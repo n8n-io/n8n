@@ -1,0 +1,31 @@
+{
+	"properties": {
+		"imageUrl": {
+			"type": "string"
+		},
+		"model": {
+			"type": "string"
+		},
+		"usage": {
+			"properties": {
+				"image_count": {
+					"type": "integer"
+				},
+				"input_tokens": {
+					"type": "integer"
+				},
+				"output_tokens": {
+					"type": "integer"
+				},
+				"size": {
+					"type": "string"
+				},
+				"total_tokens": {
+					"type": "integer"
+				}
+			},
+			"type": "object"
+		}
+	},
+	"type": "object"
+}

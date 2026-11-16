@@ -1,0 +1,152 @@
+{
+	"properties": {
+		"channels": {
+			"items": {
+				"type": "string"
+			},
+			"type": "array"
+		},
+		"comments_count": {
+			"type": "integer"
+		},
+		"created": {
+			"type": "integer"
+		},
+		"display_as_bot": {
+			"type": "boolean"
+		},
+		"editable": {
+			"type": "boolean"
+		},
+		"external_type": {
+			"type": "string"
+		},
+		"favorites": {
+			"items": {},
+			"type": "array"
+		},
+		"file_access": {
+			"type": "string"
+		},
+		"filetype": {
+			"type": "string"
+		},
+		"groups": {
+			"items": {
+				"type": "string"
+			},
+			"type": "array"
+		},
+		"has_more_shares": {
+			"type": "boolean"
+		},
+		"has_rich_preview": {
+			"type": "boolean"
+		},
+		"id": {
+			"type": "string"
+		},
+		"ims": {
+			"items": {
+				"type": "string"
+			},
+			"type": "array"
+		},
+		"is_external": {
+			"type": "boolean"
+		},
+		"is_modified_by_ai": {
+			"type": "boolean"
+		},
+		"is_public": {
+			"type": "boolean"
+		},
+		"is_starred": {
+			"type": "boolean"
+		},
+		"media_display_type": {
+			"type": "string"
+		},
+		"mimetype": {
+			"type": "string"
+		},
+		"mode": {
+			"type": "string"
+		},
+		"name": {
+			"type": "string"
+		},
+		"original_h": {
+			"type": "integer"
+		},
+		"original_w": {
+			"type": "integer"
+		},
+		"permalink": {
+			"type": "string"
+		},
+		"permalink_public": {
+			"type": "string"
+		},
+		"pretty_type": {
+			"type": "string"
+		},
+		"public_url_shared": {
+			"type": "boolean"
+		},
+		"shares": {
+			"properties": {
+				"private": {
+					"type": "object"
+				}
+			},
+			"type": "object"
+		},
+		"size": {
+			"type": "integer"
+		},
+		"thumb_160": {
+			"type": "string"
+		},
+		"thumb_360": {
+			"type": "string"
+		},
+		"thumb_360_h": {
+			"type": "integer"
+		},
+		"thumb_360_w": {
+			"type": "integer"
+		},
+		"thumb_64": {
+			"type": "string"
+		},
+		"thumb_80": {
+			"type": "string"
+		},
+		"thumb_tiny": {
+			"type": "string"
+		},
+		"timestamp": {
+			"type": "integer"
+		},
+		"title": {
+			"type": "string"
+		},
+		"url_private": {
+			"type": "string"
+		},
+		"url_private_download": {
+			"type": "string"
+		},
+		"user": {
+			"type": "string"
+		},
+		"user_team": {
+			"type": "string"
+		},
+		"username": {
+			"type": "string"
+		}
+	},
+	"type": "object"
+}

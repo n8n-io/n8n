@@ -1,0 +1,11 @@
+{
+	"properties": {
+		"fileUri": {
+			"type": "string"
+		},
+		"mimeType": {
+			"type": "string"
+		}
+	},
+	"type": "object"
+}

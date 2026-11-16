@@ -1,0 +1,75 @@
+{
+	"properties": {
+		"contacts": {
+			"items": {
+				"properties": {
+					"profile": {
+						"properties": {
+							"name": {
+								"type": "string"
+							}
+						},
+						"type": "object"
+					},
+					"user_id": {
+						"type": "string"
+					},
+					"wa_id": {
+						"type": "string"
+					}
+				},
+				"type": "object"
+			},
+			"type": "array"
+		},
+		"field": {
+			"type": "string"
+		},
+		"messages": {
+			"items": {
+				"properties": {
+					"from": {
+						"type": "string"
+					},
+					"from_user_id": {
+						"type": "string"
+					},
+					"id": {
+						"type": "string"
+					},
+					"text": {
+						"properties": {
+							"body": {
+								"type": "string"
+							}
+						},
+						"type": "object"
+					},
+					"timestamp": {
+						"type": "string"
+					},
+					"type": {
+						"type": "string"
+					}
+				},
+				"type": "object"
+			},
+			"type": "array"
+		},
+		"messaging_product": {
+			"type": "string"
+		},
+		"metadata": {
+			"properties": {
+				"display_phone_number": {
+					"type": "string"
+				},
+				"phone_number_id": {
+					"type": "string"
+				}
+			},
+			"type": "object"
+		}
+	},
+	"type": "object"
+}

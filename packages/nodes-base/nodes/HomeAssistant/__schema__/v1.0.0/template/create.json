@@ -1,0 +1,8 @@
+{
+	"properties": {
+		"renderedTemplate": {
+			"type": ["array", "object", "string"]
+		}
+	},
+	"type": "object"
+}

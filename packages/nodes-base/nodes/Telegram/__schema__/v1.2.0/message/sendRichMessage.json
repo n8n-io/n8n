@@ -1,0 +1,69 @@
+{
+	"properties": {
+		"ok": {
+			"type": "boolean"
+		},
+		"result": {
+			"properties": {
+				"chat": {
+					"properties": {
+						"first_name": {
+							"type": "string"
+						},
+						"id": {
+							"type": "integer"
+						},
+						"type": {
+							"type": "string"
+						}
+					},
+					"type": "object"
+				},
+				"date": {
+					"type": "integer"
+				},
+				"from": {
+					"properties": {
+						"first_name": {
+							"type": "string"
+						},
+						"id": {
+							"type": "integer"
+						},
+						"is_bot": {
+							"type": "boolean"
+						},
+						"username": {
+							"type": "string"
+						}
+					},
+					"type": "object"
+				},
+				"message_id": {
+					"type": "integer"
+				},
+				"rich_message": {
+					"properties": {
+						"blocks": {
+							"items": {
+								"properties": {
+									"text": {
+										"type": ["array", "object", "string"]
+									},
+									"type": {
+										"type": "string"
+									}
+								},
+								"type": "object"
+							},
+							"type": "array"
+						}
+					},
+					"type": "object"
+				}
+			},
+			"type": "object"
+		}
+	},
+	"type": "object"
+}

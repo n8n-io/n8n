@@ -1,0 +1,97 @@
+{
+	"properties": {
+		"createdBy": {
+			"properties": {
+				"user": {
+					"properties": {
+						"displayName": {
+							"type": "string"
+						},
+						"email": {
+							"type": "string"
+						}
+					},
+					"type": "object"
+				}
+			},
+			"type": "object"
+		},
+		"createdDateTime": {
+			"type": "string"
+		},
+		"file": {
+			"properties": {
+				"hashes": {
+					"type": "object"
+				},
+				"mimeType": {
+					"type": "string"
+				}
+			},
+			"type": "object"
+		},
+		"fileSystemInfo": {
+			"properties": {
+				"createdDateTime": {
+					"type": "string"
+				},
+				"lastModifiedDateTime": {
+					"type": "string"
+				}
+			},
+			"type": "object"
+		},
+		"id": {
+			"type": "string"
+		},
+		"lastModifiedBy": {
+			"properties": {
+				"user": {
+					"properties": {
+						"displayName": {
+							"type": "string"
+						},
+						"email": {
+							"type": "string"
+						}
+					},
+					"type": "object"
+				}
+			},
+			"type": "object"
+		},
+		"lastModifiedDateTime": {
+			"type": "string"
+		},
+		"name": {
+			"type": "string"
+		},
+		"parentReference": {
+			"properties": {
+				"driveId": {
+					"type": "string"
+				},
+				"driveType": {
+					"type": "string"
+				},
+				"id": {
+					"type": "string"
+				},
+				"siteId": {
+					"type": "string"
+				}
+			},
+			"type": "object"
+		},
+		"searchResult": {
+			"type": "object"
+		},
+		"size": {
+			"type": "integer"
+		},
+		"webUrl": {
+			"type": "string"
+		}
+	},
+	"type": "object"
+}

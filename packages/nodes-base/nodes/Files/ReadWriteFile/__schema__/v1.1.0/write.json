@@ -1,0 +1,8 @@
+{
+	"properties": {
+		"fileName": {
+			"type": "string"
+		}
+	},
+	"type": "object"
+}

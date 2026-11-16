@@ -1,0 +1,14 @@
+{
+	"properties": {
+		"content": {
+			"type": ["object", "string"]
+		},
+		"finishReason": {
+			"type": "string"
+		},
+		"index": {
+			"type": "integer"
+		}
+	},
+	"type": "object"
+}

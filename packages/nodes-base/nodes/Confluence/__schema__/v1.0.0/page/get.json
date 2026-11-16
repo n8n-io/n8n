@@ -1,0 +1,97 @@
+{
+	"properties": {
+		"_links": {
+			"properties": {
+				"base": {
+					"type": "string"
+				},
+				"editui": {
+					"type": "string"
+				},
+				"edituiv2": {
+					"type": "string"
+				},
+				"tinyui": {
+					"type": "string"
+				},
+				"webui": {
+					"type": "string"
+				}
+			},
+			"type": "object"
+		},
+		"authorId": {
+			"type": "string"
+		},
+		"body": {
+			"properties": {
+				"storage": {
+					"properties": {
+						"representation": {
+							"type": "string"
+						},
+						"value": {
+							"type": "string"
+						}
+					},
+					"type": "object"
+				}
+			},
+			"type": "object"
+		},
+		"createdAt": {
+			"type": "string"
+		},
+		"id": {
+			"type": "string"
+		},
+		"lastOwnerId": {
+			"type": "string"
+		},
+		"ownerId": {
+			"type": "string"
+		},
+		"parentId": {
+			"type": "string"
+		},
+		"parentType": {
+			"type": "string"
+		},
+		"position": {
+			"type": "integer"
+		},
+		"spaceId": {
+			"type": "string"
+		},
+		"status": {
+			"type": "string"
+		},
+		"title": {
+			"type": "string"
+		},
+		"version": {
+			"properties": {
+				"authorId": {
+					"type": "string"
+				},
+				"createdAt": {
+					"type": "string"
+				},
+				"message": {
+					"type": "string"
+				},
+				"minorEdit": {
+					"type": "boolean"
+				},
+				"ncsStepVersion": {
+					"type": "string"
+				},
+				"number": {
+					"type": "integer"
+				}
+			},
+			"type": "object"
+		}
+	},
+	"type": "object"
+}

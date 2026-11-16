@@ -1,0 +1,214 @@
+{
+	"properties": {
+		"addedAt": {
+			"type": "integer"
+		},
+		"canonical-vid": {
+			"type": "integer"
+		},
+		"form-submissions": {
+			"items": {
+				"properties": {
+					"contact-associated-by": {
+						"items": {
+							"type": "string"
+						},
+						"type": "array"
+					},
+					"conversion-id": {
+						"type": "string"
+					},
+					"form-id": {
+						"type": "string"
+					},
+					"form-type": {
+						"type": "string"
+					},
+					"meta-data": {
+						"items": {},
+						"type": "array"
+					},
+					"page-title": {
+						"type": "string"
+					},
+					"page-url": {
+						"type": "string"
+					},
+					"portal-id": {
+						"type": "integer"
+					},
+					"timestamp": {
+						"type": "integer"
+					},
+					"title": {
+						"type": "string"
+					}
+				},
+				"type": "object"
+			},
+			"type": "array"
+		},
+		"identity-profiles": {
+			"items": {
+				"properties": {
+					"deleted-changed-timestamp": {
+						"type": "integer"
+					},
+					"identities": {
+						"items": {
+							"properties": {
+								"is-primary": {
+									"type": "boolean"
+								},
+								"timestamp": {
+									"type": "integer"
+								},
+								"type": {
+									"type": "string"
+								},
+								"value": {
+									"type": "string"
+								}
+							},
+							"type": "object"
+						},
+						"type": "array"
+					},
+					"saved-at-timestamp": {
+						"type": "integer"
+					},
+					"vid": {
+						"type": "integer"
+					}
+				},
+				"type": "object"
+			},
+			"type": "array"
+		},
+		"is-contact": {
+			"type": "boolean"
+		},
+		"merge-audits": {
+			"items": {
+				"properties": {
+					"canonical-vid": {
+						"type": "integer"
+					},
+					"entity-id": {
+						"type": "string"
+					},
+					"first-name": {
+						"type": "string"
+					},
+					"is-reverted": {
+						"type": "boolean"
+					},
+					"last-name": {
+						"type": "string"
+					},
+					"merged_to_email": {
+						"properties": {
+							"data-sensitivity": {},
+							"is-encrypted": {},
+							"selected": {
+								"type": "boolean"
+							},
+							"source-id": {
+								"type": "string"
+							},
+							"source-label": {},
+							"source-type": {
+								"type": "string"
+							},
+							"timestamp": {
+								"type": "integer"
+							},
+							"updated-by-user-id": {
+								"type": "integer"
+							},
+							"value": {
+								"type": "string"
+							}
+						},
+						"type": "object"
+					},
+					"num-properties-moved": {
+						"type": "integer"
+					},
+					"primary-vid-to-merge": {
+						"type": "integer"
+					},
+					"timestamp": {
+						"type": "integer"
+					},
+					"user-id": {
+						"type": "integer"
+					},
+					"vid-to-merge": {
+						"type": "integer"
+					}
+				},
+				"type": "object"
+			},
+			"type": "array"
+		},
+		"merged-vids": {
+			"items": {
+				"type": "integer"
+			},
+			"type": "array"
+		},
+		"portal-id": {
+			"type": "integer"
+		},
+		"properties": {
+			"properties": {
+				"company": {
+					"properties": {
+						"value": {
+							"type": "string"
+						}
+					},
+					"type": "object"
+				},
+				"createdate": {
+					"properties": {
+						"value": {
+							"type": "string"
+						}
+					},
+					"type": "object"
+				},
+				"firstname": {
+					"properties": {
+						"value": {
+							"type": "string"
+						}
+					},
+					"type": "object"
+				},
+				"lastmodifieddate": {
+					"properties": {
+						"value": {
+							"type": "string"
+						}
+					},
+					"type": "object"
+				},
+				"lastname": {
+					"properties": {
+						"value": {
+							"type": "string"
+						}
+					},
+					"type": "object"
+				}
+			},
+			"type": "object"
+		},
+		"vid": {
+			"type": "integer"
+		}
+	},
+	"type": "object"
+}
