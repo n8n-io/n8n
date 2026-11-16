@@ -2,7 +2,7 @@
 name: post-build-flow
 description: >-
   Load after a direct workflow_builder_build_workflow succeeds, or when the
-  message contains workflow-verification-follow-up or workflow-setup-required.
+  message contains workflow-setup-required.
   One-off builds use one-off-operations instead.
 recommended_tool_groups:
   - workflows
@@ -13,8 +13,7 @@ recommended_tool_groups:
 
 Use this skill after `workflow_builder_build_workflow` succeeds on a direct orchestrator build,
 especially when the build result contains `postBuildFlow.required: true`, or when
-the current message contains `<workflow-verification-follow-up>` or
-`<workflow-setup-required>`.
+the current message contains `<workflow-setup-required>`.
 
 One-off builds (`postBuildFlow.reason: "direct-one-off-build-succeeded"`) hand
 off to the `one-off-operations` skill instead. If both sets of instructions are
@@ -91,14 +90,6 @@ error-workflow opt-in. Then the final claim.
 Do not proactively offer, recommend, or mention publishing until a successful
 execution has run every required node on the claimed path without mocked
 credentials, simulated node output, fixture overrides, or temporary pin data.
-
-## Verification follow-up
-
-When the current message contains `<workflow-verification-follow-up>`, verify
-from the payload's `obligation`. If it is `ready_to_verify` or `verifying`, call
-`workflow_builder_verify_built_workflow`. Do not declare the
-workflow finished while `outcome.setupRequirement.status === "required"`. For a
-multi-trigger outcome, verify every trigger without a recorded successful pass.
 
 ## Setup follow-up
 

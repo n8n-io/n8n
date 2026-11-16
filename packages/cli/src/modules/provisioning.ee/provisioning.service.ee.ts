@@ -188,92 +188,115 @@ export class ProvisioningService {
 			return;
 		}
 
-		let projectRoleMap: Record<string, string>;
-		try {
-			projectRoleMap = {};
-			for (const entry of projectIdToRoles) {
-				if (typeof entry !== 'string') {
-					this.logger.warn(
-						`Skipping invalid project role mapping entry. Expected string, received ${typeof entry}.`,
-						{ userId, entry },
-					);
-					continue;
-				}
-
-				const [projectId, roleSlugSuffix] = entry.split(':');
-				if (!projectId || !roleSlugSuffix) {
-					this.logger.warn(
-						`Skipping invalid project role mapping entry. Expected format "projectId:displayName", received "${entry}".`,
-						{ userId, entry },
-					);
-					continue;
-				}
-
-				// This means that if the external SSO setup has two roles configured
-				// for the same projectId, we only provision the one we see last in the sent list.
-				projectRoleMap[projectId] = `project:${roleSlugSuffix}`;
-			}
-		} catch (error) {
-			this.logger.warn(
-				'Skipping project role provisioning. Failed to parse project to role mapping.',
-				{ userId, projectIdToRoles },
-			);
-			return;
-		}
-
-		const projectIds = Object.keys(projectRoleMap);
-		const roleSlugs = [...new Set(Object.values(projectRoleMap))];
-
-		if (projectIds.length === 0) {
-			return;
-		}
-
-		const [existingProjects, existingRoles] = await Promise.all([
-			this.projectRepository.find({
-				where: { id: In(projectIds), type: Not('personal') },
-				select: ['id'],
-			}),
-			this.roleRepository.find({
-				where: {
-					slug: In(roleSlugs),
-					roleType: 'project',
-				},
-				select: ['displayName', 'slug'],
-			}),
-		]);
-		const existingProjectIds = new Set(existingProjects.map((project) => project.id));
-
-		const validProjectToRoleMappings: Array<{ projectId: string; roleSlug: string }> = [];
-
-		// populate validProjectToRoleMappings
-		for (const [projectId, roleSlug] of Object.entries(projectRoleMap)) {
-			if (!existingProjectIds.has(projectId)) {
+		const projectRoleMap = new Map<string, string>();
+		let hasMalformedEntry = false;
+		for (const entry of projectIdToRoles) {
+			if (typeof entry !== 'string') {
+				hasMalformedEntry = true;
 				this.logger.warn(
-					`Skipped provisioning project role for project with ID ${projectId}, because project does not exist or is a personal project.`,
-					{ userId, projectId, roleSlug },
-				);
-				continue;
-			}
-			const role = existingRoles.find((role) => role.slug === roleSlug);
-			if (!role) {
-				this.logger.warn(
-					`Skipping project role provisioning for role with slug ${roleSlug}, because role does not exist or is not specific to projects.`,
-					{ userId, projectId, roleSlug },
+					`Skipping invalid project role mapping entry. Expected string, received ${typeof entry}.`,
+					{ userId, entry },
 				);
 				continue;
 			}
 
-			validProjectToRoleMappings.push({ projectId, roleSlug: role.slug });
+			const [projectId, roleSlugSuffix] = entry.split(':');
+			if (!projectId || !roleSlugSuffix) {
+				hasMalformedEntry = true;
+				this.logger.warn(
+					`Skipping invalid project role mapping entry. Expected format "projectId:displayName", received "${entry}".`,
+					{ userId, entry },
+				);
+				continue;
+			}
+
+			// This means that if the external SSO setup has two roles configured
+			// for the same projectId, we only provision the one we see last in the sent list.
+			projectRoleMap.set(projectId, `project:${roleSlugSuffix}`);
 		}
 
-		if (validProjectToRoleMappings.length === 0) {
-			this.logger.warn(
-				'Skipping project role provisioning altogether. No valid project to role mappings found.',
-				{ userId, projectRoleMap },
-			);
+		// No-colon entries are malformed just like non-string entries. A claim
+		// without any well-formed entry is not an authoritative "no project roles"
+		// signal, so leave existing access untouched. If well-formed entries exist
+		// but none resolve, a malformed sibling keeps the claim non-authoritative;
+		// otherwise the shared reconciler removes stale access.
+		if (projectRoleMap.size === 0 && hasMalformedEntry) {
 			return;
 		}
 
+		await this.reconcileProjectRoles(userId, projectRoleMap, {
+			skipWhenNoValidMappings: hasMalformedEntry,
+			logNoValidMappings: true,
+		});
+	}
+
+	/**
+	 * Reconcile a user's team-project memberships with a desired project→role map.
+	 *
+	 * Existing projects and roles are resolved first; mappings that do not resolve
+	 * are skipped. Team-project relations outside the resolved map are removed and
+	 * the resolved mappings are added. Personal projects are never touched.
+	 */
+	private async reconcileProjectRoles(
+		userId: string,
+		projectRoleMap: Map<string, string>,
+		options: {
+			logPrefix?: string;
+			skipWhenNoValidMappings?: boolean;
+			logNoValidMappings?: boolean;
+		} = {},
+	): Promise<void> {
+		const logPrefix = options.logPrefix ?? '';
+		const validMappings: Array<{ projectId: string; roleSlug: string }> = [];
+
+		if (projectRoleMap.size > 0) {
+			const projectIds = [...projectRoleMap.keys()];
+			const roleSlugs = [...new Set(projectRoleMap.values())];
+
+			const [existingProjects, existingRoles] = await Promise.all([
+				this.projectRepository.find({
+					where: { id: In(projectIds), type: Not('personal') },
+					select: ['id'],
+				}),
+				this.roleRepository.find({
+					where: { slug: In(roleSlugs), roleType: 'project' },
+					select: ['displayName', 'slug'],
+				}),
+			]);
+
+			const existingProjectIds = new Set(existingProjects.map((project) => project.id));
+
+			for (const [projectId, roleSlug] of projectRoleMap.entries()) {
+				if (!existingProjectIds.has(projectId)) {
+					this.logger.warn(
+						`${logPrefix}Skipped provisioning project role for project with ID ${projectId}, because project does not exist or is a personal project.`,
+						{ userId, projectId, roleSlug },
+					);
+					continue;
+				}
+				const role = existingRoles.find((candidate) => candidate.slug === roleSlug);
+				if (!role) {
+					this.logger.warn(
+						`${logPrefix}Skipping project role provisioning for role with slug ${roleSlug}, because role does not exist or is not specific to projects.`,
+						{ userId, projectId, roleSlug },
+					);
+					continue;
+				}
+				validMappings.push({ projectId, roleSlug: role.slug });
+			}
+		}
+
+		if (validMappings.length === 0 && options.skipWhenNoValidMappings) {
+			return;
+		}
+		if (validMappings.length === 0 && options.logNoValidMappings) {
+			this.logger.warn(
+				`${logPrefix}No valid project to role mappings found. Removing existing project access.`,
+				{ userId, projectRoleMap: Object.fromEntries(projectRoleMap) },
+			);
+		}
+
+		// Fetch existing access even when the map is empty so revocation runs.
 		const currentlyAccessibleProjects = await this.projectRepository.find({
 			where: {
 				type: Not('personal'),
@@ -284,17 +307,21 @@ export class ProvisioningService {
 			relations: ['projectRelations'],
 		});
 
-		const validProjectIds = new Set(validProjectToRoleMappings.map((m) => m.projectId));
+		const validProjectIds = new Set(validMappings.map((mapping) => mapping.projectId));
 		const projectsToRemoveAccessFrom = currentlyAccessibleProjects.filter(
 			(project) => !validProjectIds.has(project.id),
 		);
+
+		if (projectsToRemoveAccessFrom.length === 0 && validMappings.length === 0) {
+			return;
+		}
 
 		await this.projectRepository.manager.transaction(async (tx) => {
 			for (const project of projectsToRemoveAccessFrom) {
 				await tx.delete(ProjectRelation, { projectId: project.id, userId });
 			}
 
-			for (const { projectId, roleSlug } of validProjectToRoleMappings) {
+			for (const { projectId, roleSlug } of validMappings) {
 				await this.projectService.addUser(projectId, { userId, role: roleSlug }, tx);
 			}
 		});
@@ -661,71 +688,8 @@ export class ProvisioningService {
 		userId: string,
 		projectRoleMap: Map<string, string>,
 	): Promise<void> {
-		// Fetch existing access first so revocation always runs, even when projectRoleMap is empty
-		const currentlyAccessibleProjects = await this.projectRepository.find({
-			where: { type: Not('personal'), projectRelations: { userId } },
-			relations: ['projectRelations'],
-		});
-
-		const validMappings: Array<{ projectId: string; roleSlug: string }> = [];
-
-		if (projectRoleMap.size > 0) {
-			const projectIds = [...projectRoleMap.keys()];
-			const roleSlugs = [...new Set(projectRoleMap.values())];
-
-			const [existingProjects, existingRoles] = await Promise.all([
-				this.projectRepository.find({
-					where: { id: In(projectIds), type: Not('personal') },
-					select: ['id'],
-				}),
-				this.roleRepository.find({
-					where: { slug: In(roleSlugs), roleType: 'project' },
-					select: ['displayName', 'slug'],
-				}),
-			]);
-
-			const existingProjectIds = new Set(existingProjects.map((p) => p.id));
-
-			for (const [projectId, roleSlug] of projectRoleMap.entries()) {
-				if (!existingProjectIds.has(projectId)) {
-					this.logger.warn(
-						`Expression mapping: skipping project ${projectId}, not found or is a personal project`,
-						{ userId, projectId, roleSlug },
-					);
-					continue;
-				}
-				const role = existingRoles.find((r) => r.slug === roleSlug);
-				if (!role) {
-					this.logger.warn(
-						`Expression mapping: skipping role "${roleSlug}", not found or not a project role`,
-						{ userId, projectId, roleSlug },
-					);
-					continue;
-				}
-				validMappings.push({ projectId, roleSlug: role.slug });
-			}
-		}
-
-		const validProjectIds = new Set(validMappings.map((m) => m.projectId));
-		const projectsToRemoveAccessFrom = currentlyAccessibleProjects.filter(
-			(p) => !validProjectIds.has(p.id),
-		);
-
-		if (projectsToRemoveAccessFrom.length === 0 && validMappings.length === 0) return;
-
-		await this.projectRepository.manager.transaction(async (tx) => {
-			for (const project of projectsToRemoveAccessFrom) {
-				await tx.delete(ProjectRelation, { projectId: project.id, userId });
-			}
-			for (const { projectId, roleSlug } of validMappings) {
-				await this.projectService.addUser(projectId, { userId, role: roleSlug }, tx);
-			}
-		});
-
-		this.eventService.emit('sso-user-project-access-updated', {
-			projectsAdded: validProjectIds.size,
-			projectsRemoved: projectsToRemoveAccessFrom.length,
-			userId,
+		await this.reconcileProjectRoles(userId, projectRoleMap, {
+			logPrefix: 'Expression mapping: ',
 		});
 	}
 

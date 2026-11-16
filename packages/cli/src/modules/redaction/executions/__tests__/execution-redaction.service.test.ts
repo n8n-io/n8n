@@ -8,6 +8,7 @@ import { mockInstance } from '@n8n/backend-test-utils';
 import type { User } from '@n8n/db';
 import type { INode, IRunExecutionData, ITaskData, WorkflowExecuteMode } from 'n8n-workflow';
 import { shouldRedactExecutionOutput } from 'n8n-workflow';
+import type { SecurityContext } from '@n8n/permissions';
 import { mock } from 'vitest-mock-extended';
 
 import { ForbiddenError, ScopeForbiddenError } from '@n8n/errors';
@@ -596,6 +597,92 @@ describe('ExecutionRedactionService', () => {
 				redactionPolicy: 'all',
 				rejectionReason: 'User lacks execution:reveal scope for this workflow',
 			});
+		});
+	});
+
+	describe('login id on the reveal events', () => {
+		const revealOptions = (loginId?: string): ExecutionRedactionOptions => ({
+			user: mockUser,
+			redactExecutionData: false,
+			ctx: loginId ? { security: mock<SecurityContext>({ subIdentityId: loginId }) } : undefined,
+		});
+
+		const emittedPayload = (eventName: string) =>
+			eventService.emit.mock.calls.find(([name]) => name === eventName)?.[1];
+
+		it('passes the login id to execution-data-revealed', async () => {
+			workflowFinderService.findWorkflowIdsWithScopeForUser.mockResolvedValue(
+				new Set(['workflow-123']),
+			);
+
+			await service.processExecution(
+				makeExecution({ policy: 'all', mode: 'trigger' }),
+				revealOptions('login-1'),
+			);
+
+			expect(emittedPayload('execution-data-revealed')).toMatchObject({ loginId: 'login-1' });
+		});
+
+		it('passes the login id to execution-data-reveal-failure when the scope is missing', async () => {
+			await expect(
+				service.processExecution(
+					makeExecution({ policy: 'all', mode: 'trigger' }),
+					revealOptions('login-1'),
+				),
+			).rejects.toThrow(ScopeForbiddenError);
+
+			expect(emittedPayload('execution-data-reveal-failure')).toMatchObject({
+				loginId: 'login-1',
+			});
+		});
+
+		it('passes the login id to execution-data-reveal-failure for a private-credential execution', async () => {
+			const execution = makeExecution({
+				policy: 'none',
+				mode: 'manual',
+				withDynamicCredentials: true,
+				executedByUserId: 'another-user-id',
+			});
+
+			await expect(service.processExecution(execution, revealOptions('login-1'))).rejects.toThrow(
+				ForbiddenError,
+			);
+
+			expect(emittedPayload('execution-data-reveal-failure')).toMatchObject({
+				loginId: 'login-1',
+			});
+		});
+
+		it('passes the login id to execution-data-reveal-failure for an unusable credential', async () => {
+			credentialsPermissionChecker.resolveInaccessibleCredentialIdsForUser.mockResolvedValue([
+				'cred-1',
+			]);
+			const execution = makeExecution({
+				policy: 'none',
+				mode: 'trigger',
+				nodes: [nodeWithCredential('cred-1')],
+			});
+
+			await expect(service.processExecution(execution, revealOptions('login-1'))).rejects.toThrow(
+				ForbiddenError,
+			);
+
+			expect(emittedPayload('execution-data-reveal-failure')).toMatchObject({
+				loginId: 'login-1',
+			});
+		});
+
+		it('emits no login id without an operation context', async () => {
+			workflowFinderService.findWorkflowIdsWithScopeForUser.mockResolvedValue(
+				new Set(['workflow-123']),
+			);
+
+			await service.processExecution(
+				makeExecution({ policy: 'all', mode: 'trigger' }),
+				revealOptions(),
+			);
+
+			expect(emittedPayload('execution-data-revealed')).toMatchObject({ loginId: undefined });
 		});
 	});
 

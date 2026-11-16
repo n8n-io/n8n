@@ -153,6 +153,7 @@ erDiagram
   boolean availableInMCP
   timestamp_3__with_time_zone createdAt
   varchar_36_ id
+  uuid identityId FK
   json integrations
   boolean isArchived
   varchar_128_ name
@@ -331,6 +332,7 @@ erDiagram
   timestamp_3__with_time_zone createdAt
   uuid createdById FK
   varchar_36_ credentialId FK
+  boolean credentialRequired
   uuid id
   varchar_255_ identityKey
   timestamp_3__with_time_zone lastCheckedAt
