@@ -7,7 +7,7 @@ an attachment for maintenance.
 
 from datetime import date
 
-from footintel.analysis.tickets import FOLLOWED, _team_followed
+from footintel.analysis.tickets import FOLLOWED, _team_followed, national_followed
 from footintel.notify.tickets import SITE
 
 _STATE = {"gagné": "gagné ✅", "perdu": "perdu ❌", "en cours": "pas encore réglé ⏳"}
@@ -39,6 +39,8 @@ def _favourite(probs: list[float], home: str, away: str) -> tuple[str, int, floa
 
 
 def _is_mine(m: dict) -> bool:
+    if m["competition"].startswith("INT-"):
+        return national_followed(m | {"source": "marché" if m.get("market") else "modèle"})
     return m["competition"] in FOLLOWED and (_team_followed(m["home"], m["competition"])
                                              or _team_followed(m["away"], m["competition"]))
 

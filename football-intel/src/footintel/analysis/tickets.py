@@ -143,9 +143,23 @@ def _team_followed(team: str, league: str | None) -> bool:
     return teams == "*" or bool(teams and team in teams)
 
 
+# National teams (D83): every match with bookmaker prices, and every match of DR Congo.
+NATIONAL_ALWAYS = {"DR Congo"}
+
+
+def national_followed(m: dict) -> bool:
+    """A national-team match the owner follows: priced by the bookmakers (Nations League, World
+    Cup, Euro, AFCON...), or played by DR Congo. A friendly without prices has nothing to check
+    the young national model against, so it stays out."""
+    return m.get("source") == "marché" or bool({m["home"], m["away"]} & NATIONAL_ALWAYS)
+
+
 def is_followed(m: dict) -> bool:
     """A followed team plays, in any competition: its domestic league (home_league,
-    away_league) decides, so Dortmund counts in the Champions League too."""
+    away_league) decides, so Dortmund counts in the Champions League too. National teams
+    follow their own rule (national_followed)."""
+    if str(m.get("competition", "")).startswith("INT-"):
+        return national_followed(m)
     return (_team_followed(m["home"], m.get("home_league") or m["competition"])
             or _team_followed(m["away"], m.get("away_league") or m["competition"]))
 

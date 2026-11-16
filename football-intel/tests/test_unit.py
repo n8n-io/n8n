@@ -1254,3 +1254,15 @@ def test_national_history_adds_database_results_the_file_does_not_hold_yet():
     out = _history(file, db)
     # Spain - England one day apart is the same match; France - Türkiye is new; Italy - Wales is not played.
     assert list(zip(out["home"], out["away"], strict=True)) == [("Spain", "England"), ("France", "Türkiye")]
+
+
+def test_tickets_follow_priced_national_matches_and_dr_congo():
+    from footintel.analysis.tickets import is_followed
+
+    priced = {"competition": "INT-UNL", "home": "Denmark", "away": "Norway", "source": "marché"}
+    friendly = {"competition": "INT-FRI", "home": "Tahiti", "away": "Cook Islands", "source": "modèle"}
+    congo = {"competition": "INT-FRI", "home": "Gabon", "away": "DR Congo", "source": "modèle"}
+    assert is_followed(priced) and not is_followed(friendly) and is_followed(congo)
+    # Clubs keep their own rule.
+    assert is_followed({"competition": "ENG-PL", "home": "Leeds", "away": "Hull", "source": "marché"})
+    assert not is_followed({"competition": "ITA-SA", "home": "Parma", "away": "Genoa", "source": "marché"})

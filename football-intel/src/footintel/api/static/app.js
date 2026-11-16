@@ -1004,7 +1004,11 @@ function learnMine(matches) {
     for (const t of [m.home, m.away]) if (p.teams === "*" || p.teams.includes(t)) MINE.add(t);
   }
 }
+/* National teams (D83): every match with bookmaker prices, and every DR Congo match. */
+const NATIONAL_ALWAYS = new Set(["DR Congo"]);
+const nationalMine = (m) => !!m.market || NATIONAL_ALWAYS.has(m.home) || NATIONAL_ALWAYS.has(m.away);
 function isMine(m) {
+  if (String(m.competition).startsWith("INT-")) return nationalMine(m);
   const p = myPref(m);
   return (!!p && (p.teams === "*" || p.teams.includes(m.home) || p.teams.includes(m.away)))
     || MINE.has(m.home) || MINE.has(m.away);
