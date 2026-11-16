@@ -1,4 +1,4 @@
-; hash 2dcda38a1bd818001dd3b6280f6714117964615e2186361806f756c9a231dd50
+; hash fd979a30b5585b0559202ac0195244ff063fa4356ff60c1bdf7e1cded4d17b90
 ; native true
 ; meta {"compilerVersion":"0.1.0","sourceHash":"82d56213d6b9add876c6307580b2ae96348b1cf8979cae5573904f9f4ce67d44","triggers":[{"kind":"webhook","path":"tf"}],"credentials":{},"durability":"full","triggerHeaders":false}
 
@@ -11,173 +11,153 @@ paths:
   body.ids
 
 fn0 run params=1 regs=17 caps=0 async
-  try [12, 15) -> @90 catch r4
-  try [35, 62) -> @90 catch r4
-  try [82, 89) -> @90 catch r4
-  try [12, 15) -> @104 catch r9
-  try [35, 62) -> @104 catch r9
-  try [82, 104) -> @104 catch r9
-     0  CLOSURE r7, fn1 <lookup>, r0
-     1  MOV r6, r7
-     2  LOADUNDEF r7
-     3  NEWARR r1
-     4  GETPROP r8, r0, "body"
-     5  GETPROP r7, r8, "ids"
-     6  LOADI r8, 0
-     7  GETPROP r9, r7, "length"
-     8  LT r9, r8, r9
-     9  JF r9, @146
-    10  GETELEM r10, r7, r8
-    11  MOV r2, r10
-    12  LOADI r11, 2
-    13  SEQ r10, r2, r11
-    14  JF r10, @35
-    15  MOV r11, r1
-    16  LOADS r14, "finally "
-    17  MOV r13, r14
-    18  TOSTR r15, r2
-    19  ADD r13, r13, r15
-    20  MOV r12, r13
-    21  CALLM r10, "push", r11..+1
-    22  NEWOBJ r11
-    23  LOADS r12, "Audit"
-    24  SETPROP r11, "name", r12
-    25  LOADS r12, "POST"
-    26  SETPROP r11, "method", r12
-    27  LOADS r12, "https://audit.example.com"
-    28  SETPROP r11, "url", r12
-    29  NEWOBJ r12
-    30  SETPROP r12, "id", r2
-    31  SETPROP r11, "body", r12
-    32  LOADI r12, 1
-    33  SUSPEND r10, http, step r12, args r11
+  try [9, 12) -> @78 catch r4
+  try [30, 54) -> @78 catch r4
+  try [72, 77) -> @78 catch r4
+  try [9, 12) -> @90 catch r9
+  try [30, 54) -> @90 catch r9
+  try [72, 90) -> @90 catch r9
+     0  CLOSURE r6, fn1 <lookup>, r0
+     1  NEWARR r1
+     2  GETPROP r8, r0, "body"
+     3  GETPROP r7, r8, "ids"
+     4  LOADI r8, 0
+     5  GETPROP r9, r7, "length"
+     6  LT r9, r8, r9
+     7  JF r9, @128
+     8  GETELEM r2, r7, r8
+     9  LOADI r11, 2
+    10  SEQ r10, r2, r11
+    11  JF r10, @30
+    12  MOV r11, r1
+    13  LOADS r13, "finally "
+    14  TOSTR r15, r2
+    15  ADD r12, r13, r15
+    16  CALLM r10, "push", r11..+1
+    17  NEWOBJ r11
+    18  LOADS r12, "Audit"
+    19  SETPROP r11, "name", r12
+    20  LOADS r12, "POST"
+    21  SETPROP r11, "method", r12
+    22  LOADS r12, "https://audit.example.com"
+    23  SETPROP r11, "url", r12
+    24  NEWOBJ r12
+    25  SETPROP r12, "id", r2
+    26  SETPROP r11, "body", r12
+    27  LOADI r12, 1
+    28  SUSPEND r10, http, step r12, args r11
         ; resume step=1 live { r1=log: string[], r6=lookup: (entries: string[]) => Promise<string>, r7=$iter: unknown, r8=$index: number }
-    34  JMP @143
-    35  LOADUNDEF r10
-    36  NEWOBJ r11
-    37  LOADS r12, "Process"
-    38  SETPROP r11, "name", r12
-    39  LOADS r12, "POST"
-    40  SETPROP r11, "method", r12
-    41  LOADS r12, "https://api.example.com/p"
-    42  SETPROP r11, "url", r12
-    43  NEWOBJ r12
-    44  SETPROP r12, "id", r2
-    45  SETPROP r11, "body", r12
-    46  LOADI r12, 0
-    47  SUSPEND r3, http, step r12, args r11
+    29  JMP @125
+    30  NEWOBJ r11
+    31  LOADS r12, "Process"
+    32  SETPROP r11, "name", r12
+    33  LOADS r12, "POST"
+    34  SETPROP r11, "method", r12
+    35  LOADS r12, "https://api.example.com/p"
+    36  SETPROP r11, "url", r12
+    37  NEWOBJ r12
+    38  SETPROP r12, "id", r2
+    39  SETPROP r11, "body", r12
+    40  LOADI r12, 0
+    41  SUSPEND r3, http, step r12, args r11
         ; resume step=0 live { r1=log: string[], r2=id: number, r6=lookup: (entries: string[]) => Promise<string>, r7=$iter: unknown, r8=$index: number }
-    48  GETPROP r12, r3, "body"
-    49  GETPROP r11, r12, "ok"
-    50  NOT r10, r11
-    51  JF r10, @59
-    52  LOADS r13, "not ok "
-    53  MOV r12, r13
-    54  TOSTR r14, r2
-    55  ADD r12, r12, r14
-    56  MOV r11, r12
-    57  NEWERR r10, Error, r11
-    58  THROW r10
-    59  LOADI r11, 4
-    60  SEQ r10, r2, r11
-    61  JF r10, @82
-    62  MOV r11, r1
-    63  LOADS r14, "finally "
-    64  MOV r13, r14
-    65  TOSTR r15, r2
-    66  ADD r13, r13, r15
-    67  MOV r12, r13
-    68  CALLM r10, "push", r11..+1
-    69  NEWOBJ r11
-    70  LOADS r12, "Audit"
-    71  SETPROP r11, "name", r12
-    72  LOADS r12, "POST"
-    73  SETPROP r11, "method", r12
-    74  LOADS r12, "https://audit.example.com"
-    75  SETPROP r11, "url", r12
-    76  NEWOBJ r12
-    77  SETPROP r12, "id", r2
-    78  SETPROP r11, "body", r12
-    79  LOADI r12, 1
-    80  SUSPEND r10, http, step r12, args r11
+    42  GETPROP r12, r3, "body"
+    43  GETPROP r11, r12, "ok"
+    44  NOT r10, r11
+    45  JF r10, @51
+    46  LOADS r12, "not ok "
+    47  TOSTR r14, r2
+    48  ADD r11, r12, r14
+    49  NEWERR r10, Error, r11
+    50  THROW r10
+    51  LOADI r11, 4
+    52  SEQ r10, r2, r11
+    53  JF r10, @72
+    54  MOV r11, r1
+    55  LOADS r13, "finally "
+    56  TOSTR r15, r2
+    57  ADD r12, r13, r15
+    58  CALLM r10, "push", r11..+1
+    59  NEWOBJ r11
+    60  LOADS r12, "Audit"
+    61  SETPROP r11, "name", r12
+    62  LOADS r12, "POST"
+    63  SETPROP r11, "method", r12
+    64  LOADS r12, "https://audit.example.com"
+    65  SETPROP r11, "url", r12
+    66  NEWOBJ r12
+    67  SETPROP r12, "id", r2
+    68  SETPROP r11, "body", r12
+    69  LOADI r12, 1
+    70  SUSPEND r10, http, step r12, args r11
         ; resume step=1 live { r1=log: string[], r6=lookup: (entries: string[]) => Promise<string> }
-    81  JMP @146
-    82  MOV r11, r1
-    83  LOADS r14, "done "
-    84  MOV r13, r14
-    85  TOSTR r15, r2
-    86  ADD r13, r13, r15
-    87  MOV r12, r13
+    71  JMP @128
+    72  MOV r11, r1
+    73  LOADS r13, "done "
+    74  TOSTR r15, r2
+    75  ADD r12, r13, r15
+    76  CALLM r10, "push", r11..+1
+    77  JMP @108
+    78  MOV r11, r1
+    79  LOADS r13, "caught "
+    80  GETPROP r16, r4, "name"
+    81  TOSTR r15, r16
+    82  ADD r13, r13, r15
+    83  LOADS r15, ": "
+    84  ADD r13, r13, r15
+    85  GETPROP r16, r4, "message"
+    86  TOSTR r15, r16
+    87  ADD r12, r13, r15
     88  CALLM r10, "push", r11..+1
-    89  JMP @124
+    89  JMP @108
     90  MOV r11, r1
-    91  LOADS r14, "caught "
-    92  MOV r13, r14
-    93  GETPROP r16, r4, "name"
-    94  TOSTR r15, r16
-    95  ADD r13, r13, r15
-    96  LOADS r15, ": "
-    97  ADD r13, r13, r15
-    98  GETPROP r16, r4, "message"
-    99  TOSTR r15, r16
-   100  ADD r13, r13, r15
-   101  MOV r12, r13
-   102  CALLM r10, "push", r11..+1
-   103  JMP @124
-   104  MOV r11, r1
-   105  LOADS r14, "finally "
-   106  MOV r13, r14
-   107  TOSTR r15, r2
-   108  ADD r13, r13, r15
-   109  MOV r12, r13
-   110  CALLM r10, "push", r11..+1
-   111  NEWOBJ r11
-   112  LOADS r12, "Audit"
-   113  SETPROP r11, "name", r12
-   114  LOADS r12, "POST"
-   115  SETPROP r11, "method", r12
-   116  LOADS r12, "https://audit.example.com"
-   117  SETPROP r11, "url", r12
-   118  NEWOBJ r12
-   119  SETPROP r12, "id", r2
-   120  SETPROP r11, "body", r12
-   121  LOADI r12, 1
-   122  SUSPEND r10, http, step r12, args r11
+    91  LOADS r13, "finally "
+    92  TOSTR r15, r2
+    93  ADD r12, r13, r15
+    94  CALLM r10, "push", r11..+1
+    95  NEWOBJ r11
+    96  LOADS r12, "Audit"
+    97  SETPROP r11, "name", r12
+    98  LOADS r12, "POST"
+    99  SETPROP r11, "method", r12
+   100  LOADS r12, "https://audit.example.com"
+   101  SETPROP r11, "url", r12
+   102  NEWOBJ r12
+   103  SETPROP r12, "id", r2
+   104  SETPROP r11, "body", r12
+   105  LOADI r12, 1
+   106  SUSPEND r10, http, step r12, args r11
         ; resume step=1 live { r9=$exception: unknown }
-   123  THROW r9
-   124  MOV r11, r1
-   125  LOADS r14, "finally "
-   126  MOV r13, r14
-   127  TOSTR r15, r2
-   128  ADD r13, r13, r15
-   129  MOV r12, r13
-   130  CALLM r10, "push", r11..+1
-   131  NEWOBJ r11
-   132  LOADS r12, "Audit"
-   133  SETPROP r11, "name", r12
-   134  LOADS r12, "POST"
-   135  SETPROP r11, "method", r12
-   136  LOADS r12, "https://audit.example.com"
-   137  SETPROP r11, "url", r12
-   138  NEWOBJ r12
-   139  SETPROP r12, "id", r2
-   140  SETPROP r11, "body", r12
-   141  LOADI r12, 1
-   142  SUSPEND r10, http, step r12, args r11
+   107  THROW r9
+   108  MOV r11, r1
+   109  LOADS r13, "finally "
+   110  TOSTR r15, r2
+   111  ADD r12, r13, r15
+   112  CALLM r10, "push", r11..+1
+   113  NEWOBJ r11
+   114  LOADS r12, "Audit"
+   115  SETPROP r11, "name", r12
+   116  LOADS r12, "POST"
+   117  SETPROP r11, "method", r12
+   118  LOADS r12, "https://audit.example.com"
+   119  SETPROP r11, "url", r12
+   120  NEWOBJ r12
+   121  SETPROP r12, "id", r2
+   122  SETPROP r11, "body", r12
+   123  LOADI r12, 1
+   124  SUSPEND r10, http, step r12, args r11
         ; resume step=1 live { r1=log: string[], r6=lookup: (entries: string[]) => Promise<string>, r7=$iter: unknown, r8=$index: number }
-   143  LOADI r9, 1
-   144  ADD r8, r8, r9
-   145  JMP @7
-   146  LOADUNDEF r7
-   147  MOV r8, r6
-   148  MOV r9, r1
-   149  CALL r5, r8, r9..+1
-   150  NEWOBJ r7
-   151  SETPROP r7, "log", r1
-   152  SETPROP r7, "nested", r5
-   153  RET r7
-   154  LOADUNDEF r7
-   155  RET r7
+   125  LOADI r9, 1
+   126  ADD r8, r8, r9
+   127  JMP @5
+   128  MOV r9, r1
+   129  CALL r5, r6, r9..+1
+   130  NEWOBJ r7
+   131  SETPROP r7, "log", r1
+   132  SETPROP r7, "nested", r5
+   133  RET r7
+   134  LOADUNDEF r7
+   135  RET r7
 
 fn1 lookup params=1 regs=7 caps=0 async
   try [0, 10) -> @18 catch r2

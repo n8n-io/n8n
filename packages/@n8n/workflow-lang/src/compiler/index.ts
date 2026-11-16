@@ -35,6 +35,8 @@ export interface CompileOptions {
 	looseTypes?: boolean;
 	/** Writes arrow callbacks of `map`, `filter` and the like as loops. Default true. */
 	inlineCallbacks?: boolean;
+	/** Makes the bytecode shorter after lowering (`optimise.ts`). Default true. */
+	optimise?: boolean;
 }
 
 export interface Manifest {
@@ -178,7 +180,13 @@ export function compile(source: string, options: CompileOptions = {}): CompileRe
 	if (def) diagnostics.push(...validateTriggers(wp.checker, def.options));
 	if (diagnostics.length > 0 || !def) return { ok: false, diagnostics };
 
-	const linker = new Linker(wp, def.run, libraryCalls.unlinked, options.inlineCallbacks ?? true);
+	const linker = new Linker(
+		wp,
+		def.run,
+		libraryCalls.unlinked,
+		options.inlineCallbacks ?? true,
+		options.optimise ?? true,
+	);
 	linker.lowerRun();
 	if (linker.diagnostics.length > 0) return { ok: false, diagnostics: linker.diagnostics };
 	const lowered = linker.finish();
