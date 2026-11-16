@@ -25,6 +25,7 @@ import { hasPermission } from '@/app/utils/rbac/permissions';
 import { useClipboard } from '@n8n/composables/useClipboard';
 import { useI18n } from '@n8n/i18n';
 import { useDocumentTitle } from '@/app/composables/useDocumentTitle';
+import { usePrefetchModals } from '@/app/composables/usePrefetchModals';
 import { usePageRedirectionHelper } from '@/app/composables/usePageRedirectionHelper';
 import SettingsUsersTable from '../components/SettingsUsersTable.vue';
 import { I18nT } from 'vue-i18n';
@@ -55,6 +56,8 @@ const ssoStore = useSSOStore();
 const documentTitle = useDocumentTitle();
 const pageRedirectionHelper = usePageRedirectionHelper();
 const userRoleProvisioningStore = useUserRoleProvisioningStore();
+
+usePrefetchModals([INVITE_USER_MODAL_KEY, DELETE_USER_MODAL_KEY]);
 
 const i18n = useI18n();
 

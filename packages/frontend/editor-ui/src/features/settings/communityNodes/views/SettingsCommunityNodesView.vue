@@ -6,6 +6,7 @@ import {
 import CommunityPackageCard from '../components/CommunityPackageCard.vue';
 import { useToast } from '@n8n/composables/useToast';
 import { useDocumentTitle } from '@/app/composables/useDocumentTitle';
+import { usePrefetchModals } from '@/app/composables/usePrefetchModals';
 import type { PublicInstalledPackage } from 'n8n-workflow';
 
 import { useCommunityNodesStore } from '../communityNodes.store';
@@ -29,6 +30,8 @@ const loading = ref(false);
 const router = useRouter();
 const pushConnection = usePushConnection({ router });
 const pushStore = usePushConnectionStore();
+
+usePrefetchModals([COMMUNITY_PACKAGE_INSTALL_MODAL_KEY]);
 const externalHooks = useExternalHooks();
 const i18n = useI18n();
 const telemetry = useTelemetry();
