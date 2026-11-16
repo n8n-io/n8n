@@ -55,6 +55,12 @@ describe('Data Transformation Functions', () => {
 			test('should return true for an own field named like a prototype property', () => {
 				expect(evaluate('={{ ({ toString: "custom" }).hasField("toString") }}')).toBe(true);
 			});
+
+			test('should not treat fields inherited from a custom prototype as fields', () => {
+				const value = Object.create({ customerId: 1 }) as object;
+				expect(hasField(value, ['customerId'])).toBe(false);
+				expect(hasField(value, ['missing'])).toBe(false);
+			});
 		});
 
 		test('.removeField should work on an object', () => {
