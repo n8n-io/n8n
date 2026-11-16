@@ -1,0 +1,63 @@
+packages/cli/src/hooks-api/__tests__/public-http.service.test.ts
+  s_1b969b9b5a436a::t_4f905d4811e7a8 202-217
+  s_1b969b9b5a436a::t_390e830f8ea5fd 2-3,8-9,12-19,21-41,58-62,64,66-71,91,109,111,119,123,132-145,147,150,153-201,218-297,302-335
+  s_1b969b9b5a436a::t_bbe605bf318477 93-98,298-301
+  s_1b969b9b5a436a::t_5b73dded161ff6 1
+packages/@n8n/hooks-api/README.md
+  s_1b969b9b5a436a::t_7e35989cf50ae4 15-18,59-79,83-84,87-90,93-96
+  s_1b969b9b5a436a::t_0a4f91df44ce34 80-82,85-86
+  s_1b969b9b5a436a::t_8a091f0a22e06d 91-92
+packages/cli/src/hooks-api/v1/public-ownership.service.ts
+  s_1b969b9b5a436a::t_7e35989cf50ae4 2,17,34-37
+  s_1b969b9b5a436a::t_7013e4859bad34 4
+packages/cli/src/abstract-server.ts
+  s_1b969b9b5a436a::t_cd4500e7d54ee5 125-127,133,403
+  s_1b969b9b5a436a::t_ebd09d40e89d69 124,404
+packages/cli/src/hooks-api/__tests__/hooks-api.service.test.ts
+  s_1b969b9b5a436a::t_306fb2a4e98280 4
+packages/cli/src/hooks-api/v1/public-http.service.ts
+  s_1b969b9b5a436a::t_cd4500e7d54ee5 4-16,18-19,23-34,44-53,68-69,73-75,83-97,99-103,105-106,108-109,118-125,127-132
+  s_1b969b9b5a436a::t_eb3e9254164158 2,133-151,153
+packages/cli/test/integration/hooks-api/startup.test.ts
+  s_1b969b9b5a436a::t_3dd8ad0624e7df 31,179,224-227,232-256
+  s_1b969b9b5a436a::t_7013e4859bad34 228-231
+  s_1b969b9b5a436a::t_c922088d9e364c 257
+packages/cli/test/integration/hooks-api/fixtures/startup.hook.js
+  s_1b969b9b5a436a::t_3dd8ad0624e7df 22-38,41-55
+  s_1b969b9b5a436a::t_7e35989cf50ae4 39-40
+packages/@n8n/hooks-api/api/v1.d.ts
+  s_1b969b9b5a436a::t_7e35989cf50ae4 47,56,63-70,74,79,90,115-129
+  s_1b969b9b5a436a::t_23881d88390399 130
+packages/cli/src/hooks-api/__tests__/contract/v1-http.contract.integration.test.ts
+  s_1b969b9b5a436a::t_c1678b17d4834b 1-79
+packages/cli/src/hooks-api/__tests__/public-ownership.service.test.ts
+  s_1b969b9b5a436a::t_7013e4859bad34 1,13-14
+packages/cli/src/hooks-api/__tests__/contract/v1-ownership.contract.integration.test.ts
+  s_1b969b9b5a436a::t_c97a6a0303912e 10,82-83
+packages/@n8n/hooks-api/src/v1/http.ts
+  s_1b969b9b5a436a::t_05040a1dc77894 1-2,13-14,24-38,43-44,51
+packages/@n8n/hooks-api/src/v1/index.ts
+  s_1b969b9b5a436a::t_1e1d294d85b6d3 7
+packages/@n8n/hooks-api/src/v1/security.ts
+  s_1b969b9b5a436a::t_aa7114d8b4ea12 1-20
+packages/cli/src/controller.registry.ts
+  s_1b969b9b5a436a::t_a19817906ead99 172
+packages/cli/src/hooks-api/hooks-api.service.ts
+  s_1b969b9b5a436a::t_7a64cad5f020d2 5
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "9bc551a1a2cfd14fc8a8375f07fc31e589e537d7",
+  "prompts": {},
+  "sessions": {
+    "s_1b969b9b5a436a": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "df204a89-3442-4ad4-b0c3-7f28e87f473f",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "Andreas Fitzek <andreas.fitzek@n8n.io>"
+    }
+  }
+}
