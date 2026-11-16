@@ -1,0 +1,25 @@
+packages/cli/src/modules/agents/agent-execution.service.ts
+  s_8ffe1b566ca083::t_e29d6b60dc9160 606-622
+  s_8ffe1b566ca083::t_cc22403f96ba0e 480-482
+packages/cli/src/metrics/prometheus/agent-metrics.service.ts
+  s_8ffe1b566ca083::t_5d4f9243321a0b 36
+packages/cli/src/modules/agents/__tests__/agent-execution.service.test.ts
+  s_8ffe1b566ca083::t_66e28edf4d74c4 1606-1612,1614-1617
+  s_8ffe1b566ca083::t_48d010cb8400ad 1613
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "ca720ec5e4f67b1783b2ca71953883d0c1833ab3",
+  "prompts": {},
+  "sessions": {
+    "s_8ffe1b566ca083": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "0b617459-2f9a-4985-ad4d-ad02e41a3d4a",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Jaakko Husso <jaakko@n8n.io>"
+    }
+  }
+}

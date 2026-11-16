@@ -1,0 +1,117 @@
+packages/@n8n/api-types/src/agents/agent-config-validation.schema.ts
+  s_dfe3f914c8bb46::t_15dec2d04e0765 20
+packages/@n8n/config/src/configs/__tests__/agents.config.test.ts
+  s_dfe3f914c8bb46::t_0523556e8108dc 22,29,33
+packages/@n8n/config/src/configs/agents.config.ts
+  s_dfe3f914c8bb46::t_84680a8fd7445d 1,12,42,74,81-82
+packages/@n8n/constants/src/nodes.ts
+  s_dfe3f914c8bb46::t_68d4c887684311 45,47,52-53
+packages/@n8n/instance-ai/skills/agent-builder/SKILL.md
+  s_dfe3f914c8bb46::t_01e8c6872a4683 196,222,225
+packages/cli/src/__tests__/workflow-helpers.test.ts
+  s_dfe3f914c8bb46::t_fa10ba1d03ee86 1043
+packages/cli/src/modules/agents/__tests__/agent-config.service.test.ts
+  s_dfe3f914c8bb46::t_b7d8d75ab50d61 379,399
+packages/cli/src/modules/agents/agent-config-preparation.service.ts
+  s_dfe3f914c8bb46::t_578a6abf41ae33 310
+packages/cli/src/modules/agents/agent-validation.service.ts
+  s_dfe3f914c8bb46::t_47df9881e03729 410,765,797
+packages/cli/src/modules/agents/agent-workflow-execution.service.ts
+  s_dfe3f914c8bb46::t_7d9b91cce004ff 711
+packages/cli/src/modules/agents/approval/README.md
+  s_dfe3f914c8bb46::t_4af2bf74de659b 7,17,39,55,66
+packages/cli/src/modules/agents/approval/agent-channel-hitl.service.ts
+  s_dfe3f914c8bb46::t_eb914485ddfb8c 208,216
+packages/cli/src/modules/agents/approval/agent-decision-workflow.service.ts
+  s_dfe3f914c8bb46::t_e4e888635c9fb0 248,294
+packages/cli/src/node-catalog/__tests__/node-catalog.service.test.ts
+  s_dfe3f914c8bb46::t_6a97d7a7d4a6fa 84,283
+packages/cli/src/node-catalog/module-gated-node-types.ts
+  s_dfe3f914c8bb46::t_b0119907cd4cff 4-5,17,19,43-44
+packages/cli/test/integration/agents/agent-channel-approval.integration.test.ts
+  s_dfe3f914c8bb46::t_cb835bcfd22a50 12,41-43,137,140,224,232,275
+packages/frontend/@n8n/design-system/src/components/N8nIcon/nodes/agent-decision-response.svg
+  s_dfe3f914c8bb46::t_0e1d1bf7015057 2-14
+packages/frontend/@n8n/design-system/src/components/N8nIcon/nodes/agent-decision-trigger.svg
+  s_dfe3f914c8bb46::t_bf5999609f2643 2-14
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_dfe3f914c8bb46::t_a8c8dc8528df7c 6,16,29,31,36-40,42-44,51-52
+packages/frontend/editor-ui/src/app/stores/nodeTypes.store.test.ts
+  s_dfe3f914c8bb46::t_626833e1f00e80 150-153,156
+packages/frontend/editor-ui/src/app/stores/nodeTypes.store.ts
+  s_dfe3f914c8bb46::t_250caa37d5e1f7 10,115-116
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentApprovalRouteSelect.test.ts
+  s_dfe3f914c8bb46::t_b8f4e292c68b43 4,8-9,50,52-56,59,66,75,79,90-91,102-104,127,152-188
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentBuilderEditorColumn.spec.ts
+  s_dfe3f914c8bb46::t_d379ec557c8a31 3,146-154,211-212,219-221,241,592-624
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentHitlConfigurationModal.test.ts
+  s_dfe3f914c8bb46::t_688105668b382f 58,63,153-158,185-189,194-198,224-229,367,388,485,493,587-647
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentHitlDestinationPicker.test.ts
+  s_dfe3f914c8bb46::t_0e5be44ff463d8 212-214
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentHitlToolsSelect.test.ts
+  s_dfe3f914c8bb46::t_de6110bbb46c16 2-3,19-21,40,43,48,50,53-55,57-59,65-97
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentToolConfigForm.test.ts
+  s_dfe3f914c8bb46::t_2594f6e9041bfa 62-68,76-78,172-203
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentToolConfigWorkflowContent.test.ts
+  s_dfe3f914c8bb46::t_019aa2a045518e 1-28
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentValidationTooltip.test.ts
+  s_dfe3f914c8bb46::t_409dd7b259bf72 446,453
+packages/frontend/editor-ui/src/features/agents/__tests__/WorkflowToolConfigContent.test.ts
+  s_dfe3f914c8bb46::t_0cee28940fe3f9 10,150-155,157-159,162,166-169,175
+packages/frontend/editor-ui/src/features/agents/__tests__/validationIssues.test.ts
+  s_dfe3f914c8bb46::t_bdc7109393f474 10,20
+packages/frontend/editor-ui/src/features/agents/agents-design-language.md
+  s_dfe3f914c8bb46::t_6c650bde931981 234-250,322-326,597-600,605,607,610,612-614,630-642,657
+packages/frontend/editor-ui/src/features/agents/components/AgentApprovalRouteSelect.vue
+  s_dfe3f914c8bb46::t_975a1a6fcb40c4 4-5,9-10,13-27,31,40-49,51,53,55-56,60-61,63-67,70-73,82-88,97-98,123-145,157-162
+packages/frontend/editor-ui/src/features/agents/components/AgentBuilderEditorColumn.vue
+  s_dfe3f914c8bb46::t_8771ea04d7ef94 18,414-415
+packages/frontend/editor-ui/src/features/agents/components/AgentFormSettingRow.vue
+  s_dfe3f914c8bb46::t_feb2162ca8c184 15,17,42-50
+packages/frontend/editor-ui/src/features/agents/components/AgentHitlConfigurationModal.vue
+  s_dfe3f914c8bb46::t_e7d6285832ec09 4,14-15,37,99-102,263,271,279-280,316,342-344,356-365,367-382,384-387,389-473,475-551,553-555,584-592,599,627-685
+packages/frontend/editor-ui/src/features/agents/components/AgentHitlDestinationPicker.vue
+  s_dfe3f914c8bb46::t_f441cd124cf8f1 31-33,156,204
+packages/frontend/editor-ui/src/features/agents/components/AgentHitlToolsSelect.vue
+  s_dfe3f914c8bb46::t_943395207d28da 4,12,17-18,24-26,57-80,85-95,97-103,107-108,114,119
+packages/frontend/editor-ui/src/features/agents/components/AgentPillField.vue
+  s_dfe3f914c8bb46::t_7ba14818dc0edf 1-237
+packages/frontend/editor-ui/src/features/agents/components/AgentToolConfigForm.vue
+  s_dfe3f914c8bb46::t_fd2a414e1f6dc3 187-189,404,407,420-423,425-426,428,463,482,491-492
+packages/frontend/editor-ui/src/features/agents/components/AgentToolConfigWorkflowContent.vue
+  s_dfe3f914c8bb46::t_e8a5bc0fa15dc0 72-78
+packages/frontend/editor-ui/src/features/agents/components/AgentValidationTooltip.vue
+  s_dfe3f914c8bb46::t_e749af7f371453 147,228
+packages/frontend/editor-ui/src/features/agents/components/WorkflowToolConfigContent.vue
+  s_dfe3f914c8bb46::t_dec27a7ef38deb 441-445,447-456,458-482,484-509,584-593,597-602,609,617-622,631
+packages/frontend/editor-ui/src/features/agents/utils/agentValidationIssueMessages.ts
+  s_dfe3f914c8bb46::t_9639b3afd7c387 18,53
+packages/frontend/editor-ui/src/features/agents/utils/validationIssues.ts
+  s_dfe3f914c8bb46::t_1a0d7b503236ca 51
+packages/nodes-base/nodes/AgentDecision/AgentDecisionResponse.node.ts
+  s_dfe3f914c8bb46::t_a5230b16c35991 11,18
+packages/nodes-base/nodes/AgentDecision/AgentDecisionTrigger.node.test.ts
+  s_dfe3f914c8bb46::t_e5c759c7cd888b 9,13,47
+packages/nodes-base/nodes/AgentDecision/AgentDecisionTrigger.node.ts
+  s_dfe3f914c8bb46::t_22d3693f609c28 17-18,25,72,91
+packages/cli/src/modules/agents/__tests__/agent-workflow-execution.service.test.ts
+  s_dfe3f914c8bb46::t_bf972dafa7fb90 1,204
+packages/cli/src/modules/agents/approval/__tests__/agent-decision-workflow.service.test.ts
+  s_dfe3f914c8bb46::t_4bb70b0bdd38c9 2,45,96,171,284,523,743,752
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "b1f8e89285a628ef323287fc39fae5383c781b21",
+  "prompts": {},
+  "sessions": {
+    "s_dfe3f914c8bb46": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a177de-1655-75e1-b502-74f6cb945148",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "Michael Drury <michael.drury@n8n.io>"
+    }
+  }
+}
