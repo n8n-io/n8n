@@ -157,6 +157,16 @@ describe('getLegacyDateTypeParsers', () => {
 		expect(parse(builtins.TIMESTAMPTZ, '2020-01-01 12:00:00+00')).toBe('2020-01-01T12:00:00.000Z');
 	});
 
+	it('should still read a zoneless TIMESTAMP as a local wall clock', () => {
+		const parsed = parse(builtins.TIMESTAMP, '2020-01-01 12:00:00');
+
+		// Asserted through the clock rather than as a literal, because the instant
+		// this produces depends on the zone the test machine runs in. That dependence
+		// is the behaviour this PR removes everywhere except here.
+		expect(parsed.endsWith('Z')).toBe(true);
+		expect(new Date(parsed).getHours()).toBe(12);
+	});
+
 	it('should keep returning Date objects for DATE columns', () => {
 		const result = parse(builtins.DATE, '2020-01-01');
 
