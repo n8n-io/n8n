@@ -475,8 +475,9 @@ export interface ProjectListOptions {
 	type?: 'personal' | 'team';
 	activated?: boolean;
 	/**
-	 * Lists the personal projects of these service accounts only. An empty list
-	 * leaves out all of them. `undefined` keeps all of them.
+	 * Limits the personal projects of service accounts to those of these accounts.
+	 * Team projects and the personal projects of persons stay. An empty list leaves
+	 * out every service account project. `undefined` keeps all of them.
 	 */
 	serviceAccountIds?: string[];
 }
