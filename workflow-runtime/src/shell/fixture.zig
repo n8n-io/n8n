@@ -295,10 +295,24 @@ fn writeJsonString(a: std.mem.Allocator, out: *std.ArrayList(u8), s: []const u8)
 pub fn bench(gpa: std.mem.Allocator, module_bytes: []const u8, fixture_text: []const u8, n: u32) !u32 {
     var arena_state = std.heap.ArenaAllocator.init(gpa);
     defer arena_state.deinit();
-    const a = arena_state.allocator();
+    return benchIn(arena_state.allocator(), module_bytes, fixture_text, n, .{});
+}
+
+/// The sizes of `bench` that do not come from the module. The defaults are
+/// those of the server; `wfrt bench-node --arena-mb` makes them fit its block.
+pub const BenchSizes = struct {
+    scratch_bytes: usize = 32 << 20,
+    max_static_data: u32 = (core.Config{}).max_static_data,
+};
+
+/// `bench` with every allocation from `a`, which is never freed: an arena,
+/// or one block of a fixed size.
+pub fn benchIn(a: std.mem.Allocator, module_bytes: []const u8, fixture_text: []const u8, n: u32, sizes: BenchSizes) !u32 {
+    std.debug.assert(sizes.scratch_bytes >= 1 << 20 and sizes.max_static_data >= 1);
     const parsed = try std.json.parseFromSliceLeaky(std.json.Value, a, fixture_text, .{});
     const fx = try parseFixture(a, parsed);
     const cfg: core.Config = .{
+        .max_static_data = sizes.max_static_data,
         .slots = 8,
         .region_counts = .{ 8, 8, 4, 2 },
         .max_parked = 64,
@@ -314,7 +328,7 @@ pub fn bench(gpa: std.mem.Allocator, module_bytes: []const u8, fixture_text: []c
         .schedules = false,
     };
     var st = try core.State.init(a, cfg);
-    const scratch_buf = try a.alloc(u8, 32 << 20);
+    const scratch_buf = try a.alloc(u8, sizes.scratch_bytes);
     var scratch = Arena.init(scratch_buf);
     // The answers of each step, in order, built once.
     var answers = std.StringHashMap([]const struct { ok: bool, bytes: []const u8 }).init(a);
