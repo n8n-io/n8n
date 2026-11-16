@@ -12,6 +12,8 @@ Validates that your node and credential icon files exist and use the correct `fi
 
 Both SVG and PNG icons are accepted. SVG is recommended (it scales cleanly and supports theming), but PNG is allowed — see the `icon-prefer-themed-variants` rule for the related light/dark nudge.
 
+The rule reports icons in any other image format, such as JPEG, WebP, or GIF. The n8n server serves SVG and PNG icons only, so the editor cannot show other formats.
+
 ## Examples
 
 ### ❌ Incorrect
