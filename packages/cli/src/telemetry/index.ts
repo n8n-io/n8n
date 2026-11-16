@@ -80,7 +80,10 @@ interface IApiInvocationsBufferEntry {
 	total_calls: number;
 	first: Date;
 	endpoints: Record<string, number>;
-	endpoints_by_client: { editor_ui: Record<string, number> };
+	endpoints_by_client: {
+		editor_ui: Record<string, number>;
+		n8n_node: Record<string, number>;
+	};
 	routes: IApiRouteCalls[];
 	user_agents: Record<string, number>;
 	clients: Record<PublicApiClient, number>;
@@ -577,20 +580,20 @@ export class Telemetry {
 			total_calls: 0,
 			first: new Date(),
 			endpoints: {},
-			endpoints_by_client: { editor_ui: {} },
+			endpoints_by_client: { editor_ui: {}, n8n_node: {} },
 			routes: [],
 			user_agents: {},
-			clients: { editor_ui: 0, other: 0 },
+			clients: { editor_ui: 0, n8n_node: 0, other: 0 },
 		});
 		entry.total_calls++;
 		entry.clients[client]++;
 
 		entry.endpoints[route] = (entry.endpoints[route] ?? 0) + 1;
 
-		// Only editor UI calls are counted per endpoint for now to help keep event size down.
-		if (client === 'editor_ui') {
-			const editorUiEndpoints = entry.endpoints_by_client.editor_ui;
-			editorUiEndpoints[route] = (editorUiEndpoints[route] ?? 0) + 1;
+		// other is left out here. The routes list already counts it.
+		if (client !== 'other') {
+			const clientEndpoints = entry.endpoints_by_client[client];
+			clientEndpoints[route] = (clientEndpoints[route] ?? 0) + 1;
 		}
 
 		const existingRow = entry.routes.find(
