@@ -164,18 +164,17 @@ export function compileNodeInstance(
 			Object.entries(credentials).map(([type, c]) => [type, c.fields]),
 		),
 	};
-	let result = specialiseNode(input);
-	if (result.source === undefined) return { errors: result.errors };
+	const result = specialiseNode(input);
+	if (result.source === undefined || result.retyped === undefined) return { errors: result.errors };
 
 	const type = `${node.type}#${hashOf(result.source)}`;
-	result = specialiseNode({ ...input, moduleType: type });
-	if (result.source === undefined) return { errors: result.errors };
-	const errors = subsetErrors(type, node.version, result.source);
+	const source = result.retyped(type);
+	const errors = subsetErrors(type, node.version, source);
 	if (errors.length > 0) return { errors };
 	return {
 		type,
 		file: `nodes/compiled-${type.slice(type.indexOf('#') + 1)}.ts`,
-		source: result.source,
+		source,
 		dynamic: Object.keys(parameters).filter((name) => hasExpression(parameters[name])),
 		resolved: parameters,
 		derivations: result.derivations ?? [],
