@@ -87,12 +87,17 @@ describe('useSteadyValue', () => {
 		const { steady, set } = setup({ text: 'A' });
 		await vi.advanceTimersByTimeAsync(2000);
 
-		for (let i = 0; i < 12; i++) {
+		// The first change waits from here. Each new value restarts the settle time.
+		for (let i = 0; i < 9; i++) {
 			await set({ text: `Step ${i}` });
 			await vi.advanceTimersByTimeAsync(300);
 		}
+		await set({ text: 'Step 9' });
+		await vi.advanceTimersByTimeAsync(299);
+		expect(steady.value?.text).toBe('A');
 
-		expect(steady.value?.text).not.toBe('A');
+		await vi.advanceTimersByTimeAsync(1);
+		expect(steady.value?.text).toBe('Step 9');
 	});
 
 	it('shows a waiting value, and the value after it, at once', async () => {
