@@ -8,10 +8,10 @@ import type { NodeDescription } from '../src/convert/node-parameters.ts';
 import { getNodeParameters } from '../src/convert/node-parameters.ts';
 import { publicCredential } from '../src/credentials/public.ts';
 import { loadCredentialTypes, registryOf } from '../src/credentials/types.ts';
-import { differenceFromV1, V1_TIMEZONE } from '../src/node-compile/__tests__/verify.ts';
+import { compileForCheck, differenceFromV1 } from '../src/node-compile/__tests__/verify.ts';
 import type { NodeSources } from '../src/node-compile/convert.ts';
 import { evaluateInSandbox } from '../src/node-compile/evaluate-node.ts';
-import { compileNodeInstance, verifiedKey } from '../src/node-compile/convert.ts';
+import { verifiedKey } from '../src/node-compile/convert.ts';
 import type { EquivalenceCase } from '../src/nodes/__tests__/equivalence.ts';
 import { disposeRecorder, recorderAvailable } from '../src/nodes/__tests__/v1-recorder.ts';
 
@@ -26,7 +26,7 @@ interface Property {
 interface LoadedNode {
 	description: NodeDescription & {
 		version: number | number[];
-		credentials?: Array<{ name: string }>;
+		credentials?: Array<{ name: string; displayOptions?: { show?: Record<string, unknown[]> } }>;
 	};
 	nodeVersions?: Record<string, LoadedNode>;
 	constructor: { name: string };
@@ -37,12 +37,22 @@ const base = join(here, '../../../nodes-base');
 const PREFIX = 'n8n-nodes-base.';
 const load = createRequire(join(base, 'package.json'));
 
-const DIST = process.argv.includes('--dist');
-const oneAt = process.argv.indexOf('--one');
-const one = oneAt >= 0 ? process.argv[oneAt + 1] : undefined;
-const pattern = process.argv.slice(2).find((a) => !a.startsWith('--'));
+const VALUE_FLAGS = ['--one', '--weights'];
+const args = process.argv.slice(2);
+const valueOf = (flag: string) => (args.includes(flag) ? args[args.indexOf(flag) + 1] : undefined);
+const DIST = args.includes('--dist');
+const DETAIL = args.includes('--detail');
+const CACHE = !args.includes('--no-cache');
+const ALL_BLOCKERS = args.includes('--all-blockers');
+const one = valueOf('--one');
+const weightsFile = valueOf('--weights');
+const pattern = args.find((a, at) => !a.startsWith('--') && !VALUE_FLAGS.includes(args[at - 1]));
+const add = (into: Record<string, number>, from: Record<string, number> | undefined) => {
+	for (const [key, count] of Object.entries(from ?? {})) into[key] = (into[key] ?? 0) + count;
+};
 const filter = new RegExp(one === undefined ? (pattern ?? '.') : `^${one}$`, 'i');
 const PARALLEL = 6;
+const MAX_BLOCKERS = 20;
 
 if (!recorderAvailable() || !existsSync(join(base, 'dist/known/nodes.json'))) {
 	console.error('Build n8n-nodes-base and @n8n/workflow-fallback-host first.');
@@ -102,6 +112,41 @@ const sources: NodeSources = {
 };
 
 const registry = registryOf(loadCredentialTypes().types);
+
+function isJson(value: unknown): value is Json {
+	return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
+
+function readWeights(file: string | undefined): Map<string, number> {
+	const out = new Map<string, number>();
+	if (file === undefined) return out;
+	const parsed: unknown = JSON.parse(readFileSync(file, 'utf8'));
+	if (!isJson(parsed)) throw new Error(`The weights file ${file} must hold a JSON object.`);
+	for (const [key, count] of Object.entries(parsed)) {
+		if (typeof count === 'number' && Number.isFinite(count)) out.set(key, count);
+	}
+	return out;
+}
+const weights = readWeights(weightsFile);
+
+function weightOf(type: string, parameters: Json): number {
+	const operation = `${String(parameters.resource ?? '')}.${String(parameters.operation ?? '')}`;
+	return (
+		weights.get(`${type}:${operation}`) ??
+		weights.get(`${type.slice(PREFIX.length)}:${operation}`) ??
+		0
+	);
+}
+
+function credentialOf(node: LoadedNode, resolved: Json): string | undefined {
+	const all = node.description.credentials ?? [];
+	const shown = all.find((c) =>
+		Object.entries(c.displayOptions?.show ?? {}).every(
+			([name, allowed]) => name.startsWith('@') || allowed.includes(resolved[name]),
+		),
+	);
+	return (shown ?? all[0])?.name;
+}
 
 function fakeCredential(type: string): Json {
 	const data: Json = {};
@@ -181,8 +226,11 @@ function operations(node: LoadedNode): Json[] {
 	return out;
 }
 
+const checking = { cache: CACHE };
 const verified: Record<string, string[]> = {};
 const reasons: Record<string, number> = {};
+const alone: Record<string, number> = {};
+const weighted: Record<string, number> = {};
 let tried = 0;
 let compiledCount = 0;
 const examples: string[] = [];
@@ -190,6 +238,8 @@ const examples: string[] = [];
 interface NodeResult {
 	verified: Record<string, string[]>;
 	reasons: Record<string, number>;
+	alone?: Record<string, number>;
+	weighted?: Record<string, number>;
 	tried: number;
 	compiled: number;
 	examples?: string[];
@@ -202,7 +252,10 @@ async function checkInProcess(name: string): Promise<NodeResult | undefined> {
 			[
 				fileURLToPath(import.meta.url),
 				...(DIST ? ['--dist'] : []),
-				...(process.argv.includes('--detail') ? ['--detail'] : []),
+				...(DETAIL ? ['--detail'] : []),
+				...(CACHE ? [] : ['--no-cache']),
+				...(ALL_BLOCKERS ? ['--all-blockers'] : []),
+				...(weightsFile === undefined ? [] : ['--weights', weightsFile]),
 				'--one',
 				name,
 			],
@@ -239,8 +292,9 @@ if (one === undefined) {
 				continue;
 			}
 			Object.assign(verified, result.verified);
-			for (const [reason, count] of Object.entries(result.reasons))
-				reasons[reason] = (reasons[reason] ?? 0) + count;
+			add(reasons, result.reasons);
+			add(alone, result.alone);
+			add(weighted, result.weighted);
 			for (const example of result.examples ?? [])
 				if (examples.length < 400) examples.push(`${name}: ${example}`);
 			tried += result.tried;
@@ -251,14 +305,21 @@ if (one === undefined) {
 	if (lost > 0) console.log(`${lost} node(s) gave no result (a crash or more than five minutes)`);
 }
 
-const why = (reason: string) => {
-	const part = /^v1: the requests differ: (\w+)/.exec(reason);
-	const short = part
-		? `v1: the requests differ: ${part[1]}`
-		: reason.replace(/'[^']*'/g, "'…'").slice(0, 90);
-	if (part && examples.length < 60) examples.push(reason.slice(0, 200));
-	reasons[process.argv.includes('--detail') ? reason.slice(0, 110) : short] =
-		(reasons[process.argv.includes('--detail') ? reason.slice(0, 110) : short] ?? 0) + 1;
+const requestPart = (reason: string) => /^v1: the requests differ: (\w+)/.exec(reason)?.[1];
+const keyOf = (reason: string) => {
+	if (DETAIL) return reason.slice(0, 110);
+	const part = requestPart(reason);
+	return part === undefined
+		? reason.replace(/'[^']*'/g, "'…'").slice(0, 90)
+		: `v1: the requests differ: ${part}`;
+};
+const why = (reason: string, weight: number, only = true) => {
+	if (requestPart(reason) !== undefined && examples.length < 60)
+		examples.push(reason.slice(0, 200));
+	const key = keyOf(reason);
+	reasons[key] = (reasons[key] ?? 0) + 1;
+	if (only) alone[key] = (alone[key] ?? 0) + 1;
+	if (weight !== 0) weighted[key] = (weighted[key] ?? 0) + weight;
 };
 
 for (const name of one === undefined ? [] : Object.keys(known).sort()) {
@@ -276,19 +337,25 @@ for (const name of one === undefined ? [] : Object.keys(known).sort()) {
 	for (const version of versions) {
 		const node = nodeOf(type, version);
 		if (!node || sources.entry(type, version) === undefined) continue;
-		const credential = node.description.credentials?.[0]?.name;
 		for (const start of operations(node)) {
 			tried++;
 			const parameters = required(node, version, start);
+			const credential = credentialOf(node, resolve(node, version, parameters));
+			const weight = weightOf(type, parameters);
 			const instance = { type, version, parameters };
 			const fields = credential
 				? {
 						[credential]: publicCredential(registry.get(credential), fakeCredential(credential)),
 					}
 				: {};
-			const compiled = compileNodeInstance(sources, instance, null, fields, V1_TIMEZONE);
+			const compiled = compileForCheck(sources, instance, fields);
 			if ('errors' in compiled) {
-				why(compiled.errors[0].slice(compiled.errors[0].indexOf(': ') + 2));
+				const blockers = new Map<string, string>();
+				for (const error of compiled.errors.slice(0, ALL_BLOCKERS ? MAX_BLOCKERS : 1)) {
+					const reason = error.slice(error.indexOf(': ') + 2);
+					if (!blockers.has(keyOf(reason))) blockers.set(keyOf(reason), reason);
+				}
+				for (const reason of blockers.values()) why(reason, weight, blockers.size === 1);
 				continue;
 			}
 			compiledCount++;
@@ -310,31 +377,26 @@ for (const name of one === undefined ? [] : Object.keys(known).sort()) {
 			const bad = [{ status: 400, body: { message: 'bad request' } }];
 			try {
 				const difference =
-					(await differenceFromV1(make('ok', parameters, ok), sources, registry)) ??
-					(await differenceFromV1(make('error', parameters, bad), sources, registry));
+					(await differenceFromV1(make('ok', parameters, ok), sources, registry, checking)) ??
+					(await differenceFromV1(make('error', parameters, bad), sources, registry, checking));
 				if (difference !== undefined) {
-					why(`v1: ${difference}`);
+					why(`v1: ${difference}`, weight);
 					continue;
 				}
 				let names = compiled.changed;
 
 				const more = withOptions(node, version, parameters);
-				const wider = compileNodeInstance(
-					sources,
-					{ type, version, parameters: more },
-					null,
-					fields,
-					V1_TIMEZONE,
-				);
+				const wider = compileForCheck(sources, { type, version, parameters: more }, fields);
 				if (
 					!('errors' in wider) &&
-					(await differenceFromV1(make('options', more, ok), sources, registry)) === undefined
+					(await differenceFromV1(make('options', more, ok), sources, registry, checking)) ===
+						undefined
 				) {
 					names = wider.changed;
 				}
 				verified[verifiedKey(type, version, compiled.resolved)] = [...names].sort();
 			} catch (error) {
-				why(`check failed: ${error instanceof Error ? error.message : String(error)}`);
+				why(`check failed: ${error instanceof Error ? error.message : String(error)}`, weight);
 			}
 		}
 	}
@@ -342,7 +404,7 @@ for (const name of one === undefined ? [] : Object.keys(known).sort()) {
 await disposeRecorder();
 if (one !== undefined) {
 	console.log(
-		`RESULT ${JSON.stringify({ verified, reasons, tried, compiled: compiledCount, examples })}`,
+		`RESULT ${JSON.stringify({ verified, reasons, alone, weighted, tried, compiled: compiledCount, examples })}`,
 	);
 	process.exit(0);
 }
@@ -360,12 +422,22 @@ ${lines.join('\n')}
 	);
 }
 console.log(`operations ${tried}; compiled ${compiledCount}; verified against v1 ${lines.length}`);
+const weightIn = (reason: string) => weighted[reason] ?? 0;
+if (ALL_BLOCKERS) console.log('operations blocked\toperations with no other blocker\tblocker');
+if (weights.size > 0) console.log('the first column is the weighted count');
 console.log(
 	Object.entries(reasons)
-		.sort((a, b) => b[1] - a[1])
-		.slice(0, process.argv.includes('--detail') ? 70 : 40)
-		.map(([reason, count]) => `${count}\t${reason}`)
+		.sort((a, b) => weightIn(b[0]) - weightIn(a[0]) || b[1] - a[1])
+		.slice(0, DETAIL ? 70 : 40)
+		.map(([reason, count]) =>
+			[
+				...(weights.size > 0 ? [weightIn(reason)] : []),
+				count,
+				...(ALL_BLOCKERS ? [alone[reason] ?? 0] : []),
+				reason,
+			].join('\t'),
+		)
 		.join('\n'),
 );
-if (process.argv.includes('--examples')) console.log(examples.join('\n'));
-if (pattern !== undefined && !process.argv.includes('--examples')) console.log(lines.join('\n'));
+if (args.includes('--examples')) console.log(examples.join('\n'));
+if (pattern !== undefined && !args.includes('--examples')) console.log(lines.join('\n'));

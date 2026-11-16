@@ -8,7 +8,17 @@
  * The credentials helper applies `authenticate` as n8n's CLI does, so the
  * recorded requests carry the credential like real ones.
  */
-import { existsSync, readFileSync } from 'node:fs';
+import { createHash } from 'node:crypto';
+import {
+	existsSync,
+	mkdirSync,
+	readdirSync,
+	readFileSync,
+	renameSync,
+	rmSync,
+	statSync,
+	writeFileSync,
+} from 'node:fs';
 import { createRequire } from 'node:module';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -442,6 +452,120 @@ export async function recordV1(testCase: EquivalenceCase): Promise<Recording> {
 			error: message,
 		};
 	}
+}
+
+const CACHE_DIR = join(here, '../../../node_modules/.cache/v1-recordings');
+const CACHE_MAX_ENTRIES = 50_000;
+function buildFiles(): string[] {
+	const hostRequire = createRequire(join(FALLBACK_HOST_DIR, 'package.json'));
+	const built = ['n8n-workflow', 'n8n-core', '@n8n/node-engine-compatibility'].map((name) => {
+		try {
+			return hostRequire.resolve(name);
+		} catch {
+			return name;
+		}
+	});
+	return [
+		join(NODE_PACKAGES['n8n-nodes-base'], 'dist/known/nodes.json'),
+		join(NODE_PACKAGES['n8n-nodes-base'], 'dist/known/credentials.json'),
+		...built,
+	];
+}
+const RECORDER_FILES = [fileURLToPath(import.meta.url), join(here, 'equivalence.ts')];
+
+function digest(text: string): string {
+	return createHash('sha256').update(text).digest('hex');
+}
+
+let buildIdentity: string | undefined;
+
+/**
+ * A recording stays valid while the built packages and the recorder itself do
+ * not change: the size and time of the build outputs, and the text of the recorder.
+ */
+function identityOfBuild(): string {
+	if (buildIdentity !== undefined) return buildIdentity;
+	const parts = buildFiles().map((file) => {
+		if (!existsSync(file)) return `${file}:none`;
+		const { size, mtimeMs } = statSync(file);
+		return `${file}:${size}:${mtimeMs}`;
+	});
+	for (const file of RECORDER_FILES) parts.push(digest(readFileSync(file, 'utf8')));
+	parts.push(process.version, process.env.TZ ?? '');
+	buildIdentity = digest(parts.join('\n'));
+	return buildIdentity;
+}
+
+let cacheEntries: number | undefined;
+
+/** Counts the entries once; when the cache is full it removes the older half. */
+function entriesInCache(): number {
+	if (cacheEntries !== undefined) return cacheEntries;
+	mkdirSync(CACHE_DIR, { recursive: true });
+	const names = readdirSync(CACHE_DIR).filter((name) => name.endsWith('.json'));
+	cacheEntries = names.length;
+	if (names.length >= CACHE_MAX_ENTRIES) {
+		const byAge = names
+			.map((name) => {
+				try {
+					return { name, time: statSync(join(CACHE_DIR, name)).mtimeMs };
+				} catch {
+					return { name, time: 0 };
+				}
+			})
+			.sort((a, b) => a.time - b.time);
+		const old = byAge.slice(0, Math.ceil(names.length / 2));
+		for (const { name } of old) rmSync(join(CACHE_DIR, name), { force: true });
+		cacheEntries = names.length - old.length;
+	}
+	return cacheEntries;
+}
+
+function isRecording(value: unknown): value is Recording {
+	return (
+		typeof value === 'object' &&
+		value !== null &&
+		'requests' in value &&
+		Array.isArray(value.requests)
+	);
+}
+
+function storedRecording(file: string): Recording | undefined {
+	try {
+		const stored: unknown = JSON.parse(readFileSync(file, 'utf8'));
+		return isRecording(stored) ? stored : undefined;
+	} catch {
+		return undefined;
+	}
+}
+
+function store(file: string, recording: Recording): boolean {
+	const partial = `${file}.${process.pid}.tmp`;
+	try {
+		writeFileSync(partial, JSON.stringify(recording));
+		renameSync(partial, file);
+		return true;
+	} catch {
+		rmSync(partial, { force: true });
+		return false;
+	}
+}
+
+/**
+ * `recordV1` with a bounded cache on disk. The key is the case and the identity
+ * of the build, so a second run with the same node code does not run the v1 node.
+ */
+export async function recordV1Cached(testCase: EquivalenceCase): Promise<Recording> {
+	const file = join(
+		CACHE_DIR,
+		`${digest(`${identityOfBuild()}\n${JSON.stringify(testCase)}`)}.json`,
+	);
+	const count = entriesInCache();
+	const stored = storedRecording(file);
+	if (stored !== undefined) return stored;
+	const recording = await recordV1(testCase);
+	if (count < CACHE_MAX_ENTRIES && store(file, recording)) cacheEntries = count + 1;
+	return recording;
 }
 
 export async function disposeRecorder(): Promise<void> {

@@ -4,7 +4,7 @@ import type { PublicCredential } from '../../credentials/public.ts';
 import { publicCredential } from '../../credentials/public.ts';
 import type { EquivalenceCase } from '../../nodes/__tests__/equivalence.ts';
 import { applyCredential, normalizeRequest } from '../../nodes/__tests__/equivalence.ts';
-import { recordV1 } from '../../nodes/__tests__/v1-recorder.ts';
+import { recordV1, recordV1Cached } from '../../nodes/__tests__/v1-recorder.ts';
 import { runReference } from '../../reference/runner.ts';
 import type { NodeSources } from '../convert.ts';
 import { compileNodeInstance } from '../convert.ts';
@@ -28,6 +28,24 @@ export function credentialsOf(
 	};
 }
 
+type Compiled = ReturnType<typeof compileNodeInstance>;
+const RECENT_COMPILES = 8;
+const recent: Array<{ sources: NodeSources; key: string; compiled: Compiled }> = [];
+
+export function compileForCheck(
+	sources: NodeSources,
+	instance: { type: string; version: number; parameters: Record<string, unknown> },
+	credentials: Record<string, PublicCredential>,
+): Compiled {
+	const key = JSON.stringify([instance.type, instance.version, instance.parameters, credentials]);
+	const found = recent.find((entry) => entry.sources === sources && entry.key === key);
+	if (found) return found.compiled;
+	const compiled = compileNodeInstance(sources, instance, null, credentials, V1_TIMEZONE);
+	recent.push({ sources, key, compiled });
+	if (recent.length > RECENT_COMPILES) recent.shift();
+	return compiled;
+}
+
 async function within<T>(ms: number, work: Promise<T>): Promise<T> {
 	let timer: NodeJS.Timeout | undefined;
 	const late = new Promise<never>((_resolve, reject) => {
@@ -44,13 +62,12 @@ export async function differenceFromV1(
 	c: EquivalenceCase,
 	sources: NodeSources,
 	registry: Registry,
+	options: { cache?: boolean } = {},
 ): Promise<string | undefined> {
-	const compiled = compileNodeInstance(
+	const compiled = compileForCheck(
 		sources,
 		{ type: c.type, version: c.typeVersion, parameters: c.parameters },
-		null,
 		credentialsOf(c, registry),
-		V1_TIMEZONE,
 	);
 	if ('errors' in compiled) return `does not compile: ${compiled.errors[0]}`;
 	const credentialType = c.credential?.type;
@@ -80,7 +97,7 @@ export default workflow({
 	const out = await runReference(source, fixture, {
 		extraNodes: { [compiled.file]: compiled.source },
 	});
-	const v1 = await within(8000, recordV1(c));
+	const v1 = await within(8000, options.cache === true ? recordV1Cached(c) : recordV1(c));
 
 	const data: Record<string, unknown> = withDerivedValues(credentialType ?? '', {
 		...(registry.get(credentialType ?? '')?.defaults ?? {}),
