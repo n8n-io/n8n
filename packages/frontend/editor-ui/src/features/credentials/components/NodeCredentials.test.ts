@@ -258,6 +258,76 @@ describe('NodeCredentials', () => {
 		stopCredentialsMirror?.();
 	});
 
+	it.each([true, false])(
+		'passes the fixed-only restriction to credential creation and editing (forAgent=%s)',
+		async (forAgent) => {
+			const { rerender } = renderComponent({
+				props: { node: openAiNodeNoCreds, forAgent, skipAutoSelect: true },
+			});
+
+			await userEvent.click(
+				within(screen.getByTestId('node-credentials-empty-state')).getByRole('button'),
+			);
+
+			expect(uiStore.openNewCredential).toHaveBeenCalledWith(
+				'openAiApi',
+				expect.any(Boolean),
+				expect.any(Boolean),
+				undefined,
+				undefined,
+				openAiNodeNoCreds.name,
+				openAiNodeNoCreds,
+				expect.objectContaining(forAgent ? { fixedCredentialsOnly: true } : {}),
+			);
+
+			credentialsStore.state.credentials = { c8vqdPpPClh4TgIO: createCredential() };
+			await rerender({ node: httpNode });
+			await userEvent.click(
+				screen.getByTestId('credential-edit-button').querySelector('.clickable')!,
+			);
+
+			expect(uiStore.openExistingCredential).toHaveBeenCalledWith(
+				'c8vqdPpPClh4TgIO',
+				expect.objectContaining(forAgent ? { fixedCredentialsOnly: true } : {}),
+			);
+		},
+	);
+
+	it('explains an unsupported Agent selection and clears the error after replacement', async () => {
+		stopCredentialsMirror();
+		credentialsStore.state.credentials = {
+			c8vqdPpPClh4TgIO: { ...createCredential({ isResolvable: true }), connectedByMe: true },
+		};
+		credentialsStore.usableCredentials = {
+			fixed: createCredential({ id: 'fixed', name: 'Fixed account' }),
+		};
+		const { rerender, emitted } = renderComponent({ props: { node: httpNode, forAgent: true } });
+
+		expect(screen.getByRole('alert')).toHaveTextContent(
+			'Agents do not support end-user credentials yet. Select a fixed credential.',
+		);
+		expect(screen.queryByTestId('node-credential-private-row')).not.toBeInTheDocument();
+		expect(httpNode.credentials?.openAiApi.id).toBe('c8vqdPpPClh4TgIO');
+
+		await userEvent.click(screen.getByTestId('node-credentials-select'));
+		await userEvent.click(screen.getByText('Fixed account'));
+
+		expect(emitted('credentialSelected')).toEqual([
+			[
+				{
+					name: httpNode.name,
+					properties: { credentials: { openAiApi: { id: 'fixed', name: 'Fixed account' } } },
+				},
+			],
+		]);
+
+		await rerender({
+			node: { ...httpNode, credentials: { openAiApi: { id: 'fixed', name: 'Fixed account' } } },
+		});
+
+		expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+	});
+
 	it('should display available credentials in the dropdown', async () => {
 		ndvStore.activeNode = httpNode;
 		credentialsStore.state.credentials = {
@@ -274,7 +344,7 @@ describe('NodeCredentials', () => {
 	});
 
 	it.each([false, true])(
-		'offers end-user credentials only outside agents (forAgent=%s)',
+		'shows end-user credentials but disables them for Agents (forAgent=%s)',
 		async (forAgent) => {
 			credentialsStore.state.credentials = {
 				fixed: createCredential({ id: 'fixed' }),
@@ -288,7 +358,14 @@ describe('NodeCredentials', () => {
 
 			await userEvent.click(screen.getByTestId('node-credentials-select'));
 			expect(screen.queryByText('OpenAi account')).toBeInTheDocument();
-			expect(screen.queryByText('End-user account') !== null).toBe(!forAgent);
+			expect(screen.getByText('End-user account')).toBeInTheDocument();
+			expect(
+				screen.getByTestId('node-credentials-select-item-end-user').getAttribute('aria-disabled'),
+			).toBe(forAgent ? 'true' : null);
+
+			if (forAgent) {
+				expect(screen.getByText('Not supported in Agents')).toBeInTheDocument();
+			}
 		},
 	);
 
@@ -512,7 +589,7 @@ describe('NodeCredentials', () => {
 		});
 	});
 
-	it('keeps the agent scope in the credentials fetch', () => {
+	it('fetches all accessible credentials for the Agent picker', () => {
 		workflowsStore.isNewWorkflow = true;
 		projectsStore.currentProject = { id: 'project-1' } as Project;
 		ndvStore.activeNode = httpNode;
@@ -522,7 +599,6 @@ describe('NodeCredentials', () => {
 
 		expect(credentialsStore.fetchUsableCredentials).toHaveBeenCalledWith({
 			projectId: 'project-1',
-			forAgent: true,
 		});
 	});
 
