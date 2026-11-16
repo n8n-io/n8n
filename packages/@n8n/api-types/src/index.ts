@@ -1080,8 +1080,10 @@ export {
 	type ScimTransferTargetsResponse,
 } from './schemas/scim-config.schema';
 export {
+	DEFAULT_EXECUTION_LIMIT_SETTINGS,
 	EXECUTION_LIMIT_MAX_EXECUTIONS_CEILING,
 	EXECUTION_LIMIT_PERIOD_UNITS,
+	executionLimitMaxExecutionsSchema,
 	executionLimitSettingsSchema,
 	type ExecutionLimitPeriodUnit,
 	type ExecutionLimitSettings,
