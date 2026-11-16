@@ -231,27 +231,46 @@ it('does not write when the dialog closes', async () => {
 	expect(store.acceptSourceUpdates).not.toHaveBeenCalled();
 });
 
-it('reloads the selection after a stale accept and clears the warning acknowledgment', async () => {
-	vi.mocked(store.fetchSourceUpdates).mockResolvedValue({
-		updates: [update('docx', 'needs_review')],
+it('preserves the selection after a stale accept and clears the warning acknowledgment', async () => {
+	vi.mocked(store.fetchSourceUpdates).mockResolvedValueOnce({
+		updates: [update('docx', 'needs_review'), update('later')],
 		commit: null,
 	});
-	vi.mocked(store.acceptSourceUpdates).mockRejectedValue(
+	const latest = { ...update('docx', 'needs_review'), contentHash: 'b'.repeat(64) };
+	vi.mocked(store.fetchSourceUpdates).mockResolvedValue({
+		updates: [latest, update('later'), update('new')],
+		commit: null,
+	});
+	vi.mocked(store.acceptSourceUpdates).mockRejectedValueOnce(
 		new ResponseError('Changed', { httpStatusCode: 409, meta: { reason: 'stale' } }),
 	);
 	const view = render();
 	await view.findByTestId('skill-update-reviewed-warnings');
+	await userEvent.click(view.getByRole('tab', { name: 'Passed (1)' }));
+	await userEvent.click(view.getByRole('checkbox', { name: 'later' }));
 	await userEvent.click(view.getByTestId('skill-update-reviewed-warnings'));
+	expect(view.getByTestId('skill-updates-accept')).toHaveTextContent('Update 1 skill');
 	await userEvent.click(view.getByTestId('skill-updates-accept'));
 	await waitFor(() => expect(store.fetchSourceUpdates).toHaveBeenCalledTimes(2));
 	await flushPromises();
+	expect(view.getByRole('checkbox', { name: 'docx' })).toBeChecked();
 	expect(view.getByTestId('skill-update-reviewed-warnings')).not.toBeChecked();
 	expect(view.getByTestId('skill-update-reviewed-warnings')).toBeEnabled();
+	expect(view.getByTestId('skill-updates-accept')).toHaveTextContent('Update 1 skill');
 	expect(view.getByTestId('skill-updates-accept')).toBeDisabled();
 	expect(view.getByTestId('skill-updates-error')).toHaveTextContent(
 		'No selected updates were applied',
 	);
 	expect(view.emitted().close).toBeUndefined();
+	await userEvent.click(view.getByRole('tab', { name: 'Passed (2)' }));
+	expect(view.getByRole('checkbox', { name: 'later' })).not.toBeChecked();
+	expect(view.getByRole('checkbox', { name: 'new' })).not.toBeChecked();
+	await userEvent.click(view.getByTestId('skill-update-reviewed-warnings'));
+	await userEvent.click(view.getByTestId('skill-updates-accept'));
+	expect(store.acceptSourceUpdates).toHaveBeenLastCalledWith('source-1', {
+		updates: [{ skillId: 'docx', contentHash: latest.contentHash, baseVersionId: 'v1' }],
+		reviewedWarnings: true,
+	});
 });
 
 it('ignores a late diff after the reviewer selects another skill', async () => {
@@ -333,18 +352,33 @@ it('requires a new acknowledgment when another warning skill is selected', async
 	expect(view.getByTestId('skill-updates-accept')).toBeDisabled();
 });
 
-it('reloads pending updates when the preview is stale', async () => {
+it('keeps only the selected, still acceptable updates after a stale preview', async () => {
 	vi.mocked(store.fetchSourceUpdates).mockResolvedValueOnce({
-		updates: [update('old')],
+		updates: [update('first'), update('later'), update('blocked'), update('removed')],
+		commit: null,
+	});
+	const view = render();
+	await view.findByTestId('skill-source-file');
+	await userEvent.click(view.getByRole('checkbox', { name: 'later' }));
+	vi.mocked(store.fetchSourceUpdates).mockResolvedValue({
+		updates: [update('first'), update('later'), update('blocked', 'blocked'), update('new')],
 		commit: null,
 	});
 	vi.mocked(store.fetchSourceUpdate).mockRejectedValueOnce(
 		new ResponseError('Changed', { httpStatusCode: 409, meta: { reason: 'stale' } }),
 	);
-	const view = render();
-	await view.findByRole('checkbox', { name: 'docx' });
+	await userEvent.click(view.getByText('later', { exact: true }));
+	await waitFor(() => expect(store.fetchSourceUpdates).toHaveBeenCalledTimes(2));
+	await view.findByRole('checkbox', { name: 'new' });
 	await view.findByTestId('skill-source-file');
-	expect(store.fetchSourceUpdates).toHaveBeenCalledTimes(2);
+	expect(view.getByRole('checkbox', { name: 'first' })).toBeChecked();
+	expect(view.getByRole('checkbox', { name: 'later' })).not.toBeChecked();
+	expect(view.getByRole('checkbox', { name: 'new' })).not.toBeChecked();
+	expect(view.queryByRole('checkbox', { name: 'removed' })).not.toBeInTheDocument();
+	expect(view.getByTestId('skill-updates-accept')).toHaveTextContent('Update 1 skill');
+	await userEvent.click(view.getByRole('tab', { name: 'Blocked (1)' }));
+	expect(view.getByRole('checkbox', { name: 'blocked' })).not.toBeChecked();
+	expect(view.getByRole('checkbox', { name: 'blocked' })).toBeDisabled();
 	expect(view.getByTestId('skill-updates-error')).toHaveTextContent(
 		'The updates changed while you were reviewing them',
 	);

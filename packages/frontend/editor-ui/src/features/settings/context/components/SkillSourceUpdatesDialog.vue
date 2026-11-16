@@ -48,6 +48,7 @@ const detailError = ref('');
 const commit = ref<SkillUpdateCommit | null>(null);
 let previewRequest = 0;
 let listRequest = 0;
+let loaded = false;
 let closed = false;
 
 const acceptable = (update: SkillPendingUpdate) =>
@@ -140,7 +141,12 @@ async function load() {
 		const result = await store.fetchSourceUpdates(props.source.id);
 		if (closed || request !== listRequest) return;
 		updates.value = result.updates;
-		selected.value = result.updates.filter(acceptable).map(({ skillId }) => skillId);
+		selected.value = result.updates
+			.filter(
+				(update) => acceptable(update) && (!loaded || selected.value.includes(update.skillId)),
+			)
+			.map(({ skillId }) => skillId);
+		loaded = true;
 		if (commit.value?.revision !== result.commit?.revision) commit.value = result.commit;
 	} catch (cause) {
 		if (!closed && request === listRequest) error.value = errorText(cause);
@@ -325,14 +331,17 @@ void load();
 							{{ i18n.baseText('settings.context.skills.updates.publishedUnchanged') }}</N8nText
 						>
 					</div>
-					<N8nText v-if="detailLoading">{{ i18n.baseText('generic.loading') }}</N8nText>
-					<N8nCallout v-else-if="detailError" theme="warning"
+					<N8nText v-if="detailLoading" :class="$style.detailNotice">{{
+						i18n.baseText('generic.loading')
+					}}</N8nText>
+					<N8nCallout v-else-if="detailError" theme="warning" :class="$style.detailNotice"
 						>{{ detailError }}
 						<N8nButton variant="ghost" :label="i18n.baseText('generic.retry')" @click="loadPreview"
 					/></N8nCallout>
 					<N8nCallout
 						v-else-if="skill.check?.verdict === 'blocked'"
 						theme="danger"
+						:class="$style.detailNotice"
 						data-test-id="skill-update-blocked"
 						>{{ i18n.baseText('settings.context.skills.updates.blocked') }}</N8nCallout
 					>
@@ -429,6 +438,9 @@ void load();
 .detailHeader {
 	gap: var(--spacing--4xs);
 	padding: var(--spacing--sm) var(--spacing--sm) 0;
+}
+.detailNotice {
+	margin: var(--spacing--sm);
 }
 .wide {
 	--dialog--max-width: min(1200px, calc(100dvw - var(--spacing--lg)));
