@@ -1,28 +1,27 @@
-import type {
-	SerializedCredential,
-	SerializedDataTable,
-	SerializedFolder,
-	SerializedProject,
-	SerializedVariable,
-	SerializedWorkflow,
-	SerializedWorkflowMetadata,
+import {
+	type SerializedCredential,
+	type SerializedDataTable,
+	type SerializedFolder,
+	type SerializedProject,
+	type SerializedVariable,
+	type SerializedWorkflow,
+	type SerializedWorkflowMetadata,
+	FORMAT_VERSION,
+	type ManifestEntry,
+	type PackageManifest,
+	type PackageCredentialRequirement,
+	type PackageDataTableRequirement,
+	type PackageRequirementConsumer,
+	type PackageWorkflowRequirement,
 } from '@n8n/api-types';
 import { randomCredentialPayload, type CredentialPayload } from '@n8n/backend-test-utils';
 import type { WorkflowEntity } from '@n8n/db';
-import { EXECUTE_WORKFLOW_NODE_TYPE, getSubworkflowId, type INode } from 'n8n-workflow';
+import { EXECUTE_WORKFLOW_NODE_TYPE, getSubworkflowId } from 'n8n-workflow';
 
 import { DirectoryPackageWriter } from '../../io/directory/directory-package-writer';
 import { entityFilePath, workflowMetadataFilePath } from '../../io/manifest-entry';
 import type { PackageWriter } from '../../io/package-writer';
 import { TarPackageWriter } from '../../io/tar/tar-package-writer';
-import { FORMAT_VERSION } from '../../spec/constants';
-import type { ManifestEntry, PackageManifest } from '../../spec/manifest.schema';
-import type {
-	PackageCredentialRequirement,
-	PackageDataTableRequirement,
-	PackageRequirementConsumer,
-	PackageWorkflowRequirement,
-} from '../../spec/requirements.schema';
 import { streamToBuffer } from '../utils/tar-support';
 
 /** `versionId` every workflow fixture carries, so a test can name it as published. */
@@ -168,7 +167,7 @@ export function workflowRequirementsFromWorkflows(
 	};
 
 	for (const workflow of workflows) {
-		for (const node of workflow.nodes) addRequirement(getSubworkflowId(node as INode), workflow.id);
+		for (const node of workflow.nodes) addRequirement(getSubworkflowId(node), workflow.id);
 		addRequirement(errorWorkflowRef(workflow), workflow.id);
 	}
 

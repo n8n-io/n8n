@@ -17,11 +17,11 @@ import { createFolder } from '@test-integration/db/folders';
 import { createTag } from '@test-integration/db/tags';
 import { createOwner } from '@test-integration/db/users';
 import { createProjectVariable } from '@test-integration/db/variables';
+import { packageManifestSchema } from '@n8n/api-types';
 
 import { DirectoryPackageWriter } from '../io/directory/directory-package-writer';
 import { HashingPackageWriter } from '../io/hashing-package-writer';
 import { N8nPackagesService } from '../n8n-packages.service';
-import { packageManifestSchema } from '../spec/manifest.schema';
 
 async function readGitFileHashes() {
 	const git = simpleGit(repoDir);

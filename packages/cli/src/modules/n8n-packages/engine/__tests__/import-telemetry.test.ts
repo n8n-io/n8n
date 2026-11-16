@@ -2,6 +2,7 @@ import type { EventService } from '@n8n/backend-services';
 import type { OperationContext, WorkflowEntity } from '@n8n/db';
 import type { SecurityContext } from '@n8n/permissions';
 import { mock } from 'vitest-mock-extended';
+import type { PackageManifest, PackageCredentialRequirement } from '@n8n/api-types';
 
 import type { RelayEventMap } from '@/events/maps/relay.event-map';
 
@@ -15,8 +16,6 @@ import type {
 	RemovedWorkflowSummary,
 	ResolvedImportPackageRequest,
 } from '../../n8n-packages.types';
-import type { PackageManifest } from '../../spec/manifest.schema';
-import type { PackageCredentialRequirement } from '../../spec/requirements.schema';
 import type { ImportContentResult } from '../import-orchestrator';
 import { emitPackageImportedEvent, type PackageImportScope } from '../import-telemetry';
 

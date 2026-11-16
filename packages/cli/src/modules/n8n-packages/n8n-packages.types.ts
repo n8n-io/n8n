@@ -1,3 +1,10 @@
+import type {
+	ImportedAgentChannel,
+	PolicyViolation,
+	PackageManifest,
+	PackageRequirementConsumer,
+} from '@n8n/api-types';
+
 import type { AgentImportIssue } from './entities/agent/agent-import.types';
 import type { ImportedAgentChannel, PolicyViolation } from '@n8n/api-types';
 import type { OperationContext, User } from '@n8n/db';
@@ -31,8 +38,6 @@ import type {
 	WorkflowPublishingOutcome,
 	WorkflowPublishingPolicy,
 } from './entities/workflow/workflow-publishing-policy.types';
-import type { PackageManifest } from './spec/manifest.schema';
-import type { PackageRequirementConsumer } from './spec/requirements.schema';
 
 export type { CredentialResolution } from './entities/credential/credential.types';
 export { WorkflowPublishingPolicy } from './entities/workflow/workflow-publishing-policy.types';

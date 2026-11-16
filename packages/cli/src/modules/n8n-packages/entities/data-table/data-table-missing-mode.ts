@@ -1,7 +1,8 @@
+import type { PackageDataTableRequirement } from '@n8n/api-types';
+
 import { createFailure } from './data-table.types';
 import type { DataTableResolutionFailure } from './data-table.types';
 import type { DataTableMissingMode } from '../../n8n-packages.types';
-import type { PackageDataTableRequirement } from '../../spec/requirements.schema';
 
 export type TableEffect =
 	| { action: 'create' }

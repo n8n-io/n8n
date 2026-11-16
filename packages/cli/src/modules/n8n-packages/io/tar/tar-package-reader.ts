@@ -4,7 +4,7 @@ import { Parser, type ReadEntry } from 'tar';
 
 import { BadRequestError } from '@n8n/errors';
 
-import type { PackageManifest } from '../../spec/manifest.schema';
+import type { PackageManifest } from '@n8n/api-types';
 import type { PackageReader } from '../package-reader';
 
 const MANIFEST_PATH = 'manifest.json';

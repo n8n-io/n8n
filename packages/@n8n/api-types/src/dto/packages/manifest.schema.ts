@@ -1,4 +1,3 @@
-import path from 'node:path';
 import { z } from 'zod';
 
 import { FORMAT_VERSION } from './constants';
@@ -14,7 +13,7 @@ export const manifestEntrySchema = z.object({
 		.min(1)
 		.refine(
 			(target) =>
-				!path.win32.isAbsolute(target) &&
+				!/^[A-Za-z]:\//.test(target) &&
 				!target.includes('\\') &&
 				target.split('/').every((segment) => !['', '.', '..'].includes(segment)),
 			'Package target must be a canonical relative path',

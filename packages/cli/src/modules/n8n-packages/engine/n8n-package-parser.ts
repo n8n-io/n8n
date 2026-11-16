@@ -12,6 +12,9 @@ import {
 	type SerializedWorkflow,
 	type SerializedWorkflowMetadata,
 	serializedWorkflowMetadataSchema,
+	type ManifestEntry,
+	type PackageManifest,
+	packageManifestSchema,
 } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import { WorkflowEntity } from '@n8n/db';
@@ -41,8 +44,6 @@ import {
 	workflowMetadataFilePath,
 } from '../io/manifest-entry';
 import type { PackageReader } from '../io/package-reader';
-import type { ManifestEntry, PackageManifest } from '../spec/manifest.schema';
-import { packageManifestSchema } from '../spec/manifest.schema';
 import {
 	serializedAgentSchema,
 	serializedAgentMetadataSchema,

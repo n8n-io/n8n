@@ -1,4 +1,4 @@
-import type { SerializedVariable } from '@n8n/api-types';
+import type { SerializedVariable, ManifestEntry, PackageVariableRequirement } from '@n8n/api-types';
 import type { Variables } from '@n8n/db';
 import { SharedWorkflowRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
@@ -14,8 +14,6 @@ import type {
 	VariableRequirement,
 } from './variable.types';
 import { projectScopedDirectory, writeManifestEntry } from '../../io/manifest-entry';
-import type { ManifestEntry } from '../../spec/manifest.schema';
-import type { PackageVariableRequirement } from '../../spec/requirements.schema';
 import { PackageExportBlockedError } from '../package-export.errors';
 import { addRequirementUsage, type RequirementUsage } from '../requirement-source';
 

@@ -1,4 +1,4 @@
-import type { PackageWorkflowRequirement } from '../../../spec/requirements.schema';
+import type { PackageWorkflowRequirement } from '@n8n/api-types';
 import { orderBySubWorkflowDependencies } from '../sub-workflow-ordering';
 
 /** Minimal shape the orderer needs; ids double as names for readable assertions. */

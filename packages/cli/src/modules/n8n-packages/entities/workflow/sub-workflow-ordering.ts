@@ -1,5 +1,6 @@
+import type { PackageWorkflowRequirement } from '@n8n/api-types';
+
 import { getWorkflowConsumerIds } from '../../spec/requirement-consumers';
-import type { PackageWorkflowRequirement } from '../../spec/requirements.schema';
 
 /**
  * Sort workflows so we import from "lowest" to "highest"

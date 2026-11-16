@@ -1,9 +1,8 @@
 import type { User } from '@n8n/db';
+import type { ManifestEntry, PackageVariableRequirement } from '@n8n/api-types';
 
 import type { PackageWriter } from '../../io/package-writer';
 import type { VariableConflictPolicy, VariableMissingMode } from '../../n8n-packages.types';
-import type { ManifestEntry } from '../../spec/manifest.schema';
-import type { PackageVariableRequirement } from '../../spec/requirements.schema';
 import type { RequirementSource } from '../requirement-source';
 
 export type VariableRequirement = RequirementSource & { variableName: string };

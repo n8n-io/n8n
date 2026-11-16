@@ -1,10 +1,8 @@
+import type { PackageCredentialRequirement, PackageRequirementConsumer } from '@n8n/api-types';
+
 import type { CredentialResolution, CredentialResolutionFailure } from './credential.types';
 import type { CredentialMissingMode } from '../../n8n-packages.types';
 import { getRequirementConsumerIds } from '../../spec/requirement-consumers';
-import type {
-	PackageCredentialRequirement,
-	PackageRequirementConsumer,
-} from '../../spec/requirements.schema';
 
 export function canStubNotFoundFailure(failure: CredentialResolutionFailure): boolean {
 	return (

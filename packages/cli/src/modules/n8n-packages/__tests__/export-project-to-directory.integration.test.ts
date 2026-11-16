@@ -7,9 +7,9 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 
 import { createOwner } from '@test-integration/db/users';
+import { FORMAT_VERSION } from '@n8n/api-types';
 
 import { N8nPackagesService } from '../n8n-packages.service';
-import { FORMAT_VERSION } from '../spec/constants';
 
 let service: N8nPackagesService;
 let owner: User;

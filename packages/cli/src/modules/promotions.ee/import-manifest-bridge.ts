@@ -3,14 +3,15 @@ import { jsonParse } from 'n8n-workflow';
 import * as fs from 'node:fs/promises';
 import path from 'node:path';
 
-import { MANIFEST_FILE } from '@/modules/n8n-packages/spec/constants';
-import type { ManifestEntry, PackageManifest } from '@/modules/n8n-packages/spec/manifest.schema';
-import { packageManifestSchema } from '@/modules/n8n-packages/spec/manifest.schema';
+import {
+	MANIFEST_FILE,
+	type ManifestEntry,
+	type PackageManifest,
+	packageManifestSchema,
+	type PackageRequirementConsumer,
+	type PackageRequirements,
+} from '@n8n/api-types';
 import { getWorkflowConsumerIds } from '@/modules/n8n-packages/spec/requirement-consumers';
-import type {
-	PackageRequirementConsumer,
-	PackageRequirements,
-} from '@/modules/n8n-packages/spec/requirements.schema';
 
 import { remapPath, type ContainerMove } from './branch-placement';
 

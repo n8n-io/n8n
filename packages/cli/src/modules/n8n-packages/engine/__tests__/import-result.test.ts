@@ -1,14 +1,11 @@
 import type { WorkflowEntity } from '@n8n/db';
+import type { PackageCredentialRequirement, PackageRequirementConsumer } from '@n8n/api-types';
 
 import type {
 	PersistedWorkflowOutcome,
 	PreparedWorkflow,
 } from '../../entities/workflow/workflow-import.types';
 import type { ImportBindingMap } from '../../n8n-packages.types';
-import type {
-	PackageCredentialRequirement,
-	PackageRequirementConsumer,
-} from '../../spec/requirements.schema';
 import {
 	credentialsUpdatedAcrossScopes,
 	identifyRequirements,

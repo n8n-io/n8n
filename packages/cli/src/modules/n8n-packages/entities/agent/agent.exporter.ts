@@ -1,4 +1,8 @@
-import { isCredentialAgentIntegration, N8N_CHAT_INTEGRATION_TYPE } from '@n8n/api-types';
+import {
+	isCredentialAgentIntegration,
+	N8N_CHAT_INTEGRATION_TYPE,
+	type ManifestEntry,
+} from '@n8n/api-types';
 import { Service } from '@n8n/di';
 import { UnexpectedError } from '@n8n/errors';
 
@@ -16,7 +20,6 @@ import {
 } from '../../io/manifest-entry';
 import type { PackageWriter } from '../../io/package-writer';
 import { ExportVersionPolicy } from '../../n8n-packages.types';
-import type { ManifestEntry } from '../../spec/manifest.schema';
 import { PackageExportBlockedError } from '../package-export.errors';
 
 @Service()

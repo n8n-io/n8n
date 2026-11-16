@@ -1,4 +1,4 @@
-import { AgentJsonConfigSchema } from '@n8n/api-types';
+import { AgentJsonConfigSchema, type ManifestEntry, type PackageManifest } from '@n8n/api-types';
 import type { Logger } from '@n8n/backend-common';
 import { createTeamProject, testDb, testModules } from '@n8n/backend-test-utils';
 import type { Project, User } from '@n8n/db';
@@ -44,7 +44,6 @@ import { CapturingWriter } from '../io/__tests__/utils/capturing-writer';
 import { N8nPackagesService } from '../n8n-packages.service';
 import { PackageImportConfig } from '../n8n-packages.config';
 import { ExportVersionPolicy } from '../n8n-packages.types';
-import type { ManifestEntry, PackageManifest } from '../spec/manifest.schema';
 import { serializedAgentSchema, type SerializedAgent } from '../spec/serialized/agent.schema';
 import { serializedSkillSchema } from '../spec/serialized/skill.schema';
 import { SkillExporter } from '../entities/skill/skill.exporter';

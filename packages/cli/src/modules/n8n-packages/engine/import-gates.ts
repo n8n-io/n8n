@@ -2,6 +2,7 @@ import type { LicenseState } from '@n8n/backend-common';
 import type { Scope } from '@n8n/permissions';
 
 import { ForbiddenError } from '@n8n/errors';
+import type { PackageManifest } from '@n8n/api-types';
 
 import { plannedCredentialUpdates } from '../entities/credential/credential-conflict-policy';
 import type { CredentialImportPlan } from '../entities/credential/credential.types';
@@ -17,7 +18,6 @@ import type {
 } from '../entities/workflow/workflow-import.types';
 import type { WorkflowRemovalPlan } from '../entities/workflow/workflow-removal.types';
 import type { CredentialConflictPolicy } from '../n8n-packages.types';
-import type { PackageManifest } from '../spec/manifest.schema';
 
 export function packageImportScopes(manifest: PackageManifest): Scope[] {
 	const scopes: Scope[] = [];

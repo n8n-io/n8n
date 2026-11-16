@@ -26,11 +26,11 @@ import { createOwner } from '@test-integration/db/users';
 import { createVariable } from '@test-integration/db/variables';
 import { LicenseMocker } from '@test-integration/license';
 import { initCredentialsTypes, initNodeTypes } from '@test-integration/utils';
+import type { ManifestEntry, PackageManifest } from '@n8n/api-types';
 
 import { entityIdOfSegment } from '../io/manifest-entry';
 import { N8nPackagesService } from '../n8n-packages.service';
 import type { ImportRequest } from '../n8n-packages.types';
-import type { ManifestEntry, PackageManifest } from '../spec/manifest.schema';
 import {
 	buildWorkflowReferencingCredential,
 	buildWorkflowReferencingDataTables,

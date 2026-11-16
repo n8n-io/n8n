@@ -2,12 +2,12 @@ import type { Folder, User } from '@n8n/db';
 import { Service } from '@n8n/di';
 
 import { FolderFinderService } from '@n8n/backend-services';
+import type { ManifestEntry, WorkflowManifestEntry } from '@n8n/api-types';
 import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 
 import { FolderSerializer } from './folder.serializer';
 import { packageDirectory, writeManifestEntry } from '../../io/manifest-entry';
 import type { PackageWriter } from '../../io/package-writer';
-import type { ManifestEntry, WorkflowManifestEntry } from '../../spec/manifest.schema';
 import type { ExportVersionPolicy } from '../../n8n-packages.types';
 import { assertEveryRequestedEntityAccessible } from '../package-export.errors';
 import { mergeRequirements } from '../requirements.types';

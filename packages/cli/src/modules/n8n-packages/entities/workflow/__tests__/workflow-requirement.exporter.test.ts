@@ -1,9 +1,9 @@
 import type { User, WorkflowEntity } from '@n8n/db';
 import { mock } from 'vitest-mock-extended';
+import type { WorkflowManifestEntry } from '@n8n/api-types';
 
 import type { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 
-import type { WorkflowManifestEntry } from '../../../spec/manifest.schema';
 import { WorkflowRequirementExporter } from '../workflow-requirement.exporter';
 
 const user = mock<User>({ id: 'user-1' });

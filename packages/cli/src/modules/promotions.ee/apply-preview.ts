@@ -6,6 +6,8 @@ import type {
 	PromotionResource,
 	PromotionResourceChange,
 	PromotionVariableScope,
+	PackageManifest,
+	PackageRequirementConsumer,
 } from '@n8n/api-types';
 import { isRecord } from '@n8n/utils/is-record';
 import { jsonParse } from 'n8n-workflow';
@@ -20,8 +22,6 @@ import type {
 import { formatEntityFile } from '@/modules/n8n-packages/io/entity-file-format';
 import { PACKAGE_ENTITY_LAYOUT } from '@/modules/n8n-packages/io/manifest-entry';
 import type { BlockingIssue } from '@/modules/n8n-packages/n8n-packages.types';
-import type { PackageManifest } from '@/modules/n8n-packages/spec/manifest.schema';
-import type { PackageRequirementConsumer } from '@/modules/n8n-packages/spec/requirements.schema';
 
 import {
 	compare,

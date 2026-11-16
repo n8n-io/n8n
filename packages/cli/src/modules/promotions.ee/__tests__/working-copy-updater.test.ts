@@ -25,8 +25,7 @@ vi.mock('node:fs/promises', async (importOriginal) => {
 	};
 });
 
-import type { PackageManifest } from '@/modules/n8n-packages/spec/manifest.schema';
-import { packageManifestSchema } from '@/modules/n8n-packages/spec/manifest.schema';
+import { type PackageManifest, packageManifestSchema } from '@n8n/api-types';
 
 import type { BranchLayout } from '../branch-placement';
 import { PromotionsWorkflowsMovedCrossProjectError } from '../promotions-selective-push.error';

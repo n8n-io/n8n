@@ -16,6 +16,9 @@ import {
 	type PromotionMissingProjectListPublicDto,
 	type PromotionPreviewCheck,
 	type PromotionRunContents,
+	MANIFEST_FILE,
+	manifestEntrySchema,
+	type PackageManifest,
 } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import { EventService } from '@n8n/backend-services';
@@ -41,9 +44,6 @@ import {
 } from '@/modules/n8n-packages/io/directory/package-directory-inventory-reader';
 import { PackageImportConfig } from '@/modules/n8n-packages/n8n-packages.config';
 import { N8nPackagesService } from '@/modules/n8n-packages/n8n-packages.service';
-import { MANIFEST_FILE } from '@/modules/n8n-packages/spec/constants';
-import { manifestEntrySchema } from '@/modules/n8n-packages/spec/manifest.schema';
-import type { PackageManifest } from '@/modules/n8n-packages/spec/manifest.schema';
 import {
 	CredentialConflictPolicy,
 	DataTableMissingMode,

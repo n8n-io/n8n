@@ -1,4 +1,9 @@
-import type { SerializedCredential, SerializedVariable } from '@n8n/api-types';
+import type {
+	SerializedCredential,
+	SerializedVariable,
+	ManifestEntry,
+	PackageManifest,
+} from '@n8n/api-types';
 import { Service } from '@n8n/di';
 
 import { UnexpectedError } from '@n8n/errors';
@@ -61,7 +66,6 @@ import {
 import type { ImportOutcome, PackageImportScope } from './import-telemetry';
 import { N8nPackageParser } from './n8n-package-parser';
 import { PackageImportPreflight } from './package-import-preflight';
-import type { ManifestEntry, PackageManifest } from '../spec/manifest.schema';
 import type { SerializedSkill } from '../spec/serialized/skill.schema';
 
 /** Everything an import will do, read before its first write. */
