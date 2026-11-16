@@ -264,7 +264,12 @@ export class PromotionChangeService {
 			const fromInstance = instanceIndex.get(key);
 			const resource = fromInstance ?? fromBranch;
 			if (!resource) return [];
-			const branchContent = fromBranch && branchContents.get(fromBranch.path);
+			const rawBranchContent = fromBranch && branchContents.get(fromBranch.path);
+			// The summary compares the workflow file as Apply writes it, so the detail shows the same.
+			const branchContent =
+				rawBranchContent !== undefined && direction === 'apply' && fromBranch?.type === 'workflow'
+					? this.applyPreviewService.workflowFileForApply(rawBranchContent)
+					: rawBranchContent;
 			const localCopy =
 				fromBranch && (fromBranch.type === 'tag' ? localTags : localTables).get(fromBranch.id);
 			const branchSide: DetailSide =

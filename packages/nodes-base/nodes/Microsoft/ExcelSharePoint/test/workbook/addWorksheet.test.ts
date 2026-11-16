@@ -1,4 +1,5 @@
-import type { IExecuteFunctions, INode } from 'n8n-workflow';
+import type { IExecuteFunctions, INode, RequestPath } from 'n8n-workflow';
+import { requestPath } from 'n8n-workflow';
 import type { Mock } from 'vitest';
 import type { DeepMockProxy } from 'vitest-mock-extended';
 import { mock, mockDeep } from 'vitest-mock-extended';
@@ -17,7 +18,7 @@ vi.mock('../../transport', async () => {
 });
 
 const SITE_ID = 'contoso.sharepoint.com,g1,g2';
-const WORKBOOK_ROOT = `/v1.0/sites/${encodeURIComponent(SITE_ID)}/drives/b!drive1/items/ITEM123`;
+const WORKBOOK_ROOT = requestPath`/v1.0/sites/${SITE_ID}/drives/b!drive1/items/ITEM123`;
 
 describe('Microsoft Excel (SharePoint) — Workbook: Add Sheet', () => {
 	let node: MicrosoftExcelSharePoint;
@@ -56,11 +57,12 @@ describe('Microsoft Excel (SharePoint) — Workbook: Add Sheet', () => {
 
 	it('opens a session, adds the sheet with the session header, then closes the session', async () => {
 		setParams(byIdParams);
-		apiRequest.mockImplementation(async (_method: string, resource: string) => {
-			if (resource === `${WORKBOOK_ROOT}/workbook/createSession`) return { id: 'session-abc' };
-			if (resource === `${WORKBOOK_ROOT}/workbook/worksheets/add`)
+		apiRequest.mockImplementation(async (_method: string, resource: RequestPath) => {
+			if (resource.value === `${WORKBOOK_ROOT}/workbook/createSession`)
+				return { id: 'session-abc' };
+			if (resource.value === `${WORKBOOK_ROOT}/workbook/worksheets/add`)
 				return { id: 'sheet-1', name: 'Sheet2' };
-			if (resource === `${WORKBOOK_ROOT}/workbook/closeSession`) return {};
+			if (resource.value === `${WORKBOOK_ROOT}/workbook/closeSession`) return {};
 			throw new Error(`unexpected request: ${resource}`);
 		});
 
@@ -70,13 +72,13 @@ describe('Microsoft Excel (SharePoint) — Workbook: Add Sheet', () => {
 		expect(apiRequest).toHaveBeenNthCalledWith(
 			1,
 			'POST',
-			`${WORKBOOK_ROOT}/workbook/createSession`,
+			requestPath`${WORKBOOK_ROOT}/workbook/createSession`,
 			{ persistChanges: true },
 		);
 		expect(apiRequest).toHaveBeenNthCalledWith(
 			2,
 			'POST',
-			`${WORKBOOK_ROOT}/workbook/worksheets/add`,
+			requestPath`${WORKBOOK_ROOT}/workbook/worksheets/add`,
 			{},
 			{},
 			undefined,
@@ -85,7 +87,7 @@ describe('Microsoft Excel (SharePoint) — Workbook: Add Sheet', () => {
 		expect(apiRequest).toHaveBeenNthCalledWith(
 			3,
 			'POST',
-			`${WORKBOOK_ROOT}/workbook/closeSession`,
+			requestPath`${WORKBOOK_ROOT}/workbook/closeSession`,
 			{},
 			{},
 			undefined,
@@ -96,8 +98,8 @@ describe('Microsoft Excel (SharePoint) — Workbook: Add Sheet', () => {
 
 	it('sends the chosen name in the request body', async () => {
 		setParams({ ...byIdParams, options: { name: 'Q4' } });
-		apiRequest.mockImplementation(async (_method: string, resource: string) => {
-			if (resource.endsWith('/createSession')) return { id: 'session-abc' };
+		apiRequest.mockImplementation(async (_method: string, resource: RequestPath) => {
+			if (resource.value.endsWith('/createSession')) return { id: 'session-abc' };
 			return { id: 'sheet-1', name: 'Q4' };
 		});
 
@@ -106,7 +108,7 @@ describe('Microsoft Excel (SharePoint) — Workbook: Add Sheet', () => {
 		expect(apiRequest).toHaveBeenNthCalledWith(
 			2,
 			'POST',
-			`${WORKBOOK_ROOT}/workbook/worksheets/add`,
+			requestPath`${WORKBOOK_ROOT}/workbook/worksheets/add`,
 			{ name: 'Q4' },
 			{},
 			undefined,
@@ -116,9 +118,9 @@ describe('Microsoft Excel (SharePoint) — Workbook: Add Sheet', () => {
 
 	it('still closes the session when adding the sheet fails', async () => {
 		setParams(byIdParams);
-		apiRequest.mockImplementation(async (_method: string, resource: string) => {
-			if (resource.endsWith('/createSession')) return { id: 'session-abc' };
-			if (resource.endsWith('/worksheets/add')) throw new Error('boom');
+		apiRequest.mockImplementation(async (_method: string, resource: RequestPath) => {
+			if (resource.value.endsWith('/createSession')) return { id: 'session-abc' };
+			if (resource.value.endsWith('/worksheets/add')) throw new Error('boom');
 			return {};
 		});
 
@@ -128,7 +130,7 @@ describe('Microsoft Excel (SharePoint) — Workbook: Add Sheet', () => {
 		expect(apiRequest).toHaveBeenNthCalledWith(
 			3,
 			'POST',
-			`${WORKBOOK_ROOT}/workbook/closeSession`,
+			requestPath`${WORKBOOK_ROOT}/workbook/closeSession`,
 			{},
 			{},
 			undefined,
@@ -148,13 +150,13 @@ describe('Microsoft Excel (SharePoint) — Workbook: Add Sheet', () => {
 		ctx.continueOnFail.mockReturnValue(true);
 		setParams(byIdParams);
 		let createSessionCalls = 0;
-		apiRequest.mockImplementation(async (_method: string, resource: string) => {
-			if (resource.endsWith('/createSession')) {
+		apiRequest.mockImplementation(async (_method: string, resource: RequestPath) => {
+			if (resource.value.endsWith('/createSession')) {
 				createSessionCalls++;
 				if (createSessionCalls === 1) throw new Error('boom');
 				return { id: 'session-abc' };
 			}
-			if (resource.endsWith('/worksheets/add')) return { id: 'sheet-1' };
+			if (resource.value.endsWith('/worksheets/add')) return { id: 'sheet-1' };
 			return {};
 		});
 

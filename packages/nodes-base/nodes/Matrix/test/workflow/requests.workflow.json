@@ -1,0 +1,329 @@
+{
+	"name": "Matrix Requests",
+	"nodes": [
+		{
+			"parameters": {},
+			"id": "trigger",
+			"name": "When clicking \"Execute Workflow\"",
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [0, 0]
+		},
+		{
+			"parameters": {
+				"resource": "account",
+				"operation": "me"
+			},
+			"id": "matrix-0",
+			"name": "Account Me",
+			"type": "n8n-nodes-base.matrix",
+			"typeVersion": 1,
+			"position": [300, 0],
+			"credentials": {
+				"matrixApi": {
+					"id": "1",
+					"name": "Matrix account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "room",
+				"operation": "create",
+				"roomName": "Support",
+				"preset": "private_chat"
+			},
+			"id": "matrix-1",
+			"name": "Room Create",
+			"type": "n8n-nodes-base.matrix",
+			"typeVersion": 1,
+			"position": [300, 150],
+			"credentials": {
+				"matrixApi": {
+					"id": "1",
+					"name": "Matrix account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "room",
+				"operation": "join",
+				"roomIdOrAlias": "!abc123:example.com"
+			},
+			"id": "matrix-2",
+			"name": "Room Join",
+			"type": "n8n-nodes-base.matrix",
+			"typeVersion": 1,
+			"position": [300, 300],
+			"credentials": {
+				"matrixApi": {
+					"id": "1",
+					"name": "Matrix account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "room",
+				"operation": "leave",
+				"roomId": "!abc123:example.com"
+			},
+			"id": "matrix-3",
+			"name": "Room Leave",
+			"type": "n8n-nodes-base.matrix",
+			"typeVersion": 1,
+			"position": [300, 450],
+			"credentials": {
+				"matrixApi": {
+					"id": "1",
+					"name": "Matrix account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "room",
+				"operation": "invite",
+				"roomId": "!abc123:example.com",
+				"userId": "@nathan:example.com"
+			},
+			"id": "matrix-4",
+			"name": "Room Invite",
+			"type": "n8n-nodes-base.matrix",
+			"typeVersion": 1,
+			"position": [300, 600],
+			"credentials": {
+				"matrixApi": {
+					"id": "1",
+					"name": "Matrix account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "room",
+				"operation": "kick",
+				"roomId": "!abc123:example.com",
+				"userId": "@nathan:example.com",
+				"reason": "Spam"
+			},
+			"id": "matrix-5",
+			"name": "Room Kick",
+			"type": "n8n-nodes-base.matrix",
+			"typeVersion": 1,
+			"position": [300, 750],
+			"credentials": {
+				"matrixApi": {
+					"id": "1",
+					"name": "Matrix account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "message",
+				"operation": "create",
+				"roomId": "!abc123:example.com",
+				"text": "Hello"
+			},
+			"id": "matrix-6",
+			"name": "Message Create",
+			"type": "n8n-nodes-base.matrix",
+			"typeVersion": 1,
+			"position": [300, 900],
+			"credentials": {
+				"matrixApi": {
+					"id": "1",
+					"name": "Matrix account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "message",
+				"operation": "getAll",
+				"roomId": "!abc123:example.com",
+				"limit": 10
+			},
+			"id": "matrix-7",
+			"name": "Message Get Many",
+			"type": "n8n-nodes-base.matrix",
+			"typeVersion": 1,
+			"position": [300, 1050],
+			"credentials": {
+				"matrixApi": {
+					"id": "1",
+					"name": "Matrix account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "event",
+				"operation": "get",
+				"roomId": "!abc123:example.com",
+				"eventId": "$evt1:example.com"
+			},
+			"id": "matrix-8",
+			"name": "Event Get",
+			"type": "n8n-nodes-base.matrix",
+			"typeVersion": 1,
+			"position": [300, 1200],
+			"credentials": {
+				"matrixApi": {
+					"id": "1",
+					"name": "Matrix account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "roomMember",
+				"operation": "getAll",
+				"roomId": "!abc123:example.com"
+			},
+			"id": "matrix-9",
+			"name": "Room Member Get Many",
+			"type": "n8n-nodes-base.matrix",
+			"typeVersion": 1,
+			"position": [300, 1350],
+			"credentials": {
+				"matrixApi": {
+					"id": "1",
+					"name": "Matrix account"
+				}
+			}
+		}
+	],
+	"pinData": {
+		"Account Me": [
+			{
+				"json": {
+					"user_id": "@nathan:example.com"
+				}
+			}
+		],
+		"Room Create": [
+			{
+				"json": {
+					"room_id": "!abc123:example.com"
+				}
+			}
+		],
+		"Room Join": [
+			{
+				"json": {
+					"room_id": "!abc123:example.com"
+				}
+			}
+		],
+		"Room Leave": [
+			{
+				"json": {}
+			}
+		],
+		"Room Invite": [
+			{
+				"json": {}
+			}
+		],
+		"Room Kick": [
+			{
+				"json": {}
+			}
+		],
+		"Message Create": [
+			{
+				"json": {
+					"event_id": "$evt1:example.com"
+				}
+			}
+		],
+		"Message Get Many": [
+			{
+				"json": {
+					"event_id": "$evt1:example.com",
+					"type": "m.room.message"
+				}
+			}
+		],
+		"Event Get": [
+			{
+				"json": {
+					"event_id": "$evt1:example.com",
+					"type": "m.room.message"
+				}
+			}
+		],
+		"Room Member Get Many": [
+			{
+				"json": {
+					"state_key": "@nathan:example.com"
+				}
+			}
+		]
+	},
+	"connections": {
+		"When clicking \"Execute Workflow\"": {
+			"main": [
+				[
+					{
+						"node": "Account Me",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Room Create",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Room Join",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Room Leave",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Room Invite",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Room Kick",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Message Create",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Message Get Many",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Event Get",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Room Member Get Many",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"active": false,
+	"settings": {
+		"executionOrder": "v1"
+	}
+}

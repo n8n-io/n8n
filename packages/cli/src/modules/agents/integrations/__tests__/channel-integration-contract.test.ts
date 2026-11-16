@@ -69,7 +69,7 @@ runSharedChannelIntegrationContract({
 		respondPost: {
 			channel: 'C_SUPPORT',
 			thread_ts: '1719000000.000100',
-			text: 'Action response',
+			markdown_text: 'Action response',
 		},
 		respondTarget: { threadId: 'slack:C_SUPPORT:1719000000.000100' },
 	},
@@ -117,7 +117,7 @@ runSharedChannelIntegrationContract({
 		},
 		respondPost: {
 			chat_id: '123456',
-			text: 'Action response',
+			rich_message: { markdown: 'Action response' },
 		},
 		respondTarget: { threadId: 'telegram:123456' },
 	},

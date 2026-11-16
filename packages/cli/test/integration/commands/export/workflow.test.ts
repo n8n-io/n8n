@@ -5,6 +5,7 @@ import {
 	setActiveVersion,
 	createWorkflowHistory,
 	createTeamProject,
+	shareWorkflowWithProjects,
 } from '@n8n/backend-test-utils';
 import { WorkflowRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
@@ -15,7 +16,10 @@ import path from 'path';
 
 import { ExportWorkflowsCommand } from '@/commands/export/workflow';
 import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
+import { captureStatements, countCopies } from '@test-integration/utils/query-capture';
 import { setupTestCommand } from '@test-integration/utils/test-command';
+
+import { createTag } from '../../shared/db/tags';
 
 mockInstance(LoadNodesAndCredentials);
 
@@ -93,6 +97,54 @@ test('should export workflows by project with --projectId', async () => {
 	expect(exportedData).toHaveLength(1);
 	expect(exportedData[0].id).toBe(workflowInProjectA.id);
 	expect(exportedData[0].name).toBe('Project A workflow');
+});
+
+test('should export tags and shares, reading each workflow once', async () => {
+	const ownerProject = await createTeamProject();
+	const opsProject = await createTeamProject();
+	// The name is a workflow column, so it is repeated in every row a join returns.
+	const name = `Tagged ${nanoid()}`;
+	const workflow = await createWorkflowWithTriggerAndHistory({ name }, ownerProject);
+	await shareWorkflowWithProjects(workflow, [{ project: opsProject }]);
+	const baseTime = Date.now();
+	const firstTag = await createTag({ createdAt: new Date(baseTime) }, workflow);
+	const secondTag = await createTag({ createdAt: new Date(baseTime + 1000) }, workflow);
+
+	const outputFile = path.join(testOutputDir, 'output.json');
+	const { statements } = await captureStatements(
+		async () => await command.run(['--all', `--output=${outputFile}`]),
+	);
+
+	const [exported] = JSON.parse(fs.readFileSync(outputFile, 'utf-8'));
+	expect(exported.tags.map(({ id }: { id: string }) => id)).toEqual([firstTag.id, secondTag.id]);
+	expect(exported.shared.map(({ projectId }: { projectId: string }) => projectId).sort()).toEqual(
+		[ownerProject.id, opsProject.id].sort(),
+	);
+	expect(
+		exported.shared.every(
+			(share: { projectId: string; project: { id: string } }) =>
+				share.project.id === share.projectId,
+		),
+	).toBe(true);
+	expect(countCopies(statements, name)).toBe(1);
+});
+
+test('should export only the filtered project share with --projectId', async () => {
+	const ownerProject = await createTeamProject();
+	const opsProject = await createTeamProject();
+	const workflow = await createWorkflowWithTriggerAndHistory({ name: 'Shared' }, ownerProject);
+	await shareWorkflowWithProjects(workflow, [{ project: opsProject }]);
+	await createTag({}, workflow);
+
+	const outputFile = path.join(testOutputDir, 'output.json');
+	await command.run([`--projectId=${opsProject.id}`, `--output=${outputFile}`]);
+
+	const [exported] = JSON.parse(fs.readFileSync(outputFile, 'utf-8'));
+	expect(exported.id).toBe(workflow.id);
+	expect(exported.shared.map(({ projectId }: { projectId: string }) => projectId)).toEqual([
+		opsProject.id,
+	]);
+	expect(exported.tags).toHaveLength(1);
 });
 
 test('should export current draft version when no flags set', async () => {

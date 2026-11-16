@@ -2,7 +2,10 @@ operationId: getTags
 tags:
   - Tags
 summary: Retrieve all tags
-description: Retrieve all tags from your instance.
+description: |-
+  Retrieve all tags from your instance.
+
+  Requires the `tag:list` API key scope.
 x-required-scope: tag:list
 parameters:
   - $ref: ../../../../shared/spec/parameters/limit.yml

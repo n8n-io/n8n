@@ -17,6 +17,7 @@ import {
 	type Project,
 	type TagEntity,
 	TagRepository,
+	type Person,
 	type User,
 	VariablesRepository,
 	type WorkflowEntity,
@@ -264,10 +265,10 @@ describe('SourceControlImportService', () => {
 		const globMock = fastGlob.default as unknown as Mock<(...args: string[]) => Promise<string[]>>;
 		const fsReadFile = vi.mocked(readFile);
 
-		let globalAdmin: User;
-		let globalOwner: User;
-		let globalMember: User;
-		let teamAdmin: User;
+		let globalAdmin: Person;
+		let globalOwner: Person;
+		let globalMember: Person;
+		let teamAdmin: Person;
 		let team1: Project;
 
 		beforeEach(async () => {
@@ -391,8 +392,8 @@ describe('SourceControlImportService', () => {
 
 	describe('getLocalVersionIdsFromDb()', () => {
 		let instanceOwner: User;
-		let projectAdmin: User;
-		let projectMember: User;
+		let projectAdmin: Person;
+		let projectMember: Person;
 		let teamProjectA: Project;
 		let teamProjectB: Project;
 		let teamAWorkflows: WorkflowEntity[];
@@ -541,10 +542,10 @@ describe('SourceControlImportService', () => {
 		const globMock = fastGlob.default as unknown as Mock<(...args: string[]) => Promise<string[]>>;
 		const fsReadFile = vi.mocked(readFile);
 
-		let globalAdmin: User;
-		let globalOwner: User;
-		let globalMember: User;
-		let teamAdmin: User;
+		let globalAdmin: Person;
+		let globalOwner: Person;
+		let globalMember: Person;
+		let teamAdmin: Person;
 		let team1: Project;
 
 		beforeEach(async () => {
@@ -661,8 +662,8 @@ describe('SourceControlImportService', () => {
 
 	describe('getLocalCredentialsFromDb', () => {
 		let instanceOwner: User;
-		let projectAdmin: User;
-		let projectMember: User;
+		let projectAdmin: Person;
+		let projectMember: Person;
 		let teamProjectA: Project;
 		let teamProjectB: Project;
 		let teamACredentials: CredentialsEntity[];
@@ -896,8 +897,8 @@ describe('SourceControlImportService', () => {
 
 	describe('getLocalFoldersAndMappingsFromDb()', () => {
 		let instanceOwner: User;
-		let projectAdmin: User;
-		let projectMember: User;
+		let projectAdmin: Person;
+		let projectMember: Person;
 		let teamProjectA: Project;
 		let teamProjectB: Project;
 		let foldersProjectA: Folder[];
@@ -1026,10 +1027,10 @@ describe('SourceControlImportService', () => {
 		const globMock = fastGlob.default as unknown as Mock<(...args: string[]) => Promise<string[]>>;
 		const fsReadFile = vi.mocked(readFile);
 
-		let globalAdmin: User;
-		let globalOwner: User;
-		let globalMember: User;
-		let teamAdmin: User;
+		let globalAdmin: Person;
+		let globalOwner: Person;
+		let globalMember: Person;
+		let teamAdmin: Person;
 		let team1: Project;
 		let team2: Project;
 		let workflowTeam1: WorkflowEntity[];
@@ -1153,8 +1154,8 @@ describe('SourceControlImportService', () => {
 
 	describe('getLocalTagsAndMappingsFromDb()', () => {
 		let instanceOwner: User;
-		let projectAdmin: User;
-		let projectMember: User;
+		let projectAdmin: Person;
+		let projectMember: Person;
 		let teamProjectA: Project;
 		let teamProjectB: Project;
 		let tags: TagEntity[];
@@ -2054,14 +2055,14 @@ describe('SourceControlImportService', () => {
 
 		describe('workflow history', () => {
 			it('should create workflow history for new workflow on import', async () => {
-				const importingUser = await getGlobalOwner();
+				const importingPerson = (await getGlobalOwner()) as Person;
 
 				const workflow = makeWorkflowImport();
 				const file = putWorkflowFile(workflow.id, workflow);
 
 				await service.importWorkflowFromWorkFolder(
 					[mock<SourceControlledFile>({ id: workflow.id, file })],
-					importingUser.id,
+					importingPerson.id,
 				);
 
 				// Verify workflow history was created
@@ -2073,12 +2074,136 @@ describe('SourceControlImportService', () => {
 				expect(historyRecord?.nodes).toEqual(workflow.nodes);
 				expect(historyRecord?.connections).toEqual(workflow.connections);
 				expect(historyRecord?.authors).toBe(
-					`import by ${importingUser.firstName} ${importingUser.lastName}`,
+					`import by ${importingPerson.firstName} ${importingPerson.lastName}`,
 				);
 			});
 
-			it('should update workflow history when versionId exists but nodes changed', async () => {
+			it('should store the engine of a new workflow on import', async () => {
 				const importingUser = await getGlobalOwner();
+
+				const workflow = makeWorkflowImport({
+					settings: { engineType: 'v2', availableInMCP: true },
+				});
+				const file = putWorkflowFile(workflow.id, workflow);
+
+				await service.importWorkflowFromWorkFolder(
+					[mock<SourceControlledFile>({ id: workflow.id, file })],
+					importingUser.id,
+				);
+
+				const historyRecord = await workflowHistoryRepository.findOneOrFail({
+					where: { versionId: workflow.versionId, workflowId: workflow.id },
+				});
+				expect(historyRecord.settings).toEqual({ engineType: 'v2' });
+			});
+
+			it('should update workflow history when versionId exists and only the engine changed', async () => {
+				const importingUser = await getGlobalOwner();
+				const workflowId = nanoid();
+				const versionId = nanoid();
+				const nodes = [
+					{
+						id: 'node-1',
+						name: 'Start',
+						type: 'n8n-nodes-base.manualTrigger',
+						typeVersion: 1,
+						position: [250, 300] as [number, number],
+						parameters: {},
+					},
+				];
+
+				await createWorkflowWithHistory(
+					{ id: workflowId, name: 'Test Workflow', versionId, nodes, connections: {} },
+					importingUser,
+				);
+				const { authors } = await workflowHistoryRepository.findOneByOrFail({
+					versionId,
+					workflowId,
+				});
+
+				const workflow = makeWorkflowImport({
+					id: workflowId,
+					versionId,
+					nodes,
+					connections: {},
+					settings: { engineType: 'v2', availableInMCP: true },
+				});
+				const file = putWorkflowFile(workflowId, workflow);
+
+				await service.importWorkflowFromWorkFolder(
+					[mock<SourceControlledFile>({ id: workflowId, file })],
+					importingUser.id,
+				);
+
+				const historyRecord = await workflowHistoryRepository.findOneOrFail({
+					where: { versionId, workflowId },
+				});
+				expect(historyRecord).toMatchObject({ settings: { engineType: 'v2' }, authors });
+			});
+
+			it('should store v1 for a new workflow without an engine on import', async () => {
+				const importingUser = await getGlobalOwner();
+
+				const workflow = makeWorkflowImport({ settings: { availableInMCP: true } });
+				const file = putWorkflowFile(workflow.id, workflow);
+
+				await service.importWorkflowFromWorkFolder(
+					[mock<SourceControlledFile>({ id: workflow.id, file })],
+					importingUser.id,
+				);
+
+				const historyRecord = await workflowHistoryRepository.findOneOrFail({
+					where: { versionId: workflow.versionId, workflowId: workflow.id },
+				});
+				expect(historyRecord.settings).toEqual({ engineType: 'v1' });
+			});
+
+			it('should set v1 when versionId exists and the file has no engine', async () => {
+				const importingUser = await getGlobalOwner();
+				const workflowId = nanoid();
+				const versionId = nanoid();
+				const nodes = [
+					{
+						id: 'node-1',
+						name: 'Start',
+						type: 'n8n-nodes-base.manualTrigger',
+						typeVersion: 1,
+						position: [250, 300] as [number, number],
+						parameters: {},
+					},
+				];
+
+				await createWorkflowWithHistory(
+					{ id: workflowId, name: 'Test Workflow', versionId, nodes, connections: {} },
+					importingUser,
+				);
+				await workflowHistoryRepository.update(
+					{ versionId, workflowId },
+					{ settings: { engineType: 'v2' } },
+				);
+
+				const workflow = makeWorkflowImport({
+					id: workflowId,
+					versionId,
+					nodes,
+					connections: {},
+					settings: { availableInMCP: true },
+				});
+				const file = putWorkflowFile(workflowId, workflow);
+
+				await service.importWorkflowFromWorkFolder(
+					[mock<SourceControlledFile>({ id: workflowId, file })],
+					importingUser.id,
+				);
+
+				const historyRecord = await workflowHistoryRepository.findOneOrFail({
+					where: { versionId, workflowId },
+				});
+				expect(historyRecord.settings).toEqual({ engineType: 'v1' });
+			});
+
+			it('should update workflow history when versionId exists but nodes changed', async () => {
+				const importingPerson = (await getGlobalOwner()) as Person;
 				const workflowId = nanoid();
 				const versionId = nanoid();
 
@@ -2102,7 +2227,7 @@ describe('SourceControlImportService', () => {
 						nodes: initialNodes,
 						connections: {},
 					},
-					importingUser,
+					importingPerson,
 				);
 
 				// Import with updated nodes
@@ -2123,7 +2248,7 @@ describe('SourceControlImportService', () => {
 
 				await service.importWorkflowFromWorkFolder(
 					[mock<SourceControlledFile>({ id: workflowId, file })],
-					importingUser.id,
+					importingPerson.id,
 				);
 
 				// Verify workflow history was updated
@@ -2134,7 +2259,7 @@ describe('SourceControlImportService', () => {
 				expect(historyRecord).toBeTruthy();
 				expect(historyRecord?.nodes).toEqual(updatedNodes);
 				expect(historyRecord?.authors).toBe(
-					`import by ${importingUser.firstName} ${importingUser.lastName}`,
+					`import by ${importingPerson.firstName} ${importingPerson.lastName}`,
 				);
 			});
 

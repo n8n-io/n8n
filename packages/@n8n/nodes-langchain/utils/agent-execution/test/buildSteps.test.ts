@@ -1264,6 +1264,46 @@ describe('buildSteps', () => {
 	});
 
 	describe('Tool name resolution', () => {
+		it('should preserve the canonical tool name from action metadata', () => {
+			const response: EngineResponse<RequestResponseMetadata> = {
+				actionResponses: [
+					{
+						action: {
+							actionType: 'ExecutionNodeAction',
+							nodeName: 'Ingredient Glossary Lookup1',
+							input: {
+								id: 'call_123',
+								query: 'tomato',
+							},
+							type: NodeConnectionTypes.AiTool,
+							id: 'call_123',
+							metadata: {
+								itemIndex: 0,
+								toolName: 'Ingredient_Glossary_Lookup',
+							},
+						},
+						data: {
+							data: {
+								ai_tool: [[{ json: { result: 'tomato' } }]],
+							},
+							executionTime: 0,
+							startTime: 0,
+							executionIndex: 0,
+							source: [],
+						},
+					},
+				],
+				metadata: {},
+			};
+
+			const result = buildSteps(response, itemIndex);
+
+			expect(result[0].action.tool).toBe('Ingredient_Glossary_Lookup');
+			expect(result[0].action.messageLog?.[0]?.tool_calls?.[0]?.name).toBe(
+				'Ingredient_Glossary_Lookup',
+			);
+		});
+
 		it('should use HITL toolName when HITL metadata is present', () => {
 			const response: EngineResponse<RequestResponseMetadata> = {
 				actionResponses: [
@@ -1825,9 +1865,10 @@ describe('buildSteps', () => {
 				.__gemini_function_call_thought_signatures__ as Record<string, string>;
 			expect(sigMap).toEqual({ call_1: 'shared_gemini_sig' });
 
-			// Signatures array should have: ['', 'sig', ''] (text part, first func call, second func call)
+			// The model wrote no text, so no text part precedes the function calls
+			expect(firstMessage.content).toEqual([]);
 			const sigArray = firstMessage.additional_kwargs.signatures as string[];
-			expect(sigArray).toEqual(['', 'shared_gemini_sig', '']);
+			expect(sigArray).toEqual(['shared_gemini_sig', '']);
 
 			// Second step should have EMPTY messageLog (no duplicate AIMessage)
 			expect(result[1].action.messageLog).toEqual([]);

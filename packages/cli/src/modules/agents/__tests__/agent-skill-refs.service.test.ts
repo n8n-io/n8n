@@ -11,14 +11,11 @@ import type {
 	SkillService,
 	SkillTarget,
 } from '@/modules/skills';
-import { userHasScopes } from '@/permissions.ee/check-access';
 
 import { AgentSkillRefsService } from '../agent-skill-refs.service';
 import type { AgentHistory } from '../entities/agent-history.entity';
 import type { Agent } from '../entities/agent.entity';
 import type { AgentSkillRepository } from '../repositories/agent-skill.repository';
-
-vi.mock('@/permissions.ee/check-access', () => ({ userHasScopes: vi.fn() }));
 
 const ctx: OperationContext = {};
 const pinId = '0b2c6f1e-7d3a-4c1b-9f2e-5a6b7c8d9e0f';
@@ -39,7 +36,6 @@ describe('AgentSkillRefsService', () => {
 
 	beforeEach(() => {
 		// The module mock outlives each test, so clear the calls of earlier ones.
-		vi.mocked(userHasScopes).mockClear();
 		agentSkillRepository = mock<AgentSkillRepository>();
 		skillService = mock<SkillService>();
 		skillRuntime = mock<SkillRuntimeService>();
@@ -399,6 +395,82 @@ describe('AgentSkillRefsService', () => {
 				{},
 			);
 			expect(skillRuntime.runtimeVersions).not.toHaveBeenCalled();
+		});
+	});
+
+	describe('findSkillVersionsForAgents', () => {
+		it('resolves followers and pins separately in one list read', async () => {
+			agentSkillRepository.findDependencies.mockResolvedValue(
+				new Map([
+					['following', [{ skillId: 'tone', versionId: null }]],
+					['pinned', [{ skillId: 'tone', versionId: 'tone-v1' }]],
+				]),
+			);
+			agentSkillRepository.findPinsForVersions.mockResolvedValue([
+				{ agentVersionId: 'agent-v1', skillId: 'tone', skillVersionId: 'tone-v1' },
+			]);
+			skillRuntime.findVersionRefs.mockResolvedValue(
+				new Map([['tone-v1', { skillId: 'tone', version: 1 }]]),
+			);
+			skillRuntime.runtimeVersions.mockResolvedValue((ref) => ({
+				version: ref.versionId ? 1 : 2,
+				latest: 2,
+				pinned: Boolean(ref.versionId),
+			}));
+			const versions = await service.findSkillVersionsForAgents(
+				[
+					{ id: 'following', activeVersionId: 'agent-v1' },
+					{ id: 'pinned', activeVersionId: null },
+				],
+				ctx,
+			);
+			expect(versions.get('following')).toEqual({
+				tone: { draft: 2, published: 1, latest: 2, pinned: false },
+			});
+			expect(versions.get('pinned')).toEqual({
+				tone: { draft: 1, published: null, latest: 2, pinned: true },
+			});
+			expect(agentSkillRepository.findDependencies).toHaveBeenCalledTimes(1);
+			expect(agentSkillRepository.findPinsForVersions).toHaveBeenCalledWith(['agent-v1'], ctx);
+			expect(skillRuntime.runtimeVersions).toHaveBeenCalledTimes(1);
+		});
+	});
+
+	describe('matchesVersion', () => {
+		it.each<{ snapshot: [string, string][]; matches: boolean }>([
+			{ snapshot: [['tone', 'tone-v1']], matches: true },
+			{ snapshot: [['tone', 'tone-v2']], matches: false },
+			{ snapshot: [['another', 'tone-v1']], matches: false },
+			{ snapshot: [], matches: false },
+			{
+				snapshot: [
+					['tone', 'tone-v1'],
+					['another', 'other-v1'],
+				],
+				matches: false,
+			},
+		])('compares saved pins with $snapshot', async ({ snapshot, matches }) => {
+			agentSkillRepository.findPins.mockResolvedValue([
+				{ skillId: 'tone', skillVersionId: 'tone-v1' },
+			]);
+			await expect(service.matchesVersion('agent-v1', new Map(snapshot), ctx)).resolves.toBe(
+				matches,
+			);
+		});
+	});
+
+	describe('matchesDraftVersions', () => {
+		it.each<{ expected: Record<string, number>; matches: boolean }>([
+			{ expected: { tone: 2 }, matches: true },
+			{ expected: { tone: 1 }, matches: false },
+			{ expected: {}, matches: false },
+		])('checks the exact snapshot against $expected', async ({ expected, matches }) => {
+			skillRuntime.findVersionRefs.mockResolvedValue(
+				new Map([['tone-v2', { skillId: 'tone', version: 2 }]]),
+			);
+			await expect(
+				service.matchesDraftVersions(new Map([['tone', 'tone-v2']]), expected, ctx),
+			).resolves.toBe(matches);
 		});
 	});
 

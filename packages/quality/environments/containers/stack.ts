@@ -13,7 +13,7 @@ import {
 } from './helpers/utils';
 import { waitForNetworkQuiet } from './network-stabilization';
 import { ResourceTracker, type CleanupReport } from './resource-tracker';
-import { assertEngineSupported } from './services/engine';
+import { assertEngineSupported, createEngineTlsFiles } from './services/engine';
 import type { LoadBalancerResult } from './services/load-balancer';
 import {
 	createN8NInstances,
@@ -179,6 +179,9 @@ export async function createN8NStack(config: N8NConfig = {}): Promise<N8NStack> 
 		engine === 'container'
 			? createHash('sha256').update(`${uniqueProjectName}:engine-auth`).digest('hex')
 			: undefined;
+	// Once per stack, like the secret, so a replaced main still trusts the engine.
+	const engineTlsFiles =
+		engine === 'container' ? createEngineTlsFiles(uniqueProjectName) : undefined;
 
 	let allocatedMainPort: number | undefined;
 	let allocatedLbPort: number | undefined;
@@ -397,6 +400,7 @@ export async function createN8NStack(config: N8NConfig = {}): Promise<N8NStack> 
 				usePostgres,
 				engine,
 				engineAuthSecret,
+				engineTlsFiles,
 				baseUrl: needsLoadBalancer ? undefined : baseUrl,
 				allocatedPort: needsLoadBalancer ? undefined : allocatedMainPort,
 				resourceQuota,
@@ -453,21 +457,29 @@ export async function createN8NStack(config: N8NConfig = {}): Promise<N8NStack> 
 		// runner's own log is the one place the signal is observable. Match each
 		// launcher separately, so one launcher reconnecting cannot stand in for the
 		// other, and only from this run, since a reused container keeps its old logs.
-		const taskRunnerResult = serviceResults.taskRunner as TaskRunnerResult | undefined;
-		if (taskRunnerResult) {
+		const runnerResults = [
+			serviceResults.taskRunner as TaskRunnerResult | undefined,
+			serviceResults.engineTaskRunner as TaskRunnerResult | undefined,
+		].filter((result): result is TaskRunnerResult => result !== undefined);
+		if (runnerResults.length > 0) {
 			telemetry.startStage('task-runner-registration');
 			try {
-				await waitForContainerLogMessages(
-					taskRunnerResult.container,
-					[
-						/\[launcher:js\].*Received message `broker:runnerregistered`/,
-						/\[launcher:py\].*Received message `broker:runnerregistered`/,
-					],
-					{
-						since: n8nStartedAtSeconds,
-						timeoutMs: startupDeadline.remainingMs,
-						signal: startupDeadline.signal,
-					},
+				await Promise.all(
+					runnerResults.map(
+						async (runnerResult) =>
+							await waitForContainerLogMessages(
+								runnerResult.container,
+								[
+									/\[launcher:js\].*Received message `broker:runnerregistered`/,
+									/\[launcher:py\].*Received message `broker:runnerregistered`/,
+								],
+								{
+									since: n8nStartedAtSeconds,
+									timeoutMs: startupDeadline.remainingMs,
+									signal: startupDeadline.signal,
+								},
+							),
+					),
 				);
 				telemetry.finishStage();
 			} catch (error) {
@@ -631,6 +643,7 @@ export async function createN8NStack(config: N8NConfig = {}): Promise<N8NStack> 
 						// workflow that still asks for engine v2 fails far from the cause.
 						engine,
 						engineAuthSecret,
+						engineTlsFiles,
 						// The engine container is not replaced: it keeps running against the
 						// new main.
 						reuseEngine: true,

@@ -2,11 +2,8 @@ import { DataTableCreateColumnSchema } from '@n8n/api-types';
 import { BaseRepository, type OperationContext, TransactionRunner, withTransaction } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { DataSource, EntityManager, In } from '@n8n/typeorm';
-import {
-	DATA_TABLE_SYSTEM_COLUMNS,
-	DATA_TABLE_SYSTEM_TESTING_COLUMN,
-	UnexpectedError,
-} from 'n8n-workflow';
+import { DATA_TABLE_SYSTEM_COLUMNS, DATA_TABLE_SYSTEM_TESTING_COLUMN } from 'n8n-workflow';
+import { UnexpectedError } from '@n8n/errors';
 
 import { DataTableColumn } from './data-table-column.entity';
 import { DataTableDDLService } from './persistence/data-table-ddl';

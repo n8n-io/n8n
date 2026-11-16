@@ -1840,7 +1840,7 @@ defineExpose({ enterEditMode });
 				data-test-id="ndv-executing"
 			>
 				<div v-if="!props.compact" :class="$style.spinner">
-					<N8nSpinner type="ring" />
+					<N8nSpinner type="brand" size="xxlarge" />
 				</div>
 				<N8nText>{{ executingMessage }}</N8nText>
 			</div>
@@ -1851,7 +1851,7 @@ defineExpose({ enterEditMode });
 				data-test-id="ndv-trimmed-loading"
 			>
 				<div v-if="!props.compact" :class="$style.spinner">
-					<N8nSpinner type="ring" />
+					<N8nSpinner type="brand" size="xxlarge" />
 				</div>
 				<N8nText>
 					{{ i18n.baseText('runData.trimmedData.loading') }}
@@ -2512,12 +2512,6 @@ defineExpose({ enterEditMode });
 	display: flex;
 	justify-content: center;
 	margin-bottom: var(--ndv--spacing);
-
-	* {
-		color: var(--color--primary);
-		min-height: 40px;
-		min-width: 40px;
-	}
 }
 
 .editMode {

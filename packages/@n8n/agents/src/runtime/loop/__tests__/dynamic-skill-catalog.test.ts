@@ -315,7 +315,8 @@ describe('dynamic skill catalogues', () => {
 			lastObservedMessageId: cursor.id,
 		});
 		const restored = await prompt(runtime, list);
-		expect(restored.messages).toHaveLength(1);
+		// The turn's request stays visible next to the restored catalogue.
+		expect(restored.messages).toHaveLength(2);
 		expect(JSON.stringify(restored.messages)).toContain(custom.description);
 		await prompt(runtime, list);
 		expect(list.messages().filter(isRuntimeSkillCatalog)).toHaveLength(2);

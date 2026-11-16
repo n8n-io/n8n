@@ -17,7 +17,7 @@ describe('Test MicrosoftOutlookV2, Service Principal => message:move', () => {
 		nock('https://graph.microsoft.com')
 			.matchHeader('Authorization', 'Bearer test-access-token')
 			.post(
-				'/v1.0/users/user%40example.com/messages/AAMkADlhOTA0MTc5LWVtsg5OABGAAAA-message-id=/move',
+				'/v1.0/users/user@example.com/messages/AAMkADlhOTA0MTc5LWVtsg5OABGAAAA-message-id=/move',
 				{ destinationId: 'AAMkADlhOTA0MTc5LWVtsg5OAAuAAAA-folder-id=' },
 			)
 			.reply(200, {});

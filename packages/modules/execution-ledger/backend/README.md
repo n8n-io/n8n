@@ -4,6 +4,16 @@ Owns the `execution_ledger` table: one row when a run starts and one when it end
 from other modules read the rows through the contract in `@n8n/db`. The module is opt-in: enable
 it with `N8N_ENABLED_MODULES=execution-ledger`.
 
+Core code records runs through the `ExecutionLedger` service in `@n8n/backend-services`. At init, the module
+binds `ExecutionLedgerRowWriter` to that service. When the module is off, the service does
+nothing. The writer records workflow runs only (`entityType = workflow`). Agent messages have no
+execution row and get their own hook in a later ticket.
+
+Every 5 seconds, the `execution-ledger-fold` system task claims a batch of rows and runs every
+registered fold step on it, in one transaction with a savepoint for each step. When a step fails,
+the whole batch rolls back and stays in the ledger. When no step is registered, the fold does not
+claim rows.
+
 The n8n runtime loads the module through the lazy import in
 `packages/cli/src/modules/modules.manifest.ts`.
 

@@ -7,8 +7,10 @@ import type {
 	ILoadOptionsFunctions,
 	IWebhookFunctions,
 	JsonObject,
+	RequestPath,
+	WithRequestTarget,
 } from 'n8n-workflow';
-import { NodeApiError } from 'n8n-workflow';
+import { NodeApiError, requestPath, requestUrl } from 'n8n-workflow';
 
 import type {
 	WhatsAppAppWebhookSubscriptionsResponse,
@@ -46,14 +48,14 @@ async function appAccessTokenRead(
 async function whatsappApiRequest(
 	this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions | IWebhookFunctions,
 	method: IHttpRequestMethods,
-	resource: string,
+	resource: RequestPath,
 	body?: { type: 'json'; payload: IDataObject } | { type: 'form'; payload: IDataObject },
 	qs: IDataObject = {},
 ): Promise<any> {
 	const tokenResponse = await appAccessTokenRead.call(this);
 	const appAccessToken = tokenResponse.access_token;
 
-	const options: IHttpRequestOptions = {
+	const options: WithRequestTarget<IHttpRequestOptions> = {
 		headers: {
 			accept: 'application/json',
 			authorization: `Bearer ${appAccessToken}`,
@@ -61,7 +63,7 @@ async function whatsappApiRequest(
 		method,
 		qs,
 		body: body?.payload,
-		url: `https://graph.facebook.com/v19.0${resource}`,
+		url: requestUrl`https://graph.facebook.com/v19.0${resource}`,
 		json: true,
 	};
 
@@ -79,7 +81,7 @@ export async function appWebhookSubscriptionList(
 	const response = (await whatsappApiRequest.call(
 		this,
 		'GET',
-		`/${appId}/subscriptions`,
+		requestPath`/${appId}/subscriptions`,
 	)) as WhatsAppAppWebhookSubscriptionsResponse;
 	return response.data;
 }
@@ -89,7 +91,7 @@ export async function appWebhookSubscriptionCreate(
 	appId: string,
 	subscription: IDataObject,
 ) {
-	return await whatsappApiRequest.call(this, 'POST', `/${appId}/subscriptions`, {
+	return await whatsappApiRequest.call(this, 'POST', requestPath`/${appId}/subscriptions`, {
 		type: 'form',
 		payload: { ...subscription },
 	});
@@ -100,7 +102,7 @@ export async function appWebhookSubscriptionDelete(
 	appId: string,
 	object: string,
 ) {
-	return await whatsappApiRequest.call(this, 'DELETE', `/${appId}/subscriptions`, {
+	return await whatsappApiRequest.call(this, 'DELETE', requestPath`/${appId}/subscriptions`, {
 		type: 'form',
 		payload: { object },
 	});
@@ -111,7 +113,7 @@ export const createMessage = (
 	phoneNumberId: string,
 	recipientPhoneNumber: string,
 	instanceId: string,
-): IHttpRequestOptions => {
+): WithRequestTarget<IHttpRequestOptions> => {
 	const buttons = sendAndWaitConfig.options.map((option) => {
 		return `*${option.label}:*\n_${option.url}_\n\n`;
 	});
@@ -126,7 +128,7 @@ export const createMessage = (
 	return {
 		baseURL: WHATSAPP_BASE_URL,
 		method: 'POST',
-		url: `${phoneNumberId}/messages`,
+		url: requestPath`${phoneNumberId}/messages`,
 		body: {
 			messaging_product: 'whatsapp',
 			text: {

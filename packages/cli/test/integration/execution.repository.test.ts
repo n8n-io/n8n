@@ -5,7 +5,8 @@ import { Container } from '@n8n/di';
 import { stringify, parse } from 'flatted';
 import { DateTime } from 'luxon';
 import type { ExecutionStatus } from 'n8n-workflow';
-import { createEmptyRunExecutionData, createRunExecutionData, UnexpectedError } from 'n8n-workflow';
+import { createEmptyRunExecutionData, createRunExecutionData } from 'n8n-workflow';
+import { UnexpectedError } from '@n8n/errors';
 
 import { createExecution } from '@test-integration/db/executions';
 import { createOwner } from '@test-integration/db/users';
@@ -230,7 +231,7 @@ describe('UserRepository', () => {
 
 			const crashed = await executionRepository.markAsCrashedFrom(execution.id, 'waiting');
 
-			expect(crashed.map(({ id }) => id)).toEqual([execution.id]);
+			expect(crashed).toBe(true);
 			const row = await executionRepository.findOneBy({ id: execution.id });
 			expect(row?.status).toBe('crashed');
 			expect(row?.waitTill).toBeNull();
@@ -242,7 +243,7 @@ describe('UserRepository', () => {
 
 			const crashed = await executionRepository.markAsCrashedFrom(execution.id, 'waiting');
 
-			expect(crashed).toEqual([]);
+			expect(crashed).toBe(false);
 			const row = await executionRepository.findOneBy({ id: execution.id });
 			expect(row?.status).toBe('running');
 		});
@@ -257,7 +258,7 @@ describe('UserRepository', () => {
 				expectedAttempts: 0,
 			});
 
-			expect(crashed).toEqual([]);
+			expect(crashed).toBe(false);
 			const row = await executionRepository.findOneBy({ id: execution.id });
 			expect(row?.status).toBe('waiting');
 		});
