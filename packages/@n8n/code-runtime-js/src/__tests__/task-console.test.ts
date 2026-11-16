@@ -14,14 +14,7 @@ describe('createTaskConsole', () => {
 		);
 
 		expect(loggedCalls).toEqual([
-			[
-				"'a'",
-				'{"b":1}',
-				'{"self":"[Circular Reference]"}',
-				'undefined',
-				'undefined',
-				'[[ExecutionContext]]',
-			],
+			["'a'", '{"b":1}', '{"self":"[Circular Reference]"}', 'null', 'null', '[[ExecutionContext]]'],
 		]);
 	});
 

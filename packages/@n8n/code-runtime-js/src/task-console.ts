@@ -3,7 +3,7 @@ import { jsonStringify } from 'n8n-workflow';
 /** Max `console.log` calls recorded per task. Later calls are only counted. */
 export const MAX_LOGGED_CALLS = 100;
 
-/** Max length of the output of one `console.log` call, in UTF-16 code units. */
+/** Max length of the output of one `console.log` call, in UTF-16 code units. A cut call also gets the cut marker. */
 export const MAX_LOGGED_CALL_LENGTH = 64 * 1024;
 
 const CONSOLE_METHODS = [
@@ -55,11 +55,10 @@ function formatArg(arg: unknown, maxLength: number): string {
 	}
 	// Slice first, so a large string is not copied in full
 	if (typeof arg === 'string') return detach(`'${arg.slice(0, maxLength)}'`);
-	// JSON has no text for these
-	if (arg === undefined || typeof arg === 'function' || typeof arg === 'symbol') return String(arg);
 
-	// `toJSON` can return a value that has no JSON text
-	return String(jsonStringify(arg, { replaceCircularRefs: true }));
+	// A value with no JSON text, such as `undefined` or a function, shows as `null` in the UI today
+	const json: string | undefined = jsonStringify(arg, { replaceCircularRefs: true });
+	return json ?? 'null';
 }
 
 /** Cuts the text at `maxLength` and appends the cut marker. */
