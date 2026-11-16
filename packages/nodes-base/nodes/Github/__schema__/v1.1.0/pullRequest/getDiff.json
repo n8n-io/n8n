@@ -1,0 +1,8 @@
+{
+	"properties": {
+		"diff": {
+			"type": "string"
+		}
+	},
+	"type": "object"
+}

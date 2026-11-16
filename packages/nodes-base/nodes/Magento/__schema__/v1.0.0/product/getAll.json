@@ -1,0 +1,164 @@
+{
+	"properties": {
+		"attribute_set_id": {
+			"type": "number"
+		},
+		"created_at": {
+			"type": "string"
+		},
+		"custom_attributes": {
+			"items": {
+				"properties": {
+					"attribute_code": {
+						"type": "string"
+					},
+					"value": {
+						"items": {
+							"type": "string"
+						},
+						"type": ["array", "string"]
+					}
+				},
+				"type": "object"
+			},
+			"type": "array"
+		},
+		"extension_attributes": {
+			"properties": {
+				"category_links": {
+					"items": {
+						"properties": {
+							"category_id": {
+								"type": "string"
+							},
+							"position": {
+								"type": "number"
+							}
+						},
+						"type": "object"
+					},
+					"type": "array"
+				},
+				"website_ids": {
+					"items": {
+						"type": "number"
+					},
+					"type": "array"
+				}
+			},
+			"type": "object"
+		},
+		"id": {
+			"type": "number"
+		},
+		"media_gallery_entries": {
+			"items": {
+				"properties": {
+					"disabled": {
+						"type": "boolean"
+					},
+					"file": {
+						"type": "string"
+					},
+					"id": {
+						"type": "number"
+					},
+					"label": {
+						"type": ["null", "string"]
+					},
+					"media_type": {
+						"type": "string"
+					},
+					"position": {
+						"type": "number"
+					},
+					"types": {
+						"items": {
+							"type": "string"
+						},
+						"type": "array"
+					}
+				},
+				"type": "object"
+			},
+			"type": "array"
+		},
+		"name": {
+			"type": "string"
+		},
+		"options": {
+			"items": {},
+			"type": "array"
+		},
+		"price": {
+			"type": "number"
+		},
+		"product_links": {
+			"items": {
+				"properties": {
+					"link_type": {
+						"type": "string"
+					},
+					"linked_product_sku": {
+						"type": "string"
+					},
+					"linked_product_type": {
+						"type": "string"
+					},
+					"position": {
+						"type": "number"
+					},
+					"sku": {
+						"type": "string"
+					}
+				},
+				"type": "object"
+			},
+			"type": "array"
+		},
+		"sku": {
+			"type": "string"
+		},
+		"status": {
+			"type": "number"
+		},
+		"tier_prices": {
+			"items": {
+				"properties": {
+					"customer_group_id": {
+						"type": "number"
+					},
+					"extension_attributes": {
+						"properties": {
+							"website_id": {
+								"type": "number"
+							}
+						},
+						"type": "object"
+					},
+					"qty": {
+						"type": "number"
+					},
+					"value": {
+						"type": "number"
+					}
+				},
+				"type": "object"
+			},
+			"type": "array"
+		},
+		"type_id": {
+			"type": "string"
+		},
+		"updated_at": {
+			"type": "string"
+		},
+		"visibility": {
+			"type": "number"
+		},
+		"weight": {
+			"type": "number"
+		}
+	},
+	"type": "object"
+}

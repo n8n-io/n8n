@@ -1,0 +1,18 @@
+{
+	"properties": {
+		"created": {
+			"type": "boolean"
+		},
+		"errors": {
+			"items": {},
+			"type": "array"
+		},
+		"id": {
+			"type": "string"
+		},
+		"success": {
+			"type": "boolean"
+		}
+	},
+	"type": "object"
+}

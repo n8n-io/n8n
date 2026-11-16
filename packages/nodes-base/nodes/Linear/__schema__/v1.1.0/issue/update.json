@@ -1,0 +1,84 @@
+{
+	"properties": {
+		"archivedAt": {},
+		"assignee": {
+			"properties": {
+				"displayName": {
+					"type": "string"
+				},
+				"email": {
+					"type": "string"
+				},
+				"id": {
+					"type": "string"
+				}
+			},
+			"type": ["null", "object"]
+		},
+		"createdAt": {
+			"type": "string"
+		},
+		"creator": {
+			"properties": {
+				"displayName": {
+					"type": "string"
+				},
+				"email": {
+					"type": "string"
+				},
+				"id": {
+					"type": "string"
+				}
+			},
+			"type": ["null", "object"]
+		},
+		"cycle": {
+			"properties": {
+				"id": {
+					"type": "string"
+				},
+				"name": {}
+			},
+			"type": ["null", "object"]
+		},
+		"description": {
+			"type": "string"
+		},
+		"dueDate": {},
+		"id": {
+			"type": "string"
+		},
+		"identifier": {
+			"type": "string"
+		},
+		"priority": {
+			"type": "number"
+		},
+		"state": {
+			"properties": {
+				"id": {
+					"type": "string"
+				},
+				"name": {
+					"type": "string"
+				}
+			},
+			"type": "object"
+		},
+		"team": {
+			"properties": {
+				"id": {
+					"type": "string"
+				},
+				"name": {
+					"type": "string"
+				}
+			},
+			"type": "object"
+		},
+		"title": {
+			"type": "string"
+		}
+	},
+	"type": "object"
+}

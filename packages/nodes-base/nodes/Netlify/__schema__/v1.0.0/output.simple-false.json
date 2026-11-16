@@ -1,0 +1,86 @@
+{
+	"properties": {
+		"body": {
+			"type": ["null", "string"]
+		},
+		"company": {},
+		"created_at": {
+			"type": "string"
+		},
+		"data": {
+			"additionalProperties": true,
+			"properties": {
+				"email": {
+					"type": "string"
+				},
+				"ip": {
+					"type": "string"
+				},
+				"referrer": {
+					"type": "string"
+				},
+				"user_agent": {
+					"type": "string"
+				}
+			},
+			"type": "object"
+		},
+		"email": {
+			"type": ["null", "string"]
+		},
+		"first_name": {
+			"type": ["null", "string"]
+		},
+		"form_id": {
+			"type": "string"
+		},
+		"form_name": {
+			"type": "string"
+		},
+		"human_fields": {
+			"type": "object"
+		},
+		"id": {
+			"type": "string"
+		},
+		"last_name": {
+			"type": ["null", "string"]
+		},
+		"name": {
+			"type": ["null", "string"]
+		},
+		"number": {
+			"type": "number"
+		},
+		"ordered_human_fields": {
+			"items": {
+				"properties": {
+					"name": {
+						"type": "string"
+					},
+					"title": {
+						"type": "string"
+					},
+					"value": {
+						"type": "string"
+					}
+				},
+				"type": "object"
+			},
+			"type": "array"
+		},
+		"site_name": {
+			"type": "string"
+		},
+		"site_url": {
+			"type": "string"
+		},
+		"summary": {
+			"type": "string"
+		},
+		"title": {
+			"type": ["null", "string"]
+		}
+	},
+	"type": "object"
+}

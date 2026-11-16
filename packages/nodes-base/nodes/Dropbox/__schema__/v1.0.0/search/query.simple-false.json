@@ -1,0 +1,86 @@
+{
+	"properties": {
+		"highlight_spans": {
+			"items": {},
+			"type": "array"
+		},
+		"match_type": {
+			"properties": {
+				".tag": {
+					"type": "string"
+				}
+			},
+			"type": "object"
+		},
+		"metadata": {
+			"properties": {
+				".tag": {
+					"type": "string"
+				},
+				"metadata": {
+					"properties": {
+						".tag": {
+							"type": "string"
+						},
+						"client_modified": {
+							"type": "string"
+						},
+						"content_hash": {
+							"type": "string"
+						},
+						"file_owner_team_encrypted_id": {
+							"type": "string"
+						},
+						"id": {
+							"type": "string"
+						},
+						"is_downloadable": {
+							"type": "boolean"
+						},
+						"name": {
+							"type": "string"
+						},
+						"path_display": {
+							"type": "string"
+						},
+						"path_lower": {
+							"type": "string"
+						},
+						"rev": {
+							"type": "string"
+						},
+						"server_modified": {
+							"type": "string"
+						},
+						"sharing_info": {
+							"properties": {
+								"is_parent_shared_folder_read_only": {
+									"type": "boolean"
+								},
+								"no_access": {
+									"type": "boolean"
+								},
+								"parent_shared_folder_id": {
+									"type": "string"
+								},
+								"read_only": {
+									"type": "boolean"
+								},
+								"traverse_only": {
+									"type": "boolean"
+								}
+							},
+							"type": "object"
+						},
+						"size": {
+							"type": "number"
+						}
+					},
+					"type": "object"
+				}
+			},
+			"type": "object"
+		}
+	},
+	"type": "object"
+}

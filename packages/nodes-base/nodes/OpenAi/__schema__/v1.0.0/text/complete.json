@@ -1,0 +1,15 @@
+{
+	"properties": {
+		"finish_reason": {
+			"type": "string"
+		},
+		"index": {
+			"type": "number"
+		},
+		"logprobs": {},
+		"text": {
+			"type": "string"
+		}
+	},
+	"type": "object"
+}

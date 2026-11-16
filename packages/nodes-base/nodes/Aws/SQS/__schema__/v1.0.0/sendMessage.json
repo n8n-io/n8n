@@ -1,0 +1,11 @@
+{
+	"properties": {
+		"MD5OfMessageBody": {
+			"type": "string"
+		},
+		"MessageId": {
+			"type": "string"
+		}
+	},
+	"type": "object"
+}

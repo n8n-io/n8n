@@ -1,0 +1,117 @@
+{
+	"properties": {
+		"code": {
+			"type": "number"
+		},
+		"data": {
+			"properties": {
+				"content": {
+					"type": "string"
+				},
+				"description": {
+					"type": "string"
+				},
+				"external": {
+					"properties": {
+						"canonical": {
+							"type": "object"
+						},
+						"icon": {
+							"type": "object"
+						},
+						"preconnect": {
+							"type": "object"
+						},
+						"preload": {
+							"type": "object"
+						}
+					},
+					"type": "object"
+				},
+				"httpStatus": {
+					"type": "number"
+				},
+				"httpStatusText": {
+					"type": "string"
+				},
+				"metadata": {
+					"additionalProperties": true,
+					"properties": {
+						"description": {
+							"type": "string"
+						},
+						"lang": {
+							"type": "string"
+						},
+						"og:description": {
+							"type": "string"
+						},
+						"og:image": {
+							"type": "string"
+						},
+						"og:title": {
+							"type": "string"
+						},
+						"og:type": {
+							"type": "string"
+						},
+						"og:url": {
+							"type": "string"
+						},
+						"robots": {
+							"type": "string"
+						},
+						"twitter:card": {
+							"type": "string"
+						},
+						"twitter:image": {
+							"type": "string"
+						},
+						"twitter:site": {
+							"type": "string"
+						},
+						"twitter:title": {
+							"type": "string"
+						},
+						"viewport": {
+							"type": "string"
+						}
+					},
+					"type": "object"
+				},
+				"title": {
+					"type": "string"
+				},
+				"url": {
+					"type": "string"
+				},
+				"usage": {
+					"properties": {
+						"tokens": {
+							"type": "number"
+						}
+					},
+					"type": "object"
+				}
+			},
+			"type": "object"
+		},
+		"meta": {
+			"properties": {
+				"usage": {
+					"properties": {
+						"tokens": {
+							"type": "number"
+						}
+					},
+					"type": "object"
+				}
+			},
+			"type": "object"
+		},
+		"status": {
+			"type": "number"
+		}
+	},
+	"type": "object"
+}

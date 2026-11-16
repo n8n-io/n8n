@@ -1,0 +1,11 @@
+{
+	"properties": {
+		"id": {
+			"type": "number"
+		},
+		"updated": {
+			"type": "boolean"
+		}
+	},
+	"type": "object"
+}

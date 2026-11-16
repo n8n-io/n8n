@@ -1,0 +1,134 @@
+{
+	"additionalProperties": true,
+	"properties": {
+		"AccountId": {
+			"type": ["null", "string"]
+		},
+		"ActivityDate": {
+			"type": ["null", "string"]
+		},
+		"attributes": {
+			"properties": {
+				"type": {
+					"type": "string"
+				},
+				"url": {
+					"type": "string"
+				}
+			},
+			"type": "object"
+		},
+		"CallDisposition": {},
+		"CallDurationInSeconds": {
+			"type": ["null", "number"]
+		},
+		"CallObject": {},
+		"CallType": {
+			"type": ["null", "string"]
+		},
+		"CompletedDateTime": {
+			"type": ["null", "string"]
+		},
+		"CreatedById": {
+			"type": "string"
+		},
+		"CreatedDate": {
+			"type": "string"
+		},
+		"CurrencyIsoCode": {
+			"type": "string"
+		},
+		"Description": {
+			"type": ["null", "string"]
+		},
+		"Id": {
+			"type": "string"
+		},
+		"IsArchived": {
+			"type": "boolean"
+		},
+		"IsClosed": {
+			"type": "boolean"
+		},
+		"IsDeleted": {
+			"type": "boolean"
+		},
+		"IsHighPriority": {
+			"type": "boolean"
+		},
+		"IsRecurrence": {
+			"type": "boolean"
+		},
+		"IsReminderSet": {
+			"type": "boolean"
+		},
+		"LastModifiedById": {
+			"type": "string"
+		},
+		"LastModifiedDate": {
+			"type": "string"
+		},
+		"OwnerId": {
+			"type": "string"
+		},
+		"Priority": {
+			"type": "string"
+		},
+		"RecurrenceActivityId": {
+			"type": ["null", "string"]
+		},
+		"RecurrenceDayOfMonth": {},
+		"RecurrenceDayOfWeekMask": {
+			"type": ["null", "number"]
+		},
+		"RecurrenceEndDateOnly": {
+			"type": ["null", "string"]
+		},
+		"RecurrenceInstance": {},
+		"RecurrenceInterval": {
+			"type": ["null", "number"]
+		},
+		"RecurrenceMonthOfYear": {},
+		"RecurrenceRegeneratedType": {},
+		"RecurrenceStartDateOnly": {
+			"type": ["null", "string"]
+		},
+		"RecurrenceTimeZoneSidKey": {
+			"type": ["null", "string"]
+		},
+		"RecurrenceType": {
+			"type": ["null", "string"]
+		},
+		"ReminderDateTime": {
+			"type": ["null", "string"]
+		},
+		"Status": {
+			"type": "string"
+		},
+		"Subject": {
+			"type": "string"
+		},
+		"SystemModstamp": {
+			"type": "string"
+		},
+		"TaskSubtype": {
+			"type": "string"
+		},
+		"Type": {
+			"type": ["null", "string"]
+		},
+		"WhatCount": {
+			"type": "number"
+		},
+		"WhatId": {
+			"type": ["null", "string"]
+		},
+		"WhoCount": {
+			"type": "number"
+		},
+		"WhoId": {
+			"type": ["null", "string"]
+		}
+	},
+	"type": "object"
+}

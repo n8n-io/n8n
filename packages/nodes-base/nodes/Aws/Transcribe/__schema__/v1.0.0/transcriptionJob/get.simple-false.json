@@ -1,0 +1,107 @@
+{
+	"properties": {
+		"accountId": {
+			"type": "string"
+		},
+		"jobName": {
+			"type": "string"
+		},
+		"results": {
+			"properties": {
+				"audio_segments": {
+					"items": {
+						"properties": {
+							"end_time": {
+								"type": "string"
+							},
+							"id": {
+								"type": "number"
+							},
+							"items": {
+								"items": {
+									"type": "number"
+								},
+								"type": "array"
+							},
+							"start_time": {
+								"type": "string"
+							},
+							"transcript": {
+								"type": "string"
+							}
+						},
+						"type": "object"
+					},
+					"type": "array"
+				},
+				"items": {
+					"items": {
+						"properties": {
+							"alternatives": {
+								"items": {
+									"properties": {
+										"confidence": {
+											"type": "string"
+										},
+										"content": {
+											"type": "string"
+										}
+									},
+									"type": "object"
+								},
+								"type": "array"
+							},
+							"end_time": {
+								"type": "string"
+							},
+							"id": {
+								"type": "number"
+							},
+							"start_time": {
+								"type": "string"
+							},
+							"type": {
+								"type": "string"
+							}
+						},
+						"type": "object"
+					},
+					"type": "array"
+				},
+				"language_code": {
+					"type": "string"
+				},
+				"language_identification": {
+					"items": {
+						"properties": {
+							"code": {
+								"type": "string"
+							},
+							"score": {
+								"type": "string"
+							}
+						},
+						"type": "object"
+					},
+					"type": "array"
+				},
+				"transcripts": {
+					"items": {
+						"properties": {
+							"transcript": {
+								"type": "string"
+							}
+						},
+						"type": "object"
+					},
+					"type": "array"
+				}
+			},
+			"type": "object"
+		},
+		"status": {
+			"type": "string"
+		}
+	},
+	"type": "object"
+}

@@ -1,0 +1,11 @@
+{
+	"properties": {
+		"content": {
+			"type": "string"
+		},
+		"documentId": {
+			"type": "string"
+		}
+	},
+	"type": "object"
+}

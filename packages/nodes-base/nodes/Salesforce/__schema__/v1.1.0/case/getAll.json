@@ -1,0 +1,40 @@
+{
+	"properties": {
+		"AccountId": {
+			"type": ["null", "string"]
+		},
+		"attributes": {
+			"properties": {
+				"type": {
+					"type": "string"
+				},
+				"url": {
+					"type": "string"
+				}
+			},
+			"type": "object"
+		},
+		"ContactId": {
+			"type": ["null", "string"]
+		},
+		"Id": {
+			"type": "string"
+		},
+		"LastModifiedDate": {
+			"type": "string"
+		},
+		"Priority": {
+			"type": "string"
+		},
+		"Status": {
+			"type": "string"
+		},
+		"Subject": {
+			"type": ["null", "string"]
+		},
+		"Type": {
+			"type": ["null", "string"]
+		}
+	},
+	"type": "object"
+}

@@ -1,0 +1,176 @@
+{
+	"properties": {
+		"_links": {
+			"items": {
+				"properties": {
+					"href": {
+						"type": "string"
+					},
+					"method": {
+						"type": "string"
+					},
+					"rel": {
+						"type": "string"
+					},
+					"schema": {
+						"type": "string"
+					},
+					"targetSchema": {
+						"type": "string"
+					}
+				},
+				"type": "object"
+			},
+			"type": "array"
+		},
+		"archive_url": {
+			"type": "string"
+		},
+		"content_type": {
+			"type": "string"
+		},
+		"create_time": {
+			"type": "string"
+		},
+		"delivery_status": {
+			"properties": {
+				"enabled": {
+					"type": "boolean"
+				}
+			},
+			"type": "object"
+		},
+		"emails_sent": {
+			"type": "number"
+		},
+		"id": {
+			"type": "string"
+		},
+		"long_archive_url": {
+			"type": "string"
+		},
+		"needs_block_refresh": {
+			"type": "boolean"
+		},
+		"recipients": {
+			"properties": {
+				"list_id": {
+					"type": "string"
+				},
+				"list_name": {
+					"type": "string"
+				},
+				"recipient_count": {
+					"type": "number"
+				},
+				"segment_opts": {
+					"properties": {
+						"match": {
+							"type": "string"
+						}
+					},
+					"type": "object"
+				},
+				"segment_text": {
+					"type": "string"
+				}
+			},
+			"type": "object"
+		},
+		"resendable": {
+			"type": "boolean"
+		},
+		"send_time": {
+			"type": "string"
+		},
+		"settings": {
+			"properties": {
+				"authenticate": {
+					"type": "boolean"
+				},
+				"auto_footer": {
+					"type": "boolean"
+				},
+				"auto_tweet": {
+					"type": "boolean"
+				},
+				"drag_and_drop": {
+					"type": "boolean"
+				},
+				"fb_comments": {
+					"type": "boolean"
+				},
+				"folder_id": {
+					"type": "string"
+				},
+				"from_name": {
+					"type": "string"
+				},
+				"inline_css": {
+					"type": "boolean"
+				},
+				"preview_text": {
+					"type": "string"
+				},
+				"reply_to": {
+					"type": "string"
+				},
+				"subject_line": {
+					"type": "string"
+				},
+				"template_id": {
+					"type": "number"
+				},
+				"timewarp": {
+					"type": "boolean"
+				},
+				"title": {
+					"type": "string"
+				},
+				"to_name": {
+					"type": "string"
+				},
+				"use_conversation": {
+					"type": "boolean"
+				}
+			},
+			"type": "object"
+		},
+		"status": {
+			"type": "string"
+		},
+		"tracking": {
+			"properties": {
+				"clicktale": {
+					"type": "string"
+				},
+				"ecomm360": {
+					"type": "boolean"
+				},
+				"goal_tracking": {
+					"type": "boolean"
+				},
+				"google_analytics": {
+					"type": "string"
+				},
+				"html_clicks": {
+					"type": "boolean"
+				},
+				"opens": {
+					"type": "boolean"
+				},
+				"text_clicks": {
+					"type": "boolean"
+				}
+			},
+			"type": "object"
+		},
+		"type": {
+			"type": "string"
+		},
+		"web_id": {
+			"type": "number"
+		}
+	},
+	"type": "object"
+}

@@ -1,0 +1,17 @@
+{
+	"properties": {
+		"calculatedValue": {
+			"type": "string"
+		},
+		"category": {
+			"type": "string"
+		},
+		"name": {
+			"type": "string"
+		},
+		"type": {
+			"type": "string"
+		}
+	},
+	"type": "object"
+}

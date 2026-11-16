@@ -1,0 +1,231 @@
+{
+	"properties": {
+		"associations": {
+			"properties": {
+				"cartIds": {
+					"items": {},
+					"type": "array"
+				},
+				"companyIds": {
+					"items": {
+						"type": "number"
+					},
+					"type": "array"
+				},
+				"contactIds": {
+					"items": {
+						"type": "number"
+					},
+					"type": "array"
+				},
+				"contentIds": {
+					"items": {},
+					"type": "array"
+				},
+				"dealIds": {
+					"items": {},
+					"type": "array"
+				},
+				"marketingEventIds": {
+					"items": {},
+					"type": "array"
+				},
+				"orderIds": {
+					"items": {},
+					"type": "array"
+				},
+				"ownerIds": {
+					"items": {},
+					"type": "array"
+				},
+				"partnerClientIds": {
+					"items": {},
+					"type": "array"
+				},
+				"quoteIds": {
+					"items": {},
+					"type": "array"
+				},
+				"ticketIds": {
+					"items": {},
+					"type": "array"
+				},
+				"workflowIds": {
+					"items": {},
+					"type": "array"
+				}
+			},
+			"type": "object"
+		},
+		"attachments": {
+			"items": {},
+			"type": "array"
+		},
+		"engagement": {
+			"properties": {
+				"active": {
+					"type": "boolean"
+				},
+				"allAccessibleTeamIds": {
+					"items": {
+						"type": "number"
+					},
+					"type": "array"
+				},
+				"bodyPreview": {
+					"type": "string"
+				},
+				"bodyPreviewHtml": {
+					"type": "string"
+				},
+				"bodyPreviewIsTruncated": {
+					"type": "boolean"
+				},
+				"createdAt": {
+					"type": "number"
+				},
+				"id": {
+					"type": "number"
+				},
+				"lastUpdated": {
+					"type": "number"
+				},
+				"portalId": {
+					"type": "number"
+				},
+				"queueMembershipIds": {
+					"items": {},
+					"type": "array"
+				},
+				"sourceId": {
+					"type": "string"
+				},
+				"timestamp": {
+					"type": "number"
+				},
+				"type": {
+					"type": "string"
+				}
+			},
+			"type": "object"
+		},
+		"metadata": {
+			"properties": {
+				"allAttendeeEmails": {
+					"items": {
+						"type": "string"
+					},
+					"type": "array"
+				},
+				"attendeeOwnerIds": {
+					"items": {},
+					"type": "array"
+				},
+				"bcc": {
+					"items": {},
+					"type": "array"
+				},
+				"body": {
+					"type": "string"
+				},
+				"cc": {
+					"items": {},
+					"type": "array"
+				},
+				"endTime": {
+					"type": "number"
+				},
+				"guestEmails": {
+					"items": {},
+					"type": "array"
+				},
+				"html": {
+					"type": "string"
+				},
+				"ownerIdsBcc": {
+					"items": {},
+					"type": "array"
+				},
+				"ownerIdsCc": {
+					"items": {},
+					"type": "array"
+				},
+				"ownerIdsFrom": {
+					"items": {},
+					"type": "array"
+				},
+				"ownerIdsTo": {
+					"items": {},
+					"type": "array"
+				},
+				"pendingInlineImageIds": {
+					"items": {},
+					"type": "array"
+				},
+				"preMeetingProspectReminders": {
+					"items": {},
+					"type": "array"
+				},
+				"recurringEventSchedule": {
+					"items": {},
+					"type": "array"
+				},
+				"source": {
+					"type": "string"
+				},
+				"startTime": {
+					"type": "number"
+				},
+				"status": {
+					"type": "string"
+				},
+				"title": {
+					"type": "string"
+				},
+				"to": {
+					"items": {
+						"properties": {
+							"email": {
+								"type": "string"
+							}
+						},
+						"type": "object"
+					},
+					"type": "array"
+				},
+				"validationSkipped": {
+					"items": {},
+					"type": "array"
+				}
+			},
+			"type": "object"
+		},
+		"scheduledTasks": {
+			"items": {
+				"properties": {
+					"engagementId": {
+						"type": "number"
+					},
+					"engagementType": {
+						"type": "string"
+					},
+					"portalId": {
+						"type": "number"
+					},
+					"taskType": {
+						"type": "string"
+					},
+					"timestamp": {
+						"type": "number"
+					},
+					"uuid": {
+						"type": "string"
+					}
+				},
+				"type": "object"
+			},
+			"type": "array"
+		}
+	},
+	"type": "object"
+}
