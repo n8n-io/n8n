@@ -21,12 +21,18 @@ const dealPipelines = {
 		{
 			id: 'default',
 			label: 'Sales',
-			stages: [{ id: 'appointmentscheduled', label: 'Appointment Scheduled' }],
+			stages: [
+				{ id: 'appointmentscheduled', label: 'Appointment Scheduled' },
+				{ id: 'closedwon', label: 'Closed Won' },
+			],
 		},
 		{
 			id: 'renewals',
 			label: 'Renewals',
-			stages: [{ id: 'renewalreview', label: 'Renewal Review' }],
+			stages: [
+				{ id: 'renewalreview', label: 'Renewal Review' },
+				{ id: 'renewalclosedwon', label: 'Closed Won' },
+			],
 		},
 	],
 };
@@ -78,12 +84,14 @@ describe.each([
 	['V1', hubspotV1.methods.loadOptions],
 	['V2', hubspotV2.methods.loadOptions],
 ])('HubSpot %s pipeline loadOptions after the legacy API retirement', (_version, loadOptions) => {
-	it('loads deal stages from every pipeline with CRM v3 stage IDs', async () => {
+	it('loads every deal stage with its pipeline label and CRM v3 ID', async () => {
 		const context = createContext();
 
 		await expect(loadOptions.getDealStages.call(context)).resolves.toEqual([
-			{ name: 'Appointment Scheduled', value: 'appointmentscheduled' },
-			{ name: 'Renewal Review', value: 'renewalreview' },
+			{ name: 'Sales > Appointment Scheduled', value: 'appointmentscheduled' },
+			{ name: 'Sales > Closed Won', value: 'closedwon' },
+			{ name: 'Renewals > Renewal Review', value: 'renewalreview' },
+			{ name: 'Renewals > Closed Won', value: 'renewalclosedwon' },
 		]);
 	});
 

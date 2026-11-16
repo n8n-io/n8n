@@ -573,7 +573,7 @@ export class HubspotV2 implements INodeType {
 				const { results } = await hubspotApiRequest.call(this, 'GET', endpoint, {});
 				for (const pipeline of results) {
 					for (const stage of pipeline.stages) {
-						const stageName = stage.label;
+						const stageName = `${pipeline.label} > ${stage.label}`;
 						const stageId = stage.id;
 						returnData.push({
 							name: stageName,
