@@ -187,7 +187,7 @@ export class SkillSourceService {
 						previewFiles: preview.files,
 						previewTruncated: preview.truncated,
 						nameTaken: nameTaken(read),
-						error: read.error ?? null,
+						error: read.error ? { reason: read.error.reason, message: read.error.message } : null,
 						check: read.check ?? null,
 						webUrl: client.webUrl(locator, read.ref),
 					};
