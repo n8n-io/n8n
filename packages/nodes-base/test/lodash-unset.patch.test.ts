@@ -4,7 +4,7 @@ import omit from 'lodash/omit';
 import unset from 'lodash/unset';
 import { jsonParse } from 'n8n-workflow';
 
-// Guards the lodash@4.18.0 patch (patches/lodash@4.18.0.patch): while walking a
+// Guards the lodash@4.18.1 patch (patches/lodash@4.18.1.patch): while walking a
 // dot-notation path, `baseUnset` (used by `unset` and `omit`) follows a segment
 // only when it is an own property. A path that names an inherited member
 // therefore deletes nothing. These tests fail if the patch is ever dropped
