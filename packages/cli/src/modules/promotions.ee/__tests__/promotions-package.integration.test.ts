@@ -3773,7 +3773,7 @@ describe('Promote from a clean checkout', () => {
 		);
 	});
 
-	it('keeps the commit of an interrupted branched promote off the base branch of a later direct promote', async () => {
+	it('restores the base branch after a refused branched promote, so a later direct promote starts from it', async () => {
 		const remote = await createRemote();
 		const environments = await createInstanceEnvironments(
 			remote.bareDir,
@@ -3828,6 +3828,44 @@ describe('Promote from a clean checkout', () => {
 		expect((await remoteGit.raw(['rev-list', 'main'])).split('\n')).not.toContain(refusedCommit);
 		expect((await remoteGit.raw(['log', '--format=%s', 'main'])).split('\n')).not.toContain(
 			'Interrupted promotion',
+		);
+	});
+
+	it('keeps the unpushed commit of an interrupted direct promote off the remote branch', async () => {
+		const remote = await createRemote();
+		const environments = await createInstanceEnvironments(remote.bareDir);
+		const { environmentId } = await service.clone(environments.promote.id, owner);
+		const project = await createTeamProject('Orders', owner);
+		await createWorkflow({ name: 'Process order', nodes: [], connections: {} }, project);
+		const remoteGit = createFixtureGit(remote.bareDir);
+		const baseCommit = (await remoteGit.revparse(['main'])).trim();
+		const { repositoryFolder } = workingDirectory.paths(environmentId);
+		const checkoutGit = createFixtureGit(repositoryFolder);
+		await checkoutGit.addConfig('user.name', 'Earlier attempt');
+		await checkoutGit.addConfig('user.email', 'earlier@example.com');
+
+		// A direct promote that stops after its commit, before the push and the rollback, leaves
+		// this commit on the local base branch. A direct promote keeps the checkout trusted.
+		const leftover = path.join(repositoryFolder, 'n8n', 'projects', 'old', 'workflow.json');
+		await mkdir(path.dirname(leftover), { recursive: true });
+		await writeFile(leftover, '{"id":"committed-leftover"}');
+		await checkoutGit.add(['--all', '--', 'n8n']);
+		await checkoutGit.commit('Unpushed promotion');
+		expect((await checkoutGit.revparse(['main'])).trim()).not.toBe(baseCommit);
+		await expect(workingDirectory.readDescriptor(environmentId)).resolves.not.toBeNull();
+
+		const result = await service.promote(environments.promote.id, owner, {
+			canExportVariableValues: false,
+			commitMessage: 'Direct promotion',
+		});
+
+		expect(result.git.branchName).toBe('main');
+		expect((await remoteGit.raw(['rev-list', 'main'])).trim().split('\n')).toEqual([
+			result.git.commitSha,
+			baseCommit,
+		]);
+		expect(await committedPaths(remote.bareDir, result.git.commitSha)).not.toContain(
+			'n8n/projects/old/workflow.json',
 		);
 	});
 
