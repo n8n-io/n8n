@@ -144,3 +144,72 @@ describe.runIf(typesBuilt)('node compiler: n8n node source against v1', () => {
 		});
 	});
 });
+
+describe('node compiler: helper classes', () => {
+	const api = `
+export class Api {
+	context;
+	base;
+	constructor(base, context) {
+		this.context = context;
+		this.base = base;
+	}
+	async get(path) {
+		return await this.context.helpers.request({ method: 'GET', uri: this.join(path) });
+	}
+	join(path) {
+		return this.base + path;
+	}
+	unused() {
+		return missingName();
+	}
+}`;
+	const node = (body: string) => `
+import { Api } from './Api';
+export class Sample {
+	async execute() {
+		const api = new Api('https://api.example.test', this);
+		${body}
+	}
+}`;
+	const run = (body: string) => {
+		const files: Record<string, string> = { '/n/Sample.node.js': node(body), '/n/Api.js': api };
+		return specialiseNode({
+			type: 'n8n-nodes-base.sample',
+			version: 1,
+			entry: '/n/Sample.node.js',
+			readFile: (path) => files[path],
+			parameters: {},
+			instanceId: null,
+		});
+	};
+
+	it('compiles the methods in use to functions that take the object', () => {
+		const result = run("return [this.helpers.returnJsonArray(await api.get('/a'))];");
+		expect(result.errors).toEqual([]);
+		expect(result.source).toContain('__request');
+		expect(result.source).not.toContain('missingName');
+		expect(result.source).toContain("await Api_get(api, '/a')");
+		expect(result.source).toContain('Api_join(__self, ');
+		expect(result.source).not.toContain('__self.context');
+	});
+
+	it('refuses an object that the code uses as a whole value', () => {
+		const result = run('return [[{ json: { ...api } }]];');
+		expect(result.errors.join('\n')).toContain(
+			"an object of the class 'Api' is used as a whole value",
+		);
+	});
+
+	it('refuses a read of the context field from outside the class', () => {
+		const result = run('return [[{ json: { id: api.context.getInstanceId() } }]];');
+		expect(result.errors.join('\n')).toContain('the field holds the n8n context');
+	});
+
+	it('refuses a method that the code uses as a value', () => {
+		const result = run('const get = api.get; return [[{ json: await get("/a") }]];');
+		expect(result.errors.join('\n')).toContain(
+			"the method 'get' of the class 'Api' is used as a value",
+		);
+	});
+});
