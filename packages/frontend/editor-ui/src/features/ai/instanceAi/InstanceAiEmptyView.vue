@@ -24,11 +24,11 @@ import { countAttachedNodes } from './utils/buildNodesAttachment';
 import { useDocumentTitle } from '@/app/composables/useDocumentTitle';
 import { usePageRedirectionHelper } from '@/app/composables/usePageRedirectionHelper';
 import { getExperimentTelemetryPayload } from '@/experiments/utils';
-// Experiment cleanup (129_aia_inspiration_from_taxonomy_v2)
+// Experiment cleanup (142_aia_inspiration_from_taxonomy_v3)
 import { usePostHog } from '@/app/stores/posthog.store';
 // EOF Experiment cleanup
 import {
-	// Experiment cleanup (129_aia_inspiration_from_taxonomy_v2)
+	// Experiment cleanup (142_aia_inspiration_from_taxonomy_v3)
 	INSTANCE_AI_INSPIRATION_FROM_TAXONOMY_EXPERIMENT,
 	// EOF Experiment cleanup
 	INSTANCE_AI_PERSONALIZED_PROMPT_SUGGESTIONS_EXPERIMENT,
@@ -76,11 +76,8 @@ import {
 	type PersonalizedPromptMetadataLoadState,
 	type PersonalizedPromptSuggestionResolution,
 } from '@/experiments/instanceAiPersonalizedPromptSuggestions';
-// Experiment cleanup (129_aia_inspiration_from_taxonomy_v2)
+// Experiment cleanup (142_aia_inspiration_from_taxonomy_v3)
 import {
-	INSTANCE_AI_TAXONOMY_PROMPT_SUGGESTIONS_BIS,
-	INSTANCE_AI_TAXONOMY_PROMPT_SUGGESTIONS_BIS_VERSION,
-	INSTANCE_AI_TAXONOMY_PROMPT_SUGGESTIONS_VERSION,
 	isPersonalizedPromptSuggestionResolution,
 	isTaxonomyPromptSuggestionResolution,
 	resolveTaxonomyPromptSuggestions,
@@ -240,7 +237,7 @@ const {
 	isTreatmentVariant: isPersonalizedPromptSuggestionsTreatmentVariant,
 	suggestionFormat: personalizedPromptSuggestionsFormat,
 } = useInstanceAiPersonalizedPromptSuggestionsExperiment();
-// Experiment cleanup (129_aia_inspiration_from_taxonomy_v2)
+// Experiment cleanup (142_aia_inspiration_from_taxonomy_v3)
 const { currentVariant: inspirationFromTaxonomyVariant, isRowsVariant: isTaxonomyRowsVariant } =
 	useInstanceAiInspirationFromTaxonomyExperiment();
 const posthogStore = usePostHog();
@@ -249,9 +246,7 @@ const isTaxonomyExperimentAssigned = computed(
 		inspirationFromTaxonomyVariant.value ===
 			INSTANCE_AI_INSPIRATION_FROM_TAXONOMY_EXPERIMENT.control ||
 		inspirationFromTaxonomyVariant.value ===
-			INSTANCE_AI_INSPIRATION_FROM_TAXONOMY_EXPERIMENT.variant ||
-		inspirationFromTaxonomyVariant.value ===
-			INSTANCE_AI_INSPIRATION_FROM_TAXONOMY_EXPERIMENT.variantBis,
+			INSTANCE_AI_INSPIRATION_FROM_TAXONOMY_EXPERIMENT.variant,
 );
 // EOF Experiment cleanup
 const showProactiveStarter = computed(
@@ -267,10 +262,10 @@ const shouldTrackPersonalizedPromptSuggestionsExposure = computed(
 );
 const personalizedPromptSuggestionResolution = ref<
 	| PersonalizedPromptSuggestionResolution
-	| TaxonomyPromptSuggestionResolution // Experiment cleanup (129_aia_inspiration_from_taxonomy_v2)
+	| TaxonomyPromptSuggestionResolution // Experiment cleanup (142_aia_inspiration_from_taxonomy_v3)
 	| null
 >(null);
-// Experiment cleanup (129_aia_inspiration_from_taxonomy_v2)
+// Experiment cleanup (142_aia_inspiration_from_taxonomy_v3)
 const shouldShowTaxonomySuggestions = computed(() =>
 	isTaxonomyPromptSuggestionResolution(personalizedPromptSuggestionResolution.value),
 );
@@ -330,7 +325,7 @@ const activeWorkflowPreview = computed(() => {
 const personalizedPromptProfileOverride = usePersonalizedPromptProfileOverride();
 let personalizedPromptMetadataTimeout: ReturnType<typeof setTimeout> | null = null;
 let hasTrackedPersonalizedPromptSuggestionsExposure = false;
-let hasTrackedInspirationFromTaxonomyExposure = false; // Experiment cleanup (129_aia_inspiration_from_taxonomy_v2)
+let hasTrackedInspirationFromTaxonomyExposure = false; // Experiment cleanup (142_aia_inspiration_from_taxonomy_v3)
 // Experiment cleanup (124_workflow_previews_above_assistant)
 let hasTrackedWorkflowPreviewsEmptyStateView = false;
 const shouldTrackWorkflowPreviewsEmptyStateView = computed(
@@ -342,7 +337,7 @@ const shouldTrackWorkflowPreviewsEmptyStateView = computed(
 // EOF Experiment cleanup
 const isAnyPersonalizedSuggestionsTreatmentActive = computed(
 	() =>
-		isTaxonomyRowsVariant.value || // Experiment cleanup (129_aia_inspiration_from_taxonomy_v2)
+		isTaxonomyRowsVariant.value || // Experiment cleanup (142_aia_inspiration_from_taxonomy_v3)
 		isPersonalizedPromptSuggestionsTreatmentVariant.value,
 );
 
@@ -360,20 +355,13 @@ function clearPersonalizedPromptMetadataTimeout() {
 }
 
 function setPersonalizedPromptResolution(metadataLoadState: PersonalizedPromptMetadataLoadState) {
-	// Experiment cleanup (129_aia_inspiration_from_taxonomy_v2)
+	// Experiment cleanup (142_aia_inspiration_from_taxonomy_v3)
 	// Control keeps the default empty state. Only the variant renders the rows.
 	if (isTaxonomyRowsVariant.value) {
-		const isVariantBis =
-			inspirationFromTaxonomyVariant.value ===
-			INSTANCE_AI_INSPIRATION_FROM_TAXONOMY_EXPERIMENT.variantBis;
 		const taxonomyResolution = resolveTaxonomyPromptSuggestions({
 			metadata: cloudPlanStore.currentUserCloudInfo?.information ?? null,
 			metadataLoadState,
 			suggestionFormat: 'rows',
-			catalog: isVariantBis ? INSTANCE_AI_TAXONOMY_PROMPT_SUGGESTIONS_BIS : undefined,
-			catalogVersion: isVariantBis
-				? INSTANCE_AI_TAXONOMY_PROMPT_SUGGESTIONS_BIS_VERSION
-				: INSTANCE_AI_TAXONOMY_PROMPT_SUGGESTIONS_VERSION,
 		});
 
 		if (taxonomyResolution.source === 'taxonomy') {
@@ -413,7 +401,7 @@ function resolvePersonalizedPromptMetadata() {
 		return;
 	}
 
-	// Experiment cleanup (129_aia_inspiration_from_taxonomy_v2)
+	// Experiment cleanup (142_aia_inspiration_from_taxonomy_v3)
 	if (!isTaxonomyRowsVariant.value && personalizedPromptProfileOverride.value) {
 		setPersonalizedPromptResolution('loaded');
 		return;
@@ -438,8 +426,8 @@ function resolvePersonalizedPromptMetadata() {
 
 watch(
 	[
-		isTaxonomyRowsVariant, // Experiment cleanup (129_aia_inspiration_from_taxonomy_v2)
-		inspirationFromTaxonomyVariant, // Experiment cleanup (129_aia_inspiration_from_taxonomy_v2)
+		isTaxonomyRowsVariant, // Experiment cleanup (142_aia_inspiration_from_taxonomy_v3)
+		inspirationFromTaxonomyVariant, // Experiment cleanup (142_aia_inspiration_from_taxonomy_v3)
 		isPersonalizedPromptSuggestionsTreatmentVariant,
 		personalizedPromptSuggestionsFormat,
 		personalizedPromptProfileOverride,
@@ -473,7 +461,7 @@ watch(
 	{ immediate: true },
 );
 
-// Experiment cleanup (129_aia_inspiration_from_taxonomy_v2)
+// Experiment cleanup (142_aia_inspiration_from_taxonomy_v3)
 watch(
 	shouldTrackInspirationFromTaxonomyExposure,
 	(shouldTrackExposure) => {
@@ -531,7 +519,7 @@ watch(
 	},
 );
 
-// Experiment cleanup (129_aia_inspiration_from_taxonomy_v2)
+// Experiment cleanup (142_aia_inspiration_from_taxonomy_v3)
 const isTaxonomySuggestionsPending = computed(
 	() => isTaxonomyRowsVariant.value && personalizedPromptSuggestionResolution.value === null,
 );
@@ -573,7 +561,7 @@ const emptyStatePromptSuggestionProps = computed(() => {
 		return {};
 	}
 
-	// Experiment cleanup (129_aia_inspiration_from_taxonomy_v2)
+	// Experiment cleanup (142_aia_inspiration_from_taxonomy_v3)
 	if (isTaxonomySuggestionsPending.value) {
 		return {
 			suggestions: [],
@@ -657,8 +645,8 @@ const emptyStateTitleKey = computed<BaseTextKey>(() => {
 		return INSTANCE_AI_WORKFLOW_PREVIEW_SUGGESTIONS_TITLE_KEY;
 	}
 	if (
-		shouldShowTaxonomySuggestions.value || // Experiment cleanup (129_aia_inspiration_from_taxonomy_v2)
-		isTaxonomySuggestionsPending.value || // Experiment cleanup (129_aia_inspiration_from_taxonomy_v2)
+		shouldShowTaxonomySuggestions.value || // Experiment cleanup (142_aia_inspiration_from_taxonomy_v3)
+		isTaxonomySuggestionsPending.value || // Experiment cleanup (142_aia_inspiration_from_taxonomy_v3)
 		shouldShowPersonalizedPromptSuggestions.value ||
 		(isPersonalizedPromptSuggestionsTreatmentVariant.value &&
 			personalizedPromptSuggestionResolution.value === null)
