@@ -58,7 +58,10 @@ function makeService({
 	urlService = mock<UrlService>({
 		getInstanceBaseUrl: vi.fn().mockReturnValue(INSTANCE_BASE_URL),
 	}),
-	credentialTypes = mock<CredentialTypes>({ recognizes: vi.fn().mockReturnValue(true) }),
+	credentialTypes = mock<CredentialTypes>({
+		recognizes: vi.fn().mockReturnValue(true),
+		getParentTypes: vi.fn().mockReturnValue([]),
+	}),
 } = {}) {
 	const globalConfig = {
 		aiAssistant: { baseUrl: baseUrl ?? undefined },
@@ -661,7 +664,7 @@ describe('AiGatewayService', () => {
 			});
 		});
 
-		it('writes the token as OAuth2 token data when tokenFormat is oauth2', async () => {
+		it('writes the token as OAuth2 token data for a credential that extends oAuth2Api', async () => {
 			const oauth2Config = {
 				...MOCK_GATEWAY_CONFIG,
 				credentialTypes: ['zoomInfoPkceOAuth2Api'],
@@ -669,30 +672,35 @@ describe('AiGatewayService', () => {
 					zoomInfoPkceOAuth2Api: {
 						gatewayPath: '/v1/gateway/zoominfo',
 						urlField: 'baseUrl',
-						apiKeyField: 'oauthTokenData',
-						tokenFormat: 'oauth2',
+						apiKeyField: 'apiKey',
 					},
 				},
 			};
 			requestMock
 				.mockResolvedValueOnce(ok(oauth2Config))
 				.mockResolvedValueOnce(ok({ token: 'mock-jwt-token', expiresIn: 3600 }));
-			const service = makeService();
+			const credentialTypes = mock<CredentialTypes>({
+				recognizes: vi.fn().mockReturnValue(true),
+				getParentTypes: vi.fn().mockReturnValue(['oAuth2Api']),
+			});
+			const service = makeService({ credentialTypes });
 
 			const result = await service.getSyntheticCredential({
 				credentialType: 'zoomInfoPkceOAuth2Api',
 				userId: USER_ID,
 			});
 
+			// `apiKeyField` is ignored: OAuth2 credentials only read `oauthTokenData`.
 			expect(result).toEqual({
 				oauthTokenData: { access_token: 'mock-jwt-token', token_type: 'Bearer' },
 				tokenExpiredStatusCode: [],
 				baseUrl: `${BASE_URL}/v1/gateway/zoominfo`,
 			});
+			expect(credentialTypes.getParentTypes).toHaveBeenCalledWith('zoomInfoPkceOAuth2Api');
 		});
 
-		it('writes the token as a plain string when tokenFormat is unknown', async () => {
-			const unknownFormatConfig = {
+		it('writes the token to apiKeyField for a credential that does not extend oAuth2Api', async () => {
+			const apiKeyConfig = {
 				...MOCK_GATEWAY_CONFIG,
 				credentialTypes: ['someApi'],
 				providerConfig: {
@@ -700,14 +708,17 @@ describe('AiGatewayService', () => {
 						gatewayPath: '/v1/gateway/some',
 						urlField: 'url',
 						apiKeyField: 'apiKey',
-						tokenFormat: 'somethingNew',
 					},
 				},
 			};
 			requestMock
-				.mockResolvedValueOnce(ok(unknownFormatConfig))
+				.mockResolvedValueOnce(ok(apiKeyConfig))
 				.mockResolvedValueOnce(ok({ token: 'mock-jwt-token', expiresIn: 3600 }));
-			const service = makeService();
+			const credentialTypes = mock<CredentialTypes>({
+				recognizes: vi.fn().mockReturnValue(true),
+				getParentTypes: vi.fn().mockReturnValue(['someBaseApi']),
+			});
+			const service = makeService({ credentialTypes });
 
 			const result = await service.getSyntheticCredential({
 				credentialType: 'someApi',

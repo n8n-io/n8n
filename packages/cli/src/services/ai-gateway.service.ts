@@ -330,22 +330,34 @@ export class AiGatewayService {
 			agentId,
 		});
 
-		// OAuth2 credentials sign requests with `oauthTokenData.access_token`, not a flat key.
-		if (providerConfig.tokenFormat === 'oauth2') {
+		return {
+			...this.buildTokenFields(credentialType, providerConfig.apiKeyField, jwt),
+			...urlFields,
+		};
+	}
+
+	/**
+	 * Where the gateway token goes in the synthetic credential. OAuth2 credentials sign
+	 * requests with `oauthTokenData.access_token` and ignore a flat key field, so the token
+	 * goes there for any type that extends `oAuth2Api`.
+	 */
+	private buildTokenFields(
+		credentialType: string,
+		apiKeyField: string,
+		jwt: string,
+	): ICredentialDataDecryptedObject {
+		if (this.credentialTypes.getParentTypes(credentialType).includes('oAuth2Api')) {
 			return {
-				[providerConfig.apiKeyField]: { access_token: jwt, token_type: 'Bearer' },
-				// No status counts as an expired token, so n8n never tries to refresh it. A
-				// refresh would fail on this credential, which has no ID, and hide the gateway's
-				// own error, such as a 401 for a rejected token, behind "Found credential with no ID".
+				oauthTokenData: { access_token: jwt, token_type: 'Bearer' },
+				// No status counts as an expired token, so `requestOAuth2` never refreshes on a
+				// response. A refresh would fail on this credential, which has no ID, and hide the
+				// gateway's own error, such as a 401 for a rejected token, behind "Found credential
+				// with no ID". A node that calls `refreshOAuth2Token` itself still hits that error.
 				tokenExpiredStatusCode: [],
-				...urlFields,
 			};
 		}
 
-		return {
-			[providerConfig.apiKeyField]: jwt,
-			...urlFields,
-		};
+		return { [apiKeyField]: jwt };
 	}
 
 	/**
