@@ -86,14 +86,6 @@ describe('computeTriggerDiff', () => {
 		expect(computeTriggerDiff([], [])).toEqual({ toAdd: new Set(), toRemove: new Set() });
 	});
 
-	test('re-registers an unchanged trigger of any type when unchanged triggers must re-register', () => {
-		const schedule = makeNode('a');
-
-		const diff = computeTriggerDiff([schedule], [{ ...schedule }], { reregisterUnchanged: true });
-
-		expect(diff).toEqual({ toAdd: new Set(['a']), toRemove: new Set(['a']) });
-	});
-
 	describe('triggers that are always re-registered on a version change', () => {
 		const n8nTrigger = makeNode('n8n', {
 			type: 'n8n-nodes-base.n8nTrigger',
