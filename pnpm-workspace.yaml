@@ -42,7 +42,7 @@ catalog:
   mime-types: 3.0.2
   mysql2: 3.23.1
   nanoid: 3.3.18
-  nodemailer: 7.0.11
+  nodemailer: 10.1.4
   picocolors: 1.0.1
   reflect-metadata: 0.2.2
   rimraf: 6.0.1
@@ -78,7 +78,7 @@ catalogs:
     pinia: ^2.2.4
     unplugin-icons: ^0.19.0
     vue: ^3.5.13
-    vue-i18n: ^11.1.2
+    vue-i18n: 11.4.14
     vue-markdown-render: ^2.2.1
     vue-router: ^4.5.0
     vue-tsc: ^2.2.8
