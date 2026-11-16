@@ -73,6 +73,7 @@ export async function* toStreamChunks(
 	for await (const event of parseOpenAIStreamEvents(body)) {
 		switch (event.type) {
 			case 'response.output_text.delta':
+			case 'response.refusal.delta':
 				if (event.delta) yield { type: 'text-delta', delta: event.delta };
 				break;
 			case 'response.reasoning_summary_text.delta':

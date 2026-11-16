@@ -11,6 +11,7 @@ import {
 	sseEvents,
 	collect,
 	createMockHttpRequests,
+	sseReply,
 } from './fixtures/openai.helpers';
 
 describe('OpenAIChatModel', () => {
@@ -224,12 +225,83 @@ describe('OpenAIChatModel', () => {
 	it.each([
 		['malformed JSON', '{"id": "resp_bad", "output": ['],
 		['a body without output', { id: 'resp_bad', status: 'completed' }],
+		[
+			'a message without content',
+			{ ...mockFinalResponse, output: [{ type: 'message', role: 'assistant' }] },
+		],
+		[
+			'a function call without arguments',
+			{ ...mockFinalResponse, output: [{ type: 'function_call', name: 'get_weather' }] },
+		],
+		['an output item without a type', { ...mockFinalResponse, output: [{ id: 'item_1' }] }],
+		[
+			'a reasoning item with a malformed summary',
+			{
+				...mockFinalResponse,
+				output: [{ type: 'reasoning', id: 'rs_1', summary: [{ type: 'summary_text', text: 1 }] }],
+			},
+		],
 	])('should throw a clear error for %s', async (_, body) => {
 		nock(baseURL).post('/responses').reply(200, body, { 'Content-Type': 'application/json' });
 
 		await expect(createModel().generate([userMessage])).rejects.toThrow(
-			'Unexpected response from the Responses API: the body has no output array',
+			'Unexpected response from the Responses API: the output is missing or malformed',
 		);
+	});
+
+	it('should ignore output item types that the model does not use', async () => {
+		const webSearchCall = { type: 'web_search_call', id: 'ws_1', status: 'completed' };
+		nock(baseURL)
+			.post('/responses')
+			.reply(200, { ...mockFinalResponse, output: [webSearchCall, ...mockFinalResponse.output] });
+
+		const result = await createModel().generate([userMessage]);
+
+		expect(result.message.content).toEqual([{ type: 'text', text: "It's always sunny in Tokyo!" }]);
+	});
+
+	describe('refusals', () => {
+		const refusal = "I can't help with that.";
+
+		it('should return a refusal as the answer text', async () => {
+			const refusalMessage = {
+				type: 'message',
+				role: 'assistant',
+				content: [{ type: 'refusal', refusal }],
+			};
+			nock(baseURL)
+				.post('/responses')
+				.reply(200, { ...mockFinalResponse, output: [refusalMessage] });
+
+			const result = await createModel().generate([userMessage]);
+
+			expect(result.message.content).toEqual([{ type: 'text', text: refusal }]);
+		});
+
+		it('should stream a refusal as text', async () => {
+			nock(baseURL)
+				.post('/responses')
+				.reply(
+					...sseEvents(
+						{ type: 'response.refusal.delta', delta: refusal },
+						{ type: 'response.completed', response: { status: 'completed' } },
+					),
+				);
+
+			const chunks = await collect(createModel().stream([userMessage]));
+
+			expect(chunks[0]).toEqual({ type: 'text-delta', delta: refusal });
+		});
+	});
+
+	it('should end a stream that has no events', async () => {
+		nock(baseURL)
+			.post('/responses')
+			.reply(() => sseReply([]));
+
+		const chunks = await collect(createModel().stream([userMessage]));
+
+		expect(chunks).toEqual([]);
 	});
 
 	it.each([
@@ -249,21 +321,6 @@ describe('OpenAIChatModel', () => {
 		await expect(createModel().generate([userMessage])).rejects.toThrow(
 			`Failed to parse function call arguments: ${args}`,
 		);
-	});
-
-	it('should leave out a reasoning item with a malformed summary', async () => {
-		const malformed = {
-			type: 'reasoning',
-			id: 'rs_1',
-			summary: [{ type: 'summary_text', text: 1 }],
-		};
-		nock(baseURL)
-			.post('/responses')
-			.reply(200, { ...mockFinalResponse, output: [malformed, ...mockFinalResponse.output] });
-
-		const result = await createModel().generate([userMessage]);
-
-		expect(result.message.content).toEqual([{ type: 'text', text: "It's always sunny in Tokyo!" }]);
 	});
 
 	it('should skip stream data that is not an event object', async () => {

@@ -166,7 +166,9 @@ export class OpenAIChatModel extends BaseChatModel<OpenAIChatModelConfig> {
 		);
 		const body = response.body;
 		if (!isResponsesResponse(body)) {
-			throw new Error('Unexpected response from the Responses API: the body has no output array');
+			throw new Error(
+				'Unexpected response from the Responses API: the output is missing or malformed',
+			);
 		}
 		if (body.status === 'failed') {
 			throw responseFailedError(body);

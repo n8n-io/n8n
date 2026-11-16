@@ -60,12 +60,12 @@ type OpenAIResponseStatus =
 	| 'incomplete';
 
 export type OpenAIResponsesResponse = {
-	id: string;
-	object: string;
-	created_at: string;
-	model: string;
-	output: ResponsesOutputItem[];
-	status: OpenAIResponseStatus;
+	id?: string;
+	object?: string;
+	created_at?: number;
+	model?: string;
+	output: unknown[];
+	status?: OpenAIResponseStatus;
 	usage?: {
 		input_tokens: number;
 		output_tokens: number;
@@ -89,10 +89,7 @@ export type ResponsesOutputItem =
 			type: 'message';
 			role: 'assistant';
 			id?: string;
-			content: Array<{
-				type: 'output_text';
-				text: string;
-			}>;
+			content: Array<{ type: 'output_text'; text: string } | { type: 'refusal'; refusal: string }>;
 	  }
 	| {
 			type: 'function_call';

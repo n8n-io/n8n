@@ -40,6 +40,11 @@ describe('OpenAI Integration with Langchain Agent', () => {
 					model: 'gpt-4o',
 					stream: true,
 				});
+				expect(body.input).toContainEqual({
+					type: 'function_call_output',
+					call_id: 'call_StreamTest123',
+					output: "It's always sunny in Tokyo!",
+				});
 				return true;
 			})
 			.reply(() => sseReply(mockStreamFinalResponseEvents));

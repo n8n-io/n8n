@@ -34,16 +34,19 @@ export function createSSEStream(events: Array<{ type: string; data: unknown }>):
 
 	function sendData() {
 		setTimeout(() => {
-			if (eventIndex < events.length) {
-				const event = events[eventIndex];
-				if (event.type === 'done') {
+			const event = events[eventIndex];
+			eventIndex++;
+			switch (true) {
+				case event === undefined:
+					stream.push(null);
+					break;
+				case event.type === 'done':
 					stream.push('data: [DONE]\n\n');
 					stream.push(null);
-				} else {
+					break;
+				default:
 					stream.push(`data: ${JSON.stringify(event.data)}\n\n`);
-				}
-				eventIndex++;
-				sendData();
+					sendData();
 			}
 		}, 50);
 	}
