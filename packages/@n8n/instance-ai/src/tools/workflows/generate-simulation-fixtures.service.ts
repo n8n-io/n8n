@@ -40,7 +40,7 @@ import { isTriggerNodeType } from './workflow-json-utils';
 import type { Logger } from '../../logger';
 import type { AnthropicThinkingEffort, FetchFn } from '@n8n/agents';
 
-import type { HelperModelUsageReport, ModelConfig } from '../../types';
+import type { HelperUsageHook, ModelConfig } from '../../types';
 import { generateValidatedJson } from '../../utils/generate-validated-json';
 import { itemsForNode } from '../../utils/node-keyed-items';
 import type { NodeSimulationVerdict } from '../../workflow-loop/workflow-loop-state';
@@ -71,7 +71,7 @@ export interface GenerateSimulationFixturesInput {
 	/** Transport for the helper's model call. */
 	modelFetch?: FetchFn;
 	/** Receives the helper call's token usage so the host can bill it. */
-	onModelUsage?: (report: HelperModelUsageReport) => Promise<void>;
+	onHelperUsage?: HelperUsageHook;
 	logger?: Logger;
 }
 
@@ -462,7 +462,7 @@ export async function generateSimulationFixtures(
 		userText,
 		schema: FixturesResponseSchema,
 		modelFetch: input.modelFetch,
-		onModelUsage: input.onModelUsage,
+		onHelperUsage: input.onHelperUsage,
 	});
 	if (!result.ok) {
 		input.logger?.warn(

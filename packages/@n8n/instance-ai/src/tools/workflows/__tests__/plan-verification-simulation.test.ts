@@ -67,7 +67,7 @@ describe('planVerificationSimulation — simulated trigger verdicts', () => {
 		const model = 'anthropic/claude-opus-5-5';
 		const utilityModel = 'anthropic/claude-haiku-5-5';
 		const modelFetch = vi.fn();
-		const onModelUsage = vi.fn();
+		const onHelperUsage = vi.fn();
 		mockClassify.mockResolvedValue([
 			{
 				nodeName: 'Send It',
@@ -84,14 +84,14 @@ describe('planVerificationSimulation — simulated trigger verdicts', () => {
 			model,
 			utilityModel,
 			modelFetch,
-			onModelUsage,
+			onHelperUsage,
 		});
 
 		expect(mockClassify).toHaveBeenCalledWith(
-			expect.objectContaining({ model, utilityModel, modelFetch, onModelUsage }),
+			expect.objectContaining({ model, utilityModel, modelFetch, onHelperUsage }),
 		);
 		expect(mockGenerateFixtures).toHaveBeenCalledWith(
-			expect.objectContaining({ model, utilityModel, modelFetch, onModelUsage }),
+			expect.objectContaining({ model, utilityModel, modelFetch, onHelperUsage }),
 		);
 	});
 

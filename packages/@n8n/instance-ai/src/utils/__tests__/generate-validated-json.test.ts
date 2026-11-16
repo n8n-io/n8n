@@ -140,17 +140,17 @@ describe('generateValidatedJson', () => {
 			generate: vi.fn().mockResolvedValue({ messages: [], usage }),
 		} as unknown as ReturnType<typeof createEvalAgent>);
 		mockExtractText.mockReturnValue('{"ok": true}');
-		const onModelUsage = vi.fn().mockResolvedValue(undefined);
+		const onHelperUsage = vi.fn().mockResolvedValue(undefined);
 
 		await generateValidatedJson('test-agent', {
 			model: 'anthropic/claude-haiku-5-5',
 			instructions: 'instructions',
 			userText: 'do it',
 			schema,
-			onModelUsage,
+			onHelperUsage,
 		});
 
-		expect(onModelUsage).toHaveBeenCalledWith({
+		expect(onHelperUsage).toHaveBeenCalledWith({
 			helper: 'test-agent',
 			model: 'anthropic/claude-haiku-5-5',
 			usage,
@@ -172,7 +172,7 @@ describe('generateValidatedJson', () => {
 			instructions: 'instructions',
 			userText: 'do it',
 			schema,
-			onModelUsage: vi.fn().mockRejectedValue(new Error('billing down')),
+			onHelperUsage: vi.fn().mockRejectedValue(new Error('billing down')),
 		});
 
 		expect(result).toEqual({ ok: true, data: { ok: true } });
@@ -180,15 +180,15 @@ describe('generateValidatedJson', () => {
 
 	it('does not report usage when the result has none', async () => {
 		setupAgentMock('{"ok": true}');
-		const onModelUsage = vi.fn();
+		const onHelperUsage = vi.fn();
 		await generateValidatedJson('test-agent', {
 			model: 'anthropic/claude-haiku-5-5',
 			instructions: 'instructions',
 			userText: 'do it',
 			schema,
-			onModelUsage,
+			onHelperUsage,
 		});
-		expect(onModelUsage).not.toHaveBeenCalled();
+		expect(onHelperUsage).not.toHaveBeenCalled();
 	});
 
 	it('reports generation_failed without calling a model when none is available', async () => {

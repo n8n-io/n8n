@@ -6,6 +6,7 @@ import {
 	tokenUsageToBuilderUsageItems,
 	type BuilderUsageItem,
 	type HelperModelUsageReport,
+	type HelperUsageHook,
 	type TraceStatus,
 } from '@n8n/instance-ai';
 import { getErrorMessage } from '@n8n/utils/errors/get-error-message';
@@ -96,10 +97,37 @@ export class InstanceAiCreditService {
 	}
 
 	/**
-	 * Claims the usage of one helper LLM call, such as the verification classifier
-	 * or the simulation fixtures. Returns the claimed credits. Best effort: a
-	 * billing failure is logged and never fails the helper.
+	 * Claims one LLM call that runs beside the main turn, such as a memory task,
+	 * a title, or a verification helper. Returns the claimed credits. Best effort:
+	 * a billing failure is logged and never fails the call.
 	 */
+	async claimSideCallUsage(
+		user: User,
+		threadId: string,
+		dedupeId: string,
+		call: { model: string; usage: HelperModelUsageReport['usage'] },
+		source: 'chat' | 'self_healing' = 'chat',
+	): Promise<number | undefined> {
+		try {
+			return await this.claimRunUsage(
+				user,
+				threadId,
+				dedupeId,
+				tokenUsageToBuilderUsageItems(call.model, call.usage),
+				'completed',
+				source,
+			);
+		} catch (error) {
+			this.logger.warn('Failed to claim Assistant side-call usage', {
+				threadId,
+				dedupeId,
+				error: getErrorMessage(error),
+			});
+			return undefined;
+		}
+	}
+
+	/** Claims one verification helper call, such as the classifier or the simulation fixtures. */
 	async claimHelperUsage(
 		user: User,
 		threadId: string,
@@ -107,32 +135,19 @@ export class InstanceAiCreditService {
 		report: HelperModelUsageReport,
 		source: 'chat' | 'self_healing' = 'chat',
 	): Promise<number | undefined> {
-		try {
-			return await this.claimRunUsage(
-				user,
-				threadId,
-				`${runId}:helper:${report.helper}:${report.reportId}`,
-				tokenUsageToBuilderUsageItems(report.model, report.usage),
-				'completed',
-				source,
-			);
-		} catch (error) {
-			this.logger.warn('Failed to claim Assistant helper usage', {
-				threadId,
-				runId,
-				helper: report.helper,
-				error: getErrorMessage(error),
-			});
-			return undefined;
-		}
+		return await this.claimSideCallUsage(
+			user,
+			threadId,
+			`${runId}:helper:${report.helper}:${report.reportId}`,
+			report,
+			source,
+		);
 	}
 
 	/** `claimHelperUsage` bound to one run, for the context's `onHelperUsage` hook. */
-	helperUsageClaimer(
-		user: User,
-		threadId: string,
-		runId: string,
-	): (report: HelperModelUsageReport) => Promise<void> {
+	helperUsageClaimer(user: User, threadId: string, runId: string): HelperUsageHook {
+		// Awaiting here does not block the helper: `generateValidatedJson` fires the
+		// hook without awaiting it. Self-healing awaits its own claims to total them.
 		return async (report) => {
 			await this.claimHelperUsage(user, threadId, runId, report);
 		};

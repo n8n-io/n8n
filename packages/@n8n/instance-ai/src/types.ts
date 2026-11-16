@@ -1757,7 +1757,7 @@ export interface InstanceAiContext {
 	/** Transport for those utility LLM calls. It carries no run labels. */
 	modelFetch?: FetchFn;
 	/** Bills the token usage of one helper LLM call. Best effort: it never throws. */
-	onHelperUsage?: (report: HelperModelUsageReport) => Promise<void>;
+	onHelperUsage?: HelperUsageHook;
 	workflowService: InstanceAiWorkflowService;
 	executionService: InstanceAiExecutionService;
 	credentialService: InstanceAiCredentialService;
@@ -2023,6 +2023,9 @@ export interface HelperModelUsageReport {
 	/** Unique for each call, so hosts can build idempotent billing keys. */
 	reportId: string;
 }
+
+/** Bills the token usage of one helper LLM call. Best effort: it never throws. */
+export type HelperUsageHook = (report: HelperModelUsageReport) => Promise<void>;
 
 // ── Memory ───────────────────────────────────────────────────────────────────
 

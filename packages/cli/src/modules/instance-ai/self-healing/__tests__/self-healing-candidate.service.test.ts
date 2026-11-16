@@ -276,9 +276,7 @@ describe('SelfHealingCandidateService', () => {
 
 		await service.verify(input);
 
-		expect(plan).toHaveBeenCalledWith(
-			expect.objectContaining({ modelFetch, onModelUsage: onHelperUsage }),
-		);
+		expect(plan).toHaveBeenCalledWith(expect.objectContaining({ modelFetch, onHelperUsage }));
 	});
 
 	it('cleans up the temporary workflow when verification throws', async () => {

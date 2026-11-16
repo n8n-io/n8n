@@ -24,7 +24,7 @@ import {
 import type { CredentialMap } from './resolve-credentials';
 import type { FetchFn } from '@n8n/agents';
 
-import type { HelperModelUsageReport, ModelConfig } from '../../types';
+import type { HelperUsageHook, ModelConfig } from '../../types';
 import type {
 	NodeSimulationVerdict,
 	WorkflowBuildOutcome,
@@ -87,9 +87,17 @@ export async function reconcileSimulationPlan(args: {
 	/** Transport for the helper's model call. */
 	modelFetch?: FetchFn;
 	/** Receives the classifier call's token usage so the host can bill it. */
-	onModelUsage?: (report: HelperModelUsageReport) => Promise<void>;
+	onHelperUsage?: HelperUsageHook;
 }): Promise<SimulationPlanPatch | undefined> {
-	const { buildOutcome, workflow, availableCredentials, model, utilityModel, modelFetch } = args;
+	const {
+		buildOutcome,
+		workflow,
+		availableCredentials,
+		model,
+		utilityModel,
+		modelFetch,
+		onHelperUsage,
+	} = args;
 
 	const mockedEntries = Object.entries(buildOutcome.mockedCredentialsByNode ?? {});
 	const satisfiedNames = new Set(
@@ -142,7 +150,7 @@ export async function reconcileSimulationPlan(args: {
 			model,
 			utilityModel,
 			modelFetch,
-			onModelUsage: args.onModelUsage,
+			onHelperUsage,
 		});
 		freshVerdictByName = new Map(freshVerdicts.map((verdict) => [verdict.nodeName, verdict]));
 	}

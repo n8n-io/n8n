@@ -28,7 +28,7 @@ import {
 	MAX_STEPS,
 	type BuilderUsageItem,
 	OutsideThreadProjectError,
-	type HelperModelUsageReport,
+	type HelperUsageHook,
 	type InstanceAiContext,
 	type InstanceAiTraceContext,
 	type ModelConfig,
@@ -460,7 +460,7 @@ export class SelfHealingAgentService {
 		input: SelfHealingRunInput,
 		targets: Targets,
 		options: SelfHealingRunOptions,
-		onHelperUsage: (report: HelperModelUsageReport) => Promise<void>,
+		onHelperUsage: HelperUsageHook,
 	) {
 		const { user } = input;
 		const { signal, runId, threadId } = options;

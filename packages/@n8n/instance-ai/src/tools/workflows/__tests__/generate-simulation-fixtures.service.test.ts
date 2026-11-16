@@ -136,16 +136,16 @@ describe('generateSimulationFixtures', () => {
 			generate: vi.fn().mockResolvedValue({ messages: [], usage }),
 		} as unknown as ReturnType<typeof createEvalAgent>);
 		mockExtractText.mockReturnValue(JSON.stringify({ A: [{ json: { ok: true } }] }));
-		const onModelUsage = vi.fn().mockResolvedValue(undefined);
+		const onHelperUsage = vi.fn().mockResolvedValue(undefined);
 
 		await generateSimulationFixtures({
 			model: MAIN_MODEL,
-			onModelUsage,
+			onHelperUsage,
 			workflow: wf([{ name: 'A', type: 'n8n-nodes-base.slack' }]),
 			plan: [simulateVerdict('A')],
 		});
 
-		expect(onModelUsage).toHaveBeenCalledWith(
+		expect(onHelperUsage).toHaveBeenCalledWith(
 			expect.objectContaining({ helper: 'verification-simulation-fixtures', usage }),
 		);
 	});

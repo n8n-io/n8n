@@ -636,12 +636,11 @@ describe('AssistantAgentProvider', () => {
 						reportId: 'report-1',
 					});
 
-					expect(creditService.claimRunUsage).toHaveBeenCalledWith(
+					expect(creditService.claimSideCallUsage).toHaveBeenCalledWith(
 						user,
 						'thread-1',
 						`run-1:${task}:report-1`,
-						expect.arrayContaining([expect.anything()]),
-						'completed',
+						expect.objectContaining({ model: 'anthropic/claude-haiku-4-5', usage }),
 					);
 				},
 			);
@@ -659,25 +658,9 @@ describe('AssistantAgentProvider', () => {
 						reportId: 'report-1',
 					});
 
-					expect(creditService.claimRunUsage).not.toHaveBeenCalled();
+					expect(creditService.claimSideCallUsage).not.toHaveBeenCalled();
 				},
 			);
-
-			it('keeps the turn going when the claim fails', async () => {
-				const { provider, creditService } = setup();
-				creditService.claimRunUsage.mockRejectedValueOnce(new Error('billing down'));
-
-				const handle = await provider.prepareTurn(startTurn());
-
-				await expect(
-					handle.onSideCallUsage?.({
-						task: 'title',
-						model: 'anthropic/claude-haiku-4-5',
-						usage,
-						reportId: 'report-1',
-					}),
-				).resolves.toBeUndefined();
-			});
 		});
 
 		describe('workflow setup route', () => {

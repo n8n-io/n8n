@@ -35,7 +35,7 @@ import {
 import type { Logger } from '../../logger';
 import type { FetchFn } from '@n8n/agents';
 
-import type { HelperModelUsageReport, ModelConfig } from '../../types';
+import type { HelperUsageHook, ModelConfig } from '../../types';
 import { itemsForNode } from '../../utils/node-keyed-items';
 import type {
 	NodeSimulationVerdict,
@@ -62,7 +62,7 @@ export interface PlanVerificationSimulationInput {
 	/** Transport for the helper's model call. */
 	modelFetch?: FetchFn;
 	/** Receives each helper call's token usage so the host can bill it. */
-	onModelUsage?: (report: HelperModelUsageReport) => Promise<void>;
+	onHelperUsage?: HelperUsageHook;
 	logger?: Logger;
 }
 
@@ -355,7 +355,7 @@ export async function planVerificationSimulation({
 	model,
 	utilityModel,
 	modelFetch,
-	onModelUsage,
+	onHelperUsage,
 	logger,
 }: PlanVerificationSimulationInput): Promise<VerificationSimulationPlan> {
 	let nodeSimulationPlan: NodeSimulationVerdict[] | undefined;
@@ -369,7 +369,7 @@ export async function planVerificationSimulation({
 			model,
 			utilityModel,
 			modelFetch,
-			onModelUsage,
+			onHelperUsage,
 			logger,
 		});
 		nodeSimulationPlan = withDeclaredOutputVerdicts(nodeSimulationPlan, declaredFixtures);
@@ -398,7 +398,7 @@ export async function planVerificationSimulation({
 							model,
 							utilityModel,
 							modelFetch,
-							onModelUsage,
+							onHelperUsage,
 							logger,
 						})
 					: {};

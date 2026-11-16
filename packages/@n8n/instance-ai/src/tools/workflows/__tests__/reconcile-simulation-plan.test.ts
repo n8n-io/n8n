@@ -119,7 +119,7 @@ describe('reconcileSimulationPlan', () => {
 		workflow.nodes[2].parameters = { operation: 'send' };
 		workflow.nodes[2].credentials = { slackApi: { id: 'cred-1', name: 'Tool account' } };
 		const modelFetch = vi.fn();
-		const onModelUsage = vi.fn();
+		const onHelperUsage = vi.fn();
 
 		await reconcileSimulationPlan({
 			workflow,
@@ -134,7 +134,7 @@ describe('reconcileSimulationPlan', () => {
 			model: 'anthropic/claude-opus-5-5',
 			utilityModel: 'anthropic/claude-haiku-5-5',
 			modelFetch,
-			onModelUsage,
+			onHelperUsage,
 		});
 
 		expect(classifyNodesForSimulation).toHaveBeenCalledWith(
@@ -142,7 +142,7 @@ describe('reconcileSimulationPlan', () => {
 				model: 'anthropic/claude-opus-5-5',
 				utilityModel: 'anthropic/claude-haiku-5-5',
 				modelFetch,
-				onModelUsage,
+				onHelperUsage,
 			}),
 		);
 	});

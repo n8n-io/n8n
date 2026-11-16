@@ -658,63 +658,98 @@ describe('claimRunUsage on a thread without a current Assistant thread row', () 
 	});
 });
 
-describe('helperUsageClaimer', () => {
-	function serviceWithSpy() {
+describe('side-call usage', () => {
+	function setup(aiService = createMockAiService()) {
 		const service = createService({
 			threadRepo: createMockThreadRepo({ id: 't1', metadata: {} }),
-			aiService: createMockAiService(),
+			aiService,
 			push: { sendToUsers: vi.fn() },
 			telemetry: { track: vi.fn() },
 		});
-		const claim = vi.spyOn(service, 'claimRunUsage');
-		return { service, claim };
+		return { service, ai: aiService };
 	}
 
-	const report = {
-		helper: 'verification-simulation-fixtures',
+	const call = {
 		model: 'anthropic/claude-haiku-5-5',
 		usage: { promptTokens: 2000, completionTokens: 500, totalTokens: 2500 },
+	};
+	const report = {
+		...call,
+		helper: 'verification-simulation-fixtures',
 		reportId: 'report-1',
 	};
-
-	it('claims the helper call under a dedupe key for each call', async () => {
-		const { service, claim } = serviceWithSpy();
-
-		await service.helperUsageClaimer(fakeUser, 't1', 'run-1')(report);
-
-		expect(claim).toHaveBeenCalledWith(
-			fakeUser,
-			't1',
-			'run-1:helper:verification-simulation-fixtures:report-1',
-			[expect.objectContaining({ type: 'llmTokens', model: 'anthropic/claude-haiku-5-5' })],
-			'completed',
-			'chat',
-		);
+	const tokenItem = expect.objectContaining({
+		type: 'llmTokens',
+		model: 'anthropic/claude-haiku-5-5',
 	});
 
-	it('returns the claimed credits and passes the self-healing source through', async () => {
-		const { service, claim } = serviceWithSpy();
-		claim.mockResolvedValueOnce(0.04);
+	describe('claimSideCallUsage', () => {
+		it('claims the converted call under the given dedupe key and returns the credits', async () => {
+			const { service, ai } = setup();
 
-		await expect(
-			service.claimHelperUsage(fakeUser, 't1', 'run-1', report, 'self_healing'),
-		).resolves.toBe(0.04);
-		expect(claim).toHaveBeenCalledWith(
-			expect.anything(),
-			expect.anything(),
-			expect.anything(),
-			expect.anything(),
-			'completed',
-			'self_healing',
-		);
+			await expect(
+				service.claimSideCallUsage(fakeUser, 't1', 'run-1:title:report-1', call),
+			).resolves.toBe(0.5);
+
+			expect(ai.__markInstanceAiTokenUsage).toHaveBeenCalledWith(
+				{ id: 'user-1' },
+				{ Authorization: 'Bearer ia-tok' },
+				{ dedupeId: 'run-1:title:report-1', usage: [tokenItem], threadId: 't1' },
+			);
+		});
+
+		it('skips the claim when the call used no tokens', async () => {
+			const { service, ai } = setup();
+
+			await service.claimSideCallUsage(fakeUser, 't1', 'run-1:title:report-1', {
+				model: call.model,
+				usage: { promptTokens: 0, completionTokens: 0, totalTokens: 0 },
+			});
+
+			expect(ai.__markInstanceAiTokenUsage).not.toHaveBeenCalled();
+		});
+
+		it('never throws when the claim fails', async () => {
+			const { service } = setup(
+				createMockAiService({
+					claimResult: { delta: 0.5, creditsClaimed: 5.5, creditsQuota: -1 },
+				}),
+			);
+
+			await expect(
+				service.claimSideCallUsage(fakeUser, 't1', 'run-1:title:report-1', call),
+			).resolves.toBeUndefined();
+		});
 	});
 
-	it('never throws when the claim fails', async () => {
-		const { service, claim } = serviceWithSpy();
-		claim.mockRejectedValueOnce(new Error('invalid quota'));
+	describe('helper calls', () => {
+		it('claims each helper call under its own dedupe key', async () => {
+			const { service, ai } = setup();
 
-		await expect(service.helperUsageClaimer(fakeUser, 't1', 'run-1')(report)).resolves.toBe(
-			undefined,
-		);
+			await service.helperUsageClaimer(fakeUser, 't1', 'run-1')(report);
+
+			expect(ai.__markInstanceAiTokenUsage).toHaveBeenCalledWith(
+				{ id: 'user-1' },
+				expect.anything(),
+				{
+					dedupeId: 'run-1:helper:verification-simulation-fixtures:report-1',
+					usage: [tokenItem],
+					threadId: 't1',
+				},
+			);
+		});
+
+		it('bills self-healing helper calls apart from the user and returns the credits', async () => {
+			const { service, ai } = setup();
+
+			await expect(
+				service.claimHelperUsage(fakeUser, 't1', 'run-1', report, 'self_healing'),
+			).resolves.toBe(0.5);
+			expect(ai.__markInstanceAiTokenUsage).toHaveBeenCalledWith(
+				{ id: 'self_healing' },
+				expect.anything(),
+				expect.anything(),
+			);
+		});
 	});
 });

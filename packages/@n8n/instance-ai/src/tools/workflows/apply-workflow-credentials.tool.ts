@@ -136,7 +136,7 @@ export function createApplyWorkflowCredentialsTool(context: OrchestrationContext
 					model: context.modelId,
 					utilityModel: context.domainContext.utilityModelId,
 					modelFetch: context.modelFetch,
-					onModelUsage: context.domainContext.onHelperUsage,
+					onHelperUsage: context.domainContext.onHelperUsage,
 				});
 				if (patch) {
 					await context.workflowTaskService.updateBuildOutcome(input.workItemId, {

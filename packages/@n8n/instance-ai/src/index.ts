@@ -761,6 +761,7 @@ export type {
 	EndpointModelConfig,
 	VertexAnthropicModelConfig,
 	HelperModelUsageReport,
+	HelperUsageHook,
 	InstanceAiMemoryConfig,
 	CreateInstanceAgentOptions,
 	TaskStorage,

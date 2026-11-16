@@ -16,7 +16,7 @@ import { extractJsonCandidate } from '@n8n/ai-utilities/llm-output';
 import type { z } from 'zod';
 
 import { createEvalAgent, extractText } from './eval-agents';
-import type { HelperModelUsageReport } from '../types';
+import type { HelperModelUsageReport, HelperUsageHook } from '../types';
 
 export type ValidatedJsonResult<T> =
 	| { ok: true; data: T }
@@ -39,7 +39,7 @@ export interface GenerateValidatedJsonOptions<T> {
 	/** Transport for the helper's model call. */
 	modelFetch?: FetchFn;
 	/** Receives the call's token usage so the host can bill it. */
-	onModelUsage?: (report: HelperModelUsageReport) => Promise<void>;
+	onHelperUsage?: HelperUsageHook;
 }
 
 /** Tracing must never block a model call: when it fails, the call runs without spans. */
@@ -58,9 +58,9 @@ async function reportUsage<T>(
 	options: GenerateValidatedJsonOptions<T>,
 	usage: HelperModelUsageReport['usage'],
 ): Promise<void> {
-	if (!options.onModelUsage || options.model === undefined) return;
+	if (!options.onHelperUsage || options.model === undefined) return;
 	try {
-		await options.onModelUsage({
+		await options.onHelperUsage({
 			helper: agentName,
 			model: getCatalogModelId(options.model),
 			usage,
