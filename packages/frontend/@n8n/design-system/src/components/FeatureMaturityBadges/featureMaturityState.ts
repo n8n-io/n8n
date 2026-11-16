@@ -6,8 +6,6 @@ export type FeatureMaturityEntry = {
 	preview: boolean;
 	/** Show Limited enterprise readiness on an enterprise plan. */
 	limitedEnterpriseSupport: boolean;
-	/** Documentation page for the settings header link. */
-	docsUrl?: string;
 	/** Test id prefix when the feature id is not the prefix pages already use. */
 	testId?: string;
 };

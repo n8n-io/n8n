@@ -101,7 +101,7 @@ describe('FeatureMaturityBadges', () => {
 	});
 
 	it('shows the enterprise tooltip on keyboard focus', async () => {
-		const { getByText, findAllByText, queryByRole } = render(FeatureMaturityBadges, {
+		const { getByText, findAllByText } = render(FeatureMaturityBadges, {
 			...enterprisePlan,
 			props: { feature: 'assistant' },
 		});
@@ -112,6 +112,5 @@ describe('FeatureMaturityBadges', () => {
 		expect(
 			await findAllByText("Some enterprise capabilities don't cover this feature yet."),
 		).not.toHaveLength(0);
-		expect(queryByRole('link', { name: 'Learn more' })).not.toBeInTheDocument();
 	});
 });

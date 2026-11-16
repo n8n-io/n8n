@@ -167,10 +167,6 @@ describe('SettingsChatHubView', () => {
 		expect(getByTestId('chat-hub-enterprise-readiness-badge')).toHaveTextContent(
 			'Limited enterprise readiness',
 		);
-		expect(getByTestId('settings-page-header-docs')).toHaveAttribute(
-			'href',
-			'https://docs.n8n.io/advanced-ai/chat-hub/',
-		);
 	});
 
 	it('shows only the Preview badge on other plans', () => {

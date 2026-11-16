@@ -44,11 +44,7 @@ const featureMaturityStub: FeatureMaturityCatalog = {
 	agents: { preview: true, limitedEnterpriseSupport: true },
 	roles: { preview: false, limitedEnterpriseSupport: false },
 	context: { preview: true, limitedEnterpriseSupport: true },
-	assistant: {
-		preview: false,
-		limitedEnterpriseSupport: true,
-		docsUrl: 'https://docs.n8n.io/deploy/host-n8n/configure-n8n/set-up-n8n-assistant',
-	},
+	assistant: { preview: false, limitedEnterpriseSupport: true },
 };
 
 setup((app) => {

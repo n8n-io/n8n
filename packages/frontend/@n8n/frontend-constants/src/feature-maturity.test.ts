@@ -7,14 +7,9 @@ describe('featureMaturity', () => {
 			assistant: {
 				preview: false,
 				limitedEnterpriseSupport: true,
-				docsUrl: 'https://docs.n8n.io/deploy/host-n8n/configure-n8n/set-up-n8n-assistant',
 				testId: 'n8n-agent',
 			},
-			agents: {
-				preview: true,
-				limitedEnterpriseSupport: true,
-				docsUrl: 'https://docs.n8n.io/build/build-and-manage-agents',
-			},
+			agents: { preview: true, limitedEnterpriseSupport: true },
 			n8nPackages: { preview: true, limitedEnterpriseSupport: true },
 			workflowReviews: {
 				preview: true,
@@ -32,7 +27,6 @@ describe('featureMaturity', () => {
 			chat: {
 				preview: true,
 				limitedEnterpriseSupport: true,
-				docsUrl: 'https://docs.n8n.io/advanced-ai/chat-hub/',
 				testId: 'chat-hub',
 			},
 		});

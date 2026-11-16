@@ -13,25 +13,18 @@ export type FeatureMaturity = {
 	preview: boolean;
 	/** Show Limited enterprise support on an enterprise plan. */
 	limitedEnterpriseSupport: boolean;
-	/** Documentation page for the settings header link. */
-	docsUrl?: string;
 	/** Test id prefix when the feature id is not the prefix pages already use. */
 	testId?: string;
 };
-
-const ASSISTANT_DOCS_URL = 'https://docs.n8n.io/deploy/host-n8n/configure-n8n/set-up-n8n-assistant';
-const AGENTS_DOCS_URL = 'https://docs.n8n.io/build/build-and-manage-agents';
-const CHAT_DOCS_URL = 'https://docs.n8n.io/advanced-ai/chat-hub/';
 
 export const featureMaturity = {
 	endUserCredentials: { preview: true, limitedEnterpriseSupport: false },
 	assistant: {
 		preview: false,
 		limitedEnterpriseSupport: true,
-		docsUrl: ASSISTANT_DOCS_URL,
 		testId: 'n8n-agent',
 	},
-	agents: { preview: true, limitedEnterpriseSupport: true, docsUrl: AGENTS_DOCS_URL },
+	agents: { preview: true, limitedEnterpriseSupport: true },
 	n8nPackages: { preview: true, limitedEnterpriseSupport: true },
 	workflowReviews: {
 		preview: true,
@@ -49,7 +42,6 @@ export const featureMaturity = {
 	chat: {
 		preview: true,
 		limitedEnterpriseSupport: true,
-		docsUrl: CHAT_DOCS_URL,
 		testId: 'chat-hub',
 	},
 } as const satisfies Record<string, FeatureMaturity>;

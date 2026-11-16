@@ -1,13 +1,8 @@
 import { render, screen } from '@testing-library/vue';
-import { computed } from 'vue';
 
-import { EnterprisePlanKey } from '../FeatureMaturityBadges/featureMaturityState';
 import { provideFeatureMaturity } from '../FeatureMaturityBadges/featureMaturityStub';
 import N8nSettingsPageHeader from './SettingsPageHeader.vue';
 
-const enterprisePlan = provideFeatureMaturity({
-	[EnterprisePlanKey as symbol]: computed(() => true),
-});
 const featureList = provideFeatureMaturity();
 
 describe('N8nSettingsPageHeader', () => {
@@ -31,23 +26,6 @@ describe('N8nSettingsPageHeader', () => {
 		expect(
 			screen.queryByTestId('settings-context-enterprise-readiness-badge'),
 		).not.toBeInTheDocument();
-	});
-
-	it('uses the feature docs page when the header has no docsUrl', () => {
-		render(N8nSettingsPageHeader, {
-			...enterprisePlan,
-			props: {
-				title: 'Assistant',
-				description: 'Help people build workflows.',
-				feature: 'assistant',
-			},
-		});
-
-		expect(screen.getByRole('link', { name: 'documentation' })).toHaveAttribute(
-			'href',
-			'https://docs.n8n.io/deploy/host-n8n/configure-n8n/set-up-n8n-assistant',
-		);
-		expect(screen.queryByTestId('n8n-agent-enterprise-readiness-badge')).not.toBeInTheDocument();
 	});
 
 	it('renders the titleTrailing slot alongside the title', () => {

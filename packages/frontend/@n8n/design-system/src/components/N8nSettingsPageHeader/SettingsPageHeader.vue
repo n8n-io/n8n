@@ -34,8 +34,8 @@ export interface SettingsPageHeaderProps {
 	/** Heading element for the page title. */
 	headingTag?: string;
 	/**
-	 * Feature id from the list the app provides. When the entry has a docs page, that page is the
-	 * docs link unless `docsUrl` is set. Badges render beside the title only when `showBadges` is true.
+	 * Feature id from the list the app provides.
+	 * Badges render beside the title only when `showBadges` is true.
 	 */
 	feature?: string;
 	/** Render this feature's badges beside the title. */
@@ -67,10 +67,6 @@ const resolvedDocsLeadingText = computed(
 );
 const enterprisePlan = useEnterprisePlan();
 const catalog = useFeatureMaturityCatalog();
-const featureDocsUrl = computed(() =>
-	props.feature ? catalog[props.feature]?.docsUrl : undefined,
-);
-const resolvedDocsUrl = computed(() => props.docsUrl ?? featureDocsUrl.value);
 const featureBadges = computed(() =>
 	props.showBadges
 		? resolveFeatureMaturityBadges(catalog, props.feature, enterprisePlan.value)
@@ -87,7 +83,7 @@ const showTitleRow = computed(() => showFeatureBadges.value || Boolean(slots.tit
 // disabled: still visible as the nudge, but not a focusable no-op control.
 if (import.meta.env.DEV) {
 	watchEffect(() => {
-		if (props.showDocsLink && !resolvedDocsUrl.value) {
+		if (props.showDocsLink && !props.docsUrl) {
 			console.warn(
 				'[N8nSettingsPageHeader] The docs link is enabled but no `docsUrl` was provided. ' +
 					'Set `docs-url` to your documentation page, or pass `:show-docs-link="false"` to remove it.',
@@ -125,8 +121,8 @@ if (import.meta.env.DEV) {
 					}}<N8nExternalLink
 						inline
 						size="small"
-						:href="resolvedDocsUrl || undefined"
-						:disabled="resolvedDocsUrl ? undefined : true"
+						:href="docsUrl || undefined"
+						:disabled="docsUrl ? undefined : true"
 						data-test-id="settings-page-header-docs"
 						>{{ resolvedDocsLabel }}</N8nExternalLink
 					></N8nText

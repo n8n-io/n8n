@@ -62,6 +62,7 @@ const {
 	searchState,
 } = useInstanceAiConfiguration();
 
+const DOCS_URL = 'https://docs.n8n.io/deploy/host-n8n/configure-n8n/set-up-n8n-assistant';
 const DATA_SHARING_DOCS_URL =
 	'https://docs.n8n.io/build/ways-of-building-workflows/use-the-ai-assistant#ai-usage-settings';
 
@@ -444,6 +445,7 @@ async function handleDataSharingToggle(value: boolean) {
 			show-badges
 			:title="i18n.baseText('settings.n8nAgent')"
 			:description="i18n.baseText('settings.n8nAgent.description')"
+			:docs-url="DOCS_URL"
 			:docs-label="i18n.baseText('settings.n8nAgent.docsLabel')"
 		/>
 
