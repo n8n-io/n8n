@@ -27,7 +27,7 @@ import * as moduleInitializer from '@/app/moduleInitializer/moduleInitializer';
 import { initializeExpressionEngine } from '@/app/init/expressionEngine';
 import {
 	initializeQuickJsExpressionShadow,
-	notifyQuickJsShadowEditorReady,
+	preloadQuickJsExpressionShadow,
 	stopQuickJsExpressionShadow,
 } from '@/experiments/quickjsExpressionShadow/init';
 import { flushPromises } from '@vue/test-utils';
@@ -79,13 +79,13 @@ vi.mock('@/app/init/toastNotifier', () => ({
 // The real one dynamically imports the QuickJS runtime bundle, which has no
 // place in this graph. It stays inert on the default `legacy` setting anyway.
 vi.mock('@/app/init/expressionEngine', () => ({
-	initializeExpressionEngine: vi.fn(),
+	initializeExpressionEngine: vi.fn(async () => {}),
 }));
 
 // The real one waits for feature flags and loads the QuickJS runtime bundle.
 vi.mock('@/experiments/quickjsExpressionShadow/init', () => ({
 	initializeQuickJsExpressionShadow: vi.fn(async () => {}),
-	notifyQuickJsShadowEditorReady: vi.fn(),
+	preloadQuickJsExpressionShadow: vi.fn(),
 	stopQuickJsExpressionShadow: vi.fn(),
 }));
 
@@ -259,9 +259,61 @@ describe('Init', () => {
 			expect(initializeExpressionEngine).toHaveBeenCalledWith('legacy');
 		});
 
-		// Public settings omit the engine, so an unauthenticated boot leaves the
-		// legacy evaluator in place and the login hook is the first point where
-		// the choice is known.
+		it('should not wait for the expression engine when no user is signed in', async () => {
+			usersStore.currentUser = null;
+			vi.mocked(initializeExpressionEngine).mockImplementationOnce(
+				async () => await new Promise<void>(() => {}),
+			);
+
+			await initializeCore();
+
+			expect(state.initialized).toBe(true);
+		});
+
+		it('should wait for the expression engine in preview mode', async () => {
+			usersStore.currentUser = null;
+			settingsStore.isPreviewMode = true;
+			let finishEngineStart: () => void = () => {};
+			vi.mocked(initializeExpressionEngine).mockImplementationOnce(
+				async () =>
+					await new Promise<void>((resolve) => {
+						finishEngineStart = resolve;
+					}),
+			);
+
+			const core = initializeCore();
+			await new Promise((resolve) => setTimeout(resolve));
+			expect(state.initialized).toBe(false);
+
+			finishEngineStart();
+			await core;
+			settingsStore.isPreviewMode = false;
+
+			expect(state.initialized).toBe(true);
+		});
+
+		it('should load the user while the expression engine starts, and wait for the engine', async () => {
+			usersStore.currentUser = mock<IUser>({ id: '123' });
+			let finishEngineStart: () => void = () => {};
+			vi.mocked(initializeExpressionEngine).mockImplementationOnce(
+				async () =>
+					await new Promise<void>((resolve) => {
+						finishEngineStart = resolve;
+					}),
+			);
+
+			const core = initializeCore();
+			await vi.waitFor(() => expect(usersStore.initialize).toHaveBeenCalled());
+			expect(state.initialized).toBe(false);
+
+			finishEngineStart();
+			await core;
+
+			expect(state.initialized).toBe(true);
+		});
+
+		// A boot that could not read the settings leaves the legacy evaluator in
+		// place, and the login hook is the next point where the choice is known.
 		it('should start the expression engine in the login hook with authenticated settings', async () => {
 			settingsStore.getSettings.mockImplementation(async () => {
 				settingsStore.settings.expressionEngine = 'quickjs';
@@ -298,6 +350,20 @@ describe('Init', () => {
 			expect(initializeQuickJsExpressionShadow).toHaveBeenCalledTimes(1);
 			expect(postHogInit.mock.invocationCallOrder[0]).toBeLessThan(
 				vi.mocked(initializeQuickJsExpressionShadow).mock.invocationCallOrder[0],
+			);
+		});
+
+		it('should preload the expression shadow engine in the login hook before the settings request', async () => {
+			const featureFlags = { '126_quickjs_expression_shadow': true };
+			usersStore.registerLoginHook.mockImplementation(async (hook) => {
+				await hook(mock<CurrentUserResponse>({ id: 'userId', featureFlags }));
+			});
+
+			await initializeCore();
+
+			expect(preloadQuickJsExpressionShadow).toHaveBeenCalledWith(featureFlags);
+			expect(vi.mocked(preloadQuickJsExpressionShadow).mock.invocationCallOrder[0]).toBeLessThan(
+				settingsStore.getSettings.mock.invocationCallOrder[0],
 			);
 		});
 
@@ -400,7 +466,6 @@ describe('Init', () => {
 			expect(sourceControlSpy).not.toHaveBeenCalled();
 			expect(nodeTranslationSpy).not.toHaveBeenCalled();
 			expect(versionsSpy).not.toHaveBeenCalled();
-			expect(notifyQuickJsShadowEditorReady).not.toHaveBeenCalled();
 			expect(nodeTypesStore.loadNodeTypesIfNotLoaded).not.toHaveBeenCalled();
 			expect(credentialsStore.fetchAllCredentials).not.toHaveBeenCalled();
 			expect(credentialsStore.fetchCredentialTypes).not.toHaveBeenCalled();
@@ -525,7 +590,6 @@ describe('Init', () => {
 			// Modal openers are provided to the decoupled stores at bootstrap.
 			expect(usersStore.registerModalOpeners).toHaveBeenCalled();
 			expect(versionsStore.registerModalOpeners).toHaveBeenCalled();
-			expect(notifyQuickJsShadowEditorReady).toHaveBeenCalledTimes(1);
 
 			await initializeAuthenticatedFeatures();
 

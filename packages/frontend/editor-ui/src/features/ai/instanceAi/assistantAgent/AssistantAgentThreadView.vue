@@ -8,6 +8,8 @@ import type {
 } from '@n8n/api-types';
 import { useTelemetry } from '@n8n/composables/useTelemetry';
 import { useToast } from '@n8n/composables/useToast';
+import { useAssistantAwayTelemetry } from '../composables/useAssistantAwayTelemetry';
+import { getCurrentTurn } from '../assistantTurn';
 import {
 	N8nActionDropdown,
 	N8nIconButton,
@@ -100,6 +102,13 @@ import { useAssistantArtifactThread } from './useAssistantArtifactThread';
 const props = defineProps<{ threadId: string; projectId: string }>();
 
 provide(ASSISTANT_AGENT_THREAD_ID, props.threadId);
+useAssistantAwayTelemetry({
+	threadId: () => props.threadId,
+	isRunning: () => (panel.value?.isStreaming || panel.value?.isSubmitting) ?? false,
+	isAwaitingUser: () => panel.value?.isAwaitingUserAnswer ?? false,
+	isReady: () => panel.value?.isLoadingHistory === false,
+	turn: () => getCurrentTurn(thread.artifactTurns),
+});
 provide(ASSISTANT_AGENT_PROJECT_ID, props.projectId);
 
 const telemetry = useTelemetry();
@@ -177,7 +186,6 @@ const agentConfig = computed<AgentJsonConfig>(() => ({
 	name: identity.name.value,
 	model: '',
 	instructions: '',
-	personalisation: identity.personalisation,
 }));
 
 /** The Assistant reads the same request fields as from its current runtime. */
@@ -705,6 +713,7 @@ function removeStagedNodes(chipId: string): void {
 						:continue-session-id="props.threadId"
 						:new-session="isNewSession"
 						:agent-config="agentConfig"
+						empty-state-icon="n8n-assistant"
 						:accepted-mime-types="ASSISTANT_AGENT_ACCEPTED_MIME_TYPES"
 						agent-status="production"
 						:connected-triggers="[]"

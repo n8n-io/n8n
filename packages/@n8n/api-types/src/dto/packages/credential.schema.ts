@@ -1,5 +1,7 @@
 import { z } from 'zod';
 
+import { credentialDescriptionSchema } from '../../schemas/credential-description.schema';
+
 /**
  * A plain value (boolean, string) can only be a value of a field that decides which other
  * fields show. The package reader checks this against the credential type and drops every other
@@ -29,6 +31,8 @@ export const serializedCredentialSchema = z
 		id: z.string().min(1),
 		name: z.string().min(1),
 		type: z.string().min(1),
+		// Present only when the source instance has credential descriptions on.
+		description: credentialDescriptionSchema.optional(),
 		data: serializedCredentialDataSchema.optional(),
 		dataIsComplete: z.boolean().optional(),
 	})

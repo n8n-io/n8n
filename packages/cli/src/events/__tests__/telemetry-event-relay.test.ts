@@ -592,12 +592,12 @@ describe('TelemetryEventRelay', () => {
 			});
 		});
 
-		it('should track on `source-control-user-started-pull-ui` event with publicApi: true', () => {
+		it('should track on `source-control-user-started-pull-ui` event from a public API route', () => {
 			const event: RelayEventMap['source-control-user-started-pull-ui'] = {
 				workflowUpdates: 5,
 				workflowConflicts: 2,
 				credConflicts: 1,
-				publicApi: true,
+				publicApi: 'other',
 			};
 
 			eventService.emit('source-control-user-started-pull-ui', event);
@@ -607,6 +607,7 @@ describe('TelemetryEventRelay', () => {
 				workflow_conflicts: 2,
 				cred_conflicts: 1,
 				public_api: true,
+				public_api_client: 'other',
 			});
 		});
 
@@ -662,7 +663,7 @@ describe('TelemetryEventRelay', () => {
 			});
 		});
 
-		it('should track on `source-control-user-started-push-ui` event with publicApi: true', () => {
+		it('should track on `source-control-user-started-push-ui` event from a public API route', () => {
 			const event: RelayEventMap['source-control-user-started-push-ui'] = {
 				userId: 'userId',
 				workflowsEligible: 10,
@@ -670,7 +671,7 @@ describe('TelemetryEventRelay', () => {
 				credsEligible: 5,
 				credsEligibleWithConflicts: 1,
 				variablesEligible: 3,
-				publicApi: true,
+				publicApi: 'other',
 			};
 
 			eventService.emit('source-control-user-started-push-ui', event);
@@ -683,6 +684,7 @@ describe('TelemetryEventRelay', () => {
 				creds_eligible_with_conflicts: 1,
 				variables_eligible: 3,
 				public_api: true,
+				public_api_client: 'other',
 			});
 		});
 
@@ -708,14 +710,14 @@ describe('TelemetryEventRelay', () => {
 			});
 		});
 
-		it('should track on `source-control-user-finished-push-ui` event with publicApi: true', () => {
+		it('should track on `source-control-user-finished-push-ui` event from a public API route', () => {
 			const event: RelayEventMap['source-control-user-finished-push-ui'] = {
 				userId: 'userId',
 				workflowsEligible: 10,
 				workflowsPushed: 8,
 				credsPushed: 5,
 				variablesPushed: 3,
-				publicApi: true,
+				publicApi: 'other',
 			};
 
 			eventService.emit('source-control-user-finished-push-ui', event);
@@ -727,6 +729,7 @@ describe('TelemetryEventRelay', () => {
 				creds_pushed: 5,
 				variables_pushed: 3,
 				public_api: true,
+				public_api_client: 'other',
 			});
 		});
 	});
@@ -2023,7 +2026,7 @@ describe('TelemetryEventRelay', () => {
 					lastName: 'Doe',
 					role: { slug: GLOBAL_OWNER_ROLE.slug },
 				},
-				publicApi: true,
+				publicApi: 'other',
 			};
 
 			eventService.emit('public-api-key-created', event);
@@ -2031,6 +2034,7 @@ describe('TelemetryEventRelay', () => {
 			expect(telemetry.track).toHaveBeenCalledWith('API key created', {
 				user_id: 'user123',
 				public_api: true,
+				public_api_client: 'other',
 			});
 		});
 
@@ -2043,7 +2047,7 @@ describe('TelemetryEventRelay', () => {
 					lastName: 'Doe',
 					role: { slug: GLOBAL_OWNER_ROLE.slug },
 				},
-				publicApi: true,
+				publicApi: 'other',
 				isOwn: true,
 			};
 
@@ -2052,6 +2056,7 @@ describe('TelemetryEventRelay', () => {
 			expect(telemetry.track).toHaveBeenCalledWith('API key deleted', {
 				user_id: 'user123',
 				public_api: true,
+				public_api_client: 'other',
 				is_own: true,
 			});
 		});
@@ -2214,13 +2219,21 @@ describe('TelemetryEventRelay', () => {
 		});
 
 		it.each([
-			{ descriptionLength: 0, publicApi: false },
-			{ descriptionLength: 18, publicApi: false },
-			{ descriptionLength: 0, publicApi: true },
-			{ descriptionLength: 18, publicApi: true },
-		])(
+			{ descriptionLength: 0, publicApi: false, expected: { public_api: false } },
+			{ descriptionLength: 18, publicApi: false, expected: { public_api: false } },
+			{
+				descriptionLength: 0,
+				publicApi: 'editor_ui',
+				expected: { public_api: true, public_api_client: 'editor_ui' },
+			},
+			{
+				descriptionLength: 18,
+				publicApi: 'other',
+				expected: { public_api: true, public_api_client: 'other' },
+			},
+		] as const)(
 			'tracks creation with description length $descriptionLength and public API $publicApi',
-			({ descriptionLength, publicApi }) => {
+			({ descriptionLength, publicApi, expected }) => {
 				const event: RelayEventMap['credentials-created'] = {
 					credentialName: 'My GitHub account',
 					credentialDescriptionLength: descriptionLength,
@@ -2247,7 +2260,7 @@ describe('TelemetryEventRelay', () => {
 					TELEMETRY_EVENT.CREDENTIALS.USER_CREATED_CREDENTIALS,
 					{
 						source: 'backend',
-						public_api: publicApi,
+						...expected,
 						user_id: 'user123',
 						user_role: GLOBAL_OWNER_ROLE.slug,
 						credential_type: 'github',
@@ -2856,7 +2869,7 @@ describe('TelemetryEventRelay', () => {
 					nodes: [],
 					connections: {},
 				}),
-				publicApi: true,
+				publicApi: 'other',
 				source: 'api',
 			};
 
@@ -2870,6 +2883,7 @@ describe('TelemetryEventRelay', () => {
 					user_id: 'user123',
 					workflow_id: 'workflow123',
 					public_api: true,
+					public_api_client: 'other',
 					source: 'api',
 					private_credentials_count: 0,
 					private_credential_types: [],
@@ -3029,7 +3043,7 @@ describe('TelemetryEventRelay', () => {
 					nodes: [],
 					connections: {},
 				}),
-				publicApi: true,
+				publicApi: 'other',
 				deactivatedVersionId: 'version-abc-123',
 				source: 'n8n-mcp',
 			};
@@ -3040,6 +3054,7 @@ describe('TelemetryEventRelay', () => {
 				user_id: 'user123',
 				workflow_id: 'workflow123',
 				public_api: true,
+				public_api_client: 'other',
 				deactivated_version_id: 'version-abc-123',
 				source: 'n8n-mcp',
 			});

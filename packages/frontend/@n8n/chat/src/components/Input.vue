@@ -14,7 +14,7 @@ import {
 } from '@n8n/chat/utils';
 
 import ChatFile from './ChatFile.vue';
-import type { ChatMessage } from '../types';
+import type { ChatMessage, WebsocketSetupPayload } from '../types';
 
 export interface ChatInputProps {
 	placeholder?: string;
@@ -98,8 +98,12 @@ onChange((newFiles) => {
 	files.value = newFilesDT.files;
 });
 
-function handleSetupWebsocket(executionId: string, resumeToken?: string) {
-	setupWebsocketConnection(executionId, resumeToken);
+function handleSetupWebsocket(payload: string | WebsocketSetupPayload) {
+	if (typeof payload === 'string') {
+		setupWebsocketConnection(payload);
+		return;
+	}
+	setupWebsocketConnection(payload.executionId, payload.resumeToken);
 }
 
 onMounted(() => {
