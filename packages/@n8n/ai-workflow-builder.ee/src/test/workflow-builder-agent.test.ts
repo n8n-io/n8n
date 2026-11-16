@@ -57,14 +57,6 @@ jest.mock('@/chains/workflow-name', () => ({
 	workflowNameChain: jest.fn(),
 }));
 
-const mockRandomUUID = jest.fn();
-Object.defineProperty(global, 'crypto', {
-	value: {
-		randomUUID: mockRandomUUID,
-	},
-	writable: true,
-});
-
 import { MAX_AI_BUILDER_PROMPT_LENGTH } from '@/constants';
 import { ValidationError } from '@/errors';
 import { createMainAgentPrompt } from '@/tools/prompts/main-agent.prompt';
