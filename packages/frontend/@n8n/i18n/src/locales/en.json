@@ -51,6 +51,7 @@
 	"agents.hitl.route": "Reviewers",
 	"agents.hitl.mcpRoute": "Reviewers",
 	"agents.hitl.useDefault": "Ask user",
+	"agents.hitl.askUserHelp": "In a conversation, the Agent asks you first, then sends the request to any other reviewers.",
 	"agents.hitl.addReview": "Add human review",
 	"agents.hitl.create": "Create human review",
 	"agents.hitl.workflowLoadFailed": "Could not load decision workflows",

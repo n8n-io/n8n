@@ -44,6 +44,10 @@ type OutputType<TOutput> = TOutput extends z.ZodType ? z.infer<TOutput> : unknow
 
 export interface ApprovalConfig {
 	requireApproval?: boolean;
+	/** Additional context shown in the approval request. */
+	approvalNotice?: string;
+	/** Set false when each call needs a separate decision. */
+	allowSessionApproval?: boolean;
 	needsApprovalFn?: (args: unknown) => Promise<boolean> | boolean;
 }
 
@@ -127,7 +131,7 @@ export function wrapToolForApproval(tool: BuiltTool, config: ApprovalConfig): Bu
 			const grantKey = JSON.stringify(['tool', currentTool.name]);
 			const approvalContext = interruptCtx.approvalContext;
 			if (interruptCtx.resumeData === undefined) {
-				if (approvalContext?.approvedKeys.has(grantKey)) {
+				if (config.allowSessionApproval !== false && approvalContext?.approvedKeys.has(grantKey)) {
 					if (config.requireApproval || hasConditionalApproval) {
 						emitToolExecutionStart(currentTool, input, interruptCtx);
 					}
@@ -139,14 +143,17 @@ export function wrapToolForApproval(tool: BuiltTool, config: ApprovalConfig): Bu
 				}
 				if (needs) {
 					const displayName = getToolApprovalDisplayName(currentTool);
+					const description = [interruptCtx.approvalDescription, config.approvalNotice]
+						.filter(Boolean)
+						.join('\n\n');
 					return await interruptCtx.suspend(
 						{
 							type: 'approval',
 							toolName: currentTool.name,
-							...(interruptCtx.approvalDescription
-								? { description: interruptCtx.approvalDescription }
+							...(description ? { description } : {}),
+							...(approvalContext && config.allowSessionApproval !== false
+								? { supportsSessionApproval: true }
 								: {}),
-							...(approvalContext ? { supportsSessionApproval: true } : {}),
 							...(displayName ? { displayName } : {}),
 							args: approvalContext?.getDisplayArgs
 								? approvalContext.getDisplayArgs(currentTool.name, input)
@@ -165,7 +172,10 @@ export function wrapToolForApproval(tool: BuiltTool, config: ApprovalConfig): Bu
 			}
 
 			const decision = APPROVAL_RESUME_SCHEMA.parse(interruptCtx.resumeData);
-			if (decision.scope === 'session' && !approvalContext) {
+			if (
+				decision.scope === 'session' &&
+				(!approvalContext || config.allowSessionApproval === false)
+			) {
 				throw new Error('Session approvals are not available for this tool.');
 			}
 			await approvalContext?.onDecision(grantKey, decision);

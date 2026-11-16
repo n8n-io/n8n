@@ -50,9 +50,10 @@ async function openMenu(wrapper: ReturnType<typeof render>['wrapper']) {
 it('opens directly to review options with creation first and no input', async () => {
 	const { wrapper } = render();
 	expect(wrapper.text()).toContain('Reviewers');
-	const placeholder = wrapper.get('[data-testid="agent-review-placeholder"]');
-	expect(placeholder.text()).toBe('Ask user');
-	expect(placeholder.find('button').exists()).toBe(false);
+	const requester = wrapper.get('[data-testid="agent-review-requester"]');
+	expect(requester.text()).toBe('Ask user');
+	expect(requester.find('[data-icon="info"]').exists()).toBe(true);
+	expect(requester.get('button').attributes('aria-label')).toContain('asks you first');
 	expect(wrapper.find('[data-testid="agent-review-remove"]').exists()).toBe(false);
 	expect(wrapper.text()).toContain('Ask user');
 	await openMenu(wrapper);
@@ -88,9 +89,9 @@ it('appends a review after existing pills and excludes selected reviews from the
 		'Team review',
 	]);
 	expect(wrapper.text()).not.toContain('Reviews run in the order shown');
-	expect(wrapper.find('[data-testid="agent-review-placeholder"]').exists()).toBe(false);
+	expect(wrapper.find('[data-testid="agent-review-requester"]').exists()).toBe(true);
 });
-it('removes only the selected pill and falls back to Ask user after removing the last', async () => {
+it('keeps Ask user when the last external review is removed', async () => {
 	const { wrapper } = render({ type: 'configuration', configurationIds: ['workflow', 'slack'] });
 	await wrapper.findAll('[data-testid="agent-review-remove"]')[0].trigger('click');
 	expect(wrapper.emitted('update:modelValue')?.[0]).toEqual([
@@ -100,7 +101,7 @@ it('removes only the selected pill and falls back to Ask user after removing the
 	await wrapper.get('[data-testid="agent-review-remove"]').trigger('click');
 	expect(wrapper.emitted('update:modelValue')?.[1]).toEqual([undefined]);
 	await wrapper.setProps({ modelValue: undefined });
-	expect(wrapper.get('[data-testid="agent-review-placeholder"]').text()).toBe('Ask user');
+	expect(wrapper.get('[data-testid="agent-review-requester"]').text()).toBe('Ask user');
 	expect(wrapper.find('[data-testid="agent-review-remove"]').exists()).toBe(false);
 });
 it('opens an existing review for editing without changing its order', async () => {
@@ -174,7 +175,7 @@ it('keeps the standard approval toggle available when Human review is off', asyn
 	expect(wrapper.find('[data-testid="agent-review"]').exists()).toBe(false);
 });
 
-it('replaces the Ask user placeholder when a reviewer is selected', async () => {
+it('keeps Ask user before selected reviewers', async () => {
 	const { wrapper } = render();
 	await openMenu(wrapper);
 	await wrapper.findAll('[role="menuitem"]')[1].trigger('click');
@@ -182,7 +183,13 @@ it('replaces the Ask user placeholder when a reviewer is selected', async () => 
 		{ type: 'configuration', configurationIds: ['workflow'] },
 	]);
 	await wrapper.setProps({ modelValue: { type: 'configuration', configurationIds: ['workflow'] } });
-	expect(wrapper.find('[data-testid="agent-review-placeholder"]').exists()).toBe(false);
-	expect(wrapper.text()).not.toContain('Ask user');
+	expect(wrapper.find('[data-testid="agent-review-requester"]').exists()).toBe(true);
+	expect(wrapper.text()).toContain('Ask user');
+	expect(
+		wrapper
+			.get('[data-testid="agent-review-requester"]')
+			.element.compareDocumentPosition(wrapper.get('[data-testid="agent-review-pill"]').element) &
+			Node.DOCUMENT_POSITION_FOLLOWING,
+	).toBeTruthy();
 	expect(wrapper.get('[data-testid="agent-review-pill"]').text()).toBe('Finance data check');
 });

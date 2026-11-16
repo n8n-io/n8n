@@ -2,11 +2,12 @@
 import { computed, ref, watch } from 'vue';
 import { useSettingsStore } from '@n8n/stores/settings.store';
 import { HUMAN_REVIEW_MODULE } from '@n8n/constants';
-import type { DropdownMenuItemProps } from '@n8n/design-system';
+import { N8nIcon, N8nTooltip, type DropdownMenuItemProps } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import type { AgentApprovalRoute, AgentHitlConfiguration } from '@n8n/api-types';
 import type { AgentHitlContext } from './agent-hitl.types';
 import AgentPillField from './AgentPillField.vue';
+import AgentChipButton from './AgentChipButton.vue';
 import AgentToolConfigApprovalSetting from './AgentToolConfigApprovalSetting.vue';
 import AgentHitlConfigurationModal from './AgentHitlConfigurationModal.vue';
 
@@ -126,7 +127,6 @@ watch(
 			:embedded="embedded"
 			:add-label="i18n.baseText('agents.hitl.addReview')"
 			:show-items="approvalRequired !== false"
-			:empty-text="i18n.baseText('agents.hitl.useDefault')"
 			:pills="selected"
 			:items="items"
 			:disabled="disabled"
@@ -135,6 +135,30 @@ watch(
 			@remove="remove"
 			@edit="edit"
 		>
+			<template #leading-pill>
+				<AgentChipButton
+					:clickable="false"
+					:deactivated="disabled"
+					data-testid="agent-review-requester"
+				>
+					<span :class="$style.requester">
+						{{ i18n.baseText('agents.hitl.useDefault') }}
+						<N8nTooltip
+							as-child
+							:content="i18n.baseText('agents.hitl.askUserHelp')"
+							:teleported="false"
+						>
+							<button
+								type="button"
+								:class="$style.info"
+								:aria-label="i18n.baseText('agents.hitl.askUserHelp')"
+							>
+								<N8nIcon icon="info" size="small" />
+							</button>
+						</N8nTooltip>
+					</span>
+				</AgentChipButton>
+			</template>
 			<template v-if="approvalRequired !== undefined" #header>
 				<AgentToolConfigApprovalSetting
 					:model-value="approvalRequired"
@@ -161,3 +185,23 @@ watch(
 		@update:model-value="updateApprovalRequired"
 	/>
 </template>
+
+<style module lang="scss">
+@use '@n8n/design-system/css/mixins/focus';
+
+.requester {
+	display: inline-flex;
+	align-items: center;
+	gap: var(--spacing--4xs);
+}
+.info {
+	@include focus.focus-visible-ring;
+	display: inline-flex;
+	padding: 0;
+	border: 0;
+	background: transparent;
+	color: var(--text-color--subtler);
+	cursor: help;
+	pointer-events: auto;
+}
+</style>

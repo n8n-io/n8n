@@ -37,6 +37,7 @@ import { AgentChannelHitlService } from '@/modules/agents/approval/agent-channel
 import { AgentDecisionWorkflowService } from '@/modules/agents/approval/agent-decision-workflow.service';
 import { getAgentRuntimeDefinitionHash } from '@/modules/agents/utils/agent-config-hash';
 import { registerApprovalRuntime } from '@/modules/agents/approval/register-approval-runtime';
+import { encodeReviewRequester } from '@/modules/agents/approval/review-requester';
 import { AgentBackgroundJobService } from '@/modules/agents/background/agent-background-job.service';
 import type { AgentChatIntegration } from '@/modules/agents/integrations/agent-chat-integration';
 import { ChatIntegrationRegistry } from '@/modules/agents/integrations/agent-chat-integration';
@@ -250,7 +251,8 @@ describe('Durable channel approval lifecycle', () => {
 					[{ type: 'slack', credentialId: 'credential' }],
 					generateNanoId(),
 				);
-				graph.nodes[1].parameters.message = '={{ $json.toolName }}';
+				graph.nodes[1].parameters.message =
+					'={{ $json.toolName + " requested by " + $json.requester.name }}';
 				const workflow = await createWorkflowWithHistory(
 					{ ...graph, name: 'Decision workflow' },
 					project,
@@ -312,6 +314,7 @@ describe('Durable channel approval lifecycle', () => {
 					threadId,
 					resourceId: 'resource',
 					hostMetadata: {
+						...encodeReviewRequester({ id: 'U_REQUESTER', name: 'Alex Example', source: 'slack' }),
 						workflowCaller: JSON.stringify({
 							workflowId: caller.id,
 							executionId: callerExecution.id,
@@ -325,8 +328,24 @@ describe('Durable channel approval lifecycle', () => {
 			});
 			await drain(first.stream);
 			expect(await checkpoints.load(first.runId, agent.id)).toMatchObject({ status: 'suspended' });
+			expect(send).not.toHaveBeenCalled();
+			expect(await jobs.findByParentThread(threadId)).toEqual([]);
+			const confirmed = await buildAgent().resume(
+				'stream',
+				{ approved: true },
+				{
+					runId: first.runId,
+					toolCallId: 'call',
+				},
+			);
+			await drain(confirmed.stream);
 			expect(handler).not.toHaveBeenCalled();
 			expect(send).toHaveBeenCalledOnce();
+			expect(send.mock.calls[0][0].message).toContain(
+				method === 'channel'
+					? 'Requested by: Alex Example (U_REQUESTER)'
+					: 'save requested by Alex Example',
+			);
 			const [job] = await jobs.findByParentThread(threadId);
 			expect(job).toMatchObject({ kind: 'approval', status: 'running', parentRunId: first.runId });
 			const childId = job.childExecutionId!;

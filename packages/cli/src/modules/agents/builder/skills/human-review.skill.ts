@@ -61,8 +61,10 @@ whether that action may run.
 
 Start with Agent review (\`n8n-nodes-base.agentDecisionTrigger\`). Its input
 contains the proposed tool call and, when caller redaction permits, its
-arguments. Respect \`argumentsRedacted\`; do not reconstruct hidden arguments
-or put them in approval messages. Add the needed form, send-and-wait, routing,
+arguments in \`$json.toolInput\`. The optional \`$json.requester\` identifies
+the user who requested the action. It contains \`id\`, \`source\`, and an
+optional \`name\`. Do not assume a requester exists for scheduled or workflow runs. Respect \`argumentsRedacted\`; do not
+reconstruct hidden arguments or put them in approval messages. Add the needed form, send-and-wait, routing,
 or validation nodes. Use node discovery to check the available operations. Do not add a waiting operation as an inline Agent
 node tool.
 
@@ -72,6 +74,10 @@ Respond to agent review (\`n8n-nodes-base.agentDecisionResponse\`) node builds
 the same result. Include a real review step; never use an unconditional
 approval as a substitute for human review. A production Agent uses the
 published review workflow. Explain any publication that remains pending.
+
+Use Fetch Test Event on Agent review to inspect an example request in the
+output viewer before wiring expressions. Edit or pin that output when the
+workflow needs test arguments for a particular tool.
 
 ## Attach and verify
 
@@ -84,10 +90,12 @@ published review workflow. Explain any publication that remains pending.
   server use its route; do not change per-tool permission strings into objects.
 - Order reviews as the user requests. Every review must approve before the
   tool runs. Rejection, expiry, or a failed review stops the sequence.
-- A selected configuration always handles review, including in a conversation.
-  The requester sees a waiting message without approval controls. The channel
-  or workflow controls who can approve; this is not an n8n administrator-role
-  check. Without a configuration, approval stays in the current conversation.
+- In a conversation, ask the requester first. Explain that approval from the
+  configured reviewers follows their confirmation. Declining stops the request
+  before any reviewer is contacted. The requester cannot approve on behalf of
+  those reviewers. While external review is pending, show a waiting message.
+  The channel or workflow controls who can approve; this is not an n8n
+  administrator-role check. Without a configuration, only chat approval is needed.
 - Workflow callers must use Message an Agent version 4 to suspend for review.
   Scheduled tasks and workflow callers need a configured review destination
   when there is no requester to approve in chat.

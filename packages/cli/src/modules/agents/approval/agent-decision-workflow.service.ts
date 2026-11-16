@@ -39,6 +39,7 @@ import { getAgentRuntimeDefinitionHash } from '../utils/agent-config-hash';
 import { APPROVAL_EXPIRED_ERROR, hasApprovalExpired } from './approval-expiry';
 import { collectAgentDecision } from './decision-result';
 import { readWorkflowCaller } from './workflow-caller';
+import { readReviewRequester, type AgentReviewRequester } from './review-requester';
 
 interface ApprovalRunIdentity {
 	agentId: string;
@@ -94,7 +95,7 @@ export class AgentDecisionWorkflowService {
 			identity.integrations,
 		);
 		const handler = tool.handler;
-		return {
+		const reviewed: BuiltTool = {
 			...tool,
 			approval: { required: true },
 			suspendSchema: z.unknown(),
@@ -174,6 +175,18 @@ export class AgentDecisionWorkflowService {
 				return await review(firstIndex);
 			},
 		};
+		const hasRequester =
+			identity.previewChat ||
+			identity.publishedN8nChat ||
+			(identity.integrationType !== undefined && identity.integrationType !== 'task');
+		return hasRequester && configurations.every((configuration) => configuration !== undefined)
+			? wrapToolForApproval(reviewed, {
+					requireApproval: true,
+					allowSessionApproval: false,
+					approvalNotice:
+						'If you approve, the Agent will request approval from the configured reviewers before running this tool.',
+				})
+			: reviewed;
 	}
 
 	private approvedContext(
@@ -205,7 +218,12 @@ export class AgentDecisionWorkflowService {
 		};
 	}
 
-	private approvalMessage(tool: BuiltTool, description: string | undefined, redacted: boolean) {
+	private approvalMessage(
+		tool: BuiltTool,
+		description: string | undefined,
+		redacted: boolean,
+		requester: AgentReviewRequester | undefined,
+	) {
 		const card = buildApprovalCardPayload({
 			type: 'approval',
 			toolName: tool.name,
@@ -215,6 +233,11 @@ export class AgentDecisionWorkflowService {
 		});
 		const message = [
 			card.title,
+			...(requester
+				? [
+						`Requested by: ${requester.name ? `${requester.name} (${requester.id})` : requester.id} via ${requester.source}`,
+					]
+				: []),
 			...card.components.flatMap((component) =>
 				component.type === 'section' && typeof component.text === 'string' ? [component.text] : [],
 			),
@@ -304,6 +327,7 @@ export class AgentDecisionWorkflowService {
 						requestedAt.getTime() + configuration.expirySeconds * Time.seconds.toMilliseconds,
 					)
 				: undefined;
+			const requester = readReviewRequester(ctx.persistence);
 			const result = await executeWorkflow(
 				Object.assign(workflow, {
 					settings: {
@@ -316,16 +340,22 @@ export class AgentDecisionWorkflowService {
 				{
 					...(configuration.method === 'channel'
 						? {
-								message: this.approvalMessage(tool, ctx.approvalDescription, argumentsRedacted),
+								message: this.approvalMessage(
+									tool,
+									ctx.approvalDescription,
+									argumentsRedacted,
+									requester,
+								),
 							}
 						: {}),
 					requestId: `${ctx.runId}:${ctx.toolCallId}`,
 					agentId: identity.agentId,
+					...(requester ? { requester: { ...requester } } : {}),
 					toolName: tool.name,
 					...(ctx.approvalDescription && !argumentsRedacted
 						? { description: ctx.approvalDescription }
 						: {}),
-					...(argumentsRedacted ? { argumentsRedacted: true } : { arguments: args }),
+					...(argumentsRedacted ? { argumentsRedacted: true } : { toolInput: args }),
 					requestedAt: requestedAt.toISOString(),
 					...(timeoutAt ? { expiresAt: timeoutAt.toISOString() } : {}),
 				},

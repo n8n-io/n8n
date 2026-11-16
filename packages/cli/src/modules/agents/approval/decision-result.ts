@@ -4,15 +4,17 @@ import { getChildNodes, type IRunData, type IConnections } from 'n8n-workflow';
 
 /** A decision workflow must finish with one decision, including across branches. */
 export function collectAgentDecision(runData: IRunData, connections?: IConnections) {
-	const names = Object.keys(runData);
+	const names = Object.keys(runData).filter((name) =>
+		runData[name].some((run) => run.data?.main?.some((branch) => (branch?.length ?? 0) > 0)),
+	);
 	const terminalNames = connections
-		? names.filter((name) => getChildNodes(connections, name, 'main', 1).length === 0)
+		? names.filter((name) => getChildNodes(connections, name, 'ALL', 1).length === 0)
 		: names.slice(-1);
 	if (terminalNames.length !== 1) {
 		throw new UserError('The decision workflow must return one decision from one terminal node');
 	}
 	const runs = runData[terminalNames[0]];
-	const items = runs.flatMap((run) => run.data?.main.flatMap((branch) => branch ?? []) ?? []);
+	const items = runs.flatMap((run) => run.data?.main?.flatMap((branch) => branch ?? []) ?? []);
 	if (items.length !== 1) {
 		throw new UserError('The decision workflow must return exactly one decision item');
 	}

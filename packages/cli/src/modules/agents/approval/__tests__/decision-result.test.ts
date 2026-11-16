@@ -35,6 +35,46 @@ describe('collectAgentDecision', () => {
 		).toEqual({ approved: false });
 	});
 
+	it.each(['ai_languageModel', 'ai_tool'] as const)(
+		'ignores %s sub-node data when reading a workflow decision',
+		(connection) => {
+			const runData: IRunData = {
+				Review: [output({ approved: true })],
+				Helper: [
+					{ ...output({}), data: { [connection]: [[{ json: { response: 'Review context' } }]] } },
+				],
+			};
+			expect(
+				collectAgentDecision(runData, {
+					Helper: { [connection]: [[{ node: 'Review', type: connection, index: 0 }]] },
+				}),
+			).toEqual({ approved: true });
+			expect(collectAgentDecision(runData)).toEqual({ approved: true });
+		},
+	);
+
+	it('excludes a connected AI helper that records main output', () => {
+		expect(
+			collectAgentDecision(
+				{
+					Review: [output({ approved: true })],
+					Tool: [output({ response: 'Review context' })],
+				},
+				{
+					Tool: { ai_tool: [[{ node: 'Review', type: 'ai_tool', index: 0 }]] },
+				},
+			),
+		).toEqual({ approved: true });
+	});
+
+	it('ignores a terminal branch that produced no items', () => {
+		const runData: IRunData = {
+			Empty: [{ ...output({}), data: { main: [[]] } }],
+			Review: [output({ approved: false })],
+		};
+		expect(collectAgentDecision(runData, {})).toEqual({ approved: false });
+	});
+
 	it.each([{}, { approved: 'yes' }, { data: { approved: 1 } }])(
 		'rejects invalid decisions: %j',
 		(value) => {

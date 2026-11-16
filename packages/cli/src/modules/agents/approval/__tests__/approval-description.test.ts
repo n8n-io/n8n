@@ -39,6 +39,10 @@ describe('approval descriptions', () => {
 		async (schema) => {
 			const { wrapped, handler, suspend, context } = setup(schema);
 			const input = { target: 'record', __approvalDescription: '  Update the selected record.  ' };
+			expect(wrapped.inputSchema).toMatchObject({
+				required: ['target', '__approvalDescription'],
+			});
+			expect(wrapped.description).toContain('include __approvalDescription');
 			expect(await wrapped.handler?.(input, context)).toBe('waiting');
 			expect(suspend).toHaveBeenCalledWith(
 				expect.objectContaining({
@@ -77,17 +81,9 @@ describe('approval descriptions', () => {
 			{ name: 'respond', description: 'Respond', handler },
 			() => false,
 		);
+		expect(tool.inputSchema).toMatchObject({ required: [] });
 		await tool.handler?.({ message: 'Hello' }, {});
 		expect(handler).toHaveBeenCalledWith({ message: 'Hello' }, expect.anything());
-	});
-
-	it('resumes an existing request without a description', async () => {
-		const { wrapped, handler, context } = setup();
-		await wrapped.handler?.(
-			{ target: 'record' },
-			{ ...context, resumeData: { approved: true }, suspendPayload: { type: 'approval' } },
-		);
-		expect(handler).toHaveBeenCalledWith({ target: 'record' }, expect.anything());
 	});
 
 	it('removes approval metadata before cancellation', async () => {

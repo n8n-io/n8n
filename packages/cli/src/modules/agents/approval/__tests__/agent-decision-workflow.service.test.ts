@@ -22,6 +22,7 @@ import type { AgentBackgroundJob } from '../../entities/agent-background-job.ent
 import type { AgentBackgroundJobRepository } from '../../repositories/agent-background-job.repository';
 import type { CallableWorkflowLoader } from '@/workflows/callable/callable-workflow-loader.service';
 import { AgentDecisionWorkflowService } from '../agent-decision-workflow.service';
+import { encodeReviewRequester } from '../review-requester';
 
 const configuration: AgentJsonConfig = {
 	name: 'Reviewer',
@@ -86,6 +87,7 @@ function setup(agentConfiguration: AgentJsonConfig = configuration, reviewIds = 
 			agentId: 'agent',
 			projectId: 'project',
 			published: false,
+			userId: 'workflow-executor',
 		},
 	);
 	const suspend = vi.fn().mockResolvedValue('waiting');
@@ -230,7 +232,7 @@ describe('Agent review workflow approval', () => {
 				expect.objectContaining({
 					requestId: 'run:call',
 					toolName: 'write',
-					...(redacted ? { argumentsRedacted: true } : { arguments: input }),
+					...(redacted ? { argumentsRedacted: true } : { toolInput: input }),
 				}),
 				expect.objectContaining({
 					agentRun: expect.objectContaining({
@@ -238,8 +240,9 @@ describe('Agent review workflow approval', () => {
 					}),
 				}),
 			);
-			if (redacted) expect(execute.mock.calls[0][2]).not.toHaveProperty('arguments');
+			if (redacted) expect(execute.mock.calls[0][2]).not.toHaveProperty('toolInput');
 			const request = execute.mock.calls[0][2];
+			expect(request).not.toHaveProperty('requester');
 			const registered = jobService.registerWorkflowJob.mock.calls[0][0];
 			if (expirySeconds) {
 				const expected = new Date(
@@ -318,7 +321,13 @@ describe('Agent review workflow approval', () => {
 					runId: 'run',
 					toolCallId: 'call',
 					approvalDescription: 'Update the selected record.',
-					persistence: workflowPersistence(redacted),
+					persistence: {
+						...workflowPersistence(redacted),
+						hostMetadata: {
+							...workflowPersistence(redacted).hostMetadata,
+							...encodeReviewRequester({ id: 'U2', name: 'Alex Example', source: 'slack' }),
+						},
+					},
 				},
 			),
 		).toBe('waiting');
@@ -335,8 +344,10 @@ describe('Agent review workflow approval', () => {
 			),
 		});
 		const request = execute.mock.calls[0][2];
+		expect(request.requester).toEqual({ id: 'U2', name: 'Alex Example', source: 'slack' });
+		expect(request.message).toContain('Requested by: Alex Example (U2) via slack');
 		if (redacted) {
-			expect(request).not.toHaveProperty('arguments');
+			expect(request).not.toHaveProperty('toolInput');
 			expect(request).not.toHaveProperty('description');
 			expect(request.message).not.toContain('Update the selected record.');
 		}
@@ -473,16 +484,45 @@ describe('Agent review workflow approval', () => {
 		},
 	);
 
+	it('does not contact external reviewers when the requester declines', async () => {
+		const { service, tool, context, suspend, handler, loader, jobService } = setup();
+		const wrapped = service.wrap(
+			tool,
+			{ type: 'configuration', configurationIds: ['review'] },
+			configuration,
+			{ agentId: 'agent', projectId: 'project', published: false, previewChat: true },
+		);
+		const initial = {
+			...context,
+			continuation: undefined,
+			suspendPayload: undefined,
+			resumeData: undefined,
+		};
+		await wrapped.handler?.({}, initial);
+		const result = await wrapped.handler?.(
+			{},
+			{
+				...initial,
+				continuation: suspend.mock.calls[0][1].continuation,
+				suspendPayload: suspend.mock.calls[0][0],
+				resumeData: { approved: false },
+			},
+		);
+		expect(result).toMatchObject({ declined: true });
+		expect(loader.loadWorkflow).not.toHaveBeenCalled();
+		expect(jobService.registerWorkflowJob).not.toHaveBeenCalled();
+		expect(handler).not.toHaveBeenCalled();
+	});
+
 	it.each([
-		['n8n_chat', true, false, false],
-		['n8n_chat', false, true, false],
-		['slack', false, false, false],
-		['telegram', false, false, false],
-		['discord', false, false, false],
-		['slack', false, false, true],
+		['n8n_chat', true, false],
+		['n8n_chat', false, true],
+		['slack', false, false],
+		['telegram', false, false],
+		['discord', false, false],
 	] as const)(
-		'uses the configured interaction in %s (preview=%s, publishedChat=%s, requesterCheckpoint=%s)',
-		async (integrationType, previewChat, publishedN8nChat, requesterCheckpoint) => {
+		'asks the requester before external review in %s (preview=%s, publishedChat=%s)',
+		async (integrationType, previewChat, publishedN8nChat) => {
 			const { service, tool, jobs, executions, loader, context, suspend, handler } = setup();
 			Container.set(WorkflowRunner, mock<WorkflowRunner>());
 			const execute = vi
@@ -528,21 +568,49 @@ describe('Agent review workflow approval', () => {
 			const initial: InterruptibleToolContext = {
 				...context,
 				continuation: undefined,
-				suspendPayload: requesterCheckpoint ? { type: 'approval' } : undefined,
-				resumeData: requesterCheckpoint ? { approved: true } : undefined,
+				suspendPayload: undefined,
+				resumeData: undefined,
 				runId: 'run',
 				toolCallId: 'call',
 				approvalDescription: 'Update the selected record.',
 				persistence: {
 					threadId: 'thread',
 					resourceId: 'resource',
-					hostMetadata: encodeAgentSandboxHostMetadata({
-						projectId: 'project',
-						principalHash: hashAgentSandboxPrincipal({ type: 'n8n-user', userId: 'requester' }),
-					}),
+					hostMetadata: {
+						...encodeAgentSandboxHostMetadata({
+							projectId: 'project',
+							principalHash: hashAgentSandboxPrincipal({ type: 'n8n-user', userId: 'requester' }),
+						}),
+						...encodeReviewRequester({
+							id: 'original-author',
+							name: 'Alex Example',
+							source: integrationType,
+						}),
+					},
 				},
 			};
 			await wrapped.handler?.({}, initial);
+			expect(execute).not.toHaveBeenCalled();
+			expect(handler).not.toHaveBeenCalled();
+			expect(suspend.mock.calls[0][0]).toMatchObject({
+				type: 'approval',
+				description: expect.stringContaining('configured reviewers before running this tool'),
+			});
+			await wrapped.handler?.(
+				{},
+				{
+					...initial,
+					continuation: suspend.mock.calls[0][1].continuation,
+					suspendPayload: suspend.mock.calls[0][0],
+					resumeData: { approved: true },
+				},
+			);
+			const [waiting, options] = suspend.mock.calls[1];
+			expect(execute.mock.calls[0][2].requester).toEqual({
+				id: 'original-author',
+				name: 'Alex Example',
+				source: integrationType,
+			});
 			expect(execute.mock.calls[0][3].agentRun).toMatchObject({
 				integrationType,
 				previewChat,
@@ -553,7 +621,7 @@ describe('Agent review workflow approval', () => {
 				toolCallId: 'call',
 			});
 			expect(execute.mock.calls[0][3].agentRun?.workflowCaller).toBeUndefined();
-			expect(suspend.mock.calls[0][0]).toEqual({
+			expect(waiting).toEqual({
 				type: 'workflow_wait',
 				approval: true,
 				displayName: undefined,
@@ -573,8 +641,8 @@ describe('Agent review workflow approval', () => {
 				{},
 				{
 					...initial,
-					continuation: suspend.mock.calls[0][1].continuation,
-					suspendPayload: suspend.mock.calls[0][0],
+					continuation: options.continuation,
+					suspendPayload: waiting,
 					resumeData: { approved: true },
 				},
 			);
@@ -587,8 +655,8 @@ describe('Agent review workflow approval', () => {
 				{},
 				{
 					...initial,
-					continuation: suspend.mock.calls[0][1].continuation,
-					suspendPayload: suspend.mock.calls[0][0],
+					continuation: options.continuation,
+					suspendPayload: waiting,
 					resumeData: { type: 'workflow_finished' },
 				},
 			);
@@ -596,7 +664,7 @@ describe('Agent review workflow approval', () => {
 		},
 	);
 
-	it('does not ask the requester when the configured interaction is missing', async () => {
+	it('rejects a missing review configuration', async () => {
 		const { service, tool, context, suspend, handler } = setup();
 		const wrapped = service.wrap(
 			tool,

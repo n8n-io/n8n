@@ -198,7 +198,9 @@ missing.
 
 Infer the review method from the user's goal. The user does not need to name
 Human review or ask for a configuration. Load `agent-builder-human-review`
-before configuring approval rules or review destinations.
+before configuring approval rules or review destinations. In a conversation,
+the Agent asks the requester first and explains any further review required.
+Only after the requester agrees does it contact the configured reviewers.
 
 - Use standard conversation approval when the user only wants to confirm a
   tool call in chat and gives no separate reviewer or review process.

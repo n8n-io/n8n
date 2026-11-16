@@ -3,8 +3,7 @@ import { AgentsConfig } from '@n8n/config';
 import {
 	NodeConnectionTypes,
 	NodeOperationError,
-	jsonParse,
-	type IDataObject,
+	type INodeExecutionData,
 	type IExecuteFunctions,
 	type INodeType,
 	type INodeTypeDescription,
@@ -22,48 +21,18 @@ export class AgentDecisionTrigger implements INodeType {
 		group: ['trigger'],
 		version: 1,
 		description: 'Start a workflow when an Agent requests tool approval',
+		eventTriggerDescription: '',
+		mockManualExecution: true,
 		defaults: { name: 'Agent review' },
 		inputs: [],
 		outputs: [NodeConnectionTypes.Main],
 		properties: [
 			{
 				displayName:
-					'The Agent sends the tool input in <code>$json.arguments</code>. Use it in your review steps, then return one item with an <code>approved</code> boolean. Send-and-wait approval nodes can return this result directly.',
+					'The Agent sends the tool input in <code>$json.toolInput</code>. Use it in your review steps, then return one item with an <code>approved</code> boolean. Send-and-wait approval nodes can return this result directly.',
 				name: 'notice',
 				type: 'notice',
 				default: '',
-			},
-			{
-				displayName:
-					'Each request includes <code>requestId</code>, <code>agentId</code>, <code>toolName</code>, and <code>requestedAt</code>. It can also include <code>description</code> and <code>expiresAt</code>. Tool arguments keep nested objects and arrays. Secret values are hidden. If the caller hides request details, <code>arguments</code> and <code>description</code> are omitted and <code>argumentsRedacted</code> is true.',
-				name: 'requestFieldsNotice',
-				type: 'notice',
-				default: '',
-			},
-			{
-				// eslint-disable-next-line n8n-nodes-base/node-param-display-name-miscased
-				displayName: 'Test request',
-				name: 'testRequest',
-				type: 'json',
-				noDataExpression: true,
-				default: JSON.stringify(
-					{
-						requestId: 'test-run:test-call',
-						agentId: 'test-agent',
-						toolName: 'send_email',
-						description: 'Send an order confirmation email.',
-						arguments: {
-							to: 'customer@example.com',
-							subject: 'Order confirmation',
-							body: 'Your order is confirmed.',
-						},
-						requestedAt: '2026-01-01T12:00:00.000Z',
-					},
-					null,
-					2,
-				),
-				description:
-					'Use this example request when you test the workflow manually. Agent approval requests always use the actual tool input.',
 			},
 		],
 	};
@@ -71,25 +40,44 @@ export class AgentDecisionTrigger implements INodeType {
 	async trigger(this: ITriggerFunctions): Promise<ITriggerResponse> {
 		if (!Container.get(AgentsConfig).humanReviewEnabled)
 			throw new NodeOperationError(this.getNode(), 'Human review is not enabled on this instance');
-		if (this.getMode() !== 'manual') return {};
-		return {
-			manualTriggerFunction: async () => {
-				const example = this.getNodeParameter('testRequest', 0);
-				if (typeof example !== 'string')
-					throw new NodeOperationError(this.getNode(), 'Set Test request to a JSON object');
-				const request = jsonParse<IDataObject>(example, {
-					errorMessage: 'Test request is not valid JSON. Enter a JSON object.',
-				});
-				if (!request || typeof request !== 'object' || Array.isArray(request))
-					throw new NodeOperationError(this.getNode(), 'Set Test request to a JSON object');
-				this.emit([[{ json: request }]]);
-			},
-		};
+		return {};
 	}
 
-	async execute(this: IExecuteFunctions) {
+	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		if (!Container.get(AgentsConfig).humanReviewEnabled)
 			throw new NodeOperationError(this.getNode(), 'Human review is not enabled on this instance');
-		return [this.getInputData()];
+		const items = this.getInputData();
+		if (
+			this.getMode() === 'manual' &&
+			(items.length === 0 ||
+				(items.length === 1 &&
+					Object.keys(items[0].json).length === 0 &&
+					items[0].binary === undefined))
+		) {
+			const requestedAt = new Date();
+			const expiresAt = new Date(requestedAt);
+			expiresAt.setUTCHours(expiresAt.getUTCHours() + 1);
+			return [
+				[
+					{
+						json: {
+							requestId: 'test-run:test-call',
+							agentId: 'test-agent',
+							toolName: 'send_email',
+							requester: { id: 'test-user', name: 'Alex Example', source: 'preview' },
+							description: 'Send an order confirmation email.',
+							toolInput: {
+								to: ['customer@example.com'],
+								subject: 'Order confirmation',
+								body: { text: 'Your order is confirmed.' },
+							},
+							requestedAt: requestedAt.toISOString(),
+							expiresAt: expiresAt.toISOString(),
+						},
+					},
+				],
+			];
+		}
+		return [items];
 	}
 }

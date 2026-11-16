@@ -610,15 +610,20 @@ workflow or channel icon and name. Click its name to edit it. Put a remove actio
 inside each pill. Keep the plus action at the right edge of the field. Its options menu lists
 unselected reviews and a leading Create human review action. Creating a review
 appends it to this tool's sequence. Removing a pill keeps the other reviews in order.
-Show Ask user as a non-removable placeholder pill when no reviews are selected. Replace it when a reviewer is selected. Do not show an ordering hint. All selected reviews must approve.
+Always show Ask user as the first, non-removable pill. Keep it when reviewers are added.
+Add an info icon with a tooltip that explains that a chat requester confirms first,
+then the Agent contacts any other reviewers. Do not show an ordering hint. All selected reviews must approve.
 Run them in the order added. A rejection, expiry, or error stops the sequence.
 Label the row Reviewers, including for MCP servers. For MCP servers, place it after tool
 permissions. Show it when at least one
 tool or category uses Ask first. Keep Require approval inside the rounded review section. Hide the review controls when it is off. MCP servers keep their per-tool and category permissions.
 
-Configured reviews always handle approval, including in conversations.
-Only tools without a review ask the requester. Show a fixed waiting message
-with no approval actions in the requester's conversation. Name the tool that is
+In a conversation, ask the requester before contacting configured reviewers.
+Explain in that request that their confirmation starts external review. Rejecting
+stops the sequence without contacting reviewers. Do not offer session approval
+for this first step when external review is configured. Workflow and scheduled
+runs skip this step because there is no chat requester. During external review,
+show a fixed waiting message with no approval actions in the requester's conversation. Name the tool that is
 waiting and include its approval description. The configured workflow or channel
 owns approver access.
 
@@ -662,7 +667,7 @@ lookup. Show Load more only with results and a continuation cursor.
 Show attached tools in the Before tools pill field, with the same icons and names as Build.
 Keep attachment edits local until Save. Selecting a tool enables approval and appends this review to its sequence.
 Removing a selection detaches only this review. The other reviews keep their order.
-Removing the last review restores the current conversational approval behavior.
+Removing the last external review leaves the Ask user step in place.
 
 Attach the plan card directly above the approval card. Keep both in one stack
 without a gap. Use the standard approval header with the Agent and tool names.

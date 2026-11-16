@@ -18,7 +18,6 @@ const props = withDefaults(
 		label: string;
 		description?: string;
 		addLabel: string;
-		emptyText?: string;
 		items: Array<DropdownMenuItemProps<string>>;
 		showItems?: boolean;
 		pills: Array<{
@@ -70,14 +69,7 @@ watch(
 				}}</N8nText>
 			</div>
 			<div :class="$style.pills">
-				<AgentChipButton
-					v-if="!pills.length && emptyText"
-					:clickable="false"
-					:deactivated="disabled"
-					:class="$style.pill"
-					:data-testid="`${testId}-placeholder`"
-					>{{ emptyText }}</AgentChipButton
-				>
+				<slot name="leading-pill" />
 				<AgentChipButton
 					v-for="pill in pills"
 					:key="pill.value"

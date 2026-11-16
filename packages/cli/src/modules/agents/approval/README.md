@@ -1,7 +1,11 @@
 # Human review for approval
 
 Human review routes a saved Agent's tool approvals through decision workflows or
-its connected channels. A configured route always handles the request.
+its connected channels. In a conversation, the requester confirms first. The
+request explains that external review follows their confirmation. Declining
+stops the request before reviewers are contacted. A configured route then
+handles external review. Workflow and task callers have no chat requester and
+start with the configured reviewers.
 Without a route, the tool keeps its existing conversational approval behavior.
 
 Enable the Agents module and include `human-review` in `N8N_AGENTS_MODULES`.
@@ -57,9 +61,12 @@ The Agent review trigger receives one item with these fields:
 
 - `requestId`, `agentId`, and `toolName` identify the request.
 - `description` explains the proposed action.
-- `arguments` contains the sanitized tool input.
+- `toolInput` contains the sanitized tool input. Use `$json.toolInput` in expressions.
+- `requester` identifies the conversational user with `id`, optional `name`, and `source`.
+  The source is `preview`, `n8n_chat`, or the channel platform, such as `slack`.
+  It is absent when no conversational user started the request.
 - `requestedAt` records the request time. `expiresAt` is present for a deadline.
-- `argumentsRedacted: true` replaces arguments and description when the caller's
+- `argumentsRedacted: true` replaces `toolInput` and description when the caller's
   workflow redaction settings hide them.
 
 Add review steps and return one terminal item with `{ approved: boolean }`.

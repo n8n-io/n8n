@@ -10,7 +10,7 @@ const descriptionSchema = z.string().trim().min(1).max(500);
 /** Add approval context to the model input. Keep it out of tool arguments. */
 export function withApprovalDescription(
 	tool: BuiltTool,
-	requiresDescription: (input: unknown) => boolean = () => true,
+	requiresDescription?: (input: unknown) => boolean,
 ): BuiltTool {
 	const originalSchema = tool.inputSchema;
 	const schema = zodToJsonSchema(originalSchema ?? z.object({}));
@@ -19,6 +19,7 @@ export function withApprovalDescription(
 	}
 	return {
 		...tool,
+		description: `${tool.description}\n\nFor calls that require approval, include __approvalDescription with one or two short sentences about the action, its target, and its effect. Use at most 500 characters.`,
 		inputSchema: {
 			...schema,
 			properties: {
@@ -31,7 +32,7 @@ export function withApprovalDescription(
 						'Required before requesting approval. Explain this approval request in one or two short sentences. State the action, its target, and its effect. Use the language of the user. Do not include JSON, credentials, or secrets.',
 				},
 			},
-			// The handler requires the description. Old checkpoint inputs can still resume.
+			required: [...(schema.required ?? []), ...(requiresDescription ? [] : [DESCRIPTION_FIELD])],
 		},
 		onCancellation: tool.onCancellation
 			? async (input, ctx) => {
@@ -45,12 +46,10 @@ export function withApprovalDescription(
 			if (!isRecord(input))
 				throw new UserError('An approval request must include a short description.');
 			const { [DESCRIPTION_FIELD]: description, ...argumentsInput } = input;
-			// Saved requests from before this field existed can still resume.
-			const legacyResume = 'suspendPayload' in ctx && ctx.suspendPayload !== undefined;
 			const parsedDescription = descriptionSchema.safeParse(description);
 			if (
 				!parsedDescription.success &&
-				!(description === undefined && (legacyResume || !requiresDescription(argumentsInput)))
+				!(description === undefined && requiresDescription?.(argumentsInput) === false)
 			) {
 				throw new UserError(
 					'Include __approvalDescription with one or two short sentences about the action, its target, and its effect. Use at most 500 characters.',
