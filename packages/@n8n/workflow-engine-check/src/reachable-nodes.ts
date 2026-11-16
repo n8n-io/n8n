@@ -6,12 +6,13 @@ import {
 	type INode,
 } from 'n8n-workflow';
 
+import type { EngineV2EligibilityWorkflow } from './types';
+
 /**
- * The names of the nodes that engine v2 runs: each live trigger and the nodes it
- * reaches over `main`. The converter drops every other node. With no live trigger
- * the converter does not root the graph, so every node counts.
+ * Each live trigger and the nodes it reaches over `main`, disabled nodes included.
+ * With no live trigger the converter does not root the graph, so every node counts.
  */
-export function findReachableNodeNames(nodes: INode[], connections: IConnections): Set<string> {
+function findReachableNodeNames(nodes: INode[], connections: IConnections): Set<string> {
 	const triggers = nodes.filter((node) => node.disabled !== true && isTriggerNodeType(node.type));
 	if (triggers.length === 0) return new Set(nodes.map((node) => node.name));
 
@@ -21,4 +22,19 @@ export function findReachableNodeNames(nodes: INode[], connections: IConnections
 			...getChildNodes(connections, trigger.name, NodeConnectionTypes.Main, -1),
 		]),
 	);
+}
+
+/**
+ * Keeps only what engine v2 runs, like the converter's `rootAt`: the reachable nodes
+ * and the connections that leave them. Every rule sees this workflow.
+ */
+export function rootWorkflow(workflow: EngineV2EligibilityWorkflow): EngineV2EligibilityWorkflow {
+	const reachable = findReachableNodeNames(workflow.nodes, workflow.connections);
+	return {
+		...workflow,
+		nodes: workflow.nodes.filter((node) => reachable.has(node.name)),
+		connections: Object.fromEntries(
+			Object.entries(workflow.connections).filter(([source]) => reachable.has(source)),
+		),
+	};
 }

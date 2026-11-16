@@ -1,4 +1,4 @@
-import type { INode, IWorkflowSettings } from 'n8n-workflow';
+import type { IConnections, INode, IWorkflowSettings } from 'n8n-workflow';
 
 import { checkEngineV2Eligibility } from '../index';
 
@@ -61,6 +61,23 @@ describe('checkEngineV2Eligibility', () => {
 		expect(result).toEqual({
 			eligible: true,
 			reasons: [{ code: 'REDACTION_POLICY', severity: 'warning', message: expect.any(String) }],
+		});
+	});
+
+	// Engine v2 runs only the live triggers and the nodes they reach over main connections.
+	it.each<{ rule: string; nodes: INode[]; connections: IConnections }>([
+		{
+			rule: 'node type',
+			nodes: [
+				manualTrigger,
+				{ ...manualTrigger, id: 'loose-id', name: 'Loose', type: 'n8n-nodes-base.executionData' },
+			],
+			connections: {},
+		},
+	])('ignores nodes that no live trigger reaches in the $rule rule', ({ nodes, connections }) => {
+		expect(checkEngineV2Eligibility({ nodes, connections, settings: {} })).toEqual({
+			eligible: true,
+			reasons: [],
 		});
 	});
 });

@@ -1,7 +1,6 @@
-import type { IConnections, INode } from 'n8n-workflow';
+import type { INode } from 'n8n-workflow';
 
 import { NODE_TYPE_DENYLIST, type NodeTypeDenylistEntry } from './node-type-denylist';
-import { findReachableNodeNames } from './reachable-nodes';
 import type { EngineV2Reason } from './types';
 
 /**
@@ -23,11 +22,10 @@ function findDenial(node: INode): Pick<EngineV2Reason, 'code' | 'severity'> | un
 	return undefined;
 }
 
-/** Only enabled nodes that engine v2 runs count, see `findReachableNodeNames`. */
-export function findNodeTypeReasons(nodes: INode[], connections: IConnections): EngineV2Reason[] {
-	const reachable = findReachableNodeNames(nodes, connections);
+/** Engine v2 skips disabled nodes, so only enabled nodes count. */
+export function findNodeTypeReasons(nodes: INode[]): EngineV2Reason[] {
 	return nodes.flatMap((node) => {
-		if (node.disabled === true || !reachable.has(node.name)) return [];
+		if (node.disabled === true) return [];
 		const denial = findDenial(node);
 		if (!denial) return [];
 		const message =
