@@ -17,8 +17,12 @@ function toBoundValue(value: unknown): unknown {
 // currently open. '' and "" are the standard escaped-quote forms inside
 // their own string. With `bracketIdentifiers`, a SQL Server [identifier] also
 // counts: `[` opens it, `]` closes it, and `]]` is an escaped `]`. This does
-// not recognize SQL comments (-- or /* */); a $N inside a comment is still
-// treated as a placeholder reference.
+// not recognize SQL comments (-- or /* */) by default; a $N inside a comment is
+// still treated as a placeholder reference. With `bracketIdentifiers`, comments
+// are skipped while no quote is open, so a stray ' or [ inside one can't open a
+// span and mask a later placeholder: `--` runs to the end of the line and `/*`
+// to the next `*/` (no nesting). An index that lies inside a comment returns
+// false, so a $N there is still a placeholder reference.
 export function isInsideQuotes(
 	text: string,
 	index: number,
@@ -29,7 +33,15 @@ export function isInsideQuotes(
 	for (let i = 0; i < index; i++) {
 		const ch = text[i];
 		if (quoteChar === null) {
-			if (ch === "'" || ch === '"') quoteChar = ch;
+			if (options.bracketIdentifiers && ch === '-' && text[i + 1] === '-') {
+				const lineEnd = text.indexOf('\n', i);
+				if (lineEnd === -1 || lineEnd >= index) return false;
+				i = lineEnd;
+			} else if (options.bracketIdentifiers && ch === '/' && text[i + 1] === '*') {
+				const commentEnd = text.indexOf('*/', i + 2);
+				if (commentEnd === -1 || commentEnd + 2 > index) return false;
+				i = commentEnd + 1;
+			} else if (ch === "'" || ch === '"') quoteChar = ch;
 			else if (ch === '[' && options.bracketIdentifiers) quoteChar = '[';
 		} else {
 			const closeChar = quoteChar === '[' ? ']' : quoteChar;
