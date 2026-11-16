@@ -34,6 +34,7 @@ export class MicrosoftTeamsTrigger implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Microsoft Teams Trigger',
 		name: 'microsoftTeamsTrigger',
+		schemaPath: 'Microsoft/Teams',
 		icon: 'file:teams.svg',
 		group: ['trigger'],
 		version: 1,

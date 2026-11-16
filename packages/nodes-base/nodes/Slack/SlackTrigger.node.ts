@@ -21,6 +21,7 @@ export class SlackTrigger implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Slack Trigger',
 		name: 'slackTrigger',
+		schemaPath: 'Slack',
 		icon: 'file:slack.svg',
 		group: ['trigger'],
 		version: 1,
