@@ -166,6 +166,26 @@ describe('createWorkflowDraftPublisher', () => {
 		expect(published).toHaveLength(0);
 	});
 
+	it('names a node with no name after its id, so the draft still shows', async () => {
+		const { publisher, drafts } = setup();
+		const workflow = compiledWorkflow();
+		workflow.nodes.push({
+			id: 'note-1',
+			type: 'n8n-nodes-base.stickyNote',
+			typeVersion: 1,
+			position: [0, 200],
+			parameters: { content: 'Read me' },
+		});
+
+		await publisher.publish({ filePath: FILE, workflow });
+
+		expect(drafts()[0].payload.workflow.nodes.map((node) => node.name)).toEqual([
+			'Start',
+			'Set',
+			'note-1',
+		]);
+	});
+
 	describe('publishIssues', () => {
 		const issue = { code: 'SET_INVALID_ASSIGNMENT', message: 'Bad assignment', nodeName: 'Set' };
 
@@ -183,6 +203,19 @@ describe('createWorkflowDraftPublisher', () => {
 				agentId: 'agent-1',
 				payload: { filePath: FILE, revision: 2, issues: [issue] },
 			});
+		});
+
+		it('publishes nothing when the last draft of the file failed', async () => {
+			const { publisher, issueEvents } = setup();
+			await publisher.publish({ filePath: FILE, workflow: compiledWorkflow() });
+			await publisher.publish({
+				filePath: FILE,
+				workflow: compiledWorkflow({ name: undefined as unknown as string }),
+			});
+
+			publisher.publishIssues({ filePath: FILE, issues: [issue] });
+
+			expect(issueEvents()).toHaveLength(0);
 		});
 
 		it('publishes nothing for a file with no draft', () => {

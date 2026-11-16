@@ -1155,7 +1155,8 @@ export function createBuildWorkflowTool(context: InstanceAiContext) {
 			await context.workflowDraftPublisher?.publish({
 				filePath,
 				workflowId: targetWorkflowId,
-				workflow: compiled.workflow,
+				// The save uses the name that the build passes, so the draft shows it too.
+				workflow: name ? { ...compiled.workflow, name } : compiled.workflow,
 			});
 
 			// Snapshot of the previously saved workflow, used to tell nodes this

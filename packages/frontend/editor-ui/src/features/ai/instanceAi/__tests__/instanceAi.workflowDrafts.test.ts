@@ -56,6 +56,20 @@ describe('workflow drafts', () => {
 	});
 
 	describe('applyWorkflowDraft', () => {
+		it('takes the first draft of a new run, whose revisions start again', () => {
+			const earlier = applyWorkflowDraft({}, payload({ revision: 3 }), 'run-1');
+
+			const next = applyWorkflowDraft(earlier, payload({ revision: 1 }), 'run-2');
+
+			expect(next[FILE]).toMatchObject({ revision: 1, runId: 'run-2' });
+		});
+
+		it('drops an older revision of the same run', () => {
+			const drafts = applyWorkflowDraft({}, payload({ revision: 3 }), 'run-1');
+
+			expect(applyWorkflowDraft(drafts, payload({ revision: 2 }), 'run-1')).toBe(drafts);
+		});
+
 		it('keeps the run that made the draft', () => {
 			expect(applyWorkflowDraft({}, payload(), 'run-7')[FILE].runId).toBe('run-7');
 		});

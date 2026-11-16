@@ -101,9 +101,13 @@ export function useOpenArtifactTabs({
 	// True only when the load succeeded and found no stored tabs. A failed load
 	// must not count, or storing the default tabs would overwrite the stored ones.
 	let hasNoStoredTabs = false;
+	// Closed draft tabs. Kept apart from the stored layout, as a draft never outlives the session.
+	const closedDraftIds = shallowRef(new Set<string>());
 
 	const openTabs = computed((): ArtifactTab[] => {
-		const artifacts = artifactTabs();
+		const artifacts = artifactTabs().filter(
+			(tab) => !(tab.draft && closedDraftIds.value.has(tab.id)),
+		);
 		const current = layout.value;
 		if (!current) return artifacts;
 
@@ -154,6 +158,11 @@ export function useOpenArtifactTabs({
 		if (index === -1) return undefined;
 
 		const closed = tabs[index];
+		const nextTabId = (tabs[index + 1] ?? tabs[index - 1])?.id;
+		if (closed.draft) {
+			closedDraftIds.value = new Set([...closedDraftIds.value, closed.id]);
+			return nextTabId;
+		}
 		const closedKey = tabKey(closed);
 		const { closedTabs } = currentLayout();
 		layout.value = {
@@ -163,11 +172,16 @@ export function useOpenArtifactTabs({
 				{ type: closed.type, id: closed.id },
 			].slice(-MAX_ASSISTANT_THREAD_CLOSED_TABS),
 		};
-		return (tabs[index + 1] ?? tabs[index - 1])?.id;
+		return nextTabId;
 	}
 
 	/** Open a closed artifact again. Returns true when the tabs changed. */
 	function reopenTab(tabId: string): boolean {
+		if (closedDraftIds.value.has(tabId)) {
+			// The stored tabs do not change, as they never hold a draft.
+			closedDraftIds.value = new Set([...closedDraftIds.value].filter((id) => id !== tabId));
+			return false;
+		}
 		const current = layout.value;
 		if (!current) return false;
 		const tab = findTab(tabId);

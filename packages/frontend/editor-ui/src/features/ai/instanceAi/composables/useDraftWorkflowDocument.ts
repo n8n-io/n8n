@@ -15,9 +15,12 @@ import {
 import { toDraftWorkflowDb } from '../instanceAi.workflowDraftCanvas';
 import type { WorkflowDraft } from '../instanceAi.workflowDrafts';
 
-/** Its own namespace, so a draft never shares a document with a saved workflow. */
+/**
+ * Its own namespace, so a draft never shares a document with a saved workflow.
+ * The path is encoded, because `@` separates the workflow id from the version.
+ */
 function draftDocumentWorkflowId(filePath: string): string {
-	return `instance-ai-draft:${filePath}`;
+	return `instance-ai-draft:${encodeURIComponent(filePath)}`;
 }
 
 function disposeDocument(documentId: WorkflowDocumentId) {

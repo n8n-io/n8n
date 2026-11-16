@@ -29,7 +29,9 @@ function toIssuesByNodeName(issues: DraftIssue[] = []): Map<string, INodeIssues>
 	for (const { nodeName, code, message } of issues) {
 		if (!nodeName) continue;
 		const parameters = byNode.get(nodeName) ?? {};
-		parameters[code] = [...(parameters[code] ?? []), message];
+		// An issue code can match an inherited property, for example `constructor`.
+		const messages = Object.hasOwn(parameters, code) ? parameters[code] : [];
+		parameters[code] = [...messages, message];
 		byNode.set(nodeName, parameters);
 	}
 	return new Map([...byNode].map(([name, parameters]) => [name, { parameters }]));

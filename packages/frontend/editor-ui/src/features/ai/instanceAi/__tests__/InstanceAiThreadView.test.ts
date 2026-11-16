@@ -2649,6 +2649,21 @@ describe('InstanceAiThreadView', () => {
 			expect(queryByTestId('instance-ai-workflow-preview-stub')).toBeNull();
 		});
 
+		it('does not tell the agent about the tab of an unsaved draft', async () => {
+			const { findByTestId } = renderView({ props: { threadId: 'thread-1' } });
+
+			thread.workflowDrafts = { [filePath]: draft() };
+			await findByTestId('instance-ai-workflow-draft-preview-stub');
+
+			const sentTabs = vi
+				.mocked(thread.setOpenTabs)
+				.mock.calls.flatMap(([tabs]) => (Array.isArray(tabs) ? tabs : []));
+			expect(sentTabs.map((tab) => tab.id)).not.toContain(`draft:${filePath}`);
+			expect(vi.mocked(thread.setActiveArtifactId).mock.calls).not.toContainEqual([
+				`draft:${filePath}`,
+			]);
+		});
+
 		it('covers the saved canvas with its draft until the saved workflow loads', async () => {
 			thread.producedArtifacts = new Map([
 				['wf-1', { type: 'workflow', id: 'wf-1', name: 'Demo' }],

@@ -42,7 +42,8 @@ export function applyWorkflowDraft(
 ): WorkflowDraftsByFilePath {
 	if (!isSafeObjectKey(payload.filePath)) return drafts;
 	const current = drafts[payload.filePath];
-	if (current && current.revision >= payload.revision) return drafts;
+	// Each run counts the revisions of a file from 1 again.
+	if (current && current.runId === runId && current.revision >= payload.revision) return drafts;
 	return { ...drafts, [payload.filePath]: { ...payload, ...(runId ? { runId } : {}) } };
 }
 

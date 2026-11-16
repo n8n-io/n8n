@@ -176,12 +176,16 @@ describe('InstanceAiWorkflowDraftPreview', () => {
 			pinia: createTestingPinia({ stubActions: false }),
 			props: { draft: draft(['Start']), building: true },
 		});
-		const emit = vi.spyOn(canvasProps.eventBus!, 'emit');
+		const nodesAtFit: number[] = [];
+		vi.spyOn(canvasProps.eventBus!, 'emit').mockImplementation((event) => {
+			if (event === 'fitView') nodesAtFit.push(canvasProps.current?.nodes.length ?? 0);
+		});
 
 		await rerender({ draft: draft(['Start', 'Set'], 2), building: true });
+		await vi.waitFor(() => expect(nodesAtFit).toHaveLength(1));
 
-		expect(emit).toHaveBeenCalledWith('fitView');
-		expect(canvasProps.current?.nodes).toHaveLength(2);
+		// The view fits after the canvas has the new node, so the node is in view.
+		expect(nodesAtFit).toEqual([2]);
 	});
 
 	it('keeps the view when a new revision only changes existing nodes', async () => {
@@ -198,11 +202,25 @@ describe('InstanceAiWorkflowDraftPreview', () => {
 
 	it('never writes to the saved workflow document', () => {
 		const pinia = createTestingPinia({ stubActions: false });
-		renderComponent({ pinia, props: { draft: draft(['Start']), building: true } });
+		const edit: WorkflowDraft = { ...draft(['Start']), workflowId: 'wf-1' };
+		renderComponent({ pinia, props: { draft: edit, building: true } });
 
-		const saved = useWorkflowDocumentStore(
-			createWorkflowDocumentId('src/workflows/demo.workflow.ts'),
+		expect(canvasProps.current?.nodes.map((n) => n.data?.name)).toEqual(['Start']);
+		expect(useWorkflowDocumentStore(createWorkflowDocumentId('wf-1')).allNodes).toHaveLength(0);
+		expect(useWorkflowDocumentStore(createWorkflowDocumentId(edit.filePath)).allNodes).toHaveLength(
+			0,
 		);
-		expect(saved.allNodes).toHaveLength(0);
+	});
+
+	it('renders a draft whose source path has an @ in it', () => {
+		renderComponent({
+			pinia: createTestingPinia({ stubActions: false }),
+			props: {
+				draft: { ...draft(['Start']), filePath: 'src/workflows/@team/demo.workflow.ts' },
+				building: true,
+			},
+		});
+
+		expect(canvasProps.current?.nodes.map((n) => n.data?.name)).toEqual(['Start']);
 	});
 });
