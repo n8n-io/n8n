@@ -228,6 +228,9 @@ describe('N8nAttachmentGroup', function describeComponent() {
 		try {
 			const [first, second] = wrapper.findAll('.n8n-attachment');
 			const removeButtons = wrapper.findAll('[data-test-id="attachment-remove"]');
+			const firstRemoveButton = wrapper.element.querySelector('[data-test-id="attachment-remove"]');
+			if (!(firstRemoveButton instanceof HTMLButtonElement))
+				throw new Error('Remove button not found');
 			await user.tab();
 			expect(document.activeElement).toBe(first.element);
 			await user.tab();
@@ -238,7 +241,7 @@ describe('N8nAttachmentGroup', function describeComponent() {
 			origin.focus();
 			await user.tab();
 			expect(document.activeElement).toBe(first.element);
-			removeButtons[0].element.focus();
+			firstRemoveButton.focus();
 			await user.keyboard('{Enter}');
 			await nextTick();
 
@@ -268,9 +271,14 @@ describe('N8nAttachmentGroup', function describeComponent() {
 		try {
 			const attachment = wrapper.get('.n8n-attachment').element;
 			const removeButton = wrapper.find('[data-test-id="attachment-remove"]');
+			const removeButtonElement = wrapper.element.querySelector(
+				'[data-test-id="attachment-remove"]',
+			);
+			if (!(removeButtonElement instanceof HTMLButtonElement))
+				throw new Error('Remove button not found');
 			await user.tab();
 			expect(removeButton.element).toHaveAttribute('tabindex', '-1');
-			removeButton.element.focus();
+			removeButtonElement.focus();
 			await user.keyboard('{Enter}');
 			await nextTick();
 
