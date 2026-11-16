@@ -5,23 +5,11 @@ import { computed, reactive, watch } from 'vue';
  * workflow settings, and the request dialog read this same object.
  *
  * `variant` is stored in localStorage. Old and New share one store.
- * Version 4 maps the old Basic/Custom mode to Current once.
- * Version 5 maps a stored Current choice to New once.
- * Version 3 resets stored reviewer pools to project admins only.
- * Reviewer pools are stored too. A removed pool becomes project admins only.
+ * Review choices are not stored. A full page load starts from the defaults
+ * and clears review state left in localStorage.
  * Both review features start off. They do not follow the server.
  */
-const LEGACY_MODE_STORAGE_KEY = 'n8n-review-policy-prototype-mode';
 const VARIANT_STORAGE_KEY = 'n8n-review-policy-prototype-variant';
-const STORAGE_VERSION_KEY = 'n8n-review-policy-prototype-version';
-const STORAGE_VERSION = '5';
-const PUBLISHING_REVIEWERS_KEY = 'n8n-review-policy-prototype-publishing-reviewers';
-const PROMOTING_REVIEWERS_KEY = 'n8n-review-policy-prototype-promoting-reviewers';
-const PROJECT_PUBLISHING_REVIEWERS_KEY = 'n8n-review-policy-prototype-project-publishing-reviewers';
-const PROJECT_PROMOTING_REVIEWERS_KEY = 'n8n-review-policy-prototype-project-promoting-reviewers';
-
-/** Values that are no longer a Reviewers option. */
-const REMOVED_REVIEWER_POOLS = new Set(['workflowEditors', 'instanceAdmins', 'projectAdmins']);
 
 /** Narrowest pool first. Each pool includes the roles of the pools above it. */
 export const REVIEWER_POOLS = ['projectAdminsOnly', 'projectAdminsAndEditors'] as const;
@@ -59,47 +47,24 @@ export function normalizeReviewerPool(value: unknown): ReviewerPool {
 	return DEFAULT_REVIEWER_POOL;
 }
 
-/**
- * Replace a removed reviewer pool.
- * A version older than 3 resets stored pools to project admins only.
- * Version 4 maps a stored Basic or Custom choice to Current once.
- * Version 5 maps a stored Current choice to New once.
- * Later variant and pool changes still persist.
- */
-function migratePrototypeStorage(): void {
+/** Drop saved review choices. Keep the Old/New switch. */
+function clearPersistedReviewState(): void {
 	try {
 		const keys: string[] = [];
 		for (let index = 0; index < localStorage.length; index += 1) {
 			const key = localStorage.key(index);
-			if (key?.startsWith('n8n-review-policy')) keys.push(key);
+			if (key?.startsWith('n8n-review-policy') && key !== VARIANT_STORAGE_KEY) keys.push(key);
 		}
-		for (const key of keys) {
-			const stored = localStorage.getItem(key);
-			if (stored !== null && REMOVED_REVIEWER_POOLS.has(stored)) {
-				localStorage.setItem(key, DEFAULT_REVIEWER_POOL);
-			}
-		}
-		const storedVersion = localStorage.getItem(STORAGE_VERSION_KEY);
-		if (storedVersion !== STORAGE_VERSION) {
-			if (storedVersion !== '3' && storedVersion !== '4') {
-				localStorage.setItem(PUBLISHING_REVIEWERS_KEY, DEFAULT_REVIEWER_POOL);
-				localStorage.setItem(PROMOTING_REVIEWERS_KEY, DEFAULT_REVIEWER_POOL);
-				localStorage.setItem(PROJECT_PUBLISHING_REVIEWERS_KEY, DEFAULT_REVIEWER_POOL);
-				localStorage.setItem(PROJECT_PROMOTING_REVIEWERS_KEY, DEFAULT_REVIEWER_POOL);
-			}
-			localStorage.setItem(VARIANT_STORAGE_KEY, 'new');
-			localStorage.setItem(STORAGE_VERSION_KEY, STORAGE_VERSION);
-		}
+		for (const key of keys) localStorage.removeItem(key);
 		if (!isReviewPolicyVariant(localStorage.getItem(VARIANT_STORAGE_KEY))) {
-			localStorage.setItem(VARIANT_STORAGE_KEY, 'new');
+			localStorage.removeItem(VARIANT_STORAGE_KEY);
 		}
-		localStorage.removeItem(LEGACY_MODE_STORAGE_KEY);
 	} catch {
 		// Prototype preferences only. Keep the in-memory defaults.
 	}
 }
 
-migratePrototypeStorage();
+clearPersistedReviewState();
 
 function readStoredVariant(): ReviewPolicyVariant {
 	try {
@@ -107,22 +72,6 @@ function readStoredVariant(): ReviewPolicyVariant {
 		return isReviewPolicyVariant(stored) ? stored : 'new';
 	} catch {
 		return 'new';
-	}
-}
-
-function readStoredPool(key: string): ReviewerPool {
-	try {
-		return normalizeReviewerPool(localStorage.getItem(key));
-	} catch {
-		return DEFAULT_REVIEWER_POOL;
-	}
-}
-
-function writeStoredPool(key: string, value: ReviewerPool): void {
-	try {
-		localStorage.setItem(key, normalizeReviewerPool(value));
-	} catch {
-		// The choice is a local prototype preference. Keep it in memory if storage is blocked.
 	}
 }
 
@@ -188,11 +137,11 @@ export const reviewPrototypeState = reactive({
 	workflowPublishing: {} as Record<string, boolean>,
 	workflowPromoting: {} as Record<string, boolean>,
 	variant: readStoredVariant(),
-	publishingReviewers: readStoredPool(PUBLISHING_REVIEWERS_KEY),
-	promotingReviewers: readStoredPool(PROMOTING_REVIEWERS_KEY),
+	publishingReviewers: DEFAULT_REVIEWER_POOL,
+	promotingReviewers: DEFAULT_REVIEWER_POOL,
 	/** Project default is project admins only until the user changes it. */
-	projectPublishingReviewers: readStoredPool(PROJECT_PUBLISHING_REVIEWERS_KEY),
-	projectPromotingReviewers: readStoredPool(PROJECT_PROMOTING_REVIEWERS_KEY),
+	projectPublishingReviewers: DEFAULT_REVIEWER_POOL,
+	projectPromotingReviewers: DEFAULT_REVIEWER_POOL,
 });
 
 /** True when the floating switch is on New. Current and New share this store. */
@@ -213,32 +162,13 @@ watch(
 	},
 );
 
-watch(
-	() =>
-		[
-			reviewPrototypeState.publishingReviewers,
-			reviewPrototypeState.promotingReviewers,
-			reviewPrototypeState.projectPublishingReviewers,
-			reviewPrototypeState.projectPromotingReviewers,
-		] as const,
-	([publishing, promoting, projectPublishing, projectPromoting]) => {
-		writeStoredPool(PUBLISHING_REVIEWERS_KEY, publishing);
-		writeStoredPool(PROMOTING_REVIEWERS_KEY, promoting);
-		writeStoredPool(PROJECT_PUBLISHING_REVIEWERS_KEY, projectPublishing);
-		writeStoredPool(PROJECT_PROMOTING_REVIEWERS_KEY, projectPromoting);
-	},
-);
-
 /** Child page under Settings > Policies. New only. */
 export const PUBLISH_REVIEW_PROJECTS_VIEW = 'SecurityPublishReviews';
 
 /** Child page under Settings > Environments. New only. */
 export const PROMOTION_REVIEW_PROJECTS_VIEW = 'PromotionReviewProjects';
 
-/**
- * Per-project approval. Publish is wired. Promotion is stored in the same
- * shape so a later chunk can use it. Nothing reads the promotion track yet.
- */
+/** Per-project approval for publish and promotion. In memory for this page load. */
 export type ReviewTrack = 'publishing' | 'promoting';
 
 export type ProjectApprovalDisplay = 'required' | 'optedIn' | 'notRequired';
@@ -252,53 +182,12 @@ type TrackApproval = {
 
 type ProjectApprovalMap = Record<string, Partial<Record<ReviewTrack, TrackApproval>>>;
 
-const PROJECT_APPROVALS_KEY = 'n8n-review-policy-prototype-project-approvals';
-const PUBLISH_OPT_IN_SEEDED_KEY = 'n8n-review-policy-prototype-publish-opt-in-seeded';
-const PROMOTE_OPT_IN_SEEDED_KEY = 'n8n-review-policy-prototype-promote-opt-in-seeded';
-
 function emptyTrack(): TrackApproval {
 	return { required: false, optedIn: false, reviewers: null };
 }
 
-function readProjectApprovals(): ProjectApprovalMap {
-	try {
-		const raw = localStorage.getItem(PROJECT_APPROVALS_KEY);
-		if (!raw) return {};
-		const parsed: unknown = JSON.parse(raw);
-		if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) return {};
-		const result: ProjectApprovalMap = {};
-		for (const [projectId, value] of Object.entries(parsed)) {
-			if (!value || typeof value !== 'object' || Array.isArray(value)) continue;
-			const tracks: Partial<Record<ReviewTrack, TrackApproval>> = {};
-			for (const track of ['publishing', 'promoting'] as const) {
-				const row = (value as Record<string, unknown>)[track];
-				if (!row || typeof row !== 'object' || Array.isArray(row)) continue;
-				const record = row as Record<string, unknown>;
-				tracks[track] = {
-					required: record.required === true,
-					optedIn: record.optedIn === true,
-					reviewers: isReviewerPool(record.reviewers) ? record.reviewers : null,
-				};
-			}
-			if (Object.keys(tracks).length > 0) result[projectId] = tracks;
-		}
-		return result;
-	} catch {
-		return {};
-	}
-}
-
-export const projectApprovals = reactive<ProjectApprovalMap>(readProjectApprovals());
-
-function persistProjectApprovals(): void {
-	try {
-		localStorage.setItem(PROJECT_APPROVALS_KEY, JSON.stringify(projectApprovals));
-	} catch {
-		// The choice is a local prototype preference. Keep it in memory if storage is blocked.
-	}
-}
-
-watch(projectApprovals, persistProjectApprovals, { deep: true });
+/** In memory for this page load. A reload starts empty. */
+export const projectApprovals = reactive<ProjectApprovalMap>({});
 
 function ensureTrack(projectId: string, track: ReviewTrack): TrackApproval {
 	const existing = projectApprovals[projectId];
@@ -413,10 +302,7 @@ export function setProjectReviewers(
 	ensureTrack(projectId, track).reviewers = reviewers;
 }
 
-/**
- * Disable reviews removes instance Required and every project choice on this track.
- * The seed flag stays, so the demo opt-in is not written again.
- */
+/** Disable reviews removes instance Required and every project choice on this track. */
 export function clearTrackApprovals(track: ReviewTrack): void {
 	for (const projectId of Object.keys(projectApprovals)) {
 		const row = projectApprovals[projectId]?.[track];
@@ -427,31 +313,4 @@ export function clearTrackApprovals(track: ReviewTrack): void {
 	}
 	if (track === 'publishing') reviewPrototypeState.publishingNeedsApproval = false;
 	else reviewPrototypeState.promotingNeedsApproval = false;
-}
-
-/**
- * Mark the first team project as opted in on one track, once.
- * The stored row shape already has a promotion track, so existing rows stay as they are.
- */
-export function seedTrackOptIn(teamProjectIds: string[], track: ReviewTrack): void {
-	const key = track === 'publishing' ? PUBLISH_OPT_IN_SEEDED_KEY : PROMOTE_OPT_IN_SEEDED_KEY;
-	try {
-		if (localStorage.getItem(key) === '1') return;
-	} catch {
-		return;
-	}
-	const projectId = teamProjectIds.find((id) => id.trim() !== '');
-	if (!projectId) return;
-	const row = ensureTrack(projectId, track);
-	if (!row.required && !row.optedIn) row.optedIn = true;
-	try {
-		localStorage.setItem(key, '1');
-	} catch {
-		// The choice is a local prototype preference. Keep it in memory if storage is blocked.
-	}
-}
-
-/** Mark the first team project as opted in for publish, once. */
-export function seedPublishOptIn(teamProjectIds: string[]): void {
-	seedTrackOptIn(teamProjectIds, 'publishing');
 }
