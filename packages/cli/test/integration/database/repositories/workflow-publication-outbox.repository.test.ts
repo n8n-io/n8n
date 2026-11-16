@@ -64,11 +64,15 @@ describe('WorkflowPublicationOutboxRepository', () => {
 	});
 
 	it.each(['completed', 'failed', 'partial_success'] as const)(
-		'keeps the %s outcome timestamp at or after the request timestamp',
+		'moves the %s outcome timestamp past the claimed request timestamp',
 		async (status) => {
 			await repository.enqueue('wf-1', 'v-1', 'publish');
 			const record = await repository.claimNextPendingRecord();
 			assert(record);
+			const claimed = await repository.findOneBy({ id: record.id });
+			assert(claimed);
+			// The timestamps have millisecond precision. The wait makes a missing bump visible.
+			await new Promise((resolve) => setTimeout(resolve, 10));
 
 			if (status === 'completed') await repository.markCompleted(record.id);
 			else if (status === 'failed') await repository.markFailed(record.id, 'Activation failed');
@@ -77,7 +81,7 @@ describe('WorkflowPublicationOutboxRepository', () => {
 			const outcome = await repository.findLatestByWorkflowId('wf-1');
 			assert(outcome);
 			expect(outcome.status).toBe(status);
-			expect(outcome.updatedAt.getTime()).toBeGreaterThanOrEqual(record.createdAt.getTime());
+			expect(outcome.updatedAt.getTime()).toBeGreaterThan(claimed.updatedAt.getTime());
 		},
 	);
 

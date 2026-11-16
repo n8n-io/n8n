@@ -4,7 +4,8 @@ import {
 	mockInstance,
 	testDb,
 } from '@n8n/backend-test-utils';
-import { CredentialsFinderService, NodeTypesProxy, RoleService } from '@n8n/backend-services';
+import type { CredentialsFinderService } from '@n8n/backend-services';
+import { NodeTypesProxy, RoleService } from '@n8n/backend-services';
 import { WorkflowsConfig } from '@n8n/config';
 import {
 	WorkflowPublicationOutboxRepository,
@@ -371,7 +372,7 @@ describe('publish_workflow trigger activation', () => {
 				? [
 						{ nodeId: trigger.id, status: 'activated', errorMessage: null },
 						...(previousState === 'partially_registered'
-							? [{ nodeId: 'missing', status: 'failed', errorMessage: error.message }]
+							? [{ nodeId: 'missing', status: 'failed', errorMessage: 'Trigger is not registered' }]
 							: []),
 					]
 				: [{ nodeId: 'replacement', status: 'failed', errorMessage: error.message }];

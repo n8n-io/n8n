@@ -544,6 +544,52 @@ describe('WorkflowPublicationApplier', () => {
 		},
 	);
 
+	describe('after a refusal that leaves the previous version live', () => {
+		const refuse = (version: typeof newVersion) => {
+			workflowHistoryRepository.findOneBy.mockResolvedValue(version);
+			workflowPublishedVersionRepository.findOne.mockResolvedValue(makePublishedVersion(version));
+			workflowTriggerActivator.getEnabledTriggerNodes.mockImplementation(
+				(candidate) => candidate?.nodes ?? [],
+			);
+			const error = new UserError('Credential access changed');
+			credentialsPermissionChecker.check.mockRejectedValueOnce(error);
+			return error;
+		};
+
+		test('marks unregistered previous triggers with their own cause, not the refusal', async () => {
+			const version = { ...newVersion, nodes: [triggerNode('a'), triggerNode('b')] };
+			refuse(version);
+			workflowTriggerActivator.getUnregisteredNonWebhookTriggerNodeIds.mockReturnValue(
+				new Set(['b']),
+			);
+
+			const result = await applier.apply(makeRecord(), abort);
+
+			expect(result).toMatchObject({
+				type: 'failed',
+				previousTriggerState: {
+					triggerStatuses: [
+						{ nodeId: 'a', status: 'activated' },
+						{ nodeId: 'b', status: 'failed', errorMessage: 'Trigger is not registered' },
+					],
+				},
+			});
+		});
+
+		test('reports the refusal without previous state when the registration probe fails', async () => {
+			const version = { ...newVersion, nodes: [triggerNode('a')] };
+			const error = refuse(version);
+			workflowTriggerActivator.getNodesWithUnregisteredWebhooks.mockRejectedValueOnce(
+				new Error('Webhook lookup failed'),
+			);
+
+			const result = await applier.apply(makeRecord(), abort);
+
+			expect(result).toMatchObject({ type: 'failed', error });
+			expect(result).not.toHaveProperty('previousTriggerState');
+		});
+	});
+
 	test('returns version-missing when the published version history row is gone', async () => {
 		workflowHistoryRepository.findOneBy.mockResolvedValue(null);
 

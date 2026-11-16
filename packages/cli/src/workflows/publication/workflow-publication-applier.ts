@@ -535,18 +535,34 @@ export class WorkflowPublicationApplier {
 
 		const { runnable } = this.partitionByResolvability(oldVersion);
 		const triggers = this.workflowTriggerActivator.getEnabledTriggerNodes(runnable);
-		const missingNonWebhooks =
-			this.workflowTriggerActivator.getUnregisteredNonWebhookTriggerNodeIds(workflow.id, triggers);
-		const missingWebhooks = await this.workflowTriggerActivator.getNodesWithUnregisteredWebhooks(
-			workflow,
-			runnable,
-		);
-		// Stored activation rows alone do not prove that triggers survived a restart.
-		const missingTriggers = triggers.filter(
-			(node) => missingNonWebhooks.has(node.id) || missingWebhooks.has(node.id),
-		);
+		let missingTriggers: INode[];
+		try {
+			const missingNonWebhooks =
+				this.workflowTriggerActivator.getUnregisteredNonWebhookTriggerNodeIds(
+					workflow.id,
+					triggers,
+				);
+			const missingWebhooks = await this.workflowTriggerActivator.getNodesWithUnregisteredWebhooks(
+				workflow,
+				runnable,
+			);
+			// Stored activation rows alone do not prove that triggers survived a restart.
+			missingTriggers = triggers.filter(
+				(node) => missingNonWebhooks.has(node.id) || missingWebhooks.has(node.id),
+			);
+		} catch (error) {
+			// The probe only enriches the refusal. If it fails, report the refusal as before.
+			this.logger.warn('Could not check the triggers of the previous version after a refusal', {
+				workflowId: workflow.id,
+				versionId: oldVersion.versionId,
+				error: ensureError(error).message,
+			});
+			return result;
+		}
 		if (missingTriggers.length === triggers.length) return result;
 
+		// The refusal did not stop these triggers, so do not report it as their cause.
+		const notRegistered = new Error('Trigger is not registered');
 		return {
 			...result,
 			previousTriggerState: {
@@ -559,7 +575,7 @@ export class WorkflowPublicationApplier {
 						failures: missingTriggers.map((node) => ({
 							nodeId: node.id,
 							nodeName: node.name,
-							error: result.error,
+							error: notRegistered,
 						})),
 					},
 				),
