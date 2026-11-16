@@ -95,6 +95,8 @@ export class SimulationSessionService {
 				throw new UserError('Test runs are not available, so this message did not run.');
 			}
 			// The mode is fixed when the chat starts, so a live chat never turns into a test chat.
+			// A running execution is this turn: the message queue claims a preview message only
+			// when no turn of the thread runs or waits, so an earlier live turn has finished.
 			if (await this.executionRepository.hasFinishedByThread(input.testChatId)) {
 				throw new UserError('This chat runs live. Start a new chat to run a test.');
 			}
