@@ -51,12 +51,15 @@ Differences from the template, to remove over time:
 
 ## Checks for each change
 
-- `./ci.sh precommit` passes before each commit (budget 60 s): fmt, lint, check (also for Linux), the lint's
+- `./ci.sh precommit` passes before each commit (budget 30 s; all Debug tests 10 s; lint and check 10 s): fmt, lint, check (also for Linux), the lint's
   tests, test-debug.
-- `./ci.sh merge` passes before a merge (budget 900 s): the above, then test-safe, sim, bench-counts, corpus,
-  fuzz (short), leak check, growth check (`bench/growth-test.sh`: a shard allocates nothing after startup), rules.
-  `SKIP_FUZZ=1 CI_NO_BUDGET=1` while parallel agents share the machine.
-- `./ci.sh nightly`: the above with 20,000 sim seeds, then the long fuzz run.
+- `./ci.sh merge` passes before a merge (budget 300 s): the above, then test-safe, sim, bench-counts, corpus,
+  leak check, growth check (`bench/growth-test.sh`: a shard allocates nothing after startup), rules.
+  `CI_NO_BUDGET=1` while parallel agents share the machine.
+- `./ci.sh nightly`: the above with 20,000 sim seeds, then every fuzz target (3K runs, more than 30 minutes) and
+  the long fuzz run. Run it once after the cards of a round are merged.
+- Not met yet: the 1 s edit loop (lint takes 4 s because it reads the 228,000 lines of `aot_gen.zig`), the 2 s
+  limit for one test (the runner has no time for each test), and a recorded clean build time.
 - No allocation after startup on the fast path. A buffer that grows on demand comes from a pool sized at startup, and when the pool is empty the result is a limit, not an allocation.
 - No recursion. Use an explicit stack with a cap.
 - Every loop has a bound: fuel, a count or a buffer size.

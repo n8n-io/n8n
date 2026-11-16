@@ -11,8 +11,13 @@ BIN=${1:-zig-out/bin}
 LOG=$(mktemp -d)
 trap 'rm -rf "$LOG"' EXIT
 failed=0
+# Both binaries run at the same time: the Debug suite has a 10 s budget.
+"$BIN/core-test" > "$LOG/core-test.log" 2>&1 &
+core_pid=$!
+"$BIN/shell-test" > "$LOG/shell-test.log" 2>&1 &
+shell_pid=$!
 for t in core-test shell-test; do
-  "$BIN/$t" > "$LOG/$t.log" 2>&1
+  if [ $t = core-test ]; then wait $core_pid; else wait $shell_pid; fi
   rc=$?
   if [ $rc -ne 0 ]; then
     failed=1

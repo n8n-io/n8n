@@ -3,11 +3,12 @@
 # the one before it first.
 #
 #   ./ci.sh precommit   fmt, lint, check, the lint's tests, Debug tests
-#   ./ci.sh merge       + safe tests, sim, counts, corpus, fuzz (short), leaks, growth (the default)
-#   ./ci.sh nightly     + 20,000 sim seeds and the long fuzz run
+#   ./ci.sh merge       + safe tests, sim, counts, corpus, leaks, growth (the default)
+#   ./ci.sh nightly     + 20,000 sim seeds, every fuzz target (3K runs), then the long fuzz run
 #
-# Every tier has a time budget (seconds, warm cache). Over budget is a
-# failure: make a check faster, or move it to a slower tier in a reviewed
+# The budgets are those of the standards: precommit 30 s, merge 300 s, all
+# Debug tests 10 s, lint and check 10 s (the compile-time gate), on a warm
+# cache. Over budget is a failure: make a check faster, or move it to a slower tier in a reviewed
 # change. Never delete a check. CI_NO_BUDGET=1 turns the budget off while
 # parallel agents share the machine (as SKIP_FUZZ=1 does for fuzzing).
 set -Eeuo pipefail
@@ -47,7 +48,7 @@ if [ "$tier" = nightly ]; then SIM_SEEDS=${SIM_SEEDS:-20000}; fi
 zig fmt --check .
 lap "format"
 zig build lint check
-lap "lint + check"
+lap "lint + check" 10
 # Linux cross-compiles: with the net code (epoll, c-ares and OpenSSL
 # callers; `check` compiles without linking), and without it.
 # On Linux the native check already covers this, and an explicit target
@@ -64,8 +65,8 @@ lap "lint tests"
 zig build install-tests
 lap "build Debug tests"
 bench/run-tests.sh
-lap "Debug tests"
-budget precommit "${PRECOMMIT_BUDGET:-60}"
+lap "Debug tests" 10
+budget precommit "${PRECOMMIT_BUDGET:-30}"
 if [ "$tier" = precommit ]; then exit 0; fi
 
 # Merge tier.
@@ -99,14 +100,16 @@ lap "aot check"
 # bench/fuzz-long.sh runs them for minutes). One `zig build fuzz` fuzzes
 # only one test of each binary and exits 0 when the fuzzer panics, so the
 # script runs each target alone and checks its log.
-# SKIP_FUZZ=1 skips them while parallel agents share one machine: fuzz once
-# after all their work is merged.
-if [[ "${SKIP_FUZZ:-0}" == 1 ]]; then
+# They run in the nightly tier only: 3K runs of every target take longer
+# than the whole merge budget. SKIP_FUZZ=1 skips them there too.
+if [[ "$tier" != nightly ]]; then
+	echo "fuzz: nightly tier only (the seed inputs of each target ran with the tests)"
+elif [[ "${SKIP_FUZZ:-0}" == 1 ]]; then
 	echo "fuzz: skipped (SKIP_FUZZ=1)"
 else
 	RUNS="${FUZZ_RUNS:-3K}" PAR="${FUZZ_PAR:-8}" bench/fuzz-ci.sh
 fi
-lap "fuzz (short)"
+lap "fuzz"
 
 # Leaks: a Debug `serve` loads a workflow, answers a webhook, takes
 # credentials, then stops on SIGTERM. The process allocator reports any
@@ -182,7 +185,7 @@ if search 'r\.gpa\.(alloc|create|dupe|realloc)|toOwnedSlice\(r\.gpa|sh\.gpa\.(al
 fi
 lap "rules"
 
-if [ "$tier" = merge ]; then budget merge "${MERGE_BUDGET:-900}"; exit 0; fi
+if [ "$tier" = merge ]; then budget merge "${MERGE_BUDGET:-300}"; exit 0; fi
 
 # Nightly tier: the long fuzz run of every target.
 if [[ "${SKIP_FUZZ:-0}" != 1 ]]; then bench/fuzz-long.sh; fi
