@@ -182,8 +182,6 @@ export class CustomModelEndpoint implements INodeType {
 		const credentialType = pickCredentialType(this.getNode());
 		const credential = await this.getCredentials(credentialType);
 
-		// The timeout is a node-level setting, so it is read once and shared by every item
-		const runOptions = this.getNodeParameter('options', 0, {}) as Options;
 		const contextHeadersFor = (itemIndex: number) =>
 			(this.getNodeParameter('sendContextHeaders', itemIndex, true) as boolean)
 				? n8nContextHeaders(this)
@@ -197,10 +195,10 @@ export class CustomModelEndpoint implements INodeType {
 		 * this layer rather than on the request, because `mergeHeaders` lets it win over the
 		 * credential's gateway headers, which is the precedence the sub-node has.
 		 */
-		const clientFor = (requestHeaders: Record<string, string>) => {
+		const clientFor = (requestHeaders: Record<string, string>, timeout?: number) => {
 			const { configuration } = createCustomModelEndpointConfig(this, credential, {
 				credentialType,
-				timeout: runOptions.timeout,
+				timeout,
 				requestHeaders,
 			});
 
@@ -208,6 +206,9 @@ export class CustomModelEndpoint implements INodeType {
 				...configuration,
 				// The fetch strips this: a gateway reading its key elsewhere must not see it
 				apiKey: 'custom-model-endpoint',
+				// The client has a 10 minute default of its own, which would cut a longer Timeout short
+				...(timeout !== undefined && { timeout }),
+				// The node's own Retry On Fail setting owns retries, so the client adds none
 				maxRetries: 0,
 			});
 		};
@@ -258,7 +259,7 @@ export class CustomModelEndpoint implements INodeType {
 						),
 					),
 				};
-				const client = clientFor(requestHeaders);
+				const client = clientFor(requestHeaders, options.timeout);
 
 				const response = await client.chat.completions.create(body, {
 					signal: this.getExecutionCancelSignal(),

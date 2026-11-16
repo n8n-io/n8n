@@ -1,12 +1,20 @@
 import { createMockExecuteFunction } from 'n8n-nodes-base/test/nodes/Helpers';
 import { accumulateTokenUsage } from 'n8n-workflow';
-import type { IExecuteFunctions, INode, INodeExecutionData } from 'n8n-workflow';
+import type {
+	IExecuteFunctions,
+	INode,
+	INodeExecutionData,
+	NodeOperationError,
+} from 'n8n-workflow';
 import { OpenAI } from 'openai';
 import type { Mocked } from 'vitest';
 
 import { CustomModelEndpoint } from '../CustomModelEndpoint.node';
 
-import { createCustomModelEndpointConfig } from '@utils/custom-model-endpoint/gateway-config';
+import {
+	createCustomModelEndpointConfig,
+	OPENAI_CREDENTIAL,
+} from '@utils/custom-model-endpoint/gateway-config';
 
 // The real transport goes out through `proxyFetch`, whose dispatcher needs the instance
 // SSRF module. This stands in for the gateway so a unit test can read the wire headers.
@@ -102,8 +110,9 @@ const run = async (params: Params = {}, items = 1): Promise<INodeExecutionData[]
 
 const sentBody = () => create.mock.calls[0][0];
 const sentOptions = () => create.mock.calls[0][1];
-const transportHeaders = () =>
-	vi.mocked(createCustomModelEndpointConfig).mock.calls[0][2].requestHeaders;
+const transportOptions = (call: number) =>
+	vi.mocked(createCustomModelEndpointConfig).mock.calls[call][2];
+const transportHeaders = () => transportOptions(0).requestHeaders;
 
 describe('CustomModelEndpoint', () => {
 	beforeEach(() => {
@@ -292,6 +301,96 @@ describe('CustomModelEndpoint', () => {
 		expect(failed.json).toEqual({ error: 'gateway said no' });
 		expect(failed.pairedItem).toEqual({ item: 0 });
 		expect(succeeded.json).toMatchObject({ text: 'hello' });
+	});
+
+	it('sends the model and every sampling option the user set', async () => {
+		await run({
+			model: 'llama-3.1-70b',
+			options: {
+				frequencyPenalty: 0.4,
+				presencePenalty: -0.2,
+				temperature: 0.7,
+				topP: 0.9,
+				seed: 42,
+			},
+		});
+
+		expect(sentBody()).toMatchObject({
+			model: 'llama-3.1-70b',
+			frequency_penalty: 0.4,
+			presence_penalty: -0.2,
+			temperature: 0.7,
+			top_p: 0.9,
+			seed: 42,
+		});
+	});
+
+	it('gives the Timeout to the transport and to the client, so neither cuts the other short', async () => {
+		await run({ options: { timeout: 900_000 } });
+
+		expect(transportOptions(0).timeout).toBe(900_000);
+		expect(MockedOpenAI.mock.calls[0][0]).toMatchObject({ timeout: 900_000 });
+	});
+
+	it('reads the Timeout and the context switch for each item, not once for the run', async () => {
+		const ctx = contextWith({}, 2);
+		ctx.getNodeParameter = vi
+			.fn()
+			.mockImplementation((name: string, i: number, fallback: unknown) => {
+				if (name === 'options') return { timeout: (i + 1) * 1_000 };
+				if (name === 'sendContextHeaders') return i === 1;
+				if (name === 'model') return 'gpt-4o';
+				if (name === 'messages.message') return [{ role: 'user', content: 'hi' }];
+				if (name === 'headers.header') return [];
+				return fallback;
+			});
+
+		await new CustomModelEndpoint().execute.call(ctx);
+
+		expect([transportOptions(0).timeout, transportOptions(1).timeout]).toEqual([1_000, 2_000]);
+		expect(transportOptions(0).requestHeaders).toEqual({});
+		expect(transportOptions(1).requestHeaders).toMatchObject({ 'x-n8n-workflow-id': 'wf-1' });
+	});
+
+	it('refuses to stream, naming the option to remove', async () => {
+		await expect(run({ extraBody: '{"stream":true}' })).rejects.toThrow(
+			'This node cannot stream the answer',
+		);
+		expect(create).not.toHaveBeenCalled();
+	});
+
+	it('gives the reason the transport stated, not the wrapper of the SDK', async () => {
+		const blocked = Object.assign(new Error('Blocked by SSRF policy'), {
+			description: 'Allow the host on the credential.',
+		});
+		create
+			.mockResolvedValueOnce(answer())
+			.mockRejectedValueOnce(Object.assign(new Error('Connection error.'), { cause: blocked }));
+
+		const failure = await new CustomModelEndpoint().execute
+			.call(contextWith({}, 2))
+			.catch((error: NodeOperationError) => error);
+
+		expect(failure).toMatchObject({
+			message: 'Blocked by SSRF policy',
+			description: 'Allow the host on the credential.',
+			context: { itemIndex: 1 },
+		});
+	});
+
+	it('runs on an OpenAI credential as well as its own', async () => {
+		const ctx = contextWith({});
+		ctx.getNode = vi.fn().mockReturnValue({
+			...nodeDef,
+			parameters: { authentication: OPENAI_CREDENTIAL },
+			credentials: { [OPENAI_CREDENTIAL]: { id: '2', name: 'openai' } },
+		});
+		ctx.getCredentials = vi.fn().mockResolvedValue({ apiKey: 'sk-test' });
+
+		await new CustomModelEndpoint().execute.call(ctx);
+
+		expect(ctx.getCredentials).toHaveBeenCalledWith(OPENAI_CREDENTIAL);
+		expect(transportOptions(0).credentialType).toBe(OPENAI_CREDENTIAL);
 	});
 });
 
