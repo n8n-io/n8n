@@ -4,6 +4,8 @@ export const AGENTS_TRACER_NAME = '@n8n/agents';
 
 export const EXPRESSION_TRACER_NAME = 'n8n-expression-runtime';
 
+export const ENGINE_TRACER_NAME = 'n8n-engine-v2';
+
 export const DAYTONA_TRACER_NAME = '';
 
 export const MICROSOFT_AGENTS_TRACER_NAME = '@microsoft/agents-telemetry';

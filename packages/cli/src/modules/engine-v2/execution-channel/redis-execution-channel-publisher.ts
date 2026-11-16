@@ -14,11 +14,18 @@ export interface RedisChannelPublisher {
 	disconnect(): void;
 }
 
+/** Learns once how a publish ended. A publish still in flight at shutdown counts as failed. */
+export interface PublishObserver {
+	settled(failed: boolean): void;
+}
+
 /** Publishes serialized frames to execution-specific Redis channels. */
 export class RedisExecutionChannelPublisher implements ExecutionChannelPublisher {
 	private stopped = false;
 
 	private readonly inFlightPublishes = new Set<Promise<unknown>>();
+
+	private readonly pendingObservers = new Set<PublishObserver>();
 
 	constructor(
 		private readonly publisher: RedisChannelPublisher,
@@ -26,19 +33,39 @@ export class RedisExecutionChannelPublisher implements ExecutionChannelPublisher
 		private readonly logger: Logger,
 	) {}
 
-	publish(topic: ExecutionChannelTopic, executionId: string, frame: string): void {
-		if (this.stopped) return;
+	publish(
+		topic: ExecutionChannelTopic,
+		executionId: string,
+		frame: string,
+		observer?: PublishObserver,
+	): void {
+		if (this.stopped) {
+			observer?.settled(true);
+			return;
+		}
 
-		const publishTask: Promise<unknown> = this.publisher
-			.publish(this.getChannelName(topic, executionId), frame)
-			.catch((error: unknown) => {
-				this.logger.error('Failed to publish to the execution channel', {
-					topic,
-					executionId,
-					error,
+		let failed = false;
+		let publishTask: Promise<unknown>;
+		try {
+			publishTask = this.publisher
+				.publish(this.getChannelName(topic, executionId), frame)
+				.catch((error: unknown) => {
+					failed = true;
+					this.logger.error('Failed to publish to the execution channel', {
+						topic,
+						executionId,
+						error,
+					});
+				})
+				.finally(() => {
+					this.settle(observer, failed);
+					this.inFlightPublishes.delete(publishTask);
 				});
-			})
-			.finally(() => this.inFlightPublishes.delete(publishTask));
+		} catch (error) {
+			observer?.settled(true);
+			throw error;
+		}
+		if (observer) this.pendingObservers.add(observer);
 		this.inFlightPublishes.add(publishTask);
 	}
 
@@ -47,7 +74,15 @@ export class RedisExecutionChannelPublisher implements ExecutionChannelPublisher
 
 		this.stopped = true;
 		await this.drainInFlightPublishes();
+		// Before the disconnect, so no observer waits on a publish that can no longer finish.
+		for (const observer of this.pendingObservers) this.settle(observer, true);
 		this.publisher.disconnect();
+	}
+
+	private settle(observer: PublishObserver | undefined, failed: boolean): void {
+		if (!observer || !this.pendingObservers.delete(observer)) return;
+
+		observer.settled(failed);
 	}
 
 	/** Gives in-flight publishes a bounded time to reach Redis before it disconnects. */

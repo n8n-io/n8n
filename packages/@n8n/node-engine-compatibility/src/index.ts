@@ -12,11 +12,16 @@ export {
 } from './errors';
 export type {
 	AdditionalDataContext,
+	NodeExecutionTraceContext,
 	StepData,
 	StepDataLoader,
 	SubWorkflowResolveRequest,
 	SubWorkflowResolveResult,
 	SubWorkflowResolver,
 	V1StepExecutorDeps,
+	V1StepExecutorInstrumentation,
+	V1StepExecutorMeasurement,
+	V1StepExecutorPhase,
 } from './types';
+export { V1_STEP_EXECUTOR_PHASES } from './types';
 export { attachResponseHooks } from './v1-response-hooks';
