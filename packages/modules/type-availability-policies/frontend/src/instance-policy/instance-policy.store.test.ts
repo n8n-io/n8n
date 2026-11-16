@@ -225,7 +225,7 @@ describe('useInstancePolicyStore', () => {
 			);
 		});
 
-		it('fails without a reload loop when the conflict is not a new version', async () => {
+		it('reports a policy it cannot edit, without a reload loop, when the conflict is not a new version', async () => {
 			const error = conflict();
 			mocks.saveInstancePolicy.mockRejectedValue(error);
 			const store = useInstancePolicyStore();
@@ -233,7 +233,7 @@ describe('useInstancePolicyStore', () => {
 
 			const result = await store.save('node', addDenySlack);
 
-			expect(result).toEqual({ status: 'failed', error });
+			expect(result).toEqual({ status: 'notEditable', error });
 			expect(mocks.saveInstancePolicy).toHaveBeenCalledTimes(1);
 			expect(mocks.fetchInstancePolicy).toHaveBeenCalledTimes(2);
 			expect(store.policies.node).toEqual(nodePolicy(3));

@@ -24,6 +24,11 @@ export type InstancePolicySaveResult =
 	| { status: 'changed' }
 	/** Queued before a `changed` save of the same kind, so it was not sent. */
 	| { status: 'dropped' }
+	/**
+	 * The server refuses to edit this policy in place, because the scope has several attached
+	 * documents or shares its document with another scope. Only the attachments API can fix it.
+	 */
+	| { status: 'notEditable'; error: unknown }
 	| { status: 'failed'; error: unknown };
 
 type PolicyByKind = { [K in RestrictedTypeKind]: InstancePolicy<K> | null };
@@ -135,9 +140,9 @@ export const useInstancePolicyStore = defineStore(INSTANCE_POLICY_STORE_ID, () =
 			return { status: 'failed', error };
 		}
 
-		// The server also answers 409 for a policy with several attached documents. A load does not
-		// fix that, so only a new version means that another admin saved.
-		if (latest.version === sentVersion) return { status: 'failed', error };
+		// Only a new version means that the policy changed. A 409 at the same version is the server
+		// refusing the in-place edit, which a load does not fix.
+		if (latest.version === sentVersion) return { status: 'notEditable', error };
 
 		generations[kind]++;
 		accept(kind, latest);

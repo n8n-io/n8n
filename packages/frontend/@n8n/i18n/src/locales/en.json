@@ -2948,6 +2948,7 @@
 	"typeAvailabilityPolicies.backToPolicies": "Policies",
 	"typeAvailabilityPolicies.instancePolicy.loadError": "Could not load the policy",
 	"typeAvailabilityPolicies.instancePolicy.saveError": "Could not save the policy",
+	"typeAvailabilityPolicies.instancePolicy.notEditable.message": "This page cannot change this policy, because it uses several policy documents or a document that other scopes share. Use the API to change it.",
 	"typeAvailabilityPolicies.instancePolicy.changed.title": "The policy changed",
 	"typeAvailabilityPolicies.instancePolicy.changed.message": "The policy changed after you opened this page. Your change was not saved. The page now shows the current policy.",
 	"typeAvailabilityPolicies.landing.title": "Node and credential policies",

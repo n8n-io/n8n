@@ -35,6 +35,14 @@ export function useInstancePolicy() {
 				title: i18n.baseText('typeAvailabilityPolicies.instancePolicy.changed.title'),
 				message: i18n.baseText('typeAvailabilityPolicies.instancePolicy.changed.message'),
 			});
+		} else if (result.status === 'notEditable') {
+			// The server message names attachments, which this page does not show.
+			toast.showMessage({
+				type: 'error',
+				title: i18n.baseText('typeAvailabilityPolicies.instancePolicy.saveError'),
+				message: i18n.baseText('typeAvailabilityPolicies.instancePolicy.notEditable.message'),
+				duration: 0,
+			});
 		} else if (result.status === 'failed') {
 			toast.showError(
 				result.error,

@@ -106,6 +106,28 @@ describe('useInstancePolicy', () => {
 		expect(mocks.showError).not.toHaveBeenCalled();
 	});
 
+	it('explains a policy that the page cannot edit, without the server message', async () => {
+		const instancePolicy = setup(['nodeTypePolicy:manage']);
+		await instancePolicy.load();
+		mocks.saveInstancePolicy.mockRejectedValue(
+			new ResponseError('Cannot replace the policy of a scope with 2 attached documents', {
+				httpStatusCode: 409,
+			}),
+		);
+
+		const result = await instancePolicy.save('node', (current) => current);
+
+		expect(result.status).toBe('notEditable');
+		expect(mocks.showMessage).toHaveBeenCalledWith(
+			expect.objectContaining({
+				type: 'error',
+				title: 'Could not save the policy',
+				message: expect.stringContaining('Use the API to change it.'),
+			}),
+		);
+		expect(mocks.showError).not.toHaveBeenCalled();
+	});
+
 	it('shows an error when a save fails', async () => {
 		const error = new ResponseError('Invalid rule', { httpStatusCode: 400 });
 		const instancePolicy = setup(['nodeTypePolicy:manage']);
