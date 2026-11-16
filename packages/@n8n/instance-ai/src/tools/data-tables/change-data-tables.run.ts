@@ -4,7 +4,7 @@
  * tells the model exactly which changes ran, which failed, and which it skipped.
  */
 import { buildOwnedDataTableGrantKey } from '@n8n/api-types';
-import { UnexpectedError } from '@n8n/errors';
+import { OperationalError, UnexpectedError } from '@n8n/errors';
 import { getErrorMessage } from '@n8n/utils/errors/get-error-message';
 
 import type { InstanceAiContext } from '../../types';
@@ -317,8 +317,9 @@ async function readColumnId(run: Run, table: TableState, column: PlannedColumn) 
 	const schema = await run.context.dataTableService.getSchema(table.id, optionsFor(table));
 	table.columns = new Map(schema.map(({ name, id }) => [name, id]));
 	const id = table.columns.get(column.name);
+	// Someone may have dropped the column since validation. That is not a bug.
 	if (id === undefined) {
-		throw new UnexpectedError(`Table "${table.name}" has no column "${column.name}"`);
+		throw new OperationalError(`Table "${table.name}" has no column "${column.name}"`);
 	}
 	return id;
 }

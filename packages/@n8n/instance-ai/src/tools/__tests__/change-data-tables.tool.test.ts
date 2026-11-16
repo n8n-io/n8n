@@ -816,6 +816,25 @@ describe('change_data_tables tool', () => {
 			expect(cardOf(suspend).approvalDetails.changes).toHaveLength(1);
 		});
 
+		it('returns a denial without checking the batch again', async () => {
+			const context = contextWithTables({ 'dt-T': [column('name')] });
+			context.dataTableService.resolveTableReference = vi
+				.fn()
+				.mockRejectedValue(new UserError('Data table "T" not found'));
+			const result = await resumeBatch(
+				context,
+				{ changes: [{ action: 'insert-rows', table: 'T', rows: [{ name: 'a' }] }] },
+				false,
+			);
+
+			expect(result).toMatchObject({ success: false, denied: true, changes: 1 });
+			expect(context.dataTableService.resolveTableReference).not.toHaveBeenCalled();
+			expect(context.dataTableService.getSchema).not.toHaveBeenCalled();
+			for (const method of WRITE_METHODS) {
+				expect(context.dataTableService[method]).not.toHaveBeenCalled();
+			}
+		});
+
 		it('validates the batch again on resume and runs nothing when it fails', async () => {
 			const context = contextWithTables({}, { grantSessionToolApproval: vi.fn() });
 			const result = await resumeBatch(context, { changes: [createA, createA] }, true, 'session');
@@ -1103,6 +1122,20 @@ describe('change_data_tables tool', () => {
 				projectId: 'proj-1',
 			});
 			expect(onArtifactChanged).not.toHaveBeenCalled();
+		});
+
+		it('reports a column that is gone at run time without logging it as a bug', async () => {
+			const logger = { info: vi.fn(), warn: vi.fn(), error: vi.fn(), debug: vi.fn() };
+			const context = allowAll({ 'dt-T': [column('name')] }, { logger });
+			const { result } = await runBatch(context, {
+				changes: [
+					{ action: 'add-column', table: 'T', column: 'X', type: 'string' },
+					{ action: 'rename-column', table: 'T', column: 'X', newName: 'Y' },
+				],
+			});
+
+			expect(result).toMatchObject({ success: false, failed: { index: 1 } });
+			expect(logger.error).not.toHaveBeenCalled();
 		});
 
 		it('logs a failure that is a bug, not a service refusal', async () => {

@@ -77,6 +77,8 @@ async function handleChanges(
 ) {
 	const parsed = parseStrict(input);
 	if (!parsed.ok) return parsed.result;
+	// A denial runs nothing, so it needs no lookups and must not invite a retry.
+	if (ctx.resumeData && !ctx.resumeData.approved) return deniedResult(parsed.input.changes.length);
 	// On resume the handler runs again with the same input, so tables may have changed meanwhile.
 	const validation = await validateChanges(context, parsed.input);
 	if (!validation.ok) return validation.error;
@@ -86,15 +88,12 @@ async function handleChanges(
 	return await runChanges(context, plan);
 }
 
+function deniedResult(changes: number) {
+	return { success: false, denied: true, reason: 'User denied the action', changes };
+}
+
 async function resumeChanges(context: InstanceAiContext, plan: ChangePlan, resumeData: ResumeData) {
-	if (!resumeData.approved) {
-		return {
-			success: false,
-			denied: true,
-			reason: 'User denied the action',
-			changes: plan.changes.length,
-		};
-	}
+	if (!resumeData.approved) return deniedResult(plan.changes.length);
 	if (resumeData.scope === 'session') await grantBatchActions(context, plan);
 	return await runChanges(context, plan);
 }
