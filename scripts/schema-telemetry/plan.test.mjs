@@ -103,7 +103,7 @@ describe('planSchemaFile', () => {
 		);
 	});
 
-	it('skips a simplify variant on a node without an operation', () => {
+	it('writes a simplify variant of a node without an operation next to output.json', () => {
 		const plan = planSchemaFile(
 			group({
 				node_type: 'n8n-nodes-base.gmailTrigger',
@@ -114,7 +114,7 @@ describe('planSchemaFile', () => {
 			opts,
 		);
 
-		assert.match(plan.skip, /without an operation/);
+		assert.equal(plan.file, 'nodes/Google/Gmail/__schema__/v1.2.0/output.simple-false.json');
 	});
 
 	it('skips a node whose folder has another node without an operation', () => {
