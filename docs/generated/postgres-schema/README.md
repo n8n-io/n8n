@@ -108,6 +108,9 @@ Auto-generated from the PostgreSQL migrations in @n8n/db. Do not edit by hand.
 | [public.instance_monitoring_report](public.instance_monitoring_report.md) | 10 |  | BASE TABLE |
 | [public.instance_version_history](public.instance_version_history.md) | 5 |  | BASE TABLE |
 | [public.invalid_auth_token](public.invalid_auth_token.md) | 2 |  | BASE TABLE |
+| [public.lease](public.lease.md) | 17 |  | BASE TABLE |
+| [public.lease_kind](public.lease_kind.md) | 7 |  | BASE TABLE |
+| [public.lease_session](public.lease_session.md) | 7 |  | BASE TABLE |
 | [public.mcp_registry_server](public.mcp_registry_server.md) | 7 |  | BASE TABLE |
 | [public.migration_finding](public.migration_finding.md) | 10 |  | BASE TABLE |
 | [public.migration_finding_sync](public.migration_finding_sync.md) | 3 |  | BASE TABLE |
@@ -1539,6 +1542,43 @@ erDiagram
 "public.invalid_auth_token" {
   timestamp_3__with_time_zone expiresAt
   varchar_512_ token
+}
+"public.lease" {
+  timestamp_3__with_time_zone claimedAt
+  timestamp_3__with_time_zone createdAt
+  text data
+  varchar_64_ dataHash
+  bigint fencingToken
+  varchar_255_ group
+  varchar_255_ key
+  varchar_24_ kind
+  text lastError
+  timestamp_3__with_time_zone lastErrorAt
+  timestamp_3__with_time_zone nextAttemptAt
+  timestamp_3__with_time_zone readyAt
+  boolean revoked
+  timestamp_3__with_time_zone revokedAt
+  varchar_36_ sessionId
+  integer startAttempts
+  timestamp_3__with_time_zone updatedAt
+}
+"public.lease_kind" {
+  timestamp_3__with_time_zone createdAt
+  timestamp_3__with_time_zone fullPassAt
+  varchar_24_ kind
+  timestamp_3__with_time_zone syncExpiresAt
+  varchar_36_ syncHolder
+  bigint tokenCounter
+  timestamp_3__with_time_zone updatedAt
+}
+"public.lease_session" {
+  varchar_36_ bootId
+  timestamp_3__with_time_zone createdAt
+  timestamp_3__with_time_zone expiresAt
+  varchar_255_ hostId
+  varchar_36_ id
+  varchar_24_ kind
+  integer leaseSeconds
 }
 "public.mcp_registry_server" {
   timestamp_3__with_time_zone createdAt

@@ -108,6 +108,9 @@ Auto-generated from the SQLite migrations in @n8n/db. Do not edit by hand.
 | [instance_monitoring_report](instance_monitoring_report.md) | 10 |  | table |
 | [instance_version_history](instance_version_history.md) | 5 |  | table |
 | [invalid_auth_token](invalid_auth_token.md) | 2 |  | table |
+| [lease](lease.md) | 17 |  | table |
+| [lease_kind](lease_kind.md) | 7 |  | table |
+| [lease_session](lease_session.md) | 7 |  | table |
 | [mcp_registry_server](mcp_registry_server.md) | 7 |  | table |
 | [migration_finding](migration_finding.md) | 10 |  | table |
 | [migration_finding_sync](migration_finding_sync.md) | 3 |  | table |
@@ -1525,6 +1528,43 @@ erDiagram
 "invalid_auth_token" {
   datetime_3_ expiresAt
   varchar_512_ token PK
+}
+"lease" {
+  DATETIME claimedAt
+  DATETIME createdAt
+  TEXT data
+  VARCHAR_64_ dataHash
+  INTEGER fencingToken
+  VARCHAR_255_ group
+  VARCHAR_255_ key PK
+  VARCHAR_24_ kind PK
+  TEXT lastError
+  DATETIME lastErrorAt
+  DATETIME nextAttemptAt
+  DATETIME readyAt
+  BOOLEAN revoked
+  DATETIME revokedAt
+  VARCHAR_36_ sessionId
+  INTEGER startAttempts
+  DATETIME updatedAt
+}
+"lease_kind" {
+  DATETIME createdAt
+  DATETIME fullPassAt
+  VARCHAR_24_ kind PK
+  DATETIME syncExpiresAt
+  VARCHAR_36_ syncHolder
+  INTEGER tokenCounter
+  DATETIME updatedAt
+}
+"lease_session" {
+  VARCHAR_36_ bootId
+  DATETIME createdAt
+  DATETIME expiresAt
+  VARCHAR_255_ hostId
+  VARCHAR_36_ id PK
+  VARCHAR_24_ kind
+  INTEGER leaseSeconds
 }
 "mcp_registry_server" {
   datetime_3_ createdAt
