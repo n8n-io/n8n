@@ -104,13 +104,17 @@ describe('SourceControlService', () => {
 				branchName: 'main',
 			} as never);
 			gitService.setBranch.mockRejectedValueOnce(new Error('branch not found'));
+			gitService.getCurrentBranch.mockResolvedValueOnce({
+				current: 'main',
+				remote: 'origin/main',
+			});
 			const setPreferences = vi.fn().mockResolvedValue(undefined);
 			preferencesService.setPreferences = setPreferences;
 
 			await expect(sourceControlService.setBranch('missing')).rejects.toThrow('branch not found');
 
 			expect(setPreferences).not.toHaveBeenCalled();
-			expect(gitService.setBranch).toHaveBeenNthCalledWith(2, 'main');
+			expect(gitService.checkoutBranch).not.toHaveBeenCalled();
 		});
 
 		it('rolls back the checkout when storing the preference fails', async () => {
@@ -121,13 +125,17 @@ describe('SourceControlService', () => {
 				branches: ['main', 'next'],
 				currentBranch: 'next',
 			});
+			gitService.getCurrentBranch.mockResolvedValueOnce({
+				current: 'next',
+				remote: 'origin/next',
+			});
 			const setPreferences = vi.fn().mockRejectedValue(new Error('DB down'));
 			preferencesService.setPreferences = setPreferences;
 
 			await expect(sourceControlService.setBranch('next')).rejects.toThrow('DB down');
 
-			expect(gitService.setBranch).toHaveBeenNthCalledWith(1, 'next');
-			expect(gitService.setBranch).toHaveBeenNthCalledWith(2, 'main');
+			expect(gitService.setBranch).toHaveBeenCalledTimes(1);
+			expect(gitService.checkoutBranch).toHaveBeenCalledWith('main');
 		});
 	});
 

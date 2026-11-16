@@ -294,7 +294,10 @@ export class SourceControlService {
 			} catch (error) {
 				if (previousBranch && previousBranch !== branch) {
 					try {
-						await this.gitService.setBranch(previousBranch);
+						const { current } = await this.gitService.getCurrentBranch();
+						if (current !== previousBranch) {
+							await this.gitService.checkoutBranch(previousBranch);
+						}
 					} catch (rollbackError) {
 						this.logger.error(
 							`Failed to roll back to branch "${previousBranch}": ${(rollbackError as Error).message}`,

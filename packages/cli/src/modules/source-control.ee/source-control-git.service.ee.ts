@@ -358,6 +358,18 @@ export class SourceControlGitService {
 		return await this.getBranches();
 	}
 
+	/**
+	 * Switch to a local branch without resetting it to the remote commit.
+	 * Use this to undo a failed branch switch without discarding local commits.
+	 */
+	async checkoutBranch(branch: string): Promise<void> {
+		if (!this.git) {
+			throw new UnexpectedError('Git is not initialized (checkoutBranch)');
+		}
+
+		await this.git.checkout(branch);
+	}
+
 	async getCurrentBranch(): Promise<{ current: string; remote: string }> {
 		if (!this.git) {
 			throw new UnexpectedError('Git is not initialized (getCurrentBranch)');
