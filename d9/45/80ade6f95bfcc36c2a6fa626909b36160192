@@ -1,0 +1,24 @@
+.github/workflows/ci-pull-requests.yml
+  s_77b8e3ff116855::t_e81b609713e989 630-637,642-647,652-658
+.github/scripts/workflow-validation.test.mjs
+  s_77b8e3ff116855::t_930d99c77a9089 155-158
+  s_77b8e3ff116855::t_e81b609713e989 144-150,152-154,166-167,174-179
+.github/workflows/ci-pr-quality.yml
+  s_77b8e3ff116855::t_e81b609713e989 194-201,206-211,216-222
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "d94580ade6f95bfcc36c2a6fa626909b36160192",
+  "prompts": {},
+  "sessions": {
+    "s_77b8e3ff116855": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_e3b7cd992ffekKW9T8yYoO8pgA",
+        "model": "openai/gpt-5.6-sol"
+      },
+      "human_author": "Matsuuu <matias.huhta@n8n.io>"
+    }
+  }
+}

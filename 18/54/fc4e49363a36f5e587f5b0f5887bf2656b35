@@ -1,0 +1,26 @@
+packages/@n8n/api-types/src/schemas/__tests__/user.schema.test.ts
+  s_6c7ae27dfe31b8::t_462568c5787841 247-257
+packages/@n8n/api-types/src/schemas/user-settings.schema.ts
+  s_6c7ae27dfe31b8::t_462568c5787841 26-27
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "1854fc4e49363a36f5e587f5b0f5887bf2656b35",
+  "prompts": {},
+  "humans": {
+    "h_c63dce324dfc7b": {
+      "author": "konstantintieber <konstantin.tieber@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_6c7ae27dfe31b8": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "75cac949-6ada-416a-951d-cab98280c71f",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "konstantintieber <konstantin.tieber@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,21 @@
+packages/frontend/editor-ui/src/features/agents/components/AgentFolderBrowser.vue
+  s_b86bd8b73ec329::t_60e2f27de23e1c 269-296,334-340
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentFolderBrowser.test.ts
+  s_b86bd8b73ec329::t_60e2f27de23e1c 70-78,109,112-140
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "da9084d9e24d634c6846ce9d684b2efe368bf970",
+  "prompts": {},
+  "sessions": {
+    "s_b86bd8b73ec329": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a1c5ff-a9a5-7263-8c36-bf54b75e063d",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "Eugene Molodkin <eugene@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,45 @@
+packages/@n8n/db/src/repositories/folder-access.repository.ts
+  s_59270bcc1c75b9::t_b0ffff51ca78a3 60
+  s_59270bcc1c75b9::t_bdda6bd10fc79d 9
+packages/@n8n/db/src/repositories/folder.repository.ts
+  s_59270bcc1c75b9::t_1fe822978ca228 17-24
+  s_59270bcc1c75b9::t_b0ffff51ca78a3 441,487,543,589
+packages/cli/src/modules/mcp/tools/create-folder.tool.ts
+  s_59270bcc1c75b9::t_1fe822978ca228 62
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentsListView.test.ts
+  s_59270bcc1c75b9::t_cd3759a8e10c7d 240
+packages/frontend/editor-ui/src/features/agents/views/AgentsListView.vue
+  ai_agent 118
+  s_59270bcc1c75b9::t_cd3759a8e10c7d 104,110-115,117,119,430,445,447,512
+packages/cli/src/modules/n8n-packages/entities/folder/folder-import.types.ts
+  s_59270bcc1c75b9::t_1fe822978ca228 1-2
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentFolderBrowser.test.ts
+  s_59270bcc1c75b9::t_cd3759a8e10c7d 75-81
+packages/cli/src/controllers/folder.controller.ts
+  s_59270bcc1c75b9::t_ec265a9da3d15a 265
+  s_59270bcc1c75b9::t_4ced094076acee 102,119,141,169,202,242
+  s_59270bcc1c75b9::t_b10a998039c444 184-187
+  s_59270bcc1c75b9::t_a2cc05b7db8b61 32,41-50
+packages/cli/src/modules/mcp/tools/search-folders.tool.ts
+  s_59270bcc1c75b9::t_1fe822978ca228 73
+packages/frontend/editor-ui/src/features/agents/views/AgentBuilderView.vue
+  s_59270bcc1c75b9::t_cd3759a8e10c7d 1739
+packages/frontend/editor-ui/src/features/agents/components/AgentFolderBrowser.vue
+  s_59270bcc1c75b9::t_cd3759a8e10c7d 25,71,98,101,107,158,188
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "7093263fc452de153f81fecbb46bce79be198ca8",
+  "prompts": {},
+  "sessions": {
+    "s_59270bcc1c75b9": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "6f0208db-1247-4519-b410-1b1bf7dfc1ff",
+        "model": "claude-fable-5-2"
+      },
+      "human_author": "Eugene Molodkin <eugene@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,27 @@
+packages/@n8n/expression-runtime/src/runtime/to-ascii.ts
+  s_332b5877234e83::t_670c4a588f4f4c 9-10,13,15-17
+  s_332b5877234e83::t_07f479c5d9370e 1-8,11-12,14,18-36
+packages/@n8n/expression-runtime/src/__tests__/to-ascii.test.ts
+  s_332b5877234e83::t_f733ff7405af54 46-55
+packages/@n8n/expression-runtime/esbuild.config.js
+  s_332b5877234e83::t_57c3753f72b25d 16,18-25
+  s_332b5877234e83::t_a01323fee2aa42 8-15,26-31,42
+packages/@n8n/expression-runtime/src/bridge/isolated-vm-bridge.ts
+  s_332b5877234e83::t_050a5c33aa78fe 177-178,279
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "9e5d4af0d597ba2ec2b00a797ea010bcf945f203",
+  "prompts": {},
+  "sessions": {
+    "s_332b5877234e83": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "779b505d-eab4-4a92-8c8e-111b211d3a06",
+        "model": "claude-fable-5-2"
+      },
+      "human_author": "Lorent Lempereur <lorent.lempereur@n8n.io>"
+    }
+  }
+}

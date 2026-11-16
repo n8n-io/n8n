@@ -1,0 +1,29 @@
+packages/frontend/editor-ui/src/features/ai/instanceAi/__tests__/useResourceRegistry.test.ts
+  s_5855e2588b8dd0::t_c38c872f2da634 272-358
+packages/@n8n/instance-ai/src/agent/system-prompt.ts
+  s_5855e2588b8dd0::t_29bd6acd42939f 142,144,147-149
+  s_5855e2588b8dd0::t_e2deda2d4d191e 143,145-146,150-151
+packages/frontend/editor-ui/src/features/ai/instanceAi/useResourceRegistry.ts
+  s_5855e2588b8dd0::t_471c701b60ad94 285-287
+  s_5855e2588b8dd0::t_5c0b9e7e167238 282-284
+  s_5855e2588b8dd0::t_013bb07133cf12 304
+  s_5855e2588b8dd0::t_f482c9d379226f 335
+  s_5855e2588b8dd0::t_d3e73e74a04fd4 331-333,336-337
+  s_5855e2588b8dd0::t_e8d3bf92d2272e 303,309
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "fc77f4fa2181f5be628fccbb53f08f29b5bddb71",
+  "prompts": {},
+  "sessions": {
+    "s_5855e2588b8dd0": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "d7e96a43-03a7-4174-8b04-03afe378ed45",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Jaakko Husso <jaakko@n8n.io>"
+    }
+  }
+}

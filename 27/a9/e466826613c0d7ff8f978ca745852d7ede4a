@@ -1,0 +1,21 @@
+packages/frontend/editor-ui/src/features/agents/components/AgentCard.vue
+  s_b86bd8b73ec329::t_50f3feb674bb05 237,239-241,329-330
+packages/frontend/editor-ui/src/features/agents/agents-design-language.md
+  s_b86bd8b73ec329::t_bceac25538bc19 28-32
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "27a9e466826613c0d7ff8f978ca745852d7ede4a",
+  "prompts": {},
+  "sessions": {
+    "s_b86bd8b73ec329": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a1c5ff-a9a5-7263-8c36-bf54b75e063d",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "Eugene Molodkin <eugene@n8n.io>"
+    }
+  }
+}

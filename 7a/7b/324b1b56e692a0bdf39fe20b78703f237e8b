@@ -1,0 +1,434 @@
+AGENTS.md
+  h_52a137d26d774c 292-294
+docs/generated/postgres-schema/README.md
+  h_52a137d26d774c 12,529
+docs/generated/postgres-schema/public.agent_background_job.md
+  h_52a137d26d774c 31,103
+docs/generated/postgres-schema/public.agent_execution.md
+  h_52a137d26d774c 131
+docs/generated/postgres-schema/public.agent_plan.md
+  h_52a137d26d774c 84
+docs/generated/postgres-schema/public.agents.md
+  h_52a137d26d774c 139
+docs/generated/sqlite-schema/README.md
+  h_52a137d26d774c 12,515
+docs/generated/sqlite-schema/agent_background_job.md
+  h_52a137d26d774c 9,42,105
+docs/generated/sqlite-schema/agent_execution.md
+  h_52a137d26d774c 135
+docs/generated/sqlite-schema/agent_plan.md
+  h_52a137d26d774c 89
+docs/generated/sqlite-schema/agents.md
+  h_52a137d26d774c 140
+packages/@n8n/agents/src/__tests__/workspace/sandbox/daytona-sandbox.test.ts
+  h_52a137d26d774c 45-46,54-56,137-139,163-165,173-174,948-1057
+packages/@n8n/agents/src/workspace/sandbox/daytona-sandbox.ts
+  h_52a137d26d774c 59,197-206,749-791,799-847
+packages/@n8n/api-types/src/agents/__tests__/agent-json-config.schema.test.ts
+  h_52a137d26d774c 3,889-1061
+packages/@n8n/api-types/src/agents/__tests__/agent-version-metadata.dto.test.ts
+  h_52a137d26d774c 19-33
+packages/@n8n/api-types/src/agents/__tests__/sanitize-agent-json-config.test.ts
+  h_52a137d26d774c 643-696
+packages/@n8n/api-types/src/agents/__tests__/skills.schema.test.ts
+  h_52a137d26d774c 1,13-23
+packages/@n8n/api-types/src/agents/agent-config-validation.schema.ts
+  h_52a137d26d774c 20
+packages/@n8n/api-types/src/agents/agent-json-config.schema.ts
+  h_52a137d26d774c 3-4,471-619,714-741,791-793,870-912
+packages/@n8n/api-types/src/agents/dto.ts
+  h_52a137d26d774c 576-582
+packages/@n8n/api-types/src/agents/skills.schema.ts
+  h_52a137d26d774c 78-79,84-92,94,97-101,177-183,207-220
+packages/@n8n/api-types/src/index.ts
+  h_52a137d26d774c 227
+packages/@n8n/api-types/src/skills/skill-sources.schema.ts
+  h_52a137d26d774c 4,85,250-286
+packages/@n8n/db/AGENTS.md
+  h_52a137d26d774c 26-56
+packages/@n8n/db/src/migrations/common/1794310439584-AddWakeAttemptToAgentBackgroundJob.ts
+  h_52a137d26d774c 1-20
+packages/@n8n/decorators/src/system-task/__tests__/resolve-schedule.test.ts
+  h_52a137d26d774c 21-50
+packages/@n8n/decorators/src/system-task/system-task.ts
+  h_52a137d26d774c 71-76
+packages/@n8n/decorators/src/system-task/types.ts
+  h_52a137d26d774c 19-24
+packages/@n8n/engine/AGENTS.md
+  h_52a137d26d774c 108-114
+packages/@n8n/engine/src/execution/__tests__/start-execution.service.test.ts
+  h_52a137d26d774c 467,512
+packages/@n8n/engine/src/execution/start-execution.service.ts
+  h_52a137d26d774c 3,208,217,223,228
+packages/@n8n/engine/src/graph/__tests__/loops.test.ts
+  h_52a137d26d774c 252-254
+packages/@n8n/engine/src/graph/__tests__/validate-executable-graph.test.ts
+  h_52a137d26d774c 49,85,96,137-139
+packages/@n8n/engine/src/graph/__tests__/workflow-graph-queries.test.ts
+  h_52a137d26d774c 5,27-36
+packages/@n8n/engine/src/graph/index.ts
+  h_52a137d26d774c 12
+packages/@n8n/engine/src/graph/loops.ts
+  h_52a137d26d774c 4,120-121,135
+packages/@n8n/engine/src/graph/validate-executable-graph.ts
+  h_52a137d26d774c 5,28-29,35,46,51,65
+packages/@n8n/engine/src/graph/workflow-graph-queries.ts
+  h_52a137d26d774c 8-17
+packages/@n8n/instance-ai/src/tools/__tests__/skills.tool.test.ts
+  h_52a137d26d774c 27
+packages/@n8n/nodes-langchain/nodes/llms/LmChatGoogleGemini/LmChatGoogleGemini.node.ts
+  h_52a137d26d774c 3-4,31-67,309
+packages/@n8n/nodes-langchain/nodes/llms/LmChatGoogleGemini/test/LmChatGoogleGemini.test.ts
+  h_52a137d26d774c 12,169-228
+packages/@n8n/nodes-langchain/nodes/vendors/OpenAi/__schema__/v1.0.0/image/analyze.json
+  h_52a137d26d774c 1-11
+packages/@n8n/nodes-langchain/nodes/vendors/OpenAi/__schema__/v1.0.0/image/analyze.simplify-false.json
+  h_52a137d26d774c 1-57
+packages/@n8n/nodes-langchain/nodes/vendors/OpenAi/__schema__/v2.0.0/image/analyze.json
+  h_52a137d26d774c 1-64
+packages/@n8n/nodes-langchain/nodes/vendors/OpenAi/__schema__/v2.0.0/image/analyze.simplify-false.json
+  h_52a137d26d774c 1-101
+packages/@n8n/nodes-langchain/nodes/vendors/OpenAi/test/outputSchemas.test.ts
+  h_52a137d26d774c 1-28
+packages/@n8n/nodes-langchain/nodes/vendors/OpenAi/v2/actions/image/analyze.operation.ts
+  h_52a137d26d774c 79-82,124-127
+packages/@n8n/workflow-sdk/src/generate-types/generate-types.ts
+  h_52a137d26d774c 585,634-637,646,654
+packages/@n8n/workflow-sdk/src/generate-types/schema-dir-index.test.ts
+  h_52a137d26d774c 88-102
+packages/cli/package.json
+  h_52a137d26d774c 200
+packages/cli/scripts/build.mjs
+  h_52a137d26d774c 8,96-101
+packages/cli/src/__tests__/license.test.ts
+  h_52a137d26d774c 233-247
+packages/cli/src/credentials/__tests__/credentials.controller.test.ts
+  h_52a137d26d774c 78,156
+packages/cli/src/credentials/__tests__/credentials.service.test.ts
+  h_52a137d26d774c 167
+packages/cli/src/credentials/credentials.controller.ts
+  h_52a137d26d774c 143,145-150,152,156-159
+packages/cli/src/credentials/credentials.service.ts
+  h_52a137d26d774c 66,284,730-743
+packages/cli/src/executions/pre-execution-checks/__tests__/credentials-permission-checker.test.ts
+  h_52a137d26d774c 1043-1061,1396-1411
+packages/cli/src/executions/pre-execution-checks/credential-refusal.ts
+  h_52a137d26d774c 35,38-67
+packages/cli/src/executions/pre-execution-checks/credentials-permission-checker.ts
+  h_52a137d26d774c 92-94,96-100,109,255-276
+packages/cli/src/executions/pre-execution-checks/index.ts
+  h_52a137d26d774c 1-5
+packages/cli/src/license.ts
+  h_52a137d26d774c 484-491
+packages/cli/src/modules/agents/AGENTS.md
+  h_52a137d26d774c 33
+packages/cli/src/modules/agents/__tests__/agent-default-model-resolver.service.test.ts
+  h_52a137d26d774c 5,13-15,19,21-23,30,52-63
+packages/cli/src/modules/agents/__tests__/agent-publish.service.test.ts
+  h_52a137d26d774c 319-339,854
+packages/cli/src/modules/agents/__tests__/agent-skill-refs.service.test.ts
+  h_52a137d26d774c 401-476
+packages/cli/src/modules/agents/__tests__/agent-skill-usage.test.ts
+  h_52a137d26d774c 19,34,43,50-52
+packages/cli/src/modules/agents/__tests__/agent-validation.service.test.ts
+  h_52a137d26d774c 1228-1300
+packages/cli/src/modules/agents/__tests__/agents-builder-tools.service.test.ts
+  h_52a137d26d774c 28,117,141,147-148,2039-2064
+packages/cli/src/modules/agents/__tests__/test-utils/stored-agent-config.ts
+  h_52a137d26d774c 123-124
+packages/cli/src/modules/agents/agent-default-model-resolver.service.ts
+  h_52a137d26d774c 8,31,43,45-46
+packages/cli/src/modules/agents/agent-definition.service.ts
+  h_52a137d26d774c 41,54
+packages/cli/src/modules/agents/agent-execution-orchestrator.service.ts
+  h_52a137d26d774c 247-250,262,1284,2035-2036
+packages/cli/src/modules/agents/agent-publish.controller.ts
+  h_52a137d26d774c 58
+packages/cli/src/modules/agents/agent-publish.service.ts
+  h_52a137d26d774c 9,55,144,152-157,159-160,162,552-556,560,564-571,579,603,709,711-716,721,731-763
+packages/cli/src/modules/agents/agent-skill-refs.service.ts
+  h_52a137d26d774c 167-253,335-336
+packages/cli/src/modules/agents/agent-skill-usage.ts
+  h_52a137d26d774c 2,115-116
+packages/cli/src/modules/agents/agent-skills.service.ts
+  h_52a137d26d774c 309,321-324
+packages/cli/src/modules/agents/agent-turn-execution.service.ts
+  h_52a137d26d774c 57-58,263,274
+packages/cli/src/modules/agents/agent-validation.service.ts
+  h_52a137d26d774c 8,376-378,638-653
+packages/cli/src/modules/agents/agents.service.ts
+  h_52a137d26d774c 493-495,732-744
+packages/cli/src/modules/agents/background/__tests__/agent-wake.service.test.ts
+  h_52a137d26d774c 15,983-1111
+packages/cli/src/modules/agents/background/agent-wake.service.ts
+  h_52a137d26d774c 9,16,131-134,205-211,238-243,251-257,262,269-281,288-317,444,479-480,487-490
+packages/cli/src/modules/agents/builder/agents-builder-tools.service.ts
+  h_52a137d26d774c 51,524,831-840
+packages/cli/src/modules/agents/entities/agent-background-job.entity.ts
+  h_52a137d26d774c 124-130
+packages/cli/src/modules/agents/repositories/agent-background-job.repository.ts
+  h_52a137d26d774c 229,241-268
+packages/cli/src/modules/agents/repositories/agent-execution-thread.repository.ts
+  h_52a137d26d774c 1030
+packages/cli/src/modules/agents/repositories/agent-skill.repository.ts
+  h_52a137d26d774c 54-70
+packages/cli/src/modules/instance-ai/__tests__/instance-ai-execution-redaction.integration.test.ts
+  h_52a137d26d774c 6,388-391,394
+packages/cli/src/modules/instance-ai/__tests__/instance-ai.adapter.service.security.test.ts
+  h_52a137d26d774c 477,484,706,723-724,732,742-743,750,768,772,781-782,831
+packages/cli/src/modules/instance-ai/__tests__/instance-ai.adapter.service.test.ts
+  h_52a137d26d774c 6479-6507,6755-6778
+packages/cli/src/modules/instance-ai/instance-ai.adapter.service.ts
+  h_52a137d26d774c 194-198,2493-2498,2862-2866,3025-3026,3029,3048,3051,5122,5135-5158
+packages/cli/src/modules/mcp/__tests__/skill-tools.service.test.ts
+  h_52a137d26d774c 40
+packages/cli/src/modules/n8n-packages/__tests__/agent-import-application.integration.test.ts
+  h_52a137d26d774c 636,639,641-642,697
+packages/cli/src/modules/n8n-packages/engine/import-orchestrator.ts
+  h_52a137d26d774c 38
+packages/cli/src/modules/n8n-packages/entities/agent/agent-importer.ts
+  h_52a137d26d774c 193-194
+packages/cli/src/modules/skills/AGENTS.md
+  h_52a137d26d774c 88
+packages/cli/src/modules/skills/__tests__/integration/skill-source-check.integration.test.ts
+  h_52a137d26d774c 18,88,96,137-141,145,419-420,425,428-467,716
+packages/cli/src/modules/skills/__tests__/integration/skill-source-credentials.integration.test.ts
+  h_52a137d26d774c 540-544,566,571,584-587
+packages/cli/src/modules/skills/__tests__/integration/skill-source-rows.integration.test.ts
+  h_52a137d26d774c 1-327
+packages/cli/src/modules/skills/__tests__/integration/skill.repository.integration.test.ts
+  h_52a137d26d774c 821,833-835
+packages/cli/src/modules/skills/__tests__/integration/skills.controller.integration.test.ts
+  h_52a137d26d774c 661,680
+packages/cli/src/modules/skills/__tests__/skill-group-page.test.ts
+  h_52a137d26d774c 1-43
+packages/cli/src/modules/skills/__tests__/skill-source-backoff.test.ts
+  h_52a137d26d774c 1-27
+packages/cli/src/modules/skills/__tests__/skill-source-check.task.test.ts
+  h_52a137d26d774c 1-24
+packages/cli/src/modules/skills/__tests__/skill-source-health.test.ts
+  h_52a137d26d774c 1-19
+packages/cli/src/modules/skills/__tests__/skill-sync.service.test.ts
+  h_52a137d26d774c 3,9,14-15,96-149
+packages/cli/src/modules/skills/__tests__/skill.service.test.ts
+  h_52a137d26d774c 517,838
+packages/cli/src/modules/skills/__tests__/skill.service.user-actions.test.ts
+  h_52a137d26d774c 129-130,366,390,423-425,433,848
+packages/cli/src/modules/skills/__tests__/skills-gates.test.ts
+  h_52a137d26d774c 139,148
+packages/cli/src/modules/skills/controllers/skill-source.controller.ts
+  h_52a137d26d774c 84-89,91-92,94-96
+packages/cli/src/modules/skills/database/repositories/skill-source.repository.ts
+  h_52a137d26d774c 207-214,217,220,225-269
+packages/cli/src/modules/skills/database/repositories/skill.repository.ts
+  h_52a137d26d774c 27-28,47-48,65-67,101,103-189,194-195,198-203,212,233,574,581,585-588
+packages/cli/src/modules/skills/services/skill-source-check.task.ts
+  h_52a137d26d774c 18-19,32-33
+packages/cli/src/modules/skills/services/skill-source.service.ts
+  h_52a137d26d774c 15,54,223-258
+packages/cli/src/modules/skills/services/skill-sync.service.ts
+  h_52a137d26d774c 4,33,71,103,106-117,234,237,249,262-263,275-281,483
+packages/cli/src/modules/skills/services/skill-usage-proxy.service.ts
+  h_52a137d26d774c 71,73
+packages/cli/src/modules/skills/services/skill-usage.contracts.ts
+  h_52a137d26d774c 52-53
+packages/cli/src/modules/skills/services/skill.service.ts
+  h_52a137d26d774c 12,44,67,163,177-178,186-205,212-268,611,952-953
+packages/cli/src/modules/skills/utils/skill-group-page.ts
+  h_52a137d26d774c 1-47
+packages/cli/src/modules/skills/utils/skill-source-backoff.ts
+  h_52a137d26d774c 1-14
+packages/cli/src/modules/skills/utils/skill-source-health.ts
+  h_52a137d26d774c 1-21
+packages/cli/src/node-execution/__tests__/execute-node.service.test.ts
+  h_52a137d26d774c 349-373
+packages/cli/src/node-execution/execute-node.service.ts
+  h_52a137d26d774c 28-31,131-135
+packages/cli/src/public-api/v1/openapi-gen/__tests__/generate.test.ts
+  h_52a137d26d774c 76,78,87,90,92-94,96,99-103,105,118-119,128-157,163-164
+packages/cli/src/public-api/v1/openapi-gen/generate.ts
+  h_52a137d26d774c 26-27,30,237,247-257,279-281
+packages/cli/src/requests.ts
+  h_52a137d26d774c 117-120
+packages/cli/src/scheduling/system-tasks/__tests__/system-task-job-registrar.test.ts
+  h_52a137d26d774c 31-35,37-38,95-100
+packages/cli/src/scheduling/system-tasks/__tests__/system-task-runner.test.ts
+  h_52a137d26d774c 108-123
+packages/cli/src/scheduling/system-tasks/in-memory-system-task-runner.ts
+  h_52a137d26d774c 133
+packages/cli/src/scheduling/system-tasks/system-task-job-registrar.ts
+  h_52a137d26d774c 4,51-52,62
+packages/cli/src/scheduling/system-tasks/system-task-timer.ts
+  h_52a137d26d774c 45,47,55,58-61
+packages/cli/src/services/__tests__/credentials-tester.service.test.ts
+  h_52a137d26d774c 6,287-325
+packages/cli/src/services/credentials-tester.service.ts
+  h_52a137d26d774c 77-79,292
+packages/cli/test/integration/agents/agent-skill.repository.test.ts
+  h_52a137d26d774c 428
+packages/cli/test/integration/agents/agent-skills.test.ts
+  h_52a137d26d774c 7,163,166,171-175,177-183,228,244-256,268-384
+packages/cli/test/integration/credentials/credentials.api.ee.test.ts
+  h_52a137d26d774c 12-17,459-485
+packages/cli/test/integration/database/repositories/agent-background-job.repository.test.ts
+  h_52a137d26d774c 1,873-964
+packages/core/src/nodes-loader/__tests__/directory-loader.test.ts
+  h_52a137d26d774c 10,682-694
+packages/core/src/nodes-loader/directory-loader.ts
+  h_52a137d26d774c 41,265
+packages/frontend/@n8n/design-system/src/components/N8nActionToggle/ActionToggle.test.ts
+  h_52a137d26d774c 16-20
+packages/frontend/@n8n/design-system/src/components/N8nActionToggle/ActionToggle.types.ts
+  h_52a137d26d774c 26-27
+packages/frontend/@n8n/design-system/src/components/N8nActionToggle/ActionToggle.vue
+  h_52a137d26d774c 113
+packages/frontend/@n8n/design-system/src/components/N8nDataTableServer/N8nDataTableServer.stories.ts
+  h_52a137d26d774c 181,195-197
+packages/frontend/@n8n/design-system/src/components/N8nDataTableServer/N8nDataTableServer.test.ts
+  h_52a137d26d774c 8,52,63,79-247,249,329,337,346,367,375,411,439-466,468,486,494,526
+packages/frontend/@n8n/design-system/src/components/N8nDataTableServer/N8nDataTableServer.vue
+  h_52a137d26d774c 63-64,96-117,127-131,140-141,149,162-210,330,333-339,343-350,394-396,492-494,553-557,636-654,656-695,706-708,795-800,871-878
+packages/frontend/@n8n/i18n/src/locales/en.json
+  h_52a137d26d774c 4082-4102,9473,9607,10120
+packages/frontend/editor-ui/src/app/components/Modals.test.ts
+  h_52a137d26d774c 1-82
+packages/frontend/editor-ui/src/app/components/Modals.vue
+  h_52a137d26d774c 74,80-260
+packages/frontend/editor-ui/src/app/stores/workflowDocument/useWorkflowDocumentRenderData.ts
+  h_52a137d26d774c 514
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentCard.test.ts
+  h_52a137d26d774c 399-410
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentPublishButton.test.ts
+  h_52a137d26d774c 18,174,184-186,263-273,297,299,368-389,401-411,429-439,465-475,805-815,835-845
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentSkillModal.test.ts
+  h_52a137d26d774c 1967
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentValidationTooltip.test.ts
+  h_52a137d26d774c 224-241
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentVersionHistoryPanel.test.ts
+  h_52a137d26d774c 293-300
+packages/frontend/editor-ui/src/features/agents/__tests__/useAgentCapabilitiesActions.test.ts
+  h_52a137d26d774c 645
+packages/frontend/editor-ui/src/features/agents/__tests__/useAgentPublish.test.ts
+  h_52a137d26d774c 91,166-172,177,187-197,212
+packages/frontend/editor-ui/src/features/agents/components/AgentCard.vue
+  h_52a137d26d774c 27,59
+packages/frontend/editor-ui/src/features/agents/components/AgentPublishButton.vue
+  h_52a137d26d774c 12,59,162
+packages/frontend/editor-ui/src/features/agents/components/AgentValidationTooltip.vue
+  h_52a137d26d774c 108,140,154
+packages/frontend/editor-ui/src/features/agents/components/AgentWebSearchSection.vue
+  h_52a137d26d774c 361,516-522,524,529
+packages/frontend/editor-ui/src/features/agents/components/VersionHistory/AgentVersionHistoryPanel.vue
+  h_52a137d26d774c 123
+packages/frontend/editor-ui/src/features/agents/composables/agentTelemetry.utils.ts
+  h_52a137d26d774c 5,92
+packages/frontend/editor-ui/src/features/agents/composables/useAgentApi.ts
+  h_52a137d26d774c 44,661,667
+packages/frontend/editor-ui/src/features/agents/composables/useAgentPublish.ts
+  h_52a137d26d774c 72-75,77-87,109,111
+packages/frontend/editor-ui/src/features/agents/utils/agentPublication.ts
+  h_52a137d26d774c 1-14
+packages/frontend/editor-ui/src/features/agents/views/AgentBuilderView.vue
+  h_52a137d26d774c 2,3841
+packages/frontend/editor-ui/src/features/ai/instanceAi/__tests__/InstanceAiCredentialSetup.test.ts
+  h_52a137d26d774c 287
+packages/frontend/editor-ui/src/features/ai/instanceAi/__tests__/InstanceAiSkillPreview.test.ts
+  h_52a137d26d774c 40
+packages/frontend/editor-ui/src/features/ai/instanceAi/components/InstanceAiCredentialSetup.vue
+  h_52a137d26d774c 12,315-318,377-381,715
+packages/frontend/editor-ui/src/features/ai/instanceAi/components/__tests__/InstanceAiConversation.draft.test.ts
+  h_52a137d26d774c 105-107,111
+packages/frontend/editor-ui/src/features/ai/instanceAi/components/setupPanel/InstanceAiSetupCredential.vue
+  h_52a137d26d774c 162-165,516,695,697
+packages/frontend/editor-ui/src/features/ai/instanceAi/components/setupPanel/InstanceAiSetupPanel.vue
+  h_52a137d26d774c 769
+packages/frontend/editor-ui/src/features/ai/instanceAi/components/setupPanel/__tests__/InstanceAiSetupCredential.test.ts
+  h_52a137d26d774c 148,157-159,814-817,1131-1152
+packages/frontend/editor-ui/src/features/ai/instanceAi/workflowSetup/__tests__/factories.ts
+  h_52a137d26d774c 65-67
+packages/frontend/editor-ui/src/features/ai/instanceAi/workflowSetup/components/WorkflowSetupSectionBody.test.ts
+  h_52a137d26d774c 38,85,93,340-354
+packages/frontend/editor-ui/src/features/ai/instanceAi/workflowSetup/components/WorkflowSetupSectionBody.vue
+  h_52a137d26d774c 8,41-52,252,259
+packages/frontend/editor-ui/src/features/ai/instanceAi/workflowSetup/composables/useWorkflowSetupBootstrap.test.ts
+  h_52a137d26d774c 40,70
+packages/frontend/editor-ui/src/features/ai/instanceAi/workflowSetup/composables/useWorkflowSetupBootstrap.ts
+  h_52a137d26d774c 22
+packages/frontend/editor-ui/src/features/ai/instanceAi/workflowSetup/composables/useWorkflowSetupSections.test.ts
+  h_52a137d26d774c 42-43,45-49,59
+packages/frontend/editor-ui/src/features/ai/instanceAi/workflowSetup/composables/useWorkflowSetupSections.ts
+  h_52a137d26d774c 66
+packages/frontend/editor-ui/src/features/ai/instanceAi/workflowSetup/workflowSetup.types.ts
+  h_52a137d26d774c 19-20
+packages/frontend/editor-ui/src/features/credentials/components/NodeCredentials.test.ts
+  h_52a137d26d774c 528-539
+packages/frontend/editor-ui/src/features/credentials/components/NodeCredentials.vue
+  h_52a137d26d774c 117-118,575-579,582,588
+packages/frontend/editor-ui/src/features/credentials/credentials.store.ts
+  h_52a137d26d774c 47
+packages/frontend/editor-ui/src/features/credentials/credentials.types.ts
+  h_52a137d26d774c 94-95
+packages/frontend/editor-ui/src/features/credentials/credentials.utils.ts
+  h_52a137d26d774c 18-35
+packages/frontend/editor-ui/src/features/settings/context/components/SkillScopeBadge.vue
+  h_52a137d26d774c 3,5,11,23-30
+packages/frontend/editor-ui/src/features/settings/context/components/SkillSourceConnectDialog.test.ts
+  h_52a137d26d774c 387-411
+packages/frontend/editor-ui/src/features/settings/context/components/SkillSourceConnectDialog.vue
+  h_52a137d26d774c 57,424-426,683-690
+packages/frontend/editor-ui/src/features/settings/context/components/SkillSourceHealth.test.ts
+  h_52a137d26d774c 1-68
+packages/frontend/editor-ui/src/features/settings/context/components/SkillSourceHealth.vue
+  h_52a137d26d774c 1-66
+packages/frontend/editor-ui/src/features/settings/context/components/SkillsTable.test.ts
+  h_52a137d26d774c 4-9,49,343-362,364-390,392-393,395-398,400-401,403-484,487-512,514-549,552-559
+packages/frontend/editor-ui/src/features/settings/context/components/SkillsTable.vue
+  h_52a137d26d774c 2-3,9,22,26-28,43,49-54,61-62,71,127-165,167-212,248,271,275-280,283,285-378,384,497-544
+packages/frontend/editor-ui/src/features/settings/context/composables/useSkillSyncFlag.ts
+  h_52a137d26d774c 7
+packages/frontend/editor-ui/src/features/settings/context/skills.api.ts
+  h_52a137d26d774c 13,38-43,170-176,178,183,187
+packages/frontend/editor-ui/src/features/settings/context/skills.store.test.ts
+  h_52a137d26d774c 6,16-17,28-29,59-101
+packages/frontend/editor-ui/src/features/settings/context/skills.store.ts
+  h_52a137d26d774c 2-3,18,31-34,50-52,148-162,168-169,187-190
+packages/frontend/editor-ui/src/features/settings/context/views/SettingsContextView.test.ts
+  h_52a137d26d774c 54-55,59,62
+packages/frontend/editor-ui/src/features/settings/context/views/SettingsSkillsView.test.ts
+  h_52a137d26d774c 10,77,152,1267,1271,1342-1368,1371-1468,1470-1484,1486-1506,1509-1510,1512-1548,1570,1572,1578,1580-1582,1584-1585,1590-1605,1616,1619,1621,1625,1629-1645,1648-1649,1651
+packages/frontend/editor-ui/src/features/settings/context/views/SettingsSkillsView.vue
+  h_52a137d26d774c 2-3,5,7,17,183-192,234,237,246-253,506-507,736-737,772-773,776-815,818,833-835,855-866,873-878,883,891,894-896,1035,1037,1040-1043,1047-1048,1093
+packages/frontend/editor-ui/src/features/workflows/canvas/composables/useCanvasMapping.groups.test.ts
+  h_52a137d26d774c 11,17,548,573-584
+packages/frontend/editor-ui/src/features/workflows/canvas/composables/useCanvasMapping.groups.ts
+  h_52a137d26d774c 18,282-290
+packages/frontend/editor-ui/src/features/workflows/canvas/composables/useCanvasMapping.test.ts
+  h_52a137d26d774c 27-28,270-273,275-278,282,285,288-290
+packages/frontend/editor-ui/src/features/workflows/canvas/composables/useCanvasMapping.ts
+  h_52a137d26d774c 21,118-119,200,208-212
+packages/frontend/editor-ui/src/features/workflows/canvas/stores/canvasNodeGroups.constants.ts
+  h_52a137d26d774c 19-21,26-32,34-35
+packages/nodes-base/credentials/ServiceNowBasicApi.credentials.ts
+  h_52a137d26d774c 1-2,5,8,58-121
+packages/nodes-base/nodes/ServiceNow/test/ServiceNow.node.test.ts
+  h_52a137d26d774c 3-10,12,14,64-188
+packages/workflow/src/interfaces.ts
+  h_52a137d26d774c 472
+packages/workflow/src/tool-helpers.ts
+  h_52a137d26d774c 16-19
+packages/workflow/test/tool-helpers.test.ts
+  h_52a137d26d774c 122-137
+pnpm-lock.yaml
+  h_52a137d26d774c 4925-4926,12620-12622,24407-24410,29686,29691,43263-43264
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "7a7b324b1b56e692a0bdf39fe20b78703f237e8b",
+  "prompts": {},
+  "humans": {
+    "h_52a137d26d774c": {
+      "author": "Matsuuu <matias.huhta@n8n.io>"
+    }
+  }
+}

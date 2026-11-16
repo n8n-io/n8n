@@ -1,0 +1,23 @@
+packages/@n8n/instance-ai/package.json
+  s_1089d9beee619b::t_834caeb72b3ef5 94
+packages/@n8n/nodes-langchain/package.json
+  s_1089d9beee619b::t_834caeb72b3ef5 314
+pnpm-lock.yaml
+  ai_agent 3335-3336,3901,4071-4072,7774,22484-22485,31169,31189,31195,31199,31205,31207,31211,31217,31222-31223,31228,31239,31267,31277,31283,31288-31289,31294,42162
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "1288763ae10354a787ba20819fd75a0d59c10f5b",
+  "prompts": {},
+  "sessions": {
+    "s_1089d9beee619b": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "7a9952c1-53b4-4822-9da5-dbcd202b980f",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Benjamin Schroth <benjamin@n8n.io>"
+    }
+  }
+}

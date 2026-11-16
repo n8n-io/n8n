@@ -1,0 +1,31 @@
+packages/cli/src/__tests__/websocket-paths.test.ts
+  s_bbdff09dde7545::t_624fdc33580476 1-186
+packages/cli/src/chat/__tests__/chat-server.test.ts
+  s_bbdff09dde7545::t_284ec019dadfcb 47,68
+packages/cli/src/chat/chat-server.ts
+  s_bbdff09dde7545::t_ab4d64cc322e76 12-13,26,38-41
+packages/cli/src/modules/instance-ai/browser/browser-use-server.ts
+  s_bbdff09dde7545::t_c08ee647f175cc 13-17,31,55-58
+packages/cli/src/push/index.ts
+  s_bbdff09dde7545::t_92f83a26517160 17,68-71,77
+packages/cli/src/server.ts
+  s_bbdff09dde7545::t_eec27d5b4fafe8 34,576-590
+packages/cli/src/webhooks/webhook-server.ts
+  s_bbdff09dde7545::t_bfbf886c20f14e 6,26-28
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "0677844a008799cf643521c9c3df0c26be2b9497",
+  "prompts": {},
+  "sessions": {
+    "s_bbdff09dde7545": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "7e9be07d-342d-4c2d-b886-410aa08a5488",
+        "model": "unknown"
+      },
+      "human_author": "Veljko Terzic <veljko.terzic@n8n.io>"
+    }
+  }
+}

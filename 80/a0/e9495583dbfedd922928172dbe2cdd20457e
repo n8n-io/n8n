@@ -1,0 +1,550 @@
+packages/quality/testing/playwright/tests/e2e/workflows/templates/templates.spec.ts
+  s_08690fb8a4caf5::t_4ac62fdf6642d5 7,20-22,107-114,262-278
+  s_08690fb8a4caf5::t_9b71aa1e26bcbd 279-280
+packages/cli/src/modules/knowledge/retrieval/retrieval-schemas.ts
+  s_08690fb8a4caf5::t_4ac62fdf6642d5 1-316
+packages/nodes-base/nodes/N8n/n8n-api-coverage.json
+  s_08690fb8a4caf5::t_4ac62fdf6642d5 296-301
+packages/frontend/editor-ui/src/features/ai/instanceAi/assistantAgent/__tests__/AssistantConfirmationCard.test.ts
+  s_08690fb8a4caf5::t_4ac62fdf6642d5 186-211
+packages/core/src/execution-engine/__tests__/workflow-execute.test.ts
+  s_08690fb8a4caf5::t_4ac62fdf6642d5 42,1424-1645
+  s_08690fb8a4caf5::t_556ba90964151b 1646
+packages/@n8n/instance-ai/src/agent/sanitize-mcp-schemas.ts
+  s_08690fb8a4caf5::t_4ac62fdf6642d5 379-397,423-428,466-504,513-516,537-541,545-554,617-660,915-916
+packages/frontend/editor-ui/src/features/agents/composables/useAgentSkillImport.ts
+  s_08690fb8a4caf5::t_4ac62fdf6642d5 18-21,53-59,149-150
+packages/@n8n/instance-ai/src/errors/app-namespace-taken.error.ts
+  s_08690fb8a4caf5::t_4ac62fdf6642d5 1-8
+packages/cli/src/modules/n8n-packages/engine/project-package-importer.ts
+  s_08690fb8a4caf5::t_4ac62fdf6642d5 4,36,128,348,361-366,469-473,476,481-482,485-486,489,492
+packages/cli/src/modules/promotions.ee/apply-preview.service.ts
+  s_08690fb8a4caf5::t_4ac62fdf6642d5 26,50-51,59,247-249,264-266
+packages/frontend/editor-ui/src/features/workflows/canvas/components/elements/nodes/render-types/parts/CanvasNodeStatusIcons.test.ts
+  s_08690fb8a4caf5::t_4ac62fdf6642d5 7-12,20-24,128-214
+  s_08690fb8a4caf5::t_6c8b1f59317416 215
+packages/modules/promotions/frontend/src/promoteErrorMessage.ts
+  s_08690fb8a4caf5::t_4ac62fdf6642d5 3,8-12,19,30
+packages/cli/src/modules/promotions.ee/promotions.service.ts
+  s_08690fb8a4caf5::t_4ac62fdf6642d5 496,595-599,606-607,616-620,622-626,644-648,658,694,699,701-711,735,767,778,789,792-803,833-838,866,887,899,932,942-943,947,1468,1475,1624-1630,1635-1640,1647,1653-1654
+packages/@n8n/api-types/src/dto/promotions/promotion-apply-check.dto.ts
+  s_08690fb8a4caf5::t_4ac62fdf6642d5 50-52,61,65,268-287
+packages/@n8n/instance-ai/src/tools/__tests__/research.tool.test.ts
+  s_08690fb8a4caf5::t_4ac62fdf6642d5 3,54-75
+  s_08690fb8a4caf5::t_b36d5bf38a3892 76-77
+packages/@n8n/agents/src/runtime/loop/__tests__/runtime-helpers.test.ts
+  s_08690fb8a4caf5::t_4ac62fdf6642d5 2,57-80
+  s_08690fb8a4caf5::t_db6b95f669c121 81
+packages/cli/src/executions/execution-crash.service.ts
+  s_08690fb8a4caf5::t_4ac62fdf6642d5 65-91
+packages/cli/src/executions/execution-persistence.ts
+  s_08690fb8a4caf5::t_4ac62fdf6642d5 964-969,974
+packages/cli/src/modules/n8n-packages/entities/folder/folder-importer.ts
+  s_08690fb8a4caf5::t_4ac62fdf6642d5 82,84
+.github/workflows/util-update-boundaries-baseline.yml
+  s_08690fb8a4caf5::t_4ac62fdf6642d5 49
+packages/cli/src/services/__tests__/project.service.ee.test.ts
+  s_08690fb8a4caf5::t_4ac62fdf6642d5 19,1216-1243
+  s_08690fb8a4caf5::t_6f90adb0dbf23e 1244
+packages/core/src/execution-engine/partial-execution-utils/find-start-nodes.ts
+  s_08690fb8a4caf5::t_4ac62fdf6642d5 4,108-109
+packages/@n8n/cli/docs/commands/package.md
+  s_08690fb8a4caf5::t_4ac62fdf6642d5 98,116-118,125-126,277-278,281
+packages/frontend/editor-ui/src/app/views/NodeView.test.ts
+  s_08690fb8a4caf5::t_4ac62fdf6642d5 233,1228-1302
+  s_08690fb8a4caf5::t_096e0ce9431066 1303
+packages/@n8n/instance-ai/src/errors/index.ts
+  s_08690fb8a4caf5::t_4ac62fdf6642d5 3
+packages/cli/src/modules/agents/knowledge-sandbox-provider.adapter.ts
+  s_08690fb8a4caf5::t_4ac62fdf6642d5 1-48
+packages/@n8n/api-types/src/dto/promotions/__tests__/promotion-operations.dto.test.ts
+  s_08690fb8a4caf5::t_4ac62fdf6642d5 103-105
+packages/cli/src/modules/n8n-packages/entities/project/project.exporter.ts
+  s_08690fb8a4caf5::t_4ac62fdf6642d5 34-35,64-66,163
+packages/cli/src/modules/promotions.ee/__tests__/promotion-change-gate.test.ts
+  s_08690fb8a4caf5::t_4ac62fdf6642d5 1,65,81,87,94
+packages/core/src/execution-engine/partial-execution-utils/recreate-node-execution-stack.ts
+  s_08690fb8a4caf5::t_4ac62fdf6642d5 17,131-135,137-140,142,147,165-166,168,178,187-191
+packages/cli/src/modules/engine-v2/__tests__/engine-v2.module.test.ts
+  s_08690fb8a4caf5::t_4ac62fdf6642d5 166-175
+packages/frontend/editor-ui/src/features/ai/instanceAi/components/__tests__/InstanceAiConversation.test.ts
+  s_08690fb8a4caf5::t_4ac62fdf6642d5 172,179,204-205,214-215
+packages/frontend/editor-ui/src/features/ndv/parameters/components/FromAiParametersModal.vue
+  s_08690fb8a4caf5::t_4ac62fdf6642d5 5,9-17,25-26,46,48,67-73,125,139-142,145-146,148-149,152-179,181,189-190
+packages/frontend/editor-ui/src/features/ndv/runData/components/BinaryDataViewModal.vue
+  s_08690fb8a4caf5::t_4ac62fdf6642d5 3,8,12-13,15,132-141,145-150,152-156,222-223,227-231,238-239
+packages/@n8n/cli/src/__tests__/promotion-environment-operations.test.ts
+  s_08690fb8a4caf5::t_4ac62fdf6642d5 417-421,451,494-499,502-503,508,513-518,543-548,552-557,559,592,595,625,628
+packages/cli/src/modules/agents/agent-knowledge-mirror.service.ts
+  s_08690fb8a4caf5::t_4ac62fdf6642d5 33,48-49
+packages/frontend/editor-ui/src/features/shared/contextMenu/composables/useContextMenu.test.ts
+  s_08690fb8a4caf5::t_4ac62fdf6642d5 545-622
+packages/cli/src/modules/knowledge/files/knowledge-file.service.ts
+  s_08690fb8a4caf5::t_4ac62fdf6642d5 1-322
+packages/@n8n/instance-ai/src/tools/apps/__tests__/apps.tool.test.ts
+  s_08690fb8a4caf5::t_4ac62fdf6642d5 12,330-369
+  s_08690fb8a4caf5::t_e8618cbb9cc39a 370
+packages/cli/src/modules/n8n-packages/n8n-packages.service.ts
+  s_08690fb8a4caf5::t_4ac62fdf6642d5 56,491,712
+packages/cli/src/modules/promotions.ee/promotion-change.service.ts
+  s_08690fb8a4caf5::t_4ac62fdf6642d5 19,28,43-44,71,74-75,82,104-105,124-125,133,199,206
+packages/cli/src/modules/knowledge/retrieval/__tests__/commands.test.ts
+  s_08690fb8a4caf5::t_4ac62fdf6642d5 1-343
+packages/frontend/editor-ui/src/features/ndv/parameters/components/TextEdit.vue
+  s_08690fb8a4caf5::t_4ac62fdf6642d5 4,8,67-70,75-79,82,84-103
+packages/frontend/editor-ui/src/features/settings/security/rateLimits/ApiKeyRateLimitsSection.test.ts
+  s_08690fb8a4caf5::t_4ac62fdf6642d5 7,11,61-69,107-120,175,180-187
+  s_08690fb8a4caf5::t_bd00497180a6a0 188-189
+packages/cli/src/public-api/v1/controllers/promotions.public.controller.ts
+  s_08690fb8a4caf5::t_4ac62fdf6642d5 24,29-30,62,65,81-83,98,100-101,118,120,143-146,164,166-167,188-189,208,210-211,240,242-243,276,278-279,298,300-301,328,330-331,350,352-353,374,376-377,398,400-401,421,423-424,445-446,465,467-468,488,490-491,518-519,546,548-549,573,575-576,603,605-606,633,635-636,639,648-675,679-684,694,696-697,723,725-726,748,750-751,755,773-781
+  s_08690fb8a4caf5::t_f075507f904c99 782
+packages/modules/promotions/frontend/src/promotionPreview.selection.ts
+  s_08690fb8a4caf5::t_4ac62fdf6642d5 28-29,194-199,203-204,212,224-225,238-246,260-261,269
+packages/cli/src/modules/agents/agents.module.ts
+  s_08690fb8a4caf5::t_4ac62fdf6642d5 18-23
+packages/modules/promotions/frontend/src/views/PromotionPreviewView.vue
+  s_08690fb8a4caf5::t_4ac62fdf6642d5 49,80-81,83,95-103,196-197,199-201
+packages/frontend/editor-ui/src/features/shared/contextMenu/composables/useContextMenuItems.ts
+  s_08690fb8a4caf5::t_4ac62fdf6642d5 18,30,89,480-486
+packages/frontend/editor-ui/src/features/ndv/parameters/components/ImportCurlModal.vue
+  s_08690fb8a4caf5::t_4ac62fdf6642d5 3,10-20,29,52-56,118-122,124-134,136-150,154
+packages/cli/src/services/__tests__/node-resource-explorer.service.test.ts
+  s_08690fb8a4caf5::t_4ac62fdf6642d5 5,94-96,98-100
+packages/quality/efficiency/scale/benchmark/scripts/n8n-setups/engine-v2/docker-compose.yml
+  s_08690fb8a4caf5::t_4ac62fdf6642d5 122
+packages/cli/src/modules/knowledge/files/__tests__/knowledge-upload.middleware.test.ts
+  s_08690fb8a4caf5::t_4ac62fdf6642d5 1-42
+packages/cli/src/modules/n8n-packages/CLAUDE.md
+  s_08690fb8a4caf5::t_4ac62fdf6642d5 58-63
+packages/cli/src/modules/knowledge/__tests__/knowledge-sandbox-provider-registry.test.ts
+  s_08690fb8a4caf5::t_4ac62fdf6642d5 1-106
+packages/cli/src/modules/promotions.ee/promotion-commit-message.ts
+  s_08690fb8a4caf5::t_4ac62fdf6642d5 3-4,10-12,37,43,45-53,58,60
+packages/cli/src/modules/n8n-packages/__tests__/import-projects.integration.test.ts
+  s_08690fb8a4caf5::t_4ac62fdf6642d5 264,277-307,493-500,553-573,620,630-633,2289,2291
+packages/frontend/@n8n/design-system/src/components/N8nDialog/Dialog.test.ts
+  s_08690fb8a4caf5::t_4ac62fdf6642d5 591-617
+packages/frontend/editor-ui/src/app/utils/nodeViewUtils.ts
+  s_08690fb8a4caf5::t_4ac62fdf6642d5 9,21,32,657-679
+packages/quality/environments/containers/tests/engine.test.ts
+  s_08690fb8a4caf5::t_4ac62fdf6642d5 147-150
+packages/modules/promotions/frontend/src/promotionOperation.ts
+  s_08690fb8a4caf5::t_4ac62fdf6642d5 15-20,24,26,30,32,96,106,165
+packages/cli/src/modules/n8n-packages/entities/project/project-importer.ts
+  s_08690fb8a4caf5::t_4ac62fdf6642d5 2,5,63,65-67,88-89,182-186
+  s_08690fb8a4caf5::t_7099653fb67662 187-188
+packages/frontend/editor-ui/src/features/agents/components/AgentSkillUpload.vue
+  s_08690fb8a4caf5::t_4ac62fdf6642d5 48
+packages/modules/promotions/frontend/src/promotionPreview.selection.test.ts
+  s_08690fb8a4caf5::t_4ac62fdf6642d5 90,107-109,112-129,131,133-154,156-162
+packages/cli/src/workflow-runner.ts
+  s_08690fb8a4caf5::t_4ac62fdf6642d5 32,331-374
+  s_08690fb8a4caf5::t_ffd199e213405b 375
+packages/cli/src/modules/promotions.ee/__tests__/promotion-changes.integration.test.ts
+  s_08690fb8a4caf5::t_4ac62fdf6642d5 2-5,32,51,81,186-194,214,216-219,223-226,255-256,259-262,272-273,277,285-286,289-292,294-296,305-306,312,323-324,338,367-371,382-384,398,402-405,408-409,412-414,416-429,467-469,471-486,492,495-498,503-504,506-508,511-520,522-523,526,528-530,538-539,543-544,555-557,571-572,576-578,610-614,619,639-640,642-643,648,660,662-664,666,668-673,680,694-705,739-743,776-778,798,822,824-826,829,844-845,853-854,856,864,891-892,895,907,954-955,958,1013-1015,1029,1049-1050,1052,1062,1091-1092,1106-1107,1109,1116,1123,1135-1137,1145
+  s_08690fb8a4caf5::t_e12993456af940 1
+packages/@n8n/telemetry/src/events/promotions.ts
+  s_08690fb8a4caf5::t_4ac62fdf6642d5 139-142,175-182
+packages/cli/src/modules/n8n-packages/engine/import-orchestrator.ts
+  s_08690fb8a4caf5::t_4ac62fdf6642d5 115-116,246-249
+  s_08690fb8a4caf5::t_ccfdfd54cdc596 250
+packages/frontend/editor-ui/src/app/utils/nodeViewUtils.test.ts
+  s_08690fb8a4caf5::t_4ac62fdf6642d5 11-12,727-762
+packages/frontend/editor-ui/src/features/workflows/canvas/components/elements/nodes/render-types/parts/CanvasNodeStatusIcons.vue
+  s_08690fb8a4caf5::t_4ac62fdf6642d5 112-114
+packages/cli/src/modules/knowledge/files/knowledge-upload.middleware.ts
+  s_08690fb8a4caf5::t_4ac62fdf6642d5 1-101
+scripts/check-boundaries.mjs
+  s_08690fb8a4caf5::t_4ac62fdf6642d5 3-6,8-9,14,17-99,102,104,106-117,121-127,130-135,139-145,147,150-171,173-182,186,188
+packages/@n8n/cli/src/commands/promotion-environment/apply-selection-continue.ts
+  s_08690fb8a4caf5::t_4ac62fdf6642d5 4-8,13,27-30,33,46,50,53,55
+packages/cli/src/modules/promotions.ee/promotions-git.service.ts
+  s_08690fb8a4caf5::t_4ac62fdf6642d5 290,383-393,419
+packages/cli/src/modules/engine-v2/engine-v2.module.ts
+  s_08690fb8a4caf5::t_4ac62fdf6642d5 16,32-34
+  s_08690fb8a4caf5::t_48350d066ec91f 35
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_08690fb8a4caf5::t_4ac62fdf6642d5 453,465,3081-3084,3150,3982-3983,3985,6968,6970,6989,9887,10748-10749,10752-10753,10758-10759,10778,10798-10799,10863
+.boundaries-baseline.json
+  s_08690fb8a4caf5::t_4ac62fdf6642d5 2-91
+packages/modules/promotions/frontend/src/components/ApplyInstanceDialog.vue
+  s_08690fb8a4caf5::t_4ac62fdf6642d5 20,72
+packages/@n8n/api-types/src/index.ts
+  s_08690fb8a4caf5::t_4ac62fdf6642d5 455,612
+packages/frontend/editor-ui/src/app/components/WorkflowPreviewHost.vue
+  s_08690fb8a4caf5::t_4ac62fdf6642d5 28-40,62
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentSkillModal.test.ts
+  s_08690fb8a4caf5::t_4ac62fdf6642d5 179-180,1517-1559
+packages/@n8n/agents/src/runtime/loop/stream-sink.ts
+  s_08690fb8a4caf5::t_4ac62fdf6642d5 15,397-398,413
+packages/modules/promotions/frontend/src/promotionOperation.test.ts
+  s_08690fb8a4caf5::t_4ac62fdf6642d5 36-38,40-46
+packages/cli/test/integration/execution.repository.test.ts
+  s_08690fb8a4caf5::t_4ac62fdf6642d5 8,345-414
+  s_08690fb8a4caf5::t_151470f862c550 415
+packages/cli/src/modules/agents/__tests__/agent-modification-telemetry.service.test.ts
+  s_08690fb8a4caf5::t_4ac62fdf6642d5 8,11
+packages/cli/src/modules/instance-ai/__tests__/instance-ai.adapter.service.test.ts
+  s_08690fb8a4caf5::t_4ac62fdf6642d5 7,15,1969,9343-9365
+  s_08690fb8a4caf5::t_4cfd45a4a1f3d4 9366
+packages/@n8n/agents/src/runtime/__tests__/model-factory.test.ts
+  s_08690fb8a4caf5::t_4ac62fdf6642d5 228-264,407,410,477,479-480,485-506,553-555
+packages/frontend/editor-ui/src/features/ndv/parameters/components/ExpressionEditModal.vue
+  s_08690fb8a4caf5::t_4ac62fdf6642d5 19,27-30,39-40,156-159,174-178,180-197,199-214,217-227,231-251,254-282,286-287,295
+packages/cli/src/modules/knowledge/knowledge-sandbox-provider-registry.ts
+  s_08690fb8a4caf5::t_4ac62fdf6642d5 1-67
+packages/frontend/editor-ui/src/features/ndv/parameters/components/FromAiParametersModal.test.ts
+  s_08690fb8a4caf5::t_4ac62fdf6642d5 18,40-42,44-50,55-64,67-74,194-216,218,227,233,246,266,293,321,342,379,415,444
+packages/frontend/editor-ui/src/features/agents/components/AgentMemorySourceFilter.vue
+  s_08690fb8a4caf5::t_4ac62fdf6642d5 2,34-36,124-136,138,151,155,157,188-191,200
+packages/cli/src/modules/agents/__tests__/knowledge-sandbox-provider.adapter.test.ts
+  s_08690fb8a4caf5::t_4ac62fdf6642d5 1-149
+packages/@n8n/cli/src/__tests__/promotion-environment-list-changes.test.ts
+  s_08690fb8a4caf5::t_4ac62fdf6642d5 4,21,24-36,38-43,45-62,66-89,92,103,105,113-114,118-119,122,127-128,131-140,144
+packages/@n8n/instance-ai/src/agent/__tests__/sanitize-mcp-schemas.test.ts
+  s_08690fb8a4caf5::t_4ac62fdf6642d5 2,56-62,551,615,631,644,666,669,671,685,688,703,705,715,717,723,726,743,761,768-898
+packages/@n8n/instance-ai/src/tools/apps/apps.tool.ts
+  s_08690fb8a4caf5::t_4ac62fdf6642d5 6,19,280,315-327
+packages/cli/src/__tests__/workflow-runner.test.ts
+  s_08690fb8a4caf5::t_4ac62fdf6642d5 552-553,564,576-603,606,608-609,611-614,627-652,738,741,761-765
+packages/cli/src/modules/knowledge/AGENTS.md
+  s_08690fb8a4caf5::t_4ac62fdf6642d5 9,16,19,21,32
+packages/cli/src/modules/promotions.ee/__tests__/promotion-commit-message.test.ts
+  s_08690fb8a4caf5::t_4ac62fdf6642d5 23,30,34,38,43-46
+  s_08690fb8a4caf5::t_12065f3f0d2c01 47-48
+packages/cli/src/executions/__tests__/execution-persistence.test.ts
+  s_08690fb8a4caf5::t_4ac62fdf6642d5 571-575,582,588-604
+  s_08690fb8a4caf5::t_bf7ebe2171676c 605
+packages/frontend/editor-ui/src/features/ndv/parameters/components/ParameterInput.test.ts
+  s_08690fb8a4caf5::t_4ac62fdf6642d5 1127
+packages/core/src/execution-engine/partial-execution-utils/__tests__/find-start-nodes.test.ts
+  s_08690fb8a4caf5::t_4ac62fdf6642d5 526-582
+packages/@n8n/agents/src/runtime/loop/runtime-helpers.ts
+  s_08690fb8a4caf5::t_4ac62fdf6642d5 5-6,52-66
+  s_08690fb8a4caf5::t_99a0a92750035f 67-68
+packages/cli/src/modules/promotions.ee/__tests__/promotions.service.test.ts
+  s_08690fb8a4caf5::t_4ac62fdf6642d5 1804-1809,1838,1860,1884,2270-2271,2530,2535,2724,2757
+packages/quality/testing/playwright/pages/NodeDetailsViewPage.ts
+  s_08690fb8a4caf5::t_4ac62fdf6642d5 653-656,658-660,664
+packages/modules/promotions/frontend/src/views/PromotionPreviewView.test.ts
+  s_08690fb8a4caf5::t_4ac62fdf6642d5 336,595,631,645,751,758-786,813,828
+packages/cli/src/modules/agents/tools/knowledge/search-knowledge.tool.ts
+  s_08690fb8a4caf5::t_4ac62fdf6642d5 12-19
+packages/@n8n/cli/src/commands/promotion-environment/expected-source.ts
+  s_08690fb8a4caf5::t_4ac62fdf6642d5 58-74
+packages/cli/src/events/maps/relay.event-map.ts
+  s_08690fb8a4caf5::t_4ac62fdf6642d5 1526-1527,1544-1547
+packages/cli/src/modules/knowledge/files/pdf-text.ts
+  s_08690fb8a4caf5::t_4ac62fdf6642d5 1-23
+packages/cli/src/modules/agents/__tests__/agents.module.test.ts
+  s_08690fb8a4caf5::t_4ac62fdf6642d5 13,41,70-73,112-113,213-222
+  s_08690fb8a4caf5::t_fc05285d24b42d 223
+packages/frontend/editor-ui/src/features/agents/components/AgentSkillModal.vue
+  s_08690fb8a4caf5::t_4ac62fdf6642d5 87-90,216,218-220,222-228,811,1180-1182
+packages/frontend/editor-ui/src/features/agents/components/modals/AgentModal.vue
+  s_08690fb8a4caf5::t_4ac62fdf6642d5 9
+packages/frontend/editor-ui/src/features/ai/instanceAi/components/AgentTimeline.vue
+  s_08690fb8a4caf5::t_4ac62fdf6642d5 281-285,350-351
+packages/cli/src/modules/n8n-packages/engine/import-gates.ts
+  s_08690fb8a4caf5::t_4ac62fdf6642d5 9-11,18,65-117
+  s_08690fb8a4caf5::t_fbe5831dc65034 118
+packages/cli/src/modules/instance-ai/__tests__/instance-ai-step-run.test.ts
+  s_08690fb8a4caf5::t_4ac62fdf6642d5 10-17,386,400,414,448,454-495
+  s_08690fb8a4caf5::t_8b8a084a316e72 496
+packages/@n8n/cli/src/commands/promotion-environment/promote-selection.ts
+  s_08690fb8a4caf5::t_4ac62fdf6642d5 7,11-12,25-28,41
+packages/cli/test/integration/public-api/promotions.test.ts
+  s_08690fb8a4caf5::t_4ac62fdf6642d5 30,2300-2309,2320-2321,2329-2338,2340,2345,2347,2412,2417,2434-2438,2446,2480,2526,2545
+packages/cli/src/modules/instance-ai/instance-ai-step-run.ts
+  s_08690fb8a4caf5::t_4ac62fdf6642d5 376-379,432-433,446,451,458,493-500,537-538,612
+packages/cli/src/modules/n8n-packages/entities/project/__tests__/project.exporter.test.ts
+  s_08690fb8a4caf5::t_4ac62fdf6642d5 386-403,405-416
+  s_08690fb8a4caf5::t_020a02b4733705 404
+packages/@n8n/api-types/src/schemas/instance-ai.schema.ts
+  s_08690fb8a4caf5::t_4ac62fdf6642d5 885-890,1027-1029
+packages/frontend/@n8n/design-system/src/components/index.ts
+  s_08690fb8a4caf5::t_4ac62fdf6642d5 231-232
+packages/frontend/editor-ui/src/features/ai/instanceAi/assistantAgent/AssistantConfirmationCard.vue
+  s_08690fb8a4caf5::t_4ac62fdf6642d5 19,82-88,349
+packages/cli/src/modules/agents/__tests__/agent-knowledge.service.test.ts
+  s_08690fb8a4caf5::t_4ac62fdf6642d5 1-3,7-8,11-16,21,29,47-48,51,53-57,61,64,73,78,85-86,89-92,97-106,108,110-122,125-126,128-130,132,135-136,138,140,143-144,146,148-151,155-156,158,160,163-164,168-171,174-176,180,184,187-189,193-194,197-198,200,203,206-207,209,215-221,223,225-228,231-236,238-240,242-245,261,264-268,275,278
+packages/modules/promotions/frontend/src/promoteErrorMessage.test.ts
+  s_08690fb8a4caf5::t_4ac62fdf6642d5 4,11-26,30,39,47,56
+packages/modules/promotions/frontend/src/composables/usePromotionChangeCount.ts
+  s_08690fb8a4caf5::t_4ac62fdf6642d5 39
+packages/frontend/editor-ui/src/features/settings/context/views/SettingsSkillsView.vue
+  s_08690fb8a4caf5::t_4ac62fdf6642d5 2,47-50,322-323,327-333,337,352-364,366,368-384,386-390,400-403,405-439,936,988,1000-1018
+packages/@n8n/db/src/repositories/execution.repository.ts
+  s_08690fb8a4caf5::t_4ac62fdf6642d5 130,629,632-633,641-648,672-673
+packages/cli/BREAKING-CHANGES.md
+  s_08690fb8a4caf5::t_4ac62fdf6642d5 41-55
+packages/@n8n/agents/src/runtime/model/model-factory.ts
+  s_08690fb8a4caf5::t_4ac62fdf6642d5 107-109,209-214,221,230,234-284,452-453,456,464
+packages/@n8n/instance-ai/src/tools/__tests__/provider-schema.test.ts
+  s_08690fb8a4caf5::t_4ac62fdf6642d5 2,61,64-68,79,86-91
+packages/cli/src/modules/knowledge/telemetry/helpers.ts
+  s_08690fb8a4caf5::t_4ac62fdf6642d5 1-16
+packages/cli/src/modules/promotions.ee/working-copy-updater.ts
+  s_08690fb8a4caf5::t_4ac62fdf6642d5 23,92-94,103-105,110-114
+packages/cli/src/services/node-resource-explorer.service.ts
+  s_08690fb8a4caf5::t_4ac62fdf6642d5 17,410-418
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentModal.test.ts
+  s_08690fb8a4caf5::t_4ac62fdf6642d5 12-14,91,318,346,351-357,360-362,373,376,381
+packages/cli/src/modules/agents/register-knowledge-sandbox-provider.ts
+  s_08690fb8a4caf5::t_4ac62fdf6642d5 1-12
+packages/cli/src/modules/n8n-packages/n8n-packages.types.ts
+  s_08690fb8a4caf5::t_4ac62fdf6642d5 274-275,311-312,322-323,334-335,350-354
+packages/frontend/editor-ui/src/app/constants/injectionKeys.ts
+  s_08690fb8a4caf5::t_4ac62fdf6642d5 105
+packages/@n8n/api-types/src/dto/promotions/promotion-common.dto.ts
+  s_08690fb8a4caf5::t_4ac62fdf6642d5 3-4,27-33
+packages/cli/src/modules/instance-ai/instance-ai.adapter.service.ts
+  s_08690fb8a4caf5::t_4ac62fdf6642d5 121,2622,3571-3581
+packages/modules/promotions/frontend/src/composables/usePromotionChangeCount.test.ts
+  s_08690fb8a4caf5::t_4ac62fdf6642d5 10,73,83-85
+packages/@n8n/cli/src/client.ts
+  s_08690fb8a4caf5::t_4ac62fdf6642d5 9,123-131,161-162,164,478-479,484-488,490,498,500,503,506,512,515,518,521
+packages/modules/promotions/frontend/src/composables/usePromotionPreviewLabels.ts
+  s_08690fb8a4caf5::t_4ac62fdf6642d5 98
+packages/modules/promotions/frontend/src/promotionResult.ts
+  s_08690fb8a4caf5::t_4ac62fdf6642d5 68-70,72,82-89
+packages/quality/testing/playwright/pages/components/CodeNodeEditor.ts
+  s_08690fb8a4caf5::t_4ac62fdf6642d5 11-12,50
+packages/@n8n/api-types/src/dto/promotions/promotion-operations.dto.ts
+  s_08690fb8a4caf5::t_4ac62fdf6642d5 11,166-176,180,189
+packages/cli/src/modules/promotions.ee/__tests__/promotions-git.service.test.ts
+  s_08690fb8a4caf5::t_4ac62fdf6642d5 22,364
+packages/cli/test/integration/project.api.test.ts
+  s_08690fb8a4caf5::t_4ac62fdf6642d5 13,39,1815-1882
+  s_08690fb8a4caf5::t_8d024f71d67301 1883-1884
+packages/core/src/execution-engine/partial-execution-utils/__tests__/recreate-node-execution-stack.test.ts
+  s_08690fb8a4caf5::t_4ac62fdf6642d5 506-582
+packages/@n8n/instance-ai/src/index.ts
+  s_08690fb8a4caf5::t_4ac62fdf6642d5 274
+packages/cli/src/modules/n8n-packages/__tests__/import-package-selection.integration.test.ts
+  s_08690fb8a4caf5::t_4ac62fdf6642d5 10-15,23-28,39,163-238
+  s_08690fb8a4caf5::t_587c3676786bb6 239
+packages/@n8n/cli/src/commands/promotion-environment/apply-selection.ts
+  s_08690fb8a4caf5::t_4ac62fdf6642d5 4-8,13,17-18,30-33,36,41,45,47,49
+packages/cli/src/modules/knowledge/knowledge-retriever.ts
+  s_08690fb8a4caf5::t_4ac62fdf6642d5 1,9
+packages/core/src/execution-engine/workflow-execute.ts
+  s_08690fb8a4caf5::t_4ac62fdf6642d5 1889-2049,2498-2502,2844
+packages/frontend/@n8n/eslint-plugin-design-system/src/rules/wrapped-component-bans.ts
+  s_08690fb8a4caf5::t_4ac62fdf6642d5 70-73
+  s_08690fb8a4caf5::t_f97854658d4adb 68-69
+packages/@n8n/cli/src/commands/promotion-environment/apply-command.ts
+  s_08690fb8a4caf5::t_4ac62fdf6642d5 6,43,54-64,132-135,138,143
+packages/cli/src/services/project.service.ee.ts
+  s_08690fb8a4caf5::t_4ac62fdf6642d5 215,218,283-293
+  s_08690fb8a4caf5::t_9dc364c799e5f3 294
+packages/core/src/execution-engine/partial-execution-utils/__tests__/get-incoming-data.test.ts
+  s_08690fb8a4caf5::t_4ac62fdf6642d5 1,3-4,18-82
+  s_08690fb8a4caf5::t_783810f6dffab3 83-84
+packages/frontend/@n8n/design-system/src/components/N8nDialog/DialogContent.vue
+  s_08690fb8a4caf5::t_4ac62fdf6642d5 112-113,115-118,120-121,123-124,345-350
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentMemorySourceFilter.test.ts
+  s_08690fb8a4caf5::t_4ac62fdf6642d5 3,32-47,49,60,110-150
+packages/@n8n/agents/src/runtime/__tests__/openai-api-style.test.ts
+  s_08690fb8a4caf5::t_4ac62fdf6642d5 1509-1656
+packages/@n8n/api-types/src/dto/promotions/promotable-resource.dto.ts
+  s_08690fb8a4caf5::t_4ac62fdf6642d5 1-2,7,9-12,14-18
+packages/cli/src/modules/instance-ai/__tests__/instance-ai.adapter.service.security.test.ts
+  s_08690fb8a4caf5::t_4ac62fdf6642d5 245,335
+packages/cli/test/integration/public-api/n8n-packages-import-selection.test.ts
+  s_08690fb8a4caf5::t_4ac62fdf6642d5 11-18,30,506,630-750
+  s_08690fb8a4caf5::t_4d375c56700b92 751
+packages/@n8n/cli/docs/commands/promotions.md
+  s_08690fb8a4caf5::t_4ac62fdf6642d5 311-312,316,319-320,322-357,361-363,368-369,374-375,378-384,417,473,488-491,496-499,504-505,509-516,521-522,525,527,544-550
+packages/@n8n/agents/src/runtime/__tests__/agent-runtime.test.ts
+  s_08690fb8a4caf5::t_4ac62fdf6642d5 12046-12110
+packages/@n8n/instance-ai/src/stream/map-chunk.ts
+  s_08690fb8a4caf5::t_4ac62fdf6642d5 16,346-349,400
+packages/cli/src/modules/agents/agent-knowledge.service.ts
+  s_08690fb8a4caf5::t_4ac62fdf6642d5 1,6-9,11,17,19-24,29,34,42,44-48,51-56,58,60,64-65,69-70,77,79-80,84,99,108,116-120
+packages/@n8n/api-types/src/dto/packages/import-package-request.openapi.ts
+  s_08690fb8a4caf5::t_4ac62fdf6642d5 118-120,134-141
+packages/cli/src/modules/promotions.ee/promotion-preview.ts
+  s_08690fb8a4caf5::t_4ac62fdf6642d5 258,285-290,423-425
+packages/@n8n/agents/src/runtime/loop/generate-sink.ts
+  s_08690fb8a4caf5::t_4ac62fdf6642d5 10,51
+packages/frontend/editor-ui/src/app/components/WorkflowPreviewHost.test.ts
+  s_08690fb8a4caf5::t_4ac62fdf6642d5 1-70
+packages/cli/src/public-api/v1/openapi.yml
+  s_08690fb8a4caf5::t_4ac62fdf6642d5 86
+packages/cli/src/modules/n8n-packages/entities/folder/folder.exporter.ts
+  s_08690fb8a4caf5::t_4ac62fdf6642d5 37-38,89-94,106,109,116-119
+packages/cli/src/events/relays/telemetry.event-relay.ts
+  s_08690fb8a4caf5::t_4ac62fdf6642d5 3076,3094,3109-3110,3122-3123
+packages/cli/src/modules/knowledge/files/__tests__/knowledge-file.service.test.ts
+  s_08690fb8a4caf5::t_4ac62fdf6642d5 1-701
+packages/frontend/editor-ui/src/app/views/NodeView.vue
+  s_08690fb8a4caf5::t_4ac62fdf6642d5 114-119,126,208,704-736,2268
+packages/@n8n/api-types/src/dto/promotions/promotion-preview.dto.ts
+  s_08690fb8a4caf5::t_4ac62fdf6642d5 1-2,7,12,14-17,54-94,102-105,118-121,124-127,134-137,142-143,150-158,179-204,215-216
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentSkillUpload.test.ts
+  s_08690fb8a4caf5::t_4ac62fdf6642d5 3,67-107,118,178-211
+  s_08690fb8a4caf5::t_697aba3b70bc48 212
+packages/frontend/editor-ui/src/features/ndv/parameters/components/ParameterInput.vue
+  s_08690fb8a4caf5::t_4ac62fdf6642d5 120,122-123,1010-1013,1738-1742,1745,1747-1811
+packages/frontend/editor-ui/src/features/ndv/runData/components/BinaryDataViewModal.test.ts
+  s_08690fb8a4caf5::t_4ac62fdf6642d5 2-3,8,23,40-45,56-70,72,78,81,83,89,92,94,100,103,105,111,114,116,122,127,131,137-145,149,151,157,160,162,168,171,173,179-181,184,191,197,200,202,208,211,213,219,222,227,233,236,238,244,248-249,252,254,270,282,288,300,309,335,356,384,409,425,432,438,445,457,464,476,483,505,512,516,528,535,545,577,579,581,587,595,609,621,631,655,667,691,715,740,752,760,774,790,800,817
+packages/frontend/editor-ui/src/features/settings/security/rateLimits/ApiKeyRateLimitsSection.vue
+  s_08690fb8a4caf5::t_4ac62fdf6642d5 19,121,128-131,135-145,174-178,214-219,242,245-251
+packages/frontend/editor-ui/src/features/shared/toolsConnection/__tests__/ToolsConnectionModal.test.ts
+  s_08690fb8a4caf5::t_4ac62fdf6642d5 781,783-794,796-799
+packages/frontend/editor-ui/src/features/settings/context/views/SettingsSkillsView.test.ts
+  s_08690fb8a4caf5::t_4ac62fdf6642d5 17,110-125,486-659,667,670,690,693,705,707,727,729,759,776,779,794,796,809,811,1252,1254,1256,1258-1266
+packages/frontend/editor-ui/src/features/workflows/workflowHistory/components/WorkflowHistoryContent.test.ts
+  s_08690fb8a4caf5::t_4ac62fdf6642d5 2,14-17,23-28,30,32-36,56,132-147
+  s_08690fb8a4caf5::t_04b74d795b6799 148
+packages/cli/src/modules/promotions.ee/__tests__/promotions-package.integration.test.ts
+  s_08690fb8a4caf5::t_4ac62fdf6642d5 488,511-512,2146,2154,2162-2167,2174,2177-2188,2365-2416,3340,3348-3349,3363-3364,3366,3370,3374,3378,3380-3383
+packages/frontend/editor-ui/src/features/shared/contextMenu/composables/useContextMenu.ts
+  s_08690fb8a4caf5::t_4ac62fdf6642d5 3-8,30-31,90-98,101-106
+packages/@n8n/cli/src/commands/promotion-environment/list-changes.ts
+  s_08690fb8a4caf5::t_4ac62fdf6642d5 1,5,7-8,12,16,31,36-37,39-46,50-83
+packages/frontend/editor-ui/src/features/workflows/templates/views/TemplatesWorkflowView.vue
+  s_08690fb8a4caf5::t_4ac62fdf6642d5 188
+packages/@n8n/cli/src/__tests__/client.test.ts
+  s_08690fb8a4caf5::t_4ac62fdf6642d5 126-127,133-134,141-145,153-158,176-178,181
+packages/modules/promotions/frontend/src/composables/usePromotionOperation.ts
+  s_08690fb8a4caf5::t_4ac62fdf6642d5 11,21,111,114,124-125,134,152-153,169
+packages/modules/promotions/frontend/src/composables/usePromotionOutcome.ts
+  s_08690fb8a4caf5::t_4ac62fdf6642d5 7,33,42-59,63
+packages/modules/promotions/frontend/src/promotions.api.ts
+  s_08690fb8a4caf5::t_4ac62fdf6642d5 18,22-26,30,35,38
+packages/quality/environments/containers/services/engine.ts
+  s_08690fb8a4caf5::t_4ac62fdf6642d5 36-37,43
+packages/cli/src/modules/agents/agent-knowledge-telemetry.ts
+  s_08690fb8a4caf5::t_4ac62fdf6642d5 3
+packages/cli/src/modules/promotions.ee/__tests__/promotion-change.service.test.ts
+  s_08690fb8a4caf5::t_4ac62fdf6642d5 145-151
+packages/cli/src/modules/knowledge/retrieval/commands.ts
+  s_08690fb8a4caf5::t_4ac62fdf6642d5 1-594
+packages/frontend/editor-ui/src/app/constants/urls.ts
+  s_08690fb8a4caf5::t_4ac62fdf6642d5 20
+packages/@n8n/api-types/src/dto/packages/import-result.dto.ts
+  s_08690fb8a4caf5::t_4ac62fdf6642d5 187-188
+packages/@n8n/instance-ai/src/stream/__tests__/map-chunk.test.ts
+  s_08690fb8a4caf5::t_4ac62fdf6642d5 650-679
+packages/core/src/execution-engine/partial-execution-utils/get-source-data-groups.ts
+  s_08690fb8a4caf5::t_4ac62fdf6642d5 4,99
+packages/frontend/editor-ui/src/features/settings/security/rateLimits/ApiKeyRateLimitsDialog.vue
+  s_08690fb8a4caf5::t_4ac62fdf6642d5 276
+packages/@n8n/cli/src/__tests__/promotion-command-wiring.test.ts
+  s_08690fb8a4caf5::t_4ac62fdf6642d5 148
+packages/frontend/editor-ui/src/features/workflows/canvas/components/Canvas.test.ts
+  s_08690fb8a4caf5::t_4ac62fdf6642d5 238-253
+packages/modules/promotions/frontend/src/composables/usePromotionPreview.ts
+  s_08690fb8a4caf5::t_4ac62fdf6642d5 82
+packages/core/src/execution-engine/partial-execution-utils/__tests__/get-source-data-groups.test.ts
+  s_08690fb8a4caf5::t_4ac62fdf6642d5 516-582
+packages/cli/src/public-api/v1/controllers/openapi/n8n-packages.openapi.ts
+  s_08690fb8a4caf5::t_4ac62fdf6642d5 55-60,121-124
+packages/frontend/@n8n/design-system/src/components/FocusScope/index.ts
+  s_08690fb8a4caf5::t_4ac62fdf6642d5 1-2
+packages/frontend/editor-ui/src/features/ai/instanceAi/components/InstanceAiAppBlueprint.vue
+  s_08690fb8a4caf5::t_4ac62fdf6642d5 2,15-16,54-55
+packages/@n8n/cli/skills/n8n-cli/SKILL.md
+  s_08690fb8a4caf5::t_4ac62fdf6642d5 243-244,259-276,344-347
+packages/cli/src/modules/agents/agent-knowledge.controller.ts
+  s_08690fb8a4caf5::t_4ac62fdf6642d5 10,13,17-22,24,56
+packages/core/src/execution-engine/partial-execution-utils/get-incoming-data.ts
+  s_08690fb8a4caf5::t_4ac62fdf6642d5 1-9,21-23,26-41,43,45-55,57-65,67
+packages/cli/src/modules/promotions.ee/__tests__/working-copy-updater.test.ts
+  s_08690fb8a4caf5::t_4ac62fdf6642d5 92,158-159
+packages/cli/src/executions/__tests__/execution-crash.service.test.ts
+  s_08690fb8a4caf5::t_4ac62fdf6642d5 246-291
+packages/frontend/editor-ui/src/features/ai/instanceAi/components/__tests__/AppBlueprintCard.test.ts
+  s_08690fb8a4caf5::t_4ac62fdf6642d5 91-135
+packages/frontend/editor-ui/src/features/ai/instanceAi/components/AppBlueprintCard.vue
+  s_08690fb8a4caf5::t_4ac62fdf6642d5 6,28-31,67-75,80,141-142,145-153,225-235,353-361,363
+  s_08690fb8a4caf5::t_3b1387b050a008 362,364
+packages/frontend/editor-ui/src/features/workflows/canvas/components/Canvas.vue
+  s_08690fb8a4caf5::t_4ac62fdf6642d5 160,1735-1736
+packages/cli/src/public-api/v1/handlers/n8n-packages/spec/paths/importPackage.generated.yml
+  s_08690fb8a4caf5::t_0800c7c947db86 14,105,112
+packages/cli/src/public-api/v1/handlers/n8n-packages/spec/paths/importPackageSelection.generated.yml
+  s_08690fb8a4caf5::t_24b6b61d908a44 12
+packages/cli/src/public-api/v1/handlers/promotions/spec/paths/addProjectToPromotionEnvironment.generated.yml
+  s_08690fb8a4caf5::t_19863699b97ce1 4-8
+packages/cli/src/public-api/v1/handlers/promotions/spec/paths/applyPackage.generated.yml
+  s_08690fb8a4caf5::t_5caeb89ffda9e9 4-8
+packages/cli/src/public-api/v1/handlers/promotions/spec/paths/applyProjectSelection.generated.yml
+  s_08690fb8a4caf5::t_3304ad643f6dc0 4-8,30-36
+packages/cli/src/public-api/v1/handlers/promotions/spec/paths/connectPromotionCheckout.generated.yml
+  s_08690fb8a4caf5::t_13fb05e5e64285 4-8
+packages/cli/src/public-api/v1/handlers/promotions/spec/paths/continueApplyPackage.generated.yml
+  s_08690fb8a4caf5::t_5d99947d948e89 4-8
+packages/cli/src/public-api/v1/handlers/promotions/spec/paths/continueApplyProjectSelection.generated.yml
+  s_08690fb8a4caf5::t_5779189d0f2071 4-8,31-37
+packages/cli/src/public-api/v1/handlers/promotions/spec/paths/createPromotionEnvironment.generated.yml
+  s_08690fb8a4caf5::t_44b929d49fdb2f 4-8
+packages/cli/src/public-api/v1/handlers/promotions/spec/paths/createPromotionProvider.generated.yml
+  s_08690fb8a4caf5::t_3b56cb0fbacca3 4-8
+packages/cli/src/public-api/v1/handlers/promotions/spec/paths/deletePromotionEnvironment.generated.yml
+  s_08690fb8a4caf5::t_e9ae6ca40274ff 4-8
+packages/cli/src/public-api/v1/handlers/promotions/spec/paths/deletePromotionProvider.generated.yml
+  s_08690fb8a4caf5::t_fe77184b88d994 4-8
+packages/cli/src/public-api/v1/handlers/promotions/spec/paths/disconnectPromotionCheckout.generated.yml
+  s_08690fb8a4caf5::t_bb9adac443cb81 4-8
+packages/cli/src/public-api/v1/handlers/promotions/spec/paths/getPromotionChangeDetails.generated.yml
+  s_08690fb8a4caf5::t_60a30ce324392a 1-87
+packages/cli/src/public-api/v1/handlers/promotions/spec/paths/getPromotionChanges.generated.yml
+  s_08690fb8a4caf5::t_a933147cab9f8a 4-8,49-53,58,60,62-64,66-168,172-173
+packages/cli/src/public-api/v1/handlers/promotions/spec/paths/getPromotionEnvironment.generated.yml
+  s_08690fb8a4caf5::t_b513f09760dd2c 4-8
+packages/cli/src/public-api/v1/handlers/promotions/spec/paths/getPromotionEnvironmentMissingProjects.generated.yml
+  s_08690fb8a4caf5::t_21cc7818e5d2ab 4-8
+packages/cli/src/public-api/v1/handlers/promotions/spec/paths/getPromotionEnvironmentProjects.generated.yml
+  s_08690fb8a4caf5::t_d6603e7b5014ac 4-5
+packages/cli/src/public-api/v1/handlers/promotions/spec/paths/getPromotionEnvironments.generated.yml
+  s_08690fb8a4caf5::t_d53c3a620994c5 4-8
+packages/cli/src/public-api/v1/handlers/promotions/spec/paths/getPromotionProvider.generated.yml
+  s_08690fb8a4caf5::t_cd458182a0322c 4-8
+packages/cli/src/public-api/v1/handlers/promotions/spec/paths/getPromotionProviderRepositories.generated.yml
+  s_08690fb8a4caf5::t_630c277b887e3e 4-8
+packages/cli/src/public-api/v1/handlers/promotions/spec/paths/getPromotionProviderRepositoryBranches.generated.yml
+  s_08690fb8a4caf5::t_c4e0005dc856fc 4-8
+packages/cli/src/public-api/v1/handlers/promotions/spec/paths/getPromotionProviders.generated.yml
+  s_08690fb8a4caf5::t_056cbc756ddef1 4-8
+packages/cli/src/public-api/v1/handlers/promotions/spec/paths/promotePackage.generated.yml
+  s_08690fb8a4caf5::t_576f4dbf81828e 4-8
+packages/cli/src/public-api/v1/handlers/promotions/spec/paths/promoteProjectSelection.generated.yml
+  s_08690fb8a4caf5::t_9c6b20a3de2689 4-8,30-36
+packages/cli/src/public-api/v1/handlers/promotions/spec/paths/removeProjectFromPromotionEnvironment.generated.yml
+  s_08690fb8a4caf5::t_23e86426350a3e 4-5
+packages/cli/src/public-api/v1/handlers/promotions/spec/paths/updatePromotionEnvironment.generated.yml
+  s_08690fb8a4caf5::t_427487528971a1 4-8
+packages/cli/src/public-api/v1/handlers/promotions/spec/paths/updatePromotionProvider.generated.yml
+  s_08690fb8a4caf5::t_a61f180a638c72 4-8
+packages/cli/src/public-api/v1/openapi.decorator-routes.generated.yml
+  s_08690fb8a4caf5::t_4becbfe8651ea3 317-319
+packages/cli/src/public-api/v1/shared/spec/schemas/applyPackageResultDto.generated.yml
+  s_08690fb8a4caf5::t_c87996b43d1547 310
+packages/cli/src/public-api/v1/shared/spec/schemas/importResultDto.generated.yml
+  s_08690fb8a4caf5::t_8e263376af19da 322
+packages/cli/src/public-api/v1/shared/spec/schemas/promotionApplyCheck.generated.yml
+  s_08690fb8a4caf5::t_7c4d2ea30791c9 1-1330
+packages/cli/src/public-api/v1/shared/spec/schemas/promotionResource.generated.yml
+  s_08690fb8a4caf5::t_3ab94547a2b164 1-83
+packages/cli/src/public-api/v1/shared/spec/schemas/promotionResourceDetail.generated.yml
+  s_08690fb8a4caf5::t_a5abe6a5c6249f 1-928
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "80a0e9495583dbfedd922928172dbe2cdd20457e",
+  "prompts": {},
+  "sessions": {
+    "s_08690fb8a4caf5": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "33b03ae9-9b4e-49ba-ac90-ae160b5918c5",
+        "model": "claude-fable-5-2"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,23 @@
+packages/cli/src/modules/instance-ai/eval/eval-assistant-turn-overrides.ts
+  s_cf46beb77c9221::t_65c45ce3aa8246 1-33
+packages/cli/src/modules/instance-ai/eval/__tests__/eval-assistant-turn-overrides.test.ts
+  s_cf46beb77c9221::t_2a1bf9e513d91a 1-32
+packages/cli/src/modules/instance-ai/turn-setup/assistant-turn-overrides.ts
+  s_cf46beb77c9221::t_7fdd27f464c00f 4-22
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "f98efd3f5e30890d48af74e9c9f06275d12507f4",
+  "prompts": {},
+  "sessions": {
+    "s_cf46beb77c9221": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "16a9a066-a7f5-44a6-839a-0946c98f56ce",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Jaakko Husso <jaakko@n8n.io>"
+    }
+  }
+}

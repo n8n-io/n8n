@@ -1,0 +1,51 @@
+packages/cli/src/modules/agents/builder/agents-builder-tools.service.ts
+  s_90e528a8804a09::t_71c8087d89c20c 53
+  s_90e528a8804a09::t_86c7a0731ab362 52,54,525,758-762
+packages/cli/src/modules/agents/agent-config.service.ts
+  s_90e528a8804a09::t_86c7a0731ab362 116-117,124
+packages/cli/src/modules/agents/__tests__/agents-builder-tools.service.test.ts
+  s_90e528a8804a09::t_50edd983b7c135 21,117-120,144,149,399-425
+  s_90e528a8804a09::t_0193e731288b29 25
+packages/cli/src/modules/mcp/__tests__/agent-tools.service.test.ts
+  s_90e528a8804a09::t_b2d4f395a9a244 295
+  s_90e528a8804a09::t_40be65123ad015 296-297
+packages/cli/src/modules/agents/__tests__/agent-runtime-reconstruction-integration-tools.test.ts
+  s_90e528a8804a09::t_0193e731288b29 300
+  s_90e528a8804a09::t_40be65123ad015 301-302
+packages/cli/src/modules/agents/__tests__/agent-config.service.test.ts
+  s_90e528a8804a09::t_0193e731288b29 3,114-117,143,170
+  s_90e528a8804a09::t_ea4edf9d2fc58b 11-16,2056-2150
+packages/cli/test/integration/database/repositories/agent.repository.test.ts
+  s_90e528a8804a09::t_40be65123ad015 209-210,308-309
+  s_90e528a8804a09::t_b2d4f395a9a244 10,208,307
+packages/cli/src/modules/agents/utils/visit-agent-credential-references.ts
+  s_90e528a8804a09::t_5b0b20e0f1501d 7-8,98-119
+packages/cli/src/modules/agents/builder/__tests__/verify-mcp-server.tool.test.ts
+  s_90e528a8804a09::t_50edd983b7c135 81-101
+  s_90e528a8804a09::t_f3faea849815ec 31
+packages/cli/src/modules/agents/agent-config-preparation.service.ts
+  s_90e528a8804a09::t_5b0b20e0f1501d 10,17,31,52-55,80,104-108,184,202,294-303
+packages/cli/src/modules/agents/__tests__/agents.service.test.ts
+  s_90e528a8804a09::t_0193e731288b29 13-17,129
+  s_90e528a8804a09::t_40be65123ad015 130-131
+packages/cli/src/modules/agents/adapters/__tests__/agents-credential-provider.test.ts
+  s_90e528a8804a09::t_29a8afc4fc2ba5 11-28
+packages/cli/src/modules/agents/builder/verify-mcp-server.tool.ts
+  s_90e528a8804a09::t_86c7a0731ab362 33-34,150-152
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "5ff51cf33d94172b33df763c2b145f5f48021dd8",
+  "prompts": {},
+  "sessions": {
+    "s_90e528a8804a09": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "44a568aa-8001-4c8c-babf-2f2d45eb4103",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Benjamin Schroth <benjamin@n8n.io>"
+    }
+  }
+}

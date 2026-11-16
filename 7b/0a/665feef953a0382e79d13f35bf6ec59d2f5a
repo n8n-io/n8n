@@ -1,0 +1,21 @@
+packages/frontend/editor-ui/src/features/ai/instanceAi/instanceAi.responseTiming.ts
+  s_ba3342bf77eebe::t_680d19f43577c4 17-27,29-32
+packages/frontend/editor-ui/src/features/ai/instanceAi/__tests__/instanceAi.responseTiming.test.ts
+  s_ba3342bf77eebe::t_11174b5c826438 1-44
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "7b0a665feef953a0382e79d13f35bf6ec59d2f5a",
+  "prompts": {},
+  "sessions": {
+    "s_ba3342bf77eebe": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "09b8ca41-8199-4842-b463-bb177d33eaff",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Jaakko Husso <jaakko@n8n.io>"
+    }
+  }
+}

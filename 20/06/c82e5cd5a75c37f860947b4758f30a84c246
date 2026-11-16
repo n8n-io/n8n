@@ -1,0 +1,43 @@
+packages/cli/src/modules/agents/repositories/agent-execution.repository.ts
+  s_8bc76ea676b193::t_c06c903d8adde4 64,68-80,83,87-90,94-98,110-113,117,131-137,145-149,157-158,164-167,172-175,178,180-181,183-185,191,193-194,201-207,210-213,220,231-232,243,255-257,259,284-285,302,304-306,311,313-315,323-326,328,336-338,353-354,374,382-384,401,414,418-421,436,440-442,476,487-491,498,500-502,519,521-522,532-533,539,541
+  s_8bc76ea676b193::t_10d1b65489a437 171,222-224,227,472-475
+packages/cli/src/modules/agents/system-agents/system-agent-usage-relay.ts
+  s_8bc76ea676b193::t_a857dd0b6b6f2c 62
+packages/cli/src/modules/agents/agent-message-queue.service.ts
+  s_8bc76ea676b193::t_a857dd0b6b6f2c 611
+packages/cli/src/modules/agents/agent-interrupted-execution-sweeper.ts
+  s_8bc76ea676b193::t_a857dd0b6b6f2c 29
+packages/cli/src/modules/agents/sub-agents/sub-agent-runner.ts
+  s_8bc76ea676b193::t_a857dd0b6b6f2c 643
+  s_8bc76ea676b193::t_5e0dbce629dc49 647-649
+packages/cli/src/modules/agents/agent-task-cancellation.service.ts
+  s_8bc76ea676b193::t_a857dd0b6b6f2c 96,190
+packages/cli/src/modules/agents/background/agent-background-job.service.ts
+  s_8bc76ea676b193::t_a857dd0b6b6f2c 463,772,1340
+packages/cli/src/modules/agents/agent-chat-execution.service.ts
+  s_8bc76ea676b193::t_a857dd0b6b6f2c 105,125,189,278,316,329
+  s_8bc76ea676b193::t_5e0dbce629dc49 244-248,434-435
+packages/cli/src/modules/agents/system-agents/system-agent-execution.service.ts
+  s_8bc76ea676b193::t_a857dd0b6b6f2c 444,450,510,543,546,586,878
+packages/cli/src/modules/agents/agent-execution.service.ts
+  s_8bc76ea676b193::t_5e0dbce629dc49 1042-1045
+  s_8bc76ea676b193::t_a857dd0b6b6f2c 236,490,529,561,661,670,675,754,859-862,898,1080,1174,1212,1228
+packages/cli/src/modules/agents/agent-message-steering.service.ts
+  s_8bc76ea676b193::t_a857dd0b6b6f2c 125,234
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "2006c82e5cd5a75c37f860947b4758f30a84c246",
+  "prompts": {},
+  "sessions": {
+    "s_8bc76ea676b193": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "95bdee18-e058-48ae-a35e-e279fb97c915",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "Andreas Fitzek <andreas.fitzek@n8n.io>"
+    }
+  }
+}

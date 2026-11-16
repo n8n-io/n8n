@@ -1,0 +1,19 @@
+packages/@n8n/ai-utilities/src/utils/zip-size-limit.ts
+  s_6234b42c2fc645::t_8d13c0db748d3d 182-194
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "cac0522c77d3c266bfa73c082586119f836a4a92",
+  "prompts": {},
+  "sessions": {
+    "s_6234b42c2fc645": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "36f9d3ea-868c-4826-8957-f00ec6dcf32e",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Benjamin Schroth <benjamin@n8n.io>"
+    }
+  }
+}

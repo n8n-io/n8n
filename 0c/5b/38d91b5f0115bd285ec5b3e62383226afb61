@@ -1,0 +1,74 @@
+packages/@n8n/backend-services/src/code-execution/code-execution-backend.ts
+  h_8fb27e0cdf6d1e 1-19,20,21-36,37-77,78-85,86-91
+packages/@n8n/backend-services/src/index.ts
+  h_8fb27e0cdf6d1e 24-27,28,29
+packages/cli/src/__tests__/workflow-execute-additional-data.test.ts
+  h_8fb27e0cdf6d1e 2-7,20-22,37,2203-2252,2253,2254-2271
+packages/cli/src/modules/engine-v2/__tests__/engine-additional-data.test.ts
+  h_8fb27e0cdf6d1e 2,41,58,144,145-158,159-160,163,166-167,194-195,196,197,199,203-208,210-211
+packages/cli/src/modules/engine-v2/engine-additional-data.ts
+  h_8fb27e0cdf6d1e 2-7,11,98,99-104,145-146,147-148
+packages/cli/src/task-runners/__tests__/task-runner-code-execution-backend.test.ts
+  h_8fb27e0cdf6d1e 1-27,28,29-82
+packages/cli/src/task-runners/task-runner-code-execution-backend.ts
+  h_8fb27e0cdf6d1e 1-20,21,22-42
+packages/cli/src/task-runners/task-runner-module.ts
+  h_8fb27e0cdf6d1e 2,101-105
+packages/cli/src/workflow-execute-additional-data.ts
+  h_8fb27e0cdf6d1e 7,12,1011-1012,1019
+packages/cli/test/integration/task-runners/task-runner-module.internal.test.ts
+  h_8fb27e0cdf6d1e 1,7,44,45-47,48-49
+packages/cli/package.json
+  h_8fb27e0cdf6d1e 167
+packages/cli/src/commands/__tests__/execute.test.ts
+  h_8fb27e0cdf6d1e 2,41,143-147,148,163-181
+packages/cli/src/commands/base-command.ts
+  h_8fb27e0cdf6d1e 102-103,204,583-584,591-595,597-605
+packages/cli/src/commands/engine.ts
+  h_8fb27e0cdf6d1e 28
+packages/cli/src/commands/execute-batch.ts
+  h_8fb27e0cdf6d1e 138
+packages/cli/src/commands/execute.ts
+  h_8fb27e0cdf6d1e 36
+packages/cli/src/commands/start.ts
+  h_8fb27e0cdf6d1e 74,216
+packages/cli/src/commands/worker.ts
+  h_8fb27e0cdf6d1e 51
+packages/cli/tsconfig.json
+  h_8fb27e0cdf6d1e 45
+packages/modules/code-sandbox/backend/README.md
+  h_8fb27e0cdf6d1e 1-22
+packages/modules/code-sandbox/backend/oxlint.config.mts
+  h_8fb27e0cdf6d1e 1-8
+packages/modules/code-sandbox/backend/package.json
+  h_8fb27e0cdf6d1e 1-51
+packages/modules/code-sandbox/backend/src/__tests__/code-sandbox-backend.test.ts
+  h_8fb27e0cdf6d1e 1-17
+packages/modules/code-sandbox/backend/src/__tests__/code-sandbox.module.test.ts
+  h_8fb27e0cdf6d1e 1-18
+packages/modules/code-sandbox/backend/src/code-sandbox-backend.ts
+  h_8fb27e0cdf6d1e 1-20
+packages/modules/code-sandbox/backend/src/code-sandbox.module.ts
+  h_8fb27e0cdf6d1e 1-20
+packages/modules/code-sandbox/backend/src/index.ts
+  h_8fb27e0cdf6d1e 1-2
+packages/modules/code-sandbox/backend/tsconfig.build.json
+  h_8fb27e0cdf6d1e 1-10
+packages/modules/code-sandbox/backend/tsconfig.json
+  h_8fb27e0cdf6d1e 1-17
+packages/modules/code-sandbox/backend/vitest.config.ts
+  h_8fb27e0cdf6d1e 1-3
+pnpm-lock.yaml
+  h_8fb27e0cdf6d1e 5002-5004,7569-7614
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "0c5b38d91b5f0115bd285ec5b3e62383226afb61",
+  "prompts": {},
+  "humans": {
+    "h_8fb27e0cdf6d1e": {
+      "author": "Tomi Turtiainen <10324676+tomi@users.noreply.github.com>"
+    }
+  }
+}

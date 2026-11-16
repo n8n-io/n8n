@@ -1,0 +1,28 @@
+packages/cli/src/modules/promotions.ee/promotion-checkout-cleanup.service.ts
+  s_9d7cb9a95d5464::t_df5bf7540e029e 280-285
+  s_9d7cb9a95d5464::t_c0962c9abaf151 69-70,76
+packages/cli/src/modules/promotions.ee/promotion-working-directory.service.ts
+  s_9d7cb9a95d5464::t_d3e53a5a640823 119-120,122
+packages/cli/src/modules/promotions.ee/__tests__/promotion-working-directory.service.test.ts
+  s_9d7cb9a95d5464::t_69ef543d0ad42c 12-21
+  s_9d7cb9a95d5464::t_a1d37cea00f6ff 61
+  s_9d7cb9a95d5464::t_66502ed9d1aeaa 105-120
+packages/cli/src/modules/promotions.ee/__tests__/promotion-checkout-cleanup.service.test.ts
+  s_9d7cb9a95d5464::t_831e5f3f78fbcf 506-534
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "edaa19dce7f7d638ef4af031aea61ae6edee52d9",
+  "prompts": {},
+  "sessions": {
+    "s_9d7cb9a95d5464": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "1df1b4b6-0864-4701-a00f-34072efb8759",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Irénée <irenee.ajeneza@n8n.io>"
+    }
+  }
+}

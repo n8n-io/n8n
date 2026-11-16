@@ -1,0 +1,24 @@
+packages/cli/test/integration/workflow-statistics-rollup.task.test.ts
+  s_4a3382d717bf3e::t_610b2e686d9204 172-178,184
+packages/cli/src/modules/instance-reporting.ee/__tests__/instance-reporting.service.test.ts
+  s_4a3382d717bf3e::t_5b57b683e6b66c 595-597
+  s_4a3382d717bf3e::t_610b2e686d9204 576-594,598-601
+packages/cli/test/migration/1794319355722-create-agent-execution-statistics.test.ts
+  s_4a3382d717bf3e::t_610b2e686d9204 12,27-34,39
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "d55ef47e3e4330020945678c3cb9e348b4c5def8",
+  "prompts": {},
+  "sessions": {
+    "s_4a3382d717bf3e": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a1c564-665d-70f2-a96c-b4cc9c552153",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "Michael Drury <michael.drury@n8n.io>"
+    }
+  }
+}
