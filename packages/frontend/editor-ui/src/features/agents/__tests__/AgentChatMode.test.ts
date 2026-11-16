@@ -1,4 +1,6 @@
+import { N8nButton } from '@n8n/design-system';
 import { configure, fireEvent, screen, waitFor } from '@testing-library/vue';
+import { mount } from '@vue/test-utils';
 import { describe, expect, it } from 'vitest';
 
 import { createComponentRenderer } from '@/__tests__/render';
@@ -183,6 +185,25 @@ describe('AgentChatModeSwitch', () => {
 		await waitFor(() => expect(getByTestId('agent-chat-mode-switch-test')).toHaveFocus());
 	});
 
+	it('leaves other keys to the focused control', async () => {
+		const { getByTestId, emitted } = renderSwitch({
+			props: { modelValue: 'test', liveAvailability: 'published' },
+		});
+		const selected = getByTestId('agent-chat-mode-switch-test');
+		selected.focus();
+		const event = new KeyboardEvent('keydown', {
+			key: 'Tab',
+			bubbles: true,
+			cancelable: true,
+		});
+
+		await fireEvent(selected, event);
+
+		expect(event.defaultPrevented).toBe(false);
+		expect(emitted('update:modelValue')).toBeUndefined();
+		expect(selected).toHaveFocus();
+	});
+
 	it('ignores arrow keys once the mode is locked', async () => {
 		const { getByTestId, emitted } = renderSwitch({
 			props: { modelValue: 'test', liveAvailability: 'published', disabled: true },
@@ -316,10 +337,38 @@ describe('AgentChatLiveGate', () => {
 		expect(getByTestId('agent-chat-live-gate-use-live-version')).toBeInTheDocument();
 	});
 
-	it('blocks Use live version while publishing', () => {
-		const { getByTestId } = renderGate({ props: { reason: 'changed', busy: true } });
+	it('blocks both actions while publishing', async () => {
+		const { getByTestId, emitted } = renderGate({
+			props: { reason: 'changed', busy: true },
+		});
+		const publish = getByTestId('agent-chat-live-gate-publish');
+		const useLiveVersion = getByTestId('agent-chat-live-gate-use-live-version');
 
-		expect(getByTestId('agent-chat-live-gate-use-live-version')).toBeDisabled();
+		expect(publish).toBeDisabled();
+		expect(useLiveVersion).toBeDisabled();
+		await fireEvent.click(publish);
+		await fireEvent.click(useLiveVersion);
+
+		expect(emitted('publish')).toBeUndefined();
+		expect(emitted('use-live-version')).toBeUndefined();
+	});
+
+	it('ignores child action events while publishing', () => {
+		const wrapper = mount(AgentChatLiveGate, {
+			props: { reason: 'changed', busy: true },
+		});
+
+		try {
+			const buttons = wrapper.findAllComponents(N8nButton);
+			expect(buttons).toHaveLength(2);
+			// Disabled buttons block DOM clicks. Check the gate's own guard at the child boundary.
+			for (const button of buttons) button.vm.$emit('click');
+
+			expect(wrapper.emitted('publish')).toBeUndefined();
+			expect(wrapper.emitted('use-live-version')).toBeUndefined();
+		} finally {
+			wrapper.unmount();
+		}
 	});
 });
 
