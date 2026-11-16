@@ -163,7 +163,6 @@ async function remove(environment: PromotionEnvironment) {
 	<N8nSettingsLayout :class="$style.layout">
 		<N8nSettingsPageHeader
 			feature="n8nPackages"
-			show-badges
 			:title="i18n.baseText('settings.promotions.title')"
 			:description="i18n.baseText('settings.promotions.description')"
 			:docs-url="ENVIRONMENTS_PLAN_DOCS_URL"

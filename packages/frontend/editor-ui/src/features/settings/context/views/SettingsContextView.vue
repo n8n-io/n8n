@@ -78,7 +78,6 @@ onMounted(async () => {
 	<N8nSettingsLayout :class="$style.layout" data-test-id="settings-context-view">
 		<N8nSettingsPageHeader
 			feature="context"
-			show-badges
 			:title="i18n.baseText('settings.context.title')"
 			:description="i18n.baseText('settings.context.description')"
 			:show-docs-link="false"

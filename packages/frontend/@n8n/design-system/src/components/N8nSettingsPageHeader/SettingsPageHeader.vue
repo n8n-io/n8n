@@ -35,11 +35,13 @@ export interface SettingsPageHeaderProps {
 	headingTag?: string;
 	/**
 	 * Feature id from the list the app provides.
-	 * Badges render beside the title only when `showBadges` is true.
+	 * The entry decides which badges render beside the title.
 	 */
 	feature?: string;
-	/** Render this feature's badges beside the title. */
-	showBadges?: boolean;
+	/** Hide the Preview badge at this callsite. */
+	hidePreview?: boolean;
+	/** Hide the Limited enterprise readiness badge at this callsite. */
+	hideEnterprise?: boolean;
 }
 
 defineOptions({ name: 'N8nSettingsPageHeader' });
@@ -52,7 +54,8 @@ const props = withDefaults(defineProps<SettingsPageHeaderProps>(), {
 	docsLeadingText: undefined,
 	headingTag: 'h1',
 	feature: undefined,
-	showBadges: false,
+	hidePreview: false,
+	hideEnterprise: false,
 });
 
 const slots = useSlots();
@@ -68,9 +71,10 @@ const resolvedDocsLeadingText = computed(
 const enterprisePlan = useEnterprisePlan();
 const catalog = useFeatureMaturityCatalog();
 const featureBadges = computed(() =>
-	props.showBadges
-		? resolveFeatureMaturityBadges(catalog, props.feature, enterprisePlan.value)
-		: { showPreview: false, showEnterprise: false },
+	resolveFeatureMaturityBadges(catalog, props.feature, enterprisePlan.value, {
+		preview: props.hidePreview,
+		enterprise: props.hideEnterprise,
+	}),
 );
 const showFeatureBadges = computed(
 	() => featureBadges.value.showPreview || featureBadges.value.showEnterprise,
@@ -99,7 +103,12 @@ if (import.meta.env.DEV) {
 			<N8nHeading :tag="headingTag" :class="$style.title" step="xl" color="text-dark">
 				{{ title }}
 			</N8nHeading>
-			<N8nFeatureMaturityBadges v-if="showFeatureBadges" :feature="feature" />
+			<N8nFeatureMaturityBadges
+				v-if="showFeatureBadges"
+				:feature="feature"
+				:hide-preview="hidePreview"
+				:hide-enterprise="hideEnterprise"
+			/>
 			<slot name="titleTrailing" />
 		</div>
 		<N8nHeading v-else :tag="headingTag" :class="$style.title" step="xl" color="text-dark">

@@ -118,7 +118,6 @@ export const WithFeatureBadges: Story = {
 		title: 'Context',
 		description: 'Preferences and skills the assistant can use.',
 		feature: 'context',
-		showBadges: true,
 		showDocsLink: false,
 	},
 };

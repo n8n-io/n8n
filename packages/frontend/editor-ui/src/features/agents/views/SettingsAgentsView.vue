@@ -66,7 +66,6 @@ onMounted(async () => {
 	<N8nSettingsLayout data-test-id="agents-settings">
 		<N8nSettingsPageHeader
 			feature="agents"
-			show-badges
 			:title="i18n.baseText('settings.agents')"
 			:description="i18n.baseText('settings.agents.description')"
 			docs-url="https://docs.n8n.io/build/build-and-manage-agents"

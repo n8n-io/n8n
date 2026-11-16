@@ -1,8 +1,13 @@
 import { render, screen } from '@testing-library/vue';
+import { computed } from 'vue';
 
+import { EnterprisePlanKey } from '../FeatureMaturityBadges/featureMaturityState';
 import { provideFeatureMaturity } from '../FeatureMaturityBadges/featureMaturityStub';
 import N8nSettingsPageHeader from './SettingsPageHeader.vue';
 
+const enterprisePlan = provideFeatureMaturity({
+	[EnterprisePlanKey as symbol]: computed(() => true),
+});
 const featureList = provideFeatureMaturity();
 
 describe('N8nSettingsPageHeader', () => {
@@ -14,10 +19,10 @@ describe('N8nSettingsPageHeader', () => {
 		expect(title.tagName).toBe('H1');
 	});
 
-	it('renders feature badges beside the title', () => {
+	it('renders the feature badges beside the title', () => {
 		render(N8nSettingsPageHeader, {
 			...featureList,
-			props: { title: 'Context', feature: 'context', showBadges: true, showDocsLink: false },
+			props: { title: 'Context', feature: 'context', showDocsLink: false },
 		});
 
 		const title = screen.getByRole('heading', { name: 'Context' });
@@ -26,6 +31,33 @@ describe('N8nSettingsPageHeader', () => {
 		expect(
 			screen.queryByTestId('settings-context-enterprise-readiness-badge'),
 		).not.toBeInTheDocument();
+	});
+
+	it('hides one badge when the header asks', () => {
+		const preview = render(N8nSettingsPageHeader, {
+			...enterprisePlan,
+			props: {
+				title: 'Agents',
+				feature: 'agents',
+				hideEnterprise: true,
+				showDocsLink: false,
+			},
+		});
+		expect(preview.getByTestId('agents-preview-badge')).toBeInTheDocument();
+		expect(preview.queryByTestId('agents-enterprise-readiness-badge')).not.toBeInTheDocument();
+		preview.unmount();
+
+		const enterprise = render(N8nSettingsPageHeader, {
+			...enterprisePlan,
+			props: {
+				title: 'Agents',
+				feature: 'agents',
+				hidePreview: true,
+				showDocsLink: false,
+			},
+		});
+		expect(enterprise.queryByTestId('agents-preview-badge')).not.toBeInTheDocument();
+		expect(enterprise.getByTestId('agents-enterprise-readiness-badge')).toBeInTheDocument();
 	});
 
 	it('renders the titleTrailing slot alongside the title', () => {
