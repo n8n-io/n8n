@@ -73,23 +73,29 @@ describe('toDraftWorkflowDb', () => {
 	it('gives every node an id and parameters', () => {
 		const [start, set] = toDraftWorkflowDb(draft(), 'draft-doc').nodes;
 
-		expect(start).toMatchObject({ id: 'node-1', parameters: { mode: 'manual' } });
+		expect(start).toMatchObject({ id: expect.any(String), parameters: { mode: 'manual' } });
 		expect(set.id).toEqual(expect.any(String));
 		expect(set.id).not.toBe(start.id);
 		expect(set.parameters).toEqual({});
 	});
 
-	it('keeps node ids stable across revisions of the same draft', () => {
-		const first = toDraftWorkflowDb(draft(), 'draft-doc').nodes[1].id;
-		const second = toDraftWorkflowDb({ ...draft(), revision: 4 }, 'draft-doc').nodes[1].id;
+	it('keeps node ids stable across revisions, also when each compile gives new ids', () => {
+		const first = toDraftWorkflowDb(draft(), 'draft-doc').nodes[0].id;
+		const next = draft();
+		next.workflow.nodes[0] = { ...next.workflow.nodes[0], id: 'node-1-recompiled' };
+		const second = toDraftWorkflowDb({ ...next, revision: 4 }, 'draft-doc').nodes[0].id;
 
 		expect(second).toBe(first);
 	});
 
-	it('keeps the node groups', () => {
+	it('keeps the node groups on the nodes they hold', () => {
 		const nodeGroups = [{ id: 'g-1', name: 'Intake', nodeIds: ['node-1'] }];
 
-		expect(toDraftWorkflowDb(draft({ nodeGroups }), 'draft-doc').nodeGroups).toEqual(nodeGroups);
+		const workflow = toDraftWorkflowDb(draft({ nodeGroups }), 'draft-doc');
+
+		expect(workflow.nodeGroups).toEqual([
+			{ id: 'g-1', name: 'Intake', nodeIds: [workflow.nodes[0].id] },
+		]);
 	});
 
 	it('keeps connections of known types and drops the rest', () => {
