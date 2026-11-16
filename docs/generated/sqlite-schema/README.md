@@ -1532,36 +1532,36 @@ erDiagram
   varchar_512_ token PK
 }
 "lease" {
-  DATETIME claimedAt
-  DATETIME createdAt
+  datetime_3_ claimedAt
+  datetime_3_ createdAt
   TEXT data
-  VARCHAR_64_ dataHash
-  INTEGER fencingToken
-  VARCHAR_255_ key PK
-  VARCHAR_24_ leaseKind PK
-  VARCHAR_36_ leaseSessionId
-  DATETIME readyAt
-  BOOLEAN revoked
-  DATETIME revokedAt
-  DATETIME updatedAt
+  varchar_64_ dataHash
+  bigint fencingToken
+  varchar_255_ key PK
+  varchar_24_ leaseKind PK
+  varchar_36_ leaseSessionId
+  datetime_3_ readyAt
+  boolean revoked
+  datetime_3_ revokedAt
+  datetime_3_ updatedAt
 }
 "lease_kind" {
-  DATETIME createdAt
-  INTEGER fencingTokenCounter
-  VARCHAR_24_ kind PK
-  DATETIME lastFullSyncAt
-  DATETIME syncLockExpiresAt
-  VARCHAR_36_ syncLockRoundId
-  DATETIME updatedAt
+  datetime_3_ createdAt
+  bigint fencingTokenCounter
+  varchar_24_ kind PK
+  datetime_3_ lastFullSyncAt
+  datetime_3_ syncLockExpiresAt
+  varchar_36_ syncLockRoundId
+  datetime_3_ updatedAt
 }
 "lease_session" {
-  VARCHAR_36_ bootId
-  DATETIME createdAt
-  DATETIME expiresAt
-  VARCHAR_255_ hostId
-  VARCHAR_36_ id PK
+  varchar_36_ bootId
+  datetime_3_ createdAt
+  datetime_3_ expiresAt
+  varchar_255_ hostId
+  varchar_36_ id PK
   INTEGER leaseDurationSeconds
-  VARCHAR_24_ leaseKind FK
+  varchar_24_ leaseKind FK
 }
 "mcp_registry_server" {
   datetime_3_ createdAt

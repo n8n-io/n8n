@@ -17,17 +17,17 @@
 | Name | Type | Definition |
 | ---- | ---- | ---------- |
 | CHK_lease_kind_fencingTokenCounter | CHECK | CHECK (("fencingTokenCounter" >= 0)) |
+| PK_9e81b1f6095f0843f64c9554fe0 | PRIMARY KEY | PRIMARY KEY (kind) |
 | lease_kind_createdAt_not_null | n | NOT NULL "createdAt" |
 | lease_kind_fencingTokenCounter_not_null | n | NOT NULL "fencingTokenCounter" |
 | lease_kind_kind_not_null | n | NOT NULL kind |
-| lease_kind_pkey | PRIMARY KEY | PRIMARY KEY (kind) |
 | lease_kind_updatedAt_not_null | n | NOT NULL "updatedAt" |
 
 ## Indexes
 
 | Name | Definition |
 | ---- | ---------- |
-| lease_kind_pkey | CREATE UNIQUE INDEX lease_kind_pkey ON public.lease_kind USING btree (kind) |
+| PK_9e81b1f6095f0843f64c9554fe0 | CREATE UNIQUE INDEX "PK_9e81b1f6095f0843f64c9554fe0" ON public.lease_kind USING btree (kind) |
 
 ## Relations
 

@@ -6,15 +6,7 @@
 <summary><strong>Table Definition</strong></summary>
 
 ```sql
-CREATE TABLE "lease_kind" (
-			"kind" VARCHAR(24) NOT NULL PRIMARY KEY,
-			"fencingTokenCounter" INTEGER NOT NULL DEFAULT 0 CONSTRAINT "CHK_lease_kind_fencingTokenCounter" CHECK ("fencingTokenCounter" >= 0),
-			"syncLockRoundId" VARCHAR(36) NULL,
-			"syncLockExpiresAt" DATETIME NULL,
-			"lastFullSyncAt" DATETIME NULL,
-			"createdAt" DATETIME NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f','NOW')),
-			"updatedAt" DATETIME NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f','NOW'))
-		)
+CREATE TABLE "lease_kind" ("kind" varchar(24) PRIMARY KEY NOT NULL, "fencingTokenCounter" bigint NOT NULL DEFAULT (0), "syncLockRoundId" varchar(36), "syncLockExpiresAt" datetime(3), "lastFullSyncAt" datetime(3), "createdAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), "updatedAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), CONSTRAINT "CHK_lease_kind_fencingTokenCounter" CHECK ("fencingTokenCounter" >= 0))
 ```
 
 </details>
@@ -23,13 +15,13 @@ CREATE TABLE "lease_kind" (
 
 | Name | Type | Default | Nullable | Children | Parents | Comment |
 | ---- | ---- | ------- | -------- | -------- | ------- | ------- |
-| createdAt | DATETIME | STRFTIME('%Y-%m-%d %H:%M:%f','NOW') | false |  |  |  |
-| fencingTokenCounter | INTEGER | 0 | false |  |  |  |
-| kind | VARCHAR(24) |  | false | [lease](lease.md) [lease_session](lease_session.md) |  |  |
-| lastFullSyncAt | DATETIME |  | true |  |  |  |
-| syncLockExpiresAt | DATETIME |  | true |  |  |  |
-| syncLockRoundId | VARCHAR(36) |  | true |  |  |  |
-| updatedAt | DATETIME | STRFTIME('%Y-%m-%d %H:%M:%f','NOW') | false |  |  |  |
+| createdAt | datetime(3) | STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW') | false |  |  |  |
+| fencingTokenCounter | bigint | 0 | false |  |  |  |
+| kind | varchar(24) |  | false | [lease](lease.md) [lease_session](lease_session.md) |  |  |
+| lastFullSyncAt | datetime(3) |  | true |  |  |  |
+| syncLockExpiresAt | datetime(3) |  | true |  |  |  |
+| syncLockRoundId | varchar(36) |  | true |  |  |  |
+| updatedAt | datetime(3) | STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW') | false |  |  |  |
 
 ## Constraints
 
@@ -54,36 +46,36 @@ erDiagram
 "lease_session" }o--|| "lease_kind" : "FOREIGN KEY (leaseKind) REFERENCES lease_kind (kind) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 
 "lease_kind" {
-  DATETIME createdAt
-  INTEGER fencingTokenCounter
-  VARCHAR_24_ kind PK
-  DATETIME lastFullSyncAt
-  DATETIME syncLockExpiresAt
-  VARCHAR_36_ syncLockRoundId
-  DATETIME updatedAt
+  datetime_3_ createdAt
+  bigint fencingTokenCounter
+  varchar_24_ kind PK
+  datetime_3_ lastFullSyncAt
+  datetime_3_ syncLockExpiresAt
+  varchar_36_ syncLockRoundId
+  datetime_3_ updatedAt
 }
 "lease" {
-  DATETIME claimedAt
-  DATETIME createdAt
+  datetime_3_ claimedAt
+  datetime_3_ createdAt
   TEXT data
-  VARCHAR_64_ dataHash
-  INTEGER fencingToken
-  VARCHAR_255_ key PK
-  VARCHAR_24_ leaseKind PK
-  VARCHAR_36_ leaseSessionId
-  DATETIME readyAt
-  BOOLEAN revoked
-  DATETIME revokedAt
-  DATETIME updatedAt
+  varchar_64_ dataHash
+  bigint fencingToken
+  varchar_255_ key PK
+  varchar_24_ leaseKind PK
+  varchar_36_ leaseSessionId
+  datetime_3_ readyAt
+  boolean revoked
+  datetime_3_ revokedAt
+  datetime_3_ updatedAt
 }
 "lease_session" {
-  VARCHAR_36_ bootId
-  DATETIME createdAt
-  DATETIME expiresAt
-  VARCHAR_255_ hostId
-  VARCHAR_36_ id PK
+  varchar_36_ bootId
+  datetime_3_ createdAt
+  datetime_3_ expiresAt
+  varchar_255_ hostId
+  varchar_36_ id PK
   INTEGER leaseDurationSeconds
-  VARCHAR_24_ leaseKind FK
+  varchar_24_ leaseKind FK
 }
 ```
 

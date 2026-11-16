@@ -176,7 +176,7 @@ describe('CreateLeaseTables migration', () => {
 	it.each([
 		['lease_kind', 'fencingTokenCounter', zero],
 		['lease', 'fencingToken', zero],
-		['lease', 'revoked', isSqlite ? '0' : 'false'],
+		['lease', 'revoked', 'false'],
 	])('sets the default of %s.%s to %s', async (name, column, expected) => {
 		await withContext(async (context) => {
 			const table = await getTable(context, name);

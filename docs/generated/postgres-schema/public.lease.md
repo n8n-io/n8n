@@ -23,13 +23,13 @@
 | ---- | ---- | ---------- |
 | CHK_lease_fencingToken | CHECK | CHECK (("fencingToken" >= 0)) |
 | FK_lease_leaseKind | FOREIGN KEY | FOREIGN KEY ("leaseKind") REFERENCES lease_kind(kind) ON DELETE CASCADE |
+| PK_c9b9277380ffae18103999d14bf | PRIMARY KEY | PRIMARY KEY ("leaseKind", key) |
 | lease_createdAt_not_null | n | NOT NULL "createdAt" |
 | lease_dataHash_not_null | n | NOT NULL "dataHash" |
 | lease_data_not_null | n | NOT NULL data |
 | lease_fencingToken_not_null | n | NOT NULL "fencingToken" |
 | lease_key_not_null | n | NOT NULL key |
 | lease_leaseKind_not_null | n | NOT NULL "leaseKind" |
-| lease_pkey | PRIMARY KEY | PRIMARY KEY ("leaseKind", key) |
 | lease_revoked_not_null | n | NOT NULL revoked |
 | lease_updatedAt_not_null | n | NOT NULL "updatedAt" |
 
@@ -38,7 +38,7 @@
 | Name | Definition |
 | ---- | ---------- |
 | IDX_lease_leaseKind_leaseSessionId | CREATE INDEX "IDX_lease_leaseKind_leaseSessionId" ON public.lease USING btree ("leaseKind", "leaseSessionId") |
-| lease_pkey | CREATE UNIQUE INDEX lease_pkey ON public.lease USING btree ("leaseKind", key) |
+| PK_c9b9277380ffae18103999d14bf | CREATE UNIQUE INDEX "PK_c9b9277380ffae18103999d14bf" ON public.lease USING btree ("leaseKind", key) |
 
 ## Relations
 

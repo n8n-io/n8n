@@ -17,6 +17,7 @@
 | Name | Type | Definition |
 | ---- | ---- | ---------- |
 | FK_lease_session_leaseKind | FOREIGN KEY | FOREIGN KEY ("leaseKind") REFERENCES lease_kind(kind) ON DELETE CASCADE |
+| PK_08bc589de90693c1d2dbe5b8db9 | PRIMARY KEY | PRIMARY KEY (id) |
 | lease_session_bootId_not_null | n | NOT NULL "bootId" |
 | lease_session_createdAt_not_null | n | NOT NULL "createdAt" |
 | lease_session_expiresAt_not_null | n | NOT NULL "expiresAt" |
@@ -24,14 +25,13 @@
 | lease_session_id_not_null | n | NOT NULL id |
 | lease_session_leaseDurationSeconds_not_null | n | NOT NULL "leaseDurationSeconds" |
 | lease_session_leaseKind_not_null | n | NOT NULL "leaseKind" |
-| lease_session_pkey | PRIMARY KEY | PRIMARY KEY (id) |
 
 ## Indexes
 
 | Name | Definition |
 | ---- | ---------- |
 | IDX_lease_session_leaseKind_expiresAt | CREATE INDEX "IDX_lease_session_leaseKind_expiresAt" ON public.lease_session USING btree ("leaseKind", "expiresAt") |
-| lease_session_pkey | CREATE UNIQUE INDEX lease_session_pkey ON public.lease_session USING btree (id) |
+| PK_08bc589de90693c1d2dbe5b8db9 | CREATE UNIQUE INDEX "PK_08bc589de90693c1d2dbe5b8db9" ON public.lease_session USING btree (id) |
 
 ## Relations
 

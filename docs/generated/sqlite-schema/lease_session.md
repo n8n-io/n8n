@@ -6,16 +6,7 @@
 <summary><strong>Table Definition</strong></summary>
 
 ```sql
-CREATE TABLE "lease_session" (
-			"id" VARCHAR(36) NOT NULL PRIMARY KEY,
-			"leaseKind" VARCHAR(24) NOT NULL,
-			"hostId" VARCHAR(255) NOT NULL,
-			"bootId" VARCHAR(36) NOT NULL,
-			"leaseDurationSeconds" INTEGER NOT NULL,
-			"expiresAt" DATETIME NOT NULL,
-			"createdAt" DATETIME NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f','NOW')),
-			CONSTRAINT "FK_lease_session_leaseKind" FOREIGN KEY ("leaseKind") REFERENCES "lease_kind" ("kind") ON DELETE CASCADE
-		)
+CREATE TABLE "lease_session" ("id" varchar(36) PRIMARY KEY NOT NULL, "leaseKind" varchar(24) NOT NULL, "hostId" varchar(255) NOT NULL, "bootId" varchar(36) NOT NULL, "leaseDurationSeconds" integer NOT NULL, "expiresAt" datetime(3) NOT NULL, "createdAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), CONSTRAINT "FK_lease_session_leaseKind" FOREIGN KEY ("leaseKind") REFERENCES "lease_kind" ("kind") ON DELETE CASCADE)
 ```
 
 </details>
@@ -24,13 +15,13 @@ CREATE TABLE "lease_session" (
 
 | Name | Type | Default | Nullable | Children | Parents | Comment |
 | ---- | ---- | ------- | -------- | -------- | ------- | ------- |
-| bootId | VARCHAR(36) |  | false |  |  |  |
-| createdAt | DATETIME | STRFTIME('%Y-%m-%d %H:%M:%f','NOW') | false |  |  |  |
-| expiresAt | DATETIME |  | false |  |  |  |
-| hostId | VARCHAR(255) |  | false |  |  |  |
-| id | VARCHAR(36) |  | false |  |  |  |
+| bootId | varchar(36) |  | false |  |  |  |
+| createdAt | datetime(3) | STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW') | false |  |  |  |
+| expiresAt | datetime(3) |  | false |  |  |  |
+| hostId | varchar(255) |  | false |  |  |  |
+| id | varchar(36) |  | false |  |  |  |
 | leaseDurationSeconds | INTEGER |  | false |  |  |  |
-| leaseKind | VARCHAR(24) |  | false |  | [lease_kind](lease_kind.md) |  |
+| leaseKind | varchar(24) |  | false |  | [lease_kind](lease_kind.md) |  |
 
 ## Constraints
 
@@ -44,7 +35,7 @@ CREATE TABLE "lease_session" (
 
 | Name | Definition |
 | ---- | ---------- |
-| IDX_lease_session_leaseKind_expiresAt | CREATE INDEX "IDX_lease_session_leaseKind_expiresAt" ON "lease_session" ("leaseKind", "expiresAt") |
+| IDX_lease_session_leaseKind_expiresAt | CREATE INDEX "IDX_lease_session_leaseKind_expiresAt" ON "lease_session" ("leaseKind", "expiresAt")  |
 | sqlite_autoindex_lease_session_1 | PRIMARY KEY (id) |
 
 ## Relations
@@ -55,22 +46,22 @@ erDiagram
 "lease_session" }o--|| "lease_kind" : "FOREIGN KEY (leaseKind) REFERENCES lease_kind (kind) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 
 "lease_session" {
-  VARCHAR_36_ bootId
-  DATETIME createdAt
-  DATETIME expiresAt
-  VARCHAR_255_ hostId
-  VARCHAR_36_ id PK
+  varchar_36_ bootId
+  datetime_3_ createdAt
+  datetime_3_ expiresAt
+  varchar_255_ hostId
+  varchar_36_ id PK
   INTEGER leaseDurationSeconds
-  VARCHAR_24_ leaseKind FK
+  varchar_24_ leaseKind FK
 }
 "lease_kind" {
-  DATETIME createdAt
-  INTEGER fencingTokenCounter
-  VARCHAR_24_ kind PK
-  DATETIME lastFullSyncAt
-  DATETIME syncLockExpiresAt
-  VARCHAR_36_ syncLockRoundId
-  DATETIME updatedAt
+  datetime_3_ createdAt
+  bigint fencingTokenCounter
+  varchar_24_ kind PK
+  datetime_3_ lastFullSyncAt
+  datetime_3_ syncLockExpiresAt
+  varchar_36_ syncLockRoundId
+  datetime_3_ updatedAt
 }
 ```
 

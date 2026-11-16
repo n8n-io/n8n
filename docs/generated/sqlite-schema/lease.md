@@ -6,22 +6,7 @@
 <summary><strong>Table Definition</strong></summary>
 
 ```sql
-CREATE TABLE "lease" (
-			"leaseKind" VARCHAR(24) NOT NULL,
-			"key" VARCHAR(255) NOT NULL,
-			"data" TEXT NOT NULL,
-			"dataHash" VARCHAR(64) NOT NULL,
-			"leaseSessionId" VARCHAR(36) NULL,
-			"fencingToken" INTEGER NOT NULL DEFAULT 0 CONSTRAINT "CHK_lease_fencingToken" CHECK ("fencingToken" >= 0),
-			"claimedAt" DATETIME NULL,
-			"readyAt" DATETIME NULL,
-			"revoked" BOOLEAN NOT NULL DEFAULT 0,
-			"revokedAt" DATETIME NULL,
-			"createdAt" DATETIME NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f','NOW')),
-			"updatedAt" DATETIME NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f','NOW')),
-			PRIMARY KEY ("leaseKind", "key"),
-			CONSTRAINT "FK_lease_leaseKind" FOREIGN KEY ("leaseKind") REFERENCES "lease_kind" ("kind") ON DELETE CASCADE
-		)
+CREATE TABLE "lease" ("leaseKind" varchar(24) NOT NULL, "key" varchar(255) NOT NULL, "data" text NOT NULL, "dataHash" varchar(64) NOT NULL, "leaseSessionId" varchar(36), "fencingToken" bigint NOT NULL DEFAULT (0), "claimedAt" datetime(3), "readyAt" datetime(3), "revoked" boolean NOT NULL DEFAULT (false), "revokedAt" datetime(3), "createdAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), "updatedAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), CONSTRAINT "CHK_lease_fencingToken" CHECK ("fencingToken" >= 0), CONSTRAINT "FK_lease_leaseKind" FOREIGN KEY ("leaseKind") REFERENCES "lease_kind" ("kind") ON DELETE CASCADE, PRIMARY KEY ("leaseKind", "key"))
 ```
 
 </details>
@@ -30,18 +15,18 @@ CREATE TABLE "lease" (
 
 | Name | Type | Default | Nullable | Children | Parents | Comment |
 | ---- | ---- | ------- | -------- | -------- | ------- | ------- |
-| claimedAt | DATETIME |  | true |  |  |  |
-| createdAt | DATETIME | STRFTIME('%Y-%m-%d %H:%M:%f','NOW') | false |  |  |  |
+| claimedAt | datetime(3) |  | true |  |  |  |
+| createdAt | datetime(3) | STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW') | false |  |  |  |
 | data | TEXT |  | false |  |  |  |
-| dataHash | VARCHAR(64) |  | false |  |  |  |
-| fencingToken | INTEGER | 0 | false |  |  |  |
-| key | VARCHAR(255) |  | false |  |  |  |
-| leaseKind | VARCHAR(24) |  | false |  | [lease_kind](lease_kind.md) |  |
-| leaseSessionId | VARCHAR(36) |  | true |  |  |  |
-| readyAt | DATETIME |  | true |  |  |  |
-| revoked | BOOLEAN | 0 | false |  |  |  |
-| revokedAt | DATETIME |  | true |  |  |  |
-| updatedAt | DATETIME | STRFTIME('%Y-%m-%d %H:%M:%f','NOW') | false |  |  |  |
+| dataHash | varchar(64) |  | false |  |  |  |
+| fencingToken | bigint | 0 | false |  |  |  |
+| key | varchar(255) |  | false |  |  |  |
+| leaseKind | varchar(24) |  | false |  | [lease_kind](lease_kind.md) |  |
+| leaseSessionId | varchar(36) |  | true |  |  |  |
+| readyAt | datetime(3) |  | true |  |  |  |
+| revoked | boolean | false | false |  |  |  |
+| revokedAt | datetime(3) |  | true |  |  |  |
+| updatedAt | datetime(3) | STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW') | false |  |  |  |
 
 ## Constraints
 
@@ -57,7 +42,7 @@ CREATE TABLE "lease" (
 
 | Name | Definition |
 | ---- | ---------- |
-| IDX_lease_leaseKind_leaseSessionId | CREATE INDEX "IDX_lease_leaseKind_leaseSessionId" ON "lease" ("leaseKind", "leaseSessionId") |
+| IDX_lease_leaseKind_leaseSessionId | CREATE INDEX "IDX_lease_leaseKind_leaseSessionId" ON "lease" ("leaseKind", "leaseSessionId")  |
 | sqlite_autoindex_lease_1 | PRIMARY KEY (leaseKind, key) |
 
 ## Relations
@@ -68,27 +53,27 @@ erDiagram
 "lease" |o--|| "lease_kind" : "FOREIGN KEY (leaseKind) REFERENCES lease_kind (kind) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 
 "lease" {
-  DATETIME claimedAt
-  DATETIME createdAt
+  datetime_3_ claimedAt
+  datetime_3_ createdAt
   TEXT data
-  VARCHAR_64_ dataHash
-  INTEGER fencingToken
-  VARCHAR_255_ key PK
-  VARCHAR_24_ leaseKind PK
-  VARCHAR_36_ leaseSessionId
-  DATETIME readyAt
-  BOOLEAN revoked
-  DATETIME revokedAt
-  DATETIME updatedAt
+  varchar_64_ dataHash
+  bigint fencingToken
+  varchar_255_ key PK
+  varchar_24_ leaseKind PK
+  varchar_36_ leaseSessionId
+  datetime_3_ readyAt
+  boolean revoked
+  datetime_3_ revokedAt
+  datetime_3_ updatedAt
 }
 "lease_kind" {
-  DATETIME createdAt
-  INTEGER fencingTokenCounter
-  VARCHAR_24_ kind PK
-  DATETIME lastFullSyncAt
-  DATETIME syncLockExpiresAt
-  VARCHAR_36_ syncLockRoundId
-  DATETIME updatedAt
+  datetime_3_ createdAt
+  bigint fencingTokenCounter
+  varchar_24_ kind PK
+  datetime_3_ lastFullSyncAt
+  datetime_3_ syncLockExpiresAt
+  varchar_36_ syncLockRoundId
+  datetime_3_ updatedAt
 }
 ```
 
