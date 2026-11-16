@@ -435,6 +435,25 @@ describe('generateContentLengthHeader', () => {
 		expect(config.headers!['content-length']).toBeGreaterThan(0);
 	});
 
+	test('should log a handled length failure at warn', async () => {
+		const logger = mock<Logger>();
+		Container.set(Logger, logger);
+		const formData = new FormData();
+		formData.append('key', 'value');
+		vi.spyOn(formData, 'getLength').mockImplementation((callback) => {
+			callback(new Error('length failed'), 0);
+		});
+		const config: AxiosRequestConfig = { data: formData, headers: {} };
+
+		await generateContentLengthHeader(config);
+
+		expect(config.headers!['content-length']).toBeUndefined();
+		expect(logger.warn).toHaveBeenCalledWith('Unable to calculate form data length', {
+			error: expect.any(Error),
+		});
+		expect(logger.error).not.toHaveBeenCalled();
+	});
+
 	test('should skip non-FormData bodies', async () => {
 		const config: AxiosRequestConfig = { data: { key: 'value' }, headers: {} };
 		await generateContentLengthHeader(config);
