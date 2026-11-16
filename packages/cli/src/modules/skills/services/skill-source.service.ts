@@ -33,6 +33,7 @@ import { v7 as uuidv7, validate as isUuid } from 'uuid';
 import type {
 	SkillSourceConnection,
 	SkillSourceType,
+	UnlinkedSkill,
 } from '../database/entities/skill-source-connection.entity';
 import {
 	DuplicateSkillSourceError,
@@ -56,11 +57,13 @@ import {
 } from '../sources/skill-source-client';
 import {
 	contentToAgentSkill,
+	storedContentOf,
 	importableSkillSchema,
 	toSkillContent,
 	type SkillTarget,
 } from '../utils/skill-content';
 import { skillContentHash } from '../utils/skill-content-hash';
+import { unreadableSkillHash } from '../utils/skill-unlinked';
 import { skillPreview } from '../utils/skill-preview';
 import { canTakeCredential, skillSourceHealth } from '../utils/skill-source-health';
 import { countSkippedFiles } from '../utils/skipped-files';
@@ -270,6 +273,9 @@ export class SkillSourceService {
 				skillCount: count.skills,
 				updatesAvailable: canReview(source) ? count.available : 0,
 				updatesBlocked: canReview(source) ? count.blocked : 0,
+				newSkillsAvailable: canReview(source)
+					? (source.unlinkedSkills ?? []).filter(({ skipped }) => !skipped).length
+					: 0,
 				health: skillSourceHealth(
 					source.credentialRequired && !source.credentialId
 						? 'credential_missing'
@@ -482,7 +488,9 @@ export class SkillSourceService {
 				if (ref) picked.push(ref);
 				else failed.push({ key, name: null, reason: 'not_found' });
 			}
-			const reads = await this.readAll(source, { ...discovered, refs: picked });
+			const allReads = await this.readAll(source, discovered);
+			const pickedKeys = new Set(picked.map(refKey));
+			const reads = allReads.filter(({ key }) => pickedKeys.has(key));
 			const importable: ReadSkill[] = [];
 			for (const read of reads) {
 				// The source can change after discover, so connect checks the content it imports.
@@ -575,6 +583,25 @@ export class SkillSourceService {
 					const reason = failed[0]?.reason ?? 'no_skills_found';
 					throw new SkillSourceRequestError(reason, noImportMessage(failed, reason));
 				}
+				const importedKeys = new Set(imported.map(({ key }) => key));
+				await this.sourceRepository.saveUnlinkedSkills(
+					sourceId,
+					await Promise.all(
+						allReads
+							.filter((read) => !importedKeys.has(read.key) && read.check)
+							.map(
+								async (read): Promise<UnlinkedSkill> => ({
+									key: read.key,
+									contentHash: read.fetched
+										? skillContentHash(storedContentOf(read.fetched.content))
+										: await unreadableSkillHash(read.error?.message ?? ''),
+									verdict: read.check?.verdict ?? 'blocked',
+									skipped: true,
+								}),
+							),
+					),
+					ctx,
+				);
 			});
 		} catch (error) {
 			// The transaction rolled back, so nothing came in.
@@ -935,6 +962,6 @@ function duplicateError(where: 'global' | 'scope'): SkillSourceRequestError {
 		'duplicate_source',
 		where === 'global'
 			? 'This repository is already connected in Global. Every project can use its skills.'
-			: 'This repository is already connected in this scope. Add more skills to that source.',
+			: 'This repository is already connected in this scope. Review its skills to import more.',
 	);
 }

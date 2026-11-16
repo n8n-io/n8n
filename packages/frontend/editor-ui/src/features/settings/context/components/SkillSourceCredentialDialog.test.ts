@@ -27,6 +27,7 @@ const source: SkillSourceListItem = {
 	projectIcon: null,
 	skillCount: 1,
 	updatesAvailable: 0,
+	newSkillsAvailable: 0,
 	updatesBlocked: 0,
 	health: 'credential_issue',
 	lastCheckedAt: null,

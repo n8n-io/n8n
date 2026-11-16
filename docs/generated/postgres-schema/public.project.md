@@ -342,6 +342,7 @@ erDiagram
   varchar_36_ projectId FK
   varchar_32_ status
   varchar_16_ type
+  json unlinkedSkills
   timestamp_3__with_time_zone updatedAt
 }
 "public.type_availability_policy_scope" {

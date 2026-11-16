@@ -25,7 +25,12 @@ import { useSkillDeleteRule } from '../skills.utils';
 
 type SkillAction = 'edit' | 'timeline' | 'download' | 'stopSyncing' | 'delete';
 
-type SourceAction = 'checkNow' | 'openInGitHub' | 'replaceCredential' | 'deleteSource';
+type SourceAction =
+	| 'checkNow'
+	| 'reviewSkills'
+	| 'openInGitHub'
+	| 'replaceCredential'
+	| 'deleteSource';
 
 /** The fields of the action toggle item that this menu uses. */
 type SkillActionItem = {
@@ -190,6 +195,11 @@ function sourceActions(source: SkillSourceListItem) {
 	}> = [];
 	if (source.canReview) {
 		items.push({
+			value: 'reviewSkills',
+			label: i18n.baseText('settings.context.skills.sources.reviewSkills'),
+			icon: 'book-open',
+		});
+		items.push({
 			value: 'checkNow',
 			label: i18n.baseText('settings.context.skills.checkForUpdates.action'),
 			icon: 'refresh-cw',
@@ -220,6 +230,7 @@ function sourceActions(source: SkillSourceListItem) {
 
 function onSourceAction(source: SkillSourceListItem, action: SourceAction) {
 	if (action === 'checkNow') emit('checkSource', source);
+	else if (action === 'reviewSkills') emit('reviewSource', source);
 	else if (action === 'deleteSource') emit('deleteSource', source);
 	else if (action === 'replaceCredential') emit('replaceCredential', source);
 	else window.open(source.webUrl, '_blank', 'noopener,noreferrer');
@@ -389,6 +400,22 @@ const headers = computed<Array<TableHeader<SkillListItem>>>(() => [
 								})
 							}}
 						</N8nBadge>
+					</button>
+					<button
+						v-if="
+							sourcesById.get(group)!.canReview && sourcesById.get(group)!.newSkillsAvailable > 0
+						"
+						type="button"
+						:class="$style.updateButton"
+						data-test-id="skill-group-review-new"
+						data-attr="skill-group-review-new"
+						@click.stop="emit('reviewSource', sourcesById.get(group)!)"
+					>
+						<N8nBadge variant="secondary">{{
+							i18n.baseText('settings.context.skills.sources.new', {
+								interpolate: { count: sourcesById.get(group)!.newSkillsAvailable },
+							})
+						}}</N8nBadge>
 					</button>
 				</div>
 			</template>

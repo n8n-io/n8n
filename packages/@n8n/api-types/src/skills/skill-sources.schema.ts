@@ -206,6 +206,8 @@ export type SkillSourceCheckResponse = {
 	label: string;
 	/** Skills of the source with an update that waits for review, after the check. */
 	updatesFound: number;
+	/** Unlinked skills that are not hidden from the new count. */
+	newSkillsFound: number;
 	/** True when the source was checked less than a minute ago, so n8n did not check it again. */
 	throttled: boolean;
 	lastCheckedAt: string | null;
@@ -296,6 +298,8 @@ export type SkillSourceListItem = {
 	updatesAvailable: number;
 	/** Updates that the security check blocked. */
 	updatesBlocked: number;
+	/** New skills that are not hidden from the count. Includes blocked skills. */
+	newSkillsAvailable: number;
 	health: SkillSourceHealth;
 	lastCheckedAt: string | null;
 	/** Names of synced skills whose folders are gone. Their saved versions still work. */
@@ -316,17 +320,44 @@ const reviewedUpdate = {
 export class ReviewSkillSourceUpdateQueryDto extends Z.class(reviewedUpdate) {}
 
 /** Applies every selected update in one transaction. */
-export class AcceptSkillSourceUpdatesDto extends Z.class({
+const acceptSkillSourceUpdatesShape = {
 	updates: z
 		.array(z.object({ skillId: z.string().min(1).max(36), ...reviewedUpdate }))
-		.min(1)
 		.max(SKILL_SOURCE_MAX_SKILLS)
 		.refine(
 			(updates) => new Set(updates.map(({ skillId }) => skillId)).size === updates.length,
 			'Select each skill once',
 		),
+	newSkills: z
+		.array(z.object({ key: z.string().min(1).max(2048), contentHash: reviewedUpdate.contentHash }))
+		.max(SKILL_SOURCE_MAX_SKILLS)
+		.default([]),
+	skippedNewSkills: z
+		.array(z.object({ key: z.string().min(1).max(2048), contentHash: reviewedUpdate.contentHash }))
+		.max(SKILL_SOURCE_MAX_SKILLS)
+		.default([]),
 	reviewedWarnings: z.boolean().default(false),
-}) {}
+};
+const acceptSkillSourceUpdatesSchema = z.object(acceptSkillSourceUpdatesShape).refine((value) => {
+	const keys = [...value.newSkills, ...value.skippedNewSkills].map(({ key }) => key);
+	return (
+		value.updates.length + keys.length > 0 &&
+		value.updates.length + keys.length <= SKILL_SOURCE_MAX_SKILLS &&
+		new Set(keys).size === keys.length
+	);
+}, 'Select each skill once, and select at least one skill');
+
+export class AcceptSkillSourceUpdatesDto extends Z.class(acceptSkillSourceUpdatesShape) {
+	constructor(data: z.infer<typeof acceptSkillSourceUpdatesSchema>) {
+		super(acceptSkillSourceUpdatesSchema.parse(data));
+	}
+	static override safeParse(data: unknown) {
+		return acceptSkillSourceUpdatesSchema.safeParse(data);
+	}
+	static override parse(data: unknown) {
+		return acceptSkillSourceUpdatesSchema.parse(data);
+	}
+}
 
 export class SkillSourceCommitQueryDto extends Z.class({
 	revision: z.string().min(1).max(255),
@@ -357,7 +388,15 @@ export type SkillPendingUpdate = {
 
 export type SkillSourceUpdates = {
 	updates: SkillPendingUpdate[];
+	/** Read live only when the user opens the review. Includes hidden new skills. */
+	newSkills?: SkillNewUpdate[];
 	commit: SkillUpdateCommit | null;
+};
+
+export type SkillNewUpdate = DiscoveredSkill & {
+	contentHash: string;
+	revision: string;
+	skipped: boolean;
 };
 
 export type SkillUpdateFile = {
@@ -374,7 +413,10 @@ export type SkillUpdateAgents = {
 };
 
 export type SkillUpdateReview = SkillUpdateAgents & { files: SkillUpdateFile[] };
-export type SkillSourceAcceptResponse = SkillUpdateAgents & { updatedCount: number };
+export type SkillSourceAcceptResponse = SkillUpdateAgents & {
+	updatedCount: number;
+	importedCount?: number;
+};
 
 /** A refused source delete names only the agents that the user may read. */
 export const skillSourceDeleteBlockSchema = z.object({

@@ -565,6 +565,10 @@ export const CONTEXT_TELEMETRY = defineTelemetryEvents({
 			updates_found: z
 				.number()
 				.describe('Skills of the source with an update that waits for review, after the check'),
+			new_skills_found: z
+				.number()
+				.optional()
+				.describe('New skills that are not hidden from the count, after the check'),
 			throttled: z
 				.boolean()
 				.describe(
@@ -581,7 +585,9 @@ export const CONTEXT_TELEMETRY = defineTelemetryEvents({
 		properties: z.object({
 			user_id: userId,
 			provider: skillSourceProvider,
-			kind: z.literal('update').describe('An update to an existing synced skill'),
+			kind: z
+				.enum(['update', 'new'])
+				.describe('An update to a synced skill, or a new skill hidden from the count'),
 			action: z.enum(['accept', 'skip']),
 			verdict: z.enum(['pass', 'needs_review', 'blocked']),
 			bulk: z.boolean().describe('Whether the request selected more than one skill'),

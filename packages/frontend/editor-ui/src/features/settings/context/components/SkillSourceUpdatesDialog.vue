@@ -2,6 +2,7 @@
 import type {
 	DiscoveredSkill,
 	SkillPendingUpdate,
+	SkillNewUpdate,
 	SkillSourceListItem,
 	SkillUpdateAgents,
 	SkillUpdateCommit,
@@ -10,6 +11,7 @@ import type {
 import { computed, ref, watch } from 'vue';
 import {
 	N8nButton,
+	N8nBadge,
 	N8nCallout,
 	N8nCheckbox,
 	N8nDialog,
@@ -35,7 +37,8 @@ const i18n = useI18n();
 const store = useSkillsStore();
 const { showMessage } = useToast();
 const { reasonText } = useSkillSourceReasons();
-const updates = ref<SkillPendingUpdate[]>([]);
+type ReviewItem = SkillPendingUpdate & { newSkill?: SkillNewUpdate };
+const updates = ref<ReviewItem[]>([]);
 const selected = ref<string[]>([]);
 const reviewed = ref(false);
 const loading = ref(true);
@@ -56,6 +59,7 @@ const acceptable = (update: SkillPendingUpdate) =>
 const selectedUpdates = computed(() =>
 	updates.value.filter((update) => selected.value.includes(update.skillId) && acceptable(update)),
 );
+const selectedNew = computed(() => selectedUpdates.value.filter((update) => update.newSkill));
 const needsReview = computed(() =>
 	selectedUpdates.value.some((update) => update.check.verdict === 'needs_review'),
 );
@@ -75,8 +79,8 @@ const discovery = computed(() => ({
 					? [finding.file]
 					: [],
 			),
-			previewFiles: [],
-			previewTruncated: false,
+			previewFiles: update.newSkill?.previewFiles ?? [],
+			previewTruncated: update.newSkill?.previewTruncated ?? false,
 			nameTaken: update.nameClash?.where === 'scope',
 			error: update.nameClash?.where === 'agent' ? { reason: 'name_clash', message: '' } : null,
 		}),
@@ -140,10 +144,31 @@ async function load() {
 	try {
 		const result = await store.fetchSourceUpdates(props.source.id);
 		if (closed || request !== listRequest) return;
-		updates.value = result.updates;
-		selected.value = result.updates
+		updates.value = [
+			...result.updates,
+			...(result.newSkills ?? []).map(
+				(skill): ReviewItem => ({
+					skillId: skill.key,
+					name: skill.name ?? skill.location,
+					location: skill.location,
+					webUrl: skill.webUrl,
+					contentHash: skill.contentHash,
+					baseVersionId: '',
+					revision: skill.revision,
+					revisionUrl: null,
+					check: skill.check ?? { verdict: 'blocked', findings: [] },
+					nameClash: skill.nameTaken ? { name: skill.name ?? '', where: 'scope' } : null,
+					changes: { added: 0, removed: 0 },
+					nextVersion: 1,
+					newSkill: skill,
+				}),
+			),
+		];
+		selected.value = updates.value
 			.filter(
-				(update) => acceptable(update) && (!loaded || selected.value.includes(update.skillId)),
+				(update) =>
+					acceptable(update) &&
+					((!loaded && !update.newSkill) || selected.value.includes(update.skillId)),
 			)
 			.map(({ skillId }) => skillId);
 		loaded = true;
@@ -163,6 +188,19 @@ async function loadPreview() {
 	detailLoading.value = false;
 	if (!update) return;
 	if (update.check.verdict === 'blocked') return;
+	if (update.newSkill) {
+		detail.value = {
+			files: update.newSkill.previewFiles.map(({ path, text }) => ({
+				path,
+				before: '',
+				after: text,
+				status: 'added',
+			})),
+			agents: [],
+			hiddenAgentCount: 0,
+		};
+		return;
+	}
 	detailLoading.value = true;
 	try {
 		const result = await store.fetchSourceUpdate(props.source.id, update.skillId, {
@@ -224,11 +262,17 @@ async function accept() {
 	error.value = '';
 	try {
 		const result = await store.acceptSourceUpdates(props.source.id, {
-			updates: selectedUpdates.value.map(({ skillId, contentHash, baseVersionId }) => ({
-				skillId,
-				contentHash,
-				baseVersionId,
-			})),
+			updates: selectedUpdates.value
+				.filter((update) => !update.newSkill)
+				.map(({ skillId, contentHash, baseVersionId }) => ({
+					skillId,
+					contentHash,
+					baseVersionId,
+				})),
+			newSkills: selectedNew.value.flatMap(({ newSkill, contentHash }) =>
+				newSkill ? [{ key: newSkill.key, contentHash }] : [],
+			),
+			skippedNewSkills: [],
 			reviewedWarnings: reviewed.value,
 		});
 		const description = [
@@ -238,15 +282,50 @@ async function accept() {
 		showMessage({
 			type: 'success',
 			dangerouslyUseHTMLString: false,
-			title: i18n.baseText('settings.context.skills.updates.success', {
-				interpolate: { count: result.updatedCount },
-				adjustToNumber: result.updatedCount,
-			}),
+			title: [
+				result.importedCount
+					? i18n.baseText('settings.context.skills.updates.imported', {
+							interpolate: { count: result.importedCount },
+							adjustToNumber: result.importedCount,
+						})
+					: '',
+				result.updatedCount
+					? i18n.baseText('settings.context.skills.updates.success', {
+							interpolate: { count: result.updatedCount },
+							adjustToNumber: result.updatedCount,
+						})
+					: '',
+			]
+				.filter(Boolean)
+				.join('; '),
 			message: description,
 		});
 		emit('changed');
 		saving.value = false;
 		close();
+	} catch (cause) {
+		error.value = errorText(cause);
+		if (cause instanceof ResponseError && cause.httpStatusCode === 409) await load();
+	} finally {
+		saving.value = false;
+	}
+}
+
+async function hideNewSkill() {
+	const update = focused.value;
+	if (!update?.newSkill || saving.value) return;
+	saving.value = true;
+	error.value = '';
+	try {
+		await store.acceptSourceUpdates(props.source.id, {
+			updates: [],
+			newSkills: [],
+			skippedNewSkills: [{ key: update.newSkill.key, contentHash: update.contentHash }],
+			reviewedWarnings: false,
+		});
+		selected.value = selected.value.filter((id) => id !== update.skillId);
+		emit('changed');
+		await load();
 	} catch (cause) {
 		error.value = errorText(cause);
 		if (cause instanceof ResponseError && cause.httpStatusCode === 409) await load();
@@ -307,7 +386,13 @@ void load();
 				@preview="previewKey = $event"
 			>
 				<template #row-details="{ skill }">
-					<N8nText size="small" color="text-light" data-test-id="skill-update-counts">{{
+					<N8nBadge
+						v-if="byId.get(skill.key)?.newSkill"
+						variant="secondary"
+						data-test-id="skill-update-new"
+						>{{ i18n.baseText('settings.context.skills.updates.new') }}</N8nBadge
+					>
+					<N8nText v-else size="small" color="text-light" data-test-id="skill-update-counts">{{
 						i18n.baseText('settings.context.skills.updates.lines', {
 							interpolate: {
 								added: byId.get(skill.key)?.changes.added ?? 0,
@@ -326,10 +411,29 @@ void load();
 								},
 							})
 						}}</N8nText>
-						<N8nText v-if="detail" size="small" color="text-light"
+						<N8nText v-if="detail && !focused?.newSkill" size="small" color="text-light"
 							>{{ impact }}
 							{{ i18n.baseText('settings.context.skills.updates.publishedUnchanged') }}</N8nText
 						>
+						<template v-if="focused?.newSkill">
+							<N8nText size="small" color="text-light">{{
+								i18n.baseText('settings.context.skills.updates.newHint')
+							}}</N8nText>
+							<N8nButton
+								variant="ghost"
+								:disabled="saving || focused.newSkill.skipped"
+								:label="
+									i18n.baseText(
+										focused.newSkill.skipped
+											? 'settings.context.skills.updates.hiddenNew'
+											: 'settings.context.skills.updates.hideNew',
+									)
+								"
+								data-test-id="skill-new-hide"
+								data-attr="skill-new-hide"
+								@click="hideNewSkill"
+							/>
+						</template>
 					</div>
 					<N8nText v-if="detailLoading" :class="$style.detailNotice">{{
 						i18n.baseText('generic.loading')
@@ -379,10 +483,17 @@ void load();
 				:loading="saving"
 				:disabled="loading || saving || selectedUpdates.length === 0 || (needsReview && !reviewed)"
 				:label="
-					i18n.baseText('settings.context.skills.updates.accept', {
-						interpolate: { count: selectedUpdates.length },
-						adjustToNumber: selectedUpdates.length,
-					})
+					i18n.baseText(
+						selectedNew.length
+							? selectedNew.length === selectedUpdates.length
+								? 'settings.context.skills.updates.import'
+								: 'settings.context.skills.updates.apply'
+							: 'settings.context.skills.updates.accept',
+						{
+							interpolate: { count: selectedUpdates.length },
+							adjustToNumber: selectedUpdates.length,
+						},
+					)
 				"
 				data-test-id="skill-updates-accept"
 				@click="accept"

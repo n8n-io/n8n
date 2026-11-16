@@ -40,6 +40,7 @@ const source: SkillSourceListItem = {
 	projectIcon: null,
 	skillCount: 2,
 	updatesAvailable: 0,
+	newSkillsAvailable: 0,
 	updatesBlocked: 0,
 	health: 'connected',
 	lastCheckedAt: null,

@@ -241,9 +241,11 @@ export class GitHubSkillSourceClient extends SkillSourceClient {
 	async discover(
 		locator: SkillSourceLocator,
 		auth?: SkillSourceAuth,
+		_cursor?: string,
+		revision?: string,
 	): Promise<{ items: RemoteSkillRef[]; truncated: boolean; tooDeep: number; revision: string }> {
 		const parsed = readLocator(locator);
-		const sha = await this.head(parsed, auth);
+		const sha = revision ?? (await this.head(parsed, auth));
 		const archive = await this.archiveAt(parsed, sha, auth);
 		const { path } = parsed;
 		if (path && !archive.paths.some((file) => isInside(file, path) && file !== path)) {

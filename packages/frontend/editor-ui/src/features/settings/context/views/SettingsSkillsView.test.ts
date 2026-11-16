@@ -1373,6 +1373,7 @@ describe('SettingsSkillsView', () => {
 				projectIcon: null,
 				skillCount: 1,
 				updatesAvailable: 0,
+				newSkillsAvailable: 0,
 				updatesBlocked: 0,
 				health: 'connected' as const,
 				lastCheckedAt: null,
@@ -1592,28 +1593,39 @@ describe('SettingsSkillsView', () => {
 			it.each([
 				{
 					updatesFound: 0,
+					newSkillsFound: 0,
 					throttled: false,
 					title: 'Checked acme/skills',
 					message: 'No new changes.',
 				},
 				{
 					updatesFound: 2,
+					newSkillsFound: 0,
 					throttled: false,
 					title: 'Checked acme/skills',
 					message: '2 skills have updates.',
 				},
 				{
 					updatesFound: 1,
+					newSkillsFound: 0,
 					throttled: true,
 					title: 'acme/skills was checked less than a minute ago',
 					message: '1 skill has an update.',
 				},
+				{
+					updatesFound: 0,
+					newSkillsFound: 2,
+					throttled: false,
+					title: 'Checked acme/skills',
+					message: '2 new skills are available to review',
+				},
 			])(
 				'checks a source for updates ($updatesFound, throttled $throttled) and refreshes the source row',
-				async ({ updatesFound, throttled, title, message }) => {
+				async ({ updatesFound, newSkillsFound, throttled, title, message }) => {
 					skillsStore.checkSource.mockResolvedValue({
 						label: 'acme/skills',
 						updatesFound,
+						newSkillsFound,
 						throttled,
 						lastCheckedAt: '2026-10-29T12:00:00.000Z',
 					});
@@ -1641,7 +1653,13 @@ describe('SettingsSkillsView', () => {
 				await clickCheck(view);
 
 				await waitFor(() => expect(view.getByTestId('skill-group-checking')).toBeInTheDocument());
-				finish({ label: 'acme/skills', updatesFound: 0, throttled: false, lastCheckedAt: null });
+				finish({
+					label: 'acme/skills',
+					updatesFound: 0,
+					newSkillsFound: 0,
+					throttled: false,
+					lastCheckedAt: null,
+				});
 				await waitFor(() => expect(view.queryByTestId('skill-group-checking')).toBeNull());
 			});
 

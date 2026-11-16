@@ -6,6 +6,7 @@ import {
 	type OperationContext,
 } from '@n8n/db';
 import { Service } from '@n8n/di';
+import { generateNanoId } from '@n8n/utils/generate-nano-id';
 import { DataSource, In, IsNull, LessThan, LessThanOrEqual, Not, Or } from '@n8n/typeorm';
 import type { QueryDeepPartialEntity } from '@n8n/typeorm/query-builder/QueryPartialEntity';
 
@@ -13,6 +14,7 @@ import {
 	SkillSourceConnection,
 	type OpaqueSourceValue,
 	type SkillSourceType,
+	type UnlinkedSkill,
 } from '../entities/skill-source-connection.entity';
 import { SkillSourceLink, type SkillSourceLinkState } from '../entities/skill-source-link.entity';
 
@@ -86,7 +88,10 @@ export class SkillSourceRepository {
 
 	private readonly links: SkillSourceLinkTable;
 
-	constructor(dataSource: DataSource, transactionRunner: TransactionRunner) {
+	constructor(
+		dataSource: DataSource,
+		private readonly transactionRunner: TransactionRunner,
+	) {
 		this.sources = new SkillSourceTable(dataSource, transactionRunner);
 		this.links = new SkillSourceLinkTable(dataSource, transactionRunner);
 	}
@@ -165,6 +170,60 @@ export class SkillSourceRepository {
 
 	async findById(id: string, ctx: OperationContext = {}): Promise<SkillSourceConnection | null> {
 		return await this.sources.managerFor(ctx).findOneBy(SkillSourceConnection, { id });
+	}
+
+	/** Stores a complete discovery only while its source snapshot still holds. */
+	async storeUnlinkedSkills(
+		source: SkillSourceConnection,
+		skills: UnlinkedSkill[],
+	): Promise<boolean> {
+		return await this.transactionRunner.run({}, async (ctx) => {
+			const current = await this.findForDelete(source.id, ctx);
+			if (
+				!current ||
+				current.probeCursor !== source.probeCursor ||
+				current.credentialId !== source.credentialId ||
+				current.projectId !== source.projectId ||
+				JSON.stringify(current.unlinkedSkills) !== JSON.stringify(source.unlinkedSkills)
+			)
+				return false;
+			const linked = new Set(
+				(await this.findLinksBySource(source.id, ctx)).map(({ remoteRef }) =>
+					JSON.stringify(remoteRef),
+				),
+			);
+			await this.saveUnlinkedSkills(
+				source.id,
+				skills.filter(({ key }) => !linked.has(key)),
+				ctx,
+			);
+			return true;
+		});
+	}
+
+	/** Call inside the transaction that holds the source lock or creates the source. */
+	async saveUnlinkedSkills(
+		sourceId: string,
+		skills: UnlinkedSkill[],
+		ctx: OperationContext,
+	): Promise<void> {
+		await this.sources
+			.managerFor(ctx)
+			.update(SkillSourceConnection, { id: sourceId }, { unlinkedSkills: skills });
+	}
+
+	/** A removed link needs discovery even when the remote revision stays the same. */
+	async invalidateSourceForSkill(skillId: string, ctx: OperationContext): Promise<void> {
+		const link = await this.findLinkBySkillId(skillId, ctx);
+		if (!link) return;
+		// A unique cursor also invalidates a check that started with a null cursor.
+		await this.sources
+			.managerFor(ctx)
+			.update(
+				SkillSourceConnection,
+				{ id: link.sourceId },
+				{ probeCursor: `local-change:${generateNanoId()}` },
+			);
 	}
 
 	/** Replaces validated access only while the source still has the scope and credential read. */
