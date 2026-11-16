@@ -1205,6 +1205,37 @@ describe('WhatsApp Cloud API integration scenarios', () => {
 			}
 		});
 
+		it('records the digits-only user ID when the template recipient has a leading plus', async () => {
+			const fixtures = whatsAppReplayFixtures();
+			const ctx = await createWhatsAppReplayContext(fixtures, {
+				templates: [orderUpdateTemplate],
+			});
+			try {
+				await ctx.sendWebhook(expiredInbound(fixtures));
+
+				const result = await sendTemplate(ctx, {
+					userId: `+${fixtures.contact.wa_id}`,
+					templateName: 'order_update',
+					language: 'en_US',
+					parameters: { '2': 'A-1001', '1': 'Ana' },
+				});
+
+				expect(result).toMatchObject({
+					ok: true,
+					messageContext: {
+						target: {
+							type: 'dm',
+							userId: fixtures.contact.wa_id,
+							threadId: whatsAppThreadId(fixtures),
+						},
+					},
+				});
+				expect(ctx.lastPost()?.body).toMatchObject({ to: fixtures.contact.wa_id });
+			} finally {
+				await ctx.shutdown();
+			}
+		});
+
 		it('accepts an empty parameters list for a template with no placeholders', async () => {
 			const fixtures = whatsAppReplayFixtures();
 			const ctx = await createWhatsAppReplayContext(fixtures, {

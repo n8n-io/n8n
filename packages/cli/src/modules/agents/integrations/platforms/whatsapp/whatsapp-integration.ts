@@ -329,14 +329,15 @@ export class WhatsAppIntegration extends AgentChatIntegration {
 		);
 		// Sent straight through the adapter, not `postMessage`: a template is the
 		// one message type the customer service window allows.
-		const threadId = await adapter.openDM(input.userId);
+		const userId = this.normalizeUserId(input.userId);
+		const threadId = await adapter.openDM(userId);
 		const sent = await adapter.sendTemplate(threadId, message);
 		return {
 			ok: true,
 			messageContext: {
 				integrationConnectionId: params.descriptor.integrationConnectionId,
 				platform: params.descriptor.integration.type,
-				target: { type: 'dm', userId: input.userId, threadId },
+				target: { type: 'dm', userId, threadId },
 				messageId: sent.id,
 				updatedAt: new Date().toISOString(),
 			},
