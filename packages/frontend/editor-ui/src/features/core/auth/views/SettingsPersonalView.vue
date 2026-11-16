@@ -424,7 +424,6 @@ onBeforeUnmount(() => {
 		<N8nSettingsPageHeader
 			:title="i18n.baseText('settings.personal.personalSettings')"
 			:description="i18n.baseText('settings.personal.description')"
-			:show-docs-link="false"
 		/>
 
 		<N8nNotice

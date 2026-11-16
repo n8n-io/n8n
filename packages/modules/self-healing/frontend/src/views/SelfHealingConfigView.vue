@@ -383,7 +383,7 @@ onBeforeRouteUpdate(async (to, from) => {
 			</N8nButton>
 		</div>
 		<N8nSettingsLayout :class="$style.layout" data-test-id="self-healing-config-page">
-			<N8nSettingsPageHeader :title="title" :show-docs-link="false">
+			<N8nSettingsPageHeader :title="title">
 				<template #description>
 					<N8nText size="medium" color="text-base">{{
 						i18n.baseText(

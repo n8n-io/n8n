@@ -264,7 +264,6 @@ onMounted(async () => {
 		<N8nSettingsPageHeader
 			:title="i18n.baseText('settings.context.preferences.title')"
 			:description="i18n.baseText('settings.context.preferences.description')"
-			:show-docs-link="false"
 		/>
 
 		<PreferencesEmptyStateAssistant v-if="showAssistantEmptyState" @write-own="openCreateModal" />

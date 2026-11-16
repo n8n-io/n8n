@@ -1,7 +1,4 @@
-import type { FeatureMaturityId } from '@n8n/frontend-constants/feature-maturity';
 import { inject, type InjectionKey } from 'vue';
-
-export type { FeatureMaturityId };
 
 /** One feature's badge flags. The app owns the list. The design system only reads it. */
 export type FeatureMaturityEntry = {
@@ -13,7 +10,7 @@ export type FeatureMaturityEntry = {
 
 /** Feature id to badge flags. A missing id renders no feature badges. */
 export type FeatureMaturityCatalog = {
-	readonly [Id in FeatureMaturityId]?: FeatureMaturityEntry;
+	readonly [id: string]: FeatureMaturityEntry | undefined;
 };
 
 /**
@@ -32,18 +29,18 @@ export function useFeatureMaturityCatalog(): FeatureMaturityCatalog {
  * A camelCase id becomes kebab-case. `endUserCredentials` becomes `end-user-credentials`.
  * Badges append `-preview-badge` or `-enterprise-readiness-badge`.
  */
-function featureMaturityTestId(id: FeatureMaturityId): string {
+function featureMaturityTestId(id: string): string {
 	return id.replace(/[A-Z]/g, (letter) => `-${letter.toLowerCase()}`);
 }
 
 /**
  * The badges a feature entry renders.
  * `hidePreview` and `hideEnterprise` suppress a badge for one callsite.
- * An unknown id renders nothing.
+ * An unknown id renders nothing. In development it also warns.
  */
 export function resolveFeatureMaturityBadges(
 	catalog: FeatureMaturityCatalog,
-	id: FeatureMaturityId | undefined,
+	id: string | undefined,
 	hidden: { preview?: boolean; enterprise?: boolean } = {},
 ): { showPreview: boolean; showEnterprise: boolean; testId?: string } {
 	if (id === undefined) {
@@ -52,6 +49,11 @@ export function resolveFeatureMaturityBadges(
 
 	const entry = catalog[id];
 	if (entry === undefined) {
+		if (import.meta.env.DEV) {
+			console.warn(
+				`[N8nFeatureMaturityBadges] The feature list has no entry for "${id}". No badges render.`,
+			);
+		}
 		return { showPreview: false, showEnterprise: false };
 	}
 

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, useSlots, watchEffect } from 'vue';
+import { computed, useSlots } from 'vue';
 
 import { useI18n } from '../../composables/useI18n';
 import N8nExternalLink from '../N8nExternalLink';
@@ -7,7 +7,6 @@ import N8nFeatureMaturityBadges from '../N8nFeatureMaturityBadges';
 import {
 	resolveFeatureMaturityBadges,
 	useFeatureMaturityCatalog,
-	type FeatureMaturityId,
 } from '../N8nFeatureMaturityBadges/featureMaturityState';
 import N8nHeading from '../N8nHeading';
 import N8nText from '../N8nText';
@@ -18,11 +17,9 @@ export interface SettingsPageHeaderProps {
 	/** Optional 1-2 sentence description. */
 	description?: string;
 	/**
-	 * Whether to render the inline documentation link at the end of the header. On by default
-	 * so every settings page links to docs; set `:show-docs-link="false"` to remove it.
+	 * Documentation page for the inline link at the end of the description.
+	 * The header renders that link only when this URL is set.
 	 */
-	showDocsLink?: boolean;
-	/** Documentation link target. When omitted (while the link is shown) a dev warning fires. */
 	docsUrl?: string;
 	/** The underlined link word. Defaults to the localized "documentation". */
 	docsLabel?: string;
@@ -39,7 +36,7 @@ export interface SettingsPageHeaderProps {
 	 * The id sets the badge test ids. A camelCase id becomes kebab-case.
 	 * `context` renders `context-preview-badge` and `context-enterprise-readiness-badge`.
 	 */
-	feature?: FeatureMaturityId;
+	feature?: string;
 	/** Hide the Preview badge at this callsite. */
 	hidePreview?: boolean;
 	/** Hide the Limited enterprise readiness badge at this callsite. */
@@ -50,7 +47,6 @@ defineOptions({ name: 'N8nSettingsPageHeader' });
 
 const props = withDefaults(defineProps<SettingsPageHeaderProps>(), {
 	description: undefined,
-	showDocsLink: true,
 	docsUrl: undefined,
 	docsLabel: undefined,
 	docsLeadingText: undefined,
@@ -81,21 +77,6 @@ const showFeatureBadges = computed(
 	() => featureBadges.value.showPreview || featureBadges.value.showEnterprise,
 );
 const showTitleRow = computed(() => showFeatureBadges.value || Boolean(slots.titleTrailing));
-
-// Default-on means a developer who forgets to wire a docs URL is nudged (not silently broken):
-// the link word still renders as a placeholder and a dev-only warning prompts them to act.
-// Without an href N8nExternalLink falls back to a <button>, so the placeholder is rendered
-// disabled: still visible as the nudge, but not a focusable no-op control.
-if (import.meta.env.DEV) {
-	watchEffect(() => {
-		if (props.showDocsLink && !props.docsUrl) {
-			console.warn(
-				'[N8nSettingsPageHeader] The docs link is enabled but no `docsUrl` was provided. ' +
-					'Set `docs-url` to your documentation page, or pass `:show-docs-link="false"` to remove it.',
-			);
-		}
-	});
-}
 </script>
 
 <template>
@@ -115,7 +96,7 @@ if (import.meta.env.DEV) {
 		<N8nHeading v-else :tag="headingTag" :class="$style.title" step="xl" color="text-dark">
 			{{ title }}
 		</N8nHeading>
-		<p v-if="hasDescription || showDocsLink" :class="$style.description">
+		<p v-if="hasDescription || docsUrl" :class="$style.description">
 			<slot name="description">
 				<N8nText v-if="description" size="medium" color="text-base">{{ description }}</N8nText>
 			</slot>
@@ -124,15 +105,14 @@ if (import.meta.env.DEV) {
 				link + icon" can wrap to the next line as a single unit; only added after a description.
 				The link sits inside the N8nText so it inherits the description's font and line height.
 			-->
-			<template v-if="showDocsLink"
+			<template v-if="docsUrl"
 				>{{ hasDescription ? ' ' : ''
 				}}<N8nText size="medium" color="text-base" :class="$style.docsPhrase"
 					>{{ resolvedDocsLeadingText
 					}}<N8nExternalLink
 						inline
 						size="small"
-						:href="docsUrl || undefined"
-						:disabled="docsUrl ? undefined : true"
+						:href="docsUrl"
 						data-test-id="settings-page-header-docs"
 						>{{ resolvedDocsLabel }}</N8nExternalLink
 					></N8nText

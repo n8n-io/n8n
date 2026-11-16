@@ -506,7 +506,6 @@ watch(
 			v-else
 			:title="state.ruleTitle"
 			:description="ruleDescription"
-			:show-docs-link="Boolean(state.ruleDocumentationUrl)"
 			:docs-url="state.ruleDocumentationUrl"
 			:docs-label="i18n.baseText('settings.migrationReport.documentation')"
 			docs-leading-text=""

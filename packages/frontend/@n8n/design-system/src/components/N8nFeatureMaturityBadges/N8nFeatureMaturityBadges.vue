@@ -5,11 +5,7 @@ import { useI18n } from '../../composables/useI18n';
 import N8nBadge from '../N8nBadge';
 import N8nTooltip from '../N8nTooltip';
 
-import {
-	resolveFeatureMaturityBadges,
-	useFeatureMaturityCatalog,
-	type FeatureMaturityId,
-} from './featureMaturityState';
+import { resolveFeatureMaturityBadges, useFeatureMaturityCatalog } from './featureMaturityState';
 
 defineOptions({ name: 'N8nFeatureMaturityBadges' });
 
@@ -18,6 +14,7 @@ const props = withDefaults(
 		/**
 		 * Feature id from the list the app provides.
 		 * The entry decides which badges render.
+		 * An id that is missing from the list renders nothing and warns in development.
 		 * Omit it to draw only the Preview badge. That badge has no test id.
 		 *
 		 * The id sets the badge test ids. A camelCase id becomes kebab-case.
@@ -25,7 +22,7 @@ const props = withDefaults(
 		 * `endUserCredentials` renders `end-user-credentials-preview-badge`.
 		 * The enterprise badge uses the same prefix and `-enterprise-readiness-badge`.
 		 */
-		feature?: FeatureMaturityId;
+		feature?: string;
 		/** Hide the Preview badge at this callsite. */
 		hidePreview?: boolean;
 		/** Hide the Limited enterprise readiness badge at this callsite. */

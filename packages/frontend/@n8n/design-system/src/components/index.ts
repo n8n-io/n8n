@@ -152,7 +152,6 @@ export {
 	FeatureMaturityKey,
 	type FeatureMaturityCatalog,
 	type FeatureMaturityEntry,
-	type FeatureMaturityId,
 } from './N8nFeatureMaturityBadges/featureMaturityState';
 export { default as N8nNewBadge } from './NewBadge/NewBadge.vue';
 export { default as N8nPopover } from './N8nPopover';

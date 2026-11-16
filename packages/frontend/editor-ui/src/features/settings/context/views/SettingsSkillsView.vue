@@ -942,7 +942,6 @@ onMounted(async () => {
 		<N8nSettingsPageHeader
 			:title="i18n.baseText('settings.context.skills.title')"
 			:description="i18n.baseText('settings.context.skills.description')"
-			:show-docs-link="false"
 		/>
 
 		<div :class="$style.toolbar">

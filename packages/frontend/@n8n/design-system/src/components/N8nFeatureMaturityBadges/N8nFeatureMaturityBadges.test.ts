@@ -1,4 +1,3 @@
-import { featureMaturity } from '@n8n/frontend-constants/feature-maturity';
 import { render } from '@testing-library/vue';
 import userEvent from '@testing-library/user-event';
 import { mount } from '@vue/test-utils';
@@ -6,13 +5,31 @@ import { mount } from '@vue/test-utils';
 import N8nBadge from '../N8nBadge';
 
 import FeatureMaturityBadges from './N8nFeatureMaturityBadges.vue';
-import { FeatureMaturityKey } from './featureMaturityState';
+import { FeatureMaturityKey, type FeatureMaturityCatalog } from './featureMaturityState';
+
+const featureMaturity: FeatureMaturityCatalog = {
+	workflowReviews: { preview: true, limitedEnterpriseSupport: false },
+	assistant: { preview: false, limitedEnterpriseSupport: true },
+	agents: { preview: true, limitedEnterpriseSupport: true },
+};
 
 const featureList = {
 	global: { provide: { [FeatureMaturityKey as symbol]: featureMaturity } },
 };
 
 describe('N8nFeatureMaturityBadges', () => {
+	it('renders nothing and warns when the feature id is missing from the list', () => {
+		const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+		const { container } = render(FeatureMaturityBadges, {
+			...featureList,
+			props: { feature: 'missing' },
+		});
+
+		expect(container).toBeEmptyDOMElement();
+		expect(warn).toHaveBeenCalledWith(expect.stringContaining('missing'));
+		warn.mockRestore();
+	});
+
 	it('draws the Preview badge when no feature id is set', () => {
 		const { getByText, queryByText } = render(FeatureMaturityBadges);
 
