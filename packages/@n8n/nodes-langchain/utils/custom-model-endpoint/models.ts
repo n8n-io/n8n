@@ -109,14 +109,14 @@ export async function searchModels(
 	const endpoint = readCustomModelEndpointCredential(credential);
 
 	const egressFilter = this.helpers.getSecureEgressFilter();
-	const transport = createCustomModelEndpointAuthFetch(this, credential, {
+	const authFetch = createCustomModelEndpointAuthFetch(this, credential, {
 		endpoint,
 		egressFilter,
 		baseFetch: createEndpointBaseFetch(egressFilter),
 	});
 
 	try {
-		const ids = await listGatewayModels(this.getNode(), endpoint, transport.fetch);
+		const ids = await listGatewayModels(this.getNode(), endpoint, authFetch);
 		const wanted = filter
 			? ids.filter((id) => id.toLowerCase().includes(filter.toLowerCase()))
 			: ids;
