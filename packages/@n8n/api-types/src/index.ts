@@ -1101,7 +1101,6 @@ export {
 	toolCallRouteSchema,
 	toolCallReasonSchema,
 	toolCallSimulationSchema,
-	toolTestabilitySchema,
 	agentChatModeSchema,
 	type AgentChatMode,
 	toolTestKindSchema,

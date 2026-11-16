@@ -40,7 +40,7 @@ describe('TestRunCredentialsHelper', () => {
 		);
 
 		expect(inner.getDecrypted).not.toHaveBeenCalled();
-		expect(credentials.accessToken).not.toBe('xoxb-real-token');
+		expect(credentials.accessToken).toBe('<access-token>');
 		expect(credentials.region).toBe('eu');
 		expect(credentials.oauthTokenData).toBeDefined();
 	});

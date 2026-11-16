@@ -35,11 +35,18 @@ export const toolCallReasonSchema = z.enum([
 ]);
 export type ToolCallReason = z.infer<typeof toolCallReasonSchema>;
 
+/** Why a call or a tool is blocked. */
+export const blockedReasonSchema = z.enum([
+	'unsupported_by_simulator',
+	'simulator_unavailable',
+	'not_simulatable',
+]);
+
 /** The reasons that fit each route, so a payload cannot claim a blocked call was served. */
 const REASONS_BY_ROUTE: Record<ToolCallRoute, readonly ToolCallReason[]> = {
 	simulated: ['served_from_world'],
 	simulated_made_up: ['invented_by_llm'],
-	blocked: ['unsupported_by_simulator', 'simulator_unavailable', 'not_simulatable'],
+	blocked: blockedReasonSchema.options,
 };
 
 export const toolCallSimulationSchema = z
@@ -55,10 +62,6 @@ export const toolCallSimulationSchema = z
 	});
 export type ToolCallSimulation = z.infer<typeof toolCallSimulationSchema>;
 
-/** Before a run: can this tool be tested, and how. */
-export const toolTestabilitySchema = z.enum(['simulated', 'blocked']);
-export type ToolTestability = z.infer<typeof toolTestabilitySchema>;
-
 export const toolTestKindSchema = z.enum([
 	'node',
 	'workflow',
@@ -70,16 +73,25 @@ export const toolTestKindSchema = z.enum([
 ]);
 export type ToolTestKind = z.infer<typeof toolTestKindSchema>;
 
-export const toolTestCapabilitySchema = z.object({
+const toolTestCapabilityBase = {
 	/** The name the model calls. For an MCP server, the server name. */
 	toolName: z.string(),
 	kind: toolTestKindSchema,
-	testability: toolTestabilitySchema,
-	/** Set when the tool is blocked. */
-	reason: toolCallReasonSchema.optional(),
-	detail: z.string().optional(),
-});
+};
+
+/** A simulated tool has no reason. A blocked tool always says why. */
+export const toolTestCapabilitySchema = z.discriminatedUnion('testability', [
+	z.object({ ...toolTestCapabilityBase, testability: z.literal('simulated') }),
+	z.object({
+		...toolTestCapabilityBase,
+		testability: z.literal('blocked'),
+		reason: blockedReasonSchema,
+		detail: z.string().optional(),
+	}),
+]);
 export type ToolTestCapability = z.infer<typeof toolTestCapabilitySchema>;
+/** Before a run: can this tool be tested. */
+export type ToolTestability = ToolTestCapability['testability'];
 
 export interface AgentTestRunToolsResponse {
 	tools: ToolTestCapability[];
