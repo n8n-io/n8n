@@ -1330,6 +1330,23 @@ describe('ExecutionService', () => {
 				expect(executionPersistence.hardDeleteBy).not.toHaveBeenCalled();
 			});
 
+			// An unknown engine fails the schema, which drops every filter. A delete by
+			// date would then match every v1 execution before the date.
+			it.each([['v3'], [123], [null]])(
+				'should reject an unknown engine %s instead of deleting without filters',
+				async (engine) => {
+					await expect(
+						executionService.delete(
+							user,
+							DeleteExecutionsDto.parse({ deleteBefore, filters: { engine, mode: 'manual' } }),
+							['wf-1'],
+						),
+					).rejects.toThrow(BadRequestError);
+
+					expect(executionPersistence.hardDeleteBy).not.toHaveBeenCalled();
+				},
+			);
+
 			it('should keep the engine v1 filter when deleting by date', async () => {
 				await executionService.delete(
 					user,

@@ -438,10 +438,16 @@ export class ExecutionService {
 	async delete(user: User, payload: DeleteExecutionsDto, sharedWorkflowIds: string[]) {
 		const { deleteBefore, ids, filters: requestFiltersRaw } = payload;
 
+		// Read the engine from the raw filter: if a field fails the schema, the
+		// filters are dropped and a delete by date would match every v1 row.
+		const engine: unknown = requestFiltersRaw?.engine;
+		if (engine !== undefined && !EXECUTION_ENGINES.some((known) => known === engine)) {
+			throw new BadRequestError('Unknown engine in the executions filter');
+		}
+
 		// A delete by date reaches only the engine v1 table, so an engine v2 filter
-		// matches nothing there. Read the raw filter: if another field fails the
-		// schema, the filters are dropped and the delete would match every v1 row.
-		if (deleteBefore && requestFiltersRaw?.engine === 'v2') return;
+		// matches nothing there.
+		if (deleteBefore && engine === 'v2') return;
 
 		let requestFilters: IGetExecutionsQueryFilter | undefined;
 		if (requestFiltersRaw) {
