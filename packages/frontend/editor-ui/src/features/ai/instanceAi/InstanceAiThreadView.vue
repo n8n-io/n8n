@@ -26,9 +26,12 @@ import {
 	getAgentPreviewSessionFromThreadMetadata,
 	getAgentPreviewViewFromThreadMetadata,
 	getThreadDisplayTitle,
+	threadTargetsAgent,
 } from './instanceAi.threadRuntime';
 import { useInstanceAiSettingsStore } from './instanceAiSettings.store';
 import { useCanvasPreview } from './useCanvasPreview';
+import { useAssistantAwayTelemetry } from './composables/useAssistantAwayTelemetry';
+import { getCurrentTurn } from './assistantTurn';
 import { fetchThreadTabs, saveThreadTabs } from './instanceAi.memory.api';
 import { buildInstanceAiAgentPreviewHandoffContext } from './composables/useInstanceAiHandoff';
 import { INSTANCE_AI_APP_ID_QUERY } from './constants';
@@ -42,6 +45,7 @@ import {
 import { useTransitionGate } from './useTransitionGate';
 import { INSTANCE_AI_VIEW } from './constants';
 import { getDismissedContextKeys } from './instanceAi.handoffContext';
+import ApprovalModeSelector from './components/ApprovalModeSelector.vue';
 import InstanceAiDebugPanel from './components/InstanceAiDebugPanel.vue';
 import InstanceAiArtifactsPanel from './components/InstanceAiArtifactsPanel.vue';
 import InstanceAiFixWithAiPanel from './components/InstanceAiFixWithAiPanel.vue';
@@ -77,6 +81,14 @@ const store = useInstanceAiStore();
 const settingsStore = useInstanceAiSettingsStore();
 const appSettingsStore = useSettingsStore();
 const thread = provideThread(props.threadId);
+useAssistantAwayTelemetry({
+	threadId: () => props.threadId,
+	// A run that waits for the user is still active.
+	isRunning: () => thread.isStreaming || thread.isSendingMessage,
+	isAwaitingUser: () => thread.isAwaitingUserInput,
+	isReady: () => thread.hydrationStatus === 'ready',
+	turn: () => getCurrentTurn(thread.artifactTurns),
+});
 const rootStore = useRootStore();
 const i18n = useI18n();
 const router = useRouter();
@@ -887,6 +899,13 @@ function handleNewThreadClick() {
 					@thread-missing="onThreadMissing"
 					@agent-attachment-restored="onAgentAttachmentRestored"
 				>
+					<!-- A thread that builds an agent always runs in Manual mode. -->
+					<template
+						v-if="!threadTargetsAgent(store.getThreadMetadata(props.threadId))"
+						#composer-controls
+					>
+						<ApprovalModeSelector :thread-id="props.threadId" />
+					</template>
 					<template #above-input>
 						<InstanceAiSetupPanel
 							v-if="setupPanelWorkflowId"

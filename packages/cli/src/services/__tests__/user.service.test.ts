@@ -1,4 +1,4 @@
-import type { TransactionRunner } from '@n8n/db';
+import type { OperationContext, TransactionRunner } from '@n8n/db';
 import { InviteUsersRequestDto } from '@n8n/api-types';
 import { type EventService, UrlService, type RoleService, JwtService } from '@n8n/backend-services';
 import { mockInstance } from '@n8n/backend-test-utils';
@@ -21,6 +21,7 @@ import {
 } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { PROJECT_OWNER_ROLE_SLUG, PROJECT_VIEWER_ROLE_SLUG } from '@n8n/permissions';
+import type { SecurityContext } from '@n8n/permissions';
 import type { EntityManager } from '@n8n/typeorm';
 import { v4 as uuid } from 'uuid';
 import { mock } from 'vitest-mock-extended';
@@ -404,6 +405,60 @@ describe('UserService', () => {
 			await userService.inviteUsers(owner, invitations);
 
 			expect(personRepository.createPersonWithProject).toHaveBeenCalledTimes(3);
+		});
+
+		describe('login id on the invite events', () => {
+			const owner = Object.assign(new User(), { id: uuid(), role: GLOBAL_ADMIN_ROLE });
+			const invitations = [{ email: 'test@example.com', role: GLOBAL_MEMBER_ROLE.slug }];
+			const ctx: OperationContext = {
+				security: mock<SecurityContext>({ subIdentityId: 'login-1' }),
+			};
+
+			beforeEach(() => {
+				roleService.checkRolesExist.mockResolvedValue();
+				personRepository.findManyByEmail.mockResolvedValue([]);
+				personRepository.createPersonWithProject.mockImplementation(async (userData) => {
+					return { user: { ...userData, id: uuid() } as Person, project: mock<Project>() };
+				});
+			});
+
+			it('passes the login id to the user-invited event', async () => {
+				mailer.invite.mockResolvedValue({ emailSent: true });
+
+				await userService.inviteUsers(owner, invitations, false, ctx);
+
+				expect(eventService.emit).toHaveBeenCalledWith(
+					'user-invited',
+					expect.objectContaining({ loginId: 'login-1' }),
+				);
+			});
+
+			it('passes the login id to the email-failed event', async () => {
+				mailer.invite.mockRejectedValue(new Error('SMTP is down'));
+
+				await userService.inviteUsers(owner, invitations, false, ctx);
+
+				expect(eventService.emit).toHaveBeenCalledWith(
+					'email-failed',
+					expect.objectContaining({ loginId: 'login-1' }),
+				);
+			});
+
+			it.each(['user-invited', 'email-failed'])(
+				'emits no login id on %s without an operation context',
+				async (eventName) => {
+					if (eventName === 'email-failed') {
+						mailer.invite.mockRejectedValue(new Error('SMTP is down'));
+					} else {
+						mailer.invite.mockResolvedValue({ emailSent: true });
+					}
+
+					await userService.inviteUsers(owner, invitations);
+
+					const call = eventService.emit.mock.calls.find(([name]) => name === eventName);
+					expect(call?.[1]).toMatchObject({ loginId: undefined });
+				},
+			);
 		});
 
 		it('should fail if role do not exist', async () => {
@@ -974,9 +1029,12 @@ describe('UserService', () => {
 
 			it('invites users under SSO while SCIM provisioning is on', async () => {
 				await expect(userService.inviteUser(inviter, payload)).resolves.toEqual([]);
-				expect(userService.inviteUsers).toHaveBeenCalledWith(inviter, [
-					{ email: 'valid@email.com', role: 'global:member' },
-				]);
+				expect(userService.inviteUsers).toHaveBeenCalledWith(
+					inviter,
+					[{ email: 'valid@email.com', role: 'global:member' }],
+					false,
+					{},
+				);
 			});
 
 			it('rejects a role other than member while single sign-on assigns the instance roles', async () => {
@@ -1045,12 +1103,29 @@ describe('UserService', () => {
 			await expect(userService.inviteUser(inviter, payload)).resolves.toEqual(
 				inviteUsersResult.usersInvited,
 			);
-			expect(userService.inviteUsers).toHaveBeenCalledWith(inviter, [
-				{ email: 'valid@email.com', role: 'global:member' },
-			]);
+			expect(userService.inviteUsers).toHaveBeenCalledWith(
+				inviter,
+				[{ email: 'valid@email.com', role: 'global:member' }],
+				false,
+				{},
+			);
 			expect(externalHooks.run).toHaveBeenCalledWith('user.invited', [
 				inviteUsersResult.usersCreated,
 			]);
+		});
+
+		it('passes the operation context on to the invitations', async () => {
+			vi.spyOn(userService, 'inviteUsers').mockResolvedValue({
+				usersInvited: [],
+				usersCreated: [],
+			});
+			const ctx: OperationContext = {
+				security: mock<SecurityContext>({ subIdentityId: 'login-1' }),
+			};
+
+			await userService.inviteUser(inviter, payload, false, ctx);
+
+			expect(userService.inviteUsers).toHaveBeenCalledWith(inviter, expect.any(Array), false, ctx);
 		});
 	});
 
@@ -1169,6 +1244,24 @@ describe('UserService', () => {
 					migrationUserId: undefined,
 				}),
 			);
+		});
+
+		it('passes the login id to the user-deleted event', async () => {
+			await userService.deleteUser(actor, userToDelete.id, undefined, false, {
+				security: mock<SecurityContext>({ subIdentityId: 'login-1' }),
+			});
+
+			expect(eventService.emit).toHaveBeenCalledWith(
+				'user-deleted',
+				expect.objectContaining({ loginId: 'login-1' }),
+			);
+		});
+
+		it('emits no login id on user-deleted without an operation context', async () => {
+			await userService.deleteUser(actor, userToDelete.id);
+
+			const call = eventService.emit.mock.calls.find(([name]) => name === 'user-deleted');
+			expect(call?.[1]).toMatchObject({ loginId: undefined });
 		});
 
 		describe('with a system actor', () => {

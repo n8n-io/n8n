@@ -286,6 +286,13 @@ vi.mock('../../components/InstanceAiInputMenu.vue', () => ({
 	}),
 }));
 
+// The real selector reads the settings store, which has its own tests.
+vi.mock('../../components/ApprovalModeSelector.vue', () => ({
+	default: defineComponent({
+		setup: () => () => h('div', { 'data-test-id': 'approval-mode-selector-stub' }),
+	}),
+}));
+
 // The real chips resolve the nodes from the workflow document, which has its own tests.
 vi.mock('../../components/NodesAttachmentChips.vue', () => ({
 	default: defineComponent({
@@ -331,7 +338,7 @@ vi.mock('../../components/InstanceAiViewHeader.vue', () => ({
 
 vi.mock('vue-router', async (importOriginal) => ({
 	...(await importOriginal<typeof import('vue-router')>()),
-	useRouter: () => ({ push: routerPush }),
+	useRouter: () => ({ push: routerPush, currentRoute: { value: { params: {} } } }),
 }));
 
 const renderView = createComponentRenderer(AssistantAgentThreadView);
@@ -417,6 +424,7 @@ describe('AssistantAgentThreadView', () => {
 		});
 		expect(panelProps.current['interaction-extensions']).toEqual([
 			expect.objectContaining({ key: 'assistant_confirmation' }),
+			expect.objectContaining({ key: 'assistant_auto_approval' }),
 			expect.objectContaining({ key: 'assistant_instance_context' }),
 			expect.objectContaining({ key: 'assistant_status' }),
 		]);
@@ -440,6 +448,15 @@ describe('AssistantAgentThreadView', () => {
 		await flushPromises();
 
 		expect(getByTestId('input-menu-attach')).toBeDisabled();
+	});
+
+	it('shows the approval mode selector right after the "+" menu', async () => {
+		const { getByTestId } = renderView({ props: { threadId: 'thread-1', projectId: 'project-1' } });
+		await flushPromises();
+
+		expect(getByTestId('input-menu-attach').nextElementSibling).toBe(
+			getByTestId('approval-mode-selector-stub'),
+		);
 	});
 
 	it('adds a thread opened by URL to the lists right away', async () => {
@@ -544,6 +561,31 @@ describe('AssistantAgentThreadView', () => {
 				}),
 			],
 		]);
+	});
+
+	it('reports the response to a sent message with the context of that message', async () => {
+		renderView({ props: { threadId: 'thread-1', projectId: 'project-1' } });
+		await flushPromises();
+
+		const onMessageSending = panelProps.current.onMessageSending as (payload: unknown) => void;
+		const onStreamEvent = panelProps.current.onStreamEvent as (event: unknown) => void;
+		onMessageSending({ text: 'Build a digest', files: [], isFirstMessage: true });
+		onStreamEvent({ type: 'message-queued', queueId: 'q-1', sessionId: 'thread-1' });
+		onStreamEvent({ type: 'execution-started', executionId: 'exec-1', sessionId: 'thread-1' });
+		onStreamEvent({ type: 'finish', finishReason: 'stop' });
+
+		await vi.waitFor(() =>
+			expect(telemetryTrack).toHaveBeenCalledWith(
+				TELEMETRY_EVENT.INSTANCE_AI.USER_RECEIVED_AI_ASSISTANT_RESPONSE,
+				expect.objectContaining({
+					thread_id: 'thread-1',
+					run_id: 'exec-1',
+					is_first_user_message: true,
+					response_kind: 'completed',
+					runtime: 'agents',
+				}),
+			),
+		);
 	});
 
 	it('tracks the attached nodes of the first message once the server accepts it', async () => {

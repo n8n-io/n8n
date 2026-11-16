@@ -24,6 +24,39 @@ import { callAiServiceWithRetry } from '@/utils/ai-service-retry';
 import { InstanceAiSettingsService } from './instance-ai-settings.service';
 import { modelNameForProvider, withModelName } from './model-config-name';
 
+/** The run that a side model (utility tasks, approval judge) serves. */
+interface SideModelRun {
+	proxyBaseUrl?: string;
+	tokenManager?: ProxyTokenManager;
+	proxyContext?: ProxyContext;
+}
+
+/**
+ * Small model each provider uses for utility tasks when
+ * `N8N_INSTANCE_AI_UTILITY_MODEL` is unset, with the origin of the provider's
+ * own API. Providers without an entry use the main model. Keep the Anthropic
+ * entry on the AI service proxy allowlist.
+ */
+const DEFAULT_UTILITY_MODELS: Partial<Record<string, { model: string; origin: string }>> = {
+	anthropic: { model: 'claude-haiku-5-5', origin: 'https://api.anthropic.com' },
+	openai: { model: 'gpt-6-luna', origin: 'https://api.openai.com' },
+};
+
+/** Default utility model for a main model resolved outside the AI service proxy. */
+function directDefaultUtilityModel(mainModel: ModelConfig): string | undefined {
+	if (typeof mainModel === 'string') {
+		return DEFAULT_UTILITY_MODELS[splitModelId(mainModel).provider]?.model;
+	}
+	// A pre-built client hides its endpoint, and Vertex has no default.
+	if (!('kind' in mainModel) || mainModel.kind !== 'endpoint') return undefined;
+	const entry = DEFAULT_UTILITY_MODELS[splitModelId(mainModel.id).provider];
+	if (!entry || !mainModel.url) return entry?.model;
+	// A custom base URL can be a gateway that does not serve the default model.
+	return URL.canParse(mainModel.url) && new URL(mainModel.url).origin === entry.origin
+		? entry.model
+		: undefined;
+}
+
 /**
  * Resolves the language model the Instance AI agent runs against and reports
  * the credit balance for the current user.
@@ -114,42 +147,95 @@ export class InstanceAiModelService {
 	}
 
 	/**
-	 * Model for the Observer and Reflector memory tasks. It runs the configured
-	 * memory model name on the main model's provider and credentials. Returns
-	 * `undefined` when no memory model is set, so the caller uses the main model.
+	 * Model for background and helper tasks: memory, titles, and the
+	 * verification helpers. It runs the configured utility model name, or the
+	 * provider's default small model, on the main model's provider and
+	 * credentials. Returns `undefined` when neither applies, so the caller uses
+	 * the main model.
 	 */
-	async resolveMemoryModelConfig(
+	async resolveUtilityModelConfig(
 		user: User,
 		mainModel: ModelConfig,
-		run: { proxyBaseUrl?: string; tokenManager?: ProxyTokenManager; proxyContext?: ProxyContext },
+		run: SideModelRun,
 	): Promise<ModelConfig | undefined> {
-		const modelName = this.settingsService.getConfiguredMemoryModelName();
-		if (!modelName) return undefined;
+		let modelName: string | undefined;
 		try {
-			if (run.proxyBaseUrl && run.tokenManager) {
-				return await this.resolveProxyModel(
-					user,
-					run.proxyBaseUrl,
-					run.tokenManager,
-					run.proxyContext,
-					modelName,
-				);
-			}
-			// withModelName renames configs that carry a `provider/model` id. Outside the
-			// AI service proxy, the only main model without one is the pre-built Anthropic
-			// client used when HTTP(S)_PROXY is set, so build that client again with the memory model.
-			return (
-				withModelName(mainModel, modelName, { dropMainProviderPrefix: true }) ??
-				(await this.resolveHttpProxyModel(user, run.proxyContext, modelName))
-			);
+			const isProxyRun = Boolean(run.proxyBaseUrl && run.tokenManager);
+			modelName =
+				this.settingsService.getConfiguredUtilityModelName() ||
+				(isProxyRun
+					? DEFAULT_UTILITY_MODELS[this.proxyMainProvider(user)]?.model
+					: directDefaultUtilityModel(mainModel));
+			if (!modelName) return undefined;
+			return await this.resolveSideModel(user, mainModel, run, modelName);
 		} catch (error) {
-			// A memory model must never fail the user's run; the main model still works.
-			this.logger.warn('Failed to resolve the Instance AI memory model, using the main model', {
+			// A utility model must never fail the user's run; the main model still works.
+			this.logger.warn('Failed to resolve the Instance AI utility model, using the main model', {
 				modelName,
 				error: getErrorMessage(error),
 			});
 			return undefined;
 		}
+	}
+
+	/**
+	 * Model for the judge of Auto approval mode: the configured judge model name
+	 * on the main model's provider and credentials, else the utility model, else
+	 * the main model.
+	 */
+	async resolveApprovalJudgeModelConfig(
+		user: User,
+		mainModel: ModelConfig,
+		run: SideModelRun,
+	): Promise<ModelConfig> {
+		const modelName = this.settingsService.getConfiguredApprovalJudgeModelName();
+		if (modelName) {
+			try {
+				const judgeModel = await this.resolveSideModel(user, mainModel, run, modelName);
+				if (judgeModel) return judgeModel;
+			} catch (error) {
+				// The judge model must never fail the user's run; the fallbacks still work.
+				this.logger.warn(
+					'Failed to resolve the Instance AI approval judge model, using the utility or main model',
+					{ modelName, error: getErrorMessage(error) },
+				);
+			}
+		}
+		return (await this.resolveUtilityModelConfig(user, mainModel, run)) ?? mainModel;
+	}
+
+	/** Runs `modelName` on the main model's provider and credentials. */
+	private async resolveSideModel(
+		user: User,
+		mainModel: ModelConfig,
+		run: SideModelRun,
+		modelName: string,
+	): Promise<ModelConfig | undefined> {
+		if (run.proxyBaseUrl && run.tokenManager) {
+			return await this.resolveProxyModel(
+				user,
+				run.proxyBaseUrl,
+				run.tokenManager,
+				run.proxyContext,
+				modelName,
+			);
+		}
+		// withModelName renames configs that carry a `provider/model` id. Outside the
+		// AI service proxy, the only main model without one is the pre-built Anthropic
+		// client used when HTTP(S)_PROXY is set, so build that client again with the side model.
+		return (
+			withModelName(mainModel, modelName, { dropMainProviderPrefix: true }) ??
+			(await this.resolveHttpProxyModel(user, run.proxyContext, modelName))
+		);
+	}
+
+	/** Provider the proxy routes the user's main model to, matching `resolveProxyModel`. */
+	private proxyMainProvider(user: User): string {
+		const configuredModelId = this.settingsService.getConfiguredModelId();
+		const mainModelName = isMoonshotaiKimiK3ModelId(configuredModelId)
+			? configuredModelId
+			: this.settingsService.resolveModelName(user);
+		return isMoonshotaiKimiK3ModelId(mainModelName) ? 'moonshotai' : 'anthropic';
 	}
 
 	/**

@@ -6,8 +6,10 @@ import {
 	N8nButton,
 	N8nDataTableServer,
 	N8nEmptyState,
+	N8nEnterpriseReadinessBadge,
 	N8nIconButton,
 	N8nLoading,
+	N8nPreviewBadge,
 	N8nSwitch,
 	N8nText,
 	N8nTimeAgo,
@@ -21,6 +23,7 @@ import {
 	SELF_HEALING_CONFIGURATION_VIEW,
 	type SelfHealingLocation,
 } from '@n8n/frontend-constants/self-healing';
+import { useSettingsStore } from '@n8n/stores/settings.store';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { computed, nextTick, ref, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
@@ -34,6 +37,7 @@ const props = withDefaults(defineProps<{ projectId: string; variant?: SelfHealin
 const isPersonalTab = computed(() => props.variant === 'personalTab');
 const store = useSelfHealingStore();
 const rootStore = useRootStore();
+const settingsStore = useSettingsStore();
 const i18n = useI18n();
 const toast = useToast();
 const message = useMessage();
@@ -93,10 +97,35 @@ const projectMembersLabel = computed(() =>
 	}),
 );
 
+const workflowNamesById = computed(
+	() =>
+		new Map(
+			store.options[props.projectId]?.workflows.map((workflow) => [workflow.id, workflow.name]),
+		),
+);
+
+// Selected-workflow configurations take precedence, so an all-scope one covers only the rest.
+const hasSelectedWorkflowConfiguration = computed(() =>
+	configurations.value.some(
+		({ scope, workflowIds }) => scope === 'selected' && workflowIds.length > 0,
+	),
+);
+
 function scopeLabel(configuration: SelfHealingConfigurationDto) {
 	if (configuration.scope === 'all') {
-		return i18n.baseText('selfHealing.config.all');
+		return i18n.baseText(
+			hasSelectedWorkflowConfiguration.value
+				? 'selfHealing.config.allOther'
+				: 'selfHealing.config.all',
+		);
 	}
+
+	const [onlyWorkflowId] = configuration.workflowIds;
+	const onlyWorkflowName =
+		configuration.workflowIds.length === 1
+			? workflowNamesById.value.get(onlyWorkflowId)
+			: undefined;
+	if (onlyWorkflowName) return onlyWorkflowName;
 
 	return i18n.baseText('selfHealing.config.selectedCount', {
 		adjustToNumber: configuration.workflowIds.length,
@@ -195,8 +224,15 @@ async function onAction(configuration: SelfHealingConfigurationDto, action: stri
 		:class="{ [$style.personalTab]: isPersonalTab }"
 		data-test-id="project-self-healing"
 	>
-		<h3 v-if="!isPersonalTab">
+		<!-- The personal tab shows the Preview badge on the tab itself. -->
+		<h3 v-if="!isPersonalTab" :class="$style.heading">
 			<label>{{ i18n.baseText('selfHealing.config.heading') }}</label>
+			<N8nPreviewBadge size="xsmall" data-test-id="self-healing-preview-badge" />
+			<N8nEnterpriseReadinessBadge
+				v-if="settingsStore.isEnterprisePlan"
+				size="xsmall"
+				data-test-id="self-healing-enterprise-readiness-badge"
+			/>
 		</h3>
 		<slot v-if="isPersonalTab && loading" name="loading" />
 		<N8nButton v-else-if="failed" type="button" variant="outline" @click="load">{{
@@ -232,9 +268,14 @@ async function onAction(configuration: SelfHealingConfigurationDto, action: stri
 				:page-sizes="[configurations.length + 1]"
 			>
 				<template #[`item.scope`]="{ item }">
-					<N8nText size="medium" color="text-dark" data-test-id="self-healing-configuration-row">{{
-						scopeLabel(item)
-					}}</N8nText>
+					<N8nText
+						size="medium"
+						color="text-dark"
+						:class="$style.scope"
+						:title="scopeLabel(item)"
+						data-test-id="self-healing-configuration-row"
+						>{{ scopeLabel(item) }}</N8nText
+					>
 				</template>
 				<template #[`item.reviewerIds`]="{ item }">
 					<div :class="$style.people">
@@ -325,6 +366,13 @@ async function onAction(configuration: SelfHealingConfigurationDto, action: stri
 	min-width: 0;
 }
 
+.heading {
+	display: flex;
+	/* The label has a bottom margin, so the badges align with its text. */
+	align-items: baseline;
+	gap: var(--spacing--2xs);
+}
+
 .table {
 	margin-bottom: var(--spacing--sm);
 
@@ -347,7 +395,9 @@ async function onAction(configuration: SelfHealingConfigurationDto, action: stri
 	min-width: 0;
 }
 
+.scope,
 .personName {
+	display: block;
 	overflow: hidden;
 	text-overflow: ellipsis;
 	white-space: nowrap;

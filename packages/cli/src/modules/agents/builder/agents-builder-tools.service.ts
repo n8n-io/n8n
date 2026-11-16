@@ -49,7 +49,6 @@ import { z } from 'zod';
 
 import { CredentialTypes } from '@/credential-types';
 import { CredentialsPermissionChecker } from '@/executions/pre-execution-checks/credentials-permission-checker';
-import { CollaborationService } from '@/collaboration/collaboration.service';
 import { ConflictError, LockedError, UnexpectedError, UserError } from '@n8n/errors';
 import { CredentialsFinderService, NodeTypesProxy } from '@n8n/backend-services';
 import { findUsableMcpCredential } from '@/modules/mcp-registry/mcp-credential-access';
@@ -68,6 +67,7 @@ import { AgentIntegrationPersistenceService } from '../agent-integration-persist
 import { AgentPublishService } from '../agent-publish.service';
 import { AgentSkillsService } from '../agent-skills.service';
 import { AgentTaskService } from '../agent-task.service';
+import { AgentWriteLockService } from '../agent-write-lock.service';
 import {
 	AgentTestRunService,
 	collectStandardApprovals,
@@ -530,7 +530,7 @@ export class AgentsBuilderToolsService {
 		private readonly nodeTypes: NodeTypesProxy,
 		private readonly freeAiCreditsService: FreeAiCreditsService,
 		private readonly telemetry: Telemetry,
-		private readonly collaborationService: CollaborationService,
+		private readonly agentWriteLockService: AgentWriteLockService,
 		private readonly agentSkillRefs: AgentSkillRefsService,
 		private readonly credentialsFinderService: CredentialsFinderService,
 		private readonly credentialsPermissionChecker: CredentialsPermissionChecker,
@@ -597,7 +597,7 @@ export class AgentsBuilderToolsService {
 	 */
 	private async getEditorLockFailure(agentId: string): Promise<EditorLockFailure | null> {
 		try {
-			await this.collaborationService.ensureAgentEditable(agentId);
+			await this.agentWriteLockService.ensureAgentEditable(agentId);
 			return null;
 		} catch (error) {
 			if (error instanceof LockedError) {

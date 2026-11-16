@@ -98,14 +98,41 @@ export function resolveMcpToolPermission(
 	return policy.categories[classifyMcpTool(tool)];
 }
 
+const PERMISSION_STRICTNESS: Record<McpToolPermission, number> = {
+	always_allow: 0,
+	require_approval: 1,
+	blocked: 2,
+};
+
+/** Block is stricter than Ask first, and Ask first is stricter than Allow. */
+export function stricterMcpToolPermission(
+	a: McpToolPermission,
+	b: McpToolPermission,
+): McpToolPermission {
+	return PERMISSION_STRICTNESS[a] >= PERMISSION_STRICTNESS[b] ? a : b;
+}
+
 export function compileMcpToolPermissions(
 	policy: McpToolPermissions,
+	tools: McpToolDescriptor[],
+): CompiledMcpToolPermissions {
+	return compileStricterMcpToolPermissions([policy], tools);
+}
+
+/**
+ * Compiles the stricter value of several policies for each tool, for example
+ * when an admin policy and a user policy both apply to one server.
+ */
+export function compileStricterMcpToolPermissions(
+	policies: readonly McpToolPermissions[],
 	tools: McpToolDescriptor[],
 ): CompiledMcpToolPermissions {
 	const blockedTools: string[] = [];
 	const approvalTools: string[] = [];
 	for (const tool of tools) {
-		const permission = resolveMcpToolPermission(policy, tool);
+		const permission = policies
+			.map((policy) => resolveMcpToolPermission(policy, tool))
+			.reduce<McpToolPermission>(stricterMcpToolPermission, 'always_allow');
 		if (permission === 'blocked') {
 			blockedTools.push(tool.name);
 			continue;

@@ -1,0 +1,70 @@
+name: 'Release: Backend docs'
+
+# Deploys the backend onboarding site to Cloudflare Pages. A push to master
+# updates https://n8n-backend-docs.pages.dev, and a PR gets a preview at
+# https://pr-<number>.n8n-backend-docs.pages.dev.
+
+on:
+  push:
+    branches:
+      - master
+    paths:
+      - 'docs/backend/**'
+      - 'packages/@n8n/backend-docs-site/**'
+      - '.github/workflows/release-docs-backend.yml'
+  pull_request:
+    branches:
+      - master
+    paths:
+      - 'docs/backend/**'
+      - 'packages/@n8n/backend-docs-site/**'
+      - '.github/workflows/release-docs-backend.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: docs-backend-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  cloudflare:
+    name: Cloudflare Pages
+    # PRs from forks get no secrets, so they cannot deploy.
+    if: |
+      github.repository == 'n8n-io/n8n' &&
+      (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository)
+    runs-on: blacksmith-2vcpu-ubuntu-2204
+    timeout-minutes: 15
+    permissions:
+      contents: read
+      deployments: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Setup Node.js
+        uses: ./.github/actions/setup-nodejs
+        with:
+          install-command: pnpm install --frozen-lockfile --filter @n8n/backend-docs-site
+          build-command: ''
+
+      - name: Build
+        working-directory: packages/@n8n/backend-docs-site
+        run: pnpm build:site
+
+      # wrangler-action installs Wrangler at the workspace root, which pnpm rejects.
+      - name: Setup Wrangler Pre-requisites
+        run: |
+          echo "ignore-workspace-root-check=true" >> .npmrc
+          pnpm add --global wrangler
+
+      - name: Deploy
+        uses: cloudflare/wrangler-action@da0e0dfe58b7a431659754fdf3f186c529afbe65 # v3.14.1
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          command: pages deploy packages/@n8n/backend-docs-site/dist --project-name=n8n-backend-docs --branch=${{ github.event.pull_request.number && format('pr-{0}', github.event.pull_request.number) || github.ref_name }} --commit-hash=${{ github.event.pull_request.head.sha || github.sha }}
+          gitHubToken: ${{ secrets.GITHUB_TOKEN }}

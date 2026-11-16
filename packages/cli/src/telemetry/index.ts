@@ -27,6 +27,7 @@ import type {
 } from '@/interfaces';
 import { License } from '@/license';
 import type { PublicApiClient } from '@/public-api/public-api-client';
+import type { PublicApiResult } from '@/public-api/types';
 
 import { SourceControlPreferencesService } from '../modules/source-control.ee/source-control-preferences.service.ee';
 import { USER_CALLED_MCP_TOOL_EVENT } from '../modules/mcp/mcp.constants';
@@ -60,11 +61,19 @@ interface IExecutionsBuffer {
 
 interface IApiInvocationProperties {
 	user_id: string;
-	path: string;
-	method: string;
+	route: string;
+	result: PublicApiResult;
 	api_version: string;
 	user_agent?: string;
 	client: PublicApiClient;
+}
+
+/** One row for each route, result and caller. A flat list is easier to query in Hex. */
+interface IApiRouteCalls {
+	route: string;
+	result: PublicApiResult;
+	caller: PublicApiClient;
+	calls: number;
 }
 
 interface IApiInvocationsBufferEntry {
@@ -72,6 +81,7 @@ interface IApiInvocationsBufferEntry {
 	first: Date;
 	endpoints: Record<string, number>;
 	endpoints_by_client: { editor_ui: Record<string, number> };
+	routes: IApiRouteCalls[];
 	user_agents: Record<string, number>;
 	clients: Record<PublicApiClient, number>;
 }
@@ -287,6 +297,7 @@ export class Telemetry {
 					first: entry.first,
 					endpoints: JSON.stringify(entry.endpoints),
 					endpoints_by_client: JSON.stringify(entry.endpoints_by_client),
+					routes: JSON.stringify(entry.routes),
 					user_agents: JSON.stringify(entry.user_agents),
 					clients: JSON.stringify(entry.clients),
 				});
@@ -560,26 +571,35 @@ export class Telemetry {
 	trackApiInvocation(properties: IApiInvocationProperties) {
 		if (!this.rudderStack) return;
 
-		const { user_id, path, method, user_agent, client } = properties;
+		const { user_id, route, result, user_agent, client } = properties;
 
 		const entry = (this.apiInvocationsBuffer[user_id] ??= {
 			total_calls: 0,
 			first: new Date(),
 			endpoints: {},
 			endpoints_by_client: { editor_ui: {} },
+			routes: [],
 			user_agents: {},
 			clients: { editor_ui: 0, other: 0 },
 		});
 		entry.total_calls++;
 		entry.clients[client]++;
 
-		const endpointKey = `${method} ${path}`;
-		entry.endpoints[endpointKey] = (entry.endpoints[endpointKey] ?? 0) + 1;
+		entry.endpoints[route] = (entry.endpoints[route] ?? 0) + 1;
 
 		// Only editor UI calls are counted per endpoint for now to help keep event size down.
 		if (client === 'editor_ui') {
 			const editorUiEndpoints = entry.endpoints_by_client.editor_ui;
-			editorUiEndpoints[endpointKey] = (editorUiEndpoints[endpointKey] ?? 0) + 1;
+			editorUiEndpoints[route] = (editorUiEndpoints[route] ?? 0) + 1;
+		}
+
+		const existingRow = entry.routes.find(
+			(row) => row.route === route && row.result === result && row.caller === client,
+		);
+		if (existingRow) {
+			existingRow.calls++;
+		} else {
+			entry.routes.push({ route, result, caller: client, calls: 1 });
 		}
 
 		if (user_agent) {
