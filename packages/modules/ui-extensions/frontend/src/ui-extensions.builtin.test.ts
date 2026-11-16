@@ -45,12 +45,12 @@ describe('built-in views', () => {
 		},
 	);
 
-	it('all use data, and Recent runs is the first tab', () => {
-		expect(BUILTIN_VIEWS.map((view) => view.id)).toEqual([
-			'builtin:recent-runs',
-			'builtin:service-data',
+	it('starts with Recent runs, and only the two data views ask for data', () => {
+		expect(BUILTIN_VIEWS.map((view) => [view.id, view.usesData])).toEqual([
+			['builtin:recent-runs', true],
+			['builtin:service-data', true],
+			['builtin:arcade', false],
 		]);
-		expect(BUILTIN_VIEWS.every((view) => view.usesData)).toBe(true);
 	});
 
 	it.each(BUILTIN_VIEWS.map((view) => [view.id]))(

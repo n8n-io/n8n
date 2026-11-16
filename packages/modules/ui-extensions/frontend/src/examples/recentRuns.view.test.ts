@@ -174,4 +174,95 @@ describe('Recent runs view', () => {
 		expect(getByTestId('recent-runs-other-page')).toBeTruthy();
 		expect(queryByTestId('recent-runs-refresh')).toBeNull();
 	});
+
+	it('sums up the runs: count, success rate, average and longest time', () => {
+		const { getByTestId } = render(
+			workflowPage([]),
+			panelData({
+				runs: {
+					scope: 'workflow',
+					items: [
+						// Still running, so it counts as a run but not in the success rate.
+						run('4', { status: 'running', stoppedAt: null }),
+						run('3', { status: 'error', stoppedAt: '2026-11-16T11:55:00.500Z' }),
+						run('2', { stoppedAt: '2026-11-16T11:55:03.500Z' }),
+						run('1'),
+					],
+				},
+			}),
+		);
+
+		const stat = (key: string) => getByTestId(`recent-runs-stat-${key}`).textContent;
+		expect(stat('runs')).toBe('Runs4');
+		expect(stat('successRate')).toBe('Success rate67%');
+		// 500 ms, 3.5 s and 1.5 s.
+		expect(stat('averageDuration')).toBe('Average time1.8 sec');
+		expect(stat('longestDuration')).toBe('Longest time3.5 sec');
+	});
+
+	it('says None when no run has finished', () => {
+		const { getByTestId } = render(
+			workflowPage([]),
+			panelData({
+				runs: { scope: 'workflow', items: [run('1', { status: 'running', stoppedAt: null })] },
+			}),
+		);
+
+		expect(getByTestId('recent-runs-stat-successRate').textContent).toBe('Success rateNone');
+		expect(getByTestId('recent-runs-stat-averageDuration').textContent).toBe('Average timeNone');
+	});
+
+	it('charts the run times oldest first, and opens a run from its bar', async () => {
+		const { getAllByTestId, actions } = render(
+			workflowPage([]),
+			panelData({
+				runs: {
+					scope: 'workflow',
+					items: [
+						run('2', { status: 'error', stoppedAt: '2026-11-16T11:55:00.750Z' }),
+						run('1', { stoppedAt: '2026-11-16T11:55:03.000Z' }),
+					],
+				},
+			}),
+		);
+
+		const bars = getAllByTestId('recent-runs-bar');
+		expect(bars.map((bar) => bar.getAttribute('data-status'))).toEqual(['success', 'error']);
+		expect(bars[0].style.height).toBe('100%');
+		expect(bars[1].style.height).toBe('25%');
+		expect(bars[1].getAttribute('aria-label')).toBe('Failed, 750 ms. Open this run');
+
+		await fireEvent.click(bars[1]);
+
+		expect(actions).toEqual([{ type: 'openExecution', workflowId: 'wf-1', executionId: '2' }]);
+	});
+
+	it('lists the most active workflows on the workflows list only', () => {
+		const items = [
+			run('6', { workflowId: 'a', workflowName: 'Invoices', status: 'error' }),
+			run('5', { workflowId: 'b', workflowName: 'Leads' }),
+			run('4', { workflowId: 'a', workflowName: 'Invoices' }),
+			run('3', { workflowId: 'c', workflowName: 'Digest' }),
+			run('2', { workflowId: 'b', workflowName: 'Leads', status: 'crashed' }),
+			run('1', { workflowId: 'd', workflowName: 'Backup' }),
+		];
+		const list = render(listPage, panelData({ runs: { scope: 'all', items } }));
+
+		const top = list.getAllByTestId('recent-runs-top-workflow').map((el) => el.textContent);
+		expect(top).toEqual(['InvoicesRuns: 2Failures: 1', 'LeadsRuns: 2Failures: 1', 'DigestRuns: 1']);
+		list.unmount();
+
+		const workflow = render(workflowPage([]), panelData({ runs: { scope: 'workflow', items } }));
+		expect(workflow.queryByTestId('recent-runs-top-workflows')).toBeNull();
+	});
+
+	it('shows no summary and no chart without runs', () => {
+		const { queryByTestId } = render(
+			workflowPage([]),
+			panelData({ runs: { scope: 'workflow', items: [] } }),
+		);
+
+		expect(queryByTestId('recent-runs-summary')).toBeNull();
+		expect(queryByTestId('recent-runs-chart')).toBeNull();
+	});
 });

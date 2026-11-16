@@ -176,6 +176,10 @@ export const uiExtensionServiceNodeDataSchema = z.object({
 			finishedAt: z.string().nullable(),
 			itemCount: z.number().int().nonnegative(),
 			items: z.array(uiExtensionItemSchema).max(UI_EXTENSION_DATA_LIMITS.itemsPerNode),
+			/** How long the node ran, in milliseconds. */
+			durationMs: z.number().int().nonnegative().optional(),
+			/** How many fields the first item has. `items` keeps at most `keysPerItem` of them. */
+			fieldCount: z.number().int().nonnegative().optional(),
 			error: limitedText(UI_EXTENSION_DATA_LIMITS.errorLength).optional(),
 		})
 		.nullable(),

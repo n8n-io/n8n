@@ -1,5 +1,6 @@
 import type { BaseTextKey } from '@n8n/i18n';
 
+import arcadeSource from './examples/arcade.view.js?raw';
 import recentRunsSource from './examples/recentRuns.view.js?raw';
 import serviceDataSource from './examples/serviceData.view.js?raw';
 import { BUILTIN_RECENT_RUNS_VIEW_ID } from './ui-extensions.constants';
@@ -62,6 +63,16 @@ export const BUILTIN_VIEWS: readonly BuiltinViewDefinition[] = [
 			{ key: 'uiExtensions.recentRuns.mode.integrated' },
 			{ key: 'uiExtensions.recentRuns.mode.chat' },
 			{ key: 'uiExtensions.recentRuns.mode.evaluation' },
+			{ key: 'uiExtensions.recentRuns.summary.runs' },
+			{ key: 'uiExtensions.recentRuns.summary.successRate' },
+			{ key: 'uiExtensions.recentRuns.summary.averageDuration' },
+			{ key: 'uiExtensions.recentRuns.summary.longestDuration' },
+			{ key: 'uiExtensions.recentRuns.summary.noValue' },
+			{ key: 'uiExtensions.recentRuns.chart.title' },
+			{ key: 'uiExtensions.recentRuns.chart.bar', params: ['status', 'duration'] },
+			{ key: 'uiExtensions.recentRuns.topWorkflows.title' },
+			{ key: 'uiExtensions.recentRuns.topWorkflows.runs', params: ['count'] },
+			{ key: 'uiExtensions.recentRuns.topWorkflows.failures', params: ['count'] },
 		],
 	},
 	{
@@ -83,6 +94,32 @@ export const BUILTIN_VIEWS: readonly BuiltinViewDefinition[] = [
 			{ key: 'uiExtensions.serviceData.noRun' },
 			{ key: 'uiExtensions.serviceData.items', params: ['count'] },
 			{ key: 'uiExtensions.serviceData.noItems' },
+			{ key: 'uiExtensions.serviceData.summary.services' },
+			{ key: 'uiExtensions.serviceData.summary.accounts' },
+			{ key: 'uiExtensions.serviceData.summary.items' },
+			{ key: 'uiExtensions.serviceData.duration', params: ['duration'] },
+			{ key: 'uiExtensions.serviceData.fields' },
+			{ key: 'uiExtensions.serviceData.moreFields', params: ['count'] },
+		],
+	},
+	{
+		id: 'builtin:arcade',
+		titleKey: 'uiExtensions.arcade.title',
+		icon: 'zap',
+		source: arcadeSource,
+		usesData: false,
+		strings: [
+			{ key: 'uiExtensions.arcade.heading' },
+			{ key: 'uiExtensions.arcade.subtitle' },
+			{ key: 'uiExtensions.arcade.play' },
+			{ key: 'uiExtensions.arcade.playAgain' },
+			{ key: 'uiExtensions.arcade.resume' },
+			{ key: 'uiExtensions.arcade.hint' },
+			{ key: 'uiExtensions.arcade.score', params: ['score'] },
+			{ key: 'uiExtensions.arcade.best', params: ['best'] },
+			{ key: 'uiExtensions.arcade.gameOver' },
+			{ key: 'uiExtensions.arcade.paused' },
+			{ key: 'uiExtensions.arcade.canvas' },
 		],
 	},
 ];

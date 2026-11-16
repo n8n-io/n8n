@@ -22,6 +22,10 @@ const stack = 'display: flex; flex-direction: column; gap: var(--spacing--xs)';
 const row = 'display: flex; align-items: center; gap: var(--spacing--2xs)';
 const between =
 	'display: flex; align-items: center; justify-content: space-between; gap: var(--spacing--2xs)';
+const tiles =
+	'display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--spacing--2xs)';
+const tile =
+	'display: flex; flex-direction: column; gap: var(--spacing--4xs); padding: var(--spacing--2xs) var(--spacing--xs); border-radius: var(--radius); background-color: var(--background--subtle)';
 const itemTable =
 	'display: grid; grid-template-columns: minmax(0, 2fr) minmax(0, 3fr); gap: var(--spacing--4xs) var(--spacing--2xs); padding: var(--spacing--2xs); border-radius: var(--radius); background-color: var(--background--subtle)';
 
@@ -44,6 +48,41 @@ export default {
 			return format.format(seconds, 'second');
 		}
 
+		const summary = computed(() => {
+			const numberFormat = new Intl.NumberFormat(locale.value);
+			const accounts = new Set(
+				services.value.map((service) => service.credentialName).filter(Boolean),
+			);
+			const items = services.value.reduce(
+				(sum, service) => sum + (service.lastRun?.itemCount ?? 0),
+				0,
+			);
+			return [
+				{ key: 'services', value: numberFormat.format(services.value.length) },
+				{ key: 'accounts', value: numberFormat.format(accounts.size) },
+				{ key: 'items', value: numberFormat.format(items) },
+			];
+		});
+
+		function runTime(lastRun) {
+			if (lastRun.durationMs === undefined) return '';
+			const inSeconds = lastRun.durationMs >= 1000;
+			return t('uiExtensions.serviceData.duration', {
+				duration: new Intl.NumberFormat(locale.value, {
+					style: 'unit',
+					unit: inSeconds ? 'second' : 'millisecond',
+					unitDisplay: 'short',
+					maximumFractionDigits: 1,
+				}).format(inSeconds ? lastRun.durationMs / 1000 : lastRun.durationMs),
+			});
+		}
+
+		// The field names of the first item, and how many the editor left out.
+		function fields(lastRun) {
+			const names = Object.keys(lastRun.items[0] ?? {});
+			return { names, hidden: Math.max(0, (lastRun.fieldCount ?? names.length) - names.length) };
+		}
+
 		function action(service) {
 			if (service.resource && service.operation) {
 				return t('uiExtensions.serviceData.action', {
@@ -60,6 +99,9 @@ export default {
 			services,
 			finishedAgo,
 			action,
+			summary,
+			runTime,
+			fields,
 			badge: (status) => STATUS_BADGE[status] ?? 'subtle',
 			refresh: () => n8n.refresh(),
 			openUrl: (url) => n8n.openUrl(url),
@@ -68,6 +110,8 @@ export default {
 			row,
 			between,
 			itemTable,
+			tiles,
+			tile,
 			t,
 		};
 	},
@@ -94,6 +138,12 @@ export default {
 			</N8nCallout>
 			<N8nText v-else-if="services.length === 0" size="small" color="text-light" data-test-id="service-data-empty">{{ t('uiExtensions.serviceData.empty') }}</N8nText>
 			<template v-else>
+				<div :style="tiles" data-test-id="service-data-summary">
+					<div v-for="stat in summary" :key="stat.key" :style="tile" :data-test-id="'service-data-stat-' + stat.key">
+						<N8nText size="xsmall" color="text-light">{{ t('uiExtensions.serviceData.summary.' + stat.key) }}</N8nText>
+						<N8nText size="large" bold>{{ stat.value }}</N8nText>
+					</div>
+				</div>
 				<N8nCard v-for="service in services" :key="service.nodeName" data-test-id="service-data-card">
 					<div :style="stack">
 						<div :style="between" style="align-items: flex-start">
@@ -116,7 +166,15 @@ export default {
 								<N8nBadge :variant="badge(service.lastRun.status)">{{ t('uiExtensions.recentRuns.status.' + service.lastRun.status) }}</N8nBadge>
 								<N8nText size="xsmall" color="text-light">{{ finishedAgo(service.lastRun.finishedAt) }}</N8nText>
 								<N8nText size="xsmall" color="text-light" data-test-id="service-data-items">{{ t('uiExtensions.serviceData.items', { count: service.lastRun.itemCount }) }}</N8nText>
+								<N8nText v-if="runTime(service.lastRun)" size="xsmall" color="text-light" data-test-id="service-data-duration">{{ runTime(service.lastRun) }}</N8nText>
 							</span>
+							<div v-if="fields(service.lastRun).names.length > 0" style="display: flex; flex-direction: column; gap: var(--spacing--4xs)" data-test-id="service-data-fields">
+								<N8nText size="xsmall" color="text-light">{{ t('uiExtensions.serviceData.fields') }}</N8nText>
+								<span :style="row" style="flex-wrap: wrap; gap: var(--spacing--4xs)">
+									<N8nTag v-for="name in fields(service.lastRun).names" :key="name" :text="name" :clickable="false" data-test-id="service-data-field" />
+								</span>
+								<N8nText v-if="fields(service.lastRun).hidden > 0" size="xsmall" color="text-light" data-test-id="service-data-more-fields">{{ t('uiExtensions.serviceData.moreFields', { count: fields(service.lastRun).hidden }) }}</N8nText>
+							</div>
 							<N8nCallout v-if="service.lastRun.error" theme="danger" data-test-id="service-data-node-error">
 								<span style="overflow-wrap: anywhere">{{ service.lastRun.error }}</span>
 							</N8nCallout>

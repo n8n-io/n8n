@@ -102,6 +102,15 @@ describe('SidePanel', () => {
 		await flushPromises();
 		expect(dataEnabled()).toBe(true);
 
+		// The game shows no run data, so the editor stops fetching it.
+		store.activeViewId = 'builtin:arcade';
+		await flushPromises();
+		expect(dataEnabled()).toBe(false);
+
+		store.activeViewId = 'builtin:service-data';
+		await flushPromises();
+		expect(dataEnabled()).toBe(true);
+
 		store.activeViewId = 'view-1';
 		await flushPromises();
 		expect(dataEnabled()).toBe(false);

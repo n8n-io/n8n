@@ -279,6 +279,7 @@ describe(useUiExtensionPanelData, () => {
 						finishedAt: '2026-11-16T11:00:01.500Z',
 						itemCount: 0,
 						items: [],
+						durationMs: 500,
 						error: 'channel_not_found',
 					},
 				},
@@ -341,6 +342,8 @@ describe(useUiExtensionPanelData, () => {
 
 		const lastRun = panelData.value.services?.[0].lastRun;
 		expect(lastRun?.itemCount).toBe(4);
+		expect(lastRun?.durationMs).toBe(500);
+		expect(lastRun?.fieldCount).toBe(4);
 		expect(lastRun?.items).toHaveLength(3);
 		expect(lastRun?.items[0]).toEqual({
 			text: `${'x'.repeat(199)}…`,
@@ -362,6 +365,8 @@ describe(useUiExtensionPanelData, () => {
 		await flushPromises();
 
 		expect(Object.keys(panelData.value.services?.[0].lastRun?.items[0] ?? {})).toHaveLength(20);
+		// The view tells the user how many fields it left out.
+		expect(panelData.value.services?.[0].lastRun?.fieldCount).toBe(25);
 	});
 
 	it('gives no link for a stored URL that is not http(s), and skips expressions', async () => {

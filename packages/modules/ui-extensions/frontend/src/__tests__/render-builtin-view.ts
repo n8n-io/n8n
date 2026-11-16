@@ -1,8 +1,9 @@
-import type {
-	UiExtensionPageContext,
-	UiExtensionPanelData,
-	UiExtensionRun,
-	UiExtensionServiceNodeData,
+import {
+	UI_EXTENSION_VIEW_FACTORY_GLOBAL,
+	type UiExtensionPageContext,
+	type UiExtensionPanelData,
+	type UiExtensionRun,
+	type UiExtensionServiceNodeData,
 } from '@n8n/api-types';
 import {
 	N8nBadge,
@@ -65,13 +66,15 @@ export function renderBuiltinView(
 		openUrl: (url: string) => actions.push({ type: 'openUrl', url }),
 	};
 
-	const window: Record<string, unknown> = {};
-	// The test's `Date` goes in, so fake timers reach the view.
-	runInNewContext(viewSourceToScript(definition.source), { window, Date });
-	const factory = window.__n8nUiExtensionView as (
+	// The test's window, document and `Date` go in, so the view's listeners and
+	// animation frames reach the test, and fake timers reach the view.
+	const frameWindow = window as unknown as Record<string, unknown>;
+	runInNewContext(viewSourceToScript(definition.source), { window, document, Date });
+	const factory = frameWindow[UI_EXTENSION_VIEW_FACTORY_GLOBAL] as (
 		vue: typeof Vue,
 		api: typeof n8n,
 	) => Vue.Component;
+	delete frameWindow[UI_EXTENSION_VIEW_FACTORY_GLOBAL];
 
 	const result = render(factory(Vue, n8n), {
 		global: {

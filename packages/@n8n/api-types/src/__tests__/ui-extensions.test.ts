@@ -117,6 +117,23 @@ describe('ui-extensions schemas', () => {
 				},
 			],
 			[
+				'a negative run time',
+				{
+					services: [
+						service({
+							lastRun: {
+								executionId: '1',
+								status: 'success',
+								finishedAt: null,
+								itemCount: 0,
+								items: [],
+								durationMs: -1,
+							},
+						}),
+					],
+				},
+			],
+			[
 				'a target link that is not http(s)',
 				{
 					services: [service({ targets: [{ label: 'L', name: 'N', url: 'javascript:alert(1)' }] })],

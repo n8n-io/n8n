@@ -37,9 +37,13 @@ describe('useSidePanelStore', () => {
 		await store.fetchViews();
 
 		expect(store.views.map((v) => v.id)).toEqual([...BUILTIN_IDS, 'a', 'b']);
-		expect(store.views.map((v) => v.title).slice(0, 2)).toEqual(['Recent runs', 'Service data']);
-		expect(store.views.slice(0, 2).every((v) => v.builtin)).toBe(true);
-		expect(store.views[2].builtin).toBe(false);
+		expect(store.views.map((v) => v.title).slice(0, 3)).toEqual([
+			'Recent runs',
+			'Service data',
+			'Arcade',
+		]);
+		expect(store.views.slice(0, 3).every((v) => v.builtin)).toBe(true);
+		expect(store.views[3].builtin).toBe(false);
 	});
 
 	it('shows the built-in view before any fetch', () => {

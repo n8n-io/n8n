@@ -22,6 +22,14 @@ const KNOWN_MODES = [
 	'chat',
 	'evaluation',
 ];
+const BAR_COLOR = {
+	success: 'var(--color--green-500)',
+	error: 'var(--color--red-500)',
+	crashed: 'var(--color--red-500)',
+	canceled: 'var(--color--yellow-500)',
+};
+const FINISHED = ['success', 'error', 'crashed', 'canceled'];
+const TOP_WORKFLOWS = 3;
 const UNITS = [
 	['day', 86400],
 	['hour', 3600],
@@ -32,6 +40,14 @@ const stack = 'display: flex; flex-direction: column; gap: var(--spacing--xs)';
 const row = 'display: flex; align-items: center; gap: var(--spacing--2xs)';
 const between =
 	'display: flex; align-items: center; justify-content: space-between; gap: var(--spacing--2xs)';
+const tiles =
+	'display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--spacing--2xs)';
+const tile =
+	'display: flex; flex-direction: column; gap: var(--spacing--4xs); padding: var(--spacing--2xs) var(--spacing--xs); border-radius: var(--radius); background-color: var(--background--subtle)';
+const chart =
+	'display: flex; align-items: flex-end; gap: var(--spacing--4xs); height: 64px; padding: var(--spacing--2xs); border-radius: var(--radius); background-color: var(--background--subtle)';
+const bar =
+	'flex: 1; min-width: 0; padding: 0; border: none; border-radius: var(--radius) var(--radius) 0 0; cursor: pointer';
 const runButton =
 	'display: flex; flex-direction: column; gap: var(--spacing--3xs); width: 100%; padding: var(--spacing--xs); border: var(--border); border-radius: var(--radius); background-color: var(--background--surface); color: inherit; font: inherit; text-align: left; cursor: pointer';
 
@@ -60,9 +76,12 @@ export default {
 			return format.format(seconds, 'second');
 		}
 
-		function duration(run) {
-			if (!run.startedAt || !run.stoppedAt) return '';
-			const ms = Math.max(0, new Date(run.stoppedAt).getTime() - new Date(run.startedAt).getTime());
+		function durationMs(run) {
+			if (!run.startedAt || !run.stoppedAt) return null;
+			return Math.max(0, new Date(run.stoppedAt).getTime() - new Date(run.startedAt).getTime());
+		}
+
+		function formatDuration(ms) {
 			const inSeconds = ms >= 1000;
 			return new Intl.NumberFormat(locale.value, {
 				style: 'unit',
@@ -72,6 +91,77 @@ export default {
 			}).format(inSeconds ? ms / 1000 : ms);
 		}
 
+		function duration(run) {
+			const ms = durationMs(run);
+			return ms === null ? '' : formatDuration(ms);
+		}
+
+		const items = computed(() => runs.value?.items ?? []);
+		const durations = computed(() => items.value.map(durationMs).filter((ms) => ms !== null));
+
+		const summary = computed(() => {
+			const finished = items.value.filter((run) => FINISHED.includes(run.status));
+			const succeeded = finished.filter((run) => run.status === 'success').length;
+			const total = durations.value.reduce((sum, ms) => sum + ms, 0);
+			const none = t('uiExtensions.recentRuns.summary.noValue');
+			return [
+				{ key: 'runs', value: new Intl.NumberFormat(locale.value).format(items.value.length) },
+				{
+					key: 'successRate',
+					value: finished.length
+						? new Intl.NumberFormat(locale.value, { style: 'percent' }).format(
+								succeeded / finished.length,
+							)
+						: none,
+				},
+				{
+					key: 'averageDuration',
+					value: durations.value.length ? formatDuration(total / durations.value.length) : none,
+				},
+				{
+					key: 'longestDuration',
+					value: durations.value.length ? formatDuration(Math.max(...durations.value)) : none,
+				},
+			];
+		});
+
+		// Oldest first, so the chart reads left to right.
+		const bars = computed(() => {
+			const longest = Math.max(1, ...durations.value);
+			return [...items.value].reverse().map((run) => {
+				const ms = durationMs(run);
+				return {
+					run,
+					height: ms === null ? 8 : Math.max(8, Math.round((ms / longest) * 100)),
+					color: BAR_COLOR[run.status] ?? 'var(--color--blue-500)',
+					label: t('uiExtensions.recentRuns.chart.bar', {
+						status: t('uiExtensions.recentRuns.status.' + run.status),
+						duration:
+							ms === null ? t('uiExtensions.recentRuns.summary.noValue') : formatDuration(ms),
+					}),
+				};
+			});
+		});
+
+		const topWorkflows = computed(() => {
+			if (runs.value?.scope !== 'all') return [];
+			const byWorkflow = new Map();
+			for (const run of items.value) {
+				const entry = byWorkflow.get(run.workflowId) ?? {
+					workflowId: run.workflowId,
+					name: run.workflowName,
+					runs: 0,
+					failures: 0,
+				};
+				entry.runs += 1;
+				if (run.status === 'error' || run.status === 'crashed') entry.failures += 1;
+				byWorkflow.set(run.workflowId, entry);
+			}
+			return [...byWorkflow.values()]
+				.sort((a, b) => b.runs - a.runs || b.failures - a.failures)
+				.slice(0, TOP_WORKFLOWS);
+		});
+
 		return {
 			context,
 			data,
@@ -80,6 +170,9 @@ export default {
 			subtitle,
 			startedAgo,
 			duration,
+			summary,
+			bars,
+			topWorkflows,
 			modeLabel: (mode) =>
 				KNOWN_MODES.includes(mode) ? t('uiExtensions.recentRuns.mode.' + mode) : mode,
 			badge: (status) => STATUS_BADGE[status] ?? 'subtle',
@@ -89,6 +182,10 @@ export default {
 			row,
 			between,
 			runButton,
+			tiles,
+			tile,
+			chart,
+			bar,
 			t,
 		};
 	},
@@ -117,6 +214,40 @@ export default {
 						<N8nText size="small" style="overflow-wrap: anywhere">{{ runs.lastError.message }}</N8nText>
 					</div>
 				</N8nCallout>
+				<template v-if="runs.items.length > 0">
+					<div :style="tiles" data-test-id="recent-runs-summary">
+						<div v-for="stat in summary" :key="stat.key" :style="tile" :data-test-id="'recent-runs-stat-' + stat.key">
+							<N8nText size="xsmall" color="text-light">{{ t('uiExtensions.recentRuns.summary.' + stat.key) }}</N8nText>
+							<N8nText size="large" bold>{{ stat.value }}</N8nText>
+						</div>
+					</div>
+					<div style="display: flex; flex-direction: column; gap: var(--spacing--4xs)">
+						<N8nText size="xsmall" color="text-light">{{ t('uiExtensions.recentRuns.chart.title') }}</N8nText>
+						<div :style="chart" data-test-id="recent-runs-chart">
+							<button
+								v-for="entry in bars"
+								:key="entry.run.id"
+								type="button"
+								:style="[bar, { height: entry.height + '%', backgroundColor: entry.color }]"
+								:title="entry.label"
+								:aria-label="entry.label"
+								data-test-id="recent-runs-bar"
+								:data-status="entry.run.status"
+								@click="open(entry.run)"
+							/>
+						</div>
+					</div>
+					<div v-if="topWorkflows.length > 0" style="display: flex; flex-direction: column; gap: var(--spacing--4xs)" data-test-id="recent-runs-top-workflows">
+						<N8nText size="xsmall" color="text-light">{{ t('uiExtensions.recentRuns.topWorkflows.title') }}</N8nText>
+						<div v-for="workflow in topWorkflows" :key="workflow.workflowId" :style="between" data-test-id="recent-runs-top-workflow">
+							<N8nText size="small" bold style="overflow-wrap: anywhere; min-width: 0">{{ workflow.name }}</N8nText>
+							<span :style="row" style="flex-shrink: 0">
+								<N8nBadge variant="subtle">{{ t('uiExtensions.recentRuns.topWorkflows.runs', { count: workflow.runs }) }}</N8nBadge>
+								<N8nBadge v-if="workflow.failures > 0" variant="danger">{{ t('uiExtensions.recentRuns.topWorkflows.failures', { count: workflow.failures }) }}</N8nBadge>
+							</span>
+						</div>
+					</div>
+				</template>
 				<N8nText v-if="runs.items.length === 0" size="small" color="text-light" data-test-id="recent-runs-empty">
 					{{ runs.scope === 'workflow' ? t('uiExtensions.recentRuns.empty.workflow') : t('uiExtensions.recentRuns.empty.all') }}
 				</N8nText>

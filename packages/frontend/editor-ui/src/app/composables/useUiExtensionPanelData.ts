@@ -105,6 +105,10 @@ function toLastRun(
 		),
 		itemCount: output.length,
 		items: toItems(output),
+		...(Number.isFinite(task.executionTime) && {
+			durationMs: Math.max(0, Math.round(task.executionTime)),
+		}),
+		...(output[0]?.json && { fieldCount: Object.keys(output[0].json).length }),
 		...(error !== undefined && { error: cut(error, UI_EXTENSION_DATA_LIMITS.errorLength) }),
 	};
 }

@@ -179,4 +179,71 @@ describe('Service data view', () => {
 		);
 		expect(queryByTestId('service-data-refresh')).toBeNull();
 	});
+
+	it('sums up the services, the accounts and the items of the last run', () => {
+		const { getByTestId } = render(
+			workflowPage([]),
+			panelData({
+				services: [
+					serviceNode(),
+					serviceNode({ nodeName: 'Reply', credentialName: 'Sales Slack' }),
+					serviceNode({ nodeName: 'Add row', credentialName: 'Ops Sheets', lastRun: null }),
+				],
+			}),
+		);
+
+		expect(getByTestId('service-data-stat-services').textContent).toBe('Services3');
+		expect(getByTestId('service-data-stat-accounts').textContent).toBe('Accounts2');
+		expect(getByTestId('service-data-stat-items').textContent).toBe('Items in the last run10');
+	});
+
+	it('shows the run time and the field names of the last run', () => {
+		const { getByTestId, getAllByTestId, queryByTestId } = render(
+			workflowPage([]),
+			panelData({
+				services: [
+					serviceNode({
+						lastRun: {
+							executionId: '42',
+							status: 'success',
+							finishedAt: null,
+							itemCount: 1,
+							items: [{ ts: '1', text: 'hello' }],
+							durationMs: 1500,
+							fieldCount: 2,
+						},
+					}),
+				],
+			}),
+		);
+
+		expect(getByTestId('service-data-duration').textContent).toBe('Run time: 1.5 sec');
+		expect(getAllByTestId('service-data-field').map((el) => el.textContent?.trim())).toEqual([
+			'ts',
+			'text',
+		]);
+		expect(queryByTestId('service-data-more-fields')).toBeNull();
+	});
+
+	it('says how many fields it left out', () => {
+		const { getByTestId } = render(
+			workflowPage([]),
+			panelData({
+				services: [
+					serviceNode({
+						lastRun: {
+							executionId: '42',
+							status: 'success',
+							finishedAt: null,
+							itemCount: 1,
+							items: [{ a: '1', b: '2' }],
+							fieldCount: 7,
+						},
+					}),
+				],
+			}),
+		);
+
+		expect(getByTestId('service-data-more-fields').textContent).toBe('Fields not shown: 5');
+	});
 });

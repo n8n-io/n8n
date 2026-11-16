@@ -229,6 +229,11 @@ test.describe(
 			await expect(run).toHaveCount(1);
 			await expect(run).toHaveAttribute('data-status', 'success');
 			await expect(run).toContainText('Succeeded');
+			await expect(n8n.sidePanel.getViewElement('recent-runs-stat-runs')).toHaveText('Runs1');
+			await expect(n8n.sidePanel.getViewElement('recent-runs-stat-successRate')).toHaveText(
+				'Success rate100%',
+			);
+			await expect(n8n.sidePanel.getViewElement('recent-runs-bar')).toHaveCount(1);
 
 			await n8n.sidePanel.selectTab('Service data');
 			const card = n8n.sidePanel.getViewElement('service-data-card');
@@ -246,6 +251,10 @@ test.describe(
 			await expect(n8n.sidePanel.getViewElement('service-data-item').first()).toContainText(
 				'hello from qa',
 			);
+			await expect(n8n.sidePanel.getViewElement('service-data-stat-services')).toHaveText(
+				'Services1',
+			);
+			await expect(n8n.sidePanel.getViewElement('service-data-field')).toHaveText(['ts', 'text']);
 
 			await n8n.sidePanel.selectTab('Recent runs');
 			await expect(run).toHaveAttribute('data-execution-id', /^\d+$/);
@@ -255,6 +264,40 @@ test.describe(
 			await expect(n8n.page).toHaveURL((url) =>
 				url.pathname.endsWith(`/workflow/${workflowId}/executions/${executionId}`),
 			);
+		});
+
+		test('plays the dinosaur game in the Arcade tab, with no requests', async ({ n8n }) => {
+			await n8n.navigate.toWorkflows();
+			await n8n.sidePanel.open();
+			const frameRequests: string[] = [];
+			n8n.page.on('request', (request) => {
+				if (request.frame() !== n8n.page.mainFrame() && !request.url().startsWith('data:')) {
+					frameRequests.push(request.url());
+				}
+			});
+			await n8n.sidePanel.selectTab('Arcade');
+			const arcade = n8n.sidePanel.getViewElement('arcade');
+			await expect(arcade).toHaveAttribute('data-state', 'idle');
+			// Recent runs fetched its data before. From here the editor must fetch none.
+			const executionRequests: string[] = [];
+			n8n.page.on('request', (request) => {
+				if (request.url().includes('/rest/executions')) executionRequests.push(request.url());
+			});
+
+			await n8n.sidePanel.getViewElement('arcade-play').click();
+			await expect(arcade).toHaveAttribute('data-state', 'running');
+			await expect(n8n.sidePanel.getViewElement('arcade-score')).not.toHaveText('Score: 0');
+
+			await n8n.page.keyboard.press('Space');
+			await expect(arcade).toHaveAttribute('data-jumping', 'true');
+
+			// With no more jumps, the dinosaur runs into a node.
+			await expect(arcade).toHaveAttribute('data-state', 'over', { timeout: 20_000 });
+			await expect(n8n.sidePanel.getViewElement('arcade-best')).not.toHaveText('Best: 0');
+
+			// The game runs in the sandbox with no network, and the editor fetches no run data for it.
+			expect(frameRequests).toEqual([]);
+			expect(executionRequests).toEqual([]);
 		});
 
 		test('adds a tab for a view from an MCP client, with the context it may see, and keeps it after a reload', async ({
