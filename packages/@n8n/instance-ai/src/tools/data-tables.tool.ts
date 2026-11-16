@@ -19,34 +19,13 @@ import { z } from 'zod';
 
 import type { InstanceAiContext } from '../types';
 import { sanitizeInputSchema } from '../agent/sanitize-mcp-schemas';
-
-// ── Shared schemas ─────────────────────────────────────────────────────────
-
-const columnTypeSchema = z.enum(['string', 'number', 'boolean', 'date']);
-
-const filterSchema = z.object({
-	type: z.enum(['and', 'or']).describe('Combine filters with AND or OR'),
-	filters: z.array(
-		z.object({
-			columnName: z.string(),
-			condition: z.enum(['eq', 'neq', 'like', 'ilike', 'gt', 'gte', 'lt', 'lte']),
-			value: z.union([z.string(), z.number(), z.boolean()]).nullable(),
-		}),
-	),
-});
-
-const filterSchemaWithMinOne = z.object({
-	type: z.enum(['and', 'or']).describe('Combine filters with AND or OR'),
-	filters: z
-		.array(
-			z.object({
-				columnName: z.string(),
-				condition: z.enum(['eq', 'neq', 'like', 'ilike', 'gt', 'gte', 'lt', 'lte']),
-				value: z.union([z.string(), z.number(), z.boolean()]).nullable(),
-			}),
-		)
-		.min(1),
-});
+import {
+	columnSchema,
+	columnTypeSchema,
+	filterDescribe,
+	filterSchema,
+	filterSchemaWithMinOne,
+} from './data-tables/schemas';
 
 const confirmationSuspendSchema = z.object({
 	requestId: z.string(),
@@ -102,10 +81,6 @@ const MAX_CELL_CHARS = 1024;
 /** When full cell values are requested, cap rows per call — a few intact blob
  *  cells are useful; dozens re-create the flood truncation exists to prevent. */
 const MAX_FULL_VALUE_ROWS = 5;
-
-const filterDescribe =
-	'Row filter conditions. For text matching use `ilike` (case-insensitive contains); `like` is ' +
-	'case-sensitive. Values without `%` are wrapped as `%value%`.';
 
 const projectIdDescribe =
 	"Project ID. Scopes list (defaults to this conversation's project); for id-based actions, disambiguates when `dataTableId` is a name found in multiple accessible projects. Ignored when `dataTableId` is a UUID.";
@@ -241,15 +216,7 @@ const createAction = z.object({
 	action: z.literal('create').describe('Create a new data table with typed columns'),
 	name: z.string().min(1).max(128).describe('Table name'),
 	projectId: z.string().optional().describe(projectIdDescribe),
-	columns: z
-		.array(
-			z.object({
-				name: z.string().describe('Column name (alphanumeric + underscores)'),
-				type: columnTypeSchema.describe('Column data type'),
-			}),
-		)
-		.min(1)
-		.describe('Column definitions'),
+	columns: z.array(columnSchema).min(1).describe('Column definitions'),
 });
 
 const deleteAction = z.object({

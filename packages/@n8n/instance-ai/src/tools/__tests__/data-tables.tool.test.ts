@@ -1,51 +1,17 @@
-import type { InstanceAiPermissions } from '@n8n/api-types';
 import type { Mock } from 'vitest';
 import type { z } from 'zod';
 
 import { executeTool } from '../../__tests__/tool-test-utils';
 import { OutsideThreadProjectError } from '../../errors/outside-thread-project.error';
-import type { InstanceAiContext } from '../../types';
 import { createDataTableTool } from '../data-tables.tool';
-import { createDataTableToolRouter } from './data-table-tools-test-utils';
+import {
+	createDataTableToolRouter,
+	createMockContext,
+	resumeCtx,
+	suspendCtx,
+} from './data-table-tools-test-utils';
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
-
-function createMockContext(
-	overrides: Partial<Omit<InstanceAiContext, 'permissions'>> & {
-		permissions?: Partial<InstanceAiPermissions>;
-	} = {},
-): InstanceAiContext {
-	return {
-		userId: 'user-1',
-		workflowService: {} as InstanceAiContext['workflowService'],
-		executionService: {} as InstanceAiContext['executionService'],
-		nodeService: {} as InstanceAiContext['nodeService'],
-		credentialService: {} as InstanceAiContext['credentialService'],
-		dataTableService: {
-			list: vi.fn().mockResolvedValue([]),
-			getSchema: vi.fn().mockResolvedValue([]),
-			queryRows: vi.fn().mockResolvedValue({ count: 0, data: [] }),
-			create: vi.fn().mockResolvedValue({}),
-			delete: vi.fn().mockResolvedValue(undefined),
-			addColumn: vi.fn().mockResolvedValue({}),
-			deleteColumn: vi.fn().mockResolvedValue(undefined),
-			renameColumn: vi.fn().mockResolvedValue(undefined),
-			insertRows: vi.fn().mockResolvedValue({ insertedCount: 0 }),
-			updateRows: vi.fn().mockResolvedValue({ updatedCount: 0 }),
-			deleteRows: vi.fn().mockResolvedValue({ deletedCount: 0 }),
-		},
-		permissions: {},
-		...overrides,
-	} as unknown as InstanceAiContext;
-}
-
-function suspendCtx(suspendFn: Mock) {
-	return { resumeData: undefined, suspend: suspendFn } as never;
-}
-
-function resumeCtx(approved: boolean, scope?: 'once' | 'session') {
-	return { resumeData: { approved, ...(scope ? { scope } : {}) } } as never;
-}
 
 function noSuspendCtx() {
 	return { resumeData: undefined, suspend: undefined } as never;
