@@ -115,7 +115,7 @@ describe('CustomModelEndpoint', () => {
 		});
 	});
 
-	it('reaches the gateway through the shared transport, never its own default host', async () => {
+	it('builds the client on the gateway base URL, with its own retries off', async () => {
 		await run();
 
 		expect(MockedOpenAI.mock.calls[0][0]).toMatchObject({
@@ -172,7 +172,7 @@ describe('CustomModelEndpoint', () => {
 		expect(sentBody().tools).toEqual([{ type: 'function' }]);
 	});
 
-	it('puts per-request headers in the layer that beats the credential, as the sub-node does', async () => {
+	it('hands per-request headers to the transport, not to the request', async () => {
 		await run({
 			'headers.header': [
 				{ name: 'x-tenant', value: 'acme' },
@@ -180,8 +180,8 @@ describe('CustomModelEndpoint', () => {
 			],
 		});
 
-		// Resolved per request by the transport, so they override a gateway header
-		// of the same name rather than losing to it
+		// The transport layer is the one that beats a gateway header of the same name.
+		// The real-transport test at the end of this file proves that precedence.
 		expect(transportHeaders()).toEqual({ 'x-tenant': 'acme' });
 		expect(sentOptions().headers).toBeUndefined();
 	});
@@ -330,6 +330,7 @@ describe('CustomModelEndpoint, through the real transport', () => {
 			tokenUrl: TOKEN_URL,
 			clientId: 'id',
 			clientSecret: 'secret',
+			gatewayHeaders: { headers: [{ name: 'x-item-1', value: 'from-the-credential' }] },
 		});
 		ctx.helpers = {
 			getSecureEgressFilter: () => ({ validateUrl: async () => ({ ok: true }) }),
@@ -372,6 +373,7 @@ describe('CustomModelEndpoint, through the real transport', () => {
 		const retryOfLastItem = chat.at(-1)?.headers;
 
 		expect(chat).toHaveLength(4);
+		// 'set' rather than 'from-the-credential': the item's own header wins the same name
 		expect(retryOfLastItem?.get('x-item-1')).toBe('set');
 		expect(retryOfLastItem?.get('x-item-0')).toBeNull();
 		expect(retryOfLastItem?.get('authorization')).toBe(`Bearer token-${minted}`);
