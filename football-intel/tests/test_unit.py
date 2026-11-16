@@ -1263,6 +1263,9 @@ def test_tickets_follow_priced_national_matches_and_dr_congo():
     friendly = {"competition": "INT-FRI", "home": "Tahiti", "away": "Cook Islands", "source": "modèle"}
     congo = {"competition": "INT-FRI", "home": "Gabon", "away": "DR Congo", "source": "modèle"}
     assert is_followed(priced) and not is_followed(friendly) and is_followed(congo)
+    # The owner's other teams (D84) count without prices; their spelling is the results file's.
+    assert is_followed({"competition": "INT-FRI", "home": "Ivory Coast", "away": "Oman", "source": "modèle"})
+    assert is_followed({"competition": "INT-FRI", "home": "Peru", "away": "United States", "source": "modèle"})
     # Clubs keep their own rule.
     assert is_followed({"competition": "ENG-PL", "home": "Leeds", "away": "Hull", "source": "marché"})
     assert not is_followed({"competition": "ITA-SA", "home": "Parma", "away": "Genoa", "source": "marché"})

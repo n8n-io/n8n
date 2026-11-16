@@ -14,8 +14,10 @@ function learnMine(ms) {
     if (t) for (const n of [m.home, m.away]) if (t === "*" || t.includes(n)) MINE.add(n);
   }
 }
-/* National teams (D83): every match with bookmaker prices, and every DR Congo match. */
-const NATIONAL_ALWAYS = new Set(["DR Congo"]);
+/* National teams (D83, D84): every match with bookmaker prices, and every match of these teams. */
+const NATIONAL_ALWAYS = new Set(["DR Congo", "France", "Spain", "Netherlands", "Italy", "Germany", "England",
+  "Portugal", "Argentina", "Uruguay", "United States", "Brazil", "Norway", "Denmark", "Switzerland", "Morocco",
+  "Egypt", "Senegal", "Nigeria", "Ivory Coast", "Algeria", "Japan", "Mexico", "Chile", "Greece"]);
 const nationalMine = (m) => !!m.market || NATIONAL_ALWAYS.has(m.home) || NATIONAL_ALWAYS.has(m.away);
 const isMine = (m) => (String(m.competition).startsWith("INT-") ? nationalMine(m) : MINE.has(m.home) || MINE.has(m.away));
 const norm = (x) => String(x).normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();

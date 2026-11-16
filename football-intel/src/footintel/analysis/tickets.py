@@ -143,14 +143,20 @@ def _team_followed(team: str, league: str | None) -> bool:
     return teams == "*" or bool(teams and team in teams)
 
 
-# National teams (D83): every match with bookmaker prices, and every match of DR Congo.
-NATIONAL_ALWAYS = {"DR Congo"}
+# National teams (D83, D84): every match with bookmaker prices, and every match of these teams,
+# priced or not. Names as in the results file (connectors/international.py).
+NATIONAL_ALWAYS = {
+    "DR Congo", "France", "Spain", "Netherlands", "Italy", "Germany", "England", "Portugal",
+    "Argentina", "Uruguay", "United States", "Brazil", "Norway", "Denmark", "Switzerland",
+    "Morocco", "Egypt", "Senegal", "Nigeria", "Ivory Coast", "Algeria", "Japan", "Mexico",
+    "Chile", "Greece",
+}
 
 
 def national_followed(m: dict) -> bool:
     """A national-team match the owner follows: priced by the bookmakers (Nations League, World
-    Cup, Euro, AFCON...), or played by DR Congo. A friendly without prices has nothing to check
-    the young national model against, so it stays out."""
+    Cup, Euro, AFCON...), or played by one of his teams. Other friendlies without prices stay
+    out: nothing checks the young national model against them."""
     return m.get("source") == "marché" or bool({m["home"], m["away"]} & NATIONAL_ALWAYS)
 
 

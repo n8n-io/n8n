@@ -11,7 +11,7 @@ a tool or a lesson must survive the session. Keep it under 150 lines.
   short sentences, few numbers. No jargon (log loss, ECE, PSI, IC, millième, calibration, edge).
   Say what happened, what it means for his bets, and what to do. One example beats a table.
 - **football-intel/**: football prediction platform (Python, FastAPI, PostgreSQL).
-  Source of truth: `football-intel/docs/DECISIONS.md` (D1–D83), `docs/RESULTS.md`,
+  Source of truth: `football-intel/docs/DECISIONS.md` (D1–D84), `docs/RESULTS.md`,
   `docs/DATA_SOURCES.md`. Active model `routed_competition`; it equals the market and
   has no measured edge (CLV −2.5 % at average price, D54).
 - **PitUp**: delivery marketplace in Lubumbashi (customers, partner shops, couriers).
@@ -90,7 +90,7 @@ newest one when the owner says "reprends où on s'est arrêtés". Project plugin
 Own model `models/national.py` (Elo + Poisson), data from martj42/international_results (CC0) and
 the OneFootball calendar (`NATIONAL_SLUGS`). `INT-*` competitions are excluded from club data in
 `load_matches`. New edition = new OneFootball id: find it with `onefootball.com/en/competition/x-<id>`
-(redirects to the named page). Tickets (D83): national matches with bookmaker prices, plus DR Congo.
+(redirects to the named page). Tickets (D83, D84): national matches with bookmaker prices, plus 25 named teams (`NATIONAL_ALWAYS`: DR Congo, big European, South American and African sides, USA, Mexico, Japan), priced or not.
 `HOME_ABROAD` (Ukraine, Israel) plays home matches on neutral ground.
 
 ## Daily cycle trigger (D79)
