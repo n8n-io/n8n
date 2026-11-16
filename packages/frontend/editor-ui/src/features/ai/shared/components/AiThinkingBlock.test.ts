@@ -26,6 +26,29 @@ describe('AiThinkingBlock', () => {
 		expect(getByTestId('thinking-block-header')).toHaveTextContent('Planning the response.');
 	});
 
+	it('cuts a long activity label at its end by default', () => {
+		const { getByTestId } = renderComponent({
+			props: { active: true, segments: [], activityLabel: 'Searching for gmail, slack' },
+		});
+
+		expect(getByTestId('thinking-block-subline-label')).toHaveAttribute('data-truncate', 'end');
+	});
+
+	it('can cut a long activity label at its start, so its newest words stay in view', () => {
+		const { getByTestId } = renderComponent({
+			props: {
+				active: true,
+				segments: [],
+				activityLabel: 'Gmail can filter by label',
+				activityLabelTruncate: 'start',
+			},
+		});
+
+		const label = getByTestId('thinking-block-subline-label');
+		expect(label).toHaveAttribute('data-truncate', 'start');
+		expect(label).toHaveTextContent('Gmail can filter by label');
+	});
+
 	it('expands shared content from the header', async () => {
 		const { getByTestId } = renderComponent({
 			props: { active: true, segments: [{ content: 'Working.' }] },

@@ -64,10 +64,12 @@ import { isAgentWorthTesting, testAgentOfferKey } from './testAgentOffer';
 import InstanceAiDataTablePreview from './components/InstanceAiDataTablePreview.vue';
 import InstanceAiAgentPreview from './components/InstanceAiAgentPreview.vue';
 import InstanceAiWorkflowDraftPreview from './components/InstanceAiWorkflowDraftPreview.vue';
+import InstanceAiCanvasRunStatus from './components/InstanceAiCanvasRunStatus.vue';
 import { useDraftWorkflowPreviewTelemetry } from '@/experiments/instanceAiDraftWorkflowPreview/useDraftWorkflowPreviewTelemetry';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useDraftWorkflowPreviewEnabled } from '@/experiments/instanceAiDraftWorkflowPreview/useDraftWorkflowPreviewEnabled';
 import { useWorkflowStaging } from './composables/useWorkflowStaging';
+import { useCanvasRunActivity } from './composables/useRunActivity';
 import { isStagingDraft, toStagingNodeTypeInfo } from './instanceAi.workflowStaging';
 import InstanceAiSkillPreview from './components/InstanceAiSkillPreview.vue';
 import InstanceAiAppPreview from './components/InstanceAiAppPreview.vue';
@@ -306,6 +308,18 @@ watch(
 		if (appId && tabsLoaded) preview.openAppPreview(appId);
 	},
 	{ immediate: true },
+);
+
+/** What the agent does now, on the draft canvas. It changes with the chat status bar. */
+const draftRunActivity = useCanvasRunActivity(() => thread.messages);
+// A build on a saved workflow shows its progress over the saved canvas, until a draft covers it.
+const isSavedCanvasBuilding = computed(
+	() =>
+		isAgentWorking.value &&
+		preview.isPreviewVisible.value &&
+		!preview.activeWorkflowDraft.value &&
+		preview.activeWorkflowId.value !== null &&
+		preview.activeWorkflowId.value === workflowStaging.buildTarget.value?.workflowId,
 );
 
 // Experiment cleanup (137_instance_ai_draft_workflow_preview)
@@ -1078,12 +1092,19 @@ function handleNewThreadClick() {
 								@workflow-failures="handleWorkflowFailures"
 								@workflow-loaded="handleSavedWorkflowLoaded"
 							/>
+							<InstanceAiCanvasRunStatus
+								v-if="isSavedCanvasBuilding"
+								:status-text="draftRunActivity?.text"
+								:waiting="draftRunActivity?.waiting === true"
+							/>
 							<InstanceAiWorkflowDraftPreview
 								v-if="preview.isPreviewVisible.value && preview.activeWorkflowDraft.value"
 								:key="preview.activeWorkflowDraft.value.filePath"
 								:class="$style.previewSlot"
 								:draft="preview.activeWorkflowDraft.value"
 								:building="isAgentWorking"
+								:status-text="draftRunActivity?.text"
+								:waiting="draftRunActivity?.waiting === true"
 							/>
 							<InstanceAiDataTablePreview
 								v-if="preview.isPreviewVisible.value && preview.activeDataTableId.value"
