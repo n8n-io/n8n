@@ -21,7 +21,7 @@ export function parsePathParam(
 	return output.data[key];
 }
 
-// Check whether a path matches a route template. Parameter segments match any value, other segments must match exactly.
+// Check whether a path matches a route template. Parameter segments match any value. Other segments match case-insensitively.
 export function matchesPathTemplate(template: string, path: string): boolean {
 	const templateSegments = template.split('/');
 	const pathSegments = (path.length > 1 && path.endsWith('/') ? path.slice(0, -1) : path).split(
