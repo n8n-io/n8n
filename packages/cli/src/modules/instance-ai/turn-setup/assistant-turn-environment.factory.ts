@@ -89,7 +89,7 @@ export interface AssistantTurnEnvironment {
 	taskStorage: ThreadTaskStorage;
 	workflowTasks: WorkflowTaskService;
 	modelId: ModelConfig;
-	memoryModelId: ModelConfig | undefined;
+	utilityModelId: ModelConfig | undefined;
 	orchestrationContext: OrchestrationContext;
 	conversationHistory: ScopedConversationHistory | undefined;
 	instanceContextEnabled: boolean;
@@ -269,7 +269,7 @@ export class AssistantTurnEnvironmentFactory {
 			proxyBaseUrl && tokenManager
 				? await this.modelService.resolveProxyModel(user, proxyBaseUrl, tokenManager, proxyContext)
 				: await this.modelService.resolveAgentModelConfig(user, proxyContext);
-		const memoryModelId = await this.modelService.resolveMemoryModelConfig(user, modelId, {
+		const utilityModelId = await this.modelService.resolveUtilityModelConfig(user, modelId, {
 			proxyBaseUrl,
 			tokenManager,
 			proxyContext,
@@ -279,7 +279,6 @@ export class AssistantTurnEnvironmentFactory {
 		const {
 			configEvalsEnabled,
 			conversationHistoryEnabled,
-			progressiveBuildingEnabled,
 			conciseStyleEnabled,
 			setupPanelEnabled,
 			setupPanelVariant,
@@ -294,22 +293,14 @@ export class AssistantTurnEnvironmentFactory {
 		const conversationHistory = conversationHistoryEnabled
 			? this.conversationHistoryService.forContext(user.id, boundProjectId, threadId)
 			: undefined;
-		// Follow-ups and resumed runs retain the selected mode if flags change.
-		const mode =
-			runtime.turnState.getBuildMode() ?? (progressiveBuildingEnabled ? 'progressive' : 'default');
 		// The operator pin sits below the request pin and the thread's own selection,
 		// so evals and in-flight conversations keep the profile they started on.
-		// The concise experiment applies only in default mode, so a progressive
-		// thread or assignment keeps its own profile.
 		const selectedPrompt = resolvePromptProfile({
 			version:
 				runtime.turnState.getPromptVersion() ??
 				resolveOperatorPromptVersion(this.instanceAiConfig.promptVersion) ??
-				(conciseStyleEnabled && mode === 'default' ? CONCISE_PROMPT_VERSION : undefined),
-			mode,
+				(conciseStyleEnabled ? CONCISE_PROMPT_VERSION : undefined),
 		});
-		const buildMode = selectedPrompt.profile.mode;
-		runtime.turnState.setBuildMode(buildMode);
 		// Read per run so a settings change applies to the next message.
 		const allowSendingParameterValues = await this.aiUsageService.isParameterValueSharingAllowed();
 		// The frontend writes the exit to thread metadata when the agent calls `leave-onboarding` or
@@ -338,6 +329,7 @@ export class AssistantTurnEnvironmentFactory {
 			credentialDescriptionsEnabled,
 			assistantSkillsEnabled,
 			modelId,
+			utilityModelId,
 			modelFetch: this.modelService.getModelFetch(),
 			allowSendingParameterValues,
 			temporaryWorkflowMarkers: runtime.temporaryWorkflowMarkers,
@@ -584,7 +576,7 @@ export class AssistantTurnEnvironmentFactory {
 			taskStorage,
 			workflowTasks,
 			modelId,
-			memoryModelId,
+			utilityModelId,
 			orchestrationContext,
 			conversationHistory,
 			// Reuse the gate results so a rollout change cannot split this turn.

@@ -152,6 +152,7 @@ export class ExecutionsPublicController {
 				redactExecutionData: query.redactExecutionData,
 				ipAddress: req.ip ?? '',
 				userAgent: req.headers['user-agent'] ?? '',
+				ctx: req.ctx,
 			});
 		}
 
@@ -210,6 +211,7 @@ export class ExecutionsPublicController {
 				redactExecutionData: query.redactExecutionData,
 				ipAddress: req.ip ?? '',
 				userAgent: req.headers['user-agent'] ?? '',
+				ctx: req.ctx,
 			});
 		}
 
@@ -411,12 +413,15 @@ export class ExecutionsPublicController {
 		}
 
 		try {
-			const retriedExecution = await this.executionService.retry({
-				executionId,
-				options: { loadWorkflow: body.loadWorkflow },
-				sharedWorkflowIds: sharedWorkflowsIds,
-				user: req.user,
-			});
+			const retriedExecution = await this.executionService.retry(
+				{
+					executionId,
+					options: { loadWorkflow: body.loadWorkflow },
+					sharedWorkflowIds: sharedWorkflowsIds,
+					user: req.user,
+				},
+				req.ctx,
+			);
 
 			this.eventService.emit('user-retried-execution', {
 				userId: req.user.id,

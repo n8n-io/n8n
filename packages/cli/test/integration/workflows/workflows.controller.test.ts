@@ -412,6 +412,32 @@ describe('POST /workflows', () => {
 		expect(historyVersion!.nodes).toEqual(payload.nodes);
 	});
 
+	test('should store the engine in the first workflow history version', async () => {
+		const payload = {
+			name: 'testing engine',
+			nodes: [
+				{
+					id: 'uuid-1234',
+					parameters: {},
+					name: 'Start',
+					type: 'n8n-nodes-base.manualTrigger',
+					typeVersion: 1,
+					position: [240, 300],
+				},
+			],
+			connections: {},
+			settings: { engineType: 'v2', availableInMCP: true },
+		};
+
+		const response = await authOwnerAgent.post('/workflows').send(payload);
+
+		expect(response.statusCode).toBe(200);
+		const historyVersion = await workflowHistoryRepository.findOneOrFail({
+			where: { workflowId: response.body.data.id },
+		});
+		expect(historyVersion.settings).toEqual({ engineType: 'v2' });
+	});
+
 	test('should set autosaved: true in workflow history when autosaved parameter is sent', async () => {
 		const payload = {
 			name: 'testing autosave',
@@ -5347,6 +5373,29 @@ describe('POST /workflows/:workflowId/run', () => {
 
 			const executions = await getAllExecutions();
 			expect(executions.filter((e) => e.workflowId === dbWorkflow.id)).toHaveLength(0);
+		});
+
+		test('should run on the draft engine while the published version runs on v1', async () => {
+			const isActiveSpy = vi
+				.spyOn(Container.get(ModuleRegistry), 'isActive')
+				.mockImplementation((name) => name === 'engine-v2');
+			onTestFinished(() => isActiveSpy.mockRestore());
+			const dbWorkflow = await createV2Workflow();
+			const publishedVersion = await createWorkflowHistoryItem(dbWorkflow.id, {
+				nodes: dbWorkflow.nodes,
+				connections: dbWorkflow.connections,
+				settings: { engineType: 'v1' },
+			});
+			await setActiveVersion(dbWorkflow.id, publishedVersion.versionId);
+
+			const response = await authOwnerAgent
+				.post(`/workflows/${dbWorkflow.id}/run`)
+				.send({ triggerToStartFrom: { name: TRIGGER_NAME } });
+
+			expect(response.statusCode).toBe(200);
+			expect(startExecution).toHaveBeenCalledWith(
+				objectContaining({ workflowId: dbWorkflow.id, mode: 'manual' }),
+			);
 		});
 
 		test('should seed a pinned node and reuse the trigger run data for a partial execution', async () => {

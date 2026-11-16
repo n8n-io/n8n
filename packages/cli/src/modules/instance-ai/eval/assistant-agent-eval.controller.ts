@@ -5,17 +5,21 @@ import {
 	InstanceAiEvalCredentialTestTargetRequest,
 	InstanceAiEvalExportExecutionRequest,
 	InstanceAiEvalRestoreExecutionRequest,
+	InstanceAiEvalRestoreThreadRequest,
 	InstanceAiEvalSeedDataTableRowsRequest,
 } from '@n8n/api-types';
 import { AuthenticatedRequest, type User } from '@n8n/db';
 import { Body, Delete, GlobalScope, Param, Post, Put, RestController } from '@n8n/decorators';
 import { ForbiddenError } from '@n8n/errors';
+import { clearedAgentBuilderTargetMetadata } from '@n8n/instance-ai';
 import type { Response } from 'express';
 
 import { SystemAgentEvalService } from '@/modules/agents/system-agents/system-agent-eval.service';
+import { SystemAgentThreadMetadataService } from '@/modules/agents/system-agents/system-agent-thread-metadata.service';
 
 import { ASSISTANT_AGENT_ID } from '../assistant-agent/assistant-turn-options';
 import { InstanceAiSettingsService } from '../instance-ai-settings.service';
+import { toRestorableMessages } from '../restorable-messages';
 import { EvalAssistantTurnOverrides } from './eval-assistant-turn-overrides';
 import { FailedExecutionPortabilityService } from './failed-execution-portability.service';
 import { EvalThreadCredentialAllowlistService } from './thread-credential-allowlist.service';
@@ -38,9 +42,13 @@ export class AssistantAgentEvalController {
 		private readonly credentialAllowlists: EvalThreadCredentialAllowlistService,
 		private readonly evalThreadRestore: EvalThreadRestoreService,
 		private readonly failedExecutionPortability: FailedExecutionPortabilityService,
+		private readonly threadMetadata: SystemAgentThreadMetadataService,
 	) {}
 
-	/** Create the thread before its first message, so the harness can set it up first. */
+	/**
+	 * Create the thread before its first message, so the harness can set it up
+	 * first. Store the given provenance in the thread metadata.
+	 */
 	@Post('/eval/threads')
 	@GlobalScope('instanceAi:manage')
 	async createThread(
@@ -55,6 +63,17 @@ export class AssistantAgentEvalController {
 			projectId: payload.projectId,
 			threadId: payload.threadId,
 		});
+		const { source, sourceContext } = payload;
+		if (source !== undefined || sourceContext !== undefined) {
+			// The trace of each turn reads the provenance from the thread metadata.
+			// The metadata needs the memory row, which comes with the first turn.
+			await this.systemAgentEval.ensureMemoryThread(ASSISTANT_AGENT_ID, req.user, thread.id);
+			await this.threadMetadata.patch(ASSISTANT_AGENT_ID, req.user, thread.id, (metadata) => ({
+				...metadata,
+				...(source !== undefined ? { source } : {}),
+				...(sourceContext !== undefined ? { sourceContext } : {}),
+			}));
+		}
 		return { threadId: thread.id, projectId: thread.projectId };
 	}
 
@@ -157,6 +176,97 @@ export class AssistantAgentEvalController {
 			payload.workflowId,
 			payload.envelope,
 		);
+	}
+
+	/**
+	 * Start the thread mid-conversation: recreate the artifacts of the seed,
+	 * then write its earlier messages. The steps run in the order of the
+	 * restore route of the current runtime.
+	 */
+	@Post('/eval/restore-thread')
+	@GlobalScope('instanceAi:manage')
+	async restoreThread(
+		req: AuthenticatedRequest,
+		_res: Response,
+		@Body payload: InstanceAiEvalRestoreThreadRequest,
+	) {
+		this.requireInstanceAiEnabled();
+		const { projectId } = await this.getThread(req.user, payload.threadId);
+		// Seed node credentials resolve within the pinned credential view of the thread.
+		const allowedCredentialIds = this.credentialAllowlists.get(payload.threadId);
+		// Check the messages first, so a bad seed creates no artifacts.
+		const messages = toRestorableMessages(payload.messages);
+		// The service rolls back its own partial work. The steps below cannot roll
+		// back the messages, so they come last.
+		const seed = await this.evalThreadRestore.restoreSeedArtifacts(
+			payload,
+			projectId,
+			req.user,
+			allowedCredentialIds ? new Set(allowedCredentialIds) : undefined,
+		);
+		let restored = 0;
+		// Kept so that a failed message write can undo the binding.
+		let priorMetadata: Record<string, unknown> | undefined;
+		let bindingWritten = false;
+		try {
+			if (seed.agentBuilderBinding || messages.length > 0) {
+				// The memory row comes with the first turn. The binding and the messages need it now.
+				await this.systemAgentEval.ensureMemoryThread(
+					ASSISTANT_AGENT_ID,
+					req.user,
+					payload.threadId,
+				);
+			}
+			// Bind the seeded agents, or the live turn rejects their refs as unknown agents.
+			if (seed.agentBuilderBinding) {
+				const binding = seed.agentBuilderBinding;
+				await this.threadMetadata.patch(
+					ASSISTANT_AGENT_ID,
+					req.user,
+					payload.threadId,
+					(metadata) => {
+						priorMetadata = metadata;
+						return { ...metadata, ...binding };
+					},
+				);
+				bindingWritten = true;
+			}
+			// A data-table-only seed sends no messages.
+			if (messages.length > 0) {
+				await this.systemAgentEval.saveMessages(
+					ASSISTANT_AGENT_ID,
+					req.user,
+					payload.threadId,
+					messages,
+				);
+				restored = messages.length;
+			}
+		} catch (error) {
+			if (bindingWritten) {
+				try {
+					// Put the binding keys back to their prior values. An absent key drops out of the stored JSON.
+					await this.threadMetadata.patch(
+						ASSISTANT_AGENT_ID,
+						req.user,
+						payload.threadId,
+						(metadata) => ({ ...metadata, ...clearedAgentBuilderTargetMetadata(priorMetadata) }),
+					);
+				} catch {
+					// Best-effort: do not hide the error that caused the rollback.
+				}
+			}
+			await seed.rollback();
+			throw error;
+		}
+		return {
+			ok: true,
+			threadId: payload.threadId,
+			restored,
+			workflowIds: seed.workflowIds,
+			dataTableIds: seed.dataTableIds,
+			agentIds: seed.agentIds,
+			folderIds: seed.folderIds,
+		};
 	}
 
 	/** Reset the rows of an existing data table in the thread's project. */

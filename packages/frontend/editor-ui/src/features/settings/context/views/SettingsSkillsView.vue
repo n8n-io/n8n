@@ -66,6 +66,7 @@ import SkillSourceConnectDialog, {
 } from '../components/SkillSourceConnectDialog.vue';
 import SkillsTable from '../components/SkillsTable.vue';
 import SkillSourceDeleteDialog from '../components/SkillSourceDeleteDialog.vue';
+import SkillSourceCredentialDialog from '../components/SkillSourceCredentialDialog.vue';
 import { useSkillSyncFlag } from '../composables/useSkillSyncFlag';
 import { CONTEXT_DEFAULT_SORT_BY, SKILLS_DEFAULT_PAGE_SIZE } from '../context.constants';
 import {
@@ -116,6 +117,7 @@ const { failedSkillReason, reasonText } = useSkillSourceReasons();
 const skillSyncEnabled = useSkillSyncFlag();
 const connectOpen = ref(false);
 const sourceToDelete = ref<SkillSourceListItem>();
+const sourceToReplaceCredential = ref<SkillSourceListItem>();
 
 const tableOptions = ref<TableOptions>({
 	page: 0,
@@ -809,6 +811,11 @@ async function onSourceDeleted() {
 	await load();
 }
 
+async function onSourceCredentialReplaced() {
+	sourceToReplaceCredential.value = undefined;
+	await loadSources();
+}
+
 async function loadSources() {
 	if (!skillSyncEnabled.value) return;
 	try {
@@ -840,7 +847,14 @@ async function onCheckSource(source: SkillSourceListItem) {
 		result = await skillsStore.checkSource(source.id);
 	} catch (error) {
 		const reason = error instanceof ResponseError ? error.meta?.reason : undefined;
-		// The user cannot pick another credential here, so that reason gets its own text.
+		if (reason === 'rate_limited') {
+			showMessage({
+				title: i18n.baseText('settings.context.skills.sources.health.delayed'),
+				message: i18n.baseText('settings.context.skills.sources.health.delayed.description'),
+				type: 'info',
+			});
+			return;
+		}
 		const text =
 			reason === 'credential_missing'
 				? i18n.baseText('settings.context.skills.checkForUpdates.error.credentialMissing')
@@ -1070,6 +1084,7 @@ onMounted(async () => {
 			@check-source="onCheckSource"
 			@review-source="reviewSource = $event"
 			@delete-source="sourceToDelete = $event"
+			@replace-credential="sourceToReplaceCredential = $event"
 			@stop-syncing="onStopSyncing($event)"
 			@delete="onDelete"
 			@update:options="onOptionsUpdate"
@@ -1127,6 +1142,13 @@ onMounted(async () => {
 			:source="sourceToDelete"
 			@close="sourceToDelete = undefined"
 			@deleted="onSourceDeleted"
+		/>
+		<SkillSourceCredentialDialog
+			v-if="skillSyncEnabled && sourceToReplaceCredential"
+			:key="sourceToReplaceCredential.id"
+			:source="sourceToReplaceCredential"
+			@close="sourceToReplaceCredential = undefined"
+			@replaced="onSourceCredentialReplaced"
 		/>
 		<input
 			ref="skillFolderInput"

@@ -76,6 +76,7 @@ import {
 	serializeAssistantTurnOptions,
 	type AssistantTurnOptions,
 } from './assistant-turn-options';
+import { AssistantWorkflowSetupRoute } from './assistant-workflow-setup-route';
 import {
 	AssistantSandboxWorkspaceSource,
 	type AssistantSandboxLease,
@@ -234,7 +235,10 @@ export class AssistantAgentProvider implements SystemAgentProvider<AssistantSand
 		const { user, thread } = turn;
 		const { runId, request } = options;
 		const { trace, errorReporting, experimentGates, contextAttachments, proxyRunConfig } = setup;
-		const runtime = this.createTurnRuntime(turn, options, trace);
+		const setupRoute = new AssistantWorkflowSetupRoute(turn.memory, thread.id, this.logger, {
+			setupPanelEnabled: experimentGates.setupPanelEnabled,
+		});
+		const runtime = this.createTurnRuntime(turn, options, trace, setupRoute);
 		const environment = await this.turnEnvironment.create(
 			{
 				user,
@@ -319,7 +323,6 @@ export class AssistantAgentProvider implements SystemAgentProvider<AssistantSand
 			...(turnInput ? { input: turnInput.fullMessage } : {}),
 			hostMetadata: this.hostMetadataOf(
 				options,
-				environment.skillScope.profile.mode,
 				this.turnOverrides.getPromptVersion(thread.id),
 				trace,
 			),
@@ -335,9 +338,18 @@ export class AssistantAgentProvider implements SystemAgentProvider<AssistantSand
 			...(trace
 				? { withTurnContext: async <T>(run: () => Promise<T>) => await trace.withContext(run) }
 				: {}),
+			// Routes a build to setup when the agent ends the turn without it.
+			onCompletingBoundary: async () => {
+				const instruction = await setupRoute.nextInstruction();
+				if (instruction) trace?.recordHostInstruction(instruction);
+				return instruction;
+			},
 			onChunk: (chunk) => {
 				trace?.observeChunk(chunk);
 				if (chunk.type === 'error') streamErrors.add(chunk.error);
+				if (chunk.type === 'tool-call-suspended') {
+					setupRoute.observeSuspension(chunk.toolName, chunk.suspendPayload);
+				}
 				// The SDK stores the input when it receives it, so the first chunk means it is accepted.
 				if (!inputAccepted && turnInput) {
 					inputAccepted = this.turnInput
@@ -361,6 +373,8 @@ export class AssistantAgentProvider implements SystemAgentProvider<AssistantSand
 					// Finish before the host events close and the next queued turn reads the cursor.
 					await inputAccepted;
 					await this.claimTurnUsage(user, thread.id, runId, outcome, usage);
+					// Before the card resumes, so that the resumed turn does not route setup again.
+					await setupRoute.markSuspendedSetupsRouted();
 					// A suspended turn can still be building the workflows it marked.
 					if (outcome.status !== 'suspended') {
 						const archived = await this.archiveTemporaryWorkflows(environment, runtime, thread.id);
@@ -394,6 +408,7 @@ export class AssistantAgentProvider implements SystemAgentProvider<AssistantSand
 		turn: SystemAgentTurn<AssistantSandboxLease>,
 		options: AssistantTurnOptions,
 		trace: AssistantTurnTrace | undefined,
+		setupRoute: AssistantWorkflowSetupRoute,
 	): AssistantTurnRuntime {
 		const lease = turn.workspace;
 		return {
@@ -427,6 +442,9 @@ export class AssistantAgentProvider implements SystemAgentProvider<AssistantSand
 				}
 			},
 			readSetupItemsSnapshots: async () => [],
+			// The setup panel announces the checklist without suspending the turn.
+			markWorkflowSetupHandled: async (workflowId) =>
+				await setupRoute.markWorkflowSetupHandled(workflowId),
 			sandbox: {
 				resolveConfig: async () =>
 					lease?.config ?? {
@@ -439,12 +457,10 @@ export class AssistantAgentProvider implements SystemAgentProvider<AssistantSand
 		};
 	}
 
-	/** The turn overrides supply the build mode and the prompt version. The client request supplies only the Browser Use report. */
+	/** The turn overrides supply the prompt version. The client request supplies only the Browser Use report. */
 	private createTurnState(threadId: string, options: AssistantTurnOptions): AssistantTurnState {
 		const overrides = this.turnOverrides;
 		return {
-			getBuildMode: () => overrides.getBuildMode(threadId),
-			setBuildMode: () => {},
 			getPromptVersion: () => overrides.getPromptVersion(threadId),
 			setPromptConfiguration: () => {},
 			setSetupPanelEnabled: () => {},
@@ -501,13 +517,11 @@ export class AssistantAgentProvider implements SystemAgentProvider<AssistantSand
 
 	private hostMetadataOf(
 		options: AssistantTurnOptions,
-		buildMode: string | undefined,
 		promptVersion: string | undefined,
 		trace: AssistantTurnTrace | undefined,
 	): JSONObject {
 		return {
 			[ASSISTANT_TURN_METADATA_KEY]: serializeAssistantTurnOptions(options),
-			buildMode: buildMode ?? null,
 			promptVersion: promptVersion ?? null,
 			...trace?.hostMetadata(),
 		};

@@ -36,6 +36,8 @@ const source: SkillSourceListItem = {
 	projectIcon: null,
 	canReview: true,
 	canDelete: true,
+	canReplaceCredential: false,
+	missingSkills: [],
 	health: 'connected',
 	lastCheckedAt: null,
 	path: '',

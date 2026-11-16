@@ -43,7 +43,6 @@ function createSetupFactory() {
 			resolveExperimentGates: vi.fn(async () => ({
 				configEvalsEnabled: false,
 				conversationHistoryEnabled: false,
-				progressiveBuildingEnabled: false,
 				conciseStyleEnabled: false,
 				setupPanelEnabled: false,
 				setupPanelVariant: 'control',
@@ -68,7 +67,7 @@ function createSetupFactory() {
 		modelService: {
 			getCredits: vi.fn(async () => ({ creditsQuota: -1, creditsClaimed: 0 })),
 			resolveAgentModelConfig: vi.fn(async () => 'anthropic/claude-sonnet'),
-			resolveMemoryModelConfig: vi.fn(async () => undefined),
+			resolveUtilityModelConfig: vi.fn(async () => undefined),
 			getModelFetch: vi.fn(() => undefined),
 		},
 		creditService: { claimRunUsage: vi.fn() },
@@ -97,8 +96,6 @@ function createRuntime(overrides: Partial<AssistantTurnRuntime> = {}): Assistant
 		getProjectId: vi.fn(async () => 'project-1'),
 		eventBus: mock<AssistantTurnRuntime['eventBus']>(),
 		turnState: {
-			getBuildMode: vi.fn(() => 'progressive' as const),
-			setBuildMode: vi.fn(),
 			getPromptVersion: vi.fn(() => undefined),
 			setPromptConfiguration: vi.fn(),
 			setSetupPanelEnabled: vi.fn(),
@@ -137,16 +134,16 @@ describe('AssistantTurnEnvironmentFactory', () => {
 		it('reads and stores the turn settings through the runtime', async () => {
 			const { factory } = createSetupFactory();
 			const runtime = createRuntime();
+			vi.mocked(runtime.turnState.getPromptVersion).mockReturnValue('concise@1');
 
 			const environment = await factory.create(params, runtime);
 
 			expect(runtime.turnState.setSetupPanelEnabled).toHaveBeenCalledWith(false);
-			expect(runtime.turnState.setBuildMode).toHaveBeenCalledWith('progressive');
 			expect(runtime.turnState.setPromptConfiguration).toHaveBeenCalledWith(
-				expect.objectContaining({ version: 'progressive@1' }),
+				expect.objectContaining({ version: 'concise@1' }),
 			);
 			expect(environment.orchestrationContext.promptConfiguration).toMatchObject({
-				version: 'progressive@1',
+				version: 'concise@1',
 			});
 		});
 

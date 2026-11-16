@@ -25,7 +25,7 @@ import { useSkillDeleteRule } from '../skills.utils';
 
 type SkillAction = 'edit' | 'timeline' | 'download' | 'stopSyncing' | 'delete';
 
-type SourceAction = 'checkNow' | 'openInGitHub' | 'deleteSource';
+type SourceAction = 'checkNow' | 'openInGitHub' | 'replaceCredential' | 'deleteSource';
 
 /** The fields of the action toggle item that this menu uses. */
 type SkillActionItem = {
@@ -62,6 +62,7 @@ const emit = defineEmits<{
 	checkSource: [source: SkillSourceListItem];
 	reviewSource: [source: SkillSourceListItem];
 	deleteSource: [source: SkillSourceListItem];
+	replaceCredential: [source: SkillSourceListItem];
 	stopSyncing: [skill: SkillListItem];
 	delete: [skill: SkillListItem];
 	'update:options': [payload: TableOptions];
@@ -199,6 +200,13 @@ function sourceActions(source: SkillSourceListItem) {
 		label: i18n.baseText('settings.context.skills.sources.openInGitHub'),
 		icon: 'external-link',
 	});
+	if (source.canReplaceCredential) {
+		items.push({
+			value: 'replaceCredential',
+			label: i18n.baseText('settings.context.skills.sources.replaceCredential.action'),
+			icon: 'key-round',
+		});
+	}
 	if (source.canDelete) {
 		items.push({
 			value: 'deleteSource',
@@ -213,6 +221,7 @@ function sourceActions(source: SkillSourceListItem) {
 function onSourceAction(source: SkillSourceListItem, action: SourceAction) {
 	if (action === 'checkNow') emit('checkSource', source);
 	else if (action === 'deleteSource') emit('deleteSource', source);
+	else if (action === 'replaceCredential') emit('replaceCredential', source);
 	else window.open(source.webUrl, '_blank', 'noopener,noreferrer');
 }
 
