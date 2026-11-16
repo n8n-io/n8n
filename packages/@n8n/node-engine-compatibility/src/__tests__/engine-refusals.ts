@@ -77,7 +77,7 @@ export const engineRefusals: EngineRefusal[] = [
 	{
 		name: 'a Split In Batches node sets its options from an expression',
 		workflow: batchNode({ batchSize: 1, options: '={{ {} }}' }),
-		engineError: 'sets its options from an expression',
+		engineError: /sets its options from an expression\. .*Use fixed options\./,
 		check: { code: 'SPLIT_IN_BATCHES_OPTIONS_EXPRESSION' },
 	},
 	{
@@ -89,7 +89,7 @@ export const engineRefusals: EngineRefusal[] = [
 	{
 		name: 'a Split In Batches node sets its batch size from an expression',
 		workflow: batchNode({ batchSize: '={{ 1 }}' }),
-		engineError: 'sets its batch size from an expression',
+		engineError: /sets its batch size from an expression\. .*Use a fixed batch size\./,
 		check: { code: 'SPLIT_IN_BATCHES_BATCH_SIZE' },
 	},
 	{
@@ -223,8 +223,10 @@ export const engineRefusals: EngineRefusal[] = [
  * - A wait for a sub-execution that waits, a send-and-wait approval, a wait that
  *   nothing can end, and a wait date that is not valid: `v1-step-executor.ts`. A
  *   signed resume URL without a resume secret: `v1-adapters.ts`. No check rule.
- * - An inline sub-workflow, a sub-workflow called more than once for one run of a
- *   node, and a sub-workflow call from a node other than Execute Sub-workflow:
+ * - An inline sub-workflow, and a sub-workflow called more than once for one run of a
+ *   node: `sub-workflow-calls.ts`. Check rules: SUB_WORKFLOW_NOT_IN_DATABASE, and
+ *   SUB_WORKFLOW_FOR_EACH_ITEM for "Run once for each item".
+ * - A sub-workflow call from a node other than Execute Sub-workflow:
  *   `sub-workflow-calls.ts`. No check rule.
  *
  * Not refused: engine v2 ignores these settings without an error, so no engine
