@@ -111,3 +111,41 @@ function toCanvasGroups(draft: WorkflowDraft) {
 		nodeIds: group.nodeIds.flatMap((id) => canvasIds.get(id) ?? []),
 	}));
 }
+
+/** A stable key for a draft node: its id, else its name. */
+export function draftNodeKey(node: DraftNode): string {
+	return node.id ?? node.name;
+}
+
+function keepConnections(connections: DraftConnections, names: Set<string>): DraftConnections {
+	const kept: DraftConnections = {};
+	for (const [source, byType] of Object.entries(connections)) {
+		if (!names.has(source)) continue;
+		kept[source] = Object.fromEntries(
+			Object.entries(byType).map(([type, outputs]) => [
+				type,
+				outputs.map((output) => output?.filter((connection) => names.has(connection.node)) ?? null),
+			]),
+		);
+	}
+	return kept;
+}
+
+/** The draft with only the given nodes, and the connections and groups between them. */
+export function withDraftNodes(draft: WorkflowDraft, nodes: DraftNode[]): WorkflowDraft {
+	const names = new Set(nodes.map((node) => node.name));
+	const ids = new Set(nodes.flatMap((node) => (node.id ? [node.id] : [])));
+	const { nodeGroups, ...workflow } = draft.workflow;
+	const groups = nodeGroups
+		?.map((group) => ({ ...group, nodeIds: group.nodeIds.filter((id) => ids.has(id)) }))
+		.filter((group) => group.nodeIds.length > 0);
+	return {
+		...draft,
+		workflow: {
+			...workflow,
+			nodes,
+			connections: keepConnections(workflow.connections, names),
+			...(groups ? { nodeGroups: groups } : {}),
+		},
+	};
+}

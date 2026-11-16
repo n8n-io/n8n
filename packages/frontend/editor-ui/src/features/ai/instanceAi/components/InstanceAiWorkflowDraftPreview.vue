@@ -9,7 +9,9 @@ import type { CanvasEventBusEvents } from '@/features/workflows/canvas/canvas.ty
 import WorkflowCanvas from '@/features/workflows/canvas/components/WorkflowCanvas.vue';
 
 import { useDraftWorkflowDocument } from '../composables/useDraftWorkflowDocument';
+import { useStaggeredList } from '../composables/useStaggeredList';
 import AgentBuildingIndicator from './AgentBuildingIndicator.vue';
+import { draftNodeKey, withDraftNodes } from '../instanceAi.workflowDraftCanvas';
 import type { WorkflowDraft } from '../instanceAi.workflowDrafts';
 
 const props = defineProps<{
@@ -22,7 +24,10 @@ const props = defineProps<{
 
 const i18n = useI18n();
 const eventBus = createEventBus<CanvasEventBusEvents>();
-const { documentStore } = useDraftWorkflowDocument(() => props.draft);
+// New nodes join one at a time, so the canvas grows with a rhythm.
+const visibleNodes = useStaggeredList(() => props.draft.workflow.nodes, { key: draftNodeKey });
+const visibleDraft = computed(() => withDraftNodes(props.draft, visibleNodes.value));
+const { documentStore } = useDraftWorkflowDocument(() => visibleDraft.value);
 // The editor canvas reads its workflow from this key, so it renders the draft.
 provide(WorkflowDocumentStoreKey, documentStore);
 
@@ -32,7 +37,7 @@ const canvasId = computed(() => `instance-ai-draft-${props.draft.filePath}`);
 // Fit the view when the agent adds nodes, so the newest one is on screen. A change
 // to existing nodes keeps the viewport the user has.
 watch(
-	() => props.draft.workflow.nodes.map((node) => node.name),
+	() => visibleNodes.value.map((node) => node.name),
 	(names, previous) => {
 		// Wait for the canvas to render the new nodes, so the fit includes them.
 		if (names.some((name) => !previous.includes(name))) {

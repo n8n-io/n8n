@@ -74,6 +74,11 @@ import InstanceAiAgentPreview from './components/InstanceAiAgentPreview.vue';
 import InstanceAiBrowserPreview from './components/InstanceAiBrowserPreview.vue';
 import InstanceAiCloudBrowserUserActionPanel from './components/InstanceAiCloudBrowserUserActionPanel.vue';
 import InstanceAiWorkflowDraftPreview from './components/InstanceAiWorkflowDraftPreview.vue';
+import { useDraftWorkflowPreviewTelemetry } from '@/experiments/instanceAiDraftWorkflowPreview/useDraftWorkflowPreviewTelemetry';
+import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
+import { useDraftWorkflowPreviewEnabled } from '@/experiments/instanceAiDraftWorkflowPreview/useDraftWorkflowPreviewEnabled';
+import { useWorkflowStaging } from './composables/useWorkflowStaging';
+import { isStagingDraft, toStagingNodeTypeInfo } from './instanceAi.workflowStaging';
 import InstanceAiSkillPreview from './components/InstanceAiSkillPreview.vue';
 import InstanceAiAppPreview from './components/InstanceAiAppPreview.vue';
 import { useAgentEvalsFlag } from '@/features/ai/evaluation.ee/composables/useAgentEvalsFlag';
@@ -264,6 +269,19 @@ watch(
 	{ immediate: true },
 );
 
+// Experiment cleanup (137_instance_ai_draft_workflow_preview)
+const draftWorkflowPreviewEnabled = useDraftWorkflowPreviewEnabled();
+const nodeTypesStore = useNodeTypesStore();
+const describeStagingNodeType = (nodeType: string) =>
+	toStagingNodeTypeInfo(nodeTypesStore.getNodeType(nodeType));
+const workflowStaging = useWorkflowStaging({
+	messages: () => thread.messages,
+	workflowDrafts: () => thread.workflowDrafts,
+	enabled: () => draftWorkflowPreviewEnabled.value,
+	describeType: describeStagingNodeType,
+});
+// EOF Experiment cleanup
+
 // --- Canvas / data table preview ---
 const appTargets = computed(() =>
 	getAppTargetsFromThreadMetadata(store.getThreadMetadata(props.threadId)),
@@ -289,6 +307,8 @@ const preview = useCanvasPreview({
 		},
 	},
 	workflowDrafts: () => thread.workflowDrafts,
+	stagingDraft: () => workflowStaging.stagingDraft.value,
+	buildTarget: () => workflowStaging.buildTarget.value,
 	dismissWorkflowDrafts: (workflowId) => thread.dismissWorkflowDrafts(workflowId),
 });
 const openSkillTabs = computed(() => preview.openTabs.value.filter((tab) => tab.type === 'skill'));
@@ -300,8 +320,24 @@ watch(
 	{ immediate: true },
 );
 
+// Experiment cleanup (137_instance_ai_draft_workflow_preview)
+const draftPreviewTelemetry = useDraftWorkflowPreviewTelemetry(thread);
+watch(
+	() => {
+		const draft = preview.activeWorkflowDraft.value;
+		if (!preview.isPreviewVisible.value || !draft) return undefined;
+		return isStagingDraft(draft) ? 'staging' : 'draft';
+	},
+	(kind) => {
+		if (kind) draftPreviewTelemetry.trackCanvasRendered(kind);
+	},
+	{ immediate: true },
+);
+// EOF Experiment cleanup
+
 // The saved canvas loaded under its draft, so the draft has nothing left to cover.
 function handleSavedWorkflowLoaded(workflowId: string) {
+	draftPreviewTelemetry.trackCanvasRendered('saved');
 	thread.dismissWorkflowDrafts(workflowId);
 }
 watch(
