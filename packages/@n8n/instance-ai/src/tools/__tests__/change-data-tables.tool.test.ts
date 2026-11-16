@@ -10,7 +10,7 @@ import { z } from 'zod';
 import { executeTool } from '../../__tests__/tool-test-utils';
 import { sanitizeInputSchema } from '../../agent/sanitize-mcp-schemas';
 import { OutsideThreadProjectError } from '../../errors/outside-thread-project.error';
-import type { DataTableColumnInfo, InstanceAiContext } from '../../types';
+import type { DataTableColumnInfo, DataTableSummary, InstanceAiContext } from '../../types';
 import { changeDataTablesInputSchema } from '../data-tables/change-data-tables.schema';
 import { createChangeDataTablesTool } from '../data-tables/change-data-tables.tool';
 import { confirmationSuspendSchema } from '../data-tables/confirmation';
@@ -33,7 +33,26 @@ function column(name: string, index = 0): DataTableColumnInfo {
 	return { id: `col-${name}`, name, type: 'string', index };
 }
 
-/** A context whose existing table "T" resolves by name or by its ID "dt-T". */
+/** The table that a batch create returns. Its columns get IDs like existing columns. */
+function createdTable(
+	name: string,
+	columns: Array<{ name: string; type: string }>,
+	id = 'dt-new',
+): DataTableSummary {
+	return {
+		id,
+		name,
+		projectId: 'proj-1',
+		columns: columns.map((c) => ({ id: `col-${c.name}`, name: c.name, type: c.type })),
+		createdAt: '2026-01-01T00:00:00.000Z',
+		updatedAt: '2026-01-01T00:00:00.000Z',
+	};
+}
+
+/**
+ * A context whose existing table "T" resolves by name or by its ID "dt-T".
+ * A created table gets the ID "dt-new".
+ */
 function contextWithTables(
 	columnsByTableId: Record<string, DataTableColumnInfo[]> = {},
 	overrides: Parameters<typeof createMockContext>[0] = {},
@@ -44,6 +63,7 @@ function contextWithTables(
 		return { id: `dt-${name}`, name, projectId: 'proj-1' };
 	});
 	context.dataTableService.getSchema = vi.fn(async (id: string) => columnsByTableId[id] ?? []);
+	context.dataTableService.create = vi.fn(async (name, columns) => createdTable(name, columns));
 	return context;
 }
 
@@ -276,14 +296,15 @@ describe('change_data_tables tool', () => {
 				],
 			});
 
-			expect(result).toEqual({ success: true, validated: true, changes: 3 });
+			expect(result).toMatchObject({ success: true, skipped: [] });
 			expect(context.dataTableService.resolveTableReference).not.toHaveBeenCalled();
 			expect(context.assertInThreadProject).not.toHaveBeenCalled();
-			expectNoCardAndNoWrites(context, suspend);
+			expect(suspend).not.toHaveBeenCalled();
 		});
 
 		it('accepts renaming a column that an earlier change adds', async () => {
 			const context = contextWithTables({ 'dt-T': [column('name')] }, { permissions: ALLOW_ALL });
+			vi.mocked(context.dataTableService.addColumn).mockResolvedValue(column('X'));
 			const { result } = await runBatch(context, {
 				changes: [
 					{ action: 'add-column', table: 'T', column: 'X', type: 'string' },
@@ -291,7 +312,7 @@ describe('change_data_tables tool', () => {
 				],
 			});
 
-			expect(result).toMatchObject({ success: true, validated: true });
+			expect(result).toMatchObject({ success: true });
 		});
 
 		it('accepts a column ID for a column deletion', async () => {
@@ -300,7 +321,7 @@ describe('change_data_tables tool', () => {
 				changes: [{ action: 'delete-column', table: 'T', column: 'col-name' }],
 			});
 
-			expect(result).toMatchObject({ success: true, validated: true });
+			expect(result).toMatchObject({ success: true });
 		});
 
 		it('reads each existing table and its schema once', async () => {
@@ -325,7 +346,7 @@ describe('change_data_tables tool', () => {
 				changes: [{ action: 'insert-rows', table: 'dt-1', rows: [{ a: 1 }] }],
 			});
 
-			expect(result).toMatchObject({ success: true, validated: true });
+			expect(result).toMatchObject({ success: true });
 			expect(context.assertInThreadProject).toHaveBeenCalledWith({
 				kind: 'data-table',
 				id: 'dt-1',
@@ -496,7 +517,7 @@ describe('change_data_tables tool', () => {
 				],
 			});
 
-			expect(result).toMatchObject({ success: true, validated: true });
+			expect(result).toMatchObject({ success: true });
 		});
 	});
 
@@ -697,17 +718,22 @@ describe('change_data_tables tool', () => {
 			expect(result).toMatchObject({ success: true });
 			const granted = grantSessionToolApproval.mock.calls.map(([key]) => key);
 			expect(granted.sort()).toEqual(
-				['create', 'insert-rows', 'add-column'].map(buildDataTablesSessionGrantKey).sort(),
+				[
+					...['create', 'insert-rows', 'add-column'].map(buildDataTablesSessionGrantKey),
+					buildOwnedDataTableGrantKey('dt-new'),
+				].sort(),
 			);
 		});
 
-		it('grants nothing when the user approves only this batch', async () => {
+		it('grants no action when the user approves only this batch', async () => {
 			const grantSessionToolApproval = vi.fn();
 			const context = contextWithTables({}, { grantSessionToolApproval });
 			const result = await resumeBatch(context, { changes: [createA, insertIntoA] }, true, 'once');
 
 			expect(result).toMatchObject({ success: true });
-			expect(grantSessionToolApproval).not.toHaveBeenCalled();
+			expect(grantSessionToolApproval.mock.calls).toEqual([
+				[buildOwnedDataTableGrantKey('dt-new')],
+			]);
 		});
 
 		it('grants no destructive action for the session', async () => {
@@ -742,15 +768,14 @@ describe('change_data_tables tool', () => {
 			expect(cardOf(suspend).approvalDetails.changes).toHaveLength(2);
 		});
 
-		it.each([
-			{ name: 'creating a table', change: createA },
-			{ name: 'deleting an owned table', change: { action: 'delete', table: 'dt-1' } },
-		])('shows the card for $name even when the thread owns the table', async ({ change }) => {
+		it('shows the card for deleting a table even when the thread owns it', async () => {
 			const context = contextWithTables(
 				{},
 				{ sessionApprovedToolKeys: new Set([buildOwnedDataTableGrantKey('dt-1')]) },
 			);
-			const { suspend } = await runBatch(context, { changes: [change] });
+			const { suspend } = await runBatch(context, {
+				changes: [{ action: 'delete', table: 'dt-1' }],
+			});
 
 			expect(cardOf(suspend).approvalDetails.changes).toHaveLength(1);
 		});
@@ -770,6 +795,247 @@ describe('change_data_tables tool', () => {
 			changes: [createA, { action: 'delete', table: 'A' }, createA],
 		});
 
-		expect(result).toMatchObject({ success: true, validated: true });
+		expect(result).toMatchObject({ success: true });
+	});
+
+	describe('running the batch', () => {
+		const filterOnName = {
+			type: 'and',
+			filters: [{ columnName: 'name', condition: 'eq', value: 'x' }],
+		} as const;
+		const insertIntoA = { action: 'insert-rows', table: 'A', rows: [{ email: 'a@b.c' }] };
+
+		function allowAll(
+			columnsByTableId: Record<string, DataTableColumnInfo[]> = {},
+			overrides: Parameters<typeof createMockContext>[0] = {},
+		) {
+			return contextWithTables(columnsByTableId, { permissions: ALLOW_ALL, ...overrides });
+		}
+
+		/** A conflict error as the CLI throws it, wrapped like the service wraps it. */
+		function nameConflictError() {
+			const conflict = new Error('conflict');
+			Object.defineProperty(conflict, 'constructor', {
+				value: { name: 'DataTableNameConflictError' },
+			});
+			return new Error('wrapped', { cause: conflict });
+		}
+
+		it('runs the changes in the given order', async () => {
+			const context = allowAll({ 'dt-T': [column('name')] });
+			const { result } = await runBatch(context, {
+				changes: [
+					createA,
+					{ action: 'add-column', table: 'T', column: 'x', type: 'string' },
+					insertIntoA,
+					{ action: 'delete-rows', table: 'T', filter: filterOnName },
+				],
+			});
+
+			const service = vi.mocked(context.dataTableService);
+			const order = [service.create, service.addColumn, service.insertRows, service.deleteRows].map(
+				(method) => method.mock.invocationCallOrder[0],
+			);
+			expect(order).toEqual([...order].sort((a, b) => a - b));
+			expect(result).toMatchObject({
+				success: true,
+				applied: [
+					{ index: 0, action: 'create' },
+					{ index: 1, action: 'add-column' },
+					{ index: 2, action: 'insert-rows' },
+					{ index: 3, action: 'delete-rows' },
+				],
+				skipped: [],
+			});
+		});
+
+		it('inserts rows into a table created earlier in the batch', async () => {
+			const context = allowAll();
+			const { result } = await runBatch(context, {
+				projectId: 'proj-1',
+				changes: [createA, insertIntoA],
+			});
+
+			expect(context.dataTableService.create).toHaveBeenCalledWith('A', createA.columns, {
+				projectId: 'proj-1',
+			});
+			expect(context.dataTableService.insertRows).toHaveBeenCalledWith('dt-new', insertIntoA.rows, {
+				projectId: 'proj-1',
+			});
+			expect(result).toMatchObject({
+				applied: [
+					{ index: 0, table: { id: 'dt-new', name: 'A' }, result: { table: { id: 'dt-new' } } },
+					{ index: 1, table: { id: 'dt-new', name: 'A' } },
+				],
+			});
+		});
+
+		it('uses the column ID of an existing column', async () => {
+			const context = allowAll({ 'dt-T': [{ ...column('status'), id: 'c-7' }] });
+			await runBatch(context, {
+				changes: [{ action: 'delete-column', table: 'T', column: 'status' }],
+			});
+
+			expect(context.dataTableService.deleteColumn).toHaveBeenCalledWith('dt-T', 'c-7', {
+				projectId: 'proj-1',
+			});
+		});
+
+		it('uses the column ID from the result of an earlier add-column', async () => {
+			const context = allowAll({ 'dt-T': [column('name')] });
+			vi.mocked(context.dataTableService.addColumn).mockResolvedValue({
+				...column('X'),
+				id: 'c-x',
+			});
+			await runBatch(context, {
+				changes: [
+					{ action: 'add-column', table: 'T', column: 'X', type: 'string' },
+					{ action: 'rename-column', table: 'T', column: 'X', newName: 'Y' },
+					{ action: 'rename-column', table: 'T', column: 'Y', newName: 'Z' },
+				],
+			});
+
+			const renames = vi.mocked(context.dataTableService.renameColumn).mock.calls;
+			expect(renames).toEqual([
+				['dt-T', 'c-x', 'Y', { projectId: 'proj-1' }],
+				['dt-T', 'c-x', 'Z', { projectId: 'proj-1' }],
+			]);
+		});
+
+		it('uses the column ID from the result of an earlier create', async () => {
+			const context = allowAll();
+			await runBatch(context, {
+				changes: [createA, { action: 'delete-column', table: 'A', column: 'email' }],
+			});
+
+			expect(context.dataTableService.deleteColumn).toHaveBeenCalledWith('dt-new', 'col-email', {
+				projectId: 'proj-1',
+			});
+		});
+
+		it('reads the schema when a result does not name the column', async () => {
+			const context = allowAll();
+			vi.mocked(context.dataTableService.create).mockResolvedValue({
+				...createdTable('A', []),
+			});
+			vi.mocked(context.dataTableService.getSchema).mockResolvedValue([
+				{ ...column('email'), id: 'c-9' },
+			]);
+			await runBatch(context, {
+				changes: [createA, { action: 'rename-column', table: 'A', column: 'email', newName: 'e' }],
+			});
+
+			expect(context.dataTableService.getSchema).toHaveBeenCalledWith('dt-new', {
+				projectId: 'proj-1',
+			});
+			expect(context.dataTableService.renameColumn).toHaveBeenCalledWith('dt-new', 'c-9', 'e', {
+				projectId: 'proj-1',
+			});
+		});
+
+		it('stops at the first failure and lists the changes it skipped', async () => {
+			const context = allowAll({ 'dt-T': [column('name')] });
+			vi.mocked(context.dataTableService.addColumn).mockRejectedValue(new Error('boom'));
+			const { result } = await runBatch(context, {
+				changes: [
+					createA,
+					{ action: 'add-column', table: 'T', column: 'x', type: 'string' },
+					{ action: 'delete-rows', table: 'T', filter: filterOnName },
+				],
+			});
+
+			expect(result).toEqual({
+				success: false,
+				applied: [expect.objectContaining({ index: 0, action: 'create' })],
+				failed: { index: 1, action: 'add-column', error: 'boom' },
+				skipped: [2],
+			});
+			expect(context.dataTableService.deleteRows).not.toHaveBeenCalled();
+		});
+
+		it('reports each changed table once, also after a failure', async () => {
+			const onArtifactChanged = vi.fn();
+			const context = allowAll(
+				{ 'dt-T': [column('name')], 'dt-B': [column('name')] },
+				{ onArtifactChanged },
+			);
+			vi.mocked(context.dataTableService.deleteRows).mockRejectedValue(new Error('boom'));
+			await runBatch(context, {
+				changes: [
+					createA,
+					insertIntoA,
+					{ action: 'add-column', table: 'T', column: 'x', type: 'string' },
+					{ action: 'update-rows', table: 'T', filter: filterOnName, data: { name: 'y' } },
+					{ action: 'delete-rows', table: 'B', filter: filterOnName },
+				],
+			});
+
+			const reported = onArtifactChanged.mock.calls.map(([artifact]) => artifact);
+			expect(reported).toEqual([
+				{ type: 'data-table', id: 'dt-new', name: 'A', projectId: 'proj-1' },
+				{ type: 'data-table', id: 'dt-T', name: 'T', projectId: 'proj-1' },
+			]);
+		});
+
+		it('does not report a table that the batch deletes', async () => {
+			const onArtifactChanged = vi.fn();
+			const context = allowAll({}, { onArtifactChanged });
+			await runBatch(context, {
+				changes: [createA, insertIntoA, { action: 'delete', table: 'A' }],
+			});
+
+			expect(onArtifactChanged).not.toHaveBeenCalled();
+		});
+
+		it('keeps the result when reporting a table fails', async () => {
+			const onArtifactChanged = vi.fn().mockRejectedValue(new Error('report failed'));
+			const context = allowAll({}, { onArtifactChanged });
+			const { result } = await runBatch(context, { changes: [createA] });
+
+			expect(result).toMatchObject({ success: true, applied: [{ index: 0 }] });
+		});
+
+		it('records a created table as owned when no card is shown', async () => {
+			const grantSessionToolApproval = vi.fn();
+			const context = allowAll({}, { grantSessionToolApproval });
+			await runBatch(context, { changes: [createA] });
+
+			expect(grantSessionToolApproval).toHaveBeenCalledWith(buildOwnedDataTableGrantKey('dt-new'));
+		});
+
+		it('records a created table as owned after an approved card', async () => {
+			const grantSessionToolApproval = vi.fn();
+			const context = contextWithTables({}, { grantSessionToolApproval });
+			await resumeBatch(context, { changes: [createA] }, true, 'once');
+
+			expect(grantSessionToolApproval).toHaveBeenCalledWith(buildOwnedDataTableGrantKey('dt-new'));
+		});
+
+		it('returns a hint and skips the rest when the table name is taken', async () => {
+			const context = allowAll();
+			vi.mocked(context.dataTableService.create).mockRejectedValue(nameConflictError());
+			const { result } = await runBatch(context, { changes: [createA, insertIntoA] });
+
+			expect(result).toMatchObject({
+				success: false,
+				applied: [],
+				failed: { index: 0, action: 'create', error: expect.any(String) },
+				skipped: [1],
+			});
+			expect(result).not.toMatchObject({ failed: { error: 'wrapped' } });
+			expect(context.dataTableService.insertRows).not.toHaveBeenCalled();
+		});
+
+		it('runs the batch on an approved resume without a second card', async () => {
+			const context = contextWithTables();
+			const result = await resumeBatch(context, { changes: [createA, insertIntoA] }, true);
+
+			expect(result).toMatchObject({ success: true, applied: [{ index: 0 }, { index: 1 }] });
+			expect(context.dataTableService.insertRows).toHaveBeenCalledWith(
+				'dt-new',
+				insertIntoA.rows,
+				expect.anything(),
+			);
+		});
 	});
 });

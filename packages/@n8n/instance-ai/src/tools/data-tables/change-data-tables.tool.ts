@@ -17,6 +17,7 @@ import {
 	changeDataTablesInputSchema,
 	type ChangeDataTablesInput,
 } from './change-data-tables.schema';
+import { runChanges } from './change-data-tables.run';
 import { validateChanges, type ChangePlan } from './change-data-tables.validate';
 import {
 	confirmationResumeSchema,
@@ -71,7 +72,7 @@ async function handleChanges(
 	const { plan } = validation;
 	if (ctx.resumeData) return await resumeChanges(context, plan, ctx.resumeData);
 	if (batchNeedsApproval(context, plan)) return await ctx.suspend(buildApprovalRequest(plan));
-	return runChanges(plan);
+	return await runChanges(context, plan);
 }
 
 async function resumeChanges(context: InstanceAiContext, plan: ChangePlan, resumeData: ResumeData) {
@@ -84,18 +85,13 @@ async function resumeChanges(context: InstanceAiContext, plan: ChangePlan, resum
 		};
 	}
 	if (resumeData.scope === 'session') await grantBatchActions(context, plan);
-	return runChanges(plan);
+	return await runChanges(context, plan);
 }
 
 async function grantBatchActions(context: InstanceAiContext, plan: ChangePlan) {
 	for (const action of sessionGrantableActions(plan)) {
 		await context.grantSessionToolApproval?.(buildDataTablesSessionGrantKey(action));
 	}
-}
-
-// Placeholder until the run stage exists.
-function runChanges(plan: ChangePlan) {
-	return { success: true, validated: true, changes: plan.changes.length };
 }
 
 export function createChangeDataTablesTool(context: InstanceAiContext) {
