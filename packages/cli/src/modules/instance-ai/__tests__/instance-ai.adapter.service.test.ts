@@ -5209,6 +5209,27 @@ describe('createWorkflowAdapter', () => {
 			);
 		});
 
+		it('restores the version-scoped settings of the version', async () => {
+			const { adapter, mockWorkflowService, mockWorkflowHistoryService } =
+				createWorkflowAdapterForTests();
+			mockWorkflowHistoryService.getVersion.mockResolvedValue({
+				versionId: 'v-1',
+				nodes: [],
+				connections: {},
+				nodeGroups: [],
+				settings: { engineType: 'v1' },
+			});
+
+			await adapter.restoreVersion?.('wf-1', 'v-1');
+
+			expect(mockWorkflowService.update).toHaveBeenCalledWith(
+				expect.anything(),
+				expect.anything(),
+				'wf-1',
+				expect.objectContaining({ restoredVersionSettings: { engineType: 'v1' } }),
+			);
+		});
+
 		it('keeps a committed update when notifying open editors fails', async () => {
 			const { adapter, mockCollaborationService, mockLogger } = createWorkflowAdapterForTests();
 			mockCollaborationService.broadcastWorkflowUpdate.mockRejectedValue(new Error('push is down'));
