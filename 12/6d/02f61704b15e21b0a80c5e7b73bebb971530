@@ -1,0 +1,19 @@
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentChatMode.test.ts
+  s_4ac30b523ff5a0::t_ac03627b2aac31 1,3,188-206,340-359,361-371
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "126d02f61704b15e21b0a80c5e7b73bebb971530",
+  "prompts": {},
+  "sessions": {
+    "s_4ac30b523ff5a0": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "01a1d6bd-91a3-73e0-90b4-f9a04d4c977f",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "Thiago Pacheco <hi@sudoish.com>"
+    }
+  }
+}

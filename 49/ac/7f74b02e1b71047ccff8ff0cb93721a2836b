@@ -1,0 +1,21 @@
+packages/frontend/@n8n/storybook/vitest.visual.config.ts
+  s_0c556d094c6550::t_2fe7fe043355c9 77-80
+packages/frontend/@n8n/design-system/README.md
+  s_0c556d094c6550::t_83cb8c34a837ed 214,217
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "49ac7f74b02e1b71047ccff8ff0cb93721a2836b",
+  "prompts": {},
+  "sessions": {
+    "s_0c556d094c6550": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "a73fc0b9-98d9-46c5-bfe5-b13c4f4f2bf0",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "alex <alex@n8n.io>"
+    }
+  }
+}

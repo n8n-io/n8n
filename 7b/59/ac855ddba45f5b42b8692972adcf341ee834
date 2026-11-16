@@ -1,0 +1,31 @@
+packages/frontend/@n8n/frontend-test-utils/src/defaults.ts
+  s_3fcd2798627395::t_e136f58bf9bca9 21
+packages/@n8n/config/test/config.test.ts
+  s_3fcd2798627395::t_e136f58bf9bca9 70
+packages/@n8n/config/src/configs/__tests__/locales.config.test.ts
+  s_3fcd2798627395::t_e136f58bf9bca9 16,20
+  s_3fcd2798627395::t_73ff736f2de394 57,59
+packages/@n8n/config/src/configs/locales.config.ts
+  s_3fcd2798627395::t_e9781ab245afb6 40,43
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "7b59ac855ddba45f5b42b8692972adcf341ee834",
+  "prompts": {},
+  "humans": {
+    "h_c63dce324dfc7b": {
+      "author": "konstantintieber <konstantin.tieber@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_3fcd2798627395": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "385f8a79-ffe5-46ae-a396-9600aa41e650",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "konstantintieber <konstantin.tieber@n8n.io>"
+    }
+  }
+}
