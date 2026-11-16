@@ -1200,6 +1200,50 @@ function pairedInputIndex(pair: Json, k: number, inputCount: number, outputCount
 	return typeof index === 'number' && index >= 0 && index < inputCount && Math.floor(index) === index ? index : -1;
 }`,
 	},
+	pairedSourceIndexes: {
+		uses: [],
+		source: `/**
+ * The indexes of the input items that v1 pairs with output item \`k\` of a node run, as the
+ * run data of v1 has them: the paired items that the node gave (\`pair\`), or v1's own pairing
+ * by position when the node gave none (assignPairedItems).
+ */
+function pairedSourceIndexes(pair: Json, k: number, inputCount: number, outputCount: number): Json[] {
+	if (pair === null || pair === undefined) {
+		if (inputCount === 1 || outputCount === 1) return [0];
+		return outputCount === inputCount ? [k] : [];
+	}
+	const list: Json[] = Array.isArray(pair) ? pair : [pair];
+	const out: Json[] = [];
+	for (const one of list) {
+		if (typeof one === 'number') out.push(one);
+		else if (one === null || one === undefined || typeof one !== 'object' || one.input || one.sourceOverwrite) throw new Error('A paired item of this form has no compiled form.');
+		else out.push(one.item);
+	}
+	return out;
+}`,
+	},
+	pairedSourceIndex: {
+		uses: ['pairedSourceIndexes'],
+		source: `/**
+ * The index of the input item of output item \`k\` of a compiled node, for \`$('Node').item\`
+ * in a later node. \`run\` is what the node gave: the items and the paired item of each item.
+ * v1 fails when the item has no paired item, and when its paired items lead to different
+ * items of the earlier node. \`direct\` is true when the input items of this node are the
+ * items of that earlier node. If not, different paired items can lead to one item in v1, and
+ * that case has no compiled form.
+ */
+function pairedSourceIndex(run: Json, k: number, inputCount: number, node: string, direct: boolean): number {
+	let index = -1;
+	for (const found of pairedSourceIndexes(run.paired[k], k, inputCount, run.items.length)) {
+		if (index >= 0 && found !== index) throw new Error(direct ? 'Multiple matches found' : 'Several paired items of one item have no compiled form.');
+		index = found;
+	}
+	if (typeof index !== 'number' || index < 0 || index >= inputCount || Math.floor(index) !== index) {
+		throw new Error("Paired item data for item from node '" + node + "' is unavailable. Ensure '" + node + "' is providing the required output.");
+	}
+	return index;
+}`,
+	},
 	splitPairedErrorItems: {
 		uses: ['isErrorItem', 'mergedErrorItem', 'pairedInputIndex'],
 		source: `/**

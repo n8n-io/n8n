@@ -429,10 +429,13 @@ export function itemParameterEntries(
 	parameters: Record<string, unknown>,
 	paths: string[],
 	items: Array<Record<string, unknown>>,
+	firstOnly: string[] = [],
 ): Array<Record<string, unknown>> {
-	return items.map((item) =>
+	return items.map((item, k) =>
 		Object.fromEntries(
-			paths.map((path) => [path, valueForItem(valueAtPath(parameters, path), item)]),
+			paths
+				.filter((path) => k === 0 || !firstOnly.includes(path))
+				.map((path) => [path, valueForItem(valueAtPath(parameters, path), item)]),
 		),
 	);
 }
@@ -445,7 +448,12 @@ function entriesOf(
 ): ItemEntries {
 	return compiled.itemParameters.length === 0
 		? undefined
-		: itemParameterEntries(compiled.resolved, compiled.itemParameters, c.items ?? [{}]);
+		: itemParameterEntries(
+				compiled.resolved,
+				compiled.itemParameters,
+				c.items ?? [{}],
+				compiled.firstItemParameters,
+			);
 }
 
 function continueWorkflow(
@@ -535,6 +543,45 @@ export default workflow({
 	},
 });
 `;
+}
+
+function pairedSourceOf(c: EquivalenceCase, type: string, each: ItemEntries): string {
+	const credentialType = c.credential?.type;
+	return `import { webhook, workflow } from '@n8n/workflow-lang';
+
+type Json = any;
+
+export default workflow({
+	triggers: [webhook({ path: 'verify' })],
+	${credentialType ? `credentials: { c: { type: ${JSON.stringify(credentialType)} } },` : ''}
+	async run(ctx) {
+		const items: Json[] = ${JSON.stringify(c.items ?? [{}])};
+		const run: Json = await ctx.node({
+			name: 'Node',
+			type: ${JSON.stringify(type)},
+			typeVersion: ${c.typeVersion},
+			parameters: ${JSON.stringify(each ? { each } : {})},
+			items,
+			${credentialType ? "credential: 'c'," : ''}
+		});
+		const lineage: Json[] = [];
+		for (let k = 0; k < run.items.length; k++) {
+			lineage.push(pairedSourceIndexes(run.paired[k], k, items.length, run.items.length));
+		}
+		return { items: run.items, lineage };
+	},
+});
+
+${helperSources(['pairedSourceIndexes']).join('\n\n')}
+`;
+}
+
+function lineageOfV1(paired: unknown[]): unknown[] {
+	return paired.map((pair) =>
+		(pair === null || pair === undefined ? [] : Array.isArray(pair) ? pair : [pair]).map(
+			(one: unknown) => (isRecord(one) ? one.item : one),
+		),
+	);
 }
 
 function eachItemSourceOf(c: EquivalenceCase, type: string, each: ItemEntries): string {
@@ -682,6 +729,7 @@ export async function differenceFromV1(
 		pairing?: ContinueForm;
 		pairings?: Set<ErrorPairing>;
 		eachItem?: boolean;
+		paired?: boolean;
 	} = {},
 ): Promise<string | undefined> {
 	const mode: ErrorMode =
@@ -689,22 +737,33 @@ export async function differenceFromV1(
 	const continues = mode !== 'stopWorkflow';
 	if (c.settings !== undefined && !continues)
 		return 'node settings have a check only under a "continue" setting';
+	if (options.paired === true && continues)
+		return 'the paired items have a check only when the node stops the workflow';
 	const compiled = compileForCheck(
 		sources,
 		{ type: c.type, version: c.typeVersion, parameters: c.parameters },
 		credentialsOf(c, registry),
 		mode,
-		options.pairing === 'once' &&
-			pairedOutputOf(mode === 'continueErrorOutput', errorRetryOf(c.settings ?? {})),
+		options.paired === true ||
+			(options.pairing === 'once' &&
+				pairedOutputOf(mode === 'continueErrorOutput', errorRetryOf(c.settings ?? {}))),
 	);
 	if ('errors' in compiled) return `does not compile: ${compiled.errors[0]}`;
-	const asked: EquivalenceCase = compiled.storesResponses ? { ...c, responseBytes: true } : c;
+	const inEngine: EquivalenceCase =
+		options.paired === true
+			? { ...c, name: `${c.name} in the engine`, settings: { onError: 'stopWorkflow' } }
+			: c;
+	const asked: EquivalenceCase = compiled.storesResponses
+		? { ...inEngine, responseBytes: true }
+		: inEngine;
 	const credentialType = c.credential?.type;
 	const each = entriesOf(c, compiled);
 	const plainSource =
-		options.eachItem === true
-			? eachItemSourceOf(c, compiled.type, each)
-			: workflowSourceOf(c, compiled.type, each ? { each } : {});
+		options.paired === true
+			? pairedSourceOf(c, compiled.type, each)
+			: options.eachItem === true
+				? eachItemSourceOf(c, compiled.type, each)
+				: workflowSourceOf(c, compiled.type, each ? { each } : {});
 	const recordPlain = async (testCase: EquivalenceCase) =>
 		await within(8000, options.cache === true ? recordV1Cached(testCase) : recordV1(testCase));
 	const record = async (testCase: EquivalenceCase) =>
@@ -876,6 +935,25 @@ export async function differenceFromV1(
 	}
 	if (out.status !== 'ok')
 		return `the compiled node fails: ${JSON.stringify(out.result).slice(0, 120)}`;
+	if (options.paired === true) {
+		const mine = isRecord(out.result) ? out.result : {};
+		const items = withoutRandomValues(
+			mine.items,
+			v1.outputs?.[0] ?? [],
+			others.map((other) => (isRecord(other.result) ? other.result.items : undefined)),
+			compiled.randoms,
+		);
+		if (
+			JSON.stringify(comparableOutput(items.mine)) !==
+			JSON.stringify(comparableOutput(items.theirs))
+		)
+			return 'the output differs from the run data of the engine';
+		const lineage = JSON.stringify(mine.lineage);
+		const expected = JSON.stringify(lineageOfV1(v1.paired?.[0] ?? []));
+		return lineage === expected
+			? undefined
+			: `the paired items differ: ${lineage.slice(0, 60)} / ${expected.slice(0, 60)}`;
+	}
 	const results = withoutRandomValues(
 		out.result,
 		v1.output,

@@ -83,6 +83,12 @@ export interface Recording {
 	 */
 	nodePaired?: boolean[];
 	/**
+	 * The `pairedItem` of each item of every output in the run data of n8n's engine (cases with
+	 * `settings`), after the engine paired the items that the node did not pair. null when an
+	 * item has none.
+	 */
+	paired?: unknown[][];
+	/**
 	 * The message of the error of a node that threw under a "continue" setting (cases with
 	 * `settings`): the engine keeps it on the run data and passes the input items on.
 	 */

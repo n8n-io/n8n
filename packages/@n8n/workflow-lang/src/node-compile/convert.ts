@@ -234,6 +234,8 @@ export interface CompiledNode {
 
 	itemParameters: string[];
 
+	firstItemParameters: string[];
+
 	deferred: string[];
 
 	errorMode: ErrorMode;
@@ -382,6 +384,7 @@ export function compileNodeInstance(
 		source,
 		dynamic: Object.keys(parameters).filter((name) => hasExpression(parameters[name])),
 		itemParameters: result.itemParameters ?? [],
+		firstItemParameters: result.firstItemParameters ?? [],
 		deferred: (result.itemParameters ?? []).filter((path) => deferred.includes(path)),
 		errorMode,
 		pairedOutput,

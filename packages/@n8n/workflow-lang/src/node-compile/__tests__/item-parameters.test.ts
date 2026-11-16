@@ -202,6 +202,129 @@ async function run(source: string | undefined, inputs: unknown[], parameters: un
 	return reference;
 }
 
+const wholeNode = (body: string) => `
+export class Acme {
+	async execute(this: any) {
+		const items = this.getInputData();
+		const returnData: any[] = [];
+		${body}
+		return [returnData];
+	}
+}`;
+
+const compileNode = (source: string, parameters: Record<string, unknown>) =>
+	specialiseNode({
+		type: TYPE,
+		version: 1,
+		entry: ENTRY,
+		readFile: (path) => (path === ENTRY ? source : undefined),
+		parameters,
+		instanceId: null,
+	});
+
+describe('the index of an item in other loops over the items', () => {
+	const EACH = [{ id: 'a' }, { id: 'b' }, { id: 'c' }];
+	const INPUTS = [{ n: 1 }, { n: 2 }, { n: 3 }];
+	const EXPECTED = [
+		{ id: 'a', n: 1 },
+		{ id: 'b', n: 2 },
+		{ id: 'c', n: 3 },
+	];
+
+	it.each([
+		[
+			'the entries of the items',
+			"for (const [index, item] of items.entries()) returnData.push({ json: { id: this.getNodeParameter('id', index), n: item.json.n } });",
+		],
+		[
+			'a map callback over the items',
+			"const made = items.map((item: any, index: number) => ({ json: { id: this.getNodeParameter('id', index), n: item.json.n } })); for (const one of made) returnData.push(one);",
+		],
+		[
+			'a forEach callback over the items',
+			"items.forEach((item: any, index: number) => { returnData.push({ json: { id: this.getNodeParameter('id', index), n: item.json.n } }); });",
+		],
+	])('proves the index of %s, and each item has its own value', async (_label, body) => {
+		const result = compileNode(wholeNode(body), BY_ITEM);
+		expect(result.errors).toEqual([]);
+		expect(result.itemParameters).toEqual(['id']);
+		expect(result.firstItemParameters).toEqual([]);
+		const out = await run(result.source, INPUTS, { each: EACH });
+		expect(out).toMatchObject({ status: 'ok', result: EXPECTED });
+	});
+
+	it.each([
+		[
+			'the entries of another list',
+			"const other = [1, 2]; for (const [index] of other.entries()) returnData.push({ json: { id: this.getNodeParameter('id', index) } });",
+		],
+		[
+			'the item of the entries, not the index',
+			"for (const [, index] of items.entries()) returnData.push({ json: { id: this.getNodeParameter('id', index) } });",
+		],
+		[
+			'a map callback over another list',
+			"const other = [1, 2]; other.map((_one: number, index: number) => returnData.push({ json: { id: this.getNodeParameter('id', index) } }));",
+		],
+		[
+			'the first parameter of a map callback',
+			"items.map((index: any) => returnData.push({ json: { id: this.getNodeParameter('id', index) } }));",
+		],
+		[
+			'the index of a reduce callback',
+			"items.reduce((_sum: number, _item: any, index: number) => returnData.push({ json: { id: this.getNodeParameter('id', index) } }), 0);",
+		],
+		[
+			'a for...of loop with a counter',
+			"let index = 0; for (const item of items) { returnData.push({ json: { id: this.getNodeParameter('id', index), n: item.json.n } }); index++; }",
+		],
+	])('refuses %s', (_label, body) => {
+		const result = compileNode(wholeNode(body), BY_ITEM);
+		expect(result.errors.join('\n')).toContain(NO_PROOF);
+		expect(result.source).toBeUndefined();
+	});
+});
+
+describe('a parameter that the node reads for the first item only', () => {
+	it('names the parameters with all reads at the index 0', () => {
+		const helpers =
+			'function idOf(this: any, index: number) { const at = index; return this.getNodeParameter("id", at) as string; }';
+		const result = compileWith(
+			"returnData.push({ json: { id: idOf.call(this, 0), mode: this.getNodeParameter('mode', 0), name: this.getNodeParameter('name', i) } });",
+			{ id: '={{ $json.id }}', mode: '={{ $json.mode }}', name: '={{ $json.name }}' },
+			{ helpers },
+		);
+		expect(result.errors).toEqual([]);
+		expect(result.itemParameters).toEqual(['id', 'mode', 'name']);
+		expect(result.firstItemParameters).toEqual(['id', 'mode']);
+	});
+
+	it('does not name a parameter with one read for each item', () => {
+		const result = compileWith(
+			"returnData.push({ json: { id: this.getNodeParameter('id', 0), own: this.getNodeParameter('id', i) } });",
+			BY_ITEM,
+		);
+		expect(result.firstItemParameters).toEqual([]);
+	});
+
+	it('runs with a value for the first item only', async () => {
+		const result = compileWith(
+			"returnData.push({ json: { mode: this.getNodeParameter('mode', 0), name: this.getNodeParameter('name', i) } });",
+			{ mode: '={{ $json.mode }}', name: '={{ $json.name }}' },
+		);
+		const out = await run(result.source, [{}, {}], {
+			each: [{ mode: 'm', name: 'a' }, { name: 'b' }],
+		});
+		expect(out).toMatchObject({
+			status: 'ok',
+			result: [
+				{ mode: 'm', name: 'a' },
+				{ mode: 'm', name: 'b' },
+			],
+		});
+	});
+});
+
 describe('a compiled node that runs once with a value for each item', () => {
 	const READ_WHEN_ASKED =
 		"returnData.push({ json: items[i].json.skip ? { skipped: true } : { id: this.getNodeParameter('id', i), first: this.getNodeParameter('id', 0) } });";

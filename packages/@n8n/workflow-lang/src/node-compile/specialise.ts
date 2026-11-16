@@ -101,6 +101,8 @@ export interface SpecialiseResult {
 	zones?: string[];
 
 	itemParameters?: string[];
+
+	firstItemParameters?: string[];
 }
 
 export interface CredentialDerivation {
@@ -627,6 +629,12 @@ const HELPERS: Record<string, string> = {
 		}
 	}
 	return { items, paired, failed, again };
+}`,
+	__entries: `function __entries(list: any): any {
+	if (!Array.isArray(list)) throw new Error('the entries of a value that is not an array have no compiled form');
+	const out: any[] = [];
+	for (let k = 0; k < list.length; k++) out.push([k, list[k]]);
+	return out;
 }`,
 	__withPaired: `function __withPaired(list: any, options: any): any {
 	const out: any[] = [];
@@ -2355,6 +2363,19 @@ class Specialiser {
 			if (isThisCall(node, 'getInputData') && readsFirstInput(node))
 				return f.createIdentifier('__items');
 			if (
+				ts.isCallExpression(node) &&
+				node.arguments.length === 0 &&
+				ts.isPropertyAccessExpression(node.expression) &&
+				node.expression.name.text === 'entries' &&
+				ts.isForOfStatement(node.parent) &&
+				node.parent.expression === node &&
+				isInputData(node.expression.expression)
+			)
+				return this.helper(
+					'__entries',
+					ts.visitNode(node.expression.expression, visit) as ts.Expression,
+				);
+			if (
 				ts.isBinaryExpression(node) &&
 				node.operatorToken.kind === ts.SyntaxKind.InKeyword &&
 				node.right.kind === ts.SyntaxKind.ThisKeyword &&
@@ -3066,24 +3087,31 @@ class Specialiser {
 
 	private readonly itemParameters = new Set<string>();
 
+	private readonly laterItemParameters = new Set<string>();
+
 	private checkItemParameters() {
 		const uses = itemParameterUses(this.output);
 		for (const where of uses.loose)
 			this.error(where, 'the list of the parameters for each item is used as a value');
-		const bounded = (index: ts.Expression, frame: ItemFrame, hops: number): boolean => {
+		const bounded = (
+			index: ts.Expression,
+			frame: ItemFrame,
+			hops: number,
+			first = false,
+		): boolean => {
 			if (hops > MAX_INDEX_HOPS) return false;
 			if (
 				ts.isParenthesizedExpression(index) ||
 				ts.isAsExpression(index) ||
 				ts.isNonNullExpression(index)
 			)
-				return bounded(index.expression, frame, hops);
+				return bounded(index.expression, frame, hops, first);
 			if (ts.isNumericLiteral(index)) return index.text === '0';
 			if (!ts.isIdentifier(index)) return false;
 			const found = itemBindingOf(index.text, frame);
 			if (found === undefined || found.kind === 'other') return false;
-			if (found.kind === 'loop') return true;
-			if (found.kind === 'value') return bounded(found.value, found.frame, hops + 1);
+			if (found.kind === 'loop') return !first;
+			if (found.kind === 'value') return bounded(found.value, found.frame, hops + 1, first);
 			const sites = uses.calls.get(found.unit) ?? [];
 			return (
 				sites.length > 0 &&
@@ -3093,13 +3121,14 @@ class Specialiser {
 					return (
 						given !== undefined &&
 						!site.call.arguments.some(ts.isSpreadElement) &&
-						bounded(given, site.frame, hops + 1)
+						bounded(given, site.frame, hops + 1, first)
 					);
 				})
 			);
 		};
 		for (const read of uses.reads) {
 			this.itemParameters.add(read.parameter);
+			if (!bounded(read.index, read.frame, 0, true)) this.laterItemParameters.add(read.parameter);
 			if (!bounded(read.index, read.frame, 0)) {
 				this.error(
 					read.where,
@@ -6543,6 +6572,9 @@ class Specialiser {
 			retyped: this.retyped,
 			zones: [...this.zones].sort(),
 			itemParameters: [...this.itemParameters].sort(),
+			firstItemParameters: [...this.itemParameters]
+				.filter((name) => !this.laterItemParameters.has(name))
+				.sort(),
 		};
 	}
 
@@ -6952,6 +6984,37 @@ function isInputCount(e: ts.Expression, frame: ItemFrame, hops = 0): boolean {
 	return found?.kind === 'value' && isInputCount(found.value, found.frame, hops + 1);
 }
 
+const INDEXED_CALLBACKS = new Set(['map', 'forEach', 'flatMap', 'filter', 'some', 'every']);
+
+function entriesIndexOf(loop: ts.ForOfStatement, frame: ItemFrame): string | undefined {
+	const list = loop.expression;
+	if (
+		!ts.isCallExpression(list) ||
+		list.arguments.length !== 1 ||
+		!ts.isIdentifier(list.expression) ||
+		list.expression.text !== '__entries' ||
+		!isInputItems(list.arguments[0], frame)
+	)
+		return undefined;
+	const declared = loop.initializer;
+	if (
+		!ts.isVariableDeclarationList(declared) ||
+		(declared.flags & ts.NodeFlags.Const) === 0 ||
+		declared.declarations.length !== 1
+	)
+		return undefined;
+	const pattern = declared.declarations[0].name;
+	if (!ts.isArrayBindingPattern(pattern)) return undefined;
+	const [first] = pattern.elements;
+	return first !== undefined &&
+		ts.isBindingElement(first) &&
+		ts.isIdentifier(first.name) &&
+		!first.initializer &&
+		!first.dotDotDotToken
+		? first.name.text
+		: undefined;
+}
+
 function stepsByOne(step: ts.Expression | undefined, name: string): boolean {
 	if (!step) return false;
 	if (ts.isPostfixUnaryExpression(step) || ts.isPrefixUnaryExpression(step))
@@ -7037,7 +7100,25 @@ function itemParameterUses(output: Array<{ name: string; node: ts.Node }>): Item
 			}
 			if (ts.isFunctionLike(n)) {
 				const inner: ItemFrame = { names: new Map(), outer: frame };
+				const overItems =
+					(ts.isArrowFunction(n) || ts.isFunctionExpression(n)) &&
+					ts.isCallExpression(n.parent) &&
+					n.parent.arguments[0] === n &&
+					ts.isPropertyAccessExpression(n.parent.expression) &&
+					INDEXED_CALLBACKS.has(n.parent.expression.name.text) &&
+					isInputItems(n.parent.expression.expression, frame);
 				n.parameters.forEach((parameter, position) => {
+					if (
+						overItems &&
+						position === 1 &&
+						ts.isIdentifier(parameter.name) &&
+						!parameter.initializer &&
+						!parameter.dotDotDotToken &&
+						!written.has(parameter.name.text)
+					) {
+						inner.names.set(parameter.name.text, { kind: 'loop' });
+						return;
+					}
 					const plain =
 						n === root &&
 						ts.isFunctionDeclaration(n) &&
@@ -7109,6 +7190,8 @@ function itemParameterUses(output: Array<{ name: string; node: ts.Node }>): Item
 				const inner: ItemFrame = { names: new Map(), outer: frame };
 				if (ts.isVariableDeclarationList(n.initializer))
 					for (const d of n.initializer.declarations) other(inner, d.name);
+				const position = ts.isForOfStatement(n) ? entriesIndexOf(n, frame) : undefined;
+				if (position && !written.has(position)) inner.names.set(position, { kind: 'loop' });
 				ts.forEachChild(n, (child) => walk(child, inner));
 				return;
 			}
@@ -7388,6 +7471,36 @@ function unrollParameterLoop(loop: ts.ForOfStatement): ts.Statement | undefined 
 		values.map((value) => f.createBlock([withValue(value)], true)),
 		true,
 	);
+}
+
+function isInputData(e: ts.Expression): boolean {
+	if (ts.isParenthesizedExpression(e) || ts.isAsExpression(e) || ts.isNonNullExpression(e))
+		return isInputData(e.expression);
+	if (ts.isCallExpression(e)) return isThisCall(e, 'getInputData') && readsFirstInput(e);
+	if (!ts.isIdentifier(e)) return false;
+	for (let scope: ts.Node | undefined = e.parent; scope; scope = scope.parent) {
+		if (ts.isFunctionLike(scope) && scope.parameters.some((p) => bindsName(p.name, e.text)))
+			return false;
+		if (!ts.isBlock(scope) && !ts.isSourceFile(scope)) continue;
+		for (const statement of scope.statements) {
+			if (!ts.isVariableStatement(statement)) continue;
+			for (const declared of statement.declarationList.declarations) {
+				if (!bindsName(declared.name, e.text)) continue;
+				return (
+					ts.isIdentifier(declared.name) &&
+					(statement.declarationList.flags & ts.NodeFlags.Const) !== 0 &&
+					declared.initializer !== undefined &&
+					isInputData(declared.initializer)
+				);
+			}
+		}
+	}
+	return false;
+}
+
+function bindsName(name: ts.BindingName, text: string): boolean {
+	if (ts.isIdentifier(name)) return name.text === text;
+	return name.elements.some((e) => !ts.isOmittedExpression(e) && bindsName(e.name, text));
 }
 
 function readsFirstInput(read: ts.CallExpression): boolean {

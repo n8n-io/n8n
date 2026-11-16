@@ -213,3 +213,91 @@ describe('code of a translated value that cannot throw', () => {
 		).toBe(false);
 	});
 });
+
+describe('a parameter that the compiled node reads for the first item only', () => {
+	const FIRST_SOURCE = `import type { IExecuteFunctions, INodeExecutionData, INodeType } from 'n8n-workflow';
+
+export class Probe implements INodeType {
+	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
+		const items = this.getInputData();
+		const returnData: INodeExecutionData[] = [];
+		const mode = this.getNodeParameter('mode', 0) as string;
+		for (let i = 0; i < items.length; i++) {
+			const response = await this.helpers.httpRequest({
+				method: 'GET',
+				url: 'https://api.example.test/' + mode + '/' + PLACE,
+				json: true,
+			});
+			returnData.push({ json: response, pairedItem: { item: i } });
+		}
+		return [returnData];
+	}
+}
+`;
+	const firstSources = (place: string): NodeSources => {
+		const source = FIRST_SOURCE.replace('PLACE', place);
+		return {
+			entry: (type) => (type === TYPE ? ENTRY : undefined),
+			readFile: (path) => (path === ENTRY ? source : undefined),
+			description: (type) =>
+				type === TYPE
+					? {
+							name: 'probe',
+							properties: [
+								{ displayName: 'Id', name: 'id', type: 'string', default: '' },
+								{ displayName: 'Mode', name: 'mode', type: 'string', default: '' },
+							],
+						}
+					: undefined,
+			verified: { [`${TYPE}@1:.`]: ['id', 'mode', '@each=id', '@each=mode'] },
+		};
+	};
+
+	async function runFirst(place: string, mode: string) {
+		const workflow = workflowWith(BY_ITEM, {});
+		Object.assign(workflow.nodes[2].parameters, { mode });
+		const result = convertWorkflow(workflow, {
+			nodeSources: firstSources(place),
+			instance: { baseUrl: 'https://n8n.example', id: 'a'.repeat(64) },
+		});
+		expect(result.fallbackNodes).toEqual([]);
+		expect(compile(result.source, { extraNodes: result.nodes }).diagnostics).toEqual([]);
+		const out = await runReference(
+			result.source,
+			{
+				trigger: {
+					body: { list: [{ id: 'a', mode: 'm' }, { id: 'b' }, { id: 'c' }] },
+					headers: {},
+					query: {},
+				},
+				now: 0,
+				seed: 1,
+				effects: { Probe: [OK] },
+			},
+			{ extraNodes: result.nodes },
+		);
+		const urls = out.effects
+			.filter((effect) => effect.kind === 'http')
+			.map((effect) =>
+				String(Reflect.get(Object(effect.args), 'url')).replace('https://api.example.test/', ''),
+			);
+		return { status: out.status, result: out.result, urls, source: result.source };
+	}
+
+	it('evaluates the expression once, and the other parameter for each item', async () => {
+		const out = await runFirst("this.getNodeParameter('id', i)", '={{ $json.mode }}');
+		expect(out.status).toBe('ok');
+		expect(out.urls).toEqual(['m/a', 'm/b', 'm/c']);
+		expect(out.source).toContain('i < 1;');
+		expect(out.source).toMatch(/probeParameters\[0\]\[['"]mode['"]\] = /);
+	});
+
+	it('does not evaluate the expression for an item that the node does not read it for', async () => {
+		const fails =
+			"={{ $json.mode === undefined ? $('No such node').first().json.id : $json.mode }}";
+		const out = await runFirst("'x'", fails);
+		expect(out.status).toBe('ok');
+		expect(out.urls).toEqual(['m/x', 'm/x', 'm/x']);
+		expect(out.source).not.toContain('for (const $json of');
+	});
+});

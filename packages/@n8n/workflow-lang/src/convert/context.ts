@@ -61,6 +61,16 @@ export interface NodeContext {
 	markFallback(): void;
 	/** Records that the node runs as code that is compiled from its source. */
 	markCompiled?(): void;
+	/**
+	 * True when an expression of a later node reads the item of an earlier node through this
+	 * node (`$('Node').item`), so the paired items of the output of this node matter.
+	 */
+	pairsWanted?: boolean;
+	/**
+	 * Records the code of the result of a compiled node that gives the paired item of each
+	 * output item (`{ items, paired }`).
+	 */
+	setPairs?(run: string): void;
 	/** True when the source traces every node (`trace: 'all'`), sub-nodes of AI clusters too. */
 	traceAll?: boolean;
 	/** Code of a condition under which the node gives no output at all (v1 run data has none). */

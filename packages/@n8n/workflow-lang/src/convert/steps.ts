@@ -14,6 +14,7 @@ import type { PublicCredential } from '../credentials/public.ts';
 import {
 	compileNodeInstance,
 	callsOnce,
+	pairsAsV1,
 	errorItemsByPosition,
 	flagGuard,
 	isVerified,
@@ -411,10 +412,20 @@ export function tryCompiledNode(c: NodeContext): boolean {
 	// too when the check against v1 proved that form (`emitContinueOnce`). With the error
 	// output, the module then gives the paired item of each output item.
 	const once = callsOnce(sources, c.node.type, c.version, compiled.resolved, onError);
+	// A later node reads the item of an earlier node through this node (`$('Node').item`):
+	// the module gives the paired item of each output item, when the check against v1 proved
+	// that they are the paired items of the v1 node.
+	const lineage =
+		onError === 'stopWorkflow' &&
+		c.pairsWanted === true &&
+		c.setPairs !== undefined &&
+		!errorRetry(c) &&
+		pairsAsV1(sources, c.node.type, c.version, compiled.resolved);
 	if (
-		once &&
-		onError !== 'stopWorkflow' &&
-		pairedOutputOf(onError === 'continueErrorOutput', errorRetry(c))
+		lineage ||
+		(once &&
+			onError !== 'stopWorkflow' &&
+			pairedOutputOf(onError === 'continueErrorOutput', errorRetry(c)))
 	) {
 		paired = true;
 		compiled = compileWith([]);
@@ -462,15 +473,15 @@ export function tryCompiledNode(c: NodeContext): boolean {
 		compiled = checked;
 		c.helper('parameterOrError');
 	}
-	const entry: Code = {
+	const valueCode = ({ path, value }: (typeof values)[number]): Code =>
+		throwing.includes(path)
+			? raw(`parameterOrError(() => (${print(value.code, '', 0, Number.POSITIVE_INFINITY)}))`)
+			: value.code;
+	const entryOf = (chosen: typeof values): Code => ({
 		kind: 'object',
-		entries: values.map(({ path, value }): [string, Code] => [
-			path,
-			throwing.includes(path)
-				? raw(`parameterOrError(() => (${print(value.code, '', 0, Number.POSITIVE_INFINITY)}))`)
-				: value.code,
-		]),
-	};
+		entries: chosen.map((v): [string, Code] => [v.path, valueCode(v)]),
+	});
+	const entry = entryOf(values);
 	const readsItem = values.some((v) => v.value.usage.item);
 	const readsIndex = values.some((v) => v.value.usage.index);
 	// A node that asks for the bytes of a response needs a runtime that stores the body as
@@ -535,16 +546,41 @@ export function tryCompiledNode(c: NodeContext): boolean {
 	let each: Code | null = null;
 	if (values.length > 0 && one) each = { kind: 'array', items: [entry] };
 	else if (values.length > 0) {
+		// v1 evaluates an expression for the items that the node reads the parameter for. The
+		// compiler knows the parameters that the module reads for the first item only: their
+		// expressions run once, and the entries of the other items do not have them.
+		const firstOnly = values.filter((v) => compiled.firstItemParameters.includes(v.path));
+		const always = values.filter((v) => !compiled.firstItemParameters.includes(v.path));
 		const list = c.local('Parameters');
 		c.w.line(`const ${list}: Json[] = [];`);
-		if (readsIndex) {
-			c.w.open(`for (let ${INDEX} = 0; ${INDEX} < ${c.input}.length; ${INDEX}++) {`);
-			if (readsItem) c.w.line(`const ${ITEM} = ${c.input}[${INDEX}];`);
-		} else if (readsItem) c.w.open(`for (const ${ITEM} of ${c.input}) {`);
-		else c.w.open(`for (let ${INDEX} = 0; ${INDEX} < ${c.input}.length; ${INDEX}++) {`);
-		const head = `${list}.push(`;
-		c.w.block(`${head}${c.print(entry, head)});`);
-		c.w.close();
+		if (always.length > 0) {
+			const item = always.some((v) => v.value.usage.item);
+			if (always.some((v) => v.value.usage.index)) {
+				c.w.open(`for (let ${INDEX} = 0; ${INDEX} < ${c.input}.length; ${INDEX}++) {`);
+				if (item) c.w.line(`const ${ITEM} = ${c.input}[${INDEX}];`);
+			} else if (item) c.w.open(`for (const ${ITEM} of ${c.input}) {`);
+			else c.w.open(`for (let ${INDEX} = 0; ${INDEX} < ${c.input}.length; ${INDEX}++) {`);
+			const head = `${list}.push(`;
+			c.w.block(`${head}${c.print(entryOf(always), head)});`);
+			c.w.close();
+		}
+		if (firstOnly.length > 0) {
+			c.w.open(
+				`for (let ${INDEX} = 0; ${INDEX} < ${c.input}.length && ${INDEX} < 1; ${INDEX}++) {`,
+			);
+			if (firstOnly.some((v) => v.value.usage.item))
+				c.w.line(`const ${ITEM} = ${c.input}[${INDEX}];`);
+			if (always.length === 0) {
+				const head = `${list}.push(`;
+				c.w.block(`${head}${c.print(entryOf(firstOnly), head)});`);
+			} else {
+				for (const v of firstOnly) {
+					const head = `${list}[0][${str(v.path)}] = `;
+					c.w.block(`${head}${c.print(valueCode(v), head)};`);
+				}
+			}
+			c.w.close();
+		}
 		each = raw(list);
 	}
 	const call = nodeCall(
@@ -563,7 +599,8 @@ export function tryCompiledNode(c: NodeContext): boolean {
 		c.credential(),
 		one,
 	);
-	if (onError === 'stopWorkflow') emitStep(c, call);
+	if (lineage) emitPairedStep(c, call);
+	else if (onError === 'stopWorkflow') emitStep(c, call);
 	else if (once) {
 		const retry = errorRetry(c);
 		const fields = retry ? call.fields.filter(([k]) => k !== 'retry') : call.fields;
@@ -584,6 +621,32 @@ export function tryCompiledNode(c: NodeContext): boolean {
 	}
 	c.markCompiled?.();
 	return true;
+}
+
+/**
+ * Emits one call of a compiled node that gives the paired item of each output item
+ * (`{ items, paired }`), and declares output 0. The node stops the workflow when it fails,
+ * and has no "retry on fail".
+ */
+function emitPairedStep(c: NodeContext, call: StepCall): void {
+	const { w, input } = c;
+	const run = c.local('Run');
+	const empty = '{ items: [], paired: [] }';
+	const opts = options(c, call, input);
+	if (c.traceAll) {
+		w.line(`let ${run}: Json = ${empty};`);
+		w.open(`if (${input}.length > 0) {`);
+		w.open('try {');
+		const head = `${run} = await ctx.node(`;
+		w.block(`${head}${c.print(opts, head)});`);
+		failTrace(c);
+		w.close();
+	} else {
+		const head = `const ${run}: Json = ${input}.length > 0 ? await ctx.node(`;
+		w.block(`${head}${c.print(opts, head)}) : ${empty};`);
+	}
+	w.line(`const ${c.output(0)}: Json[] = ${run}.items;`);
+	c.setPairs?.(run);
 }
 
 /**

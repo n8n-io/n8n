@@ -38,6 +38,7 @@ import {
 	ERROR_ITEMS_BY_POSITION,
 	ITEM_PARAMETER_PREFIX,
 	ONE_CALL_PREFIX,
+	PAIRED_ITEMS,
 	errorModeCondition,
 	itemParameterCondition,
 	oneCallCondition,
@@ -415,6 +416,7 @@ const manyItemReasons: Record<string, number> = {};
 const threeItemCost = { operations: 0, once: 0, each: 0 };
 const expressionCost: Record<string, number> = {};
 const continueCost: Record<string, number> = {};
+const pairedReasons: Record<string, number> = {};
 const expressions: Record<string, number> = {};
 const expressionReasons: Record<string, number> = {};
 const alone: Record<string, number> = {};
@@ -435,6 +437,7 @@ interface NodeResult {
 	threeItemCost?: { operations: number; once: number; each: number };
 	expressionCost?: Record<string, number>;
 	continueCost?: Record<string, number>;
+	pairedReasons?: Record<string, number>;
 	expressions?: Record<string, number>;
 	expressionReasons?: Record<string, number>;
 	alone?: Record<string, number>;
@@ -503,6 +506,7 @@ if (one === undefined) {
 			add(threeItemCost, result.threeItemCost);
 			add(expressionCost, result.expressionCost);
 			add(continueCost, result.continueCost);
+			add(pairedReasons, result.pairedReasons);
 			add(expressions, result.expressions);
 			add(expressionReasons, result.expressionReasons);
 			add(alone, result.alone);
@@ -715,6 +719,46 @@ for (const name of one === undefined ? [] : Object.keys(known).sort()) {
 							else if (examples.length < 60)
 								examples.push(`${key} with ${variant.key}: ${difference.slice(0, 160)}`);
 						}
+					}
+					const list = [{ id: 'r1' }, { id: 'r2' }];
+					const severalResults = {
+						...plain,
+						result: list,
+						data: list,
+						items: list,
+						results: list,
+						records: list,
+						messages: list,
+						members: list,
+						channels: list,
+					};
+					let pairedReason: string | undefined;
+					for (const pairedCase of [
+						make('ok', parameters, ok),
+						three,
+						...(makesFiles || readsFiles
+							? []
+							: [
+									make(
+										'three items, several results',
+										parameters,
+										[...token, { body: severalResults }],
+										several(3),
+									),
+								]),
+					]) {
+						pairedReason = await differenceFromV1(pairedCase, sources, registry, {
+							...checking,
+							paired: true,
+						});
+						if (pairedReason !== undefined) {
+							pairedReason = `${pairedCase.name.slice(pairedCase.name.indexOf(' ') + 1)}: ${pairedReason}`;
+							break;
+						}
+					}
+					if (pairedReason !== undefined && !other) {
+						const text = pairedReason.slice(0, 110);
+						pairedReasons[text] = (pairedReasons[text] ?? 0) + 1;
 					}
 					const [badAnswer] = bad.slice(-1);
 					const [okAnswer] = ok.slice(-1);
@@ -938,6 +982,7 @@ for (const name of one === undefined ? [] : Object.keys(known).sort()) {
 					const isMode = (name: string) =>
 						name.startsWith(ITEM_PARAMETER_PREFIX) ||
 						name.startsWith(ONE_CALL_PREFIX) ||
+						name === PAIRED_ITEMS ||
 						name.startsWith('@onError=') ||
 						name === ERROR_ITEMS_BY_POSITION ||
 						name === CALL_FOR_EACH_ITEM;
@@ -949,6 +994,10 @@ for (const name of one === undefined ? [] : Object.keys(known).sort()) {
 							...flagKeys,
 							...modes,
 							...eachConditions,
+							...(pairedReason === undefined &&
+							(before === undefined || before.includes(PAIRED_ITEMS))
+								? [PAIRED_ITEMS]
+								: []),
 							...(eachItem === undefined &&
 							(before === undefined || before.includes(CALL_FOR_EACH_ITEM))
 								? [CALL_FOR_EACH_ITEM]
@@ -969,7 +1018,7 @@ for (const name of one === undefined ? [] : Object.keys(known).sort()) {
 }
 await disposeRecorder();
 if (one !== undefined) {
-	const line = `RESULT ${JSON.stringify({ verified, reasons, modeReasons, manyItems, manyItemReasons, threeItemCost, expressionCost, continueCost, expressions, expressionReasons, alone, weighted, tried, compiled: compiledCount, examples, mintedTried, mintedVerified, costs })}\n`;
+	const line = `RESULT ${JSON.stringify({ verified, reasons, modeReasons, manyItems, manyItemReasons, threeItemCost, expressionCost, continueCost, pairedReasons, expressions, expressionReasons, alone, weighted, tried, compiled: compiledCount, examples, mintedTried, mintedVerified, costs })}\n`;
 	await new Promise((written) => process.stdout.write(line, written));
 	process.exit(0);
 }
@@ -1109,6 +1158,10 @@ for (const node of Object.keys(expressionCost)
 		`three items with expressions, ${node}, ${count} operations: ${Math.round(expressionCost[`${node} once`] / count / 3)} ops for each item in one call; ${Math.round(expressionCost[`${node} each`] / count / 3)} ops for each item in a call for each item`,
 	);
 }
+const pairedCount = Object.values(verified).filter((names) => names.includes(PAIRED_ITEMS)).length;
+console.log(`the paired items of the output agree with the run data of v1: ${pairedCount}`);
+for (const [reason, count] of Object.entries(pairedReasons).sort((a, b) => b[1] - a[1]))
+	console.log(`${count}\t${reason}`);
 for (const node of Object.keys(continueCost)
 	.filter((name) => name.endsWith(' operations'))
 	.map((name) => name.slice(0, -' operations'.length))) {
