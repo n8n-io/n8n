@@ -14,6 +14,7 @@ export class ExampleChatModel implements INodeType {
 		icon: { light: 'file:../../icons/example.svg', dark: 'file:../../icons/example.dark.svg' },
 		group: ['transform'],
 		version: [1],
+		subtitle: '={{$parameter["model"]}}',
 		description: 'Custom Chat Model Node',
 		defaults: {
 			name: 'Example Chat Model',
