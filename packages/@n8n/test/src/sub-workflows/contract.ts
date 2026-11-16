@@ -146,7 +146,12 @@ function jsonExampleFields(child: string, parameters: INodeParameters): Declarat
 	if (typeof jsonExample !== 'string') {
 		return { notChecked: `the JSON example of ${child} is not in the workflow JSON` };
 	}
-	const names = Object.keys(generateSchemaFromExample(jsonExample).properties ?? {});
+	let names: string[];
+	try {
+		names = Object.keys(generateSchemaFromExample(jsonExample).properties ?? {});
+	} catch {
+		return { notChecked: `the JSON example of ${child} is not valid JSON` };
+	}
 	return { fields: names.map((name) => ({ name })), typed: false };
 }
 

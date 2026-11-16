@@ -90,11 +90,11 @@ function toSettings(
 	workflow: string,
 	settings: WorkflowDefinition['settings'] = {},
 ): IWorkflowSettings {
-	const { timezone, executionOrder } = settings;
+	const { executionOrder } = settings;
 	if (executionOrder !== undefined && executionOrder !== 'v0' && executionOrder !== 'v1') {
 		throw invalid(workflow, `The execution order "${executionOrder}" is unknown`);
 	}
-	return { timezone, executionOrder };
+	return { ...settings, executionOrder };
 }
 
 function invalid(workflow: string, message: string) {

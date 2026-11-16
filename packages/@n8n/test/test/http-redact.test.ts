@@ -28,3 +28,13 @@ test('replaces each secret with its placeholder in the url, headers and body', (
 test('keeps the real secret when redact is false', () => {
 	expect(record(false)).toEqual(request);
 });
+
+test('redacts credentials in a basic authorization header', () => {
+	const context = { options: {}, redactions: [secret] } as unknown as ExecutionSetup;
+	const run: NodeRunRecord = { parameters: [], requests: [] };
+	const authorization = `Basic ${Buffer.from('ada:test-key').toString('base64')}`;
+
+	recordRequest(context, run, { ...request, headers: { authorization } });
+
+	expect(run.requests[0].headers.authorization).toBe('Basic ada:[credential: CRM API key.value]');
+});

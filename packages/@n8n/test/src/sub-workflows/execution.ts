@@ -7,6 +7,7 @@ import type {
 	INode,
 	INodeExecutionData,
 	IRun,
+	IRunExecutionData,
 } from 'n8n-workflow';
 import {
 	collectSubWorkflowOutput,
@@ -62,6 +63,8 @@ export class SubWorkflowState {
 	readonly runs: SubWorkflowRun[] = [];
 
 	readonly redactions: Redaction[] = [];
+
+	readonly executionData = new Map<string, IRunExecutionData>();
 
 	private readonly active: ExecutionSetup[] = [];
 
@@ -220,6 +223,7 @@ async function runChild(
 		context,
 		async () => await runFromTrigger(context, start, items),
 	);
+	parent.subWorkflows.executionData.set(executionId, run.data);
 	const calledBy = { workflow: parent.handle.name, node: node.name };
 	runs.push(new SubWorkflowRun(child.name, calledBy, new WorkflowTestResult(context, run)));
 
@@ -253,7 +257,7 @@ async function runFromTrigger(
 }
 
 function findStart({ workflow, handle }: ExecutionContext): INode {
-	const nodes = Object.values(workflow.nodes);
+	const nodes = Object.values(workflow.nodes).filter((node) => !node.disabled);
 	const start =
 		nodes.find((node) => node.type === EXECUTE_WORKFLOW_TRIGGER_NODE_TYPE) ??
 		nodes.find((node) => node.type === MANUAL_TRIGGER_NODE_TYPE);

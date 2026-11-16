@@ -69,5 +69,9 @@ test('reads the requirements from the manifest', () => {
 		variables: [{ name: 'crmBaseUrl', workflows: ['New signup'] }],
 		dataTables: [],
 		workflows: [{ id: 'NotifySales001', name: 'Notify sales', workflows: ['New signup'] }],
+		nodeTypes: expect.arrayContaining([
+			{ type: 'n8n-nodes-base.httpRequest', version: 4.2, workflows: ['New signup'] },
+			{ type: 'n8n-nodes-base.slack', version: 2.2, workflows: ['Notify sales'] },
+		]),
 	});
 });

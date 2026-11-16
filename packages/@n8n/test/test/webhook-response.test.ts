@@ -27,6 +27,21 @@ test('captures the first item of the last node as the response', async () => {
 	});
 });
 
+test('reads the response property with a path that indexes into an array', async () => {
+	const definition = structuredClone(lastNode);
+	Object.assign(definition.nodes[0].parameters.options, {
+		responsePropertyName: 'body.items[1].name',
+	});
+	Object.assign(definition.nodes[1].parameters, { includeOtherFields: true });
+	const workflow = loadWorkflow(definition);
+
+	const result = await executeWorkflow(workflow, {
+		input: { body: { quantity: 3, items: [{ name: 'pen' }, { name: 'ink' }] } },
+	});
+
+	expect(result.response?.body).toBe('ink');
+});
+
 test('has no response when the trigger is not a webhook', async () => {
 	const workflow = loadWorkflow(formatName);
 

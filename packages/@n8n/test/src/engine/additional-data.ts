@@ -21,7 +21,7 @@ export function createAdditionalData(context: ExecutionSetup): IWorkflowExecuteA
 		executeWorkflow: async (workflowInfo, _additionalData, options) =>
 			await executeSubWorkflow(context, workflowInfo, options),
 		startRunnerTask: async (...args) => await startRunnerTask(context, args),
-		getRunExecutionData: async () => undefined,
+		getRunExecutionData: async (executionId) => context.subWorkflows.executionData.get(executionId),
 		getRuntimeCredential: async () => undefined,
 		logAiEvent: () => {},
 		restApiUrl: `${BASE_URL}/rest`,

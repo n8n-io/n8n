@@ -18,7 +18,7 @@ function credentialLoader() {
 }
 
 export function isKnownCredentialType(type: string): boolean {
-	return type in credentialLoader().known.credentials;
+	return Object.hasOwn(credentialLoader().known.credentials, type);
 }
 
 export function getCredentialType(type: string): ICredentialType {

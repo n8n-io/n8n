@@ -216,3 +216,54 @@ test('rejects a call to a child with a node type that is not installed when the 
 		node: 'Post to Slack',
 	});
 });
+
+test('pairs the items that a child returns with the parent items that it received', async () => {
+	const node = (name: string, type: string, typeVersion: number, parameters = {}) => ({
+		id: name,
+		name,
+		type,
+		typeVersion,
+		position: [0, 0],
+		parameters,
+	});
+	const toNode = (target: string) => ({ main: [[{ node: target, type: 'main', index: 0 }]] });
+	const parent: WorkflowDefinition = {
+		name: 'Parent',
+		nodes: [
+			node('Start', 'n8n-nodes-base.manualTrigger', 1),
+			node('Run child', 'n8n-nodes-base.executeWorkflow', 1.2, {
+				workflowId: { __rl: true, value: 'largest-1', mode: 'id' },
+				options: {},
+			}),
+			node('Read start', 'n8n-nodes-base.set', 3.4, {
+				assignments: {
+					assignments: [
+						{ id: 'a', name: 'start', value: "={{ $('Start').item.json.n }}", type: 'number' },
+					],
+				},
+				options: {},
+			}),
+		],
+		connections: { Start: toNode('Run child'), 'Run child': toNode('Read start') },
+	};
+	const child: WorkflowDefinition = {
+		id: 'largest-1',
+		name: 'Largest',
+		nodes: [
+			node('When called', 'n8n-nodes-base.executeWorkflowTrigger', 1.1, {
+				inputSource: 'passthrough',
+			}),
+			node('Sort', 'n8n-nodes-base.sort', 1, {
+				sortFieldsUi: { sortField: [{ fieldName: 'n', order: 'descending' }] },
+			}),
+			node('First', 'n8n-nodes-base.limit', 1, { maxItems: 1 }),
+		],
+		connections: { 'When called': toNode('Sort'), Sort: toNode('First') },
+	};
+
+	const result = await executeWorkflow(loadWorkflows([parent, child]).get('Parent'), {
+		input: [{ n: 1 }, { n: 2 }],
+	});
+
+	expect(result.output).toEqual([{ start: 2 }]);
+});

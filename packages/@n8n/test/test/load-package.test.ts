@@ -1,3 +1,5 @@
+import { readFileSync, writeFileSync } from 'node:fs';
+
 import { createCredential, executeWorkflow, loadPackage, mockNode } from '../src';
 import { copySalesPackage, packArchive, SALES_PACKAGE } from './support/package-fixture';
 
@@ -83,6 +85,18 @@ test('throws INVALID_PACKAGE for a path that does not exist', () => {
 		expect.objectContaining({
 			code: 'INVALID_PACKAGE',
 			message: expect.stringContaining('/no/such/package'),
+		}),
+	);
+});
+
+test('throws INVALID_PACKAGE for a .n8np file that is not complete', () => {
+	const archive = packArchive(SALES_PACKAGE);
+	writeFileSync(archive, readFileSync(archive).subarray(0, 300));
+
+	expect(() => loadPackage(archive)).toThrow(
+		expect.objectContaining({
+			code: 'INVALID_PACKAGE',
+			message: expect.stringContaining('not a package directory or a valid .n8np file'),
 		}),
 	);
 });

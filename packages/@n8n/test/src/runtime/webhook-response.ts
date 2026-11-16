@@ -1,4 +1,5 @@
 import { isRecord } from '@n8n/utils/is-record';
+import get from 'lodash/get';
 import { getAdditionalKeys } from 'n8n-core';
 import type {
 	IDataObject,
@@ -128,26 +129,12 @@ function fromFirstEntry(options: ResponseOptions, task: ITaskData): WebhookRespo
 	const headers = { ...options.headers };
 	if (typeof options.contentType === 'string') headers['content-type'] = options.contentType;
 	const body =
-		typeof options.propertyName === 'string'
-			? readPath(first.json, options.propertyName)
-			: first.json;
+		typeof options.propertyName === 'string' ? get(first.json, options.propertyName) : first.json;
 	return { status: options.status, headers, body };
 }
 
 function firstOutput(task: ITaskData) {
 	return task.data?.main[0] ?? [];
-}
-
-function readPath(value: unknown, path: string): unknown {
-	return path.split('.').reduce<unknown>(readKey, value);
-}
-
-function readKey(value: unknown, key: string): unknown {
-	if (Array.isArray(value)) {
-		const items: unknown[] = value;
-		return items[Number(key)];
-	}
-	return isRecord(value) ? value[key] : undefined;
 }
 
 function readResponseOptions(

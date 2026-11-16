@@ -15,10 +15,9 @@ export function checkNodeTypesInstalled(handle: WorkflowHandle): void {
 	throw notInstalled(handle, missing);
 }
 
-function isReplacedByMock(handle: WorkflowHandle, name: string, visited: Set<string>): boolean {
+function isReplacedByMock(handle: WorkflowHandle, name: string, path: Set<string>): boolean {
 	if (handle.mocks.has(name)) return true;
-	if (visited.has(name)) return false;
-	visited.add(name);
+	if (path.has(name)) return false;
 	const outputs = Object.entries(handle.definition.connections[name] ?? {});
 	if (outputs.length === 0 || outputs.some(([type]) => type === NodeConnectionTypes.Main)) {
 		return false;
@@ -26,7 +25,8 @@ function isReplacedByMock(handle: WorkflowHandle, name: string, visited: Set<str
 	const consumers = outputs.flatMap(([, connections]) =>
 		connections.flatMap((connection) => connection ?? []),
 	);
-	return consumers.every((consumer) => isReplacedByMock(handle, consumer.node, visited));
+	const consumerPath = new Set(path).add(name);
+	return consumers.every((consumer) => isReplacedByMock(handle, consumer.node, consumerPath));
 }
 
 function notInstalled(handle: WorkflowHandle, node: NodeDefinition) {

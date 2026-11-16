@@ -28,7 +28,7 @@ export function loadPackage(packagePath: string): WorkflowSet {
 	if (!existsSync(packagePath)) {
 		throw new WorkflowTestError('INVALID_PACKAGE', `The package "${packagePath}" does not exist.`);
 	}
-	const reader = { path: packagePath, files: readPackageFiles(packagePath) };
+	const reader = { path: packagePath, files: openPackageFiles(packagePath) };
 	const manifest = readManifest(reader);
 	const entries = manifest.workflows ?? [];
 	const credentialNames = new Map(
@@ -48,6 +48,17 @@ export function loadPackage(packagePath: string): WorkflowSet {
 		requirements: toRequirements(manifest),
 		idsByTarget: new Map(entries.map(({ target, id }) => [target, id])),
 	});
+}
+
+function openPackageFiles(packagePath: string): PackageFiles {
+	try {
+		return readPackageFiles(packagePath);
+	} catch {
+		throw new WorkflowTestError(
+			'INVALID_PACKAGE',
+			`The package "${packagePath}" is not a package directory or a valid .n8np file.`,
+		);
+	}
 }
 
 function readManifest(reader: PackageReader): PackageManifest {

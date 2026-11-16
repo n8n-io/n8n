@@ -126,8 +126,16 @@ function selectTrigger({ workflow, handle, options }: ExecutionContext): INode {
 	const names = triggers.map((node) => node.name).join(', ');
 
 	if (options.trigger !== undefined) {
-		const { name } =
-			typeof options.trigger === 'string' ? handle.node(options.trigger) : options.trigger;
+		const { workflow: owner, name } =
+			typeof options.trigger === 'string'
+				? { workflow: handle, name: options.trigger }
+				: options.trigger;
+		if (owner !== handle) {
+			throw triggerError(
+				handle,
+				`Node "${name}" belongs to workflow "${owner.name}", not to "${handle.name}"`,
+			);
+		}
 		const trigger = triggers.find((node) => node.name === name);
 		if (trigger) return trigger;
 		throw triggerError(handle, `Node "${name}" is not an active trigger. Triggers: ${names}`);

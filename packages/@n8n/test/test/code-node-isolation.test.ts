@@ -76,17 +76,21 @@ test('gives the code no direct network access', async () => {
 	const attempt = (code: string) =>
 		`(async () => { try { return String(await (async () => { ${code} })()); } catch (error) { return error.message; } })()`;
 
-	const result = await executeWorkflow(
-		codeWorkflow(`return [{ json: {
-			fetch: typeof fetch,
-			XMLHttpRequest: typeof XMLHttpRequest,
-			WebSocket: typeof WebSocket,
-			http: await ${attempt(`require('http').get('${url}')`)},
-			https: await ${attempt(`require('https').get('${url}')`)},
-			undici: await ${attempt(`require('undici').request('${url}')`)},
-		} }];`),
-	);
-	server.close();
+	let result: Awaited<ReturnType<typeof executeWorkflow>>;
+	try {
+		result = await executeWorkflow(
+			codeWorkflow(`return [{ json: {
+				fetch: typeof fetch,
+				XMLHttpRequest: typeof XMLHttpRequest,
+				WebSocket: typeof WebSocket,
+				http: await ${attempt(`require('http').get('${url}')`)},
+				https: await ${attempt(`require('https').get('${url}')`)},
+				undici: await ${attempt(`require('undici').request('${url}')`)},
+			} }];`),
+		);
+	} finally {
+		server.close();
+	}
 
 	expect(result.output).toEqual([
 		{

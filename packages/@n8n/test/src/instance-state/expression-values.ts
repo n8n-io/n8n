@@ -23,8 +23,10 @@ export function createExternalSecretsProxy(context: ExecutionSetup): ExternalSec
 	const proxy = new ExternalSecretsProxy();
 	proxy.setManager({
 		hasProvider: (vault) => Object.hasOwn(secrets, vault) || missing(vault),
-		hasSecret: (vault, key) =>
-			Object.hasOwn(secrets[vault] ?? {}, key) || missing(`${vault}.${key}`),
+		hasSecret: (vault, key) => {
+			if (!Object.hasOwn(secrets[vault] ?? {}, key)) return missing(`${vault}.${key}`);
+			return secrets[vault][key] !== null;
+		},
 		getSecret: (vault, key) => secrets[vault]?.[key] ?? undefined,
 		getSecretNames: (vault) => Object.keys(secrets[vault] ?? {}),
 		getProviderNames: () => Object.keys(secrets),

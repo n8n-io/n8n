@@ -22,3 +22,24 @@ test('starts from the selected trigger', async () => {
 	expect(result.output).toEqual([{ greeting: 'Hello Ada' }]);
 	expect(result.node('Manual start').runs).toHaveLength(0);
 });
+
+test('rejects a trigger option that names an unknown node', async () => {
+	const workflow = loadWorkflow(definition);
+
+	await expect(executeWorkflow(workflow, { trigger: 'Schedule' })).rejects.toMatchObject({
+		code: 'TRIGGER_NOT_FOUND',
+		message: 'Node "Schedule" is not an active trigger. Triggers: Manual start, Webhook.',
+	});
+});
+
+test('rejects a trigger option that references a node of another workflow', async () => {
+	const workflow = loadWorkflow(definition);
+	const other = loadWorkflow({ ...definition, name: 'Other' });
+
+	await expect(executeWorkflow(workflow, { trigger: other.node('Webhook') })).rejects.toMatchObject(
+		{
+			code: 'TRIGGER_NOT_FOUND',
+			message: 'Node "Webhook" belongs to workflow "Other", not to "Two triggers".',
+		},
+	);
+});

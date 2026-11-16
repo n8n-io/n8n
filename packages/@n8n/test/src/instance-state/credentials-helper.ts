@@ -275,6 +275,7 @@ function applyGenericAuth(
 		options.body = Object.assign(isRecord(options.body) ? options.body : {}, resolveAll(body));
 	if (auth) {
 		options.auth = {
+			...auth,
 			username: String(resolve(auth.username)),
 			password: String(resolve(auth.password)),
 		};

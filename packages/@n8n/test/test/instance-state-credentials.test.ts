@@ -51,6 +51,12 @@ test('throws on an unknown credential type', () => {
 	);
 });
 
+test('throws on a credential type name that only exists on the object prototype', () => {
+	expect(() => createCredential('toString', {})).toThrow(
+		expect.objectContaining({ code: 'CREDENTIAL_TYPE_UNKNOWN' }),
+	);
+});
+
 test('fails before the run when the credential type does not match the node', async () => {
 	const execution = executeWorkflow(loadCrm(), {
 		credentials: { 'CRM API key': createCredential('httpBasicAuth', { user: 'ada' }) },
@@ -115,6 +121,37 @@ test('fails on a secret that the test did not supply', async () => {
 		code: 'SECRET_NOT_SUPPLIED',
 		message: expect.stringContaining('"vault.crmToken"'),
 	});
+});
+
+test('treats a secret that the test set to null as missing', async () => {
+	nock(crm).get('/customers/42').reply(200, customer);
+
+	const result = await executeWorkflow(loadCrm(), {
+		credentials: {
+			'CRM API key': createCredential('httpHeaderAuth', {
+				name: 'X-Api-Key',
+				value: '={{ $secrets.vault.crmToken ?? "fallback" }}',
+			}),
+		},
+		secrets: { vault: { crmToken: null } },
+	});
+
+	expect(result.node('Get customer').requests[0].headers).not.toHaveProperty('x-api-key');
+});
+
+test('keeps the parameters when configureNode rejects an unknown credential', () => {
+	const workflow = loadCrm();
+	const node = workflow.node('Get customer');
+	const definition = workflow.definition.nodes.find(({ name }) => name === 'Get customer');
+	const before = structuredClone(definition?.parameters);
+
+	expect(() =>
+		configureNode(node, {
+			parameters: { url: 'https://staging.example.com/customers/7' },
+			credentials: { 'Unknown key': createCredential('httpHeaderAuth', {}) },
+		}),
+	).toThrow(expect.objectContaining({ code: 'CREDENTIAL_NOT_FOUND' }));
+	expect(definition?.parameters).toEqual(before);
 });
 
 test('replaces a supplied parameter and keeps the others', async () => {

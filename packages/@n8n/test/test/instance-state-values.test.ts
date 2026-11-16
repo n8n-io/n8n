@@ -37,10 +37,11 @@ test('reads a null variable as undefined', async () => {
 });
 
 test('reads a supplied env value and leaves process.env unchanged', async () => {
+	const region = process.env.REGION;
 	const result = await read('{ region: $env.REGION }', { env: { REGION: 'eu' } });
 
 	expect(result.output).toEqual([{ region: 'eu' }]);
-	expect(process.env.REGION).toBeUndefined();
+	expect(process.env.REGION).toBe(region);
 });
 
 test('blocks $env when the test supplies no env', async () => {

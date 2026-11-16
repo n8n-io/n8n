@@ -1,7 +1,7 @@
 import type { ClientRequest } from 'node:http';
 
 import type { ExecutionSetup, NodeRunRecord } from '../execution-context';
-import { redact, secretsToRedact } from './redact';
+import { type Redaction, redact, secretsToRedact } from './redact';
 
 export interface HttpRequest {
 	method: string;
@@ -20,10 +20,18 @@ export function recordRequest(
 		method: request.method,
 		url: redact(request.url, secrets),
 		headers: Object.fromEntries(
-			Object.entries(request.headers).map(([name, value]) => [name, redact(value, secrets)]),
+			Object.entries(request.headers).map(([name, value]) => [name, redactHeader(value, secrets)]),
 		),
 		body: redact(request.body, secrets),
 	});
+}
+
+function redactHeader(value: string, secrets: Redaction[]): string {
+	const basic = /^Basic (.+)$/i.exec(value);
+	if (!basic) return redact(value, secrets);
+	const decoded = Buffer.from(basic[1], 'base64').toString();
+	const redacted = redact(decoded, secrets);
+	return redacted === decoded ? redact(value, secrets) : `Basic ${redacted}`;
 }
 
 export function recordClientRequest(context: ExecutionSetup, message: unknown) {

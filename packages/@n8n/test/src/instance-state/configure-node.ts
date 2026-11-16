@@ -22,11 +22,9 @@ export function configureNode(
 		);
 	}
 
+	if (credentials) assertCredentialKeys(node, definition, Object.keys(credentials));
 	if (parameters) Object.assign(definition.parameters, deepCopy(parameters));
-	if (!credentials) return;
-
-	assertCredentialKeys(node, definition, Object.keys(credentials));
-	configureCredentials(node.workflow, node.name, credentials);
+	if (credentials) configureCredentials(node.workflow, node.name, credentials);
 }
 
 function assertCredentialKeys(node: NodeReference, definition: NodeDefinition, keys: string[]) {

@@ -1,4 +1,4 @@
-import { isResourceLocatorValue } from 'n8n-workflow';
+import { DATA_TABLE_NODE_TYPES, isResourceLocatorValue } from 'n8n-workflow';
 
 import type { NodeDefinition, WorkflowSet } from '../workflow-set';
 import { subWorkflowCall } from './contract';
@@ -42,8 +42,6 @@ export interface WorkflowSetRequirements {
 }
 
 type Entry<T> = [key: string, value: T];
-
-const DATA_TABLE_NODE_TYPE = 'n8n-nodes-base.dataTable';
 
 const VARIABLE_PATTERN = /\$vars(?:\.([A-Za-z_$][\w$]*)|\[\s*\\?["']([^"'\\]+)\\?["']\s*\])/g;
 
@@ -99,8 +97,9 @@ function variablesOf(node: NodeDefinition): Array<Entry<Omit<VariableRequirement
 
 function dataTablesOf(node: NodeDefinition): Array<Entry<Omit<DataTableRequirement, 'workflows'>>> {
 	const { dataTableId } = node.parameters;
-	if (node.type !== DATA_TABLE_NODE_TYPE || !isResourceLocatorValue(dataTableId)) return [];
-	const id = String(dataTableId.value);
+	if (!DATA_TABLE_NODE_TYPES.includes(node.type) || !isResourceLocatorValue(dataTableId)) return [];
+	const { mode, value: id } = dataTableId;
+	if (mode === 'name' || typeof id !== 'string' || !id || id.includes('{')) return [];
 	const name =
 		typeof dataTableId.cachedResultName === 'string' ? dataTableId.cachedResultName : undefined;
 	return [[id, { id, name }]];
