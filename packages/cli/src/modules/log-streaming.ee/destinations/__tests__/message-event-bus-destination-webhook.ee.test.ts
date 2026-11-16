@@ -214,6 +214,8 @@ describe('MessageEventBusDestinationWebhook', () => {
 				'internal',
 				undefined,
 				false,
+				undefined,
+				{ actor: { kind: 'system', reason: 'log-streaming' } },
 			);
 			expect(request).toHaveBeenCalledWith(
 				expect.objectContaining({
@@ -255,6 +257,8 @@ describe('MessageEventBusDestinationWebhook', () => {
 				'internal',
 				undefined,
 				false,
+				undefined,
+				{ actor: { kind: 'system', reason: 'log-streaming' } },
 			);
 			expect(request).toHaveBeenCalledWith(
 				expect.objectContaining({
@@ -299,6 +303,8 @@ describe('MessageEventBusDestinationWebhook', () => {
 				'internal',
 				undefined,
 				false,
+				undefined,
+				{ actor: { kind: 'system', reason: 'log-streaming' } },
 			);
 			expect(request).toHaveBeenCalledWith(
 				expect.objectContaining({
@@ -306,6 +312,44 @@ describe('MessageEventBusDestinationWebhook', () => {
 				}),
 			);
 		});
+
+		it.each([
+			['Basic Auth', 'httpBasicAuth'],
+			['Digest Auth', 'httpDigestAuth'],
+			['Header Auth', 'httpHeaderAuth'],
+			['Query Auth', 'httpQueryAuth'],
+		] as const)(
+			'should not send when %s credentials cannot be resolved',
+			async (label, genericAuthType) => {
+				const { outboundHttp, request } = mockOutboundHttp();
+				const destination = new MessageEventBusDestinationWebhook(
+					mockEventBus,
+					{
+						__type: MessageEventBusDestinationTypeNames.webhook,
+						url: 'https://example.com/webhook',
+						authentication: 'genericCredentialType',
+						genericAuthType,
+						credentials: {
+							[genericAuthType]: { id: 'credential-id', name: label },
+						},
+					},
+					outboundHttp,
+				);
+				const credentialsHelper = mock<CredentialsHelper>();
+				credentialsHelper.getDecrypted.mockRejectedValue(
+					new Error('Could not resolve credential'),
+				);
+				destination.credentialsHelper = credentialsHelper;
+
+				await expect(
+					destination.receiveFromEventBus({
+						msg: createMessage(),
+						confirmCallback: vi.fn(),
+					} as Parameters<MessageEventBusDestinationWebhook['receiveFromEventBus']>[0]),
+				).rejects.toThrow('Could not resolve credential');
+				expect(request).not.toHaveBeenCalled();
+			},
+		);
 
 		it('should not send when Simplified Custom Auth credentials cannot be resolved', async () => {
 			const { outboundHttp, request } = mockOutboundHttp();

@@ -378,21 +378,13 @@ export class MessageEventBusDestinationWebhook
 
 		if (this.authentication === 'genericCredentialType') {
 			if (this.genericAuthType === 'httpBasicAuth') {
-				try {
-					httpBasicAuth = await this.matchDecryptedCredentialType('httpBasicAuth');
-				} catch {}
+				httpBasicAuth = await this.matchDecryptedCredentialType('httpBasicAuth');
 			} else if (this.genericAuthType === 'httpDigestAuth') {
-				try {
-					httpDigestAuth = await this.matchDecryptedCredentialType('httpDigestAuth');
-				} catch {}
+				httpDigestAuth = await this.matchDecryptedCredentialType('httpDigestAuth');
 			} else if (this.genericAuthType === 'httpHeaderAuth') {
-				try {
-					httpHeaderAuth = await this.matchDecryptedCredentialType('httpHeaderAuth');
-				} catch {}
+				httpHeaderAuth = await this.matchDecryptedCredentialType('httpHeaderAuth');
 			} else if (this.genericAuthType === 'httpQueryAuth') {
-				try {
-					httpQueryAuth = await this.matchDecryptedCredentialType('httpQueryAuth');
-				} catch {}
+				httpQueryAuth = await this.matchDecryptedCredentialType('httpQueryAuth');
 			} else if (this.genericAuthType === 'httpTemplatedCustomAuth') {
 				httpTemplatedCustomAuth =
 					await this.matchDecryptedCredentialType('httpTemplatedCustomAuth');
