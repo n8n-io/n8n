@@ -974,6 +974,7 @@ describe('InstanceAiService — runtime workspace setup', () => {
 				setupPanelVariant: snapshotMode === 'off' ? 'control' : 'variant',
 				configEvalsEnabled: true,
 				conversationHistoryEnabled: false,
+				draftWorkflowPreviewEnabled: false,
 				nodeUsageEnabled: !instanceContextEnabled,
 				nodeContextEnabled: false,
 				folderExplorationEnabled: false,
@@ -1326,6 +1327,7 @@ describe('InstanceAiService — runtime workspace setup', () => {
 			resolveExperimentGates: vi.fn().mockResolvedValue({
 				configEvalsEnabled: true,
 				conversationHistoryEnabled: false,
+				draftWorkflowPreviewEnabled: false,
 				conciseStyleEnabled: concise,
 				nodeUsageEnabled: false,
 				nodeContextEnabled: false,

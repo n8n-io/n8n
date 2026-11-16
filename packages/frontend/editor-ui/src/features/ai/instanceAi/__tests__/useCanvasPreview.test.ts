@@ -14,6 +14,7 @@ import {
 import { useCanvasPreview } from '../useCanvasPreview';
 import type { ResourceEntry } from '../useResourceRegistry';
 import type { ThreadTabsStorage } from '../composables/useOpenArtifactTabs';
+import type { WorkflowDraft, WorkflowDraftsByFilePath } from '../instanceAi.workflowDrafts';
 
 // ---------------------------------------------------------------------------
 // Factories
@@ -162,6 +163,8 @@ function setup(options?: {
 	tabsStorage?: ThreadTabsStorage;
 }) {
 	const thread = createMockThread();
+	const drafts = ref<WorkflowDraftsByFilePath>({});
+	const dismissWorkflowDrafts = vi.fn();
 	if (options?.threadOverrides) Object.assign(thread, options.threadOverrides);
 	const route = createMockRoute();
 
@@ -172,19 +175,157 @@ function setup(options?: {
 		initialAgentId: options?.initialAgentId,
 		initialAppId: options?.initialAppId,
 		tabsStorage: options?.tabsStorage,
+		workflowDrafts: () => drafts.value,
+		dismissWorkflowDrafts,
 	});
 
-	return { ...result, thread, route };
+	return { ...result, thread, route, drafts, dismissWorkflowDrafts };
 }
 
 // ---------------------------------------------------------------------------
 // Tests
 // ---------------------------------------------------------------------------
 
+function makeDraft(filePath: string, overrides: Partial<WorkflowDraft> = {}): WorkflowDraft {
+	return {
+		filePath,
+		revision: 1,
+		workflow: { name: `Draft ${filePath}`, nodes: [], connections: {} },
+		...overrides,
+	};
+}
+
 describe('useCanvasPreview', () => {
 	beforeEach(() => {
 		vi.restoreAllMocks();
 		createTestingPinia();
+	});
+
+	describe('workflow drafts', () => {
+		const fileA = 'src/workflows/a.workflow.ts';
+		const fileB = 'src/workflows/b.workflow.ts';
+
+		test('opens a building tab for the draft of a new workflow and shows it', async () => {
+			const ctx = setup();
+
+			ctx.drafts.value = { [fileA]: makeDraft(fileA) };
+			await nextTick();
+
+			const tab = ctx.openTabs.value.find((t) => t.id === ctx.activeTabId.value);
+			expect(tab).toMatchObject({ type: 'workflow', name: `Draft ${fileA}`, building: true });
+			expect(tab?.draft).toBe(true);
+			expect(ctx.activeWorkflowId.value).toBeNull();
+			expect(ctx.activeWorkflowDraft.value?.filePath).toBe(fileA);
+			expect(ctx.isPreviewVisible.value).toBe(true);
+		});
+
+		test('shows the draft of a saved workflow on that workflow tab', async () => {
+			const ctx = setup();
+			registerWorkflow(ctx.thread, 'wf-1');
+
+			ctx.drafts.value = { [fileA]: makeDraft(fileA, { workflowId: 'wf-1' }) };
+			await nextTick();
+
+			expect(ctx.openTabs.value.map((t) => t.id)).toEqual(['wf-1']);
+			expect(ctx.activeWorkflowId.value).toBe('wf-1');
+			expect(ctx.activeWorkflowDraft.value?.filePath).toBe(fileA);
+		});
+
+		test('gives each new workflow its own draft tab', async () => {
+			const ctx = setup();
+
+			ctx.drafts.value = { [fileA]: makeDraft(fileA), [fileB]: makeDraft(fileB) };
+			await nextTick();
+
+			expect(ctx.openTabs.value.filter((t) => t.draft)).toHaveLength(2);
+		});
+
+		test('keeps the tab the user picked while drafts of another workflow arrive', async () => {
+			const ctx = setup();
+			ctx.thread.isStreaming = true;
+			ctx.drafts.value = { [fileA]: makeDraft(fileA), [fileB]: makeDraft(fileB) };
+			await nextTick();
+			const tabA = ctx.openTabs.value.find((t) => t.name === `Draft ${fileA}`);
+			ctx.selectTab(tabA!.id);
+
+			ctx.drafts.value = { ...ctx.drafts.value, [fileB]: makeDraft(fileB, { revision: 2 }) };
+			await nextTick();
+
+			expect(ctx.activeTabId.value).toBe(tabA!.id);
+		});
+
+		test('moves an active draft tab to the saved workflow when the build saves it', async () => {
+			const ctx = setup();
+			ctx.drafts.value = { [fileA]: makeDraft(fileA) };
+			await nextTick();
+
+			registerWorkflow(ctx.thread, 'wf-1');
+			ctx.drafts.value = { [fileA]: makeDraft(fileA, { savedWorkflowId: 'wf-1' }) };
+			await nextTick();
+
+			expect(ctx.activeTabId.value).toBe('wf-1');
+			expect(ctx.openTabs.value.some((t) => t.draft)).toBe(false);
+			// The draft stays on screen until the saved canvas loads.
+			expect(ctx.activeWorkflowDraft.value?.filePath).toBe(fileA);
+		});
+
+		test('dismisses a saved draft that is not on screen', async () => {
+			const ctx = setup();
+			ctx.drafts.value = { [fileA]: makeDraft(fileA), [fileB]: makeDraft(fileB) };
+			await nextTick();
+			const tabB = ctx.openTabs.value.find((t) => t.name === `Draft ${fileB}`);
+			ctx.selectTab(tabB!.id);
+
+			registerWorkflow(ctx.thread, 'wf-a');
+			ctx.drafts.value = {
+				...ctx.drafts.value,
+				[fileA]: makeDraft(fileA, { savedWorkflowId: 'wf-a' }),
+			};
+			await nextTick();
+
+			expect(ctx.dismissWorkflowDrafts).toHaveBeenCalledWith('wf-a');
+		});
+
+		test('never stores a draft tab as the active tab', async () => {
+			vi.useFakeTimers();
+			try {
+				const save = vi.fn().mockResolvedValue(undefined);
+				const ctx = setup({ tabsStorage: { load: vi.fn().mockResolvedValue(null), save } });
+				await flushPromises();
+				ctx.drafts.value = { [fileA]: makeDraft(fileA) };
+				await nextTick();
+
+				ctx.selectTab(ctx.activeTabId.value!);
+				await vi.advanceTimersByTimeAsync(DEBOUNCE_TIME.API.AUTOSAVE);
+
+				expect(save).toHaveBeenCalledWith(expect.objectContaining({ tabs: [], activeTab: null }));
+			} finally {
+				vi.useRealTimers();
+			}
+		});
+
+		test('never stores draft tabs', async () => {
+			vi.useFakeTimers();
+			try {
+				const save = vi.fn().mockResolvedValue(undefined);
+				const ctx = setup({ tabsStorage: { load: vi.fn().mockResolvedValue(null), save } });
+				await flushPromises();
+				registerWorkflow(ctx.thread, 'wf-1');
+				ctx.drafts.value = { [fileA]: makeDraft(fileA) };
+				await nextTick();
+
+				ctx.selectTab('wf-1');
+				await vi.advanceTimersByTimeAsync(DEBOUNCE_TIME.API.AUTOSAVE);
+
+				expect(save).toHaveBeenCalledWith(
+					expect.objectContaining({
+						tabs: [{ type: 'workflow', id: 'wf-1', name: 'Workflow wf-1' }],
+					}),
+				);
+			} finally {
+				vi.useRealTimers();
+			}
+		});
 	});
 
 	describe('openTabs', () => {

@@ -18,6 +18,8 @@ import {
 	upsertEvaluationConfigSchema,
 	INSTANCE_AI_CONVERSATION_HISTORY_FLAG,
 	INSTANCE_AI_CONVERSATION_HISTORY_ENABLED_VARIANT,
+	INSTANCE_AI_DRAFT_WORKFLOW_PREVIEW_FLAG,
+	INSTANCE_AI_DRAFT_WORKFLOW_PREVIEW_ENABLED_VARIANT,
 	INSTANCE_AI_SETUP_PANEL_FLAG,
 	INSTANCE_AI_SETUP_PANEL_ENABLED_VARIANT,
 	INSTANCE_AI_APPROVAL_MODES_FLAG,
@@ -424,6 +426,8 @@ export interface InstanceAiFeatureFlags {
 	configEvalsEnabled: boolean;
 	/** Past-conversation recall: tool, prompt section and first-turn hint. */
 	conversationHistoryEnabled: boolean;
+	/** Canvas drafts parsed from the builder's source before the save. */
+	draftWorkflowPreviewEnabled: boolean;
 	/** Concise reply style. Applies only when the default build mode is selected. */
 	conciseStyleEnabled: boolean;
 	setupPanelEnabled: boolean;
@@ -846,6 +850,9 @@ export class InstanceAiAdapterService {
 			conversationHistoryEnabled:
 				flags[INSTANCE_AI_CONVERSATION_HISTORY_FLAG] ===
 				INSTANCE_AI_CONVERSATION_HISTORY_ENABLED_VARIANT,
+			draftWorkflowPreviewEnabled:
+				flags[INSTANCE_AI_DRAFT_WORKFLOW_PREVIEW_FLAG] ===
+				INSTANCE_AI_DRAFT_WORKFLOW_PREVIEW_ENABLED_VARIANT,
 			conciseStyleEnabled:
 				flags[INSTANCE_AI_CONCISE_STYLE_FLAG] === INSTANCE_AI_CONCISE_STYLE_ENABLED_VARIANT,
 			setupPanelEnabled: setupPanelVariant === INSTANCE_AI_SETUP_PANEL_ENABLED_VARIANT,
