@@ -167,16 +167,54 @@ describe('Arcade view', () => {
 		expect(state(view)).toBe('paused');
 	});
 
-	it('stops listening and drawing when it closes', async () => {
+	it('stops drawing when it closes during a game', async () => {
 		const view = render();
 		press();
 		await advance(100);
+		expect(frames).toHaveLength(1);
 
 		view.unmount();
-		expect(frames).toHaveLength(0);
 
-		press();
 		expect(frames).toHaveLength(0);
+	});
+
+	it('stops listening to keys when it closes', () => {
+		const view = render();
+
+		view.unmount();
+		// A key that the game still heard would start a game and ask for a frame.
+		press();
+
+		expect(frames).toHaveLength(0);
+	});
+
+	it('removes every listener that it added when it closes', () => {
+		const added: Array<[EventTarget, string, unknown]> = [];
+		for (const target of [window, document]) {
+			const original = target.addEventListener.bind(target);
+			vi.spyOn(target, 'addEventListener').mockImplementation((type, listener, options) => {
+				added.push([target, type, listener]);
+				original(type, listener, options);
+			});
+		}
+		const removeFromWindow = vi.spyOn(window, 'removeEventListener');
+		const removeFromDocument = vi.spyOn(document, 'removeEventListener');
+		const view = render();
+		const gameListeners = added.filter(([, type]) =>
+			['keydown', 'blur', 'visibilitychange'].includes(type),
+		);
+		expect(gameListeners.map(([, type]) => type).sort()).toEqual([
+			'blur',
+			'keydown',
+			'visibilitychange',
+		]);
+
+		view.unmount();
+
+		for (const [target, type, listener] of gameListeners) {
+			const remove = target === window ? removeFromWindow : removeFromDocument;
+			expect(remove, type).toHaveBeenCalledWith(type, listener);
+		}
 	});
 
 	it('draws with the colors of the theme', async () => {
@@ -184,13 +222,32 @@ describe('Arcade view', () => {
 		vi.mocked(HTMLCanvasElement.prototype.getContext).mockReturnValue(
 			context as unknown as CanvasRenderingContext2D,
 		);
-		document.documentElement.style.setProperty('--background--brand', 'rgb(1, 2, 3)');
+		// On the body, where the tokens of the system theme are.
+		document.body.style.setProperty('--background--brand', 'rgb(1, 2, 3)');
 
 		render();
 
 		expect(fills).toContain('rgb(1, 2, 3)');
 		expect(context.fillRect).toHaveBeenCalled();
-		document.documentElement.style.removeProperty('--background--brand');
+		document.body.style.removeProperty('--background--brand');
+	});
+
+	it('shows a focus ring for keyboard focus only', async () => {
+		const view = render();
+		const canvas = view.getByTestId('arcade-canvas');
+		const matches = vi.spyOn(canvas, 'matches').mockReturnValue(true);
+
+		await fireEvent.focus(canvas);
+		expect(canvas.getAttribute('data-focus-ring')).toBe('true');
+		expect(canvas.style.outline).toContain('solid');
+
+		await fireEvent.blur(canvas);
+		expect(canvas.getAttribute('data-focus-ring')).toBe('false');
+
+		matches.mockReturnValue(false);
+		await fireEvent.focus(canvas);
+		expect(canvas.getAttribute('data-focus-ring')).toBe('false');
+		expect(canvas.style.outline).toBe('none');
 	});
 
 	it('only translates keys that the host sends it, in every state', async () => {

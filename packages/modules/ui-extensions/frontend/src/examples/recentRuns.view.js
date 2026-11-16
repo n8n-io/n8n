@@ -28,7 +28,8 @@ const BAR_COLOR = {
 	crashed: 'var(--color--red-500)',
 	canceled: 'var(--color--yellow-500)',
 };
-const FINISHED = ['success', 'error', 'crashed', 'canceled'];
+// A canceled run neither succeeded nor failed, so the success rate leaves it out.
+const RATED = ['success', 'error', 'crashed'];
 const TOP_WORKFLOWS = 3;
 const UNITS = [
 	['day', 86400],
@@ -45,7 +46,7 @@ const tiles =
 const tile =
 	'display: flex; flex-direction: column; gap: var(--spacing--4xs); padding: var(--spacing--2xs) var(--spacing--xs); border-radius: var(--radius); background-color: var(--background--subtle)';
 const chart =
-	'display: flex; align-items: flex-end; gap: var(--spacing--4xs); height: 64px; padding: var(--spacing--2xs); border-radius: var(--radius); background-color: var(--background--subtle)';
+	'display: flex; align-items: flex-end; gap: var(--spacing--4xs); height: var(--spacing--3xl); padding: var(--spacing--2xs); border-radius: var(--radius); background-color: var(--background--subtle)';
 const bar =
 	'flex: 1; min-width: 0; padding: 0; border: none; border-radius: var(--radius) var(--radius) 0 0; cursor: pointer';
 const runButton =
@@ -76,6 +77,8 @@ export default {
 			return format.format(seconds, 'second');
 		}
 
+		const workflowName = (run) => run.workflowName || t('uiExtensions.recentRuns.unnamedWorkflow');
+
 		function durationMs(run) {
 			if (!run.startedAt || !run.stoppedAt) return null;
 			return Math.max(0, new Date(run.stoppedAt).getTime() - new Date(run.startedAt).getTime());
@@ -100,17 +103,17 @@ export default {
 		const durations = computed(() => items.value.map(durationMs).filter((ms) => ms !== null));
 
 		const summary = computed(() => {
-			const finished = items.value.filter((run) => FINISHED.includes(run.status));
-			const succeeded = finished.filter((run) => run.status === 'success').length;
+			const rated = items.value.filter((run) => RATED.includes(run.status));
+			const succeeded = rated.filter((run) => run.status === 'success').length;
 			const total = durations.value.reduce((sum, ms) => sum + ms, 0);
 			const none = t('uiExtensions.recentRuns.summary.noValue');
 			return [
 				{ key: 'runs', value: new Intl.NumberFormat(locale.value).format(items.value.length) },
 				{
 					key: 'successRate',
-					value: finished.length
+					value: rated.length
 						? new Intl.NumberFormat(locale.value, { style: 'percent' }).format(
-								succeeded / finished.length,
+								succeeded / rated.length,
 							)
 						: none,
 				},
@@ -130,15 +133,15 @@ export default {
 			const longest = Math.max(1, ...durations.value);
 			return [...items.value].reverse().map((run) => {
 				const ms = durationMs(run);
+				const status = t('uiExtensions.recentRuns.status.' + run.status);
 				return {
 					run,
 					height: ms === null ? 8 : Math.max(8, Math.round((ms / longest) * 100)),
 					color: BAR_COLOR[run.status] ?? 'var(--color--blue-500)',
-					label: t('uiExtensions.recentRuns.chart.bar', {
-						status: t('uiExtensions.recentRuns.status.' + run.status),
-						duration:
-							ms === null ? t('uiExtensions.recentRuns.summary.noValue') : formatDuration(ms),
-					}),
+					label:
+						ms === null
+							? t('uiExtensions.recentRuns.chart.barNoTime', { status })
+							: t('uiExtensions.recentRuns.chart.bar', { status, duration: formatDuration(ms) }),
 				};
 			});
 		});
@@ -149,7 +152,7 @@ export default {
 			for (const run of items.value) {
 				const entry = byWorkflow.get(run.workflowId) ?? {
 					workflowId: run.workflowId,
-					name: run.workflowName,
+					name: workflowName(run),
 					runs: 0,
 					failures: 0,
 				};
@@ -172,6 +175,7 @@ export default {
 			duration,
 			summary,
 			bars,
+			workflowName,
 			topWorkflows,
 			modeLabel: (mode) =>
 				KNOWN_MODES.includes(mode) ? t('uiExtensions.recentRuns.mode.' + mode) : mode,
@@ -231,6 +235,7 @@ export default {
 								:style="[bar, { height: entry.height + '%', backgroundColor: entry.color }]"
 								:title="entry.label"
 								:aria-label="entry.label"
+								tabindex="-1"
 								data-test-id="recent-runs-bar"
 								:data-status="entry.run.status"
 								@click="open(entry.run)"
@@ -266,7 +271,7 @@ export default {
 						<N8nBadge :variant="badge(run.status)" data-test-id="recent-runs-status">{{ t('uiExtensions.recentRuns.status.' + run.status) }}</N8nBadge>
 						<N8nText size="small" color="text-light">{{ startedAgo(run.startedAt) }}</N8nText>
 					</span>
-					<N8nText v-if="runs.scope === 'all'" size="small" bold data-test-id="recent-runs-workflow" style="overflow-wrap: anywhere">{{ run.workflowName }}</N8nText>
+					<N8nText v-if="runs.scope === 'all'" size="small" bold data-test-id="recent-runs-workflow" style="overflow-wrap: anywhere">{{ workflowName(run) }}</N8nText>
 					<span :style="row">
 						<N8nTag :text="modeLabel(run.mode)" :clickable="false" data-test-id="recent-runs-mode" />
 						<span v-if="duration(run)" :style="row" style="gap: var(--spacing--4xs)">

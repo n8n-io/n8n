@@ -87,6 +87,7 @@ export default {
 		const score = ref(0);
 		const best = ref(0);
 		const jumping = ref(false);
+		const focusRing = ref(false);
 
 		let game = newGame();
 		let frameId = 0;
@@ -100,9 +101,13 @@ export default {
 			return t('uiExtensions.arcade.play');
 		});
 
+		// From the canvas and the body, because the tokens of the system theme sit on the body.
 		function readColors() {
-			const style = window.getComputedStyle(document.documentElement);
-			const read = (name, fallback) => style.getPropertyValue(name).trim() || fallback;
+			const styles = [canvas.value, document.body]
+				.filter(Boolean)
+				.map((element) => window.getComputedStyle(element));
+			const read = (name, fallback) =>
+				styles.map((style) => style.getPropertyValue(name).trim()).find(Boolean) ?? fallback;
 			return {
 				dino: read('--background--brand', '#ea4b71'),
 				surface: read('--background--surface', '#ffffff'),
@@ -311,6 +316,15 @@ export default {
 			if (document.hidden) pause();
 		}
 
+		/** Shows a focus ring for keyboard focus only. An inline style can't use `:focus-visible`. */
+		function showFocusRing(event) {
+			try {
+				focusRing.value = event.type === 'focus' && event.target.matches(':focus-visible');
+			} catch {
+				focusRing.value = false;
+			}
+		}
+
 		onMounted(() => {
 			window.addEventListener('keydown', onKeyDown);
 			window.addEventListener('blur', pause);
@@ -330,6 +344,8 @@ export default {
 			score,
 			best,
 			jumping,
+			focusRing,
+			showFocusRing,
 			formatNumber,
 			buttonLabel,
 			press,
@@ -360,7 +376,11 @@ export default {
 					role="img"
 					:aria-label="t('uiExtensions.arcade.canvas')"
 					data-test-id="arcade-canvas"
-					style="display: block; width: 100%; aspect-ratio: 2 / 1; border-radius: var(--radius); background-color: var(--background--subtle); cursor: pointer; touch-action: manipulation; outline: none"
+					style="display: block; width: 100%; aspect-ratio: 2 / 1; border-radius: var(--radius); background-color: var(--background--subtle); cursor: pointer; touch-action: manipulation; image-rendering: pixelated; outline-offset: 2px"
+					:style="{ outline: focusRing ? 'var(--focus--border-width) solid var(--focus--border-color)' : 'none' }"
+					:data-focus-ring="focusRing ? 'true' : 'false'"
+					@focus="showFocusRing"
+					@blur="showFocusRing"
 					@pointerdown.prevent="press"
 				/>
 				<div v-if="state !== 'running'" :style="overlay" data-test-id="arcade-overlay">

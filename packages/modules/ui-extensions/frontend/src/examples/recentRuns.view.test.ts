@@ -182,7 +182,8 @@ describe('Recent runs view', () => {
 				runs: {
 					scope: 'workflow',
 					items: [
-						// Still running, so it counts as a run but not in the success rate.
+						// Running and canceled runs count as runs, but not in the success rate.
+						run('5', { status: 'canceled', stoppedAt: null }),
 						run('4', { status: 'running', stoppedAt: null }),
 						run('3', { status: 'error', stoppedAt: '2026-11-16T11:55:00.500Z' }),
 						run('2', { stoppedAt: '2026-11-16T11:55:03.500Z' }),
@@ -193,7 +194,7 @@ describe('Recent runs view', () => {
 		);
 
 		const stat = (key: string) => getByTestId(`recent-runs-stat-${key}`).textContent;
-		expect(stat('runs')).toBe('Runs4');
+		expect(stat('runs')).toBe('Runs shown5');
 		expect(stat('successRate')).toBe('Success rate67%');
 		// 500 ms, 3.5 s and 1.5 s.
 		expect(stat('averageDuration')).toBe('Average time1.8 sec');
@@ -231,6 +232,8 @@ describe('Recent runs view', () => {
 		expect(bars[0].style.height).toBe('100%');
 		expect(bars[1].style.height).toBe('25%');
 		expect(bars[1].getAttribute('aria-label')).toBe('Failed, 750 ms. Open this run');
+		// The run list is the keyboard path to a run, so the bars stay out of the tab order.
+		expect(bars.every((bar) => bar.getAttribute('tabindex') === '-1')).toBe(true);
 
 		await fireEvent.click(bars[1]);
 
@@ -264,5 +267,28 @@ describe('Recent runs view', () => {
 
 		expect(queryByTestId('recent-runs-summary')).toBeNull();
 		expect(queryByTestId('recent-runs-chart')).toBeNull();
+	});
+
+	it('labels a bar without a time while the run goes on', () => {
+		const { getByTestId } = render(
+			workflowPage([]),
+			panelData({
+				runs: { scope: 'workflow', items: [run('1', { status: 'running', stoppedAt: null })] },
+			}),
+		);
+
+		expect(getByTestId('recent-runs-bar').getAttribute('aria-label')).toBe(
+			'Running. Open this run',
+		);
+	});
+
+	it('names a workflow without a name', () => {
+		const { getByTestId } = render(
+			listPage,
+			panelData({ runs: { scope: 'all', items: [run('1', { workflowName: '' })] } }),
+		);
+
+		expect(getByTestId('recent-runs-workflow').textContent).toBe('Untitled workflow');
+		expect(getByTestId('recent-runs-top-workflow').textContent).toContain('Untitled workflow');
 	});
 });

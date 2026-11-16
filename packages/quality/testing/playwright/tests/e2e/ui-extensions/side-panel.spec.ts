@@ -33,6 +33,12 @@ async function createWorkflow(api: ApiHelpers, options: { availableInMCP?: boole
 	return { id: String(workflow.id), name };
 }
 
+/** Whether a request is the side panel's own fetch of the latest runs. */
+function isPanelFetch(url: string) {
+	const { pathname, searchParams } = new URL(url);
+	return pathname.endsWith('/rest/executions') && searchParams.get('limit') === '10';
+}
+
 /**
  * A view that keeps sending the editor a command to replace the open workflow:
  * every few milliseconds while it runs, and again while the editor removes its
@@ -229,7 +235,7 @@ test.describe(
 			await expect(run).toHaveCount(1);
 			await expect(run).toHaveAttribute('data-status', 'success');
 			await expect(run).toContainText('Succeeded');
-			await expect(n8n.sidePanel.getViewElement('recent-runs-stat-runs')).toHaveText('Runs1');
+			await expect(n8n.sidePanel.getViewElement('recent-runs-stat-runs')).toHaveText('Runs shown1');
 			await expect(n8n.sidePanel.getViewElement('recent-runs-stat-successRate')).toHaveText(
 				'Success rate100%',
 			);
@@ -266,23 +272,24 @@ test.describe(
 			);
 		});
 
-		test('plays the dinosaur game in the Arcade tab, with no requests', async ({ n8n }) => {
+		test('plays the dinosaur game in the Arcade tab, and fetches no run data for it', async ({
+			n8n,
+			api,
+		}) => {
+			const workflow = await createWorkflow(api);
+
 			await n8n.navigate.toWorkflows();
 			await n8n.sidePanel.open();
-			const frameRequests: string[] = [];
-			n8n.page.on('request', (request) => {
-				if (request.frame() !== n8n.page.mainFrame() && !request.url().startsWith('data:')) {
-					frameRequests.push(request.url());
-				}
-			});
 			await n8n.sidePanel.selectTab('Arcade');
 			const arcade = n8n.sidePanel.getViewElement('arcade');
 			await expect(arcade).toHaveAttribute('data-state', 'idle');
-			// Recent runs fetched its data before. From here the editor must fetch none.
-			const executionRequests: string[] = [];
-			n8n.page.on('request', (request) => {
-				if (request.url().includes('/rest/executions')) executionRequests.push(request.url());
-			});
+
+			const requests: string[] = [];
+			n8n.page.on('request', (request) => requests.push(request.url()));
+
+			// Opening a workflow makes a data view fetch. With Arcade open, nothing fetches.
+			await n8n.workflows.cards.clickWorkflowCard(workflow.name);
+			await expect(n8n.canvas.nodeByName('Start here')).toBeVisible();
 
 			await n8n.sidePanel.getViewElement('arcade-play').click();
 			await expect(arcade).toHaveAttribute('data-state', 'running');
@@ -294,10 +301,12 @@ test.describe(
 			// With no more jumps, the dinosaur runs into a node.
 			await expect(arcade).toHaveAttribute('data-state', 'over', { timeout: 20_000 });
 			await expect(n8n.sidePanel.getViewElement('arcade-best')).not.toHaveText('Best: 0');
+			expect(requests.filter(isPanelFetch)).toEqual([]);
 
-			// The game runs in the sandbox with no network, and the editor fetches no run data for it.
-			expect(frameRequests).toEqual([]);
-			expect(executionRequests).toEqual([]);
+			// The same page fetches as soon as a data view opens.
+			const fetched = n8n.page.waitForRequest((request) => isPanelFetch(request.url()));
+			await n8n.sidePanel.selectTab('Recent runs');
+			expect(new URL((await fetched).url()).searchParams.get('filter')).toContain(workflow.id);
 		});
 
 		test('adds a tab for a view from an MCP client, with the context it may see, and keeps it after a reload', async ({

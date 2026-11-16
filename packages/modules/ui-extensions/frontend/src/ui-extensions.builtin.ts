@@ -70,6 +70,8 @@ export const BUILTIN_VIEWS: readonly BuiltinViewDefinition[] = [
 			{ key: 'uiExtensions.recentRuns.summary.noValue' },
 			{ key: 'uiExtensions.recentRuns.chart.title' },
 			{ key: 'uiExtensions.recentRuns.chart.bar', params: ['status', 'duration'] },
+			{ key: 'uiExtensions.recentRuns.chart.barNoTime', params: ['status'] },
+			{ key: 'uiExtensions.recentRuns.unnamedWorkflow' },
 			{ key: 'uiExtensions.recentRuns.topWorkflows.title' },
 			{ key: 'uiExtensions.recentRuns.topWorkflows.runs', params: ['count'] },
 			{ key: 'uiExtensions.recentRuns.topWorkflows.failures', params: ['count'] },
