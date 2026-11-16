@@ -1,0 +1,25 @@
+packages/cli/src/modules/instance-ai/__tests__/cloud-browser-local-mcp-server.test.ts
+  s_53de0925ea9368::t_704fa8878b7ff4 105,705
+  s_53de0925ea9368::t_ffbb80ca33fdae 717-718
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "f9bc6db8accaa878cd8a651343ab7332673e67e7",
+  "prompts": {},
+  "humans": {
+    "h_44f8d1c0f2f8c4": {
+      "author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_53de0925ea9368": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "61e9e68e-3dbb-46a8-99d1-6e74fcb229e7",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    }
+  }
+}
