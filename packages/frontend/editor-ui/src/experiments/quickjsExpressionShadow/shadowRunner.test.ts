@@ -11,10 +11,11 @@ const context = (source: string): ExpressionShadowContext => ({
 });
 
 const ok = (value: unknown): ExpressionEvaluationOutcome => ({ ok: true, value });
-const failed = (errorClass: string): ExpressionEvaluationOutcome => ({
+const failed = (errorClass: string, errorOrigin?: string): ExpressionEvaluationOutcome => ({
 	ok: false,
 	error: new Error(errorClass),
 	errorClass,
+	errorOrigin,
 });
 
 function createShadow(quickjs: ExpressionEvaluationOutcome, options: { random?: number } = {}) {
@@ -240,7 +241,7 @@ describe('QuickJsExpressionShadow', () => {
 	});
 
 	it('reports where the QuickJS error started', () => {
-		const { shadow } = createShadow({ ...failed('Error'), errorOrigin: 'guest:TypeError' });
+		const { shadow } = createShadow(failed('Error', 'guest:TypeError'));
 
 		run(shadow, '{{ $json.a }}', ok(1));
 
