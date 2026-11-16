@@ -4,5 +4,5 @@
 	"description": "Set and If nodes with a real-world mix of expressions: about two thirds fit native evaluation and one third needs the expression engine",
 	"scenarioData": { "workflowFiles": ["expression-mix.json"] },
 	"scriptPath": "expression-mix.script.js",
-	"supportedEngines": ["v1"]
+	"supportedEngines": ["v1", "v2"]
 }
