@@ -103,6 +103,26 @@ describe('listGatewayModels', () => {
 		expect(error?.description).toBe(BY_ID_HINT);
 	});
 
+	it('says the same when the headers arrive and the body stalls', async () => {
+		const controller = new AbortController();
+		const expired = new DOMException('This operation was aborted', 'TimeoutError');
+		vi.spyOn(AbortSignal, 'timeout').mockReturnValue(controller.signal);
+		const stallingBody = (async () => ({
+			ok: true,
+			status: 200,
+			text: async () => {
+				controller.abort(expired);
+				throw expired;
+			},
+		})) as unknown as typeof fetch;
+
+		const error = await rejection(listGatewayModels(node, endpointWith(), stallingBody));
+
+		expect(error).toBeInstanceOf(NodeApiError);
+		expect(error?.message).toBe('The gateway did not answer the model list within 30 seconds');
+		expect(error?.description).toBe(BY_ID_HINT);
+	});
+
 	it.each([
 		['an OpenAI-style answer', openAiStyle, ['gpt-4o', 'claude-sonnet']],
 		['a bare array of objects', JSON.stringify([{ id: 'a' }, { id: 'b' }]), ['a', 'b']],

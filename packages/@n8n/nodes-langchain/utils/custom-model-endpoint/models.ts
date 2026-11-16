@@ -46,10 +46,7 @@ export async function listGatewayModels(
 	fetchModels: typeof fetch,
 ): Promise<string[]> {
 	const deadline = AbortSignal.timeout(MODEL_LIST_TIMEOUT_MS);
-	const response = await fetchModels(`${endpoint.baseUrl}/models`, {
-		method: 'GET',
-		signal: deadline,
-	}).catch((error: unknown) => {
+	const whenDeadlinePassed = (error: unknown): never => {
 		// The login has its own deadline and states which host refused. Relabelling it here
 		// would point the user at the gateway for a failure of the token endpoint.
 		if (error instanceof UserError) throw error;
@@ -62,8 +59,15 @@ export async function listGatewayModels(
 				description: NO_LIST_HINT,
 			},
 		);
-	});
-	const text = await response.text();
+	};
+
+	const response = await fetchModels(`${endpoint.baseUrl}/models`, {
+		method: 'GET',
+		signal: deadline,
+	}).catch(whenDeadlinePassed);
+	// The body is the second place the gateway can stall: the headers can arrive and
+	// the body never finish, which aborts here rather than above.
+	const text = await response.text().catch(whenDeadlinePassed);
 	const httpCode = String(response.status);
 
 	if (response.status === 404) {
