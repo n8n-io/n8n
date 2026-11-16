@@ -28,6 +28,8 @@ LEFT JOIN match_outcomes o ON o.match_id = m.id
 LEFT JOIN team_match_statistics sh ON sh.match_id = m.id AND sh.team_id = m.home_team_id
 LEFT JOIN team_match_statistics sa ON sa.match_id = m.id AND sa.team_id = m.away_team_id
 WHERE m.status IN ('scheduled', 'finished')
+  -- National teams have their own model (D82): they never enter the club features or training.
+  AND c.type <> 'national'
 """)
 
 _ODDS_SQL = text("""

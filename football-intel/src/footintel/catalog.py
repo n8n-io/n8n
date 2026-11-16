@@ -17,6 +17,7 @@ OPENLIGADB = "openligadb"
 FOOTBALL_DATA_ORG = "football_data_org"
 THE_ODDS_API = "the_odds_api"
 ONEFOOTBALL = "onefootball"
+INTERNATIONAL = "intl_results"
 
 
 @dataclass(frozen=True)
@@ -128,6 +129,18 @@ SOURCES = [
             "of the four target leagues, current season."
         ),
     ),
+    SourceDef(
+        code=INTERNATIONAL,
+        name="International football results (martj42)",
+        kind="csv",
+        base_url="https://github.com/martj42/international_results",
+        terms_url="https://github.com/martj42/international_results/blob/master/LICENSE",
+        terms_note=(
+            "CC0 1.0 (public domain). Every men's national-team match since 1872, updated after "
+            "each international window, with the goal scorers and minutes. No odds. Used to rate "
+            "national teams (D82); upcoming matches come from the OneFootball calendar."
+        ),
+    ),
 ]
 
 # The Odds API sport keys. Checked against /sports (free) before each call: a key that is
@@ -142,7 +155,11 @@ ODDS_API_SPORTS = {"UEFA-CL": "soccer_uefa_champs_league", "UEFA-EL": "soccer_ue
                    "GER-BL": "soccer_germany_bundesliga", "FRA-L1": "soccer_france_ligue_one",
                    "ENG-FAC": "soccer_fa_cup", "ENG-EFL": "soccer_england_efl_cup",
                    "ESP-CDR": "soccer_spain_copa_del_rey", "ITA-CI": "soccer_italy_coppa_italia",
-                   "FRA-CDF": "soccer_france_coupe_de_france"}
+                   "FRA-CDF": "soccer_france_coupe_de_france",
+                   # National teams (D82). Keys not in season cost nothing.
+                   "INT-UNL": "soccer_uefa_nations_league", "INT-WC": "soccer_fifa_world_cup",
+                   "INT-EURO": "soccer_uefa_european_championship", "INT-COPA": "soccer_conmebol_copa_america",
+                   "INT-AFCON": "soccer_africa_cup_of_nations"}
 
 # football-data.org codes (free plan). It never creates teams. For the cups it only checks
 # matches that exist; for the four leagues it also adds the full season calendar and
@@ -195,6 +212,20 @@ COMPETITIONS = [
                    elo_prior=1480, country_code="FRA"),
     CompetitionDef("FRA-CDF", "Coupe de France", "France", "cup", {}, country_code="FRA",
                    unknown_team_prior=1240),
+    # National teams (D82): rated by their own Elo model (models/national.py), never mixed with
+    # the clubs. History from the martj42 results; fixtures and new results from OneFootball.
+    CompetitionDef("INT-WC", "FIFA World Cup", None, "national", {}),
+    CompetitionDef("INT-WCQ", "World Cup qualification", None, "national", {}),
+    CompetitionDef("INT-EURO", "UEFA Euro", None, "national", {}),
+    CompetitionDef("INT-EUROQ", "UEFA Euro qualification", None, "national", {}),
+    CompetitionDef("INT-UNL", "UEFA Nations League", None, "national", {}),
+    CompetitionDef("INT-AFCON", "Africa Cup of Nations", None, "national", {}),
+    CompetitionDef("INT-AFCONQ", "Africa Cup of Nations qualification", None, "national", {}),
+    CompetitionDef("INT-COPA", "Copa América", None, "national", {}),
+    CompetitionDef("INT-ASIA", "AFC Asian Cup", None, "national", {}),
+    CompetitionDef("INT-GOLD", "CONCACAF Gold Cup", None, "national", {}),
+    CompetitionDef("INT-FRI", "International friendlies", None, "national", {}),
+    CompetitionDef("INT-OTHER", "Other national-team matches", None, "national", {}, is_target=False),
     # Context leagues: domestic form of clubs met in European cups. Not predicted.
     CompetitionDef("NED-ERE", "Eredivisie", "Netherlands", "league", {FOOTBALL_DATA: "N1"},
                    is_target=False, elo_prior=1440, country_code="NED"),

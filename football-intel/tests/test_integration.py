@@ -701,3 +701,54 @@ def test_onefootball_attaches_lineups_without_creating_teams(db, settings, monke
         assert one("SELECT max((extra->>'shots')::int) FROM team_match_tactics") == 12
         assert one("SELECT count(*) FROM teams WHERE name = 'Nobody'") == 0
         assert one("SELECT count(*) FROM match_outcomes") == 0  # scores are never written
+
+
+class FakeNationalCalendar:
+    def __init__(self, cards):
+        self.cards = cards
+
+    def fixtures(self, competition_code):
+        return [c for c in self.cards if not c.finished] if competition_code == "INT-UNL" else []
+
+    def results(self, competition_code):
+        return [c for c in self.cards if c.finished] if competition_code == "INT-UNL" else []
+
+
+def test_national_teams_get_their_own_rows_forecasts_and_stay_out_of_club_data(db, settings, monkeypatch):
+    from footintel.connectors import international as intl
+    from footintel.connectors.onefootball import MatchCard
+    from footintel.db.models import Team
+    from footintel.ingestion.international import predict_national, sync_international
+
+    # A club already holds the name "Andorra" (FC Andorra).
+    with session_scope(db) as s:
+        s.add(Team(name="Andorra", country="Spain"))
+    file = pd.DataFrame({"date": pd.to_datetime(["2025-06-01", "2025-09-01", "2025-10-01"]),
+                         "home": ["France", "Turkey", "Andorra"], "away": ["Turkey", "Andorra", "France"],
+                         "home_goals": [2, 3, 0], "away_goals": [1, 0, 4], "tournament": ["UEFA Nations League"] * 3,
+                         "code": ["INT-UNL"] * 3, "kind": ["qualifier"] * 3, "neutral": [False] * 3})
+    monkeypatch.setattr(intl, "download", lambda settings: settings.data_dir)
+    monkeypatch.setattr(intl, "load", lambda folder: file)
+    st = sync_international(db, settings)
+    assert st.inserted == 3 and "name_taken" in [i[1] for i in st.issues]
+    assert sync_international(db, settings).inserted == 0  # idempotent
+
+    soon = datetime.now(UTC) + timedelta(days=2)
+    cards = [MatchCard("n1", soon, "Türkiye", "Andorra", False),
+             MatchCard("n2", soon, "France", "Atlantis", False)]
+    cal = tasks.sync_onefootball_calendar(db, settings, competitions=["INT-UNL"], connector=FakeNationalCalendar(cards))
+    assert cal.inserted == 1 and "unmapped_team" in [i[1] for i in cal.issues]  # Atlantis is skipped
+    with db.connect() as conn:
+        teams = conn.execute(text("""SELECT th.name, ta.name FROM matches m JOIN teams th ON th.id = m.home_team_id
+                                     JOIN teams ta ON ta.id = m.away_team_id""")).all()
+    # The OneFootball spelling maps to the file's name; the national Andorra is not the club.
+    assert teams == [("Turkey", "Andorra (sélection)")]
+
+    summary = predict_national(db, settings)
+    assert summary.created == 1 and predict_national(db, settings).unchanged == 1
+    with db.connect() as conn:
+        p = conn.execute(text("""SELECT p.p_home, p.p_away, mv.status FROM predictions p
+                                 JOIN model_versions mv ON mv.id = p.model_version_id""")).one()
+    assert p.p_home > p.p_away and p.status == "companion"  # Turkey beat Andorra 3-0 at home
+    # Club features never see national-team matches.
+    assert load_matches(db)["competition"].str.startswith("INT-").sum() == 0

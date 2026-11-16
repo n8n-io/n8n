@@ -10,6 +10,7 @@ from footintel.connectors.base import season_start_for
 from footintel.features.builder import build_features
 from footintel.features.dataset import load_matches
 from footintel.ingestion import tasks
+from footintel.ingestion.international import predict_national, sync_international
 from footintel.jobs import JobAlreadyRunning, acquire_lock, release_lock
 from footintel.models import registry
 from footintel.postmatch.evaluate import evaluate_finished
@@ -57,7 +58,9 @@ def morning(engine: Engine, settings: Settings) -> dict:
     """Fixtures and odds, then predictions and the pre-match report."""
     results: dict = {}
     _step("sync_fixtures", lambda: tasks.sync_fixtures(engine, settings), results)
-    # Full fixture lists of the five leagues and the national cups (D62).
+    # National teams (D82): refresh the results file and the team rows before the calendar.
+    _step("sync_international", lambda: sync_international(engine, settings), results)
+    # Full fixture lists of the five leagues, the national cups and the national teams (D62, D82).
     _step("sync_onefootball_calendar", lambda: tasks.sync_onefootball_calendar(engine, settings), results)
     # Current-season UEFA cups and DFB-Pokal: no other authorised free source has them.
     _step("sync_openligadb", lambda: tasks.import_openligadb(engine, settings, jitter_seconds=90),
@@ -68,6 +71,7 @@ def morning(engine: Engine, settings: Settings) -> dict:
     # League line-ups and events of the matches finished since the last run (D50).
     _step("sync_onefootball", lambda: tasks.sync_onefootball(engine, settings), results)
     _step("predict", lambda: predict_upcoming(engine, settings), results)
+    _step("predict_national", lambda: predict_national(engine, settings), results)
     _step("prematch_report", lambda: prematch_report(engine, settings).paths, results)
     if isinstance(results.get("prematch_report"), dict):
         _step("notify", lambda: _notify(settings, "Football Intel — avant-match", results["prematch_report"]), results)
