@@ -231,7 +231,7 @@ describe('UserRepository', () => {
 
 			const crashed = await executionRepository.markAsCrashedFrom(execution.id, 'waiting');
 
-			expect(crashed.map(({ id }) => id)).toEqual([execution.id]);
+			expect(crashed).toBe(true);
 			const row = await executionRepository.findOneBy({ id: execution.id });
 			expect(row?.status).toBe('crashed');
 			expect(row?.waitTill).toBeNull();
@@ -243,7 +243,7 @@ describe('UserRepository', () => {
 
 			const crashed = await executionRepository.markAsCrashedFrom(execution.id, 'waiting');
 
-			expect(crashed).toEqual([]);
+			expect(crashed).toBe(false);
 			const row = await executionRepository.findOneBy({ id: execution.id });
 			expect(row?.status).toBe('running');
 		});
@@ -258,7 +258,7 @@ describe('UserRepository', () => {
 				expectedAttempts: 0,
 			});
 
-			expect(crashed).toEqual([]);
+			expect(crashed).toBe(false);
 			const row = await executionRepository.findOneBy({ id: execution.id });
 			expect(row?.status).toBe('waiting');
 		});

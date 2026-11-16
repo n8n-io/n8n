@@ -28,6 +28,7 @@ import {
 } from '../assistantAgent/assistantAgentThreads';
 import { useAssistantAgentThreadsStore } from '../assistantAgent/assistantAgentThreads.store';
 import { assistantConfirmationExtension } from '../assistantAgent/assistantConfirmation';
+import { useAssistantAgentMessageTelemetry } from '../assistantAgent/useAssistantAgentMessageTelemetry';
 import { useAssistantArtifactThread } from '../assistantAgent/useAssistantArtifactThread';
 import type { SuggestionSelectionPayload } from '../components/InstanceAiInput.vue';
 import InstanceAiResourceChip from '../components/InstanceAiResourceChip.vue';
@@ -48,6 +49,7 @@ import {
 	formatAgentPreviewContextLabel,
 } from '../instanceAi.handoffContext';
 import { useInstanceAiSettingsStore } from '../instanceAiSettings.store';
+import { resolveAuthorship } from '../prefills';
 
 const props = withDefaults(
 	defineProps<{
@@ -86,13 +88,13 @@ const rootStore = useRootStore();
 const settingsStore = useInstanceAiSettingsStore();
 const threadsStore = useAssistantAgentThreadsStore();
 const identity = useN8nAssistantIdentity();
+const messageTelemetry = useAssistantAgentMessageTelemetry(props.threadId);
 
 const isNewSession = ref(props.newSession);
 const agentConfig = computed<AgentJsonConfig>(() => ({
 	name: identity.name.value,
 	model: '',
 	instructions: '',
-	personalisation: identity.personalisation,
 }));
 
 // The host stashes a starter message before it opens a new thread.
@@ -154,12 +156,18 @@ const panel = useTemplateRef<InstanceType<typeof AgentChatPanel>>('panel');
 watch(panel, (current, previous) => {
 	if (!current || previous) return;
 	if (starter) {
+		messageTelemetry.expectHostSend({ text: starter.message, authorship: starter.authorship });
 		current.sendMessageFromOutside(starter.message);
 		return;
 	}
 	const draft = getPendingComposerDraft(props.threadId);
-	if (draft) current.setDraft(draft.text);
+	if (draft) setPrefill(draft);
 });
+
+function setPrefill(prefill: InstanceAiPrefillPayload): void {
+	messageTelemetry.setPrefill(prefill);
+	panel.value?.setDraft(prefill.text);
+}
 
 function onSessionCreated(): void {
 	isNewSession.value = false;
@@ -181,8 +189,10 @@ const thread = useAssistantArtifactThread({
 	messages: () => panel.value?.messages ?? [],
 	isStreaming: () => panel.value?.isStreaming ?? false,
 	isLoadingHistory: () => panel.value?.isLoadingHistory ?? true,
-	sendMessage: (text, context) =>
-		panel.value?.sendMessageFromOutside(text, [], context ? { context } : undefined),
+	sendMessage: (text, authorship, context) => {
+		messageTelemetry.expectHostSend({ text, authorship });
+		panel.value?.sendMessageFromOutside(text, [], context ? { context } : undefined);
+	},
 });
 provideArtifactThread(thread);
 useAgentMutationRefresh(thread);
@@ -210,15 +220,19 @@ defineExpose({
 		handoffContext.value = context;
 		if (initialDraft) {
 			stashPendingComposerDraft(props.threadId, initialDraft);
-			panel.value?.setDraft(initialDraft.text);
+			setPrefill(initialDraft);
 		} else {
 			clearPendingComposerDraft(props.threadId);
 		}
 		panel.value?.focusInput();
 	},
-	setPrefill: (prefill: InstanceAiPrefillPayload) => panel.value?.setDraft(prefill.text),
-	submitSuggestion: (payload: SuggestionSelectionPayload) =>
-		panel.value?.sendMessageFromOutside(payload.prompt ?? i18n.baseText(payload.promptKey)),
+	setPrefill,
+	submitSuggestion(payload: SuggestionSelectionPayload) {
+		const text = payload.prompt ?? i18n.baseText(payload.promptKey);
+		const prefill = { text, prefillType: payload.prefillType, prefillId: payload.suggestionId };
+		messageTelemetry.expectHostSend({ text, authorship: resolveAuthorship(text, prefill) });
+		panel.value?.sendMessageFromOutside(text);
+	},
 });
 </script>
 
@@ -231,6 +245,7 @@ defineExpose({
 		:continue-session-id="props.threadId"
 		:new-session="isNewSession"
 		:agent-config="agentConfig"
+		empty-state-icon="n8n-assistant"
 		:accepted-mime-types="ASSISTANT_AGENT_ACCEPTED_MIME_TYPES"
 		agent-status="production"
 		:connected-triggers="[]"
@@ -246,6 +261,8 @@ defineExpose({
 		data-test-id="instance-ai-embed-assistant-agent-thread"
 		@content-change="emit('content-change', $event)"
 		@session-created="onSessionCreated"
+		@message-sending="messageTelemetry.trackSend"
+		@draft-cleared="messageTelemetry.setPrefill(null)"
 		@message-accepted="onMessageAccepted"
 		@update:streaming="onStreamingChange"
 	>

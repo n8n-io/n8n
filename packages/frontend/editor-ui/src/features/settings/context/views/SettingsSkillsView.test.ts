@@ -920,6 +920,25 @@ describe('SettingsSkillsView', () => {
 			});
 		});
 
+		it('passes the fetched project type to the modal for an unlisted personal project', async () => {
+			const projectSkill = {
+				scope: 'project' as const,
+				projectId: 'other-personal',
+				projectName: 'Ada Lovelace <ada@example.com>',
+				projectType: 'personal' as const,
+			};
+			skillsStore.skills = [skill(projectSkill)];
+			skillsStore.count = 1;
+			skillsStore.fetchSkill.mockResolvedValue(detail(projectSkill));
+			const { getByText } = renderView();
+			await new Promise(process.nextTick);
+
+			await userEvent.click(getByText('research-search'));
+
+			await waitFor(() => expect(lastModalData().projectType).toBe('personal'));
+			expect(lastModalData().initialScope).toBe('project:other-personal');
+		});
+
 		it('lets the user move a skill that agents use, and hands the modal who uses it', async () => {
 			const usedBy = {
 				drafts: [
@@ -1321,6 +1340,7 @@ describe('SettingsSkillsView', () => {
 				sourceId: 'src-1',
 				type: 'github' as const,
 				label: 'acme/skills',
+				ref: 'main',
 				webUrl: 'https://github.com/acme/skills/tree/main/research-search',
 				canStopSyncing: false,
 			};
@@ -1357,6 +1377,7 @@ describe('SettingsSkillsView', () => {
 				health: 'connected' as const,
 				lastCheckedAt: null,
 				canReview: true,
+				canDelete: true,
 			};
 
 			async function renderWithSource() {
@@ -1389,6 +1410,25 @@ describe('SettingsSkillsView', () => {
 					expect.objectContaining({ groupBy: 'source' }),
 				);
 				expect(view.getByTestId('skill-group-title')).toHaveTextContent('acme/skills · main');
+			});
+
+			it('confirms source deletion and reloads the sources, skills, and creators', async () => {
+				const view = await renderWithSource();
+				await userEvent.click(view.getByTestId('skill-group-actions').querySelector('button')!);
+				const action = await screen.findByTestId('action-deleteSource');
+				await userEvent.click(action);
+				const dialog = await screen.findByRole('dialog');
+				expect(dialog).toHaveTextContent("This can't be undone.");
+				expect(skillsStore.deleteSource).not.toHaveBeenCalled();
+				skillsStore.fetchSkills.mockClear();
+				skillsStore.fetchSources.mockClear();
+				skillsStore.fetchCreators.mockClear();
+				await userEvent.click(within(dialog).getByRole('button', { name: 'Delete source' }));
+				await waitFor(() => expect(skillsStore.deleteSource).toHaveBeenCalledWith('src-1'));
+				await waitFor(() => expect(skillsStore.fetchSkills).toHaveBeenCalled());
+				expect(skillsStore.fetchSources).toHaveBeenCalled();
+				expect(skillsStore.fetchCreators).toHaveBeenCalled();
+				await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
 			});
 
 			it('opens and focuses the page of a duplicate source', async () => {
@@ -1660,6 +1700,7 @@ describe('SettingsSkillsView', () => {
 				sourceId: 'src-1',
 				type: 'github' as const,
 				label: 'acme/skills',
+				ref: 'main',
 				webUrl: 'https://github.com/acme/skills/tree/main/research-search',
 				canStopSyncing: true,
 			};

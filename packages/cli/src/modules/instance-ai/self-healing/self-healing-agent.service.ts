@@ -26,6 +26,7 @@ import {
 	selfHealingOutputSchema,
 	streamAgentRun,
 	MAX_STEPS,
+	type BuilderUsageItem,
 	OutsideThreadProjectError,
 	type InstanceAiContext,
 	type InstanceAiTraceContext,
@@ -82,6 +83,8 @@ export type SelfHealingRunResult = {
 	validationError?: string;
 	error?: unknown;
 	usage: SelfHealingResultUsage;
+	/** A telemetry fact. It is not saved with the result. */
+	tokenUsage?: BuilderUsageItem[];
 	candidates?: Array<{
 		baseline: WorkflowSuggestionBaseline;
 		compile: () => Promise<CandidateWorkflowResult>;
@@ -296,6 +299,7 @@ export class SelfHealingAgentService {
 			// Model work has stopped. The final charge must not cancel result persistence.
 			options.onFinalizing();
 			result.usage.durationSeconds = (Date.now() - startedAt) / 1000;
+			result.tokenUsage = stream?.usage?.usage;
 
 			if ('promptTokens' in result.usage) {
 				result.usage.promptTokens = stream?.usage?.promptTokens ?? null;
@@ -450,6 +454,11 @@ export class SelfHealingAgentService {
 						proxyContext,
 					)
 				: await this.models.resolveAgentModelConfig(user, proxyContext);
+		const utilityModelId = await this.models.resolveUtilityModelConfig(user, modelId, {
+			proxyBaseUrl: proxy.proxyBaseUrl,
+			tokenManager: proxy.tokenManager,
+			proxyContext,
+		});
 
 		const shareParameters = await this.aiUsage.isParameterValueSharingAllowed();
 		const context = this.adapter.createContext(user, {
@@ -457,6 +466,7 @@ export class SelfHealingAgentService {
 			projectId: input.baseline.projectId,
 			searchProxyConfig: proxy.searchProxyConfig,
 			modelId,
+			utilityModelId,
 			modelFetch: this.models.getModelFetch(),
 			allowSendingParameterValues: shareParameters,
 		});

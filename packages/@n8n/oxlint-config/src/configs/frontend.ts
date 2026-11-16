@@ -22,6 +22,9 @@ export const frontendConfig = defineConfig({
 		// The base layer leaves this rule off, because its fixer can remove an
 		// import that `emitDecoratorMetadata` needs. No frontend package uses decorators.
 		'typescript/consistent-type-imports': ['error', { disallowTypeAnnotations: false }],
+		// Oxlint reads `./X.vue?raw` as a second import of `./X.vue`. import-x
+		// resolves them to different modules, so a Vite query import is not a duplicate.
+		'import/no-duplicates': ['error', { considerQueryString: true }],
 
 		// The script-side rules of `eslint-plugin-vue`. They also check
 		// `defineComponent` objects in `.ts` files, so they apply to every file.
@@ -59,6 +62,14 @@ export const frontendConfig = defineConfig({
 		'vue/valid-next-tick': 'error',
 	},
 	overrides: [
+		{
+			files: ['**/*.test.ts', '**/test/**/*.ts', '**/__tests__/**/*.ts', '**/*.stories.ts'],
+			jsPlugins: ['@n8n/eslint-config/plugin'],
+			rules: {
+				// TODO: remove these
+				'n8n-local-rules/no-internal-package-import': 'warn',
+			},
+		},
 		{
 			files: ['**/*.vue'],
 			// An override that names a jsPlugin rule must re-declare the plugin.
@@ -100,6 +111,7 @@ export const frontendConfig = defineConfig({
 				// TODO: remove these
 				'vue/no-side-effects-in-computed-properties': 'warn',
 				'vue/return-in-computed-property': 'warn',
+				'n8n-local-rules/no-internal-package-import': 'warn',
 			},
 		},
 	],

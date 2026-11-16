@@ -133,6 +133,23 @@ describe('ChatInput', () => {
 		expect(global.WebSocket).toHaveBeenCalledWith(expect.stringContaining('executionId=exec-123'));
 	});
 
+	it('accepts a string payload for setupWebsocket', () => {
+		wrapper = mount(Input);
+
+		wrapper.vm.handleSetupWebsocket('exec-123');
+
+		expect(global.WebSocket).toHaveBeenCalledWith(expect.stringContaining('executionId=exec-123'));
+	});
+
+	it('accepts a payload object with a resume token for setupWebsocket', () => {
+		wrapper = mount(Input);
+
+		wrapper.vm.handleSetupWebsocket({ executionId: 'exec-9', resumeToken: 'token-1' });
+
+		expect(global.WebSocket).toHaveBeenCalledWith(expect.stringContaining('executionId=exec-9'));
+		expect(global.WebSocket).toHaveBeenCalledWith(expect.stringContaining('token=token-1'));
+	});
+
 	it('keeps waitingForResponse true after setting up the WebSocket connection', () => {
 		// The initial sendMessage clears waitingForResponse on `executionStarted`;
 		// the connection setup must re-enable it so the typing indicator stays up

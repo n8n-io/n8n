@@ -6,6 +6,7 @@ import {
 	type INodeType,
 	type INodeTypeDescription,
 	NodeConnectionTypes,
+	requestPath,
 } from 'n8n-workflow';
 
 import {
@@ -148,7 +149,7 @@ export class Misp implements INodeType {
 				const responseData = (await mispApiRequest.call(
 					this,
 					'GET',
-					'/organisations',
+					requestPath`/organisations`,
 				)) as LoadedOrgs;
 				return responseData.map((i) => ({ name: i.Organisation.name, value: i.Organisation.id }));
 			},
@@ -157,7 +158,7 @@ export class Misp implements INodeType {
 				const responseData = (await mispApiRequest.call(
 					this,
 					'GET',
-					'/sharing_groups',
+					requestPath`/sharing_groups`,
 				)) as LoadedSharingGroups;
 				return responseData.response.map((i) => ({
 					name: i.SharingGroup.name,
@@ -166,7 +167,11 @@ export class Misp implements INodeType {
 			},
 
 			async getTags(this: ILoadOptionsFunctions) {
-				const responseData = (await mispApiRequest.call(this, 'GET', '/tags')) as LoadedTags;
+				const responseData = (await mispApiRequest.call(
+					this,
+					'GET',
+					requestPath`/tags`,
+				)) as LoadedTags;
 				return responseData.Tag.map((i) => ({ name: i.name, value: i.id }));
 			},
 
@@ -174,7 +179,7 @@ export class Misp implements INodeType {
 				const responseData = (await mispApiRequest.call(
 					this,
 					'GET',
-					'/admin/users',
+					requestPath`/admin/users`,
 				)) as LoadedUsers;
 				return responseData.map((i) => ({ name: i.User.email, value: i.User.id }));
 			},
@@ -216,7 +221,7 @@ export class Misp implements INodeType {
 						}
 
 						const eventId = this.getNodeParameter('eventId', i);
-						const endpoint = `/attributes/add/${eventId}`;
+						const endpoint = requestPath`/attributes/add/${eventId}`;
 						responseData = await mispApiRequest.call(this, 'POST', endpoint, body);
 						responseData = responseData.Attribute;
 					} else if (operation === 'delete') {
@@ -225,7 +230,7 @@ export class Misp implements INodeType {
 						// ----------------------------------------
 
 						const attributeId = this.getNodeParameter('attributeId', i);
-						const endpoint = `/attributes/delete/${attributeId}`;
+						const endpoint = requestPath`/attributes/delete/${attributeId}`;
 						responseData = await mispApiRequest.call(this, 'DELETE', endpoint);
 					} else if (operation === 'get') {
 						// ----------------------------------------
@@ -233,7 +238,7 @@ export class Misp implements INodeType {
 						// ----------------------------------------
 
 						const attributeId = this.getNodeParameter('attributeId', i);
-						const endpoint = `/attributes/view/${attributeId}`;
+						const endpoint = requestPath`/attributes/view/${attributeId}`;
 						responseData = await mispApiRequest.call(this, 'GET', endpoint);
 						responseData = responseData.Attribute;
 					} else if (operation === 'getAll') {
@@ -241,7 +246,7 @@ export class Misp implements INodeType {
 						//            attribute: getAll
 						// ----------------------------------------
 
-						responseData = await mispApiRequestAllItems.call(this, '/attributes');
+						responseData = await mispApiRequestAllItems.call(this, requestPath`/attributes`);
 					} else if (operation === 'search') {
 						// ----------------------------------------
 						//            attribute: search
@@ -262,7 +267,7 @@ export class Misp implements INodeType {
 						Object.assign(body, updateFields);
 
 						const attributeId = this.getNodeParameter('attributeId', i);
-						const endpoint = `/attributes/edit/${attributeId}`;
+						const endpoint = requestPath`/attributes/edit/${attributeId}`;
 						responseData = await mispApiRequest.call(this, 'PUT', endpoint, body);
 						responseData = responseData.Attribute;
 					}
@@ -289,7 +294,7 @@ export class Misp implements INodeType {
 							Object.assign(body, additionalFields);
 						}
 
-						responseData = await mispApiRequest.call(this, 'POST', '/events', body);
+						responseData = await mispApiRequest.call(this, 'POST', requestPath`/events`, body);
 						responseData = responseData.Event;
 					} else if (operation === 'delete') {
 						// ----------------------------------------
@@ -297,7 +302,7 @@ export class Misp implements INodeType {
 						// ----------------------------------------
 
 						const eventId = this.getNodeParameter('eventId', i);
-						const endpoint = `/events/delete/${eventId}`;
+						const endpoint = requestPath`/events/delete/${eventId}`;
 						responseData = await mispApiRequest.call(this, 'DELETE', endpoint);
 					} else if (operation === 'get') {
 						// ----------------------------------------
@@ -305,7 +310,7 @@ export class Misp implements INodeType {
 						// ----------------------------------------
 
 						const eventId = this.getNodeParameter('eventId', i);
-						const endpoint = `/events/view/${eventId}`;
+						const endpoint = requestPath`/events/view/${eventId}`;
 						responseData = await mispApiRequest.call(this, 'GET', endpoint);
 						responseData = responseData.Event;
 						delete responseData.Attribute; // prevent excessive payload size
@@ -314,7 +319,7 @@ export class Misp implements INodeType {
 						//              event: getAll
 						// ----------------------------------------
 
-						responseData = await mispApiRequestAllItems.call(this, '/events');
+						responseData = await mispApiRequestAllItems.call(this, requestPath`/events`);
 					} else if (operation === 'search') {
 						// ----------------------------------------
 						//            event: search
@@ -327,7 +332,7 @@ export class Misp implements INodeType {
 						// ----------------------------------------
 
 						const eventId = this.getNodeParameter('eventId', i);
-						const endpoint = `/events/publish/${eventId}`;
+						const endpoint = requestPath`/events/publish/${eventId}`;
 						responseData = await mispApiRequest.call(this, 'POST', endpoint);
 					} else if (operation === 'unpublish') {
 						// ----------------------------------------
@@ -336,7 +341,7 @@ export class Misp implements INodeType {
 
 						const eventId = this.getNodeParameter('eventId', i);
 
-						const endpoint = `/events/unpublish/${eventId}`;
+						const endpoint = requestPath`/events/unpublish/${eventId}`;
 						responseData = await mispApiRequest.call(this, 'POST', endpoint);
 					} else if (operation === 'update') {
 						// ----------------------------------------
@@ -352,7 +357,7 @@ export class Misp implements INodeType {
 						Object.assign(body, updateFields);
 
 						const eventId = this.getNodeParameter('eventId', i);
-						const endpoint = `/events/edit/${eventId}`;
+						const endpoint = requestPath`/events/edit/${eventId}`;
 						responseData = await mispApiRequest.call(this, 'PUT', endpoint, body);
 						responseData = responseData.Event;
 						delete responseData.Attribute; // prevent excessive payload size
@@ -368,7 +373,7 @@ export class Misp implements INodeType {
 							tag: this.getNodeParameter('tagId', i),
 						};
 
-						const endpoint = '/events/addTag';
+						const endpoint = requestPath`/events/addTag`;
 						responseData = await mispApiRequest.call(this, 'POST', endpoint, body);
 					} else if (operation === 'remove') {
 						// ----------------------------------------
@@ -378,7 +383,7 @@ export class Misp implements INodeType {
 						const eventId = this.getNodeParameter('eventId', i);
 						const tagId = this.getNodeParameter('tagId', i);
 
-						const endpoint = `/events/removeTag/${eventId}/${tagId}`;
+						const endpoint = requestPath`/events/removeTag/${eventId}/${tagId}`;
 						responseData = await mispApiRequest.call(this, 'POST', endpoint);
 					}
 				} else if (resource === 'feed') {
@@ -407,7 +412,7 @@ export class Misp implements INodeType {
 							Object.assign(body, additionalFields);
 						}
 
-						responseData = await mispApiRequest.call(this, 'POST', '/feeds/add', body);
+						responseData = await mispApiRequest.call(this, 'POST', requestPath`/feeds/add`, body);
 						responseData = responseData.Feed;
 					} else if (operation === 'disable') {
 						// ----------------------------------------
@@ -416,7 +421,7 @@ export class Misp implements INodeType {
 
 						const feedId = this.getNodeParameter('feedId', i);
 
-						const endpoint = `/feeds/disable/${feedId}`;
+						const endpoint = requestPath`/feeds/disable/${feedId}`;
 						responseData = await mispApiRequest.call(this, 'POST', endpoint);
 					} else if (operation === 'enable') {
 						// ----------------------------------------
@@ -424,7 +429,7 @@ export class Misp implements INodeType {
 						// ----------------------------------------
 
 						const feedId = this.getNodeParameter('feedId', i);
-						const endpoint = `/feeds/enable/${feedId}`;
+						const endpoint = requestPath`/feeds/enable/${feedId}`;
 						responseData = await mispApiRequest.call(this, 'POST', endpoint);
 					} else if (operation === 'get') {
 						// ----------------------------------------
@@ -432,14 +437,18 @@ export class Misp implements INodeType {
 						// ----------------------------------------
 
 						const feedId = this.getNodeParameter('feedId', i);
-						responseData = await mispApiRequest.call(this, 'GET', `/feeds/view/${feedId}`);
+						responseData = await mispApiRequest.call(
+							this,
+							'GET',
+							requestPath`/feeds/view/${feedId}`,
+						);
 						responseData = responseData.Feed;
 					} else if (operation === 'getAll') {
 						// ----------------------------------------
 						//               feed: getAll
 						// ----------------------------------------
 
-						responseData = (await mispApiRequestAllItems.call(this, '/feeds')) as Array<{
+						responseData = (await mispApiRequestAllItems.call(this, requestPath`/feeds`)) as Array<{
 							Feed: unknown;
 						}>;
 						responseData = responseData.map((entry) => entry.Feed);
@@ -462,7 +471,12 @@ export class Misp implements INodeType {
 						Object.assign(body, updateFields);
 
 						const feedId = this.getNodeParameter('feedId', i);
-						responseData = await mispApiRequest.call(this, 'PUT', `/feeds/edit/${feedId}`, body);
+						responseData = await mispApiRequest.call(
+							this,
+							'PUT',
+							requestPath`/feeds/edit/${feedId}`,
+							body,
+						);
 						responseData = responseData.Feed;
 					}
 				} else if (resource === 'galaxy') {
@@ -476,7 +490,7 @@ export class Misp implements INodeType {
 						// ----------------------------------------
 
 						const galaxyId = this.getNodeParameter('galaxyId', i);
-						const endpoint = `/galaxies/delete/${galaxyId}`;
+						const endpoint = requestPath`/galaxies/delete/${galaxyId}`;
 						responseData = await mispApiRequest.call(this, 'DELETE', endpoint);
 					} else if (operation === 'get') {
 						// ----------------------------------------
@@ -484,7 +498,7 @@ export class Misp implements INodeType {
 						// ----------------------------------------
 
 						const galaxyId = this.getNodeParameter('galaxyId', i);
-						const endpoint = `/galaxies/view/${galaxyId}`;
+						const endpoint = requestPath`/galaxies/view/${galaxyId}`;
 						responseData = await mispApiRequest.call(this, 'GET', endpoint);
 						responseData = responseData.Galaxy;
 					} else if (operation === 'getAll') {
@@ -492,7 +506,10 @@ export class Misp implements INodeType {
 						//              galaxy: getAll
 						// ----------------------------------------
 
-						responseData = (await mispApiRequestAllItems.call(this, '/galaxies')) as Array<{
+						responseData = (await mispApiRequestAllItems.call(
+							this,
+							requestPath`/galaxies`,
+						)) as Array<{
 							Galaxy: unknown;
 						}>;
 						responseData = responseData.map((entry) => entry.Galaxy);
@@ -508,7 +525,7 @@ export class Misp implements INodeType {
 						// ----------------------------------------
 
 						const noticelistId = this.getNodeParameter('noticelistId', i);
-						const endpoint = `/noticelists/view/${noticelistId}`;
+						const endpoint = requestPath`/noticelists/view/${noticelistId}`;
 						responseData = await mispApiRequest.call(this, 'GET', endpoint);
 						responseData = responseData.Noticelist;
 					} else if (operation === 'getAll') {
@@ -516,7 +533,10 @@ export class Misp implements INodeType {
 						//            noticelist: getAll
 						// ----------------------------------------
 
-						responseData = (await mispApiRequestAllItems.call(this, '/noticelists')) as Array<{
+						responseData = (await mispApiRequestAllItems.call(
+							this,
+							requestPath`/noticelists`,
+						)) as Array<{
 							Noticelist: unknown;
 						}>;
 						responseData = responseData.map((entry) => entry.Noticelist);
@@ -552,7 +572,7 @@ export class Misp implements INodeType {
 							Object.assign(body, additionalFields);
 						}
 
-						const endpoint = '/admin/organisations/add';
+						const endpoint = requestPath`/admin/organisations/add`;
 						responseData = await mispApiRequest.call(this, 'POST', endpoint, body);
 						responseData = responseData.Organisation;
 					} else if (operation === 'delete') {
@@ -561,7 +581,7 @@ export class Misp implements INodeType {
 						// ----------------------------------------
 
 						const organisationId = this.getNodeParameter('organisationId', i);
-						const endpoint = `/admin/organisations/delete/${organisationId}`;
+						const endpoint = requestPath`/admin/organisations/delete/${organisationId}`;
 						responseData = await mispApiRequest.call(this, 'DELETE', endpoint);
 					} else if (operation === 'get') {
 						// ----------------------------------------
@@ -569,7 +589,7 @@ export class Misp implements INodeType {
 						// ----------------------------------------
 
 						const organisationId = this.getNodeParameter('organisationId', i);
-						const endpoint = `/organisations/view/${organisationId}`;
+						const endpoint = requestPath`/organisations/view/${organisationId}`;
 						responseData = await mispApiRequest.call(this, 'GET', endpoint);
 						responseData = responseData.Organisation;
 					} else if (operation === 'getAll') {
@@ -577,7 +597,10 @@ export class Misp implements INodeType {
 						//           organisation: getAll
 						// ----------------------------------------
 
-						responseData = (await mispApiRequestAllItems.call(this, '/organisations')) as Array<{
+						responseData = (await mispApiRequestAllItems.call(
+							this,
+							requestPath`/organisations`,
+						)) as Array<{
 							Organisation: unknown;
 						}>;
 						responseData = responseData.map((entry) => entry.Organisation);
@@ -592,7 +615,7 @@ export class Misp implements INodeType {
 						Object.assign(body, updateFields);
 
 						const organisationId = this.getNodeParameter('organisationId', i);
-						const endpoint = `/admin/organisations/edit/${organisationId}`;
+						const endpoint = requestPath`/admin/organisations/edit/${organisationId}`;
 						responseData = await mispApiRequest.call(this, 'PUT', endpoint, body);
 						responseData = responseData.Organisation;
 					}
@@ -621,7 +644,7 @@ export class Misp implements INodeType {
 							});
 						}
 
-						responseData = await mispApiRequest.call(this, 'POST', '/tags/add', body);
+						responseData = await mispApiRequest.call(this, 'POST', requestPath`/tags/add`, body);
 						responseData = responseData.Tag;
 					} else if (operation === 'delete') {
 						// ----------------------------------------
@@ -629,13 +652,21 @@ export class Misp implements INodeType {
 						// ----------------------------------------
 
 						const tagId = this.getNodeParameter('tagId', i);
-						responseData = await mispApiRequest.call(this, 'POST', `/tags/delete/${tagId}`);
+						responseData = await mispApiRequest.call(
+							this,
+							'POST',
+							requestPath`/tags/delete/${tagId}`,
+						);
 					} else if (operation === 'getAll') {
 						// ----------------------------------------
 						//               tag: getAll
 						// ----------------------------------------
 
-						responseData = (await mispApiRequest.call(this, 'GET', '/tags')) as LoadedTags;
+						responseData = (await mispApiRequest.call(
+							this,
+							'GET',
+							requestPath`/tags`,
+						)) as LoadedTags;
 
 						const returnAll = this.getNodeParameter('returnAll', 0);
 
@@ -664,7 +695,12 @@ export class Misp implements INodeType {
 						});
 
 						const tagId = this.getNodeParameter('tagId', i);
-						responseData = await mispApiRequest.call(this, 'POST', `/tags/edit/${tagId}`, body);
+						responseData = await mispApiRequest.call(
+							this,
+							'POST',
+							requestPath`/tags/edit/${tagId}`,
+							body,
+						);
 						responseData = responseData.Tag;
 					}
 				} else if (resource === 'user') {
@@ -688,7 +724,12 @@ export class Misp implements INodeType {
 							Object.assign(body, additionalFields);
 						}
 
-						responseData = await mispApiRequest.call(this, 'POST', '/admin/users/add', body);
+						responseData = await mispApiRequest.call(
+							this,
+							'POST',
+							requestPath`/admin/users/add`,
+							body,
+						);
 						responseData = responseData.User;
 					} else if (operation === 'delete') {
 						// ----------------------------------------
@@ -696,7 +737,7 @@ export class Misp implements INodeType {
 						// ----------------------------------------
 
 						const userId = this.getNodeParameter('userId', i);
-						const endpoint = `/admin/users/delete/${userId}`;
+						const endpoint = requestPath`/admin/users/delete/${userId}`;
 						responseData = await mispApiRequest.call(this, 'DELETE', endpoint);
 					} else if (operation === 'get') {
 						// ----------------------------------------
@@ -704,7 +745,7 @@ export class Misp implements INodeType {
 						// ----------------------------------------
 
 						const userId = this.getNodeParameter('userId', i);
-						const endpoint = `/admin/users/view/${userId}`;
+						const endpoint = requestPath`/admin/users/view/${userId}`;
 						responseData = await mispApiRequest.call(this, 'GET', endpoint);
 						responseData = responseData.User;
 					} else if (operation === 'getAll') {
@@ -712,7 +753,10 @@ export class Misp implements INodeType {
 						//               user: getAll
 						// ----------------------------------------
 
-						responseData = (await mispApiRequestAllItems.call(this, '/admin/users')) as Array<{
+						responseData = (await mispApiRequestAllItems.call(
+							this,
+							requestPath`/admin/users`,
+						)) as Array<{
 							User: unknown;
 						}>;
 						responseData = responseData.map((entry) => entry.User);
@@ -727,7 +771,7 @@ export class Misp implements INodeType {
 						Object.assign(body, updateFields);
 
 						const userId = this.getNodeParameter('userId', i);
-						const endpoint = `/admin/users/edit/${userId}`;
+						const endpoint = requestPath`/admin/users/edit/${userId}`;
 						responseData = await mispApiRequest.call(this, 'PUT', endpoint, body);
 						responseData = responseData.User;
 					}
@@ -742,7 +786,7 @@ export class Misp implements INodeType {
 						// ----------------------------------------
 
 						const warninglistId = this.getNodeParameter('warninglistId', i);
-						const endpoint = `/warninglists/view/${warninglistId}`;
+						const endpoint = requestPath`/warninglists/view/${warninglistId}`;
 						responseData = await mispApiRequest.call(this, 'GET', endpoint);
 						responseData = responseData.Warninglist;
 					} else if (operation === 'getAll') {
@@ -750,7 +794,7 @@ export class Misp implements INodeType {
 						//           warninglist: getAll
 						// ----------------------------------------
 
-						responseData = (await mispApiRequest.call(this, 'GET', '/warninglists')) as {
+						responseData = (await mispApiRequest.call(this, 'GET', requestPath`/warninglists`)) as {
 							Warninglists: Array<{ Warninglist: unknown }>;
 						};
 

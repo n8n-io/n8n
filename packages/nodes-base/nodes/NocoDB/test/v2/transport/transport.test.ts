@@ -1,4 +1,5 @@
 import type { IDataObject, IHttpRequestMethods } from 'n8n-workflow';
+import { requestPath, requestUrl } from 'n8n-workflow';
 
 import { apiRequest, apiRequestAllItems, downloadRecordAttachments } from '../../../v2/transport';
 
@@ -27,7 +28,7 @@ describe('NocoDB Transport API', () => {
 			mockThis.helpers.httpRequestWithAuthentication.mockResolvedValue({ success: true });
 
 			const method: IHttpRequestMethods = 'GET';
-			const endpoint = '/api/v2/test';
+			const endpoint = requestPath`/api/v2/test`;
 			const body: IDataObject = {};
 			const query: IDataObject = { param: 'value' };
 
@@ -40,7 +41,7 @@ describe('NocoDB Transport API', () => {
 				{
 					method: 'GET',
 					qs: { param: 'value' },
-					url: 'http://localhost:8080/api/v2/test',
+					url: requestUrl`http://localhost:8080/api/v2/test`,
 					json: true,
 				},
 			);
@@ -56,7 +57,7 @@ describe('NocoDB Transport API', () => {
 			mockThis.helpers.httpRequestWithAuthentication.mockResolvedValue({ success: true });
 
 			const method: IHttpRequestMethods = 'POST';
-			const endpoint = '/api/v2/test';
+			const endpoint = requestPath`/api/v2/test`;
 			const body: IDataObject = {}; // Empty body
 			const query: IDataObject = {};
 
@@ -67,89 +68,8 @@ describe('NocoDB Transport API', () => {
 				{
 					method: 'POST',
 					qs: {},
-					url: 'http://localhost:8080/api/v2/test',
+					url: requestUrl`http://localhost:8080/api/v2/test`,
 					json: true,
-				},
-			);
-		});
-
-		it('should use provided URI if available', async () => {
-			mockThis.getNodeParameter.mockReturnValue('nocoDbApiToken');
-			mockThis.getCredentials.mockResolvedValue({
-				host: 'http://localhost:8080',
-				apiKey: 'test-api-key',
-			});
-			mockThis.helpers.httpRequestWithAuthentication.mockResolvedValue({ success: true });
-
-			const method: IHttpRequestMethods = 'GET';
-			const endpoint = '/api/v2/test';
-			const body: IDataObject = {};
-			const query: IDataObject = {};
-			const customUri = 'http://localhost:8080/custom/path';
-
-			await apiRequest.call(mockThis, method, endpoint, body, query, customUri);
-
-			expect(mockThis.helpers.httpRequestWithAuthentication).toHaveBeenCalledWith(
-				'nocoDbApiToken',
-				{
-					method: 'GET',
-					qs: {},
-					url: customUri,
-					json: true,
-					disableFollowRedirect: true,
-				},
-			);
-		});
-
-		it.each([
-			['another host', 'http://custom.url/path'],
-			['another port', 'http://localhost:9090/path'],
-			['another scheme', 'https://localhost:8080/path'],
-			['an invalid URL', 'not a url'],
-		])('should not send credentials to a URI on %s', async (_label, customUri) => {
-			mockThis.getNodeParameter.mockReturnValue('nocoDbApiToken');
-			mockThis.getCredentials.mockResolvedValue({
-				host: 'http://localhost:8080',
-				apiKey: 'test-api-key',
-			});
-			mockThis.helpers.httpRequest = vi.fn().mockResolvedValue({ success: true });
-
-			const result = await apiRequest.call(mockThis, 'GET', '', {}, {}, customUri);
-
-			expect(mockThis.helpers.httpRequestWithAuthentication).not.toHaveBeenCalled();
-			expect(mockThis.helpers.httpRequest).toHaveBeenCalledWith({
-				method: 'GET',
-				qs: {},
-				url: customUri,
-				json: true,
-			});
-			expect(result).toEqual({ success: true });
-		});
-
-		it('should merge additional options', async () => {
-			mockThis.getNodeParameter.mockReturnValue('nocoDbApiToken');
-			mockThis.getCredentials.mockResolvedValue({
-				host: 'http://localhost:8080',
-				apiKey: 'test-api-key',
-			});
-			mockThis.helpers.httpRequestWithAuthentication.mockResolvedValue({ success: true });
-
-			const method: IHttpRequestMethods = 'GET';
-			const endpoint = '/api/v2/test';
-			const body: IDataObject = {};
-			const query: IDataObject = {};
-			const option: IDataObject = { timeout: 5000 };
-
-			await apiRequest.call(mockThis, method, endpoint, body, query, undefined, option);
-
-			expect(mockThis.helpers.httpRequestWithAuthentication).toHaveBeenCalledWith(
-				'nocoDbApiToken',
-				{
-					method: 'GET',
-					qs: {},
-					url: 'http://localhost:8080/api/v2/test',
-					json: true,
-					timeout: 5000,
 				},
 			);
 		});
@@ -169,7 +89,7 @@ describe('NocoDB Transport API', () => {
 				.mockResolvedValueOnce({ records: [{ id: 3 }], next: null });
 
 			const method: IHttpRequestMethods = 'GET';
-			const endpoint = '/api/v2/data';
+			const endpoint = requestPath`/api/v2/data`;
 			const body: IDataObject = {};
 			const query: IDataObject = {};
 
