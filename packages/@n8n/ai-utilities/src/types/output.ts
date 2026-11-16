@@ -44,7 +44,11 @@ export type StreamChunk = ContentMetadata &
 		  }
 		| {
 				type: 'tool-call-delta';
-				id?: string;
+				/**
+				 * The id of the tool call that this delta belongs to. Send it on every
+				 * delta, so that parallel tool calls stay apart.
+				 */
+				id: string;
 				name?: string;
 				argumentsDelta?: string;
 		  }
