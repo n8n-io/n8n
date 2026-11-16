@@ -210,6 +210,8 @@ function credentialsHelper(credentialTypes: CredentialTypes, data: Record<string
 	};
 }
 
+const MAX_FAKE_REQUESTS = 64;
+
 let expressionEngine: Promise<void> | undefined;
 
 /** A JSON copy, so later changes by the node do not change the record. */
@@ -228,7 +230,12 @@ function snapshot(value: unknown): unknown {
 function installFakeHttp(responses: EquivalenceCase['responses'], recorded: RawRequest[]) {
 	const { di, network } = load();
 	let index = 0;
-	const next = () => responses[Math.min(index++, responses.length - 1)] ?? { body: {} };
+	// A node that pages until an empty answer never stops on a repeated last answer.
+	const next = () => {
+		if (index >= MAX_FAKE_REQUESTS)
+			throw new Error(`the node sent more than ${MAX_FAKE_REQUESTS} requests`);
+		return responses[Math.min(index++, responses.length - 1)] ?? { body: {} };
+	};
 	const answer = (
 		status: number,
 		body: unknown,
