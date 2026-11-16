@@ -1,0 +1,50 @@
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_5e5f3ce1c6da16::t_382f022c0e6967 1807
+packages/frontend/editor-ui/src/app/components/MainHeader/WorkflowHeaderDraftPublishActions.test.ts
+  s_5e5f3ce1c6da16::t_382f022c0e6967 1317
+packages/modules/engine-v2/frontend/package.json
+  s_5e5f3ce1c6da16::t_4d034f73174f3b 41
+packages/modules/engine-v2/frontend/src/engineV2Check.test.ts
+  s_5e5f3ce1c6da16::t_7f17c325805f46 1-9,23-29
+  s_044ef61ef38ea6::t_fbaf13b050434b 30
+packages/modules/engine-v2/frontend/src/components/EngineV2CompatibilityCallout.test.ts
+  s_5e5f3ce1c6da16::t_382f022c0e6967 20-21,33,47-50,76-77,87
+packages/modules/engine-v2/frontend/src/components/EngineV2CompatibilityCallout.vue
+  s_5e5f3ce1c6da16::t_734a4698cde1ba 16-19
+packages/frontend/editor-ui/src/app/views/NodeView.test.ts
+  s_5e5f3ce1c6da16::t_382f022c0e6967 1070
+packages/modules/engine-v2/frontend/README.md
+  s_5e5f3ce1c6da16::t_a32f6cc4e3b440 17-20
+packages/modules/engine-v2/frontend/src/composables/useEngineV2Compatibility.test.ts
+  s_5e5f3ce1c6da16::t_382f022c0e6967 10,18
+packages/modules/engine-v2/frontend/src/engineV2Check.ts
+  s_5e5f3ce1c6da16::t_f2c3120281408c 4-6,13-16
+packages/frontend/editor-ui/src/app/composables/useWorkflowEngineV2Compatibility.test.ts
+  s_5e5f3ce1c6da16::t_382f022c0e6967 20
+pnpm-lock.yaml
+  s_5e5f3ce1c6da16::t_90fec5c80c2797 7711-7713
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "7f6adcc4df9b277b858432bcff0e66eb4523337d",
+  "prompts": {},
+  "sessions": {
+    "s_044ef61ef38ea6": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "0cae1352-0601-4229-a79c-7bc30c70ce01",
+        "model": "unknown"
+      },
+      "human_author": "alex <alex@n8n.io>"
+    },
+    "s_5e5f3ce1c6da16": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "512d7f4b-1d3a-4776-9de2-8862e7f307bc",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "alex <alex@n8n.io>"
+    }
+  }
+}
