@@ -328,6 +328,8 @@ describe('AssistantTurnEnvironmentFactory', () => {
 
 			const { context } = await factory.create(params, createRuntime());
 
+			// The context is a deep mock, so check that the mode was never set.
+			expect(Object.keys(context)).not.toContain('approvalMode');
 			expect(context.enforceAdminMcpPermissions).toBe(false);
 			expect(fields.approvalModeService.resolveMode).toHaveBeenCalledWith(user, false);
 			expect(fields.approvalReviewerFactory.create).not.toHaveBeenCalled();
@@ -344,6 +346,7 @@ describe('AssistantTurnEnvironmentFactory', () => {
 			const { context } = await factory.create(params, createRuntime());
 
 			expect(fields.approvalModeService.resolveMode).toHaveBeenCalledWith(user, true);
+			expect(context.approvalMode).toBe('manual');
 			expect(context.enforceAdminMcpPermissions).toBe(false);
 			expect(fields.approvalReviewerFactory.create).not.toHaveBeenCalled();
 		});
@@ -359,6 +362,7 @@ describe('AssistantTurnEnvironmentFactory', () => {
 
 			const { context, orchestrationContext } = await factory.create(params, runtime);
 
+			expect(context.approvalMode).toBe('auto');
 			expect(context.enforceAdminMcpPermissions).toBe(true);
 			expect(context.approvalReviewer).toBe(
 				fields.approvalReviewerFactory.create.mock.results[0].value,
@@ -420,6 +424,7 @@ describe('AssistantTurnEnvironmentFactory', () => {
 
 				const { context } = await factory.create(params, runtime);
 
+				expect(context.approvalMode).toBe('manual');
 				expect(context.enforceAdminMcpPermissions).toBe(false);
 				expect(fields.approvalReviewerFactory.create).not.toHaveBeenCalled();
 			});
