@@ -16,27 +16,65 @@ const filterPreviewSchema = z.object({
 	),
 });
 
+const columnTypeSchema = z.enum(['string', 'number', 'boolean', 'date']);
+
+const deleteTableDetails = z.object({ action: z.literal('delete-table') });
+const addColumnDetails = z.object({
+	action: z.literal('add-column'),
+	column: z.string(),
+	columnType: columnTypeSchema,
+});
+const deleteColumnDetails = z.object({ action: z.literal('delete-column'), column: z.string() });
+const renameColumnDetails = z.object({
+	action: z.literal('rename-column'),
+	column: z.string(),
+	newName: z.string(),
+});
+const insertRowsDetails = z.object({
+	action: z.literal('insert-rows'),
+	count: z.number().int().nonnegative(),
+	rows: z.array(rowPreviewSchema),
+});
+const updateRowsDetails = z.object({
+	action: z.literal('update-rows'),
+	changes: rowPreviewSchema,
+	filter: filterPreviewSchema,
+});
+const deleteRowsDetails = z.object({
+	action: z.literal('delete-rows'),
+	filter: filterPreviewSchema,
+});
+
+/** One change in a `data-table-changes` batch. Only a batch shows table creation. */
+const dataTableChangeDetailsSchema = z.discriminatedUnion('action', [
+	z.object({
+		action: z.literal('create-table'),
+		columns: z.array(z.object({ name: z.string(), columnType: columnTypeSchema })),
+	}),
+	deleteTableDetails,
+	addColumnDetails,
+	deleteColumnDetails,
+	renameColumnDetails,
+	insertRowsDetails,
+	updateRowsDetails,
+	deleteRowsDetails,
+]);
+
+export type InstanceAiDataTableChangeDetails = z.infer<typeof dataTableChangeDetailsSchema>;
+
 export const instanceAiApprovalDetailsSchema = z.discriminatedUnion('action', [
 	z.object({ action: z.literal('edit-workflow'), summary: z.string().optional() }),
-	z.object({ action: z.literal('delete-table') }),
+	deleteTableDetails,
+	addColumnDetails,
+	deleteColumnDetails,
+	renameColumnDetails,
+	insertRowsDetails,
+	updateRowsDetails,
+	deleteRowsDetails,
 	z.object({
-		action: z.literal('add-column'),
-		column: z.string(),
-		columnType: z.enum(['string', 'number', 'boolean', 'date']),
+		action: z.literal('data-table-changes'),
+		changes: z.array(z.object({ tableName: z.string(), details: dataTableChangeDetailsSchema })),
 	}),
-	z.object({ action: z.literal('delete-column'), column: z.string() }),
-	z.object({ action: z.literal('rename-column'), column: z.string(), newName: z.string() }),
-	z.object({
-		action: z.literal('insert-rows'),
-		count: z.number().int().nonnegative(),
-		rows: z.array(rowPreviewSchema),
-	}),
-	z.object({
-		action: z.literal('update-rows'),
-		changes: rowPreviewSchema,
-		filter: filterPreviewSchema,
-	}),
-	z.object({ action: z.literal('delete-rows'), filter: filterPreviewSchema }),
 	z.object({ action: z.literal('archive-workflow'), name: z.string(), id: z.string() }),
 	z.object({ action: z.literal('restore-workflow'), name: z.string(), id: z.string() }),
 	z.object({ action: z.literal('unpublish-workflow'), name: z.string(), id: z.string() }),

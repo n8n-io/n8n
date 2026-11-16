@@ -1,7 +1,14 @@
 import {
+	CHANGE_DATA_TABLES_TOOL_NAME,
+	DATA_TABLE_READ_TOOL_ACTIONS,
+	DATA_TABLE_TOOL_ACTIONS,
+	DATA_TABLE_TOOL_NAMES,
+	DATA_TABLE_WRITE_TOOL_ACTIONS,
+	DATA_TABLE_WRITE_TOOL_NAMES,
 	LEGACY_BUILDER_TOOL_NAMES,
 	SHARED_BUILDER_TOOL_NAMES,
 	WORKFLOW_BUILDER_TOOL_NAMES,
+	getDataTableCallAction,
 	getLegacyBuilderToolActions,
 	getLegacyBuilderToolNames,
 	isFormerWorkflowsTool,
@@ -132,4 +139,34 @@ describe('isFormerWorkflowsTool', () => {
 			expect(isFormerWorkflowsTool(name)).toBe(false);
 		},
 	);
+});
+
+describe('data table tool names', () => {
+	it('lists the three read actions', () => {
+		expect(DATA_TABLE_READ_TOOL_ACTIONS).toEqual(['list', 'schema', 'query']);
+	});
+
+	it('splits every action into exactly one of read or write', () => {
+		expect([...DATA_TABLE_READ_TOOL_ACTIONS, ...DATA_TABLE_WRITE_TOOL_ACTIONS].sort()).toEqual(
+			[...DATA_TABLE_TOOL_ACTIONS].sort(),
+		);
+	});
+
+	it('keeps the eight former write tool names for stored calls', () => {
+		expect(DATA_TABLE_WRITE_TOOL_NAMES).toHaveLength(8);
+		expect(DATA_TABLE_WRITE_TOOL_NAMES).toContain(SHARED_BUILDER_TOOL_NAMES.ADD_DATA_TABLE_COLUMN);
+		expect(DATA_TABLE_WRITE_TOOL_NAMES).not.toContain(CHANGE_DATA_TABLES_TOOL_NAME);
+	});
+
+	it('still resolves the action of a stored former write call', () => {
+		expect(getDataTableCallAction(SHARED_BUILDER_TOOL_NAMES.ADD_DATA_TABLE_COLUMN)).toBe(
+			'add-column',
+		);
+	});
+
+	it('recognizes the batch tool as a data table tool without a single action', () => {
+		expect(CHANGE_DATA_TABLES_TOOL_NAME).toBe('change_data_tables');
+		expect(DATA_TABLE_TOOL_NAMES).toContain(CHANGE_DATA_TABLES_TOOL_NAME);
+		expect(getDataTableCallAction(CHANGE_DATA_TABLES_TOOL_NAME)).toBeUndefined();
+	});
 });

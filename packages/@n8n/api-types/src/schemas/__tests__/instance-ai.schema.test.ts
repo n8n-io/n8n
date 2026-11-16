@@ -13,6 +13,7 @@ import {
 	appBlueprintSchema,
 	buildCredentialDestinationGrantKey,
 	buildDataTablesSessionGrantKey,
+	buildOwnedDataTableGrantKey,
 	buildExecuteNodeSessionGrantKey,
 	buildUpdateWorkflowSessionGrantKey,
 	buildSetupSkipGrantKey,
@@ -803,6 +804,11 @@ describe('data-tables session grant keys', () => {
 	it('builds action-scoped keys matching the frontend always-allow format', () => {
 		expect(buildDataTablesSessionGrantKey('create')).toBe('data-tables:create');
 		expect(buildDataTablesSessionGrantKey('insert-rows')).toBe('data-tables:insert-rows');
+	});
+
+	it('builds an owned-table key that differs from every action key', () => {
+		expect(buildOwnedDataTableGrantKey('dt-1')).toBe('data-tables:owned:dt-1');
+		expect(buildOwnedDataTableGrantKey('a/b:c')).toBe('data-tables:owned:a%2Fb%3Ac');
 	});
 });
 

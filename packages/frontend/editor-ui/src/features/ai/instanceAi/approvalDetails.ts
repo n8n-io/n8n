@@ -253,6 +253,9 @@ export function formatApprovalDetails(details: InstanceAiApprovalDetails): strin
 			}
 			return lines.join('\n\n');
 		}
+		case 'data-table-changes':
+			// Plain-text fallback that names the affected tables.
+			return join([...new Set(details.changes.map(({ tableName }) => tableName))]);
 	}
 }
 

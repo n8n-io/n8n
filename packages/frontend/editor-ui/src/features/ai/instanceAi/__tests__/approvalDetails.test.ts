@@ -20,6 +20,19 @@ const rows: InstanceAiApprovalDetails = {
 };
 
 describe('approval details', () => {
+	it('names each affected table once for a batch of data table changes', () => {
+		expect(
+			formatApprovalDetails({
+				action: 'data-table-changes',
+				changes: [
+					{ tableName: 'Leads', details: { action: 'create-table', columns: [] } },
+					{ tableName: 'Leads', details: { action: 'delete-table' } },
+					{ tableName: 'Orders', details: { action: 'delete-column', column: 'note' } },
+				],
+			}),
+		).toBe('Leads, Orders');
+	});
+
 	it('renders row values, empty values, omitted counts, and paragraph breaks', () => {
 		expect(formatApprovalDetails(rows)).toBe(
 			'Add 5 rows\n\nRow 1: set "email" to "alice.test@example.com", 1 more column\n\nRow 2: set "status" to no value, 2 more columns\n\nRow 3: no column values supplied\n\n2 more rows',

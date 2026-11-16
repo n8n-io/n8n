@@ -178,6 +178,11 @@ export function buildDataTablesSessionGrantKey(action: string): string {
 	return `data-tables:${action}`;
 }
 
+/** Thread grant for a table the Assistant created in this thread. */
+export function buildOwnedDataTableGrantKey(dataTableId: string): string {
+	return `data-tables:owned:${encodeURIComponent(dataTableId)}`;
+}
+
 // --- Workflow-setup skips ---
 
 const SETUP_SKIP_GRANT_PREFIX = 'workflows:setup-skip:';

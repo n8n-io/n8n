@@ -9091,6 +9091,7 @@
 	"instanceAi.tools.insert_data_table_rows": "Inserting rows",
 	"instanceAi.tools.update_data_table_rows": "Updating rows",
 	"instanceAi.tools.delete_data_table_rows": "Deleting rows",
+	"instanceAi.tools.change_data_tables": "Changing data tables",
 	"instanceAi.tools.list_projects": "Listing projects",
 	"instanceAi.tools.list_tags": "Listing tags",
 	"instanceAi.tools.tag_workflow": "Tagging workflow",
