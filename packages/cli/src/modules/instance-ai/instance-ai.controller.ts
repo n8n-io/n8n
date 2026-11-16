@@ -206,7 +206,6 @@ export class InstanceAiController {
 			payload.context,
 			payload.timeZone,
 			payload.pushRef,
-			payload.mode,
 			payload.promptVersion,
 			payload.browserUseAvailable,
 			payload.threadArtifacts,
@@ -881,7 +880,7 @@ export class InstanceAiController {
 
 		const result = await this.memoryService.getRichMessages(req.user.id, threadId, {
 			limit: query.limit,
-			page: query.page,
+			cursor: query.cursor,
 			excludeRunIds: excludeRunIds.length > 0 ? excludeRunIds : undefined,
 			excludeMessageGroupIds:
 				excludeMessageGroupIds.length > 0 ? excludeMessageGroupIds : undefined,

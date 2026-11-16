@@ -5,7 +5,7 @@ import {
 	type SelfHealingResultUsage,
 	type WorkflowSuggestionBaseline,
 } from '@n8n/api-types';
-import { Logger } from '@n8n/backend-common';
+import { getN8nVersion, Logger } from '@n8n/backend-common';
 import { InstanceWriteAccessService } from '@n8n/backend-services';
 import { GlobalConfig } from '@n8n/config';
 import { WorkflowDependencyRepository, type User } from '@n8n/db';
@@ -26,6 +26,7 @@ import {
 	selfHealingOutputSchema,
 	streamAgentRun,
 	MAX_STEPS,
+	type BuilderUsageItem,
 	OutsideThreadProjectError,
 	type InstanceAiContext,
 	type InstanceAiTraceContext,
@@ -39,7 +40,7 @@ import { getErrorMessage } from '@n8n/utils/errors/get-error-message';
 import { sanitizeErrorDetail } from '@n8n/utils/redaction/sanitize-error-detail';
 import { nanoid } from 'nanoid';
 
-import { N8N_VERSION, WORKFLOW_SDK_VERSION } from '@/constants';
+import { WORKFLOW_SDK_VERSION } from '@/constants';
 import type { ProxyTokenManager } from '@/services/proxy-token-manager';
 import { AiUsageService } from '@/services/ai-usage.service';
 import { modelStreamStallOptions } from '@/utils/model-stream-stall-options';
@@ -82,6 +83,8 @@ export type SelfHealingRunResult = {
 	validationError?: string;
 	error?: unknown;
 	usage: SelfHealingResultUsage;
+	/** A telemetry fact. It is not saved with the result. */
+	tokenUsage?: BuilderUsageItem[];
 	candidates?: Array<{
 		baseline: WorkflowSuggestionBaseline;
 		compile: () => Promise<CandidateWorkflowResult>;
@@ -239,7 +242,7 @@ export class SelfHealingAgentService {
 					self_healing_project_id: baseline.projectId,
 				},
 				proxyConfig: proxy.tracingProxyConfig,
-				n8nVersion: N8N_VERSION,
+				n8nVersion: getN8nVersion(),
 				workflowSdkVersion: WORKFLOW_SDK_VERSION,
 			});
 			if (tracing) {
@@ -296,6 +299,7 @@ export class SelfHealingAgentService {
 			// Model work has stopped. The final charge must not cancel result persistence.
 			options.onFinalizing();
 			result.usage.durationSeconds = (Date.now() - startedAt) / 1000;
+			result.tokenUsage = stream?.usage?.usage;
 
 			if ('promptTokens' in result.usage) {
 				result.usage.promptTokens = stream?.usage?.promptTokens ?? null;
@@ -450,6 +454,11 @@ export class SelfHealingAgentService {
 						proxyContext,
 					)
 				: await this.models.resolveAgentModelConfig(user, proxyContext);
+		const utilityModelId = await this.models.resolveUtilityModelConfig(user, modelId, {
+			proxyBaseUrl: proxy.proxyBaseUrl,
+			tokenManager: proxy.tokenManager,
+			proxyContext,
+		});
 
 		const shareParameters = await this.aiUsage.isParameterValueSharingAllowed();
 		const context = this.adapter.createContext(user, {
@@ -457,6 +466,7 @@ export class SelfHealingAgentService {
 			projectId: input.baseline.projectId,
 			searchProxyConfig: proxy.searchProxyConfig,
 			modelId,
+			utilityModelId,
 			modelFetch: this.models.getModelFetch(),
 			allowSendingParameterValues: shareParameters,
 		});

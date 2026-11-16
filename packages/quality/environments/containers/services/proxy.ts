@@ -100,7 +100,7 @@ export interface ProxyServerRequest {
 export interface ProxyServerResponse {
 	statusCode: number;
 	headers?: Record<string, string[]>;
-	body?: string;
+	body?: HttpResponse['body'];
 	delay?: {
 		timeUnit: 'MICROSECONDS' | 'MILLISECONDS' | 'SECONDS' | 'MINUTES';
 		value: number;

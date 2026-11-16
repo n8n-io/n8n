@@ -1,4 +1,4 @@
-import { PostHogClient } from '@/posthog';
+import { PostHogClient } from '@n8n/backend-services';
 import {
 	createTeamProject,
 	linkUserToProject,

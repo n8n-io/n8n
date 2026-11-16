@@ -1,6 +1,7 @@
 import type { Mock } from 'vitest';
 import type { Logger } from '@n8n/backend-common';
-import type { Project, User, WorkflowEntity } from '@n8n/db';
+import type { OperationContext, Project, User, WorkflowEntity } from '@n8n/db';
+import type { SecurityContext } from '@n8n/permissions';
 import { mock } from 'vitest-mock-extended';
 
 import { ForbiddenError, NotFoundError } from '@n8n/errors';
@@ -122,10 +123,12 @@ describe('WorkflowPublisher', () => {
 
 			const result = await publisher.apply(user, createItem(true), workflow);
 
-			expect(workflowService.activateWorkflow).toHaveBeenCalledWith(user, 'wf-1', {
-				versionId: 'v1',
-				source: 'import',
-			});
+			expect(workflowService.activateWorkflow).toHaveBeenCalledWith(
+				user,
+				'wf-1',
+				{ versionId: 'v1', source: 'import', publicApi: false },
+				{},
+			);
 			expect(result.workflow).toBe(published);
 			expect(result.publishing).toEqual({ state: 'published' });
 		});
@@ -177,9 +180,12 @@ describe('WorkflowPublisher', () => {
 			const result = await publisher.apply(user, updateItem, workflow, 'stub-credential');
 
 			expect(workflowService.activateWorkflow).not.toHaveBeenCalled();
-			expect(workflowService.deactivateWorkflow).toHaveBeenCalledWith(user, 'wf-1', {
-				source: 'import',
-			});
+			expect(workflowService.deactivateWorkflow).toHaveBeenCalledWith(
+				user,
+				'wf-1',
+				{ source: 'import', publicApi: false },
+				{},
+			);
 			expect(result.workflow).toBe(unpublished);
 			expect(result.publishing).toEqual({ state: 'unpublished' });
 		});
@@ -257,9 +263,12 @@ describe('WorkflowPublisher', () => {
 			const result = await publisher.apply(user, updateItem, workflow, 'missing-node-type');
 
 			expect(workflowService.activateWorkflow).not.toHaveBeenCalled();
-			expect(workflowService.deactivateWorkflow).toHaveBeenCalledWith(user, 'wf-1', {
-				source: 'import',
-			});
+			expect(workflowService.deactivateWorkflow).toHaveBeenCalledWith(
+				user,
+				'wf-1',
+				{ source: 'import', publicApi: false },
+				{},
+			);
 			expect(result.workflow).toBe(unpublished);
 			expect(result.publishing).toEqual({ state: 'unpublished' });
 		});
@@ -303,6 +312,7 @@ describe('WorkflowPublisher', () => {
 			// rejects a parent whose referenced sub-workflow is not yet published.
 			const published = await publisher.applyToPackage({
 				user,
+				publicApi: 'editor_ui',
 				persisted: [persisted('CHEDDAR'), persisted('BRIE')],
 				policy: WorkflowPublishingPolicy.PublishAll,
 				subWorkflowRequirements: [
@@ -311,13 +321,40 @@ describe('WorkflowPublisher', () => {
 			});
 
 			expect(activationOrder()).toEqual(['BRIE', 'CHEDDAR']);
+			expect(workflowService.activateWorkflow.mock.calls.map(([, , options]) => options)).toEqual([
+				expect.objectContaining({ source: 'import', publicApi: 'editor_ui' }),
+				expect.objectContaining({ source: 'import', publicApi: 'editor_ui' }),
+			]);
 			expect(published.get('BRIE')?.publishing).toEqual({ state: 'published' });
 			expect(published.get('CHEDDAR')?.publishing).toEqual({ state: 'published' });
+		});
+
+		it('passes the operation context to each publish', async () => {
+			const ctx: OperationContext = {
+				security: mock<SecurityContext>({ subIdentityId: 'login-1' }),
+			};
+
+			await publisher.applyToPackage({
+				user,
+				publicApi: false,
+				ctx,
+				persisted: [persisted('BRIE')],
+				policy: WorkflowPublishingPolicy.PublishAll,
+				subWorkflowRequirements: undefined,
+			});
+
+			expect(workflowService.activateWorkflow).toHaveBeenCalledExactlyOnceWith(
+				user,
+				'local-BRIE',
+				{ versionId: 'v1', source: 'import', publicApi: false },
+				ctx,
+			);
 		});
 
 		it('keeps written order when no sub-workflow dependencies are declared', async () => {
 			await publisher.applyToPackage({
 				user,
+				publicApi: false,
 				persisted: [persisted('CHEDDAR'), persisted('BRIE')],
 				policy: WorkflowPublishingPolicy.PublishAll,
 				subWorkflowRequirements: undefined,
@@ -329,6 +366,7 @@ describe('WorkflowPublisher', () => {
 		it('never publishes a skipped workflow and reports it as unchanged', async () => {
 			const published = await publisher.applyToPackage({
 				user,
+				publicApi: false,
 				persisted: [
 					{
 						status: 'skipped' as const,

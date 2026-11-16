@@ -6,6 +6,7 @@ import type {
 	IHttpRequestMethods,
 	INode,
 } from 'n8n-workflow';
+import { requestPath } from 'n8n-workflow';
 import nock from 'nock';
 
 import { profileResponse } from './apiResponses';
@@ -39,15 +40,32 @@ describe('Oura', () => {
 	describe('ouraApiRequest', () => {
 		it('should make an authenticated API request to Oura', async () => {
 			const method: IHttpRequestMethods = 'GET';
-			const resource = '/usercollection/personal_info';
+			const resource = requestPath`/usercollection/personal_info`;
 
 			await ouraApiRequest.call(mockThis, method, resource);
 
 			expect(mockThis.helpers.httpRequestWithAuthentication).toHaveBeenCalledWith('ouraApi', {
 				method: 'GET',
-				url: 'https://api.ouraring.com/v2/usercollection/personal_info',
+				url: expect.objectContaining({
+					value: 'https://api.ouraring.com/v2/usercollection/personal_info',
+				}),
 				json: true,
 			});
+		});
+
+		it('should encode path values', async () => {
+			const id = '7/delete?x=1';
+
+			await ouraApiRequest.call(mockThis, 'GET', requestPath`/usercollection/sleep/${id}`);
+
+			expect(mockThis.helpers.httpRequestWithAuthentication).toHaveBeenCalledWith(
+				'ouraApi',
+				expect.objectContaining({
+					url: expect.objectContaining({
+						value: 'https://api.ouraring.com/v2/usercollection/sleep/7%2Fdelete%3Fx=1',
+					}),
+				}),
+			);
 		});
 	});
 
@@ -55,9 +73,17 @@ describe('Oura', () => {
 		beforeAll(() => {
 			nock('https://api.ouraring.com/v2')
 				.get('/usercollection/personal_info')
-				.reply(200, profileResponse);
+				.reply(200, profileResponse)
+				.get('/usercollection/daily_activity')
+				.reply(200, { data: [{ day: '2024-05-01', score: 82, steps: 10234 }] })
+				.get('/usercollection/daily_readiness')
+				.reply(200, { data: [{ day: '2024-05-01', score: 76 }] })
+				.get('/usercollection/daily_sleep')
+				.reply(200, { data: [{ day: '2024-05-01', score: 88 }] });
 		});
 
-		new NodeTestHarness().setupTests();
+		new NodeTestHarness().setupTests({
+			customAssertions: () => expect(nock.pendingMocks()).toEqual([]),
+		});
 	});
 });

@@ -232,7 +232,7 @@ onMounted(async () => {
 				</div>
 
 				<div v-if="loadingCandidate" :class="$style.loading" data-test-id="add-execution-loading">
-					<N8nSpinner type="ring" />
+					<N8nSpinner type="brand" size="xxlarge" />
 				</div>
 
 				<div v-else-if="!hasColumns" :class="$style.empty">

@@ -5,7 +5,7 @@ import type {
 	INodeType,
 	INodeTypeDescription,
 } from 'n8n-workflow';
-import { NodeConnectionTypes } from 'n8n-workflow';
+import { NodeConnectionTypes, decodePathValue, requestPath } from 'n8n-workflow';
 
 import { buildFields, buildOperations } from './BuildDescription';
 import { travisciApiRequest, travisciApiRequestAllItems } from './GenericFunctions';
@@ -17,7 +17,8 @@ export class TravisCi implements INodeType {
 		// eslint-disable-next-line n8n-nodes-base/node-class-description-icon-not-svg
 		icon: 'file:travisci.png',
 		group: ['output'],
-		version: 1,
+		version: [1, 1.1],
+		defaultVersion: 1.1,
 		subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',
 		description: 'Consume TravisCI API',
 		defaults: {
@@ -54,6 +55,7 @@ export class TravisCi implements INodeType {
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const items = this.getInputData();
 		const returnData: INodeExecutionData[] = [];
+		const nodeVersion = this.getNode().typeVersion;
 		const length = items.length;
 		const qs: IDataObject = {};
 		let responseData;
@@ -72,7 +74,13 @@ export class TravisCi implements INodeType {
 							qs.include = additionalFields.include as string;
 						}
 
-						responseData = await travisciApiRequest.call(this, 'GET', `/build/${buildId}`, {}, qs);
+						responseData = await travisciApiRequest.call(
+							this,
+							'GET',
+							requestPath`/build/${buildId}`,
+							{},
+							qs,
+						);
 					}
 					//https://developer.travis-ci.com/resource/builds#for_current_user
 					if (operation === 'getAll') {
@@ -96,13 +104,19 @@ export class TravisCi implements INodeType {
 								this,
 								'builds',
 								'GET',
-								'/builds',
+								requestPath`/builds`,
 								{},
 								qs,
 							);
 						} else {
 							qs.limit = this.getNodeParameter('limit', i);
-							responseData = await travisciApiRequest.call(this, 'GET', '/builds', {}, qs);
+							responseData = await travisciApiRequest.call(
+								this,
+								'GET',
+								requestPath`/builds`,
+								{},
+								qs,
+							);
 							responseData = responseData.builds;
 						}
 					}
@@ -112,7 +126,7 @@ export class TravisCi implements INodeType {
 						responseData = await travisciApiRequest.call(
 							this,
 							'POST',
-							`/build/${buildId}/cancel`,
+							requestPath`/build/${buildId}/cancel`,
 							{},
 							qs,
 						);
@@ -123,18 +137,16 @@ export class TravisCi implements INodeType {
 						responseData = await travisciApiRequest.call(
 							this,
 							'POST',
-							`/build/${buildId}/restart`,
+							requestPath`/build/${buildId}/restart`,
 							{},
 							qs,
 						);
 					}
 					//https://developer.travis-ci.com/resource/requests#create
 					if (operation === 'trigger') {
-						let slug = this.getNodeParameter('slug', i) as string;
+						const slug = this.getNodeParameter('slug', i) as string;
 						const branch = this.getNodeParameter('branch', i) as string;
 						const additionalFields = this.getNodeParameter('additionalFields', i);
-
-						slug = slug.replace(new RegExp(/\//g), '%2F');
 
 						const request: IDataObject = {
 							branch,
@@ -151,7 +163,7 @@ export class TravisCi implements INodeType {
 						responseData = await travisciApiRequest.call(
 							this,
 							'POST',
-							`/repo/${slug}/requests`,
+							requestPath`/repo/${nodeVersion < 1.1 ? decodePathValue(slug) : slug}/requests`,
 							JSON.stringify({ request }),
 						);
 					}

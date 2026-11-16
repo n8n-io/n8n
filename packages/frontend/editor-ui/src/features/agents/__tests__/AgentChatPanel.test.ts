@@ -967,6 +967,24 @@ describe('AgentChatPanel', () => {
 			expect(isCentered(mountPanel({ centerEmptyState: true, newSession: true }))).toBe(false);
 		});
 
+		it('keeps the centered empty state while a new chat loads its history', () => {
+			// The history load counts as a recovering run.
+			isLoadingHistoryMock.value = true;
+			isStreamingMock.value = true;
+			const wrapper = mountPanel({ centerEmptyState: true, newSession: true });
+
+			expect(isCentered(wrapper)).toBe(true);
+			expect(wrapper.find('[data-testid="empty-state-stub"]').exists()).toBe(true);
+		});
+
+		it('hides the empty state while the history loads in other hosts', () => {
+			isLoadingHistoryMock.value = true;
+			isStreamingMock.value = true;
+			const wrapper = mountPanel({ newSession: true });
+
+			expect(wrapper.find('[data-testid="empty-state-stub"]').exists()).toBe(false);
+		});
+
 		describe('first message preview', () => {
 			const messageList = (wrapper: ReturnType<typeof mountPanel>) =>
 				wrapper.findComponent({ name: 'AgentChatMessageList' });
@@ -4221,6 +4239,52 @@ describe('AgentChatPanel', () => {
 		};
 	}
 
+	describe('isAwaitingUserAnswer', () => {
+		type AwaitingVm = { isAwaitingUserAnswer: boolean };
+
+		it('is false while a waiting card is open, because the workflow resumes the run', () => {
+			messagesMock.value = [openWaitMessage()];
+
+			const wrapper = mountPanel();
+
+			expect((wrapper.vm as unknown as AwaitingVm).isAwaitingUserAnswer).toBe(false);
+			wrapper.unmount();
+		});
+
+		it('is true while a card waits for the user to answer', () => {
+			messagesMock.value = [
+				{
+					id: 'assistant-1',
+					role: 'assistant',
+					content: '',
+					status: 'awaitingUser',
+					interactive: {
+						toolName: N8N_CHAT_ACTION_TOOL_NAME,
+						toolCallId: 'tc-1',
+						runId: 'run-1',
+						input: {
+							card: { components: [{ type: 'button', label: 'Pick Slack', value: 'slack' }] },
+						},
+					},
+				},
+			];
+
+			const wrapper = mountPanel();
+
+			expect((wrapper.vm as unknown as AwaitingVm).isAwaitingUserAnswer).toBe(true);
+			wrapper.unmount();
+		});
+
+		it('is false when no card is open', () => {
+			messagesMock.value = [];
+
+			const wrapper = mountPanel();
+
+			expect((wrapper.vm as unknown as AwaitingVm).isAwaitingUserAnswer).toBe(false);
+			wrapper.unmount();
+		});
+	});
+
 	it('allows queue submissions while a waiting card is open', () => {
 		messagesMock.value = [openWaitMessage()];
 
@@ -4601,7 +4665,11 @@ describe('AgentChatPanel', () => {
 
 	describe('host extension API', () => {
 		type HostPanelVm = {
-			sendMessageFromOutside: (message: string, files?: File[]) => void;
+			sendMessageFromOutside: (
+				message: string,
+				files?: File[],
+				clientContext?: Record<string, unknown>,
+			) => void;
 			isDirty: () => boolean;
 			setDraft: (text: string) => void;
 			openFilePicker: () => void;
@@ -4623,6 +4691,18 @@ describe('AgentChatPanel', () => {
 			expect(input.props('acceptedMimeTypes')).toBe(
 				`image/png,image/jpeg,image/gif,image/webp,application/pdf,${AGENT_CHAT_DATA_ATTACHMENT_ACCEPT}`,
 			);
+		});
+
+		it('shows the empty state only after the history loads', async () => {
+			isLoadingHistoryMock.value = true;
+			const wrapper = mountPanel();
+
+			expect(wrapper.find('[data-testid="empty-state-stub"]').exists()).toBe(false);
+
+			isLoadingHistoryMock.value = false;
+			await nextTick();
+
+			expect(wrapper.find('[data-testid="empty-state-stub"]').exists()).toBe(true);
 		});
 
 		describe('slots', () => {
@@ -4793,6 +4873,70 @@ describe('AgentChatPanel', () => {
 				await flushPromises();
 
 				expect(wrapper.emitted('message-accepted')).toBeUndefined();
+			});
+		});
+
+		describe('draft-cleared', () => {
+			it('emits when typed text that cancels an open question leaves the composer', async () => {
+				messagesMock.value = [openInteractiveMessage()];
+				const wrapper = mountPanel();
+				const input = composer(wrapper);
+
+				input.vm.$emit('update:modelValue', 'go another direction');
+				await nextTick();
+				input.vm.$emit('submit');
+				await flushPromises();
+				expect(wrapper.emitted('draft-cleared')).toBeUndefined();
+
+				cancelAndSteerMock.mock.lastCall?.[1]?.();
+				await flushPromises();
+
+				expect(wrapper.emitted('draft-cleared')).toHaveLength(1);
+			});
+		});
+
+		describe('message-sending', () => {
+			it('emits each new message on send, also when the server does not accept it', async () => {
+				sendMessageMock.mockResolvedValueOnce('busy');
+				const wrapper = mountPanel();
+
+				hostVm(wrapper).sendMessageFromOutside('hello', [], { attachments: [] });
+				await flushPromises();
+
+				expect(wrapper.emitted('message-sending')).toEqual([
+					[{ text: 'hello', files: [], clientContext: { attachments: [] }, isFirstMessage: true }],
+				]);
+			});
+
+			it('emits typed text that cancels an open question, without its files', async () => {
+				messagesMock.value = [
+					{ id: 'm1', role: 'user', content: 'hi' } as ChatMessage,
+					openInteractiveMessage(),
+				];
+				const wrapper = mountPanel();
+
+				hostVm(wrapper).sendMessageFromOutside('go another direction', [
+					new File(['a'], 'a.png', { type: 'image/png' }),
+				]);
+				await flushPromises();
+
+				expect(cancelAndSteerMock).toHaveBeenCalledOnce();
+				expect(wrapper.emitted('message-sending')).toEqual([
+					[{ text: 'go another direction', files: [], isFirstMessage: false }],
+				]);
+			});
+
+			it('marks a message as not the first once the thread has a user message', async () => {
+				messagesMock.value = [{ id: 'm1', role: 'user', content: 'hi' } as ChatMessage];
+				sendMessageMock.mockResolvedValueOnce('sent');
+				const wrapper = mountPanel();
+
+				hostVm(wrapper).sendMessageFromOutside('again');
+				await flushPromises();
+
+				expect(wrapper.emitted('message-sending')?.[0]?.[0]).toMatchObject({
+					isFirstMessage: false,
+				});
 			});
 		});
 
@@ -5078,6 +5222,7 @@ describe('AgentChatPanel', () => {
 					[{ text: 'fix it', files: [], clientContext }],
 				]);
 				expect(composer(wrapper).props('modelValue')).toBe('half-typed');
+				expect(wrapper.emitted('draft-cleared')).toBeUndefined();
 				expect(vm.composerAttachments.map(({ chip }) => chip.id)).toEqual(['wf-1']);
 			});
 

@@ -12,8 +12,15 @@ import {
 	type Ref,
 } from 'vue';
 import { storeToRefs } from 'pinia';
-import { N8nChatMessage, N8nIconButton, N8nScrollArea, N8nText } from '@n8n/design-system';
-import { useScroll } from '@vueuse/core';
+import {
+	N8nButton,
+	N8nChatMessage,
+	N8nIconButton,
+	N8nScrollArea,
+	N8nSpinner,
+	N8nText,
+} from '@n8n/design-system';
+import { useInfiniteScroll, useScroll } from '@vueuse/core';
 import { useI18n } from '@n8n/i18n';
 import type {
 	InstanceAiAgentAttachment,
@@ -86,6 +93,8 @@ const props = withDefaults(
 	defineProps<{
 		/** Runs before every send (e.g. flush a pending autosave). Rejecting cancels the send. */
 		beforeSend?: () => Promise<void>;
+		/** The host persists this local draft before the first send. */
+		newThread?: boolean;
 		placeholder?: string;
 		placeholderPreview?: Readonly<Ref<string | undefined>>;
 		autofocus?: boolean;
@@ -415,9 +424,11 @@ const scrollContainerRef = computed(
 		(scrollableRef.value?.closest('[data-reka-scroll-area-viewport]') as HTMLElement | null) ??
 		null,
 );
-const { arrivedState } = useScroll(scrollContainerRef, {
+/** Distance from the top, in px, at which older history starts to load. */
+const OLDER_MESSAGES_DISTANCE = 200;
+const { arrivedState, measure: measureScroll } = useScroll(scrollContainerRef, {
 	throttle: 100,
-	offset: { bottom: 100 },
+	offset: { top: OLDER_MESSAGES_DISTANCE, bottom: 100 },
 });
 const userScrolledUp = ref(false);
 
@@ -425,6 +436,56 @@ watch(
 	() => arrivedState.bottom,
 	(atBottom) => {
 		userScrolledUp.value = !atBottom;
+	},
+);
+
+// Stops a failed load from retrying in a loop. The retry button or leaving the top area allows a new try.
+const loadOlderFailed = ref(false);
+watch(
+	() => arrivedState.top,
+	(nearTop) => {
+		if (!nearTop) loadOlderFailed.value = false;
+	},
+);
+const viewScrolled = ref(false);
+const { isLoading: isLoadingOlderMessages } = useInfiniteScroll(
+	scrollContainerRef,
+	async () => {
+		const container = scrollContainerRef.value;
+		if (!container) return;
+		// The throttled scroll state can miss one scroll event, such as a jump to the top.
+		// Measure it now, so that auto-follow does not move the view to the bottom when the page lands.
+		// Set the flag directly: when the state was already wrong, its watcher does not run.
+		measureScroll();
+		userScrolledUp.value = !arrivedState.bottom;
+		// The older page lands above the first message. Measure only how far that message moves:
+		// the user can scroll and a live reply can grow below the view while the page loads.
+		const contentTop = (el: HTMLElement) => el.getBoundingClientRect().top + container.scrollTop;
+		const anchor = messageListRef.value?.querySelector<HTMLElement>('[data-message-id]');
+		const anchorTop = anchor ? contentTop(anchor) : 0;
+		try {
+			await thread.loadOlderMessages();
+		} catch {
+			loadOlderFailed.value = true;
+			return;
+		}
+		await nextTick();
+		// Keep the messages the user reads in place.
+		if (anchor && container.contains(anchor)) container.scrollTop += contentTop(anchor) - anchorTop;
+	},
+	{
+		direction: 'top',
+		distance: OLDER_MESSAGES_DISTANCE,
+		// This listener has no throttle, so it also gets a single scroll event.
+		onScroll: () => {
+			viewScrolled.value = true;
+		},
+		// Wait for the first scroll: on mount the view is at the top before it scrolls to the bottom.
+		// A thread too short to scroll still fills itself.
+		canLoadMore: (el) =>
+			thread.hasOlderMessages &&
+			!loadOlderFailed.value &&
+			(viewScrolled.value || (el !== null && el.scrollHeight <= el.clientHeight)),
 	},
 );
 
@@ -588,6 +649,28 @@ async function syncThread() {
 	// Apply editor hand-off attachments before any await so a first submit
 	// cannot race past them, including when SSE is already connected.
 	restorePendingHandoffAttachments();
+	if (props.newThread) {
+		// A local draft has no server history to load.
+		thread.hydrationStatus = 'ready';
+		if (!settingsStore.isWorkflowBuilderAvailable) return;
+		const pending = consumePendingFirstMessage(requestedThreadId);
+		if (pending) {
+			pendingComposerContext.value = pending.context ?? pendingComposerContext.value;
+			// Opening prompts are real sends: provision the draft and include its agent.
+			void handleSubmit(
+				pending.message,
+				pending.attachments,
+				() => {
+					if (!isCurrentThreadRuntime()) return false;
+					stashPendingFirstMessage(requestedThreadId, pending);
+					return true;
+				},
+				pending.authorship,
+				pending.responseStartedAtEpochMs,
+			);
+		}
+		return;
+	}
 	// The history list is paginated, so an unknown id is resolved on its own
 	// rather than by loading the whole list.
 	if (!store.threads.some((t) => t.id === requestedThreadId)) {
@@ -877,6 +960,26 @@ defineExpose({
 
 <template>
 	<div :class="$style.chatContent">
+		<!-- Floats over the messages, so the content does not move when it disappears. -->
+		<N8nSpinner
+			v-if="isLoadingOlderMessages"
+			:class="$style.olderMessagesStatus"
+			data-test-id="instance-ai-older-messages-loading"
+		/>
+		<!-- A thread too short to scroll cannot leave the top area, so it needs this button to try again. -->
+		<div
+			v-else-if="loadOlderFailed"
+			:class="[$style.olderMessagesStatus, $style.olderMessagesError]"
+			role="alert"
+			data-test-id="instance-ai-older-messages-error"
+		>
+			<N8nText size="small" color="text-light">
+				{{ i18n.baseText('instanceAi.thread.loadOlderError') }}
+			</N8nText>
+			<N8nButton variant="ghost" size="xsmall" @click="loadOlderFailed = false">
+				{{ i18n.baseText('generic.retry') }}
+			</N8nButton>
+		</div>
 		<N8nScrollArea as-child type="auto" :class="$style.scrollArea">
 			<div
 				ref="scrollable"
@@ -910,6 +1013,7 @@ defineExpose({
 							v-for="message in renderedMessages"
 							:key="message.id"
 							:message="message"
+							:data-message-id="message.id"
 							:class="{ [$style.greetingLines]: greetingPhase !== null }"
 						/>
 					</TransitionGroup>
@@ -1069,6 +1173,25 @@ defineExpose({
 	display: flex;
 	flex-direction: column;
 	position: relative;
+}
+
+.olderMessagesStatus {
+	position: absolute;
+	top: var(--spacing--sm);
+	left: 50%;
+	transform: translateX(-50%);
+	z-index: 1;
+}
+
+.olderMessagesError {
+	display: flex;
+	align-items: center;
+	gap: var(--spacing--2xs);
+	padding: var(--spacing--4xs) var(--spacing--4xs) var(--spacing--4xs) var(--spacing--sm);
+	background-color: var(--background--surface);
+	border: var(--border);
+	border-radius: var(--radius--full);
+	box-shadow: var(--shadow--xs);
 }
 
 .scrollArea {

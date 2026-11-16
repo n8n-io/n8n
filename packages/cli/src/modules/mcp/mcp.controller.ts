@@ -17,6 +17,7 @@ import {
 	MCP_DISCOVER_METHOD,
 	HANDSHAKE_FAILED_ERROR_MESSAGE,
 	MISSING_PROTOCOL_VERSION_ERROR_MESSAGE,
+	MCP_EMPTY_PREFERENCES_NOTE_FLAG,
 } from './mcp.constants';
 import { McpService, type McpFeatureFlags } from './mcp.service';
 import { isJSONRPCRequest } from './mcp.typeguards';
@@ -145,6 +146,7 @@ export class McpController {
 			auth_type: (req as McpAuthenticatedRequest).mcpCaller?.authType,
 			mcp_apps_enabled: featureFlags.mcpApps.enabled,
 			mcp_apps_variant: featureFlags.mcpApps.variant,
+			[`$feature/${MCP_EMPTY_PREFERENCES_NOTE_FLAG}`]: featureFlags.preferencesNoteVariant,
 		};
 
 		// In stateless mode, create a new instance of transport and server for each request
@@ -243,7 +245,14 @@ export class McpController {
 		// 2026-07-28 protocol and, via the stateless legacy fallback, 2025-era
 		// clients on this same endpoint.
 		const handler = createMcpHandler(
-			async () => await this.mcpService.getServer(req.user, featureFlags, getClientInfo(req), auth),
+			async () =>
+				await this.mcpService.getServer(
+					req.user,
+					featureFlags,
+					getClientInfo(req),
+					auth,
+					req.ctx ?? {},
+				),
 			{
 				legacy: 'stateless',
 				onerror: (error) => {
