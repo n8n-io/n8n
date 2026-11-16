@@ -45,6 +45,12 @@ description: Use when building or debugging interactive 3D scenes on the web wit
 - Loading huge textures/models → slow start; use compressed textures, Draco/KTX2, smaller maps
 - Using too many lights/shadows → expensive; fake lighting with baked textures when possible
 
+## Ambitious scenes (terrain, forest, water, sky, WebGPU)
+Read `references/procedural-world-lessons.md` first. It sums up a large procedural
+three.js world: how to run the work (brief, reference-delta loop, status file), how to
+verify it headless with Playwright, lighting rules (no black shadows), vegetation, water,
+sky, and the WebGPU/TSL traps that cost its author days.
+
 ## Quick recipes
 
 ### 1) Minimal spinning cube

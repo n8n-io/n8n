@@ -18,7 +18,7 @@ a tool or a lesson must survive the session. Keep it under 150 lines.
   Not in this repository. Use the `prediction-modeling` skill for what to log.
 - Work branches: `ccr-4d6bcf99-mmbgxo` and `claude/branche-higgsfield-974raq`; push both.
 
-## Skills in .claude/skills (120) — pick by theme
+## Skills in .claude/skills (122) — pick by theme
 
 38 come from master (marketingskills v2: copywriting, ad-creative, social, sms, offers,
 referrals, onboarding, analytics, aso…; skill-creator, brainstorming, deep-research…).
@@ -27,11 +27,11 @@ Where names overlapped, master's newer version was kept. Main ones added by us:
 | Theme | Skills |
 |---|---|
 | Agents, AI apps, automation | ai-agent-engineering, vercel-ai-sdk, activepieces-automation, agent-designer, agent-workflow-designer, rag-architect, senior-prompt-engineer |
-| Claude Code itself | claude-code-workflow (+ Boris Cherny tips), karpathy-guidelines, fable-method (explicit only), claude-agent-sdk-app (build own agents, e.g. Cassie) |
+| Claude Code itself | claude-code-workflow (+ Boris Cherny tips), karpathy-guidelines, fable-method (explicit only), deep-work-mode (our own), claude-agent-sdk-app (build own agents, e.g. Cassie) |
 | Football data and models | football-data-sources, prediction-modeling, statistical-analyst, senior-data-scientist, experiment-designer, pandas-pro |
 | Video (Higgsfield) | seedance-video (our own), html-reel, video-to-superprompt, video-content-strategist, cinematic-scroll-site |
 | Marketing, copy, social | copywriting, copy-editing, content-strategy, content-humanizer, social-content, social-media-manager, social-media-analyzer, ad-creative, paid-ads, marketing-psychology, launch-strategy, referral-program, pricing-strategy, marketing-context, marketing-ideas |
-| Growth, product (PitUp) | page-cro, signup-flow-cro, onboarding-cro, churn-prevention, ab-test-setup, analytics-tracking, campaign-analytics, local-seo-manager, app-store-optimization, product-discovery, product-analytics, roast |
+| Growth, product (PitUp) | decision-council (our own: 5 views + verdict), page-cro, signup-flow-cro, onboarding-cro, churn-prevention, ab-test-setup, analytics-tracking, campaign-analytics, local-seo-manager, app-store-optimization, product-discovery, product-analytics, roast |
 | Design, UI/UX, 3D | design-taste-frontend, no-ai-design-slop, audit-ai-design-slop, ui-design-system, ux-researcher-designer, landing-page, pricing-page, tailwindcss, gsap, animation-systems, build-awwwards-quality-sites, cinematic-scroll-storytelling, threejs, build-threejs-scroll-worlds, webgl-3d-object, 3d-orbit-inspect-demo, react-3d-web, design-first-ui-prompting |
 | Code, data, deploy | python-pro, fastapi-expert, postgres-pro, sql-pro, database-designer, typescript-pro, javascript-pro, react-expert, nextjs-developer, react-native-expert, flutter-expert, api-designer, debugging-wizard, test-master, secure-code-guardian, devops-engineer, docker-development, ci-cd-pipeline-builder, data-quality-auditor |
 
@@ -70,9 +70,9 @@ newest one when the owner says "reprends où on s'est arrêtés". Project plugin
 | dcaribou/transfermarkt-datasets (2026-11-13) | Used once (CC0, frozen at 2026-07-06): line-ups for the rotation test D78. Download: `curl -LO https://pub-e682421888d945d684bcae8890b0ec20.r2.dev/data/transfermarkt-datasets.duckdb` |
 | SKZL-AI/boris-cherny-claude-code-playbook, Sahir619/fable-method, anthropics/claude-plugins-official (2026-11-16) | Installed: tips in claude-code-workflow/references; fable-method skill (MIT, made explicit-only); agent-sdk-dev turned into skill claude-agent-sdk-app (Apache-2.0). Other official plugins: `/plugin marketplace add anthropics/claude-plugins-official` on a local machine |
 | anthropics/anthropic-sdk-typescript (2026-11-16) | Library, not a skill: `npm i @anthropic-ai/sdk` in the app that needs it (Cassie). Needs an API key, so a paid account |
-| aiwithremy/claude-skills-llm-council, mrtooher/fable-mode (2026-11-16) | Not vendored: no licence. Both spawn several subagents per question (higher usage). fable-mode overlaps fable-method |
+| aiwithremy/claude-skills-llm-council, mrtooher/fable-mode (2026-11-16) | Not vendored (no licence). Ideas rewritten as our own skills decision-council and deep-work-mode; both run inline unless the owner asks for agents |
 | DannyMac180/fable-advisor (2026-11-16) | Not installed: delegates work to subagents; its own measure shows about 2.8x the cost on small tasks |
-| Braffolk/fable5-world-demo, SebLague/Path-Creator, mhgolkar/Arrow, ellisonleao/magictools, Roobyx/awesome-game-design, opencodeiiita/GamingSphere, hesreallyhim/awesome-claude-code (2026-11-16) | Not installed: game projects and link lists, not skills. 3D world demo (MIT, Three.js) is a reference for threejs work; Path-Creator is Unity; Arrow is a Godot narrative tool. GamingSphere has no licence; awesome-claude-code is CC BY-NC-ND |
+| Braffolk/fable5-world-demo, SebLague/Path-Creator, mhgolkar/Arrow, ellisonleao/magictools, Roobyx/awesome-game-design, opencodeiiita/GamingSphere, hesreallyhim/awesome-claude-code (2026-11-16) | Not installed: game projects and link lists, not skills. 3D world demo (MIT, Three.js) distilled into threejs/references/procedural-world-lessons.md; Path-Creator is Unity; Arrow is a Godot narrative tool. GamingSphere has no licence; awesome-claude-code is CC BY-NC-ND |
 | Austin1serb/Anthropic-Leaked-Source-Code (2026-11-16) | Refused, not downloaded: leaked proprietary code. Cassie is built on the official Claude Agent SDK instead |
 | higgsfield-ai/higgsfield, o3de, ai-agent frameworks lists | Not relevant (GPU training framework; game engine — owner may revisit) |
 | 3641397194-wq/gpt6-Astra, claude-code-best/claude-code, asgeirtj/system_prompts_leaks | Refused: jailbreak injector with unknown relay; unauthorised reconstruction of proprietary code; leaked confidential prompts |
