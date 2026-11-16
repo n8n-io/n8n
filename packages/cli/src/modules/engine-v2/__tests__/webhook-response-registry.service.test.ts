@@ -5,7 +5,7 @@ import { createDeferredPromise, type IDeferredPromise } from '@n8n/utils/promise
 import { mock } from 'vitest-mock-extended';
 
 import { createExecutionIdV2 } from '@/executions/execution-id';
-import type { ExecutionResponseReceiver } from '@/modules/engine-v2/response-channel/execution-response-receiver';
+import type { ExecutionResponseReceiver } from '@/modules/engine-v2/execution-channel/execution-response-receiver';
 import {
 	EngineV2WebhookResponseRegistry,
 	MAX_PENDING_WEBHOOKS,

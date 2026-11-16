@@ -1,12 +1,12 @@
 import {
 	getCredentialOwnRequestAllowedDomains,
-	UserError,
 	type ICredentialDataDecryptedObject,
 	type ICredentialTestRequest,
 	type ICredentialType,
 	type IHttpRequestOptions,
 	type INodeProperties,
 } from 'n8n-workflow';
+import { UserError } from '@n8n/errors';
 
 import { getTokenRequestClient, TOKEN_REQUEST_TIMEOUT } from './common/token-request';
 

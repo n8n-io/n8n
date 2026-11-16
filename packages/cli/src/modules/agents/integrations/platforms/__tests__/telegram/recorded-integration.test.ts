@@ -224,6 +224,51 @@ describe('Telegram recorded integration replay', () => {
 	});
 
 	it.each([
+		{
+			label: 'unlisted user without a username',
+			sender: { from: { id: 333, is_bot: false, first_name: 'alice_dev' } },
+		},
+		{
+			label: 'unlisted user with a numeric first name',
+			sender: { from: { id: 444, is_bot: false, first_name: '5123456789' } },
+		},
+		{
+			label: 'message sent on behalf of a chat',
+			sender: {
+				from: undefined,
+				sender_chat: { id: -100555, type: 'channel', title: 'alice_dev' },
+			},
+		},
+	])(
+		'in private mode, checks the allowlist against the Telegram user ID and username ($label)',
+		async ({ sender }) => {
+			const originalMessage = telegramFixtures.mention.message;
+			if (!originalMessage) throw new Error('Telegram mention fixture must include a message');
+			const payload = {
+				...telegramFixtures.mention,
+				message: {
+					...originalMessage,
+					...sender,
+				},
+			};
+			const ctx = await createTelegramReplayContext(telegramFixtures, {
+				integration: {
+					type: 'telegram',
+					credentialId: 'cred-telegram',
+					settings: { accessMode: 'private', allowedUsers: ['alice_dev', '5123456789'] },
+				},
+			});
+			try {
+				await ctx.sendTelegramWebhook(payload);
+
+				expect(ctx.agentExecutor.executeForChatPublished).not.toHaveBeenCalled();
+			} finally {
+				await ctx.shutdown();
+			}
+		},
+	);
+
+	it.each([
 		{ buttonIndex: 0, approved: true, outcome: '✅ Approved by Alice' },
 		{ buttonIndex: 1, approved: false, outcome: '🚫 Declined by Alice' },
 	])(
@@ -379,9 +424,57 @@ describe('Telegram recorded integration replay', () => {
 					target: { type: 'dm', userId: '123456', threadId: 'telegram:123456' },
 				},
 			});
-			expect(ctx.lastApiCall('sendMessage')?.body).toMatchObject({
+			expect(ctx.lastApiCall('sendRichMessage')?.body).toMatchObject({
 				chat_id: '123456',
-				text: 'DM from agent',
+				rich_message: { markdown: 'DM from agent' },
+			});
+		} finally {
+			await ctx.shutdown();
+		}
+	});
+
+	it('sends send_dm text as Markdown', async () => {
+		const ctx = await createTelegramReplayContext(telegramFixtures);
+		try {
+			await ctx.actionExecutor.execute({
+				descriptor: ctx.descriptor,
+				action: 'send_dm',
+				input: { userId: '123456', message: { text: '**Headline**\nAT&T <ok>' } },
+				awaitResponse: false,
+			});
+
+			expect(ctx.lastApiCall('sendMessage')).toBeUndefined();
+			expect(ctx.lastApiCall('sendRichMessage')?.body).toMatchObject({
+				chat_id: '123456',
+				rich_message: { markdown: '**Headline**\nAT&T <ok>' },
+			});
+		} finally {
+			await ctx.shutdown();
+		}
+	});
+
+	it('edits messages with text as Markdown', async () => {
+		const ctx = await createTelegramReplayContext(telegramFixtures);
+		try {
+			const sent = await ctx.actionExecutor.execute({
+				descriptor: ctx.descriptor,
+				action: 'send_dm',
+				input: { userId: '123456', message: { text: 'Draft' } },
+				awaitResponse: false,
+			});
+			if (!sent.ok || !sent.messageContext) throw new Error('send_dm failed');
+
+			await ctx.actionExecutor.execute({
+				descriptor: ctx.descriptor,
+				action: 'edit_message',
+				input: { messageId: sent.messageContext.messageId, message: { text: '**Final**' } },
+				currentMessageContext: sent.messageContext,
+				awaitResponse: false,
+			});
+
+			expect(ctx.lastApiCall('editMessageText')?.body).toMatchObject({
+				chat_id: '123456',
+				rich_message: { markdown: '**Final**' },
 			});
 		} finally {
 			await ctx.shutdown();

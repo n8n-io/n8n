@@ -3,7 +3,8 @@ import { Time } from '@n8n/constants';
 import type { User } from '@n8n/db';
 import { formatRedactedError } from '@n8n/instance-ai/errors';
 import { ensureError } from '@n8n/utils/errors/ensure-error';
-import { UnexpectedError, TimeoutExecutionCancelledError, type IRun } from 'n8n-workflow';
+import { TimeoutExecutionCancelledError, type IRun } from 'n8n-workflow';
+import { UnexpectedError } from '@n8n/errors';
 
 import type { ActiveExecutions } from '@/active-executions';
 import { loadExecutionForViewer } from '@/executions/execution-viewer-reader';

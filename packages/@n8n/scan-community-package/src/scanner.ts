@@ -34,18 +34,110 @@ type SourceRepo = {
 	readonly gitCommit: string;
 };
 
+export type Finding = {
+	readonly file: string;
+	readonly line: number;
+	readonly column: number;
+	readonly rule: string | null;
+	readonly message: string;
+	/** Which download the file is in: the attested source repository or the npm tarball. */
+	readonly origin?: 'source' | 'package';
+};
+
+export const CHECKS = {
+	PROVENANCE: 'provenance',
+	SOURCE_REPOSITORY: 'source',
+	ESLINT: 'eslint',
+} as const;
+
+export type Check = (typeof CHECKS)[keyof typeof CHECKS];
+
+const ESLINT_SEVERITY = {
+	WARNING: 1,
+	ERROR: 2,
+} as const satisfies Record<string, Linter.Severity>;
+
+/** The input cannot be scanned, for example a path without a package.json. */
+export class ScanInputError extends Error {
+	override name = 'ScanInputError';
+}
+
+/** The result of one check, for example the provenance check or one ESLint pass. */
 export type AnalysisResult =
-	| { readonly passed: true; readonly message?: string; readonly details?: never }
+	| {
+			readonly passed: true;
+			readonly message?: string;
+			readonly details?: never;
+			readonly findings?: never;
+			readonly check?: never;
+	  }
 	| {
 			readonly passed: false;
 			readonly message: string;
 			readonly details?: string;
-			readonly error?: unknown;
+			readonly findings?: readonly Finding[];
+			/** The check that did not pass. Not set when the scan failed before the first check. */
+			readonly check?: Check;
+			/** The scan could not finish, so the package was not fully checked. */
+			readonly incomplete?: boolean;
 	  };
 
-const errorMessage = (error: unknown) => (error instanceof Error ? error.message : String(error));
+/** The result of a whole scan of one package, merged from its checks. */
+export type PackageScan = AnalysisResult & {
+	readonly packageName: string;
+	readonly version: string | null;
+	/** Checks that did not run, so a pass does not cover them. */
+	readonly skippedChecks?: readonly Check[];
+};
+
+/**
+ * The file that `--output` writes for a `PackageScan`. It is a separate type so
+ * that internal changes do not change the format that CI jobs read.
+ */
+export type JsonReport = {
+	readonly package: string;
+	readonly version: string | null;
+	readonly status: 'passed' | 'failed' | 'error';
+	readonly check: Check | null;
+	readonly message: string | null;
+	readonly findings: readonly Finding[];
+	readonly skippedChecks: readonly Check[];
+};
+
+export const errorMessage = (error: unknown) =>
+	error instanceof Error ? error.message : String(error);
 
 const field = (value: unknown, key: string): unknown => (isRecord(value) ? value[key] : undefined);
+
+export const EXIT_CODES = {
+	/** The package passed all checks. */
+	SCAN_SUCCEEDED: 0,
+	/** The scan could not finish. Matches Node.js, which exits with 1 on an uncaught exception. */
+	INTERNAL_ERROR: 1,
+	/** The scan finished and the package failed a check. */
+	SCAN_FAILED: 2,
+} as const;
+
+export const getExitCode = (result: AnalysisResult) => {
+	if (result.passed) return EXIT_CODES.SCAN_SUCCEEDED;
+	return result.incomplete ? EXIT_CODES.INTERNAL_ERROR : EXIT_CODES.SCAN_FAILED;
+};
+
+const STATUSES = {
+	[EXIT_CODES.SCAN_SUCCEEDED]: 'passed',
+	[EXIT_CODES.SCAN_FAILED]: 'failed',
+	[EXIT_CODES.INTERNAL_ERROR]: 'error',
+} as const;
+
+export const toJsonReport = (scan: PackageScan): JsonReport => ({
+	package: scan.packageName,
+	version: scan.version,
+	status: STATUSES[getExitCode(scan)],
+	check: scan.check ?? null,
+	message: scan.message ?? null,
+	findings: scan.findings ?? [],
+	skippedChecks: scan.skippedChecks ?? [],
+});
 
 /**
  * Checks if the given childPath is contained within the parentPath. Resolves
@@ -84,7 +176,7 @@ export const resolvePackage = (
 ): { packageName: string; version: string | null } => {
 	// Validate input to prevent command injection
 	if (!/^[a-zA-Z0-9@/_.-]+$/.test(packageSpec)) {
-		throw new Error('Invalid package specification');
+		throw new ScanInputError('Invalid package specification');
 	}
 
 	const isScoped = packageSpec.startsWith('@');
@@ -107,6 +199,9 @@ export const resolvePackage = (
 	}
 };
 
+export const formatPackageSpec = (packageName: string, version: string | null): string =>
+	version ? `${packageName}@${version}` : packageName;
+
 /**
  * Picks the exact version to scan: the latest one without a spec, the highest
  * match for a range, and otherwise the version a dist-tag points to.
@@ -122,7 +217,7 @@ export const resolveVersion = (metadata: PackageMetadata, version: string | null
 		}
 		case isRange: {
 			const match = semver.maxSatisfying(Object.keys(metadata.versions), version);
-			if (!match) throw new Error(`No version found matching ${version}`);
+			if (!match) throw new Error(`No version found matching "${version}"`);
 			return match;
 		}
 		default:
@@ -213,6 +308,17 @@ export const parseSourceRepo = (
 // A source fetch failure fails the scan outright, so bound the requests —
 // a stalled connection must not hang the gate.
 const SOURCE_FETCH_TIMEOUT_MS = 30_000;
+
+// Request timeout and rate limiting are on our side, not on the package author
+const TRANSIENT_CLIENT_ERRORS = new Set([408, 429]);
+
+export const isSourceUnavailable = (error: unknown): boolean => {
+	if (!axios.isAxiosError(error)) return false;
+	const status = error.response?.status;
+	return (
+		status !== undefined && status >= 400 && status < 500 && !TRANSIENT_CLIENT_ERRORS.has(status)
+	);
+};
 
 const fetchSourceInfo = async (packageName: string, version: string) => {
 	const { data } = await axios.get<{ attestations?: Attestation[] }>(
@@ -354,7 +460,7 @@ export const buildScanConfig = async (): Promise<Linter.Config[]> => {
 	);
 };
 
-export const analyzePackage = async (
+export const lintDirectory = async (
 	packageDir: string,
 	filePatterns = ['**/*.js', '**/*.ts', '**/*.json'],
 ): Promise<AnalysisResult> => {
@@ -388,8 +494,20 @@ export const analyzePackage = async (
 			const formattedResults = await formatter.format(results);
 			return {
 				passed: false,
+				check: CHECKS.ESLINT,
 				message: 'ESLint violations found',
 				details: formattedResults,
+				findings: violations.flatMap((result) =>
+					result.messages
+						.filter((message) => message.severity === ESLINT_SEVERITY.ERROR)
+						.map((message) => ({
+							file: path.relative(packageDir, result.filePath),
+							line: message.line,
+							column: message.column,
+							rule: message.ruleId,
+							message: message.message,
+						})),
+				),
 			};
 		}
 
@@ -398,16 +516,155 @@ export const analyzePackage = async (
 		console.error(error);
 		return {
 			passed: false,
+			check: CHECKS.ESLINT,
 			message: `Analysis failed: ${errorMessage(error)}`,
-			error,
+			incomplete: true,
 		};
 	}
+};
+
+const findingsFrom = (result: AnalysisResult, origin: Finding['origin']): Finding[] =>
+	(result.findings ?? []).map((finding) => ({ ...finding, origin }));
+
+const summarizeFindings = (sourceCount: number, packageCount: number): string | null => {
+	const counts = [
+		sourceCount > 0 ? `${sourceCount} in the source` : null,
+		packageCount > 0 ? `${packageCount} in the package` : null,
+	].filter((count) => count !== null);
+	return counts.length > 0 ? `ESLint violations found: ${counts.join(', ')}` : null;
+};
+
+const mergeResults = (
+	sourceResult: AnalysisResult,
+	packageResult: AnalysisResult,
+): AnalysisResult => {
+	const failures = [sourceResult, packageResult].filter((result) => !result.passed);
+	if (failures.length === 0) return { passed: true };
+
+	const sourceFindings = findingsFrom(sourceResult, 'source');
+	const packageFindings = findingsFrom(packageResult, 'package');
+	// Incomplete runs come first, so an incomplete scan is never reported as a plain failure
+	const incompleteRuns = failures.filter((result) => result.incomplete);
+	const message = [
+		...incompleteRuns.map((result) => result.message),
+		summarizeFindings(sourceFindings.length, packageFindings.length),
+	]
+		.filter((part) => part !== null)
+		.join('. ');
+	const details = failures.flatMap((result) => result.details || []).join('\n');
+
+	return {
+		passed: false,
+		message,
+		details: details || undefined,
+		findings: [...sourceFindings, ...packageFindings],
+		check: CHECKS.ESLINT,
+		incomplete: incompleteRuns.length > 0,
+	};
+};
+
+const writeAnalyzed = (label: string, result: AnalysisResult) => {
+	if (stdout.isTTY) {
+		stdout.clearLine(0);
+		stdout.cursorTo(0);
+	}
+	stdout.write(
+		!result.passed && result.incomplete
+			? `❌ Could not analyze "${label}" \n`
+			: `✅ Analyzed "${label}" \n`,
+	);
+};
+
+export const isLocalPath = (packageSpec: string): boolean => {
+	const [firstSegment] = packageSpec.replaceAll('\\', '/').split('/');
+	return firstSegment === '.' || firstSegment === '..' || path.isAbsolute(packageSpec);
+};
+
+/** npm provenance and the attested source only exist after publishing. */
+export const LOCAL_SKIPPED_CHECKS: readonly Check[] = [CHECKS.PROVENANCE, CHECKS.SOURCE_REPOSITORY];
+
+const readPackageJson = (packageDir: string): unknown => {
+	let stats: fs.Stats;
+	try {
+		stats = fs.statSync(packageDir);
+	} catch {
+		throw new ScanInputError(`No directory found at "${packageDir}"`);
+	}
+	if (!stats.isDirectory()) {
+		throw new ScanInputError(`"${packageDir}" is not a directory`);
+	}
+
+	const packageJsonPath = path.join(packageDir, 'package.json');
+	let contents: string;
+	try {
+		contents = fs.readFileSync(packageJsonPath, 'utf8');
+	} catch {
+		throw new ScanInputError(`No package.json found in "${packageDir}"`);
+	}
+	try {
+		return JSON.parse(contents);
+	} catch (error: unknown) {
+		throw new ScanInputError(`Invalid package.json in "${packageDir}": ${errorMessage(error)}`);
+	}
+};
+
+type NpmPackResult = { files: Array<{ path: string }> };
+
+// Asks npm so the `files` field and `.npmignore` apply exactly as on publish.
+const listPublishedFiles = (packageDir: string): string[] => {
+	const npmResult = spawnSync('npm', ['pack', '--dry-run', '--json', '--ignore-scripts'], {
+		cwd: packageDir,
+		stdio: 'pipe',
+		encoding: 'utf8',
+		shell: process.platform === 'win32',
+	});
+	if (npmResult.status !== 0) {
+		throw new Error(`Could not list the package files: ${npmResult.stderr.trim()}`);
+	}
+
+	const packResults: NpmPackResult[] = JSON.parse(npmResult.stdout);
+	return packResults.flatMap((packResult) => packResult.files.map((file) => file.path));
+};
+
+/**
+ * Lints a package directory on disk the way a published package is linted, so
+ * authors can check it before they submit. npm provenance and the attested
+ * source only exist after publishing, so this skips them.
+ */
+export const analyzeLocalPackage = async (packageDir: string): Promise<PackageScan> => {
+	const packageJson = readPackageJson(packageDir);
+	const packageName = field(packageJson, 'name');
+	if (typeof packageName !== 'string') {
+		throw new ScanInputError(`No package name in the package.json in "${packageDir}"`);
+	}
+	const rawVersion = field(packageJson, 'version');
+	const version = typeof rawVersion === 'string' ? rawVersion : null;
+	const label = formatPackageSpec(packageName, version);
+
+	const publishedJsFiles = listPublishedFiles(packageDir).filter((file) => file.endsWith('.js'));
+	if (publishedJsFiles.length === 0) {
+		stdout.write(
+			'⚠️ The package has no JavaScript files to publish. Build it to also lint the compiled output.\n',
+		);
+	}
+
+	stdout.write(`Analyzing "${label}"...`);
+	const result = mergeResults(
+		await lintDirectory(packageDir, SOURCE_FILE_PATTERNS),
+		await lintDirectory(packageDir, [
+			'package.json',
+			...publishedJsFiles.map((file) => glob.escapePath(file)),
+		]),
+	);
+	writeAnalyzed(label, result);
+
+	return { packageName, version, ...result, skippedChecks: LOCAL_SKIPPED_CHECKS };
 };
 
 export const analyzePackageByName = async (
 	packageName: string,
 	version: string | null,
-): Promise<AnalysisResult & { packageName: string; version: string | null }> => {
+): Promise<PackageScan> => {
 	try {
 		const { data: packageMetadata } = await axios.get<PackageMetadata>(
 			`${registry}/${packageName}`,
@@ -415,7 +672,7 @@ export const analyzePackageByName = async (
 		const exactVersion = resolveVersion(packageMetadata, version);
 		const label = `${packageName}@${exactVersion}`;
 
-		stdout.write(`Checking provenance for ${label}...`);
+		stdout.write(`Checking provenance for "${label}"...`);
 		const provenanceResult = checkPackageProvenance(packageMetadata, exactVersion);
 		if (stdout.isTTY) {
 			stdout.clearLine(0);
@@ -423,16 +680,17 @@ export const analyzePackageByName = async (
 		}
 
 		if (!provenanceResult.passed) {
-			stdout.write(`❌ Provenance check failed for ${label} \n`);
+			stdout.write(`❌ Provenance check failed for "${label}" \n`);
 
 			return {
 				packageName,
 				version: exactVersion,
 				...provenanceResult,
+				check: CHECKS.PROVENANCE,
 			};
 		}
 
-		stdout.write(`✅ Provenance check passed for ${label} \n`);
+		stdout.write(`✅ Provenance check passed for "${label}" \n`);
 
 		// Lint the source the provenance attestation points at: the
 		// node/credential rules are written for `.ts` sources and mostly no-op
@@ -440,7 +698,7 @@ export const analyzePackageByName = async (
 		// in the tarball. An unreachable source is a hard failure — falling
 		// back to a tarball-only scan would silently reintroduce that blind
 		// spot.
-		stdout.write(`Fetching source for ${label}...`);
+		stdout.write(`Fetching source for "${label}"...`);
 		let sourceDir: string | null = null;
 		let sourceInfo: SourceRepo | null = null;
 		let sourceError: unknown = null;
@@ -461,56 +719,53 @@ export const analyzePackageByName = async (
 			const reason = sourceError
 				? errorMessage(sourceError)
 				: 'unsupported or unlocatable source repository';
-			stdout.write(`❌ Could not fetch source for ${label} \n`);
+			stdout.write(`❌ Could not fetch source for "${label}" \n`);
+
+			if (sourceError && !isSourceUnavailable(sourceError)) {
+				return {
+					packageName,
+					version: exactVersion,
+					passed: false,
+					check: CHECKS.SOURCE_REPOSITORY,
+					message: `Analysis failed: could not fetch the attested source repository (${reason})`,
+					incomplete: true,
+				};
+			}
 
 			return {
 				packageName,
 				version: exactVersion,
 				passed: false,
+				check: CHECKS.SOURCE_REPOSITORY,
 				message: `Could not fetch the source repository recorded in the package's npm provenance (${reason}). The scan lints the attested source, so it must be reachable — publish with provenance from a public GitHub repository.`,
 			};
 		}
 
 		const shortCommit = sourceInfo.gitCommit.slice(0, 7);
 		stdout.write(
-			`✅ Fetched source from github.com/${sourceInfo.owner}/${sourceInfo.repo}@${shortCommit} \n`,
+			`✅ Fetched source from "github.com/${sourceInfo.owner}/${sourceInfo.repo}@${shortCommit}" \n`,
 		);
 
-		stdout.write(`Downloading ${label}...`);
+		stdout.write(`Downloading "${label}"...`);
 		const packageDir = await downloadAndExtractPackage(packageName, exactVersion);
 		if (stdout.isTTY) {
 			stdout.clearLine(0);
 			stdout.cursorTo(0);
 		}
-		stdout.write(`✅ Downloaded ${label} \n`);
+		stdout.write(`✅ Downloaded "${label}" \n`);
 
-		stdout.write(`Analyzing ${label}...`);
+		stdout.write(`Analyzing "${label}"...`);
 		// The source checkout gets the full rule set on real `.ts` sources.
 		// The shipped artifact must stay scanned too: provenance pins the
 		// source commit, not the build output — a build step can emit anything
 		// into `dist/`. Scope the tarball leg to compiled `.js` and the
 		// published package.json; `.ts`/`.d.ts` declarations are covered better
 		// by the source scan and only false-positive on filename rules here.
-		const sourceResult = await analyzePackage(sourceDir, SOURCE_FILE_PATTERNS);
-		const distResult = await analyzePackage(packageDir, ['**/*.js', 'package.json']);
-		const failures = [sourceResult, distResult].filter((r) => !r.passed);
-		const [firstFailure] = failures;
-		const analysisResult: AnalysisResult = firstFailure
-			? {
-					passed: false,
-					message: firstFailure.message,
-					details:
-						failures
-							.map((r) => r.details)
-							.filter(Boolean)
-							.join('\n') || undefined,
-				}
-			: { passed: true };
-		if (stdout.isTTY) {
-			stdout.clearLine(0);
-			stdout.cursorTo(0);
-		}
-		stdout.write(`✅ Analyzed ${label} \n`);
+		const analysisResult = mergeResults(
+			await lintDirectory(sourceDir, SOURCE_FILE_PATTERNS),
+			await lintDirectory(packageDir, ['**/*.js', 'package.json']),
+		);
+		writeAnalyzed(label, analysisResult);
 
 		return {
 			packageName,
@@ -518,12 +773,13 @@ export const analyzePackageByName = async (
 			...analysisResult,
 		};
 	} catch (error: unknown) {
-		console.error(`Failed to analyze ${packageName}@${version}:`, error);
+		console.error(`Failed to analyze "${formatPackageSpec(packageName, version)}":`, error);
 		return {
 			packageName,
 			version,
 			passed: false,
 			message: `Analysis failed: ${errorMessage(error)}`,
+			incomplete: true,
 		};
 	}
 };

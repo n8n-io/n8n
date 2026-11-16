@@ -1,0 +1,553 @@
+{
+	"name": "BambooHR Requests",
+	"nodes": [
+		{
+			"parameters": {},
+			"id": "trigger",
+			"name": "When clicking \"Execute Workflow\"",
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [0, 0]
+		},
+		{
+			"parameters": {
+				"operation": "toJson",
+				"options": {
+					"fileName": "contract.json"
+				}
+			},
+			"id": "to-file",
+			"name": "Convert to File",
+			"type": "n8n-nodes-base.convertToFile",
+			"typeVersion": 1.1,
+			"position": [200, 0]
+		},
+		{
+			"parameters": {
+				"resource": "companyReport",
+				"operation": "get",
+				"reportId": "18",
+				"format": "JSON",
+				"options": {}
+			},
+			"id": "node-0",
+			"name": "Company Report Get",
+			"type": "n8n-nodes-base.bambooHr",
+			"typeVersion": 1,
+			"position": [400, 0],
+			"credentials": {
+				"bambooHrApi": {
+					"id": "1",
+					"name": "BambooHR account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "employee",
+				"operation": "create",
+				"synced": false,
+				"firstName": "Nathan",
+				"lastName": "Smith",
+				"additionalFields": {
+					"payRate": {
+						"value": {
+							"value": "50000",
+							"currency": "USD"
+						}
+					}
+				}
+			},
+			"id": "node-1",
+			"name": "Employee Create",
+			"type": "n8n-nodes-base.bambooHr",
+			"typeVersion": 1,
+			"position": [400, 150],
+			"credentials": {
+				"bambooHrApi": {
+					"id": "1",
+					"name": "BambooHR account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "employee",
+				"operation": "get",
+				"employeeId": "112",
+				"options": {
+					"fields": ["firstName", "lastName"]
+				}
+			},
+			"id": "node-2",
+			"name": "Employee Get",
+			"type": "n8n-nodes-base.bambooHr",
+			"typeVersion": 1,
+			"position": [400, 300],
+			"credentials": {
+				"bambooHrApi": {
+					"id": "1",
+					"name": "BambooHR account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "employee",
+				"operation": "getAll",
+				"returnAll": true
+			},
+			"id": "node-3",
+			"name": "Employee Get Many",
+			"type": "n8n-nodes-base.bambooHr",
+			"typeVersion": 1,
+			"position": [400, 450],
+			"credentials": {
+				"bambooHrApi": {
+					"id": "1",
+					"name": "BambooHR account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "employee",
+				"operation": "update",
+				"employeeId": "112",
+				"synced": false,
+				"updateFields": {
+					"firstName": "Nate"
+				}
+			},
+			"id": "node-4",
+			"name": "Employee Update",
+			"type": "n8n-nodes-base.bambooHr",
+			"typeVersion": 1,
+			"position": [400, 600],
+			"credentials": {
+				"bambooHrApi": {
+					"id": "1",
+					"name": "BambooHR account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "employeeDocument",
+				"operation": "getAll",
+				"employeeId": "112",
+				"returnAll": true,
+				"simplifyOutput": false
+			},
+			"id": "node-5",
+			"name": "Employee Document Get Many",
+			"type": "n8n-nodes-base.bambooHr",
+			"typeVersion": 1,
+			"position": [400, 750],
+			"credentials": {
+				"bambooHrApi": {
+					"id": "1",
+					"name": "BambooHR account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "employeeDocument",
+				"operation": "download",
+				"employeeId": "112",
+				"fileId": "345"
+			},
+			"id": "node-6",
+			"name": "Employee Document Download",
+			"type": "n8n-nodes-base.bambooHr",
+			"typeVersion": 1,
+			"position": [400, 900],
+			"credentials": {
+				"bambooHrApi": {
+					"id": "1",
+					"name": "BambooHR account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "employeeDocument",
+				"operation": "update",
+				"employeeId": "112",
+				"fileId": "345",
+				"updateFields": {
+					"name": "contract-2026.pdf"
+				}
+			},
+			"id": "node-7",
+			"name": "Employee Document Update",
+			"type": "n8n-nodes-base.bambooHr",
+			"typeVersion": 1,
+			"position": [400, 1050],
+			"credentials": {
+				"bambooHrApi": {
+					"id": "1",
+					"name": "BambooHR account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "employeeDocument",
+				"operation": "delete",
+				"employeeId": "112",
+				"fileId": "345"
+			},
+			"id": "node-8",
+			"name": "Employee Document Delete",
+			"type": "n8n-nodes-base.bambooHr",
+			"typeVersion": 1,
+			"position": [400, 1200],
+			"credentials": {
+				"bambooHrApi": {
+					"id": "1",
+					"name": "BambooHR account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "employeeDocument",
+				"operation": "upload",
+				"employeeId": "112",
+				"categoryId": "17",
+				"binaryPropertyName": "data",
+				"options": {}
+			},
+			"id": "node-9",
+			"name": "Employee Document Upload",
+			"type": "n8n-nodes-base.bambooHr",
+			"typeVersion": 1,
+			"position": [400, 1350],
+			"credentials": {
+				"bambooHrApi": {
+					"id": "1",
+					"name": "BambooHR account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "file",
+				"operation": "getAll",
+				"returnAll": true,
+				"simplifyOutput": false
+			},
+			"id": "node-10",
+			"name": "File Get Many",
+			"type": "n8n-nodes-base.bambooHr",
+			"typeVersion": 1,
+			"position": [400, 1500],
+			"credentials": {
+				"bambooHrApi": {
+					"id": "1",
+					"name": "BambooHR account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "file",
+				"operation": "download",
+				"fileId": "501"
+			},
+			"id": "node-11",
+			"name": "File Download",
+			"type": "n8n-nodes-base.bambooHr",
+			"typeVersion": 1,
+			"position": [400, 1650],
+			"credentials": {
+				"bambooHrApi": {
+					"id": "1",
+					"name": "BambooHR account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "file",
+				"operation": "update",
+				"fileId": "501",
+				"updateFields": {}
+			},
+			"id": "node-12",
+			"name": "File Update",
+			"type": "n8n-nodes-base.bambooHr",
+			"typeVersion": 1,
+			"position": [400, 1800],
+			"credentials": {
+				"bambooHrApi": {
+					"id": "1",
+					"name": "BambooHR account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "file",
+				"operation": "delete",
+				"fileId": "501"
+			},
+			"id": "node-13",
+			"name": "File Delete",
+			"type": "n8n-nodes-base.bambooHr",
+			"typeVersion": 1,
+			"position": [400, 1950],
+			"credentials": {
+				"bambooHrApi": {
+					"id": "1",
+					"name": "BambooHR account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "file",
+				"operation": "upload",
+				"categoryId": "21",
+				"binaryPropertyName": "data",
+				"options": {}
+			},
+			"id": "node-14",
+			"name": "File Upload",
+			"type": "n8n-nodes-base.bambooHr",
+			"typeVersion": 1,
+			"position": [400, 2100],
+			"credentials": {
+				"bambooHrApi": {
+					"id": "1",
+					"name": "BambooHR account"
+				}
+			}
+		}
+	],
+	"pinData": {
+		"Company Report Get": [
+			{
+				"json": {
+					"title": "Headcount",
+					"employees": [
+						{
+							"id": "112"
+						}
+					]
+				}
+			}
+		],
+		"Employee Create": [
+			{
+				"json": {
+					"id": "112"
+				}
+			}
+		],
+		"Employee Get": [
+			{
+				"json": {
+					"id": "112",
+					"firstName": "Nathan",
+					"lastName": "Smith"
+				}
+			}
+		],
+		"Employee Get Many": [
+			{
+				"json": {
+					"id": "112",
+					"firstName": "Nathan"
+				}
+			}
+		],
+		"Employee Update": [
+			{
+				"json": {
+					"success": true
+				}
+			}
+		],
+		"Employee Document Get Many": [
+			{
+				"json": {
+					"id": 17,
+					"name": "Contracts",
+					"files": [
+						{
+							"id": 345,
+							"name": "contract.pdf"
+						}
+					]
+				}
+			}
+		],
+		"Employee Document Download": [
+			{
+				"json": {}
+			}
+		],
+		"Employee Document Update": [
+			{
+				"json": {
+					"success": true
+				}
+			}
+		],
+		"Employee Document Delete": [
+			{
+				"json": {
+					"success": true
+				}
+			}
+		],
+		"Employee Document Upload": [
+			{
+				"json": {
+					"fileId": "346"
+				}
+			}
+		],
+		"File Get Many": [
+			{
+				"json": {
+					"id": 21,
+					"name": "Policies",
+					"files": [
+						{
+							"id": 501,
+							"name": "handbook.pdf"
+						}
+					]
+				}
+			}
+		],
+		"File Download": [
+			{
+				"json": {}
+			}
+		],
+		"File Update": [
+			{
+				"json": {
+					"success": true
+				}
+			}
+		],
+		"File Delete": [
+			{
+				"json": {
+					"success": true
+				}
+			}
+		],
+		"File Upload": [
+			{
+				"json": {
+					"fileId": "502"
+				}
+			}
+		]
+	},
+	"connections": {
+		"When clicking \"Execute Workflow\"": {
+			"main": [
+				[
+					{
+						"node": "Company Report Get",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Employee Create",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Employee Get",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Employee Get Many",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Employee Update",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Employee Document Get Many",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Employee Document Download",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Employee Document Update",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Employee Document Delete",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "File Get Many",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "File Download",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "File Update",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "File Delete",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Convert to File",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Convert to File": {
+			"main": [
+				[
+					{
+						"node": "Employee Document Upload",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "File Upload",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"active": false,
+	"settings": {
+		"executionOrder": "v1"
+	}
+}

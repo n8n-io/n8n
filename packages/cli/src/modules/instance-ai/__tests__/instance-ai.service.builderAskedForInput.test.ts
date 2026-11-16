@@ -58,7 +58,20 @@ describe('InstanceAiService — "Builder asked for input" telemetry', () => {
 
 		expect(service.telemetry.track).toHaveBeenCalledWith(
 			'Builder asked for input',
-			expect.objectContaining({ type: 'questions', num_steps: 2 }),
+			expect.objectContaining({ type: 'questions', num_steps: 2, runtime: 'instance-ai' }),
+		);
+	});
+
+	it('normalizes the app blueprint telemetry type', () => {
+		const service = makeService();
+
+		service.trackConfirmationRequest('user-1', 'thread-a', {
+			payload: { inputType: 'app-blueprint' },
+		});
+
+		expect(service.telemetry.track).toHaveBeenCalledWith(
+			'Builder asked for input',
+			expect.objectContaining({ type: 'app_blueprint' }),
 		);
 	});
 

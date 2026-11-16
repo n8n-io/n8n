@@ -4,7 +4,7 @@ export type { CancelExecutionResponse, ExecutionSnapshot, StepDetail } from './a
 export type {
 	ResolveStepRequest,
 	ResolveStepResponse,
-	ResumeTargetRequest,
+	ResumeLocateRequest,
 	ResumeTargetResponse,
 } from './api.types';
 export type {

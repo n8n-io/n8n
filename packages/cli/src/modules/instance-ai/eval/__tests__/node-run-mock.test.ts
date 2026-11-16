@@ -65,7 +65,8 @@ vi.mock('@n8n/agents/tool', () => ({
 import { Tool } from '@n8n/agents/tool';
 import { createEvalAgent } from '@n8n/instance-ai';
 import type { IExecuteFunctions, INode, INodeExecutionData } from 'n8n-workflow';
-import { NodeOperationError, OperationalError } from 'n8n-workflow';
+import { NodeOperationError } from 'n8n-workflow';
+import { OperationalError } from '@n8n/errors';
 
 import { createNodeRunMockHandler } from '../node-run-mock';
 

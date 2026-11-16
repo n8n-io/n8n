@@ -10,12 +10,13 @@ import {
 	createRunExecutionData,
 	jsonStringify,
 	isTriggerNode,
+	type INodeTypes,
 } from 'n8n-workflow';
 import z from 'zod';
 
 import type { ActiveExecutions } from '@/active-executions';
+import { findCredentialRefusal } from '@/executions/pre-execution-checks';
 import type { McpService } from '@/modules/mcp/mcp.service';
-import type { NodeTypes } from '@/node-types';
 import type { Telemetry } from '@/telemetry';
 import type { WorkflowRunner } from '@/workflow-runner';
 import type { WorkflowFinderService } from '@/workflows/workflow-finder.service';
@@ -75,7 +76,7 @@ export const createTestWorkflowTool = (
 	workflowFinderService: WorkflowFinderService,
 	activeExecutions: ActiveExecutions,
 	workflowRunner: WorkflowRunner,
-	nodeTypes: NodeTypes,
+	nodeTypes: INodeTypes,
 	telemetry: Telemetry,
 	mcpService: McpService,
 	logger: Logger,
@@ -176,7 +177,7 @@ export async function testWorkflow(
 	workflowFinderService: WorkflowFinderService,
 	activeExecutions: ActiveExecutions,
 	workflowRunner: WorkflowRunner,
-	nodeTypes: NodeTypes,
+	nodeTypes: INodeTypes,
 	mcpService: McpService,
 	logger: Logger,
 	workflowId: string,
@@ -270,7 +271,20 @@ export async function testWorkflow(
 		}),
 	};
 
+	// Redaction can hide the refusal reason in the saved execution, so get it up front.
+	const credentialRefusal = await findCredentialRefusal(workflowId, nodes, user.id);
+
 	const executionId = await workflowRunner.run(runData);
+
+	// The runner finalizes a refused run before it returns, so there is nothing to wait for.
+	if (credentialRefusal && !activeExecutions.has(executionId)) {
+		return {
+			executionId,
+			status: 'error',
+			error: [credentialRefusal.message, credentialRefusal.description].filter(Boolean).join('. '),
+		};
+	}
+
 	const data = await waitForExecutionResult(
 		executionId,
 		activeExecutions,

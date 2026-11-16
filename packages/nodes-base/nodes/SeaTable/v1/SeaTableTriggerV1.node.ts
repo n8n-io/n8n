@@ -8,6 +8,7 @@ import {
 	type INodeTypeDescription,
 	NodeConnectionTypes,
 	type INodeTypeBaseDescription,
+	requestPath,
 } from 'n8n-workflow';
 
 import {
@@ -16,6 +17,7 @@ import {
 	rowFormatColumns,
 	seaTableApiRequest,
 	simplify,
+	type SeaTableEndpoint,
 } from './GenericFunctions';
 import type { ICtx, IRow, IRowResponse } from './Interfaces';
 
@@ -92,7 +94,7 @@ export class SeaTableTriggerV1 implements INodeType {
 					this,
 					{},
 					'GET',
-					'/dtable-server/api/v1/dtables/{{dtable_uuid}}/metadata',
+					(dtableUuid) => requestPath`/dtable-server/api/v1/dtables/${dtableUuid}/metadata`,
 				);
 				for (const table of tables) {
 					returnData.push({
@@ -123,7 +125,8 @@ export class SeaTableTriggerV1 implements INodeType {
 
 		const filterField = event === 'rowCreated' ? '_ctime' : '_mtime';
 
-		const endpoint = '/dtable-db/api/v1/query/{{dtable_uuid}}/';
+		const endpoint: SeaTableEndpoint = (dtableUuid) =>
+			requestPath`/dtable-db/api/v1/query/${dtableUuid}/`;
 
 		if (this.getMode() === 'manual') {
 			rows = (await seaTableApiRequest.call(this, ctx, 'POST', endpoint, {

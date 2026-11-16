@@ -13,8 +13,11 @@ import {
 	createClaimedToolNames,
 	type McpToolNameValidationError,
 } from './mcp-tool-name-validation';
+import { applyApprovalReview } from '../approval-review/approval-review';
+import { holdProbeTelemetry } from '../approval-review/probe-telemetry';
 import { listConnectedMcpServices } from '../mcp/connected-mcp-services';
 import { getVersionedSystemPrompt, resolvePromptProfile } from '../prompts/prompt-profiles';
+import { createInstanceAiContextCueProvider } from '../skills/context-cues';
 import { createToolRegistry, mergeToolRegistries, toolRegistryValues } from '../tool-registry';
 import {
 	createOrchestratorDomainTools,
@@ -22,7 +25,12 @@ import {
 	getActiveOrchestratorDomainToolNames,
 } from '../tools';
 import { createToolsFromLocalMcpServer } from '../tools/create-tools-from-mcp-server';
-import { ALWAYS_LOADED_TOOL_NAMES } from '../tools/tool-ids';
+import {
+	ALWAYS_LOADED_TOOL_NAMES,
+	getMcpToolGroup,
+	getToolGroup,
+	getToolGroupDescription,
+} from '../tools/tool-ids';
 import { isSetupPanelEnabled } from '../tools/workflows/setup-items';
 import {
 	buildAgentTraceInputs,
@@ -96,6 +104,10 @@ export async function createInstanceAgent(
 	const domainContext: InstanceAiContext = {
 		...context,
 		tracing: orchestrationContext?.tracing,
+		// Auto mode holds the telemetry of its review probe until the card shows.
+		...(context.approvalReviewer && context.trackTelemetry
+			? { trackTelemetry: holdProbeTelemetry(context.trackTelemetry) }
+			: {}),
 	};
 	if (orchestrationContext) {
 		orchestrationContext.domainContext = domainContext;
@@ -106,7 +118,9 @@ export async function createInstanceAgent(
 	// with this call (not shared mutable state) — concurrent runs with different
 	// configs can't read each other's failures.
 	const { tools: mcpTools, connectionFailures: managerMcpFailures } =
-		await mcpManager.getRegularTools(mcpServers, context.logger, context.permissions);
+		await mcpManager.getRegularTools(mcpServers, context.logger, context.permissions, {
+			enforceAdminPermissions: context.enforceAdminMcpPermissions === true,
+		});
 	// Map manager-reported connection failures to the generic SDK event type so
 	// the runtime can inject a model-facing note into the orchestrator's system
 	// message. The adapter owns the n8n-specific server config → plain SDK event
@@ -179,17 +193,18 @@ export async function createInstanceAgent(
 	);
 	for (const name of orchestrationContext?.disabledToolNames ?? [])
 		allOrchestratorTools.delete(name);
+	const reviewedOrchestratorTools = applyApprovalReview(allOrchestratorTools, domainContext);
 	const tracedOrchestratorTools =
-		orchestrationContext?.tracing?.wrapTools(allOrchestratorTools, {
+		orchestrationContext?.tracing?.wrapTools(reviewedOrchestratorTools, {
 			agentRole: 'orchestrator',
 			tags: ['orchestrator'],
-		}) ?? allOrchestratorTools;
+		}) ?? reviewedOrchestratorTools;
 	const { coreTools, deferredTools } = splitDeferredTools(tracedOrchestratorTools);
 	const hasDeferrableTools = !options.disableDeferredTools && deferredTools.size > 0;
 	const hasDeferredExternalMcpTools =
 		hasDeferrableTools && Array.from(safeMcpTools.keys()).some((name) => deferredTools.has(name));
 	const runtimeTools = hasDeferrableTools ? coreTools : tracedOrchestratorTools;
-	const baseSystemPrompt = getVersionedSystemPrompt(
+	const systemPrompt = getVersionedSystemPrompt(
 		orchestrationContext?.promptConfiguration?.systemPromptVersion ??
 			resolvePromptProfile({}).profile.systemPromptVersion,
 		{
@@ -212,10 +227,6 @@ export async function createInstanceAgent(
 					: undefined,
 		},
 	);
-
-	const systemPrompt = orchestrationContext?.skillAvailabilityNotice
-		? `${baseSystemPrompt}\n\n${orchestrationContext.skillAvailabilityNotice}`
-		: baseSystemPrompt;
 
 	setTracePromptVersion(
 		orchestrationContext?.tracing,
@@ -247,7 +258,35 @@ export async function createInstanceAgent(
 		applyAgentThinking(agent, modelId);
 	}
 	if (hasDeferrableTools) {
-		agent.deferredTool(toolRegistryValues(deferredTools), { search: { topK: 5 } });
+		// Tool catalog mode keeps the toolset fixed for the whole run, so the prompt cache
+		// survives, and a deferred tool costs one call_tool call instead of a load step.
+		agent.toolDeferral({ mode: 'tool-catalog' });
+		// MCP tools are listed under their server and n8n tools under their resource
+		// (workflows, data_tables, agents, ...), so the model can browse one area
+		// with find_tools({ group }) instead of searching the whole set.
+		const toolsByGroup = new Map<string | undefined, InstanceAiToolRegistry>();
+		const groupDescriptions = new Map<string, string>();
+		for (const [name, tool] of deferredTools) {
+			let group: string | undefined;
+			if (tool.mcpServerName) {
+				group = getMcpToolGroup(tool.mcpServerName);
+				groupDescriptions.set(group, `tools from the ${tool.mcpServerName} MCP server`);
+			} else {
+				group = getToolGroup(name);
+				const description = group ? getToolGroupDescription(group) : undefined;
+				if (group && description) groupDescriptions.set(group, description);
+			}
+			const groupTools = toolsByGroup.get(group) ?? createToolRegistry();
+			groupTools.set(name, tool);
+			toolsByGroup.set(group, groupTools);
+		}
+		for (const [group, groupTools] of toolsByGroup) {
+			const groupDescription = group ? groupDescriptions.get(group) : undefined;
+			agent.deferredTool(
+				toolRegistryValues(groupTools),
+				group ? { group, groupDescription } : undefined,
+			);
+		}
 	}
 	// The agents module owns the builder skills that are generated from its config schema.
 	const builderSkills = context.builderDelegate?.getRuntimeSkills() ?? [];
@@ -260,7 +299,10 @@ export async function createInstanceAgent(
 		agent.telemetry(telemetry);
 	}
 	if (orchestrationContext?.workspace) agent.workspace(orchestrationContext.workspace);
-	if (skills) agent.skills(skills);
+	if (skills) {
+		agent.skills(skills);
+		agent.contextCueProvider(createInstanceAiContextCueProvider());
+	}
 
 	if (options.memory) {
 		const mem = new Memory().storage(options.memory);
@@ -270,6 +312,7 @@ export async function createInstanceAgent(
 				observerThresholdTokens,
 				reflectorThresholdTokens,
 				midRunObservation,
+				policy,
 				onTaskUsage,
 				model: memoryModel,
 			} = memoryConfig.observationalMemory;
@@ -278,6 +321,7 @@ export async function createInstanceAgent(
 				observerThresholdTokens,
 				reflectorThresholdTokens,
 				...(midRunObservation !== undefined ? { midRunObservation } : {}),
+				...policy,
 				...(onTaskUsage || memoryModel
 					? {
 							observe: createObservationLogObserveFn(taskModel, { onUsage: onTaskUsage }),
@@ -320,7 +364,7 @@ export async function createInstanceAgent(
 					}
 				: undefined,
 			toolSearchEnabled: hasDeferrableTools,
-			inputProcessors: hasDeferrableTools ? ['NativeToolSearch'] : undefined,
+			inputProcessors: hasDeferrableTools ? ['ToolCatalog'] : undefined,
 			skills: skills?.registry,
 		}),
 	);

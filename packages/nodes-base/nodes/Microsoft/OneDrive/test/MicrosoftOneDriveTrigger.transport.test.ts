@@ -64,7 +64,7 @@ describe('MicrosoftOneDriveTrigger transport (real GenericFunctions)', () => {
 		expect(requestWithAuthentication).toHaveBeenCalledWith(
 			'microsoftEntraServicePrincipalApi',
 			expect.objectContaining({
-				uri: 'https://graph.microsoft.com/v1.0/users/jane%40contoso.com/drive/root/delta',
+				uri: 'https://graph.microsoft.com/v1.0/users/jane@contoso.com/drive/root/delta',
 			}),
 		);
 		expect(requestOAuth2).not.toHaveBeenCalled();
@@ -100,7 +100,7 @@ describe('MicrosoftOneDriveTrigger transport (real GenericFunctions)', () => {
 		expect(requestWithAuthentication).toHaveBeenCalledWith(
 			'microsoftEntraServicePrincipalApi',
 			expect.objectContaining({
-				uri: 'https://graph.microsoft.com/v1.0/users/user_contoso.com%23EXT%23%40tenant.onmicrosoft.com/drive/root/delta',
+				uri: 'https://graph.microsoft.com/v1.0/users/user_contoso.com%23EXT%23@tenant.onmicrosoft.com/drive/root/delta',
 			}),
 		);
 		expect(requestOAuth2).not.toHaveBeenCalled();

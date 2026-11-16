@@ -10,6 +10,10 @@ Extra information, specific to the frontend codebase. Use this when doing any fr
 - Available icon names are in `packages/frontend/@n8n/design-system/src/components/N8nIcon/icons.ts`.
   Use keys from `updatedIconSet` only — `deprecatedIconSet` entries must not be used in new code.
 - When you change a Pinia store, check for unused computed properties.
+- Set `data-testid` (or `data-test-id`) for tests and `data-attr` for analytics. Both can hold the same value.
+  PostHog autocapture masks the text of the clicked element, so it identifies an element by its `data-attr`.
+  When an element has no `data-attr`, analytics may use its `data-testid`, but this is brittle. A test change can rename it.
+  Add a `data-attr` to each element that analytics needs to identify.
 - Use centralized constants from `@/app/constants/durations` instead of hardcoding:
 
 ```typescript

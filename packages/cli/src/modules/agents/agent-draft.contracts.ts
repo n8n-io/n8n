@@ -1,13 +1,4 @@
-import type { ToolDescriptor } from '@n8n/agents';
-import type {
-	AgentActor,
-	AgentCreationState,
-	AgentIntegrationConfig,
-	AgentJsonConfig,
-	AgentSkill,
-	AgentSkillVersionInfo,
-	StoredAgentConfig,
-} from '@n8n/api-types';
+import type { AgentActor, AgentDto, AgentJsonConfig, AgentSkill } from '@n8n/api-types';
 
 export interface CreateAgentDraftOptions {
 	id?: string;
@@ -41,24 +32,6 @@ export interface PersistedAgentDraft {
 	getState(): Promise<AgentDraftState>;
 }
 
-export interface AgentDraftState extends AgentCreationState {
-	id: string;
-	name: string;
-	projectId: string;
-	schema: StoredAgentConfig | null;
-	integrations: AgentIntegrationConfig[];
-	tools: Record<string, { code: string; descriptor: ToolDescriptor }>;
-	skills: Record<string, AgentSkill>;
-	availableInMCP: boolean;
-	setupCompletedAt: Date | null;
-	versionId: string | null;
-	activeVersionId: string | null;
-	revision: number;
-	createdAt: Date;
-	updatedAt: Date;
-	isRunnable: boolean;
-	hasPublishHistory: boolean;
-	skillHashes: Record<string, string>;
-	outdatedSkillIds: string[];
-	skillVersions: Record<string, AgentSkillVersionInfo>;
+export interface AgentDraftState extends AgentDto {
+	adopted: boolean;
 }

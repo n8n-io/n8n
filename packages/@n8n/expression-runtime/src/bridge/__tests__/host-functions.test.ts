@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
 
 import { HostDataResolver } from '../host-data-resolver';
-import { getArrayElement, getValueAtPath } from '../host-functions';
+import { dispatchHostCall, getArrayElement, getValueAtPath } from '../host-functions';
 
 describe.each([
 	{
@@ -84,5 +84,46 @@ describe('getArrayElement indices', () => {
 		const resolver = new HostDataResolver({ $json: { items: value } });
 
 		expect(getArrayElement(resolver, ['$json', 'items'], 0)).toBeUndefined();
+	});
+});
+
+describe('dispatchHostCall checkNode', () => {
+	it('resolves the node and returns undefined', () => {
+		const $ = vi.fn(() => ({ first: () => 42 }));
+		const resolver = new HostDataResolver({ $ });
+
+		expect(dispatchHostCall({ type: 'checkNode', nodeName: 'Foo' }, resolver)).toBeUndefined();
+		expect($).toHaveBeenCalledWith('Foo');
+	});
+
+	it('reuses the checked node for typed RPCs', () => {
+		const $ = vi.fn(() => ({ first: () => 42 }));
+		const resolver = new HostDataResolver({ $ });
+
+		dispatchHostCall({ type: 'checkNode', nodeName: 'Foo' }, resolver);
+
+		expect(dispatchHostCall({ type: 'getNodeFirst', nodeName: 'Foo' }, resolver)).toBe(42);
+		expect($).toHaveBeenCalledTimes(1);
+	});
+
+	it('throws the error of the host $', () => {
+		const error = new Error("Referenced node doesn't exist");
+		const resolver = new HostDataResolver({
+			$: () => {
+				throw error;
+			},
+		});
+
+		expect(() => dispatchHostCall({ type: 'checkNode', nodeName: 'Unknown' }, resolver)).toThrow(
+			error,
+		);
+	});
+
+	it.each([null, 123, false, undefined])('rejects the node name %j', (nodeName) => {
+		const $ = vi.fn();
+		const resolver = new HostDataResolver({ $ });
+
+		expect(() => dispatchHostCall({ type: 'checkNode', nodeName }, resolver)).toThrow();
+		expect($).not.toHaveBeenCalled();
 	});
 });

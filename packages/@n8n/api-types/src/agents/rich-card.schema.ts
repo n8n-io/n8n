@@ -130,7 +130,12 @@ export const richCardSchema = z
 
 export const richMessageSchema = z
 	.object({
-		text: z.string().optional().describe('Plain-text fallback or summary for the message.'),
+		text: z
+			.string()
+			.optional()
+			.describe(
+				'Message text in standard Markdown. The integration converts it to the platform format. With a card, it is the fallback or summary.',
+			),
 		card: richCardSchema.optional(),
 	})
 	.strict()

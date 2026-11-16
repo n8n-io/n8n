@@ -18,7 +18,11 @@ import {
 	NODE_X_SPACING,
 	snapToGrid,
 } from '@/app/utils/nodeViewUtils';
-import { AGENT_NODE_SIZE, getAgentNodeHandleOffset } from '@/features/agents/utils/agentNode';
+import {
+	DEFAULT_AGENT_HEIGHT,
+	DEFAULT_AGENT_WIDTH,
+	getAgentNodeHandleOffset,
+} from '@/features/agents/utils/agentNode';
 import {
 	GROUP_HEADER_HEIGHT,
 	GROUP_HEADER_WIDTH_COLLAPSED,
@@ -591,7 +595,7 @@ export function useCanvasLayout(
 		// The agent card is far larger than the default node — without this the
 		// unmeasured fallback below would feed dagre a 96x96 box for it
 		if (node.data.render?.type === CanvasNodeRenderType.Agent) {
-			return { width: AGENT_NODE_SIZE[0], height: AGENT_NODE_SIZE[1] };
+			return { width: DEFAULT_AGENT_WIDTH, height: DEFAULT_AGENT_HEIGHT };
 		}
 
 		// Fallback to default size

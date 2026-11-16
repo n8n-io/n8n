@@ -15,7 +15,7 @@ import { useBuildingArtifactIds } from '../composables/useBuildingArtifactIds';
 import { useArtifactThread } from '../artifactThread';
 import { useInstanceAiStore } from '../instanceAi.store';
 import type { ResourceEntry } from '../useResourceRegistry';
-import { appHref, skillsHubHref } from '../canvasPreview.utils';
+import { useArtifactLinks } from '../artifactLinks';
 import {
 	agentPreviewContextIcon,
 	formatAgentPreviewContextLabel,
@@ -28,6 +28,7 @@ const projectsStore = useProjectsStore();
 const store = useInstanceAiStore();
 
 const i18n = useI18n();
+const { artifactHref: resolveArtifactHref } = useArtifactLinks();
 const thread = useArtifactThread();
 const project = computed(() => {
 	// The project id arrives with thread hydration. Until then the lookup is
@@ -148,23 +149,8 @@ const artifactIconMap: Record<string, IconName> = {
 };
 
 function artifactHref(artifact: ResourceEntry) {
-	if (artifact.type === 'workflow') return `/workflow/${artifact.id}`;
-	if (artifact.type === 'data-table') {
-		return artifact.projectId
-			? `/projects/${artifact.projectId}/datatables/${artifact.id}`
-			: '/data-tables';
-	}
-	if (artifact.type === 'agent') {
-		if (artifact.pending) return '#';
-		return artifact.projectId
-			? `/projects/${artifact.projectId}/agents/${artifact.id}`
-			: '/home/agents';
-	}
-	if (artifact.type === 'skill') return skillsHubHref(artifact.id);
-	if (artifact.type === 'app' && artifact.projectId) {
-		return appHref(artifact.projectId, artifact.id);
-	}
-	return '#';
+	if (artifact.type === 'agent' && artifact.pending) return '#';
+	return resolveArtifactHref(artifact.type, artifact.id, artifact.projectId) ?? '#';
 }
 
 function openArtifactLabel(name: string) {
@@ -176,6 +162,8 @@ function contextEntryFor(context: InstanceAiHandoffContext): ContextEntry | unde
 
 	// A control signal, not user-added context — no sidebar entry.
 	if (context.source === 'setup-panel-execute') return undefined;
+	// The workflow attachment already shows the workflow the finding is about.
+	if (context.source === 'migration-report') return undefined;
 
 	if (context.source === 'agent-preview') {
 		return {
@@ -212,12 +200,12 @@ const contextEntries = computed<ContextEntry[]>(() => {
 		entries.push(pendingEntry);
 	}
 
-	for (const message of [...thread.messages].reverse()) {
-		if (message.role !== 'user' || !message.context) continue;
+	for (const turn of [...thread.artifactTurns].reverse()) {
+		if (turn.role !== 'user' || !turn.context) continue;
 
-		const key = handoffContextKey(message.context);
+		const key = handoffContextKey(turn.context);
 		if (seen.has(key) || dismissedKeys.has(key)) continue;
-		const entry = contextEntryFor(message.context);
+		const entry = contextEntryFor(turn.context);
 		if (!entry) continue;
 		seen.add(key);
 		entries.push(entry);

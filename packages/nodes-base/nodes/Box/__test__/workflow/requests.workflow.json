@@ -1,0 +1,451 @@
+{
+	"name": "Box Requests",
+	"nodes": [
+		{
+			"parameters": {},
+			"id": "trigger",
+			"name": "When clicking \"Execute Workflow\"",
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [0, 0]
+		},
+		{
+			"parameters": {
+				"operation": "copy",
+				"fileId": "5000948880",
+				"parentId": "4000",
+				"additionalFields": {}
+			},
+			"id": "node-0",
+			"name": "File Copy",
+			"type": "n8n-nodes-base.box",
+			"typeVersion": 1,
+			"position": [300, 0],
+			"credentials": {
+				"boxOAuth2Api": {
+					"id": "1",
+					"name": "Box account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"operation": "delete",
+				"fileId": "5000948880"
+			},
+			"id": "node-1",
+			"name": "File Delete",
+			"type": "n8n-nodes-base.box",
+			"typeVersion": 1,
+			"position": [300, 150],
+			"credentials": {
+				"boxOAuth2Api": {
+					"id": "1",
+					"name": "Box account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"operation": "download",
+				"fileId": "5000948880"
+			},
+			"id": "node-2",
+			"name": "File Download",
+			"type": "n8n-nodes-base.box",
+			"typeVersion": 1,
+			"position": [300, 300],
+			"credentials": {
+				"boxOAuth2Api": {
+					"id": "1",
+					"name": "Box account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"operation": "get",
+				"fileId": "5000948880",
+				"additionalFields": {}
+			},
+			"id": "node-3",
+			"name": "File Get",
+			"type": "n8n-nodes-base.box",
+			"typeVersion": 1,
+			"position": [300, 450],
+			"credentials": {
+				"boxOAuth2Api": {
+					"id": "1",
+					"name": "Box account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"operation": "search",
+				"query": "report",
+				"limit": 5,
+				"additionalFields": {}
+			},
+			"id": "node-4",
+			"name": "File Search",
+			"type": "n8n-nodes-base.box",
+			"typeVersion": 1,
+			"position": [300, 600],
+			"credentials": {
+				"boxOAuth2Api": {
+					"id": "1",
+					"name": "Box account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"operation": "share",
+				"fileId": "5000948880",
+				"accessibleBy": "user",
+				"useEmail": true,
+				"email": "nathan@example.com",
+				"role": "editor",
+				"options": {}
+			},
+			"id": "node-5",
+			"name": "File Share",
+			"type": "n8n-nodes-base.box",
+			"typeVersion": 1,
+			"position": [300, 750],
+			"credentials": {
+				"boxOAuth2Api": {
+					"id": "1",
+					"name": "Box account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"operation": "upload",
+				"fileName": "notes.txt",
+				"fileContent": "Hello"
+			},
+			"id": "node-6",
+			"name": "File Upload",
+			"type": "n8n-nodes-base.box",
+			"typeVersion": 1,
+			"position": [300, 900],
+			"credentials": {
+				"boxOAuth2Api": {
+					"id": "1",
+					"name": "Box account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "folder",
+				"operation": "create",
+				"name": "Reports",
+				"options": {}
+			},
+			"id": "node-7",
+			"name": "Folder Create",
+			"type": "n8n-nodes-base.box",
+			"typeVersion": 1,
+			"position": [300, 1050],
+			"credentials": {
+				"boxOAuth2Api": {
+					"id": "1",
+					"name": "Box account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "folder",
+				"operation": "delete",
+				"folderId": "4000",
+				"recursive": true
+			},
+			"id": "node-8",
+			"name": "Folder Delete",
+			"type": "n8n-nodes-base.box",
+			"typeVersion": 1,
+			"position": [300, 1200],
+			"credentials": {
+				"boxOAuth2Api": {
+					"id": "1",
+					"name": "Box account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "folder",
+				"operation": "get",
+				"folderId": "4000"
+			},
+			"id": "node-9",
+			"name": "Folder Get",
+			"type": "n8n-nodes-base.box",
+			"typeVersion": 1,
+			"position": [300, 1350],
+			"credentials": {
+				"boxOAuth2Api": {
+					"id": "1",
+					"name": "Box account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "folder",
+				"operation": "search",
+				"query": "Reports",
+				"limit": 5,
+				"additionalFields": {}
+			},
+			"id": "node-10",
+			"name": "Folder Search",
+			"type": "n8n-nodes-base.box",
+			"typeVersion": 1,
+			"position": [300, 1500],
+			"credentials": {
+				"boxOAuth2Api": {
+					"id": "1",
+					"name": "Box account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "folder",
+				"operation": "share",
+				"folderId": "4000",
+				"accessibleBy": "user",
+				"useEmail": true,
+				"email": "nathan@example.com",
+				"role": "editor",
+				"options": {}
+			},
+			"id": "node-11",
+			"name": "Folder Share",
+			"type": "n8n-nodes-base.box",
+			"typeVersion": 1,
+			"position": [300, 1650],
+			"credentials": {
+				"boxOAuth2Api": {
+					"id": "1",
+					"name": "Box account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "folder",
+				"operation": "update",
+				"folderId": "4000",
+				"updateFields": {
+					"name": "Q3 Reports"
+				}
+			},
+			"id": "node-12",
+			"name": "Folder Update",
+			"type": "n8n-nodes-base.box",
+			"typeVersion": 1,
+			"position": [300, 1800],
+			"credentials": {
+				"boxOAuth2Api": {
+					"id": "1",
+					"name": "Box account"
+				}
+			}
+		}
+	],
+	"pinData": {
+		"File Copy": [
+			{
+				"json": {
+					"id": "5000948881",
+					"type": "file",
+					"name": "report.txt"
+				}
+			}
+		],
+		"File Delete": [
+			{
+				"json": {
+					"success": true
+				}
+			}
+		],
+		"File Download": [
+			{
+				"json": {}
+			}
+		],
+		"File Get": [
+			{
+				"json": {
+					"id": "5000948880",
+					"type": "file",
+					"name": "report.txt"
+				}
+			}
+		],
+		"File Search": [
+			{
+				"json": {
+					"id": "5000948880",
+					"type": "file",
+					"name": "report.txt"
+				}
+			}
+		],
+		"File Share": [
+			{
+				"json": {
+					"id": "791293",
+					"type": "collaboration",
+					"role": "editor"
+				}
+			}
+		],
+		"File Upload": [
+			{
+				"json": {
+					"id": "5000948882",
+					"type": "file",
+					"name": "notes.txt"
+				}
+			}
+		],
+		"Folder Create": [
+			{
+				"json": {
+					"id": "4000",
+					"type": "folder",
+					"name": "Reports"
+				}
+			}
+		],
+		"Folder Delete": [
+			{
+				"json": {
+					"success": true
+				}
+			}
+		],
+		"Folder Get": [
+			{
+				"json": {
+					"id": "4000",
+					"type": "folder",
+					"name": "Reports"
+				}
+			}
+		],
+		"Folder Search": [
+			{
+				"json": {
+					"id": "4000",
+					"type": "folder",
+					"name": "Reports"
+				}
+			}
+		],
+		"Folder Share": [
+			{
+				"json": {
+					"id": "791293",
+					"type": "collaboration",
+					"role": "editor"
+				}
+			}
+		],
+		"Folder Update": [
+			{
+				"json": {
+					"id": "4000",
+					"type": "folder",
+					"name": "Q3 Reports"
+				}
+			}
+		]
+	},
+	"connections": {
+		"When clicking \"Execute Workflow\"": {
+			"main": [
+				[
+					{
+						"node": "File Copy",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "File Delete",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "File Download",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "File Get",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "File Search",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "File Share",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "File Upload",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Folder Create",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Folder Delete",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Folder Get",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Folder Search",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Folder Share",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Folder Update",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"active": false,
+	"settings": {
+		"executionOrder": "v1"
+	}
+}

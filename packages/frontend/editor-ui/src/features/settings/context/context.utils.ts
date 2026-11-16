@@ -3,17 +3,11 @@ import type {
 	AiPreferenceSortOption,
 	AiPreferenceUserDto,
 } from '@n8n/api-types';
-import {
-	AI_PREFERENCES_SORT_OPTIONS,
-	aiPreferenceScopeOf,
-	CONTEXT_PREFERENCES_ENABLED_VARIANT,
-	CONTEXT_PREFERENCES_FLAG,
-} from '@n8n/api-types';
+import { AI_PREFERENCES_SORT_OPTIONS, aiPreferenceScopeOf } from '@n8n/api-types';
 import type { TableOptions } from '@n8n/design-system';
 import { getResourcePermissions } from '@n8n/permissions';
 import { ResponseError } from '@n8n/rest-api-client';
 
-import { usePostHog, waitForFeatureFlagsWithTimeout } from '@/app/stores/posthog.store';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 import { splitName } from '@/features/collaboration/projects/projects.utils';
 import { useSettingsStore } from '@n8n/stores/settings.store';
@@ -21,46 +15,6 @@ import { useUsersStore } from '@n8n/stores/users.store';
 
 import { CONTEXT_DEFAULT_SORT_BY } from './context.constants';
 import type { Preference, PreferencePermissions } from './context.types';
-
-/**
- * Multivariate flag: only `variant` enables the surface.
- * Local override: `window.featureFlags.override('111_context_preferences', 'variant')`
- */
-export function isContextPreferencesEnabled(): boolean {
-	return usePostHog().isVariantEnabled(
-		CONTEXT_PREFERENCES_FLAG,
-		CONTEXT_PREFERENCES_ENABLED_VARIANT,
-	);
-}
-
-const FLAG_WAIT_TIMEOUT_MS = 3000;
-
-/**
- * Waits for a pending client-side flag evaluation before a deep link fails closed.
- * `waitForFeatureFlagsWithTimeout` resolves immediately when nothing is pending, so
- * this doesn't need its own `hasPendingFeatureFlags()` guard.
- */
-export async function isContextPreferencesEnabledOnceEvaluated(): Promise<boolean> {
-	await waitForFeatureFlagsWithTimeout(usePostHog(), FLAG_WAIT_TIMEOUT_MS);
-	return isContextPreferencesEnabled();
-}
-
-/**
- * The Context overview lists preferences and skills, so either flag opens it. Synchronous,
- * for the settings menu: it reads the PostHog flags as they are now.
- */
-export function isContextEnabled(): boolean {
-	return isContextPreferencesEnabled() || isContextSkillsEnabled();
-}
-
-/**
- * `isContextEnabled` for the route guard. A deep link can arrive before PostHog has
- * evaluated the flags, so it waits for them instead of sending the user away. The skills
- * setting comes from the backend env var and is already known.
- */
-export async function isContextEnabledOnceEvaluated(): Promise<boolean> {
-	return isContextSkillsEnabled() || (await isContextPreferencesEnabledOnceEvaluated());
-}
 
 export function preferenceScope(row: Pick<Preference, 'userId' | 'projectId'>): AiPreferenceScope {
 	return aiPreferenceScopeOf(row);

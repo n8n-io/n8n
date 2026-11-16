@@ -1,3 +1,4 @@
+import { requestPath } from 'n8n-workflow';
 import * as fill from '../../../actions/interaction/fill.operation';
 import { ERROR_MESSAGES } from '../../../constants';
 import * as transport from '../../../transport';
@@ -53,7 +54,7 @@ describe('Test Airtop, fill form operation', () => {
 
 		expect(apiRequestMock).toHaveBeenCalledWith(
 			'POST',
-			'/async/sessions/test-session-123/windows/win-123/execute-automation',
+			requestPath`/async/sessions/test-session-123/windows/win-123/execute-automation`,
 			{
 				automationId: 'auto',
 				parameters: {
@@ -62,7 +63,7 @@ describe('Test Airtop, fill form operation', () => {
 			},
 		);
 
-		expect(apiRequestMock).toHaveBeenCalledWith('GET', '/requests/req-123/status');
+		expect(apiRequestMock).toHaveBeenCalledWith('GET', requestPath`/requests/req-123/status`);
 
 		expect(result).toEqual([
 			{
