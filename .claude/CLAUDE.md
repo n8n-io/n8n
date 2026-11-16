@@ -18,7 +18,7 @@ a tool or a lesson must survive the session. Keep it under 150 lines.
   Not in this repository. Use the `prediction-modeling` skill for what to log.
 - Work branches: `ccr-4d6bcf99-mmbgxo` and `claude/branche-higgsfield-974raq`; push both.
 
-## Skills in .claude/skills (117) — pick by theme
+## Skills in .claude/skills (120) — pick by theme
 
 38 come from master (marketingskills v2: copywriting, ad-creative, social, sms, offers,
 referrals, onboarding, analytics, aso…; skill-creator, brainstorming, deep-research…).
@@ -27,7 +27,7 @@ Where names overlapped, master's newer version was kept. Main ones added by us:
 | Theme | Skills |
 |---|---|
 | Agents, AI apps, automation | ai-agent-engineering, vercel-ai-sdk, activepieces-automation, agent-designer, agent-workflow-designer, rag-architect, senior-prompt-engineer |
-| Claude Code itself | claude-code-workflow, karpathy-guidelines |
+| Claude Code itself | claude-code-workflow (+ Boris Cherny tips), karpathy-guidelines, fable-method (explicit only), claude-agent-sdk-app (build own agents, e.g. Cassie) |
 | Football data and models | football-data-sources, prediction-modeling, statistical-analyst, senior-data-scientist, experiment-designer, pandas-pro |
 | Video (Higgsfield) | seedance-video (our own), html-reel, video-to-superprompt, video-content-strategist, cinematic-scroll-site |
 | Marketing, copy, social | copywriting, copy-editing, content-strategy, content-humanizer, social-content, social-media-manager, social-media-analyzer, ad-creative, paid-ads, marketing-psychology, launch-strategy, referral-program, pricing-strategy, marketing-context, marketing-ideas |
@@ -68,6 +68,12 @@ newest one when the owner says "reprends où on s'est arrêtés". Project plugin
 | Graphify-Labs/graphify (2026-11-06) | Installed: skill `/graphify` in .claude/skills/graphify; CLI `graphifyy` 0.9.103 via the setup script. Its Read/Grep hooks and root CLAUDE.md block were removed (hooks fail when the CLI is missing). Use on football-intel/, not on all of n8n. `graphify update <dir>` = local AST, no API cost |
 | kalil0321/reverse-api-engineer (2026-11-12) | Not used for football: the missing data (betPawa, OneFootball history API, Understat, ESPN) is behind terms that forbid collection, and the tool's own rules say to respect them. MIT; fine for sites we own or have permission for (PitUp) |
 | dcaribou/transfermarkt-datasets (2026-11-13) | Used once (CC0, frozen at 2026-07-06): line-ups for the rotation test D78. Download: `curl -LO https://pub-e682421888d945d684bcae8890b0ec20.r2.dev/data/transfermarkt-datasets.duckdb` |
+| SKZL-AI/boris-cherny-claude-code-playbook, Sahir619/fable-method, anthropics/claude-plugins-official (2026-11-16) | Installed: tips in claude-code-workflow/references; fable-method skill (MIT, made explicit-only); agent-sdk-dev turned into skill claude-agent-sdk-app (Apache-2.0). Other official plugins: `/plugin marketplace add anthropics/claude-plugins-official` on a local machine |
+| anthropics/anthropic-sdk-typescript (2026-11-16) | Library, not a skill: `npm i @anthropic-ai/sdk` in the app that needs it (Cassie). Needs an API key, so a paid account |
+| aiwithremy/claude-skills-llm-council, mrtooher/fable-mode (2026-11-16) | Not vendored: no licence. Both spawn several subagents per question (higher usage). fable-mode overlaps fable-method |
+| DannyMac180/fable-advisor (2026-11-16) | Not installed: delegates work to subagents; its own measure shows about 2.8x the cost on small tasks |
+| Braffolk/fable5-world-demo, SebLague/Path-Creator, mhgolkar/Arrow, ellisonleao/magictools, Roobyx/awesome-game-design, opencodeiiita/GamingSphere, hesreallyhim/awesome-claude-code (2026-11-16) | Not installed: game projects and link lists, not skills. 3D world demo (MIT, Three.js) is a reference for threejs work; Path-Creator is Unity; Arrow is a Godot narrative tool. GamingSphere has no licence; awesome-claude-code is CC BY-NC-ND |
+| Austin1serb/Anthropic-Leaked-Source-Code (2026-11-16) | Refused, not downloaded: leaked proprietary code. Cassie is built on the official Claude Agent SDK instead |
 | higgsfield-ai/higgsfield, o3de, ai-agent frameworks lists | Not relevant (GPU training framework; game engine — owner may revisit) |
 | 3641397194-wq/gpt6-Astra, claude-code-best/claude-code, asgeirtj/system_prompts_leaks | Refused: jailbreak injector with unknown relay; unauthorised reconstruction of proprietary code; leaked confidential prompts |
 
