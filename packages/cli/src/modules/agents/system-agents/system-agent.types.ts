@@ -6,6 +6,7 @@ import type {
 	ObservationLogObserverMemory,
 	ResumeOptions,
 	RunOptions,
+	SerializableAgentState,
 	SideCallUsageReport,
 	TokenUsage,
 } from '@n8n/agents';
@@ -108,8 +109,19 @@ export interface SystemAgentResumeTurn<TLease = unknown>
 	type: 'resume';
 	/** Host metadata the suspended run stored in its checkpoint. */
 	checkpointHostMetadata: JSONObject;
+	/**
+	 * The tool calls that the checkpoint holds open, the resumed one included.
+	 * The runtime can send them again as suspensions during the resume.
+	 */
+	openSuspensions: Array<Pick<SuspendedToolCall, 'toolCallId' | 'toolName' | 'suspendPayload'>>;
 	resumeData: unknown;
 }
+
+/** A tool call that a suspended run still waits on. */
+export type SuspendedToolCall = Extract<
+	SerializableAgentState['pendingToolCalls'][string],
+	{ suspended: true }
+>;
 
 export type SystemAgentTurn<TLease = unknown> =
 	| SystemAgentStartTurn<TLease>

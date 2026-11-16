@@ -54,12 +54,8 @@ import type {
 	SystemAgentTurnOptions,
 	SystemAgentTurnOutcome,
 	SystemAgentWorkspaceScope,
+	SuspendedToolCall,
 } from './system-agent.types';
-
-type SuspendedToolCall = Extract<
-	SerializableAgentState['pendingToolCalls'][string],
-	{ suspended: true }
->;
 
 export type SystemAgentThreadStatus = 'running' | 'suspended' | 'idle';
 
@@ -728,10 +724,11 @@ export class SystemAgentExecutionService {
 			thread.agentId,
 			thread.id,
 		);
-		const pending = Object.values(checkpoint?.pendingToolCalls ?? {}).find(
-			(toolCall): toolCall is SuspendedToolCall =>
-				toolCall.suspended &&
-				(params.toolCallId === undefined || toolCall.toolCallId === params.toolCallId),
+		const openToolCalls = Object.values(checkpoint?.pendingToolCalls ?? {}).filter(
+			(toolCall): toolCall is SuspendedToolCall => toolCall.suspended,
+		);
+		const pending = openToolCalls.find(
+			(toolCall) => params.toolCallId === undefined || toolCall.toolCallId === params.toolCallId,
 		);
 		// A client run id must name the open suspension, not an earlier run.
 		if (!checkpoint || !pending || (params.runId !== undefined && params.runId !== pending.runId)) {
@@ -767,6 +764,11 @@ export class SystemAgentExecutionService {
 					runId,
 					toolCallId: pending.toolCallId,
 					checkpointHostMetadata,
+					openSuspensions: openToolCalls.map(({ toolCallId, toolName, suspendPayload }) => ({
+						toolCallId,
+						toolName,
+						suspendPayload,
+					})),
 					resumeData: params.resumeData,
 				}),
 		);

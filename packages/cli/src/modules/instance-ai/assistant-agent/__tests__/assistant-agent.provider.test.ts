@@ -12,6 +12,7 @@ import type {
 	SystemAgentResumeTurn,
 	SystemAgentStartTurn,
 } from '@/modules/agents/system-agents/system-agent.types';
+import type { Telemetry } from '@/telemetry';
 
 import type { InstanceAiCreditService } from '../../instance-ai-credit.service';
 import { InstanceAiErrorReporterService } from '../../instance-ai-error-reporter.service';
@@ -97,6 +98,7 @@ function setup() {
 	);
 	// The real default, so that the tests see "no override" unless a test sets one.
 	const turnOverrides = new AssistantTurnOverrides();
+	const telemetry = mock<Telemetry>();
 	const provider = new AssistantAgentProvider(
 		logger,
 		mock<GlobalConfig>({ ai: {} }),
@@ -112,10 +114,12 @@ function setup() {
 		errorReporter,
 		userRepository,
 		turnOverrides,
+		telemetry,
 	);
 	return {
 		userRepository,
 		provider,
+		telemetry,
 		turnOverrides,
 		sentry,
 		errorReporter,
@@ -495,6 +499,7 @@ describe('AssistantAgentProvider', () => {
 				runId: 'agent-run-1',
 				toolCallId: 'tool-call-1',
 				checkpointHostMetadata: { assistantTurn: { runId: 'run-1', messageGroupId: 'mg-1' } },
+				openSuspensions: [],
 				resumeData: { approved: true },
 			};
 
@@ -697,6 +702,125 @@ describe('AssistantAgentProvider', () => {
 				expect.any(Array),
 				'completed',
 			);
+		});
+
+		describe('"Builder asked for input" telemetry', () => {
+			function card(requestId: string, extra: Record<string, unknown> = {}) {
+				return { requestId, message: 'Delete the workflow?', severity: 'destructive', ...extra };
+			}
+
+			function suspended(toolCallId: string, suspendPayload: unknown) {
+				return {
+					type: 'tool-call-suspended',
+					runId: 'agent-run-1',
+					toolCallId,
+					toolName: 'workflows',
+					suspendPayload,
+				} as never;
+			}
+
+			function resumeTurn(
+				openSuspensions: SystemAgentResumeTurn['openSuspensions'],
+			): SystemAgentResumeTurn<AssistantSandboxLease> {
+				const start = startTurn();
+				const checkpointStore = mock<SystemAgentStartTurn['checkpointStore']>();
+				return {
+					type: 'resume',
+					user,
+					thread,
+					resourceId: start.resourceId,
+					abortSignal: start.abortSignal,
+					emitHostEvent: start.emitHostEvent,
+					memory: start.memory,
+					checkpointStore,
+					sessionGrants: start.sessionGrants,
+					readFile: vi.fn(async () => undefined),
+					runId: 'agent-run-1',
+					toolCallId: 'tc-1',
+					checkpointHostMetadata: { assistantTurn: { runId: 'run-1', messageGroupId: 'mg-1' } },
+					openSuspensions,
+					resumeData: { approved: true },
+				};
+			}
+
+			function open(
+				toolCallId: string,
+				suspendPayload: unknown,
+			): SystemAgentResumeTurn['openSuspensions'][number] {
+				return { toolCallId, toolName: 'workflows', suspendPayload };
+			}
+
+			it('sends one event for each new Assistant card, with the request id as input id', async () => {
+				const { provider, telemetry } = setup();
+
+				const handle = await provider.prepareTurn(startTurn());
+				handle.onChunk?.(suspended('tc-1', card('req-1')));
+				handle.onChunk?.(
+					suspended('tc-2', card('req-2', { inputType: 'questions', questions: [{}, {}] })),
+				);
+
+				expect(telemetry.track).toHaveBeenCalledTimes(2);
+				expect(telemetry.track).toHaveBeenNthCalledWith(1, 'Builder asked for input', {
+					user_id: 'user-1',
+					thread_id: 'thread-1',
+					input_thread_id: 'req-1',
+					type: 'approval',
+					num_steps: 1,
+					contains_templated_cred: false,
+					runtime: 'agents',
+				});
+				expect(telemetry.track).toHaveBeenNthCalledWith(
+					2,
+					'Builder asked for input',
+					expect.objectContaining({ input_thread_id: 'req-2', type: 'questions', num_steps: 2 }),
+				);
+			});
+
+			it('sends no event for a suspension that is not an Assistant card', async () => {
+				const { provider, telemetry } = setup();
+
+				const handle = await provider.prepareTurn(startTurn());
+				handle.onChunk?.(suspended('tc-1', { toolName: 'notion_search', args: {} }));
+
+				expect(telemetry.track).not.toHaveBeenCalled();
+			});
+
+			it('does not count an open sibling card again when another card is answered', async () => {
+				const { provider, telemetry } = setup();
+				const turn = resumeTurn([open('tc-1', card('req-1')), open('tc-2', card('req-2'))]);
+
+				const handle = await provider.prepareTurn(turn);
+				// The runtime sends the open sibling again, with the same payload.
+				handle.onChunk?.(suspended('tc-2', card('req-2')));
+
+				expect(turn.checkpointStore.load).not.toHaveBeenCalled();
+				expect(telemetry.track).not.toHaveBeenCalled();
+			});
+
+			it('does not count the open cards again when a resume sends all of them back', async () => {
+				const { provider, telemetry } = setup();
+				const turn = resumeTurn([open('tc-1', card('req-1')), open('tc-2', card('req-2'))]);
+
+				const handle = await provider.prepareTurn(turn);
+				// A failed cancellation cleanup keeps every pending card, the answered one too.
+				handle.onChunk?.(suspended('tc-1', card('req-1')));
+				handle.onChunk?.(suspended('tc-2', card('req-2')));
+
+				expect(telemetry.track).not.toHaveBeenCalled();
+			});
+
+			it('counts a new card that the resumed tool shows', async () => {
+				const { provider, telemetry } = setup();
+				const turn = resumeTurn([open('tc-1', card('req-1'))]);
+
+				const handle = await provider.prepareTurn(turn);
+				handle.onChunk?.(suspended('tc-1', card('req-3')));
+
+				expect(telemetry.track).toHaveBeenCalledWith(
+					'Builder asked for input',
+					expect.objectContaining({ input_thread_id: 'req-3', runtime: 'agents' }),
+				);
+			});
 		});
 
 		describe('side-call usage', () => {
@@ -996,6 +1120,7 @@ describe('AssistantAgentProvider', () => {
 				runId: 'agent-run-1',
 				toolCallId: 'tool-call-1',
 				checkpointHostMetadata: { assistantTurn: { runId: 'run-1', messageGroupId: 'mg-1' } },
+				openSuspensions: [],
 				resumeData: { approved: true },
 			};
 
@@ -1144,6 +1269,7 @@ describe('AssistantAgentProvider', () => {
 					runId: 'agent-run-1',
 					toolCallId: 'tool-call-1',
 					checkpointHostMetadata: { assistantTurn: { runId: 'run-1', messageGroupId: 'mg-1' } },
+					openSuspensions: [],
 					resumeData: { approved: true },
 				};
 
@@ -1262,6 +1388,7 @@ describe('AssistantAgentProvider', () => {
 								request: { attachments: [agentAttachment] },
 							},
 						},
+						openSuspensions: [],
 						resumeData: { approved: true },
 					});
 

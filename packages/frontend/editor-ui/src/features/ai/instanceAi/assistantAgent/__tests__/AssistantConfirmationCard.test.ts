@@ -476,6 +476,18 @@ describe('AssistantConfirmationCard', () => {
 			});
 		});
 
+		it('uses the request id as input id when the card has none, as the backend does', async () => {
+			const { getByTestId, accept } = renderInThread({ ...runApproval, inputThreadId: undefined });
+
+			await fireEvent.click(getByTestId('approval-card-allow-once'));
+			accept();
+
+			expect(telemetryTrack).toHaveBeenCalledWith(
+				'User finished providing input',
+				expect.objectContaining({ input_thread_id: 'req-aa' }),
+			);
+		});
+
 		it('tracks always allow as approve_always', async () => {
 			const { getByTestId, accept } = renderInThread(runApproval);
 
@@ -610,6 +622,28 @@ describe('AssistantConfirmationCard', () => {
 					],
 					skipped_inputs: [],
 				}),
+			);
+		});
+
+		it('gives the runtime to the shared cards that track their own input', async () => {
+			const { getByTestId } = renderInThread({
+				requestId: 'req-9',
+				inputThreadId: 'input-thread-1',
+				message: 'Read a file',
+				inputType: 'resource-decision',
+				resourceDecision: {
+					toolGroup: 'filesystem',
+					resource: '/tmp/a.txt',
+					description: 'Read /tmp/a.txt',
+					options: ['denyOnce', 'allowOnce', 'allowForSession'],
+				},
+			});
+
+			await fireEvent.click(getByTestId('gateway-decision-deny'));
+
+			expect(telemetryTrack).toHaveBeenCalledWith(
+				'User finished providing input',
+				expect.objectContaining({ type: 'resource-decision', runtime: 'agents' }),
 			);
 		});
 

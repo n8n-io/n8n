@@ -135,7 +135,7 @@ export class ExecuteBatch extends BaseCommand<z.infer<typeof flagsSchema>> {
 
 	override needsExpressionEngine = true;
 
-	override needsTaskRunner = true;
+	override needsCodeExecution = true;
 
 	/**
 	 * Gracefully handles exit.
