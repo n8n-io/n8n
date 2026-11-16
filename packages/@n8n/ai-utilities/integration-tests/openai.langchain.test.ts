@@ -3,9 +3,9 @@ import nock from 'nock';
 
 import { LangchainChatModelAdapter } from 'src';
 
-import { OpenAIChatModel } from './openai';
-import { createMockHttpRequests } from './openai.helpers';
-import { mockFinalResponse, mockToolCallResponse, weatherTool } from './openai.fixtures';
+import { OpenAIChatModel } from './fixtures/openai';
+import { createMockHttpRequests } from './fixtures/openai.helpers';
+import { mockFinalResponse, mockToolCallResponse, weatherTool } from './fixtures/openai.fixtures';
 
 describe('OpenAI Integration with Langchain Agent', () => {
 	const baseURL = 'https://api.openai.com/v1';

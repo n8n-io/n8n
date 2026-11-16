@@ -2,8 +2,8 @@ import nock from 'nock';
 import assert from 'node:assert';
 import { Readable } from 'node:stream';
 
-import { OpenAIChatModel } from './openai';
-import { mockFinalResponse, mockToolCallResponse } from './openai.fixtures';
+import { OpenAIChatModel } from './fixtures/openai';
+import { mockFinalResponse, mockToolCallResponse } from './fixtures/openai.fixtures';
 import {
 	baseURL,
 	userMessage,
@@ -11,7 +11,7 @@ import {
 	sseEvents,
 	collect,
 	createMockHttpRequests,
-} from './openai.helpers';
+} from './fixtures/openai.helpers';
 
 describe('OpenAIChatModel', () => {
 	const apiErrorMessage = 'model crashed';

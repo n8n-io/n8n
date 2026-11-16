@@ -3,10 +3,13 @@ import nock from 'nock';
 
 import { LangchainChatModelAdapter } from 'src';
 
-import { OpenAIChatModel } from './openai';
-import { createMockHttpRequests, sseReply } from './openai.helpers';
-import { weatherTool } from './openai.fixtures';
-import { mockStreamFinalResponseEvents, mockStreamToolCallEvents } from './openai.stream-fixtures';
+import { OpenAIChatModel } from './fixtures/openai';
+import { createMockHttpRequests, sseReply } from './fixtures/openai.helpers';
+import { weatherTool } from './fixtures/openai.fixtures';
+import {
+	mockStreamFinalResponseEvents,
+	mockStreamToolCallEvents,
+} from './fixtures/openai.stream-fixtures';
 
 describe('OpenAI Integration with Langchain Agent', () => {
 	const baseURL = 'https://api.openai.com/v1';

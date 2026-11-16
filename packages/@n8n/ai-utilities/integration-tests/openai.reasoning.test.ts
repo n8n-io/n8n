@@ -2,9 +2,9 @@ import nock from 'nock';
 
 import type { Message } from 'src';
 
-import { OpenAIChatModel } from './openai';
-import { mockFinalResponse } from './openai.fixtures';
-import { baseURL, userMessage, createModel, sseEvents, collect } from './openai.helpers';
+import { OpenAIChatModel } from './fixtures/openai';
+import { mockFinalResponse } from './fixtures/openai.fixtures';
+import { baseURL, userMessage, createModel, sseEvents, collect } from './fixtures/openai.helpers';
 
 describe('OpenAIChatModel reasoning', () => {
 	afterEach(() => {
