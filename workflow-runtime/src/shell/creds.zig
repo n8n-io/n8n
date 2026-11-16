@@ -4,6 +4,7 @@
 const std = @import("std");
 const http = @import("http.zig");
 const renew = @import("renew.zig");
+const cred_flags = @import("core").cred_flags;
 
 /// A value is renewed this long before it expires, so that it outlives
 /// the request that carries it.
@@ -132,6 +133,71 @@ pub const Store = struct {
         return if (x == .string) x.string else "";
     }
 };
+
+/// The credential flags of a credentials document, as the core reads them
+/// (`core/cred_flags.zig`): for each slot, the members of `data.n8nDerived`
+/// that have a flag name and a boolean value, `{"<slot>":{"<name>":true}}`.
+/// A slot without a flag is left out; `{}` when no slot has one. A flag is
+/// one bit of a credential that node code may read. No other value of the
+/// document goes into the output, and the output goes to no log line.
+pub fn flagsDoc(text: []const u8, buf: []u8) Out.Error![]const u8 {
+    var out: Out = .{ .buf = buf };
+    try out.byte('{');
+    var slots = http.Members.init(text) orelse {
+        try out.byte('}');
+        return out.written();
+    };
+    // Each step moves past one member, so the text length bounds each loop.
+    var left = text.len;
+    var nslots: usize = 0;
+    while (slots.next()) |slot| {
+        std.debug.assert(left > 0);
+        left -= 1;
+        const data = rawMember(slot.value, "data") orelse continue;
+        const derived = rawMember(data, "n8nDerived") orelse continue;
+        var flags = http.Members.init(derived) orelse continue;
+        var inner = derived.len;
+        var nflags: usize = 0;
+        while (flags.next()) |flag| {
+            std.debug.assert(inner > 0);
+            inner -= 1;
+            const on = std.mem.eql(u8, flag.value, "true");
+            if (!on and !std.mem.eql(u8, flag.value, "false")) continue;
+            if (flag.key.len != cred_flags.name_len + 2 or !cred_flags.isName(flag.key[1 .. flag.key.len - 1])) continue;
+            if (nflags == 0) {
+                if (nslots > 0) try out.byte(',');
+                try out.put(slot.key);
+                try out.put(":{");
+                nslots += 1;
+            } else try out.byte(',');
+            try out.put(flag.key);
+            try out.put(if (on) ":true" else ":false");
+            nflags += 1;
+        }
+        if (nflags > 0) try out.byte('}');
+    }
+    try out.byte('}');
+    return out.written();
+}
+
+test "flagsDoc keeps the flags of each slot and no other value" {
+    const t = std.testing;
+    var buf: [256]u8 = undefined;
+    const doc =
+        \\{"a":{"type":"x","data":{"token":"secret","n8nDerived":{"f00000001":true,"d00000001":"text","f00000002":false,"f00000003":"true","f0000004":true}}},
+        \\ "b":{"data":{"token":"other"}},
+        \\ "c":{"data":{"n8nDerived":{"f00000009":false}}},
+        \\ "d":"plain"}
+    ;
+    const got = try flagsDoc(doc, &buf);
+    try t.expectEqualStrings("{\"a\":{\"f00000001\":true,\"f00000002\":false},\"c\":{\"f00000009\":false}}", got);
+    try t.expect(cred_flags.valid(got));
+    try t.expect(std.mem.indexOf(u8, got, "secret") == null);
+    try t.expectEqualStrings("{}", try flagsDoc("{\"b\":{\"data\":{}}}", &buf));
+    try t.expectEqualStrings("{}", try flagsDoc("[]", &buf));
+    var small: [20]u8 = undefined;
+    try t.expectError(error.NoSpace, flagsDoc(doc, &small));
+}
 
 /// Credential documents that arrive after startup (the admin API), each in
 /// a slot of `slot_bytes` reserved at startup. Requests copy what they need

@@ -263,6 +263,40 @@ test "fuzz manual payload" {
     } });
 }
 
+// ---- credential flags ---------------------------------------------------------------
+
+fn fuzzCredFlags(_: void, smith: *Smith) !void {
+    const cred_flags = @import("cred_flags.zig");
+    const doc = input_buf[0..smith.slice(&input_buf)];
+    const found = cred_flags.scan(doc, "slot", "f00000001");
+    if (found == .invalid) {
+        if (cred_flags.valid(doc)) return error.FormDependsOnTheQuestion;
+        return;
+    }
+    // A document of the one form is one JSON value, and the general JSON
+    // reader finds the same flag.
+    if (module.jsonSkipValue(doc, 0) != doc.len) return error.NotOneJsonValue;
+    const raw: ?[]const u8 = if (module.jsonGet(doc, "slot")) |of_slot| module.jsonGet(of_slot, "f00000001") else null;
+    const same = switch (found) {
+        .yes => raw != null and std.mem.eql(u8, raw.?, "true"),
+        .no => raw != null and std.mem.eql(u8, raw.?, "false"),
+        .absent => raw == null,
+        .invalid => unreachable, // Returned above.
+    };
+    if (!same) return error.ReadersDisagree;
+}
+
+test "fuzz credential flags document" {
+    try std.testing.fuzz({}, fuzzCredFlags, .{ .corpus = &.{
+        seed("{}"),
+        seed("{\"slot\":{\"f00000001\":true}}"),
+        seed("{\"a\":{},\"slot\":{\"f00000002\":true,\"f00000001\":false},\"slot\":{\"f00000001\":true}}"),
+        seed("{\"slot\":{\"f00000001\":\"true\"}}"),
+        seed("{\"sl\\\"ot\":{\"f00000001\":true}}"),
+        seed("{\"slot\":{\"f00000001\":true,\"f00000001\":false}}"),
+    } });
+}
+
 // ---- TZif and cron ------------------------------------------------------------------
 
 var zone: tz.Zone = .{};

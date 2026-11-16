@@ -14,6 +14,7 @@ const cron = @import("cron.zig");
 const tz = @import("tz.zig");
 const multipart = @import("multipart.zig");
 const static_data = @import("static_data.zig");
+const cred_flags = @import("cred_flags.zig");
 const Arena = @import("arena.zig").Arena;
 const reserveMem = @import("arena.zig").reserve;
 const Value = value.Value;
@@ -85,6 +86,7 @@ pub const Config = struct {
         n += @as(usize, c.max_schedules) * @sizeOf(Schedule) + @as(usize, c.max_zones) * @sizeOf(tz.Zone);
         n += @as(usize, c.max_static_data) * (@as(usize, c.static_data_bytes) + static_data.max_id + 8);
         n += (@as(usize, c.slots) + c.max_batch_events) * @sizeOf(StaticCommit);
+        n += @as(usize, c.max_modules) * (@as(usize, cred_flags.doc_bytes) + static_data.max_id + 8);
         return n + (1 << 20);
     }
 };
@@ -137,6 +139,13 @@ pub const EventKind = enum(u8) {
     /// logs one for each `reserve_none` action; a replay starts the next
     /// block after it, so no id repeats after a restart.
     reserve_none = 20,
+    /// The credential flags of a workflow (`cred_flags.zig`). Payload: the
+    /// workflow id, a newline, then the document; `{}` removes it. The
+    /// shell adds one when the credentials of a loaded workflow change.
+    /// Executions that start later copy the document. It is in the log, as
+    /// booleans by name, so a replay starts each execution with the same
+    /// flags; the credentials themselves are never in the log.
+    credential_flags = 21,
 };
 
 pub const Event = struct {
@@ -451,6 +460,9 @@ pub const State = struct {
     /// at the end of the batch, in order, so a replay sees them at the same
     /// point.
     statics: static_data.Table,
+    /// The credential flags of each loaded workflow, by workflow id: one
+    /// entry for each module at most, `cred_flags.doc_bytes` each.
+    cred_flags: static_data.Table,
     static_q: []StaticCommit,
     nstatic_q: u32 = 0,
     /// Set by the shell while it replays a log: executions' static data
@@ -523,6 +535,7 @@ pub const State = struct {
         s.vars_buf = try reserveMem(gpa, u8, max_vars);
         s.vars_len = 0;
         s.statics = try static_data.Table.init(gpa, cfg.max_static_data, cfg.static_data_bytes);
+        s.cred_flags = try static_data.Table.init(gpa, cfg.max_modules, cred_flags.doc_bytes);
         s.static_q = try gpa.alloc(StaticCommit, @as(usize, cfg.slots) + cfg.max_batch_events);
         s.nstatic_q = 0;
         s.replaying = false;
@@ -730,6 +743,7 @@ fn applyEvent(s: *State, ev: Event, scratch: *Arena) StepError!void {
         .manual => try manualRun(s, ev, scratch),
         .set_vars => try setVars(s, ev),
         .static_data => queueLoggedStatic(s, ev),
+        .credential_flags => setCredFlags(s, ev),
         .reserve_none => {
             // Only a replay feeds these. Live ids of the block may have gone
             // out, so the next live id starts after the block.
@@ -1162,7 +1176,31 @@ fn unloadWorkflow(s: *State, ev: Event) StepError!void {
     retire(s, mod);
     // n8n keeps its copy; a later load sends it again.
     s.statics.remove(ev.payload);
+    s.cred_flags.remove(ev.payload);
     try reply(s, ev.conn, 200, "{\"ok\":true}");
+}
+
+/// Keep the credential flags of a loaded workflow for the executions that
+/// start later. An event for an unknown workflow, or with a document of
+/// another form or over the size, changes nothing and is not logged: node
+/// code then finds no flag, and the step fails with the message of the
+/// reference. The shell checks the size and the form before it adds the
+/// event, and says so when it drops one.
+fn setCredFlags(s: *State, ev: Event) void {
+    const nl = std.mem.indexOfScalar(u8, ev.payload, '\n') orelse ev.payload.len;
+    const id = ev.payload[0..nl];
+    const doc = if (nl < ev.payload.len) ev.payload[nl + 1 ..] else "";
+    const known = id.len > 0 and id.len <= max_id and s.liveWorkflow(id) != null;
+    if (!known or doc.len > cred_flags.doc_bytes or !cred_flags.valid(doc)) {
+        s.log_modes[s.cur_event] = .skip;
+        return;
+    }
+    if (doc.len == 2) return s.cred_flags.remove(id);
+    // One entry for each live workflow fits: an unload removes its entry.
+    // A full table keeps the flags that it has.
+    s.cred_flags.set(id, doc) catch {
+        s.log_modes[s.cur_event] = .skip;
+    };
 }
 
 /// Reply with an error. The event changed nothing, so it is not logged.
@@ -1788,7 +1826,9 @@ fn startExecution(s: *State, mod: u16, trigger: []const u8, conn: u64, route: u1
         var vm = vmFor(s, slot, scratch);
         const vars: ?[]const u8 = if (s.modules[mod].uses_vars) (if (s.vars_len > 0) s.vars_buf[0..s.vars_len] else "{}") else null;
         const statics: ?[]const u8 = if (s.modules[mod].wf_id_len > 0) s.statics.get(s.modules[mod].workflowId()) else null;
-        if (initWithTrigger(&vm, exec_id, execSeed(s, exec_id), trigger, vars, statics)) |_| {
+        // Only a module whose code reads a flag pays for the copy.
+        const flags: ?[]const u8 = if (s.modules[mod].wf_id_len > 0 and s.modules[mod].m.flag_names.len > 0) s.cred_flags.get(s.modules[mod].workflowId()) else null;
+        if (initWithTrigger(&vm, exec_id, execSeed(s, exec_id), trigger, vars, statics, flags)) |_| {
             break;
         } else |err| switch (err) {
             error.RegionFull => giveRegion(s, class, got.idx, s.regions[slot].used, slot),
@@ -1828,13 +1868,17 @@ fn startExecution(s: *State, mod: u16, trigger: []const u8, conn: u64, route: u1
     return true;
 }
 
-fn initWithTrigger(vm: *ops.Vm, exec_id: u64, seed: u64, trigger: []const u8, vars: ?[]const u8, statics: ?[]const u8) json.DecodeError!void {
+fn initWithTrigger(vm: *ops.Vm, exec_id: u64, seed: u64, trigger: []const u8, vars: ?[]const u8, statics: ?[]const u8, flags: ?[]const u8) json.DecodeError!void {
     try interp.initExec(vm.r, vm.m, exec_id, seed);
     const tv = try json.decode(vm, trigger);
     interp.setTrigger(vm.r, tv);
     // Captured at start, so a replay sees the same variables and static data.
     if (vars) |v| vm.r.exec().vars = try vm.newStr(v);
     if (statics) |d| vm.r.exec().static_start = try vm.newStr(d);
+    if (flags) |f| {
+        std.debug.assert(f.len > 2 and f.len <= cred_flags.doc_bytes);
+        vm.r.exec().cred_flags = value.payload(try vm.newStr(f));
+    }
 }
 
 /// A full region is first compacted into a fresh region of the same class:
@@ -1995,13 +2039,7 @@ fn handleEffect(s: *State, slot: SlotId, vm: *ops.Vm, req: interp.EffectReq, scr
             return true;
         },
         .wait => {
-            // The date the workflow waits for is on its own clock, the
-            // timer that ends the wait is on the shard clock: a relative
-            // wait of 5 s is still 5 s (CLOCK-OFFSET).
-            const ms = waitMs(vm, req.args, clockNow(s, slot));
-            try addTimer(s, .{ .at_ms = s.now_ms + ms, .exec_id = exec_id, .seq = req.seq, .kind = .wait });
-            if (ms >= s.cfg.evict_wait_ms) s.slot_long_wait[slot] = true;
-            try statusEvent(s, slot, req.step, .waiting, "", s.now_ms + ms);
+            try startWait(s, slot, vm, req);
             // The trace payload lives in scratch until the batch ends.
             return s.cfg.trace_effects;
         },
@@ -2031,6 +2069,25 @@ fn handleEffect(s: *State, slot: SlotId, vm: *ops.Vm, req: interp.EffectReq, scr
     try emit(s, a);
     try statusEvent(s, slot, req.step, .started, payload, 0);
     return true;
+}
+
+/// A wait: the timer that ends it and, for a wait step of the workflow, the
+/// `waiting` event and the mark of a long wait.
+fn startWait(s: *State, slot: SlotId, vm: *ops.Vm, req: interp.EffectReq) StepError!void {
+    std.debug.assert(req.kind == .wait and req.step < vm.m.steps.len);
+    // The date the workflow waits for is on its own clock, the timer that
+    // ends the wait is on the shard clock: a relative wait of 5 s is still
+    // 5 s (CLOCK-OFFSET).
+    const ms = waitMs(vm, req.args, clockNow(s, slot));
+    try addTimer(s, .{ .at_ms = s.now_ms + ms, .exec_id = s.slot_exec[slot], .seq = req.seq, .kind = .wait });
+    // A wait in the code of a node (a pause between two requests) has the
+    // step of that node. It is a timer and nothing else: no durable
+    // `waiting` event, and the execution stays in memory. The timer and the
+    // occurrence counter of the step come from the logged inputs alone, so
+    // a replay makes the same requests with the same idempotency keys.
+    if (vm.m.steps[req.step].kind != @backingInt(module.EffectKind.wait)) return;
+    if (ms >= s.cfg.evict_wait_ms) s.slot_long_wait[slot] = true;
+    try statusEvent(s, slot, req.step, .waiting, "", s.now_ms + ms);
 }
 
 /// A host step whose args have `staticData: true` gets the execution's

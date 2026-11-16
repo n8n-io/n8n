@@ -16,6 +16,7 @@ const regex = @import("regex.zig");
 const textcodec = @import("textcodec.zig");
 const xml = @import("xml.zig");
 const xmlrss = @import("xmlrss.zig");
+const cred_flags = @import("cred_flags.zig");
 const Builder = @import("arena.zig").Builder;
 const Value = value.Value;
 const Vm = ops.Vm;
@@ -65,18 +66,19 @@ pub const Native = enum(u16) {
     ascii_is,
     ascii_is_printable,
     base64_encode_utf8,
+    credential_flag,
 };
 
 const native_names = [_][]const u8{
-    "Math.floor",         "Math.ceil",          "Math.round",        "Math.trunc",    "Math.abs",
-    "Math.min",           "Math.max",           "Math.pow",          "Math.sqrt",     "Math.sign",
-    "Math.log",           "Math.exp",           "JSON.stringify",    "JSON.parse",    "Object.keys",
-    "Object.values",      "Object.entries",     "Object.assign",     "Array.isArray", "Number",
-    "String",             "Boolean",            "parseInt",          "parseFloat",    "isNaN",
-    "Number.isInteger",   "Number.isFinite",    "RegExp.exec",       "btoa",          "atob",
-    "encodeURIComponent", "decodeURIComponent", "escape",            "unescape",      "XML.parse",
-    "XML.snippet",        "XML.content",        "ctx.staticData",    "ctx.polled",    "encodeURI",
-    "Ascii.is",           "Ascii.isPrintable",  "Base64.encodeUtf8",
+    "Math.floor",         "Math.ceil",          "Math.round",        "Math.trunc",         "Math.abs",
+    "Math.min",           "Math.max",           "Math.pow",          "Math.sqrt",          "Math.sign",
+    "Math.log",           "Math.exp",           "JSON.stringify",    "JSON.parse",         "Object.keys",
+    "Object.values",      "Object.entries",     "Object.assign",     "Array.isArray",      "Number",
+    "String",             "Boolean",            "parseInt",          "parseFloat",         "isNaN",
+    "Number.isInteger",   "Number.isFinite",    "RegExp.exec",       "btoa",               "atob",
+    "encodeURIComponent", "decodeURIComponent", "escape",            "unescape",           "XML.parse",
+    "XML.snippet",        "XML.content",        "ctx.staticData",    "ctx.polled",         "encodeURI",
+    "Ascii.is",           "Ascii.isPrintable",  "Base64.encodeUtf8", "ctx.credentialFlag",
 };
 
 pub const Method = enum(u16) {
@@ -219,6 +221,7 @@ pub fn callNative(vm: *Vm, id: u16, args: []const Value) Err!Value {
         .ascii_is => textRange(vm, arg(args, 0), 0x00, 0x7f),
         .ascii_is_printable => textRange(vm, arg(args, 0), 0x20, 0x7e),
         .base64_encode_utf8 => codec(vm, args, textcodec.base64Utf8),
+        .credential_flag => credentialFlag(vm, arg(args, 0), arg(args, 1)),
     };
 }
 
@@ -254,6 +257,28 @@ fn staticData(vm: *Vm, kind: Value, node: Value) Err!Value {
     const kv = try vm.newStr(key);
     try vm.objSet(value.payload(vm.r.exec().static_doc), kv, fresh);
     return fresh;
+}
+
+/// ctx.credentialFlag(slot, name): the outcome of one condition on the
+/// credential of the slot, a boolean, and the only value of a credential
+/// that node code reads. The name must have the form of a flag name and be
+/// in the list of the module's META. The value is the execution's copy from
+/// its start, so a replay and a changed credential give the same branch.
+/// Each other case throws: the result is never a value of another type.
+fn credentialFlag(vm: *Vm, slot: Value, name: Value) Err!Value {
+    const found: cred_flags.Found = blk: {
+        if (value.kindOf(slot) != .string or value.kindOf(name) != .string) break :blk .absent;
+        const flag = vm.str(name);
+        if (!cred_flags.isName(flag) or !cred_flags.declared(vm.m.flag_names, flag)) break :blk .absent;
+        const off = vm.r.exec().cred_flags;
+        if (off == 0) break :blk .absent;
+        break :blk cred_flags.scan(vm.r.strBytes(off), vm.str(slot), flag);
+    };
+    return switch (found) {
+        .yes => value.true_,
+        .no => value.false_,
+        .absent, .invalid => vm.throwMsg(.@"error", cred_flags.missing_message, .{}),
+    };
 }
 
 /// ctx.polled(items) (spec 9.8): true when a poll found items. A quiet poll

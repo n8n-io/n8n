@@ -25,7 +25,7 @@ shell-syscall 73
 core-print 62
 map-order 3
 safety-off 17
-pub-unused 80
+pub-unused 78
 test-sleep 2
 test-no-check 1
 embed-file 3

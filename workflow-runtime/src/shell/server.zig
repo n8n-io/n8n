@@ -322,6 +322,8 @@ const WfCreds = struct {
     id: [core.max_id]u8 = undefined,
     id_len: u8 = 0,
     store: ?*creds.Store = null,
+    /// The core has credential flags from this document (`queueCredFlags`).
+    has_flags: bool = false,
 };
 
 fn token(kind: Kind, gen: u32, idx: u32) u64 {
@@ -1798,6 +1800,7 @@ pub const Runner = struct {
                 var zones: std.ArrayList(core.Event) = .empty;
                 triggers.zoneEventsNew(a, &zones, bytes, &r.sh.st) catch |e| return r.adminReply(idx, if (e == error.OutOfMemory) 503 else 400, if (e == error.OutOfMemory) busy_body else "{\"error\":\"unknown time zone\"}");
                 if (r.events.items.len + zones.items.len + 1 + r.resultReserve() > r.events.capacity) return r.adminReply(idx, 503, "{\"error\":\"busy\"}");
+                var flags: ?[]const u8 = null;
                 if (http.member(req.body, "credentials")) |raw| {
                     const text = std.mem.trim(u8, raw, " \t\r\n");
                     if (!std.mem.eql(u8, text, "null")) {
@@ -1807,6 +1810,10 @@ pub const Runner = struct {
                             else => "{\"error\":\"credentials must be a JSON object\"}",
                         });
                         store.next = r.egress.cfg.credentials;
+                        flags = credFlagsPayload(a, id, store.text) catch {
+                            r.wf_pool.?.release(store);
+                            return r.adminReply(idx, 503, busy_body);
+                        };
                         if (!r.setWorkflowCreds(id, store)) {
                             r.wf_pool.?.release(store);
                             return r.adminReply(idx, 503, "{\"error\":\"too many workflows with credentials\"}");
@@ -1816,6 +1823,8 @@ pub const Runner = struct {
                 r.keepBatch(&fba);
                 for (zones.items) |z| r.events.appendAssumeCapacity(z);
                 r.events.appendAssumeCapacity(.{ .kind = .load_workflow, .conn = conn, .payload = p });
+                // After the load: the core keeps flags of a loaded workflow only.
+                if (flags) |f| r.queueCredFlags(id, f);
             },
             .delete_workflow => |id| {
                 r.dropWorkflowCreds(id);
@@ -1960,11 +1969,53 @@ pub const Runner = struct {
             error.CredentialsNotAnObject => "{\"error\":\"credentials must be a JSON object\"}",
         });
         store.next = r.egress.cfg.credentials;
+        var fba = r.batchFba();
+        const flags = credFlagsPayload(fba.allocator(), id, store.text) catch {
+            pool.release(store);
+            return r.adminReply(idx, 503, busy_body);
+        };
         if (!r.setWorkflowCreds(id, store)) {
             pool.release(store);
             return r.adminReply(idx, 503, "{\"error\":\"too many workflows with credentials\"}");
         }
+        r.keepBatch(&fba);
+        r.queueCredFlags(id, flags);
         r.adminReply(idx, 200, "{\"ok\":true}");
+    }
+
+    /// The payload of a `credential_flags` event for the credentials
+    /// document `text` of a workflow: the id, a newline, the flags. Flags
+    /// over the size of the core give `{}` and a message with the id: node
+    /// code that reads one then fails with the message of the reference.
+    /// The message has no name and no value of a flag.
+    fn credFlagsPayload(a: std.mem.Allocator, id: []const u8, text: []const u8) error{OutOfMemory}![]const u8 {
+        std.debug.assert(id.len > 0 and id.len <= core.max_id);
+        const cred_flags = core_lib.cred_flags;
+        const buf = try a.alloc(u8, id.len + 1 + cred_flags.doc_bytes);
+        @memcpy(buf[0..id.len], id);
+        buf[id.len] = '\n';
+        const room = buf[id.len + 1 ..];
+        const doc: []const u8 = if (creds.flagsDoc(text, room)) |d| (if (cred_flags.valid(d)) d else "") else |_| "";
+        if (doc.len == 0) {
+            std.debug.print("workflow {s}: its credential flags do not fit {d} bytes or have a slot name that is not text; its compiled nodes get none\n", .{ id, cred_flags.doc_bytes });
+            room[0..2].* = "{}".*;
+            return buf[0 .. id.len + 3];
+        }
+        return buf[0 .. id.len + 1 + doc.len];
+    }
+
+    /// Add the `credential_flags` event of a workflow whose credentials
+    /// changed. `payload` is in the batch memory. The event is in the log,
+    /// so it goes out only when there are flags, or when the core can hold
+    /// flags of an older document that must go.
+    fn queueCredFlags(r: *Runner, id: []const u8, payload: []const u8) void {
+        const w = r.findWorkflowCreds(id) orelse return;
+        const some = !std.mem.endsWith(u8, payload, "\n{}");
+        if (!some and !w.has_flags and r.sh.st.cred_flags.find(id) == null) return;
+        w.has_flags = some;
+        // `handleAdmin` keeps room for the events of one request.
+        std.debug.assert(r.events.items.len < r.events.capacity);
+        r.events.appendAssumeCapacity(.{ .kind = .credential_flags, .payload = payload });
     }
 
     fn findWorkflowCreds(r: *Runner, id: []const u8) ?*WfCreds {
