@@ -25,6 +25,16 @@ export const workflowPublishBlockedDetailsSchema = z
 			message: 'workflowReviewRequestId is required when a review blocks publication',
 			path: ['workflowReviewRequestId'],
 		},
+	)
+	// A required review applies to one version, so that reason names it.
+	.refine(
+		(details) =>
+			!(REQUIREMENT_REASONS as readonly string[]).includes(details.reason) ||
+			details.versionId !== undefined,
+		{
+			message: 'versionId is required when publication needs an approved review',
+			path: ['versionId'],
+		},
 	);
 
 export type WorkflowPublishBlockedDetails = z.infer<typeof workflowPublishBlockedDetailsSchema>;

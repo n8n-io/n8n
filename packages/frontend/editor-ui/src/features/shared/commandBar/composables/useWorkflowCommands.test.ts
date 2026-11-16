@@ -318,6 +318,14 @@ describe('useWorkflowCommands', () => {
 				...settingsStore.settings,
 				workflowReviews: { enabled: true, alwaysRequired: true },
 			};
+			mockWorkflowDocumentStore.setHomeProject({
+				id: 'team-project',
+				name: 'team project',
+				type: 'team',
+				icon: null,
+				createdAt: '',
+				updatedAt: '',
+			});
 
 			const { commands } = useWorkflowCommands();
 			const publishCommand = commands.value.find((cmd) => cmd.id === 'publish-workflow');

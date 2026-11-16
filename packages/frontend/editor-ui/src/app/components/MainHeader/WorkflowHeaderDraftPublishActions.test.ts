@@ -228,6 +228,7 @@ describe('WorkflowHeaderDraftPublishActions', () => {
 		settingsStore.settings = {
 			...settingsStore.settings,
 			workflowReviews: { enabled: false },
+			useWorkflowPublicationService: false,
 		};
 		useUsersStore().currentUserId = 'user-1';
 		localStorage.removeItem(LOCAL_STORAGE_WORKFLOW_REVIEW_REQUIRED_BY_WORKFLOW('user-1'));
@@ -252,6 +253,7 @@ describe('WorkflowHeaderDraftPublishActions', () => {
 		workflowDocumentStore.setVersionData({ versionId: 'version-1', name: null, description: null });
 		workflowDocumentStore.setActiveState({ activeVersionId: null, activeVersion: null });
 		workflowDocumentStore.setHomeProject(null);
+		workflowDocumentStore.setPublicationStatus({ status: 'idle' });
 		uiStore.markStateClean();
 		collaborationStore.shouldBeReadOnly = false;
 
