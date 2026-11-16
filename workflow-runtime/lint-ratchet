@@ -1,0 +1,33 @@
+# The known findings of each lint rule: `rule count`. A rule without a line allows none.
+# A count may only go down. Lint fails when a rule has more findings than its line,
+# and also when it has fewer: lower the line in the same change. Never raise a line.
+# List the findings of one rule with: zig build lint -- --rule <name>
+core-allocator 9
+row-pointer 10
+undefined 380
+pointer-cast 26
+local-array 1
+global-var 18
+empty-catch 15
+silent-catch 86
+anyerror 14
+inferred-error 16
+unreachable-comment 75
+optional-unwrap 21
+switch-else 81
+unbounded-loop 24
+fn-length 41
+nesting 26
+fn-assert 144
+discard 129
+core-std 91
+shell-syscall 73
+core-print 62
+map-order 3
+safety-off 17
+pub-unused 80
+test-sleep 2
+test-no-check 1
+embed-file 3
+branch-quota 4
+line-length 3

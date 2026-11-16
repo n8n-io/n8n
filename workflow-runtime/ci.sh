@@ -1,11 +1,53 @@
 #!/usr/bin/env bash
-# The checks from the Zig coding standards, in the order CI runs them.
-set -euo pipefail
+# The checks from the Zig coding standards, in three tiers. Each tier runs
+# the one before it first.
+#
+#   ./ci.sh precommit   fmt, lint, check, the lint's tests, Debug tests
+#   ./ci.sh merge       + safe tests, sim, counts, corpus, fuzz (short), leaks, growth (the default)
+#   ./ci.sh nightly     + 20,000 sim seeds and the long fuzz run
+#
+# Every tier has a time budget (seconds, warm cache). Over budget is a
+# failure: make a check faster, or move it to a slower tier in a reviewed
+# change. Never delete a check. CI_NO_BUDGET=1 turns the budget off while
+# parallel agents share the machine (as SKIP_FUZZ=1 does for fuzzing).
+set -Eeuo pipefail
 # A failed command names itself: some steps fail without output of their own.
 trap 'echo "ci.sh: line $LINENO failed (exit $?): $BASH_COMMAND" >&2' ERR
 cd "$(dirname "$0")"
+tier=${1:-merge}
+case "$tier" in precommit | merge | nightly) ;; *) echo "usage: ci.sh [precommit|merge|nightly]" >&2; exit 2 ;; esac
+found=$(zig version)
+if [ "$found" != 0.17.0 ]; then echo "ci.sh: Zig 0.17.0 is required, found $found" >&2; exit 1; fi
+warm=no
+if [ -d .zig-cache ]; then warm=yes; fi
+started=$(date +%s)
+budget() {
+  local took=$(($(date +%s) - started))
+  echo "[ci] $1 tier: ${took}s of ${2}s budget (warm cache: $warm)"
+  if [ "$warm" = yes ] && [ "${CI_NO_BUDGET:-0}" != 1 ] && [ "$took" -gt "$2" ]; then
+    echo "[ci] the $1 tier is over its time budget" >&2; exit 1
+  fi
+}
+# Prints the time of the step that just ended. With a second argument, the
+# step has a budget of its own (seconds), under the same conditions.
+lap_at=$started
+lap() {
+  local now took
+  now=$(date +%s)
+  took=$((now - lap_at))
+  lap_at=$now
+  echo "[ci] $1: ${took}s${2:+ of ${2}s budget}"
+  if [ -n "${2:-}" ] && [ "$warm" = yes ] && [ "${CI_NO_BUDGET:-0}" != 1 ] && [ "$took" -gt "$2" ]; then
+    echo "[ci] the step '$1' is over its time budget" >&2; exit 1
+  fi
+}
+if [ "$tier" = nightly ]; then SIM_SEEDS=${SIM_SEEDS:-20000}; fi
+
+# Gate: the cheapest checks first.
 zig fmt --check .
-zig build check
+lap "format"
+zig build lint check
+lap "lint + check"
 # Linux cross-compiles: with the net code (epoll, c-ares and OpenSSL
 # callers; `check` compiles without linking), and without it.
 # On Linux the native check already covers this, and an explicit target
@@ -14,16 +56,31 @@ if [ "$(uname -s)" != Linux ]; then
   zig build check -Dtarget=x86_64-linux-gnu
   zig build check -Dtarget=x86_64-linux-gnu -Dnet=false
 fi
+lap "check for Linux"
 # Debug tests run outside the build runner, so a test binary that dies
 # names its last test and its signal (bench/run-tests.sh).
+zig build test-lint
+lap "lint tests"
 zig build install-tests
+lap "build Debug tests"
 bench/run-tests.sh
+lap "Debug tests"
+budget precommit "${PRECOMMIT_BUDGET:-60}"
+if [ "$tier" = precommit ]; then exit 0; fi
+
+# Merge tier.
 zig build install-tests-safe
+lap "build safe tests"
 bench/run-tests.sh zig-out/bin/safe
+lap "safe tests"
 zig build -Drelease=true
+lap "release build"
 ./zig-out/bin/wfrt sim --seeds "${SIM_SEEDS:-1000}"
+lap "sim"
 ./zig-out/bin/wfrt bench-counts
+lap "bench-counts"
 if [ -d ../packages/@n8n/workflow-lang/corpus ]; then ./zig-out/bin/wfrt corpus ../packages/@n8n/workflow-lang/corpus; fi
+lap "corpus"
 # Compiled library code (src/core/aot.zig): a warning, not a failure, when a
 # node source changed after the last `wfrt aot-gen` (docs/aot-design.md).
 if command -v node > /dev/null && [ -d ../packages/@n8n/workflow-lang/node_modules ]; then
@@ -36,6 +93,7 @@ if command -v node > /dev/null && [ -d ../packages/@n8n/workflow-lang/node_modul
   fi
   rm -rf "$AOT"
 fi
+lap "aot check"
 
 # Fuzz targets: every one, a fixed number of runs each (bench/fuzz-ci.sh;
 # bench/fuzz-long.sh runs them for minutes). One `zig build fuzz` fuzzes
@@ -48,6 +106,7 @@ if [[ "${SKIP_FUZZ:-0}" == 1 ]]; then
 else
 	RUNS="${FUZZ_RUNS:-3K}" PAR="${FUZZ_PAR:-8}" bench/fuzz-ci.sh
 fi
+lap "fuzz (short)"
 
 # Leaks: a Debug `serve` loads a workflow, answers a webhook, takes
 # credentials, then stops on SIGTERM. The process allocator reports any
@@ -95,9 +154,11 @@ if grep -q "leaked" "$LEAK/out.txt" || ! grep -q "wfrt stopping" "$LEAK/out.txt"
 fi
 rm -rf "$LEAK"
 echo "serve shutdown: no leaks"
+lap "leak check"
 
 # Growth: after startup a shard's memory must not grow, whatever the load.
 bench/growth-test.sh ./zig-out/debug/bin/wfrt
+lap "growth check"
 
 # Rules. ripgrep when it is there, else grep.
 search() {
@@ -119,3 +180,9 @@ fi
 if search 'r\.gpa\.(alloc|create|dupe|realloc)|toOwnedSlice\(r\.gpa|sh\.gpa\.(alloc|dupe|create)' src/shell/server.zig; then
   echo "allocation from the shard allocator in server.zig: use a pool reserved at startup" >&2; exit 1
 fi
+lap "rules"
+
+if [ "$tier" = merge ]; then budget merge "${MERGE_BUDGET:-900}"; exit 0; fi
+
+# Nightly tier: the long fuzz run of every target.
+if [[ "${SKIP_FUZZ:-0}" != 1 ]]; then bench/fuzz-long.sh; fi

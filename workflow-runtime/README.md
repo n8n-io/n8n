@@ -24,13 +24,16 @@ from `$HOMEBREW_PREFIX/opt`. On Linux: `libssl-dev` and `libc-ares-dev`.
 | `bench/egress-load.sh` | W3 at vendor latency (100 ms, 300 ms) with 1,000 to 30,000 requests in flight, over HTTP/1.1, h2c, and TLS with and without h2. Prints the rate, CPU time per request and peak RSS. |
 | `bench/gym-test.sh` | Integration test of `--gym-env` and `--ca-file` against the real ai-gym (`../ai-gym`). Needs Go and Node.js; skips without them. |
 | `bench/admin-test.sh` | Integration test of the admin API and event stream: load, replace and unload workflows, manual runs with trace, webhooks, approvals, per-workflow credentials, restart. Needs Node.js. |
-| `ci.sh` | The checks from the Zig coding standards. |
+| `ci.sh` | The checks from the Zig coding standards, in tiers: `precommit`, `merge` (default), `nightly`. |
+| `tools/` | The lint tool. `lint-rules` names its rules, `lint-ratchet` holds the known findings. |
 
 ## Commands
 
 ```bash
 zig build -Drelease=true                       # ReleaseSafe build
-./ci.sh                                        # fmt, tests, sim, counts, corpus, rules
+./ci.sh precommit                              # fmt, lint, check, Debug tests (before each commit)
+./ci.sh                                        # the merge tier: + safe tests, sim, counts, corpus, fuzz, leaks, rules
+zig build lint -- --rule undefined             # the known findings of one lint rule (docs/zig-standards.md)
 ./zig-out/bin/wfrt corpus ../packages/@n8n/workflow-lang/corpus
 ./zig-out/bin/wfrt run module.wfm fixture.json # one differential run
 ./zig-out/bin/wfrt sim --seeds 10000 --crash 30

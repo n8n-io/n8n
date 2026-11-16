@@ -41,6 +41,19 @@ pub fn build(b: *std.Build) void {
     const check = b.step("check", "Compile without producing a binary");
     check.dependOn(&b.addExecutable(.{ .name = "wfrt-check", .root_module = exe_mod }).step);
 
+    // lint: every rule a machine can check (tools/lint.zig, docs/zig-standards.md).
+    // It fails on a finding that `lint-ratchet` does not allow.
+    const lint_mod = b.createModule(.{ .root_source_file = b.path("tools/lint.zig"), .target = b.graph.host, .optimize = .ReleaseSafe });
+    check.dependOn(&b.addExecutable(.{ .name = "lint-check", .root_module = lint_mod }).step);
+    const lint = b.addRunArtifact(b.addExecutable(.{ .name = "lint", .root_module = lint_mod }));
+    lint.setCwd(b.path("."));
+    lint.has_side_effects = true;
+    lint.addPassthruArgs(); // `zig build lint -- --rule undefined`
+    b.step("lint", "Check the lint rules against lint-ratchet").dependOn(&lint.step);
+    // The lint's own tests: every rule's failing and passing sample.
+    const lint_test_mod = b.createModule(.{ .root_source_file = b.path("tools/lint.zig"), .target = b.graph.host, .optimize = .Debug });
+    b.step("test-lint", "Tests of the lint tool").dependOn(&b.addRunArtifact(b.addTest(.{ .root_module = lint_test_mod })).step);
+
     const run_cmd = b.addRunArtifact(exe);
     run_cmd.step.dependOn(b.getInstallStep());
     run_cmd.addPassthruArgs();
