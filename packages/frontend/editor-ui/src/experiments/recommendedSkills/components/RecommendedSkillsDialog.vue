@@ -24,7 +24,7 @@ function onSelect(recommended: { id: RecommendedSkillId; skill: AgentSkill }) {
 <template>
 	<N8nDialog
 		v-model:open="open"
-		size="xlarge"
+		size="2xlarge"
 		:header="i18n.baseText('experiments.recommendedSkills.dialog.title')"
 		data-test-id="recommended-skills-dialog"
 	>
