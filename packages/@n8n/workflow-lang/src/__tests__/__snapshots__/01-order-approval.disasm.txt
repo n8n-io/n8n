@@ -1,4 +1,4 @@
-; hash 18eae7d6856518e2f2e6ad687514ffe7d7cda7745e0e7b7cb41053fe45bfb492
+; hash be6defa55c6e1f9e22a6beec6bfc9572b25d94ba9b3f2d33da0187fcc71fcb53
 ; native true
 ; meta {"compilerVersion":"0.1.0","sourceHash":"da1dcff2980b05d21c81d5a2e61d4b11d5e1921b73aeb9b64f2b229d536a7f73","triggers":[{"kind":"webhook","path":"orders","method":"POST"}],"credentials":{"payments":{"type":"httpHeaderAuth"}},"durability":"full","triggerHeaders":false}
 
@@ -18,166 +18,152 @@ paths:
   body.orderId
 
 fn0 run params=1 regs=18 caps=0 async
-  try [92, 132) -> @134 catch r8
-     0  LOADUNDEF r9
-     1  GETPROP r1, r0, "body"
-     2  LOADUNDEF r9
-     3  NEWARR r2
-     4  LOADUNDEF r9
-     5  LOADI r3, 0
-     6  GETPROP r9, r1, "items"
-     7  LOADI r10, 0
-     8  GETPROP r11, r9, "length"
-     9  LT r11, r10, r11
-    10  JF r11, @45
-    11  GETELEM r12, r9, r10
-    12  MOV r4, r12
-    13  LOADUNDEF r11
-    14  NEWOBJ r12
-    15  LOADS r13, "Check stock"
-    16  SETPROP r12, "name", r13
-    17  LOADS r13, "GET"
-    18  SETPROP r12, "method", r13
-    19  LOADS r15, "https://inventory.example.com/stock/"
-    20  MOV r14, r15
-    21  GETPROP r17, r4, "sku"
-    22  TOSTR r16, r17
-    23  ADD r14, r14, r16
-    24  MOV r13, r14
-    25  SETPROP r12, "url", r13
-    26  LOADI r13, 0
-    27  SUSPEND r5, http, step r13, args r12
+  try [80, 119) -> @121 catch r8
+     0  GETPROP r1, r0, "body"
+     1  NEWARR r2
+     2  LOADI r3, 0
+     3  GETPROP r9, r1, "items"
+     4  LOADI r10, 0
+     5  GETPROP r11, r9, "length"
+     6  LT r11, r10, r11
+     7  JF r11, @36
+     8  GETELEM r4, r9, r10
+     9  NEWOBJ r12
+    10  LOADS r13, "Check stock"
+    11  SETPROP r12, "name", r13
+    12  LOADS r13, "GET"
+    13  SETPROP r12, "method", r13
+    14  LOADS r14, "https://inventory.example.com/stock/"
+    15  GETPROP r17, r4, "sku"
+    16  TOSTR r16, r17
+    17  ADD r13, r14, r16
+    18  SETPROP r12, "url", r13
+    19  LOADI r13, 0
+    20  SUSPEND r5, http, step r13, args r12
         ; resume step=0 live { r1=order: Order, r2=short: string[], r3=total: number, r4=item: OrderItem, r9=$iter: unknown, r10=$index: number }
-    28  GETPROP r13, r5, "body"
-    29  GETPROP r12, r13, "available"
-    30  GETPROP r13, r4, "qty"
-    31  LT r11, r12, r13
-    32  JF r11, @36
-    33  MOV r12, r2
-    34  GETPROP r13, r4, "sku"
-    35  CALLM r11, "push", r12..+1
-    36  MOV r12, r3
-    37  GETPROP r14, r4, "qty"
-    38  GETPROP r15, r4, "price"
-    39  MUL r13, r14, r15
-    40  ADD r11, r12, r13
-    41  MOV r3, r11
-    42  LOADI r11, 1
-    43  ADD r10, r10, r11
-    44  JMP @8
-    45  GETPROP r10, r2, "length"
-    46  LOADI r11, 0
-    47  GT r9, r10, r11
-    48  JF r9, @92
-    49  LOADUNDEF r9
-    50  NEWOBJ r10
-    51  LOADS r11, "Approve short order"
-    52  SETPROP r10, "name", r11
-    53  LOADS r13, "Order "
-    54  MOV r12, r13
-    55  GETPROP r15, r1, "orderId"
-    56  TOSTR r14, r15
-    57  ADD r12, r12, r14
-    58  LOADS r14, " is short on "
-    59  ADD r12, r12, r14
-    60  MOV r16, r2
-    61  LOADS r17, ", "
-    62  CALLM r15, "join", r16..+1
-    63  TOSTR r14, r15
-    64  ADD r12, r12, r14
-    65  MOV r11, r12
-    66  SETPROP r10, "message", r11
-    67  LOADS r11, "slack"
-    68  SETPROP r10, "via", r11
-    69  LOADI r11, 1
-    70  SUSPEND r6, approval, step r11, args r10
+    21  GETPROP r13, r5, "body"
+    22  GETPROP r12, r13, "available"
+    23  GETPROP r13, r4, "qty"
+    24  LT r11, r12, r13
+    25  JF r11, @29
+    26  MOV r12, r2
+    27  GETPROP r13, r4, "sku"
+    28  CALLM r11, "push", r12..+1
+    29  GETPROP r14, r4, "qty"
+    30  GETPROP r15, r4, "price"
+    31  MUL r13, r14, r15
+    32  ADD r3, r3, r13
+    33  LOADI r11, 1
+    34  ADD r10, r10, r11
+    35  JMP @5
+    36  GETPROP r10, r2, "length"
+    37  LOADI r11, 0
+    38  GT r9, r10, r11
+    39  JF r9, @80
+    40  NEWOBJ r10
+    41  LOADS r11, "Approve short order"
+    42  SETPROP r10, "name", r11
+    43  LOADS r12, "Order "
+    44  GETPROP r15, r1, "orderId"
+    45  TOSTR r14, r15
+    46  ADD r12, r12, r14
+    47  LOADS r14, " is short on "
+    48  ADD r12, r12, r14
+    49  MOV r16, r2
+    50  LOADS r17, ", "
+    51  CALLM r15, "join", r16..+1
+    52  TOSTR r14, r15
+    53  ADD r11, r12, r14
+    54  SETPROP r10, "message", r11
+    55  LOADS r11, "slack"
+    56  SETPROP r10, "via", r11
+    57  LOADI r11, 1
+    58  SUSPEND r6, approval, step r11, args r10
         ; resume step=1 live { r1=order: Order, r2=short: string[], r3=total: number }
-    71  GETPROP r10, r6, "approved"
-    72  NOT r9, r10
-    73  JF r9, @92
-    74  NEWOBJ r10
-    75  LOADS r11, "Reject"
-    76  SETPROP r10, "name", r11
-    77  LOADI r11, 409
-    78  SETPROP r10, "status", r11
-    79  NEWOBJ r11
-    80  GETPROP r12, r1, "orderId"
-    81  SETPROP r11, "orderId", r12
-    82  SETPROP r11, "short", r2
-    83  SETPROP r10, "body", r11
-    84  LOADI r11, 2
-    85  SUSPEND r9, respond, step r11, args r10
+    59  GETPROP r10, r6, "approved"
+    60  NOT r9, r10
+    61  JF r9, @80
+    62  NEWOBJ r10
+    63  LOADS r11, "Reject"
+    64  SETPROP r10, "name", r11
+    65  LOADI r11, 409
+    66  SETPROP r10, "status", r11
+    67  NEWOBJ r11
+    68  GETPROP r12, r1, "orderId"
+    69  SETPROP r11, "orderId", r12
+    70  SETPROP r11, "short", r2
+    71  SETPROP r10, "body", r11
+    72  LOADI r11, 2
+    73  SUSPEND r9, respond, step r11, args r10
         ; resume step=2 live { r6=decision: import("/sdk/index").ApprovalResult }
-    86  NEWOBJ r9
-    87  LOADS r10, "rejected"
-    88  SETPROP r9, "status", r10
-    89  GETPROP r10, r6, "by"
-    90  SETPROP r9, "by", r10
-    91  RET r9
-    92  LOADUNDEF r9
-    93  NEWOBJ r10
-    94  LOADS r11, "Charge"
-    95  SETPROP r10, "name", r11
-    96  LOADS r11, "POST"
-    97  SETPROP r10, "method", r11
-    98  LOADS r11, "https://payments.example.com/charges"
-    99  SETPROP r10, "url", r11
-   100  NEWOBJ r11
-   101  GETPROP r13, r1, "customer"
-   102  GETPROP r12, r13, "id"
-   103  SETPROP r11, "customer", r12
-   104  LOADI r14, 100
-   105  MUL r13, r3, r14
-   106  CALLN r12, "Math.round", r13..+1
-   107  SETPROP r11, "amount", r12
-   108  SETPROP r10, "body", r11
-   109  LOADS r11, "payments"
-   110  SETPROP r10, "credential", r11
-   111  LOADI r11, 3
-   112  SUSPEND r7, http, step r11, args r10
+    74  NEWOBJ r9
+    75  LOADS r10, "rejected"
+    76  SETPROP r9, "status", r10
+    77  GETPROP r10, r6, "by"
+    78  SETPROP r9, "by", r10
+    79  RET r9
+    80  NEWOBJ r10
+    81  LOADS r11, "Charge"
+    82  SETPROP r10, "name", r11
+    83  LOADS r11, "POST"
+    84  SETPROP r10, "method", r11
+    85  LOADS r11, "https://payments.example.com/charges"
+    86  SETPROP r10, "url", r11
+    87  NEWOBJ r11
+    88  GETPROP r13, r1, "customer"
+    89  GETPROP r12, r13, "id"
+    90  SETPROP r11, "customer", r12
+    91  LOADI r14, 100
+    92  MUL r13, r3, r14
+    93  CALLN r12, "Math.round", r13..+1
+    94  SETPROP r11, "amount", r12
+    95  SETPROP r10, "body", r11
+    96  LOADS r11, "payments"
+    97  SETPROP r10, "credential", r11
+    98  LOADI r11, 3
+    99  SUSPEND r7, http, step r11, args r10
         ; resume step=3 live { r1=order: Order, r3=total: number }
-   113  NEWOBJ r10
-   114  LOADS r11, "Confirm"
-   115  SETPROP r10, "name", r11
-   116  NEWOBJ r11
-   117  GETPROP r12, r1, "orderId"
-   118  SETPROP r11, "orderId", r12
-   119  GETPROP r13, r7, "body"
-   120  GETPROP r12, r13, "id"
-   121  SETPROP r11, "chargeId", r12
-   122  SETPROP r10, "body", r11
-   123  LOADI r11, 4
-   124  SUSPEND r9, respond, step r11, args r10
+   100  NEWOBJ r10
+   101  LOADS r11, "Confirm"
+   102  SETPROP r10, "name", r11
+   103  NEWOBJ r11
+   104  GETPROP r12, r1, "orderId"
+   105  SETPROP r11, "orderId", r12
+   106  GETPROP r13, r7, "body"
+   107  GETPROP r12, r13, "id"
+   108  SETPROP r11, "chargeId", r12
+   109  SETPROP r10, "body", r11
+   110  LOADI r11, 4
+   111  SUSPEND r9, respond, step r11, args r10
         ; resume step=4 live { r3=total: number, r7=charge: import("/sdk/index").HttpResponse<{ id: string; }> }
-   125  NEWOBJ r9
-   126  LOADS r10, "charged"
-   127  SETPROP r9, "status", r10
-   128  SETPROP r9, "total", r3
-   129  GETPROP r11, r7, "body"
-   130  GETPROP r10, r11, "id"
-   131  SETPROP r9, "chargeId", r10
-   132  RET r9
-   133  JMP @154
-   134  NEWOBJ r10
-   135  LOADS r11, "Payment failed"
-   136  SETPROP r10, "name", r11
-   137  LOADI r11, 402
-   138  SETPROP r10, "status", r11
-   139  NEWOBJ r11
-   140  GETPROP r12, r8, "message"
-   141  SETPROP r11, "error", r12
-   142  SETPROP r10, "body", r11
-   143  LOADI r11, 5
-   144  SUSPEND r9, respond, step r11, args r10
+   112  NEWOBJ r9
+   113  LOADS r10, "charged"
+   114  SETPROP r9, "status", r10
+   115  SETPROP r9, "total", r3
+   116  GETPROP r11, r7, "body"
+   117  GETPROP r10, r11, "id"
+   118  SETPROP r9, "chargeId", r10
+   119  RET r9
+   120  JMP @140
+   121  NEWOBJ r10
+   122  LOADS r11, "Payment failed"
+   123  SETPROP r10, "name", r11
+   124  LOADI r11, 402
+   125  SETPROP r10, "status", r11
+   126  NEWOBJ r11
+   127  GETPROP r12, r8, "message"
+   128  SETPROP r11, "error", r12
+   129  SETPROP r10, "body", r11
+   130  LOADI r11, 5
+   131  SUSPEND r9, respond, step r11, args r10
         ; resume step=5 live { r8=e: any }
-   145  NEWOBJ r9
-   146  LOADS r10, "failed"
-   147  SETPROP r9, "status", r10
-   148  GETPROP r10, r8, "message"
-   149  SETPROP r9, "error", r10
-   150  GETPROP r10, r8, "step"
-   151  SETPROP r9, "step", r10
-   152  RET r9
-   153  JMP @154
-   154  LOADUNDEF r9
-   155  RET r9
+   132  NEWOBJ r9
+   133  LOADS r10, "failed"
+   134  SETPROP r9, "status", r10
+   135  GETPROP r10, r8, "message"
+   136  SETPROP r9, "error", r10
+   137  GETPROP r10, r8, "step"
+   138  SETPROP r9, "step", r10
+   139  RET r9
+   140  LOADUNDEF r9
+   141  RET r9

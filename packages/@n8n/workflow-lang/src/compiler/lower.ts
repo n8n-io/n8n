@@ -18,6 +18,7 @@ import {
 import type { Label, Region } from './emitter.ts';
 import { FunctionBuilder, liveRegisters } from './emitter.ts';
 import { liveOut } from './liveness.ts';
+import { optimise } from './optimise.ts';
 import type { FunctionEntry, StepEntry, SuspendEntry } from './module.ts';
 import {
 	DATE_SETTERS,
@@ -212,6 +213,9 @@ export class Linker {
 	/** Writes the callbacks of `map` and the like as loops (`inlinePrelude`), and inlines small helpers. */
 	readonly inlineCallbacks: boolean;
 
+	/** Runs the bytecode optimiser on each function (`optimise.ts`). */
+	readonly optimise: boolean;
+
 	private readonly helperSize = new Map<ts.FunctionDeclaration, boolean>();
 
 	/**
@@ -259,9 +263,11 @@ export class Linker {
 		run: ts.FunctionLikeDeclaration,
 		unlinked: ReadonlySet<ts.Node> = new Set(),
 		inlineCallbacks = true,
+		optimise = true,
 	) {
 		this.unlinked = unlinked;
 		this.inlineCallbacks = inlineCallbacks;
+		this.optimise = optimise;
 		this.wp = wp;
 		this.run = run;
 		this.checker = wp.checker;
@@ -742,18 +748,28 @@ class FnLowering {
 			}
 		}
 
-		const tries = fb.finish();
+		const capsOf = (fi: number) => this.linker.functions[fi]?.ncaps ?? 0;
+		const nregs = Math.max(fb.maxRegs, 1);
+		const emitted = {
+			code: fb.code,
+			ranges: fb.ranges,
+			tries: fb.finish(),
+			suspendPcs: fb.suspends.map((site) => site.pc),
+		};
+		const { code, ranges, tries, suspendPcs } = this.linker.optimise
+			? optimise(emitted, { nparams, nregs, capsOf })
+			: emitted;
 		const entry: FunctionEntry = {
 			name: this.functionName(),
 			nparams,
-			nregs: Math.max(fb.maxRegs, 1),
+			nregs,
 			ncaps: this.captures.length,
 			async:
 				this.role === 'run' ||
 				this.role === 'node' ||
 				this.role === 'element' ||
 				isAsyncFunction(n),
-			code: fb.code,
+			code,
 			tries,
 		};
 		this.pool.str(entry.name);
@@ -761,21 +777,21 @@ class FnLowering {
 
 		// Resume signatures.
 		if (fb.suspends.length > 0) {
-			const capsOf = (fi: number) => this.linker.functions[fi]?.ncaps ?? 0;
-			const live = liveOut(fb.code, tries, capsOf);
-			for (const site of fb.suspends) {
-				const resultReg = fb.code[site.pc].a;
-				const regs = liveRegisters(site, live[site.pc], resultReg);
+			const live = liveOut(code, tries, capsOf);
+			fb.suspends.forEach((site, i) => {
+				const pc = suspendPcs[i];
+				const resultReg = code[pc].a;
+				const regs = liveRegisters(site, live[pc], resultReg);
 				for (const r of regs) {
 					this.pool.str(r.name);
 					this.pool.str(r.type);
 				}
-				this.linker.suspends.push({ func: index, pc: site.pc, step: site.step, live: regs });
-			}
+				this.linker.suspends.push({ func: index, pc, step: site.step, live: regs });
+			});
 		}
 		// Source map.
 		const entries: Array<{ pc: number; start: number; end: number }> = [];
-		fb.ranges.forEach(([start, end], pc) => {
+		ranges.forEach(([start, end], pc) => {
 			const last = entries[entries.length - 1];
 			if (!last || last.start !== start || last.end !== end) entries.push({ pc, start, end });
 		});

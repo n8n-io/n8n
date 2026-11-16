@@ -98,7 +98,8 @@ function successors(code: Instr[], pc: number): number[] {
 /**
  * Computes the registers that are live after each instruction. Each
  * instruction in a try region also flows to the handler of the innermost
- * region, without the catch register.
+ * region, without the catch register: the registers that the handler reads
+ * are live before and after the instruction.
  */
 export function liveOut(
 	code: Instr[],
@@ -119,11 +120,19 @@ export function liveOut(
 		for (let pc = n - 1; pc >= 0; pc--) {
 			const o = new Set<number>();
 			for (const s of succ[pc]) for (const r of liveIn[s] ?? []) o.add(r);
-			const t = handlerOf[pc];
-			if (t) for (const r of liveIn[t.handler] ?? []) if (r !== t.catchReg) o.add(r);
 			const i = new Set(o);
 			for (const d of use[pc].defs) i.delete(d);
 			for (const u of use[pc].uses) i.add(u);
+			// An instruction can throw before it writes its result, so what the
+			// handler reads is live before the instruction too.
+			const t = handlerOf[pc];
+			if (t) {
+				for (const r of liveIn[t.handler] ?? []) {
+					if (r === t.catchReg) continue;
+					o.add(r);
+					i.add(r);
+				}
+			}
 			if (i.size !== liveIn[pc].size || o.size !== out[pc].size) changed = true;
 			else for (const r of i) if (!liveIn[pc].has(r)) changed = true;
 			liveIn[pc] = i;

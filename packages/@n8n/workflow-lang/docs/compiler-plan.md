@@ -440,6 +440,25 @@ The Zig interpreter needs no change. The gate is the cost ratchet (`--check-cost
 reference runner and the bytecode in the existing tests, and the fuzz of the runtime. Item 3 needs one new
 test: a register that a loop body reads before it writes must still get its `LOADUNDEF`.
 
+**Status: done in `src/compiler/optimise.ts`**, a pass over each function after lowering. Differences from
+the proposal:
+
+- Item 2 has no change in the lowering. Copy propagation and the rule `OP t; MOV l, t` -> `OP l` give the
+  same result.
+- Item 3 uses data flow, not "not in a loop": a `LOADUNDEF` goes when the register is undefined on every
+  path. The analysis forgets all at `CALL`, `SUSPEND`, `FORK` and `JOIN`.
+- Item 4 does not trust the type. `TONUM` goes only when data flow proves that the operand is a number.
+- No pass changes or removes `SUSPEND`, `FORK` or `JOIN`, and no copy crosses one. The named live registers
+  of each resume point stay the same.
+- `liveness.ts` had an error that the new code made reachable: a register that a handler reads was not live
+  before an instruction of the try region that writes it. It is live now.
+- The AOT table of the runtime finds a function by a hash of its code (`aot.zig` `hashFunc`). New code has a
+  new hash, so `aot_gen.zig` must be made again (`scripts/aot-modules.ts`, then `wfrt aot-gen`). Until then
+  the functions run in the interpreter.
+- A module hash changes with the code. A parked execution holds the frames and the pcs of the module that
+  started it, and its snapshot records that module hash (`core.zig` `SnapHeader`). It can resume only in
+  that module. A publish of the new module is a new version.
+
 ## Phases
 
 | Phase | Work | Done when |
