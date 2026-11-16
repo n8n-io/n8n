@@ -13,11 +13,16 @@ import { useI18n } from '@n8n/i18n';
 import { onMounted } from 'vue';
 import { useRouter } from 'vue-router';
 
-import { INSTANCE_POLICY_VIEW } from '../type-availability-policies.constants';
+import { usePolicyAdminAccess } from '../composables/usePolicyAdminAccess';
+import {
+	INSTANCE_POLICY_VIEW,
+	POLICIES_LANDING_VIEW,
+} from '../type-availability-policies.constants';
 
 const i18n = useI18n();
 const router = useRouter();
 const documentTitle = useDocumentTitle();
+const { entryRouteName } = usePolicyAdminAccess();
 
 function onBack() {
 	void router.push({ name: VIEWS.SECURITY_SETTINGS });
@@ -28,6 +33,11 @@ function openInstancePolicy() {
 }
 
 onMounted(() => {
+	// The Policies row skips this page for some users, and a direct link must skip it too.
+	if (entryRouteName.value !== POLICIES_LANDING_VIEW) {
+		void router.replace({ name: entryRouteName.value });
+		return;
+	}
 	documentTitle.set(i18n.baseText('typeAvailabilityPolicies.landing.title'));
 });
 </script>
