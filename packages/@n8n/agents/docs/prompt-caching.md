@@ -317,7 +317,8 @@ these two options only influence routing and retention.
   `gpt-5.1`; on `gpt-5.5` and later, `'24h'` is the only supported value.
   Pass `'in_memory'` explicitly to opt back into the short-lived default.
   GPT-6 and later do not accept the option. For them n8n sends no retention
-  unless it is set explicitly, and assumes the in-memory default.
+  unless it is set explicitly, and assumes the 30 minute minimum lifetime that
+  OpenAI documents for GPT-5.6 and later.
 
 ## Reading cache usage and cost
 

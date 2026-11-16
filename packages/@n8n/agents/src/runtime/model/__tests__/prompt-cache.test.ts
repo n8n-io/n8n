@@ -546,8 +546,8 @@ describe('getPromptCacheRetentionMs', () => {
 		).toBe(HOUR);
 	});
 
-	it('assumes the in-memory default for GPT-6 and later, which take no retention', () => {
-		expect(getPromptCacheRetentionMs({ enabled: true }, 'openai/gpt-6.1-sol')).toBe(HOUR);
+	it('assumes the 30 minute minimum lifetime for GPT-6 and later, which take no retention', () => {
+		expect(getPromptCacheRetentionMs({ enabled: true }, 'openai/gpt-6.1-sol')).toBe(30 * 60_000);
 		expect(getPromptCacheRetentionMs({ enabled: true }, 'openai/gpt-5.6-luna')).toBe(24 * HOUR);
 		expect(
 			getPromptCacheRetentionMs(
