@@ -1331,7 +1331,11 @@ export class InstanceAiAdapterService {
 				if (requested.folderId !== undefined && requested.folderId !== '') {
 					try {
 						add(
-							await folderRepository.findOneOrFailFolderInProject(requested.folderId, projectId),
+							await folderRepository.findOneOrFailFolderInProject(
+								requested.folderId,
+								projectId,
+								'workflow',
+							),
 							projectId,
 						);
 					} catch {
