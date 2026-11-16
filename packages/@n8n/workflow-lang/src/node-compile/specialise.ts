@@ -1474,6 +1474,27 @@ class Specialiser {
 
 		const objects = new Map<string, Map<string, Literal>>();
 		const fieldTexts = new Map<string, ts.Expression>();
+		const plainValue = (e: ts.Expression) =>
+			isPure(e) ||
+			isCredentialMarker(e) ||
+			(ts.isIdentifier(e) && e.text.startsWith(CREDENTIAL_PREFIX));
+		const reads = new Map<string, number>();
+		const impureWrites = new Set<string>();
+		const noteReads = (n: ts.Node) => {
+			if (ts.isIdentifier(n) && isValueUse(n)) {
+				const p = n.parent;
+				const stored =
+					ts.isBinaryExpression(p) &&
+					p.left === n &&
+					p.operatorToken.kind === ts.SyntaxKind.EqualsToken &&
+					ts.isExpressionStatement(p.parent);
+				if (!stored) reads.set(n.text, (reads.get(n.text) ?? 0) + 1);
+				else if (!plainValue(p.right)) impureWrites.add(n.text);
+			}
+			ts.forEachChild(n, noteReads);
+		};
+		noteReads(root);
+		const dead = new Set<string>();
 		const scan = (n: ts.Node) => {
 			if (
 				ts.isVariableDeclaration(n) &&
@@ -1488,6 +1509,14 @@ class Specialiser {
 					ts.isVariableDeclarationList(list) &&
 					(!ts.isVariableStatement(list.parent) || list.parent === root);
 				const lit = literalOf(n.initializer);
+				if (
+					!inLoopHead &&
+					!reads.get(n.name.text) &&
+					!impureWrites.has(n.name.text) &&
+					plainValue(n.initializer)
+				) {
+					dead.add(n.name.text);
+				}
 				if (inLoopHead) {
 				} else if (
 					ts.isIdentifier(n.initializer) &&
@@ -1528,6 +1557,24 @@ class Specialiser {
 			ts.forEachChild(n, scan);
 		};
 		scan(root);
+		const bare = (n: ts.Node) => {
+			if (
+				ts.isVariableDeclaration(n) &&
+				ts.isIdentifier(n.name) &&
+				!n.initializer &&
+				counts.get(n.name.text) === 1
+			) {
+				const list = n.parent;
+				const statement =
+					ts.isVariableDeclarationList(list) &&
+					ts.isVariableStatement(list.parent) &&
+					list.parent !== root;
+				if (statement && !reads.get(n.name.text) && !impureWrites.has(n.name.text))
+					dead.add(n.name.text);
+			}
+			ts.forEachChild(n, bare);
+		};
+		bare(root);
 		const readsOnly = (n: ts.Node) => {
 			if (ts.isIdentifier(n) && objects.has(n.text) && isValueUse(n)) {
 				const p = n.parent;
@@ -1550,7 +1597,15 @@ class Specialiser {
 			ts.forEachChild(n, readsOnly);
 		};
 		readsOnly(root);
-		if (constants.size + credentials.size + unused.size + objects.size + fieldTexts.size === 0)
+		if (
+			constants.size +
+				credentials.size +
+				unused.size +
+				objects.size +
+				fieldTexts.size +
+				dead.size ===
+			0
+		)
 			return root;
 		this.changed = true;
 		const visit = (n: ts.Node): ts.Node | undefined => {
@@ -1562,7 +1617,8 @@ class Specialiser {
 						!credentials.has(name) &&
 						!unused.has(name) &&
 						!objects.has(name) &&
-						!fieldTexts.has(name)
+						!fieldTexts.has(name) &&
+						!dead.has(name)
 					);
 				});
 				if (kept.length === 0) return undefined;
@@ -1625,6 +1681,15 @@ class Specialiser {
 				objects.has(n.expression.text)
 			) {
 				return expressionOf(objects.get(n.expression.text)?.get(n.name.text));
+			}
+			if (
+				ts.isExpressionStatement(n) &&
+				ts.isBinaryExpression(n.expression) &&
+				n.expression.operatorToken.kind === ts.SyntaxKind.EqualsToken &&
+				ts.isIdentifier(n.expression.left) &&
+				dead.has(n.expression.left.text)
+			) {
+				return f.createEmptyStatement();
 			}
 			if (ts.isShorthandPropertyAssignment(n) && constants.has(n.name.text)) {
 				return f.createPropertyAssignment(n.name.text, expressionOf(constants.get(n.name.text)));
