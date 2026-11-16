@@ -93,6 +93,18 @@ export const CONTINUE_MODES: ErrorMode[] = ['continueRegularOutput', 'continueEr
 
 export const ERROR_ITEMS_BY_POSITION = '@errorItems=position';
 
+export const CALL_FOR_EACH_ITEM = '@items=each';
+
+export function agreesForEachItem(
+	sources: NodeSources,
+	type: string,
+	version: number,
+	compiled: CompiledNode,
+): boolean {
+	const names = (sources.verified ?? VERIFIED)[verifiedKey(type, version, compiled.resolved)];
+	return names?.includes(CALL_FOR_EACH_ITEM) === true;
+}
+
 export function errorItemsByPosition(
 	sources: NodeSources,
 	type: string,

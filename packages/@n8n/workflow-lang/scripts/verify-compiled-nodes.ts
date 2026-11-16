@@ -33,6 +33,7 @@ import type { ErrorMode, NodeSources } from '../src/node-compile/convert.ts';
 import { evaluateInSandbox } from '../src/node-compile/evaluate-node.ts';
 import {
 	CONTINUE_MODES,
+	CALL_FOR_EACH_ITEM,
 	ERROR_ITEMS_BY_POSITION,
 	errorModeCondition,
 	verifiedKey,
@@ -354,6 +355,9 @@ const checking = { cache: CACHE };
 const verified: Record<string, string[]> = {};
 const reasons: Record<string, number> = {};
 const modeReasons: Record<string, number> = {};
+const manyItems: Record<string, number> = {};
+const manyItemReasons: Record<string, number> = {};
+const threeItemCost = { operations: 0, once: 0, each: 0 };
 const alone: Record<string, number> = {};
 const weighted: Record<string, number> = {};
 let tried = 0;
@@ -367,6 +371,9 @@ interface NodeResult {
 	verified: Record<string, string[]>;
 	reasons: Record<string, number>;
 	modeReasons?: Record<string, number>;
+	manyItems?: Record<string, number>;
+	manyItemReasons?: Record<string, number>;
+	threeItemCost?: { operations: number; once: number; each: number };
 	alone?: Record<string, number>;
 	weighted?: Record<string, number>;
 	tried: number;
@@ -428,6 +435,9 @@ if (one === undefined) {
 			Object.assign(costs, result.costs);
 			add(reasons, result.reasons);
 			add(modeReasons, result.modeReasons);
+			add(manyItems, result.manyItems);
+			add(manyItemReasons, result.manyItemReasons);
+			add(threeItemCost, result.threeItemCost);
 			add(alone, result.alone);
 			add(weighted, result.weighted);
 			for (const example of result.examples ?? [])
@@ -541,6 +551,34 @@ for (const name of one === undefined ? [] : Object.keys(known).sort()) {
 						why(`v1: ${difference}`, weight);
 						continue;
 					}
+					const first = readsFiles ? FILE_ITEMS[0] : {};
+					const several = (count: number) =>
+						Array.from({ length: count }, (_, k) => ({ ...first, position: k + 1 }));
+					const three = make('three items', parameters, ok, several(3));
+					const withThree = await differenceFromV1(three, sources, registry, checking);
+					if (withThree !== undefined) {
+						why(`v1: three items: ${withThree}`, weight);
+						continue;
+					}
+					const eachItem = await differenceFromV1(three, sources, registry, {
+						...checking,
+						eachItem: true,
+					});
+					if (eachItem !== undefined) {
+						manyItems[type] = (manyItems[type] ?? 0) + 1;
+						const reason = `three items, one call for each item: ${eachItem}`;
+						manyItemReasons[reason.slice(0, 110)] =
+							(manyItemReasons[reason.slice(0, 110)] ?? 0) + 1;
+					}
+					if (SHOW_COST && !other) {
+						const once = costOfCase(three, sources, registry);
+						const each = costOfCase(three, sources, registry, true);
+						if (once && each) {
+							threeItemCost.operations++;
+							threeItemCost.once += once.ops;
+							threeItemCost.each += each.ops;
+						}
+					}
 					if (makesFiles) {
 						const unnamed = await differenceFromV1(
 							make('file without an extension', parameters, [...token, DOWNLOAD_ANSWER_TYPED]),
@@ -611,9 +649,6 @@ for (const name of one === undefined ? [] : Object.keys(known).sort()) {
 								examples.push(`${key} with ${variant.key}: ${difference.slice(0, 160)}`);
 						}
 					}
-					const first = readsFiles ? FILE_ITEMS[0] : {};
-					const several = (count: number) =>
-						Array.from({ length: count }, (_, k) => ({ ...first, position: k + 1 }));
 					const [badAnswer] = bad.slice(-1);
 					const [okAnswer] = ok.slice(-1);
 					const proven: string[] = [];
@@ -668,7 +703,9 @@ for (const name of one === undefined ? [] : Object.keys(known).sort()) {
 						whyMode(mode, byItem);
 					}
 					const isMode = (name: string) =>
-						name.startsWith('@onError=') || name === ERROR_ITEMS_BY_POSITION;
+						name.startsWith('@onError=') ||
+						name === ERROR_ITEMS_BY_POSITION ||
+						name === CALL_FOR_EACH_ITEM;
 					const samePairing =
 						before === undefined ||
 						before.includes(ERROR_ITEMS_BY_POSITION) === proven.includes(ERROR_ITEMS_BY_POSITION);
@@ -682,6 +719,10 @@ for (const name of one === undefined ? [] : Object.keys(known).sort()) {
 							...names,
 							...flagKeys,
 							...modes,
+							...(eachItem === undefined &&
+							(before === undefined || before.includes(CALL_FOR_EACH_ITEM))
+								? [CALL_FOR_EACH_ITEM]
+								: []),
 						]),
 					].sort();
 					if (MEASURE_COST && !other) {
@@ -698,7 +739,7 @@ for (const name of one === undefined ? [] : Object.keys(known).sort()) {
 }
 await disposeRecorder();
 if (one !== undefined) {
-	const line = `RESULT ${JSON.stringify({ verified, reasons, modeReasons, alone, weighted, tried, compiled: compiledCount, examples, mintedTried, mintedVerified, costs })}\n`;
+	const line = `RESULT ${JSON.stringify({ verified, reasons, modeReasons, manyItems, manyItemReasons, threeItemCost, alone, weighted, tried, compiled: compiledCount, examples, mintedTried, mintedVerified, costs })}\n`;
 	await new Promise((written) => process.stdout.write(line, written));
 	process.exit(0);
 }
@@ -801,6 +842,17 @@ if (CHECK_COST || risen.length > 0) {
 	if (CHECK_COST && risen.length > 0) process.exitCode = 1;
 }
 console.log(`operations ${tried}; compiled ${compiledCount}; verified against v1 ${lines.length}`);
+const manyItemNodes = Object.entries(manyItems).sort((a, b) => b[1] - a[1]);
+if (manyItemNodes.length > 0)
+	console.log(
+		`agree with v1 for three items only in one call for all items: ${manyItemNodes.reduce((sum, [, count]) => sum + count, 0)} (${manyItemNodes.map(([node, count]) => `${node.slice(PREFIX.length)} ${count}`).join(', ')})`,
+	);
+for (const [reason, count] of Object.entries(manyItemReasons).sort((a, b) => b[1] - a[1]))
+	console.log(`${count}\t${reason}`);
+if (threeItemCost.operations > 0)
+	console.log(
+		`three items, ${threeItemCost.operations} operations: ${Math.round(threeItemCost.once / threeItemCost.operations / 3)} ops for each item in one call; ${Math.round(threeItemCost.each / threeItemCost.operations / 3)} ops for each item in a call for each item`,
+	);
 for (const mode of CONTINUE_MODES) {
 	const [condition] = errorModeCondition(mode);
 	const count = Object.values(verified).filter((names) => names.includes(condition)).length;

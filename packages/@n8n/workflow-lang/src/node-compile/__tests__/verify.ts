@@ -465,6 +465,35 @@ export default workflow({
 `;
 }
 
+function eachItemSourceOf(c: EquivalenceCase, type: string): string {
+	const credentialType = c.credential?.type;
+	return `import { webhook, workflow } from '@n8n/workflow-lang';
+
+type Json = any;
+
+export default workflow({
+	triggers: [webhook({ path: 'verify' })],
+	${credentialType ? `credentials: { c: { type: ${JSON.stringify(credentialType)} } },` : ''}
+	async run(ctx) {
+		const items: Json[] = ${JSON.stringify(c.items ?? [{}])};
+		const out: Json[] = [];
+		for (const item of items) {
+			const result: Json[] = await ctx.node({
+				name: 'Node',
+				type: ${JSON.stringify(type)},
+				typeVersion: ${c.typeVersion},
+				parameters: {},
+				items: [item],
+				${credentialType ? "credential: 'c'," : ''}
+			});
+			for (const r of result) out.push(r);
+		}
+		return out;
+	},
+});
+`;
+}
+
 const MAX_COMPILED_STEPS = 20000;
 const effectsOf = (responses: EquivalenceCase['responses']) => ({
 	Node: responses.map((r) => ({ status: 200, headers: {}, ...r })),
@@ -516,6 +545,7 @@ export function costOfCase(
 	c: EquivalenceCase,
 	sources: NodeSources,
 	registry: Registry,
+	eachItem = false,
 ): CaseCost | undefined {
 	const compiled = compileForCheck(
 		sources,
@@ -525,7 +555,7 @@ export function costOfCase(
 	if ('errors' in compiled) return undefined;
 	const responses = c.responses.filter((r) => r !== MINTED_TOKEN_RESPONSE);
 	const mine = bytecodeCost(
-		workflowSourceOf(c, compiled.type, {}),
+		eachItem ? eachItemSourceOf(c, compiled.type) : workflowSourceOf(c, compiled.type, {}),
 		{ [compiled.file]: compiled.source },
 		responses,
 	);
@@ -555,7 +585,12 @@ export async function differenceFromV1(
 	c: EquivalenceCase,
 	sources: NodeSources,
 	registry: Registry,
-	options: { cache?: boolean; pairing?: ErrorPairing; pairings?: Set<ErrorPairing> } = {},
+	options: {
+		cache?: boolean;
+		pairing?: ErrorPairing;
+		pairings?: Set<ErrorPairing>;
+		eachItem?: boolean;
+	} = {},
 ): Promise<string | undefined> {
 	const mode: ErrorMode =
 		c.settings?.onError ?? (c.settings?.continueOnFail ? 'continueRegularOutput' : 'stopWorkflow');
@@ -571,7 +606,10 @@ export async function differenceFromV1(
 	if ('errors' in compiled) return `does not compile: ${compiled.errors[0]}`;
 	const asked: EquivalenceCase = compiled.storesResponses ? { ...c, responseBytes: true } : c;
 	const credentialType = c.credential?.type;
-	const plainSource = workflowSourceOf(c, compiled.type, {});
+	const plainSource =
+		options.eachItem === true
+			? eachItemSourceOf(c, compiled.type)
+			: workflowSourceOf(c, compiled.type, {});
 	const recordPlain = async (testCase: EquivalenceCase) =>
 		await within(8000, options.cache === true ? recordV1Cached(testCase) : recordV1(testCase));
 	const record = async (testCase: EquivalenceCase) =>
@@ -590,9 +628,10 @@ export async function differenceFromV1(
 	const given = minted
 		? minted.testCase.responses.filter((_response, k) => !minted.exchanges.has(k))
 		: c.responses;
-	const responses = continues
-		? Array.from({ length: MAX_ANSWERS }, (_, k) => given[Math.min(k, given.length - 1)])
-		: given;
+	const responses =
+		continues || options.eachItem === true
+			? Array.from({ length: MAX_ANSWERS }, (_, k) => given[Math.min(k, given.length - 1)])
+			: given;
 	const flags = flagValues(compiled.flags, credentialData(c, registry));
 	if (flags === undefined)
 		return 'a condition on the credential has no value for the test credential';

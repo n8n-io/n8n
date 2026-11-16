@@ -27,7 +27,9 @@ const nodeSources: NodeSources = {
 	description: (type, version) =>
 		NODE_DESCRIPTIONS[NODE_DESCRIPTION_VERSIONS[`${type}@${version}`]],
 	aliases: { '@utils/': `${join(nodesBase, 'utils')}/` },
-	verified: { 'n8n-nodes-base.telegram@1.2:message.sendChatAction': ['chatId', 'action'] },
+	verified: {
+		'n8n-nodes-base.telegram@1.2:message.sendChatAction': ['chatId', 'action', '@items=each'],
+	},
 };
 const instance = { baseUrl: 'https://n8n.example', id: 'a'.repeat(64) };
 
@@ -117,6 +119,28 @@ describe('node compiler in the converter', () => {
 		);
 		expect(result.fallbackNodes).toEqual(['Telegram']);
 		expect(result.nodes).toBeUndefined();
+	});
+
+	it('calls the node once with all items, and once for each item only when v1 agrees so', () => {
+		const key = 'n8n-nodes-base.telegram@1.2:message.sendChatAction';
+		const oneCall: NodeSources = { ...nodeSources, verified: { [key]: ['chatId', 'action'] } };
+		const fixed = {
+			resource: 'message',
+			operation: 'sendChatAction',
+			chatId: '42',
+			action: 'typing',
+		};
+		const once = convertWorkflow(workflowWith(fixed), { nodeSources: oneCall, instance });
+		expect(once.fallbackNodes).toEqual([]);
+		expect(once.source).toContain('webhookItems.length > 0 ? await ctx.node(');
+		expect(once.source).toContain('items: webhookItems,');
+
+		const perItem = { ...fixed, chatId: '={{ $json.body.chat }}' };
+		const refused = convertWorkflow(workflowWith(perItem), { nodeSources: oneCall, instance });
+		expect(refused.fallbackNodes).toEqual(['Telegram']);
+		const each = convertWorkflow(workflowWith(perItem), { nodeSources, instance });
+		expect(each.fallbackNodes).toEqual([]);
+		expect(each.source).toContain('items: [$json],');
 	});
 
 	it('compiles a node for its error setting only when v1 agrees under that setting', async () => {

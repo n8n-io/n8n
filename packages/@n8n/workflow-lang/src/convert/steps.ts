@@ -12,6 +12,7 @@
  */
 import type { PublicCredential } from '../credentials/public.ts';
 import {
+	agreesForEachItem,
 	compileNodeInstance,
 	errorItemsByPosition,
 	flagGuard,
@@ -410,6 +411,24 @@ export function tryCompiledNode(c: NodeContext): boolean {
 	}
 	// A node that asks for the bytes of a response needs a runtime that stores the body as
 	// binary data (`responseBinary`, spec 7.1). The caller says when its runtime does.
+	const dynamic: Record<string, unknown> = {};
+	for (const name of compiled.dynamic) dynamic[name] = c.parameters[name];
+	// As for a library node: v1 gives the node all items, and the module runs once for each item.
+	const parameters = c.compiled(dynamic, '', { flattenResourceLocators: false });
+	// One call for each item gives other requests than one run of the v1 node when the node
+	// does work once for a run (a lookup before the items, a batch). The check against v1
+	// records the operations for which the calls for each item agree with v1.
+	if (
+		onError === 'stopWorkflow' &&
+		(parameters.usage.item || parameters.usage.index) &&
+		!agreesForEachItem(c.nodeSources, c.node.type, c.version, compiled)
+	) {
+		c.info(
+			'node-compile',
+			'A parameter of the node reads the item, and a call of the compiled node for each item is not checked against the v1 node.',
+		);
+		return false;
+	}
 	if (compiled.storesResponses && c.nodeSources.storesResponses !== true) {
 		c.info(
 			'node-compile',
@@ -453,17 +472,16 @@ export function tryCompiledNode(c: NodeContext): boolean {
 		}
 		c.addCredentialMints(slot, compiled.mints);
 	}
-	const dynamic: Record<string, unknown> = {};
-	for (const name of compiled.dynamic) dynamic[name] = c.parameters[name];
-	// As for a library node: v1 gives the node all items, and the module runs once for each item.
-	const parameters = c.compiled(dynamic, '', { flattenResourceLocators: false });
 	c.addNode(compiled.file, compiled.source);
 	for (const zone of compiled.zones) c.scope.useZone?.(zone);
 	c.info(
 		'node-compiled',
 		`The node runs as code that is compiled from its source (${compiled.type}).`,
 	);
-	const call = nodeCall(c, compiled.type, parameters, c.credential(), true);
+	// v1 runs the node once with all items, and so does the module. The call runs once for
+	// each item only when a parameter reads the item (the converter evaluates it for each
+	// item), or under a "continue" setting (`emitCompiledContinue`).
+	const call = nodeCall(c, compiled.type, parameters, c.credential(), onError !== 'stopWorkflow');
 	if (onError === 'stopWorkflow') emitStep(c, call);
 	else {
 		const byPosition = errorItemsByPosition(c.nodeSources, c.node.type, c.version, compiled);

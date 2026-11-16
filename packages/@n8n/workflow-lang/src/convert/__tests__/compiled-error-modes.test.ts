@@ -91,6 +91,7 @@ function sources(errorItem: string, conditions: string[]): NodeSources {
 const REGULAR = '@onError=continueRegularOutput';
 const ERROR_OUTPUT = '@onError=continueErrorOutput';
 const BY_POSITION = '@errorItems=position';
+const EACH_ITEM = '@items=each';
 
 function workflowWith(settings: Record<string, unknown>, strict = false) {
 	const errorOutput = settings.onError === 'continueErrorOutput';
@@ -201,7 +202,8 @@ describe('a compiled node under the error settings of the node', () => {
 		expect(await run(regularOnly, { onError: 'continueErrorOutput' }, [OK('A')])).toMatchObject({
 			fallback: ['Probe'],
 		});
-		expect((await run(stopOnly, {}, [OK('A')])).result).toEqual({
+		expect(await run(stopOnly, {}, [OK('A')])).toMatchObject({ fallback: ['Probe'] });
+		expect((await run(sources(PAIRED, [EACH_ITEM]), {}, [OK('A')])).result).toEqual({
 			Good: [{ name: 'A' }, { name: 'A' }],
 		});
 	});
