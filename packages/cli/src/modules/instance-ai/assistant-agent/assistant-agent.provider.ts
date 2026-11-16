@@ -116,6 +116,20 @@ function contextAttachmentsOf(
 }
 
 /**
+ * The request ids of the cards that a resumed run still shows. Each tool
+ * suspension creates a new request id, so a card with one of these ids is a
+ * copy that the resume sends again.
+ */
+function openRequestIdsOf(turn: SystemAgentTurn<AssistantSandboxLease>): Set<string> {
+	if (turn.type !== 'resume') return new Set();
+	return new Set(
+		turn.openSuspensions.flatMap(
+			({ suspendPayload }) => readAssistantConfirmationPayload(suspendPayload)?.requestId ?? [],
+		),
+	);
+}
+
+/**
  * The n8n Assistant as a system agent on the Agents runtime. The runtime owns
  * the queue, steering, checkpoints, HITL resume and the chat stream. The
  * provider builds each turn with the shared Assistant turn setup.
@@ -311,7 +325,7 @@ export class AssistantAgentProvider implements SystemAgentProvider<AssistantSand
 		let usage: { model: string; usage: TokenUsage } | undefined;
 		let inputAccepted: Promise<void> | undefined;
 		// A resume sends the still-open cards again, so only the cards that are new count as asks.
-		const askedRequestIds = await this.openRequestIdsOf(turn);
+		const askedRequestIds = openRequestIdsOf(turn);
 		// The model stream reports these errors. Other errors of the turn were thrown.
 		const streamErrors = new Set<unknown>();
 		// `formatError` and the turn report share the credit check of one error.
@@ -410,32 +424,6 @@ export class AssistantAgentProvider implements SystemAgentProvider<AssistantSand
 				await this.claimSideCallUsage(user, thread.id, runId, report),
 			formatError: async (error) => toFormattedTurnError(await shownErrorOf(error)),
 		};
-	}
-
-	/**
-	 * The request ids of the cards that the suspended run still shows. Each tool
-	 * suspension creates a new request id, so a card with one of these ids is a
-	 * copy that the resume sends again.
-	 */
-	private async openRequestIdsOf(
-		turn: SystemAgentTurn<AssistantSandboxLease>,
-	): Promise<Set<string>> {
-		const requestIds = new Set<string>();
-		if (turn.type !== 'resume') return requestIds;
-		try {
-			const checkpoint = await turn.checkpointStore.load(turn.runId);
-			for (const pending of Object.values(checkpoint?.pendingToolCalls ?? {})) {
-				if (!pending.suspended) continue;
-				const payload = readAssistantConfirmationPayload(pending.suspendPayload);
-				if (payload) requestIds.add(payload.requestId);
-			}
-		} catch (error) {
-			this.logger.warn('Failed to read the open Assistant cards of a resumed run', {
-				threadId: turn.thread.id,
-				error: getErrorMessage(error),
-			});
-		}
-		return requestIds;
 	}
 
 	/** Sends "Builder asked for input" once for each new Assistant card. */
