@@ -2,7 +2,12 @@ import { Logger } from '@n8n/backend-common';
 import { Service } from '@n8n/di';
 import { OperationalError, UnexpectedError, UserError } from '@n8n/errors';
 import { ExecuteContext } from 'n8n-core';
-import type { IDataObject, IExecuteData, INode } from 'n8n-workflow';
+import type {
+	ICredentialDataDecryptedObject,
+	IDataObject,
+	IExecuteData,
+	INode,
+} from 'n8n-workflow';
 import { createRunExecutionData, Workflow } from 'n8n-workflow';
 
 import { CredentialTypes } from '@/credential-types';
@@ -23,13 +28,61 @@ function toExecuteData(nodeType: string): IExecuteData {
 }
 
 /** A token under `data.n8nMinted` in the credentials document. */
-interface MintedToken {
+export interface MintedToken {
 	access_token: string;
 	/** When the token expires, in milliseconds since the epoch. */
 	expires_at: number;
 }
 
 const MINTED_KEY = 'n8nMinted';
+/** The member of a slot that tells `wfrt` how the slot is renewed. */
+const RENEWAL_KEY = 'renewal';
+/** `wfrt` reads at most this many status codes for a slot (`renew.zig`). */
+const MAX_RENEWAL_STATUSES = 8;
+
+/** How n8n renews the values of a credential slot. */
+export type RenewalKind = 'oauth2' | 'preAuthentication' | 'minted';
+
+/**
+ * What `wfrt` needs to renew a slot: the response statuses that mean "the value expired",
+ * and the time at which the value expires, when n8n knows it.
+ */
+export interface SlotRenewal {
+	status: number[];
+	expiresAt?: number;
+}
+
+/** Options of `buildDocument`. */
+export interface BuildDocumentOptions {
+	/** Throw when a slot cannot be prepared. Without it, the slot is left out with a warning. */
+	strict?: boolean;
+	/** Tokens made in this renewal, so each workflow of a credential gets the same one. */
+	minted?: Map<string, MintedToken>;
+}
+
+/** The expiry of the minted tokens of each slot of a credentials document. */
+export function mintExpiries(document: Record<string, unknown>): Map<string, number> {
+	const expiries = new Map<string, number>();
+	for (const [slot, entry] of Object.entries(document)) {
+		const data = isRecord(entry) ? entry.data : undefined;
+		const minted = isRecord(data) ? data[MINTED_KEY] : undefined;
+		if (!isRecord(minted)) continue;
+		for (const token of Object.values(minted)) {
+			const expiresAt = isRecord(token) ? token.expires_at : undefined;
+			if (typeof expiresAt !== 'number') continue;
+			expiries.set(slot, Math.min(expiries.get(slot) ?? expiresAt, expiresAt));
+		}
+	}
+	return expiries;
+}
+
+/** The statuses that mean "the token expired" for an OAuth2 credential, as n8n-core reads them. */
+function oauth2ExpiredStatuses(data: IDataObject): number[] {
+	const configured = data.tokenExpiredStatusCode;
+	if (configured === undefined || configured === null || configured === '') return [401];
+	const list = Array.isArray(configured) ? configured : [configured];
+	return list.map((code) => Number(code)).filter((code) => Number.isInteger(code) && code > 0);
+}
 /** The lifetime that n8n assumes when the token endpoint gives none. */
 const UNKNOWN_LIFETIME_SECONDS = 300;
 
@@ -77,6 +130,7 @@ export class CompiledEngineCredentials {
 		slots: CredentialSlotBinding[],
 		derivations: Record<string, Array<{ name: string; code: string }>> = {},
 		mints: Record<string, CredentialMintRequest[]> = {},
+		options: BuildDocumentOptions = {},
 	): Promise<Record<string, unknown>> {
 		const lang = await loadWorkflowLang();
 		const registry: Parameters<typeof lang.buildCredentialsFile>[0]['registry'] = {
@@ -104,6 +158,11 @@ export class CompiledEngineCredentials {
 					'internal',
 					toExecuteData(use.type),
 				);
+				const kind = this.renewalKind(use.type, (mints[use.slot] ?? []).length > 0);
+				if (kind === 'preAuthentication') {
+					// As v1 before each request: a credential without a session token gets one.
+					Object.assign(data, await this.preAuthenticate(use, data, workflowId, false));
+				}
 				const { file } = lang.buildCredentialsFile({
 					exported: [
 						{ id: use.credentialId, name: use.credentialName, type: use.type, data: { ...data } },
@@ -141,12 +200,22 @@ export class CompiledEngineCredentials {
 					}
 					const minted: Record<string, MintedToken> = {};
 					for (const mint of requested) {
-						minted[mint.name] = await this.mintToken(use, mint, { ...data }, workflowId);
+						// One token for each credential and service in a renewal: every workflow shares it.
+						const key = `${use.credentialId}\n${mint.service}\n${mint.scopes.join(' ')}`;
+						const token =
+							options.minted?.get(key) ??
+							(await this.mintToken(use, mint, { ...data }, workflowId));
+						options.minted?.set(key, token);
+						minted[mint.name] = token;
 					}
 					Reflect.set(entryData, MINTED_KEY, minted);
 				}
+				if (kind !== undefined && typeof entry === 'object' && entry !== null) {
+					Reflect.set(entry, RENEWAL_KEY, this.slotRenewal(kind, { ...data }, entryData));
+				}
 				Object.assign(document, file);
 			} catch (error) {
+				if (options.strict) throw error;
 				this.logger.warn(`Could not prepare credential slot "${use.slot}"`, {
 					workflowId,
 					error: error instanceof Error ? error.message : String(error),
@@ -223,6 +292,87 @@ export class CompiledEngineCredentials {
 		}
 		const context = await this.refreshContext(binding, workflowId);
 		await context.helpers.refreshOAuth2Token.call(context, binding.type);
+	}
+
+	/**
+	 * How n8n renews the values of a slot, or `undefined` when the values do not expire.
+	 * OAuth2 types refresh the token (or get a new one for the client-credentials grant). A
+	 * type with a `preAuthentication` method and an expirable property gets a new session
+	 * token. A slot with minted tokens gets new ones.
+	 */
+	renewalKind(type: string, hasMints: boolean): RenewalKind | undefined {
+		if (type === 'oAuth2Api') return 'oauth2';
+		if (this.credentialTypes.recognizes(type)) {
+			if ((this.credentialTypes.getParentTypes(type) ?? []).includes('oAuth2Api')) return 'oauth2';
+			const credentialType = this.credentialTypes.getByName(type);
+			const expirable = credentialType.properties?.some(
+				(property) => property.type === 'hidden' && property.typeOptions?.expirable === true,
+			);
+			if (expirable && typeof credentialType.preAuthentication === 'function') {
+				return 'preAuthentication';
+			}
+		}
+		return hasMints ? 'minted' : undefined;
+	}
+
+	/** The `renewal` member of a slot of the credentials document. */
+	private slotRenewal(kind: RenewalKind, data: IDataObject, entryData: unknown): SlotRenewal {
+		if (kind === 'oauth2') {
+			return { status: oauth2ExpiredStatuses(data).slice(0, MAX_RENEWAL_STATUSES) };
+		}
+		if (kind === 'preAuthentication') return { status: [401] };
+		const expiresAt = mintExpiries({ slot: { data: entryData } }).get('slot');
+		return expiresAt === undefined ? { status: [401] } : { status: [401], expiresAt };
+	}
+
+	/**
+	 * Renews the secret part of a credential where the secret is: n8n. An OAuth2 credential
+	 * gets a new token and n8n saves it. A credential with `preAuthentication` gets a new
+	 * session token and n8n saves it. Minted tokens need nothing here: `buildDocument` makes
+	 * them again.
+	 */
+	async renew(binding: CredentialSlotBinding, workflowId: string, hasMints: boolean) {
+		if (!binding.credentialId) {
+			throw new UserError(`The credential slot "${binding.slot}" has no credential`);
+		}
+		const kind = this.renewalKind(binding.type, hasMints);
+		if (kind === undefined) {
+			throw new UserError(`n8n cannot renew a credential of type "${binding.type}"`);
+		}
+		if (kind === 'oauth2') {
+			await this.refreshOAuth2(binding, workflowId);
+		} else if (kind === 'preAuthentication') {
+			const additionalData = await WorkflowExecuteAdditionalData.getBase({ workflowId });
+			const data = await this.credentialsHelper.getDecrypted(
+				additionalData,
+				{ id: binding.credentialId, name: binding.credentialName },
+				binding.type,
+				'internal',
+				toExecuteData(binding.type),
+			);
+			await this.preAuthenticate(binding, data, workflowId, true);
+		}
+	}
+
+	/**
+	 * Runs the `preAuthentication` method of the credential type as v1 does: when the
+	 * expirable property is empty or `expired` is true. The helper saves the new value.
+	 */
+	private async preAuthenticate(
+		binding: CredentialSlotBinding,
+		data: ICredentialDataDecryptedObject,
+		workflowId: string,
+		expired: boolean,
+	): Promise<ICredentialDataDecryptedObject> {
+		const context = await this.refreshContext(binding, workflowId);
+		const renewed = await this.credentialsHelper.preAuthentication(
+			{ helpers: context.helpers },
+			data,
+			binding.type,
+			context.getNode(),
+			expired,
+		);
+		return renewed ?? {};
 	}
 
 	/**

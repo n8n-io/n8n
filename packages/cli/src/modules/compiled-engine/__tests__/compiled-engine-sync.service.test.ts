@@ -27,12 +27,13 @@ describe('CompiledEngineSync: minted tokens', () => {
 		endpoints: { webhookWaiting: 'webhook-waiting', formWaiting: 'form-waiting' },
 	});
 
+	const slots = [{ slot: 'sa', type: 'googleApi', credentialId: 'c1', credentialName: 'SA' }];
 	const artifact = (mints: CompiledArtifact['mints']) =>
 		mock<CompiledArtifact>({
 			ok: true,
 			key: 'k1',
 			module: Buffer.from('module'),
-			slots: [],
+			slots,
 			derivations: undefined,
 			mints,
 			diagnostics: [],
@@ -73,21 +74,26 @@ describe('CompiledEngineSync: minted tokens', () => {
 		vi.useRealTimers();
 	});
 
-	it('loads the workflow again with new tokens before the first token expires', async () => {
+	it('sends new tokens before the first token expires, and does not load the module again', async () => {
 		compiler.compile.mockResolvedValue(artifact(mints));
 		credentials.buildDocument.mockImplementation(async () => documentThatExpiresIn(60 * MINUTE));
 		await sync.activate(workflow);
 		expect(client.putWorkflow).toHaveBeenCalledTimes(1);
 
 		await vi.advanceTimersByTimeAsync(54 * MINUTE);
-		expect(client.putWorkflow).toHaveBeenCalledTimes(1);
+		expect(client.putWorkflowCredentials).not.toHaveBeenCalled();
 
 		await vi.advanceTimersByTimeAsync(2 * MINUTE);
-		expect(client.putWorkflow).toHaveBeenCalledTimes(2);
+		expect(client.putWorkflowCredentials).toHaveBeenCalledTimes(1);
+		expect(client.putWorkflowCredentials.mock.lastCall?.[0]).toBe('wf1');
+		expect(credentials.renew).toHaveBeenCalledWith(slots[0], 'wf1', true);
+		expect(credentials.buildDocument.mock.lastCall?.[1]).toEqual(slots);
 		expect(credentials.buildDocument.mock.lastCall?.[3]).toEqual(mints);
+		expect(credentials.buildDocument.mock.lastCall?.[4]).toMatchObject({ strict: true });
 
 		await vi.advanceTimersByTimeAsync(56 * MINUTE);
-		expect(client.putWorkflow).toHaveBeenCalledTimes(3);
+		expect(client.putWorkflowCredentials).toHaveBeenCalledTimes(2);
+		expect(client.putWorkflow).toHaveBeenCalledTimes(1);
 	});
 
 	it('tries again after a minute when n8n could not make the token', async () => {
@@ -96,7 +102,8 @@ describe('CompiledEngineSync: minted tokens', () => {
 		await sync.activate(workflow);
 
 		await vi.advanceTimersByTimeAsync(MINUTE);
-		expect(client.putWorkflow).toHaveBeenCalledTimes(2);
+		expect(client.putWorkflowCredentials).toHaveBeenCalledTimes(1);
+		expect(client.putWorkflow).toHaveBeenCalledTimes(1);
 	});
 
 	it('sets no timer for a workflow without minted tokens', async () => {
@@ -106,6 +113,7 @@ describe('CompiledEngineSync: minted tokens', () => {
 
 		await vi.advanceTimersByTimeAsync(24 * 60 * MINUTE);
 		expect(client.putWorkflow).toHaveBeenCalledTimes(1);
+		expect(client.putWorkflowCredentials).not.toHaveBeenCalled();
 	});
 
 	it('stops the renewal when the workflow is unloaded', async () => {
@@ -116,5 +124,74 @@ describe('CompiledEngineSync: minted tokens', () => {
 
 		await vi.advanceTimersByTimeAsync(120 * MINUTE);
 		expect(client.putWorkflow).toHaveBeenCalledTimes(1);
+		expect(client.putWorkflowCredentials).not.toHaveBeenCalled();
+	});
+
+	describe('renewCredential', () => {
+		const other = mock<WorkflowEntity>({ id: 'wf2', activeVersion: null, settings: {} });
+
+		beforeEach(async () => {
+			compiler.compile.mockResolvedValue(artifact(mints));
+			credentials.buildDocument.mockImplementation(async () => documentThatExpiresIn(60 * MINUTE));
+			await sync.activate(workflow);
+			await sync.activate(other);
+			await sync.prepareManualRun({ ...workflow, id: 'wf1' });
+			client.putWorkflow.mockClear();
+			credentials.buildDocument.mockClear();
+		});
+
+		it('renews once for requests at the same time, and every workflow of the credential gets the values', async () => {
+			let finish = () => {};
+			credentials.renew.mockImplementation(
+				async () => await new Promise<void>((resolve) => (finish = resolve)),
+			);
+
+			const requests = [
+				sync.renewCredential('c1', 'wf1'),
+				sync.renewCredential('c1', 'wf2'),
+				sync.renewCredential('c1', 'wf1~manual'),
+			];
+			await vi.advanceTimersByTimeAsync(0);
+			finish();
+			await Promise.all(requests);
+
+			expect(credentials.renew).toHaveBeenCalledTimes(1);
+			expect(client.putWorkflowCredentials.mock.calls.map(([id]) => id).sort()).toEqual([
+				'wf1',
+				'wf1~manual',
+				'wf2',
+			]);
+			// The modules stay: only credential values go to `wfrt`.
+			expect(client.putWorkflow).not.toHaveBeenCalled();
+			// One token table for the renewal: the workflows share each minted token.
+			const tables = credentials.buildDocument.mock.calls.map(
+				([, , , , options]) => options?.minted,
+			);
+			expect(tables[0]).toBeInstanceOf(Map);
+			expect(new Set(tables).size).toBe(1);
+		});
+
+		it('renews again for a request after the first renewal ended', async () => {
+			await sync.renewCredential('c1', 'wf1');
+			await sync.renewCredential('c1', 'wf1');
+			expect(credentials.renew).toHaveBeenCalledTimes(2);
+		});
+
+		it('fails the request of a workflow that did not get the values', async () => {
+			client.putWorkflowCredentials.mockImplementation(async (id) => {
+				if (id === 'wf2') throw new Error('wfrt said no');
+			});
+			await expect(sync.renewCredential('c1', 'wf1')).resolves.toBeUndefined();
+			await expect(sync.renewCredential('c1', 'wf2')).rejects.toThrow('wfrt said no');
+		});
+
+		it('fails every request when n8n cannot renew the credential', async () => {
+			credentials.renew.mockRejectedValue(new Error('The grant was revoked'));
+			await expect(sync.renewCredential('c1', 'wf1')).rejects.toThrow('The grant was revoked');
+			expect(client.putWorkflowCredentials).not.toHaveBeenCalled();
+			await expect(sync.renewCredential('none', 'wf1')).rejects.toThrow(
+				'No loaded workflow uses this credential',
+			);
+		});
 	});
 });

@@ -3340,7 +3340,7 @@ test "a 401 of a renewable credential asks n8n once, then the request goes again
     const rt = &r.renewals.?;
     // No host: the resend fails at once, which shows that it was sent.
     const args = "{\"url\":\"nowhere\",\"credential\":\"api\"}";
-    const info: renew.Info = .{ .statuses = .{ 401, 0, 0, 0 }, .nstatus = 1 };
+    const info: renew.Info = .{ .statuses = .{ 401, 0, 0, 0, 0, 0, 0, 0 }, .nstatus = 1 };
     const key: [32]u8 = @splat(0);
     const slot = args[std.mem.indexOf(u8, args, "api").?..][0..3];
     for ([_]u64{ 5, 6 }) |exec| {
@@ -3378,7 +3378,7 @@ test "a renewal that n8n refuses fails the step with the message of n8n" {
     r.renewals = try renew.Table.init(t.arena.allocator(), 8, 1024);
     const rt = &r.renewals.?;
     const args = "{\"url\":\"nowhere\",\"credential\":\"api\"}";
-    const info: renew.Info = .{ .statuses = .{ 403, 0, 0, 0 }, .nstatus = 1 };
+    const info: renew.Info = .{ .statuses = .{ 403, 0, 0, 0, 0, 0, 0, 0 }, .nstatus = 1 };
     const req: renew.Request = .{ .exec_id = 5, .seq = 2, .attempt = 0, .pool_key = 0, .idempotent = false, .key = @splat(0), .single_use = false };
     try std.testing.expect(rt.add(req, "wf", "Step", args, args[2..5], info) != null);
     Runner.egressDone(r, 5, 2, .{ .ok = .{ .status = 403, .header_lines = "", .body = "", .json = false } });

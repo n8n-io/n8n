@@ -16,7 +16,7 @@
 const std = @import("std");
 
 /// The most status codes of one slot (`renewal.status`).
-pub const max_statuses = 4;
+pub const max_statuses = 8;
 /// The longest step name that the service event carries.
 const max_step = 128;
 /// The longest workflow id (`core.max_id`).
@@ -393,7 +393,7 @@ fn testRequest(exec_id: u64, seq: u32) Request {
 }
 
 const test_args = "{\"url\":\"http://h/\",\"credential\":\"api\"}";
-const test_info: Info = .{ .statuses = .{ 401, 403, 0, 0 }, .nstatus = 2 };
+const test_info: Info = .{ .statuses = .{ 401, 403, 0, 0, 0, 0, 0, 0 }, .nstatus = 2 };
 
 fn testAdd(t: *Table, exec_id: u64, seq: u32, workflow_id: []const u8) ?u32 {
     const at = std.mem.indexOf(u8, test_args, "api") orelse return null;

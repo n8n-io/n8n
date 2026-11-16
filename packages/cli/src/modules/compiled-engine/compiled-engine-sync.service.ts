@@ -10,7 +10,8 @@ import type { IDataObject, IWorkflowBase, IWorkflowSettings } from 'n8n-workflow
 import { WorkflowStaticDataService } from '@/workflows/workflow-static-data.service';
 import { getVariables } from '@/workflow-helpers';
 
-import { CompiledEngineCredentials, earliestMintExpiry } from './compiled-engine-credentials';
+import type { MintedToken } from './compiled-engine-credentials';
+import { CompiledEngineCredentials, mintExpiries } from './compiled-engine-credentials';
 import type { CompiledArtifact } from './compiled-engine.types';
 import { MANUAL_WORKFLOW_SUFFIX, WFRT_WEBHOOK_PREFIX } from './compiled-engine.types';
 import { CompiledWorkflowCompiler } from './compiled-workflow.compiler';
@@ -21,6 +22,14 @@ import { WfrtAdminClient } from './wfrt-admin.client';
 const MINT_RENEWAL_MARGIN_MS = 5 * 60 * 1000;
 /** The shortest wait before n8n makes a minted token again, also after a failure. */
 const MINT_RENEWAL_MIN_DELAY_MS = 60 * 1000;
+/** The most credentials that n8n renews at the same time. More is an error for the request. */
+const MAX_RENEWALS_IN_FLIGHT = 1024;
+
+/** The workflows (`wfrt` ids) that got the new values of a renewal, and the errors of the others. */
+interface RenewalResult {
+	sent: Set<string>;
+	failures: Map<string, Error>;
+}
 
 /** A workflow version that n8n loaded into `wfrt`. */
 export interface LoadedWorkflow {
@@ -63,8 +72,20 @@ export class CompiledEngineSync {
 
 	private connected = false;
 
-	/** One timer for each published workflow with minted tokens: it loads the workflow again. */
+	/**
+	 * One timer for each published workflow with minted tokens. It renews the tokens ahead
+	 * of their expiry, so a request does not wait for the renewal.
+	 */
 	private readonly mintRenewals = new Map<string, NodeJS.Timeout>();
+
+	/** When the minted tokens of each slot of a loaded workflow expire, by `wfrt` id. */
+	private readonly mintExpiry = new Map<string, Map<string, number>>();
+
+	/**
+	 * The renewals in progress, by credential id: requests for the same credential share
+	 * one.
+	 */
+	private readonly renewals = new Map<string, Promise<RenewalResult>>();
 
 	/** The last static data save of each workflow, so saves stay in order. */
 	private readonly staticSaves = new Map<string, Promise<void>>();
@@ -119,6 +140,7 @@ export class CompiledEngineSync {
 	async deactivate(workflowId: string) {
 		const known = this.loaded.delete(workflowId);
 		this.cancelMintRenewal(workflowId);
+		this.mintExpiry.delete(workflowId);
 		// After a restart `wfrt` can hold a workflow that this process never loaded.
 		if (this.connected) await this.client.deleteWorkflow(workflowId);
 		else if (known) this.logger.debug(`Workflow ${workflowId} unloads when wfrt connects`);
@@ -297,18 +319,127 @@ export class CompiledEngineSync {
 		};
 	}
 
+	/**
+	 * Renews a credential and sends the new values to every loaded workflow that uses it:
+	 * a credentials-only update, the modules stay. Requests for the same credential at the
+	 * same time share one renewal. It throws when the workflow `forWfrtId` did not get the
+	 * new values.
+	 */
+	async renewCredential(credentialId: string, forWfrtId: string, again = false): Promise<void> {
+		let renewal = this.renewals.get(credentialId);
+		if (!renewal) {
+			if (this.renewals.size >= MAX_RENEWALS_IN_FLIGHT) {
+				throw new OperationalError('Too many credential renewals are in progress');
+			}
+			renewal = this.runRenewal(credentialId).finally(() => {
+				this.renewals.delete(credentialId);
+			});
+			this.renewals.set(credentialId, renewal);
+		}
+		const result = await renewal;
+		const failed = result.failures.get(forWfrtId);
+		if (failed) throw failed;
+		if (result.sent.has(forWfrtId)) return;
+		// The renewal began before this workflow was loaded: one more, for this workflow.
+		if (again) throw new OperationalError('The workflow did not get the renewed credential');
+		await this.renewCredential(credentialId, forWfrtId, true);
+	}
+
+	private async runRenewal(credentialId: string): Promise<RenewalResult> {
+		const users = [...this.loaded.values()].filter((entry) =>
+			entry.artifact.slots.some((slot) => slot.credentialId === credentialId),
+		);
+		const first = users[0];
+		const binding = first?.artifact.slots.find((slot) => slot.credentialId === credentialId);
+		if (!first || !binding) throw new UserError('No loaded workflow uses this credential');
+		const hasMints = users.some((entry) =>
+			entry.artifact.slots.some(
+				(slot) =>
+					slot.credentialId === credentialId &&
+					(entry.artifact.mints?.[slot.slot] ?? []).length > 0,
+			),
+		);
+		await this.credentials.renew(binding, first.workflowData.id, hasMints);
+		const failures = new Map<string, Error>();
+		const sent = new Set<string>();
+		const minted = new Map<string, MintedToken>();
+		for (const entry of users) {
+			try {
+				await this.pushCredentials(entry, credentialId, minted);
+				sent.add(entry.wfrtId);
+			} catch (error) {
+				failures.set(entry.wfrtId, error instanceof Error ? error : new Error(String(error)));
+				this.logger.warn(`Could not send renewed credentials to workflow ${entry.wfrtId}`, {
+					error: error instanceof Error ? error.message : String(error),
+				});
+			}
+		}
+		return { sent, failures };
+	}
+
+	/** Sends the slots of one credential of a loaded workflow, with new values. */
+	private async pushCredentials(
+		entry: LoadedWorkflow,
+		credentialId: string,
+		minted: Map<string, MintedToken>,
+	) {
+		if (!this.connected) throw new OperationalError('The compiled engine is not connected');
+		const slots = entry.artifact.slots.filter((slot) => slot.credentialId === credentialId);
+		const credentials = await this.credentials.buildDocument(
+			entry.workflowData.id,
+			slots,
+			entry.artifact.derivations,
+			entry.artifact.mints,
+			{ strict: true, minted },
+		);
+		await this.client.putWorkflowCredentials(entry.wfrtId, credentials);
+		const expiries = this.mintExpiry.get(entry.wfrtId) ?? new Map<string, number>();
+		for (const [slot, expiresAt] of mintExpiries(credentials)) expiries.set(slot, expiresAt);
+		this.mintExpiry.set(entry.wfrtId, expiries);
+		if (this.loaded.get(entry.wfrtId) === entry) this.scheduleMintRenewal(entry);
+	}
+
+	/** The first expiry of the minted tokens of a workflow; none when a token is missing. */
+	private earliestMintExpiry(entry: LoadedWorkflow): number | undefined {
+		const expiries = this.mintExpiry.get(entry.wfrtId);
+		let earliest: number | undefined;
+		for (const [slot, requested] of Object.entries(entry.artifact.mints ?? {})) {
+			if (requested.length === 0) continue;
+			const expiresAt = expiries?.get(slot);
+			if (expiresAt === undefined) return undefined;
+			if (earliest === undefined || expiresAt < earliest) earliest = expiresAt;
+		}
+		return earliest;
+	}
+
+	/** Renews each credential of the workflow that has minted tokens. */
+	private async renewMinted(entry: LoadedWorkflow) {
+		const credentialIds = new Set<string>();
+		for (const slot of entry.artifact.slots) {
+			if (slot.credentialId && (entry.artifact.mints?.[slot.slot] ?? []).length > 0) {
+				credentialIds.add(slot.credentialId);
+			}
+		}
+		for (const credentialId of credentialIds) {
+			await this.renewCredential(credentialId, entry.wfrtId);
+		}
+	}
+
 	private cancelMintRenewal(wfrtId: string) {
 		clearTimeout(this.mintRenewals.get(wfrtId));
 		this.mintRenewals.delete(wfrtId);
 	}
 
 	/**
-	 * Minted tokens expire, and `wfrt` cannot make them: n8n loads the workflow again with new
-	 * tokens before the first one expires. Without an expiry the mint failed, so n8n tries again.
+	 * Minted tokens expire, and `wfrt` cannot make them. `wfrt` asks for a renewal when a
+	 * request needs one (`renewCredential`). This timer is an optimisation: n8n sends new
+	 * tokens before the first one expires, with a credentials-only update, so a request does
+	 * not wait. Without an expiry the mint failed, so n8n tries again.
 	 * A manual run gets new tokens at each run, so it has no timer.
 	 */
-	private scheduleMintRenewal(entry: LoadedWorkflow, expiresAt: number | undefined) {
+	private scheduleMintRenewal(entry: LoadedWorkflow, retry = false) {
 		this.cancelMintRenewal(entry.wfrtId);
+		const expiresAt = retry ? undefined : this.earliestMintExpiry(entry);
 		const minted = Object.values(entry.artifact.mints ?? {}).some((list) => list.length > 0);
 		if (!minted || !entry.active) return;
 		const delay =
@@ -318,11 +449,11 @@ export class CompiledEngineSync {
 		const timer = setTimeout(() => {
 			this.mintRenewals.delete(entry.wfrtId);
 			if (!this.connected || this.loaded.get(entry.wfrtId) !== entry) return;
-			void this.push(entry).catch((error) => {
+			void this.renewMinted(entry).catch((error) => {
 				this.logger.warn(`Could not renew the tokens of workflow ${entry.wfrtId}`, {
 					error: error instanceof Error ? error.message : String(error),
 				});
-				this.scheduleMintRenewal(entry, undefined);
+				this.scheduleMintRenewal(entry, true);
 			});
 		}, delay);
 		timer.unref();
@@ -337,7 +468,8 @@ export class CompiledEngineSync {
 			entry.artifact.derivations,
 			entry.artifact.mints,
 		);
-		this.scheduleMintRenewal(entry, earliestMintExpiry(credentials));
+		this.mintExpiry.set(entry.wfrtId, mintExpiries(credentials));
+		this.scheduleMintRenewal(entry);
 		// n8n's copy of the static data; manual runs read it too (they keep nothing).
 		const staticData = await this.staticData.getStaticDataById(entry.workflowData.id);
 		await this.client.putWorkflow(entry.wfrtId, {

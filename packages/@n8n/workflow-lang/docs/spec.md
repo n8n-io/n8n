@@ -1546,7 +1546,10 @@ await ctx.service({ name, service: 'dataTable', op: 'getManyRowsAndCount', args:
     `updateOauthTokenData` (`credentialId`, `oauthTokenData`) saves the token
     data that a v1 node in the fallback host refreshed. `refreshOAuth2`
     (`credentialId`) refreshes the token with n8n-core's OAuth2 code and saves
-    it. Both send the new credential document to `wfrt` before they answer.
+    it. `renew` (`credentialId`: the slot name) comes from `wfrt` itself, for a
+    request whose credential value expired (`docs/credentials-plan.md`,
+    "Renewal"). `renew` and `refreshOAuth2` send only the new credential
+    values (`PUT /_admin/workflows/<id>/credentials`) before they answer.
     n8n answers only for a credential that the workflow of the execution
     uses; else the answer is `ok: false` with
     `The workflow does not use this credential`. These calls need the service

@@ -21,6 +21,7 @@ Add a row when a new difference is found. The sources are `docs/spec.md`, the RE
 | A compiled error had no class name, HTTP code or description | A compiled NodeApiError or NodeOperationError has the name, the HTTP code and the description; `instanceof` works |
 | Node code that computes a value from a credential field did not compile | The value is a derived value of the credential: n8n computes it where the credential data is |
 | A compiled node could behave differently from the v1 node | A node runs compiled only when its operation is in the list that `scripts/verify-compiled-nodes.ts` makes against the v1 node |
+| An OAuth2 refresh happened only on status 401, only in the HTTP Request node, and a minted Google service-account token had no renewal on a rejected request or in a manual run | The runtime renews each renewable credential slot with one protocol (`docs/credentials-plan.md`, "Renewal"): before the value expires, and after a response with status 401 or the `tokenExpiredStatusCode` of the credential. It then sends the request again once, as `requestOAuth2` of n8n-core does. A request with a multipart body gets the renewal and no resend, as in v1. Tests: `renew.zig`, `server.zig`, and the n8n module. No test with a real service yet |
 
 ## Open
 
@@ -32,7 +33,9 @@ Add a row when a new difference is found. The sources are `docs/spec.md`, the RE
 | A sub-workflow is compiled into the parent: n8n has no row for the sub-execution | `progress.md` | A sub-execution record, or a call of a loaded module |
 | `$json` and `Object.keys($json)` show `$binary`; a core node keeps binary data where v1 drops it | spec section 10 | Binary data as a handle outside the item |
 | All nodes of one batch see the same `$now`; v1 reads the clock at each evaluation | spec section 10 | Decide: v1 values differ by milliseconds only |
-| An OAuth2 refresh happens only on status 401, not on `tokenExpiredStatusCode` of the credential type | `progress.md` | The status in the credentials document |
+| Token renewal: the HTTP Request library node still asks for an OAuth2 refresh in its own code after a 401. When the token is refused also after the renewal of the runtime, there is a second renewal and a third request (v1: one renewal, two requests) | this work | Remove the 401 code from `src/nodes/http-request.ts`, then `wfrt aot-gen` |
+| Token renewal: the options `skipTokenRefresh`, `skipRefreshWhileTokenIsFresh`, `preAuthenticationRetryStatusCode` and a `tokenExpiredStatusCode` that a node gives are not in the credentials document. The runtime uses the statuses of the credential, else 401 | this work | The node compiler writes the option of the node into the request |
+| Token renewal: a request with a status 401 and a minted service-account token is sent again once with a new token; v1 makes a token for each request and does not send again. After a failed renewal for a multipart request the step gets the first response; v1 gives the renewal error | this work | Decide: the results are equal when the service accepts the token |
 | Project variables are not sent to the runtime | n8n module README | Send them with the workflow |
 | The log and the outbox are not encrypted at rest | `progress.md` | Card ENCRYPT |
 | 140 of 18,782 certified bundles do not match v1 in the replay (99.25%) | `progress.md` | The focus runs |

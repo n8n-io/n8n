@@ -100,6 +100,18 @@ export class WfrtAdminClient {
 		});
 	}
 
+	/**
+	 * A credentials-only update: the slots of `credentials` replace those of the loaded
+	 * workflow. The module and the other slots stay.
+	 */
+	async putWorkflowCredentials(workflowId: string, credentials: Record<string, unknown>) {
+		await this.request(
+			'PUT',
+			`/_admin/workflows/${encodeURIComponent(workflowId)}/credentials`,
+			credentials,
+		);
+	}
+
 	/** The static data that `wfrt` holds for a workflow; `{}` when it has none. */
 	async getStaticData(workflowId: string): Promise<IDataObject> {
 		const parsed: unknown = JSON.parse(
