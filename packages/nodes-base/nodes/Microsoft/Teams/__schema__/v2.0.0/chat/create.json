@@ -23,7 +23,7 @@
 			"type": "string"
 		},
 		"topic": {
-			"type": "string"
+			"type": ["null", "string"]
 		},
 		"viewpoint": {},
 		"webUrl": {

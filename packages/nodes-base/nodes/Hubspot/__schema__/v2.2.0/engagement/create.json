@@ -12,13 +12,13 @@
 				},
 				"companyIds": {
 					"items": {
-						"type": "integer"
+						"type": "number"
 					},
 					"type": "array"
 				},
 				"contactIds": {
 					"items": {
-						"type": "integer"
+						"type": "number"
 					},
 					"type": "array"
 				},
@@ -28,7 +28,7 @@
 				},
 				"dealIds": {
 					"items": {
-						"type": "integer"
+						"type": "number"
 					},
 					"type": "array"
 				},
@@ -86,23 +86,23 @@
 					"type": "boolean"
 				},
 				"createdAt": {
-					"type": "integer"
+					"type": "number"
 				},
 				"id": {
-					"type": "integer"
+					"type": "number"
 				},
 				"lastUpdated": {
-					"type": "integer"
+					"type": "number"
 				},
 				"portalId": {
-					"type": "integer"
+					"type": "number"
 				},
 				"queueMembershipIds": {
 					"items": {},
 					"type": "array"
 				},
 				"timestamp": {
-					"type": "integer"
+					"type": "number"
 				},
 				"type": {
 					"type": "string"

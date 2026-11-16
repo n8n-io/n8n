@@ -9,19 +9,19 @@
 		"usage": {
 			"properties": {
 				"image_count": {
-					"type": "integer"
+					"type": "number"
 				},
 				"input_tokens": {
-					"type": "integer"
+					"type": "number"
 				},
 				"output_tokens": {
-					"type": "integer"
+					"type": "number"
 				},
 				"size": {
 					"type": "string"
 				},
 				"total_tokens": {
-					"type": "integer"
+					"type": "number"
 				}
 			},
 			"type": "object"

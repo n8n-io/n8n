@@ -1,7 +1,7 @@
 {
 	"properties": {
 		"binaryDataSizeBytes": {
-			"type": "integer"
+			"type": "number"
 		},
 		"createdAt": {
 			"type": "string"
@@ -34,7 +34,7 @@
 															"pairedItem": {
 																"properties": {
 																	"item": {
-																		"type": "integer"
+																		"type": "number"
 																	}
 																},
 																"type": "object"
@@ -61,6 +61,7 @@
 												"type": "string"
 											},
 											"parameters": {
+												"additionalProperties": true,
 												"properties": {
 													"jsCode": {
 														"type": "string"
@@ -85,7 +86,7 @@
 											},
 											"position": {
 												"items": {
-													"type": "integer"
+													"type": "number"
 												},
 												"type": "array"
 											},
@@ -93,7 +94,7 @@
 												"type": "string"
 											},
 											"typeVersion": {
-												"type": ["integer", "number"]
+												"type": "number"
 											}
 										},
 										"type": "object"
@@ -107,10 +108,10 @@
 															"type": "string"
 														},
 														"previousNodeOutput": {
-															"type": "integer"
+															"type": "number"
 														},
 														"previousNodeRun": {
-															"type": "integer"
+															"type": "number"
 														}
 													},
 													"type": "object"
@@ -128,7 +129,7 @@
 						"runtimeData": {
 							"properties": {
 								"establishedAt": {
-									"type": "integer"
+									"type": "number"
 								},
 								"redaction": {
 									"properties": {
@@ -139,7 +140,7 @@
 											"type": "boolean"
 										},
 										"version": {
-											"type": "integer"
+											"type": "number"
 										}
 									},
 									"type": "object"
@@ -159,7 +160,7 @@
 									"type": "object"
 								},
 								"version": {
-									"type": "integer"
+									"type": "number"
 								}
 							},
 							"type": "object"
@@ -191,13 +192,13 @@
 					"type": "object"
 				},
 				"version": {
-					"type": "integer"
+					"type": "number"
 				}
 			},
 			"type": "object"
 		},
 		"deduplicationKey": {
-			"type": "string"
+			"type": ["null", "string"]
 		},
 		"deletedAt": {},
 		"finished": {
@@ -207,7 +208,7 @@
 			"type": "string"
 		},
 		"jsonSizeBytes": {
-			"type": "integer"
+			"type": "number"
 		},
 		"mode": {
 			"type": "string"
@@ -235,13 +236,13 @@
 					"type": "string"
 				}
 			},
-			"type": "object"
+			"type": ["null", "object"]
 		},
 		"usedPrivateCredentials": {
 			"type": "boolean"
 		},
 		"waitTill": {
-			"type": "string"
+			"type": ["null", "string"]
 		},
 		"workflowData": {
 			"properties": {
@@ -299,6 +300,7 @@
 								"type": "string"
 							},
 							"parameters": {
+								"additionalProperties": true,
 								"properties": {
 									"authentication": {
 										"type": "string"
@@ -390,7 +392,7 @@
 															"type": "object"
 														},
 														"rightValue": {
-															"type": ["boolean", "integer", "string"]
+															"type": ["boolean", "number", "string"]
 														}
 													},
 													"type": "object"
@@ -409,7 +411,7 @@
 														"type": "string"
 													},
 													"version": {
-														"type": "integer"
+														"type": "number"
 													}
 												},
 												"type": "object"
@@ -485,7 +487,7 @@
 										"type": "object"
 									},
 									"height": {
-										"type": "integer"
+										"type": "number"
 									},
 									"infoMessage": {
 										"type": "string"
@@ -497,7 +499,7 @@
 										"type": "string"
 									},
 									"limit": {
-										"type": "integer"
+										"type": "number"
 									},
 									"looseTypeValidation": {
 										"type": "boolean"
@@ -518,6 +520,7 @@
 										"type": "string"
 									},
 									"options": {
+										"additionalProperties": true,
 										"properties": {
 											"response": {
 												"properties": {
@@ -542,7 +545,7 @@
 												"type": "object"
 											},
 											"timeout": {
-												"type": "integer"
+												"type": "number"
 											}
 										},
 										"type": "object"
@@ -581,14 +584,14 @@
 										"type": "string"
 									},
 									"width": {
-										"type": "integer"
+										"type": "number"
 									}
 								},
 								"type": "object"
 							},
 							"position": {
 								"items": {
-									"type": "integer"
+									"type": "number"
 								},
 								"type": "array"
 							},
@@ -630,7 +633,7 @@
 			"type": "string"
 		},
 		"workflowVersionId": {
-			"type": "string"
+			"type": ["null", "string"]
 		}
 	},
 	"type": "object"

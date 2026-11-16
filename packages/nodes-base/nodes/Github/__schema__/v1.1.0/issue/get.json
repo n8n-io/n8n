@@ -25,7 +25,7 @@
 					"type": "string"
 				},
 				"id": {
-					"type": "integer"
+					"type": "number"
 				},
 				"login": {
 					"type": "string"
@@ -61,7 +61,7 @@
 					"type": "string"
 				}
 			},
-			"type": "object"
+			"type": ["null", "object"]
 		},
 		"assignees": {
 			"items": {
@@ -88,7 +88,7 @@
 						"type": "string"
 					},
 					"id": {
-						"type": "integer"
+						"type": "number"
 					},
 					"login": {
 						"type": "string"
@@ -135,7 +135,7 @@
 			"type": "string"
 		},
 		"closed_at": {
-			"type": "string"
+			"type": ["null", "string"]
 		},
 		"closed_by": {
 			"properties": {
@@ -161,7 +161,7 @@
 					"type": "string"
 				},
 				"id": {
-					"type": "integer"
+					"type": "number"
 				},
 				"login": {
 					"type": "string"
@@ -197,10 +197,10 @@
 					"type": "string"
 				}
 			},
-			"type": "object"
+			"type": ["null", "object"]
 		},
 		"comments": {
-			"type": "integer"
+			"type": "number"
 		},
 		"comments_url": {
 			"type": "string"
@@ -215,21 +215,21 @@
 			"type": "string"
 		},
 		"id": {
-			"type": "integer"
+			"type": "number"
 		},
 		"issue_dependencies_summary": {
 			"properties": {
 				"blocked_by": {
-					"type": "integer"
+					"type": "number"
 				},
 				"blocking": {
-					"type": "integer"
+					"type": "number"
 				},
 				"total_blocked_by": {
-					"type": "integer"
+					"type": "number"
 				},
 				"total_blocking": {
-					"type": "integer"
+					"type": "number"
 				}
 			},
 			"type": "object"
@@ -250,10 +250,10 @@
 						"type": "boolean"
 					},
 					"description": {
-						"type": "string"
+						"type": ["null", "string"]
 					},
 					"id": {
-						"type": "integer"
+						"type": "number"
 					},
 					"name": {
 						"type": "string"
@@ -280,7 +280,7 @@
 			"type": "string"
 		},
 		"number": {
-			"type": "integer"
+			"type": "number"
 		},
 		"performed_via_github_app": {
 			"properties": {
@@ -306,7 +306,7 @@
 					"type": "string"
 				},
 				"id": {
-					"type": "integer"
+					"type": "number"
 				},
 				"name": {
 					"type": "string"
@@ -338,7 +338,7 @@
 							"type": "string"
 						},
 						"id": {
-							"type": "integer"
+							"type": "number"
 						},
 						"login": {
 							"type": "string"
@@ -415,37 +415,37 @@
 					"type": "string"
 				}
 			},
-			"type": "object"
+			"type": ["null", "object"]
 		},
 		"pinned_comment": {},
 		"reactions": {
 			"properties": {
 				"-1": {
-					"type": "integer"
+					"type": "number"
 				},
 				"+1": {
-					"type": "integer"
+					"type": "number"
 				},
 				"confused": {
-					"type": "integer"
+					"type": "number"
 				},
 				"eyes": {
-					"type": "integer"
+					"type": "number"
 				},
 				"heart": {
-					"type": "integer"
+					"type": "number"
 				},
 				"hooray": {
-					"type": "integer"
+					"type": "number"
 				},
 				"laugh": {
-					"type": "integer"
+					"type": "number"
 				},
 				"rocket": {
-					"type": "integer"
+					"type": "number"
 				},
 				"total_count": {
-					"type": "integer"
+					"type": "number"
 				},
 				"url": {
 					"type": "string"
@@ -460,18 +460,18 @@
 			"type": "string"
 		},
 		"state_reason": {
-			"type": "string"
+			"type": ["null", "string"]
 		},
 		"sub_issues_summary": {
 			"properties": {
 				"completed": {
-					"type": "integer"
+					"type": "number"
 				},
 				"percent_completed": {
-					"type": "integer"
+					"type": "number"
 				},
 				"total": {
-					"type": "integer"
+					"type": "number"
 				}
 			},
 			"type": "object"
@@ -513,7 +513,7 @@
 					"type": "string"
 				},
 				"id": {
-					"type": "integer"
+					"type": "number"
 				},
 				"login": {
 					"type": "string"

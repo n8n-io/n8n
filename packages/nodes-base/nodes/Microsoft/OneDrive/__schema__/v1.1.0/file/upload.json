@@ -138,7 +138,7 @@
 			"type": "object"
 		},
 		"size": {
-			"type": "integer"
+			"type": "number"
 		},
 		"webUrl": {
 			"type": "string"

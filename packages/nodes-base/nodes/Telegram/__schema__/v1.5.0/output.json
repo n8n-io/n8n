@@ -8,7 +8,7 @@
 							"type": "string"
 						},
 						"id": {
-							"type": "integer"
+							"type": "number"
 						},
 						"type": {
 							"type": "string"
@@ -17,7 +17,7 @@
 					"type": "object"
 				},
 				"date": {
-					"type": "integer"
+					"type": "number"
 				},
 				"from": {
 					"properties": {
@@ -25,7 +25,7 @@
 							"type": "string"
 						},
 						"id": {
-							"type": "integer"
+							"type": "number"
 						},
 						"is_bot": {
 							"type": "boolean"
@@ -37,7 +37,7 @@
 					"type": "object"
 				},
 				"message_id": {
-					"type": "integer"
+					"type": "number"
 				},
 				"text": {
 					"type": "string"
@@ -46,7 +46,7 @@
 			"type": "object"
 		},
 		"update_id": {
-			"type": "integer"
+			"type": "number"
 		}
 	},
 	"type": "object"

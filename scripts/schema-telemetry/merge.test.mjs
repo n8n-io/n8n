@@ -38,7 +38,7 @@ describe('mergeSamples', () => {
 			obj({ id: { type: 'integer' } }),
 		]);
 
-		assert.deepEqual(merged, obj({ id: { type: ['integer', 'string'] } }));
+		assert.deepEqual(merged, obj({ id: { type: ['number', 'string'] } }));
 	});
 
 	it('widens a key that is only ever null to unknown', () => {
@@ -47,13 +47,62 @@ describe('mergeSamples', () => {
 		assert.deepEqual(merged, obj({ note: {} }));
 	});
 
-	it('ignores null when another sample has a real type', () => {
+	it('keeps null in the union when another sample has a real type', () => {
 		const merged = mergeSamples([
 			obj({ note: { type: 'null' } }),
 			obj({ note: { type: 'string' } }),
 		]);
 
-		assert.deepEqual(merged, obj({ note: { type: 'string' } }));
+		assert.deepEqual(merged, obj({ note: { type: ['null', 'string'] } }));
+	});
+
+	it('describes integers as numbers, because a sample cannot prove a value is never fractional', () => {
+		const merged = mergeSamples([obj({ seconds: { type: 'integer' } })]);
+
+		assert.deepEqual(merged, obj({ seconds: { type: 'number' } }));
+	});
+
+	it('keeps the properties of an object when samples also see another type', () => {
+		const merged = mergeSamples([
+			obj({ content: obj({ role: { type: 'string' } }) }),
+			obj({ content: { type: 'string' } }),
+		]);
+
+		assert.deepEqual(
+			merged,
+			obj({ content: { type: ['object', 'string'], properties: { role: { type: 'string' } } } }),
+		);
+	});
+
+	it('keeps the items of an array when samples also see another type', () => {
+		const merged = mergeSamples([
+			obj({ text: { type: 'array', items: { type: 'string' } } }),
+			obj({ text: { type: 'string' } }),
+		]);
+
+		assert.deepEqual(
+			merged,
+			obj({ text: { type: ['array', 'string'], items: { type: 'string' } } }),
+		);
+	});
+
+	it('leaves a nested object open when samples add their own keys to it', () => {
+		const merged = mergeSamples(
+			['a', 'b', 'c', 'd', 'e'].map((f) =>
+				obj({ fields: obj({ ID: { type: 'string' }, [f]: { type: 'string' } }) }),
+			),
+		);
+
+		assert.deepEqual(
+			merged,
+			obj({
+				fields: {
+					type: 'object',
+					properties: { ID: { type: 'string' } },
+					additionalProperties: true,
+				},
+			}),
+		);
 	});
 
 	it('reads anyOf as a union of its members', () => {
@@ -62,7 +111,7 @@ describe('mergeSamples', () => {
 			obj({ id: { type: 'string' } }),
 		]);
 
-		assert.deepEqual(merged, obj({ id: { type: ['integer', 'string'] } }));
+		assert.deepEqual(merged, obj({ id: { type: ['number', 'string'] } }));
 	});
 
 	it('merges array items across samples', () => {

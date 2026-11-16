@@ -21,10 +21,10 @@
 					"type": "string"
 				},
 				"numMedia": {
-					"type": "integer"
+					"type": "number"
 				},
 				"numSegments": {
-					"type": "integer"
+					"type": "number"
 				},
 				"recipients": {
 					"items": {},

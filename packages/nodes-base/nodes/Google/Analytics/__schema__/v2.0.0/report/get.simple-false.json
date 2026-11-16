@@ -43,7 +43,7 @@
 			"type": "array"
 		},
 		"rowCount": {
-			"type": "integer"
+			"type": "number"
 		},
 		"rows": {
 			"items": {
@@ -71,7 +71,7 @@
 						"type": "array"
 					}
 				},
-				"type": "object"
+				"type": ["null", "object"]
 			},
 			"type": "array"
 		}

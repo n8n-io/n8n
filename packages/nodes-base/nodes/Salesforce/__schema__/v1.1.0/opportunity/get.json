@@ -2,13 +2,13 @@
 	"additionalProperties": true,
 	"properties": {
 		"AccountId": {
-			"type": "string"
+			"type": ["null", "string"]
 		},
 		"AgeInDays": {
-			"type": "integer"
+			"type": "number"
 		},
 		"Amount": {
-			"type": ["integer", "number"]
+			"type": ["null", "number"]
 		},
 		"attributes": {
 			"properties": {
@@ -26,10 +26,10 @@
 			"type": "string"
 		},
 		"ContactId": {
-			"type": "string"
+			"type": ["null", "string"]
 		},
 		"ContractId": {
-			"type": "string"
+			"type": ["null", "string"]
 		},
 		"CreatedById": {
 			"type": "string"
@@ -38,19 +38,19 @@
 			"type": "string"
 		},
 		"Description": {
-			"type": "string"
+			"type": ["null", "string"]
 		},
 		"ExpectedRevenue": {
-			"type": ["integer", "number"]
+			"type": ["null", "number"]
 		},
 		"Fiscal": {
 			"type": "string"
 		},
 		"FiscalQuarter": {
-			"type": "integer"
+			"type": "number"
 		},
 		"FiscalYear": {
-			"type": "integer"
+			"type": "number"
 		},
 		"ForecastCategory": {
 			"type": "string"
@@ -86,16 +86,16 @@
 			"type": "boolean"
 		},
 		"LastActivityDate": {
-			"type": "string"
+			"type": ["null", "string"]
 		},
 		"LastActivityInDays": {
-			"type": "integer"
+			"type": ["null", "number"]
 		},
 		"LastAmountChangedHistoryId": {
-			"type": "string"
+			"type": ["null", "string"]
 		},
 		"LastCloseDateChangedHistoryId": {
-			"type": "string"
+			"type": ["null", "string"]
 		},
 		"LastModifiedById": {
 			"type": "string"
@@ -104,37 +104,37 @@
 			"type": "string"
 		},
 		"LastReferencedDate": {
-			"type": "string"
+			"type": ["null", "string"]
 		},
 		"LastStageChangeDate": {
-			"type": "string"
+			"type": ["null", "string"]
 		},
 		"LastStageChangeInDays": {
-			"type": "integer"
+			"type": "number"
 		},
 		"LastViewedDate": {
-			"type": "string"
+			"type": ["null", "string"]
 		},
 		"LeadSource": {
-			"type": "string"
+			"type": ["null", "string"]
 		},
 		"Name": {
 			"type": "string"
 		},
 		"NextStep": {
-			"type": "string"
+			"type": ["null", "string"]
 		},
 		"OwnerId": {
 			"type": "string"
 		},
 		"Pricebook2Id": {
-			"type": "string"
+			"type": ["null", "string"]
 		},
 		"Probability": {
-			"type": "integer"
+			"type": "number"
 		},
 		"PushCount": {
-			"type": "integer"
+			"type": "number"
 		},
 		"RecordTypeId": {
 			"type": "string"
@@ -143,16 +143,16 @@
 			"type": "string"
 		},
 		"SyncedQuoteId": {
-			"type": "string"
+			"type": ["null", "string"]
 		},
 		"SystemModstamp": {
 			"type": "string"
 		},
 		"TotalOpportunityQuantity": {
-			"type": "integer"
+			"type": ["null", "number"]
 		},
 		"Type": {
-			"type": "string"
+			"type": ["null", "string"]
 		}
 	},
 	"type": "object"

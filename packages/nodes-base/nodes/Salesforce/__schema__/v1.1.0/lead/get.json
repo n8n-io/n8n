@@ -2,37 +2,37 @@
 	"additionalProperties": true,
 	"properties": {
 		"ActivityMetricId": {
-			"type": "string"
+			"type": ["null", "string"]
 		},
 		"Address": {
 			"properties": {
 				"city": {
-					"type": "string"
+					"type": ["null", "string"]
 				},
 				"country": {
-					"type": "string"
+					"type": ["null", "string"]
 				},
 				"geocodeAccuracy": {},
 				"latitude": {
-					"type": "number"
+					"type": ["null", "number"]
 				},
 				"longitude": {
-					"type": "number"
+					"type": ["null", "number"]
 				},
 				"postalCode": {
-					"type": "string"
+					"type": ["null", "string"]
 				},
 				"state": {
-					"type": "string"
+					"type": ["null", "string"]
 				},
 				"street": {
-					"type": "string"
+					"type": ["null", "string"]
 				}
 			},
-			"type": "object"
+			"type": ["null", "object"]
 		},
 		"AnnualRevenue": {
-			"type": "integer"
+			"type": ["null", "number"]
 		},
 		"attributes": {
 			"properties": {
@@ -46,23 +46,23 @@
 			"type": "object"
 		},
 		"City": {
-			"type": "string"
+			"type": ["null", "string"]
 		},
 		"Company": {
 			"type": "string"
 		},
 		"ConvertedAccountId": {
-			"type": "string"
+			"type": ["null", "string"]
 		},
 		"ConvertedContactId": {
-			"type": "string"
+			"type": ["null", "string"]
 		},
 		"ConvertedDate": {
-			"type": "string"
+			"type": ["null", "string"]
 		},
 		"ConvertedOpportunityId": {},
 		"Country": {
-			"type": "string"
+			"type": ["null", "string"]
 		},
 		"CreatedById": {
 			"type": "string"
@@ -74,26 +74,26 @@
 			"type": "string"
 		},
 		"Description": {
-			"type": "string"
+			"type": ["null", "string"]
 		},
 		"DoNotCall": {
 			"type": "boolean"
 		},
 		"Email": {
-			"type": "string"
+			"type": ["null", "string"]
 		},
 		"EmailBouncedDate": {
-			"type": "string"
+			"type": ["null", "string"]
 		},
 		"EmailBouncedReason": {
-			"type": "string"
+			"type": ["null", "string"]
 		},
 		"Fax": {},
 		"FirstName": {
-			"type": "string"
+			"type": ["null", "string"]
 		},
 		"GCLID__c": {
-			"type": "string"
+			"type": ["null", "string"]
 		},
 		"GeocodeAccuracy": {},
 		"HasOptedOutOfEmail": {
@@ -107,7 +107,7 @@
 		},
 		"IndividualId": {},
 		"Industry": {
-			"type": "string"
+			"type": ["null", "string"]
 		},
 		"IsConverted": {
 			"type": "boolean"
@@ -124,7 +124,7 @@
 		"Jigsaw": {},
 		"JigsawContactId": {},
 		"LastActivityDate": {
-			"type": "string"
+			"type": ["null", "string"]
 		},
 		"LastModifiedById": {
 			"type": "string"
@@ -136,71 +136,71 @@
 			"type": "string"
 		},
 		"LastReferencedDate": {
-			"type": "string"
+			"type": ["null", "string"]
 		},
 		"LastTransferDate": {
 			"type": "string"
 		},
 		"LastViewedDate": {
-			"type": "string"
+			"type": ["null", "string"]
 		},
 		"Latitude": {
-			"type": "number"
+			"type": ["null", "number"]
 		},
 		"LeadSource": {
-			"type": "string"
+			"type": ["null", "string"]
 		},
 		"Longitude": {
-			"type": "number"
+			"type": ["null", "number"]
 		},
 		"MasterRecordId": {},
 		"MobilePhone": {
-			"type": "string"
+			"type": ["null", "string"]
 		},
 		"Name": {
 			"type": "string"
 		},
 		"NumberOfEmployees": {
-			"type": "integer"
+			"type": ["null", "number"]
 		},
 		"OwnerId": {
 			"type": "string"
 		},
 		"Phone": {
-			"type": "string"
+			"type": ["null", "string"]
 		},
 		"PhotoUrl": {
 			"type": "string"
 		},
 		"PostalCode": {
-			"type": "string"
+			"type": ["null", "string"]
 		},
 		"Rating": {
-			"type": "string"
+			"type": ["null", "string"]
 		},
 		"RecordTypeId": {
 			"type": "string"
 		},
 		"Salutation": {
-			"type": "string"
+			"type": ["null", "string"]
 		},
 		"State": {
-			"type": "string"
+			"type": ["null", "string"]
 		},
 		"Status": {
 			"type": "string"
 		},
 		"Street": {
-			"type": "string"
+			"type": ["null", "string"]
 		},
 		"SystemModstamp": {
 			"type": "string"
 		},
 		"Title": {
-			"type": "string"
+			"type": ["null", "string"]
 		},
 		"Website": {
-			"type": "string"
+			"type": ["null", "string"]
 		}
 	},
 	"type": "object"

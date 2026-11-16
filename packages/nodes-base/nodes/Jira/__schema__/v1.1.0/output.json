@@ -18,13 +18,13 @@
 								"type": "string"
 							},
 							"from": {
-								"type": "string"
+								"type": ["null", "string"]
 							},
 							"fromString": {
-								"type": "string"
+								"type": ["null", "string"]
 							},
 							"to": {
-								"type": "string"
+								"type": ["null", "string"]
 							},
 							"toString": {
 								"type": "string"
@@ -40,24 +40,25 @@
 		"issue": {
 			"properties": {
 				"fields": {
+					"additionalProperties": true,
 					"properties": {
 						"aggregateprogress": {
 							"properties": {
 								"progress": {
-									"type": "integer"
+									"type": "number"
 								},
 								"total": {
-									"type": "integer"
+									"type": "number"
 								}
 							},
 							"type": "object"
 						},
 						"aggregatetimeestimate": {
-							"type": "integer"
+							"type": ["null", "number"]
 						},
 						"aggregatetimeoriginalestimate": {},
 						"aggregatetimespent": {
-							"type": "integer"
+							"type": ["null", "number"]
 						},
 						"assignee": {
 							"properties": {
@@ -97,7 +98,7 @@
 									"type": "string"
 								}
 							},
-							"type": "object"
+							"type": ["null", "object"]
 						},
 						"attachment": {
 							"items": {},
@@ -177,7 +178,7 @@
 									"type": "string"
 								}
 							},
-							"type": "object"
+							"type": ["null", "object"]
 						},
 						"customfield_10015": {},
 						"customfield_10016": {},
@@ -188,7 +189,7 @@
 							"items": {
 								"properties": {
 									"boardId": {
-										"type": "integer"
+										"type": "number"
 									},
 									"endDate": {
 										"type": "string"
@@ -197,7 +198,7 @@
 										"type": "string"
 									},
 									"id": {
-										"type": "integer"
+										"type": "number"
 									},
 									"name": {
 										"type": "string"
@@ -211,11 +212,11 @@
 								},
 								"type": "object"
 							},
-							"type": "array"
+							"type": ["array", "null"]
 						},
 						"customfield_10021": {},
 						"description": {
-							"type": "string"
+							"type": ["null", "string"]
 						},
 						"duedate": {},
 						"environment": {},
@@ -260,7 +261,7 @@
 						"issuetype": {
 							"properties": {
 								"avatarId": {
-									"type": "integer"
+									"type": "number"
 								},
 								"description": {
 									"type": "string"
@@ -269,7 +270,7 @@
 									"type": "string"
 								},
 								"hierarchyLevel": {
-									"type": "integer"
+									"type": "number"
 								},
 								"iconUrl": {
 									"type": "string"
@@ -296,7 +297,7 @@
 							"type": "array"
 						},
 						"lastViewed": {
-							"type": "string"
+							"type": ["null", "string"]
 						},
 						"priority": {
 							"properties": {
@@ -318,10 +319,10 @@
 						"progress": {
 							"properties": {
 								"progress": {
-									"type": "integer"
+									"type": "number"
 								},
 								"total": {
-									"type": "integer"
+									"type": "number"
 								}
 							},
 							"type": "object"
@@ -421,10 +422,10 @@
 									"type": "string"
 								}
 							},
-							"type": "object"
+							"type": ["null", "object"]
 						},
 						"resolutiondate": {
-							"type": "string"
+							"type": ["null", "string"]
 						},
 						"security": {},
 						"status": {
@@ -450,7 +451,7 @@
 											"type": "string"
 										},
 										"id": {
-											"type": "integer"
+											"type": "number"
 										},
 										"key": {
 											"type": "string"
@@ -473,7 +474,7 @@
 									"type": "string"
 								},
 								"id": {
-									"type": "integer"
+									"type": "number"
 								},
 								"key": {
 									"type": "string"
@@ -498,11 +499,11 @@
 							"type": "string"
 						},
 						"timeestimate": {
-							"type": "integer"
+							"type": ["null", "number"]
 						},
 						"timeoriginalestimate": {},
 						"timespent": {
-							"type": "integer"
+							"type": ["null", "number"]
 						},
 						"timetracking": {
 							"type": "object"
@@ -523,7 +524,7 @@
 									"type": "string"
 								},
 								"votes": {
-									"type": "integer"
+									"type": "number"
 								}
 							},
 							"type": "object"
@@ -537,13 +538,13 @@
 									"type": "string"
 								},
 								"watchCount": {
-									"type": "integer"
+									"type": "number"
 								}
 							},
 							"type": "object"
 						},
 						"workratio": {
-							"type": "integer"
+							"type": "number"
 						}
 					},
 					"type": "object"
@@ -564,7 +565,7 @@
 			"type": "string"
 		},
 		"timestamp": {
-			"type": "integer"
+			"type": "number"
 		},
 		"triggeredByUser": {
 			"type": "string"

@@ -1,18 +1,18 @@
 {
 	"properties": {
 		"AboutMe": {
-			"type": "string"
+			"type": ["null", "string"]
 		},
 		"AccountId": {
-			"type": "string"
+			"type": ["null", "string"]
 		},
 		"Address": {
 			"properties": {
 				"city": {
-					"type": "string"
+					"type": ["null", "string"]
 				},
 				"country": {
-					"type": "string"
+					"type": ["null", "string"]
 				},
 				"countryCode": {
 					"type": "string"
@@ -21,17 +21,17 @@
 				"latitude": {},
 				"longitude": {},
 				"postalCode": {
-					"type": "string"
+					"type": ["null", "string"]
 				},
 				"state": {
-					"type": "string"
+					"type": ["null", "string"]
 				},
 				"stateCode": {},
 				"street": {
-					"type": "string"
+					"type": ["null", "string"]
 				}
 			},
-			"type": "object"
+			"type": ["null", "object"]
 		},
 		"Alias": {
 			"type": "string"
@@ -54,22 +54,22 @@
 			"type": "string"
 		},
 		"CallCenterId": {
-			"type": "string"
+			"type": ["null", "string"]
 		},
 		"City": {
-			"type": "string"
+			"type": ["null", "string"]
 		},
 		"CommunityNickname": {
 			"type": "string"
 		},
 		"CompanyName": {
-			"type": "string"
+			"type": ["null", "string"]
 		},
 		"ContactId": {
-			"type": "string"
+			"type": ["null", "string"]
 		},
 		"Country": {
-			"type": "string"
+			"type": ["null", "string"]
 		},
 		"CreatedById": {
 			"type": "string"
@@ -82,13 +82,13 @@
 		},
 		"DelegatedApproverId": {},
 		"Department": {
-			"type": "string"
+			"type": ["null", "string"]
 		},
 		"DigestFrequency": {
 			"type": "string"
 		},
 		"Division": {
-			"type": "string"
+			"type": ["null", "string"]
 		},
 		"Email": {
 			"type": "string"
@@ -106,15 +106,15 @@
 			"type": "boolean"
 		},
 		"EmployeeNumber": {
-			"type": "string"
+			"type": ["null", "string"]
 		},
 		"EndDay": {
-			"type": "string"
+			"type": ["null", "string"]
 		},
 		"Extension": {},
 		"Fax": {},
 		"FederationIdentifier": {
-			"type": "string"
+			"type": ["null", "string"]
 		},
 		"FirstName": {
 			"type": "string"
@@ -146,7 +146,7 @@
 			"type": "string"
 		},
 		"LastLoginDate": {
-			"type": "string"
+			"type": ["null", "string"]
 		},
 		"LastModifiedById": {
 			"type": "string"
@@ -158,13 +158,13 @@
 			"type": "string"
 		},
 		"LastPasswordChangeDate": {
-			"type": "string"
+			"type": ["null", "string"]
 		},
 		"LastReferencedDate": {
-			"type": "string"
+			"type": ["null", "string"]
 		},
 		"LastViewedDate": {
-			"type": "string"
+			"type": ["null", "string"]
 		},
 		"Latitude": {},
 		"LocaleSidKey": {
@@ -172,7 +172,7 @@
 		},
 		"Longitude": {},
 		"ManagerId": {
-			"type": "string"
+			"type": ["null", "string"]
 		},
 		"MediumBannerPhotoUrl": {
 			"type": "string"
@@ -181,13 +181,13 @@
 			"type": "string"
 		},
 		"MobilePhone": {
-			"type": "string"
+			"type": ["null", "string"]
 		},
 		"Name": {
 			"type": "string"
 		},
 		"NumberOfFailedLogins": {
-			"type": "integer"
+			"type": ["null", "number"]
 		},
 		"OfflinePdaTrialExpirationDate": {},
 		"OfflineTrialExpirationDate": {},
@@ -195,14 +195,14 @@
 			"type": "string"
 		},
 		"PasswordExpirationDate": {
-			"type": "string"
+			"type": ["null", "string"]
 		},
 		"Phone": {
-			"type": "string"
+			"type": ["null", "string"]
 		},
 		"PortalRole": {},
 		"PostalCode": {
-			"type": "string"
+			"type": ["null", "string"]
 		},
 		"ProfileId": {
 			"type": "string"
@@ -214,11 +214,11 @@
 			"type": "boolean"
 		},
 		"SenderEmail": {
-			"type": "string"
+			"type": ["null", "string"]
 		},
 		"SenderName": {},
 		"Signature": {
-			"type": "string"
+			"type": ["null", "string"]
 		},
 		"SmallBannerPhotoUrl": {
 			"type": "string"
@@ -227,16 +227,16 @@
 			"type": "string"
 		},
 		"StartDay": {
-			"type": "string"
+			"type": ["null", "string"]
 		},
 		"State": {
-			"type": "string"
+			"type": ["null", "string"]
 		},
 		"StayInTouchNote": {},
 		"StayInTouchSignature": {},
 		"StayInTouchSubject": {},
 		"Street": {
-			"type": "string"
+			"type": ["null", "string"]
 		},
 		"SuAccessExpirationDate": {},
 		"SystemModstamp": {
@@ -246,7 +246,7 @@
 			"type": "string"
 		},
 		"Title": {
-			"type": "string"
+			"type": ["null", "string"]
 		},
 		"Username": {
 			"type": "string"
@@ -540,7 +540,7 @@
 			"type": "boolean"
 		},
 		"UserRoleId": {
-			"type": "string"
+			"type": ["null", "string"]
 		},
 		"UserType": {
 			"type": "string"

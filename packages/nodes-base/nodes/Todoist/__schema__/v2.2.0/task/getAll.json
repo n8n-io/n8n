@@ -4,27 +4,27 @@
 			"type": "string"
 		},
 		"added_by_uid": {
-			"type": "string"
+			"type": ["null", "string"]
 		},
 		"assigned_by_uid": {
-			"type": "string"
+			"type": ["null", "string"]
 		},
 		"checked": {
 			"type": "boolean"
 		},
 		"child_order": {
-			"type": "integer"
+			"type": "number"
 		},
 		"completed_at": {},
 		"completed_by_uid": {},
 		"completed_count": {
-			"type": "integer"
+			"type": "number"
 		},
 		"content": {
 			"type": "string"
 		},
 		"day_order": {
-			"type": "integer"
+			"type": "number"
 		},
 		"deadline": {},
 		"description": {
@@ -46,7 +46,7 @@
 				},
 				"timezone": {}
 			},
-			"type": "object"
+			"type": ["null", "object"]
 		},
 		"duration": {},
 		"id": {
@@ -65,26 +65,26 @@
 			"type": "array"
 		},
 		"note_count": {
-			"type": "integer"
+			"type": "number"
 		},
 		"order_key": {
 			"type": "string"
 		},
 		"parent_id": {
-			"type": "string"
+			"type": ["null", "string"]
 		},
 		"postponed_count": {
-			"type": "integer"
+			"type": "number"
 		},
 		"priority": {
-			"type": "integer"
+			"type": "number"
 		},
 		"project_id": {
 			"type": "string"
 		},
 		"responsible_uid": {},
 		"section_id": {
-			"type": "string"
+			"type": ["null", "string"]
 		},
 		"updated_at": {
 			"type": "string"

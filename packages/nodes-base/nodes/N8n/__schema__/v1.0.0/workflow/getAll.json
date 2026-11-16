@@ -18,10 +18,10 @@
 					"type": "string"
 				},
 				"description": {
-					"type": "string"
+					"type": ["null", "string"]
 				},
 				"name": {
-					"type": "string"
+					"type": ["null", "string"]
 				},
 				"nodeGroups": {
 					"items": {},
@@ -49,6 +49,7 @@
 								"type": "string"
 							},
 							"parameters": {
+								"additionalProperties": true,
 								"properties": {
 									"conditions": {
 										"properties": {
@@ -98,7 +99,7 @@
 														"type": "string"
 													},
 													"version": {
-														"type": "integer"
+														"type": "number"
 													}
 												},
 												"type": "object"
@@ -151,7 +152,7 @@
 							},
 							"position": {
 								"items": {
-									"type": "integer"
+									"type": "number"
 								},
 								"type": "array"
 							},
@@ -179,10 +180,10 @@
 					"type": "string"
 				}
 			},
-			"type": "object"
+			"type": ["null", "object"]
 		},
 		"activeVersionId": {
-			"type": "string"
+			"type": ["null", "string"]
 		},
 		"connections": {
 			"type": "object"
@@ -208,7 +209,7 @@
 					"type": "boolean"
 				}
 			},
-			"type": "object"
+			"type": ["null", "object"]
 		},
 		"name": {
 			"type": "string"
@@ -258,6 +259,7 @@
 						"type": "string"
 					},
 					"parameters": {
+						"additionalProperties": true,
 						"properties": {
 							"assignments": {
 								"properties": {
@@ -274,7 +276,7 @@
 													"type": "string"
 												},
 												"value": {
-													"type": ["boolean", "integer", "string"]
+													"type": ["boolean", "number", "string"]
 												}
 											},
 											"type": "object"
@@ -316,7 +318,7 @@
 													"type": "object"
 												},
 												"rightValue": {
-													"type": ["boolean", "integer", "string"]
+													"type": ["boolean", "number", "string"]
 												}
 											},
 											"type": "object"
@@ -335,7 +337,7 @@
 												"type": "string"
 											},
 											"version": {
-												"type": "integer"
+												"type": "number"
 											}
 										},
 										"type": "object"
@@ -356,6 +358,14 @@
 								"type": "string"
 							},
 							"jsonBody": {
+								"properties": {
+									"page_size": {
+										"type": "number"
+									},
+									"query": {
+										"type": "string"
+									}
+								},
 								"type": ["object", "string"]
 							},
 							"method": {
@@ -371,6 +381,7 @@
 								"type": "string"
 							},
 							"options": {
+								"additionalProperties": true,
 								"properties": {
 									"response": {
 										"properties": {
@@ -414,7 +425,7 @@
 					},
 					"position": {
 						"items": {
-							"type": "integer"
+							"type": "number"
 						},
 						"type": "array"
 					},
@@ -433,7 +444,7 @@
 			"type": "array"
 		},
 		"pinData": {
-			"type": "object"
+			"type": ["null", "object"]
 		},
 		"settings": {
 			"properties": {
@@ -470,7 +481,7 @@
 			"type": "array"
 		},
 		"staticData": {
-			"type": "object"
+			"type": ["null", "object"]
 		},
 		"tags": {
 			"items": {
@@ -493,7 +504,7 @@
 			"type": "array"
 		},
 		"triggerCount": {
-			"type": "integer"
+			"type": "number"
 		},
 		"updatedAt": {
 			"type": "string"

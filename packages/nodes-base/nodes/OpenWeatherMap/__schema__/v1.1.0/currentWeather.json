@@ -6,13 +6,13 @@
 		"clouds": {
 			"properties": {
 				"all": {
-					"type": "integer"
+					"type": "number"
 				}
 			},
 			"type": "object"
 		},
 		"cod": {
-			"type": "integer"
+			"type": "number"
 		},
 		"coord": {
 			"properties": {
@@ -20,16 +20,16 @@
 					"type": "number"
 				},
 				"lon": {
-					"type": ["integer", "number"]
+					"type": "number"
 				}
 			},
 			"type": "object"
 		},
 		"dt": {
-			"type": "integer"
+			"type": "number"
 		},
 		"id": {
-			"type": "integer"
+			"type": "number"
 		},
 		"main": {
 			"properties": {
@@ -37,16 +37,16 @@
 					"type": "number"
 				},
 				"grnd_level": {
-					"type": "integer"
+					"type": "number"
 				},
 				"humidity": {
-					"type": "integer"
+					"type": "number"
 				},
 				"pressure": {
-					"type": "integer"
+					"type": "number"
 				},
 				"sea_level": {
-					"type": "integer"
+					"type": "number"
 				},
 				"temp": {
 					"type": "number"
@@ -55,7 +55,7 @@
 					"type": "number"
 				},
 				"temp_min": {
-					"type": ["integer", "number"]
+					"type": "number"
 				}
 			},
 			"type": "object"
@@ -69,25 +69,25 @@
 					"type": "string"
 				},
 				"id": {
-					"type": "integer"
+					"type": "number"
 				},
 				"sunrise": {
-					"type": "integer"
+					"type": "number"
 				},
 				"sunset": {
-					"type": "integer"
+					"type": "number"
 				},
 				"type": {
-					"type": "integer"
+					"type": "number"
 				}
 			},
 			"type": "object"
 		},
 		"timezone": {
-			"type": "integer"
+			"type": "number"
 		},
 		"visibility": {
-			"type": "integer"
+			"type": "number"
 		},
 		"weather": {
 			"items": {
@@ -99,7 +99,7 @@
 						"type": "string"
 					},
 					"id": {
-						"type": "integer"
+						"type": "number"
 					},
 					"main": {
 						"type": "string"
@@ -112,7 +112,7 @@
 		"wind": {
 			"properties": {
 				"deg": {
-					"type": "integer"
+					"type": "number"
 				},
 				"gust": {
 					"type": "number"

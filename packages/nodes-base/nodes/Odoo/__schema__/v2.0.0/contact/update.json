@@ -1,7 +1,7 @@
 {
 	"properties": {
 		"id": {
-			"type": "integer"
+			"type": "number"
 		},
 		"updated": {
 			"type": "boolean"

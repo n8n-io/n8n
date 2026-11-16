@@ -4,7 +4,7 @@
 			"items": {
 				"properties": {
 					"content_scan_version": {
-						"type": "integer"
+						"type": "number"
 					},
 					"content_type": {
 						"type": "string"
@@ -25,7 +25,7 @@
 						"type": "string"
 					},
 					"size": {
-						"type": "integer"
+						"type": "number"
 					},
 					"url": {
 						"type": "string"
@@ -39,7 +39,7 @@
 			"properties": {
 				"accent_color": {},
 				"avatar": {
-					"type": "string"
+					"type": ["null", "string"]
 				},
 				"avatar_decoration_data": {
 					"properties": {
@@ -51,7 +51,7 @@
 							"type": "string"
 						}
 					},
-					"type": "object"
+					"type": ["null", "object"]
 				},
 				"banner": {},
 				"banner_color": {},
@@ -73,7 +73,7 @@
 							"type": "string"
 						}
 					},
-					"type": "object"
+					"type": ["null", "object"]
 				},
 				"collectibles": {},
 				"discriminator": {
@@ -81,10 +81,10 @@
 				},
 				"display_name_styles": {},
 				"flags": {
-					"type": "integer"
+					"type": "number"
 				},
 				"global_name": {
-					"type": "string"
+					"type": ["null", "string"]
 				},
 				"id": {
 					"type": "string"
@@ -104,10 +104,10 @@
 							"type": "string"
 						}
 					},
-					"type": "object"
+					"type": ["null", "object"]
 				},
 				"public_flags": {
-					"type": "integer"
+					"type": "number"
 				},
 				"username": {
 					"type": "string"
@@ -125,16 +125,16 @@
 						"items": {
 							"properties": {
 								"id": {
-									"type": "integer"
+									"type": "number"
 								},
 								"label": {
 									"type": "string"
 								},
 								"style": {
-									"type": "integer"
+									"type": "number"
 								},
 								"type": {
-									"type": "integer"
+									"type": "number"
 								},
 								"url": {
 									"type": "string"
@@ -145,10 +145,10 @@
 						"type": "array"
 					},
 					"id": {
-						"type": "integer"
+						"type": "number"
 					},
 					"type": {
-						"type": "integer"
+						"type": "number"
 					}
 				},
 				"type": "object"
@@ -159,16 +159,16 @@
 			"type": "string"
 		},
 		"edited_timestamp": {
-			"type": "string"
+			"type": ["null", "string"]
 		},
 		"embeds": {
 			"items": {
 				"properties": {
 					"color": {
-						"type": "integer"
+						"type": "number"
 					},
 					"content_scan_version": {
-						"type": "integer"
+						"type": "number"
 					},
 					"description": {
 						"type": "string"
@@ -185,7 +185,7 @@
 			"type": "array"
 		},
 		"flags": {
-			"type": "integer"
+			"type": "number"
 		},
 		"id": {
 			"type": "string"
@@ -232,7 +232,7 @@
 					},
 					"display_name_styles": {},
 					"flags": {
-						"type": "integer"
+						"type": "number"
 					},
 					"global_name": {
 						"type": "string"
@@ -258,7 +258,7 @@
 						"type": "object"
 					},
 					"public_flags": {
-						"type": "integer"
+						"type": "number"
 					},
 					"username": {
 						"type": "string"
@@ -278,7 +278,7 @@
 			"type": "boolean"
 		},
 		"type": {
-			"type": "integer"
+			"type": "number"
 		}
 	},
 	"type": "object"

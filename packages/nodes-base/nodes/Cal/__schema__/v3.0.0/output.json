@@ -14,10 +14,10 @@
 						"type": "array"
 					},
 					"failures": {
-						"type": "integer"
+						"type": "number"
 					},
 					"success": {
-						"type": "integer"
+						"type": "number"
 					},
 					"type": {
 						"type": "string"
@@ -56,13 +56,13 @@
 						"type": "string"
 					},
 					"phoneNumber": {
-						"type": "string"
+						"type": ["null", "string"]
 					},
 					"timeZone": {
 						"type": "string"
 					},
 					"utcOffset": {
-						"type": "integer"
+						"type": "number"
 					}
 				},
 				"type": "object"
@@ -74,7 +74,7 @@
 			"type": "string"
 		},
 		"bookingId": {
-			"type": "integer"
+			"type": "number"
 		},
 		"cancellationReason": {},
 		"createdAt": {
@@ -94,13 +94,13 @@
 			"items": {
 				"properties": {
 					"credentialId": {
-						"type": "integer"
+						"type": "number"
 					},
 					"externalId": {
 						"type": "string"
 					},
 					"id": {
-						"type": "integer"
+						"type": "number"
 					},
 					"integration": {
 						"type": "string"
@@ -109,12 +109,12 @@
 						"type": "string"
 					},
 					"userId": {
-						"type": "integer"
+						"type": "number"
 					}
 				},
 				"type": "object"
 			},
-			"type": "array"
+			"type": ["array", "null"]
 		},
 		"disableCancelling": {
 			"type": "boolean"
@@ -132,13 +132,13 @@
 			"type": "string"
 		},
 		"eventDescription": {
-			"type": "string"
+			"type": ["null", "string"]
 		},
 		"eventTitle": {
 			"type": "string"
 		},
 		"eventTypeId": {
-			"type": "integer"
+			"type": "number"
 		},
 		"eventTypeTitle": {
 			"type": "string"
@@ -157,13 +157,13 @@
 			"type": "boolean"
 		},
 		"iCalSequence": {
-			"type": "integer"
+			"type": "number"
 		},
 		"iCalUID": {
 			"type": "string"
 		},
 		"length": {
-			"type": "integer"
+			"type": "number"
 		},
 		"location": {
 			"type": "string"
@@ -184,7 +184,7 @@
 					"type": "string"
 				},
 				"id": {
-					"type": "integer"
+					"type": "number"
 				},
 				"language": {
 					"properties": {
@@ -207,7 +207,7 @@
 					"type": "string"
 				},
 				"utcOffset": {
-					"type": "integer"
+					"type": "number"
 				}
 			},
 			"type": "object"
@@ -226,7 +226,7 @@
 			"type": "string"
 		},
 		"price": {
-			"type": "integer"
+			"type": "number"
 		},
 		"privateNoteEnabled": {
 			"type": "boolean"

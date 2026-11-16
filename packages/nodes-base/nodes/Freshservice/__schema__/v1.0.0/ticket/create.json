@@ -48,7 +48,7 @@
 		},
 		"group_id": {},
 		"id": {
-			"type": "integer"
+			"type": "number"
 		},
 		"is_escalated": {
 			"type": "boolean"
@@ -58,7 +58,7 @@
 		"planned_end_date": {},
 		"planned_start_date": {},
 		"priority": {
-			"type": "integer"
+			"type": "number"
 		},
 		"quality_score": {},
 		"quality_score_level": {
@@ -73,23 +73,23 @@
 			"type": "array"
 		},
 		"requested_for_id": {
-			"type": "integer"
+			"type": "number"
 		},
 		"requester_id": {
-			"type": "integer"
+			"type": "number"
 		},
 		"resolution_notes": {},
 		"resolution_notes_html": {},
 		"responder_id": {},
 		"skillset_id": {},
 		"source": {
-			"type": "integer"
+			"type": "number"
 		},
 		"spam": {
 			"type": "boolean"
 		},
 		"status": {
-			"type": "integer"
+			"type": "number"
 		},
 		"sub_category": {},
 		"subject": {
@@ -100,7 +100,7 @@
 			"type": "array"
 		},
 		"tasks_dependency_type": {
-			"type": "integer"
+			"type": "number"
 		},
 		"to_emails": {},
 		"type": {
@@ -110,7 +110,7 @@
 			"type": "string"
 		},
 		"workspace_id": {
-			"type": "integer"
+			"type": "number"
 		},
 		"xla_policy_id": {},
 		"xla_policy_name": {},

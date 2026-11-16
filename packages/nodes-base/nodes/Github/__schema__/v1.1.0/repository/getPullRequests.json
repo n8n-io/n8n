@@ -94,7 +94,7 @@
 					"type": "string"
 				},
 				"id": {
-					"type": "integer"
+					"type": "number"
 				},
 				"login": {
 					"type": "string"
@@ -130,7 +130,7 @@
 					"type": "string"
 				}
 			},
-			"type": "object"
+			"type": ["null", "object"]
 		},
 		"assignees": {
 			"items": {
@@ -157,7 +157,7 @@
 						"type": "string"
 					},
 					"id": {
-						"type": "integer"
+						"type": "number"
 					},
 					"login": {
 						"type": "string"
@@ -228,7 +228,7 @@
 							"type": "string"
 						},
 						"id": {
-							"type": "integer"
+							"type": "number"
 						},
 						"login": {
 							"type": "string"
@@ -270,7 +270,7 @@
 					"type": "string"
 				}
 			},
-			"type": "object"
+			"type": ["null", "object"]
 		},
 		"base": {
 			"properties": {
@@ -331,7 +331,7 @@
 							"type": "string"
 						},
 						"description": {
-							"type": "string"
+							"type": ["null", "string"]
 						},
 						"disabled": {
 							"type": "boolean"
@@ -346,10 +346,10 @@
 							"type": "boolean"
 						},
 						"forks": {
-							"type": "integer"
+							"type": "number"
 						},
 						"forks_count": {
-							"type": "integer"
+							"type": "number"
 						},
 						"forks_url": {
 							"type": "string"
@@ -391,7 +391,7 @@
 							"type": "boolean"
 						},
 						"homepage": {
-							"type": "string"
+							"type": ["null", "string"]
 						},
 						"hooks_url": {
 							"type": "string"
@@ -400,7 +400,7 @@
 							"type": "string"
 						},
 						"id": {
-							"type": "integer"
+							"type": "number"
 						},
 						"is_template": {
 							"type": "boolean"
@@ -421,7 +421,7 @@
 							"type": "string"
 						},
 						"language": {
-							"type": "string"
+							"type": ["null", "string"]
 						},
 						"languages_url": {
 							"type": "string"
@@ -441,10 +441,10 @@
 									"type": "string"
 								},
 								"url": {
-									"type": "string"
+									"type": ["null", "string"]
 								}
 							},
-							"type": "object"
+							"type": ["null", "object"]
 						},
 						"merges_url": {
 							"type": "string"
@@ -463,10 +463,10 @@
 							"type": "string"
 						},
 						"open_issues": {
-							"type": "integer"
+							"type": "number"
 						},
 						"open_issues_count": {
-							"type": "integer"
+							"type": "number"
 						},
 						"owner": {
 							"properties": {
@@ -492,7 +492,7 @@
 									"type": "string"
 								},
 								"id": {
-									"type": "integer"
+									"type": "number"
 								},
 								"login": {
 									"type": "string"
@@ -546,13 +546,13 @@
 							"type": "string"
 						},
 						"size": {
-							"type": "integer"
+							"type": "number"
 						},
 						"ssh_url": {
 							"type": "string"
 						},
 						"stargazers_count": {
-							"type": "integer"
+							"type": "number"
 						},
 						"stargazers_url": {
 							"type": "string"
@@ -594,10 +594,10 @@
 							"type": "string"
 						},
 						"watchers": {
-							"type": "integer"
+							"type": "number"
 						},
 						"watchers_count": {
-							"type": "integer"
+							"type": "number"
 						},
 						"web_commit_signoff_required": {
 							"type": "boolean"
@@ -632,7 +632,7 @@
 							"type": "string"
 						},
 						"id": {
-							"type": "integer"
+							"type": "number"
 						},
 						"login": {
 							"type": "string"
@@ -674,10 +674,10 @@
 			"type": "object"
 		},
 		"body": {
-			"type": "string"
+			"type": ["null", "string"]
 		},
 		"closed_at": {
-			"type": "string"
+			"type": ["null", "string"]
 		},
 		"comments_url": {
 			"type": "string"
@@ -753,7 +753,7 @@
 							"type": "string"
 						},
 						"description": {
-							"type": "string"
+							"type": ["null", "string"]
 						},
 						"disabled": {
 							"type": "boolean"
@@ -768,10 +768,10 @@
 							"type": "boolean"
 						},
 						"forks": {
-							"type": "integer"
+							"type": "number"
 						},
 						"forks_count": {
-							"type": "integer"
+							"type": "number"
 						},
 						"forks_url": {
 							"type": "string"
@@ -813,7 +813,7 @@
 							"type": "boolean"
 						},
 						"homepage": {
-							"type": "string"
+							"type": ["null", "string"]
 						},
 						"hooks_url": {
 							"type": "string"
@@ -822,7 +822,7 @@
 							"type": "string"
 						},
 						"id": {
-							"type": "integer"
+							"type": "number"
 						},
 						"is_template": {
 							"type": "boolean"
@@ -843,7 +843,7 @@
 							"type": "string"
 						},
 						"language": {
-							"type": "string"
+							"type": ["null", "string"]
 						},
 						"languages_url": {
 							"type": "string"
@@ -863,10 +863,10 @@
 									"type": "string"
 								},
 								"url": {
-									"type": "string"
+									"type": ["null", "string"]
 								}
 							},
-							"type": "object"
+							"type": ["null", "object"]
 						},
 						"merges_url": {
 							"type": "string"
@@ -885,10 +885,10 @@
 							"type": "string"
 						},
 						"open_issues": {
-							"type": "integer"
+							"type": "number"
 						},
 						"open_issues_count": {
-							"type": "integer"
+							"type": "number"
 						},
 						"owner": {
 							"properties": {
@@ -914,7 +914,7 @@
 									"type": "string"
 								},
 								"id": {
-									"type": "integer"
+									"type": "number"
 								},
 								"login": {
 									"type": "string"
@@ -968,13 +968,13 @@
 							"type": "string"
 						},
 						"size": {
-							"type": "integer"
+							"type": "number"
 						},
 						"ssh_url": {
 							"type": "string"
 						},
 						"stargazers_count": {
-							"type": "integer"
+							"type": "number"
 						},
 						"stargazers_url": {
 							"type": "string"
@@ -1016,10 +1016,10 @@
 							"type": "string"
 						},
 						"watchers": {
-							"type": "integer"
+							"type": "number"
 						},
 						"watchers_count": {
-							"type": "integer"
+							"type": "number"
 						},
 						"web_commit_signoff_required": {
 							"type": "boolean"
@@ -1054,7 +1054,7 @@
 							"type": "string"
 						},
 						"id": {
-							"type": "integer"
+							"type": "number"
 						},
 						"login": {
 							"type": "string"
@@ -1099,7 +1099,7 @@
 			"type": "string"
 		},
 		"id": {
-			"type": "integer"
+			"type": "number"
 		},
 		"issue_url": {
 			"type": "string"
@@ -1116,10 +1116,10 @@
 						"type": "boolean"
 					},
 					"description": {
-						"type": "string"
+						"type": ["null", "string"]
 					},
 					"id": {
-						"type": "integer"
+						"type": "number"
 					},
 					"name": {
 						"type": "string"
@@ -1139,17 +1139,17 @@
 			"type": "boolean"
 		},
 		"merge_commit_sha": {
-			"type": "string"
+			"type": ["null", "string"]
 		},
 		"merged_at": {
-			"type": "string"
+			"type": ["null", "string"]
 		},
 		"milestone": {},
 		"node_id": {
 			"type": "string"
 		},
 		"number": {
-			"type": "integer"
+			"type": "number"
 		},
 		"patch_url": {
 			"type": "string"
@@ -1179,7 +1179,7 @@
 						"type": "string"
 					},
 					"id": {
-						"type": "integer"
+						"type": "number"
 					},
 					"login": {
 						"type": "string"
@@ -1229,7 +1229,7 @@
 						"type": "string"
 					},
 					"id": {
-						"type": "integer"
+						"type": "number"
 					},
 					"members_url": {
 						"type": "string"
@@ -1244,7 +1244,7 @@
 						"type": "string"
 					},
 					"organization_id": {
-						"type": "integer"
+						"type": "number"
 					},
 					"parent": {
 						"properties": {
@@ -1255,7 +1255,7 @@
 								"type": "string"
 							},
 							"id": {
-								"type": "integer"
+								"type": "number"
 							},
 							"members_url": {
 								"type": "string"
@@ -1270,7 +1270,7 @@
 								"type": "string"
 							},
 							"organization_id": {
-								"type": "integer"
+								"type": "number"
 							},
 							"permission": {
 								"type": "string"
@@ -1291,7 +1291,7 @@
 								"type": "string"
 							}
 						},
-						"type": "object"
+						"type": ["null", "object"]
 					},
 					"permission": {
 						"type": "string"
@@ -1361,7 +1361,7 @@
 					"type": "string"
 				},
 				"id": {
-					"type": "integer"
+					"type": "number"
 				},
 				"login": {
 					"type": "string"

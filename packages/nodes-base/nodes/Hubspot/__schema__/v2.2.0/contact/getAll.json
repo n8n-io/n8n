@@ -1,10 +1,10 @@
 {
 	"properties": {
 		"addedAt": {
-			"type": "integer"
+			"type": "number"
 		},
 		"canonical-vid": {
-			"type": "integer"
+			"type": "number"
 		},
 		"form-submissions": {
 			"items": {
@@ -35,10 +35,10 @@
 						"type": "string"
 					},
 					"portal-id": {
-						"type": "integer"
+						"type": "number"
 					},
 					"timestamp": {
-						"type": "integer"
+						"type": "number"
 					},
 					"title": {
 						"type": "string"
@@ -52,7 +52,7 @@
 			"items": {
 				"properties": {
 					"deleted-changed-timestamp": {
-						"type": "integer"
+						"type": "number"
 					},
 					"identities": {
 						"items": {
@@ -61,7 +61,7 @@
 									"type": "boolean"
 								},
 								"timestamp": {
-									"type": "integer"
+									"type": "number"
 								},
 								"type": {
 									"type": "string"
@@ -75,10 +75,10 @@
 						"type": "array"
 					},
 					"saved-at-timestamp": {
-						"type": "integer"
+						"type": "number"
 					},
 					"vid": {
-						"type": "integer"
+						"type": "number"
 					}
 				},
 				"type": "object"
@@ -92,7 +92,7 @@
 			"items": {
 				"properties": {
 					"canonical-vid": {
-						"type": "integer"
+						"type": "number"
 					},
 					"entity-id": {
 						"type": "string"
@@ -121,7 +121,7 @@
 								"type": "string"
 							},
 							"timestamp": {
-								"type": "integer"
+								"type": "number"
 							},
 							"updated-by-user-id": {},
 							"value": {
@@ -145,7 +145,7 @@
 								"type": "string"
 							},
 							"timestamp": {
-								"type": "integer"
+								"type": "number"
 							},
 							"updated-by-user-id": {},
 							"value": {
@@ -155,16 +155,16 @@
 						"type": "object"
 					},
 					"num-properties-moved": {
-						"type": "integer"
+						"type": "number"
 					},
 					"primary-vid-to-merge": {
-						"type": "integer"
+						"type": "number"
 					},
 					"timestamp": {
-						"type": "integer"
+						"type": "number"
 					},
 					"vid-to-merge": {
-						"type": "integer"
+						"type": "number"
 					}
 				},
 				"type": "object"
@@ -173,14 +173,15 @@
 		},
 		"merged-vids": {
 			"items": {
-				"type": "integer"
+				"type": "number"
 			},
 			"type": "array"
 		},
 		"portal-id": {
-			"type": "integer"
+			"type": "number"
 		},
 		"properties": {
+			"additionalProperties": true,
 			"properties": {
 				"firstname": {
 					"properties": {
@@ -210,7 +211,7 @@
 			"type": "object"
 		},
 		"vid": {
-			"type": "integer"
+			"type": "number"
 		}
 	},
 	"type": "object"

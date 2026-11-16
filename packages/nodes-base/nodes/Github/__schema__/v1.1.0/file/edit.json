@@ -76,19 +76,19 @@
 				"verification": {
 					"properties": {
 						"payload": {
-							"type": "string"
+							"type": ["null", "string"]
 						},
 						"reason": {
 							"type": "string"
 						},
 						"signature": {
-							"type": "string"
+							"type": ["null", "string"]
 						},
 						"verified": {
 							"type": "boolean"
 						},
 						"verified_at": {
-							"type": "string"
+							"type": ["null", "string"]
 						}
 					},
 					"type": "object"
@@ -131,7 +131,7 @@
 					"type": "string"
 				},
 				"size": {
-					"type": "integer"
+					"type": "number"
 				},
 				"type": {
 					"type": "string"

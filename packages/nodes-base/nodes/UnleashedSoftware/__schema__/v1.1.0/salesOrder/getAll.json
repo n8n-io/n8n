@@ -7,16 +7,16 @@
 			"type": "number"
 		},
 		"BCTaxTotal": {
-			"type": ["integer", "number"]
+			"type": "number"
 		},
 		"BCTotal": {
 			"type": "number"
 		},
 		"Comments": {
-			"type": "string"
+			"type": ["null", "string"]
 		},
 		"CompletedDate": {
-			"type": "string"
+			"type": ["null", "string"]
 		},
 		"CreatedBy": {
 			"type": "string"
@@ -46,7 +46,7 @@
 		"Customer": {
 			"properties": {
 				"CurrencyId": {
-					"type": "integer"
+					"type": "number"
 				},
 				"CustomerCode": {
 					"type": "string"
@@ -64,13 +64,13 @@
 			"type": "object"
 		},
 		"CustomerRef": {
-			"type": "string"
+			"type": ["null", "string"]
 		},
 		"CustomOrderStatus": {
-			"type": "string"
+			"type": ["null", "string"]
 		},
 		"DeliveryCity": {
-			"type": "string"
+			"type": ["null", "string"]
 		},
 		"DeliveryContact": {
 			"properties": {
@@ -78,50 +78,50 @@
 					"type": "string"
 				},
 				"FirstName": {
-					"type": "string"
+					"type": ["null", "string"]
 				},
 				"Guid": {
 					"type": "string"
 				},
 				"LastName": {
-					"type": "string"
+					"type": ["null", "string"]
 				},
 				"MobilePhone": {},
 				"OfficePhone": {},
 				"PhoneNumber": {}
 			},
-			"type": "object"
+			"type": ["null", "object"]
 		},
 		"DeliveryCountry": {
-			"type": "string"
+			"type": ["null", "string"]
 		},
 		"DeliveryInstruction": {},
 		"DeliveryMethod": {
-			"type": "string"
+			"type": ["null", "string"]
 		},
 		"DeliveryName": {
-			"type": "string"
+			"type": ["null", "string"]
 		},
 		"DeliveryPostCode": {
-			"type": "string"
+			"type": ["null", "string"]
 		},
 		"DeliveryRegion": {
-			"type": "string"
+			"type": ["null", "string"]
 		},
 		"DeliveryStreetAddress": {
-			"type": "string"
+			"type": ["null", "string"]
 		},
 		"DeliveryStreetAddress2": {
-			"type": "string"
+			"type": ["null", "string"]
 		},
 		"DeliverySuburb": {
-			"type": "string"
+			"type": ["null", "string"]
 		},
 		"DiscountRate": {
-			"type": ["integer", "number"]
+			"type": "number"
 		},
 		"ExchangeRate": {
-			"type": "integer"
+			"type": "number"
 		},
 		"Guid": {
 			"type": "string"
@@ -146,11 +146,11 @@
 		},
 		"ReceivedDate": {},
 		"RequiredDate": {
-			"type": "string"
+			"type": ["null", "string"]
 		},
 		"SalesAccount": {},
 		"SalesOrderGroup": {
-			"type": "string"
+			"type": ["null", "string"]
 		},
 		"SalesOrderLines": {
 			"items": {
@@ -167,14 +167,14 @@
 								"type": "string"
 							}
 						},
-						"type": "object"
+						"type": ["null", "object"]
 					},
 					"AverageLandedPriceAtTimeOfSale": {
-						"type": "number"
+						"type": ["null", "number"]
 					},
 					"BatchNumbers": {},
 					"BCLineTax": {
-						"type": ["integer", "number"]
+						"type": "number"
 					},
 					"BCLineTotal": {
 						"type": "number"
@@ -183,13 +183,13 @@
 						"type": "number"
 					},
 					"Comments": {
-						"type": "string"
+						"type": ["null", "string"]
 					},
 					"CostOfGoodsAccount": {
-						"type": "string"
+						"type": ["null", "string"]
 					},
 					"DiscountRate": {
-						"type": ["integer", "number"]
+						"type": "number"
 					},
 					"DueDate": {
 						"type": "string"
@@ -201,22 +201,22 @@
 						"type": "string"
 					},
 					"LineNumber": {
-						"type": "integer"
+						"type": "number"
 					},
 					"LineTax": {
-						"type": ["integer", "number"]
+						"type": "number"
 					},
 					"LineTaxCode": {
-						"type": "string"
+						"type": ["null", "string"]
 					},
 					"LineTotal": {
 						"type": "number"
 					},
 					"LineType": {
-						"type": "string"
+						"type": ["null", "string"]
 					},
 					"OrderQuantity": {
-						"type": "integer"
+						"type": "number"
 					},
 					"Product": {
 						"properties": {
@@ -224,7 +224,7 @@
 								"type": "string"
 							},
 							"ProductCode": {
-								"type": "string"
+								"type": ["null", "string"]
 							},
 							"ProductDescription": {
 								"type": "string"
@@ -234,19 +234,19 @@
 					},
 					"SerialNumbers": {},
 					"TaxRate": {
-						"type": ["integer", "number"]
+						"type": "number"
 					},
 					"UnitPrice": {
 						"type": "number"
 					},
 					"Volume": {
-						"type": ["integer", "number"]
+						"type": ["null", "number"]
 					},
 					"Weight": {
-						"type": ["integer", "number"]
+						"type": ["null", "number"]
 					},
 					"XeroSalesAccount": {
-						"type": "string"
+						"type": ["null", "string"]
 					},
 					"XeroTaxCode": {
 						"type": "string"
@@ -274,7 +274,7 @@
 					"type": "boolean"
 				}
 			},
-			"type": "object"
+			"type": ["null", "object"]
 		},
 		"SaveAddress": {
 			"type": "boolean"
@@ -283,7 +283,7 @@
 			"type": "boolean"
 		},
 		"SourceId": {
-			"type": "string"
+			"type": ["null", "string"]
 		},
 		"SubTotal": {
 			"type": "number"
@@ -318,42 +318,42 @@
 					"type": "string"
 				},
 				"TaxRate": {
-					"type": ["integer", "number"]
+					"type": "number"
 				}
 			},
 			"type": "object"
 		},
 		"TaxRate": {
-			"type": ["integer", "number"]
+			"type": "number"
 		},
 		"TaxTotal": {
-			"type": ["integer", "number"]
+			"type": "number"
 		},
 		"Total": {
 			"type": "number"
 		},
 		"TotalVolume": {
-			"type": ["integer", "number"]
+			"type": "number"
 		},
 		"TotalWeight": {
-			"type": ["integer", "number"]
+			"type": "number"
 		},
 		"Warehouse": {
 			"properties": {
 				"AddressLine1": {
-					"type": "string"
+					"type": ["null", "string"]
 				},
 				"AddressLine2": {
-					"type": "string"
+					"type": ["null", "string"]
 				},
 				"City": {
-					"type": "string"
+					"type": ["null", "string"]
 				},
 				"ContactName": {
-					"type": "string"
+					"type": ["null", "string"]
 				},
 				"Country": {
-					"type": "string"
+					"type": ["null", "string"]
 				},
 				"DDINumber": {},
 				"FaxNumber": {},
@@ -367,25 +367,25 @@
 					"type": "string"
 				},
 				"MobileNumber": {
-					"type": "string"
+					"type": ["null", "string"]
 				},
 				"Obsolete": {
 					"type": "boolean"
 				},
 				"PhoneNumber": {
-					"type": "string"
+					"type": ["null", "string"]
 				},
 				"PostCode": {
-					"type": "string"
+					"type": ["null", "string"]
 				},
 				"Region": {
-					"type": "string"
+					"type": ["null", "string"]
 				},
 				"StreetNo": {
-					"type": "string"
+					"type": ["null", "string"]
 				},
 				"Suburb": {
-					"type": "string"
+					"type": ["null", "string"]
 				},
 				"WarehouseCode": {
 					"type": "string"

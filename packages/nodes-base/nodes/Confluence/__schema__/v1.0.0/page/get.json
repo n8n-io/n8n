@@ -46,7 +46,7 @@
 			"type": "string"
 		},
 		"lastOwnerId": {
-			"type": "string"
+			"type": ["null", "string"]
 		},
 		"ownerId": {
 			"type": "string"
@@ -58,7 +58,7 @@
 			"type": "string"
 		},
 		"position": {
-			"type": "integer"
+			"type": ["null", "number"]
 		},
 		"spaceId": {
 			"type": "string"
@@ -87,7 +87,7 @@
 					"type": "string"
 				},
 				"number": {
-					"type": "integer"
+					"type": "number"
 				}
 			},
 			"type": "object"

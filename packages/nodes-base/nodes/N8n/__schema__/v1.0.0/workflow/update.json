@@ -30,6 +30,7 @@
 								"type": "boolean"
 							},
 							"credentials": {
+								"additionalProperties": true,
 								"properties": {
 									"openAiApi": {
 										"properties": {
@@ -52,7 +53,7 @@
 								"type": "string"
 							},
 							"maxTries": {
-								"type": "integer"
+								"type": "number"
 							},
 							"name": {
 								"type": "string"
@@ -140,7 +141,7 @@
 															"type": "object"
 														},
 														"rightValue": {
-															"type": ["boolean", "integer", "string"]
+															"type": ["boolean", "number", "string"]
 														}
 													},
 													"type": "object"
@@ -159,7 +160,7 @@
 														"type": "string"
 													},
 													"version": {
-														"type": "integer"
+														"type": "number"
 													}
 												},
 												"type": "object"
@@ -244,6 +245,7 @@
 										"type": "string"
 									},
 									"options": {
+										"additionalProperties": true,
 										"properties": {
 											"response": {
 												"properties": {
@@ -265,7 +267,7 @@
 												"type": "object"
 											},
 											"timeout": {
-												"type": ["integer", "string"]
+												"type": ["number", "string"]
 											},
 											"waitForSubWorkflow": {
 												"type": "boolean"
@@ -402,7 +404,7 @@
 							},
 							"position": {
 								"items": {
-									"type": "integer"
+									"type": "number"
 								},
 								"type": "array"
 							},
@@ -416,7 +418,7 @@
 								"type": "number"
 							},
 							"waitBetweenTries": {
-								"type": "integer"
+								"type": "number"
 							},
 							"webhookId": {
 								"type": "string"
@@ -445,7 +447,7 @@
 								"type": "string"
 							},
 							"id": {
-								"type": "integer"
+								"type": "number"
 							},
 							"userId": {
 								"type": "string"
@@ -462,10 +464,10 @@
 					"type": "array"
 				}
 			},
-			"type": "object"
+			"type": ["null", "object"]
 		},
 		"activeVersionId": {
-			"type": "string"
+			"type": ["null", "string"]
 		},
 		"connections": {
 			"type": "object"
@@ -474,7 +476,7 @@
 			"type": "string"
 		},
 		"description": {
-			"type": "string"
+			"type": ["null", "string"]
 		},
 		"id": {
 			"type": "string"
@@ -491,7 +493,7 @@
 					"type": "string"
 				}
 			},
-			"type": "object"
+			"type": ["null", "object"]
 		},
 		"name": {
 			"type": "string"
@@ -523,6 +525,7 @@
 						"type": "boolean"
 					},
 					"credentials": {
+						"additionalProperties": true,
 						"properties": {
 							"openAiApi": {
 								"properties": {
@@ -545,7 +548,7 @@
 						"type": "string"
 					},
 					"maxTries": {
-						"type": "integer"
+						"type": "number"
 					},
 					"name": {
 						"type": "string"
@@ -633,7 +636,7 @@
 													"type": "object"
 												},
 												"rightValue": {
-													"type": ["boolean", "integer", "string"]
+													"type": ["boolean", "number", "string"]
 												}
 											},
 											"type": "object"
@@ -652,7 +655,7 @@
 												"type": "string"
 											},
 											"version": {
-												"type": "integer"
+												"type": "number"
 											}
 										},
 										"type": "object"
@@ -722,6 +725,28 @@
 								"type": "string"
 							},
 							"jsonBody": {
+								"properties": {
+									"query": {
+										"type": "string"
+									},
+									"variables": {
+										"properties": {
+											"after": {
+												"type": "string"
+											},
+											"id": {
+												"type": "string"
+											},
+											"queryId": {
+												"type": "string"
+											},
+											"segmentId": {
+												"type": "string"
+											}
+										},
+										"type": "object"
+									}
+								},
 								"type": ["object", "string"]
 							},
 							"method": {
@@ -737,6 +762,7 @@
 								"type": "string"
 							},
 							"options": {
+								"additionalProperties": true,
 								"properties": {
 									"response": {
 										"properties": {
@@ -758,7 +784,7 @@
 										"type": "object"
 									},
 									"timeout": {
-										"type": ["integer", "string"]
+										"type": ["number", "string"]
 									}
 								},
 								"type": "object"
@@ -864,7 +890,7 @@
 					},
 					"position": {
 						"items": {
-							"type": "integer"
+							"type": "number"
 						},
 						"type": "array"
 					},
@@ -878,7 +904,7 @@
 						"type": "number"
 					},
 					"waitBetweenTries": {
-						"type": "integer"
+						"type": "number"
 					},
 					"webhookId": {
 						"type": "string"
@@ -889,7 +915,7 @@
 			"type": "array"
 		},
 		"pinData": {
-			"type": "object"
+			"type": ["null", "object"]
 		},
 		"settings": {
 			"properties": {
@@ -907,7 +933,7 @@
 		},
 		"sourceWorkflowId": {},
 		"staticData": {
-			"type": "object"
+			"type": ["null", "object"]
 		},
 		"tags": {
 			"items": {
@@ -930,13 +956,13 @@
 			"type": "array"
 		},
 		"triggerCount": {
-			"type": "integer"
+			"type": "number"
 		},
 		"updatedAt": {
 			"type": "string"
 		},
 		"versionCounter": {
-			"type": "integer"
+			"type": "number"
 		},
 		"versionId": {
 			"type": "string"

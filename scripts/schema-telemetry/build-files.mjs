@@ -1,8 +1,5 @@
-import { mergeSamples, stableKeyShare } from './merge.mjs';
+import { mergeSamples } from './merge.mjs';
 import { planSchemaFile } from './plan.mjs';
-
-/** Below this share of stable keys, samples add user-defined keys next to the node's own. */
-const MIN_KEPT_KEY_SHARE = 0.8;
 
 function compareVersions(a, b) {
 	const pa = String(a).split('.').map(Number);
@@ -82,14 +79,14 @@ export function buildFiles(rows, index, { exists, defaultOf, minShare }) {
 			existing.push(file);
 			continue;
 		}
-		const merged = mergeSamples(samples, { minShare });
-		const userShaped = stableKeyShare(samples) < MIN_KEPT_KEY_SHARE;
-		if (userShaped && !merged.properties) {
+		const schema = mergeSamples(
+			samples.filter((sample) => sample.type === 'object'),
+			{ minShare },
+		);
+		if (!schema.properties) {
 			skipped.push({ group: { file }, reason: 'user-shaped output with no stable keys' });
 			continue;
 		}
-		// Samples add their own keys next to the stable ones: describe an open object.
-		const schema = userShaped ? { ...merged, additionalProperties: true } : merged;
 		files.push({ file, nodeType, workflows, schema });
 	}
 	return { files, existing, skipped, schemaPaths };

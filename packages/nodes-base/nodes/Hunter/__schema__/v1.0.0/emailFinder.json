@@ -1,38 +1,38 @@
 {
 	"properties": {
 		"accept_all": {
-			"type": "boolean"
+			"type": ["boolean", "null"]
 		},
 		"company": {
-			"type": "string"
+			"type": ["null", "string"]
 		},
 		"domain": {
 			"type": "string"
 		},
 		"email": {
-			"type": "string"
+			"type": ["null", "string"]
 		},
 		"first_name": {
-			"type": "string"
+			"type": ["null", "string"]
 		},
 		"last_name": {
-			"type": "string"
+			"type": ["null", "string"]
 		},
 		"linkedin_url": {
-			"type": "string"
+			"type": ["null", "string"]
 		},
 		"phone_number": {},
 		"position": {
-			"type": "string"
+			"type": ["null", "string"]
 		},
 		"provenance": {
-			"type": "string"
+			"type": ["null", "string"]
 		},
 		"score": {
-			"type": "integer"
+			"type": ["null", "number"]
 		},
 		"source_type": {
-			"type": "string"
+			"type": ["null", "string"]
 		},
 		"sources": {
 			"items": {
@@ -61,10 +61,10 @@
 		"verification": {
 			"properties": {
 				"date": {
-					"type": "string"
+					"type": ["null", "string"]
 				},
 				"status": {
-					"type": "string"
+					"type": ["null", "string"]
 				}
 			},
 			"type": "object"

@@ -32,7 +32,7 @@
 					"type": "string"
 				}
 			},
-			"type": "object"
+			"type": ["null", "object"]
 		},
 		"id": {
 			"type": "string"
@@ -78,6 +78,7 @@
 			"type": "object"
 		},
 		"properties": {
+			"additionalProperties": true,
 			"properties": {
 				"Status": {
 					"properties": {

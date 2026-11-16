@@ -1,6 +1,26 @@
 {
 	"properties": {
 		"renderedTemplate": {
+			"additionalProperties": true,
+			"items": {
+				"type": "string"
+			},
+			"properties": {
+				"tests": {
+					"items": {
+						"properties": {
+							"name": {
+								"type": "string"
+							},
+							"ok": {
+								"type": "boolean"
+							}
+						},
+						"type": "object"
+					},
+					"type": "array"
+				}
+			},
 			"type": ["array", "object", "string"]
 		}
 	},

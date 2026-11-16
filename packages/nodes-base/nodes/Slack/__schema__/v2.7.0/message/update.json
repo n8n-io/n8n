@@ -18,6 +18,17 @@
 								"items": {
 									"properties": {
 										"text": {
+											"properties": {
+												"emoji": {
+													"type": "boolean"
+												},
+												"text": {
+													"type": "string"
+												},
+												"type": {
+													"type": "string"
+												}
+											},
 											"type": ["object", "string"]
 										},
 										"type": {
@@ -85,7 +96,7 @@
 							"type": "string"
 						},
 						"updated": {
-							"type": "integer"
+							"type": "number"
 						},
 						"user_id": {
 							"type": "string"
