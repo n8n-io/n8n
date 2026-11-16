@@ -246,8 +246,7 @@ export type RelayEventMap = ModuleEventMap & {
 		workflow: IWorkflowDb;
 		publicApi: boolean;
 		deactivatedVersionId: string | null;
-		/** `transfer` marks an unpublish forced by the destination project of a transfer. */
-		source?: WorkflowActionSource | 'transfer';
+		source?: WorkflowActionSource;
 	};
 
 	'workflow-deactivated-by-system': {
