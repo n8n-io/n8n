@@ -318,7 +318,7 @@ describe('InstanceAiArtifactsPanel', () => {
 			},
 		});
 
-		await fireEvent.click(getByTestId('instance-ai-context-dismiss'));
+		await fireEvent.click(getByTestId('instance-ai-panel-list-item-dismiss'));
 
 		expect(pendingComposerContext.value).toBeNull();
 		expect(dismissPendingComposerContext).toHaveBeenCalledWith(
@@ -360,7 +360,7 @@ describe('InstanceAiArtifactsPanel', () => {
 			},
 		});
 
-		await fireEvent.click(getByTestId('instance-ai-context-dismiss'));
+		await fireEvent.click(getByTestId('instance-ai-panel-list-item-dismiss'));
 
 		expect(pendingComposerContext.value).toBeNull();
 		expect(dismissPendingComposerContext).toHaveBeenCalledWith(
@@ -386,7 +386,7 @@ describe('InstanceAiArtifactsPanel', () => {
 			},
 		});
 
-		await fireEvent.click(getByTestId('instance-ai-context-dismiss'));
+		await fireEvent.click(getByTestId('instance-ai-panel-list-item-dismiss'));
 
 		expect(pendingComposerContext.value).not.toBeNull();
 		expect(getByText('SEO Auditor session')).toBeInTheDocument();
@@ -440,7 +440,7 @@ describe('InstanceAiArtifactsPanel', () => {
 
 		const { getByTestId, queryByText } = renderComponent();
 
-		await fireEvent.click(getByTestId('instance-ai-context-dismiss'));
+		await fireEvent.click(getByTestId('instance-ai-panel-list-item-dismiss'));
 
 		expect(updateThreadMetadataMock).toHaveBeenCalledWith('thread-1', {
 			dismissedContextKeys: ['agent-preview:agent-1:preview-thread-1:'],

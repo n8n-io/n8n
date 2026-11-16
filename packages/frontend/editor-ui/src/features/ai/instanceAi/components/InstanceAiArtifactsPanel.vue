@@ -1,20 +1,14 @@
 <script lang="ts" setup>
-import ProjectIcon from '@/features/collaboration/projects/components/ProjectIcon.vue';
 import type { InstanceAiHandoffContext, TaskItem } from '@n8n/api-types';
-import {
-	isIconOrEmoji,
-	N8nHeading,
-	N8nIcon,
-	N8nIconButton,
-	N8nLoading,
-	type IconName,
-} from '@n8n/design-system';
+import { isIconOrEmoji, N8nIcon, N8nLoading, type IconName } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { computed, inject, type Ref } from 'vue';
 import { useBuildingArtifactIds } from '../composables/useBuildingArtifactIds';
 import { useArtifactThread } from '../artifactThread';
 import { useInstanceAiStore } from '../instanceAi.store';
 import type { ResourceEntry } from '../useResourceRegistry';
+import InstanceAiPanelList from './InstanceAiPanelList.vue';
+import InstanceAiPanelListItem from './InstanceAiPanelListItem.vue';
 import { useArtifactLinks } from '../artifactLinks';
 import {
 	agentPreviewContextIcon,
@@ -110,15 +104,12 @@ const tasks = computed(() => thread.currentTasks);
 const visibleTasks = computed(() => tasks.value?.tasks ?? []);
 const hasTasks = computed(() => visibleTasks.value.length > 0);
 
-const statusIconMap: Record<
-	TaskItem['status'],
-	{ icon: IconName; spin: boolean; className: string }
-> = {
-	todo: { icon: 'circle', spin: false, className: 'todoIcon' },
-	in_progress: { icon: 'spinner', spin: true, className: 'inProgressIcon' },
-	done: { icon: 'check', spin: false, className: 'doneIcon' },
-	failed: { icon: 'circle-x', spin: false, className: 'failedIcon' },
-	cancelled: { icon: 'ban', spin: false, className: 'cancelledIcon' },
+const statusIconMap: Record<TaskItem['status'], { icon: IconName; spin: boolean }> = {
+	todo: { icon: 'circle', spin: false },
+	in_progress: { icon: 'spinner', spin: true },
+	done: { icon: 'check', spin: false },
+	failed: { icon: 'circle-x', spin: false },
+	cancelled: { icon: 'ban', spin: false },
 };
 
 // --- Artifacts ---
@@ -231,164 +222,92 @@ async function dismissContext(key: string) {
 <template>
 	<aside :class="$style.panel" data-test-id="instance-ai-artifacts-sidebar">
 		<div :class="$style.group" data-test-id="instance-ai-artifacts-sidebar-group">
-			<!-- Project section -->
-			<div :class="$style.section">
-				<div :class="$style.sectionHeader">
-					<N8nHeading tag="h3" size="small" :class="$style.sectionTitle">
-						{{ i18n.baseText('instanceAi.artifactsPanel.project') }}
-					</N8nHeading>
-				</div>
+			<InstanceAiPanelList
+				:title="i18n.baseText('instanceAi.artifactsPanel.project')"
+				:collapsible="false"
+			>
+				<InstanceAiPanelListItem v-if="project" :label="project.name" :icon="project.icon" />
+				<li v-else :class="$style.skeletonRow" data-test-id="instance-ai-artifacts-project-loading">
+					<span :class="$style.iconSkeleton"><N8nLoading variant="custom" /></span>
+					<span :class="$style.nameSkeleton"><N8nLoading variant="custom" /></span>
+				</li>
+			</InstanceAiPanelList>
 
-				<div :class="$style.artifactList">
-					<div v-if="project" :class="[$style.artifactRow]">
-						<span :class="$style.artifactIconWrap">
-							<ProjectIcon :icon="project.icon" size="small" border-less />
-						</span>
-						<span :class="$style.artifactName">{{ project.name }}</span>
-					</div>
-					<div
-						v-else
-						:class="$style.artifactRow"
-						data-test-id="instance-ai-artifacts-project-loading"
-					>
-						<span :class="[$style.artifactIconWrap, $style.iconSkeleton]">
-							<N8nLoading variant="custom" />
-						</span>
-						<span :class="$style.nameSkeleton">
-							<N8nLoading variant="custom" />
-						</span>
-					</div>
-				</div>
-			</div>
+			<hr v-if="contextEntries.length > 0" :class="$style.separator" />
+			<InstanceAiPanelList
+				v-if="contextEntries.length > 0"
+				:count="contextEntries.length"
+				:title="i18n.baseText('instanceAi.artifactsPanel.context.title')"
+			>
+				<InstanceAiPanelListItem
+					v-for="entry in contextEntries"
+					:key="entry.key"
+					:label="entry.name"
+					:subtitle="entry.subtitle"
+					:icon="entry.icon"
+					dismissible
+					test-id="instance-ai-context-row"
+					@dismiss="dismissContext(entry.key)"
+				/>
+			</InstanceAiPanelList>
 
-			<!-- Context section -->
-			<div v-if="contextEntries.length > 0" :class="$style.section">
-				<div :class="$style.sectionHeader">
-					<N8nHeading tag="h3" size="small" :class="$style.sectionTitle">
-						{{ i18n.baseText('instanceAi.artifactsPanel.context.title') }}
-					</N8nHeading>
-				</div>
-
-				<div :class="$style.contextList">
-					<div
-						v-for="entry in contextEntries"
-						:key="entry.key"
-						:class="$style.contextRow"
-						data-test-id="instance-ai-context-row"
-					>
-						<span :class="$style.artifactIconWrap">
-							<N8nIcon :icon="entry.icon" size="large" :class="$style.artifactIcon" />
-						</span>
-						<span :class="$style.contextText">
-							<span :class="$style.contextName">{{ entry.name }}</span>
-							<span :class="$style.contextSubtitle">{{ entry.subtitle }}</span>
-						</span>
-						<N8nIconButton
-							icon="x"
-							variant="ghost"
-							size="xsmall"
-							:class="$style.contextDismiss"
-							:aria-label="i18n.baseText('instanceAi.artifactsPanel.context.dismiss')"
-							:title="i18n.baseText('instanceAi.artifactsPanel.context.dismiss')"
-							data-test-id="instance-ai-context-dismiss"
-							@click="dismissContext(entry.key)"
+			<hr :class="$style.separator" />
+			<InstanceAiPanelList
+				:title="i18n.baseText('instanceAi.artifactsPanel.title')"
+				:count="artifacts.length"
+			>
+				<template v-if="artifacts.length === 0 && thread.hydrationStatus === 'ready'" #empty>
+					{{ i18n.baseText('instanceAi.artifactsPanel.noArtifacts') }}
+				</template>
+				<InstanceAiPanelListItem
+					v-for="artifact in artifacts"
+					:key="artifact.id"
+					:label="artifact.name"
+					:icon="artifactIconMap[artifact.type] ?? 'file'"
+					:href="artifactHref(artifact)"
+					:aria-label="openArtifactLabel(artifact.name)"
+					:archived="artifact.archived"
+					@click="handleArtifactClick(artifact, $event)"
+				>
+					<template v-if="buildingArtifactIds.has(artifact.id)" #leading>
+						<N8nIcon
+							icon="spinner"
+							spin
+							size="large"
+							data-test-id="instance-ai-artifact-building-spinner"
 						/>
-					</div>
-				</div>
-			</div>
-
-			<!-- Artifacts section -->
-			<div :class="$style.section">
-				<div :class="$style.sectionHeader">
-					<N8nHeading tag="h3" size="small" :class="$style.sectionTitle">
-						{{ i18n.baseText('instanceAi.artifactsPanel.title') }}
-					</N8nHeading>
-				</div>
-
-				<div v-if="artifacts.length > 0" :class="$style.artifactList">
-					<a
-						v-for="artifact in artifacts"
-						:key="artifact.id"
-						:href="artifactHref(artifact)"
-						:class="[$style.artifactRow, artifact.archived && $style.artifactRowArchived]"
-						:title="artifact.name"
-						:aria-label="openArtifactLabel(artifact.name)"
-						@click="handleArtifactClick(artifact, $event)"
-					>
-						<span :class="$style.artifactIconWrap">
-							<N8nIcon
-								v-if="buildingArtifactIds.has(artifact.id)"
-								icon="spinner"
-								spin
-								size="large"
-								:class="$style.artifactIcon"
-								data-test-id="instance-ai-artifact-building-spinner"
-							/>
-							<N8nIcon
-								v-else
-								:icon="artifactIconMap[artifact.type] ?? 'file'"
-								size="large"
-								:class="$style.artifactIcon"
-							/>
-						</span>
-						<span :class="$style.artifactName">{{ artifact.name }}</span>
-						<span v-if="artifact.archived" :class="$style.archivedBadge">
-							{{ i18n.baseText('instanceAi.artifactsPanel.archived') }}
-						</span>
-					</a>
-				</div>
-
-				<div
-					v-else-if="thread.hydrationStatus !== 'ready'"
-					:class="$style.artifactList"
+					</template>
+				</InstanceAiPanelListItem>
+				<li
+					v-if="artifacts.length === 0 && thread.hydrationStatus !== 'ready'"
+					:class="$style.skeletonRow"
 					data-test-id="instance-ai-artifacts-list-loading"
 				>
-					<div :class="[$style.artifactRow, $style.artifactRowSkeleton]">
-						<span :class="[$style.artifactIconWrap, $style.artifactIconSkeleton]">
-							<N8nLoading variant="custom" />
-						</span>
-						<span :class="$style.nameSkeleton">
-							<N8nLoading variant="custom" />
-						</span>
-					</div>
-				</div>
+					<span :class="$style.iconSkeleton"><N8nLoading variant="custom" /></span>
+					<span :class="$style.nameSkeleton"><N8nLoading variant="custom" /></span>
+				</li>
+			</InstanceAiPanelList>
 
-				<div v-else :class="$style.emptyState">
-					<span>{{ i18n.baseText('instanceAi.artifactsPanel.noArtifacts') }}</span>
-				</div>
-			</div>
-
-			<!-- Tasks section -->
-			<div v-if="hasTasks" :class="$style.section">
-				<div :class="$style.sectionHeader">
-					<N8nHeading tag="h3" size="small" :class="$style.sectionTitle">
-						{{ i18n.baseText('instanceAi.artifactsPanel.tasks') }}
-					</N8nHeading>
-				</div>
-
-				<div :class="$style.taskList">
-					<div
-						v-for="task in visibleTasks"
-						:key="task.id"
-						:class="[
-							$style.task,
-							task.status === 'done' ? $style.doneTask : '',
-							task.status === 'failed' ? $style.failedTask : '',
-							task.status === 'cancelled' ? $style.cancelledTask : '',
-						]"
-					>
+			<hr v-if="hasTasks" :class="$style.separator" />
+			<InstanceAiPanelList
+				v-if="hasTasks"
+				:count="visibleTasks.length"
+				:title="i18n.baseText('instanceAi.artifactsPanel.tasks')"
+			>
+				<InstanceAiPanelListItem
+					v-for="task in visibleTasks"
+					:key="task.id"
+					:label="task.description"
+				>
+					<template #leading>
 						<N8nIcon
 							:icon="statusIconMap[task.status].icon"
-							:class="$style[statusIconMap[task.status].className]"
 							:spin="statusIconMap[task.status].spin"
-							size="medium"
+							size="large"
 						/>
-						<span :class="$style.taskDescription" :title="task.description">{{
-							task.description
-						}}</span>
-					</div>
-				</div>
-			</div>
+					</template>
+				</InstanceAiPanelListItem>
+			</InstanceAiPanelList>
 		</div>
 	</aside>
 </template>
@@ -407,251 +326,36 @@ async function dismissContext(key: string) {
 .group {
 	border: var(--border);
 	border-radius: var(--radius--xl);
-	background: var(--color--background--light-3);
+	background: var(--background--surface);
 	box-shadow: var(--shadow--xs);
 	overflow: hidden;
 }
 
-.section {
-	position: relative;
-	display: flex;
-	flex-direction: column;
-	padding: var(--spacing--2xs);
-
-	&:first-child {
-		padding-top: calc(var(--spacing--2xs) + var(--spacing--3xs));
-	}
-
-	& + & {
-		padding-top: var(--spacing--sm);
-	}
-
-	& + &::before {
-		content: '';
-		position: absolute;
-		top: 0;
-		left: var(--spacing--sm);
-		right: var(--spacing--sm);
-		border-top: var(--border);
-	}
+.separator {
+	margin: 0;
+	border: 0;
+	border-top: var(--border);
+	border-color: var(--border-color--subtle);
 }
 
-.sectionHeader {
-	margin-bottom: var(--spacing--2xs);
-	padding: 0 var(--spacing--2xs);
-	display: flex;
-	align-items: center;
-	justify-content: space-between;
-	gap: var(--spacing--3xs);
-}
-
-.sectionTitle {
-	color: var(--text-color--subtle);
-}
-
-/* Artifact list */
-.artifactList {
-	display: flex;
-	flex-direction: column;
-}
-
-.contextList {
-	display: flex;
-	flex-direction: column;
-}
-
-.contextRow {
-	display: flex;
-	align-items: flex-start;
-	gap: var(--spacing--2xs);
-	padding: var(--spacing--2xs);
-}
-
-.contextText {
-	display: flex;
-	flex: 1;
-	flex-direction: column;
-	min-width: 0;
-}
-
-.contextName {
-	font-size: var(--font-size--sm);
-	line-height: var(--line-height--lg);
-	color: var(--color--text--shade-1);
-	overflow: hidden;
-	text-overflow: ellipsis;
-	white-space: nowrap;
-}
-
-.contextSubtitle {
-	font-size: var(--font-size--2xs);
-	line-height: var(--line-height--sm);
-	color: var(--color--text--tint-1);
-	overflow: hidden;
-	text-overflow: ellipsis;
-	white-space: nowrap;
-}
-
-.contextDismiss {
-	flex-shrink: 0;
-	margin-top: calc(var(--spacing--5xs) * -1);
-}
-
-.artifactRow {
+/* Skeleton rows match the footprint of InstanceAiPanelListItem: one text line plus the row padding */
+.skeletonRow {
 	display: flex;
 	align-items: center;
 	gap: var(--spacing--2xs);
 	padding: var(--spacing--2xs);
-	border-radius: var(--radius);
-	color: var(--color--text);
-	text-decoration: none;
-	transition: background-color var(--animation--duration--snappy) var(--animation--easing);
-
-	&:is(a) {
-		cursor: pointer;
-		&:hover,
-		&:focus-visible {
-			background: var(--background--hover);
-			outline: none;
-			text-decoration: none;
-		}
-
-		&:visited {
-			color: var(--color--text);
-		}
-	}
+	min-height: calc(var(--font-size--sm) * var(--line-height--lg) + 2 * var(--spacing--2xs));
 }
 
-.artifactIconWrap {
-	display: inline-flex;
-	align-items: center;
-	justify-content: center;
-	flex-shrink: 0;
-}
-
-.artifactIcon {
-	color: var(--color--text);
-}
-
-.artifactName {
-	font-size: var(--font-size--sm);
-	line-height: var(--line-height--lg);
-	color: var(--color--text--shade-1);
-	overflow: hidden;
-	text-overflow: ellipsis;
-	white-space: nowrap;
-	flex: 1;
-	min-width: 0;
-}
-
-/* Same footprint as the resolved project row (small ProjectIcon + one text line) */
 .iconSkeleton {
-	width: var(--spacing--lg);
-	height: var(--spacing--lg);
+	flex-shrink: 0;
+	width: var(--spacing--sm);
+	height: var(--spacing--sm);
 }
 
 .nameSkeleton {
 	flex: 1;
 	max-width: 50%;
 	height: var(--font-size--sm);
-}
-
-/* Artifact rows are shorter: one text line at its line height, plus the row padding (border-box) */
-.artifactRowSkeleton {
-	min-height: calc(var(--font-size--sm) * var(--line-height--lg) + 2 * var(--spacing--2xs));
-}
-
-.artifactIconSkeleton {
-	width: var(--spacing--sm);
-	height: var(--spacing--sm);
-}
-
-.artifactRowArchived {
-	opacity: 0.55;
-
-	.artifactName {
-		text-decoration: line-through;
-	}
-}
-
-.archivedBadge {
-	font-size: var(--font-size--3xs);
-	color: var(--color--text--tint-1);
-	background: var(--color--foreground--tint-1);
-	padding: var(--spacing--5xs) var(--spacing--3xs);
-	border-radius: var(--radius--sm);
-	flex-shrink: 0;
-}
-
-/* Empty state */
-.emptyState {
-	display: flex;
-	flex-direction: column;
-	align-items: center;
-	gap: var(--spacing--2xs);
-	padding: var(--spacing--sm) 0;
-	font-size: var(--font-size--2xs);
-	color: var(--color--text--tint-1);
-}
-
-/* Task list */
-.taskList {
-	display: flex;
-	flex-direction: column;
-}
-
-.task {
-	display: flex;
-	align-items: center;
-	gap: var(--spacing--2xs);
-	padding: var(--spacing--3xs) 0;
-	padding-left: var(--spacing--2xs);
-	font-size: var(--font-size--sm);
-	line-height: var(--line-height--lg);
-}
-
-.doneTask {
-	opacity: 0.6;
-	text-decoration: line-through;
-}
-
-.failedTask {
-	color: var(--color--danger);
-}
-
-.cancelledTask {
-	opacity: 0.7;
-}
-
-.taskDescription {
-	color: var(--color--text--shade-1);
-	flex: 1;
-	min-width: 0;
-	overflow: hidden;
-	text-overflow: ellipsis;
-	white-space: nowrap;
-}
-
-.todoIcon {
-	color: var(--color--text--tint-2);
-}
-
-.inProgressIcon {
-	color: var(--color--primary);
-}
-
-.doneIcon {
-	color: white;
-	background: var(--color--success);
-	border-radius: 50%;
-	padding: 1px;
-}
-
-.failedIcon {
-	color: var(--color--danger);
-}
-
-.cancelledIcon {
-	color: var(--color--text--tint-1);
 }
 </style>
