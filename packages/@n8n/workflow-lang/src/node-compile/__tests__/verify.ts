@@ -393,6 +393,7 @@ export default workflow({
 `;
 }
 
+const MAX_COMPILED_STEPS = 20000;
 const effectsOf = (responses: EquivalenceCase['responses']) => ({
 	Node: responses.map((r) => ({ status: 200, headers: {}, ...r })),
 });
@@ -522,7 +523,7 @@ export async function differenceFromV1(
 		await runReference(
 			source,
 			{ ...fixture, seed },
-			{ extraNodes: { [compiled.file]: compiled.source } },
+			{ extraNodes: { [compiled.file]: compiled.source }, maxSteps: MAX_COMPILED_STEPS },
 		);
 	const out = await runWith(fixture.seed);
 

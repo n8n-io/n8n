@@ -175,6 +175,8 @@ export async function runReference(
 		nodes?: Record<string, string>;
 		extraNodes?: Record<string, string>;
 		fileName?: string;
+		/** The run stops with the status `limit` after this many fibre steps. */
+		maxSteps?: number;
 	} = {},
 ): Promise<ReferenceOutput> {
 	// Workflows run in UTC: local-time Date methods equal the UTC methods.
@@ -379,7 +381,7 @@ export async function runReference(
 			},
 		);
 	});
-	const MAX_STEPS = 1_000_000;
+	const MAX_STEPS = options.maxSteps ?? 1_000_000;
 	for (let i = 0; i < MAX_STEPS && !state.finished && !state.abort; i++) {
 		const next = queue.shift();
 		if (!next) throw new Error('deadlock: no runnable fibre');
