@@ -1,6 +1,6 @@
 import { Container } from '@n8n/di';
 
-import { KnowledgeSandboxProviderRegistry } from '@/modules/knowledge/knowledge-sandbox-provider-registry';
+import { KnowledgeSandboxProviderRegistry } from '@/modules/knowledge/knowledge-sandbox-provider-proxy';
 
 import { AgentKnowledgeSandboxProvider } from './knowledge-sandbox-provider.adapter';
 

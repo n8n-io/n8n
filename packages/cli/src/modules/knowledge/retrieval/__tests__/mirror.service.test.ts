@@ -13,7 +13,7 @@ import type { KnowledgeFileStore } from '../../files/knowledge-file-store';
 import { getKnowledgePaths } from '../../files/storage-naming';
 import type { KnowledgeConsumerScope } from '../../knowledge-consumer-scope';
 import type { KnowledgeSandboxHandle } from '../../knowledge-sandbox-provider';
-import type { KnowledgeSandboxProviderRegistry } from '../../knowledge-sandbox-provider-registry';
+import type { KnowledgeSandboxProviderRegistry } from '../../knowledge-sandbox-provider-proxy';
 import type { KnowledgeFileRepository } from '../../repositories/knowledge-file.repository';
 import { KnowledgeMirrorService } from '../mirror.service';
 

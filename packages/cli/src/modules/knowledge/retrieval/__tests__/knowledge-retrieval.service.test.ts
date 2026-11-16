@@ -1,7 +1,7 @@
 import { mock } from 'vitest-mock-extended';
 
 import type { KnowledgeConsumerScope } from '../../knowledge-consumer-scope';
-import type { KnowledgeSandboxProviderRegistry } from '../../knowledge-sandbox-provider-registry';
+import type { KnowledgeSandboxProviderRegistry } from '../../knowledge-sandbox-provider-proxy';
 import type { KnowledgeFileRepository } from '../../repositories/knowledge-file.repository';
 import { KnowledgeRetrievalService } from '../knowledge-retrieval.service';
 import type { KnowledgeMirrorService } from '../mirror.service';

@@ -7,7 +7,7 @@ import type {
 	KnowledgeSandboxHandle,
 	KnowledgeSandboxProvider,
 } from '../knowledge-sandbox-provider';
-import { KnowledgeSandboxProviderRegistry } from '../knowledge-sandbox-provider-registry';
+import { KnowledgeSandboxProviderRegistry } from '../knowledge-sandbox-provider-proxy';
 
 const scope: KnowledgeConsumerScope = { kind: 'agent', projectId: 'project-1', agentId: 'agent-1' };
 

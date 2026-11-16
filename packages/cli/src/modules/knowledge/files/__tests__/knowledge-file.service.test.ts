@@ -14,7 +14,7 @@ import type { InstanceSettings } from 'n8n-core';
 import type { KnowledgeFile } from '../../entities/knowledge-file.entity';
 import { KnowledgeConfig } from '../../knowledge.config';
 import type { KnowledgeConsumerScope } from '../../knowledge-consumer-scope';
-import type { KnowledgeSandboxProviderRegistry } from '../../knowledge-sandbox-provider-registry';
+import type { KnowledgeSandboxProviderRegistry } from '../../knowledge-sandbox-provider-proxy';
 import { createKnowledgeTelemetryHmac } from '../../telemetry/helpers';
 import type { KnowledgeFileRepository } from '../../repositories/knowledge-file.repository';
 import type { KnowledgeMirrorService } from '../../retrieval/mirror.service';

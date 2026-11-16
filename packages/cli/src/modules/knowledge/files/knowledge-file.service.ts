@@ -15,7 +15,7 @@ import type { Readable } from 'node:stream';
 import type { KnowledgeFile } from '../entities/knowledge-file.entity';
 import { KnowledgeConfig } from '../knowledge.config';
 import type { KnowledgeConsumerScope } from '../knowledge-consumer-scope';
-import { KnowledgeSandboxProviderRegistry } from '../knowledge-sandbox-provider-registry';
+import { KnowledgeSandboxProviderRegistry } from '../knowledge-sandbox-provider-proxy';
 import { createKnowledgeTelemetryHmac } from '../telemetry/helpers';
 import { KnowledgeFileRepository } from '../repositories/knowledge-file.repository';
 import { KnowledgeMirrorService } from '../retrieval/mirror.service';

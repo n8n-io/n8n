@@ -10,7 +10,7 @@ import { ExecutionDataJsonStore } from '@/executions/execution-data/execution-da
 import { FavoriteResourceResolverRegistry } from '@n8n/backend-services';
 import { SandboxSettingsService } from '@/services/sandbox-settings.service';
 import { AgentUsageProviderProxy } from '@/modules/workflow-index/agent-usage-provider-proxy.service';
-import { KnowledgeSandboxProviderRegistry } from '@/modules/knowledge/knowledge-sandbox-provider-registry';
+import { KnowledgeSandboxProviderRegistry } from '@/modules/knowledge/knowledge-sandbox-provider-proxy';
 import { SkillUsageProxy } from '@/modules/skills';
 
 import { AgentChannelMediaRetentionTask } from '../agent-channel-media-retention.task';

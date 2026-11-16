@@ -2,7 +2,7 @@ import { Service } from '@n8n/di';
 
 import type { KnowledgeConsumerScope } from '../knowledge-consumer-scope';
 import type { KnowledgeRetriever } from '../knowledge-retriever';
-import { KnowledgeSandboxProviderRegistry } from '../knowledge-sandbox-provider-registry';
+import { KnowledgeSandboxProviderRegistry } from '../knowledge-sandbox-provider-proxy';
 import { KnowledgeFileRepository } from '../repositories/knowledge-file.repository';
 import { KnowledgeMirrorService } from './mirror.service';
 import type {

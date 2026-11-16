@@ -19,7 +19,7 @@ import {
 } from '../files/storage-naming';
 import type { KnowledgeConsumerScope } from '../knowledge-consumer-scope';
 import type { KnowledgeSandboxHandle } from '../knowledge-sandbox-provider';
-import { KnowledgeSandboxProviderRegistry } from '../knowledge-sandbox-provider-registry';
+import { KnowledgeSandboxProviderRegistry } from '../knowledge-sandbox-provider-proxy';
 import { KnowledgeFileRepository } from '../repositories/knowledge-file.repository';
 import {
 	buildMirrorFinalizeCommand,
