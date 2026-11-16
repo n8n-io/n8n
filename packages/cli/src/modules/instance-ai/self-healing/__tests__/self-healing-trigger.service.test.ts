@@ -72,6 +72,7 @@ describe('SelfHealingTriggerService', () => {
 			newStaticData: {},
 			executionId: '42',
 			executedInThisProcess: true,
+			endedByThisSave: true,
 		};
 	});
 

@@ -1,5 +1,6 @@
 import type { IWorkflowSettings } from 'n8n-workflow';
 
+import { makeReason } from './reason';
 import type { EngineV2Reason } from './types';
 
 /**
@@ -20,29 +21,35 @@ export function findSettingsReasons(settings: IWorkflowSettings): EngineV2Reason
 	const reasons: EngineV2Reason[] = [];
 
 	if (namesErrorWorkflow(settings.errorWorkflow)) {
-		reasons.push({
-			code: 'ERROR_WORKFLOW',
-			severity: 'blocking',
-			message: 'Engine v2 does not run an error workflow yet. Remove the error workflow setting.',
-		});
+		reasons.push(
+			makeReason({
+				code: 'ERROR_WORKFLOW',
+				kind: 'temporary',
+				problem: 'Engine v2 does not run error workflows yet.',
+			}),
+		);
 	}
 
 	if ((settings.redactionPolicy ?? 'none') !== 'none') {
-		reasons.push({
-			code: 'REDACTION_POLICY',
-			severity: 'warning',
-			message:
-				'Engine v2 is not fully tested with data redaction yet. Some execution data may not be redacted as expected.',
-		});
+		reasons.push(
+			makeReason({
+				code: 'REDACTION_POLICY',
+				kind: 'temporary',
+				severity: 'warning',
+				problem:
+					'Engine v2 is not fully tested with data redaction yet. Some execution data may not be redacted as expected.',
+			}),
+		);
 	}
 
 	if (settings.credentialResolverId) {
-		reasons.push({
-			code: 'END_USER_CREDENTIALS',
-			severity: 'blocking',
-			message:
-				'Engine v2 does not support end-user credentials yet. Remove the credential resolver.',
-		});
+		reasons.push(
+			makeReason({
+				code: 'END_USER_CREDENTIALS',
+				kind: 'temporary',
+				problem: 'Engine v2 does not support end-user credentials yet.',
+			}),
+		);
 	}
 
 	return reasons;

@@ -13,20 +13,17 @@ describe('AssistantTurnOverrides', () => {
 		expect(overrides.getCredentialIdAllowlist('thread-1')).toBeUndefined();
 		expect(overrides.shouldBypassCredentialTest('thread-1', 'cred-1')).toBe(false);
 		expect(overrides.getCredentialTestTarget('thread-1', 'slackApi')).toBeUndefined();
-		expect(overrides.getBuildMode('thread-1')).toBeUndefined();
 		expect(overrides.getPromptVersion('thread-1')).toBeUndefined();
 	});
 
 	it('lets a subclass replace the default in the container', () => {
 		class FixedOverrides extends AssistantTurnOverrides {
 			override getPromptVersion(): string {
-				return 'progressive@1';
+				return 'concise@1';
 			}
 		}
 		Container.set(AssistantTurnOverrides, new FixedOverrides());
 
-		expect(Container.get(AssistantTurnOverrides).getPromptVersion('thread-1')).toBe(
-			'progressive@1',
-		);
+		expect(Container.get(AssistantTurnOverrides).getPromptVersion('thread-1')).toBe('concise@1');
 	});
 });

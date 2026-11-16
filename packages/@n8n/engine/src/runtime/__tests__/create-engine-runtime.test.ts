@@ -190,4 +190,31 @@ describe('createEngineRuntime', () => {
 
 		await expect(engine.stop()).resolves.toBeUndefined();
 	});
+
+	it.each([Number.NaN, Number.POSITIVE_INFINITY, 0, -1, 1.5])(
+		'refuses a staleness threshold of %s',
+		(queuedMs) => {
+			expect(() =>
+				createEngineRuntime({
+					dataSource: fakeDataSource(),
+					admittance: new AllowAllAdmittance(),
+					identityVerifier,
+					responseSender,
+					staleness: { queuedMs, runningStepMs: 60_000 },
+				}),
+			).toThrow('The staleness threshold "queuedMs" must be a positive whole number');
+		},
+	);
+
+	it('accepts positive whole staleness thresholds', () => {
+		expect(() =>
+			createEngineRuntime({
+				dataSource: fakeDataSource(),
+				admittance: new AllowAllAdmittance(),
+				identityVerifier,
+				responseSender,
+				staleness: { queuedMs: 1, runningStepMs: 60_000 },
+			}),
+		).not.toThrow();
+	});
 });

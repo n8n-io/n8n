@@ -28,7 +28,7 @@ export const ASSISTANT_AGENT_BASE = '/rest/agents/system/assistant';
 /** Eval-only routes of the Assistant agent. Same bodies as `/rest/instance-ai/eval`. */
 export const ASSISTANT_AGENT_EVAL_BASE = '/rest/assistant/eval';
 
-/** Turn overrides of a thread: build mode and prompt version. */
+/** Turn overrides of a thread: the prompt version. */
 export type AssistantEvalThreadOverridesBody = InstanceAiAssistantEvalThreadOverridesRequest;
 
 /** The fields of an Agents chat message that the harness sets. */

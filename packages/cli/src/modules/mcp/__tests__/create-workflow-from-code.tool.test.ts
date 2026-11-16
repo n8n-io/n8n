@@ -1,6 +1,7 @@
 import { Logger } from '@n8n/backend-common';
 import { mockInstance } from '@n8n/backend-test-utils';
-import { ProjectRepository, User, WorkflowEntity } from '@n8n/db';
+import { type OperationContext, ProjectRepository, User, WorkflowEntity } from '@n8n/db';
+import type { SecurityContext } from '@n8n/permissions';
 import { NodeConnectionTypes, type INode } from 'n8n-workflow';
 import type { Mock } from 'vitest';
 import { mock } from 'vitest-mock-extended';
@@ -175,7 +176,7 @@ describe('create-workflow-from-code MCP tool', () => {
 		incrementPostSaveFailure: vi.fn(),
 	});
 
-	const createTool = () =>
+	const createTool = (ctx?: OperationContext) =>
 		createCreateWorkflowFromCodeTool(
 			user,
 			workflowCreationService,
@@ -190,6 +191,7 @@ describe('create-workflow-from-code MCP tool', () => {
 			{},
 			logger,
 			postSaveMetrics,
+			ctx,
 		);
 
 	// Helper to call handler with proper typing (optional fields default to undefined)
@@ -269,6 +271,7 @@ describe('create-workflow-from-code MCP tool', () => {
 				user,
 				expect.anything(),
 				expect.objectContaining({ projectId: 'custom-project-id', parentFolderId: 'folder-1' }),
+				{},
 			);
 			const response = parseResult(result);
 			expect(response.targetFolder).toEqual({ id: 'folder-1', name: 'Marketing Campaigns' });
@@ -378,7 +381,18 @@ describe('create-workflow-from-code MCP tool', () => {
 				user,
 				expect.any(WorkflowEntity),
 				expect.objectContaining({ projectId: 'personal-project-1', source: 'n8n-mcp' }),
+				{},
 			);
+		});
+
+		test('passes the operation context to the creation service', async () => {
+			const ctx: OperationContext = {
+				security: mock<SecurityContext>({ subIdentityId: 'login-1' }),
+			};
+
+			await callHandler({ code: 'const wf = ...' }, createTool(ctx));
+
+			expect(createWorkflowMock.mock.calls[0][3]).toBe(ctx);
 		});
 
 		test('passes provided projectId to service', async () => {
@@ -388,6 +402,7 @@ describe('create-workflow-from-code MCP tool', () => {
 				user,
 				expect.any(WorkflowEntity),
 				expect.objectContaining({ projectId: 'custom-project-id', source: 'n8n-mcp' }),
+				{},
 			);
 		});
 
@@ -405,6 +420,7 @@ describe('create-workflow-from-code MCP tool', () => {
 					versionName: 'Initial Slack notification workflow',
 					versionDescription: 'Posts to #ops when the webhook fires',
 				}),
+				{},
 			);
 		});
 
@@ -418,6 +434,7 @@ describe('create-workflow-from-code MCP tool', () => {
 					versionName: 'Initial version',
 					versionDescription: 'Created with 2 nodes: Webhook, Set',
 				}),
+				{},
 			);
 		});
 

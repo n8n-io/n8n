@@ -144,7 +144,7 @@ describe('Instance AI skills', () => {
 	// Routing needs intent-recognition once per request; carrying its body for the
 	// rest of the thread costs every later call ~7K tokens.
 	it('expires intent-recognition when the next user turn starts', async () => {
-		for (const version of ['default@1', 'progressive@1']) {
+		for (const version of ['default@1', 'concise@1']) {
 			const { profile } = resolvePromptProfile({ version });
 			const { source } = await loadInstanceAiPromptSkills(profile);
 			const entry = source.registry.skills.find((skill) => skill.id === 'intent-recognition');
@@ -164,7 +164,6 @@ describe('Instance AI skills', () => {
 			'instance-awareness',
 			'intent-recognition',
 			'n8n-docs-assistant',
-			'progressive-building',
 			'suggest-automations',
 			'v3-migration',
 			'workflow-builder',
@@ -318,21 +317,6 @@ describe('Instance AI skills', () => {
 			await loadTool.handler?.({ skillId: 'config-eval-playbook' }, {}),
 		);
 		expect(playbook).toContain('Config Eval Playbook');
-	});
-
-	it('keeps the progressive-building fragment out of both profile catalogs', async () => {
-		const source = loadInstanceAiSkills();
-		const progressive = source.registry.skills.find(
-			(skill) => skill.name === 'progressive-building',
-		);
-		expect(progressive?.id).toBe('progressive-building');
-		for (const mode of ['default', 'progressive'] as const) {
-			const { source: selected } = await loadInstanceAiPromptSkills(
-				resolvePromptProfile({ mode }).profile,
-			);
-			expect(selected.registry.skills.map(({ id }) => id)).not.toContain('progressive-building');
-			await expect(selected.loadSkill('progressive-building')).resolves.toBeNull();
-		}
 	});
 
 	it('loads the bundled Agents module skills', async () => {
