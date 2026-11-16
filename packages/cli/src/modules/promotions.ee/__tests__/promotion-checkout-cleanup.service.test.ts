@@ -403,7 +403,7 @@ describe('PromotionCheckoutCleanupService', () => {
 		);
 
 		it.each(entryPointNames)(
-			'$name publishes and deletes the trash after it releases the lock',
+			'$name publishes and then deletes the trash after it releases the lock',
 			async ({ name }) => {
 				isMultiMain = true;
 				await createCheckout(LIVE_ID);
@@ -413,15 +413,20 @@ describe('PromotionCheckoutCleanupService', () => {
 				});
 				let lockFreeOnTrashDeletion: boolean | undefined;
 				const deleteTrash = workingDirectory.deleteTrash.bind(workingDirectory);
-				vi.spyOn(workingDirectory, 'deleteTrash').mockImplementation(async (folders) => {
-					lockFreeOnTrashDeletion = await isLockFree(LIVE_ID);
-					await deleteTrash(folders);
-				});
+				const deleteTrashSpy = vi
+					.spyOn(workingDirectory, 'deleteTrash')
+					.mockImplementation(async (folders) => {
+						lockFreeOnTrashDeletion = await isLockFree(LIVE_ID);
+						await deleteTrash(folders);
+					});
 
 				await entryPoint(name).run();
 
 				await vi.waitFor(() => expect(lockFreeOnPublish).toBe(true));
 				expect(lockFreeOnTrashDeletion).toBe(true);
+				expect(publisher.publishCommand.mock.invocationCallOrder[0]).toBeLessThan(
+					deleteTrashSpy.mock.invocationCallOrder[0],
+				);
 			},
 		);
 

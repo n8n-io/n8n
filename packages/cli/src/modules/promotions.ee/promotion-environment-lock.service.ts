@@ -49,6 +49,8 @@ export function throwIfLockLost(signal: AbortSignal): void {
  *   lock ([LIGO-1399](https://linear.app/n8n/issue/LIGO-1399) decides the rule).
  * - Two promotion branch names that are the same to the millisecond. The push is not forced, so
  *   the remote rejects the second one, and a retry gets a new name.
+ * - The cleanup messages from other mains. They take no lock, so a late message can remove a
+ *   clone that a Connect on this main started. The Connect fails, and a retry works.
  */
 @Service()
 export class PromotionEnvironmentLockService {
