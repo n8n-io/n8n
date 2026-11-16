@@ -1,0 +1,40 @@
+packages/@n8n/test/README.md
+  s_bd76ab629df3c7::t_dfe2bb53122ecc 1-222
+packages/@n8n/test/src/sub-workflows/contract.ts
+  s_bd76ab629df3c7::t_eee88318023412 64-66,68,70
+  s_bd76ab629df3c7::t_4f6895a9744cff 2-63,67,69,71-171
+packages/@n8n/test/src/runtime/code-runner.ts
+  s_bd76ab629df3c7::t_579ef9eed8e834 1-277
+packages/@n8n/test/src/sub-workflows/issues.ts
+  s_bd76ab629df3c7::t_2352e197ed61ae 1-59
+packages/@n8n/test/test/sub-workflow.test.ts
+  s_bd76ab629df3c7::t_0b86e3c314699e 1-218
+packages/@n8n/test/src/sub-workflows/execution.ts
+  s_bd76ab629df3c7::t_5ad15d7628e2b1 2-287
+packages/@n8n/test/src/runtime/runner-data.ts
+  s_bd76ab629df3c7::t_2442210d063d7b 1-102
+packages/@n8n/test/src/runtime/webhook-response.ts
+  s_bd76ab629df3c7::t_7db4cf1011cbe0 2-222
+packages/@n8n/test/src/runtime/refusals.ts
+  s_bd76ab629df3c7::t_802c50376b7a0b 1-58
+packages/@n8n/test/src/sub-workflows/requirements.ts
+  s_bd76ab629df3c7::t_7499f585bc793c 1-115
+packages/@n8n/test/test/contract.test.ts
+  s_bd76ab629df3c7::t_0ff6b01b8ee35e 1-83
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "159178bc19417dd5642edee6d08f066e6454795b",
+  "prompts": {},
+  "sessions": {
+    "s_bd76ab629df3c7": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "b4920771-73b9-447e-9790-061901b0f141",
+        "model": "claude-fable-5-2"
+      },
+      "human_author": "James Gee <1285296+geemanjs@users.noreply.github.com>"
+    }
+  }
+}
