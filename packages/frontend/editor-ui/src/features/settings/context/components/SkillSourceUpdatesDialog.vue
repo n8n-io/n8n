@@ -141,7 +141,7 @@ async function load() {
 		if (closed || request !== listRequest) return;
 		updates.value = result.updates;
 		selected.value = result.updates.filter(acceptable).map(({ skillId }) => skillId);
-		commit.value = result.commit;
+		if (commit.value?.revision !== result.commit?.revision) commit.value = result.commit;
 	} catch (cause) {
 		if (!closed && request === listRequest) error.value = errorText(cause);
 	} finally {
@@ -156,20 +156,6 @@ async function loadPreview() {
 	detailError.value = '';
 	detailLoading.value = false;
 	if (!update) return;
-	commit.value = {
-		revision: update.revision,
-		webUrl: update.revisionUrl,
-		message: null,
-		author: null,
-		date: null,
-	};
-	// This independent request must not hold up the stored diff or its actions.
-	void store
-		.fetchSourceCommit(props.source.id, update.revision)
-		.then((result) => {
-			if (!closed && request === previewRequest) commit.value = result;
-		})
-		.catch(() => undefined);
 	if (update.check.verdict === 'blocked') return;
 	detailLoading.value = true;
 	try {
@@ -189,9 +175,33 @@ async function loadPreview() {
 	}
 }
 watch(focused, loadPreview);
-watch(selected, () => {
-	reviewed.value = false;
-});
+// Commit metadata is shared by every skill at this revision and does not block the diff.
+watch(
+	() => focused.value?.revision,
+	async (revision) => {
+		if (!revision) return;
+		commit.value = {
+			revision,
+			webUrl: focused.value?.revisionUrl ?? null,
+			message: null,
+			author: null,
+			date: null,
+		};
+		try {
+			const result = await store.fetchSourceCommit(props.source.id, revision);
+			if (!closed && focused.value?.revision === revision) commit.value = result;
+		} catch {
+			// The revision link remains available when metadata cannot be read.
+		}
+	},
+);
+watch(
+	selected,
+	() => {
+		reviewed.value = false;
+	},
+	{ deep: true },
+);
 
 function close() {
 	if (saving.value) return;

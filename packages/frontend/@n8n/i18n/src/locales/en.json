@@ -4135,6 +4135,7 @@
 	"settings.context.skills.updates.error": "Could not load or save these updates. Try again.",
 	"settings.context.skills.updates.stale": "The updates changed while you were reviewing them. No selected updates were applied. Review the latest changes and try again.",
 	"settings.context.skills.updates.nameClash": "Another skill already uses this name. Rename it in the source before updating.",
+	"settings.context.skills.updates.agentNameClash": "An agent that follows this skill already uses another skill with a name like \"{name}\". Rename this skill in the source before updating.",
 	"settings.context.skills.sources.updates": "{count} update | {count} updates",
 	"settings.context.skills.sources.actions": "Actions for {source}",
 	"settings.context.skills.sources.health.connected": "Connected",

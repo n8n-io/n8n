@@ -16,6 +16,7 @@ import {
 import { GLOBAL_OWNER_ROLE, type Project, type User } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { DataSource } from '@n8n/typeorm';
+import { UserError } from '@n8n/errors';
 import nock from 'nock';
 import { randomUUID } from 'node:crypto';
 
@@ -32,6 +33,7 @@ import { SkillSourceCheckTask } from '../../services/skill-source-check.task';
 import { SkillUsageProxy } from '../../services/skill-usage-proxy.service';
 import type { SkillUsage } from '../../services/skill-usage.contracts';
 import { SkillSyncService } from '../../services/skill-sync.service';
+import { SkillService } from '../../services/skill.service';
 import { SkillsTelemetry } from '../../services/skills-telemetry.service';
 import { SkillSourceNotFoundError } from '../../errors/skill-source-not-found.error';
 import { SkillSourceRepository } from '../../database/repositories/skill-source.repository';
@@ -95,6 +97,7 @@ describe('Skill source checks', () => {
 		postHog.getFeatureFlags.mockResolvedValue({ [SKILL_SYNC_FLAG]: true });
 		// The rate limit budget lives in memory on the service, so one test's limit stays there.
 		(Reflect.get(sync(), 'backoff') as Map<string, unknown>).clear();
+		Reflect.get(sync(), 'commits').clear();
 		github.start();
 		github.push('acme/skills', FILES);
 	});
@@ -390,7 +393,7 @@ describe('Skill source checks', () => {
 			}
 		});
 
-		it('uses the stored commit and tolerates a failed metadata lookup', async () => {
+		it('reuses commit metadata for concurrent and later reviews', async () => {
 			const { sourceId, reviewed } = await changed();
 			const revision = reviewed.updates[0].revision;
 			const metadata = nock('https://api.github.com')
@@ -399,16 +402,23 @@ describe('Skill source checks', () => {
 					message: 'Update skills',
 					author: { name: 'Alex', date: '2026-11-11T10:00:00Z' },
 				});
-			const response = await editor
-				.get(`/skill-sources/${sourceId}/commit`)
-				.query({ revision })
-				.expect(200);
-			expect(response.body.data).toMatchObject({
-				revision,
-				message: 'Update skills',
-				author: 'Alex',
-			});
+			const describe = () =>
+				editor.get(`/skill-sources/${sourceId}/commit`).query({ revision }).expect(200);
+			const responses = [...(await Promise.all([describe(), describe()])), await describe()];
+			for (const response of responses) {
+				expect(response.body.data).toMatchObject({
+					revision,
+					message: 'Update skills',
+					author: 'Alex',
+				});
+			}
 			expect(metadata.isDone()).toBe(true);
+			await accept(sourceId, reviewed);
+		});
+
+		it('retries failed commit metadata without blocking acceptance', async () => {
+			const { sourceId, reviewed } = await changed();
+			const revision = reviewed.updates[0].revision;
 			const failure = nock('https://api.github.com')
 				.get(`/repos/acme/skills/git/commits/${revision}`)
 				.reply(503);
@@ -422,7 +432,34 @@ describe('Skill source checks', () => {
 				message: null,
 			});
 			expect(failure.isDone()).toBe(true);
+			const retry = nock('https://api.github.com')
+				.get(`/repos/acme/skills/git/commits/${revision}`)
+				.reply(200, { message: 'Recovered metadata' });
+			const recovered = await editor
+				.get(`/skill-sources/${sourceId}/commit`)
+				.query({ revision })
+				.expect(200);
+			expect(recovered.body.data.message).toBe('Recovered metadata');
+			expect(retry.isDone()).toBe(true);
 			await accept(sourceId, reviewed);
+		});
+
+		it('preserves validation errors and leaves all selected updates pending', async () => {
+			const { sourceId, docx, reviewed } = await changed();
+			const failure = new UserError('Skill instructions cannot be empty.');
+			vi.spyOn(Container.get(SkillService), 'saveTrusted').mockRejectedValueOnce(failure);
+			await expect(
+				sync().acceptUpdates(memberUser, sourceId, {
+					updates: reviewed.updates.map(({ skillId, contentHash, baseVersionId }) => ({
+						skillId,
+						contentHash,
+						baseVersionId,
+					})),
+					reviewedWarnings: false,
+				}),
+			).rejects.toBe(failure);
+			expect((await findLatestSkillVersion(docx))?.version).toBe(1);
+			expect((await review(sourceId)).updates).toEqual(reviewed.updates);
 		});
 
 		it('keeps content checks available during commit metadata backoff', async () => {

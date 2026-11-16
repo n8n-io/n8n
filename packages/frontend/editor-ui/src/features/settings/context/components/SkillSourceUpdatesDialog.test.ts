@@ -9,7 +9,8 @@ import { createComponentRenderer } from '@/__tests__/render';
 import { useSkillsStore } from '../skills.store';
 import SkillSourceUpdatesDialog from './SkillSourceUpdatesDialog.vue';
 
-vi.mock('@n8n/composables/useToast', () => ({ useToast: () => ({ showMessage: vi.fn() }) }));
+const { showMessage } = vi.hoisted(() => ({ showMessage: vi.fn() }));
+vi.mock('@n8n/composables/useToast', () => ({ useToast: () => ({ showMessage }) }));
 vi.mock('@n8n/design-system', async () => {
 	const actual = await vi.importActual<typeof import('@n8n/design-system')>('@n8n/design-system');
 	return {
@@ -78,6 +79,7 @@ const renderDialog = createComponentRenderer(SkillSourceUpdatesDialog);
 let store: ReturnType<typeof useSkillsStore>;
 let pinia: ReturnType<typeof createTestingPinia>;
 beforeEach(() => {
+	showMessage.mockClear();
 	pinia = createTestingPinia();
 	store = useSkillsStore(pinia);
 	vi.mocked(store.fetchSourceUpdates).mockResolvedValue({
@@ -199,6 +201,10 @@ it('does not select blocked updates or name clashes', async () => {
 		updates: [
 			update('blocked', 'blocked'),
 			{ ...update('taken'), nameClash: { name: 'taken', where: 'scope' } },
+			{
+				...update('agent-clash', 'needs_review'),
+				nameClash: { name: 'agent-clash', where: 'agent' },
+			},
 		],
 		commit: null,
 	});
@@ -209,6 +215,10 @@ it('does not select blocked updates or name clashes', async () => {
 	expect(view.queryByRole('button', { name: 'Retry' })).not.toBeInTheDocument();
 	expect(view.getByTestId('skill-updates-accept')).toBeDisabled();
 	for (const checkbox of view.getAllByRole('checkbox')) expect(checkbox).toBeDisabled();
+	expect(view.getByTestId('skill-source-skills')).toHaveTextContent(
+		'An agent that follows this skill already uses another skill with a name like "agent-clash"',
+	);
+	expect(view.getByTestId('skill-source-skills')).not.toHaveTextContent('Links to a new domain');
 });
 
 it('does not write when the dialog closes', async () => {
@@ -244,6 +254,8 @@ it('reloads the selection after a stale accept and clears the warning acknowledg
 
 it('ignores a late diff after the reviewer selects another skill', async () => {
 	const pending = createDeferredPromise<Awaited<ReturnType<typeof store.fetchSourceUpdate>>>();
+	const metadata = createDeferredPromise<Awaited<ReturnType<typeof store.fetchSourceCommit>>>();
+	vi.mocked(store.fetchSourceCommit).mockReturnValue(metadata.promise);
 	vi.mocked(store.fetchSourceUpdates).mockResolvedValue({
 		updates: [update('first'), update('second')],
 		commit: null,
@@ -262,4 +274,76 @@ it('ignores a late diff after the reviewer selects another skill', async () => {
 	await flushPromises();
 	expect(view.getByTestId('skill-source-file')).toHaveTextContent('SKILL.md');
 	expect(view.queryByText('Late content')).not.toBeInTheDocument();
+	metadata.resolve({
+		revision: 'abc',
+		webUrl: null,
+		message: 'Shared commit',
+		author: 'Alex',
+		date: null,
+	});
+	await view.findByText('Shared commit');
+	expect(store.fetchSourceCommit).toHaveBeenCalledTimes(1);
+});
+
+it.each([
+	{ agents: [], hiddenAgentCount: 0, message: 'No agents follow these skills yet.' },
+	{
+		agents: [{ id: 'a', name: '<b>Support</b>' }],
+		hiddenAgentCount: 0,
+		message: 'Agent drafts that follow these skills will use the updates: <b>Support</b>.',
+	},
+	{ agents: [], hiddenAgentCount: 1, message: '1 other agent draft will use the updates.' },
+	{
+		agents: [{ id: 'a', name: 'Support' }],
+		hiddenAgentCount: 2,
+		message:
+			'Agent drafts that follow these skills will use the updates: Support. 2 other agent drafts will use the updates.',
+	},
+])('reports the accepted updates with $message', async ({ agents, hiddenAgentCount, message }) => {
+	vi.mocked(store.acceptSourceUpdates).mockResolvedValue({
+		updatedCount: 1,
+		agents,
+		hiddenAgentCount,
+	});
+	const view = render();
+	await view.findByTestId('skill-source-file');
+	await userEvent.click(view.getByTestId('skill-updates-accept'));
+	expect(showMessage).toHaveBeenCalledWith({
+		type: 'success',
+		dangerouslyUseHTMLString: false,
+		title: 'Updated 1 skill',
+		message: `${message} Published agents keep their pinned versions until you publish again.`,
+	});
+});
+
+it('requires a new acknowledgment when another warning skill is selected', async () => {
+	vi.mocked(store.fetchSourceUpdates).mockResolvedValue({
+		updates: [update('first', 'needs_review'), update('second', 'needs_review')],
+		commit: null,
+	});
+	const view = render();
+	const second = await view.findByRole('checkbox', { name: 'second' });
+	await userEvent.click(second);
+	await userEvent.click(view.getByTestId('skill-update-reviewed-warnings'));
+	expect(view.getByTestId('skill-updates-accept')).toBeEnabled();
+	await userEvent.click(second);
+	expect(view.getByTestId('skill-update-reviewed-warnings')).not.toBeChecked();
+	expect(view.getByTestId('skill-updates-accept')).toBeDisabled();
+});
+
+it('reloads pending updates when the preview is stale', async () => {
+	vi.mocked(store.fetchSourceUpdates).mockResolvedValueOnce({
+		updates: [update('old')],
+		commit: null,
+	});
+	vi.mocked(store.fetchSourceUpdate).mockRejectedValueOnce(
+		new ResponseError('Changed', { httpStatusCode: 409, meta: { reason: 'stale' } }),
+	);
+	const view = render();
+	await view.findByRole('checkbox', { name: 'docx' });
+	await view.findByTestId('skill-source-file');
+	expect(store.fetchSourceUpdates).toHaveBeenCalledTimes(2);
+	expect(view.getByTestId('skill-updates-error')).toHaveTextContent(
+		'The updates changed while you were reviewing them',
+	);
 });

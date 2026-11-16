@@ -22,8 +22,9 @@ import {
 	type User,
 } from '@n8n/db';
 import { Service } from '@n8n/di';
-import { ForbiddenError, NotFoundError, UserError } from '@n8n/errors';
+import { ForbiddenError, NotFoundError } from '@n8n/errors';
 import { ensureError } from '@n8n/utils/errors/ensure-error';
+import { LRUCache } from 'lru-cache';
 
 import type {
 	SkillSourceConnection,
@@ -62,6 +63,7 @@ import {
 	updateFiles,
 } from '../utils/skill-update-review';
 import { SkillNameTakenError } from '../errors/skill-name-taken.error';
+import { SkillAgentNameTakenError } from '../errors/skill-agent-name-taken.error';
 import { SkillService } from './skill.service';
 import { SkillUsageProxy } from './skill-usage-proxy.service';
 import { SkillAccessService } from './skill-access.service';
@@ -101,6 +103,10 @@ export class SkillSyncService {
 	 * public access of a source type. In memory, so a restart or another main forgets it.
 	 */
 	private readonly backoff = new Map<string, { until: number; attempts: number }>();
+	private readonly commits = new LRUCache<string, Promise<SkillUpdateCommit>>({
+		max: 100,
+		ttl: 60 * 60 * 1000,
+	});
 
 	constructor(
 		private readonly logger: Logger,
@@ -162,7 +168,7 @@ export class SkillSyncService {
 		await this.requireReview(user, sourceId);
 		const { link, row } = await this.reviewedUpdate(sourceId, skillId, reviewed);
 		const content = pendingScan(link).verdict === 'blocked' ? null : pendingContent(link);
-		const followers = await this.skillUsage.markFollowersChanged(skillId);
+		const followers = await this.skillUsage.findFollowingAgentIds(skillId);
 		return {
 			files: content ? updateFiles(rowContent(row), content) : [],
 			...(await this.visibleAgents(user, followers)),
@@ -180,12 +186,23 @@ export class SkillSyncService {
 		if (!links.some((link) => link.pendingRevision === revision)) throw staleUpdate();
 		const fallback = this.commitFallback(source, client, revision);
 		const metadataKey = `metadata:${accessKey(source)}`;
-		if (!client.describeRevision || (this.backoff.get(metadataKey)?.until ?? 0) > Date.now()) {
-			return fallback;
-		}
+		if (!client.describeRevision) return fallback;
 		try {
 			const auth = await this.authOf(source, client);
-			return { ...fallback, ...(await client.describeRevision(source.locator, revision, auth)) };
+			const key = JSON.stringify([source.type, source.locator, revision, accessKey(source)]);
+			const cached = this.commits.get(key);
+			if (cached) return await cached;
+			if ((this.backoff.get(metadataKey)?.until ?? 0) > Date.now()) return fallback;
+			const pending = client
+				.describeRevision(source.locator, revision, auth)
+				.then((details) => ({ ...fallback, ...details }));
+			this.commits.set(key, pending);
+			try {
+				return await pending;
+			} catch (error) {
+				if (this.commits.peek(key) === pending) this.commits.delete(key);
+				throw error;
+			}
 		} catch (error) {
 			this.recordBackoff(metadataKey, error);
 			this.logger.debug('Could not read skill update commit details', {
@@ -262,7 +279,7 @@ export class SkillSyncService {
 						);
 						saved.push({ skillId: link.skillId, ...version });
 					} catch (error) {
-						if (error instanceof SkillNameTakenError || error instanceof UserError) {
+						if (error instanceof SkillNameTakenError || error instanceof SkillAgentNameTakenError) {
 							throw new SkillSourceRequestError('name_clash', 'This skill name is already in use.');
 						}
 						throw error;
@@ -377,7 +394,7 @@ export class SkillSyncService {
 		} catch (error) {
 			if (error instanceof SkillNameTakenError) return { name, where: 'scope' };
 			// The agent error may name agents the user cannot read. Return only the kind of clash.
-			if (error instanceof UserError) return { name, where: 'agent' };
+			if (error instanceof SkillAgentNameTakenError) return { name, where: 'agent' };
 			throw error;
 		}
 	}

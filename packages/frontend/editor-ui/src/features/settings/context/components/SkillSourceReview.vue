@@ -158,6 +158,11 @@ function blockedReason(skill: DiscoveredSkill): string {
 			interpolate: { name: titleOf(skill), scope: props.scopeLabel },
 		});
 	}
+	if (skill.error?.reason === 'name_clash') {
+		return i18n.baseText('settings.context.skills.updates.agentNameClash', {
+			interpolate: { name: titleOf(skill) },
+		});
+	}
 	const findings = skill.check ? findingsText(skill.check.findings) : '';
 	if (findings) return findings;
 	return skill.error ? reasonText(skill.error.reason) : '';

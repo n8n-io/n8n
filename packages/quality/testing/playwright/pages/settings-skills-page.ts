@@ -42,4 +42,8 @@ export class SettingsSkillsPage extends BasePage {
 	getAcceptButton() {
 		return this.page.getByTestId('skill-updates-accept');
 	}
+
+	getUpdateCheckbox(name: string) {
+		return this.getUpdateDialog().getByRole('checkbox', { name, exact: true });
+	}
 }

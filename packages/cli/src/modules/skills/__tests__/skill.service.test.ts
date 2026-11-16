@@ -511,7 +511,7 @@ describe('SkillService', () => {
 		it('marks the following agents in the transaction and refreshes them after the commit', async () => {
 			const baseSkillHash = givenLatest(versionRow(skill, 2));
 			await givenFollowers();
-			const markFollowersChanged = vi.spyOn(skillUsage, 'markFollowersChanged');
+			const findFollowingAgentIds = vi.spyOn(skillUsage, 'findFollowingAgentIds');
 
 			const result = await service.saveTrusted(
 				'skill_a',
@@ -521,7 +521,7 @@ describe('SkillService', () => {
 				{ pushRef: 'push-ref-1' },
 			);
 
-			expect(markFollowersChanged).toHaveBeenCalledWith('skill_a', TX_CTX);
+			expect(findFollowingAgentIds).toHaveBeenCalledWith('skill_a', TX_CTX);
 			expect(result.followingAgentIds).toEqual(['agent-1', 'agent-2']);
 			expect(usage.refreshed).toEqual([
 				{ agentIds: ['agent-1', 'agent-2'], excludePushRef: 'push-ref-1' },
