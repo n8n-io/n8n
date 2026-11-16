@@ -438,6 +438,7 @@ describe('SkillsTable', () => {
 			const view = renderGrouped({ sources: [current] });
 			const badge = view.getByTestId('skill-group-review-new');
 			expect(badge).toHaveTextContent('2 new');
+			expect(view.getByTestId('skill-group-new-dot').className).toMatch(/success/);
 			await userEvent.click(badge);
 			expect(view.emitted().reviewSource).toEqual([[current]]);
 		});
@@ -534,9 +535,10 @@ describe('SkillsTable', () => {
 					sources: [source({ updatesAvailable: available, updatesBlocked: blocked })],
 				});
 
-				const badge = getByTestId('skill-group-updates');
-				expect(badge).toHaveTextContent(text);
-				expect(badge.className).toMatch(red ? /danger/ : /warning/);
+				expect(getByTestId('skill-group-updates')).toHaveTextContent(text);
+				expect(getByTestId('skill-group-updates-dot').className).toMatch(
+					red ? /danger/ : /warning/,
+				);
 			},
 		);
 

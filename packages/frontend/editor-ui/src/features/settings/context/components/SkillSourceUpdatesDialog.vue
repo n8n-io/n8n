@@ -44,6 +44,8 @@ const reviewed = ref(false);
 const loading = ref(true);
 const saving = ref(false);
 const error = ref('');
+/** Why the new skills did not load. The stored updates still show. */
+const newSkillsError = ref('');
 const previewKey = ref<string | null>(null);
 const detail = ref<SkillUpdateReview | null>(null);
 const detailLoading = ref(false);
@@ -172,6 +174,14 @@ async function load() {
 			)
 			.map(({ skillId }) => skillId);
 		loaded = true;
+		newSkillsError.value = result.newSkillsError
+			? [
+					i18n.baseText('settings.context.skills.updates.newSkillsError'),
+					result.newSkillsError.reason ? reasonText(result.newSkillsError.reason) : '',
+				]
+					.filter(Boolean)
+					.join(' ')
+			: '';
 		if (commit.value?.revision !== result.commit?.revision) commit.value = result.commit;
 	} catch (cause) {
 		if (!closed && request === listRequest) error.value = errorText(cause);
@@ -378,6 +388,12 @@ void load();
 			<N8nCallout v-if="error" theme="warning" data-test-id="skill-updates-error">{{
 				error
 			}}</N8nCallout>
+			<N8nCallout
+				v-if="newSkillsError && !loading"
+				theme="warning"
+				data-test-id="skill-updates-new-error"
+				>{{ newSkillsError }}</N8nCallout
+			>
 			<N8nText v-if="loading">{{ i18n.baseText('generic.loading') }}</N8nText>
 			<SkillSourceReview
 				v-else-if="updates.length"

@@ -463,6 +463,22 @@ describe('Skill source checks', () => {
 			expect(unlinked.length).toBeGreaterThan(0);
 			expect(unlinked.some(({ key }) => key.includes('nested/'))).toBe(false);
 		});
+
+		it('reports a flagged new skill with the user of Check for updates', async () => {
+			const flaggedSkill = vi.spyOn(Container.get(SkillsTelemetry), 'flaggedSkill');
+			const { sourceId } = await importAll();
+			// A description over the limit cannot come in.
+			pushChange({ 'skills/pptx/SKILL.md': skillMd('pptx', 'Follow pptx.', 'x'.repeat(5000)) });
+			await age(sourceId);
+
+			await editor.post(`/skill-sources/${sourceId}/check`).expect(200);
+
+			expect(flaggedSkill).toHaveBeenCalledTimes(1);
+			expect(flaggedSkill).toHaveBeenCalledWith(
+				expect.objectContaining({ stage: 'import', verdict: 'blocked' }),
+				memberUser.id,
+			);
+		});
 	});
 
 	describe('reviewing stored updates', () => {
@@ -510,7 +526,7 @@ describe('Skill source checks', () => {
 				}
 
 				const reviewed = await review(sourceId);
-				expect(reviewed).toEqual({ ...stored, newSkills: [] });
+				expect(reviewed).toEqual({ ...stored, newSkills: [], newSkillsError: { reason } });
 				const update = reviewed.updates[0];
 				const detail = await editor
 					.get(`/skill-sources/${sourceId}/updates/${docx}`)

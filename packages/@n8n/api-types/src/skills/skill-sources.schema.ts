@@ -390,6 +390,8 @@ export type SkillSourceUpdates = {
 	updates: SkillPendingUpdate[];
 	/** Read live only when the user opens the review. Includes hidden new skills. */
 	newSkills?: SkillNewUpdate[];
+	/** Set when n8n could not read the new skills. Stored updates stay available. */
+	newSkillsError?: { reason: SkillSourceReason | null };
 	commit: SkillUpdateCommit | null;
 };
 

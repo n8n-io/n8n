@@ -161,19 +161,20 @@ export class SkillSyncService {
 		}
 		const revision = updates[0]?.revision;
 		let newSkills: SkillNewUpdate[] = [];
+		let newSkillsError: SkillSourceUpdates['newSkillsError'];
 		if (source.unlinkedSkills?.length) {
 			try {
 				newSkills = await this.newSkills.review(source, client, await this.authOf(source, client));
 			} catch (error) {
-				this.logger.warn('Could not read new skills for source review', {
-					sourceId,
-					reason: skillSourceReasonOf(error),
-				});
+				const reason = skillSourceReasonOf(error) ?? null;
+				this.logger.warn('Could not read new skills for source review', { sourceId, reason });
+				newSkillsError = { reason };
 			}
 		}
 		return {
 			updates,
 			newSkills,
+			...(newSkillsError ? { newSkillsError } : {}),
 			commit: revision ? this.commitFallback(source, client, revision) : null,
 		};
 	}
@@ -563,7 +564,7 @@ export class SkillSyncService {
 		}
 
 		try {
-			await this.check(source, 'manual');
+			await this.check(source, 'manual', user.id);
 		} catch (error) {
 			await track({
 				updatesFound: await this.sourceRepository.countPendingUpdates(source.id),
@@ -624,10 +625,16 @@ export class SkillSyncService {
 	// ---------------------------------------------------------------- check
 
 	/** One check of a source. A check of the same source that runs on this main is joined. */
-	private async check(source: SkillSourceConnection, trigger: CheckTrigger): Promise<void> {
+	private async check(
+		source: SkillSourceConnection,
+		trigger: CheckTrigger,
+		userId?: string,
+	): Promise<void> {
 		const pending = this.running.get(source.id);
 		if (pending) return await pending;
-		const run = this.runCheck(source, trigger).finally(() => this.running.delete(source.id));
+		const run = this.runCheck(source, trigger, userId).finally(() =>
+			this.running.delete(source.id),
+		);
 		this.running.set(source.id, run);
 		return await run;
 	}
@@ -637,7 +644,11 @@ export class SkillSyncService {
 	 * each synced skill fetched at the new revision and compared with the stored content. A
 	 * failure is stored on the source and thrown.
 	 */
-	private async runCheck(source: SkillSourceConnection, trigger: CheckTrigger): Promise<void> {
+	private async runCheck(
+		source: SkillSourceConnection,
+		trigger: CheckTrigger,
+		userId?: string,
+	): Promise<void> {
 		const client = this.clients.get(source.type);
 		if (!client) return;
 		const access = accessKey(source);
@@ -664,7 +675,7 @@ export class SkillSyncService {
 			}
 			const links = await this.sourceRepository.findLinksBySource(source.id);
 			const { counts, conflict } = await this.compareAll(source, client, links, auth, cursor);
-			const discovered = await this.newSkills.check(source, client, auth, cursor);
+			const discovered = await this.newSkills.check(source, client, auth, cursor, userId);
 			// A link that another check changed meanwhile was not written: no cursor, so the next
 			// check reads every skill again.
 			const next = conflict || !discovered ? null : cursor;

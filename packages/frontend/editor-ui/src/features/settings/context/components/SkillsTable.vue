@@ -7,6 +7,7 @@ import {
 	N8nDataTableServer,
 	N8nIcon,
 	N8nSpinner,
+	N8nStatusDot,
 	N8nText,
 	N8nTooltip,
 	N8nUserInfo,
@@ -383,25 +384,6 @@ const headers = computed<Array<TableHeader<SkillListItem>>>(() => [
 						data-test-id="skill-group-checking"
 					/>
 					<button
-						v-else-if="updateCount(sourcesById.get(group)!) > 0"
-						type="button"
-						:class="$style.updateButton"
-						data-test-id="skill-group-review-updates"
-						@click.stop="emit('reviewSource', sourcesById.get(group)!)"
-					>
-						<N8nBadge
-							:variant="sourcesById.get(group)!.updatesAvailable > 0 ? 'warning' : 'danger'"
-							data-test-id="skill-group-updates"
-						>
-							{{
-								i18n.baseText('settings.context.skills.sources.updates', {
-									interpolate: { count: updateCount(sourcesById.get(group)!) },
-									adjustToNumber: updateCount(sourcesById.get(group)!),
-								})
-							}}
-						</N8nBadge>
-					</button>
-					<button
 						v-if="
 							sourcesById.get(group)!.canReview && sourcesById.get(group)!.newSkillsAvailable > 0
 						"
@@ -411,11 +393,40 @@ const headers = computed<Array<TableHeader<SkillListItem>>>(() => [
 						data-attr="skill-group-review-new"
 						@click.stop="emit('reviewSource', sourcesById.get(group)!)"
 					>
-						<N8nBadge variant="secondary">{{
-							i18n.baseText('settings.context.skills.sources.new', {
-								interpolate: { count: sourcesById.get(group)!.newSkillsAvailable },
-							})
-						}}</N8nBadge>
+						<N8nBadge variant="outline" data-test-id="skill-group-new">
+							<template #leading>
+								<N8nStatusDot variant="success" data-test-id="skill-group-new-dot" />
+							</template>
+							{{
+								i18n.baseText('settings.context.skills.sources.new', {
+									interpolate: { count: sourcesById.get(group)!.newSkillsAvailable },
+								})
+							}}
+						</N8nBadge>
+					</button>
+					<button
+						v-if="
+							!props.checkingSourceIds?.includes(group) && updateCount(sourcesById.get(group)!) > 0
+						"
+						type="button"
+						:class="$style.updateButton"
+						data-test-id="skill-group-review-updates"
+						@click.stop="emit('reviewSource', sourcesById.get(group)!)"
+					>
+						<N8nBadge variant="outline" data-test-id="skill-group-updates">
+							<template #leading>
+								<N8nStatusDot
+									:variant="sourcesById.get(group)!.updatesAvailable > 0 ? 'warning' : 'danger'"
+									data-test-id="skill-group-updates-dot"
+								/>
+							</template>
+							{{
+								i18n.baseText('settings.context.skills.sources.updates', {
+									interpolate: { count: updateCount(sourcesById.get(group)!) },
+									adjustToNumber: updateCount(sourcesById.get(group)!),
+								})
+							}}
+						</N8nBadge>
 					</button>
 				</div>
 			</template>

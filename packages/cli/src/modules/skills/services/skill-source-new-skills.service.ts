@@ -112,6 +112,8 @@ export class SkillSourceNewSkillsService {
 		client: SkillSourceClient,
 		auth?: SkillSourceAuth,
 		revision?: string,
+		/** The user of Check for updates. The hourly check has none, so its events reach BigQuery only. */
+		userId?: string,
 	): Promise<boolean> {
 		const reads = await this.discover(source, client, auth, revision);
 		const previous = new Map((source.unlinkedSkills ?? []).map((skill) => [skill.key, skill]));
@@ -134,18 +136,21 @@ export class SkillSourceNewSkillsService {
 					previous.get(read.key)?.contentHash === read.contentHash
 				)
 					continue;
-				await this.telemetry.flaggedSkill({
-					provider: source.type,
-					stage: 'import',
-					verdict: read.check.verdict,
-					rule_codes: [
-						...new Set(
-							read.check.findings
-								.filter(({ severity }) => severity !== 'info')
-								.map(({ rule }) => rule),
-						),
-					],
-				});
+				await this.telemetry.flaggedSkill(
+					{
+						provider: source.type,
+						stage: 'import',
+						verdict: read.check.verdict,
+						rule_codes: [
+							...new Set(
+								read.check.findings
+									.filter(({ severity }) => severity !== 'info')
+									.map(({ rule }) => rule),
+							),
+						],
+					},
+					userId,
+				);
 			}
 		}
 		return stored;

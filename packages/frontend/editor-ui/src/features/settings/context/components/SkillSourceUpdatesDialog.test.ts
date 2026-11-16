@@ -209,6 +209,32 @@ it('reports agent impact when new skills and updates are accepted together', asy
 	});
 });
 
+it('says why new skills did not load and keeps stored updates reviewable', async () => {
+	vi.mocked(store.fetchSourceUpdates).mockResolvedValue({
+		updates: [update('docx')],
+		newSkills: [],
+		newSkillsError: { reason: 'unreachable' },
+		commit: null,
+	});
+	const view = render();
+	expect(await view.findByRole('checkbox', { name: 'docx' })).toBeChecked();
+	expect(view.getByTestId('skill-updates-new-error')).toHaveTextContent(
+		'n8n could not load the new skills of this source. You can still review the stored updates. n8n cannot reach GitHub. Try again later.',
+	);
+	expect(view.getByTestId('skill-updates-accept')).toBeEnabled();
+});
+
+it('shows no load warning when new skills load', async () => {
+	vi.mocked(store.fetchSourceUpdates).mockResolvedValue({
+		updates: [],
+		newSkills: [newSkill()],
+		commit: null,
+	});
+	const view = render();
+	await view.findByRole('checkbox', { name: 'pdf' });
+	expect(view.queryByTestId('skill-updates-new-error')).toBeNull();
+});
+
 it('never enables a blocked new skill', async () => {
 	vi.mocked(store.fetchSourceUpdates).mockResolvedValue({
 		updates: [],
