@@ -287,6 +287,19 @@ The admin reads (`getEffectivePolicy`, behind the `GET` routes) read the databas
 the `version` they report is what the editor sends back as `expectedVersion`, so a stale read
 there would surface as a write conflict.
 
+### The access of each type at instance scope
+
+`GET /node-type-policies/instance/access` and `GET /credential-type-policies/instance/access`
+return, for every known type, what the instance policy alone decides: `allow`, `deny` or
+`delegate`. Each entry names the rule that decided it, or has `matchedRuleId: null` when the
+default action decided. The admin UI shows this as the Access of each row, so the client does
+not evaluate rules itself.
+
+The route reads the policy once through `getEffectivePolicy` and evaluates every type against
+that read, so the `version` in the response is the version the verdicts come from. It uses the
+same type names as `available-types`, so generated tool variants are included and inherit
+their base type's verdict.
+
 ## The write seal
 
 This is the first check that can deny anything, so the clearance token is now exercised end to
@@ -342,9 +355,9 @@ through a sealed repository method, and the lint rule that guards that has no al
 | `type-availability-policy.service.ts`             | Reads and writes the store, with versioning and row locks                       |
 | `type-availability-policy-snapshot.ts`            | Holds every scope in memory for decisions, and keeps it fresh                   |
 | `effective-policy.ts`                             | The composed policy of one scope, and its allow-all default                     |
-| `type-availability-policy-instance.controller.ts` | Instance scope, documents and attachments, `node-types`                         |
+| `type-availability-policy-instance.controller.ts` | Instance scope, documents, attachments and access of each type, `node-types`    |
 | `type-availability-policy-project.controller.ts`  | A project's own scope, for project admins, `node-types`                         |
-| `credential-type-policy-instance.controller.ts`   | Instance scope, documents and attachments, `credential-types`                   |
+| `credential-type-policy-instance.controller.ts`   | Instance scope, documents, attachments and access of each type, `credential-types` |
 | `credential-type-policy-project.controller.ts`    | A project's own scope, for project admins, `credential-types`                   |
 | `available-types.controller.ts`                   | The effective type set for one project, for the builder                         |
 | `sub-workflow-policy-check.controller.ts`         | The start violations a parent's call to a sub-workflow would hit                |

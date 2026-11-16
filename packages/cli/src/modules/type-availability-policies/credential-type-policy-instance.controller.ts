@@ -3,6 +3,7 @@ import {
 	PutCredentialTypeInstancePolicyDto,
 	ReplaceAttachmentsDto,
 	UpdateCredentialTypePolicyDocumentDto,
+	type InstanceTypeAccessResponse,
 } from '@n8n/api-types';
 import { LICENSE_FEATURES } from '@n8n/constants';
 import { AuthenticatedRequest } from '@n8n/db';
@@ -22,8 +23,13 @@ import type { Response } from 'express';
 
 import { NotFoundError } from '@n8n/errors';
 
+import { CredentialTypes } from '@/credential-types';
+
 import { CREDENTIAL_TYPES_KIND } from './constants';
-import { TypeAvailabilityPolicyService } from './type-availability-policy.service';
+import {
+	TypeAvailabilityPolicyService,
+	toInstanceTypeAccessResponse,
+} from './type-availability-policy.service';
 
 /**
  * Instance-scope REST surface for credential type availability policies. Same shape as
@@ -33,7 +39,10 @@ import { TypeAvailabilityPolicyService } from './type-availability-policy.servic
  */
 @RestController('/credential-type-policies')
 export class CredentialTypePolicyInstanceController {
-	constructor(private readonly service: TypeAvailabilityPolicyService) {}
+	constructor(
+		private readonly service: TypeAvailabilityPolicyService,
+		private readonly credentialTypes: CredentialTypes,
+	) {}
 
 	@Get('/instance')
 	@Licensed(LICENSE_FEATURES.TYPE_AVAILABILITY_POLICIES)
@@ -47,6 +56,18 @@ export class CredentialTypePolicyInstanceController {
 			defaultAction: effective.defaultAction,
 			version: effective.version,
 		};
+	}
+
+	@Get('/instance/access')
+	@Licensed(LICENSE_FEATURES.TYPE_AVAILABILITY_POLICIES)
+	@GlobalScope('credentialTypePolicy:manage')
+	async getInstanceAccess(): Promise<InstanceTypeAccessResponse> {
+		const access = await this.service.getInstanceAccess(
+			CREDENTIAL_TYPES_KIND,
+			Object.keys(this.credentialTypes.getKnownTypes()),
+		);
+
+		return toInstanceTypeAccessResponse(access);
 	}
 
 	@Put('/instance')
