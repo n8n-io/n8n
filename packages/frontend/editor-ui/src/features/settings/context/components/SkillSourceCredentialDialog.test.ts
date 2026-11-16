@@ -32,6 +32,7 @@ const source: SkillSourceListItem = {
 	lastCheckedAt: null,
 	missingSkills: [],
 	canReview: true,
+	canMove: true,
 	canDelete: true,
 	canReplaceCredential: true,
 };

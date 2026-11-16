@@ -14,7 +14,8 @@ a main workflow.
 Use this pattern when a workflow is large, has reusable chunks, or benefits from
 independent testing. Simple workflows should stay in one workflow.
 
-1. Write a source file for each supporting workflow, then build it with
+1. Write a source file for each supporting workflow. Write all of them in one
+   `workspace_edit_files` call. Then build each one with
    `workflow_builder_build_workflow` and `isSupportingWorkflow: true`.
 2. Give each supporting workflow an `executeWorkflowTrigger` (version 1.1) with
    an explicit input schema.
