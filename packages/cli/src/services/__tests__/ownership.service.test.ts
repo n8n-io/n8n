@@ -26,6 +26,7 @@ import { mock } from 'vitest-mock-extended';
 import { BadRequestError } from '@n8n/errors';
 import { OwnershipService } from '@/services/ownership.service';
 import { PasswordUtility } from '@/services/password.utility';
+import type { ServiceAccountProjects } from '@/services/service-account-projects';
 import { mockCredential, mockProject, mockServiceAccount } from '@test/mock-objects';
 
 import { CacheService } from '@n8n/backend-services';
@@ -41,6 +42,7 @@ describe('OwnershipService', () => {
 	const logger = mockInstance(Logger);
 	const eventService = mock<EventService>();
 	const settingsRepository = mock<SettingsRepository>();
+	const serviceAccountProjects = mock<ServiceAccountProjects>();
 	const workflowProjectService = new WorkflowProjectService(cacheService, sharedWorkflowRepository);
 
 	const ownershipService = new OwnershipService(
@@ -54,7 +56,7 @@ describe('OwnershipService', () => {
 		userRepository,
 		personRepository,
 		settingsRepository,
-		mock(), // serviceAccountProjects
+		serviceAccountProjects,
 	);
 
 	beforeEach(() => {
@@ -312,6 +314,39 @@ describe('OwnershipService', () => {
 			});
 
 			expect(sharedWithProjects).toHaveLength(0);
+		});
+	});
+
+	describe('addSharingWithAccountKinds()', () => {
+		test('should add the owner, the shares and the account kind of each project', async () => {
+			const ownerProject = mockProject();
+			const agentProject = mockProject();
+			const teamProject = Object.assign(mockProject(), { type: 'team', name: 'Marketing' });
+
+			const credential = mockCredential();
+			credential.shared = [
+				{ role: 'credential:owner', project: ownerProject },
+				{ role: 'credential:user', project: agentProject },
+			] as SharedCredentials[];
+
+			projectRepository.findServiceAccountIdsByProject.mockResolvedValueOnce(
+				new Map([[agentProject.id, 'account-1']]),
+			);
+			serviceAccountProjects.findProjectsOfAccounts.mockResolvedValueOnce(
+				new Map([['account-1', { id: teamProject.id, name: teamProject.name }]]),
+			);
+
+			const { homeProject, sharedWithProjects } =
+				await ownershipService.addSharingWithAccountKinds(credential);
+
+			expect(homeProject).toMatchObject({ id: ownerProject.id, accountKind: 'person' });
+			expect(sharedWithProjects).toMatchObject([
+				{
+					id: agentProject.id,
+					accountKind: 'service',
+					accountProject: { id: teamProject.id, name: 'Marketing' },
+				},
+			]);
 		});
 	});
 

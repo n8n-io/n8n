@@ -189,6 +189,14 @@ export class OwnershipService {
 	):
 		| ListQueryDb.Workflow.WithOwnedByAndSharedWith
 		| ListQueryDb.Credentials.WithOwnedByAndSharedWith {
+		return this.toOwnedByAndSharedWith(rawEntity);
+	}
+
+	private toOwnedByAndSharedWith(
+		rawEntity: ListQueryDb.Workflow.WithSharing | ListQueryDb.Credentials.WithSharing,
+	):
+		| ListQueryDb.Workflow.WithOwnedByAndSharedWith
+		| ListQueryDb.Credentials.WithOwnedByAndSharedWith {
 		const shared = rawEntity.shared;
 		const entity = rawEntity as
 			| ListQueryDb.Workflow.WithOwnedByAndSharedWith
@@ -223,6 +231,27 @@ export class OwnershipService {
 			}
 		}
 
+		return entity;
+	}
+
+	/**
+	 * Adds the owner and the shares, plus the account kind of each project.
+	 * Use it for responses that show each share target, such as a share modal.
+	 * Lists show only a share count, so they use the sync method.
+	 */
+	async addSharingWithAccountKinds(
+		rawWorkflow: ListQueryDb.Workflow.WithSharing,
+	): Promise<ListQueryDb.Workflow.WithOwnedByAndSharedWith>;
+	async addSharingWithAccountKinds(
+		rawCredential: ListQueryDb.Credentials.WithSharing,
+	): Promise<ListQueryDb.Credentials.WithOwnedByAndSharedWith>;
+	async addSharingWithAccountKinds(
+		rawEntity: ListQueryDb.Workflow.WithSharing | ListQueryDb.Credentials.WithSharing,
+	): Promise<
+		ListQueryDb.Workflow.WithOwnedByAndSharedWith | ListQueryDb.Credentials.WithOwnedByAndSharedWith
+	> {
+		const entity = this.toOwnedByAndSharedWith(rawEntity);
+		await this.addAccountKinds([entity.homeProject, ...entity.sharedWithProjects]);
 		return entity;
 	}
 

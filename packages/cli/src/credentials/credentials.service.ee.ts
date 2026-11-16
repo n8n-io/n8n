@@ -159,12 +159,7 @@ export class EnterpriseCredentialsService {
 			);
 		}
 
-		const withSharing = this.ownershipService.addOwnedByAndSharedWith(credential);
-		await this.ownershipService.addAccountKinds([
-			withSharing.homeProject,
-			...withSharing.sharedWithProjects,
-		]);
-		credential = withSharing;
+		credential = await this.ownershipService.addSharingWithAccountKinds(credential);
 
 		const { data: _, ...rest } = credential;
 

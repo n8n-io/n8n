@@ -311,9 +311,7 @@ describe('EnterpriseCredentialsService', () => {
 			});
 
 		beforeEach(() => {
-			ownershipService.addOwnedByAndSharedWith.mockImplementation(
-				(c) => Object.assign(c, { homeProject: null, sharedWithProjects: [] }) as never,
-			);
+			ownershipService.addSharingWithAccountKinds.mockImplementation(async (c) => c as never);
 			credentialsService.populateConnectedByMe.mockResolvedValue(undefined);
 			credentialsService.countConnectedUsers.mockResolvedValue(0);
 		});
