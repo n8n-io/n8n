@@ -62,6 +62,7 @@ export function createMockContext(
 			deleteRows: vi.fn().mockResolvedValue({ deletedCount: 0 }),
 		},
 		permissions: {},
+		logger: { debug: vi.fn(), info: vi.fn(), warn: vi.fn(), error: vi.fn() },
 		...overrides,
 	} as unknown as InstanceAiContext;
 }

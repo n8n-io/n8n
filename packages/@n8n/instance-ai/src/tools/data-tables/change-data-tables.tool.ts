@@ -2,9 +2,14 @@
  * One tool for every data table write. The agent sends an ordered list of
  * changes and the user approves the list once.
  */
-import { CHANGE_DATA_TABLES_TOOL_NAME, buildDataTablesSessionGrantKey } from '@n8n/api-types';
+import {
+	CHANGE_DATA_TABLES_TOOL_NAME,
+	DATA_TABLE_WRITE_TOOL_ACTIONS,
+	DATA_TABLE_WRITE_TOOL_NAMES,
+	buildDataTablesSessionGrantKey,
+} from '@n8n/api-types';
 import { Tool } from '@n8n/agents';
-import type { z } from 'zod';
+import { z } from 'zod';
 
 import { sanitizeInputSchema } from '../../agent/sanitize-mcp-schemas';
 import type { InstanceAiContext } from '../../types';
@@ -13,6 +18,7 @@ import {
 	buildApprovalRequest,
 	sessionGrantableActions,
 } from './change-data-tables.approval';
+import { FORMER_DATA_TABLES_TOOL_NAMES, normalizeLegacyInput } from './change-data-tables.legacy';
 import {
 	changeDataTablesInputSchema,
 	type ChangeDataTablesInput,
@@ -94,10 +100,25 @@ async function grantBatchActions(context: InstanceAiContext, plan: ChangePlan) {
 	}
 }
 
+/**
+ * The runtime validates a resumed call against this schema before the handler
+ * runs, so stored inputs of the former write tools are converted first. The
+ * preprocess step does not change the JSON schema that the model sees.
+ */
+const toolInputSchema = z.preprocess(
+	normalizeLegacyInput,
+	sanitizeInputSchema(changeDataTablesInputSchema),
+);
+
 export function createChangeDataTablesTool(context: InstanceAiContext) {
-	return new Tool(CHANGE_DATA_TABLES_TOOL_NAME)
+	const tool = new Tool(CHANGE_DATA_TABLES_TOOL_NAME)
 		.description(DESCRIPTION)
-		.input(sanitizeInputSchema(changeDataTablesInputSchema))
+		.input(toolInputSchema)
+		.legacyNames(...DATA_TABLE_WRITE_TOOL_NAMES);
+	for (const formerName of FORMER_DATA_TABLES_TOOL_NAMES) {
+		tool.legacyActions(formerName, ...DATA_TABLE_WRITE_TOOL_ACTIONS);
+	}
+	return tool
 		.suspend(confirmationSuspendSchema)
 		.resume(confirmationResumeSchema)
 		.handler(async (input, ctx) => await handleChanges(context, input, ctx))

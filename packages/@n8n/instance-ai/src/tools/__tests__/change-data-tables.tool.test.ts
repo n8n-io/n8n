@@ -1,20 +1,29 @@
 import {
+	DATA_TABLE_READ_TOOL_ACTIONS,
+	DATA_TABLE_TOOL_NAME_BY_ACTION,
 	DATA_TABLE_WRITE_TOOL_ACTIONS,
+	DATA_TABLE_WRITE_TOOL_NAMES,
 	buildDataTablesSessionGrantKey,
 	buildOwnedDataTableGrantKey,
 } from '@n8n/api-types';
+import { zodToJsonSchema } from '@n8n/ai-utilities/json-schema';
 import { UnexpectedError, UserError } from '@n8n/errors';
 import { zodSchema } from 'ai';
 import { z } from 'zod';
 
-import { executeTool } from '../../__tests__/tool-test-utils';
+import { executeTool, parseToolInput } from '../../__tests__/tool-test-utils';
 import { sanitizeInputSchema } from '../../agent/sanitize-mcp-schemas';
 import { OutsideThreadProjectError } from '../../errors/outside-thread-project.error';
 import type { DataTableColumnInfo, DataTableSummary, InstanceAiContext } from '../../types';
 import { changeDataTablesInputSchema } from '../data-tables/change-data-tables.schema';
 import { createChangeDataTablesTool } from '../data-tables/change-data-tables.tool';
 import { confirmationSuspendSchema } from '../data-tables/confirmation';
-import { createMockContext, resumeCtx, suspendCtx } from './data-table-tools-test-utils';
+import {
+	createMockContext,
+	dataTableToolFor,
+	resumeCtx,
+	suspendCtx,
+} from './data-table-tools-test-utils';
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -149,6 +158,18 @@ describe('change_data_tables tool', () => {
 				].sort(),
 			);
 		});
+	});
+
+	it('shows the model the same schema through the tool as the sanitized input schema', async () => {
+		const tool = createChangeDataTablesTool(createMockContext());
+		if (!(tool.inputSchema instanceof z.ZodType)) throw new Error('Expected a Zod input schema');
+		const sanitized = sanitizeInputSchema(changeDataTablesInputSchema);
+
+		expect(await zodSchema(tool.inputSchema).jsonSchema).toEqual(
+			await zodSchema(sanitized).jsonSchema,
+		);
+		// The tool catalog converts deferred tool schemas with this helper.
+		expect(zodToJsonSchema(tool.inputSchema)).toEqual(zodToJsonSchema(sanitized));
 	});
 
 	describe('validation before approval', () => {
@@ -1077,6 +1098,190 @@ describe('change_data_tables tool', () => {
 
 			expect(result).toMatchObject({ success: false, failed: { index: 1 } });
 			expect(logger.error).toHaveBeenCalledTimes(1);
+		});
+	});
+
+	describe('stored calls of the former write tools', () => {
+		const filter = {
+			type: 'and',
+			filters: [{ columnName: 'name', condition: 'eq', value: 'x' }],
+		} as const;
+		const rows = [{ name: 'Ann' }];
+
+		/** Each former tool's stored input (no `action`) and the service call it must make. */
+		const storedCalls = {
+			create: {
+				input: { name: 'A', projectId: 'proj-1', columns: [{ name: 'email', type: 'string' }] },
+				method: 'create',
+				args: ['A', [{ name: 'email', type: 'string' }], { projectId: 'proj-1' }],
+			},
+			delete: {
+				input: { dataTableId: 'dt-T', dataTableName: 'T' },
+				method: 'delete',
+				args: ['dt-T', { projectId: 'proj-1' }],
+			},
+			'add-column': {
+				input: { dataTableId: 'dt-T', dataTableName: 'T', columnName: 'age', type: 'number' },
+				method: 'addColumn',
+				args: ['dt-T', { name: 'age', type: 'number' }, { projectId: 'proj-1' }],
+			},
+			'delete-column': {
+				input: { dataTableId: 'dt-T', columnId: 'c-7', currentColumnName: 'status' },
+				method: 'deleteColumn',
+				args: ['dt-T', 'c-7', { projectId: 'proj-1' }],
+			},
+			'rename-column': {
+				input: { dataTableId: 'dt-T', columnId: 'c-7', newName: 'state' },
+				method: 'renameColumn',
+				args: ['dt-T', 'c-7', 'state', { projectId: 'proj-1' }],
+			},
+			'insert-rows': {
+				input: { dataTableId: 'dt-T', projectId: 'proj-1', rows },
+				method: 'insertRows',
+				args: ['dt-T', rows, { projectId: 'proj-1' }],
+			},
+			'update-rows': {
+				input: { dataTableId: 'dt-T', filter, data: { name: 'Bo' } },
+				method: 'updateRows',
+				args: ['dt-T', filter, { name: 'Bo' }, { projectId: 'proj-1' }],
+			},
+			'delete-rows': {
+				input: { dataTableId: 'dt-T', filter },
+				method: 'deleteRows',
+				args: ['dt-T', filter, { projectId: 'proj-1' }],
+			},
+		} as const;
+		const storedCallCases = DATA_TABLE_WRITE_TOOL_ACTIONS.map((action) => ({
+			action,
+			...storedCalls[action],
+		}));
+
+		function tableContext() {
+			return contextWithTables(
+				{ 'dt-T': [column('name'), { ...column('status', 1), id: 'c-7' }] },
+				{ grantSessionToolApproval: vi.fn() },
+			);
+		}
+
+		/** Validate the stored input as the runtime does on resume, then run the handler. */
+		async function resumeStoredCall(
+			context: InstanceAiContext,
+			input: unknown,
+			approved: boolean,
+			scope?: 'once' | 'session',
+		) {
+			const tool = createChangeDataTablesTool(context);
+			const parsed = parseToolInput(tool, input);
+			if (!parsed.success) return { success: false, error: parsed.error.message };
+			return await executeTool(tool, parsed.data, resumeCtx(approved, scope));
+		}
+
+		it.each(storedCallCases)(
+			'runs an approved stored $action call with its stored arguments',
+			async ({ input, method, args }) => {
+				const context = tableContext();
+				const result = await resumeStoredCall(context, input, true);
+
+				expect(result).toMatchObject({ success: true });
+				expect(context.dataTableService[method]).toHaveBeenCalledWith(...args);
+				for (const other of WRITE_METHODS.filter((m) => m !== method)) {
+					expect(context.dataTableService[other]).not.toHaveBeenCalled();
+				}
+			},
+		);
+
+		it.each(storedCallCases)(
+			'runs no change when the user denies a stored $action call',
+			async ({ input }) => {
+				const context = tableContext();
+				const result = await resumeStoredCall(context, input, false);
+
+				expect(result).toMatchObject({ success: false, denied: true });
+				for (const method of WRITE_METHODS) {
+					expect(context.dataTableService[method]).not.toHaveBeenCalled();
+				}
+			},
+		);
+
+		it.each(storedCallCases)(
+			'runs a stored $action call of the former multi-action tool',
+			async ({ action, input, method, args }) => {
+				const context = tableContext();
+				const result = await resumeStoredCall(context, { action, ...input }, true);
+
+				expect(result).toMatchObject({ success: true });
+				expect(context.dataTableService[method]).toHaveBeenCalledWith(...args);
+			},
+		);
+
+		it.each([
+			{ name: 'a table delete with an unknown extra key', input: { dataTableId: 'dt-T', x: 1 } },
+			{ name: 'no known shape', input: { foo: 'bar' } },
+			{ name: 'an empty input', input: {} },
+			{
+				name: 'a multi-action call whose fields belong to another action',
+				input: { action: 'add-column', dataTableId: 'dt-T' },
+			},
+			{
+				name: 'a multi-action call of a read action',
+				input: { action: 'query', dataTableId: 'dt-T' },
+			},
+			{
+				name: 'a multi-action call of an unknown action',
+				input: { action: 'drop', dataTableId: 'dt-T' },
+			},
+			{
+				name: 'fields of two actions at once',
+				input: { dataTableId: 'dt-T', rows, filter },
+			},
+		])('returns an error and runs nothing for $name', async ({ input }) => {
+			const context = tableContext();
+			const result = await resumeStoredCall(context, input, true);
+
+			expect(result).toMatchObject({ success: false });
+			for (const method of WRITE_METHODS) {
+				expect(context.dataTableService[method]).not.toHaveBeenCalled();
+			}
+		});
+
+		it('grants a non-destructive action for the session on a stored call', async () => {
+			const context = tableContext();
+			await resumeStoredCall(context, storedCalls['insert-rows'].input, true, 'session');
+
+			expect(context.grantSessionToolApproval).toHaveBeenCalledWith(
+				buildDataTablesSessionGrantKey('insert-rows'),
+			);
+		});
+
+		it('grants nothing for the session on a stored destructive call', async () => {
+			const context = tableContext();
+			await resumeStoredCall(context, storedCalls.delete.input, true, 'session');
+
+			expect(context.grantSessionToolApproval).not.toHaveBeenCalled();
+		});
+
+		it('claims the former write tool names and their actions of the former multi-action tool', () => {
+			const tool = createChangeDataTablesTool(createMockContext());
+
+			expect([...(tool.legacyNames ?? [])].sort()).toEqual([...DATA_TABLE_WRITE_TOOL_NAMES].sort());
+			for (const formerName of ['data_tables', 'data-tables']) {
+				expect([...(tool.legacyActions?.[formerName] ?? [])].sort()).toEqual(
+					[...DATA_TABLE_WRITE_TOOL_ACTIONS].sort(),
+				);
+			}
+		});
+
+		it('leaves the read actions of the former multi-action tool to the read tools', () => {
+			const batch = createChangeDataTablesTool(createMockContext());
+			for (const action of DATA_TABLE_READ_TOOL_ACTIONS) {
+				const read = dataTableToolFor(createMockContext(), action);
+				expect(read.name).toBe(DATA_TABLE_TOOL_NAME_BY_ACTION[action]);
+				expect(batch.legacyNames).not.toContain(read.name);
+				for (const formerName of ['data_tables', 'data-tables']) {
+					expect(read.legacyActions?.[formerName]).toEqual([action]);
+					expect(batch.legacyActions?.[formerName]).not.toContain(action);
+				}
+			}
 		});
 	});
 });
