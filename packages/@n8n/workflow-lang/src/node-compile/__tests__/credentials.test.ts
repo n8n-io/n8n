@@ -288,3 +288,99 @@ export class AcmeApi {
 		expect(result.source).toContain('"{{$credentials.account}}"');
 	});
 });
+
+const GOOGLE_FUNCTIONS = `
+import * as jwt from 'jsonwebtoken';
+export const googleServiceAccountScopes = {
+	docs: ['https://scopes.test/documents', 'https://scopes.test/drive'],
+	chat: ['https://scopes.test/chat'],
+} as const;
+export async function getGoogleAccessToken(this: unknown, credentials: any, service: 'docs' | 'chat') {
+	const scopes = googleServiceAccountScopes[service];
+	const assertion = jwt.sign({ iss: credentials.email, scope: scopes.join(' ') }, credentials.privateKey);
+	return await this.helpers.request({ method: 'POST', uri: 'https://oauth2.googleapis.com/token', form: { assertion } });
+}`;
+
+const GOOGLE_NODE = `
+import { getGoogleAccessToken } from '../GenericFunctions';
+export class Acme {
+	async execute() {
+		const credentials = await this.getCredentials('googleApi');
+		const { access_token } = await getGoogleAccessToken.call(this, credentials, 'docs');
+		const response = await this.helpers.request({ method: 'GET', uri: 'https://docs.acme.test/v1/items', headers: { Authorization: \`Bearer \${access_token}\` } });
+		return [this.helpers.returnJsonArray(response)];
+	}
+}`;
+
+const compileGoogle = (node: string, functionsFile = '/nodes/Google/GenericFunctions.ts') =>
+	specialiseNode({
+		type: 'n8n-nodes-acme.acme',
+		version: 1,
+		entry: '/nodes/Google/Acme/Acme.node.ts',
+		readFile: (path) =>
+			path === '/nodes/Google/Acme/Acme.node.ts'
+				? node
+				: path === functionsFile
+					? GOOGLE_FUNCTIONS
+					: undefined,
+		parameters: {},
+		instanceId: null,
+		credentialFields: { googleApi: {} },
+	});
+
+describe('a Google service account token in the node compiler', () => {
+	it('becomes a template of a token that n8n mints, with the scopes of the service', () => {
+		const result = compileGoogle(GOOGLE_NODE);
+		expect(result.errors).toEqual([]);
+		expect(result.mints).toHaveLength(1);
+		const mint = result.mints?.[0];
+		expect(mint).toMatchObject({
+			kind: 'google-service-account',
+			service: 'docs',
+			scopes: ['https://scopes.test/documents', 'https://scopes.test/drive'],
+		});
+		expect(result.source).toContain(`{{$credentials.n8nMinted.${mint?.name}.access_token}}`);
+		expect(result.source).not.toContain('privateKey');
+		expect(result.source).not.toContain('oauth2.googleapis.com');
+	});
+
+	it('gives two services with different scopes different names', () => {
+		const other = compileGoogle(GOOGLE_NODE.replace("'docs')", "'chat')"));
+		expect(other.errors).toEqual([]);
+		expect(other.mints?.[0].name).not.toBe(compileGoogle(GOOGLE_NODE).mints?.[0].name);
+	});
+
+	it('does not take a function with the same name from another file', () => {
+		const result = compileGoogle(
+			GOOGLE_NODE.replace('../GenericFunctions', '../Other'),
+			'/nodes/Google/Other.ts',
+		);
+		expect(result.source).toBeUndefined();
+		expect(result.mints ?? []).toEqual([]);
+	});
+
+	it('does not compile a service that is not a constant', () => {
+		const result = compileGoogle(
+			GOOGLE_NODE.replace("'docs')", 'this.getInputData()[0].json.service)'),
+		);
+		expect(result.source).toBeUndefined();
+		expect(result.errors.join('\n')).toContain('service that is not a constant');
+	});
+
+	it('does not compile a service that the scopes table does not have', () => {
+		const result = compileGoogle(GOOGLE_NODE.replace("'docs')", "'sheets')"));
+		expect(result.source).toBeUndefined();
+		expect(result.errors.join('\n')).toContain("the Google service 'sheets' has no scopes");
+	});
+
+	it('does not compile code that keeps the whole token response', () => {
+		const result = compileGoogle(
+			GOOGLE_NODE.replace('const { access_token } =', 'const token =').replace(
+				'${access_token}',
+				'${token.access_token}${token.token_type}',
+			),
+		);
+		expect(result.source).toBeUndefined();
+		expect(result.errors.join('\n')).toContain('reads more than the access token');
+	});
+});

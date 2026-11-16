@@ -2,7 +2,7 @@ import { compile } from '../compiler/index.ts';
 import { getNodeParameters } from '../convert/node-parameters.ts';
 import type { PublicCredential } from '../credentials/public.ts';
 import type { NodeDescription } from '../convert/node-parameters.ts';
-import type { CredentialDerivation, ParameterKind } from './specialise.ts';
+import type { CredentialDerivation, CredentialMint, ParameterKind } from './specialise.ts';
 import { hasExpression, specialiseNode } from './specialise.ts';
 import { VERIFIED } from './verified.generated.ts';
 
@@ -97,6 +97,8 @@ export interface CompiledNode {
 	resolved: Record<string, unknown>;
 
 	derivations: CredentialDerivation[];
+
+	mints: CredentialMint[];
 
 	changed: string[];
 }
@@ -218,6 +220,7 @@ export function compileNodeInstance(
 		dynamic: Object.keys(parameters).filter((name) => hasExpression(parameters[name])),
 		resolved: parameters,
 		derivations: result.derivations ?? [],
+		mints: result.mints ?? [],
 
 		changed: [...changed, ...Object.values(credentials).flatMap((c) => c.classes)],
 	};

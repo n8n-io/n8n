@@ -2,13 +2,18 @@ import { withDerivedValues } from '../../credentials/derived.ts';
 import { deriveInject } from '../../credentials/inject.ts';
 import type { PublicCredential } from '../../credentials/public.ts';
 import { publicCredential } from '../../credentials/public.ts';
-import type { EquivalenceCase } from '../../nodes/__tests__/equivalence.ts';
+import type {
+	EquivalenceCase,
+	NormalRequest,
+	Recording,
+} from '../../nodes/__tests__/equivalence.ts';
 import { applyCredential, normalizeRequest } from '../../nodes/__tests__/equivalence.ts';
 import { recordV1, recordV1Cached } from '../../nodes/__tests__/v1-recorder.ts';
 import { runReference } from '../../reference/runner.ts';
 import type { NodeSources } from '../convert.ts';
 import { compileNodeInstance } from '../convert.ts';
 import { evaluateDerivation } from '../evaluate-node.ts';
+import type { CredentialMint } from '../specialise.ts';
 
 export const V1_TIMEZONE = 'America/New_York';
 
@@ -58,6 +63,77 @@ async function within<T>(ms: number, work: Promise<T>): Promise<T> {
 	}
 }
 
+const TOKEN_EXCHANGE_URL = 'https://oauth2.googleapis.com/token';
+const MAX_TOKEN_ROUNDS = 4;
+
+export const MINTED_TOKEN_RESPONSE: EquivalenceCase['responses'][number] = {
+	body: { access_token: 'minted-token', expires_in: 3599, token_type: 'Bearer' },
+};
+
+function tokenExchangeScope(request: NormalRequest): string | undefined {
+	if (request.method !== 'POST' || request.url !== TOKEN_EXCHANGE_URL) return undefined;
+	const form = isRecord(request.body) ? request.body.$form : undefined;
+	const assertion = isRecord(form) ? form.assertion : undefined;
+	if (typeof assertion !== 'string') return undefined;
+	try {
+		const claims: unknown = JSON.parse(
+			Buffer.from(assertion.split('.')[1] ?? '', 'base64url').toString('utf8'),
+		);
+		return isRecord(claims) && typeof claims.scope === 'string' ? claims.scope : undefined;
+	} catch {
+		return undefined;
+	}
+}
+
+interface MintedRun {
+	testCase: EquivalenceCase;
+	v1: Recording;
+	exchanges: Set<number>;
+	tokens: Record<string, { access_token: string }>;
+}
+
+async function recordWithMints(
+	c: EquivalenceCase,
+	mints: CredentialMint[],
+	record: (testCase: EquivalenceCase) => Promise<Recording>,
+): Promise<MintedRun | string> {
+	const answerAt = (list: EquivalenceCase['responses'], k: number) =>
+		list[Math.min(k, list.length - 1)];
+	let testCase = c;
+	for (let round = 0; round < MAX_TOKEN_ROUNDS; round++) {
+		const v1 = await record(testCase);
+		const exchanges = new Set<number>();
+		const tokens: Record<string, { access_token: string }> = {};
+		let settled = true;
+		for (const [k, request] of v1.requests.entries()) {
+			const scope = tokenExchangeScope(request);
+			if (scope === undefined) continue;
+			const mint = mints.find((m) => m.scopes.join(' ') === scope);
+			if (!mint) return `v1 asks for a token with scopes that the compiled node did not record`;
+			exchanges.add(k);
+			const body = answerAt(testCase.responses, k)?.body;
+			const token = isRecord(body) ? body.access_token : undefined;
+			if (typeof token !== 'string') {
+				settled = false;
+				continue;
+			}
+			if (tokens[mint.name] !== undefined && tokens[mint.name].access_token !== token)
+				return 'v1 got two different tokens for one token request';
+			tokens[mint.name] = { access_token: token };
+		}
+		if (settled) return { testCase, v1, exchanges, tokens };
+		const others = testCase.responses.filter((r) => r !== MINTED_TOKEN_RESPONSE);
+		let used = 0;
+		testCase = {
+			...testCase,
+			responses: v1.requests.map((_request, k) =>
+				exchanges.has(k) ? MINTED_TOKEN_RESPONSE : (answerAt(others, used++) ?? { body: {} }),
+			),
+		};
+	}
+	return 'the token requests of v1 do not settle';
+}
+
 export async function differenceFromV1(
 	c: EquivalenceCase,
 	sources: NodeSources,
@@ -88,16 +164,24 @@ export default workflow({
 	},
 });
 `;
+	const record = async (testCase: EquivalenceCase) =>
+		await within(8000, options.cache === true ? recordV1Cached(testCase) : recordV1(testCase));
+	const minted =
+		compiled.mints.length > 0 ? await recordWithMints(c, compiled.mints, record) : undefined;
+	if (typeof minted === 'string') return minted;
+	const v1 = minted?.v1 ?? (await record(c));
+	const responses = minted
+		? minted.testCase.responses.filter((_response, k) => !minted.exchanges.has(k))
+		: c.responses;
 	const fixture = {
 		trigger: { body: {}, headers: {}, query: {} },
 		now: 0,
 		seed: 1,
-		effects: { Node: c.responses.map((r) => ({ status: 200, headers: {}, ...r })) },
+		effects: { Node: responses.map((r) => ({ status: 200, headers: {}, ...r })) },
 	};
 	const out = await runReference(source, fixture, {
 		extraNodes: { [compiled.file]: compiled.source },
 	});
-	const v1 = await within(8000, options.cache === true ? recordV1Cached(c) : recordV1(c));
 
 	const data: Record<string, unknown> = withDerivedValues(credentialType ?? '', {
 		...(registry.get(credentialType ?? '')?.defaults ?? {}),
@@ -114,6 +198,13 @@ export default workflow({
 			derived[name] = value;
 		}
 		data.n8nDerived = derived;
+	}
+	if (minted) {
+		for (const mint of compiled.mints) {
+			if (minted.tokens[mint.name] === undefined && minted.exchanges.size > 0)
+				return 'the compiled node recorded a token request that v1 did not send';
+		}
+		data.n8nMinted = minted.tokens;
 	}
 	const inject = credentialType ? deriveInject(registry, credentialType, data).inject : undefined;
 	const requests = out.effects.map((effect) => {
@@ -144,7 +235,8 @@ export default workflow({
 		}
 		return request;
 	});
-	const expected = v1.requests.map(({ qsFormat: _, ...r }) => {
+	const sent = minted ? v1.requests.filter((_request, k) => !minted.exchanges.has(k)) : v1.requests;
+	const expected = sent.map(({ qsFormat: _, ...r }) => {
 		const form = isRecord(r.body) ? r.body.$form : undefined;
 		if (!isRecord(form)) return r;
 		const text: Record<string, string> = {};

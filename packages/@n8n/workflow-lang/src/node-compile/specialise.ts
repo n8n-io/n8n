@@ -49,6 +49,8 @@ export interface SpecialiseResult {
 
 	derivations?: CredentialDerivation[];
 
+	mints?: CredentialMint[];
+
 	retyped?: (moduleType: string) => string;
 }
 
@@ -56,6 +58,20 @@ export interface CredentialDerivation {
 	name: string;
 	code: string;
 }
+
+export interface CredentialMint {
+	name: string;
+	kind: 'google-service-account';
+	service: string;
+	scopes: string[];
+}
+
+const MINT_GOOGLE = '__MINT_GOOGLE';
+const GOOGLE_TOKEN_FUNCTION = 'getGoogleAccessToken';
+const GOOGLE_TOKEN_FILE = '/nodes/Google/GenericFunctions.ts';
+const MAX_MINTS = 16;
+const isMintCall = (e: ts.Node): e is ts.CallExpression =>
+	ts.isCallExpression(e) && ts.isIdentifier(e.expression) && e.expression.text === MINT_GOOGLE;
 
 const f = ts.factory;
 
@@ -1498,6 +1514,15 @@ class Specialiser {
 				if (
 					name.text === 'call' &&
 					ts.isIdentifier(target) &&
+					node.arguments[0]?.kind === ts.SyntaxKind.ThisKeyword &&
+					!localNames.has(target.text) &&
+					this.isGoogleTokenFunction(unit.file, target.text, unit.name)
+				) {
+					return call(MINT_GOOGLE, ...args(node, 1));
+				}
+				if (
+					name.text === 'call' &&
+					ts.isIdentifier(target) &&
 					node.arguments[0]?.kind === ts.SyntaxKind.ThisKeyword
 				) {
 					this.contextCallees.add(target.text);
@@ -1847,7 +1872,8 @@ class Specialiser {
 			}
 			const returned =
 				isWholeCredential(node) && ts.isReturnStatement(node.parent) && where !== 'execute';
-			if (isWholeCredential(node) && !returned) {
+			const minted = isMintCall(node.parent) && node.parent.arguments[0] === node;
+			if (isWholeCredential(node) && !returned && !minted) {
 				this.error(
 					where,
 					'the credential is used as a whole value: only its fields can go into a request',
@@ -2056,6 +2082,7 @@ class Specialiser {
 			cur = this.renew(cur, this.propagate(cur.node, where));
 			cur = this.renew(cur, this.flow(cur.node));
 			cur = this.renew(cur, this.reduce(cur.node));
+			cur = this.renew(cur, this.mintTokens(cur.node, where));
 			settled = !this.changed;
 		}
 		if (!settled) this.error(where, `the code still changes after ${MAX_FOLD_ROUNDS} fold rounds`);
@@ -2070,6 +2097,167 @@ class Specialiser {
 	}
 
 	readonly derivations = new Map<string, string>();
+
+	readonly mints = new Map<string, CredentialMint>();
+
+	private googleScopes: Map<string, string[]> | undefined;
+
+	private isGoogleTokenFunction(file: FileModel, name: string, where: string): boolean {
+		const found = this.member(file, name);
+		const fn = found?.node;
+		if (
+			!found ||
+			!fn ||
+			!ts.isFunctionDeclaration(fn) ||
+			fn.name?.text !== GOOGLE_TOKEN_FUNCTION ||
+			!found.file.path.endsWith(GOOGLE_TOKEN_FILE)
+		)
+			return false;
+		this.googleScopes ??= this.scopeTable(found.file, fn);
+		if (!this.googleScopes)
+			this.error(where, `the scopes of '${GOOGLE_TOKEN_FUNCTION}' are not a table of constants`);
+		return true;
+	}
+
+	private scopeTable(
+		file: FileModel,
+		fn: ts.FunctionDeclaration,
+	): Map<string, string[]> | undefined {
+		const service = fn.parameters.filter(
+			(p) => !(ts.isIdentifier(p.name) && p.name.text === 'this'),
+		)[1]?.name;
+		if (!service || !ts.isIdentifier(service) || !fn.body) return undefined;
+		const tables: string[] = [];
+		const find = (n: ts.Node) => {
+			if (
+				ts.isElementAccessExpression(n) &&
+				ts.isIdentifier(n.argumentExpression) &&
+				n.argumentExpression.text === service.text
+			)
+				tables.push(ts.isIdentifier(n.expression) ? n.expression.text : '');
+			ts.forEachChild(n, find);
+		};
+		find(fn.body);
+		if (tables.length !== 1 || tables[0] === '') return undefined;
+		const declared = this.member(file, tables[0])?.node;
+		let table = declared && ts.isVariableDeclaration(declared) ? declared.initializer : undefined;
+		while (
+			table &&
+			(ts.isAsExpression(table) ||
+				ts.isSatisfiesExpression(table) ||
+				ts.isParenthesizedExpression(table))
+		)
+			table = table.expression;
+		if (!table || !ts.isObjectLiteralExpression(table)) return undefined;
+		const out = new Map<string, string[]>();
+		for (const property of table.properties) {
+			if (
+				!ts.isPropertyAssignment(property) ||
+				!(ts.isIdentifier(property.name) || ts.isStringLiteral(property.name)) ||
+				!ts.isArrayLiteralExpression(property.initializer) ||
+				out.has(property.name.text)
+			)
+				return undefined;
+			const scopes: string[] = [];
+			for (const element of property.initializer.elements) {
+				if (!ts.isStringLiteral(element) && !ts.isNoSubstitutionTemplateLiteral(element))
+					return undefined;
+				scopes.push(element.text);
+			}
+			out.set(property.name.text, scopes);
+		}
+		return out;
+	}
+
+	private mintMarker(request: ts.CallExpression, where: string): ts.Expression | undefined {
+		const [credential, service] = request.arguments;
+		if (
+			request.arguments.length !== 2 ||
+			!isWholeCredential(credential) ||
+			!ts.isStringLiteral(service)
+		)
+			return undefined;
+		const scopes = this.googleScopes?.get(service.text);
+		if (!scopes) {
+			this.error(where, `the Google service '${service.text}' has no scopes that are constants`);
+			return undefined;
+		}
+		const kind = 'google-service-account';
+		const text = JSON.stringify([kind, scopes]);
+		let hash = 0x811c9dc5;
+		for (let k = 0; k < text.length; k++) {
+			hash ^= text.charCodeAt(k);
+			hash = Math.imul(hash, 0x01000193) >>> 0;
+		}
+		const name = `m${hash.toString(16).padStart(8, '0')}`;
+		const known = this.mints.get(name);
+		if (known && JSON.stringify(known.scopes) !== JSON.stringify(scopes)) {
+			this.error(where, 'two token requests have the same name');
+			return undefined;
+		}
+		if (!known && this.mints.size >= MAX_MINTS) {
+			this.error(where, `the node needs more than ${MAX_MINTS} minted tokens`);
+			return undefined;
+		}
+		if (!known) this.mints.set(name, { name, kind, service: service.text, scopes: [...scopes] });
+		return call('__CREDFIELD', f.createStringLiteral(`n8nMinted.${name}.access_token`));
+	}
+
+	private checkMints() {
+		for (const { name, node } of this.output) {
+			const walk = (n: ts.Node) => {
+				if (ts.isIdentifier(n) && n.text === MINT_GOOGLE) {
+					this.error(
+						name,
+						`the call of '${GOOGLE_TOKEN_FUNCTION}' has a service that is not a constant, or the code reads more than the access token`,
+					);
+				}
+				ts.forEachChild(n, walk);
+			};
+			walk(node);
+		}
+	}
+
+	private mintTokens(root: ts.Node, where: string): ts.Node {
+		const requestOf = (e: ts.Expression | undefined): ts.CallExpression | undefined => {
+			let cur = e;
+			while (cur && ts.isParenthesizedExpression(cur)) cur = cur.expression;
+			if (!cur || !ts.isAwaitExpression(cur)) return undefined;
+			return isMintCall(cur.expression) ? cur.expression : undefined;
+		};
+		const visit = (n: ts.Node): ts.Node => {
+			if (ts.isPropertyAccessExpression(n) && n.name.text === 'access_token') {
+				const request = requestOf(n.expression);
+				const marker = request && this.mintMarker(request, where);
+				if (marker) {
+					this.changed = true;
+					return marker;
+				}
+			}
+			if (
+				ts.isVariableDeclaration(n) &&
+				ts.isObjectBindingPattern(n.name) &&
+				n.name.elements.length === 1
+			) {
+				const bound = plainBindings(n.name)?.[0];
+				const request = requestOf(n.initializer);
+				const marker =
+					bound?.field === 'access_token' && request ? this.mintMarker(request, where) : undefined;
+				if (bound && marker) {
+					this.changed = true;
+					return f.updateVariableDeclaration(
+						n,
+						f.createIdentifier(bound.name),
+						undefined,
+						undefined,
+						marker,
+					);
+				}
+			}
+			return ts.visitEachChild(n, visit, undefined);
+		};
+		return ts.visitNode(root, visit);
+	}
 
 	private credentialPure(root: ts.Node): { ok: boolean; marker: boolean; computes: boolean } {
 		const state = { marker: false, computes: false };
@@ -2467,7 +2655,7 @@ class Specialiser {
 					ts.isCallExpression(call) &&
 					call.arguments.includes(n) &&
 					ts.isIdentifier(call.expression) &&
-					!call.expression.text.startsWith('__');
+					(!call.expression.text.startsWith('__') || call.expression.text === MINT_GOOGLE);
 				const presence =
 					call &&
 					((ts.isBinaryExpression(call) && EQUALITY_OPERATORS.has(call.operatorToken.kind)) ||
@@ -4296,12 +4484,22 @@ class Specialiser {
 		this.trimArguments();
 		this.checkParameters();
 		this.checkCredentials();
+		this.checkMints();
 		const linked = this.output.map((o) => o.name);
 		if (this.errors.length > 0) return { errors: this.errors, notes: this.notes, linked };
 		const source = this.print();
 		if (this.errors.length > 0) return { errors: this.errors, notes: this.notes, linked };
 		const derivations = [...this.derivations].map(([name, code]) => ({ name, code }));
-		return { source, errors: [], notes: this.notes, linked, derivations, retyped: this.retyped };
+		const mints = [...this.mints.values()].filter((m) => source.includes(`n8nMinted.${m.name}.`));
+		return {
+			source,
+			errors: [],
+			notes: this.notes,
+			linked,
+			derivations,
+			mints,
+			retyped: this.retyped,
+		};
 	}
 
 	private bufferText(root: ts.Node): ts.Node {

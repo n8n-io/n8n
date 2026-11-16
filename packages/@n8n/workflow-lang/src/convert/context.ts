@@ -1,7 +1,7 @@
 /**
  * The interface between the converter driver and the lowering of one node.
  */
-import type { CredentialDerivation } from '../node-compile/specialise.ts';
+import type { CredentialDerivation, CredentialMint } from '../node-compile/specialise.ts';
 import type { NodeSources } from '../node-compile/convert.ts';
 import type { Code, Writer } from './code.ts';
 import type { ExpressionScope, TranslatedValue, TranslateOptions } from './expression.ts';
@@ -78,6 +78,11 @@ export interface NodeContext {
 	 * slot (`ConvertResult.credentialDerivations`).
 	 */
 	addCredentialDerivations?(slot: string, derivations: CredentialDerivation[]): void;
+	/**
+	 * Records tokens that n8n makes from a credential, for a credential slot
+	 * (`ConvertResult.credentialMints`).
+	 */
+	addCredentialMints?(slot: string, mints: CredentialMint[]): void;
 	/** False when the runtime does not run `ctx.service` effects (`ConvertOptions.services`). */
 	services?: boolean;
 	/** Records a time zone that the node's native code formats dates in (META \`zones\`). */

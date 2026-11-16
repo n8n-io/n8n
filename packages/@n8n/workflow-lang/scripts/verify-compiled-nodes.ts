@@ -1,5 +1,15 @@
 import { spawn } from 'node:child_process';
-import { existsSync, readFileSync, readdirSync, statSync, writeFileSync } from 'node:fs';
+import { generateKeyPairSync } from 'node:crypto';
+import {
+	existsSync,
+	linkSync,
+	mkdirSync,
+	readFileSync,
+	readdirSync,
+	rmSync,
+	statSync,
+	writeFileSync,
+} from 'node:fs';
 import { createRequire } from 'node:module';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -8,7 +18,11 @@ import type { NodeDescription } from '../src/convert/node-parameters.ts';
 import { getNodeParameters } from '../src/convert/node-parameters.ts';
 import { publicCredential } from '../src/credentials/public.ts';
 import { loadCredentialTypes, registryOf } from '../src/credentials/types.ts';
-import { compileForCheck, differenceFromV1 } from '../src/node-compile/__tests__/verify.ts';
+import {
+	compileForCheck,
+	differenceFromV1,
+	MINTED_TOKEN_RESPONSE,
+} from '../src/node-compile/__tests__/verify.ts';
 import type { NodeSources } from '../src/node-compile/convert.ts';
 import { evaluateInSandbox } from '../src/node-compile/evaluate-node.ts';
 import { verifiedKey } from '../src/node-compile/convert.ts';
@@ -148,12 +162,60 @@ function credentialOf(node: LoadedNode, resolved: Json): string | undefined {
 	return (shown ?? all[0])?.name;
 }
 
+const SIGNING_KEY_FILE = join(here, '../node_modules/.cache/v1-recordings/test-signing-key.pem');
+let signingKey: string | undefined;
+function testSigningKey(): string {
+	if (signingKey !== undefined) return signingKey;
+	if (!existsSync(SIGNING_KEY_FILE)) {
+		mkdirSync(dirname(SIGNING_KEY_FILE), { recursive: true });
+		const { privateKey } = generateKeyPairSync('rsa', {
+			modulusLength: 2048,
+			privateKeyEncoding: { type: 'pkcs8', format: 'pem' },
+			publicKeyEncoding: { type: 'spki', format: 'pem' },
+		});
+		const partial = `${SIGNING_KEY_FILE}.${process.pid}.tmp`;
+		writeFileSync(partial, privateKey, { mode: 0o600 });
+		try {
+			linkSync(partial, SIGNING_KEY_FILE);
+		} catch {
+			if (!existsSync(SIGNING_KEY_FILE)) throw new Error('The test signing key has no file.');
+		} finally {
+			rmSync(partial, { force: true });
+		}
+	}
+	signingKey = readFileSync(SIGNING_KEY_FILE, 'utf8');
+	return signingKey;
+}
+
+const MAX_AUTHENTICATIONS = 4;
+function otherAuthentications(node: LoadedNode, version: number, start: Json): Json[] {
+	const properties = node.description.properties as unknown as Property[];
+	const usual = credentialOf(node, resolve(node, version, required(node, version, start)));
+	const out: Json[] = [];
+	const seen = new Set<unknown>();
+	for (const property of properties) {
+		if (property.name !== 'authentication' || property.type !== 'options') continue;
+		for (const { value } of property.options ?? []) {
+			if (typeof value !== 'string' || seen.has(value) || out.length >= MAX_AUTHENTICATIONS)
+				continue;
+			seen.add(value);
+			const other = { ...start, authentication: value };
+			const resolved = resolve(node, version, required(node, version, other));
+			if (resolved.authentication !== value) continue;
+			const credential = credentialOf(node, resolved);
+			if (credential !== undefined && credential !== usual) out.push(other);
+		}
+	}
+	return out;
+}
+
 function fakeCredential(type: string): Json {
 	const data: Json = {};
 	for (const [key, value] of Object.entries(registry.get(type)?.defaults ?? {})) {
 		const address = /url|host|domain|server|endpoint/i.test(key);
 		data[key] = value === '' ? (address ? 'https://api.example.test' : `fake-${key}`) : value;
 	}
+	if (type === 'googleApi') data.privateKey = testSigningKey();
 	if (/oauth2/i.test(type)) {
 		data.oauthTokenData = {
 			access_token: 'fake-token',
@@ -233,6 +295,8 @@ const alone: Record<string, number> = {};
 const weighted: Record<string, number> = {};
 let tried = 0;
 let compiledCount = 0;
+let mintedTried = 0;
+let mintedVerified = 0;
 const examples: string[] = [];
 
 interface NodeResult {
@@ -243,6 +307,8 @@ interface NodeResult {
 	tried: number;
 	compiled: number;
 	examples?: string[];
+	mintedTried?: number;
+	mintedVerified?: number;
 }
 
 async function checkInProcess(name: string): Promise<NodeResult | undefined> {
@@ -299,6 +365,8 @@ if (one === undefined) {
 				if (examples.length < 400) examples.push(`${name}: ${example}`);
 			tried += result.tried;
 			compiledCount += result.compiled;
+			mintedTried += result.mintedTried ?? 0;
+			mintedVerified += result.mintedVerified ?? 0;
 		}
 	};
 	await Promise.all(Array.from({ length: PARALLEL }, worker));
@@ -337,66 +405,82 @@ for (const name of one === undefined ? [] : Object.keys(known).sort()) {
 	for (const version of versions) {
 		const node = nodeOf(type, version);
 		if (!node || sources.entry(type, version) === undefined) continue;
-		for (const start of operations(node)) {
-			tried++;
-			const parameters = required(node, version, start);
-			const credential = credentialOf(node, resolve(node, version, parameters));
-			const weight = weightOf(type, parameters);
-			const instance = { type, version, parameters };
-			const fields = credential
-				? {
-						[credential]: publicCredential(registry.get(credential), fakeCredential(credential)),
+		for (const usual of operations(node)) {
+			for (const start of [usual, ...otherAuthentications(node, version, usual)]) {
+				const other = start !== usual;
+				if (!other) tried++;
+				const parameters = required(node, version, start);
+				const credential = credentialOf(node, resolve(node, version, parameters));
+				const weight = weightOf(type, parameters);
+				const instance = { type, version, parameters };
+				const fields = credential
+					? {
+							[credential]: publicCredential(registry.get(credential), fakeCredential(credential)),
+						}
+					: {};
+				const compiled = compileForCheck(sources, instance, fields);
+				if (other && ('errors' in compiled || compiled.mints.length === 0)) continue;
+				if (other) mintedTried++;
+				if ('errors' in compiled) {
+					const blockers = new Map<string, string>();
+					for (const error of compiled.errors.slice(0, ALL_BLOCKERS ? MAX_BLOCKERS : 1)) {
+						const reason = error.slice(error.indexOf(': ') + 2);
+						if (!blockers.has(keyOf(reason))) blockers.set(keyOf(reason), reason);
 					}
-				: {};
-			const compiled = compileForCheck(sources, instance, fields);
-			if ('errors' in compiled) {
-				const blockers = new Map<string, string>();
-				for (const error of compiled.errors.slice(0, ALL_BLOCKERS ? MAX_BLOCKERS : 1)) {
-					const reason = error.slice(error.indexOf(': ') + 2);
-					if (!blockers.has(keyOf(reason))) blockers.set(keyOf(reason), reason);
-				}
-				for (const reason of blockers.values()) why(reason, weight, blockers.size === 1);
-				continue;
-			}
-			compiledCount++;
-			const make = (
-				label: string,
-				p: Json,
-				responses: EquivalenceCase['responses'],
-			): EquivalenceCase => ({
-				name: `${type}@${version} ${label}`,
-				type,
-				typeVersion: version,
-				parameters: p,
-				...(credential
-					? { credential: { type: credential, data: fakeCredential(credential) } }
-					: {}),
-				responses,
-			});
-			const ok = [{ body: { ok: true, id: 'r1', result: { id: 'r1' }, data: [{ id: 'r1' }] } }];
-			const bad = [{ status: 400, body: { message: 'bad request' } }];
-			try {
-				const difference =
-					(await differenceFromV1(make('ok', parameters, ok), sources, registry, checking)) ??
-					(await differenceFromV1(make('error', parameters, bad), sources, registry, checking));
-				if (difference !== undefined) {
-					why(`v1: ${difference}`, weight);
+					for (const reason of blockers.values()) why(reason, weight, blockers.size === 1);
 					continue;
 				}
-				let names = compiled.changed;
+				if (!other) compiledCount++;
+				const token = compiled.mints.length > 0 ? [MINTED_TOKEN_RESPONSE] : [];
+				const make = (
+					label: string,
+					p: Json,
+					responses: EquivalenceCase['responses'],
+				): EquivalenceCase => ({
+					name: `${type}@${version} ${label}`,
+					type,
+					typeVersion: version,
+					parameters: p,
+					...(credential
+						? { credential: { type: credential, data: fakeCredential(credential) } }
+						: {}),
+					responses,
+				});
+				const ok = [
+					...token,
+					{ body: { ok: true, id: 'r1', result: { id: 'r1' }, data: [{ id: 'r1' }] } },
+				];
+				const bad = [...token, { status: 400, body: { message: 'bad request' } }];
+				try {
+					const difference =
+						(await differenceFromV1(make('ok', parameters, ok), sources, registry, checking)) ??
+						(await differenceFromV1(make('error', parameters, bad), sources, registry, checking));
+					if (difference !== undefined) {
+						why(`v1: ${difference}`, weight);
+						continue;
+					}
+					let names = compiled.changed;
 
-				const more = withOptions(node, version, parameters);
-				const wider = compileForCheck(sources, { type, version, parameters: more }, fields);
-				if (
-					!('errors' in wider) &&
-					(await differenceFromV1(make('options', more, ok), sources, registry, checking)) ===
-						undefined
-				) {
-					names = wider.changed;
+					const more = withOptions(node, version, parameters);
+					const wider = compileForCheck(sources, { type, version, parameters: more }, fields);
+					if (
+						!('errors' in wider) &&
+						(await differenceFromV1(make('options', more, ok), sources, registry, checking)) ===
+							undefined
+					) {
+						names = wider.changed;
+					}
+					const key = verifiedKey(type, version, compiled.resolved);
+					const before = other ? verified[key] : undefined;
+					if (before?.some((name) => !name.startsWith('@') && !names.includes(name))) {
+						why('v1: the other authentication agrees with v1 for fewer parameters', weight);
+						continue;
+					}
+					verified[key] = [...new Set([...(before ?? []), ...names])].sort();
+					if (compiled.mints.length > 0) mintedVerified++;
+				} catch (error) {
+					why(`check failed: ${error instanceof Error ? error.message : String(error)}`, weight);
 				}
-				verified[verifiedKey(type, version, compiled.resolved)] = [...names].sort();
-			} catch (error) {
-				why(`check failed: ${error instanceof Error ? error.message : String(error)}`, weight);
 			}
 		}
 	}
@@ -404,7 +488,7 @@ for (const name of one === undefined ? [] : Object.keys(known).sort()) {
 await disposeRecorder();
 if (one !== undefined) {
 	console.log(
-		`RESULT ${JSON.stringify({ verified, reasons, alone, weighted, tried, compiled: compiledCount, examples })}`,
+		`RESULT ${JSON.stringify({ verified, reasons, alone, weighted, tried, compiled: compiledCount, examples, mintedTried, mintedVerified })}`,
 	);
 	process.exit(0);
 }
@@ -422,6 +506,10 @@ ${lines.join('\n')}
 	);
 }
 console.log(`operations ${tried}; compiled ${compiledCount}; verified against v1 ${lines.length}`);
+if (mintedVerified > 0 || mintedTried > 0)
+	console.log(
+		`operation forms verified with a token that n8n mints: ${mintedVerified} (other authentications tried: ${mintedTried})`,
+	);
 const weightIn = (reason: string) => weighted[reason] ?? 0;
 if (ALL_BLOCKERS) console.log('operations blocked\toperations with no other blocker\tblocker');
 if (weights.size > 0) console.log('the first column is the weighted count');
