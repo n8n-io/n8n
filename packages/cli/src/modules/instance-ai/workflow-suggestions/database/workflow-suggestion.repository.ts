@@ -1,4 +1,9 @@
-import type { WorkflowSuggestionContent, WorkflowSuggestionBaseline } from '@n8n/api-types';
+import type {
+	WorkflowSuggestionContent,
+	WorkflowSuggestionBaseline,
+	WorkflowSuggestionActivity as WorkflowSuggestionActivityDto,
+	WorkflowSuggestionAppliedVersion,
+} from '@n8n/api-types';
 import {
 	BaseRepository,
 	TransactionRunner,
@@ -8,13 +13,19 @@ import {
 import { Service } from '@n8n/di';
 import { ConflictError, NotFoundError } from '@n8n/errors';
 import { DataSource } from '@n8n/typeorm';
+import { generateNanoId } from '@n8n/utils/generate-nano-id';
 
+import { SelfHealingResultRepository } from '../../self-healing/database/self-healing-result.repository';
 import { WorkflowSuggestionActivity } from './workflow-suggestion-activity.entity';
 import { WorkflowSuggestion } from './workflow-suggestion.entity';
 
 @Service()
 export class WorkflowSuggestionRepository extends BaseRepository<WorkflowSuggestion> {
-	constructor(dataSource: DataSource, transactionRunner: TransactionRunner) {
+	constructor(
+		dataSource: DataSource,
+		transactionRunner: TransactionRunner,
+		private readonly results: SelfHealingResultRepository,
+	) {
 		super(WorkflowSuggestion, dataSource.manager, transactionRunner);
 	}
 
@@ -35,6 +46,8 @@ export class WorkflowSuggestionRepository extends BaseRepository<WorkflowSuggest
 	async createPending(
 		baseline: WorkflowSuggestionBaseline,
 		payload: WorkflowSuggestionContent,
+		resultKind: WorkflowSuggestion['resultKind'],
+		selfHealingResultId: string,
 		ctx: OperationContext,
 	) {
 		const manager = this.managerFor(ctx);
@@ -46,7 +59,13 @@ export class WorkflowSuggestionRepository extends BaseRepository<WorkflowSuggest
 			state: 'pending',
 			closedReason: null,
 			closedAt: null,
+			resultKind,
+			appliedVersionId: null,
+			appliedChecksum: null,
+			appliedAction: null,
+			appliedActorId: null,
 			payload,
+			selfHealingResultId,
 		});
 		try {
 			return await manager.save(suggestion);
@@ -64,8 +83,75 @@ export class WorkflowSuggestionRepository extends BaseRepository<WorkflowSuggest
 				suggestionId,
 				action: 'submitted',
 				author: 'assistant',
+				actorId: null,
 			}),
 		);
+	}
+
+	async appendActivity(
+		suggestionId: string,
+		action: WorkflowSuggestionActivityDto['action'],
+		actor: Pick<WorkflowSuggestionActivityDto, 'author' | 'actorId'>,
+		ctx: OperationContext,
+	) {
+		const manager = this.managerFor(ctx);
+		await manager
+			.createQueryBuilder()
+			.insert()
+			.into(WorkflowSuggestionActivity)
+			.values({
+				id: generateNanoId(),
+				suggestionId,
+				action,
+				author: actor.author,
+				actorId: actor.actorId,
+			})
+			.orIgnore()
+			.execute();
+	}
+
+	async closePending(
+		suggestion: WorkflowSuggestion,
+		reason: NonNullable<WorkflowSuggestion['closedReason']>,
+		actor: Pick<WorkflowSuggestionActivityDto, 'author' | 'actorId'>,
+		ctx: OperationContext,
+		appliedVersion: WorkflowSuggestionAppliedVersion | null = null,
+	) {
+		const result = await this.managerFor(ctx).update(
+			WorkflowSuggestion,
+			{ id: suggestion.id, state: 'pending' },
+			{
+				state: 'closed',
+				closedReason: reason,
+				closedAt: new Date(),
+				appliedVersionId: appliedVersion?.versionId ?? null,
+				appliedChecksum: appliedVersion?.checksum ?? null,
+				appliedAction: appliedVersion?.action ?? null,
+				appliedActorId: appliedVersion?.actorId ?? null,
+			},
+		);
+		if (result.affected !== 1) return false;
+		await this.results.closeResult(
+			suggestion.selfHealingResultId,
+			reason === 'discarded' ? 'dismissed' : reason,
+			ctx,
+		);
+		await this.appendActivity(suggestion.id, reason, actor, ctx);
+		return true;
+	}
+
+	async getPendingForWorkflow(workflowId: string, ctx: OperationContext = {}) {
+		return await this.managerFor(ctx).findOneBy(WorkflowSuggestion, {
+			workflowId,
+			state: 'pending',
+		});
+	}
+
+	async getForResult(selfHealingResultId: string, ctx: OperationContext) {
+		return await this.managerFor(ctx).find(WorkflowSuggestion, {
+			where: { selfHealingResultId },
+			order: { workflowId: 'ASC' },
+		});
 	}
 
 	async getActivity(suggestionId: string) {

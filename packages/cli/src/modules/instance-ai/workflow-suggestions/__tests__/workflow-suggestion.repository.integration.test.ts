@@ -1,6 +1,7 @@
 import type { WorkflowSuggestionBaseline, WorkflowSuggestionContent } from '@n8n/api-types';
 import { createWorkflow, createTeamProject, testDb, testModules } from '@n8n/backend-test-utils';
 import {
+	type OperationContext,
 	type Project,
 	ProjectRepository,
 	TransactionRunner,
@@ -9,23 +10,28 @@ import {
 	WorkflowEntity,
 	WorkflowRepository,
 	WorkflowHistoryRepository,
-	wrapMigration,
-	postgresMigrations,
 } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { DataSource } from '@n8n/typeorm';
+import omit from 'lodash/omit';
 import { randomUUID } from 'node:crypto';
 
 import { createUser } from '@test-integration/db/users';
 
+import { createResult } from '../../self-healing/__tests__/support/result';
+import { SelfHealingResultRepository } from '../../self-healing/database/self-healing-result.repository';
 import { WorkflowSuggestionActivity } from '../database/workflow-suggestion-activity.entity';
+import { WorkflowSuggestion } from '../database/workflow-suggestion.entity';
 import { WorkflowSuggestionRepository } from '../database/workflow-suggestion.repository';
+import { WorkflowSuggestionService } from '../workflow-suggestion.service';
 
 let suggestions: WorkflowSuggestionRepository;
+let results: SelfHealingResultRepository;
 let tx: TransactionRunner;
 let workflow: WorkflowEntity;
 let project: Project;
 let backgroundUser: User;
+let resultId: string;
 const baseline = (): WorkflowSuggestionBaseline => ({
 	workflowId: workflow.id,
 	projectId: project.id,
@@ -34,6 +40,8 @@ const baseline = (): WorkflowSuggestionBaseline => ({
 		savedVersionId: randomUUID(),
 		publishedVersionId: randomUUID(),
 		checksum: 'a'.repeat(64),
+		versionCounter: workflow.versionCounter,
+		latestPublishHistoryEventId: null,
 	},
 	original: { name: 'Example', nodes: [], connections: {} },
 });
@@ -43,9 +51,11 @@ const payload = (): WorkflowSuggestionContent => ({
 	explanation: 'Fix the workflow.',
 	errorContext: null,
 });
+const insertPending = async (ctx: OperationContext, from = baseline()) =>
+	await suggestions.createPending(from, payload(), 'fix_ready', resultId, ctx);
 const saveProposal = async () =>
 	await tx.run({}, async (ctx) => {
-		const suggestion = await suggestions.createPending(baseline(), payload(), ctx);
+		const suggestion = await insertPending(ctx);
 		await suggestions.appendSubmittedActivity(suggestion.id, ctx);
 		return suggestion;
 	});
@@ -54,17 +64,105 @@ beforeAll(async () => {
 	await testModules.loadModules(['instance-ai']);
 	await testDb.init();
 	suggestions = Container.get(WorkflowSuggestionRepository);
+	results = Container.get(SelfHealingResultRepository);
 	tx = Container.get(TransactionRunner);
 });
 beforeEach(async () => {
 	backgroundUser = await createUser();
 	project = await createTeamProject();
 	workflow = await createWorkflow({}, project);
+	resultId = (await createResult(baseline())).id;
 });
 afterAll(async () => await testDb.terminate());
 afterEach(async () => {
-	await Container.get(DataSource).getRepository(WorkflowSuggestionActivity).clear();
 	await suggestions.createQueryBuilder().delete().execute();
+});
+
+describe('open results', () => {
+	async function copyResult(ctx: OperationContext = {}) {
+		const original = await results.getResult(
+			resultId,
+			{ workflowId: workflow.id, projectId: project.id },
+			ctx,
+		);
+		return await results.createResult(omit(original, 'id'), ctx);
+	}
+
+	it.each([
+		{ triggerMatches: true, suggestionState: null, expected: true },
+		{ triggerMatches: true, suggestionState: 'pending', expected: true },
+		{ triggerMatches: true, suggestionState: 'closed', expected: true },
+		{ triggerMatches: false, suggestionState: null, expected: false },
+		{ triggerMatches: false, suggestionState: 'pending', expected: true },
+		{ triggerMatches: false, suggestionState: 'closed', expected: false },
+	] as const)(
+		'finds the result for trigger=$triggerMatches and suggestion=$suggestionState',
+		async ({ triggerMatches, suggestionState, expected }) => {
+			if (!triggerMatches) {
+				const otherWorkflow = await createWorkflow({}, project);
+				await results.update(resultId, { workflowId: otherWorkflow.id });
+			}
+			if (suggestionState) {
+				const suggestion = await insertPending({});
+				await suggestions.update(suggestion.id, { state: suggestionState });
+			}
+			expect(await results.getOpenResultIds(workflow.id, {})).toEqual(expected ? [resultId] : []);
+			expect(await results.getOpenForWorkflow(workflow.id, project.id)).toEqual(
+				expected ? { id: resultId } : null,
+			);
+			const otherProject = await createTeamProject();
+			expect(await results.getOpenForWorkflow(workflow.id, otherProject.id)).toBeNull();
+		},
+	);
+
+	it.each(['closed', 'applied', 'dismissed', 'outdated'] as const)(
+		'excludes %s results for the trigger and pending member',
+		async (reviewState) => {
+			const child = await createWorkflow({}, project);
+			await insertPending({}, { ...baseline(), workflowId: child.id });
+			await results.update(resultId, { reviewState });
+			for (const workflowId of [workflow.id, child.id]) {
+				expect(await results.getOpenResultIds(workflowId, {})).toEqual([]);
+				expect(await results.getOpenForWorkflow(workflowId, project.id)).toBeNull();
+			}
+		},
+	);
+
+	it('returns every matching result once when both branches match', async () => {
+		await insertPending({});
+		const second = await copyResult();
+		const expected = [resultId, second.id].sort();
+		expect((await results.getOpenResultIds(workflow.id, {})).sort()).toEqual(expected);
+		expect(expected).toContain((await results.getOpenForWorkflow(workflow.id, project.id))?.id);
+	});
+
+	it('reads both branches through the caller transaction', async () => {
+		const child = await createWorkflow({}, project);
+		await results.update(resultId, { reviewState: 'closed' });
+		await expect(
+			tx.run({}, async (ctx) => {
+				const result = await copyResult(ctx);
+				await suggestions.createPending(
+					{ ...baseline(), workflowId: child.id },
+					payload(),
+					'fix_ready',
+					result.id,
+					ctx,
+				);
+				for (const workflowId of [workflow.id, child.id]) {
+					expect(await results.getOpenResultIds(workflowId, ctx)).toEqual([result.id]);
+					expect(await results.getOpenForWorkflow(workflowId, project.id, ctx)).toEqual({
+						id: result.id,
+					});
+				}
+				throw new Error('Rollback the result.');
+			}),
+		).rejects.toThrow('Rollback the result.');
+		for (const workflowId of [workflow.id, child.id]) {
+			expect(await results.getOpenResultIds(workflowId, {})).toEqual([]);
+			expect(await results.getOpenForWorkflow(workflowId, project.id)).toBeNull();
+		}
+	});
 });
 
 it('accepts only one concurrent pending proposal for a workflow', async () => {
@@ -93,7 +191,7 @@ it('allows a new proposal after the previous proposal closes', async () => {
 it('rolls back the suggestion and its activity when activity insertion fails', async () => {
 	await expect(
 		tx.run({}, async (ctx) => {
-			const suggestion = await suggestions.createPending(baseline(), payload(), ctx);
+			const suggestion = await insertPending(ctx);
 			await suggestions.appendSubmittedActivity(suggestion.id, ctx);
 			await suggestions.appendSubmittedActivity(suggestion.id, ctx);
 		}),
@@ -106,7 +204,7 @@ it('joins the caller transaction and rolls back both rows if finalization fails'
 	await expect(
 		tx.run({}, async (ctx) => {
 			await tx.run(ctx, async (ctx) => {
-				const suggestion = await suggestions.createPending(baseline(), payload(), ctx);
+				const suggestion = await insertPending(ctx);
 				await suggestions.appendSubmittedActivity(suggestion.id, ctx);
 			});
 			throw new Error('Investigation completion failed.');
@@ -141,7 +239,7 @@ it.each([
 		expect(await suggestions.findOneBy({ id: suggestion.id })).toBeNull();
 		expect(await suggestions.getActivity(suggestion.id)).toHaveLength(0);
 		await expect(
-			tx.run({}, async (ctx) => await suggestions.createPending(originalBaseline, payload(), ctx)),
+			tx.run({}, async (ctx) => await insertPending(ctx, originalBaseline)),
 		).rejects.toThrow(/foreign key/i);
 		expect(await suggestions.count()).toBe(0);
 	},
@@ -155,7 +253,7 @@ it('leaves workflow and history unchanged and reads the current saved workflow',
 	await tx.run({}, async (ctx) => {
 		const currentWorkflow = await workflows.findByIdInContext(workflow.id, ctx);
 		expect(currentWorkflow?.versionId).toBe(before.versionId);
-		const suggestion = await suggestions.createPending(baseline(), payload(), ctx);
+		const suggestion = await insertPending(ctx);
 		await suggestions.appendSubmittedActivity(suggestion.id, ctx);
 	});
 	expect(await workflows.findOneByOrFail({ id: workflow.id })).toEqual(before);
@@ -167,27 +265,67 @@ it('leaves workflow and history unchanged and reads the current saved workflow',
 	});
 });
 
-it('reverts and reapplies the suggestion schema', async () => {
-	const db = Container.get(DataSource);
-	// Template databases skip migrate(), which normally installs the DSL wrappers.
-	postgresMigrations.forEach(wrapMigration);
-	const migration = db.migrations.find(
-		({ constructor }) => constructor.name === 'CreateWorkflowSuggestionTables1790928780672',
-	);
-	if (!migration) throw new Error('The workflow suggestion migration is not registered.');
-	// Test this schema directly. Newer migrations must remain applied.
-	const runner = db.createQueryRunner();
-	try {
-		await migration.down(runner);
-		try {
-			const table = db.getMetadata(WorkflowSuggestionActivity).tablePath;
-			expect(await runner.hasTable(table)).toBe(false);
-			expect(await runner.hasTable(suggestions.metadata.tablePath)).toBe(false);
-		} finally {
-			await migration.up(runner);
-		}
-	} finally {
-		await runner.release();
-	}
-	expect(await suggestions.count()).toBe(0);
+describe.skipIf(process.env.DB_TYPE !== 'postgresdb')('PostgreSQL concurrent writes', () => {
+	let peer: DataSource;
+
+	beforeAll(async () => {
+		// Use another pool so a busy application connection cannot make the test pass.
+		peer = await new DataSource({
+			...Container.get(DataSource).options,
+			synchronize: false,
+			migrationsRun: false,
+			dropSchema: false,
+		}).initialize();
+	});
+	afterAll(async () => {
+		if (peer?.isInitialized) await peer.destroy();
+	});
+
+	it('lets another request close a suggestion while its read transaction stays open', async () => {
+		const suggestion = await saveProposal();
+		await tx.run({}, async (ctx) => {
+			const current = await suggestions.getSuggestion(suggestion.id, suggestion, ctx);
+			await peer.transaction(async (manager) => {
+				await manager.query("SET LOCAL lock_timeout = '250ms'");
+				await manager.update(
+					WorkflowSuggestion,
+					{ id: suggestion.id, state: 'pending' },
+					{
+						state: 'closed',
+						closedReason: 'discarded',
+						closedAt: new Date(),
+					},
+				);
+			});
+			expect(
+				await suggestions.closePending(
+					current,
+					'outdated',
+					{ author: 'system', actorId: null },
+					ctx,
+				),
+			).toBe(false);
+			expect(await suggestions.getSuggestion(suggestion.id, suggestion, ctx)).toMatchObject({
+				state: 'closed',
+				closedReason: 'discarded',
+			});
+		});
+		expect((await suggestions.getActivity(suggestion.id)).map(({ action }) => action)).toEqual([
+			'submitted',
+		]);
+	});
+
+	it('holds a workflow save until the Apply transaction commits', async () => {
+		const settings = { executionTimeout: 60 };
+		await tx.run({}, async (ctx) => {
+			await Container.get(WorkflowSuggestionService).readWorkflowTargetForApply(workflow.id, ctx);
+			await expect(
+				peer.transaction(async (manager) => {
+					await manager.query("SET LOCAL lock_timeout = '250ms'");
+					await manager.update(WorkflowEntity, workflow.id, { settings });
+				}),
+			).rejects.toThrow('lock timeout');
+		});
+		await peer.manager.update(WorkflowEntity, workflow.id, { settings });
+	});
 });

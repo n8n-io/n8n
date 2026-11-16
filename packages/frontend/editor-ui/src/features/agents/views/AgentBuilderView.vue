@@ -1,5 +1,17 @@
 <script setup lang="ts">
-import { ref, computed, watch, nextTick, onBeforeUnmount, useTemplateRef } from 'vue';
+import { hasAgentUnpublishedChanges } from '../utils/agentPublication';
+import { useAgentPromptInspiration } from '../composables/useAgentPromptInspiration';
+import { useAgentBuilderExperimentStore } from '@/experiments/agentBuilder/stores/agentBuilder.store';
+import {
+	ref,
+	computed,
+	watch,
+	nextTick,
+	onBeforeUnmount,
+	inject,
+	provide,
+	useTemplateRef,
+} from 'vue';
 import {
 	StorageSerializers,
 	useElementSize,
@@ -9,31 +21,28 @@ import {
 } from '@vueuse/core';
 import { onBeforeRouteLeave, onBeforeRouteUpdate, useRoute, useRouter } from 'vue-router';
 import {
-	N8nAssistantIcon,
 	N8nCanvasPill,
 	N8nIcon,
 	N8nIconButton,
 	N8nResizeWrapper,
 	N8nButton,
+	N8nSpinner,
 	type ActionDropdownItem,
 	type ResizeData,
 } from '@n8n/design-system';
 import { useI18n, type BaseTextKey } from '@n8n/i18n';
 import {
-	MAX_AGENT_FILE_SIZE_BYTES,
-	MAX_AGENT_FILE_SIZE_MB,
-	MAX_AGENT_FILES_PER_UPLOAD,
-	MAX_AGENT_KNOWLEDGE_BASE_SIZE_BYTES,
-	MAX_AGENT_KNOWLEDGE_BASE_SIZE_GB,
+	N8N_CHAT_INTEGRATION_TYPE,
 	addMissingAgentPersonalisation,
-	type AgentFileDto,
+	type AgentSkillAvailability,
 	type InstanceAiHandoffContext,
 	type PushMessage,
 	type PushPayload,
 } from '@n8n/api-types';
 import { useRootStore } from '@n8n/stores/useRootStore';
-import { TELEMETRY_EVENT } from '@n8n/telemetry';
+import { TELEMETRY_EVENT, type InferTelemetryProps } from '@n8n/telemetry';
 import { ResponseError } from '@n8n/rest-api-client';
+import { createDeferredPromise } from '@n8n/utils/promise/deferred-promise';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 import { useAgentProjectBreadcrumb } from '@/features/agents/composables/useAgentProjectBreadcrumb';
 import { useDeviceSupport } from '@n8n/composables/useDeviceSupport';
@@ -42,6 +51,7 @@ import { useToast } from '@n8n/composables/useToast';
 import { useCredentialsStore } from '@/features/credentials/credentials.store';
 import { useSettingsStore } from '@n8n/stores/settings.store';
 import { useUIStore } from '@/app/stores/ui.store';
+import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { usePushConnectionStore } from '@/app/stores/pushConnection.store';
 import { useFavoritesStore } from '@/app/stores/favorites.store';
 import { useDocumentTitle } from '@/app/composables/useDocumentTitle';
@@ -49,22 +59,21 @@ import { useKeybindings } from '@/app/composables/useKeybindings';
 import KeyboardShortcutTooltip from '@/app/components/KeyboardShortcutTooltip.vue';
 import { MODAL_CONFIRM } from '@/app/constants';
 import { AGENT_EXTERNAL_UPDATE_NOTICE_DURATION, TIME } from '@/app/constants/durations';
-import { deepCopy } from 'n8n-workflow';
+import { copyAgentConfig } from '../utils/agentSectionEditor.utils';
+import { buildAgentTestHref } from '../utils/agentTestUrl';
 import {
 	getAgent,
 	createAgent,
 	createAgentTask,
 	deleteAgent,
-	listAgentFiles,
-	uploadAgentFiles,
-	deleteAgentFile,
-	warmAgentKnowledgeSandbox,
 	updateAgentSkill,
 } from '../composables/useAgentApi';
+import { useAgentKnowledge } from '../composables/useAgentKnowledge';
 import { useAgentIntegrationsCatalog } from '../composables/useAgentIntegrationsCatalog';
 import { useN8nChatChannel } from '../channels/n8nChat/useN8nChatChannel';
 import type {
 	AgentResource,
+	AgentCreationResource,
 	AgentContinueLoadedEvent,
 	AgentSendToAssistantEvent,
 	AgentJsonConfig,
@@ -72,6 +81,9 @@ import type {
 	AgentSkill,
 } from '../types';
 import { useAgentBuilderTelemetry } from '../composables/useAgentBuilderTelemetry';
+import { useAgentsN8nChatFlag } from '../composables/useAgentsN8nChatFlag';
+import { useAgentTelemetry } from '../composables/useAgentTelemetry';
+import { useAgentArchive } from '../composables/useAgentArchive';
 import { useAgentConfirmationModal } from '../composables/useAgentConfirmationModal';
 import { useAgentConfig } from '../composables/useAgentConfig';
 import { useAgentConfigValidation } from '../composables/useAgentConfigValidation';
@@ -87,57 +99,89 @@ import {
 } from '../composables/useAgentConfigAutosave';
 import { useAgentBuilderMainTabs } from '../composables/useAgentBuilderMainTabs';
 import { useAgentCapabilitiesActions } from '../composables/useAgentCapabilitiesActions';
+import { useAgentSetupTasks } from '../components/AgentSetupTasks/useAgentSetupTasks';
 import {
 	removeProjectAgentFromListCache,
 	upsertProjectAgentsListCache,
 } from '../composables/useProjectAgentsList';
-import type { AgentPreviewHandoffParams } from '@/features/ai/instanceAi/composables/useInstanceAiAgentPreviewHandoff';
+import type { AgentTestHandoffParams } from '@/features/ai/instanceAi/composables/useInstanceAiAgentTestHandoff';
 import {
 	AGENT_BUILDER_VIEW,
+	AGENT_MIN_PANEL_WIDTH,
+	AGENT_MAX_PANEL_WIDTH,
+	AGENT_DEFAULT_PANEL_WIDTH,
+	AGENT_DEFAULT_PANEL_WIDTH_RATIO,
 	AGENT_PREVIEW_VIEW,
 	AGENT_SESSION_DETAIL_VIEW,
 	AGENT_JSON_IMPORT_MODAL_KEY,
 	AGENT_DESCRIPTION_MODAL_KEY,
+	AGENT_UNPUBLISHED_WORKFLOWS_MODAL_KEY,
 	AGENT_VECTOR_STORES_MODAL_KEY,
 	ASSISTANT_THREAD_PARAM,
 	CONTINUE_SESSION_ID_PARAM,
 	NEW_SESSION_PARAM,
 	OPEN_PREVIEW_PARAM,
 	PENDING_AGENT_ID_STATE,
+	PENDING_AGENT_STARTER_STATE,
 } from '../constants';
+import { unsavedAgentIds } from '../composables/useCreateAgent';
 import { getDebounceTime } from '@n8n/composables/useDebounce';
-import { agentsEventBus, type AgentUpdatedEvent } from '../agents.eventBus';
+import {
+	agentsEventBus,
+	type AgentUpdatedEvent,
+	type AgentCredentialHelpRequest,
+} from '../agents.eventBus';
+import { AGENTS_MODALS } from '../modals';
 import {
 	AGENT_TEMPLATES,
 	AGENT_TEMPLATE_SUGGESTIONS_VERSION,
 	applyAgentTemplate,
 	isAgentConfigBlank,
+	isAgentStarter,
+	type AgentStarter,
 	type AgentTemplate,
 } from '../agentTemplates';
+import {
+	AGENT_CONFIG_WRITE_KEY,
+	AGENT_BUILDER_STANDALONE_KEY,
+	type AgentConfigWrite,
+} from '../components/agentBuilderInjectionKeys';
+import AgentBuilderChatMode from '../components/AgentBuilderChatMode.vue';
+import AgentBuilderChatDisclaimer from '../components/AgentBuilderChatDisclaimer.vue';
+import {
+	useAgentBuilderLayout,
+	AGENT_CONFIG_MIN_WIDTH,
+	type AgentBuilderLayout,
+} from '../composables/useAgentBuilderLayout';
 import AgentBuilderHeader from '../components/AgentBuilderHeader.vue';
 import AgentCollaborationBanner from '../components/AgentCollaborationBanner.vue';
 import AgentBuilderEditorColumn from '../components/AgentBuilderEditorColumn.vue';
 import AgentBuilderIntro from '../components/AgentBuilderIntro.vue';
-import AgentPreviewHeader from '../components/AgentPreviewHeader.vue';
-import AgentPreviewChatPage from '../components/AgentPreviewChatPage.vue';
-import AgentPreviewDock from '../components/AgentPreviewDock.vue';
+import type { SetupTask } from '../components/AgentSetupTasks/agentSetupTasks.registry';
+import AgentTestHeader from '../components/AgentTestHeader.vue';
+import AgentTestChatPage from '../components/AgentTestChatPage.vue';
+import AgentTestDock from '../components/AgentTestDock.vue';
 import AgentVersionHistoryPanel from '../components/VersionHistory/AgentVersionHistoryPanel.vue';
 import {
 	buildInstanceAiAgentPreviewHandoffContext,
+	stashPendingFirstMessage,
+	buildInstanceAiCredentialHandoffContext,
+	buildInstanceAiCredentialQuestion,
 	type InstanceAiThreadLaunch,
 	type PendingComposerDraft,
+	type PendingFirstMessage,
 } from '@/features/ai/instanceAi/composables/useInstanceAiHandoff';
+import { USER_TYPED_MESSAGE } from '@/features/ai/instanceAi/prefills';
 import {
 	useInstanceAiAvailable,
 	useInstanceAiReady,
 } from '@/features/ai/instanceAi/composables/useInstanceAiAvailability';
 import { INSTANCE_AI_VIEW } from '@/features/ai/instanceAi/constants';
 import InstanceAiChatPanel from '@/features/ai/instanceAi/embed/InstanceAiChatPanel.vue';
-import { persistPendingAgent } from '@/features/ai/instanceAi/instanceAi.memory.api';
+import type { persistPendingAgent } from '@/features/ai/instanceAi/instanceAi.memory.api';
 import type { InstanceAiEmbedSubject } from '@/features/ai/instanceAi/embed/instanceAiEmbed.types';
 import AgentBuildingIndicator from '@/features/ai/instanceAi/components/AgentBuildingIndicator.vue';
-import { useMcp } from '@/features/ai/mcpAccess/composables/useMcp';
-import { useMCPStore } from '@/features/ai/mcpAccess/mcp.store';
+import { useMcp, useMCPStore } from '@n8n/frontend-module-mcp';
 import { useAgentCollaborationStore } from '../stores/agentCollaboration.store';
 import { useActivityDetection } from '@/app/composables/useActivityDetection';
 import { buildAgentChangeRequestPrompt } from '../utils/agent-change-request';
@@ -148,17 +192,22 @@ import {
 	raisedBudgetCaps,
 	type BudgetAmountField,
 } from '../utils/budget-config';
-import { hasBlockingIssues } from '../utils/validationIssues';
+import { hasBlockingIssues, unpublishedWorkflowTools } from '../utils/validationIssues';
+import { isNotFoundError } from '../utils/errors';
 
 const props = withDefaults(
 	defineProps<{
 		artifactMode?: boolean;
+		/** Independent layout choices for the standalone builder. */
+		builderLayout?: AgentBuilderLayout;
 		artifactProjectId?: string;
 		artifactAgentId?: string;
 		/** Preview session to restore when this agent opens as an Instance AI artifact. */
 		artifactPreviewSessionId?: string;
 		/** Controls the preview chat when the builder is inside Instance AI. */
 		artifactPreviewOpen?: boolean;
+		/** Render the test chat over the host Assistant column. */
+		artifactPreviewChatTarget?: HTMLElement | null;
 		/** True while the AI is actively building/mutating this agent in artifact mode — disables editing/publishing without hiding content. */
 		artifactEditingLocked?: boolean;
 		/** True when no agent row exists behind `artifactAgentId` yet — the builder
@@ -172,7 +221,9 @@ const props = withDefaults(
 		 * binding — a reload can then never re-enter pending mode on an agent that
 		 * already exists.
 		 */
-		artifactPersistAgent?: (name: string) => Promise<AgentResource>;
+		artifactPersistAgent?: (
+			request: Parameters<typeof persistPendingAgent>[2],
+		) => Promise<AgentCreationResource>;
 	}>(),
 	{
 		artifactMode: false,
@@ -180,6 +231,7 @@ const props = withDefaults(
 		artifactAgentId: undefined,
 		artifactPreviewSessionId: undefined,
 		artifactPreviewOpen: undefined,
+		artifactPreviewChatTarget: undefined,
 		artifactEditingLocked: false,
 		artifactAgentPending: false,
 		artifactPersistAgent: undefined,
@@ -190,7 +242,7 @@ const emit = defineEmits<{
 	'preview-open-change': [open: boolean];
 	/** The agent name was successfully saved. */
 	'name-saved': [name: string];
-	'assistant-handoff': [params: AgentPreviewHandoffParams];
+	'assistant-handoff': [params: AgentTestHandoffParams];
 }>();
 
 const route = useRoute();
@@ -200,6 +252,8 @@ const rootStore = useRootStore();
 const pushConnectionStore = usePushConnectionStore();
 const projectsStore = useProjectsStore();
 const telemetry = useTelemetry();
+const isAgentsN8nChatFlag = useAgentsN8nChatFlag();
+const { trackClickedTraceDetailsFromTestPanel } = useAgentTelemetry();
 const instanceAiAvailable = useInstanceAiAvailable();
 const instanceAiReady = useInstanceAiReady();
 const sessionsStore = useAgentSessionsStore();
@@ -207,6 +261,7 @@ const agentEvalsStore = useAgentEvalsStore();
 const credentialsStore = useCredentialsStore();
 const settingsStore = useSettingsStore();
 const uiStore = useUIStore();
+const nodeTypesStore = useNodeTypesStore();
 const favoritesStore = useFavoritesStore();
 const mcpStore = useMCPStore();
 const mcp = useMcp();
@@ -214,10 +269,7 @@ const agentCollaborationStore = useAgentCollaborationStore();
 useActivityDetection(agentCollaborationStore);
 const { isCtrlKeyPressed } = useDeviceSupport();
 
-// No design tokens cover these layout widths. Keep the editor usable while the
-// two resizable side panels adapt to the available viewport.
 const AGENT_BUILDER_EDITOR_MIN_WIDTH = 480;
-const AGENT_BUILDER_SIDE_PANEL_MIN_WIDTH = 320;
 
 // Gates the Knowledge Base files table (upload, list, sandbox fetch/warmup) on
 // the backend: Daytona sandbox env vars (N8N_AGENTS_AI_SANDBOX_ENABLED +
@@ -227,6 +279,7 @@ const isKnowledgeBaseEnabled = computed(() => settingsStore.isAgentsKnowledgeBas
 const documentTitle = useDocumentTitle();
 const { showError, showMessage } = useToast();
 const { openAgentConfirmationModal } = useAgentConfirmationModal();
+const { archive, unarchive } = useAgentArchive();
 
 // Artifact mode reuses this route shell inside Instance AI. It still relies on
 // singleton agent session/credential stores, so only one builder shell should
@@ -246,25 +299,154 @@ const agentId = computed(
 	() =>
 		(isArtifactMode.value ? props.artifactAgentId : undefined) ?? (route.params.agentId as string),
 );
+function historyMarksAgentPending(targetAgentId: string): boolean {
+	return (history.state as Record<string, unknown>)[PENDING_AGENT_ID_STATE] === targetAgentId;
+}
 function readPendingAgentIdFromHistory(): string | null {
 	const pendingAgentId = (history.state as Record<string, unknown>)[PENDING_AGENT_ID_STATE];
-	return typeof pendingAgentId === 'string' ? pendingAgentId : null;
+	if (typeof pendingAgentId === 'string') return pendingAgentId;
+	// A fresh history entry for the same URL (e.g. the Settings back link) has
+	// no marker, so fall back to the ids this tab minted and has not saved yet.
+	return unsavedAgentIds.has(agentId.value) ? agentId.value : null;
+}
+function readPendingStarterFromHistory(): AgentStarter | null {
+	const starter = (history.state as Record<string, unknown>)[PENDING_AGENT_STARTER_STATE];
+	return isAgentStarter(starter) ? starter : null;
 }
 const routePendingAgentId = ref(readPendingAgentIdFromHistory());
+const routePendingStarter = ref<AgentStarter | null>(readPendingStarterFromHistory());
+const pendingStarterMessage = ref<PendingFirstMessage | null>(null);
+let starterReady: ReturnType<typeof createDeferredPromise> | undefined;
+let starterSettled = false;
+let starterInFlight = false;
 const isRouteAgentPending = computed(() => {
 	if (isArtifactMode.value) return false;
 	return routePendingAgentId.value === agentId.value;
 });
+function currentStarter(): AgentStarter | null {
+	if (!isRouteAgentPending.value) return null;
+	return routePendingStarter.value;
+}
+function armStarterGate() {
+	starterReady?.resolve(undefined);
+	starterSettled = false;
+	starterInFlight = false;
+	pendingStarterMessage.value = null;
+	if (!currentStarter()) {
+		starterReady = undefined;
+		starterSettled = true;
+		return;
+	}
+	starterReady = createDeferredPromise();
+}
+function settleStarter() {
+	if (starterSettled) return;
+	starterSettled = true;
+	starterReady?.resolve(undefined);
+}
+function clearPendingStarterFromHistory() {
+	const historyState = history.state as Record<string, unknown>;
+	if (PENDING_AGENT_STARTER_STATE in historyState) {
+		const { [PENDING_AGENT_STARTER_STATE]: _starter, ...state } = historyState;
+		history.replaceState(state, '');
+	}
+	routePendingStarter.value = null;
+}
+armStarterGate();
 const isAgentPending = computed(() => props.artifactAgentPending || isRouteAgentPending.value);
 const previewOpenStorageKey = computed(function getPreviewOpenStorageKey() {
 	return `N8N_AGENT_PREVIEW_OPEN:${projectId.value}:${agentId.value}`;
 });
 const persistedPreviewOpen = useStorage(previewOpenStorageKey, false);
-const previewDockWidth = ref(480);
+const resizedPreviewDockWidth = ref<number>();
+const previewDockWidth = computed({
+	get: () => resizedPreviewDockWidth.value ?? defaultPanelWidth.value,
+	set: (width: number) => {
+		resizedPreviewDockWidth.value = width;
+	},
+});
 const isPreviewDockResizing = ref(false);
+const builderHost = useTemplateRef<HTMLElement>('builderHost');
+const { width: builderHostWidth } = useElementSize(
+	computed(() => builderHost.value?.parentElement),
+);
 const builderContainer = useTemplateRef<HTMLElement>('builderContainer');
 const { width: builderContainerWidth } = useElementSize(builderContainer, undefined, {
 	box: 'border-box',
+});
+provide(AGENT_BUILDER_STANDALONE_KEY, !isArtifactMode.value);
+const chatLayoutEnabled = computed(
+	() => !isArtifactMode.value && !isStandalonePreview.value && instanceAiReady.value,
+);
+const builderExperiment = useAgentBuilderExperimentStore();
+const builderLayout = computed(() => props.builderLayout ?? builderExperiment.layout);
+const wideChat = computed(
+	() => chatLayoutEnabled.value && builderLayout.value.chatWidth === 'wide',
+);
+const inlineTestChat = computed(
+	() => chatLayoutEnabled.value && builderLayout.value.testChat === 'inline',
+);
+const {
+	compact: compactLayout,
+	chatWidth: wideChatWidth,
+	defaultChatWidth,
+	resizeChat,
+} = useAgentBuilderLayout(builderContainerWidth, builderHostWidth);
+const compactChatLayout = computed(
+	() => chatLayoutEnabled.value && (wideChat.value || inlineTestChat.value) && compactLayout.value,
+);
+const showConfiguration = ref(false);
+const mobileNavigation = useTemplateRef<HTMLElement>('mobileNavigation');
+watch(showConfiguration, async (visible) => {
+	if (!visible || !compactChatLayout.value) return;
+	await nextTick();
+	mobileNavigation.value?.querySelector('button')?.focus();
+});
+function closeBuilderChat() {
+	if (compactChatLayout.value) {
+		showConfiguration.value = true;
+	} else {
+		isAiPanelOpen.value = false;
+	}
+}
+function closeTestChat() {
+	if (compactChatLayout.value && inlineTestChat.value) {
+		showConfiguration.value = true;
+	} else {
+		closePreviewDock();
+	}
+}
+const hasSentBuilderMessage = useLocalStorage(
+	computed(() => `N8N_AGENT_BUILDER_CHAT_STARTED:${projectId.value}:${agentId.value}`),
+	false,
+);
+const chatMode = computed(() => (isPreviewDockOpen.value ? 'test' : 'build'));
+let previewRequest = 0;
+async function setChatMode(mode: 'build' | 'test') {
+	if (mode === 'test') return await onOpenPreview();
+	if (chatModeBusy.value) return false;
+	if (!isArtifactMode.value && instanceAiReady.value) isAiPanelOpen.value = true;
+	closePreviewDock();
+	return true;
+}
+const openParentAgentChatPreview = inject<
+	((agentId: string, projectId: string) => boolean) | undefined
+>('openAgentChatPreview', undefined);
+if (!isArtifactMode.value) {
+	provide('openAgentChatPreview', (targetAgentId: string, targetProjectId: string): boolean => {
+		if (targetAgentId === agentId.value && targetProjectId === projectId.value) {
+			void setChatMode('test');
+		} else if (openParentAgentChatPreview) {
+			return openParentAgentChatPreview(targetAgentId, targetProjectId);
+		} else {
+			void router.push(buildAgentTestHref(targetProjectId, targetAgentId));
+		}
+		return true;
+	});
+}
+const defaultPanelWidth = computed(() => {
+	if (builderContainerWidth.value === 0) return AGENT_DEFAULT_PANEL_WIDTH;
+	return clampPanelWidth(builderContainerWidth.value * AGENT_DEFAULT_PANEL_WIDTH_RATIO);
 });
 const isPreviewDockOpen = computed(function isPreviewDockOpen() {
 	return !isStandalonePreview.value && persistedPreviewOpen.value;
@@ -275,8 +457,8 @@ const isPreviewActive = computed(function isPreviewActive() {
 });
 
 // Embedded n8n Assistant panel (left dock, mirrors the preview dock on the right).
-// Default open for a pending agent so a new agent lands with the assistant
-// already showing; closed otherwise. Persisted per agent, like the preview dock.
+// Open editable unpublished agents with the assistant on each visit.
+// Other agents use their saved panel preference, like the preview dock.
 // null = no preference yet, so the default is derived instead of stored.
 const aiPanelOpenStorageKey = computed(function getAiPanelOpenStorageKey() {
 	return `N8N_AGENT_AI_PANEL_OPEN:${projectId.value}:${agentId.value}`;
@@ -286,6 +468,7 @@ const storedAiPanelOpen = useLocalStorage<boolean | null>(aiPanelOpenStorageKey,
 	writeDefaults: false,
 	flush: 'sync',
 });
+const aiPanelOpenForVisit = ref<boolean | null>(null);
 // The pending-agent default is decided once, when the agent opens. Persisting
 // the agent later (a real edit, or the assistant finishing a build) flips
 // `isRouteAgentPending` to false, which must not close the panel out from
@@ -296,6 +479,8 @@ const openedForPendingAgent = ref(isRouteAgentPending.value);
 const templateApplied = ref(false);
 watch([projectId, agentId], () => {
 	taskPreviewPrompt.value = undefined;
+	showConfiguration.value = false;
+	aiPanelOpenForVisit.value = null;
 });
 watch(agentId, () => {
 	// An in-place agentId change (e.g. "New agent" from the switcher) reuses this
@@ -303,12 +488,18 @@ watch(agentId, () => {
 	// must be re-read here, before `isRouteAgentPending` (read below, and by the
 	// `initialize()` watcher) reflects the new agent instead of the mounted one.
 	routePendingAgentId.value = readPendingAgentIdFromHistory();
+	routePendingStarter.value = readPendingStarterFromHistory();
 	openedForPendingAgent.value = isRouteAgentPending.value;
 	templateApplied.value = false;
+	armStarterGate();
 });
 const isAiPanelOpen = computed({
-	get: () => storedAiPanelOpen.value ?? (openedForPendingAgent.value && instanceAiReady.value),
+	get: () =>
+		aiPanelOpenForVisit.value ??
+		storedAiPanelOpen.value ??
+		(openedForPendingAgent.value && instanceAiReady.value),
 	set: (value: boolean) => {
+		aiPanelOpenForVisit.value = null;
 		storedAiPanelOpen.value = value;
 	},
 });
@@ -317,7 +508,7 @@ const showAiPanel = computed(
 		!isArtifactMode.value &&
 		!isStandalonePreview.value &&
 		instanceAiReady.value &&
-		isAiPanelOpen.value,
+		chatPanelLayout.value.showAssistant,
 );
 const aiThreadId = computed(() =>
 	typeof route.query[ASSISTANT_THREAD_PARAM] === 'string'
@@ -325,11 +516,20 @@ const aiThreadId = computed(() =>
 		: undefined,
 );
 function onAiThreadIdChange(threadId: string) {
+	const message = pendingStarterMessage.value;
+	if (message) {
+		stashPendingFirstMessage(threadId, message);
+		pendingStarterMessage.value = null;
+		clearPendingStarterFromHistory();
+	}
 	void router.replace({ query: { ...route.query, [ASSISTANT_THREAD_PARAM]: threadId } });
 }
 /** True while the embedded assistant is actively mutating this agent. */
 const embeddedAiBuilding = ref(false);
-const embeddedAiProcessing = ref(false);
+const embeddedAiWorking = ref(false);
+const chatModeBusy = computed(
+	() => !isArtifactMode.value && (embeddedAiWorking.value || embeddedAiBuilding.value),
+);
 const aiPanelRef = useTemplateRef<InstanceType<typeof InstanceAiChatPanel>>('aiPanelRef');
 // The standalone preview route doesn't render the AI dock (`showAiPanel`
 // requires the builder route), so a hand-off requested from there has nowhere
@@ -339,51 +539,158 @@ const queuedAiHandoff = ref<{
 	context: InstanceAiHandoffContext;
 	initialDraft?: PendingComposerDraft;
 	onAccepted?: () => void;
+	resolve: (accepted: boolean) => void;
 } | null>(null);
+function cancelQueuedAiHandoff() {
+	const queued = queuedAiHandoff.value;
+	queuedAiHandoff.value = null;
+	queued?.resolve(false);
+}
+watch([projectId, agentId], cancelQueuedAiHandoff);
 watch(aiPanelRef, (panel) => {
 	if (!panel || !queuedAiHandoff.value) return;
-	const { context, initialDraft, onAccepted } = queuedAiHandoff.value;
+	const { context, initialDraft, onAccepted, resolve } = queuedAiHandoff.value;
 	queuedAiHandoff.value = null;
 	const handed = panel.handoff(context, initialDraft);
 	if (handed) onAccepted?.();
+	resolve(handed);
 });
-const aiPanelWidth = useStorage('N8N_AGENT_AI_PANEL_WIDTH', 400);
+
+async function handoffToAssistantPanel(
+	context: InstanceAiHandoffContext,
+	initialDraft?: PendingComposerDraft,
+	onAccepted?: () => void,
+): Promise<boolean> {
+	if (isArtifactMode.value || !instanceAiReady.value) return false;
+	const targetAgentId = agentId.value;
+	const targetProjectId = projectId.value;
+	isAiPanelOpen.value = true;
+	await nextTick();
+	if (disposed || agentId.value !== targetAgentId || projectId.value !== targetProjectId)
+		return false;
+	if (aiPanelRef.value) {
+		if (!aiPanelRef.value.handoff(context, initialDraft)) return false;
+		showConfiguration.value = false;
+		onAccepted?.();
+		if (isPreviewActive.value) closePreviewDock();
+	} else {
+		cancelQueuedAiHandoff();
+		return await new Promise<boolean>((resolve) => {
+			queuedAiHandoff.value = { context, initialDraft, onAccepted, resolve };
+			closePreviewDock();
+		});
+	}
+	return true;
+}
+
+function onCredentialHelpRequested(request: AgentCredentialHelpRequest) {
+	if (
+		isArtifactMode.value ||
+		request.projectId !== projectId.value ||
+		request.agentId !== agentId.value
+	) {
+		return;
+	}
+	request.handle = async () => {
+		return await handoffToAssistantPanel(
+			buildInstanceAiCredentialHandoffContext(request.credential),
+			{
+				text: buildInstanceAiCredentialQuestion(request.credential),
+				prefillType: 'handoff_credential_setup',
+			},
+			() => {
+				for (const { key } of AGENTS_MODALS) {
+					if (uiStore.modalsById[key]?.open) uiStore.closeModal(key);
+				}
+			},
+		);
+	};
+}
+agentsEventBus.on('credentialHelpRequested', onCredentialHelpRequested);
+const savedAiPanelWidth = useStorage<number | null>('N8N_AGENT_AI_PANEL_WIDTH', null, undefined, {
+	serializer: StorageSerializers.number,
+	writeDefaults: false,
+});
+
+const aiPanelWidth = computed({
+	get: () => savedAiPanelWidth.value ?? defaultPanelWidth.value,
+	set: (width: number) => {
+		savedAiPanelWidth.value = width;
+	},
+});
 type SidePanel = 'assistant' | 'preview';
 const preferredSidePanel = ref<SidePanel>('assistant');
 
 function bothSidePanelsFit() {
 	if (builderContainerWidth.value === 0) return true;
-	return (
-		builderContainerWidth.value >=
-		AGENT_BUILDER_EDITOR_MIN_WIDTH + AGENT_BUILDER_SIDE_PANEL_MIN_WIDTH * 2
-	);
+	return builderContainerWidth.value >= AGENT_BUILDER_EDITOR_MIN_WIDTH + AGENT_MIN_PANEL_WIDTH * 2;
 }
 
-const renderedSidePanelWidths = computed(function getRenderedSidePanelWidths() {
-	const desiredAiWidth = Math.max(aiPanelWidth.value, AGENT_BUILDER_SIDE_PANEL_MIN_WIDTH);
-	const desiredPreviewWidth = Math.max(previewDockWidth.value, AGENT_BUILDER_SIDE_PANEL_MIN_WIDTH);
-	const containerWidth = builderContainerWidth.value;
-	if (containerWidth === 0) {
-		return { ai: desiredAiWidth, preview: desiredPreviewWidth };
-	}
+function clampPanelWidth(width: number, maxWidth = AGENT_MAX_PANEL_WIDTH) {
+	return Math.min(maxWidth, Math.max(width, AGENT_MIN_PANEL_WIDTH));
+}
 
-	const availableSidePanelWidth = Math.max(
-		AGENT_BUILDER_SIDE_PANEL_MIN_WIDTH,
-		containerWidth - AGENT_BUILDER_EDITOR_MIN_WIDTH,
+const chatPanelLayout = computed(() => {
+	const containerWidth = builderContainerWidth.value;
+	const sharedWidth =
+		wideChat.value || compactChatLayout.value
+			? wideChatWidth.value
+			: clampPanelWidth(
+					aiPanelWidth.value,
+					Math.max(AGENT_MIN_PANEL_WIDTH, containerWidth - AGENT_BUILDER_EDITOR_MIN_WIDTH),
+				);
+	const preview = inlineTestChat.value
+		? sharedWidth
+		: clampPanelWidth(
+				previewDockWidth.value,
+				Math.max(
+					AGENT_MIN_PANEL_WIDTH,
+					containerWidth - AGENT_CONFIG_MIN_WIDTH - AGENT_MIN_PANEL_WIDTH,
+				),
+			);
+	const resizeOffset =
+		wideChat.value && !inlineTestChat.value && isPreviewDockOpen.value ? preview : 0;
+	return {
+		ai:
+			inlineTestChat.value || !isPreviewDockOpen.value
+				? sharedWidth
+				: Math.max(AGENT_MIN_PANEL_WIDTH, sharedWidth - preview),
+		preview,
+		resizeOffset,
+		maxWidth: wideChat.value
+			? Math.max(AGENT_MIN_PANEL_WIDTH, containerWidth - resizeOffset - AGENT_CONFIG_MIN_WIDTH)
+			: AGENT_MAX_PANEL_WIDTH,
+		defaultWidth: wideChat.value ? defaultChatWidth.value - resizeOffset : defaultPanelWidth.value,
+		showAssistant:
+			inlineTestChat.value ||
+			(wideChat.value
+				? !isPreviewDockOpen.value ||
+					containerWidth >= AGENT_CONFIG_MIN_WIDTH + AGENT_MIN_PANEL_WIDTH * 2
+				: isAiPanelOpen.value),
+	};
+});
+const renderedSidePanelWidths = computed(function getRenderedSidePanelWidths() {
+	if (wideChat.value || compactChatLayout.value || inlineTestChat.value)
+		return chatPanelLayout.value;
+	const containerWidth = builderContainerWidth.value;
+	const bothPanelsOpen = showAiPanel.value && isPreviewDockOpen.value;
+	const availableSidePanelWidth =
+		containerWidth === 0
+			? Infinity
+			: Math.max(AGENT_MIN_PANEL_WIDTH, containerWidth - AGENT_BUILDER_EDITOR_MIN_WIDTH);
+	const openPanelMaxWidth = bothPanelsOpen
+		? AGENT_MAX_PANEL_WIDTH
+		: Math.min(AGENT_MAX_PANEL_WIDTH, availableSidePanelWidth);
+	const desiredAiWidth = clampPanelWidth(
+		aiPanelWidth.value,
+		showAiPanel.value ? openPanelMaxWidth : AGENT_MAX_PANEL_WIDTH,
 	);
-	if (showAiPanel.value && !isPreviewDockOpen.value) {
-		return {
-			ai: Math.min(desiredAiWidth, availableSidePanelWidth),
-			preview: desiredPreviewWidth,
-		};
-	}
-	if (!showAiPanel.value && isPreviewDockOpen.value) {
-		return {
-			ai: desiredAiWidth,
-			preview: Math.min(desiredPreviewWidth, availableSidePanelWidth),
-		};
-	}
-	if (!showAiPanel.value || !isPreviewDockOpen.value || !bothSidePanelsFit()) {
+	const desiredPreviewWidth = clampPanelWidth(
+		previewDockWidth.value,
+		isPreviewDockOpen.value ? openPanelMaxWidth : AGENT_MAX_PANEL_WIDTH,
+	);
+
+	if (!bothPanelsOpen || !bothSidePanelsFit()) {
 		return { ai: desiredAiWidth, preview: desiredPreviewWidth };
 	}
 
@@ -391,13 +698,12 @@ const renderedSidePanelWidths = computed(function getRenderedSidePanelWidths() {
 		return { ai: desiredAiWidth, preview: desiredPreviewWidth };
 	}
 
-	const availableExtraWidth = availableSidePanelWidth - AGENT_BUILDER_SIDE_PANEL_MIN_WIDTH * 2;
-	const desiredAiExtraWidth = desiredAiWidth - AGENT_BUILDER_SIDE_PANEL_MIN_WIDTH;
-	const desiredPreviewExtraWidth = desiredPreviewWidth - AGENT_BUILDER_SIDE_PANEL_MIN_WIDTH;
+	const availableExtraWidth = availableSidePanelWidth - AGENT_MIN_PANEL_WIDTH * 2;
+	const desiredAiExtraWidth = desiredAiWidth - AGENT_MIN_PANEL_WIDTH;
+	const desiredPreviewExtraWidth = desiredPreviewWidth - AGENT_MIN_PANEL_WIDTH;
 	const desiredExtraWidth = desiredAiExtraWidth + desiredPreviewExtraWidth;
 	const renderedAiWidth =
-		AGENT_BUILDER_SIDE_PANEL_MIN_WIDTH +
-		availableExtraWidth * (desiredAiExtraWidth / desiredExtraWidth);
+		AGENT_MIN_PANEL_WIDTH + availableExtraWidth * (desiredAiExtraWidth / desiredExtraWidth);
 
 	return {
 		ai: renderedAiWidth,
@@ -406,7 +712,14 @@ const renderedSidePanelWidths = computed(function getRenderedSidePanelWidths() {
 });
 
 function keepPreferredSidePanel() {
-	if (!showAiPanel.value || !isPreviewDockOpen.value || bothSidePanelsFit()) return;
+	if (
+		inlineTestChat.value ||
+		wideChat.value ||
+		!showAiPanel.value ||
+		!isPreviewDockOpen.value ||
+		bothSidePanelsFit()
+	)
+		return;
 	if (preferredSidePanel.value === 'preview') {
 		isAiPanelOpen.value = false;
 		return;
@@ -435,10 +748,23 @@ watch(
 );
 
 function onAiPanelResize({ width }: { width: number }) {
+	if (wideChat.value) {
+		resizeChat(width + chatPanelLayout.value.resizeOffset);
+		return;
+	}
 	preferredSidePanel.value = 'assistant';
 	aiPanelWidth.value = width;
 }
 function toggleAiPanel() {
+	if (compactChatLayout.value) {
+		showConfiguration.value = !showConfiguration.value;
+		return;
+	}
+	if (inlineTestChat.value || wideChat.value) {
+		showConfiguration.value = false;
+		closePreviewDock();
+		return;
+	}
 	// Setup isn't finished — send the user to the assistant, where onboarding
 	// takes over, instead of opening a panel no model can answer in.
 	if (!instanceAiReady.value) {
@@ -469,18 +795,26 @@ const isFavorite = computed(() => favoritesStore.isFavorite(agentId.value, 'agen
 const {
 	canUpdate: canEditAgent,
 	canDelete: canDeleteAgent,
-	canExecute: canExecuteAgent,
+	canExecute: hasExecuteScope,
 } = useAgentPermissions(projectId);
+const isAgentArchived = computed(() => agent.value?.isArchived === true);
+// The backend rejects runs for an archived agent.
+const canExecuteAgent = computed(() => hasExecuteScope.value && !isAgentArchived.value);
+// True while an eval suggestion is being applied, see `runConfigWrite`.
+const configWriteInFlight = ref(false);
 // True while writes from this tab must not reach the backend: the AI is
-// mutating this agent (artifact build lock or the embedded assistant), or
-// another client holds the collaboration write lock (multi-tab / multi-user).
+// mutating this agent (artifact build lock or the embedded assistant), an eval
+// suggestion is being applied to the saved config, another client holds the
+// collaboration write lock (multi-tab / multi-user), or the agent is archived.
 // Every write path — the editor, the header actions, and the autosave loops —
 // keys off this.
 const isEditingLocked = computed(
 	() =>
 		props.artifactEditingLocked ||
 		embeddedAiBuilding.value ||
-		agentCollaborationStore.shouldBeReadOnly,
+		configWriteInFlight.value ||
+		agentCollaborationStore.shouldBeReadOnly ||
+		isAgentArchived.value,
 );
 // Combines permission with the lock: while locked, editing is disabled even
 // for a user who otherwise has permission — mirrors the workflow artifact's
@@ -501,6 +835,7 @@ const showAgentIntro = computed(
 );
 
 const isVersionHistoryOpen = ref(false);
+const versionHistoryTab = ref('versions');
 
 watch(
 	isPreviewDockOpen,
@@ -542,7 +877,7 @@ async function onSendPreviewToAssistant(event?: AgentSendToAssistantEvent) {
 	const sessionTitle = session?.title?.trim() || currentSessionTitle.value || undefined;
 	const sessionNumber = session?.sessionNumber;
 
-	const params: AgentPreviewHandoffParams = {
+	const params: AgentTestHandoffParams = {
 		projectId: projectId.value,
 		agentId: agentId.value,
 		threadId,
@@ -586,37 +921,8 @@ async function onSendPreviewToAssistant(event?: AgentSendToAssistantEvent) {
 		return;
 	}
 
-	// Setup isn't finished — send the user to the assistant, where onboarding
-	// takes over, instead of opening a panel no model can answer in.
-	if (!instanceAiReady.value) {
-		void router.push({ name: INSTANCE_AI_VIEW });
-		return;
-	}
-
-	// Open the dock (it's `v-if`) and wait a tick so `aiPanelRef` resolves
-	// before the hand-off is attempted.
-	isAiPanelOpen.value = true;
-	await nextTick();
-
 	const context = buildInstanceAiAgentPreviewHandoffContext(params);
-	if (aiPanelRef.value) {
-		const handed = aiPanelRef.value.handoff(context, params.initialDraft);
-		if (!handed) return;
-		acceptFixHandoff();
-		// Close the preview once the assistant has the request: coming back to an
-		// open preview chat beside the assistant reads as two places to ask.
-		closePreviewDock();
-	} else {
-		// Standalone preview route: the panel isn't mounted here. Queue the
-		// hand-off and close the dock — on this route that navigates back to
-		// the builder, which mounts the panel and applies the queue.
-		queuedAiHandoff.value = {
-			context,
-			initialDraft: params.initialDraft,
-			onAccepted: acceptFixHandoff,
-		};
-		closePreviewDock();
-	}
+	if (!(await handoffToAssistantPanel(context, params.initialDraft, acceptFixHandoff))) return;
 
 	telemetry.track(TELEMETRY_EVENT.AGENTS.INSTANCE_AI_OPENED_FROM_AGENT_PREVIEW, {
 		agent_id: params.agentId,
@@ -633,6 +939,7 @@ async function onSendPreviewToAssistant(event?: AgentSendToAssistantEvent) {
  *   - render the preview chat before the route/config/session state has settled.
  */
 const initialized = ref(false);
+const previewSessionsLoaded = ref(false);
 let disposed = false;
 let latestSessionsFetchRequestId = 0;
 /**
@@ -662,12 +969,6 @@ const instanceAiEmbedLaunch = computed<InstanceAiThreadLaunch>(() => ({
 	origin: 'internal',
 	sourceContext: { agentId: agentId.value },
 }));
-const agentFiles = ref<AgentFileDto[]>([]);
-const agentFilesLoading = ref(false);
-const agentFilesUploading = ref(false);
-const deletingAgentFileId = ref<string | null>(null);
-const lastKnowledgeSandboxWarmupKey = ref<string | null>(null);
-
 watch(agentName, (name) => {
 	documentTitle.set(name || locale.baseText('agents.heading'));
 });
@@ -705,7 +1006,14 @@ const previewSessionReady = computed(
 );
 
 // Config
-const { config, configHash, fetchConfig, updateConfig, repoint: repointConfig } = useAgentConfig();
+const {
+	config,
+	configHash,
+	fetchConfig,
+	updateConfig,
+	acceptCreation,
+	repoint: repointConfig,
+} = useAgentConfig();
 const {
 	validation: configValidation,
 	repoint: repointConfigValidation,
@@ -718,26 +1026,82 @@ function markConfigDraftEdited() {
 	configEditRevision += 1;
 }
 const connectedTriggers = ref<string[]>([]);
+const isPublishReady = ref(false);
+const setupChecklistContext = computed(() => {
+	return {
+		config: {
+			loaded: initialized.value && localConfig.value !== null,
+			isRunnable: agent.value?.isRunnable === true,
+			model: localConfig.value?.model ?? '',
+			instructions: localConfig.value?.instructions ?? '',
+			toolCount:
+				(localConfig.value?.tools?.length ?? 0) +
+				(localConfig.value?.mcpServers?.length ?? 0) +
+				(localConfig.value?.subAgents?.agents?.length ?? 0),
+		},
+		channels: {
+			loaded: initialized.value,
+			ids: connectedTriggers.value,
+		},
+		publication: {
+			loaded: initialized.value,
+			canPublish:
+				initialized.value &&
+				!isUnsaved.value &&
+				effectiveCanEditAgent.value &&
+				isPublishReady.value,
+			activeVersionId: agent.value?.activeVersionId ?? null,
+		},
+		sessions: {
+			loaded: initialized.value && previewSessionsLoaded.value,
+			count: sessionsStore.previewThreads.length,
+		},
+	};
+});
+const { tasks: setupTasks, isVisible: isSetupChecklistVisible } =
+	useAgentSetupTasks(setupChecklistContext);
+const areSetupTasksVisible = computed(
+	() =>
+		isSetupChecklistVisible.value &&
+		!agent.value?.activeVersionId &&
+		!isUnsaved.value &&
+		!props.artifactEditingLocked &&
+		!embeddedAiBuilding.value,
+);
+const builderHeader = useTemplateRef<{ publishAgent: () => Promise<void> | undefined }>(
+	'builderHeader',
+);
+const editorColumn = useTemplateRef<{ onSetupTaskAction: (task: SetupTask) => void }>(
+	'editorColumn',
+);
+
+async function onSetupTaskAction(task: SetupTask) {
+	if (task.action.path === 'preview') {
+		await onOpenPreview();
+		return;
+	}
+
+	if (activeMainTab.value !== 'agent') {
+		activeMainTab.value = 'agent';
+		await nextTick();
+	}
+
+	editorColumn.value?.onSetupTaskAction(task);
+}
+
+function onSetupTaskPublishAgent() {
+	void builderHeader.value?.publishAgent();
+}
 /** Bumped when the config changes outside the local editor (modal flows, version revert) so the Tasks panel reloads. */
 const tasksReloadKey = ref(0);
 const versionHistoryPanel = useTemplateRef<{ refresh: () => Promise<void> }>('versionHistoryPanel');
-const previewChatPage =
-	useTemplateRef<InstanceType<typeof AgentPreviewChatPage>>('previewChatPage');
-const previewDock = useTemplateRef<InstanceType<typeof AgentPreviewDock>>('previewDock');
+const previewChatPage = useTemplateRef<InstanceType<typeof AgentTestChatPage>>('previewChatPage');
+const previewDock = useTemplateRef<InstanceType<typeof AgentTestDock>>('previewDock');
 const executionsCount = computed(() => sessionsStore.threads.length);
 const { activeMainTab, mainTabOptions, executionsDescription } = useAgentBuilderMainTabs({
 	executionsCount,
 	routeBacked: computed(() => !isArtifactMode.value),
 });
-
-// Knowledge, Executions and Settings all read agent-scoped endpoints, so they
-// have nothing to show until the agent exists. Configuring the agent is what
-// creates it, so that is the only tab worth offering first.
-const visibleMainTabOptions = computed(() =>
-	isUnsaved.value
-		? mainTabOptions.value.filter((tab) => tab.value === 'agent')
-		: mainTabOptions.value,
-);
 
 const { ensureLoaded: ensureIntegrationsCatalog } = useAgentIntegrationsCatalog();
 // Without n8n Chat in the known trigger types, the baseline drops its chip.
@@ -748,14 +1112,53 @@ const builderTelemetry = useAgentBuilderTelemetry({
 	projectId,
 	agent,
 	localConfig,
-	connectedTriggers,
 });
+
+// Make sure each agent reports its own opening, also when the user switches agents on the knowledge tab.
+// `immediate` also reports a page that opens on the knowledge tab from its URL.
+watch(
+	[activeMainTab, agentId],
+	([tab, currentAgentId], previous) => {
+		const [previousTab, previousAgentId] = previous ?? [];
+		const isNewOpening = previousTab !== 'knowledge' || previousAgentId !== currentAgentId;
+
+		if (tab === 'knowledge' && isNewOpening) {
+			builderTelemetry.trackOpenedKnowledgeTab();
+		}
+	},
+	{ immediate: true },
+);
 
 /**
  * The backend owns runnable validation so the chat entry point either opens
  * Preview or stays in the builder.
  */
 const isBuilt = computed(() => agent.value?.isRunnable === true);
+const previewDisabledReason = computed(() => {
+	if (isArtifactMode.value) return undefined;
+	if (isAgentArchived.value) return locale.baseText('agents.builder.chatMode.archived');
+	if (!canExecuteAgent.value) return locale.baseText('agents.builder.chatMode.noPermission');
+	if (chatModeBusy.value) return locale.baseText('agents.builder.chatMode.building');
+	return undefined;
+});
+const testModeDisabledReason = computed(
+	() =>
+		previewDisabledReason.value ??
+		(!isBuilt.value ? locale.baseText('agents.builder.preview.disabledTooltip') : undefined),
+);
+const testValidationIssues = computed(() =>
+	!isBuilt.value && !chatModeBusy.value && canExecuteAgent.value
+		? (configValidation.value?.issues ?? [])
+		: [],
+);
+defineExpose({ setChatMode });
+watch(
+	[initialized, chatLayoutEnabled, () => builderExperiment.enrollment],
+	([loaded, enabled]) => {
+		if (loaded && enabled && !props.builderLayout) builderExperiment.trackExposure();
+	},
+	{ immediate: true, flush: 'post' },
+);
 
 const showBuilderLoading = computed(() => !initialized.value);
 
@@ -763,7 +1166,7 @@ watch(
 	config,
 	(c) => {
 		if (c) {
-			localConfig.value = deepCopy(c);
+			localConfig.value = copyAgentConfig(c);
 			syncAgentIdentityFromConfig(c);
 		}
 	},
@@ -796,7 +1199,7 @@ function isStaleAgentTarget(targetProjectId: string, targetAgentId: string): boo
 async function onGenerateEvalCases() {
 	const targetProjectId = projectId.value;
 	const targetAgentId = agentId.value;
-	if (!targetProjectId || !targetAgentId) return;
+	if (!targetProjectId || !targetAgentId || isUnsaved.value) return;
 
 	try {
 		const { cases } = await agentEvalsStore.generateDraftCases(targetProjectId, targetAgentId);
@@ -828,136 +1231,27 @@ async function fetchAgent(
 	upsertProjectAgentsListCache(targetProjectId, data);
 }
 
-async function fetchAgentFiles(
-	targetProjectId: string = projectId.value,
-	targetAgentId: string = agentId.value,
-) {
-	if (!isKnowledgeBaseEnabled.value) return;
-	agentFilesLoading.value = true;
-	try {
-		const files = await listAgentFiles(rootStore.restApiContext, targetProjectId, targetAgentId);
-		if (isStaleAgentTarget(targetProjectId, targetAgentId)) return;
-		agentFiles.value = files;
-	} catch (error) {
-		showError(error, locale.baseText('agents.builder.files.loadError'));
-	} finally {
-		if (!isStaleAgentTarget(targetProjectId, targetAgentId)) {
-			agentFilesLoading.value = false;
-		}
-	}
-}
-
-async function onUploadAgentFiles(files: File[]) {
-	if (files.length === 0) return;
-	const oversizedFiles = files.filter((file) => file.size > MAX_AGENT_FILE_SIZE_BYTES);
-	if (oversizedFiles.length > 0) {
-		showError(
-			new Error(
-				locale.baseText('agents.builder.files.uploadFileTooLarge.message', {
-					interpolate: { name: oversizedFiles[0].name, size: String(MAX_AGENT_FILE_SIZE_MB) },
-				}),
-			),
-			locale.baseText('agents.builder.files.uploadFileTooLarge.title'),
-		);
-	}
-	const filesWithinLimit = files.filter((file) => file.size <= MAX_AGENT_FILE_SIZE_BYTES);
-	if (filesWithinLimit.length === 0) return;
-
-	if (filesWithinLimit.length > MAX_AGENT_FILES_PER_UPLOAD) {
-		showError(
-			new Error(
-				locale.baseText('agents.builder.files.uploadTooManyFiles.message' as BaseTextKey, {
-					interpolate: { max: String(MAX_AGENT_FILES_PER_UPLOAD) },
-				}),
-			),
-			locale.baseText('agents.builder.files.uploadTooManyFiles.title' as BaseTextKey),
-		);
-		return;
-	}
-
-	const existingTotalSizeBytes = agentFiles.value.reduce(
-		(total, file) => total + file.fileSizeBytes,
-		0,
-	);
-	const uploadTotalSizeBytes = filesWithinLimit.reduce((total, file) => total + file.size, 0);
-	if (existingTotalSizeBytes + uploadTotalSizeBytes > MAX_AGENT_KNOWLEDGE_BASE_SIZE_BYTES) {
-		showError(
-			new Error(
-				locale.baseText('agents.builder.files.uploadTotalTooLarge.message' as BaseTextKey, {
-					interpolate: { size: String(MAX_AGENT_KNOWLEDGE_BASE_SIZE_GB) },
-				}),
-			),
-			locale.baseText('agents.builder.files.uploadTotalTooLarge.title' as BaseTextKey),
-		);
-		return;
-	}
-
-	const targetProjectId = projectId.value;
-	const targetAgentId = agentId.value;
-	agentFilesUploading.value = true;
-	try {
-		await ensureAgentPersisted();
-		const uploadedFiles = await uploadAgentFiles(
-			rootStore.restApiContext,
-			targetProjectId,
-			targetAgentId,
-			filesWithinLimit,
-		);
-		if (isStaleAgentTarget(targetProjectId, targetAgentId)) return;
-		const existingById = new Map(agentFiles.value.map((file) => [file.id, file]));
-		for (const file of uploadedFiles) {
-			existingById.set(file.id, file);
-		}
-		agentFiles.value = Array.from(existingById.values()).sort(
-			(a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
-		);
-		showMessage({
-			title: locale.baseText('agents.builder.files.uploaded'),
-			type: 'success',
-		});
-	} catch (error) {
-		showError(error, locale.baseText('agents.builder.files.uploadError'));
-	} finally {
-		if (!isStaleAgentTarget(targetProjectId, targetAgentId)) {
-			agentFilesUploading.value = false;
-		}
-	}
-}
-
-async function onDeleteAgentFile(file: AgentFileDto) {
-	if (deletingAgentFileId.value !== null) return;
-
-	const confirmed = await openAgentConfirmationModal({
-		title: locale.baseText('agents.builder.files.deleteModal.title', {
-			interpolate: { name: file.fileName },
-		}),
-		description: locale.baseText('agents.builder.files.deleteModal.description', {
-			interpolate: { name: file.fileName },
-		}),
-		confirmButtonText: locale.baseText('agents.builder.files.deleteModal.button.delete'),
-		cancelButtonText: locale.baseText('generic.cancel'),
-	});
-	if (confirmed !== MODAL_CONFIRM) return;
-
-	const targetProjectId = projectId.value;
-	const targetAgentId = agentId.value;
-	deletingAgentFileId.value = file.id;
-	try {
-		await deleteAgentFile(rootStore.restApiContext, targetProjectId, targetAgentId, file.id);
-		if (isStaleAgentTarget(targetProjectId, targetAgentId)) return;
-		agentFiles.value = agentFiles.value.filter((agentFile) => agentFile.id !== file.id);
-		showMessage({
-			title: locale.baseText('agents.builder.files.deleted'),
-			type: 'success',
-		});
-	} catch (error) {
-		showError(error, locale.baseText('agents.builder.files.deleteError'));
-	} finally {
-		if (deletingAgentFileId.value === file.id) {
-			deletingAgentFileId.value = null;
-		}
-	}
-}
+const {
+	agentFiles,
+	agentFilesLoading,
+	agentFilesUploading,
+	deletingAgentFileId,
+	fetchAgentFiles,
+	uploadFiles: onUploadAgentFiles,
+	deleteFile: onDeleteAgentFile,
+	warmKnowledgeSandbox: warmAgentKnowledgeSandboxForPage,
+	reset: resetAgentKnowledge,
+} = useAgentKnowledge({
+	projectId,
+	agentId,
+	agent,
+	initialized,
+	isUnsaved,
+	isKnowledgeBaseEnabled,
+	isStaleAgentTarget,
+	ensureAgentPersisted,
+	telemetry: builderTelemetry,
+});
 
 async function refreshAgentAfterIntegrationChange(
 	targetProjectId: string = projectId.value,
@@ -976,6 +1270,7 @@ function sessionIdForPreview(): string | undefined {
 }
 
 async function openPreview(preferredSessionId?: string) {
+	showConfiguration.value = false;
 	preferredSidePanel.value = 'preview';
 	const sessionId = preferredSessionId ?? sessionIdForPreview();
 	activeChatSessionId.value = sessionId ?? null;
@@ -993,6 +1288,7 @@ function openArtifactPreview(preferredSessionId?: string) {
 
 function viewPreviewTrace() {
 	if (!currentSessionHasMessages.value || !effectiveSessionId.value) return;
+	trackClickedTraceDetailsFromTestPanel({ agentId: agentId.value });
 	void router.push({
 		name: AGENT_SESSION_DETAIL_VIEW,
 		params: {
@@ -1012,18 +1308,30 @@ async function onDeletePreviewSession(sessionId: string) {
 	await deleteSession(sessionId);
 }
 
-async function onOpenPreview(expectedTarget?: {
-	projectId: string;
-	agentId: string;
-}): Promise<boolean> {
-	if (!isBuilt.value) return false;
-
+async function onOpenPreview(
+	source?: InferTelemetryProps<typeof TELEMETRY_EVENT.AGENTS.USER_OPENED_AGENT_PREVIEW>['source'],
+	expectedTarget?: { projectId: string; agentId: string },
+): Promise<boolean> {
+	if (!isBuilt.value || (!isArtifactMode.value && !canExecuteAgent.value) || chatModeBusy.value)
+		return false;
+	const request = ++previewRequest;
+	const target = expectedTarget ?? { projectId: projectId.value, agentId: agentId.value };
 	try {
 		await flushAutosave();
 	} catch {
 		return false;
 	}
-	if (expectedTarget && isStaleAgentTarget(expectedTarget.projectId, expectedTarget.agentId)) {
+	if (isArtifactMode.value) {
+		if (expectedTarget && isStaleAgentTarget(expectedTarget.projectId, expectedTarget.agentId)) {
+			return false;
+		}
+	} else if (
+		request !== previewRequest ||
+		isStaleAgentTarget(target.projectId, target.agentId) ||
+		!isBuilt.value ||
+		!canExecuteAgent.value ||
+		chatModeBusy.value
+	) {
 		return false;
 	}
 	if (isArtifactMode.value) {
@@ -1031,13 +1339,16 @@ async function onOpenPreview(expectedTarget?: {
 	} else {
 		await openPreview();
 	}
-	telemetry.track(TELEMETRY_EVENT.AGENTS.USER_OPENED_AGENT_PREVIEW, { agent_id: agentId.value });
+	telemetry.track(TELEMETRY_EVENT.AGENTS.USER_OPENED_AGENT_PREVIEW, {
+		agent_id: agentId.value,
+		...(source ? { source } : {}),
+	});
 	return true;
 }
 
 async function onPreviewTask(instructions: string) {
 	const target = { projectId: projectId.value, agentId: agentId.value };
-	if (!(await onOpenPreview(target))) return;
+	if (!(await onOpenPreview(undefined, target))) return;
 
 	// Reset first so the same objective can be previewed more than once.
 	taskPreviewPrompt.value = undefined;
@@ -1068,7 +1379,9 @@ function returnToBuilderFromPreview() {
 }
 
 function closePreviewDock() {
+	previewRequest++;
 	persistedPreviewOpen.value = false;
+	showConfiguration.value = false;
 	if (!isArtifactMode.value) closePreviewRoute();
 }
 
@@ -1087,8 +1400,10 @@ function onUnpublished(updated: AgentResource) {
 	void versionHistoryPanel.value?.refresh();
 }
 
-function onToggleVersionHistory() {
-	isVersionHistoryOpen.value = !isVersionHistoryOpen.value;
+function onOpenVersionHistory(tab: 'versions' | 'timeline' = 'versions') {
+	if (!agent.value || isUnsaved.value) return;
+	versionHistoryTab.value = tab;
+	isVersionHistoryOpen.value = true;
 }
 
 function onCloseVersionHistory() {
@@ -1123,26 +1438,6 @@ function selectLatestPreviewSession() {
 	onNewChat();
 }
 
-function warmAgentKnowledgeSandboxForPage() {
-	if (!initialized.value || !isKnowledgeBaseEnabled.value || !agent.value) return;
-	// No agent row to warm a sandbox for yet.
-	if (isUnsaved.value) return;
-
-	const targetProjectId = projectId.value;
-	const targetAgentId = agentId.value;
-	const warmupKey = `${targetProjectId}:${targetAgentId}`;
-	if (lastKnowledgeSandboxWarmupKey.value === warmupKey) return;
-	lastKnowledgeSandboxWarmupKey.value = warmupKey;
-
-	void warmAgentKnowledgeSandbox(rootStore.restApiContext, targetProjectId, targetAgentId).catch(
-		() => {
-			if (!isStaleAgentTarget(targetProjectId, targetAgentId)) {
-				lastKnowledgeSandboxWarmupKey.value = null;
-			}
-		},
-	);
-}
-
 // Base hashes are captured when the edit is scheduled, not when the debounced
 // save fires: a refresh landing in between would otherwise lend a stale
 // snapshot the fresh hash and let it overwrite the newer server state.
@@ -1163,6 +1458,7 @@ interface SkillAutosaveSnapshot {
 	skillId: string;
 	skill: AgentSkill;
 	baseSkillHash: string | undefined;
+	availableTo?: AgentSkillAvailability;
 }
 
 interface McpAvailabilitySnapshot {
@@ -1187,16 +1483,22 @@ interface McpAvailabilitySnapshot {
  * bound as well as created, so a retry after a failed binding goes back to the
  * host instead of silently declaring the artifact saved.
  */
-const persistFlights = new Map<string, Promise<void>>();
-const persistedAgentsByTarget = new Map<string, AgentResource>();
+interface PersistedAgent {
+	agent: AgentCreationResource;
+	configRevision?: number;
+}
+
+const persistFlights = new Map<string, Promise<PersistedAgent>>();
+const persistedAgentsByTarget = new Map<string, PersistedAgent>();
 
 function clearRoutePendingState(targetAgentId: string) {
 	if (isArtifactMode.value) return;
+	unsavedAgentIds.delete(targetAgentId);
+	if (routePendingAgentId.value === targetAgentId) routePendingAgentId.value = null;
 	const historyState = history.state as Record<string, unknown>;
 	if (historyState[PENDING_AGENT_ID_STATE] !== targetAgentId) return;
 	const { [PENDING_AGENT_ID_STATE]: _, ...state } = historyState;
 	history.replaceState(state, '');
-	if (routePendingAgentId.value === targetAgentId) routePendingAgentId.value = null;
 }
 
 /**
@@ -1237,7 +1539,11 @@ async function adoptExistingPendingRow(existing: AgentResource): Promise<void> {
 	// user moved on must not clear (or claim) the current target's retry state.
 	const ownsRetryState = () => existing.id === agentId.value;
 	try {
-		await props.artifactPersistAgent(existing.name);
+		await props.artifactPersistAgent({
+			projectId: existing.projectId,
+			agentId: existing.id,
+			name: existing.name,
+		});
 		if (ownsRetryState()) unboundExistingAgent.value = null;
 	} catch (error) {
 		// Queued rather than surfaced: the artifact already shows the persisted
@@ -1254,57 +1560,86 @@ async function retryPendingBind(): Promise<void> {
 	await adoptExistingPendingRow(existing);
 }
 
-async function ensureAgentPersisted(): Promise<void> {
-	// Every mutating path funnels through here, so this is where a binding that
-	// failed after the hydration probe gets its retry — a skill- or MCP-only edit
-	// must not leave the artifact unbound.
+async function createPendingAgent(
+	targetProjectId: string,
+	targetAgentId: string,
+	name: string,
+	initialConfig?: AgentJsonConfig,
+): Promise<AgentCreationResource> {
+	const request = {
+		projectId: targetProjectId,
+		agentId: targetAgentId,
+		name,
+		config: initialConfig,
+	};
+	if (props.artifactPersistAgent) {
+		return await props.artifactPersistAgent(request);
+	}
+	// Manual edits must also save when the Assistant thread is only a local draft.
+	try {
+		return await createAgent(rootStore.restApiContext, targetProjectId, name, {
+			id: targetAgentId,
+			config: initialConfig,
+		});
+	} catch (error) {
+		// The Assistant agent builds a pending agent under this same id, so it can win the insert.
+		const lostInsert = error instanceof ResponseError && error.httpStatusCode === 409;
+		if (!aiThreadId.value || !lostInsert) throw error;
+		const existing = await getAgent(rootStore.restApiContext, targetProjectId, targetAgentId);
+		return { ...existing, config: null, configHash: null, adopted: true };
+	}
+}
+
+function applyPersistedAgent(
+	targetProjectId: string,
+	targetAgentId: string,
+	saved: PersistedAgent,
+) {
+	clearRoutePendingState(targetAgentId);
+	if (isStaleAgentTarget(targetProjectId, targetAgentId)) return;
+	isUnsaved.value = false;
+	agent.value = saved.agent;
+	if (!saved.agent.adopted) acceptCreation(targetProjectId, targetAgentId, saved.agent);
+}
+
+async function persistAgent(
+	snapshot?: ConfigAutosaveSnapshot,
+): Promise<PersistedAgent | undefined> {
+	const targetProjectId = snapshot?.projectId ?? projectId.value;
+	const targetAgentId = snapshot?.agentId ?? agentId.value;
 	await retryPendingBind();
-	if (!isUnsaved.value) return;
-	const targetProjectId = projectId.value;
-	const targetAgentId = agentId.value;
+	if (!isUnsaved.value && !isStaleAgentTarget(targetProjectId, targetAgentId)) return;
+	if (snapshot?.baseConfigHash !== undefined) return;
 	const targetKey = `${targetProjectId}:${targetAgentId}`;
-	const persistedAgent = persistedAgentsByTarget.get(targetKey);
-	if (persistedAgent) {
-		isUnsaved.value = false;
-		agent.value = persistedAgent;
-		clearRoutePendingState(targetAgentId);
-		return;
+	const persisted = persistedAgentsByTarget.get(targetKey);
+	if (persisted) {
+		applyPersistedAgent(targetProjectId, targetAgentId, persisted);
+		return persisted;
 	}
 	let flight = persistFlights.get(targetKey);
 	if (!flight) {
 		flight = (async () => {
-			const name = localConfig.value?.name ?? locale.baseText('agents.new.defaultName');
-			// A thread is bound (the embedded assistant may be building the same
-			// agent right now): adopt-or-create through the thread so a race with
-			// its own create converges on one row instead of a 409.
-			const created = props.artifactPersistAgent
-				? await props.artifactPersistAgent(name)
-				: aiThreadId.value
-					? (
-							await persistPendingAgent(rootStore.restApiContext, aiThreadId.value, {
-								projectId: targetProjectId,
-								agentId: targetAgentId,
-								name,
-							})
-						).agent
-					: await createAgent(rootStore.restApiContext, targetProjectId, name, {
-							id: targetAgentId,
-						});
-			persistedAgentsByTarget.set(targetKey, created);
+			const initialConfig = snapshot?.config;
+			const name =
+				initialConfig?.name ?? localConfig.value?.name ?? locale.baseText('agents.new.defaultName');
+			const created = await createPendingAgent(targetProjectId, targetAgentId, name, initialConfig);
+			const saved = { agent: created, configRevision: snapshot?.revision };
+			persistedAgentsByTarget.set(targetKey, saved);
 			upsertProjectAgentsListCache(targetProjectId, created);
-			clearRoutePendingState(targetAgentId);
-			if (isStaleAgentTarget(targetProjectId, targetAgentId)) return;
-			isUnsaved.value = false;
-			agent.value = created;
+			applyPersistedAgent(targetProjectId, targetAgentId, saved);
+			return saved;
 		})();
 		persistFlights.set(targetKey, flight);
 	}
-
 	try {
-		await flight;
+		return await flight;
 	} finally {
 		if (persistFlights.get(targetKey) === flight) persistFlights.delete(targetKey);
 	}
+}
+
+async function ensureAgentPersisted(): Promise<void> {
+	await persistAgent();
 }
 
 async function handleAutosaveConflict(snapshot: {
@@ -1324,34 +1659,50 @@ async function handleAutosaveConflict(snapshot: {
 	return 'stale';
 }
 
-async function saveConfig(snapshot: ConfigAutosaveSnapshot): Promise<AutosaveResult> {
-	// The AI or another client may be mutating this agent right now — a save
-	// queued just before the lock engaged must not persist its now-stale full
-	// config over it.
-	if (isEditingLocked.value) return 'skipped';
-	await ensureAgentPersisted();
-	let result;
-	try {
-		result = await updateConfig(
-			snapshot.projectId,
-			snapshot.agentId,
-			snapshot.config,
-			// Edits made before the agent was persisted have no fetched hash yet; the
-			// create response for that target carries the hash of the seeded config.
-			snapshot.baseConfigHash === undefined
-				? (persistedAgentsByTarget.get(`${snapshot.projectId}:${snapshot.agentId}`)?.configHash ??
-						null)
-				: snapshot.baseConfigHash,
-		);
-	} catch (error) {
-		if (error instanceof ResponseError && error.httpStatusCode === 409) {
-			// Detach before the reload: everything scheduled so far is stale,
-			// but edits typed while the reload runs must still get saved.
-			configAutosave.reset();
-			return await handleAutosaveConflict(snapshot);
-		}
-		throw error;
+async function persistConfigSnapshot(
+	snapshot: ConfigAutosaveSnapshot,
+): Promise<'conflict' | Awaited<ReturnType<typeof updateConfig>>> {
+	const creation = await persistAgent(snapshot);
+	const persisted =
+		creation ?? persistedAgentsByTarget.get(`${snapshot.projectId}:${snapshot.agentId}`);
+	if (persisted?.agent.adopted && snapshot.baseConfigHash === undefined) return 'conflict';
+	if (creation?.configRevision === snapshot.revision && creation.agent.config) {
+		return {
+			config: creation.agent.config,
+			versionId: creation.agent.versionId,
+			stale: isStaleAgentTarget(snapshot.projectId, snapshot.agentId),
+		};
 	}
+	return await updateConfig(
+		snapshot.projectId,
+		snapshot.agentId,
+		snapshot.config,
+		snapshot.baseConfigHash === undefined
+			? (persisted?.agent.configHash ?? null)
+			: snapshot.baseConfigHash,
+	);
+}
+
+async function saveConfig(snapshot: ConfigAutosaveSnapshot): Promise<AutosaveResult> {
+	if (isEditingLocked.value) return 'skipped';
+	let result: Awaited<ReturnType<typeof persistConfigSnapshot>>;
+	try {
+		result = await persistConfigSnapshot(snapshot);
+	} catch (error) {
+		if (!(error instanceof ResponseError) || error.httpStatusCode !== 409) throw error;
+		result = 'conflict';
+	}
+	if (result === 'conflict') {
+		configAutosave.reset();
+		return await handleAutosaveConflict(snapshot);
+	}
+	return await finishConfigSave(snapshot, result);
+}
+
+async function finishConfigSave(
+	snapshot: ConfigAutosaveSnapshot,
+	result: Awaited<ReturnType<typeof updateConfig>>,
+): Promise<AutosaveResult> {
 	// The write landed regardless of staleness below — tell other surfaces
 	// (e.g. canvas agent cards invalidate their capability-summary cache).
 	agentsEventBus.emit('agentUpdated', { agentId: snapshot.agentId, source: 'agent-builder' });
@@ -1395,6 +1746,7 @@ async function saveSkill(snapshot: SkillAutosaveSnapshot): Promise<AutosaveResul
 			snapshot.skillId,
 			snapshot.skill,
 			snapshot.baseSkillHash,
+			snapshot.availableTo,
 		);
 	} catch (error) {
 		if (error instanceof ResponseError && error.httpStatusCode === 409) {
@@ -1405,9 +1757,26 @@ async function saveSkill(snapshot: SkillAutosaveSnapshot): Promise<AutosaveResul
 	}
 	agentsEventBus.emit('agentUpdated', { agentId: snapshot.agentId, source: 'agent-builder' });
 	if (agent.value?.id !== snapshot.agentId) return undefined;
+	// A save makes a new version only when the content changed, so a new hash means the next
+	// version. A draft that follows the latest version runs it.
+	const versions = agent.value.skillVersions?.[snapshot.skillId];
+	const savedNewVersion =
+		!!versions && agent.value.skillHashes?.[snapshot.skillId] !== result.skillHash;
 	agent.value = {
 		...agent.value,
 		versionId: result.versionId,
+		...(versions && savedNewVersion
+			? {
+					skillVersions: {
+						...agent.value.skillVersions,
+						[snapshot.skillId]: {
+							...versions,
+							latest: versions.latest + 1,
+							draft: versions.pinned ? versions.draft : versions.latest + 1,
+						},
+					},
+				}
+			: {}),
 		skillHashes: {
 			...(agent.value.skillHashes ?? {}),
 			[snapshot.skillId]: result.skillHash,
@@ -1564,6 +1933,29 @@ async function flushAutosaveLoops(isolateSideSaveErrors = false): Promise<Autosa
 	return configResult;
 }
 
+// Evals can rewrite the agent's instructions on the server. That reads the saved config, so
+// pending local edits land first. Editing stays locked until the write is done and the config
+// is reloaded; an edit made in between would be saved against the old config hash and hit a
+// conflict. The reload runs even when the write threw, since the server may have saved first.
+// A locked editor has nothing of its own to save: the server rejects the write on its own
+// lock check.
+const runConfigWrite: AgentConfigWrite = async (write) => {
+	if (!isEditingLocked.value) await flushAutosaveLoops();
+	configWriteInFlight.value = true;
+	try {
+		return await write();
+	} finally {
+		try {
+			await onConfigUpdated();
+		} catch (error) {
+			handleArtifactRefreshError(error);
+		} finally {
+			configWriteInFlight.value = false;
+		}
+	}
+};
+provide(AGENT_CONFIG_WRITE_KEY, runConfigWrite);
+
 async function flushAutosave(): Promise<AutosaveResult> {
 	return await flushAutosaveLoops();
 }
@@ -1580,6 +1972,13 @@ async function flushConfigAutosave(): Promise<AutosaveResult> {
 /** Flush variant for callers that await completion but not the save outcome. */
 async function flushAutosaveIgnoringResult(): Promise<void> {
 	await flushAutosave();
+}
+
+/** The embedded assistant waits to mint its thread until a list-view starter is applied. */
+async function beforeAiNewThread(): Promise<void> {
+	const gate = starterReady;
+	await gate?.promise;
+	await flushAutosaveIgnoringResult();
 }
 
 useEventListener(document, 'keydown', (event) => {
@@ -1690,23 +2089,61 @@ watch(isEditingLocked, (locked) => {
 	mcpAvailabilityOverride.value = null;
 });
 
-/**
- * Authoritative pre-publish gate for the frontend: flush any pending edit so
- * the backend validates the config the user is about to publish (not a
- * stale persisted version), then refresh the readiness result and report
- * whether it is safe to call the publish endpoint. The publish endpoint
- * re-validates independently, so this is a UX affordance, not the only guard.
- */
-async function refreshValidationBeforePublish(): Promise<boolean> {
-	// Acquire the write lock before publishing — the lock is lazy.
+async function flushBeforePublish(): Promise<boolean> {
+	const targetProjectId = projectId.value;
+	const targetAgentId = agentId.value;
+
 	agentCollaborationStore.requestWriteAccess();
+
 	try {
-		await flushAutosave();
+		let result = await flushAutosave();
+
+		if (isStaleAgentTarget(targetProjectId, targetAgentId)) return false;
+
+		if (result === 'skipped' && !isEditingLocked.value && localConfig.value) {
+			// Retry the current config after the lock clears. Its hash rejects intervening edits.
+			replaceConfigAndScheduleSave(localConfig.value);
+			result = await flushAutosave();
+		}
+
+		return isPersistedSave(result) && !isStaleAgentTarget(targetProjectId, targetAgentId);
 	} catch {
 		return false;
 	}
-	await refreshConfigValidation(projectId.value, agentId.value);
-	return configValidation.value !== null && !hasBlockingIssues(configValidation.value.issues);
+}
+
+/** Save current edits, then check whether the current draft can be published. */
+async function refreshValidationBeforePublish(): Promise<boolean> {
+	const targetProjectId = projectId.value;
+	const targetAgentId = agentId.value;
+
+	if (!(await flushBeforePublish())) return false;
+
+	await refreshConfigValidation(targetProjectId, targetAgentId);
+	if (isStaleAgentTarget(targetProjectId, targetAgentId)) return false;
+
+	if (configValidation.value === null) return false;
+
+	if (hasBlockingIssues(configValidation.value.issues)) return false;
+
+	// Unpublished workflow tools do not disable the Publish button, but the
+	// backend rejects the publish — surface them here instead of failing the
+	// request (AGENT-1001).
+	const unpublishedWorkflows = unpublishedWorkflowTools(
+		configValidation.value.issues,
+		localConfig.value?.tools ?? [],
+	);
+
+	if (unpublishedWorkflows.length > 0) {
+		uiStore.openModalWithData({
+			name: AGENT_UNPUBLISHED_WORKFLOWS_MODAL_KEY,
+			data: { workflows: unpublishedWorkflows },
+		});
+
+		return false;
+	}
+
+	return true;
 }
 
 function normalizeAgentMemoryConfig(config: AgentJsonConfig): AgentJsonConfig {
@@ -1744,6 +2181,7 @@ function onConfigFieldUpdate(updates: Partial<AgentJsonConfig>, meta?: { source:
 	// if needed) to pick up the merged config.
 	const ridesAlongWithDraft = meta?.source === 'auto' && isUnsaved.value;
 	if (ridesAlongWithDraft && !configAutosave.hasPendingSave.value) return;
+
 	configAutosave.scheduleAutosave({
 		projectId: projectId.value,
 		agentId: agentId.value,
@@ -1752,7 +2190,7 @@ function onConfigFieldUpdate(updates: Partial<AgentJsonConfig>, meta?: { source:
 		// session memory disabled. Normalize on save so legacy configs are
 		// corrected the next time the user makes a real edit, without mutating
 		// config during component mount.
-		config: normalizeAgentMemoryConfig(deepCopy(localConfig.value)),
+		config: normalizeAgentMemoryConfig(copyAgentConfig(localConfig.value)),
 		revision: configEditRevision,
 		baseConfigHash: configHash.value,
 	});
@@ -1767,11 +2205,13 @@ const caps = useAgentCapabilitiesActions({
 	agentId,
 	connectedTriggers,
 	ensureAgentPersisted,
+	flushConfigSave: flushConfigAutosave,
+	flushSkillSave: skillAutosave.flushAutosave,
 	beforeAgentMutation: flushAutosaveIgnoringResult,
 	refreshAgentAfterMutation: onConfigUpdated,
 	validationIssues: computed(() => configValidation.value?.issues ?? []),
 	scheduleConfigUpdate: onConfigFieldUpdate,
-	scheduleSkillSave: ({ skillId, skill }) => {
+	scheduleSkillSave: ({ skillId, skill, availableTo }) => {
 		// Acquire the write lock before persisting any change.
 		agentCollaborationStore.requestWriteAccess();
 		// The persisted validation result no longer reflects the working copy —
@@ -1784,6 +2224,7 @@ const caps = useAgentCapabilitiesActions({
 			skillId,
 			skill,
 			baseSkillHash: agent.value?.skillHashes?.[skillId],
+			...(availableTo ? { availableTo } : {}),
 		});
 	},
 	telemetry: {
@@ -1791,6 +2232,7 @@ const caps = useAgentCapabilitiesActions({
 		trackOpenedSkillFromList: builderTelemetry.trackOpenedSkillFromList,
 		trackOpenedAddSkillModal: builderTelemetry.trackOpenedAddSkillModal,
 		trackTriggerAdded: builderTelemetry.trackTriggerAdded,
+		trackTriggerRemoved: builderTelemetry.trackTriggerRemoved,
 	},
 });
 // Top-level alias so the template auto-unwraps the ref (nested `caps.appliedSkills`
@@ -1800,24 +2242,40 @@ const appliedSkills = caps.appliedSkills;
 function replaceConfigAndScheduleSave(nextConfig: AgentJsonConfig) {
 	markConfigDraftEdited();
 	invalidateConfigValidation();
-	localConfig.value = deepCopy(nextConfig);
+	localConfig.value = copyAgentConfig(nextConfig);
 	syncAgentIdentityFromConfig(localConfig.value);
 	configAutosave.scheduleAutosave({
 		projectId: projectId.value,
 		agentId: agentId.value,
 		type: 'config',
-		config: normalizeAgentMemoryConfig(deepCopy(localConfig.value)),
+		config: normalizeAgentMemoryConfig(copyAgentConfig(localConfig.value)),
 		revision: configEditRevision,
 		baseConfigHash: configHash.value,
 	});
 }
 
+function templateStarterMessage(template: AgentTemplate): PendingFirstMessage {
+	return {
+		message: locale.baseText('agents.builder.templates.prompt', {
+			interpolate: {
+				name: locale.baseText(template.labelKey),
+				description: locale.baseText(template.descriptionKey),
+			},
+		}),
+		authorship: {
+			kind: 'prefill',
+			prefillType: 'template_adjustment',
+			prefillId: template.id,
+		},
+	};
+}
+
 // Apply a starter template to a blank agent: writes instructions and tools,
-// pre-connects any channel triggers, creates scheduled tasks, and sends the
-// template prompt to the assistant so it starts building right away. Refuses
+// pre-connects any channel triggers, and creates scheduled tasks. Refuses
 // (with a toast) once the agent already has content — the intro is for a first build.
-async function onApplyTemplate(template: AgentTemplate) {
-	if (!localConfig.value) return;
+// Returns false when the prompt must not be sent.
+async function applyTemplateConfig(template: AgentTemplate): Promise<boolean> {
+	if (!localConfig.value) return false;
 	const next = applyAgentTemplate(
 		localConfig.value,
 		template,
@@ -1829,13 +2287,12 @@ async function onApplyTemplate(template: AgentTemplate) {
 			message: locale.baseText('agents.builder.templates.notBlank.message'),
 			type: 'warning',
 		});
-		return;
+		return false;
 	}
 	replaceConfigAndScheduleSave(next);
-	// Derive trigger chips from the template's draft integrations so the two
-	// stay in sync — a template can't declare chips without the matching
-	// integration entry.
-	connectedTriggers.value = (template.config.integrations ?? []).map((i) => i.type);
+	// Derive trigger chips from the applied integrations so the two stay in
+	// sync — the template's draft entries plus a default n8n Chat it kept.
+	connectedTriggers.value = (next.integrations ?? []).map((i) => i.type);
 	templateApplied.value = true;
 	// Persist the agent and flush the config autosave before sending the chat
 	// message. The chat's `beforeSend` hook calls `flushAutosave` too — if we
@@ -1845,7 +2302,6 @@ async function onApplyTemplate(template: AgentTemplate) {
 	const targetProjectId = projectId.value;
 	const targetAgentId = agentId.value;
 	try {
-		await ensureAgentPersisted();
 		await flushAutosave();
 	} catch {
 		// Invalid tool fields are expected in draft mode; the chat message
@@ -1853,7 +2309,7 @@ async function onApplyTemplate(template: AgentTemplate) {
 	}
 	// The user may have opened another agent while the save was in flight.
 	// The panel ref now belongs to that agent, so this prompt must not follow.
-	if (isStaleAgentTarget(targetProjectId, targetAgentId)) return;
+	if (isStaleAgentTarget(targetProjectId, targetAgentId)) return false;
 	// Task creation writes the task ref into the server config and changes its
 	// hash. Reload that config before the assistant prompt: the tasks counter
 	// only refreshes task bodies, and the update push skips this tab. A later
@@ -1864,7 +2320,7 @@ async function onApplyTemplate(template: AgentTemplate) {
 		try {
 			await ensureAgentPersisted();
 			for (const task of template.tasks) {
-				if (isStaleAgentTarget(targetProjectId, targetAgentId)) return;
+				if (isStaleAgentTarget(targetProjectId, targetAgentId)) return false;
 				await createAgentTask(rootStore.restApiContext, targetProjectId, targetAgentId, {
 					...task,
 					enabled: true,
@@ -1876,26 +2332,49 @@ async function onApplyTemplate(template: AgentTemplate) {
 				showError(error, locale.baseText('agents.builder.tasks.saveError'));
 			}
 		}
-		if (isStaleAgentTarget(targetProjectId, targetAgentId)) return;
+		if (isStaleAgentTarget(targetProjectId, targetAgentId)) return false;
 		// A created task already changed the hash. Do not prompt the assistant
 		// until this tab has reloaded that config.
 		if (tasksCreated) {
 			const refreshed = await refreshConfigAfterTemplateTasks(targetProjectId, targetAgentId);
-			if (!refreshed || isStaleAgentTarget(targetProjectId, targetAgentId)) return;
+			if (!refreshed || isStaleAgentTarget(targetProjectId, targetAgentId)) return false;
 		}
 	}
-	if (isStaleAgentTarget(targetProjectId, targetAgentId)) return;
+	return !isStaleAgentTarget(targetProjectId, targetAgentId);
+}
+
+async function settlePendingStarter() {
+	const gate = starterReady;
+	starterInFlight = true;
+	try {
+		const starter = currentStarter();
+		if (!starter) return;
+		if (starter.kind === 'prompt') {
+			const text = starter.text.trim();
+			if (text) {
+				pendingStarterMessage.value = { message: text, authorship: USER_TYPED_MESSAGE };
+			}
+			return;
+		}
+		const template = AGENT_TEMPLATES.find((entry) => entry.id === starter.templateId);
+		if (!template) return;
+		if (await applyTemplateConfig(template)) {
+			pendingStarterMessage.value = templateStarterMessage(template);
+		}
+	} finally {
+		starterInFlight = false;
+		if (starterReady === gate) settleStarter();
+	}
+}
+
+async function onApplyTemplate(template: AgentTemplate) {
+	if (!(await applyTemplateConfig(template))) return;
 	const templateIndex = AGENT_TEMPLATES.findIndex((entry) => entry.id === template.id);
 	// Send the template prompt to the assistant right away so it starts
 	// building. The prompt format is "Build {name} agent to {description}".
 	// Catalog positions are one-based, matching the home-screen suggestion list.
 	aiPanelRef.value?.submitSuggestion({
-		prompt: locale.baseText('agents.builder.templates.prompt', {
-			interpolate: {
-				name: locale.baseText(template.labelKey),
-				description: locale.baseText(template.descriptionKey),
-			},
-		}),
+		prompt: templateStarterMessage(template).message,
 		suggestionId: template.id,
 		suggestionKind: 'prompt',
 		position: templateIndex >= 0 ? templateIndex + 1 : 0,
@@ -2109,17 +2588,13 @@ const removeAgentUpdateListener = pushConnectionStore.addEventListener(onAgentPu
 // this builder mounted is still honoured — which is the normal case, since the
 // assistant reveals the agent artifact as part of accepting the suggestion.
 watch(
-	[() => agentEvalsStore.pendingEvalsFocus, agentId, visibleMainTabOptions, initialized],
+	[() => agentEvalsStore.pendingEvalsFocus, agentId, mainTabOptions, initialized, isUnsaved],
 	() => {
 		if (!agentEvalsStore.pendingEvalsFocus) return;
-		// Hold the request until initialize() resolves: `isUnsaved` — and so the tab
-		// row — isn't settled before then, so deciding earlier would honour a
-		// request for an agent whose Evals tab turns out to be hidden.
-		if (!initialized.value) return;
-		// Checked against the rendered tab row rather than the flag, so the request
-		// can't select a tab the user has no way to see — `visibleMainTabOptions`
-		// also drops everything but Agent while the agent is still unsaved.
-		if (!visibleMainTabOptions.value.some((option) => option.value === 'evals')) return;
+		// Assistant requests can generate cases, which requires a saved Agent.
+		if (!initialized.value || isUnsaved.value) return;
+		// Keep focus requests pending while the Evals feature flag is off.
+		if (!mainTabOptions.value.some((option) => option.value === 'evals')) return;
 
 		const request = agentEvalsStore.consumeEvalsFocus(agentId.value);
 		if (!request) return;
@@ -2155,7 +2630,7 @@ const headerActions = computed(() => {
 	actions.push({
 		id: 'export-json',
 		label: locale.baseText('agents.builder.exportJson' as BaseTextKey),
-		icon: 'download',
+		icon: 'arrow-block-up',
 		divided: actions.length > 0,
 	});
 
@@ -2163,30 +2638,65 @@ const headerActions = computed(() => {
 		actions.push({
 			id: 'import-json',
 			label: locale.baseText('agents.builder.importJson' as BaseTextKey),
-			icon: 'upload',
+			icon: 'arrow-block-down',
 		});
 	}
 
 	actions.push({
 		id: 'version-history',
-		label: locale.baseText('agents.versionHistory.title'),
+		label: locale.baseText('menuActions.versionHistory'),
 		icon: 'history',
-		disabled: !agent.value?.hasPublishHistory,
-		checked: isVersionHistoryOpen.value,
+		disabled: !agent.value || isUnsaved.value,
 		divided: true,
 	});
 
-	if (canDeleteAgent.value) {
-		actions.push({
-			id: 'delete',
-			label: locale.baseText('agents.builder.deleteAgent'),
-			icon: 'trash-2',
-			divided: true,
-		});
-	}
-
-	return actions;
+	return [...actions, ...archiveHeaderActions.value];
 });
+
+const archiveHeaderActions = computed((): Array<ActionDropdownItem<string>> => {
+	if (!canDeleteAgent.value || isUnsaved.value) return [];
+	if (!isAgentArchived.value) {
+		return [
+			{
+				id: 'archive',
+				label: locale.baseText('menuActions.archive'),
+				icon: 'archive',
+				divided: true,
+			},
+		];
+	}
+	return [
+		{
+			id: 'unarchive',
+			label: locale.baseText('menuActions.unarchive'),
+			icon: 'archive-restore',
+			divided: true,
+		},
+		{ id: 'delete', label: locale.baseText('agents.builder.deleteAgent'), icon: 'trash-2' },
+	];
+});
+
+async function onArchiveAgent() {
+	const target = agent.value;
+	const targetProjectId = projectId.value;
+	const targetAgentId = agentId.value;
+	if (!target) return;
+	// Save pending edits first. The backend rejects edits to an archived agent.
+	// A locked editor has no edits of its own to save.
+	if (!isEditingLocked.value && !(await flushBeforePublish())) return;
+	if (isStaleAgentTarget(targetProjectId, targetAgentId)) return;
+	const updated = await archive(target);
+	if (updated && !isStaleAgentTarget(targetProjectId, targetAgentId)) onUnpublished(updated);
+}
+
+async function onUnarchiveAgent() {
+	const target = agent.value;
+	const targetProjectId = projectId.value;
+	const targetAgentId = agentId.value;
+	if (!target) return;
+	const updated = await unarchive(target);
+	if (updated && !isStaleAgentTarget(targetProjectId, targetAgentId)) onUnpublished(updated);
+}
 
 async function exportAgentJson() {
 	if (!localConfig.value) return;
@@ -2273,7 +2783,7 @@ async function onHeaderAction(action: string) {
 		return;
 	}
 	if (action === 'version-history') {
-		onToggleVersionHistory();
+		onOpenVersionHistory();
 		return;
 	}
 	if (action === 'export-json') {
@@ -2288,6 +2798,14 @@ async function onHeaderAction(action: string) {
 		await favoritesStore.toggleFavorite(agentId.value, 'agent');
 		return;
 	}
+	if (action === 'archive') {
+		await onArchiveAgent();
+		return;
+	}
+	if (action === 'unarchive') {
+		await onUnarchiveAgent();
+		return;
+	}
 	if (action === 'delete') {
 		const confirmed = await openAgentConfirmationModal({
 			title: locale.baseText('agents.delete.modal.title', {
@@ -2296,6 +2814,7 @@ async function onHeaderAction(action: string) {
 			description: locale.baseText('agents.delete.modal.description', {
 				interpolate: { name: agentName.value },
 			}),
+			isDestructive: true,
 			confirmButtonText: locale.baseText('agents.delete.modal.button.delete'),
 			cancelButtonText: locale.baseText('generic.cancel'),
 		});
@@ -2362,17 +2881,30 @@ function draftAgentResource(personalisation: AgentJsonConfig['personalisation'])
 		id: agentId.value,
 		name: locale.baseText('agents.new.defaultName'),
 		projectId: projectId.value,
-		schema: personalisation ? { personalisation } : null,
+		project: null,
+		isArchived: false,
 		availableInMCP: false,
-		isCompiled: false,
 		isRunnable: false,
 		hasPublishHistory: false,
+		hasVersionHistory: false,
 		createdAt: now,
 		updatedAt: now,
 		versionId: null,
 		activeVersionId: null,
+		config: personalisation
+			? {
+					name: locale.baseText('agents.new.defaultName'),
+					model: '',
+					instructions: '',
+					personalisation,
+				}
+			: null,
+		configHash: null,
 		tools: {},
 		skills: {},
+		skillHashes: {},
+		outdatedSkillIds: [],
+		skillVersions: {},
 		activeVersion: null,
 	};
 }
@@ -2457,10 +2989,7 @@ async function initialize({ preserveState = false }: { preserveState?: boolean }
 			activeChatSessionId.value = null;
 			localConfig.value = null;
 			connectedTriggers.value = [];
-			agentFiles.value = [];
-			agentFilesLoading.value = false;
-			agentFilesUploading.value = false;
-			deletingAgentFileId.value = null;
+			resetAgentKnowledge();
 			repointConfig(targetProjectId, targetAgentId);
 			repointConfigValidation(targetProjectId, targetAgentId);
 		}
@@ -2472,9 +3001,14 @@ async function initialize({ preserveState = false }: { preserveState?: boolean }
 		// drafting. Only artifacts need this: a route-backed draft's id is minted
 		// milliseconds earlier by the entry point and no other writer can reach it,
 		// so the probe would be a guaranteed 404 on every "New agent" click.
-		const probedAgent = targetArtifactPending
-			? await probePendingAgentRow(targetProjectId, targetAgentId)
-			: null;
+		// A route draft recovered from `unsavedAgentIds` (no history marker) was
+		// left at some point, and the assistant may have saved it meanwhile.
+		const recoveredRouteDraft =
+			targetAgentPending && !targetArtifactPending && !historyMarksAgentPending(targetAgentId);
+		const probedAgent =
+			targetArtifactPending || recoveredRouteDraft
+				? await probePendingAgentRow(targetProjectId, targetAgentId)
+				: null;
 		if (!isCurrentInitialization()) return;
 
 		// An agent that does not exist yet has nothing to fetch: stand up the same
@@ -2490,14 +3024,22 @@ async function initialize({ preserveState = false }: { preserveState?: boolean }
 				instructions: '',
 				tools: [],
 				skills: [],
+				// New agents start available in n8n Chat, as the backend's own create does.
+				...(isAgentsN8nChatFlag.value
+					? { integrations: [{ type: N8N_CHAT_INTEGRATION_TYPE, credentialId: '' }] }
+					: {}),
 			};
 			// Seed the icon and gradient the backfill would normally add, so the
 			// draft looks like any other new agent and the first save carries them.
 			// Seeded rather than backfilled because the backfill schedules a save,
 			// which would persist the agent on mount.
 			localConfig.value = addMissingAgentPersonalisation(draftConfig) ?? draftConfig;
+			connectedTriggers.value = (localConfig.value.integrations ?? []).map(({ type }) => type);
 			agent.value = draftAgentResource(localConfig.value.personalisation);
 			agentName.value = agent.value.name;
+			if (currentStarter() && isCurrentInitialization()) {
+				await settlePendingStarter();
+			}
 		} else {
 			await Promise.all([
 				fetchAgent(targetProjectId, targetAgentId, probedAgent ?? undefined),
@@ -2510,13 +3052,21 @@ async function initialize({ preserveState = false }: { preserveState?: boolean }
 			// Hand the host the row the stale marker pointed at so it can retire the
 			// pending state.
 			if (probedAgent) void adoptExistingPendingRow(probedAgent);
+			if (recoveredRouteDraft) clearRoutePendingState(targetAgentId);
 		}
 		if (!isCurrentInitialization()) return;
+		if (!preserveState && canEditAgent.value && agent.value?.activeVersionId === null) {
+			aiPanelOpenForVisit.value = true;
+		}
+		// The tools picker and tool icons read the node types store, which stays
+		// empty when this page is the first one loaded. Not awaited: the page does
+		// not need it to render.
+		void nodeTypesStore.loadNodeTypesIfNotLoaded().catch(() => undefined);
 		// Keep agent credential pickers aligned with the workflow editor: load only
 		// credentials the current user can use in this project context.
 		credentialsStore.setCredentials([]);
 		await Promise.all([
-			credentialsStore.fetchUsableCredentials({ projectId: targetProjectId }),
+			credentialsStore.fetchUsableCredentials({ projectId: targetProjectId, forAgent: true }),
 			credentialsStore.fetchCredentialTypes(false),
 		]).catch(() => undefined);
 		if (!isCurrentInitialization()) return;
@@ -2524,6 +3074,7 @@ async function initialize({ preserveState = false }: { preserveState?: boolean }
 		// Stop any in-flight auto-refresh from the previous agent before kicking
 		// off a new fetch — keeps the store tied to the current project/agent.
 		sessionsStore.stopAutoRefresh();
+		previewSessionsLoaded.value = false;
 		if (!isUnsaved.value) {
 			void sessionsStore
 				.fetchThreads(targetProjectId, targetAgentId)
@@ -2533,6 +3084,7 @@ async function initialize({ preserveState = false }: { preserveState?: boolean }
 				})
 				.finally(() => {
 					if (!isCurrentInitialization()) return;
+					previewSessionsLoaded.value = true;
 					sessionsStore.startAutoRefresh();
 				});
 		}
@@ -2573,6 +3125,7 @@ async function initialize({ preserveState = false }: { preserveState?: boolean }
 		}
 	} finally {
 		if (isCurrentInitialization()) {
+			if (!starterInFlight) settleStarter();
 			initialized.value = true;
 			void replayPendingExternalRefresh().catch(handleArtifactRefreshError);
 			warmAgentKnowledgeSandboxForPage();
@@ -2637,8 +3190,10 @@ useEventListener(window, 'beforeunload', () => {
 
 onBeforeUnmount(async () => {
 	disposed = true;
+	cancelQueuedAiHandoff();
 	latestSessionsFetchRequestId++;
 	agentsEventBus.off('agentUpdated', onExternalAgentUpdated);
+	agentsEventBus.off('credentialHelpRequested', onCredentialHelpRequested);
 	removeAgentUpdateListener();
 	pushConnectionStore.pushDisconnect();
 	clearTimeout(externalRefreshTimer);
@@ -2680,15 +3235,6 @@ watch(
 	},
 	{ immediate: true },
 );
-
-function isNotFoundError(error: unknown): boolean {
-	return (
-		typeof error === 'object' &&
-		error !== null &&
-		'httpStatusCode' in error &&
-		error.httpStatusCode === 404
-	);
-}
 
 const pendingPreviewValidations = new Set<string>();
 async function ensurePreviewSessionAvailable(sessionId: string) {
@@ -2770,6 +3316,7 @@ function onConfirmVectorStore(vectorStore: AgentJsonVectorStoreConfig, originalN
 }
 
 function onOpenAddVectorStoreModal() {
+	builderTelemetry.trackStartedVectorStoreSetup();
 	const vectorStores = localConfig.value?.vectorStores ?? [];
 	uiStore.openModalWithData({
 		name: AGENT_VECTOR_STORES_MODAL_KEY,
@@ -2834,6 +3381,21 @@ function onSwitchAgent(nextAgentId: string) {
 	});
 }
 
+const builderPromptHasContent = ref(false);
+const templatePrompts = computed(() =>
+	AGENT_TEMPLATES.map((template) => locale.baseText(template.placeholderKey)),
+);
+const promptInspiration = useAgentPromptInspiration({
+	prompts: templatePrompts,
+	enabled: () =>
+		showAgentIntro.value &&
+		showAiPanel.value &&
+		(!inlineTestChat.value || !isPreviewDockOpen.value) &&
+		!(compactChatLayout.value && showConfiguration.value) &&
+		!hasSentBuilderMessage.value &&
+		!builderPromptHasContent.value,
+});
+
 useKeybindings({
 	ctrl_j: {
 		disabled: function isAiPanelShortcutDisabled() {
@@ -2847,9 +3409,17 @@ useKeybindings({
 </script>
 
 <template>
-	<div :class="$style.root">
-		<AgentPreviewHeader
+	<div
+		ref="builderHost"
+		:class="[
+			$style.root,
+			{ [$style.standalone]: !isArtifactMode, [$style.fullscreen]: compactChatLayout },
+		]"
+		data-testid="agent-builder-layout"
+	>
+		<AgentTestHeader
 			v-if="isStandalonePreview"
+			:agent-id="agentId"
 			:agent-name="agent?.name ?? agentName"
 			:agent-href="agentBuilderHref"
 			:session-title="currentSessionTitle"
@@ -2865,6 +3435,8 @@ useKeybindings({
 		/>
 		<AgentBuilderHeader
 			v-else
+			v-show="!compactChatLayout || showConfiguration"
+			ref="builderHeader"
 			:agent="agent"
 			:project-id="projectId"
 			:agent-id="agentId"
@@ -2873,27 +3445,30 @@ useKeybindings({
 			:header-actions="headerActions"
 			:save-status="saveStatus"
 			:before-revert-to-published="beforeRevertToPublished"
+			:is-unsaved="isUnsaved"
 			:artifact-mode="isArtifactMode"
 			:editing-locked="isEditingLocked"
 			:config-validation-status="configValidation?.status ?? null"
 			:config-validation-issues="configValidation?.issues ?? []"
 			:before-publish="refreshValidationBeforePublish"
-			:is-preview-open="isPreviewDockOpen"
+			:tasks="areSetupTasksVisible ? setupTasks : undefined"
 			@header-action="onHeaderAction"
-			@open-preview="onOpenPreview"
-			@close-preview="closePreviewDock"
+			@open-publish-timeline="onOpenVersionHistory('timeline')"
+			@publish-ready="isPublishReady = $event"
 			@published="onPublished"
 			@unpublished="onUnpublished"
 			@reverted="onReverted"
 			@switch-agent="onSwitchAgent"
+			@setup-task-action="onSetupTaskAction"
 		/>
 		<AgentCollaborationBanner v-if="!isArtifactMode" />
 		<div
 			v-if="
 				!isArtifactMode &&
 				instanceAiAvailable &&
-				!isAiPanelOpen &&
-				!agentCollaborationStore.shouldBeReadOnly
+				!showAiPanel &&
+				!agentCollaborationStore.shouldBeReadOnly &&
+				!isAgentArchived
 			"
 			:class="$style.aiToggleBar"
 		>
@@ -2902,7 +3477,7 @@ useKeybindings({
 				:shortcut="{ metaKey: true, keys: ['J'] }"
 			>
 				<N8nButton
-					variant="subtle"
+					variant="outline"
 					size="medium"
 					icon-only
 					:aria-label="locale.baseText('agents.builder.header.editWithAi')"
@@ -2911,10 +3486,23 @@ useKeybindings({
 					@click="toggleAiPanel"
 				>
 					<template #icon>
-						<N8nAssistantIcon size="large" />
+						<N8nIcon icon="n8n-assistant" :size="18" />
 					</template>
 				</N8nButton>
 			</KeyboardShortcutTooltip>
+		</div>
+		<div
+			v-if="compactChatLayout && showConfiguration"
+			ref="mobileNavigation"
+			:class="$style.mobileNavigation"
+		>
+			<N8nButton
+				variant="outline"
+				icon="messages-square"
+				data-testid="agent-builder-show-chat"
+				@click="showConfiguration = false"
+				>{{ locale.baseText('agents.builder.chatMode.chat') }}</N8nButton
+			>
 		</div>
 		<div :class="$style.externalUpdateNotice" role="status" aria-live="polite" aria-atomic="true">
 			<N8nCanvasPill
@@ -2946,7 +3534,11 @@ useKeybindings({
 			:class="[
 				$style.builder,
 				{
-					[$style.previewOpen]: isPreviewDockOpen,
+					[$style.previewOpen]:
+						isPreviewDockOpen && !inlineTestChat && !props.artifactPreviewChatTarget,
+					[$style.inlineTestChat]: inlineTestChat,
+					[$style.chatFirst]: wideChat || inlineTestChat,
+					[$style.compactChatLayout]: compactChatLayout,
 					[$style.aiPanelOpen]: showAiPanel,
 					[$style.previewResizing]: isPreviewDockResizing,
 				},
@@ -2957,29 +3549,65 @@ useKeybindings({
 				'--agent-builder-editor-min-width': `${AGENT_BUILDER_EDITOR_MIN_WIDTH}px`,
 			}"
 		>
-			<aside v-if="showAiPanel" :class="$style.aiDock" data-testid="agent-ai-dock">
+			<aside
+				v-if="showAiPanel"
+				v-show="!(compactChatLayout && showConfiguration)"
+				:class="[$style.aiDock, { [$style.testModeActive]: inlineTestChat && isPreviewDockOpen }]"
+				data-testid="agent-ai-dock"
+			>
 				<N8nResizeWrapper
 					:width="renderedSidePanelWidths.ai"
-					:min-width="AGENT_BUILDER_SIDE_PANEL_MIN_WIDTH"
-					:max-width="720"
-					:default-width="460"
+					:is-resizing-enabled="!compactChatLayout"
+					:grid-size="wideChat ? 1 : 20"
+					:min-width="AGENT_MIN_PANEL_WIDTH"
+					:max-width="chatPanelLayout.maxWidth"
+					:default-width="chatPanelLayout.defaultWidth"
 					:supported-directions="['right']"
 					@resize="onAiPanelResize"
 				>
 					<InstanceAiChatPanel
 						ref="aiPanelRef"
+						v-show="!inlineTestChat || !isPreviewDockOpen"
+						:visible="
+							(!inlineTestChat || !isPreviewDockOpen) && !(compactChatLayout && showConfiguration)
+						"
+						:closable="compactChatLayout || (!inlineTestChat && !wideChat)"
+						:show-open-full-assistant="false"
+						:composer-height="inlineTestChat ? 'var(--agent-builder-composer-height)' : undefined"
+						:placeholder="
+							inlineTestChat
+								? locale.baseText('agents.builder.chatMode.buildPlaceholder')
+								: undefined
+						"
+						@message-sent="hasSentBuilderMessage = true"
+						:placeholder-preview="promptInspiration.placeholder"
+						@content-change="builderPromptHasContent = $event"
 						:key="agentId"
 						:subject="instanceAiEmbedSubject"
 						:launch="instanceAiEmbedLaunch"
 						:thread-id="aiThreadId"
-						:before-new-thread="flushAutosaveIgnoringResult"
+						:before-new-thread="beforeAiNewThread"
 						:before-send="flushAutosaveIgnoringResult"
 						data-testid="agent-ai-chat-panel"
 						@update:thread-id="onAiThreadIdChange"
 						@update:building="embeddedAiBuilding = $event"
-						@update:processing="embeddedAiProcessing = $event"
-						@close="isAiPanelOpen = false"
+						@update:working="embeddedAiWorking = $event"
+						@close="closeBuilderChat"
 					>
+						<template v-if="inlineTestChat" #composer-footer>
+							<AgentBuilderChatDisclaimer />
+						</template>
+						<template v-if="inlineTestChat" #composer-start>
+							<AgentBuilderChatMode
+								:model-value="chatMode"
+								:disabled="chatModeBusy"
+								:test-disabled="!!testModeDisabledReason"
+								:test-disabled-reason="testModeDisabledReason"
+								:validation-issues="testValidationIssues"
+								:discovery="!hasSentBuilderMessage && !isPreviewDockOpen && !showConfiguration"
+								@update:model-value="setChatMode"
+							/>
+						</template>
 						<template v-if="showAgentIntro" #empty>
 							<AgentBuilderIntro @select="onApplyTemplate" />
 						</template>
@@ -2987,20 +3615,23 @@ useKeybindings({
 				</N8nResizeWrapper>
 			</aside>
 			<div
-				v-if="embeddedAiProcessing || embeddedAiBuilding"
+				v-if="embeddedAiBuilding"
 				:class="$style.activityArea"
 				:style="{
 					left: showAiPanel ? `${renderedSidePanelWidths.ai}px` : undefined,
-					right: isPreviewDockOpen ? `${renderedSidePanelWidths.preview}px` : undefined,
+					right:
+						isPreviewDockOpen && !inlineTestChat && !props.artifactPreviewChatTarget
+							? `${renderedSidePanelWidths.preview}px`
+							: undefined,
 				}"
 			>
 				<AgentBuildingIndicator />
 			</div>
 			<div v-if="showBuilderLoading" :class="$style.loading">
-				<N8nIcon icon="spinner" spin />
+				<N8nSpinner type="brand" size="xxlarge" />
 			</div>
 			<template v-else>
-				<AgentPreviewChatPage
+				<AgentTestChatPage
 					v-if="isStandalonePreview"
 					ref="previewChatPage"
 					layout="page"
@@ -3012,7 +3643,7 @@ useKeybindings({
 					:connected-triggers="connectedTriggers"
 					:effective-session-id="effectiveSessionId"
 					:new-session="currentSessionIsEphemeral"
-					:can-send-to-assistant="instanceAiAvailable"
+					:can-send-to-assistant="isArtifactMode ? instanceAiAvailable : instanceAiReady"
 					:dismissed-fix-tool-call-ids="dismissedFixToolCallIds"
 					:before-send="beforePreviewSend"
 					budget-cards
@@ -3024,9 +3655,13 @@ useKeybindings({
 				/>
 
 				<AgentBuilderEditorColumn
+					ref="editorColumn"
 					v-else
+					v-show="!compactChatLayout || showConfiguration"
 					v-model:active-main-tab="activeMainTab"
 					:class="$style.editorColumn"
+					:chat-first="wideChat"
+					:embedded-ai-building="embeddedAiBuilding"
 					:local-config="localConfig"
 					:agent="agent"
 					:project-id="projectId"
@@ -3042,7 +3677,7 @@ useKeybindings({
 					:can-execute-agent="canExecuteAgent"
 					:agent-available-in-mcp="agentAvailableInMcp"
 					:tasks-reload-key="tasksReloadKey"
-					:main-tab-options="visibleMainTabOptions"
+					:main-tab-options="mainTabOptions"
 					:agent-unsaved="isUnsaved"
 					:ensure-agent-persisted="ensureAgentPersisted"
 					:saved-description="localConfig?.description ?? ''"
@@ -3050,8 +3685,11 @@ useKeybindings({
 					:executions-description="executionsDescription"
 					:generating-eval-cases="agentEvalsStore.isGeneratingCases(agentId)"
 					:artifact-mode="isArtifactMode"
+					:is-preview-open="isPreviewDockOpen"
+					:hide-preview-button="inlineTestChat"
 					:prevent-scroll="isPreviewDockResizing"
 					:config-validation-issues="configValidation?.issues ?? []"
+					:preview-disabled-reason="previewDisabledReason"
 					@update:config="onConfigFieldUpdate"
 					@update:budget-config="onBudgetSettingsSave"
 					@draft:config="markConfigDraftEdited"
@@ -3066,9 +3704,9 @@ useKeybindings({
 					@remove-vector-store="onRemoveVectorStore"
 					@remove-tool="caps.onRemoveTool"
 					@remove-skill="caps.onRemoveSkill"
-					@toggle-skill="caps.onToggleSkill"
 					@update:connected-triggers="caps.onConnectedTriggersUpdate"
 					@trigger-added="caps.onTriggerAdded"
+					@trigger-removed="caps.onTriggerRemoved"
 					@toggle-task="caps.onToggleTask"
 					@toggle-mcp-access="onToggleMcpAccess"
 					@tasks-changed="() => onConfigUpdated()"
@@ -3076,68 +3714,115 @@ useKeybindings({
 					@agent-changed="refreshAgentAfterIntegrationChange"
 					@generate-eval-cases="onGenerateEvalCases"
 					@open-preview="onOpenPreview"
+					@close-preview="closePreviewDock"
+					@publish-agent="onSetupTaskPublishAgent"
 				/>
 
 				<AgentVersionHistoryPanel
 					v-if="!isStandalonePreview && isVersionHistoryOpen"
 					ref="versionHistoryPanel"
+					v-model:active-tab="versionHistoryTab"
 					:project-id="projectId"
 					:agent-id="agentId"
-					:has-unpublished-changes="
-						Boolean(agent?.activeVersionId) && agent?.versionId !== agent?.activeVersionId
-					"
+					:current-version-id="agent?.versionId"
+					:has-unpublished-changes="hasAgentUnpublishedChanges(agent)"
 					:agent-name="agent?.name ?? agentName"
 					:editing-locked="isEditingLocked"
+					:before-publish="flushBeforePublish"
 					@close="onCloseVersionHistory"
 					@reverted="onReverted"
 					@published="onPublished"
 					@unpublished="onUnpublished"
 				/>
 
-				<N8nResizeWrapper
-					v-if="!isStandalonePreview"
-					:class="[$style.previewResizeWrapper, { [$style.previewResizeOpen]: isPreviewDockOpen }]"
-					:width="renderedSidePanelWidths.preview"
-					:min-width="AGENT_BUILDER_SIDE_PANEL_MIN_WIDTH"
-					:supported-directions="['left']"
-					:grid-size="8"
-					@resizestart="isPreviewDockResizing = true"
-					@resize="onPreviewDockResize"
-					@resizeend="isPreviewDockResizing = false"
+				<Teleport
+					:to="props.artifactPreviewChatTarget ?? 'body'"
+					:disabled="!props.artifactPreviewChatTarget"
 				>
-					<AgentPreviewDock
-						ref="previewDock"
-						:is-open="isPreviewDockOpen"
-						:session-title="currentSessionTitle"
-						:session-options="sessionMenu"
-						:has-session="currentSessionHasMessages"
-						:initialized="initialized && previewSessionReady"
-						:project-id="projectId"
-						:agent-id="agentId"
-						:agent="agent"
-						:local-config="localConfig"
-						:connected-triggers="connectedTriggers"
-						:effective-session-id="effectiveSessionId"
-						:new-session="currentSessionIsEphemeral"
-						:initial-prompt="taskPreviewPrompt"
-						:can-delete-session="canDeletePreviewSession"
-						:is-deleting-session="isDeletingSession"
-						:can-send-to-assistant="instanceAiAvailable"
-						:dismissed-fix-tool-call-ids="dismissedFixToolCallIds"
-						:before-send="beforePreviewSend"
-						budget-cards
-						:increase-budget="effectiveCanEditAgent ? onPreviewIncreaseBudget : undefined"
-						@view-trace="viewPreviewTrace"
-						@new-session="startNewPreviewSession"
-						@delete-session="onDeletePreviewSession"
-						@session-select="onSessionPick"
-						@close="closePreviewDock"
-						@continue-loaded="onContinueLoaded"
-						@session-created="markSessionCreated"
-						@send-to-assistant="onSendPreviewToAssistant"
-						@initial-consumed="taskPreviewPrompt = undefined"
-					/>
-				</N8nResizeWrapper>
+					<N8nResizeWrapper
+						v-if="!isStandalonePreview"
+						:class="[
+							$style.previewResizeWrapper,
+							{
+								[$style.previewResizeOpen]: isPreviewDockOpen,
+								[$style.previewOverlay]: !!props.artifactPreviewChatTarget,
+							},
+						]"
+						:is-resizing-enabled="
+							isPreviewDockOpen && !inlineTestChat && !props.artifactPreviewChatTarget
+						"
+						v-show="!(compactChatLayout && showConfiguration)"
+						:width="renderedSidePanelWidths.preview"
+						:max-width="AGENT_MAX_PANEL_WIDTH"
+						:default-width="defaultPanelWidth"
+						:min-width="AGENT_MIN_PANEL_WIDTH"
+						:supported-directions="['left']"
+						:grid-size="8"
+						@resizestart="isPreviewDockResizing = true"
+						@resize="onPreviewDockResize"
+						@resizeend="isPreviewDockResizing = false"
+					>
+						<AgentTestDock
+							ref="previewDock"
+							:inline="inlineTestChat"
+							:overlay="!!props.artifactPreviewChatTarget"
+							:closable="compactChatLayout"
+							:placeholder="
+								inlineTestChat
+									? locale.baseText('agents.builder.chatMode.testPlaceholder', {
+											interpolate: { agentName: localConfig?.name || agentName },
+										})
+									: undefined
+							"
+							@message-sent="hasSentBuilderMessage = true"
+							:is-open="isPreviewDockOpen && !(compactChatLayout && showConfiguration)"
+							:session-title="currentSessionTitle"
+							:session-options="sessionMenu"
+							:has-session="currentSessionHasMessages"
+							:initialized="initialized && previewSessionReady"
+							:project-id="projectId"
+							:agent-id="agentId"
+							:agent="agent"
+							:local-config="localConfig"
+							:connected-triggers="connectedTriggers"
+							:effective-session-id="effectiveSessionId"
+							:new-session="currentSessionIsEphemeral"
+							:initial-prompt="taskPreviewPrompt"
+							:can-delete-session="canDeletePreviewSession"
+							:is-deleting-session="isDeletingSession"
+							:can-send-to-assistant="isArtifactMode ? instanceAiAvailable : instanceAiReady"
+							:dismissed-fix-tool-call-ids="dismissedFixToolCallIds"
+							:before-send="beforePreviewSend"
+							budget-cards
+							:increase-budget="effectiveCanEditAgent ? onPreviewIncreaseBudget : undefined"
+							@view-trace="viewPreviewTrace"
+							@new-session="startNewPreviewSession"
+							@delete-session="onDeletePreviewSession"
+							@session-select="onSessionPick"
+							@close="closeTestChat"
+							@continue-loaded="onContinueLoaded"
+							@session-created="markSessionCreated"
+							@send-to-assistant="onSendPreviewToAssistant"
+							@open-build="!isArtifactMode && setChatMode('build')"
+							@initial-consumed="taskPreviewPrompt = undefined"
+						>
+							<template v-if="inlineTestChat" #composer-footer>
+								<AgentBuilderChatDisclaimer />
+							</template>
+							<template v-if="inlineTestChat" #composer-start>
+								<AgentBuilderChatMode
+									:model-value="chatMode"
+									:disabled="chatModeBusy"
+									:test-disabled="!!testModeDisabledReason"
+									:test-disabled-reason="testModeDisabledReason"
+									:validation-issues="testValidationIssues"
+									:discovery="!hasSentBuilderMessage && isPreviewDockOpen && !showConfiguration"
+									@update:model-value="setChatMode"
+								/>
+							</template>
+						</AgentTestDock>
+					</N8nResizeWrapper>
+				</Teleport>
 			</template>
 		</div>
 	</div>
@@ -3145,6 +3830,29 @@ useKeybindings({
 
 <style lang="scss" module>
 @use '@n8n/design-system/css/mixins/motion';
+@use '@n8n/design-system/css/common/var' as ds;
+
+// Let the fullscreen builder paint above the app sidebar without moving its chats.
+:global(#content):has(.fullscreen) {
+	isolation: auto;
+}
+
+// Keep the sidebar width for measurement, but remove its hidden controls from keyboard navigation.
+:global(body):has(.fullscreen) :global(#sidebar) {
+	visibility: hidden;
+}
+
+.root.fullscreen {
+	position: fixed;
+	inset: 0;
+	z-index: ds.$index-top;
+	background: var(--background--surface);
+}
+
+.standalone {
+	width: 100%;
+	min-width: 0;
+}
 
 .root {
 	--n8n--agent-builder-header-height: var(--height--4xl);
@@ -3184,6 +3892,43 @@ useKeybindings({
 	@include motion.reduced-motion;
 }
 
+.chatFirst {
+	--instance-ai-chat-max-width: 100%;
+	--instance-ai-input-max-width: 100%;
+	--agent-chat-max-width: 100%;
+	--instance-ai-input-padding: 0 var(--spacing--sm) var(--spacing--sm);
+	--agent-chat-input-padding: 0 var(--spacing--sm) var(--spacing--sm);
+
+	.aiDock,
+	.previewResizeWrapper {
+		container-type: inline-size;
+	}
+}
+
+.inlineTestChat {
+	--agent-builder-composer-height: calc(
+		var(--height--5xl) + var(--height--4xl) + var(--height--xs)
+	);
+
+	.previewResizeWrapper {
+		left: 0;
+		right: auto;
+	}
+}
+
+.compactChatLayout,
+.compactChatLayout.aiPanelOpen {
+	padding-left: 0;
+	padding-right: 0;
+}
+
+.mobileNavigation {
+	display: flex;
+	gap: var(--spacing--2xs);
+	padding: var(--spacing--2xs);
+	border-bottom: var(--border);
+}
+
 .previewResizeWrapper {
 	position: absolute;
 	top: 0;
@@ -3193,6 +3938,19 @@ useKeybindings({
 	max-width: 100%;
 	z-index: 1;
 	pointer-events: none;
+
+	&:has([data-preview-layout='fullpage']) {
+		width: 100%;
+
+		[data-dir='left'] {
+			display: none;
+		}
+	}
+}
+
+.previewOverlay {
+	width: 100%;
+	z-index: 5;
 }
 
 .previewResizeOpen {
@@ -3234,6 +3992,17 @@ useKeybindings({
 	border-right: var(--border);
 	background: var(--background--surface);
 	z-index: 1;
+}
+
+.testModeActive {
+	// Keep the shared resize handle above Test without blocking its chat.
+	z-index: 3;
+	background: transparent;
+	pointer-events: none;
+
+	[data-dir='right'] {
+		pointer-events: auto;
+	}
 }
 
 .externalUpdateNotice {

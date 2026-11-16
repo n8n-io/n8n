@@ -299,7 +299,7 @@ describe('materializeKnowledgeBaseIntoWorkspace', () => {
 		expect(writes.size).toBe(0);
 	});
 
-	it('rematerializes when prebaked manifest exists but payload is incomplete', async () => {
+	it('trusts a matching prebaked manifest without checking each payload file', async () => {
 		const bundle = await buildKnowledgeBaseWorkspaceBundle({ root: ROOT, logger: mockLogger });
 		const files = new Map<string, string>([
 			[bundle.manifestPath, bundle.files.get(bundle.manifestPath) ?? ''],
@@ -313,7 +313,6 @@ describe('materializeKnowledgeBaseIntoWorkspace', () => {
 		});
 
 		expect(materialized.contentHash).toBe(bundle.contentHash);
-		expect(writes.has(bundle.indexPath)).toBe(true);
-		expect(writes.size).toBeGreaterThan(1);
+		expect(writes.size).toBe(0);
 	});
 });

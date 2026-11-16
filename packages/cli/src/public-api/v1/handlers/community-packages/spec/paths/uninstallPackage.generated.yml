@@ -2,11 +2,11 @@ operationId: uninstallPackage
 tags:
   - CommunityPackage
 summary: Uninstall a community package
-description: Uninstall a community package by name.
+description: |-
+  Uninstall a community package by name.
+
+  Requires the `communityPackage:uninstall` API key scope.
 x-required-scope: communityPackage:uninstall
-x-eov-operation-id: unreachable
-x-eov-operation-handler: v1/handlers/decorator-routed.handler
-x-decorator-routed: true
 parameters:
   - schema:
       type: string
@@ -25,3 +25,5 @@ responses:
     $ref: ../../../../shared/spec/responses/forbidden.yml
   '404':
     $ref: ../../../../shared/spec/responses/notFound.yml
+  '429':
+    $ref: ../../../../shared/spec/responses/tooManyRequests.yml

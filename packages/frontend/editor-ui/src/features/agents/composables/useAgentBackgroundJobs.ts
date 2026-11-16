@@ -11,13 +11,19 @@ import { computed, onScopeDispose, ref, toValue, watch, type MaybeRefOrGetter } 
 import { TIME } from '@/app/constants/durations';
 import { usePushConnectionStore } from '@/app/stores/pushConnection.store';
 
-import { getAgentBackgroundJobs, resumeAgentBackgroundJob } from './useAgentApi';
+import {
+	getAgentBackgroundJobs,
+	resumeAgentBackgroundJob,
+	stopAgentBackgroundJobs,
+	type AgentChatChannel,
+} from './useAgentApi';
 
 interface BackgroundJobsTarget {
 	projectId: MaybeRefOrGetter<string>;
 	agentId: MaybeRefOrGetter<string>;
 	threadId: MaybeRefOrGetter<string | undefined>;
 	active: MaybeRefOrGetter<boolean>;
+	channel?: MaybeRefOrGetter<AgentChatChannel>;
 	receivedJobs?: MaybeRefOrGetter<AgentBackgroundJobSignal['tasks']>;
 }
 
@@ -28,6 +34,7 @@ export function useAgentBackgroundJobs(target: BackgroundJobsTarget) {
 	const pushStore = usePushConnectionStore();
 	const visibility = useDocumentVisibility();
 	const group = ref<AgentBackgroundJobsResponse>({ tasks: [] });
+	const isStopping = ref(false);
 	const jobs = computed(() => {
 		const received = new Map(toValue(target.receivedJobs)?.map((job) => [job.id, job]));
 		// A late job response must not restore a running status after its chat signal arrives.
@@ -37,6 +44,13 @@ export function useAgentBackgroundJobs(target: BackgroundJobsTarget) {
 		}));
 		if (current.some((job) => job.status === 'running' || job.status === 'suspended'))
 			return current;
+
+		if (
+			toValue(target.channel) !== 'n8n-chat' &&
+			current.some((job) => job.status === 'paused' || job.pauseRequested)
+		)
+			return current;
+
 		return group.value.pendingTaskIds?.some((id) => !received.has(id)) ? current : [];
 	});
 	const active = computed(() => toValue(target.active) && visibility.value === 'visible');
@@ -59,7 +73,7 @@ export function useAgentBackgroundJobs(target: BackgroundJobsTarget) {
 		const agentId = toValue(target.agentId);
 		const threadId = toValue(target.threadId);
 		if (disposed || !active.value || !threadId) return;
-		if (inFlight) {
+		if (inFlight || isStopping.value) {
 			queued = true;
 			return;
 		}
@@ -79,6 +93,7 @@ export function useAgentBackgroundJobs(target: BackgroundJobsTarget) {
 				projectId,
 				agentId,
 				threadId,
+				toValue(target.channel),
 			);
 			if (isCurrent()) {
 				group.value = {
@@ -133,6 +148,7 @@ export function useAgentBackgroundJobs(target: BackgroundJobsTarget) {
 				toValue(target.agentId),
 				threadId,
 				payload,
+				toValue(target.channel),
 			);
 			if (generation === requestGeneration) {
 				for (const job of group.value.tasks) {
@@ -145,6 +161,29 @@ export function useAgentBackgroundJobs(target: BackgroundJobsTarget) {
 				}
 			}
 		} finally {
+			refresh();
+		}
+	}
+
+	async function stopAll() {
+		const threadId = toValue(target.threadId);
+		if (!threadId || !active.value || isStopping.value) return;
+		const requestGeneration = ++generation;
+		isStopping.value = true;
+		clearRetry();
+		try {
+			const result = await stopAgentBackgroundJobs(
+				rootStore.restApiContext,
+				toValue(target.projectId),
+				toValue(target.agentId),
+				threadId,
+				toValue(target.channel),
+			);
+			if (!disposed && generation === requestGeneration) group.value = result;
+		} catch (error) {
+			if (!disposed && generation === requestGeneration) throw error;
+		} finally {
+			if (generation === requestGeneration) isStopping.value = false;
 			refresh();
 		}
 	}
@@ -168,6 +207,7 @@ export function useAgentBackgroundJobs(target: BackgroundJobsTarget) {
 		],
 		() => {
 			generation++;
+			isStopping.value = false;
 			inFlight = undefined;
 			queued = false;
 			group.value = { tasks: [] };
@@ -180,6 +220,7 @@ export function useAgentBackgroundJobs(target: BackgroundJobsTarget) {
 		active,
 		(enabled) => {
 			generation++;
+			isStopping.value = false;
 			inFlight = undefined;
 			queued = false;
 			clearRetry();
@@ -200,5 +241,7 @@ export function useAgentBackgroundJobs(target: BackgroundJobsTarget) {
 		removeListener();
 	});
 
-	return { jobs, respondToApproval };
+	const allJobs = computed(() => group.value.tasks);
+
+	return { jobs, allJobs, respondToApproval, stopAll, isStopping };
 }

@@ -1,7 +1,10 @@
+import { requestPath, requestUrl, toPathSegment } from 'n8n-workflow';
 import type {
-	IHttpRequestOptions,
+	IDataObject,
 	ILoadOptionsFunctions,
 	INodeListSearchResult,
+	RequestPath,
+	RequestUrl,
 } from 'n8n-workflow';
 
 import {
@@ -14,20 +17,32 @@ import {
 	permissionHintFor,
 	sanitizeApiMessage,
 	type DatabricksCredentialType,
+	type DatabricksRequestOptions,
 } from '../actions/helpers';
 import type { DatabricksJobRun } from '../actions/interfaces';
 import { getRunOutcome } from '../actions/job/runState';
+import { getSelectedLakebaseTarget } from '../actions/lakebase/helpers';
+import { fetchLakebaseFunctions } from '../actions/lakebase/schema';
+import {
+	collectPages,
+	explainLakebaseSchemaError,
+	lakebaseApiRequest,
+	resolveLakebaseRestBase,
+	toPage,
+	type Page,
+} from '../transport';
 
 // Dropdown requests never pass through the router, so its permission-error hook
 // doesn't cover them — apply it here for every listSearch call site instead
 async function listRequest<T>(
 	context: ILoadOptionsFunctions,
 	credentialType: DatabricksCredentialType,
-	options: IHttpRequestOptions,
+	url: RequestUrl,
+	options: DatabricksRequestOptions,
 	permissionHint?: string,
 ): Promise<T> {
 	try {
-		return (await databricksApiRequest(context, credentialType, options)) as T;
+		return (await databricksApiRequest(context, credentialType, url, options)) as T;
 	} catch (error) {
 		makePermissionErrorLegible(error, permissionHint);
 		throw error;
@@ -43,9 +58,8 @@ export async function getWarehouses(
 
 	const response = await listRequest<{
 		warehouses?: Array<{ id: string; name: string; size?: string }>;
-	}>(this, credentialType, {
+	}>(this, credentialType, requestUrl`${host}/api/2.0/sql/warehouses`, {
 		method: 'GET',
-		url: `${host}/api/2.0/sql/warehouses`,
 		headers: { Accept: 'application/json' },
 		json: true,
 	});
@@ -83,9 +97,8 @@ export async function getEndpoints(
 				}>;
 			};
 		}>;
-	}>(this, credentialType, {
+	}>(this, credentialType, requestUrl`${host}/api/2.0/serving-endpoints`, {
 		method: 'GET',
-		url: `${host}/api/2.0/serving-endpoints`,
 		headers: { Accept: 'application/json' },
 		json: true,
 	});
@@ -130,9 +143,9 @@ export async function getCatalogs(
 	const response = await listRequest<{ catalogs?: Array<{ name: string; comment?: string }> }>(
 		this,
 		credentialType,
+		requestUrl`${host}/api/2.1/unity-catalog/catalogs`,
 		{
 			method: 'GET',
-			url: `${host}/api/2.1/unity-catalog/catalogs`,
 			headers: { Accept: 'application/json' },
 			json: true,
 		},
@@ -178,9 +191,10 @@ export async function getSchemas(
 		const schemasResponse = await listRequest<{ schemas?: Array<{ name: string }> }>(
 			this,
 			credentialType,
+			requestUrl`${host}/api/2.1/unity-catalog/schemas`,
 			{
 				method: 'GET',
-				url: `${host}/api/2.1/unity-catalog/schemas?catalog_name=${selectedCatalog}`,
+				qs: { catalog_name: selectedCatalog },
 				headers: { Accept: 'application/json' },
 				json: true,
 			},
@@ -214,17 +228,22 @@ async function fetchResourcesInSchema<T extends { name: string }>(
 	context: ILoadOptionsFunctions,
 	credentialType: DatabricksCredentialType,
 	host: string,
-	apiPath: string,
+	apiPath: RequestPath,
 	catalogName: string,
 	schemaName: string,
 	responseKey: string,
 ): Promise<T[]> {
-	const response = await listRequest<Record<string, T[] | undefined>>(context, credentialType, {
-		method: 'GET',
-		url: `${host}${apiPath}?catalog_name=${catalogName}&schema_name=${schemaName}`,
-		headers: { Accept: 'application/json' },
-		json: true,
-	});
+	const response = await listRequest<Record<string, T[] | undefined>>(
+		context,
+		credentialType,
+		requestUrl`${host}${apiPath}`,
+		{
+			method: 'GET',
+			qs: { catalog_name: catalogName, schema_name: schemaName },
+			headers: { Accept: 'application/json' },
+			json: true,
+		},
+	);
 	return response[responseKey] ?? [];
 }
 
@@ -267,7 +286,7 @@ export async function getVolumes(
 			this,
 			credentialType,
 			host,
-			'/api/2.1/unity-catalog/volumes',
+			requestPath`/api/2.1/unity-catalog/volumes`,
 			selectedCatalog,
 			selectedSchema,
 			'volumes',
@@ -328,7 +347,7 @@ export async function getTables(
 			this,
 			credentialType,
 			host,
-			'/api/2.1/unity-catalog/tables',
+			requestPath`/api/2.1/unity-catalog/tables`,
 			selectedCatalog,
 			selectedSchema,
 			'tables',
@@ -389,7 +408,7 @@ export async function getFunctions(
 			this,
 			credentialType,
 			host,
-			'/api/2.1/unity-catalog/functions',
+			requestPath`/api/2.1/unity-catalog/functions`,
 			selectedCatalog,
 			selectedSchema,
 			'functions',
@@ -440,13 +459,13 @@ async function fetchListPage<T>(
 	context: ILoadOptionsFunctions,
 	credentialType: DatabricksCredentialType,
 	host: string,
-	path: string,
-	limit: number,
+	path: RequestPath,
+	qs: IDataObject,
 	pageToken?: string,
 	permissionHint?: string,
 ): Promise<T> {
 	try {
-		return await fetchDatabricksPage<T>(context, credentialType, host, path, { limit }, pageToken);
+		return await fetchDatabricksPage<T>(context, credentialType, host, path, qs, pageToken);
 	} catch (error) {
 		makePermissionErrorLegible(error, permissionHint);
 		throw error;
@@ -471,8 +490,8 @@ export async function getJobs(
 			this,
 			credentialType,
 			host,
-			'/api/2.2/jobs/list',
-			JOBS_PAGE_SIZE,
+			requestPath`/api/2.2/jobs/list`,
+			{ limit: JOBS_PAGE_SIZE },
 			pageToken,
 			permissionHintFor('job'),
 		);
@@ -533,8 +552,8 @@ export async function getRuns(
 			this,
 			credentialType,
 			host,
-			'/api/2.2/jobs/runs/list',
-			RUNS_PAGE_SIZE,
+			requestPath`/api/2.2/jobs/runs/list`,
+			{ limit: RUNS_PAGE_SIZE },
 			pageToken,
 			permissionHintFor('job'),
 		);
@@ -559,4 +578,212 @@ export async function getRuns(
 	}
 
 	return { results, paginationToken: pageToken };
+}
+
+const LAKEBASE_SEARCH_PAGE_SIZE = 100;
+const LAKEBASE_SEARCH_MAX_PAGES = 10;
+// Internal tables the Data API lists under Ignore privileges; a user table named databricks_* is still reachable By ID
+const INTERNAL_TABLE_PREFIX = /^databricks_/;
+
+const byText = (filter: string | undefined) => {
+	const needle = filter?.toLowerCase();
+	return (item: { name: string; value: string }) =>
+		!needle ||
+		item.name.toLowerCase().includes(needle) ||
+		item.value.toLowerCase().includes(needle);
+};
+
+// The management API has no name filter, so a search scans pages the way getJobs does
+async function listLakebase<P, T>(
+	context: ILoadOptionsFunctions,
+	path: RequestPath,
+	entries: (page: P) => T[] | undefined,
+	filter: string | undefined,
+	paginationToken: string | undefined,
+): Promise<Page<T>> {
+	const credentialType = getActiveCredentialType(context);
+	const host = await getHost(context, credentialType);
+	const fetchPage = async (pageToken?: string) => {
+		const page = await fetchListPage<P & { next_page_token?: string }>(
+			context,
+			credentialType,
+			host,
+			path,
+			{ page_size: LAKEBASE_SEARCH_PAGE_SIZE },
+			pageToken,
+		);
+		return toPage(entries(page), page.next_page_token);
+	};
+	return await collectPages(
+		fetchPage,
+		{ deadlineEpochMs: Infinity, maxPages: filter ? LAKEBASE_SEARCH_MAX_PAGES : 1 },
+		paginationToken,
+	);
+}
+
+type LakebaseProject = { project_id: string; status?: { display_name?: string } };
+type LakebaseBranch = { branch_id: string; status?: { default?: boolean } };
+type LakebaseDatabase = { database_id: string; status?: { postgres_database?: string } };
+
+export async function getLakebaseProjects(
+	this: ILoadOptionsFunctions,
+	filter?: string,
+	paginationToken?: string,
+): Promise<INodeListSearchResult> {
+	const { items, nextPageToken } = await listLakebase(
+		this,
+		requestPath`/api/2.0/postgres/projects`,
+		(page: { projects?: LakebaseProject[] }) => page.projects,
+		filter,
+		paginationToken,
+	);
+	const results = items
+		.map((p) => ({ name: p.status?.display_name || p.project_id, value: p.project_id }))
+		.filter(byText(filter));
+	return { results, paginationToken: nextPageToken };
+}
+
+export async function getLakebaseBranches(
+	this: ILoadOptionsFunctions,
+	filter?: string,
+	paginationToken?: string,
+): Promise<INodeListSearchResult> {
+	const { project } = getSelectedLakebaseTarget(this);
+	if (!project) {
+		return { results: [{ name: 'Please Select a Project First', value: '' }] };
+	}
+
+	const { items, nextPageToken } = await listLakebase(
+		this,
+		requestPath`/api/2.0/postgres/projects/${project}/branches`,
+		(page: { branches?: LakebaseBranch[] }) => page.branches,
+		filter,
+		paginationToken,
+	);
+	// A locator cannot preselect a single branch: `default` is a static literal and the
+	// editor never writes a value from a search response. Leading with the default branch is the fallback.
+	const results = items
+		.sort((a, b) => (b.status?.default ? 1 : 0) - (a.status?.default ? 1 : 0))
+		.map((b) => ({
+			name: b.branch_id,
+			value: b.branch_id,
+			description: b.status?.default ? 'Default branch' : undefined,
+		}))
+		.filter(byText(filter));
+	return { results, paginationToken: nextPageToken };
+}
+
+export async function getLakebaseDatabases(
+	this: ILoadOptionsFunctions,
+	filter?: string,
+	paginationToken?: string,
+): Promise<INodeListSearchResult> {
+	const { project, branch } = getSelectedLakebaseTarget(this);
+	if (!project) {
+		return { results: [{ name: 'Please Select a Project First', value: '' }] };
+	}
+	if (!branch) {
+		return { results: [{ name: 'Please Select a Branch First', value: '' }] };
+	}
+
+	const { items, nextPageToken } = await listLakebase(
+		this,
+		requestPath`/api/2.0/postgres/projects/${project}/branches/${branch}/databases`,
+		(page: { databases?: LakebaseDatabase[] }) => page.databases,
+		filter,
+		paginationToken,
+	);
+	// The Data API path uses the Postgres database name, which can differ from the resource id
+	const results = items
+		.map((d) => ({ name: d.database_id, value: d.status?.postgres_database || d.database_id }))
+		.filter(byText(filter));
+	return { results, paginationToken: nextPageToken };
+}
+
+// No management endpoint lists Postgres schemas; other schemas go through By ID
+export async function getLakebaseSchemas(
+	this: ILoadOptionsFunctions,
+): Promise<INodeListSearchResult> {
+	// eslint-disable-next-line n8n-nodes-base/node-param-display-name-miscased
+	return { results: [{ name: 'public', value: 'public' }] };
+}
+
+export async function getLakebaseTables(
+	this: ILoadOptionsFunctions,
+	filter?: string,
+): Promise<INodeListSearchResult> {
+	const { project, branch, database, schema } = getSelectedLakebaseTarget(this);
+	if (!project) {
+		return { results: [{ name: 'Please Select a Project First', value: '' }] };
+	}
+	if (!branch) {
+		return { results: [{ name: 'Please Select a Branch First', value: '' }] };
+	}
+	if (!database) {
+		return { results: [{ name: 'Please Select a Database First', value: '' }] };
+	}
+	if (!schema) {
+		return { results: [{ name: 'Please Select a Schema First', value: '' }] };
+	}
+	try {
+		const base = await resolveLakebaseRestBase(this, project, branch);
+		const doc: { components?: { schemas?: Record<string, unknown> } } = await lakebaseApiRequest(
+			this,
+			{
+				method: 'GET',
+				url: `${base}/${toPathSegment(database)}/${toPathSegment(schema)}/openapi.json`,
+				headers: { Accept: 'application/openapi+json, application/json' },
+				json: true,
+			},
+		);
+		const results = Object.keys(doc.components?.schemas ?? {})
+			.filter((name) => !INTERNAL_TABLE_PREFIX.test(name))
+			.map((name) => ({ name, value: name }))
+			.filter(byText(filter));
+		return { results };
+	} catch (error) {
+		explainLakebaseSchemaError(
+			error,
+			'Turn on the "OpenAPI specification" setting of the Data API to list tables, or enter the table name By ID',
+		);
+	}
+}
+
+/** Databricks ships helper functions into user schemas; hide them from the list. UX only: grants decide what a user can run */
+const INTERNAL_FUNCTION_PREFIX = /^(databricks_|pg_databricks_|_dbx_|grant_)/;
+
+export async function getLakebaseFunctions(
+	this: ILoadOptionsFunctions,
+	filter?: string,
+): Promise<INodeListSearchResult> {
+	const { project, branch, database, schema } = getSelectedLakebaseTarget(this);
+	if (!project) {
+		return { results: [{ name: 'Please Select a Project First', value: '' }] };
+	}
+	if (!branch) {
+		return { results: [{ name: 'Please Select a Branch First', value: '' }] };
+	}
+	if (!database) {
+		return { results: [{ name: 'Please Select a Database First', value: '' }] };
+	}
+	if (!schema) {
+		return { results: [{ name: 'Please Select a Schema First', value: '' }] };
+	}
+	try {
+		const base = await resolveLakebaseRestBase(this, project, branch);
+		const names = await fetchLakebaseFunctions(
+			this,
+			`${base}/${toPathSegment(database)}/${toPathSegment(schema)}`,
+		);
+		const results = names
+			.filter((name) => !INTERNAL_FUNCTION_PREFIX.test(name))
+			.map((name) => ({ name, value: name }))
+			.filter(byText(filter));
+		return { results };
+	} catch (error) {
+		explainLakebaseSchemaError(
+			error,
+			'Turn on the "OpenAPI specification" setting of the Data API to list functions, or enter the function name By ID',
+		);
+	}
 }

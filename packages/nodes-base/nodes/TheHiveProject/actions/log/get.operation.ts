@@ -4,6 +4,7 @@ import type {
 	INodeExecutionData,
 	INodeProperties,
 } from 'n8n-workflow';
+import { requestPath } from 'n8n-workflow';
 
 import { updateDisplayOptions, wrapData } from '@utils/utilities';
 
@@ -35,7 +36,7 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 		],
 	};
 
-	responseData = await theHiveApiRequest.call(this, 'POST', '/v1/query', body);
+	responseData = await theHiveApiRequest.call(this, 'POST', requestPath`/v1/query`, body);
 
 	const executionData = this.helpers.constructExecutionMetaData(wrapData(responseData), {
 		itemData: { item: i },

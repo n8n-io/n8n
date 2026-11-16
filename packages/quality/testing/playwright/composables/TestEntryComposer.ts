@@ -152,7 +152,7 @@ export class TestEntryComposer {
 	async withUser(user: Pick<TestUser, 'email' | 'password'>): Promise<n8nPage> {
 		const browser = this.n8n.page.context().browser()!;
 		const context = await browser.newContext();
-		await setupDefaultInterceptors(context);
+		await setupDefaultInterceptors(context, this.n8n.api.options);
 		const page = await context.newPage();
 		const newN8n = this.wrapPage(page);
 		await newN8n.api.login({ email: user.email, password: user.password });

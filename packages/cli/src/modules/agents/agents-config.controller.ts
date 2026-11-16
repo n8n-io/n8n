@@ -14,6 +14,7 @@ import { AgentCustomToolsService } from './agent-custom-tools.service';
 import { AgentValidationService } from './agent-validation.service';
 import { AgentSpendLedger } from './budget-guardrail';
 import { AgentRepository } from './repositories/agent.repository';
+import { AgentsService } from './agents.service';
 import { getAgentConfigHash } from './utils/agent-config-hash';
 import { CollaborationService } from '@/collaboration/collaboration.service';
 import { CredentialsService } from '@/credentials/credentials.service';
@@ -29,6 +30,7 @@ export class AgentsConfigController {
 		private readonly agentRepository: AgentRepository,
 		private readonly collaborationService: CollaborationService,
 		private readonly agentSpendLedger: AgentSpendLedger,
+		private readonly agentsService: AgentsService,
 	) {}
 
 	@Get('/:agentId/budget')
@@ -37,11 +39,11 @@ export class AgentsConfigController {
 		req: AuthenticatedRequest<{ projectId: string; agentId: string }>,
 	): Promise<AgentBudgetSpend> {
 		const { projectId, agentId } = req.params;
-		const agent = await this.agentRepository.findByIdAndProjectId(agentId, projectId);
-		if (!agent) {
+		const exists = await this.agentRepository.existsByIdAndProjectId(agentId, projectId);
+		if (!exists) {
 			throw new NotFoundError('Agent not found');
 		}
-		const spentUsd = await this.agentSpendLedger.ledger.read(budgetMonthKey(agentId));
+		const spentUsd = await this.agentSpendLedger.read(budgetMonthKey(agentId));
 		return { spentUsd };
 	}
 
@@ -92,7 +94,7 @@ export class AgentsConfigController {
 		@Body payload: UpdateAgentConfigDto,
 	) {
 		const { projectId } = req.params;
-		const { config, baseConfigHash } = payload;
+		const { config, baseConfigHash, tags } = payload;
 		const clientId = req.headers?.['push-ref'];
 		await this.collaborationService.validateAgentWriteLock(
 			req.user.id,
@@ -101,11 +103,28 @@ export class AgentsConfigController {
 			agentId,
 			'update',
 		);
-		return await this.agentConfigService.updateConfig(agentId, projectId, config, req.user, {
-			baseConfigHash,
-			modifiedBy: 'user',
-			pushRef: req.headers?.['push-ref'],
-		});
+		// Validate the tag write before the config is committed, so a rejected
+		// tag list cannot leave the request half-applied. Omitted `tags` leave
+		// the agent's tags alone; an explicit list replaces them after the save.
+		const validatedTags =
+			tags === undefined
+				? undefined
+				: await this.agentsService.validateAgentTags(agentId, projectId, tags);
+		const result = await this.agentConfigService.updateConfig(
+			agentId,
+			projectId,
+			config,
+			req.user,
+			{
+				baseConfigHash,
+				modifiedBy: 'user',
+				pushRef: req.headers?.['push-ref'],
+			},
+		);
+		if (validatedTags !== undefined) {
+			await this.agentsService.applyValidatedAgentTags(agentId, validatedTags);
+		}
+		return result;
 	}
 
 	@Delete('/:agentId/tools/:toolId')

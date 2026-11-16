@@ -1,11 +1,13 @@
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue';
 import { I18nT } from 'vue-i18n';
-import { N8nIcon, N8nText } from '@n8n/design-system';
+import { N8nCallout, N8nIcon, N8nIconButton, N8nText } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { useRootStore } from '@n8n/stores/useRootStore';
 
 import { getAgentBudgetSpend } from '../composables/useAgentApi';
+import { useBudgetCoverageCalloutDismissal } from '../composables/useBudgetCoverageCalloutDismissal';
+import { useAgentExecutionUpdates } from '../composables/useAgentExecutionUpdates';
 import type { AgentJsonConfig } from '../types';
 import { formatBudgetUsd, parseBudgetAmount } from '../utils/budget-config';
 import AgentBudgetMonthlyModal from './AgentBudgetMonthlyModal.vue';
@@ -27,6 +29,8 @@ const emit = defineEmits<{ 'update:config': [changes: Partial<AgentJsonConfig>] 
 
 const i18n = useI18n();
 const rootStore = useRootStore();
+const { dismissed: coverageCaptionDismissed, dismiss: dismissCoverageCaption } =
+	useBudgetCoverageCalloutDismissal();
 const monthlyOpen = ref(false);
 const sessionOpen = ref(false);
 const spentUsd = ref<number | undefined>();
@@ -46,14 +50,15 @@ const usagePercent = computed(() => {
 	return Math.min(100, Math.round((spent / limit) * 100));
 });
 
-async function loadSpend() {
+async function loadSpend(silent = false) {
 	const request = ++spendRequest;
 	if (monthlyBudget.value === undefined || !props.projectId || !props.agentId) {
 		spendState.value = 'idle';
 		spentUsd.value = undefined;
 		return;
 	}
-	spendState.value = 'loading';
+	// A silent refresh keeps the shown value while it re-reads, so the usage line does not flash.
+	if (!silent) spendState.value = 'loading';
 	try {
 		const result = await getAgentBudgetSpend(
 			rootStore.restApiContext,
@@ -65,8 +70,13 @@ async function loadSpend() {
 		spendState.value = 'ready';
 	} catch {
 		if (request !== spendRequest) return;
-		spentUsd.value = undefined;
-		spendState.value = 'error';
+		// Keep the last shown value when a silent refresh fails
+		if (!silent || spentUsd.value === undefined) {
+			spentUsd.value = undefined;
+			spendState.value = 'error';
+		} else {
+			spendState.value = 'ready';
+		}
 	}
 }
 
@@ -78,6 +88,14 @@ watch(
 		});
 	},
 	{ immediate: true },
+);
+
+useAgentExecutionUpdates(
+	{
+		projectId: computed(() => props.projectId),
+		agentId: computed(() => props.agentId),
+	},
+	() => loadSpend(true),
 );
 
 const monthlyValue = computed(() => {
@@ -172,19 +190,21 @@ const sessionValue = computed(() => {
 					</N8nText>
 				</span>
 				<span :class="$style.rowValue">
-					<N8nText size="small">{{ monthlyValue }}</N8nText>
-					<N8nText
-						v-if="monthlyBudget !== undefined && budget?.alertThresholdPercent !== undefined"
-						size="small"
-						:class="shared.dataEntrySubLabel"
-						data-testid="agent-budget-alert-value"
-					>
-						{{
-							i18n.baseText('agents.builder.budget.monthly.alert', {
-								interpolate: { percent: budget.alertThresholdPercent },
-							})
-						}}
-					</N8nText>
+					<div :class="$style.rowValueStack">
+						<N8nText size="small">{{ monthlyValue }}</N8nText>
+						<N8nText
+							v-if="monthlyBudget !== undefined && budget?.alertThresholdPercent !== undefined"
+							size="small"
+							:class="shared.dataEntrySubLabel"
+							data-testid="agent-budget-alert-value"
+						>
+							{{
+								i18n.baseText('agents.builder.budget.monthly.alert', {
+									interpolate: { percent: budget.alertThresholdPercent },
+								})
+							}}
+						</N8nText>
+					</div>
 					<N8nIcon icon="chevron-right" />
 				</span>
 			</button>
@@ -205,10 +225,31 @@ const sessionValue = computed(() => {
 					</N8nText>
 				</span>
 				<span :class="$style.rowValue">
-					<N8nText size="small">{{ sessionValue }}</N8nText>
+					<div :class="$style.rowValueStack">
+						<N8nText size="small">{{ sessionValue }}</N8nText>
+					</div>
 					<N8nIcon icon="chevron-right" />
 				</span>
 			</button>
+
+			<N8nCallout
+				v-if="!coverageCaptionDismissed"
+				theme="info"
+				slim
+				data-testid="agent-budget-coverage-callout"
+			>
+				{{ i18n.baseText('agents.builder.budget.coverage.caption') }}
+				<template #trailingContent>
+					<N8nIconButton
+						icon="x"
+						variant="ghost"
+						size="xsmall"
+						:aria-label="i18n.baseText('generic.dismiss')"
+						data-testid="agent-budget-coverage-dismiss"
+						@click="dismissCoverageCaption"
+					/>
+				</template>
+			</N8nCallout>
 		</div>
 
 		<AgentBudgetMonthlyModal
@@ -243,7 +284,14 @@ const sessionValue = computed(() => {
 
 .usageHeader {
 	display: flex;
+	align-items: flex-start;
 	justify-content: space-between;
+	gap: var(--spacing--sm);
+}
+
+.usageHeader > :last-child {
+	flex-shrink: 0;
+	white-space: nowrap;
 }
 
 .spent {
@@ -267,9 +315,17 @@ const sessionValue = computed(() => {
 
 .rowValue {
 	display: flex;
+	align-items: center;
+	flex-shrink: 0;
+	gap: var(--spacing--xs);
+}
+
+.rowValueStack {
+	display: flex;
 	flex-direction: column;
 	align-items: flex-end;
-	gap: var(--spacing--xs);
+	gap: var(--spacing--4xs);
+	white-space: nowrap;
 }
 
 .track {
@@ -286,7 +342,7 @@ const sessionValue = computed(() => {
 
 .row {
 	display: flex;
-	align-items: center;
+	align-items: flex-start;
 	justify-content: space-between;
 	gap: var(--spacing--sm);
 	width: 100%;
@@ -302,8 +358,11 @@ const sessionValue = computed(() => {
 }
 
 .rowLabel {
+	opacity: var(--agent-row-label-opacity, 1);
 	display: flex;
+	flex: 1 1 auto;
 	flex-direction: column;
 	gap: var(--spacing--4xs);
+	min-width: 0;
 }
 </style>

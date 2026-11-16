@@ -6,7 +6,7 @@
 <summary><strong>Table Definition</strong></summary>
 
 ```sql
-CREATE TABLE "workflow_suggestion" ("id" varchar(36) PRIMARY KEY NOT NULL, "workflowId" varchar(36) NOT NULL, "projectId" varchar(36) NOT NULL, "backgroundUserId" varchar NOT NULL, "expectedBaseline" text NOT NULL, "state" varchar(16) NOT NULL, "closedReason" varchar(16), "closedAt" datetime(3), "payload" text NOT NULL, "createdAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), "updatedAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), CONSTRAINT "CHK_workflow_suggestion_state" CHECK ("state" IN ('pending', 'closed')), CONSTRAINT "CHK_workflow_suggestion_closedReason" CHECK ("closedReason" IN ('outdated', 'applied', 'discarded')), CONSTRAINT "FK_f6289858234727cdff168626dc9" FOREIGN KEY ("workflowId") REFERENCES "workflow_entity" ("id") ON DELETE CASCADE, CONSTRAINT "FK_0f273c2cd9e1a097a8ba044fe9a" FOREIGN KEY ("projectId") REFERENCES "project" ("id") ON DELETE CASCADE, CONSTRAINT "FK_b415d749769e092f51575def2d2" FOREIGN KEY ("backgroundUserId") REFERENCES "user" ("id") ON DELETE CASCADE)
+CREATE TABLE "workflow_suggestion" ("id" varchar(36) PRIMARY KEY NOT NULL, "workflowId" varchar(36) NOT NULL, "projectId" varchar(36) NOT NULL, "backgroundUserId" varchar NOT NULL, "expectedBaseline" text NOT NULL, "state" varchar(16) NOT NULL, "closedReason" varchar(16), "closedAt" datetime(3), "payload" text NOT NULL, "createdAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), "updatedAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), "resultKind" varchar(16) NOT NULL, "appliedVersionId" varchar(36), "appliedChecksum" varchar(64), "appliedAction" varchar(32), "appliedActorId" varchar, "selfHealingResultId" varchar(36) NOT NULL, CONSTRAINT "CHK_workflow_suggestion_state" CHECK ((("state" IN ('pending', 'closed')))), CONSTRAINT "CHK_workflow_suggestion_closedReason" CHECK ((("closedReason" IN ('outdated', 'applied', 'discarded')))), CONSTRAINT "CHK_workflow_suggestion_resultKind" CHECK (("resultKind" IN ('fix_ready', 'needs_you'))), CONSTRAINT "CHK_workflow_suggestion_appliedAction" CHECK (("appliedAction" IN ('apply', 'approve-and-publish'))), CONSTRAINT "FK_f6289858234727cdff168626dc9" FOREIGN KEY ("workflowId") REFERENCES "workflow_entity" ("id") ON DELETE CASCADE ON UPDATE NO ACTION, CONSTRAINT "FK_0f273c2cd9e1a097a8ba044fe9a" FOREIGN KEY ("projectId") REFERENCES "project" ("id") ON DELETE CASCADE ON UPDATE NO ACTION, CONSTRAINT "FK_b415d749769e092f51575def2d2" FOREIGN KEY ("backgroundUserId") REFERENCES "user" ("id") ON DELETE CASCADE ON UPDATE NO ACTION, CONSTRAINT "FK_workflow_suggestion_self_healing_result" FOREIGN KEY ("selfHealingResultId") REFERENCES "self_healing_result" ("id") ON DELETE CASCADE)
 ```
 
 </details>
@@ -15,6 +15,10 @@ CREATE TABLE "workflow_suggestion" ("id" varchar(36) PRIMARY KEY NOT NULL, "work
 
 | Name | Type | Default | Nullable | Children | Parents | Comment |
 | ---- | ---- | ------- | -------- | -------- | ------- | ------- |
+| appliedAction | varchar(32) |  | true |  |  |  |
+| appliedActorId | varchar |  | true |  |  |  |
+| appliedChecksum | varchar(64) |  | true |  |  |  |
+| appliedVersionId | varchar(36) |  | true |  |  |  |
 | backgroundUserId | varchar |  | false |  | [user](user.md) |  |
 | closedAt | datetime(3) |  | true |  |  |  |
 | closedReason | varchar(16) |  | true |  |  |  |
@@ -23,6 +27,8 @@ CREATE TABLE "workflow_suggestion" ("id" varchar(36) PRIMARY KEY NOT NULL, "work
 | id | varchar(36) |  | false | [workflow_suggestion_activity](workflow_suggestion_activity.md) |  |  |
 | payload | TEXT |  | false |  |  |  |
 | projectId | varchar(36) |  | false |  | [project](project.md) |  |
+| resultKind | varchar(16) |  | false |  |  |  |
+| selfHealingResultId | varchar(36) |  | false |  | [self_healing_result](self_healing_result.md) |  |
 | state | varchar(16) |  | false |  |  |  |
 | updatedAt | datetime(3) | STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW') | false |  |  |  |
 | workflowId | varchar(36) |  | false |  | [workflow_entity](workflow_entity.md) |  |
@@ -31,11 +37,14 @@ CREATE TABLE "workflow_suggestion" ("id" varchar(36) PRIMARY KEY NOT NULL, "work
 
 | Name | Type | Definition |
 | ---- | ---- | ---------- |
-| - | CHECK | CHECK ("state" IN ('pending', 'closed')) |
-| - | CHECK | CHECK ("closedReason" IN ('outdated', 'applied', 'discarded')) |
-| - (Foreign key ID: 0) | FOREIGN KEY | FOREIGN KEY (backgroundUserId) REFERENCES user (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE |
-| - (Foreign key ID: 1) | FOREIGN KEY | FOREIGN KEY (projectId) REFERENCES project (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE |
-| - (Foreign key ID: 2) | FOREIGN KEY | FOREIGN KEY (workflowId) REFERENCES workflow_entity (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE |
+| - | CHECK | CHECK ((("state" IN ('pending', 'closed')))) |
+| - | CHECK | CHECK ((("closedReason" IN ('outdated', 'applied', 'discarded')))) |
+| - | CHECK | CHECK (("resultKind" IN ('fix_ready', 'needs_you'))) |
+| - | CHECK | CHECK (("appliedAction" IN ('apply', 'approve-and-publish'))) |
+| - (Foreign key ID: 0) | FOREIGN KEY | FOREIGN KEY (selfHealingResultId) REFERENCES self_healing_result (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE |
+| - (Foreign key ID: 1) | FOREIGN KEY | FOREIGN KEY (backgroundUserId) REFERENCES user (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE |
+| - (Foreign key ID: 2) | FOREIGN KEY | FOREIGN KEY (projectId) REFERENCES project (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE |
+| - (Foreign key ID: 3) | FOREIGN KEY | FOREIGN KEY (workflowId) REFERENCES workflow_entity (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE |
 | id | PRIMARY KEY | PRIMARY KEY (id) |
 | sqlite_autoindex_workflow_suggestion_1 | PRIMARY KEY | PRIMARY KEY (id) |
 
@@ -46,6 +55,7 @@ CREATE TABLE "workflow_suggestion" ("id" varchar(36) PRIMARY KEY NOT NULL, "work
 | IDX_0f273c2cd9e1a097a8ba044fe9 | CREATE INDEX "IDX_0f273c2cd9e1a097a8ba044fe9" ON "workflow_suggestion" ("projectId")  |
 | IDX_b415d749769e092f51575def2d | CREATE INDEX "IDX_b415d749769e092f51575def2d" ON "workflow_suggestion" ("backgroundUserId")  |
 | IDX_f6289858234727cdff168626dc | CREATE INDEX "IDX_f6289858234727cdff168626dc" ON "workflow_suggestion" ("workflowId")  |
+| IDX_workflow_suggestion_selfHealingResultId | CREATE INDEX "IDX_workflow_suggestion_selfHealingResultId" ON "workflow_suggestion" ("selfHealingResultId")  |
 | IDX_workflow_suggestion_workflowId | CREATE UNIQUE INDEX "IDX_workflow_suggestion_workflowId" ON "workflow_suggestion" ("workflowId") WHERE "state" = 'pending' |
 | sqlite_autoindex_workflow_suggestion_1 | PRIMARY KEY (id) |
 
@@ -57,9 +67,14 @@ erDiagram
 "workflow_suggestion" }o--|| "user" : "FOREIGN KEY (backgroundUserId) REFERENCES user (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "workflow_suggestion_activity" }o--|| "workflow_suggestion" : "FOREIGN KEY (suggestionId) REFERENCES workflow_suggestion (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "workflow_suggestion" }o--|| "project" : "FOREIGN KEY (projectId) REFERENCES project (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
+"workflow_suggestion" }o--|| "self_healing_result" : "FOREIGN KEY (selfHealingResultId) REFERENCES self_healing_result (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "workflow_suggestion" }o--|| "workflow_entity" : "FOREIGN KEY (workflowId) REFERENCES workflow_entity (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 
 "workflow_suggestion" {
+  varchar_32_ appliedAction
+  varchar appliedActorId
+  varchar_64_ appliedChecksum
+  varchar_36_ appliedVersionId
   varchar backgroundUserId FK
   datetime_3_ closedAt
   varchar_16_ closedReason
@@ -68,6 +83,8 @@ erDiagram
   varchar_36_ id PK
   TEXT payload
   varchar_36_ projectId FK
+  varchar_16_ resultKind
+  varchar_36_ selfHealingResultId FK
   varchar_16_ state
   datetime_3_ updatedAt
   varchar_36_ workflowId FK
@@ -78,6 +95,7 @@ erDiagram
   varchar_255_ email
   varchar_32_ firstName
   varchar id PK
+  VARCHAR_16_ kind
   date lastActiveAt
   varchar_32_ lastName
   boolean mfaEnabled
@@ -91,6 +109,7 @@ erDiagram
 }
 "workflow_suggestion_activity" {
   varchar_16_ action
+  varchar actorId FK
   varchar_16_ author
   datetime_3_ createdAt
   varchar_36_ id PK
@@ -107,6 +126,22 @@ erDiagram
   varchar_255_ name
   varchar_36_ type
   datetime_3_ updatedAt
+}
+"self_healing_result" {
+  varchar backgroundUserId FK
+  datetime_3_ completedAt
+  INTEGER configurationId FK
+  datetime_3_ createdAt
+  varchar_36_ executionId
+  varchar_36_ id PK
+  varchar_16_ outcome
+  varchar_36_ projectId FK
+  TEXT report
+  varchar_16_ reviewState
+  TEXT summary
+  datetime_3_ updatedAt
+  TEXT usage
+  varchar_36_ workflowId FK
 }
 "workflow_entity" {
   boolean active

@@ -12,9 +12,9 @@ import {
 	createRunExecutionData,
 	FORM_NODE_TYPE,
 	FORM_TRIGGER_NODE_TYPE,
-	UserError,
 	Workflow,
 } from 'n8n-workflow';
+import { UserError } from '@n8n/errors';
 import type { MockProxy } from 'vitest-mock-extended';
 import { mock } from 'vitest-mock-extended';
 
@@ -1085,6 +1085,7 @@ describe('Form Node', () => {
 				redirect: vi.fn(),
 				send: vi.fn(),
 				setHeader: vi.fn(),
+				removeHeader: vi.fn(),
 			};
 			mockWebhookFunctions.getResponseObject.mockReturnValue(
 				mockResponseObject as unknown as Response,
@@ -1094,6 +1095,7 @@ describe('Form Node', () => {
 			const result = await form.webhook(mockWebhookFunctions);
 
 			expect(result).toEqual({ noWebhookResponse: true });
+			expect(mockResponseObject.removeHeader).toHaveBeenCalledWith('Content-Security-Policy');
 			expect(mockResponseObject.render).toHaveBeenCalledWith('form-trigger-completion', {
 				appendAttribution: 'test',
 				n8nWebsiteLink: 'https://n8n.io/?utm_source=n8n-internal&utm_medium=form-trigger',

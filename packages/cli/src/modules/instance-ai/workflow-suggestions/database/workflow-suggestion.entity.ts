@@ -1,4 +1,8 @@
-import type { WorkflowSuggestionContent, WorkflowSuggestionBaseline } from '@n8n/api-types';
+import type {
+	WorkflowSuggestionContent,
+	WorkflowSuggestionBaseline,
+	WorkflowSuggestionAppliedVersion,
+} from '@n8n/api-types';
 import {
 	DateTimeColumn,
 	JsonColumn,
@@ -8,6 +12,8 @@ import {
 	WithTimestampsAndStringId,
 } from '@n8n/db';
 import { Column, Entity, Index, JoinColumn, ManyToOne, type Relation } from '@n8n/typeorm';
+
+import { SelfHealingResult } from '../../self-healing/database/self-healing-result.entity';
 
 @Entity('workflow_suggestion')
 @Index(['workflowId'], { unique: true, where: "state = 'pending'" })
@@ -48,6 +54,29 @@ export class WorkflowSuggestion extends WithTimestampsAndStringId {
 	@DateTimeColumn({ nullable: true })
 	closedAt: Date | null;
 
+	@Column({ type: 'varchar', length: 16 })
+	resultKind: 'fix_ready' | 'needs_you';
+
+	@Column({ type: 'varchar', length: 36, nullable: true })
+	appliedVersionId: string | null;
+
+	@Column({ type: 'varchar', length: 64, nullable: true })
+	appliedChecksum: string | null;
+
+	@Column({ type: 'varchar', length: 32, nullable: true })
+	appliedAction: WorkflowSuggestionAppliedVersion['action'] | null;
+
+	@Column({ type: 'uuid', nullable: true })
+	appliedActorId: string | null;
+
 	@JsonColumn()
 	payload: WorkflowSuggestionContent;
+
+	@Index()
+	@Column({ type: 'varchar', length: 36 })
+	selfHealingResultId: string;
+
+	@ManyToOne(() => SelfHealingResult, { nullable: false, onDelete: 'CASCADE' })
+	@JoinColumn({ name: 'selfHealingResultId' })
+	selfHealingResult: Relation<SelfHealingResult>;
 }

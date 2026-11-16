@@ -5,7 +5,7 @@ import type { PendingConfirmationItem } from './instanceAi.store';
  * over the chat input) or the inline list (renders in the chat flow).
  *
  * Floating: structured questions, single-click approvals, and domain/web-search access.
- * Inline: plan-review, text, setup, credential, gateway resource-decision,
+ * Inline: text, setup, credential, gateway resource-decision,
  *   continue, channel setup.
  *
  * Items are inline-by-presence: if `setupRequests` / `credentialRequests` /
@@ -21,12 +21,13 @@ export function isPendingItemFloating(item: PendingConfirmationItem): boolean {
 	if (conf.credentialFlow) return false;
 	if (conf.channelConfig) return false;
 	if (conf.testListener) return false;
+	if (conf.appBlueprint) return false;
 
 	switch (conf.inputType) {
-		case 'plan-review':
 		case 'text':
 		case 'resource-decision':
 		case 'continue':
+		case 'app-blueprint':
 			return false;
 		case 'questions':
 		case 'approval':

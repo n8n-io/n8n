@@ -81,7 +81,7 @@ export class InstanceAiPage extends BasePage {
 	async mockSearchVerification(
 		response: { ok: true; resultCount: number } | { ok: false; failure: string },
 	): Promise<void> {
-		await this.page.route('**/rest/instance-ai/settings/verify/search', async (route) => {
+		await this.page.route('**/rest/assistant/settings/verify/search', async (route) => {
 			await route.fulfill({ json: { data: response } });
 		});
 	}
@@ -143,6 +143,41 @@ export class InstanceAiPage extends BasePage {
 
 	getComposer(): Locator {
 		return this.container.getByTestId('instance-ai-composer');
+	}
+
+	async openConnectors(): Promise<void> {
+		await this.container
+			.getByRole('button', { name: 'Add context with connectors, files and more', exact: true })
+			.click();
+		await this.page.getByRole('menuitem', { name: 'Connect services', exact: true }).click();
+		await this.getConnectorsDialog().waitFor({ state: 'visible' });
+	}
+
+	getConnectorsDialog(): Locator {
+		return this.page.getByRole('dialog', { name: 'Connectors', exact: true });
+	}
+
+	getConnectorConnectButton(serverTitle: string): Locator {
+		return this.getConnectorsDialog()
+			.getByTestId('tools-connection-row')
+			.filter({ hasText: serverTitle })
+			.getByTestId('tool-credential-picker-trigger-connect');
+	}
+
+	async scrollConnectorsToBottom(): Promise<void> {
+		await this.getConnectorsDialog()
+			.locator('.recycle-scroller-wrapper')
+			.evaluate((element) => element.scrollTo({ top: element.scrollHeight }));
+	}
+
+	getConnectorCredentialMenu(): Locator {
+		return this.getVisiblePoppers().filter({
+			has: this.page.getByTestId('tool-credential-picker-search'),
+		});
+	}
+
+	getConnectorCreateCredentialButton(): Locator {
+		return this.page.getByTestId('tool-credential-picker-create');
 	}
 
 	getSendButton(): Locator {
@@ -255,8 +290,9 @@ export class InstanceAiPage extends BasePage {
 		await this.getChatInput().press('ArrowRight');
 	}
 
+	// Scoped to the composer: a sent message renders the same chips for its attachments.
 	getComposerWorkflowChip(name: string | RegExp): Locator {
-		return this.container.getByTestId('attachment-preview-resource').filter({ hasText: name });
+		return this.getComposer().getByTestId('attachment-preview-resource').filter({ hasText: name });
 	}
 
 	getComposerWorkflowRemoveButton(name: string | RegExp): Locator {
@@ -266,11 +302,11 @@ export class InstanceAiPage extends BasePage {
 	}
 
 	getComposerNodeChip(name: string | RegExp): Locator {
-		return this.container.getByTestId('nodes-chip-node').filter({ hasText: name });
+		return this.getComposer().getByTestId('nodes-chip-node').filter({ hasText: name });
 	}
 
 	getComposerGroupChip(name: string | RegExp): Locator {
-		return this.container.getByTestId('nodes-chip-group').filter({ hasText: name });
+		return this.getComposer().getByTestId('nodes-chip-group').filter({ hasText: name });
 	}
 
 	getUserMessageByText(text: string | RegExp): Locator {
@@ -328,12 +364,6 @@ export class InstanceAiPage extends BasePage {
 		return this.page.getByText(text, { exact: false });
 	}
 
-	// ── Plan Review ───────────────────────────────────────────────────
-
-	getPlanApproveButton(): Locator {
-		return this.container.getByTestId('instance-ai-plan-approve');
-	}
-
 	/**
 	 * Returns a locator that matches ANY type of approve/continue button.
 	 * Uses Playwright's `or()` to race between confirmation types.
@@ -341,7 +371,6 @@ export class InstanceAiPage extends BasePage {
 	getAnyApproveButton(): Locator {
 		return this.getConfirmApproveButton()
 			.or(this.getDomainAccessApprove())
-			.or(this.getPlanApproveButton())
 			.or(this.getCredentialContinue());
 	}
 
@@ -382,6 +411,34 @@ export class InstanceAiPage extends BasePage {
 
 	getPreviewPanel(): Locator {
 		return this.container.getByTestId('instance-ai-preview-panel');
+	}
+
+	getBuilderChat(): Locator {
+		return this.container.getByTestId('instance-ai-builder-chat');
+	}
+
+	getAgentTestButton(): Locator {
+		return this.getPreviewPanel().locator('[data-testid="agent-header-preview-btn"]');
+	}
+
+	getAgentTestChatInner(): Locator {
+		return this.getBuilderChat().locator('[data-testid="agent-preview-dock"] > div');
+	}
+
+	async getAgentTestChatBoundsDifference(): Promise<number> {
+		const host = await this.getBuilderChat().boundingBox();
+		const dock = this.getBuilderChat().locator('[data-testid="agent-preview-dock"]');
+		const bounds = await dock.boundingBox();
+		const inner = await this.getAgentTestChatInner().boundingBox();
+		if (!host || !bounds || !inner) throw new Error('The test chat is not visible');
+		return Math.max(
+			...[bounds, inner].flatMap((box) => [
+				Math.abs(box.x - host.x),
+				Math.abs(box.y - host.y),
+				Math.abs(box.width - host.width),
+				Math.abs(box.height - host.height),
+			]),
+		);
 	}
 
 	getPreviewTabByName(name: string | RegExp): Locator {
@@ -440,7 +497,6 @@ export class InstanceAiPage extends BasePage {
 						this.getConfirmAlwaysAllowButton(),
 						this.getDomainAccessAlwaysAllow(),
 						this.getConfirmApproveButton(),
-						this.getPlanApproveButton(),
 						this.getDomainAccessApprove(),
 						this.getGatewayDecisionApprove(),
 						this.getCredentialContinue(),
@@ -554,17 +610,5 @@ export class InstanceAiPage extends BasePage {
 
 	async waitForRunComplete(timeoutMs = 180_000): Promise<void> {
 		await this.getStopButton().waitFor({ state: 'hidden', timeout: timeoutMs });
-	}
-
-	/**
-	 * Wait for the plan-review panel to appear and approve it. Since the
-	 * planning guardrails (#31984), the planner only engages for coordinated
-	 * multi-artifact work or when the prompt explicitly asks to review a plan
-	 * first — single-workflow builds skip plan review entirely, so only call
-	 * this from tests whose prompt requests a plan.
-	 */
-	async approveBuildPlan(timeout = 120_000): Promise<void> {
-		await this.getPlanApproveButton().waitFor({ state: 'visible', timeout });
-		await this.getPlanApproveButton().click();
 	}
 }

@@ -1,17 +1,34 @@
 import type { ValidationWarning } from '@n8n/ai-workflow-builder';
 import type { Logger } from '@n8n/backend-common';
 import type { GlobalConfig } from '@n8n/config';
-import { type User, type SharedWorkflowRepository, WorkflowEntity } from '@n8n/db';
+import {
+	type OperationContext,
+	type User,
+	type SharedWorkflowRepository,
+	WorkflowEntity,
+} from '@n8n/db';
+import { UserError } from '@n8n/errors';
 import { hasGlobalScope } from '@n8n/permissions';
+import {
+	connectRequiredSubnodeInputs,
+	describeAddedSubnodeConnection,
+	type ClearedSubnodeInput,
+} from '@n8n/workflow-sdk';
 import isEqual from 'lodash/isEqual';
-import type { IWorkflowSettings } from 'n8n-workflow';
+import { UnrecognizedNodeTypeError } from 'n8n-core';
+import {
+	NodeConnectionTypes,
+	type INode,
+	type INodeType,
+	type IWorkflowSettings,
+	type INodeTypes,
+} from 'n8n-workflow';
 import { z } from 'zod';
 
 import type { CollaborationService } from '@/collaboration/collaboration.service';
 import type { CredentialsService } from '@/credentials/credentials.service';
-import type { DataTableUserOperations } from '@/modules/data-table/data-table-proxy.service';
+import type { DataTableUserOperations } from '@n8n/backend-module-data-table';
 import type { McpPostSaveMetricsService } from '@/modules/mcp/mcp-post-save-metrics.service';
-import type { NodeTypes } from '@/node-types';
 import type { AiGatewayService } from '@/services/ai-gateway.service';
 import type { TagService } from '@/services/tag.service';
 import type { UrlService } from '@n8n/backend-services';
@@ -22,11 +39,9 @@ import {
 	removeDefaultValues,
 	resolveNodeWebhookIds,
 } from '@/workflow-helpers';
-import {
-	isExpressionErrorWorkflowId,
-	staticErrorWorkflowId,
-	type ErrorWorkflowValidationService,
-} from '@/workflows/error-workflow-validation.service';
+import { isExpressionErrorWorkflowId, staticErrorWorkflowId } from '@/workflows/error-workflow-id';
+import type { ErrorWorkflowValidationService } from '@/workflows/error-workflow-validation.service';
+import { assertExecutionTimeoutWithinMax } from '@/workflows/execution-timeout-validation';
 import type { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 import type { WorkflowService } from '@/workflows/workflow.service';
 
@@ -64,6 +79,10 @@ import {
 } from './workflow-operations';
 import { USER_CALLED_MCP_TOOL_EVENT } from '../../mcp.constants';
 import type { ToolDefinition, UserCalledMCPToolEventPayload } from '../../mcp.types';
+import {
+	workflowMigrationFindingsSchema,
+	type ReadWorkflowMigrationFindings,
+} from '../migration-report/migration-report.utils';
 import { getMcpWorkflow, validateMcpWorkflow } from '../workflow-validation.utils';
 
 const MAX_OPERATIONS_PER_CALL = 100;
@@ -357,6 +376,7 @@ const outputSchema = {
 		.describe('Error message explaining why the update failed. Present only on failure.'),
 	errorCode: z.string().optional().describe('Machine-readable error code.'),
 	note: z.string().optional(),
+	migrationFindings: workflowMigrationFindingsSchema.optional(),
 } satisfies z.ZodRawShape;
 /**
  * The success payload, derived from `outputSchema` so the handler cannot build a
@@ -451,28 +471,6 @@ function assertCallerPolicyConsistent(settings: IWorkflowSettings | undefined): 
 	if (callerIds.length === 0) {
 		throw new Error(
 			'callerPolicy "workflowsFromAList" requires callerIds — a comma-separated list of workflow IDs allowed to call this workflow. Without it, no workflow can call this one. Provide callerIds, or choose a different callerPolicy.',
-		);
-	}
-}
-
-/**
- * Reject an executionTimeout that exceeds the instance maximum. The schema
- * already enforces a positive integer; this adds the instance-specific upper
- * bound, which isn't knowable statically. A non-positive `maxTimeout` means the
- * instance sets no cap, so nothing is enforced.
- */
-function assertExecutionTimeoutWithinMax(
-	executionTimeout: number | undefined,
-	maxTimeout: number,
-): void {
-	// `executionTimeout <= 0` is the "unlimited" sentinel (-1) and is never capped.
-	if (executionTimeout === undefined || executionTimeout <= 0 || maxTimeout <= 0) {
-		return;
-	}
-
-	if (executionTimeout > maxTimeout) {
-		throw new Error(
-			`executionTimeout (${executionTimeout}s) exceeds this instance's maximum of ${maxTimeout}s. Set executionTimeout to ${maxTimeout} or less.`,
 		);
 	}
 }
@@ -730,6 +728,26 @@ const isTagOperation = (op: PartialUpdateOperation) =>
 const isSettingsOperation = (op: PartialUpdateOperation) => op.type === 'setWorkflowSettings';
 
 /**
+ * Operations that cannot leave a required subnode input unsatisfied: they touch
+ * neither connections nor the parameters a conditional `inputs` expression reads.
+ * Node-level execution settings qualify, since `inputs` only sees `$parameter`.
+ */
+const GRAPH_NEUTRAL_OPERATIONS = new Set<PartialUpdateOperation['type']>([
+	'addTags',
+	'removeTags',
+	'setNodeSettings',
+	'setWorkflowSettings',
+	'setWorkflowMetadata',
+	'addNodeGroup',
+	'removeNodeGroup',
+	'updateNodeGroup',
+	'setNodeGroups',
+	'setNodePosition',
+]);
+
+const touchesGraph = (op: PartialUpdateOperation) => !GRAPH_NEUTRAL_OPERATIONS.has(op.type);
+
+/**
  * Rejects operations this instance cannot serve, before anything is loaded or
  * applied.
  */
@@ -754,7 +772,7 @@ function assertOperationsSupported(
  */
 function resolveNodeGroupViolations(
 	result: ApplyOperationsSuccess,
-	nodeTypes: NodeTypes,
+	nodeTypes: INodeTypes,
 ): {
 	skippedOperations: SkippedOperation[];
 	removedGroups: Array<{ groupName: string; reason: string }>;
@@ -915,7 +933,7 @@ async function autoAssignCredentialsForAddedNodes(
 		aiGatewayService,
 	}: {
 		user: User;
-		nodeTypes: NodeTypes;
+		nodeTypes: INodeTypes;
 		credentialsService: CredentialsService;
 		aiGatewayService: AiGatewayService;
 	},
@@ -937,6 +955,63 @@ async function autoAssignCredentialsForAddedNodes(
 	);
 }
 
+function createNodeTypesIgnoringUnloadedExistingTypes(
+	nodeTypes: INodeTypes,
+	existingNodes: INode[],
+): INodeTypes {
+	const existingNodeTypeNames = new Set(existingNodes.map((node) => node.type));
+
+	return {
+		getByName: (nodeType) => nodeTypes.getByName(nodeType),
+		getKnownTypes: () => nodeTypes.getKnownTypes(),
+		getByNameAndVersion: (nodeType, version) => {
+			try {
+				return nodeTypes.getByNameAndVersion(nodeType, version);
+			} catch (error) {
+				if (error instanceof UnrecognizedNodeTypeError && existingNodeTypeNames.has(nodeType)) {
+					return undefined as unknown as INodeType;
+				}
+				throw error;
+			}
+		},
+	};
+}
+
+function isUnloadedNodeType(node: INode, nodeTypes: INodeTypes): boolean {
+	try {
+		nodeTypes.getByNameAndVersion(node.type, node.typeVersion);
+	} catch (error) {
+		if (error instanceof UnrecognizedNodeTypeError) return true;
+	}
+	return false;
+}
+
+function assertAddedNodeTypesLoaded(addedNodes: INode[], nodeTypes: INodeTypes): void {
+	const unloadedNode = addedNodes.find((node) => isUnloadedNodeType(node, nodeTypes));
+	if (unloadedNode) {
+		throw Object.assign(
+			new UserError(
+				`Cannot add node '${unloadedNode.name}': this instance does not load the node type '${unloadedNode.type}'. Check the type name, or use a node type that this instance has.`,
+			),
+			{ errorCode: 'UNRECOGNIZED_NODE_TYPE' },
+		);
+	}
+}
+
+function buildUnloadedNodeTypeWarnings(
+	nodes: INode[],
+	nodeTypes: INodeTypes,
+): Array<ValidationWarning & { preExisting: true }> {
+	return nodes
+		.filter((node) => isUnloadedNodeType(node, nodeTypes))
+		.map((node) => ({
+			code: 'UNLOADED_NODE_TYPE',
+			message: `[pre-existing] This instance does not load the node type '${node.type}', so the workflow cannot run this node. Tell the user; an administrator of this instance must enable the node type, or the node must be replaced.`,
+			nodeName: node.name,
+			preExisting: true,
+		}));
+}
+
 /**
  * Validates the resulting workflow and marks the warnings that were already
  * there before this update.
@@ -955,13 +1030,13 @@ async function autoAssignCredentialsForAddedNodes(
 async function collectValidationWarnings(
 	updated: Pick<WorkflowEntity, 'name' | 'nodes' | 'connections'>,
 	existing: Pick<WorkflowEntity, 'name' | 'nodes' | 'connections'>,
-	nodeTypes: NodeTypes,
+	nodeTypes: INodeTypes,
 ): Promise<Array<ValidationWarning & { preExisting?: boolean }>> {
 	const { ParseValidateHandler, getWarningKey } = await import('@n8n/ai-workflow-builder');
 
 	const validator = new ParseValidateHandler({
 		generatePinData: false,
-		nodeTypesProvider: nodeTypes,
+		nodeTypesProvider: createNodeTypesIgnoringUnloadedExistingTypes(nodeTypes, existing.nodes),
 	});
 	const validate = (workflow: Pick<WorkflowEntity, 'name' | 'nodes' | 'connections'>) =>
 		validator.validateJSON({
@@ -1051,7 +1126,7 @@ export const createUpdateWorkflowTool = (
 	workflowService: WorkflowService,
 	urlService: UrlService,
 	telemetry: Telemetry,
-	nodeTypes: NodeTypes,
+	nodeTypes: INodeTypes,
 	credentialsService: CredentialsService,
 	sharedWorkflowRepository: SharedWorkflowRepository,
 	collaborationService: CollaborationService,
@@ -1069,9 +1144,15 @@ export const createUpdateWorkflowTool = (
 		findUninstalledNodeTypes?: FindUninstalledNodeTypes;
 		/** Whether this session can call the install tool; steers the warning text. */
 		installToolAvailable?: boolean;
+		/**
+		 * Reads the migration report findings of the saved workflow, so a fix needs no
+		 * extra check. Supplied only when the caller can read the migration report.
+		 */
+		readMigrationFindings?: ReadWorkflowMigrationFindings;
 	} = {},
 	logger: Logger,
 	postSaveMetrics: McpPostSaveMetricsService,
+	ctx: OperationContext = {},
 ): ToolDefinition<typeof inputSchema> => {
 	// Bound once: these never vary per call, so the call sites below show only
 	// what is being validated.
@@ -1159,6 +1240,34 @@ export const createUpdateWorkflowTool = (
 				if (!result.success) {
 					throw new Error(result.error);
 				}
+
+				const addedNodes = result.workflow.nodes.filter((node) =>
+					result.addedNodeNames.includes(node.name),
+				);
+				assertAddedNodeTypesLoaded(addedNodes, nodeTypes);
+
+				// Setting a parameter can make a subnode input required without wiring it.
+				// Skip inputs this batch disconnected, or removeConnection is a no-op.
+				// Names are carried through later renames, since the pass runs against
+				// the final graph.
+				const clearedInputs: ClearedSubnodeInput[] = [];
+				for (const op of strictOperations) {
+					if (op.type === 'removeConnection') {
+						clearedInputs.push({
+							nodeName: op.target,
+							connectionType: op.connectionType ?? NodeConnectionTypes.Main,
+						});
+					} else if (op.type === 'renameNode') {
+						for (const cleared of clearedInputs) {
+							if (cleared.nodeName === op.oldName) cleared.nodeName = op.newName;
+						}
+					}
+				}
+				// A tag, settings or layout edit cannot create an unsatisfied input, and
+				// wiring one off the back of such an update would be a surprise.
+				const addedSubnodeLinks = strictOperations.some(touchesGraph)
+					? connectRequiredSubnodeInputs(result.workflow, nodeTypes, { clearedInputs })
+					: [];
 
 				const { skippedOperations, removedGroups, nodeGroupsNeedPersisting } =
 					resolveNodeGroupViolations(result, nodeTypes);
@@ -1248,12 +1357,17 @@ export const createUpdateWorkflowTool = (
 					nodeTypes,
 				);
 
+				for (const link of addedSubnodeLinks) {
+					validationWarnings.push(describeAddedSubnodeConnection(link));
+				}
+
 				validationWarnings.push(
 					...(await buildUninstalledNodeWarnings(
-						workflowUpdateData.nodes.filter((node) => result.addedNodeNames.includes(node.name)),
+						addedNodes,
 						options.findUninstalledNodeTypes,
 						options.installToolAvailable,
 					)),
+					...buildUnloadedNodeTypeWarnings(workflowUpdateData.nodes, nodeTypes),
 				);
 
 				const tagIds = await resolveTagIds(result.tagNames, user, tagService);
@@ -1284,13 +1398,19 @@ export const createUpdateWorkflowTool = (
 						: undefined;
 				expectedTagNames = result.tagNames;
 				updateAttempted = true;
-				const updatedWorkflow = await workflowService.update(user, workflowUpdateData, workflowId, {
-					aiBuilderAssisted: hasNonTagOperations,
-					source: 'n8n-mcp',
-					versionName: versionMetadata.name,
-					versionDescription: versionMetadata.description,
-					...(tagIds !== undefined ? { tagIds } : {}),
-				});
+				const updatedWorkflow = await workflowService.update(
+					user,
+					workflowUpdateData,
+					workflowId,
+					{
+						aiBuilderAssisted: hasNonTagOperations,
+						source: 'n8n-mcp',
+						versionName: versionMetadata.name,
+						versionDescription: versionMetadata.description,
+						...(tagIds !== undefined ? { tagIds } : {}),
+					},
+					ctx,
+				);
 
 				const baseUrl = urlService.getInstanceBaseUrl();
 				const workflowUrl = `${baseUrl}/workflow/${updatedWorkflow.id}`;
@@ -1346,6 +1466,9 @@ export const createUpdateWorkflowTool = (
 						? ((updatedWorkflow.settings ?? {}) as Record<string, unknown>)
 						: undefined,
 				};
+
+				const migrationFindings = await options.readMigrationFindings?.(updatedWorkflow.id);
+				if (migrationFindings) output.migrationFindings = migrationFindings;
 
 				try {
 					if (autoAssignOutcomes.length > 0) {

@@ -298,6 +298,7 @@ describe('RunDataJsonActions', () => {
 			pinia,
 		});
 
+		await fireEvent.click(screen.getByTestId('ndv-json-copy-menu'));
 		await waitFor(() =>
 			expect(screen.getByText(i18n.baseText('runData.copyValue'))).toBeInTheDocument(),
 		);
@@ -343,6 +344,7 @@ describe('RunDataJsonActions', () => {
 			pinia,
 		});
 
+		await fireEvent.click(screen.getByTestId('ndv-json-copy-menu'));
 		await waitFor(() =>
 			expect(screen.getByText(i18n.baseText('runData.copyItemPath'))).toBeInTheDocument(),
 		);
@@ -388,6 +390,7 @@ describe('RunDataJsonActions', () => {
 			pinia,
 		});
 
+		await fireEvent.click(screen.getByTestId('ndv-json-copy-menu'));
 		await waitFor(() =>
 			expect(screen.getByText(i18n.baseText('runData.copyParameterPath'))).toBeInTheDocument(),
 		);

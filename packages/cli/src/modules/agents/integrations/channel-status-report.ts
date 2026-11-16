@@ -1,4 +1,5 @@
 import {
+	hasChannelRuntime,
 	isCredentialAgentIntegration,
 	isDraftIntegration,
 	type AgentChannelRuntimeStatus,
@@ -55,7 +56,7 @@ export function buildChannelStatusReport(
 		.filter((integration) => !isDraftIntegration(integration))
 		.map((integration) => {
 			const rows = liveByChannel.get(channelKey(integration.type, integration.credentialId)) ?? [];
-			const status = resolveStatus(activeVersionId, rows);
+			const status = resolveStatus(integration, activeVersionId, rows);
 			const failure = status === 'error' ? mostRecentFailure(rows) : undefined;
 
 			return {
@@ -75,7 +76,15 @@ export function buildChannelStatusReport(
 		entries.push({ type: 'n8n_chat', status: publishedChat ? 'connected' : 'configured' });
 	}
 
-	return { status: rollUp(entries), integrations: entries };
+	const drafts = (integrations ?? [])
+		.filter(isCredentialAgentIntegration)
+		.filter((integration) => isDraftIntegration(integration))
+		.map((integration) => ({
+			type: integration.type,
+			...('settings' in integration ? { settings: integration.settings } : {}),
+		}));
+
+	return { status: rollUp(entries), integrations: entries, drafts };
 }
 
 function channelKey(integrationType: string, credentialId: string): string {
@@ -83,12 +92,15 @@ function channelKey(integrationType: string, credentialId: string): string {
 }
 
 function resolveStatus(
+	integration: AgentIntegrationConfig,
 	activeVersionId: string | null,
 	rows: AgentChannelStatus[],
 ): AgentChannelRuntimeStatus {
 	// An unpublished agent must not receive events, so no channel of it is meant
 	// to be running — whatever a row left over from before the unpublish says.
 	if (activeVersionId === null) return 'configured';
+	// A channel without a platform runtime writes no rows: it is live once published.
+	if (!hasChannelRuntime(integration)) return 'connected';
 	if (rows.length === 0) return 'starting';
 	if (rows.some((row) => row.status === 'error')) return 'error';
 

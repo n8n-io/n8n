@@ -1,4 +1,5 @@
 import { createWorkflow, createWorkflowHistory, testDb } from '@n8n/backend-test-utils';
+import { NODE_ID_MAX_LENGTH } from '@n8n/constants';
 import type { IWorkflowDb } from '@n8n/db';
 import {
 	WorkflowHistoryRepository,
@@ -91,6 +92,24 @@ describe('WorkflowPublicationTriggerStatusRepository', () => {
 		const rows = await repo.findByWorkflowId(workflow.id);
 		expect(rows).toHaveLength(1);
 		expect(rows[0]).toMatchObject({ nodeId: 'n1', versionId: 'v2', status: 'activated' });
+	});
+
+	it('replaceForWorkflow stores node ids of the maximum length', async () => {
+		const longNodeId = 'n'.repeat(NODE_ID_MAX_LENGTH);
+
+		await repo.replaceForWorkflow(workflow.id, [
+			{
+				nodeId: longNodeId,
+				versionId: 'v1',
+				status: 'activated',
+				errorMessage: null,
+				triggerKind: 'persisted',
+			},
+		]);
+
+		expect(await repo.findByWorkflowId(workflow.id)).toEqual([
+			expect.objectContaining({ nodeId: longNodeId }),
+		]);
 	});
 
 	it('replaceForWorkflow with an empty list clears all rows', async () => {

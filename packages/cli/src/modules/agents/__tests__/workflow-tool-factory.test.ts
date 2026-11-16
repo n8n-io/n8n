@@ -6,18 +6,18 @@ import { mock } from 'vitest-mock-extended';
 import type { ActiveExecutions } from '@/active-executions';
 import { ExecutionPersistence } from '@/executions/execution-persistence';
 import type { SubworkflowPolicyChecker } from '@/executions/pre-execution-checks';
+import type { EphemeralNodeExecutor } from '@/node-execution/ephemeral-node-executor';
 import type { WorkflowRunner } from '@/workflow-runner';
-
 import {
-	buildUnavailableWorkflowTool,
 	detectTriggerNode,
-	resolveWorkflowTool,
 	validateCompatibility,
-} from '../tools/workflow-tool-factory';
+} from '@/workflows/callable/callable-workflow-input';
+import type { CallableWorkflowLoader } from '@/workflows/callable/callable-workflow-loader.service';
+import { CallableWorkflowUnavailableError } from '@/workflows/callable/callable-workflow-unavailable.error';
+
+import { buildUnavailableWorkflowTool, resolveWorkflowTool } from '../tools/workflow-tool-factory';
 import type { WorkflowToolContext } from '../tools/workflow-tool-factory';
-import { WorkflowToolUnavailableError } from '../tools/workflow-tool-unavailable-error';
 import { findWorkflowToolWorkflows } from '../tools/workflow-tool-workflow-resolver';
-import type { WorkflowToolWorkflowLoader } from '../tools/workflow-tool-workflow-loader.service';
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -79,12 +79,13 @@ function makeWorkflow(
 function makeContext(foundWorkflow: WorkflowEntity | null): WorkflowToolContext {
 	const workflowRunner = mock<WorkflowRunner>();
 	const activeExecutions = mock<ActiveExecutions>();
-	const workflowLoader = mock<WorkflowToolWorkflowLoader>();
+	const workflowLoader = mock<CallableWorkflowLoader>();
 
 	workflowLoader.loadWorkflow.mockResolvedValue(foundWorkflow);
 
 	return {
 		workflowLoader,
+		executor: mock<EphemeralNodeExecutor>(),
 		workflowRunner,
 		subworkflowPolicyChecker: mock<SubworkflowPolicyChecker>(),
 		activeExecutions,
@@ -190,7 +191,7 @@ describe('resolveWorkflowTool() — metadata attachment', () => {
 		await expect(
 			resolveWorkflowTool({ type: 'workflow', workflow: 'Missing Workflow' }, context),
 		).rejects.toMatchObject({
-			constructor: WorkflowToolUnavailableError,
+			constructor: CallableWorkflowUnavailableError,
 			reason: 'not_found',
 			message: 'Workflow "Missing Workflow" not found',
 		});
@@ -202,7 +203,7 @@ describe('resolveWorkflowTool() — metadata attachment', () => {
 		await expect(
 			resolveWorkflowTool({ type: 'workflow', workflow: 'Manual Only' }, context),
 		).rejects.toMatchObject({
-			constructor: WorkflowToolUnavailableError,
+			constructor: CallableWorkflowUnavailableError,
 			reason: 'incompatible',
 		});
 	});
@@ -315,6 +316,85 @@ describe('resolveWorkflowTool() — metadata attachment', () => {
 			undefined,
 			expect.anything(),
 		);
+	});
+
+	it('resolves configured inputs for new calls and preserves them on continuation', async () => {
+		const trigger = makeExecuteWorkflowTriggerNode({
+			parameters: {
+				inputSource: 'jsonExample',
+				jsonExample: JSON.stringify({ sides: 6, count: 1, label: '' }),
+			},
+		});
+		const context = makeContext(makeWorkflow({}, trigger));
+		const executor = mock<EphemeralNodeExecutor>();
+		executor.evaluateExpressions
+			.mockResolvedValueOnce({ count: 2 })
+			.mockResolvedValueOnce({ count: 3 })
+			.mockResolvedValueOnce({ count: 'invalid' })
+			.mockRejectedValueOnce(new Error('Cannot resolve input "count"'));
+		context.executor = executor;
+		const run = vi.fn().mockResolvedValue('exec-1');
+		context.workflowRunner.run = run;
+		context.activeExecutions.has = vi.fn().mockReturnValue(false);
+		Container.set(ExecutionPersistence, {
+			findSingleExecution: vi.fn().mockResolvedValue({
+				status: 'success',
+				data: { resultData: { runData: {} } },
+			}),
+		} as unknown as ExecutionPersistence);
+
+		const tool = await resolveWorkflowTool(
+			{
+				type: 'workflow',
+				workflow: 'My Test Workflow',
+				inputs: {
+					count: { mode: 'expression', value: '={{ $json.sides / 3 }}' },
+					hasOwnProperty: { mode: 'expression' as const, value: '={{ $json.removed }}' },
+					label: { mode: 'fixed', value: '={{ literal }}' },
+				},
+			},
+			context,
+		);
+
+		for (const [sides, count] of [
+			[6, 2],
+			[9, 3],
+		]) {
+			await tool.handler?.({ sides, count: 99, label: 'model value' }, {});
+			expect(run).toHaveBeenLastCalledWith(
+				expect.objectContaining({
+					pinData: { [TRIGGER_NAME]: [{ json: { sides, count, label: '={{ literal }}' } }] },
+				}),
+				undefined,
+				undefined,
+				undefined,
+				expect.anything(),
+			);
+		}
+		await expect(tool.handler?.({ sides: 6 }, {})).rejects.toThrow('count');
+		await expect(tool.handler?.({ sides: 6 }, {})).rejects.toThrow('Cannot resolve input "count"');
+		expect(run).toHaveBeenCalledTimes(2);
+		expect(executor.evaluateExpressions).toHaveBeenLastCalledWith(
+			expect.objectContaining({ projectId: 'project-1' }),
+			{ count: '={{ $json.sides / 3 }}' },
+			[{ json: { sides: 6 } }],
+		);
+
+		await expect(
+			tool.handler?.(
+				{},
+				{
+					continuation: { executionId: 'exec-1' },
+					suspend: vi.fn(),
+					resumeData: undefined,
+				},
+			),
+		).resolves.toMatchObject({
+			executionId: 'exec-1',
+			status: 'success',
+		});
+		expect(executor.evaluateExpressions).toHaveBeenCalledTimes(4);
+		expect(run).toHaveBeenCalledTimes(2);
 	});
 });
 

@@ -43,7 +43,7 @@ flowchart TD
     C --> N
 ```
 
-The report row owns delivery retries. Durable occurrences use `maxAttempts: 1`.
+The report row owns delivery retries. Durable occurrences use `retryOnFailure: false`.
 A delivery error fails that occurrence. The next scheduled pass checks the
 stored retry delay and budget. It does not get a new delivery budget.
 

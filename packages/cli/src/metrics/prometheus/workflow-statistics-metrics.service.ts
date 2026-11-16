@@ -1,15 +1,15 @@
 import { PrometheusMetricsConfig } from '@n8n/config';
 import { Time } from '@n8n/constants';
-import { LicenseMetricsRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
 import promClient from 'prom-client';
 
-import { CacheService } from '@n8n/backend-services';
-
 import type { PrometheusMetricsCollector } from './base';
-import { CachedMetricQuery } from './cached-metric-query';
-
-type LicenseMetrics = Awaited<ReturnType<LicenseMetricsRepository['getLicenseRenewalMetrics']>>;
+import type { CachedMetricQuery } from './cached-metric-query';
+import { toGaugeValue } from './cached-metric-query';
+import {
+	DatabaseMetricQueryService,
+	type WorkflowStatistics as LicenseMetrics,
+} from './database-metric-query.service';
 
 /**
  * Tracks workflow and instance statistics as Gauges (executions, users, workflows, credentials).
@@ -21,8 +21,7 @@ type LicenseMetrics = Awaited<ReturnType<LicenseMetricsRepository['getLicenseRen
 export class PrometheusWorkflowStatisticsMetricsService implements PrometheusMetricsCollector {
 	constructor(
 		private readonly config: PrometheusMetricsConfig,
-		private readonly cacheService: CacheService,
-		private readonly licenseMetricsRepository: LicenseMetricsRepository,
+		private readonly databaseQueries: DatabaseMetricQueryService,
 	) {}
 
 	get enabled(): boolean {
@@ -31,12 +30,7 @@ export class PrometheusWorkflowStatisticsMetricsService implements PrometheusMet
 
 	init() {
 		const cacheTtl = this.config.workflowStatisticsInterval * Time.seconds.toMilliseconds;
-		const query = new CachedMetricQuery<LicenseMetrics>({
-			cacheService: this.cacheService,
-			cacheKey: 'metrics:workflow-statistics:shared:v2',
-			ttlMs: cacheTtl,
-			query: async () => await this.licenseMetricsRepository.getLicenseRenewalMetrics(),
-		});
+		const query = this.databaseQueries.workflowStatistics(cacheTtl);
 
 		const metricsConfig = [
 			{
@@ -91,7 +85,7 @@ export class PrometheusWorkflowStatisticsMetricsService implements PrometheusMet
 			name: `${this.config.prefix}${metricName}`,
 			help,
 			async collect() {
-				this.set(getMetricValue(await query.get()));
+				this.set(toGaugeValue(await query.get(), getMetricValue));
 			},
 		});
 	}

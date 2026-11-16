@@ -21,11 +21,15 @@ import {
 	vectorSearchParameters,
 	jobOperations,
 	jobParameters,
+	lakebaseOperations,
+	lakebaseParameters,
 } from './resources';
 
 import { router } from './actions/router';
 import { authenticationProperty, databricksCredentials } from './authentication';
 import { DATABRICKS_NODE_VERSION } from './constants';
+import * as loadOptions from './methods/loadOptions';
+import * as resourceMapping from './methods/resourceMapping';
 import * as listSearch from './methods/listSearch';
 
 export class Databricks implements INodeType {
@@ -34,7 +38,8 @@ export class Databricks implements INodeType {
 		name: 'databricks',
 		icon: 'file:databricks.svg',
 		group: ['transform'],
-		version: DATABRICKS_NODE_VERSION,
+		version: [1, DATABRICKS_NODE_VERSION],
+		defaultVersion: DATABRICKS_NODE_VERSION,
 		usableAsTool: true,
 		subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',
 		description: 'Interact with Databricks API',
@@ -66,10 +71,22 @@ export class Databricks implements INodeType {
 							'Manage files in Unity Catalog volumes. <a href="https://docs.databricks.com/api/workspace/files" target="_blank">Learn more</a>.',
 					},
 					{
-						name: 'Genie',
+						name: 'Genie Agent',
 						value: 'genie',
 						description:
-							'AI-powered data assistant. <a href="https://docs.databricks.com/genie/index.html" target="_blank">Learn more</a>.',
+							'Ask a Genie agent questions about your data. <a href="https://docs.databricks.com/genie/index.html" target="_blank">Learn more</a>.',
+					},
+					{
+						name: 'Job',
+						value: 'job',
+						description:
+							'Run and inspect Databricks jobs. <a href="https://docs.databricks.com/jobs/index.html" target="_blank">Learn more</a>.',
+					},
+					{
+						name: 'Lakebase',
+						value: 'lakebase',
+						description:
+							'Read and write rows in a Lakebase Postgres database. <a href="https://docs.databricks.com/aws/en/oltp/" target="_blank">Learn more</a>.',
 					},
 					{
 						name: 'Model Serving',
@@ -99,6 +116,7 @@ export class Databricks implements INodeType {
 			modelServingOperations,
 			vectorSearchOperations,
 			jobOperations,
+			lakebaseOperations,
 			...filesParameters,
 			...genieParameters,
 			...unityCatalogParameters,
@@ -106,10 +124,11 @@ export class Databricks implements INodeType {
 			...modelServingParameters,
 			...vectorSearchParameters,
 			...jobParameters,
+			...lakebaseParameters,
 		],
 	};
 
-	methods = { listSearch };
+	methods = { listSearch, loadOptions, resourceMapping };
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		return await router.call(this);

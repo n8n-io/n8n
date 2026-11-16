@@ -5,8 +5,14 @@ import type {
 	IDataObject,
 	IHttpRequestMethods,
 } from 'n8n-workflow';
+import { requestPath, requestUrl } from 'n8n-workflow';
 
-import { lemlistApiRequest, lemlistApiRequestAllItems, getEvents } from '../GenericFunctions';
+import {
+	lemlistApiRequest,
+	lemlistApiRequestAllItems,
+	getEvents,
+	toPathValue,
+} from '../GenericFunctions';
 
 describe('GenericFunctions', () => {
 	describe('lemlistApiRequest', () => {
@@ -18,21 +24,33 @@ describe('GenericFunctions', () => {
 
 		it('should make an authenticated API request to Lemlist', async () => {
 			const method: IHttpRequestMethods = 'GET';
-			const endpoint = '/test-endpoint';
+			const endpoint = requestPath`/test-endpoint`;
 			const body: IDataObject = { key: 'value' };
 			const qs: IDataObject = { query: 'value' };
-			const option: IDataObject = { headers: {} };
 
-			await lemlistApiRequest.call(mockThis, method, endpoint, body, qs, option);
+			await lemlistApiRequest.call(mockThis, method, endpoint, body, qs);
 
 			expect(mockThis.helpers.requestWithAuthentication).toHaveBeenCalledWith('lemlistApi', {
 				headers: {},
 				method: 'GET',
-				uri: 'https://api.lemlist.com/api/test-endpoint',
+				uri: requestUrl`https://api.lemlist.com/api/test-endpoint`,
 				qs: { query: 'value' },
 				body: { key: 'value' },
 				json: true,
 			});
+		});
+
+		it('should encode path values', async () => {
+			const email = 'nathan/test@n8n.io';
+
+			await lemlistApiRequest.call(mockThis, 'GET', requestPath`/leads/${email}`);
+
+			expect(mockThis.helpers.requestWithAuthentication).toHaveBeenCalledWith(
+				'lemlistApi',
+				expect.objectContaining({
+					uri: requestUrl`https://api.lemlist.com/api/leads/nathan%2Ftest@n8n.io`,
+				}),
+			);
 		});
 	});
 
@@ -47,7 +65,7 @@ describe('GenericFunctions', () => {
 
 		it('should return all results', async () => {
 			const method: IHttpRequestMethods = 'GET';
-			const endpoint = '/test-endpoint';
+			const endpoint = requestPath`/test-endpoint`;
 			const qs: IDataObject = {};
 			qs.version = 'v2';
 
@@ -111,6 +129,16 @@ describe('GenericFunctions', () => {
 			];
 			const result = getEvents();
 			expect(result).toEqual(expectedEvents);
+		});
+	});
+
+	describe('toPathValue', () => {
+		it('should decode the value in versions before 2.1', () => {
+			expect(toPathValue(2, 'nathan%40n8n.io')).toBe('nathan@n8n.io');
+		});
+
+		it('should keep the value as entered in version 2.1', () => {
+			expect(toPathValue(2.1, 'nathan%40n8n.io')).toBe('nathan%40n8n.io');
 		});
 	});
 });

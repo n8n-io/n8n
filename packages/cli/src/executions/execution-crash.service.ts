@@ -1,5 +1,5 @@
 import { EventService } from '@n8n/backend-services';
-import type { CrashedExecution } from '@n8n/db';
+import type { CrashedExecution, ResumableExecutionStatus } from '@n8n/db';
 import { ExecutionRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { InstanceSettings } from 'n8n-core';
@@ -31,16 +31,61 @@ export class ExecutionCrashService {
 		});
 	}
 
+	/** Mark a `waiting` or `new` execution as `crashed`, which `markAsCrashed` skips. */
+	async markAsCrashedFrom(
+		executionId: string,
+		status: ResumableExecutionStatus,
+		detector: CrashDetector,
+		expectedAttempts?: number,
+	): Promise<boolean> {
+		return await this.executionRepository.markAsCrashedFrom(executionId, status, {
+			expectedAttempts,
+			onTransitioned: (batch) => {
+				this.count(batch);
+				this.announce(batch, detector);
+			},
+		});
+	}
+
 	/**
 	 * Claim and announce without counting, for a caller that runs `workflowExecuteAfter`
-	 * for the same executions, which counts them itself.
+	 * for the same executions, which counts them itself. A given `stoppedAt` replaces the
+	 * claim time in the announcement, for a caller that knows when the work stopped.
 	 */
 	async markAsCrashedWithoutCounting(
 		executionIds: string | string[],
 		detector: CrashDetector,
+		options: { stoppedAt?: Date } = {},
 	): Promise<CrashedExecution[]> {
 		return await this.executionRepository.markAsCrashed(executionIds, (batch) =>
-			this.announce(batch, detector),
+			this.announce(batch, detector, options.stoppedAt),
+		);
+	}
+
+	/**
+	 * Announce an execution the caller already transitioned to `crashed` itself.
+	 * Performs no transition and no counting; the caller's lifecycle hooks count it.
+	 */
+	async announceStalledExecution(executionId: string): Promise<void> {
+		const execution = await this.executionRepository.findSingleExecution(executionId, {
+			includeData: false,
+		});
+		if (!execution || execution.status !== 'crashed' || !execution.stoppedAt) return;
+
+		this.announce(
+			[
+				{
+					id: execution.id,
+					workflowId: execution.workflowId,
+					mode: execution.mode,
+					startedAt: execution.startedAt ?? null,
+					stoppedAt: execution.stoppedAt,
+					retryOf: execution.retryOf ?? undefined,
+					workflowVersionId: execution.workflowVersionId ?? undefined,
+					tracingContext: execution.tracingContext ?? undefined,
+				},
+			],
+			'stall',
 		);
 	}
 
@@ -59,7 +104,11 @@ export class ExecutionCrashService {
 		this.workflowStatisticsService.emit('executionsCrashed', { executions });
 	}
 
-	private announce(executions: CrashedExecution[], detector: CrashDetector) {
+	private announce(
+		executions: CrashedExecution[],
+		detector: CrashDetector,
+		stoppedAtOverride?: Date,
+	) {
 		for (const {
 			id,
 			workflowId,
@@ -81,7 +130,7 @@ export class ExecutionCrashService {
 				mode,
 				retryOf,
 				startedAt: startedAt ?? undefined,
-				stoppedAt,
+				stoppedAt: stoppedAtOverride ?? stoppedAt,
 				detector,
 				hostId: this.instanceSettings.hostId,
 				tracingContext,

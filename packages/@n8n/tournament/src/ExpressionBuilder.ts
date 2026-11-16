@@ -137,17 +137,29 @@ const fixStringNewLines = (node: types.namedTypes.File): types.namedTypes.File =
 	const replace = (str: string): string => {
 		return str.replace(/\n/g, '\\n');
 	};
+	const hasNewLine = (el: types.namedTypes.TemplateElement): boolean => el.value.raw.includes('\n');
 	visit(node, {
-		visitTemplateElement(path) {
+		visitTemplateLiteral(path) {
 			this.traverse(path);
-			const el = b.templateElement(
-				{
-					cooked: path.node.value.cooked === null ? null : replace(path.node.value.cooked),
-					raw: replace(path.node.value.raw),
-				},
-				path.node.tail,
+			if (!path.node.quasis.some(hasNewLine)) return;
+			const quasis = path.node.quasis.map((el) =>
+				b.templateElement(
+					{
+						cooked: el.value.cooked === null ? null : replace(el.value.cooked),
+						raw: replace(el.value.raw),
+					},
+					el.tail,
+				),
 			);
-			path.replace(el);
+			// `original: null` makes recast print the literal from scratch. When
+			// recast patches a changed element into the source instead, it adds
+			// a space between an element that ends in an identifier character
+			// and the `${` after it, which changes the string value.
+			const literal: types.namedTypes.TemplateLiteral & { original: null } = {
+				...b.templateLiteral(quasis, path.node.expressions),
+				original: null,
+			};
+			path.replace(literal);
 		},
 	});
 

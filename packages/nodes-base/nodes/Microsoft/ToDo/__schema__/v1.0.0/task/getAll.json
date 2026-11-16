@@ -21,6 +21,17 @@
                 "type": "string"
             }
         },
+        "completedDateTime": {
+            "type": "object",
+            "properties": {
+                "dateTime": {
+                    "type": "string"
+                },
+                "timeZone": {
+                    "type": "string"
+                }
+            }
+        },
         "createdDateTime": {
             "type": "string"
         },
@@ -57,5 +68,5 @@
             "type": "string"
         }
     },
-    "version": 7
+    "version": 8
 }

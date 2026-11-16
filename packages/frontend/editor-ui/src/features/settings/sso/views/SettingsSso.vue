@@ -5,17 +5,19 @@ import { useSSOStore, SupportedProtocols, type SupportedProtocolType } from '../
 import { useI18n } from '@n8n/i18n';
 import { computed, onMounted, ref, useTemplateRef } from 'vue';
 import { onBeforeRouteLeave, type NavigationGuardNext } from 'vue-router';
-import { ElDialog } from 'element-plus';
-
 import {
-	N8nEmptyState,
 	N8nButton,
+	N8nDialog,
+	N8nDialogBody,
+	N8nDialogFooter,
+	N8nEmptyState,
 	N8nCallout,
-	N8nHeading,
 	N8nOption,
 	N8nSelect,
+	N8nSettingsPageHeader,
 	N8nText,
 } from '@n8n/design-system';
+import AuthenticationBackLink from '../components/AuthenticationBackLink.vue';
 import SamlSettingsForm from '../components/SamlSettingsForm.vue';
 import OidcSettingsForm from '../components/OidcSettingsForm.vue';
 import { useUserRoleProvisioningStore } from '../provisioning/composables/userRoleProvisioning.store';
@@ -82,24 +84,32 @@ onBeforeRouteLeave((_to, _from, next) => {
 });
 
 async function onSaveAndLeave() {
+	const next = pendingNext.value;
+	pendingNext.value = null;
 	showUnsavedChangesDialog.value = false;
 	const saved = await activeForm.value?.onSave();
 	if (saved) {
-		pendingNext.value?.();
-		pendingNext.value = null;
+		next?.();
+	} else {
+		next?.(false);
 	}
 }
 
 function onLeaveWithoutSaving() {
-	showUnsavedChangesDialog.value = false;
-	pendingNext.value?.();
+	const next = pendingNext.value;
 	pendingNext.value = null;
+	showUnsavedChangesDialog.value = false;
+	next?.();
 }
 
-function onKeepEditing() {
+function onDismissUnsavedChanges() {
 	showUnsavedChangesDialog.value = false;
 	pendingNext.value?.(false);
 	pendingNext.value = null;
+}
+
+function onUnsavedDialogOpenUpdate(open: boolean) {
+	if (!open) onDismissUnsavedChanges();
 }
 
 onMounted(() => {
@@ -111,15 +121,14 @@ onMounted(() => {
 
 <template>
 	<div class="pb-2xl">
-		<div :class="$style.heading">
-			<N8nHeading size="2xlarge">{{ i18n.baseText('settings.sso.title') }}</N8nHeading>
-		</div>
-		<p :class="$style.description">
-			{{ i18n.baseText('settings.sso.info') }}
-			<a :class="$style.docLink" href="https://docs.n8n.io/user-management/saml/" target="_blank">
-				{{ i18n.baseText('settings.sso.info.link') }}
-			</a>
-		</p>
+		<AuthenticationBackLink />
+		<N8nSettingsPageHeader
+			:title="i18n.baseText('settings.sso.title')"
+			:description="i18n.baseText('settings.sso.info')"
+			docs-url="https://docs.n8n.io/user-management/saml/"
+			:class="$style.header"
+			data-test-id="sso-settings-header"
+		/>
 		<N8nCallout v-if="ssoStore.ssoManagedByEnv" theme="warning" class="mb-m">
 			{{
 				isRulesMappingInN8n
@@ -180,60 +189,38 @@ onMounted(() => {
 			</template>
 		</N8nEmptyState>
 
-		<ElDialog
-			v-model="showUnsavedChangesDialog"
-			:title="i18n.baseText('settings.sso.settings.unsavedChanges.title')"
-			width="500"
+		<N8nDialog
+			:open="showUnsavedChangesDialog"
+			size="medium"
+			:header="i18n.baseText('settings.sso.settings.unsavedChanges.title')"
 			data-test-id="sso-unsaved-changes-dialog"
+			@update:open="onUnsavedDialogOpenUpdate"
 		>
-			<N8nText>{{ i18n.baseText('settings.sso.settings.unsavedChanges.message') }}</N8nText>
-			<template #footer>
-				<div :class="$style.dialogFooter">
-					<N8nButton variant="ghost" data-test-id="sso-unsaved-keep-editing" @click="onKeepEditing">
-						{{ i18n.baseText('settings.sso.settings.unsavedChanges.keepEditing') }}
-					</N8nButton>
-					<N8nButton
-						variant="outline"
-						data-test-id="sso-unsaved-leave"
-						@click="onLeaveWithoutSaving"
-					>
-						{{ i18n.baseText('settings.sso.settings.unsavedChanges.leaveWithoutSaving') }}
-					</N8nButton>
-					<N8nButton
-						variant="solid"
-						data-test-id="sso-unsaved-save-and-leave"
-						@click="onSaveAndLeave"
-					>
-						{{ i18n.baseText('settings.sso.settings.unsavedChanges.saveAndLeave') }}
-					</N8nButton>
-				</div>
-			</template>
-		</ElDialog>
+			<N8nDialogBody>
+				<N8nText>{{ i18n.baseText('settings.sso.settings.unsavedChanges.message') }}</N8nText>
+			</N8nDialogBody>
+			<N8nDialogFooter>
+				<N8nButton variant="outline" data-test-id="sso-unsaved-leave" @click="onLeaveWithoutSaving">
+					{{ i18n.baseText('settings.sso.settings.unsavedChanges.leaveWithoutSaving') }}
+				</N8nButton>
+				<N8nButton
+					variant="solid"
+					data-test-id="sso-unsaved-save-and-leave"
+					@click="onSaveAndLeave"
+				>
+					{{ i18n.baseText('settings.sso.settings.unsavedChanges.saveAndLeave') }}
+				</N8nButton>
+			</N8nDialogFooter>
+		</N8nDialog>
 	</div>
 </template>
 
 <style lang="scss" module="shared" src="../styles/sso-form.module.scss" />
 
 <style lang="scss" module>
-.heading {
-	margin-bottom: var(--spacing--2xs);
-}
-
-.description {
-	font-size: var(--font-size--sm);
-	color: var(--color--text--tint-1);
-	line-height: var(--line-height--xl);
-	margin: 0 0 var(--spacing--lg);
-}
-
-.docLink {
-	color: var(--color--text);
-	text-decoration: underline;
-
-	&::after {
-		content: '↗';
-		margin-left: 2px;
-	}
+/* This page is not inside N8nSettingsLayout (which owns the header → content gap), so it keeps its own. */
+.header {
+	margin-bottom: var(--spacing--lg);
 }
 
 .protocolCard {
@@ -246,11 +233,5 @@ onMounted(() => {
 
 .actionBox {
 	margin-top: var(--spacing--lg);
-}
-
-.dialogFooter {
-	display: flex;
-	justify-content: flex-end;
-	gap: var(--spacing--2xs);
 }
 </style>

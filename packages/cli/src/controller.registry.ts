@@ -12,11 +12,10 @@ import type {
 	KeyedRateLimiterConfig,
 } from '@n8n/decorators';
 import { Container, Service } from '@n8n/di';
-import { NotFoundError, UnauthenticatedError } from '@n8n/errors';
+import { NotFoundError, UnauthenticatedError, UnexpectedError } from '@n8n/errors';
 import { ensureError } from '@n8n/utils/errors/ensure-error';
 import { Router } from 'express';
-import type { Application, Request, Response, RequestHandler } from 'express';
-import { UnexpectedError } from 'n8n-workflow';
+import type { Request, Response, RequestHandler } from 'express';
 import assert from 'node:assert';
 
 import { AuthService } from '@/auth/auth.service';
@@ -29,6 +28,7 @@ import { AbstractServer } from './abstract-server';
 import { CorsService } from './services/cors-service';
 import { LastActiveAtService } from './services/last-active-at.service';
 import { RateLimitService } from './services/rate-limit.service';
+import type { BodyArg } from './public-api/public-api-route-resolver';
 
 @Service()
 export class ControllerRegistry {
@@ -41,15 +41,16 @@ export class ControllerRegistry {
 		private readonly rateLimitService: RateLimitService,
 	) {}
 
-	activate(app: Application) {
+	activate(app: Pick<Router, 'use'>, options: { surface?: 'main' | 'apps' } = {}) {
 		for (const controllerClass of this.metadata.controllerClasses) {
 			const metadata = this.metadata.getControllerMetadata(controllerClass);
 			if (metadata.isPublicApi) continue;
+			if ((metadata.surface ?? 'main') !== (options.surface ?? 'main')) continue;
 			this.activateController(app, controllerClass);
 		}
 	}
 
-	private activateController(app: Application, controllerClass: Controller) {
+	private activateController(app: Pick<Router, 'use'>, controllerClass: Controller) {
 		const metadata = this.metadata.getControllerMetadata(controllerClass);
 
 		const router = Router({ mergeParams: true });
@@ -80,6 +81,22 @@ export class ControllerRegistry {
 
 		// Register regular routes
 		for (const [handlerName, route] of metadata.routes) {
+			// Guard against internal API using non-JSON body media types.
+			// We may support non-JSON media types in the future, but for now they are only supported
+			// on `@PublicApiController` routes.
+			const nonJsonBodyArg = route.args.find(
+				(arg): arg is BodyArg =>
+					arg?.type === 'body' &&
+					arg.media !== undefined &&
+					arg.media.mediaType !== 'application/json',
+			);
+			if (nonJsonBodyArg) {
+				throw new UnexpectedError(
+					`${controllerClass.name}.${handlerName} declares @Body({ mediaType: ` +
+						`'${nonJsonBodyArg.media?.mediaType}' }), which only @PublicApiController routes support.`,
+				);
+			}
+
 			// Original handler logic for non-router routes
 			const argTypes = Reflect.getMetadata(
 				'design:paramtypes',

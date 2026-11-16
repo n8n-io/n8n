@@ -5,12 +5,14 @@ import { Memoized } from '@n8n/decorators';
 import { Service } from '@n8n/di';
 import { toResult } from '@n8n/utils/result';
 import { createHash, randomBytes } from 'crypto';
-import { UserError, jsonParse, ALPHABET } from 'n8n-workflow';
+import { jsonParse, ALPHABET } from 'n8n-workflow';
+import { UserError } from '@n8n/errors';
 import { customAlphabet } from 'nanoid';
 import { chmodSync, existsSync, mkdirSync, readFileSync, statSync, writeFileSync } from 'node:fs';
 import os from 'node:os';
 import path from 'path';
 
+import { instanceTypeFromArgv } from './instance-type';
 import { WorkerMissingEncryptionKey } from './worker-missing-encryption-key.error';
 
 const nanoid = customAlphabet(ALPHABET, 16);
@@ -97,8 +99,7 @@ export class InstanceSettings {
 		private readonly config: InstanceSettingsConfig,
 		private readonly logger: Logger,
 	) {
-		const command = process.argv[2] as InstanceType;
-		this.instanceType = ['webhook', 'worker', 'engine'].includes(command) ? command : 'main';
+		this.instanceType = instanceTypeFromArgv(process.argv);
 
 		this.hostId = `${this.instanceType}-${this.isDocker ? os.hostname() : nanoid()}`;
 		this.settings = this.loadOrCreate();

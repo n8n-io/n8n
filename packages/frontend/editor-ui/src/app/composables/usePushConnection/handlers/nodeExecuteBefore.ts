@@ -20,7 +20,11 @@ export async function nodeExecuteBefore(
 		return;
 	}
 
-	workflowExecutionStateStore.executingNode.addExecutingNode(data.nodeName, data.sequenceNumber);
+	workflowExecutionStateStore.executingNode.addExecutingNode(
+		data.nodeName,
+		data.sequenceNumber,
+		data.data.executionIndex,
+	);
 
 	useExecutionDataStore(createExecutionDataId(data.executionId)).addNodeExecutionStartedData(data);
 }

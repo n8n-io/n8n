@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { effectScope, ref, type EffectScope } from 'vue';
 import { flushPromises } from '@vue/test-utils';
-import type { InstanceAiThreadTabsState } from '@n8n/api-types';
+import type { AssistantThreadTabsState } from '@n8n/api-types';
 import { DEBOUNCE_TIME } from '@/app/constants';
 import { useOpenArtifactTabs, type ThreadTabsStorage } from '../composables/useOpenArtifactTabs';
 import type { ArtifactTab } from '../useCanvasPreview';
@@ -16,21 +16,21 @@ function dataTableTab(id: string): ArtifactTab {
 	return { id, type: 'data-table', name: `Table ${id}`, icon: 'table', projectId: 'project-1' };
 }
 
-function createStorage(state: InstanceAiThreadTabsState | null = null) {
-	let resolveLoad: (value: InstanceAiThreadTabsState | null) => void = () => {};
+function createStorage(state: AssistantThreadTabsState | null = null) {
+	let resolveLoad: (value: AssistantThreadTabsState | null) => void = () => {};
 	const load = vi.fn(
 		async () =>
-			await new Promise<InstanceAiThreadTabsState | null>((resolve) => {
+			await new Promise<AssistantThreadTabsState | null>((resolve) => {
 				resolveLoad = resolve;
 			}),
 	);
-	const save = vi.fn(async (_state: InstanceAiThreadTabsState) => {});
+	const save = vi.fn(async (_state: AssistantThreadTabsState) => {});
 	const storage: ThreadTabsStorage = { load, save };
 	return {
 		storage,
 		load,
 		save,
-		finishLoad: async (value: InstanceAiThreadTabsState | null = state) => {
+		finishLoad: async (value: AssistantThreadTabsState | null = state) => {
 			resolveLoad(value);
 			await flushPromises();
 		},
@@ -353,5 +353,71 @@ describe('useOpenArtifactTabs', () => {
 
 		expect(tabs.isLoaded.value).toBe(true);
 		expect(tabs.storedActiveTab.value).toEqual({ type: 'workflow', id: 'wf-2' });
+	});
+
+	describe('storeDefaultTabs', () => {
+		it('stores the default tabs without an active tab or a preview state', async () => {
+			const { storage, save, finishLoad } = createStorage();
+			const { tabs } = setup([workflowTab('wf-1'), dataTableTab('dt-1')], storage, () => true);
+			await finishLoad(null);
+
+			tabs.storeDefaultTabs();
+
+			expect(save).toHaveBeenCalledWith({
+				tabs: [
+					{ type: 'workflow', id: 'wf-1', name: 'Workflow wf-1' },
+					{ type: 'data-table', id: 'dt-1', name: 'Table dt-1', projectId: 'project-1' },
+				],
+				closedTabs: [],
+				activeTab: null,
+			});
+		});
+
+		it('stores the tabs only once', async () => {
+			const { storage, save, finishLoad } = createStorage();
+			const { tabs } = setup([workflowTab('wf-1')], storage);
+			await finishLoad(null);
+
+			tabs.storeDefaultTabs();
+			tabs.storeDefaultTabs();
+
+			expect(save).toHaveBeenCalledTimes(1);
+		});
+
+		it('does not store tabs when tabs are stored already, or before they load', async () => {
+			const stored = createStorage({
+				tabs: [{ type: 'workflow', id: 'wf-1', name: 'Workflow wf-1' }],
+				closedTabs: [],
+				activeTab: null,
+			});
+			const { tabs } = setup([workflowTab('wf-1')], stored.storage);
+			tabs.storeDefaultTabs();
+			await stored.finishLoad();
+			tabs.storeDefaultTabs();
+
+			expect(stored.save).not.toHaveBeenCalled();
+		});
+
+		it('does not store tabs when the stored tabs cannot load', async () => {
+			const load = vi.fn().mockRejectedValue(new Error('Network error'));
+			const save = vi.fn().mockResolvedValue(undefined);
+			const { tabs } = setup([workflowTab('wf-1')], { load, save });
+			await flushPromises();
+
+			tabs.storeDefaultTabs();
+
+			expect(tabs.isLoaded.value).toBe(true);
+			expect(save).not.toHaveBeenCalled();
+		});
+
+		it('does not store tabs for a thread without artifacts', async () => {
+			const { storage, save, finishLoad } = createStorage();
+			const { tabs } = setup([], storage);
+			await finishLoad(null);
+
+			tabs.storeDefaultTabs();
+
+			expect(save).not.toHaveBeenCalled();
+		});
 	});
 });

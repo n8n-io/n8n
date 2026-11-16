@@ -1,7 +1,9 @@
 import { createWorkflow, testDb } from '@n8n/backend-test-utils';
-import { ExecutionDataRepository, ExecutionRepository } from '@n8n/db';
+import { ExecutionsConfig } from '@n8n/config';
+import { ExecutionData, ExecutionRepository } from '@n8n/db';
 import type { IExecutionResponse } from '@n8n/db';
 import { Container } from '@n8n/di';
+import { DataSource } from '@n8n/typeorm';
 import { createEmptyRunExecutionData } from 'n8n-workflow';
 
 import { DbStore } from '@/executions/execution-data/db-store';
@@ -48,7 +50,7 @@ describe('ExecutionPersistence', () => {
 			expect(executionEntity?.status).toEqual('new');
 			expect(executionEntity?.storedAt).toEqual('db');
 
-			const executionDataRepository = Container.get(ExecutionDataRepository);
+			const executionDataRepository = Container.get(DataSource).getRepository(ExecutionData);
 			const executionData = await executionDataRepository.findOneBy({ executionId });
 			expect(executionData?.workflowData).toEqual({
 				id: workflow.id,
@@ -87,7 +89,7 @@ describe('ExecutionPersistence', () => {
 	describe('updateExistingExecution (db overwrite path)', () => {
 		it('should preserve the original workflowVersionId when overwriting data and workflowData', async () => {
 			const executionPersistence = Container.get(ExecutionPersistence);
-			const executionDataRepository = Container.get(ExecutionDataRepository);
+			const executionDataRepository = Container.get(DataSource).getRepository(ExecutionData);
 			const workflow = await createWorkflow({ settings: { executionOrder: 'v1' } });
 
 			const executionId = await executionPersistence.create({
@@ -116,7 +118,7 @@ describe('ExecutionPersistence', () => {
 		it('should roll back the status change when the data row is missing during an overwrite', async () => {
 			const executionPersistence = Container.get(ExecutionPersistence);
 			const executionRepo = Container.get(ExecutionRepository);
-			const executionDataRepository = Container.get(ExecutionDataRepository);
+			const executionDataRepository = Container.get(DataSource).getRepository(ExecutionData);
 			const workflow = await createWorkflow({ settings: { executionOrder: 'v1' } });
 
 			const executionId = await executionPersistence.create({
@@ -179,37 +181,260 @@ describe('ExecutionPersistence', () => {
 		);
 	});
 
-	// CAT-3909: an enqueued execution whose data row is gone used to be dropped silently, so
-	// startup recovery never learned about it and the row stayed `new` forever.
-	describe('findMultipleExecutionsWithUnreadable', () => {
-		it('returns the ids of enqueued executions whose data row is gone', async () => {
+	describe('deleteInFlightExecution', () => {
+		const executionsConfig = Container.get(ExecutionsConfig);
+		const originalPruneData = executionsConfig.pruneData;
+		const stoppedAt = new Date('2026-01-01T00:00:00.000Z');
+
+		afterEach(() => {
+			executionsConfig.pruneData = originalPruneData;
+		});
+
+		const createRunningExecution = async () => {
 			const executionPersistence = Container.get(ExecutionPersistence);
-			const executionDataRepository = Container.get(ExecutionDataRepository);
 			const workflow = await createWorkflow({ settings: { executionOrder: 'v1' } });
+			const executionId = await executionPersistence.create({
+				workflowId: workflow.id,
+				data: createEmptyRunExecutionData(),
+				workflowData: workflow,
+				mode: 'trigger',
+				status: 'running',
+				finished: false,
+			});
+			return { workflowId: workflow.id, executionId, storedAt: 'db' as const };
+		};
 
-			const create = async () =>
-				await executionPersistence.create({
-					workflowId: workflow.id,
-					data: createEmptyRunExecutionData(),
-					workflowData: workflow,
-					mode: 'webhook',
-					status: 'new',
-					finished: false,
+		it.each([
+			{ status: 'success' as const, finished: true },
+			{ status: 'error' as const, finished: false },
+		])(
+			'should write the final $status state and soft-delete when pruning is enabled',
+			async ({ status, finished }) => {
+				executionsConfig.pruneData = true;
+				const target = await createRunningExecution();
+
+				const result = await Container.get(ExecutionPersistence).deleteInFlightExecution(target, {
+					status,
+					finished,
+					stoppedAt,
 				});
 
-			const healthyId = await create();
-			const orphanedId = await create();
-			await executionDataRepository.delete({ executionId: orphanedId });
-
-			const { executions, unreadableIds } =
-				await executionPersistence.findMultipleExecutionsWithUnreadable({
-					select: ['id', 'mode'],
-					where: { status: 'new' },
-					order: { id: 'ASC' },
+				expect(result).toEqual({ ended: true });
+				const row = await Container.get(ExecutionRepository).findOne({
+					where: { id: target.executionId },
+					withDeleted: true,
 				});
+				expect(row).toMatchObject({ status, finished, stoppedAt });
+				expect(row?.deletedAt).toBeInstanceOf(Date);
+			},
+		);
 
-			expect(executions.map((e) => e.id)).toEqual([healthyId]);
-			expect(unreadableIds).toEqual([orphanedId]);
+		it('should keep a canceled status and still soft-delete when pruning is enabled', async () => {
+			executionsConfig.pruneData = true;
+			const target = await createRunningExecution();
+			const executionRepo = Container.get(ExecutionRepository);
+			await executionRepo.update(target.executionId, { status: 'canceled' });
+
+			const result = await Container.get(ExecutionPersistence).deleteInFlightExecution(target, {
+				status: 'success',
+				finished: true,
+				stoppedAt,
+			});
+
+			expect(result).toEqual({ ended: false });
+			const row = await executionRepo.findOne({
+				where: { id: target.executionId },
+				withDeleted: true,
+			});
+			expect(row?.status).toEqual('canceled');
+			expect(row?.deletedAt).toBeInstanceOf(Date);
+		});
+
+		it('should not report ended for a run that a crash sweep already finished', async () => {
+			executionsConfig.pruneData = false;
+			const target = await createRunningExecution();
+			await Container.get(ExecutionRepository).markAsCrashed(target.executionId);
+
+			const result = await Container.get(ExecutionPersistence).deleteInFlightExecution(target, {
+				status: 'success',
+				finished: true,
+				stoppedAt,
+			});
+
+			expect(result).toEqual({ ended: false });
+		});
+
+		it('should hard-delete the execution when pruning is disabled', async () => {
+			executionsConfig.pruneData = false;
+			const target = await createRunningExecution();
+
+			const result = await Container.get(ExecutionPersistence).deleteInFlightExecution(target, {
+				status: 'success',
+				finished: true,
+				stoppedAt,
+			});
+
+			expect(result).toEqual({ ended: true });
+
+			const row = await Container.get(ExecutionRepository).findOne({
+				where: { id: target.executionId },
+				withDeleted: true,
+			});
+			expect(row).toBeNull();
+		});
+	});
+
+	describe('saveExecutionOutcome', () => {
+		const stoppedAt = new Date('2026-01-01T00:00:00.000Z');
+
+		const createRunningExecution = async () => {
+			const workflow = await createWorkflow({ settings: { executionOrder: 'v1' } });
+			const executionId = await Container.get(ExecutionPersistence).create({
+				workflowId: workflow.id,
+				data: createEmptyRunExecutionData(),
+				workflowData: workflow,
+				mode: 'trigger',
+				status: 'running',
+				finished: false,
+			});
+			return { executionId, workflow };
+		};
+
+		const successOutcome = (workflow: IExecutionResponse['workflowData']) => ({
+			status: 'success' as const,
+			finished: true,
+			stoppedAt,
+			data: createEmptyRunExecutionData(),
+			workflowData: workflow,
+		});
+
+		it('should report ended only for the first save of a final status', async () => {
+			const { executionId, workflow } = await createRunningExecution();
+			const executionPersistence = Container.get(ExecutionPersistence);
+
+			const first = await executionPersistence.saveExecutionOutcome(
+				executionId,
+				successOutcome(workflow),
+				{ requireNotCanceled: true },
+			);
+			const second = await executionPersistence.saveExecutionOutcome(
+				executionId,
+				successOutcome(workflow),
+				{ requireNotCanceled: true },
+			);
+
+			expect(first).toEqual({ updated: true, ended: true });
+			expect(second).toEqual({ updated: true, ended: false });
+		});
+
+		it('should still write a late save after a crash sweep, without reporting ended', async () => {
+			const { executionId, workflow } = await createRunningExecution();
+			await Container.get(ExecutionRepository).markAsCrashed(executionId);
+
+			const result = await Container.get(ExecutionPersistence).saveExecutionOutcome(
+				executionId,
+				successOutcome(workflow),
+				{ requireNotCanceled: true },
+			);
+
+			expect(result).toEqual({ updated: true, ended: false });
+			const row = await Container.get(ExecutionRepository).findOneBy({ id: executionId });
+			expect(row?.status).toEqual('success');
+		});
+
+		it('should not report ended for a waiting status', async () => {
+			const { executionId } = await createRunningExecution();
+
+			const result = await Container.get(ExecutionPersistence).saveExecutionOutcome(
+				executionId,
+				{ status: 'waiting' },
+				{ requireNotCanceled: true },
+			);
+
+			expect(result).toEqual({ updated: true, ended: false });
+		});
+
+		it('should give ended to exactly one of a crash sweep and a final save that race', async () => {
+			const executionRepository = Container.get(ExecutionRepository);
+			const executionPersistence = Container.get(ExecutionPersistence);
+			const runs = await Promise.all(Array.from({ length: 20 }, createRunningExecution));
+
+			const results = await Promise.all(
+				runs.map(async ({ executionId, workflow }) => {
+					const [crashed, saved] = await Promise.all([
+						executionRepository.markAsCrashed(executionId),
+						executionPersistence.saveExecutionOutcome(executionId, successOutcome(workflow), {
+							requireNotCanceled: true,
+						}),
+					]);
+					return { crashedHere: crashed.some(({ id }) => id === executionId), saved };
+				}),
+			);
+
+			for (const { crashedHere, saved } of results) {
+				expect(saved.updated).toBe(true);
+				expect(crashedHere).toBe(!saved.ended);
+			}
+		});
+	});
+
+	describe('softDeleteWithOutcome', () => {
+		it('should finish the run in the soft-delete, so a crash sweep cannot finish it again', async () => {
+			const workflow = await createWorkflow({ settings: { executionOrder: 'v1' } });
+			const executionRepository = Container.get(ExecutionRepository);
+			const executionPersistence = Container.get(ExecutionPersistence);
+			const executionId = await executionPersistence.create({
+				workflowId: workflow.id,
+				data: createEmptyRunExecutionData(),
+				workflowData: workflow,
+				mode: 'manual',
+				status: 'running',
+				finished: false,
+			});
+			const stoppedAt = new Date('2026-01-01T00:00:00.000Z');
+
+			const result = await executionPersistence.softDeleteWithOutcome(executionId, {
+				status: 'error',
+				finished: false,
+				stoppedAt,
+			});
+			const crashed = await executionRepository.markAsCrashed(executionId);
+
+			expect(result).toEqual({ ended: true });
+			expect(crashed).toEqual([]);
+			const row = await executionRepository.findOne({
+				where: { id: executionId },
+				withDeleted: true,
+			});
+			expect(row).toMatchObject({ status: 'error', stoppedAt });
+			expect(row?.deletedAt).toBeInstanceOf(Date);
+		});
+
+		it('should only soft-delete a canceled run', async () => {
+			const workflow = await createWorkflow({ settings: { executionOrder: 'v1' } });
+			const executionRepository = Container.get(ExecutionRepository);
+			const executionId = await Container.get(ExecutionPersistence).create({
+				workflowId: workflow.id,
+				data: createEmptyRunExecutionData(),
+				workflowData: workflow,
+				mode: 'manual',
+				status: 'canceled',
+				finished: false,
+			});
+
+			const result = await Container.get(ExecutionPersistence).softDeleteWithOutcome(executionId, {
+				status: 'success',
+				finished: true,
+				stoppedAt: new Date(),
+			});
+
+			expect(result).toEqual({ ended: false });
+			const row = await executionRepository.findOne({
+				where: { id: executionId },
+				withDeleted: true,
+			});
+			expect(row?.status).toEqual('canceled');
+			expect(row?.deletedAt).toBeInstanceOf(Date);
 		});
 	});
 

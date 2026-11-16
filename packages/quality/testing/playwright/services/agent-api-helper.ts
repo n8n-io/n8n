@@ -1,4 +1,5 @@
 import type {
+	AgentBackgroundJobsResponse,
 	AgentChatMessageDto,
 	AgentChatMessagesResponse,
 	AgentChatQueueResponse,
@@ -88,6 +89,16 @@ export class AgentApiHelper {
 	}
 
 	async delete(projectId: string, agentId: string): Promise<void> {
+		// The delete route accepts only an archived agent.
+		const archived = await this.api.request.post(
+			`/rest/projects/${projectId}/agents/v2/${agentId}/archive`,
+		);
+		if (!archived.ok()) {
+			const body = await archived.text();
+			// A cleanup retry can find the agent archived already.
+			const alreadyArchived = archived.status() === 400 && body.includes('already archived');
+			if (!alreadyArchived) throw new TestError(`Failed to archive agent: ${body}`);
+		}
 		const response = await this.api.request.delete(
 			`/rest/projects/${projectId}/agents/v2/${agentId}`,
 		);
@@ -103,6 +114,32 @@ export class AgentApiHelper {
 			`/rest/projects/${projectId}/agents/v2/${agentId}/chat/${threadId}/messages`,
 		);
 		if (!response.ok()) throw new TestError(`Failed to read chat: ${await response.text()}`);
+		return (await response.json()).data;
+	}
+
+	async backgroundTasks(
+		projectId: string,
+		agentId: string,
+		threadId: string,
+	): Promise<AgentBackgroundJobsResponse> {
+		const response = await this.api.request.get(
+			`/rest/projects/${projectId}/agents/v2/${agentId}/chat/${threadId}/background-tasks`,
+		);
+		if (!response.ok())
+			throw new TestError(`Failed to read background tasks: ${await response.text()}`);
+		return (await response.json()).data;
+	}
+
+	async stopBackgroundTasks(
+		projectId: string,
+		agentId: string,
+		threadId: string,
+	): Promise<AgentBackgroundJobsResponse> {
+		const response = await this.api.request.post(
+			`/rest/projects/${projectId}/agents/v2/${agentId}/chat/${threadId}/background-tasks/stop`,
+		);
+		if (!response.ok())
+			throw new TestError(`Failed to stop background tasks: ${await response.text()}`);
 		return (await response.json()).data;
 	}
 

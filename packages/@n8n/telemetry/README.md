@@ -13,6 +13,10 @@ pnpm --filter @n8n/telemetry catalog --json   # structured, for programmatic use
 
 The registry is being adopted incrementally. Events not yet registered do not appear in the catalog, so search `track()` call sites when the catalog has no match.
 
+See [Agent creation event change](agent-creation.md) for the creation and modification triggers, event versions, and Data rollout note.
+
+See [Assistant Hub skill use](assistant-hub-skills.md) for attempt, delivery, and cumulative run metrics.
+
 Define an event in its domain file under `src/events/`:
 
 ```ts

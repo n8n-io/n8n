@@ -43,12 +43,14 @@ const DEFAULT_IMAGES = {
 	kafka: 'confluentinc/cp-kafka:8.0.3',
 	mysql: 'mysql:9.6.0',
 	localstack: 'localstack/localstack:4.13.1',
+	vault: 'hashicorp/vault:1.18',
 	postgresExporter: 'prometheuscommunity/postgres-exporter:v0.17.1',
 	cadvisor: 'gcr.io/cadvisor/cadvisor:v0.49.1',
 	sandboxApi: 'n8nio/n8n-sandbox-service-api:1.3.0',
 	sandboxRunner: 'n8nio/n8n-sandbox-service-runner-dind:1.3.0',
 	sandboxSandbox: 'n8nio/n8n-sandbox-service-sandbox:1.3.0',
 	verdaccio: 'verdaccio/verdaccio:6.5.0',
+	litellm: 'ghcr.io/berriai/litellm:main-v1.83.14-stable',
 } as const;
 
 /** Convert camelCase to SCREAMING_SNAKE_CASE for env var names */
@@ -125,10 +127,12 @@ export const TEST_CONTAINER_IMAGES = {
 	mysql: getImage('mysql'),
 	ngrok: getImage('ngrok'),
 	localstack: getImage('localstack'),
+	vault: getImage('vault'),
 	postgresExporter: getImage('postgresExporter'),
 	cadvisor: getImage('cadvisor'),
 	sandboxApi: getImage('sandboxApi'),
 	sandboxRunner: getImage('sandboxRunner'),
 	sandboxSandbox: getImage('sandboxSandbox'),
 	verdaccio: getImage('verdaccio'),
+	litellm: getImage('litellm'),
 } as const;

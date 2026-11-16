@@ -34,7 +34,7 @@
 		"n8n": {
 			"source": {
 				"source": "directory",
-				"path": "./.claude/plugins/n8n"
+				"path": "./"
 			}
 		}
 	},

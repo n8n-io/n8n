@@ -2,6 +2,7 @@ import { createWorkflowWithHistory, testDb } from '@n8n/backend-test-utils';
 import { GlobalConfig } from '@n8n/config';
 import type { User } from '@n8n/db';
 import { Container } from '@n8n/di';
+import { DataSource } from '@n8n/typeorm';
 import { Cipher } from 'n8n-core';
 import type { IHttpRequestMethods, INode, IWebhookData, IWorkflowBase } from 'n8n-workflow';
 import { toCredentialContext, WEBHOOK_NODE_TYPE } from 'n8n-workflow';
@@ -10,11 +11,10 @@ import { randomUUID } from 'node:crypto';
 import { createOwner, createMember } from '@test-integration/db/users';
 import { setupTestServer } from '@test-integration/utils';
 
-import { OAuthClientRepository } from '@/modules/oauth-server/database/repositories/oauth-client.repository';
+import { OAuthClient } from '@/modules/oauth-server/database/entities/oauth-client.entity';
 import { OAuthTokenService } from '@/modules/oauth-server/oauth-token.service';
-import { CacheService } from '@n8n/backend-services';
-import { ProtectedResourceRegistry } from '@/services/protected-resource.registry';
-import { UrlService } from '@n8n/backend-services';
+import { CacheService, UrlService } from '@n8n/backend-services';
+import { ProtectedResourceRegistry } from '@n8n/backend-services/auth';
 import { TestWebhookRegistrationsService } from '@/webhooks/test-webhook-registrations.service';
 
 /**
@@ -54,7 +54,7 @@ const oauth2WebhookNode = (requireExecuteAccess?: boolean): INode => ({
 	},
 });
 
-/** Mirrors what `TestWebhooks.needsWebhook` writes when the editor starts listening. */
+/** Mirrors what `TestWebhooks.registerWebhooks` writes when the editor starts listening. */
 const registerTestWebhook = async (
 	webhookPath: string,
 	node: INode,
@@ -132,7 +132,8 @@ beforeAll(async () => {
 	registrations = Container.get(TestWebhookRegistrationsService);
 
 	clientId = randomUUID();
-	await Container.get(OAuthClientRepository).insert({
+	const clients = Container.get(DataSource).getRepository(OAuthClient);
+	await clients.insert({
 		id: clientId,
 		name: 'resource-lifetime-tests',
 		redirectUris: ['https://example.com/callback'],

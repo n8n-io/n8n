@@ -36,6 +36,28 @@ describe('CredentialSerializer', () => {
 		});
 	});
 
+	it('omits the description unless the source has descriptions on', () => {
+		const serialized = serializer.serialize(makeCredential({ description: 'Prod key' }));
+
+		expect(serialized).not.toHaveProperty('description');
+	});
+
+	it('emits the description when the source has descriptions on', () => {
+		const serialized = serializer.serialize(makeCredential({ description: 'Prod key' }), {
+			includeDescription: true,
+		});
+
+		expect(serialized.description).toBe('Prod key');
+	});
+
+	it('emits an empty description as null, so an import can clear it', () => {
+		const serialized = serializer.serialize(makeCredential({ description: null }), {
+			includeDescription: true,
+		});
+
+		expect(serialized.description).toBeNull();
+	});
+
 	it('emits bundled expression data when provided', () => {
 		const credential = makeCredential();
 

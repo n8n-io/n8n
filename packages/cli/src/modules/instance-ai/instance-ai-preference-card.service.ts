@@ -10,7 +10,7 @@ import { Service } from '@n8n/di';
 import { orchestratorAgentId } from '@n8n/instance-ai';
 import { TELEMETRY_EVENT } from '@n8n/telemetry';
 
-import { AiPreferenceService } from '@/services/ai-preference.service';
+import { AiPreferenceService } from '@n8n/backend-services';
 import { secondsSinceSaved } from '@/services/ai-preference-write';
 import { Telemetry } from '@/telemetry';
 

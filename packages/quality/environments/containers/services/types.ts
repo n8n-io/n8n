@@ -18,17 +18,20 @@ export const SERVICE_NAMES = [
 	'tracing',
 	'proxy',
 	'taskRunner',
+	'engineTaskRunner',
 	'loadBalancer',
 	'cloudflared',
 	'kafka',
 	'ngrok',
 	'mysql',
 	'localstack',
+	'vault',
 	'kent',
 	'postgresExporter',
 	'cadvisor',
 	'sandbox',
 	'npmRegistry',
+	'litellm',
 ] as const;
 
 export type ServiceName = (typeof SERVICE_NAMES)[number];

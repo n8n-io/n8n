@@ -1,10 +1,6 @@
 type: object
 properties:
-  connectionId:
-    type: string
-    minLength: 1
-    maxLength: 36
-  configId:
+  environmentId:
     type: string
     minLength: 1
     maxLength: 36
@@ -46,8 +42,33 @@ properties:
     required:
       - commitSha
       - branchName
+  review:
+    type: object
+    properties:
+      reviewId:
+        type: string
+        minLength: 1
+        maxLength: 36
+      number:
+        type: integer
+      webUrl:
+        type: string
+    required:
+      - reviewId
+      - number
+      - webUrl
+  warnings:
+    type: array
+    items:
+      type: object
+      properties:
+        message:
+          type: string
+        linkUrl:
+          type: string
+      required:
+        - message
 required:
-  - connectionId
-  - configId
+  - environmentId
   - counts
   - git

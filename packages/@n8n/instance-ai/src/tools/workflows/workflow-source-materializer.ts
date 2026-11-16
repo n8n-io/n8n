@@ -99,7 +99,7 @@ async function resolveSourceFilePath(
 	workflowId: string,
 	name: string,
 ): Promise<{ filePath: string; binding?: WorkflowSourceFileBinding }> {
-	// build-workflow binds whatever path it built from, a JSON source included. Only
+	// workflow_builder_build_workflow binds whatever path it built from, a JSON source included. Only
 	// a TypeScript binding can take generated TypeScript; anything else is left alone.
 	const own = (await findWorkflowSourceFileBindingsForWorkflow(context, workflowId)).find(
 		(binding) => isTypeScriptWorkflowSource(binding.filePath),
@@ -119,7 +119,7 @@ async function resolveSourceFilePath(
 
 /**
  * Write generated workflow source into the thread's bound workspace file and
- * record the binding, so `build-workflow` can save the file back to the same
+ * record the binding, so `workflow_builder_build_workflow` can save the file back to the same
  * workflow without an explicit id.
  *
  * The file is the agent's editing surface, so it is never clobbered while it

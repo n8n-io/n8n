@@ -1,6 +1,6 @@
 import { ChatAnthropic, type ChatAnthropicInput } from '@langchain/anthropic';
-import type { LLMResult } from '@langchain/core/outputs';
 import {
+	anthropicTokensUsageParser,
 	getProxyAgent,
 	aiClientFetch,
 	makeN8nLlmFailedAttemptHandler,
@@ -18,7 +18,7 @@ import {
 	type SupplyData,
 } from 'n8n-workflow';
 
-import { getCustomCredentialHeader } from '@utils/helpers';
+import { getCustomCredentialHeader, getRequiredApiKey } from '@utils/helpers';
 import { MODEL_SELECTION_HINT } from '@utils/model-builder-hints';
 
 import { searchModels } from './methods/searchModels';
@@ -138,7 +138,7 @@ export class LmChatAnthropic implements INodeType {
 		group: ['transform'],
 		version: [1, 1.1, 1.2, 1.3, 1.4, 1.5, 1.6],
 		defaultVersion: 1.6,
-		description: 'Language Model Anthropic',
+		description: 'Run Claude models, with optional adaptive thinking and streaming',
 		defaults: {
 			name: 'Anthropic Chat Model',
 		},
@@ -652,27 +652,6 @@ export class LmChatAnthropic implements INodeType {
 			};
 		}
 
-		const tokensUsageParser = (result: LLMResult) => {
-			const usage = (result?.llmOutput?.usage as {
-				input_tokens: number;
-				output_tokens: number;
-				cache_creation_input_tokens?: number;
-				cache_read_input_tokens?: number;
-			}) ?? {
-				input_tokens: 0,
-				output_tokens: 0,
-			};
-			const promptTokens =
-				usage.input_tokens +
-				(usage.cache_creation_input_tokens ?? 0) +
-				(usage.cache_read_input_tokens ?? 0);
-			return {
-				completionTokens: usage.output_tokens,
-				promptTokens,
-				totalTokens: promptTokens + usage.output_tokens,
-			};
-		};
-
 		const clientOptions: NonNullable<ChatAnthropicInput['clientOptions']> = {
 			fetch: aiClientFetch,
 			// undici v7 and the SDK's bundled fetch types disagree structurally
@@ -770,13 +749,13 @@ export class LmChatAnthropic implements INodeType {
 		};
 
 		const chatAnthropicParams: ChatAnthropicInput = {
-			anthropicApiKey: credentials.apiKey,
+			anthropicApiKey: getRequiredApiKey(this.getNode(), credentials.apiKey),
 			model: modelName,
 			anthropicApiUrl: baseURL,
 			maxTokens: options.maxTokensToSample,
 			callbacks: [
 				new N8nLlmTracing(this, {
-					tokensUsageParser,
+					tokensUsageParser: anthropicTokensUsageParser,
 					redactedHeaders: customHeader ? [customHeader.name] : [],
 				}),
 			],

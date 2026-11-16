@@ -88,6 +88,32 @@ describe('computeChangedNodeNames', () => {
 		expect(computeChangedNodeNames(built, saved).sort()).toEqual(['Compose', 'Send a message']);
 	});
 
+	it.each([
+		[
+			'after',
+			{
+				Compose: { main: [[{ node: 'Send a message', type: 'main', index: 0 }]] },
+				'Send a message': { main: [[{ node: 'Log', type: 'main', index: 0 }]] },
+			},
+		],
+		[
+			'before',
+			{
+				Compose: { main: [[{ node: 'Log', type: 'main', index: 0 }]] },
+				Log: { main: [[{ node: 'Send a message', type: 'main', index: 0 }]] },
+			},
+		],
+	])('does not report connected nodes when a new node is added %s them', (_side, connections) => {
+		const saved = makeWorkflow([makeComposeNode(), makeNode()], {
+			Compose: { main: [[{ node: 'Send a message', type: 'main', index: 0 }]] },
+		});
+		const built = makeWorkflow(
+			[makeComposeNode(), makeNode(), makeComposeNode({ id: 'node-3', name: 'Log' })],
+			connections,
+		);
+		expect(computeChangedNodeNames(built, saved)).toEqual(['Log']);
+	});
+
 	it('does not treat a neighbour rename as a connection change (id-space signatures)', () => {
 		const saved = makeWorkflow([makeComposeNode(), makeNode()], {
 			Compose: { main: [[{ node: 'Send a message', type: 'main', index: 0 }]] },
@@ -514,6 +540,105 @@ describe('downgradeUnchangedNodeBlockers', () => {
 			});
 			expect(downgradeUnchangedNodeBlockers([finding], built, saved)).toEqual([
 				expect.objectContaining({ code: finding.code, severity: 'informational' }),
+			]);
+		});
+	});
+
+	describe('PREFER_PREDEFINED_CREDENTIAL on saved nodes', () => {
+		const nodeName = 'Fetch results';
+		const parameters = {
+			url: 'https://urlscan.io/api/v1/search/',
+			authentication: 'genericCredentialType',
+			genericAuthType: 'httpHeaderAuth',
+			options: {},
+		};
+		const node = makeNode({
+			id: 'http-1',
+			name: nodeName,
+			type: 'n8n-nodes-base.httpRequest',
+			typeVersion: 4.2,
+			parameters,
+			credentials: { httpHeaderAuth: { id: 'stored-header-1', name: 'urlscan header' } },
+		});
+		const finding: ValidationWarning = {
+			code: 'PREFER_PREDEFINED_CREDENTIAL',
+			nodeName,
+			message: 'This request targets a service with a dedicated n8n credential ("urlScanIoApi").',
+		};
+		const connections: WorkflowJSON['connections'] = {
+			[nodeName]: { main: [[{ node: 'Compose', type: 'main', index: 0 }]] },
+		};
+
+		it('allows an edit to a different node', () => {
+			const saved = makeWorkflow([node, makeComposeNode()], connections);
+			const built = makeWorkflow(
+				[
+					node,
+					makeComposeNode({ parameters: { jsCode: 'return [{ json: { updated: true } }];' } }),
+				],
+				connections,
+			);
+
+			expect(downgradeUnchangedNodeBlockers([finding], built, saved)).toEqual([
+				{
+					...finding,
+					severity: 'informational',
+					message: expect.stringContaining('pre-existing node issue; not blocking this edit'),
+				},
+			]);
+		});
+
+		it('allows a step added after the node', () => {
+			const saved = makeWorkflow([node, makeComposeNode()], connections);
+			const built = makeWorkflow([node, makeNode(), makeComposeNode()], {
+				[nodeName]: { main: [[{ node: 'Send a message', type: 'main', index: 0 }]] },
+				'Send a message': { main: [[{ node: 'Compose', type: 'main', index: 0 }]] },
+			});
+
+			expect(downgradeUnchangedNodeBlockers([finding], built, saved)).toEqual([
+				expect.objectContaining({ code: finding.code, severity: 'informational' }),
+			]);
+		});
+
+		it('treats settings saved as false like settings the code round trip omits', () => {
+			const saved = makeWorkflow([
+				{ ...node, executeOnce: false, retryOnFail: false, alwaysOutputData: false },
+			]);
+
+			expect(downgradeUnchangedNodeBlockers([finding], makeWorkflow([node]), saved)).toEqual([
+				expect.objectContaining({ code: finding.code, severity: 'informational' }),
+			]);
+		});
+
+		it('keeps the finding blocking for a new node', () => {
+			const built = makeWorkflow([node]);
+
+			expect(downgradeUnchangedNodeBlockers([finding], built, makeWorkflow([]))).toEqual([finding]);
+		});
+
+		it.each([
+			['URL', { parameters: { ...parameters, url: 'https://urlscan.io/api/v1/scan/' } }],
+			['auth type', { parameters: { ...parameters, genericAuthType: 'httpQueryAuth' } }],
+			['credential', { credentials: { httpHeaderAuth: { id: 'stored-header-2', name: 'New' } } }],
+			['credential removal', { credentials: undefined }],
+			['name', { name: 'Fetch scan results' }],
+			['disabled state', { disabled: true }],
+			['execute-once setting', { executeOnce: true }],
+			['retry count', { maxTries: 5 }],
+		])('keeps the finding blocking when the %s changes', (_field, overrides) => {
+			const saved = makeWorkflow([node]);
+			const built = makeWorkflow([{ ...node, ...overrides }]);
+			const builtFinding = { ...finding, nodeName: built.nodes[0].name };
+
+			expect(downgradeUnchangedNodeBlockers([builtFinding], built, saved)).toEqual([builtFinding]);
+		});
+
+		it('keeps the finding blocking when the node is wired into the flow', () => {
+			const nodes = [node, makeComposeNode()];
+			const built = makeWorkflow(nodes, connections);
+
+			expect(downgradeUnchangedNodeBlockers([finding], built, makeWorkflow(nodes))).toEqual([
+				finding,
 			]);
 		});
 	});

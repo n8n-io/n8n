@@ -1,12 +1,11 @@
 import type { PushPayload } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
-import { OnPubSubEvent } from '@n8n/decorators';
+import { OnPubSubEvent, type PubSubCommandMap } from '@n8n/decorators';
 import { Service } from '@n8n/di';
 import { InstanceSettings } from 'n8n-core';
 
 import { Push } from '@/push';
-import type { PubSubCommandMap } from '@/scaling/pubsub/pubsub.event-map';
-import { Publisher } from '@/scaling/pubsub/publisher.service';
+import { Publisher } from '@n8n/backend-services';
 
 import type { AgentExecutionThread } from './entities/agent-execution-thread.entity';
 import { AgentPushRecipientsService } from './agent-push-recipients.service';
@@ -104,7 +103,9 @@ export class AgentExecutionUpdateBroadcaster {
 	}
 
 	private async getRecipients(thread: AgentExecutionThread): Promise<string[]> {
-		const userIds = await this.recipients.getProjectReaders(thread.projectId);
+		// A private thread's owner needs only the scope to use it: a chat-only member has no agent:read.
+		const scope = thread.accessScope === 'user' ? 'agent:execute' : 'agent:read';
+		const userIds = await this.recipients.getProjectUsersWithScope(thread.projectId, scope);
 		return userIds.filter((id) => threadBelongsTo(thread, thread.projectId, thread.agentId, id));
 	}
 

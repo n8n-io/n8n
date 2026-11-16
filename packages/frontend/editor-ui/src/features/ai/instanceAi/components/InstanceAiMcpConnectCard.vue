@@ -1,5 +1,5 @@
 <script lang="ts" setup>
-import { N8nButton, N8nIcon, N8nText } from '@n8n/design-system';
+import { N8nButton, N8nCard, N8nIcon, N8nText } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import type { InstanceAiMcpConnectServer, McpRegistryServerResponse } from '@n8n/api-types';
 import { computed, provide, ref, watch } from 'vue';
@@ -7,6 +7,7 @@ import { useUIStore } from '@/app/stores/ui.store';
 import { INSTANCE_AI_TOOLS_CONNECTION_MODAL_KEY } from '../constants';
 import { useCredentialsStore } from '@/features/credentials/credentials.store';
 import ToolCredentialPicker from '@/features/shared/toolsConnection/ToolCredentialPicker.vue';
+import { iconForMcpRegistryServer } from '@/features/shared/toolsConnection/mcpRegistryIcon';
 import {
 	TOOL_CONNECTION_CREDENTIAL_ADAPTER_KEY,
 	type McpServerConnectionItem,
@@ -15,7 +16,6 @@ import {
 import { useInstanceAiMcpStore } from '../instanceAiMcp.store';
 import { useInstanceAiMcpTelemetry } from '../instanceAiMcp.telemetry';
 import { useMcpServerConnect } from '../composables/useMcpServerConnect';
-import { iconForTool } from '../toolIcons';
 import ConfirmationFooter from './ConfirmationFooter.vue';
 import ConnectionRow, { type ConnectionRowIcon } from './ConnectionRow.vue';
 
@@ -53,7 +53,10 @@ void (async () => {
 })();
 void (async () => {
 	try {
-		await credentialsStore.fetchAllCredentials();
+		await Promise.all([
+			credentialsStore.fetchAllCredentials(),
+			credentialsStore.fetchCredentialTypes(false),
+		]);
 	} catch (error) {
 		console.warn('Failed to preload credentials for the tools card', error);
 	}
@@ -80,7 +83,7 @@ const rows = computed<CardRow[]>(() =>
 		return {
 			serverSlug: server.serverSlug,
 			subtitle: entry?.tagline ?? server.tagline ?? '',
-			icon: iconForTool(entry?.icons ?? [], uiStore.appliedTheme),
+			icon: iconForMcpRegistryServer(entry?.icons ?? [], uiStore.appliedTheme),
 			item: {
 				id: connection?.id ?? server.serverSlug,
 				kind: 'mcp-server',
@@ -180,7 +183,7 @@ function openSettings(row: CardRow) {
 </script>
 
 <template>
-	<div
+	<N8nCard
 		:class="[$style.card, isActionable && $style.awaitingInput]"
 		data-test-id="instance-ai-mcp-connect-card"
 	>
@@ -254,13 +257,13 @@ function openSettings(row: CardRow) {
 				}}
 			</N8nButton>
 		</ConfirmationFooter>
-	</div>
+	</N8nCard>
 </template>
 
 <style lang="scss" module>
 .card {
-	display: flex;
-	flex-direction: column;
+	padding: 0;
+	box-shadow: none;
 	max-width: 90%;
 	border: var(--border);
 	border-radius: var(--radius--lg);

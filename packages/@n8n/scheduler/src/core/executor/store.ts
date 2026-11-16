@@ -57,6 +57,15 @@ export interface ExecutorTaskStore {
 	beginDispatch(claim: ClaimedTaskRef, leaseMs: number): Promise<number>;
 
 	/**
+	 * Extend the lease of a claim whose handler is still running.
+	 *
+	 * @param {ClaimedTaskRef} claim the claim to renew
+	 * @param {number} expiresInMs the new lease expiry, in milliseconds from the store's now
+	 * @returns {Promise<boolean>} `true` when the lease was extended, `false` when the claim is gone
+	 */
+	renewLease(claim: ClaimedTaskRef, expiresInMs: number): Promise<boolean>;
+
+	/**
 	 * Stamp the effect-boundary marker (`dispatchedAt`) once the handler reports its
 	 * effect handed off. Guarded on the claim; 0 rows affected is a benign no-op.
 	 */

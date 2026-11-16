@@ -6,6 +6,7 @@ import type { NodeCreatorTag } from '../../types/node-creator-node';
 import N8nBadge from '../N8nBadge';
 import N8nIcon from '../N8nIcon';
 import PreviewBadge from '../PreviewBadge/PreviewBadge.vue';
+import N8nNewBadge from '../NewBadge/NewBadge.vue';
 
 export interface Props {
 	active?: boolean;
@@ -49,7 +50,7 @@ const { t } = useI18n();
 				<span :class="$style.name" data-test-id="node-creator-item-name" v-text="title" />
 				<PreviewBadge
 					v-if="tag?.preview"
-					size="small"
+					size="xxsmall"
 					:class="$style.previewBadge"
 					:text="tag.text"
 				/>
@@ -70,7 +71,7 @@ const { t } = useI18n();
 				>
 					{{ tag.text }}
 				</ElTag>
-				<N8nBadge v-if="isNew" variant="success">{{ t('nodeCreatorNode.new') }}</N8nBadge>
+				<N8nNewBadge v-if="isNew" :text="t('nodeCreatorNode.new')" />
 				<N8nIcon
 					v-if="isTrigger"
 					icon="bolt-filled"

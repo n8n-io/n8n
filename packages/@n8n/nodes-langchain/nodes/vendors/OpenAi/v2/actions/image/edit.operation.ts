@@ -6,9 +6,11 @@ import type {
 	INodeExecutionData,
 	INodeProperties,
 } from 'n8n-workflow';
-import { updateDisplayOptions } from 'n8n-workflow';
+import { requestPath, updateDisplayOptions } from 'n8n-workflow';
 
 import { getBinaryDataFile } from '../../../helpers/binary-data';
+import type { ImageResponse } from '../../../helpers/interfaces';
+import { accumulateImageTokenUsage } from '../../../helpers/token-usage';
 import { apiRequest } from '../../../transport';
 import { modelRLC } from '../descriptions';
 
@@ -683,10 +685,12 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 		});
 	}
 
-	const response = (await apiRequest.call(this, 'POST', '/images/edits', {
+	const response = (await apiRequest.call(this, 'POST', requestPath`/images/edits`, {
 		option: { formData },
 		headers: formData.getHeaders(),
-	})) as IDataObject;
+	})) as ImageResponse;
+
+	accumulateImageTokenUsage(this, response.usage);
 
 	const returnData: INodeExecutionData[] = [];
 

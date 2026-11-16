@@ -115,6 +115,7 @@ describe('HttpRequestV1', () => {
 			expect(executeFunctions.helpers.request).toHaveBeenCalledTimes(1);
 			const requestArgs = (executeFunctions.helpers.request as Mock).mock.calls[0][0];
 			expect(requestArgs.uri ?? requestArgs.url).toBe('http://example.com');
+			expect(requestArgs.sendCredentialsOnCrossOriginRedirect).toBe(true);
 		});
 
 		it.each([
@@ -209,6 +210,110 @@ describe('HttpRequestV1', () => {
 			expect(executeFunctions.getCredentials).toHaveBeenCalledOnce();
 			expect(executeFunctions.getCredentials).toHaveBeenCalledWith('httpHeaderAuth');
 			expect(executeFunctions.helpers.request).toHaveBeenCalledTimes(1);
+		});
+	});
+
+	it('should remove request options from continued errors', async () => {
+		const headerName = 'x-custom-header-name';
+		const headerValue = 'header-value';
+
+		(executeFunctions.getInputData as Mock).mockReturnValue([{ json: {} }]);
+		(executeFunctions.continueOnFail as Mock).mockReturnValue(true);
+		(executeFunctions.getNodeParameter as Mock).mockImplementation((paramName: string) => {
+			switch (paramName) {
+				case 'authentication':
+					return 'headerAuth';
+				case 'responseFormat':
+					return 'json';
+				case 'requestMethod':
+					return 'GET';
+				case 'url':
+					return 'http://example.com';
+				case 'jsonParameters':
+					return false;
+				case 'options':
+					return {};
+				case 'bodyParametersUi':
+				case 'headerParametersUi':
+				case 'queryParametersUi':
+					return { parameter: [] };
+				default:
+					return undefined;
+			}
+		});
+		(executeFunctions.getCredentials as Mock).mockResolvedValue({
+			name: headerName,
+			value: headerValue,
+		});
+		(executeFunctions.helpers.request as Mock).mockImplementation(
+			async (requestOptions: { headers: Record<string, unknown> }) => {
+				throw Object.assign(new Error('Request failed'), {
+					statusCode: 400,
+					options: { headers: requestOptions.headers },
+				});
+			},
+		);
+
+		const result = await node.execute.call(executeFunctions);
+		const outputError = result[0][0].json.error;
+
+		expect(outputError).toMatchObject({ message: 'Request failed', statusCode: 400 });
+		expect(outputError).not.toHaveProperty('options');
+		expect(JSON.stringify(outputError)).not.toContain(headerValue);
+	});
+
+	describe('Raw request body', () => {
+		const setupRawBody = (responseFormat: string) => {
+			(executeFunctions.getInputData as Mock).mockReturnValue([{ json: {} }]);
+			(executeFunctions.getNodeParameter as Mock).mockImplementation(
+				(paramName: string, _itemIndex?: number, fallback?: unknown) => {
+					switch (paramName) {
+						case 'responseFormat':
+							return responseFormat;
+						case 'requestMethod':
+							return 'POST';
+						case 'url':
+							return 'http://example.com';
+						case 'jsonParameters':
+							return false;
+						case 'options':
+							return { bodyContentType: 'raw' };
+						case 'dataPropertyName':
+							return 'data';
+						case 'bodyParametersUi':
+						case 'headerParametersUi':
+						case 'queryParametersUi':
+							return { parameter: [] };
+						default:
+							return fallback;
+					}
+				},
+			);
+			(executeFunctions.getCredentials as Mock).mockRejectedValue(new Error('No credentials'));
+		};
+
+		it.each(['json', 'string'])(
+			'should not request a stream for the %s response format',
+			async (responseFormat) => {
+				setupRawBody(responseFormat);
+				(executeFunctions.helpers.request as Mock).mockResolvedValue('{"a":1}');
+
+				await node.execute.call(executeFunctions);
+
+				const requestOptions = (executeFunctions.helpers.request as Mock).mock.calls[0][0] as {
+					useStream?: boolean;
+				};
+				expect(requestOptions.useStream).toBeUndefined();
+			},
+		);
+
+		it('should return the parsed body for the json response format', async () => {
+			setupRawBody('json');
+			(executeFunctions.helpers.request as Mock).mockResolvedValue('{"a":1}');
+
+			const result = await node.execute.call(executeFunctions);
+
+			expect(result).toEqual([[{ json: { a: 1 }, pairedItem: { item: 0 } }]]);
 		});
 	});
 });

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed } from 'vue';
+import { computed, ref, watch } from 'vue';
 import {
 	N8nDropdownMenu,
 	N8nIcon,
@@ -18,20 +18,25 @@ import {
 	useInstanceAiInputMenuItems,
 } from '../composables/useInstanceAiInputMenuItems';
 
-const props = withDefaults(defineProps<{ disabled?: boolean; threadId?: string }>(), {
-	disabled: false,
-	threadId: undefined,
-});
+const props = withDefaults(
+	defineProps<{ disabled?: boolean; isStreaming?: boolean; projectId?: string }>(),
+	{
+		disabled: false,
+		isStreaming: false,
+	},
+);
 const emit = defineEmits<{ attachFiles: [] }>();
 const i18n = useI18n();
 const telemetry = useTelemetry();
-const { menuItems, disconnectedConnectionCount, refreshAppliedPreferences } =
-	useInstanceAiInputMenuItems(
-		() => emit('attachFiles'),
-		() => props.threadId,
-	);
+const { menuItems, disconnectedConnectionCount, refreshSkills } = useInstanceAiInputMenuItems(
+	() => emit('attachFiles'),
+	() => props.projectId,
+);
 
 const tooltip = computed(() => {
+	if (props.disabled && props.isStreaming) {
+		return i18n.baseText('instanceAi.inputMenu.stopResponse');
+	}
 	const count = disconnectedConnectionCount.value;
 	if (count === 0) return i18n.baseText('instanceAi.inputMenu.open');
 	if (count === 1) return i18n.baseText('instanceAi.inputMenu.connectionNeedsAttention');
@@ -63,31 +68,36 @@ function trackInputPlusButtonClick() {
 	telemetry.track(TELEMETRY_EVENT.INSTANCE_AI.USER_CLICKED_AI_ASSISTANT_INPUT_PLUS_BUTTON, {});
 }
 
+const isOpen = ref(false);
+
+watch(
+	() => props.disabled,
+	(disabled) => {
+		if (disabled) isOpen.value = false;
+	},
+);
+
 function handleUpdateDropdownModelValue(open: boolean) {
+	isOpen.value = open;
 	if (open) {
+		void refreshSkills();
 		trackInputPlusButtonClick();
-		// A preference edited in settings while this chat sat open should read as edited.
-		void refreshAppliedPreferences();
 	}
 }
 </script>
 
 <template>
-	<N8nDropdownMenu
-		:items="menuItems"
-		placement="top-start"
-		:disabled="props.disabled"
-		data-test-id="instance-ai-input-menu"
-		@select="handleSelect"
-		@update:model-value="handleUpdateDropdownModelValue"
-	>
-		<template #trigger>
-			<N8nTooltip
-				as-child
-				:content="tooltip"
-				:content-class="$style.triggerTooltip"
-				placement="top"
-			>
+	<N8nTooltip :content="tooltip" :content-class="$style.triggerTooltip" placement="top">
+		<N8nDropdownMenu
+			:model-value="isOpen"
+			:items="menuItems"
+			placement="top-start"
+			:disabled="props.disabled"
+			data-test-id="instance-ai-input-menu"
+			@select="handleSelect"
+			@update:model-value="handleUpdateDropdownModelValue"
+		>
+			<template #trigger>
 				<N8nIconButton
 					icon="plus"
 					variant="ghost"
@@ -97,78 +107,69 @@ function handleUpdateDropdownModelValue(open: boolean) {
 					:aria-label="tooltip"
 					:class="[$style.trigger, { [$style.triggerWithStatus]: disconnectedConnectionCount > 0 }]"
 				/>
-			</N8nTooltip>
-		</template>
+			</template>
 
-		<template #item-leading="{ item, ui }">
-			<N8nNodeIcon
-				v-if="item.data?.toolIcon"
-				:type="item.data.toolIcon.type"
-				:src="item.data.toolIcon.type === 'file' ? item.data.toolIcon.src : undefined"
-				:name="item.data.toolIcon.type === 'icon' ? item.data.toolIcon.name : undefined"
-				:size="16"
-				:class="ui.class"
-			/>
-			<N8nIcon
-				v-else-if="item.icon?.type === 'icon'"
-				:icon="item.icon.value"
-				size="large"
-				:class="ui.class"
-			/>
-		</template>
+			<template #item-leading="{ item, ui }">
+				<N8nNodeIcon
+					v-if="item.data?.toolIcon"
+					:type="item.data.toolIcon.type"
+					:src="item.data.toolIcon.type === 'file' ? item.data.toolIcon.src : undefined"
+					:name="item.data.toolIcon.type === 'icon' ? item.data.toolIcon.name : undefined"
+					:size="16"
+					:class="ui.class"
+				/>
+				<N8nIcon
+					v-else-if="item.icon?.type === 'icon'"
+					:icon="item.icon.value"
+					size="large"
+					:class="ui.class"
+				/>
+			</template>
 
-		<template #item-label="{ item, ui }">
-			<N8nText
-				size="medium"
-				:color="
-					item.disabled || (item.data?.preference && item.data.preference !== 'applied')
-						? 'text-xlight'
-						: 'text-dark'
-				"
-				:class="[
-					ui.class,
-					$style.itemLabel,
-					!item.children?.length && $style.itemLabelLeaf,
-					item.data?.preference && $style.preferenceItem,
-				]"
-			>
-				<span :class="item.data?.preference && $style.preferenceText">{{ item.label }}</span>
-				<span
-					v-if="
-						item.data?.status &&
-						item.data.status !== 'none' &&
-						!(item.id === 'tools' && item.data.status === 'connected')
-					"
-					:class="$style.statusIndicator"
-					:aria-label="i18n.baseText(STATUS_LABEL_KEYS[item.data.status])"
+			<template #item-label="{ item, ui }">
+				<N8nText
+					size="medium"
+					:color="item.disabled ? 'text-xlight' : 'text-dark'"
+					:class="[ui.class, $style.itemLabel, !item.children?.length && $style.itemLabelLeaf]"
 				>
-					<N8nSpinner v-if="item.data.status === 'connecting'" size="small" />
-					<N8nIcon
-						v-else-if="item.data.status === 'connected'"
-						icon="check"
-						size="small"
-						:class="[$style.statusIcon, $style.connected]"
-					/>
+					<span>{{ item.label }}</span>
 					<span
-						v-else-if="item.id === 'tools'"
-						:class="[$style.statusDot, $style.disconnectedDot]"
-					/>
-					<N8nIcon
-						v-else
-						icon="circle-x"
-						size="small"
-						:class="[$style.statusIcon, $style.disconnected]"
-					/>
-				</span>
-			</N8nText>
-		</template>
-	</N8nDropdownMenu>
+						v-if="
+							item.data?.status &&
+							item.data.status !== 'none' &&
+							!(item.id === 'tools' && item.data.status === 'connected')
+						"
+						:class="$style.statusIndicator"
+						:aria-label="i18n.baseText(STATUS_LABEL_KEYS[item.data.status])"
+					>
+						<N8nSpinner v-if="item.data.status === 'connecting'" size="small" />
+						<N8nIcon
+							v-else-if="item.data.status === 'connected'"
+							icon="check"
+							size="small"
+							:class="[$style.statusIcon, $style.connected]"
+						/>
+						<span
+							v-else-if="item.id === 'tools'"
+							:class="[$style.statusDot, $style.disconnectedDot]"
+						/>
+						<N8nIcon
+							v-else
+							icon="circle-x"
+							size="small"
+							:class="[$style.statusIcon, $style.disconnected]"
+						/>
+					</span>
+				</N8nText>
+			</template>
+		</N8nDropdownMenu>
+	</N8nTooltip>
 </template>
 
 <style lang="scss" module>
 .triggerTooltip {
-	max-width: none;
-	white-space: nowrap;
+	max-width: calc(100vw - 2 * var(--spacing--sm));
+	white-space: normal;
 }
 
 .trigger {
@@ -199,21 +200,6 @@ function handleUpdateDropdownModelValue(open: boolean) {
 
 .itemLabelLeaf {
 	padding-right: var(--spacing--xs);
-}
-
-// A preference is a sentence the user wrote, not a menu verb: let it wrap to two lines.
-.preferenceItem {
-	max-width: 320px;
-	white-space: normal;
-}
-
-.preferenceText {
-	display: -webkit-box;
-	-webkit-box-orient: vertical;
-	-webkit-line-clamp: 2;
-	line-clamp: 2;
-	overflow: hidden;
-	overflow-wrap: anywhere;
 }
 
 .statusDot {

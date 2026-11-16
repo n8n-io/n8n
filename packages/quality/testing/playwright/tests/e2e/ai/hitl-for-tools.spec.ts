@@ -65,7 +65,7 @@ test.use(hitlForToolsTestConfig);
 test.describe(
 	'HITL for Tools',
 	{
-		annotation: [{ type: 'owner', description: 'AI' }],
+		annotation: [{ type: 'owner', description: 'Agent' }],
 	},
 	() => {
 		test.beforeEach(async ({ n8n, services }) => {

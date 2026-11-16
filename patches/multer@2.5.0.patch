@@ -1,0 +1,15 @@
+diff --git a/lib/make-middleware.js b/lib/make-middleware.js
+--- a/lib/make-middleware.js
++++ b/lib/make-middleware.js
+@@ -396,8 +396,7 @@ function makeMiddleware (setup) {
+           if (aborting) {
+             appender.removePlaceholder(placeholder)
+-            // On error the engine stored nothing and the file has no path, so
+-            // there is nothing to clean up; only record a successfully stored
+-            // file for the abort cleanup list.
+-            if (!err) uploadedFiles.push({ ...file, ...info })
++            // A failed disk write can leave a partial file. Keep it in the
++            // abort cleanup list when the storage engine assigned a path.
++            if (!err || file.path) uploadedFiles.push({ ...file, ...info })
+             return decrementPendingWrites()
+           }

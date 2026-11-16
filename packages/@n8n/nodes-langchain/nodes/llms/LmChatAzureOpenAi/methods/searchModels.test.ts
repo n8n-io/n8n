@@ -30,7 +30,9 @@ const mockNode: INode = {
 	parameters: {},
 };
 
-const mockModels = [{ id: 'my-gpt4', name: 'my-gpt4-display' }];
+const mockModels: modelDiscovery.AzureDeploymentModel[] = [
+	{ id: 'my-gpt4', name: 'my-gpt4-display', modelFamily: 'openai' },
+];
 
 describe('LmChatAzureOpenAi -> searchModels', () => {
 	let ctx: ILoadOptionsFunctions;
@@ -49,7 +51,7 @@ describe('LmChatAzureOpenAi -> searchModels', () => {
 		vi.clearAllMocks();
 	});
 
-	it('skips discovery for a classic api-key credential (no data-plane deployments API)', async () => {
+	it('rejects a classic api-key credential with a clear error (no data-plane deployments API)', async () => {
 		ctx.getNodeParameter = vi
 			.fn()
 			.mockReturnValueOnce(AuthenticationType.ApiKey)
@@ -59,24 +61,118 @@ describe('LmChatAzureOpenAi -> searchModels', () => {
 			resourceName: 'my-resource',
 		});
 
-		const result = await searchModels.call(ctx);
+		await expect(searchModels.call(ctx)).rejects.toThrow(
+			'Only a Microsoft Foundry credential can list deployments',
+		);
 
 		expect(listAzureOpenAiModelsSpy).not.toHaveBeenCalled();
-		expect(result).toEqual({ results: [] });
 	});
 
-	it('skips discovery for a classic Entra ID credential', async () => {
+	it('rejects a classic Entra ID credential with a clear error', async () => {
 		ctx.getNodeParameter = vi
 			.fn()
 			.mockReturnValueOnce(AuthenticationType.EntraOAuth2)
 			.mockReturnValueOnce('');
 		ctx.getCredentials = vi.fn().mockResolvedValue({ resourceName: 'my-resource' });
 
-		const result = await searchModels.call(ctx);
+		await expect(searchModels.call(ctx)).rejects.toThrow(
+			'Only a Microsoft Foundry credential can list deployments',
+		);
 
 		expect(listAzureOpenAiModelsSpy).not.toHaveBeenCalled();
 		expect(n8nOAuth2TokenCredentialSpy).not.toHaveBeenCalled();
-		expect(result).toEqual({ results: [] });
+	});
+
+	it('asks for the project before it lists deployments', async () => {
+		ctx.getNodeParameter = vi
+			.fn()
+			.mockReturnValueOnce(AuthenticationType.ApiKey)
+			.mockReturnValueOnce('');
+		ctx.getCredentials = vi.fn().mockResolvedValue({
+			apiKey: 'secret-key',
+			endpointType: 'foundry',
+			foundryEndpoint: 'https://my-resource.services.ai.azure.com/openai/v1',
+		});
+
+		await expect(searchModels.call(ctx)).rejects.toThrow(
+			'Enter the Project in the node or in the credential to list its deployments',
+		);
+
+		expect(listAzureOpenAiModelsSpy).not.toHaveBeenCalled();
+	});
+
+	it('asks for the project before it requests an Entra token', async () => {
+		ctx.getNodeParameter = vi
+			.fn()
+			.mockReturnValueOnce(AuthenticationType.EntraOAuth2)
+			.mockReturnValueOnce('');
+		ctx.getCredentials = vi.fn().mockResolvedValue({
+			endpointType: 'foundry',
+			foundryEndpoint: 'https://my-resource.services.ai.azure.com/openai/v1',
+		});
+
+		await expect(searchModels.call(ctx)).rejects.toThrow(
+			'Enter the Project in the node or in the credential to list its deployments',
+		);
+
+		expect(getTokenSpy).not.toHaveBeenCalled();
+		expect(listAzureOpenAiModelsSpy).not.toHaveBeenCalled();
+	});
+
+	it('uses the project from an api-key credential when the node has none', async () => {
+		ctx.getNodeParameter = vi
+			.fn()
+			.mockReturnValueOnce(AuthenticationType.ApiKey)
+			.mockReturnValueOnce('');
+		ctx.getCredentials = vi.fn().mockResolvedValue({
+			apiKey: 'secret-key',
+			endpointType: 'foundry',
+			foundryEndpoint: 'https://my-resource.services.ai.azure.com/openai/v1',
+			project: 'credential-project',
+		});
+
+		await searchModels.call(ctx);
+
+		expect(listAzureOpenAiModelsSpy).toHaveBeenCalledWith(
+			expect.objectContaining({ project: 'credential-project' }),
+		);
+	});
+
+	it('uses the project from an Entra ID credential when the node has none', async () => {
+		ctx.getNodeParameter = vi
+			.fn()
+			.mockReturnValueOnce(AuthenticationType.EntraOAuth2)
+			.mockReturnValueOnce('');
+		ctx.getCredentials = vi.fn().mockResolvedValue({
+			endpointType: 'foundry',
+			foundryEndpoint: 'https://my-resource.services.ai.azure.com/openai/v1',
+			project: 'credential-project',
+		});
+
+		await searchModels.call(ctx);
+
+		expect(listAzureOpenAiModelsSpy).toHaveBeenCalledWith(
+			expect.objectContaining({ project: 'credential-project' }),
+		);
+	});
+
+	it('prefers the node project over the credential project', async () => {
+		ctx.getNodeParameter = vi
+			.fn()
+			.mockReturnValueOnce(AuthenticationType.ApiKey)
+			.mockReturnValueOnce('node-project');
+		ctx.getCredentials = vi.fn().mockResolvedValue({
+			apiKey: 'secret-key',
+			endpointType: 'foundry',
+			foundryEndpoint: 'https://my-resource.services.ai.azure.com/openai/v1',
+			project: 'credential-project',
+		});
+
+		await searchModels.call(ctx);
+
+		expect(listAzureOpenAiModelsSpy).toHaveBeenCalledWith(
+			expect.objectContaining({ project: 'node-project' }),
+		);
 	});
 
 	it('derives the base URL from the Foundry endpoint origin for an api-key credential', async () => {
@@ -144,8 +240,8 @@ describe('LmChatAzureOpenAi -> searchModels', () => {
 
 	it('filters results by the search term', async () => {
 		listAzureOpenAiModelsSpy.mockResolvedValue([
-			{ id: 'my-gpt4', name: 'my-gpt4-display' },
-			{ id: 'other-deployment', name: 'other-deployment-display' },
+			{ id: 'my-gpt4', name: 'my-gpt4-display', modelFamily: 'openai' },
+			{ id: 'other-deployment', name: 'other-deployment-display', modelFamily: 'openai' },
 		]);
 		ctx.getNodeParameter = vi
 			.fn()

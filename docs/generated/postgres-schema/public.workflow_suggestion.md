@@ -4,6 +4,10 @@
 
 | Name | Type | Default | Nullable | Children | Parents | Comment |
 | ---- | ---- | ------- | -------- | -------- | ------- | ------- |
+| appliedAction | varchar(32) |  | true |  |  | Action that saved the reviewed fix |
+| appliedActorId | uuid |  | true |  |  | Human actor ID retained after the user is deleted |
+| appliedChecksum | varchar(64) |  | true |  |  | SHA-256 checksum of the saved workflow |
+| appliedVersionId | varchar(36) |  | true |  |  | Saved version ID retained after its history is deleted |
 | backgroundUserId | uuid |  | false |  | [public.user](public.user.md) | User who enabled the investigation |
 | closedAt | timestamp(3) with time zone |  | true |  |  |  |
 | closedReason | varchar(16) |  | true |  |  | Reason the suggestion closed |
@@ -12,6 +16,8 @@
 | id | varchar(36) |  | false | [public.workflow_suggestion_activity](public.workflow_suggestion_activity.md) |  |  |
 | payload | json |  | false |  |  | Original workflow snapshot, candidate nodes and connections, explanation, and error context |
 | projectId | varchar(36) |  | false |  | [public.project](public.project.md) | Original owner project |
+| resultKind | varchar(16) |  | false |  |  | Investigation outcome; only fix_ready permits Apply |
+| selfHealingResultId | varchar(36) |  | false |  | [public.self_healing_result](public.self_healing_result.md) | Self-healing result that groups this suggestion |
 | state | varchar(16) |  | false |  |  | Suggestion lifecycle state |
 | updatedAt | timestamp(3) with time zone | CURRENT_TIMESTAMP(3) | false |  |  |  |
 | workflowId | varchar(36) |  | false |  | [public.workflow_entity](public.workflow_entity.md) | Target workflow |
@@ -20,11 +26,14 @@
 
 | Name | Type | Definition |
 | ---- | ---- | ---------- |
+| CHK_workflow_suggestion_appliedAction | CHECK | CHECK ((("appliedAction")::text = ANY ((ARRAY['apply'::character varying, 'approve-and-publish'::character varying])::text[]))) |
 | CHK_workflow_suggestion_closedReason | CHECK | CHECK ((("closedReason")::text = ANY ((ARRAY['outdated'::character varying, 'applied'::character varying, 'discarded'::character varying])::text[]))) |
+| CHK_workflow_suggestion_resultKind | CHECK | CHECK ((("resultKind")::text = ANY ((ARRAY['fix_ready'::character varying, 'needs_you'::character varying])::text[]))) |
 | CHK_workflow_suggestion_state | CHECK | CHECK (((state)::text = ANY ((ARRAY['pending'::character varying, 'closed'::character varying])::text[]))) |
 | FK_0f273c2cd9e1a097a8ba044fe9a | FOREIGN KEY | FOREIGN KEY ("projectId") REFERENCES project(id) ON DELETE CASCADE |
 | FK_b415d749769e092f51575def2d2 | FOREIGN KEY | FOREIGN KEY ("backgroundUserId") REFERENCES "user"(id) ON DELETE CASCADE |
 | FK_f6289858234727cdff168626dc9 | FOREIGN KEY | FOREIGN KEY ("workflowId") REFERENCES workflow_entity(id) ON DELETE CASCADE |
+| FK_workflow_suggestion_self_healing_result | FOREIGN KEY | FOREIGN KEY ("selfHealingResultId") REFERENCES self_healing_result(id) ON DELETE CASCADE |
 | PK_529f3c424f40b3174e5e77e1cf3 | PRIMARY KEY | PRIMARY KEY (id) |
 | workflow_suggestion_backgroundUserId_not_null | n | NOT NULL "backgroundUserId" |
 | workflow_suggestion_createdAt_not_null | n | NOT NULL "createdAt" |
@@ -32,6 +41,8 @@
 | workflow_suggestion_id_not_null | n | NOT NULL id |
 | workflow_suggestion_payload_not_null | n | NOT NULL payload |
 | workflow_suggestion_projectId_not_null | n | NOT NULL "projectId" |
+| workflow_suggestion_resultKind_not_null | n | NOT NULL "resultKind" |
+| workflow_suggestion_selfHealingResultId_not_null | n | NOT NULL "selfHealingResultId" |
 | workflow_suggestion_state_not_null | n | NOT NULL state |
 | workflow_suggestion_updatedAt_not_null | n | NOT NULL "updatedAt" |
 | workflow_suggestion_workflowId_not_null | n | NOT NULL "workflowId" |
@@ -43,6 +54,7 @@
 | IDX_0f273c2cd9e1a097a8ba044fe9 | CREATE INDEX "IDX_0f273c2cd9e1a097a8ba044fe9" ON public.workflow_suggestion USING btree ("projectId") |
 | IDX_b415d749769e092f51575def2d | CREATE INDEX "IDX_b415d749769e092f51575def2d" ON public.workflow_suggestion USING btree ("backgroundUserId") |
 | IDX_f6289858234727cdff168626dc | CREATE INDEX "IDX_f6289858234727cdff168626dc" ON public.workflow_suggestion USING btree ("workflowId") |
+| IDX_workflow_suggestion_selfHealingResultId | CREATE INDEX "IDX_workflow_suggestion_selfHealingResultId" ON public.workflow_suggestion USING btree ("selfHealingResultId") |
 | IDX_workflow_suggestion_workflowId | CREATE UNIQUE INDEX "IDX_workflow_suggestion_workflowId" ON public.workflow_suggestion USING btree ("workflowId") WHERE ((state)::text = 'pending'::text) |
 | PK_529f3c424f40b3174e5e77e1cf3 | CREATE UNIQUE INDEX "PK_529f3c424f40b3174e5e77e1cf3" ON public.workflow_suggestion USING btree (id) |
 
@@ -54,9 +66,14 @@ erDiagram
 "public.workflow_suggestion" }o--|| "public.user" : "FOREIGN KEY (#quot;backgroundUserId#quot;) REFERENCES #quot;user#quot;(id) ON DELETE CASCADE"
 "public.workflow_suggestion_activity" }o--|| "public.workflow_suggestion" : "FOREIGN KEY (#quot;suggestionId#quot;) REFERENCES workflow_suggestion(id) ON DELETE CASCADE"
 "public.workflow_suggestion" }o--|| "public.project" : "FOREIGN KEY (#quot;projectId#quot;) REFERENCES project(id) ON DELETE CASCADE"
+"public.workflow_suggestion" }o--|| "public.self_healing_result" : "FOREIGN KEY (#quot;selfHealingResultId#quot;) REFERENCES self_healing_result(id) ON DELETE CASCADE"
 "public.workflow_suggestion" }o--|| "public.workflow_entity" : "FOREIGN KEY (#quot;workflowId#quot;) REFERENCES workflow_entity(id) ON DELETE CASCADE"
 
 "public.workflow_suggestion" {
+  varchar_32_ appliedAction
+  uuid appliedActorId
+  varchar_64_ appliedChecksum
+  varchar_36_ appliedVersionId
   uuid backgroundUserId FK
   timestamp_3__with_time_zone closedAt
   varchar_16_ closedReason
@@ -65,6 +82,8 @@ erDiagram
   varchar_36_ id
   json payload
   varchar_36_ projectId FK
+  varchar_16_ resultKind
+  varchar_36_ selfHealingResultId FK
   varchar_16_ state
   timestamp_3__with_time_zone updatedAt
   varchar_36_ workflowId FK
@@ -75,6 +94,7 @@ erDiagram
   varchar_255_ email
   varchar_32_ firstName
   uuid id
+  varchar_16_ kind
   date lastActiveAt
   varchar_32_ lastName
   boolean mfaEnabled
@@ -88,6 +108,7 @@ erDiagram
 }
 "public.workflow_suggestion_activity" {
   varchar_16_ action
+  uuid actorId FK
   varchar_16_ author
   timestamp_3__with_time_zone createdAt
   varchar_36_ id
@@ -104,6 +125,22 @@ erDiagram
   varchar_255_ name
   varchar_36_ type
   timestamp_3__with_time_zone updatedAt
+}
+"public.self_healing_result" {
+  uuid backgroundUserId FK
+  timestamp_3__with_time_zone completedAt
+  integer configurationId FK
+  timestamp_3__with_time_zone createdAt
+  varchar_36_ executionId
+  varchar_36_ id
+  varchar_16_ outcome
+  varchar_36_ projectId FK
+  text report
+  varchar_16_ reviewState
+  text summary
+  timestamp_3__with_time_zone updatedAt
+  json usage
+  varchar_36_ workflowId FK
 }
 "public.workflow_entity" {
   boolean active

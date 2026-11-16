@@ -1,7 +1,6 @@
-import { CacheService, EventService } from '@n8n/backend-services';
+import { EventService } from '@n8n/backend-services';
 import { PrometheusMetricsConfig } from '@n8n/config';
-import { ScheduledJobOwnerType, Time } from '@n8n/constants';
-import { ScheduledJobRepository } from '@n8n/db';
+import { Time } from '@n8n/constants';
 import { Service } from '@n8n/di';
 import promClient from 'prom-client';
 
@@ -11,18 +10,9 @@ import {
 } from '@/events/maps/system-task-metrics.event-map';
 
 import type { PrometheusMetricsCollector } from './base';
-import { CachedMetricQuery } from './cached-metric-query';
+import type { CachedMetricQuery } from './cached-metric-query';
 import { DURATION_BUCKETS_SECONDS, LAG_BUCKETS_SECONDS } from './constant';
-
-const DURABLE_JOBS_CACHE_KEY = 'metrics:system-tasks:durable-jobs:v1';
-
-/** The stored schedule of one durable system task, as JSON so the cache can hold it. */
-type DurableJobState = {
-	task: string;
-	/** Enabled and not quarantined, so the scheduler will claim it. */
-	runnable: boolean;
-	nextRunAtSeconds: number | null;
-};
+import { DatabaseMetricQueryService, type DurableJobState } from './database-metric-query.service';
 
 /**
  * Collects Prometheus metrics for system tasks, on all of their paths: the
@@ -40,9 +30,9 @@ type DurableJobState = {
  * The run outcome and skip series start at zero when a task is seeded, so
  * `increase()` counts the first failure after a restart.
  *
- * The scheduled and next-run series of a durable task come from its stored job,
- * read on scrape: the job is shared by every main, so another main can remove it
- * without this instance seeing an event.
+ * The scheduled, next-run and last-success series of a durable task come from its
+ * stored job, read on scrape: the job is shared by every main, so another main can
+ * change it without this instance seeing an event.
  *
  * Labels are bounded (task name, mode, result, reason): no instance label,
  * Prometheus adds one per scrape target.
@@ -52,8 +42,7 @@ export class PrometheusSystemTaskMetricsService implements PrometheusMetricsColl
 	constructor(
 		private readonly config: PrometheusMetricsConfig,
 		private readonly eventService: EventService,
-		private readonly cacheService: CacheService,
-		private readonly scheduledJobRepository: ScheduledJobRepository,
+		private readonly databaseQueries: DatabaseMetricQueryService,
 	) {}
 
 	get enabled(): boolean {
@@ -65,7 +54,7 @@ export class PrometheusSystemTaskMetricsService implements PrometheusMetricsColl
 
 		const runDuration = new promClient.Histogram({
 			name: `${prefix}system_task_run_duration_seconds`,
-			help: 'Duration in seconds of a system task run, by task, mode (leader_timer, instance_timer, durable) and result (success, failure, aborted).',
+			help: 'Duration in seconds of a system task run, by task, mode (leader_timer, instance_timer, durable) and result (success, failure, aborted, lease_lost, timed_out).',
 			labelNames: ['task', 'mode', 'result'],
 			buckets: DURATION_BUCKETS_SECONDS,
 		});
@@ -78,8 +67,9 @@ export class PrometheusSystemTaskMetricsService implements PrometheusMetricsColl
 
 		const lastSuccess = new promClient.Gauge({
 			name: `${prefix}system_task_last_success_timestamp_seconds`,
-			help: 'Unix timestamp in seconds of the last successful run of a system task on this instance, by task and mode.',
+			help: 'Unix timestamp in seconds of the last successful run of a system task, by task and mode: of a run on this instance for leader_timer and instance_timer tasks, or the time a durable task last reported its effect, identical on every main.',
 			labelNames: ['task', 'mode'],
+			collect: async () => await collectDurableJobs(),
 		});
 
 		const runsInFlight = new promClient.Gauge({
@@ -101,15 +91,18 @@ export class PrometheusSystemTaskMetricsService implements PrometheusMetricsColl
 		});
 
 		const durableTasks = new Set<string>();
-		const durableJobs = new CachedMetricQuery<DurableJobState[]>({
-			cacheService: this.cacheService,
-			cacheKey: DURABLE_JOBS_CACHE_KEY,
-			ttlMs: this.config.schedulerMetricsInterval * Time.seconds.toMilliseconds,
-			query: async () => await this.findDurableJobStates(),
-		});
+		const durableJobs = this.databaseQueries.durableSystemTaskJobs(
+			this.config.schedulerMetricsInterval * Time.seconds.toMilliseconds,
+		);
 		const collectDurableJobs = async () => {
 			if (durableTasks.size > 0) {
-				await this.applyDurableJobStates(durableJobs, durableTasks, scheduled, nextRun);
+				await this.applyDurableJobStates(
+					durableJobs,
+					durableTasks,
+					scheduled,
+					nextRun,
+					lastSuccess,
+				);
 			}
 		};
 
@@ -212,7 +205,7 @@ export class PrometheusSystemTaskMetricsService implements PrometheusMetricsColl
 		this.eventService.on('system-task-run-settled', ({ name, mode, result, durationMs }) => {
 			runsInFlight.dec({ task: name, mode });
 			runDuration.observe({ task: name, mode, result }, durationMs / Time.seconds.toMilliseconds);
-			if (result === 'success') {
+			if (result === 'success' && mode !== 'durable') {
 				lastSuccess.set({ task: name, mode }, Date.now() / Time.seconds.toMilliseconds);
 			}
 		});
@@ -244,33 +237,25 @@ export class PrometheusSystemTaskMetricsService implements PrometheusMetricsColl
 		});
 	}
 
-	private async findDurableJobStates(): Promise<DurableJobState[]> {
-		const jobs = await this.scheduledJobRepository.findScheduleStatesByOwnerType(
-			ScheduledJobOwnerType.SystemTask,
-		);
-		return jobs.map(({ ownerId, runnable, nextRunAt }) => ({
-			task: ownerId,
-			runnable,
-			nextRunAtSeconds:
-				nextRunAt === null ? null : nextRunAt.getTime() / Time.seconds.toMilliseconds,
-		}));
-	}
-
 	/**
-	 * Set the scheduled and next-run series of every durable task from its stored
-	 * job. A failed read keeps the last values, so one database error does not
-	 * fail the whole scrape.
+	 * Set the scheduled, next-run and last-success series of every durable task from
+	 * its stored job. A failed read keeps the last values, so one database error does
+	 * not fail the whole scrape.
 	 */
 	private async applyDurableJobStates(
 		durableJobs: CachedMetricQuery<DurableJobState[]>,
 		durableTasks: Set<string>,
 		scheduled: promClient.Gauge<'task' | 'mode'>,
 		nextRun: promClient.Gauge<'task'>,
+		lastSuccess: promClient.Gauge<'task' | 'mode'>,
 	): Promise<void> {
-		let states: DurableJobState[];
+		let states: DurableJobState[] | undefined;
 		try {
 			states = await durableJobs.get();
 		} catch {
+			return;
+		}
+		if (states === undefined) {
 			return;
 		}
 		const stateByTask = new Map(states.map((state) => [state.task, state]));
@@ -281,6 +266,9 @@ export class PrometheusSystemTaskMetricsService implements PrometheusMetricsColl
 				nextRun.set({ task }, state.nextRunAtSeconds);
 			} else {
 				nextRun.remove({ task });
+			}
+			if (state !== undefined && state.lastSuccessAtSeconds !== null) {
+				lastSuccess.set({ task, mode: 'durable' }, state.lastSuccessAtSeconds);
 			}
 		}
 	}

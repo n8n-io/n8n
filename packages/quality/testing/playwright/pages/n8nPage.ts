@@ -39,8 +39,10 @@ import { SecretsProviderSettingsPage } from './SecretsProviderSettingsPage';
 import { SecuritySettingsPage } from './SecuritySettingsPage';
 import { SettingsEnvironmentPage } from './SettingsEnvironmentPage';
 import { SettingsLogStreamingPage } from './SettingsLogStreamingPage';
+import { SettingsSkillsPage } from './settings-skills-page';
 import { SettingsMcpPage } from './SettingsMcpPage';
 import { SettingsPersonalPage } from './SettingsPersonalPage';
+import { SettingsPromotionsPage } from './settings-promotions-page';
 import { SettingsSsoPage } from './SettingsSsoPage';
 import { SettingsUsersPage } from './SettingsUsersPage';
 import { SidebarPage } from './SidebarPage';
@@ -102,6 +104,8 @@ export class n8nPage {
 	readonly projectSettings: ProjectSettingsPage;
 	readonly settingsPersonal: SettingsPersonalPage;
 	readonly settingsMcp: SettingsMcpPage;
+	readonly settingsSkills: SettingsSkillsPage;
+	readonly settingsPromotions: SettingsPromotionsPage;
 	readonly settingsLogStreaming: SettingsLogStreamingPage;
 	readonly templateCredentialSetup: TemplateCredentialSetupPage;
 	readonly templates: TemplatesPage;
@@ -194,6 +198,8 @@ export class n8nPage {
 		this.projectSettings = new ProjectSettingsPage(page);
 		this.settingsPersonal = new SettingsPersonalPage(page);
 		this.settingsMcp = new SettingsMcpPage(page);
+		this.settingsSkills = new SettingsSkillsPage(page);
+		this.settingsPromotions = new SettingsPromotionsPage(page);
 		this.settingsLogStreaming = new SettingsLogStreamingPage(page);
 		this.templateCredentialSetup = new TemplateCredentialSetupPage(page);
 		this.templates = new TemplatesPage(page);

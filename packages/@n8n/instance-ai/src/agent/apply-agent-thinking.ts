@@ -1,8 +1,11 @@
-import type { Agent, ModelConfig } from '@n8n/agents';
+import type { Agent, AnthropicThinkingEffort, ModelConfig } from '@n8n/agents';
 import { PROVIDER_CAPABILITIES } from '@n8n/api-types';
 
 import { resolveModelIdString, resolveModelProvider } from './model-config-identity';
-import { resolveCustomModelExperimentDefaultsFromEnv } from '../utils/custom-model-defaults';
+import {
+	parseReasoningEffort,
+	resolveCustomModelExperimentDefaultsFromEnv,
+} from '../utils/custom-model-defaults';
 
 /** Grok 4.5 via xAI (`xai/grok-4.5`). */
 function isGrok45Model(modelId: ModelConfig): boolean {
@@ -10,13 +13,35 @@ function isGrok45Model(modelId: ModelConfig): boolean {
 	return id.includes('grok-4.5');
 }
 
-/** GPT-5.6 family via OpenAI (`openai/gpt-5.6-sol`, `openai/gpt-5.6-terra`, `openai/gpt-5.6-luna`). */
-function isGpt56Model(modelId: ModelConfig): boolean {
+/**
+ * GPT-5.6 or newer via OpenAI (`openai/gpt-5.6-sol`, `openai/gpt-6.1-sol`, `openai/gpt-6-astra`).
+ * GPT-5.5 and older give poor results on `medium` effort, so they keep `high`.
+ */
+function isGpt56OrNewerModel(modelId: ModelConfig): boolean {
 	const id = resolveModelIdString(modelId)?.toLowerCase() ?? '';
-	return id.includes('gpt-5.6');
+	const match = /gpt-(\d+)(?:\.(\d+))?/.exec(id);
+	if (!match) return false;
+
+	const major = Number(match[1]);
+	const minor = Number(match[2] ?? 0);
+	return major > 5 || (major === 5 && minor >= 6);
 }
 
-export function applyAgentThinking(agent: Agent, modelId: ModelConfig): void {
+const ANTHROPIC_EFFORTS = ['low', 'medium', 'high', 'xhigh', 'max'] as const;
+type AnthropicEffort = (typeof ANTHROPIC_EFFORTS)[number];
+
+/** Eval override via N8N_INSTANCE_AI_REASONING_EFFORT. Unsupported values fall back to medium. */
+function resolveAnthropicEffort(): AnthropicEffort {
+	const effort = parseReasoningEffort(process.env.N8N_INSTANCE_AI_REASONING_EFFORT);
+	return ANTHROPIC_EFFORTS.find((supported) => supported === effort) ?? 'medium';
+}
+
+/** An explicit effort wins over the env override and the OpenAI per-model default. */
+export function applyAgentThinking(
+	agent: Agent,
+	modelId: ModelConfig,
+	effort?: AnthropicThinkingEffort,
+): void {
 	const provider = resolveModelProvider(modelId);
 
 	if (!provider || !PROVIDER_CAPABILITIES[provider]?.thinking) return;
@@ -43,13 +68,16 @@ export function applyAgentThinking(agent: Agent, modelId: ModelConfig): void {
 
 	if (provider === 'openai') {
 		agent.thinking('openai', {
-			reasoningEffort: isGpt56Model(modelId) ? 'medium' : 'high',
+			reasoningEffort: effort ?? (isGpt56OrNewerModel(modelId) ? 'medium' : 'high'),
 		});
 		return;
 	}
 
 	if (provider === 'anthropic' || provider === 'google-vertex-anthropic') {
-		agent.thinking(provider, { mode: 'adaptive', effort: 'medium' });
+		agent.thinking(provider, {
+			mode: 'adaptive',
+			effort: effort ?? resolveAnthropicEffort(),
+		});
 		return;
 	}
 

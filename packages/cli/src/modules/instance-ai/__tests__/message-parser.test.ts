@@ -1,5 +1,6 @@
 import type { InstanceAiAgentNode, InstanceAiMessage } from '@n8n/api-types';
 
+import { buildThreadArtifactsBlock, buildThreadContextBlock } from '../internal-messages';
 import {
 	collectConfirmationRequestIds,
 	markExpiredConfirmations,
@@ -28,6 +29,113 @@ function makeSnapshotTree(text = 'Snapshot text'): InstanceAiAgentNode {
 
 describe('parseStoredMessages', () => {
 	describe('user messages', () => {
+		// AGENT-1090: History must restore the image parts beside the user text.
+		it.each(['Build from this image', ''])('restores a saved image with user text %j', (text) => {
+			const result = parseStoredMessages([
+				{
+					id: 'msg-image',
+					role: 'user',
+					createdAt: makeDate(),
+					content: [
+						{
+							type: 'text',
+							text: `${text}\n\n[ATTACHMENTS]\n- [0] \`diagram.png\` (image/png): not a supported structured format\n[/ATTACHMENTS]`,
+						},
+						{ type: 'file', mediaType: 'image/png', data: 'aW1hZ2U=' },
+					],
+				},
+			]);
+
+			expect(result[0].content).toBe(text);
+			expect(result[0].attachments).toEqual([
+				{ type: 'file', fileName: 'diagram.png', mimeType: 'image/png', data: 'aW1hZ2U=' },
+			]);
+		});
+
+		it('keeps the names and order of images beside structured attachments', () => {
+			const result = parseStoredMessages([
+				{
+					id: 'msg-files',
+					role: 'user',
+					createdAt: makeDate(),
+					content: [
+						{
+							type: 'text',
+							text: 'Compare these\n\n[ATTACHMENTS]\n- [0] `rows.csv` (text/csv): parseable via parse-file (format: csv)\n- [1] `first.png` (image/png): not a supported structured format\n- [2] `second.png` (image/png): not a supported structured format\n[/ATTACHMENTS]',
+						},
+						{ type: 'file', mediaType: 'image/png', data: 'Zmlyc3Q=' },
+						{ type: 'file', mediaType: 'image/png', data: 'c2Vjb25k' },
+					],
+				},
+			]);
+
+			expect(result[0].attachments).toEqual([
+				{ type: 'file', fileName: 'first.png', mimeType: 'image/png', data: 'Zmlyc3Q=' },
+				{ type: 'file', fileName: 'second.png', mimeType: 'image/png', data: 'c2Vjb25k' },
+			]);
+			expect(result[0].content).toBe(
+				'Compare these\n\n[ATTACHMENTS]\n- [0] `rows.csv` (text/csv): parseable via parse-file (format: csv)\n[/ATTACHMENTS]',
+			);
+		});
+
+		it('keeps attachment-like user text when there are no saved files', () => {
+			const content =
+				'Explain [ATTACHMENTS]\n- [0] `file.png` (image/png): example\n[/ATTACHMENTS]';
+			const result = parseStoredMessages([
+				{ id: 'msg-1', role: 'user', content, createdAt: makeDate() },
+			]);
+
+			expect(result[0].content).toBe(content);
+			expect(result[0].attachments).toBeUndefined();
+		});
+
+		it('restores image and resource attachments after it removes internal context', () => {
+			const workflow = { type: 'workflow' as const, id: 'wf-1', name: 'Digest' };
+			const context = buildThreadContextBlock([buildThreadArtifactsBlock(undefined, [workflow])]);
+			const result = parseStoredMessages([
+				{
+					id: 'msg-mixed',
+					role: 'user',
+					createdAt: makeDate(),
+					content: [
+						{
+							type: 'text',
+							text: `${context}\n\nUpdate this\n\n[ATTACHMENTS]\n- [0] \`diagram.png\` (image/png): not a supported structured format\n[/ATTACHMENTS]`,
+						},
+						{ type: 'file', mediaType: 'image/png', data: 'aW1hZ2U=' },
+					],
+				},
+			]);
+
+			expect(result[0].content).toBe('Update this');
+			expect(result[0].attachments).toEqual([
+				workflow,
+				{ type: 'file', fileName: 'diagram.png', mimeType: 'image/png', data: 'aW1hZ2U=' },
+			]);
+		});
+
+		it('restores files without a manifest and skips incomplete file parts', () => {
+			const result = parseStoredMessages([
+				{
+					id: 'msg-files',
+					role: 'user',
+					createdAt: makeDate(),
+					content: [
+						{ type: 'text', text: 'Look at this' },
+						{ type: 'file', mediaType: 'image/png', data: 'aW1hZ2U=' },
+						{ type: 'file', mediaType: 'image/png' },
+						{ type: 'file', data: 'aW1hZ2U=' },
+						{ type: 'file', mediaType: 'image/png', data: '' },
+					],
+				},
+			]);
+
+			expect(result[0].content).toBe('Look at this');
+			expect(result[0].attachments).toEqual([
+				{ type: 'file', fileName: 'attachment', mimeType: 'image/png', data: 'aW1hZ2U=' },
+			]);
+		});
+
 		it('should parse user message with string content', () => {
 			const messages: StoredAgentMessage[] = [
 				{
@@ -763,12 +871,10 @@ describe('parseStoredMessages', () => {
 		});
 	});
 
-	describe('multi-run conversational turn (planned-task follow-ups)', () => {
-		// Mirrors the real flow: user sends a message, orchestrator suspends at a
-		// HITL plan-approval, user approves, planned tasks dispatch a builder, the
-		// orchestrator restarts internally (skipped <planned-task-follow-up> user
-		// rows) for checkpoint and synthesize sub-runs, and a snapshot is saved
-		// per sub-run. Without messageGroupId propagation across the turn, the
+	describe('multi-run conversational turn (legacy planned-task follow-ups)', () => {
+		// Mirrors a stored legacy thread: the orchestrator restarted internally
+		// (skipped <planned-task-follow-up> user rows) for several sub-runs, and
+		// a snapshot was saved per sub-run. Without messageGroupId propagation across the turn, the
 		// intra-turn unpaired text rows survive the dedup loop and render as
 		// duplicates of the final snapshot's tree.textContent.
 		it('collapses intra-turn unpaired assistant rows into the final snapshot', () => {
@@ -798,7 +904,7 @@ describe('parseStoredMessages', () => {
 						{
 							type: 'tool-call',
 							toolCallId: 'toolu_plan',
-							toolName: 'create-tasks',
+							toolName: 'workflows',
 							input: {},
 							state: 'resolved',
 							output: { result: 'Plan approved and 2 tasks dispatched.' },
@@ -1036,14 +1142,14 @@ describe('confirmation expiration helpers', () => {
 				reasoning: '',
 				toolCalls: requestIds.map((requestId, idx) => ({
 					toolCallId: `tc-${idx}`,
-					toolName: 'create-tasks',
+					toolName: 'workflows',
 					args: {},
 					isLoading: true,
 					confirmation: {
 						requestId,
 						severity: 'info' as const,
 						message: '',
-						inputType: 'plan-review' as const,
+						inputType: 'approval' as const,
 					},
 				})),
 				children: [
@@ -1063,7 +1169,7 @@ describe('confirmation expiration helpers', () => {
 									requestId: 'req-sub',
 									severity: 'info' as const,
 									message: '',
-									inputType: 'plan-review' as const,
+									inputType: 'approval' as const,
 								},
 							},
 						],
@@ -1105,7 +1211,7 @@ describe('confirmation expiration helpers', () => {
 		markExpiredConfirmations(messages, new Set());
 	});
 
-	/** Build a single assistant message carrying one plan-review confirmation
+	/** Build a single assistant message carrying one approval confirmation
 	 *  card, with overridable actionability fields. */
 	function makeCardMessage(
 		overrides: Partial<{ isLoading: boolean; confirmationStatus: 'approved' | 'denied' }>,
@@ -1127,7 +1233,7 @@ describe('confirmation expiration helpers', () => {
 				toolCalls: [
 					{
 						toolCallId: 'tc-0',
-						toolName: 'create-tasks',
+						toolName: 'workflows',
 						args: {},
 						isLoading: overrides.isLoading ?? true,
 						...(overrides.confirmationStatus
@@ -1137,7 +1243,7 @@ describe('confirmation expiration helpers', () => {
 							requestId: 'req-resolved',
 							severity: 'info' as const,
 							message: '',
-							inputType: 'plan-review' as const,
+							inputType: 'approval' as const,
 						},
 					},
 				],
@@ -1147,9 +1253,9 @@ describe('confirmation expiration helpers', () => {
 		};
 	}
 
-	// Regression: a resolved plan card reloaded after the user approved/denied it
+	// Regression: a resolved card reloaded after the user approved/denied it
 	// has no pending-confirmation row (claim() deleted it), but that absence must
-	// NOT relabel the historical card as "Plan (expired)".
+	// NOT relabel the historical card as expired.
 	it('does not mark a settled (no longer loading) card expired even with no live row', () => {
 		const messages = [makeCardMessage({ isLoading: false })];
 		markExpiredConfirmations(messages, new Set());

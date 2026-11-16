@@ -1,14 +1,23 @@
 import { Logger } from '@n8n/backend-common';
 import { mockInstance } from '@n8n/backend-test-utils';
 import { GlobalConfig } from '@n8n/config';
-import { SharedWorkflowRepository, User, WorkflowEntity, type Project } from '@n8n/db';
+import {
+	type OperationContext,
+	SharedWorkflowRepository,
+	User,
+	WorkflowEntity,
+	type Project,
+} from '@n8n/db';
+import type { SecurityContext } from '@n8n/permissions';
 import {
 	ERROR_TRIGGER_NODE_TYPE,
 	NodeConnectionTypes,
+	NodeVersionNotFoundError,
 	type IConnections,
 	type INode,
 } from 'n8n-workflow';
 import type { Mock } from 'vitest';
+import { UnrecognizedNodeTypeError } from 'n8n-core';
 import { mock } from 'vitest-mock-extended';
 import { z } from 'zod';
 
@@ -21,17 +30,18 @@ import { CredentialsService } from '@/credentials/credentials.service';
 import { NotFoundError } from '@n8n/errors';
 import { SubworkflowPolicyDenialError } from '@/errors/subworkflow-policy-denial.error';
 import { SubworkflowPolicyChecker } from '@/executions/pre-execution-checks/subworkflow-policy-checker';
-import { NodeTypes } from '@/node-types';
+import type { NodeTypes } from '@/node-types';
 import type { AiGatewayService } from '@/services/ai-gateway.service';
 import { TagService } from '@/services/tag.service';
-import { UrlService } from '@n8n/backend-services';
+import { UrlService, WorkflowPublishedDataService, NodeTypesProxy } from '@n8n/backend-services';
 import { Telemetry } from '@/telemetry';
 import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 import { ErrorWorkflowValidationService } from '@/workflows/error-workflow-validation.service';
-import { WorkflowPublishedDataService } from '@/workflows/workflow-published-data.service';
+
 import { WorkflowService } from '@/workflows/workflow.service';
 
 import { shapeToStandardSchema } from '../tool-schema.util';
+import type { ReadWorkflowMigrationFindings } from '../tools/migration-report/migration-report.utils';
 
 const mockAutoPopulateNodeCredentials = vi.fn();
 const mockTrackAutoassignOutcomes = vi.fn();
@@ -48,9 +58,9 @@ vi.mock('@n8n/ai-workflow-builder', () => ({
 		toolName: 'update_workflow',
 		displayTitle: 'Updating workflow',
 	},
-	ParseValidateHandler: vi.fn().mockImplementation(function () {
+	ParseValidateHandler: vi.fn().mockImplementation(function (config: unknown) {
 		return {
-			validateJSON: (json: unknown) => mockValidateJSON(json) as unknown,
+			validateJSON: (json: unknown) => mockValidateJSON(json, config) as unknown,
 		};
 	}),
 	// Real key logic (code|nodeName|parameterPath), inlined because the module
@@ -93,7 +103,7 @@ describe('update-workflow MCP tool', () => {
 	let telemetry: Telemetry;
 	let credentialsService: CredentialsService;
 	let sharedWorkflowRepository: SharedWorkflowRepository;
-	let nodeTypes: ReturnType<typeof mockInstance<NodeTypes>>;
+	let nodeTypes: ReturnType<typeof mockInstance<NodeTypesProxy>>;
 	let collaborationService: CollaborationService;
 	let dataTableOps: DataTableOpsMock;
 	let tagService: TagService;
@@ -145,7 +155,7 @@ describe('update-workflow MCP tool', () => {
 		sharedWorkflowRepository = mockInstance(SharedWorkflowRepository, {
 			findOneOrFail: vi.fn().mockResolvedValue({ projectId: 'project-1' }),
 		});
-		nodeTypes = mockInstance(NodeTypes);
+		nodeTypes = mockInstance(NodeTypesProxy);
 		nodeTypes.getByNameAndVersion.mockImplementation(((type: string) => {
 			if (type === '@n8n/n8n-nodes-langchain.agent') {
 				return { description: { group: ['transform'], outputs: [NodeConnectionTypes.Main] } };
@@ -210,13 +220,13 @@ describe('update-workflow MCP tool', () => {
 	const buildErrorWorkflowValidationService = () =>
 		new ErrorWorkflowValidationService(
 			globalConfig,
-			nodeTypes,
+			nodeTypes as unknown as NodeTypes,
 			workflowFinderService,
 			workflowPublishedDataService,
 			subworkflowPolicyChecker,
 		);
 
-	const createTool = () =>
+	const createTool = (ctx?: OperationContext) =>
 		createUpdateWorkflowTool(
 			user,
 			workflowFinderService,
@@ -235,6 +245,7 @@ describe('update-workflow MCP tool', () => {
 			{},
 			logger,
 			postSaveMetrics,
+			ctx,
 		);
 
 	const callHandler = async (
@@ -398,6 +409,87 @@ describe('update-workflow MCP tool', () => {
 					versionDescription: 'Updated nodes: B',
 				}),
 			);
+		});
+	});
+
+	describe('migration findings', () => {
+		const operations = [
+			{ type: 'updateNodeParameters', nodeName: 'B', parameters: { url: 'https://new' } },
+		];
+		const findings = {
+			targetVersion: 'v3',
+			openFindings: [
+				{
+					ruleId: 'cron-removed-v3',
+					title: 'Cron node removed',
+					impact: 'executionsFail' as const,
+					assistantAction: 'fix' as const,
+					migratable: true,
+					issues: [{ title: 'Removed', description: 'Gone', level: 'error' as const }],
+				},
+			],
+			unpublishedFixes: 0,
+			wontFixFindings: 1,
+		};
+
+		const createToolWithReader = (readMigrationFindings: ReadWorkflowMigrationFindings) =>
+			createUpdateWorkflowTool(
+				user,
+				workflowFinderService,
+				workflowService,
+				urlService,
+				telemetry,
+				nodeTypes,
+				credentialsService,
+				sharedWorkflowRepository,
+				collaborationService,
+				dataTableOps as never,
+				tagService,
+				globalConfig,
+				buildErrorWorkflowValidationService(),
+				aiGatewayService,
+				{ readMigrationFindings },
+				logger,
+				postSaveMetrics,
+			);
+
+		test('reports what the migration report still flags on the saved workflow', async () => {
+			const reader = vi.fn<ReadWorkflowMigrationFindings>().mockResolvedValue(findings);
+			const tool = createToolWithReader(reader);
+
+			const result = (await callHandler({ workflowId: 'wf-1', operations }, tool)) as {
+				structuredContent: Record<string, unknown>;
+			};
+
+			expect(reader).toHaveBeenCalledWith('wf-1');
+			expect(reader).toHaveBeenCalledAfter(updateMock);
+			expect(result.structuredContent.migrationFindings).toEqual(findings);
+			// The field must stay inside the published schema, or strict clients reject the response.
+			expect(() =>
+				z
+					.object(tool.config.outputSchema as z.ZodRawShape)
+					.strict()
+					.parse(result.structuredContent),
+			).not.toThrow();
+		});
+
+		test('leaves the field out for a workflow the report never flagged', async () => {
+			const reader = vi.fn<ReadWorkflowMigrationFindings>().mockResolvedValue(undefined);
+
+			const result = (await callHandler(
+				{ workflowId: 'wf-1', operations },
+				createToolWithReader(reader),
+			)) as { structuredContent: Record<string, unknown> };
+
+			expect(result.structuredContent).not.toHaveProperty('migrationFindings');
+		});
+
+		test('reports nothing about migration for a caller without a reader', async () => {
+			const result = (await callHandler({ workflowId: 'wf-1', operations })) as {
+				structuredContent: Record<string, unknown>;
+			};
+
+			expect(result.structuredContent).not.toHaveProperty('migrationFindings');
 		});
 	});
 
@@ -2645,11 +2737,25 @@ describe('update-workflow MCP tool', () => {
 				expect.any(WorkflowEntity),
 				'wf-1',
 				expect.objectContaining({ aiBuilderAssisted: true, source: 'n8n-mcp' }),
+				{},
 			);
 			expect(updateMock.mock.calls[0][1].name).toBe('Renamed');
 			expect(updateMock.mock.calls[0][1].meta).toEqual(
 				expect.objectContaining({ aiBuilderAssisted: true, builderVariant: 'mcp' }),
 			);
+		});
+
+		test('passes the operation context to workflowService.update', async () => {
+			const ctx: OperationContext = {
+				security: mock<SecurityContext>({ subIdentityId: 'login-1' }),
+			};
+
+			await callHandler(
+				{ workflowId: 'wf-1', operations: [{ type: 'setWorkflowMetadata', name: 'Renamed' }] },
+				createTool(ctx),
+			);
+
+			expect(updateMock.mock.calls[0][4]).toBe(ctx);
 		});
 
 		test('broadcasts workflow update on success', async () => {
@@ -3076,6 +3182,115 @@ describe('update-workflow MCP tool', () => {
 				]);
 			});
 
+			describe('a node type the instance does not load', () => {
+				const unloadedType = 'n8n-nodes-base.executeCommand';
+				const unloadedNode = makeNode({
+					id: 'c',
+					name: 'Run Command',
+					type: unloadedType,
+					position: [400, 0],
+				});
+
+				beforeEach(() => {
+					const existing = buildExistingWorkflow();
+					existing.nodes.push(unloadedNode);
+					findWorkflowMock.mockResolvedValue(existing);
+					nodeTypes.getByNameAndVersion.mockImplementation(((type: string, version: number) => {
+						if (type.startsWith(unloadedType)) {
+							throw new UnrecognizedNodeTypeError('n8n-nodes-base', 'executeCommand');
+						}
+						if (version === 999) {
+							throw new NodeVersionNotFoundError(type, version, [1]);
+						}
+						return { description: { group: ['transform'] } };
+					}) as typeof nodeTypes.getByNameAndVersion);
+					mockValidateJSON.mockImplementation(
+						(json: { nodes: INode[] }, config: { nodeTypesProvider: NodeTypes }) => {
+							const warnings = [];
+							for (const node of json.nodes) {
+								try {
+									config.nodeTypesProvider.getByNameAndVersion(node.type, node.typeVersion);
+								} catch (error) {
+									if (!(error instanceof NodeVersionNotFoundError)) throw error;
+									warnings.push({ code: 'UNKNOWN_NODE_VERSION', nodeName: node.name });
+								}
+							}
+							return warnings;
+						},
+					);
+				});
+
+				test('applies operations that do not touch the node and keeps the node unchanged', async () => {
+					const result = await callHandler({
+						workflowId: 'wf-1',
+						operations: [
+							{ type: 'updateNodeParameters', nodeName: 'B', parameters: { url: 'https://new' } },
+							{ type: 'setWorkflowMetadata', name: 'Renamed' },
+						],
+					});
+
+					expect(result.isError).toBeUndefined();
+					const saved = updateMock.mock.calls[0][1] as WorkflowEntity;
+					expect(saved.name).toBe('Renamed');
+					expect(saved.nodes.find((n) => n.name === 'B')?.parameters.url).toBe('https://new');
+					expect(saved.nodes.find((n) => n.name === 'Run Command')).toEqual(unloadedNode);
+				});
+
+				test('warns that the instance does not load the node type', async () => {
+					const result = await callHandler({
+						workflowId: 'wf-1',
+						operations: [{ type: 'setWorkflowMetadata', name: 'Renamed' }],
+					});
+
+					expect(parseResult(result).validationWarnings).toEqual([
+						expect.objectContaining({
+							code: 'UNLOADED_NODE_TYPE',
+							nodeName: 'Run Command',
+							preExisting: true,
+							message: expect.stringContaining(`'${unloadedType}'`),
+						}),
+					]);
+				});
+
+				test.each([
+					{ name: 'Typo', type: 'n8n-nodes-base.executeCommandd' },
+					{ name: 'Run Command 2', type: unloadedType },
+				])('still fails when the batch adds a node of type $type', async (node) => {
+					const result = await callHandler({
+						workflowId: 'wf-1',
+						operations: [{ type: 'addNode', node: { ...node, typeVersion: 1 } }],
+					});
+
+					expect(result.isError).toBe(true);
+					expect(parseResult(result)).toEqual(
+						expect.objectContaining({
+							errorCode: 'UNRECOGNIZED_NODE_TYPE',
+							error: expect.stringContaining(`node '${node.name}'`),
+						}),
+					);
+					expect(parseResult(result).error).toContain(`'${node.type}'`);
+					expect(updateMock).not.toHaveBeenCalled();
+				});
+
+				test('keeps the warning for a node version the instance does not have', async () => {
+					const result = await callHandler({
+						workflowId: 'wf-1',
+						operations: [
+							{
+								type: 'addNode',
+								node: { name: 'C', type: 'n8n-nodes-base.set', typeVersion: 999 },
+							},
+						],
+					});
+
+					expect(result.isError).toBeUndefined();
+					expect(parseResult(result).validationWarnings).toEqual([
+						{ code: 'UNKNOWN_NODE_VERSION', nodeName: 'C' },
+						expect.objectContaining({ code: 'UNLOADED_NODE_TYPE', nodeName: 'Run Command' }),
+					]);
+				});
+			});
+
 			test('skips the pre-update validation pass when the post-apply pass is clean', async () => {
 				await callHandler({
 					workflowId: 'wf-1',
@@ -3112,6 +3327,296 @@ describe('update-workflow MCP tool', () => {
 
 				const response = parseResult(result);
 				expect(response.validationWarnings).toEqual([]);
+			});
+
+			test('does not re-add a required subnode link that this batch removed', async () => {
+				nodeTypes.getByNameAndVersion.mockImplementation(((type: string) => {
+					if (type === '@n8n/n8n-nodes-langchain.outputParserStructured') {
+						return {
+							description: {
+								group: ['transform'],
+								builderHint: {
+									inputs: {
+										ai_languageModel: {
+											required: true,
+											displayOptions: { show: { autoFix: [true] } },
+										},
+									},
+								},
+							},
+						};
+					}
+					return { description: { group: ['transform'] } };
+				}) as unknown as typeof nodeTypes.getByNameAndVersion);
+
+				findWorkflowMock.mockResolvedValue(
+					Object.assign(new WorkflowEntity(), {
+						id: 'wf-1',
+						name: 'Existing',
+						settings: { availableInMCP: true },
+						nodes: [
+							makeNode({
+								id: 'agent',
+								name: 'AI Agent',
+								type: '@n8n/n8n-nodes-langchain.agent',
+								typeVersion: 3.1,
+							}),
+							makeNode({
+								id: 'parser',
+								name: 'Parser',
+								type: '@n8n/n8n-nodes-langchain.outputParserStructured',
+								typeVersion: 1.3,
+								parameters: { autoFix: true },
+							}),
+							makeNode({
+								id: 'model',
+								name: 'Model',
+								type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
+								typeVersion: 1.3,
+							}),
+						],
+						connections: {
+							Parser: {
+								ai_outputParser: [[{ node: 'AI Agent', type: 'ai_outputParser', index: 0 }]],
+							},
+							Model: {
+								ai_languageModel: [
+									[
+										{ node: 'AI Agent', type: 'ai_languageModel', index: 0 },
+										{ node: 'Parser', type: 'ai_languageModel', index: 0 },
+									],
+								],
+							},
+						} as IConnections,
+					}),
+				);
+
+				const result = await callHandler({
+					workflowId: 'wf-1',
+					operations: [
+						{
+							type: 'removeConnection',
+							source: 'Model',
+							target: 'Parser',
+							connectionType: 'ai_languageModel',
+						},
+					],
+				});
+
+				expect(result.isError).toBeUndefined();
+
+				const saved = updateMock.mock.calls[0][1] as WorkflowEntity;
+				const targets = saved.connections.Model.ai_languageModel?.[0]?.map((c) => c.node);
+				expect(targets).toEqual(['AI Agent']);
+			});
+
+			test('keeps the removal when the batch also renames the target node', async () => {
+				nodeTypes.getByNameAndVersion.mockImplementation(((type: string) => {
+					if (type === '@n8n/n8n-nodes-langchain.outputParserStructured') {
+						return {
+							description: {
+								group: ['transform'],
+								builderHint: {
+									inputs: {
+										ai_languageModel: {
+											required: true,
+											displayOptions: { show: { autoFix: [true] } },
+										},
+									},
+								},
+							},
+						};
+					}
+					return { description: { group: ['transform'] } };
+				}) as unknown as typeof nodeTypes.getByNameAndVersion);
+
+				findWorkflowMock.mockResolvedValue(
+					Object.assign(new WorkflowEntity(), {
+						id: 'wf-1',
+						name: 'Existing',
+						settings: { availableInMCP: true },
+						nodes: [
+							makeNode({
+								id: 'agent',
+								name: 'AI Agent',
+								type: '@n8n/n8n-nodes-langchain.agent',
+								typeVersion: 3.1,
+							}),
+							makeNode({
+								id: 'parser',
+								name: 'Parser',
+								type: '@n8n/n8n-nodes-langchain.outputParserStructured',
+								typeVersion: 1.3,
+								parameters: { autoFix: true },
+							}),
+							makeNode({
+								id: 'model',
+								name: 'Model',
+								type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
+								typeVersion: 1.3,
+							}),
+						],
+						connections: {
+							Parser: {
+								ai_outputParser: [[{ node: 'AI Agent', type: 'ai_outputParser', index: 0 }]],
+							},
+							Model: {
+								ai_languageModel: [
+									[
+										{ node: 'AI Agent', type: 'ai_languageModel', index: 0 },
+										{ node: 'Parser', type: 'ai_languageModel', index: 0 },
+									],
+								],
+							},
+						} as IConnections,
+					}),
+				);
+
+				const result = await callHandler({
+					workflowId: 'wf-1',
+					operations: [
+						{
+							type: 'removeConnection',
+							source: 'Model',
+							target: 'Parser',
+							connectionType: 'ai_languageModel',
+						},
+						{ type: 'renameNode', oldName: 'Parser', newName: 'Schema' },
+					],
+				});
+
+				expect(result.isError).toBeUndefined();
+
+				const saved = updateMock.mock.calls[0][1] as WorkflowEntity;
+				const targets = saved.connections.Model.ai_languageModel?.[0]?.map((c) => c.node);
+				expect(targets).toEqual(['AI Agent']);
+			});
+
+			/**
+			 * A parser whose required model input is unsatisfied, with the only model
+			 * wired to the agent instead. A repair pass therefore has an unambiguous
+			 * source to borrow, so any auto-wiring shows up in the saved graph.
+			 */
+			const seedParserMissingItsModel = () => {
+				nodeTypes.getByNameAndVersion.mockImplementation(((type: string) => {
+					if (type === '@n8n/n8n-nodes-langchain.outputParserStructured') {
+						return {
+							description: {
+								group: ['transform'],
+								builderHint: {
+									inputs: {
+										ai_languageModel: {
+											required: true,
+											displayOptions: { show: { autoFix: [true] } },
+										},
+									},
+								},
+							},
+						};
+					}
+					return { description: { group: ['transform'] } };
+				}) as unknown as typeof nodeTypes.getByNameAndVersion);
+
+				findWorkflowMock.mockResolvedValue(
+					Object.assign(new WorkflowEntity(), {
+						id: 'wf-1',
+						name: 'Existing',
+						settings: { availableInMCP: true },
+						nodes: [
+							makeNode({
+								id: 'agent',
+								name: 'AI Agent',
+								type: '@n8n/n8n-nodes-langchain.agent',
+								typeVersion: 3.1,
+							}),
+							makeNode({
+								id: 'parser',
+								name: 'Parser',
+								type: '@n8n/n8n-nodes-langchain.outputParserStructured',
+								typeVersion: 1.3,
+								parameters: { autoFix: true },
+							}),
+							makeNode({
+								id: 'model',
+								name: 'Model',
+								type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
+								typeVersion: 1.3,
+							}),
+						],
+						connections: {
+							Parser: {
+								ai_outputParser: [[{ node: 'AI Agent', type: 'ai_outputParser', index: 0 }]],
+							},
+							Model: {
+								ai_languageModel: [[{ node: 'AI Agent', type: 'ai_languageModel', index: 0 }]],
+							},
+						} as IConnections,
+					}),
+				);
+			};
+
+			test('does not auto-wire anything for a layout-only update', async () => {
+				seedParserMissingItsModel();
+				const result = await callHandler({
+					workflowId: 'wf-1',
+					operations: [{ type: 'setNodePosition', nodeName: 'Parser', position: [10, 20] }],
+				});
+
+				expect(result.isError).toBeUndefined();
+
+				const response = parseResult(result);
+				const warnings = (response.validationWarnings ?? []) as Array<{ code: string }>;
+				expect(warnings.some((w) => w.code === 'REQUIRED_SUBNODE_CONNECTED')).toBe(false);
+
+				// The warning is derived from the links the repair added, so assert the
+				// graph too: dropping the warning must not be enough to pass this.
+				const saved = updateMock.mock.calls[0][1] as WorkflowEntity;
+				const targets = saved.connections.Model.ai_languageModel?.[0]?.map((c) => c.node);
+				expect(targets).toEqual(['AI Agent']);
+			});
+
+			test('does not auto-wire anything for a settings-only update', async () => {
+				seedParserMissingItsModel();
+				const result = await callHandler({
+					workflowId: 'wf-1',
+					operations: [
+						{ type: 'setNodeSettings', nodeName: 'Parser', settings: { retryOnFail: true } },
+					],
+				});
+
+				expect(result.isError).toBeUndefined();
+
+				const response = parseResult(result);
+				const warnings = (response.validationWarnings ?? []) as Array<{ code: string }>;
+				expect(warnings.some((w) => w.code === 'REQUIRED_SUBNODE_CONNECTED')).toBe(false);
+
+				// The model stays wired to the agent alone; the repair pass must not
+				// have borrowed it for the parser's required input.
+				const saved = updateMock.mock.calls[0][1] as WorkflowEntity;
+				const targets = saved.connections.Model.ai_languageModel?.[0]?.map((c) => c.node);
+				expect(targets).toEqual(['AI Agent']);
+			});
+
+			test('does not auto-wire anything for a workflow-level-only update', async () => {
+				seedParserMissingItsModel();
+
+				const result = await callHandler({
+					workflowId: 'wf-1',
+					operations: [
+						{ type: 'setWorkflowMetadata', description: 'Renamed by an agent' },
+						{ type: 'setWorkflowSettings', settings: { executionOrder: 'v1' } },
+					],
+				});
+
+				expect(result.isError).toBeUndefined();
+
+				const response = parseResult(result);
+				const warnings = (response.validationWarnings ?? []) as Array<{ code: string }>;
+				expect(warnings.some((w) => w.code === 'REQUIRED_SUBNODE_CONNECTED')).toBe(false);
+
+				const saved = updateMock.mock.calls[0][1] as WorkflowEntity;
+				const targets = saved.connections.Model.ai_languageModel?.[0]?.map((c) => c.node);
+				expect(targets).toEqual(['AI Agent']);
 			});
 
 			test('refuses to save when an addConnection wires an agent as a tool to another agent', async () => {

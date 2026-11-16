@@ -1,3 +1,4 @@
+import { packagedModules } from '@/modules/modules.manifest';
 import { ModuleRegistry } from '@n8n/backend-common';
 import { createTeamProject, testDb, testModules } from '@n8n/backend-test-utils';
 import { GlobalConfig } from '@n8n/config';
@@ -14,10 +15,13 @@ import type { InstanceSettings } from 'n8n-core';
 import { mock } from 'vitest-mock-extended';
 
 import type { ConcurrencyControlService } from '@/concurrency/concurrency-control.service';
+import { CredentialsService } from '@/credentials/credentials.service';
 import { License } from '@/license';
-import { Agent } from '@/modules/agents/entities/agent.entity';
+import { AgentConfigService } from '@/modules/agents/agent-config.service';
+import { AgentsSettingsService } from '@/modules/agents/agents-settings.service';
+import { Agent, type ProjectAgent } from '@/modules/agents/entities/agent.entity';
 import type { AgentRepository } from '@/modules/agents/repositories/agent.repository';
-import { DataTableService } from '@/modules/data-table/data-table.service';
+import { DataTableService } from '@n8n/backend-module-data-table';
 import type { EvalAgentExecutionService } from '@/modules/instance-ai/eval/agent-execution.service';
 import { createUserShell } from '@test-integration/db/users';
 
@@ -64,17 +68,24 @@ const buildRunner = () =>
 		// the env overrides — exercising the operator force-enable path the
 		// `agentEvalsEnabled` assignment in `beforeEach` relies on.
 		Container.get(AgentEvalsFlagGate),
+		// Real services: every agent here has no JSON config, so judging
+		// resolves to a `status: 'error'` verdict (covered by the runner's own
+		// unit tests) rather than throwing — this suite is about execution and
+		// persistence, not the judge call itself.
+		Container.get(AgentsSettingsService),
+		Container.get(AgentConfigService),
+		Container.get(CredentialsService),
 	);
 
 /** Insert a minimal real agent row so `agent_eval_dataset.agentId`'s FK holds. */
-async function createAgent(projectId: string): Promise<Agent> {
+async function createAgent(projectId: string): Promise<ProjectAgent> {
 	return await Container.get(DataSource)
 		.getRepository(Agent)
 		.save(Object.assign(new Agent(), { name: 'test agent', projectId }));
 }
 
 beforeAll(async () => {
-	await testModules.loadModules(['data-table', 'agents']);
+	await testModules.loadModules(['data-table', 'agents'], packagedModules);
 	await testDb.init();
 	owner = await createUserShell(GLOBAL_OWNER_ROLE);
 });
@@ -93,6 +104,7 @@ beforeEach(async () => {
 		'AgentEvalDataset',
 	]);
 	Container.get(GlobalConfig).evaluation.agentEvalsEnabled = true;
+	await Container.get(AgentsSettingsService).setEnabled(true);
 });
 
 afterAll(async () => {
@@ -126,7 +138,7 @@ describe('AgentEvalRunnerService (integration)', () => {
 		});
 
 		agentRepository.findByIdAndProjectId.mockResolvedValue(
-			mock<Agent>({ id: agent.id, activeVersionId: null }),
+			mock<ProjectAgent>({ id: agent.id, activeVersionId: null }),
 		);
 		evalAgentExecutionService.executeWithLlmMock.mockImplementation(
 			async (_agentId, _user, _options, caseInput) =>
@@ -195,7 +207,7 @@ describe('AgentEvalRunnerService (integration)', () => {
 		});
 
 		agentRepository.findByIdAndProjectId.mockResolvedValue(
-			mock<Agent>({ id: agent.id, activeVersionId: null }),
+			mock<ProjectAgent>({ id: agent.id, activeVersionId: null }),
 		);
 		evalAgentExecutionService.executeWithLlmMock.mockResolvedValue({
 			runId: '',

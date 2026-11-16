@@ -1,10 +1,11 @@
 /**
- * Minimal-valid binary fixtures for the eval mock layer.
+ * Binary fixtures for the eval mock layer.
  *
- * Each fixture is the smallest byte sequence that `fileTypeFromBuffer`
- * recognizes as its declared MIME, so downstream node logic that derives
- * `fileExtension` / `fileType` from mime-sniffing behaves identically to a
- * real HTTP download.
+ * Each fixture is a byte sequence that `fileTypeFromBuffer` recognizes as its
+ * declared MIME, so downstream node logic that derives `fileExtension` /
+ * `fileType` from mime-sniffing behaves identically to a real HTTP download.
+ * Most are the smallest such sequence; `image/png` is the exception, a computed
+ * 512×512 canvas (`evalCanvasPng`) that strict decoders and image tools accept.
  *
  * Used by:
  *  - packages/cli/src/modules/instance-ai/eval/mock-handler.ts — synthesize
@@ -18,21 +19,21 @@ import { deflateSync } from 'node:zlib';
 export type FixtureSizeHint = 'small' | 'medium' | 'large';
 
 export interface SynthesizeBinaryFixtureOptions {
-	/** Pad the synthetic fixture for size-constrained scenarios. Default `'small'` (minimum valid size). */
+	/** Pad the synthetic fixture for size-constrained scenarios. Default `'small'` (the unpadded base fixture: minimum valid size, except the 512×512 PNG canvas). */
 	sizeHint?: FixtureSizeHint;
 	/** Scenario-pinned override — when present, returned untouched (Step 4 precedence). */
 	override?: Buffer;
+	/** The document's text: a PDF carries it as its text layer, a text MIME uses it as the body. */
+	text?: string;
 }
 
 // ---------------------------------------------------------------------------
-// Base fixtures — minimum byte sequences that `fileTypeFromBuffer` recognizes.
+// Base fixtures — minimum byte sequences that `fileTypeFromBuffer` recognizes
+// (PNG is the exception: a computed 512×512 canvas, see below).
 // ---------------------------------------------------------------------------
 
-/** 1×1 transparent PNG — 67 bytes. Magic: 89 50 4E 47 0D 0A 1A 0A */
-const PNG_1X1 = Buffer.from(
-	'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVQI12P4//8/AwAI/AL+XJ/PAAAAAElFTkSuQmCC',
-	'base64',
-);
+// PNG is not a constant here: `image/png` serves `evalCanvasPng()` (below),
+// which is built with computed chunk CRCs so strict decoders accept it.
 
 /** 1×1 JPEG. Magic: FF D8 FF E0 ... FF D9 */
 const JPEG_1X1 = Buffer.from(
@@ -240,10 +241,11 @@ let canvasPngCache: Buffer | undefined;
 
 /**
  * 512×512 opaque white PNG (8-bit grayscale), built programmatically so it is
- * always structurally valid. Unlike `PNG_1X1`, this gives image-PROCESSING
- * nodes (Edit Image text overlay, resize, composite via GraphicsMagick) a real
- * canvas to operate on — a 1×1 or truncated placeholder makes them fail with
- * "Insufficient image data".
+ * always structurally valid. It is the `image/png` download fixture and gives
+ * image-PROCESSING nodes (Edit Image text overlay, resize, composite via
+ * GraphicsMagick) a real canvas to operate on — a 1×1 or truncated placeholder
+ * makes them fail with "Insufficient image data", and a PNG with a bad chunk
+ * CRC makes GraphicsMagick write nothing ("Stream yields empty buffer").
  */
 export function evalCanvasPng(): Buffer {
 	if (canvasPngCache) return canvasPngCache;
@@ -267,8 +269,8 @@ export function evalCanvasPng(): Buffer {
 const PDF_TEXT_MAX_LINES = 40;
 
 /**
- * Build a valid one-page PDF whose extractable text is `text` (ASCII-printable
- * subset; other characters become `?`). The xref offsets are computed, so
+ * Build a valid one-page PDF whose extractable text is `text` (WinAnsi subset:
+ * Latin-1 plus `€`; other characters become `?`). The xref offsets are computed, so
  * strict parsers (pdfjs-dist behind Extract From File) accept it — LLM-authored
  * "PDF bytes" never parse, so mock layers substitute these and keep the
  * scenario's document CONTENT model-authored as plaintext.
@@ -276,7 +278,12 @@ const PDF_TEXT_MAX_LINES = 40;
 export function buildPdfWithText(text: string): Buffer {
 	const lines = text
 		.split(/\r?\n/)
-		.map((line) => line.replace(/[^\x20-\x7e]/g, '?').trimEnd())
+		.map((line) =>
+			line
+				.replace(/€/g, '\x80')
+				.replace(/[^\x20-\x7e\x80\xa0-\xff]/g, '?')
+				.trimEnd(),
+		)
 		.filter((line) => line.length > 0)
 		.slice(0, PDF_TEXT_MAX_LINES);
 	if (lines.length === 0) lines.push('Mock PDF document');
@@ -295,7 +302,7 @@ export function buildPdfWithText(text: string): Buffer {
 		'<</Type/Catalog/Pages 2 0 R>>',
 		'<</Type/Pages/Kids[3 0 R]/Count 1>>',
 		'<</Type/Page/Parent 2 0 R/MediaBox[0 0 612 792]/Resources<</Font<</F1 4 0 R>>>>/Contents 5 0 R>>',
-		'<</Type/Font/Subtype/Type1/BaseFont/Helvetica>>',
+		'<</Type/Font/Subtype/Type1/BaseFont/Helvetica/Encoding/WinAnsiEncoding>>',
 		`<</Length ${String(Buffer.byteLength(contentStream, 'latin1'))}>>\nstream\n${contentStream}\nendstream`,
 	];
 
@@ -322,7 +329,7 @@ export function buildPdfWithText(text: string): Buffer {
  * deterministic-random octet-stream path.
  */
 function pickBinaryFixture(mime: string, filename: string): Buffer | undefined {
-	if (mime === 'image/png') return PNG_1X1;
+	if (mime === 'image/png') return evalCanvasPng();
 	if (mime === 'image/jpeg' || mime === 'image/jpg') return JPEG_1X1;
 	if (mime === 'image/gif') return GIF_1X1;
 	if (mime === 'image/webp') return WEBP_1X1;
@@ -480,13 +487,15 @@ function applySizeHint(base: Buffer, hint: FixtureSizeHint, mime: string): Buffe
 // ---------------------------------------------------------------------------
 
 /**
- * Synthesize a minimal-valid binary buffer for the given content type.
+ * Synthesize a valid binary buffer for the given content type. Most fixtures
+ * are minimal; PNG is the exception, a computed 512×512 canvas.
  *
  * Precedence:
  *  1. `options.override` — scenario-pinned bytes returned untouched.
- *  2. MIME-keyed minimal fixture (PDF, PNG, OGG, …).
- *  3. Text MIME plaintext stub seeded with `filename`.
- *  4. Deterministic-random 256-byte payload (octet-stream fallback).
+ *  2. `options.text` — a PDF with that text, or the text itself for a text MIME.
+ *  3. MIME-keyed fixture (PDF, OGG, …; minimal except PNG, a 512×512 canvas).
+ *  4. Text MIME plaintext stub seeded with `filename`.
+ *  5. Deterministic-random 256-byte payload (octet-stream fallback).
  *
  * `options.sizeHint` only pads the tail of MIMEs whose decoder tolerates
  * trailing bytes (everything except ZIP-based formats and MP4).
@@ -500,6 +509,13 @@ export function synthesizeBinaryFixture(
 
 	const mime = (contentType || 'application/octet-stream').toLowerCase().split(';')[0].trim();
 	const hint: FixtureSizeHint = options.sizeHint ?? 'small';
+
+	if (options.text?.trim() && mime === 'application/pdf') {
+		return applySizeHint(buildPdfWithText(options.text), hint, mime);
+	}
+	if (options.text !== undefined && isTextMime(mime)) {
+		return applySizeHint(Buffer.from(options.text, 'utf8'), hint, mime);
+	}
 
 	const binary = pickBinaryFixture(mime, filename);
 	if (binary) return applySizeHint(binary, hint, mime);

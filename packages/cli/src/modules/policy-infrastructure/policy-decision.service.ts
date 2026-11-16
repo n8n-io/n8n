@@ -9,7 +9,7 @@ import type {
 } from '@n8n/decorators';
 import { ENFORCEMENT_POINT_METHODS, PolicyCheckMetadata } from '@n8n/decorators';
 import { Container, Service } from '@n8n/di';
-import { OperationalError } from 'n8n-workflow';
+import { OperationalError } from '@n8n/errors';
 import { randomUUID } from 'node:crypto';
 
 import type {
@@ -32,6 +32,7 @@ const DEADLINES_MS = {
 	workflowStart: 250,
 	workflowTransfer: 1_000,
 	credentialSave: 1_000,
+	credentialTransfer: 1_000,
 	credentialDecrypt: 250,
 	contentImport: 1_000,
 } as const satisfies Record<EnforcementPoint, number>;

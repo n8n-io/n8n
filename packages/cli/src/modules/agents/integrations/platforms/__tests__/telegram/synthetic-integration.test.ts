@@ -253,4 +253,27 @@ describe('Telegram Bot API integration scenarios', () => {
 			await ctx.shutdown();
 		}
 	});
+
+	it('posts a reply over the Telegram limit as rich messages that fit', async () => {
+		const fixtures = telegramReplayFixtures();
+		const lines = Array.from({ length: 1000 }, (_, i) => `Line ${i} of a long research report.\n`);
+		const ctx = await createTelegramReplayContext(fixtures, {
+			stream: [
+				...lines.map((delta) => ({ type: 'text-delta' as const, id: 'report', delta })),
+				{ type: 'finish', finishReason: 'stop' },
+			],
+		});
+		try {
+			await ctx.sendTelegramWebhook(fixtures.mention);
+
+			const posts = ctx.apiCalls
+				.filter((call) => call.method === 'sendRichMessage')
+				.map((call) => (call.body.rich_message as { markdown: string }).markdown);
+			expect(posts.length).toBeGreaterThan(1);
+			for (const post of posts) expect(post.length).toBeLessThanOrEqual(32_768);
+			expect(posts.join('')).toBe(lines.join(''));
+		} finally {
+			await ctx.shutdown();
+		}
+	});
 });
