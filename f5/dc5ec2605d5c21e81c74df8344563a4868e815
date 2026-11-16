@@ -1,0 +1,58 @@
+packages/frontend/editor-ui/src/features/ai/instanceAi/__tests__/useAppAssistantHandoff.test.ts
+  s_771457c926e571::t_dc46737dba3c22 9,28,97,107,115,164,190,206,212,217,228,233,272,312,318-319,321-327,330
+packages/cli/src/modules/instance-ai/assistant-agent/__tests__/assistant-agent.provider.test.ts
+  s_771457c926e571::t_66fcbf762200ee 635,639,643,676-688,696,698
+packages/@n8n/api-types/src/index.ts
+  s_771457c926e571::t_648853a58e0032 551-552,676-677
+packages/frontend/editor-ui/src/features/ai/instanceAi/composables/useAppAssistantHandoff.ts
+  s_771457c926e571::t_9ad8fc42e73855 3,22,25,104,124-128
+packages/frontend/editor-ui/src/features/ai/instanceAi/embed/instanceAiEmbed.types.ts
+  s_771457c926e571::t_73a5b5788e08e1 2,16-19,22
+packages/@n8n/instance-ai/src/tools/apps/app-target-binding.ts
+  s_771457c926e571::t_cff09bd5e2abfb 6,53,58,60,62-63
+packages/frontend/editor-ui/src/features/ai/instanceAi/assistantAgent/__tests__/AssistantAgentThreadView.test.ts
+  s_771457c926e571::t_ffcd78a79352cd 701,714-715,720,724,732,740,765
+packages/@n8n/instance-ai/src/tools/__tests__/thread-subject-binding.test.ts
+  s_771457c926e571::t_09df2dc094bba5 20-23
+  s_771457c926e571::t_e7e3b8a146bd22 1-19,24-45
+packages/frontend/editor-ui/src/features/ai/instanceAi/assistantAgent/AssistantAgentThreadView.vue
+  s_771457c926e571::t_f0fd24e359fe8c 215-216,341-345
+packages/@n8n/instance-ai/src/tools/apps/__tests__/app-target-binding.test.ts
+  s_771457c926e571::t_e7e3b8a146bd22 10,32-39,41,43,47-50,56-57,63
+packages/frontend/editor-ui/src/features/ai/instanceAi/__tests__/InstanceAiEmptyView.test.ts
+  s_771457c926e571::t_ffcd78a79352cd 1508
+packages/@n8n/instance-ai/src/tools/thread-subject-binding.ts
+  s_771457c926e571::t_cff09bd5e2abfb 1-21
+packages/frontend/editor-ui/src/features/ai/instanceAi/__tests__/useInstanceAiHandoff.test.ts
+  s_771457c926e571::t_09df2dc094bba5 79,636-648,853,860-873
+  s_771457c926e571::t_92f400caf3839f 854-859,874-882
+packages/frontend/editor-ui/src/features/ai/instanceAi/assistantAgent/assistantAgentThreads.ts
+  s_771457c926e571::t_92f400caf3839f 91-92
+  s_771457c926e571::t_73a5b5788e08e1 3,5,103-104,139,153,156
+packages/@n8n/instance-ai/src/index.ts
+  s_771457c926e571::t_cff09bd5e2abfb 310-311
+packages/cli/src/modules/instance-ai/assistant-agent/assistant-agent.provider.ts
+  s_771457c926e571::t_4dd64865595516 11,25,327-332,574-576,578,580,582-584
+packages/@n8n/api-types/src/schemas/instance-ai.schema.ts
+  s_771457c926e571::t_648853a58e0032 1596-1602,1605-1617,1823-1827
+packages/frontend/editor-ui/src/features/ai/instanceAi/composables/useInstanceAiHandoff.ts
+  s_771457c926e571::t_9d8966c111740e 14,417,428,586-599
+packages/frontend/editor-ui/src/features/ai/instanceAi/InstanceAiEmptyView.vue
+  s_771457c926e571::t_f0fd24e359fe8c 15,162-166,844-846,960,965
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "f5dc5ec2605d5c21e81c74df8344563a4868e815",
+  "prompts": {},
+  "sessions": {
+    "s_771457c926e571": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ad7fc79a-2f23-40ab-a02a-a0ca28c6c53c",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Jaakko Husso <jaakko@n8n.io>"
+    }
+  }
+}
