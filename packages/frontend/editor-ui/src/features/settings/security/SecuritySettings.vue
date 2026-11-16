@@ -416,12 +416,10 @@ const sharingCountText = computed(() => {
 					@click="openTypePolicies"
 				>
 					<template #info>
-						<span :class="$style.titleWithBadge">
-							<N8nText :bold="true" size="medium" color="text-dark">
-								{{ i18n.baseText('settings.security.nodeAndCredentialPolicies.title') }}
-							</N8nText>
-							<N8nPreviewBadge data-test-id="security-type-policies-preview-badge" />
-						</span>
+						<N8nText :bold="true">
+							{{ i18n.baseText('settings.security.nodeAndCredentialPolicies.title') }}
+							<N8nPreviewBadge class="ml-4xs" data-test-id="security-type-policies-preview-badge" />
+						</N8nText>
 						<N8nText size="small" color="text-light">
 							{{ i18n.baseText('settings.security.nodeAndCredentialPolicies.description') }}
 						</N8nText>
@@ -478,12 +476,5 @@ const sharingCountText = computed(() => {
 <style lang="scss" module>
 .layout {
 	padding-top: 0;
-}
-
-.titleWithBadge {
-	display: flex;
-	flex-wrap: wrap;
-	align-items: center;
-	gap: var(--spacing--3xs);
 }
 </style>
