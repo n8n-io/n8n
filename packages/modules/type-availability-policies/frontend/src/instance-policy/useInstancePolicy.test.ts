@@ -122,7 +122,8 @@ describe('useInstancePolicy', () => {
 			expect.objectContaining({
 				type: 'error',
 				title: 'Could not save the policy',
-				message: expect.stringContaining('Use the API to change it.'),
+				message:
+					'This page cannot change this policy, because it uses several policy documents or a document that other scopes share. Use the API to change it.',
 			}),
 		);
 		expect(mocks.showError).not.toHaveBeenCalled();
