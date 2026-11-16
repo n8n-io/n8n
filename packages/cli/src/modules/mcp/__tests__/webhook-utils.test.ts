@@ -1,7 +1,7 @@
 import { mockInstance } from '@n8n/backend-test-utils';
+import type { CredentialsFinderService } from '@n8n/backend-services';
 import { User } from '@n8n/db';
-import type { SharedCredentials } from '@n8n/db';
-import { NotFoundError } from '@n8n/errors';
+import type { CredentialsEntity } from '@n8n/db';
 import type {
 	INode,
 	INodeCredentials,
@@ -26,30 +26,19 @@ const mockCredentialsService = (
 	impl: (id: string) => ICredentialDataDecryptedObject | Promise<ICredentialDataDecryptedObject>,
 ): CredentialsService =>
 	mockInstance(CredentialsService, {
-		async getOne(_user: User, id: string, _includeDecryptedData: boolean) {
-			const data = await impl(id);
-			return {
-				name: 'MockCredentialsService',
-				description: null,
-				type: 'mock',
-				shared: [] as SharedCredentials[],
-				isManaged: false,
-				isGlobal: false,
-				isResolvable: false,
-				usageScope: 'project',
-				resolverId: null,
-				resolvableAllowFallback: false,
-				pendingAuthorizationExpiresAt: null,
-				id,
-				// Methods present on entities via WithTimestampsAndStringId mixin
-				generateId() {},
-				createdAt: new Date(),
-				updatedAt: new Date(),
-				setUpdateDate() {},
-				data,
-			};
+		async decrypt(credential: CredentialsEntity) {
+			return await impl(credential.id);
 		},
 	});
+
+const credentialsFinderService = mock<CredentialsFinderService>();
+
+beforeEach(() => {
+	credentialsFinderService.findCredentialForUser.mockReset();
+	credentialsFinderService.findCredentialForUser.mockImplementation(async (id) =>
+		mock<CredentialsEntity>({ id }),
+	);
+});
 
 const createWebhookNode = (
 	overrides: Partial<INode> & { parameters?: INodeParameters; credentials?: INodeCredentials } = {},
@@ -107,6 +96,7 @@ describe('getWebhookDetails', () => {
 			[node],
 			baseUrl,
 			mockCredentialsService(() => ({})),
+			credentialsFinderService,
 			nodeTypes,
 			endpoints,
 			workflowId,
@@ -126,6 +116,7 @@ describe('getWebhookDetails', () => {
 			[node],
 			baseUrl,
 			mockCredentialsService(() => ({})),
+			credentialsFinderService,
 			nodeTypes,
 			endpoints,
 			workflowId,
@@ -145,6 +136,7 @@ describe('getWebhookDetails', () => {
 			[node],
 			baseUrl,
 			mockCredentialsService(() => ({})),
+			credentialsFinderService,
 			nodeTypes,
 			endpoints,
 			workflowId,
@@ -160,6 +152,7 @@ describe('getWebhookDetails', () => {
 			[node],
 			baseUrl,
 			mockCredentialsService(() => ({})),
+			credentialsFinderService,
 			nodeTypes,
 			endpoints,
 			workflowId,
@@ -176,6 +169,7 @@ describe('getWebhookDetails', () => {
 			[node],
 			baseUrl,
 			mockCredentialsService(() => ({})),
+			credentialsFinderService,
 			nodeTypes,
 			endpoints,
 			workflowId,
@@ -197,30 +191,33 @@ describe('getWebhookDetails', () => {
 			[node],
 			baseUrl,
 			credsService,
+			credentialsFinderService,
 			nodeTypes,
 			endpoints,
 			workflowId,
 		);
 		expect(res).toContain('requires a header with name "X-API-Key"');
+		expect(credentialsFinderService.findCredentialForUser).toHaveBeenCalledWith('cred-1', user, [
+			'credential:read',
+			'credential:update',
+		]);
 	});
 
-	it('still describes a headerAuth webhook when the credential lookup fails', async () => {
-		// CONTEXT-276: a failed lookup of the Header Auth credential must not fail
-		// the whole get_workflow_details read. The JWT path already degrades.
+	it('still describes a headerAuth webhook when the user cannot edit the credential', async () => {
 		const node = createWebhookNode({
 			name: 'Secured Webhook',
 			parameters: { authentication: 'headerAuth', path: 'secured', httpMethod: 'POST' },
 			credentials: { httpHeaderAuth: { id: 'cred-unreadable', name: 'HeaderAuth' } },
 		});
-		const credsService = mockCredentialsService((id) => {
-			throw new NotFoundError(`Credential with ID "${id}" could not be found.`);
-		});
+		credentialsFinderService.findCredentialForUser.mockResolvedValue(null);
+		const credsService = mockCredentialsService(() => ({ name: 'X-Hidden-Header' }));
 
 		const res = await getWebhookDetails(
 			user,
 			[node],
 			baseUrl,
 			credsService,
+			credentialsFinderService,
 			nodeTypes,
 			endpoints,
 			workflowId,
@@ -232,16 +229,17 @@ describe('getWebhookDetails', () => {
 		);
 		expect(res).toContain('HTTP Method: POST');
 		expect(res).toContain('requires header authentication');
+		expect(res).not.toContain('X-Hidden-Header');
 		expect(res).not.toContain('No credentials required');
 	});
 
-	it('keeps the jwtAuth requirement when the credential lookup fails', async () => {
+	it('keeps the jwtAuth requirement when the credential cannot be decrypted', async () => {
 		const node = createWebhookNode({
 			parameters: { authentication: 'jwtAuth', path: 'a' },
 			credentials: { jwtAuth: { id: 'cred-unreadable', name: 'JwtAuth' } },
 		});
-		const credsService = mockCredentialsService((id) => {
-			throw new NotFoundError(`Credential with ID "${id}" could not be found.`);
+		const credsService = mockCredentialsService(() => {
+			throw new Error('Credential could not be decrypted');
 		});
 
 		const res = await getWebhookDetails(
@@ -249,6 +247,7 @@ describe('getWebhookDetails', () => {
 			[node],
 			baseUrl,
 			credsService,
+			credentialsFinderService,
 			nodeTypes,
 			endpoints,
 			workflowId,
@@ -272,6 +271,7 @@ describe('getWebhookDetails', () => {
 			[node],
 			baseUrl,
 			credsService,
+			credentialsFinderService,
 			nodeTypes,
 			endpoints,
 			workflowId,
@@ -293,6 +293,7 @@ describe('getWebhookDetails', () => {
 			[node],
 			baseUrl,
 			credsService,
+			credentialsFinderService,
 			nodeTypes,
 			endpoints,
 			workflowId,
@@ -311,6 +312,7 @@ describe('getWebhookDetails', () => {
 			[node],
 			baseUrl,
 			mockCredentialsService(() => ({})),
+			credentialsFinderService,
 			nodeTypes,
 			endpoints,
 			workflowId,
@@ -336,6 +338,7 @@ describe('getWebhookDetails', () => {
 			[node],
 			baseUrl,
 			mockCredentialsService(() => ({})),
+			credentialsFinderService,
 			nodeTypes,
 			endpoints,
 			workflowId,
@@ -352,6 +355,7 @@ describe('getWebhookDetails', () => {
 			[nodeAll],
 			baseUrl,
 			mockCredentialsService(() => ({})),
+			credentialsFinderService,
 			nodeTypes,
 			endpoints,
 			workflowId,
@@ -366,6 +370,7 @@ describe('getWebhookDetails', () => {
 			[nodeBin],
 			baseUrl,
 			mockCredentialsService(() => ({})),
+			credentialsFinderService,
 			nodeTypes,
 			endpoints,
 			workflowId,
@@ -380,6 +385,7 @@ describe('getWebhookDetails', () => {
 			[nodeNo],
 			baseUrl,
 			mockCredentialsService(() => ({})),
+			credentialsFinderService,
 			nodeTypes,
 			endpoints,
 			workflowId,
@@ -392,6 +398,7 @@ describe('getWebhookDetails', () => {
 			[nodeDefault],
 			baseUrl,
 			mockCredentialsService(() => ({})),
+			credentialsFinderService,
 			nodeTypes,
 			endpoints,
 			workflowId,
@@ -424,6 +431,7 @@ describe('getTriggerDetails', () => {
 			[],
 			baseUrl,
 			credentialsService,
+			credentialsFinderService,
 			nodeTypes,
 			endpoints,
 			workflowId,
@@ -440,6 +448,7 @@ describe('getTriggerDetails', () => {
 			[createTriggerNode()],
 			baseUrl,
 			credentialsService,
+			credentialsFinderService,
 			nodeTypes,
 			endpoints,
 			workflowId,
@@ -464,6 +473,7 @@ describe('getTriggerDetails', () => {
 			[],
 			baseUrl,
 			credentialsService,
+			credentialsFinderService,
 			nodeTypes,
 			endpoints,
 			workflowId,
@@ -496,6 +506,7 @@ describe('getTriggerDetails', () => {
 			[],
 			baseUrl,
 			credentialsService,
+			credentialsFinderService,
 			nodeTypes,
 			endpoints,
 			workflowId,

@@ -6,6 +6,7 @@ import {
 	type INodeProperties,
 	type IExecuteFunctions,
 	updateDisplayOptions,
+	requestPath,
 } from 'n8n-workflow';
 
 import { seaTableApiRequest } from '../../GenericFunctions';
@@ -75,7 +76,7 @@ export async function execute(
 		this,
 		{},
 		'POST',
-		'/api-gateway/api/v2/dtables/{{dtable_uuid}}/query-links/',
+		(dtableUuid) => requestPath`/api-gateway/api/v2/dtables/${dtableUuid}/query-links/`,
 		{
 			table_id: tableName.split(':::')[1],
 			link_column_key: linkColumn.split(':::')[3],

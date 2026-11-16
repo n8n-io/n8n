@@ -72,7 +72,13 @@ export interface DueStep {
 	executionId: string;
 }
 
-/** Persistence interface for step records. */
+/**
+ * Persistence interface for step records.
+ *
+ * Every transition into `queued` or `running` also records when the engine
+ * treats the step as stuck in that status (see `StalenessThresholds`). Every
+ * other transition clears that time.
+ */
 export interface StepStore {
 	/**
 	 * Persist new step records for one execution, batched so planning a fan-out
@@ -245,6 +251,9 @@ export interface StepStore {
 	 */
 	loadAllSteps(executionId: string): Promise<StepRecord[]>;
 
+	/** The steps of the given nodes, every pass of each, with their outputs. */
+	loadStepsByNodeIds(executionId: string, nodeIds: string[]): Promise<StepRecord[]>;
+
 	/**
 	 * Every step of the execution in the `waiting` status, with its wait
 	 * declaration, whatever that declaration says. The caller decides which
@@ -264,4 +273,7 @@ export interface StepStore {
 
 	/** Whether any of the execution's steps failed. */
 	hasFailedSteps(executionId: string): Promise<boolean>;
+
+	/** The execution's failed steps, by node and then by pass. */
+	loadFailedSteps(executionId: string): Promise<StepRecord[]>;
 }

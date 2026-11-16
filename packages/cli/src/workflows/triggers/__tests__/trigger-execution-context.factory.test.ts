@@ -15,7 +15,8 @@ import type {
 	IGetExecutePollFunctions,
 	StorageConfig,
 } from 'n8n-core';
-import { UnexpectedError, UserError, Workflow } from 'n8n-workflow';
+import { Workflow } from 'n8n-workflow';
+import { UnexpectedError, UserError } from '@n8n/errors';
 import type {
 	Cron,
 	CronExpression,

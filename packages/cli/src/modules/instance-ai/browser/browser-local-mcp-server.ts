@@ -1,18 +1,6 @@
-import { zodSchemaToJsonSchema } from '@n8n/ai-utilities/json-schema';
-import type {
-	InstanceAiPermissionMode,
-	InstanceGatewayResourceDecision,
-	McpTool,
-	McpToolCallRequest,
-	McpToolCallResult,
-} from '@n8n/api-types';
-import {
-	GATEWAY_CONFIRMATION_REQUIRED_PREFIX,
-	mcpToolCallResultSchema,
-	mcpToolSchema,
-} from '@n8n/api-types';
+import type { McpTool, McpToolCallRequest, McpToolCallResult } from '@n8n/api-types';
 import type { Logger } from '@n8n/backend-common';
-import type { DomainAccessTracker, LocalMcpServer } from '@n8n/instance-ai';
+import type { LocalMcpServer } from '@n8n/instance-ai';
 import type {
 	AffectedResource,
 	BrowserToolkit,
@@ -20,18 +8,15 @@ import type {
 	ToolDefinition,
 } from '@n8n/mcp-browser';
 
-export interface BrowserDomainGate {
-	tracker: DomainAccessTracker;
-	runId: string;
-	/** Governs domain access — every browser tool whose affected resource is a host. */
-	permissionMode?: InstanceAiPermissionMode;
-	/**
-	 * Governs `browser_create_credential`, which reports `credentials` rather than a host.
-	 * Writing a credential to the instance is a different kind of action from reading a
-	 * page, so it carries its own permission.
-	 */
-	createCredentialPermissionMode?: InstanceAiPermissionMode;
-}
+import {
+	browserErrorResult,
+	executeBrowserTool,
+	gateBrowserAccess,
+	toBrowserMcpTool,
+	type BrowserDomainGate,
+} from './browser.helpers';
+
+export type { BrowserDomainGate } from './browser.helpers';
 
 const NO_DOMAIN = 'browser';
 
@@ -48,14 +33,8 @@ export class BrowserLocalMcpServer implements LocalMcpServer {
 		private readonly logger: Logger,
 	) {
 		for (const tool of toolkit.tools) {
-			const candidate = {
-				name: tool.name,
-				description: tool.description,
-				inputSchema: zodSchemaToJsonSchema(tool.inputSchema),
-				annotations: { category: 'browser' },
-			};
-			const parsed = mcpToolSchema.safeParse(candidate);
-			if (!parsed.success) {
+			const mcpTool = toBrowserMcpTool(tool);
+			if (!mcpTool) {
 				this.logger.warn('Skipping browser tool with unsupported input schema', {
 					tool: tool.name,
 				});
@@ -63,7 +42,7 @@ export class BrowserLocalMcpServer implements LocalMcpServer {
 			}
 
 			this.toolsByName.set(tool.name, tool);
-			this.mcpTools.push(parsed.data);
+			this.mcpTools.push(mcpTool);
 		}
 	}
 
@@ -82,31 +61,16 @@ export class BrowserLocalMcpServer implements LocalMcpServer {
 	async callTool(req: McpToolCallRequest): Promise<McpToolCallResult> {
 		const tool = this.toolsByName.get(req.name);
 		if (!tool) {
-			return errorResult(`Unknown browser tool: ${req.name}`);
+			return browserErrorResult(`Unknown browser tool: ${req.name}`);
 		}
 
-		try {
-			const { _confirmation, ...rawArgs } = req.arguments;
-			const args: unknown = tool.inputSchema.parse(rawArgs);
-
-			const gateResult = await this.gateAccess(tool, args, _confirmation);
-			if (gateResult) {
-				return gateResult;
-			}
-
-			const result = await tool.execute(args, this.toolContext);
-			const parsed = mcpToolCallResultSchema.safeParse(result);
-			if (parsed.success) {
-				return parsed.data;
-			}
-
-			return {
-				content: [{ type: 'text', text: JSON.stringify(result.content) }],
-				...(result.isError === true ? { isError: true } : {}),
-			};
-		} catch (error) {
-			return errorResult(error instanceof Error ? error.message : String(error));
-		}
+		const { _confirmation, ...rawArgs } = req.arguments;
+		return await executeBrowserTool(
+			tool,
+			rawArgs,
+			this.toolContext,
+			async (args) => await this.gateAccess(tool, args, _confirmation),
+		);
 	}
 
 	private async gateAccess(
@@ -124,9 +88,7 @@ export class BrowserLocalMcpServer implements LocalMcpServer {
 			return undefined;
 		}
 
-		return affected.kind === 'credential-write'
-			? gateCredentialCreation(gate, affected, confirmation)
-			: await gateDomainAccess(gate, affected, confirmation);
+		return await gateBrowserAccess(gate, affected, confirmation);
 	}
 
 	private async affectedResource(
@@ -140,77 +102,4 @@ export class BrowserLocalMcpServer implements LocalMcpServer {
 			return undefined;
 		}
 	}
-}
-
-async function gateDomainAccess(
-	gate: BrowserDomainGate,
-	affected: AffectedResource,
-	confirmation: unknown,
-): Promise<McpToolCallResult | undefined> {
-	const host = affected.resource;
-
-	if (typeof confirmation === 'string') {
-		switch (confirmation) {
-			case 'allowForSession':
-				await gate.tracker.approveDomain(host);
-				return undefined;
-			case 'allowOnce':
-				gate.tracker.approveOnce(gate.runId, host);
-				return undefined;
-			default:
-				return errorResult('Access denied by user');
-		}
-	}
-
-	if (gate.permissionMode === 'blocked') {
-		return errorResult('Browser access blocked by admin');
-	}
-	if (gate.permissionMode !== 'always_allow' && !gate.tracker.isHostAllowed(host, gate.runId)) {
-		return confirmationRequiredResult(affected, ['denyOnce', 'allowOnce', 'allowForSession']);
-	}
-	return undefined;
-}
-
-/**
- * Credential creation is confirmed per call against its own permission: there is no
- * session-wide option, and the domain tracker plays no part in the decision.
- */
-function gateCredentialCreation(
-	gate: BrowserDomainGate,
-	affected: AffectedResource,
-	confirmation: unknown,
-): McpToolCallResult | undefined {
-	if (typeof confirmation === 'string') {
-		return confirmation === 'allowOnce' ? undefined : errorResult('Access denied by user');
-	}
-
-	if (gate.createCredentialPermissionMode === 'blocked') {
-		return errorResult('Credential creation blocked by admin');
-	}
-	if (gate.createCredentialPermissionMode !== 'always_allow') {
-		return confirmationRequiredResult(affected, ['denyOnce', 'allowOnce']);
-	}
-	return undefined;
-}
-
-function confirmationRequiredResult(
-	affected: AffectedResource,
-	options: InstanceGatewayResourceDecision[],
-): McpToolCallResult {
-	const payload = {
-		toolGroup: affected.toolGroup,
-		resource: affected.resource,
-		description: affected.description,
-		options,
-	};
-	return {
-		content: [
-			{ type: 'text', text: `${GATEWAY_CONFIRMATION_REQUIRED_PREFIX}${JSON.stringify(payload)}` },
-		],
-		isError: true,
-	};
-}
-
-function errorResult(message: string): McpToolCallResult {
-	return { content: [{ type: 'text', text: message }], isError: true };
 }

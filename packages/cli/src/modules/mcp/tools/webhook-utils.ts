@@ -1,3 +1,4 @@
+import type { CredentialsFinderService } from '@n8n/backend-services';
 import type { User } from '@n8n/db';
 import {
 	WEBHOOK_NODE_TYPE,
@@ -5,6 +6,7 @@ import {
 	FORM_TRIGGER_NODE_TYPE,
 	CHAT_TRIGGER_NODE_TYPE,
 	NodeHelpers,
+	type ICredentialDataDecryptedObject,
 	type INode,
 	type INodeType,
 	type INodeTypes,
@@ -74,6 +76,7 @@ export const getTriggerDetails = async (
 	unsupportedTriggers: INode[],
 	baseUrl: string,
 	credentialsService: CredentialsService,
+	credentialsFinderService: CredentialsFinderService,
 	nodeTypes: INodeTypes,
 	endpoints: WebhookEndpoints,
 	workflowId: string,
@@ -112,6 +115,7 @@ export const getTriggerDetails = async (
 			triggersByType[WEBHOOK_NODE_TYPE],
 			baseUrl,
 			credentialsService,
+			credentialsFinderService,
 			nodeTypes,
 			endpoints,
 			workflowId,
@@ -191,6 +195,7 @@ export const getWebhookDetails = async (
 	webhookNodes: INode[],
 	baseUrl: string,
 	credentialsService: CredentialsService,
+	credentialsFinderService: CredentialsFinderService,
 	nodeTypes: INodeTypes,
 	endpoints: WebhookEndpoints,
 	workflowId: string,
@@ -204,6 +209,7 @@ export const getWebhookDetails = async (
 					node,
 					baseUrl,
 					credentialsService,
+					credentialsFinderService,
 					nodeTypes,
 					endpoints,
 					workflowId,
@@ -220,6 +226,7 @@ const collectWebhookNodeDetails = async (
 	node: INode,
 	baseUrl: string,
 	credentialsService: CredentialsService,
+	credentialsFinderService: CredentialsFinderService,
 	nodeTypes: INodeTypes,
 	endpoints: WebhookEndpoints,
 	workflowId: string,
@@ -251,7 +258,12 @@ const collectWebhookNodeDetails = async (
 		),
 		httpMethod,
 		responseModeDescription: getResponseModeDescription(node),
-		credentials: await resolveCredentialRequirement(user, node, credentialsService),
+		credentials: await resolveCredentialRequirement(
+			user,
+			node,
+			credentialsService,
+			credentialsFinderService,
+		),
 	};
 };
 
@@ -300,6 +312,7 @@ const resolveCredentialRequirement = async (
 	user: User,
 	node: INode,
 	credentialsService: CredentialsService,
+	credentialsFinderService: CredentialsFinderService,
 ): Promise<WebhookCredentialRequirement> => {
 	const authType =
 		typeof node.parameters?.authentication === 'string'
@@ -312,11 +325,21 @@ const resolveCredentialRequirement = async (
 		// Keep the auth requirement when the credential cannot be read, so the
 		// webhook is not reported as open.
 		case 'headerAuth': {
-			const headerName = await getHeaderAuthName(user, node, credentialsService);
+			const headerName = await getHeaderAuthName(
+				user,
+				node,
+				credentialsService,
+				credentialsFinderService,
+			);
 			return headerName ? { type: 'header', headerName } : { type: 'header' };
 		}
 		case 'jwtAuth': {
-			const variant = await getJWTAuthVariant(user, node, credentialsService);
+			const variant = await getJWTAuthVariant(
+				user,
+				node,
+				credentialsService,
+				credentialsFinderService,
+			);
 			return variant ? { type: 'jwt', variant } : { type: 'jwt' };
 		}
 	}
@@ -324,43 +347,55 @@ const resolveCredentialRequirement = async (
 	return { type: 'none' };
 };
 
+const readCredentialDataForEditor = async (
+	user: User,
+	credentialId: string | null | undefined,
+	credentialsService: CredentialsService,
+	credentialsFinderService: CredentialsFinderService,
+): Promise<{ data: ICredentialDataDecryptedObject } | null> => {
+	if (!credentialId) return null;
+
+	try {
+		const credential = await credentialsFinderService.findCredentialForUser(credentialId, user, [
+			'credential:read',
+			'credential:update',
+		]);
+		if (!credential) return null;
+		return { data: await credentialsService.decrypt(credential) };
+	} catch {
+		return null;
+	}
+};
+
 const getHeaderAuthName = async (
 	user: User,
 	node: INode,
 	credentialsService: CredentialsService,
+	credentialsFinderService: CredentialsFinderService,
 ): Promise<string | null> => {
-	const id = node.credentials?.httpHeaderAuth?.id;
-	if (!id) return null;
-
-	// A failed lookup must not fail the whole workflow details read.
-	try {
-		const creds = await credentialsService.getOne(user, id, true);
-		if (hasHttpHeaderAuthDecryptedData(creds)) {
-			return creds.data.name;
-		}
-	} catch {
-		return null;
-	}
-	return null;
+	const credential = await readCredentialDataForEditor(
+		user,
+		node.credentials?.httpHeaderAuth?.id,
+		credentialsService,
+		credentialsFinderService,
+	);
+	return hasHttpHeaderAuthDecryptedData(credential) ? credential.data.name : null;
 };
 
 const getJWTAuthVariant = async (
 	user: User,
 	node: INode,
 	credentialsService: CredentialsService,
+	credentialsFinderService: CredentialsFinderService,
 ): Promise<'secret' | 'pem-key' | null> => {
-	const id = node.credentials?.jwtAuth?.id;
-	if (!id) return null;
-	try {
-		const creds = await credentialsService.getOne(user, id, true);
-		if (hasJwtSecretDecryptedData(creds)) {
-			return 'secret';
-		} else if (hasJwtPemKeyDecryptedData(creds)) {
-			return 'pem-key';
-		}
-	} catch {
-		return null;
-	}
+	const credential = await readCredentialDataForEditor(
+		user,
+		node.credentials?.jwtAuth?.id,
+		credentialsService,
+		credentialsFinderService,
+	);
+	if (hasJwtSecretDecryptedData(credential)) return 'secret';
+	if (hasJwtPemKeyDecryptedData(credential)) return 'pem-key';
 	return null;
 };
 

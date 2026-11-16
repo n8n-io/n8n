@@ -1,7 +1,8 @@
 import type { protos, SecretManagerServiceClient as GcpClient } from '@google-cloud/secret-manager';
 import { Logger } from '@n8n/backend-common';
 import { Container } from '@n8n/di';
-import { jsonParse, UserError, type INodeProperties } from 'n8n-workflow';
+import { jsonParse, type INodeProperties } from 'n8n-workflow';
+import { UserError } from '@n8n/errors';
 
 import type {
 	GcpSecretsManagerContext,

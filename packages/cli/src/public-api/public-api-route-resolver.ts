@@ -15,7 +15,7 @@ import type {
 import { ControllerRegistryMetadata } from '@n8n/decorators';
 import { Container } from '@n8n/di';
 import type { ApiKeyScope } from '@n8n/permissions';
-import { UnexpectedError } from 'n8n-workflow';
+import { UnexpectedError } from '@n8n/errors';
 import type { ZodTypeAny } from 'zod';
 
 import type { RequestBodyHandler } from '@/public-api/media-types/request-body';

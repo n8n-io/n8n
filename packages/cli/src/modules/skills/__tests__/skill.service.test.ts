@@ -1,9 +1,7 @@
 import type { ListSkillsQueryDto } from '@n8n/api-types';
-import type { User } from '@n8n/db';
+import { Person, type User } from '@n8n/db';
 import { ConflictError, NotFoundError, UserError } from '@n8n/errors';
 import { mock } from 'vitest-mock-extended';
-
-import { userHasScopes } from '@/permissions.ee/check-access';
 
 import {
 	createSkillServices,
@@ -19,7 +17,6 @@ import { SkillSyncedError } from '../errors/skill-synced.error';
 import { toAgentSkill, type ResolvedSkillRow } from '../utils/skill-content';
 import { getSkillHash } from '../utils/skill-hash';
 
-vi.mock('@/permissions.ee/check-access', () => ({ userHasScopes: vi.fn() }));
 vi.mock('@n8n/permissions', async (importOriginal) => ({
 	...(await importOriginal<typeof import('@n8n/permissions')>()),
 	hasGlobalScope: vi.fn(),
@@ -229,6 +226,7 @@ describe('SkillService', () => {
 				}),
 				user.id,
 				TX_CTX,
+				undefined,
 			);
 		});
 
@@ -262,6 +260,7 @@ describe('SkillService', () => {
 				expect.objectContaining({ name: 'Renamed' }),
 				user.id,
 				expect.anything(),
+				undefined,
 			);
 		});
 
@@ -306,6 +305,7 @@ describe('SkillService', () => {
 				expect.objectContaining({ frontmatter: { license: 'Apache-2.0' } }),
 				user.id,
 				TX_CTX,
+				undefined,
 			);
 		});
 
@@ -349,6 +349,7 @@ describe('SkillService', () => {
 				expect.objectContaining({ frontmatter: { 'allowed-tools': 'Read' } }),
 				user.id,
 				TX_CTX,
+				undefined,
 			);
 		});
 
@@ -365,6 +366,7 @@ describe('SkillService', () => {
 				expect.objectContaining({ frontmatter: { license: 'MIT', 'allowed-tools': 'Read' } }),
 				user.id,
 				TX_CTX,
+				undefined,
 			);
 		});
 
@@ -453,7 +455,7 @@ describe('SkillService', () => {
 					},
 					user.id,
 					{},
-					{ allowSynced: true },
+					{ allowSynced: true, sourceRevision: 'reviewed-revision' },
 				);
 
 				expect(result).toMatchObject({ version: 3, created: true });
@@ -463,6 +465,7 @@ describe('SkillService', () => {
 					fetched,
 					user.id,
 					TX_CTX,
+					'reviewed-revision',
 				);
 			});
 
@@ -493,6 +496,7 @@ describe('SkillService', () => {
 				expect.objectContaining({ instructions: 'new', frontmatter: { license: 'MIT' } }),
 				user.id,
 				TX_CTX,
+				undefined,
 			);
 		});
 
@@ -507,7 +511,7 @@ describe('SkillService', () => {
 		it('marks the following agents in the transaction and refreshes them after the commit', async () => {
 			const baseSkillHash = givenLatest(versionRow(skill, 2));
 			await givenFollowers();
-			const markFollowersChanged = vi.spyOn(skillUsage, 'markFollowersChanged');
+			const findFollowingAgentIds = vi.spyOn(skillUsage, 'findFollowingAgentIds');
 
 			const result = await service.saveTrusted(
 				'skill_a',
@@ -517,7 +521,7 @@ describe('SkillService', () => {
 				{ pushRef: 'push-ref-1' },
 			);
 
-			expect(markFollowersChanged).toHaveBeenCalledWith('skill_a', TX_CTX, user.id);
+			expect(findFollowingAgentIds).toHaveBeenCalledWith('skill_a', TX_CTX);
 			expect(result.followingAgentIds).toEqual(['agent-1', 'agent-2']);
 			expect(usage.refreshed).toEqual([
 				{ agentIds: ['agent-1', 'agent-2'], excludePushRef: 'push-ref-1' },
@@ -838,10 +842,20 @@ describe('SkillService', () => {
 				]),
 			);
 			skills.findProjects.mockResolvedValue(
-				new Map([[PROJECT, { name: 'Marketing', type: 'team' as const }]]),
+				new Map([
+					[
+						PROJECT,
+						{ name: 'Marketing', type: 'team' as const, icon: { type: 'emoji', value: '🚀' } },
+					],
+				]),
 			);
 			users.findManyByIds.mockResolvedValue([
-				{ id: 'user-1', email: null, firstName: null, lastName: null } as unknown as User,
+				Object.assign(new Person(), {
+					id: 'user-1',
+					email: null,
+					firstName: null,
+					lastName: null,
+				}) as unknown as User,
 			]);
 
 			const { count, data } = await service.list(user, {} as ListSkillsQueryDto);
@@ -850,15 +864,27 @@ describe('SkillService', () => {
 			expect(users.findManyByIds).toHaveBeenCalledWith(['user-1']);
 			expect(skills.findProjects).toHaveBeenCalledWith([PROJECT, 'project-gone']);
 			expect(
-				data.map(({ id, scope, projectId, projectName, projectType, createdBy, usedByAgents }) => ({
-					id,
-					scope,
-					projectId,
-					projectName,
-					projectType,
-					createdBy,
-					usedByAgents,
-				})),
+				data.map(
+					({
+						id,
+						scope,
+						projectId,
+						projectName,
+						projectType,
+						projectIcon,
+						createdBy,
+						usedByAgents,
+					}) => ({
+						id,
+						scope,
+						projectId,
+						projectName,
+						projectType,
+						projectIcon,
+						createdBy,
+						usedByAgents,
+					}),
+				),
 			).toEqual([
 				{
 					id: 'skill_project',
@@ -866,6 +892,7 @@ describe('SkillService', () => {
 					projectId: PROJECT,
 					projectName: 'Marketing',
 					projectType: 'team',
+					projectIcon: { type: 'emoji', value: '🚀' },
 					createdBy: { id: 'user-1', email: null, firstName: null, lastName: null },
 					usedByAgents: 2,
 				},
@@ -875,6 +902,7 @@ describe('SkillService', () => {
 					projectId: 'project-gone',
 					projectName: null,
 					projectType: null,
+					projectIcon: null,
 					createdBy: null,
 					usedByAgents: 0,
 				},
@@ -884,6 +912,7 @@ describe('SkillService', () => {
 					projectId: null,
 					projectName: null,
 					projectType: null,
+					projectIcon: null,
 					createdBy: null,
 					usedByAgents: 0,
 				},
@@ -975,7 +1004,7 @@ describe('SkillService', () => {
 						rows.filter((row) => ids.includes(row.skill.id)).map((row) => [row.skill.id, row]),
 					),
 			);
-			vi.mocked(userHasScopes).mockResolvedValue(true);
+			projectScope.hasScopes.mockResolvedValue(true);
 		});
 
 		it('lists one page of the project and instance skills that the user can list and that are available to MCP', async () => {
@@ -1021,7 +1050,7 @@ describe('SkillService', () => {
 		});
 
 		it('does not read a skill the user cannot read', async () => {
-			vi.mocked(userHasScopes).mockResolvedValue(false);
+			projectScope.hasScopes.mockResolvedValue(false);
 
 			expect(await service.readForMcp(user, 'skill-2')).toBeNull();
 		});

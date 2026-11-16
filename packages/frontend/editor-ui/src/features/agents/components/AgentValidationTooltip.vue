@@ -105,6 +105,7 @@ const PREVIEW_SPECIFIC_ISSUE_KEYS: Record<string, BaseTextKey> = {
 		'agents.builder.preview.issue.mcpServer.incompatibleCredential' as BaseTextKey,
 	'vectorStore.invalid_value':
 		'agents.builder.preview.issue.vectorStore.invalidValue' as BaseTextKey,
+	'guardrail.invalid_value': 'agents.builder.preview.issue.guardrail.invalidValue' as BaseTextKey,
 	'tool.node.restricted_node_type':
 		'agents.builder.preview.issue.restrictedNodeType' as BaseTextKey,
 	'mcpServer.restricted_node_type':
@@ -136,6 +137,7 @@ const PUBLISH_SPECIFIC_ISSUE_KEYS: Record<string, BaseTextKey> = {
 	'mcpServer.incompatible_credential':
 		'agents.publish.issue.mcpServer.incompatibleCredential' as BaseTextKey,
 	'vectorStore.invalid_value': 'agents.publish.issue.vectorStore.invalidValue' as BaseTextKey,
+	'guardrail.invalid_value': 'agents.publish.issue.guardrail.invalidValue' as BaseTextKey,
 	'tool.node.restricted_node_type': 'agents.publish.issue.restrictedNodeType' as BaseTextKey,
 	'mcpServer.restricted_node_type': 'agents.publish.issue.restrictedNodeType' as BaseTextKey,
 };
@@ -149,6 +151,7 @@ const CAPABILITY_KEYS: Record<AgentCapabilityKind, BaseTextKey> = {
 	task: 'agents.builder.tasks.title' as BaseTextKey,
 	subAgent: 'agents.chat.misconfigured.missing.subAgents.agents' as BaseTextKey,
 	vectorStore: 'agents.builder.vectorStores.panel.title' as BaseTextKey,
+	guardrail: 'agents.builder.guardrails.title' as BaseTextKey,
 };
 
 function isPreviewIssue(issue: AgentConfigValidationIssue): boolean {

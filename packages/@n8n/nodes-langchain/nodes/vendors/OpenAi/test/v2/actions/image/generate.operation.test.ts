@@ -1,5 +1,6 @@
 import { mock, mockDeep } from 'vitest-mock-extended';
 import type { IExecuteFunctions, INode } from 'n8n-workflow';
+import { requestPath } from 'n8n-workflow';
 
 import * as transport from '../../../../transport';
 import { execute } from '../../../../v2/actions/image/generate.operation';
@@ -95,7 +96,7 @@ describe('Image Generate Operation', () => {
 
 			await execute.call(mockExecuteFunctions, 0);
 
-			expect(apiRequestSpy).toHaveBeenCalledWith('POST', '/images/generations', {
+			expect(apiRequestSpy).toHaveBeenCalledWith('POST', requestPath`/images/generations`, {
 				body: expect.objectContaining({ model: 'dall-e-3', response_format: 'b64_json' }),
 			});
 		});
@@ -110,7 +111,7 @@ describe('Image Generate Operation', () => {
 
 			await execute.call(mockExecuteFunctions, 0);
 
-			expect(apiRequestSpy).toHaveBeenCalledWith('POST', '/images/generations', {
+			expect(apiRequestSpy).toHaveBeenCalledWith('POST', requestPath`/images/generations`, {
 				body: expect.objectContaining({ model: 'gpt-image-1', response_format: undefined }),
 			});
 		});
@@ -137,7 +138,7 @@ describe('Image Generate Operation', () => {
 
 			await execute.call(mockExecuteFunctions, 0);
 
-			expect(apiRequestSpy).toHaveBeenCalledWith('POST', '/images/generations', {
+			expect(apiRequestSpy).toHaveBeenCalledWith('POST', requestPath`/images/generations`, {
 				body: expect.objectContaining({ model: 'dall-e-3', response_format: 'b64_json' }),
 			});
 		});
@@ -149,7 +150,7 @@ describe('Image Generate Operation', () => {
 
 			await execute.call(mockExecuteFunctions, 0);
 
-			expect(apiRequestSpy).toHaveBeenCalledWith('POST', '/images/generations', {
+			expect(apiRequestSpy).toHaveBeenCalledWith('POST', requestPath`/images/generations`, {
 				body: expect.objectContaining({ model: 'gpt-image-1', response_format: undefined }),
 			});
 		});
@@ -161,7 +162,7 @@ describe('Image Generate Operation', () => {
 
 			await execute.call(mockExecuteFunctions, 0);
 
-			expect(apiRequestSpy).toHaveBeenCalledWith('POST', '/images/generations', {
+			expect(apiRequestSpy).toHaveBeenCalledWith('POST', requestPath`/images/generations`, {
 				body: expect.objectContaining({ model: 'gpt-image-1-mini', response_format: undefined }),
 			});
 		});
@@ -206,7 +207,7 @@ describe('Image Generate Operation', () => {
 
 			const result = await execute.call(mockExecuteFunctions, 0);
 
-			expect(apiRequestSpy).toHaveBeenCalledWith('POST', '/images/generations', {
+			expect(apiRequestSpy).toHaveBeenCalledWith('POST', requestPath`/images/generations`, {
 				body: expect.objectContaining({ response_format: 'url' }),
 			});
 			expect(result).toEqual([
@@ -223,7 +224,7 @@ describe('Image Generate Operation', () => {
 
 			const result = await execute.call(mockExecuteFunctions, 0);
 
-			expect(apiRequestSpy).toHaveBeenCalledWith('POST', '/images/generations', {
+			expect(apiRequestSpy).toHaveBeenCalledWith('POST', requestPath`/images/generations`, {
 				body: expect.objectContaining({ response_format: undefined }),
 			});
 			expect(result[0].binary).toBeDefined();
@@ -261,12 +262,12 @@ describe('Image Generate Operation', () => {
 
 			await execute.call(mockExecuteFunctions, 0);
 
-			expect(apiRequestSpy).toHaveBeenCalledWith('POST', '/images/generations', {
+			expect(apiRequestSpy).toHaveBeenCalledWith('POST', requestPath`/images/generations`, {
 				body: expect.objectContaining({ quality: 'hd' }),
 			});
 			expect(apiRequestSpy).toHaveBeenCalledWith(
 				'POST',
-				'/images/generations',
+				requestPath`/images/generations`,
 				expect.objectContaining({
 					body: expect.not.objectContaining({ dalleQuality: expect.anything() }),
 				}),

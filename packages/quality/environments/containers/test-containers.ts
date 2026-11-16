@@ -50,6 +50,7 @@ const DEFAULT_IMAGES = {
 	sandboxRunner: 'n8nio/n8n-sandbox-service-runner-dind:1.3.0',
 	sandboxSandbox: 'n8nio/n8n-sandbox-service-sandbox:1.3.0',
 	verdaccio: 'verdaccio/verdaccio:6.5.0',
+	litellm: 'ghcr.io/berriai/litellm:main-v1.83.14-stable',
 } as const;
 
 /** Convert camelCase to SCREAMING_SNAKE_CASE for env var names */
@@ -133,4 +134,5 @@ export const TEST_CONTAINER_IMAGES = {
 	sandboxRunner: getImage('sandboxRunner'),
 	sandboxSandbox: getImage('sandboxSandbox'),
 	verdaccio: getImage('verdaccio'),
+	litellm: getImage('litellm'),
 } as const;

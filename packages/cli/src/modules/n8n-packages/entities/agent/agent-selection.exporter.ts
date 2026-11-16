@@ -115,7 +115,9 @@ export class AgentSelectionExporter {
 		exporter: AgentExporter,
 	): Promise<PreparedSelection[]> {
 		const projectIds = request.projectIds ?? [];
-		const projectAgentIds = await repository.findIdsInProjectsForExport(projectIds);
+		const projectAgentIds = await repository.findIdsInProjectsForExport(projectIds, {
+			includeArchived: request.includeArchived,
+		});
 		const pending = [...new Set([...(request.agentIds ?? []), ...projectAgentIds])];
 		const seen = new Set(pending);
 		const prepared: PreparedSelection[] = [];

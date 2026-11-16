@@ -1,7 +1,14 @@
+import {
+	WORKFLOW_VERSION_DESCRIPTION_MAX_LENGTH,
+	WORKFLOW_VERSION_NAME_MAX_LENGTH,
+} from '@n8n/api-types';
 import { mockInstance } from '@n8n/backend-test-utils';
-import { User } from '@n8n/db';
+import { type OperationContext, User } from '@n8n/db';
+import type { SecurityContext } from '@n8n/permissions';
 import { v4 as uuid } from 'uuid';
 import type { Mock } from 'vitest';
+import { mock } from 'vitest-mock-extended';
+import z from 'zod';
 
 import { CollaborationService } from '@/collaboration/collaboration.service';
 import { WorkflowPublishBlockedError } from '@/errors/response-errors/workflow-publish-blocked.error';
@@ -48,6 +55,63 @@ describe('publish-workflow MCP tool', () => {
 			expect(tool.config.inputSchema).toBeDefined();
 			expect(tool.config.outputSchema).toBeDefined();
 			expect(typeof tool.handler).toBe('function');
+		});
+	});
+
+	describe('input schema', () => {
+		const getInputSchema = () =>
+			z.object(
+				createPublishWorkflowTool(
+					user,
+					workflowFinderService,
+					workflowService,
+					telemetry,
+					collaborationService,
+				).config.inputSchema!,
+			);
+
+		test('accepts a call without name and description', () => {
+			expect(getInputSchema().safeParse({ workflowId: 'wf-1' }).success).toBe(true);
+		});
+
+		test('accepts name and description within the limits', () => {
+			const result = getInputSchema().safeParse({
+				workflowId: 'wf-1',
+				name: 'n'.repeat(WORKFLOW_VERSION_NAME_MAX_LENGTH),
+				description: 'd'.repeat(WORKFLOW_VERSION_DESCRIPTION_MAX_LENGTH),
+			});
+
+			expect(result.success).toBe(true);
+		});
+
+		test('rejects a name that is too long', () => {
+			const result = getInputSchema().safeParse({
+				workflowId: 'wf-1',
+				name: 'n'.repeat(WORKFLOW_VERSION_NAME_MAX_LENGTH + 1),
+			});
+
+			expect(result.success).toBe(false);
+			expect(result.error?.issues).toEqual([
+				expect.objectContaining({
+					path: ['name'],
+					message: `Version name cannot be longer than ${WORKFLOW_VERSION_NAME_MAX_LENGTH} characters`,
+				}),
+			]);
+		});
+
+		test('rejects a description that is too long', () => {
+			const result = getInputSchema().safeParse({
+				workflowId: 'wf-1',
+				description: 'd'.repeat(WORKFLOW_VERSION_DESCRIPTION_MAX_LENGTH + 1),
+			});
+
+			expect(result.success).toBe(false);
+			expect(result.error?.issues).toEqual([
+				expect.objectContaining({
+					path: ['description'],
+					message: `Version description cannot be longer than ${WORKFLOW_VERSION_DESCRIPTION_MAX_LENGTH} characters`,
+				}),
+			]);
 		});
 	});
 
@@ -135,13 +199,66 @@ describe('publish-workflow MCP tool', () => {
 					activeVersionId,
 				});
 
-				expect(workflowService.activateWorkflow).toHaveBeenCalledWith(user, 'wf-1', {
-					versionId: undefined,
-					source: 'n8n-mcp',
-					publishHistory: 'none',
-				});
+				expect(workflowService.activateWorkflow).toHaveBeenCalledWith(
+					user,
+					'wf-1',
+					{
+						versionId: undefined,
+						name: undefined,
+						description: undefined,
+						source: 'n8n-mcp',
+						publishHistory: 'none',
+					},
+					{},
+				);
 
 				expect(collaborationService.broadcastWorkflowUpdate).toHaveBeenCalledWith('wf-1', user.id);
+			});
+
+			test('passes version name and description to activateWorkflow', async () => {
+				const workflow = createWorkflow({ settings: { availableInMCP: true } });
+				const versionId = uuid();
+				const activatedWorkflow = { ...workflow, activeVersionId: versionId };
+
+				(workflowFinderService.findWorkflowForUser as Mock).mockResolvedValue(workflow);
+				(workflowService.activateWorkflow as Mock).mockResolvedValue(activatedWorkflow);
+
+				const tool = createPublishWorkflowTool(
+					user,
+					workflowFinderService,
+					workflowService,
+					telemetry,
+					collaborationService,
+				);
+
+				const result = await tool.handler(
+					{
+						workflowId: 'wf-1',
+						versionId,
+						name: 'Add Slack notification',
+						description: 'Sends a Slack message when the order fails.',
+					},
+					{} as Parameters<typeof tool.handler>[1],
+				);
+
+				expect(result.structuredContent).toMatchObject({
+					success: true,
+					workflowId: 'wf-1',
+					activeVersionId: versionId,
+				});
+
+				expect(workflowService.activateWorkflow).toHaveBeenCalledWith(
+					user,
+					'wf-1',
+					{
+						versionId,
+						name: 'Add Slack notification',
+						description: 'Sends a Slack message when the order fails.',
+						source: 'n8n-mcp',
+						publishHistory: 'none',
+					},
+					{},
+				);
 			});
 
 			test('publishes specific version when versionId provided', async () => {
@@ -171,11 +288,42 @@ describe('publish-workflow MCP tool', () => {
 					activeVersionId: versionId,
 				});
 
-				expect(workflowService.activateWorkflow).toHaveBeenCalledWith(user, 'wf-1', {
-					versionId,
-					source: 'n8n-mcp',
-					publishHistory: 'none',
-				});
+				expect(workflowService.activateWorkflow).toHaveBeenCalledWith(
+					user,
+					'wf-1',
+					{
+						versionId,
+						name: undefined,
+						description: undefined,
+						source: 'n8n-mcp',
+						publishHistory: 'none',
+					},
+					{},
+				);
+			});
+
+			test('passes the operation context to the workflow service', async () => {
+				const workflow = createWorkflow({ settings: { availableInMCP: true } });
+				(workflowFinderService.findWorkflowForUser as Mock).mockResolvedValue(workflow);
+				(workflowService.activateWorkflow as Mock).mockResolvedValue(workflow);
+				const ctx: OperationContext = {
+					security: mock<SecurityContext>({ subIdentityId: 'login-1' }),
+				};
+
+				const tool = createPublishWorkflowTool(
+					user,
+					workflowFinderService,
+					workflowService,
+					telemetry,
+					collaborationService,
+					ctx,
+				);
+				await tool.handler(
+					{ workflowId: 'wf-1', versionId: undefined },
+					{} as Parameters<typeof tool.handler>[1],
+				);
+
+				expect((workflowService.activateWorkflow as Mock).mock.calls[0][3]).toBe(ctx);
 			});
 		});
 

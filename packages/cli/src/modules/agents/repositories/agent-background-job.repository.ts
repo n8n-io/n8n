@@ -2,7 +2,7 @@ import type { AgentPlanTaskRef, AgentToolOutputFile, AgentToolSkippedFile } from
 import { BaseRepository, TransactionRunner, type OperationContext } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { DataSource, In, IsNull, LessThan, Not } from '@n8n/typeorm';
-import { OperationalError, UserError } from 'n8n-workflow';
+import { OperationalError, UserError } from '@n8n/errors';
 
 import {
 	AgentBackgroundJob,
@@ -226,7 +226,7 @@ export class AgentBackgroundJobRepository extends BaseRepository<AgentBackground
 
 		const query = this.createQueryBuilder()
 			.update()
-			.set({ notifiedAt: new Date() })
+			.set({ notifiedAt: new Date(), wakeAttemptId: null })
 			.where({ parentThreadId, id: In(ids) })
 			.andWhere('settledAt IS NOT NULL')
 			.andWhere('notifiedAt IS NULL');
@@ -236,6 +236,34 @@ export class AgentBackgroundJobRepository extends BaseRepository<AgentBackground
 		const result = await query.execute();
 
 		return result.affected ?? 0;
+	}
+
+	/**
+	 * Link unconsumed results to a wake attempt before the agent runs. Throws
+	 * when a result changed after selection, so the wake does not start.
+	 */
+	async claimForWake(parentThreadId: string, ids: string[], wakeAttemptId: string): Promise<void> {
+		const result = await this.createQueryBuilder()
+			.update()
+			// Keep updatedAt. The wake failure brake must see the same result version.
+			.set({ wakeAttemptId, updatedAt: () => '"updatedAt"' })
+			.where({ parentThreadId, id: In(ids) })
+			.andWhere('settledAt IS NOT NULL')
+			.andWhere('notifiedAt IS NULL')
+			.andWhere('wakeAttemptId IS NULL')
+			.execute();
+		if (result.affected !== ids.length) {
+			throw new OperationalError('Background job results changed before the wake started');
+		}
+	}
+
+	/** Make results of a wake attempt that did not reach the agent eligible again. */
+	async releaseWakeClaim(parentThreadId: string, wakeAttemptId: string): Promise<void> {
+		// The thread filter uses the parentThreadId indexes.
+		await this.update(
+			{ parentThreadId, wakeAttemptId, notifiedAt: IsNull() },
+			{ wakeAttemptId: null, updatedAt: () => '"updatedAt"' },
+		);
 	}
 
 	async markApprovalDelivered(id: string, runId: string, state: string): Promise<void> {

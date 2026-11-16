@@ -1,5 +1,5 @@
 import { Service } from '@n8n/di';
-import { NotImplementedError } from '@n8n/errors';
+import { NotImplementedError, UserError } from '@n8n/errors';
 import {
 	cleanRunData,
 	DirectedGraph,
@@ -20,7 +20,7 @@ import type {
 	IWorkflowBase,
 	IWorkflowExecutionDataProcess,
 } from 'n8n-workflow';
-import { isTriggerNodeType, UserError, Workflow } from 'n8n-workflow';
+import { isTriggerNodeType, Workflow } from 'n8n-workflow';
 
 import { NodeTypes } from '@/node-types';
 

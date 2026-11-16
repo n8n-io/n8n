@@ -9,7 +9,7 @@ import type {
 	IWebhookResponseData,
 	JsonObject,
 } from 'n8n-workflow';
-import { NodeApiError, NodeConnectionTypes } from 'n8n-workflow';
+import { NodeApiError, NodeConnectionTypes, requestPath } from 'n8n-workflow';
 
 import { getresponseApiRequest, getResponseApiRequestAllItems } from './GenericFunctions';
 
@@ -142,7 +142,11 @@ export class GetResponseTrigger implements INodeType {
 			// select them easily
 			async getLists(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
-				const lists = await getResponseApiRequestAllItems.call(this, 'GET', '/campaigns');
+				const lists = await getResponseApiRequestAllItems.call(
+					this,
+					'GET',
+					requestPath`/campaigns`,
+				);
 				returnData.push({ name: '*', value: '*' });
 				for (const list of lists) {
 					returnData.push({
@@ -162,7 +166,12 @@ export class GetResponseTrigger implements INodeType {
 				const deleteCurrentSubscription = this.getNodeParameter('options.delete', false) as boolean;
 
 				try {
-					const data = await getresponseApiRequest.call(this, 'GET', '/accounts/callbacks', {});
+					const data = await getresponseApiRequest.call(
+						this,
+						'GET',
+						requestPath`/accounts/callbacks`,
+						{},
+					);
 
 					if (data.url !== webhookUrl) {
 						if (!deleteCurrentSubscription) {
@@ -177,7 +186,7 @@ export class GetResponseTrigger implements INodeType {
 					}
 				}
 
-				await getresponseApiRequest.call(this, 'DELETE', '/accounts/callbacks');
+				await getresponseApiRequest.call(this, 'DELETE', requestPath`/accounts/callbacks`);
 
 				return false;
 			},
@@ -196,13 +205,13 @@ export class GetResponseTrigger implements INodeType {
 					),
 				};
 
-				await getresponseApiRequest.call(this, 'POST', '/accounts/callbacks', body);
+				await getresponseApiRequest.call(this, 'POST', requestPath`/accounts/callbacks`, body);
 
 				return true;
 			},
 			async delete(this: IHookFunctions): Promise<boolean> {
 				try {
-					await getresponseApiRequest.call(this, 'DELETE', '/accounts/callbacks');
+					await getresponseApiRequest.call(this, 'DELETE', requestPath`/accounts/callbacks`);
 				} catch (error) {
 					return false;
 				}

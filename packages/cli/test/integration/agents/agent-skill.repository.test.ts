@@ -425,30 +425,8 @@ describe('AgentSkillRepository', () => {
 		});
 	});
 
-	describe('AgentRepository.markFollowerDraftsChanged', () => {
-		it('gives an agent in sync with its published version a new draft version id', async () => {
-			const agent = await createAgent('Support', { inSync: true });
-
-			const changed = await agents.markFollowerDraftsChanged([agent.id]);
-
-			const reloaded = await agents.findOneByOrFail({ id: agent.id });
-			expect(changed).toEqual([agent.id]);
-			expect(reloaded.versionId).not.toBe(reloaded.activeVersionId);
-			expect(reloaded.revision).toBe(agent.revision + 1);
-		});
-
-		it('gives an already modified draft a new fixed-content ID', async () => {
-			const agent = await createAgent('Support');
-
-			const changed = await agents.markFollowerDraftsChanged([agent.id]);
-
-			const reloaded = await agents.findOneByOrFail({ id: agent.id });
-			expect(changed).toEqual([agent.id]);
-			expect(reloaded.versionId).not.toBe(agent.versionId);
-		});
-
+	describe('AgentRepository.findProjectIdsByIds', () => {
 		it('writes nothing for no agents', async () => {
-			expect(await agents.markFollowerDraftsChanged([])).toEqual([]);
 			expect(await agents.findProjectIdsByIds([])).toEqual([]);
 		});
 

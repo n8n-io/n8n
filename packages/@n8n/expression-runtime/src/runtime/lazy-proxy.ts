@@ -1,6 +1,7 @@
 import { isEscapedTransferValue, TRANSFER_VALUE_KEY } from './transfer';
 import { decodeHostValue } from './transfer-codec';
-import { isKeyOf } from './utils';
+import { arrayFrom, defineProperty, isInteger } from './intrinsics';
+import { isArrayIndexKey, isKeyOf } from './utils';
 
 // ============================================================================
 // Deep Lazy Proxy System
@@ -160,7 +161,7 @@ export function createDeepLazyProxy(
 
 	function isInArrayBounds(prop: string): number | undefined {
 		const idx = Number(prop);
-		if (!Number.isInteger(idx) || idx < 0 || idx >= arrayLength) return undefined;
+		if (!isInteger(idx) || idx < 0 || idx >= arrayLength) return undefined;
 		if (String(idx) !== prop) return undefined; // reject '00', '1.0', etc.
 		return idx;
 	}
@@ -217,7 +218,7 @@ export function createDeepLazyProxy(
 		// defineProperty, not assignment: a key like '__proto__' must land as an
 		// own data property on the cache instead of walking the setter chain and
 		// silently replacing the target's prototype.
-		Object.defineProperty(t, prop, {
+		defineProperty(t, prop, {
 			value: materializeChild(basePath, prop, value),
 			writable: true,
 			enumerable: true,
@@ -249,7 +250,7 @@ export function createDeepLazyProxy(
 		ownKeys(targetObj: any): Array<string | symbol> {
 			if (materialized) return Reflect.ownKeys(targetObj);
 			if (isArray) {
-				const keys: Array<string | symbol> = Array.from({ length: arrayLength }, (_, i) =>
+				const keys: Array<string | symbol> = arrayFrom({ length: arrayLength }, (_, i) =>
 					String(i),
 				);
 				// Required by proxy invariant: target [] has non-configurable 'length'
@@ -335,10 +336,16 @@ export function createDeepLazyProxy(
 
 			if (isArray) {
 				const idx = isInArrayBounds(prop);
-				if (idx === undefined) return undefined;
-				return fetchAndCacheArrayElement(idx, prop);
+				if (idx !== undefined) {
+					return fetchAndCacheArrayElement(idx, prop);
+				}
+				if (isArrayIndexKey(prop)) {
+					return undefined;
+				}
 			}
 
+			// A host array can carry named keys, for example a key that a Set node
+			// writes on an item whose json is an array.
 			return fetchAndCacheObjectValue(prop);
 		},
 

@@ -2,6 +2,7 @@
 import './source-map-filter';
 
 import type * as AiaModelDefaultsMod from './agent/aia-model-defaults';
+import type * as ApprovalJudgeMod from './approval-review/approval-judge';
 import type * as ApplyAgentThinkingMod from './agent/apply-agent-thinking';
 import type * as InstanceAgentMod from './agent/instance-agent';
 import type * as SelfHealingAgentMod from './agent/self-healing-agent';
@@ -47,6 +48,7 @@ import type * as WorkflowValidationWarningsMod from './tools/workflows/workflow-
 import type * as SanitizeWebContentMod from './tools/web-research/sanitize-web-content';
 import type * as AgentSnapshotEventMod from './tracing/agent-snapshot-event';
 import type * as BuilderMetricEventMod from './tracing/builder-metric-event';
+import type * as BuilderToolsMod from './tools/orchestration/builder-tools';
 import type * as LangsmithTracingMod from './tracing/langsmith-tracing';
 import type * as TraceReplayMod from './tracing/trace-replay';
 import type * as AgentTreeMod from './utils/agent-tree';
@@ -113,6 +115,9 @@ const loadAgentSnapshotEvent = lazyModule(
 );
 const loadBuilderMetricEvent = lazyModule(
 	() => require('./tracing/builder-metric-event') as typeof BuilderMetricEventMod,
+);
+const loadBuilderTools = lazyModule(
+	() => require('./tools/orchestration/builder-tools') as typeof BuilderToolsMod,
 );
 const loadAgentBuildMetrics = lazyModule(
 	() => require('./tools/orchestration/agent-build-metrics') as typeof AgentBuildMetricsMod,
@@ -259,6 +264,9 @@ const loadStructuredFileParser = lazyModule(
 const loadValidateAttachments = lazyModule(
 	() => require('./parsers/validate-attachments') as typeof ValidateAttachmentsMod,
 );
+const loadApprovalJudge = lazyModule(
+	() => require('./approval-review/approval-judge') as typeof ApprovalJudgeMod,
+);
 
 export { MAX_STEPS } from './constants/max-steps';
 export { RESOURCE_EXPLORATION_UNAVAILABLE } from './constants/resource-exploration';
@@ -267,6 +275,7 @@ export { modelConfigId } from './utils/model-config-id';
 export { isEndpointModelConfig } from './utils/modal-session';
 export { resolveCustomModelExperimentDefaultsFromEnv } from './utils/custom-model-defaults';
 export {
+	AppNamespaceTakenError,
 	WorkflowSaveConflictError,
 	WorkflowNotFoundError,
 	WorkflowEditorLockedError,
@@ -275,18 +284,29 @@ export {
 	formatRedactedError,
 } from './errors';
 export { deriveCredentialHosts } from './tools/workflows/credential-url-resolver';
+export {
+	createSampleFile,
+	resolveSampleFileMarkers,
+	SAMPLE_FILE_MIME_TYPES,
+} from './tools/workflows/sample-files';
 export { instanceAiBuilderThreadPrefix } from './tools/orchestration/builder-thread-id';
 export type { CredentialHostMeta } from './tools/workflows/credential-url-resolver';
 export {
 	agentBuilderTargetMetadata,
 	clearedAgentBuilderTargetMetadata,
 	seedAgentBuilderTargetMetadata,
+	readAgentTargetsMetadata,
 	rereadAgentBuilderTarget,
 	saveAgentBuilderTarget,
 	threadAuthorizesAgentAdoption,
+	threadTargetsAgent,
+	withAttachedAgentTarget,
 	withBoundAgentTarget,
 } from './tools/orchestration/agent-target-binding';
-export type { AgentBuilderTarget } from './tools/orchestration/agent-target-binding';
+export type {
+	AgentBuilderTarget,
+	AgentTargetsMetadata,
+} from './tools/orchestration/agent-target-binding';
 export { parseAppTargets, parsePendingAppTarget } from './tools/apps/app-target-binding';
 export {
 	resolveAgentPreviewSession,
@@ -297,6 +317,18 @@ export const wrapUntrustedData: typeof SanitizeWebContentMod.wrapUntrustedData =
 	() => loadSanitizeWebContent().wrapUntrustedData,
 );
 export type { Logger } from './logger';
+export const judgeApproval: typeof ApprovalJudgeMod.judgeApproval = lazyFunction(
+	() => loadApprovalJudge().judgeApproval,
+);
+export const conversationForApprovalJudge: typeof ApprovalJudgeMod.conversationForApprovalJudge =
+	lazyFunction(() => loadApprovalJudge().conversationForApprovalJudge);
+export type { ApprovalJudgeMessage, ApprovalJudgeResult } from './approval-review/approval-judge';
+export type {
+	ApprovalReviewOutcome,
+	InstanceAiApprovalReviewer,
+} from './approval-review/approval-review';
+export type { PendingApproval } from './approval-review/pending-approval';
+export { createThreadApprovalContext } from './approval-review/thread-approval-context';
 export const createDomainAccessTracker: typeof DomainAccessMod.createDomainAccessTracker =
 	lazyFunction(() => loadDomainAccess().createDomainAccessTracker);
 export type { DomainAccessTracker } from './domain-access';
@@ -312,6 +344,10 @@ export type {
 	AgentSnapshotReason,
 } from './tracing/agent-snapshot-event';
 
+export const snapshotAgent: typeof BuilderToolsMod.snapshotAgent = lazyFunction(
+	() => loadBuilderTools().snapshotAgent,
+);
+
 export const emitBuilderMetric: typeof BuilderMetricEventMod.emitBuilderMetric = lazyFunction(
 	() => loadBuilderMetricEvent().emitBuilderMetric,
 );
@@ -325,6 +361,9 @@ export { threadProvenanceMetadata } from './tracing/thread-provenance';
 
 export const createInstanceAiTraceContext: typeof LangsmithTracingMod.createInstanceAiTraceContext =
 	lazyFunction(() => loadLangsmithTracing().createInstanceAiTraceContext);
+
+export const isLangSmithTracingEnabled: typeof LangsmithTracingMod.isLangSmithTracingEnabled =
+	lazyFunction(() => loadLangsmithTracing().isLangSmithTracingEnabled);
 
 export const createInternalOperationTraceContext: typeof LangsmithTracingMod.createInternalOperationTraceContext =
 	lazyFunction(() => loadLangsmithTracing().createInternalOperationTraceContext);
@@ -737,6 +776,8 @@ export type {
 	ModelConfig,
 	EndpointModelConfig,
 	VertexAnthropicModelConfig,
+	HelperModelUsageReport,
+	HelperUsageHook,
 	InstanceAiMemoryConfig,
 	CreateInstanceAgentOptions,
 	TaskStorage,
@@ -803,6 +844,8 @@ export type {
 	AgentSessionSummary,
 	AgentContextLookup,
 	InstanceAiAgentContextReader,
+	InstanceAiStoredFile,
+	InstanceAiStoredFileReader,
 	InstanceAiSkillService,
 	BrowserUseState,
 } from './types';

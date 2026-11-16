@@ -49,7 +49,7 @@ export class SsoOidcPublicController {
 	@Licensed(LICENSE_FEATURES.OIDC)
 	@ApiSummary('Retrieve the OIDC SSO configuration')
 	@ApiDescription(
-		'Retrieve the current OIDC SSO configuration, including every field exposed in the UI. The client secret is redacted on read and is never echoed back in plaintext. Requires the `oidc:manage` scope and the OIDC feature to be licensed.',
+		'Retrieve the current OIDC SSO configuration, including every field exposed in the UI. The client secret is redacted on read and is never echoed back in plaintext. Requires the OIDC feature to be licensed.',
 	)
 	@ApiTags(tags)
 	@ApiResponse(200, OidcConfigurationPublicDto)
@@ -64,7 +64,7 @@ export class SsoOidcPublicController {
 	@Licensed(LICENSE_FEATURES.OIDC)
 	@ApiSummary('Set the OIDC SSO configuration')
 	@ApiDescription(
-		'Set the OIDC SSO configuration. The update takes effect exactly as it would from the UI, using the same validation. `clientId`, `clientSecret` and `discoveryEndpoint` are required; submit the redacted client secret sentinel to keep the stored secret unchanged. Requires the `oidc:manage` scope and the OIDC feature to be licensed. The client secret is redacted in the response. When the configuration is managed declaratively (via environment variables), the write is rejected with 409 and no changes are made.',
+		'Set the OIDC SSO configuration. The update takes effect exactly as it would from the UI, using the same validation. `clientId`, `clientSecret` and `discoveryEndpoint` are required; submit the redacted client secret sentinel to keep the stored secret unchanged. Requires the OIDC feature to be licensed. The client secret is redacted in the response. When the configuration is managed declaratively (via environment variables), the write is rejected with 409 and no changes are made.',
 	)
 	@ApiTags(tags)
 	@ApiResponse(200, OidcConfigurationPublicDto)

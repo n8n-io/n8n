@@ -1,21 +1,30 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import os from 'node:os';
+import { AxiosError, type AxiosResponse } from 'axios';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 
 import {
-	analyzePackage,
+	analyzeLocalPackage,
+	lintDirectory,
+	toJsonReport,
 	buildScanConfig,
+	EXIT_CODES,
 	findPackageRoot,
+	formatPackageSpec,
+	getExitCode,
+	isLocalPath,
+	isSourceUnavailable,
 	parseSourceRepo,
 	resolvePackage,
 	resolveVersion,
+	ScanInputError,
 	SOURCE_FILE_PATTERNS,
 } from './scanner.js';
 
 /**
  * Build a temporary package directory on disk so we can hand it to
- * `analyzePackage` exactly the way the scanner would after extracting a
+ * `lintDirectory` exactly the way the scanner would after extracting a
  * tarball from npm.
  */
 const makeFixturePackage = (files: Record<string, string | object>) => {
@@ -185,6 +194,13 @@ describe('resolvePackage', () => {
 	});
 });
 
+describe('formatPackageSpec', () => {
+	it('adds the version only when there is one', () => {
+		expect(formatPackageSpec('n8n-nodes-foo', '1.2.3')).toBe('n8n-nodes-foo@1.2.3');
+		expect(formatPackageSpec('n8n-nodes-foo', null)).toBe('n8n-nodes-foo');
+	});
+});
+
 describe('resolveVersion', () => {
 	const metadata = {
 		'dist-tags': { latest: '1.2.0', beta: '2.0.0-beta.1' },
@@ -201,7 +217,7 @@ describe('resolveVersion', () => {
 	});
 
 	it('throws when no version matches the range', () => {
-		expect(() => resolveVersion(metadata, '3.x')).toThrow('No version found matching 3.x');
+		expect(() => resolveVersion(metadata, '3.x')).toThrow('No version found matching "3.x"');
 	});
 
 	it('throws when there is no latest dist-tag', () => {
@@ -241,7 +257,7 @@ describe('findPackageRoot', () => {
 	});
 });
 
-describe('analyzePackage', () => {
+describe('lintDirectory', () => {
 	let fixtureDir: string | undefined;
 
 	afterEach(() => {
@@ -263,7 +279,7 @@ describe('analyzePackage', () => {
 			'index.js': 'module.exports = {};\n',
 		});
 
-		const result = await analyzePackage(fixtureDir);
+		const result = await lintDirectory(fixtureDir);
 
 		expect(result.passed).toBe(false);
 		expect(result.details).toContain('no-overrides-field');
@@ -284,7 +300,7 @@ describe('analyzePackage', () => {
 			'index.js': 'module.exports = {};\n',
 		});
 
-		const result = await analyzePackage(fixtureDir);
+		const result = await lintDirectory(fixtureDir);
 
 		expect(result.passed).toBe(true);
 	});
@@ -301,7 +317,7 @@ describe('analyzePackage', () => {
 			'index.js': 'module.exports = {};\n',
 		});
 
-		const result = await analyzePackage(fixtureDir);
+		const result = await lintDirectory(fixtureDir);
 
 		expect(result.passed).toBe(false);
 		expect(result.details).toContain('no-forbidden-lifecycle-scripts');
@@ -318,7 +334,7 @@ describe('analyzePackage', () => {
 			'nodes/Foo/Foo.node.json': { categories: ['Bananas'] },
 		});
 
-		const result = await analyzePackage(fixtureDir, SOURCE_FILE_PATTERNS);
+		const result = await lintDirectory(fixtureDir, SOURCE_FILE_PATTERNS);
 
 		expect(result.passed).toBe(false);
 		expect(result.details).toContain('valid-node-categories');
@@ -356,7 +372,7 @@ describe('analyzePackage', () => {
 				'"use strict";\nObject.defineProperty(exports, "__esModule", { value: true });\nexports.Foo = void 0;\nclass Foo {}\nexports.Foo = Foo;\n',
 		});
 
-		const result = await analyzePackage(fixtureDir);
+		const result = await lintDirectory(fixtureDir);
 
 		expect(result.passed).toBe(true);
 	});
@@ -379,7 +395,7 @@ describe('analyzePackage', () => {
 			'gulpfile.js': "console.log('building');\n",
 		});
 
-		const result = await analyzePackage(fixtureDir, SOURCE_FILE_PATTERNS);
+		const result = await lintDirectory(fixtureDir, SOURCE_FILE_PATTERNS);
 
 		expect(result.passed).toBe(true);
 	});
@@ -396,10 +412,18 @@ describe('analyzePackage', () => {
 			'nodes/Foo/Foo.node.ts': "console.log('debug');\nexport class Foo {}\n",
 		});
 
-		const result = await analyzePackage(fixtureDir, SOURCE_FILE_PATTERNS);
+		const result = await lintDirectory(fixtureDir, SOURCE_FILE_PATTERNS);
 
 		expect(result.passed).toBe(false);
 		expect(result.details).toContain('no-console');
+		expect(result.check).toBe('eslint');
+		expect(result.findings).toContainEqual({
+			file: path.join('nodes', 'Foo', 'Foo.node.ts'),
+			line: 1,
+			column: 1,
+			rule: 'no-console',
+			message: 'Unexpected console statement.',
+		});
 	});
 
 	it('returns passed when the package contains no lintable files', async () => {
@@ -407,9 +431,214 @@ describe('analyzePackage', () => {
 			'README.md': '# empty package\n',
 		});
 
-		const result = await analyzePackage(fixtureDir);
+		const result = await lintDirectory(fixtureDir);
 
 		expect(result.passed).toBe(true);
 		expect(result.message).toBe('No files found to analyze');
+	});
+
+	it('marks a crash during analysis as an error, not a failed check', async () => {
+		fixtureDir = makeFixturePackage({ 'index.js': 'module.exports = {};\n' });
+		const patternsWithEmptyPattern = [''];
+
+		const result = await lintDirectory(fixtureDir, patternsWithEmptyPattern);
+
+		expect(
+			getExitCode(result),
+			'patternsWithEmptyPattern holds an empty file pattern, which crashes the analysis',
+		).toBe(EXIT_CODES.INTERNAL_ERROR);
+	});
+});
+
+describe('getExitCode', () => {
+	it('maps each scan result to its exit code', () => {
+		const failed = { passed: false, message: 'ESLint violations found' } as const;
+
+		expect(getExitCode({ passed: true })).toBe(EXIT_CODES.SCAN_SUCCEEDED);
+		expect(getExitCode(failed)).toBe(EXIT_CODES.SCAN_FAILED);
+		expect(getExitCode({ ...failed, incomplete: true })).toBe(EXIT_CODES.INTERNAL_ERROR);
+	});
+});
+
+describe('isLocalPath', () => {
+	it('treats only paths as local packages', () => {
+		expect(isLocalPath('.')).toBe(true);
+		expect(isLocalPath('..')).toBe(true);
+		expect(isLocalPath('./n8n-nodes-foo')).toBe(true);
+		expect(isLocalPath('../n8n-nodes-foo')).toBe(true);
+		expect(isLocalPath('/home/me/n8n-nodes-foo')).toBe(true);
+		expect(isLocalPath('.\\n8n-nodes-foo')).toBe(true);
+		expect(isLocalPath('..\\n8n-nodes-foo')).toBe(true);
+		expect(isLocalPath('.n8n-nodes-foo')).toBe(false);
+		expect(isLocalPath('n8n-nodes-foo')).toBe(false);
+		expect(isLocalPath('@scope/n8n-nodes-foo@1.0.0')).toBe(false);
+	});
+});
+
+describe('analyzeLocalPackage', () => {
+	let fixtureDir: string | undefined;
+
+	afterEach(() => {
+		if (fixtureDir) {
+			fs.rmSync(fixtureDir, { recursive: true, force: true });
+			fixtureDir = undefined;
+		}
+	});
+
+	it('lints the sources and the compiled output', async () => {
+		fixtureDir = makeFixturePackage({
+			'package.json': {
+				name: 'n8n-nodes-fixture',
+				version: '1.0.0',
+				description: 'A fixture community node package',
+				license: 'MIT',
+				author: { name: 'Test Author', email: 'test@example.com' },
+				keywords: ['n8n-community-node-package'],
+				peerDependencies: { 'n8n-workflow': '*' },
+				n8n: { n8nNodesApiVersion: 1, nodes: ['dist/nodes/Foo/Foo.node.js'] },
+			},
+			'nodes/Foo/Foo.node.ts': "console.log('debug');\nexport class Foo {}\n",
+			'dist/nodes/Foo/Foo.node.js': "console.log('debug');\nexports.Foo = class Foo {};\n",
+		});
+
+		const result = await analyzeLocalPackage(fixtureDir);
+
+		expect(result).toMatchObject({
+			packageName: 'n8n-nodes-fixture',
+			version: '1.0.0',
+			skippedChecks: ['provenance', 'source'],
+			message: 'ESLint violations found: 1 in the source, 1 in the package',
+		});
+		expect(getExitCode(result)).toBe(EXIT_CODES.SCAN_FAILED);
+		expect(result.findings?.map((f) => [f.origin, f.file])).toEqual([
+			['source', path.join('nodes', 'Foo', 'Foo.node.ts')],
+			['package', path.join('dist', 'nodes', 'Foo', 'Foo.node.js')],
+		]);
+	});
+
+	it('rejects a directory without a package.json', async () => {
+		fixtureDir = makeFixturePackage({ 'README.md': '# not a package\n' });
+
+		await expect(analyzeLocalPackage(fixtureDir)).rejects.toThrow('No package.json found');
+	});
+
+	it('lints the JavaScript that npm would publish, and only that', async () => {
+		fixtureDir = makeFixturePackage({
+			'package.json': {
+				name: 'n8n-nodes-fixture',
+				version: '1.0.0',
+				description: 'A fixture community node package',
+				license: 'MIT',
+				author: { name: 'Test Author', email: 'test@example.com' },
+				keywords: ['n8n-community-node-package'],
+				peerDependencies: { 'n8n-workflow': '*' },
+				n8n: { n8nNodesApiVersion: 1, nodes: ['dist/index.js'] },
+				files: ['dist', 'runtime.js'],
+			},
+			'runtime.js': "console.log('shipped');\n",
+			'dev.js': "console.log('not shipped');\n",
+			'dist/index.js': 'module.exports = {};\n',
+		});
+
+		const result = await analyzeLocalPackage(fixtureDir);
+
+		expect(result.findings?.map((f) => [f.origin, f.file])).toEqual([['package', 'runtime.js']]);
+		expect(result.message).toBe('ESLint violations found: 1 in the package');
+	});
+
+	it('rejects an invalid package.json', async () => {
+		fixtureDir = makeFixturePackage({ 'package.json': '{ not json' });
+
+		await expect(analyzeLocalPackage(fixtureDir)).rejects.toThrow('Invalid package.json');
+	});
+
+	it('rejects a path that does not exist', async () => {
+		fixtureDir = makeFixturePackage({});
+
+		await expect(analyzeLocalPackage(path.join(fixtureDir, 'missing'))).rejects.toThrow(
+			'No directory found',
+		);
+	});
+
+	it('classifies a path that cannot be scanned as an input error', async () => {
+		fixtureDir = makeFixturePackage({ 'package.json': '{ not json' });
+
+		await expect(analyzeLocalPackage(fixtureDir)).rejects.toBeInstanceOf(ScanInputError);
+		await expect(analyzeLocalPackage(path.join(fixtureDir, 'missing'))).rejects.toBeInstanceOf(
+			ScanInputError,
+		);
+		expect(() => resolvePackage('n8n-nodes-foo; rm -rf /')).toThrow(ScanInputError);
+	});
+
+	it('rejects a path to a file', async () => {
+		fixtureDir = makeFixturePackage({ 'package.json': { name: 'n8n-nodes-fixture' } });
+
+		await expect(analyzeLocalPackage(path.join(fixtureDir, 'package.json'))).rejects.toThrow(
+			'is not a directory',
+		);
+	});
+});
+
+describe('toJsonReport', () => {
+	it('reports the status that matches the exit code', () => {
+		const finding = {
+			file: 'package.json',
+			line: 1,
+			column: 1,
+			rule: '@n8n/community-nodes/no-overrides-field',
+			message: 'Remove the overrides field',
+			origin: 'package',
+		} as const;
+
+		expect(toJsonReport({ packageName: 'n8n-nodes-foo', version: '1.0.0', passed: true })).toEqual({
+			package: 'n8n-nodes-foo',
+			version: '1.0.0',
+			status: 'passed',
+			check: null,
+			message: null,
+			findings: [],
+			skippedChecks: [],
+		});
+		expect(
+			toJsonReport({
+				packageName: 'n8n-nodes-foo',
+				version: '1.0.0',
+				passed: true,
+				skippedChecks: ['provenance', 'source'],
+			}),
+		).toMatchObject({ status: 'passed', skippedChecks: ['provenance', 'source'] });
+		expect(
+			toJsonReport({
+				packageName: 'n8n-nodes-foo',
+				version: '1.0.0',
+				passed: false,
+				check: 'eslint',
+				message: 'ESLint violations found',
+				findings: [finding],
+			}),
+		).toMatchObject({ status: 'failed', check: 'eslint', findings: [finding] });
+		expect(
+			toJsonReport({
+				packageName: 'n8n-nodes-foo',
+				version: null,
+				passed: false,
+				message: 'Analysis failed: npm pack failed',
+				incomplete: true,
+			}),
+		).toMatchObject({ status: 'error', message: 'Analysis failed: npm pack failed' });
+	});
+});
+
+describe('isSourceUnavailable', () => {
+	const httpError = (status: number) =>
+		new AxiosError('Request failed', undefined, undefined, undefined, { status } as AxiosResponse);
+
+	it('treats only a 4xx response as a problem with the package', () => {
+		expect(isSourceUnavailable(httpError(404))).toBe(true);
+		expect(isSourceUnavailable(httpError(408)), 'request timeout').toBe(false);
+		expect(isSourceUnavailable(httpError(429)), 'rate limited').toBe(false);
+		expect(isSourceUnavailable(httpError(502))).toBe(false);
+		expect(isSourceUnavailable(new AxiosError('timeout', AxiosError.ECONNABORTED))).toBe(false);
+		expect(isSourceUnavailable(new Error('tar extraction failed'))).toBe(false);
 	});
 });

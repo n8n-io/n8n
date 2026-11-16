@@ -4,10 +4,9 @@ import { Logger } from '@n8n/backend-common';
 import { Service } from '@n8n/di';
 import { isRecord } from '@n8n/utils/is-record';
 import { sleep } from '@n8n/utils/sleep';
-import { OperationalError, UserError } from 'n8n-workflow';
 
 import { CredentialsFinderService } from '@n8n/backend-services';
-import { BadRequestError } from '@n8n/errors';
+import { BadRequestError, OperationalError, UserError } from '@n8n/errors';
 
 import { CredentialsService } from '@/credentials/credentials.service';
 

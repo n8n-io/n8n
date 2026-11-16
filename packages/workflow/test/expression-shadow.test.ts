@@ -1,6 +1,8 @@
 import { createRequire } from 'node:module';
 import { readFile } from 'node:fs/promises';
 
+import { HostCallError, RuntimeRestartingError } from '@n8n/expression-runtime';
+
 import { ExpressionError } from '../src/errors/expression.error';
 import { ExpressionExtensionError } from '../src/errors/expression-extension.error';
 import { Expression } from '../src/expression';
@@ -152,6 +154,36 @@ describe.runIf(process.env.N8N_EXPRESSION_ENGINE === 'legacy')('Expression shado
 			expect(evaluator.evaluate('{{ 1 }}', data(), 'UTC')).toMatchObject({
 				ok: false,
 				errorClass: 'other',
+			});
+		});
+
+		it('names the host error that stops the engine and the restart that follows it', async () => {
+			let next: Error = new HostCallError('x', 'RangeError');
+			const evaluator = await startThrowing(() => next);
+
+			expect(evaluator.evaluate('{{ 1 }}', data(), 'UTC')).toMatchObject({
+				ok: false,
+				errorClass: 'host_error:RangeError',
+			});
+			next = new HostCallError('x', 'RuntimeError');
+			expect(evaluator.evaluate('{{ 1 }}', data(), 'UTC')).toMatchObject({
+				ok: false,
+				errorClass: 'host_error:RuntimeError',
+			});
+			next = new HostCallError('x', 'number');
+			expect(evaluator.evaluate('{{ 1 }}', data(), 'UTC')).toMatchObject({
+				ok: false,
+				errorClass: 'host_error:number',
+			});
+			next = new HostCallError('x', 'Xe');
+			expect(evaluator.evaluate('{{ 1 }}', data(), 'UTC')).toMatchObject({
+				ok: false,
+				errorClass: 'host_error:other',
+			});
+			next = new RuntimeRestartingError('x');
+			expect(evaluator.evaluate('{{ 1 }}', data(), 'UTC')).toMatchObject({
+				ok: false,
+				errorClass: 'engine_restarting',
 			});
 		});
 

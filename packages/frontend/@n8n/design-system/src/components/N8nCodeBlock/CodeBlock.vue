@@ -2,15 +2,20 @@
 import { useResizeObserver } from '@vueuse/core';
 import { ElNotification as Notification } from 'element-plus';
 import hljs from 'highlight.js/lib/core';
+import * as xss from 'xss';
 import json from 'highlight.js/lib/languages/json';
 import python from 'highlight.js/lib/languages/python';
 import typescript from 'highlight.js/lib/languages/typescript';
-import { computed, nextTick, ref, useTemplateRef, watch } from 'vue';
+import { computed, nextTick, onBeforeUnmount, ref, useTemplateRef, watch } from 'vue';
 
 import { CODE_BLOCK_LANGUAGES, type CodeBlockEmits, type CodeBlockProps } from './CodeBlock.types';
 import { useI18n } from '../../composables/useI18n';
 import N8nButton from '../N8nButton';
+import N8nIcon from '../N8nIcon';
 import N8nTooltip from '../N8nTooltip';
+
+/** The default export carries the helpers when xss loads as CommonJS. */
+const { escapeHtml } = { ...xss, ...xss.default };
 
 hljs.registerLanguage('json', json);
 hljs.registerLanguage('python', python);
@@ -29,14 +34,47 @@ const preRef = useTemplateRef<HTMLPreElement>('pre');
 const explicitHeight = ref<string>();
 const isCollapsible = ref(false);
 const { t } = useI18n();
+const showCopiedFeedback = ref(false);
+let feedbackTimer: ReturnType<typeof setTimeout> | undefined;
+
+onBeforeUnmount(() => clearTimeout(feedbackTimer));
+
+const copyButtonLabel = computed(() =>
+	showCopiedFeedback.value ? t('codeBlock.copiedToClipboard') : t('codeBlock.copy'),
+);
+
+const languagesReady = ref(false);
+const normalizedLanguage = computed(() => props.language.trim().toLowerCase() || 'auto');
+
+watch(
+	normalizedLanguage,
+	async (language) => {
+		if (language === 'auto' || hljs.getLanguage(language)) return;
+		try {
+			const languages = await import('./languageModules');
+			for (const [name, module] of Object.entries(languages)) {
+				hljs.registerLanguage(name, module);
+			}
+			languagesReady.value = true;
+		} catch {
+			/** Keep escaped source text if the language modules cannot load. */
+		}
+	},
+	{ immediate: true },
+);
 
 const highlightedCode = computed(() => {
-	if (props.language === 'auto') {
+	void languagesReady.value;
+	if (normalizedLanguage.value === 'auto') {
 		return hljs.highlightAuto(props.code, [...CODE_BLOCK_LANGUAGES]).value;
 	}
 
+	if (!hljs.getLanguage(normalizedLanguage.value)) {
+		return escapeHtml(props.code.replace(/&/g, '&amp;'));
+	}
+
 	return hljs.highlight(props.code, {
-		language: props.language,
+		language: normalizedLanguage.value,
 		ignoreIllegals: true,
 	}).value;
 });
@@ -71,13 +109,15 @@ watch(() => [preRef.value, props.code, props.maxHeight], measureCollapsibility, 
 async function copyCode() {
 	try {
 		await navigator.clipboard.writeText(props.code);
-		Notification({
-			title: t('codeBlock.copiedToClipboard'),
-			type: 'success',
-			position: 'bottom-right',
-		});
+		showCopiedFeedback.value = true;
+		clearTimeout(feedbackTimer);
+		feedbackTimer = setTimeout(() => {
+			showCopiedFeedback.value = false;
+		}, 2000);
 		emit('copy', props.code);
 	} catch {
+		clearTimeout(feedbackTimer);
+		showCopiedFeedback.value = false;
 		Notification({
 			title: t('codeBlock.copyFailed'),
 			type: 'error',
@@ -128,17 +168,28 @@ function onHeightTransitionEnd(event: TransitionEvent) {
 			@transitionend="onHeightTransitionEnd"
 		><code class="hljs" v-html="highlightedCode" /></pre>
 		<div v-if="copyable && isClipboardAvailable" :class="$style.actions">
-			<N8nTooltip :content="t('codeBlock.copy')">
+			<N8nTooltip :content="copyButtonLabel">
 				<N8nButton
-					icon="copy"
 					icon-only
 					icon-size="medium"
 					size="small"
 					variant="ghost"
-					:aria-label="t('codeBlock.copy')"
-					:title="t('codeBlock.copy')"
+					:aria-label="copyButtonLabel"
+					:title="copyButtonLabel"
 					@click="copyCode"
-				/>
+				>
+					<template #icon>
+						<span :class="$style.iconSwap">
+							<Transition
+								:enter-active-class="$style.swapEnterActive"
+								:leave-active-class="$style.swapLeaveActive"
+							>
+								<N8nIcon v-if="showCopiedFeedback" key="check" icon="check" size="medium" />
+								<N8nIcon v-else key="copy" icon="copy" size="medium" />
+							</Transition>
+						</span>
+					</template>
+				</N8nButton>
 			</N8nTooltip>
 		</div>
 		<div v-if="isCollapsible" :class="$style.expandButtonContainer">
@@ -167,7 +218,9 @@ function onHeightTransitionEnd(event: TransitionEvent) {
 	overflow: hidden;
 	border: var(--border);
 	border-radius: var(--radius);
-	background: var(--background--subtle);
+	background-color: var(--background--subtle);
+	border: 0.5px solid var(--border-color);
+	background-clip: padding-box;
 
 	&:has(.pre:focus) {
 		@include focus.focus-ring;
@@ -190,11 +243,30 @@ function onHeightTransitionEnd(event: TransitionEvent) {
 	}
 }
 
+.iconSwap {
+	--animation--blur-swap--blur: var(--spacing--5xs);
+
+	position: relative;
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+}
+
+.swapEnterActive {
+	@include motion.blur-swap-in;
+}
+
+.swapLeaveActive {
+	position: absolute;
+	@include motion.blur-swap-out;
+}
+
 .pre {
 	@include motion.height-transition;
 	overflow: auto;
 	font-family: var(--font-family--monospace);
-	font-size: var(--font-size--xs);
+	/** Monospace should be slightly smaller than base font-size **/
+	font-size: 90%;
 	line-height: var(--line-height--xl);
 	tab-size: 4;
 	scrollbar-width: thin;
