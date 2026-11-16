@@ -217,7 +217,11 @@ export class QuestDb implements INodeType {
 		const db = pgp({
 			...config,
 			// Return date/timestamp columns as strings so node output stays JSON-safe
-			...(this.getNode().typeVersion >= 1.1 ? { types: getDateAsStringTypeParsers(pgp) } : {}),
+			...(this.getNode().typeVersion >= 1.1
+				? // This node has no version above 1.1, so it cannot opt in to the zoneless
+					// timestamp output that Postgres 2.9 added. Keep the older reading until it does.
+					{ types: getDateAsStringTypeParsers(pgp, { legacyUtcTimestamps: true }) }
+				: {}),
 		});
 
 		let returnItems: INodeExecutionData[] = [];

@@ -1,3 +1,5 @@
+import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
 import pgPromise from 'pg-promise';
 
 import type { DateTypeParserOptions } from './postgres';
@@ -214,4 +216,17 @@ describe('getLegacyDateTypeParsers', () => {
 			'2020-01-01T12:00:00.000Z',
 		);
 	});
+});
+
+describe('nodes that share the parsers but have no version to opt in with', () => {
+	// CrateDB, QuestDB and TimescaleDB declare only [1, 1.1], so they cannot opt in to the zoneless
+	// timestamp output that Postgres 2.9 added. They must keep the older reading until they can.
+	it.each(['CrateDb', 'QuestDb', 'TimescaleDb'])(
+		'should pass legacyUtcTimestamps from the %s node',
+		(node) => {
+			const source = readFileSync(join(__dirname, '..', 'nodes', node, `${node}.node.ts`), 'utf8');
+
+			expect(source).toContain('getDateAsStringTypeParsers(pgp, { legacyUtcTimestamps: true })');
+		},
+	);
 });
