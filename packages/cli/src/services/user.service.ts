@@ -634,6 +634,10 @@ export class UserService {
 	 *
 	 * The actor is a user, or the system for a deletion that no user asked for,
 	 * such as a SCIM deletion from the identity provider.
+	 *
+	 * Rejects a user that a module still needs, such as the service account of
+	 * an agent. The agent deletion deletes that account with
+	 * {@link deleteServiceAccount}.
 	 */
 	async deleteUser(
 		actor: User | SystemDeletionActor,
@@ -641,6 +645,34 @@ export class UserService {
 		transferId?: string,
 		publicApi: PublicApiCaller = false,
 		ctx: OperationContext = {},
+	) {
+		return await this.deleteAccount(actor, idToDelete, transferId, publicApi, ctx, {
+			checkDeletable: true,
+		});
+	}
+
+	/**
+	 * Deletes the service account of an agent that is being deleted, so it skips
+	 * the check that a module still needs the account. Only
+	 * `ServiceAccountService.remove` calls this.
+	 */
+	async deleteServiceAccount(
+		actor: User | SystemDeletionActor,
+		idToDelete: string,
+		transferId?: string,
+	) {
+		return await this.deleteAccount(actor, idToDelete, transferId, false, {}, {
+			checkDeletable: false,
+		});
+	}
+
+	private async deleteAccount(
+		actor: User | SystemDeletionActor,
+		idToDelete: string,
+		transferId: string | undefined,
+		publicApi: PublicApiCaller,
+		ctx: OperationContext,
+		{ checkDeletable }: { checkDeletable: boolean },
 	) {
 		// A user also has a `kind` (person or service), so test the value.
 		const systemActor = actor.kind === 'system' ? actor : null;
@@ -668,6 +700,12 @@ export class UserService {
 			throw new ForbiddenError('Instance owner cannot be deleted.');
 		}
 
+		const ownershipTransferService = await this.getOwnershipTransferService();
+
+		if (checkDeletable) {
+			await ownershipTransferService.assertUserDeletable(userToDelete.id);
+		}
+
 		const personalProjectToDelete = await this.projectRepository.getPersonalProjectForUserOrFail(
 			userToDelete.id,
 		);
@@ -680,7 +718,6 @@ export class UserService {
 
 		let transfereeId;
 		let transfereeProject: Project | null = null;
-		const ownershipTransferService = await this.getOwnershipTransferService();
 
 		if (transferId) {
 			transfereeProject = await this.projectService.findProject(transferId);
@@ -739,7 +776,10 @@ export class UserService {
 		}
 
 		// Clean up user-owned module data before account deletion, including on transfer.
-		await ownershipTransferService.deleteUserOwnedModuleResources([userToDelete.id]);
+		await ownershipTransferService.deleteUserOwnedModuleResources([userToDelete.id], {
+			actor,
+			transferId,
+		});
 
 		await this.txRunner.run({}, async (ctx) => {
 			await ownershipTransferService.finalizeUserDeletion(

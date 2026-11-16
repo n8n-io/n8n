@@ -6,6 +6,7 @@ import { GlobalConfig } from '@n8n/config';
 import {
 	Project,
 	GLOBAL_ADMIN_ROLE,
+	GLOBAL_AGENT_ROLE,
 	GLOBAL_MEMBER_ROLE,
 	GLOBAL_OWNER_ROLE,
 	Person,
@@ -1147,6 +1148,7 @@ describe('UserService', () => {
 			sharedCredentialsRepository.find.mockResolvedValue([]);
 			ownershipTransferService.enforceTransferPolicy.mockResolvedValue(undefined);
 			ownershipTransferService.transferAllResources.mockResolvedValue(undefined);
+			ownershipTransferService.assertUserDeletable.mockReset();
 			vi.spyOn(
 				userService as unknown as { getOwnershipTransferService: () => unknown },
 				'getOwnershipTransferService',
@@ -1211,7 +1213,7 @@ describe('UserService', () => {
 
 				expect(
 					ownershipTransferService.deleteUserOwnedModuleResources,
-				).toHaveBeenCalledExactlyOnceWith([userToDelete.id]);
+				).toHaveBeenCalledExactlyOnceWith([userToDelete.id], { actor, transferId });
 				expect(
 					ownershipTransferService.deleteUserOwnedModuleResources.mock.invocationCallOrder[0],
 				).toBeLessThan(transactions.run.mock.invocationCallOrder[0]);
@@ -1262,6 +1264,74 @@ describe('UserService', () => {
 
 			const call = eventService.emit.mock.calls.find(([name]) => name === 'user-deleted');
 			expect(call?.[1]).toMatchObject({ loginId: undefined });
+		});
+
+		it('checks that no module still needs the user before it changes anything', async () => {
+			await userService.deleteUser(actor, userToDelete.id, transfereeProject.id);
+
+			expect(ownershipTransferService.assertUserDeletable).toHaveBeenCalledExactlyOnceWith(
+				userToDelete.id,
+			);
+			expect(ownershipTransferService.assertUserDeletable.mock.invocationCallOrder[0]).toBeLessThan(
+				ownershipTransferService.transferAllResources.mock.invocationCallOrder[0],
+			);
+		});
+
+		it('rejects the deletion and changes nothing when a module still needs the user', async () => {
+			ownershipTransferService.assertUserDeletable.mockRejectedValueOnce(
+				new BadRequestError('Delete the agent instead.'),
+			);
+
+			await expect(userService.deleteUser(actor, userToDelete.id)).rejects.toThrow(
+				'Delete the agent instead.',
+			);
+
+			expect(ownershipTransferService.deleteUserOwnedModuleResources).not.toHaveBeenCalled();
+			expect(transactions.run).not.toHaveBeenCalled();
+		});
+
+		describe('of a service account', () => {
+			const serviceAccount = Object.assign(new ServiceAccount(), {
+				id: 'service-1',
+				role: GLOBAL_AGENT_ROLE,
+			});
+
+			beforeEach(() => {
+				userRepository.findByIdWithRole.mockResolvedValue(serviceAccount);
+			});
+
+			it('deletes a service account that no module needs', async () => {
+				await userService.deleteUser(actor, serviceAccount.id);
+
+				expect(userRepository.deleteAccount).toHaveBeenCalledWith(
+					serviceAccount.id,
+					personalProject.id,
+					expect.anything(),
+				);
+			});
+
+			it('skips the module check for the account of a deleted agent', async () => {
+				ownershipTransferService.assertUserDeletable.mockRejectedValue(
+					new BadRequestError('Delete the agent instead.'),
+				);
+
+				await userService.deleteServiceAccount(actor, serviceAccount.id, transfereeProject.id);
+
+				expect(ownershipTransferService.assertUserDeletable).not.toHaveBeenCalled();
+				expect(ownershipTransferService.transferAllResources).toHaveBeenCalledWith(
+					[personalProject.id],
+					transfereeProject.id,
+				);
+				expect(userRepository.deleteAccount).toHaveBeenCalledWith(
+					serviceAccount.id,
+					personalProject.id,
+					expect.anything(),
+				);
+				expect(eventService.emit).toHaveBeenCalledWith(
+					'user-deleted',
+					expect.objectContaining({ user: actor, targetUserId: serviceAccount.id }),
+				);
+			});
 		});
 
 		describe('with a system actor', () => {

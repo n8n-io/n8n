@@ -917,9 +917,13 @@ export class AgentsService {
 	 *
 	 * `requireArchived`: reject the delete of an agent that a user did not
 	 * archive first.
+	 *
+	 * `actor` is the user who deletes the agent. The audit event of the service
+	 * account removal names this user.
 	 */
 	async delete(
 		agentId: string,
+		actor: User,
 		projectId?: string,
 		{ requireArchived = false }: { requireArchived?: boolean } = {},
 	): Promise<DeletedAgentSnapshot | null> {
@@ -948,6 +952,11 @@ export class AgentsService {
 		// Cleanup is keyed to the agent's own project, so the Public API path
 		// (no `projectId` argument) cleans up the same as the project-scoped one.
 		const { projectId: agentProjectId } = agent;
+
+		// Remove the account before any cleanup that cannot be undone. If the
+		// removal fails, for example because a policy blocks the transfer of its
+		// work, the agent stays as it was.
+		await this.agentServiceAccount.deleteForAgent(agent, actor, agentProjectId);
 
 		await this.deleteKnowledgeFiles(agentProjectId, agentId);
 

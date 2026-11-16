@@ -269,7 +269,10 @@ export class ProjectService {
 
 		// 8. Remove agent data before project removal cascades delete its records.
 		if (this.moduleRegistry.isActive('agents')) {
-			await (await this.agentProjectCleanupService).cleanupProject(project.id);
+			await (await this.agentProjectCleanupService).cleanupProject(project.id, {
+				actor: user,
+				transferId: targetProject?.id,
+			});
 		}
 
 		// Capture member user IDs before the project (and its relations) are removed,

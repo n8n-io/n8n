@@ -1,9 +1,10 @@
 import { AgentsConfig } from '@n8n/config';
-import { type OperationContext, TransactionRunner } from '@n8n/db';
+import { type OperationContext, TransactionRunner, type User } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { BadRequestError } from '@n8n/errors';
 
 import { ServiceAccountService } from '@/services/service-account.service';
+import type { SystemDeletionActor } from '@/services/user.service';
 
 import type { Agent } from './entities/agent.entity';
 import { AgentRepository } from './repositories/agent.repository';
@@ -33,6 +34,22 @@ export class AgentServiceAccountService {
 
 		const { serviceAccount } = await this.serviceAccountService.create(agent.name, ctx);
 		agent.identityId = serviceAccount.id;
+	}
+
+	/**
+	 * Deletes the service account of an agent that is being deleted, with its
+	 * personal project and the shares to that project. With `transferId`, the work
+	 * of the personal project moves to that project. Runs also when agent service
+	 * accounts are off, so that an account made earlier is not left behind.
+	 */
+	async deleteForAgent(
+		agent: Pick<Agent, 'identityId'>,
+		actor: User | SystemDeletionActor,
+		transferId?: string,
+	): Promise<void> {
+		if (!agent.identityId) return;
+
+		await this.serviceAccountService.remove(agent.identityId, actor, transferId);
 	}
 
 	/**

@@ -7,6 +7,7 @@ import type {
 	SharedCredentialsRepository,
 	SharedWorkflow,
 	SharedWorkflowRepository,
+	User,
 	UserRepository,
 	WorkflowEntity,
 	WorkflowRepository,
@@ -186,6 +187,41 @@ describe('OwnershipTransferService', () => {
 		expect(manager.transaction).not.toHaveBeenCalled();
 	});
 
+	describe('assertUserDeletable', () => {
+		it('runs the check of every handler that has one, and stops at the first that throws', async () => {
+			const blocking = mock<ProjectOwnershipTransferHandler<EntityManager>>({
+				assertUserDeletable: vi.fn().mockRejectedValue(new Error('still needed')),
+			});
+			const later = mock<ProjectOwnershipTransferHandler<EntityManager>>();
+			const withoutCheck: ProjectOwnershipTransferHandler<EntityManager> = {
+				resource: 'project-only',
+				transferAll: vi.fn(),
+				deleteAll: vi.fn(),
+			};
+			const transferHandlers = new OwnershipTransferHandlerRegistry<EntityManager>();
+			transferHandlers.register(withoutCheck);
+			transferHandlers.register(blocking);
+			transferHandlers.register(later);
+			service = new OwnershipTransferService(
+				userRepository,
+				workflowService,
+				credentialsService,
+				folderService,
+				ownershipService,
+				transferHandlers,
+				sharedWorkflowRepository,
+				workflowRepository,
+				sharedCredentialsRepository,
+				policyEnforcementService,
+			);
+
+			await expect(service.assertUserDeletable('u-1')).rejects.toThrow('still needed');
+
+			expect(blocking.assertUserDeletable).toHaveBeenCalledWith('u-1');
+			expect(later.assertUserDeletable).not.toHaveBeenCalled();
+		});
+	});
+
 	describe('deleteUserOwnedModuleResources', () => {
 		it('runs the user-keyed delete of every handler that has one, for each user', async () => {
 			const userHandler = mock<ProjectOwnershipTransferHandler<EntityManager>>();
@@ -211,10 +247,11 @@ describe('OwnershipTransferService', () => {
 				policyEnforcementService,
 			);
 
-			await service.deleteUserOwnedModuleResources(['u-1', 'u-2']);
+			const deletion = { actor: mock<User>({ id: 'actor-1' }), transferId: 'target-1' };
+			await service.deleteUserOwnedModuleResources(['u-1', 'u-2'], deletion);
 
-			expect(userHandler.deleteAllForUser).toHaveBeenCalledWith('u-1');
-			expect(userHandler.deleteAllForUser).toHaveBeenCalledWith('u-2');
+			expect(userHandler.deleteAllForUser).toHaveBeenCalledWith('u-1', deletion);
+			expect(userHandler.deleteAllForUser).toHaveBeenCalledWith('u-2', deletion);
 			expect(projectOnlyHandler.deleteAll).not.toHaveBeenCalled();
 			expect(projectOnlyHandler.transferAll).not.toHaveBeenCalled();
 			expect(userHandler.deleteAll).not.toHaveBeenCalled();

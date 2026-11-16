@@ -163,7 +163,7 @@ export class AgentsController {
 		_res: Response,
 		@Param('agentId') agentId: string,
 	) {
-		const deleted = await this.agentsService.delete(agentId, req.params.projectId, {
+		const deleted = await this.agentsService.delete(agentId, req.user, req.params.projectId, {
 			requireArchived: true,
 		});
 
