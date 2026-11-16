@@ -23,7 +23,13 @@ import { createRequire } from 'node:module';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-import type { EquivalenceCase, RawRequest, Recording, ServiceCallRecord } from './equivalence.ts';
+import type {
+	EquivalenceCase,
+	RawRequest,
+	RecordedItem,
+	Recording,
+	ServiceCallRecord,
+} from './equivalence.ts';
 import { normalizeRequest } from './equivalence.ts';
 
 const here = dirname(fileURLToPath(import.meta.url));
@@ -408,6 +414,19 @@ function recordingDataTables(results: unknown[], recorded: ServiceCallRecord[]) 
 	};
 }
 
+/** The items of one output as the v1 node made them: the json, the paired input item and the error. */
+function recordedItems(list: AnyRecord[] | null): RecordedItem[] {
+	return (list ?? []).map((item) => {
+		const pair = Array.isArray(item.pairedItem) ? item.pairedItem[0] : item.pairedItem;
+		const paired = typeof pair === 'number' ? pair : pair?.item;
+		return {
+			json: load().workflow.deepCopy(item.json),
+			...(typeof paired === 'number' ? { paired } : {}),
+			...(item.error !== undefined ? { error: String(item.error?.message) } : {}),
+		};
+	});
+}
+
 /** Runs one case through the v1 node and records its requests and output. */
 export async function recordV1(testCase: EquivalenceCase): Promise<Recording> {
 	const { workflow, core, engine, compat } = load();
@@ -442,6 +461,7 @@ export async function recordV1(testCase: EquivalenceCase): Promise<Recording> {
 			typeVersion: testCase.typeVersion,
 			parameters: structuredClone(testCase.parameters),
 			continueOnFail: false,
+			...(testCase.onError ? { onError: testCase.onError } : {}),
 			...(testCase.credential ? { credentials } : {}),
 		},
 	};
@@ -508,6 +528,9 @@ export async function recordV1(testCase: EquivalenceCase): Promise<Recording> {
 			requests: recorded.map(normalizeRequest),
 			...(testCase.serviceResults ? { services } : {}),
 			output: load().workflow.deepCopy(items.map((item) => item.json)),
+			...(testCase.onError
+				? { outputs: (result.outputs ?? []).map((list: AnyRecord[] | null) => recordedItems(list)) }
+				: {}),
 		};
 	} catch (error) {
 		const message = error instanceof Error ? error.message : String(error);

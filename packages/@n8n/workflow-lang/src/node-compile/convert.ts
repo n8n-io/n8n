@@ -42,6 +42,26 @@ export function isVerified(
 	return names !== undefined && compiled.changed.every((name) => names.includes(name));
 }
 
+export type ErrorMode = 'stopWorkflow' | 'continueRegularOutput' | 'continueErrorOutput';
+
+export const CONTINUE_MODES: ErrorMode[] = ['continueRegularOutput', 'continueErrorOutput'];
+
+export const ERROR_ITEMS_BY_POSITION = '@errorItems=position';
+
+export function errorItemsByPosition(
+	sources: NodeSources,
+	type: string,
+	version: number,
+	compiled: CompiledNode,
+): boolean {
+	const names = (sources.verified ?? VERIFIED)[verifiedKey(type, version, compiled.resolved)];
+	return names?.includes(ERROR_ITEMS_BY_POSITION) === true;
+}
+
+export function errorModeCondition(mode: ErrorMode): string[] {
+	return mode === 'stopWorkflow' ? [] : [`@onError=${mode}`];
+}
+
 export function nodeDescriptionOf(value: unknown): NodeDescription | undefined {
 	if (typeof value !== 'object' || value === null) return undefined;
 	const name: unknown = Reflect.get(value, 'name');
@@ -149,6 +169,7 @@ export function compileNodeInstance(
 
 	credentials: Record<string, PublicCredential> = {},
 	timezone?: string,
+	errorMode: ErrorMode = 'stopWorkflow',
 ): CompiledNode | { errors: string[] } {
 	const entry = sources.entry(node.type, node.version);
 	const description = sources.description(node.type, node.version);
@@ -202,6 +223,7 @@ export function compileNodeInstance(
 		credentialEntry: sources.credentialEntry,
 		timezone,
 		instanceId,
+		continueOnFail: errorMode !== 'stopWorkflow',
 		credentialFields: Object.fromEntries(
 			Object.entries(credentials).map(([type, c]) => [type, c.fields]),
 		),
@@ -222,6 +244,10 @@ export function compileNodeInstance(
 		derivations: result.derivations ?? [],
 		mints: result.mints ?? [],
 
-		changed: [...changed, ...Object.values(credentials).flatMap((c) => c.classes)],
+		changed: [
+			...changed,
+			...Object.values(credentials).flatMap((c) => c.classes),
+			...errorModeCondition(errorMode),
+		],
 	};
 }

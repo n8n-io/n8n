@@ -27,6 +27,20 @@ export interface EquivalenceCase {
 	 * up to the failure and the error, not the output. Without it, v1 must succeed.
 	 */
 	expectedError?: string;
+	/**
+	 * The `onError` setting of the node. With a "continue" setting the recording has
+	 * `outputs`: every output of the v1 node, before n8n's engine moves the error items.
+	 */
+	onError?: 'stopWorkflow' | 'continueRegularOutput' | 'continueErrorOutput';
+}
+
+/** One output item of the v1 node, as the node made it. */
+export interface RecordedItem {
+	json: unknown;
+	/** The index of the input item that the node paired the item with, when it did. */
+	paired?: number;
+	/** The message of the `error` that the item carries, when it has one. */
+	error?: string;
 }
 
 /** One `ctx.service` call: the `service`, `op` and `args` of the effect. */
@@ -53,6 +67,8 @@ export interface Recording {
 	services?: ServiceCallRecord[];
 	/** The JSON of the output items of the v1 node. */
 	output?: unknown[];
+	/** Every output of the v1 node (cases with `onError`). */
+	outputs?: RecordedItem[][];
 	/** The error message when the v1 node failed. */
 	error?: string;
 }

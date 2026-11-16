@@ -11,7 +11,7 @@
  * conversion of the node fails.
  */
 import type { PublicCredential } from '../credentials/public.ts';
-import { compileNodeInstance, isVerified } from '../node-compile/convert.ts';
+import { compileNodeInstance, errorItemsByPosition, isVerified } from '../node-compile/convert.ts';
 import { CORE_NODE_TYPES } from './core-types.ts';
 import type { Code } from './code.ts';
 import { literal, raw, str } from './code.ts';
@@ -347,11 +347,10 @@ export function tryCompiledNode(c: NodeContext): boolean {
 	// A core node that has a native form reaches the host only when that form does not fit
 	// (an expression that does not translate). Its source is not a better form.
 	if (CORE_NODE_TYPES.has(c.node.type)) return false;
-	// "Continue on fail" and the error output give the description of a v1 error to the next
-	// node. A compiled node has the message of the error only.
+	// The node code is compiled for the error setting of the node (`this.continueOnFail()`), and
+	// an operation runs compiled only under the settings that are checked against the v1 node.
 	const onError =
 		c.node.onError ?? (c.node.continueOnFail ? 'continueRegularOutput' : 'stopWorkflow');
-	if (onError !== 'stopWorkflow') return false;
 	const credentials: Record<string, PublicCredential> = {};
 	for (const [type, bound] of Object.entries(c.node.credentials ?? {})) {
 		const found = c.nodeSources.publicCredential?.(type, bound?.id ?? null);
@@ -363,6 +362,7 @@ export function tryCompiledNode(c: NodeContext): boolean {
 		c.instance?.id,
 		credentials,
 		c.scope.timezone,
+		onError,
 	);
 	if ('errors' in compiled) {
 		c.info('node-compile', `The node source does not compile: ${compiled.errors.join('; ')}`);
@@ -408,8 +408,103 @@ export function tryCompiledNode(c: NodeContext): boolean {
 		'node-compiled',
 		`The node runs as code that is compiled from its source (${compiled.type}).`,
 	);
-	emitStep(c, nodeCall(c, compiled.type, parameters, c.credential(), true));
+	const call = nodeCall(c, compiled.type, parameters, c.credential(), true);
+	if (onError === 'stopWorkflow') emitStep(c, call);
+	else {
+		const byPosition = errorItemsByPosition(c.nodeSources, c.node.type, c.version, compiled);
+		emitCompiledContinue(c, call, onError === 'continueErrorOutput', byPosition);
+	}
+	c.markCompiled?.();
 	return true;
+}
+
+/**
+ * Emits a compiled node under "continue on fail" or "continue (using error output)". The
+ * module has the node's own handling of a failed item (`this.continueOnFail()` is true in it).
+ * This code is the part of v1's engine around the node:
+ * - The node runs once for each item. With the error output, the error items move to the
+ *   error output, merged into their input item (`handleNodeErrorOutput`). The check against
+ *   v1 records how the node pairs its error items: with their input item, or not at all
+ *   (`byPosition`: v1 then pairs them by position, `assignPairedItems`).
+ * - When the node throws, v1 drops the output of the run and passes all input items on
+ *   output 0 (`handleNodeExecutionError`). The error output stays empty.
+ * - "Retry on fail" runs the whole node again when it throws, or when the first item that
+ *   the node gives has an `error`.
+ */
+function emitCompiledContinue(
+	c: NodeContext,
+	call: StepCall,
+	errorOutput: boolean,
+	byPosition: boolean,
+): void {
+	const { w, input } = c;
+	const out = c.output(0);
+	const errors = errorOutput ? c.output(1, 'Errors') : null;
+	const retry = errorRetry(c);
+	const fields = retry ? call.fields.filter(([k]) => k !== 'retry') : call.fields;
+	const opts = options(c, { ...call, fields }, `[${ITEM}]`);
+	w.line(`let ${out}: Json[] = [];`);
+	if (errors) w.line(`let ${errors}: Json[] = [];`);
+	if (retry) {
+		c.helper('retryError');
+		w.open(`for (let tryIndex = 0; tryIndex < ${retry.tries}; tryIndex++) {`);
+		if (retry.delay > 0) {
+			w.line(
+				`if (tryIndex > 0) await ctx.wait({ name: ${str(`${c.node.name} (retry)`)}, duration: ${retry.delay} });`,
+			);
+		}
+		w.line(`${out} = [];`);
+		if (errors) w.line(`${errors} = [];`);
+		w.line('let again = false;');
+		w.line('let count = 0;');
+	}
+	w.open('try {');
+	const collect = errors !== null && byPosition;
+	if (collect) w.line('const all: Json[] = [];');
+	if (call.usesIndex) {
+		w.open(`for (let ${INDEX} = 0; ${INDEX} < ${input}.length; ${INDEX}++) {`);
+		w.line(`const ${ITEM} = ${input}[${INDEX}];`);
+	} else {
+		w.open(`for (const ${ITEM} of ${input}) {`);
+	}
+	const head = 'const result: Json[] = await ctx.node(';
+	w.block(`${head}${c.print(opts, head)});`);
+	if (retry) {
+		w.line('if (count === 0 && result.length > 0) again = retryError(result[0]);');
+		w.line('count += result.length;');
+	}
+	if (collect) {
+		w.line('for (const r of result) all.push(r);');
+	} else if (errors) {
+		c.helper('splitErrorItems');
+		w.line(`splitErrorItems(result, ${ITEM}, ${out}, ${errors});`);
+	} else {
+		w.line(`for (const r of result) ${out}.push(r);`);
+	}
+	w.close();
+	if (collect) {
+		c.helper('splitErrorItemsByPosition');
+		w.line(`splitErrorItemsByPosition(all, ${input}, ${out}, ${errors});`);
+	}
+	w.close('} catch (error) {');
+	w.depth++;
+	if (retry) {
+		w.line('again = true;');
+		w.open(`if (tryIndex + 1 >= ${retry.tries}) {`);
+	}
+	w.line(`${out} = [...${input}];`);
+	if (errors) w.line(`${errors} = [];`);
+	if (c.traceAll) {
+		w.line(
+			`ctx.trace(${str(c.node.name)}, { $error: { message: error.message, description: error.description ?? '' } });`,
+		);
+	}
+	if (retry) w.close();
+	w.close();
+	if (retry) {
+		w.line('if (!again) break;');
+		w.close();
+	}
 }
 
 /** A node that runs in the fallback host with its v1 parameters. */

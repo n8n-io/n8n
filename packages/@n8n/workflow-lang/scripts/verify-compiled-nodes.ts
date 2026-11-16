@@ -18,14 +18,20 @@ import type { NodeDescription } from '../src/convert/node-parameters.ts';
 import { getNodeParameters } from '../src/convert/node-parameters.ts';
 import { publicCredential } from '../src/credentials/public.ts';
 import { loadCredentialTypes, registryOf } from '../src/credentials/types.ts';
+import type { ErrorPairing } from '../src/node-compile/__tests__/verify.ts';
 import {
 	compileForCheck,
 	differenceFromV1,
 	MINTED_TOKEN_RESPONSE,
 } from '../src/node-compile/__tests__/verify.ts';
-import type { NodeSources } from '../src/node-compile/convert.ts';
+import type { ErrorMode, NodeSources } from '../src/node-compile/convert.ts';
 import { evaluateInSandbox } from '../src/node-compile/evaluate-node.ts';
-import { verifiedKey } from '../src/node-compile/convert.ts';
+import {
+	CONTINUE_MODES,
+	ERROR_ITEMS_BY_POSITION,
+	errorModeCondition,
+	verifiedKey,
+} from '../src/node-compile/convert.ts';
 import type { EquivalenceCase } from '../src/nodes/__tests__/equivalence.ts';
 import {
 	disposeRecorder,
@@ -317,6 +323,7 @@ function operations(node: LoadedNode): Json[] {
 const checking = { cache: CACHE };
 const verified: Record<string, string[]> = {};
 const reasons: Record<string, number> = {};
+const modeReasons: Record<string, number> = {};
 const alone: Record<string, number> = {};
 const weighted: Record<string, number> = {};
 let tried = 0;
@@ -328,6 +335,7 @@ const examples: string[] = [];
 interface NodeResult {
 	verified: Record<string, string[]>;
 	reasons: Record<string, number>;
+	modeReasons?: Record<string, number>;
 	alone?: Record<string, number>;
 	weighted?: Record<string, number>;
 	tried: number;
@@ -385,6 +393,7 @@ if (one === undefined) {
 			}
 			Object.assign(verified, result.verified);
 			add(reasons, result.reasons);
+			add(modeReasons, result.modeReasons);
 			add(alone, result.alone);
 			add(weighted, result.weighted);
 			for (const example of result.examples ?? [])
@@ -414,6 +423,11 @@ const why = (reason: string, weight: number, only = true) => {
 	reasons[key] = (reasons[key] ?? 0) + 1;
 	if (only) alone[key] = (alone[key] ?? 0) + 1;
 	if (weight !== 0) weighted[key] = (weighted[key] ?? 0) + weight;
+};
+
+const whyMode = (mode: ErrorMode, reason: string) => {
+	const key = `${mode}: ${DETAIL ? reason.slice(0, 110) : reason.replace(/'[^']*'/g, "'…'").slice(0, 90)}`;
+	modeReasons[key] = (modeReasons[key] ?? 0) + 1;
 };
 
 for (const name of one === undefined ? [] : Object.keys(known).sort()) {
@@ -478,6 +492,10 @@ for (const name of one === undefined ? [] : Object.keys(known).sort()) {
 				const plain = { ok: true, id: 'r1', result: { id: 'r1' }, data: [{ id: 'r1' }] };
 				const ok = [...token, { body: readsFiles ? { ...plain, ...UPLOAD_ANSWER } : plain }];
 				const bad = [...token, { status: 400, body: { message: 'bad request' } }];
+				const missing = [
+					...token,
+					{ status: 404, body: { error: { message: 'no such thing' }, code: 7 } },
+				];
 				try {
 					const difference =
 						(await differenceFromV1(make('ok', parameters, ok), sources, registry, checking)) ??
@@ -520,7 +538,66 @@ for (const name of one === undefined ? [] : Object.keys(known).sort()) {
 						why('v1: the other authentication agrees with v1 for fewer parameters', weight);
 						continue;
 					}
-					verified[key] = [...new Set([...(before ?? []), ...names])].sort();
+					const first = readsFiles ? FILE_ITEMS[0] : {};
+					const two = [
+						{ ...first, position: 1 },
+						{ ...first, position: 2 },
+					];
+					const proven: string[] = [];
+					for (const mode of CONTINUE_MODES) {
+						const pairings = new Set<ErrorPairing>();
+						const withPairings = { ...checking, pairings };
+						const under = (c: EquivalenceCase): EquivalenceCase => ({
+							...c,
+							name: `${c.name} ${mode}`,
+							onError: mode,
+						});
+						const difference =
+							(await differenceFromV1(
+								under(make('ok', parameters, ok)),
+								sources,
+								registry,
+								withPairings,
+							)) ??
+							(await differenceFromV1(
+								under(make('error', parameters, bad)),
+								sources,
+								registry,
+								withPairings,
+							)) ??
+							(await differenceFromV1(
+								under(make('two errors', parameters, bad, two)),
+								sources,
+								registry,
+								withPairings,
+							)) ??
+							(await differenceFromV1(
+								under(make('nested error', parameters, missing)),
+								sources,
+								registry,
+								withPairings,
+							));
+						if (difference === undefined && pairings.size > 1) {
+							whyMode(mode, 'v1 pairs its error items in two ways');
+							continue;
+						}
+						if (difference === undefined && pairings.has('position'))
+							proven.push(ERROR_ITEMS_BY_POSITION);
+						if (difference === undefined) proven.push(...errorModeCondition(mode));
+						else whyMode(mode, difference);
+					}
+					const isMode = (name: string) =>
+						name.startsWith('@onError=') || name === ERROR_ITEMS_BY_POSITION;
+					const samePairing =
+						before === undefined ||
+						before.includes(ERROR_ITEMS_BY_POSITION) === proven.includes(ERROR_ITEMS_BY_POSITION);
+					const errorOutput = errorModeCondition('continueErrorOutput')[0];
+					const modes = (
+						before === undefined ? proven : proven.filter((m) => before.includes(m))
+					).filter((m) => samePairing || (m !== errorOutput && m !== ERROR_ITEMS_BY_POSITION));
+					verified[key] = [
+						...new Set([...(before ?? []).filter((name) => !isMode(name)), ...names, ...modes]),
+					].sort();
 					if (compiled.mints.length > 0) mintedVerified++;
 				} catch (error) {
 					why(`check failed: ${error instanceof Error ? error.message : String(error)}`, weight);
@@ -532,7 +609,7 @@ for (const name of one === undefined ? [] : Object.keys(known).sort()) {
 await disposeRecorder();
 if (one !== undefined) {
 	console.log(
-		`RESULT ${JSON.stringify({ verified, reasons, alone, weighted, tried, compiled: compiledCount, examples, mintedTried, mintedVerified })}`,
+		`RESULT ${JSON.stringify({ verified, reasons, modeReasons, alone, weighted, tried, compiled: compiledCount, examples, mintedTried, mintedVerified })}`,
 	);
 	process.exit(0);
 }
@@ -550,6 +627,17 @@ ${lines.join('\n')}
 	);
 }
 console.log(`operations ${tried}; compiled ${compiledCount}; verified against v1 ${lines.length}`);
+for (const mode of CONTINUE_MODES) {
+	const [condition] = errorModeCondition(mode);
+	const count = Object.values(verified).filter((names) => names.includes(condition)).length;
+	console.log(`verified against v1 under ${mode}: ${count}`);
+}
+const modeLines = Object.entries(modeReasons)
+	.sort((a, b) => b[1] - a[1])
+	.slice(0, DETAIL ? 70 : 40)
+	.map(([reason, count]) => `${count}\t${reason}`);
+if (modeLines.length > 0)
+	console.log(`not verified under an error setting:\n${modeLines.join('\n')}`);
 if (mintedVerified > 0 || mintedTried > 0)
 	console.log(
 		`operation forms verified with a token that n8n mints: ${mintedVerified} (other authentications tried: ${mintedTried})`,

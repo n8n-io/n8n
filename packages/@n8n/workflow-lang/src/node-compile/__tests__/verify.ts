@@ -1,3 +1,4 @@
+import { helperSources } from '../../convert/helpers.ts';
 import { withDerivedValues } from '../../credentials/derived.ts';
 import { deriveInject } from '../../credentials/inject.ts';
 import type { PublicCredential } from '../../credentials/public.ts';
@@ -5,12 +6,13 @@ import { publicCredential } from '../../credentials/public.ts';
 import type {
 	EquivalenceCase,
 	NormalRequest,
+	RecordedItem,
 	Recording,
 } from '../../nodes/__tests__/equivalence.ts';
 import { applyCredential, normalizeRequest } from '../../nodes/__tests__/equivalence.ts';
 import { recordV1, recordV1Cached } from '../../nodes/__tests__/v1-recorder.ts';
 import { runReference } from '../../reference/runner.ts';
-import type { NodeSources } from '../convert.ts';
+import type { ErrorMode, NodeSources } from '../convert.ts';
 import { compileNodeInstance } from '../convert.ts';
 import { evaluateDerivation } from '../evaluate-node.ts';
 import type { CredentialMint } from '../specialise.ts';
@@ -61,11 +63,25 @@ export function compileForCheck(
 	sources: NodeSources,
 	instance: { type: string; version: number; parameters: Record<string, unknown> },
 	credentials: Record<string, PublicCredential>,
+	errorMode: ErrorMode = 'stopWorkflow',
 ): Compiled {
-	const key = JSON.stringify([instance.type, instance.version, instance.parameters, credentials]);
+	const key = JSON.stringify([
+		instance.type,
+		instance.version,
+		instance.parameters,
+		credentials,
+		errorMode,
+	]);
 	const found = recent.find((entry) => entry.sources === sources && entry.key === key);
 	if (found) return found.compiled;
-	const compiled = compileNodeInstance(sources, instance, null, credentials, V1_TIMEZONE);
+	const compiled = compileNodeInstance(
+		sources,
+		instance,
+		null,
+		credentials,
+		V1_TIMEZONE,
+		errorMode,
+	);
 	recent.push({ sources, key, compiled });
 	if (recent.length > RECENT_COMPILES) recent.shift();
 	return compiled;
@@ -154,20 +170,128 @@ async function recordWithMints(
 	return 'the token requests of v1 do not settle';
 }
 
+function withoutFiles(item: Record<string, unknown>): Record<string, unknown> {
+	const { $binary: _files, ...json } = item;
+	return json;
+}
+
+function isErrorJson(json: unknown): boolean {
+	if (!isRecord(json) || !json.error) return false;
+	return Object.keys(json).every((key) => ['error', 'message', 'details'].includes(key));
+}
+
+export type ErrorPairing = 'item' | 'position';
+
+export function outputsOfV1Engine(
+	outputs: RecordedItem[][],
+	mode: ErrorMode,
+	inputs: Array<Record<string, unknown>>,
+): { outputs: unknown[][]; pairing?: ErrorPairing } | string {
+	if (outputs.length > 1) return 'the v1 node has more than one output';
+	const items = outputs[0] ?? [];
+	if (mode !== 'continueErrorOutput') {
+		return { outputs: [items.map((i) => (i.error === undefined ? i.json : { error: i.error }))] };
+	}
+	const main: unknown[] = [];
+	const errors: unknown[] = [];
+	let pairing: ErrorPairing | undefined;
+	for (const [k, item] of items.entries()) {
+		if (item.error !== undefined) {
+			errors.push({ error: item.error });
+			continue;
+		}
+		if (!isErrorJson(item.json)) {
+			main.push(item.json);
+			continue;
+		}
+		const found: ErrorPairing = item.paired === undefined ? 'position' : 'item';
+		if (pairing !== undefined && pairing !== found)
+			return 'v1 pairs some error items with their input items and not others';
+		pairing = found;
+		let at = item.paired;
+		if (found === 'position') {
+			if (inputs.length === 1 || items.length === 1) at = 0;
+			else if (items.length === inputs.length) at = k;
+		}
+		const input = at === undefined ? undefined : inputs[at];
+		if (found === 'item' && input === undefined)
+			return 'v1 pairs an error item with an input item that is not there';
+		errors.push(
+			input === undefined
+				? item.json
+				: { ...withoutFiles(input), ...(isRecord(item.json) ? item.json : {}) },
+		);
+	}
+	return { outputs: [main, errors], pairing };
+}
+
+function continueWorkflow(
+	type: string,
+	c: EquivalenceCase,
+	credentialType: string | undefined,
+	errorOutput: boolean,
+	pairing: ErrorPairing,
+): string {
+	const split = !errorOutput
+		? 'for (const r of result) out.push(r);'
+		: pairing === 'item'
+			? 'splitErrorItems(result, item, out, errors);'
+			: 'for (const r of result) all.push(r);';
+	const helper = pairing === 'item' ? 'splitErrorItems' : 'splitErrorItemsByPosition';
+	return `import { webhook, workflow } from '@n8n/workflow-lang';
+
+type Json = any;
+
+export default workflow({
+	triggers: [webhook({ path: 'verify' })],
+	${credentialType ? `credentials: { c: { type: ${JSON.stringify(credentialType)} } },` : ''}
+	async run(ctx) {
+		const items: Json[] = ${JSON.stringify(c.items ?? [{}])};
+		let out: Json[] = [];
+		let errors: Json[] = [];
+		try {
+			const all: Json[] = [];
+			for (const item of items) {
+				const result: Json[] = await ctx.node({
+					name: 'Node',
+					type: ${JSON.stringify(type)},
+					typeVersion: ${c.typeVersion},
+					parameters: {},
+					items: [item],
+					${credentialType ? "credential: 'c'," : ''}
+				});
+				${split}
+			}
+			${errorOutput && pairing === 'position' ? 'splitErrorItemsByPosition(all, items, out, errors);' : ''}
+		} catch (error) {
+			out = [...items];
+			errors = [];
+		}
+		return ${errorOutput ? '[out, errors]' : '[out]'};
+	},
+});
+
+${errorOutput ? helperSources([helper]).join('\n\n') : ''}
+`;
+}
+
 export async function differenceFromV1(
 	c: EquivalenceCase,
 	sources: NodeSources,
 	registry: Registry,
-	options: { cache?: boolean } = {},
+	options: { cache?: boolean; pairings?: Set<ErrorPairing> } = {},
 ): Promise<string | undefined> {
+	const mode: ErrorMode = c.onError ?? 'stopWorkflow';
+	const continues = mode !== 'stopWorkflow';
 	const compiled = compileForCheck(
 		sources,
 		{ type: c.type, version: c.typeVersion, parameters: c.parameters },
 		credentialsOf(c, registry),
+		mode,
 	);
 	if ('errors' in compiled) return `does not compile: ${compiled.errors[0]}`;
 	const credentialType = c.credential?.type;
-	const source = `import { webhook, workflow } from '@n8n/workflow-lang';
+	const plainSource = `import { webhook, workflow } from '@n8n/workflow-lang';
 
 export default workflow({
 	triggers: [webhook({ path: 'verify' })],
@@ -190,6 +314,18 @@ export default workflow({
 		compiled.mints.length > 0 ? await recordWithMints(c, compiled.mints, record) : undefined;
 	if (typeof minted === 'string') return minted;
 	const v1 = minted?.v1 ?? (await record(c));
+	const engine = continues ? outputsOfV1Engine(v1.outputs ?? [], mode, c.items ?? [{}]) : undefined;
+	if (typeof engine === 'string' && v1.error === undefined) return engine;
+	const pairing = typeof engine === 'object' ? engine.pairing : undefined;
+	const source = continues
+		? continueWorkflow(
+				compiled.type,
+				c,
+				credentialType,
+				mode === 'continueErrorOutput',
+				pairing ?? 'item',
+			)
+		: plainSource;
 	const responses = minted
 		? minted.testCase.responses.filter((_response, k) => !minted.exchanges.has(k))
 		: c.responses;
@@ -284,6 +420,19 @@ export default workflow({
 			}
 		}
 		return 'the requests differ';
+	}
+	if (continues) {
+		if (v1.error !== undefined) return `v1 fails outside the node: ${v1.error.slice(0, 90)}`;
+		if (out.status !== 'ok')
+			return `the compiled node fails: ${JSON.stringify(out.result).slice(0, 120)}`;
+		if (typeof engine !== 'object') return 'v1 gives no outputs';
+		const mine: unknown[] = Array.isArray(out.result) ? out.result : [];
+		for (const [k, expected] of engine.outputs.entries()) {
+			if (JSON.stringify(mine[k]) !== JSON.stringify(expected))
+				return `output ${k} differs: ${JSON.stringify(mine[k]).slice(0, 70)} / ${JSON.stringify(expected).slice(0, 70)}`;
+		}
+		if (pairing !== undefined) options.pairings?.add(pairing);
+		return undefined;
 	}
 	if (v1.error !== undefined) {
 		if (out.status !== 'error') return 'v1 fails and the compiled node does not';

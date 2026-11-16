@@ -59,6 +59,8 @@ export interface NodeContext {
 	scope: ExpressionScope;
 	/** Records that the node runs in the fallback host. */
 	markFallback(): void;
+	/** Records that the node runs as code that is compiled from its source. */
+	markCompiled?(): void;
 	/** True when the source traces every node (`trace: 'all'`), sub-nodes of AI clusters too. */
 	traceAll?: boolean;
 	/** Code of a condition under which the node gives no output at all (v1 run data has none). */
