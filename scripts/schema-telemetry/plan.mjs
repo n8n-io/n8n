@@ -31,9 +31,6 @@ function variantSuffix(group, defaultOf) {
 	const { isDefault, skip } = usesDefault(group, defaultOf);
 	if (skip) return { skip };
 	if (isDefault) return { suffix: '' };
-	if (group.simplify_param.includes('.')) {
-		return { skip: `nested variant parameter ${group.simplify_param} is not supported` };
-	}
 	return { suffix: `.${group.simplify_param}-${group.simplify}` };
 }
 

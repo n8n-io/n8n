@@ -1,0 +1,213 @@
+{
+	"additionalProperties": true,
+	"properties": {
+		"AccountId": {
+			"type": "string"
+		},
+		"AssistantName": {},
+		"AssistantPhone": {},
+		"attributes": {
+			"properties": {
+				"type": {
+					"type": "string"
+				},
+				"url": {
+					"type": "string"
+				}
+			},
+			"type": "object"
+		},
+		"Birthdate": {
+			"type": "string"
+		},
+		"CreatedById": {
+			"type": "string"
+		},
+		"CreatedDate": {
+			"type": "string"
+		},
+		"Department": {},
+		"Description": {
+			"type": "string"
+		},
+		"DoNotCall": {
+			"type": "boolean"
+		},
+		"Email": {
+			"type": "string"
+		},
+		"EmailBouncedDate": {
+			"type": "string"
+		},
+		"EmailBouncedReason": {
+			"type": "string"
+		},
+		"Fax": {
+			"type": "string"
+		},
+		"FirstName": {
+			"type": "string"
+		},
+		"GenderIdentity": {},
+		"HasOptedOutOfEmail": {
+			"type": "boolean"
+		},
+		"HasOptedOutOfFax": {
+			"type": "boolean"
+		},
+		"HomePhone": {
+			"type": "string"
+		},
+		"Id": {
+			"type": "string"
+		},
+		"IndividualId": {},
+		"IsDeleted": {
+			"type": "boolean"
+		},
+		"IsEmailBounced": {
+			"type": "boolean"
+		},
+		"IsPriorityRecord": {
+			"type": "boolean"
+		},
+		"Jigsaw": {},
+		"JigsawContactId": {},
+		"LastActivityDate": {
+			"type": "string"
+		},
+		"LastCURequestDate": {},
+		"LastCUUpdateDate": {},
+		"LastModifiedById": {
+			"type": "string"
+		},
+		"LastModifiedDate": {
+			"type": "string"
+		},
+		"LastName": {
+			"type": "string"
+		},
+		"LastReferencedDate": {
+			"type": "string"
+		},
+		"LastViewedDate": {
+			"type": "string"
+		},
+		"LeadSource": {
+			"type": "string"
+		},
+		"MailingAddress": {
+			"properties": {
+				"city": {
+					"type": "string"
+				},
+				"country": {
+					"type": "string"
+				},
+				"geocodeAccuracy": {
+					"type": "string"
+				},
+				"latitude": {
+					"type": "number"
+				},
+				"longitude": {
+					"type": "number"
+				},
+				"postalCode": {
+					"type": "string"
+				},
+				"state": {
+					"type": "string"
+				},
+				"street": {
+					"type": "string"
+				}
+			},
+			"type": "object"
+		},
+		"MailingCity": {
+			"type": "string"
+		},
+		"MailingCountry": {
+			"type": "string"
+		},
+		"MailingGeocodeAccuracy": {
+			"type": "string"
+		},
+		"MailingLatitude": {
+			"type": "number"
+		},
+		"MailingLongitude": {
+			"type": "number"
+		},
+		"MailingPostalCode": {
+			"type": "string"
+		},
+		"MailingState": {
+			"type": "string"
+		},
+		"MailingStreet": {
+			"type": "string"
+		},
+		"MasterRecordId": {},
+		"MobilePhone": {
+			"type": "string"
+		},
+		"Name": {
+			"type": "string"
+		},
+		"OtherAddress": {
+			"properties": {
+				"city": {},
+				"country": {
+					"type": "string"
+				},
+				"countryCode": {
+					"type": "string"
+				},
+				"geocodeAccuracy": {},
+				"latitude": {},
+				"longitude": {},
+				"postalCode": {},
+				"state": {},
+				"stateCode": {},
+				"street": {}
+			},
+			"type": "object"
+		},
+		"OtherCity": {},
+		"OtherCountry": {
+			"type": "string"
+		},
+		"OtherGeocodeAccuracy": {},
+		"OtherLatitude": {},
+		"OtherLongitude": {},
+		"OtherPhone": {
+			"type": "string"
+		},
+		"OtherPostalCode": {},
+		"OtherState": {},
+		"OtherStreet": {},
+		"OwnerId": {
+			"type": "string"
+		},
+		"Phone": {
+			"type": "string"
+		},
+		"PhotoUrl": {
+			"type": "string"
+		},
+		"Pronouns": {},
+		"ReportsToId": {},
+		"Salutation": {
+			"type": "string"
+		},
+		"SystemModstamp": {
+			"type": "string"
+		},
+		"Title": {
+			"type": "string"
+		}
+	},
+	"type": "object"
+}
