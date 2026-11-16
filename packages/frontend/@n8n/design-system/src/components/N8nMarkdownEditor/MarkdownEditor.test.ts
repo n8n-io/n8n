@@ -196,6 +196,16 @@ describe('components/N8nMarkdownEditor', () => {
 		return { wrapper, editor: editor as Editor };
 	};
 
+	it('registers one link extension that does not open links on click', async () => {
+		const { editor } = await renderEditor('[n8n](https://n8n.io)');
+		const linkExtensions = editor.extensionManager.extensions.filter(
+			(extension) => extension.name === 'link',
+		);
+
+		expect(linkExtensions).toHaveLength(1);
+		expect(linkExtensions[0].options.openOnClick).toBe(false);
+	});
+
 	it('renders the editor', async () => {
 		const wrapper = render(N8nMarkdownEditor, {
 			props: {
