@@ -83,4 +83,19 @@ describe('ERPNext getDocFields', () => {
 
 		await expect(getDocFields.call(createContext(1.1))).resolves.toEqual([]);
 	});
+
+	it('adds the all fields option to the filter loader only', async () => {
+		vi.mocked(erpNextApiRequest).mockResolvedValue({
+			docs: [{ fields: [{ label: 'Customer', fieldname: 'customer' }] }],
+		});
+		const getDocFilters = new ERPNext().methods.loadOptions.getDocFilters;
+
+		await expect(getDocFilters.call(createContext(1.1))).resolves.toEqual([
+			{ name: '*', value: '*' },
+			{ name: 'Customer', value: 'customer' },
+		]);
+		await expect(getDocFields.call(createContext(1.1))).resolves.toEqual([
+			{ name: 'Customer', value: 'customer' },
+		]);
+	});
 });

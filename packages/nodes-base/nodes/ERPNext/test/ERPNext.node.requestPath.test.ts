@@ -12,41 +12,20 @@ const credentials = {
 describe('ERPNext Node', () => {
 	describe('loadOptions', () => {
 		it.each([
-			['getDocFilters', 1, 'Sales%20Invoice', 'Sales%20Invoice'],
-			['getDocFilters', 1.1, 'Sales Invoice', 'Sales%20Invoice'],
+			['getDocFields', 1, 'Sales%20Invoice'],
+			['getDocFilters', 1, 'Sales%20Invoice'],
+			['getDocFields', 1.1, 'Sales Invoice'],
+			['getDocFilters', 1.1, 'Sales Invoice'],
 		] as const)(
-			'%s at version %s should request the selected DocType',
-			async (method, typeVersion, docType, expected) => {
-				const context = mockDeep<ILoadOptionsFunctions>();
-				context.getNode.mockReturnValue({ typeVersion } as ReturnType<typeof context.getNode>);
-				context.getCurrentNodeParameter.mockReturnValue(docType);
-				context.getCredentials.mockResolvedValue(credentials);
-				context.helpers.requestWithAuthentication.mockResolvedValue({
-					data: { fields: [{ label: 'Customer', fieldname: 'customer' }] },
-				});
-
-				await new ERPNext().methods.loadOptions[method].call(context);
-
-				const [, options] = context.helpers.requestWithAuthentication.mock.calls[0];
-				expect(String(options.uri)).toBe(
-					`https://acme.erpnext.com/api/resource/DocType/${expected}`,
-				);
-			},
-		);
-
-		it.each([
-			[1, 'Sales%20Invoice'],
-			[1.1, 'Sales Invoice'],
-		])(
-			'getDocFields at version %s should send the selected DocType as a query parameter',
-			async (typeVersion, docType) => {
+			'%s at version %s should send the selected DocType as a query parameter',
+			async (method, typeVersion, docType) => {
 				const context = mockDeep<ILoadOptionsFunctions>();
 				context.getNode.mockReturnValue({ typeVersion } as ReturnType<typeof context.getNode>);
 				context.getCurrentNodeParameter.mockReturnValue(docType);
 				context.getCredentials.mockResolvedValue(credentials);
 				context.helpers.requestWithAuthentication.mockResolvedValue({ docs: [] });
 
-				await new ERPNext().methods.loadOptions.getDocFields.call(context);
+				await new ERPNext().methods.loadOptions[method].call(context);
 
 				const [, options] = context.helpers.requestWithAuthentication.mock.calls[0];
 				expect(String(options.uri)).toBe(
