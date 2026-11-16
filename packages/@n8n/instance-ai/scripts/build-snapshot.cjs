@@ -59,6 +59,9 @@ function isImageVerification(argv) {
 
 const DEFAULT_SNAPSHOT_RETENTION = 10;
 const DEFAULT_SNAPSHOT_MAX_AGE_DAYS = 20;
+const IMAGE_VERIFICATION_TIMEOUT_MS = 30 * 60_000;
+const VERIFICATION_CLEANUP_TIMEOUT_MS = 60_000;
+const VERIFICATION_CLEANUP_RETRY_MS = 2_000;
 
 /**
  * Read a non-negative integer env var. These are tuning knobs — a malformed
@@ -82,9 +85,37 @@ const consoleLogger = {
 	debug: () => {},
 };
 
-async function getSnapshotIfExists(daytona, name) {
+async function withDeadline(promise, deadline, timeoutMessage) {
+	let timer;
 	try {
-		return await daytona.snapshot.get(name);
+		return await Promise.race([
+			promise,
+			new Promise((_, reject) => {
+				timer = setTimeout(
+					() => reject(new Error(timeoutMessage)),
+					Math.max(deadline - Date.now(), 0),
+				);
+			}),
+		]);
+	} finally {
+		clearTimeout(timer);
+		promise.catch(() => {});
+	}
+}
+
+function isTransientDaytonaError(error) {
+	if (!error || typeof error !== 'object') return false;
+	if (error.name === 'DaytonaConnectionError' || error.name === 'DaytonaTimeoutError') return true;
+	return error.statusCode >= 500 || error.statusCode === 408 || error.statusCode === 429;
+}
+
+async function getSnapshotIfExists(daytona, name, deadline) {
+	try {
+		return await withDeadline(
+			daytona.snapshot.get(name),
+			deadline,
+			`Timed out fetching Daytona verification snapshot "${name}"`,
+		);
 	} catch (error) {
 		if (error && typeof error === 'object' && error.statusCode === 404) return null;
 		throw error;
@@ -92,14 +123,33 @@ async function getSnapshotIfExists(daytona, name) {
 }
 
 async function deleteVerificationSnapshot(daytona, name) {
-	const snapshot = await getSnapshotIfExists(daytona, name);
-	if (!snapshot) return;
-
-	await daytona.snapshot.delete(snapshot);
-	const deadline = Date.now() + 60_000;
+	const deadline = Date.now() + VERIFICATION_CLEANUP_TIMEOUT_MS;
+	let deleteRequested = false;
 	while (Date.now() < deadline) {
-		if (!(await getSnapshotIfExists(daytona, name))) return;
-		await new Promise((resolve) => setTimeout(resolve, 2_000));
+		try {
+			const snapshot = await getSnapshotIfExists(daytona, name, deadline);
+			if (!snapshot) return;
+			if (snapshot.state === 'removing') deleteRequested = true;
+
+			if (!deleteRequested) {
+				await withDeadline(
+					daytona.snapshot.delete(snapshot),
+					deadline,
+					`Timed out deleting Daytona verification snapshot "${name}"`,
+				);
+				deleteRequested = true;
+			}
+		} catch (error) {
+			if (!isTransientDaytonaError(error) || Date.now() >= deadline) throw error;
+			consoleLogger.warn('Transient error while deleting Daytona verification snapshot; retrying', {
+				name,
+				error: error instanceof Error ? error.message : String(error),
+			});
+		}
+
+		await new Promise((resolve) =>
+			setTimeout(resolve, Math.min(VERIFICATION_CLEANUP_RETRY_MS, deadline - Date.now())),
+		);
 	}
 	throw new Error(`Timed out while deleting Daytona verification snapshot "${name}"`);
 }
@@ -111,11 +161,20 @@ async function verifyImage(daytona, image) {
 	let verificationError;
 
 	try {
-		await daytona.snapshot.create(
-			{ name, image },
-			{ timeout: 1_800, onLogs: (chunk) => process.stdout.write(`${chunk}\n`) },
+		const deadline = Date.now() + IMAGE_VERIFICATION_TIMEOUT_MS;
+		await withDeadline(
+			daytona.snapshot.create(
+				{ name, image },
+				{ timeout: 1_800, onLogs: (chunk) => process.stdout.write(`${chunk}\n`) },
+			),
+			deadline,
+			`Timed out creating Daytona verification snapshot "${name}"`,
 		);
-		const snapshot = await daytona.snapshot.get(name);
+		const snapshot = await withDeadline(
+			daytona.snapshot.get(name),
+			deadline,
+			`Timed out fetching Daytona verification snapshot "${name}"`,
+		);
 		if (snapshot.state !== 'active') {
 			throw new Error(`Daytona verification snapshot is ${snapshot.state}, not active`);
 		}
