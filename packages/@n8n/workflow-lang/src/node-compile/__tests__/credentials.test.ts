@@ -1,5 +1,6 @@
 import { publicCredential } from '../../credentials/public.ts';
 import type { CredentialTypeInfo } from '../../credentials/types.ts';
+import { evaluateInSandbox } from '../evaluate-node.ts';
 import { specialiseNode } from '../specialise.ts';
 
 const NODE = `
@@ -112,7 +113,7 @@ export class Acme {
 			readFile: (path) => (path === '/acme/Acme.node.ts' ? source : undefined),
 			parameters: {},
 			instanceId: null,
-			evaluate: (code) => new Function(`return ${code.slice(code.indexOf(';') + 1)}`)() as unknown,
+			evaluate: evaluateInSandbox,
 		});
 		expect(result.errors).toEqual([]);
 		expect(result.source).toContain("parseInt('v1', 10)");
