@@ -21,22 +21,14 @@ then use IDs and narrow filters. Every write is a change in a
   its seed rows -> one call with all `create` and `insert-rows` changes.
 - **Seed rows**: `list_data_tables` -> `get_data_table_schema` ->
   `insert-rows` changes of at most 100 rows each.
-- **Import attachment**: `parse-file` preview -> `list_data_tables` ->
-  `get_data_table_schema` or schema design -> one call with `create` (if new)
-  and the first `insert-rows`.
+- **Import attachment**: `parse-file` preview -> see Tool Recipes.
 - **Rename a column**: `list_data_tables` -> `get_data_table_schema` ->
   `rename-column`.
-- **Change rows**: `list_data_tables` -> `get_data_table_schema` ->
-  `query_data_table` count/sample -> `update-rows` with the same precise
-  filter.
-- **Delete rows**: `list_data_tables` -> `get_data_table_schema` ->
-  `query_data_table` count/sample -> `delete-rows` with the same precise
-  filter.
+- **Change or delete rows**: `list_data_tables` -> `get_data_table_schema` ->
+  `query_data_table` count/sample -> `update-rows` or `delete-rows` with the
+  same precise filter.
 - **Delete table**: `list_data_tables` -> `delete`.
-- **Fix a wrong schema**: `list_data_tables` -> `get_data_table_schema` ->
-  one call with `add-column` for missing columns and `delete-column` for
-  extras; for a wrong column type, `delete` + `create` when the table is
-  empty, or stop and ask when it holds data.
+- **Fix a wrong schema**: follow the skill's Fixing A Wrong Schema rules.
 
 ## Schema Patterns
 
@@ -143,7 +135,7 @@ Create designed tables with seed rows in one call:
 ```text
 1. list_data_tables
 2. change_data_tables {
-     projectId?,
+     projectId: "<optional>",
      changes: [
        { action: "create", name: "Customers",
          columns: [{ name: "customer_id", type: "string" }, { name: "tier", type: "string" }] },
@@ -183,35 +175,20 @@ Import into an existing table:
 5. insert-rows changes of at most 100 rows each
 ```
 
-Update rows:
+Update or delete rows:
 
 ```text
 1. get_data_table_schema
 2. query_data_table with precise filter and small limit
-3. If matches are right, an update-rows change with the same filter and data
-```
-
-Delete rows:
-
-```text
-1. get_data_table_schema
-2. query_data_table with precise filter and small limit
-3. If matches are right, a delete-rows change with the same filter
+3. If matches are right, an update-rows (filter and data) or delete-rows change with the same filter
 ```
 
 ## Recovery And Edge Cases
 
 - **Name conflict**: list tables, inspect the matching schema, then reuse it or
   ask whether to create a differently named table.
-- **Wrong or incomplete schema**: repair the table instead of redesigning around
-  it, with `add-column` and `delete-column` changes in one call. Column types
-  cannot be changed in place; for an empty or just-created table, send
-  `delete` then `create` with the correct columns; for a populated table, stop
-  and ask before recreating. Never weaken a workflow's design to fit a wrong
-  schema.
-- **Failed change**: the call stops at the first failure. Earlier changes stay
-  applied. Send only the `failed` and `skipped` changes again, after you fix
-  the cause.
+- **Wrong or incomplete schema**: follow the skill's Fixing A Wrong Schema rules.
+- **Failed change**: follow the skill's Planning Writes rules.
 - **Ambiguous project**: ask which project before creating or deleting. Do not
   guess when the same table name exists in multiple projects.
 - **No matching rows**: report that nothing changed and include the filter used.

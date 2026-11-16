@@ -49,7 +49,7 @@ export function classifyToolSideEffect(name: string): string {
 	if (executionAction) {
 		return ['run', 'run-step', 'stop'].includes(executionAction) ? 'execute' : 'read';
 	}
-	// Names like `insert_data_table_rows` match no keyword below, so classify by action.
+	// Names like `query_data_table` match no keyword below, so classify by action.
 	// The batch tool has no single action, and every change it makes is a write.
 	if (DATA_TABLE_TOOL_NAMES.includes(baseName)) {
 		const dataTableAction = getDataTableToolAction(baseName);
