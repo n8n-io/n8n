@@ -90,6 +90,7 @@ void (async function start() {
 	}
 
 	runner = new JsTaskRunner(config);
+	runner.connect();
 	runner.on('runner:reached-idle-timeout', () => {
 		// Nothing is waiting on this runner, so drain immediately (don't keep offering for
 		// the grace period) with a short force-exit backstop.
