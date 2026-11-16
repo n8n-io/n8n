@@ -1732,7 +1732,7 @@ export class WorkflowService {
 				}),
 				publicApi,
 				deactivatedVersionId,
-				source: 'transfer',
+				source: publicApi ? 'api' : 'ui',
 			});
 		} catch (error) {
 			this.logger.error(`Failed to unpublish workflow "${workflow.id}" after a transfer`, {

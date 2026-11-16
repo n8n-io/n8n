@@ -305,7 +305,7 @@ describe('PUT /workflows/:workflowId/transfer', () => {
 		]);
 	});
 
-	test('emits workflow-deactivated with source transfer when the destination refuses the publish', async () => {
+	test('emits workflow-deactivated with source ui when the destination refuses the publish', async () => {
 		const workflow = await createActiveWorkflow({}, sourceProject);
 		refusePublish(targetProject.id, workflow.id);
 
@@ -317,14 +317,14 @@ describe('PUT /workflows/:workflowId/transfer', () => {
 		expect(deactivatedEvents).toEqual([
 			expect.objectContaining({
 				workflowId: workflow.id,
-				source: 'transfer',
+				source: 'ui',
 				publicApi: false,
 				workflow: expect.objectContaining({ activeVersionId: null }),
 			}),
 		]);
 	});
 
-	test('emits workflow-deactivated with publicApi true when a public API move is refused', async () => {
+	test('emits workflow-deactivated with source api and publicApi true when a public API move is refused', async () => {
 		const owner = await createOwnerWithApiKey();
 		const workflow = await createActiveWorkflow({}, sourceProject);
 		refusePublish(targetProject.id, workflow.id);
@@ -335,7 +335,7 @@ describe('PUT /workflows/:workflowId/transfer', () => {
 			.send({ destinationProjectId: targetProject.id });
 
 		expect(deactivatedEvents).toEqual([
-			expect.objectContaining({ workflowId: workflow.id, source: 'transfer', publicApi: true }),
+			expect.objectContaining({ workflowId: workflow.id, source: 'api', publicApi: true }),
 		]);
 	});
 
