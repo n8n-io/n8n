@@ -1,11 +1,13 @@
-import type { Logger } from '@n8n/backend-common';
+import { Logger } from '@n8n/backend-common';
 import { CacheService, UrlService } from '@n8n/backend-services';
 import { testDb, testModules } from '@n8n/backend-test-utils';
 import { Container } from '@n8n/di';
-import type { TrustedSourceConfigInput } from '@n8n/inbound-auth';
+import { trustedSourceConfigSchemaFor, type TrustedSourceConfigInput } from '@n8n/inbound-auth';
 import { DataSource, type Repository } from '@n8n/typeorm';
+import { Cipher } from 'n8n-core';
 import { mock } from 'vitest-mock-extended';
 
+import { SYSTEM_TRUSTED_SOURCE_CONFIG } from '@/modules/inbound-auth-core/constants';
 import { TrustedSourceEntity } from '@/modules/inbound-auth-core/database/entities/trusted-source.entity';
 import { TrustedSourceRepository } from '@/modules/inbound-auth-core/database/repositories/trusted-source.repository';
 import { SystemTrustedSourceSeeder } from '@/modules/inbound-auth-core/system-trusted-source.seeder';
@@ -21,6 +23,7 @@ const MOVED_URL = 'https://moved.n8n.example';
 
 let store: TrustedSourceDbStore;
 let cacheService: CacheService;
+let cipher: Cipher;
 let rows: Repository<TrustedSourceEntity>;
 let baseUrl: string;
 
@@ -31,6 +34,16 @@ const seederFor = (url = baseUrl) =>
 	new SystemTrustedSourceSeeder(store, mock<UrlService>({ getInstanceBaseUrl: () => url }), logger);
 
 const systemRow = async () => await rows.findOneByOrFail({ id: ID });
+
+const { identity: systemIdentity, ...systemDocument } = trustedSourceConfigSchemaFor(
+	'system',
+).parse(SYSTEM_TRUSTED_SOURCE_CONFIG);
+/** The system document as a later release stores it: `provision.person` replaces `provision.human`. */
+const versionTwoSystemDocument = {
+	...systemDocument,
+	version: 2,
+	identity: { ...systemIdentity, provision: { person: systemIdentity.provision.human } },
+};
 
 const dueIds = async () =>
 	(
@@ -56,6 +69,7 @@ beforeAll(async () => {
 
 	store = Container.get(TrustedSourceDbStore);
 	cacheService = Container.get(CacheService);
+	cipher = Container.get(Cipher);
 	rows = Container.get(DataSource).getRepository(TrustedSourceEntity);
 	baseUrl = Container.get(UrlService).getInstanceBaseUrl();
 	await cacheService.init();
@@ -181,6 +195,82 @@ describe('SystemTrustedSourceSeeder (integration)', () => {
 		await seederFor(MOVED_URL).seed();
 
 		expect(await systemRow()).toMatchObject({ issuer: MOVED_URL });
+		expect(logger.error).not.toHaveBeenCalled();
+	});
+
+	it('seeds again on a row that a later release stored as version 2 and keeps the source usable', async () => {
+		await seederFor().seed();
+		await rows.update(
+			{ id: ID },
+			{ configVersion: 2, config: await cipher.encryptV2(versionTwoSystemDocument) },
+		);
+		await cacheService.reset();
+		const before = await systemRow();
+		const warn = vi.spyOn(Container.get(Logger), 'warn');
+
+		await expect(seederFor().seed()).resolves.toBeUndefined();
+
+		// The row stays as the later release wrote it, so that release needs no second upgrade.
+		expect(await systemRow()).toEqual(before);
+		expect(await store.getById(ID)).toMatchObject({
+			id: ID,
+			config: {
+				version: 1,
+				surfaces: SYSTEM_TRUSTED_SOURCE_CONFIG.surfaces,
+				identity: { subject: 'n8n-user-id', provision: { human: 'off' } },
+			},
+		});
+		expect(warn).not.toHaveBeenCalled();
+		expect(logger.error).not.toHaveBeenCalled();
+	});
+
+	it('stores the version of the document it writes when it adds the apps surface', async () => {
+		await seederFor().seed();
+		await rows.update(
+			{ id: ID },
+			{
+				configVersion: 2,
+				config: await cipher.encryptV2({
+					...versionTwoSystemDocument,
+					surfaces: { 'public-api': {}, 'instance-mcp': {}, trigger: {} },
+				}),
+			},
+		);
+
+		await seederFor().seed();
+
+		const row = await systemRow();
+		expect(row.configVersion).toBe(1);
+		expect(JSON.parse(await cipher.decryptV2(row.config))).toMatchObject({
+			version: 1,
+			surfaces: { 'public-api': {}, 'instance-mcp': {}, trigger: {}, apps: {} },
+			identity: { provision: { human: 'off' } },
+		});
+	});
+
+	it.each<[string, () => Promise<Pick<TrustedSourceEntity, 'config' | 'configVersion'>>]>([
+		[
+			'a config version it does not know',
+			async () => ({
+				configVersion: 3,
+				config: await cipher.encryptV2({ ...versionTwoSystemDocument, version: 3 }),
+			}),
+		],
+		[
+			'a document that is not JSON',
+			async () => ({ configVersion: 1, config: await cipher.encryptV2('not-json') }),
+		],
+		['ciphertext that does not decrypt', async () => ({ configVersion: 1, config: 'garbage' })],
+	])('warns and still follows the base URL when the row holds %s', async (_, unreadable) => {
+		await seederFor().seed();
+		const stored = await unreadable();
+		await rows.update({ id: ID }, stored);
+		const warn = vi.spyOn(Container.get(Logger), 'warn');
+
+		await expect(seederFor(MOVED_URL).seed()).resolves.toBeUndefined();
+
+		expect(await systemRow()).toMatchObject({ ...stored, issuer: MOVED_URL });
+		expect(warn).toHaveBeenCalledWith(expect.any(String), expect.objectContaining({ id: ID }));
 		expect(logger.error).not.toHaveBeenCalled();
 	});
 

@@ -268,6 +268,36 @@ describe('TrustedSourceStore (integration)', () => {
 				lastError: null,
 			});
 		});
+
+		it('reads a row that a later release stored as version 2, with its provisioning mode', async () => {
+			const { identity, ...document } = trustedSourceConfigSchemaFor('admin').parse({
+				...minimalConfig(),
+				identity: {
+					provision: { human: 'jit' },
+					roleMapping: { mode: 'on-provision', fallbackInstanceRole: 'global:member' },
+				},
+			});
+			const row = await seedRow({
+				configVersion: 2,
+				config: await cipher.encryptV2({
+					...document,
+					version: 2,
+					identity: { ...identity, provision: { person: identity.provision.human } },
+				}),
+			});
+			const warn = vi.spyOn(Container.get(Logger), 'warn');
+
+			expect(await store.getById(row.id)).toMatchObject({
+				id: row.id,
+				config: { version: 1, identity: { provision: { human: 'jit' } } },
+			});
+			expect(warn).not.toHaveBeenCalled();
+			// Reads never write: the row stays as the later release stored it.
+			expect(await rows.findOneByOrFail({ id: row.id })).toMatchObject({
+				config: row.config,
+				configVersion: 2,
+			});
+		});
 	});
 
 	describe('update', () => {

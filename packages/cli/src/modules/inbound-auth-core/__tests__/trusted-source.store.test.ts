@@ -54,10 +54,45 @@ describe('System trusted source configuration', () => {
 		);
 		expect(repository.updateById).toHaveBeenCalledWith(
 			SYSTEM_TRUSTED_SOURCE_ID,
-			{ config: 'updated-config' },
+			{ configVersion: 1, config: 'updated-config' },
 			{},
 		);
 		expect(cache.deleteMany).toHaveBeenCalled();
+	});
+
+	it('fails the seed when it cannot write the app support', async () => {
+		const repository = mock<TrustedSourceRepository>();
+		const cipher = mock<Cipher>();
+		repository.findById.mockResolvedValue(
+			mock<TrustedSourceEntity>({
+				id: SYSTEM_TRUSTED_SOURCE_ID,
+				managedBy: 'system',
+				issuer: 'https://n8n.example.com',
+				config: 'stored-config',
+			}),
+		);
+		cipher.decryptV2.mockResolvedValue(
+			JSON.stringify({ ...SYSTEM_TRUSTED_SOURCE_CONFIG, surfaces: { trigger: {} } }),
+		);
+		cipher.encryptV2.mockResolvedValue('updated-config');
+		repository.updateById.mockRejectedValue(new Error('write failed'));
+		const store = new TrustedSourceDbStore(
+			mock<Logger>(),
+			repository,
+			cipher,
+			mock<CacheService>(),
+			mock<TrustedSourceIdentityRepository>(),
+			mock<TransactionRunner>(),
+		);
+
+		await expect(
+			store.seedSystemSource({
+				id: SYSTEM_TRUSTED_SOURCE_ID,
+				name: 'n8n',
+				issuer: 'https://n8n.example.com',
+				config: SYSTEM_TRUSTED_SOURCE_CONFIG,
+			}),
+		).rejects.toThrow('write failed');
 	});
 
 	it('does not rewrite an existing system source with app support', async () => {
