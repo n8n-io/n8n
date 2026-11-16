@@ -106,6 +106,7 @@ const GLOBALS = new Set([
 	'Map',
 	'isFinite',
 	'console',
+	'Buffer',
 ]);
 
 const HELPERS: Record<string, string> = {
@@ -258,6 +259,239 @@ const HELPERS: Record<string, string> = {
 	}
 	return current === undefined ? fallback : current;
 }`,
+	__caseWords: `function __caseWords(input: any): any {
+	if (typeof input !== 'string') throw new Error('change-case of a value that is not text has no compiled form');
+	const words: string[] = [];
+	let word: string = '';
+	for (let k = 0; k < input.length; k++) {
+		const code: number = input.charCodeAt(k);
+		if (code > 127) throw new Error('change-case of text outside ASCII has no compiled form');
+		const upper: boolean = code >= 65 && code <= 90;
+		const lower: boolean = code >= 97 && code <= 122;
+		const digit: boolean = code >= 48 && code <= 57;
+		if (!upper && !lower && !digit) {
+			if (word !== '') words.push(word);
+			word = '';
+			continue;
+		}
+		if (upper && word !== '') {
+			const before: number = input.charCodeAt(k - 1);
+			const after: number = k + 1 < input.length ? input.charCodeAt(k + 1) : 0;
+			if (before < 65 || before > 90 || (after >= 97 && after <= 122)) {
+				words.push(word);
+				word = '';
+			}
+		}
+		word += input.charAt(k);
+	}
+	if (word !== '') words.push(word);
+	return words;
+}`,
+	__changeCase: `function __changeCase(input: any, style: string, delimiter: string): string {
+	const words: any = __caseWords(input);
+	const out: string[] = [];
+	for (let k = 0; k < words.length; k++) {
+		const word: string = words[k];
+		const first: number = word.charCodeAt(0);
+		const rest: string = word.slice(1).toLowerCase();
+		if (style === 'lower' || (k === 0 && style === 'camel') || (k > 0 && style === 'sentence')) out.push(word.toLowerCase());
+		else if (style === 'upper') out.push(word.toUpperCase());
+		else if (k > 0 && (style === 'camel' || style === 'pascal') && first >= 48 && first <= 57) out.push('_' + word.charAt(0) + rest);
+		else out.push(word.charAt(0).toUpperCase() + rest);
+	}
+	return out.join(delimiter);
+}`,
+	__isLimit: `function __isLimit(error: any): boolean {
+	return error !== null && error !== undefined && typeof error === 'object' && typeof error.message === 'string' && error.message.endsWith('has no compiled form');
+}`,
+	__urlText: `function __urlText(text: string, escaped: any): string {
+	let out: string = '';
+	for (let k = 0; k < text.length; k++) {
+		const code: number = text.charCodeAt(k);
+		if (code > 32 && code < 127 && !escaped.includes(code)) out += text.charAt(k);
+		else out += '%' + (code < 16 ? '0' : '') + code.toString(16).toUpperCase();
+	}
+	return out;
+}`,
+	__url: `function __url(input: any): any {
+	if (input !== null && typeof input === 'object') throw new Error('a URL from a value that is not text has no compiled form');
+	const raw: string = String(input);
+	let from: number = 0;
+	let to: number = raw.length;
+	while (from < to && raw.charCodeAt(from) <= 32) from++;
+	while (to > from && raw.charCodeAt(to - 1) <= 32) to--;
+	let text: string = '';
+	let ascii: boolean = true;
+	for (let k = from; k < to; k++) {
+		const code: number = raw.charCodeAt(k);
+		if (code > 126) ascii = false;
+		if (code !== 9 && code !== 10 && code !== 13) text += raw.charAt(k);
+	}
+	let colon: number = 0;
+	while (colon < text.length) {
+		const code: number = text.charCodeAt(colon);
+		const letter: boolean = (code >= 65 && code <= 90) || (code >= 97 && code <= 122);
+		if (!letter && (colon === 0 || !((code >= 48 && code <= 57) || code === 43 || code === 45 || code === 46))) break;
+		colon++;
+	}
+	if (colon === 0 || colon >= text.length || text.charCodeAt(colon) !== 58) throw new TypeError('Invalid URL');
+	const scheme: string = text.slice(0, colon).toLowerCase();
+	if (scheme !== 'http' && scheme !== 'https') throw new Error('a URL with a scheme other than http and https has no compiled form');
+	if (!ascii) throw new Error('a URL with a character outside ASCII has no compiled form');
+	let at: number = colon + 1;
+	while (at < text.length && (text.charCodeAt(at) === 47 || text.charCodeAt(at) === 92)) at++;
+	let stop: number = at;
+	while (stop < text.length) {
+		const code: number = text.charCodeAt(stop);
+		if (code === 47 || code === 92 || code === 63 || code === 35) break;
+		stop++;
+	}
+	const authority: string = text.slice(at, stop);
+	if (authority === '') throw new TypeError('Invalid URL');
+	if (authority.includes('@') || authority.includes('[') || authority.includes(']') || authority.includes('%')) throw new Error('a URL with a user name, an IPv6 address or an escape in the host has no compiled form');
+	const split: number = authority.indexOf(':');
+	const host: string = (split < 0 ? authority : authority.slice(0, split)).toLowerCase();
+	const digits: string = split < 0 ? '' : authority.slice(split + 1);
+	if (host === '') throw new TypeError('Invalid URL');
+	let plain: boolean = true;
+	for (let k = 0; k < host.length; k++) {
+		const code: number = host.charCodeAt(k);
+		if (code <= 32 || code === 60 || code === 62 || code === 94 || code === 124) throw new TypeError('Invalid URL');
+		if (!((code >= 97 && code <= 122) || (code >= 48 && code <= 57) || code === 45 || code === 46 || code === 95)) plain = false;
+	}
+	for (let k = 0; k < digits.length; k++) {
+		if (digits.charCodeAt(k) < 48 || digits.charCodeAt(k) > 57) throw new TypeError('Invalid URL');
+	}
+	if (!plain) throw new Error('a URL with a host that has other characters than letters, digits, "-", "_" and "." has no compiled form');
+	const labels: string[] = host.split('.');
+	let bytes: number = 0;
+	let numeric: boolean = false;
+	for (const label of labels) {
+		if (label === '' || label.startsWith('xn--')) throw new Error('a URL with an empty or encoded host label has no compiled form');
+		let decimal: boolean = true;
+		let hex: boolean = label.startsWith('0x');
+		for (let j = 0; j < label.length; j++) {
+			const code: number = label.charCodeAt(j);
+			if (code < 48 || code > 57) decimal = false;
+			if (j >= 2 && !((code >= 48 && code <= 57) || (code >= 97 && code <= 102))) hex = false;
+		}
+		if (decimal && (label === '0' || label.charCodeAt(0) !== 48) && label.length <= 3 && Number(label) <= 255) bytes++;
+		numeric = decimal || hex;
+	}
+	if (numeric && (bytes !== 4 || labels.length !== 4)) throw new Error('a URL with a host that ends in a number has no compiled form');
+	let port: string = '';
+	if (digits !== '') {
+		let lead: number = 0;
+		while (lead < digits.length - 1 && digits.charCodeAt(lead) === 48) lead++;
+		if (digits.length - lead > 5 || Number(digits) > 65535) throw new TypeError('Invalid URL');
+		port = digits.slice(lead);
+		if ((scheme === 'http' && port === '80') || (scheme === 'https' && port === '443')) port = '';
+	}
+	let rest: string = text.slice(stop);
+	let fragment: any = null;
+	let query: any = null;
+	const hashAt: number = rest.indexOf('#');
+	if (hashAt >= 0) {
+		fragment = __urlText(rest.slice(hashAt + 1), [34, 60, 62, 96]);
+		rest = rest.slice(0, hashAt);
+	}
+	const queryAt: number = rest.indexOf('?');
+	if (queryAt >= 0) {
+		query = __urlText(rest.slice(queryAt + 1), [34, 35, 39, 60, 62]);
+		rest = rest.slice(0, queryAt);
+	}
+	const path: string[] = [];
+	let piece: string = '';
+	for (let k = 1; k <= rest.length; k++) {
+		const code: number = k < rest.length ? rest.charCodeAt(k) : 0;
+		if (k < rest.length && code !== 47 && code !== 92) {
+			piece += rest.charAt(k);
+			continue;
+		}
+		const lower: string = piece.toLowerCase();
+		const end: boolean = k >= rest.length;
+		if (lower === '..' || lower === '.%2e' || lower === '%2e.' || lower === '%2e%2e') {
+			if (path.length > 0) path.pop();
+			if (end) path.push('');
+		} else if (lower === '.' || lower === '%2e') {
+			if (end) path.push('');
+		} else path.push(__urlText(piece, [34, 35, 60, 62, 63, 94, 96, 123, 125]));
+		piece = '';
+	}
+	const hostText: string = port === '' ? host : host + ':' + port;
+	const origin: string = scheme + '://' + hostText;
+	const pathname: string = '/' + path.join('/');
+	return {
+		href: origin + pathname + (query === null ? '' : '?' + query) + (fragment === null ? '' : '#' + fragment),
+		origin,
+		protocol: scheme + ':',
+		host: hostText,
+		hostname: host,
+		port,
+		pathname,
+		search: query === null || query === '' ? '' : '?' + query,
+		hash: fragment === null || fragment === '' ? '' : '#' + fragment,
+	};
+}`,
+	__bufferText: `function __bufferText(value: any, encoding: string): string {
+	if (typeof value !== 'string') throw new Error('a Buffer from a value that is not text has no compiled form');
+	if (encoding === 'utf8') return value;
+	for (let k = 0; k < value.length; k++) {
+		if (value.charCodeAt(k) > 127) throw new Error('a Buffer from ' + encoding + ' text with a character outside ASCII has no compiled form');
+	}
+	return value;
+}`,
+	__urlCanParse: `function __urlCanParse(input: any): boolean {
+	try {
+		__url(input);
+		return true;
+	} catch (error) {
+		if (__isLimit(error)) throw error;
+		return false;
+	}
+}`,
+	__urlDecode: `function __urlDecode(text: string): string {
+	const spaced: string = text.replaceAll('+', ' ');
+	if (!spaced.includes('%')) return spaced;
+	try {
+		return decodeURIComponent(spaced);
+	} catch (error) {
+		throw new Error('a URL parameter with an escape that is not UTF-8 has no compiled form');
+	}
+}`,
+	__urlParam: `function __urlParam(search: string, key: any): any {
+	const wanted: string = String(key);
+	for (const part of search.slice(1).split('&')) {
+		if (part === '') continue;
+		const cut: number = part.indexOf('=');
+		if (__urlDecode(cut < 0 ? part : part.slice(0, cut)) === wanted) return cut < 0 ? '' : __urlDecode(part.slice(cut + 1));
+	}
+	return null;
+}`,
+	__urlForm: `function __urlForm(value: any): string {
+	if (value === null || typeof value !== 'object' || Array.isArray(value)) throw new Error('URL parameters from a value that is not an object has no compiled form');
+	const parts: string[] = [];
+	for (const [key, member] of Object.entries(value)) {
+		if (typeof member !== 'string' && typeof member !== 'number' && typeof member !== 'boolean') throw new Error('a URL parameter that is not text, a number or a boolean has no compiled form');
+		parts.push(__urlFormText(key) + '=' + __urlFormText(String(member)));
+	}
+	return parts.join('&');
+}`,
+	__urlFormText: `function __urlFormText(text: string): string {
+	let encoded: string = '';
+	try {
+		encoded = encodeURIComponent(text);
+	} catch (error) {
+		throw new Error('a URL parameter with half of a surrogate pair has no compiled form');
+	}
+	return encoded
+		.replaceAll('%20', '+')
+		.replaceAll('!', '%21')
+		.replaceAll("'", '%27')
+		.replaceAll('(', '%28')
+		.replaceAll(')', '%29')
+		.replaceAll('~', '%7E');
+}`,
 };
 
 const PURE_GLOBALS = new Set([
@@ -354,6 +588,199 @@ function packageHelper(imported: { from: string; name: string }): string | undef
 	const table = PACKAGE_HELPERS[pkg];
 	return table && Object.hasOwn(table, name) ? table[name] : undefined;
 }
+
+const HELPER_USES: Record<string, string[]> = {
+	__changeCase: ['__caseWords'],
+	__url: ['__urlText'],
+	__urlCanParse: ['__url', '__urlText', '__isLimit'],
+	__urlParam: ['__urlDecode'],
+	__urlForm: ['__urlFormText'],
+};
+
+const LIMIT_TEXT = 'has no compiled form';
+
+const BUFFER_ENCODINGS: Record<string, string> = {
+	utf8: 'utf8',
+	'utf-8': 'utf8',
+	base64: 'base64',
+	base64url: 'base64url',
+	hex: 'hex',
+};
+
+function bufferEncoding(e: ts.Expression | undefined): string | undefined {
+	if (e === undefined) return 'utf8';
+	return ts.isStringLiteral(e) && Object.hasOwn(BUFFER_ENCODINGS, e.text)
+		? BUFFER_ENCODINGS[e.text]
+		: undefined;
+}
+
+function mentionsBuffer(n: ts.Node): boolean {
+	if (ts.isIdentifier(n) && n.text === 'Buffer') return true;
+	return ts.forEachChild(n, mentionsBuffer) ?? false;
+}
+
+const TEXT_HELPERS = new Set(['__changeCase', '__url', '__urlCanParse', '__urlParam', '__urlForm']);
+
+const URL_PROPERTIES = new Set([
+	'href',
+	'origin',
+	'protocol',
+	'host',
+	'hostname',
+	'port',
+	'pathname',
+	'search',
+	'hash',
+]);
+
+function isUrlNew(e: ts.Node | undefined): e is ts.NewExpression {
+	return (
+		e !== undefined &&
+		ts.isNewExpression(e) &&
+		ts.isIdentifier(e.expression) &&
+		e.expression.text === 'URL' &&
+		e.arguments?.length === 1 &&
+		!ts.isSpreadElement(e.arguments[0])
+	);
+}
+
+function isGetCall(read: ts.Node): boolean {
+	const call = read.parent;
+	return (
+		ts.isPropertyAccessExpression(read) &&
+		read.name.text === 'get' &&
+		ts.isCallExpression(call) &&
+		call.expression === read &&
+		call.arguments.length === 1 &&
+		!ts.isSpreadElement(call.arguments[0])
+	);
+}
+
+function isWritten(read: ts.Node): boolean {
+	const p = read.parent;
+	if (ts.isBinaryExpression(p))
+		return (
+			p.left === read &&
+			p.operatorToken.kind >= ts.SyntaxKind.FirstAssignment &&
+			p.operatorToken.kind <= ts.SyntaxKind.LastAssignment
+		);
+	return (
+		ts.isPrefixUnaryExpression(p) || ts.isPostfixUnaryExpression(p) || ts.isDeleteExpression(p)
+	);
+}
+
+function urlVariables(
+	root: ts.Node,
+	counts: Map<string, number>,
+): { urls: Set<string>; params: Set<string> } {
+	const urls = new Set<string>();
+	const params = new Set<string>();
+	const collect = (n: ts.Node) => {
+		if (ts.isVariableDeclaration(n) && isUrlNew(n.initializer)) {
+			if (ts.isIdentifier(n.name)) urls.add(n.name.text);
+			else if (ts.isObjectBindingPattern(n.name)) {
+				for (const e of n.name.elements) {
+					const key = e.propertyName ?? e.name;
+					if (ts.isIdentifier(key) && key.text === 'searchParams' && ts.isIdentifier(e.name))
+						params.add(e.name.text);
+				}
+			}
+		}
+		if (
+			ts.isBinaryExpression(n) &&
+			n.operatorToken.kind === ts.SyntaxKind.EqualsToken &&
+			ts.isIdentifier(n.left) &&
+			isUrlNew(n.right)
+		)
+			urls.add(n.left.text);
+		ts.forEachChild(n, collect);
+	};
+	collect(root);
+	const check = (n: ts.Node) => {
+		if (ts.isIdentifier(n) && (urls.has(n.text) || params.has(n.text))) {
+			const p = n.parent;
+			const named =
+				(ts.isPropertyAccessExpression(p) && p.name === n) ||
+				(ts.isPropertyAssignment(p) && p.name === n) ||
+				(ts.isBindingElement(p) && p.propertyName === n);
+			const read = ts.isPropertyAccessExpression(p) && p.expression === n ? p : undefined;
+			const asUrl =
+				(ts.isVariableDeclaration(p) &&
+					p.name === n &&
+					(!p.initializer || isUrlNew(p.initializer))) ||
+				(ts.isBinaryExpression(p) &&
+					p.left === n &&
+					p.operatorToken.kind === ts.SyntaxKind.EqualsToken &&
+					isUrlNew(p.right)) ||
+				(read !== undefined && URL_PROPERTIES.has(read.name.text) && !isWritten(read)) ||
+				(read !== undefined && read.name.text === 'searchParams' && isGetCall(read.parent));
+			const asParams =
+				(ts.isBindingElement(p) && p.name === n && isUrlNew(p.parent.parent.initializer)) ||
+				(read !== undefined && isGetCall(read));
+			if (!named && !asUrl) urls.delete(n.text);
+			if (!named && !asParams) params.delete(n.text);
+		}
+		ts.forEachChild(n, check);
+	};
+	check(root);
+	for (const name of [...urls, ...params]) {
+		if (counts.get(name) !== 1 || (urls.has(name) && params.has(name))) {
+			urls.delete(name);
+			params.delete(name);
+		}
+	}
+	return { urls, params };
+}
+
+function guardCatches(root: ts.Node): ts.Node {
+	const visit = (n: ts.Node): ts.Node => {
+		const out = ts.visitEachChild(n, visit, undefined);
+		if (!ts.isCatchClause(out)) return out;
+		const declared = out.variableDeclaration?.name;
+		const caught =
+			declared && ts.isIdentifier(declared) ? declared : f.createIdentifier('__caught');
+		const unpack =
+			declared && !ts.isIdentifier(declared)
+				? [
+						f.createVariableStatement(
+							undefined,
+							f.createVariableDeclarationList(
+								[f.createVariableDeclaration(declared, undefined, undefined, caught)],
+								ts.NodeFlags.Const,
+							),
+						),
+					]
+				: [];
+		return f.updateCatchClause(
+			out,
+			f.createVariableDeclaration(caught),
+			f.createBlock(
+				[
+					f.createIfStatement(call('__isLimit', caught), f.createThrowStatement(caught)),
+					...unpack,
+					...out.block.statements,
+				],
+				true,
+			),
+		);
+	};
+	return ts.visitNode(root, visit);
+}
+
+const CHANGE_CASE: Record<string, [style: string, delimiter: string]> = {
+	noCase: ['lower', ' '],
+	snakeCase: ['lower', '_'],
+	kebabCase: ['lower', '-'],
+	dotCase: ['lower', '.'],
+	pathCase: ['lower', '/'],
+	constantCase: ['upper', '_'],
+	capitalCase: ['capital', ' '],
+	trainCase: ['capital', '-'],
+	pascalSnakeCase: ['capital', '_'],
+	sentenceCase: ['sentence', ' '],
+	camelCase: ['camel', ''],
+	pascalCase: ['pascal', ''],
+};
 
 const PACKAGE_CONSTANTS: Record<string, string | number> = {
 	SEND_AND_WAIT_OPERATION: 'sendAndWait',
@@ -614,6 +1041,7 @@ class Specialiser {
 	private helper(name: string, ...args: ts.Expression[]): ts.CallExpression {
 		this.helpers.add(name);
 		if (name === '__getPath') this.helpers.add('__get');
+		for (const used of HELPER_USES[name] ?? []) this.helpers.add(used);
 		return call(name, ...args);
 	}
 
@@ -880,6 +1308,7 @@ class Specialiser {
 			ts.forEachChild(n, collectRegex);
 		};
 		collectRegex(root);
+		const urlNames = urlVariables(root, localNames);
 		let depth = 0;
 
 		const visit = (node: ts.Node): ts.Node | ts.Node[] | undefined => {
@@ -1051,6 +1480,113 @@ class Specialiser {
 					);
 				}
 			}
+			if (!localNames.has('URL')) {
+				const parsed = (e: ts.Expression): ts.Expression | undefined =>
+					isUrlNew(e)
+						? this.helper('__url', ...args(e))
+						: ts.isIdentifier(e) && urlNames.urls.has(e.text)
+							? e
+							: undefined;
+				const callee =
+					ts.isCallExpression(node) && ts.isPropertyAccessExpression(node.expression)
+						? node.expression
+						: undefined;
+				if (ts.isCallExpression(node) && callee && isGetCall(callee)) {
+					const receiver = callee.expression;
+					if (ts.isIdentifier(receiver) && urlNames.params.has(receiver.text))
+						return this.helper('__urlParam', receiver, ...args(node));
+					const url =
+						ts.isPropertyAccessExpression(receiver) && receiver.name.text === 'searchParams'
+							? parsed(receiver.expression)
+							: undefined;
+					if (url)
+						return this.helper(
+							'__urlParam',
+							f.createPropertyAccessExpression(url, 'search'),
+							...args(node),
+						);
+				}
+				if (
+					ts.isCallExpression(node) &&
+					callee &&
+					ts.isIdentifier(callee.expression) &&
+					callee.expression.text === 'URL' &&
+					callee.name.text === 'canParse' &&
+					node.arguments.length === 1 &&
+					!ts.isSpreadElement(node.arguments[0])
+				)
+					return this.helper('__urlCanParse', ...args(node));
+				if (
+					ts.isPropertyAccessExpression(node) &&
+					isUrlNew(node.expression) &&
+					URL_PROPERTIES.has(node.name.text) &&
+					!isWritten(node)
+				)
+					return f.createPropertyAccessExpression(
+						this.helper('__url', ...args(node.expression)),
+						node.name.text,
+					);
+				if (ts.isExpressionStatement(node) && isUrlNew(node.expression))
+					return f.createExpressionStatement(this.helper('__url', ...args(node.expression)));
+				if (
+					ts.isBinaryExpression(node) &&
+					node.operatorToken.kind === ts.SyntaxKind.EqualsToken &&
+					ts.isIdentifier(node.left) &&
+					urlNames.urls.has(node.left.text) &&
+					isUrlNew(node.right)
+				)
+					return f.createAssignment(node.left, this.helper('__url', ...args(node.right)));
+				if (ts.isVariableDeclaration(node) && isUrlNew(node.initializer)) {
+					const elements = ts.isObjectBindingPattern(node.name) ? node.name.elements : [];
+					const plain = elements.every((e) => {
+						const key = e.propertyName ?? e.name;
+						return (
+							!e.dotDotDotToken &&
+							!e.initializer &&
+							ts.isIdentifier(key) &&
+							ts.isIdentifier(e.name) &&
+							(key.text === 'searchParams'
+								? urlNames.params.has(e.name.text)
+								: URL_PROPERTIES.has(key.text))
+						);
+					});
+					if (ts.isIdentifier(node.name) && urlNames.urls.has(node.name.text))
+						return f.createVariableDeclaration(
+							node.name,
+							undefined,
+							undefined,
+							this.helper('__url', ...args(node.initializer)),
+						);
+					if (elements.length > 0 && plain)
+						return f.createVariableDeclaration(
+							f.createObjectBindingPattern(
+								elements.map((e) => {
+									const key = e.propertyName ?? e.name;
+									return ts.isIdentifier(key) && key.text === 'searchParams'
+										? f.createBindingElement(undefined, 'search', e.name)
+										: e;
+								}),
+							),
+							undefined,
+							undefined,
+							this.helper('__url', ...args(node.initializer)),
+						);
+				}
+			}
+			if (
+				ts.isCallExpression(node) &&
+				ts.isPropertyAccessExpression(node.expression) &&
+				node.expression.name.text === 'toString' &&
+				node.arguments.length === 0 &&
+				ts.isNewExpression(node.expression.expression) &&
+				ts.isIdentifier(node.expression.expression.expression) &&
+				node.expression.expression.expression.text === 'URLSearchParams' &&
+				node.expression.expression.arguments?.length === 1 &&
+				!ts.isSpreadElement(node.expression.expression.arguments[0]) &&
+				!localNames.has('URLSearchParams') &&
+				['url', 'node:url'].includes(unit.file.imports.get('URLSearchParams')?.from ?? 'url')
+			)
+				return this.helper('__urlForm', ...args(node.expression.expression));
 			if (
 				ts.isCallExpression(node) &&
 				ts.isIdentifier(node.expression) &&
@@ -1058,6 +1594,19 @@ class Specialiser {
 			) {
 				const imported = unit.file.imports.get(node.expression.text);
 				const helper = imported ? packageHelper(imported) : undefined;
+				if (
+					imported?.from === 'change-case' &&
+					Object.hasOwn(CHANGE_CASE, imported.name) &&
+					node.arguments.length === 1
+				) {
+					const [style, delimiter] = CHANGE_CASE[imported.name];
+					return this.helper(
+						'__changeCase',
+						...args(node),
+						f.createStringLiteral(style),
+						f.createStringLiteral(delimiter),
+					);
+				}
 				if (helper === '__get') {
 					const path = node.arguments[1];
 					const text = path && ts.isStringLiteral(path) ? path.text : '';
@@ -1372,6 +1921,19 @@ class Specialiser {
 					returns.add(name);
 					changed = true;
 				}
+				if (
+					report &&
+					ts.isCallExpression(n) &&
+					((ts.isIdentifier(n.expression) && TEXT_HELPERS.has(n.expression.text)) ||
+						(ts.isPropertyAccessExpression(n.expression) &&
+							ts.isIdentifier(n.expression.expression) &&
+							n.expression.expression.text === 'Buffer')) &&
+					n.arguments.some(holds)
+				)
+					this.error(
+						name,
+						'the code computes with a credential field: node code cannot read a credential value',
+					);
 				if (report) {
 					const field =
 						ts.isCallExpression(n) &&
@@ -3670,12 +4232,71 @@ class Specialiser {
 		return { source, errors: [], notes: this.notes, linked, derivations, retyped: this.retyped };
 	}
 
+	private bufferText(root: ts.Node): ts.Node {
+		const visit = (n: ts.Node): ts.Node => {
+			const callee =
+				ts.isCallExpression(n) && ts.isPropertyAccessExpression(n.expression)
+					? n.expression
+					: undefined;
+			const inner = callee?.expression;
+			if (
+				ts.isCallExpression(n) &&
+				callee &&
+				inner &&
+				callee.name.text === 'toString' &&
+				ts.isCallExpression(inner) &&
+				ts.isPropertyAccessExpression(inner.expression) &&
+				ts.isIdentifier(inner.expression.expression) &&
+				inner.expression.expression.text === 'Buffer' &&
+				inner.expression.name.text === 'from' &&
+				inner.arguments.length >= 1 &&
+				inner.arguments.length <= 2 &&
+				n.arguments.length <= 1 &&
+				!ts.isSpreadElement(inner.arguments[0])
+			) {
+				const from = bufferEncoding(inner.arguments[1]);
+				if (from !== undefined && bufferEncoding(n.arguments[0]) !== undefined) {
+					const value = ts.visitNode(inner.arguments[0], visit);
+					return f.updateCallExpression(
+						n,
+						f.updatePropertyAccessExpression(
+							callee,
+							f.updateCallExpression(inner, inner.expression, undefined, [
+								call('__bufferText', value as ts.Expression, f.createStringLiteral(from)),
+								...inner.arguments.slice(1),
+							]),
+							callee.name,
+						),
+						undefined,
+						n.arguments,
+					);
+				}
+			}
+			if (ts.isIdentifier(n) && n.text === 'Buffer' && isValueUse(n))
+				this.error(
+					'code',
+					'a Buffer has a compiled form only as `Buffer.from(text, encoding).toString(encoding)` with the encodings utf8, base64, base64url and hex',
+				);
+			return ts.visitEachChild(n, visit, undefined);
+		};
+		return ts.visitNode(root, visit);
+	}
+
 	private print(): string {
 		const code: string[] = [];
 		let body = '';
+		const buffers = this.output.some((o) => mentionsBuffer(o.node));
+		if (buffers) this.helpers.add('__bufferText');
+		const guarded = [...this.helpers].some((h) => HELPERS[h]?.includes(LIMIT_TEXT));
+		if (guarded) this.helpers.add('__isLimit');
 		for (const { name, node, sf } of this.output) {
 			const unit = this.units.get(name);
-			const text = (n: ts.Node) => this.printer.printNode(ts.EmitHint.Unspecified, finish(n), sf);
+			const text = (n: ts.Node) =>
+				this.printer.printNode(
+					ts.EmitHint.Unspecified,
+					finish(guarded ? guardCatches(buffers ? this.bufferText(n) : n) : n),
+					sf,
+				);
 			if (!ts.isFunctionDeclaration(node)) {
 				if (unit?.withContext) this.error(name, 'a constant is called with the n8n context');
 				code.push(text(node));
