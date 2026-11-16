@@ -624,6 +624,44 @@ pub const State = struct {
         return stepReads(s, slot, p.step);
     }
 
+    /// The module of an execution in memory, or null.
+    pub fn moduleOfExecution(s: *const State, exec_id: u64) ?u16 {
+        const slot = s.by_exec.get(exec_id) orelse return null;
+        return s.slot_module[slot];
+    }
+
+    /// The dispatch of an `http` effect that waits for its result, as the
+    /// core sent it, with the args in `scratch`. The shell sends a request
+    /// again after a credential renewal and keeps no copy of the args: the
+    /// execution has them. It reads the state and changes nothing, so it is
+    /// not an input and a replay does not need it. Null when the execution
+    /// is not in memory, the effect has its result, or `scratch` is full.
+    pub fn pendingDispatch(s: *State, exec_id: u64, seq: u32, scratch: *Arena) ?Action {
+        const slot = s.by_exec.get(exec_id) orelse return null;
+        const p = s.pending.get(.{ .exec_id = exec_id, .seq = seq }) orelse return null;
+        if (p.kind != .http) return null;
+        var vm = vmFor(s, slot, scratch);
+        const fi = interp.fibreForEffect(&vm, seq) orelse return null;
+        const req = interp.pendingEffect(&vm, fi);
+        std.debug.assert(req.step == p.step and req.kind == p.kind);
+        const payload = encodeJson(&vm, req.args, scratch) catch return null;
+        const st = vm.m.steps[p.step];
+        var a: Action = .{
+            .kind = .dispatch,
+            .durability = durOf(s, slot),
+            .effect_kind = p.kind,
+            .exec_id = exec_id,
+            .seq = seq,
+            .step = p.step,
+            .module = s.slot_module[slot],
+            .attempt = p.attempt,
+            .idempotent = st.idempotent != 0,
+            .payload = payload,
+        };
+        idempotencyKey(exec_id, vm.m.str(st.id), p.occurrence, &a.key);
+        return a;
+    }
+
     /// True when an execution with this id is loaded or parked.
     pub fn knowsExecution(s: *const State, id: u64) bool {
         return s.by_exec.get(id) != null or s.parked.get(id) != null;

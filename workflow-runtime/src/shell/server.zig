@@ -107,10 +107,10 @@ pub const Options = struct {
     max_service_calls: u32 = 256,
     service_call_kb: u32 = 1024,
     service_timeout_ms: i64 = 300_000,
-    /// Requests with a renewable credential that can be in flight with the
-    /// renewal protection, and the room for the args of each (`renew.zig`).
+    /// Requests that can wait for a credential renewal, or go again after
+    /// one, at one time, and the room for the names of each (`renew.zig`).
     max_renewals: u32 = 256,
-    renewal_kb: u32 = 64,
+    renewal_kb: u32 = 1,
     /// `--step-events-sample`: step events of unwatched executions for 1 in N
     /// executions (0: none, spec 9.2).
     step_event_sample: u32 = 0,
@@ -173,6 +173,7 @@ fn appendJsonStringBounded(w: *std.ArrayList(u8), s: []const u8) error{OutOfMemo
 const FbKey = struct { exec_id: u64, seq: u32, send: bool };
 /// An effect error that waits for room. `msg` is a static text.
 const EgressLost = struct { exec_id: u64, seq: u32, msg: []const u8 };
+const renew_resend_msg = "credentials: the request could not go again after the credential renewal; the step can run again (retryable)";
 const egress_lost_msg = "http: the result found no room in the event queue; the step can run again (retryable)";
 /// A host step that failed in the shell, with a static message. `lost`: the
 /// connection whose `worker_lost` message replaces `msg` (`no_lost`: none).
@@ -524,6 +525,10 @@ pub const Runner = struct {
     global_pool: ?creds.Pool = null,
     /// Requests that can get a credential renewal (with the admin API).
     renewals: ?renew.Table = null,
+    /// A response with a status below this is not "the value expired" for
+    /// any credentials document that this shard got: the one comparison of
+    /// a response to a request with a valid value. It only goes down.
+    min_expiry_status: u32 = 400,
     /// Service calls that wait for the admin client's answer (spec 9.9).
     svc: ?admin.ServiceCalls = null,
 
@@ -643,6 +648,7 @@ pub const Runner = struct {
         ecfg.big_slots = opts.egress_big_slots;
         ecfg.insecure_tls = opts.insecure_tls;
         ecfg.credentials = opts.credentials;
+        if (opts.credentials) |s| r.noteStore(s);
         ecfg.ca_file = opts.ca_file;
         ecfg.gym = opts.gym;
         ecfg.dns_servers = opts.gym_dns;
@@ -1445,38 +1451,59 @@ pub const Runner = struct {
         _ = r.stats.egress.fetchAdd(1, .monotonic);
         const store = r.credsFor(a.module);
         const now = sys.nowMs();
-        // A document that n8n can renew: keep the request for a renewal. It
-        // waits when its value is about to expire (`guardEgress`).
-        if (store) |s| if (s.renewable and r.guardEgress(a, s, now)) return;
+        // The one comparison of a request whose credential values are
+        // valid: the clock against the first expiry of the document, which
+        // is maxInt when no value has one. The request has no row and no
+        // copy of its args (`renew.zig`).
+        if (store) |s| if (now >= s.renew_at_ms and r.renewBeforeStart(a, s, now)) return;
         r.egress.start(a.exec_id, a.seq, a.payload, if (a.idempotent) &a.key else null, store, a.attempt, r.workflowKey(a.module), now);
     }
 
     // ---- credential renewal (renew.zig) ---------------------------------------
 
-    /// Keep a request whose credential slot n8n can renew. True when the
-    /// request waits for a renewal first: its value expires within the
-    /// margin. False: the caller starts the request now.
-    fn guardEgress(r: *Runner, a: core.Action, s: *const creds.Store, now: i64) bool {
-        std.debug.assert(s.renewable);
+    /// What the args of a request say about its renewal.
+    const Renewable = struct {
+        /// The slot name, a part of the args.
+        slot: []const u8,
+        info: renew.Info,
+        single_use: bool,
+    };
+
+    /// The slot of a request when n8n can renew it, with the options that
+    /// the node gave (`skipTokenRefresh`, `tokenExpiredStatusCode`). A
+    /// request that does not carry the values of its slot (`inject: false`,
+    /// a plain request helper of v1) has no renewal, as in v1.
+    fn renewableOf(args: []const u8, s: *const creds.Store) ?Renewable {
+        const raw = http.member(args, "credential") orelse return null;
+        if (raw.len < 3 or raw[0] != '"' or raw[raw.len - 1] != '"') return null;
+        const slot = raw[1 .. raw.len - 1];
+        const info = s.renewal(slot) orelse return null;
+        if (isJson(http.member(args, "inject"), "false")) return null;
+        const multipart = http.member(args, "multipart");
+        return .{
+            .slot = slot,
+            .info = info.withRequest(isJson(http.member(args, "skipTokenRefresh"), "true"), http.member(args, "tokenExpiredStatusCode")),
+            .single_use = multipart != null and !isJson(multipart, "null"),
+        };
+    }
+
+    fn isJson(raw: ?[]const u8, text: []const u8) bool {
+        return std.mem.eql(u8, std.mem.trim(u8, raw orelse return false, " \t\r\n"), text);
+    }
+
+    /// A request starts when a value of its document is about to expire.
+    /// True when the request waits for a renewal first: the value of its
+    /// own slot expires within the margin. False: the caller starts the
+    /// request now.
+    fn renewBeforeStart(r: *Runner, a: core.Action, s: *const creds.Store, now: i64) bool {
+        std.debug.assert(now >= s.renew_at_ms);
         const t = if (r.renewals) |*t| t else return false;
-        const raw = http.member(a.payload, "credential") orelse return false;
-        if (raw.len < 3 or raw[0] != '"' or raw[raw.len - 1] != '"') return false;
-        const name = raw[1 .. raw.len - 1];
-        const info = s.renewal(name) orelse return false;
+        const want = renewableOf(a.payload, s) orelse return false;
+        if (now < want.info.expires_at_ms -| creds.renew_margin_ms) return false;
         const m = r.sh.st.moduleAt(a.module);
-        const multipart = http.member(a.payload, "multipart") orelse "null";
-        const i = t.add(.{
-            .exec_id = a.exec_id,
-            .seq = a.seq,
-            .attempt = a.attempt,
-            .pool_key = r.workflowKey(a.module),
-            .idempotent = a.idempotent,
-            .key = if (a.idempotent) a.key else @splat(0),
-            .single_use = !std.mem.eql(u8, multipart, "null"),
-        }, r.sh.st.modules[a.module].workflowId(), m.str(m.steps[a.step].name), a.payload, name, info) orelse return false;
-        // The one comparison of a request whose value is valid.
-        if (now < s.renew_at_ms) return false;
-        if (now < info.expires_at_ms -| creds.renew_margin_ms) return false;
+        // No row: the request goes with the value that it has, which is
+        // valid until the expiry. A response that refuses it is handled then.
+        const i = t.add(.{ .exec_id = a.exec_id, .seq = a.seq, .attempt = a.attempt, .single_use = want.single_use }, r.sh.st.modules[a.module].workflowId(), m.str(m.steps[a.step].name), want.slot, want.info) orelse return false;
         r.askRenewal(t, i);
         return true;
     }
@@ -1500,18 +1527,59 @@ pub const Runner = struct {
         r.publish(.{ .service = .{ .line = calls.line(ci) } });
     }
 
-    /// The result of a request that has a row: true when the step must not
-    /// see it, because the request goes again after a renewal.
+    /// The result of a request: true when the step must not see it,
+    /// because the request goes again after a renewal, or because the
+    /// renewal that it needs has no row (the step then gets a limit error).
     fn renewOnResult(r: *Runner, exec_id: u64, seq: u32, res: egress.Result) bool {
         const t = if (r.renewals) |*t| t else return false;
-        const i = t.find(exec_id, seq) orelse return false;
-        if (t.entries[i].state != .in_flight) return false;
         const status: u32 = switch (res) {
             .ok => |resp| resp.status,
             .err => 0,
         };
+        // A request that had its one renewal: the step gets this result,
+        // also when the status says "expired" again.
+        if (t.count != 0) if (t.find(exec_id, seq)) |i| {
+            if (t.entries[i].state != .in_flight) return false;
+            const decision = t.onResponse(i, status);
+            std.debug.assert(decision == .deliver);
+            return false;
+        };
+        // The one comparison of a response to a request with a valid value.
+        if (status < r.min_expiry_status) return false;
+        return r.renewAfterResponse(t, exec_id, seq, status);
+    }
+
+    /// A response with a status that can mean "the value expired". The
+    /// request has no row and the shell has no copy of its args: the core
+    /// gives them (`pendingDispatch`). They say which slot the request
+    /// used and which statuses count for it.
+    fn renewAfterResponse(r: *Runner, t: *renew.Table, exec_id: u64, seq: u32, status: u32) bool {
+        std.debug.assert(status >= r.min_expiry_status and t.find(exec_id, seq) == null);
+        const mod = r.sh.st.moduleOfExecution(exec_id) orelse return false;
+        const s = r.credsFor(mod) orelse return false;
+        if (!s.renewable) return false;
+        const arena = if (r.in_perform) &r.carry[r.carry_cur] else &r.batch;
+        // The args are needed for the names only: the row copies them.
+        const mark = arena.begin();
+        const row: ?u32, const wanted: bool = blk: {
+            defer mark.end();
+            const a = r.sh.st.pendingDispatch(exec_id, seq, arena) orelse break :blk .{ null, false };
+            const want = renewableOf(a.payload, s) orelse break :blk .{ null, false };
+            if (!want.info.matches(status)) break :blk .{ null, false };
+            const m = r.sh.st.moduleAt(a.module);
+            break :blk .{ t.add(.{ .exec_id = exec_id, .seq = seq, .attempt = a.attempt, .single_use = want.single_use }, r.sh.st.modules[a.module].workflowId(), m.str(m.steps[a.step].name), want.slot, want.info), true };
+        };
+        if (!wanted) return false;
+        const i = row orelse {
+            // No row for the renewal that v1 would make. The step does not
+            // get the response of the expired value as if the service gave
+            // it: it fails with a limit that names the flag, and can run again.
+            r.effectError(exec_id, seq, renew.full_text);
+            return true;
+        };
         switch (t.onResponse(i, status)) {
-            .deliver => return false,
+            // A new row had no renewal, and its status counts.
+            .deliver => unreachable,
             .renew => {
                 r.askRenewal(t, i);
                 return true;
@@ -1523,14 +1591,14 @@ pub const Runner = struct {
         }
     }
 
-    fn renewalsPending(r: *const Runner) bool {
-        return if (r.renewals) |*t| t.pending > 0 else false;
+    /// A credentials document arrived: a status of one of its slots can
+    /// lower the bound of `renewOnResult`.
+    fn noteStore(r: *Runner, s: *const creds.Store) void {
+        r.min_expiry_status = @min(r.min_expiry_status, s.min_status);
     }
 
-    /// The store of a workflow by its id, as `credsFor` gives it.
-    fn credsForId(r: *Runner, id: []const u8) ?*const creds.Store {
-        if (id.len > 0) if (r.findWorkflowCreds(id)) |w| return w.store;
-        return r.egress.cfg.credentials;
+    fn renewalsPending(r: *const Runner) bool {
+        return if (r.renewals) |*t| t.pending > 0 else false;
     }
 
     /// Requests whose renewal has an answer: send them again, or give the
@@ -1548,8 +1616,16 @@ pub const Runner = struct {
                 continue;
             }
             t.restart(i);
+            // The core has the args: the effect still waits for its result.
+            const a = r.sh.st.pendingDispatch(req.exec_id, req.seq, &r.batch) orelse {
+                // The execution left memory (a long wait in another branch),
+                // or the batch memory has no room for the args.
+                r.events.appendAssumeCapacity(.{ .kind = .effect_err, .exec_id = req.exec_id, .seq = req.seq, .payload = renew_resend_msg });
+                t.release(i);
+                continue;
+            };
             // A request that fails at once gives its row back in `egressDone`.
-            r.egress.start(req.exec_id, req.seq, t.args(i), if (req.idempotent) &t.entries[i].req.key else null, r.credsForId(t.workflow(i)), req.attempt, req.pool_key, now);
+            r.egress.start(a.exec_id, a.seq, a.payload, if (a.idempotent) &a.key else null, r.credsFor(a.module), a.attempt, r.workflowKey(a.module), now);
         }
     }
 
@@ -1851,6 +1927,7 @@ pub const Runner = struct {
                 });
                 const old = r.egress.cfg.credentials;
                 r.egress.cfg.credentials = store;
+                r.noteStore(store);
                 for (r.wf_creds) |*w| if (w.store) |ws| {
                     ws.next = store;
                 };
@@ -2029,6 +2106,7 @@ pub const Runner = struct {
     /// table is full.
     fn setWorkflowCreds(r: *Runner, id: []const u8, store: *creds.Store) bool {
         std.debug.assert(id.len <= core.max_id);
+        r.noteStore(store);
         if (r.findWorkflowCreds(id)) |w| {
             r.wf_pool.?.release(w.store.?);
             w.store = store;
@@ -3381,39 +3459,96 @@ test "inbound requests leave room for the results of outbound requests" {
     try std.testing.expectEqual(@as(usize, 0), r.nlost);
 }
 
-test "a 401 of a renewable credential asks n8n once, then the request goes again once" {
-    var t: TestRunner = .{ .arena = undefined };
+/// `run(t) { return await Call({ url: 'nowhere', credential: 'api', ...extra }) }`,
+/// an `http` step. `extra` is one more member of the args, or none.
+fn renewModule(gpa: std.mem.Allocator, extra: ?[]const u8, extra_number: f64, extra_true: bool) ![]u8 {
+    const Asm = core_lib.asm_.Asm;
+    var m: Asm = .{ .gpa = gpa, .meta = "{\"triggers\":[{\"kind\":\"webhook\",\"path\":\"w\"}]}" };
+    defer m.deinit();
+    const call = try m.step("Call", .http);
+    m.beginFunc();
+    try m.emit(.newobj, 0, 1, 0, 0);
+    try m.emitBc(.loads, 2, try m.str("nowhere"));
+    try m.emit(.setprop, 0, 1, try m.str("url"), 2);
+    try m.emitBc(.loads, 2, try m.str("api"));
+    try m.emit(.setprop, 0, 1, try m.str("credential"), 2);
+    if (extra) |name| {
+        if (extra_true) try m.emit(.loadbool, 1, 2, 0, 0) else try m.emitBc(.loadk, 2, try m.number(extra_number));
+        try m.emit(.setprop, 0, 1, try m.str(name), 2);
+    }
+    try m.emitBc(.loadi, 3, call);
+    try m.emit(.@"suspend", @backingInt(core_lib.module.EffectKind.http), 4, 3, 1);
+    try m.emit(.ret, 0, 4, 0, 0);
+    try m.endFunc("run", 1, 5, 0);
+    return m.finish();
+}
+
+/// Start a run of module 0 in the core of a test runner. Its request waits
+/// for a result; the test gives the results by hand. Returns the effect.
+fn startRenewRun(r: *Runner) !struct { exec: u64, seq: u32 } {
+    const tk = try r.sh.tick(sys.nowMs(), &.{.{ .kind = .start, .aux = 0, .payload = "{}" }});
+    defer r.sh.endBatch();
+    for (tk.actions) |a| if (a.kind == .dispatch) return .{ .exec = a.exec_id, .seq = a.seq };
+    return error.NoDispatch;
+}
+
+/// A test runner with one module, the service calls, the renewal table and
+/// the global credentials document `doc`.
+fn renewRunner(t: *TestRunner, doc: []const u8, rows: u32) !*Runner {
     try t.start();
-    defer t.deinit();
     const r = t.r;
     r.svc = try admin.ServiceCalls.init(t.arena.allocator(), 8, 1024);
-    r.renewals = try renew.Table.init(t.arena.allocator(), 8, 1024);
+    r.renewals = try renew.Table.init(t.arena.allocator(), rows, 1024);
+    const store = try t.arena.allocator().create(creds.Store);
+    store.* = try creds.Store.parse(t.arena.allocator(), doc);
+    r.egress.cfg.credentials = store;
+    r.noteStore(store);
+    return r;
+}
+
+fn statusResult(status: u32) egress.Result {
+    return .{ .ok = .{ .status = status, .header_lines = "", .body = "", .json = false } };
+}
+
+const renew_doc_401 = "{\"api\":{\"data\":{},\"renewal\":{\"status\":[401],\"oauth2\":true,\"statusDefault\":true}}}";
+
+test "a 401 of a renewable credential asks n8n once, then the request goes again once" {
+    var mod_arena = std.heap.ArenaAllocator.init(std.testing.allocator);
+    defer mod_arena.deinit();
+    const mods = [_][]const u8{try renewModule(mod_arena.allocator(), null, 0, false)};
+    var t: TestRunner = .{ .arena = undefined, .modules = &mods };
+    const r = try renewRunner(&t, renew_doc_401, 8);
+    defer t.deinit();
     const rt = &r.renewals.?;
-    // No host: the resend fails at once, which shows that it was sent.
-    const args = "{\"url\":\"nowhere\",\"credential\":\"api\"}";
-    const info: renew.Info = .{ .statuses = .{ 401, 0, 0, 0, 0, 0, 0, 0 }, .nstatus = 1 };
-    const key: [32]u8 = @splat(0);
-    const slot = args[std.mem.indexOf(u8, args, "api").?..][0..3];
-    for ([_]u64{ 5, 6 }) |exec| {
-        const req: renew.Request = .{ .exec_id = exec, .seq = 2, .attempt = 0, .pool_key = 0, .idempotent = false, .key = key, .single_use = false };
-        try std.testing.expect(rt.add(req, "wf", "Step", args, slot, info) != null);
-    }
-    const unauthorized: egress.Result = .{ .ok = .{ .status = 401, .header_lines = "", .body = "", .json = false } };
-    Runner.egressDone(r, 5, 2, unauthorized);
-    Runner.egressDone(r, 6, 2, unauthorized);
+    const one = try startRenewRun(r);
+    const two = try startRenewRun(r);
+    // A request with a valid value has no row, and a response that is not
+    // "expired" needs none: the step gets it.
+    try std.testing.expectEqual(@as(u32, 0), rt.count);
+    const other = try startRenewRun(r);
+    Runner.egressDone(r, other.exec, other.seq, statusResult(200));
+    Runner.egressDone(r, other.exec, other.seq, statusResult(500));
+    try std.testing.expectEqual(@as(usize, 2), r.events.items.len);
+    try std.testing.expectEqual(@as(u32, 0), rt.count);
+    r.events.clearRetainingCapacity();
+
+    Runner.egressDone(r, one.exec, one.seq, statusResult(401));
+    Runner.egressDone(r, two.exec, two.seq, statusResult(401));
     // The steps see nothing, and one call serves both requests.
     try std.testing.expectEqual(@as(usize, 0), r.events.items.len);
     try std.testing.expectEqual(@as(u32, 1), r.svc.?.count);
-    const call = r.svc.?.find(5, 2).?;
+    const call = r.svc.?.find(one.exec, one.seq).?;
     try std.testing.expect(std.mem.indexOf(u8, r.svc.?.line(call), "\"service\":\"credentials\",\"op\":\"renew\",\"args\":{\"credentialId\":\"api\"}") != null);
-    Runner.renewalAnswered(rt, rt.leaderAt(5, 2).?, .{ .ok = "true" });
+    Runner.renewalAnswered(rt, rt.leaderAt(one.exec, one.seq).?, .{ .ok = "true" });
+    // The resend takes the args from the core. No host: it fails at once,
+    // which shows that it was sent.
     r.resumeRenewed(sys.nowMs());
     try std.testing.expectEqual(@as(u64, 2), rt.counters.resent);
     // A second 401 goes to the step: one renewal and one resend only.
     var tries: u32 = 0;
     while (rt.count > 0 and tries < 4) : (tries += 1) {
-        if (rt.find(5, 2) != null) Runner.egressDone(r, 5, 2, unauthorized);
-        if (rt.find(6, 2) != null) Runner.egressDone(r, 6, 2, unauthorized);
+        if (rt.find(one.exec, one.seq) != null) Runner.egressDone(r, one.exec, one.seq, statusResult(401));
+        if (rt.find(two.exec, two.seq) != null) Runner.egressDone(r, two.exec, two.seq, statusResult(401));
     }
     try std.testing.expectEqual(@as(u32, 0), rt.count);
     try std.testing.expectEqual(@as(u64, 1), rt.counters.calls);
@@ -3421,33 +3556,91 @@ test "a 401 of a renewable credential asks n8n once, then the request goes again
 }
 
 test "a renewal that n8n refuses fails the step with the message of n8n" {
-    var t: TestRunner = .{ .arena = undefined };
-    try t.start();
+    var mod_arena = std.heap.ArenaAllocator.init(std.testing.allocator);
+    defer mod_arena.deinit();
+    const mods = [_][]const u8{try renewModule(mod_arena.allocator(), null, 0, false)};
+    var t: TestRunner = .{ .arena = undefined, .modules = &mods };
+    const r = try renewRunner(&t, "{\"api\":{\"data\":{},\"renewal\":{\"status\":[403]}}}", 8);
     defer t.deinit();
-    const r = t.r;
-    r.svc = try admin.ServiceCalls.init(t.arena.allocator(), 8, 1024);
-    r.renewals = try renew.Table.init(t.arena.allocator(), 8, 1024);
     const rt = &r.renewals.?;
-    const args = "{\"url\":\"nowhere\",\"credential\":\"api\"}";
-    const info: renew.Info = .{ .statuses = .{ 403, 0, 0, 0, 0, 0, 0, 0 }, .nstatus = 1 };
-    const req: renew.Request = .{ .exec_id = 5, .seq = 2, .attempt = 0, .pool_key = 0, .idempotent = false, .key = @splat(0), .single_use = false };
-    try std.testing.expect(rt.add(req, "wf", "Step", args, args[2..5], info) != null);
-    Runner.egressDone(r, 5, 2, .{ .ok = .{ .status = 403, .header_lines = "", .body = "", .json = false } });
+    const one = try startRenewRun(r);
+    Runner.egressDone(r, one.exec, one.seq, statusResult(403));
     try std.testing.expectEqual(@as(usize, 0), r.events.items.len);
-    Runner.renewalAnswered(rt, rt.leaderAt(5, 2).?, .{ .err = "\"Reconnect the \\\"x\\\" credential\"" });
+    Runner.renewalAnswered(rt, rt.leaderAt(one.exec, one.seq).?, .{ .err = "\"Reconnect the \\\"x\\\" credential\"" });
     r.resumeRenewed(sys.nowMs());
     try std.testing.expectEqual(@as(usize, 1), r.events.items.len);
     try std.testing.expect(r.events.items[0].kind == .effect_err);
     try std.testing.expectEqualStrings("Reconnect the \"x\" credential", r.events.items[0].payload);
     try std.testing.expectEqual(@as(u32, 0), rt.count);
     // The execution ended: the call of a renewal that it led is dropped with it.
-    try std.testing.expect(rt.add(req, "wf", "Step", args, args[2..5], info) != null);
-    Runner.egressDone(r, 5, 2, .{ .ok = .{ .status = 403, .header_lines = "", .body = "", .json = false } });
-    r.dropServiceCalls(5);
+    Runner.egressDone(r, one.exec, one.seq, statusResult(403));
+    try std.testing.expectEqual(@as(u32, 1), rt.count);
+    r.dropServiceCalls(one.exec);
     try std.testing.expectEqual(@as(u32, 1), r.svc.?.count);
     r.expireServiceCalls(std.math.maxInt(i64));
     try std.testing.expectEqual(@as(u32, 0), r.svc.?.count);
     try std.testing.expectEqual(@as(u32, 0), rt.count);
+}
+
+test "a renewal without a row fails the step with a limit, and the args have no size limit" {
+    var mod_arena = std.heap.ArenaAllocator.init(std.testing.allocator);
+    defer mod_arena.deinit();
+    const mods = [_][]const u8{try renewModule(mod_arena.allocator(), null, 0, false)};
+    var t: TestRunner = .{ .arena = undefined, .modules = &mods };
+    const r = try renewRunner(&t, "{\"api\":{\"data\":{},\"renewal\":{\"status\":[401]}},\"b\":{\"data\":{},\"renewal\":{\"status\":[302]}}}", 1);
+    defer t.deinit();
+    const rt = &r.renewals.?;
+    // A status below 400 of a slot of the document lowers the bound.
+    try std.testing.expectEqual(@as(u32, 302), r.min_expiry_status);
+    const one = try startRenewRun(r);
+    const two = try startRenewRun(r);
+    Runner.egressDone(r, one.exec, one.seq, statusResult(401));
+    try std.testing.expectEqual(@as(u32, 1), rt.count);
+    // The table is full: the step does not get the 401 of the expired value.
+    Runner.egressDone(r, two.exec, two.seq, statusResult(401));
+    try std.testing.expectEqual(@as(usize, 1), r.events.items.len);
+    try std.testing.expect(r.events.items[0].kind == .effect_err);
+    try std.testing.expectEqualStrings(renew.full_text, r.events.items[0].payload);
+    try std.testing.expectEqual(@as(u64, 1), rt.counters.full);
+    // A row has room for names only: 1 KB here, whatever the args are.
+    try std.testing.expectEqual(@as(usize, 1024), rt.room_bytes);
+}
+
+test "the options of the node: skipTokenRefresh, its own status, and a request without the slot values" {
+    const Case = struct { extra: ?[]const u8, number: f64 = 0, yes: bool = false, status: u32, renews: bool };
+    const cases = [_]Case{
+        .{ .extra = null, .status = 401, .renews = true },
+        .{ .extra = "skipTokenRefresh", .yes = true, .status = 401, .renews = false },
+        .{ .extra = "tokenExpiredStatusCode", .number = 403, .status = 403, .renews = true },
+        // The status of the node takes the place of 401.
+        .{ .extra = "tokenExpiredStatusCode", .number = 403, .status = 401, .renews = false },
+        .{ .extra = null, .status = 403, .renews = false },
+    };
+    for (cases) |c| {
+        var mod_arena = std.heap.ArenaAllocator.init(std.testing.allocator);
+        defer mod_arena.deinit();
+        const mods = [_][]const u8{try renewModule(mod_arena.allocator(), c.extra, c.number, c.yes)};
+        var t: TestRunner = .{ .arena = undefined, .modules = &mods };
+        const r = try renewRunner(&t, renew_doc_401, 8);
+        defer t.deinit();
+        const one = try startRenewRun(r);
+        Runner.egressDone(r, one.exec, one.seq, statusResult(c.status));
+        try std.testing.expectEqual(c.renews, r.renewals.?.count == 1);
+        try std.testing.expectEqual(c.renews, r.events.items.len == 0);
+    }
+    // The credential has statuses of its own: those of the node do not count.
+    var mod_arena = std.heap.ArenaAllocator.init(std.testing.allocator);
+    defer mod_arena.deinit();
+    const mods = [_][]const u8{try renewModule(mod_arena.allocator(), "tokenExpiredStatusCode", 404, false)};
+    var t: TestRunner = .{ .arena = undefined, .modules = &mods };
+    const r = try renewRunner(&t, "{\"api\":{\"data\":{},\"renewal\":{\"status\":[403],\"oauth2\":true}}}", 8);
+    defer t.deinit();
+    const one = try startRenewRun(r);
+    Runner.egressDone(r, one.exec, one.seq, statusResult(404));
+    try std.testing.expectEqual(@as(u32, 0), r.renewals.?.count);
+    const two = try startRenewRun(r);
+    Runner.egressDone(r, two.exec, two.seq, statusResult(403));
+    try std.testing.expectEqual(@as(u32, 1), r.renewals.?.count);
 }
 
 test "results raised while a batch acts wait for room, and none is lost" {

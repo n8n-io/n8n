@@ -22,6 +22,10 @@ pub const Store = struct {
     /// the earliest `renewal.expiresAt` less the margin. maxInt when no
     /// slot has an expiry. A request compares the clock with it once.
     renew_at_ms: i64 = std.math.maxInt(i64),
+    /// The lowest status that means "the value expired" for a slot of this
+    /// document; maxInt when no slot has one. A response with a lower
+    /// status needs no look at any slot.
+    min_status: u32 = std.math.maxInt(u32),
 
     /// Parse the file. The memory stays for the life of the process.
     pub fn parse(gpa: std.mem.Allocator, text: []const u8) !Store {
@@ -44,6 +48,7 @@ pub const Store = struct {
             const raw = rawMember(m.value, "renewal") orelse continue;
             if (raw.len == 0 or raw[0] != '{') continue;
             s.renewable = true;
+            s.min_status = @min(s.min_status, lowestStatus(rawMember(raw, "status")));
             const at = expiryOf(rawMember(raw, "expiresAt")) orelse continue;
             s.renew_at_ms = @min(s.renew_at_ms, at -| renew_margin_ms);
         }
@@ -69,6 +74,8 @@ pub const Store = struct {
                 info.nstatus += 1;
             }
         };
+        if (r.object.get("oauth2")) |on| info.oauth2 = on == .bool and on.bool;
+        if (r.object.get("statusDefault")) |on| info.status_default = on == .bool and on.bool;
         return info;
     }
 
@@ -133,6 +140,23 @@ pub const Store = struct {
         return if (x == .string) x.string else "";
     }
 };
+
+/// The lowest number of a `renewal.status` list (raw JSON); maxInt when it
+/// has none. A slot whose requests can give their own statuses
+/// (`statusDefault`) counts with its list: the options of the nodes of n8n
+/// give 401 and above.
+fn lowestStatus(raw: ?[]const u8) u32 {
+    var it = http.Elements.init(raw orelse return std.math.maxInt(u32)) orelse return std.math.maxInt(u32);
+    var low: u32 = std.math.maxInt(u32);
+    var n: usize = 0;
+    // Only `renew.max_statuses` count for a slot; the lowest of them is enough.
+    while (n < renew.max_statuses) : (n += 1) {
+        const e = it.next() orelse break;
+        // Text that is no status matches no response: it is left out.
+        low = @min(low, std.fmt.parseInt(u16, std.mem.trim(u8, e, " \t\r\n"), 10) catch continue);
+    }
+    return low;
+}
 
 /// The credential flags of a credentials document, as the core reads them
 /// (`core/cred_flags.zig`): for each slot, the members of `data.n8nDerived`

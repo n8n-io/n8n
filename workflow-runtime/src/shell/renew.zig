@@ -1,18 +1,25 @@
 //! Credential renewal for outbound requests (workflow-lang
 //! `docs/credentials-plan.md`, "Renewal").
 //!
-//! A request that uses a renewable credential slot keeps a copy of its args
-//! here while it is in flight. When the value is about to expire, or the
+//! When the value of a renewable credential slot is about to expire, or a
 //! response has a status that means "the token expired", the shard asks n8n
 //! for a renewal (a `credentials.renew` service call), and the request goes
 //! again once. A request gets at most one renewal and one resend.
 //!
+//! A request has a row here from the moment it needs a renewal until the
+//! response of its resend. A request whose value is valid has no row and
+//! costs nothing here. A row keeps the names of the slot, the workflow and
+//! the step, never the args: the core still has the args of an effect that
+//! waits for its result, and gives them again for the resend
+//! (`core.State.pendingDispatch`). So the size of the args is no limit.
+//!
 //! Requests that wait for the same slot of the same workflow share one call:
 //! the first is the leader, the others follow it.
 //!
-//! The table and the room of each entry are reserved at startup. A full
-//! table or args larger than the room mean that the request runs without
-//! this protection (a limit that the counters show), never a growth.
+//! The table and the room of each row are reserved at startup. A full table
+//! is a limit: the step of a request that needs a renewal and gets no row
+//! fails with a message that names the flag, and can run again. The step
+//! never gets the "expired" response of a request that had no renewal.
 const std = @import("std");
 
 /// The most status codes of one slot (`renewal.status`).
@@ -24,12 +31,37 @@ const max_workflow = 64;
 /// The message when n8n gave none that fits.
 pub const failed_text = "credentials: n8n did not renew the credential";
 
+/// The message of the step when the table has no row for its request.
+pub const full_text = "credentials: too many requests wait for a credential renewal (--max-renewals); the step can run again (limit)";
+
 /// What the credentials document says about a renewable slot.
 pub const Info = struct {
     /// When the value expires, in ms since the epoch; maxInt when unknown.
     expires_at_ms: i64 = std.math.maxInt(i64),
     statuses: [max_statuses]u16 = @splat(0),
     nstatus: u8 = 0,
+    /// The slot is an OAuth2 credential (`renewal.oauth2`): a request can
+    /// say `skipTokenRefresh`, as the options of `requestOAuth2` in n8n-core.
+    oauth2: bool = false,
+    /// The credential has no statuses of its own (`renewal.statusDefault`):
+    /// the `tokenExpiredStatusCode` of a request takes the place of 401.
+    status_default: bool = false,
+
+    /// The options that the node gave with its request, as `requestOAuth2`
+    /// of n8n-core reads them: `skipTokenRefresh: true` means no renewal
+    /// after a response; `tokenExpiredStatusCode` (a number or a list, raw
+    /// JSON) counts only when the credential has no statuses of its own.
+    /// Both are for an OAuth2 slot only.
+    pub fn withRequest(info: Info, skip: bool, raw_statuses: ?[]const u8) Info {
+        std.debug.assert(info.nstatus <= max_statuses);
+        var out = info;
+        if (!info.oauth2) return out;
+        if (info.status_default) if (raw_statuses) |raw| {
+            if (!std.mem.eql(u8, raw, "null")) out.nstatus = readStatuses(raw, &out.statuses);
+        };
+        if (skip) out.nstatus = 0;
+        return out;
+    }
 
     /// True when a response with `status` means that the value expired.
     pub fn matches(info: *const Info, status: u32) bool {
@@ -39,9 +71,29 @@ pub const Info = struct {
     }
 };
 
+/// The statuses of `raw`, a JSON number or a list of numbers: at most
+/// `max_statuses`, in order. Text that is no status gives no status, so a
+/// broken option never matches a response.
+fn readStatuses(raw: []const u8, out: *[max_statuses]u16) u8 {
+    var n: u8 = 0;
+    var i: usize = 0;
+    while (i < raw.len and n < max_statuses) {
+        const start = i;
+        while (i < raw.len and raw[i] >= '0' and raw[i] <= '9') i += 1;
+        if (i > start) {
+            // A number too large for a status matches nothing: it is left out.
+            if (std.fmt.parseInt(u16, raw[start..i], 10)) |code| {
+                out[n] = code;
+                n += 1;
+            } else |_| {}
+        } else i += 1;
+    }
+    return n;
+}
+
 pub const State = enum(u8) {
     free,
-    /// The request is with the egress client.
+    /// The request is with the egress client, or about to go to it.
     in_flight,
     /// The renewal is with n8n.
     waiting,
@@ -51,15 +103,13 @@ pub const State = enum(u8) {
     failed,
 };
 
-/// The effect that a request belongs to, and what a resend needs.
+/// The effect that a request belongs to. The core has the rest of what a
+/// resend needs.
 pub const Request = struct {
     exec_id: u64,
     seq: u32,
+    /// The attempt of the step, for the service call.
     attempt: u32,
-    /// The key of the workflow for the egress pools.
-    pool_key: u64,
-    idempotent: bool,
-    key: [32]u8,
     /// The body can go once only (multipart): n8n v1 renews for such a
     /// request and gives the first response, without a resend.
     single_use: bool,
@@ -76,26 +126,15 @@ pub const Entry = struct {
     detached: bool = false,
     req: Request = no_request,
     info: Info = .{},
-    /// Bytes of the room in use: the args, then the step name; or the
-    /// failure message.
-    args_len: u32 = 0,
-    step_len: u32 = 0,
-    /// The slot name, inside the args.
-    slot_at: u32 = 0,
+    /// Bytes of the room in use: the slot name, then the step name; or the
+    /// failure message (`slot_len` bytes, `step_len` 0).
     slot_len: u32 = 0,
+    step_len: u32 = 0,
     workflow: [max_workflow]u8 = @splat(0),
     workflow_len: u8 = 0,
 };
 
-const no_request: Request = .{
-    .exec_id = 0,
-    .seq = 0,
-    .attempt = 0,
-    .pool_key = 0,
-    .idempotent = false,
-    .key = @splat(0),
-    .single_use = false,
-};
+const no_request: Request = .{ .exec_id = 0, .seq = 0, .attempt = 0, .single_use = false };
 
 /// What to do with a response.
 pub const Decision = enum {
@@ -116,9 +155,9 @@ pub const Want = enum {
 };
 
 pub const Counters = struct {
-    /// Requests that ran without the protection: the table was full.
+    /// Requests that needed a renewal and got no row: the table was full.
     full: u64 = 0,
-    /// The same, because the args were larger than the room.
+    /// The same, because the names were longer than the room.
     too_large: u64 = 0,
     /// Service calls for a renewal.
     calls: u64 = 0,
@@ -128,7 +167,7 @@ pub const Counters = struct {
     resent: u64 = 0,
 };
 
-/// Table of the requests that can still get a renewal. One row for each
+/// Table of the requests that need a renewal or had one. One row for each
 /// such request; the shard owns it.
 pub const Table = struct {
     gpa: std.mem.Allocator,
@@ -160,25 +199,18 @@ pub const Table = struct {
         return t.rooms[@as(usize, i) * t.room_bytes ..][0..t.room_bytes];
     }
 
-    /// The args of the request of row `i`.
-    pub fn args(t: *const Table, i: u32) []const u8 {
-        const e = &t.entries[i];
-        std.debug.assert(e.state != .free and e.state != .failed);
-        return t.room(i)[0..e.args_len];
-    }
-
     /// The step name of row `i`, for the service event.
     pub fn step(t: *const Table, i: u32) []const u8 {
         const e = &t.entries[i];
         std.debug.assert(e.state != .free and e.state != .failed);
-        return t.room(i)[e.args_len..][0..e.step_len];
+        return t.room(i)[e.slot_len..][0..e.step_len];
     }
 
     /// The slot name of row `i`.
     pub fn slot(t: *const Table, i: u32) []const u8 {
         const e = &t.entries[i];
         std.debug.assert(e.state != .free and e.state != .failed);
-        return t.room(i)[e.slot_at..][0..e.slot_len];
+        return t.room(i)[0..e.slot_len];
     }
 
     pub fn workflow(t: *const Table, i: u32) []const u8 {
@@ -191,7 +223,7 @@ pub const Table = struct {
     pub fn message(t: *const Table, i: u32) []const u8 {
         const e = &t.entries[i];
         std.debug.assert(e.state == .failed);
-        return t.room(i)[0..e.args_len];
+        return t.room(i)[0..e.slot_len];
     }
 
     /// The row of an effect, or null.
@@ -210,23 +242,20 @@ pub const Table = struct {
         return if (e.state == .waiting and e.leader) i else null;
     }
 
-    /// Keep a request that starts now. `slot_name` must be a part of
-    /// `request_args`. Null when the request cannot be kept: it then runs
-    /// without a renewal.
+    /// Keep a request that needs a renewal now. Null when the table has no
+    /// row for it: the caller fails the step with `full_text`, or lets a
+    /// request with a value that is still valid go.
     pub fn add(
         t: *Table,
         req: Request,
         workflow_id: []const u8,
         step_name: []const u8,
-        request_args: []const u8,
         slot_name: []const u8,
         info: Info,
     ) ?u32 {
         std.debug.assert(workflow_id.len <= max_workflow);
-        std.debug.assert(@intFromPtr(slot_name.ptr) >= @intFromPtr(request_args.ptr));
-        std.debug.assert(@intFromPtr(slot_name.ptr) + slot_name.len <= @intFromPtr(request_args.ptr) + request_args.len);
         const name = step_name[0..@min(step_name.len, max_step)];
-        if (request_args.len + name.len > t.room_bytes) {
+        if (slot_name.len + name.len > t.room_bytes) {
             t.counters.too_large += 1;
             return null;
         }
@@ -236,15 +265,13 @@ pub const Table = struct {
         };
         const e = &t.entries[i];
         const mem = t.room(i);
-        @memcpy(mem[0..request_args.len], request_args);
-        @memcpy(mem[request_args.len..][0..name.len], name);
+        @memcpy(mem[0..slot_name.len], slot_name);
+        @memcpy(mem[slot_name.len..][0..name.len], name);
         e.* = .{
             .state = .in_flight,
             .req = req,
             .info = info,
-            .args_len = @intCast(request_args.len),
             .step_len = @intCast(name.len),
-            .slot_at = @intCast(@intFromPtr(slot_name.ptr) - @intFromPtr(request_args.ptr)),
             .slot_len = @intCast(slot_name.len),
             .workflow_len = @intCast(workflow_id.len),
         };
@@ -341,7 +368,7 @@ pub const Table = struct {
         }
         const text = if (msg.len == 0) failed_text else msg[0..@min(msg.len, t.room_bytes)];
         @memcpy(t.room(i)[0..text.len], text);
-        e.args_len = @intCast(text.len);
+        e.slot_len = @intCast(text.len);
         e.step_len = 0;
         e.state = .failed;
     }
@@ -389,22 +416,19 @@ pub const Table = struct {
 };
 
 fn testRequest(exec_id: u64, seq: u32) Request {
-    return .{ .exec_id = exec_id, .seq = seq, .attempt = 0, .pool_key = 7, .idempotent = false, .key = @splat(0), .single_use = false };
+    return .{ .exec_id = exec_id, .seq = seq, .attempt = 0, .single_use = false };
 }
 
-const test_args = "{\"url\":\"http://h/\",\"credential\":\"api\"}";
 const test_info: Info = .{ .statuses = .{ 401, 403, 0, 0, 0, 0, 0, 0 }, .nstatus = 2 };
 
 fn testAdd(t: *Table, exec_id: u64, seq: u32, workflow_id: []const u8) ?u32 {
-    const at = std.mem.indexOf(u8, test_args, "api") orelse return null;
-    return t.add(testRequest(exec_id, seq), workflow_id, "Step", test_args, test_args[at..][0..3], test_info);
+    return t.add(testRequest(exec_id, seq), workflow_id, "Step", "api", test_info);
 }
 
 test "a response with an expiry status gets one renewal and one resend" {
     var t = try Table.init(std.testing.allocator, 4, 1024);
     defer t.deinit();
     const i = testAdd(&t, 1, 0, "wf").?;
-    try std.testing.expectEqualStrings(test_args, t.args(i));
     try std.testing.expectEqualStrings("api", t.slot(i));
     try std.testing.expectEqualStrings("Step", t.step(i));
     try std.testing.expectEqual(Decision.renew, t.onResponse(i, 403));
@@ -472,7 +496,7 @@ test "a body that goes once gets the renewal and no resend" {
     defer t.deinit();
     var req = testRequest(1, 0);
     req.single_use = true;
-    const i = t.add(req, "wf", "Step", test_args, test_args[2..5], test_info).?;
+    const i = t.add(req, "wf", "Step", "api", test_info).?;
     try std.testing.expectEqual(Decision.renew_detached, t.onResponse(i, 401));
     try std.testing.expectEqual(Want.call, t.want(i));
     t.answered(i, true, "");
@@ -496,11 +520,37 @@ test "an execution that ends keeps the renewal for its followers" {
     try std.testing.expectEqual(b, t.nextPending().?);
 }
 
-test "a full table and large args are limits, not growth" {
+test "the options of a request: skipTokenRefresh and its own statuses, for an OAuth2 slot" {
+    const t = std.testing;
+    const own: Info = .{ .statuses = .{ 403, 0, 0, 0, 0, 0, 0, 0 }, .nstatus = 1, .oauth2 = true };
+    const default: Info = .{ .statuses = .{ 401, 0, 0, 0, 0, 0, 0, 0 }, .nstatus = 1, .oauth2 = true, .status_default = true };
+    // The statuses of the credential win over those of the node.
+    try t.expect(own.withRequest(false, "404").matches(403));
+    try t.expect(!own.withRequest(false, "404").matches(404));
+    // Without them, the statuses of the node take the place of 401.
+    try t.expect(default.withRequest(false, null).matches(401));
+    try t.expect(default.withRequest(false, "null").matches(401));
+    try t.expect(default.withRequest(false, "403").matches(403));
+    try t.expect(!default.withRequest(false, "403").matches(401));
+    const list = default.withRequest(false, "[401, 403,404]");
+    try t.expect(list.matches(401) and list.matches(403) and list.matches(404) and !list.matches(500));
+    try t.expectEqual(@as(u8, max_statuses), default.withRequest(false, "[1,2,3,4,5,6,7,8,9,10]").nstatus);
+    try t.expectEqual(@as(u8, 0), default.withRequest(false, "\"soon\"").nstatus);
+    try t.expectEqual(@as(u8, 1), default.withRequest(false, "[99999999,403]").nstatus);
+    // `skipTokenRefresh`: no status means "expired".
+    try t.expect(!default.withRequest(true, null).matches(401));
+    try t.expect(!own.withRequest(true, "403").matches(403));
+    // A slot of another kind does not read the options.
+    const minted: Info = .{ .statuses = .{ 401, 0, 0, 0, 0, 0, 0, 0 }, .nstatus = 1 };
+    try t.expect(minted.withRequest(true, "403").matches(401));
+    try t.expect(!minted.withRequest(true, "403").matches(403));
+}
+
+test "a full table and long names are limits, not growth" {
     var t = try Table.init(std.testing.allocator, 1, 1024);
     defer t.deinit();
     const big: [1100]u8 = @splat('x');
-    try std.testing.expect(t.add(testRequest(1, 0), "wf", "Step", &big, big[0..1], test_info) == null);
+    try std.testing.expect(t.add(testRequest(1, 0), "wf", "Step", &big, test_info) == null);
     const a = testAdd(&t, 1, 0, "wf").?;
     try std.testing.expect(testAdd(&t, 2, 0, "wf") == null);
     try std.testing.expectEqual(@as(u64, 1), t.counters.too_large);
