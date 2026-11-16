@@ -1,6 +1,0 @@
-1. A Webhook node receives POST requests and replies through a Respond to Webhook node.
-2. The cleanup is a separate workflow that starts with an Execute Workflow Trigger. It trims and lowercases the email, title-cases the name and extracts the email domain.
-3. The scoring is a separate workflow that starts with an Execute Workflow Trigger. It adds 40 for a non-free email domain, 30 for a company and 30 for a message longer than 50 characters.
-4. The main workflow calls the cleanup workflow and then the scoring workflow with Execute Workflow nodes.
-5. A Data Table node inserts the lead with its score into the "leads" data table.
-6. The response contains the score.
