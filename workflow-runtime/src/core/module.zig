@@ -5,6 +5,7 @@ const std = @import("std");
 const lib = @import("lib.zig");
 const aot = @import("aot.zig");
 const simd_json = @import("simd_json.zig");
+const cred_flags = @import("cred_flags.zig");
 
 pub const magic: u32 = 0x4D57384E;
 pub const format_version: u16 = 1;
@@ -191,6 +192,10 @@ pub const Module = struct {
     /// `simd_json.hashKey`: string index plus one, or 0. Its length is a power
     /// of two. Empty when the loader had no room for it.
     keys: []const u16 = &.{},
+    /// The names of the credential flags that the code can read: the
+    /// `credentialFlags` list of META as written, or empty when META has no
+    /// such list or the list has another form (`cred_flags.validList`).
+    flag_names: []const u8 = "",
 
     /// The index of the module string equal to `bytes`, whose hash is `h`.
     pub fn internKey(m: *const Module, bytes: []const u8, h: u32) ?u32 {
@@ -300,6 +305,9 @@ pub fn load(bytes: []const u8, natives_buf: []u16) Error!Module {
     if (natives_buf.len < m.strCount()) return error.TooLarge;
     m.natives = natives_buf[0..m.strCount()];
     try verify(&m);
+    if (jsonGet(m.metaJson(), "credentialFlags")) |list| {
+        if (cred_flags.validList(list)) m.flag_names = list;
+    }
     if (natives_buf.len >= m.strCount() + m.funcs.len) {
         const ids = natives_buf[m.strCount()..][0..m.funcs.len];
         for (ids, 0..) |*id, fi| id.* = aot.find(&m, @intCast(fi));

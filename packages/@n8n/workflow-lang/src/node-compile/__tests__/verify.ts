@@ -1,3 +1,8 @@
+import { createHash } from 'node:crypto';
+
+import { Writer } from '../../convert/code.ts';
+import { helperSources } from '../../convert/helpers.ts';
+import { emitContinueLoop, errorRetryOf } from '../../convert/steps.ts';
 import { withDerivedValues } from '../../credentials/derived.ts';
 import { credentialFlagKey } from '../../credentials/flags.ts';
 import { deriveInject } from '../../credentials/inject.ts';
@@ -10,8 +15,14 @@ import type {
 } from '../../nodes/__tests__/equivalence.ts';
 import { applyCredential, normalizeRequest } from '../../nodes/__tests__/equivalence.ts';
 import { recordV1, recordV1Cached } from '../../nodes/__tests__/v1-recorder.ts';
+import { compile } from '../../compiler/index.ts';
+import { decodeModule } from '../../compiler/decode.ts';
+import { libraryNodeTypes } from '../../library/node-sources.ts';
+import { referenceHash } from '../../reference/binary-response.ts';
 import { runReference } from '../../reference/runner.ts';
-import type { NodeSources } from '../convert.ts';
+import type { VmCost } from '../../testing/vm.ts';
+import { allocationsOf, emptyCost, runModule } from '../../testing/vm.ts';
+import type { ErrorMode, NodeSources } from '../convert.ts';
 import { compileNodeInstance } from '../convert.ts';
 import { evaluateDerivation, evaluateFlag } from '../evaluate-node.ts';
 import type {
@@ -160,6 +171,27 @@ export function flagVariants(
 	return variants;
 }
 
+function storedFile(entry: unknown): unknown {
+	if (!isRecord(entry) || typeof entry.data !== 'string') return entry;
+	const { id, ...rest } = entry;
+	const stored = referenceHash(id);
+	if (stored !== undefined) return { ...rest, data: stored };
+	if (id !== undefined) return entry;
+	const bytes = Buffer.from(entry.data, 'base64');
+	return { ...rest, data: createHash('sha256').update(bytes).digest('hex') };
+}
+
+export function comparableOutput(output: unknown): unknown {
+	if (!Array.isArray(output)) return output;
+	return output.map((item: unknown) => {
+		if (!isRecord(item) || !isRecord(item.$binary)) return item;
+		const { $binary: files, ...json } = item;
+		const compared: Record<string, unknown> = {};
+		for (const [name, entry] of Object.entries(files)) compared[name] = storedFile(entry);
+		return { ...json, $binary: compared };
+	});
+}
+
 type Compiled = ReturnType<typeof compileNodeInstance>;
 const RECENT_COMPILES = 8;
 const recent: Array<{ sources: NodeSources; key: string; compiled: Compiled }> = [];
@@ -168,11 +200,26 @@ export function compileForCheck(
 	sources: NodeSources,
 	instance: { type: string; version: number; parameters: Record<string, unknown> },
 	credentials: Record<string, PublicCredential>,
+	errorMode: ErrorMode = 'stopWorkflow',
 ): Compiled {
-	const key = JSON.stringify([instance.type, instance.version, instance.parameters, credentials]);
+	const key = JSON.stringify([
+		instance.type,
+		instance.version,
+		instance.parameters,
+		credentials,
+		errorMode,
+	]);
 	const found = recent.find((entry) => entry.sources === sources && entry.key === key);
 	if (found) return found.compiled;
-	const compiled = compileNodeInstance(sources, instance, null, credentials, V1_TIMEZONE, V1_FACTS);
+	const compiled = compileNodeInstance(
+		sources,
+		instance,
+		null,
+		credentials,
+		V1_TIMEZONE,
+		V1_FACTS,
+		errorMode,
+	);
 	recent.push({ sources, key, compiled });
 	if (recent.length > RECENT_COMPILES) recent.shift();
 	return compiled;
@@ -341,20 +388,67 @@ async function recordWithMints(
 
 const V1_REQUEST_LIMIT = 'the node sent more than';
 
-export async function differenceFromV1(
+export type ErrorPairing = 'item' | 'position';
+
+const MAX_ANSWERS = 64;
+
+function continueWorkflow(
+	type: string,
 	c: EquivalenceCase,
-	sources: NodeSources,
-	registry: Registry,
-	options: { cache?: boolean } = {},
-): Promise<string | undefined> {
-	const compiled = compileForCheck(
-		sources,
-		{ type: c.type, version: c.typeVersion, parameters: c.parameters },
-		credentialsOf(c, registry),
-	);
-	if ('errors' in compiled) return `does not compile: ${compiled.errors[0]}`;
+	credentialType: string | undefined,
+	pairing: ErrorPairing,
+): string {
+	const errorOutput = c.settings?.onError === 'continueErrorOutput';
+	const w = new Writer();
+	w.depth = 2;
+	const helpers = emitContinueLoop(w, {
+		node: 'Node',
+		out: 'out',
+		errors: errorOutput ? 'errors' : null,
+		input: 'items',
+		item: 'item',
+		index: null,
+		call: () =>
+			`{ name: 'Node', type: ${JSON.stringify(type)}, typeVersion: ${c.typeVersion}, parameters: {}, items: [item]${credentialType ? ", credential: 'c'" : ''} }`,
+		retry: errorRetryOf(c.settings ?? {}),
+		byPosition: pairing === 'position',
+		trace: false,
+	});
+	return `import { webhook, workflow } from '@n8n/workflow-lang';
+
+type Json = any;
+
+export default workflow({
+	triggers: [webhook({ path: 'verify' })],
+	${credentialType ? `credentials: { c: { type: ${JSON.stringify(credentialType)} } },` : ''}
+	async run(ctx) {
+		const items: Json[] = ${JSON.stringify(c.items ?? [{}])};
+${w.toString()}
+		return ${errorOutput ? '[out, errors]' : '[out]'};
+	},
+});
+
+${helperSources(helpers).join('\n\n')}
+`;
+}
+
+export function errorPairingOfV1(recording: Recording): ErrorPairing | undefined {
+	const [main, errors] = recording.outputs ?? [];
+	const paired = recording.nodePaired ?? [];
+	if (main === undefined || main.length > 0 || errors === undefined || errors.length === 0)
+		return undefined;
+	if (paired.length !== errors.length) return undefined;
+	if (paired.every((p) => p)) return 'item';
+	return paired.some((p) => p) ? undefined : 'position';
+}
+
+function workflowSourceOf(
+	c: EquivalenceCase,
+	type: string,
+	parameters: Record<string, unknown>,
+): string {
 	const credentialType = c.credential?.type;
-	const source = `import { webhook, workflow } from '@n8n/workflow-lang';
+	return `import { webhook, workflow } from '@n8n/workflow-lang';
 
 export default workflow({
 	triggers: [webhook({ path: 'verify' })],
@@ -362,15 +456,162 @@ export default workflow({
 	async run(ctx) {
 		return await ctx.node({
 			name: 'Node',
-			type: ${JSON.stringify(compiled.type)},
+			type: ${JSON.stringify(type)},
 			typeVersion: ${c.typeVersion},
-			parameters: {},
+			parameters: ${JSON.stringify(parameters)},
 			${c.items ? `items: ${JSON.stringify(c.items)},` : ''}
 			${credentialType ? "credential: 'c'," : ''}
 		});
 	},
 });
 `;
+}
+
+function eachItemSourceOf(c: EquivalenceCase, type: string): string {
+	const credentialType = c.credential?.type;
+	return `import { webhook, workflow } from '@n8n/workflow-lang';
+
+type Json = any;
+
+export default workflow({
+	triggers: [webhook({ path: 'verify' })],
+	${credentialType ? `credentials: { c: { type: ${JSON.stringify(credentialType)} } },` : ''}
+	async run(ctx) {
+		const items: Json[] = ${JSON.stringify(c.items ?? [{}])};
+		const out: Json[] = [];
+		for (const item of items) {
+			const result: Json[] = await ctx.node({
+				name: 'Node',
+				type: ${JSON.stringify(type)},
+				typeVersion: ${c.typeVersion},
+				parameters: {},
+				items: [item],
+				${credentialType ? "credential: 'c'," : ''}
+			});
+			for (const r of result) out.push(r);
+		}
+		return out;
+	},
+});
+`;
+}
+
+const MAX_COMPILED_STEPS = 20000;
+const effectsOf = (responses: EquivalenceCase['responses']) => ({
+	Node: responses.map((r) => ({ status: 200, headers: {}, ...r })),
+});
+
+export interface CaseCost {
+	ops: number;
+	allocations: number;
+	calls: number;
+	reads: number;
+	writes: number;
+	branches: number;
+	concats: number;
+	stringUnits: number;
+	effects: number;
+	handWrittenOps?: number;
+	handWrittenAllocations?: number;
+}
+
+const HAND_WRITTEN = new Set(libraryNodeTypes());
+
+function bytecodeCost(
+	source: string,
+	extraNodes: Record<string, string>,
+	responses: EquivalenceCase['responses'],
+): { cost: VmCost; effects: string[] } | undefined {
+	let built: ReturnType<typeof compile>;
+	try {
+		built = compile(source, { extraNodes });
+	} catch {
+		return undefined;
+	}
+	if (!built.ok || built.module === undefined) return undefined;
+	const cost = emptyCost();
+	const out = runModule(
+		decodeModule(built.module),
+		{
+			trigger: { body: {}, headers: {}, query: {} },
+			now: V1_NOW,
+			seed: 1,
+			effects: effectsOf(responses),
+		},
+		{ cost },
+	);
+	return out.status === 'ok' ? { cost, effects: out.effects.map((e) => e.kind) } : undefined;
+}
+
+export function costOfCase(
+	c: EquivalenceCase,
+	sources: NodeSources,
+	registry: Registry,
+	eachItem = false,
+): CaseCost | undefined {
+	const compiled = compileForCheck(
+		sources,
+		{ type: c.type, version: c.typeVersion, parameters: c.parameters },
+		credentialsOf(c, registry),
+	);
+	if ('errors' in compiled) return undefined;
+	const responses = c.responses.filter((r) => r !== MINTED_TOKEN_RESPONSE);
+	const mine = bytecodeCost(
+		eachItem ? eachItemSourceOf(c, compiled.type) : workflowSourceOf(c, compiled.type, {}),
+		{ [compiled.file]: compiled.source },
+		responses,
+	);
+	if (!mine) return undefined;
+	const out: CaseCost = {
+		ops: mine.cost.ops,
+		allocations: allocationsOf(mine.cost),
+		calls: mine.cost.calls,
+		reads: mine.cost.reads,
+		writes: mine.cost.writes,
+		branches: mine.cost.branches,
+		concats: mine.cost.concats,
+		stringUnits: mine.cost.stringUnits,
+		effects: mine.effects.length,
+	};
+	if (!HAND_WRITTEN.has(c.type)) return out;
+	const theirs = bytecodeCost(workflowSourceOf(c, c.type, c.parameters), {}, responses);
+	if (!theirs || theirs.effects.join() !== mine.effects.join()) return out;
+	return {
+		...out,
+		handWrittenOps: theirs.cost.ops,
+		handWrittenAllocations: allocationsOf(theirs.cost),
+	};
+}
+
+export async function differenceFromV1(
+	c: EquivalenceCase,
+	sources: NodeSources,
+	registry: Registry,
+	options: {
+		cache?: boolean;
+		pairing?: ErrorPairing;
+		pairings?: Set<ErrorPairing>;
+		eachItem?: boolean;
+	} = {},
+): Promise<string | undefined> {
+	const mode: ErrorMode =
+		c.settings?.onError ?? (c.settings?.continueOnFail ? 'continueRegularOutput' : 'stopWorkflow');
+	const continues = mode !== 'stopWorkflow';
+	if (c.settings !== undefined && !continues)
+		return 'node settings have a check only under a "continue" setting';
+	const compiled = compileForCheck(
+		sources,
+		{ type: c.type, version: c.typeVersion, parameters: c.parameters },
+		credentialsOf(c, registry),
+		mode,
+	);
+	if ('errors' in compiled) return `does not compile: ${compiled.errors[0]}`;
+	const asked: EquivalenceCase = compiled.storesResponses ? { ...c, responseBytes: true } : c;
+	const credentialType = c.credential?.type;
+	const plainSource =
+		options.eachItem === true
+			? eachItemSourceOf(c, compiled.type)
+			: workflowSourceOf(c, compiled.type, {});
 	const recordPlain = async (testCase: EquivalenceCase) =>
 		await within(8000, options.cache === true ? recordV1Cached(testCase) : recordV1(testCase));
 	const record = async (testCase: EquivalenceCase) =>
@@ -380,13 +621,20 @@ export default workflow({
 				)
 			: await recordPlain(testCase);
 	const minted =
-		compiled.mints.length > 0 ? await recordWithMints(c, compiled.mints, record) : undefined;
+		compiled.mints.length > 0 ? await recordWithMints(asked, compiled.mints, record) : undefined;
 	if (typeof minted === 'string') return minted;
-	const v1 = minted?.v1 ?? (await record(c));
+	const v1 = minted?.v1 ?? (await record(asked));
 	if (v1.error?.includes(V1_REQUEST_LIMIT)) return `v1 has no result: ${v1.error.slice(0, 90)}`;
-	const responses = minted
+	const source = continues
+		? continueWorkflow(compiled.type, c, credentialType, options.pairing ?? 'item')
+		: plainSource;
+	const given = minted
 		? minted.testCase.responses.filter((_response, k) => !minted.exchanges.has(k))
 		: c.responses;
+	const responses =
+		continues || options.eachItem === true
+			? Array.from({ length: MAX_ANSWERS }, (_, k) => given[Math.min(k, given.length - 1)])
+			: given;
 	const flags = flagValues(compiled.flags, credentialData(c, registry));
 	if (flags === undefined)
 		return 'a condition on the credential has no value for the test credential';
@@ -394,14 +642,14 @@ export default workflow({
 		trigger: { body: {}, headers: {}, query: {} },
 		now: V1_NOW,
 		seed: 1,
-		effects: { Node: responses.map((r) => ({ status: 200, headers: {}, ...r })) },
+		effects: effectsOf(responses),
 		...(compiled.flags.length > 0 ? { credentialFlags: { c: flags } } : {}),
 	};
 	const runWith = async (seed: number) =>
 		await runReference(
 			source,
 			{ ...fixture, seed },
-			{ extraNodes: { [compiled.file]: compiled.source } },
+			{ extraNodes: { [compiled.file]: compiled.source }, maxSteps: MAX_COMPILED_STEPS },
 		);
 	const out = await runWith(fixture.seed);
 
@@ -502,6 +750,24 @@ export default workflow({
 		}
 		return 'the requests differ';
 	}
+	if (continues) {
+		if (v1.error !== undefined) return `the v1 run fails: ${v1.error.slice(0, 90)}`;
+		if (out.status !== 'ok')
+			return `the compiled node fails: ${JSON.stringify(out.result).slice(0, 120)}`;
+		const theirs = v1.outputs ?? [];
+		if (theirs.length > (mode === 'continueErrorOutput' ? 2 : 1))
+			return 'the v1 node has more than one output';
+		const mine: unknown[] = Array.isArray(out.result) ? out.result : [];
+		for (let k = 0; k < mine.length; k++) {
+			const expected = JSON.stringify(comparableOutput(theirs[k] ?? []));
+			const given = JSON.stringify(comparableOutput(mine[k]));
+			if (given !== expected)
+				return `output ${k} differs: ${given.slice(0, 70)} / ${expected.slice(0, 70)}`;
+		}
+		const pairing = errorPairingOfV1(v1);
+		if (pairing !== undefined) options.pairings?.add(pairing);
+		return undefined;
+	}
 	if (v1.error !== undefined) {
 		if (out.status !== 'error') return 'v1 fails and the compiled node does not';
 		const message = isRecord(out.result) ? out.result.message : out.result;
@@ -515,7 +781,8 @@ export default workflow({
 		others.map((other) => other.result),
 		compiled.randoms,
 	);
-	return JSON.stringify(results.mine) === JSON.stringify(results.theirs)
+	return JSON.stringify(comparableOutput(results.mine)) ===
+		JSON.stringify(comparableOutput(results.theirs))
 		? undefined
 		: 'the output differs';
 }

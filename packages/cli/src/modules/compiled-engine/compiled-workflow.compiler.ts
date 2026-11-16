@@ -45,6 +45,12 @@ interface StepInfo {
 
 const STICKY_NOTE = 'n8n-nodes-base.stickyNote';
 
+/**
+ * The form of a stored artifact. It is part of the cache key: an artifact of an older form
+ * is not read. Form 2: the guard of a node with conditions on its credential names the node.
+ */
+const ARTIFACT_FORM = 2;
+
 function isTriggerType(type: string) {
 	return /trigger$/i.test(type) || type === 'n8n-nodes-base.webhook';
 }
@@ -178,6 +184,15 @@ interface StoredArtifact extends Omit<CompiledArtifact, 'module'> {
 	module?: string;
 }
 
+/** What one compile of a workflow reads. */
+interface CompileContext {
+	lang: Awaited<ReturnType<typeof loadWorkflowLang>>;
+	input: CompileInput;
+	workflowJson: Record<string, unknown>;
+	subWorkflows: Map<string, unknown>;
+	publicCredentials: Map<string, PublicCredential>;
+}
+
 /**
  * Converts and compiles workflows with `@n8n/workflow-lang`. Results are kept
  * by a hash of the input, in memory and as files in the data folder, so a
@@ -227,7 +242,7 @@ export class CompiledWorkflowCompiler {
 			connections: input.connections,
 			settings: input.settings ?? {},
 		};
-		const key = createHash('sha256')
+		const baseKey = createHash('sha256')
 			.update(lang.COMPILER_VERSION)
 			.update(JSON.stringify(workflowJson))
 			.update(JSON.stringify([...subWorkflows.entries()]))
@@ -235,8 +250,43 @@ export class CompiledWorkflowCompiler {
 			.update(input.trigger ?? '')
 			// A module holds the public fields of its credentials: other fields give another module.
 			.update(JSON.stringify([this.compileNodes, ...publicCredentials.entries()]))
+			// A node that stores a response compiles only when `wfrt` has the file store.
+			.update(this.processes.storesResponses ? 'stores-responses' : '')
+			.update(String(ARTIFACT_FORM))
 			.digest('hex');
+		const context = { lang, input, workflowJson, subWorkflows, publicCredentials };
 
+		// With every node that can compile, compiled.
+		const full = await this.compileKeyed(baseKey, context, []);
+		if (!this.compileNodes || !full.ok) return full;
+		// A compiled node with conditions on its credential runs compiled only for the values of
+		// the conditions that were checked against the v1 node. For other values the node must
+		// not fail where v1 succeeds: it runs in the fallback host. The artifact above is the
+		// one to use again when the credential changes to checked values.
+		const hostNodes = await this.credentials.unprovenFlagNodes(
+			input.id,
+			full.slots,
+			full.derivations,
+		);
+		if (hostNodes.length === 0) return full;
+		this.logger.debug(
+			`Workflow ${input.id}: ${hostNodes.length} node(s) run in the fallback host, because a credential gives their conditions values that are not checked`,
+			{ workflowId: input.id },
+		);
+		const hostKey = createHash('sha256')
+			.update(baseKey)
+			.update(JSON.stringify(hostNodes))
+			.digest('hex');
+		return await this.compileKeyed(hostKey, context, hostNodes);
+	}
+
+	/** The artifact of a key: from the memory, from the cache folder, or a new compile. */
+	private async compileKeyed(
+		key: string,
+		context: CompileContext,
+		hostNodes: string[],
+	): Promise<CompiledArtifact> {
+		const { input } = context;
 		const inMemory = this.cache.get(key);
 		if (inMemory) {
 			void this.artifacts.touch(key);
@@ -252,21 +302,17 @@ export class CompiledWorkflowCompiler {
 		const pending = this.inFlight.get(key);
 		if (pending) return await pending;
 
-		const work = this.run(lang, key, input, workflowJson, subWorkflows, publicCredentials).finally(
-			() => this.inFlight.delete(key),
-		);
+		const work = this.run(key, context, hostNodes).finally(() => this.inFlight.delete(key));
 		this.inFlight.set(key, work);
 		return await work;
 	}
 
 	private async run(
-		lang: Awaited<ReturnType<typeof loadWorkflowLang>>,
 		key: string,
-		input: CompileInput,
-		workflowJson: Record<string, unknown>,
-		subWorkflows: Map<string, unknown>,
-		publicCredentials: Map<string, PublicCredential>,
+		context: CompileContext,
+		hostNodes: string[],
 	): Promise<CompiledArtifact> {
+		const { lang, input, workflowJson, subWorkflows, publicCredentials } = context;
 		const startedAt = Date.now();
 		// `resolveWorkflow` is read by converters that support Execute Workflow nodes.
 		// `timezone` is the instance default (GENERIC_TIMEZONE), for workflows without their own.
@@ -296,6 +342,8 @@ export class CompiledWorkflowCompiler {
 							this.nodeTypes,
 							publicCredentials,
 							this.credentialTypes,
+							this.processes.storesResponses,
+							new Set(hostNodes),
 						),
 					}
 				: {}),

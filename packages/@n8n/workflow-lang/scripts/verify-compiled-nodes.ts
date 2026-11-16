@@ -18,17 +18,27 @@ import type { NodeDescription } from '../src/convert/node-parameters.ts';
 import { getNodeParameters } from '../src/convert/node-parameters.ts';
 import { publicCredential } from '../src/credentials/public.ts';
 import { loadCredentialTypes, registryOf } from '../src/credentials/types.ts';
+import type { ErrorPairing } from '../src/node-compile/__tests__/verify.ts';
+import type { CaseCost } from '../src/node-compile/__tests__/verify.ts';
 import {
 	compileForCheck,
+	costOfCase,
 	differenceFromV1,
 	flagKeyOf,
 	flagVariants,
 	MINTED_TOKEN_RESPONSE,
 } from '../src/node-compile/__tests__/verify.ts';
-import type { NodeSources } from '../src/node-compile/convert.ts';
+import { COST } from '../src/node-compile/cost.generated.ts';
+import type { ErrorMode, NodeSources } from '../src/node-compile/convert.ts';
 import { evaluateInSandbox } from '../src/node-compile/evaluate-node.ts';
-import { verifiedKey } from '../src/node-compile/convert.ts';
-import type { EquivalenceCase } from '../src/nodes/__tests__/equivalence.ts';
+import {
+	CONTINUE_MODES,
+	CALL_FOR_EACH_ITEM,
+	ERROR_ITEMS_BY_POSITION,
+	errorModeCondition,
+	verifiedKey,
+} from '../src/node-compile/convert.ts';
+import type { EquivalenceCase, NodeSettings } from '../src/nodes/__tests__/equivalence.ts';
 import {
 	disposeRecorder,
 	recordV1,
@@ -65,14 +75,19 @@ const DIST = args.includes('--dist');
 const DETAIL = args.includes('--detail');
 const CACHE = !args.includes('--no-cache');
 const ALL_BLOCKERS = args.includes('--all-blockers');
+const SHOW_COST = args.includes('--cost');
+const CHECK_COST = args.includes('--check-cost');
 const one = valueOf('--one');
 const weightsFile = valueOf('--weights');
 const pattern = args.find((a, at) => !a.startsWith('--') && !VALUE_FLAGS.includes(args[at - 1]));
 const add = (into: Record<string, number>, from: Record<string, number> | undefined) => {
 	for (const [key, count] of Object.entries(from ?? {})) into[key] = (into[key] ?? 0) + count;
 };
+const MEASURE_COST =
+	SHOW_COST || CHECK_COST || (one === undefined && pattern === undefined && !DIST);
 const filter = new RegExp(one === undefined ? (pattern ?? '.') : `^${one}$`, 'i');
 const PARALLEL = 6;
+const NODE_TIMEOUT_MS = 900_000;
 const UPLOAD_ANSWER = {
 	upload_url: 'https://files.example.com/upload/v1/abc',
 	file_id: 'F1',
@@ -93,6 +108,26 @@ const FILE_ITEMS = [
 		},
 	},
 ];
+const DOWNLOAD_ANSWER = {
+	headers: { 'content-type': 'application/pdf' },
+	body: {
+		ok: true,
+		id: 'r1',
+		name: 'reports/summary.pdf',
+		result: { id: 'r1', file_path: 'documents/file_7.pdf' },
+		data: [{ id: 'r1' }],
+	},
+};
+const DOWNLOAD_ANSWER_TYPED = {
+	headers: { 'content-type': 'image/png; charset=binary' },
+	body: {
+		ok: true,
+		id: 'r1',
+		name: 'summary',
+		result: { id: 'r1', file_path: 'photos/file_8.jpg' },
+		data: [{ id: 'r1' }],
+	},
+};
 const MAX_BLOCKERS = 20;
 
 if (!recorderAvailable() || !existsSync(join(base, 'dist/known/nodes.json'))) {
@@ -320,6 +355,10 @@ function operations(node: LoadedNode): Json[] {
 const checking = { cache: CACHE };
 const verified: Record<string, string[]> = {};
 const reasons: Record<string, number> = {};
+const modeReasons: Record<string, number> = {};
+const manyItems: Record<string, number> = {};
+const manyItemReasons: Record<string, number> = {};
+const threeItemCost = { operations: 0, once: 0, each: 0 };
 const alone: Record<string, number> = {};
 const weighted: Record<string, number> = {};
 let tried = 0;
@@ -327,10 +366,15 @@ let compiledCount = 0;
 let mintedTried = 0;
 let mintedVerified = 0;
 const examples: string[] = [];
+const costs: Record<string, CaseCost> = {};
 
 interface NodeResult {
 	verified: Record<string, string[]>;
 	reasons: Record<string, number>;
+	modeReasons?: Record<string, number>;
+	manyItems?: Record<string, number>;
+	manyItemReasons?: Record<string, number>;
+	threeItemCost?: { operations: number; once: number; each: number };
 	alone?: Record<string, number>;
 	weighted?: Record<string, number>;
 	tried: number;
@@ -338,6 +382,7 @@ interface NodeResult {
 	examples?: string[];
 	mintedTried?: number;
 	mintedVerified?: number;
+	costs?: Record<string, CaseCost>;
 }
 
 async function checkInProcess(name: string): Promise<NodeResult | undefined> {
@@ -350,6 +395,7 @@ async function checkInProcess(name: string): Promise<NodeResult | undefined> {
 				...(DETAIL ? ['--detail'] : []),
 				...(CACHE ? [] : ['--no-cache']),
 				...(ALL_BLOCKERS ? ['--all-blockers'] : []),
+				...(MEASURE_COST ? ['--cost'] : []),
 				...(weightsFile === undefined ? [] : ['--weights', weightsFile]),
 				'--one',
 				name,
@@ -363,7 +409,7 @@ async function checkInProcess(name: string): Promise<NodeResult | undefined> {
 			out += chunk.toString();
 		});
 
-		const timer = setTimeout(() => child.kill('SIGKILL'), 300_000);
+		const timer = setTimeout(() => child.kill('SIGKILL'), NODE_TIMEOUT_MS);
 		child.on('close', () => {
 			clearTimeout(timer);
 			const line = out.split('\n').find((l) => l.startsWith('RESULT '));
@@ -387,7 +433,12 @@ if (one === undefined) {
 				continue;
 			}
 			Object.assign(verified, result.verified);
+			Object.assign(costs, result.costs);
 			add(reasons, result.reasons);
+			add(modeReasons, result.modeReasons);
+			add(manyItems, result.manyItems);
+			add(manyItemReasons, result.manyItemReasons);
+			add(threeItemCost, result.threeItemCost);
 			add(alone, result.alone);
 			add(weighted, result.weighted);
 			for (const example of result.examples ?? [])
@@ -399,7 +450,8 @@ if (one === undefined) {
 		}
 	};
 	await Promise.all(Array.from({ length: PARALLEL }, worker));
-	if (lost > 0) console.log(`${lost} node(s) gave no result (a crash or more than five minutes)`);
+	if (lost > 0)
+		console.log(`${lost} node(s) gave no result (a crash or more than fifteen minutes)`);
 }
 
 const requestPart = (reason: string) => /^v1: the requests differ: (\w+)/.exec(reason)?.[1];
@@ -417,6 +469,11 @@ const why = (reason: string, weight: number, only = true) => {
 	reasons[key] = (reasons[key] ?? 0) + 1;
 	if (only) alone[key] = (alone[key] ?? 0) + 1;
 	if (weight !== 0) weighted[key] = (weighted[key] ?? 0) + weight;
+};
+
+const whyMode = (mode: ErrorMode, reason: string) => {
+	const key = `${mode}: ${DETAIL ? reason.slice(0, 110) : reason.replace(/'[^']*'/g, "'…'").slice(0, 90)}`;
+	modeReasons[key] = (modeReasons[key] ?? 0) + 1;
 };
 
 for (const name of one === undefined ? [] : Object.keys(known).sort()) {
@@ -477,9 +534,16 @@ for (const name of one === undefined ? [] : Object.keys(known).sort()) {
 					...(credential && data ? { credential: { type: credential, data } } : {}),
 					responses,
 				});
+				const makesFiles = compiled.source.includes('__prepareBinary(');
 				const plain = { ok: true, id: 'r1', result: { id: 'r1' }, data: [{ id: 'r1' }] };
-				const ok = [...token, { body: readsFiles ? { ...plain, ...UPLOAD_ANSWER } : plain }];
+				const ok = makesFiles
+					? [...token, DOWNLOAD_ANSWER]
+					: [...token, { body: readsFiles ? { ...plain, ...UPLOAD_ANSWER } : plain }];
 				const bad = [...token, { status: 400, body: { message: 'bad request' } }];
+				const missing = [
+					...token,
+					{ status: 404, body: { error: { message: 'no such thing' }, code: 7 } },
+				];
 				try {
 					const difference =
 						(await differenceFromV1(make('ok', parameters, ok), sources, registry, checking)) ??
@@ -487,6 +551,46 @@ for (const name of one === undefined ? [] : Object.keys(known).sort()) {
 					if (difference !== undefined) {
 						why(`v1: ${difference}`, weight);
 						continue;
+					}
+					const first = readsFiles ? FILE_ITEMS[0] : {};
+					const several = (count: number) =>
+						Array.from({ length: count }, (_, k) => ({ ...first, position: k + 1 }));
+					const three = make('three items', parameters, ok, several(3));
+					const withThree = await differenceFromV1(three, sources, registry, checking);
+					if (withThree !== undefined) {
+						why(`v1: three items: ${withThree}`, weight);
+						continue;
+					}
+					const eachItem = await differenceFromV1(three, sources, registry, {
+						...checking,
+						eachItem: true,
+					});
+					if (eachItem !== undefined) {
+						manyItems[type] = (manyItems[type] ?? 0) + 1;
+						const reason = `three items, one call for each item: ${eachItem}`;
+						manyItemReasons[reason.slice(0, 110)] =
+							(manyItemReasons[reason.slice(0, 110)] ?? 0) + 1;
+					}
+					if (SHOW_COST && !other) {
+						const once = costOfCase(three, sources, registry);
+						const each = costOfCase(three, sources, registry, true);
+						if (once && each) {
+							threeItemCost.operations++;
+							threeItemCost.once += once.ops;
+							threeItemCost.each += each.ops;
+						}
+					}
+					if (makesFiles) {
+						const unnamed = await differenceFromV1(
+							make('file without an extension', parameters, [...token, DOWNLOAD_ANSWER_TYPED]),
+							sources,
+							registry,
+							checking,
+						);
+						if (unnamed !== undefined) {
+							why(`v1: a file without an extension: ${unnamed}`, weight);
+							continue;
+						}
 					}
 					if (readsFiles) {
 						const withFile = await (CACHE ? recordV1Cached : recordV1)(make('ok', parameters, ok));
@@ -546,7 +650,86 @@ for (const name of one === undefined ? [] : Object.keys(known).sort()) {
 								examples.push(`${key} with ${variant.key}: ${difference.slice(0, 160)}`);
 						}
 					}
-					verified[key] = [...new Set([...(before ?? []), ...names, ...flagKeys])].sort();
+					const [badAnswer] = bad.slice(-1);
+					const [okAnswer] = ok.slice(-1);
+					const proven: string[] = [];
+					for (const mode of CONTINUE_MODES) {
+						const under = (c: EquivalenceCase, more: NodeSettings = {}): EquivalenceCase => ({
+							...c,
+							name: `${c.name} ${mode}`,
+							settings: { onError: mode, ...more },
+						});
+						const cases = [
+							under(make('ok', parameters, ok)),
+							under(make('two errors', parameters, bad, several(2))),
+							under(make('nested error', parameters, missing)),
+							under(make('first fails', parameters, [...bad, okAnswer], several(3))),
+							under(make('first works', parameters, [...ok, badAnswer], several(3))),
+							under(make('retry', parameters, [...bad, okAnswer]), {
+								retryOnFail: true,
+								maxTries: 2,
+								waitBetweenTries: 1,
+							}),
+						];
+						const differenceWith = async (pairing: ErrorPairing) => {
+							const pairings = new Set<ErrorPairing>();
+							for (const testCase of cases) {
+								const difference = await differenceFromV1(testCase, sources, registry, {
+									...checking,
+									pairing,
+									pairings,
+								});
+								if (difference !== undefined)
+									return `${testCase.name.slice(testCase.name.indexOf(' ') + 1)}: ${difference}`;
+							}
+							if (
+								mode === 'continueErrorOutput' &&
+								[...pairings].some((found) => found !== pairing)
+							)
+								return `v1 does not pair its error items by ${pairing}`;
+							return undefined;
+						};
+						const byItem = await differenceWith('item');
+						if (byItem === undefined) {
+							proven.push(...errorModeCondition(mode));
+							continue;
+						}
+						if (
+							mode === 'continueErrorOutput' &&
+							(await differenceWith('position')) === undefined
+						) {
+							proven.push(...errorModeCondition(mode), ERROR_ITEMS_BY_POSITION);
+							continue;
+						}
+						whyMode(mode, byItem);
+					}
+					const isMode = (name: string) =>
+						name.startsWith('@onError=') ||
+						name === ERROR_ITEMS_BY_POSITION ||
+						name === CALL_FOR_EACH_ITEM;
+					const samePairing =
+						before === undefined ||
+						before.includes(ERROR_ITEMS_BY_POSITION) === proven.includes(ERROR_ITEMS_BY_POSITION);
+					const errorOutput = errorModeCondition('continueErrorOutput')[0];
+					const modes = (
+						before === undefined ? proven : proven.filter((m) => before.includes(m))
+					).filter((m) => samePairing || (m !== errorOutput && m !== ERROR_ITEMS_BY_POSITION));
+					verified[key] = [
+						...new Set([
+							...(before ?? []).filter((name) => !isMode(name)),
+							...names,
+							...flagKeys,
+							...modes,
+							...(eachItem === undefined &&
+							(before === undefined || before.includes(CALL_FOR_EACH_ITEM))
+								? [CALL_FOR_EACH_ITEM]
+								: []),
+						]),
+					].sort();
+					if (MEASURE_COST && !other) {
+						const cost = costOfCase(make('ok', parameters, ok), sources, registry);
+						if (cost) costs[key] = cost;
+					}
 					if (compiled.mints.length > 0) mintedVerified++;
 				} catch (error) {
 					why(`check failed: ${error instanceof Error ? error.message : String(error)}`, weight);
@@ -557,9 +740,8 @@ for (const name of one === undefined ? [] : Object.keys(known).sort()) {
 }
 await disposeRecorder();
 if (one !== undefined) {
-	console.log(
-		`RESULT ${JSON.stringify({ verified, reasons, alone, weighted, tried, compiled: compiledCount, examples, mintedTried, mintedVerified })}`,
-	);
+	const line = `RESULT ${JSON.stringify({ verified, reasons, modeReasons, manyItems, manyItemReasons, threeItemCost, alone, weighted, tried, compiled: compiledCount, examples, mintedTried, mintedVerified, costs })}\n`;
+	await new Promise((written) => process.stdout.write(line, written));
 	process.exit(0);
 }
 
@@ -575,7 +757,114 @@ ${lines.join('\n')}
 `,
 	);
 }
+const costKeys = Object.keys(costs).sort();
+const risen = costKeys.filter((key) => COST[key] !== undefined && costs[key].ops > COST[key][0]);
+if (pattern === undefined && !DIST && risen.length === 0) {
+	writeFileSync(
+		join(here, '../src/node-compile/cost.generated.ts'),
+		`export const COST: Record<string, [ops: number, allocations: number]> = {
+${costKeys.map((key) => `\t${JSON.stringify(key)}: [${costs[key].ops}, ${costs[key].allocations}],`).join('\n')}
+};
+`,
+	);
+}
+const quantile = (sorted: number[], q: number) =>
+	sorted.length === 0 ? 0 : sorted[Math.min(sorted.length - 1, Math.floor(q * sorted.length))];
+const spread = (values: number[]) => {
+	const sorted = [...values].sort((a, b) => a - b);
+	return `p50 ${quantile(sorted, 0.5)}; p90 ${quantile(sorted, 0.9)}; max ${sorted.at(-1) ?? 0}`;
+};
+const nodeOfKey = (key: string) => key.slice(PREFIX.length, key.indexOf('@'));
+if (SHOW_COST) {
+	const rows = costKeys.map((key) => costs[key]);
+	console.log(`cost of ${rows.length} verified operations, the 'ok' case, in bytecode`);
+	console.log(`ops: ${spread(rows.map((r) => r.ops))}`);
+	console.log(`allocations: ${spread(rows.map((r) => r.allocations))}`);
+	console.log('node\toperations\tops\tallocations');
+	for (const node of [...new Set(costKeys.map(nodeOfKey))]) {
+		const mine = costKeys.filter((key) => nodeOfKey(key) === node).map((key) => costs[key]);
+		console.log(
+			[
+				node,
+				mine.length,
+				spread(mine.map((r) => r.ops)),
+				spread(mine.map((r) => r.allocations)),
+			].join('\t'),
+		);
+	}
+	console.log('the 30 most expensive operations');
+	console.log('ops\tallocations\tcalls\treads\twrites\tbranches\tconcats\trequests\toperation');
+	for (const key of [...costKeys].sort((a, b) => costs[b].ops - costs[a].ops).slice(0, 30)) {
+		const r = costs[key];
+		console.log(
+			[
+				r.ops,
+				r.allocations,
+				r.calls,
+				r.reads,
+				r.writes,
+				r.branches,
+				r.concats,
+				r.effects,
+				key,
+			].join('\t'),
+		);
+	}
+	const paired = costKeys.filter((key) => costs[key].handWrittenOps !== undefined);
+	if (paired.length > 0) {
+		console.log('compiled / hand-written, same case');
+		console.log(
+			'ops ratio\tops\thand-written ops\tallocations\thand-written allocations\toperation',
+		);
+		for (const key of paired) {
+			const r = costs[key];
+			const theirs = r.handWrittenOps ?? 1;
+			console.log(
+				[
+					(r.ops / theirs).toFixed(2),
+					r.ops,
+					theirs,
+					r.allocations,
+					r.handWrittenAllocations ?? 0,
+					key,
+				].join('\t'),
+			);
+		}
+	}
+}
+if (CHECK_COST || risen.length > 0) {
+	for (const key of risen)
+		console.log(`cost rose: ${key}: ${COST[key][0]} ops recorded, ${costs[key].ops} ops now`);
+	console.log(
+		risen.length === 0
+			? `cost check: no operation of ${costKeys.length} costs more ops than its record`
+			: `cost check: ${risen.length} operation(s) cost more ops than their record`,
+	);
+	if (CHECK_COST && risen.length > 0) process.exitCode = 1;
+}
 console.log(`operations ${tried}; compiled ${compiledCount}; verified against v1 ${lines.length}`);
+const manyItemNodes = Object.entries(manyItems).sort((a, b) => b[1] - a[1]);
+if (manyItemNodes.length > 0)
+	console.log(
+		`agree with v1 for three items only in one call for all items: ${manyItemNodes.reduce((sum, [, count]) => sum + count, 0)} (${manyItemNodes.map(([node, count]) => `${node.slice(PREFIX.length)} ${count}`).join(', ')})`,
+	);
+for (const [reason, count] of Object.entries(manyItemReasons).sort((a, b) => b[1] - a[1]))
+	console.log(`${count}\t${reason}`);
+if (threeItemCost.operations > 0)
+	console.log(
+		`three items, ${threeItemCost.operations} operations: ${Math.round(threeItemCost.once / threeItemCost.operations / 3)} ops for each item in one call; ${Math.round(threeItemCost.each / threeItemCost.operations / 3)} ops for each item in a call for each item`,
+	);
+for (const mode of CONTINUE_MODES) {
+	const [condition] = errorModeCondition(mode);
+	const count = Object.values(verified).filter((names) => names.includes(condition)).length;
+	console.log(`verified against v1 under ${mode}: ${count}`);
+}
+const modeLines = Object.entries(modeReasons)
+	.sort((a, b) => b[1] - a[1])
+	.slice(0, DETAIL ? 70 : 40)
+	.map(([reason, count]) => `${count}\t${reason}`);
+if (modeLines.length > 0)
+	console.log(`not verified under an error setting:\n${modeLines.join('\n')}`);
 if (mintedVerified > 0 || mintedTried > 0)
 	console.log(
 		`operation forms verified with a token that n8n mints: ${mintedVerified} (other authentications tried: ${mintedTried})`,

@@ -51,7 +51,7 @@ import {
 	wholeNodeOutputs,
 } from './host-node.ts';
 import { referencedNodes, lowerWithRunData } from './run-data.ts';
-import { lowerFallback } from './steps.ts';
+import { lowerFallback, tryCompiledNode } from './steps.ts';
 import { lowerSendAndWait } from './waits.ts';
 import { calleeTriggerItems, findSubworkflowStart, resolveCallee } from './subworkflow.ts';
 import { DEFAULT_TIMEZONE, isTriggerType, planTrigger, pollSchedules } from './triggers.ts';
@@ -371,6 +371,8 @@ export class ModuleGenerator {
 	private readonly onceInputs = new Map<string, string>();
 
 	private readonly fallback: string[] = [];
+	/** Nodes that run as compiled code: their step moves the error items itself. */
+	private readonly compiledSteps = new Set<string>();
 	private readonly compiledNodes: Record<string, string> = {};
 	private readonly credentialDerivations: Record<string, CredentialDerivation[]> = {};
 	private readonly credentialMints: Record<string, CredentialMint[]> = {};
@@ -569,6 +571,8 @@ export class ModuleGenerator {
 			useZone: (zone) => {
 				this.zones.add(zone);
 			},
+			binaryMode:
+				typeof b.wf.settings?.binaryMode === 'string' ? b.wf.settings.binaryMode : undefined,
 		};
 	}
 
@@ -698,6 +702,9 @@ export class ModuleGenerator {
 			scope,
 			markFallback: () => {
 				this.fallback.push(node.name);
+			},
+			markCompiled: () => {
+				this.compiledSteps.add(node.name);
 			},
 			noOutputWhen: (condition) => {
 				// "Always output data" gives one empty item instead (ensureAlwaysOutputData of v1).
@@ -1094,8 +1101,13 @@ export class ModuleGenerator {
 			// does not have (a stale connection) stays empty, as in v1.
 			// Under `continueErrorOutput` too: the host gives the error output as v1 makes it.
 			const toErrorOutput = node.onError === 'continueErrorOutput' && lowerer === lowerFallback;
-			if (extra || toErrorOutput || (inputs.length > 1 && lowerer === lowerFallback)) {
+			if (extra || (inputs.length > 1 && lowerer === lowerFallback)) {
 				lowerer = (hc) => lowerHostNode(hc, knownMainOutputs(node));
+			} else if (toErrorOutput) {
+				// A compiled node gives its error output itself. Any other node runs in the host.
+				lowerer = (hc) => {
+					if (!tryCompiledNode(hc)) lowerHostNode(hc, knownMainOutputs(node));
+				};
 			}
 		}
 		if (lowerer === lowerLibrary || lowerer === lowerHttpRequest) this.directSteps.add(node.name);
@@ -1157,6 +1169,7 @@ export class ModuleGenerator {
 	 */
 	private splitErrorItems(b: Body, node: N8nNode, inputs: string[]) {
 		if (node.onError !== 'continueErrorOutput' || this.fallback.includes(node.name)) return;
+		if (this.compiledSteps.has(node.name)) return;
 		const outs = b.outputs.get(node.name);
 		if (!outs || outs.size < 2) return;
 		const last = Math.max(...outs.keys());

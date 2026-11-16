@@ -28,6 +28,10 @@ export interface NodeSources {
 	evaluate?: (code: string) => unknown;
 
 	credentialEntry?: (type: string) => string | undefined;
+
+	storesResponses?: boolean;
+
+	runsInHost?: (nodeName: string) => boolean;
 }
 
 export function verifiedKey(
@@ -74,15 +78,52 @@ export function verifiedFlagKeys(
 	);
 }
 
-export function flagGuard(compiled: CompiledNode, allowed: string[]): CredentialDerivation {
+export function flagGuard(
+	compiled: CompiledNode,
+	allowed: string[],
+	node: string,
+): CredentialDerivation {
 	const flags = compiled.flags.map((flag) => flag.name).sort();
 	return {
-		name: `g${hashOf(JSON.stringify([flags, [...allowed].sort()]))}`,
+		name: `g${hashOf(JSON.stringify([flags, [...allowed].sort(), node]))}`,
 		code: '',
 		kind: 'guard',
 		flags,
 		allowed: [...allowed].sort(),
+		node,
 	};
+}
+
+export type ErrorMode = 'stopWorkflow' | 'continueRegularOutput' | 'continueErrorOutput';
+
+export const CONTINUE_MODES: ErrorMode[] = ['continueRegularOutput', 'continueErrorOutput'];
+
+export const ERROR_ITEMS_BY_POSITION = '@errorItems=position';
+
+export const CALL_FOR_EACH_ITEM = '@items=each';
+
+export function agreesForEachItem(
+	sources: NodeSources,
+	type: string,
+	version: number,
+	compiled: CompiledNode,
+): boolean {
+	const names = (sources.verified ?? VERIFIED)[verifiedKey(type, version, compiled.resolved)];
+	return names?.includes(CALL_FOR_EACH_ITEM) === true;
+}
+
+export function errorItemsByPosition(
+	sources: NodeSources,
+	type: string,
+	version: number,
+	compiled: CompiledNode,
+): boolean {
+	const names = (sources.verified ?? VERIFIED)[verifiedKey(type, version, compiled.resolved)];
+	return names?.includes(ERROR_ITEMS_BY_POSITION) === true;
+}
+
+export function errorModeCondition(mode: ErrorMode): string[] {
+	return mode === 'stopWorkflow' ? [] : [`@onError=${mode}`];
 }
 
 export function nodeDescriptionOf(value: unknown): NodeDescription | undefined {
@@ -146,6 +187,9 @@ export interface CompiledNode {
 	mints: CredentialMint[];
 
 	randoms: RandomShape[];
+	binary: boolean;
+
+	storesResponses: boolean;
 
 	changed: string[];
 
@@ -199,6 +243,7 @@ export function compileNodeInstance(
 	credentials: Record<string, PublicCredential> = {},
 	timezone?: string,
 	facts?: PublishFacts,
+	errorMode: ErrorMode = 'stopWorkflow',
 ): CompiledNode | { errors: string[] } {
 	const entry = sources.entry(node.type, node.version);
 	const description = sources.description(node.type, node.version);
@@ -253,6 +298,7 @@ export function compileNodeInstance(
 		timezone,
 		instanceId,
 		facts,
+		continueOnFail: errorMode !== 'stopWorkflow',
 		credentialFields: Object.fromEntries(
 			Object.entries(credentials).map(([type, c]) => [type, c.fields]),
 		),
@@ -275,7 +321,13 @@ export function compileNodeInstance(
 		mints: result.mints ?? [],
 		zones: result.zones ?? [],
 		randoms: result.randoms ?? [],
+		binary: result.binary === true,
+		storesResponses: result.storesResponses === true,
 
-		changed: [...changed, ...Object.values(credentials).flatMap((c) => c.classes)],
+		changed: [
+			...changed,
+			...Object.values(credentials).flatMap((c) => c.classes),
+			...errorModeCondition(errorMode),
+		],
 	};
 }

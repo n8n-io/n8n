@@ -233,12 +233,43 @@ export interface HttpCall extends StepOptions {
 	 * request helpers write it without `useQuerystring` (`sort[0][field]=a`).
 	 */
 	qsFormat?: 'repeat' | 'brackets';
+	/** Stores the body of a 2xx response as binary data; the body is `{ $binary: BinaryHandle }`. */
+	responseBinary?: ResponseBinary;
 }
 
 export interface HttpResponse<T> {
 	status: number;
 	headers: Record<string, string>;
 	body: T;
+}
+
+/**
+ * A binary value (spec 7.1): metadata and the id of the bytes in the binary data store of n8n.
+ * The bytes are never in the JSON. Code can read the metadata, and can give the handle to an
+ * effect: in `$binary` of an item, as `binary` of a multipart part, or as `body: { $binary }`.
+ */
+export interface BinaryHandle {
+	id: string;
+	/** The name of the store, as n8n writes it: `filesystem-v2`. */
+	data: string;
+	mimeType: string;
+	fileType?: string;
+	fileName?: string;
+	fileExtension?: string;
+	/** The size as text, as n8n writes it: `1.34 kB`. */
+	fileSize: string;
+	bytes: number;
+}
+
+/**
+ * `responseBinary` of an `http` call (spec 7.1): the runtime streams the body of a 2xx response to
+ * the binary data store, and the `body` of the result is `{ $binary: BinaryHandle }`.
+ */
+export interface ResponseBinary {
+	/** The file name. Without it: the `Content-Disposition` header, else the path of the URL. */
+	fileName?: string;
+	/** The MIME type. Without it: the `Content-Type` header. */
+	mimeType?: string;
 }
 
 export interface CodeCall extends StepOptions {
@@ -384,6 +415,19 @@ export interface HttpRequest {
 	basicAuth?: { user: string; password: string };
 	/** `false`: the credential fills templates only; what it injects is not added (spec 7.1). */
 	inject?: boolean;
+	/** Stores the body of a 2xx response as binary data; the body is `{ $binary: BinaryHandle }`. */
+	responseBinary?: ResponseBinary;
+	/**
+	 * `true`: the runtime does not renew an OAuth2 credential after a response of this request
+	 * (`skipTokenRefresh` of the OAuth2 options of n8n-core).
+	 */
+	skipTokenRefresh?: boolean;
+	/**
+	 * The statuses that mean "the token expired" for this request, when the OAuth2 credential
+	 * has none of its own (`tokenExpiredStatusCode` of the OAuth2 options of n8n-core). The
+	 * default is 401.
+	 */
+	tokenExpiredStatusCode?: number | number[];
 }
 
 /** A part of a multipart body: a text field, or a file (`binary`, n8n's binary form). */

@@ -54,6 +54,13 @@ export type RenewalKind = 'oauth2' | 'preAuthentication' | 'minted';
 export interface SlotRenewal {
 	status: number[];
 	expiresAt?: number;
+	/** An OAuth2 slot: a request can carry the `skipTokenRefresh` option of its node. */
+	oauth2?: boolean;
+	/**
+	 * The credential has no `tokenExpiredStatusCode`: the `tokenExpiredStatusCode` that a node
+	 * gives with a request takes the place of `status`, as in `requestOAuth2` of n8n-core.
+	 */
+	statusDefault?: boolean;
 }
 
 /** Options of `buildDocument`. */
@@ -288,6 +295,50 @@ export class CompiledEngineCredentials {
 		return out;
 	}
 
+	/**
+	 * The names of the compiled nodes that must run in the fallback host: a credential gives
+	 * the conditions of the node values that were not checked against the v1 node together
+	 * (the `guard` of the node). The compiler then compiles the workflow again with these nodes
+	 * in the host, so a node never fails for a credential that the v1 node accepts. A
+	 * credential that n8n cannot read counts as not checked. Only names of nodes leave this
+	 * method: no name and no value of a condition.
+	 */
+	async unprovenFlagNodes(
+		workflowId: string,
+		slots: CredentialSlotBinding[],
+		derivations: Record<string, CredentialDerivationRequest[]> = {},
+	): Promise<string[]> {
+		const lang = await loadWorkflowLang();
+		const nodes = new Set<string>();
+		for (const use of slots) {
+			const wanted = derivations[use.slot] ?? [];
+			if (!wanted.some((d) => d.kind === 'guard' && d.node !== undefined)) continue;
+			let data: ICredentialDataDecryptedObject | undefined;
+			if (use.credentialId) {
+				try {
+					const additionalData = await WorkflowExecuteAdditionalData.getBase({ workflowId });
+					data = await this.credentialsHelper.getDecrypted(
+						additionalData,
+						{ id: use.credentialId, name: use.credentialName },
+						use.type,
+						'internal',
+						toExecuteData(use.type),
+					);
+				} catch (error) {
+					this.logger.debug('Could not read a credential for the conditions of its nodes', {
+						workflowId,
+						credentialType: use.type,
+						error: error instanceof Error ? error.message : String(error),
+					});
+				}
+			}
+			for (const node of lang.unprovenFlagNodes(wanted, data ? { ...data } : undefined)) {
+				nodes.add(node);
+			}
+		}
+		return [...nodes].sort();
+	}
+
 	/** Saves the OAuth token data that a v1 node refreshed, as `CredentialsHelper` does. */
 	async updateOAuthTokenData(
 		binding: CredentialSlotBinding,
@@ -342,7 +393,11 @@ export class CompiledEngineCredentials {
 	/** The `renewal` member of a slot of the credentials document. */
 	private slotRenewal(kind: RenewalKind, data: IDataObject, entryData: unknown): SlotRenewal {
 		if (kind === 'oauth2') {
-			return { status: oauth2ExpiredStatuses(data).slice(0, MAX_RENEWAL_STATUSES) };
+			return {
+				status: oauth2ExpiredStatuses(data).slice(0, MAX_RENEWAL_STATUSES),
+				oauth2: true,
+				...(data.tokenExpiredStatusCode === undefined ? { statusDefault: true } : {}),
+			};
 		}
 		if (kind === 'preAuthentication') return { status: [401] };
 		const expiresAt = mintExpiries({ slot: { data: entryData } }).get('slot');

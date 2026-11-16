@@ -1,6 +1,7 @@
 /**
- * An expired OAuth2 token of the library HTTP Request node: n8n refreshes it
- * through the `credentials` service, then the request goes again once.
+ * An expired OAuth2 token of the library HTTP Request node. The runtime renews the token and
+ * sends the request again once (`workflow-runtime/src/shell/renew.zig`), so the node has no
+ * code for it: one renewal and one resend, as v1.
  */
 import { convertWorkflow } from '../../convert/index.ts';
 import type { HttpResponse } from '../../sdk/index.ts';
@@ -62,33 +63,23 @@ async function runHttp(
 }
 
 describe('the library HTTP Request node with an OAuth2 credential', () => {
-	it('refreshes the token once and sends the request again', async () => {
-		const out = await runHttp('oAuth2Api', [expired, { ok: true }, ok]);
+	it('leaves the renewal of an expired token to the runtime: one request, no service call', async () => {
+		const out = await runHttp('oAuth2Api', [expired]);
+		expect(out.status).toBe('error');
+		expect(out.effects.map((effect) => effect.kind)).toEqual(['http']);
+	});
+
+	it('gives the response after the renewal of the runtime as the result', async () => {
+		const out = await runHttp('oAuth2Api', [ok]);
 		expect(out.status).toBe('ok');
-		expect(out.effects.map((effect) => effect.kind)).toEqual(['http', 'service', 'http']);
-		expect(out.effects[1].args).toEqual({
-			service: 'credentials',
-			op: 'refreshOAuth2',
-			args: { credentialId: 'cred1' },
-		});
+		expect(out.effects.map((effect) => effect.kind)).toEqual(['http']);
 		expect(out.result).toEqual({ H: [{ ok: true }] });
 	});
 
-	it('gives the second expired status as the error', async () => {
-		const out = await runHttp('oAuth2Api', [expired, { ok: true }, expired]);
-		expect(out.status).toBe('error');
-		expect(out.effects.map((effect) => effect.kind)).toEqual(['http', 'service', 'http']);
-	});
-
-	it('never refreshes a credential that is not OAuth2', async () => {
-		const out = await runHttp('httpHeaderAuth', [expired]);
-		expect(out.status).toBe('error');
-		expect(out.effects.map((effect) => effect.kind)).toEqual(['http']);
-	});
-
-	it('does not refresh without a credential id', async () => {
-		const out = await runHttp('oAuth2Api', [expired], false);
-		expect(out.status).toBe('error');
-		expect(out.effects.map((effect) => effect.kind)).toEqual(['http']);
+	it('gives the status of the v1 node that means "the token expired" with the request', async () => {
+		const own = await runHttp('goToWebinarOAuth2Api', [ok]);
+		expect(own.effects[0].args).toMatchObject({ tokenExpiredStatusCode: 403 });
+		const other = await runHttp('oAuth2Api', [ok]);
+		expect(Reflect.get(Object(other.effects[0].args), 'tokenExpiredStatusCode')).toBeUndefined();
 	});
 });

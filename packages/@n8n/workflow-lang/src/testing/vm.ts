@@ -5,6 +5,7 @@
  */
 import { xmlContent, xmlParse, xmlSnippet } from '../reference/xml-lib.ts';
 import { asciiRange, base64Utf8 } from '../reference/ascii-lib.ts';
+import { storedResponse } from '../reference/binary-response.ts';
 import type { ModuleData } from '../compiler/module.ts';
 import { EFFECT_KIND_NAMES, EffectKind, OP_NAMES, Op } from '../compiler/opcodes.ts';
 import { CREDENTIAL_FLAG_MISSING, credentialFlagIn } from '../credentials/flags.ts';
@@ -405,9 +406,117 @@ function binary(op: number, l: unknown, r: unknown): unknown {
 	}
 }
 
+/**
+ * The cost of one run. `ops` is the number of instructions, which is the fuel
+ * that the runtime charges for each instruction (`interp.zig` runFibre; the
+ * extra charge of a long native call is not in it). The other fields divide
+ * the instructions and their results into classes.
+ */
+export interface VmCost {
+	ops: number;
+	/** CALL, CALLM and CALLN. */
+	calls: number;
+	/** GETPROP and GETELEM. */
+	reads: number;
+	/** SETPROP, SETELEM, DELPROP, PUSH and the two spreads. */
+	writes: number;
+	/** JMP, JT, JF and JNULLISH. */
+	branches: number;
+	/** New objects: NEWOBJ, NEWERR, and an object that a native call returns. */
+	objects: number;
+	/** New arrays: NEWARR, and an array that a native call returns. */
+	arrays: number;
+	/** New strings: a concatenation, TOSTR of a non-string, a string that a native call returns. */
+	strings: number;
+	/** ADD with a string result. */
+	concats: number;
+	/** CLOSURE and NEWCELL. */
+	closures: number;
+	/** UTF-16 code units of the new strings. The VM does not know the bytes of objects and arrays. */
+	stringUnits: number;
+}
+
+export function emptyCost(): VmCost {
+	return {
+		ops: 0,
+		calls: 0,
+		reads: 0,
+		writes: 0,
+		branches: 0,
+		objects: 0,
+		arrays: 0,
+		strings: 0,
+		concats: 0,
+		closures: 0,
+		stringUnits: 0,
+	};
+}
+
+/** The allocations of a run: objects, arrays, strings and closures. */
+export function allocationsOf(cost: VmCost): number {
+	return cost.objects + cost.arrays + cost.strings + cost.closures;
+}
+
+function countInstruction(cost: VmCost, op: number): void {
+	cost.ops++;
+	switch (op) {
+		case Op.CALL:
+		case Op.CALLM:
+		case Op.CALLN:
+			cost.calls++;
+			break;
+		case Op.GETPROP:
+		case Op.GETELEM:
+			cost.reads++;
+			break;
+		case Op.SETPROP:
+		case Op.SETELEM:
+		case Op.DELPROP:
+		case Op.PUSH:
+		case Op.SPREADARR:
+		case Op.SPREADOBJ:
+			cost.writes++;
+			break;
+		case Op.JMP:
+		case Op.JT:
+		case Op.JF:
+		case Op.JNULLISH:
+			cost.branches++;
+			break;
+		case Op.NEWOBJ:
+		case Op.NEWERR:
+			cost.objects++;
+			break;
+		case Op.NEWARR:
+			cost.arrays++;
+			break;
+		case Op.CLOSURE:
+		case Op.NEWCELL:
+			cost.closures++;
+			break;
+		default:
+			break;
+	}
+}
+
+function countNewString(cost: VmCost, value: string): void {
+	cost.strings++;
+	cost.stringUnits += value.length;
+}
+
+/** Counts what a native call returns, unless it returns its receiver or a primitive. */
+function countNativeResult(cost: VmCost, value: unknown, receiver: unknown): void {
+	if (value === receiver) return;
+	if (typeof value === 'string') countNewString(cost, value);
+	else if (Array.isArray(value)) cost.arrays++;
+	else if (typeof value === 'object' && value !== null) cost.objects++;
+}
+
 export interface VmOptions {
 	fuel?: number;
 	maxDepth?: number;
+	/** Counters that the run fills. They do not change the run. */
+	cost?: VmCost;
 }
 
 /** Runs a module against a fixture and returns the output of spec section 6. */
@@ -443,6 +552,7 @@ export function runModule(
 	let clock = fixture.now;
 	let fuel = options.fuel ?? 50_000_000;
 	const maxDepth = options.maxDepth ?? 1000;
+	const cost = options.cost;
 	const fibres: Fibre[] = [];
 	const queue: Fibre[] = [];
 
@@ -549,6 +659,7 @@ export function runModule(
 					opCounts.set(`enter:${fn.name}`, (opCounts.get(`enter:${fn.name}`) ?? 0) + 1);
 				opCounts.set(key, (opCounts.get(key) ?? 0) + 1);
 			}
+			if (cost) countInstruction(cost, ins.op);
 			const R = fr.regs;
 			const bc = (ins.b | (ins.c << 16)) >>> 0;
 			try {
@@ -594,6 +705,7 @@ export function runModule(
 						break;
 					}
 					case Op.TOSTR:
+						if (cost && typeof R[ins.b] !== 'string') countNewString(cost, String(R[ins.b]));
 						R[ins.a] = String(R[ins.b]);
 						break;
 					case Op.ISNULLISH:
@@ -675,6 +787,7 @@ export function runModule(
 							m.strings[ins.b],
 							R.slice(ins.c + 1, ins.c + 1 + ins.x),
 						);
+						if (cost) countNativeResult(cost, R[ins.a], R[ins.c]);
 						break;
 					case Op.CALLN:
 						if (m.strings[ins.b] === 'ctx.credentialFlag') {
@@ -691,6 +804,7 @@ export function runModule(
 								: m.strings[ins.b] === 'ctx.polled'
 									? Array.isArray(R[ins.c]) && (R[ins.c] as unknown[]).length > 0
 									: callLibrary(m.strings[ins.b], R.slice(ins.c, ins.c + ins.x));
+						if (cost) countNativeResult(cost, R[ins.a], ins.x > 0 ? R[ins.c] : undefined);
 						break;
 					case Op.RET: {
 						const value = R[ins.a];
@@ -733,7 +847,7 @@ export function runModule(
 						let result: unknown;
 						for (;;) {
 							effects.push({ step: s.name, kind, args: clone(args) });
-							result = nextResult(s.name);
+							result = storedResponse(kind, args, nextResult(s.name));
 							const failed = isRecord(result) && '$error' in result;
 							if (!failed || attempt >= s.retryMax) break;
 							attempt++;
@@ -794,9 +908,15 @@ export function runModule(
 					case Op.TRACE:
 						if (fixture.trace === true) traces.push(traceRecord(R[ins.a], R[ins.b]));
 						break;
-					default:
-						R[ins.a] = binary(ins.op, R[ins.b], R[ins.c]);
+					default: {
+						const value = binary(ins.op, R[ins.b], R[ins.c]);
+						if (cost && ins.op === Op.ADD && typeof value === 'string') {
+							cost.concats++;
+							countNewString(cost, value);
+						}
+						R[ins.a] = value;
 						break;
+					}
 				}
 			} catch (e) {
 				if (e instanceof Abort || e instanceof Limit) throw e;

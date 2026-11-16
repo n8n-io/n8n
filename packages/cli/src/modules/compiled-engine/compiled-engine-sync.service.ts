@@ -279,13 +279,39 @@ export class CompiledEngineSync {
 		}
 	}
 
-	/** Loads again each workflow that uses the changed credential, with the new data. */
+	/**
+	 * Loads again each workflow that uses the changed credential, with the new data. The module
+	 * depends on the credential: on its public fields, and on which of its nodes run compiled
+	 * for the values that the credential gives their conditions. So the workflow compiles again
+	 * first. The cache gives the same module when nothing of that changed.
+	 */
 	async onCredentialChanged(credentialId: string) {
 		if (!this.connected) return;
 		for (const entry of this.loaded.values()) {
 			if (entry.artifact.slots.some((s) => s.credentialId === credentialId)) {
+				await this.compileAgain(entry);
 				await this.push(entry);
 			}
+		}
+	}
+
+	/**
+	 * Compiles a published workflow again with the credentials of now, and keeps the new
+	 * artifact when it is another one. True when the artifact changed. A manual run compiles
+	 * at each run, and a compile with errors keeps the loaded module.
+	 */
+	private async compileAgain(entry: LoadedWorkflow): Promise<boolean> {
+		if (!entry.active) return false;
+		try {
+			const artifact = await this.compile(entry.workflowData);
+			if (!artifact.ok || artifact.key === entry.artifact.key) return false;
+			entry.artifact = artifact;
+			return true;
+		} catch (error) {
+			this.logger.warn(`Could not compile workflow ${entry.wfrtId} again for its credentials`, {
+				error: error instanceof Error ? error.message : String(error),
+			});
+			return false;
 		}
 	}
 
@@ -384,6 +410,18 @@ export class CompiledEngineSync {
 		minted: Map<string, MintedToken>,
 	) {
 		if (!this.connected) throw new OperationalError('The compiled engine is not connected');
+		// New values can give the conditions of a compiled node values that are not checked
+		// against the v1 node: the node must then run in the fallback host, so the workflow
+		// loads again with another module. Without such conditions the module stays.
+		const guarded = entry.artifact.slots.some(
+			(slot) =>
+				slot.credentialId === credentialId &&
+				(entry.artifact.derivations?.[slot.slot] ?? []).some((d) => d.kind === 'guard'),
+		);
+		if (guarded && (await this.compileAgain(entry))) {
+			await this.push(entry);
+			return;
+		}
 		const slots = entry.artifact.slots.filter((slot) => slot.credentialId === credentialId);
 		const credentials = await this.credentials.buildDocument(
 			entry.workflowData.id,

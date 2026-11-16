@@ -1115,6 +1115,72 @@ function moveErrorItems(out: Json[], errors: Json[], input: Json[]): void {
 	while (out.length > kept) out.pop();
 }`,
 	},
+	isErrorItem: {
+		uses: [],
+		source: `/**
+ * True for an error item, as v1's handleNodeErrorOutput finds it: the keys are only error,
+ * message and details, and error is truthy.
+ */
+function isErrorItem(item: Json): boolean {
+	if (item === null || item === undefined || typeof item !== 'object') return false;
+	const keys = Object.keys(item);
+	for (const key of keys) {
+		if (key !== 'error' && key !== 'message' && key !== 'details') return false;
+	}
+	return keys.length > 0 && Boolean(item.error);
+}`,
+	},
+	mergedErrorItem: {
+		uses: [],
+		source: `/** An error item in the json of its input item. The files of the input item do not go with it. */
+function mergedErrorItem(item: Json, input: Json): Json {
+	const merged: Json = {};
+	for (const key of Object.keys(input)) {
+		if (key !== '$binary') merged[key] = input[key];
+	}
+	for (const key of Object.keys(item)) merged[key] = item[key];
+	return merged;
+}`,
+	},
+	splitErrorItems: {
+		uses: ['isErrorItem', 'mergedErrorItem'],
+		source: `/**
+ * Moves the error items of a node run to the error output, as v1's handleNodeErrorOutput for
+ * a node that pairs its error items with their input items: \`sources[k]\` is the input item
+ * of \`result[k]\`. An item without json makes v1 fail there, as a node that throws.
+ */
+function splitErrorItems(result: Json[], sources: Json[], out: Json[], errors: Json[]): void {
+	for (let k = 0; k < result.length; k++) {
+		const item = result[k];
+		if (item === null || item === undefined) throw new Error('An item of the node has no json.');
+		if (isErrorItem(item)) errors.push(mergedErrorItem(item, sources[k]));
+		else out.push(item);
+	}
+}`,
+	},
+	splitErrorItemsByPosition: {
+		uses: ['isErrorItem', 'mergedErrorItem'],
+		source: `/**
+ * Moves the error items of a node run to the error output, for a node that does not pair its
+ * error items. v1 (assignPairedItems) then pairs an error item by position: with the only
+ * input item, with the input item at its position when the counts are equal, or with the
+ * first input item when the node gives one item. In all other cases the item does not merge.
+ */
+function splitErrorItemsByPosition(result: Json[], input: Json[], out: Json[], errors: Json[]): void {
+	for (let k = 0; k < result.length; k++) {
+		const item = result[k];
+		if (item === null || item === undefined) throw new Error('An item of the node has no json.');
+		if (!isErrorItem(item)) {
+			out.push(item);
+			continue;
+		}
+		let source: Json = undefined;
+		if (input.length === 1 || result.length === 1) source = input[0];
+		else if (result.length === input.length) source = input[k];
+		errors.push(source === undefined ? item : mergedErrorItem(item, source));
+	}
+}`,
+	},
 	retryError: {
 		uses: [],
 		source: `/** True when an output item has an error, as v1's "retry on fail" checks \`json.error\`. */

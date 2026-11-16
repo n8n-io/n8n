@@ -11,6 +11,7 @@ import { regexExec } from './regex-lib.ts';
 import { StaticDataDoc } from './static-data.ts';
 import { xmlContent, xmlParse, xmlSnippet } from './xml-lib.ts';
 import { asciiIs, asciiIsPrintable, base64Utf8 } from './ascii-lib.ts';
+import { storedResponse } from './binary-response.ts';
 
 /** A differential test fixture (spec section 6). */
 export interface Fixture {
@@ -174,6 +175,8 @@ export async function runReference(
 		nodes?: Record<string, string>;
 		extraNodes?: Record<string, string>;
 		fileName?: string;
+		/** The run stops with the status `limit` after this many fibre steps. */
+		maxSteps?: number;
 	} = {},
 ): Promise<ReferenceOutput> {
 	// Workflows run in UTC: local-time Date methods equal the UTC methods.
@@ -222,7 +225,7 @@ export async function runReference(
 		let result: unknown;
 		for (;;) {
 			effects.push({ step, kind, args: clone(args) });
-			result = nextResult(step);
+			result = storedResponse(kind, args, nextResult(step));
 			const failed = isRecord(result) && '$error' in result;
 			if (!failed || attempt >= retryMax) break;
 			attempt++;
@@ -378,7 +381,7 @@ export async function runReference(
 			},
 		);
 	});
-	const MAX_STEPS = 1_000_000;
+	const MAX_STEPS = options.maxSteps ?? 1_000_000;
 	for (let i = 0; i < MAX_STEPS && !state.finished && !state.abort; i++) {
 		const next = queue.shift();
 		if (!next) throw new Error('deadlock: no runnable fibre');
