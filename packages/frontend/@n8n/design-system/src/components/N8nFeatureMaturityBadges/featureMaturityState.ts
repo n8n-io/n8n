@@ -1,4 +1,11 @@
-import { inject, type InjectionKey } from 'vue';
+import {
+	computed,
+	inject,
+	toValue,
+	type ComputedRef,
+	type InjectionKey,
+	type MaybeRefOrGetter,
+} from 'vue';
 
 /** One feature's badge flags. The app owns the list. The design system only reads it. */
 export type FeatureMaturityEntry = {
@@ -15,13 +22,16 @@ export type FeatureMaturityCatalog = {
 
 /**
  * The app provides the feature list. Storybook provides a stub.
+ * Provide a computed list when the badges must follow instance state.
  * A component that renders with no list reads an empty catalog.
  */
-export const FeatureMaturityKey: InjectionKey<FeatureMaturityCatalog> = Symbol('FeatureMaturity');
+export const FeatureMaturityKey: InjectionKey<MaybeRefOrGetter<FeatureMaturityCatalog>> =
+	Symbol('FeatureMaturity');
 
 /** The feature list provided by the app. Empty when the app provided none. */
-export function useFeatureMaturityCatalog(): FeatureMaturityCatalog {
-	return inject(FeatureMaturityKey, {});
+export function useFeatureMaturityCatalog(): ComputedRef<FeatureMaturityCatalog> {
+	const provided = inject(FeatureMaturityKey, {});
+	return computed(() => toValue(provided));
 }
 
 /**

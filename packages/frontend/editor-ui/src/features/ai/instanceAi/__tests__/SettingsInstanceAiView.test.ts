@@ -89,6 +89,10 @@ async function selectOption(select: HTMLElement, label: string) {
 	await fireEvent.click(option!);
 }
 
+function setPlanName(settingsStore: ReturnType<typeof useSettingsStore>, planName: string) {
+	settingsStore.settings.license = { ...settingsStore.settings.license, planName };
+}
+
 const fullyConfigured = {
 	modelEnvConfigured: true,
 	sandboxEnabled: true,
@@ -297,7 +301,8 @@ describe('SettingsInstanceAiView', () => {
 	});
 
 	describe('page header', () => {
-		it('shows the limited enterprise readiness badge beside the title', async () => {
+		it('shows the limited enterprise readiness badge beside the title on Enterprise', async () => {
+			setPlanName(settingsStore, 'Enterprise');
 			const { findByText, getByRole, getByTestId } = renderComponent();
 			await waitFor(() => expect(store.isLoading).toBe(false));
 			const label = await findByText('settings.n8nAgent.enable.label');
@@ -309,6 +314,13 @@ describe('SettingsInstanceAiView', () => {
 			expect(label.parentElement).not.toContainElement(
 				getByTestId('assistant-enterprise-readiness-badge'),
 			);
+		});
+
+		it('hides the limited enterprise readiness badge on other plans', () => {
+			setPlanName(settingsStore, 'Business');
+
+			const { queryByTestId } = renderComponent();
+			expect(queryByTestId('assistant-enterprise-readiness-badge')).toBeNull();
 		});
 
 		it('does not show a Preview badge', () => {
@@ -637,6 +649,7 @@ describe('SettingsInstanceAiView', () => {
 		});
 
 		it('shows the limited enterprise readiness badge in the empty state', () => {
+			setPlanName(settingsStore, 'Enterprise');
 			store.$patch({ settings: { ...store.settings!, enabled: false } });
 			setModuleSettings(settingsStore, { ...defaultModuleSettings, enabled: false });
 

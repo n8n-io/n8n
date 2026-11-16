@@ -18,6 +18,7 @@ const { settingsState, setChatEnabledMock } = vi.hoisted(() => ({
 	settingsState: {
 		enabled: true as boolean | undefined,
 		isChatFeatureEnabled: true,
+		isEnterprisePlan: true,
 	},
 	setChatEnabledMock: vi.fn().mockResolvedValue(undefined),
 }));
@@ -29,6 +30,9 @@ vi.mock('@n8n/stores/settings.store', () => ({
 		},
 		get isChatFeatureEnabled() {
 			return settingsState.isChatFeatureEnabled;
+		},
+		get isEnterprisePlan() {
+			return settingsState.isEnterprisePlan;
 		},
 		getModuleSettings: vi.fn().mockResolvedValue(undefined),
 	}),
@@ -86,6 +90,7 @@ describe('SettingsChatHubView', () => {
 		hasPermissionMock.mockReturnValue(true);
 		settingsState.enabled = true;
 		settingsState.isChatFeatureEnabled = true;
+		settingsState.isEnterprisePlan = true;
 	});
 
 	it('renders the enable toggle and providers when Chat is enabled', () => {
@@ -147,6 +152,15 @@ describe('SettingsChatHubView', () => {
 		await userEvent.click(getByTestId('chat-hub-enabled-switch'));
 
 		expect(setChatEnabledMock).toHaveBeenCalledWith(true);
+	});
+
+	it('hides the limited enterprise readiness badge on other plans', () => {
+		settingsState.isEnterprisePlan = false;
+
+		const { getByTestId, queryByTestId } = renderComponent();
+
+		expect(getByTestId('chat-preview-badge')).toBeInTheDocument();
+		expect(queryByTestId('chat-enterprise-readiness-badge')).not.toBeInTheDocument();
 	});
 
 	it('shows the Preview and limited enterprise readiness badges next to the title', () => {

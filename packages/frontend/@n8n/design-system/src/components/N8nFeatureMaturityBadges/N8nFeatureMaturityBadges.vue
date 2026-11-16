@@ -48,7 +48,7 @@ const resolved = computed(() => {
 		};
 	}
 
-	return resolveFeatureMaturityBadges(catalog, props.feature, {
+	return resolveFeatureMaturityBadges(catalog.value, props.feature, {
 		preview: props.hidePreview,
 		enterprise: props.hideEnterprise,
 	});

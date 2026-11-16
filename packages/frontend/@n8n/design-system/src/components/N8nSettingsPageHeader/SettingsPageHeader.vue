@@ -68,7 +68,7 @@ const resolvedDocsLeadingText = computed(
 );
 const catalog = useFeatureMaturityCatalog();
 const featureBadges = computed(() =>
-	resolveFeatureMaturityBadges(catalog, props.feature, {
+	resolveFeatureMaturityBadges(catalog.value, props.feature, {
 		preview: props.hidePreview,
 		enterprise: props.hideEnterprise,
 	}),

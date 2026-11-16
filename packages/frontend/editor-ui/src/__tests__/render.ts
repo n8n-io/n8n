@@ -1,8 +1,9 @@
 import { computed } from 'vue';
 import vueJsonPretty from 'vue-json-pretty';
 import { FeatureMaturityKey } from '@n8n/design-system';
-import { featureMaturity } from '@n8n/frontend-constants/feature-maturity';
+import { featureMaturityForPlan } from '@n8n/frontend-constants/feature-maturity';
 import { defineRenderer, type RenderOptions } from '@n8n/frontend-test-utils';
+import { useSettingsStore } from '@n8n/stores/settings.store';
 import { GlobalDirectivesPlugin } from '@/app/plugins/directives';
 import { WorkflowDocumentStoreKey } from '@/app/constants/injectionKeys';
 import {
@@ -31,10 +32,16 @@ export const { renderComponent, createComponentRenderer } = defineRenderer({
 	//
 	// A thunk, not an object: `useWorkflowDocumentStore()` has to run per render, inside the pinia
 	// that render activated.
-	provide: () => ({
-		[WorkflowDocumentStoreKey as symbol]: computed(() =>
-			useWorkflowDocumentStore(createWorkflowDocumentId(useWorkflowsStore().workflowId)),
-		),
-		[FeatureMaturityKey as symbol]: featureMaturity,
-	}),
+	provide: () => {
+		const settingsStore = useSettingsStore();
+		return {
+			[WorkflowDocumentStoreKey as symbol]: computed(() =>
+				useWorkflowDocumentStore(createWorkflowDocumentId(useWorkflowsStore().workflowId)),
+			),
+			// Match App.vue: only the Enterprise plan keeps Limited enterprise readiness.
+			[FeatureMaturityKey as symbol]: computed(() =>
+				featureMaturityForPlan(settingsStore.isEnterprisePlan),
+			),
+		};
+	},
 });

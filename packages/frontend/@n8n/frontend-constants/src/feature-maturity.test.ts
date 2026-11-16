@@ -1,4 +1,8 @@
-import { featureMaturity, showsFeatureMaturityBadges } from './feature-maturity';
+import {
+	featureMaturity,
+	featureMaturityForPlan,
+	showsFeatureMaturityBadges,
+} from './feature-maturity';
 
 describe('featureMaturity', () => {
 	it('matches the feature list', () => {
@@ -18,6 +22,19 @@ describe('featureMaturity', () => {
 			selfHealing: { preview: true, limitedEnterpriseSupport: true },
 			chat: { preview: true, limitedEnterpriseSupport: true },
 		});
+	});
+
+	it('hides limited enterprise readiness unless the plan is Enterprise', () => {
+		expect(featureMaturityForPlan(true)).toBe(featureMaturity);
+		expect(featureMaturityForPlan(false).assistant).toEqual({
+			preview: false,
+			limitedEnterpriseSupport: false,
+		});
+		expect(featureMaturityForPlan(false).agents).toEqual({
+			preview: true,
+			limitedEnterpriseSupport: false,
+		});
+		expect(featureMaturityForPlan(false).openTelemetry).toEqual(featureMaturity.openTelemetry);
 	});
 
 	it('shows a badge when the entry is preview or has limited enterprise support', () => {
