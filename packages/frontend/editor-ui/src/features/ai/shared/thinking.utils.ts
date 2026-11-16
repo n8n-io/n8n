@@ -9,7 +9,8 @@ export function firstSentence(content: string): string {
 const MIN_SENTENCE_LENGTH = 12;
 const MAX_SENTENCE_LENGTH = 140;
 // A sentence ends at punctuation followed by white space, so `n8n-nodes-base.gmail` stays whole.
-const SENTENCE_PATTERN = /.*?[.!?]+(?=\s)/g;
+// A common abbreviation does not end a sentence.
+const SENTENCE_PATTERN = /.*?(?<!\b(?:e\.g|i\.e|etc|vs))[.!?]+(?=\s)/g;
 
 /** The sentences of one line. The rest of the line counts, also while it streams. */
 function sentencesOfLine(line: string): string[] {

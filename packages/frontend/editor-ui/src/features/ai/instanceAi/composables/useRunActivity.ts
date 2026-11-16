@@ -57,7 +57,10 @@ function collectToolCalls(node: InstanceAiAgentNode): InstanceAiToolCallState[] 
 function readNodeTypes(tree: InstanceAiAgentNode): string[] {
 	return unique(
 		collectToolCalls(tree).flatMap((toolCall) => {
-			if (toolCall.toolName !== SHARED_BUILDER_TOOL_NAMES.GET_NODE_TYPES) return [];
+			// Older runs stored the former builder tool name.
+			if (resolveBuilderToolName(toolCall.toolName) !== SHARED_BUILDER_TOOL_NAMES.GET_NODE_TYPES) {
+				return [];
+			}
 			const { nodeTypes } = toolCall.args;
 			if (!Array.isArray(nodeTypes)) return [];
 			return nodeTypes.flatMap((request: unknown) => {

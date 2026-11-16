@@ -25,6 +25,15 @@ describe('currentSentence', () => {
 		);
 	});
 
+	it('does not end a sentence at an abbreviation', () => {
+		expect(currentSentence('Use a filter, e.g. Gmail can filter by label')).toBe(
+			'Use a filter, e.g. Gmail can filter by label',
+		);
+		expect(currentSentence('Pick one, i.e. the newest one, etc. and go on')).toBe(
+			'Pick one, i.e. the newest one, etc. and go on',
+		);
+	});
+
 	it('does not end a sentence inside a dotted name', () => {
 		expect(currentSentence('I will use n8n-nodes-base.gmail for this. More')).toBe(
 			'I will use n8n-nodes-base.gmail for this.',

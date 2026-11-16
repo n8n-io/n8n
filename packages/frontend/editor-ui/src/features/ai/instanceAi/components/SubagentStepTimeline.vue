@@ -107,9 +107,11 @@ const steps = computed((): TimelineStep[] => {
 			result.push({
 				type: 'tool-call',
 				icon: tc.isLoading ? 'spinner' : getToolIcon(tc.toolName),
-				label: tc.isLoading
-					? activeToolLabel(tc, props.agentNode, now.value.getTime())
-					: getToolLabel(tc.toolName, tc.args),
+				// A stopped sub-agent can keep a call that still loads; it keeps the plain label.
+				label:
+					tc.isLoading && props.agentNode.status === 'active'
+						? activeToolLabel(tc, props.agentNode, now.value.getTime())
+						: getToolLabel(tc.toolName, tc.args),
 				isLoading: tc.isLoading,
 				toggleLabel: getToggleLabel(tc),
 				hideLabel: getHideLabel(tc),

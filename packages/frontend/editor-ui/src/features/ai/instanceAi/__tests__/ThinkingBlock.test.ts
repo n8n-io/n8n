@@ -379,13 +379,51 @@ describe('ThinkingBlock', () => {
 		expect(getByTestId('thinking-block-subline')).not.toHaveTextContent('Thinking');
 	});
 
-	it('rotates the node types the agent read on the subline while it writes the source', () => {
+	it('rotates the node types the agent read on the subline while it writes the source', async () => {
+		vi.useFakeTimers({ now: 0 });
+		try {
+			const names: Record<string, string> = {
+				'n8n-nodes-base.gmail': 'Gmail',
+				'n8n-nodes-base.slack': 'Slack',
+			};
+			mockedStore(useNodeTypesStore).getNodeType = vi.fn((name: string) =>
+				names[name] ? { displayName: names[name] } : null,
+			) as unknown as ReturnType<typeof useNodeTypesStore>['getNodeType'];
+			const read = makeToolCall({
+				toolCallId: 'tc-read',
+				toolName: 'get_node_types',
+				args: { nodeTypes: ['n8n-nodes-base.gmail', 'n8n-nodes-base.slack'] },
+			});
+			const write = makeToolCall({
+				toolCallId: 'tc-write',
+				toolName: 'workspace_write_file',
+				isLoading: true,
+			});
+			const { getByTestId } = renderComponent({
+				props: {
+					agentNode: makeAgentNode({ status: 'active', toolCalls: [read, write] }),
+					entries: [toolEntry('tc-read'), toolEntry('tc-write')],
+					active: true,
+				},
+			});
+			expect(getByTestId('thinking-block-subline')).toHaveTextContent('Configuring Gmail nodes');
+
+			// The next name comes after 3 seconds, and shows once it has held for 400 ms.
+			await vi.advanceTimersByTimeAsync(3500);
+
+			expect(getByTestId('thinking-block-subline')).toHaveTextContent('Configuring Slack nodes');
+		} finally {
+			vi.useRealTimers();
+		}
+	});
+
+	it('reads the node types of a call with the former builder tool name', () => {
 		mockedStore(useNodeTypesStore).getNodeType = vi.fn((name: string) =>
 			name === 'n8n-nodes-base.gmail' ? { displayName: 'Gmail' } : null,
 		) as unknown as ReturnType<typeof useNodeTypesStore>['getNodeType'];
 		const read = makeToolCall({
 			toolCallId: 'tc-read',
-			toolName: 'get_node_types',
+			toolName: 'agent_builder_get_node_types',
 			args: { nodeTypes: ['n8n-nodes-base.gmail'] },
 		});
 		const write = makeToolCall({
