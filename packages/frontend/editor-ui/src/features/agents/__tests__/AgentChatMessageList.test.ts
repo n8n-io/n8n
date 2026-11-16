@@ -496,12 +496,12 @@ describe('AgentChatMessageList', () => {
 	it.each([true, false])(
 		'follows a resized status only when near the bottom: %s',
 		async (nearBottom) => {
-			let resizeStatus: (() => void) | undefined;
+			const resizeCallbacks: Array<() => void> = [];
 			vi.stubGlobal(
 				'ResizeObserver',
 				class {
 					constructor(onResize: () => void) {
-						resizeStatus = onResize;
+						resizeCallbacks.push(onResize);
 					}
 
 					observe() {}
@@ -529,9 +529,9 @@ describe('AgentChatMessageList', () => {
 
 				Object.defineProperty(scroller, 'scrollHeight', { value: 600 });
 
-				expect(resizeStatus).toBeDefined();
+				expect(resizeCallbacks.length).toBeGreaterThan(0);
 
-				resizeStatus?.();
+				for (const onResize of resizeCallbacks) onResize();
 				await flushPromises();
 
 				expect(scroller.scrollTop).toBe(nearBottom ? 600 : 0);
