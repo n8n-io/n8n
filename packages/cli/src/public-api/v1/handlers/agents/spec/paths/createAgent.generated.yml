@@ -65,6 +65,9 @@ responses:
               type: string
             projectId:
               type: string
+            parentFolderId:
+              type: string
+              nullable: true
             project:
               type: object
               nullable: true

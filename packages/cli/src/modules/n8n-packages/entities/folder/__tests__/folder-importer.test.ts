@@ -1,4 +1,4 @@
-import type { User } from '@n8n/db';
+import type { Folder, Project, User } from '@n8n/db';
 import { PROJECT_ROOT } from 'n8n-workflow';
 import { mock } from 'vitest-mock-extended';
 
@@ -28,7 +28,13 @@ const folder = (sourceFolderId: string, parentFolderId: string | null): Prepared
 });
 
 const existingFolder = (id: string, projectId: string, parentFolderId: string | null) =>
-	({ id, name: id, parentFolderId, homeProject: { id: projectId } }) as never;
+	mock<Folder>({
+		id,
+		name: id,
+		parentFolderId,
+		resourceType: 'workflow',
+		homeProject: mock<Project>({ id: projectId }),
+	});
 
 describe('FolderImporter', () => {
 	it('reports a parent mismatch as a conflict by default', async () => {
