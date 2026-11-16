@@ -244,7 +244,11 @@ pub const Sink = struct {
     /// `h` and the body to the binary data store, or gives `h` back.
     /// `url_path` is the path of the URL that answered. Null: such a request
     /// fails at its start.
-    stored: ?*const fn (ctx: *anyopaque, exec_id: u64, seq: u32, h: blob_store.Handle, r: Response, url_path: []const u8) void = null,
+    /// The body is not in `r`: it goes to the store in pieces afterwards
+    /// (`expected`: its size, when the response says it), or `whole` is set
+    /// and it follows at once. False: the sink gave `h` back, and has the
+    /// result of the step or sends the request again.
+    stored: ?*const fn (ctx: *anyopaque, exec_id: u64, seq: u32, h: blob_store.Handle, r: Response, url_path: []const u8, expected: ?u64, whole: bool) bool = null,
 };
 
 /// Counters for `--stats` and the tests.
@@ -257,6 +261,8 @@ pub const Counters = struct {
     h1_conns: u64 = 0,
     h2_conns: u64 = 0,
     h2_streams: u64 = 0,
+    /// Times a stored response stopped reading because the store had no free block.
+    stored_pauses: u64 = 0,
     queue_full: u64 = 0,
     overload: u64 = 0,
     requeued: u64 = 0,
@@ -347,6 +353,9 @@ const Req = struct {
     /// The row of the binary data store that waits for the response of a
     /// request with `responseBinary`. `.none` for every other request.
     stored: blob_store.Handle = .none,
+    /// The store has the start of the response (`blob_store.begin`): the
+    /// body goes to it in pieces, and the result of the step comes from it.
+    storing: bool = false,
 };
 
 const Origin = struct {
@@ -413,8 +422,15 @@ const Origin = struct {
     }
 };
 
-const CState = enum { free, connecting, handshaking, idle, sending, reading, h2 };
-const BodyKind = enum { none, length, chunked, close };
+/// `paused`: a response that goes to the binary data store, when the store
+/// has no free block. The socket is not read until blocks are free.
+const CState = enum { free, connecting, handshaking, idle, sending, reading, paused, h2 };
+/// How the body of a response ends. The `s_` kinds are the same four for a
+/// request with `responseBinary`: the switch on the kind sends them to the
+/// store, so a request without it pays no test for it after `start`.
+const BodyKind = enum(u8) { none, length, chunked, close, s_none, s_length, s_chunked, s_close };
+/// The distance from a kind to its `s_` kind.
+const stored_kinds = 4;
 const Proto = enum { h1, h2 };
 
 const Conn = struct {
@@ -451,6 +467,10 @@ const Conn = struct {
     raw_start: usize = 0,
     raw_end: usize = 0,
     chunked: http.Chunked = .{},
+    /// Bytes of the body that the store has, and whether the connection
+    /// can stay open after the response (the head is gone by then).
+    stored_bytes: u64 = 0,
+    stored_keep: bool = false,
     got_bytes: bool = false,
     /// In `Client.read_list`: TLS may hold decrypted bytes for it.
     read_queued: bool = false,
@@ -553,6 +573,8 @@ pub const Client = struct {
     /// response to the next send of the connection free of recursion.
     read_list: []u32 = &.{},
     nread: u32 = 0,
+    /// Connections in the state `paused`.
+    npaused: u32 = 0,
     /// h2 connections with frames to write. They are written once per
     /// loop round, so the streams that a batch starts share one write
     /// (and one TLS record) per connection.
@@ -690,7 +712,8 @@ pub const Client = struct {
         r.on_wire = false;
         c.resetStream(ri);
         if (!c.build(ri, args, st, idem_key)) return;
-        // The one branch that a request without `responseBinary` pays here.
+        // The one branch that a request without `responseBinary` pays for it
+        // (HTTP/1.1; `h2Complete` has one more).
         if (r.built.stores and !c.reserveStored(ri, args)) return;
         r.state = .active;
         c.active += 1;
@@ -718,22 +741,223 @@ pub const Client = struct {
         return true;
     }
 
-    /// The response of a request with `responseBinary`. A 2xx status goes
-    /// to the store through the sink; another status has its usual body.
+    /// The whole response of a request with `responseBinary` (HTTP/2: the
+    /// body is in the response area). A 2xx status goes to the store;
+    /// another status has its usual body.
     fn doneStored(c: *Client, ri: u32, resp: Response) void {
         const r = &c.reqs[ri];
         const h = r.stored;
         r.stored = .none;
-        std.debug.assert(h != .none);
+        std.debug.assert(h != .none and !r.storing);
         const stored = c.sink.stored orelse unreachable; // `reserveStored` needs the store, and the store comes with this sink.
         const blobs = c.cfg.blobs orelse unreachable; // As above: the handle came from it.
         if (resp.status < 200 or resp.status > 299) {
             blobs.release(h);
             return c.sink.done(c.sink.ctx, r.exec_id, r.seq, .{ .ok = resp });
         }
-        const target = r.url.target;
-        const path = target[0 .. std.mem.indexOfScalar(u8, target, '?') orelse target.len];
-        stored(c.sink.ctx, r.exec_id, r.seq, h, resp, path);
+        if (!stored(c.sink.ctx, r.exec_id, r.seq, h, resp, c.urlPath(ri), resp.body.len, true)) return;
+        blobs.putBody(h, resp.body, c.now_ms);
+    }
+
+    /// The path of the URL of the request, without the query.
+    fn urlPath(c: *Client, ri: u32) []const u8 {
+        const target = c.reqs[ri].url.target;
+        return target[0 .. std.mem.indexOfScalar(u8, target, '?') orelse target.len];
+    }
+
+    // ---- a response that goes to the binary data store in pieces (HTTP/1.1) ----------
+
+    fn isRedirect(r: *const Req, h: http.Head) bool {
+        return (h.status == 301 or h.status == 302 or h.status == 303 or h.status == 307 or h.status == 308) and h.location != null and
+            (std.mem.eql(u8, r.built.method(), "GET") or std.mem.eql(u8, r.built.method(), "HEAD"));
+    }
+
+    /// `more`: the response needs more bytes. `done`: it is complete,
+    /// failed or paused. `plain`: it is not stored, and has its plain kind now.
+    const StoredStep = enum { more, done, plain };
+
+    /// Body bytes of a response to a request with `responseBinary`.
+    fn advanceStored(c: *Client, ci: u32) StoredStep {
+        const cn = &c.conns[ci];
+        const ri = cn.req;
+        const r = &c.reqs[ri];
+        std.debug.assert(r.stored != .none and @backingInt(cn.kind) >= stored_kinds);
+        if (!r.storing) {
+            const h = cn.head.?;
+            if (h.status < 200 or h.status > 299) {
+                // Not stored: the body is the usual one. A redirect keeps the
+                // row of the store for the response of the next request.
+                if (!isRedirect(r, h)) {
+                    const reported = c.dropStored(ri, "");
+                    std.debug.assert(!reported);
+                }
+                cn.kind = @fromBackingInt(@intCast(@backingInt(cn.kind) - stored_kinds));
+                return if (c.sizeBody(ci)) .plain else .done;
+            }
+            if (!c.beginStored(ci)) return .done;
+        }
+        return if (c.streamBody(ci)) .more else .done;
+    }
+
+    /// Give the start of the response to the store. False when the sink
+    /// did not take it: the request and the connection are done.
+    fn beginStored(c: *Client, ci: u32) bool {
+        const cn = &c.conns[ci];
+        const ri = cn.req;
+        const r = &c.reqs[ri];
+        const h = cn.head.?;
+        const stored = c.sink.stored orelse unreachable; // `reserveStored` needs the store, and the store comes with this sink.
+        c.feedback(r.origin, h.status, h.lines);
+        const expected: ?u64 = switch (cn.kind) {
+            .s_none => 0,
+            .s_length => h.content_length,
+            else => null,
+        };
+        const resp: Response = .{ .status = h.status, .header_lines = h.lines, .body = "", .json = h.json };
+        if (!stored(c.sink.ctx, r.exec_id, r.seq, r.stored, resp, c.urlPath(ri), expected, false)) {
+            r.stored = .none;
+            cn.req = none;
+            c.freeReq(ri);
+            // The body is not read.
+            c.finishConn(ci, false);
+            return false;
+        }
+        r.storing = true;
+        cn.stored_bytes = 0;
+        cn.stored_keep = !h.close;
+        // The store has the head: the whole buffer takes body bytes from here on.
+        const pending = cn.raw_end;
+        std.debug.assert(cn.raw_start == 0 and cn.big == none);
+        std.mem.copyForwards(u8, cn.rbuf[0..pending], cn.body_buf[0..pending]);
+        cn.body_buf = cn.rbuf;
+        cn.body_len = 0;
+        cn.head.?.lines = "";
+        cn.head.?.location = null;
+        return true;
+    }
+
+    /// Give `bytes` to the store. The count that it took, or null when the
+    /// transfer failed: the store has the reason, and the request and the
+    /// connection are done.
+    fn giveStored(c: *Client, ci: u32, bytes: []const u8) ?usize {
+        const cn = &c.conns[ci];
+        const ri = cn.req;
+        const blobs = c.cfg.blobs orelse unreachable; // The handle of the request came from it.
+        std.debug.assert(bytes.len > 0 and c.reqs[ri].storing);
+        switch (blobs.append(c.reqs[ri].stored, bytes, c.now_ms)) {
+            .took => |k| {
+                cn.stored_bytes += k;
+                return k;
+            },
+            .failed => {
+                const reported = c.dropStored(ri, "");
+                std.debug.assert(reported);
+                cn.req = none;
+                c.freeReq(ri);
+                c.finishConn(ci, false);
+                return null;
+            },
+        }
+    }
+
+    /// The store has no free block: do not read the socket until it has.
+    fn pauseStored(c: *Client, ci: u32) bool {
+        const cn = &c.conns[ci];
+        std.debug.assert(cn.state == .reading and cn.fd >= 0);
+        cn.state = .paused;
+        c.npaused += 1;
+        c.counters.stored_pauses += 1;
+        c.poller.watch(cn.fd, sys.makeToken(c.kind_conn, cn.gen, ci), false, cn.write_armed);
+        return false;
+    }
+
+    /// Blocks of the store are free again: the paused responses go on.
+    fn resumeStored(c: *Client) void {
+        const blobs = c.cfg.blobs orelse unreachable; // A paused response has a handle of it.
+        std.debug.assert(c.npaused > 0);
+        for (c.conns, 0..) |*cn, i| {
+            if (cn.state != .paused) continue;
+            if (!blobs.hasRoom(c.reqs[cn.req].stored)) continue;
+            const ci: u32 = @intCast(i);
+            cn.state = .reading;
+            c.npaused -= 1;
+            cn.last_io_ms = c.now_ms;
+            c.poller.watch(cn.fd, sys.makeToken(c.kind_conn, cn.gen, ci), true, cn.write_armed);
+            // The bytes that waited go first; then a read, for bytes that a TLS session holds.
+            if (c.streamBody(ci)) c.queueRead(ci);
+        }
+    }
+
+    /// Decode the body bytes that arrived and give them to the store.
+    /// False when the response is complete, failed or paused.
+    fn streamBody(c: *Client, ci: u32) bool {
+        const cn = &c.conns[ci];
+        std.debug.assert(c.reqs[cn.req].storing and cn.state == .reading);
+        switch (cn.kind) {
+            .s_none => {
+                c.streamDone(ci, false);
+                return false;
+            },
+            .s_length, .s_close => {
+                const have = cn.raw_end - cn.raw_start;
+                const left: u64 = if (cn.kind == .s_length) cn.head.?.content_length.? - cn.stored_bytes else have;
+                const give: usize = @intCast(@min(have, left));
+                if (give > 0) {
+                    const took = c.giveStored(ci, cn.body_buf[cn.raw_start..][0..give]) orelse return false;
+                    cn.raw_start += took;
+                    if (took < give) return c.pauseStored(ci);
+                }
+                if (cn.kind == .s_length and cn.stored_bytes == cn.head.?.content_length.?) {
+                    c.streamDone(ci, cn.raw_start < cn.raw_end);
+                    return false;
+                }
+                cn.raw_start = 0;
+                cn.raw_end = 0;
+                return true;
+            },
+            .s_chunked => {
+                cn.chunked.feed(cn.body_buf, &cn.body_len, &cn.raw_start, cn.raw_end) catch {
+                    c.connFailFmt(ci, "bad chunked body from {s}", .{c.hostPort(ci)});
+                    return false;
+                };
+                if (cn.body_len > 0) {
+                    const took = c.giveStored(ci, cn.body_buf[0..cn.body_len]) orelse return false;
+                    if (took < cn.body_len) {
+                        std.mem.copyForwards(u8, cn.body_buf[0 .. cn.body_len - took], cn.body_buf[took..cn.body_len]);
+                        cn.body_len -= took;
+                        return c.pauseStored(ci);
+                    }
+                    cn.body_len = 0;
+                }
+                if (cn.chunked.done()) {
+                    c.streamDone(ci, cn.raw_start < cn.raw_end);
+                    return false;
+                }
+                // The decoder took every byte: the buffer is free again.
+                std.debug.assert(cn.raw_start == cn.raw_end);
+                cn.raw_start = 0;
+                cn.raw_end = 0;
+                return true;
+            },
+            // `advanceBody` sends only the stored kinds here.
+            .none, .length, .chunked, .close => unreachable,
+        }
+    }
+
+    /// The body is complete: the store writes the rest and gives the result.
+    fn streamDone(c: *Client, ci: u32, extra: bool) void {
+        const cn = &c.conns[ci];
+        const ri = cn.req;
+        const r = &c.reqs[ri];
+        const blobs = c.cfg.blobs orelse unreachable; // The handle of the request came from it.
+        std.debug.assert(r.storing and r.stored != .none);
+        const keep = cn.stored_keep and cn.kind != .s_close and !extra;
+        blobs.complete(r.stored);
+        r.stored = .none;
+        r.storing = false;
+        cn.req = none;
+        c.freeReq(ri);
+        c.finishConn(ci, keep);
     }
 
     /// Build the request; false when it failed (and was reported).
@@ -787,6 +1011,8 @@ pub const Client = struct {
             .handshaking => c.doHandshake(idx),
             .sending => c.doSend(idx),
             .reading => c.doRead(idx),
+            // The store has no room: the bytes stay in the socket.
+            .paused => {},
             .idle => if (ev.readable or ev.eof) c.idleRead(idx),
             .h2 => {
                 if (ev.writable) c.h2Flush(idx);
@@ -815,6 +1041,7 @@ pub const Client = struct {
         }
         std.mem.copyForwards(u32, c.read_list[0 .. c.nread - n], c.read_list[n..c.nread]);
         c.nread -= n;
+        if (c.npaused > 0) c.resumeStored();
         if (now_ms >= c.wake_ms) {
             c.wake_ms = std.math.maxInt(i64);
             c.pending_pump = true;
@@ -1726,7 +1953,16 @@ pub const Client = struct {
         cn.raw_end = cn.rlen - h.len;
         cn.chunked = .{};
         const head_method = std.mem.eql(u8, r.built.method(), "HEAD");
-        cn.kind = if (head_method or h.status == 204 or h.status == 304) .none else if (h.chunked) .chunked else if (h.content_length != null) .length else .close;
+        const kind: BodyKind = if (head_method or h.status == 204 or h.status == 304) .none else if (h.chunked) .chunked else if (h.content_length != null) .length else .close;
+        // No branch: a request with a row of the store gets the `s_` kind.
+        cn.kind = @fromBackingInt(@intCast(@backingInt(kind) + @as(u8, @intFromBool(r.stored != .none)) * stored_kinds));
+        return c.sizeBody(ci);
+    }
+
+    /// A body with a known length: its limit, and a large buffer when it needs one.
+    fn sizeBody(c: *Client, ci: u32) bool {
+        const cn = &c.conns[ci];
+        const h = cn.head.?;
         if (cn.kind == .length) {
             const n = h.content_length.?;
             if (n > c.cfg.max_body) {
@@ -1741,37 +1977,45 @@ pub const Client = struct {
     /// Decode body bytes. False when the response is complete or failed.
     fn advanceBody(c: *Client, ci: u32) bool {
         const cn = &c.conns[ci];
-        switch (cn.kind) {
-            .none => {},
-            .length => {
-                cn.body_len = @min(cn.raw_end, cn.head.?.content_length.?);
-                if (cn.raw_end < cn.head.?.content_length.?) return true;
-            },
-            .chunked => {
-                cn.chunked.feed(cn.body_buf, &cn.body_len, &cn.raw_start, cn.raw_end) catch {
-                    c.connFailFmt(ci, "bad chunked body from {s}", .{c.hostPort(ci)});
-                    return false;
-                };
-                if (cn.body_len > c.cfg.max_body) {
-                    c.connFailFmt(ci, "the response body from {s} is larger than {d} bytes", .{ c.hostPort(ci), c.cfg.max_body });
-                    return false;
-                }
-                if (!cn.chunked.done()) {
-                    // Reuse the space of decoded framing.
-                    if (cn.raw_start == cn.raw_end) {
-                        cn.raw_start = cn.body_len;
-                        cn.raw_end = cn.body_len;
+        // Two passes at most: a response that is not stored gets its plain kind, once.
+        for (0..2) |_| {
+            switch (cn.kind) {
+                .none => {},
+                .length => {
+                    cn.body_len = @min(cn.raw_end, cn.head.?.content_length.?);
+                    if (cn.raw_end < cn.head.?.content_length.?) return true;
+                },
+                .chunked => {
+                    cn.chunked.feed(cn.body_buf, &cn.body_len, &cn.raw_start, cn.raw_end) catch {
+                        c.connFailFmt(ci, "bad chunked body from {s}", .{c.hostPort(ci)});
+                        return false;
+                    };
+                    if (cn.body_len > c.cfg.max_body) {
+                        c.connFailFmt(ci, "the response body from {s} is larger than {d} bytes", .{ c.hostPort(ci), c.cfg.max_body });
+                        return false;
                     }
+                    if (!cn.chunked.done()) {
+                        // Reuse the space of decoded framing.
+                        const spent = cn.raw_start == cn.raw_end;
+                        cn.raw_start = if (spent) cn.body_len else cn.raw_start;
+                        cn.raw_end = if (spent) cn.body_len else cn.raw_end;
+                        return true;
+                    }
+                },
+                .close => {
+                    cn.body_len = cn.raw_end;
                     return true;
-                }
-            },
-            .close => {
-                cn.body_len = cn.raw_end;
-                return true;
-            },
+                },
+                .s_none, .s_length, .s_chunked, .s_close => switch (c.advanceStored(ci)) {
+                    .more => return true,
+                    .done => return false,
+                    .plain => continue,
+                },
+            }
+            c.complete(ci);
+            return false;
         }
-        c.complete(ci);
-        return false;
+        unreachable; // The second pass has a plain kind: it returns.
     }
 
     /// The body buffer is full: compact, or move to a large buffer.
@@ -1784,6 +2028,8 @@ pub const Client = struct {
             cn.raw_end = cn.body_len + n;
             return true;
         }
+        // A body that goes to the store never fills the buffer: `streamBody` empties it.
+        std.debug.assert(@backingInt(cn.kind) < stored_kinds);
         if (cn.big == none) return c.moveToBig(ci);
         c.connFailFmt(ci, "the response body from {s} is larger than {d} bytes", .{ c.hostPort(ci), c.cfg.max_body });
         return false;
@@ -1810,6 +2056,8 @@ pub const Client = struct {
             cn.head.?.close = true;
             return c.complete(ci);
         }
+        // A stored body that ends with the connection: `streamBody` gave every byte.
+        if (cn.head != null and cn.kind == .s_close and c.reqs[cn.req].storing) return c.streamDone(ci, false);
         c.lostConn(ci);
     }
 
@@ -1847,9 +2095,7 @@ pub const Client = struct {
         const extra = cn.kind == .chunked and cn.raw_start < cn.raw_end or cn.kind == .length and cn.raw_end > h.content_length.?;
         const keep = !h.close and cn.kind != .close and !extra;
         c.feedback(r.origin, h.status, h.lines);
-        const is_redirect = (h.status == 301 or h.status == 302 or h.status == 303 or h.status == 307 or h.status == 308) and h.location != null and
-            (std.mem.eql(u8, r.built.method(), "GET") or std.mem.eql(u8, r.built.method(), "HEAD"));
-        if (is_redirect) {
+        if (isRedirect(r, h)) {
             cn.req = none;
             c.offWire(ri);
             const failed = c.redirect(ri, h.location.?);
@@ -1858,7 +2104,9 @@ pub const Client = struct {
             return;
         }
         const resp: Response = .{ .status = h.status, .header_lines = h.lines, .body = cn.body_buf[0..cn.body_len], .json = h.json };
-        if (r.stored != .none) c.doneStored(ri, resp) else c.sink.done(c.sink.ctx, r.exec_id, r.seq, .{ .ok = resp });
+        // A request with a row of the store never comes here with it: `advanceStored` took the response.
+        std.debug.assert(r.stored == .none);
+        c.sink.done(c.sink.ctx, r.exec_id, r.seq, .{ .ok = resp });
         cn.req = none;
         c.freeReq(ri);
         c.finishConn(ci, keep);
@@ -2035,6 +2283,7 @@ pub const Client = struct {
         const cn = &c.conns[ci];
         std.debug.assert(cn.state != .free);
         if (cn.state == .idle) c.unlinkIdle(ci);
+        if (cn.state == .paused) c.npaused -= 1;
         const o = &c.origins[cn.origin];
         if (cn.h2 != none) {
             // Opening lasts until the server's SETTINGS arrive.
@@ -2970,17 +3219,29 @@ pub const Client = struct {
     fn failReq(c: *Client, ri: u32, msg: []const u8) void {
         const r = &c.reqs[ri];
         std.debug.assert(r.state == .active);
-        if (r.stored != .none) c.dropStored(ri);
+        // A response that the store began to take: the store removes its file and gives `msg`.
+        if (r.stored != .none and c.dropStored(ri, msg)) return c.freeReq(ri);
         c.sink.done(c.sink.ctx, r.exec_id, r.seq, .{ .err = msg });
         c.freeReq(ri);
     }
 
-    /// The request failed: its row of the binary data store is free again.
-    fn dropStored(c: *Client, ri: u32) void {
+    /// The request has no response to store. Its row of the binary data
+    /// store is free again, and the result is false; or the store began to
+    /// take the response, it gets `msg` as the result of the step (unless it
+    /// has a failure of its own), and the result is true.
+    fn dropStored(c: *Client, ri: u32, msg: []const u8) bool {
         const r = &c.reqs[ri];
-        std.debug.assert(r.stored != .none);
-        if (c.cfg.blobs) |blobs| blobs.release(r.stored);
+        const blobs = c.cfg.blobs orelse unreachable; // The handle of the request came from it.
+        const h = r.stored;
+        std.debug.assert(h != .none);
         r.stored = .none;
+        if (!r.storing) {
+            blobs.release(h);
+            return false;
+        }
+        r.storing = false;
+        blobs.fail(h, msg);
+        return true;
     }
 
     /// Fail a request that never left `start`.
@@ -3028,7 +3289,7 @@ pub const Client = struct {
         for (c.conns, 0..) |*cn, i| {
             const ci: u32 = @intCast(i);
             switch (cn.state) {
-                .free, .sending, .reading => {},
+                .free, .sending, .reading, .paused => {},
                 .idle => if (now >= cn.deadline_ms) c.closeConn(ci),
                 .h2 => if (c.h2s[cn.h2].open == 0 and cn.deadline_ms != 0 and now >= cn.deadline_ms) c.closeConn(ci),
                 .connecting, .handshaking => if (now >= cn.deadline_ms) {
@@ -3156,7 +3417,7 @@ pub const Client = struct {
                         cn.req = none;
                         return c.failReqFmt(ri, "http: the request timed out after {d} ms", .{r.timeout_ms});
                     },
-                    .sending, .reading => {
+                    .sending, .reading, .paused => {
                         if (now >= r.deadline_ms) return c.connFailFmt(ci, "the request to {s} timed out after {d} ms", .{ c.hostPort(ci), r.timeout_ms });
                         if (cn.state == .reading and read_ms > 0 and now - cn.last_io_ms >= read_ms) return c.connFailFmt(ci, "no data from {s} for {d} ms (read timeout)", .{ c.hostPort(ci), read_ms });
                     },

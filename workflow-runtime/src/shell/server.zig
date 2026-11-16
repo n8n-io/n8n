@@ -1782,16 +1782,20 @@ pub const Runner = struct {
     /// A 2xx response of a request with `responseBinary`: the body goes to
     /// the binary data store, and the step gets its result with the handle
     /// when the file is written (`drainStored`).
-    fn egressStored(ctx: *anyopaque, exec_id: u64, seq: u32, h: blob_store.Handle, resp: egress.Response, url_path: []const u8) void {
+    fn egressStored(ctx: *anyopaque, exec_id: u64, seq: u32, h: blob_store.Handle, resp: egress.Response, url_path: []const u8, expected: ?u64, whole: bool) bool {
         const r: *Runner = @ptrCast(@alignCast(ctx));
         const blobs = r.blobs orelse unreachable; // The egress client got the handle from this store.
         // The request goes again after a renewal: there is nothing to store yet.
-        if (r.renewOnResult(exec_id, seq, .{ .ok = resp })) return blobs.release(h);
+        if (r.renewOnResult(exec_id, seq, .{ .ok = resp })) {
+            blobs.release(h);
+            return false;
+        }
         const st = &r.sh.st;
         const arena = if (r.in_perform) &r.carry[r.carry_cur] else &r.batch;
         const head = writeStoredHead(arena, resp, st.resultReads(exec_id, seq)) catch {
             blobs.release(h);
-            return egressDone(ctx, exec_id, seq, .{ .err = "http: the response does not fit in the batch memory" });
+            egressDone(ctx, exec_id, seq, .{ .err = "http: the response does not fit in the batch memory" });
+            return false;
         };
         // The execution part of the path, as the fallback host writes it: n8n's id
         // for a manual run, else `wfrt-` and the id of the runtime. n8n moves the
@@ -1801,7 +1805,8 @@ pub const Runner = struct {
         const exec_text = heap.formatExecId(exec_id, &eb);
         // 40 bytes hold the prefix and the 32 bytes of an id.
         const execution = if (exec_id & core.given_id_flag != 0) exec_text else std.fmt.bufPrint(&xb, "wfrt-{s}", .{exec_text}) catch unreachable;
-        blobs.put(h, .{
+        // The body comes next, in pieces from the socket or whole (`whole`).
+        blobs.begin(h, .{
             .exec_id = exec_id,
             .seq = seq,
             .workflow = if (st.by_exec.get(exec_id)) |slot| st.modules[st.slot_module[slot]].workflowId() else "",
@@ -1810,10 +1815,11 @@ pub const Runner = struct {
             .content_disposition = egress.headerValue(resp.header_lines, "content-disposition") orelse "",
             .content_type = egress.headerValue(resp.header_lines, "content-type") orelse "",
             .url_path = url_path,
-            .body = resp.body,
+            .expected = expected,
+            .whole = whole,
             .now_ms = r.egress.now_ms,
         });
-        r.deliverStored();
+        return true;
     }
 
     /// Give the steps the results of the store, oldest first, as room
@@ -4331,7 +4337,9 @@ test "a stored response gives its step a result through the event list" {
     // the step gets the reason, and the row of the store is free again.
     const before = r.events.items.len;
     const h = try blobs.reserve("{}");
-    Runner.egressStored(r, 5, 2, h, .{ .status = 200, .header_lines = "content-type: text/plain\r\n", .body = "hi", .json = false }, "/a.txt");
+    try std.testing.expect(Runner.egressStored(r, 5, 2, h, .{ .status = 200, .header_lines = "content-type: text/plain\r\n", .body = "", .json = false }, "/a.txt", 2, true));
+    blobs.putBody(h, "hi", sys.nowMs());
+    r.drainStored(sys.nowMs());
     try std.testing.expectEqual(before + 1, r.events.items.len);
     const ev = r.events.items[before];
     try std.testing.expectEqual(core.EventKind.effect_err, ev.kind);
@@ -4342,7 +4350,9 @@ test "a stored response gives its step a result through the event list" {
     const free = r.events.capacity - r.resultReserve() - r.events.items.len;
     for (0..free) |_| r.events.appendAssumeCapacity(.{ .kind = .cancel, .exec_id = 1 });
     const h2 = try blobs.reserve("{}");
-    Runner.egressStored(r, 6, 1, h2, .{ .status = 200, .header_lines = "", .body = "", .json = false }, "/");
+    try std.testing.expect(Runner.egressStored(r, 6, 1, h2, .{ .status = 200, .header_lines = "", .body = "", .json = false }, "/", 0, true));
+    blobs.putBody(h2, "", sys.nowMs());
+    r.drainStored(sys.nowMs());
     try std.testing.expect(blobs.nextDone() != null);
     r.events.items.len -= 1;
     r.drainStored(sys.nowMs());
