@@ -98,14 +98,6 @@ function hasSource(value: unknown): value is WithSource {
 }
 
 /**
- * Non-enumerable, so object spread, `Object.assign` and `util.inspect` skip the
- * source, which can hold an API key.
- */
-function recordSource(response: object, source: SupplyModelOptions) {
-	Object.defineProperty(response, SUPPLIED_MODEL_SOURCE, { value: source });
-}
-
-/**
  * Returns the options that `supplyModel` received to create `response`.
  * Only the object that `supplyModel` returned carries the source: models
  * derived from it, for example by `bindTools`, return `undefined`.
@@ -118,6 +110,7 @@ export function supplyModel(ctx: ISupplyDataFunctions, model: SupplyModelOptions
 	const response = isOpenAiModel(model)
 		? getOpenAiModel(ctx, model)
 		: new LangchainChatModelAdapter(model, ctx);
-	recordSource(response, model);
+	// Non-enumerable, so spread, `Object.assign` and `util.inspect` skip the source, which can hold an API key.
+	Object.defineProperty(response, SUPPLIED_MODEL_SOURCE, { value: model });
 	return { response };
 }
