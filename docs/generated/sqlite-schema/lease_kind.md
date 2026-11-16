@@ -6,7 +6,7 @@
 <summary><strong>Table Definition</strong></summary>
 
 ```sql
-CREATE TABLE "lease_kind" ("kind" varchar(24) PRIMARY KEY NOT NULL, "fencingTokenCounter" bigint NOT NULL DEFAULT (0), "syncLockRoundId" varchar(36), "syncLockExpiresAt" datetime(3), "lastFullSyncAt" datetime(3), "createdAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), "updatedAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), CONSTRAINT "CHK_lease_kind_fencingTokenCounter" CHECK ("fencingTokenCounter" >= 0))
+CREATE TABLE "lease_kind" ("kind" varchar(24) PRIMARY KEY NOT NULL, "fencingTokenCounter" bigint NOT NULL DEFAULT (0), "syncLockRoundId" varchar, "syncLockExpiresAt" datetime(3), "lastFullSyncAt" datetime(3), "createdAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), "updatedAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), CONSTRAINT "CHK_lease_kind_fencingTokenCounter" CHECK ("fencingTokenCounter" >= 0))
 ```
 
 </details>
@@ -20,7 +20,7 @@ CREATE TABLE "lease_kind" ("kind" varchar(24) PRIMARY KEY NOT NULL, "fencingToke
 | kind | varchar(24) |  | false | [lease](lease.md) [lease_session](lease_session.md) |  |  |
 | lastFullSyncAt | datetime(3) |  | true |  |  |  |
 | syncLockExpiresAt | datetime(3) |  | true |  |  |  |
-| syncLockRoundId | varchar(36) |  | true |  |  |  |
+| syncLockRoundId | varchar |  | true |  |  |  |
 | updatedAt | datetime(3) | STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW') | false |  |  |  |
 
 ## Constraints
@@ -51,7 +51,7 @@ erDiagram
   varchar_24_ kind PK
   datetime_3_ lastFullSyncAt
   datetime_3_ syncLockExpiresAt
-  varchar_36_ syncLockRoundId
+  varchar syncLockRoundId
   datetime_3_ updatedAt
 }
 "lease" {
@@ -62,18 +62,18 @@ erDiagram
   bigint fencingToken
   varchar_255_ key PK
   varchar_24_ leaseKind PK
-  varchar_36_ leaseSessionId
+  varchar leaseSessionId
   datetime_3_ readyAt
   boolean revoked
   datetime_3_ revokedAt
   datetime_3_ updatedAt
 }
 "lease_session" {
-  varchar_36_ bootId
+  varchar bootId
   datetime_3_ createdAt
   datetime_3_ expiresAt
   varchar_255_ hostId
-  varchar_36_ id PK
+  varchar id PK
   INTEGER leaseDurationSeconds
   varchar_24_ leaseKind FK
 }

@@ -6,7 +6,7 @@
 <summary><strong>Table Definition</strong></summary>
 
 ```sql
-CREATE TABLE "lease_session" ("id" varchar(36) PRIMARY KEY NOT NULL, "leaseKind" varchar(24) NOT NULL, "hostId" varchar(255) NOT NULL, "bootId" varchar(36) NOT NULL, "leaseDurationSeconds" integer NOT NULL, "expiresAt" datetime(3) NOT NULL, "createdAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), CONSTRAINT "FK_lease_session_leaseKind" FOREIGN KEY ("leaseKind") REFERENCES "lease_kind" ("kind") ON DELETE CASCADE)
+CREATE TABLE "lease_session" ("id" varchar PRIMARY KEY NOT NULL, "leaseKind" varchar(24) NOT NULL, "hostId" varchar(255) NOT NULL, "bootId" varchar NOT NULL, "leaseDurationSeconds" integer NOT NULL, "expiresAt" datetime(3) NOT NULL, "createdAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), CONSTRAINT "FK_lease_session_leaseKind" FOREIGN KEY ("leaseKind") REFERENCES "lease_kind" ("kind") ON DELETE CASCADE)
 ```
 
 </details>
@@ -15,11 +15,11 @@ CREATE TABLE "lease_session" ("id" varchar(36) PRIMARY KEY NOT NULL, "leaseKind"
 
 | Name | Type | Default | Nullable | Children | Parents | Comment |
 | ---- | ---- | ------- | -------- | -------- | ------- | ------- |
-| bootId | varchar(36) |  | false |  |  |  |
+| bootId | varchar |  | false |  |  |  |
 | createdAt | datetime(3) | STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW') | false |  |  |  |
 | expiresAt | datetime(3) |  | false |  |  |  |
 | hostId | varchar(255) |  | false |  |  |  |
-| id | varchar(36) |  | false |  |  |  |
+| id | varchar |  | false |  |  |  |
 | leaseDurationSeconds | INTEGER |  | false |  |  |  |
 | leaseKind | varchar(24) |  | false |  | [lease_kind](lease_kind.md) |  |
 
@@ -46,11 +46,11 @@ erDiagram
 "lease_session" }o--|| "lease_kind" : "FOREIGN KEY (leaseKind) REFERENCES lease_kind (kind) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 
 "lease_session" {
-  varchar_36_ bootId
+  varchar bootId
   datetime_3_ createdAt
   datetime_3_ expiresAt
   varchar_255_ hostId
-  varchar_36_ id PK
+  varchar id PK
   INTEGER leaseDurationSeconds
   varchar_24_ leaseKind FK
 }
@@ -60,7 +60,7 @@ erDiagram
   varchar_24_ kind PK
   datetime_3_ lastFullSyncAt
   datetime_3_ syncLockExpiresAt
-  varchar_36_ syncLockRoundId
+  varchar syncLockRoundId
   datetime_3_ updatedAt
 }
 ```

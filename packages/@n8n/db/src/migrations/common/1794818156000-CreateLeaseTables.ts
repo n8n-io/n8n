@@ -13,7 +13,7 @@ export class CreateLeaseTables1794818156000 implements ReversibleMigration {
 			.withColumns(
 				column('kind').varchar(24).primary,
 				column('fencingTokenCounter').bigint.notNull.default(0),
-				column('syncLockRoundId').varchar(36),
+				column('syncLockRoundId').uuid,
 				column('syncLockExpiresAt').timestampTimezone(),
 				column('lastFullSyncAt').timestampTimezone(),
 			)
@@ -24,10 +24,10 @@ export class CreateLeaseTables1794818156000 implements ReversibleMigration {
 
 		await createTable('lease_session')
 			.withColumns(
-				column('id').varchar(36).primary,
+				column('id').uuid.primary,
 				column('leaseKind').varchar(24).notNull,
 				column('hostId').varchar(255).notNull,
-				column('bootId').varchar(36).notNull,
+				column('bootId').uuid.notNull,
 				column('leaseDurationSeconds').int.notNull,
 				column('expiresAt').timestampTimezone().notNull,
 			)
@@ -45,7 +45,7 @@ export class CreateLeaseTables1794818156000 implements ReversibleMigration {
 				column('key').varchar(255).primary,
 				column('data').text.notNull,
 				column('dataHash').varchar(64).notNull,
-				column('leaseSessionId').varchar(36),
+				column('leaseSessionId').uuid,
 				column('fencingToken').bigint.notNull.default(0),
 				column('claimedAt').timestampTimezone(),
 				column('readyAt').timestampTimezone(),

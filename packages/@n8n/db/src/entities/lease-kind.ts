@@ -12,7 +12,7 @@ export class LeaseKind extends WithTimestamps {
 	@Column({ type: 'bigint', default: 0, transformer: bigintStringToNumber })
 	fencingTokenCounter: number;
 
-	@Column({ type: 'varchar', length: 36, nullable: true })
+	@Column({ type: 'uuid', nullable: true })
 	syncLockRoundId: string | null;
 
 	@DateTimeColumn({ nullable: true })

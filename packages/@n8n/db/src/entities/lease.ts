@@ -18,7 +18,7 @@ export class Lease extends WithTimestamps {
 	@Column({ type: 'varchar', length: 64 })
 	dataHash: string;
 
-	@Column({ type: 'varchar', length: 36, nullable: true })
+	@Column({ type: 'uuid', nullable: true })
 	leaseSessionId: string | null;
 
 	@Column({ type: 'bigint', default: 0, transformer: bigintStringToNumber })

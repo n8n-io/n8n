@@ -4,11 +4,11 @@
 
 | Name | Type | Default | Nullable | Children | Parents | Comment |
 | ---- | ---- | ------- | -------- | -------- | ------- | ------- |
-| bootId | varchar(36) |  | false |  |  |  |
+| bootId | uuid |  | false |  |  |  |
 | createdAt | timestamp(3) with time zone | CURRENT_TIMESTAMP(3) | false |  |  |  |
 | expiresAt | timestamp(3) with time zone |  | false |  |  |  |
 | hostId | varchar(255) |  | false |  |  |  |
-| id | varchar(36) |  | false |  |  |  |
+| id | uuid |  | false |  |  |  |
 | leaseDurationSeconds | integer |  | false |  |  |  |
 | leaseKind | varchar(24) |  | false |  | [public.lease_kind](public.lease_kind.md) |  |
 
@@ -41,11 +41,11 @@ erDiagram
 "public.lease_session" }o--|| "public.lease_kind" : "FOREIGN KEY (#quot;leaseKind#quot;) REFERENCES lease_kind(kind) ON DELETE CASCADE"
 
 "public.lease_session" {
-  varchar_36_ bootId
+  uuid bootId
   timestamp_3__with_time_zone createdAt
   timestamp_3__with_time_zone expiresAt
   varchar_255_ hostId
-  varchar_36_ id
+  uuid id
   integer leaseDurationSeconds
   varchar_24_ leaseKind FK
 }
@@ -55,7 +55,7 @@ erDiagram
   varchar_24_ kind
   timestamp_3__with_time_zone lastFullSyncAt
   timestamp_3__with_time_zone syncLockExpiresAt
-  varchar_36_ syncLockRoundId
+  uuid syncLockRoundId
   timestamp_3__with_time_zone updatedAt
 }
 ```

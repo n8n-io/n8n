@@ -11,7 +11,7 @@
 | fencingToken | bigint | 0 | false |  |  |  |
 | key | varchar(255) |  | false |  |  |  |
 | leaseKind | varchar(24) |  | false |  | [public.lease_kind](public.lease_kind.md) |  |
-| leaseSessionId | varchar(36) |  | true |  |  |  |
+| leaseSessionId | uuid |  | true |  |  |  |
 | readyAt | timestamp(3) with time zone |  | true |  |  |  |
 | revoked | boolean | false | false |  |  |  |
 | revokedAt | timestamp(3) with time zone |  | true |  |  |  |
@@ -55,7 +55,7 @@ erDiagram
   bigint fencingToken
   varchar_255_ key
   varchar_24_ leaseKind FK
-  varchar_36_ leaseSessionId
+  uuid leaseSessionId
   timestamp_3__with_time_zone readyAt
   boolean revoked
   timestamp_3__with_time_zone revokedAt
@@ -67,7 +67,7 @@ erDiagram
   varchar_24_ kind
   timestamp_3__with_time_zone lastFullSyncAt
   timestamp_3__with_time_zone syncLockExpiresAt
-  varchar_36_ syncLockRoundId
+  uuid syncLockRoundId
   timestamp_3__with_time_zone updatedAt
 }
 ```

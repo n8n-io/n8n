@@ -6,7 +6,7 @@
 <summary><strong>Table Definition</strong></summary>
 
 ```sql
-CREATE TABLE "lease" ("leaseKind" varchar(24) NOT NULL, "key" varchar(255) NOT NULL, "data" text NOT NULL, "dataHash" varchar(64) NOT NULL, "leaseSessionId" varchar(36), "fencingToken" bigint NOT NULL DEFAULT (0), "claimedAt" datetime(3), "readyAt" datetime(3), "revoked" boolean NOT NULL DEFAULT (false), "revokedAt" datetime(3), "createdAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), "updatedAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), CONSTRAINT "CHK_lease_fencingToken" CHECK ("fencingToken" >= 0), CONSTRAINT "FK_lease_leaseKind" FOREIGN KEY ("leaseKind") REFERENCES "lease_kind" ("kind") ON DELETE CASCADE, PRIMARY KEY ("leaseKind", "key"))
+CREATE TABLE "lease" ("leaseKind" varchar(24) NOT NULL, "key" varchar(255) NOT NULL, "data" text NOT NULL, "dataHash" varchar(64) NOT NULL, "leaseSessionId" varchar, "fencingToken" bigint NOT NULL DEFAULT (0), "claimedAt" datetime(3), "readyAt" datetime(3), "revoked" boolean NOT NULL DEFAULT (false), "revokedAt" datetime(3), "createdAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), "updatedAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), CONSTRAINT "CHK_lease_fencingToken" CHECK ("fencingToken" >= 0), CONSTRAINT "FK_lease_leaseKind" FOREIGN KEY ("leaseKind") REFERENCES "lease_kind" ("kind") ON DELETE CASCADE, PRIMARY KEY ("leaseKind", "key"))
 ```
 
 </details>
@@ -22,7 +22,7 @@ CREATE TABLE "lease" ("leaseKind" varchar(24) NOT NULL, "key" varchar(255) NOT N
 | fencingToken | bigint | 0 | false |  |  |  |
 | key | varchar(255) |  | false |  |  |  |
 | leaseKind | varchar(24) |  | false |  | [lease_kind](lease_kind.md) |  |
-| leaseSessionId | varchar(36) |  | true |  |  |  |
+| leaseSessionId | varchar |  | true |  |  |  |
 | readyAt | datetime(3) |  | true |  |  |  |
 | revoked | boolean | false | false |  |  |  |
 | revokedAt | datetime(3) |  | true |  |  |  |
@@ -60,7 +60,7 @@ erDiagram
   bigint fencingToken
   varchar_255_ key PK
   varchar_24_ leaseKind PK
-  varchar_36_ leaseSessionId
+  varchar leaseSessionId
   datetime_3_ readyAt
   boolean revoked
   datetime_3_ revokedAt
@@ -72,7 +72,7 @@ erDiagram
   varchar_24_ kind PK
   datetime_3_ lastFullSyncAt
   datetime_3_ syncLockExpiresAt
-  varchar_36_ syncLockRoundId
+  varchar syncLockRoundId
   datetime_3_ updatedAt
 }
 ```

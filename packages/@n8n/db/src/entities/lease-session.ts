@@ -5,7 +5,7 @@ import { DateTimeColumn, WithCreatedAt } from './abstract-entity';
 @Entity({ name: 'lease_session' })
 @Index(['leaseKind', 'expiresAt'])
 export class LeaseSession extends WithCreatedAt {
-	@PrimaryColumn({ type: 'varchar', length: 36 })
+	@PrimaryColumn('uuid')
 	id: string;
 
 	@Column({ type: 'varchar', length: 24 })
@@ -14,7 +14,7 @@ export class LeaseSession extends WithCreatedAt {
 	@Column({ type: 'varchar', length: 255 })
 	hostId: string;
 
-	@Column({ type: 'varchar', length: 36 })
+	@Column({ type: 'uuid' })
 	bootId: string;
 
 	@Column({ type: 'int' })
