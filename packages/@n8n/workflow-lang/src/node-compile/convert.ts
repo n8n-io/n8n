@@ -2,7 +2,7 @@ import { compile } from '../compiler/index.ts';
 import { getNodeParameters } from '../convert/node-parameters.ts';
 import type { PublicCredential } from '../credentials/public.ts';
 import type { NodeDescription } from '../convert/node-parameters.ts';
-import type { CredentialDerivation } from './specialise.ts';
+import type { CredentialDerivation, ParameterKind } from './specialise.ts';
 import { hasExpression, specialiseNode } from './specialise.ts';
 import { VERIFIED } from './verified.generated.ts';
 
@@ -101,6 +101,45 @@ export interface CompiledNode {
 	changed: string[];
 }
 
+function isRecord(value: unknown): value is Record<string, unknown> {
+	return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
+
+function kindOf(property: unknown): ParameterKind | undefined {
+	if (!isRecord(property) || typeof property.type !== 'string') return undefined;
+	const kind: ParameterKind = { type: property.type, extract: Boolean(property.extractValue) };
+	if (property.type !== 'resourceLocator') return kind;
+	if (!Array.isArray(property.modes)) return undefined;
+	const modes: NonNullable<ParameterKind['modes']> = {};
+	for (const mode of property.modes) {
+		if (!isRecord(mode) || typeof mode.name !== 'string' || mode.name in modes) return undefined;
+		const rule = mode.extractValue;
+		if (!rule) {
+			modes[mode.name] = null;
+			continue;
+		}
+		if (!isRecord(rule) || rule.type !== 'regex') return undefined;
+		if (typeof rule.regex === 'string') modes[mode.name] = { pattern: rule.regex, flags: '' };
+		else if (rule.regex instanceof RegExp)
+			modes[mode.name] = { pattern: rule.regex.source, flags: rule.regex.flags };
+		else return undefined;
+	}
+	return { ...kind, modes };
+}
+
+export function parameterKindOf(
+	description: NodeDescription,
+	name: string,
+): ParameterKind | undefined {
+	const kinds = description.properties.filter((p) => p.name === name).map(kindOf);
+	const first = kinds[0];
+	if (first === undefined) return undefined;
+	const text = JSON.stringify(first);
+	return kinds.every((kind) => kind !== undefined && JSON.stringify(kind) === text)
+		? first
+		: undefined;
+}
+
 export function compileNodeInstance(
 	sources: NodeSources,
 	node: { type: string; version: number; parameters: Record<string, unknown> },
@@ -156,6 +195,7 @@ export function compileNodeInstance(
 		readFile: sources.readFile,
 		parameters,
 		aliases: sources.aliases,
+		parameterKind: (name: string) => parameterKindOf(description, name),
 		evaluate: sources.evaluate,
 		credentialEntry: sources.credentialEntry,
 		timezone,
