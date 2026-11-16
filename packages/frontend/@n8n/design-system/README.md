@@ -144,7 +144,7 @@ condition.
 | ------------------------------------- | ---------------------------------------------------------------------------------------- |
 | `@n8n/design-system`                  | The barrel: components, composables, exported types, and the `locale` singleton.         |
 | `@n8n/design-system/plugin`           | `N8nPlugin`. It registers the `v-n8n-truncate` and `v-n8n-html` directives.              |
-| `@n8n/design-system/feature-maturity` | `FeatureMaturityKey`, `featureMaturityForPlan`, `showsFeatureMaturityBadges`, and the catalog types. A host provides the list without the barrel. |
+| `@n8n/design-system/feature-maturity` | `FeatureMaturityKey`, `featureMaturityForPlan`, and the catalog types. A host provides the list without the barrel. |
 | `@n8n/design-system/icons/lucide`     | `loadLucideIconBody` and `IconBodyLoaderKey`, for icons outside the bundled set.         |
 | `@n8n/design-system/style.css`        | The component styles.                                                                    |
 | `@n8n/design-system/theme.css`        | The design tokens, the CSS reset, four `@font-face` rules, and the element-plus overrides. |

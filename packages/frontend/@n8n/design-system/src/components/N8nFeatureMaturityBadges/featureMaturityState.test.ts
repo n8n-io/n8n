@@ -1,6 +1,5 @@
 import {
 	featureMaturityForPlan,
-	showsFeatureMaturityBadges,
 	type FeatureMaturityCatalog,
 	type FeatureMaturityEntry,
 } from './featureMaturityState';
@@ -20,9 +19,7 @@ const openTelemetry: FeatureMaturityEntry = {
 	limitedEnterpriseSupport: false,
 	docsUrl: 'https://docs.n8n.io/hosting/logging-monitoring/opentelemetry/',
 };
-const roles: FeatureMaturityEntry = { preview: false, limitedEnterpriseSupport: false };
-
-const catalog: FeatureMaturityCatalog = { assistant, agents, openTelemetry, roles };
+const catalog: FeatureMaturityCatalog = { assistant, agents, openTelemetry };
 
 describe('featureMaturityForPlan', () => {
 	it('hides limited enterprise readiness unless the plan is Enterprise', () => {
@@ -38,14 +35,5 @@ describe('featureMaturityForPlan', () => {
 			docsUrl: 'https://docs.n8n.io/build/build-and-manage-agents',
 		});
 		expect(featureMaturityForPlan(catalog, false).openTelemetry).toEqual(openTelemetry);
-	});
-});
-
-describe('showsFeatureMaturityBadges', () => {
-	it('shows a badge when the entry is preview or has limited enterprise support', () => {
-		expect(showsFeatureMaturityBadges(assistant)).toBe(true);
-		expect(showsFeatureMaturityBadges(agents)).toBe(true);
-		expect(showsFeatureMaturityBadges(openTelemetry)).toBe(true);
-		expect(showsFeatureMaturityBadges(roles)).toBe(false);
 	});
 });

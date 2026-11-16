@@ -20,17 +20,12 @@ describe('featureMaturity', () => {
 				docsUrl: 'https://docs.n8n.io/administer/environments/plan-your-environments',
 			},
 			workflowReviews: { preview: true, limitedEnterpriseSupport: false },
-			oauthJwe: { preview: true, limitedEnterpriseSupport: false },
-			tokenExchange: { preview: true, limitedEnterpriseSupport: false },
 			openTelemetry: {
 				preview: true,
 				limitedEnterpriseSupport: false,
 				docsUrl: 'https://docs.n8n.io/hosting/logging-monitoring/opentelemetry/',
 			},
-			microsoftAgent365: { preview: true, limitedEnterpriseSupport: false },
 			context: { preview: true, limitedEnterpriseSupport: true },
-			roles: { preview: false, limitedEnterpriseSupport: false },
-			nodePolicies: { preview: true, limitedEnterpriseSupport: false },
 			selfHealing: { preview: true, limitedEnterpriseSupport: true },
 			chat: { preview: true, limitedEnterpriseSupport: true },
 			authentication: {
