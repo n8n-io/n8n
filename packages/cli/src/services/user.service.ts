@@ -153,6 +153,29 @@ export class UserService {
 		return account.settings;
 	}
 
+	/** Sets or clears the personal UI locale of any user, on behalf of `actor`. */
+	async changeLocale(
+		actor: User,
+		targetUserId: string,
+		locale: string | null,
+		publicApi: PublicApiCaller = false,
+	) {
+		// Without personal locales the endpoint does not exist, so answer like an unknown route.
+		// Checked first, so that clearing with `null` is rejected too.
+		if (!this.globalConfig.locales.userOverride) {
+			throw new NotFoundError('not found');
+		}
+
+		await this.updateSettings(targetUserId, { locale });
+
+		this.eventService.emit('user-changed-locale', {
+			userId: actor.id,
+			targetUserId,
+			publicApi,
+			locale,
+		});
+	}
+
 	private assertLocaleCanBeSet(locale: string) {
 		if (!this.globalConfig.locales.userOverride) {
 			throw new BadRequestError('Choosing a personal UI language is turned off on this instance');

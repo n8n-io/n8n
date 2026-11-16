@@ -160,6 +160,7 @@ export const GLOBAL_CUSTOM_ROLE_SCOPE_GROUPS = {
 			'user:update',
 			'user:delete',
 			'user:changeRole',
+			'user:changeLocale',
 			'user:resetPassword',
 			'user:generateInviteLink',
 			'user:enforceMfa',

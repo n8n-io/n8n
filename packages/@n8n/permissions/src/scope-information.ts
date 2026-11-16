@@ -194,6 +194,10 @@ export const scopeInformation: Partial<Record<Scope, ScopeInformation>> = {
 		description:
 			'Allows creating, updating, and deleting provider connections used by instance-level features. These connections are not available in workflows.',
 	},
+	'user:changeLocale': {
+		displayName: 'Change user language',
+		description: 'Allows setting the UI language of any user.',
+	},
 	'insights:read': {
 		displayName: 'Read Insights',
 		description: 'Allows reading insights data.',
