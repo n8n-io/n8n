@@ -198,6 +198,9 @@ const RANDOM_INTEGER_LIMIT = 4294967296;
 const MAX_RANDOM_SHAPES = 32;
 
 const CONTEXT_HELPERS: Record<string, string> = {
+	__storedMetadata: `async function __storedMetadata(id) {
+	return await ctx.service({ service: 'binaryData', op: 'metadata', args: { id } });
+}`,
 	__sleep: `async function __sleep(ms) {
 	if (ms !== null && typeof ms === 'object') throw new Error('a pause for a value that is not a number or text has no compiled form');
 	const wanted = Number(ms);
@@ -531,9 +534,6 @@ const HELPERS: Record<string, string> = {
 	const stored: any = __storedBytes(file.id);
 	stored.length = file.bytes;
 	return stored;
-}`,
-	__storedMetadata: `function __storedMetadata(id: any): any {
-	throw new Error('the metadata of binary data in a file store has no compiled form');
 }`,
 	__responseBytes: `function __responseBytes(body: any): any {
 	const entry: any = body !== null && body !== undefined && typeof body === 'object' && !Array.isArray(body) ? body.$binary : undefined;
@@ -2386,8 +2386,11 @@ class Specialiser {
 			if (
 				isThisCall(binaryCall, 'helpers', 'getBinaryMetadata') &&
 				binaryCall.arguments.length === 1
-			)
-				return this.helper('__storedMetadata', ...args(binaryCall));
+			) {
+				this.readsStoredMetadata = true;
+				const metadata = this.helper('__storedMetadata', ...args(binaryCall));
+				return ts.isAwaitExpression(node) ? f.createAwaitExpression(metadata) : metadata;
+			}
 			if (
 				isThisCall(binaryCall, 'helpers', 'prepareBinaryData') &&
 				binaryCall.arguments.length >= 1 &&
@@ -6460,6 +6463,7 @@ class Specialiser {
 			mints,
 			randoms: this.randoms,
 			binary:
+				this.readsStoredMetadata ||
 				BINARY_HELPERS.some((h) => this.helpers.has(h)) ||
 				this.output.some((o) => mentionsBinary(o.node)),
 			storesResponses: this.storesResponses,
@@ -6472,6 +6476,7 @@ class Specialiser {
 	private readonly responseBuffers = new Set<ts.Node>();
 
 	private storesResponses = false;
+	private readsStoredMetadata = false;
 	private requestTokenOptions = false;
 
 	private bufferText(root: ts.Node): ts.Node {

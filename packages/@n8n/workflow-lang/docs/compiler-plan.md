@@ -289,7 +289,7 @@ and webhook triggers, and the AI agent loop.
 **What the language has.** An item holds its files in the key `$binary` of its JSON, in the form of n8n:
 `{ data, mimeType, fileName?, fileExtension?, fileSize?, bytes?, id? }`. `data` is base64 text, or the name of
 the file store (`filesystem-v2`, `filesystem`) when `id` names a stored file. `ctx.http` sends files with
-`multipart` and with `body: { $binary }` (spec 7.1). The runtime reads a stored file into the request buffer.
+`multipart` and with `body: { $binary }` (spec 7.1). The runtime sends a stored file in pieces from the file store.
 `responseBinary` stores the body of a response and gives a handle: metadata and an id, never the bytes.
 
 **Built: uploads.** The compiler binds these calls. Each is exact, or stops with a `has no compiled form` error.
@@ -300,7 +300,7 @@ the file store (`filesystem-v2`, `filesystem`) when `id` names a stored file. `c
 | `Buffer.from(text, 'base64')` | A handle `{ $bytes, data, length }`. No byte is decoded in the program |
 | `getBinaryDataBuffer(i, name)` | The same handle. A stored file needs `bytes` for `length` |
 | `getBinaryStream(id)` | A handle `{ $bytes, data: <store>, id }`, only for the file system stores |
-| `getBinaryMetadata(id)` | A stop at run time. The language cannot read the store |
+| `getBinaryMetadata(id)` | The service call `binaryData.metadata` of the runtime: the JSON of the companion file |
 | `formData` of `request` helpers | `multipart`, with the field rules of form-data 4 (below) |
 
 - A handle is a value, not bytes. Code can read `length` and can put the handle into a form field. All other
@@ -375,29 +375,51 @@ file name with an extension and a `Content-Type`, and a file name without an ext
 - *Limits.* `--binary-max-file-mb` (16), `--binary-max-transfers` (64), `--binary-buffer-mb` (32, the
   bodies that wait for their writes on the ring). Over a limit the step fails with an `http:` error. v1
   has no limit for a file of the file system store, so there is no v1 error to match.
-- *A request without `responseBinary`* pays two branches that are never taken (at its start and at its
-  end) and no memory. Without a storage path the shard has no store at all.
+- *A request without `responseBinary`* pays one branch at its start and one test at the head of its
+  response (the kind of the body on HTTP/1.1, the row of the store on HTTP/2), and no memory. Without a
+  storage path the shard has no store at all.
+
+**Built: streaming in both directions (2026-11-16).** `blob_store.zig`, `egress.zig`, `request.zig`.
+
+- *Downloads.* The body of a response goes to the store as it arrives, on HTTP/1.1 and on HTTP/2. No
+  body is complete in a buffer of egress, so `--egress-max-body-mb` does not bound a stored file. When
+  the store has no free block, an HTTP/1.1 connection is not read, and an HTTP/2 stream keeps the bytes
+  that came in its response area and gets no window until the store has them.
+- *Uploads.* A `$binary` body or a `multipart` part that names a stored file is not read into the
+  request buffer. The request builder records the place of each file (`request.Files`, at most 8 for one
+  body; more are read whole as before). The store opens each file for its size, so the request has its
+  `Content-Length` before it goes out. Then the sender takes the file in pieces of one buffer
+  (`sourcePeek`, `sourceTake`), on HTTP/1.1 and on HTTP/2. An upload has no size limit, as in v1. The
+  read buffers are reserved at startup (8 for a shard); a file without a free buffer waits.
+- *The limit that v1 does not have.* A response larger than `--binary-max-file-mb` fails its step, and
+  the text ends with `(limit: binary-max-file)`. n8n reads that text: it keeps the node of that
+  workflow in the fallback host, compiles the workflow again and loads the new module
+  (`compiled-engine-sync.service.ts` `onRuntimeLimit`). So the next run has no limit. The run that
+  reached the limit stays failed: its node sent requests, and n8n does not send them again. The list
+  of such nodes is in the memory of n8n only.
 
 **Not built.**
 
-- *Streaming.* The body of a response is complete in the buffer of egress before the store gets it, so a
-  stored file is at most `--egress-max-body-mb`. An upload of a stored file is a blocking read into the
-  request buffer (`request.zig` `writeBinary`). The design: the request writer takes its body from a
-  source and the response reader gives body bytes to a sink, for HTTP/1.1 and HTTP/2, with the blocks of
-  the store.
+- *A retry in the fallback host of the step that reached the limit.* A compiled node is code of the
+  module, not a step that the runtime can give to the host. The converter would have to write the host
+  form of the node next to the compiled form, and run it only when every request that the node sent
+  can go again (`GET`, `HEAD`, or a request with an idempotency key). Until then the first run fails.
+- *A node under a "continue" setting* keeps the limit error in its item, so n8n does not see the text
+  and the node stays compiled.
 - *S3.* A second backend is another set of phases behind `reserve`, `put`, `nextDone` and `take`.
 - *Sidecar names.* The runtime writes the companion file at the end of the download, with the names of the
   request. A compiled node gives its names later, in the program. Add an effect that writes the names of
   an entry (`ctx.binary`), or the UI of n8n shows the names of the request for such a file.
-- *`getBinaryMetadata(id)`.* It stays a stop at run time in the program. The store reads the companion
-  file by id (`blob_store.zig` `readMetadata`); no effect calls it yet.
+- *`getBinaryMetadata(id)` in the check against v1.* The compiled form is the service call
+  `binaryData.metadata` (`blob_store.zig` `readMetadata`). The v1 recorder has no binary data store, so
+  no case of the check has a stored file: the cases have base64 data, and they do not reach this call.
 - *Raw bodies.* A handle as the whole `body` of a request stays a stop at run time in a compiled node.
   `ctx.http` has the form (`body: { $binary }`). First compare the content type that axios sends.
 
 **Decisions that are open.**
 
-1. Slack `file.upload` (2.2 and later) verifies with base64 data. With a stored file it stops at
-   `getBinaryMetadata`. It must stay on v1 for stored files until the effect above exists.
+1. Slack `file.upload` (2.2 and later) verifies with base64 data. With a stored file it reads the size
+   with `binaryData.metadata`. That path has a unit test and no case in the check against v1.
 2. `length` comes from the length of the base64 text. Text that is not valid base64 fails later, in the runtime.
 
 ## Proposal: fewer moves and undefined loads in the bytecode
