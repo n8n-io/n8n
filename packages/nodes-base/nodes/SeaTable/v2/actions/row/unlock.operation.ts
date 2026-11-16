@@ -1,4 +1,5 @@
 import type { IDataObject, INodeExecutionData, IExecuteFunctions } from 'n8n-workflow';
+import { requestPath } from 'n8n-workflow';
 
 import { seaTableApiRequest } from '../../GenericFunctions';
 
@@ -13,7 +14,7 @@ export async function execute(
 		this,
 		{},
 		'PUT',
-		'/api-gateway/api/v2/dtables/{{dtable_uuid}}/unlock-rows/',
+		(dtableUuid) => requestPath`/api-gateway/api/v2/dtables/${dtableUuid}/unlock-rows/`,
 		{
 			table_name: tableName,
 			row_ids: [rowId],

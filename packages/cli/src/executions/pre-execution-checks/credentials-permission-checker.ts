@@ -89,8 +89,15 @@ export class CredentialsPermissionChecker {
 	 * (inline/parameter, file, url): these carry no project of their own, so their
 	 * credentials must be evaluated against the user triggering the run rather than
 	 * against the parent workflow's project.
+	 *
+	 * @param options.ignoreGlobalUseScope - check the user's own access only, as
+	 * if they held no instance-wide `credential:use`.
 	 */
-	async checkForUser(userId: string, nodes: INode[]) {
+	async checkForUser(
+		userId: string,
+		nodes: INode[],
+		options: { ignoreGlobalUseScope?: boolean } = {},
+	) {
 		const credIdsToNodes = this.mapCredIdsToNodes(nodes);
 		const workflowCredIds = Object.keys(credIdsToNodes);
 
@@ -99,6 +106,7 @@ export class CredentialsPermissionChecker {
 		const { instanceScoped, notGranted } = await this.findUnusable(
 			await this.loadUserWithRole(userId),
 			workflowCredIds,
+			options,
 		);
 
 		// No owner to ask: sharing a provider connection cannot make a workflow able
@@ -244,6 +252,28 @@ export class CredentialsPermissionChecker {
 		return unusable.map((c) => c.id);
 	}
 
+	/**
+	 * The credentials that `user` can use through their own access: owned, shared
+	 * with them, in a project they belong to, or global. An instance-wide
+	 * `credential:use` does not count. Redaction asks the same question, so the
+	 * n8n Assistant suggests only these.
+	 */
+	async filterUsableThroughOwnAccess<T extends { id: string }>(
+		user: User,
+		credentials: T[],
+	): Promise<T[]> {
+		if (credentials.length === 0) return credentials;
+
+		const inaccessibleIds = new Set(
+			await this.resolveInaccessibleCredentialIdsForUser(
+				user,
+				credentials.map((c) => c.id),
+				{ ignoreGlobalUseScope: true },
+			),
+		);
+		return credentials.filter((c) => !inaccessibleIds.has(c.id));
+	}
+
 	/** Loads the role relation (scopes are eager) so `hasGlobalScope` can resolve. */
 	private async loadUserWithRole(userId: string) {
 		return await this.userRepository.findOne({ where: { id: userId }, relations: ['role'] });
@@ -257,27 +287,63 @@ export class CredentialsPermissionChecker {
 	 * on a triggered one. Consulted only for credentials the project route already
 	 * rejected, so a workflow whose credentials are all shared with its project
 	 * never needs one.
+	 * @returns for execution telemetry, how many credentials the run uses that the
+	 * workflow's projects do not carry and that the acting user's personal space owns.
 	 */
-	async check(workflowId: string, nodes: INode[], actingUserId?: string) {
+	async check(
+		workflowId: string,
+		nodes: INode[],
+		actingUserId?: string,
+	): Promise<{ personalCredentialsCount: number }> {
 		const credIdsToNodes = this.mapCredIdsToNodes(nodes);
 
 		const workflowCredIds = Object.keys(credIdsToNodes);
 
-		if (workflowCredIds.length === 0) return;
+		if (workflowCredIds.length === 0) return { personalCredentialsCount: 0 };
 
-		const { homeProject, inaccessibleIds, unusableForActingUser } = await this.findInaccessible(
-			workflowId,
-			workflowCredIds,
-			actingUserId,
-		);
+		const { homeProject, inaccessibleIds, unusableForActingUser, personalRouteIds } =
+			await this.findInaccessible(workflowId, workflowCredIds, actingUserId);
 
-		if (inaccessibleIds.length === 0) return;
+		if (inaccessibleIds.length === 0) {
+			const personalCredentialsCount = await this.countOwnedByPersonalProjectOf(
+				actingUserId,
+				personalRouteIds,
+			);
+			return { personalCredentialsCount };
+		}
 
 		const unusable = unusableForActingUser.find((c) => c.id === inaccessibleIds[0]);
 		const nodeToFlag = credIdsToNodes[inaccessibleIds[0]][0];
 		throw unusable
 			? new UnusableCredentialForUserError(nodeToFlag, unusable)
 			: new InaccessibleCredentialError(nodeToFlag, homeProject);
+	}
+
+	/**
+	 * How many of `credentialIds` the personal project of `userId` owns. The user
+	 * route also accepts direct shares, other team memberships, and an instance-wide
+	 * grant, which telemetry must not count as personal credentials.
+	 */
+	private async countOwnedByPersonalProjectOf(
+		userId: string | undefined,
+		credentialIds: string[],
+	): Promise<number> {
+		if (!userId || credentialIds.length === 0) return 0;
+
+		const ownerProjects =
+			await this.sharedCredentialsRepository.findOwnerProjectsByCredentialIds(credentialIds);
+		const personalProjectIds = [...ownerProjects.values()]
+			.filter((project) => project.type === 'personal')
+			.map((project) => project.id);
+		if (personalProjectIds.length === 0) return 0;
+
+		const personalProjectOwners =
+			await this.ownershipService.getPersonalProjectOwnersCached(personalProjectIds);
+
+		return credentialIds.filter((id) => {
+			const ownerProject = ownerProjects.get(id);
+			return ownerProject && personalProjectOwners.get(ownerProject.id)?.id === userId;
+		}).length;
 	}
 
 	/**
@@ -301,13 +367,20 @@ export class CredentialsPermissionChecker {
 		inaccessibleIds: string[];
 		/** Details for the ids the acting user personally cannot use, to name them in an error. */
 		unusableForActingUser: UnusableCredential[];
+		/** Ids the project route rejected but the acting user may use through their own access. */
+		personalRouteIds: string[];
 	}> {
 		const homeProject = await this.ownershipService.getWorkflowProjectCached(workflowId);
 
 		const { instanceScopedIds, projectScopedIds } = await this.partitionByUsageScope(credentialIds);
 		if (instanceScopedIds.length > 0) {
 			// Never usable by a workflow, so they do not fall through to the user route.
-			return { homeProject, inaccessibleIds: instanceScopedIds, unusableForActingUser: [] };
+			return {
+				homeProject,
+				inaccessibleIds: instanceScopedIds,
+				unusableForActingUser: [],
+				personalRouteIds: [],
+			};
 		}
 
 		const homeProjectOwner = await this.ownershipService.getPersonalProjectOwnerCached(
@@ -328,7 +401,7 @@ export class CredentialsPermissionChecker {
 			// picker's personal-only restriction is cosmetic for Owner/Admin — a
 			// hand-edited or imported workflow in their personal space still runs a
 			// team credential.
-			return { homeProject, inaccessibleIds: [], unusableForActingUser: [] };
+			return { homeProject, inaccessibleIds: [], unusableForActingUser: [], personalRouteIds: [] };
 		}
 		const projectIds = await this.projectService.findProjectsWorkflowIsIn(workflowId);
 
@@ -344,7 +417,7 @@ export class CredentialsPermissionChecker {
 
 		const rejectedByProject = projectScopedIds.filter((id) => !accessibleSet.has(id));
 		if (rejectedByProject.length === 0) {
-			return { homeProject, inaccessibleIds: [], unusableForActingUser: [] };
+			return { homeProject, inaccessibleIds: [], unusableForActingUser: [], personalRouteIds: [] };
 		}
 
 		// Only for what the project route rejected. Without an acting user we
@@ -360,12 +433,22 @@ export class CredentialsPermissionChecker {
 				'Refusing a run with no identity to attribute it to; republish the workflow to restore attribution',
 				{ workflowId, credentialIds: rejectedByProject },
 			);
-			return { homeProject, inaccessibleIds: rejectedByProject, unusableForActingUser: [] };
+			return {
+				homeProject,
+				inaccessibleIds: rejectedByProject,
+				unusableForActingUser: [],
+				personalRouteIds: [],
+			};
 		}
 
 		const actingUser = await this.loadUserWithRole(actingUserId);
 		if (!actingUser) {
-			return { homeProject, inaccessibleIds: rejectedByProject, unusableForActingUser: [] };
+			return {
+				homeProject,
+				inaccessibleIds: rejectedByProject,
+				unusableForActingUser: [],
+				personalRouteIds: [],
+			};
 		}
 
 		// Asks the finder directly rather than going through `findUnusable`: the ids
@@ -383,12 +466,13 @@ export class CredentialsPermissionChecker {
 				{ ignoreGlobalUseScope: homeProject.type === 'team' },
 			);
 
+		const unusableIds = new Set(unusableForActingUser.map((c) => c.id));
+
 		return {
 			homeProject,
-			inaccessibleIds: rejectedByProject.filter((id) =>
-				unusableForActingUser.some((c) => c.id === id),
-			),
+			inaccessibleIds: rejectedByProject.filter((id) => unusableIds.has(id)),
 			unusableForActingUser,
+			personalRouteIds: rejectedByProject.filter((id) => !unusableIds.has(id)),
 		};
 	}
 

@@ -44,6 +44,7 @@ import {
 	MigrationFindingQueryService,
 	type ReportScope,
 } from './query/migration-finding-query.service';
+import { resolveReportScope } from './query/report-scope';
 import { MigrationFindingSyncService } from './sync/migration-finding-sync.service';
 import { MigrationFindingTriageService } from './triage/migration-finding-triage.service';
 import { isWorkflowLevelRule } from './types';
@@ -65,16 +66,8 @@ export class BreakingChangesController {
 		private readonly workflowFinderService: WorkflowFinderService,
 	) {}
 
-	/**
-	 * A user who can edit every workflow reads the whole instance. Everyone else
-	 * reads the workflows they can edit, since those are the ones they can fix.
-	 */
 	private async scopeFor(user: User): Promise<ReportScope> {
-		if (hasGlobalScope(user, 'workflow:update')) return { kind: 'instance' };
-		const workflowIds = await this.workflowFinderService.findAllWorkflowIdsForUser(user, [
-			'workflow:update',
-		]);
-		return { kind: 'workflows', workflowIds };
+		return await resolveReportScope(user, this.workflowFinderService);
 	}
 
 	/** The given workflows that the user can edit. Editing a workflow allows triaging its findings. */

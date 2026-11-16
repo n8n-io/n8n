@@ -51,13 +51,11 @@ vi.mock('@/app/utils/rbac/permissions', () => ({
 
 const {
 	cloudBrowserExperimentMock,
-	contextPreferencesEnabledMock,
 	contextSkillsEnabledMock,
 	confirmMock,
 	testSavedCredentialMock,
 } = vi.hoisted(() => ({
 	cloudBrowserExperimentMock: vi.fn(),
-	contextPreferencesEnabledMock: vi.fn(() => true),
 	contextSkillsEnabledMock: vi.fn(() => true),
 	confirmMock: vi.fn(),
 	testSavedCredentialMock: vi.fn(),
@@ -82,7 +80,6 @@ vi.mock('@/app/composables/useMessage', () => ({
 }));
 
 vi.mock('@/features/settings/context/context.utils', () => ({
-	isContextPreferencesEnabled: () => contextPreferencesEnabledMock(),
 	isContextSkillsEnabled: () => contextSkillsEnabledMock(),
 }));
 
@@ -387,12 +384,12 @@ describe('SettingsInstanceAiView', () => {
 			expect(queryByTestId(modelSaveDialog)).toBeNull();
 		});
 
-		it('shows the switch off with dimmed sections when disabled but configured', () => {
+		it('hides the other sections when disabled but configured', () => {
 			disable({ modelCredentialId: 'openai-id', modelName: 'gpt-4o' });
 
-			const { getByTestId, getByText } = renderComponent();
+			const { getByTestId, queryByText } = renderComponent();
 			expect(getByTestId('n8n-agent-enable-toggle')).toHaveAttribute('aria-checked', 'false');
-			expect(getByText('settings.n8nAgent.permissions.title')).toBeVisible();
+			expect(queryByText('settings.n8nAgent.permissions.title')).toBeNull();
 		});
 
 		it('does not show the switch to members', () => {
@@ -594,32 +591,22 @@ describe('SettingsInstanceAiView', () => {
 	});
 
 	describe('off state', () => {
-		it('shows sub-feature switches as disabled and unchecked while off', () => {
+		it('hides the other settings while off', () => {
 			store.$patch({ settings: { ...store.settings!, enabled: false, ...fullyConfigured } });
 			setModuleSettings(settingsStore, { ...defaultModuleSettings, enabled: false });
 
-			settingsStore.settings.ai = { allowSendingParameterValues: true };
-
-			const { getByTestId } = renderComponent();
+			const { getByTestId, queryByTestId } = renderComponent();
+			expect(getByTestId('n8n-agent-enable-toggle')).toHaveAttribute('aria-checked', 'false');
 			for (const testId of [
 				'n8n-agent-browser-use-toggle',
 				'n8n-agent-mcp-access-toggle',
 				'n8n-agent-data-sharing-schema-toggle',
 				'n8n-agent-data-sharing-values-toggle',
+				'n8n-agent-model-row',
 			]) {
-				expect(getByTestId(testId)).toBeDisabled();
-				expect(getByTestId(testId)).toHaveAttribute('aria-checked', 'false');
+				expect(queryByTestId(testId)).toBeNull();
 			}
 			expect(store.settings?.mcpAccessEnabled).toBe(true);
-		});
-
-		it('hides the missing model warning while off', () => {
-			store.$patch({ settings: { ...store.settings!, enabled: false, searchDisabled: true } });
-			setModuleSettings(settingsStore, { ...defaultModuleSettings, enabled: false });
-
-			const { getByTestId, queryByText } = renderComponent();
-			expect(getByTestId('n8n-agent-model-row')).toBeVisible();
-			expect(queryByText('settings.n8nAgent.modelCredential.missing.description')).toBeNull();
 		});
 
 		it('shows the missing model warning while on', () => {
@@ -1106,6 +1093,32 @@ describe('SettingsInstanceAiView', () => {
 			}
 		});
 
+		it('shows the Delete data tables permission when the Data tables group is expanded', async () => {
+			const { getByTestId, getByLabelText } = renderComponent();
+
+			await fireEvent.click(
+				getByLabelText('Toggle settings.n8nAgent.permissions.group.dataTables'),
+			);
+
+			await waitFor(() =>
+				expect(getByTestId('n8n-agent-permission-deleteDataTable')).toBeVisible(),
+			);
+		});
+
+		it('explains who confirms Ask first only while approval modes are available', async () => {
+			const first = renderComponent();
+			await first.findByText(/settings.n8nAgent.permissions.description/);
+			expect(first.queryByText(/settings.n8nAgent.permissions.askFirst.description/)).toBeNull();
+			first.unmount();
+
+			store.$patch({ approvalModesAvailable: true });
+			const { findByText } = renderComponent();
+
+			await expect(
+				findByText(/settings.n8nAgent.permissions.askFirst.description/),
+			).resolves.toBeTruthy();
+		});
+
 		it('shows the Execute a node permission when the Nodes group is expanded', async () => {
 			const { getByTestId, getByLabelText } = renderComponent();
 
@@ -1129,15 +1142,6 @@ describe('SettingsInstanceAiView', () => {
 			expect(getByTestId('n8n-agent-permission-group-folders').textContent).toContain(
 				'settings.n8nAgent.permissions.group.default',
 			);
-		});
-
-		it('hides the Preferences group while the 111_context_preferences flag is off', () => {
-			contextPreferencesEnabledMock.mockReturnValueOnce(false);
-
-			const { queryByTestId, getByTestId } = renderComponent();
-
-			expect(queryByTestId('n8n-agent-permission-group-preferences')).toBeNull();
-			expect(getByTestId('n8n-agent-permission-group-workflows')).toBeVisible();
 		});
 
 		it('shows the Skills group while context skills are enabled', () => {

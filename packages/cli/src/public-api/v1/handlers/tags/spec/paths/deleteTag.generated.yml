@@ -2,7 +2,10 @@ operationId: deleteTag
 tags:
   - Tags
 summary: Delete a tag
-description: Deletes a tag.
+description: |-
+  Deletes a tag.
+
+  Requires the `tag:delete` API key scope.
 x-required-scope: tag:delete
 parameters:
   - schema:

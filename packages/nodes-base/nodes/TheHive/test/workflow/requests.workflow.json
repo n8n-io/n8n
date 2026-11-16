@@ -1,0 +1,558 @@
+{
+	"name": "TheHive Requests",
+	"nodes": [
+		{
+			"parameters": {},
+			"id": "trigger",
+			"name": "When clicking \"Execute Workflow\"",
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [0, 0]
+		},
+		{
+			"parameters": {
+				"resource": "alert",
+				"operation": "get",
+				"id": "~41160",
+				"options": {}
+			},
+			"id": "thehive-0",
+			"name": "Alert Get",
+			"type": "n8n-nodes-base.theHive",
+			"typeVersion": 1,
+			"position": [300, 0],
+			"credentials": {
+				"theHiveApi": {
+					"id": "1",
+					"name": "TheHive account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "alert",
+				"operation": "markAsRead",
+				"id": "~41160"
+			},
+			"id": "thehive-1",
+			"name": "Alert Mark As Read",
+			"type": "n8n-nodes-base.theHive",
+			"typeVersion": 1,
+			"position": [300, 150],
+			"credentials": {
+				"theHiveApi": {
+					"id": "1",
+					"name": "TheHive account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "alert",
+				"operation": "markAsUnread",
+				"id": "~41160"
+			},
+			"id": "thehive-2",
+			"name": "Alert Mark As Unread",
+			"type": "n8n-nodes-base.theHive",
+			"typeVersion": 1,
+			"position": [300, 300],
+			"credentials": {
+				"theHiveApi": {
+					"id": "1",
+					"name": "TheHive account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "alert",
+				"operation": "merge",
+				"id": "~41160",
+				"caseId": "~81920"
+			},
+			"id": "thehive-3",
+			"name": "Alert Merge",
+			"type": "n8n-nodes-base.theHive",
+			"typeVersion": 1,
+			"position": [300, 450],
+			"credentials": {
+				"theHiveApi": {
+					"id": "1",
+					"name": "TheHive account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "alert",
+				"operation": "promote",
+				"id": "~41160",
+				"additionalFields": {}
+			},
+			"id": "thehive-4",
+			"name": "Alert Promote",
+			"type": "n8n-nodes-base.theHive",
+			"typeVersion": 1,
+			"position": [300, 600],
+			"credentials": {
+				"theHiveApi": {
+					"id": "1",
+					"name": "TheHive account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "alert",
+				"operation": "update",
+				"id": "~41160",
+				"jsonParameters": false,
+				"updateFields": {
+					"follow": false
+				}
+			},
+			"id": "thehive-5",
+			"name": "Alert Update",
+			"type": "n8n-nodes-base.theHive",
+			"typeVersion": 1,
+			"position": [300, 750],
+			"credentials": {
+				"theHiveApi": {
+					"id": "1",
+					"name": "TheHive account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "observable",
+				"operation": "create",
+				"caseId": "~81920",
+				"dataType": "domain",
+				"data": "example.com",
+				"message": "Suspicious domain",
+				"startDate": "2025-03-01T10:00:00.000Z",
+				"tlp": 2,
+				"ioc": true,
+				"sighted": false,
+				"status": "Ok",
+				"options": {}
+			},
+			"id": "thehive-6",
+			"name": "Observable Create",
+			"type": "n8n-nodes-base.theHive",
+			"typeVersion": 1,
+			"position": [300, 900],
+			"credentials": {
+				"theHiveApi": {
+					"id": "1",
+					"name": "TheHive account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "observable",
+				"operation": "executeAnalyzer",
+				"id": "~12288",
+				"dataType": "domain",
+				"analyzers": ["DShield_lookup_1_0::cortex1"]
+			},
+			"id": "thehive-7",
+			"name": "Observable Execute Analyzer",
+			"type": "n8n-nodes-base.theHive",
+			"typeVersion": 1,
+			"position": [300, 1050],
+			"credentials": {
+				"theHiveApi": {
+					"id": "1",
+					"name": "TheHive account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "observable",
+				"operation": "get",
+				"id": "~12288"
+			},
+			"id": "thehive-8",
+			"name": "Observable Get",
+			"type": "n8n-nodes-base.theHive",
+			"typeVersion": 1,
+			"position": [300, 1200],
+			"credentials": {
+				"theHiveApi": {
+					"id": "1",
+					"name": "TheHive account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "observable",
+				"operation": "update",
+				"id": "~12288",
+				"updateFields": {
+					"ioc": false
+				}
+			},
+			"id": "thehive-9",
+			"name": "Observable Update",
+			"type": "n8n-nodes-base.theHive",
+			"typeVersion": 1,
+			"position": [300, 1350],
+			"credentials": {
+				"theHiveApi": {
+					"id": "1",
+					"name": "TheHive account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "case",
+				"operation": "get",
+				"id": "~81920"
+			},
+			"id": "thehive-10",
+			"name": "Case Get",
+			"type": "n8n-nodes-base.theHive",
+			"typeVersion": 1,
+			"position": [300, 1500],
+			"credentials": {
+				"theHiveApi": {
+					"id": "1",
+					"name": "TheHive account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "case",
+				"operation": "update",
+				"id": "~81920",
+				"jsonParameters": false,
+				"updateFields": {
+					"flag": true
+				}
+			},
+			"id": "thehive-11",
+			"name": "Case Update",
+			"type": "n8n-nodes-base.theHive",
+			"typeVersion": 1,
+			"position": [300, 1650],
+			"credentials": {
+				"theHiveApi": {
+					"id": "1",
+					"name": "TheHive account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "task",
+				"operation": "create",
+				"caseId": "~81920",
+				"title": "Check logs",
+				"status": "Waiting",
+				"flag": false,
+				"options": {}
+			},
+			"id": "thehive-12",
+			"name": "Task Create",
+			"type": "n8n-nodes-base.theHive",
+			"typeVersion": 1,
+			"position": [300, 1800],
+			"credentials": {
+				"theHiveApi": {
+					"id": "1",
+					"name": "TheHive account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "task",
+				"operation": "get",
+				"id": "~20480"
+			},
+			"id": "thehive-13",
+			"name": "Task Get",
+			"type": "n8n-nodes-base.theHive",
+			"typeVersion": 1,
+			"position": [300, 1950],
+			"credentials": {
+				"theHiveApi": {
+					"id": "1",
+					"name": "TheHive account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "task",
+				"operation": "update",
+				"id": "~20480",
+				"updateFields": {
+					"flag": true
+				}
+			},
+			"id": "thehive-14",
+			"name": "Task Update",
+			"type": "n8n-nodes-base.theHive",
+			"typeVersion": 1,
+			"position": [300, 2100],
+			"credentials": {
+				"theHiveApi": {
+					"id": "1",
+					"name": "TheHive account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "log",
+				"operation": "create",
+				"taskId": "~20480",
+				"message": "Logs checked",
+				"startDate": "2025-03-01T11:00:00.000Z",
+				"status": "Ok",
+				"options": {}
+			},
+			"id": "thehive-15",
+			"name": "Log Create",
+			"type": "n8n-nodes-base.theHive",
+			"typeVersion": 1,
+			"position": [300, 2250],
+			"credentials": {
+				"theHiveApi": {
+					"id": "1",
+					"name": "TheHive account"
+				}
+			}
+		}
+	],
+	"connections": {
+		"When clicking \"Execute Workflow\"": {
+			"main": [
+				[
+					{
+						"node": "Alert Get",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Alert Mark As Read",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Alert Mark As Unread",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Alert Merge",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Alert Promote",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Alert Update",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Observable Create",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Observable Execute Analyzer",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Observable Get",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Observable Update",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Case Get",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Case Update",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Task Create",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Task Get",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Task Update",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Log Create",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"pinData": {
+		"Alert Get": [
+			{
+				"json": {
+					"id": "~41160",
+					"title": "Phishing mail"
+				}
+			}
+		],
+		"Alert Mark As Read": [
+			{
+				"json": {
+					"id": "~41160",
+					"title": "Phishing mail"
+				}
+			}
+		],
+		"Alert Mark As Unread": [
+			{
+				"json": {
+					"id": "~41160",
+					"title": "Phishing mail"
+				}
+			}
+		],
+		"Alert Merge": [
+			{
+				"json": {
+					"id": "~81920",
+					"title": "Phishing campaign"
+				}
+			}
+		],
+		"Alert Promote": [
+			{
+				"json": {
+					"id": "~81920",
+					"title": "Phishing campaign"
+				}
+			}
+		],
+		"Alert Update": [
+			{
+				"json": {
+					"id": "~41160",
+					"title": "Phishing mail"
+				}
+			}
+		],
+		"Observable Create": [
+			{
+				"json": {
+					"id": "~12288",
+					"data": "example.com"
+				}
+			}
+		],
+		"Observable Execute Analyzer": [
+			{
+				"json": {
+					"id": "AXz2mKd8",
+					"status": "Success"
+				}
+			}
+		],
+		"Observable Get": [
+			{
+				"json": {
+					"id": "~12288",
+					"data": "example.com"
+				}
+			}
+		],
+		"Observable Update": [
+			{
+				"json": {
+					"success": true
+				}
+			}
+		],
+		"Case Get": [
+			{
+				"json": {
+					"id": "~81920",
+					"title": "Phishing campaign"
+				}
+			}
+		],
+		"Case Update": [
+			{
+				"json": {
+					"id": "~81920",
+					"title": "Phishing campaign"
+				}
+			}
+		],
+		"Task Create": [
+			{
+				"json": {
+					"id": "~20480",
+					"title": "Check logs"
+				}
+			}
+		],
+		"Task Get": [
+			{
+				"json": {
+					"id": "~20480",
+					"title": "Check logs"
+				}
+			}
+		],
+		"Task Update": [
+			{
+				"json": {
+					"id": "~20480",
+					"title": "Check logs"
+				}
+			}
+		],
+		"Log Create": [
+			{
+				"json": {
+					"id": "~24576",
+					"message": "Logs checked"
+				}
+			}
+		]
+	},
+	"active": false,
+	"settings": {
+		"executionOrder": "v1"
+	}
+}

@@ -1,9 +1,8 @@
 import { ASSISTANT_SKILLS_FLAG, SKILL_SYNC_FLAG } from '@n8n/api-types';
+import type { PostHogClient } from '@n8n/backend-services';
 import type { User } from '@n8n/db';
 import { NotFoundError } from '@n8n/errors';
 import { mock } from 'vitest-mock-extended';
-
-import type { PostHogClient } from '@/posthog';
 
 import { AssistantSkillsFlagGate } from '../services/assistant-skills-flag-gate';
 import type { SkillUsage } from '../services/skill-usage.contracts';
@@ -98,7 +97,7 @@ describe('skills gates', () => {
 		await expect(
 			proxy.assertRenameKeepsNamesApart('skill-1', 'Old', 'New'),
 		).resolves.toBeUndefined();
-		expect(await proxy.markFollowersChanged('skill-1')).toEqual([]);
+		expect(await proxy.findFollowingAgentIds('skill-1')).toEqual([]);
 		await expect(proxy.refreshAgents(['agent-1'])).resolves.toBeUndefined();
 	});
 
@@ -126,7 +125,7 @@ describe('skills gates', () => {
 		usage.findUsage.mockResolvedValue(usedBy);
 		usage.countUsingAgents.mockResolvedValue(counts);
 		usage.findUsingAgentIds.mockResolvedValue(['agent-1']);
-		usage.markFollowersChanged.mockResolvedValue(['agent-2']);
+		usage.findFollowingAgentIds.mockResolvedValue(['agent-2']);
 		proxy.register(usage);
 		const ctx = { trx: undefined };
 
@@ -136,7 +135,7 @@ describe('skills gates', () => {
 		expect(await proxy.countUsingAgents(['skill-1'], ctx)).toBe(counts);
 		expect(await proxy.findUsingAgentIds('skill-1', ctx)).toEqual(['agent-1']);
 		await proxy.assertRenameKeepsNamesApart('skill-1', 'Old', 'New', ctx);
-		expect(await proxy.markFollowersChanged('skill-1', ctx, 'user-1')).toEqual(['agent-2']);
+		expect(await proxy.findFollowingAgentIds('skill-1', ctx)).toEqual(['agent-2']);
 		await proxy.refreshAgents(['agent-1'], 'push-ref');
 
 		expect(usage.findAgents).toHaveBeenCalledWith(['agent-1'], ctx);
@@ -145,7 +144,7 @@ describe('skills gates', () => {
 		expect(usage.countUsingAgents).toHaveBeenCalledWith(['skill-1'], ctx);
 		expect(usage.findUsingAgentIds).toHaveBeenCalledWith('skill-1', ctx);
 		expect(usage.assertRenameKeepsNamesApart).toHaveBeenCalledWith('skill-1', 'Old', 'New', ctx);
-		expect(usage.markFollowersChanged).toHaveBeenCalledWith('skill-1', ctx, 'user-1');
+		expect(usage.findFollowingAgentIds).toHaveBeenCalledWith('skill-1', ctx);
 		expect(usage.refreshAgents).toHaveBeenCalledWith(['agent-1'], 'push-ref');
 	});
 });

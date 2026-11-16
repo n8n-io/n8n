@@ -3,6 +3,7 @@ import {
 	type InstanceAiCloudBrowserLiveViewResponse,
 } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
+import { PostHogClient } from '@n8n/backend-services';
 import { UserRepository } from '@n8n/db';
 import { OnShutdown } from '@n8n/decorators';
 import { Service } from '@n8n/di';
@@ -10,7 +11,6 @@ import { UnexpectedError, UserError } from '@n8n/errors';
 import { tmpdir } from 'node:os';
 
 import { CredentialsService } from '@/credentials/credentials.service';
-import { PostHogClient } from '@/posthog';
 import { AiGatewayBrowserUseService } from '@/services/ai-gateway-browser-use.service';
 
 import {

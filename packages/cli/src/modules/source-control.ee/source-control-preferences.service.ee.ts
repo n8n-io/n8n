@@ -330,7 +330,7 @@ export class SourceControlPreferencesService {
 	 */
 	private async broadcastReloadSourceControlConfiguration(): Promise<void> {
 		if (this.instanceSettings.isMultiMain) {
-			const { Publisher } = await import('@/scaling/pubsub/publisher.service.js');
+			const { Publisher } = await import('@n8n/backend-services');
 			await Container.get(Publisher).publishCommand({ command: 'reload-source-control-config' });
 			this.logger.debug('Broadcasting source control configuration reload to other main instances');
 		}

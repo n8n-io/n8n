@@ -111,13 +111,19 @@ import { sourceControlEventBus } from '@/features/integrations/sourceControl.ee/
 import { useTagsStore } from '@/features/shared/tags/tags.store';
 
 import { injectNDVStore } from '@/features/ndv/shared/ndv.store';
-import { DEFAULT_NODE_SIZE, getBounds, getNodeViewTab } from '@/app/utils/nodeViewUtils';
+import {
+	DEFAULT_NODE_SIZE,
+	getBounds,
+	getNodeViewTab,
+	isPastableWorkflowText,
+} from '@/app/utils/nodeViewUtils';
 import { isChatNode } from '@/app/utils/aiUtils';
 import CanvasStopCurrentExecutionButton from '@/features/workflows/canvas/components/elements/buttons/CanvasStopCurrentExecutionButton.vue';
 import CanvasStopWaitingForWebhookButton from '@/features/workflows/canvas/components/elements/buttons/CanvasStopWaitingForWebhookButton.vue';
 import { nodeViewEventBus } from '@/app/event-bus';
 import type { PinDataSource } from '@/app/composables/usePinnedData';
 import { useClipboard } from '@n8n/composables/useClipboard';
+import { useDeviceSupport } from '@n8n/composables/useDeviceSupport';
 import { useBeforeUnload } from '@/app/composables/useBeforeUnload';
 import { getResourcePermissions } from '@n8n/permissions';
 import NodeViewUnfinishedWorkflowMessage from '@/app/components/NodeViewUnfinishedWorkflowMessage.vue';
@@ -199,6 +205,7 @@ const workflowSaving = useWorkflowSaving({
 });
 const nodeHelpers = useNodeHelpers();
 const clipboard = useClipboard({ onPaste: onClipboardPaste });
+const { controlKeyText } = useDeviceSupport();
 
 const nodeTypesStore = useNodeTypesStore();
 const uiStore = useUIStore();
@@ -685,6 +692,7 @@ async function onClipboardPaste(plainTextData: string): Promise<void> {
 		const result = await importWorkflowData(workflowData, 'paste', {
 			importTags: false,
 			viewport: viewportBoundaries.value,
+			warnRestrictedNodes: true,
 		});
 		const ids = result.nodes?.map((node) => node.id) ?? [];
 
@@ -692,6 +700,39 @@ async function onClipboardPaste(plainTextData: string): Promise<void> {
 	};
 
 	await mcpJsonNudgeTrigger.gate('paste', paste);
+}
+
+// The context menu has no paste event, so read the clipboard explicitly.
+async function onPasteFromContextMenu() {
+	// A browser paste prompt can stay open while the user navigates to another workflow
+	const originWorkflowId = workflowId.value;
+	let plainTextData: string;
+	try {
+		plainTextData = await navigator.clipboard.readText();
+	} catch {
+		if (!isStillOnWorkflow(originWorkflowId)) return;
+		toast.showMessage({
+			title: i18n.baseText('nodeView.showMessage.clipboardReadFailed.title'),
+			message: i18n.baseText('nodeView.showMessage.clipboardReadFailed.message', {
+				interpolate: { shortcut: `${controlKeyText.value}+V` },
+			}),
+			type: 'warning',
+		});
+		return;
+	}
+
+	if (!isStillOnWorkflow(originWorkflowId)) return;
+
+	if (!isPastableWorkflowText(plainTextData)) {
+		toast.showMessage({
+			title: i18n.baseText('nodeView.showMessage.clipboardNoWorkflowData.title'),
+			message: i18n.baseText('nodeView.showMessage.clipboardNoWorkflowData.message'),
+			type: 'info',
+		});
+		return;
+	}
+
+	await onClipboardPaste(plainTextData);
 }
 
 async function onCutNodes(ids: string[], deleteWholeGroupIds: string[] = []) {
@@ -942,6 +983,7 @@ async function onImportWorkflowDataEvent(data: IDataObject) {
 		regenerateIds: data.regenerateIds === true || data.regenerateIds === undefined,
 		trackEvents,
 		setStateDirty,
+		warnRestrictedNodes: data.warnRestrictedNodes === true,
 	});
 
 	await nextTick();
@@ -977,6 +1019,7 @@ async function onImportWorkflowUrlEvent(data: IDataObject) {
 
 		await importWorkflowData(workflowData, 'url', {
 			viewport: viewportBoundaries.value,
+			warnRestrictedNodes: true,
 		});
 
 		canvasRef.value?.ensureNodesAreVisible(workflowData.nodes?.map((node) => node.id) ?? []);
@@ -989,12 +1032,14 @@ function addImportEventBindings() {
 	nodeViewEventBus.on('importWorkflowData', onImportWorkflowDataEvent);
 	nodeViewEventBus.on('importWorkflowUrl', onImportWorkflowUrlEvent);
 	nodeViewEventBus.on('openChat', onOpenChat);
+	nodeViewEventBus.on('replaceNode', onReplaceNodeEvent);
 }
 
 function removeImportEventBindings() {
 	nodeViewEventBus.off('importWorkflowData', onImportWorkflowDataEvent);
 	nodeViewEventBus.off('importWorkflowUrl', onImportWorkflowUrlEvent);
 	nodeViewEventBus.off('openChat', onOpenChat);
+	nodeViewEventBus.off('replaceNode', onReplaceNodeEvent);
 }
 
 /**
@@ -1219,7 +1264,13 @@ function onClickConnectionAdd(connection: Connection) {
 	}
 }
 
-function onClickReplaceNode(nodeId: string) {
+/** The bus reaches every mounted NodeView, previews too, so only an editable canvas replaces. */
+function onReplaceNodeEvent(nodeId: string) {
+	if (isCanvasReadOnly.value) return;
+	onClickReplaceNode(nodeId, { fromSetupPanel: true });
+}
+
+function onClickReplaceNode(nodeId: string, { fromSetupPanel = false } = {}) {
 	const node = workflowDocumentStore?.value?.getNodeById(nodeId);
 	const expression = workflowDocumentStore?.value?.getExpressionHandler();
 	if (!node || !expression) return;
@@ -1228,6 +1279,7 @@ function onClickReplaceNode(nodeId: string) {
 
 	nodeCreatorReplaceTargetId.value = nodeId;
 	nodeCreatorStore.openingContext = 'replacement';
+	nodeCreatorStore.isReplacingFromSetupPanel = fromSetupPanel;
 	if (isTriggerNode(nodeType)) {
 		nodeCreatorStore.openNodeCreatorForTriggerNodes(
 			workflowId.value,
@@ -1871,11 +1923,8 @@ function unregisterCustomActions() {
 
 function showAddFirstStepIfEnabled() {
 	if (uiStore.addFirstStepOnLoad) {
-		void onOpenNodeCreatorForTriggerNodes(
-			uiStore.addFirstStepOnLoadSource ?? NODE_CREATOR_OPEN_SOURCES.TRIGGER_PLACEHOLDER_BUTTON,
-		);
+		void onOpenNodeCreatorForTriggerNodes(NODE_CREATOR_OPEN_SOURCES.TRIGGER_PLACEHOLDER_BUTTON);
 		uiStore.addFirstStepOnLoad = false;
-		uiStore.addFirstStepOnLoadSource = undefined;
 	}
 }
 
@@ -2225,6 +2274,7 @@ onBeforeUnmount(() => {
 			@update:nodes:pin="onPinNodes"
 			@duplicate:nodes="onDuplicateNodes"
 			@copy:nodes="onCopyNodes"
+			@paste:clipboard="onPasteFromContextMenu"
 			@cut:nodes="onCutNodes"
 			@replace:node="onClickReplaceNode"
 			@run:workflow="onRunWorkflowShortcut"

@@ -1,4 +1,5 @@
 import type { ILoadOptionsFunctions, INodePropertyOptions } from 'n8n-workflow';
+import { requestPath } from 'n8n-workflow';
 
 import { getSubfolders, microsoftApiRequestAllItems } from '../transport';
 
@@ -13,7 +14,7 @@ export async function getCategoriesNames(
 		this,
 		'value',
 		'GET',
-		'/outlook/masterCategories',
+		requestPath`/outlook/masterCategories`,
 		0,
 	);
 	for (const category of categories) {
@@ -31,7 +32,7 @@ export async function getFolders(this: ILoadOptionsFunctions): Promise<INodeProp
 		this,
 		'value',
 		'GET',
-		'/mailFolders',
+		requestPath`/mailFolders`,
 		0,
 		{},
 	);
@@ -53,7 +54,7 @@ export async function getCalendarGroups(
 		this,
 		'value',
 		'GET',
-		'/calendarGroups',
+		requestPath`/calendarGroups`,
 		0,
 		{},
 	);

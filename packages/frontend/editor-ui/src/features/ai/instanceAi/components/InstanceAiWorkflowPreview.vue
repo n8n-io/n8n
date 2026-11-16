@@ -157,13 +157,9 @@ const handoff = thread.consumePendingHandoff(props.workflowId);
 const initialWorkflow = handoff?.workflow;
 const initialExecution = handoff?.execution;
 
-const isAgentEditingThisWorkflow = computed(() => {
-	for (const message of thread.messages) {
-		if (!message.agentTree) continue;
-		if (isAgentEditingWorkflow(message.agentTree, props.workflowId)) return true;
-	}
-	return false;
-});
+const isAgentEditingThisWorkflow = computed(() =>
+	isAgentEditingWorkflow(thread.artifactTurns, props.workflowId),
+);
 
 // Per-editor host overrides for the embedded editor. Instance AI supersedes the
 // standalone AI helpers (`false`), forces the canvas read-only while the agent

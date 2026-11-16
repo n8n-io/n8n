@@ -8,7 +8,7 @@ import {
 	promotionApplyCheckSchema,
 	promotionBindingWarningSchema,
 } from './promotion-apply-check.dto';
-import { promotionCommitMessageSchema } from './promotion-common.dto';
+import { promotionCommitMessageSchema, promotionSelectedIdsSchema } from './promotion-common.dto';
 import { promotionReviewResultSchema } from './promotion-review.dto';
 
 export class PromotePackageDto extends Z.class(
@@ -163,17 +163,21 @@ const expectedPreviewRevisionSchema = z
 			'status `preview-changed` without writing when it differs, for example after a local edit.',
 	});
 
-/** The selection is a set, so a repeated workflow id is a malformed request. */
-const selectedWorkflowIdsSchema = z
-	.array(n8nIdSchema)
-	.min(1)
-	.refine((ids) => new Set(ids).size === ids.length, {
-		message: 'workflowIds contains duplicates',
-	});
+/**
+ * The selection of a project Apply. Apply always applies the project details, so a request
+ * without workflows and folders applies only the project.
+ */
+const applySelectionShape = {
+	workflowIds: promotionSelectedIdsSchema('workflowIds'),
+	folderIds: promotionSelectedIdsSchema('folderIds').openapi({
+		description:
+			'Folders of the project on the branch. Apply creates a selected folder, or moves and renames it to match the branch.',
+	}),
+};
 
 export class ApplySelectionDto extends Z.class(
 	{
-		workflowIds: selectedWorkflowIdsSchema,
+		...applySelectionShape,
 		expectedSource: expectedSourceSchema.optional(),
 		expectedPreviewRevision: expectedPreviewRevisionSchema,
 	},
@@ -182,7 +186,7 @@ export class ApplySelectionDto extends Z.class(
 
 export class ContinueApplySelectionDto extends Z.class(
 	{
-		workflowIds: selectedWorkflowIdsSchema,
+		...applySelectionShape,
 		expectedSource: expectedSourceSchema,
 		expectedPreviewRevision: expectedPreviewRevisionSchema,
 		confirmDestructiveChanges: confirmDestructiveChangesSchema,

@@ -1,4 +1,4 @@
-import type { TransactionRunner } from '@n8n/db';
+import type { OperationContext, TransactionRunner } from '@n8n/db';
 import type { AgentProjectDeletionRepository } from '@/modules/agents/repositories/agent-project-deletion.repository';
 import type { AgentSessionStopService } from '@/modules/agents/agent-session-stop.service';
 import type { AgentExecutionRepository } from '@/modules/agents/repositories/agent-execution.repository';
@@ -16,6 +16,7 @@ import {
 	type SharedWorkflowRepository,
 	type ProjectRelationRepository,
 	type SharedCredentials,
+	type SharedWorkflow,
 	type User,
 	type UserRepository,
 	ProjectRelation as ProjectRelationEntity,
@@ -23,6 +24,7 @@ import {
 	PROJECT_VIEWER_ROLE,
 } from '@n8n/db';
 import { PROJECT_OWNER_ROLE_SLUG } from '@n8n/permissions';
+import type { SecurityContext } from '@n8n/permissions';
 import type { EntityManager } from '@n8n/typeorm';
 import type { Mocked } from 'vitest';
 import { mock } from 'vitest-mock-extended';
@@ -193,9 +195,11 @@ describe('ProjectService', () => {
 
 			// ACT & ASSERT
 			await expect(
-				projectService.addUsersToProject(user, projectId, [
-					{ userId: '1234', role: 'project:admin' },
-				]),
+				projectService.addUsersToProject({
+					user,
+					projectId,
+					relations: [{ userId: '1234', role: 'project:admin' }],
+				}),
 			).rejects.toThrowError("Can't add users to personal projects.");
 		});
 
@@ -209,9 +213,11 @@ describe('ProjectService', () => {
 
 			// ACT & ASSERT
 			await expect(
-				projectService.addUsersToProject(user, projectId, [
-					{ userId: '1234', role: PROJECT_OWNER_ROLE_SLUG },
-				]),
+				projectService.addUsersToProject({
+					user,
+					projectId,
+					relations: [{ userId: '1234', role: PROJECT_OWNER_ROLE_SLUG }],
+				}),
 			).rejects.toThrowError("Can't add a personalOwner to a team project.");
 		});
 
@@ -230,10 +236,15 @@ describe('ProjectService', () => {
 			roleService.isRoleLicensed.mockReturnValue(true);
 
 			// ACT
-			await projectService.addUsersToProject(user, projectId, [
-				{ userId: 'existing', role: 'project:admin' },
-				{ userId: 'newcomer', role: 'project:viewer' },
-			]);
+			await projectService.addUsersToProject({
+				user,
+				projectId,
+				relations: [
+					{ userId: 'existing', role: 'project:admin' },
+					{ userId: 'newcomer', role: 'project:viewer' },
+				],
+				publicApi: 'editor_ui',
+			});
 
 			// ASSERT: mailer called once, only for the newcomer
 			expect(userManagementMailer.notifyProjectShared).toHaveBeenCalledTimes(1);
@@ -241,6 +252,8 @@ describe('ProjectService', () => {
 				sharer: user,
 				newSharees: [{ userId: 'newcomer', role: 'project:viewer' }],
 				project: { id: projectId, name: 'Team Project' },
+				publicApi: 'editor_ui',
+				ctx: {},
 			});
 		});
 
@@ -255,10 +268,14 @@ describe('ProjectService', () => {
 				instanceUser('member', 'global:member'),
 			]);
 
-			await projectService.addUsersToProject(user, projectId, [
-				{ userId: 'admin', role: 'project:viewer' },
-				{ userId: 'member', role: 'project:viewer' },
-			]);
+			await projectService.addUsersToProject({
+				user,
+				projectId,
+				relations: [
+					{ userId: 'admin', role: 'project:viewer' },
+					{ userId: 'member', role: 'project:viewer' },
+				],
+			});
 
 			expect(projectRelationRepository.save).toHaveBeenCalledWith([
 				{ projectId, userId: 'member', role: { slug: 'project:viewer' } },
@@ -268,6 +285,8 @@ describe('ProjectService', () => {
 				sharer: user,
 				newSharees: [{ userId: 'member', role: 'project:viewer' }],
 				project: { id: projectId, name: 'Team Project' },
+				publicApi: false,
+				ctx: {},
 			});
 		});
 
@@ -285,12 +304,55 @@ describe('ProjectService', () => {
 			roleService.isRoleLicensed.mockReturnValue(true);
 
 			// ACT
-			await projectService.addUsersToProject(user, projectId, [
-				{ userId: 'existing', role: 'project:admin' },
-			]);
+			await projectService.addUsersToProject({
+				user,
+				projectId,
+				relations: [{ userId: 'existing', role: 'project:admin' }],
+			});
 
 			// ASSERT
 			expect(userManagementMailer.notifyProjectShared).not.toHaveBeenCalled();
+		});
+
+		describe('operation context on the share notification', () => {
+			const projectId = '12345';
+
+			beforeEach(() => {
+				projectRepository.findOne.mockResolvedValueOnce(
+					mock<Project>({
+						id: projectId,
+						name: 'Team Project',
+						type: 'team',
+						projectRelations: [],
+					}),
+				);
+				roleService.isRoleLicensed.mockReturnValue(true);
+			});
+
+			it('passes the operation context to the share notification', async () => {
+				const ctx: OperationContext = {
+					security: mock<SecurityContext>({ subIdentityId: 'login-1' }),
+				};
+
+				await projectService.addUsersToProject(
+					{ user, projectId, relations: [{ userId: 'newcomer', role: 'project:viewer' }] },
+					ctx,
+				);
+
+				expect(userManagementMailer.notifyProjectShared).toHaveBeenCalledWith(
+					expect.objectContaining({ ctx }),
+				);
+			});
+
+			it('passes an empty operation context when none is given', async () => {
+				await projectService.addUsersToProject({
+					user,
+					projectId,
+					relations: [{ userId: 'newcomer', role: 'project:viewer' }],
+				});
+
+				expect(userManagementMailer.notifyProjectShared.mock.calls[0][0].ctx).toEqual({});
+			});
 		});
 	});
 
@@ -1069,6 +1131,62 @@ describe('ProjectService', () => {
 			).toBeLessThan(projectRepository.removeProjectForDeletion.mock.invocationCallOrder[0]);
 		});
 
+		describe('operation context on the cascaded deletes', () => {
+			const workflowDelete = vi.fn();
+			const credentialDelete = vi.fn();
+
+			beforeEach(() => {
+				Object.defineProperty(projectService, 'workflowService', {
+					configurable: true,
+					get: async () => ({ delete: workflowDelete }),
+				});
+				Object.defineProperty(projectService, 'credentialsService', {
+					configurable: true,
+					get: async () => ({ delete: credentialDelete }),
+				});
+				const project = mock<Project>({ id: 'project-1', type: 'team' });
+				projectRepository.findOneWithUserRoles.mockResolvedValueOnce(project);
+				projectRepository.removeProjectForDeletion.mockResolvedValueOnce(project);
+				sharedWorkflowRepository.find.mockReset();
+				sharedCredentialsRepository.find.mockReset();
+				sharedWorkflowRepository.find.mockResolvedValueOnce([
+					mock<SharedWorkflow>({ workflowId: 'workflow-1' }),
+				]);
+				sharedCredentialsRepository.find.mockResolvedValueOnce([
+					mock<SharedCredentials>({
+						credentialsId: 'credential-1',
+						credentials: { id: 'credential-1', isResolvable: false },
+					}),
+				]);
+				moduleRegistry.isActive.mockReturnValue(false);
+				projectRelationRepository.findBy.mockResolvedValueOnce([]);
+			});
+
+			it('passes the operation context to the workflow and credential deletes', async () => {
+				const ctx: OperationContext = {
+					security: mock<SecurityContext>({ subIdentityId: 'login-1' }),
+				};
+
+				await projectService.deleteProject(user, 'project-1', {}, ctx);
+
+				expect(workflowDelete).toHaveBeenCalledWith(
+					user,
+					'workflow-1',
+					true,
+					{ publicApi: false },
+					ctx,
+				);
+				expect(credentialDelete).toHaveBeenCalledWith(user, 'credential-1', {}, ctx);
+			});
+
+			it('passes an empty operation context when none is given', async () => {
+				await projectService.deleteProject(user, 'project-1');
+
+				expect(workflowDelete.mock.calls[0][4]).toEqual({});
+				expect(credentialDelete.mock.calls[0][3]).toEqual({});
+			});
+		});
+
 		describe('migrating end-user credentials', () => {
 			// all scopes deleteProject needs, so both project lookups short-circuit on global scope
 			const migratingUser = {
@@ -1211,6 +1329,35 @@ describe('ProjectService', () => {
 				await projectService.deleteProject(migratingUser, project.id);
 
 				expect(ownershipTransferService.enforceTransferPolicy).not.toHaveBeenCalled();
+			});
+
+			it('finishes the transfer when the workflow project cache invalidation fails', async () => {
+				projectRepository.findOneWithUserRoles
+					.mockResolvedValueOnce(project)
+					.mockResolvedValueOnce(mock<Project>({ id: 'team-2', type: 'team' }));
+				sharedWorkflowRepository.find.mockResolvedValueOnce([
+					mock<SharedWorkflow>({ workflowId: 'workflow-1' }),
+				]);
+				ownershipService.invalidateWorkflowProjectCacheByIds.mockRejectedValueOnce(
+					new Error('cache unavailable'),
+				);
+
+				await projectService.deleteProject(migratingUser, project.id, {
+					migrateToProject: 'team-2',
+				});
+
+				expect(ownershipService.invalidateWorkflowProjectCacheByIds).toHaveBeenCalledWith([
+					'workflow-1',
+				]);
+				expect(logger.warn).toHaveBeenCalledWith(
+					expect.stringContaining('workflow project cache'),
+					expect.objectContaining({ projectId: project.id }),
+				);
+				expect(variablesService.updateCache).toHaveBeenCalledTimes(1);
+				expect(eventService.emit).toHaveBeenCalledWith(
+					'team-project-deleted',
+					expect.objectContaining({ projectId: project.id, removalType: 'transfer' }),
+				);
 			});
 		});
 
