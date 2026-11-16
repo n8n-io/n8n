@@ -8,6 +8,7 @@ export class LeaseKind extends WithTimestamps {
 	@PrimaryColumn({ type: 'varchar', length: 24 })
 	kind: string;
 
+	/** Source of fencing tokens. It never resets, so a recreated key gets a higher token. */
 	@Column({ type: 'bigint', default: 0, transformer: bigintStringToNumber })
 	fencingTokenCounter: number;
 

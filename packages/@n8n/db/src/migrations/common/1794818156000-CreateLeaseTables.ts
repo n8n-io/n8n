@@ -1,6 +1,6 @@
 import type { MigrationContext, ReversibleMigration } from '../migration-types';
 
-/** No unique index or foreign key may cover `lease.leaseSessionId`, `lease.fencingToken` or `lease.revoked`, so their updates stay no-key updates. */
+/** No unique index or foreign key may cover `lease.leaseSessionId`, `lease.fencingToken` or `lease.revoked`: updates to them then do not conflict with the `FOR KEY SHARE` lock of a fence check. */
 export class CreateLeaseTables1794818156000 implements ReversibleMigration {
 	async up({ escape, isPostgres, runQuery, tablePrefix }: MigrationContext) {
 		const kind = escape.tableName('lease_kind');
@@ -64,6 +64,7 @@ export class CreateLeaseTables1794818156000 implements ReversibleMigration {
 		);
 
 		if (isPostgres) {
+			// Free space in each page lets an update that changes no indexed column stay on the same page and skip index writes.
 			await runQuery(`ALTER TABLE ${lease} SET (fillfactor = 90)`);
 		}
 	}
