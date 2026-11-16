@@ -51,6 +51,7 @@ const {
 	previewProps,
 	previewThread,
 	appPreviewProps,
+	skillPreviewProps,
 	routerPush,
 	focusInput,
 	openFilePicker,
@@ -67,6 +68,7 @@ const {
 	previewProps: { current: undefined as Record<string, unknown> | undefined },
 	previewThread: { current: undefined as ArtifactThread | undefined },
 	appPreviewProps: { current: undefined as Record<string, unknown> | undefined },
+	skillPreviewProps: { current: undefined as Record<string, unknown> | undefined },
 	routerPush: vi.fn(),
 	focusInput: vi.fn(),
 	openFilePicker: vi.fn(),
@@ -244,6 +246,18 @@ vi.mock('../../components/InstanceAiAppPreview.vue', () => ({
 	}),
 }));
 
+vi.mock('../../components/InstanceAiSkillPreview.vue', () => ({
+	default: defineComponent({
+		inheritAttrs: false,
+		setup(_props, { attrs }) {
+			return () => {
+				skillPreviewProps.current = { ...attrs };
+				return h('div', { 'data-test-id': 'skill-preview-stub' });
+			};
+		},
+	}),
+}));
+
 // The tab that the `tab-bar-open-tab` button opens.
 const { tabBarTabToOpen } = vi.hoisted(() => ({
 	tabBarTabToOpen: { current: undefined as unknown },
@@ -387,6 +401,7 @@ describe('AssistantAgentThreadView', () => {
 		previewProps.current = undefined;
 		previewThread.current = undefined;
 		appPreviewProps.current = undefined;
+		skillPreviewProps.current = undefined;
 		routerPush.mockReset();
 		focusInput.mockReset();
 		openFilePicker.mockReset();
@@ -678,6 +693,43 @@ describe('AssistantAgentThreadView', () => {
 		await flushPromises();
 
 		expect(appPreviewProps.current?.['refresh-key']).toBe(Number(firstKey) + 1);
+	});
+
+	it('opens the skill that the Assistant writes and reloads it on the next update', async () => {
+		const { getByTestId } = renderView({ props: { threadId: 'thread-1', projectId: 'project-1' } });
+		await flushPromises();
+		isLoadingHistory.value = false;
+		await flushPromises();
+		const skillMessage = (toolCallId: string, action: 'create' | 'update'): ChatMessage => ({
+			id: `a-${toolCallId}`,
+			role: 'assistant',
+			content: '',
+			toolCalls: [
+				{
+					tool: 'skills',
+					toolCallId,
+					input: { action, ...(action === 'update' ? { skillId: 'skill-1' } : {}) },
+					output:
+						action === 'create'
+							? { success: true, skill: { id: 'skill-1', name: 'Tone guide' } }
+							: { success: true, saved: { id: 'skill-1' } },
+					state: 'done',
+				},
+			],
+		});
+
+		chatMessages.value = [skillMessage('tc-1', 'create')];
+		await flushPromises();
+
+		expect(getByTestId('assistant-agent-preview-panel')).toBeVisible();
+		expect(getByTestId('skill-preview-stub')).toBeInTheDocument();
+		expect(skillPreviewProps.current).toMatchObject({ 'skill-id': 'skill-1' });
+		const firstKey = skillPreviewProps.current?.['refresh-key'];
+
+		chatMessages.value = [...chatMessages.value, skillMessage('tc-2', 'update')];
+		await flushPromises();
+
+		expect(skillPreviewProps.current?.['refresh-key']).toBe(Number(firstKey) + 1);
 	});
 
 	it('does not open the preview for a workflow built before the thread loaded', async () => {
