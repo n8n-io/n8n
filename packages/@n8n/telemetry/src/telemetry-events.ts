@@ -12,6 +12,7 @@ import { MIGRATION_REPORT_TELEMETRY } from './events/migration-report';
 import { PLATFORM_TELEMETRY } from './events/platform';
 import { POLICIES_TELEMETRY } from './events/policies';
 import { PROMOTIONS_TELEMETRY } from './events/promotions';
+import { SCIM_TELEMETRY } from './events/scim';
 import { SELF_HEALING_TELEMETRY } from './events/self-healing';
 import { TRUSTED_SOURCES_TELEMETRY } from './events/trusted-sources';
 import { TYPE_AVAILABILITY_POLICIES_TELEMETRY } from './events/type-availability-policies';
@@ -32,6 +33,7 @@ export const TELEMETRY_EVENT = {
 	INSTANCE_AI: INSTANCE_AI_TELEMETRY,
 	MCP: MCP_TELEMETRY,
 	MIGRATION_REPORT: MIGRATION_REPORT_TELEMETRY,
+	SCIM: SCIM_TELEMETRY,
 	SELF_HEALING: SELF_HEALING_TELEMETRY,
 	TRUSTED_SOURCES: TRUSTED_SOURCES_TELEMETRY,
 	TYPE_AVAILABILITY_POLICIES: TYPE_AVAILABILITY_POLICIES_TELEMETRY,

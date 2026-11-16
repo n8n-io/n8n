@@ -13,6 +13,7 @@ import type {
 	PromotionReviewType,
 	PublicApiRateLimitSettings,
 	RedactionFloor,
+	ScimDeprovisioningPolicy,
 } from '@n8n/api-types';
 import type { AuthProviderType, User, IWorkflowDb } from '@n8n/db';
 import type {
@@ -42,6 +43,7 @@ import type {
 	ImportPackageEventOptions,
 	PackageFailureReason,
 } from '@/modules/n8n-packages/n8n-packages.types';
+import type { ScimOperation, ScimRejectReason } from '@/modules/scim/scim-request.types';
 import type { TokenExchangeFailureReason } from '@/modules/token-exchange/token-exchange.types';
 import type { AdminCredentialSelection as InstanceAiCredentialSelection } from '@/modules/instance-ai/instance-ai-settings.service';
 import type {
@@ -403,6 +405,8 @@ export type RelayEventMap = ModuleEventMap & {
 	'user-updated': {
 		user: UserLike;
 		fieldsChanged: string[];
+		/** The system that changed the user without a user request. */
+		source?: 'scim';
 	};
 
 	'user-mfa-enabled': {
@@ -418,6 +422,8 @@ export type RelayEventMap = ModuleEventMap & {
 		user: UserLike;
 		userType: AuthProviderType;
 		wasDisabledLdapUser: boolean;
+		/** The system that created the user without a user request. */
+		source?: 'scim';
 	};
 
 	'user-logged-in': {
@@ -1083,6 +1089,37 @@ export type RelayEventMap = ModuleEventMap & {
 	'sso-user-instance-role-updated': {
 		role: string;
 		userId: string;
+	};
+
+	/**
+	 * SCIM provisioning turned on or off, or its token changed. Emitted only
+	 * when the saved state changes.
+	 */
+	'scim-settings-updated': {
+		/** The user who made the change. `null` when n8n turned SCIM off by itself. */
+		user: UserLike | null;
+		/** SCIM provisioning is on after the change. */
+		isActive: boolean;
+		change: 'enabled' | 'disabled' | 'token_created' | 'token_rotated' | 'token_revoked';
+		/** `sso_off`: SAML or OIDC sign-in turned off. `startup`: single sign-on was off at startup. */
+		source: 'user' | 'sso_off' | 'startup';
+	};
+
+	/** An admin changed what SCIM DELETE does. Emitted only when the policy changes. */
+	'scim-deprovisioning-policy-updated': {
+		user: UserLike;
+		/** SCIM provisioning is on. */
+		isActive: boolean;
+		before: ScimDeprovisioningPolicy;
+		after: ScimDeprovisioningPolicy;
+	};
+
+	/** n8n answered a request of the identity provider with an error status. */
+	'scim-request-rejected': {
+		operation: ScimOperation;
+		/** The HTTP status of the response. */
+		status: number;
+		reason: ScimRejectReason;
 	};
 
 	/**
