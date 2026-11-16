@@ -1,0 +1,41 @@
+{
+	"id": "format-name-1",
+	"name": "Format name",
+	"nodes": [
+		{
+			"id": "a1b2c3d4-0001-4000-8000-000000000001",
+			"name": "Start",
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [0, 0],
+			"parameters": {}
+		},
+		{
+			"id": "a1b2c3d4-0001-4000-8000-000000000002",
+			"name": "Format name",
+			"type": "n8n-nodes-base.set",
+			"typeVersion": 3.4,
+			"position": [220, 0],
+			"parameters": {
+				"assignments": {
+					"assignments": [
+						{
+							"id": "b1",
+							"name": "fullName",
+							"value": "={{ $json.first }} {{ $json.last }}",
+							"type": "string"
+						}
+					]
+				},
+				"options": {}
+			}
+		}
+	],
+	"connections": {
+		"Start": { "main": [[{ "node": "Format name", "type": "main", "index": 0 }]] }
+	},
+	"pinData": {
+		"Format name": [{ "json": { "fullName": "Pinned value" } }]
+	},
+	"settings": { "executionOrder": "v1" }
+}

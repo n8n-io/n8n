@@ -1,0 +1,32 @@
+{
+	"id": "qualys-request-1",
+	"name": "Qualys request",
+	"nodes": [
+		{
+			"id": "d0000000-0001-4000-8000-000000000001",
+			"name": "Start",
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [0, 0],
+			"parameters": {}
+		},
+		{
+			"id": "d0000000-0001-4000-8000-000000000002",
+			"name": "List scans",
+			"type": "n8n-nodes-base.httpRequest",
+			"typeVersion": 4.2,
+			"position": [220, 0],
+			"parameters": {
+				"url": "https://qualys.example.com/scans",
+				"authentication": "predefinedCredentialType",
+				"nodeCredentialType": "qualysApi",
+				"options": {}
+			},
+			"credentials": { "qualysApi": { "id": "cred-2", "name": "Qualys account" } }
+		}
+	],
+	"connections": {
+		"Start": { "main": [[{ "node": "List scans", "type": "main", "index": 0 }]] }
+	},
+	"settings": { "executionOrder": "v1" }
+}

@@ -1,0 +1,48 @@
+{
+	"id": "two-triggers-1",
+	"name": "Two triggers",
+	"nodes": [
+		{
+			"id": "b0000000-0000-4000-8000-000000000001",
+			"name": "Manual start",
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [0, 0],
+			"parameters": {}
+		},
+		{
+			"id": "b0000000-0000-4000-8000-000000000002",
+			"name": "Webhook",
+			"type": "n8n-nodes-base.webhook",
+			"typeVersion": 2,
+			"position": [0, 200],
+			"webhookId": "8b1c4b8e-3333-4000-8000-000000000001",
+			"parameters": { "path": "greet", "options": {} }
+		},
+		{
+			"id": "b0000000-0000-4000-8000-000000000003",
+			"name": "Greet",
+			"type": "n8n-nodes-base.set",
+			"typeVersion": 3.4,
+			"position": [220, 100],
+			"parameters": {
+				"assignments": {
+					"assignments": [
+						{
+							"id": "g1",
+							"name": "greeting",
+							"value": "=Hello {{ $json.body.name }}",
+							"type": "string"
+						}
+					]
+				},
+				"options": {}
+			}
+		}
+	],
+	"connections": {
+		"Manual start": { "main": [[{ "node": "Greet", "type": "main", "index": 0 }]] },
+		"Webhook": { "main": [[{ "node": "Greet", "type": "main", "index": 0 }]] }
+	},
+	"settings": { "executionOrder": "v1" }
+}

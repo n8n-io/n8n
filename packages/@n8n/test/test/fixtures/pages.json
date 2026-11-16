@@ -1,0 +1,39 @@
+{
+	"id": "pages-1",
+	"name": "Pages",
+	"nodes": [
+		{
+			"id": "f0000000-0000-4000-8000-000000000001",
+			"name": "Start",
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [0, 0],
+			"parameters": {}
+		},
+		{
+			"id": "f0000000-0000-4000-8000-000000000002",
+			"name": "Loop",
+			"type": "n8n-nodes-base.splitInBatches",
+			"typeVersion": 3,
+			"position": [220, 0],
+			"parameters": { "batchSize": 1, "options": {} }
+		},
+		{
+			"id": "f0000000-0000-4000-8000-000000000003",
+			"name": "Get customers",
+			"type": "n8n-nodes-base.httpRequest",
+			"typeVersion": 4.2,
+			"position": [440, 100],
+			"parameters": {
+				"url": "=https://crm.example.com/customers?page={{ $json.page }}",
+				"options": {}
+			}
+		}
+	],
+	"connections": {
+		"Start": { "main": [[{ "node": "Loop", "type": "main", "index": 0 }]] },
+		"Loop": { "main": [[], [{ "node": "Get customers", "type": "main", "index": 0 }]] },
+		"Get customers": { "main": [[{ "node": "Loop", "type": "main", "index": 0 }]] }
+	},
+	"settings": { "executionOrder": "v1" }
+}

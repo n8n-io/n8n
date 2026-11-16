@@ -1,0 +1,73 @@
+{
+	"id": "runtime-1",
+	"name": "Runtime",
+	"nodes": [
+		{
+			"id": "a0000000-0000-4000-8000-000000000001",
+			"name": "Start",
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [0, 0],
+			"parameters": {}
+		},
+		{
+			"id": "a0000000-0000-4000-8000-000000000002",
+			"name": "Wait an hour",
+			"type": "n8n-nodes-base.wait",
+			"typeVersion": 1.1,
+			"position": [220, 0],
+			"webhookId": "7a1c4b8e-2222-4000-8000-000000000001",
+			"parameters": { "amount": 1, "unit": "hours" }
+		},
+		{
+			"id": "a0000000-0000-4000-8000-000000000003",
+			"name": "Disabled step",
+			"type": "n8n-nodes-base.set",
+			"typeVersion": 3.4,
+			"position": [440, 0],
+			"disabled": true,
+			"parameters": {
+				"assignments": {
+					"assignments": [{ "id": "r0", "name": "replaced", "value": "yes", "type": "string" }]
+				},
+				"options": {}
+			}
+		},
+		{
+			"id": "a0000000-0000-4000-8000-000000000004",
+			"name": "Read runtime",
+			"type": "n8n-nodes-base.set",
+			"typeVersion": 3.4,
+			"position": [660, 0],
+			"parameters": {
+				"assignments": {
+					"assignments": [
+						{
+							"id": "r1",
+							"name": "executionId",
+							"value": "={{ $execution.id }}",
+							"type": "string"
+						},
+						{ "id": "r2", "name": "mode", "value": "={{ $execution.mode }}", "type": "string" },
+						{ "id": "r3", "name": "active", "value": "={{ $workflow.active }}", "type": "boolean" },
+						{ "id": "r4", "name": "workflowId", "value": "={{ $workflow.id }}", "type": "string" },
+						{ "id": "r5", "name": "input", "value": "={{ $json.name }}", "type": "string" },
+						{
+							"id": "r6",
+							"name": "tagged",
+							"value": "={{ $execution.customData.set('source', 'test') ?? true }}",
+							"type": "boolean"
+						}
+					]
+				},
+				"options": {}
+			}
+		}
+	],
+	"connections": {
+		"Start": { "main": [[{ "node": "Wait an hour", "type": "main", "index": 0 }]] },
+		"Wait an hour": { "main": [[{ "node": "Disabled step", "type": "main", "index": 0 }]] },
+		"Disabled step": { "main": [[{ "node": "Read runtime", "type": "main", "index": 0 }]] }
+	},
+	"settings": { "executionOrder": "v1" }
+}

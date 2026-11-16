@@ -1,0 +1,47 @@
+{
+	"id": "crm-requests-1",
+	"name": "CRM requests",
+	"nodes": [
+		{
+			"id": "c0000000-0001-4000-8000-000000000001",
+			"name": "Start",
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [0, 0],
+			"parameters": {}
+		},
+		{
+			"id": "c0000000-0001-4000-8000-000000000002",
+			"name": "Get customer",
+			"type": "n8n-nodes-base.httpRequest",
+			"typeVersion": 4.2,
+			"position": [220, 0],
+			"parameters": {
+				"url": "https://crm.example.com/customers/42",
+				"authentication": "genericCredentialType",
+				"genericAuthType": "httpHeaderAuth",
+				"options": {}
+			},
+			"credentials": { "httpHeaderAuth": { "id": "cred-1", "name": "CRM API key" } }
+		},
+		{
+			"id": "c0000000-0001-4000-8000-000000000003",
+			"name": "Get orders",
+			"type": "n8n-nodes-base.httpRequest",
+			"typeVersion": 4.2,
+			"position": [440, 0],
+			"parameters": {
+				"url": "https://crm.example.com/customers/42/orders",
+				"authentication": "genericCredentialType",
+				"genericAuthType": "httpHeaderAuth",
+				"options": {}
+			},
+			"credentials": { "httpHeaderAuth": { "id": "cred-1", "name": "CRM API key" } }
+		}
+	],
+	"connections": {
+		"Start": { "main": [[{ "node": "Get customer", "type": "main", "index": 0 }]] },
+		"Get customer": { "main": [[{ "node": "Get orders", "type": "main", "index": 0 }]] }
+	},
+	"settings": { "executionOrder": "v1" }
+}
