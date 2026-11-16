@@ -1,4 +1,5 @@
-import { ChatOpenAI } from '@langchain/openai';
+import { isRecord } from '@n8n/utils/is-record';
+import { ChatOpenAICompletions } from '@langchain/openai';
 import {
 	getConnectionHintNoticeField,
 	makeN8nLlmFailedAttemptHandler,
@@ -48,6 +49,20 @@ const RETRYABLE = new Set([408, 429]);
 
 function shouldRetry(status: number): boolean {
 	return RETRYABLE.has(status) || status >= 500;
+}
+
+/**
+ * The OpenAI SDK reports every transport failure as "Connection error." and keeps the reason
+ * on `cause`. Without it the user cannot tell a refused port from a name that does not resolve.
+ */
+function nameTransportFault(error: unknown): void {
+	if (!isRecord(error) || typeof error.message !== 'string') return;
+	if (error.message !== 'Connection error.') return;
+
+	const code = isRecord(error.cause) ? error.cause.code : undefined;
+	if (typeof code !== 'string') return;
+
+	error.message = `Connection error (${code})`;
 }
 
 function modelKwargsFor(
@@ -175,7 +190,7 @@ export class LmChatCustomEndpoint implements INodeType {
 			requestHeaders,
 		});
 
-		const chatModel = new ChatOpenAI({
+		const chatModel = new ChatOpenAICompletions({
 			// The fetch strips this: a gateway reading its key elsewhere must not see it
 			apiKey: 'custom-model-endpoint',
 			model,
@@ -195,6 +210,7 @@ export class LmChatCustomEndpoint implements INodeType {
 				// A connection error or a timeout carries no status, and the default
 				// handler already knows which of those are worth another attempt
 				if (status !== undefined && !shouldRetry(status)) throw error;
+				nameTransportFault(error);
 			}),
 		});
 
