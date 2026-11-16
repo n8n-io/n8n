@@ -21,6 +21,7 @@ import type {
 	DbLockService,
 	TransactionRunner,
 	ProjectRelation,
+	OperationContext,
 } from '@n8n/db';
 import {
 	CredentialIdConflictError,
@@ -31,6 +32,7 @@ import {
 	type Role,
 } from '@n8n/db';
 import type { PolicyCleared } from '@n8n/decorators';
+import type { SecurityContext } from '@n8n/permissions';
 import type { EntityManager, FindOptionsWhere } from '@n8n/typeorm';
 import { CREDENTIAL_ERRORS, CredentialDataError, Credentials, type ErrorReporter } from 'n8n-core';
 import { OAuth2Api } from 'n8n-nodes-base/credentials/OAuth2Api.credentials';
@@ -580,6 +582,26 @@ describe('CredentialsService', () => {
 				expect(eventService.emit).not.toHaveBeenCalled();
 			},
 		);
+
+		it('passes the login id to the credentials-updated event', async () => {
+			const ctx: OperationContext = {
+				security: mock<SecurityContext>({ subIdentityId: 'login-1' }),
+			};
+
+			await service.updateDescription(ownerUser, credential.id, 'New', ctx);
+
+			expect(eventService.emit).toHaveBeenCalledWith(
+				'credentials-updated',
+				expect.objectContaining({ loginId: 'login-1' }),
+			);
+		});
+
+		it('emits no login id without an operation context', async () => {
+			await service.updateDescription(ownerUser, credential.id, 'New');
+
+			const call = eventService.emit.mock.calls.find(([name]) => name === 'credentials-updated');
+			expect(call?.[1]).toMatchObject({ loginId: undefined });
+		});
 
 		it('uses and validates the description returned by the hook', async () => {
 			externalHooks.run.mockImplementation(async (_name, parameters) => {
@@ -1891,6 +1913,63 @@ describe('CredentialsService', () => {
 			});
 			const emittedEventNames = eventService.emit.mock.calls.map((call) => call[0]);
 			expect(emittedEventNames).not.toContain('private-credential-deleted');
+		});
+
+		describe('login id on the deleted event', () => {
+			const projectCredential = () => {
+				const credential = mock<CredentialsEntity>({
+					id: 'project-credential',
+					type: 'gmailOAuth2',
+					usageScope: 'project',
+					isResolvable: false,
+				});
+				credentialsFinderService.findCredentialForUser.mockResolvedValue(credential);
+				credentialsRepository.remove.mockResolvedValue(credential);
+				return credential;
+			};
+
+			const ctx: OperationContext = {
+				security: mock<SecurityContext>({ subIdentityId: 'login-1' }),
+			};
+
+			it('passes the login id to the credentials-deleted event', async () => {
+				const credential = projectCredential();
+
+				await service.delete(ownerUser, credential.id, {}, ctx);
+
+				expect(eventService.emit).toHaveBeenCalledWith(
+					'credentials-deleted',
+					expect.objectContaining({ loginId: 'login-1' }),
+				);
+			});
+
+			it('passes the login id when an instance credential is deleted', async () => {
+				const credential = mock<CredentialsEntity>({
+					id: 'instance-credential',
+					usageScope: 'instance',
+					isResolvable: false,
+				});
+				credentialsFinderService.findCredentialForUser.mockResolvedValue(credential);
+				credentialsRepository.deleteInstanceCredentialIfUnassigned.mockResolvedValue({
+					status: 'deleted',
+				});
+
+				await service.delete(ownerUser, credential.id, { includeInstanceCredentials: true }, ctx);
+
+				expect(eventService.emit).toHaveBeenCalledWith(
+					'credentials-deleted',
+					expect.objectContaining({ loginId: 'login-1' }),
+				);
+			});
+
+			it('emits no login id without an operation context', async () => {
+				const credential = projectCredential();
+
+				await service.delete(ownerUser, credential.id);
+
+				const call = eventService.emit.mock.calls.find(([name]) => name === 'credentials-deleted');
+				expect(call?.[1]).toMatchObject({ loginId: undefined });
+			});
 		});
 	});
 

@@ -123,6 +123,9 @@ describe('Server static assets', () => {
 		);
 		writeFileSync(path.join(staticCacheDir, 'public-asset.txt'), 'public');
 		writeFileSync(path.join(staticCacheDir, 'types-extra.txt'), 'extra');
+		mkdirSync(path.join(staticCacheDir, 'assets'));
+		writeFileSync(path.join(staticCacheDir, 'assets', 'emscripten-module-uFzwHH0Y.wasm'), 'wasm');
+		writeFileSync(path.join(staticCacheDir, 'assets', 'index-uFzwHH0Y.js'), 'js');
 
 		const resolvedDir = path.join(staticCacheDir, 'resolved');
 		mkdirSync(resolvedDir);
@@ -215,6 +218,16 @@ describe('Server static assets', () => {
 			const { headers } = await get('/ASSETS/main.js', ports[mount], { accept: 'text/html' });
 
 			expect(headers['cache-control']).toBeUndefined();
+		});
+
+		test.each([
+			['/assets/emscripten-module-uFzwHH0Y.wasm', 'public, max-age=31536000, immutable'],
+			['/assets/index-uFzwHH0Y.js', 'public, max-age=86400'],
+		])('serves %s with the cache header %s', async (requestPath, cacheControl) => {
+			const { statusCode, headers } = await get(requestPath, ports[mount]);
+
+			expect(statusCode).toBe(200);
+			expect(headers['cache-control']).toBe(cacheControl);
 		});
 
 		describe('type files', () => {

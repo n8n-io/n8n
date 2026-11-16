@@ -1,8 +1,9 @@
 import type { CreatePromotionProviderDto, UpdatePromotionProviderDto } from '@n8n/api-types';
 import { LockService, type Logger } from '@n8n/backend-common';
 import type { EventService, Publisher } from '@n8n/backend-services';
-import type { User } from '@n8n/db';
+import type { OperationContext, User } from '@n8n/db';
 import { Container } from '@n8n/di';
+import type { SecurityContext } from '@n8n/permissions';
 import type { Cipher, InstanceSettings } from 'n8n-core';
 import { mock } from 'vitest-mock-extended';
 
@@ -20,6 +21,7 @@ import type { PromotionWorkingDirectoryService } from '../promotion-working-dire
 import type { PromotionsGitService } from '../promotions-git.service';
 
 describe('PromotionProvidersService', () => {
+	const ctx: OperationContext = { security: mock<SecurityContext>({ subIdentityId: 'login-1' }) };
 	const providerRepository = mock<PromotionProviderRepository>();
 	const environmentRepository = mock<PromotionEnvironmentRepository>();
 	const gitService = mock<PromotionsGitService>();
@@ -149,6 +151,7 @@ describe('PromotionProvidersService', () => {
 					auth: { authType: 'token', username: 'u', password: 'p' },
 				} as CreatePromotionProviderDto,
 				actor,
+				ctx,
 			);
 
 			expect(eventService.emit).toHaveBeenCalledWith('promotion-provider-created', {
@@ -159,6 +162,7 @@ describe('PromotionProvidersService', () => {
 				authType: 'token',
 				outcome: 'success',
 				durationMs: expect.any(Number),
+				loginId: 'login-1',
 			});
 		});
 
@@ -245,6 +249,7 @@ describe('PromotionProvidersService', () => {
 				'prov1',
 				{ name: 'renamed', auth: { authType: 'ssh-key' } } as UpdatePromotionProviderDto,
 				actor,
+				ctx,
 			);
 
 			expect(eventService.emit).toHaveBeenCalledWith('promotion-provider-updated', {
@@ -256,6 +261,7 @@ describe('PromotionProvidersService', () => {
 				changedFields: ['name', 'auth'],
 				outcome: 'success',
 				durationMs: expect.any(Number),
+				loginId: 'login-1',
 			});
 		});
 
@@ -472,7 +478,7 @@ describe('PromotionProvidersService', () => {
 			environmentRepository.countByProviderId.mockResolvedValue(0);
 			providerRepository.deleteProvider.mockResolvedValue(true);
 
-			await service.delete('prov2', actor);
+			await service.delete('prov2', actor, ctx);
 
 			expect(eventService.emit).toHaveBeenCalledWith('promotion-provider-deleted', {
 				user: actor,
@@ -481,6 +487,7 @@ describe('PromotionProvidersService', () => {
 				providerType: 'gitlab',
 				authType: 'token',
 				hostBaseUrl: 'https://gitlab.example.com',
+				loginId: 'login-1',
 			});
 		});
 

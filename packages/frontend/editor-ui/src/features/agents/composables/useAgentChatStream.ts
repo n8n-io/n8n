@@ -2075,6 +2075,7 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 		isLoadingHistory,
 		messages,
 		isStreaming,
+		isStreamAttached: computed(() => isStreamOpen.value),
 		activeExecutionId,
 		isCancelling,
 		messagingState,

@@ -17,9 +17,8 @@ import {
 	N8nEnterpriseReadinessBadge,
 	N8nHeading,
 	N8nPreviewBadge,
-	N8nSwitch,
-	N8nText,
-	N8nTooltip,
+	N8nSettingsEnableRow,
+	N8nSettingsRowGroup,
 } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { computed, onMounted } from 'vue';
@@ -141,28 +140,17 @@ onMounted(async () => {
 			/>
 		</div>
 
-		<label :class="$style.enabledRow">
-			<div :class="$style.enabledText">
-				<N8nText bold>{{ i18n.baseText('settings.chatHub.enabled.label') }}</N8nText>
-				<N8nText size="small" color="text-light">
-					{{ i18n.baseText('settings.chatHub.enabled.description') }}
-				</N8nText>
-			</div>
-
-			<N8nTooltip
-				:content="i18n.baseText('settings.chatHub.enabled.disabled.tooltip')"
-				:disabled="!disabled"
-				placement="top"
-			>
-				<N8nSwitch
-					data-test-id="chat-hub-enabled-switch"
-					size="large"
-					:model-value="isChatEnabled"
-					:disabled="disabled"
-					@update:model-value="onToggleEnabled"
-				/>
-			</N8nTooltip>
-		</label>
+		<N8nSettingsRowGroup>
+			<N8nSettingsEnableRow
+				data-test-id="chat-hub-enabled-row"
+				:title="i18n.baseText('settings.chatHub.enabled.label')"
+				:description="i18n.baseText('settings.chatHub.enabled.description')"
+				:enabled="isChatEnabled"
+				:disabled="disabled"
+				switch-test-id="chat-hub-enabled-switch"
+				@update:enabled="onToggleEnabled"
+			/>
+		</N8nSettingsRowGroup>
 
 		<template v-if="settingsStore.isChatFeatureEnabled">
 			<ChatProvidersTable
@@ -175,9 +163,6 @@ onMounted(async () => {
 			/>
 			<ChatSemanticSearchSettings v-if="isSemanticSearchEnabled" />
 		</template>
-		<N8nText v-else color="text-light" data-test-id="chat-hub-disabled-notice">
-			{{ i18n.baseText('settings.chatHub.disabled.notice') }}
-		</N8nText>
 	</div>
 </template>
 
@@ -187,20 +172,6 @@ onMounted(async () => {
 	flex-direction: column;
 	gap: var(--spacing--2xl);
 	padding-bottom: var(--spacing--2xl);
-}
-
-.enabledRow {
-	display: flex;
-	align-items: center;
-	justify-content: space-between;
-	gap: var(--spacing--lg);
-	margin: 0;
-}
-
-.enabledText {
-	display: flex;
-	flex-direction: column;
-	gap: var(--spacing--3xs);
 }
 
 .titleWithTag {

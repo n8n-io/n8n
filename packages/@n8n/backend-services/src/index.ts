@@ -50,6 +50,11 @@ export {
 	type FavoriteResourceResolver,
 	type ResolvedFavoriteResourceType,
 } from './services/favorite-resource-resolver.registry';
+export { CollaborationState, type WriteLock } from './collaboration/collaboration.state';
+export {
+	AgentProjectLookupProxy,
+	type AgentProjectLookup,
+} from './collaboration/agent-project-lookup-proxy.service';
 export { WorkflowProjectService } from './services/workflow-project.service';
 export {
 	OwnershipTransferHandlerRegistry,
@@ -103,6 +108,7 @@ export {
 	type PublishedWorkflowData,
 	type PublishedWorkflowDataForExecution,
 } from './workflows/workflow-published-data.service';
+export { WorkflowVersionedSettingsService } from './workflows/workflow-versioned-settings.service';
 
 export {
 	RuntimeCredentialProxyService,
@@ -114,7 +120,7 @@ export {
 } from './services/instance-registry-proxy.service';
 export { ExecutingUserIdentifierProxy } from './credentials/executing-user-identifier-proxy';
 export type { IExecutingUserIdentifier } from './credentials/executing-user-identifier.interface';
-export { ExecutionLedger } from './executions/execution-ledger.service';
+export { ExecutionLedger, type CreatedExecution } from './executions/execution-ledger.service';
 export type * from './executions/execution-ledger-writer';
 export { ExecutionRedactionServiceProxy } from './executions/execution-redaction-proxy.service';
 export {
