@@ -1,0 +1,37 @@
+packages/@n8n/api-types/src/schemas/instance-ai.schema.ts
+  s_95bfe39bb3e379::t_f04503531b9af3 1749-1750
+packages/cli/src/modules/instance-ai/__tests__/internal-messages.test.ts
+  s_6b827a190cb2f5::t_bf6f52dcf90dac 916-956
+packages/cli/src/modules/instance-ai/internal-messages.ts
+  s_6b827a190cb2f5::t_d3108d9ee031f5 594,596-600
+packages/frontend/editor-ui/src/features/ai/instanceAi/__tests__/instanceAi.threadRuntime.test.ts
+  s_6b827a190cb2f5::t_391b34bdeec6e2 1759-1782
+packages/frontend/editor-ui/src/features/ai/instanceAi/__tests__/threadArtifacts.test.ts
+  s_6b827a190cb2f5::t_d82ef930e86399 1-2,138-219
+packages/frontend/editor-ui/src/features/ai/instanceAi/assistantAgent/__tests__/AssistantAgentThreadView.test.ts
+  s_95bfe39bb3e379::t_435d8c2a411152 965-983
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "84ead6a96f4224502106537f098ce8eee84191ce",
+  "prompts": {},
+  "sessions": {
+    "s_6b827a190cb2f5": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "6e8dd930-54b4-4f2f-9875-0988907b288c",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "r00gm <raul00gm@gmail.com>"
+    },
+    "s_95bfe39bb3e379": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ef9b81f8-ba5a-4f3b-b102-ea87734cbdb4",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "r00gm <raul00gm@gmail.com>"
+    }
+  }
+}

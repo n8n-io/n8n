@@ -1,0 +1,30 @@
+packages/@n8n/test/src/http/undici-request.ts
+  s_1a2087067112a6::t_e28159decd8637 33,37-40
+packages/@n8n/test/test/output.test.ts
+  s_1a2087067112a6::t_f671cc280ce7f1 1-13
+packages/@n8n/test/test/fixtures/two-branches.json
+  s_1a2087067112a6::t_374000243c00a0 1-51
+packages/@n8n/test/src/result.ts
+  s_1a2087067112a6::t_58c2c19a3cd056 87
+packages/@n8n/test/test/undici-request.test.ts
+  s_1a2087067112a6::t_7440768ea845af 1-17
+packages/@n8n/test/README.md
+  s_1a2087067112a6::t_7b3f255cb8a0ca 144
+  s_1a2087067112a6::t_3dade54ae34bf1 152
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "d5a30237925e30393c019cfb1d0f9b9a60551fed",
+  "prompts": {},
+  "sessions": {
+    "s_1a2087067112a6": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "6300bd3e-1cc9-4e36-ad69-be897cb35d93",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "James Gee <1285296+geemanjs@users.noreply.github.com>"
+    }
+  }
+}
