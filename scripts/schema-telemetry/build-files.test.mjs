@@ -84,15 +84,38 @@ describe('buildFiles', () => {
 });
 
 describe('buildFiles filters', () => {
-	it('skips a file whose samples are mostly user-defined keys', () => {
+	it('writes the stable keys as an open object when samples add user-defined keys', () => {
 		const result = buildFiles(
 			[row({ samples: ['a', 'b', 'c', 'd', 'e'].map((f) => schema(['id', `${f}1`, `${f}2`])) })],
 			index,
 			{ exists: noFiles, defaultOf },
 		);
 
+		assert.deepEqual(result.files[0].schema, {
+			type: 'object',
+			properties: { id: { type: 'string' } },
+			additionalProperties: true,
+		});
+	});
+
+	it('keeps an object closed when its keys are stable', () => {
+		const { files } = buildFiles([row({ samples: [schema(['id']), schema(['id'])] })], index, {
+			exists: noFiles,
+			defaultOf,
+		});
+
+		assert.equal('additionalProperties' in files[0].schema, false);
+	});
+
+	it('skips a file whose samples share no key', () => {
+		const result = buildFiles(
+			[row({ samples: ['a', 'b', 'c', 'd', 'e'].map((f) => schema([`${f}1`])) })],
+			index,
+			{ exists: noFiles, defaultOf },
+		);
+
 		assert.deepEqual(result.files, []);
-		assert.match(result.skipped[0].reason, /user-shaped/);
+		assert.match(result.skipped[0].reason, /no stable keys/);
 	});
 
 	it('keeps only the newest version of an operation', () => {

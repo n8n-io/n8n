@@ -1,0 +1,17 @@
+{
+	"additionalProperties": true,
+	"properties": {
+		"attributes": {
+			"properties": {
+				"type": {
+					"type": "string"
+				},
+				"url": {
+					"type": "string"
+				}
+			},
+			"type": "object"
+		}
+	},
+	"type": "object"
+}

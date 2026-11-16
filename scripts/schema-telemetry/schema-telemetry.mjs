@@ -96,6 +96,18 @@ function missingSchemaPaths(files, schemaPaths, index) {
 		.map((type) => [type, schemaPaths[type]]);
 }
 
+/** The `schemaPath` each node declares in its description, by node type. */
+function declaredSchemaPaths(index) {
+	const paths = new Map();
+	for (const [type, { sourceFile }] of index) {
+		const declared = readFileSync(join(repoRoot, sourceFile), 'utf8').match(
+			/schemaPath: '([^']+)'/,
+		)?.[1];
+		if (declared) paths.set(type, declared);
+	}
+	return paths;
+}
+
 /** A node folder's TypeScript sources, without tests. */
 function readSources(dir) {
 	return readdirSync(join(repoRoot, dir), { recursive: true })
@@ -144,9 +156,15 @@ function report({ files, existing, skipped, schemaPaths }, index) {
 
 function main() {
 	const rows = fetchRows();
-	const index = buildNodeIndex(loadPackages(), {
+	const packages = loadPackages();
+	const telemetry = {
 		types: [...new Set(rows.map((r) => r.node_type))],
 		noOperationTypes: [...new Set(rows.filter((r) => !r.operation).map((r) => r.node_type))],
+	};
+	const sourceIndex = buildNodeIndex(packages, telemetry);
+	const index = buildNodeIndex(packages, {
+		...telemetry,
+		schemaPaths: declaredSchemaPaths(sourceIndex),
 	});
 	const result = buildFiles(rows, index, {
 		exists: (file) => existsSync(join(repoRoot, file)),

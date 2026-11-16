@@ -89,3 +89,28 @@ describe('buildNodeIndex source file', () => {
 		);
 	});
 });
+
+describe('buildNodeIndex schemaPath', () => {
+	it('uses the schemaPath that a node declares as its folder', () => {
+		const index = buildNodeIndex(packages, {
+			types: ['n8n-nodes-base.formTrigger'],
+			noOperationTypes: ['n8n-nodes-base.formTrigger', 'n8n-nodes-base.form'],
+			schemaPaths: new Map([['n8n-nodes-base.formTrigger', 'Form/FormTrigger']]),
+		});
+
+		assert.equal(
+			index.get('n8n-nodes-base.formTrigger')?.dir,
+			'packages/nodes-base/nodes/Form/FormTrigger',
+		);
+	});
+
+	it('no longer reports a sibling once the node has its own schemaPath', () => {
+		const index = buildNodeIndex(packages, {
+			types: ['n8n-nodes-base.formTrigger'],
+			noOperationTypes: ['n8n-nodes-base.formTrigger', 'n8n-nodes-base.form'],
+			schemaPaths: new Map([['n8n-nodes-base.formTrigger', 'Form/FormTrigger']]),
+		});
+
+		assert.deepEqual(index.get('n8n-nodes-base.formTrigger')?.noOperationSiblings, []);
+	});
+});
