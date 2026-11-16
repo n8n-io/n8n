@@ -1,6 +1,7 @@
 import { settleAbandonedToolCallsInMemory } from '@n8n/agents';
 import type { Message, ScopedMemoryTaskEvent } from '@n8n/agents';
 import {
+	type InstanceAiApprovalMode,
 	type InstanceAiAttachment,
 	type InstanceAiHandoffContext,
 	type InstanceAiAgentAttachment,
@@ -2945,7 +2946,12 @@ export class InstanceAiService {
 				if (signal.aborted && !this.shouldPreserveHitlOnShutdown(runId)) return;
 
 				if (result.confirmationEvent) {
-					this.trackConfirmationRequest(user.id, threadId, result.confirmationEvent);
+					this.trackConfirmationRequest(
+						user.id,
+						threadId,
+						result.confirmationEvent,
+						context.approvalMode,
+					);
 					this.eventBus.publish(threadId, result.confirmationEvent);
 				}
 
@@ -4024,7 +4030,12 @@ export class InstanceAiService {
 				if (opts.signal.aborted && !this.shouldPreserveHitlOnShutdown(opts.runId)) return;
 
 				if (result.confirmationEvent) {
-					this.trackConfirmationRequest(opts.user.id, opts.threadId, result.confirmationEvent);
+					this.trackConfirmationRequest(
+						opts.user.id,
+						opts.threadId,
+						result.confirmationEvent,
+						opts.orchestrationContext?.domainContext?.approvalMode,
+					);
 					this.eventBus.publish(opts.threadId, result.confirmationEvent);
 				}
 
@@ -4593,6 +4604,7 @@ export class InstanceAiService {
 		userId: string,
 		threadId: string,
 		confirmationEvent: { payload: Record<string, unknown> },
+		approvalMode: InstanceAiApprovalMode | undefined,
 	): void {
 		const payload = confirmationEvent.payload;
 		const inputThreadId = nanoid();
@@ -4603,6 +4615,7 @@ export class InstanceAiService {
 			inputThreadId,
 			payload,
 			runtime: 'instance-ai',
+			approvalMode,
 		});
 	}
 

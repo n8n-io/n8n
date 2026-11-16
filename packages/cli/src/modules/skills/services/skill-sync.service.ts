@@ -22,7 +22,7 @@ import {
 	type User,
 } from '@n8n/db';
 import { Service } from '@n8n/di';
-import { ForbiddenError, NotFoundError } from '@n8n/errors';
+import { ConflictError, ForbiddenError, NotFoundError } from '@n8n/errors';
 import { ensureError } from '@n8n/utils/errors/ensure-error';
 import { LRUCache } from 'lru-cache';
 
@@ -490,15 +490,32 @@ export class SkillSyncService {
 	 * skill was created.
 	 */
 	async stopSyncing(user: User, skillId: string): Promise<void> {
-		const { link, source } = await this.requireSource(user, skillId, 'stopSyncing');
-		// A stop at the same time removed the link first. The skill is not synced either way.
-		const stopped = await this.txRunner.run({}, async (ctx) => {
+		const checked = await this.requireSource(user, skillId, 'stopSyncing');
+		const [canRead, canUpdate] = await Promise.all([
+			this.skillAccess.accessCheck(user, 'read'),
+			this.skillAccess.accessCheck(user, 'update'),
+		]);
+		const result = await this.txRunner.run({}, async (ctx) => {
 			await this.sourceRepository.invalidateSourceForSkill(skillId, ctx);
 			// Source deletion takes the same lock before it reads which skills are still synced.
 			await this.skillRepository.lockForEdit([skillId], ctx);
-			return await this.sourceRepository.deleteLink(skillId, ctx);
+			const link = await this.sourceRepository.findLinkBySkillId(skillId, ctx);
+			if (!link) return null;
+			const source = await this.sourceRepository.findById(link.sourceId, ctx);
+			if (!source || source.id !== checked.source.id) {
+				throw new ConflictError('The source scope changed. Reload the skill and try again.');
+			}
+			if (source.projectId !== checked.source.projectId) {
+				if (!canRead(source)) throw new NotFoundError('Skill not found');
+				if (!canUpdate(source))
+					throw new ForbiddenError('You are not allowed to stop syncing this skill.');
+			}
+			const current = { link, source };
+			if (!(await this.sourceRepository.deleteLink(skillId, ctx))) return null;
+			return current;
 		});
-		if (!stopped) return;
+		if (!result) return;
+		const { link, source } = result;
 		await this.skillsTelemetry.stoppedSync(
 			{ provider: source.type, had_pending_update: link.pendingContentHash !== null },
 			user.id,
@@ -723,6 +740,7 @@ export class SkillSyncService {
 		const written = await this.sourceRepository.recordCheck(source.id, {
 			...result,
 			credentialId: source.credentialId,
+			readScope: source,
 		});
 		if (written) await this.trackHealthChange(source, result.errorReason);
 	}

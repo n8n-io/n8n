@@ -184,7 +184,7 @@ const PERMISSION_GROUPS: PermissionGroup[] = [
 	{
 		id: 'dataTables',
 		labelKey: 'settings.n8nAgent.permissions.group.dataTables',
-		keys: ['createDataTable', 'mutateDataTableSchema', 'mutateDataTableRows'],
+		keys: ['createDataTable', 'mutateDataTableSchema', 'mutateDataTableRows', 'deleteDataTable'],
 	},
 	{
 		id: 'credentials',
@@ -358,9 +358,18 @@ async function enableEnvironmentSandboxIfNeeded(): Promise<boolean> {
 
 useSetupPageViewTelemetry('settings');
 
+// With approval modes on, Ask first can be confirmed by the automatic check of Auto mode.
+const permissionsDescription = computed(() => {
+	const description = i18n.baseText('settings.n8nAgent.permissions.description');
+	return store.approvalModesAvailable
+		? `${description} ${i18n.baseText('settings.n8nAgent.permissions.askFirst.description')}`
+		: description;
+});
+
 onMounted(() => {
 	documentTitle.set(i18n.baseText('settings.n8nAgent'));
 	void store.fetch();
+	void store.fetchPreferences();
 	void credentialsStore.fetchCredentialTypes(false);
 });
 
@@ -636,7 +645,7 @@ async function handleDataSharingToggle(value: boolean) {
 			<N8nSettingsSection
 				v-if="isEnabled"
 				:title="i18n.baseText('settings.n8nAgent.permissions.title')"
-				:description="i18n.baseText('settings.n8nAgent.permissions.description')"
+				:description="permissionsDescription"
 			>
 				<N8nSettingsRowGroup>
 					<N8nSettingsRow

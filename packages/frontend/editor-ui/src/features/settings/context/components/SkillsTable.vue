@@ -30,6 +30,7 @@ type SourceAction =
 	| 'checkNow'
 	| 'reviewSkills'
 	| 'openInGitHub'
+	| 'changeScope'
 	| 'replaceCredential'
 	| 'deleteSource';
 
@@ -66,6 +67,7 @@ const emit = defineEmits<{
 	download: [skill: SkillListItem];
 	toggleSource: [sourceId: string];
 	checkSource: [source: SkillSourceListItem];
+	moveSource: [source: SkillSourceListItem];
 	reviewSource: [source: SkillSourceListItem];
 	deleteSource: [source: SkillSourceListItem];
 	replaceCredential: [source: SkillSourceListItem];
@@ -206,6 +208,13 @@ function sourceActions(source: SkillSourceListItem) {
 			icon: 'refresh-cw',
 		});
 	}
+	if (source.canMove) {
+		items.push({
+			value: 'changeScope',
+			label: i18n.baseText('settings.context.skills.moveSource.action'),
+			icon: 'folder',
+		});
+	}
 	items.push({
 		value: 'openInGitHub',
 		label: i18n.baseText('settings.context.skills.sources.openInGitHub'),
@@ -232,6 +241,7 @@ function sourceActions(source: SkillSourceListItem) {
 function onSourceAction(source: SkillSourceListItem, action: SourceAction) {
 	if (action === 'checkNow') emit('checkSource', source);
 	else if (action === 'reviewSkills') emit('reviewSource', source);
+	else if (action === 'changeScope') emit('moveSource', source);
 	else if (action === 'deleteSource') emit('deleteSource', source);
 	else if (action === 'replaceCredential') emit('replaceCredential', source);
 	else window.open(source.webUrl, '_blank', 'noopener,noreferrer');

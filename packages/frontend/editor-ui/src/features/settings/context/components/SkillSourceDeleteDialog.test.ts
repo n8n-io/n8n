@@ -48,6 +48,7 @@ const source: SkillSourceListItem = {
 	canReplaceCredential: false,
 	canReview: true,
 	canImport: true,
+	canMove: true,
 	canDelete: true,
 };
 
