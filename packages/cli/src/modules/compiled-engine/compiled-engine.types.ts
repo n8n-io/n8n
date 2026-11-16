@@ -18,8 +18,8 @@ export interface CredentialSlotBinding {
 /**
  * A value that compiled node code needs from the credential of a slot. Without a kind: text
  * that n8n computes with `code`. Kind `flag`: the outcome of one condition, a boolean that
- * node code reads. Kind `guard`: the flags of one node instance, and the values of them that
- * were checked against the v1 node.
+ * node code reads. Kind `guard`: the flags of one node instance, the values of them that
+ * were checked against the v1 node, and the name of the node.
  */
 export interface CredentialDerivationRequest {
 	name: string;
@@ -27,6 +27,7 @@ export interface CredentialDerivationRequest {
 	kind?: 'flag' | 'guard';
 	flags?: string[];
 	allowed?: string[];
+	node?: string;
 }
 
 /** The result of converting and compiling one workflow version. */

@@ -417,6 +417,17 @@ export interface HttpRequest {
 	inject?: boolean;
 	/** Stores the body of a 2xx response as binary data; the body is `{ $binary: BinaryHandle }`. */
 	responseBinary?: ResponseBinary;
+	/**
+	 * `true`: the runtime does not renew an OAuth2 credential after a response of this request
+	 * (`skipTokenRefresh` of the OAuth2 options of n8n-core).
+	 */
+	skipTokenRefresh?: boolean;
+	/**
+	 * The statuses that mean "the token expired" for this request, when the OAuth2 credential
+	 * has none of its own (`tokenExpiredStatusCode` of the OAuth2 options of n8n-core). The
+	 * default is 401.
+	 */
+	tokenExpiredStatusCode?: number | number[];
 }
 
 /** A part of a multipart body: a text field, or a file (`binary`, n8n's binary form). */

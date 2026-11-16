@@ -28,6 +28,7 @@ pub const normalize = @import("normalize.zig");
 pub const collate = @import("collate.zig");
 pub const binary_names = @import("binary_names.zig");
 pub const mime_tables = @import("mime_tables.zig");
+pub const cred_flags = @import("cred_flags.zig");
 
 test {
     @import("std").testing.refAllDecls(@This());
@@ -38,4 +39,5 @@ test {
     _ = @import("fuzz_test.zig");
     _ = @import("textcodec.zig");
     _ = @import("static_data.zig");
+    _ = @import("cred_flags.zig");
 }

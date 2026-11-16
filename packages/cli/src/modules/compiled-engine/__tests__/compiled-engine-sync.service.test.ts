@@ -127,6 +127,62 @@ describe('CompiledEngineSync: minted tokens', () => {
 		expect(client.putWorkflowCredentials).not.toHaveBeenCalled();
 	});
 
+	describe('a credential that changes', () => {
+		const guard = { name: 'g1', code: '', kind: 'guard' as const, flags: ['f00000001'], node: 'A' };
+		const withKey = (key: string, derivations: CompiledArtifact['derivations']) =>
+			mock<CompiledArtifact>({
+				ok: true,
+				key,
+				module: Buffer.from(key),
+				slots,
+				derivations,
+				mints: undefined,
+				diagnostics: [],
+			});
+
+		beforeEach(() => {
+			credentials.buildDocument.mockResolvedValue({});
+		});
+
+		it('compiles the workflow again and loads the other module', async () => {
+			compiler.compile.mockResolvedValue(withKey('compiled', { sa: [guard] }));
+			await sync.activate(workflow);
+			expect(client.putWorkflow.mock.lastCall?.[1]).toMatchObject({ versionId: 'compiled' });
+
+			// The new values of the credential are not checked: a node runs in the host.
+			compiler.compile.mockResolvedValue(withKey('host', undefined));
+			await sync.onCredentialChanged('c1');
+			expect(client.putWorkflow).toHaveBeenCalledTimes(2);
+			expect(client.putWorkflow.mock.lastCall?.[1]).toMatchObject({ versionId: 'host' });
+			expect(credentials.buildDocument.mock.lastCall?.[2]).toBeUndefined();
+
+			// The values are checked again: the compiled node is back.
+			compiler.compile.mockResolvedValue(withKey('compiled', { sa: [guard] }));
+			await sync.onCredentialChanged('c1');
+			expect(client.putWorkflow.mock.lastCall?.[1]).toMatchObject({ versionId: 'compiled' });
+		});
+
+		it('keeps the loaded module when the new compile has errors', async () => {
+			compiler.compile.mockResolvedValue(withKey('compiled', undefined));
+			await sync.activate(workflow);
+			compiler.compile.mockResolvedValue(mock<CompiledArtifact>({ ok: false, key: 'broken' }));
+			await sync.onCredentialChanged('c1');
+			expect(client.putWorkflow.mock.lastCall?.[1]).toMatchObject({ versionId: 'compiled' });
+		});
+
+		it('loads the other module when a renewal gives values that are not checked', async () => {
+			compiler.compile.mockResolvedValue(withKey('compiled', { sa: [guard] }));
+			await sync.activate(workflow);
+			compiler.compile.mockResolvedValue(withKey('host', undefined));
+
+			await sync.renewCredential('c1', 'wf1');
+
+			expect(client.putWorkflow).toHaveBeenCalledTimes(2);
+			expect(client.putWorkflow.mock.lastCall?.[1]).toMatchObject({ versionId: 'host' });
+			expect(client.putWorkflowCredentials).not.toHaveBeenCalled();
+		});
+	});
+
 	describe('renewCredential', () => {
 		const other = mock<WorkflowEntity>({ id: 'wf2', activeVersion: null, settings: {} });
 

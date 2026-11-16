@@ -504,6 +504,26 @@ describe('node compiler: folds that keep the result of v1', () => {
 			instanceId: null,
 		});
 
+	it('writes the token options of the node into the request, and only for a node that gives them', () => {
+		const request = (extra: string) =>
+			`return [this.helpers.returnJsonArray(await this.helpers.requestOAuth2.call(this, 'sampleOAuth2Api', { method: 'GET', uri: 'https://api.example.test/a', json: true }${extra}))];`;
+		const skips = run(request(", { tokenType: 'Bearer', skipTokenRefresh: true }"));
+		expect(skips.errors).toEqual([]);
+		expect(skips.source).toContain('skipTokenRefresh: tokenOptions.skipTokenRefresh === true');
+		expect(skips.source).toContain('tokenExpiredStatusCode: tokenOptions.tokenExpiredStatusCode');
+		expect(skips.source).toContain('skipTokenRefresh: true }, false)');
+		const nested = run(
+			`return [this.helpers.returnJsonArray(await this.helpers.requestWithAuthentication.call(this, 'sampleOAuth2Api', { method: 'GET', uri: 'https://api.example.test/a', json: true }, { oauth2: { tokenExpiredStatusCode: [401, 403] } }))];`,
+		);
+		expect(nested.errors).toEqual([]);
+		expect(nested.source).toContain('tokenExpiredStatusCode: [401, 403] } }, true)');
+		const plain = run(request(", { tokenType: 'Bearer' }"));
+		expect(plain.errors).toEqual([]);
+		expect(plain.source).toContain('__request');
+		expect(plain.source).not.toContain('tokenOptions');
+		expect(run(request('')).source).not.toContain('tokenOptions');
+	});
+
 	it('keeps the name that v1 shows when a loop source folds to a value that is not there', () => {
 		const result = run(
 			`const media = this.getNodeParameter('media', 0);

@@ -84,7 +84,7 @@ pub fn initExec(r: *heap.Region, m: *const module.Module, exec_id: u64, seed: u6
         .result = value.undef,
         .trigger = value.undef,
         .flags = 0,
-        ._pad = 0,
+        .cred_flags = 0,
         .vars = value.undef,
         .static_start = value.undef,
         .static_doc = value.undef,

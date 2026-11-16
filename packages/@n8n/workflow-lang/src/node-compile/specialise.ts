@@ -99,6 +99,7 @@ export interface CredentialDerivation {
 	kind?: 'flag' | 'guard';
 	flags?: string[];
 	allowed?: string[];
+	node?: string;
 }
 
 export interface CredentialMint {
@@ -252,6 +253,18 @@ function randomShapes(roots: ts.Node[]): RandomShape[] {
 	return [...shapes.values()];
 }
 const REQUEST_BYTES = "legacy ? options.encoding === null : options.encoding === 'arraybuffer'";
+const REQUEST_HEAD = 'async function __request(options, wrapped, legacy) {';
+const REQUEST_HEAD_WITH_TOKEN_OPTIONS = `async function __request(options, wrapped, legacy, extra, nested) {
+	const oauth2 = extra === undefined || extra === null ? undefined : nested ? extra.oauth2 : extra;
+	const tokenOptions = oauth2 === undefined || oauth2 === null ? {} : oauth2;`;
+const REQUEST_CREDENTIAL = '\t\tinject: wrapped,\n\t\tcredential,\n';
+const REQUEST_CREDENTIAL_WITH_TOKEN_OPTIONS = `${REQUEST_CREDENTIAL}\t\tskipTokenRefresh: tokenOptions.skipTokenRefresh === true ? true : undefined,
+		tokenExpiredStatusCode: tokenOptions.tokenExpiredStatusCode,
+`;
+const TOKEN_OPTION_NAMES = new Set(['skipTokenRefresh', 'tokenExpiredStatusCode']);
+const namesTokenOption = (n: ts.Node): boolean =>
+	(ts.isIdentifier(n) && TOKEN_OPTION_NAMES.has(n.text)) ||
+	(ts.forEachChild(n, namesTokenOption) ?? false);
 
 const GLOBALS = new Set([
 	'undefined',
@@ -2294,11 +2307,23 @@ class Specialiser {
 						node.arguments.length >= 3
 							? this.authenticateUnit(typeArgument.text)
 							: undefined;
+					const extraAt = (viaCall ? 1 : 0) + 2;
+					const tokenOptions =
+						wrapped &&
+						helperName !== 'requestOAuth1' &&
+						node.arguments.length > extraAt &&
+						namesTokenOption(root)
+							? args(node, extraAt)[0]
+							: undefined;
+					if (tokenOptions) this.requestTokenOptions = true;
 					return this.helper(
 						'__request',
 						authenticate ? f.createAwaitExpression(call(authenticate, options)) : options,
 						wrapped ? f.createTrue() : f.createFalse(),
 						legacy ? f.createTrue() : f.createFalse(),
+						...(tokenOptions
+							? [tokenOptions, helperName === 'requestOAuth2' ? f.createFalse() : f.createTrue()]
+							: []),
 					);
 				}
 
@@ -6072,6 +6097,7 @@ class Specialiser {
 	private readonly responseBuffers = new Set<ts.Node>();
 
 	private storesResponses = false;
+	private requestTokenOptions = false;
 
 	private bufferText(root: ts.Node): ts.Node {
 		const visit = (n: ts.Node): ts.Node => {
@@ -6286,7 +6312,15 @@ class Specialiser {
 			this.output.some((o) => mentionsEncoding(o.node));
 		if (this.helpers.has('__request'))
 			code.unshift(
-				this.storesResponses ? REQUEST_SOURCE : REQUEST_SOURCE.replace(REQUEST_BYTES, 'false'),
+				(this.storesResponses ? REQUEST_SOURCE : REQUEST_SOURCE.replace(REQUEST_BYTES, 'false'))
+					.replace(
+						REQUEST_HEAD,
+						this.requestTokenOptions ? REQUEST_HEAD_WITH_TOKEN_OPTIONS : REQUEST_HEAD,
+					)
+					.replace(
+						REQUEST_CREDENTIAL,
+						this.requestTokenOptions ? REQUEST_CREDENTIAL_WITH_TOKEN_OPTIONS : REQUEST_CREDENTIAL,
+					),
 			);
 		this.helpers.delete('__request');
 		for (const [name, source] of Object.entries(CONTEXT_HELPERS)) {

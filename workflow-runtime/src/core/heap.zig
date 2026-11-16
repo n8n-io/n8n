@@ -153,7 +153,10 @@ pub const Exec = extern struct {
     /// `exec_flag_*` bits. They come from the start event, so a replay
     /// sets the same bits.
     flags: u32,
-    _pad: u32,
+    /// The credential flags at the start (`cred_flags.zig`): the offset of
+    /// a string, the document of the workflow, or 0 when it has none. The
+    /// field took the place of padding, so the layout did not change.
+    cred_flags: u32,
     /// The clock offset of this execution, in ms (CLOCK-OFFSET): a test bed
     /// gives it, so the workflow reads the time of the recorded run. It comes
     /// from the start event, so a replay sets the same offset.
@@ -619,6 +622,10 @@ fn scanExec(src: *Region, dst: *Region, off: u32) Error!void {
     dst.at(Exec, off).fibres = fibres;
     const occ = try forward(src, dst, dst.at(Exec, off).occ);
     dst.at(Exec, off).occ = occ;
+    if (dst.at(Exec, off).cred_flags != 0) {
+        const cred_flags = try forward(src, dst, dst.at(Exec, off).cred_flags);
+        dst.at(Exec, off).cred_flags = cred_flags;
+    }
     const result = try forwardValue(src, dst, dst.at(Exec, off).result);
     dst.at(Exec, off).result = result;
     const trigger = try forwardValue(src, dst, dst.at(Exec, off).trigger);
@@ -660,6 +667,7 @@ test "compact keeps sharing and drops garbage" {
     e.fibres = try a.alloc(.fibres, @sizeOf(Hdr) + @sizeOf(Fibre));
     a.at(Fibre, e.fibres + 8).* = std.mem.zeroes(Fibre);
     e.occ = try a.newBytes(8);
+    e.cred_flags = 0;
     _ = try a.newString("garbage that nobody references");
     const shared = try a.newString("héllo");
     const arr = try a.newArray(2);
@@ -687,6 +695,7 @@ test "appendStr grows in place, keeps older strings, and survives compaction" {
     e.fibres = try a.alloc(.fibres, @sizeOf(Hdr) + @sizeOf(Fibre));
     a.at(Fibre, e.fibres + 8).* = std.mem.zeroes(Fibre);
     e.occ = try a.newBytes(8);
+    e.cred_flags = 0;
     const start = try a.newString(&xs);
     var s = try a.appendStr(start, a.strBytes(value.payload(start)), 70, "ab");
     const first_buf = a.at(StrRef, value.payload(s)).data;

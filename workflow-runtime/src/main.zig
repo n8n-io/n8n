@@ -552,6 +552,7 @@ test {
     _ = @import("shell/fuzz_test.zig");
     _ = @import("shell/loadgen.zig");
     _ = @import("shell/static_data_test.zig");
+    _ = @import("shell/cred_flags_test.zig");
     _ = @import("shell/outbox_test.zig");
     _ = @import("shell/binary_store.zig");
     _ = @import("shell/blob_store.zig");

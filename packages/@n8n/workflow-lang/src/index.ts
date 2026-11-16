@@ -25,6 +25,7 @@ export {
 	evaluateCredentialFlags,
 	evaluateDerivation,
 	evaluateInSandbox,
+	unprovenFlagNodes,
 } from './node-compile/evaluate-node.ts';
 export type { CredentialDerivation } from './node-compile/specialise.ts';
 export type { NodeSources } from './node-compile/convert.ts';

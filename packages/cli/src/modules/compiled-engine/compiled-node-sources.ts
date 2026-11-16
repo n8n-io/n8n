@@ -35,6 +35,7 @@ export function nodeSourcesOf(
 	credentials: Map<string, PublicCredential>,
 	credentialTypes: CredentialTypes,
 	storesResponses: boolean,
+	hostNodes: ReadonlySet<string> = new Set(),
 ): NodeSources {
 	const nodeOf = (type: string, version: number) => {
 		try {
@@ -57,6 +58,8 @@ export function nodeSourcesOf(
 		description: (type, version) => lang.nodeDescriptionOf(nodeOf(type, version)?.description),
 		publicCredential: (type, id) => credentials.get(`${type}:${id ?? ''}`),
 		evaluate: lang.evaluateInSandbox,
+		// A node whose credential gives its conditions values that are not checked against v1.
+		runsInHost: (nodeName) => hostNodes.has(nodeName),
 		credentialEntry: (type) =>
 			credentialTypes.recognizes(type)
 				? fileOf(credentialTypes.getByName(type).constructor)

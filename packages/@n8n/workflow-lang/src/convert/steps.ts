@@ -357,6 +357,15 @@ export function tryCompiledNode(c: NodeContext): boolean {
 	const onError =
 		c.node.onError ?? (c.node.continueOnFail ? 'continueRegularOutput' : 'stopWorkflow');
 	if (onError !== 'stopWorkflow') return false;
+	// The caller knows that the credential of this node gives its conditions values that were
+	// not checked against the v1 node together: the node runs in the host, as in v1.
+	if (c.nodeSources.runsInHost?.(c.node.name) === true) {
+		c.info(
+			'node-compile',
+			'The credential of the node gives its conditions values that are not checked against the v1 node.',
+		);
+		return false;
+	}
 	const credentials: Record<string, PublicCredential> = {};
 	for (const [type, bound] of Object.entries(c.node.credentials ?? {})) {
 		const found = c.nodeSources.publicCredential?.(type, bound?.id ?? null);
@@ -426,10 +435,14 @@ export function tryCompiledNode(c: NodeContext): boolean {
 			);
 			return false;
 		}
-		// The guard holds the flag values that were checked against the v1 node together: n8n
-		// gives the flags to the module only for those.
+		// The guard holds the flag values that were checked against the v1 node together, and the
+		// name of the node. n8n gives the flags to the module only for those values. For other
+		// values n8n converts again with the node in the host (`NodeSources.runsInHost`).
 		const allowed = verifiedFlagKeys(c.nodeSources, c.node.type, c.version, compiled);
-		c.addCredentialDerivations(slot, [...compiled.flags, flagGuard(compiled, allowed)]);
+		c.addCredentialDerivations(slot, [
+			...compiled.flags,
+			flagGuard(compiled, allowed, c.node.name),
+		]);
 	}
 	if (compiled.mints.length > 0) {
 		const slot = c.credential();
