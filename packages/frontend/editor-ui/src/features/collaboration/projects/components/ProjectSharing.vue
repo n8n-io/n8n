@@ -177,8 +177,11 @@ const sortedProjects = computed((): ProjectSharingData[] => {
 });
 
 const moreResultsCount = computed(() => {
-	// The selected option is part of the count, so it is not one of the "more" results.
-	const listed = searchResults.value.length + selectedProjectOption.value.length;
+	// An off-page selected option is part of the count, so it is not one of the "more" results.
+	const offPage = selectedProjectOption.value.filter(
+		(selected) => !searchResults.value.some((p) => p.id === selected.id),
+	);
+	const listed = searchResults.value.length + offPage.length;
 	return Math.max(0, searchCount.value - listed);
 });
 const showSearchHint = computed(

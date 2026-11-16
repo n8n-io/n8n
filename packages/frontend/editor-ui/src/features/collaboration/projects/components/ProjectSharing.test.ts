@@ -304,6 +304,24 @@ describe('ProjectSharing', () => {
 				expect(item).not.toHaveTextContent('projects.sharing.moreResults');
 			}
 		});
+
+		it('should count the selected project once when filterFn hides it from the results', async () => {
+			const selectedItem = { ...selected, role: 'project:editor' as const };
+			const { getByTestId } = renderComponent({
+				props: {
+					// One project exists past the returned page.
+					searchFn: createTestSearchFnWithCount(
+						[...teamProjects, selectedItem],
+						teamProjects.length + 2,
+					),
+					filterFn: (project: ProjectListItem) => project.id !== selected.id,
+					modelValue: selected,
+				},
+			});
+
+			const items = await getDropdownItems(getByTestId('project-sharing-select'));
+			expect(items[items.length - 1]).toHaveTextContent('projects.sharing.moreResults');
+		});
 	});
 
 	it('should render home project as owner when defined', async () => {
