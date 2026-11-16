@@ -149,6 +149,59 @@ describe('N8nSettingsPageHeader', () => {
 		expect(screen.queryByText(/Learn more in the/)).not.toBeInTheDocument();
 	});
 
+	it('uses the documentation URL from the feature entry', () => {
+		render(N8nSettingsPageHeader, {
+			global: {
+				provide: {
+					[FeatureMaturityKey as symbol]: {
+						openTelemetry: {
+							preview: true,
+							limitedEnterpriseSupport: false,
+							docsUrl: 'https://docs.n8n.io/hosting/logging-monitoring/opentelemetry/',
+						},
+					} satisfies FeatureMaturityCatalog,
+				},
+			},
+			props: {
+				title: 'OpenTelemetry',
+				description: 'Send traces from this instance.',
+				feature: 'openTelemetry',
+			},
+		});
+
+		expect(screen.getByRole('link', { name: 'documentation' })).toHaveAttribute(
+			'href',
+			'https://docs.n8n.io/hosting/logging-monitoring/opentelemetry/',
+		);
+	});
+
+	it('lets the page URL override the feature entry', () => {
+		render(N8nSettingsPageHeader, {
+			global: {
+				provide: {
+					[FeatureMaturityKey as symbol]: {
+						agents: {
+							preview: true,
+							limitedEnterpriseSupport: true,
+							docsUrl: 'https://docs.n8n.io/build/build-and-manage-agents',
+						},
+					} satisfies FeatureMaturityCatalog,
+				},
+			},
+			props: {
+				title: 'Agents',
+				description: 'Build agents.',
+				feature: 'agents',
+				docsUrl: 'https://docs.n8n.io/override',
+			},
+		});
+
+		expect(screen.getByRole('link', { name: 'documentation' })).toHaveAttribute(
+			'href',
+			'https://docs.n8n.io/override',
+		);
+	});
+
 	it('renders the docs link as an N8nExternalLink that opens in a new tab', () => {
 		render(N8nSettingsPageHeader, {
 			props: {

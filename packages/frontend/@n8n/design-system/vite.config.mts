@@ -175,6 +175,10 @@ export default mergeConfig(
 					// the component barrel. It stays on `src/index.ts` too — the entry is
 					// an extra door, not a move.
 					plugin: resolve(srcDir, 'plugin.ts'),
+					// Fourth entry so a host can provide `FeatureMaturityKey` without
+					// loading the component barrel. Storybook preview does this. The
+					// symbols stay on the barrel too — the entry is an extra door.
+					'feature-maturity': resolve(srcDir, 'feature-maturity.ts'),
 				},
 				// ES only. UMD supports neither multiple entries nor code splitting, and
 				// both are requirements here — the icon buckets have to stay lazy chunks.

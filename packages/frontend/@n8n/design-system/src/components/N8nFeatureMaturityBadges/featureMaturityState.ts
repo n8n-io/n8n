@@ -13,6 +13,11 @@ export type FeatureMaturityEntry = {
 	preview: boolean;
 	/** Show the Limited enterprise readiness badge. */
 	limitedEnterpriseSupport: boolean;
+	/**
+	 * Documentation page for this feature.
+	 * `N8nSettingsPageHeader` renders the link. A page `docs-url` overrides it.
+	 */
+	docsUrl?: string;
 };
 
 /** Feature id to badge flags. A missing id renders no feature badges. */

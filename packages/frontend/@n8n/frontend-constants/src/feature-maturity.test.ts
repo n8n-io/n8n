@@ -8,13 +8,29 @@ describe('featureMaturity', () => {
 	it('matches the feature list', () => {
 		expect(featureMaturity).toEqual({
 			endUserCredentials: { preview: true, limitedEnterpriseSupport: false },
-			assistant: { preview: false, limitedEnterpriseSupport: true },
-			agents: { preview: true, limitedEnterpriseSupport: true },
-			n8nPackages: { preview: true, limitedEnterpriseSupport: true },
+			assistant: {
+				preview: false,
+				limitedEnterpriseSupport: true,
+				docsUrl: 'https://docs.n8n.io/deploy/host-n8n/configure-n8n/set-up-n8n-assistant',
+			},
+			agents: {
+				preview: true,
+				limitedEnterpriseSupport: true,
+				docsUrl: 'https://docs.n8n.io/build/build-and-manage-agents',
+			},
+			n8nPackages: {
+				preview: true,
+				limitedEnterpriseSupport: true,
+				docsUrl: 'https://docs.n8n.io/administer/environments/plan-your-environments',
+			},
 			workflowReviews: { preview: true, limitedEnterpriseSupport: false },
 			oauthJwe: { preview: true, limitedEnterpriseSupport: false },
 			tokenExchange: { preview: true, limitedEnterpriseSupport: false },
-			openTelemetry: { preview: true, limitedEnterpriseSupport: false },
+			openTelemetry: {
+				preview: true,
+				limitedEnterpriseSupport: false,
+				docsUrl: 'https://docs.n8n.io/hosting/logging-monitoring/opentelemetry/',
+			},
 			microsoftAgent365: { preview: true, limitedEnterpriseSupport: false },
 			context: { preview: true, limitedEnterpriseSupport: true },
 			roles: { preview: false, limitedEnterpriseSupport: false },
@@ -29,10 +45,12 @@ describe('featureMaturity', () => {
 		expect(featureMaturityForPlan(false).assistant).toEqual({
 			preview: false,
 			limitedEnterpriseSupport: false,
+			docsUrl: 'https://docs.n8n.io/deploy/host-n8n/configure-n8n/set-up-n8n-assistant',
 		});
 		expect(featureMaturityForPlan(false).agents).toEqual({
 			preview: true,
 			limitedEnterpriseSupport: false,
+			docsUrl: 'https://docs.n8n.io/build/build-and-manage-agents',
 		});
 		expect(featureMaturityForPlan(false).openTelemetry).toEqual(featureMaturity.openTelemetry);
 	});

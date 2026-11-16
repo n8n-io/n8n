@@ -18,7 +18,7 @@ export interface SettingsPageHeaderProps {
 	description?: string;
 	/**
 	 * Documentation page for the inline link at the end of the description.
-	 * The header renders that link only when this URL is set.
+	 * Overrides `docsUrl` on the feature entry. The header renders no link when both are unset.
 	 */
 	docsUrl?: string;
 	/** The underlined link word. Defaults to the localized "documentation". */
@@ -33,6 +33,7 @@ export interface SettingsPageHeaderProps {
 	/**
 	 * Feature id from the list the app provides.
 	 * The entry decides which badges render beside the title.
+	 * The entry's `docsUrl` renders the documentation link when this page sets none.
 	 * The id sets the badge test ids. A camelCase id becomes kebab-case.
 	 * `context` renders `context-preview-badge` and `context-enterprise-readiness-badge`.
 	 */
@@ -67,6 +68,11 @@ const resolvedDocsLeadingText = computed(
 	() => props.docsLeadingText ?? t('settingsPageHeader.docsLeadingText'),
 );
 const catalog = useFeatureMaturityCatalog();
+const featureEntry = computed(() =>
+	props.feature === undefined ? undefined : catalog.value[props.feature],
+);
+// The page URL wins. Otherwise the feature entry supplies the documentation page.
+const resolvedDocsUrl = computed(() => props.docsUrl ?? featureEntry.value?.docsUrl);
 const featureBadges = computed(() =>
 	resolveFeatureMaturityBadges(catalog.value, props.feature, {
 		preview: props.hidePreview,
@@ -96,7 +102,7 @@ const showTitleRow = computed(() => showFeatureBadges.value || Boolean(slots.tit
 		<N8nHeading v-else :tag="headingTag" :class="$style.title" step="xl" color="text-dark">
 			{{ title }}
 		</N8nHeading>
-		<p v-if="hasDescription || docsUrl" :class="$style.description">
+		<p v-if="hasDescription || resolvedDocsUrl" :class="$style.description">
 			<slot name="description">
 				<N8nText v-if="description" size="medium" color="text-base">{{ description }}</N8nText>
 			</slot>
@@ -105,14 +111,14 @@ const showTitleRow = computed(() => showFeatureBadges.value || Boolean(slots.tit
 				link + icon" can wrap to the next line as a single unit; only added after a description.
 				The link sits inside the N8nText so it inherits the description's font and line height.
 			-->
-			<template v-if="docsUrl"
+			<template v-if="resolvedDocsUrl"
 				>{{ hasDescription ? ' ' : ''
 				}}<N8nText size="medium" color="text-base" :class="$style.docsPhrase"
 					>{{ resolvedDocsLeadingText
 					}}<N8nExternalLink
 						inline
 						size="small"
-						:href="docsUrl"
+						:href="resolvedDocsUrl"
 						data-test-id="settings-page-header-docs"
 						>{{ resolvedDocsLabel }}</N8nExternalLink
 					></N8nText

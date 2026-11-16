@@ -6,6 +6,7 @@
  * The page title shows those badges. Pass `hide-preview` or `hide-enterprise` to hide one.
  * Only the Enterprise plan shows Limited enterprise readiness.
  * Call `featureMaturityForPlan` before providing the list.
+ * `docsUrl` is the documentation page. The settings header renders that link.
  *
  * The feature id sets the badge test ids.
  * A camelCase id becomes kebab-case.
@@ -24,17 +25,38 @@ export type FeatureMaturity = {
 	 * Show that badge only on the Enterprise plan. Use `featureMaturityForPlan`.
 	 */
 	limitedEnterpriseSupport: boolean;
+	/**
+	 * Documentation page for this feature.
+	 * `N8nSettingsPageHeader` renders the link. A page `docs-url` overrides it.
+	 */
+	docsUrl?: string;
 };
 
 export const featureMaturity = {
 	endUserCredentials: { preview: true, limitedEnterpriseSupport: false },
-	assistant: { preview: false, limitedEnterpriseSupport: true },
-	agents: { preview: true, limitedEnterpriseSupport: true },
-	n8nPackages: { preview: true, limitedEnterpriseSupport: true },
+	assistant: {
+		preview: false,
+		limitedEnterpriseSupport: true,
+		docsUrl: 'https://docs.n8n.io/deploy/host-n8n/configure-n8n/set-up-n8n-assistant',
+	},
+	agents: {
+		preview: true,
+		limitedEnterpriseSupport: true,
+		docsUrl: 'https://docs.n8n.io/build/build-and-manage-agents',
+	},
+	n8nPackages: {
+		preview: true,
+		limitedEnterpriseSupport: true,
+		docsUrl: 'https://docs.n8n.io/administer/environments/plan-your-environments',
+	},
 	workflowReviews: { preview: true, limitedEnterpriseSupport: false },
 	oauthJwe: { preview: true, limitedEnterpriseSupport: false },
 	tokenExchange: { preview: true, limitedEnterpriseSupport: false },
-	openTelemetry: { preview: true, limitedEnterpriseSupport: false },
+	openTelemetry: {
+		preview: true,
+		limitedEnterpriseSupport: false,
+		docsUrl: 'https://docs.n8n.io/hosting/logging-monitoring/opentelemetry/',
+	},
 	microsoftAgent365: { preview: true, limitedEnterpriseSupport: false },
 	context: { preview: true, limitedEnterpriseSupport: true },
 	roles: { preview: false, limitedEnterpriseSupport: false },
@@ -57,7 +79,11 @@ export function featureMaturityForPlan(isEnterprisePlan: boolean): {
 
 	const catalog: { [id: string]: FeatureMaturity } = {};
 	for (const [id, entry] of Object.entries(featureMaturity)) {
-		catalog[id] = { preview: entry.preview, limitedEnterpriseSupport: false };
+		catalog[id] = {
+			preview: entry.preview,
+			limitedEnterpriseSupport: false,
+			...(entry.docsUrl === undefined ? {} : { docsUrl: entry.docsUrl }),
+		};
 	}
 	return catalog;
 }
