@@ -12,6 +12,7 @@ import {
 	getDataTableCallAction,
 	getLegacyBuilderToolActions,
 	getLegacyBuilderToolNames,
+	isDataTableWriteToolAction,
 	isFormerWorkflowsTool,
 	resolveBuilderToolName,
 } from '../builder-tool-names';
@@ -166,6 +167,15 @@ describe('data table tool names', () => {
 		expect(getDataTableCallAction(SHARED_BUILDER_TOOL_NAMES.ADD_DATA_TABLE_COLUMN)).toBe(
 			'add-column',
 		);
+	});
+
+	it('recognizes only write actions as data table write actions', () => {
+		for (const action of DATA_TABLE_WRITE_TOOL_ACTIONS) {
+			expect(isDataTableWriteToolAction(action)).toBe(true);
+		}
+		for (const value of [...DATA_TABLE_READ_TOOL_ACTIONS, 'drop-everything', undefined, 1, {}]) {
+			expect(isDataTableWriteToolAction(value)).toBe(false);
+		}
 	});
 
 	it('recognizes the batch tool as a data table tool without a single action', () => {

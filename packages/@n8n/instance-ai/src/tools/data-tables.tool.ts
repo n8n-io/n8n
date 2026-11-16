@@ -13,8 +13,12 @@ import { z } from 'zod';
 
 import type { InstanceAiContext } from '../types';
 import { sanitizeInputSchema } from '../agent/sanitize-mcp-schemas';
-import { filterDescribe, filterSchema } from './data-tables/schemas';
-import { dataTableNameDescribe, projectIdDescribe } from './data-tables/write-action-schemas';
+import {
+	dataTableNameDescribe,
+	filterDescribe,
+	filterSchema,
+	projectIdDescribe,
+} from './data-tables/schemas';
 
 // ── Input schemas ──────────────────────────────────────────────────────────
 

@@ -1,6 +1,12 @@
 /** Zod pieces that the data table tools share. */
 import { z } from 'zod';
 
+export const projectIdDescribe =
+	"Project ID. Scopes list (defaults to this conversation's project); for id-based actions, disambiguates when `dataTableId` is a name found in multiple accessible projects. Ignored when `dataTableId` is a UUID.";
+
+export const dataTableNameDescribe =
+	'Data table name for the approval card. Pass whenever known so users see a name instead of an ID.';
+
 export const columnTypeSchema = z.enum(['string', 'number', 'boolean', 'date']);
 
 export const columnSchema = z.object({

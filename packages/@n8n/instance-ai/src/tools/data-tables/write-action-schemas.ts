@@ -8,16 +8,12 @@ import { z } from 'zod';
 import {
 	columnSchema,
 	columnTypeSchema,
+	dataTableNameDescribe,
 	filterDescribe,
 	filterSchema,
 	filterSchemaWithMinOne,
+	projectIdDescribe,
 } from './schemas';
-
-export const projectIdDescribe =
-	"Project ID. Scopes list (defaults to this conversation's project); for id-based actions, disambiguates when `dataTableId` is a name found in multiple accessible projects. Ignored when `dataTableId` is a UUID.";
-
-export const dataTableNameDescribe =
-	'Data table name for the approval card. Pass whenever known so users see a name instead of an ID.';
 
 const columnNameForCardDescribe =
 	'Current column name for the approval card. Pass whenever known so users see a name instead of an ID.';

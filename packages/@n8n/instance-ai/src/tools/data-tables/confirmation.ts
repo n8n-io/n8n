@@ -1,4 +1,4 @@
-/** Suspend and resume contract shared by the data table write tools. */
+/** Suspend and resume contract of `change_data_tables`. */
 import {
 	buildDataTablesSessionGrantKey,
 	instanceAiApprovalDetailsSchema,

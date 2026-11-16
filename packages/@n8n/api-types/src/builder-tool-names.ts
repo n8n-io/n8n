@@ -254,10 +254,13 @@ export const DATA_TABLE_READ_TOOL_ACTIONS = [
 export type DataTableReadToolAction = (typeof DATA_TABLE_READ_TOOL_ACTIONS)[number];
 export type DataTableWriteToolAction = Exclude<DataTableToolAction, DataTableReadToolAction>;
 
-function isDataTableWriteToolAction(
-	action: DataTableToolAction,
-): action is DataTableWriteToolAction {
-	return !DATA_TABLE_READ_TOOL_ACTIONS.some((read) => read === action);
+/** Whether a value names a data table action that changes data or schema. */
+export function isDataTableWriteToolAction(value: unknown): value is DataTableWriteToolAction {
+	return (
+		typeof value === 'string' &&
+		isDataTableToolAction(value) &&
+		!DATA_TABLE_READ_TOOL_ACTIONS.some((read) => read === value)
+	);
 }
 
 /** Every action that is not a read. The batch tool now runs these. */

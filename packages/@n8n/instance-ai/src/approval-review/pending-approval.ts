@@ -1,9 +1,9 @@
 import { APPROVAL_SUSPEND_SCHEMA } from '@n8n/agents';
 import type { BuiltTool } from '@n8n/agents';
 import {
-	DATA_TABLE_WRITE_TOOL_ACTIONS,
 	instanceAiApprovalDetailsSchema,
 	instanceAiConfirmationSeveritySchema,
+	isDataTableWriteToolAction,
 } from '@n8n/api-types';
 import type {
 	DataTableWriteToolAction,
@@ -95,17 +95,13 @@ const DATA_TABLE_CHANGE_ROUTES: Readonly<Record<DataTableWriteToolAction, Approv
 	'delete-rows': 'judge',
 };
 
-function isDataTableWriteAction(value: unknown): value is DataTableWriteToolAction {
-	return DATA_TABLE_WRITE_TOOL_ACTIONS.some((action) => action === value);
-}
-
 /** A batch takes the most careful route of its changes. A change it cannot read goes to the judge. */
 function routeDataTableChanges(args: unknown): ApprovalRoute {
 	const changes = isRecord(args) ? args.changes : undefined;
 	if (!Array.isArray(changes) || changes.length === 0) return 'judge';
 	const routes = changes.map((change: unknown) => {
 		const action = isRecord(change) ? change.action : undefined;
-		return isDataTableWriteAction(action) ? DATA_TABLE_CHANGE_ROUTES[action] : 'judge';
+		return isDataTableWriteToolAction(action) ? DATA_TABLE_CHANGE_ROUTES[action] : 'judge';
 	});
 	if (routes.includes('always-ask')) return 'always-ask';
 	return routes.every((route) => route === 'low-risk') ? 'low-risk' : 'judge';
