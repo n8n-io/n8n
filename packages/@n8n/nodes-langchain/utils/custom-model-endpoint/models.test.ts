@@ -180,7 +180,7 @@ describe('listGatewayModels', () => {
 		);
 		const { calls, fetchImpl } = answering(openAiStyle);
 
-		const transport = createCustomModelEndpointAuthFetch(
+		const authFetch = createCustomModelEndpointAuthFetch(
 			ctx,
 			{},
 			{
@@ -189,7 +189,7 @@ describe('listGatewayModels', () => {
 				baseFetch: fetchImpl,
 			},
 		);
-		await listGatewayModels(node, endpoint, transport.fetch);
+		await listGatewayModels(node, endpoint, authFetch);
 
 		expect(Object.fromEntries(calls[0].headers)).toMatchObject({
 			'x-api-key': 'secret-9f2a71c4',
