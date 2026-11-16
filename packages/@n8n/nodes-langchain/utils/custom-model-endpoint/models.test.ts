@@ -267,3 +267,33 @@ describe('searchModels', () => {
 		expect(result.results).toEqual([{ name: 'platform/gpt-4o', value: 'platform/gpt-4o' }]);
 	});
 });
+
+describe('listGatewayModels, answers that are not a model list', () => {
+	it.each([
+		['an object in another shape', '{"models":["a"]}'],
+		['an error sent with status 200', '{"error":{"message":"nope"}}'],
+		['a bare string', '"ok"'],
+	])('throws the hinted error for %s', async (_name, body) => {
+		const fetchModels = vi.fn().mockResolvedValue(new Response(body, { status: 200 }));
+
+		await expect(
+			listGatewayModels(
+				node,
+				{ baseUrl: 'https://gw.example.com/v1' } as EndpointCredential,
+				fetchModels,
+			),
+		).rejects.toThrow('shape this node does not read');
+	});
+
+	it('still returns an empty list when the gateway lists no models', async () => {
+		const fetchModels = vi.fn().mockResolvedValue(new Response('{"data":[]}', { status: 200 }));
+
+		await expect(
+			listGatewayModels(
+				node,
+				{ baseUrl: 'https://gw.example.com/v1' } as EndpointCredential,
+				fetchModels,
+			),
+		).resolves.toEqual([]);
+	});
+});
