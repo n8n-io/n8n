@@ -61,10 +61,11 @@ const WAITING_TRIGGERS: Record<string, WaitingTrigger> = {
 				(limit) => limit !== undefined && limit !== -1,
 			);
 		},
-		setting: (node) =>
-			readOption(node, 'acknowledge') === undefined
-				? 'Parallel Message Processing Limit'
-				: 'Delete From Queue When',
+		setting: (node) => {
+			if (isExpression(node.parameters.options)) return 'Options';
+			if (readOption(node, 'acknowledge') === undefined) return 'Parallel Message Processing Limit';
+			return 'Delete From Queue When';
+		},
 	},
 	'n8n-nodes-base.amqpTrigger': {
 		waits: (node) =>

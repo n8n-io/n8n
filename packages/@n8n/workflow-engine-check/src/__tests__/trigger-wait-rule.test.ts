@@ -139,6 +139,11 @@ describe('trigger wait rule', () => {
 			'Parallel Message Processing Limit',
 		],
 		[
+			'a RabbitMQ trigger whose options are an expression',
+			trigger('rabbitmqTrigger', 1, { options: '={{ { parallelMessages: 5 } }}' }),
+			'Options',
+		],
+		[
 			'an AMQP trigger',
 			trigger('amqpTrigger', 1, { options: { parallelProcessing: false } }),
 			'Parallel Processing',
