@@ -55,6 +55,11 @@ export type PubSubCommandMap = {
 	'self-healing-failure': {
 		workflowId: string;
 		executionId: string;
+		// Telemetry facts that only the executing process has. Optional for rolling upgrades.
+		workflowVersionId?: string;
+		failedAt?: string;
+		errorType?: string;
+		errorNodeType?: string;
 	};
 	'reload-agents-settings': never;
 
@@ -141,6 +146,8 @@ export type PubSubCommandMap = {
 
 	'relay-execution-lifecycle-event': PushMessage & {
 		pushRef: string;
+		/** Absent when a main or worker of an older version sends the event. */
+		userId?: string;
 		asBinary: boolean;
 	};
 

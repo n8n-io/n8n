@@ -1,0 +1,530 @@
+{
+	"name": "grafana-requests",
+	"nodes": [
+		{
+			"parameters": {},
+			"id": "00000000-0000-4000-8000-000000000000",
+			"name": "When clicking ‘Execute workflow’",
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [0, 0]
+		},
+		{
+			"parameters": {
+				"resource": "dashboard",
+				"operation": "create",
+				"title": "Ops",
+				"additionalFields": {}
+			},
+			"id": "00000000-0000-4000-8000-000000000001",
+			"name": "Dashboard Create",
+			"type": "n8n-nodes-base.grafana",
+			"typeVersion": 1,
+			"position": [220, 120],
+			"credentials": {
+				"grafanaApi": {
+					"id": "1",
+					"name": "Test account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "dashboard",
+				"operation": "delete",
+				"dashboardUidOrUrl": "cIBgcSjkk"
+			},
+			"id": "00000000-0000-4000-8000-000000000002",
+			"name": "Dashboard Delete",
+			"type": "n8n-nodes-base.grafana",
+			"typeVersion": 1,
+			"position": [220, 240],
+			"credentials": {
+				"grafanaApi": {
+					"id": "1",
+					"name": "Test account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "dashboard",
+				"operation": "get",
+				"dashboardUidOrUrl": "cIBgcSjkk"
+			},
+			"id": "00000000-0000-4000-8000-000000000003",
+			"name": "Dashboard Get",
+			"type": "n8n-nodes-base.grafana",
+			"typeVersion": 1,
+			"position": [220, 360],
+			"credentials": {
+				"grafanaApi": {
+					"id": "1",
+					"name": "Test account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "dashboard",
+				"operation": "getAll",
+				"returnAll": true,
+				"filters": {}
+			},
+			"id": "00000000-0000-4000-8000-000000000004",
+			"name": "Dashboard Get Many",
+			"type": "n8n-nodes-base.grafana",
+			"typeVersion": 1,
+			"position": [220, 480],
+			"credentials": {
+				"grafanaApi": {
+					"id": "1",
+					"name": "Test account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "dashboard",
+				"operation": "update",
+				"dashboardUidOrUrl": "https://grafana.example.com/d/aB3dE5fGh/billing",
+				"updateFields": {
+					"title": "Billing v2"
+				}
+			},
+			"id": "00000000-0000-4000-8000-000000000005",
+			"name": "Dashboard Update",
+			"type": "n8n-nodes-base.grafana",
+			"typeVersion": 1,
+			"position": [220, 600],
+			"credentials": {
+				"grafanaApi": {
+					"id": "1",
+					"name": "Test account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "team",
+				"operation": "create",
+				"name": "SRE",
+				"additionalFields": {}
+			},
+			"id": "00000000-0000-4000-8000-000000000006",
+			"name": "Team Create",
+			"type": "n8n-nodes-base.grafana",
+			"typeVersion": 1,
+			"position": [220, 720],
+			"credentials": {
+				"grafanaApi": {
+					"id": "1",
+					"name": "Test account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "team",
+				"operation": "delete",
+				"teamId": "7"
+			},
+			"id": "00000000-0000-4000-8000-000000000007",
+			"name": "Team Delete",
+			"type": "n8n-nodes-base.grafana",
+			"typeVersion": 1,
+			"position": [220, 840],
+			"credentials": {
+				"grafanaApi": {
+					"id": "1",
+					"name": "Test account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "team",
+				"operation": "get",
+				"teamId": "5"
+			},
+			"id": "00000000-0000-4000-8000-000000000008",
+			"name": "Team Get",
+			"type": "n8n-nodes-base.grafana",
+			"typeVersion": 1,
+			"position": [220, 960],
+			"credentials": {
+				"grafanaApi": {
+					"id": "1",
+					"name": "Test account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "team",
+				"operation": "getAll",
+				"returnAll": true,
+				"filters": {}
+			},
+			"id": "00000000-0000-4000-8000-000000000009",
+			"name": "Team Get Many",
+			"type": "n8n-nodes-base.grafana",
+			"typeVersion": 1,
+			"position": [220, 1080],
+			"credentials": {
+				"grafanaApi": {
+					"id": "1",
+					"name": "Test account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "team",
+				"operation": "update",
+				"teamId": "6",
+				"updateFields": {
+					"name": "Platform"
+				}
+			},
+			"id": "00000000-0000-4000-8000-000000000010",
+			"name": "Team Update",
+			"type": "n8n-nodes-base.grafana",
+			"typeVersion": 1,
+			"position": [220, 1200],
+			"credentials": {
+				"grafanaApi": {
+					"id": "1",
+					"name": "Test account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "teamMember",
+				"operation": "add",
+				"userId": "12",
+				"teamId": "5"
+			},
+			"id": "00000000-0000-4000-8000-000000000011",
+			"name": "Team Member Add",
+			"type": "n8n-nodes-base.grafana",
+			"typeVersion": 1,
+			"position": [220, 1320],
+			"credentials": {
+				"grafanaApi": {
+					"id": "1",
+					"name": "Test account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "teamMember",
+				"operation": "remove",
+				"teamId": "5",
+				"memberId": "12"
+			},
+			"id": "00000000-0000-4000-8000-000000000012",
+			"name": "Team Member Remove",
+			"type": "n8n-nodes-base.grafana",
+			"typeVersion": 1,
+			"position": [220, 1440],
+			"credentials": {
+				"grafanaApi": {
+					"id": "1",
+					"name": "Test account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "teamMember",
+				"operation": "getAll",
+				"teamId": "8",
+				"returnAll": true
+			},
+			"id": "00000000-0000-4000-8000-000000000013",
+			"name": "Team Member Get Many",
+			"type": "n8n-nodes-base.grafana",
+			"typeVersion": 1,
+			"position": [220, 1560],
+			"credentials": {
+				"grafanaApi": {
+					"id": "1",
+					"name": "Test account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "user",
+				"operation": "delete",
+				"userId": "13"
+			},
+			"id": "00000000-0000-4000-8000-000000000014",
+			"name": "User Delete",
+			"type": "n8n-nodes-base.grafana",
+			"typeVersion": 1,
+			"position": [220, 1680],
+			"credentials": {
+				"grafanaApi": {
+					"id": "1",
+					"name": "Test account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "user",
+				"operation": "getAll",
+				"returnAll": true
+			},
+			"id": "00000000-0000-4000-8000-000000000015",
+			"name": "User Get Many",
+			"type": "n8n-nodes-base.grafana",
+			"typeVersion": 1,
+			"position": [220, 1800],
+			"credentials": {
+				"grafanaApi": {
+					"id": "1",
+					"name": "Test account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "user",
+				"operation": "update",
+				"userId": "12",
+				"updateFields": {
+					"role": "Editor"
+				}
+			},
+			"id": "00000000-0000-4000-8000-000000000016",
+			"name": "User Update",
+			"type": "n8n-nodes-base.grafana",
+			"typeVersion": 1,
+			"position": [220, 1920],
+			"credentials": {
+				"grafanaApi": {
+					"id": "1",
+					"name": "Test account"
+				}
+			}
+		}
+	],
+	"pinData": {
+		"Dashboard Create": [
+			{
+				"json": {
+					"uid": "cIBgcSjkk",
+					"status": "success"
+				}
+			}
+		],
+		"Dashboard Delete": [
+			{
+				"json": {
+					"title": "Ops"
+				}
+			}
+		],
+		"Dashboard Get": [
+			{
+				"json": {
+					"dashboard": {
+						"uid": "cIBgcSjkk",
+						"title": "Ops"
+					}
+				}
+			}
+		],
+		"Dashboard Get Many": [
+			{
+				"json": {
+					"id": 1,
+					"title": "Ops"
+				}
+			}
+		],
+		"Dashboard Update": [
+			{
+				"json": {
+					"status": "success"
+				}
+			}
+		],
+		"Team Create": [
+			{
+				"json": {
+					"teamId": 5
+				}
+			}
+		],
+		"Team Delete": [
+			{
+				"json": {
+					"message": "Team deleted"
+				}
+			}
+		],
+		"Team Get": [
+			{
+				"json": {
+					"id": 5,
+					"name": "SRE"
+				}
+			}
+		],
+		"Team Get Many": [
+			{
+				"json": {
+					"id": 5,
+					"name": "SRE"
+				}
+			}
+		],
+		"Team Update": [
+			{
+				"json": {
+					"message": "Team updated"
+				}
+			}
+		],
+		"Team Member Add": [
+			{
+				"json": {
+					"message": "Member added to Team"
+				}
+			}
+		],
+		"Team Member Remove": [
+			{
+				"json": {
+					"message": "Team Member removed"
+				}
+			}
+		],
+		"Team Member Get Many": [
+			{
+				"json": {
+					"userId": 12
+				}
+			}
+		],
+		"User Delete": [
+			{
+				"json": {
+					"message": "User removed from organization"
+				}
+			}
+		],
+		"User Get Many": [
+			{
+				"json": {
+					"userId": 12,
+					"email": "ada@example.com"
+				}
+			}
+		],
+		"User Update": [
+			{
+				"json": {
+					"message": "Organization user updated"
+				}
+			}
+		]
+	},
+	"settings": {
+		"executionOrder": "v1"
+	},
+	"connections": {
+		"When clicking ‘Execute workflow’": {
+			"main": [
+				[
+					{
+						"node": "Dashboard Create",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Dashboard Delete",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Dashboard Get",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Dashboard Get Many",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Dashboard Update",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Team Create",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Team Delete",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Team Get",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Team Get Many",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Team Update",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Team Member Add",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Team Member Remove",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Team Member Get Many",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "User Delete",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "User Get Many",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "User Update",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	}
+}

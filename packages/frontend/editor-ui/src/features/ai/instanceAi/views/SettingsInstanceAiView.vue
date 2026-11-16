@@ -10,6 +10,7 @@ import {
 	N8nLoading,
 	N8nOption,
 	N8nSelect,
+	N8nSettingsEnableRow,
 	N8nSettingsLayout,
 	N8nSettingsPageHeader,
 	N8nSettingsRow,
@@ -183,7 +184,7 @@ const PERMISSION_GROUPS: PermissionGroup[] = [
 	{
 		id: 'dataTables',
 		labelKey: 'settings.n8nAgent.permissions.group.dataTables',
-		keys: ['createDataTable', 'mutateDataTableSchema', 'mutateDataTableRows'],
+		keys: ['createDataTable', 'mutateDataTableSchema', 'mutateDataTableRows', 'deleteDataTable'],
 	},
 	{
 		id: 'credentials',
@@ -357,9 +358,18 @@ async function enableEnvironmentSandboxIfNeeded(): Promise<boolean> {
 
 useSetupPageViewTelemetry('settings');
 
+// With approval modes on, Ask first can be confirmed by the automatic check of Auto mode.
+const permissionsDescription = computed(() => {
+	const description = i18n.baseText('settings.n8nAgent.permissions.description');
+	return store.approvalModesAvailable
+		? `${description} ${i18n.baseText('settings.n8nAgent.permissions.askFirst.description')}`
+		: description;
+});
+
 onMounted(() => {
 	documentTitle.set(i18n.baseText('settings.n8nAgent'));
 	void store.fetch();
+	void store.fetchPreferences();
 	void credentialsStore.fetchCredentialTypes(false);
 });
 
@@ -375,12 +385,15 @@ async function enable() {
 	await continueSetup();
 }
 
-async function handleEnabledToggle(value: boolean) {
+function onEnabledChange(value: boolean) {
 	if (value) {
-		await enable();
+		void enable();
 		return;
 	}
+	void confirmDisable();
+}
 
+async function confirmDisable() {
 	const confirmed = await message.confirm(
 		i18n.baseText('settings.n8nAgent.status.disable.description'),
 		{
@@ -474,21 +487,16 @@ async function handleDataSharingToggle(value: boolean) {
 		<template v-else-if="isAdmin">
 			<N8nSettingsSection>
 				<N8nSettingsRowGroup>
-					<N8nSettingsRow
+					<N8nSettingsEnableRow
 						:title="i18n.baseText('settings.n8nAgent.enable.label')"
 						:description="i18n.baseText('settings.n8nAgent.enable.description')"
-					>
-						<template #action>
-							<N8nSwitch
-								:model-value="isSwitchOn"
-								:disabled="store.isSaving || isEnabling || isTestingCredential"
-								:aria-label="i18n.baseText('settings.n8nAgent.enable.label')"
-								data-test-id="n8n-agent-enable-toggle"
-								@update:model-value="handleEnabledToggle"
-							/>
-						</template>
-					</N8nSettingsRow>
-
+						:enabled="isSwitchOn"
+						:disabled="store.isSaving || isEnabling || isTestingCredential"
+						switch-test-id="n8n-agent-enable-toggle"
+						@update:enabled="onEnabledChange"
+					/>
+				</N8nSettingsRowGroup>
+				<N8nSettingsRowGroup v-if="isEnabled && (showCredentialsRows || showSandboxRow)">
 					<N8nSettingsRow
 						v-if="showCredentialsRows"
 						:class="{ [$style.dim]: isOff }"
@@ -541,10 +549,10 @@ async function handleDataSharingToggle(value: boolean) {
 			</N8nSettingsSection>
 
 			<!-- Experiment cleanup: remove with openWorkflowInAssistant. -->
-			<DefaultEditorSetting />
+			<DefaultEditorSetting v-if="isEnabled" />
 
 			<N8nSettingsSection
-				:class="{ [$style.dim]: isOff }"
+				v-if="isEnabled"
 				:title="i18n.baseText('settings.n8nAgent.capabilities.title')"
 				:description="i18n.baseText('settings.n8nAgent.capabilities.description')"
 			>
@@ -612,7 +620,7 @@ async function handleDataSharingToggle(value: boolean) {
 			</N8nSettingsSection>
 
 			<N8nSettingsSection
-				:class="{ [$style.dim]: isOff }"
+				v-if="isEnabled"
 				:title="i18n.baseText('settings.n8nAgent.mcp.title')"
 				:description="i18n.baseText('settings.n8nAgent.mcp.description')"
 			>
@@ -635,9 +643,9 @@ async function handleDataSharingToggle(value: boolean) {
 			</N8nSettingsSection>
 
 			<N8nSettingsSection
-				:class="{ [$style.dim]: isOff }"
+				v-if="isEnabled"
 				:title="i18n.baseText('settings.n8nAgent.permissions.title')"
-				:description="i18n.baseText('settings.n8nAgent.permissions.description')"
+				:description="permissionsDescription"
 			>
 				<N8nSettingsRowGroup>
 					<N8nSettingsRow
@@ -693,7 +701,7 @@ async function handleDataSharingToggle(value: boolean) {
 			</N8nSettingsSection>
 
 			<N8nSettingsSection
-				:class="{ [$style.dim]: isOff }"
+				v-if="isEnabled"
 				:title="i18n.baseText('settings.n8nAgent.dataSharing.title')"
 			>
 				<template #description>
@@ -759,7 +767,7 @@ async function handleDataSharingToggle(value: boolean) {
 
 		<!-- Experiment cleanup: remove with openWorkflowInAssistant. Members see
 		none of the admin sections above, so they get the row on its own. -->
-		<DefaultEditorSetting v-if="!isAdmin && !store.isLoading && !neverConfigured" />
+		<DefaultEditorSetting v-if="!isAdmin && !store.isLoading && !neverConfigured && isEnabled" />
 
 		<ConnectionDialog
 			v-if="showCredentialsRows && !isModelReadOnly"

@@ -7,7 +7,7 @@ import type {
 	INodeType,
 	INodeTypeDescription,
 } from 'n8n-workflow';
-import { NodeConnectionTypes } from 'n8n-workflow';
+import { decodePathValue, NodeConnectionTypes, requestPath } from 'n8n-workflow';
 
 import { storyblokApiRequest, storyblokApiRequestAllItems } from './GenericFunctions';
 import { storyContentFields, storyContentOperations } from './StoryContentDescription';
@@ -19,7 +19,8 @@ export class Storyblok implements INodeType {
 		name: 'storyblok',
 		icon: 'file:storyblok.svg',
 		group: ['output'],
-		version: 1,
+		version: [1, 1.1],
+		defaultVersion: 1.1,
 		subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',
 		description: 'Consume Storyblok API',
 		defaults: {
@@ -117,7 +118,7 @@ export class Storyblok implements INodeType {
 		loadOptions: {
 			async getSpaces(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
-				const { spaces } = await storyblokApiRequest.call(this, 'GET', '/v1/spaces');
+				const { spaces } = await storyblokApiRequest.call(this, 'GET', requestPath`/v1/spaces`);
 				for (const space of spaces) {
 					returnData.push({
 						name: space.name,
@@ -132,7 +133,7 @@ export class Storyblok implements INodeType {
 				const { components } = await storyblokApiRequest.call(
 					this,
 					'GET',
-					`/v1/spaces/${space}/components`,
+					requestPath`/v1/spaces/${space}/components`,
 				);
 				for (const component of components) {
 					returnData.push({
@@ -154,17 +155,26 @@ export class Storyblok implements INodeType {
 		const source = this.getNodeParameter('source', 0) as string;
 		const resource = this.getNodeParameter('resource', 0);
 		const operation = this.getNodeParameter('operation', 0);
+		const nodeVersion = this.getNode().typeVersion;
 		for (let i = 0; i < length; i++) {
 			try {
 				if (source === 'contentApi') {
 					if (resource === 'story') {
 						if (operation === 'get') {
-							const identifier = this.getNodeParameter('identifier', i) as string;
+							const identifier = String(this.getNodeParameter('identifier', i));
+							const storyPath = identifier
+								.split('/')
+								.filter(Boolean)
+								.reduce(
+									(path, segment) =>
+										requestPath`${path}/${nodeVersion < 1.1 ? decodePathValue(segment) : segment}`,
+									requestPath`/v1/cdn/stories`,
+								);
 
 							responseData = await storyblokApiRequest.call(
 								this,
 								'GET',
-								`/v1/cdn/stories/${identifier}`,
+								identifier.endsWith('/') ? requestPath`${storyPath}/` : storyPath,
 							);
 							responseData = responseData.story;
 						}
@@ -178,7 +188,7 @@ export class Storyblok implements INodeType {
 									this,
 									'stories',
 									'GET',
-									'/v1/cdn/stories',
+									requestPath`/v1/cdn/stories`,
 									{},
 									qs,
 								);
@@ -188,7 +198,7 @@ export class Storyblok implements INodeType {
 								responseData = await storyblokApiRequest.call(
 									this,
 									'GET',
-									'/v1/cdn/stories',
+									requestPath`/v1/cdn/stories`,
 									{},
 									qs,
 								);
@@ -262,7 +272,7 @@ export class Storyblok implements INodeType {
 							responseData = await storyblokApiRequest.call(
 								this,
 								'DELETE',
-								`/v1/spaces/${space}/stories/${storyId}`,
+								requestPath`/v1/spaces/${space}/stories/${storyId}`,
 							);
 							responseData = responseData.story;
 						}
@@ -273,7 +283,7 @@ export class Storyblok implements INodeType {
 							responseData = await storyblokApiRequest.call(
 								this,
 								'GET',
-								`/v1/spaces/${space}/stories/${storyId}`,
+								requestPath`/v1/spaces/${space}/stories/${storyId}`,
 							);
 							responseData = responseData.story;
 						}
@@ -288,7 +298,7 @@ export class Storyblok implements INodeType {
 									this,
 									'stories',
 									'GET',
-									`/v1/spaces/${space}/stories`,
+									requestPath`/v1/spaces/${space}/stories`,
 									{},
 									qs,
 								);
@@ -298,7 +308,7 @@ export class Storyblok implements INodeType {
 								responseData = await storyblokApiRequest.call(
 									this,
 									'GET',
-									`/v1/spaces/${space}/stories`,
+									requestPath`/v1/spaces/${space}/stories`,
 									{},
 									qs,
 								);
@@ -321,7 +331,7 @@ export class Storyblok implements INodeType {
 							responseData = await storyblokApiRequest.call(
 								this,
 								'GET',
-								`/v1/spaces/${space}/stories/${storyId}/publish`,
+								requestPath`/v1/spaces/${space}/stories/${storyId}/publish`,
 								{},
 								query,
 							);
@@ -334,7 +344,7 @@ export class Storyblok implements INodeType {
 							responseData = await storyblokApiRequest.call(
 								this,
 								'GET',
-								`/v1/spaces/${space}/stories/${storyId}/unpublish`,
+								requestPath`/v1/spaces/${space}/stories/${storyId}/unpublish`,
 							);
 							responseData = responseData.story;
 						}

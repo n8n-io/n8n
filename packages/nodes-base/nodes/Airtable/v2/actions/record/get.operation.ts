@@ -5,6 +5,7 @@ import type {
 	NodeApiError,
 	IExecuteFunctions,
 } from 'n8n-workflow';
+import { requestPath } from 'n8n-workflow';
 
 import { updateDisplayOptions, wrapData } from '../../../../../utils/utilities';
 import type { IRecord } from '../../helpers/interfaces';
@@ -71,7 +72,7 @@ export async function execute(
 		try {
 			id = this.getNodeParameter('id', i) as string;
 
-			const responseData = await apiRequest.call(this, 'GET', `${base}/${table}/${id}`);
+			const responseData = await apiRequest.call(this, 'GET', requestPath`${base}/${table}/${id}`);
 
 			const options = this.getNodeParameter('options', 0, {});
 

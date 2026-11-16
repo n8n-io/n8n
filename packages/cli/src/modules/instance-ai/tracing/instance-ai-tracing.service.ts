@@ -43,11 +43,7 @@ export interface MessageTraceFinalization {
 	error?: string;
 }
 
-export type OrchestratorResumeReason =
-	| 'approval'
-	| 'background_task_completed'
-	| 'workflow_verification'
-	| 'workflow_setup';
+export type OrchestratorResumeReason = 'approval' | 'workflow_setup';
 
 // The slice of each collaborator the tracing service actually uses. Anchored to
 // the concrete types via `Pick` so the signatures stay in sync with the source.

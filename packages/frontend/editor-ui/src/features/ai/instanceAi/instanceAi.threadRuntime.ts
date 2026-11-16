@@ -1,4 +1,4 @@
-import { computed, nextTick, reactive, ref, shallowRef, triggerRef, watch } from 'vue';
+import { computed, reactive, ref, shallowRef, triggerRef, watch } from 'vue';
 import { v4 as uuidv4 } from 'uuid';
 import { ResponseError } from '@n8n/rest-api-client';
 import {
@@ -9,6 +9,7 @@ import {
 	isSafeObjectKey,
 	resolveBuilderToolName,
 	WORKFLOW_BUILDER_TOOL_NAMES,
+	type InstanceAiApprovalMode,
 	type InstanceAiConfirmation,
 	type InstanceAiConfirmRequest,
 	type InstanceAiConfirmResponse,
@@ -90,7 +91,10 @@ import {
 	syncLiveRunFromStatus,
 } from './instanceAi.liveRunState';
 import { isInstanceAiThreadSource } from './constants';
-import { instanceAiResponseNow } from './instanceAi.responseTiming';
+import {
+	instanceAiResponseNow,
+	observeInstanceAiResponseRender,
+} from './instanceAi.responseTiming';
 
 /**
  * State the editor handed off, snapshotted before its stores are torn down so
@@ -122,6 +126,8 @@ type SetupChatTelemetryContext = Pick<
 >;
 
 const MAX_DEBUG_EVENTS = 1000;
+/** Stored message rows per history read. One rendered turn can span many rows. */
+const HISTORY_PAGE_SIZE = 100;
 /** Tool calls that end the onboarding flow: the agent's explicit exit, or the start of a build. */
 /** How an onboarding thread ended; the telemetry value of each exit. */
 export type OnboardingExitOutcome = 'build' | 'left' | 'run_failed';
@@ -278,6 +284,24 @@ export function getPendingAppTargetFromThreadMetadata(
 		return undefined;
 	}
 	return { appId: target.appId, projectId: target.projectId };
+}
+
+/** Whether the thread builds or edits an agent. Auto approval mode does not apply there. */
+export function threadTargetsAgent(metadata: Record<string, unknown> | undefined): boolean {
+	return (
+		getAgentBuilderTargetFromThreadMetadata(metadata) !== undefined ||
+		getAgentBuilderTargetsFromThreadMetadata(metadata).length > 0 ||
+		getPendingAgentTargetFromThreadMetadata(metadata) !== undefined
+	);
+}
+
+/** The approval mode that the backend uses for the run of a message sent now. */
+export function messageApprovalMode(
+	settings: { approvalModesAvailable: boolean; approvalMode: InstanceAiApprovalMode },
+	buildsAgent: boolean,
+): InstanceAiApprovalMode | 'unavailable' {
+	if (!settings.approvalModesAvailable) return 'unavailable';
+	return buildsAgent ? 'manual' : settings.approvalMode;
 }
 
 export function getAgentPreviewViewFromThreadMetadata(
@@ -561,6 +585,8 @@ export function createThreadRuntime(
 	const resolvedConfirmationIds = reactive(new Map<string, 'approved' | 'denied' | 'deferred'>());
 	const pendingMessageCount = ref(0);
 	const hydrationStatus = ref<'idle' | 'hydrating' | 'ready'>('idle');
+	/** Server cursor of the next older history page. `undefined` once the thread start is loaded. */
+	const olderMessagesCursor = ref<string>();
 	const sseState = ref<InstanceAiSSEConnectionState>('disconnected');
 	const lastEventId = ref<number | undefined>(undefined);
 	/** Focused preview tab id while the artifacts preview is open. */
@@ -636,6 +662,7 @@ export function createThreadRuntime(
 	const isSendingMessage = computed(() => pendingMessageCount.value > 0);
 	const hasMessages = computed(() => messages.value.length > 0);
 	const isHydratingThread = computed(() => hydrationStatus.value === 'hydrating');
+	const hasOlderMessages = computed(() => olderMessagesCursor.value !== undefined);
 	const artifactTurns = computed(() => toArtifactTurns(messages.value));
 
 	const {
@@ -739,21 +766,12 @@ export function createThreadRuntime(
 		return event.payload.status === 'completed' ? 'completed' : null;
 	}
 
-	async function observeResponseRender(): Promise<{ atEpochMs: number; tabVisible: boolean }> {
-		await nextTick();
-		const tabVisible = document.visibilityState === 'visible';
-		if (tabVisible) {
-			await new Promise<void>((resolve) => requestAnimationFrame(() => resolve()));
-		}
-		return { atEpochMs: instanceAiResponseNow(), tabVisible };
-	}
-
 	function createResponseSignal(responseKind: ResponseKind | null): ResponseSignal {
 		if (responseKind === null) return { kind: 'discard' };
 		return {
 			kind: 'received',
 			responseKind,
-			rendered: observeResponseRender(),
+			rendered: observeInstanceAiResponseRender(),
 		};
 	}
 
@@ -820,6 +838,11 @@ export function createThreadRuntime(
 
 	// Scoped to the active run's message (not all messages) so a stale
 	// confirmation left on an older message can't suppress stall detection.
+	/**
+	 * True while the active run is paused until the user resolves a confirmation of
+	 * any kind, including the ones that the timeline renders inline. Unlike
+	 * `isAwaitingConfirmation`, it is false once the run has ended.
+	 */
 	const isAwaitingUserInput = computed(() => {
 		const runId = activeRunId.value;
 		if (runId === null) return false;
@@ -1010,6 +1033,7 @@ export function createThreadRuntime(
 							input_thread_id: conf.inputThreadId ?? '',
 							instance_id: rootStore.instanceId,
 							type: 'approval',
+							runtime: 'instance-ai',
 							provided_inputs: [
 								{
 									label: conf.message,
@@ -1332,6 +1356,7 @@ export function createThreadRuntime(
 		hydrationGeneration += 1;
 		hydrationPromise = null;
 		hydrationStatus.value = 'idle';
+		olderMessagesCursor.value = undefined;
 		messages.value = [];
 		archivedWorkflowIds.value = new Set();
 		latestTasks.value = null;
@@ -1376,7 +1401,11 @@ export function createThreadRuntime(
 
 		const promise = (async (): Promise<HistoricalHydrationStatus> => {
 			try {
-				const result = await fetchThreadMessagesApi(rootStore.restApiContext, threadId, 100);
+				const result = await fetchThreadMessagesApi(
+					rootStore.restApiContext,
+					threadId,
+					HISTORY_PAGE_SIZE,
+				);
 				if (capturedHydrationGeneration !== hydrationGeneration) return 'stale';
 				// A live event that arrived while the request was in flight is newer than
 				// the persisted fact, so it wins. Parsed like the SSE path parses its frames,
@@ -1387,6 +1416,7 @@ export function createThreadRuntime(
 				}
 				// Only hydrate if SSE hasn't delivered messages while the request was in flight.
 				if (messages.value.length > 0) return 'skipped';
+				olderMessagesCursor.value = result.nextCursor;
 				// Backend now returns InstanceAiMessage[] directly — no conversion needed.
 				if (result.messages.length > 0) {
 					for (const msg of result.messages) {
@@ -1425,6 +1455,53 @@ export function createThreadRuntime(
 
 		hydrationPromise = promise;
 		return await promise;
+	}
+
+	/** Prepends the history page before the oldest loaded message. Throws when the request fails. */
+	async function loadOlderMessages(): Promise<void> {
+		const cursor = olderMessagesCursor.value;
+		if (cursor === undefined) return;
+		const capturedHydrationGeneration = hydrationGeneration;
+
+		const result = await fetchThreadMessagesApi(
+			rootStore.restApiContext,
+			threadId,
+			HISTORY_PAGE_SIZE,
+			undefined,
+			cursor,
+		);
+		if (capturedHydrationGeneration !== hydrationGeneration) return;
+		// A message group can show on both sides of a page edge, for example when a
+		// background run outlives its turn. The loaded copy is newer, so it wins.
+		const loadedIds = new Set(messages.value.map((msg) => msg.id));
+		const loadedGroupIds = new Set(messages.value.map((msg) => msg.messageGroupId));
+		const older = result.messages.filter(
+			(msg) =>
+				!loadedIds.has(msg.id) && !(msg.messageGroupId && loadedGroupIds.has(msg.messageGroupId)),
+		);
+		for (const msg of older) {
+			if (msg.agentTree) normalizeAgentTreeToolNames(msg.agentTree);
+		}
+		// The older page holds past builds and agent changes. The watchers that open
+		// the preview or send events for new ones run synchronously and skip them
+		// while the thread hydrates.
+		hydrationStatus.value = 'hydrating';
+		try {
+			messages.value = [...older, ...messages.value];
+		} finally {
+			hydrationStatus.value = 'ready';
+		}
+		olderMessagesCursor.value = result.nextCursor;
+
+		// Same routing rebuild as the first page, so a resumed older run (an old
+		// confirmation the user approves now) reduces into its existing state.
+		const routing = buildRoutingFromMessages(older);
+		routing.runStateByGroupId.forEach((value, key) => {
+			if (!runStateByGroupId.has(key)) runStateByGroupId.set(key, value);
+		});
+		routing.groupIdByRunId.forEach((value, key) => {
+			if (!groupIdByRunId.has(key)) groupIdByRunId.set(key, value);
+		});
 	}
 
 	async function loadThreadStatus(): Promise<void> {
@@ -1539,6 +1616,10 @@ export function createThreadRuntime(
 			prefill_type: isPrefill ? authorship.prefillType : null,
 			prefill_id: isPrefill ? (authorship.prefillId ?? null) : null,
 			prompt_modified: isPrefill ? (authorship.promptModified ?? false) : null,
+			approval_mode: messageApprovalMode(
+				instanceAiSettingsStore,
+				threadTargetsAgent(hooks.getThreadMetadata?.(threadId)),
+			),
 			mention_counts: mentionCounts,
 			attachment_count: attachmentCount,
 			selected_element_count: selectedElementCount,
@@ -1802,6 +1883,7 @@ export function createThreadRuntime(
 		isSendingMessage,
 		hasMessages,
 		isHydratingThread,
+		hasOlderMessages,
 		artifactTurns,
 		producedArtifacts,
 		resourceNameIndex,
@@ -1818,6 +1900,7 @@ export function createThreadRuntime(
 		contextualSuggestion,
 		pendingConfirmations,
 		isAwaitingConfirmation,
+		isAwaitingUserInput,
 
 		// actions
 		setPendingHandoff,
@@ -1835,6 +1918,7 @@ export function createThreadRuntime(
 		connectSSE,
 		closeSSE,
 		loadHistoricalMessages,
+		loadOlderMessages,
 		loadThreadStatus,
 		registerSetupChatTelemetryContext,
 		sendMessage,

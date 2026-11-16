@@ -1,0 +1,416 @@
+{
+	"name": "AgileCrm Requests",
+	"nodes": [
+		{
+			"parameters": {},
+			"id": "trigger",
+			"name": "When clicking \"Execute Workflow\"",
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [0, 0]
+		},
+		{
+			"parameters": {
+				"resource": "contact",
+				"operation": "get",
+				"contactId": "5629499534213120"
+			},
+			"id": "agilecrm-0",
+			"name": "Contact Get",
+			"type": "n8n-nodes-base.agileCrm",
+			"typeVersion": 1,
+			"position": [300, 0],
+			"credentials": {
+				"agileCrmApi": {
+					"id": "1",
+					"name": "AgileCRM account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "contact",
+				"operation": "delete",
+				"contactId": "5629499534213120"
+			},
+			"id": "agilecrm-1",
+			"name": "Contact Delete",
+			"type": "n8n-nodes-base.agileCrm",
+			"typeVersion": 1,
+			"position": [300, 150],
+			"credentials": {
+				"agileCrmApi": {
+					"id": "1",
+					"name": "AgileCRM account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "contact",
+				"operation": "getAll",
+				"limit": 2
+			},
+			"id": "agilecrm-2",
+			"name": "Contact Get Many",
+			"type": "n8n-nodes-base.agileCrm",
+			"typeVersion": 1,
+			"position": [300, 300],
+			"credentials": {
+				"agileCrmApi": {
+					"id": "1",
+					"name": "AgileCRM account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "contact",
+				"operation": "create",
+				"additionalFields": {
+					"firstName": "Nathan"
+				}
+			},
+			"id": "agilecrm-3",
+			"name": "Contact Create",
+			"type": "n8n-nodes-base.agileCrm",
+			"typeVersion": 1,
+			"position": [300, 450],
+			"credentials": {
+				"agileCrmApi": {
+					"id": "1",
+					"name": "AgileCRM account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "contact",
+				"operation": "update",
+				"contactId": "5629499534213120",
+				"additionalFields": {
+					"firstName": "Nathan",
+					"leadScore": 10,
+					"starValue": 3,
+					"tags": ["lead"]
+				}
+			},
+			"id": "agilecrm-4",
+			"name": "Contact Update",
+			"type": "n8n-nodes-base.agileCrm",
+			"typeVersion": 1,
+			"position": [300, 600],
+			"credentials": {
+				"agileCrmApi": {
+					"id": "1",
+					"name": "AgileCRM account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "company",
+				"operation": "get",
+				"companyId": "5707702298738688"
+			},
+			"id": "agilecrm-5",
+			"name": "Company Get",
+			"type": "n8n-nodes-base.agileCrm",
+			"typeVersion": 1,
+			"position": [300, 750],
+			"credentials": {
+				"agileCrmApi": {
+					"id": "1",
+					"name": "AgileCRM account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "deal",
+				"operation": "get",
+				"dealId": "5649050225344512"
+			},
+			"id": "agilecrm-6",
+			"name": "Deal Get",
+			"type": "n8n-nodes-base.agileCrm",
+			"typeVersion": 1,
+			"position": [300, 900],
+			"credentials": {
+				"agileCrmApi": {
+					"id": "1",
+					"name": "AgileCRM account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "deal",
+				"operation": "delete",
+				"dealId": "5649050225344512"
+			},
+			"id": "agilecrm-7",
+			"name": "Deal Delete",
+			"type": "n8n-nodes-base.agileCrm",
+			"typeVersion": 1,
+			"position": [300, 1050],
+			"credentials": {
+				"agileCrmApi": {
+					"id": "1",
+					"name": "AgileCRM account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "deal",
+				"operation": "getAll",
+				"limit": 2
+			},
+			"id": "agilecrm-8",
+			"name": "Deal Get Many",
+			"type": "n8n-nodes-base.agileCrm",
+			"typeVersion": 1,
+			"position": [300, 1200],
+			"credentials": {
+				"agileCrmApi": {
+					"id": "1",
+					"name": "AgileCRM account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "deal",
+				"operation": "create",
+				"jsonParameters": true,
+				"additionalFieldsJson": "{\"name\":\"Renewal\",\"expected_value\":500}"
+			},
+			"id": "agilecrm-9",
+			"name": "Deal Create",
+			"type": "n8n-nodes-base.agileCrm",
+			"typeVersion": 1,
+			"position": [300, 1350],
+			"credentials": {
+				"agileCrmApi": {
+					"id": "1",
+					"name": "AgileCRM account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "deal",
+				"operation": "update",
+				"dealId": "5649050225344512",
+				"jsonParameters": true,
+				"additionalFieldsJson": "{\"id\":5649050225344512,\"probability\":50}"
+			},
+			"id": "agilecrm-10",
+			"name": "Deal Update",
+			"type": "n8n-nodes-base.agileCrm",
+			"typeVersion": 1,
+			"position": [300, 1500],
+			"credentials": {
+				"agileCrmApi": {
+					"id": "1",
+					"name": "AgileCRM account"
+				}
+			}
+		}
+	],
+	"pinData": {
+		"Contact Get": [
+			{
+				"json": {
+					"id": 5629499534213120,
+					"type": "PERSON",
+					"properties": [
+						{
+							"type": "SYSTEM",
+							"name": "first_name",
+							"value": "Nathan"
+						}
+					]
+				}
+			}
+		],
+		"Contact Delete": [
+			{
+				"json": {}
+			}
+		],
+		"Contact Get Many": [
+			{
+				"json": {
+					"id": 5629499534213120,
+					"type": "PERSON",
+					"properties": [
+						{
+							"type": "SYSTEM",
+							"name": "first_name",
+							"value": "Nathan"
+						}
+					]
+				}
+			}
+		],
+		"Contact Create": [
+			{
+				"json": {
+					"id": 5629499534213120,
+					"type": "PERSON",
+					"properties": [
+						{
+							"type": "SYSTEM",
+							"name": "first_name",
+							"value": "Nathan"
+						}
+					]
+				}
+			}
+		],
+		"Contact Update": [
+			{
+				"json": {
+					"id": 5629499534213120,
+					"type": "PERSON",
+					"properties": [
+						{
+							"type": "SYSTEM",
+							"name": "first_name",
+							"value": "Nathan"
+						}
+					]
+				}
+			}
+		],
+		"Company Get": [
+			{
+				"json": {
+					"id": 5707702298738688,
+					"type": "COMPANY",
+					"properties": [
+						{
+							"type": "SYSTEM",
+							"name": "name",
+							"value": "Acme Corp"
+						}
+					]
+				}
+			}
+		],
+		"Deal Get": [
+			{
+				"json": {
+					"id": 5649050225344512,
+					"name": "Renewal",
+					"expected_value": 500,
+					"probability": 50
+				}
+			}
+		],
+		"Deal Delete": [
+			{
+				"json": {}
+			}
+		],
+		"Deal Get Many": [
+			{
+				"json": {
+					"id": 5649050225344512,
+					"name": "Renewal",
+					"expected_value": 500,
+					"probability": 50
+				}
+			}
+		],
+		"Deal Create": [
+			{
+				"json": {
+					"id": 5649050225344512,
+					"name": "Renewal",
+					"expected_value": 500,
+					"probability": 50
+				}
+			}
+		],
+		"Deal Update": [
+			{
+				"json": {
+					"id": 5649050225344512,
+					"name": "Renewal",
+					"expected_value": 500,
+					"probability": 50
+				}
+			}
+		]
+	},
+	"connections": {
+		"When clicking \"Execute Workflow\"": {
+			"main": [
+				[
+					{
+						"node": "Contact Get",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Contact Delete",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Contact Get Many",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Contact Create",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Contact Update",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Company Get",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Deal Get",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Deal Delete",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Deal Get Many",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Deal Create",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Deal Update",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"active": false,
+	"settings": {
+		"executionOrder": "v1"
+	}
+}

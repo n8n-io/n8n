@@ -1,4 +1,4 @@
-import { UnexpectedError, UserError } from 'n8n-workflow';
+import { UnexpectedError, UserError } from '@n8n/errors';
 
 const quote = (names: string[]) => names.map((name) => `"${name}"`).join(', ');
 

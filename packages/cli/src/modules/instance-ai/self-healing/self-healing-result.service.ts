@@ -4,6 +4,7 @@ import {
 	type WorkflowSuggestionGraph,
 	selfHealingResultContentSchema,
 	type SelfHealingExecutionReference,
+	type SelfHealingOriginalAction,
 	type SelfHealingResultDetail,
 	type SelfHealingResultActionResponse,
 	type SelfHealingResultWorkflow,
@@ -24,12 +25,15 @@ import {
 import { Service } from '@n8n/di';
 import type { SelfHealingOutput } from '@n8n/instance-ai';
 import { ConflictError, ForbiddenError, NotFoundError, UnexpectedError } from '@n8n/errors';
+import { TELEMETRY_EVENT } from '@n8n/telemetry';
 import sortBy from 'lodash/sortBy';
 import uniqBy from 'lodash/uniqBy';
 
+import { Telemetry } from '@/telemetry';
 import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 
 import type { InboxSourceQuery } from '../../inbox/inbox-source.registry';
+import { afterCommit, runInTransaction } from '../after-commit';
 import { WorkflowSuggestionActionsService } from '../workflow-suggestions/workflow-suggestion-actions.service';
 import { hasGraphChanges } from '../workflow-suggestions/workflow-suggestion-graph';
 import {
@@ -79,7 +83,40 @@ export class SelfHealingResultService {
 		private readonly configurationService: SelfHealingConfigurationService,
 		private readonly dependencies: WorkflowDependencyRepository,
 		private readonly workflowFinder: WorkflowFinderService,
+		private readonly telemetry: Telemetry,
 	) {}
+
+	private trackState(
+		result: SelfHealingResult,
+		newState: SelfHealingResultDetail['reviewState'],
+		changedWorkflowCount: number,
+		change: {
+			userId?: string;
+			originalAction?: SelfHealingOriginalAction;
+			published?: boolean;
+		} = {},
+	) {
+		this.telemetry.track(TELEMETRY_EVENT.SELF_HEALING.SELF_HEALING_CHANGED_RESULT_STATE, {
+			result_id: result.id,
+			workflow_id: result.workflowId,
+			project_id: result.projectId,
+			result_kind: result.outcome,
+			new_state: newState,
+			// A system change is attributed to the user who enabled the configuration.
+			user_id: change.userId ?? result.backgroundUserId,
+			original_action: change.originalAction ?? null,
+			changed_workflow_count: changedWorkflowCount,
+			published: change.published ?? null,
+		});
+	}
+
+	/** Report a result that closed because one of its workflows changed. */
+	async trackOutdated(resultId: string) {
+		const result = await this.results.findById(resultId);
+		if (!result) return;
+		const suggestions = await this.suggestions.getForResult(resultId);
+		this.trackState(result, 'outdated', suggestions.length);
+	}
 
 	private async getInboxAccess(userId: string) {
 		const user = await this.users.findByIdWithRole(userId);
@@ -139,7 +176,7 @@ export class SelfHealingResultService {
 		const { content, completedAt, suggestions } = await this.prepareResult(investigation, input);
 		signal?.throwIfAborted();
 
-		return await this.txRunner.run({}, async (ctx) => {
+		return await runInTransaction(this.txRunner, {}, async (ctx) => {
 			const configuration = await this.configurations.findForUpdate(
 				investigation.configurationId,
 				investigation.projectId,
@@ -192,6 +229,7 @@ export class SelfHealingResultService {
 			await this.investigations.completeWithResult(investigationId, result.id, ctx);
 			// Abort before commit so the result and its suggestions roll back together.
 			signal?.throwIfAborted();
+			afterCommit(ctx, () => this.trackState(result, result.reviewState, suggestions.length));
 			return result;
 		});
 	}
@@ -368,6 +406,7 @@ export class SelfHealingResultService {
 		resultId: string,
 		action: WorkflowSuggestionAppliedVersion['action'],
 		clientId?: string,
+		originalAction?: SelfHealingOriginalAction,
 	): Promise<SelfHealingResultActionResponse> {
 		const { result, reviewer, suggestions } = await this.getResultForEditor(
 			user,
@@ -394,6 +433,14 @@ export class SelfHealingResultService {
 			result.executionId,
 		);
 		const current = await this.results.getResult(resultId, { projectId, workflowId });
+		// An outdated close is reported where it occurs.
+		if (result.reviewState === 'open' && current.reviewState === 'applied') {
+			this.trackState(current, 'applied', suggestions.length, {
+				userId: reviewer.id,
+				originalAction,
+				published: action === 'approve-and-publish' && publication.publishError === undefined,
+			});
+		}
 		const proposals = await this.suggestions.getProposals(
 			reviewer,
 			projectId,
@@ -406,8 +453,14 @@ export class SelfHealingResultService {
 		};
 	}
 
-	async dismiss(user: User, projectId: string, workflowId: string, resultId: string) {
-		const outcome = await this.txRunner.run({}, async (ctx) => {
+	async dismiss(
+		user: User,
+		projectId: string,
+		workflowId: string,
+		resultId: string,
+		originalAction?: SelfHealingOriginalAction,
+	) {
+		const outcome = await runInTransaction(this.txRunner, {}, async (ctx) => {
 			const { result, reviewer, suggestions } = await this.getResultForEditor(
 				user,
 				projectId,
@@ -420,15 +473,22 @@ export class SelfHealingResultService {
 			if (!suggestions.some((suggestion) => suggestion.workflowId === workflowId)) {
 				await this.requireCurrentProject(workflowId, projectId, ctx);
 			}
+			const trackDismissed = () =>
+				afterCommit(ctx, () =>
+					this.trackState(result, 'dismissed', suggestions.length, {
+						userId: user.id,
+						originalAction,
+					}),
+				);
 			if (suggestions.length > 0) {
-				return await this.actions.discardPending(reviewer, projectId, suggestions, ctx);
+				const discard = await this.actions.discardPending(reviewer, projectId, suggestions, ctx);
+				if (discard === 'discarded') trackDismissed();
+				return discard;
 			}
-			if (
-				result.reviewState !== 'closed' &&
-				!(await this.results.closeResult(result.id, 'dismissed', ctx))
-			) {
-				return 'already_closed';
-			}
+			// A Could not fix result is created closed. A dismiss request changes nothing.
+			if (result.reviewState === 'closed') return 'dismissed';
+			if (!(await this.results.closeResult(result.id, 'dismissed', ctx))) return 'already_closed';
+			trackDismissed();
 			return 'dismissed';
 		});
 

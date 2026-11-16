@@ -5,7 +5,10 @@ import pick from 'lodash/pick';
 import { ensureError } from '@n8n/utils/errors/ensure-error';
 import { type ExecutionStatus, type IRun, type IWorkflowBase } from 'n8n-workflow';
 
-import { ExecutionPersistence } from '@/executions/execution-persistence';
+import {
+	ExecutionPersistence,
+	type ExecutionOutcomeSaveResult,
+} from '@/executions/execution-persistence';
 import type { UpdateExecutionPayload } from '@/interfaces';
 import { ExecutionMetadataService } from '@/services/execution-metadata.service';
 import { isWorkflowIdValid } from '@/utils';
@@ -92,12 +95,12 @@ export async function updateExistingExecutionMetadata(
 	}
 }
 
-export async function updateExistingExecution(parameters: {
+export async function saveExecutionOutcome(parameters: {
 	executionId: string;
 	workflowId: string;
 	executionData: Partial<IExecutionDb>;
 	conditions?: UpdateExecutionConditions;
-}) {
+}): Promise<ExecutionOutcomeSaveResult> {
 	const logger = Container.get(Logger);
 	const { executionId, workflowId, executionData, conditions } = parameters;
 	// Leave log message before flatten as that operation increased memory usage a lot and the chance of a crash is highest here
@@ -110,26 +113,35 @@ export async function updateExistingExecution(parameters: {
 	});
 
 	const executionPersistence = Container.get(ExecutionPersistence);
-	const updated = await executionPersistence.updateExistingExecution(
+	const result = await executionPersistence.saveExecutionOutcome(
 		executionId,
 		executionData,
 		conditions,
 	);
 
-	if (!updated) {
+	if (!result.updated) {
 		logger.debug(
 			`Skipped saving execution data for execution ID ${executionId} - update conditions not met`,
 			{ executionId, workflowId },
 		);
-		return updated;
+		return result;
 	}
 
 	// oxlint-disable-next-line typescript/no-deprecated
 	if (executionData.finished === true && executionData.retryOf !== undefined) {
-		await executionPersistence.updateExistingExecution(executionData.retryOf, {
-			retrySuccessId: executionId,
-		});
+		// The save is committed, so a failed link must not hide that this write ended the run.
+		try {
+			await executionPersistence.updateExistingExecution(executionData.retryOf, {
+				retrySuccessId: executionId,
+			});
+		} catch (e) {
+			const error = ensureError(e);
+			logger.error(
+				`Failed to link execution ${executionId} to the execution it retried: ${error.message}`,
+				{ executionId, retryOf: executionData.retryOf, error },
+			);
+		}
 	}
 
-	return updated;
+	return result;
 }
