@@ -7,34 +7,34 @@ import type {
 	KnowledgeSandboxHandle,
 	KnowledgeSandboxProvider,
 } from '../knowledge-sandbox-provider';
-import { KnowledgeSandboxProviderRegistry } from '../knowledge-sandbox-provider-proxy';
+import { KnowledgeSandboxProviderProxy } from '../knowledge-sandbox-provider-proxy';
 
 const scope: KnowledgeConsumerScope = { kind: 'agent', projectId: 'project-1', agentId: 'agent-1' };
 
-describe('KnowledgeSandboxProviderRegistry', () => {
-	let registry: KnowledgeSandboxProviderRegistry;
+describe('KnowledgeSandboxProviderProxy', () => {
+	let proxy: KnowledgeSandboxProviderProxy;
 	let provider: ReturnType<typeof mock<KnowledgeSandboxProvider>>;
 
 	beforeEach(() => {
-		registry = new KnowledgeSandboxProviderRegistry();
+		proxy = new KnowledgeSandboxProviderProxy();
 		provider = mock<KnowledgeSandboxProvider>();
 	});
 
 	it('reports no provider until a consumer registers one', () => {
-		expect(registry.isRegistered).toBe(false);
+		expect(proxy.isRegistered).toBe(false);
 
-		registry.register(provider);
+		proxy.register(provider);
 
-		expect(registry.isRegistered).toBe(true);
+		expect(proxy.isRegistered).toBe(true);
 	});
 
 	describe('with a registered provider', () => {
 		beforeEach(() => {
-			registry.register(provider);
+			proxy.register(provider);
 		});
 
 		it('delegates assertConfiguration with the scope', () => {
-			registry.assertConfiguration(scope);
+			proxy.assertConfiguration(scope);
 
 			expect(provider.assertConfiguration).toHaveBeenCalledWith(scope);
 		});
@@ -43,7 +43,7 @@ describe('KnowledgeSandboxProviderRegistry', () => {
 			const handle = mock<KnowledgeSandboxHandle>({ cacheKey: 'daytona:knowledge:sandbox-1' });
 			provider.acquire.mockResolvedValue(handle);
 
-			await expect(registry.acquire(scope)).resolves.toBe(handle);
+			await expect(proxy.acquire(scope)).resolves.toBe(handle);
 			expect(provider.acquire).toHaveBeenCalledWith(scope);
 		});
 
@@ -52,27 +52,27 @@ describe('KnowledgeSandboxProviderRegistry', () => {
 			const result = mock<CommandResult>({ exitCode: 0, stdout: 'ok' });
 			provider.executeCommand.mockResolvedValue(result);
 
-			await expect(registry.executeCommand(sandbox, 'cat manifest', 120_000)).resolves.toBe(result);
+			await expect(proxy.executeCommand(sandbox, 'cat manifest', 120_000)).resolves.toBe(result);
 			expect(provider.executeCommand).toHaveBeenCalledWith(sandbox, 'cat manifest', 120_000);
 		});
 
 		it('delegates warm with the scope', async () => {
-			await registry.warm(scope);
+			await proxy.warm(scope);
 
 			expect(provider.warm).toHaveBeenCalledWith(scope);
 		});
 
 		it('delegates destroy with the scope', async () => {
-			await registry.destroy(scope);
+			await proxy.destroy(scope);
 
 			expect(provider.destroy).toHaveBeenCalledWith(scope);
 		});
 
 		it('hands every call to the last registered provider', async () => {
 			const replacement = mock<KnowledgeSandboxProvider>();
-			registry.register(replacement);
+			proxy.register(replacement);
 
-			await registry.warm(scope);
+			await proxy.warm(scope);
 
 			expect(replacement.warm).toHaveBeenCalledWith(scope);
 			expect(provider.warm).not.toHaveBeenCalled();
@@ -85,22 +85,22 @@ describe('KnowledgeSandboxProviderRegistry', () => {
 		);
 
 		it('throws on assertConfiguration', () => {
-			expect(() => registry.assertConfiguration(scope)).toThrow(expectedError);
+			expect(() => proxy.assertConfiguration(scope)).toThrow(expectedError);
 		});
 
 		it.each([
-			['acquire', async () => await registry.acquire(scope)],
+			['acquire', async () => await proxy.acquire(scope)],
 			[
 				'executeCommand',
-				async () => await registry.executeCommand(mock<WorkspaceSandbox>(), 'ls', 1_000),
+				async () => await proxy.executeCommand(mock<WorkspaceSandbox>(), 'ls', 1_000),
 			],
-			['warm', async () => await registry.warm(scope)],
+			['warm', async () => await proxy.warm(scope)],
 		])('rejects %s', async (_method, call) => {
 			await expect(call()).rejects.toThrow(expectedError);
 		});
 
 		it('resolves destroy, because teardown never throws and there is no sandbox to delete', async () => {
-			await expect(registry.destroy(scope)).resolves.toBeUndefined();
+			await expect(proxy.destroy(scope)).resolves.toBeUndefined();
 		});
 	});
 });

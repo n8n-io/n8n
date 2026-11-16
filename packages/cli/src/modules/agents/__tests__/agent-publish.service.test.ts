@@ -133,8 +133,8 @@ function makeService({ isKnowledgeActive = true } = {}) {
 	agentTaskRepository.replaceForAgent.mockResolvedValue(false);
 	Container.set(AgentRuntimeCacheService, runtimeCacheService);
 	const agentPolicyService = mock<AgentPolicyService>();
-	const agentFileRepository = mock<KnowledgeFileRepository>();
-	agentFileRepository.getKnowledgeTotals.mockResolvedValue({ fileCount: 0, totalBytes: 0 });
+	const knowledgeFileRepository = mock<KnowledgeFileRepository>();
+	knowledgeFileRepository.getKnowledgeTotals.mockResolvedValue({ fileCount: 0, totalBytes: 0 });
 
 	agentRepository.claimSetupCompleted.mockResolvedValue(true);
 	agentRepository.setActiveVersionFenced.mockResolvedValue(true);
@@ -195,7 +195,7 @@ function makeService({ isKnowledgeActive = true } = {}) {
 		),
 		agentPolicyService,
 		skillRefs,
-		agentFileRepository,
+		knowledgeFileRepository,
 		publishHistory,
 		makeKnowledgeAvailabilityService({ isKnowledgeActive }),
 	);
@@ -204,7 +204,7 @@ function makeService({ isKnowledgeActive = true } = {}) {
 		publishHistory,
 		service,
 		logger,
-		agentFileRepository,
+		knowledgeFileRepository,
 		skillRefs,
 		agentPolicyService,
 		agentUpdateBroadcaster,
@@ -973,16 +973,16 @@ describe('AgentPublishService', () => {
 	] as const)(
 		'adds the knowledge file totals to the %s publish event',
 		async (by, publishedEvent) => {
-			const { service, agentRepository, agentFileRepository, telemetry } = makeService();
+			const { service, agentRepository, knowledgeFileRepository, telemetry } = makeService();
 			agentRepository.findByIdAndProjectId.mockResolvedValue(makeAgent());
-			agentFileRepository.getKnowledgeTotals.mockResolvedValue({
+			knowledgeFileRepository.getKnowledgeTotals.mockResolvedValue({
 				fileCount: 3,
 				totalBytes: 4096,
 			});
 
 			await service.publishAgent(agentId, projectId, person, { by, trigger: 'explicit' });
 
-			expect(agentFileRepository.getKnowledgeTotals).toHaveBeenCalledWith(agentId, {});
+			expect(knowledgeFileRepository.getKnowledgeTotals).toHaveBeenCalledWith(agentId, {});
 			expect(telemetry.track).toHaveBeenCalledWith(
 				publishedEvent,
 				expect.objectContaining({ knowledge_file_count: 3, knowledge_total_bytes: 4096 }),
@@ -991,7 +991,7 @@ describe('AgentPublishService', () => {
 	);
 
 	it('publishes and sends the event without knowledge totals when the knowledge module is inactive', async () => {
-		const { service, agentRepository, agentFileRepository, telemetry, logger } = makeService({
+		const { service, agentRepository, knowledgeFileRepository, telemetry, logger } = makeService({
 			isKnowledgeActive: false,
 		});
 		agentRepository.findByIdAndProjectId.mockResolvedValue(makeAgent());
@@ -999,7 +999,7 @@ describe('AgentPublishService', () => {
 		await service.publishAgent(agentId, projectId, person, byUser);
 
 		expect(agentRepository.setActiveVersionFenced).toHaveBeenCalled();
-		expect(agentFileRepository.getKnowledgeTotals).not.toHaveBeenCalled();
+		expect(knowledgeFileRepository.getKnowledgeTotals).not.toHaveBeenCalled();
 		expect(logger.warn).not.toHaveBeenCalled();
 		expect(telemetry.track).toHaveBeenCalledWith(
 			TELEMETRY_EVENT.AGENTS.USER_PUBLISHED_AGENT,
@@ -1012,9 +1012,9 @@ describe('AgentPublishService', () => {
 	});
 
 	it('publishes and sends the event without knowledge totals when the totals read fails', async () => {
-		const { service, agentRepository, agentFileRepository, telemetry } = makeService();
+		const { service, agentRepository, knowledgeFileRepository, telemetry } = makeService();
 		agentRepository.findByIdAndProjectId.mockResolvedValue(makeAgent());
-		agentFileRepository.getKnowledgeTotals.mockRejectedValue(new Error('read failed'));
+		knowledgeFileRepository.getKnowledgeTotals.mockRejectedValue(new Error('read failed'));
 
 		await service.publishAgent(agentId, projectId, person, byUser);
 

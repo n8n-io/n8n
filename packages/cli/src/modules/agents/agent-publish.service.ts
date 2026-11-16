@@ -27,7 +27,7 @@ import { BadRequestError, ConflictError, NotFoundError, UserError } from '@n8n/e
 import { KnowledgeAvailabilityService } from '@/modules/knowledge/knowledge-availability.service';
 import {
 	KnowledgeFileRepository,
-	type AgentKnowledgeTotals,
+	type KnowledgeFileTotals,
 } from '@/modules/knowledge/repositories/knowledge-file.repository';
 import { Telemetry } from '@/telemetry';
 
@@ -132,7 +132,7 @@ export class AgentPublishService {
 		private readonly definitionService: AgentDefinitionService,
 		private readonly agentPolicyService: AgentPolicyService,
 		private readonly agentSkillRefs: AgentSkillRefsService,
-		private readonly agentFileRepository: KnowledgeFileRepository,
+		private readonly knowledgeFileRepository: KnowledgeFileRepository,
 		private readonly publishHistory: AgentPublishHistoryRepository,
 		private readonly knowledgeAvailabilityService: KnowledgeAvailabilityService,
 	) {}
@@ -418,14 +418,14 @@ export class AgentPublishService {
 	/** Make sure a failed read for the publish event never stops the publication. */
 	private async readKnowledgeTotalsForTelemetry(
 		agentId: string,
-	): Promise<AgentKnowledgeTotals | undefined> {
+	): Promise<KnowledgeFileTotals | undefined> {
 		// With the knowledge module off no file is reachable, so the event carries no totals.
 		if (!this.knowledgeAvailabilityService.isModuleActive()) {
 			return undefined;
 		}
 
 		try {
-			return await this.agentFileRepository.getKnowledgeTotals(agentId, {});
+			return await this.knowledgeFileRepository.getKnowledgeTotals(agentId, {});
 		} catch (error) {
 			this.logger.warn('Failed to read knowledge totals for the publish event', {
 				agentId,
@@ -448,7 +448,7 @@ export class AgentPublishService {
 		emitter: AgentPublishEmitter,
 		wasPublished: boolean,
 		published: AgentJsonConfig | null,
-		knowledgeTotals: AgentKnowledgeTotals | undefined,
+		knowledgeTotals: KnowledgeFileTotals | undefined,
 	): void {
 		const properties = {
 			agent_id: agent.id,
