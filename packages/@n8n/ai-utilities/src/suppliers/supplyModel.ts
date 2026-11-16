@@ -90,9 +90,15 @@ function getOpenAiModel(ctx: ISupplyDataFunctions, model: OpenAiModel) {
 // `Symbol.for` gives the ESM and CJS builds the same key, so either copy finds the source.
 const SUPPLIED_MODEL_SOURCE: unique symbol = Symbol.for('@n8n/ai-utilities.suppliedModelSource');
 
-type WithSource = { [SUPPLIED_MODEL_SOURCE]: SupplyModelOptions };
+/**
+ * A model returned by `supplyModel`. An interface, not a type alias, so that
+ * TypeScript names it in declarations instead of the private symbol key.
+ */
+export interface SuppliedModel {
+	[SUPPLIED_MODEL_SOURCE]: SupplyModelOptions;
+}
 
-function hasSource(value: unknown): value is WithSource {
+function hasSource(value: unknown): value is SuppliedModel {
 	return typeof value === 'object' && value !== null && Object.hasOwn(value, SUPPLIED_MODEL_SOURCE);
 }
 
@@ -110,12 +116,22 @@ export function getSuppliedModelSource(response: unknown): SupplyModelOptions | 
 	return hasSource(response) ? response[SUPPLIED_MODEL_SOURCE] : undefined;
 }
 
-export function supplyModel(ctx: ISupplyDataFunctions, model: SupplyModelOptions): SupplyData {
+function attachSource(
+	response: object,
+	source: SupplyModelOptions,
+): asserts response is SuppliedModel {
+	// Attach the options to the model so `getSuppliedModelSource` can read back what the node passed in.
+	// Non-enumerable, so spread, `Object.assign` and `util.inspect` neither copy nor print it: it can hold an API key.
+	Object.defineProperty(response, SUPPLIED_MODEL_SOURCE, { value: source });
+}
+
+export function supplyModel(
+	ctx: ISupplyDataFunctions,
+	model: SupplyModelOptions,
+): SupplyData & { response: SuppliedModel } {
 	const response = isOpenAiModel(model)
 		? getOpenAiModel(ctx, model)
 		: new LangchainChatModelAdapter(model, ctx);
-	// Attach the options to the model so `getSuppliedModelSource` can read back what the node passed in.
-	// Non-enumerable, so spread, `Object.assign` and `util.inspect` neither copy nor print it: it can hold an API key.
-	Object.defineProperty(response, SUPPLIED_MODEL_SOURCE, { value: model });
+	attachSource(response, model);
 	return { response };
 }

@@ -3,14 +3,19 @@ import { BaseChatModel } from '@langchain/core/language_models/chat_models';
 import { HumanMessage } from '@langchain/core/messages';
 import { ChatOpenAI } from '@langchain/openai';
 import { passthroughEgressFilter } from '@n8n/backend-network/egress';
-import type { INode, INodeExecutionData, ISupplyDataFunctions } from 'n8n-workflow';
+import type { INode, INodeExecutionData, ISupplyDataFunctions, SupplyData } from 'n8n-workflow';
 import { createServer, type IncomingHttpHeaders, type Server } from 'node:http';
 import type { AddressInfo } from 'node:net';
 import { inspect } from 'node:util';
 import { mock } from 'vitest-mock-extended';
 
 import { LangchainChatModelAdapter } from 'src/adapters/langchain-chat-model';
-import { getSuppliedModelSource, supplyModel, type OpenAiModel } from 'src/suppliers/supplyModel';
+import {
+	getSuppliedModelSource,
+	supplyModel,
+	type OpenAiModel,
+	type SuppliedModel,
+} from 'src/suppliers/supplyModel';
 import type { ChatModel } from 'src/types/chat-model';
 
 const API_KEY = 'sk-test-6f1c2d9e-must-not-leak';
@@ -105,6 +110,11 @@ describe('getSuppliedModelSource', () => {
 			},
 		};
 	}
+
+	it('types the response as a supplied model that still fits SupplyData', () => {
+		expectTypeOf(supplyModel).returns.toEqualTypeOf<SupplyData & { response: SuppliedModel }>();
+		expectTypeOf(supplyModel).returns.toExtend<SupplyData>();
+	});
 
 	it('returns the OpenAI config for an OpenAI-compatible model', () => {
 		const config = integratorConfig();

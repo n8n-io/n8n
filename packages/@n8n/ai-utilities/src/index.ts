@@ -142,6 +142,7 @@ export { supplyMemory, type SupplyMemoryOptions } from './suppliers/supplyMemory
 export {
 	supplyModel,
 	getSuppliedModelSource,
+	type SuppliedModel,
 	type SupplyModelOptions,
 	type OpenAiModel,
 } from './suppliers/supplyModel';
