@@ -1,0 +1,28 @@
+packages/@n8n/backend-services/src/code-execution/code-execution-backend.ts
+  h_8fb27e0cdf6d1e 20,37-77
+packages/@n8n/backend-services/src/index.ts
+  h_8fb27e0cdf6d1e 28
+packages/cli/src/__tests__/workflow-execute-additional-data.test.ts
+  h_8fb27e0cdf6d1e 2253
+packages/cli/src/modules/engine-v2/__tests__/engine-additional-data.test.ts
+  h_8fb27e0cdf6d1e 145-158,196
+packages/cli/src/modules/engine-v2/engine-additional-data.ts
+  h_8fb27e0cdf6d1e 2-7,11,99-104,147-148
+packages/cli/src/task-runners/__tests__/task-runner-code-execution-backend.test.ts
+  h_8fb27e0cdf6d1e 28
+packages/cli/src/task-runners/task-runner-code-execution-backend.ts
+  h_8fb27e0cdf6d1e 21
+packages/cli/src/workflow-execute-additional-data.ts
+  h_8fb27e0cdf6d1e 12,1011-1012
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "4eb3ba8ff4c1274cd2c688ee9228b8bdd104668f",
+  "prompts": {},
+  "humans": {
+    "h_8fb27e0cdf6d1e": {
+      "author": "Tomi Turtiainen <10324676+tomi@users.noreply.github.com>"
+    }
+  }
+}

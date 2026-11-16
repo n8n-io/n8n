@@ -1,0 +1,34 @@
+OWNERS
+  h_8fb27e0cdf6d1e 32
+codecov.yml
+  h_8fb27e0cdf6d1e 81
+packages/@n8n/code-runtime-js/README.md
+  h_8fb27e0cdf6d1e 1-12
+packages/@n8n/code-runtime-js/oxlint.config.mts
+  h_8fb27e0cdf6d1e 1-7
+packages/@n8n/code-runtime-js/package.json
+  h_8fb27e0cdf6d1e 1-38
+packages/@n8n/code-runtime-js/src/index.ts
+  h_8fb27e0cdf6d1e 1-2
+packages/@n8n/code-runtime-js/tsconfig.build.json
+  h_8fb27e0cdf6d1e 1-10
+packages/@n8n/code-runtime-js/tsconfig.json
+  h_8fb27e0cdf6d1e 1-10
+packages/@n8n/code-runtime-js/vite.config.ts
+  h_8fb27e0cdf6d1e 1-3
+pnpm-lock.yaml
+  h_8fb27e0cdf6d1e 2263-2292
+scripts/lint-parity/layers.json
+  h_8fb27e0cdf6d1e 35
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "3aaea77f24007939a7d9c9a081d7a768e0eb7f2e",
+  "prompts": {},
+  "humans": {
+    "h_8fb27e0cdf6d1e": {
+      "author": "Tomi Turtiainen <10324676+tomi@users.noreply.github.com>"
+    }
+  }
+}

@@ -1,0 +1,24 @@
+.github/workflows/ci-pull-requests.yml
+  s_029fc84d406534::t_2e4da77fdfd6d2 31
+  s_029fc84d406534::t_0c907f43f3d178 135-144,431,516-531,669
+packages/quality/testing/playwright/tests/e2e/settings/environments/promotion-environments.spec.ts
+  s_029fc84d406534::t_eaa468a83affd5 19-32,34-52,54-62
+packages/quality/testing/playwright/tests/infrastructure/promotions/checkout-cleanup-multi-main.spec.ts
+  s_029fc84d406534::t_eaa468a83affd5 55-122,124-126,128-136,138,140-144,146-148,150-164
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "4b43ba02fdb5234c67392342323e9f7ab610fb9b",
+  "prompts": {},
+  "sessions": {
+    "s_029fc84d406534": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a1c696-46c1-76e0-b9ba-65ac5f50fe2c",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "kgrhartlage <kai.hartlage@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,16 @@
+packages/modules/code-sandbox/backend/package.json
+  h_8fb27e0cdf6d1e 38-40,52-53
+pnpm-lock.yaml
+  h_8fb27e0cdf6d1e 7617-7619
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "bec8662b4114f2e2d0b8c9b5b95d651a359607af",
+  "prompts": {},
+  "humans": {
+    "h_8fb27e0cdf6d1e": {
+      "author": "Tomi Turtiainen <10324676+tomi@users.noreply.github.com>"
+    }
+  }
+}

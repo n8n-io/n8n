@@ -1,0 +1,215 @@
+docs/generated/postgres-schema/README.md
+  s_dfe3f914c8bb46::t_1981aae47710eb 138,142,185,486,1802,1841,2276
+docs/generated/postgres-schema/public.project.md
+  s_dfe3f914c8bb46::t_c55d3f539399e1 258,293,383
+docs/generated/postgres-schema/public.self_healing_configuration.md
+  s_dfe3f914c8bb46::t_f41d0b637aa30d 12,29,61,118
+docs/generated/postgres-schema/public.self_healing_configuration_reviewer.md
+  s_dfe3f914c8bb46::t_b6a5614435c197 45
+docs/generated/postgres-schema/public.self_healing_configuration_workflow.md
+  s_dfe3f914c8bb46::t_0c66841be21f81 51
+docs/generated/postgres-schema/public.self_healing_investigation.md
+  s_dfe3f914c8bb46::t_8f8efcfde080d8 50,105,131
+docs/generated/postgres-schema/public.self_healing_result.md
+  s_dfe3f914c8bb46::t_c4b150dc17097a 12,16,27,42,66,80,110,144,149-159
+docs/generated/postgres-schema/public.user.md
+  s_dfe3f914c8bb46::t_61102d367e7fb2 439,473,625
+docs/generated/postgres-schema/public.workflow_entity.md
+  s_dfe3f914c8bb46::t_2342a1c97b8399 320,432
+docs/generated/postgres-schema/public.workflow_suggestion.md
+  s_dfe3f914c8bb46::t_14129b1df45132 16,20,36,45,57,69,86,129-144
+docs/generated/postgres-schema/public.workflow_suggestion_activity.md
+  s_dfe3f914c8bb46::t_9414b6a26139cb 88
+docs/generated/sqlite-schema/README.md
+  s_dfe3f914c8bb46::t_843cde35c6e46b 138,142,184,401-403,469,471-472,1788,1827,2256
+docs/generated/sqlite-schema/project.md
+  s_dfe3f914c8bb46::t_1dc009f7363878 264,299,389
+docs/generated/sqlite-schema/self_healing_configuration.md
+  s_dfe3f914c8bb46::t_a834da813200a7 9,23,63,120
+docs/generated/sqlite-schema/self_healing_configuration_reviewer.md
+  s_dfe3f914c8bb46::t_396be3b892ff15 56
+docs/generated/sqlite-schema/self_healing_configuration_workflow.md
+  s_dfe3f914c8bb46::t_0221b2a5ebe07d 61
+docs/generated/sqlite-schema/self_healing_investigation.md
+  s_dfe3f914c8bb46::t_b0091004d5c540 51,106,132
+docs/generated/sqlite-schema/self_healing_result.md
+  s_dfe3f914c8bb46::t_dec15b76054840 9,23,27,37-42,64,78,108,142,147-157
+docs/generated/sqlite-schema/user.md
+  s_dfe3f914c8bb46::t_e8e9c9e299dffc 443,477,629
+docs/generated/sqlite-schema/workflow_entity.md
+  s_dfe3f914c8bb46::t_413aad1a181e66 319,423
+docs/generated/sqlite-schema/workflow_suggestion.md
+  s_dfe3f914c8bb46::t_ae47d4bc70b462 9,27,31,40-47,58,70,87,130-145
+docs/generated/sqlite-schema/workflow_suggestion_activity.md
+  s_dfe3f914c8bb46::t_0373b7102bb51b 94
+packages/@n8n/api-types/src/__tests__/self-healing-configurations.test.ts
+  s_dfe3f914c8bb46::t_ff30f7569fe38a 11,31-35,50-59
+packages/@n8n/api-types/src/dto/index.ts
+  s_dfe3f914c8bb46::t_a35bd4835fd910 266
+packages/@n8n/api-types/src/dto/workflows/__tests__/create-workflow-public.dto.test.ts
+  s_dfe3f914c8bb46::t_02202c3b9c9f22 1,105-122
+packages/@n8n/api-types/src/dto/workflows/base-workflow-public.dto.ts
+  s_dfe3f914c8bb46::t_7de9ee7bea065a 24-26
+packages/@n8n/api-types/src/self-healing-configurations.ts
+  s_dfe3f914c8bb46::t_2d93ade6a07ead 11
+packages/@n8n/api-types/src/self-healing-results.ts
+  s_dfe3f914c8bb46::t_0ca935de03a26f 43,45-58,69-78,83-85,87-92
+packages/@n8n/db/src/migrations/common/1794320824000-AddIncludeSubWorkflowsToSelfHealingConfiguration.ts
+  s_dfe3f914c8bb46::t_8fa3e3d580399e 1-19
+packages/@n8n/db/src/migrations/common/1794320825000-LinkWorkflowSuggestionsToSelfHealingResult.ts
+  s_dfe3f914c8bb46::t_9dda81ad7d20f0 1-95
+packages/@n8n/db/src/migrations/common/1794320826000-IndexSelfHealingInvestigationActivity.ts
+  s_dfe3f914c8bb46::t_bb534f3ed9059f 1-13
+packages/@n8n/db/src/repositories/workflow-dependency.repository.ts
+  s_dfe3f914c8bb46::t_99ff3e0bb43896 71-89
+packages/@n8n/instance-ai/prompts/self-healing/self-healing.md
+  s_dfe3f914c8bb46::t_052a169bd45920 3-6,17,19-26,32-33,61-92,107-109
+packages/@n8n/instance-ai/src/__tests__/self-healing.test.ts
+  s_dfe3f914c8bb46::t_5e7b703074907a 12-16,23-26,34,47
+packages/@n8n/instance-ai/src/agent/__tests__/self-healing-agent.test.ts
+  s_dfe3f914c8bb46::t_96101d2e94710f 105,125-128,232,247,249,434-435,441-442
+packages/@n8n/instance-ai/src/agent/self-healing-agent.ts
+  s_dfe3f914c8bb46::t_e433d4d85e5f72 42-43,45,113
+packages/@n8n/instance-ai/src/self-healing.ts
+  s_dfe3f914c8bb46::t_42fd90e7f5d842 27-31,35,38-39,43,46-47,74
+packages/@n8n/instance-ai/src/tools/__tests__/workflows.tool.test.ts
+  s_dfe3f914c8bb46::t_6403b644a77f60 1671-1697
+packages/@n8n/instance-ai/src/tools/workflows.tool.ts
+  s_dfe3f914c8bb46::t_46099f6c64f5a9 2389
+packages/cli/src/modules/instance-ai/__tests__/instance-ai.service.test.ts
+  s_dfe3f914c8bb46::t_282ad8027eebab 1592-1593
+packages/cli/src/modules/instance-ai/self-healing/README.md
+  s_dfe3f914c8bb46::t_b1d972eb26cae9 58-59,72,74-76,81-87,97-111,145-148,193-216,245-247,282,290-292,336,353-367,374-378,381-384,388-394,414-415,418
+packages/cli/src/modules/instance-ai/self-healing/__tests__/candidate-workflow.test.ts
+  s_dfe3f914c8bb46::t_5530f3b248de2c 397-408
+packages/cli/src/modules/instance-ai/self-healing/__tests__/self-healing-agent.service.test.ts
+  s_dfe3f914c8bb46::t_e557e70e47b31c 1,7-8,13,41,83-91,95-96,99-100,105,131-133,149-150,152-165,172-178,181-184,213-215,278-279,294-295,344-346,359-361,364-366,386,390,401,468,497,507,521,527,532-533,536-541,669,695,763,864-1087
+packages/cli/src/modules/instance-ai/self-healing/__tests__/self-healing-candidate.service.test.ts
+  s_dfe3f914c8bb46::t_a95798dc65a660 105,179,317
+packages/cli/src/modules/instance-ai/self-healing/__tests__/self-healing-configuration.service.integration.test.ts
+  s_dfe3f914c8bb46::t_b5f7aea73042f6 14,26,96,126-152,394,428,438,452,478,503,520,536,1038,1054-1062,1069-1072,1075-1079,1090-1091,1097,1105-1141,1202,1267,1286,1358,1388,1402,1464-1485
+packages/cli/src/modules/instance-ai/self-healing/__tests__/self-healing-hierarchy.test.ts
+  s_dfe3f914c8bb46::t_c74007520f3835 1-74
+packages/cli/src/modules/instance-ai/self-healing/__tests__/self-healing-investigation.repository.integration.test.ts
+  s_dfe3f914c8bb46::t_767b8cf9571e10 106-108
+packages/cli/src/modules/instance-ai/self-healing/__tests__/self-healing-investigation.service.test.ts
+  s_dfe3f914c8bb46::t_6f8f7be3f1ee93 63,90,115,165-166,181-191,198,208,239,241-253,255-257,274,278-301,303-304,310,342,346-431,442,444-445,448
+packages/cli/src/modules/instance-ai/self-healing/__tests__/self-healing-result.service.integration.test.ts
+  s_dfe3f914c8bb46::t_fe51ea23d94f64 21-22,34,43,55,134-135,149-164,176,206-240,280,284,551,566,573,576-581,630,651,790,800,803-819,883-884,886,903-909,911,928,1034,1050,1052-1056,1059-1060,1062-1065,1074,1076,1078,1080,1083,1085,1091-1094,1097,1105-1109,1122-1125,1127-1129,1131-1136,1146,1151,1160-1163,1167-1170,1174-1175,1178,1194,1226,1231-1232,1235-1238,1249-1620,1624-1960,2033,2070,2221,2397,2403-2408,2410-2412,2432,2564,2626,2743,2775,2800,2839,2888,2994,3002-3003,3011-3012,3016-3017,3020-3021,3023,3025,3038,3040,3043-3044,3056-3057,3061,3066
+packages/cli/src/modules/instance-ai/self-healing/__tests__/support/result.ts
+  s_dfe3f914c8bb46::t_4bbf4e21be12f2 1-34
+packages/cli/src/modules/instance-ai/self-healing/candidate-workflow.ts
+  s_dfe3f914c8bb46::t_678efb12828f70 87-96
+packages/cli/src/modules/instance-ai/self-healing/database/self-healing-configuration.entity.ts
+  s_dfe3f914c8bb46::t_9d91aecd7032c9 35-37
+packages/cli/src/modules/instance-ai/self-healing/database/self-healing-configuration.repository.ts
+  s_dfe3f914c8bb46::t_2a540021f43b99 61,183-196,211,292-295,337-361,420
+packages/cli/src/modules/instance-ai/self-healing/database/self-healing-investigation.entity.ts
+  s_dfe3f914c8bb46::t_0eb7b3d279b2c3 12
+packages/cli/src/modules/instance-ai/self-healing/database/self-healing-result.entity.ts
+  s_dfe3f914c8bb46::t_cec6e3f1eb1e83 1-5,71-72
+packages/cli/src/modules/instance-ai/self-healing/database/self-healing-result.repository.ts
+  s_dfe3f914c8bb46::t_4035e35df66139 1,13,15,52-53,81-96,100-106,108-141,175,206,208,235,240-244,247-248
+packages/cli/src/modules/instance-ai/self-healing/self-healing-agent.service.ts
+  s_dfe3f914c8bb46::t_1592098723079e 1,11,13-19,29,61,66-67,71-74,85-86,88,127,147-148,220-222,224,253-254,263-264,276-280,283-284,286,367,383-435,477,479,484-485,487,489,491-516,521-523,529-532,534-537,545-548,550,552,557,562-563,565,571,574,578,582-583,592-593,601-602,619-632,634,637,641-644,647-652,659
+packages/cli/src/modules/instance-ai/self-healing/self-healing-configuration.service.ts
+  s_dfe3f914c8bb46::t_9cb5dbe7f88c5d 7,30,122,196-197,220-229,233-240,313-315
+packages/cli/src/modules/instance-ai/self-healing/self-healing-hierarchy.ts
+  s_dfe3f914c8bb46::t_9eb55f0a82d5a0 1-65
+packages/cli/src/modules/instance-ai/self-healing/self-healing-investigation.service.ts
+  s_dfe3f914c8bb46::t_9e01429fe017e2 21,24,111,209,216-217,260-261,263-269,271-272,274-275,277-284
+packages/cli/src/modules/instance-ai/self-healing/self-healing-result.service.ts
+  s_dfe3f914c8bb46::t_1e7ff149b148da 9-10,20,27-30,34,49-54,59-60,62,80-81,139,169-172,174,188-190,193,207,216-231,244,254,258-260,262-264,273-336,341-342,357-359,372,378,380,383-389,396-402,404-405,411,418-420,423-425,427-428,430,460-468
+packages/cli/src/modules/instance-ai/workflow-suggestions/README.md
+  s_dfe3f914c8bb46::t_25b97227e8cfc1 13,23,27,29-32,34,36,40,42,44-46,50,58
+packages/cli/src/modules/instance-ai/workflow-suggestions/__tests__/workflow-suggestion-actions.service.integration.test.ts
+  s_dfe3f914c8bb46::t_5bcdd76e1a7385 1-4,48,127-146,358,365,761
+packages/cli/src/modules/instance-ai/workflow-suggestions/__tests__/workflow-suggestion.repository.integration.test.ts
+  s_dfe3f914c8bb46::t_e3ae82e1149da0 4,16,21-22,29,34,54-55,58,67,74,81-167,194,207,242,256
+packages/cli/src/modules/instance-ai/workflow-suggestions/__tests__/workflow-suggestion.service.integration.test.ts
+  s_dfe3f914c8bb46::t_7f0206389bb0c0 27,46,67-68,72,83,99,106,111,120,141,147,170,189,198,208,222,232-234,255,262,274,285,301,307,342,361
+packages/cli/src/modules/instance-ai/workflow-suggestions/__tests__/workflow-suggestion.service.test.ts
+  s_dfe3f914c8bb46::t_3eec04222dd547 21,44,203,214-215,339,344-345,419
+packages/cli/src/modules/instance-ai/workflow-suggestions/database/workflow-suggestion.entity.ts
+  s_dfe3f914c8bb46::t_e662890ce3b9a7 16-17,74-81
+packages/cli/src/modules/instance-ai/workflow-suggestions/database/workflow-suggestion.repository.ts
+  s_dfe3f914c8bb46::t_2324b53e3d3def 18,24-28,50-51,68,134-138,150-156
+packages/cli/src/modules/instance-ai/workflow-suggestions/workflow-suggestion-actions.service.ts
+  s_dfe3f914c8bb46::t_124adfeccd543e 1,3-9,14,20-21,27-41,49,59-60,62-73,75-76,78-79,81,83,86,90,94-109,112,115-117,119,123,125-126,130-137,139-140,142,145-151,155-171,173-177,179-183,185-190,192-199,201-203,206-214,217,256-292,294-319,322,324-325
+packages/cli/src/modules/instance-ai/workflow-suggestions/workflow-suggestion-event-relay.service.ts
+  s_dfe3f914c8bb46::t_1db182a77faccd 10,16-17,45-84
+packages/cli/src/modules/instance-ai/workflow-suggestions/workflow-suggestion-graph.ts
+  s_dfe3f914c8bb46::t_fe70f6403feb7b 1-7
+packages/cli/src/modules/instance-ai/workflow-suggestions/workflow-suggestion.service.ts
+  s_dfe3f914c8bb46::t_6a0734b0efee17 25,28,69,146,218-222,240-241,285,289-300,307-327,346-368,371,373
+packages/cli/src/public-api/v1/controllers/workflows.public.controller.ts
+  s_dfe3f914c8bb46::t_7aea360fa2da5c 9,410-413,448-449
+packages/cli/src/public-api/v1/handlers/workflows/spec/paths/updateWorkflow.generated.yml
+  s_dfe3f914c8bb46::t_093fde5cc3591d 1119
+packages/cli/src/services/__tests__/import.service.test.ts
+  s_dfe3f914c8bb46::t_a6ff8aa793acff 1394-1408,1463,1479-1521
+packages/cli/src/services/import.service.ts
+  s_dfe3f914c8bb46::t_cc78ab0f5fa631 45,348-352,354,357
+packages/cli/src/services/ownership-transfer/ownership-transfer.manifest.json
+  s_dfe3f914c8bb46::t_eab0f6452290c3 115,120
+packages/cli/src/workflows/__tests__/workflow.service.ee.test.ts
+  s_dfe3f914c8bb46::t_166c90b8534561 13,31-34,883-1106,1396-1412
+packages/cli/src/workflows/sub-workflow-order.ts
+  s_dfe3f914c8bb46::t_df67c098e74a25 1-53
+packages/cli/src/workflows/workflow.service.ee.ts
+  s_dfe3f914c8bb46::t_549c6d75474d88 98-101,294,307-310,421-424,476-480,483-497,571-577,581-588
+packages/cli/src/workflows/workflow.service.ts
+  s_dfe3f914c8bb46::t_aa26cd8407fa8b 149-152,155,600-601,645-646,678
+packages/cli/test/integration/database/repositories/workflow-dependency.repository.test.ts
+  s_dfe3f914c8bb46::t_69acc6517f2077 375-436
+packages/cli/test/integration/public-api/workflows.test.ts
+  s_dfe3f914c8bb46::t_66c5280080ece1 3659-3676,3809,3834,3850-3853,3855-3860
+packages/cli/test/integration/shared/utils/index.ts
+  s_dfe3f914c8bb46::t_e60f4e3dab910b 94-97
+packages/cli/test/migration/1794320825000-link-workflow-suggestions-to-self-healing-result.test.ts
+  s_dfe3f914c8bb46::t_2b106f65de5d99 1-154
+packages/cli/test/migration/1794320826000-index-self-healing-investigation-activity.test.ts
+  s_dfe3f914c8bb46::t_c4f0e782ab57f1 1-49
+packages/frontend/@n8n/design-system/src/components/N8nListbox/Listbox.test.ts
+  s_dfe3f914c8bb46::t_d672c6ddf4b52b 3,238-279
+packages/modules/inbox/frontend/src/self-healing/SelfHealingResultActivity.vue
+  s_dfe3f914c8bb46::t_a9bad6962dc3b7 19-21,44,49-50
+packages/modules/inbox/frontend/src/self-healing/SelfHealingResultContent.test.ts
+  s_dfe3f914c8bb46::t_dbe5478872e19c 171-172,175,177,185,203,221,223,238,274,299,318-321,333,458
+packages/modules/inbox/frontend/src/self-healing/SelfHealingResultContent.vue
+  s_dfe3f914c8bb46::t_b96bc5cef2a1dc 48-49,235,238-239
+packages/modules/inbox/frontend/src/self-healing/SelfHealingResultDetail.test.ts
+  s_dfe3f914c8bb46::t_f0d8a6e643470c 113-115,246,282,346,613,663,805,812
+packages/modules/inbox/frontend/src/self-healing/SelfHealingResultDetail.vue
+  s_dfe3f914c8bb46::t_ba10d7daf5e344 59,177,192
+packages/modules/inbox/frontend/src/self-healing/selfHealingResults.test.utils.ts
+  s_dfe3f914c8bb46::t_f40ab96146321c 100-109
+packages/modules/self-healing/frontend/src/components/ProjectSelfHealingSection.test.ts
+  s_dfe3f914c8bb46::t_841af2d1cd6381 25
+packages/modules/self-healing/frontend/src/self-healing.store.test.ts
+  s_dfe3f914c8bb46::t_e4980cf57c2130 17
+packages/modules/self-healing/frontend/src/views/SelfHealingConfigView.test.ts
+  s_dfe3f914c8bb46::t_6aea9c53410d4e 37,114,230-236,242-258,320,613,655,701-707,723-729
+packages/modules/self-healing/frontend/src/views/SelfHealingConfigView.vue
+  s_dfe3f914c8bb46::t_9c23da4570d183 57,215,225
+patches/reka-ui@2.5.0.patch
+  s_dfe3f914c8bb46::t_0fefcc17c62e08 49-148,176-243
+pnpm-lock.yaml
+  s_dfe3f914c8bb46::t_bc1212b3e0bdfe 1124,5890,6968,7558,8006,8260,41228
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "09de5765c2a8fb6ab212c7d69d0e6d35384b9293",
+  "prompts": {},
+  "sessions": {
+    "s_dfe3f914c8bb46": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a177de-1655-75e1-b502-74f6cb945148",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "Michael Drury <michael.drury@n8n.io>"
+    }
+  }
+}

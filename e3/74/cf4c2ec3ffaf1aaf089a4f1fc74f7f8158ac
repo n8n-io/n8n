@@ -1,0 +1,19 @@
+packages/cli/src/modules/instance-ai/eval/consume-eval-stream.ts
+  s_1cfc31402a4d82::t_be27b0383d417c 8
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "e374cf4c2ec3ffaf1aaf089a4f1fc74f7f8158ac",
+  "prompts": {},
+  "sessions": {
+    "s_1cfc31402a4d82": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "01a18e0b-98de-71df-9e22-818c5a5a5933",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "Thiago Pacheco <hi@sudoish.com>"
+    }
+  }
+}

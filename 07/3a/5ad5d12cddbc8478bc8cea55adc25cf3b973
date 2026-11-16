@@ -1,0 +1,132 @@
+packages/@n8n/backend-common/src/index.ts
+  h_8fb27e0cdf6d1e 11,13
+packages/@n8n/backend-common/src/utils/__tests__/path-util.test.ts
+  h_8fb27e0cdf6d1e 6,8,15-60
+packages/@n8n/backend-common/src/utils/path-util.ts
+  h_8fb27e0cdf6d1e 1,5-36
+packages/@n8n/config/src/index.ts
+  h_8fb27e0cdf6d1e 168-171
+packages/@n8n/config/test/config.test.ts
+  h_8fb27e0cdf6d1e 53
+packages/@n8n/nodes-langchain/nodes/trigger/ChatTrigger/ChatTrigger.node.ts
+  h_8fb27e0cdf6d1e 1103-1104,1113
+packages/@n8n/nodes-langchain/nodes/trigger/ChatTrigger/__test__/templates.test.ts
+  h_8fb27e0cdf6d1e 27,612-695,803-804,831-832
+packages/@n8n/nodes-langchain/nodes/trigger/ChatTrigger/templates.ts
+  h_8fb27e0cdf6d1e 318,332,383-392,408,427
+packages/cli/src/__tests__/abstract-server.test.ts
+  h_8fb27e0cdf6d1e 51
+packages/cli/src/__tests__/controller.registry.test.ts
+  h_8fb27e0cdf6d1e 33,41-45,60
+packages/cli/src/__tests__/load-nodes-and-credentials.test.ts
+  h_8fb27e0cdf6d1e 131,136,141,146,150-159,163,172,182
+packages/cli/src/abstract-server.ts
+  h_8fb27e0cdf6d1e 19,49-51,114-120,124-135,217-220,224,230,236,243,252,257-260,267,271,276-279
+packages/cli/src/auth/__tests__/auth-service-browser-id-whitelist.test.ts
+  h_8fb27e0cdf6d1e 8,23-25,36,63-85
+packages/cli/src/auth/__tests__/auth.service.test.ts
+  h_8fb27e0cdf6d1e 20,52-54,64,162,178,214,347,391,410,429,471,536,560,573,587,818,864,1073,1078-1101
+packages/cli/src/auth/auth.service.ts
+  h_8fb27e0cdf6d1e 20,110,113-117,121,124,127-128,133,136-139,142,145,151,245-250,296-297
+packages/cli/src/commands/__tests__/execute-batch.test.ts
+  h_8fb27e0cdf6d1e 95-97
+packages/cli/src/commands/__tests__/execute.test.ts
+  h_8fb27e0cdf6d1e 84-86
+packages/cli/src/commands/base-command.ts
+  h_8fb27e0cdf6d1e 53,138-144,160
+packages/cli/src/commands/start.ts
+  h_8fb27e0cdf6d1e 43,163-166,187-189
+packages/cli/src/controller.registry.ts
+  h_8fb27e0cdf6d1e 31,42,57-63
+packages/cli/src/deprecation/deprecation.service.ts
+  h_8fb27e0cdf6d1e 158-163
+packages/cli/src/load-nodes-and-credentials.ts
+  h_8fb27e0cdf6d1e 235,251-254
+packages/cli/src/metrics/prometheus/__tests__/route-metrics.service.test.ts
+  h_8fb27e0cdf6d1e 3,9-10,26-34,48,153-182
+packages/cli/src/metrics/prometheus/route-metrics.service.ts
+  h_8fb27e0cdf6d1e 1,9-10,21,53-57,60-67
+packages/cli/src/modules/dynamic-credentials.ee/__tests__/dynamic-credentials.controller.test.ts
+  h_8fb27e0cdf6d1e 22,44,71,802-857
+packages/cli/src/modules/dynamic-credentials.ee/dynamic-credentials.controller.ts
+  h_8fb27e0cdf6d1e 16,53,274-291,293
+packages/cli/src/public-api/__tests__/index.test.ts
+  h_8fb27e0cdf6d1e 1-25
+packages/cli/src/public-api/index.ts
+  h_8fb27e0cdf6d1e 6,23,44-78,118,124-126,132-136,138,149,280,296,321,384,389,393-394,398,402-413,428,432,453,460
+packages/cli/src/public-api/v1/handlers/discover/discover.service.ts
+  h_8fb27e0cdf6d1e 45,247
+packages/cli/src/push/__tests__/index.test.ts
+  h_8fb27e0cdf6d1e 47,58,79,95-102
+packages/cli/src/push/index.ts
+  h_8fb27e0cdf6d1e 71,74,76,96,98
+packages/cli/src/server.ts
+  h_8fb27e0cdf6d1e 171-173,209-212,216-228,246,248,282,306-311,316,369-370,376-380,408-411,442-447,454,457,510,516,529-531,533-540,556,562,581-583
+packages/cli/src/services/__tests__/frontend.service.test.ts
+  h_8fb27e0cdf6d1e 33
+packages/cli/src/services/__tests__/path-resolving.service.test.ts
+  h_8fb27e0cdf6d1e 1-371
+packages/cli/src/services/__tests__/url.service.test.ts
+  h_8fb27e0cdf6d1e 4,12-120,125,128,136-137,145,148,156-157,162-164,171,175,182-183,195,198
+packages/cli/src/services/__tests__/user.service.test.ts
+  h_8fb27e0cdf6d1e 29,51-54
+packages/cli/src/services/path-resolving.service.ts
+  h_8fb27e0cdf6d1e 1-211
+packages/cli/src/services/url.service.ts
+  h_8fb27e0cdf6d1e 4-5,11-18,51,54,56
+packages/cli/src/utils/health-endpoint.util.ts
+  h_8fb27e0cdf6d1e 1,20-23,27-31
+packages/cli/src/webhooks/__tests__/waiting-webhooks.test.ts
+  h_8fb27e0cdf6d1e 13,43-45,54,482-514,552-554,563
+packages/cli/src/webhooks/waiting-webhooks.ts
+  h_8fb27e0cdf6d1e 33,56,130-143
+packages/cli/test/integration/public-api/base-path.test.ts
+  h_8fb27e0cdf6d1e 1-36
+packages/cli/test/integration/shared/types.ts
+  h_8fb27e0cdf6d1e 92
+packages/cli/test/integration/shared/utils/test-server.ts
+  h_8fb27e0cdf6d1e 1,78-83,96-101,107-112,114-119,135,163-166,176,209
+packages/cli/test/unit/utils/health-endpoint.util.test.ts
+  h_8fb27e0cdf6d1e 71,80-90
+packages/frontend/@n8n/design-system/src/components/N8nMarkdown/Markdown.test.ts
+  h_8fb27e0cdf6d1e 8-11,57-92
+packages/frontend/@n8n/design-system/src/components/N8nMarkdown/Markdown.vue
+  h_8fb27e0cdf6d1e 179-180
+packages/frontend/@n8n/design-system/src/shims-global.d.ts
+  h_8fb27e0cdf6d1e 1-8
+packages/frontend/@n8n/frontend-utils/src/htmlUtils.ts
+  h_8fb27e0cdf6d1e 30-31
+packages/frontend/@n8n/frontend-utils/src/shims-global.d.ts
+  h_8fb27e0cdf6d1e 1-8
+packages/testing/containers/helpers/utils.ts
+  h_8fb27e0cdf6d1e 21-27
+packages/testing/containers/services/load-balancer.ts
+  h_8fb27e0cdf6d1e 3,13,37,41,46,71,103,115,127
+packages/testing/containers/services/n8n.ts
+  h_8fb27e0cdf6d1e 11,254-257,262
+packages/testing/containers/stack.ts
+  h_8fb27e0cdf6d1e 344-348,465-466
+packages/testing/playwright/composables/TestEntryComposer.ts
+  h_8fb27e0cdf6d1e 20
+packages/testing/playwright/fixtures/base.ts
+  h_8fb27e0cdf6d1e 4,92-127,269-273,294,297,306-310,328-332,364-365,368
+packages/testing/playwright/helpers/NavigationHelper.ts
+  h_8fb27e0cdf6d1e 23-27,31-34,40,51,62,67,76,84,92,100,115,126,136,147,162,170,178,186,194,202,210,218,226,234,242,250,266,274,282
+packages/testing/playwright/pages/InstanceAiPage.ts
+  h_8fb27e0cdf6d1e 14-17,30-33,35,48,110
+packages/testing/playwright/pages/n8nPage.ts
+  h_8fb27e0cdf6d1e 166-168,174,188,255,266,273
+packages/testing/playwright/tests/e2e/custom-base-path.spec.ts
+  h_8fb27e0cdf6d1e 1-88
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "073a5ad5d12cddbc8478bc8cea55adc25cf3b973",
+  "prompts": {},
+  "humans": {
+    "h_8fb27e0cdf6d1e": {
+      "author": "Tomi Turtiainen <10324676+tomi@users.noreply.github.com>"
+    }
+  }
+}

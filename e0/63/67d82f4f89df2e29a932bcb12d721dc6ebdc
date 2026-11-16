@@ -1,0 +1,19 @@
+packages/frontend/editor-ui/src/features/ai/instanceAi/assistantAgent/useAssistantAgentMessageTelemetry.ts
+  s_013e1480e11471::t_3b883a80fe6861 41,44,46-48,83
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "e06367d82f4f89df2e29a932bcb12d721dc6ebdc",
+  "prompts": {},
+  "sessions": {
+    "s_013e1480e11471": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "4351bcd2-837d-4594-8d50-950380193f11",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "r00gm <raul00gm@gmail.com>"
+    }
+  }
+}

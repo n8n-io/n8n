@@ -1,0 +1,18 @@
+packages/frontend/editor-ui/src/features/agents/components/AgentEvalCaseRow.vue
+  h_8a472ace01776f 41-43,93-98
+packages/frontend/editor-ui/src/features/ai/instanceAi/__tests__/InstanceAiTestAgentPreviewPanel.test.ts
+  h_8a472ace01776f 236-246,249,288-289
+packages/frontend/editor-ui/src/features/ai/instanceAi/components/InstanceAiTestAgentPreviewPanel.vue
+  h_8a472ace01776f 235,243-245,251
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "fd8dc56797c9b8762998d9fb6819530cbf4744ed",
+  "prompts": {},
+  "humans": {
+    "h_8a472ace01776f": {
+      "author": "Thiago Pacheco <hi@sudoish.com>"
+    }
+  }
+}

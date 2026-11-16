@@ -1,0 +1,77 @@
+packages/frontend/editor-ui/src/features/agents/components/AgentHumanInteractionToolModal.vue
+  s_dfe3f914c8bb46::t_a9759b672240a8 1-166
+  s_dfe3f914c8bb46::t_14717f5835b056 167-226
+packages/@n8n/api-types/src/__tests__/human-interaction.test.ts
+  s_dfe3f914c8bb46::t_1d5847f3b0df17 1-48
+  s_dfe3f914c8bb46::t_408ea0c9b58830 49-89
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentHumanInteractionToolModal.test.ts
+  s_dfe3f914c8bb46::t_0726755c852029 1-106
+  s_dfe3f914c8bb46::t_58617ca2b210f9 107-229
+packages/@n8n/api-types/src/agents/human-interaction.schema.ts
+  s_dfe3f914c8bb46::t_04776c34dc0234 1-55
+  s_dfe3f914c8bb46::t_9186a7f9c257bd 56-125
+packages/@n8n/api-types/src/agents/agent-hitl.schema.ts
+  s_dfe3f914c8bb46::t_719dce5bab2e37 2,43,49-59
+packages/@n8n/api-types/src/agents/index.ts
+  s_dfe3f914c8bb46::t_257e47bdc56f2f 58-59
+packages/cli/src/modules/agents/agent-runtime-reconstruction.service.ts
+  s_dfe3f914c8bb46::t_6c43ea6c8894f8 1109-1129
+packages/cli/src/modules/agents/agents.module.ts
+  s_dfe3f914c8bb46::t_70054625309c6a 229-231,233
+packages/cli/src/modules/agents/background/agent-background-job.service.ts
+  s_dfe3f914c8bb46::t_d6219c3523334b 371-372
+packages/cli/src/modules/agents/human-interactions/human-interaction-reconciliation.task.ts
+  s_dfe3f914c8bb46::t_ecbe9e335ae261 1-16
+packages/cli/src/modules/agents/human-interactions/human-interaction.service.ts
+  s_dfe3f914c8bb46::t_abf9864e2d8dc5 1-400
+packages/cli/src/modules/agents/human-interactions/interaction-request.ts
+  s_dfe3f914c8bb46::t_9ba0d62f40e1ca 1-80
+packages/cli/src/modules/agents/integrations/agent-chat-bridge.ts
+  s_dfe3f914c8bb46::t_a7e8cb1f3f2daa 469-481
+packages/cli/src/modules/agents/integrations/component-mapper.ts
+  s_dfe3f914c8bb46::t_e0d7d09054b5b6 5,100,147,167-169,174,197,309,318-323,334,343-348
+packages/cli/src/modules/agents/integrations/integration-action-executor.ts
+  s_dfe3f914c8bb46::t_6cfaf214afa5d2 402,427,429
+packages/cli/src/modules/agents/integrations/integration-tool-types.ts
+  s_dfe3f914c8bb46::t_b551b16f39c826 199-203,205
+packages/cli/src/modules/agents/repositories/agent-background-job.repository.ts
+  s_dfe3f914c8bb46::t_2a5eaf7deb921b 199-205,222,296
+packages/cli/src/modules/agents/repositories/agent-checkpoint.repository.ts
+  s_dfe3f914c8bb46::t_137dba18ed4c11 147
+packages/cli/src/modules/agents/repositories/human-interaction-request.repository.ts
+  s_dfe3f914c8bb46::t_d9964d214fb27c 1-72
+packages/cli/src/modules/instance-ai/human-interaction-design.controller.ts
+  s_dfe3f914c8bb46::t_929aa09a300a08 1-78
+packages/cli/src/modules/instance-ai/instance-ai.module.ts
+  s_dfe3f914c8bb46::t_7bdbad4d3d77ad 55
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_dfe3f914c8bb46::t_3489533e3ebebf 2-30
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentCapabilitiesSection.test.ts
+  s_dfe3f914c8bb46::t_0ed53f99916fda 4,94-101,137-141,1789-1849
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentHitlConfigurationModal.test.ts
+  s_dfe3f914c8bb46::t_0eb8af0736a2a7 58,63-64,589-641
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentToolsConnectionModalWrapper.test.ts
+  s_dfe3f914c8bb46::t_d6ab6283fa249a 304-308,453-598
+packages/frontend/editor-ui/src/features/agents/components/AgentHumanInteractionToolEditor.vue
+  s_dfe3f914c8bb46::t_5341de3a47f859 1-302
+packages/frontend/editor-ui/src/features/agents/composables/useAgentApi.ts
+  s_dfe3f914c8bb46::t_8d5c5226a37c34 1286-1299
+packages/frontend/editor-ui/src/features/shared/toolsConnection/types.ts
+  s_dfe3f914c8bb46::t_1b1e14eceaa76b 171
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "901914d5bf991e60de2de47f4731aa93feddfed9",
+  "prompts": {},
+  "sessions": {
+    "s_dfe3f914c8bb46": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a177de-1655-75e1-b502-74f6cb945148",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "Michael Drury <michael.drury@n8n.io>"
+    }
+  }
+}
