@@ -56,7 +56,7 @@ const enterpriseTestId = computed(() =>
 	<span v-if="visible" :class="$style.badges">
 		<N8nBadge
 			v-if="resolved.showPreview"
-			variant="filled"
+			variant="outline"
 			size="xxsmall"
 			:data-test-id="previewTestId"
 		>
@@ -68,7 +68,7 @@ const enterpriseTestId = computed(() =>
 			as-child
 			:content="t('enterpriseReadinessBadge.tooltip')"
 		>
-			<N8nBadge variant="filled" size="xxsmall" :data-test-id="enterpriseTestId" tabindex="0">
+			<N8nBadge variant="outline" size="xxsmall" :data-test-id="enterpriseTestId" tabindex="0">
 				{{ t('enterpriseReadinessBadge.limited') }}
 			</N8nBadge>
 		</N8nTooltip>

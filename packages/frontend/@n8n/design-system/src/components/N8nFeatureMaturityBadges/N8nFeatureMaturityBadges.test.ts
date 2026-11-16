@@ -91,13 +91,13 @@ describe('N8nFeatureMaturityBadges', () => {
 		expect(container).toBeEmptyDOMElement();
 	});
 
-	it('draws both badges as filled grey badges', () => {
+	it('draws both badges as outline badges', () => {
 		const preview = mount(FeatureMaturityBadges, {
 			...featureList,
 			props: { feature: 'workflowReviews' },
 		});
 		expect(preview.getComponent(N8nBadge).props()).toMatchObject({
-			variant: 'filled',
+			variant: 'outline',
 			size: 'xxsmall',
 		});
 		expect(preview.getComponent(N8nBadge).props('leadingIcon')).toBeUndefined();
@@ -108,7 +108,7 @@ describe('N8nFeatureMaturityBadges', () => {
 			props: { feature: 'assistant' },
 		});
 		expect(enterprise.getComponent(N8nBadge).props()).toMatchObject({
-			variant: 'filled',
+			variant: 'outline',
 			size: 'xxsmall',
 		});
 		expect(enterprise.getComponent(N8nBadge).props('leadingIcon')).toBeUndefined();
