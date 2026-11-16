@@ -221,6 +221,14 @@ export class CompiledEngineProcesses {
 	}
 
 	/**
+	 * Whether `wfrt` stores the body of a response as binary data (`responseBinary`). It has
+	 * n8n's file system store only: `binaryData` gives it the storage path in that mode.
+	 */
+	get storesResponses(): boolean {
+		return this.binaryDataConfig.mode === 'filesystem';
+	}
+
+	/**
 	 * The binary data settings of this instance. The host stores binary data as n8n does,
 	 * in the same storage path, so the n8n UI shows it and n8n's pruning deletes it.
 	 * `wfrt` reads stored files from the path for binary responses.

@@ -88,24 +88,45 @@ pub fn filePath(buf: *[max_path + 1]u8, storage: []const u8, id: []const u8) Rea
     return path;
 }
 
+/// Open the file of the file id `fid` for reading. The walk starts at the
+/// storage directory `root_fd` (closed here) and opens one segment at a
+/// time, never through a symbolic link (`sys.FileOp`).
+fn openStored(root_fd: c_int, fid: []const u8) ReadError!c_int {
+    var fd = root_fd;
+    var name: [max_segment + 1]u8 = @splat(0);
+    var it = std.mem.splitScalar(u8, fid, '/');
+    while (it.next()) |segment| {
+        std.debug.assert(validSegment(segment));
+        @memcpy(name[0..segment.len], segment);
+        name[segment.len] = 0;
+        const how: sys.FileOp.Open = if (it.peek() == null) .read else .dir;
+        const res = sys.fileOpNow(.{ .kind = .open, .fd = fd, .name = name[0..segment.len :0], .how = how });
+        sys.close(fd);
+        if (res < 0) return error.NotFound;
+        fd = res;
+    }
+    return fd;
+}
+
 /// Reads the file of `id` into memory from `scratch` (the transient storage of
-/// the batch). A file larger than `limit` is `error.TooLarge`.
+/// the batch). A file larger than `limit` is `error.TooLarge`. The read
+/// blocks; `blob_store.zig` has the operations that do not.
 pub fn read(scratch: std.mem.Allocator, storage: []const u8, id: []const u8, limit: usize) ReadError![]u8 {
-    var buf: [max_path + 1]u8 = undefined;
-    const path = try filePath(&buf, storage, id);
-    const fd = std.c.open(path, .{ .ACCMODE = .RDONLY }, @as(std.c.mode_t, 0));
-    if (fd < 0) return error.NotFound;
-    defer _ = std.c.close(fd);
-    const end = std.c.lseek(fd, 0, std.c.SEEK.END);
-    if (end < 0) return error.Io;
-    const size: usize = @intCast(end);
+    const fid = fileId(id) orelse return error.BadId;
+    if (storage.len == 0) return error.NoStore;
+    if (storage.len > max_path) return error.BadId;
+    var root: [max_path + 1]u8 = @splat(0);
+    @memcpy(root[0..storage.len], storage);
+    const root_fd = sys.openDir(root[0..storage.len :0]) catch return error.NotFound;
+    const fd = try openStored(root_fd, fid);
+    defer sys.close(fd);
+    const size = sys.fileSize(fd) orelse return error.Io;
     if (size > limit) return error.TooLarge;
-    if (std.c.lseek(fd, 0, std.c.SEEK.SET) != 0) return error.Io;
-    const out = try scratch.alloc(u8, size);
+    const out = try scratch.alloc(u8, @intCast(size));
     var got: usize = 0;
     // Each read moves forward or ends the loop, so the file size bounds it.
-    while (got < size) {
-        const n = std.c.read(fd, out[got..].ptr, size - got);
+    while (got < out.len) {
+        const n = sys.fileOpNow(.{ .kind = .read, .fd = fd, .into = out[got..], .offset = got });
         if (n <= 0) return error.Io;
         got += @intCast(n);
     }
@@ -158,6 +179,10 @@ test "read gives the bytes of a stored file" {
     try t.expectError(error.TooLarge, read(t.allocator, root, "filesystem-v2:workflows/wf1/executions/41/binary_data/f1", 2));
     try t.expectError(error.NotFound, read(t.allocator, root, "filesystem-v2:workflows/wf1/executions/41/binary_data/f2", 1024));
     try t.expectError(error.BadId, read(t.allocator, root, "filesystem-v2:../x", 1024));
+    // A symbolic link is not a stored file, also when it points into the store.
+    const link = try std.fmt.bufPrintSentinel(&pb, "{s}/workflows/wf1/executions/41/binary_data/ln", .{root}, 0);
+    try t.expect(std.c.symlink("f1", link) == 0);
+    try t.expectError(error.NotFound, read(t.allocator, root, "filesystem-v2:workflows/wf1/executions/41/binary_data/ln", 1024));
 }
 
 /// A seed in the fuzzer's input form: `Smith.slice` reads a 4-byte little-

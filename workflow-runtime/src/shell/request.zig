@@ -23,6 +23,9 @@ pub const Built = struct {
     timeout_ms: ?u32 = null,
     /// A retry on a fresh connection cannot apply the request twice.
     retry_safe: bool = false,
+    /// The args have `responseBinary`: the body of a 2xx response goes to
+    /// the binary data store (`blob_store.zig`).
+    stores: bool = false,
 
     pub fn method(b: *const Built) []const u8 {
         return b.method_buf[0..b.method_len];
@@ -70,6 +73,8 @@ fn buildWith(args: []const u8, store: ?*const creds.Store, idem_key: ?[]const u8
     // The members of the args, in one pass (a scan for each showed in
     // profiles).
     const fa = readArgs(args);
+    // An object asks for a stored response; `null` and other values do not.
+    b.stores = if (fa.response_binary) |raw| raw.len > 0 and raw[0] == '{' else false;
     const m_raw = fa.method;
     const method: []const u8 = if (m_raw) |m| http.plainString(m) orelse "GET" else "GET";
     if (method.len == 0 or method.len > b.method_buf.len) return invalid(diag, "http: the method is not valid", .{});
@@ -537,6 +542,7 @@ const Args = struct {
     qs_format: ?[]const u8 = null,
     basic_auth: ?[]const u8 = null,
     inject: ?[]const u8 = null,
+    response_binary: ?[]const u8 = null,
 };
 
 fn readArgs(args: []const u8) Args {
@@ -546,7 +552,7 @@ fn readArgs(args: []const u8) Args {
     while (it.next()) |mem| : (guard += 1) {
         if (guard > args.len) break;
         const k = mem.key;
-        const slot: *?[]const u8 = if (eq(k, "\"method\"")) &a.method else if (eq(k, "\"credential\"")) &a.credential else if (eq(k, "\"timeoutMs\"")) &a.timeout_ms else if (eq(k, "\"url\"")) &a.url else if (eq(k, "\"qs\"")) &a.qs else if (eq(k, "\"headers\"")) &a.headers else if (eq(k, "\"body\"")) &a.body else if (eq(k, "\"multipart\"")) &a.multipart else if (eq(k, "\"qsFormat\"")) &a.qs_format else if (eq(k, "\"basicAuth\"")) &a.basic_auth else if (eq(k, "\"inject\"")) &a.inject else continue;
+        const slot: *?[]const u8 = if (eq(k, "\"method\"")) &a.method else if (eq(k, "\"credential\"")) &a.credential else if (eq(k, "\"timeoutMs\"")) &a.timeout_ms else if (eq(k, "\"url\"")) &a.url else if (eq(k, "\"qs\"")) &a.qs else if (eq(k, "\"headers\"")) &a.headers else if (eq(k, "\"body\"")) &a.body else if (eq(k, "\"multipart\"")) &a.multipart else if (eq(k, "\"qsFormat\"")) &a.qs_format else if (eq(k, "\"basicAuth\"")) &a.basic_auth else if (eq(k, "\"inject\"")) &a.inject else if (eq(k, "\"responseBinary\"")) &a.response_binary else continue;
         if (slot.* == null) slot.* = mem.value;
     }
     return a;

@@ -60,6 +60,9 @@ const StubRing = struct {
     pub fn send(_: *StubRing, _: u64, _: c_int, _: []const u8) bool {
         return false;
     }
+    pub fn fileOp(_: *StubRing, _: u64, _: sys.FileOp) bool {
+        return false;
+    }
     pub fn cancel(_: *StubRing, _: u64) void {}
     pub fn pollIn(_: *StubRing, _: u64, _: c_int) bool {
         return false;
@@ -156,6 +159,26 @@ const LinuxRing = struct {
     pub fn send(r: *LinuxRing, user: u64, fd: c_int, buf: []const u8) bool {
         const s = r.sqe() orelse return false;
         s.prep_send(fd, buf, linux.MSG.NOSIGNAL);
+        s.user_data = user;
+        return true;
+    }
+
+    /// A file operation of the binary data store (`sys.FileOp`): one
+    /// completion with `user`, whose result is the count or the descriptor,
+    /// or a negative errno. The names and the buffer of `op` must stay
+    /// unchanged until the completion. False when no SQE could be queued (a
+    /// limit).
+    pub fn fileOp(r: *LinuxRing, user: u64, op: sys.FileOp) bool {
+        const s = r.sqe() orelse return false;
+        switch (op.kind) {
+            .mkdir => s.prep_mkdirat(op.fd, op.name, sys.dir_mode),
+            .open => s.prep_openat(op.fd, op.name, sys.openFlags(op.how), sys.file_mode),
+            .read => s.prep_read(op.fd, op.into, op.offset),
+            .write => s.prep_write(op.fd, op.from, op.offset),
+            .close => s.prep_close(op.fd),
+            .rename => s.prep_renameat(op.fd, op.name, op.fd, op.to, 0),
+            .unlink => s.prep_unlinkat(op.fd, op.name, 0),
+        }
         s.user_data = user;
         return true;
     }
@@ -316,4 +339,55 @@ test "ring: accept, recv into provided buffers, send, and buffers come back" {
     cfd_open = false;
     const eof = try waitFor(&ring, 2);
     try std.testing.expectEqual(@as(i32, 0), eof.res);
+}
+
+/// Queue `op` and give its result.
+fn fileResult(r: *Ring, user: u64, op: sys.FileOp) !i32 {
+    try std.testing.expect(r.fileOp(user, op));
+    return (try waitFor(r, user)).res;
+}
+
+test "ring: the file operations of the binary data store" {
+    if (!supported) return error.SkipZigTest;
+    const t = std.testing;
+    const mem = try t.allocator.alloc(u8, 4 * (4096 + 4) + (64 << 10));
+    defer t.allocator.free(mem);
+    var fba: std.heap.FixedBufferAllocator = .init(mem);
+    var ring: Ring = undefined;
+    // A kernel or sandbox without io_uring: nothing to test here.
+    ring.init(fba.allocator(), .{ .entries = 64, .buffers = 4, .buffer_size = 4096 }) catch return error.SkipZigTest;
+    defer ring.deinit(fba.allocator());
+    var tmp = t.tmpDir(.{});
+    defer tmp.cleanup();
+    var root_buf: [256]u8 = undefined;
+    const root = try sys.openDir(try std.fmt.bufPrintSentinel(&root_buf, ".zig-cache/tmp/{s}", .{tmp.sub_path}, 0));
+    defer sys.close(root);
+
+    // The same results as `sys.fileOpNow`: a count or a descriptor, or a negative errno.
+    try t.expectEqual(@as(i32, 0), try fileResult(&ring, 10, .{ .kind = .mkdir, .fd = root, .name = "d" }));
+    try t.expect(sys.isExists(try fileResult(&ring, 11, .{ .kind = .mkdir, .fd = root, .name = "d" })));
+    const dir = try fileResult(&ring, 12, .{ .kind = .open, .fd = root, .name = "d", .how = .dir });
+    try t.expect(dir >= 0);
+    const file = try fileResult(&ring, 13, .{ .kind = .open, .fd = dir, .name = "f.tmp", .how = .create });
+    try t.expect(file >= 0);
+    try t.expect(sys.isExists(try fileResult(&ring, 14, .{ .kind = .open, .fd = dir, .name = "f.tmp", .how = .create })));
+    try t.expectEqual(@as(i32, 5), try fileResult(&ring, 15, .{ .kind = .write, .fd = file, .from = "hello" }));
+    try t.expectEqual(@as(i32, 3), try fileResult(&ring, 16, .{ .kind = .write, .fd = file, .from = "abc", .offset = 5 }));
+    try t.expectEqual(@as(i32, 0), try fileResult(&ring, 17, .{ .kind = .close, .fd = file }));
+    try t.expectEqual(@as(i32, 0), try fileResult(&ring, 18, .{ .kind = .rename, .fd = dir, .name = "f.tmp", .to = "f" }));
+    const again = try fileResult(&ring, 19, .{ .kind = .open, .fd = dir, .name = "f", .how = .read });
+    try t.expect(again >= 0);
+    var buf: [16]u8 = undefined;
+    try t.expectEqual(@as(i32, 8), try fileResult(&ring, 20, .{ .kind = .read, .fd = again, .into = &buf }));
+    try t.expectEqualStrings("helloabc", buf[0..8]);
+    try t.expectEqual(@as(i32, 0), try fileResult(&ring, 21, .{ .kind = .read, .fd = again, .into = &buf, .offset = 8 }));
+    sys.close(again);
+    // A symbolic link is never opened, as a file or as a directory.
+    try t.expect(sys.symlinkAt("f", dir, "ln"));
+    try t.expect(try fileResult(&ring, 22, .{ .kind = .open, .fd = dir, .name = "ln", .how = .read }) < 0);
+    try t.expect(sys.symlinkAt("d", root, "dl"));
+    try t.expect(try fileResult(&ring, 23, .{ .kind = .open, .fd = root, .name = "dl", .how = .dir }) < 0);
+    try t.expectEqual(@as(i32, 0), try fileResult(&ring, 24, .{ .kind = .unlink, .fd = dir, .name = "f" }));
+    try t.expect(try fileResult(&ring, 25, .{ .kind = .open, .fd = dir, .name = "f", .how = .read }) < 0);
+    sys.close(dir);
 }

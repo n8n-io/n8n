@@ -17,6 +17,7 @@ const admin = @import("admin.zig");
 const renew = @import("renew.zig");
 const triggers = @import("triggers.zig");
 const binary_store = @import("binary_store.zig");
+const blob_store = @import("blob_store.zig");
 const fbf = @import("fallback_frames.zig");
 const outbox = @import("outbox.zig");
 const programs = @import("programs.zig");
@@ -68,6 +69,12 @@ pub const Options = struct {
     egress_max_body: u32 = 16 << 20,
     /// Large buffers for bodies over 16 KB, reserved at start.
     egress_big_slots: u32 = 8,
+    /// `--binary-max-file-mb`, `--binary-buffer-mb`, `--binary-max-transfers`:
+    /// the limits of the binary data store (`blob_store.Config`). The store
+    /// exists when n8n's storage path is set (`startBlobs`).
+    binary_max_file: u64 = 16 << 20,
+    binary_buffer: u64 = 32 << 20,
+    binary_max_transfers: u16 = 64,
     /// Tests only: skip the TLS certificate check.
     insecure_tls: bool = false,
     credentials: ?*const creds.Store = null,
@@ -288,6 +295,8 @@ const Kind = enum(u8) {
     ring_recv = 9,
     ring_send = 10,
     ring_epoll = 11,
+    /// A file operation of the binary data store (`blob_store.zig`).
+    ring_file = 12,
 };
 
 /// A connection to the admin port. Its buffers are reserved at startup. A
@@ -432,6 +441,8 @@ pub const Runner = struct {
     poller: sys.Poller,
     /// The io_uring of the inbound side, when it started (`startRing`).
     ring: ?*uring.Ring = null,
+    /// The binary data store, when n8n's storage path is set (`startBlobs`).
+    blobs: ?*blob_store.Store = null,
     /// Reserved at startup: the ring and the memory of its buffers. The
     /// ring is made in the shard's thread, which alone submits to it.
     ring_store: ?*uring.Ring = null,
@@ -644,7 +655,9 @@ pub const Runner = struct {
         ecfg.ca_file = opts.ca_file;
         ecfg.gym = opts.gym;
         ecfg.dns_servers = opts.gym_dns;
-        try r.egress.init(gpa, ecfg, .{ .ctx = r, .done = egressDone }, &r.poller, @backingInt(Kind.egress), @backingInt(Kind.dns));
+        try r.startBlobs(gpa, opts);
+        ecfg.blobs = r.blobs;
+        try r.egress.init(gpa, ecfg, .{ .ctx = r, .done = egressDone, .stored = egressStored }, &r.poller, @backingInt(Kind.egress), @backingInt(Kind.dns));
         // Virtual memory: pages are used only as large frames come and go.
         // Without --fallback the shard keeps no host buffers.
         r.fb_conns = try gpa.alloc(FbConn, if (opts.fallback != null) fbf.max_conns else 0);
@@ -787,6 +800,7 @@ pub const Runner = struct {
         if (r.svc) |*t| t.deinit();
         if (r.renewals) |*t| t.deinit();
         r.egress.deinit();
+        if (r.blobs) |b| b.deinit();
         if (r.ring) |ring| ring.deinit(r.ring_fba.allocator());
         r.poller.deinit();
     }
@@ -805,6 +819,10 @@ pub const Runner = struct {
             if (has_ready or r.events.items.len > 0 or r.sh.wakes.items.len > 0 or r.nlost > 0 or r.egress.hasWork()) timeout = 0;
             // The stream has durable lines that one pass did not send.
             if (r.stream_more or r.renewalsPending()) timeout = 0;
+            // A stored response has a result that found no room.
+            if (r.blobs) |b| if (b.nextDone() != null) {
+                timeout = 0;
+            };
             if (next_timer) |t| timeout = @min(timeout, @as(i32, @intCast(std.math.clamp(t - sys.nowMs(), 0, 50))));
             if (r.sh.unsynced) timeout = @min(timeout, @as(i32, @intCast(r.opts.batched_sync_ms)));
             // Outbound requests that wait for an origin's rate or Retry-After.
@@ -818,6 +836,7 @@ pub const Runner = struct {
             const now = sys.nowMs();
             r.egress.afterEvents(now);
             r.drainEgressLost();
+            r.drainStored(now);
             r.serviceFallback(now);
             r.expireServiceCalls(now);
             r.resumeRenewed(now);
@@ -893,7 +912,7 @@ pub const Runner = struct {
                 if (ev.writable) r.flushAdmin(idx);
                 if (ev.readable) r.readAdmin(idx);
             }, // Ring completions never come through epoll.
-            .ring_accept, .ring_recv, .ring_send, .ring_epoll => unreachable,
+            .ring_accept, .ring_recv, .ring_send, .ring_epoll, .ring_file => unreachable,
         }
     }
 
@@ -913,6 +932,7 @@ pub const Runner = struct {
             return;
         };
         r.ring = store;
+        if (r.blobs) |b| b.useRing(store);
         r.poller.remove(r.lfd);
         store.acceptMultishot(token(.ring_accept, 0, 0), r.lfd);
         r.ring_epoll_armed = store.pollIn(token(.ring_epoll, 0, 0), r.poller.fd);
@@ -962,6 +982,8 @@ pub const Runner = struct {
             },
             .ring_recv => r.onRecv(ring, idx, gen, c),
             .ring_send => r.onSent(idx, gen, c),
+            // The result of the step goes out in `drainStored`.
+            .ring_file => if (r.blobs) |b| b.onCompletion(c.user, c.res),
             else => unreachable, // Only ring kinds are submitted.
         }
     }
@@ -1635,6 +1657,112 @@ pub const Runner = struct {
         core_lib.json.writeString(&b, resp.body) catch return error.ArenaFull;
         try b.byte('}');
         return .{ .payload = b.finish(), .aux = 0 };
+    }
+
+    // ---- stored responses (blob_store.zig, spec 7.1 `responseBinary`) ------------
+
+    /// Make the binary data store when n8n keeps binary data in files: its
+    /// storage path is set (`binary_store.storagePath`), and its mode, when
+    /// set, is `filesystem`. Without the store, a request with
+    /// `responseBinary` fails at its start. The store has no cost for a
+    /// shard without it: no memory and no descriptor.
+    fn startBlobs(r: *Runner, gpa: std.mem.Allocator, opts: Options) error{OutOfMemory}!void {
+        r.blobs = null;
+        const root = binary_store.storagePath() orelse return;
+        const mode = sys.getenv("N8N_DEFAULT_BINARY_DATA_MODE") orelse "filesystem";
+        if (!std.mem.eql(u8, mode, "filesystem")) return;
+        // Bodies wait in blocks only for writes on the ring.
+        const ring_possible = uring.supported and opts.io != .poll;
+        const b = try gpa.create(blob_store.Store);
+        b.init(gpa, .{
+            .root = root,
+            .max_file_bytes = opts.binary_max_file,
+            .max_transfers = opts.binary_max_transfers,
+            .buffer_bytes = if (ring_possible) opts.binary_buffer else 0,
+        }, @backingInt(Kind.ring_file)) catch |e| switch (e) {
+            error.OutOfMemory => return error.OutOfMemory,
+            error.BadRoot => {
+                std.debug.print("shard {d}: the binary data storage path \"{s}\" is not a directory; responses are not stored\n", .{ r.id, root[0..@min(root.len, 200)] });
+                return;
+            },
+        };
+        r.blobs = b;
+    }
+
+    /// The start of the result of a stored response: `{"status":N,"headers":{...}}`.
+    fn writeStoredHead(arena: *Arena, resp: egress.Response, reads: core.ResultReads) error{ArenaFull}![]const u8 {
+        var b = arena.builder();
+        errdefer b.abandon();
+        var nb: [32]u8 = @splat(0);
+        // 32 bytes hold this text with any u32.
+        try b.append(std.fmt.bufPrint(&nb, "{{\"status\":{d},\"headers\":", .{resp.status}) catch unreachable);
+        if (reads.headers) try http.writeHeadersJson(&b, resp.header_lines) else try b.append("{}");
+        try b.byte('}');
+        return b.finish();
+    }
+
+    /// A 2xx response of a request with `responseBinary`: the body goes to
+    /// the binary data store, and the step gets its result with the handle
+    /// when the file is written (`drainStored`).
+    fn egressStored(ctx: *anyopaque, exec_id: u64, seq: u32, h: blob_store.Handle, resp: egress.Response, url_path: []const u8) void {
+        const r: *Runner = @ptrCast(@alignCast(ctx));
+        const blobs = r.blobs orelse unreachable; // The egress client got the handle from this store.
+        // The request goes again after a renewal: there is nothing to store yet.
+        if (r.renewOnResult(exec_id, seq, .{ .ok = resp })) return blobs.release(h);
+        const st = &r.sh.st;
+        const arena = if (r.in_perform) &r.carry[r.carry_cur] else &r.batch;
+        const head = writeStoredHead(arena, resp, st.resultReads(exec_id, seq)) catch {
+            blobs.release(h);
+            return egressDone(ctx, exec_id, seq, .{ .err = "http: the response does not fit in the batch memory" });
+        };
+        // The execution part of the path, as the fallback host writes it: n8n's id
+        // for a manual run, else `wfrt-` and the id of the runtime. n8n moves the
+        // files of a production run to its own id when it saves the run.
+        var eb: [32]u8 = @splat(0);
+        var xb: [40]u8 = @splat(0);
+        const exec_text = heap.formatExecId(exec_id, &eb);
+        // 40 bytes hold the prefix and the 32 bytes of an id.
+        const execution = if (exec_id & core.given_id_flag != 0) exec_text else std.fmt.bufPrint(&xb, "wfrt-{s}", .{exec_text}) catch unreachable;
+        blobs.put(h, .{
+            .exec_id = exec_id,
+            .seq = seq,
+            .workflow = if (st.by_exec.get(exec_id)) |slot| st.modules[st.slot_module[slot]].workflowId() else "",
+            .execution = execution,
+            .head = head,
+            .content_disposition = egress.headerValue(resp.header_lines, "content-disposition") orelse "",
+            .content_type = egress.headerValue(resp.header_lines, "content-type") orelse "",
+            .url_path = url_path,
+            .body = resp.body,
+            .now_ms = r.egress.now_ms,
+        });
+        r.deliverStored();
+    }
+
+    /// Give the steps the results of the store, oldest first, as room
+    /// allows. They count as new work: the reserve for requests in flight
+    /// stays. A result without room waits in the store.
+    fn deliverStored(r: *Runner) void {
+        const blobs = r.blobs orelse return;
+        var guard: u32 = 0;
+        while (guard < blobs.cfg.max_transfers and r.events.items.len + r.resultReserve() < r.events.capacity) : (guard += 1) {
+            const d = blobs.nextDone() orelse return;
+            const arena = if (r.in_perform) &r.carry[r.carry_cur] else &r.batch;
+            if (arena.dupe(d.payload)) |payload| {
+                const kind: core.EventKind = if (d.ok) .effect_ok else .effect_err;
+                r.events.appendAssumeCapacity(.{ .kind = kind, .exec_id = d.exec_id, .seq = d.seq, .aux = if (d.ok) core.raw_body_flag | d.head_len else 0, .payload = payload });
+            } else |_| {
+                r.events.appendAssumeCapacity(.{ .kind = .effect_err, .exec_id = d.exec_id, .seq = d.seq, .payload = "http: the response does not fit in the batch memory" });
+            }
+            blobs.take(d);
+        }
+    }
+
+    /// Once per loop round: transfers over their time fail, and finished
+    /// ones give their results.
+    fn drainStored(r: *Runner, now: i64) void {
+        const blobs = r.blobs orelse return;
+        blobs.tick(now);
+        r.deliverStored();
     }
 
     // ---- admin API (spec 9.1) ---------------------------------------------------
@@ -3937,4 +4065,43 @@ test "fallback: the steps that wait go out in arrival order" {
     }
     try std.testing.expectEqual(n, off);
     try std.testing.expectEqual(@as(usize, 0), r.fb_waitq.items.len);
+}
+
+test "a stored response gives its step a result through the event list" {
+    const Env = struct {
+        extern "c" fn setenv(name: [*:0]const u8, value: [*:0]const u8, overwrite: c_int) c_int;
+        extern "c" fn unsetenv(name: [*:0]const u8) c_int;
+    };
+    var tmp = std.testing.tmpDir(.{});
+    defer tmp.cleanup();
+    var root_buf: [256]u8 = undefined;
+    const root = try std.fmt.bufPrintSentinel(&root_buf, ".zig-cache/tmp/{s}", .{tmp.sub_path}, 0);
+    try std.testing.expectEqual(@as(c_int, 0), Env.setenv("WFRT_BINARY_DATA_STORAGE_PATH", root, 1));
+    defer _ = Env.unsetenv("WFRT_BINARY_DATA_STORAGE_PATH");
+    var t: TestRunner = .{ .arena = undefined };
+    try t.start();
+    defer t.deinit();
+    const r = t.r;
+    const blobs = r.blobs orelse return error.TestExpectedEqual;
+    // No execution 5 runs here, so the response has no workflow for its path:
+    // the step gets the reason, and the row of the store is free again.
+    const before = r.events.items.len;
+    const h = try blobs.reserve("{}");
+    Runner.egressStored(r, 5, 2, h, .{ .status = 200, .header_lines = "content-type: text/plain\r\n", .body = "hi", .json = false }, "/a.txt");
+    try std.testing.expectEqual(before + 1, r.events.items.len);
+    const ev = r.events.items[before];
+    try std.testing.expectEqual(core.EventKind.effect_err, ev.kind);
+    try std.testing.expectEqual(@as(u64, 5), ev.exec_id);
+    try std.testing.expect(std.mem.indexOf(u8, ev.payload, "workflow id") != null);
+    try std.testing.expect(!blobs.busy() and blobs.nextDone() == null);
+    // A result that finds no room waits in the store, then goes out.
+    const free = r.events.capacity - r.resultReserve() - r.events.items.len;
+    for (0..free) |_| r.events.appendAssumeCapacity(.{ .kind = .cancel, .exec_id = 1 });
+    const h2 = try blobs.reserve("{}");
+    Runner.egressStored(r, 6, 1, h2, .{ .status = 200, .header_lines = "", .body = "", .json = false }, "/");
+    try std.testing.expect(blobs.nextDone() != null);
+    r.events.items.len -= 1;
+    r.drainStored(sys.nowMs());
+    try std.testing.expect(blobs.nextDone() == null);
+    try std.testing.expectEqual(@as(u64, 6), r.events.items[r.events.items.len - 1].exec_id);
 }

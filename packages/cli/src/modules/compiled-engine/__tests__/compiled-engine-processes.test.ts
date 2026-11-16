@@ -39,6 +39,15 @@ describe('CompiledEngineProcesses', () => {
 		});
 	});
 
+	it('says that wfrt stores responses only in filesystem mode', () => {
+		const stores = (mode: BinaryDataConfig['mode']) =>
+			(processesWith({ mode }) as unknown as CompiledEngineProcesses).storesResponses;
+		expect(stores('filesystem')).toBe(true);
+		expect(stores('default')).toBe(false);
+		expect(stores('s3')).toBe(false);
+		expect(stores('database')).toBe(false);
+	});
+
 	it('blocks $env in the host unless n8n allows env access in nodes', () => {
 		const processes = processesWith({});
 		const original = process.env.N8N_BLOCK_ENV_ACCESS_IN_NODE;

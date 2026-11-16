@@ -26,6 +26,8 @@ pub const regex = @import("regex.zig");
 pub const json_error = @import("json_error.zig");
 pub const normalize = @import("normalize.zig");
 pub const collate = @import("collate.zig");
+pub const binary_names = @import("binary_names.zig");
+pub const mime_tables = @import("mime_tables.zig");
 
 test {
     @import("std").testing.refAllDecls(@This());

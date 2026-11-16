@@ -811,7 +811,10 @@ file at start (`wfrt serve --credentials <file>`,
   The reference runner and the test VM make the handle from the body of the fixture
   (`src/reference/binary-response.ts`): `{ $base64 }` is decoded, text is UTF-8, another value is
   its JSON text. The file part of the `id` is the SHA-256 of the bytes, so a test compares stored
-  bytes without a store. The runtime does not have `responseBinary` yet (compiler-plan.md 9).
+  bytes without a store. The runtime writes the file and its `.metadata` companion in n8n's file
+  system store (`blob_store.zig`): the storage path must be set, and the file part of the `id` is
+  a UUID. The body is complete in memory before it is stored, so its limit is the smaller of
+  `--egress-max-body-mb` and `--binary-max-file-mb` (compiler-plan.md 9).
 * The runtime limits outbound requests per origin (scheme, host, port):
   connections, requests on the wire, waiting requests, a request rate, and
   connect and read timeouts (`wfrt serve --egress-origin`, workflow-runtime
