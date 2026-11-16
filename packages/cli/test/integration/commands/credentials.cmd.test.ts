@@ -1,6 +1,6 @@
-import { GlobalConfig } from '@n8n/config';
 import { CREDENTIAL_DESCRIPTION_MAX_LENGTH, CREDENTIAL_DESCRIPTIONS_FLAG } from '@n8n/api-types';
 import { getPersonalProject, mockInstance, testDb } from '@n8n/backend-test-utils';
+import { PostHogClient } from '@n8n/backend-services';
 import { CredentialsEntity, DbLock, DbLockService, InstanceCredentialAssignment } from '@n8n/db';
 import type { ContentImportContext, PolicyViolation } from '@n8n/decorators';
 import { Container } from '@n8n/di';
@@ -39,6 +39,8 @@ const [credentialsFixture] = jsonParse<CredentialFixture[]>(
 );
 
 mockInstance(LoadNodesAndCredentials);
+// Keep flag results independent of the live rollout and the PostHog cache.
+const postHogClient = mockInstance(PostHogClient);
 const command = setupTestCommand(ImportCredentialsCommand);
 const IMPORT_CREDENTIAL_USE = {
 	id: 'test:credential-import',
@@ -53,7 +55,9 @@ beforeAll(() => {
 });
 
 beforeEach(async () => {
-	Container.get(GlobalConfig).featureFlags.override[CREDENTIAL_DESCRIPTIONS_FLAG] = true;
+	postHogClient.getFeatureFlagForInstance.mockImplementation(async (flag) =>
+		flag === CREDENTIAL_DESCRIPTIONS_FLAG ? true : undefined,
+	);
 	await testDb.truncate([
 		'InstanceCredentialAssignment',
 		'CredentialsEntity',
@@ -269,21 +273,16 @@ test.each([
 	},
 );
 
-test.for([false, undefined])(
+test.each([false, undefined])(
 	'import:credentials ignores descriptions and preserves stored values when the flag is %s',
-	async (enabled, { skip }) => {
-		// Re-enable this case after the test mocks the live PostHog flag lookup.
-		if (enabled === undefined) skip();
-
+	async (enabled) => {
 		await createOwner();
 		await command.run([
 			'--input=./test/integration/commands/import-credentials/credentials-description.json',
 		]);
-		if (enabled === undefined) {
-			delete Container.get(GlobalConfig).featureFlags.override[CREDENTIAL_DESCRIPTIONS_FLAG];
-		} else {
-			Container.get(GlobalConfig).featureFlags.override[CREDENTIAL_DESCRIPTIONS_FLAG] = enabled;
-		}
+		postHogClient.getFeatureFlagForInstance.mockImplementation(async (flag) =>
+			flag === CREDENTIAL_DESCRIPTIONS_FLAG ? enabled : undefined,
+		);
 		const temporaryDirectory = fs.mkdtempSync(path.join(os.tmpdir(), 'n8n-credential-import-'));
 		const inputPath = path.join(temporaryDirectory, 'credentials.json');
 		fs.writeFileSync(
@@ -973,8 +972,4 @@ describe('content-import policy', () => {
 			withLock.mockRestore();
 		}
 	});
-});
-
-afterEach(() => {
-	delete Container.get(GlobalConfig).featureFlags.override[CREDENTIAL_DESCRIPTIONS_FLAG];
 });
