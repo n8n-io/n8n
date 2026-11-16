@@ -272,7 +272,7 @@ export class SimulationSessionService {
 		if (backend && forBackend.length > 0) {
 			try {
 				const described = await backend.describeTools({ ...agent, tools: forBackend });
-				served = new Map(described.map((tool) => [tool.toolName, withBlockReason(tool)]));
+				served = new Map(described.map((tool) => [tool.toolName, tool]));
 			} catch (error) {
 				describeFailed = true;
 				this.logger.warn('[SafeTesting] The simulator failed to describe tools', {
@@ -284,7 +284,7 @@ export class SimulationSessionService {
 
 		return agent.tools.map((tool): ToolTestCapability => {
 			const blocked = (
-				reason: ToolTestCapability['reason'],
+				reason: Extract<ToolTestCapability, { testability: 'blocked' }>['reason'],
 				detail: string,
 			): ToolTestCapability => ({
 				toolName: tool.toolName,
@@ -317,12 +317,6 @@ interface DescribedAgent {
 /** A session belongs to one chat of one agent and user, so a reused chat ID never shares a world. */
 function sessionKey({ user, projectId, agentId, testChatId }: OpenSimulationInput): string {
 	return `${user.id}:${projectId}:${agentId}:${testChatId}`;
-}
-
-/** A backend that blocks a tool without saying why still gets a reason the panel can show. */
-function withBlockReason(tool: ToolTestCapability): ToolTestCapability {
-	if (tool.testability !== 'blocked' || tool.reason) return tool;
-	return { ...tool, reason: 'unsupported_by_simulator' };
 }
 
 function urlOrigin(url: string): string | undefined {

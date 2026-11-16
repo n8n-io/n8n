@@ -337,18 +337,6 @@ describe('SimulationSessionService', () => {
 		});
 	});
 
-	it('gives a reason to a tool the backend blocks without one', async () => {
-		const backend = llmBackend();
-		vi.mocked(backend.describeTools).mockResolvedValue([
-			{ toolName: 'Send_Slack', kind: 'node', testability: 'blocked' },
-		]);
-		const { service } = setup({ backend });
-
-		const tools = await service.describeTools('agent-1', 'project-1');
-
-		expect(tools[0]).toMatchObject({ testability: 'blocked', reason: 'unsupported_by_simulator' });
-	});
-
 	it('lets the simulator describe a workflow tool that runs on the default engine', async () => {
 		const { service } = setup({ backend: llmBackend() });
 
