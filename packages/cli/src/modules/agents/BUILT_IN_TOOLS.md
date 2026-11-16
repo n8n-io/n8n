@@ -49,6 +49,9 @@ workflow, node, integration, knowledge, memory, and MCP tools. Provider-native
 tools stay eager. A local tool also stays eager when it has an explicit cache
 marker or `deferLoading: false`.
 
+The channel tools `render_ui` and `do_not_respond` also stay eager when attached.
+Their definitions set `deferLoading: false` for both supported native search providers.
+
 Deferral changes model visibility only. All authorized handlers stay in the
 execution registry. Validation, approval, and cancellation use the same paths.
 The catalog, tool order, and instructions stay stable during discovery. Search
@@ -128,6 +131,17 @@ Files in `outputs/` become conversation files with source `sandbox`. A turn that
 - Slack user and channel searches return `nextCursor` when more results remain. The cursor retains unused matches from the current page and binds the search criteria and filters. Keep the same search inputs when you continue. Use `get_channel_info` when the channel ID is known.
 - Teams and Linear user searches use platform filters. They return a continuation cursor when the platform has another page.
 - Source: [`integrations/integration-tool-factory.ts`](./integrations/integration-tool-factory.ts).
+
+### `render_ui` and `do_not_respond`
+
+- Attach condition: The same top-level runtime that attaches channel tools. Each tool requires at least one channel that supports it. Preview and n8n Chat follow the same rule. Attach each tool once, even with multiple connections.
+- Visibility: Both tools stay eager. They do not require tool discovery.
+- Routing: Use the current turn's integration context. Reject the call if that connection does not support the tool. Do not fall back to another configured connection.
+- `render_ui` sends `message.card` in the current conversation. It uses the existing `respond` action handler. Display-only cards return at once. Interactive cards suspend until the user responds. Files and action approval use the existing paths.
+- `do_not_respond` uses the existing silence action. A successful call ends the turn. The existing channel reply policy still applies.
+- The grouped action tool no longer exposes silence or `respond` cards when the generic tool is attached. Explicit sends to other destinations still accept cards. Saved action handlers remain available for execution and resume.
+- New channels declare their supported card components and actions. `AgentChatIntegration.conversationTools` derives UI support from nonempty `supportedComponents` plus `respond`, and silence support from `do_not_respond`. Implement the existing channel action and component hooks. Do not add another platform-specific UI or silence tool.
+- Source: [`integrations/conversation-tools.ts`](./integrations/conversation-tools.ts). Contract: [`AgentChatIntegration.conversationTools`](./integrations/agent-chat-integration.ts).
 
 ### `delegate_subagent`
 

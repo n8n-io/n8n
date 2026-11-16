@@ -4,6 +4,7 @@ import {
 	Tool,
 	type ApprovalResumePayload,
 	type InterruptibleToolContext,
+	type ToolContext,
 } from '@n8n/agents';
 import type { AgentIntegrationConfig } from '@n8n/api-types';
 import { UserError } from '@n8n/errors';
@@ -12,6 +13,7 @@ import { z } from 'zod';
 import {
 	DEFAULT_INTEGRATION_ACTION_TOOL_DEFINITIONS,
 	DEFAULT_INTEGRATION_CONTEXT_TOOL_DEFINITIONS,
+	fileIdsSchema,
 	resolveIntegrationActionDefinitions,
 	resolveIntegrationContextQueryDefinitions,
 } from './integration-tool-definitions';
@@ -32,11 +34,13 @@ import {
 	buildActionInputSchema,
 	buildContextInputSchema,
 	type RawContextToolInput,
+	type RawActionToolInput,
 	toSingleActionOperation,
 	toSingleContextOperation,
 } from './integration-tool-schema';
 import type {
 	IntegrationAction,
+	ConversationToolName,
 	IntegrationActionDefinition,
 	IntegrationActionExecutor,
 	IntegrationContextQuery,
@@ -48,6 +52,7 @@ import type {
 } from './integration-tool-types';
 
 export interface IntegrationToolCapabilities {
+	conversationTools?: readonly ConversationToolName[];
 	contextQueries?: IntegrationContextQuery[];
 	actions?: IntegrationAction[];
 	contextToolDefinitions?: IntegrationContextQueryDefinition[];
@@ -71,7 +76,10 @@ const integrationActionSuspendSchema = z.object({
  * user response, and an action held for approval. The approval branch reuses the
  * SDK payload so the chat bridge renders its Approve/Deny card unchanged.
  */
-const actionSuspendSchema = z.union([integrationActionSuspendSchema, APPROVAL_SUSPEND_SCHEMA]);
+export const INTEGRATION_ACTION_SUSPEND_SCHEMA = z.union([
+	integrationActionSuspendSchema,
+	APPROVAL_SUSPEND_SCHEMA,
+]);
 
 export function getIntegrationToolConnectionDescriptors(
 	integrations: AgentIntegrationConfig[],
@@ -110,6 +118,7 @@ export function getIntegrationToolConnectionDescriptors(
 			actionToolDefinitions,
 			contextToolGuidance: capabilities?.contextToolGuidance,
 			actionToolGuidance: capabilities?.actionToolGuidance,
+			conversationTools: capabilities?.conversationTools,
 			...('approval' in integration && integration.approval
 				? { approval: integration.approval }
 				: {}),
@@ -164,77 +173,112 @@ export function createIntegrationContextTool(params: {
 		});
 }
 
-export function createIntegrationActionTool(params: {
+export interface IntegrationActionToolParams {
 	descriptor: IntegrationToolConnectionDescriptor;
 	messageContextStore: IntegrationMessageContextStore;
 	actionExecutor: IntegrationActionExecutor;
 	projectId?: string;
-}) {
-	const { descriptor, messageContextStore, actionExecutor, projectId } = params;
+}
 
-	// The model is told to stop after staying silent, but may call it again.
+export function createIntegrationActionTool(params: IntegrationActionToolParams) {
+	const { descriptor } = params;
+	const definitions = descriptor.actionToolDefinitions
+		.filter(
+			(definition) =>
+				definition.name !== 'do_not_respond' ||
+				!descriptor.conversationTools?.includes('do_not_respond'),
+		)
+		.map((definition) =>
+			definition.name === 'respond' && descriptor.conversationTools?.includes('render_ui')
+				? {
+						...definition,
+						inputSchema: z.object({
+							action: z.literal('respond'),
+							input: z
+								.object({
+									message: z.object({ text: z.string() }).strict(),
+									fileIds: fileIdsSchema,
+								})
+								.strict(),
+						}),
+					}
+				: definition,
+		);
+	const exposedDescriptor = {
+		...descriptor,
+		actions: definitions.map(({ name }) => name),
+		actionToolDefinitions: definitions,
+	};
 	return new Tool(descriptor.actionToolName)
-		.description(buildActionToolDescription(descriptor))
-		.input(buildActionInputSchema(descriptor.actionToolDefinitions))
-		.suspend(actionSuspendSchema)
+		.description(buildActionToolDescription(exposedDescriptor))
+		.input(buildActionInputSchema(definitions))
+		.suspend(INTEGRATION_ACTION_SUSPEND_SCHEMA)
 		.resume(INTEGRATION_ACTION_RESUME_SCHEMA)
 		.endsTurnWhen(isSilentActionOutput)
-		.handler(async (input, ctx) => {
-			const interruptCtx = ctx as InterruptibleToolContext;
-			const approvalDecision = readApprovalDecision(interruptCtx);
+		.handler(async (input, ctx) => await executeIntegrationActionTool(params, input, ctx));
+}
 
-			// A card resume carries the user's answer straight back to the model. An
-			// approval resume is a decision about work that has not run yet, so it
-			// either falls through to execution below or stops here.
-			if (approvalDecision === undefined && ctx.resumeData) {
-				return ctx.resumeData;
-			}
-			if (approvalDecision) {
-				const { action, ...decision } = approvalDecision;
-				if (decision.scope === 'session' && !ctx.approvalContext) {
-					throw new UserError('Session approvals are not available for this tool.');
-				}
-				await ctx.approvalContext?.onDecision(
-					integrationActionApprovalKey(descriptor.integrationConnectionId, action),
-					decision,
-				);
-				ctx.abortSignal?.throwIfAborted();
-			}
-			if (approvalDecision?.approved === false) {
-				return {
-					ok: false,
-					error: {
-						code: INTEGRATION_ERROR_CODES.ACTION_DECLINED,
-						message: `The action "${approvalDecision.action}" was not approved.`,
-					},
-				};
-			}
+/** Shared execution preserves channel approval and interactive-card resumes. */
+export async function executeIntegrationActionTool(
+	params: IntegrationActionToolParams,
+	input: RawActionToolInput,
+	ctx: ToolContext,
+): Promise<unknown> {
+	const { descriptor, messageContextStore, actionExecutor, projectId } = params;
+	const interruptCtx = ctx as InterruptibleToolContext;
+	const approvalDecision = readApprovalDecision(interruptCtx);
 
-			const toolInput = input;
+	// A card resume carries the user's answer straight back to the model. An
+	// approval resume is a decision about work that has not run yet, so it
+	// either falls through to execution below or stops here.
+	if (approvalDecision === undefined && interruptCtx.resumeData) {
+		return interruptCtx.resumeData;
+	}
+	if (approvalDecision) {
+		const { action, ...decision } = approvalDecision;
+		if (decision.scope === 'session' && !ctx.approvalContext) {
+			throw new UserError('Session approvals are not available for this tool.');
+		}
+		await ctx.approvalContext?.onDecision(
+			integrationActionApprovalKey(descriptor.integrationConnectionId, action),
+			decision,
+		);
+		ctx.abortSignal?.throwIfAborted();
+	}
+	if (approvalDecision?.approved === false) {
+		return {
+			ok: false,
+			error: {
+				code: INTEGRATION_ERROR_CODES.ACTION_DECLINED,
+				message: `The action "${approvalDecision.action}" was not approved.`,
+			},
+		};
+	}
 
-			if (toolInput.actions !== undefined) {
-				return await executeActionToolBatch({
-					operations: toolInput.actions.map(toSingleActionOperation),
-					descriptor,
-					messageContextStore,
-					actionExecutor,
-					ctx,
-					projectId,
-				});
-			}
+	const toolInput = input;
 
-			return await executeActionToolOperation({
-				operation: toSingleActionOperation(toolInput),
-				descriptor,
-				messageContextStore,
-				actionExecutor,
-				ctx,
-				interruptCtx,
-				projectId,
-				allowSuspend: true,
-				...(approvalDecision ? { approvedAction: approvalDecision.action } : {}),
-			});
+	if (toolInput.actions !== undefined) {
+		return await executeActionToolBatch({
+			operations: toolInput.actions.map(toSingleActionOperation),
+			descriptor,
+			messageContextStore,
+			actionExecutor,
+			ctx,
+			projectId,
 		});
+	}
+
+	return await executeActionToolOperation({
+		operation: toSingleActionOperation(toolInput),
+		descriptor,
+		messageContextStore,
+		actionExecutor,
+		ctx,
+		interruptCtx,
+		projectId,
+		allowSuspend: true,
+		...(approvalDecision ? { approvedAction: approvalDecision.action } : {}),
+	});
 }
 
 /**

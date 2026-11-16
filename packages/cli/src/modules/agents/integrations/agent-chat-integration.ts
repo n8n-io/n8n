@@ -23,6 +23,7 @@ import {
 	resolveIntegrationContextQueryDefinitions,
 } from './integration-tool-definitions';
 import type {
+	ConversationToolName,
 	IntegrationAction,
 	IntegrationActionDefinition,
 	IntegrationActionParams,
@@ -373,6 +374,18 @@ export abstract class AgentChatIntegration {
 	/** Side-effecting actions exposed through the generated integration action tool. */
 	get actions(): IntegrationAction[] {
 		return this.actionToolDefinitions.map((definition) => definition.name);
+	}
+
+	/**
+	 * Eager conversation tools use the channel's existing action handlers.
+	 * New channels declare card components and supported actions to opt in.
+	 */
+	get conversationTools(): ConversationToolName[] {
+		const tools: ConversationToolName[] = [];
+		if (this.supportedComponents?.length && this.actions.includes('respond'))
+			tools.push('render_ui');
+		if (this.actions.includes('do_not_respond')) tools.push('do_not_respond');
+		return tools;
 	}
 
 	/**

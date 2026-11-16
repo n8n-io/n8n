@@ -294,7 +294,9 @@ export class AgentChatBridge {
 			postErrorToThread: this.postErrorToThread.bind(this),
 			handleSuspension: this.handleSuspension.bind(this),
 			handleMessage: this.handleMessage.bind(this),
-			isIntegrationActionTool: (toolName) => actionToolNamePattern.test(toolName),
+			isIntegrationActionTool: (toolName) =>
+				actionToolNamePattern.test(toolName) ||
+				(this.integrationImpl?.conversationTools.some((name) => name === toolName) ?? false),
 			postReplyFiles: async (thread, { fileIds, caption, agentThreadId, onPosted }) =>
 				await Container.get(AgentOutboundFiles).postReplyFiles(thread, integration.type, {
 					fileIds,

@@ -79,7 +79,7 @@ export class N8nChatIntegration extends AgentChatIntegration {
 	readonly fileUploadLimits = { maxFiles: 10, maxFileBytes: Number.MAX_SAFE_INTEGER };
 
 	readonly actionToolGuidance = [
-		'This is the built-in n8n chat: your normal assistant reply already reaches the user. NEVER call respond with only message.text — write that text directly in your reply instead. Call this tool only with message.card, to render a rich card or collect structured input, or with fileIds, to show files with your reply.',
+		'This is the built-in n8n chat: your normal assistant reply already reaches the user. NEVER call respond with only message.text — write that text directly in your reply instead. Use render_ui to show a rich card or collect structured input. Use respond with fileIds to show files with your reply.',
 		'To send files, call respond with fileIds and a short message.text. The files show on your reply. Write your reply as the message for the files, and do not mention fileIds.',
 	];
 

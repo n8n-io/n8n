@@ -33,6 +33,9 @@ export type IntegrationMessageTarget =
  */
 export type ReplyExpectation = 'required' | 'optional';
 
+export const CONVERSATION_TOOL_NAMES = ['render_ui', 'do_not_respond'] as const;
+export type ConversationToolName = (typeof CONVERSATION_TOOL_NAMES)[number];
+
 export interface TelegramMessageAttachmentContext {
 	type: 'image' | 'file' | 'video' | 'audio';
 	file_id: string;
@@ -155,6 +158,8 @@ export interface IntegrationToolConnectionDescriptor {
 	actionToolDefinitions: IntegrationActionDefinition[];
 	contextToolGuidance?: string[];
 	actionToolGuidance?: string[];
+	/** Eager tools supported by this channel in the current conversation. */
+	conversationTools?: readonly ConversationToolName[];
 	/** Actions this channel gates behind human approval. Absent = none. */
 	approval?: AgentApproval;
 }
