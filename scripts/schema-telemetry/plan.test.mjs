@@ -251,3 +251,24 @@ describe('planSchemaFile evaluation node', () => {
 		assert.match(plan.skip, /passes its input/);
 	});
 });
+
+describe('planSchemaFile item transform nodes', () => {
+	for (const [nodeType, operation] of [
+		['n8n-nodes-base.removeDuplicates', 'removeDuplicateItems'],
+		['n8n-nodes-base.itemLists', 'splitOutItems'],
+	]) {
+		it(`skips ${nodeType}, because it outputs its input items`, () => {
+			const withNode = new Map([
+				...index,
+				[nodeType, { dir: 'nodes/Transform', noOperationSiblings: [] }],
+			]);
+			const plan = planSchemaFile(
+				group({ node_type: nodeType, node_version: '2', operation }),
+				withNode,
+				opts,
+			);
+
+			assert.match(plan.skip, /passes its input/);
+		});
+	}
+});
