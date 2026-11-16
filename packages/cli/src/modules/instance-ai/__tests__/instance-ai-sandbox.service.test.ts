@@ -1411,6 +1411,22 @@ describe('InstanceAiSandboxService', () => {
 			expect(createdProviders()).toEqual(['n8n-sandbox', 'daytona', 'n8n-sandbox']);
 		});
 
+		it('starts a Daytona fallback in full after the primary failed in the same run', async () => {
+			mockProviders({ 'n8n-sandbox': unavailable() });
+			const { service } = createSandboxService({
+				config: fallbackConfig,
+				runState: { getActiveRunId: vi.fn(() => 'run-1') },
+			});
+
+			const entry = await service.getOrCreateWorkspaceEntry('thread-1', fakeUser);
+
+			expect(entry?.provider).toBe('daytona');
+			expect(createSandbox).toHaveBeenLastCalledWith(
+				expect.not.objectContaining({ quickStart: true }),
+				expect.any(Object),
+			);
+		});
+
 		it('skips the primary provider while its circuit is open', async () => {
 			mockProviders({ 'n8n-sandbox': unavailable() });
 			const providerHealth = new SandboxProviderHealth({ failureThreshold: 1 });
