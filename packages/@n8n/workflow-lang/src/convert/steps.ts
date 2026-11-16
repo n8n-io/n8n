@@ -377,6 +377,17 @@ export function tryCompiledNode(c: NodeContext): boolean {
 		);
 		return false;
 	}
+	if (compiled.derivations.length > 0) {
+		const slot = c.credential();
+		if (slot === undefined || !c.addCredentialDerivations) {
+			c.info(
+				'node-compile',
+				'The node source needs values from its credential, and the caller does not take them.',
+			);
+			return false;
+		}
+		c.addCredentialDerivations(slot, compiled.derivations);
+	}
 	const dynamic: Record<string, unknown> = {};
 	for (const name of compiled.dynamic) dynamic[name] = c.parameters[name];
 	// As for a library node: v1 gives the node all items, and the module runs once for each item.

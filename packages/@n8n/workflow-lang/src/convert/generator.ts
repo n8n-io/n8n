@@ -15,6 +15,7 @@
  *   node runs once for each parent that sends items, and loops run until no
  *   items are left. Lists of the latest run of each node are `let` variables.
  */
+import type { CredentialDerivation } from '../node-compile/specialise.ts';
 import type { NodeSources } from '../node-compile/convert.ts';
 import type { LegacyIssue } from '../legacy/index.ts';
 import type { Code } from './code.ts';
@@ -153,6 +154,8 @@ export interface Round {
 	fallbackNodes: string[];
 	/** Modules that the node compiler made, by virtual path. */
 	nodes: Record<string, string>;
+	/** Values to compute from the fields of the credential of a slot, by slot. */
+	credentialDerivations: Record<string, CredentialDerivation[]>;
 	/** Translated expressions by their range in the source. */
 	ranges: Array<{ start: number; end: number; node: string; path: string }>;
 	/** The lines (1-based, end exclusive) of the code of each node. */
@@ -367,6 +370,7 @@ export class ModuleGenerator {
 
 	private readonly fallback: string[] = [];
 	private readonly compiledNodes: Record<string, string> = {};
+	private readonly credentialDerivations: Record<string, CredentialDerivation[]> = {};
 
 	private readonly slots = new Map<string, string>();
 
@@ -704,6 +708,11 @@ export class ModuleGenerator {
 			nodeSources: this.options.nodeSources,
 			addNode: (file, text) => {
 				this.compiledNodes[file] = text;
+			},
+			addCredentialDerivations: (slot, derivations) => {
+				const list = this.credentialDerivations[slot] ?? [];
+				for (const d of derivations) if (!list.some((x) => x.name === d.name)) list.push(d);
+				this.credentialDerivations[slot] = list;
 			},
 			services: this.options.services,
 			codeNodes:
@@ -1916,6 +1925,7 @@ export class ModuleGenerator {
 			diagnostics: this.diagnostics,
 			fallbackNodes: this.fallback,
 			nodes: this.compiledNodes,
+			credentialDerivations: this.credentialDerivations,
 			ranges,
 			blocks,
 			credentials: this.credentialRefs(),

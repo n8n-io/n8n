@@ -43,6 +43,7 @@ export class CompiledEngineCredentials {
 	async buildDocument(
 		workflowId: string,
 		slots: CredentialSlotBinding[],
+		derivations: Record<string, Array<{ name: string; code: string }>> = {},
 	): Promise<Record<string, unknown>> {
 		const lang = await loadWorkflowLang();
 		const registry: Parameters<typeof lang.buildCredentialsFile>[0]['registry'] = {
@@ -78,6 +79,27 @@ export class CompiledEngineCredentials {
 					mappings: new Map([[use.slot, use.credentialId]]),
 					registry,
 				});
+				// Values that compiled node code needs from this credential: computed here, where the
+				// data is, and read by the module as credential templates.
+				const entry: unknown = file[use.slot];
+				const entryData: unknown =
+					typeof entry === 'object' && entry !== null ? Reflect.get(entry, 'data') : undefined;
+				if (typeof entryData === 'object' && entryData !== null) {
+					const derived: Record<string, string> = {};
+					const existing: unknown = Reflect.get(entryData, 'n8nDerived');
+					if (typeof existing === 'object' && existing !== null) Object.assign(derived, existing);
+					for (const { name, code } of derivations[use.slot] ?? []) {
+						const value = lang.evaluateDerivation(code, { ...data });
+						if (value === undefined) {
+							this.logger.warn(`A derived value of credential slot "${use.slot}" is not text`, {
+								workflowId,
+							});
+							continue;
+						}
+						derived[name] = value;
+					}
+					if (Object.keys(derived).length > 0) Reflect.set(entryData, 'n8nDerived', derived);
+				}
 				Object.assign(document, file);
 			} catch (error) {
 				this.logger.warn(`Could not prepare credential slot "${use.slot}"`, {

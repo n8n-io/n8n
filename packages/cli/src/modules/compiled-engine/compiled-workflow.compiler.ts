@@ -363,6 +363,7 @@ export class CompiledWorkflowCompiler {
 			}),
 			module: ok ? module : undefined,
 			slots: bindSlots(input.nodes, moduleSlots, lang.credentialSlots, lang.credentialKey),
+			...(converted.credentialDerivations ? { derivations: converted.credentialDerivations } : {}),
 			triggers,
 			compiledAt: new Date().toISOString(),
 		};

@@ -27,6 +27,11 @@ export interface CompiledArtifact {
 	/** The `.wfm` module. Not set when `ok` is false. */
 	module?: Buffer;
 	slots: CredentialSlotBinding[];
+	/**
+	 * Values that compiled node code needs from the credential of a slot, by slot: n8n computes
+	 * each one from the credential data when it builds the credentials document.
+	 */
+	derivations?: Record<string, Array<{ name: string; code: string }>>;
 	triggers: unknown[];
 	compiledAt: string;
 }

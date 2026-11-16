@@ -81,16 +81,22 @@ describe('credentials in the node compiler', () => {
 		expect(result.source).toContain('{{$credentials.apiKey}}');
 	});
 
-	it('does not compile a branch on a field when the caller gives no public fields', () => {
-		const result = compileWith(NODE);
-		expect(result.source).toBeUndefined();
-		expect(result.errors.join(' ')).toContain('compares or branches on a credential field');
+	it('makes a value that code computes from a credential field a derived value of the credential', () => {
+		const result = compileWith(BRANCH_ON_SECRET);
+		expect(result.errors).toEqual([]);
+		expect(result.derivations).toHaveLength(1);
+		expect(result.derivations?.[0].code).toContain("c.apiKey === 'x'");
+		expect(result.source).toContain(`{{$credentials.n8nDerived.${result.derivations?.[0].name}}}`);
+		expect(result.source).not.toContain('sandbox.acme.test');
 	});
 
-	it('does not compile a branch on a secret, with or without public fields', () => {
-		const result = compileWith(BRANCH_ON_SECRET, {
-			acmeApi: { environment: 'sandbox', baseUrl: 'https://api.acme.test' },
-		});
+	it('does not compile a statement that branches on a secret', () => {
+		const result = compileWith(
+			NODE.replace(
+				'const base =',
+				"if (credentials.apiKey === 'x') throw new Error('no');\n\t\tconst base =",
+			),
+		);
 		expect(result.source).toBeUndefined();
 		expect(result.errors.join(' ')).toContain('compares or branches on a credential field');
 	});

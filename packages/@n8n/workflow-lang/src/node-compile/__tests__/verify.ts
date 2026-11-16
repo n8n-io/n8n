@@ -8,6 +8,7 @@ import { recordV1 } from '../../nodes/__tests__/v1-recorder.ts';
 import { runReference } from '../../reference/runner.ts';
 import type { NodeSources } from '../convert.ts';
 import { compileNodeInstance } from '../convert.ts';
+import { evaluateDerivation } from '../evaluate-node.ts';
 
 export const V1_TIMEZONE = 'America/New_York';
 
@@ -81,10 +82,22 @@ export default workflow({
 	});
 	const v1 = await within(8000, recordV1(c));
 
-	const data = withDerivedValues(credentialType ?? '', {
+	const data: Record<string, unknown> = withDerivedValues(credentialType ?? '', {
 		...(registry.get(credentialType ?? '')?.defaults ?? {}),
 		...c.credential?.data,
 	});
+	if (compiled.derivations.length > 0) {
+		const derived: Record<string, unknown> = isRecord(data.n8nDerived)
+			? { ...data.n8nDerived }
+			: {};
+		for (const { name, code } of compiled.derivations) {
+			const value = evaluateDerivation(code, data);
+			if (value === undefined)
+				return `a derived credential value is not text: ${code.slice(0, 80)}`;
+			derived[name] = value;
+		}
+		data.n8nDerived = derived;
+	}
 	const inject = credentialType ? deriveInject(registry, credentialType, data).inject : undefined;
 	const requests = out.effects.map((effect) => {
 		const args = isRecord(effect.args) ? effect.args : {};
@@ -97,6 +110,7 @@ export default workflow({
 					qs: args.qs,
 					body: args.body,
 					basicAuth: args.basicAuth,
+					inject: args.inject,
 				},
 				inject,
 				data,
@@ -119,8 +133,7 @@ export default workflow({
 		const text: Record<string, string> = {};
 		for (const [key, value] of Object.entries(form)) {
 			if (value !== undefined)
-				text[key] =
-					value === null ? '' : typeof value === 'object' ? JSON.stringify(value) : String(value);
+				text[key] = value === null ? '' : typeof value === 'string' ? value : JSON.stringify(value);
 		}
 		const { 'content-type': _type, ...headers } = r.headers;
 		return { ...r, headers, body: { $form: text } };

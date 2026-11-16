@@ -1,6 +1,7 @@
 /**
  * The interface between the converter driver and the lowering of one node.
  */
+import type { CredentialDerivation } from '../node-compile/specialise.ts';
 import type { NodeSources } from '../node-compile/convert.ts';
 import type { Code, Writer } from './code.ts';
 import type { ExpressionScope, TranslatedValue, TranslateOptions } from './expression.ts';
@@ -72,6 +73,11 @@ export interface NodeContext {
 	nodeSources?: NodeSources;
 	/** Adds a module that the node compiler made to the result (`ConvertResult.nodes`). */
 	addNode?(file: string, source: string): void;
+	/**
+	 * Records values that node code computes from the fields of a credential, for a credential
+	 * slot (`ConvertResult.credentialDerivations`).
+	 */
+	addCredentialDerivations?(slot: string, derivations: CredentialDerivation[]): void;
 	/** False when the runtime does not run `ctx.service` effects (`ConvertOptions.services`). */
 	services?: boolean;
 	/** Records a time zone that the node's native code formats dates in (META \`zones\`). */

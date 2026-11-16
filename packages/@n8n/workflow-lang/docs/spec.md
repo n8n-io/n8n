@@ -749,6 +749,9 @@ file at start (`wfrt serve --credentials <file>`,
 * `basicAuth: { user, password }` writes `Authorization: Basic …` for this call. The values are
   strings and can hold credential templates, so a credential field goes into the header and
   workflow code does not read it. It replaces the basic auth that the credential injects.
+* `inject: false` keeps the templates of the credential and leaves out what the credential injects
+  (headers, query, body members, basic auth). A compiled node uses it for a request that v1 sends
+  with `this.helpers.request`, which does not apply the authentication of the credential.
 * `qsFormat` sets how `qs` goes into the URL:
   * `"repeat"` (the default): one pair per member; an array repeats the key
     (`a=1&a=2`); an object is sent as JSON text; values are encoded as Node.js

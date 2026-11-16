@@ -15,6 +15,11 @@ Add a row when a new difference is found. The sources are `docs/spec.md`, the RE
 | A converted schedule fired at second 0, minute 0 or hour 0 where v1 fires at a time from the workflow id and the node id | The converter writes the cron expression of v1 (test against `toCronExpression`) |
 | The trigger item of a schedule was `{ scheduledAt }` | The item of the v1 node is the default |
 | A Schedule Trigger rule with an interval above 1, and the Interval node, had the rhythm of the runtime | They stay triggers of n8n, which keeps the rhythm of v1 |
+| A compiled request of a plain request helper got the authentication of the credential, which v1 does not add | `inject: false` on the `http` effect (runtime test, and the check against v1) |
+| Request options `auth` and `form` of n8n's request helper had no compiled form | Basic auth of a call in the `http` effect; a form encoder |
+| A credential type that authenticates in code could not be used by a compiled node | The node compiler compiles that code with the node |
+| A compiled error had no class name, HTTP code or description | A compiled NodeApiError or NodeOperationError has the name, the HTTP code and the description; `instanceof` works |
+| Node code that computes a value from a credential field did not compile | The value is a derived value of the credential: n8n computes it where the credential data is |
 | A compiled node could behave differently from the v1 node | A node runs compiled only when its operation is in the list that `scripts/verify-compiled-nodes.ts` makes against the v1 node |
 
 ## Open
@@ -32,7 +37,8 @@ Add a row when a new difference is found. The sources are `docs/spec.md`, the RE
 | The log and the outbox are not encrypted at rest | `progress.md` | Card ENCRYPT |
 | 140 of 18,782 certified bundles do not match v1 in the replay (99.25%) | `progress.md` | The focus runs |
 | A node with "continue on fail" or an error output is not compiled from its source | this work | Errors with the description and the HTTP code of v1 |
-| Request options without a compiled form: form bodies, basic auth from credential fields, full responses | verifier, 2026-11-16 | A form encoder; basic auth in the `http` effect |
+| Request options without a compiled form: full responses, nested form values, streams | verifier, 2026-11-16 | The options one by one, each with the check against v1 |
+| A statement that branches on a secret credential field does not compile (Mailchimp reads the data centre from the API key) | verifier, 2026-11-16 | Decide: evaluate such a condition at publish, which puts one bit of the secret in the module |
 | Python Code nodes run in a process that is not a sandbox | spec section 10 | n8n's task runner |
 | Polling triggers in a manual run poll in the host | spec 9.8 | Done by n8n when it runs the trigger; check |
 

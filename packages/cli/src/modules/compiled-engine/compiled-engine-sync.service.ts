@@ -291,6 +291,7 @@ export class CompiledEngineSync {
 		const credentials = await this.credentials.buildDocument(
 			entry.workflowData.id,
 			entry.artifact.slots,
+			entry.artifact.derivations,
 		);
 		// n8n's copy of the static data; manual runs read it too (they keep nothing).
 		const staticData = await this.staticData.getStaticDataById(entry.workflowData.id);

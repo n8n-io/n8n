@@ -38,6 +38,13 @@ export interface SpecialiseResult {
 	notes: string[];
 
 	linked: string[];
+
+	derivations?: CredentialDerivation[];
+}
+
+export interface CredentialDerivation {
+	name: string;
+	code: string;
 }
 
 const f = ts.factory;
@@ -54,6 +61,7 @@ const REQUEST_SOURCE = `async function __request(options, wrapped) {
 		qs: __plain(options.qs ?? {}),
 		body: form !== undefined && form !== null ? __form(__plain(form)) : __plain(options.body),
 		basicAuth: auth ? { user: auth.user ?? auth.username ?? '', password: auth.pass ?? auth.password ?? '' } : undefined,
+		inject: wrapped,
 		credential,
 	});
 	if (response.status >= 400) {
@@ -280,6 +288,33 @@ const PURE_CALLS = new Set([
 	'parseFloat',
 ]);
 
+const DERIVED_OPERATORS = new Set<ts.SyntaxKind>([
+	ts.SyntaxKind.PlusToken,
+	ts.SyntaxKind.EqualsEqualsEqualsToken,
+	ts.SyntaxKind.ExclamationEqualsEqualsToken,
+	ts.SyntaxKind.AmpersandAmpersandToken,
+	ts.SyntaxKind.BarBarToken,
+	ts.SyntaxKind.QuestionQuestionToken,
+]);
+const DERIVED_FUNCTIONS = new Set(['String', 'encodeURIComponent', 'btoa']);
+const DERIVED_METHODS = new Set([
+	'split',
+	'pop',
+	'join',
+	'slice',
+	'substring',
+	'replace',
+	'replaceAll',
+	'trim',
+	'toLowerCase',
+	'toUpperCase',
+	'toString',
+	'concat',
+	'at',
+	'padStart',
+	'padEnd',
+]);
+
 const ERROR_CLASSES: Record<string, string[]> = {
 	NodeApiError: ['NodeApiError'],
 	NodeOperationError: ['NodeOperationError'],
@@ -320,7 +355,14 @@ function packageHelper(imported: { from: string; name: string }): string | undef
 
 const PACKAGE_CONSTANTS: Record<string, string | number> = {
 	SEND_AND_WAIT_OPERATION: 'sendAndWait',
+	BINARY_ENCODING: 'base64',
 };
+
+function isCredentialMarker(e: ts.Node): e is ts.CallExpression {
+	return (
+		ts.isCallExpression(e) && ts.isIdentifier(e.expression) && e.expression.text === '__CREDFIELD'
+	);
+}
 
 const CREDENTIAL_PREFIX = '__CREDENTIAL_';
 
@@ -1338,7 +1380,92 @@ class Specialiser {
 			cur = this.reparse(this.reduce(cur.node), cur.sf);
 			if (!this.changed) break;
 		}
-		return cur;
+		return this.reparse(this.deriveCredentialValues(cur.node), cur.sf);
+	}
+
+	readonly derivations = new Map<string, string>();
+
+	private credentialPure(root: ts.Node): { ok: boolean; marker: boolean; computes: boolean } {
+		const state = { marker: false, computes: false };
+		const pure = (e: ts.Node): boolean => {
+			if (isCredentialMarker(e)) {
+				state.marker = true;
+				return true;
+			}
+			if (ts.isExpression(e) && literalOf(e)) return true;
+			if (ts.isRegularExpressionLiteral(e)) return true;
+			if (ts.isParenthesizedExpression(e)) return pure(e.expression);
+			if (ts.isTemplateExpression(e)) return e.templateSpans.every((span) => pure(span.expression));
+			if (ts.isConditionalExpression(e)) {
+				state.computes = true;
+				return pure(e.condition) && pure(e.whenTrue) && pure(e.whenFalse);
+			}
+			if (ts.isBinaryExpression(e)) {
+				if (e.operatorToken.kind !== ts.SyntaxKind.PlusToken) state.computes = true;
+				return DERIVED_OPERATORS.has(e.operatorToken.kind) && pure(e.left) && pure(e.right);
+			}
+			if (ts.isPropertyAccessExpression(e)) {
+				state.computes = true;
+				return e.name.text === 'length' && pure(e.expression);
+			}
+			if (ts.isCallExpression(e)) {
+				state.computes = true;
+				const callee = e.expression;
+				if (!e.arguments.every(pure)) return false;
+				if (ts.isIdentifier(callee)) return DERIVED_FUNCTIONS.has(callee.text);
+				if (!ts.isPropertyAccessExpression(callee)) return false;
+				if (ts.isIdentifier(callee.expression) && callee.expression.text === 'Buffer')
+					return callee.name.text === 'from';
+				return DERIVED_METHODS.has(callee.name.text) && pure(callee.expression);
+			}
+			return false;
+		};
+		const ok = pure(root);
+		return { ok, marker: state.marker, computes: state.computes };
+	}
+
+	private deriveCredentialValues(root: ts.Node): ts.Node {
+		const isMarker = isCredentialMarker;
+		const visit = (n: ts.Node): ts.Node => {
+			if (ts.isExpression(n) && !isMarker(n)) {
+				const found = this.credentialPure(n);
+				if (found.ok && found.marker && found.computes) {
+					const fields = (x: ts.Node): ts.Node => {
+						if (isMarker(x)) {
+							const path = x.arguments[0];
+							let read: ts.Expression = f.createIdentifier('c');
+							for (const key of (ts.isStringLiteral(path) ? path.text : '').split('.'))
+								read = f.createPropertyAccessExpression(read, key);
+							return read;
+						}
+						return ts.visitEachChild(x, fields, undefined);
+					};
+					const blank = ts.createSourceFile(
+						'd.js',
+						'',
+						ts.ScriptTarget.ES2022,
+						false,
+						ts.ScriptKind.JS,
+					);
+					const text = this.printer.printNode(
+						ts.EmitHint.Unspecified,
+						ts.visitNode(n, fields),
+						n.getSourceFile() ?? blank,
+					);
+					const code = `(c) => (${text})`;
+					let hash = 0x811c9dc5;
+					for (let k = 0; k < code.length; k++) {
+						hash ^= code.charCodeAt(k);
+						hash = Math.imul(hash, 0x01000193) >>> 0;
+					}
+					const name = `d${hash.toString(16).padStart(8, '0')}`;
+					this.derivations.set(name, code);
+					return call('__CREDFIELD', f.createStringLiteral(`n8nDerived.${name}`));
+				}
+			}
+			return ts.visitEachChild(n, visit, undefined);
+		};
+		return ts.visitNode(root, visit);
 	}
 
 	private propagate(root: ts.Node, where: string): ts.Node {
@@ -1355,6 +1482,7 @@ class Specialiser {
 		const unused = new Set<string>();
 
 		const objects = new Map<string, Map<string, Literal>>();
+		const fieldTexts = new Map<string, ts.Expression>();
 		const scan = (n: ts.Node) => {
 			if (
 				ts.isVariableDeclaration(n) &&
@@ -1377,6 +1505,12 @@ class Specialiser {
 					credentials.set(n.name.text, n.initializer.text.slice(CREDENTIAL_PREFIX.length));
 				} else if (isConst && lit) {
 					constants.set(n.name.text, lit.value);
+				} else if (
+					isConst &&
+					this.credentialPure(n.initializer).ok &&
+					this.credentialPure(n.initializer).marker
+				) {
+					fieldTexts.set(n.name.text, n.initializer);
 				} else if (
 					isConst &&
 					ts.isObjectLiteralExpression(n.initializer) &&
@@ -1425,7 +1559,8 @@ class Specialiser {
 			ts.forEachChild(n, readsOnly);
 		};
 		readsOnly(root);
-		if (constants.size + credentials.size + unused.size + objects.size === 0) return root;
+		if (constants.size + credentials.size + unused.size + objects.size + fieldTexts.size === 0)
+			return root;
 		this.changed = true;
 		const visit = (n: ts.Node): ts.Node | undefined => {
 			if (ts.isVariableStatement(n)) {
@@ -1435,7 +1570,8 @@ class Specialiser {
 						!constants.has(name) &&
 						!credentials.has(name) &&
 						!unused.has(name) &&
-						!objects.has(name)
+						!objects.has(name) &&
+						!fieldTexts.has(name)
 					);
 				});
 				if (kept.length === 0) return undefined;
@@ -1452,6 +1588,18 @@ class Specialiser {
 				}
 			}
 			if (ts.isPropertyAccessExpression(n)) {
+				const base = ts.isParenthesizedExpression(n.expression)
+					? n.expression.expression
+					: n.expression;
+				const called = n.parent && ts.isCallExpression(n.parent) && n.parent.expression === n;
+				if (isCredentialMarker(base) && !called) {
+					const path = base.arguments[0];
+					this.changed = true;
+					return call(
+						'__CREDFIELD',
+						f.createStringLiteral(`${ts.isStringLiteral(path) ? path.text : ''}.${n.name.text}`),
+					);
+				}
 				const names: string[] = [];
 				let cursor: ts.Expression = n;
 				while (ts.isPropertyAccessExpression(cursor)) {
@@ -1470,6 +1618,15 @@ class Specialiser {
 				) {
 					return this.credentialField(credentials.get(cursor.text) ?? '', names.join('.'));
 				}
+				if (
+					ts.isIdentifier(cursor) &&
+					cursor.text.startsWith(CREDENTIAL_PREFIX) &&
+					!callee &&
+					(!inner || method)
+				) {
+					this.changed = true;
+					return this.credentialField(cursor.text.slice(CREDENTIAL_PREFIX.length), names.join('.'));
+				}
 			}
 			if (
 				ts.isPropertyAccessExpression(n) &&
@@ -1483,6 +1640,9 @@ class Specialiser {
 			}
 			if (ts.isIdentifier(n) && isValueUse(n)) {
 				if (constants.has(n.text)) return expressionOf(constants.get(n.text));
+				const fieldText = fieldTexts.get(n.text);
+				if (fieldText && !ts.isShorthandPropertyAssignment(n.parent))
+					return f.createParenthesizedExpression(fieldText);
 				const call = n.parent;
 				const argument =
 					call &&
@@ -1553,7 +1713,7 @@ class Specialiser {
 			props: Map<string, Literal | typeof UNKNOWN>;
 		}
 		interface Env {
-			scalars: Map<string, Literal>;
+			scalars: Map<string, Literal | { credential: string }>;
 			vars: Map<string, Obj>;
 		}
 		const empty = (): Env => ({ scalars: new Map(), vars: new Map() });
@@ -1662,7 +1822,10 @@ class Specialiser {
 						p && targetOf(p) === n.text && (ts.isBinaryExpression(p) ? p.left === n : true);
 					if (!written && !(p && ts.isShorthandPropertyAssignment(p))) {
 						this.changed = true;
-						return expressionOf(env.scalars.get(n.text));
+						const held = env.scalars.get(n.text);
+						return typeof held === 'object' && held !== null
+							? f.createIdentifier(held.credential)
+							: expressionOf(held);
 					}
 				}
 				return ts.visitEachChild(n, visit, undefined);
@@ -1840,6 +2003,13 @@ class Specialiser {
 					) {
 						const lit = literalOf(e.right);
 						if (lit && tracked(e.left.text)) env.scalars.set(e.left.text, lit.value);
+						if (
+							ts.isIdentifier(e.right) &&
+							e.right.text.startsWith(CREDENTIAL_PREFIX) &&
+							tracked(e.left.text)
+						) {
+							env.scalars.set(e.left.text, { credential: e.right.text });
+						}
 					}
 				}
 				return out;
@@ -2119,7 +2289,7 @@ class Specialiser {
 			});
 			return touched ? f.updateCallExpression(n, n.expression, undefined, next) : n;
 		};
-		return ts.visitNode(root, visit) as ts.Node;
+		return ts.visitNode(root, visit);
 	}
 
 	private withContextArguments(statement: ts.Statement, unit: Unit): ts.Statement {
@@ -2681,7 +2851,8 @@ class Specialiser {
 		if (this.errors.length > 0) return { errors: this.errors, notes: this.notes, linked };
 		const source = this.print();
 		if (this.errors.length > 0) return { errors: this.errors, notes: this.notes, linked };
-		return { source, errors: [], notes: this.notes, linked };
+		const derivations = [...this.derivations].map(([name, code]) => ({ name, code }));
+		return { source, errors: [], notes: this.notes, linked, derivations };
 	}
 
 	private print(): string {

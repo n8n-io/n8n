@@ -79,6 +79,13 @@ export interface ConvertResult {
 	 * `compile` as `extraNodes`.
 	 */
 	nodes?: Record<string, string>;
+	/**
+	 * Values that compiled node code needs from the credential of a slot, by slot. The builder of
+	 * the credentials document evaluates each `code` on the data of the credential
+	 * (`evaluateDerivation`) and stores the text under `data.n8nDerived.<name>`. The module reads
+	 * it as a credential template, so node code never has the fields.
+	 */
+	credentialDerivations?: Record<string, Array<{ name: string; code: string }>>;
 	/** The n8n credential behind each credential slot of the source. */
 	credentials?: Record<string, { id: string | null; name: string; type: string }>;
 }

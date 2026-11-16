@@ -213,10 +213,13 @@ export function applyCredential(
 		body?: unknown;
 		qsFormat?: string;
 		basicAuth?: unknown;
+		inject?: unknown;
 	},
-	inject: InjectSpec | undefined,
+	given: InjectSpec | undefined,
 	data: Record<string, unknown>,
 ): RawRequest {
+	// `inject: false` of the call: the credential fills templates and adds nothing (spec 7.1).
+	const inject = request.inject === false ? undefined : given;
 	const headers = isRecord(request.headers) ? { ...request.headers } : {};
 	const qs = isRecord(request.qs) ? { ...request.qs } : {};
 	let body = request.body;

@@ -109,7 +109,13 @@ function fakeCredential(type: string): Json {
 		const address = /url|host|domain|server|endpoint/i.test(key);
 		data[key] = value === '' ? (address ? 'https://api.example.test' : `fake-${key}`) : value;
 	}
-	if (/oauth2/i.test(type)) data.oauthTokenData = { access_token: 'fake-token' };
+	if (/oauth2/i.test(type)) {
+		data.oauthTokenData = {
+			access_token: 'fake-token',
+			instance_url: 'https://instance.example.test',
+			api_domain: 'https://api.example.test',
+		};
+	}
 	return data;
 }
 

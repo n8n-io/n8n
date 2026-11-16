@@ -382,6 +382,8 @@ export interface HttpRequest {
 	qsFormat?: 'repeat' | 'brackets';
 	/** Basic auth of this call (spec 7.1). The values can hold credential templates. */
 	basicAuth?: { user: string; password: string };
+	/** `false`: the credential fills templates only; what it injects is not added (spec 7.1). */
+	inject?: boolean;
 }
 
 /** A part of a multipart body: a text field, or a file (`binary`, n8n's binary form). */
