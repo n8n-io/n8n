@@ -466,8 +466,12 @@ watch(
  * Workflow
  */
 
-async function openWorkflow(data: IWorkflowDb) {
-	resetWorkspace();
+/**
+ * Reloads the open workflow without resetWorkspace(). A reset empties the node list for a
+ * moment, so the canvas shows the empty canvas placeholder and then fails to render the
+ * nodes that come back.
+ */
+async function reloadWorkflowInPlace(data: IWorkflowDb) {
 	// Show AI_BUILDING status if builder is actively streaming, otherwise IDLE
 	if (builderStore.streaming) {
 		documentTitle.setDocumentTitle(data.name, 'AI_BUILDING');
@@ -1714,7 +1718,7 @@ async function onSourceControlPull() {
 		if (workflowId.value && !uiStore.stateIsDirty) {
 			const workflowData = await workflowsListStore.fetchWorkflow(workflowId.value);
 			if (workflowData) {
-				await openWorkflow(workflowData);
+				await reloadWorkflowInPlace(workflowData);
 			}
 		}
 	} catch (error) {

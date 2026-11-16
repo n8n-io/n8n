@@ -30,7 +30,7 @@ import {
 	VIEWS,
 } from '../constants';
 import { WorkflowIdKey, WorkflowDocumentStoreKey } from '../constants/injectionKeys';
-import { computed, defineComponent, nextTick, shallowRef } from 'vue';
+import { computed, defineComponent, nextTick, shallowRef, watch } from 'vue';
 import { nodeViewEventBus } from '@/app/event-bus';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 import type { Project } from '@/features/collaboration/projects/projects.types';
@@ -46,6 +46,10 @@ import { useCanvasStore } from '@/app/stores/canvas.store';
 import { DEFAULT_NODE_SIZE, snapPositionToGrid } from '@/app/utils/nodeViewUtils';
 import { useTypeAvailabilityPoliciesStore } from '@n8n/frontend-module-type-availability-policies';
 import { usePostHog } from '@/app/stores/posthog.store';
+import { sourceControlEventBus } from '@/features/integrations/sourceControl.ee/sourceControl.eventBus';
+import { useEnvironmentsStore } from '@/features/settings/environments.ee/environments.store';
+import { useTagsStore } from '@/features/shared/tags/tags.store';
+import { useCredentialsStore } from '@/features/credentials/credentials.store';
 
 const mockMcpJsonNudgeGate = vi.hoisted(() => vi.fn());
 // Experiment cleanup: remove with emptyCanvasGroups (121_empty_canvas_groups).
@@ -806,6 +810,40 @@ describe('NodeView', () => {
 					main: expect.arrayContaining([[{ node: 'Loop Over Items', type: 'main', index: 0 }]]),
 				},
 			});
+		});
+	});
+
+	describe('Source control pull', () => {
+		it('reloads the open workflow without clearing the canvas', async () => {
+			const localNode = createTestNode({ id: 'node-1', name: 'Local' });
+			const pulledNode = createTestNode({ id: 'node-1', name: 'Pulled' });
+			workflowDocumentStore.setNodes([localNode]);
+
+			vi.spyOn(useEnvironmentsStore(), 'fetchAllVariables').mockResolvedValue([]);
+			vi.spyOn(useTagsStore(), 'fetchAll').mockResolvedValue([]);
+			vi.spyOn(useCredentialsStore(), 'fetchUsableCredentials').mockResolvedValue([]);
+			vi.spyOn(useProjectsStore(), 'getAvailableProjects').mockResolvedValue([]);
+			vi.spyOn(useWorkflowsListStore(), 'fetchWorkflow').mockResolvedValue(
+				createTestWorkflow({ id: 'w0', nodes: [pulledNode], connections: {} }),
+			);
+
+			renderNodeView();
+
+			// An empty node list shows the empty canvas placeholder, and the canvas
+			// can fail to render the nodes when they come back
+			const nodeCounts: number[] = [];
+			watch(
+				() => workflowDocumentStore.allNodes.length,
+				(count) => nodeCounts.push(count),
+				{ flush: 'sync' },
+			);
+
+			sourceControlEventBus.emit('pull');
+
+			await waitFor(() =>
+				expect(workflowDocumentStore.allNodes.map((node) => node.name)).toEqual(['Pulled']),
+			);
+			expect(nodeCounts).not.toContain(0);
 		});
 	});
 
