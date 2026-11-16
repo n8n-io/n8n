@@ -237,6 +237,18 @@ export function findProviderOutage(build: {
 }
 
 /**
+ * True when the sandbox service refused a sandbox because the tenant quota was
+ * full. The agent then has no sandbox to build in, so the build shows the state
+ * of the tenant and not the quality of the agent.
+ */
+export function hitSandboxQuota(toolCalls: Array<{ error?: string; result?: unknown }>): boolean {
+	const refused = /tenant sandbox quota exceeded/i;
+	return toolCalls.some(
+		(call) => refused.test(call.error ?? '') || refused.test(JSON.stringify(call.result ?? '')),
+	);
+}
+
+/**
  * Eval-DB races abort an execution before any node runs. Two known shapes:
  * `SQLITE_CONSTRAINT: FOREIGN KEY constraint failed` and `Workflow <id> not
  * found or not accessible` (lookup misses that outlast the server's own 1.7s
