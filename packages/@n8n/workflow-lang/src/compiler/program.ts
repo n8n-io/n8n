@@ -34,6 +34,8 @@ export interface ProgramInput {
 	prelude?: Record<string, string>;
 	/** Node library sources by virtual path. The default is the bundled library. */
 	nodes?: Record<string, string>;
+	/** More node sources, added to `nodes` or to the bundled library (`ConvertResult.nodes`). */
+	extraNodes?: Record<string, string>;
 }
 
 export interface WorkflowProgram {
@@ -57,7 +59,7 @@ export function createWorkflowProgram(input: ProgramInput): WorkflowProgram {
 	files.set(LIB_FILE, LIB_DTS);
 	const prelude = input.prelude ?? PRELUDE_SOURCES;
 	// Only the library nodes that the workflow names: the library is large.
-	const nodes = input.nodes ?? selectNodeSources(input.source);
+	const nodes = { ...(input.nodes ?? selectNodeSources(input.source)), ...input.extraNodes };
 	const preludeNames = Object.keys(prelude).map((p) => `/${p}`);
 	const nodeNames = Object.keys(nodes).map((p) => `/${p}`);
 	for (const [p, text] of Object.entries(prelude)) files.set(`/${p}`, text);

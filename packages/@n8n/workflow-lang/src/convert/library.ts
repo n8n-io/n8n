@@ -24,7 +24,7 @@ import { emptyUsage, INDEX, ITEM } from './expression.ts';
 import { isClusterRoot, LANGCHAIN_PREFIX, lowerAiNode, lowerHostNode } from './host-node.ts';
 import type { Paging } from './http-pagination.ts';
 import { emitPaging, readPaging } from './http-pagination.ts';
-import { emitStep, nodeCall } from './steps.ts';
+import { emitStep, nodeCall, tryCompiledNode } from './steps.ts';
 import { isRecord, text } from './types.ts';
 
 let libraryTypes: Set<string> | undefined;
@@ -373,12 +373,11 @@ export function lowerLibrary(c: NodeContext): void {
 	// A Data Table node calls n8n's data-table service (`ctx.service`, spec 9.9). With
 	// `ConvertOptions.services: false` (a runtime without the admin client) it runs in the host.
 	const service = type === 'n8n-nodes-base.dataTable' && c.services === false;
-	if (
-		(support && !librarySupports(support, adapted)) ||
-		older ||
-		(attribution && !c.instance) ||
-		service
-	) {
+	const unsupported = (support && !librarySupports(support, adapted)) || older;
+	// The library node comes first. An operation that it does not have is compiled from the
+	// source of the v1 node when that compiles, and else runs in the host.
+	if (unsupported && !service && tryCompiledNode(c)) return;
+	if (unsupported || (attribution && !c.instance) || service) {
 		lowerHostNode(c, 1, [['host', raw("'fallback'")]]);
 		return;
 	}

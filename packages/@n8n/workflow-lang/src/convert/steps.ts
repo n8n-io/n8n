@@ -10,6 +10,8 @@
  * the same value (it reads only the item and built-in functions); else the
  * conversion of the node fails.
  */
+import { compileNodeInstance } from '../node-compile/convert.ts';
+import { CORE_NODE_TYPES } from './core-types.ts';
 import type { Code } from './code.ts';
 import { literal, raw, str } from './code.ts';
 import type { NodeContext } from './context.ts';
@@ -334,6 +336,38 @@ export function nodeCall(
 	};
 }
 
+/**
+ * Writes the node as a call of a module that is compiled from the node source.
+ * Returns false when there is no source or it does not compile: the caller then
+ * runs the node in the fallback host.
+ */
+export function tryCompiledNode(c: NodeContext): boolean {
+	if (!c.nodeSources || !c.addNode) return false;
+	// A core node that has a native form reaches the host only when that form does not fit
+	// (an expression that does not translate). Its source is not a better form.
+	if (CORE_NODE_TYPES.has(c.node.type)) return false;
+	const compiled = compileNodeInstance(
+		c.nodeSources,
+		{ type: c.node.type, version: c.version, parameters: c.parameters },
+		c.instance?.id,
+	);
+	if ('errors' in compiled) {
+		c.info('node-compile', `The node source does not compile: ${compiled.errors.join('; ')}`);
+		return false;
+	}
+	const dynamic: Record<string, unknown> = {};
+	for (const name of compiled.dynamic) dynamic[name] = c.parameters[name];
+	// As for a library node: v1 gives the node all items, and the module runs once for each item.
+	const parameters = c.compiled(dynamic, '', { flattenResourceLocators: false });
+	c.addNode(compiled.file, compiled.source);
+	c.info(
+		'node-compiled',
+		`The node runs as code that is compiled from its source (${compiled.type}).`,
+	);
+	emitStep(c, nodeCall(c, compiled.type, parameters, c.credential(), true));
+	return true;
+}
+
 /** A node that runs in the fallback host with its v1 parameters. */
 /**
  * Parameters that the v1 node reads as raw expression text (`node.parameters`) and
@@ -390,6 +424,9 @@ export function checkOneResult(c: NodeContext, perItem: boolean): void {
 }
 
 export function lowerFallback(c: NodeContext): void {
+	// A node with no native form and no library node is compiled from its n8n source when
+	// the caller gives the sources (`ConvertOptions.nodeSources`) and the source compiles.
+	if (tryCompiledNode(c)) return;
 	for (const path of SELF_EVALUATED[c.node.type] ?? []) {
 		let v: unknown = c.parameters;
 		for (const k of path) v = isRecord(v) ? v[k] : undefined;

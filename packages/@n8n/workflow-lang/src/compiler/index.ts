@@ -29,6 +29,8 @@ export interface CompileOptions {
 	hasher?: Hasher;
 	prelude?: Record<string, string>;
 	nodes?: Record<string, string>;
+	/** Modules of the node compiler (`ConvertResult.nodes`), added to the library. */
+	extraNodes?: Record<string, string>;
 	/** Allows implicit `any`, for legacy JavaScript expressions. */
 	looseTypes?: boolean;
 	/** Writes arrow callbacks of `map`, `filter` and the like as loops. Default true. */
@@ -142,6 +144,7 @@ export function compile(source: string, options: CompileOptions = {}): CompileRe
 		fileName: options.fileName ?? WORKFLOW_FILE,
 		prelude: options.prelude,
 		nodes: options.nodes,
+		extraNodes: options.extraNodes,
 		looseTypes: options.looseTypes,
 	});
 	const libraryFiles = [...wp.preludeFiles, ...wp.nodeFiles];

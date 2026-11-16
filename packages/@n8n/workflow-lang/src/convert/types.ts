@@ -74,6 +74,11 @@ export interface ConvertResult {
 	diagnostics: ConvertDiagnostic[];
 	/** Names of the nodes that run in the fallback host. */
 	fallbackNodes: string[];
+	/**
+	 * Modules that the node compiler made from node sources, by virtual path. Give them to
+	 * `compile` as `extraNodes`.
+	 */
+	nodes?: Record<string, string>;
 	/** The n8n credential behind each credential slot of the source. */
 	credentials?: Record<string, { id: string | null; name: string; type: string }>;
 }

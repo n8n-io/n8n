@@ -160,7 +160,11 @@ function nodeLibrary(sources: Record<string, string>, runtime: unknown): Map<str
 export async function runReference(
 	source: string,
 	fixture: Fixture,
-	options: { nodes?: Record<string, string>; fileName?: string } = {},
+	options: {
+		nodes?: Record<string, string>;
+		extraNodes?: Record<string, string>;
+		fileName?: string;
+	} = {},
 ): Promise<ReferenceOutput> {
 	// Workflows run in UTC: local-time Date methods equal the UTC methods.
 	useUtc();
@@ -297,7 +301,10 @@ export async function runReference(
 		});
 	};
 
-	const library = nodeLibrary(options.nodes ?? selectNodeSources(source), runtime);
+	const library = nodeLibrary(
+		{ ...(options.nodes ?? selectNodeSources(source)), ...options.extraNodes },
+		runtime,
+	);
 
 	const ctx = {
 		node: async (opts: unknown) => {

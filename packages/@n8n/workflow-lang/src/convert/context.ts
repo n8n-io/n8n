@@ -1,6 +1,7 @@
 /**
  * The interface between the converter driver and the lowering of one node.
  */
+import type { NodeSources } from '../node-compile/convert.ts';
 import type { Code, Writer } from './code.ts';
 import type { ExpressionScope, TranslatedValue, TranslateOptions } from './expression.ts';
 import type { N8nNode, N8nWorkflow } from './types.ts';
@@ -67,6 +68,10 @@ export interface NodeContext {
 	codeNodes?: 'native' | 'host';
 	/** The n8n instance (`ConvertOptions.instance`), when the caller gives it. */
 	instance?: { baseUrl: string; id: string };
+	/** Sources of nodes for the node compiler (`ConvertOptions.nodeSources`). */
+	nodeSources?: NodeSources;
+	/** Adds a module that the node compiler made to the result (`ConvertResult.nodes`). */
+	addNode?(file: string, source: string): void;
 	/** False when the runtime does not run `ctx.service` effects (`ConvertOptions.services`). */
 	services?: boolean;
 	/** Records a time zone that the node's native code formats dates in (META \`zones\`). */

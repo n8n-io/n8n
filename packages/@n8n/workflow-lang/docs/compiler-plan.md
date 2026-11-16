@@ -20,10 +20,47 @@ accepts with no change to that compiler.
   `delete` on a local, `list.push(...more)`, `pattern.test(text)`, `NodeApiError` and `NodeOperationError`.
 - Weaker than v1, and listed in the `notes` of each result: the text of an HTTP error and of the two error
   classes; `delete` copies the object.
-- Not built: the converter does not call it yet (the test gives the module to the compiler by hand); lodash,
-  dates, crypto, `Map` and `Set`, other regular expression uses, binary data, `extractValue`, and the
-  performance work of phase 3. A survey of all nodes needs the parameters of real workflows: with default
-  parameters a node can fold to its first `throw`.
+- The converter calls it (`ConvertOptions.nodeSources`). The order for a node is: a native lowering, then a
+  library node (a hand port), then the node source, then the fallback host. The modules are in
+  `ConvertResult.nodes`; give them to `compile` as `extraNodes`. Without `nodeSources` nothing changes.
+- A credential field is a marker until the module is printed. Code that compares it or branches on it is an
+  error. The check follows a field through the variables of one function, not into another function.
+- More compiled forms: calls through a namespace (`import * as sheet`, the router layout of newer nodes),
+  constant objects, `{ extractValue: true }` for the modes `id` and `list`, destructured credentials,
+  `this.logger`, the error classes of n8n-workflow, `jsonParse`, `deepCopy`, lodash `isEmpty` and `get`.
+
+### Measured on real workflows (2026-11-16)
+
+300 workflows of the corpus (3,702 nodes), converted with and without the node compiler:
+
+| | Without | With |
+|---|---|---|
+| Nodes in the fallback host | 739 | 722 |
+| Nodes compiled from their source | 0 | 17 |
+| Workflows with no host node | 94 | 95 |
+
+The nodes that compile today are simple HTTP nodes (Telegram operations, Twilio, Facebook Graph, Monday).
+The reasons for the others, by node count (a node can have several):
+
+| Nodes | Reason | What closes it |
+|---|---|---|
+| 226 | A regular expression that is not `pattern.test(text)` | The regex helpers of the native Code path |
+| 175 | The credential is used as a whole value (drivers, service accounts, signing) | Derived credentials; protocol clients |
+| 146 | `Set` and `Map` | The subset or a helper type |
+| about 190 | Binary data helpers and `Buffer` | Binary data handles in the runtime |
+| 91 | `evaluateExpression` (SQL nodes) | Protocol clients, not the compiler |
+| 91 | `this` passed as a value (helper classes such as `GoogleSheet`) | Classes as records of functions |
+| about 100 | Luxon and moment-timezone | The date helpers of the native Code path |
+| 66 | `new Promise` | Stays in the host |
+| 48 | `getNodeParameter` with a name that is not a constant, or `extractValue` on a URL | Folding through loops; the patterns of the description |
+| 41 | lodash `set` | A helper |
+
+By type, the largest groups that stay in the host are Postgres, Microsoft SQL and MySQL (drivers), Gmail
+and Email Send (MIME and binary data), Google Sheets (a helper class), Salesforce, Google Analytics and
+BigQuery. These are also the candidates for a native port.
+
+- Not built: lodash `set`, dates, crypto, `Map` and `Set`, other regular expression uses, binary data,
+  classes, and the performance work of phase 3. n8n does not pass `nodeSources` yet.
 
 ## Goals
 

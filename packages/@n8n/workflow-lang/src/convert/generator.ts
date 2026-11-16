@@ -15,6 +15,7 @@
  *   node runs once for each parent that sends items, and loops run until no
  *   items are left. Lists of the latest run of each node are `let` variables.
  */
+import type { NodeSources } from '../node-compile/convert.ts';
 import type { LegacyIssue } from '../legacy/index.ts';
 import type { Code } from './code.ts';
 import { literal, print, raw, str, Writer } from './code.ts';
@@ -106,6 +107,12 @@ export interface ConvertOptions {
 	 * fallback host; `host` always runs it in the fallback host.
 	 */
 	codeNodes?: 'native' | 'host';
+	/**
+	 * The sources of nodes. With it, a node that has no native form and no library node is
+	 * compiled from its n8n source (`src/node-compile/`), and runs in the fallback host only
+	 * when the source does not compile. The modules are in `ConvertResult.nodes`.
+	 */
+	nodeSources?: NodeSources;
 	/** Names of Code nodes that always run in the fallback host. */
 	hostCodeNodes?: string[];
 	/**
@@ -137,6 +144,8 @@ export interface Round {
 	source: string;
 	diagnostics: ConvertDiagnostic[];
 	fallbackNodes: string[];
+	/** Modules that the node compiler made, by virtual path. */
+	nodes: Record<string, string>;
 	/** Translated expressions by their range in the source. */
 	ranges: Array<{ start: number; end: number; node: string; path: string }>;
 	/** The lines (1-based, end exclusive) of the code of each node. */
@@ -350,6 +359,7 @@ export class ModuleGenerator {
 	private readonly onceInputs = new Map<string, string>();
 
 	private readonly fallback: string[] = [];
+	private readonly compiledNodes: Record<string, string> = {};
 
 	private readonly slots = new Map<string, string>();
 
@@ -684,6 +694,10 @@ export class ModuleGenerator {
 				this.notRun.set(node.name, condition);
 			},
 			instance: this.options.instance,
+			nodeSources: this.options.nodeSources,
+			addNode: (file, text) => {
+				this.compiledNodes[file] = text;
+			},
 			services: this.options.services,
 			codeNodes:
 				this.options.codeNodes === 'host' || this.options.hostCodeNodes?.includes(node.name)
@@ -1892,6 +1906,7 @@ export class ModuleGenerator {
 			source,
 			diagnostics: this.diagnostics,
 			fallbackNodes: this.fallback,
+			nodes: this.compiledNodes,
 			ranges,
 			blocks,
 			credentials: this.credentialRefs(),

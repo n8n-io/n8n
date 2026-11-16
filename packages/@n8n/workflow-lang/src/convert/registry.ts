@@ -122,7 +122,10 @@ export function lowererOf(node: N8nNode): Lowerer | string {
 	return lowerFallback;
 }
 
-/** A node of another package (a community node): the fallback host runs it when n8n has the package. */
+/**
+ * A node of another package (a community or custom node): `lowerFallback` compiles it from its
+ * source when it can; else the fallback host runs it when n8n has the package.
+ */
 function lowerOtherPackage(c: NodeContext): void {
 	c.warn(
 		'community-node',

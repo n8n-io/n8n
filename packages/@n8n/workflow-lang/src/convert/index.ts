@@ -175,6 +175,7 @@ export function convertWorkflow(input: unknown, options: ConvertOptions = {}): C
 		diagnostics,
 		fallbackNodes: round.fallbackNodes,
 		credentials: round.credentials,
+		...(Object.keys(round.nodes).length > 0 ? { nodes: round.nodes } : {}),
 	};
 }
 

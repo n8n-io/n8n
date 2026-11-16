@@ -59,6 +59,8 @@ function specialise(c: EquivalenceCase) {
 		readFile: (path) => (existsSync(path) ? readFileSync(path, 'utf8') : undefined),
 		parameters: isRecord(parameters) ? parameters : {},
 		aliases: { '@utils/': `${join(nodesBase, 'utils')}/` },
+		// The recordings of v1 have no instance id (`withoutInstanceId`).
+		instanceId: null,
 	});
 }
 

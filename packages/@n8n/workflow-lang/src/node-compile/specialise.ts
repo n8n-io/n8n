@@ -28,6 +28,13 @@ export interface SpecialiseInput {
 	/** Defaults of the node description, by parameter name. */
 	defaults?: Record<string, unknown>;
 	continueOnFail?: boolean;
+	/**
+	 * The id of the n8n instance (`getInstanceId`). `null`: the caller knows that there is
+	 * none. Absent: a node that reads the id does not compile.
+	 */
+	instanceId?: string | null;
+	/** The type that the module names itself. The default is `type`. */
+	moduleType?: string;
 	/** Import prefixes that are folders, for example `{ '@utils/': '/repo/nodes-base/utils/' }`. */
 	aliases?: Record<string, string>;
 }
@@ -109,6 +116,32 @@ const HELPERS: Record<string, string> = {
 	if (typeof cause === 'string') return new Error(cause);
 	return new Error(String(cause !== null && cause !== undefined && cause.message !== undefined ? cause.message : cause));
 }`,
+	__isEmpty: `function __isEmpty(value: any): boolean {
+	if (value === null || value === undefined) return true;
+	if (typeof value === 'string' || Array.isArray(value)) return value.length === 0;
+	if (typeof value === 'object') return Object.keys(value).length === 0;
+	return true;
+}`,
+	__get: `function __get(value: any, path: any, fallback: any): any {
+	const keys: any = Array.isArray(path) ? path : String(path).split('.');
+	let current: any = value;
+	for (const key of keys) {
+		if (current === null || current === undefined) return fallback;
+		current = current[key];
+	}
+	return current === undefined ? fallback : current;
+}`,
+	__jsonParse: `function __jsonParse(text: any, options: any): any {
+	try {
+		return JSON.parse(text);
+	} catch (error) {
+		if (options !== null && options !== undefined && options.fallbackValue !== undefined) return options.fallbackValue;
+		throw error;
+	}
+}`,
+	__deepCopy: `function __deepCopy(value: any): any {
+	return value === undefined ? undefined : JSON.parse(JSON.stringify(value));
+}`,
 	__request: `async function __request(ctx: NodeCtx, credential: any, options: any): Promise<any> {
 	const response: any = await ctx.http({
 		method: options.method ?? 'GET',
@@ -122,6 +155,31 @@ const HELPERS: Record<string, string> = {
 	return response.body;
 }`,
 };
+
+const GENERIC_ERRORS = new Set([
+	'UserError',
+	'ApplicationError',
+	'OperationalError',
+	'UnexpectedError',
+]);
+
+/** Functions of packages that have a helper in the subset. */
+const PACKAGE_HELPERS: Record<string, Record<string, string>> = {
+	lodash: { isEmpty: '__isEmpty', get: '__get' },
+	'n8n-workflow': { jsonParse: '__jsonParse', deepCopy: '__deepCopy' },
+};
+
+function packageHelper(imported: { from: string; name: string }): string | undefined {
+	const slash = imported.from.indexOf('/');
+	const pkg =
+		imported.from.startsWith('lodash') && slash > 0 ? imported.from.slice(0, slash) : imported.from;
+	const name =
+		imported.name === 'default'
+			? imported.from.slice(imported.from.lastIndexOf('/') + 1)
+			: imported.name;
+	const table = PACKAGE_HELPERS[pkg];
+	return table && Object.hasOwn(table, name) ? table[name] : undefined;
+}
 
 /** Constants of n8n packages that node code compares with. */
 const PACKAGE_CONSTANTS: Record<string, string | number> = {
@@ -179,7 +237,7 @@ function expressionOf(value: unknown): ts.Expression {
 	throw new Error(`a parameter value of type ${typeof value} has no compiled form`);
 }
 
-function hasExpression(value: unknown): boolean {
+export function hasExpression(value: unknown): boolean {
 	if (typeof value === 'string') return value.startsWith('=');
 	if (Array.isArray(value)) return value.some(hasExpression);
 	if (typeof value === 'object' && value !== null) return Object.values(value).some(hasExpression);
@@ -267,6 +325,19 @@ interface FileModel {
 	declarations: Map<string, ts.FunctionDeclaration | ts.VariableDeclaration>;
 	/** Imported names: the module text and the name in that module. */
 	imports: Map<string, { from: string; name: string }>;
+	/** `import * as name from 'module'`. */
+	namespaces: Map<string, string>;
+	/** `export { local as name }`. */
+	exportLocal: Map<string, string>;
+	/** `export { name } from 'module'`; `export * as name from 'module'` has the name `*`. */
+	exportFrom: Map<string, { from: string; name: string }>;
+	/** `export * from 'module'`. */
+	exportStar: string[];
+}
+
+interface Resolved {
+	file: FileModel;
+	node?: ts.FunctionDeclaration | ts.VariableDeclaration;
 }
 
 interface Unit {
@@ -340,7 +411,16 @@ class Specialiser {
 			},
 		}).outputText;
 		const sf = ts.createSourceFile(path, js, ts.ScriptTarget.ES2022, true, ts.ScriptKind.JS);
-		const model: FileModel = { path, sf, declarations: new Map(), imports: new Map() };
+		const model: FileModel = {
+			path,
+			sf,
+			declarations: new Map(),
+			imports: new Map(),
+			namespaces: new Map(),
+			exportLocal: new Map(),
+			exportFrom: new Map(),
+			exportStar: [],
+		};
 		for (const st of sf.statements) {
 			if (ts.isFunctionDeclaration(st) && st.name) model.declarations.set(st.name.text, st);
 			if (ts.isVariableStatement(st)) {
@@ -357,6 +437,30 @@ class Specialiser {
 					for (const e of named.elements) {
 						model.imports.set(e.name.text, { from, name: (e.propertyName ?? e.name).text });
 					}
+				}
+			}
+		}
+		for (const st of sf.statements) {
+			if (ts.isImportDeclaration(st) && ts.isStringLiteral(st.moduleSpecifier)) {
+				const named = st.importClause?.namedBindings;
+				if (named && ts.isNamespaceImport(named))
+					model.namespaces.set(named.name.text, st.moduleSpecifier.text);
+			}
+			if (!ts.isExportDeclaration(st)) continue;
+			const from =
+				st.moduleSpecifier && ts.isStringLiteral(st.moduleSpecifier)
+					? st.moduleSpecifier.text
+					: undefined;
+			const clause = st.exportClause;
+			if (!clause) {
+				if (from !== undefined) model.exportStar.push(from);
+			} else if (ts.isNamespaceExport(clause)) {
+				if (from !== undefined) model.exportFrom.set(clause.name.text, { from, name: '*' });
+			} else {
+				for (const e of clause.elements) {
+					const local = (e.propertyName ?? e.name).text;
+					if (from !== undefined) model.exportFrom.set(e.name.text, { from, name: local });
+					else model.exportLocal.set(e.name.text, local);
 				}
 			}
 		}
@@ -425,7 +529,20 @@ class Specialiser {
 		if (!nameArg || !ts.isStringLiteral(nameArg)) {
 			return node; // `this` stays, and the check after folding reports it
 		}
-		if (options) return node;
+		// `{ extractValue: true }` on a resource locator: the value of the modes `id` and `list`.
+		let extract = false;
+		if (options) {
+			const only =
+				ts.isObjectLiteralExpression(options) && options.properties.length === 1
+					? options.properties[0]
+					: undefined;
+			extract =
+				!!only &&
+				ts.isPropertyAssignment(only) &&
+				only.name.getText() === 'extractValue' &&
+				only.initializer.kind === ts.SyntaxKind.TrueKeyword;
+			if (!extract) return node;
+		}
 		const path = nameArg.text.split('.');
 		let value: unknown = this.input.parameters;
 		for (const key of path) {
@@ -450,6 +567,18 @@ class Specialiser {
 						f.createBinaryExpression(read, ts.SyntaxKind.QuestionQuestionToken, or),
 					)
 				: read;
+		}
+		if (extract) {
+			const locator =
+				typeof value === 'object' && value !== null
+					? (value as Record<string, unknown>)
+					: undefined;
+			if (hasExpression(top)) return node;
+			if (locator?.__rl === true) {
+				// The mode `url` takes the value out of a URL with a pattern of the description.
+				if (locator.mode !== 'id' && locator.mode !== 'list') return node;
+				return expressionOf(locator.value);
+			}
 		}
 		if (value !== undefined) return expressionOf(value);
 		if (path.length === 1 && this.input.defaults && path[0] in this.input.defaults) {
@@ -504,6 +633,45 @@ class Specialiser {
 			(node.arguments ?? []).slice(from).map((a) => ts.visitNode(a, visit) as ts.Expression);
 
 		const rewrite = (node: ts.Node): ts.Node | ts.Node[] | undefined => {
+			const credentialCall = (e: ts.Expression) =>
+				isThisCall(e, 'getCredentials') ||
+				(ts.isAwaitExpression(e) && isThisCall(e.expression, 'getCredentials'));
+			// const { a, b: c } = await this.getCredentials(...): each name is one field.
+			if (
+				ts.isVariableDeclaration(node) &&
+				ts.isObjectBindingPattern(node.name) &&
+				node.initializer &&
+				credentialCall(node.initializer)
+			) {
+				const plain = node.name.elements.every(
+					(e) =>
+						ts.isIdentifier(e.name) &&
+						!e.initializer &&
+						!e.dotDotDotToken &&
+						(!e.propertyName || ts.isIdentifier(e.propertyName)),
+				);
+				if (plain) {
+					return node.name.elements.map((e) =>
+						f.createVariableDeclaration(
+							(e.name as ts.Identifier).text,
+							undefined,
+							undefined,
+							call(
+								'__CREDFIELD',
+								f.createStringLiteral(((e.propertyName ?? e.name) as ts.Identifier).text),
+							),
+						),
+					);
+				}
+			}
+			// (await this.getCredentials(...)).field
+			if (ts.isPropertyAccessExpression(node)) {
+				const inner = ts.isParenthesizedExpression(node.expression)
+					? node.expression.expression
+					: node.expression;
+				if (credentialCall(inner))
+					return call('__CREDFIELD', f.createStringLiteral(node.name.text));
+			}
 			if (ts.isAwaitExpression(node) && isThisCall(node.expression, 'getCredentials'))
 				return f.createIdentifier('__CREDENTIAL');
 			if (isThisCall(node, 'getCredentials')) return f.createIdentifier('__CREDENTIAL');
@@ -513,7 +681,10 @@ class Specialiser {
 			if (isThisCall(node, 'continueOnFail'))
 				return this.input.continueOnFail ? f.createTrue() : f.createFalse();
 			if (isThisCall(node, 'getInstanceId')) {
-				return f.createPropertyAccessExpression(f.createIdentifier('parameters'), 'instanceId');
+				const id = this.input.instanceId;
+				return id === undefined
+					? f.createIdentifier('__INSTANCE_ID')
+					: expressionOf(id ?? undefined);
 			}
 			if (isThisCall(node, 'getNode')) {
 				return expressionOf({
@@ -548,6 +719,14 @@ class Specialiser {
 					);
 				}
 				// helper.call(this, a, b): the helper gets the context as leading parameters.
+				// resource[operation].execute.call(this, a): the target is known after folding.
+				if (
+					name.text === 'call' &&
+					!ts.isIdentifier(target) &&
+					node.arguments[0]?.kind === ts.SyntaxKind.ThisKeyword
+				) {
+					return call('__CTXCALL', ts.visitNode(target, visit) as ts.Expression, ...args(node, 1));
+				}
 				if (
 					name.text === 'call' &&
 					ts.isIdentifier(target) &&
@@ -590,8 +769,21 @@ class Specialiser {
 					}
 				}
 			}
+			if (
+				ts.isCallExpression(node) &&
+				ts.isIdentifier(node.expression) &&
+				!localNames.has(node.expression.text)
+			) {
+				const imported = unit.file.imports.get(node.expression.text);
+				const helper = imported ? packageHelper(imported) : undefined;
+				if (helper) return this.helper(helper, ...args(node));
+			}
 			if (ts.isNewExpression(node) && ts.isIdentifier(node.expression)) {
 				const cls = node.expression.text;
+				if (GENERIC_ERRORS.has(cls)) {
+					this.note(`${cls} is an Error with its message: the other fields of v1 are not there.`);
+					return this.helper('__error', args(node)[0] ?? f.createStringLiteral(cls));
+				}
 				if (cls === 'NodeApiError' || cls === 'NodeOperationError') {
 					this.note(
 						`${cls} is an Error with the message of its cause: the description and the HTTP code of v1 are not there.`,
@@ -601,6 +793,16 @@ class Specialiser {
 			}
 			if (ts.isExpressionStatement(node)) {
 				const e = node.expression;
+				// this.logger.debug(...): the compiled node writes no log.
+				if (
+					ts.isCallExpression(e) &&
+					ts.isPropertyAccessExpression(e.expression) &&
+					ts.isPropertyAccessExpression(e.expression.expression) &&
+					e.expression.expression.name.text === 'logger' &&
+					e.expression.expression.expression.kind === ts.SyntaxKind.ThisKeyword
+				) {
+					return f.createEmptyStatement();
+				}
 				// Object.assign(target, source): the subset has it only into a new object.
 				if (
 					ts.isCallExpression(e) &&
@@ -730,6 +932,24 @@ class Specialiser {
 						: '`this` as a value has no compiled form',
 				);
 			}
+			if (ts.isIdentifier(node) && node.text === '__CREDENTIAL') {
+				this.error(
+					where,
+					'the credential is used as a whole value: only its fields can go into a request',
+				);
+			}
+			if (ts.isIdentifier(node) && node.text === '__CTXCALL') {
+				this.error(
+					where,
+					'a call with the n8n context has a target that is not known at compile time',
+				);
+			}
+			if (ts.isIdentifier(node) && node.text === '__INSTANCE_ID') {
+				this.error(
+					where,
+					'the node reads the instance id, and the caller did not give the instance',
+				);
+			}
 			if (ts.isRegularExpressionLiteral(node))
 				this.error(where, 'a regular expression is supported only as `pattern.test(text)`');
 			if (ts.isDeleteExpression(node))
@@ -745,6 +965,72 @@ class Specialiser {
 			ts.forEachChild(node, walk);
 		};
 		walk(root);
+		this.checkCredentialUse(root, where);
+	}
+
+	/**
+	 * A credential field is a template that the runtime fills: text for a
+	 * request. Code that compares it or branches on it would need the value, so
+	 * that is an error. The check follows a field through the variables of one
+	 * function. It does not follow it into another function.
+	 */
+	private checkCredentialUse(root: ts.Node, where: string) {
+		const tainted = new Set<string>();
+		const holds = (e: ts.Node): boolean =>
+			(ts.isIdentifier(e) &&
+				(e.text === '__CREDFIELD' || (tainted.has(e.text) && isValueUse(e)))) ||
+			(ts.forEachChild(e, holds) ?? false);
+		for (let round = 0; round < 8; round++) {
+			const before = tainted.size;
+			const collect = (n: ts.Node) => {
+				if (
+					ts.isVariableDeclaration(n) &&
+					ts.isIdentifier(n.name) &&
+					n.initializer &&
+					holds(n.initializer)
+				)
+					tainted.add(n.name.text);
+				if (
+					ts.isBinaryExpression(n) &&
+					n.operatorToken.kind === ts.SyntaxKind.EqualsToken &&
+					ts.isIdentifier(n.left) &&
+					holds(n.right)
+				) {
+					tainted.add(n.left.text);
+				}
+				ts.forEachChild(n, collect);
+			};
+			collect(root);
+			if (tainted.size === before) break;
+		}
+		const find = (n: ts.Node) => {
+			const field =
+				ts.isCallExpression(n) &&
+				ts.isIdentifier(n.expression) &&
+				n.expression.text === '__CREDFIELD';
+			const variable = ts.isIdentifier(n) && tainted.has(n.text) && isValueUse(n);
+			const p = n.parent;
+			if ((field || variable) && p) {
+				const op = ts.isBinaryExpression(p) ? p.operatorToken.kind : undefined;
+				const decides =
+					(op !== undefined &&
+						op !== ts.SyntaxKind.PlusToken &&
+						op !== ts.SyntaxKind.EqualsToken &&
+						op !== ts.SyntaxKind.CommaToken) ||
+					ts.isPrefixUnaryExpression(p) ||
+					ts.isTypeOfExpression(p) ||
+					((ts.isIfStatement(p) || ts.isWhileStatement(p) || ts.isSwitchStatement(p)) &&
+						p.expression === n) ||
+					(ts.isConditionalExpression(p) && p.condition === n);
+				if (decides)
+					this.error(
+						where,
+						'the code compares or branches on a credential field: node code cannot read a credential value',
+					);
+			}
+			ts.forEachChild(n, find);
+		};
+		find(root);
 	}
 
 	// ----- fold -----
@@ -773,6 +1059,8 @@ class Specialiser {
 		const constants = new Map<string, Literal>();
 		const credentials = new Set<string>();
 		const unused = new Set<string>();
+		// A constant object of constants that the code only reads: `x.resource` is the constant.
+		const objects = new Map<string, Map<string, Literal>>();
 		const scan = (n: ts.Node) => {
 			if (
 				ts.isVariableDeclaration(n) &&
@@ -793,6 +1081,25 @@ class Specialiser {
 					credentials.add(n.name.text);
 				} else if (isConst && lit) {
 					constants.set(n.name.text, lit.value);
+				} else if (
+					isConst &&
+					ts.isObjectLiteralExpression(n.initializer) &&
+					n.initializer.properties.length > 0
+				) {
+					const members = new Map<string, Literal>();
+					for (const p of n.initializer.properties) {
+						const value = ts.isPropertyAssignment(p) ? literalOf(p.initializer) : undefined;
+						const key =
+							ts.isPropertyAssignment(p) && (ts.isIdentifier(p.name) || ts.isStringLiteral(p.name))
+								? p.name.text
+								: undefined;
+						if (!value || key === undefined) {
+							members.clear();
+							break;
+						}
+						members.set(key, value.value);
+					}
+					if (members.size > 0) objects.set(n.name.text, members);
 				} else if (!uses.get(n.name.text) && isPure(n.initializer)) {
 					unused.add(n.name.text);
 				}
@@ -800,13 +1107,40 @@ class Specialiser {
 			ts.forEachChild(n, scan);
 		};
 		scan(root);
-		if (constants.size + credentials.size + unused.size === 0) return root;
+		const readsOnly = (n: ts.Node) => {
+			if (ts.isIdentifier(n) && objects.has(n.text) && isValueUse(n)) {
+				const p = n.parent;
+				const read =
+					ts.isPropertyAccessExpression(p) &&
+					p.expression === n &&
+					objects.get(n.text)?.has(p.name.text);
+				const up = read ? p.parent : undefined;
+				const written =
+					up &&
+					((ts.isBinaryExpression(up) &&
+						up.left === p &&
+						up.operatorToken.kind >= ts.SyntaxKind.FirstAssignment &&
+						up.operatorToken.kind <= ts.SyntaxKind.LastAssignment) ||
+						ts.isDeleteExpression(up) ||
+						ts.isPrefixUnaryExpression(up) ||
+						ts.isPostfixUnaryExpression(up));
+				if (!read || written) objects.delete(n.text);
+			}
+			ts.forEachChild(n, readsOnly);
+		};
+		readsOnly(root);
+		if (constants.size + credentials.size + unused.size + objects.size === 0) return root;
 		this.changed = true;
 		const visit = (n: ts.Node): ts.Node | undefined => {
 			if (ts.isVariableStatement(n)) {
 				const kept = n.declarationList.declarations.filter((d) => {
 					const name = ts.isIdentifier(d.name) ? d.name.text : '';
-					return !constants.has(name) && !credentials.has(name) && !unused.has(name);
+					return (
+						!constants.has(name) &&
+						!credentials.has(name) &&
+						!unused.has(name) &&
+						!objects.has(name)
+					);
 				});
 				if (kept.length === 0) return undefined;
 				if (kept.length !== n.declarationList.declarations.length) {
@@ -826,7 +1160,32 @@ class Specialiser {
 				ts.isIdentifier(n.expression) &&
 				credentials.has(n.expression.text)
 			) {
-				return f.createStringLiteral(`{{$credentials.${n.name.text}}}`);
+				// A template is text for a request. A comparison or a condition on it would read the secret.
+				const p = n.parent;
+				const assigns =
+					ts.isBinaryExpression(p) && p.operatorToken.kind === ts.SyntaxKind.EqualsToken;
+				const decides =
+					(ts.isBinaryExpression(p) &&
+						p.operatorToken.kind !== ts.SyntaxKind.PlusToken &&
+						!assigns) ||
+					ts.isPrefixUnaryExpression(p) ||
+					ts.isTypeOfExpression(p) ||
+					(ts.isIfStatement(p) && p.expression === n) ||
+					(ts.isConditionalExpression(p) && p.condition === n);
+				if (decides) {
+					this.error(
+						where,
+						`the code decides on the credential field '${n.name.text}': node code cannot read a credential value`,
+					);
+				}
+				return call('__CREDFIELD', f.createStringLiteral(n.name.text));
+			}
+			if (
+				ts.isPropertyAccessExpression(n) &&
+				ts.isIdentifier(n.expression) &&
+				objects.has(n.expression.text)
+			) {
+				return expressionOf(objects.get(n.expression.text)?.get(n.name.text));
 			}
 			if (ts.isShorthandPropertyAssignment(n) && constants.has(n.name.text)) {
 				return f.createPropertyAssignment(n.name.text, expressionOf(constants.get(n.name.text)));
@@ -1118,6 +1477,96 @@ class Specialiser {
 
 	// ----- drive -----
 
+	/** What a name of a file is: a declaration, or the namespace of a module (no `node`). */
+	private member(file: FileModel, name: string, hops = 0): Resolved | undefined {
+		if (hops > 12) return undefined;
+		const node = file.declarations.get(name);
+		if (node) return { file, node };
+		const space = file.namespaces.get(name);
+		if (space !== undefined) {
+			const target = this.resolveModule(file, space);
+			return target ? { file: target } : undefined;
+		}
+		const imported = file.imports.get(name);
+		if (!imported) return undefined;
+		const target = this.resolveModule(file, imported.from);
+		return target ? this.exported(target, imported.name, hops + 1) : undefined;
+	}
+
+	/** What a module exports under a name. */
+	private exported(file: FileModel, name: string, hops = 0): Resolved | undefined {
+		if (hops > 12) return undefined;
+		const local = file.exportLocal.get(name);
+		if (local !== undefined) return this.member(file, local, hops + 1);
+		const from = file.exportFrom.get(name);
+		if (from) {
+			const target = this.resolveModule(file, from.from);
+			if (!target) return undefined;
+			return from.name === '*' ? { file: target } : this.exported(target, from.name, hops + 1);
+		}
+		const node = file.declarations.get(name);
+		if (node) return { file, node };
+		for (const star of file.exportStar) {
+			const target = this.resolveModule(file, star);
+			const found = target ? this.exported(target, name, hops + 1) : undefined;
+			if (found) return found;
+		}
+		return undefined;
+	}
+
+	/**
+	 * Calls through a namespace: `sheet.append.execute(...)` with
+	 * `import * as sheet`. After folding, the keys are constants, so the target
+	 * is one declaration. It becomes a unit with a name of its own.
+	 */
+	private resolveChains(root: ts.Node, unit: Unit): ts.Node {
+		const bound = bindingsOf(root);
+		const target = (e: ts.Expression, withContext: boolean): string | undefined => {
+			const keys: string[] = [];
+			let cur = e;
+			for (;;) {
+				if (ts.isPropertyAccessExpression(cur)) {
+					keys.unshift(cur.name.text);
+					cur = cur.expression;
+				} else if (
+					ts.isElementAccessExpression(cur) &&
+					ts.isStringLiteral(cur.argumentExpression)
+				) {
+					keys.unshift(cur.argumentExpression.text);
+					cur = cur.expression;
+				} else break;
+			}
+			if (!ts.isIdentifier(cur) || keys.length === 0 || bound.has(cur.text)) return undefined;
+			let found = this.member(unit.file, cur.text);
+			for (const key of keys)
+				found = found && !found.node ? this.exported(found.file, key) : undefined;
+			if (!found?.node) return undefined;
+			const alias = [cur.text, ...keys].join('_');
+			if (!this.units.has(alias)) {
+				const next: Unit = { name: alias, node: found.node, file: found.file, withContext };
+				this.units.set(alias, next);
+				this.queue.push(next);
+			}
+			return alias;
+		};
+		const visit = (n: ts.Node): ts.Node => {
+			const out = ts.visitEachChild(n, visit, undefined);
+			if (!ts.isCallExpression(out)) return out;
+			if (ts.isIdentifier(out.expression) && out.expression.text === '__CTXCALL') {
+				const alias = out.arguments.length > 0 ? target(out.arguments[0], true) : undefined;
+				if (!alias) return out;
+				return call(
+					alias,
+					...CONTEXT_PARAMS.map((p) => f.createIdentifier(p)),
+					...out.arguments.slice(1),
+				);
+			}
+			const alias = target(out.expression, false);
+			return alias ? call(alias, ...out.arguments) : out;
+		};
+		return ts.visitNode(root, visit);
+	}
+
 	private process(unit: Unit, isExecute: boolean) {
 		const source = unit.node;
 		const statement = ts.isMethodDeclaration(source)
@@ -1133,12 +1582,33 @@ class Specialiser {
 			: ts.isVariableDeclaration(source)
 				? f.createVariableStatement(
 						undefined,
-						f.createVariableDeclarationList([source], ts.NodeFlags.Const),
+						f.createVariableDeclarationList(
+							[
+								f.updateVariableDeclaration(
+									source,
+									f.createIdentifier(unit.name),
+									source.exclamationToken,
+									source.type,
+									source.initializer,
+								),
+							],
+							ts.NodeFlags.Const,
+						),
 					)
-				: source;
+				: f.updateFunctionDeclaration(
+						source,
+						source.modifiers,
+						source.asteriskToken,
+						f.createIdentifier(unit.name),
+						source.typeParameters,
+						source.parameters,
+						source.type,
+						source.body,
+					);
 		let cur = this.reparse(statement, unit.file.sf);
 		cur = this.reparse(this.bind(cur.node, unit, isExecute), cur.sf);
 		cur = this.fold(cur, unit.name);
+		cur = this.reparse(this.resolveChains(cur.node, unit), cur.sf);
 		const node = cur.node;
 		this.check(node, unit.name);
 		const bound = bindingsOf(node);
@@ -1237,7 +1707,7 @@ import { defineNode, type NodeCtx } from '@n8n/workflow-lang';
 ${[...helpers, ...parts].join('\n\n')}
 
 export default defineNode<any>({
-	type: ${JSON.stringify(this.input.type)},
+	type: ${JSON.stringify(this.input.moduleType ?? this.input.type)},
 	version: ${this.input.version},
 	async run(ctx, parameters0, items0, credential) {
 		const parameters: any = parameters0 ?? {};
@@ -1300,13 +1770,28 @@ function typed(root: ts.Node): ts.Node {
 	const anyType = () => f.createKeywordTypeNode(ts.SyntaxKind.AnyKeyword);
 	const visit = (n: ts.Node): ts.Node => {
 		const out = ts.visitEachChild(n, visit, undefined);
+		// A credential field becomes the template that the runtime fills (spec section 7).
+		if (
+			ts.isCallExpression(out) &&
+			ts.isIdentifier(out.expression) &&
+			out.expression.text === '__CREDFIELD'
+		) {
+			const field = out.arguments[0];
+			return f.createStringLiteral(
+				`{{$credentials.${ts.isStringLiteral(field) ? field.text : ''}}}`,
+			);
+		}
 		if (ts.isParameter(out) && !out.type) {
 			return f.updateParameterDeclaration(
 				out,
 				out.modifiers,
 				out.dotDotDotToken,
 				out.name,
-				out.questionToken,
+				// v1 calls its helpers with fewer arguments than parameters: each one is optional.
+				out.questionToken ??
+					(n.pos >= 0 && !out.initializer && !out.dotDotDotToken
+						? f.createToken(ts.SyntaxKind.QuestionToken)
+						: undefined),
 				anyType(),
 				out.initializer,
 			);
