@@ -100,8 +100,16 @@ describe('buildViewDocument', () => {
 		);
 
 		expect(doc.querySelector('script[src]')?.getAttribute('nonce')).toBe('abc"def');
-		// On the root element, so the color scheme of the whole frame document follows it.
+		// On the root, so the color scheme of the whole frame document follows it, and
+		// on the body, so the system color scheme does not override the tokens.
 		expect(doc.documentElement.getAttribute('data-theme')).toBe('dark');
+		expect(doc.body.getAttribute('data-theme')).toBe('dark');
+	});
+
+	it('sets no theme when the editor follows the system theme', () => {
+		const doc = parse(buildViewDocument({ runtime, source: VIEW }));
+
+		expect(doc.documentElement.hasAttribute('data-theme')).toBe(false);
 		expect(doc.body.hasAttribute('data-theme')).toBe(false);
 	});
 

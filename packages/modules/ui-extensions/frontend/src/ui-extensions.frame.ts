@@ -103,13 +103,15 @@ export function buildViewDocument({
 		'<!doctype html>',
 		// The theme goes on the root, so the frame's color scheme matches the editor's.
 		// A frame with another color scheme than its embedder gets an opaque canvas.
+		// It goes on the body too, because the tokens follow the system color scheme
+		// on a body without a theme.
 		`<html${themeAttribute}>`,
 		'<head>',
 		'<meta charset="utf-8">',
 		`<meta http-equiv="Content-Security-Policy" content="${VIEW_FRAME_CONTENT_SECURITY_POLICY}">`,
 		`<style>${css}</style>`,
 		'</head>',
-		'<body>',
+		`<body${themeAttribute}>`,
 		'<div id="app"></div>',
 		`<script${nonceAttribute} src="${runtimeUrl(runtime)}"></script>`,
 		`<script${nonceAttribute} src="${scriptUrl(viewScript)}"></script>`,

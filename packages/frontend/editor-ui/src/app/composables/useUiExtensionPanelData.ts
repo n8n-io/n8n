@@ -109,33 +109,60 @@ function toLastRun(
 	};
 }
 
-/** The display name of the selected option of a parameter, such as "Send" for `post`. */
+type Selection = { resource?: string; operation?: string };
+
+/**
+ * Whether a property shows for the selected resource and operation. Nodes such as
+ * Slack declare one property for each resource or operation under the same name.
+ */
+function isShownFor(property: INodeProperties, selection: Selection): boolean {
+	const show = property.displayOptions?.show;
+	return (['resource', 'operation'] as const).every((name) => {
+		const shownFor = show?.[name];
+		if (!shownFor) return true;
+		const value = selection[name];
+		return value !== undefined && shownFor.includes(value);
+	});
+}
+
+/** The `options` property for a resource or an operation that shows for the selection. */
+function selectionProperty(
+	properties: INodeProperties[],
+	name: keyof Selection,
+	selection: Selection,
+): INodeProperties | undefined {
+	return properties.find(
+		(p) => p.name === name && p.type === 'options' && isShownFor(p, selection),
+	);
+}
+
+/**
+ * The selected resource and operation. A saved node leaves out a parameter that
+ * has its default value, so the default of the node type fills the gap.
+ */
+function toSelection(properties: INodeProperties[], parameters: INodeUi['parameters']): Selection {
+	const selection: Selection = {};
+	for (const name of ['resource', 'operation'] as const) {
+		const value = parameters[name] ?? selectionProperty(properties, name, selection)?.default;
+		if (typeof value === 'string') selection[name] = value;
+	}
+	return selection;
+}
+
+/** The display name of the selected option, such as "Send" for the operation `post`. */
 function optionName(
 	properties: INodeProperties[],
-	name: 'resource' | 'operation',
-	parameters: INodeUi['parameters'],
+	name: keyof Selection,
+	selection: Selection,
 ): string | undefined {
-	const value = parameters[name];
-	if (typeof value !== 'string') return undefined;
-	const resource = parameters.resource;
-	for (const property of properties) {
-		if (property.name !== name || property.type !== 'options') continue;
-		const shownFor = property.displayOptions?.show?.resource;
-		if (
-			name === 'operation' &&
-			shownFor &&
-			(typeof resource !== 'string' || !shownFor.includes(resource))
-		) {
-			continue;
-		}
-		const option = property.options?.find((o) => 'value' in o && o.value === value);
-		if (option) return option.name;
-	}
-	return undefined;
+	const value = selection[name];
+	return selectionProperty(properties, name, selection)?.options?.find(
+		(option) => 'value' in option && option.value === value,
+	)?.name;
 }
 
 /** What a node works on: the resource locator parameters at the top level, such as a channel. */
-function toTargets(node: INodeUi, properties: INodeProperties[]) {
+function toTargets(node: INodeUi, properties: INodeProperties[], selection: Selection) {
 	const targets: UiExtensionServiceNodeData['targets'] = [];
 	for (const [parameter, value] of Object.entries(node.parameters)) {
 		if (!isResourceLocatorValue(value)) continue;
@@ -143,9 +170,11 @@ function toTargets(node: INodeUi, properties: INodeProperties[]) {
 		// An expression has no name to show until the node runs.
 		const name = value.cachedResultName ?? (raw.startsWith('=') ? '' : raw);
 		if (!name) continue;
+		const candidates = properties.filter(
+			(p) => p.name === parameter && p.type === 'resourceLocator',
+		);
 		const label =
-			properties.find((p) => p.name === parameter && p.type === 'resourceLocator')?.displayName ??
-			parameter;
+			(candidates.find((p) => isShownFor(p, selection)) ?? candidates[0])?.displayName ?? parameter;
 		const url = value.cachedResultUrl;
 		targets.push({
 			label,
@@ -163,8 +192,9 @@ function toServiceNode(
 	execution: IExecutionResponse | null,
 ): UiExtensionServiceNodeData {
 	const properties = nodeType?.properties ?? [];
-	const resource = optionName(properties, 'resource', node.parameters);
-	const operation = optionName(properties, 'operation', node.parameters);
+	const selection = toSelection(properties, node.parameters);
+	const resource = optionName(properties, 'resource', selection);
+	const operation = optionName(properties, 'operation', selection);
 	const credentialName = Object.values(node.credentials ?? {}).find((c) => c?.name)?.name;
 	const task = execution?.data?.resultData.runData[node.name]?.at(-1);
 	return {
@@ -173,7 +203,7 @@ function toServiceNode(
 		displayName: nodeType?.displayName ?? node.type,
 		...(resource && { resource }),
 		...(operation && { operation }),
-		targets: toTargets(node, properties),
+		targets: toTargets(node, properties, selection),
 		...(credentialName && { credentialName }),
 		lastRun: execution ? toLastRun(execution.id, task) : null,
 	};
@@ -216,7 +246,7 @@ export function useUiExtensionPanelData(
 		const context = pageContext.value;
 		if (context.page === 'workflow') {
 			const id = workflowDocumentStore.value?.workflowId;
-			return id ? `workflow:${id}` : 'none';
+			return id ? `workflow:${id}` : 'unsaved';
 		}
 		return context.page === 'workflows' ? 'all' : 'none';
 	});
@@ -233,6 +263,8 @@ export function useUiExtensionPanelData(
 
 	async function fetchFor(forKey: string): Promise<Fetched> {
 		if (forKey === 'none') return EMPTY;
+		// A workflow that is not saved yet has no runs.
+		if (forKey === 'unsaved') return { ...EMPTY, scope: 'workflow' };
 		if (forKey === 'all') {
 			const runs = await fetchRuns({});
 			return { state: 'ready', scope: 'all', runs: runs.map(toRun), lastExecution: null };

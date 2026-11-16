@@ -128,6 +128,7 @@ export default {
 					:title="t('uiExtensions.recentRuns.openRun')"
 					data-test-id="recent-runs-run"
 					:data-status="run.status"
+					:data-execution-id="run.id"
 					@click="open(run)"
 				>
 					<span :style="between" style="width: 100%">

@@ -40,7 +40,9 @@ const frame = useTemplateRef<HTMLIFrameElement>('frame');
 const viewError = ref<string | null>(null);
 const hasLeftFrame = ref(false);
 
-const theme = document.body.getAttribute('data-theme') === 'dark' ? 'dark' : 'light';
+// No theme means that the editor follows the system theme, and the frame does too.
+const editorTheme = document.body.getAttribute('data-theme');
+const theme = editorTheme === 'dark' || editorTheme === 'light' ? editorTheme : undefined;
 const nonce = document.querySelector<HTMLScriptElement>('script[nonce]')?.nonce;
 // Built once: a new `srcdoc` would reload the view. The parent keys this component by view.
 let srcdoc = '';

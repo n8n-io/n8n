@@ -248,9 +248,12 @@ test.describe(
 			);
 
 			await n8n.sidePanel.selectTab('Recent runs');
-			await n8n.sidePanel.getViewElement('recent-runs-run').click();
+			await expect(run).toHaveAttribute('data-execution-id', /^\d+$/);
+			const executionId = await run.getAttribute('data-execution-id');
+			await run.click();
+			// The executions list opens the newest run by itself, so check the id.
 			await expect(n8n.page).toHaveURL((url) =>
-				url.pathname.startsWith(`/workflow/${workflowId}/executions/`),
+				url.pathname.endsWith(`/workflow/${workflowId}/executions/${executionId}`),
 			);
 		});
 
@@ -263,11 +266,18 @@ test.describe(
 			await api.setMcpAccess(true);
 			const { apiKey } = await api.rotateMcpApiKey();
 
+			// A run, so the built-in view has data in this session before the MCP view opens.
+			await n8n.navigate.toWorkflow(exposed.id);
+			await n8n.canvas.clickExecuteWorkflowButton();
+			await expect(
+				n8n.notifications.getNotificationByTitle('Workflow executed successfully'),
+			).toBeVisible();
+
 			await n8n.navigate.toWorkflows();
 			await n8n.sidePanel.open();
 			await n8n.sidePanel.selectTab('Recent runs');
 			// The built-in view has its data, so the panel has fetched the views and the run
-			// data, and it holds its push connection. The earlier test left a run.
+			// data, and it holds its push connection.
 			await expect(n8n.sidePanel.getViewElement('recent-runs-run').first()).toBeVisible();
 
 			const title = `Probe ${nanoid(6)}`;

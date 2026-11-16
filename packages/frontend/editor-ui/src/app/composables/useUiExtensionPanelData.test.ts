@@ -2,7 +2,7 @@ import type { PushMessage, UiExtensionPageContext } from '@n8n/api-types';
 import { makeRestApiRequest } from '@n8n/rest-api-client';
 import { createTestingPinia } from '@pinia/testing';
 import { flushPromises } from '@vue/test-utils';
-import type { ExecutionSummary, INode, ITaskData } from 'n8n-workflow';
+import type { ExecutionSummary, INode, INodeTypeDescription, ITaskData } from 'n8n-workflow';
 import { setActivePinia } from 'pinia';
 import type { MockInstance } from 'vitest';
 import { computed, effectScope, ref, shallowRef, type ShallowRef } from 'vue';
@@ -27,10 +27,13 @@ vi.mock('@n8n/rest-api-client', async (importOriginal) => ({
 
 const SLACK = 'n8n-nodes-base.slack';
 
-const slackType = mockNodeTypeDescription({
-	name: SLACK,
-	displayName: 'Slack',
-	credentials: [{ name: 'slackApi', required: true }],
+// Plain properties, as in a real node type. The mock would wrap them in proxies.
+const slackType: INodeTypeDescription = {
+	...mockNodeTypeDescription({
+		name: SLACK,
+		displayName: 'Slack',
+		credentials: [{ name: 'slackApi', required: true }],
+	}),
 	properties: [
 		{
 			displayName: 'Resource',
@@ -58,14 +61,23 @@ const slackType = mockNodeTypeDescription({
 			displayOptions: { show: { resource: ['message'] } },
 			options: [{ name: 'Send', value: 'post' }],
 		},
+		// The same parameter name for another resource, with another label.
+		{
+			displayName: 'Channel to Archive',
+			name: 'channelId',
+			type: 'resourceLocator',
+			default: { mode: 'list', value: '' },
+			displayOptions: { show: { resource: ['channel'] } },
+		},
 		{
 			displayName: 'Send Message To',
 			name: 'channelId',
 			type: 'resourceLocator',
 			default: { mode: 'list', value: '' },
+			displayOptions: { show: { resource: ['message'], operation: ['post'] } },
 		},
 	],
-});
+};
 
 const slackNode = (extra: Partial<INode> = {}) =>
 	createTestNode({
@@ -274,6 +286,40 @@ describe(useUiExtensionPanelData, () => {
 		});
 	});
 
+	it('takes the resource, the operation and the target label that show for the node', async () => {
+		documentStore.value?.setNodes([
+			// A saved node leaves out the parameters that have their default value.
+			slackNode({ name: 'Defaults', parameters: { channelId: slackNode().parameters.channelId } }),
+			slackNode({
+				name: 'Archive',
+				parameters: {
+					resource: 'channel',
+					operation: 'post',
+					channelId: slackNode().parameters.channelId,
+				},
+			}),
+		]);
+		respondRuns([]);
+
+		const { panelData } = setup(workflowPage());
+		await flushPromises();
+
+		expect(panelData.value.services).toMatchObject([
+			{
+				nodeName: 'Defaults',
+				resource: 'Message',
+				operation: 'Send',
+				targets: [{ label: 'Send Message To' }],
+			},
+			{
+				nodeName: 'Archive',
+				resource: 'Channel',
+				operation: 'Archive',
+				targets: [{ label: 'Channel to Archive' }],
+			},
+		]);
+	});
+
 	it('takes the first items of a node, with flat values, cut values and no binary data', async () => {
 		const long = 'x'.repeat(250);
 		const items = [
@@ -366,6 +412,20 @@ describe(useUiExtensionPanelData, () => {
 		});
 	});
 
+	it('shows no runs and fetches nothing for a workflow that is not saved', async () => {
+		documentStore = shallowRef(null);
+
+		const { panelData } = setup(workflowPage());
+		await flushPromises();
+
+		expect(makeRestApiRequest).not.toHaveBeenCalled();
+		expect(panelData.value).toEqual({
+			state: 'ready',
+			runs: { scope: 'workflow', items: [] },
+			services: [],
+		});
+	});
+
 	it('fetches nothing on other pages', async () => {
 		const { panelData } = setup({ page: 'other', routeName: 'SettingsPersonalView' });
 		await flushPromises();
@@ -418,18 +478,42 @@ describe(useUiExtensionPanelData, () => {
 		expect(makeRestApiRequest).toHaveBeenCalledTimes(2);
 	});
 
-	it('drops a response for a page that is no longer open', async () => {
-		let resolveList: (value: unknown) => void = () => {};
+	/** A call to the executions endpoint that the test answers later. */
+	function pendingCall() {
+		const call = {
+			resolve: (_value: unknown) => {},
+			reject: (_error: Error) => {},
+		};
 		vi.mocked(makeRestApiRequest).mockReturnValueOnce(
-			new Promise((resolve) => {
-				resolveList = resolve;
+			new Promise((resolve, reject) => {
+				call.resolve = resolve;
+				call.reject = reject;
 			}),
 		);
+		return call;
+	}
+
+	it.each([
+		[
+			'response',
+			(call: ReturnType<typeof pendingCall>) => call.resolve({ results: [summary('9')] }),
+		],
+		['failure', (call: ReturnType<typeof pendingCall>) => call.reject(new Error('offline'))],
+	])('drops a %s for a page that is no longer open', async (_name, answer) => {
+		const listCall = pendingCall();
+		const workflowCall = pendingCall();
 		const { panelData } = setup(listPage);
-		respondRuns([]);
 
 		context.value = workflowPage();
-		resolveList({ results: [summary('9', { workflowName: 'Invoices' })] });
+		await flushPromises();
+		// The list answers while the workflow's own fetch still runs.
+		answer(listCall);
+		await flushPromises();
+
+		expect(makeRestApiRequest).toHaveBeenCalledTimes(2);
+		expect(panelData.value).toEqual({ state: 'loading', runs: null, services: null });
+
+		workflowCall.resolve({ results: [] });
 		await flushPromises();
 
 		expect(panelData.value.runs).toEqual({ scope: 'workflow', items: [] });

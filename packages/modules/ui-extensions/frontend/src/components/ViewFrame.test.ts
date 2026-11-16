@@ -72,6 +72,21 @@ describe('ViewFrame', () => {
 		expect(iframe.getAttribute('srcdoc')).toContain("connect-src 'none'");
 	});
 
+	it.each([
+		['dark', 'dark'],
+		['light', 'light'],
+		[null, null],
+	])('gives the frame the theme of the editor (%s)', (editorTheme, frameTheme) => {
+		if (editorTheme) document.body.setAttribute('data-theme', editorTheme);
+
+		const { iframe } = renderFrame();
+		document.body.removeAttribute('data-theme');
+
+		const doc = new DOMParser().parseFromString(iframe.getAttribute('srcdoc') ?? '', 'text/html');
+		expect(doc.documentElement.getAttribute('data-theme')).toBe(frameTheme);
+		expect(doc.body.getAttribute('data-theme')).toBe(frameTheme);
+	});
+
 	it('answers ready with a port, and sends the context over that port only', async () => {
 		const { postMessage, received, fromFrame } = renderFrame();
 
