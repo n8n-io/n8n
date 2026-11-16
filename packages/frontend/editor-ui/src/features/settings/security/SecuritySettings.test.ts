@@ -121,9 +121,7 @@ describe('SecuritySettings', () => {
 
 			expect(row).toHaveTextContent('Node and credential policies');
 			expect(row).toHaveTextContent('Configure');
-			expect(getByTestId('security-type-policies-section')).toHaveTextContent(
-				'Nodes and credentials',
-			);
+			expect(getByTestId('security-type-policies-section')).toHaveTextContent('Access control');
 		});
 
 		it('opens the landing page from the row', async () => {

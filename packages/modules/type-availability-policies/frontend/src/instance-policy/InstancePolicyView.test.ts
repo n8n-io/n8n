@@ -67,21 +67,21 @@ describe('InstancePolicyView', () => {
 	it('shows both tabs to a user with both scopes', () => {
 		const { getByTestId } = setup();
 
-		expect(getByTestId('instance-policy-tabs')).toHaveTextContent('Node types');
-		expect(getByTestId('instance-policy-tabs')).toHaveTextContent('Credential types');
+		expect(getByTestId('instance-policy-tabs')).toHaveTextContent('Nodes');
+		expect(getByTestId('instance-policy-tabs')).toHaveTextContent('Credentials');
 	});
 
-	it('shows only the Node types tab to a user with only the node scope', () => {
+	it('shows only the Nodes tab to a user with only the node scope', () => {
 		const { getByTestId } = setup(['nodeTypePolicy:manage']);
 
-		expect(getByTestId('instance-policy-tabs')).toHaveTextContent('Node types');
-		expect(getByTestId('instance-policy-tabs')).not.toHaveTextContent('Credential types');
+		expect(getByTestId('instance-policy-tabs')).toHaveTextContent('Nodes');
+		expect(getByTestId('instance-policy-tabs')).not.toHaveTextContent('Credentials');
 	});
 
-	it('opens the Credential types tab for a user with only the credential scope', () => {
+	it('opens the Credentials tab for a user with only the credential scope', () => {
 		const { getByTestId, queryByTestId } = setup(['credentialTypePolicy:manage']);
 
-		expect(getByTestId('instance-policy-tabs')).not.toHaveTextContent('Node types');
+		expect(getByTestId('instance-policy-tabs')).not.toHaveTextContent('Nodes');
 		expect(getByTestId('instance-policy-credential-table')).toBeInTheDocument();
 		expect(queryByTestId('instance-policy-node-table')).not.toBeInTheDocument();
 	});
@@ -101,7 +101,7 @@ describe('InstancePolicyView', () => {
 	it('writes the selected tab to the query', async () => {
 		const { getByText } = setup();
 
-		await fireEvent.click(getByText('Credential types'));
+		await fireEvent.click(getByText('Credentials'));
 
 		expect(replace).toHaveBeenCalledWith({ query: { tab: 'credential' } });
 	});
