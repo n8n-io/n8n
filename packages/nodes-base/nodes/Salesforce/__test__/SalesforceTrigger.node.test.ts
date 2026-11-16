@@ -445,6 +445,14 @@ describe('SalesforceTrigger', () => {
 			await expect(trigger.poll.call(mockPollFunctions)).rejects.toThrow('API Error');
 
 			expect(mockPollFunctions.logger.error).not.toHaveBeenCalled();
+			expect(mockPollFunctions.logger.debug).toHaveBeenCalledWith(
+				expect.stringContaining('There was a problem in'),
+				expect.objectContaining({
+					node: mockNode.name,
+					workflowId: 'test-workflow',
+					error: expect.objectContaining({ message: 'API Error' }),
+				}),
+			);
 		});
 
 		it('should throw error immediately when no lastTimeChecked exists', async () => {
