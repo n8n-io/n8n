@@ -79,7 +79,7 @@ export class ExecutionLedger {
 
 		const recorded = await this.recordStarted(started, ctx);
 		const { mode } = started;
-		const outcome = toLedgerOutcome({
+		const { outcome } = toLedgerOutcome({
 			mode,
 			status: created.status,
 			startedAt: created.startedAt ?? null,
