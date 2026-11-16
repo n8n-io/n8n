@@ -1665,8 +1665,7 @@ describe('integration tools', () => {
 		);
 	});
 
-	it('action tool keeps the interacting user after a send', async () => {
-		const messageContextStore = mock<IntegrationMessageContextStore>();
+	describe('interacting user after a send', () => {
 		const messageContext: IntegrationMessageContext = {
 			integrationConnectionId: 'slack:cred-a',
 			platform: 'slack',
@@ -1675,39 +1674,53 @@ describe('integration tools', () => {
 			interactingUserId: 'U_CUSTOMER',
 			updatedAt: '2026-05-18T10:00:00.000Z',
 		};
-		const actionExecutor = mock<IntegrationActionExecutor>();
-		actionExecutor.execute.mockResolvedValue({
-			ok: true,
-			messageContext: {
-				integrationConnectionId: 'slack:cred-a',
-				platform: 'slack',
-				target: { type: 'dm', userId: 'slack:U123', threadId: 'slack:D123' },
-				messageId: '456.789',
-				updatedAt: '2026-05-18T10:01:00.000Z',
-			},
-		});
-		const tool = createIntegrationActionTool({
-			descriptor: getIntegrationToolConnectionDescriptors([slackA])[0],
-			messageContextStore,
-			actionExecutor,
-		}).build();
 
-		await tool.handler!(
-			{ action: 'send_dm', input: { userId: 'slack:U123', message: { text: 'Hello' } } },
-			makeInterruptibleCtx({
-				persistence: {
-					threadId: 'thread-1',
-					resourceId: 'resource-1',
-					hostMetadata: encodeIntegrationMessageContext(messageContext),
+		async function sendTo(target: IntegrationMessageContext['target']) {
+			const messageContextStore = mock<IntegrationMessageContextStore>();
+			const actionExecutor = mock<IntegrationActionExecutor>();
+			actionExecutor.execute.mockResolvedValue({
+				ok: true,
+				messageContext: {
+					integrationConnectionId: 'slack:cred-a',
+					platform: 'slack',
+					target,
+					messageId: '456.789',
+					updatedAt: '2026-05-18T10:01:00.000Z',
 				},
-			}),
-		);
+			});
+			const tool = createIntegrationActionTool({
+				descriptor: getIntegrationToolConnectionDescriptors([slackA])[0],
+				messageContextStore,
+				actionExecutor,
+			}).build();
 
-		expect(messageContextStore.setLatest).toHaveBeenCalledWith(
-			'thread-1',
-			'resource-1',
-			expect.objectContaining({ interactingUserId: 'U_CUSTOMER' }),
-		);
+			await tool.handler!(
+				{ action: 'send_dm', input: { userId: 'slack:U123', message: { text: 'Hello' } } },
+				makeInterruptibleCtx({
+					persistence: {
+						threadId: 'thread-1',
+						resourceId: 'resource-1',
+						hostMetadata: encodeIntegrationMessageContext(messageContext),
+					},
+				}),
+			);
+			return messageContextStore.setLatest.mock.calls[0][2];
+		}
+
+		it('keeps the user after a reply in the same thread', async () => {
+			const stored = await sendTo({ type: 'dm', threadId: 'slack:C123:123.456' });
+			expect(stored).toEqual(expect.objectContaining({ interactingUserId: 'U_CUSTOMER' }));
+		});
+
+		it('drops the user after a send to another thread', async () => {
+			const stored = await sendTo({ type: 'dm', userId: 'slack:U123', threadId: 'slack:D123' });
+			expect(stored.interactingUserId).toBeUndefined();
+		});
+
+		it('drops the user when the send has no thread', async () => {
+			const stored = await sendTo({ type: 'dm', userId: 'slack:U123' });
+			expect(stored.interactingUserId).toBeUndefined();
+		});
 	});
 
 	describe('action approval', () => {

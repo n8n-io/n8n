@@ -453,8 +453,12 @@ function withPreviousSubject(
 		...(!context.agentUserId && previousContext.agentUserId
 			? { agentUserId: previousContext.agentUserId }
 			: {}),
-		// The user who started the run stays the same after the agent sends a message.
-		...(!context.interactingUserId && previousContext.interactingUserId
+		// A reply in the same thread keeps the user who started the run. A send to
+		// another thread does not, because that thread belongs to another user.
+		...(!context.interactingUserId &&
+		previousContext.interactingUserId &&
+		context.target.threadId !== undefined &&
+		context.target.threadId === previousContext.target.threadId
 			? { interactingUserId: previousContext.interactingUserId }
 			: {}),
 		...(replyExpectation ? { replyExpectation } : {}),

@@ -123,10 +123,11 @@ type ChatSdk = Awaited<ReturnType<typeof loadChatSdk>>;
  * rejects the send, so we fail fast and point the agent to `send_template`.
  * @see https://developers.facebook.com/docs/whatsapp/cloud-api/guides/send-message-templates
  */
-/** `+44 7397-567320` and `447397567320` name the same WhatsApp number. */
-const RECIPIENT_REFUSAL =
-	'This conversation can message only the customer who started it. To message another number, use a scheduled task.';
+const OTHER_CUSTOMER_REFUSAL =
+	'You can message only the customer in this conversation. Do not try other numbers.';
+const ORIGIN_REFUSAL = 'This run cannot send WhatsApp messages.';
 
+/** `+44 7397-567320` and `447397567320` name the same WhatsApp number. */
 const digitsOnly = (phone: string) => phone.replace(/\D/g, '');
 
 const WHATSAPP_CUSTOMER_SERVICE_WINDOW_MS = 24 * 60 * 60 * 1000;
@@ -356,7 +357,7 @@ export class WhatsAppIntegration extends AgentChatIntegration {
 			const { userId } = params.input;
 			const sameCustomer =
 				typeof userId === 'string' && digitsOnly(customer) === digitsOnly(userId);
-			return sameCustomer ? undefined : RECIPIENT_REFUSAL;
+			return sameCustomer ? undefined : OTHER_CUSTOMER_REFUSAL;
 		}
 
 		const startedByBusinessOrUser =
@@ -365,7 +366,7 @@ export class WhatsAppIntegration extends AgentChatIntegration {
 				(userIdFromDraftChatMemoryResourceId(resourceId) !== undefined ||
 					userIdFromProductionChatMemoryResourceId(resourceId) !== undefined ||
 					userIdFromSystemChatMemoryResourceId(resourceId) !== undefined));
-		return startedByBusinessOrUser ? undefined : RECIPIENT_REFUSAL;
+		return startedByBusinessOrUser ? undefined : ORIGIN_REFUSAL;
 	}
 
 	async executeAction(params: PlatformActionParams): Promise<IntegrationActionResult | undefined> {

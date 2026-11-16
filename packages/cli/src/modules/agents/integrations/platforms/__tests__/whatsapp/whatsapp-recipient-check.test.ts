@@ -7,6 +7,9 @@ import {
 } from '../../../../utils/agent-memory-scope';
 import { createWhatsAppIntegration } from '../../../__tests__/helpers/whatsapp/replay-test-context';
 
+const OTHER_CUSTOMER = expect.stringContaining('only the customer in this conversation');
+const NO_SEND = 'This run cannot send WhatsApp messages.';
+
 describe('WhatsAppIntegration.checkActionRecipient', () => {
 	const integration = createWhatsAppIntegration();
 	const check = (action: string, userId: string, resourceId?: string) =>
@@ -24,16 +27,16 @@ describe('WhatsAppIntegration.checkActionRecipient', () => {
 		});
 
 		it('refuses another number', () => {
-			expect(check(action, '447700900123', customerChat)).toEqual(expect.any(String));
+			expect(check(action, '447700900123', customerChat)).toEqual(OTHER_CUSTOMER);
 		});
 
 		it('refuses a number that only starts with the customer number', () => {
-			expect(check(action, '4473975673209', customerChat)).toEqual(expect.any(String));
+			expect(check(action, '4473975673209', customerChat)).toEqual(OTHER_CUSTOMER);
 		});
 
 		it('refuses when another channel started the run', () => {
 			const slackChat = integrationMemoryResourceId('slack', 'U123');
-			expect(check(action, '447397567320', slackChat)).toEqual(expect.any(String));
+			expect(check(action, '447397567320', slackChat)).toEqual(NO_SEND);
 		});
 	});
 
@@ -49,11 +52,11 @@ describe('WhatsAppIntegration.checkActionRecipient', () => {
 	});
 
 	it.each(['send_dm', 'send_template'])('refuses %s from an unknown origin', (action) => {
-		expect(check(action, '447397567320', 'something-else:1')).toEqual(expect.any(String));
+		expect(check(action, '447397567320', 'something-else:1')).toEqual(NO_SEND);
 	});
 
 	it.each(['send_dm', 'send_template'])('refuses %s without a run origin', (action) => {
-		expect(check(action, '447397567320')).toEqual(expect.any(String));
+		expect(check(action, '447397567320')).toEqual(NO_SEND);
 	});
 
 	describe('a customer message in a task session', () => {
@@ -74,7 +77,7 @@ describe('WhatsAppIntegration.checkActionRecipient', () => {
 			});
 
 		it.each(['send_dm', 'send_template'])('refuses %s to another number', (action) => {
-			expect(checkWithContext(action, '447700900123')).toEqual(expect.any(String));
+			expect(checkWithContext(action, '447700900123')).toEqual(OTHER_CUSTOMER);
 		});
 
 		it.each(['send_dm', 'send_template'])('allows %s to the same customer', (action) => {
