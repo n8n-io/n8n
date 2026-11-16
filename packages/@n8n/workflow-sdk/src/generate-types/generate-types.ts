@@ -715,11 +715,13 @@ function collectSchemasFromVersionDir(
 		for (const entry of entries) {
 			// JSON files directly in the version directory (nodes without resource/operation)
 			if (entry.isFile() && entry.name.endsWith('.json')) {
-				const operationName = entry.name.replace('.json', '');
-				// `output.<variant>.json` files are context-conditional layout
-				// variants (e.g. with-parser), not operations — skip them here.
-				if (operationName.includes('.')) continue;
-				if (seen.has(`/${operationName}`)) continue;
+				const fileKey = entry.name.replace('.json', '');
+				// `output.<variant>.json` is a variant of the node's output: a parameter
+				// variant such as `simple-false`, or a layout variant such as
+				// `with-parser` that parameter typing ignores. Other dotted names are skipped.
+				const [operationName, variant] = splitOperationVariant(fileKey);
+				if (variant && operationName !== 'output') continue;
+				if (seen.has(`/${fileKey}`)) continue;
 				const filePath = path.join(versionDir, entry.name);
 
 				try {
@@ -728,9 +730,10 @@ function collectSchemasFromVersionDir(
 					schemas.push({
 						resource: '',
 						operation: operationName,
+						...(variant ? { variant } : {}),
 						schema,
 					});
-					seen.add(`/${operationName}`);
+					seen.add(`/${fileKey}`);
 				} catch {
 					// Skip invalid JSON files
 				}
@@ -3268,6 +3271,8 @@ export function generateSingleVersionTypeFile(
 
 	// Map from config type name to output type name (only populated when schema exists)
 	const configToOutputType = new Map<string, string>();
+	// Parameter variants of `output.json` (`output.<param>-<value>.json`), by config type name
+	const configToVariants = new Map<string, ParameterVariants>();
 
 	// Collect output types that have schemas
 	const outputTypesToGenerate: Array<{ typeName: string; schema: JsonSchema }> = [];
@@ -3283,8 +3288,16 @@ export function generateSingleVersionTypeFile(
 		// root-level schema file (resource === ''). Prefer `output.json`, because a
 		// trigger can share its schema folder with an action's root-level files.
 		if (!matchingSchema && !configInfo.resource && !configInfo.operation) {
-			const rootSchemas = outputSchemas.filter((s) => s.resource === '');
+			const rootSchemas = outputSchemas.filter((s) => s.resource === '' && !s.variant);
 			matchingSchema = rootSchemas.find((s) => s.operation === 'output') ?? rootSchemas[0];
+			const outputVariants = outputSchemas.filter(
+				(s) => s.resource === '' && s.operation === 'output' && s.variant !== undefined,
+			);
+			const variants =
+				matchingSchema?.operation === 'output' && outputVariants.length > 0
+					? resolveParameterVariants(filteredProperties, outputVariants)
+					: undefined;
+			if (variants) configToVariants.set(configInfo.typeName, variants);
 		}
 
 		if (matchingSchema) {
@@ -3380,21 +3393,41 @@ export function generateSingleVersionTypeFile(
 
 		individualNodeTypes.push(finalTypeName);
 
-		lines.push(`export type ${finalTypeName} = ${baseTypeName} & {`);
 		// Include narrowed subnode config in the NodeConfig if available
 		// subnodes field is required if any AI input type is required
 		const hasRequiredSubnodes = aiInputTypes.some((input) => input.required);
-		const configType = buildNodeConfigType(configInfo.typeName, {
-			credentialsTypeName: credTypeName,
-			subnodeConfigTypeName: subnodeConfigTypeName ?? undefined,
-			subnodesRequired: hasRequiredSubnodes,
-		});
-		lines.push(`${INDENT}config: ${configType};`);
-		if (outputTypeName) {
-			lines.push(`${INDENT}output?: Items<${outputTypeName}>;`);
+		const nodeBody = (typeName: string, paramsConstraint?: string, output?: string) => {
+			const configType = buildNodeConfigType(
+				paramsConstraint ? `${configInfo.typeName} & ${paramsConstraint}` : configInfo.typeName,
+				{
+					credentialsTypeName: credTypeName,
+					subnodeConfigTypeName: subnodeConfigTypeName ?? undefined,
+					subnodesRequired: hasRequiredSubnodes,
+				},
+			);
+			return [
+				`export type ${typeName} = ${baseTypeName} & {`,
+				`${INDENT}config: ${configType};`,
+				...(output ? [`${INDENT}output?: Items<${output}>;`] : []),
+				'};',
+				'',
+			];
+		};
+
+		const variants = configToVariants.get(configInfo.typeName);
+		if (variants && outputTypeName) {
+			const base = finalTypeName.replace(/Node$/, '');
+			lines.push(
+				...generateParameterVariantTypes(
+					variants,
+					{ base, output: outputTypeName, node: finalTypeName },
+					nodeBody,
+				),
+				'',
+			);
+		} else {
+			lines.push(...nodeBody(finalTypeName, undefined, outputTypeName));
 		}
-		lines.push('};');
-		lines.push('');
 	}
 
 	// Generate union type of all individual node types

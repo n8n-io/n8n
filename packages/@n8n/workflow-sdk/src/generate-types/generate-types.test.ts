@@ -6297,6 +6297,79 @@ describe('generate-types', () => {
 			}
 		});
 
+		describe('parameter variants of a node without an operation', () => {
+			const nodeName = '__TestTriggerVariants__';
+			const triggerNode: NodeTypeDescription = {
+				name: `n8n-nodes-base.${nodeName}`,
+				displayName: 'Test Trigger Variants',
+				description: 'Test trigger with a simplify option',
+				group: ['trigger'],
+				version: 1,
+				inputs: [],
+				outputs: ['main'],
+				schemaPath: nodeName,
+				properties: [{ displayName: 'Simplify', name: 'simple', type: 'boolean', default: true }],
+			};
+			const files = {
+				'output.json': JSON.stringify({
+					type: 'object',
+					properties: { Subject: { type: 'string' } },
+				}),
+				'output.simple-false.json': JSON.stringify({
+					type: 'object',
+					properties: { headers: { type: 'object' } },
+				}),
+			};
+
+			it('emits an output type for the variant and keeps the plain one for the default', () => {
+				try {
+					createTestSchemaDir(nodeName, 'v1.0.0', files);
+
+					const content = generateTypes.generateSingleVersionTypeFile(triggerNode, 1);
+
+					expect(content).toMatch(/export type \w+SimpleFalseOutput = \{/);
+					expect(content).toContain('headers?:');
+					expect(content).toContain('Subject?:');
+				} finally {
+					cleanupTestDir(nodeName);
+				}
+			});
+
+			it('narrows the parameter in each node type', () => {
+				try {
+					createTestSchemaDir(nodeName, 'v1.0.0', files);
+
+					const content = generateTypes.generateSingleVersionTypeFile(triggerNode, 1);
+
+					expect(content).toContain('& { simple?: true }');
+					expect(content).toContain('& { simple: false }');
+					expect(content).toContain('& { simple: Expression<boolean> }');
+				} finally {
+					cleanupTestDir(nodeName);
+				}
+			});
+
+			it('keeps a layout variant such as with-parser out of the parameter variants', () => {
+				try {
+					createTestSchemaDir(nodeName, 'v1.0.0', {
+						'output.json': files['output.json'],
+						'output.with-parser.json': JSON.stringify({
+							type: 'object',
+							properties: { parsed: { type: 'object' } },
+						}),
+					});
+
+					const content = generateTypes.generateSingleVersionTypeFile(triggerNode, 1);
+
+					expect(content).toContain('Subject?:');
+					expect(content).not.toContain('parsed?:');
+					expect(content).not.toContain('WithParser');
+				} finally {
+					cleanupTestDir(nodeName);
+				}
+			});
+		});
+
 		it('prefers output.json over a sibling action file in a shared schema folder', () => {
 			const nodeName = '__TestSharedFolderTrigger__';
 			const triggerNode: NodeTypeDescription = {
