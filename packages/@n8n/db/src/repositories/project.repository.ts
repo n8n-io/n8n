@@ -316,8 +316,12 @@ export class ProjectRepository extends BaseRepository<Project> {
 			idsQuery.andWhere('p.type = :type', { type: options.type });
 		}
 
+		if (options.activated === true || options.serviceAccountIds !== undefined) {
+			idsQuery.leftJoin('p.creator', 'creator');
+		}
+
 		if (options.activated === true) {
-			idsQuery.leftJoin('p.creator', 'creator').andWhere(
+			idsQuery.andWhere(
 				new Brackets((qb) => {
 					qb.where('p.type != :personalTypeFilter', {
 						personalTypeFilter: 'personal',
@@ -325,6 +329,31 @@ export class ProjectRepository extends BaseRepository<Project> {
 				}),
 			);
 		}
+
+		if (options.serviceAccountIds !== undefined) {
+			this.limitServiceAccountProjects(idsQuery, 'p', options.serviceAccountIds);
+		}
+	}
+
+	/**
+	 * Keeps the personal projects of these service accounts only, and of no other.
+	 * The `creator` relation must already be joined on the query.
+	 */
+	private limitServiceAccountProjects(
+		query: SelectQueryBuilder<Project>,
+		alias: string,
+		serviceAccountIds: string[],
+	): void {
+		query.andWhere(
+			new Brackets((qb) => {
+				qb.where(`${alias}.type != :personalTypeLimit`, { personalTypeLimit: 'personal' })
+					.orWhere('creator.id IS NULL')
+					.orWhere('creator.kind != :serviceKind', { serviceKind: 'service' });
+				if (serviceAccountIds.length > 0) {
+					qb.orWhere('creator.id IN (:...serviceAccountIds)', { serviceAccountIds });
+				}
+			}),
+		);
 	}
 
 	private async runProjectListByIdsQuery(
@@ -363,6 +392,10 @@ export class ProjectRepository extends BaseRepository<Project> {
 				}),
 			);
 		}
+
+		if (options.serviceAccountIds !== undefined) {
+			this.limitServiceAccountProjects(query, 'project', options.serviceAccountIds);
+		}
 	}
 
 	/**
@@ -391,6 +424,26 @@ export class ProjectRepository extends BaseRepository<Project> {
 		if (ids.length === 0) return;
 
 		await this.delete({ id: In(ids) });
+	}
+
+	/** The personal projects of service accounts among `projectIds`, with the account of each. */
+	async findServiceAccountProjects(
+		projectIds: string[],
+	): Promise<Array<{ projectId: string; accountId: string }>> {
+		const rows: Array<{ projectId: string; accountId: string }> = [];
+		for (const batch of chunkIds(projectIds)) {
+			rows.push(
+				...(await this.createQueryBuilder('project')
+					.select('project.id', 'projectId')
+					.addSelect('creator.id', 'accountId')
+					.innerJoin('project.creator', 'creator')
+					.where('project.id IN (:...batch)', { batch })
+					.andWhere('project.type = :type', { type: 'personal' })
+					.andWhere('creator.kind = :kind', { kind: 'service' })
+					.getRawMany<{ projectId: string; accountId: string }>()),
+			);
+		}
+		return rows;
 	}
 
 	async getProjectCounts() {
@@ -424,4 +477,9 @@ export interface ProjectListOptions {
 	search?: string;
 	type?: 'personal' | 'team';
 	activated?: boolean;
+	/**
+	 * Lists the personal projects of these service accounts only. An empty list
+	 * leaves out all of them. `undefined` keeps all of them.
+	 */
+	serviceAccountIds?: string[];
 }

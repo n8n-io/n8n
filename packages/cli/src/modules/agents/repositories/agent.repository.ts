@@ -708,6 +708,38 @@ export class AgentRepository extends BaseRepository<Agent> {
 		return await this.findOne({ select: ['id', 'name'], where: { identityId } });
 	}
 
+	/** The project of each agent that acts through one of these identities. Instance agents have none. */
+	async findProjectsByIdentityIds(
+		identityIds: string[],
+	): Promise<Array<{ identityId: string; projectId: string; projectName: string }>> {
+		const rows: Array<{ identityId: string; projectId: string; projectName: string }> = [];
+		for (const batch of chunkIds(identityIds)) {
+			rows.push(
+				...(await this.createQueryBuilder('agent')
+					.select('agent.identityId', 'identityId')
+					.addSelect('project.id', 'projectId')
+					.addSelect('project.name', 'projectName')
+					.innerJoin('agent.project', 'project')
+					.where('agent.identityId IN (:...batch)', { batch })
+					.getRawMany<{ identityId: string; projectId: string; projectName: string }>()),
+			);
+		}
+		return rows;
+	}
+
+	/** The identities of the agents in these projects. */
+	async findIdentityIdsInProjects(projectIds: string[]): Promise<string[]> {
+		const identityIds: string[] = [];
+		for (const batch of chunkIds(projectIds)) {
+			const agents = await this.find({
+				select: ['identityId'],
+				where: { projectId: In(batch), identityId: Not(IsNull()) },
+			});
+			identityIds.push(...agents.flatMap((agent) => (agent.identityId ? [agent.identityId] : [])));
+		}
+		return identityIds;
+	}
+
 	/** Sets the identity only when the agent has none. Returns false when another write set it first. */
 	async linkIdentity(id: string, identityId: string, ctx: OperationContext): Promise<boolean> {
 		const result = await this.managerFor(ctx)

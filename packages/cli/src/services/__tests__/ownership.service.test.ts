@@ -54,6 +54,7 @@ describe('OwnershipService', () => {
 		userRepository,
 		personRepository,
 		settingsRepository,
+		mock(), // serviceAccountProjects
 	);
 
 	beforeEach(() => {

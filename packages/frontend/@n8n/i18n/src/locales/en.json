@@ -7456,6 +7456,8 @@
 	"projects.sharing.select.placeholder.user": "Share with user(s)",
 	"projects.sharing.select.placeholder.project": "Share with users or projects...",
 	"projects.sharing.personalSpace": "Personal space",
+	"projects.sharing.serviceAccount": "Service account",
+	"projects.sharing.serviceAccountIn": "Service account in {project}",
 	"projects.error.title": "Project error",
 	"projects.create.limit": "{count} project | {count} projects",
 	"projects.create.limitReached": "You have reached the {planName} plan limit of {limit}. Upgrade your plan to unlock more projects. {link}",
