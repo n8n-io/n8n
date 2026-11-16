@@ -76,11 +76,8 @@ import {
 	encodeNextCursor,
 	resolveOffsetPagination,
 } from '@/public-api/v1/shared/services/pagination.service';
-import { OwnershipService } from '@/services/ownership.service';
 import { TagService } from '@/services/tag.service';
-import { toUserLike } from '@/utils/to-user-like';
 import { TestWebhooks } from '@/webhooks/test-webhooks';
-import { getWorkflowProjectDetailsSafe } from '@/workflows/utils';
 import { WorkflowCreationService } from '@/workflows/workflow-creation.service';
 import { createWorkflowEntityFromPayload } from '@/workflows/workflow-entity-mapper';
 import { WorkflowExecutionService } from '@/workflows/workflow-execution.service';
@@ -89,6 +86,7 @@ import { WorkflowHistoryService } from '@/workflows/workflow-history/workflow-hi
 import { WorkflowService } from '@/workflows/workflow.service';
 import { EnterpriseWorkflowService } from '@/workflows/workflow.service.ee';
 import type { PublicApiRequest } from '@/public-api/public-api-client';
+import { WorkflowRequest } from '@/workflows/workflow.request';
 
 const ACTIVATE_DEACTIVATE_DEPRECATED_SINCE = new Date('2026-07-23T00:00:00Z');
 const OLD_VERSION_PATH_DEPRECATED_SINCE = new Date('2026-08-26T00:00:00Z');
@@ -242,7 +240,6 @@ export class WorkflowsPublicController {
 		private readonly redactionEnforcementService: RedactionEnforcementService,
 		private readonly workflowDependencyQueryService: WorkflowDependencyQueryService,
 		private readonly workflowExecutionService: WorkflowExecutionService,
-		private readonly ownershipService: OwnershipService,
 		private readonly testWebhooks: TestWebhooks,
 	) {}
 
@@ -975,7 +972,10 @@ export class WorkflowsPublicController {
 		const workflow = await this.workflowFinderService.findWorkflowForUser(workflowId, req.user, [
 			'workflow:execute',
 		]);
-		if (!workflow) throw new NotFoundError('Not Found');
+
+		if (!workflow) {
+			throw new NotFoundError('Not Found');
+		}
 
 		const destinationNodeExists = workflow.nodes.some(
 			(node) => node.name === body.destinationNode.nodeName,
@@ -986,7 +986,7 @@ export class WorkflowsPublicController {
 			);
 		}
 
-		const runPayload = {
+		const runPayload: WorkflowRequest.ManualRunPayload = {
 			runData: body.runData,
 			destinationNode: body.destinationNode,
 			dirtyNodeNames: body.dirtyNodeNames,
@@ -997,36 +997,15 @@ export class WorkflowsPublicController {
 			req.user,
 		);
 
+		// Webhook triggered workflows do not contain an executionId because the run data does not reach the destination node from a trigger. The trigger needs an external event to start.
 		if (!('executionId' in result)) {
-			// Without this, the test webhook stays registered and any caller of its URL starts a run
 			await this.testWebhooks.cancelWebhook(workflow.id);
 			throw new ConflictError(RUN_NEEDS_TRIGGER_EVENT_MESSAGE);
 		}
 
-		await this.emitWorkflowExecuted(req, workflow, result.executionId);
+		await this.workflowService.emitWorkflowExecuted(req.user, workflow, result.executionId);
 
 		return { executionId: result.executionId };
-	}
-
-	private async emitWorkflowExecuted(
-		req: PublicApiRequest,
-		workflow: WorkflowEntity,
-		executionId: string,
-	) {
-		const { projectId, projectName } = await getWorkflowProjectDetailsSafe(
-			this.ownershipService,
-			workflow.id,
-		);
-
-		this.eventService.emit('workflow-executed', {
-			user: toUserLike(req.user),
-			workflowId: workflow.id,
-			workflowName: workflow.name,
-			executionId,
-			projectId,
-			projectName,
-			source: 'user-manual',
-		});
 	}
 
 	/**
