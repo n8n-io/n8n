@@ -569,6 +569,8 @@ export class ModuleGenerator {
 			useZone: (zone) => {
 				this.zones.add(zone);
 			},
+			binaryMode:
+				typeof b.wf.settings?.binaryMode === 'string' ? b.wf.settings.binaryMode : undefined,
 		};
 	}
 

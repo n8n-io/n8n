@@ -779,6 +779,29 @@ file at start (`wfrt serve --credentials <file>`,
   the file name of the binary property (its base name, default `file`) and
   its MIME type (default `application/octet-stream`).
   `http-request-files.test.ts` compares the bytes with v1's.
+* Binary responses. `responseBinary: { fileName?, mimeType? }` stores the body of a response with
+  a status from 200 to 299 in the binary data store of n8n. The `body` of the result is then
+  `{ $binary: <handle> }`. A response with another status has its usual body. A handle is
+  `{ id, data, mimeType, fileType?, fileName?, fileExtension?, fileSize, bytes }`: `id` names the
+  stored file (`filesystem-v2:workflows/<wf>/executions/<e>/binary_data/<file>`), `data` is the
+  name of the store (`filesystem-v2`), `bytes` is the size, and `fileSize` is the size as n8n
+  writes it (`1.34 kB`). The bytes are never in the JSON of the program. Code can read the
+  members of a handle, and can give the handle to an effect: in `$binary` of an item, as `binary`
+  of a multipart part, or as `body: { $binary }`. The names follow n8n's `prepareBinaryData` for
+  a response:
+  * File name: `fileName`, else the file name of the `Content-Disposition` header, else the path
+    of the URL without its first `/`. `fileName` of the handle is the base name of that text.
+  * MIME type: `mimeType`, else the type of the `Content-Type` header in lower case (the text
+    before `;`), else the type of the extension of the file name, else `text/plain`.
+  * `fileExtension`: the extension of the file name, else the first extension of the MIME type.
+    The MIME tables are those of the package `mime-types` (`src/generated/mime-table.generated.ts`).
+  * `fileType`: `json`, `html`, `image`, `audio`, `video`, `text` or `pdf` from the start of the
+    MIME type, as n8n's `fileTypeFromMimeType`.
+
+  The reference runner and the test VM make the handle from the body of the fixture
+  (`src/reference/binary-response.ts`): `{ $base64 }` is decoded, text is UTF-8, another value is
+  its JSON text. The file part of the `id` is the SHA-256 of the bytes, so a test compares stored
+  bytes without a store. The runtime does not have `responseBinary` yet (compiler-plan.md 9).
 * The runtime limits outbound requests per origin (scheme, host, port):
   connections, requests on the wire, waiting requests, a request rate, and
   connect and read timeouts (`wfrt serve --egress-origin`, workflow-runtime

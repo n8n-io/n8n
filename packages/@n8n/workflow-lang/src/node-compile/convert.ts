@@ -21,6 +21,8 @@ export interface NodeSources {
 	evaluate?: (code: string) => unknown;
 
 	credentialEntry?: (type: string) => string | undefined;
+
+	storesResponses?: boolean;
 }
 
 export function verifiedKey(
@@ -99,6 +101,10 @@ export interface CompiledNode {
 	derivations: CredentialDerivation[];
 
 	mints: CredentialMint[];
+
+	binary: boolean;
+
+	storesResponses: boolean;
 
 	changed: string[];
 }
@@ -221,6 +227,8 @@ export function compileNodeInstance(
 		resolved: parameters,
 		derivations: result.derivations ?? [],
 		mints: result.mints ?? [],
+		binary: result.binary === true,
+		storesResponses: result.storesResponses === true,
 
 		changed: [...changed, ...Object.values(credentials).flatMap((c) => c.classes)],
 	};

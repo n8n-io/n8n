@@ -73,6 +73,8 @@ export interface ExpressionScope {
 	timezone?: string;
 	/** Records a time zone that the code uses (META `zones`). */
 	useZone?(zone: string): void;
+	/** The workflow setting `binaryMode`. With `combined`, v1 keeps binary data in the JSON of an item. */
+	binaryMode?: string;
 }
 
 export interface Usage {

@@ -5,6 +5,7 @@
  */
 import { xmlContent, xmlParse, xmlSnippet } from '../reference/xml-lib.ts';
 import { asciiRange, base64Utf8 } from '../reference/ascii-lib.ts';
+import { storedResponse } from '../reference/binary-response.ts';
 import type { ModuleData } from '../compiler/module.ts';
 import { EFFECT_KIND_NAMES, OP_NAMES, Op } from '../compiler/opcodes.ts';
 import type { EffectRecord, Fixture, ReferenceOutput, TraceRecord } from '../reference/runner.ts';
@@ -706,7 +707,7 @@ export function runModule(
 						let result: unknown;
 						for (;;) {
 							effects.push({ step: s.name, kind, args: clone(args) });
-							result = nextResult(s.name);
+							result = storedResponse(kind, args, nextResult(s.name));
 							const failed = isRecord(result) && '$error' in result;
 							if (!failed || attempt >= s.retryMax) break;
 							attempt++;

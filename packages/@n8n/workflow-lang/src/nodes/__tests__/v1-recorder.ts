@@ -25,6 +25,7 @@ import { fileURLToPath } from 'node:url';
 
 import type { EquivalenceCase, RawRequest, Recording, ServiceCallRecord } from './equivalence.ts';
 import { normalizeRequest } from './equivalence.ts';
+import { fixtureBytes } from '../../reference/binary-response.ts';
 
 const here = dirname(fileURLToPath(import.meta.url));
 const packagesDir = join(here, '../../../../..');
@@ -284,8 +285,17 @@ function inputItem(json: Record<string, unknown>): AnyRecord {
 	return typeof binary === 'object' && binary !== null ? { json: rest, binary } : { json };
 }
 
+/** An output item as the JSON of the language: the binary data of the item is the key `$binary`. */
+function outputItem(item: AnyRecord): unknown {
+	return item.binary === undefined ? item.json : { ...item.json, $binary: item.binary };
+}
+
 /** Installs a fake `OutboundHttp` that records requests and answers from a list. */
-function installFakeHttp(responses: EquivalenceCase['responses'], recorded: RawRequest[]) {
+function installFakeHttp(
+	responses: EquivalenceCase['responses'],
+	recorded: RawRequest[],
+	responseBytes: boolean,
+) {
 	const { di, network } = load();
 	let index = 0;
 	// A node that pages until an empty answer never stops on a repeated last answer.
@@ -294,12 +304,15 @@ function installFakeHttp(responses: EquivalenceCase['responses'], recorded: RawR
 			throw new Error(`the node sent more than ${MAX_FAKE_REQUESTS} requests`);
 		return responses[Math.min(index++, responses.length - 1)] ?? { body: {} };
 	};
+	// A request that asks for bytes gets the body of the case as a Buffer, as the HTTP client gives it.
 	const answer = (
 		status: number,
-		body: unknown,
+		given: unknown,
 		headers: Record<string, string>,
 		full: boolean,
+		bytes: boolean,
 	) => {
+		const body = bytes ? fixtureBytes(given) : given;
 		if (status >= 400) {
 			throw Object.assign(new Error(`Request failed with status code ${status}`), {
 				response: { status, data: body, headers },
@@ -325,7 +338,13 @@ function installFakeHttp(responses: EquivalenceCase['responses'], recorded: RawR
 					? { statusCode: r.status, headers: r.headers ?? {}, body: r.body }
 					: r.body;
 			}
-			return answer(r.status ?? 200, r.body, r.headers ?? {}, options.returnFullResponse === true);
+			return answer(
+				r.status ?? 200,
+				r.body,
+				r.headers ?? {},
+				options.returnFullResponse === true,
+				responseBytes && options.encoding === 'arraybuffer',
+			);
 		},
 		async requestLegacy(options: AnyRecord) {
 			let body = options.body;
@@ -355,6 +374,7 @@ function installFakeHttp(responses: EquivalenceCase['responses'], recorded: RawR
 				r.body,
 				r.headers ?? {},
 				options.resolveWithFullResponse === true,
+				responseBytes && options.encoding === null,
 			);
 		},
 		close() {},
@@ -487,7 +507,7 @@ export async function recordV1(testCase: EquivalenceCase): Promise<Recording> {
 	});
 
 	const recorded: RawRequest[] = [];
-	installFakeHttp(testCase.responses, recorded);
+	installFakeHttp(testCase.responses, recorded, testCase.responseBytes === true);
 	try {
 		const result = await executor.execute({
 			node: graphNode,
@@ -507,7 +527,7 @@ export async function recordV1(testCase: EquivalenceCase): Promise<Recording> {
 		return {
 			requests: recorded.map(normalizeRequest),
 			...(testCase.serviceResults ? { services } : {}),
-			output: load().workflow.deepCopy(items.map((item) => item.json)),
+			output: load().workflow.deepCopy(items.map(outputItem)),
 		};
 	} catch (error) {
 		const message = error instanceof Error ? error.message : String(error);
