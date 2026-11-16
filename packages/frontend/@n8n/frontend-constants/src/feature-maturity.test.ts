@@ -8,6 +8,7 @@ describe('featureMaturity', () => {
 				preview: false,
 				limitedEnterpriseSupport: true,
 				docsUrl: 'https://docs.n8n.io/deploy/host-n8n/configure-n8n/set-up-n8n-assistant',
+				testId: 'n8n-agent',
 			},
 			agents: {
 				preview: true,
@@ -15,12 +16,16 @@ describe('featureMaturity', () => {
 				docsUrl: 'https://docs.n8n.io/build/build-and-manage-agents',
 			},
 			n8nPackages: { preview: true, limitedEnterpriseSupport: true },
-			workflowReviews: { preview: true, limitedEnterpriseSupport: false },
+			workflowReviews: {
+				preview: true,
+				limitedEnterpriseSupport: false,
+				testId: 'security-workflow-reviews',
+			},
 			oauthJwe: { preview: true, limitedEnterpriseSupport: false },
 			tokenExchange: { preview: true, limitedEnterpriseSupport: false },
 			openTelemetry: { preview: true, limitedEnterpriseSupport: false },
 			microsoftAgent365: { preview: true, limitedEnterpriseSupport: false },
-			context: { preview: true, limitedEnterpriseSupport: true },
+			context: { preview: true, limitedEnterpriseSupport: true, testId: 'settings-context' },
 			roles: { preview: false, limitedEnterpriseSupport: false },
 			nodePolicies: { preview: true, limitedEnterpriseSupport: false },
 			selfHealing: { preview: true, limitedEnterpriseSupport: true },
@@ -28,6 +33,7 @@ describe('featureMaturity', () => {
 				preview: true,
 				limitedEnterpriseSupport: true,
 				docsUrl: 'https://docs.n8n.io/advanced-ai/chat-hub/',
+				testId: 'chat-hub',
 			},
 		});
 	});

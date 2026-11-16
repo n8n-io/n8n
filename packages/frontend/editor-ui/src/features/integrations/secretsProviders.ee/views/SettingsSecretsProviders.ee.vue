@@ -255,16 +255,18 @@ function goToUpgrade() {
 						</span>
 					</N8nLink>
 				</N8nText>
-				<N8nSettingsRowGroup v-if="isRoleBasedAccessEnabled" class="mt-xl">
+				<N8nSettingsRowGroup
+					v-if="isRoleBasedAccessEnabled"
+					class="mt-xl"
+					data-test-id="external-secrets-system-roles-toggle"
+				>
 					<N8nSettingsEnableRow
 						:title="i18n.baseText('settings.externalSecrets.systemRoles.title')"
 						:description="i18n.baseText('settings.externalSecrets.systemRoles.description')"
-						:max-description-lines="3"
-						:model-value="systemRolesEnabled"
+						:enabled="systemRolesEnabled"
 						:disabled="systemRolesToggleLoading"
 						switch-test-id="external-secrets-system-roles-switch"
-						data-test-id="external-secrets-system-roles-toggle"
-						@update:model-value="onSystemRolesToggle"
+						@update:enabled="onSystemRolesToggle"
 					/>
 				</N8nSettingsRowGroup>
 				<N8nButton

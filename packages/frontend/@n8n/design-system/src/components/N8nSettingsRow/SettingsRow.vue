@@ -60,12 +60,6 @@ export interface SettingsRowProps {
 	 * `clickable` row.
 	 */
 	revealActionsOnHover?: boolean;
-	/**
-	 * Associates the default title and description with this control.
-	 * Trailing content stays outside the label, so badges do not activate the control.
-	 * A custom `info` slot is left unchanged.
-	 */
-	labelFor?: string;
 }
 
 defineOptions({ name: 'N8nSettingsRow' });
@@ -87,7 +81,6 @@ const props = withDefaults(defineProps<SettingsRowProps>(), {
 	hoverable: false,
 	clickable: false,
 	revealActionsOnHover: false,
-	labelFor: undefined,
 });
 
 const emit = defineEmits<{
@@ -103,8 +96,6 @@ const slots = defineSlots<{
 	info?: () => unknown;
 	action?: () => unknown;
 	expanded?: () => unknown;
-	/** Status badges beside the row title, such as Preview or Limited enterprise support. */
-	titleTrailing?: () => unknown;
 }>();
 
 // Stable, per-instance id so the disclosure trigger can `aria-controls` its region.
@@ -177,15 +168,15 @@ const interactiveAttrs = computed(() =>
 );
 
 // A clickable row must not hijack activations meant for a nested interactive control (a button,
-// link, input, or label). Those would otherwise bubble to the row and fire the row click on top
-// of the control's own action. Clicks on non-interactive content (plain title, description, the
-// presentational N8nSettingsRowConfigure) still activate the row.
+// link, or input placed in a slot): those would otherwise bubble to the row's handlers and fire
+// the row click on top of the control's own action. Clicks on the row's non-interactive content
+// (title, description, the presentational N8nSettingsRowConfigure) still activate the row.
 function isFromNestedInteractive(event: Event): boolean {
 	const { target, currentTarget } = event;
 	if (!(target instanceof Element) || !(currentTarget instanceof Element)) {
 		return false;
 	}
-	const interactive = target.closest('button, a[href], input, select, textarea, label, [tabindex]');
+	const interactive = target.closest('button, a[href], input, select, textarea, [tabindex]');
 	return interactive !== null && interactive !== currentTarget;
 }
 
@@ -234,44 +225,10 @@ function onKeydown(event: KeyboardEvent) {
 				<div v-if="showVisualSlot" :class="$style.visual" data-test-id="settings-row-visual">
 					<slot name="visual" />
 				</div>
-				<div :class="[$style.text, slots.titleTrailing && $style.textWithTitleTrailing]">
+				<div :class="$style.text">
 					<slot name="info">
-						<span v-if="slots.titleTrailing" :class="$style.titleLine">
-							<label v-if="title && labelFor" :for="labelFor" :class="$style.textLabel">
-								<N8nText
-									:class="[$style.title, { [$style.truncate]: truncateTitle }]"
-									bold
-									size="medium"
-									color="text-dark"
-								>
-									{{ title }}
-								</N8nText>
-							</label>
-							<N8nText
-								v-else-if="title"
-								:class="[$style.title, { [$style.truncate]: truncateTitle }]"
-								bold
-								size="medium"
-								color="text-dark"
-							>
-								{{ title }}
-							</N8nText>
-							<span :class="$style.titleTrailing">
-								<slot name="titleTrailing" />
-							</span>
-						</span>
-						<label v-else-if="title && labelFor" :for="labelFor" :class="$style.textLabel">
-							<N8nText
-								:class="[$style.title, { [$style.truncate]: truncateTitle }]"
-								bold
-								size="medium"
-								color="text-dark"
-							>
-								{{ title }}
-							</N8nText>
-						</label>
 						<N8nText
-							v-else-if="title"
+							v-if="title"
 							:class="[$style.title, { [$style.truncate]: truncateTitle }]"
 							bold
 							size="medium"
@@ -279,25 +236,8 @@ function onKeydown(event: KeyboardEvent) {
 						>
 							{{ title }}
 						</N8nText>
-						<label v-if="description && labelFor" :for="labelFor" :class="$style.textLabel">
-							<N8nTooltip
-								:content="description"
-								:disabled="!isDescriptionTruncated"
-								placement="top"
-							>
-								<N8nText
-									ref="descriptionRef"
-									:class="$style.description"
-									:style="{ '--settings-row--description-lines': descriptionLines }"
-									size="small"
-									color="text-light"
-								>
-									{{ description }}
-								</N8nText>
-							</N8nTooltip>
-						</label>
 						<N8nTooltip
-							v-else-if="description"
+							v-if="description"
 							:content="description"
 							:disabled="!isDescriptionTruncated"
 							placement="top"
@@ -478,52 +418,11 @@ $expand-easing: motion.$blur-motion-easing;
 	min-width: 0;
 }
 
-// Trailing badges are taller than the title text.
-// A wider gap keeps the description clear of the badge boxes.
-// A row without trailing content keeps the smaller gap.
-.textWithTitleTrailing {
-	gap: var(--spacing--xs);
-}
-
 .title {
 	&.truncate {
 		display: block;
 		@include utils.utils-ellipsis;
 	}
-}
-
-.titleLine {
-	display: flex;
-	align-items: center;
-	gap: var(--spacing--4xs);
-	min-width: 0;
-}
-
-.titleLine .title {
-	min-width: 0;
-}
-
-.titleTrailing {
-	display: inline-flex;
-	flex: none;
-	align-items: center;
-	gap: var(--spacing--4xs);
-}
-
-// Click target for the associated control. It shrinks like the title so badges keep their width.
-.textLabel {
-	margin: 0;
-	min-width: 0;
-	cursor: pointer;
-}
-
-.titleLine .textLabel {
-	overflow: hidden;
-}
-
-.row:has(.action :disabled) .textLabel,
-.row:has(.action [data-disabled]) .textLabel {
-	cursor: not-allowed;
 }
 
 .description {

@@ -1,114 +1,166 @@
 <script setup lang="ts">
-import type { FeatureMaturityId } from '@n8n/frontend-constants/feature-maturity';
 import { computed, useId } from 'vue';
 
-import N8nFeatureMaturityBadges from '../FeatureMaturityBadges/FeatureMaturityBadges.vue';
-import {
-	resolveFeatureMaturityBadges,
-	useEnterprisePlan,
-} from '../FeatureMaturityBadges/featureMaturityState';
-import N8nSettingsRow from '../N8nSettingsRow';
+import N8nEnterpriseReadinessBadge from '../EnterpriseReadinessBadge/EnterpriseReadinessBadge.vue';
+import N8nPreviewBadge from '../PreviewBadge/PreviewBadge.vue';
 import N8nSwitch from '../N8nSwitch';
-import N8nTooltip from '../N8nTooltip';
+import N8nText from '../N8nText';
 
 export interface SettingsEnableRowProps {
 	/** Row title. The switch uses it as its accessible name. */
 	title: string;
 	/** Short description under the title. */
-	description?: string;
+	description: string;
 	/**
-	 * Feature id from `featureMaturity`. The row reads the flags from this id.
-	 * Badges render beside the title only when `showBadges` is true.
+	 * Disables the switch.
+	 * @default false
 	 */
-	feature?: FeatureMaturityId;
-	/** Render this feature's badges beside the row title. Leave this off when the page title shows them. */
-	showBadges?: boolean;
-	/** Disables the switch. */
 	disabled?: boolean;
-	/** Tooltip shown while the switch is disabled. */
-	disabledTooltip?: string;
 	/** Test id for the switch. */
 	switchTestId?: string;
-	/** Passed through to the row. The row default is 2 lines, and the hard maximum is 3. */
-	maxDescriptionLines?: number;
+	/**
+	 * Shows the Preview badge beside the title.
+	 * @default false
+	 */
+	showPreviewBadge?: boolean;
+	/**
+	 * Shows the Limited enterprise support badge beside the title.
+	 * @default false
+	 */
+	showEnterpriseReadinessBadge?: boolean;
+	/**
+	 * Whether the setting is on.
+	 * The parent owns this value.
+	 * @default false
+	 */
+	enabled?: boolean;
 }
 
-defineOptions({ name: 'N8nSettingsEnableRow', inheritAttrs: false });
+export interface SettingsEnableRowEmits {
+	/**
+	 * The user turned the setting on or off.
+	 * The payload is the next value.
+	 */
+	'update:enabled': [value: boolean];
+}
+
+defineOptions({ name: 'N8nSettingsEnableRow' });
 
 const props = withDefaults(defineProps<SettingsEnableRowProps>(), {
-	description: undefined,
-	feature: undefined,
-	showBadges: false,
 	disabled: false,
-	disabledTooltip: undefined,
 	switchTestId: undefined,
-	maxDescriptionLines: undefined,
+	showPreviewBadge: false,
+	showEnterpriseReadinessBadge: false,
+	enabled: false,
 });
 
-const slots = defineSlots<{
-	/** Replaces the switch. The title stays plain text, because this slot is not a switch. */
-	action?: () => unknown;
-}>();
+const emit = defineEmits<SettingsEnableRowEmits>();
 
-const enabled = defineModel<boolean>({ default: false });
-const enterprisePlan = useEnterprisePlan();
-const featureBadges = computed(() =>
-	props.showBadges
-		? resolveFeatureMaturityBadges(props.feature, enterprisePlan.value)
-		: { showPreview: false, showEnterprise: false },
-);
-// The title and the description label this switch. A custom action keeps the text plain.
-const switchId = `settings-enable-switch-${useId()}`;
-const labelFor = computed(() => (slots.action ? undefined : switchId));
-const fixedSwitchProps = {
-	/** Use the settings size. The default size is the parameter control. */
-	size: 'large' as const,
-};
-const switchBindings = computed(() => ({
-	...fixedSwitchProps,
-	id: switchId,
-	...(props.switchTestId ? { 'data-test-id': props.switchTestId } : {}),
-}));
-// Skip the trailing slot when nothing would render, so the title does not keep an empty gap.
-const renderBadges = computed(
-	() => featureBadges.value.showPreview || featureBadges.value.showEnterprise,
-);
+const switchId = useId();
+const hasBadges = computed(() => props.showPreviewBadge || props.showEnterpriseReadinessBadge);
+
+const settingsSwitchProps = {
+	size: 'small',
+} as const;
+
+function onEnabledChange(value: boolean) {
+	emit('update:enabled', value);
+}
 </script>
 
 <template>
-	<N8nSettingsRow
-		v-bind="$attrs"
-		:title="title"
-		:description="description"
-		:max-description-lines="maxDescriptionLines"
-		:label-for="labelFor"
-	>
-		<template v-if="renderBadges" #titleTrailing>
-			<N8nFeatureMaturityBadges :feature="feature" />
-		</template>
-		<template #action>
-			<slot name="action">
-				<N8nTooltip
-					v-if="disabledTooltip"
-					:content="disabledTooltip"
-					:disabled="!disabled"
-					placement="top"
-				>
-					<N8nSwitch
-						v-model="enabled"
-						v-bind="switchBindings"
-						:disabled="disabled"
-						:aria-label="title"
+	<div :class="$style.row">
+		<div :class="[$style.text, hasBadges && $style.withBadges]">
+			<div :class="$style.header">
+				<label :for="switchId">
+					<N8nText :class="$style.title" bold size="medium" color="text-dark">
+						{{ title }}
+					</N8nText>
+				</label>
+				<span v-if="hasBadges" :class="$style.badges">
+					<N8nPreviewBadge
+						v-if="showPreviewBadge"
+						data-test-id="settings-enable-row-preview-badge"
 					/>
-				</N8nTooltip>
-				<N8nSwitch
-					v-else
-					v-model="enabled"
-					v-bind="switchBindings"
-					:disabled="disabled"
-					:aria-label="title"
-				/>
-			</slot>
-		</template>
-	</N8nSettingsRow>
+					<N8nEnterpriseReadinessBadge
+						v-if="showEnterpriseReadinessBadge"
+						data-test-id="settings-enable-row-enterprise-readiness-badge"
+					/>
+				</span>
+			</div>
+			<label :for="switchId">
+				<N8nText :class="$style.description" size="small" color="text-light">
+					{{ description }}
+				</N8nText>
+			</label>
+		</div>
+		<N8nSwitch
+			v-bind="settingsSwitchProps"
+			:id="switchId"
+			:model-value="enabled"
+			:disabled="disabled"
+			:aria-label="title"
+			:data-test-id="switchTestId"
+			@update:model-value="onEnabledChange"
+		/>
+		<span :class="$style.divider" data-test-id="settings-row-divider" aria-hidden="true" />
+	</div>
 </template>
+
+<style lang="scss" module>
+@use '../../css/mixins/breakpoints' as breakpoints;
+
+.row {
+	position: relative;
+	display: flex;
+	flex-direction: row;
+	flex-wrap: nowrap;
+	align-items: center;
+	justify-content: space-between;
+	column-gap: var(--spacing--2xs);
+	row-gap: var(--spacing--xs);
+	padding: var(--spacing--sm);
+
+	@include breakpoints.breakpoint('xs-only') {
+		flex-wrap: wrap;
+	}
+}
+
+.text {
+	display: flex;
+	flex-direction: column;
+	gap: var(--spacing--5xs);
+
+	&.withBadges {
+		gap: var(--spacing--2xs);
+	}
+}
+
+.header {
+	display: flex;
+	align-items: center;
+	flex-wrap: wrap;
+	gap: var(--spacing--3xs);
+}
+
+.title,
+.description {
+	cursor: pointer;
+}
+
+.badges {
+	display: inline-flex;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: var(--spacing--4xs);
+}
+
+.divider {
+	position: absolute;
+	bottom: 0;
+	left: var(--spacing--sm);
+	right: var(--spacing--sm);
+	height: 1px;
+	background: var(--border-color--subtle);
+}
+</style>

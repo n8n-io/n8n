@@ -126,21 +126,17 @@ onMounted(async () => {
 </script>
 <template>
 	<div :class="$style.container">
-		<N8nSettingsPageHeader feature="chat" :title="i18n.baseText('settings.chatHub')" />
+		<N8nSettingsPageHeader feature="chat" show-badges :title="i18n.baseText('settings.chatHub')" />
 
 		<N8nSettingsRowGroup>
 			<N8nSettingsEnableRow
-				feature="chat"
-				show-badges
+				data-test-id="chat-hub-enabled-row"
 				:title="i18n.baseText('settings.chatHub.enabled.label')"
 				:description="i18n.baseText('settings.chatHub.enabled.description')"
-				:max-description-lines="3"
-				:model-value="isChatEnabled"
+				:enabled="isChatEnabled"
 				:disabled="disabled"
-				:disabled-tooltip="i18n.baseText('settings.chatHub.enabled.disabled.tooltip')"
 				switch-test-id="chat-hub-enabled-switch"
-				data-test-id="chat-hub-enabled-row"
-				@update:model-value="onToggleEnabled"
+				@update:enabled="onToggleEnabled"
 			/>
 		</N8nSettingsRowGroup>
 

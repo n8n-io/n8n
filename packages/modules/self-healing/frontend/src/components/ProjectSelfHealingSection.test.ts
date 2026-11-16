@@ -1,4 +1,6 @@
 import type { SelfHealingConfigurationDto } from '@n8n/api-types';
+import { FeatureMaturityKey } from '@n8n/design-system';
+import { featureMaturity } from '@n8n/frontend-constants/feature-maturity';
 import {
 	PERSONAL_SELF_HEALING_CONFIGURATION_VIEW,
 	SELF_HEALING_CONFIGURATION_VIEW,
@@ -53,7 +55,10 @@ async function renderSection(saved: Partial<SelfHealingConfigurationDto> = {}) {
 	await router.push('/projects/project/settings');
 	const view = render(ProjectSelfHealingSection, {
 		props: { projectId: 'project' },
-		global: { plugins: [router] },
+		global: {
+			plugins: [router],
+			provide: { [FeatureMaturityKey as symbol]: featureMaturity },
+		},
 	});
 	await view.findByText('All workflows');
 	return { view, store, router };
@@ -202,7 +207,10 @@ describe('personal tab', () => {
 		await router.push('/projects/project/self-healing');
 		const view = render(ProjectSelfHealingSection, {
 			props: { projectId: 'project', variant: 'personalTab' },
-			global: { plugins: [router] },
+			global: {
+				plugins: [router],
+				provide: { [FeatureMaturityKey as symbol]: featureMaturity },
+			},
 		});
 		return { view, router };
 	}
@@ -245,7 +253,10 @@ it('shows a one-line placeholder until the first load finishes', async () => {
 	await router.push('/projects/project/settings');
 	const view = render(ProjectSelfHealingSection, {
 		props: { projectId: 'project' },
-		global: { plugins: [router] },
+		global: {
+			plugins: [router],
+			provide: { [FeatureMaturityKey as symbol]: featureMaturity },
+		},
 	});
 
 	expect(await view.findByTestId('self-healing-config-loading')).toBeInTheDocument();

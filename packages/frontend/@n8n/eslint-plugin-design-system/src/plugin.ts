@@ -24,7 +24,6 @@ const configs = {
 		rules: {
 			'@n8n/design-system/no-direct-component-imports': 'error',
 			'@n8n/design-system/require-teleported-tooltip-in-dropdown': 'error',
-			'@n8n/design-system/use-feature-maturity-badges': 'error',
 		},
 	},
 	componentImports: {

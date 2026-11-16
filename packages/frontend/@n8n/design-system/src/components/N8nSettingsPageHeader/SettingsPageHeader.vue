@@ -1,14 +1,13 @@
 <script setup lang="ts">
-import type { FeatureMaturityId } from '@n8n/frontend-constants/feature-maturity';
 import { computed, useSlots, watchEffect } from 'vue';
 
 import { useI18n } from '../../composables/useI18n';
 import N8nExternalLink from '../N8nExternalLink';
 import N8nFeatureMaturityBadges from '../FeatureMaturityBadges/FeatureMaturityBadges.vue';
 import {
-	readFeatureMaturity,
 	resolveFeatureMaturityBadges,
 	useEnterprisePlan,
+	useFeatureMaturityCatalog,
 } from '../FeatureMaturityBadges/featureMaturityState';
 import N8nHeading from '../N8nHeading';
 import N8nText from '../N8nText';
@@ -35,11 +34,11 @@ export interface SettingsPageHeaderProps {
 	/** Heading element for the page title. */
 	headingTag?: string;
 	/**
-	 * Feature id from `featureMaturity`. When the entry has a docs page, that page is the docs link
-	 * unless `docsUrl` is set. Badges render beside the title only when `showBadges` is true.
+	 * Feature id from the list the app provides. When the entry has a docs page, that page is the
+	 * docs link unless `docsUrl` is set. Badges render beside the title only when `showBadges` is true.
 	 */
-	feature?: FeatureMaturityId;
-	/** Render this feature's badges beside the title. Leave this off when the enable row shows them. */
+	feature?: string;
+	/** Render this feature's badges beside the title. */
 	showBadges?: boolean;
 }
 
@@ -67,13 +66,14 @@ const resolvedDocsLeadingText = computed(
 	() => props.docsLeadingText ?? t('settingsPageHeader.docsLeadingText'),
 );
 const enterprisePlan = useEnterprisePlan();
+const catalog = useFeatureMaturityCatalog();
 const featureDocsUrl = computed(() =>
-	props.feature ? readFeatureMaturity(props.feature).docsUrl : undefined,
+	props.feature ? catalog[props.feature]?.docsUrl : undefined,
 );
 const resolvedDocsUrl = computed(() => props.docsUrl ?? featureDocsUrl.value);
 const featureBadges = computed(() =>
 	props.showBadges
-		? resolveFeatureMaturityBadges(props.feature, enterprisePlan.value)
+		? resolveFeatureMaturityBadges(catalog, props.feature, enterprisePlan.value)
 		: { showPreview: false, showEnterprise: false },
 );
 const showFeatureBadges = computed(

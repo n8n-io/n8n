@@ -1,3 +1,5 @@
+import { FeatureMaturityKey } from '@n8n/design-system';
+import { featureMaturity } from '@n8n/frontend-constants/feature-maturity';
 import { createComponentRenderer, mockedStore } from '@n8n/frontend-test-utils';
 import { createTestingPinia } from '@pinia/testing';
 import userEvent from '@testing-library/user-event';
@@ -76,6 +78,9 @@ const render = (options = {}) => {
 			pinia,
 			// Test the form controls without the per-field layout, tooltip portals, and SVG trees.
 			global: {
+				provide: {
+					[FeatureMaturityKey as symbol]: featureMaturity,
+				},
 				stubs: {
 					N8nSettingsRow: { template: '<div><slot name="info" /><slot name="action" /></div>' },
 					N8nTooltip: { template: '<slot />' },
@@ -125,13 +130,13 @@ describe('SettingsOpenTelemetryView', () => {
 		expect(queryByTestId('otel-exporter-endpoint')).not.toBeInTheDocument();
 	});
 
-	it('shows the Preview badge on the status row', async () => {
+	it('shows the Preview badge beside the page title', async () => {
 		const { getByTestId, getByRole, queryByRole } = render();
 
 		await waitFor(() => {
 			expect(getByTestId('open-telemetry-preview-badge')).toBeInTheDocument();
 		});
-		expect(getByRole('heading', { name: 'OpenTelemetry' })).not.toContainElement(
+		expect(getByRole('heading', { name: 'OpenTelemetry' }).parentElement).toContainElement(
 			getByTestId('open-telemetry-preview-badge'),
 		);
 		expect(queryByRole('img', { name: /N8N_OTEL_ENABLED/ })).not.toBeInTheDocument();

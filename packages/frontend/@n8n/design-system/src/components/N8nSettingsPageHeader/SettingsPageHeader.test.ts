@@ -2,15 +2,13 @@ import { render, screen } from '@testing-library/vue';
 import { computed } from 'vue';
 
 import { EnterprisePlanKey } from '../FeatureMaturityBadges/featureMaturityState';
+import { provideFeatureMaturity } from '../FeatureMaturityBadges/featureMaturityStub';
 import N8nSettingsPageHeader from './SettingsPageHeader.vue';
 
-const enterprisePlan = {
-	global: {
-		provide: {
-			[EnterprisePlanKey as symbol]: computed(() => true),
-		},
-	},
-};
+const enterprisePlan = provideFeatureMaturity({
+	[EnterprisePlanKey as symbol]: computed(() => true),
+});
+const featureList = provideFeatureMaturity();
 
 describe('N8nSettingsPageHeader', () => {
 	it('renders the title as an h1 by default', () => {
@@ -23,6 +21,7 @@ describe('N8nSettingsPageHeader', () => {
 
 	it('renders feature badges beside the title', () => {
 		render(N8nSettingsPageHeader, {
+			...featureList,
 			props: { title: 'Context', feature: 'context', showBadges: true, showDocsLink: false },
 		});
 

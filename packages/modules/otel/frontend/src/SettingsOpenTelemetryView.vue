@@ -424,6 +424,8 @@ watch(
 <template>
 	<N8nSettingsLayout :class="$style.layout">
 		<N8nSettingsPageHeader
+			feature="openTelemetry"
+			show-badges
 			:title="i18n.baseText('settings.opentelemetry.title')"
 			:description="i18n.baseText('settings.opentelemetry.description')"
 			:docs-url="OTEL_DOCS_URL"
@@ -437,14 +439,12 @@ watch(
 			<N8nSettingsSection>
 				<N8nSettingsRowGroup>
 					<N8nSettingsEnableRow
-						feature="openTelemetry"
-						show-badges
 						:title="i18n.baseText('settings.opentelemetry.status.label')"
 						:description="statusDescription"
-						:model-value="displayedEnabled"
+						:enabled="displayedEnabled"
 						:disabled="isEnvManaged('enabled') || otelStore.saving || statusSaving"
 						switch-test-id="otel-enabled-toggle"
-						@update:model-value="onToggleEnabled"
+						@update:enabled="onToggleEnabled"
 					/>
 				</N8nSettingsRowGroup>
 			</N8nSettingsSection>

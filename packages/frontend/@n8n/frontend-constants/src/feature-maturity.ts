@@ -1,8 +1,9 @@
 /**
  * Which features show Preview and Limited enterprise support.
- * Pass an id to `N8nFeatureMaturityBadges`, `N8nSettingsPageHeader`, or `N8nSettingsEnableRow`.
+ * The app provides this list to `N8nFeatureMaturityBadges`.
+ * Pass an id to `N8nFeatureMaturityBadges` or `N8nSettingsPageHeader`.
  * The entry decides which badges render. Pass `hide-preview` or `hide-enterprise` to hide one.
- * Set `show-badges` on the page title or on the enable row. The badges stay on that part.
+ * Set `show-badges` on the page title. The badges stay on that part.
  *
  * Some entries have no settings title yet: OAuth JWE, token exchange, node policies,
  * and the Microsoft Agent 365 trigger. Pass the id when that title exists.
@@ -14,6 +15,8 @@ export type FeatureMaturity = {
 	limitedEnterpriseSupport: boolean;
 	/** Documentation page for the settings header link. */
 	docsUrl?: string;
+	/** Test id prefix when the feature id is not the prefix pages already use. */
+	testId?: string;
 };
 
 const ASSISTANT_DOCS_URL = 'https://docs.n8n.io/deploy/host-n8n/configure-n8n/set-up-n8n-assistant';
@@ -26,19 +29,29 @@ export const featureMaturity = {
 		preview: false,
 		limitedEnterpriseSupport: true,
 		docsUrl: ASSISTANT_DOCS_URL,
+		testId: 'n8n-agent',
 	},
 	agents: { preview: true, limitedEnterpriseSupport: true, docsUrl: AGENTS_DOCS_URL },
 	n8nPackages: { preview: true, limitedEnterpriseSupport: true },
-	workflowReviews: { preview: true, limitedEnterpriseSupport: false },
+	workflowReviews: {
+		preview: true,
+		limitedEnterpriseSupport: false,
+		testId: 'security-workflow-reviews',
+	},
 	oauthJwe: { preview: true, limitedEnterpriseSupport: false },
 	tokenExchange: { preview: true, limitedEnterpriseSupport: false },
 	openTelemetry: { preview: true, limitedEnterpriseSupport: false },
 	microsoftAgent365: { preview: true, limitedEnterpriseSupport: false },
-	context: { preview: true, limitedEnterpriseSupport: true },
+	context: { preview: true, limitedEnterpriseSupport: true, testId: 'settings-context' },
 	roles: { preview: false, limitedEnterpriseSupport: false },
 	nodePolicies: { preview: true, limitedEnterpriseSupport: false },
 	selfHealing: { preview: true, limitedEnterpriseSupport: true },
-	chat: { preview: true, limitedEnterpriseSupport: true, docsUrl: CHAT_DOCS_URL },
+	chat: {
+		preview: true,
+		limitedEnterpriseSupport: true,
+		docsUrl: CHAT_DOCS_URL,
+		testId: 'chat-hub',
+	},
 } as const satisfies Record<string, FeatureMaturity>;
 
 export type FeatureMaturityId = keyof typeof featureMaturity;

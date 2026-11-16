@@ -93,13 +93,13 @@ beforeEach(() => {
 	vi.spyOn(useSettingsStore(), 'getModuleSettings').mockResolvedValue(undefined);
 });
 
-it('shows the Preview badge beside the enable switch', async () => {
+it('shows the Preview badge beside the page title', async () => {
 	const { findByTestId, getByRole, queryByTestId } = render();
 	const badge = await findByTestId('agents-preview-badge');
 	const heading = getByRole('heading', { name: 'Agents' });
 
-	expect(badge.closest('[data-test-id="settings-row-group"]')).not.toBeNull();
-	expect(heading.parentElement).not.toContainElement(badge);
+	expect(heading.parentElement).toContainElement(badge);
+	expect(badge.closest('[data-test-id="settings-row-group"]')).toBeNull();
 	expect(queryByTestId('agents-enterprise-readiness-badge')).not.toBeInTheDocument();
 });
 
@@ -113,8 +113,8 @@ it('shows limited enterprise support beside Preview on an enterprise plan', asyn
 	const heading = getByRole('heading', { name: 'Agents' });
 
 	expect(badge).toHaveTextContent('Limited enterprise readiness');
-	expect(badge.closest('[data-test-id="settings-row-group"]')).not.toBeNull();
-	expect(heading.parentElement).not.toContainElement(badge);
+	expect(heading.parentElement).toContainElement(badge);
+	expect(badge.closest('[data-test-id="settings-row-group"]')).toBeNull();
 });
 
 it('loads the disabled setting and saves enable and disable choices', async () => {

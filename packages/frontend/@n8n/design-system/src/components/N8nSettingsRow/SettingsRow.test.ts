@@ -4,20 +4,6 @@ import { nextTick } from 'vue';
 import N8nSettingsRow from './SettingsRow.vue';
 
 describe('N8nSettingsRow', () => {
-	it('renders trailing content beside the title', () => {
-		render(N8nSettingsRow, {
-			props: { title: 'Enable Chat' },
-			slots: { titleTrailing: '<span data-test-id="status-badge">Preview</span>' },
-		});
-
-		expect(screen.getByText('Enable Chat').parentElement).toContainElement(
-			screen.getByTestId('status-badge'),
-		);
-		expect(
-			screen.getByText('Enable Chat').closest('[class*="textWithTitleTrailing"]'),
-		).not.toBeNull();
-	});
-
 	it('renders title and description', () => {
 		render(N8nSettingsRow, {
 			props: { title: 'My setting', description: 'What it does' },
@@ -25,24 +11,6 @@ describe('N8nSettingsRow', () => {
 
 		expect(screen.getByText('My setting')).toBeInTheDocument();
 		expect(screen.getByText('What it does')).toBeInTheDocument();
-	});
-
-	it('associates the title and description with a control, and leaves trailing content outside the label', () => {
-		render(N8nSettingsRow, {
-			props: {
-				title: 'Enable Chat',
-				description: 'Let people use chat.',
-				labelFor: 'chat-switch',
-			},
-			slots: { titleTrailing: '<span data-test-id="status-badge">Preview</span>' },
-		});
-
-		expect(screen.getByText('Enable Chat').closest('label')).toHaveAttribute('for', 'chat-switch');
-		expect(screen.getByText('Let people use chat.').closest('label')).toHaveAttribute(
-			'for',
-			'chat-switch',
-		);
-		expect(screen.getByTestId('status-badge').closest('label')).toBeNull();
 	});
 
 	it('defaults to the horizontal layout', () => {
@@ -279,23 +247,6 @@ describe('N8nSettingsRow', () => {
 			await fireEvent.click(screen.getByText('Passkey'));
 
 			expect(emitted().click).toHaveLength(1);
-		});
-
-		it('does not emit click when the title labels another control', async () => {
-			const { emitted } = render(N8nSettingsRow, {
-				props: {
-					title: 'Enable Chat',
-					description: 'Let people use chat.',
-					clickable: true,
-					labelFor: 'chat-switch',
-				},
-				slots: { action: '<button id="chat-switch" type="button">Toggle</button>' },
-			});
-
-			await fireEvent.click(screen.getByText('Enable Chat'));
-			await fireEvent.click(screen.getByText('Let people use chat.'));
-
-			expect(emitted().click).toBeUndefined();
 		});
 
 		it('does not emit click for non-activation keys', async () => {

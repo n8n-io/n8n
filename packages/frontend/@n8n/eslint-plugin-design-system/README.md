@@ -32,9 +32,3 @@ The rule checks named script imports and named re-exports. In Vue files it also 
 Requires `N8nTooltip` nested anywhere inside `N8nDropdownMenu` to keep teleportation enabled. Dropdown content clips overflow, so an inline tooltip can otherwise be cropped.
 
 The `teleported` prop may be omitted because it defaults to `true`, or it may be set explicitly to `true`. Dynamic values are rejected because they cannot guarantee teleportation.
-
-### `use-feature-maturity-badges`
-
-Requires Preview and Limited enterprise support to render through `N8nFeatureMaturityBadges`. A Vue file must not render `N8nPreviewBadge` or `N8nEnterpriseReadinessBadge`, and it must not import those components.
-
-`N8nFeatureMaturityBadges` reads `featureMaturity` and draws the badges that entry lists. Pass `hide-preview` or `hide-enterprise` to hide one badge at a callsite. Pass both to hide both. The enterprise badge still renders only on an enterprise plan.

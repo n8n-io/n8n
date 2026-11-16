@@ -7,14 +7,12 @@ import N8nBadge from '../N8nBadge';
 
 import FeatureMaturityBadges from './FeatureMaturityBadges.vue';
 import { EnterprisePlanKey } from './featureMaturityState';
+import { provideFeatureMaturity } from './featureMaturityStub';
 
-const enterprisePlan = {
-	global: {
-		provide: {
-			[EnterprisePlanKey as symbol]: computed(() => true),
-		},
-	},
-};
+const enterprisePlan = provideFeatureMaturity({
+	[EnterprisePlanKey as symbol]: computed(() => true),
+});
+const featureList = provideFeatureMaturity();
 
 describe('FeatureMaturityBadges', () => {
 	it('draws the Preview badge when no feature id is set', () => {
@@ -25,7 +23,10 @@ describe('FeatureMaturityBadges', () => {
 	});
 
 	it('renders the badges listed for the feature', () => {
-		const previewOnly = render(FeatureMaturityBadges, { props: { feature: 'workflowReviews' } });
+		const previewOnly = render(FeatureMaturityBadges, {
+			...featureList,
+			props: { feature: 'workflowReviews' },
+		});
 
 		expect(previewOnly.getByTestId('security-workflow-reviews-preview-badge')).toHaveTextContent(
 			'Preview',
@@ -35,7 +36,10 @@ describe('FeatureMaturityBadges', () => {
 		).not.toBeInTheDocument();
 		previewOnly.unmount();
 
-		const hidden = render(FeatureMaturityBadges, { props: { feature: 'assistant' } });
+		const hidden = render(FeatureMaturityBadges, {
+			...featureList,
+			props: { feature: 'assistant' },
+		});
 		expect(hidden.queryByTestId('n8n-agent-enterprise-readiness-badge')).not.toBeInTheDocument();
 		hidden.unmount();
 
@@ -74,7 +78,10 @@ describe('FeatureMaturityBadges', () => {
 	});
 
 	it('draws Preview as a dashed badge and enterprise as an outline badge', () => {
-		const preview = mount(FeatureMaturityBadges, { props: { feature: 'workflowReviews' } });
+		const preview = mount(FeatureMaturityBadges, {
+			...featureList,
+			props: { feature: 'workflowReviews' },
+		});
 		expect(preview.getComponent(N8nBadge).props()).toMatchObject({
 			variant: 'outline',
 			size: 'xxsmall',

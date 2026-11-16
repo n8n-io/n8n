@@ -154,15 +154,14 @@ describe('SettingsChatHubView', () => {
 		expect(setChatEnabledMock).toHaveBeenCalledWith(true);
 	});
 
-	it('shows the Preview and limited enterprise readiness badges on the enable row on enterprise', () => {
+	it('shows the Preview and limited enterprise readiness badges next to the title on enterprise', () => {
 		const { getByRole, getByTestId } = renderComponent();
 
-		const enableRow = getByTestId('chat-hub-enabled-row');
+		const titleRow = getByRole('heading', { name: 'Chat' }).parentElement;
 
-		expect(enableRow.closest('[data-test-id="settings-row-group"]')).not.toBeNull();
-		expect(enableRow).toContainElement(getByTestId('chat-hub-preview-badge'));
-		expect(enableRow).toContainElement(getByTestId('chat-hub-enterprise-readiness-badge'));
-		expect(getByRole('heading', { name: 'Chat' })).not.toContainElement(
+		expect(titleRow).toContainElement(getByTestId('chat-hub-preview-badge'));
+		expect(titleRow).toContainElement(getByTestId('chat-hub-enterprise-readiness-badge'));
+		expect(getByTestId('chat-hub-enabled-row')).not.toContainElement(
 			getByTestId('chat-hub-preview-badge'),
 		);
 		expect(getByTestId('chat-hub-enterprise-readiness-badge')).toHaveTextContent(

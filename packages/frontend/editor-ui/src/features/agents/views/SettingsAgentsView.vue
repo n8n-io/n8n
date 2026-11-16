@@ -65,6 +65,8 @@ onMounted(async () => {
 <template>
 	<N8nSettingsLayout data-test-id="agents-settings">
 		<N8nSettingsPageHeader
+			feature="agents"
+			show-badges
 			:title="i18n.baseText('settings.agents')"
 			:description="i18n.baseText('settings.agents.description')"
 			docs-url="https://docs.n8n.io/build/build-and-manage-agents"
@@ -75,14 +77,11 @@ onMounted(async () => {
 		<N8nSettingsSection v-else-if="settings">
 			<N8nSettingsRowGroup>
 				<N8nSettingsEnableRow
-					feature="agents"
-					show-badges
 					:title="i18n.baseText('settings.agents.enable.label')"
 					:description="i18n.baseText('settings.agents.enable.description')"
-					:max-description-lines="3"
-					:model-value="settings.enabled"
+					:enabled="settings.enabled"
 					:disabled="isSaving"
-					@update:model-value="saveEnabled"
+					@update:enabled="saveEnabled"
 				/>
 			</N8nSettingsRowGroup>
 		</N8nSettingsSection>

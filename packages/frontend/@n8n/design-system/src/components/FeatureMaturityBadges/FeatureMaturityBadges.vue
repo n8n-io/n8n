@@ -1,22 +1,25 @@
 <script setup lang="ts">
-import type { FeatureMaturityId } from '@n8n/frontend-constants/feature-maturity';
 import { computed } from 'vue';
 
 import { useI18n } from '../../composables/useI18n';
 import N8nBadge from '../N8nBadge';
 import N8nTooltip from '../N8nTooltip';
 
-import { resolveFeatureMaturityBadges, useEnterprisePlan } from './featureMaturityState';
+import {
+	resolveFeatureMaturityBadges,
+	useEnterprisePlan,
+	useFeatureMaturityCatalog,
+} from './featureMaturityState';
 
 defineOptions({ name: 'N8nFeatureMaturityBadges' });
 
 const props = withDefaults(
 	defineProps<{
 		/**
-		 * Feature id from `featureMaturity`. The entry decides which badges render.
-		 * Omit it to draw only the Preview badge.
+		 * Feature id from the list the app provides.
+		 * The entry decides which badges render. Omit it to draw only the Preview badge.
 		 */
-		feature?: FeatureMaturityId;
+		feature?: string;
 		/** Hide the Preview badge at this callsite. */
 		hidePreview?: boolean;
 		/** Hide the Limited enterprise readiness badge at this callsite. */
@@ -38,6 +41,7 @@ const props = withDefaults(
 
 const { t } = useI18n();
 const enterprisePlan = useEnterprisePlan();
+const catalog = useFeatureMaturityCatalog();
 
 const resolved = computed(() => {
 	// A callsite with no feature id draws the Preview badge on its own.
@@ -49,7 +53,7 @@ const resolved = computed(() => {
 		};
 	}
 
-	const badges = resolveFeatureMaturityBadges(props.feature, enterprisePlan.value, {
+	const badges = resolveFeatureMaturityBadges(catalog, props.feature, enterprisePlan.value, {
 		preview: props.hidePreview,
 		enterprise: props.hideEnterprise,
 	});

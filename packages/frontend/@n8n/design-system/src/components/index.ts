@@ -136,7 +136,7 @@ export type { SettingsPageHeaderProps } from './N8nSettingsPageHeader';
 export { default as N8nSettingsRow } from './N8nSettingsRow';
 export type { SettingsRowProps, SettingsRowLayout } from './N8nSettingsRow';
 export { default as N8nSettingsEnableRow } from './N8nSettingsEnableRow';
-export type { SettingsEnableRowProps } from './N8nSettingsEnableRow';
+export type { SettingsEnableRowEmits, SettingsEnableRowProps } from './N8nSettingsEnableRow';
 export { default as N8nSettingsRowButton } from './N8nSettingsRowButton';
 export type { SettingsRowButtonProps } from './N8nSettingsRowButton';
 export { default as N8nSettingsRowConfigure } from './N8nSettingsRowConfigure';
@@ -148,7 +148,12 @@ export type { SettingsSaveBarProps } from './N8nSettingsSaveBar';
 export { default as N8nSettingsSection } from './N8nSettingsSection';
 export type { SettingsSectionProps } from './N8nSettingsSection';
 export { default as N8nFeatureMaturityBadges } from './FeatureMaturityBadges/FeatureMaturityBadges.vue';
-export { EnterprisePlanKey } from './FeatureMaturityBadges/featureMaturityState';
+export {
+	EnterprisePlanKey,
+	FeatureMaturityKey,
+	type FeatureMaturityCatalog,
+	type FeatureMaturityEntry,
+} from './FeatureMaturityBadges/featureMaturityState';
 export { default as N8nNewBadge } from './NewBadge/NewBadge.vue';
 export { default as N8nPopover } from './N8nPopover';
 export { default as N8nPopoverReka } from './N8nPopover'; // Alias for backwards compatibility

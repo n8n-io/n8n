@@ -1,4 +1,5 @@
-import { EnterprisePlanKey } from '@n8n/design-system';
+import { EnterprisePlanKey, FeatureMaturityKey } from '@n8n/design-system';
+import { featureMaturity } from '@n8n/frontend-constants/feature-maturity';
 import { capabilities, capabilityRegistry, type ProjectContext } from '@n8n/frontend-module-sdk';
 import { createComponentRenderer, mockedStore } from '@n8n/frontend-test-utils';
 import type { IUser } from '@n8n/rest-api-client';
@@ -86,6 +87,7 @@ const renderView = createComponentRenderer(PromotionsSettingsView, {
 		provide: {
 			// App.vue provides this from the settings store. The module renderer does not.
 			[EnterprisePlanKey as symbol]: computed(() => useSettingsStore().isEnterprisePlan),
+			[FeatureMaturityKey as symbol]: featureMaturity,
 		},
 	},
 });

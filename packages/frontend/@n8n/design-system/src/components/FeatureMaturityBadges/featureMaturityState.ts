@@ -1,9 +1,19 @@
-import {
-	featureMaturity,
-	type FeatureMaturity,
-	type FeatureMaturityId,
-} from '@n8n/frontend-constants/feature-maturity';
 import { computed, inject, type ComputedRef, type InjectionKey } from 'vue';
+
+/** One feature's badge flags. The app owns the list. The design system only reads it. */
+export type FeatureMaturityEntry = {
+	/** Show the Preview badge. */
+	preview: boolean;
+	/** Show Limited enterprise readiness on an enterprise plan. */
+	limitedEnterpriseSupport: boolean;
+	/** Documentation page for the settings header link. */
+	docsUrl?: string;
+	/** Test id prefix when the feature id is not the prefix pages already use. */
+	testId?: string;
+};
+
+/** Feature id to badge flags. An unknown id renders no feature badges. */
+export type FeatureMaturityCatalog = Record<string, FeatureMaturityEntry>;
 
 /**
  * The app provides this. True when the instance is on an enterprise plan.
@@ -12,24 +22,26 @@ import { computed, inject, type ComputedRef, type InjectionKey } from 'vue';
 export const EnterprisePlanKey: InjectionKey<ComputedRef<boolean>> = Symbol('EnterprisePlan');
 
 /**
- * Keeps the test ids that pages already use. A new feature id becomes kebab-case.
+ * The app provides the feature list. Storybook provides a stub.
+ * A component that renders with no list reads an empty catalog.
  */
-const TEST_IDS: Partial<Record<FeatureMaturityId, string>> = {
-	assistant: 'n8n-agent',
-	chat: 'chat-hub',
-	context: 'settings-context',
-	endUserCredentials: 'end-user-credentials',
-	n8nPackages: 'n8n-packages',
-	openTelemetry: 'open-telemetry',
-	workflowReviews: 'security-workflow-reviews',
-};
+export const FeatureMaturityKey: InjectionKey<FeatureMaturityCatalog> = Symbol('FeatureMaturity');
 
-export function featureMaturityTestId(id: FeatureMaturityId): string {
-	return TEST_IDS[id] ?? id.replace(/[A-Z]/g, (letter) => `-${letter.toLowerCase()}`);
+/** The plan provided by the app. False when the app provided none. */
+export function useEnterprisePlan(): ComputedRef<boolean> {
+	return inject(
+		EnterprisePlanKey,
+		computed(() => false),
+	);
 }
 
-export function readFeatureMaturity(id: FeatureMaturityId): FeatureMaturity {
-	return featureMaturity[id];
+/** The feature list provided by the app. Empty when the app provided none. */
+export function useFeatureMaturityCatalog(): FeatureMaturityCatalog {
+	return inject(FeatureMaturityKey, {});
+}
+
+function featureMaturityTestId(id: string, entry: FeatureMaturityEntry): string {
+	return entry.testId ?? id.replace(/[A-Z]/g, (letter) => `-${letter.toLowerCase()}`);
 }
 
 /**
@@ -38,7 +50,8 @@ export function readFeatureMaturity(id: FeatureMaturityId): FeatureMaturity {
  * An unknown id renders nothing.
  */
 export function resolveFeatureMaturityBadges(
-	id: FeatureMaturityId | undefined,
+	catalog: FeatureMaturityCatalog,
+	id: string | undefined,
 	enterprisePlan: boolean,
 	hidden: { preview?: boolean; enterprise?: boolean } = {},
 ): { showPreview: boolean; showEnterprise: boolean; testId?: string } {
@@ -46,18 +59,14 @@ export function resolveFeatureMaturityBadges(
 		return { showPreview: false, showEnterprise: false };
 	}
 
-	const entry = readFeatureMaturity(id);
+	const entry = catalog[id];
+	if (entry === undefined) {
+		return { showPreview: false, showEnterprise: false };
+	}
+
 	return {
 		showPreview: entry.preview && !hidden.preview,
 		showEnterprise: entry.limitedEnterpriseSupport && enterprisePlan && !hidden.enterprise,
-		testId: featureMaturityTestId(id),
+		testId: featureMaturityTestId(id, entry),
 	};
-}
-
-/** The plan provided by the app. False when the app provided none. */
-export function useEnterprisePlan(): ComputedRef<boolean> {
-	return inject(
-		EnterprisePlanKey,
-		computed(() => false),
-	);
 }

@@ -1,4 +1,5 @@
 // Use subpath entries to avoid loading all components in the preview.
+import { FeatureMaturityKey, type FeatureMaturityCatalog } from '@n8n/design-system';
 import { IconBodyLoaderKey, loadLucideIconBody } from '@n8n/design-system/icons/lucide';
 import { N8nPlugin } from '@n8n/design-system/plugin';
 import { i18nInstance } from '@n8n/i18n';
@@ -36,8 +37,23 @@ function hasAppliedTheme(): boolean {
 	return current === 'light' || current === 'dark';
 }
 
+/**
+ * The app provides the real feature list. Storybook only needs the ids its stories render.
+ */
+const featureMaturityStub: FeatureMaturityCatalog = {
+	agents: { preview: true, limitedEnterpriseSupport: true },
+	roles: { preview: false, limitedEnterpriseSupport: false },
+	context: { preview: true, limitedEnterpriseSupport: true },
+	assistant: {
+		preview: false,
+		limitedEnterpriseSupport: true,
+		docsUrl: 'https://docs.n8n.io/deploy/host-n8n/configure-n8n/set-up-n8n-assistant',
+	},
+};
+
 setup((app) => {
 	app.provide(IconBodyLoaderKey, loadLucideIconBody);
+	app.provide(FeatureMaturityKey, featureMaturityStub);
 
 	const pinia = createPinia();
 	app.use(pinia);
