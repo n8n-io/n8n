@@ -220,6 +220,9 @@ fn buildWith(args: []const u8, store: ?*const creds.Store, idem_key: ?[]const u8
     // A credential that authenticates in the body needs one, except on
     // GET and HEAD.
     if (body_raw == null and inject_body != null and !eq(m, "GET") and !eq(m, "HEAD") and multipart == null) body_raw = "{}";
+    // A `$binary` or `$form` body: every other body pays one test of its first bytes.
+    var special_ref: []const u8 = "";
+    const special: Special = if (body_raw) |br| specialBody(br, &special_ref) else .none;
     if (multipart) |mp| {
         if (body_raw != null) return invalid(diag, "http: a request has body or multipart, not both", .{});
         var bb: [64]u8 = undefined;
@@ -229,8 +232,14 @@ fn buildWith(args: []const u8, store: ?*const creds.Store, idem_key: ?[]const u8
         try out.put(boundary);
         try out.put("\r\n");
         b.hdr_end = try deferredBody(&out, diag, MultipartBody{ .raw = mp, .boundary = boundary });
-    } else if (body_raw != null and binaryRef(body_raw.?) != null) {
-        const ref = binaryRef(body_raw.?).?;
+    } else if (special == .form) {
+        // v1 `authenticate` adds body members to an object; how they join a form
+        // differs for each request helper, so there is no single rule to apply.
+        if (inject_body != null) return invalid(diag, "http: a credential that adds body members cannot go with a form body", .{});
+        if (!have.ct) try out.put("content-type: application/x-www-form-urlencoded\r\n");
+        b.hdr_end = try deferredBody(&out, diag, FormBody{ .raw = special_ref, .slot = slot });
+    } else if (special == .binary) {
+        const ref = special_ref;
         if (!have.ct) if (http.member(ref, "mimeType")) |mt| if (http.plainString(mt)) |ctv| {
             try checkValue(ctv, "content-type", diag);
             try out.put("content-type: ");
@@ -262,14 +271,58 @@ fn buildWith(args: []const u8, store: ?*const creds.Store, idem_key: ?[]const u8
 
 // ---- binary bodies ------------------------------------------------------------
 
+const Special = enum { none, binary, form };
+
 /// `body: { "$binary": { data, id?, mimeType? } }`: the bytes of a binary
-/// entry, as n8n items carry it. Null for any other body.
-fn binaryRef(body: []const u8) ?[]const u8 {
-    if (body.len < 2 or body[0] != '{') return null;
-    const ref = http.member(body, "$binary") orelse return null;
-    if (ref.len < 2 or ref[0] != '{') return null;
-    return ref;
+/// entry, as n8n items carry it. `body: { "$form": { name: text } }`: a
+/// form body. The key is the first member of the body and no white space
+/// comes before it, so a body that does not start with `{"$` costs one
+/// test. `ref` gets the value of the key.
+fn specialBody(body: []const u8, ref: *[]const u8) Special {
+    std.debug.assert(body.len > 0);
+    if (body.len < 4 or body[0] != '{' or body[1] != '"' or body[2] != '$') return .none;
+    var it = http.Members.init(body) orelse return .none;
+    const first = it.next() orelse return .none;
+    const kind: Special = if (eq(first.key, "\"$binary\"")) .binary else if (eq(first.key, "\"$form\"")) .form else return .none;
+    if (first.value.len < 2 or first.value[0] != '{') return .none;
+    ref.* = first.value;
+    std.debug.assert(ref.len >= 2);
+    return kind;
 }
+
+/// A form body as the qs library's `stringify` writes a flat object, which
+/// is how n8n's request helper sends `form`: `name=value` joined by `&`,
+/// every byte but `A-Z a-z 0-9 - . _ ~` percent-encoded, null as `name=`.
+/// A credential template in a value is filled first, so the value of the
+/// credential is encoded once, with the text around it.
+const FormBody = struct {
+    raw: []const u8,
+    slot: ?creds.Slot,
+
+    fn write(w: FormBody, out: *Out, diag: *Diag) Error!void {
+        std.debug.assert(w.raw.len >= 2 and w.raw[0] == '{');
+        var state: FormState = .{};
+        const st = &state;
+        var it = http.Members.init(w.raw) orelse return invalid(diag, "http: $form must be an object", .{});
+        var first = true;
+        // Each pass takes one member: the bytes of the text bound the passes.
+        var left = w.raw.len;
+        while (it.next()) |m| : (left -= 1) {
+            std.debug.assert(left > 0);
+            const v = m.value;
+            if (v.len > 0 and (v[0] == '{' or v[0] == '[')) return invalid(diag, "http: a $form value must be text, a number, a boolean or null", .{});
+            var ko: Out = .{ .buf = &st.key };
+            http.unescape(m.key, &ko) catch return invalid(diag, "http: a $form name is not a string of at most {d} bytes", .{max_qs_key});
+            if (!first) try out.byte('&');
+            first = false;
+            try writeRfc3986(out, ko.written());
+            try out.byte('=');
+            try encodedLeaf(out, v, w.slot, diag, &st.tmp, "$form");
+        }
+    }
+};
+
+const FormState = struct { key: [max_qs_key]u8 = @splat(0), tmp: Tmp = .{} };
 
 /// Write a body whose length is known only once it is written, then put
 /// the content-length line and the blank line before it. Returns `hdr_end`.
@@ -501,17 +554,28 @@ fn qsLeaf(out: *Out, has_query: *bool, key: []const u8, value: []const u8, slot:
     has_query.* = true;
     try writeRfc3986(out, key);
     try out.byte('=');
+    return encodedLeaf(out, value, slot, diag, tmp, "qs");
+}
+
+/// A value of `qs` or of a form, percent-encoded. A credential template is
+/// filled before the encoding, never after: the value of a credential can
+/// hold `&`, `=`, `+`, `%` or a space.
+fn encodedLeaf(out: *Out, value: []const u8, slot: ?creds.Slot, diag: *Diag, tmp: *Tmp, comptime what: []const u8) Error!void {
+    std.debug.assert(value.len == 0 or (value[0] != '{' and value[0] != '['));
     if (std.mem.eql(u8, value, "null")) return;
     if (value.len == 0 or value[0] != '"') return writeRfc3986(out, value);
     var vo: Out = .{ .buf = &tmp.buf };
-    http.unescape(value, &vo) catch return invalid(diag, "http: a qs value is longer than {d} bytes", .{max_url});
-    if (slot != null and creds.hasTemplate(vo.written())) {
-        var t2: Tmp = undefined;
-        var so: Out = .{ .buf = &t2.buf };
-        templated(vo.written(), slot, .none, &so, diag) catch |e| return if (e == error.NoSpace) invalid(diag, "http: a qs value is too long", .{}) else e;
-        return writeRfc3986(out, so.written());
-    }
+    http.unescape(value, &vo) catch return invalid(diag, "http: a " ++ what ++ " value is longer than {d} bytes", .{max_url});
+    if (slot != null and creds.hasTemplate(vo.written())) return encodedTemplate(out, vo.written(), slot, diag, what);
     return writeRfc3986(out, vo.written());
+}
+
+fn encodedTemplate(out: *Out, text: []const u8, slot: ?creds.Slot, diag: *Diag, comptime what: []const u8) Error!void {
+    var filled: Tmp = .{};
+    var so: Out = .{ .buf = &filled.buf };
+    std.debug.assert(slot != null);
+    templated(text, slot, .none, &so, diag) catch |e| return if (e == error.NoSpace) invalid(diag, "http: a " ++ what ++ " value is too long", .{}) else e;
+    return writeRfc3986(out, so.written());
 }
 
 /// Percent-encoding as the qs library does it (RFC 3986): every byte but
@@ -947,6 +1011,68 @@ test "credential injection and templates" {
     try std.testing.expectEqualStrings("{\"v\":2,\"auth_token\":\"tok\",\"n\":1}", buf[d.hdr_end..d.body_end]);
     const e = try build("{\"method\":\"POST\",\"url\":\"http://h/\",\"credential\":\"bm\"}", &store, null, &buf, &diag);
     try std.testing.expectEqualStrings("{\"auth_token\":\"tok\",\"n\":1}", buf[e.hdr_end..e.body_end]);
+}
+
+test "a credential value is encoded once for the place it goes to" {
+    var arena = std.heap.ArenaAllocator.init(std.testing.allocator);
+    defer arena.deinit();
+    // The value holds each character that has a meaning in a form, a query or JSON text.
+    const store = try creds.Store.parse(arena.allocator(),
+        \\{"s":{"data":{"k":"a&b=c+d%e f\"g\\h","id":"i d","lines":"x\r\ny"}},
+        \\ "q":{"data":{"k":"a&b=c+d%e f\"g\\h"},"inject":{"qs":{"key":"{{$credentials.k}}"},"body":{"secret":"{{$credentials.k}}"}}}}
+    );
+    const enc = "a%26b%3Dc%2Bd%25e%20f%22g%5Ch";
+    var buf: [2048]u8 = undefined;
+    var diag: Diag = .{};
+
+    // A form body: v1 writes it with qs `stringify`, so every byte with a meaning is encoded.
+    const form = try build(
+        \\{"method":"POST","url":"http://h/f","credential":"s","body":{"$form":{"api_key":"{{$credentials.k}}","client_id":"{{$credentials.id}}",
+        \\"mix":"Bearer {{$credentials.k}}","n":1.5,"t":true,"z":null,"a b&":"c d"}}}
+    , &store, null, &buf, &diag);
+    try std.testing.expectEqualStrings("api_key=" ++ enc ++ "&client_id=i%20d&mix=Bearer%20" ++ enc ++ "&n=1.5&t=true&z=&a%20b%26=c%20d", buf[form.hdr_end..form.body_end]);
+    const form_hdrs = buf[form.url_len..form.hdr_end];
+    try std.testing.expect(std.mem.indexOf(u8, form_hdrs, "content-type: application/x-www-form-urlencoded\r\n") != null);
+    try std.testing.expect(std.mem.indexOf(u8, form_hdrs, "content-length: 127\r\n") != null);
+    try std.testing.expectEqual(@as(usize, 127), form.body_end - form.hdr_end);
+    // Without a credential the text of a template stays, encoded as any other text.
+    const plain = try build("{\"method\":\"POST\",\"url\":\"http://h/f\",\"body\":{\"$form\":{\"a\":\"1 2\",\"k\":\"{{$credentials.k}}\"}}}", null, null, &buf, &diag);
+    try std.testing.expectEqualStrings("a=1%202&k=%7B%7B%24credentials.k%7D%7D", buf[plain.hdr_end..plain.body_end]);
+    const empty = try build("{\"method\":\"POST\",\"url\":\"http://h/f\",\"body\":{\"$form\":{}}}", null, null, &buf, &diag);
+    try std.testing.expectEqual(empty.hdr_end, empty.body_end);
+    try std.testing.expect(std.mem.indexOf(u8, buf[empty.url_len..empty.hdr_end], "content-length: 0\r\n") != null);
+    // A header of the call that sets the content type wins over the default.
+    const typed = try build("{\"method\":\"POST\",\"url\":\"http://h/f\",\"headers\":{\"Content-Type\":\"application/x-www-form-urlencoded; charset=utf-8\"},\"body\":{\"$form\":{\"a\":\"b\"}}}", null, null, &buf, &diag);
+    try std.testing.expect(std.mem.indexOf(u8, buf[typed.url_len..typed.hdr_end], "content-type: application/x-www-form-urlencoded\r\n") == null);
+    try std.testing.expectError(error.Invalid, build("{\"method\":\"POST\",\"url\":\"http://h/f\",\"body\":{\"$form\":{\"a\":{\"b\":1}}}}", null, null, &buf, &diag));
+    try std.testing.expectEqualStrings("http: a $form value must be text, a number, a boolean or null", diag.text());
+    try std.testing.expectError(error.Invalid, build("{\"method\":\"POST\",\"url\":\"http://h/f\",\"credential\":\"q\",\"body\":{\"$form\":{\"a\":\"b\"}}}", &store, null, &buf, &diag));
+    // `$form` that is not the first key, or not an object, is JSON data.
+    const data = try build("{\"method\":\"POST\",\"url\":\"http://h/f\",\"body\":{\"a\":1,\"$form\":{\"b\":2}}}", null, null, &buf, &diag);
+    try std.testing.expectEqualStrings("{\"a\":1,\"$form\":{\"b\":2}}", buf[data.hdr_end..data.body_end]);
+
+    // A query value, in both forms of `qs`, and a query value that the credential adds.
+    const repeat = try build("{\"url\":\"http://h/q\",\"credential\":\"s\",\"qs\":{\"k\":\"{{$credentials.k}}\",\"l\":[\"{{$credentials.id}}\"]}}", &store, null, &buf, &diag);
+    try std.testing.expectEqualStrings("http://h/q?k=" ++ enc ++ "&l=i%20d", buf[0..repeat.url_len]);
+    const brackets = try build("{\"url\":\"http://h/q\",\"credential\":\"s\",\"qsFormat\":\"brackets\",\"qs\":{\"o\":{\"k\":\"{{$credentials.k}}\"}}}", &store, null, &buf, &diag);
+    try std.testing.expectEqualStrings("http://h/q?o%5Bk%5D=" ++ enc, buf[0..brackets.url_len]);
+    const added = try build("{\"url\":\"http://h/q\",\"credential\":\"q\"}", &store, null, &buf, &diag);
+    try std.testing.expectEqualStrings("http://h/q?key=" ++ enc, buf[0..added.url_len]);
+
+    // JSON text: a quote and a backslash are escaped, in a value of the call and in a member the credential adds.
+    const json = try build("{\"method\":\"POST\",\"url\":\"http://h/j\",\"credential\":\"q\",\"body\":{\"v\":\"{{$credentials.k}}\"}}", &store, null, &buf, &diag);
+    try std.testing.expectEqualStrings("{\"v\":\"a&b=c+d%e f\\\"g\\\\h\",\"secret\":\"a&b=c+d%e f\\\"g\\\\h\"}", buf[json.hdr_end..json.body_end]);
+    const lines = try build("{\"method\":\"POST\",\"url\":\"http://h/j\",\"credential\":\"s\",\"body\":{\"v\":\"{{$credentials.lines}}\"}}", &store, null, &buf, &diag);
+    try std.testing.expectEqualStrings("{\"v\":\"x\\r\\ny\"}", buf[lines.hdr_end..lines.body_end]);
+
+    // A header value and a string body carry the value as it is: v1 does not encode them.
+    const raw = try build("{\"method\":\"POST\",\"url\":\"http://h/r\",\"credential\":\"s\",\"headers\":{\"X-Key\":\"{{$credentials.k}}\"},\"body\":\"k={{$credentials.k}}\"}", &store, null, &buf, &diag);
+    try std.testing.expect(std.mem.indexOf(u8, buf[raw.url_len..raw.hdr_end], "X-Key: a&b=c+d%e f\"g\\h\r\n") != null);
+    try std.testing.expectEqualStrings("k=a&b=c+d%e f\"g\\h", buf[raw.hdr_end..raw.body_end]);
+    // A line break cannot go into a header: the request is refused.
+    try std.testing.expectError(error.Invalid, build("{\"url\":\"http://h/r\",\"credential\":\"s\",\"headers\":{\"X-Key\":\"{{$credentials.lines}}\"}}", &store, null, &buf, &diag));
+    try std.testing.expectEqualStrings("http: the value of header \"X-Key\" has a line break", diag.text());
+    try std.testing.expectError(error.Invalid, build("{\"url\":\"http://h/r\",\"credential\":\"s\",\"basicAuth\":{\"user\":\"u\",\"password\":\"p\"},\"headers\":{\"X-Key\":\"a{{$credentials.lines}}\"}}", &store, null, &buf, &diag));
 }
 
 test "a credentials file that wfc credentials wrote" {

@@ -236,7 +236,9 @@ function fillDeep(value: unknown, data: Record<string, unknown>): unknown {
  * Applies a credential to an `http` effect as the runtime does (spec section
  * 7): it fills templates in the URL, headers, query and body strings, sets
  * the inject headers, adds the inject query parameters and body fields, and
- * sets basic auth.
+ * sets basic auth. The values stay plain text: the runtime fills a template
+ * before it encodes a query value or a `$form` value, so the receiver reads
+ * the value of the credential as it is.
  */
 export function applyCredential(
 	request: {
@@ -264,6 +266,8 @@ export function applyCredential(
 		headers[k] = v;
 	}
 	Object.assign(qs, inject?.qs ?? {});
+	if (inject?.body && isRecord(body) && isRecord(body.$form))
+		throw new Error('a credential that adds body members cannot go with a form body');
 	if (inject?.body) body = { ...(isRecord(body) ? body : {}), ...inject.body };
 	const raw: RawRequest = {
 		method: request.method,
