@@ -17,7 +17,7 @@ export function checkEngineV2Eligibility(
 		...findSettingsReasons(workflow.settings ?? {}),
 		...findTriggerIdentityReasons(workflow.nodes),
 		...findTriggerWaitReasons(workflow.nodes),
-		...findNodeTypeReasons(workflow.nodes),
+		...findNodeTypeReasons(workflow.nodes, workflow.connections),
 	];
 	return { eligible: reasons.every((reason) => reason.severity !== 'blocking'), reasons };
 }

@@ -1,4 +1,4 @@
-import type { INode } from 'n8n-workflow';
+import type { IConnections, INode } from 'n8n-workflow';
 
 import { checkEngineV2Eligibility, type EngineV2Reason } from '../index';
 import { NODE_TYPE_DENYLIST } from '../node-type-denylist';
@@ -24,10 +24,15 @@ function node(type: string, typeVersion = 1, extra: Partial<INode> = {}): INode 
 	};
 }
 
+const main = (...targets: string[]) => ({
+	main: [targets.map((target) => ({ node: target, type: 'main' as const, index: 0 }))],
+});
+
+/** The manual trigger feeds every node, so each node runs. */
 function check(nodes: INode[]) {
 	return checkEngineV2Eligibility({
 		nodes: [manualTrigger, ...nodes],
-		connections: {},
+		connections: { [manualTrigger.name]: main(...nodes.map(({ name }) => name)) },
 		settings: {},
 	});
 }
@@ -79,6 +84,50 @@ describe('node type rule', () => {
 		['an allowed core node', node('n8n-nodes-base.set', 3.4)],
 	])('does not report %s', (_, allowed) => {
 		expect(check([allowed])).toEqual({ eligible: true, reasons: [] });
+	});
+
+	// Engine v2 runs only the live triggers and the nodes they reach over main connections.
+	it.each<{ case: string; nodes: INode[]; connections: IConnections; eligible: boolean }>([
+		{
+			case: 'ignores a denylisted node that nothing connects to',
+			nodes: [manualTrigger, node('n8n-nodes-base.executionData')],
+			connections: {},
+			eligible: true,
+		},
+		{
+			case: 'ignores a denylisted node that only a disabled trigger reaches',
+			nodes: [
+				manualTrigger,
+				node('@n8n/n8n-nodes-langchain.chatTrigger', 1.1, { name: 'Chat', disabled: true }),
+				node('@n8n/n8n-nodes-langchain.agent', 3),
+			],
+			connections: { Chat: main('Node') },
+			eligible: true,
+		},
+		{
+			case: 'reports a denylisted node that a trigger reaches through a disabled node',
+			nodes: [
+				manualTrigger,
+				node('n8n-nodes-base.set', 3.4, { name: 'Set', disabled: true }),
+				node('n8n-nodes-base.form'),
+			],
+			connections: { [manualTrigger.name]: main('Set'), Set: main('Node') },
+			eligible: false,
+		},
+		{
+			case: 'reports a denylisted trigger that nothing connects to',
+			nodes: [manualTrigger, node('n8n-nodes-base.formTrigger', 2.6)],
+			connections: {},
+			eligible: false,
+		},
+		{
+			case: 'reports every node when the workflow has no live trigger',
+			nodes: [node('n8n-nodes-base.executionData')],
+			connections: {},
+			eligible: false,
+		},
+	])('$case', ({ nodes, connections, eligible }) => {
+		expect(checkEngineV2Eligibility({ nodes, connections, settings: {} }).eligible).toBe(eligible);
 	});
 
 	it('reports every denylisted node, not only the first', () => {
