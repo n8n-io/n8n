@@ -746,6 +746,9 @@ file at start (`wfrt serve --credentials <file>`,
   and the response. Without it the request gets the origin's `timeout-ms`
   (an `--egress-origin` rule) or `--egress-timeout-ms` (300 000). A request
   that times out fails with `http: the request timed out after <n> ms`.
+* `basicAuth: { user, password }` writes `Authorization: Basic …` for this call. The values are
+  strings and can hold credential templates, so a credential field goes into the header and
+  workflow code does not read it. It replaces the basic auth that the credential injects.
 * `qsFormat` sets how `qs` goes into the URL:
   * `"repeat"` (the default): one pair per member; an array repeats the key
     (`a=1&a=2`); an object is sent as JSON text; values are encoded as Node.js

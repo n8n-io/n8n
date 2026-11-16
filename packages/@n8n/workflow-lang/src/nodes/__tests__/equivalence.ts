@@ -212,6 +212,7 @@ export function applyCredential(
 		qs?: unknown;
 		body?: unknown;
 		qsFormat?: string;
+		basicAuth?: unknown;
 	},
 	inject: InjectSpec | undefined,
 	data: Record<string, unknown>,
@@ -239,6 +240,13 @@ export function applyCredential(
 		raw.auth = {
 			username: fill(inject.basicAuth.user, data),
 			password: fill(inject.basicAuth.password, data),
+		};
+	}
+	// The basic auth of the call (`HttpCall.basicAuth`) replaces the basic auth of the credential.
+	if (isRecord(request.basicAuth)) {
+		raw.auth = {
+			username: fill(String(request.basicAuth.user ?? ''), data),
+			password: fill(String(request.basicAuth.password ?? ''), data),
 		};
 	}
 	return raw;

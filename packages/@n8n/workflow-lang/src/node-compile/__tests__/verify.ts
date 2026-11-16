@@ -93,14 +93,35 @@ export default workflow({
 					headers: args.headers,
 					qs: args.qs,
 					body: args.body,
+					basicAuth: args.basicAuth,
 				},
 				inject,
 				data,
 			),
 		);
+		const type = request.headers['content-type'] ?? '';
+		if (type.startsWith('application/x-www-form-urlencoded') && typeof request.body === 'string') {
+			const { 'content-type': _type, ...headers } = request.headers;
+			return {
+				...request,
+				headers,
+				body: { $form: Object.fromEntries(new URLSearchParams(request.body)) },
+			};
+		}
 		return request;
 	});
-	const expected = v1.requests.map(({ qsFormat: _, ...r }) => r);
+	const expected = v1.requests.map(({ qsFormat: _, ...r }) => {
+		const form = isRecord(r.body) ? r.body.$form : undefined;
+		if (!isRecord(form)) return r;
+		const text: Record<string, string> = {};
+		for (const [key, value] of Object.entries(form)) {
+			if (value !== undefined)
+				text[key] =
+					value === null ? '' : typeof value === 'object' ? JSON.stringify(value) : String(value);
+		}
+		const { 'content-type': _type, ...headers } = r.headers;
+		return { ...r, headers, body: { $form: text } };
+	});
 	if (JSON.stringify(requests) !== JSON.stringify(expected)) {
 		if (requests.length !== expected.length) {
 			return `the requests differ: count ${requests.length} / ${expected.length}`;

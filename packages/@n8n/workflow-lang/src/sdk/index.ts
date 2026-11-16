@@ -219,6 +219,12 @@ export interface HttpCall extends StepOptions {
 	qs?: Record<string, unknown>;
 	body?: unknown;
 	credential?: string;
+	/**
+	 * Basic auth of this call. The values can hold credential templates
+	 * (`{{$credentials.user}}`); the runtime fills them and writes the header. It replaces
+	 * the basic auth that the credential injects.
+	 */
+	basicAuth?: { user: string; password: string };
 	idempotent?: boolean;
 	/** Total time limit of the request in ms. The runtime default is 300,000. */
 	timeoutMs?: number;
@@ -374,6 +380,8 @@ export interface HttpRequest {
 	multipart?: MultipartPart[];
 	/** How `qs` goes into the URL (spec 7.1): `repeat` (the default) or `brackets`. */
 	qsFormat?: 'repeat' | 'brackets';
+	/** Basic auth of this call (spec 7.1). The values can hold credential templates. */
+	basicAuth?: { user: string; password: string };
 }
 
 /** A part of a multipart body: a text field, or a file (`binary`, n8n's binary form). */

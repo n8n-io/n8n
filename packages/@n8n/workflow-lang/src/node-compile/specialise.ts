@@ -39,12 +39,17 @@ export interface SpecialiseResult {
 const f = ts.factory;
 
 const REQUEST_SOURCE = `async function __request(options, wrapped) {
+	const auth = options.auth;
+	const form = options.form;
+	const headers = __assign({}, __plain(options.headers ?? {}));
+	if (form !== undefined && form !== null) headers['content-type'] = 'application/x-www-form-urlencoded';
 	const response = await ctx.http({
 		method: options.method ?? 'GET',
 		url: options.uri ?? options.url,
-		headers: __plain(options.headers ?? {}),
+		headers,
 		qs: __plain(options.qs ?? {}),
-		body: __plain(options.body),
+		body: form !== undefined && form !== null ? __form(__plain(form)) : __plain(options.body),
+		basicAuth: auth ? { user: auth.user ?? auth.username ?? '', password: auth.pass ?? auth.password ?? '' } : undefined,
 		credential,
 	});
 	if (response.status >= 400) {
@@ -112,6 +117,23 @@ const HELPERS: Record<string, string> = {
 	if (code.charAt(0) === '4') return new Error('Your request is invalid or could not be processed by the service');
 	if (code.charAt(0) === '5') return new Error('The service failed to process your request');
 	return new Error(text);
+}`,
+	__formText: `function __formText(value: any): string {
+	return encodeURIComponent(String(value))
+		.replaceAll('!', '%21')
+		.replaceAll("'", '%27')
+		.replaceAll('(', '%28')
+		.replaceAll(')', '%29')
+		.replaceAll('*', '%2A');
+}`,
+	__form: `function __form(value: any): string {
+	const parts: string[] = [];
+	for (const [key, member] of Object.entries(value)) {
+		if (member === undefined) continue;
+		if (member !== null && typeof member === 'object') throw new Error('a form body with a nested value has no compiled form');
+		parts.push(__formText(key) + '=' + (member === null ? '' : __formText(member)));
+	}
+	return parts.join('&');
 }`,
 	__plain: '',
 	__wrap: `function __wrap(items: any): any {
@@ -785,7 +807,8 @@ class Specialiser {
 							ts.isPropertyAccessExpression(target) &&
 							(target.name.text === 'request' || target.name.text === 'httpRequest')
 						);
-					this.helpers.add('__apiError');
+					for (const used of ['__apiError', '__assign', '__form', '__formText'])
+						this.helpers.add(used);
 					return this.helper('__request', options, wrapped ? f.createTrue() : f.createFalse());
 				}
 

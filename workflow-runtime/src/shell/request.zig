@@ -187,7 +187,12 @@ fn buildWith(args: []const u8, store: ?*const creds.Store, idem_key: ?[]const u8
             }
         }
         try defaultHeaders(s, fa.headers, &have, &out, diag);
-        if (s.basic) try basicAuth(s, slot, &out, diag);
+        // The basic auth of the call replaces the basic auth of the credential.
+        const call_auth = if (fa.basic_auth) |raw| !eq(raw, "null") else false;
+        if (s.basic and !call_auth) try basicAuth(s, slot, &out, diag);
+    }
+    if (fa.basic_auth) |raw| {
+        if (!eq(raw, "null")) try requestBasicAuth(raw, slot, &out, diag);
     }
     if (!have.ua) try out.put("user-agent: n8n-wfrt\r\n");
     if (!have.accept) try out.put("accept: application/json,text/*;q=0.9,*/*;q=0.8\r\n");
@@ -525,6 +530,7 @@ const Args = struct {
     body: ?[]const u8 = null,
     multipart: ?[]const u8 = null,
     qs_format: ?[]const u8 = null,
+    basic_auth: ?[]const u8 = null,
 };
 
 fn readArgs(args: []const u8) Args {
@@ -534,7 +540,7 @@ fn readArgs(args: []const u8) Args {
     while (it.next()) |mem| : (guard += 1) {
         if (guard > args.len) break;
         const k = mem.key;
-        const slot: *?[]const u8 = if (eq(k, "\"method\"")) &a.method else if (eq(k, "\"credential\"")) &a.credential else if (eq(k, "\"timeoutMs\"")) &a.timeout_ms else if (eq(k, "\"url\"")) &a.url else if (eq(k, "\"qs\"")) &a.qs else if (eq(k, "\"headers\"")) &a.headers else if (eq(k, "\"body\"")) &a.body else if (eq(k, "\"multipart\"")) &a.multipart else if (eq(k, "\"qsFormat\"")) &a.qs_format else continue;
+        const slot: *?[]const u8 = if (eq(k, "\"method\"")) &a.method else if (eq(k, "\"credential\"")) &a.credential else if (eq(k, "\"timeoutMs\"")) &a.timeout_ms else if (eq(k, "\"url\"")) &a.url else if (eq(k, "\"qs\"")) &a.qs else if (eq(k, "\"headers\"")) &a.headers else if (eq(k, "\"body\"")) &a.body else if (eq(k, "\"multipart\"")) &a.multipart else if (eq(k, "\"qsFormat\"")) &a.qs_format else if (eq(k, "\"basicAuth\"")) &a.basic_auth else continue;
         if (slot.* == null) slot.* = mem.value;
     }
     return a;
@@ -673,6 +679,36 @@ fn headerValueWith(raw: []const u8, name: []const u8, slot: ?creds.Slot, out: *O
     var vo: Out = .{ .buf = &vt.buf };
     http.unescape(raw, &vo) catch return invalid(diag, "http: the value of header \"{s}\" is too long", .{name[0..@min(name.len, 64)]});
     try templated(vo.written(), slot, .none, out, diag);
+}
+
+/// `basicAuth: { user, password }` of the call. The values are templates, so a
+/// credential field goes into the header and workflow code never reads it.
+fn requestBasicAuth(raw: []const u8, slot: ?creds.Slot, out: *Out, diag: *Diag) Error!void {
+    var user: Tmp = .{};
+    var password: Tmp = .{};
+    var pair: Tmp = .{};
+    var uo: Out = .{ .buf = &user.buf };
+    var po: Out = .{ .buf = &password.buf };
+    var it = http.Members.init(raw) orelse return invalid(diag, "http: basicAuth must be an object", .{});
+    var guard: usize = 0;
+    while (it.next()) |mem| : (guard += 1) {
+        if (guard > raw.len) break;
+        const target: *Out = if (eq(mem.key, "\"user\"")) &uo else if (eq(mem.key, "\"password\"")) &po else continue;
+        target.len = 0;
+        http.unescape(mem.value, target) catch return invalid(diag, "http: a basicAuth value must be a string of at most {d} bytes", .{max_url});
+    }
+    var joined: Out = .{ .buf = &pair.buf };
+    try templated(uo.written(), slot, .none, &joined, diag);
+    joined.byte(':') catch return invalid(diag, "http: basic auth values are too long", .{});
+    try templated(po.written(), slot, .none, &joined, diag);
+    std.debug.assert(joined.len <= pair.buf.len);
+    const enc_len = std.base64.standard.Encoder.calcSize(joined.len);
+    try out.put("authorization: Basic ");
+    if (out.len + enc_len > out.buf.len) return error.NoSpace;
+    const written = std.base64.standard.Encoder.encode(out.buf[out.len..][0..enc_len], joined.written());
+    std.debug.assert(written.len == enc_len);
+    out.len += enc_len;
+    try out.put("\r\n");
 }
 
 fn basicAuth(s: creds.Slot, slot: ?creds.Slot, out: *Out, diag: *Diag) Error!void {
@@ -1081,4 +1117,26 @@ test "qs brackets form: byte-equal to the qs library (n8n's options)" {
     for (0..max_qs_depth + 1) |_| try d.byte('}');
     try d.byte('}');
     try std.testing.expectError(error.Invalid, build(d.written(), null, null, &buf, &diag));
+}
+
+test "basic auth of the call: templates from the credential, and plain values" {
+    var arena = std.heap.ArenaAllocator.init(std.testing.allocator);
+    defer arena.deinit();
+    const store = try creds.Store.parse(arena.allocator(),
+        \\{"api":{"data":{"user":"u","pw":"p"},"inject":{}},
+        \\ "basic":{"data":{"user":"x","pw":"y"},"inject":{"basicAuth":{"user":"{{$credentials.user}}","password":"{{$credentials.pw}}"}}}}
+    );
+    var buf: [2048]u8 = undefined;
+    var diag: Diag = .{};
+    const a = try build(
+        \\{"url":"http://h/","credential":"api","basicAuth":{"user":"{{$credentials.user}}","password":"{{$credentials.pw}}"}}
+    , &store, null, &buf, &diag);
+    try std.testing.expect(std.mem.indexOf(u8, buf[a.url_len..a.hdr_end], "authorization: Basic dTpw\r\n") != null);
+    const b = try build("{\"url\":\"http://h/\",\"basicAuth\":{\"user\":\"k\",\"password\":\"\"}}", null, null, &buf, &diag);
+    try std.testing.expect(std.mem.indexOf(u8, buf[b.url_len..b.hdr_end], "authorization: Basic azo=\r\n") != null);
+    // The basic auth of the call replaces the basic auth of the credential.
+    const c = try build("{\"url\":\"http://h/\",\"credential\":\"basic\",\"basicAuth\":{\"user\":\"k\",\"password\":\"\"}}", &store, null, &buf, &diag);
+    const headers = buf[c.url_len..c.hdr_end];
+    try std.testing.expect(std.mem.indexOf(u8, headers, "authorization: Basic azo=\r\n") != null);
+    try std.testing.expectEqual(@as(usize, 1), std.mem.count(u8, headers, "authorization: Basic"));
 }
