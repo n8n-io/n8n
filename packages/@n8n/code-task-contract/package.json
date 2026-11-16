@@ -25,7 +25,9 @@
   ],
   "dependencies": {
     "@n8n/errors": "workspace:*",
-    "@n8n/utils": "workspace:*",
+    "@n8n/utils": "workspace:*"
+  },
+  "peerDependencies": {
     "zod": "catalog:"
   },
   "devDependencies": {
@@ -38,7 +40,8 @@
     "oxlint-tsgolint": "catalog:",
     "typescript": "catalog:typescript",
     "vite": "catalog:",
-    "vitest": "catalog:"
+    "vitest": "catalog:",
+    "zod": "catalog:"
   },
   "license": "LicenseRef-n8n-sustainable-use"
 }

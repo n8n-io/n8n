@@ -1,4 +1,4 @@
-import { createRunExecutionData, deepCopy } from 'n8n-workflow';
+import { createRunExecutionData } from 'n8n-workflow';
 
 import {
 	CODE_TASK_CONTRACT_VERSION,
@@ -62,32 +62,44 @@ function createTaskInput(): CodeTaskInput {
 	};
 }
 
-/** Simulates writing the file on one side and reading it on the other side. */
-const roundTrip = (value: object): unknown => deepCopy(value);
+/**
+ * Writes the value as a JSON file and reads it back, as n8n and the runtime do.
+ * Not a copy: values that JSON cannot hold, such as `undefined`, are dropped.
+ */
+function toFile(value: object): unknown {
+	const json = JSON.stringify(value);
+	return JSON.parse(json);
+}
 
 describe('parseCodeTaskInput', () => {
 	it('should accept a valid task input', () => {
 		const input = createTaskInput();
 
-		const parsed = parseCodeTaskInput(roundTrip(input));
+		const file = toFile(input);
 
-		expect(parsed).toEqual({ ok: true, result: input });
+		const parsed = parseCodeTaskInput(file);
+
+		expect(parsed).toStrictEqual({ ok: true, result: file });
 	});
 
 	it('should accept a task input with a chunk', () => {
 		const input = { ...createTaskInput(), chunk: { startIndex: 10, count: 5 } };
 
-		const parsed = parseCodeTaskInput(roundTrip(input));
+		const file = toFile(input);
 
-		expect(parsed).toEqual({ ok: true, result: input });
+		const parsed = parseCodeTaskInput(file);
+
+		expect(parsed).toStrictEqual({ ok: true, result: file });
 	});
 
 	it('should keep the additional properties for the user code', () => {
 		const input = { ...createTaskInput(), additionalProperties: { query: { text: 'hello' } } };
 
-		const parsed = parseCodeTaskInput(roundTrip(input));
+		const file = toFile(input);
 
-		expect(parsed).toEqual({ ok: true, result: input });
+		const parsed = parseCodeTaskInput(file);
+
+		expect(parsed).toStrictEqual({ ok: true, result: file });
 	});
 
 	it('should keep the nested n8n data as it is', () => {
@@ -99,9 +111,11 @@ describe('parseCodeTaskInput', () => {
 			},
 		});
 
-		const parsed = parseCodeTaskInput(roundTrip(input));
+		const file = toFile(input);
 
-		expect(parsed.ok && parsed.result.data.runExecutionData).toEqual(input.data.runExecutionData);
+		const parsed = parseCodeTaskInput(file);
+
+		expect(parsed).toStrictEqual({ ok: true, result: file });
 	});
 
 	it.each([undefined, 0, 2, '1'])('should reject version %j', (version) => {
@@ -162,9 +176,11 @@ describe('parseCodeTaskResult', () => {
 			console: [["'hello'", '{"a":1}']],
 		};
 
-		const parsed = parseCodeTaskResult(roundTrip(result));
+		const file = toFile(result);
 
-		expect(parsed).toEqual({ ok: true, result });
+		const parsed = parseCodeTaskResult(file);
+
+		expect(parsed).toStrictEqual({ ok: true, result: file });
 	});
 
 	it('should keep the custom data and the static data of a success result', () => {
@@ -177,9 +193,11 @@ describe('parseCodeTaskResult', () => {
 			staticData: { global: { cursor: 42 } },
 		};
 
-		const parsed = parseCodeTaskResult(roundTrip(result));
+		const file = toFile(result);
 
-		expect(parsed).toEqual({ ok: true, result });
+		const parsed = parseCodeTaskResult(file);
+
+		expect(parsed).toStrictEqual({ ok: true, result: file });
 	});
 
 	it('should reject custom data with values that are not strings', () => {
@@ -224,9 +242,11 @@ describe('parseCodeTaskResult', () => {
 			console: [],
 		};
 
-		const parsed = parseCodeTaskResult(roundTrip(result));
+		const file = toFile(result);
 
-		expect(parsed).toEqual({ ok: true, result });
+		const parsed = parseCodeTaskResult(file);
+
+		expect(parsed).toStrictEqual({ ok: true, result: file });
 	});
 
 	it('should accept a console with the max entries and the truncation entry', () => {
