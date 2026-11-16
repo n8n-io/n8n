@@ -20,7 +20,7 @@ import { createComponentRenderer } from '@/__tests__/render';
 import { setupServer } from '@/__tests__/server';
 import { defaultNodeDescriptions, mockNodes } from '@/__tests__/mocks';
 import { useI18n } from '@n8n/i18n';
-import { createRunExecutionData } from 'n8n-workflow';
+import { NodeConnectionTypes, createRunExecutionData } from 'n8n-workflow';
 
 vi.mock('vue-router', () => {
 	return {
@@ -204,6 +204,61 @@ describe('RunDataJsonActions', () => {
 				2,
 			),
 		);
+	});
+
+	it('should copy the current AI connection output', async () => {
+		const { pinia, activeNode } = await createPiniaWithActiveNode();
+		const aiData = [{ json: { memory: 'value' } }];
+		const execution = createRunExecutionData({
+			resultData: {
+				runData: {
+					[activeNode!.name]: [
+						{
+							startTime: 0,
+							executionIndex: 0,
+							source: [],
+							data: { [NodeConnectionTypes.AiMemory]: [aiData] },
+						},
+					],
+				},
+			},
+		});
+		const renderComponent = createComponentRenderer(RunDataJsonActions, {
+			props: {
+				node: activeNode ?? undefined,
+				paneType: 'output',
+				pushRef: 'ref',
+				distanceFromActive: 0,
+				selectedJsonPath: nonExistingJsonPath,
+				jsonData: [{ memory: 'value' }],
+				outputIndex: 0,
+				runIndex: 0,
+				execution,
+				connectionType: NodeConnectionTypes.AiMemory,
+			},
+			global: {
+				provide: {
+					[WorkflowIdKey as unknown as string]: computed(() => '1'),
+				},
+				mocks: {
+					$route: {
+						name: VIEWS.WORKFLOW,
+					},
+				},
+			},
+		});
+
+		const { getByTestId } = renderComponent({
+			pinia,
+		});
+
+		await waitFor(() => expect(getByTestId('ndv-json-actions')).toBeInTheDocument());
+
+		const button = within(getByTestId('ndv-json-actions')).getByRole('button');
+
+		await fireEvent.click(button);
+
+		expect(copy).toHaveBeenCalledWith(JSON.stringify([{ memory: 'value' }], null, 2));
 	});
 
 	it('should copy unselected JSON output from selected previous run on click', async () => {

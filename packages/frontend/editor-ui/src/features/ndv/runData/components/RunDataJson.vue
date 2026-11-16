@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, defineAsyncComponent, ref } from 'vue';
 import VueJsonPretty from 'vue-json-pretty';
-import type { INodeExecutionData, IRunExecutionData } from 'n8n-workflow';
+import type { INodeExecutionData, IRunExecutionData, NodeConnectionType } from 'n8n-workflow';
 import Draggable from '@/app/components/Draggable.vue';
 import { executionDataToJson } from '@/app/utils/nodeTypesUtils';
 import { isString } from '@/app/utils/typeGuards';
@@ -37,6 +37,7 @@ const props = withDefaults(
 		search: string | undefined;
 		compact?: boolean;
 		execution?: IRunExecutionData;
+		connectionType?: NodeConnectionType;
 	}>(),
 	{
 		editMode: () => ({}),
@@ -152,6 +153,7 @@ const getListItemName = (path: string) => {
 				:output-index="outputIndex"
 				:run-index="runIndex"
 				:execution="execution"
+				:connection-type="connectionType"
 			/>
 		</Suspense>
 		<Draggable
