@@ -5,6 +5,8 @@
  */
 import { LockService, type Logger } from '@n8n/backend-common';
 import { Container } from '@n8n/di';
+import nock from 'nock';
+import { generateKeyPairSync } from 'node:crypto';
 import { createServer, type Server } from 'node:http';
 import type { AddressInfo } from 'node:net';
 import type { INodeType, IWorkflowExecuteAdditionalData } from 'n8n-workflow';
@@ -16,7 +18,7 @@ import type { CredentialsHelper } from '@/credentials-helper';
 import type { NodeTypes } from '@/node-types';
 
 import type { CredentialSlotBinding } from '../compiled-engine.types';
-import { CompiledEngineCredentials } from '../compiled-engine-credentials';
+import { CompiledEngineCredentials, earliestMintExpiry } from '../compiled-engine-credentials';
 
 vi.mock('@/workflow-execute-additional-data', () => ({ getBase: vi.fn() }));
 
@@ -119,6 +121,97 @@ describe('CompiledEngineCredentials', () => {
 		expect(data.oauthTokenData).toMatchObject({
 			access_token: 'new',
 			refresh_token: 'r2',
+		});
+	});
+
+	describe('minted tokens', () => {
+		const serviceAccount: CredentialSlotBinding = {
+			slot: 'sa',
+			type: 'googleApi',
+			credentialId: 'cred2',
+			credentialName: 'Service account',
+		};
+		const docsScopes = [
+			'https://www.googleapis.com/auth/documents',
+			'https://www.googleapis.com/auth/drive',
+			'https://www.googleapis.com/auth/drive.file',
+		];
+		const mints = {
+			sa: [
+				{
+					name: 'm1',
+					kind: 'google-service-account' as const,
+					service: 'docs',
+					scopes: docsScopes,
+				},
+			],
+		};
+		const { privateKey } = generateKeyPairSync('rsa', {
+			modulusLength: 2048,
+			privateKeyEncoding: { type: 'pkcs8', format: 'pem' },
+			publicKeyEncoding: { type: 'spki', format: 'pem' },
+		});
+
+		beforeEach(() => {
+			helper.getDecrypted.mockResolvedValue({
+				email: 'robot@project.test',
+				privateKey,
+				inpersonate: false,
+				delegatedEmail: '',
+			});
+			additionalData.hooks = undefined;
+		});
+
+		afterEach(() => {
+			nock.cleanAll();
+		});
+
+		it('signs and exchanges the token in n8n, and records when it expires', async () => {
+			let form = '';
+			nock('https://oauth2.googleapis.com')
+				.post('/token', (body: unknown) => {
+					form = typeof body === 'string' ? body : new URLSearchParams(body as never).toString();
+					return true;
+				})
+				.reply(200, { access_token: 'minted', expires_in: 3599, token_type: 'Bearer' });
+			const before = Date.now();
+
+			const document = await credentials().buildDocument('wf1', [serviceAccount], {}, mints);
+
+			const entry = document.sa as { data: Record<string, unknown> };
+			const minted = entry.data.n8nMinted as Record<
+				string,
+				{ access_token: string; expires_at: number }
+			>;
+			expect(minted.m1.access_token).toBe('minted');
+			expect(minted.m1.expires_at).toBeGreaterThanOrEqual(before + 3599_000);
+			expect(earliestMintExpiry(document)).toBe(minted.m1.expires_at);
+			const assertion = new URLSearchParams(form).get('assertion') ?? '';
+			const claims = JSON.parse(
+				Buffer.from(assertion.split('.')[1], 'base64url').toString('utf8'),
+			) as Record<string, unknown>;
+			expect(claims).toMatchObject({ iss: 'robot@project.test', scope: docsScopes.join(' ') });
+		});
+
+		it('leaves the slot out when the exchange fails, and keeps the key out of the log', async () => {
+			nock('https://oauth2.googleapis.com').post('/token').reply(400, { error: 'invalid_grant' });
+
+			const document = await credentials().buildDocument('wf1', [serviceAccount], {}, mints);
+
+			expect(document).toEqual({});
+			expect(earliestMintExpiry(document)).toBeUndefined();
+			expect(logger.warn).toHaveBeenCalledTimes(1);
+			expect(JSON.stringify(logger.warn.mock.calls)).toContain('invalid_grant');
+			expect(JSON.stringify(logger.warn.mock.calls)).not.toContain('PRIVATE KEY');
+		});
+
+		it('does not make a token when the scopes are not the scopes of n8n', async () => {
+			const other = { sa: [{ ...mints.sa[0], scopes: ['https://scopes.test/other'] }] };
+
+			const document = await credentials().buildDocument('wf1', [serviceAccount], {}, other);
+
+			expect(document).toEqual({});
+			expect(logger.warn).toHaveBeenCalledTimes(1);
 		});
 	});
 });

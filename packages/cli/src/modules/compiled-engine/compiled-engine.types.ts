@@ -32,8 +32,23 @@ export interface CompiledArtifact {
 	 * each one from the credential data when it builds the credentials document.
 	 */
 	derivations?: Record<string, Array<{ name: string; code: string }>>;
+	/**
+	 * Tokens that compiled node code needs and that only n8n can make, by slot: n8n makes each
+	 * one from the credential data when it builds the credentials document.
+	 */
+	mints?: Record<string, CredentialMintRequest[]>;
 	triggers: unknown[];
 	compiledAt: string;
+}
+
+/** A token that n8n makes from a credential for compiled node code. */
+export interface CredentialMintRequest {
+	/** The key of the token under `data.n8nMinted` in the credentials document. */
+	name: string;
+	kind: 'google-service-account';
+	/** The key of the scopes in the scopes table of the Google nodes. */
+	service: string;
+	scopes: string[];
 }
 
 // Events of `GET /_admin/events` (spec section 9.2).
