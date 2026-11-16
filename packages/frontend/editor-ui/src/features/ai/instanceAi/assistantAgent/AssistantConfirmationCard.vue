@@ -16,13 +16,14 @@ import {
 } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { useRootStore } from '@n8n/stores/useRootStore';
-import { computed, inject, nextTick, onBeforeUnmount, ref, watch } from 'vue';
+import { computed, inject, nextTick, onBeforeUnmount, provide, ref, watch } from 'vue';
 
 import { useApprovalCardLabels } from '@/app/composables/useApprovalCardLabels';
 import { usePushConnectionStore } from '@/app/stores/pushConnection.store';
 
 import { buildAlwaysAllowKey } from '../alwaysAllow';
 import { formatApprovalDetails, formatApprovalTitle } from '../approvalDetails';
+import { ASSISTANT_RUNTIME } from '../assistantRuntime';
 import {
 	approvalInputs,
 	appBlueprintInputs,
@@ -66,6 +67,8 @@ const approvalLabels = useApprovalCardLabels();
 const telemetry = useTelemetry();
 const rootStore = useRootStore();
 const threadId = inject(ASSISTANT_AGENT_THREAD_ID, '');
+// The shared cards inside track their own input. Every agents thread renders them here.
+provide(ASSISTANT_RUNTIME, 'agents');
 const submitted = ref(false);
 // Bumped when the chat refuses an answer. The inner cards remount, so they drop
 // their own answered state too.
@@ -366,7 +369,6 @@ function onApprovalSelect(key: string) {
 			:workflow-id="input.workflowId"
 			:thread-id="threadId"
 			:input-thread-id="inputThreadId"
-			runtime="agents"
 			:outcome="workflowSetupOutcome"
 			@apply="onWorkflowSetupApply"
 			@defer="onWorkflowSetupDefer"
@@ -380,7 +382,6 @@ function onApprovalSelect(key: string) {
 			:require-user-selection="input.requireUserSelection"
 			:thread-id="threadId"
 			:input-thread-id="inputThreadId"
-			runtime="agents"
 			@decide="(body) => submit(body)"
 		/>
 		<GatewayResourceDecision
@@ -390,7 +391,6 @@ function onApprovalSelect(key: string) {
 			:options="input.resourceDecision.options"
 			:thread-id="threadId"
 			:input-thread-id="inputThreadId"
-			runtime="agents"
 			@decide="(decision) => submit({ kind: 'resourceDecision', resourceDecision: decision })"
 		/>
 		<InstanceAiChannelSetup

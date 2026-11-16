@@ -23,13 +23,13 @@ import { N8nActionDropdown, N8nButton, N8nCard, N8nIcon, N8nText } from '@n8n/de
 import type { ActionDropdownItem } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { useRootStore } from '@n8n/stores/useRootStore';
-import type { AssistantRuntime } from '@n8n/telemetry';
 import { v4 as uuidv4 } from 'uuid';
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import { useTelemetry } from '@n8n/composables/useTelemetry';
 import { useInstanceAiSettingsStore } from '../instanceAiSettings.store';
 import { useInstanceAiCredentialHelp } from '../composables/useInstanceAiCredentialHelp';
 import { useBrowserUseConnection } from '../composables/useBrowserUseConnection';
+import { useAssistantRuntime } from '../assistantRuntime';
 import { AI_GATEWAY_MANAGED_TAG, INSTANCE_AI_BROWSER_CREDENTIAL_SETUP_ENABLED } from '../constants';
 import ConfirmationFooter from './ConfirmationFooter.vue';
 
@@ -45,8 +45,6 @@ const props = defineProps<{
 	threadId: string;
 	/** Joins the telemetry with the "Builder asked for input" event of this card. */
 	inputThreadId?: string;
-	/** The Assistant runtime that showed the card. */
-	runtime: AssistantRuntime;
 	/**
 	 * Raised by the parent when it could not send the answer. The card shows the
 	 * form again, with the user's selections, so the user can try again.
@@ -62,6 +60,7 @@ const emit = defineEmits<{
 const i18n = useI18n();
 const telemetry = useTelemetry();
 const rootStore = useRootStore();
+const runtime = useAssistantRuntime();
 const credentialsStore = useCredentialsStore();
 const uiStore = useUIStore();
 const { ensureConnected: ensureBrowserConnected } = useBrowserUseConnection();
@@ -531,10 +530,10 @@ function trackCredentialInput() {
 		input_thread_id: props.inputThreadId ?? '',
 		instance_id: rootStore.instanceId,
 		type: 'credential-setup',
-		runtime: props.runtime,
 		provided_inputs: provided,
 		skipped_inputs: skipped,
 		num_tasks: props.credentialRequests.length,
+		runtime,
 	});
 }
 

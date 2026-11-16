@@ -36,10 +36,13 @@ import type { ToolConnectionStatus } from '@/features/shared/toolsConnection/typ
 import { deriveInstanceAiConfiguration } from './instanceAiConfiguration';
 import { isBrowserUseSupportedOnDevice } from './utils/browserUseSupport';
 import { useInstanceAiSetupPanelExperiment } from '@/experiments/instanceAiSetupPanel/useInstanceAiSetupPanelExperiment';
+import { INSTANCE_AI_ASSISTANT_AGENT_EXPERIMENT } from '@/app/constants/experiments';
+import { usePostHog } from '@/app/stores/posthog.store';
 
 export const useInstanceAiSettingsStore = defineStore('instanceAiSettings', () => {
 	const rootStore = useRootStore();
 	const settingsStore = useSettingsStore();
+	const posthogStore = usePostHog();
 	const toast = useToast();
 
 	const isLoading = ref(false);
@@ -83,11 +86,17 @@ export const useInstanceAiSettingsStore = defineStore('instanceAiSettings', () =
 	const isSandboxEnabled = computed(
 		() => settingsStore.moduleSettings?.['instance-ai']?.sandboxEnabled === true,
 	);
-	/** New threads run on the n8n Assistant agent of the agents runtime. */
+	/** The instance runs the n8n Assistant agent, so its threads show and open. */
 	const isAssistantAgentEnabled = computed(
 		() =>
 			!isInstanceAiDisabled.value &&
 			settingsStore.moduleSettings?.['instance-ai']?.assistantAgentEnabled === true,
+	);
+	/** New threads of this user run on the n8n Assistant agent of the agents runtime. */
+	const newThreadsUseAssistantAgent = computed(
+		() =>
+			isAssistantAgentEnabled.value &&
+			posthogStore.isFeatureEnabled(INSTANCE_AI_ASSISTANT_AGENT_EXPERIMENT.name),
 	);
 	const isWorkflowBuilderAvailable = computed(
 		() => settingsStore.moduleSettings?.['instance-ai']?.workflowBuilderAvailable ?? true,
@@ -440,6 +449,7 @@ export const useInstanceAiSettingsStore = defineStore('instanceAiSettings', () =
 		isSandboxEnabled,
 		isWorkflowBuilderAvailable,
 		isAssistantAgentEnabled,
+		newThreadsUseAssistantAgent,
 		isInstanceAiSetupPanelEnabled,
 		isCloudManaged,
 		startBrowserPushListener,

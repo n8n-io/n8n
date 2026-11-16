@@ -6,7 +6,8 @@ import { computed } from 'vue';
 
 import { useTelemetry } from '@n8n/composables/useTelemetry';
 import { useRootStore } from '@n8n/stores/useRootStore';
-import { redactTelemetryProperties, type AssistantRuntime } from '@n8n/telemetry';
+import { redactTelemetryProperties } from '@n8n/telemetry';
+import { useAssistantRuntime } from '../assistantRuntime';
 import ConfirmationFooter from './ConfirmationFooter.vue';
 import ConfirmationPreview from './ConfirmationPreview.vue';
 import SplitButton from './SplitButton.vue';
@@ -33,8 +34,6 @@ const props = defineProps<{
 	threadId: string;
 	/** Joins the telemetry with the "Builder asked for input" event of this card. */
 	inputThreadId?: string;
-	/** The Assistant runtime that showed the card. */
-	runtime: AssistantRuntime;
 }>();
 
 const emit = defineEmits<{
@@ -45,6 +44,7 @@ const emit = defineEmits<{
 const i18n = useI18n();
 const telemetry = useTelemetry();
 const rootStore = useRootStore();
+const runtime = useAssistantRuntime();
 
 interface OptionEntry {
 	decision: InstanceGatewayResourceDecision;
@@ -86,9 +86,9 @@ function confirm(decision: InstanceGatewayResourceDecision) {
 		input_thread_id: props.inputThreadId ?? '',
 		instance_id: rootStore.instanceId,
 		type: 'resource-decision',
-		runtime: props.runtime,
 		provided_inputs: [{ label: props.resource, options: props.options, option_chosen: decision }],
 		skipped_inputs: [],
+		runtime,
 	};
 	// `resource` is the host the agent asked to reach — can be an internal
 	// hostname or a URL, so it goes through the egress policy like any other

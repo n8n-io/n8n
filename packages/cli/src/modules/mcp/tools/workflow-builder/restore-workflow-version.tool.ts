@@ -109,6 +109,7 @@ export const createRestoreWorkflowVersionTool = (
 				{
 					forceSave: true,
 					source: 'n8n-mcp',
+					restoredVersionSettings: version.settings,
 					versionName: versionMetadata.name,
 					versionDescription: versionMetadata.description,
 				},

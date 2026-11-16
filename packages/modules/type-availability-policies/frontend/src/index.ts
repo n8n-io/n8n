@@ -1,6 +1,8 @@
 export { TypeAvailabilityPoliciesModule } from './type-availability-policies.module';
 export { useTypeAvailabilityPoliciesStore } from './type-availability-policies.store';
 export {
+	RESTRICTED_NODE_POPOVER_SIDE_OFFSET,
+	RESTRICTED_NODE_POPOVER_WIDTH,
 	SCOPE_LABEL_KEY,
 	type ContactAudience,
 	type RestrictedTypeKind,
@@ -33,6 +35,7 @@ export {
 	type SubWorkflowRestriction,
 } from './composables/useSubWorkflowRestriction';
 export { default as RestrictedNodePopover } from './components/RestrictedNodePopover.vue';
+export { default as RestrictedMenuItemMarker } from './components/RestrictedMenuItemMarker.vue';
 export { default as RestrictedNodePanel } from './components/RestrictedNodePanel.vue';
 export { default as RestrictedTypeCallout } from './components/RestrictedTypeCallout.vue';
 export { default as RestrictedTemplateNodesCallout } from './components/RestrictedTemplateNodesCallout.vue';

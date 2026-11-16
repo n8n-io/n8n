@@ -33,7 +33,7 @@ describe('AssistantAgentFactory — createAgentMemoryOptions', () => {
 			user: User,
 			threadId: string,
 			runId: string,
-			memoryModelId?: ModelConfig,
+			utilityModelId?: ModelConfig,
 			observerThresholdTokens?: number,
 			generateTitle?: boolean,
 		) => {

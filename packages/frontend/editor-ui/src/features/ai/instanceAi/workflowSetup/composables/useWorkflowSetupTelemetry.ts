@@ -4,6 +4,7 @@ import { useRootStore } from '@n8n/stores/useRootStore';
 import { TELEMETRY_EVENT, type AssistantRuntime, type InferTelemetryProps } from '@n8n/telemetry';
 import { isRecord } from '@n8n/utils/is-record';
 import { useInstanceAiSetupPanelExperiment } from '@/experiments/instanceAiSetupPanel/useInstanceAiSetupPanelExperiment';
+import { useAssistantRuntime } from '../../assistantRuntime';
 import type { WorkflowSetupSection } from '../workflowSetup.types';
 
 type ProvidedSetupInput = { label: string; options: string[]; option_chosen: string };
@@ -60,12 +61,11 @@ export function useWorkflowSetupTelemetry(deps: {
 	threadId: Ref<string>;
 	/** Joins the telemetry with the "Builder asked for input" event of this card. */
 	inputThreadId: Ref<string | undefined>;
-	/** The Assistant runtime that showed the card. */
-	runtime: Ref<AssistantRuntime>;
 }) {
 	const telemetry = useTelemetry();
 	const rootStore = useRootStore();
 	const { getTelemetryPayload } = useInstanceAiSetupPanelExperiment();
+	const runtime = useAssistantRuntime();
 
 	const shownStepKeys = new Set<string>();
 	const handledStepKeys = new Set<string>();
@@ -79,7 +79,7 @@ export function useWorkflowSetupTelemetry(deps: {
 			input_thread_id: deps.inputThreadId.value ?? '',
 			instance_id: rootStore.instanceId,
 			type: 'setup',
-			runtime: deps.runtime.value,
+			runtime,
 		};
 	}
 
