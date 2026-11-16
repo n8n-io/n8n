@@ -1,5 +1,3 @@
-import { FeatureMaturityKey } from '@n8n/design-system';
-import { featureMaturity } from '@n8n/frontend-constants/feature-maturity';
 import { createComponentRenderer, mockedStore } from '@n8n/frontend-test-utils';
 import { createTestingPinia } from '@pinia/testing';
 import userEvent from '@testing-library/user-event';
