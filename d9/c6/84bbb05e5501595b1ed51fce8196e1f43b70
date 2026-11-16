@@ -1,0 +1,19 @@
+packages/cli/src/modules/instance-ai/__tests__/restorable-messages.test.ts
+  s_cf46beb77c9221::t_83e563c34316e7 1-47
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "d9c684bbb05e5501595b1ed51fce8196e1f43b70",
+  "prompts": {},
+  "sessions": {
+    "s_cf46beb77c9221": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "16a9a066-a7f5-44a6-839a-0946c98f56ce",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Jaakko Husso <jaakko@n8n.io>"
+    }
+  }
+}

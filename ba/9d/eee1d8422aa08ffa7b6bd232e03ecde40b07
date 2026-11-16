@@ -1,0 +1,21 @@
+packages/frontend/editor-ui/src/features/agents/views/AgentBuilderView.vue
+  s_3b17cd2e611439::t_dfad084433b299 3678
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentBuilderView.test.ts
+  s_3b17cd2e611439::t_dfad084433b299 3437,3439,3442,3447,3462,3467,3470,3475,3490-3492,3499-3501,3506,3511-3513,3516,3519,3538-3540,3549,3554,3574,3581,3591,3594,3601,3608
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "ba9deee1d8422aa08ffa7b6bd232e03ecde40b07",
+  "prompts": {},
+  "sessions": {
+    "s_3b17cd2e611439": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "01a1e3a2-d3aa-76c3-89c3-59dd528599c5",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "heymynameisrob <robhough180@gmail.com>"
+    }
+  }
+}

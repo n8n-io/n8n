@@ -1,0 +1,19 @@
+packages/core/src/execution-engine/declarative-webhook.ts
+  s_db33480b8c9c64::t_2b624dbae686ad 335-336
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "d3a62302768467a723735daefaea687f8cdfde34",
+  "prompts": {},
+  "sessions": {
+    "s_db33480b8c9c64": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3a809806-fcd2-4a06-904e-42634dd34dd8",
+        "model": "unknown"
+      },
+      "human_author": "Jonathan <jon@n8n.io>"
+    }
+  }
+}

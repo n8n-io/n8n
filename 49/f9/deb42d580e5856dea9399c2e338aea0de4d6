@@ -1,0 +1,21 @@
+packages/cli/src/modules/mcp/tools/agents/agent-tools.service.ts
+  s_08690fb8a4caf5::t_d36a8f73a20045 1097
+packages/cli/src/modules/mcp/__tests__/agent-tools.service.test.ts
+  s_08690fb8a4caf5::t_9efa682847ace0 3061-3067
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "49f9deb42d580e5856dea9399c2e338aea0de4d6",
+  "prompts": {},
+  "sessions": {
+    "s_08690fb8a4caf5": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "33b03ae9-9b4e-49ba-ac90-ae160b5918c5",
+        "model": "claude-fable-5-2"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}

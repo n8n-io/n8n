@@ -1,0 +1,33 @@
+docs/generated/postgres-schema/README.md
+  s_dfe3f914c8bb46::t_21305584d96858 173,267,846,2181
+docs/generated/postgres-schema/public.agents.md
+  s_dfe3f914c8bb46::t_ed594d8541070e 12,36,57,91,100,406-423
+docs/generated/sqlite-schema/README.md
+  s_dfe3f914c8bb46::t_a354e47191d2a6 173,249,832,2169
+docs/generated/sqlite-schema/agents.md
+  s_dfe3f914c8bb46::t_ff4fa4ed04fdc8 9,23,45-47,57,91,100,406-423
+packages/cli/src/modules/agents/__tests__/agents.service.test.ts
+  s_dfe3f914c8bb46::t_cc4b690aeac78f 2,5-9,20-31,130-133,142,193,216,791-834,1076-1081,1119-1131,1136,1148,1160,1163-1165,1168,1172,1253-1254,1256,1268,1295-1296,1299,1323-1324,1326,1371-1372,1374,1384,1420-1421,1423,1687,1703
+packages/cli/src/modules/agents/agents.service.ts
+  s_dfe3f914c8bb46::t_3a621981bbf020 23,61,79,144-160,189,333,467,516-520,523,540,743,848,885-895,898,900-903,906,912-927,929,931,944,948,950,956,958
+packages/cli/src/modules/agents/entities/agent.entity.ts
+  s_dfe3f914c8bb46::t_30e154c821909c 9,129-141
+packages/cli/src/modules/agents/integrations/agent-chat-bridge.ts
+  s_dfe3f914c8bb46::t_99f6b1d49890e5 29-32,443,470,508,528,559-566,1121-1123,1177-1183
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "5fd0bde802fa50d83b5198b128266c219ae61212",
+  "prompts": {},
+  "sessions": {
+    "s_dfe3f914c8bb46": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a177de-1655-75e1-b502-74f6cb945148",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "Michael Drury <michael.drury@n8n.io>"
+    }
+  }
+}

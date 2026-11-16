@@ -1,0 +1,23 @@
+packages/@n8n/agents/src/runtime/__tests__/agent-runtime.test.ts
+  s_9416adef5f807e::t_aebbf8d60b806e 12838-12859
+packages/@n8n/agents/src/runtime/tools/tool-call-runner.ts
+  s_9416adef5f807e::t_83e5e50a81e1d2 430-433,447
+packages/@n8n/agents/src/types/sdk/tool.ts
+  s_9416adef5f807e::t_8fe2a1201b1ba8 106-109
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "0d8558282366b59f3eb8943f245e17f12bc413a5",
+  "prompts": {},
+  "sessions": {
+    "s_9416adef5f807e": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "1bf350b5-81ad-4f81-8310-868370228261",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Thiago Pacheco <hi@sudoish.com>"
+    }
+  }
+}

@@ -1,0 +1,42 @@
+packages/frontend/@n8n/design-system/src/components/N8nStatusListItem/StatusListItem.stories.ts
+  h_8a472ace01776f 1-55
+packages/frontend/@n8n/design-system/src/components/N8nStatusListItem/StatusListItem.test.ts
+  h_8a472ace01776f 1-37
+packages/frontend/@n8n/design-system/src/components/N8nStatusListItem/StatusListItem.types.ts
+  h_8a472ace01776f 1-16
+packages/frontend/@n8n/design-system/src/components/N8nStatusListItem/StatusListItem.vue
+  h_8a472ace01776f 1-100
+packages/frontend/@n8n/design-system/src/components/N8nStatusListItem/__snapshots__/StatusListItem.test.ts.snap
+  h_8a472ace01776f 1-13
+packages/frontend/@n8n/design-system/src/components/N8nStatusListItem/index.ts
+  h_8a472ace01776f 1-5
+packages/frontend/@n8n/design-system/src/components/N8nTextDiff/TextDiff.stories.ts
+  h_8a472ace01776f 1-52
+packages/frontend/@n8n/design-system/src/components/N8nTextDiff/TextDiff.test.ts
+  h_8a472ace01776f 1-55
+packages/frontend/@n8n/design-system/src/components/N8nTextDiff/TextDiff.types.ts
+  h_8a472ace01776f 1-19
+packages/frontend/@n8n/design-system/src/components/N8nTextDiff/TextDiff.vue
+  h_8a472ace01776f 1-100
+packages/frontend/@n8n/design-system/src/components/N8nTextDiff/__snapshots__/TextDiff.test.ts.snap
+  h_8a472ace01776f 1-12
+packages/frontend/@n8n/design-system/src/components/N8nTextDiff/index.ts
+  h_8a472ace01776f 1-5
+packages/frontend/@n8n/design-system/src/components/N8nTextDiff/textDiff.ts
+  h_8a472ace01776f 1-69
+packages/frontend/@n8n/design-system/src/components/index.ts
+  h_8a472ace01776f 169-170,182-183
+packages/frontend/@n8n/design-system/src/locale/lang/en.ts
+  h_8a472ace01776f 23-26
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "78313970ad4b16865796b1f38c5a3675566cef17",
+  "prompts": {},
+  "humans": {
+    "h_8a472ace01776f": {
+      "author": "Thiago Pacheco <hi@sudoish.com>"
+    }
+  }
+}

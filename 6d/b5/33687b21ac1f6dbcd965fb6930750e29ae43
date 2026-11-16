@@ -1,0 +1,69 @@
+packages/frontend/editor-ui/src/features/settings/context/components/SkillSourceReview.vue
+  s_b46fafce860919::t_d7b91c65f2102d 161-165
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_b46fafce860919::t_d7b91c65f2102d 4138
+packages/cli/src/modules/skills/__tests__/index.test.ts
+  s_b46fafce860919::t_40b2f2d63cc35a 16
+packages/frontend/editor-ui/src/features/settings/context/components/SkillSourceUpdatesDialog.vue
+  s_b46fafce860919::t_3632ddc28e026a 144,178-204
+packages/cli/src/modules/skills/__tests__/skill.service.test.ts
+  s_b46fafce860919::t_40b2f2d63cc35a 514,524
+packages/cli/src/modules/agents/agent-skill-usage.ts
+  s_b46fafce860919::t_a32fe74458530c 110-112
+  s_b46fafce860919::t_3632ddc28e026a 4-9
+  s_b46fafce860919::t_40b2f2d63cc35a 117
+packages/cli/src/modules/skills/services/skill-sync.service.ts
+  s_b46fafce860919::t_e276cd02534ce3 25,27,66,106-109,189,192-205,282,397
+  s_b46fafce860919::t_40b2f2d63cc35a 171
+packages/cli/src/modules/skills/testing/skill-usage.contract.ts
+  s_b46fafce860919::t_40b2f2d63cc35a 3,277,327,344
+packages/cli/src/modules/skills/__tests__/skills-gates.test.ts
+  s_b46fafce860919::t_40b2f2d63cc35a 100,128,138,147
+packages/cli/src/modules/skills/errors/skill-agent-name-taken.error.ts
+  s_b46fafce860919::t_3632ddc28e026a 1-11
+packages/cli/src/modules/skills/services/skill.service.ts
+  s_b46fafce860919::t_40b2f2d63cc35a 620
+packages/frontend/editor-ui/src/features/settings/context/components/SkillSourceUpdatesDialog.test.ts
+  s_b46fafce860919::t_2cc17cc0fe0c29 12-13,82,218-221,257-258,284-289,295,302,308-334,339-345
+  s_b46fafce860919::t_a32fe74458530c 204-207,277-283,290-294,296-301,303-307,335-338,346-348
+packages/quality/environments/containers/services/proxy.ts
+  s_b46fafce860919::t_bca3353e7f4180 103
+packages/cli/src/modules/skills/__tests__/integration/skill-source-check.integration.test.ts
+  s_b46fafce860919::t_a32fe74458530c 405-407,409-413,438-441,451-460
+  s_b46fafce860919::t_fb78a2f468ce5d 19,36,100,396,408,414,416-421,435-437,442-443,447-450,461-462
+packages/cli/src/modules/skills/services/skill-usage.contracts.ts
+  s_b46fafce860919::t_40b2f2d63cc35a 52-53
+packages/cli/src/modules/skills/services/skill-usage-proxy.service.ts
+  s_b46fafce860919::t_40b2f2d63cc35a 71,73
+packages/quality/testing/playwright/pages/settings-skills-page.ts
+  s_b46fafce860919::t_bca3353e7f4180 45-48
+packages/cli/src/modules/skills/index.ts
+  s_b46fafce860919::t_3632ddc28e026a 20
+packages/quality/testing/playwright/tests/e2e/context/skill-source-updates.spec.ts
+  s_b46fafce860919::t_011a22dde8dd3c 2-7,11-12,14-21,30-73,78,80,83-90,94-111,126-127,131,134,138,144-145
+  s_b46fafce860919::t_d0023001f8c616 1,143,149-154
+  s_b46fafce860919::t_304cbb01ad4314 82,112
+  s_b46fafce860919::t_72db68661824df 113-125
+  s_b46fafce860919::t_a57b2d502fa2a4 139-142,146-148
+packages/cli/src/modules/skills/testing/skill-usage.fake.ts
+  s_b46fafce860919::t_40b2f2d63cc35a 113,117
+  s_b46fafce860919::t_45fa46262e6596 5
+packages/cli/src/modules/agents/__tests__/agent-skill-usage.test.ts
+  s_b46fafce860919::t_40b2f2d63cc35a 42,46
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "6db533687b21ac1f6dbcd965fb6930750e29ae43",
+  "prompts": {},
+  "sessions": {
+    "s_b46fafce860919": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a1c01f-899b-7ed0-beb0-f0a848e364ae",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "Arvin Ansari <arvin.ansari@n8n.io>"
+    }
+  }
+}

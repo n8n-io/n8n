@@ -1,0 +1,233 @@
+docs/generated/sqlite-schema/agent_channel_status.md
+  ai_agent 77
+docs/generated/sqlite-schema/agents_memory_entries.md
+  ai_agent 85
+docs/generated/postgres-schema/public.agent_history.md
+  ai_agent 72
+docs/generated/postgres-schema/public.agent_chat_attachments.md
+  ai_agent 81
+packages/@n8n/db/src/repositories/folder-access.repository.ts
+  s_b86bd8b73ec329::t_bc527dc2be3796 46-50,52,57-61,63,88
+docs/generated/postgres-schema/public.agent_skill_dependency.md
+  ai_agent 53
+packages/cli/src/modules/agents/agents.service.ts
+  s_b86bd8b73ec329::t_0233eb11307f95 86,101,156,197-201,213,502-505,507-509,544-553
+  s_b86bd8b73ec329::t_d72769ba2be830 510-517,520-539,543,642-651
+docs/generated/sqlite-schema/agent_workflow_dependency.md
+  ai_agent 59
+docs/generated/sqlite-schema/agent_chat_subscriptions.md
+  ai_agent 65
+docs/generated/sqlite-schema/agents_observations.md
+  ai_agent 84
+docs/generated/postgres-schema/public.workflow_entity.md
+  ai_agent 428
+packages/cli/src/services/folder-content.service.ts
+  s_b86bd8b73ec329::t_4d5c878ed815f2 1-9,11-17,19-40
+packages/@n8n/db/src/repositories/__tests__/folder.repository.test.ts
+  s_b86bd8b73ec329::t_73f81a9f61b72d 1-2,11
+packages/cli/src/modules/favorites/favorites.service.ts
+  s_b86bd8b73ec329::t_7bda81ce57ccd3 36-38,41-45,48,199-201,203
+docs/generated/postgres-schema/public.agent_channel_status.md
+  ai_agent 70
+docs/generated/postgres-schema/public.agent_task_definition.md
+  ai_agent 61
+docs/generated/sqlite-schema/agent_files.md
+  ai_agent 73
+packages/@n8n/api-types/src/schemas/folder.schema.ts
+  s_b86bd8b73ec329::t_843447dc9f3baf 3-5
+packages/@n8n/db/src/entities/types-db.ts
+  s_b86bd8b73ec329::t_b6c7cd6d2a5b31 347
+docs/generated/postgres-schema/public.agents_memory_entry_sources.md
+  ai_agent 80
+docs/generated/postgres-schema/public.agents_observation_cursors.md
+  ai_agent 58
+docs/generated/postgres-schema/public.agent_execution_threads.md
+  ai_agent 104
+packages/cli/src/workflows/workflow.service.ts
+  s_b86bd8b73ec329::t_76dfd2fac28427 881,885-888
+packages/@n8n/db/src/migrations/common/1794325645791-AddAgentFolderPlacement.ts
+  s_b86bd8b73ec329::t_0ea128fdf682be 13-17,19-29,31-54,56-59,63-75
+packages/cli/src/services/folder.service.ts
+  s_b86bd8b73ec329::t_80ef1c67f9694e 171-173,175-178
+  s_b86bd8b73ec329::t_7fef01adcfe005 2-5,7,14-18,20,29,51-52,55-58,60-63,67-68,70,76,107,119-120,137-144,148-161,163-170
+  s_b86bd8b73ec329::t_76dfd2fac28427 95
+  s_b86bd8b73ec329::t_e9de6128b4dd6f 1,64-65,90,108-110,487-499,501-504
+  s_b86bd8b73ec329::t_ee54f7038b3f04 24,179-181,183-186,188-199
+  s_b86bd8b73ec329::t_38e9e94958f3e2 211-214,216,218-222,224,252-258,272,283-285,287-307,309-323,325-330,332-336,338-343,397-400,402,405-408,410-417,473,479,481-484,486,507-509,511-512,514-516
+docs/generated/sqlite-schema/agent_chat_attachments.md
+  ai_agent 82
+docs/generated/sqlite-schema/agents.md
+  ai_agent 9,24,40-43,45,55,86,96,365-371
+docs/generated/postgres-schema/README.md
+  ai_agent 41,84,264,838,1288
+docs/generated/postgres-schema/public.agents_observation_locks.md
+  ai_agent 62
+packages/cli/src/modules/agents/entities/agent.entity.ts
+  s_b86bd8b73ec329::t_b6c7cd6d2a5b31 3-4,30,32-38
+packages/@n8n/db/src/entities/folder.ts
+  s_b86bd8b73ec329::t_b6c7cd6d2a5b31 1,19-21
+docs/generated/postgres-schema/public.folder.md
+  ai_agent 8,12,19,27,42,54,57-74
+docs/generated/sqlite-schema/agent_eval_dataset.md
+  ai_agent 74
+docs/generated/sqlite-schema/agent_task_run_lock.md
+  ai_agent 62
+packages/cli/test/integration/database/repositories/agent.repository.test.ts
+  s_b86bd8b73ec329::t_9cf10c86100125 1,213
+docs/generated/sqlite-schema/agents_memory_entry_candidates.md
+  ai_agent 90
+docs/generated/postgres-schema/public.agent_files.md
+  ai_agent 70
+packages/@n8n/api-types/src/schemas/instance-ai.schema.ts
+  s_b86bd8b73ec329::t_bc337fca7371d8 1971
+docs/generated/postgres-schema/public.folder_tag.md
+  ai_agent 44
+docs/generated/postgres-schema/public.agents_memory_entry_candidates.md
+  ai_agent 91
+packages/@n8n/api-types/src/dto/folders/list-folder-query.dto.ts
+  s_b86bd8b73ec329::t_843447dc9f3baf 5,16-17,128
+docs/generated/sqlite-schema/workflow_entity.md
+  ai_agent 419
+docs/generated/postgres-schema/public.agents_memory_entry_locks.md
+  ai_agent 58
+packages/@n8n/api-types/src/index.ts
+  s_b86bd8b73ec329::t_0ea128fdf682be 190-193,195
+packages/@n8n/db/src/migrations/sqlite/1794325645791-AddAgentFolderPlacement.ts
+  s_b86bd8b73ec329::t_0ea128fdf682be 1-5
+packages/cli/src/modules/agents/__tests__/agents.controller.test.ts
+  s_b86bd8b73ec329::t_9cf10c86100125 1,62
+packages/cli/src/modules/instance-ai/instance-ai-pending-agent.service.ts
+  s_b86bd8b73ec329::t_bc337fca7371d8 55,75
+docs/generated/postgres-schema/public.agents_memory_entries.md
+  ai_agent 82
+docs/generated/sqlite-schema/agent_credential_dependency.md
+  ai_agent 59
+packages/@n8n/db/src/repositories/folder.repository.ts
+  s_b86bd8b73ec329::t_4d5c878ed815f2 2,4,11-12,18-27,29-34,36-42,44-57,226-229,403,459-461,463,471-472,488-489
+  s_b86bd8b73ec329::t_6791a692df2035 424-425,431-435,437,467-468,481-485,487,528,538-540,542-545,547,576-577,588-589,593-595,597
+  s_b86bd8b73ec329::t_e9de6128b4dd6f 342-345,347,351,529-531,533
+docs/generated/sqlite-schema/agents_observation_cursors.md
+  ai_agent 65
+docs/generated/postgres-schema/public.agent_publish_history.md
+  ai_agent 67
+docs/generated/postgres-schema/public.agents.md
+  ai_agent 13,29,34,54,85,95,364-370
+packages/cli/src/modules/agents/repositories/agent.repository.ts
+  s_b86bd8b73ec329::t_bc527dc2be3796 563-566,568-569,572,576-590,593
+  s_b86bd8b73ec329::t_f5aea7ce8dcacf 96-99,412-415,417-419,533-536,538-562,570-571,573-575,591-592,594-599,601-605
+  s_b86bd8b73ec329::t_414e74f3da53b0 10,73,82-84,86,225,239-243,245-246,285-287,289-290,293-297
+  s_b86bd8b73ec329::t_b85378d5b68899 37-38,40-46
+docs/generated/sqlite-schema/agents_observation_locks.md
+  ai_agent 69
+docs/generated/postgres-schema/public.agents_observations.md
+  ai_agent 81
+docs/generated/sqlite-schema/agent_skill_dependency.md
+  ai_agent 63
+docs/generated/postgres-schema/public.agent_task_run_lock.md
+  ai_agent 55
+packages/@n8n/api-types/src/agents/dto.ts
+  s_b86bd8b73ec329::t_843447dc9f3baf 85,202,223-224
+  s_b86bd8b73ec329::t_414e74f3da53b0 86
+  s_b86bd8b73ec329::t_b6c7cd6d2a5b31 252-255
+packages/cli/src/modules/agents/agents.controller.ts
+  s_b86bd8b73ec329::t_d72769ba2be830 83-90,92,180-187,189
+  s_b86bd8b73ec329::t_0233eb11307f95 15,66,162,164-172,174-177
+  s_b86bd8b73ec329::t_36951da172c8d9 16,23-24,39,82,93-94,163
+  s_b86bd8b73ec329::t_7bda81ce57ccd3 1-5,7,75
+docs/generated/sqlite-schema/agents_memory_entry_sources.md
+  ai_agent 84
+docs/generated/sqlite-schema/agent_execution_threads.md
+  ai_agent 104
+packages/cli/test/integration/database/repositories/agent-execution.repository.test.ts
+  s_b86bd8b73ec329::t_9cf10c86100125 1
+packages/cli/test/integration/shared/db/folders.ts
+  s_b86bd8b73ec329::t_bc527dc2be3796 1,11,22
+packages/cli/src/workflows/__tests__/workflow.service.ee.test.ts
+  s_b86bd8b73ec329::t_1ceca01511c629 1292-1304
+  s_b86bd8b73ec329::t_f6880216006be7 5,53-55,1391-1393
+docs/generated/sqlite-schema/agent_publish_history.md
+  ai_agent 71
+packages/cli/src/modules/agents/__tests__/agents.service.test.ts
+  s_b86bd8b73ec329::t_9cf10c86100125 1,167
+docs/generated/sqlite-schema/folder_tag.md
+  ai_agent 55
+docs/generated/sqlite-schema/project.md
+  ai_agent 163,209
+docs/generated/postgres-schema/public.agent_workflow_dependency.md
+  ai_agent 49
+docs/generated/postgres-schema/public.agent_eval_dataset.md
+  ai_agent 69
+docs/generated/postgres-schema/public.agent_background_job.md
+  ai_agent 111
+docs/generated/postgres-schema/public.agent_chat_subscriptions.md
+  ai_agent 56
+packages/cli/src/modules/agents/agents.module.ts
+  s_b86bd8b73ec329::t_0233eb11307f95 11,24
+packages/cli/src/workflows/workflow-creation.service.ts
+  s_b86bd8b73ec329::t_76dfd2fac28427 440-442,444-447
+docs/generated/postgres-schema/public.agent_credential_dependency.md
+  ai_agent 49
+packages/cli/src/controllers/folder.controller.ts
+  s_b86bd8b73ec329::t_80ef1c67f9694e 28-32,34,152,190,278-281,294-295,301,334,369-370
+  s_b86bd8b73ec329::t_ade9e92001caad 91-95,123-127,160-164,203-207,249-253,304-308,342-346
+  s_b86bd8b73ec329::t_36951da172c8d9 35-36,47,88,191,233
+  s_b86bd8b73ec329::t_d72769ba2be830 78-85,87,192-199,201,236-243,247
+  s_b86bd8b73ec329::t_d4165fbb6c6c28 96-102,128-134,165-171,208-214,254-260,309-315,347-353
+  s_b86bd8b73ec329::t_7f0bbac7a722de 234,244-246
+packages/cli/src/modules/agents/agent-draft.contracts.ts
+  s_b86bd8b73ec329::t_bc337fca7371d8 31,46
+packages/cli/src/modules/agents/agent-draft.service.ts
+  s_b86bd8b73ec329::t_bc337fca7371d8 71-80,106
+docs/generated/sqlite-schema/README.md
+  ai_agent 41,84,245,247,321,824,1274
+docs/generated/sqlite-schema/agent_task_definition.md
+  ai_agent 66
+packages/@n8n/api-types/src/dto/folders/update-folder.dto.ts
+  s_b86bd8b73ec329::t_73f81a9f61b72d 11,13
+packages/@n8n/backend-services/src/services/favorite-resource-resolver.registry.ts
+  s_b86bd8b73ec329::t_7bda81ce57ccd3 5-7,9
+docs/generated/sqlite-schema/agents_memory_entry_locks.md
+  ai_agent 65
+docs/generated/sqlite-schema/agent_history.md
+  ai_agent 79
+docs/generated/postgres-schema/public.project.md
+  ai_agent 157,203
+docs/generated/sqlite-schema/agent_checkpoints.md
+  ai_agent 66
+docs/generated/sqlite-schema/agent_background_job.md
+  ai_agent 113
+docs/generated/postgres-schema/public.agent_checkpoints.md
+  ai_agent 58
+packages/cli/test/integration/agents/agent-folders.test.ts
+  s_b86bd8b73ec329::t_7002be026a8241 46-51
+  s_b86bd8b73ec329::t_c904644def4ccc 3-5,8-18,22-33,35-42,58-89,91-108,122-125,127-128,130-134,136-137,139-140,142-149,156-158,160-161,163-168,175,177-179,181-190,198-202,206,208-211,215,217-218,220-221,223-226,228-229
+  s_b86bd8b73ec329::t_b357e15a90789d 2,43-45,52-57
+  s_b86bd8b73ec329::t_c56749f6f69d73 6-7,34,109-113,115-119,121,150-153,155,169-172,174,191-195,197
+  s_b86bd8b73ec329::t_9c83fde3de37a2 1,19-21,203-204,212-213
+packages/@n8n/telemetry/src/events/platform.ts
+  s_b86bd8b73ec329::t_7bda81ce57ccd3 6-21
+packages/cli/src/modules/agents/agent-folder.service.ts
+  s_b86bd8b73ec329::t_0233eb11307f95 1-20,22-23,25-45,47-59
+docs/generated/sqlite-schema/folder.md
+  ai_agent 9,19,23,30-32,48,60,63-80
+packages/cli/src/modules/agents/__tests__/agent-runtime-reconstruction-integration-tools.test.ts
+  s_b86bd8b73ec329::t_9cf10c86100125 1,411
+packages/@n8n/api-types/src/dto/folders/create-folder.dto.ts
+  s_b86bd8b73ec329::t_843447dc9f3baf 1-3,5,10
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "fcf420d4d4c21d5b6dc040c84f96c7117206e614",
+  "prompts": {},
+  "sessions": {
+    "s_b86bd8b73ec329": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a1c5ff-a9a5-7263-8c36-bf54b75e063d",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "Eugene Molodkin <eugene@n8n.io>"
+    }
+  }
+}

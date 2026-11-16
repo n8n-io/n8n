@@ -1,0 +1,21 @@
+packages/cli/src/modules/skills/services/skill-sync.service.ts
+  s_b46fafce860919::t_b3d12368e908d7 410
+  s_b46fafce860919::t_9d96e9393a1f58 277,330,412
+  s_b46fafce860919::t_792458a46c6e8b 327
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "8f5f70365e20cefbb2f7835ce551abb9748896cf",
+  "prompts": {},
+  "sessions": {
+    "s_b46fafce860919": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a1c01f-899b-7ed0-beb0-f0a848e364ae",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "Arvin Ansari <arvin.ansari@n8n.io>"
+    }
+  }
+}

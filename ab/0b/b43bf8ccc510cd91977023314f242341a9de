@@ -1,0 +1,20 @@
+packages/@n8n/config/src/configs/__tests__/code-execution.config.test.ts
+  h_8fb27e0cdf6d1e 28,52
+packages/@n8n/config/src/configs/code-execution.config.ts
+  h_8fb27e0cdf6d1e 5,7-10,15-18,27-29,35-37,43-45,59-60
+packages/cli/src/code-execution/__tests__/validate-code-execution-config.test.ts
+  h_8fb27e0cdf6d1e 28
+packages/cli/src/code-execution/validate-code-execution-config.ts
+  h_8fb27e0cdf6d1e 16-19,22
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "ab0bb43bf8ccc510cd91977023314f242341a9de",
+  "prompts": {},
+  "humans": {
+    "h_8fb27e0cdf6d1e": {
+      "author": "Tomi Turtiainen <10324676+tomi@users.noreply.github.com>"
+    }
+  }
+}

@@ -1,0 +1,29 @@
+packages/cli/src/__tests__/active-workflow-manager.test.ts
+  s_014a2ed06d5ddc::t_eeb05d6a11c341 223,278-289,291,295,480
+  s_014a2ed06d5ddc::t_56abb9537848dc 180-222,224-277,292-293,296-324
+  s_014a2ed06d5ddc::t_72cf8b029d79cb 12
+  s_014a2ed06d5ddc::t_970ecefe7c0b27 290,294
+  s_014a2ed06d5ddc::t_e12ad3b36dcc8d 325-326
+packages/cli/src/constants.ts
+  s_014a2ed06d5ddc::t_56abb9537848dc 73-75
+packages/cli/src/active-workflow-manager.ts
+  s_014a2ed06d5ddc::t_eeec3d6505a1f1 977-980
+  s_014a2ed06d5ddc::t_56abb9537848dc 6,75-81,86-87,900,902-903,946,957,960-961,966-976,981-987,1005,1048,1060
+  s_014a2ed06d5ddc::t_eeb05d6a11c341 898-899,901,907-913,921,926,942-943
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "3c765a2db8a5c5ff7c2f08d4b00712f89edc2c93",
+  "prompts": {},
+  "sessions": {
+    "s_014a2ed06d5ddc": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_e3b7e6395ffeLyyNW4JgoMRChK",
+        "model": "openai/gpt-5.6-sol"
+      },
+      "human_author": "Matsuuu <matias.huhta@n8n.io>"
+    }
+  }
+}

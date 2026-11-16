@@ -1,0 +1,19 @@
+packages/cli/src/modules/promotions.ee/__tests__/promotions-git.service.test.ts
+  s_7c60aaca5a7f14::t_76c44ddb4fcf24 359-363
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "5e460800fff0d75ae13562cf129bb6c6fb732f01",
+  "prompts": {},
+  "sessions": {
+    "s_7c60aaca5a7f14": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "c53edca7-da7c-4d69-a1fe-adc5f1ad6c2c",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "kgrhartlage <kai.hartlage@n8n.io>"
+    }
+  }
+}

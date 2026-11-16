@@ -1,0 +1,25 @@
+packages/modules/promotions/frontend/src/views/PromotionPreviewView.vue
+  s_e220467fc24348::t_6bfe68be646416 207-212
+packages/modules/promotions/frontend/src/views/PromotionPreviewView.test.ts
+  s_e220467fc24348::t_a58fb038c48af0 1016,1031
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_e220467fc24348::t_8d8d8f4114693d 10870
+packages/cli/src/modules/promotions.ee/local-package-entities.service.ts
+  s_e220467fc24348::t_da772946f804e2 43-50,61,67,78
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "9366bbfadda7793fb82710bf9d5724ee143edb59",
+  "prompts": {},
+  "sessions": {
+    "s_e220467fc24348": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "65fd3309-ecf4-4bc5-a428-2136c8074fa9",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "kgrhartlage <kai.hartlage@n8n.io>"
+    }
+  }
+}
