@@ -169,15 +169,18 @@ describe('buildCallPromptCacheOptions — OpenAI', () => {
 		},
 	);
 
-	it('still sends an explicit promptCacheRetention for GPT-6', () => {
-		expect(
-			buildCallPromptCacheOptions(
-				{ openai: { promptCacheKey: 'assistant-v1', promptCacheRetention: '24h' } },
-				'openai/gpt-6.1-sol',
-				context,
-			),
-		).toEqual({ openai: { promptCacheKey: 'assistant-v1', promptCacheRetention: '24h' } });
-	});
+	it.each(['24h', 'in_memory'] as const)(
+		'omits a configured promptCacheRetention of %s for GPT-6, which would only log a warning',
+		(promptCacheRetention) => {
+			expect(
+				buildCallPromptCacheOptions(
+					{ openai: { promptCacheKey: 'assistant-v1', promptCacheRetention } },
+					'openai/gpt-6.1-sol',
+					context,
+				),
+			).toEqual({ openai: { promptCacheKey: 'assistant-v1' } });
+		},
+	);
 
 	it('passes through an explicit promptCacheKey and promptCacheRetention unchanged', () => {
 		expect(
@@ -549,12 +552,26 @@ describe('getPromptCacheRetentionMs', () => {
 	it('assumes the 30 minute minimum lifetime for GPT-6 and later, which take no retention', () => {
 		expect(getPromptCacheRetentionMs({ enabled: true }, 'openai/gpt-6.1-sol')).toBe(30 * 60_000);
 		expect(getPromptCacheRetentionMs({ enabled: true }, 'openai/gpt-5.6-luna')).toBe(24 * HOUR);
+		// A configured retention is not sent to GPT-6, so it does not change the assumed lifetime.
 		expect(
 			getPromptCacheRetentionMs(
 				{ enabled: true, openai: { promptCacheRetention: '24h' } },
 				'openai/gpt-6.1-sol',
 			),
-		).toBe(24 * HOUR);
+		).toBe(30 * 60_000);
+		expect(
+			getPromptCacheRetentionMs(
+				{ enabled: true, openai: { promptCacheRetention: 'in_memory' } },
+				'openai/gpt-6-luna',
+			),
+		).toBe(30 * 60_000);
+		// Up to GPT-5.6 a configured retention still decides.
+		expect(
+			getPromptCacheRetentionMs(
+				{ enabled: true, openai: { promptCacheRetention: 'in_memory' } },
+				'openai/gpt-5.6-luna',
+			),
+		).toBe(HOUR);
 	});
 
 	it('falls back to one hour for other providers', () => {

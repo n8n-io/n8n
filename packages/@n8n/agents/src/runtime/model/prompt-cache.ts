@@ -198,7 +198,8 @@ const OPENAI_DEFAULT_MIN_CACHE_MS = 30 * 60_000;
 
 /**
  * GPT-6 and later do not accept `promptCacheRetention`: the AI SDK drops it and logs
- * a warning on every call. Unknown model names keep the retention.
+ * a warning on every call, even when the config sets it. Unknown model names keep the
+ * retention.
  */
 function supportsPromptCacheRetention(modelId: string): boolean {
 	const version = /^gpt-(\d+)/.exec(splitModelId(modelId).model);
@@ -207,9 +208,9 @@ function supportsPromptCacheRetention(modelId: string): boolean {
 
 /**
  * How long the provider keeps a prompt cache warm for this model. Anthropic uses
- * the configured TTL. OpenAI uses its retention, 24 hours by default (the 30 minute
- * minimum lifetime that OpenAI documents for GPT-6 and later, which do not take a
- * retention). Other providers cache on their own terms, so assume one hour.
+ * the configured TTL. OpenAI uses its retention, 24 hours by default. GPT-6 and later
+ * take no retention, so assume the 30 minute minimum lifetime that OpenAI documents
+ * for them. Other providers cache on their own terms, so assume one hour.
  */
 export function getPromptCacheRetentionMs(
 	config: PromptCachingConfig | undefined,
@@ -219,9 +220,10 @@ export function getPromptCacheRetentionMs(
 	if (anthropicTtl) return anthropicTtl === '5m' ? 5 * 60_000 : HOUR_MS;
 	if (getProviderPrefix(modelId) === 'openai' && isEnabledForProvider(config, 'openai')) {
 		const openaiConfig = typeof config?.openai === 'object' ? config.openai : undefined;
-		const retention = openaiConfig?.promptCacheRetention;
-		if (retention) return retention === '24h' ? 24 * HOUR_MS : HOUR_MS;
-		return supportsPromptCacheRetention(modelId) ? 24 * HOUR_MS : OPENAI_DEFAULT_MIN_CACHE_MS;
+		// The retention is never sent to these models, so a configured one does not apply either.
+		if (!supportsPromptCacheRetention(modelId)) return OPENAI_DEFAULT_MIN_CACHE_MS;
+		const retention = openaiConfig?.promptCacheRetention ?? '24h';
+		return retention === '24h' ? 24 * HOUR_MS : HOUR_MS;
 	}
 	return HOUR_MS;
 }
@@ -237,10 +239,10 @@ export function buildCallPromptCacheOptions(
 	}
 
 	const openaiConfig = typeof config?.openai === 'object' ? config.openai : undefined;
-	// An explicit retention is always sent. Without one, models that reject it get none.
-	const retention =
-		openaiConfig?.promptCacheRetention ??
-		(supportsPromptCacheRetention(modelId) ? '24h' : undefined);
+	// Models that reject the retention get none, even when the config sets one.
+	const retention = supportsPromptCacheRetention(modelId)
+		? (openaiConfig?.promptCacheRetention ?? '24h')
+		: undefined;
 	return {
 		openai: {
 			promptCacheKey:

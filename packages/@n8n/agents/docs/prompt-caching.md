@@ -314,11 +314,11 @@ these two options only influence routing and retention.
   or the excess traffic overflows to additional machines (each a cache miss).
 - **`promptCacheRetention: '24h'` (default).** Extends retention beyond the
   default ~5–10 minute in-memory window. It's free on `gpt-4.1`, `gpt-5`, and
-  `gpt-5.1`; on `gpt-5.5` and later, `'24h'` is the only supported value.
+  `gpt-5.1`; on `gpt-5.5` and `gpt-5.6`, `'24h'` is the only supported value.
   Pass `'in_memory'` explicitly to opt back into the short-lived default.
-  GPT-6 and later do not accept the option. For them n8n sends no retention
-  unless it is set explicitly, and assumes the 30 minute minimum lifetime that
-  OpenAI documents for GPT-5.6 and later.
+  GPT-6 and later do not accept the option. For them n8n never sends a
+  retention, even when one is set, and assumes the 30 minute minimum lifetime
+  that OpenAI documents for GPT-5.6 and later.
 
 ## Reading cache usage and cost
 

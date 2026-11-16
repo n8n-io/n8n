@@ -370,8 +370,8 @@ export interface OpenAIPromptCachingConfig {
 	 */
 	promptCacheKey?: string;
 	/**
-	 * Retention policy. Default `'24h'` (free on gpt-4.1/5/5.1; the only supported value on gpt-5.5+).
-	 * GPT-6 and later do not accept it: n8n does not send it for them unless it is set here.
+	 * Retention policy. Default `'24h'` (free on gpt-4.1/5/5.1; the only supported value on gpt-5.5 and 5.6).
+	 * GPT-6 and later do not accept it: n8n never sends it for them, even when it is set here.
 	 */
 	promptCacheRetention?: 'in_memory' | '24h';
 }
