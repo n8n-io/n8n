@@ -593,6 +593,7 @@ export {
 	UpdateOAuthClientResponseDto,
 	OAUTH_CLIENT_DISPLAY_NAME_MAX_LENGTH,
 	OAUTH_CLIENT_DESCRIPTION_MAX_LENGTH,
+	isOAuthClientDisplayNameTooLong,
 	InstanceMcpClientStatsResponseDto,
 } from './oauth/oauth-client.dto';
 export {

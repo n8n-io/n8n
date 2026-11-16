@@ -527,6 +527,37 @@ describe('OAuthClientsTable', () => {
 				{ displayName: null },
 				{ refreshList: true },
 			);
+			await waitFor(() => {
+				expect(nameInput).toHaveValue('Claude');
+			});
+			expect(getModal()).not.toHaveTextContent('Marketing assistant');
+			expect(modal.queryByTestId('mcp-client-details-registered-name')).not.toBeInTheDocument();
+		});
+
+		it('should count the name length in code points, like the registered name', async () => {
+			mockHasScope.mockReturnValue(true);
+			const client = createOAuthClient({ name: 'Claude' });
+
+			const { getByTestId } = createComponent({
+				props: { clients: [client], loading: false },
+			});
+
+			await userEvent.click(getByTestId('mcp-client-name'));
+			const modal = within(getModal());
+			const nameInput = modal.getByTestId('mcp-client-details-name-input');
+			const saveButton = modal.getByTestId('mcp-client-details-save');
+
+			// Each rocket is one code point but two UTF-16 code units.
+			await userEvent.clear(nameInput);
+			await userEvent.click(nameInput);
+			await userEvent.paste('🚀'.repeat(255));
+			expect(nameInput).toHaveValue('🚀'.repeat(255));
+			expect(saveButton).toBeEnabled();
+			expect(modal.queryByTestId('mcp-client-details-name-too-long')).not.toBeInTheDocument();
+
+			await userEvent.paste('🚀');
+			expect(saveButton).toBeDisabled();
+			expect(modal.getByTestId('mcp-client-details-name-too-long')).toBeInTheDocument();
 		});
 
 		it('should not allow saving the registered name as a display name', async () => {

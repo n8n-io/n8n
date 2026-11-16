@@ -4527,6 +4527,7 @@
 	"settings.mcp.oAuthClients.table.connectedBy": "Connected by",
 	"settings.mcp.oAuthClients.details.connectedBy": "Connected by",
 	"settings.mcp.oAuthClients.details.name": "Name",
+	"settings.mcp.oAuthClients.details.name.tooLong": "Use {max} characters or fewer",
 	"settings.mcp.oAuthClients.details.registeredName": "Registered as {name}",
 	"settings.mcp.oAuthClients.details.description": "Description",
 	"settings.mcp.oAuthClients.details.description.placeholder": "What is this client used for?",

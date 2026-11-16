@@ -4,6 +4,7 @@ import { computed, ref, watch } from 'vue';
 import {
 	OAUTH_CLIENT_DESCRIPTION_MAX_LENGTH,
 	OAUTH_CLIENT_DISPLAY_NAME_MAX_LENGTH,
+	isOAuthClientDisplayNameTooLong,
 	type OAuthClientResponseDto,
 } from '@n8n/api-types';
 import { useToast } from '@n8n/composables/useToast';
@@ -82,7 +83,11 @@ const displayNameChanged = computed(
 const descriptionChanged = computed(
 	() => !!props.client && trimmedDescription.value !== (props.client.description ?? ''),
 );
-const canSave = computed(() => displayNameChanged.value || descriptionChanged.value);
+// Not a native maxlength: that counts UTF-16 units, while registration and the API count code points.
+const nameTooLong = computed(() => isOAuthClientDisplayNameTooLong(nameDraft.value.trim()));
+const canSave = computed(
+	() => !nameTooLong.value && (displayNameChanged.value || descriptionChanged.value),
+);
 
 // A row is one consent (client × owner), so the owner is part of its identity.
 function isSameRow(a: OAuthClientResponseDto | null, b: OAuthClientResponseDto) {
@@ -183,11 +188,22 @@ function onRevoke() {
 								id="mcp-client-details-name"
 								v-model="nameDraft"
 								size="small"
-								:maxlength="OAUTH_CLIENT_DISPLAY_NAME_MAX_LENGTH"
 								:placeholder="client.name"
 								data-test-id="mcp-client-details-name-input"
 								@keydown.enter="onSave"
 							/>
+							<N8nText
+								v-if="nameTooLong"
+								color="danger"
+								size="xsmall"
+								data-test-id="mcp-client-details-name-too-long"
+							>
+								{{
+									i18n.baseText('settings.mcp.oAuthClients.details.name.tooLong', {
+										interpolate: { max: String(OAUTH_CLIENT_DISPLAY_NAME_MAX_LENGTH) },
+									})
+								}}
+							</N8nText>
 							<N8nText
 								v-if="client.displayName"
 								color="text-light"

@@ -828,6 +828,25 @@ describe('PATCH /rest/mcp/oauth-clients/:clientId', () => {
 		expect(response.statusCode).toBe(400);
 	});
 
+	test('should count the display name length in code points, like the registered name', async () => {
+		const client = await saveConnectedClient('patch-unicode-name-client', owner.id);
+		// Each rocket is one code point but two UTF-16 code units.
+		const longestName = '🚀'.repeat(255);
+
+		const accepted = await testServer
+			.authAgentFor(owner)
+			.patch(`/mcp/oauth-clients/${client.id}`)
+			.send({ displayName: longestName });
+		const rejected = await testServer
+			.authAgentFor(owner)
+			.patch(`/mcp/oauth-clients/${client.id}`)
+			.send({ displayName: `${longestName}🚀` });
+
+		expect(accepted.statusCode).toBe(200);
+		expect(accepted.body.data.displayName).toBe(longestName);
+		expect(rejected.statusCode).toBe(400);
+	});
+
 	test('should return 400 for a description that is too long', async () => {
 		const client = await saveConnectedClient('patch-long-description-client', owner.id);
 

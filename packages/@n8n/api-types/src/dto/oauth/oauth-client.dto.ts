@@ -83,9 +83,17 @@ export class DeleteOAuthClientResponseDto extends Z.class({
 	message: z.string(),
 }) {}
 
-/** Matches the `oauth_clients.displayName` column size. */
+/**
+ * Matches the `oauth_clients.displayName` column size. Counted in code points, like the
+ * registered client name, so that a name accepted at registration is also a valid display name.
+ */
 export const OAUTH_CLIENT_DISPLAY_NAME_MAX_LENGTH = 255;
 export const OAUTH_CLIENT_DESCRIPTION_MAX_LENGTH = 512;
+
+/** Counts code points, so a supplementary-plane character such as an emoji counts once. */
+export function isOAuthClientDisplayNameTooLong(value: string): boolean {
+	return Array.from(value).length > OAUTH_CLIENT_DISPLAY_NAME_MAX_LENGTH;
+}
 
 /**
  * DTO to update the display name and description of a connected OAuth client.
@@ -95,7 +103,9 @@ export class UpdateOAuthClientDto extends Z.class({
 	displayName: z
 		.string()
 		.trim()
-		.max(OAUTH_CLIENT_DISPLAY_NAME_MAX_LENGTH)
+		.refine((value) => !isOAuthClientDisplayNameTooLong(value), {
+			message: `Display name must contain at most ${OAUTH_CLIENT_DISPLAY_NAME_MAX_LENGTH} characters`,
+		})
 		.nullable()
 		.optional()
 		.transform((value) => (value === '' ? null : value)),
