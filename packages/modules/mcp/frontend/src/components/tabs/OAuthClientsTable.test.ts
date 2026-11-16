@@ -401,12 +401,12 @@ describe('OAuthClientsTable', () => {
 		const getModal = () =>
 			document.querySelector('[data-test-id="mcp-client-details-modal"]') as HTMLElement;
 
-		it('should let a manager edit and save the name and description', async () => {
+		it('should let a manager edit and save the display name and description', async () => {
 			mockHasScope.mockReturnValue(true);
 			const client = createOAuthClient({ name: 'Claude', description: null });
 			mockMcpStore.updateOAuthClientDetails.mockResolvedValue({
 				...client,
-				name: 'Claude (marketing)',
+				displayName: 'Marketing assistant',
 				description: 'Used by the marketing team',
 			});
 
@@ -422,7 +422,7 @@ describe('OAuthClientsTable', () => {
 			const nameInput = modal.getByTestId('mcp-client-details-name-input');
 			expect(nameInput).toHaveValue('Claude');
 			await userEvent.clear(nameInput);
-			await userEvent.type(nameInput, '  Claude (marketing) ');
+			await userEvent.type(nameInput, '  Marketing assistant ');
 			await userEvent.type(
 				modal.getByTestId('mcp-client-details-description-input'),
 				'Used by the marketing team',
@@ -432,15 +432,16 @@ describe('OAuthClientsTable', () => {
 			expect(mockMcpStore.updateOAuthClientDetails).toHaveBeenCalledWith(
 				client,
 				{
-					name: 'Claude (marketing)',
+					displayName: 'Marketing assistant',
 					description: 'Used by the marketing team',
 				},
 				{ refreshList: true },
 			);
 			expect(mockShowMessage).toHaveBeenCalledWith(expect.objectContaining({ type: 'success' }));
 			await waitFor(() => {
-				expect(getModal()).toHaveTextContent('Claude (marketing)');
+				expect(getModal()).toHaveTextContent('Marketing assistant');
 			});
+			expect(modal.getByTestId('mcp-client-details-registered-name')).toHaveTextContent('Claude');
 			expect(modal.getByTestId('mcp-client-details-description-input')).toHaveValue(
 				'Used by the marketing team',
 			);
@@ -496,7 +497,7 @@ describe('OAuthClientsTable', () => {
 				);
 			});
 
-			resolveSave({ ...claude, name: 'Claude 2' });
+			resolveSave({ ...claude, displayName: 'Claude 2' });
 			await waitFor(() => {
 				expect(mockShowMessage).toHaveBeenCalledWith(expect.objectContaining({ type: 'success' }));
 			});
@@ -505,7 +506,30 @@ describe('OAuthClientsTable', () => {
 			expect(getModal()).not.toHaveTextContent('Claude 2');
 		});
 
-		it('should not allow saving an empty name', async () => {
+		it('should reset to the registered name when the name is cleared', async () => {
+			mockHasScope.mockReturnValue(true);
+			const client = createOAuthClient({ name: 'Claude', displayName: 'Marketing assistant' });
+			mockMcpStore.updateOAuthClientDetails.mockResolvedValue({ ...client, displayName: null });
+
+			const { getByTestId } = createComponent({
+				props: { clients: [client], loading: false },
+			});
+
+			await userEvent.click(getByTestId('mcp-client-name'));
+			const modal = within(getModal());
+			const nameInput = modal.getByTestId('mcp-client-details-name-input');
+			expect(nameInput).toHaveValue('Marketing assistant');
+			await userEvent.clear(nameInput);
+			await userEvent.click(modal.getByTestId('mcp-client-details-save'));
+
+			expect(mockMcpStore.updateOAuthClientDetails).toHaveBeenCalledWith(
+				client,
+				{ displayName: null },
+				{ refreshList: true },
+			);
+		});
+
+		it('should not allow saving the registered name as a display name', async () => {
 			mockHasScope.mockReturnValue(true);
 			const client = createOAuthClient({ name: 'Claude' });
 
@@ -515,9 +539,22 @@ describe('OAuthClientsTable', () => {
 
 			await userEvent.click(getByTestId('mcp-client-name'));
 			const modal = within(getModal());
-			await userEvent.clear(modal.getByTestId('mcp-client-details-name-input'));
+			const nameInput = modal.getByTestId('mcp-client-details-name-input');
+			await userEvent.clear(nameInput);
+			await userEvent.type(nameInput, ' Claude ');
 
 			expect(modal.getByTestId('mcp-client-details-save')).toBeDisabled();
+		});
+
+		it('should show the display name and keep the brand of the registered name', async () => {
+			const client = createOAuthClient({ name: 'Claude Code', displayName: 'Release bot' });
+
+			const { getByTestId } = createComponent({
+				props: { clients: [client], loading: false },
+			});
+
+			expect(getByTestId('mcp-client-name')).toHaveTextContent('Release bot');
+			expect(getByTestId('mcp-client-type')).toBeInTheDocument();
 		});
 
 		it('should show an error and keep the edits when saving fails', async () => {

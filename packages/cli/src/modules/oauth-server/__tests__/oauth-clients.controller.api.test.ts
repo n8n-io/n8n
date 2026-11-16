@@ -706,27 +706,72 @@ describe('PATCH /rest/mcp/oauth-clients/:clientId', () => {
 		return client;
 	};
 
-	test('should update the name and description and return them in the list', async () => {
+	test('should update the display name and description and return them in the list', async () => {
 		const client = await saveConnectedClient('patch-client', owner.id);
 
 		const response = await testServer
 			.authAgentFor(owner)
 			.patch(`/mcp/oauth-clients/${client.id}`)
-			.send({ name: '  Claude (marketing)  ', description: 'Used by the marketing team' });
+			.send({ displayName: '  Marketing assistant  ', description: 'Used by the marketing team' });
 
 		expect(response.statusCode).toBe(200);
 		expect(response.body.data).toEqual({
 			id: client.id,
-			name: 'Claude (marketing)',
+			name: 'Claude',
+			displayName: 'Marketing assistant',
 			description: 'Used by the marketing team',
 		});
 
 		const listResponse = await testServer.authAgentFor(owner).get('/mcp/oauth-clients');
 		expect(listResponse.body.data.data[0]).toMatchObject({
 			id: client.id,
-			name: 'Claude (marketing)',
+			name: 'Claude',
+			displayName: 'Marketing assistant',
 			description: 'Used by the marketing team',
 		});
+	});
+
+	test('should keep the registered name', async () => {
+		const client = await saveConnectedClient('patch-registered-name-client', owner.id);
+
+		await testServer
+			.authAgentFor(owner)
+			.patch(`/mcp/oauth-clients/${client.id}`)
+			.send({ displayName: 'Marketing assistant' });
+
+		expect(await oauthClientRepository.findOneBy({ id: client.id })).toMatchObject({
+			name: 'Claude',
+			displayName: 'Marketing assistant',
+		});
+	});
+
+	test('should match the name search against the display name', async () => {
+		const client = await saveConnectedClient('patch-search-client', owner.id);
+		await oauthClientRepository.update({ id: client.id }, { displayName: 'Marketing assistant' });
+
+		const byDisplayName = await testServer
+			.authAgentFor(owner)
+			.get('/mcp/oauth-clients')
+			.query({ name: 'marketing' });
+		const byRegisteredName = await testServer
+			.authAgentFor(owner)
+			.get('/mcp/oauth-clients')
+			.query({ name: 'claude' });
+
+		expect(byDisplayName.body.data.data.map((row: { id: string }) => row.id)).toEqual([client.id]);
+		expect(byRegisteredName.body.data.count).toBe(0);
+	});
+
+	test('should keep the client type of the registered name', async () => {
+		const client = await saveConnectedClient('patch-type-client', owner.id);
+		await oauthClientRepository.update({ id: client.id }, { displayName: 'Marketing assistant' });
+
+		const response = await testServer
+			.authAgentFor(owner)
+			.get('/mcp/oauth-clients')
+			.query({ type: 'web' });
+
+		expect(response.body.data.data.map((row: { id: string }) => row.id)).toEqual([client.id]);
 	});
 
 	test('should keep fields that are not in the request', async () => {
@@ -736,10 +781,26 @@ describe('PATCH /rest/mcp/oauth-clients/:clientId', () => {
 		const response = await testServer
 			.authAgentFor(owner)
 			.patch(`/mcp/oauth-clients/${client.id}`)
-			.send({ name: 'Renamed' });
+			.send({ displayName: 'Renamed' });
 
 		expect(response.statusCode).toBe(200);
-		expect(response.body.data).toMatchObject({ name: 'Renamed', description: 'Existing note' });
+		expect(response.body.data).toMatchObject({
+			displayName: 'Renamed',
+			description: 'Existing note',
+		});
+	});
+
+	test('should clear the display name when it is empty', async () => {
+		const client = await saveConnectedClient('patch-clear-name-client', owner.id);
+		await oauthClientRepository.update({ id: client.id }, { displayName: 'Marketing assistant' });
+
+		const response = await testServer
+			.authAgentFor(owner)
+			.patch(`/mcp/oauth-clients/${client.id}`)
+			.send({ displayName: '  ' });
+
+		expect(response.statusCode).toBe(200);
+		expect(response.body.data).toMatchObject({ name: 'Claude', displayName: null });
 	});
 
 	test('should clear the description when it is empty', async () => {
@@ -756,16 +817,15 @@ describe('PATCH /rest/mcp/oauth-clients/:clientId', () => {
 		expect((await oauthClientRepository.findOneBy({ id: client.id }))?.description).toBeNull();
 	});
 
-	test('should return 400 for an empty name', async () => {
-		const client = await saveConnectedClient('patch-empty-name-client', owner.id);
+	test('should return 400 for a display name that is too long', async () => {
+		const client = await saveConnectedClient('patch-long-name-client', owner.id);
 
 		const response = await testServer
 			.authAgentFor(owner)
 			.patch(`/mcp/oauth-clients/${client.id}`)
-			.send({ name: '  ' });
+			.send({ displayName: 'a'.repeat(256) });
 
 		expect(response.statusCode).toBe(400);
-		expect((await oauthClientRepository.findOneBy({ id: client.id }))?.name).toBe('Claude');
 	});
 
 	test('should return 400 for a description that is too long', async () => {
@@ -785,17 +845,17 @@ describe('PATCH /rest/mcp/oauth-clients/:clientId', () => {
 		const response = await testServer
 			.authAgentFor(member)
 			.patch(`/mcp/oauth-clients/${client.id}`)
-			.send({ name: 'Renamed' });
+			.send({ displayName: 'Renamed' });
 
 		expect(response.statusCode).toBe(403);
-		expect((await oauthClientRepository.findOneBy({ id: client.id }))?.name).toBe('Claude');
+		expect((await oauthClientRepository.findOneBy({ id: client.id }))?.displayName).toBeNull();
 	});
 
 	test('should return 404 for a non-existent client', async () => {
 		const response = await testServer
 			.authAgentFor(owner)
 			.patch('/mcp/oauth-clients/non-existent-id')
-			.send({ name: 'Renamed' });
+			.send({ displayName: 'Renamed' });
 
 		expect(response.statusCode).toBe(404);
 	});
@@ -813,9 +873,9 @@ describe('PATCH /rest/mcp/oauth-clients/:clientId', () => {
 		const response = await testServer
 			.authAgentFor(owner)
 			.patch(`/mcp/oauth-clients/${encodeURIComponent(client.id)}`)
-			.send({ name: 'Renamed' });
+			.send({ displayName: 'Renamed' });
 
 		expect(response.statusCode).toBe(404);
-		expect((await oauthClientRepository.findOneBy({ id: client.id }))?.name).toBe('My Form');
+		expect((await oauthClientRepository.findOneBy({ id: client.id }))?.displayName).toBeNull();
 	});
 });

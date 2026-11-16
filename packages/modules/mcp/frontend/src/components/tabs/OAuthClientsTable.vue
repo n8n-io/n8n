@@ -21,7 +21,12 @@ import { useUsersStore } from '@n8n/stores/users.store';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { getDebounceTime } from '@n8n/composables/useDebounce';
 import { DEBOUNCE_TIME } from '@n8n/frontend-constants/durations';
-import { EMPTY_OAUTH_CLIENT_FILTERS, getAccessSummary, getClientBrand } from '../../clients.utils';
+import {
+	EMPTY_OAUTH_CLIENT_FILTERS,
+	getAccessSummary,
+	getClientBrand,
+	getClientDisplayName,
+} from '../../clients.utils';
 import type { OAuthClientFilters } from '../../clients.utils';
 import McpEmptyStateCard from '../McpEmptyStateCard.vue';
 import OAuthClientDetailsModal from '../OAuthClientDetailsModal.vue';
@@ -207,7 +212,7 @@ function accessSummary(client: OAuthClientResponseDto): string {
 
 function revokeLabel(client: OAuthClientResponseDto): string {
 	return i18n.baseText('settings.mcp.oAuthClients.table.action.revokeAccessFor', {
-		interpolate: { name: client.name },
+		interpolate: { name: getClientDisplayName(client) },
 	});
 }
 
@@ -302,7 +307,7 @@ function onRevoke(item: OAuthClientResponseDto) {
 						</span>
 						<div :class="$style['client-name']">
 							<N8nText data-test-id="mcp-client-name" color="text-dark">
-								{{ item.name }}
+								{{ getClientDisplayName(item) }}
 							</N8nText>
 							<N8nText
 								v-if="clientTypeLabel(item)"

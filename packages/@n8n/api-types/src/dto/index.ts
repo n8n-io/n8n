@@ -591,7 +591,7 @@ export {
 	DeleteOAuthClientResponseDto,
 	UpdateOAuthClientDto,
 	UpdateOAuthClientResponseDto,
-	OAUTH_CLIENT_NAME_MAX_LENGTH,
+	OAUTH_CLIENT_DISPLAY_NAME_MAX_LENGTH,
 	OAUTH_CLIENT_DESCRIPTION_MAX_LENGTH,
 	InstanceMcpClientStatsResponseDto,
 } from './oauth/oauth-client.dto';

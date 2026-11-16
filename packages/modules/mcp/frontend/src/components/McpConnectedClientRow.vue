@@ -7,7 +7,7 @@ import { useI18n } from '@n8n/i18n';
 import type { BaseTextKey } from '@n8n/i18n';
 import { useRootStore } from '@n8n/stores/useRootStore';
 
-import { getAccessSummary, getClientBrand } from '../clients.utils';
+import { getAccessSummary, getClientBrand, getClientDisplayName } from '../clients.utils';
 
 /**
  * One of the current user's connected clients, previewed inline on the MCP
@@ -55,14 +55,14 @@ const metaKeypath = computed(() =>
 
 const revokeLabel = computed(() =>
 	i18n.baseText('settings.mcp.oAuthClients.table.action.revokeAccessFor', {
-		interpolate: { name: props.client.name },
+		interpolate: { name: getClientDisplayName(props.client) },
 	}),
 );
 </script>
 
 <template>
 	<N8nSettingsRow
-		:title="client.name"
+		:title="getClientDisplayName(client)"
 		show-visual
 		clickable
 		reveal-actions-on-hover
@@ -84,7 +84,7 @@ const revokeLabel = computed(() =>
 					:class="$style.line"
 					data-test-id="mcp-client-preview-name"
 				>
-					{{ client.name }}
+					{{ getClientDisplayName(client) }}
 				</N8nText>
 				<N8nText size="small" color="text-light" :class="$style.line">
 					<I18nT :keypath="metaKeypath" scope="global" tag="span">

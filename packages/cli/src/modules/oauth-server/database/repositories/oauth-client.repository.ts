@@ -53,7 +53,7 @@ export class OAuthClientRepository {
 	/** Updates the user-editable details of a registered (non first-party) client. */
 	async updateDetails(
 		id: string,
-		details: Partial<Pick<OAuthClient, 'name' | 'description'>>,
+		details: Partial<Pick<OAuthClient, 'displayName' | 'description'>>,
 		ctx: OperationContext,
 	): Promise<OAuthClient | null> {
 		// One transaction, so a concurrent delete can't remove the row between the update and the read.

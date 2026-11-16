@@ -3,7 +3,7 @@ import { computed, ref, watch } from 'vue';
 
 import {
 	OAUTH_CLIENT_DESCRIPTION_MAX_LENGTH,
-	OAUTH_CLIENT_NAME_MAX_LENGTH,
+	OAUTH_CLIENT_DISPLAY_NAME_MAX_LENGTH,
 	type OAuthClientResponseDto,
 } from '@n8n/api-types';
 import { useToast } from '@n8n/composables/useToast';
@@ -25,7 +25,7 @@ import type { BaseTextKey } from '@n8n/i18n';
 import { useRBACStore } from '@n8n/stores/rbac.store';
 import { useRootStore } from '@n8n/stores/useRootStore';
 
-import { getClientBrand, scopeLabel } from '../clients.utils';
+import { getClientBrand, getClientDisplayName, scopeLabel } from '../clients.utils';
 import { useMCPStore } from '../mcp.store';
 
 const props = withDefaults(
@@ -41,7 +41,7 @@ const props = withDefaults(
 const emit = defineEmits<{
 	'update:open': [value: boolean];
 	revoke: [client: OAuthClientResponseDto];
-	/** The name or description was saved. Carries the row with the saved values. */
+	/** The display name or description was saved. Carries the row with the saved values. */
 	updated: [client: OAuthClientResponseDto];
 }>();
 
@@ -59,7 +59,7 @@ const descriptionDraft = ref('');
 const saving = ref(false);
 
 function resetDrafts() {
-	nameDraft.value = props.client?.name ?? '';
+	nameDraft.value = props.client ? getClientDisplayName(props.client) : '';
 	descriptionDraft.value = props.client?.description ?? '';
 }
 
@@ -71,15 +71,18 @@ watch(
 	{ immediate: true },
 );
 
-const trimmedName = computed(() => nameDraft.value.trim());
+const displayNameToSave = computed(() => {
+	const trimmedName = nameDraft.value.trim();
+	return trimmedName === '' || trimmedName === props.client?.name ? null : trimmedName;
+});
 const trimmedDescription = computed(() => descriptionDraft.value.trim());
-const nameChanged = computed(() => !!props.client && trimmedName.value !== props.client.name);
+const displayNameChanged = computed(
+	() => !!props.client && displayNameToSave.value !== props.client.displayName,
+);
 const descriptionChanged = computed(
 	() => !!props.client && trimmedDescription.value !== (props.client.description ?? ''),
 );
-const canSave = computed(
-	() => trimmedName.value.length > 0 && (nameChanged.value || descriptionChanged.value),
-);
+const canSave = computed(() => displayNameChanged.value || descriptionChanged.value);
 
 // A row is one consent (client × owner), so the owner is part of its identity.
 function isSameRow(a: OAuthClientResponseDto | null, b: OAuthClientResponseDto) {
@@ -95,7 +98,7 @@ async function onSave() {
 		const updated = await mcpStore.updateOAuthClientDetails(
 			client,
 			{
-				...(nameChanged.value ? { name: trimmedName.value } : {}),
+				...(displayNameChanged.value ? { displayName: displayNameToSave.value } : {}),
 				...(descriptionChanged.value ? { description: trimmedDescription.value || null } : {}),
 			},
 			{ refreshList: props.refreshList },
@@ -157,7 +160,7 @@ function onRevoke() {
 							<component :is="brand.icon" v-if="brand?.icon" :class="$style.icon" />
 							<N8nIcon v-else icon="mcp" :class="$style.icon" />
 						</span>
-						{{ client.name }}
+						{{ getClientDisplayName(client) }}
 					</span>
 				</N8nDialogTitle>
 				<N8nDialogDescription>{{ subtitle }}</N8nDialogDescription>
@@ -175,14 +178,29 @@ function onRevoke() {
 						>
 							{{ i18n.baseText('settings.mcp.oAuthClients.details.name') }}
 						</N8nText>
-						<N8nInput
-							id="mcp-client-details-name"
-							v-model="nameDraft"
-							size="small"
-							:maxlength="OAUTH_CLIENT_NAME_MAX_LENGTH"
-							data-test-id="mcp-client-details-name-input"
-							@keydown.enter="onSave"
-						/>
+						<div :class="$style['name-field']">
+							<N8nInput
+								id="mcp-client-details-name"
+								v-model="nameDraft"
+								size="small"
+								:maxlength="OAUTH_CLIENT_DISPLAY_NAME_MAX_LENGTH"
+								:placeholder="client.name"
+								data-test-id="mcp-client-details-name-input"
+								@keydown.enter="onSave"
+							/>
+							<N8nText
+								v-if="client.displayName"
+								color="text-light"
+								size="xsmall"
+								data-test-id="mcp-client-details-registered-name"
+							>
+								{{
+									i18n.baseText('settings.mcp.oAuthClients.details.registeredName', {
+										interpolate: { name: client.name },
+									})
+								}}
+							</N8nText>
+						</div>
 
 						<N8nText
 							tag="label"
@@ -323,6 +341,13 @@ function onRevoke() {
 	display: flex;
 	flex-direction: column;
 	gap: var(--spacing--3xs);
+	min-width: 0;
+}
+
+.name-field {
+	display: flex;
+	flex-direction: column;
+	gap: var(--spacing--4xs);
 	min-width: 0;
 }
 

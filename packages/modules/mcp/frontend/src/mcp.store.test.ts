@@ -133,33 +133,42 @@ describe('mcp.store', () => {
 			store.oauthClientsPreview = [createOAuthClient({ id: 'client-1' })];
 			const updateSpy = vi.spyOn(mcpApi, 'updateOAuthClient').mockResolvedValue({
 				id: 'client-1',
-				name: 'Claude (marketing)',
+				name: 'Test Client',
+				displayName: 'Marketing assistant',
 				description: 'Used by the marketing team',
 			});
 			// The refetch fails, so the cached rows keep the locally applied values.
 			vi.spyOn(mcpApi, 'fetchOAuthClients').mockRejectedValue(new Error('refetch failed'));
 
 			const result = await store.updateOAuthClientDetails(ownRow, {
-				name: 'Claude (marketing)',
+				displayName: 'Marketing assistant',
 				description: 'Used by the marketing team',
 			});
 
 			expect(updateSpy).toHaveBeenCalledWith({}, 'client-1', {
-				name: 'Claude (marketing)',
+				displayName: 'Marketing assistant',
 				description: 'Used by the marketing team',
 			});
 			expect(result).toEqual({
 				...ownRow,
-				name: 'Claude (marketing)',
+				displayName: 'Marketing assistant',
 				description: 'Used by the marketing team',
 			});
-			expect(store.oauthClients.map((row) => [row.name, row.description, row.owner?.id])).toEqual([
-				['Claude (marketing)', 'Used by the marketing team', 'user-1'],
-				['Claude (marketing)', 'Used by the marketing team', 'user-2'],
-				['Cursor', null, undefined],
+			expect(
+				store.oauthClients.map((row) => [
+					row.name,
+					row.displayName,
+					row.description,
+					row.owner?.id,
+				]),
+			).toEqual([
+				['Test Client', 'Marketing assistant', 'Used by the marketing team', 'user-1'],
+				['Test Client', 'Marketing assistant', 'Used by the marketing team', 'user-2'],
+				['Cursor', null, null, undefined],
 			]);
 			expect(store.oauthClientsPreview[0]).toMatchObject({
-				name: 'Claude (marketing)',
+				name: 'Test Client',
+				displayName: 'Marketing assistant',
 				description: 'Used by the marketing team',
 			});
 		});
@@ -170,14 +179,15 @@ describe('mcp.store', () => {
 			store.oauthClientsFilters = { search: 'claude', type: null, ownerId: null, connected: null };
 			vi.spyOn(mcpApi, 'updateOAuthClient').mockResolvedValue({
 				id: 'client-1',
-				name: 'Cursor',
+				name: 'Claude',
+				displayName: 'Cursor',
 				description: null,
 			});
 			const fetchSpy = vi
 				.spyOn(mcpApi, 'fetchOAuthClients')
 				.mockResolvedValue({ data: [], count: 0, totals: { mine: 1 } });
 
-			await store.updateOAuthClientDetails(client, { name: 'Cursor' });
+			await store.updateOAuthClientDetails(client, { displayName: 'Cursor' });
 
 			expect(fetchSpy).toHaveBeenCalledTimes(1);
 			expect(fetchSpy).toHaveBeenCalledWith({}, expect.objectContaining({ name: 'claude' }));
@@ -191,20 +201,25 @@ describe('mcp.store', () => {
 			store.oauthClientsPreview = [client];
 			vi.spyOn(mcpApi, 'updateOAuthClient').mockResolvedValue({
 				id: 'client-1',
-				name: 'Renamed',
+				name: 'Claude',
+				displayName: 'Renamed',
 				description: null,
 			});
 			const fetchSpy = vi.spyOn(mcpApi, 'fetchOAuthClients').mockResolvedValue({
-				data: [{ ...client, name: 'Renamed' }],
+				data: [{ ...client, displayName: 'Renamed' }],
 				count: 1,
 				totals: { mine: 1 },
 			});
 
-			await store.updateOAuthClientDetails(client, { name: 'Renamed' }, { refreshList: false });
+			await store.updateOAuthClientDetails(
+				client,
+				{ displayName: 'Renamed' },
+				{ refreshList: false },
+			);
 
 			expect(fetchSpy).toHaveBeenCalledTimes(1);
 			expect(fetchSpy).toHaveBeenCalledWith({}, { ownership: 'mine', skip: 0, take: 3 });
-			expect(store.oauthClientsPreview.map((row) => row.name)).toEqual(['Renamed']);
+			expect(store.oauthClientsPreview.map((row) => row.displayName)).toEqual(['Renamed']);
 		});
 
 		it('does not let a list fetch that started before the save restore the old values', async () => {
@@ -216,22 +231,23 @@ describe('mcp.store', () => {
 			vi.spyOn(mcpApi, 'fetchOAuthClients')
 				.mockReturnValueOnce(stale)
 				.mockResolvedValueOnce({
-					data: [{ ...client, name: 'Renamed' }],
+					data: [{ ...client, displayName: 'Renamed' }],
 					count: 1,
 					totals: { mine: 1 },
 				});
 			vi.spyOn(mcpApi, 'updateOAuthClient').mockResolvedValue({
 				id: 'client-1',
-				name: 'Renamed',
+				name: 'Claude',
+				displayName: 'Renamed',
 				description: null,
 			});
 
 			const staleCall = store.getAllOAuthClients(); // in flight
-			await store.updateOAuthClientDetails(client, { name: 'Renamed' });
+			await store.updateOAuthClientDetails(client, { displayName: 'Renamed' });
 			resolveStale({ data: [client], count: 1, totals: { mine: 1 } });
 			await staleCall;
 
-			expect(store.oauthClients.map((row) => row.name)).toEqual(['Renamed']);
+			expect(store.oauthClients.map((row) => row.displayName)).toEqual(['Renamed']);
 		});
 
 		it('keeps the cached rows when the save fails', async () => {
@@ -239,10 +255,10 @@ describe('mcp.store', () => {
 			store.oauthClients = [client];
 			vi.spyOn(mcpApi, 'updateOAuthClient').mockRejectedValue(new Error('network'));
 
-			await expect(store.updateOAuthClientDetails(client, { name: 'Renamed' })).rejects.toThrow(
-				'network',
-			);
-			expect(store.oauthClients[0].name).toBe('Claude');
+			await expect(
+				store.updateOAuthClientDetails(client, { displayName: 'Renamed' }),
+			).rejects.toThrow('network');
+			expect(store.oauthClients[0].displayName).toBeNull();
 		});
 	});
 

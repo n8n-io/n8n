@@ -14,6 +14,7 @@ const oauthClientOwnerShape = z.object({
 const oauthClientShape = {
 	id: z.string(),
 	name: z.string(),
+	displayName: z.string().nullable(),
 	/** Admin-supplied note about the client. Shown only in the client details view. */
 	description: z.string().nullable(),
 	redirectUris: z.array(z.string()),
@@ -41,7 +42,7 @@ export class ListOAuthClientsQueryDto extends Z.class({
 	...paginationSchema,
 	/** 'all' requires mcp:manage; defaults to 'mine'. */
 	ownership: z.enum(['mine', 'all']).optional(),
-	/** Case-insensitive substring match against the client's name. */
+	/** Case-insensitive substring match against the client's display name, else its registered name. */
 	name: z.string().trim().min(1).max(100).optional(),
 	/** Narrow the `all` view to consents of this user. Ignored without mcp:manage. */
 	ownerId: z.string().max(36).optional(),
@@ -82,16 +83,22 @@ export class DeleteOAuthClientResponseDto extends Z.class({
 	message: z.string(),
 }) {}
 
-/** Matches the `oauth_clients.name` column size. */
-export const OAUTH_CLIENT_NAME_MAX_LENGTH = 255;
+/** Matches the `oauth_clients.displayName` column size. */
+export const OAUTH_CLIENT_DISPLAY_NAME_MAX_LENGTH = 255;
 export const OAUTH_CLIENT_DESCRIPTION_MAX_LENGTH = 512;
 
 /**
- * DTO to update the name and description of a connected OAuth client.
- * An empty description clears it.
+ * DTO to update the display name and description of a connected OAuth client.
+ * An empty value clears the field.
  */
 export class UpdateOAuthClientDto extends Z.class({
-	name: z.string().trim().min(1).max(OAUTH_CLIENT_NAME_MAX_LENGTH).optional(),
+	displayName: z
+		.string()
+		.trim()
+		.max(OAUTH_CLIENT_DISPLAY_NAME_MAX_LENGTH)
+		.nullable()
+		.optional()
+		.transform((value) => (value === '' ? null : value)),
 	description: z
 		.string()
 		.trim()
@@ -107,6 +114,7 @@ export class UpdateOAuthClientDto extends Z.class({
 export class UpdateOAuthClientResponseDto extends Z.class({
 	id: z.string(),
 	name: z.string(),
+	displayName: z.string().nullable(),
 	description: z.string().nullable(),
 }) {}
 

@@ -6,6 +6,7 @@ import { useUsersStore } from '@n8n/stores/users.store';
 
 import { useMcp } from './useMcp';
 import { useMCPStore } from '../mcp.store';
+import { getClientDisplayName } from '../clients.utils';
 
 /**
  * The confirm-then-revoke flow for a connected client, shared by the settings
@@ -65,7 +66,7 @@ export function useOAuthClientRevoke(
 				type: 'success',
 				title: i18n.baseText('settings.mcp.oAuthClients.revoke.success.title'),
 				message: i18n.baseText('settings.mcp.oAuthClients.revoke.success.message', {
-					interpolate: { name: client.name },
+					interpolate: { name: getClientDisplayName(client) },
 				}),
 			});
 		} catch (error) {

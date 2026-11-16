@@ -134,7 +134,7 @@ export async function deleteOAuthClient(
 export async function updateOAuthClient(
 	context: IRestApiContext,
 	clientId: string,
-	details: { name?: string; description?: string | null },
+	details: { displayName?: string | null; description?: string | null },
 ): Promise<UpdateOAuthClientResponseDto> {
 	return await makeRestApiRequest(
 		context,

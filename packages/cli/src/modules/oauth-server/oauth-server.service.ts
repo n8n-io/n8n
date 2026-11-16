@@ -13,7 +13,12 @@ import type {
 	OAuthTokens,
 	OAuthTokenRevocationRequest,
 } from '@modelcontextprotocol/sdk/shared/auth.js';
-import type { McpClientConnectedPeriod, McpClientTypeFilter } from '@n8n/api-types';
+import type {
+	McpClientConnectedPeriod,
+	McpClientTypeFilter,
+	UpdateOAuthClientDto,
+	UpdateOAuthClientResponseDto,
+} from '@n8n/api-types';
 import { getMcpClientType, MCP_CLIENT_TYPE_FILTER_BUCKETS } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import { EventService, UrlService } from '@n8n/backend-services';
@@ -818,16 +823,16 @@ export class OAuthServerService implements OAuthServerProvider {
 	}
 
 	/**
-	 * Update the name and description of a registered client. The client
+	 * Update the display name and description of a registered client. The client
 	 * registration is shared by every consent, so the change shows for all
 	 * users connected through it. First-party (virtual) clients are not editable.
 	 */
 	async updateClientDetails(
 		clientId: string,
-		details: { name?: string; description?: string | null },
-	): Promise<Pick<OAuthClient, 'id' | 'name' | 'description'>> {
-		const changes: Partial<Pick<OAuthClient, 'name' | 'description'>> = {};
-		if (details.name !== undefined) changes.name = details.name;
+		details: UpdateOAuthClientDto,
+	): Promise<UpdateOAuthClientResponseDto> {
+		const changes: Partial<Pick<OAuthClient, 'displayName' | 'description'>> = {};
+		if (details.displayName !== undefined) changes.displayName = details.displayName;
 		if (details.description !== undefined) changes.description = details.description;
 
 		const client = await this.oauthClientRepository.updateDetails(clientId, changes, {});
@@ -840,7 +845,12 @@ export class OAuthServerService implements OAuthServerProvider {
 			updatedFields: Object.keys(changes),
 		});
 
-		return { id: client.id, name: client.name, description: client.description };
+		return {
+			id: client.id,
+			name: client.name,
+			displayName: client.displayName,
+			description: client.description,
+		};
 	}
 
 	/**

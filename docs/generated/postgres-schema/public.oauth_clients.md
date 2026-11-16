@@ -8,6 +8,7 @@
 | clientSecretExpiresAt | bigint |  | true |  |  |  |
 | createdAt | timestamp(3) with time zone | CURRENT_TIMESTAMP(3) | false |  |  |  |
 | description | text |  | true |  |  | Admin-supplied note on what the connected MCP client is for. Set and read through the MCP clients settings |
+| displayName | varchar(255) |  | true |  |  | Admin-supplied name shown in the MCP clients settings instead of the registered name. The registered name stays in name |
 | grantTypes | json |  | false |  |  |  |
 | id | varchar |  | false | [public.oauth_access_tokens](public.oauth_access_tokens.md) [public.oauth_authorization_codes](public.oauth_authorization_codes.md) [public.oauth_refresh_tokens](public.oauth_refresh_tokens.md) [public.oauth_user_consents](public.oauth_user_consents.md) |  |  |
 | isFirstParty | boolean | false | false |  |  |  |
@@ -51,6 +52,7 @@ erDiagram
   bigint clientSecretExpiresAt
   timestamp_3__with_time_zone createdAt
   text description
+  varchar_255_ displayName
   json grantTypes
   varchar id
   boolean isFirstParty

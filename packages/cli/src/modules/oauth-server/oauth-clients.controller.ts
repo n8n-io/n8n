@@ -60,6 +60,7 @@ export class OAuthClientsController {
 		const clientDtos: OAuthClientResponseDto[] = clients.map((client) => ({
 			id: client.id,
 			name: client.name,
+			displayName: client.displayName,
 			description: client.description,
 			redirectUris: client.redirectUris,
 			grantTypes: client.grantTypes,
@@ -92,7 +93,7 @@ export class OAuthClientsController {
 	}
 
 	/**
-	 * Update the name and description of a connected client. The registration
+	 * Update the display name and description of a connected client. The registration
 	 * is shared by every user connected through it, so this requires `mcp:manage`.
 	 */
 	@GlobalScope('mcp:manage')

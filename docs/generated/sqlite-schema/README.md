@@ -114,7 +114,7 @@ Auto-generated from the SQLite migrations in @n8n/db. Do not edit by hand.
 | [migration_workflow_owner](migration_workflow_owner.md) | 7 |  | table |
 | [oauth_access_tokens](oauth_access_tokens.md) | 3 |  | table |
 | [oauth_authorization_codes](oauth_authorization_codes.md) | 13 |  | table |
-| [oauth_clients](oauth_clients.md) | 11 |  | table |
+| [oauth_clients](oauth_clients.md) | 12 |  | table |
 | [oauth_refresh_tokens](oauth_refresh_tokens.md) | 8 |  | table |
 | [oauth_user_consents](oauth_user_consents.md) | 5 |  | table |
 | [poller_state](poller_state.md) | 7 |  | table |
@@ -1586,6 +1586,7 @@ erDiagram
   bigint clientSecretExpiresAt
   datetime_3_ createdAt
   TEXT description
+  VARCHAR_255_ displayName
   TEXT grantTypes
   varchar id PK
   boolean isFirstParty

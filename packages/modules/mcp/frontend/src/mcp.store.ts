@@ -407,7 +407,7 @@ export const useMCPStore = defineStore(MCP_STORE, () => {
 	}
 
 	/**
-	 * Updates a client's name and description. The registration is shared by
+	 * Updates a client's display name and description. The registration is shared by
 	 * every consent row of the client, so all cached rows with that id get the
 	 * new values. Returns the given row with the saved values applied.
 	 *
@@ -419,13 +419,13 @@ export const useMCPStore = defineStore(MCP_STORE, () => {
 	 */
 	async function updateOAuthClientDetails(
 		client: OAuthClientResponseDto,
-		details: { name?: string; description?: string | null },
+		details: { displayName?: string | null; description?: string | null },
 		{ refreshList = true }: { refreshList?: boolean } = {},
 	): Promise<OAuthClientResponseDto> {
 		const updated = await updateOAuthClient(rootStore.restApiContext, client.id, details);
 		const applyUpdate = (row: OAuthClientResponseDto): OAuthClientResponseDto =>
 			row.id === updated.id
-				? { ...row, name: updated.name, description: updated.description }
+				? { ...row, displayName: updated.displayName, description: updated.description }
 				: row;
 		oauthClients.value = oauthClients.value.map(applyUpdate);
 		oauthClientsPreview.value = oauthClientsPreview.value.map(applyUpdate);

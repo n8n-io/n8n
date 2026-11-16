@@ -92,7 +92,7 @@ export class UserConsentRepository extends BaseRepository<UserConsent> {
 		}
 
 		if (options.name?.trim()) {
-			qb.andWhere('LOWER(client.name) LIKE :name', {
+			qb.andWhere('LOWER(COALESCE(client.displayName, client.name)) LIKE :name', {
 				name: `%${options.name.trim().toLowerCase()}%`,
 			});
 		}

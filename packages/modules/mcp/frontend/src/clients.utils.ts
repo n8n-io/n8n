@@ -47,6 +47,12 @@ export function getClientBrand(clientName: string): McpClientBrand {
 	return brand;
 }
 
+export function getClientDisplayName(
+	client: Pick<OAuthClientResponseDto, 'name' | 'displayName'>,
+): string {
+	return client.displayName ?? client.name;
+}
+
 /**
  * i18n key suffix for a granted scope's human label, e.g. `workflow:read` →
  * `workflow.read`. Unknown scopes have no label and are rendered verbatim.
