@@ -1,0 +1,527 @@
+import type {
+	InstanceAiAgentNode,
+	InstanceAiMessage,
+	InstanceAiToolCallState,
+} from '@n8n/api-types';
+import { createTestingPinia } from '@pinia/testing';
+
+import { mockedStore } from '@/__tests__/utils';
+import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
+import { INSTANCE_AI_DRAFT_WORKFLOW_PREVIEW_EXPERIMENT } from '@/app/constants/experiments';
+import { usePostHog } from '@/app/stores/posthog.store';
+
+import { computed, effectScope, nextTick, ref } from 'vue';
+
+import {
+	formatRunActivity,
+	useCanvasRunActivity,
+	useRunActivity,
+	useSteadyRunActivity,
+} from '../composables/useRunActivity';
+
+function call(toolName: string, args: Record<string, unknown> = {}): InstanceAiToolCallState {
+	return { toolCallId: toolName, toolName, args, isLoading: true };
+}
+
+function agent(overrides: Partial<InstanceAiAgentNode> = {}): InstanceAiAgentNode {
+	return {
+		agentId: 'root',
+		role: 'orchestrator',
+		status: 'active',
+		textContent: '',
+		reasoning: '',
+		toolCalls: [],
+		children: [],
+		timeline: [],
+		...overrides,
+	};
+}
+
+function message(tree: InstanceAiAgentNode, isStreaming = true): InstanceAiMessage {
+	return {
+		id: 'm-1',
+		role: 'assistant',
+		createdAt: '',
+		content: '',
+		reasoning: '',
+		isStreaming,
+		agentTree: tree,
+	};
+}
+
+/** The specific progress belongs to the variant of the draft workflow preview experiment. */
+function setDraftWorkflowPreview(enabled: boolean) {
+	const { name, variant, control } = INSTANCE_AI_DRAFT_WORKFLOW_PREVIEW_EXPERIMENT;
+	mockedStore(usePostHog).getVariant.mockImplementation((flag) =>
+		flag === name ? (enabled ? variant : control) : undefined,
+	);
+}
+
+describe('useRunActivity', () => {
+	beforeEach(() => {
+		createTestingPinia();
+		setDraftWorkflowPreview(true);
+	});
+
+	it('names the running tool of the orchestrator, with its details', () => {
+		const activity = useRunActivity()([
+			message(agent({ toolCalls: [call('search_nodes', { queries: ['gmail', 'slack'] })] })),
+		]);
+
+		expect(activity).toEqual({ label: 'Searching for gmail, slack' });
+	});
+
+	it('names an active sub-agent and its running tool', () => {
+		const child = agent({
+			agentId: 'child',
+			role: 'workflow-builder',
+			kind: 'builder',
+			toolCalls: [call('search_nodes', { queries: ['http'] })],
+		});
+
+		const activity = useRunActivity()([message(agent({ children: [child] }))]);
+
+		expect(activity?.detail).toBe('Searching for http');
+		expect(activity?.label).toBeTruthy();
+	});
+
+	it('is thinking when no tool runs', () => {
+		expect(useRunActivity()([message(agent())])).toEqual({ label: 'Thinking' });
+	});
+});
+
+describe('useRunActivity, specific states', () => {
+	beforeEach(() => {
+		createTestingPinia();
+		setDraftWorkflowPreview(true);
+	});
+
+	const done = (
+		toolName: string,
+		args: Record<string, unknown>,
+		result: unknown,
+	): InstanceAiToolCallState => ({ ...call(toolName, args), isLoading: false, result });
+
+	function activityOf(toolCalls: InstanceAiToolCallState[]) {
+		return useRunActivity()([message(agent({ toolCalls }))]);
+	}
+
+	it('rotates between the nodes a blocked build names', () => {
+		const deriveActivity = useRunActivity();
+		const build = done(
+			'workflow_builder_build_workflow',
+			{ filePath: 'src/workflows/a.workflow.ts' },
+			{
+				success: false,
+				errors: [
+					'[SET_INVALID_ASSIGNMENT] (Set Fields): bad',
+					'[MISSING_PARAMETER] (Read Invoices): missing',
+					'[OTHER] (Set Fields): again',
+					'[GROUP_DROPPED]: too many',
+				],
+			},
+		);
+		const messages = [message(agent({ toolCalls: [build] }))];
+
+		expect(deriveActivity(messages, 0)).toEqual({ label: 'Fixing Set Fields' });
+		expect(deriveActivity(messages, 3000)).toEqual({ label: 'Fixing Read Invoices' });
+		expect(deriveActivity(messages, 6000)).toEqual({ label: 'Fixing Set Fields' });
+	});
+
+	it('fixes the workflow when a blocked build names no node', () => {
+		const build = done(
+			'workflow_builder_build_workflow',
+			{},
+			{ success: false, errors: ['[GROUP_DROPPED]: too many'] },
+		);
+
+		expect(activityOf([build])).toEqual({ label: 'Fixing the workflow' });
+	});
+
+	it('rotates between the nodes that failed the test', () => {
+		const verify = done(
+			'workflow_builder_verify_built_workflow',
+			{ workflowId: 'wf-1' },
+			{
+				success: false,
+				status: 'error',
+				nodeErrors: [{ nodeName: 'HTTP Request' }, { nodeName: 'Slack' }],
+			},
+		);
+		const deriveActivity = useRunActivity();
+		const messages = [message(agent({ toolCalls: [verify] }))];
+
+		expect(deriveActivity(messages, 0)).toEqual({ label: 'Fixing HTTP Request' });
+		expect(deriveActivity(messages, 3000)).toEqual({ label: 'Fixing Slack' });
+	});
+
+	it.each<[string, Record<string, unknown>, unknown, string]>([
+		['search_nodes', { queries: ['gmail'] }, { results: [] }, 'Choosing nodes'],
+		['get_node_types', { nodeTypes: ['n8n-nodes-base.gmail'] }, {}, 'Planning the workflow'],
+		['load_skill', { name: 'workflow-builder' }, {}, 'Planning the workflow'],
+		['workspace_write_file', { path: 'src/workflows/a.workflow.ts' }, {}, 'Reviewing the workflow'],
+		[
+			'workflow_builder_build_workflow',
+			{},
+			{ success: true, workflowId: 'wf-1' },
+			'Reviewing the workflow',
+		],
+		['list_credentials', {}, {}, 'Thinking'],
+	])('after %s, says what comes next', (toolName, args, result, label) => {
+		expect(activityOf([done(toolName, args, result)])).toEqual({ label });
+	});
+
+	describe('waiting on the user', () => {
+		function pending(
+			toolName: string,
+			confirmation: Partial<NonNullable<InstanceAiToolCallState['confirmation']>>,
+		): InstanceAiToolCallState {
+			return {
+				...call(toolName),
+				confirmation: {
+					requestId: `req-${toolName}`,
+					severity: 'info',
+					message: 'Please confirm',
+					...confirmation,
+				},
+				confirmationStatus: 'pending',
+			};
+		}
+
+		it.each<[string, Partial<NonNullable<InstanceAiToolCallState['confirmation']>>, string]>([
+			['ask_user', { inputType: 'questions' }, 'Waiting on your answer'],
+			['ask_user', { inputType: 'text' }, 'Waiting on your answer'],
+			[
+				'setup_credentials',
+				{ credentialRequests: [], credentialFlow: { stage: 'generic' } },
+				'Waiting on credentials',
+			],
+			['data_tables', { inputType: 'resource-decision' }, 'Waiting on your choice'],
+			['workflow_builder_build_workflow', { inputType: 'approval' }, 'Waiting on your approval'],
+		])('says what %s waits on', (toolName, confirmation, label) => {
+			expect(activityOf([pending(toolName, confirmation)])).toEqual({ label, waiting: true });
+		});
+
+		it('waits on a sub-agent that asks', () => {
+			const child = agent({
+				agentId: 'child',
+				toolCalls: [pending('ask_user', { inputType: 'questions' })],
+			});
+
+			expect(useRunActivity()([message(agent({ children: [child] }))])).toEqual({
+				label: 'Waiting on your answer',
+				waiting: true,
+			});
+		});
+
+		it('ignores answered and expired confirmations', () => {
+			const answered = {
+				...pending('ask_user', { inputType: 'questions' }),
+				confirmationStatus: 'approved' as const,
+			};
+			const expired = pending('ask_user', { inputType: 'questions', expired: true });
+
+			expect(activityOf([answered])?.waiting).toBeUndefined();
+			expect(activityOf([expired])?.waiting).toBeUndefined();
+		});
+	});
+});
+
+describe('useRunActivity, long steps', () => {
+	beforeEach(() => {
+		createTestingPinia();
+		setDraftWorkflowPreview(true);
+		const nodeTypesStore = mockedStore(useNodeTypesStore);
+		nodeTypesStore.getNodeType = vi.fn(
+			(name: string) =>
+				({
+					'n8n-nodes-base.gmail': { displayName: 'Gmail' },
+					'n8n-nodes-base.slack': { displayName: 'Slack' },
+				})[name] ?? null,
+		) as unknown as typeof nodeTypesStore.getNodeType;
+	});
+
+	const readTypes: InstanceAiToolCallState = {
+		...call('get_node_types', {
+			nodeTypes: ['n8n-nodes-base.gmail', { nodeType: 'n8n-nodes-base.slack' }, 'acme.unknown'],
+		}),
+		isLoading: false,
+	};
+
+	it('rotates through the node types the agent read while it writes the source', () => {
+		const deriveActivity = useRunActivity();
+		const messages = [message(agent({ toolCalls: [readTypes, call('workspace_write_file')] }))];
+
+		expect(deriveActivity(messages, 0)).toEqual({ label: 'Configuring Gmail nodes' });
+		expect(deriveActivity(messages, 3000)).toEqual({ label: 'Configuring Slack nodes' });
+		expect(deriveActivity(messages, 6000)).toEqual({ label: 'Configuring Gmail nodes' });
+	});
+
+	it('rotates through the node types while an edit runs', () => {
+		const messages = [
+			message(agent({ toolCalls: [readTypes, call('workspace_str_replace_file')] })),
+		];
+
+		expect(useRunActivity()(messages, 0)).toEqual({ label: 'Configuring Gmail nodes' });
+	});
+
+	it('uses the node types a sub-agent read', () => {
+		const child = agent({
+			agentId: 'child',
+			role: 'workflow-builder',
+			kind: 'builder',
+			toolCalls: [readTypes, call('workspace_write_file')],
+		});
+
+		expect(useRunActivity()([message(agent({ children: [child] }))], 0)?.detail).toBe(
+			'Configuring Gmail nodes',
+		);
+	});
+
+	it('keeps the tool label while the workflow is tested, so the canvas shows the running node', () => {
+		const verify = call('workflow_builder_verify_built_workflow', { workflowId: 'wf-1' });
+
+		expect(useRunActivity()([message(agent({ toolCalls: [readTypes, verify] }))], 0)).toEqual({
+			label: 'Verifying workflow',
+		});
+	});
+
+	it('keeps the tool label when the agent read no node types', () => {
+		const write = call('workspace_write_file', {
+			path: 'src/workflows/daily-invoices.workflow.ts',
+		});
+
+		expect(useRunActivity()([message(agent({ toolCalls: [write] }))], 0)).toEqual({
+			label: 'Writing daily invoices',
+		});
+	});
+});
+
+describe('useRunActivity, reasoning', () => {
+	beforeEach(() => {
+		createTestingPinia();
+		setDraftWorkflowPreview(true);
+	});
+
+	const reasoningTimeline = (content: string) => [{ type: 'reasoning' as const, content }];
+
+	it('follows the sentence the agent is writing while it reasons', () => {
+		const tree = agent({
+			timeline: reasoningTimeline('The user wants invoices. Gmail can filter by label'),
+		});
+
+		expect(useRunActivity()([message(tree)])).toEqual({
+			label: 'Gmail can filter by label',
+			streaming: true,
+		});
+	});
+
+	it('keeps the next step until the reasoning says enough to read', () => {
+		const read: InstanceAiToolCallState = {
+			...call('get_node_types', { nodeTypes: ['n8n-nodes-base.gmail'] }),
+			isLoading: false,
+		};
+		const tree = agent({
+			toolCalls: [read],
+			timeline: [
+				{ type: 'tool-call', toolCallId: read.toolCallId },
+				...reasoningTimeline('The user'),
+			],
+		});
+
+		expect(useRunActivity()([message(tree)])).toEqual({ label: 'Planning the workflow' });
+	});
+
+	it('shows the reasoning of an active sub-agent as its detail', () => {
+		const child = agent({
+			agentId: 'child',
+			role: 'workflow-builder',
+			kind: 'builder',
+			timeline: reasoningTimeline('Gmail can filter by label. More'),
+		});
+
+		expect(useRunActivity()([message(agent({ children: [child] }))])).toEqual({
+			label: 'Building workflow',
+			detail: 'Gmail can filter by label.',
+			streaming: true,
+		});
+	});
+
+	it('names a running tool even when reasoning came before it', () => {
+		const search = call('search_nodes', { queries: ['gmail'] });
+		const tree = agent({
+			toolCalls: [search],
+			timeline: [
+				...reasoningTimeline('Gmail can filter by label. More'),
+				{ type: 'tool-call', toolCallId: search.toolCallId },
+			],
+		});
+
+		expect(useRunActivity()([message(tree)])).toEqual({ label: 'Searching for gmail' });
+	});
+});
+
+describe('useSteadyRunActivity', () => {
+	beforeEach(() => {
+		createTestingPinia();
+		setDraftWorkflowPreview(true);
+	});
+
+	it('follows streaming reasoning without holding each version', async () => {
+		const reasoningMessage = (content: string) =>
+			message(agent({ timeline: [{ type: 'reasoning', content }] }));
+		const messages = ref([reasoningMessage('Gmail can filter')]);
+		const scope = effectScope();
+		const activity = scope.run(() => useSteadyRunActivity(() => messages.value));
+
+		messages.value = [reasoningMessage('Gmail can filter by label')];
+		await nextTick();
+
+		expect(activity?.value?.label).toBe('Gmail can filter by label');
+		scope.stop();
+	});
+});
+
+describe('useCanvasRunActivity', () => {
+	const SENTENCE = 'Gmail can filter by label';
+	const reasoning = (overrides: Partial<InstanceAiAgentNode> = {}) =>
+		agent({ timeline: [{ type: 'reasoning', content: SENTENCE }], ...overrides });
+
+	beforeEach(() => {
+		createTestingPinia();
+		setDraftWorkflowPreview(true);
+		vi.useFakeTimers();
+	});
+
+	afterEach(() => {
+		vi.useRealTimers();
+		vi.restoreAllMocks();
+	});
+
+	function canvasText(messages: InstanceAiMessage[]) {
+		const scope = effectScope();
+		const activity = scope.run(() => useCanvasRunActivity(() => messages));
+		return { text: computed(() => activity?.value?.text), activity, stop: () => scope.stop() };
+	}
+
+	it('shows a reasoning phrase instead of the reasoning sentence', () => {
+		const { text, stop } = canvasText([message(reasoning())]);
+
+		expect(text?.value).toBeTruthy();
+		expect(text?.value).not.toContain('Gmail');
+		stop();
+	});
+
+	it('changes the reasoning phrase every few seconds', async () => {
+		vi.spyOn(Math, 'random').mockReturnValue(0);
+		const { text, stop } = canvasText([message(reasoning())]);
+		const first = text?.value;
+
+		vi.advanceTimersByTime(3000);
+		await nextTick();
+
+		expect(text?.value).toBeTruthy();
+		expect(text?.value).not.toBe(first);
+		stop();
+	});
+
+	it('keeps the role of a sub-agent that reasons', () => {
+		const child = reasoning({ agentId: 'child', role: 'workflow-builder', kind: 'builder' });
+
+		const { text, stop } = canvasText([message(agent({ children: [child] }))]);
+
+		expect(text?.value).toMatch(/^Building workflow · /);
+		expect(text?.value).not.toContain('Gmail');
+		stop();
+	});
+
+	it('shows the same text as the status bar when the agent does not reason', () => {
+		const { text, stop } = canvasText([
+			message(agent({ toolCalls: [call('search_nodes', { queries: ['gmail'] })] })),
+		]);
+
+		expect(text?.value).toBe('Searching for gmail');
+		stop();
+	});
+
+	it('marks a run that waits on the user', () => {
+		const { activity, stop } = canvasText([
+			message(
+				agent({
+					toolCalls: [
+						{
+							...call('ask_user'),
+							confirmation: {
+								requestId: 'r-1',
+								severity: 'info',
+								message: 'Please answer',
+								inputType: 'questions',
+							},
+							confirmationStatus: 'pending',
+						},
+					],
+				}),
+			),
+		]);
+
+		expect(activity?.value?.waiting).toBe(true);
+		stop();
+	});
+});
+
+describe('useRunActivity, control group of the experiment', () => {
+	beforeEach(() => {
+		createTestingPinia();
+		setDraftWorkflowPreview(false);
+	});
+
+	it('is thinking while the agent reasons', () => {
+		const tree = agent({ timeline: [{ type: 'reasoning', content: 'Gmail can filter by label' }] });
+
+		expect(useRunActivity()([message(tree)])).toEqual({ label: 'Thinking' });
+	});
+
+	it('does not mark a run that waits on the user', () => {
+		const asking: InstanceAiToolCallState = {
+			...call('ask_user'),
+			confirmation: {
+				requestId: 'r-1',
+				severity: 'info',
+				message: 'Please answer',
+				inputType: 'questions',
+			},
+			confirmationStatus: 'pending',
+		};
+
+		expect(useRunActivity()([message(agent({ toolCalls: [asking] }))])?.waiting).toBeUndefined();
+	});
+
+	it('is thinking after a tool call ends', () => {
+		const finished = { ...call('workflow_builder_verify_built_workflow'), isLoading: false };
+
+		expect(useRunActivity()([message(agent({ toolCalls: [finished] }))])).toEqual({
+			label: 'Thinking',
+		});
+	});
+
+	it('shows each new activity at once', async () => {
+		const messages = ref([message(agent({ toolCalls: [call('search_nodes')] }))]);
+		const scope = effectScope();
+		const activity = scope.run(() => useSteadyRunActivity(() => messages.value));
+
+		messages.value = [message(agent({ toolCalls: [call('workspace_execute_command')] }))];
+		await nextTick();
+
+		expect(activity?.value?.label).toBe('Running command');
+		scope.stop();
+	});
+});
+
+describe('formatRunActivity', () => {
+	it('joins the label and the detail like the status bar', () => {
+		expect(formatRunActivity({ label: 'Building workflow', detail: 'Searching nodes' })).toBe(
+			'Building workflow · Searching nodes',
+		);
+		expect(formatRunActivity({ label: 'Thinking' })).toBe('Thinking');
+	});
+});
