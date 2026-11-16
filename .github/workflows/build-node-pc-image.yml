@@ -31,6 +31,10 @@ on:
         default: false
         type: boolean
 
+env:
+  # Rebuilds at the same commit must not reuse a previous run or attempt.
+  STAGING_TAG: ${{ github.sha }}-${{ github.run_id }}-${{ github.run_attempt }}
+
 jobs:
   # A rebuild compiles Node and moves the tags to new digests. So master builds
   # an image only when its own inputs (its bake target, the Dockerfile and the
@@ -158,8 +162,10 @@ jobs:
           tags: |
             ${{ secrets.DOCKER_USERNAME }}/${{ env.REPO }}:${{ env.NODE_VERSION }}-${{ matrix.platform.arch }}
             ${{ secrets.DOCKER_USERNAME }}/${{ env.REPO }}:${{ env.NODE_VERSION }}-${{ github.sha }}-${{ matrix.platform.arch }}
+            ${{ secrets.DOCKER_USERNAME }}/${{ env.REPO }}:${{ env.NODE_VERSION }}-${{ env.STAGING_TAG }}-${{ matrix.platform.arch }}
             ghcr.io/${{ github.repository_owner }}/${{ env.REPO }}:${{ env.NODE_VERSION }}-${{ matrix.platform.arch }}
             ghcr.io/${{ github.repository_owner }}/${{ env.REPO }}:${{ env.NODE_VERSION }}-${{ github.sha }}-${{ matrix.platform.arch }}
+            ghcr.io/${{ github.repository_owner }}/${{ env.REPO }}:${{ env.NODE_VERSION }}-${{ env.STAGING_TAG }}-${{ matrix.platform.arch }}
           no-cache: true
 
       # No no-cache here: reuses the compile layers from the runtime build
@@ -178,10 +184,12 @@ jobs:
           tags: |
             ${{ secrets.DOCKER_USERNAME }}/${{ env.REPO }}:${{ env.NODE_VERSION }}-dev-${{ matrix.platform.arch }}
             ${{ secrets.DOCKER_USERNAME }}/${{ env.REPO }}:${{ env.NODE_VERSION }}-${{ github.sha }}-dev-${{ matrix.platform.arch }}
+            ${{ secrets.DOCKER_USERNAME }}/${{ env.REPO }}:${{ env.NODE_VERSION }}-${{ env.STAGING_TAG }}-dev-${{ matrix.platform.arch }}
             ghcr.io/${{ github.repository_owner }}/${{ env.REPO }}:${{ env.NODE_VERSION }}-dev-${{ matrix.platform.arch }}
             ghcr.io/${{ github.repository_owner }}/${{ env.REPO }}:${{ env.NODE_VERSION }}-${{ github.sha }}-dev-${{ matrix.platform.arch }}
+            ghcr.io/${{ github.repository_owner }}/${{ env.REPO }}:${{ env.NODE_VERSION }}-${{ env.STAGING_TAG }}-dev-${{ matrix.platform.arch }}
 
-  # Each image checks all its runtime and dev inputs before it moves any tag.
+  # Each image checks all runtime and dev inputs from this run and attempt.
   # A failed build for another image does not block publication.
   create-multi-arch-manifest:
     needs: [prepare, build]
@@ -215,14 +223,14 @@ jobs:
           for REPO in "${REPOS[@]}"; do
             for DEV in "" "-dev"; do
               for ARCH in amd64 arm64; do
-                docker buildx imagetools inspect "$REPO:$NODE_VERSION-${{ github.sha }}$DEV-$ARCH" > /dev/null
+                docker buildx imagetools inspect "$REPO:$NODE_VERSION-$STAGING_TAG$DEV-$ARCH" > /dev/null
               done
             done
           done
           for REPO in "${REPOS[@]}"; do
             for DEV in "" "-dev"; do
-              AMD64="$REPO:$NODE_VERSION-${{ github.sha }}$DEV-amd64"
-              ARM64="$REPO:$NODE_VERSION-${{ github.sha }}$DEV-arm64"
+              AMD64="$REPO:$NODE_VERSION-$STAGING_TAG$DEV-amd64"
+              ARM64="$REPO:$NODE_VERSION-$STAGING_TAG$DEV-arm64"
               for TAG in \
                 "$REPO:$NODE_VERSION$DEV" \
                 "$REPO:$NODE_VERSION-${{ github.sha }}$DEV" \

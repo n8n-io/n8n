@@ -10,14 +10,56 @@ const workflow = parse(
 const manifestStep = workflow.jobs['create-multi-arch-manifest'].steps.find(
 	(step) => step.name === 'Create multi-arch manifests',
 );
-const script = manifestStep.run
-	.replaceAll('${{ secrets.DOCKER_USERNAME }}', 'n8nio')
-	.replaceAll('${{ github.repository_owner }}', 'n8n-io')
-	.replaceAll('${{ matrix.image.repo }}', 'node-patched')
-	.replaceAll('${{ github.sha }}', 'commit');
 const repositories = ['n8nio/node-patched', 'ghcr.io/n8n-io/node-patched'];
 
-function publish(missingImage = '') {
+function render(template, values) {
+	return template.replace(/\$\{\{ (.+?) \}\}/g, (_, key) => {
+		assert.ok(Object.hasOwn(values, key), `Unknown workflow expression: ${key}`);
+		return values[key];
+	});
+}
+
+function context(overrides = {}) {
+	const values = {
+		'secrets.DOCKER_USERNAME': 'n8nio',
+		'github.repository_owner': 'n8n-io',
+		'matrix.image.repo': 'node-patched',
+		'env.REPO': 'node-patched',
+		'env.NODE_VERSION': '26.13.0',
+		'github.sha': 'commit',
+		'github.run_id': '100',
+		'github.run_attempt': '2',
+		...overrides,
+	};
+	values['env.STAGING_TAG'] = render(workflow.env?.STAGING_TAG ?? '', values);
+	return values;
+}
+
+function buildImages(values) {
+	return workflow.jobs.build.steps
+		.filter((step) => step.with?.tags)
+		.flatMap((step) =>
+			['amd64', 'arm64'].flatMap((arch) =>
+				render(step.with.tags, { ...values, 'matrix.platform.arch': arch })
+					.trim()
+					.split('\n')
+					.map((tag) => ({ tag, arch, stage: step.with.target })),
+			),
+		);
+}
+
+function publish({ missingImage = '', previousExecution, failedBuild } = {}) {
+	const values = context();
+	const images = new Map();
+	if (previousExecution) {
+		for (const { tag } of buildImages(context(previousExecution))) images.set(tag, 'previous');
+	}
+	for (const { tag, arch, stage } of buildImages(values)) {
+		if (failedBuild?.arch === arch && failedBuild.stage === stage) continue;
+		images.set(tag, 'current');
+	}
+	images.delete(missingImage);
+
 	return spawnSync(
 		'bash',
 		[
@@ -26,23 +68,35 @@ function publish(missingImage = '') {
 			'pipefail',
 			'-c',
 			`
+generation() {
+  while read -r tag generation; do
+    if [ "$tag" = "$1" ]; then echo "$generation"; return 0; fi
+  done <<< "$IMAGES"
+  return 1
+}
 docker() {
   if [ "$3" = inspect ]; then
-    [ "$4" != "$MISSING_IMAGE" ]
+    generation "$4"
   elif [ "$3" = create ]; then
     for image in "\${@:6}"; do
-      if [ "$image" = "$MISSING_IMAGE" ]; then return 1; fi
+      source_generation=$(generation "$image") || return 1
+      echo "source $image $source_generation"
     done
     echo "create $5"
   else
     return 1
   fi
 }
-${script}`,
+${render(manifestStep.run, values)}`,
 		],
 		{
 			encoding: 'utf8',
-			env: { ...process.env, NODE_VERSION: '26.13.0', MISSING_IMAGE: missingImage },
+			env: {
+				...process.env,
+				NODE_VERSION: values['env.NODE_VERSION'],
+				STAGING_TAG: values['env.STAGING_TAG'],
+				IMAGES: [...images].map(([tag, generation]) => `${tag} ${generation}`).join('\n'),
+			},
 		},
 	);
 }
@@ -51,9 +105,24 @@ describe('Node source image manifests', () => {
 	for (const repository of repositories) {
 		for (const stage of ['', '-dev']) {
 			for (const arch of ['amd64', 'arm64']) {
-				const missingImage = `${repository}:26.13.0-commit${stage}-${arch}`;
+				const missingImage = `${repository}:26.13.0-commit-100-2${stage}-${arch}`;
 				it(`keeps all tags unchanged when ${missingImage} is missing`, () => {
-					const result = publish(missingImage);
+					const result = publish({ missingImage });
+					assert.notEqual(result.status, 0, result.stderr);
+					assert.doesNotMatch(result.stdout, /^create /m);
+				});
+			}
+		}
+	}
+
+	for (const [name, previousExecution] of [
+		['run', { 'github.run_id': '99' }],
+		['attempt', { 'github.run_attempt': '1' }],
+	]) {
+		for (const stage of ['runtime', 'dev']) {
+			for (const arch of ['amd64', 'arm64']) {
+				it(`keeps all tags unchanged after a failed ${stage} ${arch} rebuild with prior ${name} images`, () => {
+					const result = publish({ previousExecution, failedBuild: { stage, arch } });
 					assert.notEqual(result.status, 0, result.stderr);
 					assert.doesNotMatch(result.stdout, /^create /m);
 				});
@@ -62,8 +131,11 @@ describe('Node source image manifests', () => {
 	}
 
 	it('publishes runtime and dev tags in both registries when all images exist', () => {
-		const result = publish();
+		const result = publish({ previousExecution: { 'github.run_attempt': '1' } });
 		assert.equal(result.status, 0, result.stderr);
+		const sources = result.stdout.split('\n').filter((line) => line.startsWith('source '));
+		assert.equal(sources.length, 16);
+		for (const source of sources) assert.match(source, / current$/);
 		const createdTags = result.stdout
 			.split('\n')
 			.filter((line) => line.startsWith('create '))
