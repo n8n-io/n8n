@@ -339,6 +339,17 @@ describe('useSettingsItems', () => {
 		});
 	});
 
+	// IAM-1508: Roles is an established feature and must not carry a New badge.
+	it('shows the Roles settings link without a New badge', () => {
+		const item = useSettingsItems().settingsItems.value.find(({ id }) => id === 'settings-roles');
+
+		expect(item).toMatchObject({
+			label: 'settings.roles',
+			route: { to: { name: VIEWS.ROLES_SETTINGS } },
+		});
+		expect(item?.new).toBeFalsy();
+	});
+
 	describe('the Context item', () => {
 		const idsOf = () => useSettingsItems().settingsItems.value.map(({ id }) => id);
 

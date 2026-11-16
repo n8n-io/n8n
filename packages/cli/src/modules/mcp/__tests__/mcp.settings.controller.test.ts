@@ -1,7 +1,7 @@
 import { Logger, ModuleRegistry } from '@n8n/backend-common';
 import { EventService, Publisher } from '@n8n/backend-services';
 import { InstanceSettingsLoaderConfig } from '@n8n/config';
-import { type ApiKey, type AuthenticatedRequest, User, Role } from '@n8n/db';
+import { type ApiKey, type AuthenticatedRequest, Person, type User, Role } from '@n8n/db';
 import { Container } from '@n8n/di';
 import type { Response } from 'express';
 import { mock, mockDeep } from 'vitest-mock-extended';
@@ -34,9 +34,9 @@ const createRole = () =>
 		scopes: [],
 	});
 
-const createUser = (overrides: Partial<User> = {}) =>
+const createPerson = (overrides: Partial<Person> = {}) =>
 	Object.assign(
-		new User(),
+		new Person(),
 		{
 			id: 'user-1',
 			email: 'user@example.com',
@@ -109,7 +109,7 @@ describe('McpSettingsController', () => {
 
 	describe('updateSettings', () => {
 		test('disables MCP access correctly', async () => {
-			const user = createUser();
+			const user = createPerson();
 			const req = createReq({ mcpAccessEnabled: false }, { user });
 			const dto = new UpdateMcpSettingsDto({ mcpAccessEnabled: false });
 			mcpSettingsService.setEnabled.mockResolvedValue(undefined);
@@ -132,7 +132,7 @@ describe('McpSettingsController', () => {
 		});
 
 		test('enables MCP access correctly', async () => {
-			const user = createUser();
+			const user = createPerson();
 			const req = createReq({ mcpAccessEnabled: true }, { user });
 			const dto = new UpdateMcpSettingsDto({ mcpAccessEnabled: true });
 			mcpSettingsService.setEnabled.mockResolvedValue(undefined);
@@ -155,7 +155,7 @@ describe('McpSettingsController', () => {
 		});
 
 		test('tells the other mains to reload the MCP settings', async () => {
-			const req = createReq({ mcpAccessEnabled: true }, { user: createUser() });
+			const req = createReq({ mcpAccessEnabled: true }, { user: createPerson() });
 			const dto = new UpdateMcpSettingsDto({ mcpAccessEnabled: true });
 			moduleRegistry.refreshModuleSettings.mockResolvedValue(null);
 
@@ -165,7 +165,7 @@ describe('McpSettingsController', () => {
 		});
 
 		test('keeps the update when the other mains cannot be told', async () => {
-			const req = createReq({ mcpAccessEnabled: true }, { user: createUser() });
+			const req = createReq({ mcpAccessEnabled: true }, { user: createPerson() });
 			const dto = new UpdateMcpSettingsDto({ mcpAccessEnabled: true });
 			mcpSettingsService.getEnabled.mockResolvedValue(true);
 			mcpSettingsService.getAutoExposeNewWorkflows.mockResolvedValue(false);
@@ -190,7 +190,7 @@ describe('McpSettingsController', () => {
 		});
 
 		test('handles module registry refresh failure gracefully', async () => {
-			const req = createReq({ mcpAccessEnabled: true }, { user: createUser() });
+			const req = createReq({ mcpAccessEnabled: true }, { user: createPerson() });
 			const dto = new UpdateMcpSettingsDto({ mcpAccessEnabled: true });
 			const error = new Error('Registry sync failed');
 
@@ -211,7 +211,7 @@ describe('McpSettingsController', () => {
 		});
 
 		test('handles a non-Error rejection from the module registry refresh', async () => {
-			const req = createReq({ mcpAccessEnabled: true }, { user: createUser() });
+			const req = createReq({ mcpAccessEnabled: true }, { user: createPerson() });
 			const dto = new UpdateMcpSettingsDto({ mcpAccessEnabled: true });
 
 			mcpSettingsService.setEnabled.mockResolvedValue(undefined);
@@ -243,7 +243,7 @@ describe('McpSettingsController', () => {
 		});
 
 		test('updates both fields when both are patched', async () => {
-			const user = createUser();
+			const user = createPerson();
 			const req = createReq({ mcpAccessEnabled: true, autoExposeNewWorkflows: false }, { user });
 			const dto = UpdateMcpSettingsDto.parse({
 				mcpAccessEnabled: true,
@@ -263,7 +263,7 @@ describe('McpSettingsController', () => {
 		});
 
 		test('touches only autoExposeNewWorkflows when mcpAccessEnabled is not patched', async () => {
-			const user = createUser();
+			const user = createPerson();
 			const req = createReq({ autoExposeNewWorkflows: true }, { user });
 			const dto = UpdateMcpSettingsDto.parse({ autoExposeNewWorkflows: true });
 			mcpSettingsService.setAutoExposeNewWorkflows.mockResolvedValue(undefined);
@@ -295,7 +295,7 @@ describe('McpSettingsController', () => {
 	});
 
 	describe('getApiKeyForMcpServer', () => {
-		const mockUser = createUser({ id: 'user123', email: 'user123@example.com' });
+		const mockUser = createPerson({ id: 'user123', email: 'user123@example.com' });
 		const mockApiKey = {
 			id: 'api-key-123',
 			key: 'mcp-key-abc123',
@@ -315,7 +315,7 @@ describe('McpSettingsController', () => {
 	});
 
 	describe('rotateApiKeyForMcpServer', () => {
-		const mockUser = createUser({ id: 'user123', email: 'user123@example.com' });
+		const mockUser = createPerson({ id: 'user123', email: 'user123@example.com' });
 		const mockApiKey = {
 			id: 'api-key-123',
 			key: 'mcp-key-abc123',
@@ -336,7 +336,7 @@ describe('McpSettingsController', () => {
 	});
 
 	describe('getMcpEligibleWorkflows', () => {
-		const user = createUser();
+		const user = createPerson();
 
 		test('calls workflowService.getMany with correct filter options', async () => {
 			const req = createListQueryReq(user);
@@ -437,7 +437,7 @@ describe('McpSettingsController', () => {
 	});
 
 	describe('toggleWorkflowsMCPAccess', () => {
-		const user = createUser();
+		const user = createPerson();
 
 		test('delegates to mcpSettingsService.bulkSetAvailableInMCP and returns its result', async () => {
 			const dto = new UpdateWorkflowsAvailabilityDto({

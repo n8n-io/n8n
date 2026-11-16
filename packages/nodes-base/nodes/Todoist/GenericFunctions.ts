@@ -6,8 +6,10 @@ import type {
 	JsonObject,
 	IHttpRequestMethods,
 	IRequestOptions,
+	RequestPath,
+	WithRequestTarget,
 } from 'n8n-workflow';
-import { NodeApiError } from 'n8n-workflow';
+import { NodeApiError, requestPath, requestUrl } from 'n8n-workflow';
 
 export type Context = IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions;
 
@@ -20,19 +22,20 @@ export function FormatDueDatetime(isoString: string): string {
 export async function todoistApiRequest(
 	this: Context,
 	method: IHttpRequestMethods,
-	resource: string,
+	resource: RequestPath,
 	body: IDataObject = {},
 	qs: IDataObject = {},
 ): Promise<any> {
 	const authentication = this.getNodeParameter('authentication', 0) as string;
 
 	const nodeVersion = this.getNode().typeVersion;
-	const endpoint = nodeVersion >= 2.2 ? 'api.todoist.com/api/v1' : 'api.todoist.com/rest/v2';
+	const endpoint =
+		nodeVersion >= 2.2 ? 'https://api.todoist.com/api/v1' : 'https://api.todoist.com/rest/v2';
 
-	const options: IRequestOptions = {
+	const options: WithRequestTarget<IRequestOptions, 'uri'> = {
 		method,
 		qs,
-		uri: `https://${endpoint}${resource}`,
+		uri: requestUrl`${endpoint}${resource}`,
 		json: true,
 	};
 
@@ -52,7 +55,7 @@ export async function todoistSyncRequest(
 	this: Context,
 	body: any = {},
 	qs: IDataObject = {},
-	endpoint: string = '/sync',
+	endpoint: RequestPath = requestPath`/sync`,
 ): Promise<any> {
 	const authentication = this.getNodeParameter('authentication', 0, 'oAuth2');
 
@@ -60,11 +63,11 @@ export async function todoistSyncRequest(
 	const baseUrl =
 		nodeVersion >= 2.2 ? 'https://api.todoist.com/api/v1' : 'https://api.todoist.com/sync/v9';
 
-	const options: IRequestOptions = {
+	const options: WithRequestTarget<IRequestOptions, 'uri'> = {
 		headers: {},
 		method: 'POST',
 		qs,
-		uri: `${baseUrl}${endpoint}`,
+		uri: requestUrl`${baseUrl}${endpoint}`,
 		json: true,
 	};
 
@@ -82,7 +85,7 @@ export async function todoistSyncRequest(
 
 export async function todoistApiGetAllRequest(
 	ctx: Context,
-	resource: string,
+	resource: RequestPath,
 	qs: IDataObject = {},
 	limit?: number,
 ) {

@@ -24,13 +24,12 @@ import type {
 	WorkflowExecuteMode,
 } from 'n8n-workflow';
 import {
-	UnexpectedError,
 	ExecutionBaseError,
 	NodeConnectionTypes,
 	NodeOperationError,
-	UserError,
 	isHitlToolType,
 } from 'n8n-workflow';
+import { UnexpectedError, UserError } from '@n8n/errors';
 import z, { ZodType } from 'zod';
 
 import { StructuredToolkit, type SupplyDataToolResponse } from './ai-tool-types';

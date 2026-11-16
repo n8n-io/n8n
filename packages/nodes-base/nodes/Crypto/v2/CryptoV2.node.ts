@@ -1,4 +1,5 @@
 import { formatPemBlock } from '@n8n/utils/format-pem-block';
+import { isUtf8 } from 'buffer';
 import type { BinaryToTextEncoding, CipherGCMTypes } from 'crypto';
 import {
 	constants,
@@ -820,7 +821,8 @@ export class CryptoV2 implements INodeType {
 								},
 								Buffer.from(value, 'base64'),
 							);
-							newValue = decrypted.toString('utf8');
+							// Use base64 when UTF-8 would change the decrypted bytes.
+							newValue = decrypted.toString(isUtf8(decrypted) ? 'utf8' : 'base64');
 						}
 					} catch (error) {
 						if (error instanceof NodeOperationError) throw error;

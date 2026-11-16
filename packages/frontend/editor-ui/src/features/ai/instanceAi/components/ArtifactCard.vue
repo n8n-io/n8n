@@ -1,13 +1,15 @@
 <script lang="ts" setup>
 import AgentPersonalisationIcon from '@/features/agents/components/AgentPersonalisationIcon.vue';
 import { getAgent } from '@/features/agents/composables/useAgentApi';
-import type { AgentResource } from '@/features/agents/types';
 import { useRootStore } from '@n8n/stores/useRootStore';
+import type { AgentPersonalisation } from '@n8n/api-types';
 import { N8nBadge, N8nCard, N8nIcon, N8nText, type IconName } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { computed, inject, ref, watch } from 'vue';
+import { useArtifactLinks } from '../artifactLinks';
 
 const i18n = useI18n();
+const { openArtifactInNewTab } = useArtifactLinks();
 
 const props = defineProps<{
 	type: 'workflow' | 'data-table' | 'agent';
@@ -36,7 +38,7 @@ const iconMap: Record<string, IconName> = {
 
 const icon = computed(() => iconMap[props.type] ?? 'file');
 const rootStore = useRootStore();
-const personalisation = ref<NonNullable<AgentResource['schema']>['personalisation']>();
+const personalisation = ref<AgentPersonalisation>();
 
 watch(
 	() => [props.type, props.projectId, props.resourceId] as const,
@@ -50,7 +52,7 @@ watch(
 
 		try {
 			const agent = await getAgent(rootStore.restApiContext, projectId, resourceId);
-			if (active) personalisation.value = agent.schema?.personalisation;
+			if (active) personalisation.value = agent.config?.personalisation;
 		} catch {
 			/** Keep the default icon when agent details are not available. */
 		}
@@ -58,34 +60,19 @@ watch(
 	{ immediate: true },
 );
 
-function projectResourceUrl(projectId: string | undefined, resourceType: 'data-table' | 'agent') {
-	if (resourceType === 'agent') {
-		return projectId ? `/projects/${projectId}/agents/${props.resourceId}` : '/home/agents';
+function handleClick(e: MouseEvent) {
+	if (e.metaKey || e.ctrlKey) {
+		openArtifactInNewTab(props.type, props.resourceId, props.projectId);
+		return;
 	}
 
-	return projectId ? `/projects/${projectId}/datatables/${props.resourceId}` : '/data-tables';
-}
-
-function handleClick(e: MouseEvent) {
 	if (props.type === 'workflow') {
-		if (e.metaKey || e.ctrlKey) {
-			window.open(`/workflow/${props.resourceId}`, '_blank');
-			return;
-		}
 		openPreview?.(props.resourceId);
 	} else if (props.type === 'data-table') {
-		if (e.metaKey || e.ctrlKey) {
-			window.open(projectResourceUrl(props.projectId, 'data-table'), '_blank');
-			return;
-		}
 		if (props.projectId) {
 			openDataTablePreview?.(props.resourceId, props.projectId);
 		}
 	} else if (props.type === 'agent') {
-		if (e.metaKey || e.ctrlKey) {
-			window.open(projectResourceUrl(props.projectId, 'agent'), '_blank');
-			return;
-		}
 		if (props.projectId) {
 			openAgentPreview?.(props.resourceId, props.projectId);
 		}

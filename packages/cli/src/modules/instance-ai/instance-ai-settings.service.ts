@@ -14,7 +14,6 @@ import type {
 	InstanceAiAdminSettingsResponse,
 	InstanceAiAdminSettingsUpdateRequest,
 	InstanceAiConnectionUpdate,
-	InstanceAiUserPreferencesResponse,
 	InstanceAiProviderConnection,
 	InstanceAiPermissions,
 	McpToolPermissions,
@@ -1058,33 +1057,6 @@ export class InstanceAiSettingsService {
 		this.emitSettingsUpdated(previous, this.snapshotAdminSettings());
 	}
 
-	// ── User preferences ──────────────────────────────────────────────────
-
-	async getUserPreferences(user: User): Promise<InstanceAiUserPreferencesResponse> {
-		const prefs = this.readUserPreferences(user);
-		const credentialId = prefs.credentialId ?? null;
-
-		let credentialType: string | null = null;
-		let credentialName: string | null = null;
-
-		if (credentialId) {
-			const cred = await this.credentialsFinderService.findCredentialForUser(credentialId, user, [
-				'credential:read',
-			]);
-			if (cred) {
-				credentialType = cred.type;
-				credentialName = cred.name;
-			}
-		}
-
-		return {
-			credentialId,
-			credentialType,
-			credentialName,
-			modelName: prefs.modelName || this.extractModelName(this.config.model),
-		};
-	}
-
 	// ── Shared accessors ──────────────────────────────────────────────────
 
 	/** Restores redacted fields from the assigned credential without sending them to the client. */
@@ -1342,9 +1314,9 @@ export class InstanceAiSettingsService {
 		return this.config.model.trim();
 	}
 
-	/** Model name for the Observer and Reflector memory tasks; empty when unset. */
-	getConfiguredMemoryModelName(): string {
-		return this.config.memoryModel.trim();
+	/** Model name for background and helper tasks; empty when unset. */
+	getConfiguredUtilityModelName(): string {
+		return this.config.utilityModel.trim();
 	}
 
 	/** Resolve just the model name (e.g. 'claude-sonnet-4-20250514') for proxy routing. */

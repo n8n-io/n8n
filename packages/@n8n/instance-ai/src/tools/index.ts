@@ -6,7 +6,7 @@ import {
 	EXECUTION_TOOL_ACTIONS,
 	EXECUTION_TOOL_NAME_BY_ACTION,
 	WORKFLOW_TOOL_NAME_BY_ACTION,
-	WORKSPACE_TOOL_NAME_BY_ACTION,
+	INSTANCE_TOOL_NAME_BY_ACTION,
 } from '@n8n/api-types';
 
 import { createToolRegistry } from '../tool-registry';
@@ -148,7 +148,7 @@ function getOrchestratorDomainToolFactories(
 			() => loadDataTablesTool().createDataTableTool(context, action),
 		]),
 		...getSupportedWorkspaceActions(context).map((action): [string, DomainToolFactory] => [
-			WORKSPACE_TOOL_NAME_BY_ACTION[action],
+			INSTANCE_TOOL_NAME_BY_ACTION[action],
 			() => loadWorkspaceTool().createWorkspaceActionTool(context, action),
 		]),
 		[DOMAIN_TOOL_IDS.RESEARCH, () => loadResearchTool().createResearchTool(context)],

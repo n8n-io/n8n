@@ -21,6 +21,8 @@ import {
 	MCP_CLIENT_NODE_TYPE,
 	MCP_CLIENT_TOOL_NODE_TYPE,
 	MERGE_NODE_TYPE,
+	MESSAGE_AN_AGENT_NODE_TYPE,
+	MESSAGE_AN_AGENT_TOOL_NODE_TYPE,
 	OPEN_AI_API_CREDENTIAL_TYPE,
 	OPENAI_CHAT_LANGCHAIN_NODE_TYPE,
 	OPENAI_LANGCHAIN_NODE_TYPE,
@@ -32,6 +34,7 @@ import { UnexpectedError } from './errors';
 import type { NodeApiError } from './errors/node-api.error';
 import { DEFAULT_EVALUATION_METRIC } from './evaluation-helpers';
 import { isExpression } from './expressions/expression-helpers';
+import { isResourceLocatorValue } from './type-guards';
 import type {
 	IConnection,
 	IConnections,
@@ -554,6 +557,23 @@ export function generateNodesGraph(
 		) {
 			if (node.parameters?.workflowId) {
 				nodeItem.workflow_id = node.parameters?.workflowId as string;
+			}
+		} else if (
+			node.type === MESSAGE_AN_AGENT_NODE_TYPE ||
+			node.type === MESSAGE_AN_AGENT_TOOL_NODE_TYPE
+		) {
+			// Missing agentSource means a referenced agent, which is the node default.
+			nodeItem.agent_source = node.parameters?.agentSource === 'inline' ? 'inline' : 'referenced';
+			const agentId = node.parameters?.agentId;
+			// Only a fixed id: an expression can hold user content.
+			if (
+				nodeItem.agent_source === 'referenced' &&
+				isResourceLocatorValue(agentId) &&
+				typeof agentId.value === 'string' &&
+				agentId.value !== '' &&
+				!isExpression(agentId.value)
+			) {
+				nodeItem.agent_id = agentId.value;
 			}
 		} else if (node.type === EVALUATION_TRIGGER_NODE_TYPE) {
 			evaluationTriggerNodeNames.push(node.name);

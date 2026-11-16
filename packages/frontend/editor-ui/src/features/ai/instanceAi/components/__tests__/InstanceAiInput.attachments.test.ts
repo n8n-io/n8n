@@ -463,13 +463,13 @@ describe('InstanceAiInput — mention attachments', () => {
 		);
 	});
 
-	it('inserts quoted text and stages the workflow as a draft attachment', async () => {
+	it('stages the workflow as a draft attachment without inserting text', async () => {
 		const { getByRole, getByTestId, emitted } = renderMentionsInput();
 		const textbox = getByRole('textbox');
 		await userEvent.type(textbox, 'Compare ');
 		await userEvent.click(getByTestId('mention-picker-select'));
 
-		expect(textbox).toHaveValue('Compare "Orders"');
+		expect(textbox).toHaveValue('Compare ');
 		expect(getByTestId('attachment-preview-resource')).toHaveTextContent('Orders');
 		// The pick stays a draft: the workflow reaches the thread with the submit only.
 		expect(emitted().submit).toBeUndefined();
@@ -548,7 +548,7 @@ describe('InstanceAiInput — mention attachments', () => {
 		});
 		await userEvent.click(getByTestId('mention-picker-select-node'));
 
-		expect(getByRole('textbox')).toHaveValue('"Validate"');
+		expect(getByRole('textbox')).toHaveValue('');
 		await userEvent.click(getByTestId('instance-ai-send-button'));
 		const submit = emitted().submit?.[0] as [string, unknown[]];
 		expect(submit[1]).toEqual([

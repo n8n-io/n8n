@@ -6,6 +6,8 @@ import type { NodeTypes } from './node-types';
 import {
 	MCP_CLIENT_NODE_TYPE,
 	MCP_CLIENT_TOOL_NODE_TYPE,
+	MESSAGE_AN_AGENT_NODE_TYPE,
+	MESSAGE_AN_AGENT_TOOL_NODE_TYPE,
 	STICKY_NODE_TYPE,
 } from '../src/constants';
 import { ExpressionError, NodeApiError, UnexpectedError } from '../src/errors';
@@ -2070,6 +2072,64 @@ describe('generateNodesGraph', () => {
 
 			const nodeItem = generateNodesGraph(workflow, nodeTypes).nodeGraph.nodes['0'];
 			expect(nodeItem.mcp_server_domain_base).toBe(expected);
+		});
+	});
+
+	describe('Message an Agent telemetry', () => {
+		const agentRl = (value: string) => ({ __rl: true, mode: 'list', value });
+
+		test.each([
+			{
+				name: 'referenced agent',
+				parameters: { agentSource: 'referenced', agentId: agentRl('agent-1') },
+				expected: { agent_source: 'referenced', agent_id: 'agent-1' },
+			},
+			{
+				name: 'no stored agentSource',
+				parameters: { agentId: agentRl('agent-1') },
+				expected: { agent_source: 'referenced', agent_id: 'agent-1' },
+			},
+			{
+				name: 'no agent picked',
+				parameters: { agentSource: 'referenced', agentId: agentRl('') },
+				expected: { agent_source: 'referenced', agent_id: undefined },
+			},
+			{
+				name: 'agent id from an expression',
+				parameters: { agentSource: 'referenced', agentId: agentRl('={{ $json.agentId }}') },
+				expected: { agent_source: 'referenced', agent_id: undefined },
+			},
+			{
+				name: 'inline agent',
+				parameters: {
+					agentSource: 'inline',
+					agentId: agentRl('agent-1'),
+					inlineAgent: { instructions: 'Secret instructions' },
+				},
+				expected: { agent_source: 'inline', agent_id: undefined },
+			},
+		])('should report $expected for $name', ({ parameters, expected }) => {
+			for (const type of [MESSAGE_AN_AGENT_NODE_TYPE, MESSAGE_AN_AGENT_TOOL_NODE_TYPE]) {
+				const workflow: Partial<IWorkflowBase> = {
+					nodes: [
+						{
+							parameters,
+							id: 'message-an-agent-node-id',
+							name: 'Message an Agent',
+							type,
+							typeVersion: 3.1,
+							position: [100, 100],
+						},
+					],
+					connections: {},
+					pinData: {},
+				};
+
+				const nodeItem = generateNodesGraph(workflow, nodeTypes).nodeGraph.nodes['0'];
+				expect(nodeItem.agent_source).toBe(expected.agent_source);
+				expect(nodeItem.agent_id).toBe(expected.agent_id);
+				expect(JSON.stringify(nodeItem)).not.toContain('Secret instructions');
+			}
 		});
 	});
 

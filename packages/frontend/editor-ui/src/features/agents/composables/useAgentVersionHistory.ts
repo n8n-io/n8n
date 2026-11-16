@@ -193,6 +193,7 @@ export function useAgentVersionHistory() {
 		try {
 			await openVersionMetadata({
 				mode: 'edit',
+				versionId,
 				isCurrent: () => !agentKey.value || agentKey.value === `${projectId}/${agentId}`,
 				name: version.name,
 				description: version.description,

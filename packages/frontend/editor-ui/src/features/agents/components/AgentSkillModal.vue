@@ -3,6 +3,7 @@ import cloneDeep from 'lodash/cloneDeep';
 import isEqual from 'lodash/isEqual';
 import { computed, nextTick, onMounted, ref, useCssModule, useTemplateRef, watch } from 'vue';
 import { useRouter } from 'vue-router';
+import { I18nT } from 'vue-i18n';
 import {
 	AGENT_SKILL_DESCRIPTION_MAX_LENGTH,
 	AGENT_SKILL_INSTRUCTIONS_MAX_LENGTH,
@@ -10,6 +11,7 @@ import {
 	AGENT_SKILL_REFERENCE_MAX_COUNT,
 	skillNameKey,
 	type AgentSkillAvailability,
+	type ProjectIcon,
 	type SkillCreateMethod,
 	type SkillDetail,
 	type SkillListItem,
@@ -19,27 +21,31 @@ import {
 } from '@n8n/api-types';
 import { useToast } from '@n8n/composables/useToast';
 import {
-	N8nActionDropdown,
-	N8nBadge,
 	N8nButton,
 	N8nCallout,
+	N8nDropdownMenu,
 	N8nFormInput,
 	N8nIcon,
+	N8nIconButton,
 	N8nOption,
 	N8nSelect,
 	N8nSwitch,
 	N8nText,
 	N8nTooltip,
 } from '@n8n/design-system';
-import type { ActionDropdownItem, IconName } from '@n8n/design-system';
+import type { DropdownMenuItemProps, IconName, IconOrEmoji } from '@n8n/design-system';
 import { useI18n, type BaseTextKey } from '@n8n/i18n';
 import { useRootStore } from '@n8n/stores/useRootStore';
 
 import { convertToDisplayDate } from '@/app/utils/formatters/dateFormatter';
 import { preferenceUserName } from '@/features/settings/context/context.utils';
+import SkillScopeBadge from '@/features/settings/context/components/SkillScopeBadge.vue';
+import { parseScope } from '@/features/settings/context/skills.utils';
+import { sourceLineOf } from '@/features/settings/context/skillSourceReview.utils';
 import { useMessage } from '@/app/composables/useMessage';
 import { MODAL_CONFIRM, VIEWS } from '@/app/constants';
 import { useUIStore } from '@/app/stores/ui.store';
+import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 import ToolsConnectionModal from '@/features/shared/toolsConnection/ToolsConnectionModal.vue';
 import type {
 	SkillConnectionItem,
@@ -56,6 +62,7 @@ import {
 	type SkillMoveTarget,
 } from '../utils/agentSkill';
 import AgentSkillFileNav from './AgentSkillFileNav.vue';
+import AgentSkillInlineShell from './AgentSkillInlineShell.vue';
 import AgentSkillUpload from './AgentSkillUpload.vue';
 import AgentSkillViewer from './AgentSkillViewer.vue';
 import AgentModalMultiStep from './modals/AgentModalMultiStep.vue';
@@ -68,6 +75,8 @@ export type AgentSkillModalScopeOption = {
 	value: string;
 	label: string;
 	icon: IconName;
+	/** The project's own icon, which the scope badge shows instead of `icon`. */
+	projectIcon?: ProjectIcon | null;
 	/** Where the option puts the skill, so the modal can warn when agents would lose it. */
 	target?: SkillMoveTarget;
 };
@@ -84,6 +93,10 @@ export type AgentSkillModalData = {
 	agentId?: string;
 	skill?: AgentSkill;
 	skillId?: string;
+	/** Create only: opens the form at once, without the upload step. */
+	initialStep?: 'manual';
+	/** Create only: how the caller got `skill`, such as a folder that the user uploaded. */
+	initialMethod?: SkillCreateMethod;
 	/**
 	 * Names of the agent's other skills, so a duplicate name blocks save while
 	 * the modal is still open — skill names must be unique per agent.
@@ -100,6 +113,10 @@ export type AgentSkillModalData = {
 	 */
 	scopeOptions?: AgentSkillModalScopeOption[];
 	initialScope?: string;
+	/** Settings only: the saved project's type, even when the project is not listed. */
+	projectType?: SkillDetail['projectType'];
+	/** Settings only: the saved project's icon, even when the project is not listed. */
+	projectIcon?: SkillDetail['projectIcon'];
 	/** Settings only. Absent disables Assistant availability editing for every scope. */
 	availableToAssistant?: boolean;
 	availableToMCP?: boolean;
@@ -162,10 +179,15 @@ export type AgentSkillModalData = {
 	onRemove?: (id: string) => void;
 };
 
-const props = defineProps<{
-	modalName: string;
-	data: AgentSkillModalData;
-}>();
+const props = withDefaults(
+	defineProps<{
+		modalName?: string;
+		data: AgentSkillModalData;
+		/** Embeds the editor without modal controls or version history. */
+		inline?: boolean;
+	}>(),
+	{ modalName: '', inline: false },
+);
 
 const i18n = useI18n();
 const $style = useCssModule();
@@ -173,9 +195,12 @@ const message = useMessage();
 const uiStore = useUIStore();
 const router = useRouter();
 const rootStore = useRootStore();
+const projectsStore = useProjectsStore();
 const { showError } = useToast();
 const agentTelemetry = useAgentTelemetry();
-const modalOpen = computed(() => uiStore.modalsById[props.modalName]?.open === true);
+const modalOpen = computed(
+	() => props.inline || uiStore.modalsById[props.modalName]?.open === true,
+);
 
 const existingNameKeys = computed(() => {
 	const names = props.data.getAttachedSkills
@@ -209,10 +234,19 @@ const formIsValid = ref(false);
 const selectedPath = ref(SKILL_FILE);
 const isEditing = computed(() => !!props.data.skillId);
 // An upload lands on the edit step like a saved skill does, so the step alone cannot tell.
-const createMethod = ref<SkillCreateMethod>('manual');
+const createMethod = ref<SkillCreateMethod>(props.data.initialMethod ?? 'manual');
 const hasPicker = !props.data.skillId && !!props.data.skillRefsEnabled && !!props.data.onAttach;
+// The caller chose "Create manually", so there is no upload step to go back to.
+const startsManual =
+	!props.data.skill && !props.data.skillId && props.data.initialStep === 'manual';
 const step = ref<'select' | 'preview' | 'upload' | 'manual' | 'edit'>(
-	props.data.skill || props.data.skillId ? 'edit' : hasPicker ? 'select' : 'upload',
+	props.data.skill || props.data.skillId
+		? 'edit'
+		: startsManual
+			? 'manual'
+			: hasPicker
+				? 'select'
+				: 'upload',
 );
 /** The form steps show the scope badge, the header menu and "Close" instead of "Cancel". */
 const isFormStep = computed(() => step.value === 'manual' || step.value === 'edit');
@@ -278,7 +312,8 @@ function onAddManually() {
 
 const showScope = computed(() => !!props.data.scopeOptions?.length && step.value !== 'preview');
 const canChangeScope = computed(
-	() => showScope.value && !props.data.scopeLockedReason && !props.data.readOnly,
+	() =>
+		showScope.value && !syncedFrom.value && !props.data.scopeLockedReason && !props.data.readOnly,
 );
 const availableTo = ref<AgentSkillAvailability>('project');
 /**
@@ -394,7 +429,7 @@ const cannotEdit = computed(
 const editorLocked = computed(() => isReadOnly.value || isSaving.value);
 const savedTarget = computed<AgentSkillAvailability | undefined>(() => skillAccess.value?.scope);
 const showAvailabilitySelect = computed(() => {
-	if (!props.data.skillRefsEnabled || step.value === 'preview') return false;
+	if (!props.data.skillRefsEnabled || step.value === 'preview' || syncedFrom.value) return false;
 	if (!isEditing.value) return true;
 	return !!savedTarget.value && !cannotEdit.value;
 });
@@ -420,7 +455,12 @@ const availabilityOptions = computed(() => [
 			]
 		: []),
 ]);
-type ScopeChoice = { value: string; label: string; icon: IconName };
+type ScopeChoice = {
+	value: string;
+	label: string;
+	icon: IconName;
+	projectIcon?: ProjectIcon | null;
+};
 
 /**
  * The scope badge in the header and the "Change scope" submenu. Settings picks from
@@ -431,12 +471,48 @@ const scopeChoices = computed<ScopeChoice[]>(() => {
 	return availabilityOptions.value.map((option) => ({
 		...option,
 		icon: AVAILABILITY_ICONS[option.value],
+		projectIcon: option.value === 'project' ? builderProjectIcon.value : undefined,
 	}));
+});
+/** The agent's project icon, so the "Change scope" menu matches the scope badge. */
+const builderProjectIcon = computed(() => {
+	const projectId = props.data.projectId;
+	if (!projectId) return null;
+	if (skillAccess.value?.projectId === projectId && skillAccess.value.projectIcon) {
+		return skillAccess.value.projectIcon;
+	}
+	const project = [
+		projectsStore.personalProject,
+		projectsStore.currentProject,
+		...projectsStore.myProjects,
+	].find((candidate) => candidate?.id === projectId);
+	return project?.icon ?? null;
 });
 const selectedScopeValue = computed(() => (showScope.value ? scope.value : availableTo.value));
 const selectedScope = computed(() =>
 	scopeChoices.value.find((choice) => choice.value === selectedScopeValue.value),
 );
+const selectedScopeSkill = computed(() => {
+	const target = showScope.value
+		? parseScope(scope.value)
+		: { scope: availableTo.value, projectId: props.data.projectId };
+	// The saved project's type and icon belong only to the saved scope. For another scope the
+	// option gives the icon, and the badge finds the type in the project store.
+	const saved = showScope.value
+		? scope.value === props.data.initialScope
+			? { projectType: props.data.projectType, projectIcon: props.data.projectIcon }
+			: undefined
+		: availableTo.value === savedTarget.value
+			? skillAccess.value
+			: undefined;
+	return {
+		scope: target.scope,
+		projectId: target.scope === 'project' ? (target.projectId ?? null) : null,
+		projectName: selectedScope.value?.label ?? null,
+		projectType: saved?.projectType ?? null,
+		projectIcon: selectedScope.value?.projectIcon ?? saved?.projectIcon ?? null,
+	};
+});
 const showScopeBadge = computed(
 	() =>
 		isFormStep.value &&
@@ -456,16 +532,25 @@ function onScopeChoice(value: string) {
 	if (value === 'project' || value === 'instance') availableTo.value = value;
 }
 
-function scopeItems(testIdPrefix: string): Array<ActionDropdownItem<string>> {
+/** A project row shows the project's own icon or emoji, as the scope badge does. */
+function scopeItemIcon(choice: ScopeChoice): IconOrEmoji {
+	const projectIcon = choice.projectIcon;
+	if (projectIcon?.type === 'emoji') return { type: 'emoji', value: projectIcon.value };
+	if (projectIcon?.type === 'icon') {
+		return { type: 'icon', value: projectIcon.value, color: projectIcon.color };
+	}
+	return { type: 'icon', value: choice.icon };
+}
+
+function scopeItems(testIdPrefix: string): Array<DropdownMenuItemProps<string>> {
 	return scopeChoices.value.map((choice) => ({
 		id: `scope:${choice.value}`,
 		label: choice.label,
-		icon: choice.icon,
+		icon: scopeItemIcon(choice),
 		checked: choice.value === selectedScopeValue.value,
 		testId: `${testIdPrefix}${choice.value}`,
 	}));
 }
-const scopeBadgeItems = computed(() => scopeItems('agent-skill-scope-option-'));
 
 /** "Add to <agent>" toggles the attachment of a hub skill to the agent it was opened from. */
 const showAttachToggle = computed(
@@ -476,8 +561,8 @@ const showAttachToggle = computed(
 		!!props.data.agentId &&
 		!!props.data.onRemove,
 );
-const headerMenuItems = computed<Array<ActionDropdownItem<string>>>(() => {
-	const items: Array<ActionDropdownItem<string>> = [];
+const headerMenuItems = computed<Array<DropdownMenuItemProps<string>>>(() => {
+	const items: Array<DropdownMenuItemProps<string>> = [];
 	if (showAttachToggle.value) {
 		items.push({
 			id: 'attach',
@@ -486,23 +571,49 @@ const headerMenuItems = computed<Array<ActionDropdownItem<string>>>(() => {
 						interpolate: { agent: props.data.agentName },
 					})
 				: i18n.baseText('agents.builder.skills.menu.addToThisAgent'),
-			icon: 'bot',
-			// The row draws a switch that is on: the skill is attached.
-			customClass: $style.menuItem,
+			icon: { type: 'icon', value: 'bot' },
+			checkbox: true,
+			checked: true,
+			class: $style.menuItem,
 			testId: 'agent-skill-menu-attach',
 		});
 	}
-	if (showScopeBadge.value) {
+	if (showAssistantToggle.value) {
+		items.push({
+			id: 'assistant',
+			label: i18n.baseText('settings.context.skills.assistant.toggle'),
+			icon: { type: 'icon', value: 'sparkles' },
+			checkbox: true,
+			checked: availableToAssistant.value,
+			disabled: editorLocked.value,
+			class: $style.menuItem,
+			testId: 'agent-skill-menu-assistant',
+		});
+	}
+	if (showMcpToggle.value) {
+		items.push({
+			id: 'mcp',
+			label: i18n.baseText('settings.context.skills.modal.mcp.toggle'),
+			icon: { type: 'icon', value: 'mcp' },
+			checkbox: true,
+			checked: availableToMCP.value,
+			disabled: editorLocked.value,
+			class: $style.menuItem,
+			testId: 'agent-skill-menu-mcp',
+		});
+	}
+	// A synced skill changes scope through its source, so its menu has no scope item.
+	if (showScopeBadge.value && !syncedFrom.value) {
 		items.push({
 			id: 'change-scope',
 			label: i18n.baseText('agents.builder.skills.menu.changeScope'),
-			icon: 'globe',
+			icon: { type: 'icon', value: 'globe' },
 			disabled: !scopeEditable.value,
-			customClass: $style.menuItem,
+			class: $style.menuItem,
 			testId: 'agent-skill-menu-change-scope',
 			children: scopeItems('agent-skill-menu-scope-option-').map((item) => ({
 				...item,
-				customClass: $style.menuItem,
+				class: $style.menuItem,
 			})),
 		});
 	}
@@ -510,18 +621,32 @@ const headerMenuItems = computed<Array<ActionDropdownItem<string>>>(() => {
 		items.push({
 			id: 'delete',
 			label: i18n.baseText('agents.builder.skills.menu.delete'),
-			icon: 'trash-2',
+			icon: { type: 'icon', value: 'trash-2' },
 			divided: items.length > 0,
 			// A skill attached to this agent is in use, so the builder cannot delete it.
 			disabled: !props.data.onDelete || !!props.data.deleteDisabledReason || isSaving.value,
-			customClass: [$style.menuItem, $style.deleteItem].join(' '),
+			class: [$style.menuItem, $style.deleteItem],
 			testId: 'agent-skill-menu-delete',
 		});
 	}
 	return items;
 });
 
+const menuSwitchTestIds: Record<string, string> = {
+	attach: 'agent-skill-menu-attach-switch',
+	assistant: 'skill-assistant-availability',
+	mcp: 'skill-available-to-mcp',
+};
+
 function onHeaderMenuSelect(action: string) {
+	if (action === 'assistant' && showAssistantToggle.value && !editorLocked.value) {
+		availableToAssistant.value = !availableToAssistant.value;
+		return;
+	}
+	if (action === 'mcp' && showMcpToggle.value && !editorLocked.value) {
+		availableToMCP.value = !availableToMCP.value;
+		return;
+	}
 	if (action.startsWith('scope:')) {
 		onScopeChoice(action.slice('scope:'.length));
 		return;
@@ -795,6 +920,7 @@ function onPreviewAdd() {
 }
 
 onMounted(() => {
+	if (startsManual) void refreshDefaultName();
 	if (hasPicker) void loadLibrarySkills();
 	if (props.data.skillId && props.data.skillRefsEnabled) void loadSkillAccess(props.data.skillId);
 });
@@ -806,7 +932,7 @@ const showMcpToggle = computed(
 	() => showScope.value && showAvailableToMCP.value && !cannotEdit.value,
 );
 
-const versionsOpen = ref(!!props.data.initialVersionsOpen);
+const versionsOpen = ref(!props.inline && !!props.data.initialVersionsOpen);
 const {
 	versions,
 	viewedVersion,
@@ -1077,7 +1203,10 @@ async function onSave() {
 		...(availableToMCPChanged.value ? { availableToMCP: availableToMCP.value } : {}),
 		...(isEditing.value ? {} : { method: createMethod.value }),
 	});
-	if (saved) closeModal();
+	if (saved) {
+		if (props.inline) showSavedSkill(payload);
+		else closeModal();
+	}
 }
 
 /** Hands the skill to the caller. A refused save keeps the modal open with the user's edits. */
@@ -1142,7 +1271,7 @@ watch(
 	(next) => {
 		if (!next || !isEditing.value) return;
 		showSavedSkill(next);
-		if (props.data.initialVersionsOpen) versionsOpen.value = true;
+		if (!props.inline && props.data.initialVersionsOpen) versionsOpen.value = true;
 	},
 );
 
@@ -1159,11 +1288,14 @@ function onRemove() {
 </script>
 
 <template>
-	<AgentModalMultiStep
+	<component
+		:is="inline ? AgentSkillInlineShell : AgentModalMultiStep"
 		:open="modalOpen"
 		:step="step"
 		:title="modalTitle"
-		:show-back="step === 'manual' || step === 'preview' || (step === 'upload' && hasPicker)"
+		:show-back="
+			(step === 'manual' && !startsManual) || step === 'preview' || (step === 'upload' && hasPicker)
+		"
 		:show-footer="
 			!comparison &&
 			(step === 'select' || step === 'manual' || step === 'edit' || step === 'preview')
@@ -1186,88 +1318,71 @@ function onRemove() {
 				:content="data.scopeLockedReason"
 				placement="bottom"
 			>
-				<N8nActionDropdown
-					:items="scopeBadgeItems"
-					:disabled="!scopeEditable"
-					placement="bottom-start"
-					data-testid="agent-skill-scope"
-					@select="onHeaderMenuSelect"
-				>
-					<template #activator>
-						<N8nBadge
-							variant="outline"
-							:clickable="scopeEditable"
-							:class="$style.scopeBadge"
-							data-testid="agent-skill-scope-badge"
-						>
-							<template #leading>
-								<N8nIcon :icon="selectedScope.icon" size="small" />
-							</template>
-							{{ selectedScope.label }}
-						</N8nBadge>
-					</template>
-				</N8nActionDropdown>
+				<SkillScopeBadge
+					:skill="selectedScopeSkill"
+					:label="selectedScope.label"
+					data-testid="agent-skill-scope-badge"
+				/>
 			</N8nTooltip>
 		</template>
 		<template v-if="isFormStep && headerMenuItems.length > 0" #titleSuffix>
-			<N8nActionDropdown
+			<N8nDropdownMenu
 				:items="headerMenuItems"
 				placement="bottom-start"
-				activator-icon="ellipsis"
-				activator-size="small"
-				data-testid="agent-skill-header-menu"
+				:teleported="false"
 				@select="onHeaderMenuSelect"
 			>
-				<template #menuItem="item">
-					<span v-if="item.id === 'attach'" :class="$style.menuSwitchRow">
-						{{ item.label }}
-						<!-- The whole row toggles, so the switch only shows the state. -->
-						<N8nSwitch
-							:model-value="true"
-							:class="$style.menuSwitch"
-							tabindex="-1"
-							aria-hidden="true"
-							data-testid="agent-skill-menu-attach-switch"
-						/>
+				<template #trigger>
+					<N8nIconButton
+						variant="ghost"
+						size="small"
+						icon="ellipsis"
+						:aria-label="i18n.baseText('generic.more')"
+						data-testid="agent-skill-header-menu"
+					/>
+				</template>
+				<template #item-label="{ item, ui }">
+					<span v-if="item.checkbox" :class="[ui.class, $style.menuSwitchRow]">
+						<span>
+							{{ item.label }}
+							<N8nTooltip
+								v-if="item.id === 'mcp'"
+								:content="i18n.baseText('settings.context.skills.modal.mcp.tooltip')"
+							>
+								<N8nIcon
+									icon="circle-help"
+									size="small"
+									data-testid="skill-available-to-mcp-help"
+								/>
+							</N8nTooltip>
+						</span>
 					</span>
 					<N8nTooltip
 						v-else-if="item.id === 'delete' && data.deleteDisabledReason"
 						:content="data.deleteDisabledReason"
 						placement="right"
 					>
-						<span data-testid="agent-skill-menu-delete-reason">{{ item.label }}</span>
+						<span :class="ui.class" data-testid="agent-skill-menu-delete-reason">{{
+							item.label
+						}}</span>
 					</N8nTooltip>
-					<template v-else>{{ item.label }}</template>
+					<span v-else :class="ui.class">{{ item.label }}</span>
 				</template>
-			</N8nActionDropdown>
+				<template #item-trailing="{ item }">
+					<!-- The menu item exposes the state. The switch is only a visual indicator. -->
+					<N8nSwitch
+						v-if="item.checkbox"
+						:model-value="item.checked"
+						:disabled="item.disabled"
+						:class="$style.menuSwitch"
+						tabindex="-1"
+						aria-hidden="true"
+						:data-testid="menuSwitchTestIds[item.id]"
+					/>
+				</template>
+			</N8nDropdownMenu>
 		</template>
-		<template
-			v-if="isFormStep && (showAssistantToggle || showMcpToggle || latestVersion)"
-			#headerActions
-		>
-			<N8nSwitch
-				v-if="showAssistantToggle"
-				id="skill-assistant-availability"
-				v-model="availableToAssistant"
-				:label="i18n.baseText('settings.context.skills.assistant.toggle')"
-				:disabled="editorLocked"
-				data-testid="skill-assistant-availability"
-			/>
-			<N8nSwitch
-				v-if="showMcpToggle"
-				id="skill-available-to-mcp"
-				v-model="availableToMCP"
-				:label="i18n.baseText('settings.context.skills.modal.mcp.toggle')"
-				:disabled="editorLocked"
-				data-testid="skill-available-to-mcp"
-			>
-				<template #label="{ label }">
-					{{ label }}
-					<N8nTooltip :content="i18n.baseText('settings.context.skills.modal.mcp.tooltip')">
-						<N8nIcon icon="circle-help" size="small" data-testid="skill-available-to-mcp-help" />
-					</N8nTooltip>
-				</template>
-			</N8nSwitch>
+		<template v-if="isFormStep && latestVersion" #headerActions>
 			<N8nButton
 				v-if="latestVersion"
 				variant="ghost"
@@ -1338,19 +1453,50 @@ function onRemove() {
 			/>
 		</div>
 		<template v-else-if="step !== 'select'">
-			<N8nCallout
+			<div
 				v-if="syncedFrom && step === 'edit'"
-				theme="info"
-				icon="git-branch"
-				:class="[$style.callout, isFormStep && $style.calloutInset]"
+				:class="$style.syncedBar"
 				data-testid="agent-skill-synced-banner"
 			>
-				{{
-					i18n.baseText('settings.context.skills.synced.banner', {
-						interpolate: { repo: syncedFrom.label },
-					})
-				}}
-			</N8nCallout>
+				<N8nText size="small" :class="$style.syncedInfo">
+					<N8nIcon icon="git-branch" :size="14" />
+					<I18nT keypath="settings.context.skills.synced.banner" scope="global" tag="span">
+						<template #repo>
+							<a
+								:href="syncedFrom.webUrl"
+								target="_blank"
+								rel="noopener noreferrer"
+								:class="$style.sourceLink"
+								data-testid="agent-skill-source-link"
+								>{{ sourceLineOf(syncedFrom) }}</a
+							>
+						</template>
+					</I18nT>
+				</N8nText>
+				<div :class="$style.syncedActions">
+					<N8nButton
+						variant="ghost"
+						size="small"
+						:href="syncedFrom.webUrl"
+						target="_blank"
+						data-testid="agent-skill-open-in-github"
+					>
+						<template #icon><N8nIcon icon="external-link" :size="16" /></template>
+						{{ i18n.baseText('settings.context.skills.synced.openInGithub') }}
+					</N8nButton>
+					<N8nButton
+						v-if="canStopSyncing"
+						variant="ghost"
+						size="small"
+						:disabled="isSaving || isStoppingSync"
+						data-testid="agent-skill-stop-syncing"
+						@click="onStopSyncing"
+					>
+						<template #icon><N8nIcon icon="unlink" :size="16" /></template>
+						{{ i18n.baseText('settings.context.skills.stopSyncing.action') }}
+					</N8nButton>
+				</div>
+			</div>
 			<N8nCallout
 				v-else-if="data.readOnly"
 				theme="info"
@@ -1456,7 +1602,9 @@ function onRemove() {
 				<N8nIcon icon="history" :size="14" />
 				<N8nText size="small">{{ viewingText }}</N8nText>
 			</div>
-			<div :class="[$style.content, isFormStep && $style.contentFlush]">
+			<div
+				:class="[$style.content, isFormStep && $style.contentFlush, inline && $style.inlineContent]"
+			>
 				<AgentSkillUpload
 					v-if="step === 'upload'"
 					v-model:busy="isImporting"
@@ -1557,27 +1705,6 @@ function onRemove() {
 				{{ removeLabel }}
 			</N8nButton>
 		</template>
-		<template v-else-if="syncedFrom && step === 'edit'" #footerLeft>
-			<N8nButton
-				variant="ghost"
-				:href="syncedFrom?.webUrl"
-				target="_blank"
-				data-testid="agent-skill-open-in-github"
-			>
-				<template #icon><N8nIcon icon="external-link" :size="16" /></template>
-				{{ i18n.baseText('settings.context.skills.synced.openInGithub') }}
-			</N8nButton>
-			<N8nButton
-				v-if="canStopSyncing"
-				variant="ghost"
-				:disabled="isSaving || isStoppingSync"
-				data-testid="agent-skill-stop-syncing"
-				@click="onStopSyncing"
-			>
-				<template #icon><N8nIcon icon="unlink" :size="16" /></template>
-				{{ i18n.baseText('settings.context.skills.stopSyncing.action') }}
-			</N8nButton>
-		</template>
 		<template v-else-if="step === 'select'" #footerLeft>
 			<N8nButton variant="ghost" data-testid="agent-skill-picker-manage" @click="onManageSkills">
 				<template #icon><N8nIcon icon="settings" :size="16" /></template>
@@ -1653,7 +1780,7 @@ function onRemove() {
 				{{ i18n.baseText('agents.builder.skills.save') }}
 			</N8nButton>
 		</template>
-	</AgentModalMultiStep>
+	</component>
 </template>
 
 <style module>
@@ -1684,6 +1811,7 @@ function onRemove() {
 
 .menuSwitchRow {
 	display: flex;
+	width: 100%;
 	align-items: center;
 	justify-content: space-between;
 	gap: var(--spacing--lg);
@@ -1691,6 +1819,8 @@ function onRemove() {
 
 .menuSwitch {
 	pointer-events: none;
+	flex-shrink: 0;
+	margin-left: auto;
 }
 
 /* A pinned skill: a warning strip over the file list and the form, as the design does. */
@@ -1728,13 +1858,39 @@ function onRemove() {
 	color: var(--color--text--shade-1);
 }
 
-.compareBar {
+.compareBar,
+.syncedBar {
 	display: flex;
 	align-items: center;
 	gap: var(--spacing--2xs);
 	padding: var(--spacing--2xs) var(--spacing--lg);
 	border-bottom: var(--border);
 	background-color: var(--color--background--light-2);
+}
+
+.syncedBar {
+	flex-wrap: wrap;
+}
+
+.syncedInfo {
+	display: flex;
+	align-items: center;
+	gap: var(--spacing--2xs);
+	flex: 1;
+	min-width: 0;
+}
+
+.sourceLink {
+	color: var(--color--text--shade-1);
+	text-decoration: underline;
+	overflow-wrap: anywhere;
+}
+
+.syncedActions {
+	display: flex;
+	flex-wrap: wrap;
+	gap: var(--spacing--2xs);
+	margin-left: auto;
 }
 
 .compareSelect {
@@ -1777,15 +1933,25 @@ function onRemove() {
 	text-align: right;
 }
 
-/* Geist sits high in its line box, as in the Settings scope badge. */
-.scopeBadge > :global(.n8n-text) {
-	line-height: 1;
-	padding-block: var(--spacing--5xs);
+@container skill-editor (max-width: 480px) {
+	.inlineContent {
+		flex-direction: column;
+	}
+
+	.inlineContent .fileColumn {
+		width: 100%;
+		border-right: none;
+		border-bottom: var(--border);
+	}
 }
 
 @media (max-width: 480px) {
 	.content {
 		flex-direction: column;
+	}
+
+	.syncedInfo {
+		flex-basis: 100%;
 	}
 }
 </style>

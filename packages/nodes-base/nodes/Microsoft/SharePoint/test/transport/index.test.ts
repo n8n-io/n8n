@@ -1,5 +1,5 @@
 import type { IExecuteFunctions, INode } from 'n8n-workflow';
-import { NodeApiError } from 'n8n-workflow';
+import { NodeApiError, requestPath } from 'n8n-workflow';
 import type { Mock, Mocked } from 'vitest';
 import { mockDeep } from 'vitest-mock-extended';
 
@@ -65,44 +65,58 @@ describe('Microsoft SharePoint v2 Transport', () => {
 		])('should target the %s cloud', async (_name, baseUrl) => {
 			ctx.getCredentials.mockResolvedValue({ graphApiBaseUrl: baseUrl });
 
-			await microsoftApiRequest.call(ctx, 'GET', '/v1.0/sites/s/lists/l');
+			await microsoftApiRequest.call(ctx, 'GET', requestPath`/v1.0/sites/s/lists/l`);
 
 			expect(mockRequestOAuth2).toHaveBeenCalledWith(
 				'microsoftOAuth2Api',
-				expect.objectContaining({ uri: `${baseUrl}/v1.0/sites/s/lists/l` }),
+				expect.objectContaining({
+					uri: expect.objectContaining({ value: `${baseUrl}/v1.0/sites/s/lists/l` }),
+				}),
 			);
 		});
 
 		it('should fall back to the global cloud when graphApiBaseUrl is empty', async () => {
 			ctx.getCredentials.mockResolvedValue({ graphApiBaseUrl: '' });
 
-			await microsoftApiRequest.call(ctx, 'GET', '/v1.0/sites/s/lists/l');
+			await microsoftApiRequest.call(ctx, 'GET', requestPath`/v1.0/sites/s/lists/l`);
 
 			expect(mockRequestOAuth2).toHaveBeenCalledWith(
 				'microsoftOAuth2Api',
-				expect.objectContaining({ uri: 'https://graph.microsoft.com/v1.0/sites/s/lists/l' }),
+				expect.objectContaining({
+					uri: expect.objectContaining({
+						value: 'https://graph.microsoft.com/v1.0/sites/s/lists/l',
+					}),
+				}),
 			);
 		});
 
 		it('should fall back to the global cloud when graphApiBaseUrl is undefined', async () => {
 			ctx.getCredentials.mockResolvedValue({});
 
-			await microsoftApiRequest.call(ctx, 'GET', '/v1.0/sites/s/lists/l');
+			await microsoftApiRequest.call(ctx, 'GET', requestPath`/v1.0/sites/s/lists/l`);
 
 			expect(mockRequestOAuth2).toHaveBeenCalledWith(
 				'microsoftOAuth2Api',
-				expect.objectContaining({ uri: 'https://graph.microsoft.com/v1.0/sites/s/lists/l' }),
+				expect.objectContaining({
+					uri: expect.objectContaining({
+						value: 'https://graph.microsoft.com/v1.0/sites/s/lists/l',
+					}),
+				}),
 			);
 		});
 
 		it('should strip trailing slashes from the base URL', async () => {
 			ctx.getCredentials.mockResolvedValue({ graphApiBaseUrl: 'https://graph.microsoft.us//' });
 
-			await microsoftApiRequest.call(ctx, 'GET', '/v1.0/sites/s/lists/l');
+			await microsoftApiRequest.call(ctx, 'GET', requestPath`/v1.0/sites/s/lists/l`);
 
 			expect(mockRequestOAuth2).toHaveBeenCalledWith(
 				'microsoftOAuth2Api',
-				expect.objectContaining({ uri: 'https://graph.microsoft.us/v1.0/sites/s/lists/l' }),
+				expect.objectContaining({
+					uri: expect.objectContaining({
+						value: 'https://graph.microsoft.us/v1.0/sites/s/lists/l',
+					}),
+				}),
 			);
 		});
 
@@ -110,18 +124,22 @@ describe('Microsoft SharePoint v2 Transport', () => {
 			setParams({ authentication: SERVICE_PRINCIPAL_AUTH });
 			ctx.getCredentials.mockResolvedValue({ graphApiBaseUrl: 'https://graph.microsoft.us' });
 
-			await microsoftApiRequest.call(ctx, 'GET', '/v1.0/sites/s/lists/l');
+			await microsoftApiRequest.call(ctx, 'GET', requestPath`/v1.0/sites/s/lists/l`);
 
 			expect(mockRequestWithAuthentication).toHaveBeenCalledWith(
 				SERVICE_PRINCIPAL_AUTH,
-				expect.objectContaining({ uri: 'https://graph.microsoft.us/v1.0/sites/s/lists/l' }),
+				expect.objectContaining({
+					uri: expect.objectContaining({
+						value: 'https://graph.microsoft.us/v1.0/sites/s/lists/l',
+					}),
+				}),
 			);
 		});
 	});
 
 	describe('auth routing', () => {
 		it('should route OAuth2 requests through requestOAuth2 with the generic credential', async () => {
-			await microsoftApiRequest.call(ctx, 'GET', '/v1.0/sites/s/lists/l');
+			await microsoftApiRequest.call(ctx, 'GET', requestPath`/v1.0/sites/s/lists/l`);
 
 			expect(ctx.getCredentials).toHaveBeenCalledWith('microsoftOAuth2Api');
 			expect(mockRequestOAuth2).toHaveBeenCalledTimes(1);
@@ -131,7 +149,7 @@ describe('Microsoft SharePoint v2 Transport', () => {
 		it('should route Service Principal requests through requestWithAuthentication', async () => {
 			setParams({ authentication: SERVICE_PRINCIPAL_AUTH });
 
-			await microsoftApiRequest.call(ctx, 'GET', '/v1.0/sites/s/lists/l');
+			await microsoftApiRequest.call(ctx, 'GET', requestPath`/v1.0/sites/s/lists/l`);
 
 			expect(ctx.getCredentials).toHaveBeenCalledWith(SERVICE_PRINCIPAL_AUTH);
 			expect(mockRequestWithAuthentication).toHaveBeenCalledTimes(1);
@@ -141,7 +159,7 @@ describe('Microsoft SharePoint v2 Transport', () => {
 		it('should pass an explicit uri through verbatim', async () => {
 			const nextLink = 'https://graph.microsoft.com/v1.0/sites?$skiptoken=abc';
 
-			await microsoftApiRequest.call(ctx, 'GET', '/ignored', {}, {}, nextLink);
+			await microsoftApiRequest.call(ctx, 'GET', requestPath`/ignored`, {}, {}, nextLink);
 
 			expect(mockRequestOAuth2).toHaveBeenCalledWith(
 				'microsoftOAuth2Api',
@@ -163,7 +181,7 @@ describe('Microsoft SharePoint v2 Transport', () => {
 				ctx,
 				'value',
 				'GET',
-				'/v1.0/sites/s/lists',
+				requestPath`/v1.0/sites/s/lists`,
 				{},
 				{ $select: 'id' },
 			);
@@ -190,7 +208,7 @@ describe('Microsoft SharePoint v2 Transport', () => {
 				ctx,
 				'value',
 				'GET',
-				'/v1.0/sites/s/lists',
+				requestPath`/v1.0/sites/s/lists`,
 			);
 
 			expect(result).toEqual([
@@ -223,7 +241,7 @@ describe('Microsoft SharePoint v2 Transport', () => {
 				ctx,
 				'value',
 				'GET',
-				'/v1.0/sites/s/lists',
+				requestPath`/v1.0/sites/s/lists`,
 				{},
 				{},
 				6,
@@ -257,7 +275,7 @@ describe('Microsoft SharePoint v2 Transport', () => {
 				ctx,
 				'value',
 				'GET',
-				'/v1.0/sites/s/lists',
+				requestPath`/v1.0/sites/s/lists`,
 				{},
 				{},
 				50,
@@ -289,7 +307,7 @@ describe('Microsoft SharePoint v2 Transport', () => {
 				ctx,
 				'value',
 				'GET',
-				'/v1.0/sites/s/lists',
+				requestPath`/v1.0/sites/s/lists`,
 				{},
 				{},
 				3,
@@ -306,7 +324,7 @@ describe('Microsoft SharePoint v2 Transport', () => {
 				ctx,
 				'value',
 				'GET',
-				'/v1.0/sites/s/lists',
+				requestPath`/v1.0/sites/s/lists`,
 				{},
 				{},
 				0,
@@ -334,7 +352,7 @@ describe('Microsoft SharePoint v2 Transport', () => {
 				ctx,
 				'value',
 				'GET',
-				'/v1.0/sites/s/lists',
+				requestPath`/v1.0/sites/s/lists`,
 				{},
 				{},
 				-5,
@@ -359,7 +377,7 @@ describe('Microsoft SharePoint v2 Transport', () => {
 				ctx,
 				'value',
 				'GET',
-				'/v1.0/sites/s/lists',
+				requestPath`/v1.0/sites/s/lists`,
 			);
 
 			expect(result).toEqual([{ id: '1' }, { id: '2' }]);
@@ -378,7 +396,7 @@ describe('Microsoft SharePoint v2 Transport', () => {
 				ctx,
 				'value',
 				'GET',
-				'/v1.0/sites/s/lists',
+				requestPath`/v1.0/sites/s/lists`,
 				{},
 				{ $select: 'id' },
 				undefined,
@@ -406,9 +424,9 @@ describe('Microsoft SharePoint v2 Transport', () => {
 				error: { error: { code: 'accessDenied', message: 'Access denied' } },
 			});
 
-			await expect(microsoftApiRequest.call(ctx, 'GET', '/v1.0/sites/s/lists/l')).rejects.toThrow(
-				/Sites\.Read\.All/,
-			);
+			await expect(
+				microsoftApiRequest.call(ctx, 'GET', requestPath`/v1.0/sites/s/lists/l`),
+			).rejects.toThrow(/Sites\.Read\.All/);
 		});
 
 		it('should name the missing delegated permission on a 403 for list:getAll', async () => {
@@ -418,18 +436,18 @@ describe('Microsoft SharePoint v2 Transport', () => {
 				error: { error: { code: 'accessDenied', message: 'Access denied' } },
 			});
 
-			await expect(microsoftApiRequest.call(ctx, 'GET', '/v1.0/sites/s/lists')).rejects.toThrow(
-				/Sites\.Read\.All/,
-			);
+			await expect(
+				microsoftApiRequest.call(ctx, 'GET', requestPath`/v1.0/sites/s/lists`),
+			).rejects.toThrow(/Sites\.Read\.All/);
 		});
 
 		it('should name the missing application permission on a 403 under the Service Principal', async () => {
 			setParams({ authentication: SERVICE_PRINCIPAL_AUTH, resource: 'list', operation: 'get' });
 			mockRequestWithAuthentication.mockRejectedValue({ httpCode: '403' });
 
-			await expect(microsoftApiRequest.call(ctx, 'GET', '/v1.0/sites/s/lists/l')).rejects.toThrow(
-				/Sites\.Read\.All \(or Sites\.Selected/,
-			);
+			await expect(
+				microsoftApiRequest.call(ctx, 'GET', requestPath`/v1.0/sites/s/lists/l`),
+			).rejects.toThrow(/Sites\.Read\.All \(or Sites\.Selected/);
 		});
 
 		it('should offer Files.Read.All for document-library items as an alternative on a 403 for item:get', async () => {
@@ -440,7 +458,7 @@ describe('Microsoft SharePoint v2 Transport', () => {
 			});
 
 			await expect(
-				microsoftApiRequest.call(ctx, 'GET', '/v1.0/sites/s/lists/l/items/1'),
+				microsoftApiRequest.call(ctx, 'GET', requestPath`/v1.0/sites/s/lists/l/items/1`),
 			).rejects.toThrow(/Files\.Read\.All for document-library items/);
 		});
 
@@ -453,7 +471,7 @@ describe('Microsoft SharePoint v2 Transport', () => {
 
 			let thrown: NodeApiError | undefined;
 			try {
-				await microsoftApiRequest.call(ctx, 'GET', '/v1.0/sites/s/lists/l');
+				await microsoftApiRequest.call(ctx, 'GET', requestPath`/v1.0/sites/s/lists/l`);
 			} catch (error) {
 				thrown = error as NodeApiError;
 			}
@@ -469,9 +487,9 @@ describe('Microsoft SharePoint v2 Transport', () => {
 				error: { error: { code: 'NotFound', message: 'Resource not found' } },
 			});
 
-			await expect(microsoftApiRequest.call(ctx, 'GET', '/v1.0/sites/s/lists/l')).rejects.toThrow(
-				'List not found',
-			);
+			await expect(
+				microsoftApiRequest.call(ctx, 'GET', requestPath`/v1.0/sites/s/lists/l`),
+			).rejects.toThrow('List not found');
 		});
 
 		it('should rewrite a Graph NotFound to name the item resource under OAuth2', async () => {
@@ -482,7 +500,7 @@ describe('Microsoft SharePoint v2 Transport', () => {
 			});
 
 			await expect(
-				microsoftApiRequest.call(ctx, 'GET', '/v1.0/sites/s/lists/l/items/i'),
+				microsoftApiRequest.call(ctx, 'GET', requestPath`/v1.0/sites/s/lists/l/items/i`),
 			).rejects.toThrow('Item not found');
 		});
 
@@ -491,7 +509,7 @@ describe('Microsoft SharePoint v2 Transport', () => {
 			mockRequestWithAuthentication.mockRejectedValue({ httpCode: '404' });
 
 			await expect(
-				microsoftApiRequest.call(ctx, 'GET', '/v1.0/sites/s/lists/l/items/i'),
+				microsoftApiRequest.call(ctx, 'GET', requestPath`/v1.0/sites/s/lists/l/items/i`),
 			).rejects.toThrow('Item not found');
 		});
 
@@ -505,7 +523,7 @@ describe('Microsoft SharePoint v2 Transport', () => {
 
 			let thrown: NodeApiError | undefined;
 			try {
-				await microsoftApiRequest.call(ctx, 'GET', '/v1.0/sites/s/lists/l');
+				await microsoftApiRequest.call(ctx, 'GET', requestPath`/v1.0/sites/s/lists/l`);
 			} catch (error) {
 				thrown = error as NodeApiError;
 			}
@@ -533,7 +551,7 @@ describe('Microsoft SharePoint v2 Transport', () => {
 			});
 
 			await expect(
-				microsoftApiRequest.call(ctx, 'POST', '/v1.0/sites/s/lists/l/items'),
+				microsoftApiRequest.call(ctx, 'POST', requestPath`/v1.0/sites/s/lists/l/items`),
 			).rejects.toMatchObject({
 				message:
 					'Microsoft Graph rejected the request (HTTP 400): One or more fields with unique constraints already has the provided value.',
@@ -550,7 +568,7 @@ describe('Microsoft SharePoint v2 Transport', () => {
 
 			let thrown: NodeApiError | undefined;
 			try {
-				await microsoftApiRequest.call(ctx, 'GET', '/v1.0/sites/s/lists/l');
+				await microsoftApiRequest.call(ctx, 'GET', requestPath`/v1.0/sites/s/lists/l`);
 			} catch (error) {
 				thrown = error as NodeApiError;
 			}
@@ -571,9 +589,9 @@ describe('Microsoft SharePoint v2 Transport', () => {
 				},
 			});
 
-			await expect(microsoftApiRequest.call(ctx, 'GET', '/v1.0/sites/s/lists/l')).rejects.toThrow(
-				'List not found',
-			);
+			await expect(
+				microsoftApiRequest.call(ctx, 'GET', requestPath`/v1.0/sites/s/lists/l`),
+			).rejects.toThrow('List not found');
 		});
 	});
 
@@ -585,7 +603,7 @@ describe('Microsoft SharePoint v2 Transport', () => {
 				microsoftApiRequest.call(
 					ctx,
 					'GET',
-					'',
+					requestPath``,
 					{},
 					{},
 					'https://graph.microsoft.com/v1.0/sites?$skiptoken=abc',
@@ -598,7 +616,7 @@ describe('Microsoft SharePoint v2 Transport', () => {
 			ctx.getCredentials.mockResolvedValue({ graphApiBaseUrl: 'https://graph.microsoft.us' });
 			const nextLink = 'https://graph.microsoft.us/v1.0/sites?$skiptoken=abc';
 
-			await microsoftApiRequest.call(ctx, 'GET', '', {}, {}, nextLink);
+			await microsoftApiRequest.call(ctx, 'GET', requestPath``, {}, {}, nextLink);
 
 			expect(mockRequestOAuth2).toHaveBeenCalledWith(
 				'microsoftOAuth2Api',
@@ -624,7 +642,7 @@ describe('Microsoft SharePoint v2 Transport', () => {
 			await microsoftApiRequest.call(
 				ctx,
 				'PUT',
-				'/v1.0/sites/s/drive/items/f:/a.png:/content',
+				requestPath`/v1.0/sites/s/drive/items/f:/a.png:/content`,
 				payload,
 				{},
 				undefined,

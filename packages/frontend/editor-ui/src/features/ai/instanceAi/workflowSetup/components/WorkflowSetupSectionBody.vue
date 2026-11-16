@@ -5,6 +5,7 @@ import { TEMPLATED_CUSTOM_AUTH_CREDENTIAL_TYPE } from '@n8n/api-types';
 import { useI18n } from '@n8n/i18n';
 import NodeCredentials from '@/features/credentials/components/NodeCredentials.vue';
 import { deriveServiceName } from '@/features/credentials/templatedAuth.utils';
+import { toOverrideCredentials } from '@/features/credentials/credentials.utils';
 import FreeAiCreditsCallout from '@/app/components/FreeAiCreditsCallout.vue';
 import ParameterInputList from '@/features/ndv/parameters/components/ParameterInputList.vue';
 import { useCredentialsStore } from '@/features/credentials/credentials.store';
@@ -36,6 +37,18 @@ const credentialsStore = useCredentialsStore();
 const nodeTypesStore = useNodeTypesStore();
 
 const credentialType = computed(() => props.section.credentialType);
+
+// The store's usable-credentials slice holds whichever scope fetched last, such
+// as the preview canvas. The server's list does not change under the card.
+const offeredCredentials = computed(() =>
+	credentialType.value && props.section.existingCredentials
+		? toOverrideCredentials(
+				props.section.existingCredentials,
+				credentialType.value,
+				credentialsStore.getCredentialById,
+			)
+		: undefined,
+);
 
 const selectedCredentialId = computed(() =>
 	credentialType.value
@@ -236,12 +249,14 @@ function onParameterValueChanged(update: IUpdateInformation) {
 			:project-id="ctx.projectId.value"
 			:workflow-id="ctx.workflowId.value"
 			standalone
+			for-assistant
 			hide-issues
 			:instance-ai-credential-help="instanceAiCredentialHelp"
 			:skip-auto-select="isTemplatedType || section.preferNewCredential === true"
 			:prefer-new-credential="section.preferNewCredential === true"
 			:credential-setup-hint="section.setupHint"
 			:credentials-field-label="credentialsFieldLabel"
+			:credentials="offeredCredentials"
 			@credential-selected="onCredentialSelected"
 		>
 			<template v-if="section.credentialTargetNodes.length > 1" #label-postfix>

@@ -100,6 +100,7 @@ export namespace PubSub {
 		export type AgentTasksChanged = ToCommand<'agent-tasks-changed'>;
 		export type RedactionFloorChanged = ToCommand<'redaction-floor-changed'>;
 		export type ReloadTypeAvailabilityPolicies = ToCommand<'reload-type-availability-policies'>;
+		export type PromotionEnvironmentChanged = ToCommand<'promotion-environment-changed'>;
 	}
 
 	/** Command sent via the `n8n.commands` pubsub channel. */
@@ -160,7 +161,8 @@ export namespace PubSub {
 		| Commands.AgentConfigChanged
 		| Commands.AgentTasksChanged
 		| Commands.RedactionFloorChanged
-		| Commands.ReloadTypeAvailabilityPolicies;
+		| Commands.ReloadTypeAvailabilityPolicies
+		| Commands.PromotionEnvironmentChanged;
 
 	// ----------------------------------
 	//         worker responses

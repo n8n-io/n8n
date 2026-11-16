@@ -6,6 +6,7 @@ import {
 	N8nDialogFooter,
 	N8nDialogHeader,
 	N8nDialogTitle,
+	FocusScope,
 	N8nIcon,
 	N8nIconButton,
 	N8nInlineTextEdit,
@@ -13,7 +14,6 @@ import {
 	type DialogSize,
 } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
-import { FocusScope } from 'reka-ui';
 import { computed, nextTick, provide, ref, useSlots, useTemplateRef } from 'vue';
 import type { ComponentPublicInstance } from 'vue';
 import { ParameterInputModalContextKey } from '@/app/constants/injectionKeys';

@@ -248,6 +248,8 @@ export interface IExecutionTrackProperties extends ITelemetryTrackProperties {
 	credential_resolver_id?: string;
 	execution_source?: WorkflowExecutionSource;
 	mock_data_sources?: string;
+	/** Number of credentials the run uses only through the acting user's own access. */
+	personal_credentials_count?: number;
 }
 
 export interface IAgentExecutionTrackProperties extends ITelemetryTrackProperties {

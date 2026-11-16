@@ -7,6 +7,7 @@ import { defineComponent, type PropType } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { faker } from '@faker-js/faker';
 import { createComponentRenderer } from '@/__tests__/render';
+import { createTestWorkflow } from '@/__tests__/mocks';
 import { SETTINGS_STORE_DEFAULT_STATE } from '@/__tests__/utils';
 import WorkflowHistoryPage from './WorkflowHistory.vue';
 import { useWorkflowHistoryStore } from '../workflowHistory.store';
@@ -280,6 +281,195 @@ describe('WorkflowHistory', () => {
 		});
 
 		expect(within(getByRole('alert')).getByRole('link')).toBeInTheDocument();
+	});
+
+	describe('slow actions', () => {
+		const renderPreview = createComponentRenderer(WorkflowHistoryPage, {
+			global: {
+				stubs: {
+					Modal: defineComponent({
+						template: '<div><slot name="content" /></div>',
+					}),
+					WorkflowHistoryDiff: true,
+					WorkflowPublishTimelineContent: true,
+					WorkflowPreviewHost: true,
+				},
+			},
+		});
+
+		const shownVersion = { ...versionData, ...historyData[1] };
+		const slowActions = ['clone', 'restore', 'download'] as const;
+
+		const openListActions = async (
+			getAllByTestId: ReturnType<typeof renderPreview>['getAllByTestId'],
+			index: number,
+		) => {
+			const item = getAllByTestId('workflow-history-list-item')[index];
+			const button = within(within(item).getByTestId('action-toggle')).getByRole('button');
+			await userEvent.click(button);
+			const dropdown = document.getElementById(button.getAttribute('aria-controls') as string);
+			expect(dropdown).toBeInTheDocument();
+			return within(dropdown as HTMLElement);
+		};
+
+		const prepareSlowAction = () => {
+			route.params.workflowId = workflowId;
+			route.params.versionId = shownVersion.versionId;
+			vi.spyOn(workflowsListStore, 'fetchWorkflow').mockResolvedValue({
+				id: workflowId,
+				versionId: 'current-version',
+			} as IWorkflowDb);
+			vi.spyOn(workflowsListStore, 'getWorkflowById').mockReturnValue({
+				id: workflowId,
+				scopes: ['workflow:read', 'workflow:create', 'workflow:update'],
+			} as unknown as IWorkflowDb);
+			vi.spyOn(workflowHistoryStore, 'getWorkflowVersion').mockResolvedValue(shownVersion);
+		};
+
+		const mockPendingActions = () => {
+			const pending = Promise.withResolvers<IWorkflowDb>();
+			const spies = {
+				cloneIntoNewWorkflow: vi
+					.spyOn(workflowHistoryStore, 'cloneIntoNewWorkflow')
+					.mockReturnValue(pending.promise),
+				restoreWorkflow: vi
+					.spyOn(workflowHistoryStore, 'restoreWorkflow')
+					.mockReturnValue(pending.promise),
+				downloadVersion: vi
+					.spyOn(workflowHistoryStore, 'downloadVersion')
+					.mockImplementation(async () => {
+						await pending.promise;
+					}),
+			};
+			return {
+				spies,
+				finish: () => pending.resolve(createTestWorkflow({ id: 'done', versionId: 'next' })),
+			};
+		};
+
+		it.each([
+			['Clone to new workflow', 'cloneIntoNewWorkflow'],
+			['Restore version', 'restoreWorkflow'],
+			['Download', 'downloadVersion'],
+		] as const)(
+			'shows a loading Actions button while %s runs, then returns to idle',
+			async (label, method) => {
+				prepareSlowAction();
+				const { spies, finish } = mockPendingActions();
+				const spy = spies[method];
+
+				const { findByTestId, findByText, getByTestId, getAllByTestId } = renderPreview({ pinia });
+				await userEvent.click(await findByTestId('action-toggle-button'));
+				await userEvent.click(await findByText(label));
+
+				await waitFor(() => {
+					expect(spy).toHaveBeenCalledTimes(1);
+					const pendingButton = getByTestId('action-toggle-button');
+					expect(pendingButton).toHaveTextContent('Actions');
+					expect(pendingButton).toBeDisabled();
+					expect(pendingButton).toHaveAttribute('aria-busy', 'true');
+					expect(pendingButton.querySelector('[data-spinner="grid"]')).toBeInTheDocument();
+				});
+				const pendingActions = await openListActions(getAllByTestId, 2);
+				for (const action of slowActions) {
+					expect(pendingActions.getByTestId(`action-${action}`)).toHaveAttribute('data-disabled');
+				}
+				await userEvent.keyboard('{Escape}');
+
+				finish();
+				await waitFor(() => {
+					const idleButton = getByTestId('action-toggle-button');
+					expect(idleButton).toHaveTextContent('Actions');
+					expect(idleButton).not.toBeDisabled();
+					expect(idleButton).not.toHaveAttribute('aria-busy', 'true');
+				});
+				const idleActions = await openListActions(getAllByTestId, 1);
+				expect(idleActions.getByTestId('action-clone')).not.toHaveAttribute('data-disabled');
+				await userEvent.keyboard('{Escape}');
+			},
+		);
+
+		it.each([
+			['Clone to new workflow', 'cloneIntoNewWorkflow', 'clone'],
+			['Restore version', 'restoreWorkflow', 'restore'],
+			['Download', 'downloadVersion', 'download'],
+		] as const)(
+			'shows a spinner on an unselected row while %s runs and ignores repeat actions',
+			async (_label, method, action) => {
+				prepareSlowAction();
+				const { spies, finish } = mockPendingActions();
+				const spy = spies[method];
+				const { getAllByTestId, findAllByTestId, queryByTestId } = renderPreview({ pinia });
+				await findAllByTestId('workflow-history-list-item');
+				const initialActions = await openListActions(getAllByTestId, 2);
+				await userEvent.click(initialActions.getByTestId(`action-${action}`));
+				await waitFor(() => {
+					expect(spy).toHaveBeenCalledTimes(1);
+					const pendingRow = getAllByTestId('workflow-history-list-item')[2];
+					const spinner = within(pendingRow).getByTestId('workflow-history-list-item-pending');
+					expect(spinner).toBeDisabled();
+					expect(spinner).toHaveAttribute('aria-busy', 'true');
+				});
+
+				for (const index of [1, 3]) {
+					const pendingActions = await openListActions(getAllByTestId, index);
+					for (const pendingAction of slowActions) {
+						const entry = pendingActions.getByTestId(`action-${pendingAction}`);
+						expect(entry).toHaveAttribute('data-disabled');
+						expect(entry).toHaveAttribute('aria-disabled', 'true');
+						await userEvent.click(entry);
+					}
+					await userEvent.keyboard('{Escape}');
+				}
+				expect(spy).toHaveBeenCalledTimes(1);
+				for (const [otherMethod, otherSpy] of Object.entries(spies)) {
+					if (otherMethod !== method) {
+						expect(otherSpy).not.toHaveBeenCalled();
+					}
+				}
+
+				finish();
+				// Restore adds rows to the top of the list, so check every row, not one index.
+				await waitFor(() =>
+					expect(queryByTestId('workflow-history-list-item-pending')).not.toBeInTheDocument(),
+				);
+				for (const index of [1, 2]) {
+					const idleActions = await openListActions(getAllByTestId, index);
+					for (const idleAction of slowActions) {
+						const entry = idleActions.getByTestId(`action-${idleAction}`);
+						expect(entry).not.toHaveAttribute('data-disabled');
+						expect(entry).not.toHaveAttribute('aria-disabled', 'true');
+					}
+					await userEvent.keyboard('{Escape}');
+				}
+			},
+		);
+
+		it('clears the loading state after a clone error and allows another clone', async () => {
+			prepareSlowAction();
+			const cloneSpy = vi
+				.spyOn(workflowHistoryStore, 'cloneIntoNewWorkflow')
+				.mockRejectedValueOnce(new Error('Clone failed'))
+				.mockResolvedValueOnce({ id: 'cloned-after-error' } as IWorkflowDb);
+
+			const { findByTestId, findByText, getByTestId, getAllByTestId } = renderPreview({ pinia });
+			await userEvent.click(await findByTestId('action-toggle-button'));
+			await userEvent.click(await findByText('Clone to new workflow'));
+
+			expect(await findByText('Failed to clone to new workflow')).toBeInTheDocument();
+			await waitFor(() => {
+				expect(getByTestId('action-toggle-button')).not.toBeDisabled();
+			});
+			const idleActions = await openListActions(getAllByTestId, 1);
+			expect(idleActions.getByTestId('action-clone')).not.toHaveAttribute('data-disabled');
+			await userEvent.keyboard('{Escape}');
+
+			await userEvent.click(getByTestId('action-toggle-button'));
+			await userEvent.click(await findByText('Clone to new workflow'));
+			await waitFor(() => {
+				expect(cloneSpy).toHaveBeenCalledTimes(2);
+			});
+		});
 	});
 
 	it('should download workflow version', async () => {

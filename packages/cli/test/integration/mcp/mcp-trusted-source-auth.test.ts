@@ -6,7 +6,7 @@ import {
 	UrlService,
 } from '@n8n/backend-services';
 import { Container } from '@n8n/di';
-import type { User } from '@n8n/db';
+import type { Person } from '@n8n/db';
 import {
 	AuthenticationPipeline,
 	JwkSchema,
@@ -51,7 +51,7 @@ const MCP_ISSUER = 'https://idp-a.example';
 const PUBLIC_API_ISSUER = 'https://idp-b.example';
 const CLIENT_ID = 'external-client';
 
-let member: User;
+let member: Person;
 let mcpResource: string;
 let metadataUrl: string;
 let privateKey: CryptoKey;
@@ -243,6 +243,9 @@ describe('Instance MCP authentication through the trusted-source pipeline', () =
 			expect.anything(),
 			expect.anything(),
 			{ caller: { authType: 'oauth', clientId: CLIENT_ID }, grantedScopes: ['workflow:read'] },
+			{
+				security: expect.objectContaining({ subject: expect.objectContaining({ id: member.id }) }),
+			},
 		);
 	});
 
