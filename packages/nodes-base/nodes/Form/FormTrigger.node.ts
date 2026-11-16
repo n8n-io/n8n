@@ -9,6 +9,7 @@ export class FormTrigger extends VersionedNodeType {
 		const baseDescription: INodeTypeBaseDescription = {
 			displayName: 'n8n Form Trigger',
 			name: 'formTrigger',
+			schemaPath: 'Form/FormTrigger',
 			icon: 'node:form-trigger',
 			iconColor: 'teal',
 			group: ['trigger'],
