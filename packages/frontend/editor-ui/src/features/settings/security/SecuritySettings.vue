@@ -1,5 +1,6 @@
 <script lang="ts" setup>
 import { computed, ref } from 'vue';
+import { useRouter } from 'vue-router';
 import { useAsyncState } from '@vueuse/core';
 import { I18nT } from 'vue-i18n';
 import {
@@ -9,6 +10,7 @@ import {
 	N8nSettingsLayout,
 	N8nSettingsPageHeader,
 	N8nSettingsRow,
+	N8nSettingsRowConfigure,
 	N8nSettingsRowGroup,
 	N8nSettingsSection,
 	N8nSwitch,
@@ -31,7 +33,12 @@ import ApiKeyRateLimitsSection from './rateLimits/ApiKeyRateLimitsSection.vue';
 import { PUBLIC_API_RATE_LIMIT_SETTINGS_FLAG } from './rateLimits/rateLimits';
 import { usePostHog } from '@/app/stores/posthog.store';
 import { useWorkflowReviewsFeature } from '@/features/workflow-reviews/composables/useWorkflowReviewsFeature';
+import {
+	INSTANCE_POLICY_VIEW,
+	usePolicyAdminAccess,
+} from '@n8n/frontend-module-type-availability-policies';
 
+const router = useRouter();
 const rootStore = useRootStore();
 const settingsStore = useSettingsStore();
 const usersStore = useUsersStore();
@@ -40,6 +47,11 @@ const { showToast, showError } = useToast();
 const pageRedirectionHelper = usePageRedirectionHelper();
 const { isWorkflowReviewsAvailable } = useWorkflowReviewsFeature();
 const posthogStore = usePostHog();
+const { canManagePolicies: canManageTypePolicies } = usePolicyAdminAccess();
+
+function openTypePolicies() {
+	void router.push({ name: INSTANCE_POLICY_VIEW });
+}
 
 const isRateLimitSettingsEnabled = computed(() =>
 	posthogStore.isFeatureEnabled(PUBLIC_API_RATE_LIMIT_SETTINGS_FLAG),
@@ -387,6 +399,29 @@ const sharingCountText = computed(() => {
 								})
 							}}
 						</N8nText>
+					</template>
+				</N8nSettingsRow>
+			</N8nSettingsRowGroup>
+		</N8nSettingsSection>
+
+		<N8nSettingsSection
+			v-if="canManageTypePolicies"
+			:title="i18n.baseText('settings.security.nodeAndCredentialPolicies.section')"
+			data-test-id="security-type-policies-section"
+		>
+			<N8nSettingsRowGroup>
+				<N8nSettingsRow
+					clickable
+					:title="i18n.baseText('settings.security.nodeAndCredentialPolicies.title')"
+					:description="i18n.baseText('settings.security.nodeAndCredentialPolicies.description')"
+					data-test-id="security-type-policies-row"
+					data-attr="security-type-policies-row"
+					@click="openTypePolicies"
+				>
+					<template #action>
+						<N8nSettingsRowConfigure
+							:value="i18n.baseText('settings.security.nodeAndCredentialPolicies.configure')"
+						/>
 					</template>
 				</N8nSettingsRow>
 			</N8nSettingsRowGroup>

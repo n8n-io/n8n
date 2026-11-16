@@ -7,6 +7,9 @@ import SecuritySettings from './SecuritySettings.vue';
 import { EnterpriseEditionFeature } from '@/app/constants';
 import { useSettingsStore } from '@n8n/stores/settings.store';
 import { useUsersStore } from '@n8n/stores/users.store';
+import { useRBACStore } from '@n8n/stores/rbac.store';
+import type { Scope } from '@n8n/permissions';
+import { INSTANCE_POLICY_VIEW } from '@n8n/frontend-module-type-availability-policies';
 import { usePostHog } from '@/app/stores/posthog.store';
 import { PUBLIC_API_RATE_LIMIT_SETTINGS_FLAG } from './rateLimits/rateLimits';
 
@@ -36,6 +39,12 @@ vi.mock('@n8n/rest-api-client/api/public-api-rate-limit-settings', () => {
 		updatePublicApiRateLimitSettings: vi.fn(),
 	};
 });
+
+const routerPush = vi.fn();
+vi.mock('vue-router', async (importOriginal) => ({
+	...(await importOriginal<typeof import('vue-router')>()),
+	useRouter: () => ({ push: routerPush }),
+}));
 
 const showToast = vi.fn();
 const showError = vi.fn();
@@ -89,6 +98,58 @@ describe('SecuritySettings', () => {
 		settingsStore.isEnterpriseFeatureEnabled[EnterpriseEditionFeature.WorkflowReviews] = false;
 		checkEnvFeatureFlag.mockReturnValue(false);
 		usersStore.updateEnforceMfa = vi.fn().mockResolvedValue(undefined);
+		settingsStore.isModuleActive = vi.fn().mockReturnValue(false);
+		useRBACStore().setGlobalScopes([]);
+	});
+
+	describe('node and credential policies', () => {
+		const enablePolicies = (scopes: Scope[]) => {
+			settingsStore.isModuleActive = vi.fn(
+				(moduleName: string) => moduleName === 'type-availability-policies',
+			);
+			useRBACStore().setGlobalScopes(scopes);
+		};
+
+		it('shows the row to a user with a global policy scope on a licensed instance', async () => {
+			enablePolicies(['nodeTypePolicy:manage']);
+			const { findByTestId, getByTestId } = renderView();
+
+			const row = await findByTestId('security-type-policies-row');
+
+			expect(row).toHaveTextContent('Node and credential policies');
+			expect(row).toHaveTextContent('Configure');
+			expect(getByTestId('security-type-policies-section')).toHaveTextContent(
+				'Nodes and credentials',
+			);
+		});
+
+		it('opens the instance policy page from the row', async () => {
+			enablePolicies(['nodeTypePolicy:manage', 'credentialTypePolicy:manage']);
+			const { findByTestId } = renderView();
+
+			await userEvent.click(await findByTestId('security-type-policies-row'));
+
+			expect(routerPush).toHaveBeenCalledWith({ name: INSTANCE_POLICY_VIEW });
+		});
+
+		it('hides the row when the module is not active, as on an unlicensed instance', async () => {
+			useRBACStore().setGlobalScopes(['nodeTypePolicy:manage', 'credentialTypePolicy:manage']);
+			const { queryByTestId } = renderView();
+
+			await waitFor(() => expect(getSecuritySettings).toHaveBeenCalled());
+
+			expect(queryByTestId('security-type-policies-section')).not.toBeInTheDocument();
+		});
+
+		it('hides the row from a user who holds the policy scopes only in a project', async () => {
+			enablePolicies([]);
+			useRBACStore().addProjectScope('nodeTypePolicy:manage', { projectId: 'project-1' });
+			const { queryByTestId } = renderView();
+
+			await waitFor(() => expect(getSecuritySettings).toHaveBeenCalled());
+
+			expect(queryByTestId('security-type-policies-section')).not.toBeInTheDocument();
+		});
 	});
 
 	describe('API key rate limits', () => {
