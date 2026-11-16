@@ -10,7 +10,11 @@ import { CredentialsHelper } from '@/credentials-helper';
 import { NodeTypes } from '@/node-types';
 import * as WorkflowExecuteAdditionalData from '@/workflow-execute-additional-data';
 
-import type { CredentialMintRequest, CredentialSlotBinding } from './compiled-engine.types';
+import type {
+	CredentialDerivationRequest,
+	CredentialMintRequest,
+	CredentialSlotBinding,
+} from './compiled-engine.types';
 import type { PublicCredential } from './compiled-node-sources';
 import { loadWorkflowLang } from './workflow-lang';
 
@@ -30,6 +34,8 @@ interface MintedToken {
 }
 
 const MINTED_KEY = 'n8nMinted';
+/** The name of a flag under `data.n8nDerived`. Only a boolean has such a name. */
+const FLAG_NAME = /^f[0-9a-f]{8}$/;
 /** The lifetime that n8n assumes when the token endpoint gives none. */
 const UNKNOWN_LIFETIME_SECONDS = 300;
 
@@ -75,7 +81,7 @@ export class CompiledEngineCredentials {
 	async buildDocument(
 		workflowId: string,
 		slots: CredentialSlotBinding[],
-		derivations: Record<string, Array<{ name: string; code: string }>> = {},
+		derivations: Record<string, CredentialDerivationRequest[]> = {},
 		mints: Record<string, CredentialMintRequest[]> = {},
 	): Promise<Record<string, unknown>> {
 		const lang = await loadWorkflowLang();
@@ -118,10 +124,12 @@ export class CompiledEngineCredentials {
 				const entryData: unknown =
 					typeof entry === 'object' && entry !== null ? Reflect.get(entry, 'data') : undefined;
 				if (typeof entryData === 'object' && entryData !== null) {
-					const derived: Record<string, string> = {};
+					const derived: Record<string, string | boolean> = {};
 					const existing: unknown = Reflect.get(entryData, 'n8nDerived');
 					if (typeof existing === 'object' && existing !== null) Object.assign(derived, existing);
-					for (const { name, code } of derivations[use.slot] ?? []) {
+					const wanted = derivations[use.slot] ?? [];
+					for (const { name, code, kind } of wanted) {
+						if (kind !== undefined || FLAG_NAME.test(name)) continue;
 						const value = lang.evaluateDerivation(code, { ...data });
 						if (value === undefined) {
 							this.logger.warn(`A derived value of credential slot "${use.slot}" is not text`, {
@@ -130,6 +138,22 @@ export class CompiledEngineCredentials {
 							continue;
 						}
 						derived[name] = value;
+					}
+					// The outcome of each condition on the credential that node code branches on: a
+					// boolean, and only for values that were checked against the v1 node. The log has
+					// the count, never a name or a value.
+					for (const name of Object.keys(derived)) {
+						if (FLAG_NAME.test(name)) delete derived[name];
+					}
+					if (wanted.some((d) => d.kind === 'flag')) {
+						const { flags, withheld } = lang.evaluateCredentialFlags(wanted, { ...data });
+						Object.assign(derived, flags);
+						if (withheld.length > 0) {
+							this.logger.warn(
+								`Credential slot "${use.slot}" has ${withheld.length} condition(s) that the compiled nodes cannot use`,
+								{ workflowId },
+							);
+						}
 					}
 					if (Object.keys(derived).length > 0) Reflect.set(entryData, 'n8nDerived', derived);
 				}

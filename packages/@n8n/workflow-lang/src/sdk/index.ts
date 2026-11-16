@@ -401,6 +401,12 @@ export interface NodeCtx {
 	service<T = unknown>(request: ServiceRequest): Promise<T>;
 	/** The workflow static data, as `Ctx.staticData` (spec 9.7). Library polls keep their cursor there. */
 	staticData(type: 'global' | 'node', node?: string): Record<string, unknown>;
+	/**
+	 * The outcome of one condition on the credential of the slot. n8n computes it where the
+	 * credential is stored; the module names it by `id`, a constant `f` and eight hex digits.
+	 * It gives no other value of the credential. It throws when the flag is not there. Glue.
+	 */
+	credentialFlag(slot: string | undefined, id: string): boolean;
 }
 
 /**

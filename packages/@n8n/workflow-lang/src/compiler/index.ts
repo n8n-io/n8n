@@ -137,6 +137,24 @@ function tsDiagnostics(program: ts.Program, files: ts.SourceFile[]): Diagnostic[
  * Compiles a workflow source to a module, a canvas projection, a source map
  * and a manifest. It does no file system access.
  */
+/** The names of the flags that `ctx.credentialFlag` calls in the files read, sorted. */
+function credentialFlagNames(files: ts.SourceFile[]): string[] {
+	const names = new Set<string>();
+	const walk = (node: ts.Node) => {
+		if (
+			ts.isCallExpression(node) &&
+			ts.isPropertyAccessExpression(node.expression) &&
+			node.expression.name.text === 'credentialFlag' &&
+			node.arguments.length === 2 &&
+			ts.isStringLiteral(node.arguments[1])
+		)
+			names.add(node.arguments[1].text);
+		ts.forEachChild(node, walk);
+	};
+	for (const file of files) walk(file);
+	return [...names].sort();
+}
+
 export function compile(source: string, options: CompileOptions = {}): CompileResult {
 	const hasher = options.hasher ?? sha256;
 	const wp = createWorkflowProgram({
@@ -224,6 +242,11 @@ export function compile(source: string, options: CompileOptions = {}): CompileRe
 			],
 		};
 	}
+	// The credential flags that linked node code reads. The runtime gives a flag to
+	// `ctx.credentialFlag` only when this list has its name.
+	const credentialFlags = credentialFlagNames(
+		[...lowered.libraryTypes.keys()].flatMap((type) => nodeFileOf.get(type) ?? []),
+	);
 	const sourceHash = toHex(hasher(new TextEncoder().encode(source)));
 	const meta = JSON.stringify({
 		compilerVersion: COMPILER_VERSION,
@@ -233,6 +256,7 @@ export function compile(source: string, options: CompileOptions = {}): CompileRe
 		durability,
 		// Only when there are zones, so other modules keep their bytes.
 		...(zones.length > 0 ? { zones } : {}),
+		...(credentialFlags.length > 0 ? { credentialFlags } : {}),
 		// The runtime decodes the webhook trigger without the request headers.
 		...(triggerHeadersUnread(wp.checker, def.run) ? { triggerHeaders: false } : {}),
 	});

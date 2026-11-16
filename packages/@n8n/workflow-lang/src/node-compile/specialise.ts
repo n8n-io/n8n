@@ -2,6 +2,7 @@ import ts from 'typescript';
 
 import { CODE_HELPERS } from '../convert/code-native/helpers.ts';
 import { translateCode } from '../convert/code-native/translate.ts';
+import { MAX_CREDENTIAL_FLAGS } from '../credentials/flags.ts';
 import { commonJsToModule, isCommonJs } from './commonjs.ts';
 
 export interface SpecialiseInput {
@@ -57,6 +58,9 @@ export interface SpecialiseResult {
 export interface CredentialDerivation {
 	name: string;
 	code: string;
+	kind?: 'flag' | 'guard';
+	flags?: string[];
+	allowed?: string[];
 }
 
 export interface CredentialMint {
@@ -715,6 +719,35 @@ const DERIVED_OPERATORS = new Set<ts.SyntaxKind>([
 	ts.SyntaxKind.QuestionQuestionToken,
 ]);
 const DERIVED_FUNCTIONS = new Set(['String', 'encodeURIComponent', 'btoa']);
+const FLAG_OPERATORS = new Set<ts.SyntaxKind>([
+	ts.SyntaxKind.EqualsEqualsEqualsToken,
+	ts.SyntaxKind.ExclamationEqualsEqualsToken,
+	ts.SyntaxKind.EqualsEqualsToken,
+	ts.SyntaxKind.ExclamationEqualsToken,
+	ts.SyntaxKind.LessThanToken,
+	ts.SyntaxKind.LessThanEqualsToken,
+	ts.SyntaxKind.GreaterThanToken,
+	ts.SyntaxKind.GreaterThanEqualsToken,
+]);
+const FLAG_METHODS = new Set(['includes', 'startsWith', 'endsWith']);
+const FLAG_MARKER = '__CREDFLAG';
+
+function yieldsBoolean(e: ts.Node): boolean {
+	if (ts.isParenthesizedExpression(e)) return yieldsBoolean(e.expression);
+	if (ts.isPrefixUnaryExpression(e)) return e.operator === ts.SyntaxKind.ExclamationToken;
+	if (ts.isBinaryExpression(e)) {
+		const kind = e.operatorToken.kind;
+		if (FLAG_OPERATORS.has(kind)) return true;
+		const logical =
+			kind === ts.SyntaxKind.AmpersandAmpersandToken || kind === ts.SyntaxKind.BarBarToken;
+		return logical && yieldsBoolean(e.left) && yieldsBoolean(e.right);
+	}
+	return (
+		ts.isCallExpression(e) &&
+		ts.isPropertyAccessExpression(e.expression) &&
+		FLAG_METHODS.has(e.expression.name.text)
+	);
+}
 const DERIVED_METHODS = new Set([
 	'split',
 	'pop',
@@ -2541,7 +2574,17 @@ class Specialiser {
 			}
 			if (ts.isBinaryExpression(e)) {
 				if (e.operatorToken.kind !== ts.SyntaxKind.PlusToken) state.computes = true;
-				return DERIVED_OPERATORS.has(e.operatorToken.kind) && pure(e.left) && pure(e.right);
+				const known =
+					DERIVED_OPERATORS.has(e.operatorToken.kind) || FLAG_OPERATORS.has(e.operatorToken.kind);
+				return known && pure(e.left) && pure(e.right);
+			}
+			if (ts.isPrefixUnaryExpression(e) && e.operator === ts.SyntaxKind.ExclamationToken) {
+				state.computes = true;
+				return pure(e.operand);
+			}
+			if (ts.isTypeOfExpression(e)) {
+				state.computes = true;
+				return pure(e.expression);
 			}
 			if (ts.isPropertyAccessExpression(e)) {
 				state.computes = true;
@@ -2555,7 +2598,8 @@ class Specialiser {
 				if (!ts.isPropertyAccessExpression(callee)) return false;
 				if (ts.isIdentifier(callee.expression) && callee.expression.text === 'Buffer')
 					return callee.name.text === 'from';
-				return DERIVED_METHODS.has(callee.name.text) && pure(callee.expression);
+				const known = DERIVED_METHODS.has(callee.name.text) || FLAG_METHODS.has(callee.name.text);
+				return known && pure(callee.expression);
 			}
 			return false;
 		};
@@ -2563,11 +2607,103 @@ class Specialiser {
 		return { ok, marker: state.marker, computes: state.computes };
 	}
 
+	readonly flags = new Map<string, string>();
+
+	private credentialFlag(n: ts.Expression): ts.Expression {
+		const fields = (x: ts.Node): ts.Node => {
+			if (isCredentialMarker(x)) {
+				const path = x.arguments[0];
+				let read: ts.Expression = f.createIdentifier('c');
+				for (const key of (ts.isStringLiteral(path) ? path.text : '').split('.'))
+					read = f.createPropertyAccessExpression(read, key);
+				return read;
+			}
+			return ts.visitEachChild(x, fields, undefined);
+		};
+		const blank = ts.createSourceFile('d.js', '', ts.ScriptTarget.ES2022, false, ts.ScriptKind.JS);
+		const text = this.printer.printNode(
+			ts.EmitHint.Unspecified,
+			ts.visitNode(n, fields),
+			n.getSourceFile() ?? blank,
+		);
+		const code = yieldsBoolean(n) ? `(c) => (${text})` : `(c) => Boolean(${text})`;
+		let hash = 0x811c9dc5;
+		for (let k = 0; k < code.length; k++) {
+			hash ^= code.charCodeAt(k);
+			hash = Math.imul(hash, 0x01000193) >>> 0;
+		}
+		const name = `f${hash.toString(16).padStart(8, '0')}`;
+		this.flags.set(name, code);
+		return call(FLAG_MARKER, f.createStringLiteral(name));
+	}
+
+	private credentialTest(e: ts.Expression, visit: (n: ts.Node) => ts.Node): ts.Expression {
+		const found = this.credentialPure(e);
+		if (found.ok && found.marker) return this.credentialFlag(e);
+		const test = (x: ts.Expression) => this.credentialTest(x, visit);
+		if (ts.isParenthesizedExpression(e))
+			return f.updateParenthesizedExpression(e, test(e.expression));
+		if (ts.isPrefixUnaryExpression(e) && e.operator === ts.SyntaxKind.ExclamationToken)
+			return f.updatePrefixUnaryExpression(e, test(e.operand));
+		if (
+			ts.isBinaryExpression(e) &&
+			(e.operatorToken.kind === ts.SyntaxKind.AmpersandAmpersandToken ||
+				e.operatorToken.kind === ts.SyntaxKind.BarBarToken)
+		)
+			return f.updateBinaryExpression(e, test(e.left), e.operatorToken, test(e.right));
+		const out = visit(e);
+		return ts.isExpression(out) ? out : e;
+	}
+
+	private credentialTests(n: ts.Node, visit: (n: ts.Node) => ts.Node): ts.Node | undefined {
+		const holds = (e: ts.Node): boolean =>
+			isCredentialMarker(e) || (ts.forEachChild(e, holds) ?? false);
+		const statement = (x: ts.Statement): ts.Statement => {
+			const out = visit(x);
+			return ts.isStatement(out) ? out : x;
+		};
+		const expression = (x: ts.Expression): ts.Expression => {
+			const out = visit(x);
+			return ts.isExpression(out) ? out : x;
+		};
+		if (ts.isIfStatement(n) && holds(n.expression))
+			return f.updateIfStatement(
+				n,
+				this.credentialTest(n.expression, visit),
+				statement(n.thenStatement),
+				n.elseStatement && statement(n.elseStatement),
+			);
+		if (ts.isConditionalExpression(n) && holds(n.condition))
+			return f.updateConditionalExpression(
+				n,
+				this.credentialTest(n.condition, visit),
+				n.questionToken,
+				expression(n.whenTrue),
+				n.colonToken,
+				expression(n.whenFalse),
+			);
+		if (ts.isWhileStatement(n) && holds(n.expression))
+			return f.updateWhileStatement(
+				n,
+				this.credentialTest(n.expression, visit),
+				statement(n.statement),
+			);
+		if (ts.isDoStatement(n) && holds(n.expression))
+			return f.updateDoStatement(
+				n,
+				statement(n.statement),
+				this.credentialTest(n.expression, visit),
+			);
+		return undefined;
+	}
+
 	private deriveCredentialValues(root: ts.Node): ts.Node {
 		const isMarker = isCredentialMarker;
 		const visit = (n: ts.Node): ts.Node => {
 			if (ts.isExpression(n) && !isMarker(n)) {
 				const found = this.credentialPure(n);
+				if (found.ok && found.marker && found.computes && yieldsBoolean(n))
+					return this.credentialFlag(n);
 				if (found.ok && found.marker && found.computes) {
 					const fields = (x: ts.Node): ts.Node => {
 						if (isMarker(x)) {
@@ -2602,6 +2738,8 @@ class Specialiser {
 					return call('__CREDFIELD', f.createStringLiteral(`n8nDerived.${name}`));
 				}
 			}
+			const tested = this.credentialTests(n, visit);
+			if (tested) return tested;
 			return ts.visitEachChild(n, visit, undefined);
 		};
 		return ts.visitNode(root, visit);
@@ -5250,7 +5388,20 @@ class Specialiser {
 		if (this.errors.length > 0) return { errors: this.errors, notes: this.notes, linked };
 		const source = this.print();
 		if (this.errors.length > 0) return { errors: this.errors, notes: this.notes, linked };
-		const derivations = [...this.derivations].map(([name, code]) => ({ name, code }));
+		const flags = [...this.flags]
+			.filter(([name]) => source.includes(`"${name}"`))
+			.map(([name, code]): CredentialDerivation => ({ name, code, kind: 'flag' }));
+		if (flags.length > MAX_CREDENTIAL_FLAGS) {
+			this.error(
+				'execute',
+				`the node needs more than ${MAX_CREDENTIAL_FLAGS} conditions on its credential`,
+			);
+			return { errors: this.errors, notes: this.notes, linked };
+		}
+		const derivations: CredentialDerivation[] = [
+			...[...this.derivations].map(([name, code]) => ({ name, code })),
+			...flags,
+		];
 		const mints = [...this.mints.values()].filter((m) => source.includes(`n8nMinted.${m.name}.`));
 		return {
 			source,
@@ -5580,6 +5731,16 @@ function finish(root: ts.Node): ts.Node {
 				`{{$credentials.${ts.isStringLiteral(field) ? field.text : ''}}}`,
 			);
 		}
+		if (
+			ts.isCallExpression(out) &&
+			ts.isIdentifier(out.expression) &&
+			out.expression.text === FLAG_MARKER
+		)
+			return f.createCallExpression(
+				f.createPropertyAccessExpression(f.createIdentifier('ctx'), 'credentialFlag'),
+				undefined,
+				[f.createIdentifier('credential'), ...out.arguments],
+			);
 		return out;
 	};
 	return ts.visitNode(root, visit);

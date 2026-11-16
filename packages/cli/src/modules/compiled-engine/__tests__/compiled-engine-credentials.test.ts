@@ -124,6 +124,64 @@ describe('CompiledEngineCredentials', () => {
 		});
 	});
 
+	describe('credential flags', () => {
+		const acme: CredentialSlotBinding = {
+			slot: 'acme',
+			type: 'acmeApi',
+			credentialId: 'cred3',
+			credentialName: 'Acme',
+		};
+		const short = {
+			name: 'f00000001',
+			code: '(c) => (c.apiKey.length < 64)',
+			kind: 'flag' as const,
+		};
+		const text = { name: 'd00000001', code: '(c) => (c.account + "!")' };
+		const guard = (allowed: string[]) => ({
+			name: 'g1',
+			code: '',
+			kind: 'guard' as const,
+			flags: [short.name],
+			allowed,
+		});
+		const derivedOf = (document: Record<string, unknown>) =>
+			(document.acme as { data: Record<string, unknown> }).data.n8nDerived;
+
+		beforeEach(() => {
+			helper.getDecrypted.mockResolvedValue({ apiKey: 'sk-live-1', account: 'jo' });
+		});
+
+		it('puts the outcome of a checked condition into the document as a boolean', async () => {
+			const derivations = { acme: [text, short, guard(['@flags=f00000001:1'])] };
+
+			const document = await credentials().buildDocument('wf1', [acme], derivations);
+
+			expect(derivedOf(document)).toEqual({ d00000001: 'jo!', f00000001: true });
+			expect(logger.warn).not.toHaveBeenCalled();
+		});
+
+		it('withholds a flag whose value was not checked, and logs no name and no value', async () => {
+			const derivations = { acme: [short, guard(['@flags=f00000001:0'])] };
+
+			const document = await credentials().buildDocument('wf1', [acme], derivations);
+
+			expect(derivedOf(document)).toBeUndefined();
+			expect(logger.warn).toHaveBeenCalledTimes(1);
+			const logged = JSON.stringify(logger.warn.mock.calls);
+			expect(logged).not.toContain('f00000001');
+			expect(logged).not.toContain('sk-live-1');
+		});
+
+		it('does not write text under the name of a flag', async () => {
+			const derivations = { acme: [{ name: 'f00000002', code: '(c) => c.apiKey' }] };
+
+			const document = await credentials().buildDocument('wf1', [acme], derivations);
+
+			expect(derivedOf(document)).toBeUndefined();
+			expect(JSON.stringify(document)).not.toContain('f00000002');
+		});
+	});
+
 	describe('minted tokens', () => {
 		const serviceAccount: CredentialSlotBinding = {
 			slot: 'sa',

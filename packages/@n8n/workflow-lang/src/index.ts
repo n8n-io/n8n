@@ -21,7 +21,12 @@ export { describeCredentialType, parentTypes, registryOf } from './credentials/t
 export { publicCredential } from './credentials/public.ts';
 export type { PublicCredential } from './credentials/public.ts';
 export { nodeDescriptionOf } from './node-compile/convert.ts';
-export { evaluateDerivation, evaluateInSandbox } from './node-compile/evaluate-node.ts';
+export {
+	evaluateCredentialFlags,
+	evaluateDerivation,
+	evaluateInSandbox,
+} from './node-compile/evaluate-node.ts';
+export type { CredentialDerivation } from './node-compile/specialise.ts';
 export type { NodeSources } from './node-compile/convert.ts';
 export type { CredentialTypeInfo, CredentialTypeRegistry } from './credentials/types.ts';
 export { runDataTableCall } from './services/data-table.ts';

@@ -17,13 +17,56 @@ kinds:
   only its result (`NodeSources.publicCredential`), so the converter never sees a secret.
 - The compiler folds a public field like a parameter. A branch on `authentication`, `useShared` or `environment`
   is gone from the module.
-- A template field is a marker until the module is printed. A comparison, a condition or a `typeof` on it is a
-  compile error. The check follows the field through variables, members, arguments and results.
+- A template field is a marker until the module is printed. A condition that has only template fields and
+  constants becomes a flag (see "Credential flags"). Each other comparison, condition or `typeof` on a template
+  field is a compile error. The check follows the field through variables, members, arguments and results.
 - The verified list holds the classes of the public fields of each check (`@type.field=value`, text as `set` or
   `empty`). A node runs compiled only when its credential has classes that were checked against v1.
 
 Result on n8n-nodes-base: 854 operations of 88 node types compile and agree with v1 (734 of 79 without public
 fields).
+
+## Credential flags
+
+Some v1 nodes branch on a field that is not public. Examples: `if (apiToken.length < 64)`, `if (credentials.url)`,
+`rejectUnauthorized: !credentials.allowUnauthorizedCerts`. The module cannot hold the outcome, because the
+outcome changes when the credential changes. A flag gives the outcome to node code at run time.
+
+- **What a flag is.** A flag is the boolean outcome of one condition. The condition has only credential fields,
+  constants, comparisons, `!`, `&&`, `||`, `typeof`, `length` and a fixed list of text methods. The compiler
+  writes the condition as code (`(c) => (c.apiToken.length < 64)`) and gives it a name: `f` and eight hex
+  digits of the hash of the code. A derived text value has the prefix `d`, so the two names never collide.
+- **Where n8n computes it.** `evaluateCredentialFlags` runs the code where the credential is stored, in the
+  same sandbox as a derived value. The result must be a boolean. n8n writes it to
+  `data.n8nDerived.<name>` of the credentials document. A condition that fails or gives another type has no
+  flag. n8n logs the count of flags that it withholds. n8n does not log a name or a value.
+- **How node code reads it.** `ctx.credentialFlag(credential, '<name>')` returns the boolean. The call throws
+  when the flag is not there. This is the only read of a credential value in node code. The validator accepts
+  the call only in a library node, and only with the slot variable and a constant name of the form
+  `f` and eight hex digits (`WL012`). The META of the module lists each name (`credentialFlags`).
+- **What a flag reveals.** A flag reveals the outcome of one condition, one bit, to node code. Node code can
+  use the bit as a value: it can go into a request or the output. The module file holds the code of the
+  condition and no bit of the credential. Thus a module stays valid when a secret changes.
+- **Limits.** One node instance has at most 16 flags; more is a compile error. A flag is always a boolean. A
+  `switch` on a field and a comparison of a field with a value of the run are not flags: they stay compile
+  errors. A condition on a public field folds at publish and makes no flag.
+- **Verification.** The verifier computes the flags from the test credential. It then changes one field of
+  the test credential at a time (empty, long, absent, the other boolean) to get other flag values, and compares
+  each with v1. The verified list holds each set of values that agrees with v1
+  (`@flags=f2ad9326f:0`, `@flags=f2ad9326f:1`). The converter gives these sets to n8n as a guard. n8n writes
+  the flags of a node instance only when their values are one of the sets. For other values, the node fails
+  with "The credential has no value for a condition of this node".
+
+What the runtime must do (not built, `workflow-runtime` is a different card):
+
+- `src/core/lib.zig`: add the native `ctx.credentialFlag(slot, name)`. Accept a name only when it has the form
+  `f` and eight hex digits and when the META list `credentialFlags` of the module has it. Return only a JSON
+  boolean. Throw an Error with the message above for each other case.
+- The core has no credentials. The shell must give the flags to the core when an execution starts (as it gives
+  the static data): for each slot of the workflow, the members of `data.n8nDerived` that have a flag name and a
+  boolean value. The execution keeps this copy, so a replay takes the same branches after a credential
+  changes.
+- A flag is not in a log. The copy of an execution is in the event log only as booleans by name.
 
 ## Control plane and data plane
 
@@ -81,6 +124,10 @@ each template of each request. For the budget and for the coding standards it be
   snapshot or in the execution log.
 
 ## What is not solved
+
+- **Flag values that are not checked.** When a credential changes to flag values that the verifier did not
+  check, n8n withholds the flags and the node fails. n8n must instead publish the workflow again with the node
+  in the fallback host.
 
 - **Whole credentials.** 765 operations pass the credential object to a helper or read a field by a computed
   name. The compiler needs to follow the object into the helper, as it follows a field today.

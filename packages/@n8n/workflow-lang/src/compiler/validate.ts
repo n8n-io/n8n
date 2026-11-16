@@ -25,6 +25,7 @@ import {
 } from './opcodes.ts';
 import { checkDates, dateStatic, isDateConstructor, isDateish } from './dates.ts';
 import { LIB_FILE, SDK_FILE } from './program.ts';
+import { CREDENTIAL_FLAG_NAME } from '../credentials/flags.ts';
 
 export interface Diagnostic {
 	code: string;
@@ -443,14 +444,33 @@ export function validateFile(
 				method &&
 				method !== 'http' &&
 				method !== 'service' &&
-				method !== 'staticData'
+				method !== 'staticData' &&
+				method !== 'credentialFlag'
 			) {
 				report(
 					node,
 					'WL012',
-					'A library node can use only ctx.http, ctx.service and ctx.staticData.',
+					'A library node can use only ctx.http, ctx.service, ctx.staticData and ctx.credentialFlag.',
 					'Use ctx.http.',
 				);
+			}
+			if (method === 'credentialFlag') {
+				// A flag is the only credential value that node code reads: the name must be a
+				// constant, so the module lists every flag that it can read.
+				const [slot, id] = node.arguments;
+				const named =
+					node.arguments.length === 2 &&
+					ts.isIdentifier(slot) &&
+					ts.isStringLiteral(id) &&
+					CREDENTIAL_FLAG_NAME.test(id.text);
+				if (role !== 'library' || !named) {
+					report(
+						node,
+						'WL012',
+						'ctx.credentialFlag is for a library node, with the credential slot and the constant name of a flag.',
+						"ctx.credentialFlag(credential, 'f0123abcd')",
+					);
+				}
 			}
 			if (isAsyncCall(checker, node) && !awaited(node) && !isPromiseAllElement(node)) {
 				report(

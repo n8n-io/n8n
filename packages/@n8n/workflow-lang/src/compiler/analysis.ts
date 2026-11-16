@@ -11,7 +11,8 @@ export type CtxMethod =
 	| 'execution'
 	| 'vars'
 	| 'staticData'
-	| 'polled';
+	| 'polled'
+	| 'credentialFlag';
 
 /** ctx calls that are glue: they do not suspend and are not steps. */
 export const GLUE_CTX_METHODS: ReadonlySet<string> = new Set([
@@ -22,6 +23,7 @@ export const GLUE_CTX_METHODS: ReadonlySet<string> = new Set([
 	'vars',
 	'staticData',
 	'polled',
+	'credentialFlag',
 ]);
 
 const CTX_METHODS: ReadonlySet<string> = new Set([
@@ -39,6 +41,7 @@ const CTX_METHODS: ReadonlySet<string> = new Set([
 	'vars',
 	'staticData',
 	'polled',
+	'credentialFlag',
 ]);
 
 export function isFunctionLike(node: ts.Node): node is ts.FunctionLikeDeclaration {
@@ -95,6 +98,7 @@ export function ctxCallMethod(checker: ts.TypeChecker, call: ts.Node): CtxMethod
 		case 'vars':
 		case 'staticData':
 		case 'polled':
+		case 'credentialFlag':
 			return method;
 		default:
 			return null;

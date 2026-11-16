@@ -21,6 +21,8 @@ import { loadCredentialTypes, registryOf } from '../src/credentials/types.ts';
 import {
 	compileForCheck,
 	differenceFromV1,
+	flagKeyOf,
+	flagVariants,
 	MINTED_TOKEN_RESPONSE,
 } from '../src/node-compile/__tests__/verify.ts';
 import type { NodeSources } from '../src/node-compile/convert.ts';
@@ -464,15 +466,14 @@ for (const name of one === undefined ? [] : Object.keys(known).sort()) {
 					p: Json,
 					responses: EquivalenceCase['responses'],
 					items: EquivalenceCase['items'] = readsFiles ? FILE_ITEMS : undefined,
+					data: Json | undefined = credential ? fakeCredential(credential) : undefined,
 				): EquivalenceCase => ({
 					name: `${type}@${version} ${label}`,
 					type,
 					typeVersion: version,
 					parameters: p,
 					...(items ? { items } : {}),
-					...(credential
-						? { credential: { type: credential, data: fakeCredential(credential) } }
-						: {}),
+					...(credential && data ? { credential: { type: credential, data } } : {}),
 					responses,
 				});
 				const plain = { ok: true, id: 'r1', result: { id: 'r1' }, data: [{ id: 'r1' }] };
@@ -520,7 +521,31 @@ for (const name of one === undefined ? [] : Object.keys(known).sort()) {
 						why('v1: the other authentication agrees with v1 for fewer parameters', weight);
 						continue;
 					}
-					verified[key] = [...new Set([...(before ?? []), ...names])].sort();
+					const flagKeys: string[] = [];
+					if (compiled.flags.length > 0) {
+						const usual = make('ok', parameters, ok);
+						const usualKey = flagKeyOf(usual, compiled.flags, registry);
+						if (usualKey !== undefined) flagKeys.push(usualKey);
+						for (const variant of flagVariants(usual, compiled.flags, registry)) {
+							const difference =
+								(await differenceFromV1(
+									make('ok', parameters, ok, undefined, variant.data),
+									sources,
+									registry,
+									checking,
+								)) ??
+								(await differenceFromV1(
+									make('error', parameters, bad, undefined, variant.data),
+									sources,
+									registry,
+									checking,
+								));
+							if (difference === undefined) flagKeys.push(variant.key);
+							else if (examples.length < 60)
+								examples.push(`${key} with ${variant.key}: ${difference.slice(0, 160)}`);
+						}
+					}
+					verified[key] = [...new Set([...(before ?? []), ...names, ...flagKeys])].sort();
 					if (compiled.mints.length > 0) mintedVerified++;
 				} catch (error) {
 					why(`check failed: ${error instanceof Error ? error.message : String(error)}`, weight);
