@@ -1,7 +1,7 @@
 import { OwnerSetupRequestDto } from '@n8n/api-types';
-import type { User } from '@n8n/db';
+import { isPerson, type Person } from '@n8n/db';
 import { Service } from '@n8n/di';
-import { BadRequestError, UserError } from '@n8n/errors';
+import { BadRequestError, UnexpectedError, UserError } from '@n8n/errors';
 import type {
 	OwnerSetupInputV1,
 	OwnerSetupOptionsV1,
@@ -14,7 +14,7 @@ import { OwnershipService } from '@/services/ownership.service';
 
 import { HooksApiError } from '../hooks-api.error';
 
-const toUserV1 = (user: User): UserV1 => ({
+const toUserV1 = (user: Person): UserV1 => ({
 	id: user.id,
 	email: user.email,
 	firstName: user.firstName,
@@ -31,7 +31,10 @@ export class PublicOwnershipService implements OwnershipApiV1 {
 		// A shell owner always exists. It only counts as an owner after setup.
 		if (!(await this.ownershipService.hasInstanceOwner())) return null;
 
-		return toUserV1(await this.ownershipService.getInstanceOwner());
+		const owner = await this.ownershipService.getInstanceOwner();
+		// The owner is always a person. `setupOwner` enforces it.
+		if (!isPerson(owner)) throw new UnexpectedError('Instance owner is not a person');
+		return toUserV1(owner);
 	}
 
 	async setupOwner(owner: OwnerSetupInputV1, options?: OwnerSetupOptionsV1): Promise<UserV1> {

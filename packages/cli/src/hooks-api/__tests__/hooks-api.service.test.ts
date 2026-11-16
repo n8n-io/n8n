@@ -1,7 +1,7 @@
 import type { HooksApi, RegisterHooks } from '@n8n/hooks-api';
 import { mock } from 'vitest-mock-extended';
 import type { InstanceSettings } from 'n8n-core';
-import { UnexpectedError } from 'n8n-workflow';
+import { UnexpectedError } from '@n8n/errors';
 
 import { ExternalHooks } from '@/external-hooks';
 

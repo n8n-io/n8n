@@ -44,6 +44,7 @@ export interface WorkflowHooksV1 {
 }
 
 // ---- http.d.ts ----
+import type { SecurityContextV1 } from './security';
 export type HttpMethodV1 = 'get' | 'post' | 'put' | 'patch' | 'delete';
 export interface HttpRequestV1 {
     method: HttpMethodV1;
@@ -52,19 +53,30 @@ export interface HttpRequestV1 {
     query: Record<string, string | string[] | undefined>;
     headers: Record<string, string | string[] | undefined>;
     body: unknown;
+    security?: SecurityContextV1;
 }
 export interface HttpResponseV1 {
     status: number;
     headers?: Record<string, string>;
     body?: unknown;
 }
+export interface HttpMiddlewareV1 {
+    readonly name: string;
+}
+export interface HttpMiddlewaresV1 {
+    readonly sessionAuthentication: HttpMiddlewareV1;
+    requireGlobalScope(scope: string): HttpMiddlewareV1;
+}
+export type HttpMiddlewareFnV1 = (request: HttpRequestV1) => Promise<HttpResponseV1 | undefined>;
 export interface HttpRouteV1 {
     method: HttpMethodV1;
     path: string;
+    middlewares: Array<HttpMiddlewareV1 | HttpMiddlewareFnV1>;
     handler: (request: HttpRequestV1) => Promise<HttpResponseV1>;
 }
 export interface HttpApiV1 {
     readonly version: 1;
+    readonly middlewares: HttpMiddlewaresV1;
     registerRoute(route: HttpRouteV1): void;
 }
 
@@ -75,6 +87,7 @@ export type * from './hooks-api';
 export type * from './http';
 export type * from './ownership';
 export type * from './workflows';
+export type * from './security';
 
 // ---- ownership.d.ts ----
 export type OwnershipErrorCodeV1 = 'owner_already_set_up';
@@ -97,6 +110,22 @@ export interface OwnershipApiV1 {
     readonly version: 1;
     getOwner(): Promise<UserV1 | null>;
     setupOwner(owner: OwnerSetupInputV1, options?: OwnerSetupOptionsV1): Promise<UserV1>;
+}
+
+// ---- security.d.ts ----
+export type PrincipalTypeV1 = 'person' | 'service';
+export interface PrincipalV1 {
+    id: string;
+    type: PrincipalTypeV1;
+    email?: string;
+    firstName?: string;
+    lastName?: string;
+}
+export type AuthMethodV1 = 'session-cookie';
+export interface SecurityContextV1 {
+    subject: PrincipalV1;
+    actor?: PrincipalV1;
+    authMethod: AuthMethodV1;
 }
 
 // ---- workflows.d.ts ----

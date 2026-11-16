@@ -2,7 +2,7 @@ import { Logger } from '@n8n/backend-common';
 import { Service } from '@n8n/di';
 import type { HooksApi, HooksApiV1, InstanceTypeV1 } from '@n8n/hooks-api';
 import { InstanceSettings } from 'n8n-core';
-import { UnexpectedError } from 'n8n-workflow';
+import { UnexpectedError } from '@n8n/errors';
 
 import { N8N_VERSION } from '@/constants';
 import { ExternalHooks } from '@/external-hooks';
