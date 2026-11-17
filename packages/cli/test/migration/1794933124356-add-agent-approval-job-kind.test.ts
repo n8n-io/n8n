@@ -10,7 +10,7 @@ import { Container } from '@n8n/di';
 import { DataSource } from '@n8n/typeorm';
 import { v7 as uuid } from 'uuid';
 
-const migration = 'AddAgentApprovalJobKind1794916566281';
+const migration = 'AddAgentApprovalJobKind1794933124356';
 
 describe('Agent approval job migration', () => {
 	async function context<T>(run: (ctx: TestMigrationContext) => Promise<T>) {

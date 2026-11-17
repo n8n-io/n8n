@@ -1,6 +1,6 @@
 import type { MigrationContext, ReversibleMigration } from '../migration-types';
 
-export class AddAgentApprovalJobKind1794916566281 implements ReversibleMigration {
+export class AddAgentApprovalJobKind1794933124356 implements ReversibleMigration {
 	async up({
 		schemaBuilder: { dropEnumCheck, addEnumCheck, addColumns, column, createIndex, addForeignKey },
 		isPostgres,
