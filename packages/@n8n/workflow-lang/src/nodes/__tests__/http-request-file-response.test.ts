@@ -253,6 +253,40 @@ describe('HTTP Request response format "file" and v1', () => {
 		]);
 	});
 
+	it('gives the fallback host the answers of the requests before the file that is too large', async () => {
+		const c = { name: 'large', path: '/files/dot.png' };
+		const converted = convertWorkflow(workflow(c), { trace: 'all', nodeSources });
+		expect(converted.fallbackNodes).toEqual([]);
+		const redirect = { status: 302, headers: { location: `${base}/files/moved.png` }, body: '' };
+		const replays: unknown[] = [];
+		const out = await runReference(
+			converted.source,
+			{
+				trigger: { body: {} },
+				now: 0,
+				seed: 1,
+				effects: {
+					H: [redirect, { $error: 'http: the body is larger than 64 MB (limit: binary-max-file)' }],
+				},
+			},
+			{
+				answer: async (effect) => {
+					if (effect.kind !== 'node' || !effect.step.startsWith('H')) return undefined;
+					const args: unknown = effect.args;
+					if (typeof args === 'object' && args !== null && 'replay' in args) {
+						replays.push(args.replay);
+					}
+					return [{ fromHost: true }];
+				},
+			},
+		);
+		expect(out.status).toBe('ok');
+		// The v1 node gets the redirect from the list. It sends only the request of the file.
+		expect(replays).toEqual([
+			[{ method: 'GET', url: `${base}${c.path}`, qs: {}, response: redirect }],
+		]);
+	});
+
 	it.each([
 		{ label: 'a runtime that stores no response', sources: undefined, parameters: {} },
 		{ label: 'another method', sources: nodeSources, parameters: { method: 'POST' } },

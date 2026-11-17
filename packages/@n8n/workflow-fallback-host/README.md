@@ -226,6 +226,18 @@ cli gives the host the settings of its instance.
   `WF_FALLBACK_BINARY_STORE=off`, or a mode other than `filesystem`, keeps the
   binary data in the items as base64.
 
+## Answers of a library node (`replay`)
+
+A compiled library node can hand its node over to the host after it sent GET
+requests (a Gmail read without "simplify", an HTTP Request file that is too
+large for the runtime). The node step then has `replay`: the answers that the
+library node received. The host gives each answer once to the v1 node for the
+same GET request (method, URL and query), in the order of the list, and sends
+each other request. So the requests are on the network once, as in n8n's v1
+engine. `src/http-replay.ts` has the rules; the specification of the runtime
+(`@n8n/workflow-lang`, `docs/spec.md`, "Answers of a library node") has the
+format and the limits.
+
 ## Data tables
 
 The v1 Data Table node asks `additionalData['data-table'].dataTableProxyProvider`

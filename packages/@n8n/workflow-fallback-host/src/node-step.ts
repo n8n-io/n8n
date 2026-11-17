@@ -67,6 +67,8 @@ import { readinessIssues, toNodeParameters } from './check-ready';
 import { hostExtensions } from './extensions';
 import { binaryStore, inlineStoredBinary, registerExecution } from './binary-store';
 import { startDeduplication } from './deduplication';
+import type { ReplayEntry, StoredBody } from './http-replay';
+import { readReplay, withReplay } from './http-replay';
 import { callService, currentServiceChannel } from './service-calls';
 import type { JsTaskResult } from './task-runner';
 import { runJsTask } from './task-runner';
@@ -211,6 +213,13 @@ export interface NodeStepArgs {
 	reportError?: boolean;
 	/** Settings of the workflow, such as `timezone`, for the node's `Workflow`. */
 	settings?: { timezone?: string };
+	/** Answers of GET requests that a library node received before the host got the node (`http-replay.ts`). */
+	replay?: ReplayEntry[];
+}
+
+/** The bytes of a stored response body of `replay`, from n8n's binary data store. */
+async function readStoredBody(body: StoredBody): Promise<Buffer | undefined> {
+	return await (await binaryStore())?.getAsBuffer(body);
 }
 
 export interface NodeStepMeta {
@@ -379,6 +388,9 @@ export function parseNodeStepArgs(args: JsonObject): NodeStepArgs {
 		reportError: args.reportError === true,
 		...(isJsonObject(args.settings) && typeof args.settings.timezone === 'string'
 			? { settings: { timezone: args.settings.timezone } }
+			: {}),
+		...(Array.isArray(args.replay) && args.replay.length > 0
+			? { replay: readReplay(args.replay) }
 			: {}),
 	};
 }
@@ -830,8 +842,8 @@ export class NodeStepRunner {
 		let outputs: INodeExecutionData[][];
 		let subRuns: SubNodeRuns = {};
 		let nodeError: string | undefined;
-		try {
-			outputs = args.poll
+		const execute = async () =>
+			args.poll
 				? await this.runPoll(args, meta)
 				: args.subNodes.length > 0 || args.type.startsWith(LANGCHAIN_PREFIX)
 					? await this.runCluster(
@@ -851,6 +863,11 @@ export class NodeStepRunner {
 									}
 								: undefined,
 						);
+		try {
+			// The v1 node gets the answers that a library node received for the same requests.
+			outputs = args.replay
+				? await withReplay(args.replay, readStoredBody, execute)
+				: await execute();
 		} catch (error) {
 			await recoverExpressionEngine(error);
 			// A cluster that fails still gives the runs of its sub-nodes (a model that failed),

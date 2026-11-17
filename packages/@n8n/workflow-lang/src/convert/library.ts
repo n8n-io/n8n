@@ -38,6 +38,7 @@ import type { HostForm, StepCall } from './steps.ts';
 import {
 	emitStep,
 	emitWithHostForm,
+	replayOf,
 	errorRetry,
 	hostFormOf,
 	nodeCall,
@@ -966,14 +967,13 @@ export function lowerLibrary(c: NodeContext): void {
 	const noToken = account !== undefined && c.addCredentialMints === undefined;
 	// A Gmail read without "simplify" parses the raw message. The library node parses the
 	// messages that it reads exactly as mailparser. For each other message it ends with the
-	// mark of `RUNS_IN_HOST` after its GET requests, and the v1 node in the host sends them
-	// again. v1 sends them once, so the node runs in the host unless the caller accepts this.
+	// mark of `RUNS_IN_HOST` after its GET requests. The host step then gets the answers of
+	// these requests (`replayOf`), so the v1 node in the host sends none of them again.
 	const gmailRaw =
 		type === 'n8n-nodes-base.gmail' &&
 		(adapted.resource ?? 'message') === 'message' &&
 		(adapted.operation === 'get' || adapted.operation === 'getAll') &&
 		adapted.simple === false;
-	const repeats = gmailRaw && c.repeatRequestsInHost !== true;
 	// The error item of some v1 nodes has no exact form in a library call.
 	const continues =
 		c.node.onError === 'continueRegularOutput' ||
@@ -981,14 +981,14 @@ export function lowerLibrary(c: NodeContext): void {
 		(!c.node.onError && c.node.continueOnFail === true);
 	const inexact = continues && !errorItemIsExact(type, adapted);
 	const unsupported =
-		(support && !librarySupports(support, adapted)) || older || noToken || repeats || inexact;
+		(support && !librarySupports(support, adapted)) || older || noToken || inexact;
 	// The caller says that the node runs in the host (`NodeSources.runsInHost`): a limit of
 	// the runtime, or a token for a service account that the caller does not make. Without
 	// this, a workflow with such a library node had no conversion with the node compiler.
 	const moved = c.nodeSources?.runsInHost?.(c.node.name) === true;
 	// The library node comes first. An operation that it does not have is compiled from the
 	// source of the v1 node when that compiles, and else runs in the host.
-	if (unsupported && !service && !moved && !repeats && tryCompiledNode(c)) return;
+	if (unsupported && !service && !moved && tryCompiledNode(c)) return;
 	if (unsupported || (attribution && !c.instance) || service || moved) {
 		lowerHostNode(c, 1, [['host', raw("'fallback'")]]);
 		return;
@@ -1087,13 +1087,25 @@ export function lowerLibrary(c: NodeContext): void {
 		});
 		return;
 	}
-	// The host form of a Gmail read without "simplify" (`repeatRequestsInHost`).
+	// The host form of a Gmail read without "simplify", with the answers of the library node.
 	if (gmailRaw) {
-		const inHost = (to: NodeContext) => lowerHostNode(to, 1, [['host', raw("'fallback'")]]);
-		const hostForm = hostFormOf(c, inHost);
-		if (hostForm === null) return inHost(c);
+		const replay = c.local('Replay');
+		const answers = replayOf(replay);
+		const hostForm = hostFormOf(c, (to) =>
+			lowerHostNode(to, 1, [['host', raw("'fallback'")], answers.host]),
+		);
+		if (hostForm === null || parameters.code.kind !== 'object') {
+			return lowerHostNode(c, 1, [['host', raw("'fallback'")]]);
+		}
+		parameters.code.entries.push(answers.compiled);
 		const call = nodeCall(c, type, parameters, c.credential(), true);
-		emitWithHostForm(c, false, (to, hostLimit) => emitStep(to, { ...call, hostLimit }), hostForm);
+		emitWithHostForm(
+			c,
+			false,
+			(to, hostLimit) => emitStep(to, { ...call, hostLimit }),
+			hostForm,
+			replay,
+		);
 		return;
 	}
 	// v1 runs the node once for each item, so the library node runs once for each item too.
@@ -1766,9 +1778,13 @@ function lowerHttpLibrary(c: NodeContext): void {
 		return;
 	}
 	if (storesFile) {
-		// A file over the largest size of the runtime: the fallback host runs the v1 node.
-		const inHost = (to: NodeContext) => lowerHostNode(to, 1, [['host', raw("'fallback'")]]);
-		const hostForm = hostFormOf(c, inHost);
+		// A file over the largest size of the runtime: the fallback host runs the v1 node, with
+		// the answers of the requests that the library node sent before (`replayOf`).
+		const replay = c.local('Replay');
+		const answers = replayOf(replay);
+		const hostForm = hostFormOf(c, (to) =>
+			lowerHostNode(to, 1, [['host', raw("'fallback'")], answers.host]),
+		);
 		if (hostForm === null) {
 			throw new NodeFailure(
 				'http-binary',
@@ -1776,7 +1792,14 @@ function lowerHttpLibrary(c: NodeContext): void {
 				'options.response',
 			);
 		}
-		emitWithHostForm(c, false, (to, hostLimit) => emitStep(to, { ...call, hostLimit }), hostForm);
+		entries.push(answers.compiled);
+		emitWithHostForm(
+			c,
+			false,
+			(to, hostLimit) => emitStep(to, { ...call, hostLimit }),
+			hostForm,
+			replay,
+		);
 		return;
 	}
 	// v1 sends one request for each item.
