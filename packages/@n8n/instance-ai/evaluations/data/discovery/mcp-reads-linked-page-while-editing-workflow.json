@@ -1,0 +1,103 @@
+{
+	"id": "mcp-reads-linked-page-while-editing-workflow",
+	"userMessage": "I think that would be good. We also want to follow this template in the future: https://www.notion.so/acme/Weekly-update-template-2a7c9e1b4d6f48a0b3c5d7e9f1a2b4c6\n\nSo generally, I'd say we're interested in: what goes well, what doesn't, high-level of what happened, what's planned next week, release time/version",
+	"instanceState": {
+		"mcp": { "registry": ["notion"], "connected": [{ "slug": "notion" }] }
+	},
+	"credentials": [{ "type": "notionApi", "name": "Notion account" }],
+	"seed": {
+		"mode": "inline",
+		"messages": [
+			{
+				"role": "user",
+				"text": "The weekly updates this workflow writes are too verbose. Make the summary shorter and easier to read for people outside the team."
+			},
+			{
+				"role": "assistant",
+				"text": "I rewrote the summary instructions so the output is a short status brief: At a glance, Going well, Needs attention, Upcoming releases. A test run on last week's Linear updates worked. The change is saved as a draft. One thing I noticed: the brief dropped the release version for one project. If release versions matter to your readers, I can tell it to always keep them. Should I do that?"
+			}
+		],
+		"workflows": [
+			{
+				"id": "wf-weekly-notion",
+				"name": "Weekly Linear Project Updates Summary to Notion",
+				"nodes": [
+					{
+						"id": "n1",
+						"name": "Every Monday",
+						"type": "n8n-nodes-base.scheduleTrigger",
+						"typeVersion": 1.2,
+						"position": [0, 0],
+						"parameters": {
+							"rule": {
+								"interval": [{ "field": "weeks", "triggerAtDay": [1], "triggerAtHour": 9 }]
+							}
+						}
+					},
+					{
+						"id": "n2",
+						"name": "Get project updates",
+						"type": "n8n-nodes-base.linear",
+						"typeVersion": 1.1,
+						"position": [220, 0],
+						"parameters": { "resource": "issue", "operation": "getAll", "returnAll": true }
+					},
+					{
+						"id": "n3",
+						"name": "Summarize the week",
+						"type": "@n8n/n8n-nodes-langchain.openAi",
+						"typeVersion": 1.8,
+						"position": [440, 0],
+						"parameters": {
+							"modelId": { "__rl": true, "value": "gpt-4o-mini", "mode": "list" },
+							"messages": {
+								"values": [
+									{ "content": "=Summarize these project updates: {{ JSON.stringify($json) }}" }
+								]
+							}
+						}
+					},
+					{
+						"id": "n4",
+						"name": "Append summary to Notion page",
+						"type": "n8n-nodes-base.notion",
+						"typeVersion": 2.2,
+						"position": [660, 0],
+						"parameters": {
+							"resource": "block",
+							"blockId": {
+								"__rl": true,
+								"value": "https://www.notion.so/acme/Weekly-updates-1f2e3d4c5b6a47988a7b6c5d4e3f2a1b",
+								"mode": "url"
+							},
+							"blockUi": { "blockValues": [{ "textContent": "={{ $json.message.content }}" }] }
+						},
+						"credentials": { "notionApi": { "id": "seed-cred-1", "name": "Notion account" } }
+					}
+				],
+				"connections": {
+					"Every Monday": {
+						"main": [[{ "node": "Get project updates", "type": "main", "index": 0 }]]
+					},
+					"Get project updates": {
+						"main": [[{ "node": "Summarize the week", "type": "main", "index": 0 }]]
+					},
+					"Summarize the week": {
+						"main": [[{ "node": "Append summary to Notion page", "type": "main", "index": 0 }]]
+					}
+				}
+			}
+		]
+	},
+	"attach": { "workflow": "wf-weekly-notion" },
+	"expectedToolInvocations": {
+		"anyOfToolCalls": [
+			{ "toolName": "mcp_notion_notion-fetch" },
+			{ "toolName": "mcp_notion_notion-search" }
+		],
+		"noneOfToolCalls": [{ "toolName": "execute_node" }]
+	},
+	"rationale": "Mid-edit, the user links a Notion page. Notion is connected, and the open workflow has a Notion credential: the agent must read the page with the Notion MCP tools, not with an HTTP Request through execute_node.",
+	"maxSteps": 30,
+	"timeoutMs": 120000
+}

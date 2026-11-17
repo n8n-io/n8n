@@ -5,6 +5,12 @@ import { z } from 'zod';
 import type { BrowserUseState } from '../../../src/types';
 import type { DiscoveryMcpState } from '../../discovery/stub-mcp-registry';
 import type { DiscoveryConfirmations, DiscoveryTestCase } from '../../discovery/types';
+import {
+	CaseSeedSchema,
+	ConversationTurnSchema,
+	testCaseCredentialSchema,
+	type CaseSeed,
+} from '../../harness/schema';
 
 const forbiddenToolCallSchema = z
 	.object({
@@ -67,6 +73,16 @@ const confirmationsSchema: z.ZodType<DiscoveryConfirmations> = z
 		message: 'confirmations must not be empty',
 	});
 
+/** The stub instance serves an inline seed, except its folders, projects and recorded runs. */
+const stubSeedSchema = CaseSeedSchema.refine(
+	(seed): seed is Extract<CaseSeed, { mode: 'inline' }> =>
+		seed.mode === 'inline' &&
+		seed.folders.length === 0 &&
+		seed.projects.length === 0 &&
+		(seed.recordedRuns?.length ?? 0) === 0,
+	{ message: 'needs an inline seed without folders, projects or recordedRuns' },
+);
+
 /** Strict authoring schema for discovery cases — a typo'd key or an empty
  *  expectation must fail at load time, not pass vacuously at run time (the
  *  workflow-case loader has had this guarantee for a while; discovery cases
@@ -83,6 +99,9 @@ export const discoveryTestCaseSchema = z
 			})
 			.strict()
 			.optional(),
+		credentials: z.array(testCaseCredentialSchema).min(1).optional(),
+		seed: stubSeedSchema.optional(),
+		attach: ConversationTurnSchema.shape.attach,
 		confirmations: confirmationsSchema.optional(),
 		expectedToolInvocations: z
 			.object({
@@ -102,7 +121,16 @@ export const discoveryTestCaseSchema = z
 		maxSteps: z.number().int().positive().optional(),
 		timeoutMs: z.number().int().positive().optional(),
 	})
-	.strict();
+	.strict()
+	// An attachment that names nothing gives the agent a reference to nothing.
+	.refine(
+		({ seed, attach }) =>
+			!attach ||
+			('workflow' in attach
+				? seed?.workflows.some(({ id }) => id === attach.workflow)
+				: seed?.agents.some(({ id }) => id === attach.agent)) === true,
+		{ message: 'attach must name a workflow or Agent that the seed declares', path: ['attach'] },
+	);
 
 export interface DiscoveryTestCaseWithFile {
 	testCase: DiscoveryTestCase;

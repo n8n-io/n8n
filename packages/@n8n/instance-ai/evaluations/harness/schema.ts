@@ -174,6 +174,24 @@ export const CaseSeedSchema = z.discriminatedUnion('mode', [
 
 export type CaseSeed = z.infer<typeof CaseSeedSchema>;
 
+/** A credential the stub instance holds. Discovery cases use it too. */
+export const testCaseCredentialSchema = z.object({
+	// Validated against the seeder's templates so an authoring typo fails
+	// at case-load time instead of per-build as an agent failure.
+	type: z
+		.string()
+		.min(1)
+		.refine((t) => SUPPORTED_CREDENTIAL_TYPES.has(t), {
+			message: `unknown credential type — add a template to evaluations/credentials/seeder.ts (supported: ${[...SUPPORTED_CREDENTIAL_TYPES].join(', ')})`,
+		}),
+	name: z.string().min(1).optional(),
+	description: credentialDescriptionSchema.optional(),
+	// False lets the connection test fail for a credential that is already broken.
+	valid: z.boolean().optional(),
+	// True seeds no field values and disables the connection-test bypass.
+	blank: z.boolean().optional(),
+});
+
 const evalTestCaseObjectSchema = z
 	.object({
 		/** Optional human-readable note on what this case is testing (esp. for behaviour cases). */
@@ -215,26 +233,7 @@ const evalTestCaseObjectSchema = z
 		 * build and pinned as the thread's entire credential view; omitted → the
 		 * build sees no credentials.
 		 */
-		credentials: z
-			.array(
-				z.object({
-					// Validated against the seeder's templates so an authoring typo fails
-					// at case-load time instead of per-build as an agent failure.
-					type: z
-						.string()
-						.min(1)
-						.refine((t) => SUPPORTED_CREDENTIAL_TYPES.has(t), {
-							message: `unknown credential type — add a template to evaluations/credentials/seeder.ts (supported: ${[...SUPPORTED_CREDENTIAL_TYPES].join(', ')})`,
-						}),
-					name: z.string().min(1).optional(),
-					description: credentialDescriptionSchema.optional(),
-					// False lets the connection test fail for a credential that is already broken.
-					valid: z.boolean().optional(),
-					// True seeds no field values and disables the connection-test bypass.
-					blank: z.boolean().optional(),
-				}),
-			)
-			.optional(),
+		credentials: z.array(testCaseCredentialSchema).optional(),
 		/**
 		 * Opts this case into the credential-setup BROWSER lane, and picks what the
 		 * browser talks to. Replaces the old tag-pair convention, which you had to

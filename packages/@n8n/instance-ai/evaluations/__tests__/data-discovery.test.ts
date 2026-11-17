@@ -109,6 +109,21 @@ describe('discoveryTestCaseSchema', () => {
 		expect(discoveryTestCaseSchema.safeParse(withState).success).toBe(ok);
 	});
 
+	const seed = {
+		mode: 'inline',
+		workflows: [{ id: 'wf-1', name: 'Seeded', nodes: [], connections: {} }],
+	};
+
+	it.each([
+		['an attachment that names a seeded workflow', { seed, attach: { workflow: 'wf-1' } }, true],
+		['an attachment that names nothing', { seed, attach: { workflow: 'wf-2' } }, false],
+		['an attachment without a seed', { attach: { workflow: 'wf-1' } }, false],
+		['a replay seed', { seed: { mode: 'replay', threadId: 't-1' } }, false],
+		['a seed with projects', { seed: { ...seed, projects: [{ name: 'Acme' }] } }, false],
+	])('validates the seed and attachment: %s', (_name, fields, ok) => {
+		expect(discoveryTestCaseSchema.safeParse({ ...valid, ...fields }).success).toBe(ok);
+	});
+
 	it('rejects the retired computerUse key instead of passing vacuously', () => {
 		const retired = {
 			...valid,

@@ -84,6 +84,12 @@ export interface DiscoveryTestCase {
 	userMessage: string;
 	/** Optional instance state overrides applied when constructing the agent. */
 	instanceState?: DiscoveryInstanceState;
+	/** Accounts the stub instance holds. */
+	credentials?: TestCaseCredential[];
+	/** State the stub instance holds before the turn: earlier messages, workflows, runs, tables, Agents. */
+	seed?: Extract<CaseSeed, { mode: 'inline' }>;
+	/** The seeded workflow or Agent the user has open. */
+	attach?: ConversationTurn['attach'];
 	/** Answers for the tools listed; every other suspension is approved. */
 	confirmations?: DiscoveryConfirmations;
 	/** Pass condition. At least one expectation key is required. */
@@ -99,15 +105,15 @@ export interface DiscoveryTestCase {
 /** What the runner reads from a case. Routing cases carry no tool expectations. */
 export type DiscoveryScenario = Pick<
 	DiscoveryTestCase,
-	'userMessage' | 'instanceState' | 'confirmations' | 'maxSteps' | 'timeoutMs'
-> & {
-	/** Routing cases: state the stub instance holds before the turn. */
-	seed?: Extract<CaseSeed, { mode: 'inline' }>;
-	/** Routing cases: the seeded workflow or Agent the user has open. */
-	attach?: ConversationTurn['attach'];
-	/** Routing cases: accounts the stub instance holds. */
-	credentials?: TestCaseCredential[];
-};
+	| 'userMessage'
+	| 'instanceState'
+	| 'credentials'
+	| 'seed'
+	| 'attach'
+	| 'confirmations'
+	| 'maxSteps'
+	| 'timeoutMs'
+>;
 
 export type DiscoveryStreamStatus =
 	| 'completed'
