@@ -200,6 +200,86 @@ gives the marker `sql-credential`: that workflow stays in the fallback host.
 - Not built: timestamps in the years below 100 and above 9999 (the marker `sql-type`); SSH tunnels; CA and client
   certificates; a retry on a connection that the server closed while idle.
 
+## MySQL (`dialect: mysql`)
+
+Status: built and tested against a scripted server. Not yet run against a real server, so the shard does not send
+calls to it: `Options.sql_mysql` is off, and a call with the dialect `mysql` ends with `(limit: sql-host)` and
+runs in the fallback host. Turn the option on after the `mysql live` tests pass.
+
+The files are `src/core/mywire.zig` (the pure codec), `src/core/myerr_tables.zig` (the error names of mysql2,
+made by `gen_myerr.mjs`), `src/shell/my_call.zig` (the arguments and the row JSON), `src/shell/my.zig` (the
+client) and `src/shell/sql_net.zig` (what `pg.zig` and `my.zig` share: socket and TLS bytes, address text,
+credential values, the finished-call record). The pools, the queue and the connect steps of `my.zig` follow
+`pg.zig` but are not shared code.
+
+- **Text protocol only.** The v1 node writes the values into the text and sends `COM_QUERY`. A statement must
+  have `simple: true` and no `values`. The runtime sends the text as it is. There is no prepared statement.
+- **Login.** Handshake version 10, the capability flags of mysql2 that change behavior (`FOUND_ROWS`,
+  `IGNORE_SPACE`, `MULTI_STATEMENTS`, `SESSION_TRACK`, `LOCAL_FILES`), character set 224, no
+  `CLIENT_DEPRECATE_EOF`. Methods: `mysql_native_password`, and `caching_sha2_password` with the fast login and
+  the full login (the clear password over TLS; without TLS the password under the RSA key of the server, through
+  OpenSSL in `tls.zig`). The server can change the method. Another method gives `(limit: sql-credential)`.
+- **Modes.** All statements of a call run on one connection, one after the other. `single`: each alone, the
+  result ends with the first failure. `independently`: each alone; a failure skips the later statements of the
+  same `group` (`{"skipped":true}`). `transaction`: `START TRANSACTION`, the statements, `COMMIT`; the first
+  failure sends `ROLLBACK` and ends the result.
+- **Result.** One `{"sets":[...]}` for each statement, with one set for each result of the text, or
+  `{"error":{...}}` with the fields of mysql2 (`code` is the name of the error number). Two columns of one name:
+  the place of the first, the value of the last.
+- **A marker only when the call committed nothing.** The call keeps one fact. Outside a transaction of the mode,
+  each OK packet sets it, and so does a result set of a text that does not only read (each command starts with
+  `SELECT`, `SHOW`, `DESCRIBE`, `DESC` or `EXPLAIN`). In a transaction of the mode, an answer whose status has
+  lost `SERVER_STATUS_IN_TRANS` sets it (a command with an implicit commit). At a limit (`sql-type`,
+  `sql-max-result`), a transaction of the mode is rolled back first. While the fact is false the error has the
+  marker; else it is a plain `(limit)` error. The client adds no transaction of its own, so the database effect
+  equals v1.
+- **A connection is new for each call.** The v1 node makes a pool for each run. The runtime keeps connections,
+  so it sends `COM_RESET_CONNECTION` before a call on a used connection. A statement that sets
+  `SERVER_SESSION_STATE_CHANGED` (`USE`, a tracked variable), an open transaction at the end of a call, or a
+  server without the reset command: the connection closes after the call.
+- **Time limit.** The connection closes, and a second connection logs in with the same credential and sends
+  `KILL QUERY <id>` (4 at one time; best effort).
+- **Credential.** `host`, `port`, `database`, `user`, `password`, `ssl`. `sshTunnel`, or `ssl` with a
+  certificate field, gives `(limit: sql-credential)`. A TLS failure also gives it, because the text of OpenSSL is
+  not the text of Node.js.
+
+| Limit | Flag | Default | At the limit |
+|---|---|---|---|
+| Calls in flight or waiting | `--sql-max-requests` | 64 | Limit error; the step can run again |
+| Connections of the shard (apart from PostgreSQL) | `--sql-max-conns` | 16 | The call waits in order |
+| Connections of one credential and host | `--sql-pool-conns` | 4 | The call waits in order |
+| Credentials and hosts in use | 16 pools | 16 | Limit error |
+| Result JSON of a call | `--sql-max-result-kb` | 4096 | Marker `sql-max-result`, or `(limit)` |
+| Arguments of a call, and one statement text | `--sql-max-request-kb` | 1024 | Limit error |
+| Statements of a call | `--sql-max-statements` | 256 | Marker `sql-statement` |
+| Columns of one result set | 512 | 512 | Marker `sql-type` |
+| One value | 16 MB (one packet) | | Marker `sql-max-result` |
+| Time to connect and log in | `connectTimeoutMs` | 10 s | Connect error `ETIMEDOUT` |
+| Total time of a call | `timeoutMs` | 300 s | `KILL QUERY`, the step fails |
+
+Known differences and what is not built:
+
+- Not verified against a real server: everything. In particular the RSA login, the reset (the character set
+  after it), `KILL QUERY`, and each column type. TLS with a certificate that verifies was never run.
+- A table that has no transactions (MyISAM) is not rolled back: a limit in a transaction of the mode then gives
+  a marker after a write.
+- A JSON column keeps the key order of the server; JavaScript puts keys that are whole numbers first. A string
+  with a `\u` escape gives `sql-type`.
+- A character column in a set that is not UTF-8 or ASCII, and DATE or DATETIME with `dates: legacy`, give
+  `sql-type`. Geometry and vector types also.
+- When the connection closes while a statement runs, the step fails. mysql2 gives an error of the query.
+- Not built: server-side prepared statements, compression, `sha256_password`, `mysql_clear_password`, CA and
+  client certificates, SSH tunnels, a local file for `LOAD DATA LOCAL` (the entry is the error of mysql2).
+
+Tests: unit tests in `mywire.zig` and `my_call.zig`; three fuzz targets in `src/core/fuzz_test.zig` (server
+packets, column values, the text scan); `src/shell/my_fake.zig` is the scripted server of the `mysql fake` tests
+in `src/shell/my_test.zig`; `src/shell/server.zig` has a run through the shard. The `mysql live` tests need the
+server of the contract (users `root`, `nat`, `sha`, `nopw`, database `card`):
+
+```bash
+WFRT_TEST_MY=127.0.0.1:5545 WFRT_TEST_MY_PASSWORD=cardmy ./zig-out/bin/shell-test
+```
+
 ## Cost
 
 Measured on 2026-11-17 with a ReleaseSafe build (`zig build -Drelease=true`) on macOS (Apple silicon), one shard,

@@ -33,6 +33,7 @@ const dns = @import("dns.zig");
 const creds = @import("creds.zig");
 const http = @import("http.zig");
 const pg_call = @import("pg_call.zig");
+const sql_net = @import("sql_net.zig");
 
 const none: u32 = std.math.maxInt(u32);
 /// Prepared statements that one connection keeps. A call with more
@@ -278,38 +279,20 @@ const marker_form = " (limit: sql-type)";
 const marker_statement = " (limit: sql-statement)";
 const closed_msg = "sql: the connection to the database closed";
 
-const IoStep = union(enum) { n: usize, again, want_write, closed };
+const addrText = sql_net.addrText;
+const textOf = sql_net.textOf;
+const isOn = sql_net.isOn;
+const hasText = sql_net.hasText;
 
-fn ioRead(cn: *const Conn, buf: []u8) IoStep {
-    const s = cn.session orelse return switch (sys.readSome(cn.fd, buf)) {
-        .n => |n| .{ .n = n },
-        .again => .again,
-        .closed => .closed,
-    };
-    return switch (s.read(buf)) {
-        .n => |n| .{ .n = n },
-        .want_read => .again,
-        .want_write => .want_write,
-        .closed, .failed => .closed,
-    };
+fn ioRead(cn: *const Conn, buf: []u8) sql_net.IoStep {
+    return sql_net.ioRead(cn.session, cn.fd, buf);
 }
 
-fn ioWrite(cn: *const Conn, buf: []const u8) IoStep {
-    const s = cn.session orelse return switch (sys.writeSome(cn.fd, buf)) {
-        .n => |n| .{ .n = n },
-        .again => .again,
-        .closed => .closed,
-    };
-    return switch (s.write(buf)) {
-        .n => |n| .{ .n = n },
-        .want_read, .want_write => .want_write,
-        .closed, .failed => .closed,
-    };
+fn ioWrite(cn: *const Conn, buf: []const u8) sql_net.IoStep {
+    return sql_net.ioWrite(cn.session, cn.fd, buf);
 }
 
-/// One finished call: the result JSON (`ok`) or the text of the error.
-/// `payload` is valid until `release`.
-pub const Done = struct { req: u32, exec_id: u64, seq: u32, ok: bool, payload: []const u8 };
+pub const Done = sql_net.Done;
 
 pub const Client = struct {
     cfg: Config,
@@ -1909,71 +1892,6 @@ fn noBindForm(body: []const u8) bool {
         std.mem.startsWith(u8, msg, "syntax error at or near \"$");
 }
 
-/// `ip:port` as Node.js writes it in a connect error.
-fn addrText(a: sys.Addr, buf: []u8) []const u8 {
-    // A buffer of 64 bytes holds every address; a smaller one gives no text.
-    if (!a.v6) return std.fmt.bufPrint(buf, "{d}.{d}.{d}.{d}:{d}", .{ a.ip[0], a.ip[1], a.ip[2], a.ip[3], a.port }) catch "";
-    var o: creds.Out = .{ .buf = buf };
-    writeIp6(&o, a.ip) catch return "";
-    var pb: [8]u8 = @splat(0);
-    // A port has five digits at most.
-    const port = std.fmt.bufPrint(&pb, ":{d}", .{a.port}) catch "";
-    o.put(port) catch return "";
-    return o.written();
-}
-
-/// An IPv6 address in the short form (RFC 5952): the longest run of two
-/// or more zero groups becomes `::`.
-fn writeIp6(o: *creds.Out, ip: [16]u8) creds.Out.Error!void {
-    var groups: [8]u16 = @splat(0);
-    for (&groups, 0..) |*g, i| g.* = std.mem.readInt(u16, ip[i * 2 ..][0..2], .big);
-    var best_at: usize = 8;
-    var best_len: usize = 1;
-    var i: usize = 0;
-    while (i < 8) : (i += 1) {
-        var j = i;
-        while (j < 8 and groups[j] == 0) j += 1;
-        if (j - i > best_len) {
-            best_at = i;
-            best_len = j - i;
-        }
-        i = @max(i, j);
-    }
-    i = 0;
-    while (i < 8) : (i += 1) {
-        if (i == best_at) {
-            try o.put("::");
-            i += best_len - 1;
-            continue;
-        }
-        var gb: [5]u8 = @splat(0);
-        if (i > 0 and i != best_at + best_len) try o.byte(':');
-        // A group has four hex digits at most.
-        const group = std.fmt.bufPrint(&gb, "{x}", .{groups[i]}) catch "";
-        try o.put(group);
-    }
-}
-
-fn textOf(v: ?std.json.Value) ?[]const u8 {
-    const x = v orelse return null;
-    return switch (x) {
-        .string => |s| s,
-        .number_string => |s| s,
-        // A value of another kind is no text.
-        else => null,
-    };
-}
-
-fn isOn(v: ?std.json.Value) bool {
-    const x = v orelse return false;
-    return x == .bool and x.bool;
-}
-
-fn hasText(v: ?std.json.Value) bool {
-    const t = textOf(v) orelse return false;
-    return t.len > 0;
-}
-
 /// Read the connection values of the slot into the call. The answer is
 /// the text of an error, or null. The text never has a value of the
 /// credential.
@@ -2018,20 +1936,6 @@ fn poolKey(r: *const Req) [32]u8 {
     h.update(std.mem.sliceAsBytes(&lens));
     h.update(r.cred[0 .. @as(usize, r.host_len) + r.user_len + r.db_len + r.pass_len]);
     return h.finalResult();
-}
-
-test "sql client: addresses as Node.js writes them" {
-    var buf: [64]u8 = @splat(0);
-    try std.testing.expectEqualStrings("127.0.0.1:5432", addrText(sys.Addr.ip4(.{ 127, 0, 0, 1 }, 5432), &buf));
-    var one: [16]u8 = @splat(0);
-    one[15] = 1;
-    try std.testing.expectEqualStrings("::1:5432", addrText(.{ .v6 = true, .ip = one, .port = 5432 }, &buf));
-    var mid: [16]u8 = @splat(0);
-    mid[0] = 0x20;
-    mid[1] = 0x01;
-    mid[15] = 0x10;
-    mid[7] = 0x05;
-    try std.testing.expectEqualStrings("2001:0:0:5::10:1", addrText(.{ .v6 = true, .ip = mid, .port = 1 }, &buf));
 }
 
 test "sql client: a text without a bind form is recognized by the refusal of the server" {

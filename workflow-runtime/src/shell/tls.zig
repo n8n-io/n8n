@@ -431,6 +431,43 @@ pub const Session = struct {
     }
 };
 
+const EVP_PKEY = opaque {};
+const EVP_PKEY_CTX = opaque {};
+extern fn BIO_new_mem_buf(buf: [*]const u8, len: c_int) ?*BIO;
+extern fn PEM_read_bio_PUBKEY(bio: *BIO, x: ?*anyopaque, cb: ?*const anyopaque, u: ?*anyopaque) ?*EVP_PKEY;
+extern fn EVP_PKEY_free(key: *EVP_PKEY) void;
+extern fn EVP_PKEY_CTX_new(key: *EVP_PKEY, engine: ?*anyopaque) ?*EVP_PKEY_CTX;
+extern fn EVP_PKEY_CTX_free(ctx: *EVP_PKEY_CTX) void;
+extern fn EVP_PKEY_encrypt_init(ctx: *EVP_PKEY_CTX) c_int;
+extern fn EVP_PKEY_CTX_set_rsa_padding(ctx: *EVP_PKEY_CTX, pad: c_int) c_int;
+extern fn EVP_PKEY_encrypt(ctx: *EVP_PKEY_CTX, out: [*]u8, out_len: *usize, in: [*]const u8, in_len: usize) c_int;
+const RSA_PKCS1_OAEP_PADDING = 4;
+
+/// Encrypt `msg` with the RSA public key in `pem`, with OAEP padding and
+/// SHA-1 (the full login of the MySQL method `caching_sha2_password`). The
+/// answer is the ciphertext in `out`, or null: the key cannot be read, or
+/// the text is longer than the key allows.
+pub fn rsaOaepEncrypt(pem: []const u8, msg: []const u8, out: []u8) ?[]const u8 {
+    if (!enabled) return null;
+    const bio = BIO_new_mem_buf(pem.ptr, std.math.cast(c_int, pem.len) orelse return null) orelse return null;
+    defer std.debug.assert(BIO_free(bio) == 1);
+    const key = PEM_read_bio_PUBKEY(bio, null, null, null) orelse return clearErrors();
+    defer EVP_PKEY_free(key);
+    const ctx = EVP_PKEY_CTX_new(key, null) orelse return clearErrors();
+    defer EVP_PKEY_CTX_free(ctx);
+    if (EVP_PKEY_encrypt_init(ctx) != 1) return clearErrors();
+    if (EVP_PKEY_CTX_set_rsa_padding(ctx, RSA_PKCS1_OAEP_PADDING) != 1) return clearErrors();
+    var len: usize = out.len;
+    if (EVP_PKEY_encrypt(ctx, out.ptr, &len, msg.ptr, msg.len) != 1) return clearErrors();
+    return out[0..len];
+}
+
+/// Drop the queued OpenSSL errors, so that a later TLS failure does not show them.
+fn clearErrors() ?[]const u8 {
+    ERR_clear_error();
+    return null;
+}
+
 /// The text of the oldest queued OpenSSL error, or a generic text.
 pub fn lastError(out: []u8) []const u8 {
     if (!enabled) return "TLS is not in this build";
