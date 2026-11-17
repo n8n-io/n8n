@@ -35,6 +35,7 @@
     "test:dev": "vitest --silent=false"
   },
   "dependencies": {
+    "@n8n/api-types": "workspace:*",
     "@n8n/constants": "workspace:*",
     "@n8n/db": "workspace:*",
     "@n8n/decorators": "workspace:*",

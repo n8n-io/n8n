@@ -10,6 +10,13 @@ import { CustomModelEndpointApi } from '../CustomModelEndpointApi.credentials';
 describe('CustomModelEndpointApi Credential', () => {
 	const credential = new CustomModelEndpointApi();
 
+	const OAUTH2: ICredentialDataDecryptedObject = {
+		authentication: 'oauth2',
+		tokenUrl: 'https://login.example.com/oauth2/token',
+		clientId: 'client-1',
+		clientSecret: 'cs-9f2a71c4ab',
+	};
+
 	const findProperty = (name: string) =>
 		credential.properties.find((property) => property.name === name);
 
@@ -24,9 +31,9 @@ describe('CustomModelEndpointApi Credential', () => {
 			expect(findProperty('url')).toMatchObject({ required: true, default: '' });
 		});
 
-		const loginMethods = ['bearer', 'header', 'basic', 'none'] as const;
+		const loginMethods = ['bearer', 'header', 'basic', 'oauth2', 'none'] as const;
 
-		it('offers four login methods', () => {
+		it('offers five login methods', () => {
 			const options = (findProperty('authentication')?.options ?? []) as INodePropertyOptions[];
 
 			expect(options.map(({ value }) => value)).toEqual(loginMethods);
@@ -134,6 +141,12 @@ describe('CustomModelEndpointApi Credential', () => {
 			);
 
 			expect(result.headers).toEqual({ authorization: 'Bearer sk-test' });
+		});
+
+		it('refuses an oauth2 credential, which only the nodes can sign in', async () => {
+			await expect(authenticate(OAUTH2)).rejects.toThrow(
+				'OAuth2 works only in the Custom Model Endpoint nodes',
+			);
 		});
 	});
 });
