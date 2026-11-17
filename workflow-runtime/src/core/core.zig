@@ -2795,7 +2795,10 @@ fn popTimer(s: *State) Timer {
 }
 
 fn fireTimers(s: *State, scratch: *Arena) StepError!void {
-    var deferred: [64]Timer = undefined;
+    // The deferred timers live in scratch, taken at the first one. Most
+    // batches have none, and a safe build fills a stack array with 0xAA in
+    // every batch (1,536 bytes).
+    var deferred: []Timer = &.{};
     var nd: usize = 0;
     while (s.ntimers > 0 and s.timers[0].at_ms <= s.now_ms) {
         const t = popTimer(s);
@@ -2803,6 +2806,7 @@ fn fireTimers(s: *State, scratch: *Arena) StepError!void {
             if (s.parked.get(t.exec_id) != null) {
                 // Evicted: ask the shell for the snapshot, fire next batch.
                 try emit(s, .{ .kind = .wake, .exec_id = t.exec_id });
+                if (deferred.len == 0) deferred = scratch.push(Timer, 64) catch return error.ArenaFull;
                 if (nd < deferred.len) {
                     deferred[nd] = t;
                     nd += 1;

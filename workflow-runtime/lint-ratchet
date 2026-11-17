@@ -4,7 +4,7 @@
 # List the findings of one rule with: zig build lint -- --rule <name>
 core-allocator 9
 row-pointer 10
-undefined 377
+undefined 376
 pointer-cast 26
 local-array 1
 global-var 18
