@@ -1,6 +1,10 @@
 import userEvent from '@testing-library/user-event';
 import { fireEvent, render } from '@testing-library/vue';
 
+import {
+	FeatureMaturityKey,
+	type FeatureMaturityCatalog,
+} from '../N8nFeatureMaturityBadges/featureMaturityState';
 import N8nTabs from './Tabs.vue';
 
 const options = [
@@ -140,6 +144,28 @@ describe('N8nTabs', () => {
 
 		await rerender({ justified: true });
 		expect(queryByRole('button')).not.toBeInTheDocument();
+	});
+
+	it.each([
+		{ value: 'plain', label: 'Plain', feature: 'agents' },
+		{ value: 'external', label: 'External', feature: 'agents', href: 'https://example.com' },
+		{ value: 'route', label: 'Route', feature: 'agents', to: '/workflows' },
+	])('hides the enterprise badge on a $value tab', function testHiddenEnterpriseBadge(option) {
+		const featureMaturity: FeatureMaturityCatalog = {
+			agents: { preview: true, limitedEnterpriseSupport: true },
+		};
+		const { getByTestId, queryByTestId } = render(N8nTabs, {
+			props: { modelValue: option.value, options: [option] },
+			global: {
+				provide: { [FeatureMaturityKey as symbol]: featureMaturity },
+				stubs: {
+					RouterLink: { template: '<a><slot /></a>' },
+				},
+			},
+		});
+
+		expect(getByTestId('agents-preview-badge')).toBeVisible();
+		expect(queryByTestId('agents-enterprise-readiness-badge')).not.toBeInTheDocument();
 	});
 
 	it.each([

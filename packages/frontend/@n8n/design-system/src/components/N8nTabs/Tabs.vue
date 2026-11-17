@@ -78,6 +78,10 @@ function handleTabClick(option: TabOptions<Value>) {
 	emit('update:modelValue', option.value);
 }
 
+const featureBadgeProps = {
+	hideEnterprise: true,
+} as const;
+
 function scroll(direction: 'left' | 'right') {
 	const container = tabs.value;
 	if (!container) return;
@@ -153,7 +157,11 @@ function scroll(direction: 'left' | 'right') {
 								:icon="option.icon ?? 'external-link'"
 								size="small"
 							/>
-							<N8nFeatureMaturityBadges :feature="option.feature" :class="$style.badge" />
+							<N8nFeatureMaturityBadges
+								v-bind="featureBadgeProps"
+								:feature="option.feature"
+								:class="$style.badge"
+							/>
 							<N8nBadge v-if="option.tag" :class="$style.badge">{{ option.tag }}</N8nBadge>
 						</div>
 					</a>
@@ -167,7 +175,11 @@ function scroll(direction: 'left' | 'right') {
 					>
 						<N8nIcon v-if="option.icon" :icon="option.icon" size="medium" />
 						<span v-if="option.label">{{ option.label }}</span>
-						<N8nFeatureMaturityBadges :feature="option.feature" :class="$style.badge" />
+						<N8nFeatureMaturityBadges
+							v-bind="featureBadgeProps"
+							:feature="option.feature"
+							:class="$style.badge"
+						/>
 						<N8nBadge v-if="option.tag" :class="$style.badge">{{ option.tag }}</N8nBadge>
 					</RouterLink>
 					<div
@@ -203,7 +215,11 @@ function scroll(direction: 'left' | 'right') {
 							:class="$style.icon"
 							size="small"
 						/>
-						<N8nFeatureMaturityBadges :feature="option.feature" :class="$style.badge" />
+						<N8nFeatureMaturityBadges
+							v-bind="featureBadgeProps"
+							:feature="option.feature"
+							:class="$style.badge"
+						/>
 						<N8nBadge v-if="option.tag" :class="$style.badge">{{ option.tag }}</N8nBadge>
 					</div>
 				</N8nTooltip>
