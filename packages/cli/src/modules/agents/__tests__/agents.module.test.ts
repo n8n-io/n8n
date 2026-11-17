@@ -7,11 +7,12 @@ import { mock } from 'vitest-mock-extended';
 
 import { AiService } from '@/services/ai.service';
 import { ExecutionDataJsonStore } from '@/executions/execution-data/execution-data-json-store';
-import { FavoriteResourceResolverRegistry } from '@n8n/backend-services';
+import { AgentProjectLookupProxy, FavoriteResourceResolverRegistry } from '@n8n/backend-services';
 import { SandboxSettingsService } from '@/services/sandbox-settings.service';
 import { AgentUsageProviderProxy } from '@/modules/workflow-index/agent-usage-provider-proxy.service';
 import { KnowledgeSandboxProviderProxy } from '@/modules/knowledge/knowledge-sandbox-provider-proxy';
 import { SkillUsageProxy } from '@/modules/skills';
+import { ServiceAccountUsageProxy } from '@/services/service-account-usage-proxy.service';
 
 import { AgentChannelMediaRetentionTask } from '../agent-channel-media-retention.task';
 import { AgentKnowledgeSnapshotTask } from '../agent-knowledge-snapshot.task';
@@ -38,6 +39,7 @@ import { AgentHistoryRepository } from '../repositories/agent-history.repository
 import { AgentCredentialDependencyRepository } from '../repositories/agent-credential-dependency.repository';
 import { AgentWorkflowDependencyRepository } from '../repositories/agent-workflow-dependency.repository';
 import { AgentSkillUsage } from '../agent-skill-usage';
+import { AgentServiceAccountUsage } from '../agent-service-account-usage';
 import { AgentKnowledgeSandboxProvider } from '../knowledge-sandbox-provider.adapter';
 import { AgentRepository } from '../repositories/agent.repository';
 import { AgentSecureRuntime } from '../runtime/agent-secure-runtime';
@@ -67,6 +69,10 @@ function setUpContainerForInit() {
 	Container.set(AgentRepository, mock<AgentRepository>());
 	Container.set(SkillUsageProxy, mock<SkillUsageProxy>());
 	Container.set(AgentSkillUsage, mock<AgentSkillUsage>());
+	const serviceAccountUsageProxy = mock<ServiceAccountUsageProxy>();
+	const serviceAccountUsage = mock<AgentServiceAccountUsage>();
+	Container.set(ServiceAccountUsageProxy, serviceAccountUsageProxy);
+	Container.set(AgentServiceAccountUsage, serviceAccountUsage);
 	const knowledgeSandboxProviderProxy = mock<KnowledgeSandboxProviderProxy>();
 	const knowledgeSandboxProvider = mock<AgentKnowledgeSandboxProvider>();
 	Container.set(KnowledgeSandboxProviderProxy, knowledgeSandboxProviderProxy);
@@ -111,6 +117,8 @@ function setUpContainerForInit() {
 		n8nChatIntegration,
 		knowledgeSandboxProviderProxy,
 		knowledgeSandboxProvider,
+		serviceAccountUsageProxy,
+		serviceAccountUsage,
 	};
 }
 
@@ -211,12 +219,33 @@ describe('AgentsModule', () => {
 			expect(registry.get(N8N_CHAT_INTEGRATION_TYPE)).toBe(n8nChatIntegration);
 		});
 
+		it('registers the agent repository as the agent project lookup for collaboration', async () => {
+			setUpContainerForInit();
+			const agentRepository = Container.get(AgentRepository);
+			vi.mocked(agentRepository.getProjectIdById).mockResolvedValue('project-1');
+
+			await module.init();
+
+			await expect(
+				Container.get(AgentProjectLookupProxy).getProjectIdById('agent-1'),
+			).resolves.toBe('project-1');
+			expect(agentRepository.getProjectIdById).toHaveBeenCalledWith('agent-1');
+		});
+
 		it('registers the knowledge sandbox provider with the knowledge module', async () => {
 			const { knowledgeSandboxProviderProxy, knowledgeSandboxProvider } = setUpContainerForInit();
 
 			await module.init();
 
 			expect(knowledgeSandboxProviderProxy.register).toHaveBeenCalledWith(knowledgeSandboxProvider);
+		});
+
+		it('tells core which agent acts as a service account', async () => {
+			const { serviceAccountUsageProxy, serviceAccountUsage } = setUpContainerForInit();
+
+			await module.init();
+
+			expect(serviceAccountUsageProxy.register).toHaveBeenCalledWith(serviceAccountUsage);
 		});
 	});
 });

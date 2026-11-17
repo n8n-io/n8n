@@ -1187,6 +1187,42 @@ describe('SystemAgentExecutionService', () => {
 	});
 
 	describe('resume', () => {
+		it('passes every open suspension of the checkpoint to the resume turn', async () => {
+			const { service, provider, checkpointStorage } = setup([textChunk]);
+			const checkpoint = suspendedCheckpoint();
+			checkpointStorage.findSuspendedForThread.mockResolvedValue({
+				...checkpoint,
+				pendingToolCalls: {
+					...checkpoint.pendingToolCalls,
+					'tc-2': {
+						...checkpoint.pendingToolCalls['tc-1'],
+						toolCallId: 'tc-2',
+						suspendPayload: { requestId: 'req-2' },
+					},
+					'tc-3': { toolCallId: 'tc-3', toolName: 'ask-user', input: {}, suspended: false },
+				},
+			} as never);
+
+			const result = await service.resume({
+				agentId: AGENT_ID,
+				user,
+				threadId: 'thread-1',
+				toolCallId: 'tc-2',
+				resumeData: { approved: true },
+			});
+			await result.done;
+
+			expect(provider.prepareTurn).toHaveBeenCalledWith(
+				expect.objectContaining({
+					toolCallId: 'tc-2',
+					openSuspensions: [
+						{ toolCallId: 'tc-1', toolName: 'ask-user', suspendPayload: { requestId: 'req-1' } },
+						{ toolCallId: 'tc-2', toolName: 'ask-user', suspendPayload: { requestId: 'req-2' } },
+					],
+				}),
+			);
+		});
+
 		it('finds the suspended tool call in the checkpoint and prepares a resume turn', async () => {
 			const { service, provider, checkpointStorage, prepared, agentMemory, agentCheckpointStore } =
 				setup([textChunk]);
@@ -1210,6 +1246,9 @@ describe('SystemAgentExecutionService', () => {
 					runId: 'run-1',
 					toolCallId: 'tc-1',
 					checkpointHostMetadata: { turnOptions: { runId: 'host-run-1' } },
+					openSuspensions: [
+						{ toolCallId: 'tc-1', toolName: 'ask-user', suspendPayload: { requestId: 'req-1' } },
+					],
 					resumeData: { approved: true },
 					memory: agentMemory,
 					checkpointStore: agentCheckpointStore,
@@ -2200,6 +2239,89 @@ describe('SystemAgentExecutionService', () => {
 					projectId: 'project-2',
 				}),
 			);
+		});
+	});
+
+	describe('onBeforeThreadDeletion', () => {
+		function setupWithHook() {
+			const context = setup();
+			const afterDeletion = vi.fn(async () => {});
+			const onBeforeThreadDeletion = vi.fn(async () => afterDeletion);
+			Object.assign(context.provider, { onBeforeThreadDeletion });
+			return { ...context, afterDeletion, onBeforeThreadDeletion };
+		}
+
+		it('lets the provider read the thread before the deletion and clean up after it', async () => {
+			const { service, executionService, agentMemory, afterDeletion, onBeforeThreadDeletion } =
+				setupWithHook();
+			executionService.deleteThread.mockResolvedValue(true);
+
+			await service.deleteThread(AGENT_ID, user, 'thread-1');
+
+			expect(onBeforeThreadDeletion).toHaveBeenCalledWith({
+				agentId: AGENT_ID,
+				threadId: 'thread-1',
+				projectId: 'project-1',
+				userId: 'user-1',
+				memory: agentMemory,
+			});
+			expect(onBeforeThreadDeletion.mock.invocationCallOrder[0]).toBeLessThan(
+				executionService.deleteThread.mock.invocationCallOrder[0],
+			);
+			expect(executionService.deleteThread.mock.invocationCallOrder[0]).toBeLessThan(
+				afterDeletion.mock.invocationCallOrder[0],
+			);
+		});
+
+		it('skips the cleanup when the thread is busy', async () => {
+			const { service, executionService, afterDeletion } = setupWithHook();
+			executionService.deleteThread.mockRejectedValue(
+				new ConflictError('The session has active work and cannot be deleted'),
+			);
+
+			await expect(service.deleteThread(AGENT_ID, user, 'thread-1')).rejects.toThrow(ConflictError);
+			expect(afterDeletion).not.toHaveBeenCalled();
+		});
+
+		it('deletes the thread when the provider fails to prepare', async () => {
+			const { service, executionService, onBeforeThreadDeletion, logger } = setupWithHook();
+			onBeforeThreadDeletion.mockRejectedValue(new Error('memory down'));
+			executionService.deleteThread.mockResolvedValue(true);
+
+			await expect(service.deleteThread(AGENT_ID, user, 'thread-1')).resolves.toBeUndefined();
+			expect(executionService.deleteThread).toHaveBeenCalled();
+			expect(logger.warn).toHaveBeenCalledWith(
+				'System agent preparation for thread deletion failed',
+				expect.objectContaining({ threadId: 'thread-1' }),
+			);
+		});
+
+		it('keeps the deletion when the cleanup fails', async () => {
+			const { service, executionService, afterDeletion, logger } = setupWithHook();
+			afterDeletion.mockRejectedValue(new Error('archive failed'));
+			executionService.deleteThread.mockResolvedValue(true);
+
+			await expect(service.deleteThread(AGENT_ID, user, 'thread-1')).resolves.toBeUndefined();
+			expect(logger.warn).toHaveBeenCalledWith(
+				'System agent cleanup after thread deletion failed',
+				expect.objectContaining({ threadId: 'thread-1' }),
+			);
+		});
+
+		it('cleans up the threads that account cleanup deletes', async () => {
+			const { service, threadRepository, executionService, afterDeletion, onBeforeThreadDeletion } =
+				setupWithHook();
+			threadRepository.findPrivateSystemAgentSessionsForDeletion.mockResolvedValue([
+				{ id: 'thread-1', agentId: AGENT_ID, projectId: 'project-1' },
+			]);
+			executionService.deleteThread.mockResolvedValue(true);
+
+			await service.deleteThreadsOfUser('user-1');
+
+			expect(onBeforeThreadDeletion).toHaveBeenCalledWith(
+				expect.objectContaining({ threadId: 'thread-1', userId: 'user-1' }),
+			);
+			expect(afterDeletion).toHaveBeenCalledTimes(1);
 		});
 	});
 

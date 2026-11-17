@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import type {
 	AgentJsonConfig,
+	AgentSseEvent,
 	InstanceAiAttachment,
 	InstanceAiHandoffContext,
 	InstanceAiNodesAttachment,
@@ -30,6 +31,7 @@ import { useN8nAssistantIdentity } from '@/features/agents/n8nChatPage/composabl
 
 import { provideArtifactAgentTargets } from '../artifactAgentTargets';
 import { provideArtifactThread } from '../artifactThread';
+import ApprovalModeSelector from '../components/ApprovalModeSelector.vue';
 import InstanceAiAgentPreview from '../components/InstanceAiAgentPreview.vue';
 import InstanceAiArtifactsPanel from '../components/InstanceAiArtifactsPanel.vue';
 import InstanceAiAppPreview from '../components/InstanceAiAppPreview.vue';
@@ -38,6 +40,7 @@ import InstanceAiFixWithAiPanel from '../components/InstanceAiFixWithAiPanel.vue
 import InstanceAiInputMenu from '../components/InstanceAiInputMenu.vue';
 import InstanceAiPreviewTabBar from '../components/InstanceAiPreviewTabBar.vue';
 import InstanceAiResourcePicker from '../components/InstanceAiResourcePicker.vue';
+import InstanceAiSkillPreview from '../components/InstanceAiSkillPreview.vue';
 import InstanceAiViewHeader from '../components/InstanceAiViewHeader.vue';
 import InstanceAiWorkflowPreview, {
 	type WorkflowFailuresReport,
@@ -66,7 +69,7 @@ import { INSTANCE_AI_VIEW } from '../constants';
 import { buildFixWithAiPrompt } from '../fixWithAi';
 import { formatAgentPreviewContextLabel } from '../instanceAi.handoffContext';
 import { useInstanceAiStore } from '../instanceAi.store';
-import { firstMessageTitle } from '../instanceAi.threadRuntime';
+import { firstMessageTitle, threadTargetsAgent } from '../instanceAi.threadRuntime';
 import { useInstanceAiSettingsStore } from '../instanceAiSettings.store';
 import { buildThreadArtifactsContext } from '../threadArtifacts';
 import { useCanvasPreview } from '../useCanvasPreview';
@@ -85,6 +88,7 @@ import {
 	getAssistantAgentLaunch,
 	type PendingAssistantAgentMessage,
 } from './assistantAgentThreads';
+import { assistantAutoApprovalExtension } from './assistantAutoApproval';
 import { assistantConfirmationExtension } from './assistantConfirmation';
 import { assistantHostEventExtensions } from './assistantHostEvents';
 import { useAssistantAgentThreadsStore } from './assistantAgentThreads.store';
@@ -94,7 +98,15 @@ import {
 	readNodesAttachment,
 	toNodesComposerAttachment,
 } from './assistantNodeAttachments';
-import { useAssistantAgentMessageTelemetry } from './useAssistantAgentMessageTelemetry';
+import {
+	useAssistantAgentMessageTelemetry,
+	type AssistantAgentSendingMessage,
+} from './useAssistantAgentMessageTelemetry';
+import { useAssistantAgentTurnTelemetry } from './useAssistantAgentTurnTelemetry';
+import {
+	ASSISTANT_AGENT_SETUP_SAVED,
+	useAssistantAgentSetupSavedTelemetry,
+} from './useAssistantAgentSetupSavedTelemetry';
 import { useAssistantAgentTargets } from './useAssistantAgentTargets';
 import { useAssistantAgentTrace } from './useAssistantAgentTrace';
 import { useAssistantArtifactThread } from './useAssistantArtifactThread';
@@ -230,7 +242,11 @@ function onMessageAccepted({ clientContext }: { clientContext?: Record<string, u
 	pendingHandoffContext = undefined;
 }
 
-const interactionExtensions = [assistantConfirmationExtension, ...assistantHostEventExtensions];
+const interactionExtensions = [
+	assistantConfirmationExtension,
+	assistantAutoApprovalExtension,
+	...assistantHostEventExtensions,
+];
 
 const panel = useTemplateRef<InstanceType<typeof AgentChatPanel>>('panel');
 
@@ -238,6 +254,29 @@ const trace = useAssistantAgentTrace({
 	threadId: props.threadId,
 	messages: () => panel.value?.messages ?? [],
 });
+
+const turnTelemetry = useAssistantAgentTurnTelemetry({
+	threadId: props.threadId,
+	isStreaming: () => panel.value?.isStreaming ?? false,
+	isStreamAttached: () => panel.value?.isStreamAttached ?? false,
+	isSubmitting: () => panel.value?.isSubmitting ?? false,
+	hasOpenInteraction: () => panel.value?.hasOpenInteraction ?? false,
+});
+
+function onMessageSending(message: AssistantAgentSendingMessage): void {
+	turnTelemetry.trackSubmit(messageTelemetry.trackSend(message));
+}
+
+function onStreamEvent(event: AgentSseEvent): void {
+	trace.recordEvent(event);
+	turnTelemetry.handleStreamEvent(event);
+}
+
+const setupSavedTelemetry = useAssistantAgentSetupSavedTelemetry({
+	threadId: props.threadId,
+	messages: () => panel.value?.messages ?? [],
+});
+provide(ASSISTANT_AGENT_SETUP_SAVED, setupSavedTelemetry.expectResult);
 
 watch(panel, (current) => {
 	if (!current) return;
@@ -327,8 +366,11 @@ const preview = useCanvasPreview({
 provide('openWorkflowPreview', preview.openWorkflowPreview);
 provide('openDataTablePreview', preview.openDataTablePreview);
 provide('openAppPreview', preview.openAppPreview);
+provide('openSkillPreview', preview.openSkillPreview);
 provide('openAgentPreview', preview.openAgentPreview);
 provide('openAgentChatPreview', openAgentChatPreview);
+
+const openSkillTabs = computed(() => preview.openTabs.value.filter((tab) => tab.type === 'skill'));
 
 watch(
 	[() => preview.activeTabId.value, () => preview.isPreviewVisible.value],
@@ -721,9 +763,9 @@ function removeStagedNodes(chipId: string): void {
 						:client-context="clientContext"
 						:interaction-extensions="interactionExtensions"
 						:show-attach-button="false"
-						@stream-event="trace.recordEvent"
+						@stream-event="onStreamEvent"
 						@session-created="onSessionCreated"
-						@message-sending="messageTelemetry.trackSend"
+						@message-sending="onMessageSending"
 						@draft-cleared="messageTelemetry.setPrefill(null)"
 						@message-accepted="onMessageAccepted"
 						@update:streaming="onStreamingChange"
@@ -754,6 +796,11 @@ function removeStagedNodes(chipId: string): void {
 								:disabled="disabled"
 								:project-id="props.projectId"
 								@attach-files="panel?.openFilePicker()"
+							/>
+							<!-- A thread that builds an agent always runs in Manual mode. -->
+							<ApprovalModeSelector
+								v-if="!threadTargetsAgent(threadsStore.threadsById.get(props.threadId)?.metadata)"
+								:thread-id="props.threadId"
 							/>
 						</template>
 					</AgentChatPanel>
@@ -848,6 +895,15 @@ function removeStagedNodes(chipId: string): void {
 							@preview-open-change="handleAgentTestDockOpenChange"
 							@assistant-handoff="handleAgentPreviewAssistantHandoff"
 						/>
+						<!-- Retain each open skill's draft while another artifact is visible. -->
+						<KeepAlive v-for="tab in openSkillTabs" :key="tab.id">
+							<InstanceAiSkillPreview
+								v-if="preview.isPreviewVisible.value && preview.activeSkillId.value === tab.id"
+								:class="$style.previewSlot"
+								:skill-id="tab.id"
+								:refresh-key="preview.skillRefreshKey.value"
+							/>
+						</KeepAlive>
 					</div>
 				</N8nTabsRoot>
 			</N8nResizeWrapper>

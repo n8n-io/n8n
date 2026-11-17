@@ -6,6 +6,7 @@ import type {
 	ObservationLogObserverMemory,
 	ResumeOptions,
 	RunOptions,
+	SerializableAgentState,
 	SideCallUsageReport,
 	TokenUsage,
 } from '@n8n/agents';
@@ -108,8 +109,19 @@ export interface SystemAgentResumeTurn<TLease = unknown>
 	type: 'resume';
 	/** Host metadata the suspended run stored in its checkpoint. */
 	checkpointHostMetadata: JSONObject;
+	/**
+	 * The tool calls that the checkpoint holds open, the resumed one included.
+	 * The runtime can send them again as suspensions during the resume.
+	 */
+	openSuspensions: Array<Pick<SuspendedToolCall, 'toolCallId' | 'toolName' | 'suspendPayload'>>;
 	resumeData: unknown;
 }
+
+/** A tool call that a suspended run still waits on. */
+export type SuspendedToolCall = Extract<
+	SerializableAgentState['pendingToolCalls'][string],
+	{ suspended: true }
+>;
 
 export type SystemAgentTurn<TLease = unknown> =
 	| SystemAgentStartTurn<TLease>
@@ -217,6 +229,20 @@ export interface SystemAgentWorkspaceDestroyScope {
 	userId?: string;
 }
 
+/** The thread that a user deletes, with the Agents memory that still holds its state. */
+export interface SystemAgentThreadDeletionScope {
+	agentId: string;
+	threadId: string;
+	/** The working project of the thread. */
+	projectId: string;
+	/** The user who deletes the thread. Account cleanup also deletes threads. */
+	userId: string;
+	memory: ObservationLogObserverMemory;
+}
+
+/** Work that runs after the thread deletion commits. */
+export type SystemAgentAfterThreadDeletion = () => Promise<void>;
+
 /**
  * Supplies the sandbox workspace of a system agent. The provider keeps its own
  * sandbox identity, images and lifecycle. The runtime only reports when a turn
@@ -279,6 +305,16 @@ export interface SystemAgentProvider<TLease = unknown> {
 	): Promise<SystemAgentTurnOptions>;
 	/** Convert a resume payload from a client into the tool's resume data. */
 	normalizeResumeData?(resumeData: unknown): unknown;
+	/**
+	 * Called before a user deletes a thread of this agent, while the thread
+	 * state can still be read. Do not change data here: the deletion can still
+	 * fail, for example while a turn runs. Return the cleanup that must run
+	 * after the deletion commits. A failure is logged and does not stop the
+	 * deletion.
+	 */
+	onBeforeThreadDeletion?(
+		scope: SystemAgentThreadDeletionScope,
+	): Promise<SystemAgentAfterThreadDeletion | undefined>;
 	/**
 	 * Called once for each execution of a run that a turn of this agent
 	 * delegated, foreground or background, after the runner tries to store

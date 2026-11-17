@@ -1,4 +1,12 @@
 import type {
+	MoveSkillSourceDto,
+	SkillSourceMovePreview,
+	AcceptSkillSourceUpdatesDto,
+	ReviewSkillSourceUpdateQueryDto,
+	SkillSourceUpdates,
+	SkillUpdateReview,
+	SkillUpdateCommit,
+	SkillSourceAcceptResponse,
 	ConnectSkillSourceDto,
 	CreateSkillDto,
 	DiscoverSkillSourceDto,
@@ -220,5 +228,75 @@ export async function stopSyncingSkill(context: IRestApiContext, skillId: string
 		context,
 		'POST',
 		`${SOURCES_ENDPOINT}/skills/${skillId}/stop-syncing`,
+	);
+}
+
+/** Local validation for a source scope change. */
+export async function previewSkillSourceMove(
+	context: IRestApiContext,
+	sourceId: string,
+	payload: MoveSkillSourceDto,
+): Promise<SkillSourceMovePreview> {
+	return await makeRestApiRequest<SkillSourceMovePreview>(
+		context,
+		'POST',
+		`${SOURCES_ENDPOINT}/${sourceId}/move/preview`,
+		payload,
+	);
+}
+
+export async function moveSkillSource(
+	context: IRestApiContext,
+	sourceId: string,
+	payload: MoveSkillSourceDto,
+): Promise<void> {
+	await makeRestApiRequest(context, 'POST', `${SOURCES_ENDPOINT}/${sourceId}/move`, payload);
+}
+
+export async function getSkillSourceUpdates(context: IRestApiContext, sourceId: string) {
+	return await makeRestApiRequest<SkillSourceUpdates>(
+		context,
+		'GET',
+		`${SOURCES_ENDPOINT}/${sourceId}/updates`,
+	);
+}
+
+export async function getSkillSourceUpdate(
+	context: IRestApiContext,
+	sourceId: string,
+	skillId: string,
+	reviewed: ReviewSkillSourceUpdateQueryDto,
+) {
+	return await makeRestApiRequest<SkillUpdateReview>(
+		context,
+		'GET',
+		`${SOURCES_ENDPOINT}/${sourceId}/updates/${skillId}`,
+		{ ...reviewed },
+	);
+}
+
+export async function getSkillSourceCommit(
+	context: IRestApiContext,
+	sourceId: string,
+	revision: string,
+) {
+	return await makeRestApiRequest<SkillUpdateCommit>(
+		context,
+		'GET',
+		`${SOURCES_ENDPOINT}/${sourceId}/commit`,
+		{ revision },
+	);
+}
+
+export async function acceptSkillSourceUpdates(
+	context: IRestApiContext,
+	sourceId: string,
+	payload: AcceptSkillSourceUpdatesDto,
+) {
+	return await makeRestApiRequest<SkillSourceAcceptResponse>(
+		context,
+		'POST',
+		`${SOURCES_ENDPOINT}/${sourceId}/updates/accept`,
+		payload,
 	);
 }

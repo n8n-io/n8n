@@ -131,6 +131,21 @@ export class SkillsTelemetry {
 		});
 	}
 
+	async changedSourceScope(
+		props: Omit<
+			InferTelemetryProps<typeof TELEMETRY_EVENT.CONTEXT.USER_CHANGED_SKILL_SOURCE_SCOPE>,
+			'user_id'
+		>,
+		userId: string,
+	) {
+		await this.safely(async () => {
+			this.telemetry.track(TELEMETRY_EVENT.CONTEXT.USER_CHANGED_SKILL_SOURCE_SCOPE, {
+				user_id: userId,
+				...props,
+			});
+		});
+	}
+
 	/** One connect request of Skill Sync, also a failed one. */
 	async connectedSource(props: Omit<ConnectedSourceProps, 'user_id'>, userId: string) {
 		await this.safely(async () => {
@@ -192,6 +207,21 @@ export class SkillsTelemetry {
 	async checkedNow(props: Omit<CheckedNowProps, 'user_id'>, userId: string) {
 		await this.safely(async () => {
 			this.telemetry.track(TELEMETRY_EVENT.CONTEXT.USER_CHECKED_SKILL_SOURCE_NOW, {
+				user_id: userId,
+				...props,
+			});
+		});
+	}
+
+	async reviewedUpdate(
+		props: Omit<
+			InferTelemetryProps<typeof TELEMETRY_EVENT.CONTEXT.USER_REVIEWED_SKILL_UPDATE>,
+			'user_id'
+		>,
+		userId: string,
+	) {
+		await this.safely(async () => {
+			this.telemetry.track(TELEMETRY_EVENT.CONTEXT.USER_REVIEWED_SKILL_UPDATE, {
 				user_id: userId,
 				...props,
 			});
