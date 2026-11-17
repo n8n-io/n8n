@@ -66,3 +66,20 @@ describe('Google Sheets with a service account in the converter', () => {
 		expect(out.credentialMints).toBeUndefined();
 	});
 });
+
+describe('Google Sheets clear and delete in the converter', () => {
+	const oauth = { googleSheetsOAuth2Api: { id: 'c2' } };
+
+	it('links a clear and a delete, once for all items', () => {
+		for (const parameters of [
+			{ ...read, operation: 'clear', clear: 'specificRows', startIndex: '={{ $json.body.row }}' },
+			{ ...read, operation: 'delete', toDelete: 'columns', startIndex: 'B', numberToDelete: 2 },
+		]) {
+			const out = convertWorkflow(workflow(parameters, oauth));
+			expect(out.ok).toBe(true);
+			expect(compile(out.source).diagnostics).toEqual([]);
+			expect(out.source).not.toContain("host: 'fallback'");
+			expect(out.source).toContain('batch:');
+		}
+	});
+});

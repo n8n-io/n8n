@@ -81,7 +81,7 @@ type Adapter = (
 	node?: { onError?: string },
 ) => Record<string, unknown>;
 
-const ADAPTERS: Record<string, Adapter> = {
+export const ADAPTERS: Record<string, Adapter> = {
 	...Object.fromEntries(
 		Object.entries(VENDOR_NODES).map(([type, vendor]): [string, Adapter] => [
 			type,
@@ -575,7 +575,9 @@ const BATCH_OPERATIONS: Record<string, (key: string, p: Record<string, unknown>)
 	'n8n-nodes-base.postgres': () => true,
 	'n8n-nodes-base.mySql': () => true,
 	// Append and append or update read the sheet once, then write the rows of all items.
-	'n8n-nodes-base.googleSheets': (key) => key === 'sheet.appendOrUpdate' || key === 'sheet.append',
+	// A clear and a delete find the sheet once, then work through the items.
+	'n8n-nodes-base.googleSheets': (key) =>
+		['sheet.appendOrUpdate', 'sheet.append', 'sheet.clear', 'sheet.delete'].includes(key),
 };
 
 let supports: Map<string, Support> | undefined;
