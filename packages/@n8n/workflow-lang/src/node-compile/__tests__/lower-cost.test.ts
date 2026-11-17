@@ -337,9 +337,9 @@ return [await api(a), await api(b)];`,
 			false,
 		);
 		expect(out.code).not.toContain('__request(');
-		expect(flat(out.code)).toContain(
-			'skipTokenRefresh: undefined, tokenExpiredStatusCode: undefined',
-		);
+		expect(out.code).not.toContain('skipTokenRefresh');
+		expect(out.code).not.toContain('multipart');
+		expect(flat(out.code)).toContain('json: true,');
 		expect(flat(out.code)).toContain('const options = { qs: query };');
 	});
 
@@ -491,6 +491,64 @@ const first = /top/.test(text);`,
 		expect(flat(out.code)).toContain("text.replace(/x/g, '')");
 		expect(flat(out.code)).toContain('__pattern1.test(text), () => /inner/.test(text)');
 		expect(flat(out.code)).toContain('const first = /top/.test(text);');
+	});
+});
+
+describe('lowerCost: the options of a request', () => {
+	const request = `async function __request(options, wrapped, legacy) {
+	const parts = legacy ? __formParts(options, headers) : undefined;
+	return await ctx.http({ url: options.uri, acceptAs: legacy ? 'legacy' : 'request', json: options.json, inject: wrapped });
+}`;
+
+	it('sends the json option as a constant and leaves out the members that are not there', () => {
+		const out = lowerCost(
+			`${request}
+async function api(query) {
+	const option = {};
+	const options = { method: 'GET', uri: 'https://x.test', qs: query };
+	options.json = true;
+	if (Object.keys(option)) { __assign(options, option); }
+	return await __request(options, true, true);
+}
+return [await api(a), await api(b)];`,
+			false,
+		);
+		expect(out.code).not.toContain('__request(');
+		expect(out.code).not.toContain('__assign(options');
+		expect(flat(out.code)).toContain("acceptAs: 'legacy', json: true, inject: true,");
+		expect(out.code).not.toContain('multipart');
+		expect(out.code).not.toContain('basicAuth');
+		expect(flat(out.code)).toContain('body: undefined,');
+		expect(flat(out.code)).toContain('const options = { qs: query };');
+	});
+
+	it('keeps the json option of the node when the code can change it', () => {
+		const out = lowerCost(
+			`${request}
+async function api(query) {
+	const options = { uri: 'https://x.test', qs: query, json: true };
+	if (query.text) options.json = false;
+	return await __request(options, true, true);
+}
+return [await api(a), await api(b)];`,
+			false,
+		);
+		expect(flat(out.code)).toContain('json: options.json,');
+		expect(flat(out.code)).toContain('const options = { qs: query, json: true };');
+	});
+
+	it('folds the constant arguments of the general request', () => {
+		const out = lowerCost(
+			`${request}
+async function api(options) {
+	return await __request(options, false, true);
+}
+return [await api(a), await api(b)];`,
+			false,
+		);
+		expect(flat(out.code)).toContain('const parts = __formParts(options, headers);');
+		expect(flat(out.code)).toContain("acceptAs: 'legacy'");
+		expect(flat(out.code)).toContain('inject: false');
 	});
 });
 

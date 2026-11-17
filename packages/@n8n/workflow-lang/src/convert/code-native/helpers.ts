@@ -1218,7 +1218,7 @@ function collKeysOf(v: Json, which: string): Json[] {
 }`,
 	},
 	hasOwnOf: {
-		uses: ['objectPrototypeName'],
+		uses: [],
 		source: `/** \`x.hasOwnProperty(k)\` and \`Object.hasOwn(x, k)\` for JSON values. */
 function hasOwnOf(x: Json, k: Json): boolean {
 	if (x === undefined || x === null) {
@@ -1232,8 +1232,22 @@ function hasOwnOf(x: Json, k: Json): boolean {
 	}
 	if (typeof x !== 'object' || !(key in x)) return false;
 	// \`in\` is also true for the names of \`Object.prototype\`, which are own keys only when the object has them.
-	if (key.length < 7 || !objectPrototypeName(key)) return true;
-	return Object.keys(x).includes(key);
+	return key.length < 7 || Object.keys(x).includes(key);
+}`,
+	},
+	hasOwnNamedOf: {
+		uses: [],
+		source: `/** \`hasOwnOf\` for a key that is text and not a name of \`Object.prototype\`. */
+function hasOwnNamedOf(x: Json, key: string): boolean {
+	if (x === undefined || x === null) {
+		throw new TypeError('Cannot convert undefined or null to object');
+	}
+	if (Array.isArray(x) || typeof x === 'string') {
+		if (key === 'length') return true;
+		const i = Number(key);
+		return String(i) === key && Number.isInteger(i) && i >= 0 && i < x.length;
+	}
+	return typeof x === 'object' && key in x;
 }`,
 	},
 	objectPrototypeName: {
