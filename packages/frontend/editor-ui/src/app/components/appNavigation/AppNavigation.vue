@@ -16,6 +16,7 @@ import { useTelemetry } from '@n8n/composables/useTelemetry';
 import { useSettingsStore } from '@n8n/stores/settings.store';
 import { VIEWS } from '@/app/constants';
 import { hasPermission } from '@/app/utils/rbac/permissions';
+import { useGlobalEntityCreation } from '@/app/composables/useGlobalEntityCreation';
 import { promotionEventBus } from '@n8n/frontend-module-promotions';
 import { useUIStore } from '@/app/stores/ui.store';
 import { useFavoritesStore } from '@/app/stores/favorites.store';
@@ -50,11 +51,23 @@ const isInsightsAvailable = computed(
 );
 const isInsightsActive = computed(() => route.name === VIEWS.INSIGHTS);
 
+const projectsStore = useProjectsStore();
+
+// Creating a project opens its settings, as the create menu of the old sidebar did.
+const globalEntityCreation = useGlobalEntityCreation();
+const showCreateProject = computed(() => projectsStore.isTeamProjectFeatureEnabled);
+const canCreateProject = computed(
+	() => projectsStore.canCreateProjects && projectsStore.hasPermissionToCreateProjects,
+);
+function onCreateProject() {
+	if (!canCreateProject.value) return;
+	void globalEntityCreation.createProject('navigation_rail');
+}
+
 function onInsightsClick() {
 	telemetry.track('User clicked insights link from side menu');
 }
 const uiStore = useUIStore();
-const projectsStore = useProjectsStore();
 const agentTelemetry = useAgentTelemetry();
 
 const { railItems, activeItemId, sectionsFor, railItemById } = useAppNavigation();
@@ -266,6 +279,35 @@ onBeforeUnmount(() => {
 					role="separator"
 				/>
 			</template>
+			<!-- Ends the project list, so it reads as "add another project". -->
+			<div v-if="showCreateProject" :class="$style.railGroup">
+				<N8nTooltip
+					:content="
+						canCreateProject
+							? i18n.baseText('appNavigation.createProject')
+							: globalEntityCreation.projectsLimitReachedMessage.value
+					"
+					placement="right"
+					:show-after="300"
+				>
+					<button
+						type="button"
+						:class="[$style.railItem, $style.createProject]"
+						:disabled="!canCreateProject"
+						:aria-label="i18n.baseText('appNavigation.createProject')"
+						data-test-id="app-nav-create-project"
+						@mouseenter="peek.onLeave"
+						@click="onCreateProject"
+					>
+						<ProjectIcon
+							:icon="{ type: 'icon', value: 'plus' }"
+							size="small"
+							border-less
+							color="text-dark"
+						/>
+					</button>
+				</N8nTooltip>
+			</div>
 			<div :class="$style.account">
 				<N8nTooltip
 					v-if="isInsightsAvailable"
@@ -401,6 +443,21 @@ $panel-width: 240px;
 	&:focus-visible {
 		outline: var(--focus--border-width, 1px) solid var(--focus--border-color);
 		outline-offset: 1px;
+	}
+}
+
+.createProject {
+	border: none;
+	background: none;
+	cursor: pointer;
+
+	&:disabled {
+		cursor: not-allowed;
+		opacity: 0.5;
+
+		&:hover {
+			background-color: transparent;
+		}
 	}
 }
 

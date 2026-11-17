@@ -5,6 +5,7 @@ import { createTestingPinia } from '@pinia/testing';
 import { createComponentRenderer } from '@/__tests__/render';
 import { mockedStore } from '@/__tests__/utils';
 import { useUIStore } from '@/app/stores/ui.store';
+import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 import { useFavoritesStore } from '@/app/stores/favorites.store';
 import { useSettingsStore } from '@n8n/stores/settings.store';
 import { useRBACStore } from '@n8n/stores/rbac.store';
@@ -70,6 +71,17 @@ vi.mock('./useAppNavigation', async (importOriginal) => ({
 	}),
 }));
 
+const createProject = vi.hoisted(() => vi.fn());
+vi.mock('@/app/composables/useGlobalEntityCreation', async () => {
+	const { computed } = await import('vue');
+	return {
+		useGlobalEntityCreation: () => ({
+			createProject,
+			projectsLimitReachedMessage: computed(() => 'Limit reached'),
+		}),
+	};
+});
+
 vi.mock('@/features/ai/instanceAi/composables/useInstanceAiAvailability', () => ({
 	useInstanceAiAvailable: () => ref(false),
 }));
@@ -90,6 +102,11 @@ const renderComponent = createComponentRenderer(AppNavigation, {
 
 function setup({ collapsed, before }: { collapsed: boolean; before?: () => void }) {
 	createTestingPinia();
+	// The projects store reads license settings that these tests do not set.
+	const projectsStore = mockedStore(useProjectsStore);
+	projectsStore.isTeamProjectFeatureEnabled = false;
+	projectsStore.canCreateProjects = false;
+	projectsStore.hasPermissionToCreateProjects = false;
 	before?.();
 	const uiStore = mockedStore(useUIStore);
 	uiStore.sidebarMenuCollapsed = collapsed;
@@ -121,6 +138,7 @@ describe('AppNavigation', () => {
 
 	afterEach(() => {
 		vi.useRealTimers();
+		createProject.mockClear();
 	});
 
 	it('shows the rail items with a divider before the projects, and the account menu', () => {
@@ -175,6 +193,52 @@ describe('AppNavigation', () => {
 		await fireEvent.click(unstar);
 
 		expect(mockedStore(useFavoritesStore).toggleFavorite).toHaveBeenCalledWith('wf-1', 'workflow');
+	});
+
+	describe('create project', () => {
+		it('creates a project from the end of the project list', async () => {
+			const { getByTestId } = setup({
+				collapsed: true,
+				before: () => {
+					const projectsStore = mockedStore(useProjectsStore);
+					projectsStore.isTeamProjectFeatureEnabled = true;
+					projectsStore.canCreateProjects = true;
+					projectsStore.hasPermissionToCreateProjects = true;
+				},
+			});
+
+			await fireEvent.click(getByTestId('app-nav-create-project'));
+
+			expect(createProject).toHaveBeenCalledWith('navigation_rail');
+		});
+
+		it('keeps the button, disabled, when the user cannot create more projects', async () => {
+			const { getByTestId } = setup({
+				collapsed: true,
+				before: () => {
+					const projectsStore = mockedStore(useProjectsStore);
+					projectsStore.isTeamProjectFeatureEnabled = true;
+					projectsStore.canCreateProjects = false;
+					projectsStore.hasPermissionToCreateProjects = true;
+				},
+			});
+
+			const button = getByTestId('app-nav-create-project');
+			expect(button).toBeDisabled();
+			await fireEvent.click(button);
+			expect(createProject).not.toHaveBeenCalled();
+		});
+
+		it('hides the button without team projects', () => {
+			const { queryByTestId } = setup({
+				collapsed: true,
+				before: () => {
+					mockedStore(useProjectsStore).isTeamProjectFeatureEnabled = false;
+				},
+			});
+
+			expect(queryByTestId('app-nav-create-project')).not.toBeInTheDocument();
+		});
 	});
 
 	describe('expanded', () => {
