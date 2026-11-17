@@ -1333,3 +1333,27 @@ fn jsonStr(j: *std.Io.Writer, s: []const u8) !void {
 test "fuzz qs brackets form" {
     try std.testing.fuzz({}, fuzzQsBrackets, .{});
 }
+
+// ---- the rule of a stored response ------------------------------------------------
+
+const store_rule = @import("store_rule.zig");
+
+/// Random bytes as the JSON of a rule: the texts stay inside the row.
+fn fuzzStoreRule(_: void, smith: *Smith) !void {
+    const raw = input_buf[0..smith.slice(&input_buf)];
+    var table: store_rule.Table = .{};
+    const i = table.intern(raw) catch |e| switch (e) {
+        error.Full => return error.EmptyTableIsFull,
+        error.Invalid => return,
+    };
+    const r = &table.rules[i];
+    if (r.packed_len > r.packed_texts.len) return error.TextsPastTheRow;
+    if (@as(usize, r.n_inline) + r.n_store > 2 * store_rule.max_texts) return error.TooManyTexts;
+    _ = r.stores(raw);
+}
+
+test "fuzz store rule" {
+    try std.testing.fuzz({}, fuzzStoreRule, .{
+        .corpus = &.{ seed(store_rule.example), seed("{\"storeTypes\":[\"\\u00e9\",\"\"],\"inlineTypes\":[]}") },
+    });
+}
