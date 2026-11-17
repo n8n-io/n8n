@@ -312,7 +312,7 @@ describe('Microsoft SharePoint v2 — Item: Update', () => {
 	it('sends the collection type with a multi-choice value on the fields route', async () => {
 		setParams(
 			baseParams({
-				value: { id: ITEM_ID, Tags: ['A', 'B'] },
+				value: { id: ITEM_ID, Tags: ['A', 'B'] } as unknown as ResourceMapperValue['value'],
 				matchingColumns: ['id'],
 			}),
 		);

@@ -147,7 +147,10 @@ describe('Microsoft SharePoint v2 — Item: Create or Update', () => {
 
 	it('sends the collection type with a multi-choice value when it creates', async () => {
 		setParams(
-			baseParams({ value: { Title: 'Title 2', Tags: ['A', 'B'] }, matchingColumns: ['Title'] }),
+			baseParams({
+				value: { Title: 'Title 2', Tags: ['A', 'B'] } as unknown as ResourceMapperValue['value'],
+				matchingColumns: ['Title'],
+			}),
 		);
 		apiRequestAllItems.mockResolvedValueOnce([]);
 		apiRequest.mockResolvedValueOnce({ id: '2' });
