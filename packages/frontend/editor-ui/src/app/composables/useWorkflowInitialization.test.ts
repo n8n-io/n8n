@@ -330,7 +330,7 @@ describe('useWorkflowInitialization', () => {
 
 			const error = await failToOpenWorkflow({ onLoadError });
 
-			expect(onLoadError).toHaveBeenCalledWith(error);
+			expect(onLoadError).toHaveBeenCalledWith(error, 'wf-1');
 			expect(mockRouter.replace).not.toHaveBeenCalled();
 			expect(mockRouter.push).not.toHaveBeenCalled();
 		});

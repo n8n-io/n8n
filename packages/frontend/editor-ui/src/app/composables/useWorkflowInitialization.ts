@@ -42,7 +42,7 @@ import { hasNewWorkflowQuery, withoutNewWorkflowQuery } from '@/app/utils/workfl
 export function useWorkflowInitialization(
 	options: {
 		/** Shows a failed workflow load in place. Without it, the app opens an error page. */
-		onLoadError?: (error: unknown) => void;
+		onLoadError?: (error: unknown, workflowId: string) => void;
 	} = {},
 ) {
 	const route = useRoute();
@@ -412,7 +412,7 @@ export function useWorkflowInitialization(
 			void workflowsStore.fetchLastSuccessfulExecution();
 		} catch (error) {
 			if (options.onLoadError) {
-				options.onLoadError(error);
+				options.onLoadError(error, id);
 				return;
 			}
 			if ((error as { httpStatusCode?: number }).httpStatusCode === 404) {

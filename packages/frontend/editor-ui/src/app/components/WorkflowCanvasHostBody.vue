@@ -50,7 +50,9 @@ const loadError = ref<'unauthorized' | 'notFound'>();
 
 const { isLoading, initializeData, initializeWorkflow, openWorkflow, cleanup } =
 	useWorkflowInitialization({
-		onLoadError: (error) => {
+		onLoadError: (error, workflowId) => {
+			// A late failure of a workflow the user left must not cover the open one.
+			if (workflowId !== props.workflowId) return;
 			loadError.value =
 				error instanceof ResponseError && error.httpStatusCode === 403
 					? 'unauthorized'
@@ -155,6 +157,7 @@ const isReady = computed(() => !isLoading.value && !!currentWorkflowDocumentStor
 		<EntityNotFound
 			v-else-if="loadError === 'notFound'"
 			entity-type="workflow"
+			hide-action
 			:class="$style.centerState"
 			data-test-id="workflow-canvas-host-error"
 		/>
