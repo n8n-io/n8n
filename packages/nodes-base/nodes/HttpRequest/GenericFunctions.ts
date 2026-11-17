@@ -232,6 +232,10 @@ export const getOAuth2AdditionalParameters = (nodeCredentialType: string) => {
 		microsoftAzureMonitorOAuth2Api: {
 			tokenExpiredStatusCode: 403,
 		},
+		microsoftOAuth2Api: {
+			tokenExpiredStatusCode: [401, 403],
+			skipRefreshWhileTokenIsFresh: true,
+		},
 		philipsHueOAuth2Api: {
 			tokenType: 'Bearer',
 		},
