@@ -60,6 +60,7 @@ export const MOMENT_HELPERS: Record<string, string> = {
 		}
 		if (stop !== text.length) return null;
 		const total: number = hours * 60 + minutes;
+		if (minutes > 59 || total > (sign === 43 ? 840 : 720)) return [hour, minute, second, milli, NaN, true];
 		return [hour, minute, second, milli, total === 0 ? 0 : sign === 43 ? total : -total, true];
 	}
 	let stop: number = at;

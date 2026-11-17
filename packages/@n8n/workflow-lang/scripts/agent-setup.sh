@@ -6,7 +6,7 @@
 #
 # Run it from the root of the worktree. It prints the tip that the worktree is on.
 set -euo pipefail
-MAIN=${1:-$(git worktree list --porcelain | awk '/^worktree /{print $2; exit}')}
+MAIN=${1:-$(git worktree list --porcelain | sed -n 's/^worktree //p' | sed -n 1p)}
 BRANCH=poc/compiled-workflow-engine
 here=$(pwd -P)
 [ "$here" != "$(cd "$MAIN" && pwd -P)" ] || { echo "agent-setup: run this in a worktree, not in the main checkout" >&2; exit 2; }
