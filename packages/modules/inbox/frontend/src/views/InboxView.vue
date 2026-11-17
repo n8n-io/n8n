@@ -15,6 +15,7 @@ import { INBOX_VIEW, type InboxItemChange } from '../inbox.constants';
 import { inboxItemLocation, isInboxRoute, selectionFromRoute } from '../inbox.routes';
 import { useInboxStore } from '../inbox.store';
 import WorkflowReviewDetail from '../reviews/WorkflowReviewDetail.vue';
+import PromotionOwnerRequestDetail from '../promotions/PromotionOwnerRequestDetail.vue';
 import PromotionReviewDetail from '../promotions/PromotionReviewDetail.vue';
 import SelfHealingResultDetail from '../self-healing/SelfHealingResultDetail.vue';
 
@@ -57,6 +58,9 @@ const selectedReviewItem = computed(() =>
 );
 const selectedPromotionItem = computed(() =>
 	selectedListItem.value?.type === 'promotion_review' ? selectedListItem.value : undefined,
+);
+const selectedOwnerRequestItem = computed(() =>
+	selectedListItem.value?.type === 'promotion_owner_request' ? selectedListItem.value : undefined,
 );
 const detailTab = computed(() => (route.query.tab === 'changes' ? 'changes' : 'activity'));
 let isMounted = false;
@@ -258,6 +262,13 @@ onBeforeUnmount(() => {
 				<PromotionReviewDetail
 					v-else-if="selectedPromotionItem && !store.disabledSources.includes('promotion_review')"
 					:item="selectedPromotionItem"
+					:on-item-change="onItemChange"
+				/>
+				<PromotionOwnerRequestDetail
+					v-else-if="
+						selectedOwnerRequestItem && !store.disabledSources.includes('promotion_owner_request')
+					"
+					:item="selectedOwnerRequestItem"
 					:on-item-change="onItemChange"
 				/>
 				<SelfHealingResultDetail

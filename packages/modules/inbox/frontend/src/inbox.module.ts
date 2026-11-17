@@ -56,5 +56,10 @@ export const InboxModule = defineFrontendModule({
 			path: '/inbox/promotion-reviews/:reviewId',
 			name: 'InboxPromotionReview',
 		},
+		{
+			...inboxView,
+			path: '/inbox/promotion-requests/:requestId',
+			name: 'InboxPromotionOwnerRequest',
+		},
 	],
 });
