@@ -16,8 +16,20 @@ useUtc();
 
 type Outcome = { ok: true; value: unknown } | { ok: false };
 
-function native(code: string, mode: CodeMode, input: unknown[]): Outcome {
-	const t = translateCode({ code, mode, kind: 'code', hasNode: () => false, timezone: 'system' });
+function native(
+	code: string,
+	mode: CodeMode,
+	input: unknown[],
+	itemsOfFirstOnly?: boolean,
+): Outcome {
+	const t = translateCode({
+		code,
+		mode,
+		kind: 'code',
+		hasNode: () => false,
+		timezone: 'system',
+		itemsOfFirstOnly,
+	});
 	if (!t.ok) throw new Error(`blocked: ${t.blockers.map((b) => b.feature).join(', ')}`);
 	const c = checkTranslation(t.translation, mode);
 	if (!c.ok) throw new Error(`does not compile: ${c.blockers.map((b) => b.message).join('; ')}`);
@@ -191,5 +203,85 @@ return items.map((i) => ({ json: { out, own: join('/', i.json.id, i.json.n) } })
 	])('keeps a rest parameter of a function used as %s in the host', (_, code) => {
 		const t = translateCode({ code, mode: 'all', kind: 'code', hasNode: () => false });
 		expect(t.ok && checkTranslation(t.translation, 'all').ok).toBe(false);
+	});
+});
+
+describe('$items() without a node name', () => {
+	/** The host step with the context item that the converter gives it. */
+	const hostWithContext = (code: string, mode: CodeMode, input: unknown[], once: boolean) => {
+		const body = mode === 'each' ? eachItemCode(code, true, false) : allItemsCode(code, true);
+		const context = once ? { $nodes: {}, $itemsOnce: true } : { $nodes: {} };
+		try {
+			const value = hostRunners().code({ name: 'code', code: body, items: [...input, context] });
+			return { ok: true, value };
+		} catch {
+			return { ok: false };
+		}
+	};
+
+	// v1 (`$items` of `workflow-data-proxy.ts`): the input items, the same list as `items`.
+	it.each([
+		[
+			'all',
+			'const all = $items(); all.push({ json: { added: true } }); return [{ json: { n: all.length, m: items.length, same: all === items, first: $items()[0].json.id, paired: all[1].pairedItem } }];',
+		],
+		['all', 'return $items().map((i) => ({ json: { id: i.json.id, name: i.json.name } }));'],
+		[
+			'each',
+			'return { json: { id: $json.id, of: $items().length, last: $items()[$items().length - 1].json.id } };',
+		],
+	] as Array<[CodeMode, string]>)('gives the input items in "%s" mode', (mode, code) => {
+		for (const once of [false, true]) {
+			const n = native(code, mode, rows, once);
+			expect(n.ok).toBe(true);
+			expect(n).toEqual(hostWithContext(code, mode, rows, once));
+		}
+	});
+
+	it('gives the first item only when the node before has "execute once"', () => {
+		const code = 'return [{ json: { ids: $items().map((i) => i.json.id) } }];';
+		expect(native(code, 'all', rows, true)).toEqual({ ok: true, value: [{ ids: [1] }] });
+		expect(native(code, 'all', rows, false)).toEqual({
+			ok: true,
+			value: [{ ids: [1, 2, 3, 4, 5] }],
+		});
+	});
+
+	it('reads output 0 of a node with $items(name, 0) as with $items(name)', () => {
+		const translate = (code: string) =>
+			translateCode({ code, mode: 'all', kind: 'code', hasNode: (n) => n === 'Src' });
+		const one = translate("return $items('Src').map((i) => ({ json: i.json }));");
+		const two = translate("return $items('Src', 0).map((i) => ({ json: i.json }));");
+		expect(one.ok && two.ok && two.translation.body === one.translation.body).toBe(true);
+		expect(translate("return $items('Src', 1);").ok).toBe(false);
+		expect(translate("return $items('Src', 0, 0);").ok).toBe(false);
+	});
+
+	it('stays in the host when the node before is not fixed, and with other arguments', () => {
+		expect(blockersOf('return $items();')).toContain('$items() without a node name');
+		const t = translateCode({
+			code: 'return $items(undefined, 0);',
+			mode: 'all',
+			kind: 'code',
+			hasNode: () => false,
+			itemsOfFirstOnly: false,
+		});
+		expect(t.ok).toBe(false);
+	});
+});
+
+describe('toLocaleString of a Date', () => {
+	it('formats a variable that holds one of two new Dates as a Date', () => {
+		const code = `return items.map((i) => {
+	const when = i.json.n ? new Date(i.json.n * 86400000) : new Date(0);
+	return { json: { text: when.toLocaleString('en-US', { dateStyle: 'medium', timeStyle: 'short' }), year: when.getUTCFullYear(), when } };
+});`;
+		expect(same(code).ok).toBe(true);
+	});
+
+	it('keeps date options on a value of unknown kind in the host', () => {
+		const code = `const parse = (v) => new Date(v);
+return items.map((i) => ({ json: { text: parse(i.json.n).toLocaleString('en-US', { dateStyle: 'medium' }) } }));`;
+		expect(blockersOf(code)).toContain('Date: toLocaleString of a value of unknown kind');
 	});
 });

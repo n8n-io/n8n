@@ -64,6 +64,12 @@ export interface CodeNativeInput {
 	nodeCode?: { globals: Set<string> };
 	/** The name of the node, for static data of type `node`. */
 	nodeName?: string;
+	/**
+	 * For `$items()` without a node name, which gives the input items: true when the node
+	 * before this one has "execute once" (v1 then gives the first item only). Undefined when
+	 * the node before this one is not fixed: then `$items()` has no native form.
+	 */
+	itemsOfFirstOnly?: boolean;
 }
 
 export interface Blocker {
@@ -88,6 +94,16 @@ export interface Translation {
 	readOnly: boolean;
 	/** The code reads `$json` of the first item (all-items mode). */
 	usesFirstJson: boolean;
+	/**
+	 * The code makes HTTP requests (`this.helpers.httpRequest`): `async` and `await` stay, and
+	 * `emit` gives the code the function `__wf_http`, which runs the `http` effect.
+	 */
+	usesHttp: boolean;
+	/**
+	 * The code can make or change binary data of items (`writesBinary`): the result list gets
+	 * the size members of each binary entry, as the fallback host gives them.
+	 */
+	writesBinary: boolean;
 	/** The code reads the clock or the random generator. */
 	nondeterministic: boolean;
 	/** The code makes a Set or a Map (`collNew`). */
@@ -119,6 +135,77 @@ export const FIRST_JSON = `${P}json0`;
 export const nodeVar = (k: number) => `${P}n${k}`;
 export const ALL_NODES = `${P}nodes`;
 export const MATCHES = `${P}matches`;
+export const HTTP = `${P}http`;
+
+/** Options of `this.helpers.httpRequest` that the native form sends as v1 does. */
+const HTTP_OPTIONS = new Set([
+	'method',
+	'url',
+	'headers',
+	'body',
+	'json',
+	'qs',
+	'timeout',
+	'ignoreHttpStatusErrors',
+]);
+
+/** `this.helpers.httpRequest`. */
+function isHttpHelper(e: ts.Expression): boolean {
+	return (
+		ts.isPropertyAccessExpression(e) &&
+		e.name.text === 'httpRequest' &&
+		!e.questionDotToken &&
+		ts.isPropertyAccessExpression(e.expression) &&
+		e.expression.name.text === 'helpers' &&
+		!e.expression.questionDotToken &&
+		e.expression.expression.kind === ts.SyntaxKind.ThisKeyword
+	);
+}
+
+/**
+ * The options of `await this.helpers.httpRequest({ … })` when the request has a native form,
+ * a reason when it has none, and null when the expression is not such a call.
+ *
+ * The options are an object literal with known names, so every option that the native form
+ * does not send (a proxy, a response as bytes, the full response) keeps the node in the host.
+ * `method` and `ignoreHttpStatusErrors` are literals: they decide the form of the request.
+ */
+export function httpRequestOptions(
+	n: ts.AwaitExpression,
+): ts.ObjectLiteralExpression | string | null {
+	const call = stripParens(n.expression);
+	if (!ts.isCallExpression(call) || !isHttpHelper(stripParens(call.expression))) return null;
+	const options = call.arguments.length === 1 ? stripParens(call.arguments[0]) : undefined;
+	if (options === undefined || !ts.isObjectLiteralExpression(options)) {
+		return 'options that are not an object literal';
+	}
+	for (const p of options.properties) {
+		if (!ts.isPropertyAssignment(p) && !ts.isShorthandPropertyAssignment(p)) {
+			return 'options with a spread or a method';
+		}
+		if (!ts.isIdentifier(p.name) && !ts.isStringLiteral(p.name)) return 'a computed option name';
+		const name = p.name.text;
+		if (!HTTP_OPTIONS.has(name)) return `the option \`${name}\``;
+		const value = ts.isPropertyAssignment(p) ? stripParens(p.initializer) : undefined;
+		if (
+			name === 'method' &&
+			!(
+				value !== undefined &&
+				(ts.isStringLiteral(value) || ts.isNoSubstitutionTemplateLiteral(value))
+			)
+		) {
+			return 'a computed method';
+		}
+		if (
+			name === 'ignoreHttpStatusErrors' &&
+			value?.kind !== ts.SyntaxKind.TrueKeyword &&
+			value?.kind !== ts.SyntaxKind.FalseKeyword
+		) {
+			return '`ignoreHttpStatusErrors` that is not true or false';
+		}
+	}
+	return options;
+}
 
 /** Globals of the subset that code can name (spec section 4.3). */
 const SUBSET_GLOBALS = new Set([
@@ -274,6 +361,26 @@ const DATE_READERS = new Set([
 	'toUTCString',
 ]);
 
+/** Options of \`toLocaleString\` that only the format of a date reads. */
+const DATE_FORMAT_OPTIONS = new Set([
+	'dateStyle',
+	'timeStyle',
+	'weekday',
+	'era',
+	'year',
+	'month',
+	'day',
+	'dayPeriod',
+	'hour',
+	'minute',
+	'second',
+	'fractionalSecondDigits',
+	'hour12',
+	'hourCycle',
+	'timeZoneName',
+	'calendar',
+]);
+
 /** Methods with another name in the subset. */
 const METHOD_ALIASES: Record<string, string> = {
 	trimLeft: 'trimStart',
@@ -415,6 +522,16 @@ function isNewDate(e: ts.Expression | undefined): boolean {
 	if (!e) return false;
 	const x = stripParens(e);
 	return ts.isNewExpression(x) && ts.isIdentifier(x.expression) && x.expression.text === 'Date';
+}
+
+/** `new Date(…)`, or a choice between two such values: the variable that holds it is a Date. */
+function isDateInit(e: ts.Expression | undefined): boolean {
+	if (!e) return false;
+	const x = stripParens(e);
+	return (
+		isNewDate(x) ||
+		(ts.isConditionalExpression(x) && isDateInit(x.whenTrue) && isDateInit(x.whenFalse))
+	);
 }
 
 /** True when `e` makes a new array or object, so changing it changes no input. */
@@ -714,6 +831,75 @@ function provesReadOnly(root: ts.Node, checker: ts.TypeChecker, mode: CodeMode):
 		if (sym === undefined || !ownVars.has(sym) || otherVars.has(sym)) return false;
 	}
 	return true;
+}
+
+/**
+ * True when the code can make or change the binary data of an item. Every use of the name
+ * `binary` counts, but a read of a member of an entry (`item.binary.data.fileName`): the
+ * map or an entry as a value can go into a result or get a change later.
+ */
+function writesBinary(root: ts.Node): boolean {
+	const named = (x: ts.Node): boolean =>
+		(ts.isIdentifier(x) || ts.isStringLiteralLike(x)) && x.text === 'binary';
+	const isAccess = (x: ts.Node): x is ts.PropertyAccessExpression | ts.ElementAccessExpression =>
+		ts.isPropertyAccessExpression(x) || ts.isElementAccessExpression(x);
+	/** The access of which `x` is the object, through parentheses. */
+	const memberOf = (x: ts.Node): ts.Node | null => {
+		let child = x;
+		let parent = x.parent;
+		while (ts.isParenthesizedExpression(parent) || ts.isNonNullExpression(parent)) {
+			child = parent;
+			parent = parent.parent;
+		}
+		return isAccess(parent) && parent.expression === child ? parent : null;
+	};
+	const written = (x: ts.Node): boolean => {
+		const p = x.parent;
+		return (
+			(ts.isBinaryExpression(p) &&
+				p.left === x &&
+				p.operatorToken.kind >= ts.SyntaxKind.FirstAssignment &&
+				p.operatorToken.kind <= ts.SyntaxKind.LastAssignment) ||
+			ts.isDeleteExpression(p) ||
+			ts.isPrefixUnaryExpression(p) ||
+			ts.isPostfixUnaryExpression(p) ||
+			(ts.isCallExpression(p) && p.expression === x)
+		);
+	};
+	let found = false;
+	const visit = (x: ts.Node): void => {
+		if (found) return;
+		if (
+			(ts.isPropertyAssignment(x) ||
+				ts.isShorthandPropertyAssignment(x) ||
+				ts.isMethodDeclaration(x) ||
+				ts.isBindingElement(x)) &&
+			((x.name !== undefined && named(x.name)) ||
+				(ts.isBindingElement(x) && x.propertyName !== undefined && named(x.propertyName)))
+		) {
+			found = true;
+			return;
+		}
+		if (ts.isIdentifier(x) && x.text === '$binary') {
+			found = true;
+			return;
+		}
+		const isBinary =
+			(ts.isPropertyAccessExpression(x) && x.name.text === 'binary') ||
+			(ts.isElementAccessExpression(x) && named(x.argumentExpression));
+		if (isBinary) {
+			// \`X.binary.<entry>.<member>\`, read: the only use that changes nothing.
+			const entry = memberOf(x);
+			const member = entry === null ? null : memberOf(entry);
+			if (member === null || written(member)) {
+				found = true;
+				return;
+			}
+		}
+		ts.forEachChild(x, visit);
+	};
+	visit(root);
+	return found;
 }
 
 /** Translates the code. See the file comment. */
@@ -1177,6 +1363,85 @@ export function translateCode(input: CodeNativeInput): TranslateResult {
 
 	/** True when the code uses Luxon: then DateTime methods and getters become helpers. */
 	const usesLuxon = /\$now\b|\$today\b|\bDateTime\b/.test(input.code);
+	/**
+	 * The code calls `this.helpers.httpRequest`. A body of the type `multipart/form-data` has no
+	 * native form, and the type can be a computed text, so code with that text stays in the host.
+	 * Code with a strict mode directive stays there too.
+	 */
+	const usesHttp =
+		!input.nodeCode &&
+		/\bhelpers\s*\.\s*httpRequest\b/.test(input.code) &&
+		!/multipart\/form-data/i.test(input.code) &&
+		// In strict mode, \`this\` of a called function is undefined.
+		!/use strict/.test(input.code);
+	/** `async` and `await` stay as they are: the code makes requests. */
+	const keepsAsync = input.nodeCode !== undefined || usesHttp;
+	/** True when `id` names a local async function. */
+	const isAsyncFunction = (id: ts.Identifier): boolean => {
+		const declarations = checker.getSymbolAtLocation(id)?.declarations ?? [];
+		return (
+			declarations.length === 1 &&
+			declarations.every((d) => {
+				const fn = ts.isVariableDeclaration(d) && d.initializer ? stripParens(d.initializer) : d;
+				return (
+					(ts.isFunctionDeclaration(fn) || ts.isArrowFunction(fn) || ts.isFunctionExpression(fn)) &&
+					(fn.modifiers ?? []).some((m) => m.kind === ts.SyntaxKind.AsyncKeyword)
+				);
+			})
+		);
+	};
+	/**
+	 * True when `this` at `n` is the context of the Code node for certain, so `this.helpers`
+	 * is the helpers of n8n. The code of a Code node is not in strict mode: `this` is the
+	 * context at the top, in arrow functions, and in a function declaration that the code only
+	 * calls by its name. In a method, or in a function that the code uses as a value, `this`
+	 * can be another value.
+	 */
+	const thisIsContext = (n: ts.Node): boolean => {
+		for (let x: ts.Node | undefined = n.parent; x !== undefined; x = x.parent) {
+			if (x === root) return true;
+			if (!isFunctionNode(x) || ts.isArrowFunction(x)) continue;
+			if (!ts.isFunctionDeclaration(x) || x.name === undefined) return false;
+			const name = x.name;
+			const sym = checker.getSymbolAtLocation(name);
+			if (sym === undefined || (sym.declarations ?? []).length !== 1) return false;
+			let onlyCalls = true;
+			const scan = (y: ts.Node): void => {
+				if (!onlyCalls) return;
+				if (ts.isIdentifier(y) && y.text === name.text && y !== name && !isNameOf(y)) {
+					const parent = y.parent;
+					const direct =
+						ts.isCallExpression(parent) &&
+						parent.expression === y &&
+						checker.getSymbolAtLocation(y) === sym;
+					if (!direct) onlyCalls = false;
+				}
+				ts.forEachChild(y, scan);
+			};
+			scan(root);
+			if (!onlyCalls) return false;
+		}
+		return false;
+	};
+
+	/**
+	 * What an `await` waits for in code that makes requests: a request (`http`), a call of a
+	 * local async function or `Promise.all` (`call`), or a value that is not a promise (null).
+	 */
+	const awaited = (n: ts.AwaitExpression): 'http' | 'call' | null => {
+		if (!usesHttp) return null;
+		if (httpRequestOptions(n) !== null) return 'http';
+		const call = stripParens(n.expression);
+		if (!ts.isCallExpression(call)) return null;
+		const callee = stripParens(call.expression);
+		if (ts.isIdentifier(callee)) return isAsyncFunction(callee) ? 'call' : null;
+		return ts.isPropertyAccessExpression(callee) &&
+			callee.name.text === 'all' &&
+			ts.isIdentifier(callee.expression) &&
+			callee.expression.text === 'Promise'
+			? 'call'
+			: null;
+	};
 	/** The default zone of Luxon, as code. */
 	const dz = JSON.stringify(input.timezone ?? DEFAULT_TIMEZONE);
 
@@ -1472,6 +1737,15 @@ export function translateCode(input: CodeNativeInput): TranslateResult {
 		const entry = tableEntry(name, a);
 		const typedDate = isDateValue(recv);
 		const isDate = name !== 'toLocaleString' || typedDate;
+		if (!isDate && Object.keys(a.options).some((k) => DATE_FORMAT_OPTIONS.has(k))) {
+			// The options are those of a date, but the value has no known kind: a Date that went
+			// through an untyped place is text in native code, and text has no date format.
+			block(
+				'Date: toLocaleString of a value of unknown kind',
+				'`toLocaleString` with date options needs a value that is a Date for certain.',
+			);
+			return true;
+		}
 		if (!entry || (isDate && !entry.date) || (!isDate && !entry.num && !entry.date)) {
 			block(
 				'locale formatting outside the table',
@@ -1697,8 +1971,10 @@ export function translateCode(input: CodeNativeInput): TranslateResult {
 	const visit = (n: ts.Node): void => {
 		const errName = errTextNodes.get(n);
 		if (errName !== undefined) {
-			helpers.add('errText');
-			replaceNode(n, `errText(${errName})`);
+			// The error of a failed request is a plain object in v1: its text is another one.
+			const helper = usesHttp ? 'errTextOf' : 'errText';
+			helpers.add(helper);
+			replaceNode(n, `${helper}(${errName})`);
 			return;
 		}
 		const mc = methodChecks.get(n);
@@ -1714,7 +1990,7 @@ export function translateCode(input: CodeNativeInput): TranslateResult {
 			);
 		}
 		if (ts.isTryStatement(n) && n.catchClause && readsError(n.catchClause)) {
-			const plan = planCatch(n, checker, { dateVars });
+			const plan = planCatch(n, checker, { dateVars, awaited, requests: usesHttp });
 			if (typeof plan === 'string') {
 				// Node code: the node compiler checks the error text against v1 (the verified list).
 				if (!input.nodeCode)
@@ -1777,15 +2053,43 @@ export function translateCode(input: CodeNativeInput): TranslateResult {
 			}
 			annotateParameters(n);
 			const asyncMod = n.modifiers?.find((m) => m.kind === ts.SyntaxKind.AsyncKeyword);
-			// An async function of node code keeps `async`: its result type is a promise.
-			if (!(asyncMod && input.nodeCode)) annotateReturn(n);
-			// No value in native code is a promise, so an async function runs to its end at once.
-			if (asyncMod && !input.nodeCode) replace(asyncMod.getStart(sf), asyncMod.getEnd() + 1, '');
+			// An async function of code that makes requests keeps `async`: its result type is a promise.
+			if (!(asyncMod && keepsAsync)) annotateReturn(n);
+			// No value in other native code is a promise, so an async function runs to its end at once.
+			if (asyncMod && !keepsAsync) replace(asyncMod.getStart(sf), asyncMod.getEnd() + 1, '');
 		}
 
 		if (ts.isAwaitExpression(n) && !input.nodeCode) {
-			const at = n.getStart(sf);
-			replace(at, n.expression.getStart(sf), '');
+			const kind = awaited(n);
+			if (kind === 'http') {
+				const options = httpRequestOptions(n);
+				if (!thisIsContext(n)) {
+					block(
+						'this.helpers.httpRequest',
+						'`this.helpers.httpRequest` in a function whose `this` can be another value has no native form.',
+					);
+					return;
+				}
+				if (typeof options === 'string' || options === null) {
+					block(
+						'this.helpers.httpRequest',
+						`\`this.helpers.httpRequest\` with ${options ?? 'this call'} has no native form.`,
+					);
+					return;
+				}
+				// \`await this.helpers.httpRequest({ … })\` becomes \`await __wf_http({ … })\` (\`emit.ts\`).
+				const call = stripParens(n.expression);
+				if (ts.isCallExpression(call)) {
+					replace(call.expression.getStart(sf), call.expression.getEnd(), HTTP);
+				}
+				for (const p of options.properties) visit(p);
+				return;
+			}
+			if (kind === null) {
+				// The value is not a promise: \`await\` gives the value itself.
+				const at = n.getStart(sf);
+				replace(at, n.expression.getStart(sf), '');
+			}
 		}
 
 		if (ts.isVariableStatement(n) && (n.declarationList.flags & ts.NodeFlags.BlockScoped) === 0) {
@@ -1806,9 +2110,9 @@ export function translateCode(input: CodeNativeInput): TranslateResult {
 			const loopHead =
 				ts.isVariableDeclarationList(n.parent) &&
 				(ts.isForOfStatement(n.parent.parent) || ts.isForInStatement(n.parent.parent));
-			if (blockScoped && !loopHead && !n.type && !isNewDate(n.initializer)) {
+			if (blockScoped && !loopHead && !n.type && !isDateInit(n.initializer)) {
 				insert(n.name.getEnd(), ': Json', 0);
-			} else if (blockScoped && isNewDate(n.initializer) && ts.isIdentifier(n.name)) {
+			} else if (blockScoped && isDateInit(n.initializer) && ts.isIdentifier(n.name)) {
 				const sym = checker.getSymbolAtLocation(n.name);
 				if (sym) dateVars.add(sym);
 			}
@@ -1942,24 +2246,6 @@ export function translateCode(input: CodeNativeInput): TranslateResult {
 				for (const p of starts) open(p.getStart(sf), '}, {');
 				closing(n.getEnd(), n.getEnd(), '])', o);
 			}
-		}
-		if (
-			!input.nodeCode &&
-			(ts.isPropertyAssignment(n) || ts.isShorthandPropertyAssignment(n)) &&
-			ts.isIdentifier(n.name) &&
-			n.name.text === 'binary'
-		) {
-			// The host adds sizes to binary data that code makes; native code does not.
-			block('binary data', 'The code makes binary data.');
-		}
-		if (
-			!input.nodeCode &&
-			ts.isBinaryExpression(n) &&
-			n.operatorToken.kind === ts.SyntaxKind.EqualsToken &&
-			ts.isPropertyAccessExpression(n.left) &&
-			n.left.name.text === 'binary'
-		) {
-			block('binary data', 'The code makes binary data.');
 		}
 		if (ts.isForInStatement(n)) {
 			// For plain JSON objects and arrays, `for...in` visits the keys of `Object.keys`.
@@ -2536,7 +2822,16 @@ export function translateCode(input: CodeNativeInput): TranslateResult {
 					block('$items', '`$items` has no native form.');
 					return false;
 				}
-				const nodeName = stringArgument(parent);
+				if (parent.arguments.length === 0 && input.itemsOfFirstOnly !== undefined) {
+					// As v1: the input items, and only the first one when the node before runs once.
+					replaceNode(parent, input.itemsOfFirstOnly ? `${ITEMS}.slice(0, 1)` : ITEMS);
+					return false;
+				}
+				// \`$items(name, 0)\`: output 0 is the default, so it is \`$items(name)\`.
+				const [first, second] = parent.arguments;
+				const firstOutput =
+					parent.arguments.length === 2 && ts.isNumericLiteral(second) && second.text === '0';
+				const nodeName = firstOutput ? constText(first) : stringArgument(parent);
 				if (nodeName === null) {
 					block('$items() without a node name', '`$items()` has no native form.');
 					return false;
@@ -2649,6 +2944,17 @@ export function translateCode(input: CodeNativeInput): TranslateResult {
 			replaceNode(n, fnValue);
 			return false;
 		}
+		// \`await Promise.all(list.map(async (x) => …))\` of code that makes requests: the compiler
+		// accepts only this form, and the requests start in the order of the list, as in v1.
+		const awaitedAll =
+			usesHttp &&
+			name === 'Promise' &&
+			member &&
+			parent.name.text === 'all' &&
+			ts.isCallExpression(parent.parent) &&
+			parent.parent.expression === parent &&
+			ts.isAwaitExpression(parent.parent.parent);
+		if (awaitedAll) return true;
 		const host = own(HOST_GLOBALS, name);
 		if (host) {
 			block(host, `\`${name}\` has no native form.`);
@@ -2757,6 +3063,8 @@ export function translateCode(input: CodeNativeInput): TranslateResult {
 		nodes,
 		helpers,
 		mutates,
+		usesHttp,
+		writesBinary: !input.nodeCode && writesBinary(root),
 		readOnly: provesReadOnly(root, checker, input.mode),
 		usesFirstJson,
 		nondeterministic,

@@ -76,6 +76,24 @@ export function project(
 	return builder.canvas;
 }
 
+/**
+ * True when the `http` call is the request function that the converter gives to the code of
+ * a Code node (`__wf_http`, `convert/code-native/emit.ts`).
+ */
+function isCodeRequest(call: ts.CallExpression): boolean {
+	for (let n: ts.Node | undefined = call.parent; n !== undefined; n = n.parent) {
+		if (ts.isFunctionLike(n)) {
+			const declaration = n.parent;
+			return (
+				ts.isVariableDeclaration(declaration) &&
+				ts.isIdentifier(declaration.name) &&
+				declaration.name.text === '__wf_http'
+			);
+		}
+	}
+	return false;
+}
+
 class CanvasBuilder {
 	readonly canvas: Canvas = { nodes: [], connections: {} };
 
@@ -501,6 +519,13 @@ class CanvasBuilder {
 				break;
 			}
 			case 'http':
+				if (isCodeRequest(call)) {
+					// The request of a Code node that runs as plain code: the node is the Code node.
+					type = 'n8n-nodes-base.code';
+					typeVersion = 2;
+					parameters = {};
+					break;
+				}
 				type = 'n8n-nodes-base.httpRequest';
 				typeVersion = 4;
 				break;
