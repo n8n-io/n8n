@@ -590,6 +590,8 @@ export interface HttpRequest {
 	 * the HTTP Request node of n8n does. A request to another host fails, and nothing is sent.
 	 */
 	allowedDomains?: boolean;
+	/** Total time limit of the request in ms (spec 7.1). The runtime default is 300,000. */
+	timeoutMs?: number;
 }
 
 /** A part of a multipart body: a text field, or a file (`binary`, n8n's binary form). */

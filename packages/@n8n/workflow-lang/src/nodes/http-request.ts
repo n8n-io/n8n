@@ -45,6 +45,15 @@ interface HttpRequestParameters {
 	 * 4.3 send the credential to another origin after a redirect, and the other versions do not.
 	 */
 	sendCredentialsOnCrossOriginRedirect?: boolean;
+	/**
+	 * The largest number of redirects that the node follows (`options.redirect` of v1). The
+	 * default is 21. With 0 the node follows no redirect.
+	 */
+	redirects?: number;
+	/** `options.timeout` of v1: the time limit of each request in ms. */
+	timeoutMs?: number;
+	/** How the query goes into the URL: v1 writes it with the qs library (`brackets`). */
+	qsFormat?: 'repeat' | 'brackets';
 	/** The n8n credential behind `credential`. */
 	credentialId?: string;
 	/** The n8n credential type behind `credential`. */
@@ -572,10 +581,12 @@ export default defineNode<HttpRequestParameters>({
 				url,
 				headers: withAccept(textValues(headers), options, version),
 				qs: query,
+				qsFormat: parameters.qsFormat,
 				body,
 				credential,
 				tokenExpiredStatusCode,
 				allowedDomains: true,
+				timeoutMs: parameters.timeoutMs,
 			});
 			const items = responseItems(
 				pageResponse.body,
@@ -612,6 +623,7 @@ export default defineNode<HttpRequestParameters>({
 				url: parameters.url,
 				headers: sent.headers,
 				qs: parameters.qs ?? {},
+				qsFormat: parameters.qsFormat,
 				body: sent.body,
 				multipart: sent.multipart,
 				credential,
@@ -619,10 +631,11 @@ export default defineNode<HttpRequestParameters>({
 				allowedDomains: true,
 				// The node sends the request of each redirect itself, with the rules of the v1 node.
 				followRedirects: false,
+				timeoutMs: parameters.timeoutMs,
 			});
 		} catch (error) {
-			if (!continues) throw error;
-			return [failedRequestItem(error, version)];
+			if (!continues) throw requestError(error);
+			return [failedRequestItem(error, version, false, parameters.timeoutMs)];
 		}
 		const sendsCredentials =
 			parameters.sendCredentialsOnCrossOriginRedirect ?? (version >= 3 && version < 4.4);
@@ -630,7 +643,8 @@ export default defineNode<HttpRequestParameters>({
 		// 307 and 308 keep the method and the body.
 		let url = parameters.url;
 		let current = method;
-		for (let hop = 0; hop < 21; hop++) {
+		const limit = parameters.redirects ?? 21;
+		for (let hop = 0; hop < limit; hop++) {
 			const status = response.status;
 			const location = response.headers.location;
 			if (![301, 302, 303, 307, 308].includes(status) || typeof location !== 'string') break;
@@ -658,13 +672,75 @@ export default defineNode<HttpRequestParameters>({
 					tokenExpiredStatusCode,
 					allowedDomains: true,
 					followRedirects: false,
+					timeoutMs: parameters.timeoutMs,
 				});
 			} catch (error) {
-				if (!continues) throw error;
-				return [failedRequestItem(error, version, true)];
+				if (!continues) throw requestError(error);
+				return [failedRequestItem(error, version, true, parameters.timeoutMs)];
 			}
 		}
 		const status = response.status;
+		if (status >= 300 && status < 400) {
+			// A redirect that the node does not follow. After the largest number of redirects,
+			// v1 fails with the error of its HTTP client, also with "never error".
+			if (limit > 0 && typeof response.headers.location === 'string') {
+				const message = 'Maximum number of redirects exceeded';
+				if (continues) {
+					const item: Item = {
+						error: {
+							message,
+							name: 'Error [ERR_FR_TOO_MANY_REDIRECTS]',
+							code: 'ERR_FR_TOO_MANY_REDIRECTS',
+						},
+					};
+					if (version >= 4.5) {
+						item.details = {
+							message,
+							httpCode: 'ERR_FR_TOO_MANY_REDIRECTS',
+							body: null,
+							context: { itemIndex: 0 },
+						};
+					}
+					return [item];
+				}
+				// oxlint-disable-next-line typescript/only-throw-error
+				throw {
+					name: 'NodeApiError',
+					message,
+					description: '',
+					httpCode: 'ERR_FR_TOO_MANY_REDIRECTS',
+				};
+			}
+			// Each other status from 300 to 399 is an error of v1: n8n has no text for it, so
+			// the message is the message of the HTTP client.
+			if (options.neverError !== true) {
+				const message = `${status} - ${JSON.stringify(bodyText(response.body))}`;
+				const description = errorDescription(response.body);
+				if (continues) {
+					const item: Item = {
+						error: { message, name: 'AxiosError', code: 'ERR_BAD_RESPONSE', status },
+					};
+					if (version >= 4.5) {
+						const details: Item = {
+							message,
+							httpCode: String(status),
+							body: response.body,
+							context: { itemIndex: 0 },
+						};
+						if (description !== undefined) details.description = description;
+						item.details = details;
+					}
+					return [item];
+				}
+				// oxlint-disable-next-line typescript/only-throw-error
+				throw {
+					name: 'NodeApiError',
+					message,
+					description: description ?? '',
+					httpCode: String(status),
+				};
+			}
+		}
 		if (status >= 400 && options.neverError !== true) {
 			if (continues) {
 				const reason = requestReason(
@@ -722,12 +798,59 @@ function refusedDomainItem(message: string, redirected: boolean): Item | undefin
 	};
 }
 
-/** The item of a request that the runtime reports as a failure (`ctx.http` throws). */
-function failedRequestItem(error: unknown, version: number, redirected = false): Item {
+/** The message of n8n for a request that reached its time limit (`ECONNABORTED`). */
+const TIMEOUT_MESSAGE = 'The connection was aborted, perhaps the server is offline';
+
+/** True for the error of the runtime for a request that reached its time limit (spec 7.1). */
+function timedOut(message: string): boolean {
+	return message.indexOf('the request timed out after') >= 0;
+}
+
+/** The error of a failed request as the v1 node throws it. */
+function requestError(error: unknown): unknown {
 	const message =
 		typeof error === 'object' && error !== null && 'message' in error
 			? String(error.message)
 			: String(error);
+	if (!timedOut(message)) return error;
+	return {
+		name: 'NodeApiError',
+		message: TIMEOUT_MESSAGE,
+		description: '',
+		httpCode: 'ECONNABORTED',
+	};
+}
+
+/** The item of a request that the runtime reports as a failure (`ctx.http` throws). */
+function failedRequestItem(
+	error: unknown,
+	version: number,
+	redirected = false,
+	timeoutMs?: number,
+): Item {
+	const message =
+		typeof error === 'object' && error !== null && 'message' in error
+			? String(error.message)
+			: String(error);
+	if (timedOut(message)) {
+		// The error of v1's HTTP client for a request that reached its time limit.
+		const item: Item = {
+			error: {
+				message: `timeout of ${timeoutMs ?? 300000}ms exceeded`,
+				name: 'AxiosError',
+				code: 'ECONNABORTED',
+			},
+		};
+		if (version >= 4.5) {
+			item.details = {
+				message: TIMEOUT_MESSAGE,
+				httpCode: 'ECONNABORTED',
+				body: null,
+				context: { itemIndex: 0 },
+			};
+		}
+		return item;
+	}
 	const refused = refusedDomainItem(message, redirected);
 	if (refused !== undefined) return refused;
 	const status = failureStatus(message);

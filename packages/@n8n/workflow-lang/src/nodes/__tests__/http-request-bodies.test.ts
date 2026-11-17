@@ -2,7 +2,7 @@
  * Form bodies and raw bodies of the HTTP Request node against v1. Each case runs the v1
  * workflow in n8n's engine against a local server and the converted workflow on the reference
  * runner: the content type and the text of the body must be the same. Options that the
- * library node does not have (no redirects, a proxy, no certificate check) keep the v1 node
+ * library node does not have (a proxy, no certificate check) keep the v1 node
  * in the fallback host.
  */
 import { createServer, type Server } from 'node:http';
@@ -132,22 +132,6 @@ const CASES: Case[] = [
 ];
 
 const HOST: Case[] = [
-	{
-		name: 'a request that does not follow redirects',
-		version: 4.2,
-		parameters: { options: { redirect: { redirect: { followRedirects: false } } } },
-	},
-	{
-		name: 'version 3 with an empty redirect option',
-		version: 3,
-		parameters: { options: { redirect: { redirect: {} } } },
-	},
-	{ name: 'version 3 without the redirect option', version: 3, parameters: {} },
-	{
-		name: 'a limit of redirects',
-		version: 4.2,
-		parameters: { options: { redirect: { redirect: { followRedirects: true, maxRedirects: 3 } } } },
-	},
 	{
 		name: 'no certificate check',
 		version: 4.2,
