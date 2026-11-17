@@ -1605,13 +1605,20 @@ export const instanceAiAppSubjectSchema = z.object({
 export type InstanceAiAppSubject = z.infer<typeof instanceAiAppSubjectSchema>;
 
 /**
+ * An agent that a page hands off to a thread. A pending agent has no row yet.
+ * It has the same shape as the agent attachment, but only the subject binds.
+ */
+export const instanceAiAgentSubjectSchema = instanceAiAgentAttachmentSchema;
+export type InstanceAiAgentSubject = z.infer<typeof instanceAiAgentSubjectSchema>;
+
+/**
  * The resource that a thread starts on: the agent or the app of the page that
  * opened the thread. The Assistant agent binds it in the thread metadata, so
  * its tools work on that resource and the page finds the thread again. Add a
  * variant here, with its binding in `withThreadSubject`, for a new kind of page.
  */
 export const instanceAiThreadSubjectSchema = z.discriminatedUnion('type', [
-	instanceAiAgentAttachmentSchema,
+	instanceAiAgentSubjectSchema,
 	instanceAiAppSubjectSchema,
 ]);
 export type InstanceAiThreadSubject = z.infer<typeof instanceAiThreadSubjectSchema>;
