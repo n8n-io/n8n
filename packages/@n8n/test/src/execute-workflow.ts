@@ -25,9 +25,8 @@ import type {
 } from './execution-context';
 import { WorkflowTestResult } from './result';
 import { captureWebhookResponse } from './runtime/webhook-response';
+import { SubWorkflowState } from './sub-workflows/execution';
 import type { WorkflowHandle } from './workflow-set';
-
-const EXECUTION_ID = 'test-execution-1';
 
 let executing = false;
 
@@ -45,7 +44,22 @@ export async function executeWorkflow(
 
 	executing = true;
 	try {
-		const context = createExecutionContext(handle, options);
+		const subWorkflows: SubWorkflowState = new SubWorkflowState({
+			createContext: (child, executionId) =>
+				createExecutionContext(
+					child,
+					{ ...options, staticData: undefined },
+					subWorkflows,
+					executionId,
+				),
+			toFailure: (child, run) => child.fatalError ?? toNodeFailure(child, run),
+		});
+		const context = createExecutionContext(
+			handle,
+			options,
+			subWorkflows,
+			subWorkflows.nextExecutionId(),
+		);
 		const run = await guardNetwork(context, async () => await runEngine(context));
 		return toResult(context, run);
 	} finally {
@@ -56,6 +70,8 @@ export async function executeWorkflow(
 function createExecutionContext(
 	handle: WorkflowHandle,
 	options: ExecuteWorkflowOptions,
+	subWorkflows: SubWorkflowState,
+	executionId: string,
 ): ExecutionContext {
 	checkNodeTypesInstalled(handle);
 	const workflowData = toWorkflowData(handle.definition);
@@ -66,14 +82,16 @@ function createExecutionContext(
 	});
 	const runs: NodeRunLog = { open: [], completed: new Map() };
 	const setup: ExecutionSetup = {
-		executionId: EXECUTION_ID,
+		executionId,
 		options,
+		set: handle.set,
 		handle,
 		workflowData,
 		workflow,
 		runs,
-		hooks: createHooks(EXECUTION_ID, workflowData, runs),
-		redactions: [],
+		hooks: createHooks(executionId, workflowData, runs),
+		redactions: subWorkflows.redactions,
+		subWorkflows,
 	};
 	return Object.assign(setup, { additionalData: createAdditionalData(setup) });
 }
@@ -90,10 +108,11 @@ async function runEngine(context: ExecutionContext): Promise<IRun> {
 		},
 	});
 	const engine = new WorkflowExecute(context.additionalData, 'trigger', runExecutionData);
-	return await withClockAndEnv(
-		context.options,
-		async () => await engine.processRunExecutionData(context.workflow),
-	);
+	return await withClockAndEnv(context.options, async () => {
+		const run = await engine.processRunExecutionData(context.workflow);
+		await context.subWorkflows.settle(context);
+		return run;
+	});
 }
 
 function selectTrigger({ workflow, handle, options }: ExecutionContext): INode {
@@ -147,6 +166,8 @@ function toNodeFailure(context: ExecutionContext, run: IRun): WorkflowTestError 
 	if (!error) return undefined;
 	const node = ('node' in error ? error.node?.name : undefined) ?? failedNode(run);
 	if (node && continuesOnError(context.workflow.getNode(node))) return undefined;
+	const subWorkflowFailure = context.subWorkflows.failedCall(context, node);
+	if (subWorkflowFailure) return subWorkflowFailure;
 	const where = node ? `Node "${node}"` : `Workflow "${context.handle.name}"`;
 	return new WorkflowTestError('NODE_FAILED', `${where} failed: ${error.message}`, {
 		workflow: context.handle.name,

@@ -25,17 +25,6 @@ export function refuseUnmockedNode(context: ExecutionSetup, functions: IExecuteF
 	);
 }
 
-export function refuseSubWorkflow(context: ExecutionSetup, node: INode | undefined): never {
-	return failExecution(
-		context,
-		new WorkflowTestError(
-			'SUB_WORKFLOW_SOURCE_NOT_SUPPORTED',
-			`Node "${node?.name}" calls a sub-workflow, which a test cannot run. Mock the node with mockNode().`,
-			{ workflow: context.handle.name, node: node?.name },
-		),
-	);
-}
-
 function findRefusal(node: INode, functions: IExecuteFunctions): Refusal | undefined {
 	if (isPythonCode(node, functions)) {
 		return { code: 'CODE_NODE_NOT_MOCKED', reason: 'runs Python code, which a test cannot run' };

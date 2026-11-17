@@ -18,7 +18,7 @@ interface Guard {
 export async function guardNetwork<T>(root: ExecutionSetup, run: () => Promise<T>): Promise<T> {
 	const guard: Guard = { root, allowHttp: root.options.allowHttp ?? false };
 	const onNoMatch = (...args: unknown[]) => checkUnmatchedRequest(guard, args);
-	const onHttpRequest = (message: unknown) => recordClientRequest(guard.root, message);
+	const onHttpRequest = (message: unknown) => recordClientRequest(running(guard), message);
 	const onUndiciRequest = (message: unknown) => checkUndiciRequest(guard, message);
 
 	blockHosts(guard.allowHttp);
@@ -61,8 +61,9 @@ function checkUndiciRequest(guard: Guard, message: unknown) {
 	if (!isUndiciMessage(message)) return;
 	const { request } = message;
 	const url = new URL(request.path, request.origin);
-	const record = guard.root.runs.open.at(-1)?.record;
-	if (record) recordRequest(guard.root, record, toHttpRequest(request, url));
+	const context = running(guard);
+	const record = context.runs.open.at(-1)?.record;
+	if (record) recordRequest(context, record, toHttpRequest(request, url));
 	if (permits(guard.allowHttp, url.hostname)) return;
 	// undici 6 and 7 abort a request with this internal field before they send it.
 	request.error = failUnmocked(
@@ -72,17 +73,19 @@ function checkUndiciRequest(guard: Guard, message: unknown) {
 	);
 }
 
-function failUnmocked({ root }: Guard, request: string, reason: string) {
-	const node = root.runs.open.at(-1)?.node;
+function running({ root }: Guard) {
+	return root.subWorkflows.running(root);
+}
+
+function failUnmocked(guard: Guard, request: string, reason: string) {
+	const context = running(guard);
+	const node = context.runs.open.at(-1)?.node;
 	const error = new WorkflowTestError(
 		'HTTP_NOT_MOCKED',
-		`Node "${node}" sent ${redact(request, secretsToRedact(root))}, which ${reason}.`,
-		{
-			workflow: root.handle.name,
-			node,
-		},
+		`Node "${node}" sent ${redact(request, secretsToRedact(context))}, which ${reason}.`,
+		{ workflow: context.handle.name, node },
 	);
-	root.fatalError ??= error;
+	guard.root.fatalError ??= error;
 	return error;
 }
 

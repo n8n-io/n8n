@@ -4,7 +4,7 @@ import type { ExecutionSetup } from '../execution-context';
 import { TestCredentialsHelper } from '../instance-state/credentials-helper';
 import { createExternalSecretsProxy, createVariables } from '../instance-state/expression-values';
 import { startRunnerTask } from '../runtime/code-runner';
-import { refuseSubWorkflow } from '../runtime/refusals';
+import { executeSubWorkflow } from '../sub-workflows/execution';
 import { createNodeHandler } from './node-handler';
 
 const BASE_URL = 'http://localhost:5678';
@@ -18,10 +18,10 @@ export function createAdditionalData(context: ExecutionSetup): IWorkflowExecuteA
 		externalSecretsProxy: createExternalSecretsProxy(context),
 		variables: createVariables(context),
 		currentNodeExecutionIndex: 0,
-		executeWorkflow: async (_workflowInfo, _additionalData, { node }) =>
-			refuseSubWorkflow(context, node),
+		executeWorkflow: async (workflowInfo, _additionalData, options) =>
+			await executeSubWorkflow(context, workflowInfo, options),
 		startRunnerTask: async (...args) => await startRunnerTask(context, args),
-		getRunExecutionData: async () => undefined,
+		getRunExecutionData: async (executionId) => context.subWorkflows.executionData.get(executionId),
 		getRuntimeCredential: async () => undefined,
 		logAiEvent: () => {},
 		restApiUrl: `${BASE_URL}/rest`,
