@@ -23,6 +23,7 @@ import type { Fixture } from '../../reference/runner.ts';
 import { runReference } from '../../reference/runner.ts';
 import { runModule } from '../../testing/vm.ts';
 import { ENGINE_CASES, AI_HOST_CASES } from './ai-cases.ts';
+import { ERROR_ITEM_CASES } from './equivalence-cases.ts';
 import type { EquivalenceCase, NormalRequest, Recording } from './equivalence.ts';
 import { applyCredential, networkErrorText, normalizeRequest } from './equivalence.ts';
 
@@ -154,7 +155,9 @@ function traced(traces: Trace[], name: string) {
 describe.runIf(typesBuilt)('AI nodes through the converter, against n8n engine recordings', () => {
 	const registry = registryOf(loadCredentialTypes().types);
 
-	describe.each(ENGINE_CASES.map((c) => ({ ...c, label: c.name })))('$label', (c) => {
+	// The cases of the AI nodes, and the error items of the other library nodes.
+	const cases = [...ENGINE_CASES, ...ERROR_ITEM_CASES];
+	describe.each(cases.map((c) => ({ ...c, label: c.name })))('$label', (c) => {
 		const recording = recordings[c.name];
 
 		it('has a v1 recording of the result that the case names', () => {
@@ -223,8 +226,13 @@ describe.runIf(typesBuilt)('AI nodes through the converter, against n8n engine r
 			expect(node.error).toBe(recording.error);
 			expect(out.status).toBe(recording.error === undefined ? 'ok' : 'error');
 			if (recording.error === undefined) {
+				// A node that threw under a continue setting has no run data for its error output.
 				const outputs = recording.outputs ?? [];
-				expect(node.outputs).toEqual(outputs.length === 0 ? [[]] : outputs);
+				const given =
+					recording.nodeError !== undefined && node.outputs[1]?.length === 0
+						? node.outputs.slice(0, 1)
+						: node.outputs;
+				expect(given).toEqual(outputs.length === 0 ? [[]] : outputs);
 			}
 			for (const sub of c.subNodes ?? []) {
 				expect(traced(out.trace ?? [], sub.name).subRuns).toEqual(

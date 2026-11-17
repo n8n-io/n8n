@@ -2910,6 +2910,69 @@ const FAILED_REQUEST_CASES: EquivalenceCase[] = [
 	),
 ];
 
+/**
+ * The item that v1 gives for an input item that failed, under "continue" and under "continue
+ * (using error output)". Each case has two input items: the request of the first one fails.
+ * The recorder runs them in n8n's engine, and `ai-cluster.test.ts` runs them through the
+ * converter and compares the items of each output.
+ */
+function errorItems(
+	base: string,
+	failure: EquivalenceCase['responses'] = [{ status: 400, body: FAILURE_BODY }],
+	after: EquivalenceCase['responses'] | undefined = undefined,
+): EquivalenceCase[] {
+	const found = [...handPorted, ...HTTP_ERROR_CASES, ...MICROSOFT_TEAMS_CASES].find(
+		(c) => c.name === base,
+	);
+	if (!found) throw new Error(`no case ${base}`);
+	const { expectedError: _expected, ...rest } = found;
+	const one: EquivalenceCase = {
+		...rest,
+		items: found.items ?? [{ a: 1 }, { a: 2 }],
+		responses: [...failure, ...(after ?? found.responses)],
+	};
+	return [
+		{
+			...one,
+			name: `${base}: error item, continue`,
+			settings: { onError: 'continueRegularOutput' },
+		},
+		{
+			...one,
+			name: `${base}: error item, error output`,
+			settings: { onError: 'continueErrorOutput' },
+		},
+	];
+}
+
+const done = [{ status: 204, body: '' }];
+
+export const ERROR_ITEM_CASES: EquivalenceCase[] = [
+	...errorItems('telegram message.sendMessage no attribution'),
+	...errorItems('telegram message.sendMessage no attribution', [
+		{ status: 400, body: FAILURE_TEXT },
+	]).map((c) => ({
+		...c,
+		name: `${c.name}, text body`,
+	})),
+	...errorItems('gmail message.delete'),
+	...errorItems('gmail draft.create with an address that has no at sign', [], []),
+	...errorItems('supabase row.get'),
+	...errorItems('supabase row.create define below for all items'),
+	...errorItems('supabase row.update define below', [], []).map((c) => ({
+		...c,
+		parameters: { ...c.parameters, filters: {} },
+	})),
+	...errorItems('googleDrive file.deleteFile for good'),
+	...errorItems('notion databasePage.create'),
+	...errorItems('slack reaction.add', [{ body: { ok: false, error: 'channel_not_found' } }]),
+	// The router of the v1 node catches the failure for all items.
+	...errorItems('googleSheets failed request 404', []),
+	...errorItems('googleCalendar failed request 404', undefined, done),
+	...errorItems('microsoftOutlook failed request 404', undefined, done),
+	...errorItems('microsoftTeams task.get status 404', undefined, [{ body: { id: 'task-2' } }]),
+];
+
 export const EQUIVALENCE_CASES: EquivalenceCase[] = [
 	...declarative,
 	...handPorted,
@@ -2924,4 +2987,5 @@ export const EQUIVALENCE_CASES: EquivalenceCase[] = [
 	...ANTHROPIC_CASES,
 	...GEMINI_CASES,
 	...ENGINE_CASES,
+	...ERROR_ITEM_CASES,
 ];

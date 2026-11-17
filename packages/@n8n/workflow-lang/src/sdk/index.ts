@@ -697,6 +697,12 @@ export interface ApiError extends Error {
 	/** The HTTP status as text. */
 	httpCode?: string;
 	description?: unknown;
+	/**
+	 * True when the v1 node throws this error outside its own handling of a failed item
+	 * (`this.continueOnFail()`). Under a continue setting, n8n's engine then drops the output
+	 * of the node and passes all input items on output 0 (`handleNodeExecutionError`).
+	 */
+	wholeNode?: boolean;
 }
 
 /** The keys of a message in an error answer, in the order of n8n-workflow (POSSIBLE_ERROR_MESSAGE_KEYS). */
@@ -863,5 +869,12 @@ export function operationError(message: string, description?: string): ApiError 
 	const failure: ApiError = new Error(message);
 	failure.name = 'NodeOperationError';
 	if (description !== undefined && description !== '') failure.description = description;
+	return failure;
+}
+
+/** An `operationError` that the v1 node throws outside its handling of a failed item. */
+export function wholeNodeError(message: string): ApiError {
+	const failure = operationError(message);
+	failure.wholeNode = true;
 	return failure;
 }

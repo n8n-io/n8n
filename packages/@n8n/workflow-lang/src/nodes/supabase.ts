@@ -14,7 +14,13 @@
  * from v1: v1 removes one slash at the end of the host. This node does not,
  * so a host that ends with a slash gives a URL with two slashes.
  */
-import { apiError, defineNode, type FailedResponse, type Item } from '@n8n/workflow-lang';
+import {
+	apiError,
+	defineNode,
+	wholeNodeError,
+	type FailedResponse,
+	type Item,
+} from '@n8n/workflow-lang';
 
 interface Condition {
 	keyName?: unknown;
@@ -359,7 +365,8 @@ export default defineNode<SupabaseParameters>({
 			const qs: Record<string, unknown> = {};
 			if (operation === 'get') {
 				if (conditions.length === 0) {
-					throw new Error('At least one select condition must be defined');
+					// v1 throws this error before its `try` for the item.
+					throw wholeNodeError('At least one select condition must be defined');
 				}
 				// buildGetQuery: the last condition of a key wins.
 				for (const condition of conditions) {
@@ -370,7 +377,8 @@ export default defineNode<SupabaseParameters>({
 			}
 			if (filterType === 'manual') {
 				if (operation === 'update' && conditions.length === 0) {
-					throw new Error('At least one select condition must be defined');
+					// v1 throws this error before its `try` for the item.
+					throw wholeNodeError('At least one select condition must be defined');
 				}
 				if (conditions.length > 0) {
 					if (matchType === 'allFilters' && operation === 'getAll') {

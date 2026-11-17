@@ -40,6 +40,7 @@ import {
 	errorRetry,
 	hostFormOf,
 	nodeCall,
+	errorItemIsExact,
 	tryCompiledNode,
 } from './steps.ts';
 import { isRecord, sourceNode, text } from './types.ts';
@@ -889,7 +890,14 @@ export function lowerLibrary(c: NodeContext): void {
 		mysqlInHost(c);
 	// A caller that does not make tokens for a service account runs the node in the host.
 	const noToken = account !== undefined && c.addCredentialMints === undefined;
-	const unsupported = (support && !librarySupports(support, adapted)) || older || noToken;
+	// The error item of some v1 nodes has no exact form in a library call.
+	const continues =
+		c.node.onError === 'continueRegularOutput' ||
+		c.node.onError === 'continueErrorOutput' ||
+		(!c.node.onError && c.node.continueOnFail === true);
+	const inexact = continues && !errorItemIsExact(type, adapted);
+	const unsupported =
+		(support && !librarySupports(support, adapted)) || older || noToken || inexact;
 	// The caller says that the node runs in the host (`NodeSources.runsInHost`): a limit of
 	// the runtime, or a token for a service account that the caller does not make. Without
 	// this, a workflow with such a library node had no conversion with the node compiler.
