@@ -38,7 +38,7 @@ const config = useAgentRegistryMcpConfig(modalData, () => emit('credential-delet
 const item = config.item;
 const title = config.title;
 const submitted = ref(false);
-const approvalRoute = ref<AgentApprovalRoute>(props.data.mcpServer.approvalRoute);
+const approvalRoute = ref<AgentApprovalRoute | undefined>(props.data.mcpServer.approvalRoute);
 const initialConnectionTimeoutMs =
 	props.data.mcpServer.connectionTimeoutMs ?? DEFAULT_AGENT_MCP_CONNECTION_TIMEOUT_MS;
 const draftSettings = ref<McpToolSettings>({

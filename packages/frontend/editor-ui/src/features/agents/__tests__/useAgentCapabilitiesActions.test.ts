@@ -107,6 +107,7 @@ function setup(
 }
 
 type ToolsModalData = {
+	tools: NonNullable<AgentJsonConfig['tools']>;
 	supportsToolApproval?: boolean;
 	approvalContext?: AgentHitlContext;
 	onConfirm: (payload: {
@@ -161,14 +162,14 @@ describe('useAgentCapabilitiesActions — tools modal host seam', () => {
 			workflowId: 'wf',
 		} as const;
 		modalData.approvalContext?.saveConfiguration(configuration, ['tool:custom:send']);
-		const tools = [
+		const tools: NonNullable<AgentJsonConfig['tools']> = [
 			{
 				type: 'custom',
 				id: 'send',
 				requireApproval: true,
 				approvalRoute: { type: 'configuration', configurationIds: ['review'] },
 			},
-		] as const;
+		];
 		expect(scheduleConfigUpdate).toHaveBeenCalledWith(
 			expect.objectContaining({ hitlConfigurations: [configuration], tools }),
 		);

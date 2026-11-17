@@ -1,5 +1,5 @@
-import { mount, flushPromises } from '@vue/test-utils';
-import { defineComponent } from 'vue';
+import { mount, flushPromises, type VueWrapper } from '@vue/test-utils';
+import { defineComponent, type ComponentPublicInstance } from 'vue';
 import { N8nTooltip, N8nCombobox2, N8nSelect2, N8nSwitch } from '@n8n/design-system';
 import type { AgentHitlConfiguration, AgentJsonConfig } from '@n8n/api-types';
 import { getAgentHitlChannels } from '../composables/useAgentApi';
@@ -86,7 +86,8 @@ function getSelect(wrapper: ReturnType<typeof render>, testId: string) {
 		.findAllComponents(N8nSelect2)
 		.find((component) => component.find(`[data-testid="${testId}"]`).exists());
 	if (!select) throw new Error(`Select ${testId} was not found`);
-	return select;
+	// N8nSelect2 is a generic SFC, so its type resolves to the DOM wrapper overload.
+	return select as unknown as VueWrapper<ComponentPublicInstance<Record<string, unknown>>>;
 }
 async function saveHint(wrapper: ReturnType<typeof render>) {
 	await wrapper.get('[data-testid="agent-hitl-save-trigger"]').trigger('focus');
@@ -620,7 +621,7 @@ it('renders a saved channel icon and label after loading without opening the sel
 	expect(getSelect(wrapper, 'agent-hitl-channel').props('disabled')).toBe(false);
 	expect(select.attributes('aria-expanded')).toBe('false');
 	expect(select.text()).toBe('Slack');
-	expect(select.get('[data-icon="slack"]').exists()).toBe(true);
+	expect(select.find('[data-icon="slack"]').exists()).toBe(true);
 });
 
 it('shows the expiry select before Before tools without helper text', async () => {

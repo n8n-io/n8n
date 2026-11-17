@@ -24,7 +24,11 @@ const config: AgentJsonConfig = {
 	model: 'test',
 	instructions: 'Help',
 	tools: [
-		{ type: 'node', name: 'send_message', node: { nodeType: 'slack', nodeTypeVersion: 1 } },
+		{
+			type: 'node',
+			name: 'send_message',
+			node: { nodeType: 'slack', nodeTypeVersion: 1, nodeParameters: {} },
+		},
 		{ type: 'workflow', workflow: 'Write records', name: 'Write' },
 		{ type: 'custom', id: 'custom' },
 	],
@@ -60,7 +64,7 @@ it('lists attached tools with icons and shows selected tools as removable pills'
 	expect(tags.map((tag) => tag.element.tagName)).toEqual(['SPAN', 'SPAN']);
 	expect(tags[0].text()).toContain('Send message');
 	expect(tags[0].get('[data-testid="node-icon"]').text()).toBe('slack');
-	expect(tags[1].get('[data-icon="workflow"]').exists()).toBe(true);
+	expect(tags[1].find('[data-icon="workflow"]').exists()).toBe(true);
 });
 
 it('adds tools from the plus menu and removes only the selected tool', async () => {

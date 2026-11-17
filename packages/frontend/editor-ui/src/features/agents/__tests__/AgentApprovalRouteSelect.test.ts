@@ -30,6 +30,7 @@ function render(modelValue?: AgentApprovalRoute) {
 	const config = ref<AgentJsonConfig>({
 		name: 'Agent',
 		model: 'test',
+		instructions: 'Help',
 		hitlConfigurations: configurations,
 	});
 	const saveConfiguration = vi.fn();
@@ -69,7 +70,7 @@ it('opens directly to review options with creation first and no input', async ()
 it('appends a review after existing pills and excludes selected reviews from the menu', async () => {
 	const { wrapper } = render({ type: 'configuration', configurationIds: ['workflow'] });
 	expect(wrapper.get('[data-testid="agent-review-pill"]').text()).toBe('Finance data check');
-	expect(wrapper.get('[data-testid="agent-review-pill"] [data-icon="workflow"]').exists()).toBe(
+	expect(wrapper.find('[data-testid="agent-review-pill"] [data-icon="workflow"]').exists()).toBe(
 		true,
 	);
 	await openMenu(wrapper);

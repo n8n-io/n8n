@@ -12,6 +12,7 @@ import { MODAL_CANCEL, MODAL_CONFIRM } from '@/app/constants';
 
 import AgentRegistryMcpConfigForm from '../components/AgentRegistryMcpConfigForm.vue';
 import AgentApprovalRouteSelect from '../components/AgentApprovalRouteSelect.vue';
+import McpToolPermissionsEditor from '@/features/shared/toolsConnection/McpToolPermissionsEditor.vue';
 import type { AgentRegistryMcpModalData } from '../composables/useAgentRegistryMcpConfig';
 
 const saveMock = vi.hoisted(() => vi.fn());
@@ -209,7 +210,7 @@ describe('AgentRegistryMcpConfigForm', () => {
 		const route = wrapper.getComponent(AgentApprovalRouteSelect);
 		expect(route.props('label')).toBe('agents.hitl.mcpRoute');
 		expect(route.props('modelValue')).toBeUndefined();
-		wrapper.getComponent('[data-testid="permissions-editor"]').vm.$emit('update:modelValue', {
+		wrapper.getComponent(McpToolPermissionsEditor).vm.$emit('update:modelValue', {
 			categories: { read: 'always_allow', write: 'always_allow' },
 		});
 		await wrapper.vm.$nextTick();

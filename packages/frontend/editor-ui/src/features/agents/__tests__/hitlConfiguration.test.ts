@@ -19,7 +19,11 @@ function config(): AgentJsonConfig {
 		instructions: 'Help',
 		hitlConfigurations: [configuration],
 		tools: [
-			{ type: 'node', name: 'Send', node: { nodeType: 'slack', nodeTypeVersion: 1 } },
+			{
+				type: 'node',
+				name: 'Send',
+				node: { nodeType: 'slack', nodeTypeVersion: 1, nodeParameters: {} },
+			},
 			{ type: 'workflow', workflow: 'Write', requireApproval: true, approvalRoute: route },
 			{
 				type: 'custom',
