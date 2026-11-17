@@ -498,107 +498,113 @@ the proposal:
 ## AI nodes: native library nodes (2026-11-17)
 
 The AI nodes (`@n8n/n8n-nodes-langchain`) are built on LangChain classes, callbacks and closures. The node
-compiler does not take them. Each AI node gets a hand-written library node (`src/nodes/`). The census is in
-`docs/ai-node-coverage.md`.
+compiler does not take them. Each AI node gets a hand-written library node (`src/nodes/`). The census and the
+current coverage are in `docs/ai-node-coverage.md`.
 
 ### Shape
 
-- A root AI node (chain, agent) gets its sub-nodes through `ai_*` connections. A library node has no
-  connections. The converter writes each supported sub-node into the parameters of the root
-  (`src/convert/ai-cluster.ts`): `aiModel` is the chat model. Later: `aiMemory`, `aiTools`, `aiParser`.
-- `nativeCluster` accepts only the shapes that have a proof. For each other shape it gives a reason, and the
-  whole cluster stays in the fallback host (`lowerAiNode`), as before. The invariant holds: a cluster that ran
-  on v1 runs.
-- The credential of the call is the credential of the model sub-node. The request names the secret with a
-  template (`Bearer {{$credentials.apiKey}}`) and sets `inject: false`, because the LangChain client sends
-  less than the credential type injects (no organization header).
-- A library node is one file. The request builder of a provider is in each root that uses it. When the agent
-  needs the same builders, move them to a shared library module (the compiler links one file for each node
-  type today; this needs a small linker change).
-- v1 gives each sub-node a run in the run data. With `trace: 'all'` the converter writes these runs after the
-  step (`$subRuns`), one run of the model for each item.
+- **One call for all items.** The v1 AI nodes handle the items themselves: batches, "continue on fail", and
+  n8n's "retry on fail" runs the whole node again. So a native AI node runs once for all input items. The
+  converter gives the parameters of each item in `batch` (`input.map(...)`).
+- **Vendor nodes** (`openAi`, `anthropic`, `googleGemini`; `VENDOR_NODES` in `src/convert/ai-cluster.ts`): the
+  library node makes the `{ error }` item of an item that fails under a "continue" setting, as the v1 router
+  does. The usual step code of the converter does the retry loop and the error output.
+- **Cluster roots** (`chainLlm`, `agent`): a root gets its sub-nodes through `ai_*` connections. A library node
+  has no connections. `nativeCluster` writes each supported sub-node into the parameters of the root: `aiModel`
+  is the chat model. v1 reads the parameters of the model for the first input item only, so the converter
+  evaluates them with the first item. `nativeCluster` accepts only the shapes that have a proof. For each
+  other shape it gives a reason, and the whole cluster stays in the fallback host (`lowerAiNode`).
+- **Result of a cluster root.** The library node gives one object: `items`, `runs` (the runs of the model
+  sub-node, with the error of a failed run) and `error`. It does not throw for its own failure. The converted
+  source traces the runs (`$subRuns`), runs v1's retry loop, then throws the error. So the run data has the
+  failed run of the model as v1 records it.
+- **Credential.** The credential of the call is the credential of the model sub-node. The LangChain client
+  of OpenAI sends the key and the custom header of the credential, and no organization. Without an
+  organization the injection of the credential type gives exactly that. With an organization the node names
+  the key itself (`inject: false`). The node reads one credential flag for this (`ctx.credentialFlag`). A
+  credential with an organization and a custom header has no proof: the guard of the flags names the node, and
+  the caller runs it in the host (`unprovenFlagNodes`).
+- **One file for two roots.** A library node is one file, and the compiler links one file for each node type.
+  A Tools Agent without tools is one call of the model, as the chain is. So `chain-llm.ts` is the library node
+  of both (`kind: 'agent'`), and the converter links it for the agent. When the agent gets tools, move the
+  request builders to a shared library module (this needs imports between library files in the linker).
 
 ### What v1 does, part by part (read from the node sources and from recordings)
 
 - **Parameters.** The `Workflow` constructor of n8n drops the parameters that the node type hides
   (`displayOptions`) and fills the defaults of the members of a fixed collection. The converter does the same
   for the root and for each sub-node (`hideParameters`).
+- **Expressions.** An expression that finds no value gives undefined; so does an expression that throws a
+  TypeError. The JSON value null stays null: a null prompt goes to the model as the text "null".
 - **Basic LLM Chain.** For each item: the message list (system, AI, user), then the prompt as a user message.
   No template variable applies to the text. One model call. The output is `{ text }` with the text trimmed.
-  With an output parser, the format instructions follow the prompt and the output is the parsed object. From
-  version 1.7 the items run in batches at the same time; the requests keep the item order.
+  From version 1.7 the items run in batches (default 5): a batch sends all its requests, then the first
+  failure in item order stops the node. A wait follows each batch (`delayBetweenBatches`).
+- **Tools Agent, versions 2 to 3.1, without tools.** The messages are: the system message when
+  `options.systemMessage` has a value (no default text), then the prompt. One model call with `stream: false`.
+  The output is `{ output }`: a Chat Completions answer as it is (not trimmed); the text parts of a Responses
+  answer joined and trimmed. `intermediateSteps` is an empty list with `options.returnIntermediateSteps`.
+  Batches as the chain, with a default size of 1. Before version 3 the agent refuses a model that asks for the
+  Responses API. Version 3 also stores the first output as execution custom data
+  (`autoSaveHighlightedData`); the native node does not (see the differences).
+- **Tools Agent, versions 1.6 to 1.9.** They ask the model for a stream (`stream: true`). Not native.
+- **Tools Agent with tools.** The system message, the chat history from the memory, the prompt, then the
+  scratchpad (tool calls and results). Each tool is a function schema of the provider. With an output parser
+  the agent adds the tool `format_final_json_response`. The loop stops at `options.maxIterations` (default 10)
+  with "Max iterations (N) reached...". Version 3 gives the tool calls to n8n's engine as requests; versions
+  1 and 2 run the tools inside LangChain's executor.
 - **OpenAI chat model (`lmChatOpenAi`).** LangChain `ChatOpenAI` with `fetch`. Version 1.3 uses the Responses
   API by default (`POST /responses`: `input` messages, `text: {}`, `max_output_tokens`). Versions 1 to 1.2 use
-  Chat Completions (`POST /chat/completions`: `messages`, `max_tokens`), but LangChain picks the Responses API
-  itself for some model names. For a reasoning model (`o1`, `gpt-5`, not `gpt-5-chat`) a system message has
-  the role `developer` and Chat Completions gets `max_completion_tokens`. `stream` is false. The headers are
-  the bearer token and `openai-platform`. The organization of the credential is not sent.
-- **Failures of the model call.** Status 400 to 407, 409 and 413: no second try; the message is the message
-  of n8n's `NodeApiError` for the status. Status 429: no second try; the message is the rate-limit message
-  of the OpenAI nodes. Other statuses: LangChain tries again `maxRetries` times (default 2) with a wait that
-  doubles from 1 second, then fails with the message of the OpenAI client (`500 <message>`).
-- **Vendor nodes (`openAi`, `anthropic`, `googleGemini`).** Plain HTTP with n8n's request helper and the
-  credential type. Without connected tools they send one request for each item. A failed request gives the
-  `NodeApiError` message for the status.
-- **Tools Agent (versions 1.6 to 3.1).** The prompt is: a system message (`options.systemMessage`, default
-  "You are a helpful assistant"; with an output parser the formatting instruction follows it), the chat
-  history from the memory, the user input, then the scratchpad (the tool calls and tool results of this run).
-  Each connected tool is a function schema of the provider. With an output parser, the agent adds the tool
-  `format_final_json_response`, and the model must call it with the answer. The loop: call the model; if the
-  answer has tool calls, run each tool, add the results, call again; stop at `options.maxIterations` (default
-  10) with the error "Max iterations (N) reached...". The output is `{ output }`, and `intermediateSteps`
-  with `options.returnIntermediateSteps`. With a memory, the agent loads the history before the call and
-  saves the input and the output after the answer. Version 3 gives the tool calls to n8n's engine as
-  requests, and the engine runs the tool nodes; versions 1 and 2 run the tools inside LangChain's executor.
-  Without tools and without a parser the agent is one model call.
-- **Streaming.** A compiled workflow has no stream to a chat client. Streaming applies in v1 only when the
-  trigger asks for it, so the native nodes send `stream: false` requests.
-- **Token usage.** v1 records the token usage on the run of the model sub-node, not in the output items.
-  The native node does not report it.
-
-### The agent as native code
-
-The agent is a loop in the language: build the request from the system message, the history, the input and
-the tool schemas; `ctx.http`; read the tool calls; run each tool; append the results; repeat up to
-`maxIterations`; apply the output parser; save the memory. Each tool call is a durable step, so a restart does
-not call a tool twice.
-
-- A tool that is a node (`*Tool`, `toolHttpRequest`) runs as the library or compiled form of that node, with
-  the arguments of the model in the place of the `$fromAI(...)` expressions.
-- A workflow tool (`toolWorkflow`) is a call of the sub-workflow function that the converter makes already.
-- A code tool (`toolCode`) is a compiled Code node. A calculator and "think" are pure functions.
-- A structured output parser checks the answer against the JSON schema of the node. This needs a JSON schema
-  check in the library (v1 uses Zod, made from the schema).
+  Chat Completions (`messages`, `max_tokens`), but LangChain picks the Responses API itself for some model
+  names. For a reasoning model (`o1`, `gpt-5`, not `gpt-5-chat`) a system message has the role `developer` and
+  Chat Completions gets `max_completion_tokens`. The headers are the bearer token and `openai-platform`.
+- **OpenRouter chat model.** The same client with the URL and key of its credential, without `openai-platform`.
+- **Failures of a model call.** Status 400 to 407, 409 and 413: no second try; the message is the message of
+  n8n's `NodeApiError` for the status. Status 429: no second try; the rate-limit message of the OpenAI nodes.
+  Other statuses: LangChain tries again `maxRetries` times (default 2). It waits 1 to 2 seconds (random)
+  before the second try, and doubles the wait for each later try. Then the message of the client
+  (`500 <message>`). The native node waits with `ctx.wait` and `ctx.random`.
+- **Vendor nodes.** n8n's request helper with the credential type. A failed request gives the `NodeApiError`
+  message for the status. The helper of `anthropic` and `googleGemini` sends a request again, once, after a
+  401 answer. `anthropic` asks again after a paused turn (three times at most).
+- **Token usage.** v1 records it on the run of the model sub-node, not in the output items. Not reported.
 
 ### The vendor simulator
 
 The test bed answers the provider APIs from a simulator, so the native node must send the request that v1
-sends. The equivalence cases prove the JSON of the body, the URL, the method and the headers that carry the
-credential. Headers that name the client library (`user-agent`, `x-stainless-*`) are not compared; a compiled
-node does not send them. Not checked in this work: how the simulator matches a request, and the answers that
-it gives for the Responses API (an answer part without `annotations` fails in v1 and in the native node).
+sends. The simulator is not on this machine. The proof here is the recording of the real v1 node in n8n's
+engine: for every case the test compares the method, the URL, the JSON body (key by key, with `stream`, the
+message order and each default) and the headers after the credential is applied. Headers that name the client
+library (`user-agent`, `x-stainless-*`, `accept`) are not compared; a compiled node does not send them.
 
-### Memory
+### Memory (decision, not built)
 
 Window buffer memory (`memoryBufferWindow`) keeps the last K exchanges of a session in the memory of the n8n
 process, keyed by workflow id and session key. It does not survive a restart of n8n. Decision: keep it in the
-workflow static data under the node name and the session key, with the same window. This survives restarts,
-which v1 does not promise, and a v1 run after a restart starts with an empty history. To stay equal to v1 in
-the test bed, an execution that starts with empty static data behaves as v1 after a start. Database memories
-(`memoryPostgresChat`, `memoryRedisChat`) need a service call (`ctx.service`) to the store; they stay in the
-host until that service exists.
+workflow static data under the node name and the session key, with the same window. Database memories
+(`memoryPostgresChat`, `memoryRedisChat`) can use the SQL effect or a service call.
 
-### Not native yet, and what each one needs
+### Known differences from v1 in the native nodes
 
-- Output parsers: the JSON schema check, and the auto-fix call of a second model.
-- Other chat models (`lmChatAnthropic`, `lmChatGoogleGemini`, `lmChatOpenRouter`, Azure): a request builder
-  and an answer reader each, proven with the recorder (the recorder already catches `fetch`).
-- A "continue" error setting on a root: the trace of a failed run of the model sub-node.
-- `options.reasoningEffort`, `responseFormat`, `textFormat` and built-in tools of the OpenAI model.
-- A custom header of the OpenAI credential: the native request needs a credential flag for it.
-- Vector stores with state in the process (`vectorStoreInMemory`): a store service. Document loaders and
-  text splitters with binary files: binary reads in the library and the splitter algorithms.
-- The wait between the tries of a failed model call (`ctx.wait`).
+- Agent version 3 and 3.1: v1 stores the first output as execution custom data. The native node does not.
+- An answer of the model with a tool call, for an agent without tools: v1 calls the model again. The native
+  node fails the item. A model has no tool to call there, so the case needs a faulty provider.
+- A network failure of a model request (no HTTP status) stops the node, also under a "continue" setting.
+- The custom error texts that v1 makes from the code of an OpenAI error in the vendor node were not seen in
+  the recorder (its failed answer has no error code at the place where the node looks).
+
+### Not native yet, in order of workflows
+
+1. Chat models `lmChatAnthropic`, `lmChatGoogleGemini`, Azure and others: a request builder and an answer
+   reader each (the recorder catches `fetch` for all of them). `lmChatAnthropic` has thinking modes and a
+   list of models that take no sampling parameters.
+2. Structured output parser: the JSON schema check, the format instructions, and the auto-fix call.
+3. Tools Agent versions 1.6 to 1.9: the answer is a stream (server-sent events).
+4. Tools Agent with tools, then window buffer memory.
+5. `informationExtractor`, `textClassifier` (a chain with a fixed prompt and a parser).
+6. Other operations of the vendor nodes (image, audio, document, file).
+7. `options.reasoningEffort`, `responseFormat`, `textFormat` and built-in tools of the OpenAI model.
+8. Vector stores, document loaders and text splitters.
 
 ## Phases
 
