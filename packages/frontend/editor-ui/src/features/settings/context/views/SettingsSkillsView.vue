@@ -1094,12 +1094,6 @@ onMounted(async () => {
 			size="small"
 			data-test-id="skills-view-tabs"
 		/>
-		<SkillCatalog
-			v-if="skillSyncEnabled && activeView === 'discover'"
-			:can-create="scopeOptions.length > 0"
-			:loading="uploadBusy"
-			@select="onCatalogSelect"
-		/>
 		<template v-if="activeView === 'installed'">
 			<div
 				v-if="showRecommendedEmptyState"
@@ -1338,6 +1332,15 @@ onMounted(async () => {
 				</template>
 			</SkillsTable>
 		</template>
+		<N8nHeading v-if="skillSyncEnabled && showRecommendedEmptyState" tag="h2" size="medium" bold>
+			{{ i18n.baseText('settings.context.skills.catalog.discover') }}
+		</N8nHeading>
+		<SkillCatalog
+			v-if="skillSyncEnabled && (activeView === 'discover' || showRecommendedEmptyState)"
+			:can-create="scopeOptions.length > 0"
+			:loading="uploadBusy"
+			@select="onCatalogSelect"
+		/>
 
 		<SkillSourceMoveDialog
 			v-if="skillSyncEnabled && movingSource"
