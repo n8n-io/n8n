@@ -10,7 +10,7 @@ import { ExecutionDataJsonStore } from '@/executions/execution-data/execution-da
 import { AgentProjectLookupProxy, FavoriteResourceResolverRegistry } from '@n8n/backend-services';
 import { SandboxSettingsService } from '@/services/sandbox-settings.service';
 import { AgentUsageProviderProxy } from '@/modules/workflow-index/agent-usage-provider-proxy.service';
-import { KnowledgeSandboxProviderRegistry } from '@/modules/knowledge/knowledge-sandbox-provider-registry';
+import { KnowledgeSandboxProviderProxy } from '@/modules/knowledge/knowledge-sandbox-provider-proxy';
 import { SkillUsageProxy } from '@/modules/skills';
 import { ServiceAccountUsageProxy } from '@/services/service-account-usage-proxy.service';
 
@@ -73,9 +73,9 @@ function setUpContainerForInit() {
 	const serviceAccountUsage = mock<AgentServiceAccountUsage>();
 	Container.set(ServiceAccountUsageProxy, serviceAccountUsageProxy);
 	Container.set(AgentServiceAccountUsage, serviceAccountUsage);
-	const knowledgeSandboxProviderRegistry = mock<KnowledgeSandboxProviderRegistry>();
+	const knowledgeSandboxProviderProxy = mock<KnowledgeSandboxProviderProxy>();
 	const knowledgeSandboxProvider = mock<AgentKnowledgeSandboxProvider>();
-	Container.set(KnowledgeSandboxProviderRegistry, knowledgeSandboxProviderRegistry);
+	Container.set(KnowledgeSandboxProviderProxy, knowledgeSandboxProviderProxy);
 	Container.set(AgentKnowledgeSandboxProvider, knowledgeSandboxProvider);
 	Container.set(FavoriteResourceResolverRegistry, mock<FavoriteResourceResolverRegistry>());
 	Container.set(AgentCredentialDependencyRepository, mock<AgentCredentialDependencyRepository>());
@@ -115,7 +115,7 @@ function setUpContainerForInit() {
 		discordIntegration,
 		whatsAppIntegration,
 		n8nChatIntegration,
-		knowledgeSandboxProviderRegistry,
+		knowledgeSandboxProviderProxy,
 		knowledgeSandboxProvider,
 		serviceAccountUsageProxy,
 		serviceAccountUsage,
@@ -233,14 +233,11 @@ describe('AgentsModule', () => {
 		});
 
 		it('registers the knowledge sandbox provider with the knowledge module', async () => {
-			const { knowledgeSandboxProviderRegistry, knowledgeSandboxProvider } =
-				setUpContainerForInit();
+			const { knowledgeSandboxProviderProxy, knowledgeSandboxProvider } = setUpContainerForInit();
 
 			await module.init();
 
-			expect(knowledgeSandboxProviderRegistry.register).toHaveBeenCalledWith(
-				knowledgeSandboxProvider,
-			);
+			expect(knowledgeSandboxProviderProxy.register).toHaveBeenCalledWith(knowledgeSandboxProvider);
 		});
 
 		it('tells core which agent acts as a service account', async () => {
