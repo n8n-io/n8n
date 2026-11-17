@@ -38,7 +38,7 @@ export class GmailTriggerVersionRule implements IBreakingChangeWorkflowRule {
 			{
 				action: 'Adjust Gmail Trigger nodes on versions below 1.4',
 				description:
-					'Replace each affected node with a new Gmail Trigger node, which uses version 1.4, and keep its name and connections. The settings below exist only on version 1.4. If a poll can return more than 10 emails and the workflow must process them at once, raise "Max Emails per Poll". If the workflow must run on drafts, enable "Include Drafts" in Filters. If it must run on sent or scheduled emails, use a Schedule Trigger with a Gmail "Get Many messages" operation instead, for example with the search "in:sent" or "in:scheduled". Add a Remove Duplicates node set to "Remove Items Processed in Previous Executions" on the message ID, so that later runs skip messages the workflow already processed. If the version 1.4 behavior is acceptable as it is, set the finding to Won\'t fix.',
+					'Replace each affected node with a new Gmail Trigger node, which uses version 1.4, and keep its name and connections. "Max Emails per Poll" exists only on version 1.4. If a poll can return more than 10 emails and the workflow must process them at once, raise "Max Emails per Poll". If the workflow must run on drafts, enable "Include Drafts" in Filters. If it must run on sent or scheduled emails, use a Schedule Trigger with a Gmail "Get Many messages" operation instead, for example with the search "in:sent" or "in:scheduled". Add a Remove Duplicates node set to "Remove Items Processed in Previous Executions" on the message ID, so that later runs skip messages the workflow already processed. If the version 1.4 behavior is acceptable as it is, set the finding to Won\'t fix.',
 			},
 		];
 	}
