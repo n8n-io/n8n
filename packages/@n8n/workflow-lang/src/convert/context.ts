@@ -105,6 +105,8 @@ export interface NodeContext {
 	addCredentialMints?(slot: string, mints: CredentialMint[]): void;
 	/** False when the runtime does not run `ctx.service` effects (`ConvertOptions.services`). */
 	services?: boolean;
+	/** True when the client of the runtime answers the service `chatMemory` (`ConvertOptions.chatMemory`). */
+	chatMemory?: boolean;
 	/** True when the runtime runs `ctx.sql` effects (`ConvertOptions.sql`). */
 	sql?: boolean;
 	/** True when the `sql` effect of the runtime has a MySQL client (`ConvertOptions.mysql`). */

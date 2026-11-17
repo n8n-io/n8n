@@ -719,7 +719,9 @@ export function lowerNativeCluster(c: NodeContext): void {
 		credential === undefined ||
 		credentialType === undefined ||
 		NOT_INJECTABLE.has(credentialType) ||
-		!c.addCredentialDerivations
+		!c.addCredentialDerivations ||
+		// The memory needs the service `chatMemory` (`ConvertOptions.chatMemory`).
+		(native.memory !== undefined && (c.chatMemory !== true || c.services === false))
 	) {
 		lowerAiNode(c);
 		return;
@@ -763,8 +765,6 @@ export function lowerNativeCluster(c: NodeContext): void {
 		entries.push([name, raw(`${subs}[0]?.${name}`)]);
 	}
 	if (onError !== 'stopWorkflow') entries.push(['continueOnFail', raw('true')]);
-	// The memory drops a session that was idle for one hour: the time of the run counts.
-	if (native.memory !== undefined) entries.push(['now', raw('ctx.now()')]);
 	entries.push(['batch', raw(`${c.input}.map((${ITEM}: Json, ${INDEX}: number) => (${item}))`)]);
 	const call: Code = {
 		kind: 'object',

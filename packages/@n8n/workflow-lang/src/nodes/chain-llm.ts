@@ -28,10 +28,9 @@
  * fields of the request body.
  * The agent can have the window buffer memory (`memoryBufferWindow`, parameter `aiMemory`).
  * v1 keeps the messages of a session in the memory of the n8n process, under the workflow id
- * and the session key, and drops a session that no agent used for one hour. This node keeps
- * them in the workflow static data (`MEMORY_STORE`), with the same window and the same hour.
- * The static data survives a restart of n8n, and the node keeps `MEMORY_SESSIONS` sessions
- * at most: the process memory of v1 does neither.
+ * and the session key. This node keeps nothing: it asks the service `chatMemory`
+ * (`ctx.service`), whose store has the rules of v1 (`docs/compiler-plan.md`, "Memory"). `open`
+ * gives the session of the run, `load` gives the window, `save` adds one exchange.
  * Not supported (the converter keeps these in the fallback host): tools, an output
  * parser, a fallback model, image messages, the JSON response format, the reasoning
  * effort, built-in tools, a custom base URL of the model node, and other model providers.
@@ -89,58 +88,6 @@ interface StoredMessage {
 	text: string;
 }
 
-interface Session {
-	/** The time of the last agent run that used the session. */
-	at: number;
-	messages: StoredMessage[];
-}
-
-/** The node name of the static data that holds the sessions of all memory nodes of a workflow. */
-const MEMORY_STORE = '@n8n/n8n-nodes-langchain.memoryBufferWindow';
-/** v1 drops a session that no agent used for one hour. */
-const MEMORY_IDLE = 60 * 60 * 1000;
-/** The maximum count of sessions of a workflow. The session that was idle the longest goes first. */
-const MEMORY_SESSIONS = 1024;
-
-function isSession(value: unknown): value is Session {
-	return isObject(value) && typeof value.at === 'number' && Array.isArray(value.messages);
-}
-
-/**
- * The session of the key in the store, as getMemory of the v1 node gives it: first the idle
- * sessions go, then the session is made when it is not there, and its time is set.
- */
-function openSession(store: Record<string, unknown>, key: string, now: number): Session {
-	let count = 0;
-	for (const name of Object.keys(store)) {
-		const session = store[name];
-		if (!isSession(session) || session.at < now - MEMORY_IDLE) delete store[name];
-		else count += 1;
-	}
-	const name = `s:${key}`;
-	const found = store[name];
-	if (isSession(found)) {
-		found.at = now;
-		return found;
-	}
-	while (count >= MEMORY_SESSIONS) {
-		let oldest = '';
-		let at = 0;
-		for (const other of Object.keys(store)) {
-			const session = store[other];
-			if (isSession(session) && (oldest === '' || session.at < at)) {
-				oldest = other;
-				at = session.at;
-			}
-		}
-		delete store[oldest];
-		count -= 1;
-	}
-	const session: Session = { at: now, messages: [] };
-	store[name] = session;
-	return session;
-}
-
 interface ChainParameters {
 	/**
 	 * `agent`: the root is a Tools Agent (`@n8n/n8n-nodes-langchain.agent`, versions 2 to 3.1)
@@ -162,8 +109,6 @@ interface ChainParameters {
 	aiModel?: AiModel;
 	/** The agent: the window buffer memory sub-node. */
 	aiMemory?: AiMemory;
-	/** The time of the run in milliseconds: the idle time of a session counts from it. */
-	now?: number;
 	batch?: ItemParameters[];
 }
 
@@ -795,7 +740,6 @@ export default defineNode<ChainParameters>({
 				'continueOnFail',
 				'aiModel',
 				'aiMemory',
-				'now',
 				'batch',
 			],
 		},
@@ -825,7 +769,7 @@ export default defineNode<ChainParameters>({
 		const tries = (ai.options?.maxRetries ?? 2) + 1;
 		const memoryRuns: Array<{ error: string | null }> = [];
 		// The memory sub-node gives its session once for the run, before the first item.
-		let session: Session | undefined;
+		let session: string | undefined;
 		const memory = agent ? parameters.aiMemory : undefined;
 		if (memory !== undefined) {
 			const key = memory.key;
@@ -845,17 +789,24 @@ export default defineNode<ChainParameters>({
 					},
 				];
 			}
-			session = openSession(ctx.staticData('node', MEMORY_STORE), String(key), parameters.now ?? 0);
+			session = String(key);
+			// v1 fixes the window of a session when it makes the session, so the store gets it here.
+			await ctx.service({
+				service: 'chatMemory',
+				op: 'open',
+				args: { sessionKey: session, window: memory.window ?? 5 },
+			});
 		}
-		const window = (memory?.window ?? 5) * 2;
-		/** The agent keeps the prompt and its answer in the session, and the window of them. */
-		const remember = (input: string, output: string): void => {
+		/** The agent keeps the prompt and its answer in the session. */
+		const remember = async (input: string, output: string): Promise<void> => {
 			if (session === undefined) return;
 			if (version >= 3 && (input === '' || output === '')) return;
 			memoryRuns.push({ error: null });
-			session.messages.push({ ai: false, text: input });
-			session.messages.push({ ai: true, text: output });
-			while (session.messages.length > window) session.messages.shift();
+			await ctx.service({
+				service: 'chatMemory',
+				op: 'save',
+				args: { sessionKey: session, input, output },
+			});
 		};
 
 		/**
@@ -1021,7 +972,12 @@ export default defineNode<ChainParameters>({
 			let history: StoredMessage[] = [];
 			if (session !== undefined) {
 				memoryRuns.push({ error: null });
-				history = session.messages.slice(-window);
+				const loaded = await ctx.service<{ messages?: StoredMessage[] }>({
+					service: 'chatMemory',
+					op: 'load',
+					args: { sessionKey: session },
+				});
+				history = loaded.messages ?? [];
 			}
 			const request = requestOf(item, ai, agent, history);
 			for (let turn = 1; ; turn++) {
@@ -1050,7 +1006,7 @@ export default defineNode<ChainParameters>({
 						// tool to run and runs the agent again. Version 2 answers each call itself.
 						if (version >= 3) return { again: true };
 						if (turn >= maxIterations) {
-							remember(promptText(item.text), 'Agent stopped due to max iterations.');
+							await remember(promptText(item.text), 'Agent stopped due to max iterations.');
 							return { item: { output: 'Agent stopped due to max iterations.' } };
 						}
 						const failed = answerToolCalls(request, answer.data);
@@ -1061,7 +1017,7 @@ export default defineNode<ChainParameters>({
 					const single = request.gemini === true && parts.length === 1 && parts[0].type === 'text';
 					const blocks = request.responses || request.anthropic === true || request.gemini === true;
 					const text = agentOutput(parts, blocks && !single);
-					remember(promptText(item.text), text);
+					await remember(promptText(item.text), text);
 					const output: Item = { output: text };
 					if (parameters.returnIntermediateSteps === true) output.intermediateSteps = [];
 					return { item: output };

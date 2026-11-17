@@ -155,6 +155,13 @@ export interface ConvertOptions {
 	 */
 	services?: boolean;
 	/**
+	 * The client of the runtime answers the service `chatMemory`: the session store of the
+	 * window buffer memory, with the rules of v1 (`docs/compiler-plan.md`, "Memory"). The
+	 * default is false: an AI Agent with a window buffer memory runs in the fallback host,
+	 * where the v1 node keeps the sessions in the memory of its process.
+	 */
+	chatMemory?: boolean;
+	/**
 	 * The runtime runs `ctx.sql` effects (spec 9.10). The default is false: the Postgres
 	 * node runs in the fallback host. With true, it runs as a library node when the
 	 * library node has the call.
@@ -864,6 +871,7 @@ export class ModuleGenerator {
 				this.credentialMints[slot] = list;
 			},
 			services: this.options.services,
+			chatMemory: this.options.chatMemory,
 			sql: this.options.sql,
 			mysql: this.options.mysql,
 			mysqlRecordFirst: this.options.mysqlRecordFirst,

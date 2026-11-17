@@ -99,7 +99,7 @@ function workflowOf(c: EquivalenceCase): unknown {
 }
 
 function converted(c: EquivalenceCase) {
-	const result = convertWorkflow(workflowOf(c), { trace: 'all' });
+	const result = convertWorkflow(workflowOf(c), { trace: 'all', chatMemory: true });
 	expect(result.diagnostics.filter((d) => d.severity === 'error')).toEqual([]);
 	return result;
 }
@@ -124,6 +124,52 @@ function fixtureOf(c: EquivalenceCase, result: ReturnType<typeof convertWorkflow
 		},
 		credentialFlags,
 	};
+}
+
+/** The store of the service `chatMemory` with the rules of v1, for one run. */
+function memoryAnswers(calls: Array<Record<string, unknown>>): unknown[] {
+	const sessions = new Map<string, { window: number; messages: unknown[] }>();
+	return calls.map((call) => {
+		const args = isRecord(call.args) ? call.args : {};
+		const key = String(args.sessionKey);
+		if (call.op === 'open' && !sessions.has(key)) {
+			sessions.set(key, { window: Number(args.window), messages: [] });
+		}
+		const session = sessions.get(key);
+		if (session === undefined) throw new Error('The session is not open');
+		if (call.op === 'load') return { messages: session.messages.slice(-session.window * 2) };
+		if (call.op === 'save') {
+			session.messages.push({ ai: false, text: args.input }, { ai: true, text: args.output });
+		}
+		return {};
+	});
+}
+
+/**
+ * The fixture of a case with a memory: the answers of the service go between the answers of
+ * the model, in the order of the calls. Each run shows the place of one more service call.
+ */
+async function withMemory(source: string, fixture: Fixture): Promise<Fixture> {
+	const http = fixture.effects[NODE];
+	for (let round = 0; round < 64; round++) {
+		const out = await runReference(source, fixture);
+		const effects = out.effects.filter((e) => e.step === NODE && e.kind !== 'wait');
+		const calls = effects
+			.filter((e) => e.kind === 'service')
+			.map((e) => (isRecord(e.args) ? e.args : {}));
+		const answers = memoryAnswers(calls);
+		const list: unknown[] = [];
+		let model = 0;
+		let service = 0;
+		for (const effect of effects) {
+			if (effect.kind === 'service') list.push(answers[service++]);
+			else list.push(http[model++ % http.length]);
+		}
+		for (let k = model; k < http.length; k++) list.push(http[k]);
+		if (JSON.stringify(list) === JSON.stringify(fixture.effects[NODE])) return fixture;
+		fixture = { ...fixture, effects: { ...fixture.effects, [NODE]: list } };
+	}
+	throw new Error('The order of the service calls does not settle');
 }
 
 interface Trace {
@@ -174,7 +220,7 @@ describe.runIf(typesBuilt)('AI nodes through the converter, against n8n engine r
 
 		it('gives the same result from the bytecode as from the reference runner', async () => {
 			const result = converted(c);
-			const fixture = fixtureOf(c, result);
+			const fixture = await withMemory(result.source, fixtureOf(c, result));
 			const compiled = compile(result.source);
 			expect(compiled.module).toBeDefined();
 			const reference = await runReference(result.source, fixture);
@@ -184,7 +230,10 @@ describe.runIf(typesBuilt)('AI nodes through the converter, against n8n engine r
 
 		it('sends the same requests, and gives the same outputs, error and sub-node runs', async () => {
 			const result = converted(c);
-			const out = await runReference(result.source, fixtureOf(c, result));
+			const out = await runReference(
+				result.source,
+				await withMemory(result.source, fixtureOf(c, result)),
+			);
 			const data = withDerivedValues(c.credential?.type ?? '', {
 				...(registry.get(c.credential?.type ?? '')?.defaults ?? {}),
 				...c.credential?.data,
@@ -235,56 +284,6 @@ describe.runIf(typesBuilt)('AI nodes through the converter, against n8n engine r
 		});
 	});
 
-	describe('the window buffer memory between executions', () => {
-		const c = ENGINE_CASES.find((x) => x.name === 'agent memory, window of one exchange');
-		const HOUR = 60 * 60 * 1000;
-
-		/** The messages of each request of a run that starts with the static data of another run. */
-		async function messagesOf(staticData: Record<string, unknown>, now: number) {
-			if (c === undefined) throw new Error('The case is missing');
-			const result = converted(c);
-			const fixture = { ...fixtureOf(c, result), staticData, now };
-			const out = await runReference(result.source, fixture);
-			const compiled = compile(result.source);
-			const bytecode = runModule(decodeModule(compiled.module ?? new Uint8Array()), fixture);
-			expect(JSON.stringify(bytecode)).toBe(JSON.stringify(out));
-			const messages = out.effects
-				.filter((e) => e.kind === 'http')
-				.map((e) => (isRecord(e.args) && isRecord(e.args.body) ? e.args.body.messages : undefined));
-			return { messages, staticData: out.staticData };
-		}
-
-		it('gives the next execution the window of the session', async () => {
-			const first = await messagesOf({}, 1000);
-			const second = await messagesOf(first.staticData ?? {}, 1000 + HOUR);
-			expect(second.messages[0]).toEqual([
-				{ role: 'system', content: 'Be brief' },
-				{ role: 'user', content: 'three' },
-				{ role: 'assistant', content: 'third' },
-				{ role: 'user', content: 'one' },
-			]);
-		});
-
-		it('drops a session that no agent used for more than one hour', async () => {
-			const first = await messagesOf({}, 1000);
-			const second = await messagesOf(first.staticData ?? {}, 1001 + HOUR);
-			expect(second.messages[0]).toEqual([
-				{ role: 'system', content: 'Be brief' },
-				{ role: 'user', content: 'one' },
-			]);
-		});
-
-		it('keeps only the window of each session', async () => {
-			const first = await messagesOf({}, 1000);
-			const store = Object.values(first.staticData ?? {})[0];
-			const session = isRecord(store) ? store['s:key-window'] : undefined;
-			expect(isRecord(session) ? session.messages : undefined).toEqual([
-				{ ai: false, text: 'three' },
-				{ ai: true, text: 'third' },
-			]);
-		});
-	});
-
 	describe('agent shapes that stay in the fallback host', () => {
 		const LC = '@n8n/n8n-nodes-langchain.';
 		const root = { name: NODE, type: `${LC}agent`, typeVersion: 3.1 };
@@ -329,6 +328,17 @@ describe.runIf(typesBuilt)('AI nodes through the converter, against n8n engine r
 			['memory version 2', [model, memory(custom, 2)]],
 		])('gives the reason "%s"', (reason, subs) => {
 			expect(nativeCluster(root, parameters, subs)).toBe(reason);
+		});
+
+		it('keeps a memory in the host when the client does not answer the service', () => {
+			const c = ENGINE_CASES.find((x) => x.name === 'agent memory, version 3.1');
+			const result = convertWorkflow(c ? workflowOf(c) : {}, { trace: 'all' });
+			expect(result.fallbackNodes).toContain(NODE);
+			const without = convertWorkflow(c ? workflowOf(c) : {}, {
+				chatMemory: true,
+				services: false,
+			});
+			expect(without.fallbackNodes).toContain(NODE);
 		});
 
 		it('keeps a memory with batches of more than one item in the host', () => {
