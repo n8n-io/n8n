@@ -1,3 +1,4 @@
+import { createHash } from 'node:crypto';
 import type {
 	PromotionDeletionCallers,
 	PromotionPlannedMove,
@@ -29,6 +30,22 @@ type InstanceProject = { id: string; name: string; type: string };
 
 /** A project as a moved row names it. `name` is set only when the user can access the project. */
 export type MoveProject = { id: string; name?: string };
+
+const HIDDEN_PREFIX = 'hidden-';
+
+/**
+ * The id that a response shows for a project that the user cannot read. It is stable, so a
+ * client can still count such projects, and it does not give the real id.
+ */
+export function hiddenProjectId(projectId: string): string {
+	return `${HIDDEN_PREFIX}${createHash('sha256').update(projectId).digest('hex').slice(0, 12)}`;
+}
+
+/** A project without a name is one that the user cannot read: a response does not hold its id. */
+const shownProject = (project: MoveProject): MoveProject =>
+	project.name !== undefined || project.id.startsWith(HIDDEN_PREFIX)
+		? project
+		: { id: hiddenProjectId(project.id) };
 
 /** A workflow or folder that the branch holds under one project and this instance under another. */
 export interface PromoteMove {
@@ -270,8 +287,12 @@ export function markMovedResources(
 	return resources.flatMap((resource) => {
 		const move = moveOf.get(keyOf(resource));
 		if (!move) return [resource];
-		if (resource.change !== 'deleted') return [{ ...resource, movedFromProject: move.fromProject }];
-		return arrived.has(keyOf(resource)) ? [] : [{ ...resource, movedToProject: move.toProject }];
+		if (resource.change !== 'deleted') {
+			return [{ ...resource, movedFromProject: shownProject(move.fromProject) }];
+		}
+		return arrived.has(keyOf(resource))
+			? []
+			: [{ ...resource, movedToProject: shownProject(move.toProject) }];
 	});
 }
 
@@ -297,7 +318,9 @@ export function describePlannedMoves(
 } {
 	const named = (id: string): MoveProject => {
 		const name = projectNames.get(id);
-		return readableProjectIds.has(id) && name !== undefined ? { id, name } : { id };
+		return readableProjectIds.has(id) && name !== undefined
+			? { id, name }
+			: { id: hiddenProjectId(id) };
 	};
 	const plannedMoves = planned
 		.map(
@@ -518,14 +541,18 @@ export function classifyApplyMoves({
 				const { id, name } = move.instanceProject;
 				const teamName =
 					name ?? (move.blockedBy === 'personal-project' ? undefined : access.names.get(id));
+				// The row of a project that the user cannot read holds no id and no name of it. A
+				// project that only the branch holds is readable only for a user who can create it.
+				const hidden = hiddenProjectId(move.project.id);
 				return {
 					...move,
-					project:
-						move.projectExists && !access.readable.has(move.project.id)
-							? { id: move.project.id, name: move.project.id }
-							: move.project,
+					project: access.readable.has(move.project.id)
+						? move.project
+						: { id: hidden, name: hidden },
 					instanceProject:
-						access.readable.has(id) && teamName !== undefined ? { id, name: teamName } : { id },
+						access.readable.has(id) && teamName !== undefined
+							? { id, name: teamName }
+							: { id: hiddenProjectId(id) },
 				};
 			})
 			.sort((a, b) => a.id.localeCompare(b.id));

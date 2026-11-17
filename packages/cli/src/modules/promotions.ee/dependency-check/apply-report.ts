@@ -1,3 +1,5 @@
+import { createHash } from 'node:crypto';
+
 import type {
 	PromotionCredentialGrant,
 	PromotionCredentialHomeChoice,
@@ -127,7 +129,14 @@ export function computeApplyOutcome(input: ApplyCheckInput): ApplyCheckOutcome {
 			report.addHardBlock({
 				code: 'credential-move-forbidden',
 				target,
-				detail: { missingPermission: 'credential:create', project: toProject.name },
+				// The cause is for a client: a placeholder needs only the right to create a credential
+				// in the project of the branch. A credential with values that the user may not move
+				// is not a block: its move has `blockedReason: 'no-move-right'`.
+				detail: {
+					cause: 'missing-create-right',
+					missingPermission: 'credential:create',
+					project: toProject.name,
+				},
 			});
 		}
 
@@ -348,9 +357,10 @@ export function computeApplyOutcome(input: ApplyCheckInput): ApplyCheckOutcome {
 			const group: PromotionGapGroup = visibility.canReadProject(destination.project?.id)
 				? 'access-not-grantable'
 				: 'no-access';
+			// The owner team can share the credential. Without a sharing licence nobody can.
 			gap(
 				group,
-				group === 'no-access' ? ['ask-owner'] : [],
+				sharingLicensed ? ['ask-owner'] : [],
 				destination,
 				sharingLicensed ? {} : { detail: 'sharing-not-licensed' },
 			);
@@ -379,32 +389,45 @@ export function computeApplyOutcome(input: ApplyCheckInput): ApplyCheckOutcome {
 				homeChoices.set(target.id, {
 					credential: { id: target.id, name: file.name, type: file.type },
 					candidateProjects: candidates,
+					...(candidates.length === 0 ? { noCandidateReason: noHomeReason() } : {}),
 				});
 			}
 			return;
 		}
 
 		// 5. Not on the branch. A confirmed gap, or a branch of an earlier version.
+		// A row without a reason can be an instance credential: an earlier version did not record
+		// that. An instance credential never gets a placeholder, so such a row gets none. The
+		// reference stays unresolved until a Promote of this version writes the reason.
+		const confirmedGap = requirement?.reason === 'confirmed-gap';
 		gap('not-on-branch', [], undefined, {
-			detail: requirement?.reason === 'confirmed-gap' ? 'confirmed-gap' : 'legacy-reference',
-			...placeholderExtra(),
+			detail: confirmedGap ? 'confirmed-gap' : 'legacy-reference',
+			...(confirmedGap ? placeholderExtra() : {}),
 		});
 	};
 
-	/** Team projects where the user can create the credential. The consumers come first. */
+	/** A team project that the environment covers, that the user can read and that stays. */
+	const canBeHome = (projectId: string) =>
+		!(plan.deletedProjectIds ?? []).includes(projectId) &&
+		access.projects[projectId]?.kind === 'team' &&
+		visibility.environmentCovers(projectId) &&
+		visibility.canReadProject(projectId);
+
+	/** Why no project can be the home: the right to create a credential, or no project at all. */
+	const noHomeReason = (): NonNullable<PromotionCredentialHomeChoice['noCandidateReason']> =>
+		access.coveredProjectIds.some(canBeHome) ? 'missing-create-right' : 'no-covered-project';
+
+	/**
+	 * Team projects of the environment where the user can create the credential. The consumers
+	 * come first.
+	 */
 	const homeCandidates = (credentialId: string): PromotionDependencyProject[] => {
-		const removed = new Set(plan.deletedProjectIds ?? []);
 		const consumers = new Set(
 			live
 				.filter(({ target }) => target.kind === 'credential' && target.id === credentialId)
 				.map(({ consumer }) => consumer.projectId),
 		);
-		const eligible = access.createCredentialProjectIds.filter(
-			(projectId) =>
-				!removed.has(projectId) &&
-				access.projects[projectId]?.kind === 'team' &&
-				visibility.canReadProject(projectId),
-		);
+		const eligible = [...new Set(access.createCredentialProjectIds)].filter(canBeHome);
 		const rank = (projectId: string) => {
 			const index = plan.projectOrder.indexOf(projectId);
 			return index === -1 ? plan.projectOrder.length : index;
@@ -451,7 +474,10 @@ export function computeApplyOutcome(input: ApplyCheckInput): ApplyCheckOutcome {
 			target: visibility.target(reference, visible ? destination : undefined),
 			usage: reference.usage,
 			group: visible ? 'access-not-grantable' : 'no-access',
-			exits: withIncompleteExit(visible ? [] : ['ask-owner'], allowIncomplete),
+			exits: withIncompleteExit(
+				visible && access.sharingLicensed === false ? [] : ['ask-owner'],
+				allowIncomplete,
+			),
 			detail: 'published-version',
 		});
 	}
@@ -470,6 +496,7 @@ export function computeApplyOutcome(input: ApplyCheckInput): ApplyCheckOutcome {
 		}
 		if (callers.length === 0 && hiddenCallerCount === 0) continue;
 		deletionCallers.push({
+			id: deletionCallersId(id, callers, hiddenCallerCount),
 			target: { id, name: workflow.name },
 			callers,
 			hiddenCallerCount,
@@ -489,11 +516,18 @@ export function computeApplyOutcome(input: ApplyCheckInput): ApplyCheckOutcome {
 		const first = entries.find(({ reference }) => reference.consumer.projectId === homeProjectId);
 		if (!first) continue;
 		const { target, consumer } = first.reference;
-		// The name and the type of the source credential: the branch knows them better than a node.
-		const file = branch.credentials[credentialId];
-		const row = branch.requirements[targetKey('credential', credentialId)];
-		const name = file?.name ?? row?.name ?? target.name;
-		const type = file?.type ?? row?.credentialType ?? target.credentialType;
+		// The name and the type as the consumer workflow holds them. The file of the branch
+		// counts only when the user can read the project that holds it.
+		const folders = branch.credentialFolders[credentialId] ?? [];
+		const file =
+			folders.length === 0 || folders.every((folder) => visibility.canReadProject(folder))
+				? branch.credentials[credentialId]
+				: undefined;
+		const row =
+			branch.requirements[targetKey('credential', credentialId)] ??
+			branch.credentialRows?.[credentialId];
+		const name = file?.name ?? target.name ?? row?.name;
+		const type = file?.type ?? target.credentialType ?? row?.credentialType;
 		// The confirmation of the gaps never gives the right to create a credential.
 		if (!canCreateIn.has(homeProjectId) || name === undefined || type === undefined) {
 			report.addHardBlock({
@@ -531,6 +565,24 @@ export function computeApplyOutcome(input: ApplyCheckInput): ApplyCheckOutcome {
 		}),
 		actions,
 	};
+}
+
+/**
+ * Stable for one deleted workflow and the callers that the user sees: the callers that the
+ * user can access, and the count of the others. A new caller gives another id, so a
+ * confirmation names what the user saw.
+ */
+export function deletionCallersId(
+	targetId: string,
+	callers: PromotionDeletionCallers['callers'],
+	hiddenCallerCount: number,
+): string {
+	const seen = callers
+		.map(({ id, publishedOnly }) => `${id}${publishedOnly ? ':published' : ''}`)
+		.sort()
+		.join(',');
+	const hash = createHash('sha256').update(`${seen}|${hiddenCallerCount}`).digest('hex');
+	return `${targetId}|${hash.slice(0, 16)}`;
 }
 
 /**

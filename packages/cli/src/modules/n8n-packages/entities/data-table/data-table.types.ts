@@ -108,6 +108,11 @@ export interface DataTableImportRequest {
 	matchingMode: DataTableMatchingMode;
 	missingMode: DataTableMissingMode;
 	schemaConflictPolicy: DataTableSchemaConflictPolicy;
+	/**
+	 * Promotion-only. Tables that another project of the package owns. The import does not
+	 * create or change them for this project, and it does not need their file.
+	 */
+	referenceOnlyIds?: ReadonlySet<string>;
 }
 
 export interface DataTableImportPlan {

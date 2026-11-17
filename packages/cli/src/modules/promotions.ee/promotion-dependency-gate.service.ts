@@ -5,8 +5,11 @@ import type {
 	PromotionDependencyReport,
 	PromotionKeptProject,
 	PromotionKeptWorkflow,
+	PromotionLivePlaceholderWorkflows,
 	PromotionPlaceholderResult,
+	PromotionReferenceUsage,
 	PromotionResource,
+	PromotionResourceWarning,
 } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import {
@@ -14,6 +17,8 @@ import {
 	ProjectRepository,
 	SharedCredentialsRepository,
 	SharedWorkflowRepository,
+	WorkflowDependencyRepository,
+	WorkflowRepository,
 	type User,
 } from '@n8n/db';
 import { Container, Service } from '@n8n/di';
@@ -40,7 +45,8 @@ import type { PackageManifest } from '@/modules/n8n-packages/spec/manifest.schem
 import { reconcileApplyCheck } from './apply-check-reconcile';
 import { PACKAGE_SUBFOLDER } from './constants';
 import {
-	describeGap,
+	describeGapWithFix,
+	describeHardBlock,
 	PromotionDependencyCheckService,
 	renderGapsForCommitMessage,
 	renderGapsForReviewDescription,
@@ -50,6 +56,7 @@ import {
 	type ApplyCheckOutcome,
 	type CheckSelection,
 } from './dependency-check';
+import { ResourceWarningsService } from './dependency-check/resource-warnings.service';
 import { GitCommitPackageReader } from './git-commit-package-reader';
 import { promoteDeletionCallers } from './project-moves';
 import { PromotionAccessService } from './promotion-access.service';
@@ -83,6 +90,8 @@ export type ApplyConfirmations = {
 	confirmedGapIds?: string[];
 	confirmedGrantIds?: string[];
 	confirmDeletionCallers?: boolean;
+	/** The `id` of each `deletionCallers` row that the user saw and accepts. */
+	confirmedDeletionCallerIds?: string[];
 	credentialHomes?: Record<string, string>;
 };
 
@@ -118,8 +127,27 @@ export type ApplyDependencyResult = {
 	credentialMoves?: PromotionCredentialMove[];
 	keptWorkflows?: PromotionKeptWorkflow[];
 	keptProjects?: PromotionKeptProject[];
+	livePlaceholderWorkflows?: PromotionLivePlaceholderWorkflows[];
 	dependencyMessages?: string[];
 };
+
+const USAGE_TEXT: Record<PromotionReferenceUsage, string> = {
+	credential: 'credential',
+	'sub-workflow': 'sub-workflow',
+	'error-workflow': 'error workflow',
+};
+
+/** One sentence for a data table or a variable that another project owns. */
+export function describeResourceWarning({
+	code,
+	consumer,
+	resource,
+}: PromotionResourceWarning): string {
+	const what = code === 'data-table-of-other-project' ? 'data table' : 'variable';
+	const label = resource.name ? `"${resource.name}"` : `with the id ${resource.id ?? ''}`.trim();
+	const project = resource.project ? `project "${resource.project.name}"` : 'another project';
+	return `Workflow "${consumer.name}" uses the ${what} ${label} of ${project}. The operation does not copy it, and the reference does not resolve in the project of the workflow.`;
+}
 
 const unique = <T>(values: Iterable<T>): T[] => [...new Set(values)];
 
@@ -144,6 +172,9 @@ export class PromotionDependencyGate {
 		private readonly projectRepository: ProjectRepository,
 		private readonly inventoryReader: PackageDirectoryInventoryReader,
 		private readonly logger: Logger,
+		private readonly workflowDependencyRepository: WorkflowDependencyRepository,
+		private readonly workflowRepository: WorkflowRepository,
+		private readonly resourceWarnings: ResourceWarningsService,
 	) {
 		this.logger = this.logger.scoped('promotions');
 	}
@@ -188,6 +219,14 @@ export class PromotionDependencyGate {
 					error,
 				});
 			}
+		}
+
+		// A data table or a project variable of another project: a warning, never a gap.
+		try {
+			const warnings = await this.resourceWarnings.forPromote(user, selection);
+			if (warnings.length > 0) report.resourceWarnings = warnings;
+		} catch (error) {
+			this.logger.warn('Could not check the data tables and variables of a Promote', { error });
 		}
 
 		await this.markOwnerRequests(report, user, input);
@@ -251,17 +290,23 @@ export class PromotionDependencyGate {
 	/** For a Promote route whose result has no status: the stop becomes an error with the gaps. */
 	assertCanPromote(report: PromotionDependencyReport, confirmedGapIds?: readonly string[]): void {
 		if (!this.mustStop(report, confirmedGapIds)) return;
-		const lines = [
-			...report.hardBlocks.map(
-				({ code, target }) => `${target.name ?? target.id}: ${code.replaceAll('-', ' ')}`,
-			),
-			...report.gaps.map(describeGap),
-		];
-		const reason = report.allowIncomplete
-			? 'The dependency gaps differ from the confirmed gaps.'
-			: 'This environment does not allow incomplete promotions.';
+		// The message is the only report of this route, so each line gives the fix.
+		const blocks = report.hardBlocks.map(describeHardBlock);
+		const gaps = report.gaps.map(describeGapWithFix);
+		const reason =
+			blocks.length > 0
+				? 'A confirmation does not lift a block.'
+				: report.allowIncomplete
+					? 'The dependency gaps differ from the confirmed gaps. Close each gap, or send its id in `confirmedGapIds`.'
+					: 'This environment does not allow incomplete promotions. Close each gap.';
 		throw new ConflictError(
-			`The Promote stopped and wrote nothing. ${reason} ${lines.length === 1 ? 'Gap' : 'Gaps'}: ${lines.join('; ')}`,
+			[
+				`The Promote stopped and wrote nothing. ${reason}`,
+				...(blocks.length > 0
+					? [`${blocks.length === 1 ? 'Block' : 'Blocks'}: ${blocks.join('; ')}`]
+					: []),
+				...(gaps.length > 0 ? [`${gaps.length === 1 ? 'Gap' : 'Gaps'}: ${gaps.join('; ')}`] : []),
+			].join(' '),
 		);
 	}
 
@@ -325,6 +370,19 @@ export class PromotionDependencyGate {
 			...(credentialHomes ? { credentialHomes } : {}),
 		});
 		await this.addKeptProjects(outcome, user);
+		// A data table or a project variable of another project: a warning, never a gap. The
+		// import leaves such a reference as it is.
+		try {
+			const manifest = await new GitCommitPackageReader(files).readManifest();
+			const warnings = await this.resourceWarnings.forApply(
+				user,
+				manifest,
+				selection === 'instance' ? 'instance' : selection,
+			);
+			if (warnings.length > 0) outcome.report.resourceWarnings = warnings;
+		} catch (error) {
+			this.logger.warn('Could not check the data tables and variables of an Apply', { error });
+		}
 		await this.markOwnerRequests(outcome.report, user, input);
 		return outcome;
 	}
@@ -347,8 +405,41 @@ export class PromotionDependencyGate {
 			};
 		} catch (error) {
 			this.logger.error('Could not compute the dependency report of an Apply preview', { error });
-			return { check };
+			return { check: await this.withoutUnreadableOwners(context.user, check) };
 		}
+	}
+
+	/**
+	 * Without a report, the check is not reconciled, and its credential rows can name the owner
+	 * project of a credential. Such a row stays only when the user can read that project.
+	 */
+	private async withoutUnreadableOwners<T extends PromotionApplyCheck>(
+		user: User,
+		check: T,
+	): Promise<T> {
+		const ownerIds = unique(
+			check.missingBindings.flatMap((binding) =>
+				binding.kind === 'credential' && binding.ownerProject ? [binding.ownerProject.id] : [],
+			),
+		);
+		if (ownerIds.length === 0) return check;
+		let readable = new Set<string>();
+		try {
+			readable = await this.access.readableProjectIds(user, ownerIds);
+		} catch (error) {
+			this.logger.warn('Could not read the access to the owner projects of an Apply check', {
+				error,
+			});
+		}
+		return {
+			...check,
+			missingBindings: check.missingBindings.filter(
+				(binding) =>
+					binding.kind !== 'credential' ||
+					!binding.ownerProject ||
+					readable.has(binding.ownerProject.id),
+			),
+		};
 	}
 
 	/**
@@ -374,7 +465,7 @@ export class PromotionDependencyGate {
 		if (
 			verifyConfirmedGaps(report, confirmations.confirmedGapIds) === 'changed' ||
 			report.hardBlocks.length > 0 ||
-			(report.deletionCallers.length > 0 && confirmations.confirmDeletionCallers !== true)
+			!this.deletionCallersConfirmed(report, confirmations, context)
 		) {
 			return { status: 'stop', report };
 		}
@@ -388,6 +479,10 @@ export class PromotionDependencyGate {
 		const credentialDependencies: ImportCredentialDependencies = {
 			credentialOwnerPolicy: CredentialOwnerPolicy.FollowPackage,
 			placeholderCredentialIds: placeholderIds,
+			// The check selected the home of each placeholder. The import must use the same one.
+			placeholderHomes: Object.fromEntries(
+				actions.placeholders.map(({ credential, projectId }) => [credential.id, projectId]),
+			),
 			// A confirmed gap without a placeholder, and a reference that is broken on the source:
 			// the import writes the reference unchanged.
 			allowedUnresolvedCredentialIds: unique(
@@ -417,6 +512,34 @@ export class PromotionDependencyGate {
 			homes,
 			confirmedGrantIds: [],
 		};
+	}
+
+	/**
+	 * Whether the user accepted the callers of the workflows that the Apply deletes.
+	 * `confirmedDeletionCallerIds` must name exactly the current rows, so a caller that appeared
+	 * after the preview stops the Apply. The flag `confirmDeletionCallers` alone still accepts
+	 * every caller: a client of an earlier version sends only the flag.
+	 */
+	private deletionCallersConfirmed(
+		report: PromotionDependencyReport,
+		confirmations: ApplyConfirmations,
+		context: Pick<ApplyDependencyContext, 'input'>,
+	): boolean {
+		if (report.deletionCallers.length === 0) return true;
+		if (confirmations.confirmedDeletionCallerIds !== undefined) {
+			const confirmed = new Set(confirmations.confirmedDeletionCallerIds);
+			const current = report.deletionCallers.map(({ id }) => id);
+			return (
+				confirmed.size === current.length &&
+				current.every((id) => id !== undefined && confirmed.has(id))
+			);
+		}
+		if (confirmations.confirmDeletionCallers !== true) return false;
+		this.logger.info(
+			'Apply accepted the callers of deleted workflows by the flag, without their ids',
+			{ environmentId: context.input.environmentId, rowCount: report.deletionCallers.length },
+		);
+		return true;
 	}
 
 	/**
@@ -490,11 +613,12 @@ export class PromotionDependencyGate {
 	}
 
 	/** What the Apply did for its dependencies. Each list holds only what the user may see. */
-	applyResult(
+	async applyResult(
+		user: User,
 		decision: Extract<ApplyDependencyDecision, { status: 'continue' }>,
 		result: ImportResult,
 		deletedProjectIds: readonly string[] = [],
-	): ApplyDependencyResult {
+	): Promise<ApplyDependencyResult> {
 		const { report, grants } = decision;
 		const messages: string[] = [];
 
@@ -523,13 +647,43 @@ export class PromotionDependencyGate {
 				return [{ ...known, allowed: false, blockedReason }];
 			},
 		);
-		for (const { credential, allowed, blockedReason } of credentialMoves) {
+		for (const { credential, allowed, blockedReason, toProject } of credentialMoves) {
 			if (allowed) continue;
 			messages.push(
 				blockedReason === 'managed' || blockedReason === 'end-user'
 					? `"${credential.name}" is ${blockedReason === 'managed' ? 'a managed' : 'an end-user'} credential, so it stays where it is.`
-					: `"${credential.name}" has another owner on the destination. A user who may move it must apply.`,
+					: blockedReason === 'missing-create-right'
+						? `"${credential.name}" did not move into project "${toProject.name}": you may not create a credential in that project.`
+						: `"${credential.name}" has another owner on the destination. A user who may move it must apply.`,
 			);
+		}
+
+		// A published version that references the id of a new placeholder now reads an empty
+		// credential. The Apply does not unpublish, so the result says which workflows to check.
+		const livePlaceholderWorkflows = await this.livePlaceholderWorkflows(user, placeholders);
+		for (const { credential, workflows, hiddenWorkflowCount } of livePlaceholderWorkflows) {
+			const names = workflows.map(({ name }) => `"${name}"`);
+			if (hiddenWorkflowCount > 0) {
+				names.push(
+					`${hiddenWorkflowCount} workflow${hiddenWorkflowCount === 1 ? '' : 's'} that you cannot access`,
+				);
+			}
+			messages.push(
+				`The published version of ${names.join(', ')} uses the empty placeholder "${credential.name}". It fails until the credential has values.`,
+			);
+		}
+
+		// A warning does not stop the Apply. The result repeats it for a client that shows no report.
+		for (const { consumer, target, usage, code } of report.warnings) {
+			const label = target.name ? `"${target.name}"` : `id ${target.id}`;
+			messages.push(
+				code === 'broken-on-source'
+					? `Workflow "${consumer.name}" references the ${USAGE_TEXT[usage]} ${label}. The reference is broken on the source and stays broken.`
+					: `Workflow "${consumer.name}" references the ${USAGE_TEXT[usage]} ${label}. The branch does not hold it and does not say why, so the reference stays as it is.`,
+			);
+		}
+		for (const warning of report.resourceWarnings ?? []) {
+			messages.push(describeResourceWarning(warning));
 		}
 
 		for (const { name, referencedBy } of report.keptWorkflows) {
@@ -553,8 +707,65 @@ export class PromotionDependencyGate {
 			...(credentialMoves.length > 0 ? { credentialMoves } : {}),
 			...(report.keptWorkflows.length > 0 ? { keptWorkflows: report.keptWorkflows } : {}),
 			...(keptProjects.length > 0 ? { keptProjects } : {}),
+			...(livePlaceholderWorkflows.length > 0 ? { livePlaceholderWorkflows } : {}),
 			...(messages.length > 0 ? { dependencyMessages: messages } : {}),
 		};
+	}
+
+	/**
+	 * The workflows whose published version references the id of a placeholder that the Apply
+	 * created. The workflow index holds the references of each published version. A workflow is
+	 * named only when the user can read its project. Never throws: the Apply is done.
+	 */
+	private async livePlaceholderWorkflows(
+		user: User,
+		placeholders: PromotionPlaceholderResult[],
+	): Promise<PromotionLivePlaceholderWorkflows[]> {
+		if (placeholders.length === 0) return [];
+		try {
+			const rows = await this.workflowDependencyRepository.findDependenciesForResources(
+				placeholders.map(({ id }) => id),
+				['credentialId'],
+				false,
+			);
+			const live = rows.filter(({ publishedVersionId }) => publishedVersionId !== null);
+			if (live.length === 0) return [];
+			const workflowIds = unique(live.map(({ workflowId }) => workflowId));
+			const [owners, names] = await Promise.all([
+				this.sharedWorkflowRepository.findOwnerProjectsByWorkflowIds(workflowIds),
+				this.workflowRepository.findByIds(workflowIds, { fields: ['name'] }),
+			]);
+			const nameOf = new Map(names.map(({ id, name }) => [id, name]));
+			const readable = await this.access.readableProjectIds(
+				user,
+				unique([...owners.values()].map(({ id }) => id)),
+			);
+			return placeholders.flatMap(({ id, name }): PromotionLivePlaceholderWorkflows[] => {
+				const ids = unique(
+					live.filter(({ dependencyKey }) => dependencyKey === id).map((row) => row.workflowId),
+				);
+				if (ids.length === 0) return [];
+				const visible = ids.filter((workflowId) => {
+					const owner = owners.get(workflowId);
+					return owner !== undefined && readable.has(owner.id);
+				});
+				return [
+					{
+						credential: { id, name },
+						workflows: visible.map((workflowId) => ({
+							id: workflowId,
+							name: nameOf.get(workflowId) ?? workflowId,
+						})),
+						hiddenWorkflowCount: ids.length - visible.length,
+					},
+				];
+			});
+		} catch (error) {
+			this.logger.warn('Could not read the published workflows that use a new placeholder', {
+				error,
+			});
+			return [];
+		}
 	}
 
 	/** The report of the Apply preview of one project: the Apply of the whole project. */
@@ -568,7 +779,7 @@ export class PromotionDependencyGate {
 			selection = await this.projectApplySelection(inventory, args.projectId);
 		} catch (error) {
 			this.logger.error('Could not read the package for the dependency report', { error });
-			return { check };
+			return { check: await this.withoutUnreadableOwners(args.user, check) };
 		}
 		return await this.applyPreviewReport(
 			{ user: args.user, input: args.input, files: args.files, selection },

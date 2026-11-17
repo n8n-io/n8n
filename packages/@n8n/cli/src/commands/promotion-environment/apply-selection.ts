@@ -33,6 +33,11 @@ export default class PromotionEnvironmentApplySelection extends PromotionApplyCo
 			description: 'Folder ID to apply (repeat for more than one)',
 			multiple: true,
 		}),
+		credential: Flags.string({
+			description:
+				'ID of a credential that the branch holds under the project (repeat for more than one). Apply updates it, and moves it to the project when another project owns it on this instance. Without this flag, Apply writes each credential of the project on the branch that this instance already holds.',
+			multiple: true,
+		}),
 		...expectedSourceFlags({ required: false }),
 		...expectedPreviewRevisionFlag,
 		...applyConfirmationFlags,
@@ -40,7 +45,11 @@ export default class PromotionEnvironmentApplySelection extends PromotionApplyCo
 
 	async run() {
 		const { args, flags } = await this.parse(PromotionEnvironmentApplySelection);
-		const selection = { workflowIds: flags.workflow, folderIds: flags.folder };
+		const selection = {
+			workflowIds: flags.workflow,
+			folderIds: flags.folder,
+			credentialIds: flags.credential,
+		};
 		await this.execute(async () => {
 			const result = await this.getClient(flags).applyProjectSelection(
 				args.projectId,

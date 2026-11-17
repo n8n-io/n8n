@@ -63,6 +63,7 @@ export function scopeCredentialDependencies(
 
 	return {
 		placeholderIds: new Set(dependencies.placeholderCredentialIds),
+		placeholderHomes: new Map(Object.entries(dependencies.placeholderHomes ?? {})),
 		allowedUnresolvedIds: new Set(dependencies.allowedUnresolvedCredentialIds),
 		grantIds: new Set(
 			(dependencies.credentialGrants ?? [])

@@ -410,6 +410,7 @@ export class ImportOrchestrator {
 				context: input.context,
 				plan: credentialPlan,
 				projectPendingCreation: input.projectPendingCreation ?? false,
+				placeholderHomes: input.credentialRequest.dependencies?.placeholderHomes,
 			})),
 		);
 		for (const { plan: credentialPlan, failures } of restored) {

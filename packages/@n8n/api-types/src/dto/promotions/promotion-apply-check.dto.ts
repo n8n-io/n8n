@@ -264,6 +264,8 @@ export const promotionBindingConflictSchema = z.discriminatedUnion('code', [
 			'workflow-forbidden',
 		]),
 		reason: z.string().optional(),
+		/** `workflow-forbidden` for a move between projects: the permission that the user lacks. */
+		missingScope: z.string().optional(),
 		consumers: consumersSchema,
 	}),
 	z.object({

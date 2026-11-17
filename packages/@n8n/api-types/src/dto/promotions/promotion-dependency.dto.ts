@@ -146,7 +146,33 @@ export const promotionDependencyWarningSchema = z.object({
 	target: promotionReferenceTargetSchema,
 	usage: promotionReferenceUsageSchema,
 	code: z.enum(['broken-on-source', 'legacy-workflow-reference']),
+	/**
+	 * Promote: why the reference is broken on the source. Set only when the user can read the
+	 * target. `caller-policy`: the sub-workflow refuses the caller. `not-usable`: the project of
+	 * the workflow cannot use the credential.
+	 */
+	cause: z.enum(['archived', 'caller-policy', 'not-usable']).optional(),
 });
+
+/**
+ * A data table or a project variable that a workflow of the operation uses and that another
+ * project owns. The reference does not resolve on the source either, so it is a warning: the
+ * operation continues and does not copy the resource.
+ */
+export const promotionResourceWarningSchema = z.object({
+	code: z.enum(['data-table-of-other-project', 'variable-of-other-project']),
+	consumer: promotionReferenceConsumerSchema,
+	resource: z.object({
+		kind: z.enum(['dataTable', 'variable']),
+		/** The id of a data table. A variable has only a name. */
+		id: z.string().optional(),
+		/** Not set for a data table that the user cannot read. */
+		name: z.string().optional(),
+		/** The project that owns the resource. Set only when the user can access it. */
+		project: promotionDependencyProjectSchema.optional(),
+	}),
+});
+export type PromotionResourceWarning = z.infer<typeof promotionResourceWarningSchema>;
 export type PromotionDependencyWarning = z.infer<typeof promotionDependencyWarningSchema>;
 
 /** Information only. A note is never a gap. */
@@ -194,6 +220,10 @@ export type PromotionCredentialMove = z.infer<typeof promotionCredentialMoveSche
 
 /** Apply: workflows that the Apply does not write and that call a workflow that it deletes. */
 export const promotionDeletionCallersSchema = z.object({
+	id: z.string().optional().openapi({
+		description:
+			'Stable for one deleted workflow and the callers that this row lists. Send it in `confirmedDeletionCallerIds`. Set on Apply only.',
+	}),
 	target: namedRefSchema,
 	/** Only the callers that the user can access. */
 	callers: z.array(
@@ -218,7 +248,14 @@ export type PromotionKeptWorkflow = z.infer<typeof promotionKeptWorkflowSchema>;
 /** Apply: a top-level credential file of an existing branch has no owner. The user selects the home. */
 export const promotionCredentialHomeChoiceSchema = z.object({
 	credential: credentialRefSchema,
+	/** Team projects that the environment covers and where the user can create a credential. */
 	candidateProjects: z.array(promotionDependencyProjectSchema),
+	/**
+	 * Why `candidateProjects` is empty. `missing-create-right`: the environment covers a project
+	 * that the user can read, and the user lacks `credential:create` in each. `no-covered-project`:
+	 * the user can read no project of the environment.
+	 */
+	noCandidateReason: z.enum(['missing-create-right', 'no-covered-project']).optional(),
 });
 export type PromotionCredentialHomeChoice = z.infer<typeof promotionCredentialHomeChoiceSchema>;
 
@@ -247,7 +284,11 @@ export const promotionHardBlockSchema = z.object({
 	code: promotionHardBlockCodeSchema,
 	target: promotionReferenceTargetSchema,
 	consumer: promotionReferenceConsumerSchema.optional(),
-	/** Values for the message, such as both credential types. Only what the user may see. */
+	/**
+	 * Values for the message, such as both credential types. Only what the user may see.
+	 * `credential-move-forbidden` holds `cause` (`missing-create-right`), `missingPermission`
+	 * and `project`. `ambiguous-credential-owner` holds `folders` and `hiddenFolderCount`.
+	 */
 	detail: z.record(z.string(), z.string()).optional(),
 });
 export type PromotionHardBlock = z.infer<typeof promotionHardBlockSchema>;
@@ -279,6 +320,8 @@ export const promotionDependencyReportSchema = z
 		hiddenKeptProjectCount: z.number().int().nonnegative().optional(),
 		credentialHomeChoices: z.array(promotionCredentialHomeChoiceSchema),
 		hardBlocks: z.array(promotionHardBlockSchema),
+		/** Data tables and project variables of other projects. They never stop the operation. */
+		resourceWarnings: z.array(promotionResourceWarningSchema).optional(),
 	})
 	.openapi('PromotionDependencyReport');
 export type PromotionDependencyReport = z.infer<typeof promotionDependencyReportSchema>;
@@ -324,10 +367,22 @@ export const promotionApplyConfirmationShape = {
 	confirmedGrantIds: z.array(z.string().min(1)).optional().openapi({
 		description: 'The `id` of each credential grant that the user accepts, from the report.',
 	}),
-	confirmDeletionCallers: z.boolean().optional().openapi({
-		description:
-			'Accepts that the Apply deletes workflows that other workflows on this instance call.',
-	}),
+	confirmDeletionCallers: z
+		.boolean()
+		.optional()
+		.openapi({
+			description:
+				'Accepts that the Apply deletes workflows that other workflows on this instance call. ' +
+				'It accepts every caller, also one that the reviewed report did not list. Prefer `confirmedDeletionCallerIds`.',
+		}),
+	confirmedDeletionCallerIds: z
+		.array(z.string().min(1))
+		.optional()
+		.openapi({
+			description:
+				'The `id` of each `deletionCallers` row that the user accepts, from the dependency report. ' +
+				'When the list differs from the current rows, the Apply returns status `gaps-changed` and changes nothing.',
+		}),
 	credentialHomes: z.record(n8nIdSchema, n8nIdSchema).optional().openapi({
 		description:
 			'The project that gets each credential that the branch holds without an owner, by credential id.',
@@ -343,6 +398,18 @@ export const promotionPlaceholderResultSchema = z.object({
 });
 export type PromotionPlaceholderResult = z.infer<typeof promotionPlaceholderResultSchema>;
 
+/** A placeholder of an Apply and the published workflows that reference its id. */
+export const promotionLivePlaceholderWorkflowsSchema = z.object({
+	credential: namedRefSchema,
+	/** Only the workflows that the user can access. */
+	workflows: z.array(namedRefSchema),
+	/** How many such workflows the user cannot access. */
+	hiddenWorkflowCount: z.number().int().nonnegative(),
+});
+export type PromotionLivePlaceholderWorkflows = z.infer<
+	typeof promotionLivePlaceholderWorkflowsSchema
+>;
+
 /** What an Apply did for its dependencies. Each list holds only what the user may see. */
 export const promotionApplyDependencyResultShape = {
 	placeholders: z.array(promotionPlaceholderResultSchema).optional(),
@@ -350,6 +417,11 @@ export const promotionApplyDependencyResultShape = {
 	credentialMoves: z.array(promotionCredentialMoveSchema).optional(),
 	keptWorkflows: z.array(promotionKeptWorkflowSchema).optional(),
 	keptProjects: z.array(promotionKeptProjectSchema).optional(),
+	/**
+	 * Workflows whose published version now uses a placeholder that this Apply created. The
+	 * published version fails until a person adds the values of the credential.
+	 */
+	livePlaceholderWorkflows: z.array(promotionLivePlaceholderWorkflowsSchema).optional(),
 	/** Sentences for a client without its own texts, such as the CLI. One for each fact. */
 	dependencyMessages: z.array(z.string()).optional(),
 };

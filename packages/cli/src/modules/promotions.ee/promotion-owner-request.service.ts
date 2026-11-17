@@ -154,6 +154,18 @@ export class PromotionOwnerRequestService {
 			this.logger.info('Owner request not stored: the target has no owner team project', context);
 			return SENT;
 		}
+		// A request is for a gap that the owner can close in this environment. The environment
+		// must cover the owner project, else its Promote or Apply cannot write the target here.
+		if (
+			owner.projectId !== null &&
+			!(await this.access.environmentCovers(input, owner.projectId))
+		) {
+			this.logger.info(
+				'Owner request not stored: the environment does not cover the owner project',
+				context,
+			);
+			return SENT;
+		}
 		const requesterIsRecipient =
 			this.access.hasGlobalRight(user, direction) ||
 			(owner.projectId !== null &&
@@ -382,6 +394,21 @@ export class PromotionOwnerRequestService {
 		const inventory = await this.readBranchInventory(input);
 		const consumer = inventory?.workflows.find(({ id }) => id === consumerWorkflowId);
 		if (!inventory || !consumer) return null;
+
+		// A credential that this instance holds: its owner project here can share it with the
+		// consumer project. So the request for an access that the user cannot grant goes there.
+		if (target.kind === 'credential') {
+			const destinationOwner = await this.sharedCredentialsRepository.findCredentialOwningProject(
+				target.id,
+			);
+			if (destinationOwner?.type === 'team') {
+				return {
+					consumerProjectId: consumer.projectId,
+					consumer: consumer.content,
+					owner: { projectId: destinationOwner.id, resourceName: null },
+				};
+			}
+		}
 
 		const held =
 			target.kind === 'credential'

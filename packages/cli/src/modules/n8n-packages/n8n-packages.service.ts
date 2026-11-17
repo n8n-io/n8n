@@ -365,6 +365,8 @@ export class N8nPackagesService {
 			writer,
 			// Routes project-owned data tables into their project namespace; others stay top-level.
 			projectTargetsById,
+			// A workflow can reference a data table of a project that the user cannot read.
+			referenceOnlyWhenMissing: isReferenceOnly,
 		});
 
 		const workflowRequirementExportResult = await this.workflowRequirementExporter.export({
@@ -761,6 +763,9 @@ export class N8nPackagesService {
 				: {}),
 			...(request.confirmedMovesOutOfOperation !== undefined
 				? { confirmedMovesOutOfOperation: request.confirmedMovesOutOfOperation }
+				: {}),
+			...(request.crossProjectResourcePolicy !== undefined
+				? { crossProjectResourcePolicy: request.crossProjectResourcePolicy }
 				: {}),
 			selection,
 		};

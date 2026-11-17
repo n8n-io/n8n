@@ -324,9 +324,14 @@ function describeIssue(
 		case 'cross-project-move-blocked': {
 			// Names the missing permission of the move, like the editor move.
 			const reason = `The move of ${issue.entity} "${issue.name}" between projects needs the permission "${issue.missingScope ?? 'workflow:move'}"`;
-			return issue.entity === 'workflow'
-				? workflowConflict('workflow-forbidden', reason, ofWorkflow(issue.id))
-				: projectConflict('import-blocked', reason, issue.toProjectId);
+			const conflict =
+				issue.entity === 'workflow'
+					? workflowConflict('workflow-forbidden', reason, ofWorkflow(issue.id))
+					: projectConflict('import-blocked', reason, issue.toProjectId);
+			// The scope as a field, so a client can show its own sentence.
+			return conflict.code === 'workflow-forbidden'
+				? { ...conflict, missingScope: issue.missingScope ?? 'workflow:move' }
+				: conflict;
 		}
 		case 'policy-violation':
 			return workflowConflict(

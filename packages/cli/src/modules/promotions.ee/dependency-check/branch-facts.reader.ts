@@ -141,7 +141,13 @@ export function toBranchFact(
 	}
 
 	// A row matters only while the branch does not hold its target.
+	const credentialRows: NonNullable<BranchFact['credentialRows']> = {};
+	fact.credentialRows = credentialRows;
 	for (const row of manifest?.requirements?.credentials ?? []) {
+		credentialRows[row.id] = {
+			...(row.name ? { name: row.name } : {}),
+			...(row.type ? { credentialType: row.type } : {}),
+		};
 		if (row.id in fact.credentialFolders) continue;
 		fact.requirements[targetKey('credential', row.id)] = {
 			...(row.reason ? { reason: row.reason } : {}),

@@ -103,6 +103,8 @@ export class DataTableImporter {
 		const failures: DataTableResolutionFailure[] = [];
 
 		for (const requirement of requirements) {
+			// A table of another project: the reference stays, and the owner project writes the table.
+			if (request.referenceOnlyIds?.has(requirement.id)) continue;
 			const packageTable = packageTablesById.get(requirement.id);
 			if (!packageTable) {
 				throw new UserError(

@@ -52,6 +52,9 @@ export type SideResource = {
 	isArchived: boolean;
 };
 
+/** Who reads the index. Without it, every project of the side counts as readable. */
+export type IndexAccess = { readableProjectIds?: ReadonlySet<string> };
+
 export type SideIndex = ReadonlyMap<string, SideResource>;
 
 const RESOURCE_TYPES = {
@@ -73,6 +76,8 @@ const TYPE_ORDER: PromotionResourceType[] = [
 	'variable',
 	'tag',
 ];
+
+const PROJECTS_PREFIX = `${PACKAGE_ENTITY_LAYOUT.projects.directory}/`;
 
 export function resourceKey(type: Exclude<PromotionResourceType, 'variable'>, id: string): string {
 	return `${type}:${id}`;
@@ -107,7 +112,11 @@ function containerTarget(collection: ManifestEntityCollection, target: string): 
  * Lists the project's resources on one side: the project, its folders and workflows, and the
  * dependencies that its workflows require. Other projects' resources on the branch stay out.
  */
-export function indexSide(side: PreviewSide, projectId: string): Map<string, SideResource> {
+export function indexSide(
+	side: PreviewSide,
+	projectId: string,
+	{ readableProjectIds }: IndexAccess = {},
+): Map<string, SideResource> {
 	const index = new Map<string, SideResource>();
 	const { manifest } = side;
 	const project = manifest?.projects?.find(({ id }) => id === projectId);
@@ -145,12 +154,36 @@ export function indexSide(side: PreviewSide, projectId: string): Map<string, Sid
 		add('workflows', workflow, resourceKey('workflow', workflow.id));
 	}
 
+	// The file of a dependency under a project that the user cannot read is not served. The
+	// row then holds only what the requirement row of the consumer holds, and it has no file.
+	const isHidden = ({ target }: ManifestEntry): boolean => {
+		if (!readableProjectIds || !target.startsWith(PROJECTS_PREFIX)) return false;
+		const owner = manifest.projects?.find((candidate) => target.startsWith(`${candidate.target}/`));
+		return owner !== undefined && owner.id !== projectId && !readableProjectIds.has(owner.id);
+	};
+
 	const requirements = manifest.requirements;
 	for (const collection of ['credentials', 'dataTables', 'tags'] as const) {
 		const entries = new Map(manifest[collection]?.map((entry) => [entry.id, entry]));
-		for (const { id } of requirements?.[collection] ?? []) {
+		for (const { id, name } of requirements?.[collection] ?? []) {
 			const entry = entries.get(id);
-			if (entry) add(collection, entry, resourceKey(RESOURCE_TYPES[collection], id));
+			if (!entry) continue;
+			const key = resourceKey(RESOURCE_TYPES[collection], id);
+			if (isHidden(entry)) {
+				index.set(key, {
+					key,
+					type: RESOURCE_TYPES[collection],
+					id,
+					name: name ?? id,
+					target: entry.target,
+					parentKey: null,
+					path: '',
+					blobSha: null,
+					isArchived: false,
+				});
+				continue;
+			}
+			add(collection, entry, key);
 		}
 	}
 	// A credential of the project is a resource of its own, also when no workflow uses it:
@@ -178,12 +211,13 @@ export function indexSide(side: PreviewSide, projectId: string): Map<string, Sid
 export function indexProjects(
 	side: PreviewSide,
 	projectIds: readonly string[],
+	access: IndexAccess = {},
 ): Map<string, SideResource> {
 	const index = new Map<string, SideResource>();
 	if (!side.manifest) return index;
 	for (const projectId of projectIds) {
 		const scoped = { ...side, manifest: scopeManifestToProject(side.manifest, projectId) };
-		for (const [key, resource] of indexSide(scoped, projectId)) {
+		for (const [key, resource] of indexSide(scoped, projectId, access)) {
 			// The row of the owner project wins over the row of a project that only uses the item.
 			if (resource.parentKey === null && index.has(key)) continue;
 			index.set(key, resource);
@@ -310,8 +344,6 @@ function applyOperationRules(
 		...(plannedChange.previousId !== undefined ? { previousId: plannedChange.previousId } : {}),
 	};
 }
-
-const PROJECTS_PREFIX = `${PACKAGE_ENTITY_LAYOUT.projects.directory}/`;
 
 /**
  * True for a credential that a project outside the view owns. A Promote never writes a top-level
@@ -468,6 +500,7 @@ export function buildPreview({
 	projectIds,
 	base,
 	desired,
+	readableProjectIds,
 }: {
 	/**
 	 * The operation whose rules decide what changes. `null` lists every difference between the
@@ -487,9 +520,11 @@ export function buildPreview({
 	projectIds: readonly string[];
 	base: PreviewSide;
 	desired: PreviewSide;
+	/** The projects that the user can read. A dependency file of any other project is not shown. */
+	readableProjectIds?: ReadonlySet<string>;
 }): { resources: PromotionResource[]; dependencies: PromotionResourceDependency[] } {
-	const baseIndex = indexProjects(base, projectIds);
-	const desiredIndex = indexProjects(desired, projectIds);
+	const baseIndex = indexProjects(base, projectIds, { readableProjectIds });
+	const desiredIndex = indexProjects(desired, projectIds, { readableProjectIds });
 
 	const all = new Map<string, PromotionResource>();
 	for (const key of new Set([...baseIndex.keys(), ...desiredIndex.keys()])) {

@@ -16,6 +16,7 @@ import type {
 	CredentialBindingRequest,
 	CredentialUpdateScope,
 } from '../entities/credential/credential.types';
+import { findCrossProjectResources } from '../entities/cross-project-resources';
 import type { DataTableImportRequest } from '../entities/data-table/data-table.types';
 import { ProjectImporter, projectRefusalError } from '../entities/project/project-importer';
 import type { ProjectImportPlan } from '../entities/project/project-import.types';
@@ -462,12 +463,28 @@ export class ProjectPackageImporter {
 			),
 		};
 
+		// A data table and a project variable cannot cross a project. Under `reference-only`, the
+		// ones that another project of the package owns stay references for this project.
+		const crossProject =
+			request.crossProjectResourcePolicy === 'reference-only'
+				? findCrossProjectResources(manifest).filter(
+						({ consumerProjectId }) => consumerProjectId === project.id,
+					)
+				: [];
+		const referenceOnlyIds = new Set(
+			crossProject.flatMap(({ kind, id }) => (kind === 'dataTable' && id ? [id] : [])),
+		);
+		const referenceOnlyNames = new Set(
+			crossProject.flatMap(({ kind, name }) => (kind === 'variable' ? [name] : [])),
+		);
+
 		const dataTableRequest: DataTableImportRequest = {
 			requirements: identifyRequirements(manifest.requirements?.dataTables, workflows, agents),
 			packageDataTables: await this.packageParser.getDataTables(reader),
 			matchingMode: request.dataTableMatchingMode,
 			missingMode: request.dataTableMissingMode,
 			schemaConflictPolicy: request.dataTableSchemaConflictPolicy,
+			...(referenceOnlyIds.size > 0 ? { referenceOnlyIds } : {}),
 		};
 
 		const variableRequest: VariableImportRequest = {
@@ -479,6 +496,7 @@ export class ProjectPackageImporter {
 			}),
 			missingMode: request.variableMissingMode,
 			conflictPolicy: request.variableConflictPolicy,
+			...(referenceOnlyNames.size > 0 ? { referenceOnlyNames } : {}),
 		};
 
 		// Untrimmed on purpose: the tag importer scopes by this project's workflows' own

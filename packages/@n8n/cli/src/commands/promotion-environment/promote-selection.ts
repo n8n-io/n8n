@@ -44,6 +44,11 @@ export default class PromotionEnvironmentPromoteSelection extends BaseCommand {
 			description: 'Folder ID to promote (repeat for more than one)',
 			multiple: true,
 		}),
+		credential: Flags.string({
+			description:
+				'ID of a credential that the project owns, to promote also when no selected workflow of the project uses it (repeat for more than one)',
+			multiple: true,
+		}),
 		message: Flags.string({
 			char: 'm',
 			description: 'Commit message. If you omit it, the commit uses a generated message.',
@@ -57,7 +62,7 @@ export default class PromotionEnvironmentPromoteSelection extends BaseCommand {
 		await this.execute(async () => {
 			const result = await this.getClient(flags).promoteProjectSelection(
 				args.projectId,
-				{ workflowIds: flags.workflow, folderIds: flags.folder },
+				{ workflowIds: flags.workflow, folderIds: flags.folder, credentialIds: flags.credential },
 				flags.message,
 				flags.expectedPreviewRevision,
 				flags.confirmGap,

@@ -64,6 +64,7 @@ import {
 	compare,
 } from './package-references';
 import { markMovedResources, type MovedItem } from './project-moves';
+import { PromotionAccessService } from './promotion-access.service';
 import { moveCheckFields, PromotionMovesService } from './promotion-moves.service';
 import { buildPreview, previewRevision, resourceKey, type PreviewSide } from './promotion-preview';
 import type { PromotionOperationInput } from './promotions.types';
@@ -110,6 +111,8 @@ export function applySelectionRequest(
 		// A workflow or folder that another team project holds here is one transfer.
 		crossProjectMovePolicy: CrossProjectMovePolicy.Transfer,
 		confirmedMovesOutOfOperation: confirmMoves,
+		// A data table or a project variable of another project is a warning, not a copy.
+		crossProjectResourcePolicy: 'reference-only',
 	};
 }
 
@@ -166,6 +169,7 @@ export class ApplyPreviewService {
 		private readonly localEntities: LocalPackageEntities,
 		private readonly globalConfig: GlobalConfig,
 		private readonly movesService: PromotionMovesService,
+		private readonly access: PromotionAccessService,
 	) {}
 
 	/**
@@ -188,11 +192,14 @@ export class ApplyPreviewService {
 	}): Promise<ApplyPreview & { selection: ImportSelection }> {
 		const { reader, inventory } = await this.readPackage(files);
 		const moves = await this.findCrossProjectMoves(inventory, projectId);
-		const projectSelection = classifyProjectWorkflows(
+		const projectSelection = await this.withHeldCredentials(
 			inventory,
-			projectId,
-			await this.sharedWorkflowRepository.findOwnedWorkflowIdsByProjects([projectId]),
-			new Set(moves.workflows.map(({ id }) => id)),
+			classifyProjectWorkflows(
+				inventory,
+				projectId,
+				await this.sharedWorkflowRepository.findOwnedWorkflowIdsByProjects([projectId]),
+				new Set(moves.workflows.map(({ id }) => id)),
+			),
 		);
 		// The import needs the project on the branch. Without it, the preview still shows what the
 		// branch lacks, and the check stops Apply.
@@ -240,9 +247,10 @@ export class ApplyPreviewService {
 			manifest: plan?.manifest ?? (await reader.readManifest()),
 			tagsDisabled: this.globalConfig.tags.disabled,
 			moves: movePlan?.movedItems,
+			readableProjectIds: await this.readableBranchProjects(user, inventory),
 		});
 		// The dependency report reads the same selection, with the projects that the moves added.
-		return { ...(await this.finish(resources, dependencies, check)), selection };
+		return { ...(await this.finish(user, resources, dependencies, check)), selection };
 	}
 
 	/**
@@ -300,11 +308,14 @@ export class ApplyPreviewService {
 		for (const { id, canOperate } of onBranch) {
 			if (!canOperate) continue;
 			planned.push(
-				classifyProjectWorkflows(
+				await this.withHeldCredentials(
 					inventory,
-					id,
-					await this.sharedWorkflowRepository.findOwnedWorkflowIdsByProjects([id]),
-					movedWorkflowIds,
+					classifyProjectWorkflows(
+						inventory,
+						id,
+						await this.sharedWorkflowRepository.findOwnedWorkflowIdsByProjects([id]),
+						movedWorkflowIds,
+					),
 				),
 			);
 		}
@@ -355,13 +366,14 @@ export class ApplyPreviewService {
 			manifest: plan?.manifest ?? (await reader.readManifest()),
 			tagsDisabled: this.globalConfig.tags.disabled,
 			moves: movePlan?.movedItems,
+			readableProjectIds: await this.readableBranchProjects(user, inventory),
 		});
 		const operable = new Set(projects.filter(({ canOperate }) => canOperate).map(({ id }) => id));
 		for (const resource of resources) {
 			resource.selectable =
 				resource.selectable && resource.projectId !== undefined && operable.has(resource.projectId);
 		}
-		await this.addLocalState(resources);
+		await this.addLocalState(user, resources);
 		return {
 			resources,
 			dependencies,
@@ -447,7 +459,25 @@ export class ApplyPreviewService {
 		for (const resource of owned) if (!listed.has(resource.key)) resources.push(resource);
 		// Apply applies the whole package, so nothing can be selected.
 		for (const resource of resources) resource.selectable = false;
-		return await this.finish(resources, dependencies, check);
+		return await this.finish(user, resources, dependencies, check);
+	}
+
+	/**
+	 * The Apply of a project also writes each credential that the branch holds under the project
+	 * and that this instance already holds: the owner here follows the branch, and its name and
+	 * expression values come from the branch. So the plan of a preview holds them too, and a
+	 * changed one is a row that the user can select.
+	 */
+	private async withHeldCredentials(
+		inventory: PackageDirectoryInventory,
+		selection: ImportProjectSelection,
+	): Promise<ImportProjectSelection> {
+		const ids = inventory.credentials
+			.filter(({ projectId }) => projectId === selection.selectedProjectId)
+			.map(({ credential }) => credential.id);
+		const held = await this.localEntities.credentialNames(ids);
+		const selectedCredentialIds = ids.filter((id) => held.has(id));
+		return selectedCredentialIds.length > 0 ? { ...selection, selectedCredentialIds } : selection;
 	}
 
 	/** A whole-instance Apply deletes the team projects that the package does not hold. */
@@ -475,6 +505,17 @@ export class ApplyPreviewService {
 			}));
 	}
 
+	/** The projects of the branch that the user can read: only their dependency files are shown. */
+	private async readableBranchProjects(
+		user: User,
+		inventory: PackageDirectoryInventory,
+	): Promise<Set<string>> {
+		return await this.access.readableProjectIds(
+			user,
+			inventory.projects.map(({ id }) => id),
+		);
+	}
+
 	private async readPackage(files: ReadonlyMap<string, Buffer>) {
 		if (files.size === 0) {
 			throw new BadRequestError(
@@ -487,11 +528,12 @@ export class ApplyPreviewService {
 
 	/** Adds the local state of resources that the export lacks, then identifies the preview. */
 	private async finish(
+		user: User,
 		resources: PromotionResource[],
 		dependencies: PromotionResourceDependency[],
 		check: PromotionPreviewCheck,
 	): Promise<ApplyPreview> {
-		await this.addLocalState(resources);
+		await this.addLocalState(user, resources);
 		return { resources, dependencies, check, revision: previewRevision({ resources, check }) };
 	}
 
@@ -503,15 +545,19 @@ export class ApplyPreviewService {
 	/**
 	 * A tag, data table or credential that no local workflow uses is not in the local export, but
 	 * Apply reuses it. Its revision is read here as the detail endpoint reads it, so the two compare,
-	 * and a bound credential shows its local name.
+	 * and a bound credential shows its local name. Only what the user can read on this instance.
 	 */
-	private async addLocalState(resources: PromotionResource[]): Promise<void> {
+	private async addLocalState(user: User, resources: PromotionResource[]): Promise<void> {
 		const unexported = (type: PromotionResource['type']) =>
 			resources.filter((resource) => resource.type === type && resource.revision.before === null);
 		const [tags, tables, credentialNames] = await Promise.all([
 			this.localEntities.tags(unexported('tag')),
-			this.localEntities.dataTables(unexported('dataTable').map(({ id }) => id)),
-			this.localEntities.credentialNames(
+			this.localEntities.dataTables(
+				unexported('dataTable').map(({ id }) => id),
+				user,
+			),
+			this.localEntities.readableCredentialNames(
+				user,
 				unexported('credential')
 					.filter(({ change }) => change === 'unchanged')
 					.map(({ id }) => id),
@@ -607,7 +653,8 @@ function compareWithBranch({
 	manifest,
 	tagsDisabled,
 	moves = [],
-}: Pick<Parameters<typeof buildPreview>[0], 'operation' | 'projectIds'> & {
+	readableProjectIds,
+}: Pick<Parameters<typeof buildPreview>[0], 'operation' | 'projectIds' | 'readableProjectIds'> & {
 	instance: InstancePackage;
 	files: ReadonlyMap<string, Buffer>;
 	manifest: PreviewSide['manifest'];
@@ -625,6 +672,7 @@ function compareWithBranch({
 		files,
 		manifest,
 		tagsDisabled,
+		readableProjectIds,
 	});
 	return moves.length > 0
 		? { ...compared, resources: markMovedResources(compared.resources, moves) }
@@ -638,7 +686,8 @@ function compareSides({
 	files,
 	manifest,
 	tagsDisabled,
-}: Pick<Parameters<typeof buildPreview>[0], 'operation' | 'projectIds'> & {
+	readableProjectIds,
+}: Pick<Parameters<typeof buildPreview>[0], 'operation' | 'projectIds' | 'readableProjectIds'> & {
 	instance: InstancePackage;
 	files: ReadonlyMap<string, Buffer>;
 	manifest: PreviewSide['manifest'];
@@ -652,6 +701,7 @@ function compareSides({
 	return buildPreview({
 		operation,
 		projectIds,
+		readableProjectIds,
 		base: {
 			manifest: instance.manifest,
 			blobByPath: new Map(instance.files.map(({ path, blobSha }) => [path, blobSha])),

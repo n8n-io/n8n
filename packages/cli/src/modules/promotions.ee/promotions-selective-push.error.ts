@@ -28,3 +28,16 @@ export class PromotionsWorkflowsMovedCrossProjectError extends BadRequestError {
 		};
 	}
 }
+
+/**
+ * One message for every selected workflow that the selected project does not hold: one that
+ * does not exist, one of a project that the user cannot read, and one of another project of
+ * the branch. So the answer does not tell these cases apart.
+ */
+export function workflowsNotInSelectedProjectError(
+	workflowIds: readonly string[],
+): BadRequestError {
+	return new BadRequestError(
+		`The following workflows are not in the selected project: ${workflowIds.join(', ')}`,
+	);
+}

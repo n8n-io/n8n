@@ -94,11 +94,11 @@ export class ApplyCheckFactsService {
 		// consumer keeps it, so the report can still show what the workflow shows on the source.
 		for (const { target } of references) {
 			const row = branch.requirements[targetKey(target.kind, target.id)];
-			// The branch keeps a row only while it does not hold the target. The file of a credential
-			// on the branch has the same name as the row had.
+			// The row of the consumer, never the credential file: the file can be in a project that
+			// the user cannot read, and the report decides what it shows of that file.
 			const name =
 				row?.name ??
-				(target.kind === 'credential' ? branch.credentials[target.id]?.name : undefined);
+				(target.kind === 'credential' ? branch.credentialRows?.[target.id]?.name : undefined);
 			if (target.name === undefined && name !== undefined) target.name = name;
 		}
 

@@ -1246,7 +1246,9 @@ export class CredentialsService {
 		const persist = async (transactionManager: EntityManager, ctx: OperationContext) => {
 			await this.credentialsRepository.updateContent(
 				credentialId,
-				options?.clearPlaceholder
+				// A placeholder stays a placeholder until the saved data holds a value. An empty
+				// `data` object does not make the credential usable.
+				options?.clearPlaceholder && holdsCredentialValue(decryptedCredentialData)
 					? { ...newCredentialData, isPlaceholder: false }
 					: newCredentialData,
 				ctx,
@@ -2683,4 +2685,19 @@ export class CredentialsService {
 
 		return { credentials: mergedCredentials, storedData: decryptedData };
 	}
+}
+
+/**
+ * True when the data of a credential holds at least one value that a person entered: a text
+ * that is not blank, a number, or a list or an object that holds such a value. A switch alone
+ * (true or false) is not a value: every credential form has defaults for those.
+ */
+export function holdsCredentialValue(data: unknown): boolean {
+	if (typeof data === 'string') return data.trim() !== '';
+	if (typeof data === 'number') return true;
+	if (Array.isArray(data)) return data.some(holdsCredentialValue);
+	if (typeof data === 'object' && data !== null) {
+		return Object.values(data).some(holdsCredentialValue);
+	}
+	return false;
 }

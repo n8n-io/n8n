@@ -18,6 +18,11 @@ export interface DataTableExportRequest {
 	requirements: DataTableRequirement[];
 	writer: PackageWriter;
 	projectTargetsById?: Map<string, string>;
+	/**
+	 * A data table that does not exist, or that the user cannot read, becomes a requirement row
+	 * without a file. Omitted: the export stops.
+	 */
+	referenceOnlyWhenMissing?: boolean;
 }
 
 export interface DataTableExportResult {
@@ -53,10 +58,19 @@ export class DataTableExporter {
 			['dataTable:read'],
 		);
 
-		this.assertAllRequestedDataTablesFound(requestedIds, dataTables);
+		if (!request.referenceOnlyWhenMissing) {
+			this.assertAllRequestedDataTablesFound(requestedIds, dataTables);
+		}
 
 		const entries: ManifestEntry[] = [];
 		const requirements: PackageDataTableRequirement[] = [];
+
+		// The row keeps the reference visible. The user cannot read the name, so the row holds the id.
+		const foundIds = new Set(dataTables.map(({ id }) => id));
+		for (const id of requestedIds) {
+			if (foundIds.has(id)) continue;
+			requirements.push({ id, name: id, usedBy: usageById.get(id)?.usedBy ?? [] });
+		}
 
 		for (const dataTable of dataTables) {
 			entries.push(

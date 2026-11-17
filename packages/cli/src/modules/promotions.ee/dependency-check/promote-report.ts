@@ -58,7 +58,13 @@ export function computePromoteReport(input: PromoteCheckInput): PromotionDepende
 		const source = sourceTargets[key];
 		const consumerRef = toConsumer(consumer);
 
-		if (source && !worksOnSource(source, consumer.id)) {
+		const broken = source ? brokenOnSource(source, consumer.id, target.kind) : undefined;
+		if (source && broken) {
+			// The cause is information about the target, so it needs access to the target.
+			const cause =
+				broken !== 'missing' && source.canRead && visibility.canReadProject(source.project?.id)
+					? broken
+					: undefined;
 			report.warnings.push({
 				id: gapId(reference),
 				consumer: consumerRef,
@@ -66,6 +72,7 @@ export function computePromoteReport(input: PromoteCheckInput): PromotionDepende
 				target: visibility.target(reference),
 				usage,
 				code: 'broken-on-source',
+				...(cause ? { cause } : {}),
 			});
 			continue;
 		}
@@ -167,11 +174,19 @@ export function computePromoteReport(input: PromoteCheckInput): PromotionDepende
 	});
 }
 
-/** The target exists, is not archived, and the consumer can use it. Unknown counts as working. */
-function worksOnSource(source: SourceTargetFact, consumerId: string): boolean {
-	if (source.exists === false) return false;
-	if (source.archived === true) return false;
-	return source.usableBy[consumerId] !== false;
+/**
+ * Why the reference does not work on the source. Not set when the target exists, is not
+ * archived, and the consumer can use it. Unknown counts as working.
+ */
+function brokenOnSource(
+	source: SourceTargetFact,
+	consumerId: string,
+	kind: 'credential' | 'workflow',
+): 'missing' | 'archived' | 'caller-policy' | 'not-usable' | undefined {
+	if (source.exists === false) return 'missing';
+	if (source.archived === true) return 'archived';
+	if (source.usableBy[consumerId] !== false) return undefined;
+	return kind === 'workflow' ? 'caller-policy' : 'not-usable';
 }
 
 function projectOf(input: PromoteCheckInput, projectId: string) {

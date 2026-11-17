@@ -310,12 +310,40 @@ export class CredentialImporter {
 			context: ImportContext;
 			plan: CredentialImportPlan;
 			projectPendingCreation: boolean;
+			/** The project that creates each placeholder, when the caller decided it. */
+			placeholderHomes?: ReadonlyMap<string, string>;
 		}>,
 	): Promise<Array<{ plan: CredentialImportPlan; failures: CredentialResolutionFailure[] }>> {
-		const creators = new Map<string, { shareWithProjectIds: string[] } | 'forbidden'>();
+		type Placeholder = NonNullable<CredentialImportPlan['placeholders']>[number];
+		const creators = new Map<string, Placeholder | 'forbidden'>();
 		const mayCreate = new Map<string, boolean>();
 		const restored: Array<{ plan: CredentialImportPlan; failures: CredentialResolutionFailure[] }> =
 			[];
+		const creatorIn = async (
+			context: ImportContext,
+			projectPendingCreation: boolean,
+			placeholder: Placeholder,
+		) => {
+			if (!mayCreate.has(context.projectId)) {
+				mayCreate.set(
+					context.projectId,
+					projectPendingCreation || (await this.canCreateIn(context)),
+				);
+			}
+			return mayCreate.get(context.projectId) ? placeholder : ('forbidden' as const);
+		};
+
+		// The caller named the home: that scope creates the placeholder, whatever the order of
+		// the scopes. So the caller and the import agree on the project.
+		for (const { context, plan, projectPendingCreation, placeholderHomes } of scopes) {
+			for (const placeholder of plan.placeholders ?? []) {
+				const { sourceId } = placeholder;
+				if (placeholderHomes?.get(sourceId) !== context.projectId || creators.has(sourceId)) {
+					continue;
+				}
+				creators.set(sourceId, await creatorIn(context, projectPendingCreation, placeholder));
+			}
+		}
 
 		for (const { context, plan, projectPendingCreation } of scopes) {
 			const own: NonNullable<CredentialImportPlan['placeholders']> = [];
@@ -325,18 +353,12 @@ export class CredentialImporter {
 				const { sourceId, name, type } = placeholder;
 				let creator = creators.get(sourceId);
 				if (creator === undefined) {
-					if (!mayCreate.has(context.projectId)) {
-						mayCreate.set(
-							context.projectId,
-							projectPendingCreation || (await this.canCreateIn(context)),
-						);
-					}
-					creator = mayCreate.get(context.projectId) ? placeholder : 'forbidden';
+					creator = await creatorIn(context, projectPendingCreation, placeholder);
 					creators.set(sourceId, creator);
-					if (creator !== 'forbidden') {
-						own.push(placeholder);
-						continue;
-					}
+				}
+				if (creator === placeholder) {
+					own.push(placeholder);
+					continue;
 				}
 
 				if (creator === 'forbidden') {

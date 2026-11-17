@@ -15,7 +15,10 @@ import type { ManifestEntry, PackageManifest } from '@/modules/n8n-packages/spec
 import { containerMoves, isUnder, projectHolding, staleWorkflowTargets } from './branch-placement';
 import type { BranchLayout, ContainerMove } from './branch-placement';
 import { writeImportManifest } from './import-manifest-bridge';
-import { PromotionsWorkflowsMovedCrossProjectError } from './promotions-selective-push.error';
+import {
+	PromotionsWorkflowsMovedCrossProjectError,
+	workflowsNotInSelectedProjectError,
+} from './promotions-selective-push.error';
 
 const selectivePushOptionsSchema = z.object({
 	projectId: z.string().min(1),
@@ -186,6 +189,33 @@ export class WorkingCopyUpdater {
 			await fs.rm(directory, { recursive: true, force: true });
 		}
 		return { ...staging, ...(staging.credentials ? { credentials: kept } : {}) };
+	}
+
+	/**
+	 * A data table cannot cross a project, so a Promote writes a data table file only under a
+	 * project of the operation. The exporter writes a table of any other project at the top
+	 * level. Remove that file from the staging export, so the reference stays a requirement row
+	 * and the destination does not copy the table into the project of the workflow.
+	 */
+	async dropDataTablesOfOtherProjects(
+		stagingFolder: string,
+		staging: PackageManifest,
+		selection: SelectivePushSelection,
+	): Promise<PackageManifest> {
+		if (!staging.dataTables?.length) return staging;
+		const targets = projectsOf(selection).flatMap(
+			({ projectId }) => staging.projects?.find(({ id }) => id === projectId)?.target ?? [],
+		);
+		const kept: ManifestEntry[] = [];
+		for (const entry of staging.dataTables) {
+			if (targets.some((target) => isUnder(entry.target, target))) {
+				kept.push(entry);
+				continue;
+			}
+			const directory = await this.resolveLeafTarget(stagingFolder, entry.target, 'Dependency');
+			await fs.rm(directory, { recursive: true, force: true });
+		}
+		return { ...staging, dataTables: kept };
 	}
 
 	/**
@@ -377,21 +407,13 @@ export class WorkingCopyUpdater {
 		if (selection.deletedWorkflowIds.length === 0) return;
 
 		const targetById = new Map((branch.workflows ?? []).map((w) => [w.id, w.target]));
-		const unknown = selection.deletedWorkflowIds.filter((id) => !targetById.has(id));
-		if (unknown.length > 0) {
-			throw new BadRequestError(`Deleted workflows not found on the branch: ${unknown.join(', ')}`);
-		}
-
+		// One message for an id that the branch lacks and for an id of another project.
 		const projectTarget = branch.projects?.find((p) => p.id === selection.projectId)?.target;
 		const foreign = selection.deletedWorkflowIds.filter((id) => {
 			const target = targetById.get(id);
 			return !projectTarget || !target || !isUnder(target, projectTarget);
 		});
-		if (foreign.length > 0) {
-			throw new BadRequestError(
-				`Deleted workflows do not belong to the selected project: ${foreign.join(', ')}`,
-			);
-		}
+		if (foreign.length > 0) throw workflowsNotInSelectedProjectError(foreign);
 	}
 
 	/**

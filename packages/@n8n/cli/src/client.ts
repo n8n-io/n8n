@@ -140,6 +140,8 @@ export interface PromotionApplyConfirmations {
 	confirmedGapIds?: string[];
 	confirmedGrantIds?: string[];
 	confirmDeletionCallers?: boolean;
+	/** The ID of each `deletionCallers` row of the report that the user accepts. */
+	confirmedDeletionCallerIds?: string[];
 	/** The home of a credential that the branch holds without an owner, by credential ID. */
 	credentialHomes?: Record<string, string>;
 }
@@ -167,6 +169,8 @@ export interface PromotionExpectedSource {
 export interface PromotionSelection {
 	workflowIds?: string[];
 	folderIds?: string[];
+	/** Credentials that the project owns. Left out: the default of the server applies. */
+	credentialIds?: string[];
 }
 
 /** References in a package that must be set up on this instance before Apply can import it. */
@@ -232,6 +236,7 @@ export type ApplyPackageResult =
 			credentialMoves?: Array<Record<string, unknown>>;
 			keptWorkflows?: Array<Record<string, unknown>>;
 			keptProjects?: Array<Record<string, unknown>>;
+			livePlaceholderWorkflows?: Array<Record<string, unknown>>;
 	  })
 	| (ApplyPackageIdentity & {
 			status: 'blocked';

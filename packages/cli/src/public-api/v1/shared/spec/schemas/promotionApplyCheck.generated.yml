@@ -1029,6 +1029,8 @@ properties:
                 - workflow-forbidden
             reason:
               type: string
+            missingScope:
+              type: string
             consumers:
               type: array
               items:
