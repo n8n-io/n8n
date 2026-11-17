@@ -162,6 +162,10 @@ const pageType = computed(() => {
 	}
 });
 
+// The navigation panel lists the pages of Overview and of each project, so only the shared
+// pages, which the panel does not list, keep the tabs.
+const showTabs = computed(() => pageType.value === 'shared');
+
 const personalSelfHealingTab = computed((): TabOptions<string> | null => {
 	const project = projectsStore.currentProject;
 	if (
@@ -569,6 +573,13 @@ const onSelect = (action: string, source: CreateSource) => {
 					:content="i18n.baseText('readOnlyEnv.cantAdd.any')"
 				>
 					<div style="display: flex; gap: var(--spacing--xs); align-items: center">
+						<!-- Without tabs, the list search, sort and filter sit before the main button. -->
+						<div
+							v-if="setListToolbarTarget && !showTabs"
+							:ref="onListToolbarTargetRef"
+							:class="[$style.listToolbar, $style.listToolbarInHeader]"
+							data-test-id="project-header-list-toolbar"
+						/>
 						<ReadyToRunButton :has-active-callouts="props.hasActiveCallouts" />
 						<ProjectCreateResource
 							data-test-id="add-resource-buttons"
@@ -590,7 +601,7 @@ const onSelect = (action: string, source: CreateSource) => {
 			</div>
 		</div>
 		<slot></slot>
-		<div :class="$style.actions">
+		<div v-if="showTabs" :class="$style.actions">
 			<ProjectTabs
 				:class="$style.tabs"
 				:page-type="pageType"
@@ -669,6 +680,10 @@ const onSelect = (action: string, source: CreateSource) => {
 	:global(.n8n-tabs [role='tablist'] .n8n-badge) {
 		margin-block: calc(var(--spacing--3xs) / -2);
 	}
+}
+
+.listToolbarInHeader {
+	padding-bottom: 0;
 }
 
 .tabs {

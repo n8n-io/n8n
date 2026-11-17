@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, nextTick, onBeforeMount, onBeforeUnmount, ref, watch } from 'vue';
 import { useRoute } from 'vue-router';
-import { N8nTooltip } from '@n8n/design-system';
+import { N8nTooltip, updatedIconSet, type IconOrEmoji } from '@n8n/design-system';
 import { promotionEventBus } from '@n8n/frontend-module-promotions';
 import { useUIStore } from '@/app/stores/ui.store';
 import { useKeybindings } from '@/app/composables/useKeybindings';
@@ -51,6 +51,13 @@ const panelSections = computed(() => sectionsFor(panelItem.value?.id));
 
 const mainItems = computed(() => railItems.value.filter((item) => item.group === 'main'));
 const projectItems = computed(() => railItems.value.filter((item) => item.group === 'project'));
+
+/** The active item shows the solid twin of its icon, when the icon set has one */
+function railIcon(icon: IconOrEmoji, isActive: boolean): IconOrEmoji {
+	if (!isActive || icon.type !== 'icon') return icon;
+	const filled = `${icon.value}-filled`;
+	return filled in updatedIconSet ? { type: 'icon', value: filled } : icon;
+}
 
 function toggle() {
 	if (isExpanded.value) {
@@ -180,7 +187,12 @@ onBeforeUnmount(() => {
 							@focus="peek.onItemEnter(item.id)"
 							@click="onRailItemClick(item.id)"
 						>
-							<ProjectIcon :icon="item.icon" size="small" border-less color="text-dark" />
+							<ProjectIcon
+								:icon="railIcon(item.icon, item.id === activeItemId)"
+								size="small"
+								border-less
+								color="text-dark"
+							/>
 						</RouterLink>
 					</N8nTooltip>
 				</div>
@@ -242,10 +254,13 @@ $panel-width: 240px;
 	z-index: 2;
 	display: flex;
 	height: 100%;
-	background-color: var(--menu--color--background);
 }
 
 .rail {
+	// The account avatar rings its unread dot with the menu background.
+	--menu--color--background: var(--app-shell--rail--color--background);
+
+	background-color: var(--app-shell--rail--color--background);
 	display: flex;
 	flex-direction: column;
 	align-items: center;
@@ -322,6 +337,7 @@ $panel-width: 240px;
 	width: $panel-width;
 	flex: none;
 	min-height: 0;
+	background-color: var(--app-shell--nav-panel--color--background);
 }
 
 .floating {
@@ -332,7 +348,7 @@ $panel-width: 240px;
 	width: $panel-width;
 	border: 0.5px solid var(--app-shell--panel--border-color);
 	border-radius: var(--radius--sm);
-	background-color: var(--app-shell--panel--color--background);
+	background-color: var(--app-shell--nav-panel--color--background);
 	box-shadow: var(--shadow--md);
 	overflow: hidden;
 }

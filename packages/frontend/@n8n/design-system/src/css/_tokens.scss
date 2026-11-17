@@ -639,6 +639,10 @@
 	--app-shell--panel--border-color: var(--color--neutral-250);
 	// A soft drop plus a tight contact shadow. No primitive has these low alphas.
 	--app-shell--panel--shadow: 0 3px 6px -2px oklch(0% 0 0 / 0.02), 0 1px 1px oklch(0% 0 0 / 0.04);
+	// Three steps from dark to light: the navigation rail, the navigation panel, the content.
+	--app-shell--rail--color--background: var(--color--neutral-150);
+	--app-shell--nav-panel--color--background: var(--color--neutral-50);
+	--app-shell--content--color--background: var(--background--surface);
 
 	// Params
 	--icon--color: var(--color--text--tint-1);
@@ -1250,6 +1254,9 @@
 	// A shadow does not show on a black frame, so the border separates the panel.
 	--app-shell--panel--border-color: var(--color--white-alpha-150);
 	--app-shell--panel--shadow: none;
+	--app-shell--rail--color--background: var(--color--neutral-black);
+	--app-shell--nav-panel--color--background: var(--color--neutral-950);
+	--app-shell--content--color--background: var(--color--neutral-900);
 
 	/* Ag Grid */
 	--grid--row--color--background--selected: var(--color--purple-900);

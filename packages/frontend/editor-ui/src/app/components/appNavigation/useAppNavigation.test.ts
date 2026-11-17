@@ -3,6 +3,8 @@ import { createTestingPinia } from '@pinia/testing';
 import type { Scope } from '@n8n/permissions';
 import type { DynamicTabOptions } from '@n8n/frontend-module-sdk';
 import { useSettingsStore } from '@n8n/stores/settings.store';
+import { useUsersStore } from '@n8n/stores/users.store';
+import { PERSONAL_SELF_HEALING_VIEW } from '@n8n/frontend-constants/self-healing';
 import { INBOX_VIEW } from '@n8n/frontend-module-inbox';
 import { mockedStore } from '@/__tests__/utils';
 import { VIEWS } from '@/app/constants';
@@ -263,6 +265,26 @@ describe('useAppNavigation', () => {
 				name: VIEWS.PROJECTS_WORKFLOWS,
 				params: { projectId: 'personal-1' },
 			});
+		});
+
+		it('adds Self-healing to the Personal project when the owner can configure it', () => {
+			projectsStore.personalProject = {
+				...personal,
+				relations: [{ id: 'user-1', role: 'project:personalOwner' }],
+			} as Project;
+			mockedStore(useUsersStore).currentUserId = 'user-1';
+			settingsStore.moduleSettings = {
+				'instance-ai': { workflowSuggestionsEnabled: true },
+			} as typeof settingsStore.moduleSettings;
+
+			const [section] = setup().nav.sectionsFor(projectItemId('personal-1'));
+
+			expect(section.links.at(-1)).toMatchObject({
+				id: PERSONAL_SELF_HEALING_VIEW,
+				to: { name: PERSONAL_SELF_HEALING_VIEW, params: { projectId: 'personal-1' } },
+			});
+			const [teamSection] = setup().nav.sectionsFor(projectItemId('team-a'));
+			expect(teamSection.links.map((link) => link.id)).not.toContain(PERSONAL_SELF_HEALING_VIEW);
 		});
 
 		it('gives the Assistant a New chat link and the recent chats', () => {

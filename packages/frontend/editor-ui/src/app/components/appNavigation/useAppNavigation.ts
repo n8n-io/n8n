@@ -11,6 +11,11 @@ import { useUIStore } from '@/app/stores/ui.store';
 import { processDynamicTabs } from '@/app/utils/modules/tabUtils';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 import { ProjectTypes } from '@/features/collaboration/projects/projects.types';
+import {
+	canConfigureSelfHealing,
+	selfHealingLocation,
+} from '@/features/collaboration/projects/projects.utils';
+import { PERSONAL_SELF_HEALING_VIEW } from '@n8n/frontend-constants/self-healing';
 import type { Scope } from '@n8n/permissions';
 import { DEFAULT_PROJECT_ICON } from '@/features/collaboration/projects/projects.constants';
 import {
@@ -103,6 +108,7 @@ const PAGE_ICONS: Record<string, IconName> = {
 	[PROJECT_AGENTS]: 'bot',
 	[DATA_TABLE_VIEW]: 'table',
 	[PROJECT_DATA_TABLES]: 'table',
+	[PERSONAL_SELF_HEALING_VIEW]: 'wrench',
 };
 const DEFAULT_PAGE_ICON: IconName = 'layers';
 
@@ -294,6 +300,22 @@ export function useAppNavigation() {
 					to: { name: VIEWS.PROJECT_SETTINGS, params: { projectId } },
 				});
 			}
+		}
+
+		// The header showed this page as a tab of the personal project only.
+		const personalProject = projectsStore.personalProject;
+		if (
+			projectId &&
+			projectId === personalProject?.id &&
+			selfHealingLocation(personalProject) === 'personalTab' &&
+			canConfigureSelfHealing(personalProject)
+		) {
+			pages.push({
+				value: PERSONAL_SELF_HEALING_VIEW,
+				label: i18n.baseText('selfHealing.config.heading'),
+				preview: true,
+				to: { name: PERSONAL_SELF_HEALING_VIEW, params: { projectId } },
+			});
 		}
 
 		return pages.flatMap<AppNavLink>((page) =>

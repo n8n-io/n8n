@@ -66,7 +66,10 @@ const Empty = defineComponent({ template: '<div />' });
 
 const renderComponent = createComponentRenderer(AppNavigation, {
 	global: {
-		stubs: { MainSidebarAccountMenu: { template: '<div data-test-id="account-menu" />' } },
+		stubs: {
+			MainSidebarAccountMenu: { template: '<div data-test-id="account-menu" />' },
+			ProjectIcon: { props: ['icon'], template: '<span data-test-id="rail-icon" :data-icon="icon.value" />' },
+		},
 	},
 });
 
@@ -108,6 +111,17 @@ describe('AppNavigation', () => {
 		expect(getByTestId('app-nav-project')).not.toHaveAttribute('aria-current');
 		expect(getByRole('separator')).toBeInTheDocument();
 		expect(getByTestId('account-menu')).toBeInTheDocument();
+	});
+
+	it('shows the solid icon of the active item, and the outline icon of the others', async () => {
+		const { getByTestId, getAllByTestId } = setup({ collapsed: false });
+		const icons = () => getAllByTestId('rail-icon').map((icon) => icon.dataset.icon);
+
+		expect(icons()).toEqual(['house-filled', 'layers']);
+
+		activeItemId.value = 'project:p1';
+		await waitFor(() => expect(icons()).toEqual(['house', 'layers-filled']));
+		expect(getByTestId('app-nav-project')).toHaveAttribute('aria-current', 'page');
 	});
 
 	describe('expanded', () => {

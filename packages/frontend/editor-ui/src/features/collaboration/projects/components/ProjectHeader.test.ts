@@ -10,10 +10,7 @@ import { useProjectsStore } from '../projects.store';
 import type { Project, ProjectListItem } from '../projects.types';
 import { ProjectTypes } from '../projects.types';
 import { EnterpriseEditionFeature, VIEWS } from '@/app/constants';
-import {
-	PERSONAL_SELF_HEALING_VIEW,
-	PERSONAL_SELF_HEALING_CONFIGURATION_VIEW,
-} from '@n8n/frontend-constants/self-healing';
+import { PERSONAL_SELF_HEALING_CONFIGURATION_VIEW } from '@n8n/frontend-constants/self-healing';
 import userEvent from '@testing-library/user-event';
 import { waitFor, within } from '@testing-library/vue';
 import { useSettingsStore } from '@n8n/stores/settings.store';
@@ -252,82 +249,6 @@ describe('ProjectHeader', () => {
 		expect(getByTestId('project-subtitle')).toHaveTextContent(projectDescription);
 	});
 
-	it('should render ProjectTabs Settings if project is team project and user has update scope', () => {
-		route.params.projectId = '123';
-		projectsStore.currentProject = createTestProject({
-			scopes: ['project:update'],
-		});
-		renderComponent();
-
-		expect(projectTabsSpy).toHaveBeenCalledWith(
-			expect.objectContaining({
-				'show-settings': true,
-			}),
-			null,
-		);
-	});
-
-	it('should render ProjectTabs without Settings if no project update, manageMembers or externalSecretsProvider:read permission', () => {
-		route.params.projectId = '123';
-		projectsStore.currentProject = createTestProject({
-			scopes: ['project:read'],
-		});
-		renderComponent();
-
-		expect(projectTabsSpy).toHaveBeenCalledWith(
-			expect.objectContaining({
-				'show-settings': false,
-			}),
-			null,
-		);
-	});
-
-	it('should render ProjectTabs Settings if project member has project:manageMembers scope', () => {
-		route.params.projectId = '123';
-		projectsStore.currentProject = createTestProject({
-			scopes: ['project:read', 'project:manageMembers'],
-		});
-		renderComponent();
-
-		expect(projectTabsSpy).toHaveBeenCalledWith(
-			expect.objectContaining({
-				'show-settings': true,
-			}),
-			null,
-		);
-	});
-
-	it('should render ProjectTabs Settings if project editor has externalSecretsProvider:read scope', () => {
-		route.params.projectId = '123';
-		projectsStore.currentProject = createTestProject({
-			scopes: ['project:read', 'externalSecretsProvider:read', 'externalSecretsProvider:list'],
-		});
-		renderComponent();
-
-		expect(projectTabsSpy).toHaveBeenCalledWith(
-			expect.objectContaining({
-				'show-settings': true,
-			}),
-			null,
-		);
-	});
-
-	it('should render ProjectTabs without Settings if project is not team project', () => {
-		route.params.projectId = '123';
-		projectsStore.currentProject = createTestProject({
-			type: ProjectTypes.Personal,
-			scopes: ['project:update'],
-		});
-		renderComponent();
-
-		expect(projectTabsSpy).toHaveBeenCalledWith(
-			expect.objectContaining({
-				'show-settings': false,
-			}),
-			null,
-		);
-	});
-
 	it('should create a workflow', async () => {
 		const project = createTestProject({
 			scopes: ['workflow:create'],
@@ -428,12 +349,6 @@ describe('ProjectHeader', () => {
 
 		const { getByTestId, queryByTestId } = renderComponent({ props: { mainButton: 'agent' } });
 
-		expect(projectTabsSpy).toHaveBeenCalledWith(
-			expect.objectContaining({
-				'additional-tabs': [],
-			}),
-			null,
-		);
 		expect(queryByTestId('menu-agent')).not.toBeInTheDocument();
 		expect(queryByTestId('add-resource-agent')).not.toBeInTheDocument();
 		expect(getByTestId('add-resource-workflow')).toBeEnabled();
@@ -469,61 +384,27 @@ describe('ProjectHeader', () => {
 			);
 		});
 
-		it('should pass tabs for overview page type when on overview sub page', () => {
+		it.each([
+			{ page: 'overview', overview: true },
+			{ page: 'project', overview: false },
+		])('does not render the tabs on the $page page', ({ overview }) => {
 			vi.spyOn(projectPages, 'isSharedSubPage', 'get').mockReturnValue(false);
-			vi.spyOn(projectPages, 'isOverviewSubPage', 'get').mockReturnValue(true);
-
-			const mockTabs = [{ value: 'overview-tab-1', label: 'Overview Tab 1' }];
-
-			uiStore.moduleTabs.overview = {
-				overviewModule: mockTabs,
-			};
-
-			settingsStore.isModuleActive = vi.fn().mockReturnValue(true);
+			vi.spyOn(projectPages, 'isOverviewSubPage', 'get').mockReturnValue(overview);
 
 			renderComponent();
 
-			expect(projectTabsSpy).toHaveBeenCalledWith(
-				expect.objectContaining({
-					'additional-tabs': mockTabs,
-				}),
-				null,
-			);
-		});
-
-		it('should pass tabs for project page type when not on shared or overview sub pages', () => {
-			vi.spyOn(projectPages, 'isSharedSubPage', 'get').mockReturnValue(false);
-			vi.spyOn(projectPages, 'isOverviewSubPage', 'get').mockReturnValue(false);
-
-			const mockTabs = [
-				{ value: 'project-tab-1', label: 'Project Tab 1' },
-				{ value: 'project-tab-2', label: 'Project Tab 2' },
-			];
-
-			uiStore.moduleTabs.project = {
-				projectModule: mockTabs,
-			};
-
-			settingsStore.isModuleActive = vi.fn().mockReturnValue(true);
-
-			renderComponent();
-
-			expect(projectTabsSpy).toHaveBeenCalledWith(
-				expect.objectContaining({
-					'additional-tabs': mockTabs,
-				}),
-				null,
-			);
+			// The navigation panel lists these pages instead.
+			expect(projectTabsSpy).not.toHaveBeenCalled();
 		});
 
 		it('should filter out tabs from inactive modules', () => {
-			vi.spyOn(projectPages, 'isSharedSubPage', 'get').mockReturnValue(false);
+			vi.spyOn(projectPages, 'isSharedSubPage', 'get').mockReturnValue(true);
 			vi.spyOn(projectPages, 'isOverviewSubPage', 'get').mockReturnValue(false);
 
 			const activeTabs = [{ value: 'active-tab', label: 'Active Tab' }];
 			const inactiveTabs = [{ value: 'inactive-tab', label: 'Inactive Tab' }];
 
-			uiStore.moduleTabs.project = {
+			uiStore.moduleTabs.shared = {
 				activeModule: activeTabs,
 				inactiveModule: inactiveTabs,
 			};
@@ -543,7 +424,7 @@ describe('ProjectHeader', () => {
 		});
 
 		it('should flatten tabs from multiple active modules', () => {
-			vi.spyOn(projectPages, 'isSharedSubPage', 'get').mockReturnValue(false);
+			vi.spyOn(projectPages, 'isSharedSubPage', 'get').mockReturnValue(true);
 			vi.spyOn(projectPages, 'isOverviewSubPage', 'get').mockReturnValue(false);
 
 			const module1Tabs = [
@@ -552,7 +433,7 @@ describe('ProjectHeader', () => {
 			];
 			const module2Tabs = [{ value: 'module2-tab1', label: 'Module 2 Tab 1' }];
 
-			uiStore.moduleTabs.project = {
+			uiStore.moduleTabs.shared = {
 				module1: module1Tabs,
 				module2: module2Tabs,
 				module3: [], // Empty tabs array
@@ -571,10 +452,10 @@ describe('ProjectHeader', () => {
 		});
 
 		it('should pass empty array when no modules are active', () => {
-			vi.spyOn(projectPages, 'isSharedSubPage', 'get').mockReturnValue(false);
+			vi.spyOn(projectPages, 'isSharedSubPage', 'get').mockReturnValue(true);
 			vi.spyOn(projectPages, 'isOverviewSubPage', 'get').mockReturnValue(false);
 
-			uiStore.moduleTabs.project = {
+			uiStore.moduleTabs.shared = {
 				module1: [{ value: 'tab1', label: 'Tab 1' }],
 				module2: [{ value: 'tab2', label: 'Tab 2' }],
 			};
@@ -592,10 +473,10 @@ describe('ProjectHeader', () => {
 		});
 
 		it('should pass empty array when no modules exist for the tab type', () => {
-			vi.spyOn(projectPages, 'isSharedSubPage', 'get').mockReturnValue(false);
+			vi.spyOn(projectPages, 'isSharedSubPage', 'get').mockReturnValue(true);
 			vi.spyOn(projectPages, 'isOverviewSubPage', 'get').mockReturnValue(false);
 
-			uiStore.moduleTabs.project = {}; // No modules
+			uiStore.moduleTabs.shared = {}; // No modules
 
 			renderComponent();
 
@@ -608,14 +489,7 @@ describe('ProjectHeader', () => {
 		});
 	});
 
-	describe('personal self-healing tab', () => {
-		const selfHealingTab = {
-			label: 'Self-healing',
-			value: PERSONAL_SELF_HEALING_VIEW,
-			preview: true,
-			to: { name: PERSONAL_SELF_HEALING_VIEW, params: { projectId: 'project' } },
-		};
-
+	describe('personal self-healing actions', () => {
 		beforeEach(() => {
 			vi.spyOn(projectPages, 'isSharedSubPage', 'get').mockReturnValue(false);
 			vi.spyOn(projectPages, 'isOverviewSubPage', 'get').mockReturnValue(false);
@@ -641,17 +515,6 @@ describe('ProjectHeader', () => {
 			} as Project;
 		}
 
-		it('adds the tab to the personal project when self-healing is enabled', () => {
-			setProject(ProjectTypes.Personal, true);
-
-			renderComponent();
-
-			expect(projectTabsSpy).toHaveBeenCalledWith(
-				expect.objectContaining({ 'additional-tabs': [selfHealingTab] }),
-				null,
-			);
-		});
-
 		it('opens a personal configuration from the header and keeps workflow creation in the menu', async () => {
 			setProject(ProjectTypes.Personal, true);
 			const { getByRole, getByTestId } = renderComponent({ props: { mainButton: 'selfHealing' } });
@@ -673,19 +536,6 @@ describe('ProjectHeader', () => {
 			expect(getByRole('button', { name: 'Add configuration' })).toBeDisabled();
 		});
 
-		it.each([
-			{ type: ProjectTypes.Personal, enabled: false },
-			{ type: ProjectTypes.Team, enabled: true },
-		])('does not add the tab to a $type project when enabled=$enabled', ({ type, enabled }) => {
-			setProject(type, enabled);
-
-			renderComponent();
-
-			expect(projectTabsSpy).toHaveBeenCalledWith(
-				expect.objectContaining({ 'additional-tabs': [] }),
-				null,
-			);
-		});
 	});
 
 	describe('ProjectCreateResource', () => {

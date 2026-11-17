@@ -16,8 +16,14 @@ import Entra from './custom/entra.svg';
 import FilledSquare from './custom/filled-square.svg';
 import Form from './custom/form.svg';
 import GripLinesVertical from './custom/grip-lines-vertical.svg';
+import FolderFilled from './custom/brand/folder--solid-16.svg';
 import GroupFilled from './custom/brand/group--solid-16.svg';
 import HourglassFilled from './custom/brand/hourglass--solid-16.svg';
+import HouseFilled from './custom/brand/home--solid-16.svg';
+import InboxFilled from './custom/brand/inbox--solid-16.svg';
+import LayersFilled from './custom/brand/layers--solid-16.svg';
+import N8nAssistantFilled from './custom/brand/n8n-assistant--solid-16.svg';
+import UserFilled from './custom/brand/person--solid-16.svg';
 import Linear from './custom/linear.svg';
 import Lovable from './custom/lovable.svg';
 import Mcp from './custom/mcp.svg';
@@ -670,6 +676,13 @@ export const updatedIconSet = {
 	'workflow-filled': NodeExtract,
 	'workflow-filled-12': WorkflowFilled12,
 	'star-filled': StarFilled,
+	// Solid twins of navigation icons, for the active item
+	'folder-filled': FolderFilled,
+	'house-filled': HouseFilled,
+	'inbox-filled': InboxFilled,
+	'layers-filled': LayersFilled,
+	'n8n-assistant-filled': N8nAssistantFilled,
+	'user-filled': UserFilled,
 	'vector-square': VectorSquare,
 	'continue-on-error': Continue,
 	'always-output-data': EmptyOutput,

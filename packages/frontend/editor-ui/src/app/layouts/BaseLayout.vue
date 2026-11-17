@@ -124,20 +124,15 @@ onMounted(() => {
 	background-color: var(--app-shell--color--background);
 
 	.content {
-		// Surfaces inside the panel, such as sticky headers and cards, match the panel.
-		--background--surface: var(--app-shell--panel--color--background);
+		// Surfaces inside the content, such as sticky headers and cards, match the content.
+		--background--surface: var(--app-shell--content--color--background);
 
-		// An outer layout sizes every nested `main` to 100%, which would push the margins out of view.
+		// The content fills the space to the right, top and bottom edges of the window.
 		width: auto;
 		height: auto;
 		min-width: 0;
 		min-height: 0;
-		margin: var(--spacing--2xs) var(--spacing--2xs) var(--spacing--2xs) 0;
-		// A half-pixel hairline, drawn as one device pixel on high-density screens
-		border: 0.5px solid var(--app-shell--panel--border-color);
-		border-radius: var(--radius--sm);
-		background-color: var(--app-shell--panel--color--background);
-		box-shadow: var(--app-shell--panel--shadow);
+		background-color: var(--app-shell--content--color--background);
 		overflow: hidden;
 	}
 
