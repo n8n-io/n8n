@@ -343,6 +343,7 @@ export class CredentialsPublicController {
 			updatePayload,
 			{ kind: 'user', user: req.user },
 			decryptedDataForDeps,
+			{ clearPlaceholder: existingCredential.isPlaceholder && body.data !== undefined },
 		);
 
 		if (!updatedCredential) {

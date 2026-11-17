@@ -412,6 +412,8 @@ export type PromotionLayoutProperties = {
 	 * write. Without it, such a move is a blocking issue.
 	 */
 	confirmedMovesOutOfOperation?: boolean;
+	/** Omitted means that the import treats each credential reference as before. */
+	credentialDependencies?: ImportCredentialDependencies;
 };
 
 /* eslint-disable @typescript-eslint/naming-convention */
@@ -467,6 +469,56 @@ export interface CrossProjectMoveBlocked {
 	fromProjectId: string;
 	toProjectId: string;
 	missingScope?: string;
+}
+
+/**
+ * Whether a credential that the package places in another project than the destination moves
+ * to the project of the package. `keep` never moves a credential.
+ */
+export const CredentialOwnerPolicy = {
+	Keep: 'keep',
+	FollowPackage: 'follow-package',
+} as const;
+
+export type CredentialOwnerPolicy =
+	(typeof CredentialOwnerPolicy)[keyof typeof CredentialOwnerPolicy];
+
+/**
+ * Promotion-only. What the caller already decided for the credentials of an import. The caller
+ * computes each list from its dependency check and the confirmation of the user. No entry gives
+ * a permission: each write checks the rights of the importing user again. Applies only with
+ * `credentialMatchingMode: 'id-only'`.
+ */
+export interface ImportCredentialDependencies {
+	/**
+	 * Source ids that get an empty placeholder credential when no credential on the destination
+	 * has the id. The first project of the import that uses the credential gets the placeholder,
+	 * and the other projects of the import that use it get use access.
+	 */
+	placeholderCredentialIds?: string[];
+	/**
+	 * Source ids whose reference the import writes unchanged when the consumer project cannot
+	 * use the credential. Without an entry here, such a reference blocks the import.
+	 */
+	allowedUnresolvedCredentialIds?: string[];
+	/**
+	 * Use access that the import gives before it writes the workflows of the project. The import
+	 * gives it only when the project needs it and the user may share the credential.
+	 */
+	credentialGrants?: Array<{ credentialId: string; projectId: string }>;
+	/** Omitted means `keep`. */
+	credentialOwnerPolicy?: CredentialOwnerPolicy;
+	/**
+	 * Home project, by credential id, of a package credential that no project folder holds.
+	 * The folder of a credential in the package always wins.
+	 */
+	credentialHomes?: Record<string, string>;
+	/**
+	 * Under `follow-package`: the package credentials that the import writes for their home
+	 * project. Omitted means every credential file of an imported project, or, for a selection
+	 * import, the credential files that the selected workflows of their home project use.
+	 */
+	ownedCredentialIds?: string[];
 }
 
 export type ResolvedImportRequest = ImportRequest & ResolvedImportFolderProperties;
@@ -532,7 +584,8 @@ export interface ImportContext {
 export type ImportPackageEventOptions = Required<ImportCredentialProperties> &
 	Omit<ImportWorkflowProperties, 'idPolicy' | 'publishingPolicy'> &
 	ImportProjectProperties &
-	ResolvedImportFolderProperties &
+	// The decisions of a promotion are no import option, so the audit event does not carry them.
+	Omit<ResolvedImportFolderProperties, 'credentialDependencies'> &
 	ImportDataTableProperties &
 	ImportVariableProperties &
 	ImportTagProperties & {
@@ -920,6 +973,50 @@ export interface ImportCredentialSummary {
 	incomplete: string[];
 	/** Source ids whose matched credential this import wrote under `credentialConflictPolicy=overwrite`. */
 	updated: string[];
+	/** Empty placeholder credentials that this import created. Set only with `credentialDependencies`. */
+	placeholders?: ImportedCredentialPlaceholder[];
+	/** Use access that this import gave, or found in place. Set only with `credentialDependencies`. */
+	grants?: ImportedCredentialGrant[];
+	/** Credentials whose owner differs from the package, moved or not. Set only with `credentialDependencies`. */
+	moves?: ImportedCredentialMove[];
+	/** Source ids whose reference this import wrote unchanged, without a usable credential. */
+	unresolved?: string[];
+}
+
+export interface ImportedCredentialPlaceholder {
+	id: string;
+	name: string;
+	type: string;
+	/** The project that owns the placeholder. */
+	projectId: string;
+	/** The other projects of the import that got use access. */
+	sharedWithProjectIds: string[];
+}
+
+export interface ImportedCredentialGrant {
+	credentialId: string;
+	projectId: string;
+	/** `already-usable`: an earlier import or a user gave the access. Nothing was written. */
+	status: 'granted' | 'already-usable';
+}
+
+/**
+ * - `moved`: the owner is now the project of the package. Every share stays.
+ * - `not-allowed`: the user may not move the credential. It did not move and did not change.
+ * - `excluded`: this kind of credential never moves. It did not change.
+ */
+export interface ImportedCredentialMove {
+	credentialId: string;
+	name: string;
+	type: string;
+	status: 'moved' | 'not-allowed' | 'excluded';
+	/** The project that the package names as the owner. */
+	toProjectId: string;
+	/** The owner on the destination before the import. The caller decides who may see it. */
+	fromProjectId?: string;
+	isPlaceholder: boolean;
+	/** For `excluded`. */
+	reason?: 'managed' | 'resolvable' | 'instance';
 }
 
 export interface ImportVariableSummary {

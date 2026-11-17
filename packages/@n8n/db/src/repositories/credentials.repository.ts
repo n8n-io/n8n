@@ -134,6 +134,18 @@ export class CredentialsRepository extends BaseRepository<CredentialsEntity> {
 		});
 	}
 
+	/** Id and name of each of the given credentials that is a promotion placeholder. */
+	async findPlaceholdersByIds(
+		ids: string[],
+	): Promise<Array<Pick<CredentialsEntity, 'id' | 'name'>>> {
+		if (ids.length === 0) return [];
+
+		return await this.find({
+			where: { id: In(ids), isPlaceholder: true },
+			select: ['id', 'name'],
+		});
+	}
+
 	/** The ids among `ids` that still have a row, regardless of usage scope. */
 	async findExistingIds(ids: string[]): Promise<string[]> {
 		if (ids.length === 0) return [];

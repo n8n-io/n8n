@@ -10,6 +10,7 @@ import type { ICredentialDataDecryptedObject } from 'n8n-workflow';
 
 import { CredentialDescriptionsService } from '@/credentials/credential-descriptions.service';
 import { CredentialsService } from '@/credentials/credentials.service';
+import { EnterpriseCredentialsService } from '@/credentials/credentials.service.ee';
 import { getExternalSecretExpressionPaths } from '@/credentials/external-secrets.utils';
 import { CredentialsOverwrites } from '@/credentials-overwrites';
 import { loginIdOf } from '@/events/login-id';
@@ -30,14 +31,23 @@ import {
 import type {
 	CredentialBindResult,
 	CredentialBindingRequest,
+	CredentialDependencyPlan,
+	CredentialDependencyRequest,
 	CredentialImportPlan,
 	CredentialMatch,
 	CredentialResolution,
 	CredentialResolutionFailure,
 	CredentialUpdateCandidate,
 	PlacedCredentialRequirement,
+	PlannedCredentialMove,
 } from './credential.types';
-import type { ImportBindingMap, ImportContext } from '../../n8n-packages.types';
+import type {
+	ImportBindingMap,
+	ImportContext,
+	ImportedCredentialGrant,
+	ImportedCredentialMove,
+	ImportedCredentialPlaceholder,
+} from '../../n8n-packages.types';
 import { mergeRequirementConsumers } from '../../spec/requirement-consumers';
 
 @Service()
@@ -49,6 +59,7 @@ export class CredentialImporter {
 		private readonly eventService: EventService,
 		private readonly credentialDescriptions: CredentialDescriptionsService,
 		private readonly credentialsOverwrites: CredentialsOverwrites,
+		private readonly enterpriseCredentialsService: EnterpriseCredentialsService,
 	) {}
 
 	/**
@@ -61,7 +72,7 @@ export class CredentialImporter {
 		context: ImportContext,
 		request: CredentialBindingRequest,
 	): Promise<CredentialImportPlan> {
-		const resolution = await this.credentialMatcherFactory
+		const matched = await this.credentialMatcherFactory
 			.getMatcher(request.matchingMode)
 			.match(request.requirements, {
 				projectId: context.projectId,
@@ -69,6 +80,18 @@ export class CredentialImporter {
 				credentialBindings: request.credentialBindings,
 				excludePersonalRoute: request.personalRoute === 'exclude',
 			});
+		const dependencies = activeDependencies(request);
+		const ownership = await this.planMoves(context, request, dependencies);
+		const { failures, ...dependencyPlan } = await this.planDependencies(
+			context,
+			dependencies,
+			{
+				successes: matched.successes,
+				failures: mergeOwnershipFailures(matched.failures, ownership.failures),
+			},
+			ownership.moves,
+		);
+		const resolution: CredentialResolution = { successes: matched.successes, failures };
 		const stubIds = new Map(
 			credentialsToStub(request.missingMode, resolution).map(({ sourceId }) => [
 				sourceId,
@@ -77,14 +100,261 @@ export class CredentialImporter {
 		);
 
 		if (request.conflictPolicy === 'keep-existing') {
-			return { ...resolution, stubIds, candidates: [], updates: [], forbidden: [] };
+			return {
+				...resolution,
+				...dependencyPlan,
+				stubIds,
+				candidates: [],
+				updates: [],
+				forbidden: [],
+			};
 		}
 
 		return {
 			...resolution,
+			...dependencyPlan,
 			stubIds,
-			...(await this.planUpdates(context.user, request, resolution)),
+			...(await this.planUpdates(context, request, resolution, dependencies, ownership.moves)),
 		};
+	}
+
+	/**
+	 * The owner changes for the package credentials that this scope owns: "the owner follows
+	 * the package". Read-only. A credential of another type never moves and never changes: it
+	 * becomes a `type_mismatch` failure, which blocks the import.
+	 */
+	private async planMoves(
+		context: ImportContext,
+		request: CredentialBindingRequest,
+		dependencies: CredentialDependencyRequest | undefined,
+	): Promise<{ moves: PlannedCredentialMove[]; failures: CredentialResolutionFailure[] }> {
+		const moves: PlannedCredentialMove[] = [];
+		const failures: CredentialResolutionFailure[] = [];
+		if (dependencies?.ownerPolicy !== 'follow-package') return { moves, failures };
+
+		for (const credentialId of dependencies.ownedIds) {
+			const packageCredential = request.packageCredentials?.get(credentialId);
+			if (packageCredential === undefined) continue;
+
+			const check = await this.enterpriseCredentialsService.checkTransferKeepingShares(
+				context.user,
+				credentialId,
+				context.projectId,
+				{ destinationPendingCreation: dependencies.projectPendingCreation },
+			);
+			if (check.status === 'not-found') continue;
+
+			if (check.type !== packageCredential.type) {
+				failures.push({
+					kind: 'type_mismatch',
+					sourceId: credentialId,
+					name: packageCredential.name,
+					type: packageCredential.type,
+					targetId: credentialId,
+					expectedType: packageCredential.type,
+					actualType: check.type,
+				});
+				continue;
+			}
+			if (check.status === 'not-needed') continue;
+			// An instance credential does not match a project credential of the package.
+			if (check.status === 'excluded' && check.reason === 'instance') {
+				failures.push({
+					kind: 'not_found',
+					reason: 'incompatible-usage-scope',
+					sourceId: credentialId,
+					name: packageCredential.name,
+					type: packageCredential.type,
+				});
+				continue;
+			}
+
+			moves.push({
+				credentialId,
+				name: check.name,
+				type: check.type,
+				toProjectId: context.projectId,
+				...(check.fromProjectId !== undefined ? { fromProjectId: check.fromProjectId } : {}),
+				...(check.status === 'excluded'
+					? { status: 'excluded', reason: check.reason, isPlaceholder: false }
+					: { status: check.status, isPlaceholder: check.isPlaceholder }),
+			});
+		}
+
+		return { moves, failures };
+	}
+
+	/**
+	 * Settles the unresolved references that the caller named in `credentialDependencies`.
+	 * Read-only. A reference that it settles leaves `failures`, so it does not block. A
+	 * credential that exists with another type always blocks: the import never binds it.
+	 */
+	private async planDependencies(
+		context: ImportContext,
+		dependencies: CredentialDependencyRequest | undefined,
+		resolution: CredentialResolution,
+		moves: PlannedCredentialMove[],
+	): Promise<CredentialDependencyPlan & { failures: CredentialResolutionFailure[] }> {
+		const matchedPlaceholderIds = await this.credentialsService.findPlaceholderIds([
+			...new Set(resolution.successes.values()),
+		]);
+		const plan: Required<Omit<CredentialDependencyPlan, 'placeholderForbidden'>> = {
+			placeholders: [],
+			placeholderBindings: [],
+			pendingGrants: [],
+			pendingMoves: [],
+			unresolvedAllowed: [],
+			matchedPlaceholders: [...resolution.successes]
+				.filter(([, targetId]) => matchedPlaceholderIds.has(targetId))
+				.map(([sourceId]) => sourceId),
+			moves,
+		};
+		if (dependencies === undefined) return { ...plan, failures: resolution.failures };
+
+		const movedIntoScope = new Set(
+			moves.filter(({ status }) => status === 'allowed').map(({ credentialId }) => credentialId),
+		);
+		const failures: CredentialResolutionFailure[] = [];
+
+		for (const failure of resolution.failures) {
+			const { sourceId } = failure;
+			const named =
+				dependencies.placeholderIds.has(sourceId) ||
+				dependencies.allowedUnresolvedIds.has(sourceId) ||
+				dependencies.grantIds.has(sourceId) ||
+				movedIntoScope.has(sourceId);
+			// An explicit binding names another credential, so the id rules do not apply to it.
+			if (failure.kind !== 'not_found' || failure.targetId !== undefined || !named) {
+				failures.push(failure);
+				continue;
+			}
+
+			const destination = await this.credentialsFinder.findById(sourceId);
+			if (destination === null) {
+				if (dependencies.placeholderIds.has(sourceId) && failure.type !== undefined) {
+					plan.placeholders.push({
+						sourceId,
+						name: failure.name ?? sourceId,
+						type: failure.type,
+						shareWithProjectIds: [],
+					});
+				} else if (dependencies.allowedUnresolvedIds.has(sourceId)) {
+					plan.unresolvedAllowed.push(sourceId);
+				} else {
+					failures.push(failure);
+				}
+				continue;
+			}
+
+			// The id is taken: the destination credential never gets a placeholder.
+			if (failure.type !== undefined && destination.type !== failure.type) {
+				failures.push({
+					...failure,
+					kind: 'type_mismatch',
+					targetId: destination.id,
+					expectedType: failure.type,
+					actualType: destination.type,
+				});
+				continue;
+			}
+			if (destination.usageScope !== 'project') {
+				failures.push(failure);
+				continue;
+			}
+			if (movedIntoScope.has(sourceId)) {
+				plan.pendingMoves.push(sourceId);
+				continue;
+			}
+			if (
+				dependencies.grantIds.has(sourceId) &&
+				(await this.enterpriseCredentialsService.checkProjectAccessGrant(
+					context.user,
+					sourceId,
+					context.projectId,
+				)) === 'grantable'
+			) {
+				plan.pendingGrants.push(sourceId);
+				continue;
+			}
+			if (dependencies.allowedUnresolvedIds.has(sourceId)) {
+				plan.unresolvedAllowed.push(sourceId);
+				continue;
+			}
+			failures.push(failure);
+		}
+
+		return { ...plan, failures };
+	}
+
+	/**
+	 * One id gets one placeholder: the first scope that needs it creates it, and each later
+	 * scope binds to it and gets use access. Without `credential:create` in the project of the
+	 * first scope, nobody gets the placeholder: the reference is a `not_found` failure again in
+	 * each scope. Changes the plans in place. Returns the failures that it put back, so the
+	 * caller can report them as blocking issues.
+	 */
+	async settlePlaceholders(
+		scopes: Array<{
+			context: ImportContext;
+			plan: CredentialImportPlan;
+			projectPendingCreation: boolean;
+		}>,
+	): Promise<Array<{ plan: CredentialImportPlan; failures: CredentialResolutionFailure[] }>> {
+		const creators = new Map<string, { shareWithProjectIds: string[] } | 'forbidden'>();
+		const mayCreate = new Map<string, boolean>();
+		const restored: Array<{ plan: CredentialImportPlan; failures: CredentialResolutionFailure[] }> =
+			[];
+
+		for (const { context, plan, projectPendingCreation } of scopes) {
+			const own: NonNullable<CredentialImportPlan['placeholders']> = [];
+			const failures: CredentialResolutionFailure[] = [];
+
+			for (const placeholder of plan.placeholders ?? []) {
+				const { sourceId, name, type } = placeholder;
+				let creator = creators.get(sourceId);
+				if (creator === undefined) {
+					if (!mayCreate.has(context.projectId)) {
+						mayCreate.set(
+							context.projectId,
+							projectPendingCreation || (await this.canCreateIn(context)),
+						);
+					}
+					creator = mayCreate.get(context.projectId) ? placeholder : 'forbidden';
+					creators.set(sourceId, creator);
+					if (creator !== 'forbidden') {
+						own.push(placeholder);
+						continue;
+					}
+				}
+
+				if (creator === 'forbidden') {
+					failures.push({ kind: 'not_found', sourceId, name, type });
+					plan.placeholderForbidden = [...(plan.placeholderForbidden ?? []), sourceId];
+				} else {
+					if (!creator.shareWithProjectIds.includes(context.projectId)) {
+						creator.shareWithProjectIds.push(context.projectId);
+					}
+					plan.placeholderBindings = [...(plan.placeholderBindings ?? []), sourceId];
+				}
+			}
+
+			plan.placeholders = own;
+			if (failures.length > 0) {
+				plan.failures.push(...failures);
+				restored.push({ plan, failures });
+			}
+		}
+
+		return restored;
+	}
+
+	private async canCreateIn(context: ImportContext): Promise<boolean> {
+		try {
+			await this.credentialsService.assertCanCreateInProject(context.user, context.projectId);
+			return true;
+		} catch {
+			return false;
+		}
 	}
 
 	/**
@@ -93,10 +363,14 @@ export class CredentialImporter {
 	 * Decrypted values stay in this method: the plan keeps only ids and the package payload.
 	 */
 	private async planUpdates(
-		user: User,
+		context: ImportContext,
 		request: CredentialBindingRequest,
 		resolution: CredentialResolution,
+		dependencies: CredentialDependencyRequest | undefined,
+		moves: PlannedCredentialMove[],
 	): Promise<Pick<CredentialImportPlan, 'candidates' | 'updates' | 'forbidden'>> {
+		const { user } = context;
+		const followsPackage = dependencies?.ownerPolicy === 'follow-package';
 		const requirementsById = new Map(
 			(request.requirements ?? []).map((requirement) => [requirement.id, requirement]),
 		);
@@ -113,6 +387,8 @@ export class CredentialImporter {
 			// No file means the exporting user could not read the credential: bind only.
 			const packageCredential = request.packageCredentials?.get(sourceId);
 			if (packageCredential === undefined) continue;
+			// Only the home project of the package writes the credential: see the owned pass below.
+			if (followsPackage && dependencies.homes.has(sourceId)) continue;
 
 			if (!destinations.has(targetId)) {
 				destinations.set(
@@ -141,6 +417,45 @@ export class CredentialImporter {
 			});
 		}
 
+		// The package credentials that this scope owns, with or without a consumer in the scope.
+		// A credential that moves into the project is updated as a credential of the project.
+		const movesById = new Map(moves.map((move) => [move.credentialId, move]));
+		const movedIds = new Set<string>();
+		for (const credentialId of followsPackage ? dependencies.ownedIds : []) {
+			const packageCredential = request.packageCredentials?.get(credentialId);
+			const move = movesById.get(credentialId);
+			if (packageCredential === undefined || (move && move.status !== 'allowed')) continue;
+
+			const destination = await this.credentialsFinder.findById(credentialId, {
+				includeSharedProject: true,
+			});
+			if (
+				!destination ||
+				destination.type !== packageCredential.type ||
+				destination.isManaged ||
+				destination.isResolvable ||
+				destination.usageScope === 'instance'
+			) {
+				continue;
+			}
+			if (!move && credentialOwnerProjectId(destination) !== context.projectId) continue;
+			if (move) movedIds.add(credentialId);
+
+			inScope.push({
+				match: {
+					sourceId: credentialId,
+					targetId: credentialId,
+					targetName: destination.name,
+					usedBy: mergeRequirementConsumers(requirementsById.get(credentialId)?.usedBy ?? []),
+				},
+				packageCredential: descriptionsEnabled
+					? packageCredential
+					: { ...packageCredential, description: undefined },
+				destination,
+				ownerProjectId: context.projectId,
+			});
+		}
+
 		// Matching needs only use access. The comparison reads the stored secret, so a match in
 		// scope that the user cannot update blocks without being read.
 		const updatableIds =
@@ -151,6 +466,17 @@ export class CredentialImporter {
 						['credential:update'],
 					)
 				: new Set<string>();
+		// After the move the project owns the credential, so the right in the project decides.
+		if (
+			movedIds.size > 0 &&
+			(dependencies?.projectPendingCreation ||
+				(await this.enterpriseCredentialsService.canUpdateCredentialsInProject(
+					user,
+					context.projectId,
+				)))
+		) {
+			for (const credentialId of movedIds) updatableIds.add(credentialId);
+		}
 		const candidates: CredentialUpdateCandidate[] = [];
 		const updates: CredentialUpdateCandidate[] = [];
 		const forbidden: CredentialMatch[] = [];
@@ -253,6 +579,7 @@ export class CredentialImporter {
 		const stubbed: string[] = [];
 		const seeded: string[] = [];
 		const incomplete: string[] = [];
+		const dependencyResult = await this.applyDependencies(context, resolution, bindings);
 
 		const packageData = credentialMissingModeUsesPackageData(request.missingMode)
 			? packageDataBySourceId(request.requirements)
@@ -299,7 +626,94 @@ export class CredentialImporter {
 			}
 		}
 
-		return { bindings, matched, stubbed, seeded, incomplete };
+		return { bindings, matched, stubbed, seeded, incomplete, ...dependencyResult };
+	}
+
+	/**
+	 * Writes what the plan settled for `credentialDependencies`, before the workflows of the
+	 * scope: the confirmed grants, the placeholders and the owner changes. Each write checks the
+	 * rights of the user again. A grant or a move that the plan allowed and that the destination
+	 * now refuses stops the import: the destination changed after the plan.
+	 */
+	private async applyDependencies(
+		context: ImportContext,
+		plan: CredentialImportPlan,
+		bindings: ImportBindingMap,
+	): Promise<
+		Pick<
+			CredentialBindResult,
+			'placeholders' | 'placeholderBound' | 'grants' | 'unresolved' | 'moves'
+		>
+	> {
+		const { user, projectId } = context;
+
+		const grants: ImportedCredentialGrant[] = [];
+		for (const credentialId of plan.pendingGrants ?? []) {
+			const { status } = await this.enterpriseCredentialsService.grantProjectAccess(
+				user,
+				credentialId,
+				projectId,
+			);
+			if (status !== 'granted' && status !== 'already-usable') {
+				throw new UnprocessableRequestError(
+					`The import cannot give project "${projectId}" access to credential "${credentialId}".`,
+					'The credential or your permissions changed after the check. Run the import again.',
+				);
+			}
+			grants.push({ credentialId, projectId, status });
+			bindings.set(credentialId, credentialId);
+		}
+
+		const placeholders: ImportedCredentialPlaceholder[] = [];
+		for (const { sourceId, name, type, shareWithProjectIds } of plan.placeholders ?? []) {
+			const placeholder = await this.enterpriseCredentialsService.createPlaceholderCredential(
+				{ id: sourceId, name, type, projectId, shareWithProjectIds },
+				user,
+			);
+			bindings.set(sourceId, placeholder.id);
+			placeholders.push({
+				id: placeholder.id,
+				name,
+				type,
+				projectId,
+				sharedWithProjectIds: shareWithProjectIds,
+			});
+		}
+		for (const sourceId of plan.placeholderBindings ?? []) bindings.set(sourceId, sourceId);
+
+		const moves: ImportedCredentialMove[] = [];
+		for (const { status, ...move } of plan.moves ?? []) {
+			if (status !== 'allowed') {
+				moves.push({ ...move, status });
+				continue;
+			}
+			const result = await this.enterpriseCredentialsService.transferKeepingShares(
+				user,
+				move.credentialId,
+				move.toProjectId,
+			);
+			// `not-needed`: another scope or a retry already moved it.
+			if (result.status !== 'moved' && result.status !== 'not-needed') {
+				throw new UnprocessableRequestError(
+					`The import cannot move credential "${move.name}" (${move.credentialId}) to project "${move.toProjectId}".`,
+					'The credential or your permissions changed after the check. Run the import again.',
+				);
+			}
+			moves.push({ ...move, status: 'moved' });
+		}
+		for (const sourceId of plan.pendingMoves ?? []) bindings.set(sourceId, sourceId);
+
+		return {
+			placeholders,
+			placeholderBound: [
+				...placeholders.map(({ id }) => id),
+				...(plan.placeholderBindings ?? []),
+				...(plan.matchedPlaceholders ?? []),
+			],
+			grants,
+			unresolved: [...(plan.unresolvedAllowed ?? [])],
+			moves,
+		};
 	}
 
 	/**
@@ -392,6 +806,11 @@ export class CredentialImporter {
 			includeSharedProject: true,
 		});
 		if (!credential) throw credentialNotFound(update);
+		// A planned move runs before the update. The dry run comes before the move, so it
+		// validates the update against the project that owns the credential after it.
+		// Changes only this loaded copy, which nothing saves.
+		const ownerSharing = credential.shared?.find(({ role }) => role === 'credential:owner');
+		if (ownerSharing) ownerSharing.projectId = update.ownerProjectId;
 
 		const stored = await this.readStoredData(credential);
 		if (
@@ -475,4 +894,29 @@ function packageDataBySourceId(
 		}
 	}
 	return data;
+}
+
+/**
+ * One failure for each credential. What the owned pass found for a credential decides over a
+ * plain `not_found` of the matcher, which can say less: the matcher sees only what the
+ * consumer project can use.
+ */
+function mergeOwnershipFailures(
+	matcherFailures: CredentialResolutionFailure[],
+	ownershipFailures: CredentialResolutionFailure[],
+): CredentialResolutionFailure[] {
+	const ownedIds = new Set(ownershipFailures.map(({ sourceId }) => sourceId));
+	const kept = matcherFailures.filter(
+		({ sourceId, kind, targetId }) =>
+			!(ownedIds.has(sourceId) && kind === 'not_found' && targetId === undefined),
+	);
+	const keptIds = new Set(kept.map(({ sourceId }) => sourceId));
+	return [...kept, ...ownershipFailures.filter(({ sourceId }) => !keptIds.has(sourceId))];
+}
+
+/** The decisions of the caller apply only to references that the matcher looks up by id. */
+function activeDependencies(
+	request: CredentialBindingRequest,
+): CredentialDependencyRequest | undefined {
+	return request.matchingMode === 'id-only' ? request.dependencies : undefined;
 }

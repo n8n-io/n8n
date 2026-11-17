@@ -246,6 +246,19 @@ function moveResource() {
 				<N8nBadge v-if="needsSetup" class="ml-3xs" variant="warning">
 					{{ locale.baseText('credentials.item.needsSetup') }}
 				</N8nBadge>
+				<N8nTooltip v-if="data.isPlaceholder" placement="top">
+					<template #content>
+						{{ locale.baseText('credentials.placeholder.tooltip') }}
+					</template>
+					<N8nBadge
+						class="ml-3xs"
+						variant="warning"
+						leading-icon="square-dashed"
+						data-test-id="credential-card-placeholder"
+					>
+						{{ locale.baseText('credentials.placeholder.badge') }}
+					</N8nBadge>
+				</N8nTooltip>
 			</N8nText>
 		</template>
 		<div :class="[$style.cardDescription, { [$style.hasDescription]: data.description }]">

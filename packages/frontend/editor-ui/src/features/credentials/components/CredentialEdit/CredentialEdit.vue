@@ -65,6 +65,7 @@ import { useElementSize } from '@vueuse/core';
 import { useRouter } from 'vue-router';
 
 import {
+	N8nBadge,
 	N8nCallout,
 	N8nButton,
 	N8nDialog,
@@ -77,6 +78,7 @@ import {
 	N8nMenuItem,
 	N8nSpinner,
 	N8nText,
+	N8nTooltip,
 	type IMenuItem,
 } from '@n8n/design-system';
 import { usePrivateCredentials } from '@/features/resolvers/composables/usePrivateCredentials';
@@ -317,6 +319,9 @@ const {
 watch(currentCredential, (credential) => {
 	credentialDescription.value = credential?.description ?? '';
 });
+
+// The marker goes away with the first save of values, and the save puts its response here.
+const isPlaceholder = computed(() => currentCredential.value?.isPlaceholder === true);
 
 const canEditDescription = computed(
 	() =>
@@ -1694,6 +1699,18 @@ const { width } = useElementSize(credNameRef);
 									"
 									@update:model-value="onNameEdit"
 								/>
+								<N8nTooltip v-if="isPlaceholder" placement="bottom">
+									<template #content>
+										{{ i18n.baseText('credentials.placeholder.tooltip') }}
+									</template>
+									<N8nBadge
+										variant="warning"
+										leading-icon="square-dashed"
+										data-test-id="credential-placeholder-badge"
+									>
+										{{ i18n.baseText('credentials.placeholder.badge') }}
+									</N8nBadge>
+								</N8nTooltip>
 								<span
 									v-if="isResolvable"
 									:class="$style.dynamicTag"
@@ -1797,6 +1814,14 @@ const { width } = useElementSize(credNameRef);
 								<N8nCallout v-if="modalOptions?.notice" theme="info">{{
 									modalOptions.notice()
 								}}</N8nCallout>
+								<N8nCallout
+									v-if="isPlaceholder"
+									theme="warning"
+									icon="square-dashed"
+									data-test-id="credential-placeholder-callout"
+								>
+									{{ i18n.baseText('credentials.placeholder.callout') }}
+								</N8nCallout>
 								<N8nCallout v-if="savedCredentialNeedsLoad" theme="warning">
 									{{ i18n.baseText('credentialEdit.savedLoadFailed') }}
 									<template #actions>
