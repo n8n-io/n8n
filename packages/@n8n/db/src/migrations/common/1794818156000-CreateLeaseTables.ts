@@ -41,10 +41,10 @@ export class CreateLeaseTables1794818156000 implements ReversibleMigration {
 					'The session ID, new for each session, also after a process loses a session',
 				),
 				column('leaseKind').varchar(24).notNull,
-				column('hostId').varchar(255).notNull.comment('The host that runs the process'),
-				column('bootId').uuid.notNull.comment(
-					'The start of the process, used for same-host takeover',
-				),
+				column('hostId')
+					.varchar(255)
+					.notNull.comment('The hostId of the n8n instance that opened the session'),
+				column('bootId').uuid.notNull.comment('A random ID made when the process starts'),
 				column('leaseDurationSeconds').int.notNull.comment(
 					'The lease length of the session, in seconds',
 				),
@@ -66,7 +66,7 @@ export class CreateLeaseTables1794818156000 implements ReversibleMigration {
 			.withColumns(
 				column('leaseKind').varchar(24).primary,
 				column('key').varchar(255).primary.comment('The key of the lease in its kind'),
-				column('data').json.notNull.comment('The canonical JSON of the lease spec data'),
+				column('data').json.notNull.comment('The data that the holder needs, as canonical JSON'),
 				column('dataHash')
 					.varchar(64)
 					.notNull.comment('The SHA-256 of data, which sync compares to find changed leases'),
@@ -98,7 +98,6 @@ export class CreateLeaseTables1794818156000 implements ReversibleMigration {
 		await createIndex('lease', ['leaseKind', 'leaseSessionId']);
 
 		if (isPostgres) {
-			// Free space in each page lets an update that changes no indexed column stay on the same page and skip index writes.
 			await runQuery(`ALTER TABLE ${escape.tableName('lease')} SET (fillfactor = 90)`);
 		}
 	}

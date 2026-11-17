@@ -6,7 +6,7 @@
 | ---- | ---- | ------- | -------- | -------- | ------- | ------- |
 | claimedAt | timestamp(3) with time zone |  | true |  |  | The time at which the holder claimed the lease |
 | createdAt | timestamp(3) with time zone | CURRENT_TIMESTAMP(3) | false |  |  |  |
-| data | json |  | false |  |  | The canonical JSON of the lease spec data |
+| data | json |  | false |  |  | The data that the holder needs, as canonical JSON |
 | dataHash | varchar(64) |  | false |  |  | The SHA-256 of data, which sync compares to find changed leases |
 | fencingToken | bigint | 0 | false |  |  | The fencing token of the current or last holder |
 | key | varchar(255) |  | false |  |  | The key of the lease in its kind |

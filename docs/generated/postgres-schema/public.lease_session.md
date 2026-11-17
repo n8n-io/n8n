@@ -4,10 +4,10 @@
 
 | Name | Type | Default | Nullable | Children | Parents | Comment |
 | ---- | ---- | ------- | -------- | -------- | ------- | ------- |
-| bootId | uuid |  | false |  |  | The start of the process, used for same-host takeover |
+| bootId | uuid |  | false |  |  | A random ID made when the process starts |
 | createdAt | timestamp(3) with time zone | CURRENT_TIMESTAMP(3) | false |  |  |  |
 | expiresAt | timestamp(3) with time zone |  | false |  |  | The database time until which the session and all its leases are valid |
-| hostId | varchar(255) |  | false |  |  | The host that runs the process |
+| hostId | varchar(255) |  | false |  |  | The hostId of the n8n instance that opened the session |
 | id | uuid |  | false |  |  | The session ID, new for each session, also after a process loses a session |
 | leaseDurationSeconds | integer |  | false |  |  | The lease length of the session, in seconds |
 | leaseKind | varchar(24) |  | false |  | [public.lease_kind](public.lease_kind.md) |  |
