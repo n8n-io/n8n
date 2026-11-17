@@ -430,6 +430,8 @@ async function recordWithMints(
 const V1_REQUEST_LIMIT = 'the node sent more than';
 const PAGING_GOES_ON = 'v1 has no result: the paging does not end';
 const LAST_PAGE_FAILS = 'v1 fails on the last page';
+const MAX_PAGING_CHOICES = 4096;
+const pagingChoices = new Map<string, string>();
 
 export type ErrorPairing = 'item' | 'position';
 
@@ -1019,27 +1021,36 @@ export async function differenceFromV1(
 		compiled.mints.length > 0 ? await recordWithMints(asked, compiled.mints, record) : undefined;
 	if (typeof minted === 'string') return minted;
 	const v1 = minted?.v1 ?? (await record(asked));
-	if (v1.error?.includes(V1_REQUEST_LIMIT)) {
+	const limit =
+		v1.requests.length > MAX_ANSWERS
+			? (v1.error ?? v1.nodeError ?? `${V1_REQUEST_LIMIT} ${MAX_ANSWERS} requests`)
+			: undefined;
+	if (limit !== undefined) {
 		if (options.pagingEnds === true) return PAGING_GOES_ON;
 		const paths = loopPaths(compiled.source);
 		const page = c.responses.at(-1) ?? { body: {} };
 		const lastPages = lastPagesOf(page.body, paths);
-		for (const [n, next] of [nextPageOf(page.body, paths), page.body].entries()) {
-			for (const [k, last] of lastPages.entries()) {
-				const found = await differenceFromV1(
-					{
-						...c,
-						name: `${c.name}, the paging ends ${n}.${k}`,
-						responses: [...c.responses, { ...page, body: next }, { ...page, body: last }],
-					},
-					sources,
-					registry,
-					{ ...options, pagingEnds: true },
-				);
-				if (found !== PAGING_GOES_ON && found !== LAST_PAGE_FAILS) return found;
-			}
+		const trials = [nextPageOf(page.body, paths), page.body].flatMap((next, n) =>
+			lastPages.map((last, k) => ({ label: `${n}.${k}`, next, last })),
+		);
+		const operation = `${c.type}@${c.typeVersion}:${String(compiled.resolved.resource ?? '')}.${String(compiled.resolved.operation ?? '')}`;
+		const known = trials.find((trial) => trial.label === pagingChoices.get(operation));
+		for (const trial of known ? [known, ...trials.filter((t) => t !== known)] : trials) {
+			const found = await differenceFromV1(
+				{
+					...c,
+					name: `${c.name}, the paging ends ${trial.label}`,
+					responses: [...c.responses, { ...page, body: trial.next }, { ...page, body: trial.last }],
+				},
+				sources,
+				registry,
+				{ ...options, pagingEnds: true },
+			);
+			if (found === PAGING_GOES_ON || found === LAST_PAGE_FAILS) continue;
+			if (pagingChoices.size < MAX_PAGING_CHOICES) pagingChoices.set(operation, trial.label);
+			return found;
 		}
-		return `v1 has no result: ${v1.error.slice(0, 90)}`;
+		return `v1 has no result: ${limit.slice(0, 90)}`;
 	}
 	if (options.pagingEnds === true && (v1.error ?? v1.nodeError) !== undefined)
 		return LAST_PAGE_FAILS;
