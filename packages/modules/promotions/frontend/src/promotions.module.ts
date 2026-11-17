@@ -7,7 +7,7 @@ import { useRootStore } from '@n8n/stores/useRootStore';
 import { RouterView, type RouteLocationNormalized, type RouteRecordRaw } from 'vue-router';
 
 import {
-	PROMOTION_INSTANCE_APPLY_VIEW,
+	PROMOTION_ENVIRONMENT_VIEWS,
 	PROMOTION_PREVIEW_VIEWS,
 	PROMOTIONS_ENVIRONMENT_ADD_VIEW,
 	PROMOTIONS_ENVIRONMENT_EDIT_VIEW,
@@ -38,7 +38,8 @@ const requireOperationScope =
 		);
 		if (hasGlobalRight) return true;
 		// A project page also opens for an admin of the project. The server knows that right.
-		const projectId = to.params.projectId;
+		// The changes view opens for that admin too, when it continues a project page (`?from=`).
+		const projectId = to.params.projectId ?? to.query.from;
 		if (typeof projectId !== 'string') return { name: VIEWS.HOMEPAGE };
 		const { loadPromotionProjectEnvironments } = await import(
 			'./composables/usePromotionProjectEnvironments'
@@ -66,15 +67,18 @@ const previewRoute = (direction: PromotionDirection): RouteRecordRaw => ({
 	beforeEnter: requireOperationScope(direction),
 });
 
-/** The same page for the Apply of the whole instance. Users open it from the settings page. */
-const instanceApplyRoute: RouteRecordRaw = {
-	path: '/promotions/apply',
-	name: PROMOTION_INSTANCE_APPLY_VIEW,
+/**
+ * The same page as the changes view of the environment, across projects. Users open it from
+ * the settings page, or from a project page when they include an item of another project.
+ */
+const environmentRoute = (direction: PromotionDirection): RouteRecordRaw => ({
+	path: `/promotions/${direction}`,
+	name: PROMOTION_ENVIRONMENT_VIEWS[direction],
 	component: PreviewView,
-	props: { direction: 'apply' },
+	props: { direction },
 	meta: { middleware: ['authenticated', 'custom'] },
-	beforeEnter: requireOperationScope('apply'),
-};
+	beforeEnter: requireOperationScope(direction),
+});
 
 export const PromotionsModule = defineFrontendModule({
 	id: 'promotions',
@@ -136,6 +140,7 @@ export const PromotionsModule = defineFrontendModule({
 		},
 		previewRoute('promote'),
 		previewRoute('apply'),
-		instanceApplyRoute,
+		environmentRoute('promote'),
+		environmentRoute('apply'),
 	],
 });

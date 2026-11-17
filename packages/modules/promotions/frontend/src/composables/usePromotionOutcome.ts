@@ -1,7 +1,7 @@
 import type { PromotePackageResultDto } from '@n8n/api-types';
 import { useToast } from '@n8n/composables/useToast';
 import { capabilities, capabilityRegistry } from '@n8n/frontend-module-sdk';
-import { useI18n } from '@n8n/i18n';
+import { useI18n, type BaseTextKey } from '@n8n/i18n';
 import { getResourcePermissions } from '@n8n/permissions';
 import { getProject, ResponseError } from '@n8n/rest-api-client';
 import { useRootStore } from '@n8n/stores/useRootStore';
@@ -19,8 +19,36 @@ export function usePromotionOutcome() {
 	const projectContext = capabilityRegistry.use(capabilities.projectContext);
 	const usersStore = useUsersStore();
 
-	function showPromoted(projectId: string, result: PromotePackageResultDto) {
-		promotionEventBus.emit('promoted', { projectId });
+	/** What the Apply did for its dependencies, so the user knows what to finish by hand. */
+	function dependencyNotes(result: AppliedResult): string[] {
+		const count = (key: BaseTextKey, items: unknown[] | undefined) =>
+			items?.length
+				? [
+						i18n.baseText(key, {
+							adjustToNumber: items.length,
+							interpolate: { count: String(items.length) },
+						}),
+					]
+				: [];
+		return [
+			...count('promotions.dependencies.result.placeholders', result.placeholders),
+			...count('promotions.dependencies.result.grants', result.grants),
+			...count(
+				'promotions.dependencies.result.moves',
+				result.credentialMoves?.filter(({ allowed }) => allowed),
+			),
+			...count(
+				'promotions.dependencies.result.movesRefused',
+				result.credentialMoves?.filter(({ allowed }) => !allowed),
+			),
+			...count('promotions.dependencies.result.kept', result.keptWorkflows),
+			...count('promotions.dependencies.result.gaps', result.dependencyReport?.gaps),
+		];
+	}
+
+	// A Promote across projects is one push. Each project hears about it.
+	function showPromoted(projectIds: string[], result: PromotePackageResultDto) {
+		for (const projectId of projectIds) promotionEventBus.emit('promoted', { projectId });
 		toast.showMessage({
 			title: i18n.baseText('promotions.operation.toast.success.title'),
 			type: result.warnings?.length ? 'warning' : 'success',
@@ -61,12 +89,14 @@ export function usePromotionOutcome() {
 		const notes = [
 			withFolderNotes(i18n, workflowsChanged ? workflowSummary : '', result.counts),
 			projects.updated > 0 ? i18n.baseText('promotions.applied.projectUpdated') : '',
+			...dependencyNotes(result),
 		].filter(Boolean);
+		const incomplete = (result.dependencyReport?.gaps.length ?? 0) > 0;
 		// A workflow can be imported and still fail to publish, so success alone would mislead.
 		toast.showMessage({
 			title: i18n.baseText('promotions.operation.incoming.applied.title'),
 			message: notes.length > 0 ? notes.join(' ') : workflowSummary,
-			type: notPublished ? 'warning' : 'success',
+			type: notPublished || incomplete ? 'warning' : 'success',
 		});
 	}
 
@@ -83,19 +113,21 @@ export function usePromotionOutcome() {
 			notPublished: String(notPublished),
 		};
 		// A workflow can be imported and still fail to publish, so success alone would mislead.
+		const summary = withFolderNotes(
+			i18n,
+			i18n.baseText(
+				notPublished
+					? 'settings.promotions.apply.toast.success.messageNotPublished'
+					: 'settings.promotions.apply.toast.success.message',
+				{ interpolate },
+			),
+			result.counts,
+		);
+		const incomplete = (result.dependencyReport?.gaps.length ?? 0) > 0;
 		toast.showMessage({
 			title: i18n.baseText('settings.promotions.apply.toast.success.title'),
-			message: withFolderNotes(
-				i18n,
-				i18n.baseText(
-					notPublished
-						? 'settings.promotions.apply.toast.success.messageNotPublished'
-						: 'settings.promotions.apply.toast.success.message',
-					{ interpolate },
-				),
-				result.counts,
-			),
-			type: notPublished ? 'warning' : 'success',
+			message: [summary, ...dependencyNotes(result)].join(' '),
+			type: notPublished || incomplete ? 'warning' : 'success',
 		});
 	}
 

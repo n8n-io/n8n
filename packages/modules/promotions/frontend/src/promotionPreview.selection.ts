@@ -127,11 +127,17 @@ function requiredClosure(graph: SelectionGraph, key: ResourceKey): ResourceKey[]
 	return reached;
 }
 
+/**
+ * `extra` holds the resources that the user included directly and cannot select otherwise, such
+ * as a credential of another project.
+ */
 export function resolveInclusion(
 	graph: SelectionGraph,
 	selected: ReadonlySet<ResourceKey>,
+	extra: Iterable<ResourceKey> = [],
 ): Inclusion {
 	const reasons = new Map<ResourceKey, InclusionReason>();
+	for (const key of extra) if (graph.resources.has(key)) reasons.set(key, { kind: 'selected' });
 	const required = new Map<ResourceKey, ResourceKey[]>();
 	const containers = new Map<ResourceKey, ResourceKey[]>();
 	const called = new Map<ResourceKey, ResourceKey[]>();
@@ -197,7 +203,7 @@ function containerKeys(graph: SelectionGraph, containerKey: ResourceKey): Resour
 	return canSelect(graph, containerKey) ? [containerKey, ...descendants] : descendants;
 }
 
-type CheckState = 'checked' | 'indeterminate' | 'unchecked';
+export type CheckState = 'checked' | 'indeterminate' | 'unchecked';
 
 /**
  * A project or folder shows the state of itself and the selectable resources inside it. A
@@ -253,6 +259,10 @@ export function selectionCheck(
 			disabled: locked || (!checked && disabled.has(resource.key)),
 		};
 	}
+	// The user included this dependency directly, so the user can also remove it.
+	if (inclusion.reasons.get(resource.key)?.kind === 'selected') {
+		return { checked: true, indeterminate: false, disabled: locked };
+	}
 	return { checked: inclusion.included.has(resource.key), indeterminate: false, disabled: true };
 }
 
@@ -266,7 +276,15 @@ export function toggleContainer(
 	containerKey: ResourceKey,
 	disabled: DisabledKeys = noKeys,
 ): SelectionState {
-	const keys = containerKeys(graph, containerKey);
+	return toggleKeys(state, containerKeys(graph, containerKey), disabled);
+}
+
+/** Selects every key that users can add, or clears them all when those are selected. */
+export function toggleKeys(
+	state: SelectionState,
+	keys: readonly ResourceKey[],
+	disabled: DisabledKeys = noKeys,
+): SelectionState {
 	const available = keys.filter((key) => !disabled.has(key));
 	const selected = new Set(state.selected);
 	if (available.every((key) => selected.has(key))) {
@@ -275,6 +293,18 @@ export function toggleContainer(
 		for (const key of available) selected.add(key);
 	}
 	return { mode: 'custom', selected };
+}
+
+/** The state of one checkbox for a set of keys, such as the changes of one project. */
+export function keysCheckState(
+	keys: readonly ResourceKey[],
+	selected: ReadonlySet<ResourceKey>,
+	disabled: DisabledKeys = noKeys,
+): CheckState {
+	const counted = keys.filter((key) => !disabled.has(key) || selected.has(key));
+	const count = counted.filter((key) => selected.has(key)).length;
+	if (count === 0) return 'unchecked';
+	return count === counted.length ? 'checked' : 'indeterminate';
 }
 
 /** Adds every resource that users can add. Selected disabled resources stay selected. */

@@ -1,4 +1,11 @@
-import type { PromotionDirection, PromotionPreview } from '@n8n/api-types';
+import type {
+	ApplyPackageResultDto,
+	PromoteSelectionResultDto,
+	PromotionDependencyReport,
+	PromotionDirection,
+	PromotionEnvironmentSelectionProject,
+	PromotionPreview,
+} from '@n8n/api-types';
 import { useMessage } from '@n8n/design-system';
 import { VIEWS } from '@n8n/frontend-constants/views';
 import { useI18n } from '@n8n/i18n';
@@ -8,15 +15,20 @@ import { computed, ref, shallowRef, type Ref } from 'vue';
 import { useRouter } from 'vue-router';
 
 import { getPromoteErrorMessage } from '../promoteErrorMessage';
+import type { DependencyConfirmationPayload } from '../promotionDependencies';
 import { isLockedError } from '../promotionErrors';
+import { loadPromotionFixture } from '../promotionFixtures';
 import type { OperationSelection } from '../promotionOperation';
 import {
+	applyEnvironmentSelection,
 	applyProjectSelection,
+	continueApplyEnvironmentSelection,
 	continueApplyProjectSelection,
+	promoteEnvironmentSelection,
 	promoteProjectSelection,
 } from '../promotions.api';
 import {
-	PROMOTION_INSTANCE_APPLY_VIEW,
+	PROMOTION_ENVIRONMENT_VIEWS,
 	PROMOTION_PREVIEW_VIEWS,
 	PROMOTIONS_SETTINGS_VIEW,
 } from '../promotions.constants';
@@ -31,10 +43,26 @@ export type OperationRequest = OperationSelection & {
 	deletedProjects?: string[];
 	/** Promote only. When it is missing, the backend generates the message. */
 	commitMessage?: string;
+	/** Changes view only: the selection of each project. */
+	projects?: PromotionEnvironmentSelectionProject[];
+	/**
+	 * Changes view of an Apply only: the selection holds every change, so the Apply of the whole
+	 * instance runs. Only that Apply deletes projects.
+	 */
+	wholeInstance?: boolean;
+	/** The gaps and the other items of the dependency report that the user accepted. */
+	confirmations?: DependencyConfirmationPayload;
+	/** True when the user already confirmed the operation in the dialog of the gaps. */
+	confirmed?: boolean;
 };
 
 /** Why the page reloaded the preview after an operation that wrote nothing. */
-type OperationNotice = 'sourceChanged' | 'instanceChanged' | 'projectChanged' | 'newBlockers';
+type OperationNotice =
+	| 'sourceChanged'
+	| 'instanceChanged'
+	| 'projectChanged'
+	| 'newBlockers'
+	| 'gapsChanged';
 
 type OperationError = {
 	message: string;
@@ -57,7 +85,7 @@ function errorKind(cause: unknown): Exclude<OperationError['kind'], 'explained'>
 
 /**
  * Runs the promote or the apply of the preview page, and handles its result. Without a project,
- * it applies the whole instance.
+ * it runs the selection of the changes view, across projects.
  */
 export function usePromotionOperation(
 	projectId: Ref<string | undefined>,
@@ -66,10 +94,19 @@ export function usePromotionOperation(
 		preview,
 		check,
 		refresh,
+		environmentId,
+		origin,
+		fixture,
 	}: {
 		preview: Ref<PromotionPreview | null>;
 		check: Ref<ApplyCheckResult | null>;
 		refresh: () => Promise<void>;
+		/** The environment of the changes view. */
+		environmentId?: Ref<string | undefined>;
+		/** Only for the changes view: the project page that the user came from. */
+		origin?: Ref<string | undefined>;
+		/** Development only: the name of a fixture that replaces the server. */
+		fixture?: Ref<string | undefined>;
 	},
 ) {
 	const i18n = useI18n();
@@ -83,10 +120,16 @@ export function usePromotionOperation(
 	const isBusy = computed(() => phase.value !== 'idle');
 	const notice = ref<OperationNotice | null>(null);
 	const error = shallowRef<OperationError | null>(null);
+	/**
+	 * The report of an operation that stopped because the gaps changed. It describes the exact
+	 * selection of that request, so the page shows it until the selection changes.
+	 */
+	const gapsReport = shallowRef<PromotionDependencyReport | null>(null);
 
 	async function confirmApply({
 		confirmDestructiveChanges,
 		deletedProjects = [],
+		wholeInstance,
 	}: OperationRequest) {
 		if (deletedProjects.length > 0) {
 			const deletion = i18n.baseText('promotions.preview.confirmProjectDeletion.message', {
@@ -118,10 +161,10 @@ export function usePromotionOperation(
 					},
 				)
 			: await message.confirm(
-					projectId.value === undefined
+					wholeInstance
 						? i18n.baseText('promotions.preview.confirmInstance.message')
 						: i18n.baseText('promotions.operation.incoming.confirmSelected.message'),
-					projectId.value === undefined
+					wholeInstance
 						? i18n.baseText('promotions.preview.confirmInstance.title')
 						: i18n.baseText('promotions.operation.incoming.confirmSelected.title'),
 					{
@@ -138,91 +181,150 @@ export function usePromotionOperation(
 	async function leave() {
 		const id = projectId.value;
 		const page =
-			id === undefined ? PROMOTION_INSTANCE_APPLY_VIEW : PROMOTION_PREVIEW_VIEWS[direction.value];
+			id === undefined
+				? PROMOTION_ENVIRONMENT_VIEWS[direction.value]
+				: PROMOTION_PREVIEW_VIEWS[direction.value];
 		// Users can leave while the request runs. Then the page must not move them again.
 		if (router.currentRoute.value.name !== page) return;
+		// The changes view goes back to where it was opened: a project, or the settings page.
+		const backTo = id ?? origin?.value;
 		await router.replace(
-			id === undefined
+			backTo === undefined
 				? { name: PROMOTIONS_SETTINGS_VIEW }
-				: { name: VIEWS.PROJECTS_WORKFLOWS, params: { projectId: id } },
+				: { name: VIEWS.PROJECTS_WORKFLOWS, params: { projectId: backTo } },
 		);
 	}
 
-	async function promote(id: string, { workflowIds, folderIds, commitMessage }: OperationRequest) {
-		// Promote what the page shows. A project or branch that changed since is reported, not pushed.
-		const result = await promoteProjectSelection(rootStore.publicApiContext, id, {
-			workflowIds,
-			folderIds,
-			...(commitMessage && { commitMessage }),
-			expectedPreviewRevision: preview.value?.revision,
-		});
-		// Changed gaps also mean that nothing was pushed. The reloaded preview shows the report.
-		if (result.status === 'preview-changed' || result.status === 'gaps-changed') {
+	async function onPromoted(result: PromoteSelectionResultDto, projectIds: string[]) {
+		if (result.status === 'gaps-changed') {
+			// Nothing was pushed. The report holds the gaps that the user must review.
+			gapsReport.value = result.dependencyReport;
+			notice.value = 'gapsChanged';
+			await refresh();
+			return;
+		}
+		if (result.status === 'preview-changed') {
 			notice.value = 'projectChanged';
 			await refresh();
 			return;
 		}
-		outcome.showPromoted(id, result);
+		outcome.showPromoted(projectIds, result);
 		await leave();
 	}
 
-	async function reportUnapplied(
-		status: 'source-changed' | 'preview-changed' | 'blocked' | 'gaps-changed',
-	) {
+	async function promote(request: OperationRequest) {
+		const { workflowIds, folderIds, commitMessage, projects, confirmations } = request;
+		// Promote what the page shows. A project or branch that changed since is reported, not pushed.
+		const shared = {
+			...(commitMessage && { commitMessage }),
+			expectedPreviewRevision: preview.value?.revision,
+			...(confirmations?.confirmedGapIds && { confirmedGapIds: confirmations.confirmedGapIds }),
+		};
+		const confirmedGapIds = confirmations?.confirmedGapIds ?? [];
+		const id = projectId.value;
+		if (fixture?.value) {
+			const result = (
+				await loadPromotionFixture(fixture.value, 'promote', id ?? origin?.value)
+			).promote(confirmedGapIds);
+			await onPromoted(result, id === undefined ? (projects ?? []).map((p) => p.projectId) : [id]);
+			return;
+		}
+		if (id !== undefined) {
+			const result = await promoteProjectSelection(rootStore.publicApiContext, id, {
+				workflowIds,
+				folderIds,
+				...shared,
+			});
+			await onPromoted(result, [id]);
+			return;
+		}
+		if (!environmentId?.value || !projects?.length) return;
+		const result = await promoteEnvironmentSelection(
+			rootStore.publicApiContext,
+			environmentId.value,
+			{ projects, ...shared },
+		);
+		await onPromoted(
+			result,
+			projects.map((project) => project.projectId),
+		);
+	}
+
+	async function onApplied(result: ApplyPackageResultDto, acrossProjects: boolean) {
+		if (result.status === 'applied') {
+			const id = projectId.value;
+			if (id !== undefined) {
+				outcome.showApplied(result);
+				await leave();
+				await outcome.announceApplied(id);
+				return;
+			}
+			outcome.showInstanceApplied(result);
+			await leave();
+			if (acrossProjects) await outcome.refreshProjects();
+			return;
+		}
+		if (result.status === 'gaps-changed') gapsReport.value = result.dependencyReport;
 		// Nothing was written. The reloaded preview and check show what changed.
 		const notices = {
 			'source-changed': 'sourceChanged',
 			'preview-changed': 'instanceChanged',
 			blocked: 'newBlockers',
-			'gaps-changed': 'newBlockers',
+			'gaps-changed': 'gapsChanged',
 		} as const;
-		notice.value = notices[status];
+		notice.value = notices[result.status];
 		await refresh();
 	}
 
-	async function applyProject(id: string, request: OperationRequest, source: ApplyCheckResult) {
+	async function apply(request: OperationRequest, source: ApplyCheckResult) {
 		// Apply what the page shows. A branch or an instance that changed since is reported, not applied.
 		const expected = {
-			workflowIds: request.workflowIds,
-			folderIds: request.folderIds,
 			expectedSource: { environmentId: source.environmentId, ...source.git },
 			expectedPreviewRevision: preview.value?.revision,
+			...request.confirmations,
 		};
+		const context = rootStore.publicApiContext;
+		const id = projectId.value;
+		if (fixture?.value) {
+			const result = (
+				await loadPromotionFixture(fixture.value, 'apply', id ?? origin?.value)
+			).apply(request.confirmations?.confirmedGapIds ?? []);
+			await onApplied(result, false);
+			return;
+		}
+		if (id !== undefined) {
+			const selection = { workflowIds: request.workflowIds, folderIds: request.folderIds };
+			const result = request.confirmDestructiveChanges
+				? await continueApplyProjectSelection(context, id, {
+						...selection,
+						...expected,
+						confirmDestructiveChanges: true,
+					})
+				: await applyProjectSelection(context, id, { ...selection, ...expected });
+			await onApplied(result, false);
+			return;
+		}
+		if (request.wholeInstance) {
+			// Project deletions and destructive data table changes need the confirmation of Continue.
+			const confirm = request.confirmDestructiveChanges || !!request.deletedProjects?.length;
+			const result = confirm
+				? await continueApplyPromotion(context, source.environmentId, {
+						...expected,
+						confirmDestructiveChanges: true,
+					})
+				: await applyPromotion(context, source.environmentId, expected);
+			await onApplied(result, true);
+			return;
+		}
+		if (!request.projects?.length) return;
+		const payload = { projects: request.projects, ...expected };
 		const result = request.confirmDestructiveChanges
-			? await continueApplyProjectSelection(rootStore.publicApiContext, id, {
-					...expected,
+			? await continueApplyEnvironmentSelection(context, source.environmentId, {
+					...payload,
 					confirmDestructiveChanges: true,
 				})
-			: await applyProjectSelection(rootStore.publicApiContext, id, expected);
-		if (result.status === 'applied') {
-			outcome.showApplied(result);
-			await leave();
-			await outcome.announceApplied(id);
-			return;
-		}
-		await reportUnapplied(result.status);
-	}
-
-	async function applyInstance(request: OperationRequest, source: ApplyCheckResult) {
-		const expected = {
-			expectedSource: { environmentId: source.environmentId, ...source.git },
-			expectedPreviewRevision: preview.value?.revision,
-		};
-		// Project deletions and destructive data table changes need the confirmation of Continue.
-		const confirm = request.confirmDestructiveChanges || !!request.deletedProjects?.length;
-		const result = confirm
-			? await continueApplyPromotion(rootStore.publicApiContext, source.environmentId, {
-					...expected,
-					confirmDestructiveChanges: true,
-				})
-			: await applyPromotion(rootStore.publicApiContext, source.environmentId, expected);
-		if (result.status === 'applied') {
-			outcome.showInstanceApplied(result);
-			await leave();
-			await outcome.refreshProjects();
-			return;
-		}
-		await reportUnapplied(result.status);
+			: await applyEnvironmentSelection(context, source.environmentId, payload);
+		await onApplied(result, true);
 	}
 
 	async function submit(request: OperationRequest) {
@@ -233,17 +335,19 @@ export function usePromotionOperation(
 		// Set before the dialog, so a second click does not open another one.
 		phase.value = 'confirming';
 		try {
-			if (direction.value === 'apply' && !(await confirmApply(request))) return;
+			// The dialog of the gaps confirms the Apply. A deletion or a destructive change still
+			// gets its own question.
+			const needsQuestion =
+				!request.confirmed ||
+				request.confirmDestructiveChanges ||
+				!!request.deletedProjects?.length;
+			if (direction.value === 'apply' && needsQuestion && !(await confirmApply(request))) return;
 			phase.value = 'running';
 			notice.value = null;
 			error.value = null;
-			const id = projectId.value;
-			if (direction.value === 'promote') {
-				if (id !== undefined) await promote(id, request);
-			} else if (source) {
-				if (id === undefined) await applyInstance(request, source);
-				else await applyProject(id, request, source);
-			}
+			gapsReport.value = null;
+			if (direction.value === 'promote') await promote(request);
+			else if (source) await apply(request, source);
 		} catch (cause) {
 			const kind = errorKind(cause);
 			const explained =
@@ -274,6 +378,7 @@ export function usePromotionOperation(
 		isRunning: computed(() => phase.value === 'running'),
 		notice,
 		error,
+		gapsReport,
 		submit,
 	};
 }

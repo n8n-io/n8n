@@ -20,8 +20,14 @@ export const PROMOTION_PREVIEW_VIEWS = {
 	apply: 'PromotionPreviewApply',
 } as const;
 
-/** The preview page of a whole-instance Apply. */
+/** The changes view of an environment, across projects. Apply also serves the whole instance. */
 export const PROMOTION_INSTANCE_APPLY_VIEW = 'PromotionInstanceApply';
+export const PROMOTION_INSTANCE_PROMOTE_VIEW = 'PromotionInstancePromote';
+
+export const PROMOTION_ENVIRONMENT_VIEWS = {
+	promote: PROMOTION_INSTANCE_PROMOTE_VIEW,
+	apply: PROMOTION_INSTANCE_APPLY_VIEW,
+} as const;
 
 /** The details endpoint accepts at most this many keys in one request. */
 export const PROMOTION_DETAILS_BATCH_SIZE = 50;
