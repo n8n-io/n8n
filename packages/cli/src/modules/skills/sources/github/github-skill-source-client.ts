@@ -19,6 +19,7 @@ import { createHash } from 'node:crypto';
 import {
 	DEFAULT_ARCHIVE_LIMITS,
 	archiveSize,
+	isLicensePath,
 	readRepositoryArchive,
 	type ArchiveLimits,
 	type RepositoryArchive,
@@ -32,11 +33,11 @@ import {
 } from './github-link';
 import { lsRefsRequestBody, parseLsRefsResponse, type GitRefs } from './git-refs';
 import { SKILL_FILE, filesOfSkill, findSkillFolders, isInside } from './skill-discovery';
+import { readGitHubSkillFolder } from './skill-reference-examples';
 import { SkillParseError } from '../../errors/skill-parse.error';
 import { SkillSourceNotFoundError } from '../../errors/skill-source-not-found.error';
 import { SkillSourceReadError } from '../../errors/skill-source-read.error';
 import { SkillSourceUrlError } from '../../errors/skill-source-url.error';
-import { readSkillFolder } from '../../utils/skill-md';
 import {
 	SkillSourceClient,
 	type FetchedSkill,
@@ -113,7 +114,7 @@ export class GitHubSkillSourceClient extends SkillSourceClient {
 		changeDetection: 'source',
 		pinnedFetch: true,
 		history: false,
-		// An import keeps SKILL.md and `references/*.md` only. It lists the other files in
+		// JSON and TypeScript references become Markdown. Other unsupported files stay in
 		// `skippedFiles`.
 		importFidelity: 'lossy',
 	};
@@ -268,7 +269,12 @@ export class GitHubSkillSourceClient extends SkillSourceClient {
 		const parsed = readLocator(locator);
 		const { path } = readRef(ref);
 		const sha = revision ?? (await this.head(parsed, auth));
-		const archive = await this.archiveAt(parsed, sha, auth);
+		// A later import can add a skill outside the folder used to connect this source.
+		const archive = await this.archiveAt(
+			isInside(path, parsed.path) ? parsed : { ...parsed, path },
+			sha,
+			auth,
+		);
 		const inRepository = (file: string) => (path ? `${path}/${file}` : file);
 		const skillFile = inRepository(SKILL_FILE);
 		if (archive.oversized.has(skillFile)) {
@@ -286,12 +292,34 @@ export class GitHubSkillSourceClient extends SkillSourceClient {
 			.filter((file) => !archive.oversized.has(inRepository(file)))
 			.map((file) => ({ path: file, content: archive.text.get(inRepository(file)) ?? '' }));
 		const folderName = path.split('/').at(-1) || parsed.repository;
-		const { content, skippedFiles, unstorableFiles } = readSkillFolder(folderName, files);
+		const { content, skippedFiles, unstorableFiles } = readGitHubSkillFolder(folderName, files);
+		const noticePaths = archive.paths.filter((file) => {
+			if (!isLicensePath(file)) return false;
+			const directory = file.split('/').slice(0, -1).join('/');
+			return isInside(path, directory) || isInside(file, path);
+		});
+		let noticeBytes = 0;
+		const notices = noticePaths.sort().map((file) => {
+			const text = archive.text.get(file);
+			if (text === undefined || text.includes('\0')) {
+				throw new SkillParseError('The license notice cannot be stored.');
+			}
+			noticeBytes += Buffer.byteLength(text);
+			if (noticeBytes > 256 * 1024) throw new SkillParseError('The license notices exceed 256 KB.');
+			return { path: file, text };
+		});
+		if (notices.length > 0) {
+			content.frontmatter = {
+				...content.frontmatter,
+				n8n_source: this.webUrl(locator, ref),
+				n8n_licenses: notices,
+			};
+		}
 		return {
 			content,
 			revision: sha,
 			fidelity: [],
-			skippedFiles: [...skippedFiles, ...oversized],
+			skippedFiles: [...skippedFiles.filter((file) => !isLicensePath(file)), ...oversized],
 			unstorableFiles,
 		};
 	}

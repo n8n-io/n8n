@@ -1568,6 +1568,32 @@ describe('SettingsSkillsView', () => {
 			return renderView({ global: { stubs: { SkillSourceConnectDialog: ConnectDialogStub } } });
 		}
 
+		it('opens a catalog selection in the GitHub import dialog', async () => {
+			enableSkillSync();
+			const view = renderWithDialogStub();
+			await userEvent.click(view.getByRole('tab', { name: 'Discover' }));
+			await view.findByTestId('skill-catalog');
+			await userEvent.click(view.getAllByTestId('skill-catalog-details')[0]);
+			await userEvent.click(await view.findByTestId('skill-catalog-add'));
+			expect(await view.findByTestId('connect-dialog-stub')).toBeInTheDocument();
+		});
+
+		it('opens a guide-based skill in the GitHub import flow', async () => {
+			enableSkillSync();
+			const view = renderWithDialogStub();
+			await userEvent.click(view.getByRole('tab', { name: 'Discover' }));
+			const card = await view.findByTestId('skill-catalog-n8n-memory-optimization');
+			await userEvent.click(within(card).getByRole('button'));
+			await userEvent.click(view.getByTestId('skill-catalog-add'));
+			expect(await view.findByTestId('connect-dialog-stub')).toBeInTheDocument();
+			expect(uiStore.openModalWithData).not.toHaveBeenCalled();
+		});
+
+		it('hides Discover when Skill Sync is disabled', () => {
+			const view = renderWithDialogStub();
+			expect(view.queryByRole('tab', { name: 'Discover' })).not.toBeInTheDocument();
+		});
+
 		it('offers "Connect to GitHub" first in the "Create skills" menu when the flag is on', async () => {
 			enableSkillSync();
 			const view = renderWithDialogStub();

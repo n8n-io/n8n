@@ -42,6 +42,10 @@ const skillSourceScope = {
 };
 
 const skillSourceTarget = {
+	/** Add to this source without changing its scope, branch, or credential. */
+	existingSourceId: z.string().uuid().optional(),
+	/** When supplied, reject omitted files outside this reviewed list. */
+	allowedSkippedFiles: z.array(z.string().min(1).max(512)).max(100).optional(),
 	/** A link to a repository, a folder, or one SKILL.md. */
 	url: z.string().trim().min(1).max(2048),
 	...skillSourceScope,

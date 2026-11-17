@@ -187,6 +187,44 @@ describe('Skill source checks', () => {
 			return { ...imported, reviewed: await review(imported.sourceId) };
 		};
 
+		it('reviews and saves changes to converted reference examples', async () => {
+			pushChange({
+				'skills/docx/SKILL.md': skillMd('docx', 'Read `references/example.json`.'),
+				'skills/docx/references/example.json': '{"version":1}',
+			});
+			const { sourceId, docx } = await importAll();
+			const original = (await editor.get(`/skills/${docx}`).expect(200)).body.data.skill;
+			expect(original.instructions).toBe('Read `references/example.json.md`.');
+			expect(original.references).toEqual([
+				{
+					path: 'references/example.json.md',
+					content: expect.stringContaining('{"version":1}'),
+				},
+			]);
+			pushChange({ 'skills/docx/references/example.json': '{"version":2}' });
+			await sync().checkAll();
+			const pending = await review(sourceId);
+			expect(pending.updates).toHaveLength(1);
+			const update = pending.updates[0];
+			const detail = await editor
+				.get(`/skill-sources/${sourceId}/updates/${docx}`)
+				.query({ contentHash: update.contentHash, baseVersionId: update.baseVersionId })
+				.expect(200);
+			expect(detail.body.data.files).toEqual(
+				expect.arrayContaining([
+					expect.objectContaining({
+						path: 'references/example.json.md',
+						before: expect.stringContaining('{"version":1}'),
+						after: expect.stringContaining('{"version":2}'),
+					}),
+				]),
+			);
+			expect((await editor.get(`/skills/${docx}`).expect(200)).body.data.skill).toEqual(original);
+			await accept(sourceId, pending);
+			const saved = (await editor.get(`/skills/${docx}`).expect(200)).body.data.skill;
+			expect(saved.references[0].content).toContain('{"version":2}');
+		});
+
 		it('keeps unselected updates pending and compares newer content with the saved version', async () => {
 			const { sourceId, docx, xlsx, reviewed } = await changed();
 			await accept(sourceId, {

@@ -399,6 +399,85 @@ describe('GitHubSkillSourceClient', () => {
 		});
 	});
 
+	it('keeps source and ancestor license notices with a folder import', async () => {
+		github.push('acme/notices', {
+			'LICENSE-MIT': 'Root license',
+			'skills/a/SKILL.md': skillMd('a'),
+			'skills/a/NOTICE.txt': 'Author notice',
+			'skills/other/LICENSE': 'Other license',
+		});
+		const locator = await client.parseLocator('https://github.com/acme/notices/tree/main/skills/a');
+		const fetched = await client.fetchLatest(locator, { path: 'skills/a' });
+		expect(fetched.content.frontmatter).toMatchObject({
+			n8n_source: 'https://github.com/acme/notices/tree/main/skills/a',
+			n8n_licenses: [
+				{ path: 'LICENSE-MIT', text: 'Root license' },
+				{ path: 'skills/a/NOTICE.txt', text: 'Author notice' },
+			],
+		});
+		expect(fetched.skippedFiles).toEqual([]);
+	});
+
+	it('reads reference examples from the selected revision on import and update', async () => {
+		const files = {
+			'a/SKILL.md': skillMd('a', 'Read [example](references/workflow.json).'),
+			'a/references/workflow.json': '{"version":1}',
+			'a/references/example.ts': 'export const example = 1;',
+			'a/scripts/run.ts': 'export const script = 1;',
+		};
+		github.push('acme/examples', files);
+		const locator = await client.parseLocator('https://github.com/acme/examples');
+		const { revision } = await client.discover(locator);
+		const original = await client.fetchLatest(locator, { path: 'a' }, undefined, revision);
+		expect(original.content.instructions).toContain('(references/workflow.json.md)');
+		expect(original.content.files).toEqual([
+			{
+				path: 'references/example.ts.md',
+				content: expect.stringContaining('```typescript\nexport const example = 1;\n```'),
+			},
+			{
+				path: 'references/workflow.json.md',
+				content: expect.stringContaining('```json\n{"version":1}\n```'),
+			},
+		]);
+		expect(original.skippedFiles).toEqual(['scripts/run.ts']);
+		github.push('acme/examples', { ...files, 'a/references/workflow.json': '{"version":2}' });
+		const updated = await client.fetchLatest(locator, { path: 'a' });
+		expect(updated.content.files[1].content).toContain('{"version":2}');
+		expect(updated.revision).not.toBe(original.revision);
+		expect(await client.fetchLatest(locator, { path: 'a' }, undefined, revision)).toEqual(original);
+	});
+
+	it('keeps oversized reference examples in the omitted file list', async () => {
+		github.push('acme/examples', {
+			'a/SKILL.md': skillMd('a'),
+			'a/references/huge.json': 'x'.repeat(1001),
+		});
+		client = clientWithLimits({ maxTextFileBytes: 1000 });
+		const locator = await client.parseLocator('https://github.com/acme/examples');
+		const fetched = await client.fetchLatest(locator, { path: 'a' });
+		expect(fetched.content.files).toEqual([]);
+		expect(fetched.skippedFiles).toEqual(['references/huge.json']);
+	});
+
+	it('reads a later skill outside the original connection folder', async () => {
+		github.push('acme/more', {
+			'skills/a/SKILL.md': skillMd('a'),
+			'skills/b/SKILL.md': skillMd('b'),
+		});
+		const locator = await client.parseLocator('https://github.com/acme/more/tree/main/skills/a');
+		expect((await client.fetchLatest(locator, { path: 'skills/b' })).content.name).toBe('b');
+	});
+
+	it('refuses license notices that exceed the retained notice limit', async () => {
+		github.push('acme/large-notice', {
+			LICENSE: 'x'.repeat(256 * 1024 + 1),
+			'a/SKILL.md': skillMd('a'),
+		});
+		const locator = await client.parseLocator('https://github.com/acme/large-notice');
+		await expect(client.fetchLatest(locator, { path: 'a' })).rejects.toThrow(SkillParseError);
+	});
+
 	it('skips a reference over the size limit instead of importing it empty', async () => {
 		github.push('acme/skills', {
 			'pdf/SKILL.md': skillMd('pdf'),

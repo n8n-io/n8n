@@ -28,7 +28,7 @@ export const DEFAULT_ARCHIVE_LIMITS: ArchiveLimits = {
 /**
  * The files of a repository folder at one commit. Every file keeps its path, so the picker can
  * list the files that an import skips. Only the files that can become skill content keep their
- * text: SKILL.md files and markdown under a `references` folder.
+ * text: SKILL.md files, supported references, and license notices.
  */
 export type RepositoryArchive = {
 	paths: string[];
@@ -57,7 +57,7 @@ function tooLarge(root: string): SkillSourceReadError {
 /**
  * Reads a GitHub tarball (`codeload.github.com/<owner>/<repo>/tar.gz/<sha>`) as it streams in.
  * GitHub puts every file under one folder named after the repository and the commit. The paths
- * here leave it out. Only the entries under `root` are kept, and only they count toward the
+ * here leave it out. Entries under `root` and ancestor license notices count toward the
  * entry and size limits. Links, folders and other entries that are not files are left out.
  */
 export async function readRepositoryArchive(
@@ -96,7 +96,11 @@ export async function readRepositoryArchive(
 
 		parser.on('entry', (entry: ReadEntry) => {
 			const path = withoutTopFolder(entry.path);
-			if (path === undefined || !isInside(path, root)) {
+			if (
+				path === undefined ||
+				(!isInside(path, root) &&
+					!(isLicensePath(path) && isInside(root, path.split('/').slice(0, -1).join('/'))))
+			) {
 				entry.resume();
 				return;
 			}
@@ -175,6 +179,13 @@ function withoutTopFolder(path: string): string | undefined {
 function keepsText(path: string): boolean {
 	const segments = path.split('/');
 	const name = segments.at(-1) ?? '';
-	if (name === 'SKILL.md') return true;
-	return segments.includes('references') && /\.(md|markdown)$/i.test(name);
+	if (name === 'SKILL.md' || isLicensePath(path)) return true;
+	return segments.includes('references') && /\.(md|markdown|json|ts)$/i.test(name);
+}
+
+/** License notices stay with imported content, including notices above a linked folder. */
+export function isLicensePath(path: string): boolean {
+	return /^(licen[cs]e|copying|notice)(-[a-z0-9]+)*(\.(txt|md|markdown))?$/i.test(
+		path.split('/').at(-1) ?? '',
+	);
 }

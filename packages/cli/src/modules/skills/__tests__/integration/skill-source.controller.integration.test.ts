@@ -365,8 +365,8 @@ describe('SkillSourceController', () => {
 			expect(importedFromSource).toHaveBeenCalledWith(
 				expect.objectContaining({
 					imported: 1,
-					skipped_files: 5,
-					skipped_file_extensions: { '.py': 2, '.png': 1, '.sh': 1, none: 1 },
+					skipped_files: 4,
+					skipped_file_extensions: { '.py': 2, '.png': 1, '.sh': 1 },
 					skipped_script_files: 3,
 					status: 'success',
 				}),
@@ -1032,6 +1032,115 @@ describe('SkillSourceController', () => {
 				);
 			},
 		);
+	});
+
+	describe('adding skills to an existing source', () => {
+		async function connectDocx() {
+			const { data: preview } = await discover(owner, { url: REPO, scope: 'instance' });
+			return (
+				await connect(owner, { url: REPO, scope: 'instance', skillKeys: keysOf(preview, ['docx']) })
+			).data;
+		}
+
+		it('adds another folder and keeps one source, then refuses a repeated import', async () => {
+			const first = await connectDocx();
+			const target = { url: REPO, scope: 'instance', existingSourceId: first.sourceId };
+			const { data: preview } = await discover(owner, target);
+			expect(preview.duplicate).toEqual({ kind: 'none' });
+			expect(preview.skills.find((skill) => skill.name === 'docx')?.nameTaken).toBe(true);
+			const skillKeys = keysOf(preview, ['pdf']);
+			const { data: second } = await connect(owner, {
+				...target,
+				skillKeys,
+				reviewedSkillKeys: skillKeys,
+			});
+			expect(second.sourceId).toBe(first.sourceId);
+			expect(second.imported).toHaveLength(1);
+			expect(await countSources()).toBe(1);
+			const repeated = await connect(
+				owner,
+				{ ...target, skillKeys, reviewedSkillKeys: skillKeys },
+				409,
+			);
+			expect(repeated.meta).toEqual({ reason: 'name_taken' });
+			expect(await countSources()).toBe(1);
+		});
+
+		it('refuses to reuse a source in another scope', async () => {
+			const first = await connectDocx();
+			const result = await discover(
+				owner,
+				{ url: REPO, scope: 'project', projectId: team.id, existingSourceId: first.sourceId },
+				409,
+			);
+			expect(result.meta).toEqual({ reason: 'stale' });
+			expect(await countSources()).toBe(1);
+		});
+
+		it('checks create permission before reading an existing source', async () => {
+			const first = await connectDocx();
+			await discover(
+				member,
+				{ url: REPO, scope: 'instance', existingSourceId: first.sourceId },
+				403,
+			);
+			expect(await countSources()).toBe(1);
+		});
+
+		it('keeps the original branch when adding to a source', async () => {
+			const first = await connectDocx();
+			github.push('acme/skills', FILES, 'develop');
+			const result = await discover(
+				owner,
+				{
+					url: `${REPO}/tree/develop`,
+					scope: 'instance',
+					existingSourceId: first.sourceId,
+				},
+				409,
+			);
+			expect(result.meta).toEqual({ reason: 'stale' });
+			expect(await countSources()).toBe(1);
+		});
+
+		it('allows reviewed development files but rejects a new omitted file', async () => {
+			const url = 'https://github.com/acme/curated';
+			const files = { 'SKILL.md': skillMd('curated'), 'evals/evals.json': '{}' };
+			github.push('acme/curated', files);
+			const { data: preview } = await discover(owner, { url, scope: 'instance' });
+			const target = {
+				url,
+				scope: 'instance',
+				skillKeys: keysOf(preview, ['curated']),
+				allowedSkippedFiles: ['evals/evals.json'],
+			};
+			github.push('acme/curated', { ...files, 'scripts/run.py': 'print(1)' });
+			const result = await connect(owner, target, 422);
+			expect(result.meta).toEqual({ reason: 'blocked_by_check' });
+			expect(await countSources()).toBe(0);
+			github.push('acme/curated', files);
+			const { data } = await connect(owner, target);
+			expect(data.imported).toHaveLength(1);
+			expect(await countSources()).toBe(1);
+		});
+
+		it('refuses omitted files when the catalog requires a complete import', async () => {
+			const { data: preview } = await discover(owner, { url: REPO, scope: 'instance' });
+			const keys = keysOf(preview, ['pdf']);
+			const result = await connect(
+				owner,
+				{
+					url: REPO,
+					scope: 'instance',
+					skillKeys: keys,
+					reviewedSkillKeys: keys,
+					allowedSkippedFiles: [],
+				},
+				422,
+			);
+			expect(result.meta).toEqual({ reason: 'blocked_by_check' });
+			expect(await countSources()).toBe(0);
+		});
 	});
 
 	describe('duplicate rules', () => {

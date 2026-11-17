@@ -8,7 +8,7 @@ import {
 	type SkillSourceDiscovery,
 	type SkillSourceRepositoryOption,
 } from '@n8n/api-types';
-import { computed, onBeforeUnmount, ref, watch } from 'vue';
+import { computed, onBeforeUnmount, ref, useId, watch } from 'vue';
 import { useI18n, type BaseTextKey } from '@n8n/i18n';
 import { useToast } from '@n8n/composables/useToast';
 import {
@@ -19,6 +19,7 @@ import {
 	N8nDialog,
 	N8nDialogBody,
 	N8nDialogFooter,
+	N8nExternalLink,
 	N8nIcon,
 	N8nInputLabel,
 	N8nSelect2,
@@ -50,10 +51,19 @@ export type SkillSourceConnected = {
 	scopeLabel: string;
 };
 
+export type SkillSourcePreset = {
+	name: string;
+	url: string;
+	location: string;
+	allowedSkippedFiles?: string[];
+};
+
 const props = defineProps<{
 	open: boolean;
 	/** The scopes where the user may create skills, as the create modal lists them. */
 	scopeOptions: AgentSkillModalScopeOption[];
+	/** A catalog entry keeps the import focused on one reviewed folder. */
+	preset?: SkillSourcePreset;
 }>();
 
 const emit = defineEmits<{
@@ -113,6 +123,8 @@ const credentialsStore = useCredentialsStore();
 const credentialOAuth = useCredentialOAuth();
 
 const step = ref<'repository' | 'review'>('repository');
+const showCredential = ref(false);
+const credentialOptionsId = useId();
 const scope = ref('');
 const discovering = ref(false);
 const connecting = ref(false);
@@ -120,7 +132,12 @@ const linkError = ref('');
 const discovery = ref<SkillSourceDiscovery | null>(null);
 const selected = ref<string[]>([]);
 /** The link and credential that the shown discovery read, which connect sends again. */
-const discovered = ref<{ url: string; credentialId?: string } | null>(null);
+const discovered = ref<{
+	url: string;
+	credentialId?: string;
+	existingSourceId?: string;
+	allowedSkippedFiles?: string[];
+} | null>(null);
 
 /** `''` is "None, the repository is public". */
 const credentialId = ref('');
@@ -192,6 +209,7 @@ watch(
 		credentialsRun += 1;
 		discovering.value = false;
 		step.value = 'repository';
+		showCredential.value = false;
 		scope.value = props.scopeOptions[0]?.value ?? '';
 		linkError.value = '';
 		discovery.value = null;
@@ -201,8 +219,8 @@ watch(
 		credentials.value = [];
 		credentialsLoading.value = false;
 		createdCredential.value = null;
-		repository.value = '';
-		repositorySearch.value = '';
+		repository.value = props.preset?.url ?? '';
+		repositorySearch.value = props.preset?.url ?? '';
 		resetRepositories();
 		reviewed.value = false;
 		void loadCredentials();
@@ -239,6 +257,14 @@ const scopeItems = computed<SelectItem[]>(() =>
 		label: option.label,
 		icon: option.icon,
 	})),
+);
+
+const scopeLabel = computed(() =>
+	i18n.baseText(
+		props.preset
+			? 'settings.context.skills.connect.catalog.scope'
+			: 'settings.context.skills.connect.scope.label',
+	),
 );
 
 const scopeHint = computed(() => {
@@ -580,8 +606,18 @@ watch(needsReview, (needed) => {
 	if (!needed) reviewed.value = false;
 });
 
+const incomplete = computed(
+	() =>
+		!!props.preset &&
+		(discovery.value?.skills.some(
+			(skill) =>
+				selected.value.includes(skill.key) &&
+				skill.skippedFiles.some((file) => !props.preset?.allowedSkippedFiles?.includes(file)),
+		) ??
+			false),
+);
 const canImport = computed(
-	() => selected.value.length > 0 && (!needsReview.value || reviewed.value),
+	() => selected.value.length > 0 && !incomplete.value && (!needsReview.value || reviewed.value),
 );
 
 async function onNext() {
@@ -602,14 +638,42 @@ async function onNext() {
 		link === sourceUrl.value &&
 		requestedScope === scope.value &&
 		requestedCredential === credentialId.value;
-	const target = {
+	const target: NonNullable<typeof discovered.value> = {
 		url: link,
 		...(requestedCredential ? { credentialId: requestedCredential } : {}),
+		...(props.preset ? { allowedSkippedFiles: props.preset.allowedSkippedFiles ?? [] } : {}),
 	};
 	discovering.value = true;
 	try {
-		const result = await skillsStore.discoverSource({ ...target, ...parseScope(requestedScope) });
+		let result = await skillsStore.discoverSource({ ...target, ...parseScope(requestedScope) });
 		if (!isCurrent()) return;
+		const duplicate = result.duplicate;
+		if (
+			props.preset &&
+			duplicate.kind === 'blocked' &&
+			duplicate.sourceId &&
+			(duplicate.where === 'scope' || parseScope(requestedScope).scope === 'instance')
+		) {
+			target.existingSourceId = duplicate.sourceId;
+			try {
+				result = await skillsStore.discoverSource({ ...target, ...parseScope(requestedScope) });
+			} catch (error) {
+				if (!(error instanceof ResponseError) || error.meta?.reason !== 'stale') throw error;
+				// A different branch or credential needs the existing source's settings.
+				delete target.existingSourceId;
+			}
+			if (!isCurrent()) return;
+		}
+		if (props.preset) {
+			result = {
+				...result,
+				skills: result.skills.filter((skill) => skill.location === props.preset?.location),
+			};
+			if (result.skills.length === 0) {
+				linkError.value = reasonText('not_found');
+				return;
+			}
+		}
 		discovery.value = result;
 		discovered.value = target;
 		if (result.duplicate.kind === 'blocked') return;
@@ -708,7 +772,13 @@ function onInteractOutside(event: Event) {
 <template>
 	<N8nDialog
 		:open="open"
-		:header="i18n.baseText('settings.context.skills.connect.title')"
+		:header="
+			i18n.baseText(
+				preset
+					? 'settings.context.skills.connect.catalog.title'
+					: 'settings.context.skills.connect.title',
+			)
+		"
 		:size="step === 'review' ? 'full' : 'xlarge'"
 		:container-class="step === 'review' ? $style.wide : undefined"
 		:trap-focus="!credentialModalOpen"
@@ -718,6 +788,22 @@ function onInteractOutside(event: Event) {
 		@interact-outside="onInteractOutside"
 	>
 		<N8nDialogBody v-if="step === 'repository'" :class="$style.body">
+			<template v-if="preset">
+				<div :class="$style.catalogSelection" data-test-id="skill-source-catalog-selection">
+					<N8nText bold>{{ preset.name }}</N8nText>
+					<N8nText size="small" color="text-light">
+						{{ i18n.baseText('settings.context.skills.connect.catalog.source') }}
+					</N8nText>
+					<N8nText size="small" :class="$style.catalogUrl">
+						<N8nExternalLink :href="preset.url" inline size="small">
+							<span>{{ preset.url }}</span>
+						</N8nExternalLink>
+					</N8nText>
+				</div>
+				<N8nText color="text-base">
+					{{ i18n.baseText('settings.context.skills.connect.catalog.description') }}
+				</N8nText>
+			</template>
 			<N8nCallout
 				v-if="createdCredential && createdCredential.id === credentialId"
 				theme="success"
@@ -730,12 +816,11 @@ function onInteractOutside(event: Event) {
 				}}
 			</N8nCallout>
 			<div :class="$style.field">
-				<N8nInputLabel
-					:label="i18n.baseText('settings.context.skills.connect.scope.label')"
-					color="text-dark"
-				>
+				<N8nInputLabel :label="scopeLabel" color="text-dark" input-name="skill-source-scope">
 					<N8nSelect2
+						id="skill-source-scope"
 						:model-value="scope"
+						:aria-label="scopeLabel"
 						:items="scopeItems"
 						size="large"
 						data-test-id="skill-source-scope-select"
@@ -746,7 +831,18 @@ function onInteractOutside(event: Event) {
 					{{ scopeHint }}
 				</N8nText>
 			</div>
-			<div :class="$style.field">
+			<N8nButton
+				v-if="preset"
+				:class="$style.credentialToggle"
+				variant="ghost"
+				size="small"
+				:icon="showCredential ? 'chevron-down' : 'chevron-right'"
+				:label="i18n.baseText('settings.context.skills.connect.catalog.credential')"
+				:aria-expanded="showCredential"
+				:aria-controls="credentialOptionsId"
+				@click="showCredential = !showCredential"
+			/>
+			<div v-show="!preset || showCredential" :id="credentialOptionsId" :class="$style.field">
 				<N8nInputLabel
 					:label="i18n.baseText('settings.context.skills.connect.credential.label')"
 					color="text-dark"
@@ -777,8 +873,9 @@ function onInteractOutside(event: Event) {
 					{{ i18n.baseText('settings.context.skills.connect.credential.oauth2Warning') }}
 				</N8nCallout>
 			</div>
-			<div :class="$style.field">
+			<div v-if="!preset || duplicateError" :class="$style.field">
 				<N8nInputLabel
+					v-if="!preset"
 					:label="i18n.baseText('settings.context.skills.connect.repository.label')"
 					color="text-dark"
 				>
@@ -822,11 +919,11 @@ function onInteractOutside(event: Event) {
 						@click="emit('openSource', duplicateSourceId)"
 					/>
 				</N8nText>
-				<N8nText v-else size="small" color="text-light">
+				<N8nText v-else-if="!preset" size="small" color="text-light">
 					{{ i18n.baseText('settings.context.skills.connect.repository.hint') }}
 				</N8nText>
 				<N8nText
-					v-if="repositoriesTruncated"
+					v-if="!preset && repositoriesTruncated"
 					size="small"
 					color="text-light"
 					data-test-id="skill-source-repositories-truncated"
@@ -840,6 +937,9 @@ function onInteractOutside(event: Event) {
 		</N8nDialogBody>
 
 		<N8nDialogBody v-else-if="discovery" :class="$style.body">
+			<N8nCallout v-if="incomplete" theme="warning" data-test-id="skill-catalog-incomplete">
+				{{ i18n.baseText('settings.context.skills.catalog.incomplete') }}
+			</N8nCallout>
 			<div :class="$style.source">
 				<N8nText bold data-test-id="skill-source-summary">{{ sourceLine }}</N8nText>
 				<SkillScopeBadge :skill="scopeSkill" :label="selectedScope?.label" />
@@ -884,7 +984,9 @@ function onInteractOutside(event: Event) {
 			/>
 			<N8nButton
 				v-if="step === 'repository'"
-				:label="i18n.baseText('generic.next')"
+				:label="
+					i18n.baseText(preset ? 'settings.context.skills.connect.catalog.review' : 'generic.next')
+				"
 				:disabled="!canGoNext"
 				:loading="discovering"
 				data-test-id="skill-source-next"
@@ -913,6 +1015,43 @@ function onInteractOutside(event: Event) {
 	display: flex;
 	flex-direction: column;
 	gap: var(--spacing--4xs);
+}
+
+.catalogSelection {
+	display: flex;
+	flex-direction: column;
+	align-items: flex-start;
+	gap: var(--spacing--2xs);
+	padding: var(--spacing--sm);
+	border: var(--border);
+	border-radius: var(--radius--xs);
+	background: var(--background--subtle);
+}
+
+.catalogUrl {
+	align-self: stretch;
+	max-width: 100%;
+	overflow-wrap: anywhere;
+
+	a {
+		align-items: baseline;
+		max-width: 100%;
+	}
+
+	svg {
+		flex-shrink: 0;
+	}
+}
+
+.credentialToggle {
+	align-self: flex-start;
+	margin-inline-start: calc(-1 * var(--spacing--xs));
+	border-radius: var(--radius--xs);
+
+	/* An expanded disclosure is not a pressed action. */
+	&[aria-expanded='true']:not(:hover):not(:active) {
+		background-color: transparent;
+	}
 }
 
 /* The OAuth2 option has a second line for its note. */

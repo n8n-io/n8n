@@ -930,6 +930,157 @@ describe('SkillSourceConnectDialog', () => {
 		});
 	});
 
+	describe('catalog selection', () => {
+		const preset = {
+			name: 'Brand voice',
+			url: 'https://github.com/acme/skills/tree/main/skills/brand-voice',
+			location: 'skills/brand-voice',
+		};
+
+		it('shows the selected skill and source with the save scope as the main choice', async () => {
+			skillsStore.discoverSource.mockResolvedValue(discovery());
+			const view = renderDialog({ props: { open: true, scopeOptions: SCOPES, preset } });
+			const summary = within(view.getByTestId('skill-source-catalog-selection'));
+			expect(summary.getByText('Brand voice')).toBeVisible();
+			expect(summary.getByRole('link', { name: preset.url })).toHaveAttribute('href', preset.url);
+			expect(view.queryByTestId('skill-source-repository-select')).not.toBeInTheDocument();
+			expect(view.getByTestId('skill-source-credential-select')).not.toBeVisible();
+			expect(view.getByLabelText('Save to')).toBeVisible();
+
+			await selectScope(view, 'project:team-1');
+			await userEvent.click(view.getByRole('button', { name: 'Review skill' }));
+			await view.findByTestId('skill-source-review');
+			expect(skillsStore.discoverSource).toHaveBeenCalledWith({
+				url: preset.url,
+				scope: 'project',
+				projectId: 'team-1',
+				allowedSkippedFiles: [],
+			});
+		});
+
+		it('keeps the selected GitHub link when an optional credential is chosen', async () => {
+			skillsStore.fetchSourceCredentials.mockResolvedValue([TOKEN]);
+			skillsStore.discoverSource.mockResolvedValue(discovery());
+			const view = renderDialog({ props: { open: true, scopeOptions: SCOPES, preset } });
+			await userEvent.click(view.getByRole('button', { name: 'GitHub credential (optional)' }));
+			expect(view.getByTestId('skill-source-credential-select')).toBeVisible();
+			await selectCredential(view, 'Ada token');
+			await next(view);
+			await view.findByTestId('skill-source-review');
+			expect(skillsStore.discoverSource).toHaveBeenCalledWith({
+				url: preset.url,
+				scope: 'instance',
+				credentialId: TOKEN.id,
+				allowedSkippedFiles: [],
+			});
+		});
+
+		it('imports only the selected folder and requires all its files', async () => {
+			skillsStore.discoverSource.mockResolvedValue(discovery());
+			skillsStore.connectSource.mockResolvedValue({ sourceId: 'src-1', imported: [], failed: [] });
+			const view = renderDialog({ props: { open: true, scopeOptions: SCOPES, preset } });
+			await next(view);
+			await view.findByTestId('skill-source-review');
+			await userEvent.click(view.getByTestId('skill-source-import'));
+			expect(skillsStore.connectSource).toHaveBeenCalledWith(
+				expect.objectContaining({
+					url: preset.url,
+					skillKeys: ['skills/brand-voice'],
+					allowedSkippedFiles: [],
+				}),
+			);
+		});
+
+		it('reuses a source in the selected scope after a fresh review', async () => {
+			skillsStore.discoverSource
+				.mockResolvedValueOnce(
+					discovery({
+						duplicate: { kind: 'blocked', where: 'scope', sourceId: 'src-1' },
+					}),
+				)
+				.mockResolvedValueOnce(discovery());
+			skillsStore.connectSource.mockResolvedValue({ sourceId: 'src-1', imported: [], failed: [] });
+			const view = renderDialog({ props: { open: true, scopeOptions: SCOPES, preset } });
+			await selectScope(view, 'project:team-1');
+			await next(view);
+			await view.findByTestId('skill-source-review');
+			await userEvent.click(view.getByTestId('skill-source-import'));
+			expect(skillsStore.connectSource).toHaveBeenCalledWith(
+				expect.objectContaining({
+					existingSourceId: 'src-1',
+					scope: 'project',
+					projectId: 'team-1',
+				}),
+			);
+		});
+
+		it('offers the existing source when its branch or credential differs', async () => {
+			skillsStore.discoverSource
+				.mockResolvedValueOnce(
+					discovery({
+						duplicate: { kind: 'blocked', where: 'scope', sourceId: 'src-1' },
+					}),
+				)
+				.mockRejectedValueOnce(new ResponseError('Source changed', { meta: { reason: 'stale' } }));
+			const view = renderDialog({ props: { open: true, scopeOptions: SCOPES, preset } });
+			await next(view);
+			await userEvent.click(await view.findByText('View source'));
+			expect(view.emitted('openSource')).toEqual([['src-1']]);
+			expect(skillsStore.connectSource).not.toHaveBeenCalled();
+		});
+
+		it('keeps a global source blocked when a project scope is selected', async () => {
+			skillsStore.discoverSource.mockResolvedValue(
+				discovery({
+					duplicate: { kind: 'blocked', where: 'global', sourceId: 'src-1' },
+				}),
+			);
+			const view = renderDialog({ props: { open: true, scopeOptions: SCOPES, preset } });
+			await selectScope(view, 'project:team-1');
+			await next(view);
+			await waitFor(() => expect(skillsStore.discoverSource).toHaveBeenCalledTimes(1));
+			expect(skillsStore.connectSource).not.toHaveBeenCalled();
+			expect(view.queryByTestId('skill-source-review')).not.toBeInTheDocument();
+		});
+
+		it('allows the reviewed development files of a catalog entry', async () => {
+			skillsStore.discoverSource.mockResolvedValue(
+				discovery({
+					skills: [discovered({ skippedFiles: ['evals/evals.json'] })],
+				}),
+			);
+			skillsStore.connectSource.mockResolvedValue({ sourceId: 'src-1', imported: [], failed: [] });
+			const view = renderDialog({
+				props: {
+					open: true,
+					scopeOptions: SCOPES,
+					preset: { ...preset, allowedSkippedFiles: ['evals/evals.json'] },
+				},
+			});
+			await next(view);
+			await view.findByTestId('skill-source-review');
+			expect(view.queryByTestId('skill-catalog-incomplete')).not.toBeInTheDocument();
+			await userEvent.click(view.getByTestId('skill-source-import'));
+			expect(skillsStore.connectSource).toHaveBeenCalledWith(
+				expect.objectContaining({
+					allowedSkippedFiles: ['evals/evals.json'],
+				}),
+			);
+		});
+
+		it('prevents import when the selected folder contains unsupported files', async () => {
+			skillsStore.discoverSource.mockResolvedValue(
+				discovery({
+					skills: [discovered({ skippedFiles: ['scripts/run.py'] })],
+				}),
+			);
+			const view = renderDialog({ props: { open: true, scopeOptions: SCOPES, preset } });
+			await next(view);
+			expect(await view.findByTestId('skill-catalog-incomplete')).toBeInTheDocument();
+			expect(view.getByTestId('skill-source-import')).toBeDisabled();
+		});
+	});
+
 	describe('the import', () => {
 		const flagged = discovered({
 			key: 'skills/flagged',

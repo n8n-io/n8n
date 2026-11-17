@@ -168,7 +168,7 @@ export class SkillSourceRepository {
 		return await this.sources.managerFor(ctx).findOneBy(SkillSourceConnection, { id });
 	}
 
-	async lockForMove(sourceId: string, ctx: OperationContext): Promise<void> {
+	async lockForMemberChange(sourceId: string, ctx: OperationContext): Promise<void> {
 		if (!ctx.trx) throw new UnexpectedError('Source row locks need a transaction');
 		if (this.sources.manager.connection.options.type !== 'postgres') return;
 		await this.sources.managerFor(ctx).findOne(SkillSourceConnection, {
