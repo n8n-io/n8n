@@ -968,6 +968,11 @@ describe('Telemetry', () => {
 					properties: expect.objectContaining({ instance_id: instanceId, install_id: installId }),
 				}),
 			);
+			expect(postHog.track).toHaveBeenCalledWith(
+				expect.objectContaining({
+					properties: expect.objectContaining({ instance_id: instanceId, install_id: installId }),
+				}),
+			);
 		});
 
 		test('should add installId to RudderStack identify traits', () => {

@@ -424,6 +424,20 @@ describe('InstanceSettings', () => {
 				expect(seededInstallIds()).toHaveLength(0);
 			});
 
+			it('should keep the stored instance ID when an existing install gets its install ID', async () => {
+				mockRepo.findActiveIdentifier.mockImplementation(async (type: string) => {
+					if (type === 'instance.id') return { value: 'db-stored-instance-id' };
+					const [seeded] = seededInstallIds();
+					return seeded ? { value: seeded } : null;
+				});
+
+				await settings.initialize(mockRepo);
+
+				expect(settings.instanceId).toEqual('db-stored-instance-id');
+				expect(seededInstallIds()).toHaveLength(1);
+				expect(settings.installId).toEqual(seededInstallIds()[0]);
+			});
+
 			it('should give two installs with the same encryption key different install IDs', async () => {
 				const other = createInstanceSettings({ encryptionKey: 'test_key' });
 

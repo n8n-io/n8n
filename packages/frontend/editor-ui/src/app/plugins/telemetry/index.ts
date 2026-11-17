@@ -130,9 +130,11 @@ export class TelemetryService implements Telemetry {
 		if (!this.rudderStack) return;
 
 		const posthogSessionId = window.posthog?.get_session_id?.();
+		const installId = useSettingsStore().settings?.installId;
 
 		const updatedProperties = {
 			...properties,
+			...(installId && { install_id: installId }),
 			version_cli: useRootStore().versionCli,
 			posthog_session_id: posthogSessionId,
 		};

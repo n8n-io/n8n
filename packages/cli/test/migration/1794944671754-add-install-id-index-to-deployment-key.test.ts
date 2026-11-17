@@ -27,8 +27,10 @@ describe('AddInstallIdIndexToDeploymentKey migration', () => {
 	async function insertInstallId(status: 'active' | 'inactive') {
 		await withContext(async (context) => {
 			const table = context.escape.tableName('deployment_key');
+			const createdAt = context.escape.columnName('createdAt');
+			const updatedAt = context.escape.columnName('updatedAt');
 			await context.runQuery(
-				`INSERT INTO ${table} (id, type, value, algorithm, status, "createdAt", "updatedAt")
+				`INSERT INTO ${table} (id, type, value, algorithm, status, ${createdAt}, ${updatedAt})
 				 VALUES (:id, :type, :value, :algorithm, :status, :createdAt, :updatedAt)`,
 				{
 					id: `install-id-${++nextId}`,

@@ -4661,7 +4661,7 @@ describe('TelemetryEventRelay', () => {
 			'should leave out the license consumer ID on `server-started` with $name',
 			async ({ isEphemeral, consumerId }) => {
 				license.isEphemeral.mockReturnValueOnce(isEphemeral);
-				license.getConsumerId.mockReturnValueOnce(consumerId);
+				license.getConsumerId.mockReturnValue(consumerId);
 
 				eventService.emit('server-started');
 				await flushPromises();
@@ -4670,6 +4670,7 @@ describe('TelemetryEventRelay', () => {
 					([event]) => (event as unknown) === TELEMETRY_EVENT.INSTANCE.INSTANCE_STARTED,
 				);
 				expect(startupEvent?.[1]).toHaveProperty('license_consumer_id', undefined);
+				license.getConsumerId.mockReset();
 			},
 		);
 

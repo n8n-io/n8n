@@ -227,6 +227,22 @@ describe('telemetry', () => {
 			);
 		});
 
+		it('should add the install ID from the settings to the properties', () => {
+			const trackFunction = vi.spyOn(window.rudderanalytics, 'track');
+			settingsStore.setSettings(
+				merge({}, SETTINGS_STORE_DEFAULT_STATE.settings, { installId: 'test-install' }),
+			);
+
+			telemetry.track('testEvent', { test: '1' });
+
+			expect(trackFunction).toHaveBeenCalledWith(
+				'testEvent',
+				{ test: '1', install_id: 'test-install', version_cli: MOCK_VERSION_CLI },
+				{ context: { ip: '0.0.0.0' } },
+			);
+			settingsStore.setSettings(SETTINGS_STORE_DEFAULT_STATE.settings);
+		});
+
 		it('should include the posthog session id in the parameters', () => {
 			const trackFunction = vi.spyOn(window.rudderanalytics, 'track');
 			vi.stubGlobal('posthog', {

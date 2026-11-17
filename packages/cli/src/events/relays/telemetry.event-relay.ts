@@ -2323,7 +2323,7 @@ export class TelemetryEventRelay extends EventRelay {
 	private getLicenseConsumerId(): string | undefined {
 		if (this.license.isEphemeral()) return undefined;
 		const consumerId = this.license.getConsumerId();
-		return consumerId && consumerId !== 'unknown' ? consumerId : undefined;
+		return consumerId !== 'unknown' ? consumerId : undefined;
 	}
 
 	// Instance information available at group level on PostHog & Rudderstack
