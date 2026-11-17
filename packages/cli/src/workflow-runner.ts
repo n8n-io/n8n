@@ -16,7 +16,6 @@ import {
 	establishExecutionContext,
 	InstanceSettings,
 	StorageConfig,
-	WorkflowExecute,
 } from 'n8n-core';
 import type {
 	ExecutionError,
@@ -59,6 +58,7 @@ import {
 import { toSaveSettings } from '@/execution-lifecycle/to-save-settings';
 import { ExecutionCrashService } from '@/executions/execution-crash.service';
 import { ExecutionPersistence } from '@/executions/execution-persistence';
+import { startPreparedWorkflow } from '@/executions/start-prepared-workflow';
 import { FailedRunFactory } from '@/executions/failed-run-factory';
 import {
 	CredentialsPermissionChecker,
@@ -726,22 +726,21 @@ export class WorkflowRunner {
 				userId: getPushRefUserId(data),
 			});
 
-			if (data.configureAdditionalData) {
-				await data.configureAdditionalData(additionalData);
-			}
-
 			if (data.executionData !== undefined) {
 				this.logger.debug(`Execution ID ${executionId} had Execution data. Running with payload.`, {
 					executionId,
 				});
-				const workflowExecute = new WorkflowExecute(
+				const started = await startPreparedWorkflow({
+					workflow,
 					additionalData,
-					data.executionMode,
-					data.executionData,
+					mode: data.executionMode,
+					runExecutionData: data.executionData,
 					storedAt,
-				);
-				workflowExecution = workflowExecute.processRunExecutionData(workflow);
+					configureAdditionalData: data.configureAdditionalData,
+				});
+				workflowExecution = started.execution;
 			} else {
+				await data.configureAdditionalData?.(additionalData);
 				workflowExecution = this.manualExecutionService.runManually(
 					data,
 					workflow,

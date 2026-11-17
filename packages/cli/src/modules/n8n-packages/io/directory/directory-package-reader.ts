@@ -19,6 +19,15 @@ export interface DirectoryReaderLimits {
 }
 
 export class DirectoryPackageReader implements PackageReader {
+	static async open(
+		baseDir: string,
+		limits: DirectoryReaderLimits,
+	): Promise<DirectoryPackageReader> {
+		const reader = new DirectoryPackageReader(baseDir, limits);
+		await reader.listEntries();
+		return reader;
+	}
+
 	constructor(
 		private readonly baseDir: string,
 		private readonly limits: DirectoryReaderLimits,

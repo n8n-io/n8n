@@ -8,22 +8,20 @@ import {
 } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { isRecord } from '@n8n/utils/is-record';
-import { Credentials, FULL_ACCESS_NODE_TYPES, getAdditionalKeys } from 'n8n-core';
+import { Credentials, FULL_ACCESS_NODE_TYPES } from 'n8n-core';
 import type {
-	CredentialInformation,
 	ICredentialDataDecryptedObject,
 	ICredentialType,
 	ICredentialsExpressionResolveValues,
 	IHttpRequestOptions,
 	INode,
 	INodeCredentialsDetails,
-	INodeParameters,
 	INodeProperties,
 	IRequestOptionsSimplified,
-	IWorkflowDataProxyAdditionalKeys,
 	WorkflowExecuteMode,
 	IHttpRequestHelper,
 	IWorkflowExecuteAdditionalData,
+	Workflow,
 	IExecuteData,
 	IGetDecryptedCredentialsOptions,
 	IDataObject,
@@ -32,76 +30,29 @@ import {
 	ICredentialsHelper,
 	MANAGED_VERSION_KEY,
 	NodeHelpers,
-	Workflow,
 	classifyTriggerIdentity,
-	getCredentialOwnRequestAllowedDomains,
 	isExpression,
-	jsonParse,
 } from 'n8n-workflow';
 import { UnexpectedError, UserError } from '@n8n/errors';
 
 import { CredentialTypes } from '@/credential-types';
 import { CredentialsOverwrites } from '@/credentials-overwrites';
 import { hasTokenData } from '@/managed-versions';
-import { DCR_MANAGED_CREDENTIAL_FIELDS, OAUTH_PINNED_FIELDS } from '@/oauth/dcr-managed-fields';
 import { ExternalSecretsConfig } from '@/modules/external-secrets.ee/external-secrets.config';
 import type { PolicyActor } from '@/policy/policy-enforcement-backend';
 import { PolicyEnforcementService } from '@/policy/policy-enforcement.service';
 import { AiGatewayService } from '@/services/ai-gateway.service';
 
 import { DynamicCredentialsProxy } from './credentials/dynamic-credentials-proxy';
-import { createMockNodeTypes } from './credentials/mock-node-types';
+import {
+	authenticateCredential,
+	prepareCredentialData,
+	preAuthenticateCredential,
+	runCredentialPreAuthentication,
+} from './credentials/credential-operations';
 import { CredentialMissingIdError } from './errors/credential-missing-id.error';
 import { CredentialNotFoundError } from './errors/credential-not-found.error';
 import { UnsupportedEndUserCredentialTriggerError } from './errors/unsupported-end-user-credential-trigger.error';
-
-/**
- * Applies the credential's allowlist to the requests its `preAuthentication` hook issues.
- *
- * Narrowed to the single method `IHttpRequestHelper` declares, rather than spreading the
- * node's wider helper bag, so a hook cannot reach an unwrapped request method on it.
- *
- * Read per request rather than up front: `runPreAuthentication` runs on every OAuth2
- * request for hooks that only transform token data in memory, and an empty `'domains'`
- * list must not fail those.
- */
-function restrictToCredentialDomains(
-	helpers: IHttpRequestHelper,
-	credentials: ICredentialDataDecryptedObject,
-): IHttpRequestHelper {
-	return {
-		helpers: {
-			httpRequest: async (requestOptions: IHttpRequestOptions): Promise<unknown> => {
-				const allowedDomains = getCredentialOwnRequestAllowedDomains(credentials);
-				if (allowedDomains === undefined) {
-					return await helpers.helpers.httpRequest(requestOptions);
-				}
-
-				// A request carries one allowlist, and honouring either side alone could widen
-				// what the other permits, so refuse rather than pick.
-				if (requestOptions.allowedDomains !== undefined) {
-					throw new UserError(
-						'This credential restricts requests to specific domains, which cannot be combined with the domains its authentication step asks for.',
-					);
-				}
-
-				return await helpers.helpers.httpRequest({ ...requestOptions, allowedDomains });
-			},
-		},
-	};
-}
-
-const mockNode = {
-	name: '',
-	typeVersion: 1,
-	type: 'mock',
-	position: [0, 0],
-	parameters: {},
-} as INode;
-
-const { nodeTypes: mockNodeTypes } = createMockNodeTypes();
-
-const INVALID_JSON_VALUE = Symbol('invalidJsonValue');
 
 /** A run names no user: the starter is not known reliably on every path, so a run never guesses. */
 function decryptActor({ executionId, userId }: IWorkflowExecuteAdditionalData): PolicyActor {
@@ -144,60 +95,13 @@ export class CredentialsHelper extends ICredentialsHelper {
 		workflow?: Workflow,
 		node?: INode,
 	): Promise<IHttpRequestOptions> {
-		const requestOptions = incomingRequestOptions;
-		const credentialType = this.credentialTypes.getByName(typeName);
-
-		if (credentialType.authenticate) {
-			if (typeof credentialType.authenticate === 'function') {
-				// Special authentication function is defined
-
-				return await credentialType.authenticate(
-					credentials,
-					requestOptions as IHttpRequestOptions,
-				);
-			}
-
-			if (typeof credentialType.authenticate === 'object') {
-				if (!workflow || !node) {
-					throw new UnexpectedError(
-						'Workflow and node are required for declarative credential authentication',
-					);
-				}
-				// Predefined authentication method
-
-				let keyResolved: string;
-				let valueResolved: string;
-				const { authenticate } = credentialType;
-				if (requestOptions.headers === undefined) {
-					requestOptions.headers = {};
-				}
-
-				if (authenticate.type === 'generic') {
-					Object.entries(authenticate.properties).forEach(([outerKey, outerValue]) => {
-						Object.entries(outerValue).forEach(([key, value]) => {
-							keyResolved = this.resolveValue(key, { $credentials: credentials }, workflow, node);
-
-							valueResolved = this.resolveValue(
-								value as string,
-								{ $credentials: credentials },
-								workflow,
-								node,
-							);
-
-							// @ts-expect-error dynamic key on request options
-							if (!requestOptions[outerKey]) {
-								// @ts-expect-error dynamic key on request options
-								requestOptions[outerKey] = {};
-							}
-							// @ts-expect-error dynamic key on request options
-							requestOptions[outerKey][keyResolved] = valueResolved;
-						});
-					});
-				}
-			}
-		}
-
-		return requestOptions as IHttpRequestOptions;
+		return await authenticateCredential(
+			this.credentialTypes.getByName(typeName),
+			credentials,
+			incomingRequestOptions,
+			workflow,
+			node,
+		);
 	}
 
 	async preAuthentication(
@@ -208,64 +112,24 @@ export class CredentialsHelper extends ICredentialsHelper {
 		credentialsExpired: boolean,
 	): Promise<ICredentialDataDecryptedObject | undefined> {
 		const credentialType = this.credentialTypes.getByName(typeName);
-
-		const expirableProperty = credentialType.properties.find(
-			(property) => property.type === 'hidden' && property?.typeOptions?.expirable === true,
-		);
-
-		if (expirableProperty?.name === undefined) {
-			return undefined;
+		const prepared = await preAuthenticateCredential({
+			credentialType,
+			helpers,
+			credentials,
+			node,
+			credentialsExpired,
+		});
+		if (!prepared || !node.credentials) return undefined;
+		const nodeCredentials = node.credentials[credentialType.name];
+		const storedData = await (
+			await this.getCredentials(nodeCredentials, credentialType.name)
+		).getData();
+		const dataToPersist: ICredentialDataDecryptedObject = { ...storedData };
+		for (const [key, value] of Object.entries(prepared.data)) {
+			if (key === prepared.property || !isExpression(storedData[key])) dataToPersist[key] = value;
 		}
-
-		// check if the node is the mockup node used for testing
-		// if so, it means this is a credential test and not normal node execution
-		const isTestingCredentials =
-			node?.parameters?.temp === '' && node?.type === 'n8n-nodes-base.noOp';
-
-		if (credentialType.preAuthentication) {
-			if (typeof credentialType.preAuthentication === 'function') {
-				// if the expirable property is empty in the credentials
-				// or are expired, call pre authentication method
-				// or the credentials are being tested
-				if (
-					credentials[expirableProperty?.name] === '' ||
-					credentialsExpired ||
-					isTestingCredentials
-				) {
-					const output = await credentialType.preAuthentication.call(
-						restrictToCredentialDomains(helpers, credentials),
-						credentials,
-					);
-
-					// if there is data in the output, make sure the returned
-					// property is the expirable property
-					// else the database will not get updated
-					if (output[expirableProperty.name] === undefined) {
-						return undefined;
-					}
-
-					if (node.credentials) {
-						const nodeCredentials = node.credentials[credentialType.name];
-						// Cache the freshly-fetched token onto the raw stored credentials, but
-						// never overwrite a field the user stored as an expression with the value
-						// it resolved to this run — otherwise later runs reuse a stale static value.
-						const storedData = await (
-							await this.getCredentials(nodeCredentials, credentialType.name)
-						).getData();
-						const dataToPersist: ICredentialDataDecryptedObject = { ...storedData };
-						for (const [key, value] of Object.entries(output as ICredentialDataDecryptedObject)) {
-							if (key === expirableProperty.name || !isExpression(storedData[key])) {
-								dataToPersist[key] = value;
-							}
-						}
-
-						await this.updateCredentials(nodeCredentials, credentialType.name, dataToPersist);
-						return Object.assign(credentials, output);
-					}
-				}
-			}
-		}
-		return undefined;
+		await this.updateCredentials(nodeCredentials, credentialType.name, dataToPersist);
+		return Object.assign(credentials, prepared.data);
 	}
 
 	/**
@@ -279,44 +143,11 @@ export class CredentialsHelper extends ICredentialsHelper {
 		credentials: ICredentialDataDecryptedObject,
 		typeName: string,
 	): Promise<ICredentialDataDecryptedObject | undefined> {
-		const credentialType = this.credentialTypes.getByName(typeName);
-		if (typeof credentialType.preAuthentication !== 'function') {
-			return undefined;
-		}
-		const output = await credentialType.preAuthentication.call(
-			restrictToCredentialDomains(helpers, credentials),
+		return await runCredentialPreAuthentication(
+			this.credentialTypes.getByName(typeName),
+			helpers,
 			credentials,
 		);
-		return (output as ICredentialDataDecryptedObject) ?? undefined;
-	}
-
-	/**
-	 * Resolves the given value in case it is an expression
-	 */
-	private resolveValue(
-		parameterValue: string,
-		additionalKeys: IWorkflowDataProxyAdditionalKeys,
-		workflow: Workflow,
-		node: INode,
-	): string {
-		if (!isExpression(parameterValue)) {
-			return parameterValue;
-		}
-
-		const returnValue = workflow.expression.getSimpleParameterValue(
-			node,
-			parameterValue,
-			'internal',
-			additionalKeys,
-			undefined,
-			'',
-		);
-
-		if (!returnValue) {
-			return '';
-		}
-
-		return returnValue.toString();
 	}
 
 	/**
@@ -436,115 +267,6 @@ export class CredentialsHelper extends ICredentialsHelper {
 		NodeHelpers.mergeNodeProperties(combineProperties, credentialTypeData.properties);
 
 		return combineProperties;
-	}
-
-	private resolveCredentialExpressions(
-		workflow: Workflow,
-		credentialsProperties: INodeProperties[],
-		decryptedData: ICredentialDataDecryptedObject,
-		mode: WorkflowExecuteMode,
-		additionalKeys: IWorkflowDataProxyAdditionalKeys,
-		selfData: ICredentialDataDecryptedObject,
-	): ICredentialDataDecryptedObject {
-		try {
-			return workflow.expression.getComplexParameterValue(
-				mockNode,
-				decryptedData as INodeParameters,
-				mode,
-				additionalKeys,
-				undefined,
-				undefined,
-				selfData,
-			) as ICredentialDataDecryptedObject;
-		} catch (error) {
-			// Non-execution contexts may not have runtime data for optional credential fields.
-			// Resolve per field so opted-in fields can be omitted without losing required data.
-			return this.resolveCredentialExpressionsByProperty(
-				workflow,
-				credentialsProperties,
-				decryptedData,
-				mode,
-				additionalKeys,
-				selfData,
-				error,
-			);
-		}
-	}
-
-	private resolveCredentialExpressionsByProperty(
-		workflow: Workflow,
-		credentialsProperties: INodeProperties[],
-		decryptedData: ICredentialDataDecryptedObject,
-		mode: WorkflowExecuteMode,
-		additionalKeys: IWorkflowDataProxyAdditionalKeys,
-		selfData: ICredentialDataDecryptedObject,
-		originalError: unknown,
-	): ICredentialDataDecryptedObject {
-		const propertiesByName = new Map(
-			credentialsProperties.map((property) => [property.name, property]),
-		);
-		const resolvedData: ICredentialDataDecryptedObject = {};
-
-		for (const [propertyName, propertyValue] of Object.entries(decryptedData)) {
-			try {
-				const resolvedProperty = workflow.expression.getComplexParameterValue(
-					mockNode,
-					{ [propertyName]: propertyValue } as INodeParameters,
-					mode,
-					additionalKeys,
-					undefined,
-					undefined,
-					selfData,
-				) as ICredentialDataDecryptedObject;
-
-				if (Object.prototype.hasOwnProperty.call(resolvedProperty, propertyName)) {
-					resolvedData[propertyName] = resolvedProperty[propertyName];
-				}
-			} catch {
-				const credentialProperty = propertiesByName.get(propertyName);
-				if (credentialProperty?.typeOptions?.ignoreCredentialExpressionResolveError === true) {
-					continue;
-				}
-
-				throw originalError;
-			}
-		}
-
-		return resolvedData;
-	}
-
-	private parseJsonLeafExpressionFields(
-		credentialsProperties: INodeProperties[],
-		decryptedData: ICredentialDataDecryptedObject,
-	): Map<string, string> {
-		const parsedFields = new Map<string, string>();
-
-		for (const property of credentialsProperties) {
-			if (!property.typeOptions?.resolveCredentialJsonLeaves) continue;
-
-			const value = decryptedData[property.name];
-			if (typeof value !== 'string' || value === '') continue;
-
-			const parsed = jsonParse<CredentialInformation | typeof INVALID_JSON_VALUE>(value, {
-				fallbackValue: INVALID_JSON_VALUE,
-			});
-			if (parsed === INVALID_JSON_VALUE) continue;
-
-			parsedFields.set(property.name, value);
-			decryptedData[property.name] = parsed;
-		}
-
-		return parsedFields;
-	}
-
-	private stringifyJsonLeafExpressionFields(
-		decryptedData: ICredentialDataDecryptedObject,
-		parsedFields: Map<string, string>,
-	) {
-		for (const [propertyName, originalValue] of parsedFields) {
-			const serializedValue = JSON.stringify(decryptedData[propertyName]);
-			decryptedData[propertyName] = serializedValue ?? originalValue;
-		}
 	}
 
 	private assertTriggerSupportsEndUserCredential(
@@ -760,130 +482,17 @@ export class CredentialsHelper extends ICredentialsHelper {
 		expressionResolveValues?: ICredentialsExpressionResolveValues,
 		managedVersion?: number,
 	): Promise<ICredentialDataDecryptedObject> {
-		const credentialsProperties = this.getCredentialsProperties(type);
-		const dynamicClientRegistration = this.supportsDynamicClientRegistration(type);
-
-		// The credential type owns hidden OAuth endpoint/flow fields. Drop stored values so
-		// applyOverwrite (admin overwrite) and getNodeParameters (type default) fill them.
-		// Registration types let the user choose, so keep the stored choice.
-		const storedData = { ...decryptedDataOriginal };
-		for (const field of OAUTH_PINNED_FIELDS) {
-			if (dynamicClientRegistration && field === 'useDynamicClientRegistration') continue;
-			if (credentialsProperties.some((p) => p.name === field && p.type === 'hidden')) {
-				delete storedData[field];
-			}
-		}
-
-		// Load and apply the credentials overwrites if any exist
-		const dataWithOverwrites = this.credentialsOverwrites.applyOverwrite(
-			type,
-			storedData,
-			managedVersion,
-		);
-
-		// Add the default credential values
-		let decryptedData = NodeHelpers.getNodeParameters(
-			credentialsProperties,
-			dataWithOverwrites as INodeParameters,
-			true,
-			false,
-			null,
-			null,
-		) as ICredentialDataDecryptedObject;
-
-		if (decryptedDataOriginal.oauthTokenData !== undefined) {
-			// The OAuth data gets removed as it is not defined specifically as a parameter
-			// on the credentials so add it back in case it was set
-			decryptedData.oauthTokenData = decryptedDataOriginal.oauthTokenData;
-		}
-
-		if (
-			decryptedData.allowedHttpRequestDomains === undefined &&
-			decryptedDataOriginal.allowedHttpRequestDomains !== undefined
-		) {
-			decryptedData.allowedHttpRequestDomains = decryptedDataOriginal.allowedHttpRequestDomains;
-		}
-		if (
-			decryptedData.allowedDomains === undefined &&
-			decryptedDataOriginal.allowedDomains !== undefined
-		) {
-			decryptedData.allowedDomains = decryptedDataOriginal.allowedDomains;
-		}
-
-		// When using dynamic client registration, OAuth fields negotiated at runtime
-		// are not shown in the UI, so we need to copy them from the original data.
-		if (decryptedData.useDynamicClientRegistration) {
-			for (const field of DCR_MANAGED_CREDENTIAL_FIELDS) {
-				decryptedData[field] = decryptedDataOriginal[field];
-			}
-		}
-
-		const parsedJsonLeafExpressionFields = this.parseJsonLeafExpressionFields(
-			credentialsProperties,
-			decryptedData,
-		);
-
-		const additionalKeys = getAdditionalKeys(additionalData, mode, null, {
-			isCredential: true,
+		return await prepareCredentialData({
+			credentialType: this.credentialTypes.getByName(type),
+			properties: this.getCredentialsProperties(type),
+			data: decryptedDataOriginal,
+			applyOverwrite: (data) =>
+				this.credentialsOverwrites.applyOverwrite(type, data, managedVersion),
+			additionalData,
+			mode,
+			executeData,
+			expressionResolveValues,
 		});
-
-		// Secret values supplied by an instance overwrite stay out of `$self`.
-		const selfData = { ...decryptedData };
-		for (const { name, typeOptions } of credentialsProperties) {
-			if (
-				(typeOptions?.password || typeOptions?.expirable) &&
-				dataWithOverwrites[name] !== storedData[name]
-			) {
-				delete selfData[name];
-			}
-		}
-
-		if (expressionResolveValues) {
-			try {
-				decryptedData = expressionResolveValues.workflow.expression.getParameterValue(
-					decryptedData as INodeParameters,
-					expressionResolveValues.runExecutionData,
-					expressionResolveValues.runIndex,
-					expressionResolveValues.itemIndex,
-					expressionResolveValues.node.name,
-					expressionResolveValues.connectionInputData,
-					mode,
-					additionalKeys,
-					executeData,
-					false,
-					selfData,
-				) as ICredentialDataDecryptedObject;
-			} catch (e) {
-				e.message += ' [Error resolving credentials]';
-				throw e;
-			}
-		} else {
-			const workflow = new Workflow({
-				nodes: [mockNode],
-				connections: {},
-				active: false,
-				nodeTypes: mockNodeTypes,
-			});
-
-			// Resolve expressions if any are set
-			await workflow.expression.acquireIsolate();
-			try {
-				decryptedData = this.resolveCredentialExpressions(
-					workflow,
-					credentialsProperties,
-					decryptedData,
-					mode,
-					additionalKeys,
-					selfData,
-				);
-			} finally {
-				await workflow.expression.releaseIsolate();
-			}
-		}
-
-		this.stringifyJsonLeafExpressionFields(decryptedData, parsedJsonLeafExpressionFields);
-
-		return decryptedData;
 	}
 
 	/**

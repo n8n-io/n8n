@@ -1,3 +1,4 @@
+import { shouldAssignExecuteMethod } from '../node-execution-method';
 import { generateNanoId } from '@n8n/utils/generate-nano-id';
 import type { INode, INodeType, Workflow } from 'n8n-workflow';
 import { CliWorkflowOperationError } from 'n8n-workflow';
@@ -6,7 +7,6 @@ import { mock } from 'vitest-mock-extended';
 import {
 	findCliWorkflowStart,
 	findSubworkflowStart,
-	shouldAssignExecuteMethod,
 	getAllKeyPaths,
 	isWorkflowIdValid,
 	rightDiff,

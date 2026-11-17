@@ -84,6 +84,10 @@ export class WebhookResponseHeaders {
 
 		res.setHeaders(this.headers);
 	}
+
+	toObject(): Record<string, string> {
+		return Object.fromEntries(this.headers);
+	}
 }
 
 /** The operator setting that controls the sandbox CSP on the responses of a route. */

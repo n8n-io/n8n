@@ -37,7 +37,6 @@ import type {
 	WorkflowExecuteMode,
 	IWorkflowExecutionDataProcess,
 	IWorkflowBase,
-	WebhookResponseData,
 	IDestinationNode,
 	IUser,
 	ExecutionStorageLocation,
@@ -92,20 +91,19 @@ import { WaitTracker } from '@/wait-tracker';
 import { EXECUTION_ENDED_WITHOUT_RESPONSE } from '@/webhooks/constants';
 import { WebhookExecutionContext } from '@/webhooks/webhook-execution-context';
 import { createMultiFormDataParser } from '@/webhooks/webhook-form-data';
-import { extractWebhookLastNodeResponse } from '@/webhooks/webhook-last-node-response-extractor';
-import { extractWebhookOnReceivedResponse } from '@/webhooks/webhook-on-received-response-extractor';
-import { createStaticResponse, createStreamResponse } from '@/webhooks/webhook-response';
 import * as WorkflowExecuteAdditionalData from '@/workflow-execute-additional-data';
 import * as WorkflowHelpers from '@/workflow-helpers';
 import { WorkflowRunner } from '@/workflow-runner';
 
 import { toResponseExpectation } from './engine-v2-response-expectation';
 import { EngineV2Webhooks } from './engine-v2-webhooks';
+import { applySandboxCSP, WebhookResponseHeaders } from './webhook-response-headers';
 import {
-	applySandboxCSP,
-	WebhookResponseHeaders,
-	type WebhookNodeResponseHeaders,
-} from './webhook-response-headers';
+	createWebhookLastNodeResponse,
+	createWebhookOnReceivedResponse,
+	evaluateWebhookResponseHeaders,
+	evaluateWebhookResponseOptions,
+} from './webhook-response-lifecycle';
 import {
 	WebhookResponder,
 	type WebhookResponseCallback,
@@ -1076,15 +1074,11 @@ export async function executeWebhook(
 		getRunExecutionData: () => runExecutionData,
 	});
 
-	const {
-		responseMode,
-		responseCode,
-		responseData,
-		checkAllMainOutputs,
-		responsePropertyName,
-		responseContentType,
-		responseBinaryPropertyName,
-	} = evaluateResponseOptions(context, req);
+	const responseOptions = evaluateWebhookResponseOptions(
+		context,
+		autoDetectResponseMode(workflowStartNode, workflow, req.method),
+	);
+	const { responseMode, responseCode } = responseOptions;
 
 	if (!SUPPORTED_RESPONSE_MODES.has(responseMode)) {
 		// If the mode is not known we error. Is probably best like that instead of using
@@ -1197,7 +1191,7 @@ export async function executeWebhook(
 		}
 		cleanupMultipartFiles = undefined;
 
-		const responseHeaders = evaluateResponseHeaders(context);
+		const responseHeaders = evaluateWebhookResponseHeaders(context);
 
 		if (!res.headersSent && responseHeaders) {
 			// Only set given headers if they haven't been sent yet, e.g. for streaming
@@ -1384,17 +1378,12 @@ export async function executeWebhook(
 				resumeUrl: `${additionalData.webhookWaitingBaseUrl}/${executionId}`,
 				resumeFormUrl: `${additionalData.formWaitingBaseUrl}/${executionId}`,
 			};
-			const evaluatedResponseData = context.evaluateComplexWebhookDescriptionExpression<string>(
-				'responseData',
-				undefined,
-				'firstEntryJson',
-			);
-
-			const responseBody = extractWebhookOnReceivedResponse(
-				evaluatedResponseData,
+			const webhookResponse = createWebhookOnReceivedResponse(
+				context,
 				webhookResultData,
+				responseCode,
+				responseHeaders,
 			);
-			const webhookResponse = createStaticResponse(responseBody, responseCode, responseHeaders);
 			responder.respondWith(webhookResponse);
 		}
 
@@ -1571,11 +1560,10 @@ export async function executeWebhook(
 						return runData;
 					}
 
-					const result = await extractWebhookLastNodeResponse(
-						responseData as WebhookResponseData,
+					const result = await createWebhookLastNodeResponse(
+						responseOptions,
 						lastNodeTaskData,
-						checkAllMainOutputs,
-						{ responsePropertyName, responseContentType, responseBinaryPropertyName },
+						responseHeaders,
 					);
 
 					if (!result.ok) {
@@ -1583,17 +1571,7 @@ export async function executeWebhook(
 						return runData;
 					}
 
-					const response = result.result;
-					// Apply potential content-type override
-					if (response.contentType) {
-						responseHeaders.set('content-type', response.contentType);
-					}
-
-					responder.respondWith(
-						response.type === 'static'
-							? createStaticResponse(response.body, responseCode, responseHeaders)
-							: createStreamResponse(response.stream, responseCode, responseHeaders),
-					);
+					responder.respondWith(result.result);
 					return runData;
 				})
 				.catch((e: unknown) => {
@@ -1648,62 +1626,6 @@ export async function executeWebhook(
 			await Container.get(EngineV2PayloadFiles).discard(engineV2Payload);
 		}
 	}
-}
-
-/**
- * Evaluates the response mode, code and data for a webhook node
- */
-function evaluateResponseOptions(context: WebhookExecutionContext, req: WebhookRequest) {
-	const { workflow, workflowStartNode } = context;
-
-	//check if response mode should be set automatically, e.g. multipage form
-	const responseMode =
-		autoDetectResponseMode(workflowStartNode, workflow, req.method) ??
-		context.evaluateSimpleWebhookDescriptionExpression<WebhookResponseMode>(
-			'responseMode',
-			undefined,
-			'onReceived',
-		)!;
-
-	const responseCode = context.evaluateSimpleWebhookDescriptionExpression<number>(
-		'responseCode',
-		undefined,
-		200,
-	)!;
-
-	// This parameter is used for two different purposes:
-	// 1. as arbitrary string input defined in the workflow in the "respond immediately" mode,
-	// 2. as well as WebhookResponseData config in all the other modes
-	const responseData = context.evaluateComplexWebhookDescriptionExpression<
-		WebhookResponseData | string
-	>('responseData', undefined, 'firstEntryJson');
-
-	// This is needed for backward compatibility, where only the first main output was checked for data.
-	// We want to keep existing behavior for webhooks, but change for chat triggers, where checking all main outputs makes more sense.
-	// We can unify the behavior in the next major release and get rid of this flag
-	const checkAllMainOutputs = workflowStartNode.type === CHAT_TRIGGER_NODE_TYPE;
-
-	const responsePropertyName =
-		context.evaluateSimpleWebhookDescriptionExpression<string>('responsePropertyName');
-
-	const responseContentType =
-		context.evaluateSimpleWebhookDescriptionExpression<string>('responseContentType');
-
-	const responseBinaryPropertyName = context.evaluateSimpleWebhookDescriptionExpression<string>(
-		'responseBinaryPropertyName',
-		undefined,
-		'data',
-	);
-
-	return {
-		responseMode,
-		responseCode,
-		responseData,
-		checkAllMainOutputs,
-		responsePropertyName,
-		responseContentType,
-		responseBinaryPropertyName,
-	};
 }
 
 function requiresMultipartFormData(node: INode): boolean {
@@ -1773,27 +1695,6 @@ async function parseRequestBody(
 	await parseBody(req);
 
 	return undefined;
-}
-
-/**
- * Evaluates the `responseHeaders` parameter of a webhook node
- */
-function evaluateResponseHeaders(context: WebhookExecutionContext): WebhookResponseHeaders {
-	const headers = new WebhookResponseHeaders();
-
-	if (context.webhookData.webhookDescription.responseHeaders === undefined) {
-		return headers;
-	}
-
-	const evaluatedHeaders =
-		context.evaluateComplexWebhookDescriptionExpression<WebhookNodeResponseHeaders>(
-			'responseHeaders',
-		);
-	if (evaluatedHeaders) {
-		headers.addFromNodeHeaders(evaluatedHeaders);
-	}
-
-	return headers;
 }
 
 /**

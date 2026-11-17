@@ -13,7 +13,8 @@ import { join, dirname } from 'path';
 
 import { LoadNodesAndCredentials } from './load-nodes-and-credentials';
 import { convertNodeToAiTool, convertNodeToHitlTool } from './tool-generation';
-import { satisfiesToolCapability, shouldAssignExecuteMethod, stripToolSuffix } from './utils';
+import { shouldAssignExecuteMethod } from './node-execution-method';
+import { satisfiesToolCapability, stripToolSuffix } from './utils';
 
 @Service()
 export class NodeTypes implements INodeTypes {

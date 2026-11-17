@@ -1282,6 +1282,26 @@ describe('run', () => {
 			expect(additionalData.evalLlmMockHandler).toBe(sentinel);
 		});
 
+		it('waits for asynchronous configuration before starting the workflow', async () => {
+			const { data, additionalData } = arrangeRunDeps();
+			const started = createDeferredPromise();
+			const release = createDeferredPromise();
+			data.configureAdditionalData = async (configured) => {
+				started.resolve();
+				await release.promise;
+				configured.variables = { region: 'eu' };
+			};
+
+			const execution = runner.run(data);
+			await started.promise;
+			expect(WorkflowExecute.prototype.processRunExecutionData).not.toHaveBeenCalled();
+			release.resolve();
+			await execution;
+
+			expect(WorkflowExecute.prototype.processRunExecutionData).toHaveBeenCalledTimes(1);
+			expect(additionalData.variables).toEqual({ region: 'eu' });
+		});
+
 		it('is a no-op when not provided', async () => {
 			const { data } = arrangeRunDeps();
 			// Not setting data.configureAdditionalData

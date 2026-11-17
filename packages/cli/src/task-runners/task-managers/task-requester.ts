@@ -28,6 +28,7 @@ import { TaskRequestTimeoutError } from '@/task-runners/errors/task-request-time
 
 import { DataRequestResponseBuilder } from './data-request-response-builder';
 import { DataRequestResponseStripper } from './data-request-response-stripper';
+import { applyTaskResult } from './task-result';
 
 export type RequestAccept = (jobId: string) => void;
 export type RequestReject = (reason: string | Error) => void;
@@ -195,22 +196,7 @@ export abstract class TaskRequester {
 				executionId: task.data.additionalData.executionId ?? 'unknown',
 			});
 
-			// Set custom execution data (`$execution.customData`) if sent
-			if (resultData.customData) {
-				Object.entries(resultData.customData).forEach(([k, v]) => {
-					if (!runExecutionData.resultData.metadata) {
-						runExecutionData.resultData.metadata = {};
-					}
-					runExecutionData.resultData.metadata[k] = v;
-				});
-			}
-
-			const { staticData: incomingStaticData } = resultData;
-
-			// if the runner sent back static data, then it changed, so update it
-			if (incomingStaticData) workflow.overrideStaticData(incomingStaticData);
-
-			return createResultOk(resultData.result as TData);
+			return createResultOk(applyTaskResult(data, resultData) as TData);
 		} catch (e: unknown) {
 			return createResultError(e as TError);
 		} finally {
