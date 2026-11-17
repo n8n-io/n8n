@@ -17,6 +17,8 @@ export const SUBSCRIBER_LIVENESS_INTERVAL_MS = 30 * Time.seconds.toMilliseconds;
 /** How long to wait for the SUBSCRIBE reply before dropping the subscriber connection so ioredis reconnects. */
 export const SUBSCRIBER_LIVENESS_TIMEOUT_MS = 10 * Time.seconds.toMilliseconds;
 
+export const PUBLISHER_SHUTDOWN_TIMEOUT_MS = 5 * Time.seconds.toMilliseconds;
+
 /**
  * Max allowed size in bytes of a message relayed over the pubsub channel. Events
  * exceeding this are skipped (or trimmed) rather than bloating the channel.

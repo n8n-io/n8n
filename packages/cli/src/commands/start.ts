@@ -29,7 +29,6 @@ import replaceStream from 'replacestream';
 import { pipeline } from 'stream/promises';
 import { z } from 'zod';
 
-import { ActiveExecutions } from '@/active-executions';
 import { ActiveWorkflowManager } from '@/active-workflow-manager';
 import config from '@/config';
 import { EDITOR_UI_DIST_DIR, N8N_VERSION } from '@/constants';
@@ -114,14 +113,14 @@ export class Start extends BaseCommand<z.infer<typeof flagsSchema>> {
 				await Container.get(MultiMainSetup).shutdown();
 			}
 
-			if (this.globalConfig.executions.mode === 'queue') {
-				Container.get(Publisher).shutdown();
-				Container.get(Subscriber).shutdown();
-			}
-
 			Container.get(EventService).emit('instance-stopped');
 
-			await Container.get(ActiveExecutions).shutdown();
+			await this.drainInFlightWork();
+
+			if (this.globalConfig.executions.mode === 'queue') {
+				Container.get(Subscriber).shutdown();
+				await Container.get(Publisher).shutdown();
+			}
 
 			// Finally shut down Event Bus
 			await Container.get(MessageEventBus).close();

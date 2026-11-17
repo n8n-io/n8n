@@ -27,8 +27,8 @@ export class RedisSessionStore implements SessionStore {
 	}
 
 	async unregister(sessionId: string): Promise<void> {
-		await this.publisher.clear(this.getSessionKey(sessionId));
 		delete this.tools[sessionId];
+		await this.publisher.clear(this.getSessionKey(sessionId));
 	}
 
 	getTools(sessionId: string): Tool[] | undefined {

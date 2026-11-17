@@ -48,9 +48,23 @@ export class SessionManager {
 
 	async destroySession(sessionId: string): Promise<void> {
 		const session = this.sessions[sessionId];
-		await this.store.unregister(sessionId);
 		delete this.sessions[sessionId];
 		await session?.server.close().catch(() => {});
+		await this.store.unregister(sessionId);
+	}
+
+	async detachSession(sessionId: string): Promise<void> {
+		const session = this.sessions[sessionId];
+		if (!session) return;
+
+		delete this.sessions[sessionId];
+		this.store.clearTools(sessionId);
+		session.transport.onclose = undefined;
+		await session.server.close().catch(() => {});
+	}
+
+	getSessionIds(): string[] {
+		return Object.keys(this.sessions);
 	}
 
 	getSession(sessionId: string): SessionInfo | undefined {

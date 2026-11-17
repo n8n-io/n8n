@@ -1122,4 +1122,323 @@ describe('McpServer', () => {
 			expect(result.content[0].text).toContain('Header Auth (httpHeaderAuth): not connected');
 		});
 	});
+
+	describe('shutdown', () => {
+		const sessionId = 'session-1';
+		const requestId = 'req-1';
+
+		type CallToolHandler = (
+			request: { params: { name: string; arguments: Record<string, unknown> } },
+			extra: { sessionId?: string; requestId?: string },
+		) => Promise<{ isError?: boolean; content: Array<{ type: string; text: string }> }>;
+
+		const sessionManagerOf = () =>
+			(mcpServer as unknown as { sessionManager: SessionManager }).sessionManager;
+
+		const shutdownError = {
+			isError: true,
+			content: [{ type: 'text', text: 'OperationalError: n8n is shutting down' }],
+		};
+
+		async function startToolCall(tool = createMockTool('slow_tool'), server = createMockServer()) {
+			await sessionManagerOf().registerSession(
+				sessionId,
+				createMockServer(),
+				createMockTransport(sessionId),
+				[tool],
+			);
+			(mcpServer as unknown as { setupHandlers(s: unknown): void }).setupHandlers(server);
+			const handleCallTool = server.setRequestHandler.mock
+				.calls[1][1] as unknown as CallToolHandler;
+			return {
+				result: handleCallTool(
+					{ params: { name: tool.name, arguments: {} } },
+					{ sessionId, requestId },
+				),
+			};
+		}
+
+		async function startQueuedToolCall() {
+			mcpServer.setExecutionStrategy(
+				new QueuedExecutionStrategy(mcpServer.getPendingCallsManager()),
+			);
+			return await startToolCall();
+		}
+
+		function slowTool() {
+			const tool = createMockTool('slow_tool');
+			tool.invoke.mockReturnValue(new Promise<never>(() => {}));
+			return tool;
+		}
+
+		it('should wait for a queued tool call until the worker result arrives', async () => {
+			const { result: toolCall } = await startQueuedToolCall();
+			let settled = false;
+			const settling = mcpServer.settleToolCalls(Date.now() + 60_000).then(() => {
+				settled = true;
+			});
+
+			await new Promise((resolve) => setImmediate(resolve));
+			expect(settled).toBe(false);
+			expect(mockLogger.info).toHaveBeenCalledWith('Waiting for 1 MCP tool calls to finish...');
+
+			mcpServer.handleWorkerResponse(sessionId, requestId, { result: 'ok' });
+
+			const result = await toolCall;
+			expect(result.isError).toBeFalsy();
+			expect(result.content[0].text).toContain('ok');
+			await settling;
+			expect(settled).toBe(true);
+		});
+
+		it('should cancel queued tool calls that outlast the deadline with a shutdown error', async () => {
+			vi.useFakeTimers();
+			try {
+				const { result: toolCall } = await startQueuedToolCall();
+				const settling = mcpServer.settleToolCalls(Date.now() + 1_000);
+
+				await vi.advanceTimersByTimeAsync(1_000);
+				await settling;
+
+				await expect(toolCall).resolves.toEqual(shutdownError);
+				expect(mockLogger.warn).toHaveBeenCalledWith(
+					'Cancelling 1 MCP tool calls that did not finish before shutdown',
+				);
+			} finally {
+				vi.useRealTimers();
+			}
+		});
+
+		it('should wait for a direct tool call until the tool returns', async () => {
+			let finishTool = (_result: unknown) => {};
+			const tool = createMockTool('slow_tool');
+			tool.invoke.mockReturnValue(
+				new Promise((resolve) => {
+					finishTool = resolve;
+				}),
+			);
+			const { result: toolCall } = await startToolCall(tool);
+			let settled = false;
+			const settling = mcpServer.settleToolCalls(Date.now() + 60_000).then(() => {
+				settled = true;
+			});
+
+			await new Promise((resolve) => setImmediate(resolve));
+			expect(settled).toBe(false);
+
+			finishTool({ result: 'ok' });
+
+			const result = await toolCall;
+			expect(result.isError).toBeFalsy();
+			expect(result.content[0].text).toContain('ok');
+			await settling;
+		});
+
+		it('should cancel direct tool calls that outlast the deadline with a shutdown error', async () => {
+			vi.useFakeTimers();
+			try {
+				const tool = slowTool();
+				const { result: toolCall } = await startToolCall(tool);
+				const settling = mcpServer.settleToolCalls(Date.now() + 1_000);
+
+				await vi.advanceTimersByTimeAsync(999);
+				expect(mockLogger.warn).not.toHaveBeenCalled();
+
+				await vi.advanceTimersByTimeAsync(1);
+				await settling;
+
+				await expect(toolCall).resolves.toEqual(shutdownError);
+				expect(tool.invoke).toHaveBeenCalledOnce();
+				expect(mockLogger.warn).toHaveBeenCalledWith(
+					'Cancelling 1 MCP tool calls that did not finish before shutdown',
+				);
+			} finally {
+				vi.useRealTimers();
+			}
+		});
+
+		it('should answer a credential prompt that outlasts the deadline with the connection links', async () => {
+			vi.useFakeTimers();
+			try {
+				const server = createMockServer();
+				server.getClientCapabilities.mockReturnValue({ elicitation: { url: {} } });
+				server.elicitInput.mockReturnValue(new Promise<never>(() => {}));
+				(
+					mcpServer as unknown as { pendingGateResults: Record<string, unknown> }
+				).pendingGateResults[`${sessionId}_${requestId}`] = {
+					readyToExecute: false,
+					credentials: [
+						{
+							credentialId: 'c1',
+							credentialName: 'Slack',
+							credentialType: 'slackOAuth2Api',
+							status: 'missing',
+							authorizationUrl: 'https://n8n.test/authorize/c1',
+						},
+					],
+				};
+				const tool = createMockTool('slow_tool');
+				const { result: toolCall } = await startToolCall(tool, server);
+				const settling = mcpServer.settleToolCalls(Date.now() + 1_000);
+
+				await vi.advanceTimersByTimeAsync(1_000);
+				await settling;
+
+				const result = await toolCall;
+				expect(server.elicitInput).toHaveBeenCalledOnce();
+				expect(result.isError).toBe(true);
+				expect(result.content[0].text).toContain('https://n8n.test/authorize/c1');
+				expect(tool.invoke).not.toHaveBeenCalled();
+			} finally {
+				vi.useRealTimers();
+			}
+		});
+
+		it('should refuse tool calls that start after the shutdown drain without running them', async () => {
+			await mcpServer.settleToolCalls(Date.now());
+			const tool = createMockTool('slow_tool');
+
+			const { result } = await startToolCall(tool);
+
+			await expect(result).resolves.toEqual(shutdownError);
+			expect(tool.invoke).not.toHaveBeenCalled();
+		});
+
+		it('should return at once when no tool call is running', async () => {
+			await mcpServer.settleToolCalls(Date.now());
+
+			expect(mockLogger.info).not.toHaveBeenCalled();
+		});
+
+		it('should release SSE sessions and keep Streamable HTTP sessions registered for other mains', async () => {
+			const store = {
+				register: vi.fn().mockResolvedValue(undefined),
+				validate: vi.fn().mockResolvedValue(true),
+				unregister: vi.fn().mockResolvedValue(undefined),
+				getTools: vi.fn(),
+				setTools: vi.fn(),
+				clearTools: vi.fn(),
+			};
+			mcpServer.setSessionStore(store);
+			const sseServer = createMockServer();
+			const streamableServer = createMockServer();
+			const streamableTransport = createMockTransport('streamable-1', 'streamableHttp');
+			streamableTransport.onclose = vi.fn();
+			await sessionManagerOf().registerSession('sse-1', sseServer, createMockTransport('sse-1'));
+			await sessionManagerOf().registerSession(
+				'streamable-1',
+				streamableServer,
+				streamableTransport,
+			);
+
+			await mcpServer.closeSessions();
+
+			expect(store.unregister).toHaveBeenCalledExactlyOnceWith('sse-1');
+			expect(store.clearTools).toHaveBeenCalledWith('streamable-1');
+			expect(streamableTransport.onclose).toBeUndefined();
+			expect(sseServer.close).toHaveBeenCalled();
+			expect(streamableServer.close).toHaveBeenCalled();
+			expect(mcpServer.getTransport('sse-1')).toBeUndefined();
+			expect(mcpServer.getTransport('streamable-1')).toBeUndefined();
+		});
+
+		it('should close SSE sessions without waiting more than a second for a store that does not answer', async () => {
+			vi.useFakeTimers();
+			try {
+				const store = {
+					register: vi.fn().mockResolvedValue(undefined),
+					validate: vi.fn().mockResolvedValue(true),
+					unregister: vi.fn().mockReturnValue(new Promise<void>(() => {})),
+					getTools: vi.fn(),
+					setTools: vi.fn(),
+					clearTools: vi.fn(),
+				};
+				mcpServer.setSessionStore(store);
+				const sseServer = createMockServer();
+				await sessionManagerOf().registerSession('sse-1', sseServer, createMockTransport('sse-1'));
+				let closed = false;
+
+				const closing = mcpServer.closeSessions().then(() => {
+					closed = true;
+				});
+				await vi.advanceTimersByTimeAsync(999);
+
+				expect(closed).toBe(false);
+				expect(sseServer.close).toHaveBeenCalled();
+				expect(mcpServer.getTransport('sse-1')).toBeUndefined();
+
+				await vi.advanceTimersByTimeAsync(1);
+				await closing;
+				expect(closed).toBe(true);
+			} finally {
+				vi.useRealTimers();
+			}
+		});
+	});
+
+	describe('session release on connection close', () => {
+		it('should drop an SSE session without rejecting when its store cleanup fails', async () => {
+			const store = {
+				register: vi.fn().mockResolvedValue(undefined),
+				validate: vi.fn().mockResolvedValue(true),
+				unregister: vi.fn().mockRejectedValue(new Error('Connection is closed.')),
+				getTools: vi.fn(),
+				setTools: vi.fn(),
+				clearTools: vi.fn(),
+			};
+			mcpServer.setSessionStore(store);
+			const resp = createMockResponse();
+
+			await mcpServer.handleSetupRequest(
+				createMockRequest({ method: 'GET' }),
+				resp,
+				'test-server',
+				'/mcp/test',
+				[createMockTool('test-tool')],
+			);
+
+			const [sessionId] = store.register.mock.calls[0] as [string];
+			expect(mcpServer.getTransport(sessionId)).toBeDefined();
+			const onClose = resp.on.mock.calls.find(([event]) => event === 'close')?.[1] as
+				| (() => Promise<void>)
+				| undefined;
+
+			await expect(onClose?.()).resolves.toBeUndefined();
+
+			expect(store.unregister).toHaveBeenCalledWith(sessionId);
+			expect(mcpServer.getTransport(sessionId)).toBeUndefined();
+			expect(mockLogger.warn).toHaveBeenCalledWith(
+				`Failed to release MCP session ${sessionId}: Connection is closed.`,
+			);
+		});
+
+		it('should not release an SSE session again when its stream closes after shutdown released it', async () => {
+			const store = {
+				register: vi.fn().mockResolvedValue(undefined),
+				validate: vi.fn().mockResolvedValue(true),
+				unregister: vi.fn().mockResolvedValue(undefined),
+				getTools: vi.fn(),
+				setTools: vi.fn(),
+				clearTools: vi.fn(),
+			};
+			mcpServer.setSessionStore(store);
+			const resp = createMockResponse();
+			await mcpServer.handleSetupRequest(
+				createMockRequest({ method: 'GET' }),
+				resp,
+				'test-server',
+				'/mcp/test',
+				[createMockTool('test-tool')],
+			);
+			const onClose = resp.on.mock.calls.find(([event]) => event === 'close')?.[1] as
+				| (() => Promise<void>)
+				| undefined;
+
+			await mcpServer.closeSessions();
+			await onClose?.();
+
+			expect(store.unregister).toHaveBeenCalledOnce();
+			expect(mockLogger.warn).not.toHaveBeenCalled();
+		});
+	});
 });
