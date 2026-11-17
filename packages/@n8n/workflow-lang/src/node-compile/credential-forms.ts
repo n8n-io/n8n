@@ -235,3 +235,86 @@ export function fallbackResult(n: ts.Node): { subject: ts.Node; parent: ts.Node 
 	}
 	return { subject, parent };
 }
+
+const CARRIER_HELPERS = new Set([
+	'__request',
+	'__AUTHENTICATE',
+	'__assign',
+	'__set',
+	'__setSafe',
+	'__form',
+	'__formParts',
+	'__formPart',
+	'__sendBody',
+	'__sendBodyChecked',
+	'__deepCopy',
+	'__plain',
+]);
+
+const CARRIER_METHODS = new Set(['push', 'unshift', 'set', 'append']);
+
+const helperName = (text: string): string => text.replace(/^(__[A-Za-z]+)_[0-9a-z]+$/, '$1');
+
+function insideRequest(n: ts.Node): boolean {
+	for (let cur = n.parent; cur; cur = cur.parent) {
+		if (!ts.isCallExpression(cur)) continue;
+		const callee = cur.expression;
+		if (ts.isIdentifier(callee) && helperName(callee.text) === '__request') return true;
+		if (
+			ts.isPropertyAccessExpression(callee) &&
+			ts.isIdentifier(callee.expression) &&
+			callee.expression.text === 'ctx' &&
+			callee.name.text === 'http'
+		)
+			return true;
+	}
+	return false;
+}
+
+export function credentialValueMoves(n: ts.Node, isUnit: (name: string) => boolean): boolean {
+	if (insideRequest(n)) return true;
+	let subject = n;
+	let parent = n.parent;
+	for (; parent?.parent; subject = parent, parent = parent.parent) {
+		const joins =
+			ts.isParenthesizedExpression(parent) ||
+			ts.isAsExpression(parent) ||
+			ts.isNonNullExpression(parent) ||
+			ts.isTemplateSpan(parent) ||
+			ts.isTemplateExpression(parent) ||
+			(ts.isBinaryExpression(parent) && parent.operatorToken.kind === ts.SyntaxKind.PlusToken) ||
+			(ts.isBinaryExpression(parent) &&
+				parent.right === subject &&
+				(parent.operatorToken.kind === ts.SyntaxKind.BarBarToken ||
+					parent.operatorToken.kind === ts.SyntaxKind.AmpersandAmpersandToken ||
+					parent.operatorToken.kind === ts.SyntaxKind.QuestionQuestionToken)) ||
+			(ts.isConditionalExpression(parent) && parent.condition !== subject) ||
+			(ts.isPropertyAssignment(parent) && parent.initializer === subject) ||
+			ts.isShorthandPropertyAssignment(parent) ||
+			ts.isObjectLiteralExpression(parent) ||
+			ts.isArrayLiteralExpression(parent) ||
+			ts.isSpreadAssignment(parent) ||
+			ts.isSpreadElement(parent);
+		if (!joins) break;
+	}
+	if (!parent) return true;
+	if (ts.isVariableDeclaration(parent)) return parent.initializer === subject;
+	if (ts.isReturnStatement(parent) || ts.isExpressionStatement(parent)) return true;
+	if (ts.isArrowFunction(parent)) return parent.body === subject;
+	if (ts.isBinaryExpression(parent)) {
+		const kind = parent.operatorToken.kind;
+		return (
+			parent.right === subject &&
+			(kind === ts.SyntaxKind.EqualsToken ||
+				kind === ts.SyntaxKind.PlusEqualsToken ||
+				kind === ts.SyntaxKind.CommaToken)
+		);
+	}
+	if (ts.isCallExpression(parent) && parent.expression !== subject) {
+		const callee = parent.expression;
+		if (ts.isIdentifier(callee))
+			return CARRIER_HELPERS.has(helperName(callee.text)) || isUnit(callee.text);
+		return ts.isPropertyAccessExpression(callee) && CARRIER_METHODS.has(callee.name.text);
+	}
+	return false;
+}

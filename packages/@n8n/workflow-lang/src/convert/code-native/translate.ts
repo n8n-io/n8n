@@ -1352,13 +1352,24 @@ export function translateCode(input: CodeNativeInput): TranslateResult {
 			}
 		}
 		if (!call && member === 'item') {
-			// As v1: the item that pairs with the current item, when the pairing is by position.
-			// Else as the host: the current item in "each item" mode, else the first item.
-			const paired = !own && input.mode === 'each' && input.pairsByPosition?.(name) === true;
+			// As v1: the item that pairs with the current item (the first item in "all items"
+			// mode). The pairing has a native form only when it is by position.
+			const paired = !own && input.pairsByPosition?.(name) === true;
+			if (!own && !paired) {
+				block(
+					"$('…').item without a known pairing",
+					"`$('…').item` has a native form only when v1 pairs the items by position.",
+				);
+				return;
+			}
 			replace(
 				base.getStart(sf),
 				p.getEnd(),
-				own && input.mode === 'each' ? ITEM : paired ? `${list}[${INDEX}]` : `${list}[0]`,
+				own && input.mode === 'each'
+					? ITEM
+					: paired && input.mode === 'each'
+						? `${list}[${INDEX}]`
+						: `${list}[0]`,
 			);
 			return;
 		}
@@ -1434,7 +1445,7 @@ export function translateCode(input: CodeNativeInput): TranslateResult {
 		const which =
 			called && called.arguments.length === 0 && ['all', 'first', 'last'].includes(member)
 				? member
-				: !called && (member === 'item' || member === 'isExecuted')
+				: !called && member === 'isExecuted'
 					? member
 					: null;
 		if (which === null) {
@@ -4922,6 +4933,13 @@ export function translateCode(input: CodeNativeInput): TranslateResult {
 					member.name.text !== 'json'
 				) {
 					block('$node[…] other than .json', 'Only `$node[…].json` has a native form.');
+					return false;
+				}
+				if (input.mode === 'each') {
+					block(
+						'$node[…] in "each item" mode',
+						'`$node[…].json` is the item at the index of the current item there, with an error of v1 past the last item.',
+					);
 					return false;
 				}
 				const list = nodeList(nodeName);

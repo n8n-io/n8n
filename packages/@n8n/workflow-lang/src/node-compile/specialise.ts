@@ -33,7 +33,12 @@ import {
 	momentZones,
 	momentZoneUse,
 } from './moment.ts';
-import { fallbackResult, truthOfVariableIsFixed, withValueTests } from './credential-forms.ts';
+import {
+	credentialValueMoves,
+	fallbackResult,
+	truthOfVariableIsFixed,
+	withValueTests,
+} from './credential-forms.ts';
 import { withoutLabels } from './labels.ts';
 import {
 	PACKAGE_FORM_HELPER_USES,
@@ -4340,6 +4345,18 @@ class Specialiser {
 						n.expression.text === '__CREDFIELD';
 					const variable = ts.isIdentifier(n) && tainted.has(n.text) && isValueUse(n);
 					const p = n.parent;
+					const path =
+						field && ts.isCallExpression(n) && ts.isStringLiteral(n.arguments[0])
+							? n.arguments[0].text
+							: '';
+					if (
+						field &&
+						(path.endsWith('.length') || !credentialValueMoves(n, (unit) => this.units.has(unit)))
+					)
+						this.error(
+							name,
+							'the code reads a credential field in a place that is not a value of a request: node code cannot read a credential value',
+						);
 					if ((field || variable) && p) {
 						const { subject, parent } = fallbackResult(n);
 						const op = ts.isBinaryExpression(parent) ? parent.operatorToken.kind : undefined;
@@ -4349,6 +4366,7 @@ class Specialiser {
 								op !== ts.SyntaxKind.EqualsToken &&
 								op !== ts.SyntaxKind.CommaToken) ||
 							ts.isPrefixUnaryExpression(parent) ||
+							ts.isPostfixUnaryExpression(parent) ||
 							ts.isTypeOfExpression(parent) ||
 							((ts.isIfStatement(parent) ||
 								ts.isWhileStatement(parent) ||

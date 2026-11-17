@@ -327,7 +327,7 @@ const RESULTS: Case[] = [
 	{ name: 'each: unknown key', code: 'return { json: {}, zz: 1 };', mode: 'each' },
 	{
 		name: 'node family identity',
-		code: "const a = $('Src').all(); a[0].json.m = 1; return [{ json: { same: a === $('Src').all(), firstEl: $('Src').first() === a[0], seen: $('Src').first().json.m, itemEl: $('Src').item === a[0], node: $node['Src'].json === a[0].json, nodeSeen: $node['Src'].json.m, itemsFn: $items('Src')[0] === a[0], itemsSeen: $items('Src')[0].json.m } }];",
+		code: "const a = $('Src').all(); a[0].json.m = 1; return [{ json: { same: a === $('Src').all(), firstEl: $('Src').first() === a[0], seen: $('Src').first().json.m, node: $node['Src'].json === a[0].json, nodeSeen: $node['Src'].json.m, itemsFn: $items('Src')[0] === a[0], itemsSeen: $items('Src')[0].json.m } }];",
 		nodes: { Src: [{ s: 1 }, { s: 2 }] },
 	},
 	{

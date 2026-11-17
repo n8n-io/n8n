@@ -93,8 +93,10 @@ function wrap(code: string): string {
 		'\n})(JSON.parse(__wfItems)).then(',
 		'  (value) => {',
 		// As n8n: null gives no items, and undefined is not a result.
-		'    try { __wfOut.json = value === undefined ? undefined : JSON.stringify(value); __wfOut.returned = true; }',
-		'    catch (error) { __wfOut.error = "Code returned a value that is not JSON: " + String(error && error.message); }',
+		// As n8n's task runner: a BigInt is its decimal text, and a result that has no JSON
+		// form (a cycle) fails with "Unknown error".
+		'    try { __wfOut.json = value === undefined ? undefined : JSON.stringify(value, (key, v) => (typeof v === "bigint" ? v.toString() : v)); __wfOut.returned = true; }',
+		'    catch (error) { __wfOut.error = "Unknown error"; }',
 		'    if (globalThis.__wfStaticDoc !== undefined) {',
 		'      try { __wfOut.staticJson = JSON.stringify(globalThis.__wfStaticDoc); }',
 		'      catch (error) { __wfOut.error = "The static data is not JSON: " + String(error && error.message); }',
@@ -129,9 +131,12 @@ const USES_LUXON = /\b(DateTime|Duration|Interval)\b|\$now\b|\$today\b/;
 /** `Buffer` and `helpers` in the context need the host's `Buffer`. */
 const USES_BUFFER = /\bBuffer\b|\bhelpers\b/;
 
-const USES_REQUIRE = /\brequire\s*\(/;
+const USES_REQUIRE = /\brequire\b/;
 
-const USES_JMESPATH = /\$jmespath\b/;
+const USES_JMESPATH = /\$jmes[pP]ath\b/;
+
+/** Globals of Node.js that n8n's task runner gives to the code. */
+const USES_TEXT_GLOBALS = /\b(?:btoa|atob|TextEncoder|TextDecoder)\b/;
 
 let luxonScript: Script | undefined;
 
@@ -212,6 +217,8 @@ const HELPERS = new Script(
 // $jmespath of n8n (jmespath.ts). Data and result cross the context as JSON.
 if (typeof __wfJmespath === 'function') {
 	globalThis.$jmespath = (data, query) => JSON.parse(__wfJmespath(JSON.stringify(data), query));
+	// v1's data proxy has both spellings.
+	globalThis.$jmesPath = globalThis.$jmespath;
 }
 // The variables of the instance (\`WF_FALLBACK_VARIABLES\`), as \`$vars\` of n8n.
 globalThis.$vars = Object.freeze(JSON.parse(__wfVars));
@@ -415,7 +422,8 @@ function compiled(args: CodeStepArgs): Script {
 	try {
 		script = new Script(wrap(args.code), { filename });
 	} catch (error) {
-		throw new CodeStepError(`Code has a syntax error: ${messageOf(error)}`);
+		// As n8n's task runner: the message of the syntax error, without a line.
+		throw new CodeStepError(messageOf(error));
 	}
 	scripts.set(key, script);
 	if (scripts.size > SCRIPT_CACHE_SIZE) {
@@ -493,6 +501,8 @@ function prepare(args: CodeStepArgs, timers: boolean): { script: Script; context
 	}
 	if (USES_REQUIRE.test(args.code)) globals.require = codeRequire();
 	if (USES_JMESPATH.test(args.code)) globals.__wfJmespath = jmespathText;
+	if (USES_TEXT_GLOBALS.test(args.code))
+		Object.assign(globals, { btoa, atob, TextEncoder, TextDecoder });
 	if (timers && USES_HTTP.test(args.code)) globals.__wfHttpRequest = httpRequestText;
 	if (timers)
 		Object.assign(globals, {

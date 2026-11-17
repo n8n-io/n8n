@@ -177,3 +177,119 @@ give them too (HTTP Request has the `accept` header of the v1 node instead).
 Not done: `helpers.request` sends a text body that is not JSON as a JSON string (axios); `accept-encoding` and
 `connection` are those of the runtime; the default headers of n8n for `api.openai.com` (config.ts:52); the
 `accept` of the HTTP Request node before version 3.
+
+## Audit of the parity rule (2026-11-17)
+
+The rule: the compiled engine gives what v1 gives. A form that cannot be exact runs in the fallback host. A form
+that the host cannot give exactly does not convert, and n8n runs the workflow on v1 (`runsOnV1`). The audit found
+three places where the rule did not hold.
+
+### 1. The Code step of the fallback host
+
+The host does not run n8n's task runner. It runs the code with a prologue of the converter (`convert/code-node.ts`)
+and its own result rules (`workflow-fallback-host/src/code-step.ts`, `items.ts`). The test
+`src/convert/__tests__/host-code-parity.test.ts` runs 306 generated Code bodies in the host and in n8n's real task
+runner, and compares the items and the error message. Each difference that it found:
+
+| Form | v1 | The host before | Now |
+|---|---|---|---|
+| `$('Node').item`, "each item" mode | the item that pairs with the current item | the first item | by position when the converter proves the pairing; else the node does not convert |
+| `$('Node').item`, "all items" mode, on the native route too | the item that pairs with input item 0 | the first item | the same rule; the native route refuses the form without a proven pairing |
+| `.itemMatching(k)` | the paired item; `Missing item index for .itemMatching()` without `k`; `Can’t get data` past the input | by position, with a one-item list as the pair of each item; a TypeError | the same rule, with the errors of v1 |
+| `.pairedItem(k)` | as `.itemMatching(k)`, with the current item as the default | not a function | as v1 |
+| A paired item after a node that changes the count or the order | an error of v1, or the item that the paired items give | a wrong item | the node does not convert |
+| `$node["Node"].json` in "each item" mode, on the native route too | the item at the index of the current item, with an error past the last item | the first item | as v1; the native route leaves the form to the host |
+| `$node` or `$()` with a name that is no node | `Referenced node doesn't exist` | an empty item, or `Node '…' hasn't been executed` | as v1 |
+| An error of the data proxy | no line, and not an `Error` of the code | ` [line N]` | as v1 |
+| `pairedItem` of an item of another node | the paired item of the run data | `{ item: position }` | the node does not convert |
+| `$mode`, `$self`, `$parameter`, `$rawParameter`, `$nodeId`, `$webhookId`, `$agentInfo`, `$data`, `$tool`, `$getPairedItem`, `$fromAI`, `$position`, `$thisItem`, `$thisItemIndex`, `$thisRunIndex`, `$input.params`, `$input.context` | a value | `… is not defined`, or undefined | the node does not convert |
+| `$nodeVersion`, `$jmesPath`, `btoa`, `atob`, `TextEncoder`, `TextDecoder`, `typeof require` | a value | not defined | the value of v1 |
+| `$workflow.active` | the state of the workflow | always true | the node does not convert (`.id` and `.name` stay) |
+| `$execution.customData` | kept with the execution | not kept | the node does not convert |
+| `$items(name, output, run)`, `.all(output, run)` | the items of that output and run | the arguments had no effect | the node does not convert |
+| `items` in "each item" mode | `items is not defined` | the input items | the node does not convert |
+| A BigInt in the result | its decimal text | an error | as v1 |
+| A cycle in the result | `Unknown error` | a long message | as v1 |
+| A syntax error | the message of V8 | a prefix before the message | as v1 |
+| An item with `error` in "all items" mode | the JSON is `{ error: error.message }`; null fails | the JSON of the item | as v1 |
+
+Open, not fixed in this audit:
+
+- `Object.keys(this)` and `typeof setTimeout` differ: the host gives the names and the timers only to code that
+  calls them.
+- Local `Date` methods use the time zone of the host process. v1 uses the time zone of the task runner process.
+  Luxon (`$now`, `$today`, `DateTime`) uses the zone of the workflow in both.
+- `.isExecuted` is false in the host for a node that ran and gave no items.
+- The legacy Function and Function Item nodes, Python code, and the task runner of the host for Code tools
+  (`task-runner.ts`) were not compared.
+- The same pairing problem exists in expressions. `$('Node').item` in a parameter pairs by position with the
+  warning `paired-item` (711 workflows in the corpus count of `docs/convert-coverage.md`). A node with
+  "execute once" counts as a node with one item (`singleItem` in `convert/generator.ts`), but it can give many
+  items. A node with one item gives that item also when a node on the way gives no paired items, where v1 fails.
+  The exact fix is the paired items of each node in the engine; until then the rule asks for no conversion.
+
+### 2. Credential fields in node code
+
+A compiled module holds `{{$credentials.<field>}}` in place of a credential field. The runtime replaces it in a
+request. Code that reads the value reads this text. The check (`checkCredentials` in `node-compile/specialise.ts`)
+refused a list of forms, and each form that was not in the list compiled. The test
+`src/node-compile/__tests__/credential-reads.test.ts` has 102 generated reads and 8 places that are no request.
+Before the audit 49 of the reads and each of the 8 places compiled with the text in a place that reads it:
+
+- truth and choice: `Boolean(x)`, `for (; x; )`, `switch (x)`, `x === <value of the run>`;
+- text: `x.length`, `x?.length`, `x.indexOf`, `x.charAt`, `x[0]`, `x.match`, `regex.test(x)`, `JSON.stringify(x)`,
+  `JSON.stringify({ x })`, `JSON.parse(x)`, `encodeURI(x)`;
+- lists and objects: `Object.values({ x }).every/some/filter`, `[x].includes/indexOf/join/filter/find/map/sort`,
+  `[...x]`, `Array.from(x)`, `for (… of x)`, a computed key `{ [x]: … }`, an index `o[x]`;
+- numbers: `x * n`, `x - n`, `+x`, `Number(x)`, `parseInt(x)`, `x++`, `Math.max(x)`, `isNaN(x)`,
+  `Array.isArray(x)`;
+- a function that reads its parameter;
+- a place that is no request: an output item, a binary file name, a paired item, the message of an error.
+
+Now the check has a list of the places that move a value without a read: a member of an object or a list, a
+variable, an assignment, a `+` or a template, the second operand of `||`, `&&` and `??`, a branch of `?:`, a return
+value, an argument of a function of the node, and a request. Each other place is the compile error `the code reads
+a credential field in a place that is not a value of a request`. The node then runs in the host.
+
+Open: the check knows only that a variable holds a field somewhere. A read through a variable still compiles
+(`const o = { key: x }; Object.values(o).every(Boolean)`, `JSON.stringify(o)`, `o.key.trim()`). A refusal of these
+needs the member that holds the field, or it refuses each read of a request object. A value that goes to an output
+item through a variable compiles too; the verifier finds that one with each credential value. The test lists these
+6 forms as open. A check of the printed module would close them: the last lowering steps run after the check.
+
+Node types of nodes-base whose source has such a form (by search): a number or a truth value from a field (Oracle,
+Microsoft SQL); a field in a list or as a key (MySQL, LDAP, Postgres, TimescaleDB, QuestDB, CrateDB); values of
+the credential (HTTP Request); `.every/.some/.filter(Boolean)` (Databricks, Monday.com, AWS, Slack, Odoo,
+Microsoft, Zendesk, Telegram, Notion, Marketstack, Mailgun, GitHub, Currents, Airtop); an HMAC with a secret key
+(Venafi, Unleashed Software, and 30 trigger nodes, which n8n runs). The verified list has operations of Venafi,
+Monday.com, Marketstack, Notion, Telegram, Microsoft Outlook, Microsoft Teams and Mailchimp. The verifier used
+one credential with each field set, so a wrong form could pass. The next verification shows the operations that
+stop: each has the new compile error.
+
+### 3. What the verifier and the equivalence tests vary
+
+A check against v1 proves the operation only for the inputs of the check
+(`scripts/verify-compiled-nodes.ts`, `src/node-compile/__tests__/verify.ts`, `src/nodes/__tests__`).
+
+| Dimension | Varied | Held fixed |
+|---|---|---|
+| Parameters | each resource and operation; each authentication option; one parameter as an expression for each item; an expression that fails | one value for each parameter; optional collections; the type of a value |
+| Expression results | text of an item field; a failure | null, undefined, a number, an object, a list, a Date, binary data |
+| Credential | the fields that a credential flag names: empty, long, missing, a boolean flipped (at most 8) | each other field: one value `fake-<field>`, never empty, never a number, never with a quote or a non-ASCII character |
+| Response | one success body; status 400; status 404; more bodies for the operations in `OPERATION_ANSWERS` | an empty list, a missing member, null, text that is not JSON, response headers, a second page, a redirect, a timeout |
+| Items | one item and three items; file items for the nodes that read files | no items; item JSON other than `{ position }`; binary data on the other nodes; paired items of the input |
+| Error settings | stop, continue, error output; retry | the status of an error other than 400 and 404; an error on item 2 of 3 |
+| Clock and random | three seeds | one time, one time zone |
+| Hand-written nodes (`src/nodes/__tests__`) | the cases of each file, recorded from v1 | each input that has no case |
+
+The three dimensions most likely to hide a wrong compile today:
+
+1. **Credential field values.** Only a field of a flag changes. Section 2 shows 49 forms that compiled, and that
+   pass this check when the result is the same for the one fake value (truth, a number, a comparison).
+2. **Response bodies.** One success body for most operations. Code that reads a member that is not there, an empty
+   list, or a cursor for the next page runs with one shape only, so a loop over pages or a `?.` default is not
+   checked.
+3. **Parameter values and expression results.** One value for each parameter, and an expression gives text. A
+   number, null, an object, or an empty optional collection takes other branches of the node code (`if (x)`,
+   `typeof`, a default).
+

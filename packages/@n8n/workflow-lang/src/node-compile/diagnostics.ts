@@ -661,6 +661,11 @@ export const RULES: Rule[] = [
 					/^the code computes with a credential field: node code cannot read a credential value$/,
 				locate: computesWithCredential,
 			},
+			{
+				pattern:
+					/^the code reads a credential field in a place that is not a value of a request: node code cannot read a credential value$/,
+				locate: computesWithCredential,
+			},
 		],
 	},
 	{
