@@ -1,12 +1,12 @@
 import { z } from 'zod';
 
 import {
-	aiPreferenceContentSchema,
 	aiPreferenceScopeSchema,
 	aiPreferenceSourceSchema,
 } from '../../schemas/ai-preference.schema';
 import { Z } from '../../zod-class';
 import { publicApiPaginationSchema } from '../pagination/pagination.dto';
+import { AiPreferenceRequestDto } from './ai-preference-request.dto';
 
 const aiPreferencePublicSchema = z.object({
 	id: z.string(),
@@ -33,22 +33,11 @@ export class ListAiPreferencesPublicQueryDto extends Z.class({
 	projectId: z.string().min(1).max(36).optional(),
 }) {}
 
-export class CreateAiPreferencePublicDto extends Z.class(
-	{
-		content: aiPreferenceContentSchema,
-		scope: aiPreferenceScopeSchema,
-		projectId: z.string().max(36).nullish(),
-		userId: z.string().uuid().nullish(),
-	},
-	{ strict: true },
-) {}
+export class CreateAiPreferencePublicDto extends Z.class(AiPreferenceRequestDto.schema.shape, {
+	strict: true,
+}) {}
 
 export class UpdateAiPreferencePublicDto extends Z.class(
-	{
-		content: aiPreferenceContentSchema,
-		scope: aiPreferenceScopeSchema.optional(),
-		projectId: z.string().max(36).nullish(),
-		userId: z.string().uuid().nullish(),
-	},
+	{ ...AiPreferenceRequestDto.schema.shape, scope: aiPreferenceScopeSchema.optional() },
 	{ strict: true },
 ) {}

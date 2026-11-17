@@ -150,19 +150,45 @@ describe('Public API /ai-preferences', () => {
 			expect(contentsOf(response)).toEqual(expected);
 		});
 
-		test('filters by a readable project', async () => {
-			await seed({ content: 'instance' });
-			await seed({ content: 'editor project', projectId: editorProject.id });
-			await seed({ content: 'viewer project', projectId: viewerProject.id });
+		test.each([
+			['user', ['member row', 'outsider row']],
+			['project', ['foreign project']],
+		])(
+			'keeps the wider owner and admin view under the %s scope filter',
+			async (scope, expected) => {
+				await seed({ content: 'instance' });
+				await seed({ content: 'member row', userId: member.id });
+				await seed({ content: 'outsider row', userId: outsider.id });
+				await seed({ content: 'foreign project', projectId: foreignProject.id });
 
-			const response = await testServer
-				.publicApiAgentFor(member)
-				.get('/ai-preferences')
-				.query({ projectId: viewerProject.id });
+				for (const caller of [owner, admin]) {
+					const response = await testServer
+						.publicApiAgentFor(caller)
+						.get('/ai-preferences')
+						.query({ scope });
 
-			expect(response.statusCode).toBe(200);
-			expect(contentsOf(response)).toEqual(['viewer project']);
-		});
+					expect(response.statusCode).toBe(200);
+					expect(contentsOf(response)).toEqual(expected);
+				}
+			},
+		);
+
+		test.each([{}, { scope: 'project' }])(
+			'filters by a readable project with %o',
+			async (scopeFilter) => {
+				await seed({ content: 'instance' });
+				await seed({ content: 'editor project', projectId: editorProject.id });
+				await seed({ content: 'viewer project', projectId: viewerProject.id });
+
+				const response = await testServer
+					.publicApiAgentFor(member)
+					.get('/ai-preferences')
+					.query({ ...scopeFilter, projectId: viewerProject.id });
+
+				expect(response.statusCode).toBe(200);
+				expect(contentsOf(response)).toEqual(['viewer project']);
+			},
+		);
 
 		test('returns no rows for a project the caller cannot read', async () => {
 			await seed({ content: 'foreign project', projectId: foreignProject.id });
@@ -445,6 +471,7 @@ describe('Public API /ai-preferences', () => {
 			for (const body of [
 				{ content: 'stay', projectId: viewerProject.id },
 				{ content: 'stay', userId: member.id },
+				{ content: 'stay', projectId: '', userId: member.id },
 			]) {
 				const response = await testServer
 					.publicApiAgentFor(member)
@@ -452,7 +479,7 @@ describe('Public API /ai-preferences', () => {
 					.send(body);
 
 				expect(response.statusCode).toBe(400);
-				expect(response.body.message).toBe('Send scope together with projectId or userId');
+				expect(response.body.message).toBe('A projectId or userId needs a scope');
 			}
 			expect((await repository().findOneByOrFail({ id: row.id })).projectId).toBe(editorProject.id);
 		});

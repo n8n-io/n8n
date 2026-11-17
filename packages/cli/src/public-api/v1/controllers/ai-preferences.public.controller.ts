@@ -26,7 +26,6 @@ import {
 	PublicApiController,
 	Query,
 } from '@n8n/decorators';
-import { BadRequestError } from '@n8n/errors';
 import type { Response } from 'express';
 
 import {
@@ -124,11 +123,6 @@ export class AiPreferencesPublicController {
 		@Param('preferenceId', aiPreferenceIdParamSchema) preferenceId: string,
 		@Body body: UpdateAiPreferencePublicDto,
 	): Promise<AiPreferencePublicDto> {
-		const namesTargetWithoutScope =
-			body.scope === undefined && Boolean(body.projectId ?? body.userId);
-		if (namesTargetWithoutScope) {
-			throw new BadRequestError('Send scope together with projectId or userId');
-		}
 		return toAiPreferencePublicDto(
 			await this.aiPreferenceService.update(req.user, preferenceId, body),
 		);
