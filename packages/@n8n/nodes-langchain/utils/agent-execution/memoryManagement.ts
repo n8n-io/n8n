@@ -1,7 +1,13 @@
 import type { BaseChatMemory } from '@langchain/classic/memory';
 import type { BaseChatModel } from '@langchain/core/language_models/chat_models';
 import type { BaseMessage } from '@langchain/core/messages';
-import { AIMessage, HumanMessage, ToolMessage, trimMessages } from '@langchain/core/messages';
+import {
+	AIMessage,
+	HumanMessage,
+	SystemMessage,
+	ToolMessage,
+	trimMessages,
+} from '@langchain/core/messages';
 import type { IDataObject, GenericValue } from 'n8n-workflow';
 
 import type { ToolCallData } from './types';
@@ -222,10 +228,13 @@ export function cleanupOrphanedMessages(chatHistory: BaseMessage[]): BaseMessage
 }
 
 function hasEmptyContent(message: BaseMessage): boolean {
-	const type = message.getType();
-	if (type !== 'human' && type !== 'ai') return false;
-	// An AI message that only carries tool calls has no text by design
-	if (AIMessage.isInstance(message) && (message.tool_calls?.length ?? 0) > 0) return false;
+	// isInstance, not getType(): a custom memory can return items that are not BaseMessage
+	if (AIMessage.isInstance(message)) {
+		// An AI message that only carries tool calls has no text by design
+		if ((message.tool_calls?.length ?? 0) > 0) return false;
+	} else if (!HumanMessage.isInstance(message)) {
+		return false;
+	}
 
 	const { content } = message;
 	if (typeof content === 'string') return content.trim() === '';
@@ -251,13 +260,13 @@ export function removeEmptyTurns(chatHistory: BaseMessage[]): BaseMessage[] {
 	let turn: BaseMessage[] = [];
 	const flush = () => {
 		const keep = turn.some(hasEmptyContent)
-			? turn.filter((message) => message.getType() === 'system')
+			? turn.filter((message) => SystemMessage.isInstance(message))
 			: turn;
 		result.push(...keep);
 		turn = [];
 	};
 	for (const message of chatHistory) {
-		if (message.getType() === 'human') flush();
+		if (HumanMessage.isInstance(message)) flush();
 		turn.push(message);
 	}
 	flush();
