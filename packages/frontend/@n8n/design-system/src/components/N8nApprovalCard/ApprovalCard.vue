@@ -237,14 +237,11 @@ function onKeydown(event: KeyboardEvent) {
 				v-if="description || slots.description || formattedArgs"
 				:id="`${id}-details`"
 				:class="$style.body"
+				role="region"
+				tabindex="0"
+				:aria-label="descriptionLabel ?? title"
 			>
-				<div
-					v-if="description || slots.description"
-					:class="$style.description"
-					role="region"
-					tabindex="0"
-					:aria-label="descriptionLabel ?? title"
-				>
+				<div v-if="description || slots.description" :class="$style.description">
 					<slot name="description"
 						><N8nText step="sm" :class="$style.descriptionText">{{ description }}</N8nText></slot
 					>
@@ -322,6 +319,7 @@ function onKeydown(event: KeyboardEvent) {
 </template>
 
 <style lang="scss" module>
+@use '../../css/mixins/focus';
 @use '../../css/mixins/motion';
 @use '../../css/mixins/utils';
 
@@ -406,6 +404,13 @@ function onKeydown(event: KeyboardEvent) {
 	flex-direction: column;
 	gap: var(--spacing--xs);
 	padding: var(--spacing--sm);
+	/* Long details (for example a batch of data table changes) scroll, so the decision options stay in view.
+	   The body is the focusable region, so keyboard users can scroll it too. */
+	max-height: var(--approval-card--body--max-height, 40vh);
+	overflow-y: auto;
+	overscroll-behavior: contain;
+	outline: none;
+	@include focus.focus-visible-ring;
 }
 
 .description {
