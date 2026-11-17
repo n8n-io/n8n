@@ -63,12 +63,6 @@ export const engineRefusals: EngineRefusal[] = [
 		check: { code: 'RETRY_ON_FAIL' },
 	},
 	{
-		name: 'a node has Always Output Data on',
-		workflow: fromTrigger('Node', [{ ...noOp('Node'), alwaysOutputData: true }]),
-		engineError: 'Always Output Data',
-		check: { code: 'ALWAYS_OUTPUT_DATA' },
-	},
-	{
 		name: 'a node has Execute Once on',
 		workflow: fromTrigger('Node', [{ ...noOp('Node'), executeOnce: true }]),
 		engineError: 'Execute Once',

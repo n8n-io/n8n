@@ -45,9 +45,6 @@ function findNodeReasons(node: INode): EngineV2Reason[] {
 	if (node.retryOnFail === true) {
 		reasons.push(temporaryReason(node, 'RETRY_ON_FAIL', 'it uses Retry On Fail'));
 	}
-	if (node.alwaysOutputData === true) {
-		reasons.push(temporaryReason(node, 'ALWAYS_OUTPUT_DATA', 'it uses Always Output Data'));
-	}
 	if (node.executeOnce === true) {
 		reasons.push(temporaryReason(node, 'EXECUTE_ONCE', 'it uses Execute Once'));
 	}

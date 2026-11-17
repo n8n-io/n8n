@@ -3,6 +3,7 @@ import type {
 	IStepExecutor,
 	StepExecutionRequest,
 	StepExecutionResult,
+	StepSlots,
 } from '@n8n/engine';
 import { attachStepErrorDetails } from '@n8n/engine';
 import { UnrecognizedNodeTypeError } from 'n8n-core';
@@ -92,6 +93,25 @@ function toStepResult(
 }
 
 /**
+ * A node with Always Output Data that returned nothing on its first output gets
+ * one empty item there, so the nodes after it still run. As in v1, the item
+ * links to every input item, and only the first output counts.
+ */
+function ensureAlwaysOutputData(
+	config: V1NodeStepConfig,
+	nodeResult: INodeExecutionData[][],
+	inputs: StepSlots,
+): INodeExecutionData[][] {
+	if (!config.alwaysOutputData || nodeResult[0]?.[0]) return nodeResult;
+
+	const pairedItem = fromStepInputs(inputs).flatMap((items, input) =>
+		items.map((_, item) => ({ item, input })),
+	);
+	const [, ...rest] = nodeResult;
+	return [[{ json: {}, pairedItem }], ...rest];
+}
+
+/**
  * Runs `v1-node` steps by adapting them to the v1 node runtime.
  *
  * A step is executable when its type is `v1-node`, its config is a valid
@@ -146,7 +166,7 @@ export class V1StepExecutor implements IStepExecutor {
 
 		return await workflow.expression.withIsolate(async () => {
 			const nodeResult = await this.runNode({ nodeType, context });
-			return toStepResult(context, nodeResult);
+			return toStepResult(context, ensureAlwaysOutputData(stepConfig, nodeResult, request.inputs));
 		});
 	}
 
