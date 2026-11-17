@@ -10,7 +10,12 @@ const requirementUsage = {
  * it to tell a gap that the user confirmed from a reference that already fails on the source.
  * Optional: a reader of an older version drops the key.
  */
-export const packageRequirementReasonSchema = z.enum(['confirmed-gap', 'broken-on-source']);
+export const packageRequirementReasonSchema = z.enum([
+	'confirmed-gap',
+	'broken-on-source',
+	// The credential has the usage scope `instance`, so it is never in a package.
+	'instance-credential',
+]);
 export type PackageRequirementReason = z.infer<typeof packageRequirementReasonSchema>;
 
 export const packageCredentialRequirementSchema = z

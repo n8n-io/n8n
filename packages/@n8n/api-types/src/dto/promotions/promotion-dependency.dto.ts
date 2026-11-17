@@ -95,6 +95,21 @@ export const promotionGapStateSchema = z.enum([
 ]);
 export type PromotionGapState = z.infer<typeof promotionGapStateSchema>;
 
+/** More about a gap, for the message. A client can ignore a value that it does not know. */
+export const promotionGapDetailSchema = z.enum([
+	/** Promote: the target is a placeholder on the source. A placeholder is never content. */
+	'placeholder-on-source',
+	/** Apply: the instance has no sharing licence, so nobody can grant the access. */
+	'sharing-not-licensed',
+	/** Apply: an incomplete Promote left the target out. */
+	'confirmed-gap',
+	/** Apply: an earlier version wrote the branch, so the requirement has no reason. */
+	'legacy-reference',
+	/** Apply: only the published version of the consumer on the destination holds the reference. */
+	'published-version',
+]);
+export type PromotionGapDetail = z.infer<typeof promotionGapDetailSchema>;
+
 /**
  * One reference that will not resolve after the operation. A gap is one consumer and one
  * target, so "2 gaps" counts references.
@@ -119,6 +134,7 @@ export const promotionGapSchema = z
 		ownerRequestSent: z.boolean().optional(),
 		/** Apply: an incomplete Apply creates a placeholder credential for this gap. */
 		placeholder: z.boolean().optional(),
+		detail: promotionGapDetailSchema.optional(),
 	})
 	.openapi('PromotionGap');
 export type PromotionGap = z.infer<typeof promotionGapSchema>;
@@ -169,6 +185,10 @@ export const promotionCredentialMoveSchema = z.object({
 	placeholder: z.boolean(),
 	/** False when the user may not move the credential. Apply then leaves it as it is. */
 	allowed: z.boolean(),
+	/** Why `allowed` is false. A managed and an end-user credential never move. */
+	blockedReason: z
+		.enum(['no-move-right', 'missing-create-right', 'managed', 'end-user'])
+		.optional(),
 });
 export type PromotionCredentialMove = z.infer<typeof promotionCredentialMoveSchema>;
 
@@ -241,6 +261,8 @@ export const promotionDependencyReportSchema = z
 		credentialMoves: z.array(promotionCredentialMoveSchema),
 		deletionCallers: z.array(promotionDeletionCallersSchema),
 		keptWorkflows: z.array(promotionKeptWorkflowSchema),
+		/** How many kept workflows the user cannot access. */
+		hiddenKeptWorkflowCount: z.number().int().nonnegative().optional(),
 		credentialHomeChoices: z.array(promotionCredentialHomeChoiceSchema),
 		hardBlocks: z.array(promotionHardBlockSchema),
 	})
