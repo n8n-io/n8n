@@ -23,7 +23,7 @@ const varchar = (length: number) => [isSqlite ? 'varchar' : 'character varying',
 const uuid = isSqlite ? ['varchar', ''] : ['uuid', ''];
 const bigint = ['bigint', ''];
 const int = ['integer', ''];
-const text = ['text', ''];
+const json = isSqlite ? ['text', ''] : ['json', ''];
 const bool = ['boolean', ''];
 const timestamp = isSqlite ? ['datetime', ''] : ['timestamp with time zone', ''];
 
@@ -152,7 +152,7 @@ describe('CreateLeaseTables migration', () => {
 			{
 				leaseKind: varchar(24),
 				key: varchar(255),
-				data: text,
+				data: json,
 				dataHash: varchar(64),
 				leaseSessionId: uuid,
 				fencingToken: bigint,

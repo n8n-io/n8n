@@ -66,7 +66,7 @@ export class CreateLeaseTables1794818156000 implements ReversibleMigration {
 			.withColumns(
 				column('leaseKind').varchar(24).primary,
 				column('key').varchar(255).primary.comment('The key of the lease in its kind'),
-				column('data').text.notNull.comment('The canonical JSON of the lease spec data'),
+				column('data').json.notNull.comment('The canonical JSON of the lease spec data'),
 				column('dataHash')
 					.varchar(64)
 					.notNull.comment('The SHA-256 of data, which sync compares to find changed leases'),
