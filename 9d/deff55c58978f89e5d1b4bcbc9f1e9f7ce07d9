@@ -11,6 +11,7 @@ packages/cli/src/modules/promotions.ee/__tests__/promotion-change-gate.test.ts
   s_cfb06e423e7532::t_5da33ab5e14dd0 33-34,75-81
 packages/cli/src/modules/promotions.ee/promotion-change.service.ts
   s_cfb06e423e7532::t_1aa4fc2f28f827 103
+  s_cfb06e423e7532::t_21fc4f15a32c5e 37
 packages/modules/promotions/frontend/src/promotionErrors.ts
   s_cfb06e423e7532::t_8842479df02d42 9-12
 packages/modules/promotions/frontend/src/__tests__/preview.fixtures.ts
@@ -62,6 +63,10 @@ packages/cli/src/modules/promotions.ee/promotion-environment.resolver.ts
   s_cfb06e423e7532::t_ce34823d3b1613 96
 packages/cli/src/public-api/v1/handlers/promotions/spec/paths/getPromotionChanges.generated.yml
   s_cfb06e423e7532::t_eac1857b2f60c8 46-52,55-57,60-61
+packages/cli/src/modules/promotions.ee/promotion-preview.ts
+  s_cfb06e423e7532::t_21fc4f15a32c5e 31-32,527-541
+packages/cli/src/modules/promotions.ee/promote-preview.service.ts
+  s_cfb06e423e7532::t_c1b2ee2106ba45 19,56,88-89
 ---
 {
   "schema_version": "authorship/3.0.0",
