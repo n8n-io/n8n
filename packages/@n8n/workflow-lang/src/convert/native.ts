@@ -918,16 +918,20 @@ function lowerDeduplicationStore(c: NodeContext): void {
 	if (typeof id !== 'string' || id === '') {
 		host('The node has no id for its deduplication history.', 'operation');
 	}
-	const scope = opts.scope ?? 'node';
+	const scope = opts.scope === undefined ? 'node' : opts.scope;
 	if (scope !== 'node' && scope !== 'workflow') {
-		host('The scope of the deduplication history is not "node" or "workflow".', 'options.scope');
+		throw new NodeFailure(
+			'remove-duplicates',
+			'The scope of the deduplication history is not "node" or "workflow".',
+			'options.scope',
+		);
 	}
 	const { w } = c;
 	// A step name is unique: the calls that read the size of the history have their own names.
 	const call = (op: string, options: string, items?: string, suffix = ''): string =>
 		`await ctx.service({ name: ${str(`${c.node.name}${suffix}`)}, service: 'deduplication', op: '${op}', args: { ${
 			items === undefined ? '' : `items: ${items}, `
-		}scope: '${String(scope)}', node: { id: ${str(String(id))} }, options: ${options} } })`;
+		}scope: '${scope}', node: { id: ${str(String(id))} }, options: ${options} } })`;
 	if (p.operation === 'clearDeduplicationHistory') {
 		const mode = p.mode ?? 'cleanDatabase';
 		if (typeof mode !== 'string' || mode.startsWith('=')) {
@@ -954,9 +958,13 @@ function lowerDeduplicationStore(c: NodeContext): void {
 	}
 	const path = numeric ? 'incrementalDedupeValue' : 'dedupeValue';
 	const value = c.compiled(p[path] ?? '', path);
-	const history = opts.historySize ?? 10000;
-	if (!numeric && (typeof history !== 'number' || !Number.isFinite(history))) {
-		host('The history size is not a fixed number.', 'options.historySize');
+	const history = opts.historySize === undefined ? 10000 : opts.historySize;
+	if (typeof history !== 'number' || !Number.isFinite(history)) {
+		throw new NodeFailure(
+			'remove-duplicates',
+			'The history size is not a fixed number.',
+			'options.historySize',
+		);
 	}
 	const options = numeric
 		? "{ mode: 'latestIncrementalKey' }"

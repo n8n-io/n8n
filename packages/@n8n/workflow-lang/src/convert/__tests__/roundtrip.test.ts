@@ -104,7 +104,14 @@ describe('round trip through the canvas projection', () => {
 			// The wait between the retries of a node is a step of its own, not a node.
 			const retryWait = (name: string) =>
 				name.endsWith(' (retry)') && byName.has(name.slice(0, -' (retry)'.length));
-			const steps = new Set(manifest.steps.map((s) => s.name).filter((n) => !retryWait(n)));
+			// The calls of Remove Duplicates that read the size of its history are steps too.
+			const historySize = (name: string) =>
+				[' (history size)', ' (history size after)'].some(
+					(suffix) => name.endsWith(suffix) && byName.has(name.slice(0, -suffix.length)),
+				);
+			const steps = new Set(
+				manifest.steps.map((s) => s.name).filter((n) => !retryWait(n) && !historySize(n)),
+			);
 			for (const step of steps) {
 				const original = byName.get(step);
 				expect(original, `step ${step} is a node of the original`).toBeDefined();
