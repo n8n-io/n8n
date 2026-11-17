@@ -9,7 +9,11 @@ type StartAfter = { column: string; value?: string };
 const sameColumn = (a: string, b: string, caseInsensitive: boolean) =>
 	caseInsensitive ? a.toLowerCase() === b.toLowerCase() : a === b;
 
-export function getStartAfter(ctx: IExecuteFunctions, itemIndex: number): StartAfter | undefined {
+export function getStartAfter(
+	ctx: IExecuteFunctions,
+	itemIndex: number,
+	tooBigFix = 'In Options, set Output Large-Format Numbers As to Text.',
+): StartAfter | undefined {
 	const startAfter: unknown = ctx.getNodeParameter('startAfter.values', itemIndex, null);
 	if (!isRecord(startAfter)) return undefined;
 
@@ -32,7 +36,7 @@ export function getStartAfter(ctx: IExecuteFunctions, itemIndex: number): StartA
 		throw new NodeOperationError(ctx.getNode(), 'The Start After value is too big to be exact', {
 			itemIndex,
 			description:
-				'n8n cannot keep all digits of a number above 9007199254740991, so the next page can skip rows.',
+				`n8n cannot keep all digits of a number above 9007199254740991, so the next page can skip rows. ${tooBigFix}`.trim(),
 		});
 	}
 
