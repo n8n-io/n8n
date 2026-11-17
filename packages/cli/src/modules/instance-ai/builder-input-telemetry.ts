@@ -1,7 +1,9 @@
 import {
 	credentialSetupHintSchema,
+	instanceAiConfirmationSeveritySchema,
 	mcpConnectRequestSchema,
 	TEMPLATED_CUSTOM_AUTH_CREDENTIAL_TYPE,
+	type InstanceAiApprovalMode,
 } from '@n8n/api-types';
 import { TELEMETRY_EVENT, type AssistantRuntime } from '@n8n/telemetry';
 import { isRecord } from '@n8n/utils/is-record';
@@ -17,6 +19,8 @@ export interface BuilderAskedForInput {
 	payload: Record<string, unknown>;
 	/** The Assistant runtime that showed the card. */
 	runtime: AssistantRuntime;
+	/** The approval mode of the run. Absent while approval modes are off. */
+	approvalMode?: InstanceAiApprovalMode;
 }
 
 function toTelemetryInputType(inputType: string): string {
@@ -30,7 +34,7 @@ function toTelemetryInputType(inputType: string): string {
  */
 export function trackBuilderAskedForInput(
 	telemetry: Telemetry,
-	{ userId, threadId, inputThreadId, payload, runtime }: BuilderAskedForInput,
+	{ userId, threadId, inputThreadId, payload, runtime, approvalMode }: BuilderAskedForInput,
 ): void {
 	const inputType = typeof payload.inputType === 'string' ? payload.inputType : undefined;
 	const mcpConnectServers = mcpConnectRequestSchema.safeParse(payload.mcpConnectRequest).data
@@ -74,13 +78,18 @@ export function trackBuilderAskedForInput(
 			(request.setupHint !== null && request.setupHint !== undefined),
 	);
 
-	telemetry.track('Builder asked for input', {
+	const severity = instanceAiConfirmationSeveritySchema.safeParse(payload.severity).data;
+	telemetry.track(TELEMETRY_EVENT.INSTANCE_AI.BUILDER_ASKED_FOR_INPUT, {
 		user_id: userId,
 		thread_id: threadId,
 		input_thread_id: inputThreadId,
 		type,
 		num_steps: numSteps,
 		contains_templated_cred: containsTemplatedCred,
+		...(typeof payload.toolCallId === 'string' ? { tool_call_id: payload.toolCallId } : {}),
+		...(typeof payload.toolName === 'string' ? { tool_name: payload.toolName } : {}),
+		...(severity ? { severity } : {}),
+		approval_mode: approvalMode ?? 'unavailable',
 		runtime,
 	});
 

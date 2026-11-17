@@ -1,4 +1,5 @@
 import type {
+	MoveSkillSourceDto,
 	AcceptSkillSourceUpdatesDto,
 	ReviewSkillSourceUpdateQueryDto,
 	SkillListCollapsedSource,
@@ -177,6 +178,14 @@ export const useSkillsStore = defineStore('contextSkills', () => {
 		return await api.checkSkillSource(rootStore.restApiContext, sourceId);
 	}
 
+	async function previewSourceMove(sourceId: string, payload: MoveSkillSourceDto) {
+		return await api.previewSkillSourceMove(rootStore.restApiContext, sourceId, payload);
+	}
+
+	async function moveSource(sourceId: string, payload: MoveSkillSourceDto) {
+		await api.moveSkillSource(rootStore.restApiContext, sourceId, payload);
+	}
+
 	async function fetchSourceUpdates(sourceId: string) {
 		return await api.getSkillSourceUpdates(rootStore.restApiContext, sourceId);
 	}
@@ -195,6 +204,8 @@ export const useSkillsStore = defineStore('contextSkills', () => {
 	}
 
 	return {
+		previewSourceMove,
+		moveSource,
 		skills,
 		count,
 		pageCount,

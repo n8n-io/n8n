@@ -103,6 +103,6 @@ export class AgentDraftService {
 		if (!(await userHasScopes(user, ['agent:delete'], false, { projectId }))) {
 			throw new ForbiddenError('You do not have permission to access agents in this project.');
 		}
-		await this.agents.delete(agentId, projectId);
+		await this.agents.delete(agentId, user, projectId);
 	}
 }

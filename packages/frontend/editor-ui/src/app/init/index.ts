@@ -16,6 +16,7 @@ import {
 	registerModuleProjectTabs,
 	registerModulePushHandlers,
 	registerModuleResources,
+	registerModuleRunDataDisplayModes,
 	registerModuleSettingsPages,
 } from '@/app/moduleInitializer/moduleInitializer';
 import { useCloudPlanStore } from '@n8n/stores/cloudPlan.store';
@@ -94,6 +95,9 @@ export async function initializeCore() {
 	const ssoStore = useSSOStore();
 
 	registerAuthenticationHooks();
+
+	// Before the login check: in preview mode a visitor who is not logged in sees run data.
+	registerModuleRunDataDisplayModes();
 
 	/**
 	 * Initialize stores

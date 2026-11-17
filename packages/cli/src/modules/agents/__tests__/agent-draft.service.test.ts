@@ -245,7 +245,7 @@ describe('AgentDraftService', () => {
 		});
 		vi.mocked(userHasScopes).mockResolvedValue(false);
 		await expect(service.deleteDraft(user, 'project-1', 'agent-1')).rejects.toThrow(ForbiddenError);
-		expect(agents.delete).toHaveBeenCalledExactlyOnceWith('agent-1', 'project-1');
+		expect(agents.delete).toHaveBeenCalledExactlyOnceWith('agent-1', user, 'project-1');
 		expect(agents.createOrAdopt).not.toHaveBeenCalled();
 	});
 });

@@ -803,19 +803,19 @@ const activeSelection = computed(() => {
 const tabs = computed(() => {
 	return [
 		{
-			label: 'Workflows',
+			label: i18n.baseText('settings.sourceControl.modals.tabs.workflows'),
 			value: SOURCE_CONTROL_FILE_TYPE.workflow,
 			selected: selectedWorkflows.size,
 			total: changes.value.workflow.length,
 		},
 		{
-			label: 'Credentials',
+			label: i18n.baseText('settings.sourceControl.modals.tabs.credentials'),
 			value: SOURCE_CONTROL_FILE_TYPE.credential,
 			selected: selectedCredentials.size,
 			total: changes.value.credential.length,
 		},
 		{
-			label: 'Data Tables',
+			label: i18n.baseText('settings.sourceControl.modals.tabs.dataTables'),
 			value: SOURCE_CONTROL_FILE_TYPE.datatable,
 			selected: selectedDataTables.size,
 			total: changes.value.datatable.length,
@@ -1058,7 +1058,11 @@ onMounted(async () => {
 						>
 							<div>{{ tab.label }}</div>
 							<N8nText tag="div" color="text-light">
-								{{ tab.selected }} / {{ tab.total }} selected
+								{{
+									i18n.baseText('settings.sourceControl.modals.push.selectedCount', {
+										interpolate: { selected: `${tab.selected}`, total: `${tab.total}` },
+									})
+								}}
 							</N8nText>
 						</button>
 					</template>
@@ -1075,7 +1079,9 @@ onMounted(async () => {
 								@update:model-value="onToggleSelectAll"
 							>
 								<template #label>
-									<N8nText> Title </N8nText>
+									<N8nText>{{
+										i18n.baseText('settings.sourceControl.modals.tableHeader.title')
+									}}</N8nText>
 								</template>
 							</N8nCheckbox>
 							<N8nInfoTip

@@ -1,9 +1,11 @@
 import {
 	agentIdParamSchema,
+	AgentListPublicDto,
+	AgentPublicDto,
 	CreatedAgentPublicDto,
 	CreateAgentPublicDto,
 	DeletedAgentPublicDto,
-	type AgentDto,
+	ListAgentsPublicQueryDto,
 } from '@n8n/api-types';
 import type { AuthenticatedRequest } from '@n8n/db';
 import {
@@ -15,19 +17,29 @@ import {
 	ApiTags,
 	Body,
 	Delete,
+	Get,
 	Param,
 	Post,
 	ProjectScope,
 	PublicApiController,
+	Query,
 } from '@n8n/decorators';
 import type { Response } from 'express';
 
 import { NotFoundError } from '@n8n/errors';
 import { AgentCustomToolsService } from '@/modules/agents/agent-custom-tools.service';
 import { AgentDefaultModelResolverService } from '@/modules/agents/agent-default-model-resolver.service';
-import { AgentResponseMapper } from '@/modules/agents/agent-response.mapper';
+import {
+	AgentResponseMapper,
+	mapAgentListPublicItem,
+	toAgentPublicDto,
+} from '@/modules/agents/agent-response.mapper';
 import type { DeletedAgentSnapshot } from '@/modules/agents/agents.service';
 import { AgentsService } from '@/modules/agents/agents.service';
+import {
+	encodeNextCursor,
+	resolveOffsetPagination,
+} from '@/public-api/v1/shared/services/pagination.service';
 
 @PublicApiController('/agents')
 export class AgentsPublicController {
@@ -75,9 +87,65 @@ export class AgentsPublicController {
 			...(defaultModel ? { defaultModel } : {}),
 		});
 
-		return this.toCreatedAgentPublicDto(
-			await this.agentResponseMapper.toAgentDto(agent, projectId, req.user),
+		return toAgentPublicDto(await this.agentResponseMapper.toAgentDto(agent, projectId, req.user));
+	}
+
+	@Get('/:agentId')
+	@ApiKeyScope('agent:read')
+	@ProjectScope('agent:read')
+	@ApiSummary('Retrieve an agent')
+	@ApiDescription(
+		'Retrieve one agent by ID. The response carries the agent configuration that the update endpoint writes back.',
+	)
+	@ApiTags(['Agent'])
+	@ApiResponse(200, AgentPublicDto)
+	@ApiErrorResponse(404)
+	async getAgent(
+		req: AuthenticatedRequest,
+		_res: Response,
+		@Param('agentId', agentIdParamSchema) agentId: string,
+	): Promise<AgentPublicDto> {
+		// `@ProjectScope` has already authorized the user against the agent's
+		// project, so the agent is resolved by ID alone.
+		const agent = await this.agentsService.findById(agentId);
+
+		if (!agent) {
+			// the user cannot see this agent, or it does not exist
+			throw new NotFoundError('Not Found');
+		}
+
+		return toAgentPublicDto(
+			await this.agentResponseMapper.toAgentDto(agent, agent.projectId ?? '', req.user),
 		);
+	}
+
+	@Get('/')
+	@ApiKeyScope('agent:list')
+	@ApiSummary('List agents')
+	@ApiDescription(
+		'List the agents in the projects where you hold the agent:list permission. ' +
+			'The response is one cursor page: read the next page with the cursor query parameter. ' +
+			'Narrow the list to one project with projectId.',
+	)
+	@ApiTags(['Agent'])
+	@ApiResponse(200, AgentListPublicDto)
+	async listAgents(
+		req: AuthenticatedRequest,
+		_res: Response,
+		@Query query: ListAgentsPublicQueryDto,
+	): Promise<AgentListPublicDto> {
+		const { offset, limit } = resolveOffsetPagination({ cursor: query.cursor, limit: query.limit });
+
+		const { count, data } = await this.agentsService.findListableByUserPaginated(req.user, {
+			offset,
+			limit,
+			filter: query.projectId ? { projectId: query.projectId } : {},
+		});
+
+		return {
+			data: data.map(mapAgentListPublicItem),
+			nextCursor: encodeNextCursor({ offset, limit, numberOfTotalRecords: count }),
+		};
 	}
 
 	@Delete('/:agentId')
@@ -93,11 +161,11 @@ export class AgentsPublicController {
 	@ApiResponse(200, DeletedAgentPublicDto)
 	@ApiErrorResponse(404)
 	async deleteAgent(
-		_req: AuthenticatedRequest,
+		req: AuthenticatedRequest,
 		_res: Response,
 		@Param('agentId', agentIdParamSchema) agentId: string,
 	): Promise<DeletedAgentPublicDto> {
-		const deleted = await this.agentsService.delete(agentId);
+		const deleted = await this.agentsService.delete(agentId, req.user, undefined, {}, req.ctx);
 
 		if (!deleted) {
 			// the user cannot see this agent, or it does not exist
@@ -105,25 +173,6 @@ export class AgentsPublicController {
 		}
 
 		return this.toDeletedAgentPublicDto(deleted);
-	}
-
-	private toCreatedAgentPublicDto(agent: AgentDto): CreatedAgentPublicDto {
-		return {
-			id: agent.id,
-			name: agent.name,
-			projectId: agent.projectId,
-			project: agent.project,
-			availableInMCP: agent.availableInMCP,
-			isArchived: agent.isArchived,
-			versionId: agent.versionId,
-			activeVersionId: agent.activeVersionId,
-			createdAt: agent.createdAt,
-			updatedAt: agent.updatedAt,
-			config: agent.config,
-			configHash: agent.configHash,
-			tools: agent.tools,
-			activeVersion: agent.activeVersion,
-		};
 	}
 
 	private toDeletedAgentPublicDto(agent: DeletedAgentSnapshot): DeletedAgentPublicDto {
