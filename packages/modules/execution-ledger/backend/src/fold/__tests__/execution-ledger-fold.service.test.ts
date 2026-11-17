@@ -297,15 +297,17 @@ describe('ExecutionLedgerFoldService', () => {
 			eventService.emit.mock.calls.filter(([name]) => name === event);
 
 		it.each([
-			['a committed batch', rowsOf(3)],
-			['an empty claim', []],
-		])('emits succeeded after %s', async (_case, rows) => {
+			['a committed batch', rowsOf(3), 3],
+			['an empty claim', [], 0],
+		])('emits succeeded with the row count after %s', async (_case, rows, count) => {
 			addStep('first');
 			claimBatch.mockResolvedValue(rows);
 
 			await service.foldBatch();
 
-			expect(eventService.emit).toHaveBeenCalledWith('execution-ledger-fold-succeeded', {});
+			expect(eventService.emit).toHaveBeenCalledWith('execution-ledger-fold-succeeded', {
+				rows: count,
+			});
 		});
 
 		it('emits nothing when no step is registered', async () => {

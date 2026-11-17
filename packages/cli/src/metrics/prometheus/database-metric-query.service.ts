@@ -1,4 +1,4 @@
-import { ExecutionLedgerBacklogProbe } from '@n8n/backend-services';
+import { ExecutionLedger } from '@n8n/backend-services';
 import { ScheduledJobOwnerType, Time } from '@n8n/constants';
 import {
 	LicenseMetricsRepository,
@@ -42,7 +42,7 @@ export class DatabaseMetricQueryService {
 		private readonly outboxRepository: WorkflowPublicationOutboxRepository,
 		private readonly taskRepository: ScheduledTaskRepository,
 		private readonly jobRepository: ScheduledJobRepository,
-		private readonly ledgerBacklogProbe: ExecutionLedgerBacklogProbe,
+		private readonly executionLedger: ExecutionLedger,
 	) {}
 
 	activeWorkflowCount(ttlMs: number) {
@@ -84,13 +84,13 @@ export class DatabaseMetricQueryService {
 		});
 	}
 
-	/** Call only once the `execution-ledger` module has registered its backlog provider. */
+	/** Call only while `ExecutionLedger.isEnabled`, that is once the module bound its writer. */
 	executionLedgerBacklog(ttlMs: number) {
 		return this.cachedQueries.create<LedgerBacklogState>({
 			cacheKey: 'metrics:execution-ledger:backlog:v1',
 			ttlMs,
 			query: async () => {
-				const { rows, oldestOccurredAt } = await this.ledgerBacklogProbe.getStats();
+				const { rows, oldestOccurredAt } = await this.executionLedger.getBacklogStats();
 				return { rows, oldestMs: oldestOccurredAt?.getTime() ?? null };
 			},
 		});

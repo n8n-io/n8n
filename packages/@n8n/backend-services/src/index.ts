@@ -124,10 +124,6 @@ export { TelemetryProxy, type TelemetryTracker } from './services/telemetry-prox
 export { ExecutingUserIdentifierProxy } from './credentials/executing-user-identifier-proxy';
 export type { IExecutingUserIdentifier } from './credentials/executing-user-identifier.interface';
 export { ExecutionLedger, type CreatedExecution } from './executions/execution-ledger.service';
-export {
-	ExecutionLedgerBacklogProbe,
-	type ExecutionLedgerBacklogStats,
-} from './executions/execution-ledger-backlog-probe';
 export type * from './executions/execution-ledger-writer';
 export { ExecutionRedactionServiceProxy } from './executions/execution-redaction-proxy.service';
 export {

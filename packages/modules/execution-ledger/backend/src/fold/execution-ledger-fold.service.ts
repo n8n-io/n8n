@@ -122,7 +122,7 @@ export class ExecutionLedgerFoldService {
 
 		this.consecutiveLockSkips = 0;
 		if (folded.claimed > 0) this.failedBatch = undefined;
-		this.emitMetric('execution-ledger-fold-succeeded', {});
+		this.emitMetric('execution-ledger-fold-succeeded', { rows: folded.claimed });
 
 		for (const work of folded.afterCommit) {
 			try {

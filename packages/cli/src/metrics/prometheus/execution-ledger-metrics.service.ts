@@ -1,4 +1,4 @@
-import { EventService, ExecutionLedgerBacklogProbe } from '@n8n/backend-services';
+import { EventService, ExecutionLedger } from '@n8n/backend-services';
 import { PrometheusMetricsConfig } from '@n8n/config';
 import { Time } from '@n8n/constants';
 import { Service } from '@n8n/di';
@@ -18,7 +18,7 @@ export class PrometheusExecutionLedgerMetricsService implements PrometheusMetric
 	constructor(
 		private readonly config: PrometheusMetricsConfig,
 		private readonly instanceSettings: InstanceSettings,
-		private readonly ledgerBacklogProbe: ExecutionLedgerBacklogProbe,
+		private readonly executionLedger: ExecutionLedger,
 		private readonly eventService: EventService,
 		private readonly databaseQueries: DatabaseMetricQueryService,
 	) {}
@@ -27,7 +27,7 @@ export class PrometheusExecutionLedgerMetricsService implements PrometheusMetric
 		return (
 			this.config.includeExecutionLedgerMetrics &&
 			this.instanceSettings.instanceType === 'main' &&
-			this.ledgerBacklogProbe.isRegistered
+			this.executionLedger.isEnabled
 		);
 	}
 
@@ -71,14 +71,20 @@ export class PrometheusExecutionLedgerMetricsService implements PrometheusMetric
 			help: 'Unix time in seconds of the last fold that held the lock and committed, including folds that found the ledger empty.',
 		});
 
+		const foldedRows = new promClient.Counter({
+			name: `${prefix}execution_ledger_fold_rows_total`,
+			help: 'Total number of execution ledger rows folded.',
+		});
+
 		const stepFailures = new promClient.Counter({
 			name: `${prefix}execution_ledger_fold_step_failures_total`,
 			help: 'Total number of failed fold attempts by fold step.',
 			labelNames: ['step'],
 		});
 
-		this.eventService.on('execution-ledger-fold-succeeded', () => {
+		this.eventService.on('execution-ledger-fold-succeeded', ({ rows }) => {
 			lastSuccess.set(Date.now() * Time.milliseconds.toSeconds);
+			foldedRows.inc(rows);
 		});
 
 		this.eventService.on('execution-ledger-fold-step-failed', ({ step }) => {

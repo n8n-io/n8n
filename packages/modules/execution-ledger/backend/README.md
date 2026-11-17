@@ -39,6 +39,7 @@ instances report these metrics, and only when the module is on. The default pref
 | `execution_ledger_backlog_rows` | gauge | Upper-bound estimate of the rows that no fold has claimed yet, at the last refresh. |
 | `execution_ledger_backlog_oldest_row_age_seconds` | gauge | Age of the oldest unclaimed row. 0 when the ledger is empty. |
 | `execution_ledger_fold_last_success_timestamp_seconds` | gauge | Last fold that held the lock and committed. |
+| `execution_ledger_fold_rows_total` | counter | Rows folded. Its rate is the fold throughput. When `backlog_rows` grows while the rate stays flat, the fold does not keep up. |
 | `execution_ledger_fold_step_failures_total{step}` | counter | Failed fold attempts for each step. |
 
 The backlog gauges read only the primary key, so the query stays cheap at any backlog size.

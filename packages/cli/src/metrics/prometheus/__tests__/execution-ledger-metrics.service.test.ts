@@ -1,9 +1,4 @@
-import {
-	type CacheService,
-	type EventService,
-	ExecutionLedgerBacklogProbe,
-	type ExecutionLedgerBacklogStats,
-} from '@n8n/backend-services';
+import type { CacheService, EventService, ExecutionLedger } from '@n8n/backend-services';
 import { mockInstance } from '@n8n/backend-test-utils';
 import { PrometheusMetricsConfig } from '@n8n/config';
 import type { DbConnection } from '@n8n/db';
@@ -30,8 +25,7 @@ describe('PrometheusExecutionLedgerMetricsService', () => {
 	const dbConnection = mock<DbConnection>({
 		connectionState: { connected: true, migrated: true },
 	});
-	const backlog = { getStats: vi.fn<() => Promise<ExecutionLedgerBacklogStats>>() };
-	let probe: ExecutionLedgerBacklogProbe;
+	const ledger = mock<ExecutionLedger>();
 
 	let service: PrometheusExecutionLedgerMetricsService;
 	const instancesByName = new Map<string, FakeMetric>();
@@ -40,9 +34,12 @@ describe('PrometheusExecutionLedgerMetricsService', () => {
 	class FakeMetric {
 		private readonly values = new Map<string, number>();
 
-		inc = vi.fn((labels: object) => {
-			const key = JSON.stringify(labels);
-			this.values.set(key, (this.values.get(key) ?? 0) + 1);
+		inc = vi.fn((labelsOrValue: object | number) => {
+			const [key, delta] =
+				typeof labelsOrValue === 'number'
+					? ['', labelsOrValue]
+					: [JSON.stringify(labelsOrValue), 1];
+			this.values.set(key, (this.values.get(key) ?? 0) + delta);
 		});
 		set = vi.fn((value: number) => this.values.set('', value));
 
@@ -82,14 +79,13 @@ describe('PrometheusExecutionLedgerMetricsService', () => {
 
 		cacheService.get.mockResolvedValue(undefined);
 		dbConnection.connectionState.connected = true;
-		backlog.getStats.mockResolvedValue({ rows: 0, oldestOccurredAt: null });
-		probe = new ExecutionLedgerBacklogProbe();
-		probe.register(backlog.getStats);
+		ledger.getBacklogStats.mockResolvedValue({ rows: 0, oldestOccurredAt: null });
+		Object.assign(ledger, { isEnabled: true });
 
 		service = new PrometheusExecutionLedgerMetricsService(
 			config,
 			instanceSettings,
-			probe,
+			ledger,
 			eventService,
 			new DatabaseMetricQueryService(
 				new CachedMetricQueryFactory(cacheService, dbConnection),
@@ -98,7 +94,7 @@ describe('PrometheusExecutionLedgerMetricsService', () => {
 				mock(),
 				mock(),
 				mock(),
-				probe,
+				ledger,
 			),
 		);
 	});
@@ -109,7 +105,7 @@ describe('PrometheusExecutionLedgerMetricsService', () => {
 	});
 
 	describe('enabled', () => {
-		it('is true when opted in, on main, and a backlog provider is registered', () => {
+		it('is true when opted in, on main, and the ledger module is on', () => {
 			expect(service.enabled).toBe(true);
 		});
 
@@ -123,16 +119,9 @@ describe('PrometheusExecutionLedgerMetricsService', () => {
 			expect(service.enabled).toBe(false);
 		});
 
-		it('is false when no backlog provider is registered', () => {
-			const unregistered = new ExecutionLedgerBacklogProbe();
-			const off = new PrometheusExecutionLedgerMetricsService(
-				config,
-				instanceSettings,
-				unregistered,
-				eventService,
-				mock(),
-			);
-			expect(off.enabled).toBe(false);
+		it('is false when the ledger module is off', () => {
+			Object.assign(ledger, { isEnabled: false });
+			expect(service.enabled).toBe(false);
 		});
 	});
 
@@ -151,12 +140,14 @@ describe('PrometheusExecutionLedgerMetricsService', () => {
 			).toBeUndefined();
 		});
 
-		it('succeeded stamps the time of the last successful fold', () => {
-			emit('execution-ledger-fold-succeeded', {});
+		it('succeeded stamps the time of the last successful fold and counts the rows', () => {
+			emit('execution-ledger-fold-succeeded', { rows: 5 });
+			emit('execution-ledger-fold-succeeded', { rows: 0 });
 
 			expect(metric('execution_ledger_fold_last_success_timestamp_seconds').value()).toBe(
 				NOW.getTime() / 1000,
 			);
+			expect(metric('execution_ledger_fold_rows_total').value()).toBe(5);
 		});
 	});
 
@@ -173,13 +164,13 @@ describe('PrometheusExecutionLedgerMetricsService', () => {
 		});
 
 		it('reports the row count', async () => {
-			backlog.getStats.mockResolvedValue({ rows: 7, oldestOccurredAt: NOW });
+			ledger.getBacklogStats.mockResolvedValue({ rows: 7, oldestOccurredAt: NOW });
 
 			expect(await collectRows()).toBe(7);
 		});
 
 		it('reports the age of the oldest row in seconds', async () => {
-			backlog.getStats.mockResolvedValue({
+			ledger.getBacklogStats.mockResolvedValue({
 				rows: 1,
 				oldestOccurredAt: new Date(NOW.getTime() - 90_000),
 			});
@@ -188,7 +179,7 @@ describe('PrometheusExecutionLedgerMetricsService', () => {
 		});
 
 		it('reports an age of 0 when there is no oldest row', async () => {
-			backlog.getStats.mockResolvedValue({ rows: 0, oldestOccurredAt: null });
+			ledger.getBacklogStats.mockResolvedValue({ rows: 0, oldestOccurredAt: null });
 
 			expect(await collectAge()).toBe(0);
 		});
@@ -198,7 +189,7 @@ describe('PrometheusExecutionLedgerMetricsService', () => {
 
 			expect(await collectRows()).toBeNaN();
 			expect(await collectAge()).toBeNaN();
-			expect(backlog.getStats).not.toHaveBeenCalled();
+			expect(ledger.getBacklogStats).not.toHaveBeenCalled();
 		});
 	});
 });
