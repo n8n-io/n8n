@@ -307,6 +307,34 @@ describe('publishing when the instance always requires an approved review', () =
 		expect(await publishedVersionOf(workflow.id)).toBe(newVersionId);
 	});
 
+	test('approves only the version that was last submitted to the review', async () => {
+		const { workflow, newVersionId: firstSubmittedId } = await createLiveTeamWorkflow();
+		const request = await seedTeamReview(workflow.id, firstSubmittedId);
+		const lastSubmittedId = uuid();
+		await createWorkflowHistoryItem(workflow.id, { versionId: lastSubmittedId });
+		await memberAgent
+			.post(`/workflow-review-requests/${request.id}/update-version`)
+			.send({
+				workflowId: workflow.id,
+				workflowVersionId: lastSubmittedId,
+				workflowVersionName: 'Second attempt',
+			})
+			.expect(200);
+		await requireApproval();
+
+		await ownerAgent
+			.post(`/workflow-review-requests/${request.id}/decision`)
+			.send({ decision: 'approved' })
+			.expect(200);
+		expect(await publishedVersionOf(workflow.id)).toBe(lastSubmittedId);
+
+		await ownerAgent
+			.post(`/workflows/${workflow.id}/activate`)
+			.send({ versionId: firstSubmittedId })
+			.expect(409);
+		expect(await publishedVersionOf(workflow.id)).toBe(lastSubmittedId);
+	});
+
 	test('rolls back to an earlier version that has an approved review', async () => {
 		const { workflow, versionId: firstVersionId } = await createReviewableWorkflow(teamProject);
 		const secondVersionId = uuid();
