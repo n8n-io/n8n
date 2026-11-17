@@ -1923,26 +1923,17 @@ export function useCanvasOperations() {
 					// When the node has only main outputs, mixed outputs, or no outputs at all
 					// We want to place the new node directly to the right of the last interacted with node.
 
-					// If a node is active then add the new node directly after the current one
-					const newNode = { ...node, position: lastInteractedWithNodeObject.position };
+					// If a node is active then add the new node directly after the current one.
+					// When inserting via edge plus button, keep Y aligned to preserve vertical line.
 					position = getNextNodeSlotAfter(
 						lastInteractedWithNodeObject,
 						lastInteractedWithNodeTypeDescription,
-						newNode,
+						{ ...node, position: lastInteractedWithNodeObject.position },
 						nodeTypeDescription,
-						{ index: connectionIndex, count: lastInteractedWithNodeMainOutputs.length },
+						lastInteractedWithNodeConnection
+							? undefined
+							: { index: connectionIndex, count: lastInteractedWithNodeMainOutputs.length },
 					);
-
-					// When inserting via edge plus button, keep Y aligned to preserve vertical line
-					if (lastInteractedWithNodeConnection) {
-						const centeredY = getNextNodeSlotAfter(
-							lastInteractedWithNodeObject,
-							lastInteractedWithNodeTypeDescription,
-							newNode,
-							nodeTypeDescription,
-						)[1];
-						position = [position[0], centeredY];
-					}
 				}
 			}
 		}

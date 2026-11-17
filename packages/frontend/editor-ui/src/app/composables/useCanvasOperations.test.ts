@@ -1019,6 +1019,22 @@ describe('useCanvasOperations', () => {
 				]);
 			});
 
+			it('should keep a node inserted on an edge of a Switch node on its handle line', () => {
+				const switchType = mockNodeTypeDescription({
+					name: SWITCH_NODE_TYPE,
+					outputs: Array.from({ length: 3 }, () => NodeConnectionTypes.Main),
+				});
+				mockedStore(useUIStore).lastInteractedWithNodeConnection = {
+					source: 'source',
+					sourceHandle: 'outputs/main/2',
+					target: 'target',
+					targetHandle: 'inputs/main/0',
+				};
+
+				// No fan offset: the Switch handle line is at 64 and the Set handle is at 48
+				expect(resolvePositionAfter(switchType, setNodeType)).toEqual([224, 16]);
+			});
+
 			it('should keep the nodes after an IF node 96 above and below its handle line', () => {
 				const ifType = mockNodeTypeDescription({
 					name: IF_NODE_TYPE,
