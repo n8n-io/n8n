@@ -446,7 +446,7 @@ describe('MainSidebarAccountMenu', () => {
 			templatesStore.hasCustomTemplatesHost = true;
 		});
 
-		it('lists Templates, Insights and Instance settings after Personal settings', async () => {
+		it('lists Templates and Instance settings after Personal settings', async () => {
 			const { getByTestId } = renderComponent({ props: { isCollapsed: true } });
 			const menu = await openMenu(getByTestId('main-sidebar-account-trigger'));
 
@@ -454,10 +454,11 @@ describe('MainSidebarAccountMenu', () => {
 				expect.arrayContaining([
 					'main-sidebar-account-personal-settings',
 					'main-sidebar-account-templates',
-					'main-sidebar-account-insights',
 					'main-sidebar-account-settings',
 				]),
 			);
+			// The navigation rail shows Insights.
+			expect(rowsOf(menu)).not.toContain('main-sidebar-account-insights');
 			const rows = rowsOf(menu);
 			expect(rows.indexOf('main-sidebar-account-templates')).toBe(
 				rows.indexOf('main-sidebar-account-personal-settings') + 1,
@@ -477,16 +478,6 @@ describe('MainSidebarAccountMenu', () => {
 			);
 		});
 
-		it('opens Insights and tracks the click', async () => {
-			const { getByTestId } = renderComponent();
-			const menu = await openMenu(getByTestId('main-sidebar-account-trigger'));
-
-			await userEvent.click(within(menu).getByTestId('main-sidebar-account-insights'));
-
-			expect(routerPushMock).toHaveBeenCalledWith({ name: VIEWS.INSIGHTS });
-			expect(trackMock).toHaveBeenCalledWith('User clicked insights link from side menu');
-		});
-
 		it('hides the rows the user cannot reach', async () => {
 			settingsItemsMock.value = [];
 			settingsStore.isTemplatesEnabled = false;
@@ -496,7 +487,6 @@ describe('MainSidebarAccountMenu', () => {
 
 			const rows = rowsOf(menu);
 			expect(rows).not.toContain('main-sidebar-account-templates');
-			expect(rows).not.toContain('main-sidebar-account-insights');
 			expect(rows).not.toContain('main-sidebar-account-settings');
 		});
 	});

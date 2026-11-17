@@ -5,6 +5,9 @@ import { createTestingPinia } from '@pinia/testing';
 import { createComponentRenderer } from '@/__tests__/render';
 import { mockedStore } from '@/__tests__/utils';
 import { useUIStore } from '@/app/stores/ui.store';
+import { useSettingsStore } from '@n8n/stores/settings.store';
+import { useRBACStore } from '@n8n/stores/rbac.store';
+import { VIEWS } from '@/app/constants';
 import AppNavigation from './AppNavigation.vue';
 import type { AppNavRailItem, AppNavSection } from './useAppNavigation';
 import { PEEK_CLOSE_DELAY, PEEK_OPEN_DELAY } from './useNavigationPeek';
@@ -76,8 +79,9 @@ const renderComponent = createComponentRenderer(AppNavigation, {
 	},
 });
 
-function setup({ collapsed }: { collapsed: boolean }) {
+function setup({ collapsed, before }: { collapsed: boolean; before?: () => void }) {
 	createTestingPinia();
+	before?.();
 	const uiStore = mockedStore(useUIStore);
 	uiStore.sidebarMenuCollapsed = collapsed;
 	uiStore.toggleSidebarMenuCollapse = vi.fn(() => {
@@ -86,10 +90,13 @@ function setup({ collapsed }: { collapsed: boolean }) {
 
 	const router = createRouter({
 		history: createMemoryHistory(),
-		routes: ['/', '/overview', '/projects/p1', '/workflows'].map((path) => ({
-			path,
-			component: Empty,
-		})),
+		routes: [
+			...['/', '/overview', '/projects/p1', '/workflows'].map((path) => ({
+				path,
+				component: Empty,
+			})),
+			{ path: '/insights', name: VIEWS.INSIGHTS, component: Empty },
+		],
 	});
 
 	const result = renderComponent({ global: { plugins: [router] } });
@@ -125,6 +132,26 @@ describe('AppNavigation', () => {
 		activeItemId.value = 'project:p1';
 		await waitFor(() => expect(icons()).toEqual(['house', 'layers-filled']));
 		expect(getByTestId('app-nav-project')).toHaveAttribute('aria-current', 'page');
+	});
+
+	it('shows Insights above the account menu only when the user can open it', async () => {
+		const hidden = setup({ collapsed: true });
+		expect(hidden.queryByTestId('app-nav-insights')).not.toBeInTheDocument();
+		hidden.unmount();
+
+		const { getByTestId, router } = setup({
+			collapsed: true,
+			before: () => {
+				mockedStore(useSettingsStore).isModuleActive = vi.fn(() => true);
+				mockedStore(useRBACStore).hasScope = vi.fn(() => true);
+			},
+		});
+		const insights = getByTestId('app-nav-insights');
+		expect(insights).toHaveAttribute('aria-label', 'Insights');
+		expect(insights).not.toHaveAttribute('aria-current');
+
+		await router.push('/insights');
+		await waitFor(() => expect(insights).toHaveAttribute('aria-current', 'page'));
 	});
 
 	describe('expanded', () => {

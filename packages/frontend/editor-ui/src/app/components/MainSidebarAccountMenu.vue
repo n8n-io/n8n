@@ -170,7 +170,7 @@ const instanceSettingsRoute = computed(
 );
 
 type WorkspaceItem = {
-	id: 'resource-center' | 'templates' | 'insights' | 'settings';
+	id: 'resource-center' | 'templates' | 'settings';
 	label: string;
 	icon: IconName;
 	available: boolean;
@@ -213,15 +213,6 @@ const workspaceItems = computed<WorkspaceItem[]>(() =>
 				href: templatesStore.websiteTemplateRepositoryURL,
 			},
 			{
-				id: 'insights',
-				icon: 'chart-column-decreasing',
-				label: i18n.baseText('mainSidebar.insights'),
-				available:
-					settingsStore.isModuleActive('insights') &&
-					hasPermission(['rbac'], { rbac: { scope: 'insights:list' } }),
-				route: { name: VIEWS.INSIGHTS },
-			},
-			{
 				id: 'settings',
 				icon: 'wrench',
 				label: i18n.baseText('mainSidebar.instanceSettings'),
@@ -236,9 +227,6 @@ function onWorkspaceItem(item: WorkspaceItem) {
 	switch (item.id) {
 		case 'templates':
 			trackTemplatesClick(TemplateClickSource.sidebarButton);
-			break;
-		case 'insights':
-			telemetry.track('User clicked insights link from side menu');
 			break;
 		case 'settings':
 			telemetry.track(TELEMETRY_EVENT.PLATFORM.USER_CLICKED_INSTANCE_SETTINGS_LINK, {

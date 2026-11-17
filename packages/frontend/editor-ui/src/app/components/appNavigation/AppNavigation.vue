@@ -11,6 +11,11 @@ import {
 } from 'vue';
 import { useRoute } from 'vue-router';
 import { N8nTooltip, updatedIconSet, type IconOrEmoji } from '@n8n/design-system';
+import { useI18n } from '@n8n/i18n';
+import { useTelemetry } from '@n8n/composables/useTelemetry';
+import { useSettingsStore } from '@n8n/stores/settings.store';
+import { VIEWS } from '@/app/constants';
+import { hasPermission } from '@/app/utils/rbac/permissions';
 import { promotionEventBus } from '@n8n/frontend-module-promotions';
 import { useUIStore } from '@/app/stores/ui.store';
 import { useKeybindings } from '@/app/composables/useKeybindings';
@@ -32,6 +37,21 @@ import { ASSISTANT_ITEM_ID, useAppNavigation, type AppNavLink } from './useAppNa
 import { useNavigationPeek } from './useNavigationPeek';
 
 const route = useRoute();
+const i18n = useI18n();
+const telemetry = useTelemetry();
+const settingsStore = useSettingsStore();
+
+// Insights has no pages of its own to list, so it is a plain link above the account menu.
+const isInsightsAvailable = computed(
+	() =>
+		settingsStore.isModuleActive('insights') &&
+		hasPermission(['rbac'], { rbac: { scope: 'insights:list' } }),
+);
+const isInsightsActive = computed(() => route.name === VIEWS.INSIGHTS);
+
+function onInsightsClick() {
+	telemetry.track('User clicked insights link from side menu');
+}
 const uiStore = useUIStore();
 const projectsStore = useProjectsStore();
 const agentTelemetry = useAgentTelemetry();
@@ -228,6 +248,29 @@ onBeforeUnmount(() => {
 				/>
 			</template>
 			<div :class="$style.account">
+				<N8nTooltip
+					v-if="isInsightsAvailable"
+					:content="i18n.baseText('mainSidebar.insights')"
+					placement="right"
+					:show-after="300"
+				>
+					<RouterLink
+						:to="{ name: VIEWS.INSIGHTS }"
+						:class="[$style.railItem, { [$style.railItemActive]: isInsightsActive }]"
+						:aria-label="i18n.baseText('mainSidebar.insights')"
+						:aria-current="isInsightsActive ? 'page' : undefined"
+						data-test-id="app-nav-insights"
+						@mouseenter="peek.onLeave"
+						@click="onInsightsClick"
+					>
+						<ProjectIcon
+							:icon="{ type: 'icon', value: 'chart-column-decreasing' }"
+							size="small"
+							border-less
+							color="text-dark"
+						/>
+					</RouterLink>
+				</N8nTooltip>
 				<MainSidebarAccountMenu :is-collapsed="true" />
 			</div>
 		</div>
@@ -349,6 +392,10 @@ $panel-width: 240px;
 }
 
 .account {
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	gap: var(--spacing--4xs);
 	margin-top: auto;
 	padding-top: var(--spacing--2xs);
 
