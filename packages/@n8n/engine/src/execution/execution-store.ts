@@ -66,6 +66,17 @@ export class ExecutionNotFoundError extends Error {
 	}
 }
 
+/** Thrown by `createExecution` when the parent of a sub-execution has ended. */
+export class ParentExecutionEndedError extends Error {
+	constructor(
+		readonly parentExecutionId: string,
+		readonly status: ExecutionStatus,
+	) {
+		super(`Parent execution ${parentExecutionId} is ${status}`);
+		this.name = 'ParentExecutionEndedError';
+	}
+}
+
 /**
  * Persistence interface for executions.
  *
@@ -74,7 +85,17 @@ export class ExecutionNotFoundError extends Error {
  * `queued` clears that time.
  */
 export interface ExecutionStore {
-	/** Persist a new execution record under the caller-minted `record.id`. */
+	/**
+	 * Persist a new execution record under the caller-minted `record.id`.
+	 *
+	 * A record with a parent link is written only while the parent has not
+	 * ended, and the check holds the parent row until the write commits. So an
+	 * end of the parent either waits and then finds this sub-execution, or
+	 * commits first and this write refuses.
+	 *
+	 * @throws {ExecutionNotFoundError} when the parent row is missing.
+	 * @throws {ParentExecutionEndedError} when the parent has ended.
+	 */
 	createExecution(record: NewExecutionRecord): Promise<void>;
 
 	/** Load a full execution by id. Throws `ExecutionNotFoundError` if absent. */

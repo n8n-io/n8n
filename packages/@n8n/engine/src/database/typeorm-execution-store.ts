@@ -1,9 +1,10 @@
-import { In, LessThanOrEqual, type Repository } from '@n8n/typeorm';
+import { In, LessThanOrEqual, type EntityManager, type Repository } from '@n8n/typeorm';
 
 import { WorkflowSeededStep, type WorkflowExecution } from './entities';
 import { parentLinkSql, toParentColumns } from './parent-link-columns';
 import {
 	ExecutionNotFoundError,
+	ParentExecutionEndedError,
 	type ExecutionRecord,
 	type ExecutionStore,
 	type NewExecutionRecord,
@@ -11,6 +12,7 @@ import {
 } from '../execution/execution-store';
 import { DEFAULT_STALENESS_THRESHOLDS, type StalenessThresholds } from '../execution/staleness';
 import {
+	isEndedExecutionStatus,
 	LIVE_EXECUTION_STATUSES,
 	stepKeyId,
 	type ExecutionStatus,
@@ -48,12 +50,31 @@ export class TypeOrmExecutionStore implements ExecutionStore {
 			passes.map((outputs, iteration) => ({ executionId: record.id, nodeId, iteration, outputs })),
 		);
 		await this.repo.manager.transaction(async (manager) => {
+			if (parent) await this.holdParentNotEnded(manager, parent.executionId);
 			// The cast is needed because the insert payload type recurses into the
 			// opaque `graph` jsonb and rejects `StepConfig`'s deliberate `unknown`.
 			// NOTE: prefer insert to save for performance reasons.
 			await manager.insert(this.repo.target, execution as InsertValues);
 			if (seeded.length > 0) await manager.insert(WorkflowSeededStep, seeded);
 		});
+	}
+
+	/**
+	 * Takes a share lock on the parent row for the rest of the transaction. The
+	 * UPDATE that ends the parent needs the row lock too, so it either commits
+	 * first and this read sees the end, or waits and then finds the sub-execution.
+	 */
+	private async holdParentNotEnded(manager: EntityManager, parentId: string): Promise<void> {
+		const row = await manager
+			.createQueryBuilder(this.repo.target, 'execution')
+			.setLock('pessimistic_read')
+			.select('execution.status', 'status')
+			.where('execution.id = :parentId', { parentId })
+			.getRawOne<{ status: ExecutionStatus }>();
+		if (!row) throw new ExecutionNotFoundError(parentId);
+		if (isEndedExecutionStatus(row.status)) {
+			throw new ParentExecutionEndedError(parentId, row.status);
+		}
 	}
 
 	async loadSeededOutputs(

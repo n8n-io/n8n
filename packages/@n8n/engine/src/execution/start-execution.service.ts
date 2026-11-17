@@ -12,7 +12,11 @@ import {
 import type { LifecycleEventSubscription } from '../lifecycle-events';
 import type { OrchestrationMessage, WorkQueue } from '../queue';
 import type { ResponseExpectation } from '../response-channel';
-import { ExecutionNotFoundError, type ExecutionStore } from './execution-store';
+import {
+	ExecutionNotFoundError,
+	ParentExecutionEndedError,
+	type ExecutionStore,
+} from './execution-store';
 import {
 	isLiveExecutionStatus,
 	type CallerContext,
@@ -100,21 +104,25 @@ export class StartExecutionService {
 		// against it, so the store never gets to rename the run.
 		const { executionId } = request;
 
-		await this.executionStore.createExecution({
-			id: executionId,
-			workflowId: request.workflowId,
-			// admitted; a worker flips this to 'running' when it starts
-			status: 'queued',
-			mode: request.mode ?? 'production',
-			graph: toStoredGraph(request.graph, request.seededSteps ?? {}),
-			workflow: request.workflow,
-			triggerOutputs: request.triggerOutputs ?? null,
-			seededSteps: request.seededSteps,
-			callerContext: request.callerContext,
-			responseExpectation: request.responseExpectation ?? { kind: 'none' },
-			parent: request.parent ?? null,
-			lifecycleEventSubscription: request.lifecycleEventSubscription,
-		});
+		try {
+			await this.executionStore.createExecution({
+				id: executionId,
+				workflowId: request.workflowId,
+				// admitted; a worker flips this to 'running' when it starts
+				status: 'queued',
+				mode: request.mode ?? 'production',
+				graph: toStoredGraph(request.graph, request.seededSteps ?? {}),
+				workflow: request.workflow,
+				triggerOutputs: request.triggerOutputs ?? null,
+				seededSteps: request.seededSteps,
+				callerContext: request.callerContext,
+				responseExpectation: request.responseExpectation ?? { kind: 'none' },
+				parent: request.parent ?? null,
+				lifecycleEventSubscription: request.lifecycleEventSubscription,
+			});
+		} catch (error) {
+			endedParentAsInvalid(error);
+		}
 
 		// The persist above and this publish aren't atomic. A crash between them
 		// leaves the execution 'queued' until the reconciliation sweeper
@@ -133,6 +141,9 @@ export class StartExecutionService {
 	 * The parent must be live and the step must be its own, in the state that
 	 * asks for a sub-execution: suspended when it waits for this one, still
 	 * running when it does not. A step starts nothing once it has settled.
+	 *
+	 * A parent can end between this check and the insert. The store repeats the
+	 * check under a lock when it writes the row, so that case refuses too.
 	 */
 	private async validateParent(parent: ParentLink): Promise<void> {
 		const [status, step] = await Promise.all([
@@ -164,6 +175,14 @@ export class StartExecutionService {
 			);
 		}
 	}
+}
+
+/** A parent that ended before the row was written is an invalid link. */
+function endedParentAsInvalid(error: unknown): never {
+	if (error instanceof ParentExecutionEndedError) {
+		throw new InvalidParentLinkError('execution-not-live', error.message);
+	}
+	throw error;
 }
 
 /** A missing parent row is an invalid link, not a lookup failure of its own. */

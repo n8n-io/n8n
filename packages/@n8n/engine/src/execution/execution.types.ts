@@ -23,6 +23,13 @@ export function isLiveExecutionStatus(status: ExecutionStatus): boolean {
 	return (LIVE_EXECUTION_STATUSES as readonly ExecutionStatus[]).includes(status);
 }
 
+/** Ended for good. Every other status is `queued` or live. */
+export const ENDED_EXECUTION_STATUSES = ['completed', 'failed', 'cancelled'] as const;
+
+export function isEndedExecutionStatus(status: ExecutionStatus): boolean {
+	return (ENDED_EXECUTION_STATUSES as readonly ExecutionStatus[]).includes(status);
+}
+
 /** How an execution was initiated. */
 export type ExecutionMode = 'production' | 'manual';
 

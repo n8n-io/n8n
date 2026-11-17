@@ -30,7 +30,6 @@ import {
 	type StepSlots,
 	type ExecutorWaitDeclaration,
 } from './execution.types';
-import type { CancelExecutionService } from './cancel-execution.service';
 import { classifyEdge, sourceRow } from './iteration-mapping';
 import { exitSourcesInto, loadTerminalIterations } from './loop-ledger';
 import { InvalidParentLinkError, type StartExecutionService } from './start-execution.service';
@@ -80,7 +79,6 @@ export class StepReadyHandler {
 		private readonly lifecycleEventPublisherFactory: LifecycleEventPublisherFactory,
 		private readonly responseSender: ExecutionResponseSender,
 		private readonly startExecution: StartExecutionService,
-		private readonly cancelExecution: CancelExecutionService,
 		/** Called once a wait is on the row, so the sweeper can re-arm on its deadline. */
 		private readonly onStepSuspended: () => void = () => {},
 	) {}
@@ -273,18 +271,10 @@ export class StepReadyHandler {
 				callerContext: execution.callerContext,
 				parent: { executionId: execution.id, stepId: step.id, awaited: subExecution.awaited },
 			});
+			return { kind: 'started' };
 		} catch (error) {
 			return { kind: 'error', error };
 		}
-
-		// A cancel that ran between the liveness check above and this start
-		// found no sub-execution to cascade to. Read the parent again, so a sub-execution of an
-		// ended parent is cancelled here instead of running on.
-		const parent = await this.executionStore.loadExecution(execution.id);
-		if (!isLiveExecutionStatus(parent.status)) {
-			await this.cancelExecution.cancelSubExecutions(execution.id);
-		}
-		return { kind: 'started' };
 	}
 
 	/** How the step produces its result. */

@@ -840,7 +840,7 @@ describe('GET /api/workflow-executions/:id (integration)', () => {
 	});
 
 	it('reports the parent link of a sub-execution', async () => {
-		const parent = { executionId: generateId(), stepId: generateId(), awaited: true };
+		const parent = { executionId: await createExecution(), stepId: generateId(), awaited: true };
 		const subExecutionId = await startSubExecution(parent);
 
 		const response = await request(url)

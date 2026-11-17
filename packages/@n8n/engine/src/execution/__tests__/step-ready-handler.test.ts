@@ -16,7 +16,6 @@ import {
 	type StepStatus,
 	type WaitDeclaration,
 } from '../execution.types';
-import type { CancelExecutionService } from '../cancel-execution.service';
 import { InvalidParentLinkError, type StartExecutionService } from '../start-execution.service';
 import { attachStepErrorDetails } from '../step-error-details';
 import { resolveInputReads, StepReadyHandler } from '../step-ready-handler';
@@ -64,9 +63,6 @@ function makeSubExecutionStarter(): SubExecutionStarter {
 	return { start: vi.fn().mockResolvedValue({ executionId: 'exec-sub' }) };
 }
 
-/** The one method of the cancel service the handler calls; a stub stands in for the class. */
-type SubExecutionCanceller = Pick<CancelExecutionService, 'cancelSubExecutions'>;
-
 /** Handler with a throwaway publisher, for the tests that ignore it. */
 
 function makeHandler(
@@ -78,7 +74,6 @@ function makeHandler(
 	responseSender: ExecutionResponseSender = noopExecutionResponseSender,
 	onStepSuspended?: () => void,
 	subExecutionStarter: SubExecutionStarter = makeSubExecutionStarter(),
-	subExecutionCanceller: SubExecutionCanceller = { cancelSubExecutions: vi.fn() },
 ): StepReadyHandler {
 	return new StepReadyHandler(
 		executionStore,
@@ -88,7 +83,6 @@ function makeHandler(
 		new LifecycleEventPublisherFactory(lifecycleEventPublisher),
 		responseSender,
 		subExecutionStarter as StartExecutionService,
-		subExecutionCanceller as CancelExecutionService,
 		onStepSuspended,
 	);
 }
@@ -1214,49 +1208,6 @@ describe('StepReadyHandler sub-executions', () => {
 		expect(executionStore.refreshLiveStatus).toHaveBeenCalledExactlyOnceWith('exec-1');
 	});
 
-	it('cancels the sub-execution it started when the parent ended in the meantime', async () => {
-		// Running at the liveness check, cancelled by the time the sub-execution exists.
-		const executionStore = makeExecutionStore();
-		const live = await executionStore.loadExecution('exec-1');
-		const ended: ExecutionRecord = { ...live, status: 'cancelled', finishedAt: new Date() };
-		executionStore.loadExecution = vi.fn().mockResolvedValueOnce(live).mockResolvedValueOnce(ended);
-		const subExecutionCanceller: SubExecutionCanceller = { cancelSubExecutions: vi.fn() };
-		const handler = makeHandler(
-			executionStore,
-			makeStepStore(),
-			makeQueue(),
-			{ v1StepExecutor: makeExecutor({ subExecution }) },
-			undefined,
-			undefined,
-			undefined,
-			makeSubExecutionStarter(),
-			subExecutionCanceller,
-		);
-
-		await handler.handle(event);
-
-		expect(subExecutionCanceller.cancelSubExecutions).toHaveBeenCalledExactlyOnceWith('exec-1');
-	});
-
-	it('leaves the sub-execution alone when the parent is still live after the start', async () => {
-		const subExecutionCanceller: SubExecutionCanceller = { cancelSubExecutions: vi.fn() };
-		const handler = makeHandler(
-			makeExecutionStore(),
-			makeStepStore(),
-			makeQueue(),
-			{ v1StepExecutor: makeExecutor({ subExecution }) },
-			undefined,
-			undefined,
-			undefined,
-			makeSubExecutionStarter(),
-			subExecutionCanceller,
-		);
-
-		await handler.handle(event);
-
-		expect(subExecutionCanceller.cancelSubExecutions).not.toHaveBeenCalled();
-	});
-
 	it('starts no sub-execution when the step was taken over or its execution ended', async () => {
 		const stepStore = makeStepStore({}, { suspendStep: vi.fn().mockResolvedValue(false) });
 		const subExecutionStarter = makeSubExecutionStarter();
@@ -1381,29 +1332,6 @@ describe('StepReadyHandler sub-executions', () => {
 			executionId: 'exec-1',
 			stepId: 'step-a',
 		});
-	});
-
-	it('cancels the detached sub-execution it started when the parent ended in the meantime', async () => {
-		const executionStore = makeExecutionStore();
-		const live = await executionStore.loadExecution('exec-1');
-		const ended: ExecutionRecord = { ...live, status: 'cancelled', finishedAt: new Date() };
-		executionStore.loadExecution = vi.fn().mockResolvedValueOnce(live).mockResolvedValueOnce(ended);
-		const subExecutionCanceller: SubExecutionCanceller = { cancelSubExecutions: vi.fn() };
-		const handler = makeHandler(
-			executionStore,
-			makeStepStore(),
-			makeQueue(),
-			{ v1StepExecutor: makeExecutor({ subExecution: { ...detached, outputs: [[]] } }) },
-			undefined,
-			undefined,
-			undefined,
-			makeSubExecutionStarter(),
-			subExecutionCanceller,
-		);
-
-		await handler.handle(event);
-
-		expect(subExecutionCanceller.cancelSubExecutions).toHaveBeenCalledExactlyOnceWith('exec-1');
 	});
 
 	it('records the outputs when the execution ended before a detached sub-execution started', async () => {
