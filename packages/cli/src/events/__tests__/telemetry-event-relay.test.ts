@@ -2227,6 +2227,11 @@ describe('TelemetryEventRelay', () => {
 				expected: { public_api: true, public_api_client: 'editor_ui' },
 			},
 			{
+				descriptionLength: 0,
+				publicApi: 'n8n_node',
+				expected: { public_api: true, public_api_client: 'n8n_node' },
+			},
+			{
 				descriptionLength: 18,
 				publicApi: 'other',
 				expected: { public_api: true, public_api_client: 'other' },
@@ -3936,6 +3941,145 @@ describe('TelemetryEventRelay', () => {
 		});
 	});
 
+	describe('SCIM events', () => {
+		it('should track a SCIM settings change by a user', () => {
+			eventService.emit('scim-settings-updated', {
+				user: { id: 'user123', email: 'user@example.com', role: { slug: GLOBAL_OWNER_ROLE.slug } },
+				isActive: true,
+				change: 'token_rotated',
+				source: 'user',
+			});
+
+			expect(telemetry.track).toHaveBeenCalledWith(
+				TELEMETRY_EVENT.SCIM.USER_UPDATED_SCIM_SETTINGS,
+				{
+					user_id: 'user123',
+					is_active: true,
+					change: 'token_rotated',
+				},
+			);
+		});
+
+		it.each(['sso_off', 'startup'] as const)(
+			'should track a SCIM turn-off by n8n without a user (%s)',
+			(source) => {
+				eventService.emit('scim-settings-updated', {
+					user: null,
+					isActive: false,
+					change: 'disabled',
+					source,
+				});
+
+				const [, properties] = telemetry.track.mock.calls.find(
+					([event]) => (event as unknown) === TELEMETRY_EVENT.SCIM.USER_UPDATED_SCIM_SETTINGS,
+				)!;
+				expect(properties).toEqual({
+					user_id: undefined,
+					is_active: false,
+					change: 'disabled',
+				});
+				expect(
+					TELEMETRY_EVENT.SCIM.USER_UPDATED_SCIM_SETTINGS.getValidationError(properties),
+				).toBeNull();
+			},
+		);
+
+		it('should not track a deprovisioning policy change', () => {
+			eventService.emit('scim-deprovisioning-policy-updated', {
+				user: { id: 'user123', email: 'user@example.com', role: { slug: GLOBAL_OWNER_ROLE.slug } },
+				isActive: true,
+				before: { onDelete: 'disable', dataAction: 'transfer', transferProjectId: null },
+				after: { onDelete: 'delete', dataAction: 'transfer', transferProjectId: null },
+			});
+
+			expect(telemetry.track).not.toHaveBeenCalled();
+		});
+
+		describe('rejected SCIM requests', () => {
+			// Other tests add relays to the shared event service, and each relay
+			// keeps its own throttle. So these tests use their own relay.
+			let scimEventService: EventService;
+
+			const rejected = (reason: 'invalid_token' | 'conflict' = 'invalid_token') =>
+				scimEventService.emit('scim-request-rejected', {
+					operation: 'list_users',
+					status: reason === 'invalid_token' ? 401 : 409,
+					reason,
+				});
+			const rejectionCalls = () =>
+				telemetry.track.mock.calls.filter(
+					([event]) => (event as unknown) === TELEMETRY_EVENT.SCIM.SCIM_REQUEST_REJECTED,
+				);
+
+			beforeEach(async () => {
+				vi.useFakeTimers({ now: new Date('2026-11-16T10:00:00Z') });
+				scimEventService = new EventService();
+				await new TelemetryEventRelay(
+					scimEventService,
+					telemetry,
+					license,
+					licenseState,
+					globalConfig,
+					instanceSettings,
+					binaryDataConfig,
+					workflowRepository,
+					nodeTypes,
+					sharedWorkflowRepository,
+					projectRelationRepository,
+					credentialsRepository,
+					dynamicCredentialsProxy,
+					dbConnection,
+					loadNodesAndCredentials,
+					postHogClient,
+					ownershipService,
+				).init();
+			});
+
+			afterEach(() => {
+				vi.useRealTimers();
+			});
+
+			it('should report the first rejection of a reason at once', () => {
+				rejected();
+
+				expect(rejectionCalls()).toHaveLength(1);
+				const [, properties] = rejectionCalls()[0];
+				expect(properties).toEqual({
+					operation: 'list_users',
+					status: 401,
+					reason: 'invalid_token',
+					count: 1,
+				});
+				expect(
+					TELEMETRY_EVENT.SCIM.SCIM_REQUEST_REJECTED.getValidationError(properties),
+				).toBeNull();
+			});
+
+			it('should report a reason at most once an hour, with the count since the last report', () => {
+				rejected();
+				rejected();
+				rejected();
+				expect(rejectionCalls()).toHaveLength(1);
+
+				vi.advanceTimersByTime(60 * 60 * 1000);
+				rejected();
+
+				expect(rejectionCalls()).toHaveLength(2);
+				expect(rejectionCalls()[1][1]).toMatchObject({ reason: 'invalid_token', count: 3 });
+			});
+
+			it('should report each reason on its own', () => {
+				rejected('invalid_token');
+				rejected('conflict');
+
+				expect(rejectionCalls().map(([, properties]) => properties)).toEqual([
+					expect.objectContaining({ reason: 'invalid_token', count: 1 }),
+					expect.objectContaining({ reason: 'conflict', count: 1 }),
+				]);
+			});
+		});
+	});
+
 	describe('user events', () => {
 		describe('on `user-updated` event', () => {
 			const event: RelayEventMap['user-updated'] = {
@@ -3959,6 +4103,20 @@ describe('TelemetryEventRelay', () => {
 				expect(telemetry.track).toHaveBeenCalledWith('User changed personal settings', {
 					user_id: 'user123',
 					fields_changed: ['firstName', 'lastName'],
+				});
+			});
+
+			it('should add the source of a SCIM change', () => {
+				eventService.emit('user-updated', {
+					...event,
+					fieldsChanged: ['disabled'],
+					source: 'scim',
+				});
+
+				expect(telemetry.track).toHaveBeenCalledWith('User changed personal settings', {
+					user_id: 'user123',
+					fields_changed: ['disabled'],
+					source: 'scim',
 				});
 			});
 
@@ -4057,6 +4215,34 @@ describe('TelemetryEventRelay', () => {
 				public_api: false,
 				email_sent: true,
 				invitee_role: 'global:member',
+			});
+		});
+
+		it('should add the source of a SCIM sign-up to the event, not to the user traits', () => {
+			const event: RelayEventMap['user-signed-up'] = {
+				user: {
+					id: 'user123',
+					email: 'user@example.com',
+					firstName: 'John',
+					lastName: 'Doe',
+					role: { slug: GLOBAL_OWNER_ROLE.slug },
+				},
+				userType: 'saml',
+				wasDisabledLdapUser: false,
+				source: 'scim',
+			};
+
+			eventService.emit('user-signed-up', event);
+
+			expect(telemetry.identify).toHaveBeenCalledWith(
+				{ user_id: 'user123', user_type: 'saml', was_disabled_ldap_user: false },
+				'user123',
+			);
+			expect(telemetry.track).toHaveBeenCalledWith('User signed up', {
+				user_id: 'user123',
+				user_type: 'saml',
+				was_disabled_ldap_user: false,
+				source: 'scim',
 			});
 		});
 
