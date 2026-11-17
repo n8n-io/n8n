@@ -2,17 +2,24 @@ import { isRecord } from './gym-admin';
 
 type Entity = Record<string, unknown>;
 
-// The entities under native.<service>.<collection>[] of an overlay.
+const MAX_DEPTH = 6;
+
+// The lists of entities in an overlay: native.<service>.<collection>[], and lists nested in them
+// (the comments of an issue). Each item is [the object that holds the list, the list's name].
 function collections(overlay: Record<string, unknown>): Array<[Record<string, unknown>, string]> {
-	const { native } = overlay;
-	if (!isRecord(native)) return [];
-	return Object.values(native)
-		.filter(isRecord)
-		.flatMap((service) =>
-			Object.entries(service)
-				.filter(([, items]) => Array.isArray(items))
-				.map(([name]): [Record<string, unknown>, string] => [service, name]),
-		);
+	const found: Array<[Record<string, unknown>, string]> = [];
+	const visit = (holder: Record<string, unknown>, depth: number) => {
+		for (const [name, value] of Object.entries(holder)) {
+			if (Array.isArray(value) && value.some(isRecord)) {
+				found.push([holder, name]);
+				if (depth < MAX_DEPTH) value.filter(isRecord).forEach((item) => visit(item, depth + 1));
+			} else if (isRecord(value) && depth < MAX_DEPTH) {
+				visit(value, depth + 1);
+			}
+		}
+	};
+	if (isRecord(overlay.native)) visit(overlay.native, 0);
+	return found;
 }
 
 function entities(service: Record<string, unknown>, name: string): Entity[] {
@@ -52,6 +59,13 @@ export class SeededEntities {
 		return (
 			this.seeded.has(key) || [...this.held].some((id) => key === id || key.endsWith(`:${id}`))
 		);
+	}
+
+	/** True when the gym holds every id: the call names nothing that needs hydration. Dashes and case do not matter. */
+	knows(ids: string[]): boolean {
+		const squash = (id: string) => id.toLowerCase().replace(/-/g, '');
+		const keys = [...this.seeded.keys(), ...this.held].map(squash);
+		return ids.every((id) => keys.some((key) => key === id || key.endsWith(`:${id}`)));
 	}
 
 	/** Removes the entities that the tenant has. Returns what is left to seed. */

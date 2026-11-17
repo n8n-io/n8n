@@ -201,6 +201,9 @@ export class PlanHydrator implements Hydrator {
 	}
 
 	async hydrateWrite(toolName: string, args: Record<string, unknown>): Promise<void> {
+		// A call on an object that the gym made (an edit or a delete) has nothing to copy.
+		const named = idsInArgs(args);
+		if (named.length > 0 && this.seeded.knows(named)) return;
 		const prompt = [
 			'An agent is about to call a write tool. The call runs in the gym only. Make sure the objects it refers to (its parent, target page, database or issue) exist in the gym with their real ids, so the call can run. Do not apply its change.',
 			`Tool: ${toolName}`,

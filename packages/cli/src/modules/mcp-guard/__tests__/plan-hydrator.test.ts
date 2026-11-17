@@ -256,6 +256,13 @@ describe('PlanHydrator', () => {
 		expect(seeds).toEqual([]);
 	});
 
+	it('does not hydrate a write on an object that a write made in the gym', async () => {
+		const { hydrator, prompts } = setup([]);
+		hydrator.noteWrite('save_comment', text(JSON.stringify({ id: ID })));
+		await hydrator.hydrateWrite('delete_comment', { id: ID });
+		expect(prompts).toEqual([]);
+	});
+
 	it('goes back to the model with the gym error, and stops after two repairs', async () => {
 		const bad = JSON.stringify({ overlay: { a: 1 } });
 		const { hydrator, seedErrors, prompts } = setup([bad, bad, bad, bad]);

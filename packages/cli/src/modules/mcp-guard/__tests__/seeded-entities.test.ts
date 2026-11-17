@@ -83,4 +83,24 @@ describe('SeededEntities', () => {
 			native: { linear: { teams: [], projects: [{ ref: 'project:p', team: 'team:LHO' }] } },
 		});
 	});
+
+	it('removes a nested entity that the tenant has', () => {
+		const seeded = new SeededEntities();
+		seeded.hold(['c-1']);
+		const left = seeded.dedupe({
+			native: {
+				linear: { issues: [{ ref: 'issue:a', comments: [{ id: 'c-1' }, { id: 'c-2' }] }] },
+			},
+		});
+		expect(left).toEqual({
+			native: { linear: { issues: [{ ref: 'issue:a', comments: [{ id: 'c-2' }] }] } },
+		});
+	});
+
+	it('knows when it holds every id', () => {
+		const seeded = new SeededEntities();
+		seeded.hold(['91f85091-a3fe-4d7d-a6ba-e43b5805ec12']);
+		expect(seeded.knows(['91f85091a3fe4d7da6bae43b5805ec12'])).toBe(true);
+		expect(seeded.knows(['91f85091a3fe4d7da6bae43b5805ec12', 'trust1'])).toBe(false);
+	});
 });
