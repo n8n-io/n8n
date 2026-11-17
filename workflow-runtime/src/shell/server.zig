@@ -3859,6 +3859,34 @@ test "a reply larger than the connection buffer uses a large buffer, else a 500"
     try std.testing.expect(std.mem.startsWith(u8, got, "HTTP/1.1 200"));
 }
 
+test "a run that failed answers its webhook with the body of n8n, without the reason" {
+    var t: TestRunner = .{ .arena = undefined };
+    try t.start();
+    defer t.deinit();
+    const r = t.r;
+    r.in_perform = true;
+    defer r.in_perform = false;
+    var buf: [4096]u8 = undefined;
+
+    // The core gives the reason as the payload; the caller of the webhook does not get it.
+    const c = try t.client("");
+    defer sys.close(c.fd);
+    const reason = "{\"name\":\"NodeApiError\",\"message\":\"the reason of the node\",\"httpCode\":\"400\"}";
+    r.replyFromCore(c.idx, .{ .kind = .reply, .aux = 500, .payload = reason, .seq = core.reply_failed });
+    const failed = t.response(c.fd, &buf);
+    try std.testing.expect(std.mem.startsWith(u8, failed, "HTTP/1.1 500"));
+    try std.testing.expect(std.mem.endsWith(u8, failed, "{\"message\":\"Error in workflow\"}"));
+    try std.testing.expect(std.mem.indexOf(u8, failed, "the reason of the node") == null);
+
+    // A response with status 500 that the workflow made keeps its body.
+    const c2 = try t.client("");
+    defer sys.close(c2.fd);
+    r.replyFromCore(c2.idx, .{ .kind = .reply, .aux = 500, .payload = "{\"mine\":true}" });
+    const own = t.response(c2.fd, &buf);
+    try std.testing.expect(std.mem.startsWith(u8, own, "HTTP/1.1 500"));
+    try std.testing.expect(std.mem.endsWith(u8, own, "{\"mine\":true}"));
+}
+
 // ---- fallback host connections ------------------------------------------------------
 
 const no_host = "/nonexistent/wfrt-test-fallback.sock";

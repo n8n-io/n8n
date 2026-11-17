@@ -19,7 +19,8 @@
 					"state": "open"
 				},
 				"credential": "github",
-				"allowedDomains": true
+				"allowedDomains": true,
+				"followRedirects": false
 			}
 		},
 		{
@@ -36,7 +37,8 @@
 					"body": "Seen 2 issues"
 				},
 				"credential": "github",
-				"allowedDomains": true
+				"allowedDomains": true,
+				"followRedirects": false
 			}
 		},
 		{
@@ -53,7 +55,8 @@
 					"body": "Seen 2 issues"
 				},
 				"credential": "github",
-				"allowedDomains": true
+				"allowedDomains": true,
+				"followRedirects": false
 			}
 		},
 		{
@@ -66,7 +69,8 @@
 					"accept": "application/json,text/html,application/xhtml+xml,application/xml,text/*;q=0.9, image/*;q=0.8, */*;q=0.7"
 				},
 				"qs": {},
-				"allowedDomains": true
+				"allowedDomains": true,
+				"followRedirects": false
 			}
 		}
 	]

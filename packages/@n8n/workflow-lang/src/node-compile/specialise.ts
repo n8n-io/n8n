@@ -145,6 +145,8 @@ const REQUEST_SOURCE = `async function __request(options, wrapped, legacy) {
 		qs: __plain(options.qs ?? {}),
 		body: parts !== undefined ? undefined : form !== undefined && form !== null ? __form(__plain(form)) : __plain(__sendBody(options.body)),
 		multipart: parts,
+		acceptAs: legacy ? 'legacy' : 'request',
+		json: options.json,
 		responseBinary: bytes ? {} : undefined,
 		basicAuth: auth ? { user: auth.user ?? auth.username ?? '', password: auth.pass ?? auth.password ?? '' } : undefined,
 		inject: wrapped,

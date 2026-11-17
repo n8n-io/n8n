@@ -428,6 +428,7 @@ function requestForm(name: string, has: (key: RequestKey) => boolean, flags: Req
 		qs: ${has('qs') ? '__plain(options.qs ?? {})' : '{}'},
 		body: ${parts ? `parts !== undefined ? undefined : ${encoded}` : encoded},
 		multipart: ${parts ? 'parts' : 'undefined'},
+		acceptAs: ${flags.legacy ? "'legacy'" : "'request'"},${flags.json === 'undefined' ? '' : `\n\t\tjson: ${flags.json},`}
 		responseBinary: undefined,
 		basicAuth: ${has('auth') ? "auth ? { user: auth.user ?? auth.username ?? '', password: auth.pass ?? auth.password ?? '' } : undefined" : 'undefined'},
 		inject: ${flags.wrapped},
@@ -450,6 +451,7 @@ interface RequestFlags {
 	tokenOptions: boolean;
 	lenient: string;
 	full: string;
+	json: string;
 	constants: RequestConstants;
 }
 
@@ -582,6 +584,7 @@ function lowerRequests(sf: ts.SourceFile): string | undefined {
 			legacy: isLegacy,
 			headersAreObjects: shape.headersAreObjects,
 			tokenOptions,
+			json: shape.maybe.has('json') ? 'options.json' : 'undefined',
 			lenient: !honoursLenient
 				? ''
 				: isLegacy
@@ -610,6 +613,7 @@ function lowerRequests(sf: ts.SourceFile): string | undefined {
 			tokenOptions,
 			flags.lenient !== '',
 			flags.full !== '',
+			flags.json !== 'undefined',
 		];
 		const id = bits.reduce((sum, bit, k) => sum + (bit ? 2 ** k : 0), 0).toString(36);
 		const fixed = JSON.stringify(template.constants);

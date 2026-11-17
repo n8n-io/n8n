@@ -342,7 +342,8 @@ function webhookItemFields(
 	const test = str(`${urls.test}/${tail}`);
 	return (
 		`...(trigger.webhookUrl === '' ? {} : { webhookUrl: trigger.webhookUrl ?? (trigger.executionMode === 'test' ? ${test} : ${production}) }), ` +
-		"...(trigger.executionMode === '' ? {} : { executionMode: trigger.executionMode ?? 'production' }), "
+		"...(trigger.executionMode === '' ? {} : { executionMode: trigger.executionMode ?? 'production' }), " +
+		'...(trigger.jwtPayload === undefined ? {} : { jwtPayload: trigger.jwtPayload }), '
 	);
 }
 

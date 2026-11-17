@@ -40,6 +40,11 @@ interface HttpRequestParameters {
 	multipart?: FormRow[];
 	/** Before version 4.2, a repeated name replaces the earlier value (one object). */
 	multipartAssign?: boolean;
+	/**
+	 * `options.sendCredentialsOnCrossOriginRedirect` of the node. Without it, versions 3 to
+	 * 4.3 send the credential to another origin after a redirect, and the other versions do not.
+	 */
+	sendCredentialsOnCrossOriginRedirect?: boolean;
 	/** The n8n credential behind `credential`. */
 	credentialId?: string;
 	/** The n8n credential type behind `credential`. */
@@ -361,6 +366,15 @@ function sameOrigin(first: string, next: string): boolean {
 	return from.startsWith('http://') && !host.includes(':') && to === `https://${host}`;
 }
 
+/** The headers without those of the body, as n8n-core drops them when the method becomes GET. */
+function withoutContent(headers: Record<string, string>): Record<string, string> {
+	const kept: Record<string, string> = {};
+	for (const name of Object.keys(headers)) {
+		if (!name.toLowerCase().startsWith('content-')) kept[name] = headers[name];
+	}
+	return kept;
+}
+
 /** The headers without those that authenticate a request, as n8n-core drops them. */
 function withoutAuthentication(headers: Record<string, string>): Record<string, string> {
 	const kept: Record<string, string> = {};
@@ -603,11 +617,15 @@ export default defineNode<HttpRequestParameters>({
 				credential,
 				tokenExpiredStatusCode,
 				allowedDomains: true,
+				// The node sends the request of each redirect itself, with the rules of the v1 node.
+				followRedirects: false,
 			});
 		} catch (error) {
 			if (!continues) throw error;
 			return [failedRequestItem(error, version)];
 		}
+		const sendsCredentials =
+			parameters.sendCredentialsOnCrossOriginRedirect ?? (version >= 3 && version < 4.4);
 		// The v1 node follows redirects (axios, at most 21). 303 changes the method to GET;
 		// 307 and 308 keep the method and the body.
 		let url = parameters.url;
@@ -618,22 +636,28 @@ export default defineNode<HttpRequestParameters>({
 			if (![301, 302, 303, 307, 308].includes(status) || typeof location !== 'string') break;
 			url = resolveUrl(url, location);
 			const keep = status === 307 || status === 308;
+			const before = current;
 			current = keep ? current : status === 303 || current !== 'HEAD' ? 'GET' : current;
-			// From version 4.4, the v1 node sends what authenticates the request only to the
-			// origin of the first URL. The credential stays in the request for its allowed domains.
-			const authenticates = version < 4.4 || sameOrigin(parameters.url, url);
+			// The v1 node sends what authenticates the request to another origin only when
+			// `sendCredentialsOnCrossOriginRedirect` is set; versions 3 to 4.3 set it by default.
+			// The credential stays in the request for its allowed domains.
+			const authenticates = sendsCredentials || sameOrigin(parameters.url, url);
+			const downgraded = current === 'GET' && before !== 'GET';
+			let headers = authenticates ? sent.headers : withoutAuthentication(sent.headers);
+			if (downgraded) headers = withoutContent(headers);
 			try {
 				response = await ctx.http<unknown>({
 					method: current,
 					url,
-					headers: authenticates ? sent.headers : withoutAuthentication(sent.headers),
+					headers,
 					qs: {},
 					body: keep ? sent.body : undefined,
 					multipart: keep ? sent.multipart : undefined,
 					credential,
-					...(authenticates ? {} : { inject: false }),
+					inject: authenticates ? 'redirect' : 'redirectOtherOrigin',
 					tokenExpiredStatusCode,
 					allowedDomains: true,
+					followRedirects: false,
 				});
 			} catch (error) {
 				if (!continues) throw error;

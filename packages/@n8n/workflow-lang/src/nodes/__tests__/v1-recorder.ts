@@ -336,6 +336,7 @@ function installFakeHttp(
 				headers: snapshot(options.headers),
 				body: snapshot(options.body),
 				auth: snapshot(options.auth),
+				acceptDefault: options.json ? 'application/json' : 'application/json, text/plain, */*',
 			});
 			const r = next();
 			if ((r.status ?? 200) >= 400 && options.ignoreHttpStatusErrors) {
@@ -372,6 +373,7 @@ function installFakeHttp(
 				body: snapshot(body),
 				auth: snapshot(options.auth),
 				qsFormat: repeat ? 'repeat' : 'brackets',
+				acceptDefault: options.json === true ? 'application/json' : '*/*',
 			});
 			const r = next();
 			// `simple: false`: the request library gives the answer of a failed request.
@@ -587,6 +589,7 @@ async function recordInEngine(
 	}
 	return {
 		requests: recorded.map(normalizeRequest),
+		accepts: recorded.map((request) => request.acceptDefault ?? null),
 		...(testCase.serviceResults ? { services } : {}),
 		outputs: workflow.deepCopy(Array.from(outputs, (list) => list ?? [])),
 		paired: workflow.deepCopy(Array.from(paired, (list) => list ?? [])),
@@ -670,6 +673,7 @@ export async function recordV1(
 		const items: AnyRecord[] = result.outputs?.[0] ?? [];
 		return {
 			requests: recorded.map(normalizeRequest),
+			accepts: recorded.map((request) => request.acceptDefault ?? null),
 			...(testCase.serviceResults ? { services } : {}),
 			output: load().workflow.deepCopy(items.map(outputItem)),
 		};
@@ -677,6 +681,7 @@ export async function recordV1(
 		const message = error instanceof Error ? error.message : String(error);
 		return {
 			requests: recorded.map(normalizeRequest),
+			accepts: recorded.map((request) => request.acceptDefault ?? null),
 			...(testCase.serviceResults ? { services } : {}),
 			error: message,
 		};
@@ -712,6 +717,9 @@ let buildIdentity: string | undefined;
  * A recording stays valid while the built packages and the recorder itself do
  * not change: the size and time of the build outputs, and the text of the recorder.
  */
+/** The form of a recording. A new member of `Recording` needs a new value, so old files are not read. */
+const RECORDING_FORM = 'accepts-1';
+
 function identityOfBuild(): string {
 	if (buildIdentity !== undefined) return buildIdentity;
 	const parts = buildFiles().map((file) => {
@@ -787,7 +795,7 @@ function store(file: string, recording: Recording): boolean {
 export async function recordV1Cached(testCase: EquivalenceCase): Promise<Recording> {
 	const file = join(
 		CACHE_DIR,
-		`${digest(`${identityOfBuild()}\n${JSON.stringify(testCase)}`)}.json`,
+		`${digest(`${RECORDING_FORM}\n${identityOfBuild()}\n${JSON.stringify(testCase)}`)}.json`,
 	);
 	const count = entriesInCache();
 	const stored = storedRecording(file);

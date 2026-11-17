@@ -674,6 +674,16 @@ function lowerHttpLibrary(c: NodeContext): void {
 			kept.push([key, literal(value)]);
 		}
 		if (kept.length > 0) entries.push(['response', { kind: 'object', entries: kept }]);
+		const sendCredentials = options.sendCredentialsOnCrossOriginRedirect;
+		if (typeof sendCredentials === 'boolean') {
+			entries.push(['sendCredentialsOnCrossOriginRedirect', raw(String(sendCredentials))]);
+		} else if (sendCredentials !== undefined) {
+			throw new NodeFailure(
+				'http',
+				'The option "sendCredentialsOnCrossOriginRedirect" is an expression.',
+				'options',
+			);
+		}
 		paging = readPaging(c, options);
 		const fileType = p.contentType === 'binaryData' || p.contentType === 'multipart-form-data';
 		if (paging && p.sendBody === true && fileType) {

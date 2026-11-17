@@ -9,6 +9,7 @@ const loadgen = @import("shell/loadgen.zig");
 const bench = @import("shell/bench.zig");
 const programs = @import("shell/programs.zig");
 const creds = @import("shell/creds.zig");
+const request = @import("shell/request.zig");
 const cronnext = @import("shell/cronnext.zig");
 const growth = @import("shell/growth.zig");
 const egress = @import("shell/egress.zig");
@@ -30,7 +31,7 @@ const usage =
     \\        [--egress-max-requests N] [--egress-max-conns N] [--egress-max-origins N]
     \\        [--egress-origin-conns N] [--egress-origin-inflight N] [--egress-origin-queue N] [--egress-origin-rate R] [--egress-origin-burst B]
     \\        [--egress-connect-timeout-ms T] [--egress-read-timeout-ms T] [--egress-timeout-ms T] [--egress-retry-after-max-ms T] [--egress-stuck-ms T]
-    \\        [--egress-h2 on|off] [--egress-h2-conns N] [--egress-h2-streams N] [--egress-aimd on|off] [--egress-pool shared|workflow|credential] [--io poll|uring|auto] [--ring-buffers N]
+    \\        [--egress-h2 on|off] [--egress-h2-conns N] [--egress-h2-streams N] [--egress-aimd on|off] [--egress-pool shared|workflow|credential] [--egress-user-agent TEXT] [--io poll|uring|auto] [--ring-buffers N]
     \\        [--egress-origin "<host>[:port] conns=N inflight=N queue=N rate=R burst=B connect-ms=T read-ms=T timeout-ms=T h2=on|off|prior aimd=on|off"]...
     \\        (--module FILE.wfm --route "POST /path" [--rate R --burst B --concurrency C])...
     \\  load [--host IPv4] --port P [--conns C] [--seconds S] [--path /p] [--body BYTES] [--threads T] [--pipeline K]
@@ -352,6 +353,13 @@ fn serve(process_gpa: std.mem.Allocator, io: std.Io, args: []const [:0]const u8)
                 std.debug.print("--ring-buffers takes a power of two up to 32768\n", .{});
                 std.process.exit(2);
             }
+        }
+        if (std.mem.eql(u8, k, "--egress-user-agent")) {
+            if (!request.validUserAgent(v)) {
+                std.debug.print("--egress-user-agent takes 1 to 256 printable bytes\n", .{});
+                std.process.exit(2);
+            }
+            opts.egress.user_agent = v;
         }
         if (std.mem.eql(u8, k, "--egress-pool")) {
             opts.egress.pool = std.meta.stringToEnum(egress.Pool, v) orelse {
