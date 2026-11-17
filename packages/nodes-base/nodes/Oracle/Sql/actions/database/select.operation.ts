@@ -148,7 +148,7 @@ export async function execute(
 		let rules = sortRules;
 
 		const returnAll = this.getNodeParameter('returnAll', i, false);
-		const startAfter = returnAll ? undefined : getStartAfter(this, i);
+		const startAfter = returnAll ? undefined : getStartAfter(this, i, '');
 		if (startAfter) {
 			const { column, value } = startAfter;
 			if (!columnMetaDataObject[column]) {
