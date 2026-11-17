@@ -1,0 +1,20 @@
+packages/quality/testing/playwright/tests/e2e/type-availability-policies/node-type-policy.spec.ts
+  s_1a73b1a5f250ff::t_7b9dee641e1c30 129-133
+  s_1a73b1a5f250ff::t_5b2a573d333faf 116
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "fb95831a700d01f831f8c375850d11630def63fd",
+  "prompts": {},
+  "sessions": {
+    "s_1a73b1a5f250ff": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "55a84036-1b23-4a26-9eb4-4147705d2ca8",
+        "model": "claude-sonnet-5-5"
+      },
+      "human_author": "Sandra Zollner <sandra.zollner@n8n.io>"
+    }
+  }
+}

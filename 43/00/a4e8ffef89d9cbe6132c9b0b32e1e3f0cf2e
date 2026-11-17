@@ -1,0 +1,31 @@
+packages/frontend/editor-ui/src/features/agents/components/AgentCapabilityGroup.vue
+  s_36456758792231::t_5e59b495f56218 2-29,33-73,77-107
+  s_36456758792231::t_891892e774cb0c 1,30-32,74-76,108
+packages/frontend/editor-ui/src/features/agents/components/AgentCapabilitiesSection.vue
+  s_36456758792231::t_9820dd4394914e 48,62-63,84,88,611,613-614,757,759,761-762,796,803,809,811-812,848-849
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_36456758792231::t_59854380fc26b3 10417-10420
+packages/frontend/editor-ui/src/features/agents/components/AgentSkillsSection.vue
+  s_36456758792231::t_62be7c43c94729 9,43-45,69
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentBuilderEditorColumn.spec.ts
+  s_36456758792231::t_bc1b0e7a047edd 649,652
+packages/frontend/editor-ui/src/features/agents/components/AgentBuilderEditorColumn.vue
+  s_36456758792231::t_9659c7db22270b 276
+  s_36456758792231::t_2d30c2f7100838 285,292,294-296
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "4300a4e8ffef89d9cbe6132c9b0b32e1e3f0cf2e",
+  "prompts": {},
+  "sessions": {
+    "s_36456758792231": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "01a1e4b9-762f-75f5-9e85-dc5ac718b949",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "heymynameisrob <robhough180@gmail.com>"
+    }
+  }
+}
