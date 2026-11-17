@@ -173,6 +173,74 @@ describe('CompiledRunRecorder', () => {
 	});
 });
 
+describe('CompiledRunRecorder: helper steps of a node', () => {
+	const helperNodes = [...nodes, node('Seen (first)', 'n8n-nodes-base.removeDuplicates')];
+	const before = 'Seen (first) (history size)';
+	const after = 'Seen (first) (history size after)';
+
+	it('gives the node one run, with the items of its trace', () => {
+		const recorder = new CompiledRunRecorder({ nodes: helperNodes, connections });
+		const updates = [
+			...recorder.onStep(step(before, 'started', 1)),
+			...recorder.onStep(step(before, 'completed', 2, { result: 3 })),
+			...recorder.onStep(step('Seen (first)', 'started', 3)),
+			...recorder.onStep(
+				step('Seen (first)', 'completed', 4, { result: { new: ['a'], processed: [] } }),
+			),
+			...recorder.onStep(step(after, 'started', 5)),
+			...recorder.onStep(step(after, 'completed', 6, { result: 4 })),
+			...recorder.onTrace(trace('Seen (first)', [[{ id: 'a' }], []], 7)),
+			...recorder.finish(finished('ok', 8)).updates,
+		];
+
+		expect(Object.keys(recorder.getRunData())).toEqual(['Seen (first)']);
+		const runs = recorder.getRunData()['Seen (first)'];
+		expect(runs).toHaveLength(1);
+		expect(runs[0].data?.main).toEqual([[{ json: { id: 'a' } }], []]);
+		expect(new Set(updates.map((update) => update.nodeName))).toEqual(new Set(['Seen (first)']));
+	});
+
+	it('has no run for the wait between two tries of a node', () => {
+		const recorder = new CompiledRunRecorder({ nodes, connections });
+		const updates = [
+			...recorder.onStep(step('HTTP Request (retry)', 'started', 1)),
+			...recorder.onStep(step('HTTP Request (retry)', 'completed', 2)),
+		];
+		expect(updates).toEqual([]);
+		expect(recorder.getRunData()).toEqual({});
+	});
+
+	it('records a failed helper step as the error of its node', () => {
+		const recorder = new CompiledRunRecorder({ nodes: helperNodes, connections });
+		recorder.onStep(step(before, 'started', 1));
+		recorder.onStep(step(before, 'failed', 2, { error: 'The store did not answer' }));
+		const { error } = recorder.finish({ ...finished('error', 3), step: before });
+
+		const task = recorder.getRunData()['Seen (first)'][0];
+		expect(task.executionStatus).toBe('error');
+		expect(task.error?.message).toBe('The store did not answer');
+		expect(recorder.failed?.nodeName).toBe('Seen (first)');
+		expect(error).toMatchObject({ node: { name: 'Seen (first)' } });
+	});
+
+	it('names the node when only the end of the execution names the helper step', () => {
+		const recorder = new CompiledRunRecorder({ nodes: helperNodes, connections });
+		const { error } = recorder.finish({
+			...finished('error', 3, 'The history is full'),
+			step: before,
+		});
+		expect(error).toMatchObject({ node: { name: 'Seen (first)' } });
+	});
+
+	it('keeps a node with the name of a helper step as its own node', () => {
+		const own = [...nodes, node('Set (retry)', 'n8n-nodes-base.set')];
+		const recorder = new CompiledRunRecorder({ nodes: own, connections });
+		recorder.onTrace(trace('Set (retry)', [{ a: 1 }], 1));
+		recorder.finish(finished('ok', 2));
+		expect(Object.keys(recorder.getRunData())).toEqual(['Set (retry)']);
+	});
+});
+
 describe('helpers', () => {
 	it('reads multi-output trace items', () => {
 		expect(toOutputs([[{ a: 1 }], [{ b: 2 }]])).toEqual([

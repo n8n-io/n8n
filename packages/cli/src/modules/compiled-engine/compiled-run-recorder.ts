@@ -229,6 +229,35 @@ export class CompiledRunRecorder {
 		return step.slice(0, -HOST_STEP_SUFFIX.length);
 	}
 
+	/**
+	 * The node of a helper step. The converter names the other steps of a node
+	 * `<node> (<role>)`, for example the wait between two tries (`retry`) and the calls
+	 * that read the size of a deduplication history. v1 has one run for the node, so a
+	 * helper step has no run of its own. The converter gives no helper step the name of
+	 * a node of the workflow.
+	 */
+	private helperOf(step: string): string | undefined {
+		if (this.nodesByName.has(step) || !step.endsWith(')')) return undefined;
+		for (let at = step.lastIndexOf(' ('); at > 0; at = step.lastIndexOf(' (', at - 1)) {
+			const node = step.slice(0, at);
+			if (this.nodesByName.has(node)) return node;
+		}
+		return undefined;
+	}
+
+	/** A helper step that failed is the failure of its node. Its other events add nothing. */
+	private onHelperStep(node: string, event: WfrtStepEvent): NodeUpdate[] {
+		const updates: NodeUpdate[] = [];
+		if (event.status !== 'failed') return updates;
+		this.flushTrigger(updates, node);
+		this.closeOthers(node, event.at, updates);
+		const run = this.ensureOpen(node, event.at, updates);
+		run.endTime = event.at;
+		run.error = event.error ?? 'The step failed';
+		this.failedNode = { nodeName: node, message: run.error };
+		return updates;
+	}
+
 	/** The run data of the runs that have ended. */
 	getRunData(): IRunData {
 		return this.runData;
@@ -258,7 +287,10 @@ export class CompiledRunRecorder {
 	onStep(event: WfrtStepEvent): NodeUpdate[] {
 		const updates: NodeUpdate[] = [];
 		const step = this.nodeOf(event.step);
-		if (!this.nodesByName.has(step)) return updates;
+		if (!this.nodesByName.has(step)) {
+			const owner = this.helperOf(event.step);
+			return owner === undefined ? updates : this.onHelperStep(owner, event);
+		}
 		this.flushTrigger(updates, step);
 		if (event.status === 'retrying') return updates;
 		this.closeOthers(step, event.at, updates);
@@ -379,8 +411,9 @@ export class CompiledRunRecorder {
 	}
 
 	private executionError(event: WfrtFinishedEvent): ExecutionError {
-		if (!this.failedNode && event.step && this.nodesByName.has(event.step)) {
-			this.failedNode = { nodeName: event.step, message: event.error ?? 'The step failed' };
+		const failedStep = event.step ? (this.helperOf(event.step) ?? event.step) : undefined;
+		if (!this.failedNode && failedStep && this.nodesByName.has(failedStep)) {
+			this.failedNode = { nodeName: failedStep, message: event.error ?? 'The step failed' };
 		}
 		if (event.status === 'cancelled') {
 			return new WorkflowOperationError('The execution was stopped');

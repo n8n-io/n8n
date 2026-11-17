@@ -927,7 +927,14 @@ function lowerDeduplicationStore(c: NodeContext): void {
 		);
 	}
 	const { w } = c;
-	// A step name is unique: the calls that read the size of the history have their own names.
+	// A step name is unique: the calls that read the size of the history are helper steps,
+	// with the name `<node> (<role>)`. n8n shows a helper step as a part of its node, so no
+	// node of the workflow can have that name.
+	for (const suffix of [' (history size)', ' (history size after)']) {
+		if (c.workflow.nodes.some((n) => n.name === `${c.node.name}${suffix}`)) {
+			host('A node of the workflow has the name of a helper step of this node.', 'operation');
+		}
+	}
 	const call = (op: string, options: string, items?: string, suffix = ''): string =>
 		`await ctx.service({ name: ${str(`${c.node.name}${suffix}`)}, service: 'deduplication', op: '${op}', args: { ${
 			items === undefined ? '' : `items: ${items}, `
