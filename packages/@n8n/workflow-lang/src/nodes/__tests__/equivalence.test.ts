@@ -87,6 +87,8 @@ interface ParsedMail {
 	subject?: string;
 	text?: string;
 	html?: string | false;
+	inReplyTo?: string;
+	references?: string | string[];
 }
 type SimpleParser = (source: Buffer) => Promise<ParsedMail>;
 
@@ -108,6 +110,8 @@ async function readMime(raw: string): Promise<unknown> {
 		bcc: list(mail.bcc),
 		replyTo: list(mail.replyTo),
 		subject: mail.subject,
+		inReplyTo: mail.inReplyTo,
+		references: mail.references,
 		// The parser adds the final line break of a 7bit or quoted-printable part.
 		text: mail.html ? undefined : mail.text?.replace(/\n+$/, ''),
 		html: mail.html ? withoutInstanceId(mail.html).replace(/\n+$/, '') : undefined,
@@ -118,8 +122,13 @@ async function readMime(raw: string): Promise<unknown> {
 async function withParsedMime(requests: NormalRequest[]): Promise<NormalRequest[]> {
 	const out: NormalRequest[] = [];
 	for (const request of requests) {
+		const draft = isRecord(request.body) ? request.body.message : undefined;
 		if (isRecord(request.body) && typeof request.body.raw === 'string') {
 			out.push({ ...request, body: { ...request.body, raw: await readMime(request.body.raw) } });
+		} else if (isRecord(request.body) && isRecord(draft) && typeof draft.raw === 'string') {
+			// A Gmail draft holds the message in `message.raw`.
+			const message = { ...draft, raw: await readMime(draft.raw) };
+			out.push({ ...request, body: { ...request.body, message } });
 		} else {
 			out.push(request);
 		}

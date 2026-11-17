@@ -2740,8 +2740,16 @@
 					"authorization": "Bearer fake-gmail-token"
 				},
 				"body": {
-					"raw": "VG86IGFkYUBleGFtcGxlLmNvbSwgQm9iIDxib2JAZXhhbXBsZS5jb20-DQpDYzogY0BleGFtcGxlLmNvbQ0KUmVwbHktVG86IG9wc0BleGFtcGxlLmNvbQ0KU3ViamVjdDogV2Vla2x5IHJlcG9ydA0KTWVzc2FnZS1JRDogPDMyMmY2YjRkLTBiMGQtNzkxMC02ZGRiLThiYzkwNGJmYjg3YkBleGFtcGxlLmNvbT4NCkNvbnRlbnQtVHJhbnNmZXItRW5jb2Rpbmc6IDdiaXQNCkRhdGU6IFRodSwgMTIgTm92IDIwMjYgMTM6NTE6MzIgKzAwMDANCk1JTUUtVmVyc2lvbjogMS4wDQpDb250ZW50LVR5cGU6IHRleHQvcGxhaW47IGNoYXJzZXQ9dXRmLTgNCg0KQWxsIGdyZWVuLgoKLS0tClRoaXMgZW1haWwgd2FzIHNlbnQgYXV0b21hdGljYWxseSB3aXRoIG44bgpodHRwczovL244bi5pbw0K"
-				}
+					"raw": "VG86IGFkYUBleGFtcGxlLmNvbSwgQm9iIDxib2JAZXhhbXBsZS5jb20-DQpDYzogY0BleGFtcGxlLmNvbQ0KUmVwbHktVG86IG9wc0BleGFtcGxlLmNvbQ0KU3ViamVjdDogV2Vla2x5IHJlcG9ydA0KTWVzc2FnZS1JRDogPGMyNmQ4MGU1LTYzMTAtMjI1ZS0xMTk4LWU0M2JkOGE3ZGUxOEBleGFtcGxlLmNvbT4NCkNvbnRlbnQtVHJhbnNmZXItRW5jb2Rpbmc6IDdiaXQNCkRhdGU6IFR1ZSwgMTcgTm92IDIwMjYgMTI6NDQ6NTggKzAwMDANCk1JTUUtVmVyc2lvbjogMS4wDQpDb250ZW50LVR5cGU6IHRleHQvcGxhaW47IGNoYXJzZXQ9dXRmLTgNCg0KQWxsIGdyZWVuLgoKLS0tClRoaXMgZW1haWwgd2FzIHNlbnQgYXV0b21hdGljYWxseSB3aXRoIG44bgpodHRwczovL244bi5pbw0K"
+				},
+				"qsFormat": "repeat"
+			}
+		],
+		"wire": [
+			{
+				"accept": "application/json",
+				"contentType": "application/json",
+				"userAgent": "n8n"
 			}
 		],
 		"output": [
@@ -2749,6 +2757,389 @@
 				"id": "m1",
 				"threadId": "t1",
 				"labelIds": ["SENT"]
+			}
+		]
+	},
+	"gmail draft.create text with all addresses": {
+		"requests": [
+			{
+				"method": "POST",
+				"url": "https://www.googleapis.com/gmail/v1/users/me/drafts",
+				"qs": {},
+				"headers": {
+					"accept": "application/json",
+					"authorization": "Bearer fake-gmail-token"
+				},
+				"body": {
+					"message": {
+						"raw": "RnJvbTogT3BzIEJvdCA8YWxpYXNAZXhhbXBsZS5jb20-DQpUbzogYWRhQGV4YW1wbGUuY29tLCA9P1VURi04P1E_Sj1DMz1CNnJnX009QzM9QkNsbGVyPz0gPGptQGV4YW1wbGUuY29tPiwNCiAiSmFuZSAoT3BzKSIgPGpkQGV4YW1wbGUuY29tPg0KQ2M6IGNAZXhhbXBsZS5jb20NCkJjYzogQXVkaXQgVGVhbSA8YXVkaXRAZXhhbXBsZS5jb20-DQpSZXBseS1Ubzogb3BzQGV4YW1wbGUuY29tDQpTdWJqZWN0OiA9P1VURi04P1E_UGxhbl9mPUMzPUJDcl89MjJRMz0yMl89RTI9ODA9OTRfYV9zdWJqZT89DQogPT9VVEYtOD9RP2N0X2xpbmVfdGhhdF9pc19sb25nX2Vub3VnaF90b19uZWVkX21vcmU_PQ0KID0_VVRGLTg_UT9fdGhhbl9vbmVfZW5jb2RlZF93b3JkPz0NCk1lc3NhZ2UtSUQ6IDw5MDM1NGM4Yi1iY2Q4LWI2MTItOWY5OC1jZDQ5MmY5ZDE5YWNAZXhhbXBsZS5jb20-DQpDb250ZW50LVRyYW5zZmVyLUVuY29kaW5nOiBxdW90ZWQtcHJpbnRhYmxlDQpEYXRlOiBUdWUsIDE3IE5vdiAyMDI2IDEyOjQ2OjIyICswMDAwDQpNSU1FLVZlcnNpb246IDEuMA0KQ29udGVudC1UeXBlOiB0ZXh0L3BsYWluOyBjaGFyc2V0PXV0Zi04DQoNCkxpbmUgb25lCkxpbmUgdHdvIHdpdGggPUMzPUJDbWw9QzM9QTR1dHMgYW5kIGEgbGluZSB0aGF0IGlzIGxvbmdlciB0aGFuID0NCnNldmVudHktc2l4IGNoYXJhY3RlcnMsIHRvIHNlZSB0aGUgZW5jb2RpbmcuDQo"
+					}
+				},
+				"qsFormat": "repeat"
+			},
+			{
+				"method": "POST",
+				"url": "https://www.googleapis.com/gmail/v1/users/me/drafts",
+				"qs": {},
+				"headers": {
+					"accept": "application/json",
+					"authorization": "Bearer fake-gmail-token"
+				},
+				"body": {
+					"message": {
+						"raw": "RnJvbTogT3BzIEJvdCA8YWxpYXNAZXhhbXBsZS5jb20-DQpUbzogYWRhQGV4YW1wbGUuY29tLCA9P1VURi04P1E_Sj1DMz1CNnJnX009QzM9QkNsbGVyPz0gPGptQGV4YW1wbGUuY29tPiwNCiAiSmFuZSAoT3BzKSIgPGpkQGV4YW1wbGUuY29tPg0KQ2M6IGNAZXhhbXBsZS5jb20NCkJjYzogQXVkaXQgVGVhbSA8YXVkaXRAZXhhbXBsZS5jb20-DQpSZXBseS1Ubzogb3BzQGV4YW1wbGUuY29tDQpTdWJqZWN0OiA9P1VURi04P1E_UGxhbl9mPUMzPUJDcl89MjJRMz0yMl89RTI9ODA9OTRfYV9zdWJqZT89DQogPT9VVEYtOD9RP2N0X2xpbmVfdGhhdF9pc19sb25nX2Vub3VnaF90b19uZWVkX21vcmU_PQ0KID0_VVRGLTg_UT9fdGhhbl9vbmVfZW5jb2RlZF93b3JkPz0NCk1lc3NhZ2UtSUQ6IDw3NWFlYzUxOC04ZTNhLWVjMGYtODdmYi0wMjA1MGI2MjQ2ZmFAZXhhbXBsZS5jb20-DQpDb250ZW50LVRyYW5zZmVyLUVuY29kaW5nOiBxdW90ZWQtcHJpbnRhYmxlDQpEYXRlOiBUdWUsIDE3IE5vdiAyMDI2IDEyOjQ2OjIyICswMDAwDQpNSU1FLVZlcnNpb246IDEuMA0KQ29udGVudC1UeXBlOiB0ZXh0L3BsYWluOyBjaGFyc2V0PXV0Zi04DQoNCkxpbmUgb25lCkxpbmUgdHdvIHdpdGggPUMzPUJDbWw9QzM9QTR1dHMgYW5kIGEgbGluZSB0aGF0IGlzIGxvbmdlciB0aGFuID0NCnNldmVudHktc2l4IGNoYXJhY3RlcnMsIHRvIHNlZSB0aGUgZW5jb2RpbmcuDQo"
+					}
+				},
+				"qsFormat": "repeat"
+			}
+		],
+		"wire": [
+			{
+				"accept": "application/json",
+				"contentType": "application/json",
+				"userAgent": "n8n"
+			},
+			{
+				"accept": "application/json",
+				"contentType": "application/json",
+				"userAgent": "n8n"
+			}
+		],
+		"output": [
+			{
+				"id": "r1",
+				"message": {
+					"id": "m1",
+					"threadId": "t1",
+					"labelIds": ["DRAFT"]
+				}
+			},
+			{
+				"id": "r1",
+				"message": {
+					"id": "m1",
+					"threadId": "t1",
+					"labelIds": ["DRAFT"]
+				}
+			}
+		]
+	},
+	"gmail draft.create html in a thread, no recipient": {
+		"requests": [
+			{
+				"method": "GET",
+				"url": "https://www.googleapis.com/gmail/v1/users/me/threads/thread-7",
+				"qs": {
+					"format": "metadata",
+					"metadataHeaders": ["Message-ID"]
+				},
+				"headers": {
+					"accept": "application/json",
+					"authorization": "Bearer fake-gmail-token"
+				},
+				"qsFormat": "repeat"
+			},
+			{
+				"method": "POST",
+				"url": "https://www.googleapis.com/gmail/v1/users/me/drafts",
+				"qs": {},
+				"headers": {
+					"accept": "application/json",
+					"authorization": "Bearer fake-gmail-token"
+				},
+				"body": {
+					"message": {
+						"raw": "SW4tUmVwbHktVG86IDxsYXN0QG1haWwuZXhhbXBsZS5jb20-DQpSZWZlcmVuY2VzOiA8bGFzdEBtYWlsLmV4YW1wbGUuY29tPg0KU3ViamVjdDogUmU6IE9mZmVyDQpNZXNzYWdlLUlEOiA8ODY5MDMzZTQtMDdmNS04MjVhLTBkMDUtZjU4YTY4NmE3Mzk0QGxvY2FsaG9zdD4NCkNvbnRlbnQtVHJhbnNmZXItRW5jb2Rpbmc6IDdiaXQNCkRhdGU6IFR1ZSwgMTcgTm92IDIwMjYgMTI6NDY6MjIgKzAwMDANCk1JTUUtVmVyc2lvbjogMS4wDQpDb250ZW50LVR5cGU6IHRleHQvaHRtbDsgY2hhcnNldD11dGYtOA0KDQo8cD5UaGFua3MgJmFtcDsgcmVnYXJkczwvcD4NCg",
+						"threadId": "thread-7"
+					}
+				},
+				"qsFormat": "repeat"
+			}
+		],
+		"wire": [
+			{
+				"accept": "application/json",
+				"contentType": "application/json",
+				"userAgent": "n8n"
+			},
+			{
+				"accept": "application/json",
+				"contentType": "application/json",
+				"userAgent": "n8n"
+			}
+		],
+		"output": [
+			{
+				"id": "r2",
+				"message": {
+					"id": "m2",
+					"threadId": "thread-7"
+				}
+			}
+		]
+	},
+	"gmail draft.create with no options and no text": {
+		"requests": [
+			{
+				"method": "POST",
+				"url": "https://www.googleapis.com/gmail/v1/users/me/drafts",
+				"qs": {},
+				"headers": {
+					"accept": "application/json",
+					"authorization": "Bearer fake-gmail-token"
+				},
+				"body": {
+					"message": {
+						"raw": "U3ViamVjdDogRW1wdHkNCk1lc3NhZ2UtSUQ6IDw1NGM0ZTE2Ny1lMThjLTRjNDEtNWQyMC05YWIxNmUwNmIxMWJAbG9jYWxob3N0Pg0KRGF0ZTogVHVlLCAxNyBOb3YgMjAyNiAxMjo0NjoyMiArMDAwMA0KTUlNRS1WZXJzaW9uOiAxLjANCkNvbnRlbnQtVHlwZTogdGV4dC9wbGFpbg0KDQo"
+					}
+				},
+				"qsFormat": "repeat"
+			}
+		],
+		"wire": [
+			{
+				"accept": "application/json",
+				"contentType": "application/json",
+				"userAgent": "n8n"
+			}
+		],
+		"output": [
+			{
+				"id": "r3",
+				"message": {
+					"id": "m3"
+				}
+			}
+		]
+	},
+	"gmail message.reply to the sender and the recipients": {
+		"requests": [
+			{
+				"method": "GET",
+				"url": "https://www.googleapis.com/gmail/v1/users/me/messages/msg-1",
+				"qs": {
+					"format": "metadata"
+				},
+				"headers": {
+					"accept": "application/json",
+					"authorization": "Bearer fake-gmail-token"
+				},
+				"qsFormat": "repeat"
+			},
+			{
+				"method": "GET",
+				"url": "https://www.googleapis.com/gmail/v1/users/me/profile",
+				"qs": {},
+				"headers": {
+					"accept": "application/json",
+					"authorization": "Bearer fake-gmail-token"
+				},
+				"qsFormat": "repeat"
+			},
+			{
+				"method": "POST",
+				"url": "https://www.googleapis.com/gmail/v1/users/me/messages/send",
+				"qs": {
+					"format": "metadata"
+				},
+				"headers": {
+					"accept": "application/json",
+					"authorization": "Bearer fake-gmail-token"
+				},
+				"body": {
+					"raw": "RnJvbTogT3BzIEJvdCA8TUVAZXhhbXBsZS5jb20-DQpUbzogIkxvdmVsYWNlLCBBZGEiIDxhZGFAZXhhbXBsZS5jb20-LCBCb2IgPGJvYkBleGFtcGxlLmNvbT4sIENhcm9sIEMNCiA8Y2Fyb2xAZXhhbXBsZS5jb20-DQpDYzogY0BleGFtcGxlLmNvbQ0KSW4tUmVwbHktVG86IDxhYmNAbWFpbC5leGFtcGxlLmNvbT4NClJlZmVyZW5jZXM6IDxhYmNAbWFpbC5leGFtcGxlLmNvbT4NClN1YmplY3Q6IFJlOiBUaGUgcGxhbg0KTWVzc2FnZS1JRDogPDIzZjc0NDViLWRiNzUtODc5Yy0zZjY2LWE0YjQ3ZDcyMjUwMEBleGFtcGxlLmNvbT4NCkNvbnRlbnQtVHJhbnNmZXItRW5jb2Rpbmc6IDdiaXQNCkRhdGU6IFR1ZSwgMTcgTm92IDIwMjYgMTI6NDQ6NTggKzAwMDANCk1JTUUtVmVyc2lvbjogMS4wDQpDb250ZW50LVR5cGU6IHRleHQvcGxhaW47IGNoYXJzZXQ9dXRmLTgNCg0KVGhhbmtzLCBub3RlZC4NCg",
+					"threadId": "thread-1"
+				},
+				"qsFormat": "repeat"
+			}
+		],
+		"wire": [
+			{
+				"accept": "application/json",
+				"contentType": "application/json",
+				"userAgent": "n8n"
+			},
+			{
+				"accept": "application/json",
+				"contentType": "application/json",
+				"userAgent": "n8n"
+			},
+			{
+				"accept": "application/json",
+				"contentType": "application/json",
+				"userAgent": "n8n"
+			}
+		],
+		"output": [
+			{
+				"id": "sent-1",
+				"threadId": "thread-1",
+				"labelIds": ["SENT"]
+			}
+		]
+	},
+	"gmail message.reply v2.2 to the reply address only": {
+		"requests": [
+			{
+				"method": "GET",
+				"url": "https://www.googleapis.com/gmail/v1/users/me/messages/msg-2",
+				"qs": {
+					"format": "metadata"
+				},
+				"headers": {
+					"accept": "application/json",
+					"authorization": "Bearer fake-gmail-token"
+				},
+				"qsFormat": "repeat"
+			},
+			{
+				"method": "GET",
+				"url": "https://www.googleapis.com/gmail/v1/users/me/profile",
+				"qs": {},
+				"headers": {
+					"accept": "application/json",
+					"authorization": "Bearer fake-gmail-token"
+				},
+				"qsFormat": "repeat"
+			},
+			{
+				"method": "POST",
+				"url": "https://www.googleapis.com/gmail/v1/users/me/messages/send",
+				"qs": {
+					"format": "metadata"
+				},
+				"headers": {
+					"accept": "application/json",
+					"authorization": "Bearer fake-gmail-token"
+				},
+				"body": {
+					"raw": "VG86IFN1cHBvcnQgRGVzayA8c3VwcG9ydEBleGFtcGxlLmNvbT4sIHN1cHBvcnRAZXhhbXBsZS5jb20NCkJjYzogYXVkaXRAZXhhbXBsZS5jb20NCkluLVJlcGx5LVRvOiA8ZGVmQG1haWwuZXhhbXBsZS5jb20-DQpSZWZlcmVuY2VzOiA8ZGVmQG1haWwuZXhhbXBsZS5jb20-DQpTdWJqZWN0OiA9P1VURi04P1E_R3I9QzM9QkM9QzM9OUZlPz0NCk1lc3NhZ2UtSUQ6IDwxMDA4MjZlMS1mNDI5LWRkYjMtYzVmNC01MjNkZDBhY2FhNmNAbG9jYWxob3N0Pg0KQ29udGVudC1UcmFuc2Zlci1FbmNvZGluZzogN2JpdA0KRGF0ZTogVHVlLCAxNyBOb3YgMjAyNiAxMjo0NDo1OCArMDAwMA0KTUlNRS1WZXJzaW9uOiAxLjANCkNvbnRlbnQtVHlwZTogdGV4dC9odG1sOyBjaGFyc2V0PXV0Zi04DQoNCjxiPk9rPC9iPg0K",
+					"threadId": "thread-2"
+				},
+				"qsFormat": "repeat"
+			}
+		],
+		"wire": [
+			{
+				"accept": "application/json",
+				"contentType": "application/json",
+				"userAgent": "n8n"
+			},
+			{
+				"accept": "application/json",
+				"contentType": "application/json",
+				"userAgent": "n8n"
+			},
+			{
+				"accept": "application/json",
+				"contentType": "application/json",
+				"userAgent": "n8n"
+			}
+		],
+		"output": [
+			{
+				"id": "sent-2",
+				"threadId": "thread-2"
+			}
+		]
+	},
+	"gmail thread.reply to the recipients only": {
+		"requests": [
+			{
+				"method": "GET",
+				"url": "https://www.googleapis.com/gmail/v1/users/me/messages/msg-3",
+				"qs": {
+					"format": "metadata"
+				},
+				"headers": {
+					"accept": "application/json",
+					"authorization": "Bearer fake-gmail-token"
+				},
+				"qsFormat": "repeat"
+			},
+			{
+				"method": "GET",
+				"url": "https://www.googleapis.com/gmail/v1/users/me/profile",
+				"qs": {},
+				"headers": {
+					"accept": "application/json",
+					"authorization": "Bearer fake-gmail-token"
+				},
+				"qsFormat": "repeat"
+			},
+			{
+				"method": "POST",
+				"url": "https://www.googleapis.com/gmail/v1/users/me/messages/send",
+				"qs": {
+					"format": "metadata"
+				},
+				"headers": {
+					"accept": "application/json",
+					"authorization": "Bearer fake-gmail-token"
+				},
+				"body": {
+					"raw": "VG86IGJvYkBleGFtcGxlLmNvbSwgRGFuIEQgPGRhbkBleGFtcGxlLmNvbT4NClN1YmplY3Q6IFN0YXR1cw0KTWVzc2FnZS1JRDogPDE5Y2Y3MmM5LWY2MWQtYTA1ZC1jODk2LTk1YjhjYjdiMzg3ZUBsb2NhbGhvc3Q-DQpDb250ZW50LVRyYW5zZmVyLUVuY29kaW5nOiA3Yml0DQpEYXRlOiBUdWUsIDE3IE5vdiAyMDI2IDEyOjQ0OjU4ICswMDAwDQpNSU1FLVZlcnNpb246IDEuMA0KQ29udGVudC1UeXBlOiB0ZXh0L3BsYWluOyBjaGFyc2V0PXV0Zi04DQoNClNlZSBiZWxvdy4NCg",
+					"threadId": "thread-3"
+				},
+				"qsFormat": "repeat"
+			}
+		],
+		"wire": [
+			{
+				"accept": "application/json",
+				"contentType": "application/json",
+				"userAgent": "n8n"
+			},
+			{
+				"accept": "application/json",
+				"contentType": "application/json",
+				"userAgent": "n8n"
+			},
+			{
+				"accept": "application/json",
+				"contentType": "application/json",
+				"userAgent": "n8n"
+			}
+		],
+		"output": [
+			{
+				"id": "sent-3",
+				"threadId": "thread-3"
+			}
+		]
+	},
+	"gmail draft.create with an address that has no at sign": {
+		"requests": [],
+		"wire": [],
+		"error": "Invalid email address (item 0)"
+	},
+	"gmail message.send names that are not ASCII and a subject with a line break": {
+		"requests": [
+			{
+				"method": "POST",
+				"url": "https://www.googleapis.com/gmail/v1/users/me/messages/send",
+				"qs": {},
+				"headers": {
+					"accept": "application/json",
+					"authorization": "Bearer fake-gmail-token"
+				},
+				"body": {
+					"raw": "VG86ID0_VVRGLTg_UT9abz1DMz1BQl9LPTJFPz0gPHpvZUBleGFtcGxlLmNvbT4sIHBsYWluQGV4YW1wbGUuY29tDQpTdWJqZWN0OiBGaXJzdCBsaW5lIHNlY29uZCBsaW5lDQpNZXNzYWdlLUlEOiA8NzJhYTRjYzgtYjNlNy00MDM0LTRhNDctZDBlOWIxMTdhOWUwQGxvY2FsaG9zdD4NCkNvbnRlbnQtVHJhbnNmZXItRW5jb2Rpbmc6IDdiaXQNCkRhdGU6IFR1ZSwgMTcgTm92IDIwMjYgMTI6NDQ6NTggKzAwMDANCk1JTUUtVmVyc2lvbjogMS4wDQpDb250ZW50LVR5cGU6IHRleHQvcGxhaW47IGNoYXJzZXQ9dXRmLTgNCg0KSGVsbG8NCg"
+				},
+				"qsFormat": "repeat"
+			}
+		],
+		"wire": [
+			{
+				"accept": "application/json",
+				"contentType": "application/json",
+				"userAgent": "n8n"
+			}
+		],
+		"output": [
+			{
+				"id": "m9",
+				"threadId": "t9"
 			}
 		]
 	},
@@ -2761,7 +3152,8 @@
 				"headers": {
 					"accept": "application/json",
 					"authorization": "Bearer fake-gmail-token"
-				}
+				},
+				"qsFormat": "repeat"
 			},
 			{
 				"method": "POST",
@@ -2772,8 +3164,21 @@
 					"authorization": "Bearer fake-gmail-token"
 				},
 				"body": {
-					"raw": "RnJvbTogT3BzIEJvdCA8Ym90QGV4YW1wbGUuY29tPg0KVG86IGFkYUBleGFtcGxlLmNvbQ0KQmNjOiBhdWRpdEBleGFtcGxlLmNvbQ0KU3ViamVjdDogPT9VVEYtOD9RP0dyPUMzPUJDPUMzPTlGZV9hdXNfQmVybGluPz0NCk1lc3NhZ2UtSUQ6IDw3MWM3NTYxZi1kMDMzLTE3ZjEtZjBhNS05Yzg5NWJlNGJkMWJAZXhhbXBsZS5jb20-DQpDb250ZW50LVRyYW5zZmVyLUVuY29kaW5nOiBxdW90ZWQtcHJpbnRhYmxlDQpEYXRlOiBUaHUsIDEyIE5vdiAyMDI2IDEzOjUxOjMyICswMDAwDQpNSU1FLVZlcnNpb246IDEuMA0KQ29udGVudC1UeXBlOiB0ZXh0L2h0bWw7IGNoYXJzZXQ9dXRmLTgNCg0KCgkJCTxwPkhhbGxvIDxiPkFkYTwvYj48L3A-CgkJCTxicj4KCQkJPGJyPgoJCQktLS0KCQkJPGJyPgoJCQk8ZW0-VGhpcyBlbWFpbCB3YXMgc2VudCBhdXRvbWF0aWNhbGx5IHdpdGggPGEgaHJlZj0zRCJodHRwczovL244bi5pby8_PQ0KdXRtX3NvdXJjZT0zRG44bi1pbnRlcm5hbCZ1dG1fbWVkaXVtPTNEcG93ZXJlZF9ieSZ1dG1fY2FtcGFpZ249M0RuOG4tbm9kZXMtPQ0KYmFzZS5nbWFpbF9kN2I0MzQ2ZGNjMDQ5YTdiMzA1NWFjYTNiNDAxZDM4MTgwOWFiYjIyMjY5MDVjZjVjYmE0ZTgxN2UwYmVmYTNlPQ0KIiB0YXJnZXQ9M0QiX2JsYW5rIj5uOG48L2E-PC9lbT4KCQk9MDkNCg"
-				}
+					"raw": "RnJvbTogT3BzIEJvdCA8Ym90QGV4YW1wbGUuY29tPg0KVG86IGFkYUBleGFtcGxlLmNvbQ0KQmNjOiBhdWRpdEBleGFtcGxlLmNvbQ0KU3ViamVjdDogPT9VVEYtOD9RP0dyPUMzPUJDPUMzPTlGZV9hdXNfQmVybGluPz0NCk1lc3NhZ2UtSUQ6IDw3MmNkODM1ZC0wMzMyLWZjYjgtNWE4Ny00MDI3MjFiNzBiNDlAZXhhbXBsZS5jb20-DQpDb250ZW50LVRyYW5zZmVyLUVuY29kaW5nOiBxdW90ZWQtcHJpbnRhYmxlDQpEYXRlOiBUdWUsIDE3IE5vdiAyMDI2IDEyOjQ0OjU4ICswMDAwDQpNSU1FLVZlcnNpb246IDEuMA0KQ29udGVudC1UeXBlOiB0ZXh0L2h0bWw7IGNoYXJzZXQ9dXRmLTgNCg0KCgkJCTxwPkhhbGxvIDxiPkFkYTwvYj48L3A-CgkJCTxicj4KCQkJPGJyPgoJCQktLS0KCQkJPGJyPgoJCQk8ZW0-VGhpcyBlbWFpbCB3YXMgc2VudCBhdXRvbWF0aWNhbGx5IHdpdGggPGEgaHJlZj0zRCJodHRwczovL244bi5pby8_PQ0KdXRtX3NvdXJjZT0zRG44bi1pbnRlcm5hbCZ1dG1fbWVkaXVtPTNEcG93ZXJlZF9ieSZ1dG1fY2FtcGFpZ249M0RuOG4tbm9kZXMtPQ0KYmFzZS5nbWFpbF9kN2I0MzQ2ZGNjMDQ5YTdiMzA1NWFjYTNiNDAxZDM4MTgwOWFiYjIyMjY5MDVjZjVjYmE0ZTgxN2UwYmVmYTNlPQ0KIiB0YXJnZXQ9M0QiX2JsYW5rIj5uOG48L2E-PC9lbT4KCQk9MDkNCg"
+				},
+				"qsFormat": "repeat"
+			}
+		],
+		"wire": [
+			{
+				"accept": "application/json",
+				"contentType": "application/json",
+				"userAgent": "n8n"
+			},
+			{
+				"accept": "application/json",
+				"contentType": "application/json",
+				"userAgent": "n8n"
 			}
 		],
 		"output": [
@@ -2797,7 +3202,8 @@
 				"headers": {
 					"accept": "application/json",
 					"authorization": "Bearer fake-gmail-token"
-				}
+				},
+				"qsFormat": "repeat"
 			},
 			{
 				"method": "GET",
@@ -2813,7 +3219,8 @@
 				"headers": {
 					"accept": "application/json",
 					"authorization": "Bearer fake-gmail-token"
-				}
+				},
+				"qsFormat": "repeat"
 			},
 			{
 				"method": "GET",
@@ -2829,7 +3236,8 @@
 				"headers": {
 					"accept": "application/json",
 					"authorization": "Bearer fake-gmail-token"
-				}
+				},
+				"qsFormat": "repeat"
 			},
 			{
 				"method": "GET",
@@ -2838,7 +3246,30 @@
 				"headers": {
 					"accept": "application/json",
 					"authorization": "Bearer fake-gmail-token"
-				}
+				},
+				"qsFormat": "repeat"
+			}
+		],
+		"wire": [
+			{
+				"accept": "application/json",
+				"contentType": "application/json",
+				"userAgent": "n8n"
+			},
+			{
+				"accept": "application/json",
+				"contentType": "application/json",
+				"userAgent": "n8n"
+			},
+			{
+				"accept": "application/json",
+				"contentType": "application/json",
+				"userAgent": "n8n"
+			},
+			{
+				"accept": "application/json",
+				"contentType": "application/json",
+				"userAgent": "n8n"
 			}
 		],
 		"output": [
@@ -2914,7 +3345,8 @@
 				"headers": {
 					"accept": "application/json",
 					"authorization": "Bearer fake-gmail-token"
-				}
+				},
+				"qsFormat": "repeat"
 			},
 			{
 				"method": "GET",
@@ -2927,7 +3359,8 @@
 				"headers": {
 					"accept": "application/json",
 					"authorization": "Bearer fake-gmail-token"
-				}
+				},
+				"qsFormat": "repeat"
 			},
 			{
 				"method": "GET",
@@ -2941,7 +3374,8 @@
 				"headers": {
 					"accept": "application/json",
 					"authorization": "Bearer fake-gmail-token"
-				}
+				},
+				"qsFormat": "repeat"
 			},
 			{
 				"method": "GET",
@@ -2955,7 +3389,8 @@
 				"headers": {
 					"accept": "application/json",
 					"authorization": "Bearer fake-gmail-token"
-				}
+				},
+				"qsFormat": "repeat"
 			},
 			{
 				"method": "GET",
@@ -2964,7 +3399,35 @@
 				"headers": {
 					"accept": "application/json",
 					"authorization": "Bearer fake-gmail-token"
-				}
+				},
+				"qsFormat": "repeat"
+			}
+		],
+		"wire": [
+			{
+				"accept": "application/json",
+				"contentType": "application/json",
+				"userAgent": "n8n"
+			},
+			{
+				"accept": "application/json",
+				"contentType": "application/json",
+				"userAgent": "n8n"
+			},
+			{
+				"accept": "application/json",
+				"contentType": "application/json",
+				"userAgent": "n8n"
+			},
+			{
+				"accept": "application/json",
+				"contentType": "application/json",
+				"userAgent": "n8n"
+			},
+			{
+				"accept": "application/json",
+				"contentType": "application/json",
+				"userAgent": "n8n"
 			}
 		],
 		"output": [
@@ -3035,7 +3498,8 @@
 				"headers": {
 					"accept": "application/json",
 					"authorization": "Bearer fake-gmail-token"
-				}
+				},
+				"qsFormat": "repeat"
 			},
 			{
 				"method": "GET",
@@ -3044,7 +3508,20 @@
 				"headers": {
 					"accept": "application/json",
 					"authorization": "Bearer fake-gmail-token"
-				}
+				},
+				"qsFormat": "repeat"
+			}
+		],
+		"wire": [
+			{
+				"accept": "application/json",
+				"contentType": "application/json",
+				"userAgent": "n8n"
+			},
+			{
+				"accept": "application/json",
+				"contentType": "application/json",
+				"userAgent": "n8n"
 			}
 		],
 		"output": []
@@ -3061,7 +3538,8 @@
 				"headers": {
 					"accept": "application/json",
 					"authorization": "Bearer fake-gmail-token"
-				}
+				},
+				"qsFormat": "repeat"
 			},
 			{
 				"method": "GET",
@@ -3070,7 +3548,20 @@
 				"headers": {
 					"accept": "application/json",
 					"authorization": "Bearer fake-gmail-token"
-				}
+				},
+				"qsFormat": "repeat"
+			}
+		],
+		"wire": [
+			{
+				"accept": "application/json",
+				"contentType": "application/json",
+				"userAgent": "n8n"
+			},
+			{
+				"accept": "application/json",
+				"contentType": "application/json",
+				"userAgent": "n8n"
 			}
 		],
 		"output": [
@@ -3117,7 +3608,8 @@
 				},
 				"body": {
 					"addLabelIds": ["Label_1", "STARRED"]
-				}
+				},
+				"qsFormat": "repeat"
 			},
 			{
 				"method": "POST",
@@ -3129,7 +3621,20 @@
 				},
 				"body": {
 					"addLabelIds": ["Label_1", "STARRED"]
-				}
+				},
+				"qsFormat": "repeat"
+			}
+		],
+		"wire": [
+			{
+				"accept": "application/json",
+				"contentType": "application/json",
+				"userAgent": "n8n"
+			},
+			{
+				"accept": "application/json",
+				"contentType": "application/json",
+				"userAgent": "n8n"
 			}
 		],
 		"output": [
@@ -3157,7 +3662,15 @@
 				},
 				"body": {
 					"removeLabelIds": ["INBOX"]
-				}
+				},
+				"qsFormat": "repeat"
+			}
+		],
+		"wire": [
+			{
+				"accept": "application/json",
+				"contentType": "application/json",
+				"userAgent": "n8n"
 			}
 		],
 		"output": [
@@ -3180,7 +3693,15 @@
 				},
 				"body": {
 					"removeLabelIds": ["UNREAD"]
-				}
+				},
+				"qsFormat": "repeat"
+			}
+		],
+		"wire": [
+			{
+				"accept": "application/json",
+				"contentType": "application/json",
+				"userAgent": "n8n"
 			}
 		],
 		"output": [
@@ -3203,7 +3724,15 @@
 				},
 				"body": {
 					"addLabelIds": ["UNREAD"]
-				}
+				},
+				"qsFormat": "repeat"
+			}
+		],
+		"wire": [
+			{
+				"accept": "application/json",
+				"contentType": "application/json",
+				"userAgent": "n8n"
 			}
 		],
 		"output": [
@@ -3223,7 +3752,15 @@
 				"headers": {
 					"accept": "application/json",
 					"authorization": "Bearer fake-gmail-token"
-				}
+				},
+				"qsFormat": "repeat"
+			}
+		],
+		"wire": [
+			{
+				"accept": "application/json",
+				"contentType": "application/json",
+				"userAgent": "n8n"
 			}
 		],
 		"output": [
@@ -3288,6 +3825,227 @@
 			{
 				"id": "f2",
 				"name": "Untitled"
+			}
+		]
+	},
+	"googleDrive file.createFromText in the root": {
+		"requests": [
+			{
+				"method": "POST",
+				"url": "https://www.googleapis.com/upload/drive/v3/files",
+				"qs": {
+					"uploadType": "multipart",
+					"supportsAllDrives": "true"
+				},
+				"headers": {
+					"content-type": "multipart/related; boundary=<boundary>",
+					"content-length": "404",
+					"authorization": "Bearer fake-drive-token"
+				},
+				"body": "--<boundary>\r\nContent-Disposition: form-data; name=\"metadata\"\r\nContent-Type: application/json\r\n\r\n{\"name\":\"notes.txt\",\"parents\":[\"root\"],\"mimeType\":\"text/plain\"}\r\n--<boundary>\r\nContent-Disposition: form-data; name=\"data\"\r\nContent-Type: text/plain\r\n\r\nLine one\nLine two\r\n--<boundary>--\r\n"
+			},
+			{
+				"method": "PATCH",
+				"url": "https://www.googleapis.com/drive/v3/files/f1",
+				"qs": {
+					"includeItemsFromAllDrives": "true",
+					"supportsAllDrives": "true",
+					"spaces": "appDataFolder, drive",
+					"corpora": "allDrives",
+					"addParents": "root"
+				},
+				"headers": {
+					"authorization": "Bearer fake-drive-token"
+				},
+				"body": {
+					"name": "notes.txt",
+					"mimeType": "text/plain"
+				}
+			},
+			{
+				"method": "POST",
+				"url": "https://www.googleapis.com/upload/drive/v3/files",
+				"qs": {
+					"uploadType": "multipart",
+					"supportsAllDrives": "true"
+				},
+				"headers": {
+					"content-type": "multipart/related; boundary=<boundary>",
+					"content-length": "404",
+					"authorization": "Bearer fake-drive-token"
+				},
+				"body": "--<boundary>\r\nContent-Disposition: form-data; name=\"metadata\"\r\nContent-Type: application/json\r\n\r\n{\"name\":\"notes.txt\",\"parents\":[\"root\"],\"mimeType\":\"text/plain\"}\r\n--<boundary>\r\nContent-Disposition: form-data; name=\"data\"\r\nContent-Type: text/plain\r\n\r\nLine one\nLine two\r\n--<boundary>--\r\n"
+			},
+			{
+				"method": "PATCH",
+				"url": "https://www.googleapis.com/drive/v3/files/f1",
+				"qs": {
+					"includeItemsFromAllDrives": "true",
+					"supportsAllDrives": "true",
+					"spaces": "appDataFolder, drive",
+					"corpora": "allDrives",
+					"addParents": "root"
+				},
+				"headers": {
+					"authorization": "Bearer fake-drive-token"
+				},
+				"body": {
+					"name": "notes.txt",
+					"mimeType": "text/plain"
+				}
+			}
+		],
+		"accepts": ["application/json", "application/json", "application/json", "application/json"],
+		"output": [
+			{
+				"id": "f1"
+			},
+			{
+				"id": "f1"
+			}
+		]
+	},
+	"googleDrive file.createFromText in a folder with properties": {
+		"requests": [
+			{
+				"method": "POST",
+				"url": "https://www.googleapis.com/upload/drive/v3/files",
+				"qs": {
+					"uploadType": "multipart",
+					"supportsAllDrives": "true"
+				},
+				"headers": {
+					"content-type": "multipart/related; boundary=<boundary>",
+					"content-length": "475",
+					"authorization": "Bearer fake-drive-token"
+				},
+				"body": "--<boundary>\r\nContent-Disposition: form-data; name=\"metadata\"\r\nContent-Type: application/json\r\n\r\n{\"name\":\"Untitled\",\"parents\":[\"folder-9\"],\"mimeType\":\"text/plain\",\"properties\":{\"team\":\"ops\"},\"appProperties\":{\"run\":\"7\"}}\r\n--<boundary>\r\nContent-Disposition: form-data; name=\"data\"\r\nContent-Type: text/plain\r\n\r\nGrüße 😀\r\n-- end \"quoted\"\r\n--<boundary>--\r\n"
+			},
+			{
+				"method": "PATCH",
+				"url": "https://www.googleapis.com/drive/v3/files/f2",
+				"qs": {
+					"includeItemsFromAllDrives": "true",
+					"supportsAllDrives": "true",
+					"spaces": "appDataFolder, drive",
+					"corpora": "allDrives",
+					"keepRevisionForever": "true",
+					"ocrLanguage": "de",
+					"useContentAsIndexableText": "true",
+					"addParents": "folder-9"
+				},
+				"headers": {
+					"authorization": "Bearer fake-drive-token"
+				},
+				"body": {
+					"name": "Untitled",
+					"mimeType": "text/plain",
+					"properties": {
+						"team": "ops"
+					},
+					"appProperties": {
+						"run": "7"
+					}
+				}
+			}
+		],
+		"accepts": ["application/json", "application/json"],
+		"output": [
+			{
+				"id": "f2"
+			}
+		]
+	},
+	"googleDrive file.createFromText in a shared drive, no content": {
+		"requests": [
+			{
+				"method": "POST",
+				"url": "https://www.googleapis.com/upload/drive/v3/files",
+				"qs": {
+					"uploadType": "multipart",
+					"supportsAllDrives": "true"
+				},
+				"headers": {
+					"content-type": "multipart/related; boundary=<boundary>",
+					"content-length": "390",
+					"authorization": "Bearer fake-drive-token"
+				},
+				"body": "--<boundary>\r\nContent-Disposition: form-data; name=\"metadata\"\r\nContent-Type: application/json\r\n\r\n{\"name\":\"empty.txt\",\"parents\":[\"drive-3\"],\"mimeType\":\"text/plain\"}\r\n--<boundary>\r\nContent-Disposition: form-data; name=\"data\"\r\nContent-Type: text/plain\r\n\r\n\r\n--<boundary>--\r\n"
+			},
+			{
+				"method": "PATCH",
+				"url": "https://www.googleapis.com/drive/v3/files/f3",
+				"qs": {
+					"includeItemsFromAllDrives": "true",
+					"supportsAllDrives": "true",
+					"spaces": "appDataFolder, drive",
+					"corpora": "allDrives",
+					"addParents": "drive-3"
+				},
+				"headers": {
+					"authorization": "Bearer fake-drive-token"
+				},
+				"body": {
+					"name": "empty.txt",
+					"mimeType": "text/plain"
+				}
+			}
+		],
+		"accepts": ["application/json", "application/json"],
+		"output": [
+			{
+				"id": "f3"
+			}
+		]
+	},
+	"googleDrive file.createFromText as a Google document": {
+		"requests": [
+			{
+				"method": "POST",
+				"url": "https://www.googleapis.com/drive/v3/files",
+				"qs": {
+					"includeItemsFromAllDrives": "true",
+					"supportsAllDrives": "true",
+					"spaces": "appDataFolder, drive",
+					"corpora": "allDrives"
+				},
+				"headers": {
+					"authorization": "Bearer fake-drive-token"
+				},
+				"body": {
+					"name": "Doc",
+					"parents": ["folder-9"],
+					"mimeType": "application/vnd.google-apps.document",
+					"properties": {
+						"team": "ops"
+					}
+				}
+			},
+			{
+				"method": "POST",
+				"url": "https://docs.googleapis.com/v1/documents/d1:batchUpdate",
+				"qs": {},
+				"headers": {
+					"authorization": "Bearer fake-drive-token"
+				},
+				"body": {
+					"requests": [
+						{
+							"insertText": {
+								"text": "Hello document",
+								"endOfSegmentLocation": {
+									"segmentId": ""
+								}
+							}
+						}
+					]
+				}
+			}
+		],
+		"accepts": ["application/json", "application/json"],
+		"output": [
+			{
+				"id": "d1"
 			}
 		]
 	},
@@ -7240,6 +7998,185 @@
 		"output": [
 			{
 				"success": true
+			}
+		]
+	},
+	"microsoftTeams task.get status 500": {
+		"requests": [
+			{
+				"method": "GET",
+				"url": "https://graph.microsoft.com/v1.0/planner/tasks/task-1",
+				"qs": {},
+				"headers": {
+					"authorization": "Bearer fake-teams-token"
+				},
+				"qsFormat": "brackets"
+			}
+		],
+		"accepts": ["application/json"],
+		"error": "The service was not able to process your request"
+	},
+	"microsoftTeams task.get status 404": {
+		"requests": [
+			{
+				"method": "GET",
+				"url": "https://graph.microsoft.com/v1.0/planner/tasks/task-1",
+				"qs": {},
+				"headers": {
+					"authorization": "Bearer fake-teams-token"
+				},
+				"qsFormat": "brackets"
+			}
+		],
+		"accepts": ["application/json"],
+		"error": "The resource you are requesting could not be found"
+	},
+	"microsoftTeams task.create status 400": {
+		"requests": [
+			{
+				"method": "POST",
+				"url": "https://graph.microsoft.com/v1.0/planner/tasks",
+				"qs": {},
+				"headers": {
+					"authorization": "Bearer fake-teams-token"
+				},
+				"body": {
+					"planId": "plan-1",
+					"bucketId": "bucket-1",
+					"title": "x"
+				},
+				"qsFormat": "brackets"
+			}
+		],
+		"accepts": ["application/json"],
+		"error": "Bad request - please check your parameters"
+	},
+	"microsoftTeams chatMember.remove status 403": {
+		"requests": [
+			{
+				"method": "DELETE",
+				"url": "https://graph.microsoft.com/v1.0/chats/19:7e2f1174_0c5cfdbb@unq.gbl.spaces/members/m1",
+				"qs": {},
+				"headers": {
+					"authorization": "Bearer fake-teams-token"
+				},
+				"qsFormat": "brackets"
+			}
+		],
+		"accepts": ["application/json"],
+		"error": "Forbidden - perhaps check your credentials?"
+	},
+	"microsoftTeams chat.getAll status 429 on the second page": {
+		"requests": [
+			{
+				"method": "GET",
+				"url": "https://graph.microsoft.com/v1.0/chats",
+				"qs": {
+					"$top": "50"
+				},
+				"headers": {
+					"authorization": "Bearer fake-teams-token"
+				},
+				"qsFormat": "brackets"
+			},
+			{
+				"method": "GET",
+				"url": "https://graph.microsoft.com/v1.0/chats",
+				"qs": {
+					"$skiptoken": "n"
+				},
+				"headers": {
+					"authorization": "Bearer fake-teams-token"
+				},
+				"qsFormat": "brackets"
+			}
+		],
+		"accepts": ["application/json", "application/json"],
+		"error": "The service is receiving too many requests from you"
+	},
+	"microsoftTeams channel.update status 418": {
+		"requests": [
+			{
+				"method": "PATCH",
+				"url": "https://graph.microsoft.com/v1.0/teams/61165b04-e4cc-4026-b43f-926b4e2a7182/channels/19:abc123@thread.tacv2",
+				"qs": {},
+				"headers": {
+					"authorization": "Bearer fake-teams-token"
+				},
+				"body": {
+					"displayName": "x"
+				},
+				"qsFormat": "brackets"
+			}
+		],
+		"accepts": ["application/json"],
+		"error": "Your request is invalid or could not be processed by the service"
+	},
+	"microsoftTeams task.get status 501": {
+		"requests": [
+			{
+				"method": "GET",
+				"url": "https://graph.microsoft.com/v1.0/planner/tasks/task-1",
+				"qs": {},
+				"headers": {
+					"authorization": "Bearer fake-teams-token"
+				},
+				"qsFormat": "brackets"
+			}
+		],
+		"accepts": ["application/json"],
+		"error": "The service failed to process your request"
+	},
+	"microsoftTeams task.get id of dots": {
+		"requests": [],
+		"accepts": [],
+		"error": "The ID is not valid"
+	},
+	"microsoftTeams task.get id with a bad percent code": {
+		"requests": [],
+		"accepts": [],
+		"error": "The ID is not valid"
+	},
+	"microsoftTeams task.get id that decodes to a percent sign": {
+		"requests": [],
+		"accepts": [],
+		"error": "The ID is not valid"
+	},
+	"microsoftTeams task.get id with other letters and spaces around it": {
+		"requests": [
+			{
+				"method": "GET",
+				"url": "https://graph.microsoft.com/v1.0/planner/tasks/täsk-😀 x",
+				"qs": {},
+				"headers": {
+					"authorization": "Bearer fake-teams-token"
+				},
+				"qsFormat": "brackets"
+			}
+		],
+		"accepts": ["application/json"],
+		"output": [
+			{
+				"id": "t"
+			}
+		]
+	},
+	"microsoftTeams task.get id that is a number": {
+		"requests": [
+			{
+				"method": "GET",
+				"url": "https://graph.microsoft.com/v1.0/planner/tasks/42",
+				"qs": {},
+				"headers": {
+					"authorization": "Bearer fake-teams-token"
+				},
+				"qsFormat": "brackets"
+			}
+		],
+		"accepts": ["application/json"],
+		"output": [
+			{
+				"id": "42"
 			}
 		]
 	},
@@ -20269,6 +21206,30 @@
 		],
 		"nodePaired": [true, true]
 	},
+	"gmail message.reply with both reply options": {
+		"requests": [
+			{
+				"method": "GET",
+				"url": "https://www.googleapis.com/gmail/v1/users/me/messages/msg-4",
+				"qs": {
+					"format": "metadata"
+				},
+				"headers": {
+					"accept": "application/json",
+					"authorization": "Bearer fake-gmail-token"
+				},
+				"qsFormat": "repeat"
+			}
+		],
+		"wire": [
+			{
+				"accept": "application/json",
+				"contentType": "application/json",
+				"userAgent": "n8n"
+			}
+		],
+		"error": "Cannot read properties of undefined (reading 'headers') (item 0)"
+	},
 	"agent intermediate steps, version 2": {
 		"requests": [
 			{
@@ -20373,405 +21334,5 @@
 			]
 		],
 		"nodePaired": [false]
-	},
-	"googleDrive file.createFromText in the root": {
-		"requests": [
-			{
-				"method": "POST",
-				"url": "https://www.googleapis.com/upload/drive/v3/files",
-				"qs": {
-					"uploadType": "multipart",
-					"supportsAllDrives": "true"
-				},
-				"headers": {
-					"content-type": "multipart/related; boundary=<boundary>",
-					"content-length": "404",
-					"authorization": "Bearer fake-drive-token"
-				},
-				"body": "--<boundary>\r\nContent-Disposition: form-data; name=\"metadata\"\r\nContent-Type: application/json\r\n\r\n{\"name\":\"notes.txt\",\"parents\":[\"root\"],\"mimeType\":\"text/plain\"}\r\n--<boundary>\r\nContent-Disposition: form-data; name=\"data\"\r\nContent-Type: text/plain\r\n\r\nLine one\nLine two\r\n--<boundary>--\r\n"
-			},
-			{
-				"method": "PATCH",
-				"url": "https://www.googleapis.com/drive/v3/files/f1",
-				"qs": {
-					"includeItemsFromAllDrives": "true",
-					"supportsAllDrives": "true",
-					"spaces": "appDataFolder, drive",
-					"corpora": "allDrives",
-					"addParents": "root"
-				},
-				"headers": {
-					"authorization": "Bearer fake-drive-token"
-				},
-				"body": {
-					"name": "notes.txt",
-					"mimeType": "text/plain"
-				}
-			},
-			{
-				"method": "POST",
-				"url": "https://www.googleapis.com/upload/drive/v3/files",
-				"qs": {
-					"uploadType": "multipart",
-					"supportsAllDrives": "true"
-				},
-				"headers": {
-					"content-type": "multipart/related; boundary=<boundary>",
-					"content-length": "404",
-					"authorization": "Bearer fake-drive-token"
-				},
-				"body": "--<boundary>\r\nContent-Disposition: form-data; name=\"metadata\"\r\nContent-Type: application/json\r\n\r\n{\"name\":\"notes.txt\",\"parents\":[\"root\"],\"mimeType\":\"text/plain\"}\r\n--<boundary>\r\nContent-Disposition: form-data; name=\"data\"\r\nContent-Type: text/plain\r\n\r\nLine one\nLine two\r\n--<boundary>--\r\n"
-			},
-			{
-				"method": "PATCH",
-				"url": "https://www.googleapis.com/drive/v3/files/f1",
-				"qs": {
-					"includeItemsFromAllDrives": "true",
-					"supportsAllDrives": "true",
-					"spaces": "appDataFolder, drive",
-					"corpora": "allDrives",
-					"addParents": "root"
-				},
-				"headers": {
-					"authorization": "Bearer fake-drive-token"
-				},
-				"body": {
-					"name": "notes.txt",
-					"mimeType": "text/plain"
-				}
-			}
-		],
-		"accepts": ["application/json", "application/json", "application/json", "application/json"],
-		"output": [
-			{
-				"id": "f1"
-			},
-			{
-				"id": "f1"
-			}
-		]
-	},
-	"googleDrive file.createFromText in a folder with properties": {
-		"requests": [
-			{
-				"method": "POST",
-				"url": "https://www.googleapis.com/upload/drive/v3/files",
-				"qs": {
-					"uploadType": "multipart",
-					"supportsAllDrives": "true"
-				},
-				"headers": {
-					"content-type": "multipart/related; boundary=<boundary>",
-					"content-length": "475",
-					"authorization": "Bearer fake-drive-token"
-				},
-				"body": "--<boundary>\r\nContent-Disposition: form-data; name=\"metadata\"\r\nContent-Type: application/json\r\n\r\n{\"name\":\"Untitled\",\"parents\":[\"folder-9\"],\"mimeType\":\"text/plain\",\"properties\":{\"team\":\"ops\"},\"appProperties\":{\"run\":\"7\"}}\r\n--<boundary>\r\nContent-Disposition: form-data; name=\"data\"\r\nContent-Type: text/plain\r\n\r\nGrüße 😀\r\n-- end \"quoted\"\r\n--<boundary>--\r\n"
-			},
-			{
-				"method": "PATCH",
-				"url": "https://www.googleapis.com/drive/v3/files/f2",
-				"qs": {
-					"includeItemsFromAllDrives": "true",
-					"supportsAllDrives": "true",
-					"spaces": "appDataFolder, drive",
-					"corpora": "allDrives",
-					"keepRevisionForever": "true",
-					"ocrLanguage": "de",
-					"useContentAsIndexableText": "true",
-					"addParents": "folder-9"
-				},
-				"headers": {
-					"authorization": "Bearer fake-drive-token"
-				},
-				"body": {
-					"name": "Untitled",
-					"mimeType": "text/plain",
-					"properties": {
-						"team": "ops"
-					},
-					"appProperties": {
-						"run": "7"
-					}
-				}
-			}
-		],
-		"accepts": ["application/json", "application/json"],
-		"output": [
-			{
-				"id": "f2"
-			}
-		]
-	},
-	"googleDrive file.createFromText in a shared drive, no content": {
-		"requests": [
-			{
-				"method": "POST",
-				"url": "https://www.googleapis.com/upload/drive/v3/files",
-				"qs": {
-					"uploadType": "multipart",
-					"supportsAllDrives": "true"
-				},
-				"headers": {
-					"content-type": "multipart/related; boundary=<boundary>",
-					"content-length": "390",
-					"authorization": "Bearer fake-drive-token"
-				},
-				"body": "--<boundary>\r\nContent-Disposition: form-data; name=\"metadata\"\r\nContent-Type: application/json\r\n\r\n{\"name\":\"empty.txt\",\"parents\":[\"drive-3\"],\"mimeType\":\"text/plain\"}\r\n--<boundary>\r\nContent-Disposition: form-data; name=\"data\"\r\nContent-Type: text/plain\r\n\r\n\r\n--<boundary>--\r\n"
-			},
-			{
-				"method": "PATCH",
-				"url": "https://www.googleapis.com/drive/v3/files/f3",
-				"qs": {
-					"includeItemsFromAllDrives": "true",
-					"supportsAllDrives": "true",
-					"spaces": "appDataFolder, drive",
-					"corpora": "allDrives",
-					"addParents": "drive-3"
-				},
-				"headers": {
-					"authorization": "Bearer fake-drive-token"
-				},
-				"body": {
-					"name": "empty.txt",
-					"mimeType": "text/plain"
-				}
-			}
-		],
-		"accepts": ["application/json", "application/json"],
-		"output": [
-			{
-				"id": "f3"
-			}
-		]
-	},
-	"googleDrive file.createFromText as a Google document": {
-		"requests": [
-			{
-				"method": "POST",
-				"url": "https://www.googleapis.com/drive/v3/files",
-				"qs": {
-					"includeItemsFromAllDrives": "true",
-					"supportsAllDrives": "true",
-					"spaces": "appDataFolder, drive",
-					"corpora": "allDrives"
-				},
-				"headers": {
-					"authorization": "Bearer fake-drive-token"
-				},
-				"body": {
-					"name": "Doc",
-					"parents": ["folder-9"],
-					"mimeType": "application/vnd.google-apps.document",
-					"properties": {
-						"team": "ops"
-					}
-				}
-			},
-			{
-				"method": "POST",
-				"url": "https://docs.googleapis.com/v1/documents/d1:batchUpdate",
-				"qs": {},
-				"headers": {
-					"authorization": "Bearer fake-drive-token"
-				},
-				"body": {
-					"requests": [
-						{
-							"insertText": {
-								"text": "Hello document",
-								"endOfSegmentLocation": {
-									"segmentId": ""
-								}
-							}
-						}
-					]
-				}
-			}
-		],
-		"accepts": ["application/json", "application/json"],
-		"output": [
-			{
-				"id": "d1"
-			}
-		]
-	},
-	"microsoftTeams task.get status 500": {
-		"requests": [
-			{
-				"method": "GET",
-				"url": "https://graph.microsoft.com/v1.0/planner/tasks/task-1",
-				"qs": {},
-				"headers": {
-					"authorization": "Bearer fake-teams-token"
-				},
-				"qsFormat": "brackets"
-			}
-		],
-		"accepts": ["application/json"],
-		"error": "The service was not able to process your request"
-	},
-	"microsoftTeams task.get status 404": {
-		"requests": [
-			{
-				"method": "GET",
-				"url": "https://graph.microsoft.com/v1.0/planner/tasks/task-1",
-				"qs": {},
-				"headers": {
-					"authorization": "Bearer fake-teams-token"
-				},
-				"qsFormat": "brackets"
-			}
-		],
-		"accepts": ["application/json"],
-		"error": "The resource you are requesting could not be found"
-	},
-	"microsoftTeams task.create status 400": {
-		"requests": [
-			{
-				"method": "POST",
-				"url": "https://graph.microsoft.com/v1.0/planner/tasks",
-				"qs": {},
-				"headers": {
-					"authorization": "Bearer fake-teams-token"
-				},
-				"body": {
-					"planId": "plan-1",
-					"bucketId": "bucket-1",
-					"title": "x"
-				},
-				"qsFormat": "brackets"
-			}
-		],
-		"accepts": ["application/json"],
-		"error": "Bad request - please check your parameters"
-	},
-	"microsoftTeams chatMember.remove status 403": {
-		"requests": [
-			{
-				"method": "DELETE",
-				"url": "https://graph.microsoft.com/v1.0/chats/19:7e2f1174_0c5cfdbb@unq.gbl.spaces/members/m1",
-				"qs": {},
-				"headers": {
-					"authorization": "Bearer fake-teams-token"
-				},
-				"qsFormat": "brackets"
-			}
-		],
-		"accepts": ["application/json"],
-		"error": "Forbidden - perhaps check your credentials?"
-	},
-	"microsoftTeams chat.getAll status 429 on the second page": {
-		"requests": [
-			{
-				"method": "GET",
-				"url": "https://graph.microsoft.com/v1.0/chats",
-				"qs": {
-					"$top": "50"
-				},
-				"headers": {
-					"authorization": "Bearer fake-teams-token"
-				},
-				"qsFormat": "brackets"
-			},
-			{
-				"method": "GET",
-				"url": "https://graph.microsoft.com/v1.0/chats",
-				"qs": {
-					"$skiptoken": "n"
-				},
-				"headers": {
-					"authorization": "Bearer fake-teams-token"
-				},
-				"qsFormat": "brackets"
-			}
-		],
-		"accepts": ["application/json", "application/json"],
-		"error": "The service is receiving too many requests from you"
-	},
-	"microsoftTeams channel.update status 418": {
-		"requests": [
-			{
-				"method": "PATCH",
-				"url": "https://graph.microsoft.com/v1.0/teams/61165b04-e4cc-4026-b43f-926b4e2a7182/channels/19:abc123@thread.tacv2",
-				"qs": {},
-				"headers": {
-					"authorization": "Bearer fake-teams-token"
-				},
-				"body": {
-					"displayName": "x"
-				},
-				"qsFormat": "brackets"
-			}
-		],
-		"accepts": ["application/json"],
-		"error": "Your request is invalid or could not be processed by the service"
-	},
-	"microsoftTeams task.get status 501": {
-		"requests": [
-			{
-				"method": "GET",
-				"url": "https://graph.microsoft.com/v1.0/planner/tasks/task-1",
-				"qs": {},
-				"headers": {
-					"authorization": "Bearer fake-teams-token"
-				},
-				"qsFormat": "brackets"
-			}
-		],
-		"accepts": ["application/json"],
-		"error": "The service failed to process your request"
-	},
-	"microsoftTeams task.get id of dots": {
-		"requests": [],
-		"accepts": [],
-		"error": "The ID is not valid"
-	},
-	"microsoftTeams task.get id with a bad percent code": {
-		"requests": [],
-		"accepts": [],
-		"error": "The ID is not valid"
-	},
-	"microsoftTeams task.get id that decodes to a percent sign": {
-		"requests": [],
-		"accepts": [],
-		"error": "The ID is not valid"
-	},
-	"microsoftTeams task.get id with other letters and spaces around it": {
-		"requests": [
-			{
-				"method": "GET",
-				"url": "https://graph.microsoft.com/v1.0/planner/tasks/täsk-😀 x",
-				"qs": {},
-				"headers": {
-					"authorization": "Bearer fake-teams-token"
-				},
-				"qsFormat": "brackets"
-			}
-		],
-		"accepts": ["application/json"],
-		"output": [
-			{
-				"id": "t"
-			}
-		]
-	},
-	"microsoftTeams task.get id that is a number": {
-		"requests": [
-			{
-				"method": "GET",
-				"url": "https://graph.microsoft.com/v1.0/planner/tasks/42",
-				"qs": {},
-				"headers": {
-					"authorization": "Bearer fake-teams-token"
-				},
-				"qsFormat": "brackets"
-			}
-		],
-		"accepts": ["application/json"],
-		"output": [
-			{
-				"id": "42"
-			}
-		]
 	}
 }

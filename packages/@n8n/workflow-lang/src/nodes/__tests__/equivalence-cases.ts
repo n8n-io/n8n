@@ -1425,6 +1425,201 @@ const handPorted: EquivalenceCase[] = [
 		responses: ok({ id: 'm1', threadId: 't1', labelIds: ['SENT'] }),
 	},
 	{
+		name: 'gmail draft.create text with all addresses',
+		type: 'n8n-nodes-base.gmail',
+		typeVersion: 2.2,
+		parameters: {
+			resource: 'draft',
+			operation: 'create',
+			subject:
+				'Plan für "Q3" — a subject line that is long enough to need more than one encoded word',
+			emailType: 'text',
+			message:
+				' Line one\nLine two with ümläuts and a line that is longer than seventy-six characters, to see the encoding. ',
+			options: {
+				sendTo: 'ada@example.com, Jörg Müller <jm@example.com>, "Jane (Ops)" <jd@example.com>',
+				ccList: 'c@example.com',
+				bccList: 'Audit Team <audit@example.com>',
+				replyTo: 'ops@example.com',
+				fromAlias: 'Ops Bot <alias@example.com>',
+			},
+		},
+		items: [{}, {}],
+		credential: gmail,
+		responses: ok({ id: 'r1', message: { id: 'm1', threadId: 't1', labelIds: ['DRAFT'] } }),
+	},
+	{
+		name: 'gmail draft.create html in a thread, no recipient',
+		type: 'n8n-nodes-base.gmail',
+		typeVersion: 2.1,
+		parameters: {
+			resource: 'draft',
+			operation: 'create',
+			subject: 'Re: Offer',
+			emailType: 'html',
+			message: '<p>Thanks &amp; regards</p>',
+			options: { threadId: 'thread-7' },
+		},
+		credential: gmail,
+		responses: [
+			{
+				body: {
+					id: 'thread-7',
+					messages: [
+						{ payload: { headers: [{ name: 'Message-ID', value: '<first@mail.example.com>' }] } },
+						{ payload: { headers: [{ name: 'Message-Id', value: '<last@mail.example.com>' }] } },
+					],
+				},
+			},
+			{ body: { id: 'r2', message: { id: 'm2', threadId: 'thread-7' } } },
+		],
+	},
+	{
+		name: 'gmail draft.create with no options and no text',
+		type: 'n8n-nodes-base.gmail',
+		typeVersion: 2.2,
+		parameters: { resource: 'draft', operation: 'create', subject: 'Empty', options: {} },
+		credential: gmail,
+		responses: ok({ id: 'r3', message: { id: 'm3' } }),
+	},
+	{
+		name: 'gmail message.reply to the sender and the recipients',
+		type: 'n8n-nodes-base.gmail',
+		typeVersion: 2.1,
+		parameters: {
+			resource: 'message',
+			operation: 'reply',
+			messageId: 'msg-1',
+			emailType: 'text',
+			message: 'Thanks, noted.',
+			options: { ccList: 'c@example.com', senderName: 'Ops Bot' },
+		},
+		credential: gmail,
+		responses: [
+			{
+				body: {
+					id: 'msg-1',
+					threadId: 'thread-1',
+					payload: {
+						headers: [
+							{ name: 'From', value: '"Lovelace, Ada" <ada@example.com>' },
+							{
+								name: 'To',
+								value: 'Me <me@example.com>, Bob <bob@example.com>, carol@example.com (Carol C)',
+							},
+							{ name: 'Reply-To', value: 'replies@example.com' },
+							{ name: 'Subject', value: 'Re: The plan' },
+							{ name: 'Message-ID', value: '<abc@mail.example.com>' },
+						],
+					},
+				},
+			},
+			{ body: { emailAddress: 'ME@example.com' } },
+			{ body: { id: 'sent-1', threadId: 'thread-1', labelIds: ['SENT'] } },
+		],
+	},
+	{
+		// The converter adds `replyToHeader` for version 2.2.
+		name: 'gmail message.reply v2.2 to the reply address only',
+		type: 'n8n-nodes-base.gmail',
+		typeVersion: 2.2,
+		parameters: {
+			resource: 'message',
+			operation: 'reply',
+			messageId: 'msg-2',
+			emailType: 'html',
+			message: '<b>Ok</b>',
+			options: { replyToSenderOnly: true, bccList: 'audit@example.com' },
+			replyToHeader: true,
+		},
+		credential: gmail,
+		responses: [
+			{
+				body: {
+					id: 'msg-2',
+					threadId: 'thread-2',
+					payload: {
+						headers: [
+							{ name: 'from', value: 'Jörg <jm@example.com>' },
+							{ name: 'to', value: 'me@example.com, bob@example.com' },
+							{
+								name: 'reply-to',
+								value: 'Support Desk <support@example.com>, support@example.com',
+							},
+							{ name: 'subject', value: 'Grüße' },
+							{ name: 'message-id', value: '<def@mail.example.com>' },
+						],
+					},
+				},
+			},
+			{ body: { emailAddress: 'me@example.com' } },
+			{ body: { id: 'sent-2', threadId: 'thread-2' } },
+		],
+	},
+	{
+		name: 'gmail thread.reply to the recipients only',
+		type: 'n8n-nodes-base.gmail',
+		typeVersion: 2.1,
+		parameters: {
+			resource: 'thread',
+			operation: 'reply',
+			threadId: 'thread-3',
+			messageId: 'msg-3',
+			emailType: 'text',
+			message: 'See below.',
+			options: { replyToRecipientsOnly: true },
+		},
+		credential: gmail,
+		responses: [
+			{
+				body: {
+					id: 'msg-3',
+					threadId: 'thread-3',
+					payload: {
+						headers: [
+							{ name: 'From', value: 'ada@example.com' },
+							{
+								name: 'To',
+								value: 'Team: bob@example.com, Dan D <dan@example.com>;, me@example.com',
+							},
+							{ name: 'Subject', value: 'Status' },
+						],
+					},
+				},
+			},
+			{ body: { emailAddress: 'me@example.com' } },
+			{ body: { id: 'sent-3', threadId: 'thread-3' } },
+		],
+	},
+	{
+		name: 'gmail draft.create with an address that has no at sign',
+		type: 'n8n-nodes-base.gmail',
+		typeVersion: 2.2,
+		parameters: {
+			resource: 'draft',
+			operation: 'create',
+			subject: 'x',
+			options: { sendTo: '"Doe, Jane" <jd@example.com>' },
+		},
+		credential: gmail,
+		responses: ok({}),
+		expectedError: 'Invalid email address (item 0)',
+	},
+	{
+		name: 'gmail message.send names that are not ASCII and a subject with a line break',
+		type: 'n8n-nodes-base.gmail',
+		typeVersion: 2.2,
+		parameters: {
+			sendTo: 'Zoë K. <zoe@example.com>, plain@example.com',
+			subject: 'First line\nsecond line',
+			emailType: 'text',
+			message: 'Hello',
+			options: { appendAttribution: false },
+		},
+		credential: gmail,
+		responses: ok({ id: 'm9', threadId: 't9' }),
+	},
+	{
 		name: 'gmail message.send html sender name',
 		type: 'n8n-nodes-base.gmail',
 		typeVersion: 2.2,

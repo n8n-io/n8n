@@ -426,7 +426,7 @@ const HAND_PORTS: Array<[string, number, string]> = [
 	[
 		'n8n-nodes-base.gmail',
 		2.2,
-		'message.send, message.getAll and message.get (with `simple` on), message.addLabels, message.removeLabels, message.markAsRead, message.markAsUnread, message.delete',
+		'message.send, message.reply, thread.reply, draft.create, message.getAll and message.get (with `simple` on), message.addLabels, message.removeLabels, message.markAsRead, message.markAsUnread, message.delete',
 	],
 	[
 		'n8n-nodes-base.googleDrive',
