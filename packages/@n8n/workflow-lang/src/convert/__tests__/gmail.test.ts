@@ -89,4 +89,39 @@ describe('Gmail library node in the converter', () => {
 			),
 		).toContain("host: 'fallback'");
 	});
+
+	it('links a read without "simplify", with the host form for a message it does not parse', () => {
+		for (const operation of ['get', 'getAll']) {
+			const source = converted(
+				{ resource: 'message', operation, messageId: 'm1', simple: false, options: {} },
+				2.1,
+			);
+			expect(source).toContain('simple: false');
+			expect(source).toContain('fileLimitInHost(error)');
+			expect(source).toContain("host: 'fallback'");
+		}
+	});
+
+	it('links a read with "simplify" without a host form', () => {
+		const source = converted(
+			{ resource: 'message', operation: 'get', messageId: 'm1', simple: true, options: {} },
+			2.1,
+		);
+		expect(source).not.toContain("host: 'fallback'");
+	});
+
+	it('runs a read that downloads attachments in the host', () => {
+		const source = converted(
+			{
+				resource: 'message',
+				operation: 'get',
+				messageId: 'm1',
+				simple: false,
+				options: { downloadAttachments: true },
+			},
+			2.1,
+		);
+		expect(source).toContain("host: 'fallback'");
+		expect(source).not.toContain('fileLimitInHost(error)');
+	});
 });

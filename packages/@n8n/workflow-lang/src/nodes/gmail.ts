@@ -1,10 +1,19 @@
 /**
  * Compiled library node: a hand port of `n8n-nodes-base.gmail` version 2.2,
  * operations `message.send`, `message.reply`, `thread.reply`, `draft.create`,
- * `message.getAll` and `message.get` with
- * `simple` on (the other mode parses the raw MIME message in the fallback
- * host), and `message.addLabels`, `removeLabels`, `markAsRead`,
- * `markAsUnread` and `delete`.
+ * `message.getAll` and `message.get`, and `message.addLabels`, `removeLabels`,
+ * `markAsRead`, `markAsUnread` and `delete`.
+ *
+ * With `simple` off, v1 parses the raw MIME message with mailparser. `parseRawEmail`
+ * here is a port for the messages that it reads exactly as mailparser: text and HTML
+ * parts, multiparts, base64 and quoted-printable bodies, encoded words, UTF-8,
+ * ISO-8859-1 and Windows-1252. It runs as library code: the native codecs (`atob`,
+ * `unescape`, `split`) do the work for each byte, and the bytecode runs once for each
+ * line. Each other message ends the node with an error that the converted workflow
+ * reads, and the fallback host runs the v1 node: text with a link or with characters
+ * that are not ASCII (mailparser makes links with linkify-it and entities with the
+ * table of `he`), HTML without a text part at the root (html-to-text), an image by
+ * content id, other charsets. The download of attachments runs in the host.
  *
  * The v1 node builds the MIME message with nodemailer. This port builds an
  * equal message in the subset: the same addresses, subject and body, with a
@@ -40,6 +49,8 @@ interface GmailOptions {
 	threadId?: unknown;
 	replyToSenderOnly?: boolean;
 	replyToRecipientsOnly?: boolean;
+	downloadAttachments?: boolean;
+	dataPropertyAttachmentsPrefixName?: string;
 }
 
 interface Address {
@@ -300,6 +311,7 @@ interface GmailMessage {
 	id?: string;
 	labelIds?: string[];
 	payload?: { headers?: Array<{ name: string; value: string }> } & Record<string, unknown>;
+	raw?: string;
 	[key: string]: unknown;
 }
 
@@ -326,6 +338,684 @@ function simplify(message: GmailMessage, labels: Array<{ id: string; name: strin
 	return out;
 }
 
+/** The end of an error that the converted workflow reads: the fallback host runs the node. */
+const HOST_MARKER = '(no request to repeat: the fallback host runs the node)';
+
+/** The error for a message whose parsed form is not proven equal to mailparser's. */
+function inHost(reason: string): Error {
+	return new Error(`Gmail: the fallback host parses this message: ${reason} ${HOST_MARKER}`);
+}
+
+function found(source: string, flags: string, input: string): boolean {
+	return RegExp.exec(source, flags, input, 0) !== null;
+}
+
+/** Windows-1252 bytes 0x80 to 0x9F and their characters. Five bytes have none. */
+const CP1252: string[][] = [
+	['\x80', '€'],
+	['\x82', '‚'],
+	['\x83', 'ƒ'],
+	['\x84', '„'],
+	['\x85', '…'],
+	['\x86', '†'],
+	['\x87', '‡'],
+	['\x88', 'ˆ'],
+	['\x89', '‰'],
+	['\x8a', 'Š'],
+	['\x8b', '‹'],
+	['\x8c', 'Œ'],
+	['\x8e', 'Ž'],
+	['\x91', '‘'],
+	['\x92', '’'],
+	['\x93', '“'],
+	['\x94', '”'],
+	['\x95', '•'],
+	['\x96', '–'],
+	['\x97', '—'],
+	['\x98', '˜'],
+	['\x99', '™'],
+	['\x9a', 'š'],
+	['\x9b', '›'],
+	['\x9c', 'œ'],
+	['\x9e', 'ž'],
+	['\x9f', 'Ÿ'],
+];
+
+/** The charset of a text part, as a key: `utf8`, `latin1` or `cp1252`. Another charset stays in the host. */
+function charsetKey(name: string): string {
+	const key = name.toLowerCase().trim().split('-').join('').split('_').join('');
+	if (key === 'utf8' || key === 'ascii' || key === 'usascii') return 'utf8';
+	if (key === 'iso88591' || key === 'latin1') return 'latin1';
+	if (key === 'windows1252' || key === 'cp1252') return 'cp1252';
+	throw inHost('a charset other than UTF-8, ISO-8859-1 and Windows-1252');
+}
+
+/** The text of bytes (a string with one character for each byte) in a charset. */
+function textOf(bytes: string, charset: string): string {
+	if (charset === 'latin1' || Ascii.is(bytes)) return bytes;
+	if (charset === 'utf8') {
+		try {
+			// oxlint-disable-next-line typescript/no-deprecated -- the native UTF-8 decoder (spec section 4.3).
+			return decodeURIComponent(escape(bytes));
+		} catch (error) {
+			throw inHost('bytes that are not UTF-8');
+		}
+	}
+	if (!found('[\\x80-\\x9f]', '', bytes)) return bytes;
+	if (found('[\\x81\\x8d\\x8f\\x90\\x9d]', '', bytes)) {
+		throw inHost('a Windows-1252 byte without a character');
+	}
+	let out = bytes;
+	for (const pair of CP1252) out = out.replaceAll(pair[0], pair[1]);
+	return out;
+}
+
+/** The bytes of text in which `=XX` is a byte and each other character is itself. */
+function hexBytes(text: string): string {
+	const parts = text.replaceAll('%', '%25').split('=');
+	const out: string[] = [parts[0]];
+	for (let k = 1; k < parts.length; k++) {
+		out.push(found('^[0-9A-Fa-f]{2}', '', parts[k]) ? '%' : '%3D');
+		out.push(parts[k]);
+	}
+	// oxlint-disable-next-line typescript/no-deprecated -- the native codec makes a byte from `%XX` (spec section 4.3).
+	return unescape(out.join(''));
+}
+
+/** The bytes of a part body: libbase64 and libqp of mailsplit, for bodies in the usual form. */
+function bodyBytes(body: string, encoding: string): string {
+	if (encoding === 'base64') {
+		const text = body.split('\r').join('').split('\n').join('').split(' ').join('');
+		if (text.length % 4 !== 0 || !found('^[A-Za-z0-9+/]*={0,2}$', '', text)) {
+			throw inHost('a base64 body that is not in the usual form');
+		}
+		return atob(text);
+	}
+	if (encoding !== 'quoted-printable') return body;
+	if (!Ascii.is(body) || body.includes('==')) {
+		throw inHost('a quoted-printable body that is not in the usual form');
+	}
+	const kept: string[] = [];
+	for (const line of body.split('\n')) {
+		const cr = line.endsWith('\r');
+		let text = cr ? line.slice(0, -1) : line;
+		while (text.endsWith(' ') || text.endsWith('\t')) text = text.slice(0, -1);
+		kept.push(cr ? `${text}\r` : text);
+	}
+	let text = kept.join('\n').replaceAll('=\r\n', '').replaceAll('=\n', '');
+	if (text.endsWith('=')) text = text.slice(0, -1);
+	return hexBytes(text);
+}
+
+/** The charset of an encoded word: only the names that libmime and this port read the same way. */
+function wordCharset(name: string): string {
+	const star = name.indexOf('*');
+	const key = (star >= 0 ? name.slice(0, star) : name).toLowerCase();
+	if (key === 'utf-8' || key === 'utf8' || key === 'us-ascii') return 'utf8';
+	if (key === 'iso-8859-1') return 'latin1';
+	if (key === 'windows-1252') return 'cp1252';
+	throw inHost('an encoded word in another charset');
+}
+
+/** decodeWord of libmime. */
+function decodeWord(charset: string, kind: string, text: string): string {
+	if (kind === 'Q') {
+		if (found('\\s', '', text)) throw inHost('an encoded word with white space');
+		return textOf(hexBytes(text.replaceAll('_', ' ')), charset);
+	}
+	const bytes: string[] = [];
+	for (const piece of text.split('=')) {
+		if (piece === '') continue;
+		if (piece.length % 4 === 1 || !found('^[A-Za-z0-9+/]+$', '', piece)) {
+			throw inHost('an encoded word that is not base64');
+		}
+		bytes.push(atob(piece));
+	}
+	return textOf(bytes.join(''), charset);
+}
+
+interface EncodedWord {
+	from: number;
+	to: number;
+	charset: string;
+	kind: string;
+	text: string;
+}
+
+/** decodeWords of libmime (RFC 2047): words next to each other in one charset are one word. */
+function decodeWords(value: string): string {
+	if (!value.includes('=?')) return value;
+	const words: EncodedWord[] = [];
+	let at = 0;
+	const rest: string[] = [];
+	for (let n = 0; n < 500; n++) {
+		const m = RegExp.exec('=\\?([\\w\\-*]+)\\?([QqBb])\\?([^?]*)\\?=', '', value, at);
+		if (m === null) break;
+		rest.push(value.slice(at, m[0]));
+		words.push({
+			from: m[0],
+			to: m[1],
+			charset: wordCharset(value.slice(m[2], m[3])),
+			kind: value.slice(m[4], m[5]).toUpperCase(),
+			text: value.slice(m[6], m[7]),
+		});
+		at = m[1];
+	}
+	rest.push(value.slice(at));
+	if (words.length === 0 || rest.join(' ').includes('=?')) {
+		throw inHost('an encoded word of another form');
+	}
+	const out: string[] = [value.slice(0, words[0].from)];
+	let k = 0;
+	while (k < words.length) {
+		const first = words[k];
+		let text = first.text;
+		let last = k;
+		while (last + 1 < words.length) {
+			const next = words[last + 1];
+			const gap = value.slice(words[last].to, next.from);
+			if (gap.trim() !== '' || next.charset !== first.charset || next.kind !== first.kind) break;
+			text += next.text;
+			last++;
+		}
+		out.push(decodeWord(first.charset, first.kind, text));
+		if (last + 1 < words.length) {
+			const gap = value.slice(words[last].to, words[last + 1].from);
+			if (gap.trim() !== '') out.push(gap);
+		} else {
+			out.push(value.slice(words[last].to));
+		}
+		k = last + 1;
+	}
+	return out.join('');
+}
+
+interface HeaderLine {
+	key: string;
+	line: string;
+}
+
+/** The header lines of a MIME node, as the Headers class of mailsplit splits them. */
+function headerLines(rows: string[]): HeaderLine[] {
+	const out: HeaderLine[] = [];
+	if (rows.length === 0 || !Ascii.isPrintable(rows.join('').replaceAll('\t', ' '))) {
+		throw inHost('headers that are not printable ASCII');
+	}
+	for (const row of rows) {
+		if (row.startsWith(' ') || row.startsWith('\t')) {
+			if (out.length === 0) throw inHost('a first header line that starts with white space');
+			out[out.length - 1].line += `\r\n${row}`;
+			continue;
+		}
+		const colon = row.indexOf(':');
+		if (colon <= 0 || (out.length === 0 && found('^(From|POST) ', 'i', row))) {
+			throw inHost('a header line without a name');
+		}
+		out.push({ key: row.slice(0, colon).toLowerCase().trim(), line: row });
+	}
+	return out;
+}
+
+/** The value of a header line: decodeHeader of libmime. */
+function headerValue(line: string): string {
+	const parts = line.split('\r\n');
+	for (let k = 1; k < parts.length; k++) {
+		let part = parts[k];
+		while (part.startsWith(' ') || part.startsWith('\t')) part = part.slice(1);
+		parts[k] = part;
+	}
+	const text = parts.join(' ').trim();
+	return text.slice(text.indexOf(':') + 1).trim();
+}
+
+/** The value of the first header with a key, or an empty string. */
+function firstHeader(lines: HeaderLine[], key: string): string {
+	for (const entry of lines) if (entry.key === key) return headerValue(entry.line);
+	return '';
+}
+
+interface StructuredHeader {
+	value: string;
+	params: Record<string, string>;
+}
+
+/** parseHeaderValue of libmime, without the continued parameters of RFC 2231. */
+function structured(text: string): StructuredHeader {
+	const out: StructuredHeader = { value: '', params: {} };
+	let key = '';
+	let named = false;
+	let value = '';
+	let inKey = false;
+	let quoted = false;
+	let escaped = false;
+	const store = () => {
+		if (named) out.params[key] = value.trim();
+		else out.value = value.trim();
+	};
+	for (let k = 0; k < text.length; k++) {
+		const ch = text.charAt(k);
+		if (inKey) {
+			if (ch === '=') {
+				key = value.trim().toLowerCase();
+				named = true;
+				inKey = false;
+				value = '';
+			} else {
+				value += ch;
+			}
+			continue;
+		}
+		if (escaped) {
+			value += ch;
+		} else if (ch === '\\') {
+			escaped = true;
+			continue;
+		} else if (quoted && ch === '"') {
+			quoted = false;
+		} else if (!quoted && ch === '"') {
+			quoted = true;
+		} else if (!quoted && ch === ';') {
+			store();
+			inKey = true;
+			value = '';
+		} else {
+			value += ch;
+		}
+		escaped = false;
+	}
+	if (!inKey) store();
+	else if (value.trim() !== '') out.params[value.trim().toLowerCase()] = '';
+	for (const name of Object.keys(out.params)) {
+		if (name.includes('*')) throw inHost('a header parameter in more than one part');
+	}
+	return out;
+}
+
+interface MimePart {
+	multipart: boolean;
+	alternative: boolean;
+	boundary: string;
+	/** `plain` or `html` for a text part that is not an attachment, else an empty string. */
+	text: string;
+	charset: string;
+	encoding: string;
+	contentId: boolean;
+}
+
+/** A MIME node from its header lines: parseHeaders of mailsplit and createNode of mailparser. */
+function mimePart(lines: HeaderLine[]): MimePart {
+	const disposition = structured(firstHeader(lines, 'content-disposition'));
+	let typeHeader = firstHeader(lines, 'content-type');
+	let typed = false;
+	for (const entry of lines) if (entry.key === 'content-type') typed = true;
+	if (!typed) {
+		if (disposition.params.filename) throw inHost('a part with a file name and no content type');
+		typeHeader = found('^attachment$', 'i', disposition.value)
+			? 'application/octet-stream'
+			: 'text/plain';
+	}
+	const type = structured(typeHeader);
+	const contentType = type.value.toLowerCase().trim();
+	const transfer = firstHeader(lines, 'content-transfer-encoding');
+	if (contentType === '' || transfer.includes('(') || disposition.value.includes('=?')) {
+		throw inHost('a part header of another form');
+	}
+	const encoding = transfer.toLowerCase().trim();
+	let placed = disposition.value.toLowerCase().trim();
+	const part: MimePart = {
+		multipart: contentType.startsWith('multipart/'),
+		alternative: contentType === 'multipart/alternative',
+		boundary: type.params.boundary ?? '',
+		text: '',
+		charset: type.params.charset ? type.params.charset : 'utf-8',
+		encoding,
+		contentId: false,
+	};
+	for (const entry of lines) if (entry.key === 'content-id') part.contentId = true;
+	if (part.multipart) {
+		if (part.boundary === '') throw inHost('a multipart without a boundary');
+		return part;
+	}
+	if (part.boundary !== '') throw inHost('a boundary on a part that is not a multipart');
+	if (contentType === 'message/delivery-status') throw inHost('a delivery status part');
+	const plain = ['', '7bit', '8bit', 'binary'].includes(encoding);
+	if (contentType === 'message/rfc822' && placed === 'inline' && plain) {
+		throw inHost('an embedded message');
+	}
+	const textType = contentType === 'text/plain' || contentType === 'text/html';
+	if (placed !== '' && placed !== 'attachment' && placed !== 'inline') placed = 'attachment';
+	if (placed === '') placed = textType ? 'inline' : 'attachment';
+	if (!textType || placed !== 'inline') return part;
+	if ((type.params.format ?? '').toLowerCase().trim() === 'flowed') {
+		throw inHost('flowed text');
+	}
+	part.text = contentType === 'text/plain' ? 'plain' : 'html';
+	part.charset = charsetKey(part.charset);
+	return part;
+}
+
+/** textToHtml of mailparser for text without links: `he.encode` with named references. */
+function textToHtml(text: string): string {
+	if (!Ascii.is(text)) throw inHost('text that is not ASCII, for the HTML form');
+	if (found('https?:|mailto:|git:|//|@|localhost|www\\.|\\.[a-z0-9]', 'i', text)) {
+		throw inHost('text that can hold a link, for the HTML form');
+	}
+	if (found('[\\x00-\\x08\\x0b-\\x1f\\x7f]', '', text)) {
+		throw inHost('text with control characters, for the HTML form');
+	}
+	const encoded = text
+		.replaceAll('&', '&amp;')
+		.replaceAll('"', '&quot;')
+		.replaceAll("'", '&apos;')
+		.replaceAll('<', '&lt;')
+		.replaceAll('>', '&gt;')
+		.replaceAll('`', '&grave;')
+		.replaceAll('\t', '&#x9;');
+	const lines = encoded.trim().split('\n');
+	for (let k = 0; k < lines.length; k++) {
+		let line = lines[k];
+		while (line.endsWith(' ')) line = line.slice(0, -1);
+		lines[k] = line;
+	}
+	let body = lines.join('\n').trim();
+	while (body.includes('\n\n\n')) body = body.replaceAll('\n\n\n', '\n\n');
+	return `<p>${body.replaceAll('\n\n', '</p><p>').trim().replaceAll('\n', '<br/>')}</p>`;
+}
+
+/** `he.encode` with its default options: a numeric reference for each character that is not safe. */
+function encodeEntities(text: string): string {
+	if (Ascii.isPrintable(text) && !found('["&\'<>`]', '', text)) return text;
+	const out: string[] = [];
+	for (let k = 0; k < text.length; k++) {
+		let code = text.charCodeAt(k);
+		const low = k + 1 < text.length ? text.charCodeAt(k + 1) : 0;
+		if (code >= 0xd800 && code <= 0xdbff && low >= 0xdc00 && low <= 0xdfff) {
+			code = (code - 0xd800) * 0x400 + low - 0xdc00 + 0x10000;
+			k++;
+		} else {
+			const safe =
+				(code >= 0x20 && code <= 0x7e && !'"&\'<>`'.includes(text.charAt(k))) ||
+				code === 0 ||
+				code === 10 ||
+				code === 13 ||
+				(code >= 0x80 && code <= 0x9f && ![0x81, 0x8d, 0x8f, 0x90, 0x9d].includes(code));
+			if (safe) {
+				out.push(text.charAt(k));
+				continue;
+			}
+		}
+		out.push(`&#x${code.toString(16).toUpperCase()};`);
+	}
+	return out.join('');
+}
+
+interface ParsedAddress {
+	address: string;
+	name: string;
+}
+
+const ADDRESS = '[A-Za-z0-9._%+\\-]+@[A-Za-z0-9.\\-]+';
+
+/**
+ * An address header as mailparser gives it: the addresses, and their HTML and text forms.
+ * The port reads the usual forms: `a@b`, `<a@b>`, `Name <a@b>` and `"Name" <a@b>` in a list
+ * with commas. Groups, comments and escapes stay in the host.
+ */
+function addressHeader(value: string): Record<string, unknown> {
+	const entries: string[] = [];
+	if (value.includes('\\')) throw inHost('an address with an escape');
+	if (value !== '') {
+		let quoted = false;
+		let from = 0;
+		for (let k = 0; k < value.length; k++) {
+			const ch = value.charAt(k);
+			if (ch === '"') quoted = !quoted;
+			if (ch === ',' && !quoted) {
+				entries.push(value.slice(from, k).trim());
+				from = k + 1;
+			}
+		}
+		entries.push(value.slice(from).trim());
+	}
+	const list: ParsedAddress[] = [];
+	const pattern = `^(?:(${ADDRESS})|<(${ADDRESS})>|"([^"]+)"\\s*<(${ADDRESS})>|([^"<>(),;:@\\[\\]]+)<(${ADDRESS})>)$`;
+	for (const entry of entries) {
+		const m = RegExp.exec(pattern, '', entry, 0);
+		if (m === null) throw inHost('an address of another form');
+		let address = '';
+		let name = '';
+		if (m[2] >= 0) {
+			address = entry.slice(m[2], m[3]);
+		} else if (m[4] >= 0) {
+			address = entry.slice(m[4], m[5]);
+		} else if (m[8] >= 0) {
+			name = entry.slice(m[6], m[7]);
+			address = entry.slice(m[8], m[9]);
+			if (name !== name.trim() || name.includes('  ')) throw inHost('a quoted name with spaces');
+		} else {
+			name = entry.slice(m[10], m[11]).trim();
+			address = entry.slice(m[12], m[13]);
+			if (name === '') throw inHost('an address of another form');
+		}
+		if (address.toLowerCase().includes('@xn--')) throw inHost('an address with a Punycode domain');
+		if (name !== '') name = decodeWords(name).trim();
+		list.push({ address, name });
+	}
+	const html: string[] = [];
+	const text: string[] = [];
+	for (const entry of list) {
+		const link = `<a href="mailto:${entry.address}" class="mp_address_email">${entry.address}</a>`;
+		html.push(
+			entry.name
+				? `<span class="mp_address_group"><span class="mp_address_name">${encodeEntities(entry.name)}</span> &lt;${link}&gt;</span>`
+				: `<span class="mp_address_group">${link}</span>`,
+		);
+		text.push(entry.name ? `"${entry.name}" <${entry.address}>` : entry.address);
+	}
+	return { value: list, html: html.join(', '), text: text.join(', ') };
+}
+
+/** ensureMessageIDFormat of mailparser. */
+function messageIdForm(value: string): string {
+	let id = value;
+	if (id.charAt(0) !== '<') id = `<${id}`;
+	if (id.charAt(id.length - 1) !== '>') id = `${id}>`;
+	return id;
+}
+
+/** The fields that simpleParser reads from the headers of the message, in its order. */
+function headerFields(lines: HeaderLine[]): Record<string, unknown> {
+	const out: Record<string, unknown> = {};
+	const values = (key: string): string[] => {
+		const list: string[] = [];
+		for (const entry of lines) if (entry.key === key) list.push(headerValue(entry.line));
+		return list;
+	};
+	const subjects = values('subject').filter((value) => value !== '');
+	if (subjects.length > 0) {
+		const subject = decodeWords(subjects[subjects.length - 1]);
+		if (subject === '') throw inHost('a subject that decodes to nothing');
+		out.subject = subject;
+	}
+	const references: string[] = [];
+	for (const value of values('references')) {
+		if (value === '') throw inHost('an empty References header');
+		for (const id of decodeWords(value).replaceAll('\t', ' ').split(' ')) {
+			if (id !== '') references.push(messageIdForm(id));
+		}
+	}
+	if (references.length > 0) out.references = references.length === 1 ? references[0] : references;
+	const dates = values('date').filter((value) => value !== '');
+	if (dates.length > 0) {
+		const text = dates[dates.length - 1];
+		const zone = '(?:[+-]\\d{4}|GMT|UT)(?: \\([A-Za-z]+\\))?';
+		const form = `^(?:[A-Za-z]{3}, )?\\d{1,2} [A-Za-z]{3} \\d{4} \\d{2}:\\d{2}(?::\\d{2})? ${zone}$`;
+		const paren = text.indexOf(' (');
+		const time = Date.parse(paren < 0 ? text : text.slice(0, paren));
+		if (!found(form, '', text) || isNaN(time)) throw inHost('a date of another form');
+		out.date = new Date(time).toISOString();
+	}
+	for (const key of ['to', 'from', 'cc', 'bcc']) {
+		const list = values(key).map((value) => addressHeader(value));
+		if (list.length === 0) continue;
+		out[key] = key === 'from' || list.length === 1 ? list[list.length - 1] : list;
+	}
+	for (const key of ['message-id', 'in-reply-to']) {
+		const list = values(key).filter((value) => value !== '');
+		if (list.length === 0) continue;
+		const id = decodeWords(list[list.length - 1]);
+		if (id === '') throw inHost('a message id that decodes to nothing');
+		out[key === 'message-id' ? 'messageId' : 'inReplyTo'] = messageIdForm(id);
+	}
+	const replies = values('reply-to').map((value) => addressHeader(value));
+	if (replies.length > 0) out.replyTo = replies[replies.length - 1];
+	return out;
+}
+
+interface TextPart {
+	html: boolean;
+	content: string;
+	alternative: boolean;
+	root: boolean;
+}
+
+/**
+ * parseRawEmail of the v1 node without the download of attachments: the message of the Gmail
+ * API in the `raw` format, as `simpleParser` of mailparser 3.9 reads it. The port gives the
+ * result only for a message whose parts it reads exactly as mailparser; each other message
+ * ends with the error that sends the node to the fallback host.
+ */
+function parseRawEmail(message: GmailMessage): Item {
+	let bytes = '';
+	try {
+		bytes = atob(String(message.raw).replaceAll('-', '+').replaceAll('_', '/'));
+	} catch (error) {
+		throw inHost('a raw value that is not base64');
+	}
+	if (!Ascii.is(bytes)) textOf(bytes, 'utf8');
+	if (bytes.replaceAll('\r\n', '').includes('\r')) throw inHost('a carriage return alone');
+	const lines = bytes.split('\n');
+	const open: MimePart[] = [];
+	const texts: TextPart[] = [];
+	let rootLines: HeaderLine[] | undefined;
+	let head: string[] = [];
+	let state = 'head';
+	let leaf: MimePart | undefined;
+	let leafFrom = 0;
+	let contentIds = false;
+	let hasText = false;
+	let hasHtml = false;
+	const endLeaf = (to: number, last: boolean) => {
+		const part = leaf;
+		leaf = undefined;
+		if (part === undefined) return;
+		if (part.contentId && part.text === '') contentIds = true;
+		if (part.text === '') return;
+		let body = lines.slice(leafFrom, to).join('\n');
+		if (!last && to === leafFrom + 1 && (body === '' || body === '\r')) {
+			throw inHost('a part whose body is one line break');
+		}
+		if (!last && body.endsWith('\r')) body = body.slice(0, -1);
+		const content = textOf(bodyBytes(body, part.encoding), part.charset).replaceAll('\r\n', '\n');
+		let alternative = false;
+		for (const parent of open) if (parent.alternative) alternative = true;
+		if (part.text === 'plain') hasText = true;
+		else hasHtml = true;
+		texts.push({ html: part.text === 'html', content, alternative, root: open.length === 0 });
+	};
+	for (let k = 0; k < lines.length; k++) {
+		const ended = k < lines.length - 1;
+		const raw = lines[k];
+		const line = raw.endsWith('\r') ? raw.slice(0, -1) : raw;
+		if (open.length > 0 && line.startsWith('--')) {
+			let match = -1;
+			for (let p = 0; p < open.length; p++) {
+				if (line.startsWith(`--${open[p].boundary}`)) match = p;
+			}
+			if (match >= 0) {
+				const boundary = open[open.length - 1].boundary;
+				const closes = line === `--${boundary}--`;
+				if (
+					match !== open.length - 1 ||
+					state === 'head' ||
+					!(closes || line === `--${boundary}`)
+				) {
+					throw inHost('a boundary line in another place');
+				}
+				if (!closes && !ended) throw inHost('a boundary line that ends the message');
+				endLeaf(k, false);
+				if (closes) {
+					open.pop();
+					state = 'skip';
+				} else {
+					state = 'head';
+					head = [];
+				}
+				continue;
+			}
+		}
+		if (state !== 'head') continue;
+		if (!ended) throw inHost('headers without a body');
+		if (line !== '') {
+			head.push(line);
+			continue;
+		}
+		const parsed = headerLines(head);
+		if (rootLines === undefined) rootLines = parsed;
+		const part = mimePart(parsed);
+		if (part.multipart) {
+			for (const parent of open) {
+				if (
+					parent.boundary.startsWith(part.boundary) ||
+					part.boundary.startsWith(parent.boundary)
+				) {
+					throw inHost('boundaries that start the same way');
+				}
+			}
+			open.push(part);
+			state = 'skip';
+		} else {
+			leaf = part;
+			leafFrom = k + 1;
+			state = 'body';
+		}
+	}
+	if (open.length > 0 || rootLines === undefined) throw inHost('a multipart that does not end');
+	endLeaf(lines.length, true);
+	const htmlParts: string[] = [];
+	const textParts: string[] = [];
+	for (const part of texts) {
+		if (part.content === '') continue;
+		if (!part.html) {
+			textParts.push(part.content);
+			if (!part.alternative && hasHtml) htmlParts.push(textToHtml(part.content));
+			continue;
+		}
+		if ((!part.alternative && hasText) || (part.root && !hasText)) {
+			throw inHost('HTML that mailparser turns into text');
+		}
+		htmlParts.push(part.content);
+	}
+	const html = htmlParts.join('<br/>\n');
+	if (contentIds && found('\\bcid:', '', html)) throw inHost('an image in the HTML by content id');
+	const headers: Record<string, unknown> = {};
+	for (const entry of rootLines) headers[entry.key] = entry.line;
+	const out: Record<string, unknown> = {};
+	for (const key of ['id', 'threadId', 'labelIds', 'sizeEstimate']) {
+		if (message[key] !== undefined) out[key] = message[key];
+	}
+	out.headers = headers;
+	if (htmlParts.length > 0) out.html = html;
+	if (textParts.length > 0) {
+		out.text = textParts.join('\n');
+		out.textAsHtml = textParts.map((part) => textToHtml(part)).join('<br/>\n');
+	}
+	const fields = headerFields(rootLines);
+	for (const key of Object.keys(fields)) out[key] = fields[key];
+	if (htmlParts.length === 0) out.html = false;
+	return out;
+}
+
 function wrap(text: string, width: number): string {
 	const lines: string[] = [];
 	for (let i = 0; i < text.length; i += width) lines.push(text.slice(i, i + width));
@@ -343,7 +1033,7 @@ export default defineNode<GmailParameters>({
 				'authentication',
 				'returnAll',
 				'limit',
-				'simple=true',
+				'simple=true|false',
 				'filters',
 				'filters.includeSpamTrash',
 				'filters.labelIds',
@@ -353,8 +1043,17 @@ export default defineNode<GmailParameters>({
 				'filters.receivedBefore',
 				'filters.sender',
 				'options',
+				'options.downloadAttachments=false',
+				'options.dataPropertyAttachmentsPrefixName',
 			],
-			'message.get': ['authentication', 'messageId', 'simple=true', 'options'],
+			'message.get': [
+				'authentication',
+				'messageId',
+				'simple=true|false',
+				'options',
+				'options.downloadAttachments=false',
+				'options.dataPropertyAttachmentsPrefixName',
+			],
 			'message.addLabels': ['authentication', 'messageId', 'labelIds'],
 			'message.removeLabels': ['authentication', 'messageId', 'labelIds'],
 			'message.markAsRead': ['authentication', 'messageId'],
@@ -458,6 +1157,11 @@ export default defineNode<GmailParameters>({
 			if (response.status >= 400) throw requestFailure(response);
 			return response.body;
 		};
+		// Without "simplify", v1 reads the raw message and parses it (parseRawEmail).
+		const raw = parameters.simple === false;
+		if (raw && (parameters.options ?? {}).downloadAttachments === true) {
+			throw new Error('Gmail: the download of attachments is not in the compiled library');
+		}
 		const metadata = {
 			format: 'metadata',
 			metadataHeaders: ['From', 'To', 'Cc', 'Bcc', 'Subject'],
@@ -512,9 +1216,9 @@ export default defineNode<GmailParameters>({
 				position++;
 				const message = await get<GmailMessage>(
 					`${api}/messages/${String(parameters.messageId ?? '')}`,
-					metadata,
+					raw ? { format: 'raw' } : metadata,
 				);
-				out.push(simplify(message, await labelList()));
+				out.push(raw ? parseRawEmail(message) : simplify(message, await labelList()));
 			}
 			return out;
 		}
@@ -548,10 +1252,16 @@ export default defineNode<GmailParameters>({
 					list = data.messages ?? [];
 				}
 				// v1 reuses the list query for each message, with the metadata format added.
-				const messageQs: Record<string, unknown> = { ...qs, ...metadata };
+				const messageQs: Record<string, unknown> = raw
+					? { ...qs, format: 'raw' }
+					: { ...qs, ...metadata };
 				const messages: GmailMessage[] = [];
 				for (const entry of list) {
 					messages.push(await get<GmailMessage>(`${api}/messages/${entry.id}`, messageQs));
+				}
+				if (raw) {
+					for (const message of messages) out.push(parseRawEmail(message));
+					continue;
 				}
 				const labels = await labelList();
 				for (const message of messages) out.push(simplify(message, labels));
