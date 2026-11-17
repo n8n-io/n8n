@@ -23,7 +23,7 @@ import { evaluateCredentialFlags, unprovenFlagNodes } from '../../node-compile/e
 import type { Fixture } from '../../reference/runner.ts';
 import { runReference } from '../../reference/runner.ts';
 import { runModule } from '../../testing/vm.ts';
-import { ENGINE_CASES, AI_HOST_CASES } from './ai-cases.ts';
+import { ENGINE_CASES, AI_HOST_CASES, TOOL_PROBE_CASES } from './ai-cases.ts';
 import type { EquivalenceCase, NormalRequest, Recording } from './equivalence.ts';
 import { applyCredential, networkErrorText, normalizeRequest } from './equivalence.ts';
 
@@ -281,6 +281,45 @@ describe.runIf(typesBuilt)('AI nodes through the converter, against n8n engine r
 					recording.subRuns?.[sub.name] ?? [],
 				);
 			}
+		});
+	});
+
+	describe.each(TOOL_PROBE_CASES.map((c) => ({ ...c, label: c.name })))('$label', (c) => {
+		const recording = recordings[c.name];
+
+		it('stays in the fallback host', () => {
+			expect(converted(c).fallbackNodes).toContain(NODE);
+		});
+
+		it('has the v1 recording: the model, the tool, then the model with the result', () => {
+			expect(recording.error).toBeUndefined();
+			expect(recording.requests.map((r) => r.url)).toEqual([
+				'https://api.openai.com/v1/chat/completions',
+				'https://example.com/a',
+				'https://api.openai.com/v1/chat/completions',
+			]);
+			const first = recording.requests[0].body;
+			expect(isRecord(first) ? first.tools : undefined).toEqual([
+				{
+					type: 'function',
+					function: {
+						name: 'Fetch_page',
+						description: 'Gets a page',
+						parameters: {
+							type: 'object',
+							properties: { url: { type: 'string', description: 'The address of the page' } },
+							required: ['url'],
+							additionalProperties: false,
+							$schema: 'http://json-schema.org/draft-07/schema#',
+						},
+						strict: false,
+					},
+				},
+			]);
+			expect(recording.subRuns).toEqual({
+				Model: [{ error: null }, { error: null }],
+				'Fetch page': [{ error: null }],
+			});
 		});
 	});
 

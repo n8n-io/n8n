@@ -2606,6 +2606,57 @@ const MEMORY_CASES: EquivalenceCase[] = [
 	),
 ];
 
+/** The model calls the tool `name` with the arguments. */
+const callsTool = (name: string, args: Record<string, unknown>, id = 'call_1') => ({
+	body: {
+		id: 'chatcmpl-1',
+		choices: [
+			{
+				index: 0,
+				message: {
+					role: 'assistant',
+					content: null,
+					tool_calls: [
+						{ id, type: 'function', function: { name, arguments: JSON.stringify(args) } },
+					],
+				},
+				finish_reason: 'tool_calls',
+			},
+		],
+	},
+});
+const httpTool: SubNodeCase = {
+	name: 'Fetch page',
+	type: 'n8n-nodes-base.httpRequestTool',
+	typeVersion: 4.2,
+	parameters: {
+		toolDescription: 'Gets a page',
+		url: "={{ $fromAI('url', 'The address of the page', 'string') }}",
+		options: {},
+	},
+	connection: 'ai_tool',
+};
+/**
+ * The Tools Agent with the HTTP Request tool. The converter keeps these clusters in the
+ * fallback host. The recordings are the facts of v1 for the native form that is planned
+ * (`docs/compiler-plan.md`, "Tools"): the function schema, the request of the tool, the
+ * messages of the call and of its result, and the intermediate steps.
+ */
+export const TOOL_PROBE_CASES: EquivalenceCase[] = [2.2, 3.1].map((version) =>
+	agent(
+		`tool probe http ${version}`,
+		version,
+		gpt,
+		[
+			callsTool('Fetch_page', { url: 'https://example.com/a' }),
+			{ body: { title: 'A page' } },
+			completion('The title is A page'),
+		],
+		{ options: { systemMessage: 'Be brief', returnIntermediateSteps: version >= 3 } },
+		{ subNodes: [gpt, httpTool], responseBytes: true },
+	),
+);
+
 /** Every case that runs in the engine of n8n and through the converter. */
 export const ENGINE_CASES: EquivalenceCase[] = [
 	...AI_ENGINE_CASES,

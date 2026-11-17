@@ -678,14 +678,52 @@ call there is a step with LangChain objects in it.
    list of models that take no sampling parameters.
 2. Structured output parser: the JSON schema check, the format instructions, and the auto-fix call.
 3. Tools Agent versions 1.6 to 1.9: the answer is a stream (server-sent events).
-4. Tools Agent with tools. The tool runs must be steps of the converted source (version 3 gives each call to
-   the engine, which runs the tool node), so that a tool uses the compiled or library form of its node. Needs:
-   `$fromAI` in the expression translator, the function schema of each tool for each provider, the messages
-   of a call and its result, and the step data of `intermediateSteps`. The memory then also keeps the calls.
+4. Tools Agent with tools: see "Tools" below.
 5. `informationExtractor`, `textClassifier` (a chain with a fixed prompt and a parser).
 6. Other operations of the vendor nodes (image, audio, document, file).
 7. `options.reasoningEffort`, `responseFormat`, `textFormat` and built-in tools of the OpenAI model.
 8. Vector stores, document loaders and text splitters.
+
+### Tools (plan; not built)
+
+Facts of v1 from recordings (`TOOL_PROBE_CASES` in `ai-cases.ts`; the recorder now loads the tool form of a
+node, `<type>Tool`, and gives the model and the tools one list of answers):
+
+- **Schema** (OpenAI Chat Completions): `tools: [{ type: 'function', function: { name, description,
+  parameters, strict: false } }]`. The name is the node name with `_` for each other character. The
+  description is `toolDescription`. `parameters` is the JSON schema of the `$fromAI` calls of the node:
+  `{ type: 'object', properties: { <key>: { type, description } }, required: [<keys without a default>],
+  additionalProperties: false, $schema: 'http://json-schema.org/draft-07/schema#' }`. The Code tool without
+  an input schema has `properties: { input: { type: 'string' } }` and no `required`.
+- **Order**: the model, each tool of the answer, the model again with the same `tools`.
+- **Messages of a call**: versions 2 to 2.2 send `{ role: 'assistant', content: '', tool_calls }`; versions 3
+  and 3.1 send `content: []`. `arguments` is the JSON text of the parsed arguments. The result is
+  `{ role: 'tool', content, tool_call_id }`; for the HTTP Request tool `content` is the JSON text of the
+  output items of the node.
+- **Steps** (3.1, `returnIntermediateSteps`): `{ action: { tool, toolInput, log: 'Calling <node name>',
+  messageLog: [<the AI message as LangChain writes it>], toolCallId, type: 'tool_call' }, observation }`.
+- **Runs**: one run of the tool sub-node for each call, with its error.
+
+Work, in order:
+
+1. **The loop in the converted source.** A library node cannot call a node. `lowerNativeCluster` must write the
+   loop: a call of the library node for one turn of the model (new parameters: `tools`, the schemas, and
+   `steps`, the calls and results so far, for each item), then one step for each tool call, then the next
+   turn. Version 3 runs all items again after the tools, and counts `maxIterations` for the node; version 2
+   loops for each item. `chain-llm.ts` must give the calls of a turn in place of `again`.
+2. **`$fromAI` in the expression translator** (`src/convert/expression.ts`): in a tool step, `$fromAI(key,
+   description, type, default)` reads `key` of the arguments of the call, or the default. The same parse gives
+   the schema. v1 gives the tool node one item with the arguments.
+3. **A tool as a step.** The tool node goes through its usual lowerer (library node, compiled node, native
+   Code node) with the arguments as its input item. A tool that only the host can run keeps the whole cluster
+   in the host.
+4. **Recorder.** The Code tool needs a task runner (`startRunnerTask` of the recorder is not there), so it
+   has no recording yet. The workflow tool needs `executeWorkflow`.
+5. **Other providers.** The Responses API (`function_call` items and `function_call_output`), Anthropic
+   (`tools` with `input_schema`, `tool_use` and `tool_result` blocks) and Gemini (`functionDeclarations`,
+   `functionCall` and `functionResponse` parts; its schema has no `additionalProperties` and no `$schema`
+   — to confirm with a recording). Each needs its probe case first.
+6. **Memory with tools.** v1 keeps the calls and results of a turn in the session (`saveToMemory` with steps).
 
 ## Phases
 
