@@ -46,7 +46,7 @@ A run that changes nothing is a valid result.
    `last_reviewed` in the frontmatter.
 3. For each page, list the folders of the code that the page describes. Most
    pages name few files, so also find the code for the statements that name no
-   code. Do not check that each name in the page exists. Step 9 does that.
+   code. Step 9 checks that the names in the page exist.
 4. For each page, list the commits in those folders since its
    `last_reviewed`:
    `git log origin/master --since=<last_reviewed> --no-merges --format='%h %ad %s' --date=short -- <folders>`.
@@ -66,9 +66,12 @@ A run that changes nothing is a valid result.
 8. Keep the voice of the page. Follow the writing rules in `AGENTS.md` and the
    Vale styles in `docs/backend/styles`. Keep each sentence to 25 words or
    fewer.
-9. Run `node scripts/backend-docs-check.mjs`. It must pass. It checks that the
-   paths and environment variables that the pages name exist. CI runs Vale
-   and Lychee on the PR.
+9. Run `node scripts/backend-docs-check.mjs`. It must pass. It checks the
+   paths, the environment variables, and the symbols in tables with "File"
+   and "Symbol" columns. It does not check other symbols in code spans, for
+   example decorators and class names. For each of these, confirm with
+   `git grep -w <name> -- ':!docs/backend'` that the name still exists. CI
+   runs Vale and Lychee on the PR.
 
 Change only files in `docs/backend`.
 
