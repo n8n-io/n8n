@@ -17,7 +17,7 @@ vi.mock('../../agent/sanitize-mcp-schemas', () => ({
 
 import { McpClient } from '@n8n/agents';
 import { createResultError, createResultOk } from '@n8n/utils/result';
-import { UserError } from 'n8n-workflow';
+import { UserError } from '@n8n/errors';
 
 import { sanitizeMcpToolSchemas } from '../../agent/sanitize-mcp-schemas';
 import type { SsrfUrlValidator } from '../mcp-client-manager';
@@ -180,6 +180,65 @@ describe('McpClientManager', () => {
 					limitType: 'depth',
 				}),
 			);
+		});
+	});
+
+	describe('admin and server tool permissions', () => {
+		const tools = [
+			{ name: 'search', annotations: { readOnlyHint: true } },
+			{ name: 'create', annotations: { readOnlyHint: false } },
+		];
+		const userServer = {
+			name: 'crm',
+			url: 'https://crm.example.com/mcp',
+			toolPermissions: {
+				categories: { read: 'always_allow', write: 'always_allow' },
+			},
+		} as const;
+
+		function configureTools() {
+			const calls = mockedMcpClient.mock.calls as Array<
+				[Array<{ configureTools: (descriptors: typeof tools) => unknown }>]
+			>;
+			return calls[0][0][0].configureTools(tools);
+		}
+
+		it("lets a server's own permissions replace the admin's by default", async () => {
+			await new McpClientManager().getRegularTools([userServer], mockLogger, {
+				mcpRead: 'always_allow',
+				mcpWrite: 'require_approval',
+			});
+
+			expect(configureTools()).toEqual({
+				toolFilter: { mode: 'exclude', tools: [] },
+				requireApproval: [],
+			});
+		});
+
+		it("keeps the admin's stricter permission when enforced", async () => {
+			await new McpClientManager().getRegularTools(
+				[userServer],
+				mockLogger,
+				{ mcpRead: 'always_allow', mcpWrite: 'require_approval' },
+				{ enforceAdminPermissions: true },
+			);
+
+			expect(configureTools()).toEqual({
+				toolFilter: { mode: 'exclude', tools: [] },
+				requireApproval: ['create'],
+			});
+		});
+
+		it('caches the enforced and the default tool lists apart', async () => {
+			const manager = new McpClientManager();
+			const permissions = { mcpRead: 'always_allow', mcpWrite: 'require_approval' } as const;
+
+			await manager.getRegularTools([userServer], mockLogger, permissions);
+			await manager.getRegularTools([userServer], mockLogger, permissions, {
+				enforceAdminPermissions: true,
+			});
+
+			expect(mockedMcpClient).toHaveBeenCalledTimes(2);
 		});
 	});
 

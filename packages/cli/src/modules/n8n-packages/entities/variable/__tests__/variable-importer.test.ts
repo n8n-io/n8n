@@ -1,4 +1,5 @@
-import type { Variables } from '@n8n/db';
+import type { OperationContext, Variables } from '@n8n/db';
+import type { SecurityContext } from '@n8n/permissions';
 import { hasGlobalScope } from '@n8n/permissions';
 import { mock } from 'vitest-mock-extended';
 
@@ -23,6 +24,7 @@ const context: ImportContext = {
 	user: mock(),
 	projectId: 'proj-target',
 	folderId: null,
+	publicApi: false,
 };
 
 function makeImporter() {
@@ -63,6 +65,26 @@ describe('VariableImporter.apply', () => {
 		});
 
 		expect(result).toEqual({ created: [], stubbed: ['API_KEY'], skippedExisting: [], updated: [] });
+	});
+
+	it('passes the operation context to each variable create and update', async () => {
+		const { importer, variablesService } = makeImporter();
+		variablesService.getAllCached.mockResolvedValue([]);
+		variablesService.getCached.mockResolvedValue(mock<Variables>({ value: 'old' }));
+		const ctx: OperationContext = {
+			security: mock<SecurityContext>({ subIdentityId: 'login-1' }),
+		};
+
+		await importer.apply(
+			{ ...context, ctx },
+			{
+				...projectCreationPlan,
+				overwrites: [{ variableId: 'var-1', name: 'BASE_URL', value: 'new' }],
+			},
+		);
+
+		expect(variablesService.create.mock.calls[0][2]).toBe(ctx);
+		expect(variablesService.update.mock.calls[0][3]).toBe(ctx);
 	});
 
 	it('treats a concurrent create as a skip when the variable now exists at the destination', async () => {

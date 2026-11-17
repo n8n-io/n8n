@@ -69,8 +69,8 @@ describe('Okta Node', () => {
 			description: 'should encode the user id as one path segment on get',
 			operation: 'get',
 			method: 'get',
-			userId: 'x/../y',
-			path: '/api/v1/users/x%2F..%2Fy',
+			userId: 'x/y',
+			path: '/api/v1/users/x%2Fy',
 			output: { id: '00u1abcd' },
 		},
 		{

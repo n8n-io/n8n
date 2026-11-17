@@ -4,8 +4,9 @@ import type {
 	INodeListSearchItems,
 	INodeListSearchResult,
 	INodeParameterResourceLocator,
+	RequestPath,
 } from 'n8n-workflow';
-import { NodeApiError, NodeOperationError } from 'n8n-workflow';
+import { NodeApiError, NodeOperationError, requestPath } from 'n8n-workflow';
 
 import { SERVICE_PRINCIPAL_AUTH } from '../helpers/constants';
 import { isWorkbookFile, workbookSearchEndpoint } from '../helpers/workbookSearch';
@@ -25,7 +26,7 @@ type Drive = IDataObject & { id?: string; name?: string; webUrl?: string };
  */
 async function fetchPage<T extends IDataObject>(
 	this: ILoadOptionsFunctions,
-	resource: string,
+	resource: RequestPath,
 	qs: IDataObject,
 	paginationToken?: string,
 ): Promise<GraphListResponse<T>> {
@@ -33,7 +34,7 @@ async function fetchPage<T extends IDataObject>(
 		? await (microsoftApiRequest<GraphListResponse<T>>).call(
 				this,
 				'GET',
-				'',
+				resource,
 				{},
 				{},
 				paginationToken,
@@ -110,7 +111,7 @@ export async function searchSites(
 	try {
 		response = await (fetchPage<Site>).call(
 			this,
-			'/v1.0/sites',
+			requestPath`/v1.0/sites`,
 			{ search: filter ?? '*', $select: 'id,displayName,webUrl' },
 			paginationToken,
 		);
@@ -136,7 +137,7 @@ export async function searchLibraries(
 
 	const response = await (fetchPage<Drive>).call(
 		this,
-		`/v1.0/sites/${encodeURIComponent(siteId)}/drives`,
+		requestPath`/v1.0/sites/${siteId}/drives`,
 		{ $select: 'id,name,webUrl' },
 		paginationToken,
 	);
@@ -193,7 +194,7 @@ export async function getSheets(
 
 	return await (listSearchPage<GraphWorksheet>).call(
 		this,
-		`${workbookRoot}/workbook/worksheets`,
+		requestPath`${workbookRoot}/workbook/worksheets`,
 		(sheet) => ({ name: sheet.name, value: sheet.id }),
 		filter,
 		paginationToken,
@@ -214,7 +215,7 @@ export async function getTables(
 
 	return await (listSearchPage<GraphTable>).call(
 		this,
-		`${workbookRoot}/workbook/worksheets/${encodeURIComponent(worksheetId)}/tables`,
+		requestPath`${workbookRoot}/workbook/worksheets/${worksheetId}/tables`,
 		(table) => ({ name: table.name, value: table.id }),
 		filter,
 		paginationToken,

@@ -128,6 +128,19 @@ function nodeUnchanged(node: NodeJSON, saved: NodeJSON): boolean {
 	);
 }
 
+/** Codegen writes boolean settings only when true, so `false` and absent compare equal. */
+function executionSettingsUnchanged(node: NodeJSON, saved: NodeJSON): boolean {
+	return (
+		Boolean(node.executeOnce) === Boolean(saved.executeOnce) &&
+		Boolean(node.retryOnFail) === Boolean(saved.retryOnFail) &&
+		Boolean(node.alwaysOutputData) === Boolean(saved.alwaysOutputData) &&
+		node.maxTries === saved.maxTries &&
+		node.waitBetweenTries === saved.waitBetweenTries &&
+		node.onError === saved.onError &&
+		node.extendsCredential === saved.extendsCredential
+	);
+}
+
 /**
  * Names of nodes this build added or modified relative to the saved workflow
  * (type, typeVersion, parameters, credentials, disabled state, or name differ,
@@ -256,6 +269,13 @@ export function downgradeUnchangedNodeBlockers(
 				warning.code === 'chat_model_validation' &&
 				(!isDeepStrictEqual(node.credentials ?? {}, saved.credentials ?? {}) ||
 					(node.disabled ?? false) !== (saved.disabled ?? false))
+			)
+				return warning;
+		} else if (warning.code === 'PREFER_PREDEFINED_CREDENTIAL') {
+			if (
+				!nodeUnchanged(node, saved) ||
+				!executionSettingsUnchanged(node, saved) ||
+				wiredIntoFlow(node, saved, builtSignatures, savedSignatures)
 			)
 				return warning;
 		} else {

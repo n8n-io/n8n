@@ -46,8 +46,8 @@ export function renderSkillCatalogPrompt(
 							`  id: ${promptString(skill.id)}`,
 						]),
 				...(skill.category ? [`  category: ${promptString(skill.category)}`] : []),
-				...(skill.recommendedTools?.length
-					? [`  recommendedTools: ${promptStringArray(skill.recommendedTools)}`]
+				...(skill.recommendedToolGroups?.length
+					? [`  recommendedToolGroups: ${promptStringArray(skill.recommendedToolGroups)}`]
 					: []),
 			].join('\n'),
 		)

@@ -1,12 +1,14 @@
 import { mock } from 'vitest-mock-extended';
-import type { ILoadOptionsFunctions } from 'n8n-workflow';
+import type { ILoadOptionsFunctions, INode } from 'n8n-workflow';
+import { requestPath } from 'n8n-workflow';
 
 import { getWorksheetColumnRow } from '../../../v2/methods/loadOptions';
 import { microsoftApiRequest } from '../../../v2/transport';
 import type { MockedFunction } from 'vitest';
 
 // Mock the transport module
-vi.mock('../../../v2/transport', () => ({
+vi.mock('../../../v2/transport', async (importOriginal) => ({
+	...(await importOriginal()),
 	microsoftApiRequest: vi.fn(),
 }));
 
@@ -18,6 +20,7 @@ describe('Microsoft Excel V2 - loadOptions', () => {
 	beforeEach(() => {
 		mockContext = mock<ILoadOptionsFunctions>({
 			getNodeParameter: mockGetNodeParameter,
+			getNode: () => mock<INode>({ typeVersion: 2.3 }),
 		});
 		mockMicrosoftApiRequest.mockReset();
 		mockGetNodeParameter.mockReset();
@@ -45,7 +48,7 @@ describe('Microsoft Excel V2 - loadOptions', () => {
 
 			expect(mockMicrosoftApiRequest).toHaveBeenCalledWith(
 				'GET',
-				`/drive/items/${workbookId}/workbook/worksheets/${worksheetId}/usedRange`,
+				requestPath`/items/${workbookId}/workbook/worksheets/${worksheetId}/usedRange`,
 				undefined,
 				{ select: 'values' },
 				undefined,
@@ -80,7 +83,7 @@ describe('Microsoft Excel V2 - loadOptions', () => {
 
 			expect(mockMicrosoftApiRequest).toHaveBeenCalledWith(
 				'PATCH',
-				`/drive/items/${workbookId}/workbook/worksheets/${worksheetId}/range(address='${range}')`,
+				requestPath`/items/${workbookId}/workbook/worksheets/${worksheetId}/range(address='${range}')`,
 				{ select: 'values' },
 				undefined,
 				undefined,

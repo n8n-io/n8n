@@ -10,7 +10,7 @@ import { test, expect } from '../../../../../fixtures/base';
  */
 test.describe(
 	'Subworkflow Stop @mode:queue',
-	{ annotation: [{ type: 'owner', description: 'Catalysts' }] },
+	{ annotation: [{ type: 'owner', description: 'Core Execution' }] },
 	() => {
 		test('should stop a subworkflow execution on the worker and keep it canceled', async ({
 			api,

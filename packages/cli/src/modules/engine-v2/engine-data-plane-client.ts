@@ -1,6 +1,5 @@
 import { isObjectLiteral } from '@n8n/backend-common';
 import type { HttpRequestClient } from '@n8n/backend-network';
-import { OutboundHttp } from '@n8n/backend-network';
 import { EngineConfig } from '@n8n/config';
 import { Service } from '@n8n/di';
 import type {
@@ -33,6 +32,8 @@ import {
 	type ResumeOutcome,
 } from '@/services/engine-data-plane-proxy.service';
 
+import { EngineMtls } from './engine-mtls';
+
 /** Must match the engine's `ExecutionStatus`. */
 const notCancellableDetailsSchema = z.object({
 	status: z.enum(['queued', 'running', 'waiting', 'completed', 'failed', 'cancelled']),
@@ -52,10 +53,10 @@ export class EngineDataPlaneClient implements EngineDataPlaneProvider {
 
 	constructor(
 		private readonly engineConfig: EngineConfig,
-		outboundHttp: OutboundHttp,
 		private readonly instanceSettings: InstanceSettings,
+		mtls: EngineMtls,
 	) {
-		this.http = outboundHttp.requests({
+		this.http = mtls.requests({
 			// Fixed, n8n-controlled host.
 			useDefaultSsrfPolicy: 'unsafe',
 			// `engineConfig.host` is a bind address, not a destination, so it is not

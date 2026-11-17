@@ -23,7 +23,7 @@ test.use({
 test.describe(
 	'Schedule Trigger timezone (durable scheduler)',
 	{
-		annotation: [{ type: 'owner', description: 'Catalysts' }],
+		annotation: [{ type: 'owner', description: 'Core Application' }],
 	},
 	() => {
 		test("should resolve the workflow's DEFAULT timezone to the instance timezone", async ({

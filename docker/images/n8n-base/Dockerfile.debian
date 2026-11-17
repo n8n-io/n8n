@@ -2,12 +2,13 @@
 # glibc variant of ./Dockerfile. Users add vendor libraries that need glibc
 # (Oracle Instant Client, IBM Db2) in a derived image; see the n8n image README.
 #
-# docker/docker-bake.hcl sets the DHI reference (DEBIAN_DHI_REF).
+# docker/docker-bake.hcl sets the DHI reference (DEBIAN_DHI_REF) and ALPINE_IMAGE.
 ARG DHI_REF
+ARG ALPINE_IMAGE
 
 # The DHI Debian mirror has no msttcorefonts installer, so take the same fonts
 # as the Alpine base from Alpine. They are data files: any platform will do.
-FROM --platform=$BUILDPLATFORM alpine:3.24@sha256:294b683cb724975bec92580e1e685676bd4b50bda910ddb8c51d4cabeaec77e6 AS fonts
+FROM --platform=$BUILDPLATFORM ${ALPINE_IMAGE} AS fonts
 RUN apk add --no-cache msttcorefonts-installer && \
     update-ms-fonts && \
     find /usr/share/fonts/truetype/msttcorefonts/ -type l -exec unlink {} \;

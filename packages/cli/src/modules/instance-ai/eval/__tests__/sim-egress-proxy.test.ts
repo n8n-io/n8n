@@ -163,6 +163,33 @@ describe('SimEgressProxy', () => {
 		expect([...proxy.refusedHosts]).toEqual(['api.example.com']);
 	});
 
+	it('forwards a request sent to its own address for a served host to the gateway', async () => {
+		const gateway = await startRecorder();
+		servers.push(gateway.server);
+		proxy = new SimEgressProxy(
+			{ host: '127.0.0.1', port: gateway.port },
+			['api.openai.com'],
+			[],
+			mock<Logger>(),
+		);
+		const proxyUrl = await proxy.start();
+		const { port } = new URL(proxyUrl);
+
+		const req = request({
+			host: '127.0.0.1',
+			port: Number(port),
+			method: 'POST',
+			path: `${proxyUrl}/sim/api.openai.com/v1/responses`,
+		});
+		req.on('error', () => {});
+		req.end();
+
+		// The gateway gets a TLS hello that names the served host (SNI).
+		await vi.waitFor(() => expect(gateway.received).toHaveLength(1));
+		expect(gateway.received[0]).toContain('api.openai.com');
+		expect(proxy.refusedHosts.size).toBe(0);
+	});
+
 	it('refuses an AI SDK call to a host the simulation does not serve', async () => {
 		proxy = new SimEgressProxy(
 			{ host: '127.0.0.1', port: 1 },

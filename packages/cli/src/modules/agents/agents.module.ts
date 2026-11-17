@@ -15,6 +15,10 @@ export class AgentsModule implements ModuleInterface {
 		const { registerSkillUsage } = await import('./register-skill-usage.js');
 		registerSkillUsage();
 
+		// Tell core which agent acts as a service account, so a user deletion keeps it.
+		const { registerServiceAccountUsage } = await import('./register-service-account-usage.js');
+		registerServiceAccountUsage();
+
 		// The knowledge module starts before this module. Hand it the sandbox its file mirror runs in.
 		const { registerKnowledgeSandboxProvider } = await import(
 			'./register-knowledge-sandbox-provider.js'
@@ -37,6 +41,7 @@ export class AgentsModule implements ModuleInterface {
 		await import('./agent-chat.controller.js');
 		await import('./system-agents/system-agent-chat.controller.js');
 		await import('./agent-integrations.controller.js');
+		await import('./integrations/platforms/webhook/webhook-channel.controller.js');
 		await import('./agent-slack-integrations.controller.js');
 		await import('./agent-teams-integrations.controller.js');
 		await import('./agent-whatsapp-integrations.controller.js');
@@ -57,6 +62,11 @@ export class AgentsModule implements ModuleInterface {
 		const { registerUserDeletionHandler } = await import('./register-user-deletion-handler.js');
 		registerUserDeletionHandler();
 
+		// Share pickers show the project of each agent's service account.
+		const { ServiceAccountProjects } = await import('@/services/service-account-projects.js');
+		const { AgentServiceAccountService } = await import('./agent-service-account.service.js');
+		Container.get(ServiceAccountProjects).register(Container.get(AgentServiceAccountService));
+
 		// Register blob backends for agent execution logs.
 		// The fs backend is always available; s3/az reuse the clients base-command
 		// already initialized (initBinaryDataService runs before module init in
@@ -75,6 +85,11 @@ export class AgentsModule implements ModuleInterface {
 
 		const { registerFavoriteResolver } = await import('./register-favorite-resolver.js');
 		registerFavoriteResolver();
+
+		// Collaboration checks agent access on push messages through this lookup.
+		const { AgentProjectLookupProxy } = await import('@n8n/backend-services');
+		const { AgentRepository } = await import('./repositories/agent.repository.js');
+		Container.get(AgentProjectLookupProxy).registerProvider(Container.get(AgentRepository));
 
 		const { registerAgentUsageProvider } = await import('./register-agent-usage-provider.js');
 		registerAgentUsageProvider();
@@ -119,6 +134,9 @@ export class AgentsModule implements ModuleInterface {
 		const { N8nChatIntegration } = await import(
 			'./integrations/platforms/n8n-chat/n8n-chat-integration.js'
 		);
+		const { WebhookIntegration } = await import(
+			'./integrations/platforms/webhook/webhook-integration.js'
+		);
 		const registry = Container.get(ChatIntegrationRegistry);
 		registry.register(Container.get(SlackIntegration));
 		registry.register(Container.get(TelegramIntegration));
@@ -127,6 +145,7 @@ export class AgentsModule implements ModuleInterface {
 		registry.register(Container.get(WhatsAppIntegration));
 		registry.register(Container.get(TeamsIntegration));
 		registry.register(Container.get(N8nChatIntegration));
+		registry.register(Container.get(WebhookIntegration));
 
 		// Resume Chat and Task services on startup so this main runs what its
 		// current role calls for.

@@ -9,6 +9,7 @@ import {
 	type SaveSkillDto,
 	type SkillAgentOption,
 	type SkillDetail,
+	type SkillListCollapsedSource,
 	type SkillListItem,
 	type SkillListResponse,
 	type SkillNewNameQueryDto,
@@ -40,6 +41,7 @@ import { SkillSourceRepository } from '../database/repositories/skill-source.rep
 import {
 	SkillRepository,
 	type SkillListSort,
+	type SkillMatchFilter,
 	type SkillVisibility,
 } from '../database/repositories/skill.repository';
 import { SkillNameTakenError } from '../errors/skill-name-taken.error';
@@ -61,7 +63,8 @@ import {
 	type SkillTarget,
 	type SkillUpdate,
 } from '../utils/skill-content';
-import { skillContentHash } from '../utils/skill-content-hash';
+import { compareSkillFilePaths, skillContentHash } from '../utils/skill-content-hash';
+import { skillGroupPage } from '../utils/skill-group-page';
 import { getSkillHash } from '../utils/skill-hash';
 import { AssistantSkillsFlagGate } from './assistant-skills-flag-gate';
 import { SkillAccessService } from './skill-access.service';
@@ -157,6 +160,7 @@ export class SkillService {
 	// ---------------------------------------------------------------- user actions
 
 	async list(user: User, query: ListSkillsQueryDto): Promise<SkillListResponse> {
+		if (query.groupBy === 'source') await this.skillSyncFlagGate.assertEnabled(user);
 		if (query.attachableTo !== undefined && (query.scope || query.projectId || query.agentId)) {
 			throw new UserError('Filter by attachableTo alone, without scope, projectId or agentId.');
 		}
@@ -170,7 +174,8 @@ export class SkillService {
 			this.attachTarget(query.attachableTo),
 		]);
 		if (usedBySkillIds === null) return { count: 0, data: [] };
-		const { skills, count } = await this.skillRepository.findVisiblePage(visibilityOf(projectIds), {
+		const visibility = visibilityOf(projectIds);
+		const match: SkillMatchFilter = {
 			scope: query.scope,
 			projectId: query.projectId || undefined,
 			attachableToProjectId,
@@ -178,10 +183,87 @@ export class SkillService {
 			createdById: query.createdById,
 			search: query.search,
 			sort: query.sortBy && LIST_SORTS[query.sortBy],
+		};
+		if (query.groupBy === 'source') {
+			const page = await this.findGroupedPage(
+				visibility,
+				match,
+				new Set(query.collapsedSourceIds ?? []),
+				query.page ?? 0,
+				query.take,
+				query.focusSourceId,
+			);
+			return {
+				count: page.count,
+				data: await this.toListItems(user, page.skills),
+				collapsedSources: page.collapsedSources,
+				page: page.page,
+				pageCount: page.pageCount,
+			};
+		}
+		const { skills, count } = await this.skillRepository.findVisiblePage(visibility, {
+			...match,
 			skip: query.skip,
 			take: query.take,
 		});
 		return { count, data: await this.toListItems(user, skills) };
+	}
+
+	private async findGroupedPage(
+		visibility: SkillVisibility,
+		match: SkillMatchFilter,
+		collapsed: Set<string>,
+		pageIndex: number,
+		take: number | undefined,
+		focusSourceId?: string,
+	) {
+		let groups = await this.skillRepository.findSourceGroupSizes(visibility, match);
+		// Empty sources remain manageable in the unfiltered list.
+		if (
+			!match.search &&
+			!match.scope &&
+			!match.projectId &&
+			!match.createdById &&
+			!match.usedBySkillIds &&
+			!match.attachableToProjectId
+		) {
+			const sources = await this.sourceRepository.findVisibleSources(visibility.projectIds);
+			const counts = new Map(groups.map((group) => [group.sourceId, group.count]));
+			groups = sources
+				.sort((a, b) => a.identityKey.localeCompare(b.identityKey) || a.id.localeCompare(b.id))
+				.map((source) => ({ sourceId: source.id, count: counts.get(source.id) ?? 0 }));
+			const localCount = counts.get(null);
+			if (localCount) groups.push({ sourceId: null, count: localCount });
+		}
+		const page = skillGroupPage(groups, collapsed, pageIndex, take, focusSourceId);
+		const sourceIds = page.groups
+			.filter((group) => group.count > 0 && !collapsed.has(group.sourceId))
+			.map((group) => group.sourceId);
+		const [sourceSkills, localSkills] = await Promise.all([
+			this.skillRepository.findVisibleSourceSkills(visibility, match, sourceIds),
+			page.localTake > 0
+				? this.skillRepository.findVisibleSlice(visibility, {
+						...match,
+						withoutSource: true,
+						skip: page.localSkip,
+						take: page.localTake,
+					})
+				: [],
+		]);
+		const collapsedSources: SkillListCollapsedSource[] = [];
+		let index = 0;
+		for (const group of page.groups) {
+			if (group.count === 0 || collapsed.has(group.sourceId)) {
+				collapsedSources.push({ sourceId: group.sourceId, index, skillCount: group.count });
+			} else index += group.count;
+		}
+		return {
+			skills: [...sourceSkills, ...localSkills],
+			count: page.count,
+			page: page.page,
+			pageCount: page.pageCount,
+			collapsedSources,
+		};
 	}
 
 	/** The users who created a skill that the user may see, for the creator filter. */
@@ -432,25 +514,28 @@ export class SkillService {
 		},
 		ctx: OperationContext = {},
 	): Promise<string> {
-		const skill = withTrimmedName(input.skill);
-		assertHasInstructions(skill);
-		if (input.checkNameTaken) {
-			await this.assertNameFree(skill.name, input.target, undefined, ctx);
-		}
-		const id = input.id ?? `skill_${generateNanoId()}`;
-		await this.skillRepository.createSkill(
-			{
-				id,
-				target: input.target,
-				source: input.source,
-				createdById: input.createdById,
-				...(input.sourceRevision ? { sourceRevision: input.sourceRevision } : {}),
-			},
-			toSkillContent(skill, input.frontmatter ?? null),
-			ctx,
-		);
-		this.logger.debug('Created skill', { skillId: id });
-		return id;
+		return await this.txRunner.run(ctx, async (txCtx) => {
+			const skill = withTrimmedName(input.skill);
+			assertHasInstructions(skill);
+			await this.skillRepository.lockNames(txCtx);
+			if (input.checkNameTaken) {
+				await this.assertNameFree(skill.name, input.target, undefined, txCtx);
+			}
+			const id = input.id ?? `skill_${generateNanoId()}`;
+			await this.skillRepository.createSkill(
+				{
+					id,
+					target: input.target,
+					source: input.source,
+					createdById: input.createdById,
+					...(input.sourceRevision ? { sourceRevision: input.sourceRevision } : {}),
+				},
+				toSkillContent(skill, input.frontmatter ?? null),
+				txCtx,
+			);
+			this.logger.debug('Created skill', { skillId: id });
+			return id;
+		});
 	}
 
 	/**
@@ -471,7 +556,15 @@ export class SkillService {
 		update: SkillUpdate,
 		userId: string,
 		ctx: OperationContext = {},
-		{ pushRef, allowSynced = false }: { pushRef?: string; allowSynced?: boolean } = {},
+		{
+			pushRef,
+			allowSynced = false,
+			sourceRevision,
+		}: {
+			pushRef?: string;
+			allowSynced?: boolean;
+			sourceRevision?: string;
+		} = {},
 	): Promise<SkillSaveResult> {
 		const { saved, following } = await this.txRunner.run(ctx, async (txCtx) => {
 			await this.skillRepository.lockForEdit([skillId], txCtx);
@@ -495,7 +588,13 @@ export class SkillService {
 				);
 			}
 			const skill: AgentSkill = { ...current, ...changes };
-			if (!skill.references?.length) delete skill.references;
+			// Reads return files sorted by path. Sort here too, so the returned skill hashes the same
+			// as the stored version and a caller can send that hash back on its next save.
+			if (skill.references?.length) {
+				skill.references = [...skill.references].sort((a, b) =>
+					compareSkillFilePaths(a.path, b.path),
+				);
+			} else delete skill.references;
 			assertHasInstructions(skill);
 			const content = toSkillContent(
 				skill,
@@ -511,6 +610,9 @@ export class SkillService {
 			if (!allowSynced && (await this.sourceRepository.isLinked(skillId, txCtx))) {
 				throw new SkillSyncedError(latest.version.name, sourceLabelOf(latest.skill.source));
 			}
+			if (skillNameKey(skill.name) !== skillNameKey(current.name)) {
+				await this.skillRepository.lockNames(txCtx);
+			}
 			await this.assertCanRename(skillId, latest.skill, latest.version.name, skill.name, txCtx);
 			const version = await this.skillRepository.nextVersionNumber(skillId, txCtx);
 			const versionId = await this.skillRepository.insertSavedVersion(
@@ -519,8 +621,9 @@ export class SkillService {
 				content,
 				userId,
 				txCtx,
+				sourceRevision,
 			);
-			const followingIds = await this.skillUsage.markFollowersChanged(skillId, txCtx, userId);
+			const followingIds = await this.skillUsage.findFollowingAgentIds(skillId, txCtx);
 			const result = { versionId, version, created: true, skill, followingAgentIds: followingIds };
 			return { saved: result, following: followingIds };
 		});
@@ -545,7 +648,12 @@ export class SkillService {
 		target: SkillTarget,
 		keepAgentId: string | undefined,
 		ctx: OperationContext = {},
-		{ nameAfterMove, checkedSource, agentProjectIds = 'all' }: SkillMoveOptions = {},
+		{
+			nameAfterMove,
+			checkedSource,
+			agentProjectIds = 'all',
+			movingSourceId,
+		}: SkillMoveOptions = {},
 	): Promise<void> {
 		await this.txRunner.run(ctx, async (txCtx) => {
 			await this.skillRepository.lockForEdit([skillId], txCtx);
@@ -564,7 +672,11 @@ export class SkillService {
 				nameAfterMove ??
 				(await this.skillRepository.findLatestSummaries([skillId], txCtx)).get(skillId)?.name;
 			// All skills of a source share its scope, so a synced skill moves only with its source.
-			if (await this.sourceRepository.isLinked(skillId, txCtx)) {
+			const link = await this.sourceRepository.findLinkBySkillId(skillId, txCtx);
+			if (movingSourceId && link?.sourceId !== movingSourceId) {
+				throw new ConflictError('The skill stopped syncing. Check the source and try again.');
+			}
+			if (link && link.sourceId !== movingSourceId) {
 				const [skill] = await this.skillRepository.findByIds([skillId], txCtx);
 				throw new SkillSyncedError(
 					name ?? skillId,
@@ -576,6 +688,7 @@ export class SkillService {
 				(id) => id !== keepAgentId,
 			);
 			await this.assertAgentsKeepAccess(others, target, agentProjectIds, txCtx);
+			await this.skillRepository.lockNames(txCtx);
 			// The new scope must not already hold a name like the one the skill has after the move.
 			if (name) await this.assertNameFree(name, target, skillId, txCtx);
 			await this.skillRepository.updateTarget(skillId, target, txCtx);
@@ -849,6 +962,7 @@ export class SkillService {
 				projectId,
 				projectName: projectId ? (projects.get(projectId)?.name ?? null) : null,
 				projectType: projectId ? (projects.get(projectId)?.type ?? null) : null,
+				projectIcon: projectId ? (projects.get(projectId)?.icon ?? null) : null,
 				source: skill.source,
 				createdBy: skill.createdById ? (creators.get(skill.createdById) ?? null) : null,
 				latestVersion: summary.version,
@@ -861,9 +975,8 @@ export class SkillService {
 				// Stop syncing needs the update permission of the scope that the skill shares with its source.
 				// The route answers 404 while the Skill Sync flag is off for the user.
 				canStopSyncing: skillSyncOn && synced.has(skill.id) && canEdit(skill),
-				syncState: synced.get(skill.id) ?? null,
-				// Check now needs the same permission as stop syncing.
-				canCheckForUpdates: skillSyncOn && synced.has(skill.id) && canEdit(skill),
+				syncState: synced.get(skill.id)?.state ?? null,
+				sourceId: synced.get(skill.id)?.sourceId ?? null,
 				createdAt: skill.createdAt.toISOString(),
 				updatedAt: skill.updatedAt.toISOString(),
 			});

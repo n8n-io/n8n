@@ -36,7 +36,7 @@ export const userDescription: INodeProperties[] = [
 				routing: {
 					request: {
 						method: 'GET',
-						url: '=/users/{{$parameter.userId}}',
+						url: '=/users/{{ toPathSegment($parameter.userId) }}',
 					},
 				},
 			},

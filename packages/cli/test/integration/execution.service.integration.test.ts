@@ -64,6 +64,7 @@ describe('ExecutionService', () => {
 			mock(),
 			mock(),
 			mock(),
+			mock(),
 		);
 
 		owner = await createOwner();

@@ -59,6 +59,7 @@ describe('Agent conversations on project deletion', () => {
 	});
 
 	it('rejects a late checkpoint save before the project cascade', async () => {
+		const owner = await createOwner();
 		const project = await createTeamProject();
 		const agents = Container.get(AgentRepository);
 		const agent = await agents.save(
@@ -94,7 +95,7 @@ describe('Agent conversations on project deletion', () => {
 				state: '{}',
 			}),
 		);
-		await Container.get(AgentProjectCleanupService).cleanupProject(project.id);
+		await Container.get(AgentProjectCleanupService).cleanupProject(project.id, { actor: owner });
 		expect(await checkpoints.findByRunId('finished-checkpoint')).toBeNull();
 		expect(await threads.findOneBy({ id: threadId })).not.toBeNull();
 		await expect(
@@ -244,7 +245,7 @@ describe('Agent conversations on project deletion', () => {
 			name: 'Replacement project',
 		});
 		await expect(
-			Container.get(AgentProjectDeletionRepository).assertWritable(project.id),
+			Container.get(AgentProjectDeletionRepository).withWritableProject(project.id, async () => {}),
 		).resolves.toBeUndefined();
 		expect(await executions.findOneBy({ id: deletedLog.executionId })).toBeNull();
 		expect(await logs.read(deletedLog, 'fs')).toBeNull();

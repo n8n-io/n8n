@@ -10,6 +10,7 @@ import { computed } from 'vue';
 import AiThinkingBlock from '../../shared/components/AiThinkingBlock.vue';
 
 import { isStreamingTimelineEntry } from '../agentTimeline.utils';
+import { autoApprovalLabel, autoApprovalReason, type AutoApproval } from '../autoApproval';
 import { useInstanceContextLabel } from '../instanceContextLabels';
 import { useToolLabel } from '../toolLabels';
 import InstanceAiMarkdown from './InstanceAiMarkdown.vue';
@@ -48,6 +49,10 @@ const toolCallsById = computed(() => {
 
 function toolCallFor(entry: InstanceAiTimelineEntry): InstanceAiToolCallState | undefined {
 	return entry.type === 'tool-call' ? toolCallsById.value[entry.toolCallId] : undefined;
+}
+
+function autoApprovalFor(entry: InstanceAiTimelineEntry): AutoApproval | undefined {
+	return toolCallFor(entry)?.autoApproval;
 }
 
 const tailToolCall = computed<InstanceAiToolCallState | undefined>(() => {
@@ -144,20 +149,29 @@ const durationSec = computed<number | undefined>(() => {
 				</p>
 			</N8nAiActivityStep>
 
-			<N8nAiActivityStep
-				v-else-if="entry.type === 'tool-call' && toolCallFor(entry)"
-				:label="getToolLabel(toolCallFor(entry)!.toolName, toolCallFor(entry)!.args)"
-				:loading="props.agentNode.status === 'active' && toolCallFor(entry)!.isLoading"
-				:error="toolCallFor(entry)!.error"
-			>
-				<ToolResultJson v-if="toolCallFor(entry)!.args" :value="toolCallFor(entry)!.args" />
-				<ToolResultRenderer
-					v-if="toolCallFor(entry)!.result !== undefined"
-					:result="toolCallFor(entry)!.result"
-					:tool-name="toolCallFor(entry)!.toolName"
-					:tool-args="toolCallFor(entry)!.args"
-				/>
-			</N8nAiActivityStep>
+			<template v-else-if="entry.type === 'tool-call' && toolCallFor(entry)">
+				<!-- Auto mode ran this call without its approval card: say so, and why. -->
+				<N8nAiActivityStep
+					v-if="autoApprovalFor(entry)"
+					:label="autoApprovalLabel(i18n, autoApprovalFor(entry)!)"
+					data-test-id="instance-ai-auto-approval"
+				>
+					<p :class="$style.thought">{{ autoApprovalReason(i18n, autoApprovalFor(entry)!) }}</p>
+				</N8nAiActivityStep>
+				<N8nAiActivityStep
+					:label="getToolLabel(toolCallFor(entry)!.toolName, toolCallFor(entry)!.args)"
+					:loading="props.agentNode.status === 'active' && toolCallFor(entry)!.isLoading"
+					:error="toolCallFor(entry)!.error"
+				>
+					<ToolResultJson v-if="toolCallFor(entry)!.args" :value="toolCallFor(entry)!.args" />
+					<ToolResultRenderer
+						v-if="toolCallFor(entry)!.result !== undefined"
+						:result="toolCallFor(entry)!.result"
+						:tool-name="toolCallFor(entry)!.toolName"
+						:tool-args="toolCallFor(entry)!.args"
+					/>
+				</N8nAiActivityStep>
+			</template>
 		</template>
 	</AiThinkingBlock>
 </template>

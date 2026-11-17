@@ -5,7 +5,7 @@ import {
 	mockInstance,
 	testDb,
 } from '@n8n/backend-test-utils';
-import type { Project, User } from '@n8n/db';
+import type { Person, Project, User } from '@n8n/db';
 import {
 	WorkflowRepository,
 	WorkflowReviewRequestReviewerRepository,
@@ -151,7 +151,7 @@ describe('GET /workflow-review-requests/:workflowReviewRequestId', () => {
 			decision: 'pending',
 			title: 'Please review',
 			description: 'Some context',
-			requester: { id: owner.id, email: owner.email },
+			requester: { id: owner.id, email: (owner as Person).email },
 			reviewers: [{ id: reviewer.id, email: reviewer.email }],
 		});
 		// The covered workflows live only in `workflows` — the inbox card's flat

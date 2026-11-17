@@ -51,19 +51,28 @@ describe('SettingsContextView', () => {
 		expect(getByText('Preview')).toBeInTheDocument();
 	});
 
-	it('lists Preferences, Skills and Sources', () => {
-		const { getByTestId } = renderView();
+	it('lists Preferences and Skills, with no Sources row: sources show in the skills table', () => {
+		const { getByTestId, queryByTestId } = renderView();
 
 		expect(getByTestId('settings-context-preferences-row')).toBeInTheDocument();
 		expect(getByTestId('settings-context-skills-row')).toBeInTheDocument();
-		expect(getByTestId('settings-context-sources-row')).toBeInTheDocument();
+		expect(queryByTestId('settings-context-sources-row')).toBeNull();
 	});
 
-	it('marks Skills and Sources as unavailable while the agents module is off', () => {
+	it('marks Skills as disabled and names the consumers while all of them are off', async () => {
+		const skillsStore = mockedStore(useSkillsStore);
 		const { getByTestId } = renderView();
+		const row = getByTestId('settings-context-skills-row');
 
-		expect(getByTestId('settings-context-skills-row')).toHaveTextContent('Coming soon');
-		expect(getByTestId('settings-context-sources-row')).toHaveTextContent('Coming soon');
+		expect(row).toHaveTextContent('Disabled');
+		expect(row).toHaveTextContent(
+			'Turn on agents, n8n Assistant, or instance-level MCP to use skills',
+		);
+		expect(skillsStore.fetchSkillCount).not.toHaveBeenCalled();
+
+		await userEvent.click(row);
+
+		expect(push).not.toHaveBeenCalled();
 	});
 
 	it.each([

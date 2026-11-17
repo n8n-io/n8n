@@ -6,7 +6,7 @@ import {
 	UrlService,
 } from '@n8n/backend-services';
 import { Container } from '@n8n/di';
-import type { User } from '@n8n/db';
+import type { Person } from '@n8n/db';
 import {
 	AuthenticationPipeline,
 	JwkSchema,
@@ -51,7 +51,7 @@ const MCP_ISSUER = 'https://idp-a.example';
 const PUBLIC_API_ISSUER = 'https://idp-b.example';
 const CLIENT_ID = 'external-client';
 
-let member: User;
+let member: Person;
 let mcpResource: string;
 let metadataUrl: string;
 let privateKey: CryptoKey;
@@ -131,12 +131,15 @@ const probe = async (token?: string) => {
 
 /** Every line the authentication edge wrote, from the pipeline, the admission or the middleware. */
 const authLines = (logger: Logger) =>
-	[...vi.mocked(logger.info).mock.calls, ...vi.mocked(logger.warn).mock.calls].filter(([message]) =>
-		message.startsWith('Inbound authentication'),
-	);
+	[
+		...vi.mocked(logger.debug).mock.calls,
+		...vi.mocked(logger.info).mock.calls,
+		...vi.mocked(logger.warn).mock.calls,
+	].filter(([message]) => message.startsWith('Inbound authentication'));
 
 const spyOnLogger = () => {
 	const logger = Container.get(Logger);
+	vi.spyOn(logger, 'debug');
 	vi.spyOn(logger, 'info');
 	vi.spyOn(logger, 'warn');
 	return logger;
@@ -243,6 +246,9 @@ describe('Instance MCP authentication through the trusted-source pipeline', () =
 			expect.anything(),
 			expect.anything(),
 			{ caller: { authType: 'oauth', clientId: CLIENT_ID }, grantedScopes: ['workflow:read'] },
+			{
+				security: expect.objectContaining({ subject: expect.objectContaining({ id: member.id }) }),
+			},
 		);
 	});
 
@@ -314,6 +320,7 @@ describe('Instance MCP authentication through the trusted-source pipeline', () =
 		];
 
 		for (const token of tokens) {
+			vi.mocked(logger.debug).mockClear();
 			vi.mocked(logger.info).mockClear();
 			vi.mocked(logger.warn).mockClear();
 			await probe(token);

@@ -9,7 +9,7 @@ const TRIGGER_NAME = 'Manual';
 test.describe(
 	'Wait node deadline',
 	{
-		annotation: [{ type: 'owner', description: 'Catalysts' }],
+		annotation: [{ type: 'owner', description: 'Core Execution' }],
 	},
 	() => {
 		test('should resume a webhook wait at its time limit without a request @engine:v2', async ({

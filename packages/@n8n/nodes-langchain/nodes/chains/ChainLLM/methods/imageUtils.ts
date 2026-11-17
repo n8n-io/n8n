@@ -3,7 +3,8 @@ import { HumanMessage } from '@langchain/core/messages';
 import { ChatGoogleGenerativeAI } from '@langchain/google-genai';
 import { ChatOllama } from '@langchain/ollama';
 import type { IExecuteFunctions, IBinaryData } from 'n8n-workflow';
-import { NodeOperationError, NodeConnectionTypes, OperationalError } from 'n8n-workflow';
+import { NodeOperationError, NodeConnectionTypes } from 'n8n-workflow';
+import { OperationalError } from '@n8n/errors';
 
 import type { MessageTemplate } from './types';
 
