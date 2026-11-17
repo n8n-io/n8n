@@ -253,7 +253,10 @@ export class SchedulerConfig {
 	triggerNodeMode: 'legacy' | 'new' = 'new';
 
 	/**
-	 * Whether poll triggers (for example nodes that check an inbox or API on an interval) run on the durable scheduler instead of n8n's in-process timer. Set to false to go back to the in-process timer. Requires `N8N_SCHEDULER_ENABLED` and `N8N_USE_WORKFLOW_PUBLICATION_SERVICE` to be on. This variable will be removed in a future version.
+	 * Whether poll triggers (nodes that check an inbox or API on an interval) run
+	 * on the durable scheduler, which also needs `N8N_SCHEDULER_ENABLED` and
+	 * `N8N_USE_WORKFLOW_PUBLICATION_SERVICE` on. Set to false to go back to n8n's
+	 * in-process timer. This variable will be removed in a future version.
 	 */
 	@Env('N8N_SCHEDULER_POLL_TRIGGERS_ENABLED')
 	enabledForPollTriggers: boolean = true;
@@ -274,7 +277,13 @@ export class SchedulerConfig {
 	pollTimeoutSeconds: number = 45;
 
 	/**
-	 * Whether a poll trigger's cursor advance and the execution it produced are saved together, atomically. Set to false to save them separately, so a crash between the two can leave a poll pointing past items whose execution was never saved. Requires `N8N_SCHEDULER_ENABLED`, `N8N_SCHEDULER_POLL_TRIGGERS_ENABLED` and `N8N_USE_WORKFLOW_PUBLICATION_SERVICE` to be on. This variable will be removed in a future version.
+	 * Whether a poll trigger saves its cursor and the execution it produced
+	 * together, atomically, which also needs `N8N_SCHEDULER_ENABLED`,
+	 * `N8N_SCHEDULER_POLL_TRIGGERS_ENABLED` and
+	 * `N8N_USE_WORKFLOW_PUBLICATION_SERVICE` on. Set to false to save them
+	 * separately, so a crash between the two can leave a poll pointing past items
+	 * whose execution was never saved. This variable will be removed in a future
+	 * version.
 	 */
 	@Env('N8N_POLLER_DURABLE_CURSORS_ENABLED')
 	durableCursorsEnabled: boolean = true;
