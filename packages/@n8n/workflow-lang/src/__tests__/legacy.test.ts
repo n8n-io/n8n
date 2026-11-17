@@ -11,8 +11,13 @@ const D = '$';
 import { runReference } from '../reference/runner.ts';
 import { runModule } from '../testing/vm.ts';
 
-async function evaluate(body: string, json: unknown, nodes: Record<string, unknown> = {}) {
-	const r = compileLegacyExpression(body);
+async function evaluate(
+	body: string,
+	json: unknown,
+	nodes: Record<string, unknown> = {},
+	timezone?: string,
+) {
+	const r = compileLegacyExpression(body, timezone);
 	if (!r.ok) throw new Error(JSON.stringify(r.issues));
 	const fixture = {
 		trigger: { body: { json, nodes }, headers: {}, query: {} },
@@ -89,9 +94,28 @@ describe('legacy expressions', () => {
 		expect(await evaluate('new Date($json.at)', { at: 'Jan 2 2021' })).toBe(
 			'2021-01-02T00:00:00.000Z',
 		);
-		expect(await evaluate('$now.toISO() + " " + $today.toISO()', {})).toBe(
+		expect(await evaluate('$now.toMillis()', {})).toBe(0);
+	});
+
+	it('maps the ISO text of $now and $today only for the time zone UTC', async () => {
+		expect(await evaluate('$now.toISO() + " " + $today.toISO()', {}, {}, 'UTC')).toBe(
 			'1970-01-01T00:00:00.000Z 1970-01-01T00:00:00.000Z',
 		);
+		// Luxon writes the offset of the zone, and the day starts at midnight in the zone.
+		for (const zone of [
+			undefined,
+			'Etc/UTC',
+			'Europe/London',
+			'America/New_York',
+			'Asia/Kolkata',
+		]) {
+			for (const body of ['$now.toISO()', '$today.toISO()']) {
+				const r = compileLegacyExpression(body, zone);
+				expect(r.ok).toBe(false);
+				if (!r.ok)
+					expect(r.issues.map((i) => i.feature)).toEqual([body.slice(0, body.indexOf('.'))]);
+			}
+		}
 	});
 
 	it('reports library gaps with the subset rule', () => {

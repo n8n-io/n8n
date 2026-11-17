@@ -2865,7 +2865,7 @@ export function translateCode(input: CodeNativeInput): TranslateResult {
 		};
 		reads(root);
 	};
-	if (!input.nodeCode && !input.expression && (makesDates || usesLuxon)) guardDates();
+	if (makesDates || usesLuxon) guardDates();
 
 	/**
 	 * True when the code reads local time of a \`Date\`: a getter or a setter of local fields,
@@ -4437,12 +4437,7 @@ export function translateCode(input: CodeNativeInput): TranslateResult {
 						ts.isCallExpression(receiver) &&
 						ts.isPropertyAccessExpression(receiver.expression) &&
 						receiver.expression.name.text === 'toJSDate';
-					if (
-						!input.nodeCode &&
-						!input.expression &&
-						!fromLuxon &&
-						!inDeadDateBranch(n, receiver)
-					) {
+					if (!fromLuxon && !inDeadDateBranch(n, receiver)) {
 						// No value of the code is a Date here: JavaScript throws a TypeError.
 						block(
 							'Date: method of a value of unknown kind',

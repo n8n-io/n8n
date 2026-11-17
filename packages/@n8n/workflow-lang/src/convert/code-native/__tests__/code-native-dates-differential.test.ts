@@ -229,3 +229,51 @@ describe('Dates in Code nodes: the native form against the fallback host', () =>
 		expect(equal).toBeGreaterThan(0);
 	}, 1_800_000);
 });
+
+describe('Dates in node code and in expressions: the rule of Code nodes', () => {
+	const translate = (code: string, where: 'node' | 'expression') =>
+		translateCode({
+			code,
+			mode: 'all',
+			kind: 'code',
+			hasNode: () => false,
+			timezone: 'UTC',
+			...(where === 'node'
+				? { nodeCode: { globals: new Set(['value']) } }
+				: { expression: { globals: new Set(['value']) } }),
+		});
+	const feature = (code: string, where: 'node' | 'expression') => {
+		const t = translate(code, where);
+		return t.ok ? 'ok' : t.blockers[0].feature;
+	};
+
+	it.each(['node', 'expression'] as const)(
+		'refuses a Date that loses its kind in %s code',
+		(where) => {
+			expect(feature('return value.getTime();', where)).toBe(
+				'Date: method of a value of unknown kind',
+			);
+			expect(feature('return value.toISOString();', where)).toBe(
+				'Date: method of a value of unknown kind',
+			);
+			expect(feature('const f = (d) => d - 1; return f(new Date(value));', where)).toBe(
+				'Date: a Date in a place that loses its kind',
+			);
+			expect(feature('const o = { d: new Date(value) }; return o.d - 1;', where)).toBe(
+				'Date: a Date read back from an object',
+			);
+			expect(feature('const a = [new Date(value)]; return a[0] - 1;', where)).toBe(
+				'Date: a Date in a place that loses its kind',
+			);
+		},
+	);
+
+	it.each(['node', 'expression'] as const)(
+		'keeps a Date with a proven kind in %s code',
+		(where) => {
+			expect(feature('return new Date(value).getTime();', where)).toBe('ok');
+			expect(feature('const d = new Date(value); return d.toISOString();', where)).toBe('ok');
+			expect(feature('const d = new Date(value); return { at: d, ms: d - 1 };', where)).toBe('ok');
+		},
+	);
+});
