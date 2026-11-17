@@ -64,7 +64,7 @@ export const useWorkflowReviewStatusStore = defineStore('workflowReviewStatus', 
 			});
 			if (isStale(workflowId, sequence)) return;
 			latestReviewByWorkflowId.value[workflowId] = response.data[0] ?? null;
-			reviewRequiredByWorkflowId.value[workflowId] = response.reviewRequiredBy ?? null;
+			reviewRequiredByWorkflowId.value[workflowId] = response.reviewRequiredBy;
 		} catch (error) {
 			if (isStale(workflowId, sequence)) return;
 			if (

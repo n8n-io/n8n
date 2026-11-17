@@ -1306,6 +1306,37 @@ describe('ProjectSettings', () => {
 			expect(projectsStore.updateCurrentProjectWorkflowReviewSettings).not.toHaveBeenCalled();
 		});
 
+		it('hides Require approval and saves no value when its load fails', async () => {
+			projectsStore.currentProjectWorkflowReviewSettings = null;
+			projectsStore.fetchProjectWorkflowReviewSettings.mockRejectedValue(new Error('network down'));
+			const { getByTestId, queryByTestId } = renderComponent();
+			await vi.waitFor(() =>
+				expect(projectsStore.fetchProjectWorkflowReviewSettings).toHaveBeenCalledWith('123'),
+			);
+
+			await userEvent.type(getInput(getByTestId('project-settings-name-input')), ' Renamed');
+			await userEvent.click(getByTestId('project-settings-save-button'));
+
+			expect(queryByTestId('project-settings-require-approval-switch')).not.toBeInTheDocument();
+			expect(projectsStore.updateProject).toHaveBeenCalled();
+			expect(projectsStore.updateCurrentProjectWorkflowReviewSettings).not.toHaveBeenCalled();
+		});
+
+		it('shows the loaded Require approval value', async () => {
+			projectsStore.currentProjectWorkflowReviewSettings = null;
+			projectsStore.fetchProjectWorkflowReviewSettings.mockImplementation(async () => {
+				projectsStore.currentProjectWorkflowReviewSettings = { projectApprovalRequired: true };
+			});
+			const { getByTestId } = renderComponent();
+
+			await vi.waitFor(() =>
+				expect(getByTestId('project-settings-require-approval-switch')).toHaveAttribute(
+					'aria-checked',
+					'true',
+				),
+			);
+		});
+
 		it.each([
 			[
 				'without project:update',

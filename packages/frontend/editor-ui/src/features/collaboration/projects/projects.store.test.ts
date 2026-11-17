@@ -429,6 +429,11 @@ describe('useProjectsStore workflow review settings', () => {
 	beforeEach(() => {
 		setActivePinia(createPinia());
 		vi.clearAllMocks();
+		mockRoute.params = { projectId: 'p1' };
+	});
+
+	afterEach(() => {
+		mockRoute.params = {};
 	});
 
 	it('loads and saves the workflow review settings of a project', async () => {
@@ -451,5 +456,31 @@ describe('useProjectsStore workflow review settings', () => {
 			{ projectApprovalRequired: true },
 		);
 		expect(store.currentProjectWorkflowReviewSettings).toEqual({ projectApprovalRequired: true });
+	});
+
+	it('clears the previous project value when the fetch for a new project fails', async () => {
+		vi.mocked(workflowReviewsApi.getProjectWorkflowReviewSettings)
+			.mockResolvedValueOnce({ projectApprovalRequired: true })
+			.mockRejectedValueOnce(new Error('network down'));
+		const store = useProjectsStore();
+		await store.fetchProjectWorkflowReviewSettings('p1');
+
+		mockRoute.params = { projectId: 'p2' };
+		await expect(store.fetchProjectWorkflowReviewSettings('p2')).rejects.toThrow('network down');
+
+		expect(store.currentProjectWorkflowReviewSettings).toBeNull();
+	});
+
+	it('drops a response for a project that is no longer current', async () => {
+		vi.mocked(workflowReviewsApi.getProjectWorkflowReviewSettings).mockResolvedValue({
+			projectApprovalRequired: true,
+		});
+		const store = useProjectsStore();
+		const fetch = store.fetchProjectWorkflowReviewSettings('p1');
+
+		mockRoute.params = { projectId: 'p2' };
+		await fetch;
+
+		expect(store.currentProjectWorkflowReviewSettings).toBeNull();
 	});
 });

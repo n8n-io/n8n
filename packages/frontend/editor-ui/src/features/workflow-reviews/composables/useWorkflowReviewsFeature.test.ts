@@ -74,6 +74,7 @@ describe('useWorkflowReviewsFeature', () => {
 	it.each<{
 		label: string;
 		enabled: boolean;
+		alwaysRequired?: boolean;
 		serverLevel?: WorkflowReviewRequirementLevel | null;
 		homeProject?: { type: 'team' | 'personal' };
 		expected: WorkflowReviewRequirementLevel | null;
@@ -103,6 +104,14 @@ describe('useWorkflowReviewsFeature', () => {
 			expected: null,
 		},
 		{
+			label:
+				'no level for a team workflow before the first fetch when approval is required only when configured',
+			enabled: true,
+			alwaysRequired: false,
+			homeProject: { type: 'team' },
+			expected: null,
+		},
+		{
 			label: 'no level when workflow reviews are off',
 			enabled: false,
 			serverLevel: 'project',
@@ -110,13 +119,13 @@ describe('useWorkflowReviewsFeature', () => {
 			expected: null,
 		},
 	])(
-		'reports $label under an always required policy',
-		async ({ enabled, serverLevel, homeProject, expected }) => {
+		'reports $label',
+		async ({ enabled, alwaysRequired = true, serverLevel, homeProject, expected }) => {
 			setGates({ licensed: true, instanceEnabled: true });
 			const settingsStore = useSettingsStore();
 			settingsStore.settings = {
 				...settingsStore.settings,
-				workflowReviews: { enabled, alwaysRequired: true },
+				workflowReviews: { enabled, alwaysRequired },
 			};
 			if (serverLevel !== undefined) {
 				vi.mocked(fetchWorkflowReviewRequests).mockResolvedValue({

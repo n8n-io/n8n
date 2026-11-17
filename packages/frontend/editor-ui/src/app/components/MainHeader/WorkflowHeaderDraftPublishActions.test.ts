@@ -1651,38 +1651,49 @@ describe('WorkflowHeaderDraftPublishActions', () => {
 			);
 		});
 
-		it.each([
-			{
-				level: 'instance',
-				alwaysRequired: true,
-				reason: 'This instance requires an approved review before a new version is published.',
-			},
-			{
-				level: 'project',
-				alwaysRequired: false,
-				reason: 'This project requires an approved review before a new version is published.',
-			},
-		] as const)(
-			'shows Review required on and locked with the reason for a published team workflow ($level)',
-			async ({ level, alwaysRequired, reason }) => {
-				setWorkflowReviewGates({ alwaysRequired });
-				await setServerReviewRequirement(level);
-				setHomeProjectType('team');
-				setupEnabledPublishButton();
-				workflowDocumentStore.setActiveState({
-					activeVersionId: 'version-1',
-					activeVersion: createMockActiveVersion('version-1'),
-				});
+		it('shows Review required on and locked with the reason for a published team workflow', async () => {
+			setWorkflowReviewGates({ alwaysRequired: false });
+			await setServerReviewRequirement('project');
+			setHomeProjectType('team');
+			setupEnabledPublishButton();
+			workflowDocumentStore.setActiveState({
+				activeVersionId: 'version-1',
+				activeVersion: createMockActiveVersion('version-1'),
+			});
 
-				const { getByTestId, findByRole, getByText } = renderComponent();
-				await userEvent.click(getByTestId('version-menu-button'));
+			const { getByTestId, findByRole, getByText } = renderComponent();
+			await userEvent.click(getByTestId('version-menu-button'));
 
-				const reviewItem = await findByRole('menuitemcheckbox', { name: /Review required/ });
-				expect(reviewItem).toHaveAttribute('aria-checked', 'true');
-				expect(reviewItem).toHaveAttribute('aria-disabled', 'true');
-				expect(getByText(reason)).toBeInTheDocument();
-			},
-		);
+			const reviewItem = await findByRole('menuitemcheckbox', { name: /Review required/ });
+			expect(reviewItem).toHaveAttribute('aria-checked', 'true');
+			expect(reviewItem).toHaveAttribute('aria-disabled', 'true');
+			expect(
+				getByText('This project requires an approved review before a new version is published.'),
+			).toBeInTheDocument();
+		});
+
+		it('refetches the requirement on Publish and opens the submit dialog when the project now requires approval', async () => {
+			const openModalSpy = vi.spyOn(uiStore, 'openModalWithData');
+			setWorkflowReviewGates({ alwaysRequired: false });
+			setHomeProjectType('team');
+			setupEnabledPublishButton();
+			useReviewRequiredStore().setReviewRequired(defaultWorkflowProps.id, false);
+
+			const { getByTestId, findByRole } = renderComponent();
+			const publishButton = getByTestId('workflow-open-publish-modal-button');
+			await vi.waitFor(() => expect(fetchWorkflowReviewRequests).toHaveBeenCalled());
+			expect(publishButton).toHaveTextContent('Publish');
+
+			vi.mocked(fetchWorkflowReviewRequests).mockResolvedValue({
+				count: 0,
+				data: [],
+				reviewRequiredBy: 'project',
+			});
+			await userEvent.click(publishButton);
+
+			expect(await findByRole('dialog', { name: 'Submit for review' })).toBeInTheDocument();
+			expect(openModalSpy).not.toHaveBeenCalled();
+		});
 
 		it.each([
 			{ label: 'always required', alwaysRequired: true },

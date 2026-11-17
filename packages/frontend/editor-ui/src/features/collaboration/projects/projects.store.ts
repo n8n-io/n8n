@@ -234,10 +234,11 @@ export const useProjectsStore = defineStore(STORES.PROJECTS, () => {
 
 	const fetchProjectWorkflowReviewSettings = async (projectId: string): Promise<void> => {
 		currentProjectWorkflowReviewSettings.value = null;
-		currentProjectWorkflowReviewSettings.value = await getProjectWorkflowReviewSettings(
-			rootStore.restApiContext,
-			projectId,
-		);
+		const settings = await getProjectWorkflowReviewSettings(rootStore.restApiContext, projectId);
+		// Drop a response that arrives after the user switched to another project.
+		if (currentProjectId.value === projectId) {
+			currentProjectWorkflowReviewSettings.value = settings;
+		}
 	};
 
 	const updateCurrentProjectWorkflowReviewSettings = async (

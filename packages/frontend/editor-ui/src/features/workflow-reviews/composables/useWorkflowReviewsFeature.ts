@@ -9,6 +9,11 @@ import {
 import { useWorkflowReviewStatusStore } from '@/features/workflow-reviews/reviewStatus.store';
 import { useSettingsStore } from '@n8n/stores/settings.store';
 
+type ReviewableWorkflow = {
+	id: string;
+	homeProject?: Pick<ProjectSharingData, 'type'> | null;
+};
+
 export const useWorkflowReviewsFeature = () => {
 	const settingsStore = useSettingsStore();
 	const reviewStatusStore = useWorkflowReviewStatusStore();
@@ -35,10 +40,7 @@ export const useWorkflowReviewsFeature = () => {
 	 * The level the server reports for the workflow. Before the first fetch, the instance rule
 	 * applies, and an unknown home project counts as a team project, so the rule fails closed.
 	 */
-	function reviewRequiredBy(workflow: {
-		id: string;
-		homeProject?: Pick<ProjectSharingData, 'type'> | null;
-	}): WorkflowReviewRequirementLevel | null {
+	function reviewRequiredBy(workflow: ReviewableWorkflow): WorkflowReviewRequirementLevel | null {
 		if (!isWorkflowReviewsEnabled.value) return null;
 
 		const fromServer = reviewStatusStore.reviewRequiredBy(workflow.id);
@@ -49,7 +51,7 @@ export const useWorkflowReviewsFeature = () => {
 			: null;
 	}
 
-	function isReviewRequiredFor(workflow: Parameters<typeof reviewRequiredBy>[0]): boolean {
+	function isReviewRequiredFor(workflow: ReviewableWorkflow): boolean {
 		return reviewRequiredBy(workflow) !== null;
 	}
 
