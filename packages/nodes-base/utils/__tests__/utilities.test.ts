@@ -10,6 +10,7 @@ import {
 	getResolvables,
 	keysToLowercase,
 	removeTrailingSlash,
+	resolveExpressions,
 	shuffleArray,
 	sortItemKeysByPriorityList,
 	wrapData,
@@ -114,6 +115,38 @@ describe('Test keysToLowercase', () => {
 		expect(test4).toEqual(true);
 		expect(test5).toEqual(null);
 		expect(test6).toEqual(undefined);
+	});
+});
+
+describe('resolveExpressions', () => {
+	const evaluate = (values: Record<string, unknown>) => (resolvable: string) => values[resolvable];
+
+	it.each(['$&', '$$', "$'", '$`', "'^[0-9]+$'"])('should insert %s literally', (value) => {
+		expect(resolveExpressions('SELECT {{ $json.v }}', evaluate({ '{{ $json.v }}': value }))).toBe(
+			`SELECT ${value}`,
+		);
+	});
+
+	it('should not substitute an expression inside an already resolved value', () => {
+		const values = { '{{ $json.a }}': '{{ $json.b }}', '{{ $json.b }}': 'b' };
+
+		expect(resolveExpressions('{{ $json.a }} {{ $json.b }}', evaluate(values))).toBe(
+			'{{ $json.b }} b',
+		);
+	});
+
+	it('should resolve repeated expressions', () => {
+		expect(
+			resolveExpressions('{{ $json.a }}-{{ $json.a }}', evaluate({ '{{ $json.a }}': 1 })),
+		).toBe('1-1');
+	});
+
+	it('should keep String.replace semantics in legacy mode', () => {
+		const values = { '{{ $json.a }}': '{{ $json.b }}$$', '{{ $json.b }}': 'b' };
+
+		expect(
+			resolveExpressions('{{ $json.a }} {{ $json.b }}', evaluate(values), { legacy: true }),
+		).toBe('b$ {{ $json.b }}');
 	});
 });
 

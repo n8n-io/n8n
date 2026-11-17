@@ -20,7 +20,7 @@ import { ensureError } from '@n8n/utils/errors/ensure-error';
 import z from 'zod';
 
 import type { WorkflowDependencyQueryService } from '@/modules/workflow-index/workflow-dependency-query.service';
-import type { Telemetry } from '@/telemetry';
+import type { TelemetryProxy } from '@n8n/backend-services';
 import type { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 
 import { USER_CALLED_MCP_TOOL_EVENT } from '../mcp.constants';
@@ -171,7 +171,7 @@ export const createGetDependenciesTool = (
 	user: User,
 	workflowDependencyQueryService: WorkflowDependencyQueryService,
 	workflowFinderService: WorkflowFinderService,
-	telemetry: Telemetry,
+	telemetry: TelemetryProxy,
 	options: GetDependenciesToolOptions,
 ): ToolDefinition<typeof inputSchema> => {
 	const isWithheld = (type: ResolvedDependency['type']) =>

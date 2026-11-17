@@ -5,6 +5,7 @@ import type {
 	NodeTypesProxy,
 	ProjectScopeService,
 	Publisher,
+	TelemetryProxy,
 } from '@n8n/backend-services';
 import type { AgentMessageSteeringService } from '../agent-message-steering.service';
 import type { Mocked } from 'vitest';
@@ -36,7 +37,6 @@ import type { OauthService } from '@/oauth/oauth.service';
 import type { AiGatewayService } from '@/services/ai-gateway.service';
 import type { AiService } from '@/services/ai.service';
 import type { TagService } from '@/services/tag.service';
-import type { Telemetry } from '@/telemetry';
 import type { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 
 import { AgentChangePublisher } from '../agent-change-publisher.service';
@@ -67,6 +67,7 @@ import { AgentSaveCompletionService } from '../agent-save-completion.service';
 import { AgentDefinitionService } from '../agent-definition.service';
 import type { AgentServiceAccountService } from '../agent-service-account.service';
 import type { AgentUpdateBroadcaster } from '../agent-update-broadcaster';
+import type { AgentUsageTelemetryService } from '../agent-usage-telemetry.service';
 
 import type { AgentTaskService } from '../agent-task.service';
 import { AgentsService } from '../agents.service';
@@ -219,7 +220,7 @@ describe('AgentRuntimeReconstructionService integration tools', () => {
 	let agentKnowledgeService: Mocked<AgentKnowledgeService>;
 	let publisher: Mocked<Publisher>;
 	let globalConfig: Mocked<GlobalConfig>;
-	let telemetry: Mocked<Telemetry>;
+	let telemetry: Mocked<TelemetryProxy>;
 	let runtimeCacheService: AgentRuntimeCacheService;
 	let agentConfigService: AgentConfigService;
 	let agentExecutionOrchestratorService: AgentExecutionOrchestratorService;
@@ -249,7 +250,7 @@ describe('AgentRuntimeReconstructionService integration tools', () => {
 		globalConfig = mock<GlobalConfig>({
 			multiMainSetup: { enabled: false },
 		} as Partial<GlobalConfig>);
-		telemetry = mock<Telemetry>();
+		telemetry = mock<TelemetryProxy>();
 		const logger = mockLogger();
 
 		credentialsService = mock<CredentialsService>();
@@ -327,7 +328,7 @@ describe('AgentRuntimeReconstructionService integration tools', () => {
 				mock<AgentKnowledgeUsageTracker>(),
 				mock<AgentSandboxFilesService>(),
 			),
-			telemetry,
+			mock<AgentUsageTelemetryService>(),
 			runtimeCacheService,
 			mock<IntegrationMessageContextService>(),
 			mock<AgentRunTracingService>(),

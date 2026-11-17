@@ -5,7 +5,7 @@ import {
 	testDb,
 } from '@n8n/backend-test-utils';
 import type { CredentialsFinderService } from '@n8n/backend-services';
-import { NodeTypesProxy, RoleService } from '@n8n/backend-services';
+import { NodeTypesProxy, RoleService, TelemetryProxy } from '@n8n/backend-services';
 import { WorkflowsConfig } from '@n8n/config';
 import {
 	WorkflowPublicationOutboxRepository,
@@ -35,7 +35,6 @@ import { PolicyEnforcementService } from '@/policy/policy-enforcement.service';
 import { PolicyViolationError } from '@/policy/policy-violation.error';
 import { Push } from '@/push';
 import { ProjectService } from '@/services/project.service.ee';
-import { Telemetry } from '@/telemetry';
 import { WorkflowPublicationNotifier } from '@/workflows/publication/workflow-publication-notifier';
 import { WorkflowPublicationOutboxConsumer } from '@/workflows/publication/workflow-publication-outbox-consumer';
 import { WorkflowPublicationStatusService } from '@/workflows/publication/workflow-publication-status.service';
@@ -61,7 +60,7 @@ mockInstance(Push);
 mockInstance(ExternalSecretsProxy);
 mockInstance(ExecutionService);
 mockInstance(ExternalHooks);
-const telemetry = mockInstance(Telemetry);
+const telemetry = mockInstance(TelemetryProxy);
 const collaborationService = mockInstance(CollaborationService, {
 	ensureWorkflowEditable: vi.fn().mockResolvedValue(undefined),
 	broadcastWorkflowUpdate: vi.fn().mockResolvedValue(undefined),

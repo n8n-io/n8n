@@ -703,6 +703,11 @@ export class AgentRepository extends BaseRepository<Agent> {
 		return agent?.identityId ?? null;
 	}
 
+	/** The agent that acts as this identity, if there is one. */
+	async findByIdentityId(identityId: string): Promise<Pick<Agent, 'id' | 'name'> | null> {
+		return await this.findOne({ select: ['id', 'name'], where: { identityId } });
+	}
+
 	/** Sets the identity only when the agent has none. Returns false when another write set it first. */
 	async linkIdentity(id: string, identityId: string, ctx: OperationContext): Promise<boolean> {
 		const result = await this.managerFor(ctx)

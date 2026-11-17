@@ -10,8 +10,9 @@ import { ExecutionDataJsonStore } from '@/executions/execution-data/execution-da
 import { AgentProjectLookupProxy, FavoriteResourceResolverRegistry } from '@n8n/backend-services';
 import { SandboxSettingsService } from '@/services/sandbox-settings.service';
 import { AgentUsageProviderProxy } from '@/modules/workflow-index/agent-usage-provider-proxy.service';
-import { KnowledgeSandboxProviderRegistry } from '@/modules/knowledge/knowledge-sandbox-provider-registry';
+import { KnowledgeSandboxProviderProxy } from '@/modules/knowledge/knowledge-sandbox-provider-proxy';
 import { SkillUsageProxy } from '@/modules/skills';
+import { ServiceAccountUsageProxy } from '@/services/service-account-usage-proxy.service';
 
 import { AgentChannelMediaRetentionTask } from '../agent-channel-media-retention.task';
 import { AgentKnowledgeSnapshotTask } from '../agent-knowledge-snapshot.task';
@@ -38,6 +39,7 @@ import { AgentHistoryRepository } from '../repositories/agent-history.repository
 import { AgentCredentialDependencyRepository } from '../repositories/agent-credential-dependency.repository';
 import { AgentWorkflowDependencyRepository } from '../repositories/agent-workflow-dependency.repository';
 import { AgentSkillUsage } from '../agent-skill-usage';
+import { AgentServiceAccountUsage } from '../agent-service-account-usage';
 import { AgentKnowledgeSandboxProvider } from '../knowledge-sandbox-provider.adapter';
 import { AgentRepository } from '../repositories/agent.repository';
 import { AgentSecureRuntime } from '../runtime/agent-secure-runtime';
@@ -67,9 +69,13 @@ function setUpContainerForInit() {
 	Container.set(AgentRepository, mock<AgentRepository>());
 	Container.set(SkillUsageProxy, mock<SkillUsageProxy>());
 	Container.set(AgentSkillUsage, mock<AgentSkillUsage>());
-	const knowledgeSandboxProviderRegistry = mock<KnowledgeSandboxProviderRegistry>();
+	const serviceAccountUsageProxy = mock<ServiceAccountUsageProxy>();
+	const serviceAccountUsage = mock<AgentServiceAccountUsage>();
+	Container.set(ServiceAccountUsageProxy, serviceAccountUsageProxy);
+	Container.set(AgentServiceAccountUsage, serviceAccountUsage);
+	const knowledgeSandboxProviderProxy = mock<KnowledgeSandboxProviderProxy>();
 	const knowledgeSandboxProvider = mock<AgentKnowledgeSandboxProvider>();
-	Container.set(KnowledgeSandboxProviderRegistry, knowledgeSandboxProviderRegistry);
+	Container.set(KnowledgeSandboxProviderProxy, knowledgeSandboxProviderProxy);
 	Container.set(AgentKnowledgeSandboxProvider, knowledgeSandboxProvider);
 	Container.set(FavoriteResourceResolverRegistry, mock<FavoriteResourceResolverRegistry>());
 	Container.set(AgentCredentialDependencyRepository, mock<AgentCredentialDependencyRepository>());
@@ -109,8 +115,10 @@ function setUpContainerForInit() {
 		discordIntegration,
 		whatsAppIntegration,
 		n8nChatIntegration,
-		knowledgeSandboxProviderRegistry,
+		knowledgeSandboxProviderProxy,
 		knowledgeSandboxProvider,
+		serviceAccountUsageProxy,
+		serviceAccountUsage,
 	};
 }
 
@@ -225,14 +233,19 @@ describe('AgentsModule', () => {
 		});
 
 		it('registers the knowledge sandbox provider with the knowledge module', async () => {
-			const { knowledgeSandboxProviderRegistry, knowledgeSandboxProvider } =
-				setUpContainerForInit();
+			const { knowledgeSandboxProviderProxy, knowledgeSandboxProvider } = setUpContainerForInit();
 
 			await module.init();
 
-			expect(knowledgeSandboxProviderRegistry.register).toHaveBeenCalledWith(
-				knowledgeSandboxProvider,
-			);
+			expect(knowledgeSandboxProviderProxy.register).toHaveBeenCalledWith(knowledgeSandboxProvider);
+		});
+
+		it('tells core which agent acts as a service account', async () => {
+			const { serviceAccountUsageProxy, serviceAccountUsage } = setUpContainerForInit();
+
+			await module.init();
+
+			expect(serviceAccountUsageProxy.register).toHaveBeenCalledWith(serviceAccountUsage);
 		});
 	});
 });

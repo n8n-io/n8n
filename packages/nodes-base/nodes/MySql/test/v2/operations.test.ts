@@ -374,6 +374,35 @@ describe('Test MySql V2, operations', () => {
 		expect(connectionQuerySpy).toBeCalledWith('SELECT * FROM users LIMIT 2, 5');
 	});
 
+	it.each([
+		{ nodeVersion: 2.6, expected: "select '1$&2', '1$$2', '^[0-9]+$'" },
+		{ nodeVersion: 2.5, expected: "select '1{{ $json.sql }}2', '1$2', '^[0-9]+" },
+	])(
+		'executeQuery, should insert the resolved query for version $nodeVersion',
+		async ({ nodeVersion, expected }) => {
+			const nodeParameters: IDataObject = {
+				operation: 'executeQuery',
+				query: '{{ $json.sql }}',
+				options: { nodeVersion },
+			};
+			const nodeOptions = nodeParameters.options as IDataObject;
+			const fakeExecuteFunction = createMockExecuteFunction(nodeParameters, mySqlMockNode);
+			fakeExecuteFunction.evaluateExpression = vi
+				.fn()
+				.mockReturnValue("select '1$&2', '1$$2', '^[0-9]+$'");
+			const runQueries = vi.fn(async () => []);
+
+			await executeQuery.execute.call(
+				fakeExecuteFunction,
+				emptyInputItems,
+				runQueries,
+				nodeOptions,
+			);
+
+			expect(runQueries).toHaveBeenCalledWith([{ query: expected, values: [], itemIndex: 0 }]);
+		},
+	);
+
 	it('executeQuery, should keep a resolved value out of another parameter slot', async () => {
 		// Raw, unevaluated node config, as it's stored in the workflow.
 		const rawParameters: IDataObject = {

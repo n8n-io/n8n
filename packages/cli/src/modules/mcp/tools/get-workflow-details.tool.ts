@@ -4,8 +4,7 @@ import z from 'zod';
 
 import type { CredentialsService } from '@/credentials/credentials.service';
 import type { ProjectService } from '@/services/project.service.ee';
-import type { CredentialsFinderService, RoleService } from '@n8n/backend-services';
-import type { Telemetry } from '@/telemetry';
+import type { CredentialsFinderService, RoleService, TelemetryProxy } from '@n8n/backend-services';
 import type { WorkflowPublicationStatusService } from '@/workflows/publication/workflow-publication-status.service';
 import type { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 
@@ -91,7 +90,7 @@ export const createWorkflowDetailsTool = (
 	credentialsFinderService: CredentialsFinderService,
 	nodeTypes: INodeTypes,
 	endpoints: WebhookEndpoints,
-	telemetry: Telemetry,
+	telemetry: TelemetryProxy,
 	roleService: RoleService,
 	projectService: ProjectService,
 	testBaseWebhookUrl: string = baseWebhookUrl,

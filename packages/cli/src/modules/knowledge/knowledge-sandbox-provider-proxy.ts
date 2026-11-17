@@ -18,7 +18,7 @@ import type {
  * exception: teardown never throws, and without a provider there is no sandbox to delete.
  */
 @Service()
-export class KnowledgeSandboxProviderRegistry implements KnowledgeSandboxProvider {
+export class KnowledgeSandboxProviderProxy implements KnowledgeSandboxProvider {
 	private provider: KnowledgeSandboxProvider | null = null;
 
 	register(provider: KnowledgeSandboxProvider): void {

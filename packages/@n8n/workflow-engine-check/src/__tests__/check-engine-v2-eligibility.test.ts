@@ -81,6 +81,21 @@ describe('checkEngineV2Eligibility', () => {
 			],
 			connections: {},
 		},
+		{
+			rule: 'converter',
+			nodes: [
+				manualTrigger,
+				{
+					...manualTrigger,
+					id: 'merge-id',
+					name: 'Merge',
+					type: 'n8n-nodes-base.merge',
+					typeVersion: 3,
+					parameters: { mode: 'chooseBranch' },
+				},
+			],
+			connections: {},
+		},
 	])('ignores nodes that no live trigger reaches in the $rule rule', ({ nodes, connections }) => {
 		expect(checkEngineV2Eligibility({ nodes, connections, settings: {} })).toEqual({
 			eligible: true,
