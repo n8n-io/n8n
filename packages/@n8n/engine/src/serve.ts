@@ -15,7 +15,7 @@ const logger = createConsoleLogger();
 
 async function main(): Promise<void> {
 	const config = Container.get(EngineConfig);
-	const { pruneData, pruneDataMaxAge } = Container.get(ExecutionsConfig);
+	const { pruneData, pruneDataMaxAge, pruneDataMaxCount } = Container.get(ExecutionsConfig);
 
 	// Refused rather than degraded: an engine with nowhere to record an execution
 	// would report healthy while being unable to run one.
@@ -53,7 +53,11 @@ async function main(): Promise<void> {
 			},
 			logger,
 		}),
-		retention: retentionPolicyFromHours({ enabled: pruneData, maxAgeHours: pruneDataMaxAge }),
+		retention: retentionPolicyFromHours({
+			enabled: pruneData,
+			maxAgeHours: pruneDataMaxAge,
+			maxCount: pruneDataMaxCount,
+		}),
 	});
 	runtime.start();
 
