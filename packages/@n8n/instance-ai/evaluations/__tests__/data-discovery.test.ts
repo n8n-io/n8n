@@ -120,6 +120,22 @@ describe('discoveryTestCaseSchema', () => {
 		['an attachment without a seed', { attach: { workflow: 'wf-1' } }, false],
 		['a replay seed', { seed: { mode: 'replay', threadId: 't-1' } }, false],
 		['a seed with projects', { seed: { ...seed, projects: [{ name: 'Acme' }] } }, false],
+		['an empty seed', { seed: { mode: 'inline' } }, false],
+		[
+			'a prior run of a seeded workflow',
+			{ seed: { ...seed, priorRuns: [{ workflow: 'wf-1' }] } },
+			true,
+		],
+		[
+			'a prior run of an undeclared workflow',
+			{ seed: { ...seed, priorRuns: [{ workflow: 'wf-2' }] } },
+			false,
+		],
+		[
+			'a setup-panel hand-off',
+			{ seed, attach: { workflow: 'wf-1', source: 'setup-panel-execute' } },
+			false,
+		],
 	])('validates the seed and attachment: %s', (_name, fields, ok) => {
 		expect(discoveryTestCaseSchema.safeParse({ ...valid, ...fields }).success).toBe(ok);
 	});

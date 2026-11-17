@@ -73,14 +73,20 @@ const confirmationsSchema: z.ZodType<DiscoveryConfirmations> = z
 		message: 'confirmations must not be empty',
 	});
 
-/** The stub instance serves an inline seed, except its folders, projects and recorded runs. */
+/** The stub instance serves an inline seed, except its folders, projects and recorded runs.
+ *  An empty seed runs the case unseeded, and the stub makes up a prior run for an undeclared workflow. */
 const stubSeedSchema = CaseSeedSchema.refine(
 	(seed): seed is Extract<CaseSeed, { mode: 'inline' }> =>
 		seed.mode === 'inline' &&
+		[seed.messages, seed.workflows, seed.dataTables, seed.agents].some((slot) => slot.length > 0) &&
 		seed.folders.length === 0 &&
 		seed.projects.length === 0 &&
-		(seed.recordedRuns?.length ?? 0) === 0,
-	{ message: 'needs an inline seed without folders, projects or recordedRuns' },
+		(seed.recordedRuns?.length ?? 0) === 0 &&
+		(seed.priorRuns ?? []).every((run) => seed.workflows.some(({ id }) => id === run.workflow)),
+	{
+		message:
+			'needs a non-empty inline seed without folders, projects or recordedRuns, whose priorRuns name seeded workflows',
+	},
 );
 
 /** Strict authoring schema for discovery cases — a typo'd key or an empty
@@ -101,7 +107,11 @@ export const discoveryTestCaseSchema = z
 			.optional(),
 		credentials: z.array(testCaseCredentialSchema).min(1).optional(),
 		seed: stubSeedSchema.optional(),
-		attach: ConversationTurnSchema.shape.attach,
+		// The runner sends only the attachment, so a setup-panel hand-off would grade as a plain one.
+		attach: ConversationTurnSchema.shape.attach.refine(
+			(attachment) => !attachment || !('source' in attachment),
+			{ message: 'discovery cases do not support attach.source' },
+		),
 		confirmations: confirmationsSchema.optional(),
 		expectedToolInvocations: z
 			.object({
