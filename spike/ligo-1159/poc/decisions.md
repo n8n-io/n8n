@@ -722,3 +722,44 @@ workflows and projects that reconciliation keeps.
 
 The page disables the operation, also on an environment that allows
 incomplete operations, and says to update n8n or close the gap.
+
+## Decisions of the backend verification (run on the dev/prod harness)
+
+### V1. A sub-workflow row outside the listed projects shows the id only
+
+A preview lists a called workflow that is not in a listed project as a row
+without a parent. Its name came from the requirement row of the branch, which a
+user with access to the owner project wrote. A project admin of the caller
+project could then read the name of a workflow that they cannot access. The row
+now always shows the id. The dependency report still names the target when the
+user can read it.
+
+### V2. A selection Promote never writes a top-level credential file
+
+The exporter writes a credential of a project outside the export at the top
+level of the package. A selection Promote now removes every credential file
+that is not under a selected project, so the reference stays a requirement row
+(with its reason). A credential file under a selected project replaces the
+file of the same id under another project of the branch: the owner changed on
+the source.
+
+### V3. A refused credential move does not block the import plan
+
+When the owner follows the package and the user may not move the credential
+(or it is managed or end-user), the engine reported the selected credential as
+unresolved and the Apply returned `blocked` with `import-blocked`. The engine
+now settles that reference: the credential stays where it is, and the result
+lists the move with `allowed: false` (decision D22).
+
+### V4. The detail of `credential-type-mismatch` uses `sourceType`
+
+The check wrote `branchType`. The user interface reads `sourceType` and
+`destinationType` (decision E6), so the check now writes `sourceType`.
+
+### V5. Git ignores the credential helpers of the host
+
+On macOS the Git of the instance also asked the system keychain helper, stored
+the provider token in the keychain of the host, and later stalled on a keychain
+prompt ("Git operation stalled"). The HTTP(S) Git configuration now starts with
+an empty `credential.helper`, so Git asks only the helper of n8n. This also
+applies to source control, which shares the helper.

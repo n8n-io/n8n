@@ -388,7 +388,9 @@ function addProjectLinks(
 			key,
 			type: 'workflow',
 			id: requirement.id,
-			name: requirement.name ?? requirement.id,
+			// Another project owns it, and the user may not be able to read that project. The
+			// name on the branch came from a user who could, so the row shows the id only.
+			name: requirement.id,
 			parentKey: null,
 			change: 'unchanged',
 			selectable: false,
