@@ -1,6 +1,8 @@
 import type { PromotionPreviewCheck } from '@n8n/api-types';
 import { UnexpectedError } from '@n8n/errors';
 
+export * from './project-moves';
+
 export type CrossProjectMove = PromotionPreviewCheck['movedWorkflows'][number];
 
 export type CrossProjectMoves = {

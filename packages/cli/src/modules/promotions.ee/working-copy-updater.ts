@@ -22,6 +22,12 @@ const selectivePushOptionsSchema = z.object({
 	workflowIds: z.array(z.string().min(1)),
 	deletedWorkflowIds: z.array(z.string().min(1)),
 	folderIds: z.array(z.string().min(1)),
+	/**
+	 * Write a move between two team projects: a selected workflow or folder that the branch holds
+	 * under another project leaves that project and arrives under this one, in the same working
+	 * copy. A moved folder takes its branch directory with it. Omitted means refuse, as before.
+	 */
+	allowCrossProjectMoves: z.boolean().optional(),
 });
 
 export type SelectivePushOptions = z.infer<typeof selectivePushOptionsSchema>;
@@ -332,7 +338,7 @@ export class WorkingCopyUpdater {
 	 * selective push refuses it.
 	 */
 	assertNoCrossProjectMoves(branch: BranchLayout, selection: SelectivePushOptions): void {
-		if (selection.workflowIds.length === 0) return;
+		if (selection.allowCrossProjectMoves || selection.workflowIds.length === 0) return;
 
 		const projectTarget = branch.projects?.find((p) => p.id === selection.projectId)?.target;
 		const selected = new Set(selection.workflowIds);
@@ -372,6 +378,26 @@ export class WorkingCopyUpdater {
 	}
 
 	/**
+	 * With `allowCrossProjectMoves`, a folder directory may come from another project. A project
+	 * directory never does: the directory of another project holds content that stays there.
+	 */
+	private assertOnlyFoldersCrossProjects(
+		branch: BranchLayout,
+		projectId: string,
+		moves: readonly ContainerMove[],
+	): void {
+		const projectTarget = branch.projects?.find((p) => p.id === projectId)?.target;
+		const foreignProject = moves.find(
+			({ kind, from }) => kind === 'projects' && from !== projectTarget,
+		);
+		if (foreignProject) {
+			throw new BadRequestError(
+				`"${foreignProject.from}" is the directory of another project on the branch. Remove it and retry.`,
+			);
+		}
+	}
+
+	/**
 	 * Overlay the staging export onto `exportFolder`. Pass `branch` from
 	 * `assertSelectionFitsBranch` for the same folder and selection.
 	 * File work runs on a copy, then the copy replaces the
@@ -405,7 +431,11 @@ export class WorkingCopyUpdater {
 				.filter((p) => p.id !== selection.projectId)
 				.map((p) => p.target);
 			const moves = containerMoves(existing, staging);
-			this.assertNoCrossProjectContainerMoves(existing, selection.projectId, moves);
+			if (selection.allowCrossProjectMoves) {
+				this.assertOnlyFoldersCrossProjects(existing, selection.projectId, moves);
+			} else {
+				this.assertNoCrossProjectContainerMoves(existing, selection.projectId, moves);
+			}
 			const remaining: BranchLayout = {
 				...existing,
 				workflows: (existing.workflows ?? []).filter(

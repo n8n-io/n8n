@@ -217,7 +217,10 @@ export function toPreviewCheck(input: ApplyCheckInput): PromotionPreviewCheck {
 			(issue.type === 'workflow-id-conflict' && movedIds.has(issue.sourceWorkflowId)) ||
 			(issue.type === 'folder-conflict' &&
 				issue.kind === 'id-in-other-project' &&
-				movedIds.has(issue.sourceFolderId))
+				movedIds.has(issue.sourceFolderId)) ||
+			// The caller reports an unconfirmed move from the planned moves: a confirmation for an
+			// instance Apply, a `moved` conflict for a project Apply.
+			(issue.type === 'cross-project-move-blocked' && issue.kind === 'unconfirmed')
 		) {
 			handled.add(issue);
 		}
@@ -311,6 +314,13 @@ function describeIssue(
 			);
 		case 'workflow-lineage-conflict':
 			return workflowConflict('lineage-conflict', issue.type, ofWorkflow(issue.sourceWorkflowId));
+		case 'cross-project-move-blocked': {
+			// Names the missing permission of the move, like the editor move.
+			const reason = `The move of ${issue.entity} "${issue.name}" between projects needs the permission "${issue.missingScope ?? 'workflow:move'}"`;
+			return issue.entity === 'workflow'
+				? workflowConflict('workflow-forbidden', reason, ofWorkflow(issue.id))
+				: projectConflict('import-blocked', reason, issue.toProjectId);
+		}
 		case 'policy-violation':
 			return workflowConflict(
 				'policy-violation',

@@ -71,7 +71,11 @@ export function usePromotionPreviewLabels() {
 			}
 			if (resource.movedFromProject) {
 				return i18n.baseText('promotions.preview.marker.movedIn', {
-					interpolate: { project: resource.movedFromProject.name },
+					interpolate: {
+						// The name is absent when the user cannot access the other project.
+						project:
+							resource.movedFromProject.name ?? i18n.baseText('promotions.preview.anotherProject'),
+					},
 				});
 			}
 			return i18n.baseText('promotions.preview.marker.workflow', {

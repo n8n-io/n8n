@@ -3,7 +3,6 @@ import '../../openapi-extend';
 import { z } from 'zod';
 
 import {
-	promotionBindingProjectSchema,
 	promotionCredentialExpressionValueRef,
 	promotionDataTableChangeSchema,
 	promotionInstanceProjectSchema,
@@ -92,10 +91,11 @@ export const promotionResourceSchema = z
 		 */
 		movedToProject: promotionInstanceProjectSchema.optional(),
 		/**
-		 * Only for added workflows on Promote: the project that holds the workflow on the branch. It moved
-		 * into this project on this instance, and a project promote refuses it.
+		 * The project that holds the item on the other side: on the branch for a Promote, on this
+		 * instance for an Apply. The item moved into the project of this row. `name` is left out when
+		 * the user cannot access the project.
 		 */
-		movedFromProject: promotionBindingProjectSchema.optional(),
+		movedFromProject: promotionInstanceProjectSchema.optional(),
 		revision: revisionSchema,
 	})
 	.openapi('PromotionResource');
