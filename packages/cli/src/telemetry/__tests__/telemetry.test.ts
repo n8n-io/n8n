@@ -539,8 +539,11 @@ describe('Telemetry', () => {
 
 				const execBuffer = telemetry.getCountsBuffer();
 				expect(Object.hasOwn(execBuffer, workflowId)).toBe(true);
+				// A fresh entry, not a built-in reached through the key.
+				expect(Object.getPrototypeOf(execBuffer[workflowId])).toBe(Object.prototype);
 				expect(execBuffer[workflowId].manual_success?.count).toBe(1);
 				expect(Object.hasOwn(Object.prototype, 'manual_success')).toBe(false);
+				expect(Object.hasOwn(Object, 'manual_success')).toBe(false);
 			},
 		);
 	});

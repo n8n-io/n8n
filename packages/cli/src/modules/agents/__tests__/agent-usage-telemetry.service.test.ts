@@ -57,7 +57,13 @@ describe('AgentUsageTelemetryService', () => {
 
 				const [counts] = Object.values(service.getAgentExecutionCountsBuffer());
 				expect(Object.hasOwn(counts.counts_by_source, source)).toBe(true);
+				expect(counts.counts_by_source[source]).toEqual({
+					message_count: 1,
+					token_count: 0,
+					tool_call_count: 0,
+				});
 				expect(Object.hasOwn(Object.prototype, 'message_count')).toBe(false);
+				expect(Object.hasOwn(Object, 'message_count')).toBe(false);
 			},
 		);
 
@@ -606,6 +612,14 @@ describe('AgentUsageTelemetryService', () => {
 			expect(JSON.stringify(payload)).not.toContain('thread-1');
 		});
 
+		const firstTurnMetrics = {
+			latency_ms: 100,
+			cost: 10,
+			token_count: 1000,
+			tool_call_count: 1,
+			turn_count: 1,
+		};
+
 		test.each(['__proto__', 'constructor'])(
 			'should keep session metrics for thread id "%s" as an own entry',
 			(threadId) => {
@@ -623,8 +637,10 @@ describe('AgentUsageTelemetryService', () => {
 
 				const [bucket] = Object.values(service.getAgentSessionMetricsBuffer());
 				expect(Object.hasOwn(bucket.sessions, threadId)).toBe(true);
-				expect(Object.hasOwn(bucket.sessions_by_source.unknown, threadId)).toBe(true);
+				expect(bucket.sessions[threadId]).toMatchObject(firstTurnMetrics);
+				expect(bucket.sessions_by_source.unknown[threadId]).toMatchObject(firstTurnMetrics);
 				expect(Object.hasOwn(Object.prototype, 'latency_ms')).toBe(false);
+				expect(Object.hasOwn(Object, 'latency_ms')).toBe(false);
 			},
 		);
 
@@ -646,7 +662,9 @@ describe('AgentUsageTelemetryService', () => {
 
 				const [bucket] = Object.values(service.getAgentSessionMetricsBuffer());
 				expect(Object.hasOwn(bucket.sessions_by_source, source)).toBe(true);
+				expect(bucket.sessions_by_source[source]['thread-1']).toMatchObject(firstTurnMetrics);
 				expect(Object.hasOwn(Object.prototype, 'thread-1')).toBe(false);
+				expect(Object.hasOwn(Object, 'thread-1')).toBe(false);
 			},
 		);
 
