@@ -13,7 +13,7 @@ import {
 	domainGatingSuspendSchema,
 	domainGatingResumeSchema,
 } from '../domain-access';
-import type { InstanceAiContext } from '../types';
+import type { FetchedPage, InstanceAiContext } from '../types';
 import { sanitizeWebContent, wrapUntrustedData } from './web-research/sanitize-web-content';
 
 /** True when both URLs share an eTLD+1 (per Public Suffix List) and target is HTTPS. */
@@ -37,6 +37,8 @@ async function isSameRegistrableDomainOverHttps(
 }
 
 // ── Action schemas ──────────────────────────────────────────────────────────
+
+const DEFAULT_MAX_CONTENT_LENGTH = 30_000;
 
 const webSearchAction = z.object({
 	action: z.literal('web-search').describe('Search the web for information'),
@@ -65,9 +67,17 @@ const fetchUrlAction = z.object({
 		.int()
 		.positive()
 		.max(100_000)
-		.default(30_000)
+		.default(DEFAULT_MAX_CONTENT_LENGTH)
 		.optional()
 		.describe('Maximum content length in characters (default 30000)'),
+	offset: z
+		.number()
+		.int()
+		.min(0)
+		.optional()
+		.describe(
+			'Character offset to start reading from (default 0). Pass `nextOffset` from the previous result to read the next part of a long page.',
+		),
 });
 
 const inputSchema = sanitizeInputSchema(
@@ -237,13 +247,36 @@ async function handleFetchUrl(
 		);
 	};
 
-	const result = await context.webResearchService.fetchUrl(input.url, {
-		maxContentLength: input.maxContentLength ?? undefined,
+	const page = await context.webResearchService.fetchUrl(input.url, {
 		authorizeUrl,
 		abortSignal: ctx.abortSignal,
 	});
-	result.content = wrapUntrustedData(sanitizeWebContent(result.content), result.finalUrl);
-	return result;
+	return slicePage(page, input.offset ?? 0, input.maxContentLength ?? DEFAULT_MAX_CONTENT_LENGTH);
+}
+
+/**
+ * Return one part of the full page. Offsets count characters of the sanitized
+ * content, so `nextOffset` always continues where this part ends.
+ */
+function slicePage(page: FetchedPage, offset: number, maxContentLength: number) {
+	const content = sanitizeWebContent(page.content);
+	const end = sliceEnd(content, offset, maxContentLength);
+	const hasMore = end < content.length;
+	return {
+		...page,
+		content: wrapUntrustedData(content.slice(offset, end), page.finalUrl),
+		contentLength: content.length,
+		truncated: hasMore || page.truncated,
+		...(hasMore ? { nextOffset: end } : {}),
+	};
+}
+
+/** Move the end back by one when it would split a surrogate pair, so the next part starts on a whole character. */
+function sliceEnd(content: string, offset: number, maxContentLength: number) {
+	const end = offset + maxContentLength;
+	const code = content.charCodeAt(end - 1);
+	const endsOnHighSurrogate = code >= 0xd800 && code <= 0xdbff;
+	return endsOnHighSurrogate && end - 1 > offset ? end - 1 : end;
 }
 
 // ── Tool factory ────────────────────────────────────────────────────────────
