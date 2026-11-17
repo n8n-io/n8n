@@ -144,5 +144,18 @@ describe('useRunDataDisplayModes', () => {
 
 			expect(setup().displayModeToAutoSelect.value).toBeUndefined();
 		});
+
+		it('is undefined in the input pane', () => {
+			runDataDisplayModeRegistry.register(contribution({ autoSelect: true }));
+
+			const { availableDisplayModes, displayModeToAutoSelect } = useRunDataDisplayModes({
+				node,
+				pane: 'input',
+				data: [{ json: {} }],
+			});
+
+			expect(availableDisplayModes.value.map((mode) => mode.id)).toEqual(['map']);
+			expect(displayModeToAutoSelect.value).toBeUndefined();
+		});
 	});
 });

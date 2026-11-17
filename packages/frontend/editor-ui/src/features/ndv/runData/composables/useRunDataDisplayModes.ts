@@ -41,8 +41,11 @@ export function useRunDataDisplayModes(options: {
 		return runDataDisplayModeRegistry.getAll().filter((mode) => safeCanRender(mode, context));
 	});
 
+	// The SDK contract: `autoSelect` applies to the output pane only
 	const displayModeToAutoSelect = computed(() =>
-		availableDisplayModes.value.find((mode) => mode.autoSelect),
+		toValue(options.pane) === 'output'
+			? availableDisplayModes.value.find((mode) => mode.autoSelect)
+			: undefined,
 	);
 
 	function getAvailableDisplayMode(id: DisplayMode) {
