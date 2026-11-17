@@ -424,10 +424,8 @@ const onPublishButtonClick = async () => {
 	if (!(await ensureWorkflowSaved())) return;
 
 	if (reviewsApply.value) {
-		// TODO(LIGO-604): backend publish enforcement. Until then this gate is
-		// best-effort: a not-yet-fetched status (e.g. Publish clicked before the
-		// on-mount fetch resolves) reads as "no open review" — accepted, since
-		// only backend enforcement can close that hole.
+		// Best effort: a status that is not fetched yet reads as "no open review".
+		// The server rejects the publish in that case.
 		if (reviewStatusStore.hasOpenReview(props.id)) {
 			if (reviewContainsSavedVersion.value) return;
 			showUpdateReviewDialog.value = true;
