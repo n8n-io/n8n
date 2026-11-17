@@ -1,0 +1,22 @@
+packages/frontend/editor-ui/src/features/settings/context/views/SettingsSkillsView.vue
+  s_bc27ac3adda411::t_bac5f6ea6a3f6d 1335-1343
+packages/frontend/editor-ui/src/features/settings/context/views/SettingsSkillsView.test.ts
+  s_bc27ac3adda411::t_bac5f6ea6a3f6d 973
+  s_bc27ac3adda411::t_4a5e2ed8575c17 940-972
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "d2ca914da49eebe54c8fed50a6a717d176ec5c2a",
+  "prompts": {},
+  "sessions": {
+    "s_bc27ac3adda411": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a1e944-3dbf-7aa3-9124-352b45e22dd3",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "Arvin Ansari <arvin.ansari@n8n.io>"
+    }
+  }
+}
