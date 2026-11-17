@@ -1,9 +1,6 @@
 import { normalizeItems } from 'n8n-core';
-import {
-	UnexpectedError,
-	type ISupplyDataFunctions,
-	type IWorkflowDataProxyData,
-} from 'n8n-workflow';
+import type { ISupplyDataFunctions, IWorkflowDataProxyData } from 'n8n-workflow';
+import { UnexpectedError } from '@n8n/errors';
 import { mock } from 'vitest-mock-extended';
 
 import { N8nItemListOutputParser } from '@utils/output_parsers/N8nItemListOutputParser';

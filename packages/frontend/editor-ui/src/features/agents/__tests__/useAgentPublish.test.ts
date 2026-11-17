@@ -128,7 +128,7 @@ describe('useAgentPublish', () => {
 			n8nChatFlag.value = flag;
 			publishAgentMock.mockResolvedValueOnce({
 				...agentResource,
-				activeVersion: { versionId: 'v2', schema: { integrations }, skills: null, author: '' },
+				activeVersion: { versionId: 'v2', integrations },
 			});
 			const { publish } = useAgentPublish();
 
@@ -203,6 +203,9 @@ describe('useAgentPublish', () => {
 		await useAgentPublish().publish('p1', 'a1', 'older-version');
 		expect(getAgentMock).not.toHaveBeenCalled();
 		expect(getAgentVersionMock).toHaveBeenCalledWith({}, 'p1', 'a1', 'older-version');
+		expect(openVersionMetadataMock).toHaveBeenCalledWith(
+			expect.objectContaining({ mode: 'publish', versionId: 'older-version' }),
+		);
 		expect(publishAgentMock).toHaveBeenCalledWith(
 			{},
 			'p1',

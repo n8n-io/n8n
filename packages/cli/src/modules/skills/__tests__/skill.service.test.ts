@@ -12,6 +12,7 @@ import {
 	versionRow,
 	resetSkillMocks,
 } from './test-utils/skill-services';
+import type { SkillSourceLink } from '../database/entities/skill-source-link.entity';
 import type { Skill } from '../database/entities/skill.entity';
 import { SkillSyncedError } from '../errors/skill-synced.error';
 import { toAgentSkill, type ResolvedSkillRow } from '../utils/skill-content';
@@ -226,6 +227,7 @@ describe('SkillService', () => {
 				}),
 				user.id,
 				TX_CTX,
+				undefined,
 			);
 		});
 
@@ -253,12 +255,14 @@ describe('SkillService', () => {
 			);
 
 			expect(result.skill.name).toBe('Renamed');
+			expect(skills.lockNames).toHaveBeenCalledWith(TX_CTX);
 			expect(skills.insertSavedVersion).toHaveBeenCalledWith(
 				'skill_a',
 				3,
 				expect.objectContaining({ name: 'Renamed' }),
 				user.id,
 				expect.anything(),
+				undefined,
 			);
 		});
 
@@ -303,16 +307,25 @@ describe('SkillService', () => {
 				expect.objectContaining({ frontmatter: { license: 'Apache-2.0' } }),
 				user.id,
 				TX_CTX,
+				undefined,
 			);
 		});
 
-		it('does not check the name when the save keeps it', async () => {
-			const baseSkillHash = givenLatest(versionRow(skill, 2));
+		it.each([undefined, 'BRAND_VOICE'])(
+			'does not lock or check an unchanged name key (%s)',
+			async (name) => {
+				const baseSkillHash = givenLatest(versionRow(skill, 2));
 
-			await service.saveTrusted('skill_a', { baseSkillHash, instructions: 'new' }, user.id);
+				await service.saveTrusted(
+					'skill_a',
+					{ baseSkillHash, ...(name === undefined ? {} : { name }), instructions: 'new' },
+					user.id,
+				);
 
-			expect(skills.findLatestNamesInTarget).not.toHaveBeenCalled();
-		});
+				expect(skills.lockNames).not.toHaveBeenCalled();
+				expect(skills.findLatestNamesInTarget).not.toHaveBeenCalled();
+			},
+		);
 
 		it('removes references set to an empty list', async () => {
 			const baseSkillHash = givenLatest(
@@ -346,6 +359,7 @@ describe('SkillService', () => {
 				expect.objectContaining({ frontmatter: { 'allowed-tools': 'Read' } }),
 				user.id,
 				TX_CTX,
+				undefined,
 			);
 		});
 
@@ -362,6 +376,7 @@ describe('SkillService', () => {
 				expect.objectContaining({ frontmatter: { license: 'MIT', 'allowed-tools': 'Read' } }),
 				user.id,
 				TX_CTX,
+				undefined,
 			);
 		});
 
@@ -450,7 +465,7 @@ describe('SkillService', () => {
 					},
 					user.id,
 					{},
-					{ allowSynced: true },
+					{ allowSynced: true, sourceRevision: 'reviewed-revision' },
 				);
 
 				expect(result).toMatchObject({ version: 3, created: true });
@@ -460,6 +475,7 @@ describe('SkillService', () => {
 					fetched,
 					user.id,
 					TX_CTX,
+					'reviewed-revision',
 				);
 			});
 
@@ -490,6 +506,7 @@ describe('SkillService', () => {
 				expect.objectContaining({ instructions: 'new', frontmatter: { license: 'MIT' } }),
 				user.id,
 				TX_CTX,
+				undefined,
 			);
 		});
 
@@ -504,7 +521,7 @@ describe('SkillService', () => {
 		it('marks the following agents in the transaction and refreshes them after the commit', async () => {
 			const baseSkillHash = givenLatest(versionRow(skill, 2));
 			await givenFollowers();
-			const markFollowersChanged = vi.spyOn(skillUsage, 'markFollowersChanged');
+			const findFollowingAgentIds = vi.spyOn(skillUsage, 'findFollowingAgentIds');
 
 			const result = await service.saveTrusted(
 				'skill_a',
@@ -514,7 +531,7 @@ describe('SkillService', () => {
 				{ pushRef: 'push-ref-1' },
 			);
 
-			expect(markFollowersChanged).toHaveBeenCalledWith('skill_a', TX_CTX);
+			expect(findFollowingAgentIds).toHaveBeenCalledWith('skill_a', TX_CTX);
 			expect(result.followingAgentIds).toEqual(['agent-1', 'agent-2']);
 			expect(usage.refreshed).toEqual([
 				{ agentIds: ['agent-1', 'agent-2'], excludePushRef: 'push-ref-1' },
@@ -629,7 +646,7 @@ describe('SkillService', () => {
 
 		it('refuses to move a synced skill on its own, for every caller', async () => {
 			await givenUsers();
-			links.isLinked.mockResolvedValue(true);
+			links.findLinkBySkillId.mockResolvedValue(mock<SkillSourceLink>({ sourceId: 'source-1' }));
 			skills.findLatestSummaries.mockResolvedValue(
 				new Map([['skill_a', { name: 'Brand voice', description: 'd', version: 1 }]]),
 			);
@@ -640,7 +657,7 @@ describe('SkillService', () => {
 				SkillSyncedError,
 				'"Brand voice" is synced from GitHub, so it moves only with its source. Stop syncing it to move it on its own.',
 			);
-			expect(links.isLinked).toHaveBeenCalledWith('skill_a', TX_CTX);
+			expect(links.findLinkBySkillId).toHaveBeenCalledWith('skill_a', TX_CTX);
 			expect(skills.updateTarget).not.toHaveBeenCalled();
 		});
 
@@ -835,7 +852,12 @@ describe('SkillService', () => {
 				]),
 			);
 			skills.findProjects.mockResolvedValue(
-				new Map([[PROJECT, { name: 'Marketing', type: 'team' as const, icon: null }]]),
+				new Map([
+					[
+						PROJECT,
+						{ name: 'Marketing', type: 'team' as const, icon: { type: 'emoji', value: '🚀' } },
+					],
+				]),
 			);
 			users.findManyByIds.mockResolvedValue([
 				Object.assign(new Person(), {
@@ -852,15 +874,27 @@ describe('SkillService', () => {
 			expect(users.findManyByIds).toHaveBeenCalledWith(['user-1']);
 			expect(skills.findProjects).toHaveBeenCalledWith([PROJECT, 'project-gone']);
 			expect(
-				data.map(({ id, scope, projectId, projectName, projectType, createdBy, usedByAgents }) => ({
-					id,
-					scope,
-					projectId,
-					projectName,
-					projectType,
-					createdBy,
-					usedByAgents,
-				})),
+				data.map(
+					({
+						id,
+						scope,
+						projectId,
+						projectName,
+						projectType,
+						projectIcon,
+						createdBy,
+						usedByAgents,
+					}) => ({
+						id,
+						scope,
+						projectId,
+						projectName,
+						projectType,
+						projectIcon,
+						createdBy,
+						usedByAgents,
+					}),
+				),
 			).toEqual([
 				{
 					id: 'skill_project',
@@ -868,6 +902,7 @@ describe('SkillService', () => {
 					projectId: PROJECT,
 					projectName: 'Marketing',
 					projectType: 'team',
+					projectIcon: { type: 'emoji', value: '🚀' },
 					createdBy: { id: 'user-1', email: null, firstName: null, lastName: null },
 					usedByAgents: 2,
 				},
@@ -877,6 +912,7 @@ describe('SkillService', () => {
 					projectId: 'project-gone',
 					projectName: null,
 					projectType: null,
+					projectIcon: null,
 					createdBy: null,
 					usedByAgents: 0,
 				},
@@ -886,6 +922,7 @@ describe('SkillService', () => {
 					projectId: null,
 					projectName: null,
 					projectType: null,
+					projectIcon: null,
 					createdBy: null,
 					usedByAgents: 0,
 				},

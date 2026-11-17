@@ -52,6 +52,12 @@ const ObservationalMemoryConfigSchema = z.object({
 	renderTokenBudget: z.number().int().min(1).optional(),
 	observationLogTailLimit: z.number().int().min(1).optional(),
 	lockTtlMs: z.number().int().min(0).optional(),
+	windowShares: z
+		.object({
+			// 0 removes the default cap; the model's context window still applies.
+			maxContextWindowTokens: z.number().int().min(0).optional(),
+		})
+		.optional(),
 });
 
 export const EPISODIC_MEMORY_GUIDANCE_MAX_TOPICS = 20;
@@ -470,8 +476,8 @@ export const BudgetGuardrailConfigSchema = z
 
 /**
  * PII entity set for `pii` tool guardrails. Mirrors `PIIEntity` in
- * `@n8n/nodes-langchain` (`nodes/Guardrails/actions/checks/pii.ts`) —
- * api-types cannot depend on that package. Keep in sync.
+ * `@n8n/ai-utilities` (`src/guardrails/checks/pii.ts`) — api-types cannot
+ * depend on that package (it depends on api-types). Keep in sync.
  */
 export const TOOL_GUARDRAIL_PII_ENTITIES = [
 	// Global
@@ -555,8 +561,10 @@ const toolGuardrailBaseShape = {
 			'Guardrail id can only contain letters, numbers, hyphens, and underscores',
 		),
 	name: z.string().trim().min(1).optional(),
-	stage: z.enum(['before', 'after']),
-	tools: z.array(ToolGuardrailToolRefSchema).min(1),
+	/** When absent, runs at every stage the kind supports (both, for pattern kinds). */
+	stage: z.enum(['before', 'after']).optional(),
+	/** Covers every tool when absent. At least one ref when present. */
+	tools: z.array(ToolGuardrailToolRefSchema).min(1).optional(),
 };
 
 const modelToolGuardrailShape = {
@@ -899,6 +907,8 @@ export function findToolGuardrailRefIssues(
 	const issues: ToolGuardrailRefIssue[] = [];
 	for (let guardrailIndex = 0; guardrailIndex < guardrails.length; guardrailIndex++) {
 		const refs = guardrails[guardrailIndex].tools;
+		// A guardrail without `tools` covers every tool, so it has no refs to dangle.
+		if (!refs) continue;
 		for (let toolIndex = 0; toolIndex < refs.length; toolIndex++) {
 			const ref = refs[toolIndex];
 			const matches =

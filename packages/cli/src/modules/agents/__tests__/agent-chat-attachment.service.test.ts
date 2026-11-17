@@ -3,7 +3,7 @@ import type { AgentsConfig } from '@n8n/config';
 import { EntityNotFoundError } from '@n8n/typeorm';
 import { FileNotFoundError, type BinaryDataService } from 'n8n-core';
 import { mock } from 'vitest-mock-extended';
-import { UserError } from 'n8n-workflow';
+import { UserError } from '@n8n/errors';
 
 import type { AgentProjectDeletionRepository } from '../repositories/agent-project-deletion.repository';
 import { AgentChatAttachmentService, AgentFileLimitError } from '../agent-chat-attachment.service';

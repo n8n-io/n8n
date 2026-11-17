@@ -8,7 +8,7 @@
  */
 import { AGENT_BUILDER_TOOL_NAMES, resolveBuilderToolName } from '@n8n/api-types';
 import { isRecord } from '@n8n/utils/is-record';
-import { UserError } from 'n8n-workflow';
+import { UserError } from '@n8n/errors';
 import { z } from 'zod';
 
 import {
@@ -374,6 +374,12 @@ export function threadAuthorizesAgentAdoption(
 	}
 	const bound = parseTarget(metadata[METADATA_KEY]);
 	return bound?.agentId === target.agentId && bound.projectId === target.projectId;
+}
+
+/** Whether the thread builds or edits an agent: it has a bound, a pending or an earlier agent target. */
+export function threadTargetsAgent(metadata: Record<string, unknown> | undefined): boolean {
+	const { bound, pending, targets } = readAgentTargetsMetadata(metadata);
+	return bound !== undefined || pending !== undefined || targets.length > 0;
 }
 
 /**

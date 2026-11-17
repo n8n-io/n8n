@@ -1,0 +1,112 @@
+{
+	"name": "AWS Lambda and SNS requests",
+	"nodes": [
+		{
+			"parameters": {},
+			"id": "8b6f1f43-1d0e-4c55-9d38-5ad1c1a0e001",
+			"name": "When clicking 'Execute workflow'",
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [0, 0]
+		},
+		{
+			"parameters": {
+				"function": "arn:aws:lambda:eu-central-1:123456789012:function:order-sync",
+				"payload": "{\"orderId\":42}"
+			},
+			"id": "8b6f1f43-1d0e-4c55-9d38-5ad1c1a0e002",
+			"name": "Invoke Latest",
+			"type": "n8n-nodes-base.awsLambda",
+			"typeVersion": 1,
+			"position": [220, -300],
+			"credentials": { "aws": { "id": "1", "name": "AWS" } }
+		},
+		{
+			"parameters": {
+				"function": "order-sync",
+				"qualifier": "prod",
+				"invocationType": "Event",
+				"payload": "{\"orderId\":43}"
+			},
+			"id": "8b6f1f43-1d0e-4c55-9d38-5ad1c1a0e003",
+			"name": "Invoke Alias",
+			"type": "n8n-nodes-base.awsLambda",
+			"typeVersion": 1,
+			"position": [220, -150],
+			"credentials": { "aws": { "id": "1", "name": "AWS" } }
+		},
+		{
+			"parameters": {
+				"operation": "create",
+				"name": "orders",
+				"options": {
+					"displayName": "Order events",
+					"fifoTopic": true
+				}
+			},
+			"id": "8b6f1f43-1d0e-4c55-9d38-5ad1c1a0e004",
+			"name": "Create Topic",
+			"type": "n8n-nodes-base.awsSns",
+			"typeVersion": 1,
+			"position": [220, 0],
+			"credentials": { "aws": { "id": "1", "name": "AWS" } }
+		},
+		{
+			"parameters": {
+				"operation": "delete",
+				"topic": {
+					"__rl": true,
+					"mode": "list",
+					"value": "arn:aws:sns:eu-central-1:123456789012:legacy-orders"
+				}
+			},
+			"id": "8b6f1f43-1d0e-4c55-9d38-5ad1c1a0e005",
+			"name": "Delete Topic",
+			"type": "n8n-nodes-base.awsSns",
+			"typeVersion": 1,
+			"position": [220, 150],
+			"credentials": { "aws": { "id": "1", "name": "AWS" } }
+		},
+		{
+			"parameters": {
+				"topic": {
+					"__rl": true,
+					"mode": "list",
+					"value": "arn:aws:sns:eu-central-1:123456789012:orders"
+				},
+				"subject": "Order created",
+				"message": "Order 42 is ready"
+			},
+			"id": "8b6f1f43-1d0e-4c55-9d38-5ad1c1a0e006",
+			"name": "Publish",
+			"type": "n8n-nodes-base.awsSns",
+			"typeVersion": 1,
+			"position": [220, 300],
+			"credentials": { "aws": { "id": "1", "name": "AWS" } }
+		}
+	],
+	"pinData": {
+		"Invoke Latest": [{ "json": { "result": { "status": "synced" } } }],
+		"Invoke Alias": [{ "json": { "result": {} } }],
+		"Create Topic": [
+			{ "json": { "TopicArn": "arn:aws:sns:eu-central-1:123456789012:orders.fifo" } }
+		],
+		"Delete Topic": [{ "json": { "success": true } }],
+		"Publish": [{ "json": { "MessageId": "5f1c7c2e-0a7b-4b1c-9f4e-6d1f0b7a9e21" } }]
+	},
+	"connections": {
+		"When clicking 'Execute workflow'": {
+			"main": [
+				[
+					{ "node": "Invoke Latest", "type": "main", "index": 0 },
+					{ "node": "Invoke Alias", "type": "main", "index": 0 },
+					{ "node": "Create Topic", "type": "main", "index": 0 },
+					{ "node": "Delete Topic", "type": "main", "index": 0 },
+					{ "node": "Publish", "type": "main", "index": 0 }
+				]
+			]
+		}
+	},
+	"active": false,
+	"settings": { "executionOrder": "v1" }
+}

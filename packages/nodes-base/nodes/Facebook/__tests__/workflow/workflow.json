@@ -1,0 +1,95 @@
+{
+	"name": "Facebook Graph API",
+	"nodes": [
+		{
+			"parameters": {},
+			"id": "8b0d4c7e-1f1a-4c1e-9d3a-000000000001",
+			"name": "When clicking 'Execute workflow'",
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [0, 300]
+		},
+		{
+			"parameters": {
+				"graphApiVersion": "v23.0",
+				"node": "me",
+				"options": {}
+			},
+			"id": "8b0d4c7e-1f1a-4c1e-9d3a-000000000003",
+			"name": "Get Node",
+			"type": "n8n-nodes-base.facebookGraphApi",
+			"typeVersion": 1,
+			"position": [300, 150],
+			"credentials": {
+				"facebookGraphApi": {
+					"id": "1",
+					"name": "Facebook Graph API"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"graphApiVersion": "v23.0",
+				"node": "act_1234567890",
+				"edge": "campaigns",
+				"options": {}
+			},
+			"id": "8b0d4c7e-1f1a-4c1e-9d3a-000000000004",
+			"name": "Get Edge",
+			"type": "n8n-nodes-base.facebookGraphApi",
+			"typeVersion": 1,
+			"position": [300, 300],
+			"credentials": {
+				"facebookGraphApi": {
+					"id": "1",
+					"name": "Facebook Graph API"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"hostUrl": "graph-video.facebook.com",
+				"httpRequestMethod": "POST",
+				"graphApiVersion": "v23.0",
+				"node": "108824017345866",
+				"edge": "videos",
+				"options": {}
+			},
+			"id": "8b0d4c7e-1f1a-4c1e-9d3a-000000000006",
+			"name": "Post Video Host",
+			"type": "n8n-nodes-base.facebookGraphApi",
+			"typeVersion": 1,
+			"position": [300, 450],
+			"credentials": {
+				"facebookGraphApi": {
+					"id": "1",
+					"name": "Facebook Graph API"
+				}
+			}
+		}
+	],
+	"pinData": {
+		"Get Node": [{ "json": { "id": "1029384756", "name": "Nathan" } }],
+		"Get Edge": [{ "json": { "data": [{ "id": "120210000000000001" }] } }],
+		"Post Video Host": [{ "json": { "id": "987654321012345" } }]
+	},
+	"connections": {
+		"When clicking 'Execute workflow'": {
+			"main": [
+				[
+					{ "node": "Get Node", "type": "main", "index": 0 },
+					{ "node": "Get Edge", "type": "main", "index": 0 },
+					{ "node": "Post Video Host", "type": "main", "index": 0 }
+				]
+			]
+		}
+	},
+	"active": false,
+	"settings": {
+		"executionOrder": "v1"
+	},
+	"versionId": "00000000-0000-4000-8000-000000000001",
+	"meta": {},
+	"id": "FbGraphApiRequestUrls",
+	"tags": []
+}

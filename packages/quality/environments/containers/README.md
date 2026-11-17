@@ -361,6 +361,7 @@ Now usable as `test.use({ capability: 'my-capability' })`.
 | `kafka` | ✓ | Kafka broker for message queue testing |
 | `proxy` | - | HTTP proxy (MockServer) |
 | `taskRunner` | - | External task runner |
+| `engineTaskRunner` | - | External task runner for the engine container (auto-starts with `engine: 'container'`) |
 | `loadBalancer` | - | Caddy for multi-main |
 | `cloudflared` | - | Cloudflare Tunnel for public webhook URLs |
 | `litellm` | - | OpenAI-compatible AI gateway (LiteLLM) with four logins |

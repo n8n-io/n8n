@@ -4,11 +4,12 @@ import type {
 	INodeExecutionData,
 	INodeProperties,
 } from 'n8n-workflow';
+import { requestPath } from 'n8n-workflow';
 
 import { updateDisplayOptions } from '@utils/utilities';
 
 import { stampItemIndexOnError } from '../../../../GenericFunctions';
-import { microsoftApiRequest } from '../../transport';
+import { microsoftApiRequest, toWorkbookId } from '../../transport';
 import { workbookRLC } from '../common.descriptions';
 
 const properties: INodeProperties[] = [
@@ -50,9 +51,12 @@ export async function execute(
 
 	for (let i = 0; i < items.length; i++) {
 		try {
-			const workbookId = this.getNodeParameter('workbook', i, undefined, {
-				extractValue: true,
-			}) as string;
+			const workbookId = toWorkbookId.call(
+				this,
+				this.getNodeParameter('workbook', i, undefined, {
+					extractValue: true,
+				}) as string,
+			);
 
 			const additionalFields = this.getNodeParameter('additionalFields', i);
 			const body: IDataObject = {};
@@ -62,7 +66,7 @@ export async function execute(
 			const { id } = await microsoftApiRequest.call(
 				this,
 				'POST',
-				`/drive/items/${workbookId}/workbook/createSession`,
+				requestPath`/items/${workbookId}/workbook/createSession`,
 				{ persistChanges: true },
 				undefined,
 				undefined,
@@ -72,7 +76,7 @@ export async function execute(
 			const responseData = await microsoftApiRequest.call(
 				this,
 				'POST',
-				`/drive/items/${workbookId}/workbook/worksheets/add`,
+				requestPath`/items/${workbookId}/workbook/worksheets/add`,
 				body,
 				{},
 				'',
@@ -82,7 +86,7 @@ export async function execute(
 			await microsoftApiRequest.call(
 				this,
 				'POST',
-				`/drive/items/${workbookId}/workbook/closeSession`,
+				requestPath`/items/${workbookId}/workbook/closeSession`,
 				{},
 				{},
 				'',

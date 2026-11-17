@@ -15,18 +15,22 @@ import { useSkillsStore } from './skills.store';
 const list = vi.fn();
 const sources = vi.fn();
 const checkSource = vi.fn();
+const deleteSource = vi.fn();
 const creators = vi.fn();
 const agents = vi.fn();
 const discoverSource = vi.fn();
 const connectSource = vi.fn();
 const sourceCredentials = vi.fn();
 const sourceRepositories = vi.fn();
+const replacementCredentials = vi.fn();
+const replaceCredential = vi.fn();
 const getSkill = vi.fn();
 const saveSkill = vi.fn();
 
 vi.mock('./skills.api', () => ({
 	listSkillSources: async (...args: unknown[]) => await sources(...args),
 	checkSkillSource: async (...args: unknown[]) => await checkSource(...args),
+	deleteSkillSource: async (...args: unknown[]) => await deleteSource(...args),
 	getSkill: async (...args: unknown[]) => await getSkill(...args),
 	saveSkill: async (...args: unknown[]) => await saveSkill(...args),
 	getSkills: async (...args: unknown[]) => await list(...args),
@@ -36,6 +40,9 @@ vi.mock('./skills.api', () => ({
 	connectSkillSource: async (...args: unknown[]) => await connectSource(...args),
 	getSkillSourceCredentials: async (...args: unknown[]) => await sourceCredentials(...args),
 	getSkillSourceRepositories: async (...args: unknown[]) => await sourceRepositories(...args),
+	getSkillSourceReplacementCredentials: async (...args: unknown[]) =>
+		await replacementCredentials(...args),
+	replaceSkillSourceCredential: async (...args: unknown[]) => await replaceCredential(...args),
 }));
 
 function deferred<T>() {
@@ -78,6 +85,37 @@ describe('useSkillsStore', () => {
 		const store = useSkillsStore();
 		expect(await store.checkSource('source-1')).toBe(result);
 		expect(checkSource).toHaveBeenCalledWith(useRootStore().restApiContext, 'source-1');
+	});
+
+	it('lists and replaces a source credential with the REST context', async () => {
+		const row = { id: 'source-1', projectId: 'project-1' } as SkillSourceListItem;
+		const options = [{ id: 'c1', name: 'GitHub', type: 'githubApi' }];
+		replacementCredentials.mockResolvedValue(options);
+		const store = useSkillsStore();
+
+		expect(await store.fetchReplacementCredentials(row)).toBe(options);
+		await store.replaceSourceCredential(row, 'c1');
+
+		const { restApiContext } = useRootStore();
+		expect(replacementCredentials).toHaveBeenCalledWith(restApiContext, row);
+		expect(replaceCredential).toHaveBeenCalledWith(restApiContext, row, 'c1');
+	});
+
+	it('passes a failed credential replacement to the caller', async () => {
+		replaceCredential.mockRejectedValue(new Error('credential_invalid'));
+		const store = useSkillsStore();
+
+		await expect(
+			store.replaceSourceCredential({ id: 'source-1' } as SkillSourceListItem, 'c1'),
+		).rejects.toThrow('credential_invalid');
+	});
+
+	it('deletes a source with the REST context', async () => {
+		const store = useSkillsStore();
+
+		await store.deleteSource('source-1');
+
+		expect(deleteSource).toHaveBeenCalledWith(useRootStore().restApiContext, 'source-1');
 	});
 
 	it('keeps the previous sources when a read fails', async () => {

@@ -15,7 +15,7 @@ test.beforeEach(({ n8nContainer }) => {
 test.describe(
 	'SSE push backend',
 	{
-		annotation: [{ type: 'owner', description: 'Catalysts' }],
+		annotation: [{ type: 'owner', description: 'Core Application' }],
 	},
 	() => {
 		test('should deliver execution results over an SSE push connection', async ({ n8n }) => {

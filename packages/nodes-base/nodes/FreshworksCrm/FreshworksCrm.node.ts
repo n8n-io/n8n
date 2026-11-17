@@ -7,6 +7,7 @@ import {
 	type INodeType,
 	type INodeTypeDescription,
 	NodeConnectionTypes,
+	requestPath,
 } from 'n8n-workflow';
 
 import {
@@ -127,14 +128,18 @@ export class FreshworksCrm implements INodeType {
 				const responseData = await handleListing.call(
 					this,
 					'GET',
-					`/sales_accounts/view/${viewId}`,
+					requestPath`/sales_accounts/view/${viewId}`,
 				);
 
 				return responseData.map(({ name, id }) => ({ name, value: id })) as LoadOption[];
 			},
 
 			async getAccountViews(this: ILoadOptionsFunctions) {
-				const responseData = await handleListing.call(this, 'GET', '/sales_accounts/filters');
+				const responseData = await handleListing.call(
+					this,
+					'GET',
+					requestPath`/sales_accounts/filters`,
+				);
 				return responseData.map(({ name, id }) => ({ name, value: id })) as LoadOption[];
 			},
 
@@ -151,7 +156,7 @@ export class FreshworksCrm implements INodeType {
 			},
 
 			async getContactViews(this: ILoadOptionsFunctions) {
-				const responseData = await handleListing.call(this, 'GET', '/contacts/filters');
+				const responseData = await handleListing.call(this, 'GET', requestPath`/contacts/filters`);
 
 				return responseData.map(({ name, id }) => ({ name, value: id })) as LoadOption[];
 			},
@@ -160,7 +165,7 @@ export class FreshworksCrm implements INodeType {
 				const response = (await freshworksCrmApiRequest.call(
 					this,
 					'GET',
-					'/selector/currencies',
+					requestPath`/selector/currencies`,
 				)) as FreshworksConfigResponse<LoadedCurrency>;
 
 				const key = Object.keys(response)[0];
@@ -193,7 +198,7 @@ export class FreshworksCrm implements INodeType {
 			},
 
 			async getDealViews(this: ILoadOptionsFunctions) {
-				const responseData = await handleListing.call(this, 'GET', '/deals/filters');
+				const responseData = await handleListing.call(this, 'GET', requestPath`/deals/filters`);
 
 				return responseData.map(({ name, id }) => ({ name, value: id })) as LoadOption[];
 			},
@@ -223,7 +228,7 @@ export class FreshworksCrm implements INodeType {
 				const response = (await freshworksCrmApiRequest.call(
 					this,
 					'GET',
-					'/selector/owners',
+					requestPath`/selector/owners`,
 				)) as FreshworksConfigResponse<LoadedUser>;
 
 				const key = Object.keys(response)[0];
@@ -272,7 +277,7 @@ export class FreshworksCrm implements INodeType {
 						responseData = await freshworksCrmApiRequest.call(
 							this,
 							'POST',
-							'/sales_accounts',
+							requestPath`/sales_accounts`,
 							body,
 						);
 						responseData = responseData.sales_account;
@@ -285,7 +290,7 @@ export class FreshworksCrm implements INodeType {
 
 						const accountId = this.getNodeParameter('accountId', i);
 
-						const endpoint = `/sales_accounts/${accountId}`;
+						const endpoint = requestPath`/sales_accounts/${accountId}`;
 						await freshworksCrmApiRequest.call(this, 'DELETE', endpoint);
 						responseData = { success: true };
 					} else if (operation === 'get') {
@@ -297,7 +302,7 @@ export class FreshworksCrm implements INodeType {
 
 						const accountId = this.getNodeParameter('accountId', i);
 
-						const endpoint = `/sales_accounts/${accountId}`;
+						const endpoint = requestPath`/sales_accounts/${accountId}`;
 						responseData = await freshworksCrmApiRequest.call(this, 'GET', endpoint);
 						responseData = responseData.sales_account;
 					} else if (operation === 'getAll') {
@@ -309,7 +314,11 @@ export class FreshworksCrm implements INodeType {
 
 						const view = this.getNodeParameter('view', i) as string;
 
-						responseData = await handleListing.call(this, 'GET', `/sales_accounts/view/${view}`);
+						responseData = await handleListing.call(
+							this,
+							'GET',
+							requestPath`/sales_accounts/view/${view}`,
+						);
 					} else if (operation === 'update') {
 						// ----------------------------------------
 						//             account: update
@@ -328,7 +337,7 @@ export class FreshworksCrm implements INodeType {
 
 						const accountId = this.getNodeParameter('accountId', i);
 
-						const endpoint = `/sales_accounts/${accountId}`;
+						const endpoint = requestPath`/sales_accounts/${accountId}`;
 						responseData = await freshworksCrmApiRequest.call(this, 'PUT', endpoint, body);
 						responseData = responseData.sales_account;
 					}
@@ -379,7 +388,12 @@ export class FreshworksCrm implements INodeType {
 						if (attendees.length) {
 							body.appointment_attendees_attributes = adjustAttendees(attendees);
 						}
-						responseData = await freshworksCrmApiRequest.call(this, 'POST', '/appointments', body);
+						responseData = await freshworksCrmApiRequest.call(
+							this,
+							'POST',
+							requestPath`/appointments`,
+							body,
+						);
 						responseData = responseData.appointment;
 					} else if (operation === 'delete') {
 						// ----------------------------------------
@@ -390,7 +404,7 @@ export class FreshworksCrm implements INodeType {
 
 						const appointmentId = this.getNodeParameter('appointmentId', i);
 
-						const endpoint = `/appointments/${appointmentId}`;
+						const endpoint = requestPath`/appointments/${appointmentId}`;
 						await freshworksCrmApiRequest.call(this, 'DELETE', endpoint);
 						responseData = { success: true };
 					} else if (operation === 'get') {
@@ -402,7 +416,7 @@ export class FreshworksCrm implements INodeType {
 
 						const appointmentId = this.getNodeParameter('appointmentId', i);
 
-						const endpoint = `/appointments/${appointmentId}`;
+						const endpoint = requestPath`/appointments/${appointmentId}`;
 						responseData = await freshworksCrmApiRequest.call(this, 'GET', endpoint);
 						responseData = responseData.appointment;
 					} else if (operation === 'getAll') {
@@ -426,7 +440,13 @@ export class FreshworksCrm implements INodeType {
 						if (include) {
 							qs.include = include;
 						}
-						responseData = await handleListing.call(this, 'GET', '/appointments', {}, qs);
+						responseData = await handleListing.call(
+							this,
+							'GET',
+							requestPath`/appointments`,
+							{},
+							qs,
+						);
 					} else if (operation === 'update') {
 						// ----------------------------------------
 						//           appointment: update
@@ -470,7 +490,7 @@ export class FreshworksCrm implements INodeType {
 
 						const appointmentId = this.getNodeParameter('appointmentId', i);
 
-						const endpoint = `/appointments/${appointmentId}`;
+						const endpoint = requestPath`/appointments/${appointmentId}`;
 						responseData = await freshworksCrmApiRequest.call(this, 'PUT', endpoint, body);
 						responseData = responseData.appointment;
 					}
@@ -500,7 +520,12 @@ export class FreshworksCrm implements INodeType {
 							Object.assign(body, adjustAccounts(additionalFields));
 						}
 
-						responseData = await freshworksCrmApiRequest.call(this, 'POST', '/contacts', body);
+						responseData = await freshworksCrmApiRequest.call(
+							this,
+							'POST',
+							requestPath`/contacts`,
+							body,
+						);
 						responseData = responseData.contact;
 					} else if (operation === 'delete') {
 						// ----------------------------------------
@@ -511,7 +536,7 @@ export class FreshworksCrm implements INodeType {
 
 						const contactId = this.getNodeParameter('contactId', i);
 
-						const endpoint = `/contacts/${contactId}`;
+						const endpoint = requestPath`/contacts/${contactId}`;
 						await freshworksCrmApiRequest.call(this, 'DELETE', endpoint);
 						responseData = { success: true };
 					} else if (operation === 'get') {
@@ -523,7 +548,7 @@ export class FreshworksCrm implements INodeType {
 
 						const contactId = this.getNodeParameter('contactId', i);
 
-						const endpoint = `/contacts/${contactId}`;
+						const endpoint = requestPath`/contacts/${contactId}`;
 						responseData = await freshworksCrmApiRequest.call(this, 'GET', endpoint);
 						responseData = responseData.contact;
 					} else if (operation === 'getAll') {
@@ -535,7 +560,11 @@ export class FreshworksCrm implements INodeType {
 
 						const view = this.getNodeParameter('view', i) as string;
 
-						responseData = await handleListing.call(this, 'GET', `/contacts/view/${view}`);
+						responseData = await handleListing.call(
+							this,
+							'GET',
+							requestPath`/contacts/view/${view}`,
+						);
 					} else if (operation === 'update') {
 						// ----------------------------------------
 						//             contact: update
@@ -554,7 +583,7 @@ export class FreshworksCrm implements INodeType {
 
 						const contactId = this.getNodeParameter('contactId', i);
 
-						const endpoint = `/contacts/${contactId}`;
+						const endpoint = requestPath`/contacts/${contactId}`;
 						responseData = await freshworksCrmApiRequest.call(this, 'PUT', endpoint, body);
 						responseData = responseData.contact;
 					}
@@ -583,7 +612,12 @@ export class FreshworksCrm implements INodeType {
 							Object.assign(body, adjustAccounts(additionalFields));
 						}
 
-						responseData = await freshworksCrmApiRequest.call(this, 'POST', '/deals', body);
+						responseData = await freshworksCrmApiRequest.call(
+							this,
+							'POST',
+							requestPath`/deals`,
+							body,
+						);
 						responseData = responseData.deal;
 					} else if (operation === 'delete') {
 						// ----------------------------------------
@@ -594,7 +628,7 @@ export class FreshworksCrm implements INodeType {
 
 						const dealId = this.getNodeParameter('dealId', i);
 
-						await freshworksCrmApiRequest.call(this, 'DELETE', `/deals/${dealId}`);
+						await freshworksCrmApiRequest.call(this, 'DELETE', requestPath`/deals/${dealId}`);
 						responseData = { success: true };
 					} else if (operation === 'get') {
 						// ----------------------------------------
@@ -605,7 +639,11 @@ export class FreshworksCrm implements INodeType {
 
 						const dealId = this.getNodeParameter('dealId', i);
 
-						responseData = await freshworksCrmApiRequest.call(this, 'GET', `/deals/${dealId}`);
+						responseData = await freshworksCrmApiRequest.call(
+							this,
+							'GET',
+							requestPath`/deals/${dealId}`,
+						);
 						responseData = responseData.deal;
 					} else if (operation === 'getAll') {
 						// ----------------------------------------
@@ -616,7 +654,7 @@ export class FreshworksCrm implements INodeType {
 
 						const view = this.getNodeParameter('view', i) as string;
 
-						responseData = await handleListing.call(this, 'GET', `/deals/view/${view}`);
+						responseData = await handleListing.call(this, 'GET', requestPath`/deals/view/${view}`);
 					} else if (operation === 'update') {
 						// ----------------------------------------
 						//               deal: update
@@ -638,7 +676,7 @@ export class FreshworksCrm implements INodeType {
 						responseData = await freshworksCrmApiRequest.call(
 							this,
 							'PUT',
-							`/deals/${dealId}`,
+							requestPath`/deals/${dealId}`,
 							body,
 						);
 						responseData = responseData.deal;
@@ -663,7 +701,12 @@ export class FreshworksCrm implements INodeType {
 							targetable_type: this.getNodeParameter('targetableType', i),
 						} as IDataObject;
 
-						responseData = await freshworksCrmApiRequest.call(this, 'POST', '/notes', body);
+						responseData = await freshworksCrmApiRequest.call(
+							this,
+							'POST',
+							requestPath`/notes`,
+							body,
+						);
 						responseData = responseData.note;
 					} else if (operation === 'delete') {
 						// ----------------------------------------
@@ -674,7 +717,7 @@ export class FreshworksCrm implements INodeType {
 
 						const noteId = this.getNodeParameter('noteId', i);
 
-						await freshworksCrmApiRequest.call(this, 'DELETE', `/notes/${noteId}`);
+						await freshworksCrmApiRequest.call(this, 'DELETE', requestPath`/notes/${noteId}`);
 						responseData = { success: true };
 					} else if (operation === 'update') {
 						// ----------------------------------------
@@ -697,7 +740,7 @@ export class FreshworksCrm implements INodeType {
 						responseData = await freshworksCrmApiRequest.call(
 							this,
 							'PUT',
-							`/notes/${noteId}`,
+							requestPath`/notes/${noteId}`,
 							body,
 						);
 						responseData = responseData.note;
@@ -735,9 +778,14 @@ export class FreshworksCrm implements INodeType {
 							Object.assign(body, additionalFields);
 						}
 
-						responseData = await freshworksCrmApiRequest.call(this, 'POST', '/sales_activities', {
-							sales_activity: body,
-						});
+						responseData = await freshworksCrmApiRequest.call(
+							this,
+							'POST',
+							requestPath`/sales_activities`,
+							{
+								sales_activity: body,
+							},
+						);
 						responseData = responseData.sales_activity;
 					} else if (operation === 'delete') {
 						// ----------------------------------------
@@ -748,7 +796,7 @@ export class FreshworksCrm implements INodeType {
 
 						const salesActivityId = this.getNodeParameter('salesActivityId', i);
 
-						const endpoint = `/sales_activities/${salesActivityId}`;
+						const endpoint = requestPath`/sales_activities/${salesActivityId}`;
 						await freshworksCrmApiRequest.call(this, 'DELETE', endpoint);
 						responseData = { success: true };
 					} else if (operation === 'get') {
@@ -760,7 +808,7 @@ export class FreshworksCrm implements INodeType {
 
 						const salesActivityId = this.getNodeParameter('salesActivityId', i);
 
-						const endpoint = `/sales_activities/${salesActivityId}`;
+						const endpoint = requestPath`/sales_activities/${salesActivityId}`;
 						responseData = await freshworksCrmApiRequest.call(this, 'GET', endpoint);
 						responseData = responseData.sales_activity;
 					} else if (operation === 'getAll') {
@@ -770,7 +818,7 @@ export class FreshworksCrm implements INodeType {
 
 						// https://developers.freshworks.com/crm/api/#list_all_sales_activities
 
-						responseData = await handleListing.call(this, 'GET', '/sales_activities');
+						responseData = await handleListing.call(this, 'GET', requestPath`/sales_activities`);
 					} else if (operation === 'update') {
 						// ----------------------------------------
 						//          salesActivity: update
@@ -805,7 +853,7 @@ export class FreshworksCrm implements INodeType {
 
 						const salesActivityId = this.getNodeParameter('salesActivityId', i);
 
-						const endpoint = `/sales_activities/${salesActivityId}`;
+						const endpoint = requestPath`/sales_activities/${salesActivityId}`;
 						responseData = await freshworksCrmApiRequest.call(this, 'PUT', endpoint, body);
 						responseData = responseData.sales_activity;
 					}
@@ -830,7 +878,13 @@ export class FreshworksCrm implements INodeType {
 							per_page: 100,
 						};
 
-						responseData = await freshworksCrmApiRequest.call(this, 'GET', '/search', {}, qs);
+						responseData = await freshworksCrmApiRequest.call(
+							this,
+							'GET',
+							requestPath`/search`,
+							{},
+							qs,
+						);
 
 						if (!returnAll) {
 							const limit = this.getNodeParameter('limit', 0);
@@ -858,7 +912,13 @@ export class FreshworksCrm implements INodeType {
 							entities,
 						};
 
-						responseData = await freshworksCrmApiRequest.call(this, 'GET', '/lookup', {}, qs);
+						responseData = await freshworksCrmApiRequest.call(
+							this,
+							'GET',
+							requestPath`/lookup`,
+							{},
+							qs,
+						);
 					}
 				} else if (resource === 'task') {
 					// **********************************************************************
@@ -890,7 +950,12 @@ export class FreshworksCrm implements INodeType {
 							Object.assign(body, additionalFields);
 						}
 
-						responseData = await freshworksCrmApiRequest.call(this, 'POST', '/tasks', body);
+						responseData = await freshworksCrmApiRequest.call(
+							this,
+							'POST',
+							requestPath`/tasks`,
+							body,
+						);
 						responseData = responseData.task;
 					} else if (operation === 'delete') {
 						// ----------------------------------------
@@ -901,7 +966,7 @@ export class FreshworksCrm implements INodeType {
 
 						const taskId = this.getNodeParameter('taskId', i);
 
-						await freshworksCrmApiRequest.call(this, 'DELETE', `/tasks/${taskId}`);
+						await freshworksCrmApiRequest.call(this, 'DELETE', requestPath`/tasks/${taskId}`);
 						responseData = { success: true };
 					} else if (operation === 'get') {
 						// ----------------------------------------
@@ -912,7 +977,11 @@ export class FreshworksCrm implements INodeType {
 
 						const taskId = this.getNodeParameter('taskId', i);
 
-						responseData = await freshworksCrmApiRequest.call(this, 'GET', `/tasks/${taskId}`);
+						responseData = await freshworksCrmApiRequest.call(
+							this,
+							'GET',
+							requestPath`/tasks/${taskId}`,
+						);
 						responseData = responseData.task;
 					} else if (operation === 'getAll') {
 						// ----------------------------------------
@@ -938,7 +1007,7 @@ export class FreshworksCrm implements INodeType {
 							qs.include = include;
 						}
 
-						responseData = await handleListing.call(this, 'GET', '/tasks', {}, qs);
+						responseData = await handleListing.call(this, 'GET', requestPath`/tasks`, {}, qs);
 					} else if (operation === 'update') {
 						// ----------------------------------------
 						//               task: update
@@ -968,7 +1037,7 @@ export class FreshworksCrm implements INodeType {
 						responseData = await freshworksCrmApiRequest.call(
 							this,
 							'PUT',
-							`/tasks/${taskId}`,
+							requestPath`/tasks/${taskId}`,
 							body,
 						);
 						responseData = responseData.task;

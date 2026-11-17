@@ -1,4 +1,5 @@
 import type { Mock } from 'vitest';
+import { ModuleRegistry } from '@n8n/backend-common';
 import { mockInstance } from '@n8n/backend-test-utils';
 import { WorkflowsConfig } from '@n8n/config';
 import { User } from '@n8n/db';
@@ -20,16 +21,15 @@ import { WorkflowAccessError } from '../mcp.errors';
 import { createExecuteWorkflowTool, executeWorkflow } from '../tools/execute-workflow.tool';
 
 import { McpService } from '@/modules/mcp/mcp.service';
-import { Telemetry } from '@/telemetry';
 import { WorkflowRunner } from '@/workflow-runner';
 import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
-import { WorkflowPublishedDataService } from '@n8n/backend-services';
+import { WorkflowPublishedDataService, TelemetryProxy } from '@n8n/backend-services';
 
 describe('execute-workflow MCP tool', () => {
 	const user = Object.assign(new User(), { id: 'user-1' });
 	let workflowFinderService: WorkflowFinderService;
 	let workflowRunner: WorkflowRunner;
-	let telemetry: Telemetry;
+	let telemetry: TelemetryProxy;
 	let mcpService: McpService;
 	let workflowsConfig: WorkflowsConfig;
 	let workflowPublishedDataService: MockProxy<WorkflowPublishedDataService>;
@@ -37,7 +37,7 @@ describe('execute-workflow MCP tool', () => {
 	beforeEach(() => {
 		workflowFinderService = mockInstance(WorkflowFinderService);
 		workflowRunner = mockInstance(WorkflowRunner);
-		telemetry = mockInstance(Telemetry, {
+		telemetry = mockInstance(TelemetryProxy, {
 			track: vi.fn(),
 		});
 		mcpService = mockInstance(McpService, {
@@ -565,6 +565,71 @@ describe('execute-workflow MCP tool', () => {
 						},
 					],
 				});
+			});
+		});
+
+		describe('engine of the run', () => {
+			const webhookNode = {
+				id: 'node-1',
+				name: 'WebhookNode',
+				type: WEBHOOK_NODE_TYPE,
+				typeVersion: 1,
+				position: [0, 0],
+				disabled: false,
+				parameters: {},
+			} as INode;
+
+			const runEngine = async (executionMode: 'production' | 'manual') => {
+				const workflow = createWorkflow({
+					activeVersionId: uuid(),
+					nodes: [webhookNode],
+					settings: { availableInMCP: true, engineType: 'v2' },
+					activeVersion: createWorkflowHistoryVersion({
+						workflowId: 'wf-1',
+						versionId: 'published',
+						nodes: [webhookNode],
+						settings: { engineType: 'v1' },
+					}),
+				});
+				(workflowFinderService.findWorkflowForUser as Mock).mockResolvedValue(workflow);
+				(workflowRunner.run as Mock).mockResolvedValue('exec-123');
+
+				await executeWorkflow(
+					user,
+					workflowFinderService,
+					workflowRunner,
+					mcpService,
+					workflowsConfig,
+					workflowPublishedDataService,
+					'wf-1',
+					{ webhookData: { method: 'GET' } },
+					executionMode,
+					'WebhookNode',
+				);
+
+				const runCall = (workflowRunner.run as Mock).mock
+					.calls[0][0] as IWorkflowExecutionDataProcess;
+				return runCall.workflowData.settings?.engineType;
+			};
+
+			test('runs production on the engine of the published version with the engine-v2 module', async () => {
+				vi.spyOn(Container.get(ModuleRegistry), 'eligibleModules', 'get').mockReturnValue([
+					'engine-v2',
+				]);
+
+				expect(await runEngine('production')).toBe('v1');
+			});
+
+			test('runs a manual execution on the draft engine', async () => {
+				vi.spyOn(Container.get(ModuleRegistry), 'eligibleModules', 'get').mockReturnValue([
+					'engine-v2',
+				]);
+
+				expect(await runEngine('manual')).toBe('v2');
+			});
+
+			test('runs production on the draft engine without the engine-v2 module, as before', async () => {
+				expect(await runEngine('production')).toBe('v2');
 			});
 		});
 

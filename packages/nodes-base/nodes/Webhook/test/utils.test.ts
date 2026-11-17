@@ -2,7 +2,6 @@ import jwt from 'jsonwebtoken';
 import {
 	REDACTED,
 	redactedHeaders,
-	UnexpectedError,
 	type IWebhookFunctions,
 	type INodeExecutionData,
 	type IDataObject,
@@ -10,6 +9,7 @@ import {
 	type INode,
 	type ICredentialDataDecryptedObject,
 } from 'n8n-workflow';
+import { UnexpectedError } from '@n8n/errors';
 
 import type { WebhookParameters } from '../utils';
 import {

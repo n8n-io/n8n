@@ -160,6 +160,7 @@ export { ViewableMimeTypes } from './schemas/binary-data.schema';
 export { passwordSchema, createPasswordSchema } from './schemas/password.schema';
 export { n8nIdSchema } from './schemas/id.schema';
 export {
+	agentIdParamSchema,
 	columnIdParamSchema,
 	communityPackageNameParamSchema,
 	credentialIdParamSchema,
@@ -187,7 +188,12 @@ export {
 	workflowIdParamSchema,
 	workflowVersionIdParamSchema,
 } from './schemas/public-api-path-params.schema';
-export { folderNameSchema, folderIdSchema } from './schemas/folder.schema';
+export {
+	folderNameSchema,
+	folderIdSchema,
+	folderResourceTypeSchema,
+	type FolderResourceType,
+} from './schemas/folder.schema';
 export {
 	SYSTEM_RESOLVER_ID,
 	credentialResolverSchema,
@@ -202,6 +208,8 @@ export {
 export {
 	WORKFLOW_VERSION_NAME_MAX_LENGTH,
 	WORKFLOW_VERSION_DESCRIPTION_MAX_LENGTH,
+	workflowVersionNameSchema,
+	workflowVersionDescriptionSchema,
 } from './schemas/workflow-version.schema';
 export {
 	CREDENTIAL_DESCRIPTION_MAX_LENGTH,
@@ -214,6 +222,7 @@ export { EMPTY_CANVAS_GROUPS_FLAG } from './constants/empty-canvas-groups';
 export type {
 	DependencyType,
 	DependencyResourceType,
+	DependencyVersion,
 	ResolvedDependency,
 	ResolvedDependenciesResult,
 	DependenciesBatchResponse,
@@ -365,7 +374,10 @@ export type {
 
 export {
 	MIGRATION_REPORT_TARGET_VERSION,
+	breakingChangeAssistantActionSchema,
+	breakingChangeInstanceIssueSchema,
 	breakingChangeRuleImpactSchema,
+	breakingChangeWorkflowIssueSchema,
 	breakingChangeVersionSchema,
 	migrationFindingStatusSchema,
 	migrationFindingTriageStatusSchema,
@@ -483,13 +495,12 @@ export {
 	AI_ASSISTANT_AT_MENTIONS_FLAG,
 	INSTANCE_AI_CONVERSATION_HISTORY_FLAG,
 	INSTANCE_AI_CONVERSATION_HISTORY_ENABLED_VARIANT,
-	INSTANCE_AI_PROGRESSIVE_BUILDING_FLAG,
 	INSTANCE_AI_SETUP_PANEL_FLAG,
 	INSTANCE_AI_SETUP_PANEL_ENABLED_VARIANT,
-	INSTANCE_AI_PROGRESSIVE_BUILDING_ENABLED_VARIANT,
 	INSTANCE_AI_CONCISE_STYLE_FLAG,
 	INSTANCE_AI_CONCISE_STYLE_ENABLED_VARIANT,
 	INSTANCE_AI_NODE_USAGE_FLAG,
+	INSTANCE_AI_APPROVAL_MODES_FLAG,
 	INSTANCE_AI_FOLDER_EXPLORATION_FLAG,
 	INSTANCE_ACTIVITY_CONTEXT_FLAG,
 	INSTANCE_AI_FOLDER_EXPLORATION_ENABLED_VARIANT,
@@ -525,6 +536,8 @@ export {
 	InstanceAiEvalAgentExecutionRequest,
 	InstanceAiEvalCredentialAllowlistRequest,
 	InstanceAiEvalCredentialTestTargetRequest,
+	InstanceAiAssistantEvalCreateThreadRequest,
+	InstanceAiAssistantEvalThreadOverridesRequest,
 	INSTANCE_AI_MEMORY_TASK_WAIT_TIMEOUT_MS,
 	AI_GATEWAY_MANAGED_TAG,
 	InstanceAiEvalRestoreThreadRequest,
@@ -580,13 +593,11 @@ export {
 	INSTANCE_AI_THREAD_SOURCE_FALLBACK,
 	INSTANCE_AI_PREFILL_TYPES,
 	INSTANCE_AI_PREFILL_TYPE_FALLBACK,
-	instanceAiBuildModeSchema,
 	instanceAiPromptConfigurationSchema,
 	INSTANCE_AI_RUN_LIMIT_REASONS,
 } from './schemas/instance-ai.schema';
 
 export type {
-	InstanceAiBuildMode,
 	InstanceAiPromptConfiguration,
 	InstanceAiPrefillType,
 	InstanceAiPrefillTypeReported,
@@ -646,6 +657,7 @@ export type {
 	InstanceAiToolResultEvent,
 	InstanceAiToolErrorEvent,
 	InstanceAiConfirmationRequestEvent,
+	InstanceAiAutoApprovalEvent,
 	InstanceAiSetupItem,
 	InstanceAiSetupItemsEvent,
 	InstanceAiPreferencesAppliedEvent,
@@ -1015,11 +1027,18 @@ export {
 	SSO_ERROR_LOGIN_FAILED,
 } from './constants/role-mapping';
 export { SSO_LOGIN_REQUIRED_ERROR_CODE } from './constants/auth';
-export { N8N_CLIENT_HEADER, N8N_CLIENT_EDITOR_UI } from './constants/client';
+export { N8N_CLIENT_HEADER, N8N_CLIENT_EDITOR_UI, N8N_CLIENT_N8N_NODE } from './constants/client';
 
 export {
 	instanceAiApprovalDetailsSchema,
+	instanceAiApprovalModeSchema,
+	instanceAiAutoApprovalDeciderSchema,
+	autoApprovalPayloadSchema,
 	type InstanceAiApprovalDetails,
+	type InstanceAiApprovalMode,
+	type InstanceAiApprovalPreferences,
+	type InstanceAiAutoApprovalDecider,
+	type InstanceAiAutoApprovalPayload,
 } from './schemas/instance-ai-approval.schema';
 export type {
 	ExecutionListPagination,
@@ -1074,3 +1093,10 @@ export {
 	type ScimTransferTargetProject,
 	type ScimTransferTargetsResponse,
 } from './schemas/scim-config.schema';
+export {
+	EXECUTION_LIMIT_MAX_EXECUTIONS_CEILING,
+	EXECUTION_LIMIT_PERIOD_UNITS,
+	executionLimitSettingsSchema,
+	type ExecutionLimitPeriodUnit,
+	type ExecutionLimitSettings,
+} from './schemas/execution-limit-settings.schema';

@@ -5,6 +5,7 @@ import type {
 	NodeApiError,
 	IExecuteFunctions,
 } from 'n8n-workflow';
+import { requestPath } from 'n8n-workflow';
 
 import { updateDisplayOptions, wrapData } from '../../../../../utils/utilities';
 import { processAirtableError } from '../../helpers/utils';
@@ -46,7 +47,11 @@ export async function execute(
 		try {
 			id = this.getNodeParameter('id', i) as string;
 
-			const responseData = await apiRequest.call(this, 'DELETE', `${base}/${table}/${id}`);
+			const responseData = await apiRequest.call(
+				this,
+				'DELETE',
+				requestPath`${base}/${table}/${id}`,
+			);
 
 			const executionData = this.helpers.constructExecutionMetaData(
 				wrapData(responseData as IDataObject[]),

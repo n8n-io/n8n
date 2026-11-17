@@ -160,6 +160,13 @@ describe('IdentityResolutionService', () => {
 			).rejects.toThrow(TokenExchangeAuthError);
 		});
 
+		it('throws on a global:agent role claim', async () => {
+			await expect(
+				service.resolve(makeClaims({ role: 'global:agent' }), undefined, ctx()),
+			).rejects.toThrow(TokenExchangeAuthError);
+			expect(personRepository.createPersonWithProject).not.toHaveBeenCalled();
+		});
+
 		it('throws when the role is not in the key allowedRoles', async () => {
 			await expect(
 				service.resolve(makeClaims({ role: CUSTOM_ROLE }), ['global:member'], ctx()),
@@ -232,6 +239,14 @@ describe('IdentityResolutionService', () => {
 			mockLinkedUser('global:member');
 
 			await service.resolve(makeClaims({ role: 'global:owner' }), undefined, ctx());
+
+			expect(userService.changeUserRole).not.toHaveBeenCalled();
+		});
+
+		it('ignores a global:agent role claim', async () => {
+			mockLinkedUser('global:member');
+
+			await service.resolve(makeClaims({ role: 'global:agent' }), undefined, ctx());
 
 			expect(userService.changeUserRole).not.toHaveBeenCalled();
 		});

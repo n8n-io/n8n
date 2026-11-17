@@ -38,7 +38,7 @@ export function validateExecutableGraph(graph: WorkflowGraph): void {
 	}
 
 	// Slot indices are structural, so they're enforced here rather than left to
-	// the transport boundary. TODO(CAT-3042): enforce an upper bound too.
+	// the transport boundary.
 	for (const edge of graph.edges) {
 		for (const index of [edge.outputIndex, edge.inputIndex]) {
 			if (!Number.isInteger(index) || index < 0) {

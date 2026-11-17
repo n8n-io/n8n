@@ -35,7 +35,7 @@ export function showAgentPublishedConfirmation(agent: AgentResource): void {
 	// `AgentRepository.publishedN8nChatSql`), and a republish can differ from the draft.
 	const n8nChatLive =
 		useAgentsN8nChatFlag().value &&
-		(agent.activeVersion?.schema?.integrations ?? []).some(
+		(agent.activeVersion?.integrations ?? []).some(
 			({ type }) => type === N8N_CHAT_INTEGRATION_TYPE,
 		);
 	useUIStore().openModalWithData({
@@ -97,6 +97,7 @@ export function useAgentPublish() {
 			let updated: AgentResource | null = null;
 			const published = await openVersionMetadata({
 				mode: 'publish',
+				versionId: selectedId,
 				isCurrent,
 				name: version.name,
 				description: version.description,

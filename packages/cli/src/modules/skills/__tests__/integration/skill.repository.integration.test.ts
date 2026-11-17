@@ -1,4 +1,6 @@
 import { ASSISTANT_SKILLS_FLAG } from '@n8n/api-types';
+import { ModuleRegistry } from '@n8n/backend-common';
+import { PostHogClient } from '@n8n/backend-services';
 import {
 	createTeamProject,
 	getPersonalProject,
@@ -28,7 +30,6 @@ import { SkillRuntimeService } from '../../services/skill-runtime.service';
 import { SkillService } from '../../services/skill.service';
 import type { AssistantSkillContext } from '../../utils/skill-content';
 import * as fixtures from '../../testing';
-import { PostHogClient } from '@/posthog';
 
 import { createOwner, createUser } from '@test-integration/db/users';
 
@@ -66,6 +67,7 @@ describe('SkillRepository', () => {
 		histories = Container.get(DataSource).getRepository(AgentHistory);
 		txRunner = Container.get(TransactionRunner);
 		registerSkillUsage();
+		Container.get(ModuleRegistry).settings.set('instance-ai', { enabled: true });
 		skillRuntime = Container.get(SkillRuntimeService);
 		owner = await createOwner();
 		user = await createUser();

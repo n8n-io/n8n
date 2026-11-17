@@ -24,7 +24,7 @@ export interface ProjectExportRequest {
 	writer: PackageWriter;
 	includeTags: boolean;
 	versionPolicy: ExportVersionPolicy;
-	includeArchivedWorkflows: boolean;
+	includeArchived: boolean;
 	/**
 	 * Export only these workflows from the projects, with the folders on the
 	 * path to them. Omit to export whole projects. An empty array writes the
@@ -142,7 +142,7 @@ export class ProjectExporter {
 		request: ProjectExportRequest,
 		selectedWorkflowIds: ReadonlySet<string> | undefined,
 	): Promise<FolderExportResult> {
-		const folderIds = await this.folderFinder.findFolderIdsInProject(projectId);
+		const folderIds = await this.folderFinder.findFolderIdsInProject(projectId, 'workflow');
 		if (folderIds.length === 0) {
 			return {
 				entries: [],
@@ -157,7 +157,7 @@ export class ProjectExporter {
 			writer: request.writer,
 			includeTags: request.includeTags,
 			versionPolicy: request.versionPolicy,
-			includeArchivedWorkflows: request.includeArchivedWorkflows,
+			includeArchived: request.includeArchived,
 			basePrefix: target,
 			selectedWorkflowIds,
 			selectedFolderIds: request.folderIds ? new Set(request.folderIds) : undefined,
@@ -171,7 +171,7 @@ export class ProjectExporter {
 		selectedWorkflowIds: ReadonlySet<string> | undefined,
 	): Promise<WorkflowExportResult> {
 		const rootWorkflowIds = await this.workflowFinder.findRootWorkflowIdsInProject(projectId, {
-			includeArchived: request.includeArchivedWorkflows,
+			includeArchived: request.includeArchived,
 		});
 		// Filtering the source list keeps the manifest order stable.
 		const selected = selectedWorkflowIds

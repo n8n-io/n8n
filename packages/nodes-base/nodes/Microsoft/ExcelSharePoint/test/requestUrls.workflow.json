@@ -1,0 +1,367 @@
+{
+	"name": "Microsoft Excel (SharePoint) request URLs",
+	"nodes": [
+		{
+			"parameters": {},
+			"id": "6843828f-fee5-5480-a8d3-517919ad1cc8",
+			"name": "When clicking \"Execute Workflow\"",
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [0, 0]
+		},
+		{
+			"parameters": {
+				"authentication": "microsoftOAuth2Api",
+				"workbook": {
+					"__rl": true,
+					"mode": "id",
+					"value": "01FUWX3BQ4ATCOZNR265GLA6IJEZDQUE4I"
+				},
+				"site": {
+					"__rl": true,
+					"mode": "id",
+					"value": "contoso.sharepoint.com,2c712a40-7a5b-4f3c-b8f8-1a0c9b6d8e21,6d0e4c55-3a7b-4d1e-9f2c-8b5a1e7d3c40"
+				},
+				"library": {
+					"__rl": true,
+					"mode": "id",
+					"value": "b!QCpxLFt6PE-4-BoMm22OIVVMDm17Ox5NnyyLqh59PEA"
+				},
+				"resource": "table",
+				"operation": "convertToRange",
+				"worksheet": {
+					"__rl": true,
+					"mode": "id",
+					"value": "{A0883CFE-D27E-4ECC-B94B-981830AAD55B}"
+				},
+				"table": {
+					"__rl": true,
+					"mode": "id",
+					"value": "{317CA469-7D1C-4A5D-9B0B-424444BF0336}"
+				}
+			},
+			"id": "5c008a88-c989-5e5b-845a-08bd93cb58a1",
+			"name": "Table Convert To Range",
+			"type": "n8n-nodes-base.microsoftExcelSharePoint",
+			"typeVersion": 1,
+			"position": [300, 0],
+			"credentials": {
+				"microsoftOAuth2Api": {
+					"id": "c1",
+					"name": "Microsoft account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"authentication": "microsoftOAuth2Api",
+				"workbook": {
+					"__rl": true,
+					"mode": "id",
+					"value": "01FUWX3BQ4ATCOZNR265GLA6IJEZDQUE4I"
+				},
+				"site": {
+					"__rl": true,
+					"mode": "id",
+					"value": "contoso.sharepoint.com,2c712a40-7a5b-4f3c-b8f8-1a0c9b6d8e21,6d0e4c55-3a7b-4d1e-9f2c-8b5a1e7d3c40"
+				},
+				"library": {
+					"__rl": true,
+					"mode": "id",
+					"value": "b!QCpxLFt6PE-4-BoMm22OIVVMDm17Ox5NnyyLqh59PEA"
+				},
+				"resource": "table",
+				"operation": "deleteTable",
+				"worksheet": {
+					"__rl": true,
+					"mode": "id",
+					"value": "{A0883CFE-D27E-4ECC-B94B-981830AAD55B}"
+				},
+				"table": {
+					"__rl": true,
+					"mode": "id",
+					"value": "{317CA469-7D1C-4A5D-9B0B-424444BF0336}"
+				}
+			},
+			"id": "c0d964f2-385f-540a-8274-2da10c580cfd",
+			"name": "Table Delete",
+			"type": "n8n-nodes-base.microsoftExcelSharePoint",
+			"typeVersion": 1,
+			"position": [300, 120],
+			"credentials": {
+				"microsoftOAuth2Api": {
+					"id": "c1",
+					"name": "Microsoft account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"authentication": "microsoftOAuth2Api",
+				"workbook": {
+					"__rl": true,
+					"mode": "id",
+					"value": "01FUWX3BQ4ATCOZNR265GLA6IJEZDQUE4I"
+				},
+				"site": {
+					"__rl": true,
+					"mode": "id",
+					"value": "contoso.sharepoint.com,2c712a40-7a5b-4f3c-b8f8-1a0c9b6d8e21,6d0e4c55-3a7b-4d1e-9f2c-8b5a1e7d3c40"
+				},
+				"library": {
+					"__rl": true,
+					"mode": "id",
+					"value": "b!QCpxLFt6PE-4-BoMm22OIVVMDm17Ox5NnyyLqh59PEA"
+				},
+				"resource": "table",
+				"operation": "getColumns",
+				"worksheet": {
+					"__rl": true,
+					"mode": "id",
+					"value": "{A0883CFE-D27E-4ECC-B94B-981830AAD55B}"
+				},
+				"table": {
+					"__rl": true,
+					"mode": "id",
+					"value": "{317CA469-7D1C-4A5D-9B0B-424444BF0336}"
+				},
+				"returnAll": false,
+				"limit": 2,
+				"rawData": false,
+				"options": {}
+			},
+			"id": "ab75730d-801a-58a9-b7d5-47576b71b3c3",
+			"name": "Table Get Columns",
+			"type": "n8n-nodes-base.microsoftExcelSharePoint",
+			"typeVersion": 1,
+			"position": [300, 240],
+			"credentials": {
+				"microsoftOAuth2Api": {
+					"id": "c1",
+					"name": "Microsoft account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"authentication": "microsoftOAuth2Api",
+				"workbook": {
+					"__rl": true,
+					"mode": "id",
+					"value": "01FUWX3BQ4ATCOZNR265GLA6IJEZDQUE4I"
+				},
+				"site": {
+					"__rl": true,
+					"mode": "id",
+					"value": "contoso.sharepoint.com,2c712a40-7a5b-4f3c-b8f8-1a0c9b6d8e21,6d0e4c55-3a7b-4d1e-9f2c-8b5a1e7d3c40"
+				},
+				"library": {
+					"__rl": true,
+					"mode": "id",
+					"value": "b!QCpxLFt6PE-4-BoMm22OIVVMDm17Ox5NnyyLqh59PEA"
+				},
+				"resource": "table",
+				"operation": "lookup",
+				"worksheet": {
+					"__rl": true,
+					"mode": "id",
+					"value": "{A0883CFE-D27E-4ECC-B94B-981830AAD55B}"
+				},
+				"table": {
+					"__rl": true,
+					"mode": "id",
+					"value": "{317CA469-7D1C-4A5D-9B0B-424444BF0336}"
+				},
+				"lookupColumn": "Name",
+				"lookupValue": "Frank",
+				"options": {}
+			},
+			"id": "ac08368b-c7c3-54c6-9b66-b212ef852d6a",
+			"name": "Table Lookup",
+			"type": "n8n-nodes-base.microsoftExcelSharePoint",
+			"typeVersion": 1,
+			"position": [300, 360],
+			"credentials": {
+				"microsoftOAuth2Api": {
+					"id": "c1",
+					"name": "Microsoft account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"authentication": "microsoftOAuth2Api",
+				"workbook": {
+					"__rl": true,
+					"mode": "id",
+					"value": "01FUWX3BQ4ATCOZNR265GLA6IJEZDQUE4I"
+				},
+				"site": {
+					"__rl": true,
+					"mode": "id",
+					"value": "contoso.sharepoint.com,2c712a40-7a5b-4f3c-b8f8-1a0c9b6d8e21,6d0e4c55-3a7b-4d1e-9f2c-8b5a1e7d3c40"
+				},
+				"library": {
+					"__rl": true,
+					"mode": "id",
+					"value": "b!QCpxLFt6PE-4-BoMm22OIVVMDm17Ox5NnyyLqh59PEA"
+				},
+				"resource": "worksheet",
+				"operation": "upsert",
+				"worksheet": {
+					"__rl": true,
+					"mode": "id",
+					"value": "{A0883CFE-D27E-4ECC-B94B-981830AAD55B}"
+				},
+				"useRange": true,
+				"range": "A1:B3",
+				"dataMode": "define",
+				"columnToMatchOn": "Name",
+				"valueToMatchOn": "Frank",
+				"fieldsUi": {
+					"values": [
+						{
+							"column": "Email",
+							"fieldValue": "frank@fabrikam.com"
+						}
+					]
+				},
+				"options": {}
+			},
+			"id": "843c9b1c-a458-5b05-a445-b347d401969e",
+			"name": "Sheet Upsert",
+			"type": "n8n-nodes-base.microsoftExcelSharePoint",
+			"typeVersion": 1,
+			"position": [300, 480],
+			"credentials": {
+				"microsoftOAuth2Api": {
+					"id": "c1",
+					"name": "Microsoft account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"authentication": "microsoftOAuth2Api",
+				"site": {
+					"__rl": true,
+					"mode": "url",
+					"value": "https://contoso.sharepoint.com/sites/Finance Team"
+				},
+				"library": {
+					"__rl": true,
+					"mode": "id",
+					"value": "b!QCpxLFt6PE-4-BoMm22OIVVMDm17Ox5NnyyLqh59PEA"
+				},
+				"resource": "workbook",
+				"operation": "getAll",
+				"filter": "Budget",
+				"returnAll": false,
+				"limit": 10,
+				"options": {}
+			},
+			"id": "10bd55eb-8e6a-5543-a378-f92dfcf1255f",
+			"name": "Workbook Get Many",
+			"type": "n8n-nodes-base.microsoftExcelSharePoint",
+			"typeVersion": 1,
+			"position": [300, 600],
+			"credentials": {
+				"microsoftOAuth2Api": {
+					"id": "c1",
+					"name": "Microsoft account"
+				}
+			}
+		}
+	],
+	"connections": {
+		"When clicking \"Execute Workflow\"": {
+			"main": [
+				[
+					{
+						"node": "Table Convert To Range",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Table Delete",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Table Get Columns",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Table Lookup",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Sheet Upsert",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Workbook Get Many",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"pinData": {
+		"Table Convert To Range": [
+			{
+				"json": {
+					"address": "Sheet1!A1:B3"
+				}
+			}
+		],
+		"Table Delete": [
+			{
+				"json": {
+					"success": true
+				}
+			}
+		],
+		"Table Get Columns": [
+			{
+				"json": {
+					"name": "Name"
+				}
+			},
+			{
+				"json": {
+					"name": "Email"
+				}
+			}
+		],
+		"Table Lookup": [
+			{
+				"json": {
+					"Name": "Frank",
+					"Email": "frank@contoso.com"
+				}
+			}
+		],
+		"Sheet Upsert": [
+			{
+				"json": {
+					"Name": "Frank",
+					"Email": "frank@fabrikam.com"
+				}
+			}
+		],
+		"Workbook Get Many": [
+			{
+				"json": {
+					"id": "01FUWX3BQ4ATCOZNR265GLA6IJEZDQUE4I",
+					"name": "Budget.xlsx",
+					"file": {}
+				}
+			}
+		]
+	}
+}

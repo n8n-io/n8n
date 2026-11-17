@@ -14,6 +14,7 @@ import type { AgentPolicyService } from '../agent-policy.service';
 import { AgentValidationService } from '../agent-validation.service';
 import type { Agent, ProjectAgent } from '../entities/agent.entity';
 import type { ChatIntegrationRegistry } from '../integrations/agent-chat-integration';
+import { WebhookIntegration } from '../integrations/platforms/webhook/webhook-integration';
 import type { AgentTaskSnapshotRepository } from '../repositories/agent-task-snapshot.repository';
 import type { AgentTaskRepository } from '../repositories/agent-task.repository';
 import type { AgentRepository } from '../repositories/agent.repository';
@@ -1075,6 +1076,7 @@ describe('AgentValidationService — structured issues', () => {
 		chatIntegrationRegistry.get.mockReturnValue({
 			type: 'slack',
 			credentialTypes: ['slackOAuth2Api'],
+			acceptedCredentialTypes: () => ['slackOAuth2Api'],
 		} as never);
 		agentRepository.findByIdAndProjectId.mockResolvedValue(
 			makeAgent(
@@ -1110,6 +1112,45 @@ describe('AgentValidationService — structured issues', () => {
 				path: 'integrations.1.credentialId',
 				capability: { kind: 'channel', id: 'slack', index: 1 },
 			}),
+		]);
+	});
+
+	it('checks a webhook credential against its authentication, and skips authentication none', async () => {
+		const { service, agentRepository, chatIntegrationRegistry } = makeService();
+		chatIntegrationRegistry.get.mockReturnValue(new WebhookIntegration());
+		agentRepository.findByIdAndProjectId.mockResolvedValue(
+			makeAgent(
+				runnableConfig,
+				{},
+				{
+					integrations: [
+						{ type: 'webhook', credentialId: '', settings: { authentication: 'none' } },
+						{
+							type: 'webhook',
+							credentialId: 'jwt-cred',
+							settings: { authentication: 'headerAuth' },
+						},
+						{ type: 'webhook', credentialId: 'jwt-cred' },
+					],
+				},
+			),
+		);
+
+		const result = await service.validateAgentConfiguration(
+			agentId,
+			projectId,
+			makeCredentialProvider([
+				{ id: 'openai-main', type: 'openAiApi' },
+				{ id: 'jwt-cred', type: 'jwtAuth' },
+			]),
+		);
+
+		expect(result.issues).toEqual([
+			expect.objectContaining({
+				code: 'incompatible_credential',
+				path: 'integrations.1.credentialId',
+			}),
+			expect.objectContaining({ code: 'missing_credential', path: 'integrations.2.credentialId' }),
 		]);
 	});
 
