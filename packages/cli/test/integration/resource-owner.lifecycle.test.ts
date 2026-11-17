@@ -11,7 +11,7 @@ import { WorkflowRepository, type Project, type User, type WorkflowEntity } from
 import { Container } from '@n8n/di';
 import { LicenseMocker } from '@test-integration/license';
 
-import { createAdmin, createMember, createOwner } from './shared/db/users';
+import { createAdmin, createMember, getGlobalOwner } from './shared/db/users';
 
 import { License } from '@/license';
 import { ProvisioningService } from '@/modules/provisioning.ee/provisioning.service.ee';
@@ -50,7 +50,7 @@ describe('Resource owner on lifecycle changes', () => {
 		license.mockLicenseState(Container.get(LicenseState));
 		license.enable('feat:projectRole:editor');
 
-		instanceOwner = await createOwner();
+		instanceOwner = await getGlobalOwner();
 		projectAdmin = await createMember();
 	});
 

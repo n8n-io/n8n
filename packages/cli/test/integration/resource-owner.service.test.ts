@@ -25,7 +25,7 @@ import { ResourceOwnerService } from '@/services/resource-owner.service';
 import {
 	createAdmin,
 	createMember,
-	createOwner,
+	getGlobalOwner,
 	createServiceAccountWithProject,
 } from './shared/db/users';
 
@@ -68,7 +68,7 @@ describe('ResourceOwnerService', () => {
 		workflowRepository = Container.get(WorkflowRepository);
 		agentRepository = Container.get(AgentRepository);
 
-		instanceOwner = await createOwner();
+		instanceOwner = await getGlobalOwner();
 		projectAdmin = await createMember();
 		editor = await createMember();
 		outsider = await createMember();
