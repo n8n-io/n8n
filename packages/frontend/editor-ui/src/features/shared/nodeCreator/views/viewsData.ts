@@ -110,7 +110,8 @@ export interface NodeViewItem {
 		tag?: {
 			type?: string;
 			text?: string;
-			preview?: boolean;
+			/** Feature id. The feature list decides which badges render. */
+			feature?: string;
 		};
 		forceIncludeNodes?: string[];
 		iconData?: { type: 'file'; fileBuffer: string } | { type: 'icon'; icon: string };

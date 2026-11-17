@@ -48,16 +48,16 @@ const { t } = useI18n();
 		<div :class="$style.body">
 			<div :class="$style.details">
 				<span :class="$style.name" data-test-id="node-creator-item-name" v-text="title" />
-				<N8nFeatureMaturityBadges v-if="tag?.preview" :class="$style.previewBadge" />
+				<N8nFeatureMaturityBadges :feature="tag?.feature" :class="$style.previewBadge" />
 				<N8nBadge
-					v-else-if="tag?.pill"
+					v-if="!tag?.feature && tag?.pill"
 					size="xxsmall"
 					:variant="tag.type === 'info' || tag.type === 'danger' ? tag.type : 'success'"
 				>
 					{{ tag.text }}
 				</N8nBadge>
 				<ElTag
-					v-else-if="tag"
+					v-else-if="!tag?.feature && tag"
 					:class="$style.tag"
 					disable-transitions
 					size="small"

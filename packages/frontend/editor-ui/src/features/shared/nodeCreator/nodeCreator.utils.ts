@@ -549,10 +549,7 @@ function applyNodeTags(element: INodeCreateElement): INodeCreateElement {
 	if (element.properties.tag) return element;
 
 	if (element.properties.name === MESSAGE_AN_AGENT_NODE_TYPE) {
-		element.properties.tag = {
-			preview: true,
-			text: i18n.baseText('nodeCreator.nodeItem.earlyPreview'),
-		};
+		element.properties.tag = { feature: 'agents' };
 	} else if (RECOMMENDED_NODES.includes(element.properties.name)) {
 		element.properties.tag = {
 			type: 'info',

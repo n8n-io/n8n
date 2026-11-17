@@ -1,6 +1,14 @@
 import { render } from '@testing-library/vue';
 
+import {
+	FeatureMaturityKey,
+	type FeatureMaturityCatalog,
+} from '../N8nFeatureMaturityBadges/featureMaturityState';
 import NodeCreatorNode from './NodeCreatorNode.vue';
+
+const featureMaturity: FeatureMaturityCatalog = {
+	agents: { preview: true, limitedEnterpriseSupport: true },
+};
 
 function renderNode(tag: { text: string; pill?: boolean; type?: string }) {
 	return render(NodeCreatorNode, {
@@ -10,13 +18,17 @@ function renderNode(tag: { text: string; pill?: boolean; type?: string }) {
 }
 
 describe('N8nNodeCreatorNode', () => {
-	it('shows the Preview badge for a preview node', () => {
+	it('shows the feature badges for a feature tag', () => {
 		const { getByText } = render(NodeCreatorNode, {
-			props: { title: 'Message an Agent', tag: { preview: true, text: 'Early preview' } },
-			global: { stubs: ['N8nIcon'] },
+			props: { title: 'Message an Agent', tag: { feature: 'agents' } },
+			global: {
+				stubs: ['N8nIcon'],
+				provide: { [FeatureMaturityKey as symbol]: featureMaturity },
+			},
 		});
 
 		expect(getByText('Preview')).toBeInTheDocument();
+		expect(getByText('Limited enterprise readiness')).toBeInTheDocument();
 	});
 
 	it('shows the New badge for new nodes', () => {

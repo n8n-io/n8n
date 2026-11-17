@@ -16,5 +16,9 @@ export interface TabOptions<Value extends string | number> {
 	to?: RouteLocationRaw;
 	notification?: boolean;
 	tag?: string;
-	preview?: boolean;
+	/**
+	 * Feature id from the list the app provides.
+	 * The entry decides which badges render beside the label.
+	 */
+	feature?: string;
 }

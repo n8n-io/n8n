@@ -12,6 +12,11 @@ defineOptions({ name: 'N8nFeatureMaturityBadges' });
 
 const props = withDefaults(
 	defineProps<{
+		/**
+		 * Feature id from the list the app provides.
+		 * The entry decides which badges render.
+		 * An omitted id renders nothing.
+		 */
 		feature?: string;
 		/** Hide the Preview badge at this callsite. */
 		/** @default false */
@@ -30,21 +35,12 @@ const props = withDefaults(
 const { t } = useI18n();
 const catalog = useFeatureMaturityCatalog();
 
-const resolved = computed(() => {
-	if (props.feature === undefined) {
-		return {
-			showPreview: !props.hidePreview,
-			showEnterprise: false,
-			testId: undefined,
-			docsUrl: undefined,
-		};
-	}
-
-	return resolveFeatureMaturityBadges(catalog.value, props.feature, {
+const resolved = computed(() =>
+	resolveFeatureMaturityBadges(catalog.value, props.feature, {
 		preview: props.hidePreview,
 		enterprise: props.hideEnterprise,
-	});
-});
+	}),
+);
 const visible = computed(() => resolved.value.showPreview || resolved.value.showEnterprise);
 const previewTestId = computed(() =>
 	resolved.value.testId ? `${resolved.value.testId}-preview-badge` : undefined,

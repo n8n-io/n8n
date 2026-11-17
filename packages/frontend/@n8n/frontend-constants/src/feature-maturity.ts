@@ -14,6 +14,7 @@ export const featureMaturity = {
 		limitedEnterpriseSupport: true,
 		docsUrl: 'https://docs.n8n.io/build/build-and-manage-agents',
 	},
+	apps: { preview: true, limitedEnterpriseSupport: false },
 	n8nPackages: {
 		preview: true,
 		limitedEnterpriseSupport: true,

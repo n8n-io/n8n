@@ -59,7 +59,7 @@ export const AppsModule = defineFrontendModule({
 			{
 				label: 'Apps',
 				value: APPS_LIST_VIEW,
-				preview: true,
+				feature: 'apps',
 				insertAfter: VIEWS.WORKFLOWS,
 				to: { name: APPS_LIST_VIEW },
 			},
@@ -68,7 +68,7 @@ export const AppsModule = defineFrontendModule({
 			{
 				label: 'Apps',
 				value: PROJECT_APPS,
-				preview: true,
+				feature: 'apps',
 				insertAfter: VIEWS.PROJECTS_WORKFLOWS,
 				dynamicRoute: { name: PROJECT_APPS, includeProjectId: true },
 				available: (projectId) => projectId !== undefined && getAppPermissions(projectId).canList,

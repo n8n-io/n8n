@@ -46,6 +46,8 @@ const featureMaturityStub: FeatureMaturityCatalog = {
 		limitedEnterpriseSupport: true,
 		docsUrl: 'https://docs.n8n.io/build/build-and-manage-agents',
 	},
+	apps: { preview: true, limitedEnterpriseSupport: false },
+	selfHealing: { preview: true, limitedEnterpriseSupport: true },
 	context: { preview: true, limitedEnterpriseSupport: true },
 	assistant: {
 		preview: false,

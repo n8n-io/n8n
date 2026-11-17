@@ -140,7 +140,7 @@ export const AgentsModule = defineFrontendModule({
 			{
 				label: 'Agents',
 				value: AGENTS_LIST_VIEW,
-				preview: true,
+				feature: 'agents',
 				insertAfter: VIEWS.WORKFLOWS,
 				to: {
 					name: AGENTS_LIST_VIEW,
@@ -151,7 +151,7 @@ export const AgentsModule = defineFrontendModule({
 			{
 				label: 'Agents',
 				value: PROJECT_AGENTS,
-				preview: true,
+				feature: 'agents',
 				insertAfter: VIEWS.PROJECTS_WORKFLOWS,
 				dynamicRoute: {
 					name: PROJECT_AGENTS,

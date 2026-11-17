@@ -30,11 +30,10 @@ describe('N8nFeatureMaturityBadges', () => {
 		warn.mockRestore();
 	});
 
-	it('draws the Preview badge when no feature id is set', () => {
-		const { getByText, queryByText } = render(FeatureMaturityBadges);
+	it('renders nothing when no feature id is set', () => {
+		const { container } = render(FeatureMaturityBadges);
 
-		expect(getByText('Preview')).toBeInTheDocument();
-		expect(queryByText('Limited enterprise readiness')).not.toBeInTheDocument();
+		expect(container).toBeEmptyDOMElement();
 	});
 
 	it('renders the badges listed for the feature', () => {

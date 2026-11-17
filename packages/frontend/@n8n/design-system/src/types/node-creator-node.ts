@@ -1,10 +1,14 @@
 import type { ElTag } from 'element-plus';
 
 export type NodeCreatorTag = {
-	text: string;
+	/** Label for a pill or tag. A feature badge does not use this. */
+	text?: string;
 	type?: (typeof ElTag)['type'];
 	/** When true, renders as N8nBadge instead of ElTag. */
 	pill?: boolean;
-	/** When true, renders the Preview badge through `N8nFeatureMaturityBadges`. */
-	preview?: boolean;
+	/**
+	 * Feature id from the list the app provides.
+	 * The entry decides which badges render beside the title.
+	 */
+	feature?: string;
 };
