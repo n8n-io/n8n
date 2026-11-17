@@ -1186,14 +1186,33 @@ export interface TranslateOptions {
 	 * What a whole `{{ }}` value that is a Luxon DateTime gives. `text`: its ISO text, for a
 	 * value inside a collection parameter (v1's \`getNodeParameter\` turns a DateTime there
 	 * into text, \`cleanupParameterData\`). `object`: the DateTime, for a caller that reads
-	 * it. Without it, such an expression does not translate.
+	 * it. `below`: text for each value below the value of the call, and no translation for the
+	 * value of the call itself: the caller asks for one parameter as the node reads it, and v1
+	 * keeps a DateTime that is the whole parameter. `nested`: the same for a tree of all the
+	 * parameters of a node: text from the second level on (a member of a collection or of a
+	 * list). Without it, such an expression does not translate.
 	 */
-	luxonValue?: 'text' | 'object';
+	luxonValue?: 'text' | 'object' | 'below' | 'nested';
 	/**
 	 * A whole `{{ }}` value can be `$binary` or one of its entries: the caller reads only
 	 * whether the value is there, or the names of its members (see `binaryUse`).
 	 */
 	binaryValue?: boolean;
+}
+
+/** What a DateTime value gives at the path `p` of a tree that starts at `root`. */
+function luxonMode(
+	mode: TranslateOptions['luxonValue'],
+	root: string,
+	p: string,
+): 'reject' | 'text' | 'object' {
+	if (mode === undefined) return 'reject';
+	if (mode === 'text' || mode === 'object') return mode;
+	if (p === root) return 'reject';
+	if (mode === 'below') return 'text';
+	// The path below the root, without the mark of its first step.
+	const rest = p.slice(root.length).replace(/^[.[]/, '');
+	return rest.includes('.') || rest.includes('[') ? 'text' : 'reject';
 }
 
 /**
@@ -1219,7 +1238,7 @@ export function translateValue(
 		if (isExpression(v)) {
 			const known = scope.knownIssues?.(p);
 			let r: BodyResult;
-			const lux = options.luxonValue ?? 'reject';
+			const lux = luxonMode(options.luxonValue, path, p);
 			const bin = options.binaryValue === true;
 			if (!known) r = translateExpression(v, scope, options.templatePart, false, lux, bin);
 			else if (!scope.useHelper || known.some((i) => i.code === NATIVE_FORM_FAILED)) {
