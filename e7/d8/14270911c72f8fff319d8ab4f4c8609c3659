@@ -1,0 +1,25 @@
+packages/frontend/editor-ui/src/features/agents/components/SessionTimelineChart.vue
+  s_adee977eab8a65::t_5e0d07fe30bb84 357
+packages/frontend/editor-ui/src/features/agents/components/timeline-items/SessionCapabilityItem.vue
+  s_adee977eab8a65::t_5e0d07fe30bb84 172
+  s_adee977eab8a65::t_1790fc9670a786 173-177
+packages/frontend/editor-ui/src/features/agents/components/SessionTimelinePill.vue
+  s_adee977eab8a65::t_5e0d07fe30bb84 5,10,20-21,57-65,68-73,78,86
+  s_adee977eab8a65::t_a04f2e7c9d9764 79-85,87-88
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "e7d814270911c72f8fff319d8ab4f4c8609c3659",
+  "prompts": {},
+  "sessions": {
+    "s_adee977eab8a65": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a1d5e8-1bc3-73e2-8649-1f304c4b7793",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "Michael Drury <michael.drury@n8n.io>"
+    }
+  }
+}
