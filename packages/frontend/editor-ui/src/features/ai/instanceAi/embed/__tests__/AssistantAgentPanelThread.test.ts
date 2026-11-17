@@ -3,10 +3,10 @@ import type {
 	InstanceAiHandoffContext,
 	InstanceAiResourceAttachment,
 } from '@n8n/api-types';
+import { TELEMETRY_EVENT } from '@n8n/telemetry';
 import { createTestingPinia } from '@pinia/testing';
 import { flushPromises, mount } from '@vue/test-utils';
 import { setActivePinia } from 'pinia';
-import { TELEMETRY_EVENT } from '@n8n/telemetry';
 import { defineComponent, h, inject, ref, type Ref } from 'vue';
 
 import type { ChatMessage } from '@/features/ai/shared/agentsChat/types';
@@ -286,6 +286,28 @@ describe('AssistantAgentPanelThread', () => {
 			prefill_id: 'summarize-inbox',
 			prompt_modified: false,
 		});
+	});
+
+	it('reports the response to a sent message with the runtime', async () => {
+		await render();
+
+		sendAndReadTelemetry('Add a Slack tool');
+		const onStreamEvent = panelProps.current.onStreamEvent as (event: unknown) => void;
+		onStreamEvent({ type: 'message-queued', queueId: 'q-1', sessionId: 'thread-1' });
+		onStreamEvent({ type: 'execution-started', executionId: 'exec-1', sessionId: 'thread-1' });
+		onStreamEvent({ type: 'finish', finishReason: 'stop' });
+
+		await vi.waitFor(() =>
+			expect(telemetryTrack).toHaveBeenCalledWith(
+				TELEMETRY_EVENT.INSTANCE_AI.USER_RECEIVED_AI_ASSISTANT_RESPONSE,
+				expect.objectContaining({
+					thread_id: 'thread-1',
+					run_id: 'exec-1',
+					response_kind: 'completed',
+					runtime: 'agents',
+				}),
+			),
+		);
 	});
 
 	it('removes the chip when the message with the hand-off is accepted', async () => {

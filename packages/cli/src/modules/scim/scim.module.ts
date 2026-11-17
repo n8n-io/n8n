@@ -16,7 +16,9 @@ import { Container } from '@n8n/di';
 @BackendModule({ name: 'scim', licenseFlag: 'feat:scim', instanceTypes: ['main'] })
 export class ScimModule implements ModuleInterface {
 	async init() {
-		// Import controllers to register routes
+		// Import controllers to register routes. `ScimController` comes first:
+		// its static router reports every `/scim/v2` request before the routes
+		// of the other SCIM controllers match.
 		await import('./scim.controller.js');
 		await import('./scim-discovery.controller.js');
 		await import('./scim-token.controller.js');

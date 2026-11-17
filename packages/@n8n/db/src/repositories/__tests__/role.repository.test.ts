@@ -1,6 +1,12 @@
 import { Container } from '@n8n/di';
 
-import { Person, ProjectRelation, ServiceAccount, ServiceAccountDetails } from '../../entities';
+import {
+	Person,
+	ProjectRelation,
+	ServiceAccount,
+	ServiceAccountDetails,
+	User,
+} from '../../entities';
 import { mockEntityManager } from '../../utils/test-utils/mock-entity-manager';
 import { RoleRepository } from '../role.repository';
 
@@ -12,18 +18,55 @@ describe('RoleRepository', () => {
 		entityManager.find.mockReset();
 	});
 
-	describe('findAllProjectMembers', () => {
-		const person = Object.assign(new Person(), {
-			id: 'person-1',
-			email: 'ada@example.com',
-			firstName: 'Ada',
-			lastName: 'Lovelace',
-		});
-		const serviceAccount = Object.assign(new ServiceAccount(), {
-			id: 'service-1',
-			details: Object.assign(new ServiceAccountDetails(), { name: 'Deploy bot' }),
+	const person = Object.assign(new Person(), {
+		id: 'person-1',
+		email: 'ada@example.com',
+		firstName: 'Ada',
+		lastName: 'Lovelace',
+	});
+	const serviceAccount = Object.assign(new ServiceAccount(), {
+		id: 'service-1',
+		details: Object.assign(new ServiceAccountDetails(), { name: 'Deploy bot' }),
+	});
+
+	describe('findUsersWithGlobalRole', () => {
+		it('loads the accounts of both kinds that hold the role', async () => {
+			entityManager.find.mockResolvedValueOnce([]);
+
+			await roleRepository.findUsersWithGlobalRole('global:member');
+
+			expect(entityManager.find).toHaveBeenCalledWith(User, {
+				where: { role: { slug: 'global:member' } },
+			});
 		});
 
+		it('builds an entry with the kind for a person and for a service account', async () => {
+			entityManager.find.mockResolvedValueOnce([person, serviceAccount]);
+
+			const members = await roleRepository.findUsersWithGlobalRole('global:member');
+
+			expect(members).toEqual([
+				{
+					userId: 'person-1',
+					firstName: 'Ada',
+					lastName: 'Lovelace',
+					email: 'ada@example.com',
+					role: 'global:member',
+					kind: 'person',
+				},
+				{
+					userId: 'service-1',
+					firstName: 'Deploy bot',
+					lastName: null,
+					email: '',
+					role: 'global:member',
+					kind: 'service',
+				},
+			]);
+		});
+	});
+
+	describe('findAllProjectMembers', () => {
 		it('loads the members without the role and its eager scopes', async () => {
 			entityManager.find.mockResolvedValueOnce([]);
 

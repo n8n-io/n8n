@@ -8,7 +8,16 @@
 		"DELETE /agents/{agentId}": {
 			"status": "gap"
 		},
+		"GET /agents": {
+			"status": "gap"
+		},
+		"GET /agents/{agentId}": {
+			"status": "gap"
+		},
 		"POST /agents": {
+			"status": "gap"
+		},
+		"PUT /agents/{agentId}": {
 			"status": "gap"
 		},
 		"GET /roles": {

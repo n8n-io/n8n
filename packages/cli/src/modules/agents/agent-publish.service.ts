@@ -9,7 +9,7 @@ import {
 	type PublishAgentDto,
 } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
-import { EventService } from '@n8n/backend-services';
+import { EventService, TelemetryProxy } from '@n8n/backend-services';
 import {
 	TransactionRunner,
 	isUniqueConstraintError,
@@ -27,9 +27,8 @@ import { BadRequestError, ConflictError, NotFoundError, UserError } from '@n8n/e
 import { KnowledgeAvailabilityService } from '@/modules/knowledge/knowledge-availability.service';
 import {
 	KnowledgeFileRepository,
-	type AgentKnowledgeTotals,
+	type KnowledgeFileTotals,
 } from '@/modules/knowledge/repositories/knowledge-file.repository';
-import { Telemetry } from '@/telemetry';
 
 import { AgentDefinitionService } from './agent-definition.service';
 import { AgentsCredentialProvider } from './adapters/agents-credential-provider';
@@ -123,7 +122,7 @@ export class AgentPublishService {
 		private readonly runtimeCacheService: AgentRuntimeCacheService,
 		private readonly agentValidationService: AgentValidationService,
 		private readonly credentialsService: CredentialsService,
-		private readonly telemetry: Telemetry,
+		private readonly telemetry: TelemetryProxy,
 		private readonly eventService: EventService,
 		private readonly setupCompletionService: AgentSetupCompletionService,
 		private readonly agentUpdateBroadcaster: AgentUpdateBroadcaster,
@@ -132,7 +131,7 @@ export class AgentPublishService {
 		private readonly definitionService: AgentDefinitionService,
 		private readonly agentPolicyService: AgentPolicyService,
 		private readonly agentSkillRefs: AgentSkillRefsService,
-		private readonly agentFileRepository: KnowledgeFileRepository,
+		private readonly knowledgeFileRepository: KnowledgeFileRepository,
 		private readonly publishHistory: AgentPublishHistoryRepository,
 		private readonly knowledgeAvailabilityService: KnowledgeAvailabilityService,
 	) {}
@@ -418,14 +417,14 @@ export class AgentPublishService {
 	/** Make sure a failed read for the publish event never stops the publication. */
 	private async readKnowledgeTotalsForTelemetry(
 		agentId: string,
-	): Promise<AgentKnowledgeTotals | undefined> {
+	): Promise<KnowledgeFileTotals | undefined> {
 		// With the knowledge module off no file is reachable, so the event carries no totals.
 		if (!this.knowledgeAvailabilityService.isModuleActive()) {
 			return undefined;
 		}
 
 		try {
-			return await this.agentFileRepository.getKnowledgeTotals(agentId, {});
+			return await this.knowledgeFileRepository.getKnowledgeTotals(agentId, {});
 		} catch (error) {
 			this.logger.warn('Failed to read knowledge totals for the publish event', {
 				agentId,
@@ -448,7 +447,7 @@ export class AgentPublishService {
 		emitter: AgentPublishEmitter,
 		wasPublished: boolean,
 		published: AgentJsonConfig | null,
-		knowledgeTotals: AgentKnowledgeTotals | undefined,
+		knowledgeTotals: KnowledgeFileTotals | undefined,
 	): void {
 		const properties = {
 			agent_id: agent.id,

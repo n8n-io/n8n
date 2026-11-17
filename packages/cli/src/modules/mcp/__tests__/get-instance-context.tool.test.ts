@@ -1,8 +1,8 @@
+import type { TelemetryProxy } from '@n8n/backend-services';
 import type { User } from '@n8n/db';
 import { mock } from 'vitest-mock-extended';
 
 import type { InstanceContextService } from '@/modules/instance-ai/instance-context.service';
-import type { Telemetry } from '@/telemetry';
 
 import { USER_CALLED_MCP_TOOL_EVENT } from '../mcp.constants';
 import {
@@ -15,7 +15,7 @@ const user = mock<User>({ id: 'user-1' });
 
 function harness() {
 	const instanceContext = mock<InstanceContextService>();
-	const telemetry = mock<Telemetry>();
+	const telemetry = mock<TelemetryProxy>();
 
 	instanceContext.buildBlock.mockResolvedValue({ state: 'absent', reason: 'empty' });
 	instanceContext.hasWithheldWorkflows.mockResolvedValue(false);

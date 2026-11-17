@@ -754,7 +754,7 @@ describe('Agent skills in the skills module', () => {
 		expect(await findSkill(refs![0].id)).toMatchObject({ projectId: project.id, source: 'agent' });
 
 		// The skill belongs to the project, so it outlives the agent.
-		await agentsService.delete(agent.id, project.id);
+		await agentsService.delete(agent.id, owner, project.id);
 		expect(await findSkill(refs![0].id)).not.toBeNull();
 	});
 });

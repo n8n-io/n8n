@@ -1,7 +1,6 @@
+import type { TelemetryProxy } from '@n8n/backend-services';
 import type { User } from '@n8n/db';
 import z from 'zod';
-
-import type { Telemetry } from '@/telemetry';
 
 import { MCP_GET_SDK_REFERENCE_TOOL } from './constants';
 import { getSdkReferenceContent, type SdkReferenceSection } from './sdk-reference-content';
@@ -40,7 +39,7 @@ const outputSchema = {
  */
 export const createGetWorkflowSdkReferenceTool = (
 	user: User,
-	telemetry: Telemetry,
+	telemetry: TelemetryProxy,
 ): ToolDefinition<typeof inputSchema> => ({
 	name: MCP_GET_SDK_REFERENCE_TOOL.toolName,
 	config: {

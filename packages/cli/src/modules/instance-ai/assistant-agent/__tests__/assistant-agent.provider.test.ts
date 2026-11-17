@@ -5,6 +5,7 @@ import type { GlobalConfig } from '@n8n/config';
 import type { User, UserRepository } from '@n8n/db';
 import { hasGlobalScope } from '@n8n/permissions';
 import { UserError } from '@n8n/errors';
+import { TELEMETRY_EVENT } from '@n8n/telemetry';
 import type { ErrorReporter } from 'n8n-core';
 import { mock } from 'vitest-mock-extended';
 
@@ -12,7 +13,7 @@ import type {
 	SystemAgentResumeTurn,
 	SystemAgentStartTurn,
 } from '@/modules/agents/system-agents/system-agent.types';
-import type { Telemetry } from '@/telemetry';
+import type { TelemetryProxy } from '@n8n/backend-services';
 
 import type { InstanceAiCreditService } from '../../instance-ai-credit.service';
 import { InstanceAiErrorReporterService } from '../../instance-ai-error-reporter.service';
@@ -98,7 +99,7 @@ function setup() {
 	);
 	// The real default, so that the tests see "no override" unless a test sets one.
 	const turnOverrides = new AssistantTurnOverrides();
-	const telemetry = mock<Telemetry>();
+	const telemetry = mock<TelemetryProxy>();
 	const provider = new AssistantAgentProvider(
 		logger,
 		mock<GlobalConfig>({ ai: {} }),
@@ -760,18 +761,26 @@ describe('AssistantAgentProvider', () => {
 				);
 
 				expect(telemetry.track).toHaveBeenCalledTimes(2);
-				expect(telemetry.track).toHaveBeenNthCalledWith(1, 'Builder asked for input', {
-					user_id: 'user-1',
-					thread_id: 'thread-1',
-					input_thread_id: 'req-1',
-					type: 'approval',
-					num_steps: 1,
-					contains_templated_cred: false,
-					runtime: 'agents',
-				});
+				expect(telemetry.track).toHaveBeenNthCalledWith(
+					1,
+					TELEMETRY_EVENT.INSTANCE_AI.BUILDER_ASKED_FOR_INPUT,
+					{
+						user_id: 'user-1',
+						thread_id: 'thread-1',
+						input_thread_id: 'req-1',
+						type: 'approval',
+						num_steps: 1,
+						contains_templated_cred: false,
+						tool_call_id: 'tc-1',
+						tool_name: 'workflows',
+						severity: 'destructive',
+						approval_mode: 'unavailable',
+						runtime: 'agents',
+					},
+				);
 				expect(telemetry.track).toHaveBeenNthCalledWith(
 					2,
-					'Builder asked for input',
+					TELEMETRY_EVENT.INSTANCE_AI.BUILDER_ASKED_FOR_INPUT,
 					expect.objectContaining({ input_thread_id: 'req-2', type: 'questions', num_steps: 2 }),
 				);
 			});
@@ -817,8 +826,21 @@ describe('AssistantAgentProvider', () => {
 				handle.onChunk?.(suspended('tc-1', card('req-3')));
 
 				expect(telemetry.track).toHaveBeenCalledWith(
-					'Builder asked for input',
+					TELEMETRY_EVENT.INSTANCE_AI.BUILDER_ASKED_FOR_INPUT,
 					expect.objectContaining({ input_thread_id: 'req-3', runtime: 'agents' }),
+				);
+			});
+
+			it('sends the approval mode of the run', async () => {
+				const { provider, telemetry, environment } = setup();
+				environment.context.approvalMode = 'auto';
+
+				const handle = await provider.prepareTurn(startTurn());
+				handle.onChunk?.(suspended('tc-1', card('req-1')));
+
+				expect(telemetry.track).toHaveBeenCalledWith(
+					TELEMETRY_EVENT.INSTANCE_AI.BUILDER_ASKED_FOR_INPUT,
+					expect.objectContaining({ approval_mode: 'auto' }),
 				);
 			});
 		});
@@ -839,12 +861,11 @@ describe('AssistantAgentProvider', () => {
 						reportId: 'report-1',
 					});
 
-					expect(creditService.claimRunUsage).toHaveBeenCalledWith(
+					expect(creditService.claimSideCallUsage).toHaveBeenCalledWith(
 						user,
 						'thread-1',
 						`run-1:${task}:report-1`,
-						expect.arrayContaining([expect.anything()]),
-						'completed',
+						expect.objectContaining({ model: 'anthropic/claude-haiku-4-5', usage }),
 					);
 				},
 			);
@@ -862,25 +883,9 @@ describe('AssistantAgentProvider', () => {
 						reportId: 'report-1',
 					});
 
-					expect(creditService.claimRunUsage).not.toHaveBeenCalled();
+					expect(creditService.claimSideCallUsage).not.toHaveBeenCalled();
 				},
 			);
-
-			it('keeps the turn going when the claim fails', async () => {
-				const { provider, creditService } = setup();
-				creditService.claimRunUsage.mockRejectedValueOnce(new Error('billing down'));
-
-				const handle = await provider.prepareTurn(startTurn());
-
-				await expect(
-					handle.onSideCallUsage?.({
-						task: 'title',
-						model: 'anthropic/claude-haiku-4-5',
-						usage,
-						reportId: 'report-1',
-					}),
-				).resolves.toBeUndefined();
-			});
 		});
 
 		describe('workflow setup route', () => {
