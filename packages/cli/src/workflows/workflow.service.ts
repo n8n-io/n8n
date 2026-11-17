@@ -1682,7 +1682,7 @@ export class WorkflowService {
 		workflowIds: string[],
 		destinationProjectId: string,
 		transfer: () => Promise<void>,
-		{ publicApi }: { publicApi: boolean },
+		{ publicApi }: { publicApi: PublicApiCaller },
 	): Promise<Map<string, WorkflowTransferResult>> {
 		const workflows = (
 			await this.workflowRepository.findWithActiveVersionByIds(workflowIds)
@@ -1792,7 +1792,7 @@ export class WorkflowService {
 		user: User,
 		workflows: PublishedWorkflow[],
 		refusals: Map<string, unknown>,
-		publicApi: boolean,
+		publicApi: PublicApiCaller,
 	): Promise<Map<string, WorkflowTransferResult>> {
 		const failures = new Map<string, unknown>();
 		const allowedIds: string[] = [];
@@ -1834,7 +1834,7 @@ export class WorkflowService {
 	private async _unpublishAfterTransfer(
 		user: User,
 		workflow: PublishedWorkflow,
-		publicApi: boolean,
+		publicApi: PublicApiCaller,
 	): Promise<void> {
 		const deactivatedVersionId = workflow.activeVersion.versionId;
 		try {

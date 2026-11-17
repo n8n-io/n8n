@@ -65,6 +65,7 @@ import {
 	PolicyEnforcementService,
 } from '@/policy/policy-enforcement.service';
 import { findPolicyViolations } from '@/policy/policy-violation.error';
+import type { PublicApiCaller } from '@/public-api/public-api-client';
 import { OwnershipService } from '@/services/ownership.service';
 import { ProjectService } from '@/services/project.service.ee';
 import { stripToolSuffix } from '@/utils';
@@ -826,7 +827,7 @@ export class EnterpriseWorkflowService {
 		destinationProjectId: string,
 		shareCredentials: string[] = [],
 		destinationParentFolderId?: string,
-		options: { publicApi?: boolean } = {},
+		options: { publicApi?: PublicApiCaller } = {},
 	): Promise<WorkflowTransferResult | undefined> {
 		// 1. get workflow
 		const workflow = await this.workflowFinderService.findWorkflowForUser(

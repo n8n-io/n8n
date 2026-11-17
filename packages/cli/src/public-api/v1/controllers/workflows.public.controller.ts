@@ -566,7 +566,7 @@ export class WorkflowsPublicController {
 	@ApiResponse(204)
 	@ApiErrorResponse(404)
 	async transferWorkflow(
-		req: AuthenticatedRequest,
+		req: PublicApiRequest,
 		_res: Response,
 		@Param('workflowId', workflowIdParamSchema) workflowId: string,
 		@Body body: TransferWorkflowPublicDto,
@@ -577,7 +577,7 @@ export class WorkflowsPublicController {
 			body.destinationProjectId,
 			[],
 			undefined,
-			{ publicApi: true },
+			{ publicApi: req.publicApiClient },
 		);
 	}
 
