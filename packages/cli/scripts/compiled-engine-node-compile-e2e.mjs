@@ -41,7 +41,7 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 const stub = { requests: [], failWith: 0, unauthorizedOnce: false, tokens: 0 };
 
 function startStub() {
-	const server = createServer((req, res) => {
+	const handler = (req, res) => {
 		const chunks = [];
 		req.on('data', (c) => chunks.push(c));
 		req.on('end', () => {
@@ -71,16 +71,30 @@ function startStub() {
 				return send(401, { error: 'expired' });
 			}
 			if (stub.failWith) return send(stub.failWith, { errors: ['stub failure'] });
+			if (url.pathname.startsWith('/redirect/')) {
+				// To another host name of this stub: `localhost` in place of `127.0.0.1`.
+				const location = `http://localhost:${STUB_PORT}/landed/${url.pathname.slice(10)}`;
+				res.writeHead(302, { location });
+				return res.end();
+			}
 			send(200, { id: url.pathname.split('/').pop(), path: url.pathname, ok: true });
 		});
-	});
-	return new Promise((r) => server.listen(STUB_PORT, '127.0.0.1', () => r(server)));
+	};
+	// `localhost` can be the IPv6 loopback address, so the stub listens on the two addresses.
+	const listen = (host) =>
+		new Promise((resolve) => {
+			const server = createServer(handler);
+			server.once('error', () => resolve(undefined));
+			server.listen(STUB_PORT, host, () => resolve(server));
+		});
+	return Promise.all([listen('127.0.0.1'), listen('::1')]);
 }
 
 /** The parts of the recorded requests that the two engines must agree on. */
 function comparable(requests) {
 	return requests.map((r) => ({
 		method: r.method,
+		host: r.headers.host,
 		path: r.path,
 		query: r.query,
 		body: r.body,
@@ -241,15 +255,19 @@ const keepHash = {
 	},
 };
 
-/** An HTTP Request with a credential that allows no domain: v1 refuses the request. */
-const restrictedRequest = (credential) => ({
+/**
+ * An HTTP Request with a header credential. The node continues on an error, so the response
+ * of the webhook has the message of the error.
+ */
+const headerRequest = (credential, path, typeVersion = 4.2) => ({
 	id: 'q',
 	name: 'HTTP Request',
 	type: 'n8n-nodes-base.httpRequest',
-	typeVersion: 4.2,
+	typeVersion,
 	position: [400, 0],
+	onError: 'continueRegularOutput',
 	parameters: {
-		url: `${STUB}/restricted/resource`,
+		url: `${STUB}/${path}`,
 		authentication: 'genericCredentialType',
 		genericAuthType: 'httpHeaderAuth',
 	},
@@ -397,7 +415,7 @@ async function runCase(spec) {
 			([node, tier]) => compiled.tiers?.[node] === tier,
 		),
 		ranCompiled: (spec.compiledNodes ?? []).every((node) => compiled.compiledNodes?.includes(node)),
-		sameResponse: same((c) => [c.status, c.response]),
+		sameResponse: same(spec.response ?? ((c) => [c.status, c.response])),
 		sameRequests: same((c) => c.requests),
 		sameExecutions: JSON.stringify(compiled.executions) === JSON.stringify(v1.executions),
 		...(spec.check ? { expected: spec.check(compiled) } : {}),
@@ -419,7 +437,7 @@ async function runCase(spec) {
 // ---------------------------------------------------------------- main
 
 async function main() {
-	const server = await startStub();
+	const servers = await startStub();
 	await login();
 	const discourseCredential = await createCredential('Discourse', 'discourseApi', {
 		url: STUB,
@@ -434,11 +452,14 @@ async function main() {
 		scope: '',
 		authentication: 'body',
 	});
-	const restrictedCredential = await createCredential('Header', 'httpHeaderAuth', {
-		name: 'X-Stub-Key',
-		value: 'stub-header-value',
-		allowedHttpRequestDomains: 'none',
-	});
+	const headerCredentials = [];
+	/** A header credential; the data is made when the cases run. */
+	const header = (limit, name = 'X-Stub-Key') => {
+		const reference = {};
+		headerCredentials.push({ reference, data: { name, value: 'stub-header-value', ...limit } });
+		return reference;
+	};
+	const domains = (allowedDomains) => ({ allowedHttpRequestDomains: 'domains', allowedDomains });
 	const only = process.env.ONLY?.split(',');
 	const cases = [
 		{
@@ -516,12 +537,51 @@ async function main() {
 		{
 			key: 'h',
 			title: 'HTTP Request, credential that allows no domain',
-			nodes: [restrictedRequest(restrictedCredential)],
+			nodes: [headerRequest(header({ allowedHttpRequestDomains: 'none' }), 'limited/none')],
 			calls: [{ body: {} }],
 			check: (run) => run.calls[0]?.requests.length === 0,
-			open: 'the compiled HTTP Request does not read the allowed domains of the credential',
+		},
+		{
+			key: 'k',
+			title: 'HTTP Request, allowed domains with the host of the request',
+			nodes: [headerRequest(header(domains('example.com, 127.0.0.1')), 'limited/listed')],
+			calls: [{ body: {} }],
+			check: (run) => run.calls[0]?.requests.length === 1,
+		},
+		{
+			key: 'l',
+			title: 'HTTP Request, allowed domains without the host of the request',
+			nodes: [headerRequest(header(domains('*.example.com, api.example.org')), 'limited/other')],
+			calls: [{ body: {} }],
+			check: (run) => run.calls[0]?.requests.length === 0,
+		},
+		{
+			key: 'm',
+			title: 'HTTP Request, redirect to a host that the allowed domains do not have',
+			nodes: [headerRequest(header(domains('127.0.0.1')), 'redirect/limited')],
+			calls: [{ body: {} }],
+			// The error of v1 has a stack with file paths: the name and the message are compared.
+			response: (c) => [c.status, c.response?.[0]?.error?.name, c.response?.[0]?.error?.message],
+			check: (run) => run.calls[0]?.requests.length === 1,
+		},
+		{
+			key: 'n',
+			title: 'HTTP Request 4.4, redirect to another host, Authorization header',
+			nodes: [headerRequest(header({}, 'Authorization'), 'redirect/open', 4.4)],
+			calls: [{ body: {} }],
+			check: (run) => run.calls[0]?.requests.at(-1)?.authorization === undefined,
+		},
+		{
+			key: 'o',
+			title: 'HTTP Request 4.2, redirect to another host, Authorization header',
+			nodes: [headerRequest(header({}, 'Authorization'), 'redirect/open')],
+			calls: [{ body: {} }],
+			open: 'before node version 4.4, v1 sends the Authorization header to the other host',
 		},
 	];
+	for (const [index, { reference, data }] of headerCredentials.entries()) {
+		Object.assign(reference, await createCredential(`Header ${index}`, 'httpHeaderAuth', data));
+	}
 	for (const spec of cases) {
 		if (only && !only.includes(spec.key)) continue;
 		await runCase(spec);
@@ -529,7 +589,7 @@ async function main() {
 	if (process.env.RESULTS_FILE) {
 		writeFileSync(process.env.RESULTS_FILE, JSON.stringify(results, null, 2));
 	}
-	server.close();
+	for (const server of servers) server?.close();
 	const failures = results.filter((r) => !r.pass && !r.open).length;
 	const open = results.filter((r) => !r.pass && r.open).length;
 	console.log(

@@ -572,6 +572,7 @@ fn runCorpus(gpa: std.mem.Allocator, io: std.Io, out: *std.Io.Writer, dir_path: 
 test {
     _ = @import("shell/http.zig");
     _ = @import("shell/creds.zig");
+    _ = @import("shell/domains.zig");
     _ = @import("shell/renew.zig");
     _ = @import("shell/request.zig");
     _ = @import("shell/egress.zig");

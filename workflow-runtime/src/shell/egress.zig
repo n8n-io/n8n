@@ -1060,6 +1060,7 @@ pub const Client = struct {
 
     fn isRedirect(r: *const Req, h: http.Head) bool {
         return (h.status == 301 or h.status == 302 or h.status == 303 or h.status == 307 or h.status == 308) and h.location != null and
+            !r.built.no_redirect and
             (std.mem.eql(u8, r.built.method(), "GET") or std.mem.eql(u8, r.built.method(), "HEAD"));
     }
 
@@ -3282,6 +3283,7 @@ pub const Client = struct {
         const r = &c.reqs[ri];
         const method = r.built.method();
         const is_redirect = (r.status == 301 or r.status == 302 or r.status == 303 or r.status == 307 or r.status == 308) and
+            !r.built.no_redirect and
             (std.mem.eql(u8, method, "GET") or std.mem.eql(u8, method, "HEAD"));
         if (!is_redirect) return null;
         return headerValue(c.respArea(ri)[0..r.hdr_len], "location");

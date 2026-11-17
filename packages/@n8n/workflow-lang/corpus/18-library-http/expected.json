@@ -16,7 +16,8 @@
 				"qs": {
 					"state": "open"
 				},
-				"credential": "github"
+				"credential": "github",
+				"allowedDomains": true
 			}
 		},
 		{
@@ -32,7 +33,8 @@
 				"body": {
 					"body": "Seen 2 issues"
 				},
-				"credential": "github"
+				"credential": "github",
+				"allowedDomains": true
 			}
 		},
 		{
@@ -48,7 +50,8 @@
 				"body": {
 					"body": "Seen 2 issues"
 				},
-				"credential": "github"
+				"credential": "github",
+				"allowedDomains": true
 			}
 		},
 		{
@@ -58,7 +61,8 @@
 				"method": "GET",
 				"url": "https://status.example.com",
 				"headers": {},
-				"qs": {}
+				"qs": {},
+				"allowedDomains": true
 			}
 		}
 	]

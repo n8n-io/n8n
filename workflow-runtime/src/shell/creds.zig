@@ -4,6 +4,7 @@
 const std = @import("std");
 const http = @import("http.zig");
 const renew = @import("renew.zig");
+const domains = @import("domains.zig");
 const cred_flags = @import("core").cred_flags;
 
 /// A value is renewed this long before it expires, so that it outlives
@@ -131,6 +132,10 @@ pub const Store = struct {
                 out.basic_password = str(b.object.get("password"));
                 out.basic = true;
             };
+        };
+        if (v.object.get("allowedDomains")) |limit| if (limit == .object) {
+            out.domains_mode = domains.modeOf(str(limit.object.get("mode")));
+            out.domains = str(limit.object.get("domains"));
         };
         return out;
     }
@@ -326,6 +331,11 @@ pub const Slot = struct {
     basic: bool = false,
     basic_user: []const u8 = "",
     basic_password: []const u8 = "",
+    /// `allowedDomains.mode` of the entry: the hosts that a request may go to
+    /// when its node reads the limit of the credential (`domains.zig`).
+    domains_mode: domains.Mode = .all,
+    /// `allowedDomains.domains`: the list of the mode `domains`.
+    domains: []const u8 = "",
 };
 
 /// A bounded output buffer. With `buf` empty it only counts, which gives

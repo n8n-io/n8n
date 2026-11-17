@@ -428,6 +428,11 @@ export interface HttpRequest {
 	 * default is 401.
 	 */
 	tokenExpiredStatusCode?: number | number[];
+	/**
+	 * `true`: the runtime applies the allowed domains of the credential to this request, as
+	 * the HTTP Request node of n8n does. A request to another host fails, and nothing is sent.
+	 */
+	allowedDomains?: boolean;
 }
 
 /** A part of a multipart body: a text field, or a file (`binary`, n8n's binary form). */

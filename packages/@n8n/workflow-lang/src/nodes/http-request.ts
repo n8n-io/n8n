@@ -315,6 +315,43 @@ function resolveUrl(base: string, location: string): string {
 	return parts.join('/');
 }
 
+/** The scheme, the host and the port of a URL, in lower case. */
+function originOf(url: string): string {
+	const scheme = url.indexOf('://');
+	if (scheme < 0) return '';
+	const rest = url.slice(scheme + 3);
+	let end = rest.length;
+	for (const mark of ['/', '?', '#']) {
+		const at = rest.indexOf(mark);
+		if (at >= 0 && at < end) end = at;
+	}
+	return url.slice(0, scheme + 3 + end).toLowerCase();
+}
+
+/**
+ * As n8n-core for a redirect: the same origin, or the same host that goes from http to
+ * https with no port in the two URLs.
+ */
+function sameOrigin(first: string, next: string): boolean {
+	const from = originOf(first);
+	const to = originOf(next);
+	if (from === to) return true;
+	const host = from.slice('http://'.length);
+	return from.startsWith('http://') && !host.includes(':') && to === `https://${host}`;
+}
+
+/** The headers without those that authenticate a request, as n8n-core drops them. */
+function withoutAuthentication(headers: Record<string, string>): Record<string, string> {
+	const kept: Record<string, string> = {};
+	for (const name of Object.keys(headers)) {
+		const lower = name.toLowerCase();
+		if (lower === 'authorization' || lower === 'proxy-authorization' || lower === 'cookie')
+			continue;
+		kept[name] = headers[name];
+	}
+	return kept;
+}
+
 /** The body as the text that the server sent. */
 function bodyText(body: unknown): string {
 	if (body === undefined || body === null) return '';
@@ -503,6 +540,7 @@ export default defineNode<HttpRequestParameters>({
 				body,
 				credential,
 				tokenExpiredStatusCode,
+				allowedDomains: true,
 			});
 			const items = responseItems(
 				pageResponse.body,
@@ -542,6 +580,7 @@ export default defineNode<HttpRequestParameters>({
 				multipart: sent.multipart,
 				credential,
 				tokenExpiredStatusCode,
+				allowedDomains: true,
 			});
 		} catch (error) {
 			if (!continues) throw error;
@@ -558,20 +597,25 @@ export default defineNode<HttpRequestParameters>({
 			url = resolveUrl(url, location);
 			const keep = status === 307 || status === 308;
 			current = keep ? current : status === 303 || current !== 'HEAD' ? 'GET' : current;
+			// From version 4.4, the v1 node sends what authenticates the request only to the
+			// origin of the first URL. The credential stays in the request for its allowed domains.
+			const authenticates = version < 4.4 || sameOrigin(parameters.url, url);
 			try {
 				response = await ctx.http<unknown>({
 					method: current,
 					url,
-					headers: sent.headers,
+					headers: authenticates ? sent.headers : withoutAuthentication(sent.headers),
 					qs: {},
 					body: keep ? sent.body : undefined,
 					multipart: keep ? sent.multipart : undefined,
 					credential,
+					...(authenticates ? {} : { inject: false }),
 					tokenExpiredStatusCode,
+					allowedDomains: true,
 				});
 			} catch (error) {
 				if (!continues) throw error;
-				return [failedRequestItem(error, version)];
+				return [failedRequestItem(error, version, true)];
 			}
 		}
 		const status = response.status;
@@ -599,12 +643,47 @@ export default defineNode<HttpRequestParameters>({
 	},
 });
 
+/** The errors of n8n for a credential whose allowed domains refuse each request of the node. */
+const DOMAIN_SETTING_ERRORS = [
+	'This credential is configured to prevent use within an HTTP Request or GraphQL node',
+	'No allowed domains specified. Configure allowed domains or change restriction setting.',
+];
+
+/**
+ * The item of the v1 node for a request that the allowed domains of the credential refuse.
+ * The v1 node gives the message for an error of the setting, the fields of the error that
+ * its request helper throws for the first URL, and the error of the redirect for a later URL
+ * (its stack is not given).
+ */
+function refusedDomainItem(message: string, redirected: boolean): Item | undefined {
+	if (DOMAIN_SETTING_ERRORS.includes(message)) return { error: message };
+	if (!message.startsWith('Domain not allowed: ')) return undefined;
+	if (redirected) {
+		return {
+			error: {
+				message: `Redirected request failed: ${message}`,
+				name: 'Error [ERR_FR_REDIRECTION_FAILURE]',
+			},
+		};
+	}
+	return {
+		error: {
+			name: 'UserError',
+			level: 'info',
+			shouldReport: false,
+			tags: { packageName: 'workflow' },
+		},
+	};
+}
+
 /** The item of a request that the runtime reports as a failure (`ctx.http` throws). */
-function failedRequestItem(error: unknown, version: number): Item {
+function failedRequestItem(error: unknown, version: number, redirected = false): Item {
 	const message =
 		typeof error === 'object' && error !== null && 'message' in error
 			? String(error.message)
 			: String(error);
+	const refused = refusedDomainItem(message, redirected);
+	if (refused !== undefined) return refused;
 	const status = failureStatus(message);
 	return requestFailureItem(requestReason(status, message), status, undefined, version);
 }

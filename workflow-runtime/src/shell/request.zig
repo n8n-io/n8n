@@ -5,10 +5,15 @@
 const std = @import("std");
 const http = @import("http.zig");
 const creds = @import("creds.zig");
+const domains = @import("domains.zig");
 const binary_store = @import("binary_store.zig");
 const Out = creds.Out;
 
 pub const max_url = 8 << 10;
+
+/// The most bytes of a host and of a list of allowed domains in a message.
+const max_shown_host = 96;
+const max_shown_list = 280;
 
 /// Layout of a built request in its buffer: the URL, then the header
 /// lines (ending with the blank line), then the body. The request line
@@ -26,6 +31,9 @@ pub const Built = struct {
     /// The args have `responseBinary`: the body of a 2xx response goes to
     /// the binary data store (`blob_store.zig`).
     stores: bool = false,
+    /// The credential limits the hosts of this request: a redirect goes back
+    /// to the node, which sends the next request, so each URL is checked.
+    no_redirect: bool = false,
     /// Not 0: the body has stored files (`Files`), so its length is not
     /// known yet. The content-length line goes here (`finishLength`), and
     /// `hdr_end` is the start of the body bytes in memory.
@@ -39,7 +47,7 @@ pub const Built = struct {
 /// The reason for `error.Invalid`, for the effect error message. It never
 /// holds a credential value.
 pub const Diag = struct {
-    buf: [256]u8 = undefined,
+    buf: [512]u8 = undefined,
     len: usize = 0,
 
     pub fn set(d: *Diag, comptime fmt: []const u8, args: anytype) void {
@@ -198,7 +206,10 @@ fn buildWith(args: []const u8, store: ?*const creds.Store, idem_key: ?[]const u8
         error.Userinfo => invalid(diag, "http: a user name or password in the url is not supported; use a credential", .{}),
         error.BadUrl => invalid(diag, "http: the url is not valid", .{}),
     };
-    _ = url;
+    if (fa.allowed_domains) |raw| if (eq(raw, "true")) if (slot) |s| {
+        try checkDomains(s, out.written(), url, diag);
+        b.no_redirect = s.domains_mode == .domains;
+    };
 
     // A multipart body sets its own content type (with the boundary).
     const multipart: ?[]const u8 = if (fa.multipart) |r| (if (std.mem.eql(u8, r, "null")) null else r) else null;
@@ -677,6 +688,7 @@ const Args = struct {
     basic_auth: ?[]const u8 = null,
     inject: ?[]const u8 = null,
     response_binary: ?[]const u8 = null,
+    allowed_domains: ?[]const u8 = null,
 };
 
 fn readArgs(args: []const u8) Args {
@@ -686,7 +698,7 @@ fn readArgs(args: []const u8) Args {
     while (it.next()) |mem| : (guard += 1) {
         if (guard > args.len) break;
         const k = mem.key;
-        const slot: *?[]const u8 = if (eq(k, "\"method\"")) &a.method else if (eq(k, "\"credential\"")) &a.credential else if (eq(k, "\"timeoutMs\"")) &a.timeout_ms else if (eq(k, "\"url\"")) &a.url else if (eq(k, "\"qs\"")) &a.qs else if (eq(k, "\"headers\"")) &a.headers else if (eq(k, "\"body\"")) &a.body else if (eq(k, "\"multipart\"")) &a.multipart else if (eq(k, "\"qsFormat\"")) &a.qs_format else if (eq(k, "\"basicAuth\"")) &a.basic_auth else if (eq(k, "\"inject\"")) &a.inject else if (eq(k, "\"responseBinary\"")) &a.response_binary else continue;
+        const slot: *?[]const u8 = if (eq(k, "\"method\"")) &a.method else if (eq(k, "\"credential\"")) &a.credential else if (eq(k, "\"timeoutMs\"")) &a.timeout_ms else if (eq(k, "\"url\"")) &a.url else if (eq(k, "\"qs\"")) &a.qs else if (eq(k, "\"headers\"")) &a.headers else if (eq(k, "\"body\"")) &a.body else if (eq(k, "\"multipart\"")) &a.multipart else if (eq(k, "\"qsFormat\"")) &a.qs_format else if (eq(k, "\"basicAuth\"")) &a.basic_auth else if (eq(k, "\"inject\"")) &a.inject else if (eq(k, "\"responseBinary\"")) &a.response_binary else if (eq(k, "\"allowedDomains\"")) &a.allowed_domains else continue;
         if (slot.* == null) slot.* = mem.value;
     }
     return a;
@@ -699,6 +711,34 @@ fn eq(a: []const u8, b: []const u8) bool {
 fn invalid(diag: *Diag, comptime fmt: []const u8, args: anytype) Error {
     diag.set(fmt, args);
     return error.Invalid;
+}
+
+/// The texts of n8n for a request that the allowed domains of its credential
+/// refuse. The host and the list are settings, not secrets.
+fn checkDomains(s: creds.Slot, url_text: []const u8, url: http.Url, diag: *Diag) Error!void {
+    std.debug.assert(url.host.len > 0);
+    switch (s.domains_mode) {
+        .all => {},
+        .none => return invalid(diag, "This credential is configured to prevent use within an HTTP Request or GraphQL node", .{}),
+        .domains => {
+            if (domains.isEmpty(s.domains)) {
+                return invalid(diag, "No allowed domains specified. Configure allowed domains or change restriction setting.", .{});
+            }
+            if (domains.allowed(url.host, s.domains)) return;
+            // The host as n8n shows it: with the port when it is not the default one.
+            const start = (std.mem.indexOf(u8, url_text, "://") orelse 0) + 3;
+            const end = std.mem.indexOfAnyPos(u8, url_text, start, "/?#") orelse url_text.len;
+            var shown = url_text[@min(start, end)..end];
+            const default = if (url.https) ":443" else ":80";
+            if (std.mem.endsWith(u8, shown, default)) shown = shown[0 .. shown.len - default.len];
+            const list = std.mem.trim(u8, s.domains, " \t\r\n");
+            var lower: [max_shown_host]u8 = @splat(0);
+            const host = std.ascii.lowerString(&lower, shown[0..@min(shown.len, max_shown_host)]);
+            return invalid(diag, "Domain not allowed: This credential is restricted from accessing {s}. Only the following domains are allowed: {s}", .{
+                host, list[0..@min(list.len, max_shown_list)],
+            });
+        },
+    }
 }
 
 /// Headers the client writes itself; values from args are dropped.
@@ -1416,4 +1456,44 @@ test "inject false: the credential fills templates and adds nothing" {
     try std.testing.expect(std.mem.indexOf(u8, headers, "authorization") == null);
     const b = try build("{\"url\":\"http://h/\",\"credential\":\"api\"}", &store, null, &buf, &diag);
     try std.testing.expectEqualStrings("http://h/?key=T", buf[0..b.url_len]);
+}
+
+test "allowed domains: a request with the member is checked against the list of the credential" {
+    const gpa = std.testing.allocator;
+    var arena = std.heap.ArenaAllocator.init(gpa);
+    defer arena.deinit();
+    const doc =
+        \\{"open":{"data":{"k":"v"},"inject":{"headers":{"X-Key":"{{$credentials.k}}"}}},
+        \\ "listed":{"data":{"k":"v"},"inject":{"headers":{"X-Key":"{{$credentials.k}}"}},
+        \\  "allowedDomains":{"mode":"domains","domains":"api.example.com, *.example.org"}},
+        \\ "blank":{"data":{"k":"v"},"allowedDomains":{"mode":"domains","domains":"  "}},
+        \\ "closed":{"data":{"k":"v"},"allowedDomains":{"mode":"none"}}}
+    ;
+    var store = try creds.Store.parse(arena.allocator(), doc);
+    var buf: [1024]u8 = undefined;
+    var diag: Diag = .{};
+
+    // A listed host and a host below a wildcard go out, and a redirect goes back to the node.
+    const a = try build("{\"url\":\"https://API.example.com/x\",\"credential\":\"listed\",\"allowedDomains\":true}", &store, null, &buf, &diag);
+    try std.testing.expect(a.no_redirect);
+    const w = try build("{\"url\":\"https://a.example.org/x\",\"credential\":\"listed\",\"allowedDomains\":true}", &store, null, &buf, &diag);
+    try std.testing.expect(w.no_redirect);
+
+    // Another host is refused with the text of n8n, and nothing is built.
+    try std.testing.expectError(error.Invalid, build("{\"url\":\"http://Other.test:8080/x?a=1\",\"credential\":\"listed\",\"allowedDomains\":true}", &store, null, &buf, &diag));
+    try std.testing.expectEqualStrings("Domain not allowed: This credential is restricted from accessing other.test:8080. Only the following domains are allowed: api.example.com, *.example.org", diag.text());
+    try std.testing.expectError(error.Invalid, build("{\"url\":\"https://example.org:443/\",\"credential\":\"listed\",\"allowedDomains\":true}", &store, null, &buf, &diag));
+    try std.testing.expectEqualStrings("Domain not allowed: This credential is restricted from accessing example.org. Only the following domains are allowed: api.example.com, *.example.org", diag.text());
+
+    // An empty list and the mode `none` refuse each host.
+    try std.testing.expectError(error.Invalid, build("{\"url\":\"https://api.example.com/\",\"credential\":\"blank\",\"allowedDomains\":true}", &store, null, &buf, &diag));
+    try std.testing.expectEqualStrings("No allowed domains specified. Configure allowed domains or change restriction setting.", diag.text());
+    try std.testing.expectError(error.Invalid, build("{\"url\":\"https://api.example.com/\",\"credential\":\"closed\",\"allowedDomains\":true}", &store, null, &buf, &diag));
+    try std.testing.expectEqualStrings("This credential is configured to prevent use within an HTTP Request or GraphQL node", diag.text());
+
+    // A credential without a limit, and a request of a node that does not read the limit.
+    const o = try build("{\"url\":\"https://other.test/\",\"credential\":\"open\",\"allowedDomains\":true}", &store, null, &buf, &diag);
+    try std.testing.expect(!o.no_redirect);
+    const n = try build("{\"url\":\"https://other.test/\",\"credential\":\"closed\"}", &store, null, &buf, &diag);
+    try std.testing.expect(!n.no_redirect);
 }

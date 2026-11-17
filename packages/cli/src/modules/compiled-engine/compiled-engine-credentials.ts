@@ -41,6 +41,8 @@ export interface MintedToken {
 const MINTED_KEY = 'n8nMinted';
 /** The member of a slot that tells `wfrt` how the slot is renewed. */
 const RENEWAL_KEY = 'renewal';
+/** The member of a slot that tells `wfrt` the allowed domains of the credential. */
+const ALLOWED_DOMAINS_KEY = 'allowedDomains';
 /** `wfrt` reads at most this many status codes for a slot (`renew.zig`). */
 const MAX_RENEWAL_STATUSES = 8;
 
@@ -100,6 +102,21 @@ function needsFirstToken(data: IDataObject): boolean {
 	if (data.grantType !== 'clientCredentials') return false;
 	const token = isRecord(data.oauthTokenData) ? data.oauthTokenData.access_token : undefined;
 	return typeof token !== 'string' || token === '';
+}
+
+/** The allowed domains of a credential, as `wfrt` reads them for a request of the HTTP Request node. */
+export interface SlotAllowedDomains {
+	mode: 'domains' | 'none';
+	/** The list of the mode `domains`, as the user wrote it. */
+	domains?: string;
+}
+
+/** The allowed domains of a credential, or `undefined` when it allows all domains. */
+function allowedDomainsOf(data: IDataObject): SlotAllowedDomains | undefined {
+	if (data.allowedHttpRequestDomains === 'none') return { mode: 'none' };
+	if (data.allowedHttpRequestDomains !== 'domains') return undefined;
+	const domains = typeof data.allowedDomains === 'string' ? data.allowedDomains.trim() : '';
+	return { mode: 'domains', domains };
 }
 
 /** The name of a flag under `data.n8nDerived`. Only a boolean has such a name. */
@@ -258,6 +275,10 @@ export class CompiledEngineCredentials {
 				}
 				if (kind !== undefined && typeof entry === 'object' && entry !== null) {
 					Reflect.set(entry, RENEWAL_KEY, this.slotRenewal(kind, { ...data }, entryData));
+				}
+				const allowedDomains = allowedDomainsOf(data);
+				if (allowedDomains !== undefined && typeof entry === 'object' && entry !== null) {
+					Reflect.set(entry, ALLOWED_DOMAINS_KEY, allowedDomains);
 				}
 				Object.assign(document, file);
 			} catch (error) {
