@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { useCredentialDescriptionsExperiment } from '@/experiments/credentialDescriptions/useCredentialDescriptionsExperiment';
-import { computed, ref } from 'vue';
+import { computed, ref, useTemplateRef } from 'vue';
 import dateformat from 'dateformat';
 import { MODAL_CONFIRM } from '@/app/constants';
 import { PROJECT_MOVE_RESOURCE_MODAL } from '@/features/collaboration/projects/projects.constants';
@@ -21,6 +21,9 @@ import type { CredentialsResource } from '@/Interface';
 import { usePrivateCredentials } from '@/features/resolvers/composables/usePrivateCredentials';
 import PrivateCredentialIcon from '@/features/resolvers/components/PrivateCredentialIcon.vue';
 import { useCredentialOAuth } from '../composables/useCredentialOAuth';
+import { useCredentialTypeUsability } from '../composables/useCredentialTypeUsability';
+import { RestrictedNodePopover } from '@n8n/frontend-module-type-availability-policies';
+import type { ProjectType } from '@n8n/rest-api-client';
 
 import {
 	N8nActionToggle,
@@ -49,10 +52,12 @@ const props = withDefaults(
 		data: CredentialsResource;
 		readOnly?: boolean;
 		needsSetup?: boolean;
+		restrictionProjectType?: ProjectType;
 	}>(),
 	{
 		readOnly: false,
 		needsSetup: false,
+		restrictionProjectType: undefined,
 	},
 );
 
@@ -66,11 +71,22 @@ const { isEnabled: isPrivateCredentialsEnabled } = usePrivateCredentials();
 const { hasDependencies } = useDependencies();
 const { authorize, isOAuthCredentialType } = useCredentialOAuth();
 
+const { describeCredentialTypeUsability } = useCredentialTypeUsability();
+
 const isConnecting = ref(false);
+const restrictedBadgeRef = useTemplateRef<HTMLElement>('restrictedBadgeRef');
 
 const resourceTypeLabel = computed(() => locale.baseText('generic.credential').toLowerCase());
 const credentialType = computed(() =>
 	credentialsStore.getCredentialTypeByName(props.data.type ?? ''),
+);
+const restriction = computed(() =>
+	props.data.restriction
+		? describeCredentialTypeUsability(
+				props.data.restriction,
+				credentialType.value?.displayName ?? props.data.type,
+			)
+		: null,
 );
 const credentialPermissions = computed(() => getResourcePermissions(props.data.scopes).credential);
 
@@ -233,22 +249,54 @@ function moveResource() {
 </script>
 
 <template>
-	<N8nCard :class="$style.cardLink" @click.stop="onClick">
+	<N8nCard
+		:class="[$style.cardLink, { [$style.blocked]: restriction?.blocked }]"
+		@click.stop="onClick"
+	>
 		<template #prepend>
-			<CredentialIcon :credential-type-name="credentialType?.name ?? ''" />
+			<CredentialIcon :class="$style.dimmable" :credential-type-name="credentialType?.name ?? ''" />
 		</template>
 		<template #header>
 			<N8nText tag="h2" bold :class="$style.cardHeading">
-				{{ data.name }}
+				<span :class="$style.dimmable">{{ data.name }}</span>
 				<N8nBadge v-if="readOnly" class="ml-3xs" variant="outline">
 					{{ locale.baseText('credentials.item.readonly') }}
 				</N8nBadge>
 				<N8nBadge v-if="needsSetup" class="ml-3xs" variant="warning">
 					{{ locale.baseText('credentials.item.needsSetup') }}
 				</N8nBadge>
+				<!-- The card stays clickable, so a press on the badge must not open it. -->
+				<span
+					v-if="restriction"
+					ref="restrictedBadgeRef"
+					:class="['ml-3xs', $style.restrictedBadge]"
+					data-test-id="credential-card-restricted"
+					@click.stop
+				>
+					<N8nBadge>
+						<RestrictedNodePopover
+							:kind="restriction.kind"
+							side="right"
+							marker-size="xsmall"
+							:node-type-name="credentialType?.displayName ?? data.type"
+							:restriction="restriction.restriction"
+							:scope-label="restriction.popoverScopeLabel"
+							:description="restriction.description"
+							:project-type="restrictionProjectType"
+							:anchor="restrictedBadgeRef"
+						/>
+						{{ locale.baseText('credentials.item.restricted') }}
+					</N8nBadge>
+				</span>
 			</N8nText>
 		</template>
-		<div :class="[$style.cardDescription, { [$style.hasDescription]: data.description }]">
+		<div
+			:class="[
+				$style.cardDescription,
+				$style.dimmable,
+				{ [$style.hasDescription]: data.description },
+			]"
+		>
 			<N8nText color="text-light" size="small">
 				<span v-if="credentialType">{{ credentialType.displayName }} | </span>
 				<span v-show="data"
@@ -344,6 +392,21 @@ function moveResource() {
 	align-items: center;
 	font-size: var(--font-size--sm);
 	padding: var(--spacing--sm) 0 0;
+}
+
+.restrictedBadge {
+	display: inline-flex;
+
+	// The lock is the badge's leading icon. Its own padding already spaces it from the label.
+	:global(.n8n-badge) {
+		--n8n-badge--gap: 0;
+		--n8n-badge--padding-inline-start: var(--spacing--4xs);
+	}
+}
+
+// Workflows cannot use a credential of a blocked type. The card still opens, like a restricted node.
+.blocked .dimmable {
+	opacity: 0.5;
 }
 
 .cardDescription {

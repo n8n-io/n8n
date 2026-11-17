@@ -26,35 +26,79 @@ import { useTypeAvailabilityPoliciesStore } from '../type-availability-policies.
 /** The verdict that restricts a node type: from the node kind, or the credential kind for a credential-only node. */
 export type TypeRestriction = NodeTypeAvailability | CredentialTypeAvailability;
 
-function nodeRestriction(nodeType: string): NodeTypeAvailability | null {
-	const availability = useTypeAvailabilityPoliciesStore().getNodeTypeAvailability(nodeType);
-	return availability && !availability.available ? availability : null;
+/** Answers which node and credential types a policy restricts, in one project. */
+export type TypeRestrictionLookup = {
+	credentialTypeRestriction: (credentialType: string) => CredentialTypeAvailability | null;
+	nodeTypeRestriction: (nodeType: string) => TypeRestriction | null;
+};
+
+const unavailable = <T extends { available: boolean }>(availability: T | undefined): T | null =>
+	availability && !availability.available ? availability : null;
+
+function restrictionLookup(
+	nodeTypeAvailability: (name: string) => NodeTypeAvailability | undefined,
+	credentialTypeAvailability: (name: string) => CredentialTypeAvailability | undefined,
+): TypeRestrictionLookup {
+	const credentialTypeRestriction = (credentialType: string) =>
+		unavailable(credentialTypeAvailability(credentialType));
+
+	/**
+	 * A credential-only node (`n8n-creds-base.<type>`) is HTTP Request with one credential type
+	 * attached, so it is restricted when either is: the node kind decides for HTTP Request, the
+	 * credential kind for the type it wraps. HTTP Request is read first because it is the wider
+	 * reason and already covers every credential-only node. This mirrors the backend, where the
+	 * node check judges the stored `httpRequest` node and the credential check judges its type.
+	 */
+	function nodeTypeRestriction(nodeType: string): TypeRestriction | null {
+		if (isCredentialOnlyNodeType(nodeType)) {
+			return (
+				unavailable(nodeTypeAvailability(HTTP_REQUEST_NODE_TYPE)) ??
+				credentialTypeRestriction(getCredentialOnlyNodeCredentialType(nodeType))
+			);
+		}
+
+		return unavailable(nodeTypeAvailability(nodeType));
+	}
+
+	return { credentialTypeRestriction, nodeTypeRestriction };
+}
+
+export function getCurrentProjectRestrictionLookup(): TypeRestrictionLookup {
+	const store = useTypeAvailabilityPoliciesStore();
+	return restrictionLookup(
+		(name) => store.getNodeTypeAvailability(name),
+		(name) => store.getCredentialTypeAvailability(name),
+	);
+}
+
+export function getProjectRestrictionLookup(projectId: string): TypeRestrictionLookup | null {
+	const store = useTypeAvailabilityPoliciesStore();
+	if (!store.hasProjectVerdicts(projectId)) return null;
+
+	return restrictionLookup(
+		(name) => store.getNodeTypeAvailabilityIn(projectId, name),
+		(name) => store.getCredentialTypeAvailabilityIn(projectId, name),
+	);
+}
+
+export function onlyInstanceWideRestrictions(lookup: TypeRestrictionLookup): TypeRestrictionLookup {
+	const instanceWide = <T extends TypeRestriction>(restriction: T | null): T | null =>
+		restriction?.scope === 'instance' && !restriction.optInAvailable ? restriction : null;
+
+	return {
+		credentialTypeRestriction: (name) => instanceWide(lookup.credentialTypeRestriction(name)),
+		nodeTypeRestriction: (name) => instanceWide(lookup.nodeTypeRestriction(name)),
+	};
 }
 
 export function getCredentialTypeRestriction(
 	credentialType: string,
 ): CredentialTypeAvailability | null {
-	const availability =
-		useTypeAvailabilityPoliciesStore().getCredentialTypeAvailability(credentialType);
-	return availability && !availability.available ? availability : null;
+	return getCurrentProjectRestrictionLookup().credentialTypeRestriction(credentialType);
 }
 
-/**
- * A credential-only node (`n8n-creds-base.<type>`) is HTTP Request with one credential type
- * attached, so it is restricted when either is: the node kind decides for HTTP Request, the
- * credential kind for the type it wraps. HTTP Request is read first because it is the wider
- * reason and already covers every credential-only node. This mirrors the backend, where the
- * node check judges the stored `httpRequest` node and the credential check judges its type.
- */
 export function getNodeTypeRestriction(nodeType: string): TypeRestriction | null {
-	if (isCredentialOnlyNodeType(nodeType)) {
-		return (
-			nodeRestriction(HTTP_REQUEST_NODE_TYPE) ??
-			getCredentialTypeRestriction(getCredentialOnlyNodeCredentialType(nodeType))
-		);
-	}
-
-	return nodeRestriction(nodeType);
+	return getCurrentProjectRestrictionLookup().nodeTypeRestriction(nodeType);
 }
 
 /** The policy kind behind a node type's verdict, matching the order in `getNodeTypeRestriction`. */

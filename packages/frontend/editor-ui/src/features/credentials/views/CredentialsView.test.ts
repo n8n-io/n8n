@@ -563,4 +563,167 @@ describe('CredentialsView', () => {
 			expect(credentialsStore.fetchAllCredentials).not.toHaveBeenCalled();
 		});
 	});
+
+	describe('restricted credentials', () => {
+		const credential = (
+			id: string,
+			type: string,
+			homeProjectId = 'team-1',
+		): ICredentialsResponse => ({
+			id,
+			name: `${type} credential`,
+			type,
+			createdAt: '2021-05-05T00:00:00Z',
+			updatedAt: '2021-05-05T00:00:00Z',
+			scopes: ['credential:update'],
+			isManaged: false,
+			homeProject: {
+				id: homeProjectId,
+				name: homeProjectId,
+				icon: null,
+				type: ProjectTypes.Team,
+				createdAt: '',
+				updatedAt: '',
+			},
+		});
+
+		const setup = ({
+			current = {},
+			byProject,
+			enabled = true,
+		}: {
+			current?: Record<string, 'instance' | 'project'>;
+			byProject?: Record<string, Record<string, 'instance' | 'project'>>;
+			enabled?: boolean;
+		}) => {
+			const policies = mockedStore(useTypeAvailabilityPoliciesStore);
+			policies.isEnabled = enabled;
+			policies.getNodeTypeAvailability.mockImplementation((name) => ({ name, available: true }));
+			policies.getCredentialTypeAvailability.mockImplementation((name) =>
+				current[name]
+					? { name, available: false, scope: current[name] }
+					: { name, available: true },
+			);
+			policies.hasProjectVerdicts.mockImplementation((id) => Boolean(byProject?.[id]));
+			policies.getNodeTypeAvailabilityIn.mockImplementation((_id, name) => ({
+				name,
+				available: true,
+			}));
+			policies.getCredentialTypeAvailabilityIn.mockImplementation((id, name) => {
+				const scope = byProject?.[id]?.[name];
+				return scope ? { name, available: false, scope } : { name, available: true };
+			});
+			return policies;
+		};
+
+		it('marks a credential whose type a policy blocks', async () => {
+			await router.push('/team-1/credentials');
+			setup({ current: { slackApi: 'project' } });
+			mockedStore(useCredentialsStore).allCredentials = [
+				credential('1', 'slackApi'),
+				credential('2', 'gmailOAuth2'),
+			];
+
+			const { getAllByTestId } = renderComponent();
+
+			const [slack, gmail] = getAllByTestId('resources-list-item');
+			expect(within(slack).getByTestId('credential-card-restricted')).toHaveTextContent(
+				'Restricted',
+			);
+			expect(within(gmail).queryByTestId('credential-card-restricted')).not.toBeInTheDocument();
+		});
+
+		it('marks nothing when the policies module is off', async () => {
+			await router.push('/team-1/credentials');
+			setup({ current: { slackApi: 'instance' }, enabled: false });
+			mockedStore(useCredentialsStore).allCredentials = [credential('1', 'slackApi')];
+
+			const { queryByTestId, getByTestId, findByTestId } = renderComponent();
+			await flushPromises();
+			await fireEvent.click(getByTestId('resources-list-filters-trigger'));
+
+			expect(await findByTestId('credential-filter-setup-needed')).toBeInTheDocument();
+			expect(queryByTestId('credential-card-restricted')).not.toBeInTheDocument();
+			expect(queryByTestId('credential-filter-cannot-be-used')).not.toBeInTheDocument();
+		});
+
+		it('filters on the credentials that cannot be used and keeps the filter in the URL', async () => {
+			await router.push('/team-1/credentials');
+			setup({ current: { slackApi: 'instance' } });
+			mockedStore(useCredentialsStore).allCredentials = [
+				credential('1', 'slackApi'),
+				credential('2', 'gmailOAuth2'),
+			];
+
+			const { getAllByTestId, getByTestId } = renderComponent();
+			await flushPromises();
+			expect(getAllByTestId('resources-list-item')).toHaveLength(2);
+
+			await fireEvent.click(getByTestId('resources-list-filters-trigger'));
+			await fireEvent.click(getByTestId('credential-filter-cannot-be-used-all'));
+
+			await waitFor(() => expect(getAllByTestId('resources-list-item')).toHaveLength(1));
+			expect(getByTestId('resources-list-item')).toHaveTextContent('slackApi credential');
+			await waitFor(() =>
+				expect(router.currentRoute.value.query.cannotBeUsed).toBe('typeRestricted,nodesRestricted'),
+			);
+		});
+
+		it('restores the filter from the URL and matches only the selected reason', async () => {
+			await router.push({
+				path: '/team-1/credentials',
+				query: { cannotBeUsed: 'nodesRestricted,unknown' },
+			});
+			setup({ current: { slackApi: 'instance' } });
+			mockedStore(useCredentialsStore).allCredentials = [credential('1', 'slackApi')];
+
+			const { queryAllByTestId } = renderComponent();
+			await flushPromises();
+
+			expect(queryAllByTestId('resources-list-item')).toHaveLength(0);
+		});
+
+		describe('on Overview', () => {
+			it('loads the policy of each home project', async () => {
+				const policies = setup({});
+				mockedStore(useCredentialsStore).allCredentials = [
+					credential('1', 'slackApi', 'team-1'),
+					credential('2', 'slackApi', 'team-2'),
+					credential('3', 'gmailOAuth2', 'team-1'),
+				];
+
+				renderComponent();
+
+				expect(policies.fetchForProjects).toHaveBeenCalledWith(['team-1', 'team-2']);
+			});
+
+			it("judges each credential by its home project's policy", async () => {
+				setup({ byProject: { 'team-1': { slackApi: 'project' }, 'team-2': {} } });
+				mockedStore(useCredentialsStore).allCredentials = [
+					credential('1', 'slackApi', 'team-1'),
+					credential('2', 'slackApi', 'team-2'),
+				];
+
+				const { getAllByTestId } = renderComponent();
+
+				const [teamOne, teamTwo] = getAllByTestId('resources-list-item');
+				expect(within(teamOne).getByTestId('credential-card-restricted')).toBeInTheDocument();
+				expect(within(teamTwo).queryByTestId('credential-card-restricted')).not.toBeInTheDocument();
+			});
+
+			it('keeps only instance-wide rules when the home project policy cannot be read', async () => {
+				setup({ current: { slackApi: 'instance', gmailOAuth2: 'project' } });
+				mockedStore(useCredentialsStore).allCredentials = [
+					credential('1', 'slackApi', 'other-team'),
+					credential('2', 'gmailOAuth2', 'other-team'),
+				];
+
+				const { getAllByTestId } = renderComponent();
+
+				const [slack, gmail] = getAllByTestId('resources-list-item');
+				expect(within(slack).getByTestId('credential-card-restricted')).toBeInTheDocument();
+				expect(within(gmail).queryByTestId('credential-card-restricted')).not.toBeInTheDocument();
+			});
+		});
+	});
 });

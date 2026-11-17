@@ -31,6 +31,11 @@ function unavailableByName<T extends { name: string; available: boolean }>(
 	return new Map(entries.filter((entry) => !entry.available).map((entry) => [entry.name, entry]));
 }
 
+type ProjectVerdicts = {
+	nodeTypes: ReadonlyMap<string, NodeTypeAvailability>;
+	credentialTypes: ReadonlyMap<string, CredentialTypeAvailability>;
+};
+
 export const useTypeAvailabilityPoliciesStore = defineStore(
 	TYPE_AVAILABILITY_POLICIES_STORE_ID,
 	() => {
@@ -57,6 +62,9 @@ export const useTypeAvailabilityPoliciesStore = defineStore(
 		const failedSubWorkflowChecks = reactive(new Set<string>());
 		const subWorkflowRequests = new Map<string, Promise<void>>();
 		let subWorkflowGeneration = 0;
+		const verdictsByProject = shallowRef<ReadonlyMap<string, ProjectVerdicts | null>>(new Map());
+		const projectVerdictRequests = new Map<string, Promise<void>>();
+		let projectVerdictsGeneration = 0;
 
 		const isEnabled = computed(
 			() => settingsStore.isModuleActive(TYPE_AVAILABILITY_POLICIES_MODULE_ID) ?? false,
@@ -80,9 +88,59 @@ export const useTypeAvailabilityPoliciesStore = defineStore(
 
 		/** Refetches the current project after the server's node set changed. */
 		async function reload(): Promise<void> {
-			if (!isEnabled.value || requestedProjectId.value === null) return;
+			if (!isEnabled.value) return;
 
-			await load(requestedProjectId.value);
+			const cachedProjectIds = [...verdictsByProject.value.keys()];
+			clearProjectVerdicts();
+			await Promise.all([
+				requestedProjectId.value === null ? undefined : load(requestedProjectId.value),
+				fetchForProjects(cachedProjectIds),
+			]);
+		}
+
+		async function fetchForProjects(projectIds: string[]): Promise<void> {
+			if (!isEnabled.value) return;
+
+			await Promise.all([...new Set(projectIds)].map(fetchProjectVerdicts));
+		}
+
+		async function fetchProjectVerdicts(projectId: string): Promise<void> {
+			if (verdictsByProject.value.has(projectId)) return;
+			const pending = projectVerdictRequests.get(projectId);
+			if (pending) return await pending;
+
+			const generation = projectVerdictsGeneration;
+			const request = Promise.all([
+				fetchAvailableTypes(rootStore.restApiContext, projectId),
+				fetchAvailableCredentialTypes(rootStore.restApiContext, projectId),
+			])
+				.then(
+					([nodeTypes, credentialTypes]): ProjectVerdicts | null | undefined => ({
+						nodeTypes: unavailableByName(nodeTypes),
+						credentialTypes: unavailableByName(credentialTypes),
+					}),
+					(error: unknown) => {
+						if (isRefusal(error)) return null;
+						console.error('Failed to fetch available types for project', projectId, error);
+						return undefined;
+					},
+				)
+				.then((verdicts) => {
+					if (generation !== projectVerdictsGeneration) return;
+
+					projectVerdictRequests.delete(projectId);
+					if (verdicts === undefined) return;
+					verdictsByProject.value = new Map(verdictsByProject.value).set(projectId, verdicts);
+				});
+			projectVerdictRequests.set(projectId, request);
+
+			await request;
+		}
+
+		function clearProjectVerdicts(): void {
+			projectVerdictsGeneration++;
+			projectVerdictRequests.clear();
+			verdictsByProject.value = new Map();
 		}
 
 		/**
@@ -140,6 +198,28 @@ export const useTypeAvailabilityPoliciesStore = defineStore(
 			if (loadedProjectId.value !== requestedProjectId.value) return { name, available: true };
 
 			return restrictedCredentialTypes.value.get(name) ?? { name, available: true };
+		}
+
+		function hasProjectVerdicts(projectId: string): boolean {
+			return Boolean(verdictsByProject.value.get(projectId));
+		}
+
+		function getNodeTypeAvailabilityIn(projectId: string, name: string): NodeTypeAvailability {
+			return (
+				verdictsByProject.value.get(projectId)?.nodeTypes.get(name) ?? { name, available: true }
+			);
+		}
+
+		function getCredentialTypeAvailabilityIn(
+			projectId: string,
+			name: string,
+		): CredentialTypeAvailability {
+			return (
+				verdictsByProject.value.get(projectId)?.credentialTypes.get(name) ?? {
+					name,
+					available: true,
+				}
+			);
 		}
 
 		/**
@@ -206,6 +286,7 @@ export const useTypeAvailabilityPoliciesStore = defineStore(
 			subWorkflowChecks.clear();
 			failedSubWorkflowChecks.clear();
 			subWorkflowRequests.clear();
+			clearProjectVerdicts();
 			restrictedNodeTypes.value = new Map();
 			restrictedCredentialTypes.value = new Map();
 			policyProject.value = null;
@@ -225,6 +306,10 @@ export const useTypeAvailabilityPoliciesStore = defineStore(
 			getNodeTypeAvailability,
 			isNodeTypeAvailable,
 			getCredentialTypeAvailability,
+			fetchForProjects,
+			hasProjectVerdicts,
+			getNodeTypeAvailabilityIn,
+			getCredentialTypeAvailabilityIn,
 			fetchSubWorkflowCheck,
 			getSubWorkflowCheck,
 			hasSubWorkflowCheckFailed,
