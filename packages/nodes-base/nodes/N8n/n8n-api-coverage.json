@@ -17,6 +17,18 @@
 		"POST /agents": {
 			"status": "gap"
 		},
+		"DELETE /ai-preferences/{preferenceId}": {
+			"status": "gap"
+		},
+		"GET /ai-preferences": {
+			"status": "gap"
+		},
+		"PATCH /ai-preferences/{preferenceId}": {
+			"status": "gap"
+		},
+		"POST /ai-preferences": {
+			"status": "gap"
+		},
 		"GET /roles": {
 			"status": "gap"
 		},

@@ -192,11 +192,14 @@ export class AiPreferenceService {
 			ids?: string[];
 			search?: string;
 			sortBy?: AiPreferenceSortOption;
+			scope?: AiPreferenceScope;
+			projectId?: string;
 		},
 	): Promise<AiPreferenceListDto> {
 		const access = this.projectAccess(user);
 		const [rows, count] = await this.aiPreferenceRepository.findPageVisible({
 			...(await this.visibleTo(user, access)),
+			...(await this.narrowedTo(access, page)),
 			skip: page.skip,
 			take: page.take,
 			...(page.ids ? { ids: page.ids } : {}),
@@ -360,6 +363,18 @@ export class AiPreferenceService {
 			allUsers: hasGlobalScope(user, 'aiPreference:list'),
 			projectIds: readable === 'all' ? readable : [...readable],
 		};
+	}
+
+	private async narrowedTo(
+		access: ProjectAccess,
+		filter: { scope?: AiPreferenceScope; projectId?: string },
+	) {
+		if (filter.projectId === undefined) return filter.scope ? { scope: filter.scope } : {};
+		if (filter.scope && filter.scope !== 'project') {
+			throw new BadRequestError('The projectId filter works only with the project scope');
+		}
+		const readable = await access.has(filter.projectId, 'list');
+		return { scope: 'project' as const, projectIds: readable ? [filter.projectId] : [] };
 	}
 
 	/** A hidden row answers like a missing one. */

@@ -205,6 +205,13 @@ export { ListCredentialsQueryDto } from './credentials/list-credentials-query.dt
 export { AiPreferenceRequestDto } from './ai-preference/ai-preference-request.dto';
 export { AiPreferenceSettingsRequestDto } from './ai-preference/ai-preference-settings-request.dto';
 export {
+	AiPreferencePublicDto,
+	AiPreferenceListPublicDto,
+	ListAiPreferencesPublicQueryDto,
+	CreateAiPreferencePublicDto,
+	UpdateAiPreferencePublicDto,
+} from './ai-preference/ai-preference-public.dto';
+export {
 	AiPreferenceListQueryDto,
 	AI_PREFERENCES_DEFAULT_PAGE_SIZE,
 	AI_PREFERENCES_MAX_IDS_FILTER,
