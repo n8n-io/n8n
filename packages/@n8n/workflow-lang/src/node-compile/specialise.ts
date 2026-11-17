@@ -470,6 +470,7 @@ const UNSAFE_PROPERTIES = [
 const HELPERS: Record<string, string> = {
 	__apiError: `function __apiError(cause: any, options: any): any {
 	if (cause !== null && cause !== undefined && typeof cause === 'object' && cause.name === 'NodeApiError') return cause;
+	if (cause !== null && cause !== undefined && typeof cause === 'object' && !Array.isArray(cause) && cause.message === undefined && cause.reason === undefined && cause.name === undefined) return __apiObjectError(cause, options);
 	const text: string = cause !== null && cause !== undefined && typeof cause.message === 'string' ? cause.message : String(cause);
 	const prefix = 'Request failed with status code ';
 	const answered: boolean = cause !== null && cause !== undefined && typeof cause === 'object' && cause.name === 'AxiosError' && cause.response !== null && cause.response !== undefined && typeof cause.response.status === 'number';
@@ -503,6 +504,70 @@ const HELPERS: Record<string, string> = {
 	if (description && description !== message) failure.description = description;
 	return failure;
 }`,
+	__apiObjectError: `function __apiObjectError(cause: any, options: any): any {
+	const given: any = options !== null && options !== undefined ? options : {};
+	const isObject = (value: any): boolean => value !== null && value !== undefined && typeof value === 'object' && !Array.isArray(value);
+	let code: any = given.httpCode ? given.httpCode : cause.httpCode ? cause.httpCode : __apiDeep(cause, ['statusCode', 'status', 'code', 'status_code', 'errorCode', 'error_code']);
+	let description: any = given.description;
+	const data: any = isObject(cause.response) ? cause.response.data : undefined;
+	if (isObject(data)) {
+		if (data.message) description = data.message;
+		else if (data.error && data.error.message) description = data.error.message;
+	}
+	if (!description) description = cause.description;
+	if (!description) description = __apiDeep(cause, undefined);
+	let message: any = given.description ? given.description : '';
+	if (given.message) message = given.message;
+	else {
+		if (!code && typeof message === 'string' && message.toLowerCase().includes('bad gateway')) code = '502';
+		const text: string = code ? String(code) : '';
+		const known: any = {
+			'400': 'Bad request - please check your parameters',
+			'401': 'Authorization failed - please check your credentials',
+			'402': 'Payment required - perhaps check your payment details?',
+			'403': 'Forbidden - perhaps check your credentials?',
+			'404': 'The resource you are requesting could not be found',
+			'405': 'Method not allowed - please check you are using the right HTTP method',
+			'429': 'The service is receiving too many requests from you',
+			'500': 'The service was not able to process your request',
+			'502': 'Bad gateway - the service failed to handle your request',
+			'503': 'Service unavailable - try again later or consider setting this node to retry automatically (in the node settings)',
+			'504': 'Gateway timed out - perhaps try again later?',
+		};
+		if (known[text] !== undefined) message = known[text];
+		else if (text.charAt(0) === '4') message = 'Your request is invalid or could not be processed by the service';
+		else if (text.charAt(0) === '5') message = 'The service failed to process your request';
+		else if (!message) {
+			if (description) {
+				message = description;
+				description = undefined;
+			} else {
+				message = 'There was an unknown issue while executing the node';
+				description = 'Double-check the node configuration and the service it connects to. Check the error details below and refer to the <a href="https://docs.n8n.io" target="_blank">n8n documentation</a> to troubleshoot the issue.';
+			}
+		}
+	}
+	const failure: any = new Error(message);
+	failure.name = 'NodeApiError';
+	if (code) failure.httpCode = String(code);
+	if (description && description !== message) failure.description = description;
+	return failure;
+}`,
+	__apiDeep: `function __apiDeep(source: any, keys: any): any {
+	const names: any = keys === undefined ? __apiKeys() : keys;
+	for (const key of names) {
+		const found: any = __apiFound(source[key], keys);
+		if (found.done) return found.text;
+	}
+	for (const key of ['Error', 'error', 'err', 'response', 'body', 'data']) {
+		const value: any = source[key];
+		if (value !== null && value !== undefined && typeof value === 'object' && !Array.isArray(value) && Object.keys(value).length > 0) {
+			const inner: any = __apiDeep(value, keys);
+			if (inner) return inner;
+		}
+	}
+	return null;
+}`,
 	__apiDescription: `function __apiDescription(cause: any, text: string, options: any): any {
 	let description: any = options !== null && options !== undefined ? options.description : undefined;
 	const isObject = (value: any): boolean => value !== null && value !== undefined && typeof value === 'object' && !Array.isArray(value);
@@ -515,7 +580,7 @@ const HELPERS: Record<string, string> = {
 	if (description || cause.description || cause.reason || cause.cause || typeof cause.message !== 'string') return description;
 	if (cause.error) {
 		if (cause.name !== 'AxiosError') return description;
-		const found: any = __apiFound(cause.error);
+		const found: any = __apiFound(cause.error, undefined);
 		if (found.done) return found.text === null ? undefined : found.text;
 	}
 	try {
@@ -525,7 +590,7 @@ const HELPERS: Record<string, string> = {
 		return text;
 	}
 }`,
-	__apiFound: `function __apiFound(given: any): any {
+	__apiFound: `function __apiFound(given: any, keys: any): any {
 	let value: any = given;
 	if (!value) return { done: false, text: null };
 	if (typeof value === 'string') {
@@ -544,25 +609,28 @@ const HELPERS: Record<string, string> = {
 			if (typeof member === 'string') texts.push(member);
 			else if (typeof member === 'number') texts.push(String(member));
 			else if (member !== null && member !== undefined && typeof member === 'object' && !Array.isArray(member) && Object.keys(member).length > 0) {
-				const inner: any = __apiProperty(member);
+				const inner: any = __apiProperty(member, keys);
 				if (inner !== null) texts.push(inner);
 			}
 		}
 		return { done: true, text: texts.length === 0 ? null : texts.join(' | ') };
 	}
 	if (value !== null && value !== undefined && typeof value === 'object' && Object.keys(value).length > 0) {
-		const inner: any = __apiProperty(value);
+		const inner: any = __apiProperty(value, keys);
 		if (inner) return { done: true, text: inner };
 	}
 	return { done: false, text: null };
 }`,
-	__apiProperty: `function __apiProperty(source: any): any {
-	const keys: any[] = ['cause', 'error', 'message', 'Message', 'msg', 'messages', 'description', 'reason', 'detail', 'details', 'errors', 'errorMessage', 'errorMessages', 'ErrorMessage', 'error_message', '_error_message', 'errorDescription', 'error_description', 'error_summary', 'error_info', 'title', 'text', 'field', 'err', 'type'];
-	for (const key of keys) {
-		const found: any = __apiFound(source[key]);
+	__apiProperty: `function __apiProperty(source: any, keys: any): any {
+	const names: any = keys === undefined ? __apiKeys() : keys;
+	for (const key of names) {
+		const found: any = __apiFound(source[key], keys);
 		if (found.done) return found.text;
 	}
 	return null;
+}`,
+	__apiKeys: `function __apiKeys(): any {
+	return ['cause', 'error', 'message', 'Message', 'msg', 'messages', 'description', 'reason', 'detail', 'details', 'errors', 'errorMessage', 'errorMessages', 'ErrorMessage', 'error_message', '_error_message', 'errorDescription', 'error_description', 'error_summary', 'error_info', 'title', 'text', 'field', 'err', 'type'];
 }`,
 	__httpFailure: `function __httpFailure(response: any, legacy: any, json: boolean): any {
 	const status: number = response.status;
@@ -1442,6 +1510,18 @@ const HELPERS: Record<string, string> = {
 	...MOMENT_HELPERS,
 	...VALIDATION_HELPERS,
 };
+
+export const API_ERROR_SOURCE = [
+	'__apiError',
+	'__apiDescription',
+	'__apiFound',
+	'__apiProperty',
+	'__apiKeys',
+	'__apiObjectError',
+	'__apiDeep',
+]
+	.map((name) => HELPERS[name])
+	.join('\n');
 
 const PURE_GLOBALS = new Set([
 	'undefined',
@@ -7698,7 +7778,14 @@ class Specialiser {
 		this.randoms = randomShapes(this.output.map((o) => o.node));
 		for (const always of ['__wrap', '__plain']) this.helpers.add(always);
 		if (this.helpers.has('__apiError'))
-			for (const used of ['__apiDescription', '__apiFound', '__apiProperty'])
+			for (const used of [
+				'__apiDescription',
+				'__apiFound',
+				'__apiProperty',
+				'__apiKeys',
+				'__apiObjectError',
+				'__apiDeep',
+			])
 				this.helpers.add(used);
 
 		const globals = new Set([

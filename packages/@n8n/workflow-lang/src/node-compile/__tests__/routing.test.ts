@@ -8,7 +8,7 @@ import type { EquivalenceCase } from '../../nodes/__tests__/equivalence.ts';
 import { disposeRecorder, recorderAvailable } from '../../nodes/__tests__/v1-recorder.ts';
 import type { NodeSources } from '../convert.ts';
 import { compileNodeInstance } from '../convert.ts';
-import { hasExecuteMethod, routedEntry, singleItemSource } from '../routing.ts';
+import { flatNamespaces, hasExecuteMethod, routedEntry, singleItemSource } from '../routing.ts';
 import { differenceFromV1 } from './verify.ts';
 
 const base = join(dirname(fileURLToPath(import.meta.url)), '../../../../../nodes-base');
@@ -113,6 +113,37 @@ const CASES: EquivalenceCase[] = [
 	whatsApp('send text fails', SEND_TEXT, [{ status: 500, body: { error: { message: 'down' } } }], {
 		expectedError: 'Sending failed',
 	}),
+	whatsApp(
+		'send text is refused',
+		SEND_TEXT,
+		[{ status: 400, body: { error: { message: '(#100) The parameter is not valid', code: 100 } } }],
+		{ expectedError: 'Bad request - please check your parameters' },
+	),
+	brevo('contact upsert', { resource: 'contact', operation: 'upsert', email: 'ada@example.test' }, [
+		{ body: { id: 9 } },
+	]),
+	brevo(
+		'contact get all with members of collections',
+		{
+			resource: 'contact',
+			operation: 'getAll',
+			limit: 2,
+			options: { sort: 'asc' },
+			filters: { modifiedSince: '2024-01-01T00:00:00Z' },
+		},
+		[{ body: { contacts: [{ id: 1 }], count: 1 } }],
+	),
+	brevo(
+		'contact get all with an expression in a member of a collection',
+		{
+			resource: 'contact',
+			operation: 'getAll',
+			limit: 2,
+			filters: { modifiedSince: '={{ $json.since }}' },
+		},
+		[{ body: { contacts: [{ id: 1 }], count: 1 } }],
+		{ items: [{ since: '2024-01-01T00:00:00Z' }, { since: '2024-02-01T00:00:00Z' }] },
+	),
 ];
 
 const registry = registryOf(loadCredentialTypes().types);
@@ -128,8 +159,17 @@ describe.skipIf(!built || !recorderAvailable())('declarative nodes against v1', 
 });
 
 describe.skipIf(!built)('the entry of a declarative node', () => {
-	const compileOf = (type: string, version: number, parameters: Record<string, unknown>) =>
-		compileNodeInstance(sources, { type, version, parameters }, null);
+	const compileOf = (
+		type: string,
+		version: number,
+		parameters: Record<string, unknown>,
+		limits?: Record<string, unknown>,
+	) =>
+		compileNodeInstance(sources, { type, version, parameters }, null, {
+			whatsAppApi: { fields: {}, classes: [] },
+			googleBusinessProfileOAuth2Api: { fields: {}, classes: [] },
+			sendInBlueApi: { fields: limits ?? {}, classes: [] },
+		});
 
 	it('finds no execute method in a declarative node', () => {
 		const entry = sources.entry('n8n-nodes-base.whatsApp', 1.1) ?? '';
@@ -159,6 +199,51 @@ describe.skipIf(!built)('the entry of a declarative node', () => {
 		expect('errors' in compiled ? compiled.errors[0] : '').toContain('stays in the host');
 	});
 
+	it('keeps a node in the host when its credential limits the domains', () => {
+		const contact = { resource: 'contact', operation: 'get', identifier: 'a' };
+		const type = 'n8n-nodes-base.sendInBlue';
+		for (const limit of ['domains', 'none']) {
+			const compiled = compileOf(type, 1.1, contact, { allowedHttpRequestDomains: limit });
+			expect('errors' in compiled ? compiled.errors[0] : '').toContain('limits its domains');
+		}
+		const open = compileOf(type, 1.1, contact, { allowedHttpRequestDomains: 'all' });
+		expect('errors' in open ? open.errors : []).toEqual([]);
+	});
+
+	it('gives a hook without a name a name, and reads a hook in a namespace', () => {
+		const upsert = compileOf('n8n-nodes-base.sendInBlue', 1.1, {
+			resource: 'contact',
+			operation: 'upsert',
+			email: 'ada@example.test',
+		});
+		expect('source' in upsert ? upsert.source : '').toMatch(
+			/await routedHook\w+\(i, requestOptions\)/,
+		);
+		const flat = flatNamespaces(
+			'/acme/Hooks.ts',
+			'export namespace Acme {\n\texport const LIMIT = 2;\n\texport namespace Checks {\n\t\texport function over(n: number) {\n\t\t\treturn n > Acme.LIMIT;\n\t\t}\n\t}\n}\nexport const first = Acme.Checks.over(3);\n',
+		);
+		expect(flat).not.toContain('namespace');
+		expect(flat).toContain('return n > LIMIT;');
+		expect(flat).toContain('export const first = over(3);');
+	});
+
+	it('keeps an operation that gets its results over several requests in the host', () => {
+		const all = compileOf('n8n-nodes-base.sendInBlue', 1.1, {
+			resource: 'contact',
+			operation: 'getAll',
+			returnAll: true,
+		});
+		expect('errors' in all ? all.errors[0] : '').toContain('over several requests');
+		const some = compileOf('n8n-nodes-base.sendInBlue', 1.1, {
+			resource: 'contact',
+			operation: 'getAll',
+			returnAll: false,
+			limit: 2,
+		});
+		expect('errors' in some ? some.errors : []).toEqual([]);
+	});
+
 	it('keeps a node with request settings in the host', () => {
 		const entry = sources.entry('n8n-nodes-base.sendInBlue', 1.1) ?? '';
 		const routed = routedEntry({
@@ -172,7 +257,7 @@ describe.skipIf(!built)('the entry of a declarative node', () => {
 			version: 1.1,
 			entry,
 			readFile: sources.readFile,
-			hasCredential: () => true,
+			credentialFields: () => ({}),
 		});
 		expect('errors' in routed ? routed.errors[0] : '').toContain("'requestOptions'");
 	});

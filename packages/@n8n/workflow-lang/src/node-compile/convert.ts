@@ -555,7 +555,8 @@ export function compileNodeInstance(
 					version: node.version,
 					entry,
 					readFile: sources.readFile,
-					hasCredential: (type) => Object.hasOwn(credentials, type),
+					credentialFields: (type) =>
+						Object.hasOwn(credentials, type) ? credentials[type].fields : undefined,
 				})
 			: undefined;
 	if (routed !== undefined && 'errors' in routed) return routed;
