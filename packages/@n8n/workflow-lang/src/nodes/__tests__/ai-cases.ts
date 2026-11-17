@@ -2944,12 +2944,6 @@ const ALL_TOOL_CASES: EquivalenceCase[] = [
 const TOOL_INPUT_GAPS = [
 	'agent tools 3.1, JSON argument',
 	'agent tools 3.1, JSON argument that is missing',
-	// The HTTP Request library node reads a response of another content type as text
-	// (`autodetect`); v1 gives a file. These four are the facts of v1 for the tool.
-	'agent tools 2.2, tool gives a file',
-	'agent tools 3.1, tool gives a file',
-	'agent tools 2.2, tool without arguments gives a file',
-	'agent tools 3.1, tool without arguments gives a file',
 ];
 export const TOOL_PENDING_CASES = ALL_TOOL_CASES.filter((c) => TOOL_INPUT_GAPS.includes(c.name));
 export const TOOL_CASES = ALL_TOOL_CASES.filter((c) => !TOOL_INPUT_GAPS.includes(c.name));

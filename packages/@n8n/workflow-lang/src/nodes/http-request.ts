@@ -11,7 +11,7 @@
  *   (text in `outputPropertyName` in place of `body`).
  * `version` is the node version: before 3 the format is JSON unless set.
  */
-import { defineNode, type HttpResponse, type Item } from '@n8n/workflow-lang';
+import { defineNode, type HttpResponse, type Item, type ResponseBinary } from '@n8n/workflow-lang';
 
 interface ResponseOptions {
 	fullResponse?: boolean;
@@ -85,6 +85,53 @@ interface Replay {
 	bytes: number;
 	/** True when the answers did not fit. The list is then empty, and stays empty. */
 	full: boolean;
+}
+
+/**
+ * The response format `autodetect` of the v1 node (`HttpRequestV3.node.ts`, `execute`): a
+ * content type with `application/json` is JSON, else a content type with one text of
+ * `binaryContentTypes` (`GenericFunctions.ts`) is a file, else the body is text. The runtime
+ * decides with this rule after the head of the response (`responseBinary`, spec 7.1).
+ */
+const AUTODETECT: ResponseBinary = {
+	inlineTypes: ['application/json'],
+	storeTypes: [
+		'image/',
+		'audio/',
+		'video/',
+		'application/octet-stream',
+		'application/gzip',
+		'application/zip',
+		'application/vnd.rar',
+		'application/epub+zip',
+		'application/x-bzip',
+		'application/x-bzip2',
+		'application/x-cdf',
+		'application/vnd.amazon.ebook',
+		'application/msword',
+		'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+		'application/vnd.ms-fontobject',
+		'application/vnd.oasis.opendocument.presentation',
+		'application/pdf',
+		'application/x-tar',
+		'application/vnd.visio',
+		'application/vnd.ms-excel',
+		'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+		'application/x-7z-compressed',
+	],
+};
+
+/** With "never error" the v1 node makes the file from a response of each status. */
+const AUTODETECT_ANY_STATUS: ResponseBinary = { ...AUTODETECT, anyStatus: true };
+
+/** True when the runtime stored the body of a response with this content type (`AUTODETECT`). */
+function storesType(header: unknown): boolean {
+	const contentType = typeof header === 'string' ? header : '';
+	if (contentType.includes('application/json')) return false;
+	for (const text of AUTODETECT.storeTypes ?? []) {
+		if (contentType.includes(text)) return true;
+	}
+	return false;
 }
 
 /** The most answers that the node keeps for the host. */
@@ -660,7 +707,18 @@ export default defineNode<HttpRequestParameters>({
 			return [pageItem];
 		}
 		// `responseFormat: file`: the runtime stores the body of a 2xx response (spec 7.1).
-		const responseBinary = options.responseFormat === 'file' ? {} : undefined;
+		// `autodetect`: the runtime stores it when the content type is one of v1's binary types.
+		const stores = options.responseFormat === 'file';
+		const detects =
+			(options.responseFormat ?? (version >= 3 ? 'autodetect' : 'json')) === 'autodetect';
+		const anyStatus = options.neverError === true;
+		const responseBinary = stores
+			? {}
+			: detects
+				? anyStatus
+					? AUTODETECT_ANY_STATUS
+					: AUTODETECT
+				: undefined;
 		const parts = requestParts(parameters);
 		const sent = { ...parts, headers: withAccept(parts.headers, options, version) };
 		let response: HttpResponse<unknown>;
@@ -682,7 +740,7 @@ export default defineNode<HttpRequestParameters>({
 				responseBinary,
 			});
 		} catch (error) {
-			if (responseBinary !== undefined) {
+			if (stores) {
 				const limit = fileLimitError(error);
 				// oxlint-disable-next-line typescript/only-throw-error
 				if (limit !== undefined) throw limit;
@@ -703,7 +761,7 @@ export default defineNode<HttpRequestParameters>({
 			if (![301, 302, 303, 307, 308].includes(status) || typeof location !== 'string') break;
 			// The answers for the host are kept only on the paths of a redirect and of a stored
 			// file, so a request without them costs nothing more.
-			if (responseBinary !== undefined && current === 'GET' && parameters.replay !== undefined) {
+			if (stores && current === 'GET' && parameters.replay !== undefined) {
 				keepAnswer(parameters.replay, url, hop === 0 ? (parameters.qs ?? {}) : {}, response);
 			}
 			url = resolveUrl(url, location);
@@ -734,7 +792,7 @@ export default defineNode<HttpRequestParameters>({
 					responseBinary,
 				});
 			} catch (error) {
-				if (responseBinary !== undefined) {
+				if (stores) {
 					const tooLarge = fileLimitError(error);
 					// oxlint-disable-next-line typescript/only-throw-error
 					if (tooLarge !== undefined) throw tooLarge;
@@ -809,15 +867,14 @@ export default defineNode<HttpRequestParameters>({
 			if (continues) {
 				const message = `${status} - ${JSON.stringify(bodyText(response.body))}`;
 				// With the response format "file" the error of v1's HTTP client has no body.
-				const reason =
-					responseBinary === undefined
-						? requestReason(status, message, response.body)
-						: {
-								name: 'AxiosError',
-								message,
-								code: status >= 500 ? 'ERR_BAD_RESPONSE' : 'ERR_BAD_REQUEST',
-								status,
-							};
+				const reason = !stores
+					? requestReason(status, message, response.body)
+					: {
+							name: 'AxiosError',
+							message,
+							code: status >= 500 ? 'ERR_BAD_RESPONSE' : 'ERR_BAD_REQUEST',
+							status,
+						};
 				return [requestFailureItem(reason, status, response.body, version)];
 			}
 			// n8n's NodeApiError: the message and the description are separate fields.
@@ -831,7 +888,12 @@ export default defineNode<HttpRequestParameters>({
 				httpCode: String(status),
 			};
 		}
-		if (responseBinary !== undefined && status < 300) {
+		// The node reads the content type as the runtime does: a JSON body with the key
+		// `$binary` is never taken for a stored file.
+		if (detects && (status < 300 || anyStatus) && storesType(response.headers['content-type'])) {
+			return [fileItem(response, items?.[0], options, url)];
+		}
+		if (stores && status < 300) {
 			// The query is in the first request only. A redirect to the first URL itself gives an
 			// entry that answers no request of the v1 node: the v1 node then sends that request.
 			if (parameters.replay !== undefined && current === 'GET') {
