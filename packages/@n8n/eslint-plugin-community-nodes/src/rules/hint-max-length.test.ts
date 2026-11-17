@@ -24,8 +24,8 @@ function createNodeDescriptionCode(body: string): string {
 	`;
 }
 
-function property(fields: string): string {
-	return `{ displayName: 'Query', name: 'query', type: 'string', default: '', ${fields} }`;
+function property(fields: string, type = 'string'): string {
+	return `{ displayName: 'Query', name: 'query', type: '${type}', default: '', ${fields} }`;
 }
 
 ruleTester.run('hint-max-length', HintMaxLengthRule, {
@@ -68,6 +68,43 @@ ruleTester.run('hint-max-length', HintMaxLengthRule, {
 				`properties: [${property(`routing: { request: { body: { hint: '${TOO_LONG_HINT}' } } }`)}]`,
 			),
 		},
+		{
+			name: 'ignores a hint key in a spread-based default value',
+			code: createNodeDescriptionCode(
+				`properties: [{ displayName: 'Body', name: 'body', type: 'json', default: { ...baseDefaults, hint: '${TOO_LONG_HINT}' } }]`,
+			),
+		},
+		{
+			name: 'ignores a hint key in a spread-based request body',
+			code: createNodeDescriptionCode(
+				`properties: [${property(`routing: { request: { body: { ...baseBody, hint: '${TOO_LONG_HINT}' } } }`)}]`,
+			),
+		},
+		{
+			name: 'ignores a hint key in an unrelated spread-based object',
+			code: `export const body = { ...baseBody, hint: '${TOO_LONG_HINT}' };`,
+		},
+		{
+			name: 'ignores a hint key in an unrelated options array',
+			code: `export const body = { options: [{ ...baseOptions, hint: '${TOO_LONG_HINT}' }] };`,
+		},
+		...[
+			{ encoded: '&lt;script&gt;', text: '<script>' },
+			{ encoded: '&copy;&eacute;&nbsp;&amp;', text: '©é &' },
+			{ encoded: '&#65;&#x42;', text: 'AB' },
+			{ encoded: '&amp;lt;', text: '&lt;' },
+		].map(({ encoded, text }) => ({
+			name: `counts ${encoded} as decoded text at the limit`,
+			code: createNodeDescriptionCode(
+				`properties: [${property(`hint: '${'x'.repeat(MAX_HINT_LENGTH - text.length)}${encoded}'`)}]`,
+			),
+		})),
+		{
+			name: 'ignores a greater-than sign inside an HTML attribute',
+			code: createNodeDescriptionCode(
+				`properties: [${property(`hint: '<b title="a > b">${'x'.repeat(MAX_HINT_LENGTH)}</b>'`)}]`,
+			),
+		},
 	],
 	invalid: [
 		{
@@ -90,6 +127,68 @@ ruleTester.run('hint-max-length', HintMaxLengthRule, {
 			),
 			errors: [{ messageId: 'hintTooLong' }],
 		},
+		{
+			name: 'reports a spread property in a typed resource array',
+			code: `export const fields: INodeProperties[] = [{ ...baseProperty, hint: '${TOO_LONG_HINT}' }];`,
+			errors: [{ messageId: 'hintTooLong' }],
+		},
+		{
+			name: 'reports a spread property in a typed resource object',
+			code: `export const field: INodeProperties = { ...baseProperty, hint: '${TOO_LONG_HINT}' };`,
+			errors: [{ messageId: 'hintTooLong' }],
+		},
+		{
+			name: 'reports a spread property in credential properties',
+			code: `export class TestCredential implements ICredentialType { properties = [{ ...baseProperty, hint: '${TOO_LONG_HINT}' }]; }`,
+			errors: [{ messageId: 'hintTooLong' }],
+		},
+		...[
+			{
+				type: 'collection',
+				fields: `options: [{ ...baseProperty, hint: '${TOO_LONG_HINT}' }]`,
+			},
+			{
+				type: 'fixedCollection',
+				fields: `options: [{ name: 'values', values: [{ ...baseProperty, hint: '${TOO_LONG_HINT}' }] }]`,
+			},
+			{
+				type: 'resourceLocator',
+				fields: `modes: [{ ...baseMode, hint: '${TOO_LONG_HINT}' }]`,
+			},
+		].map(({ type, fields }) => ({
+			name: `reports a spread property inside a ${type}`,
+			code: createNodeDescriptionCode(`properties: [${property(fields, type)}]`),
+			errors: [{ messageId: 'hintTooLong' as const }],
+		})),
+		{
+			name: 'counts plain-text comparisons toward the limit',
+			code: createNodeDescriptionCode(
+				`properties: [${property(`hint: '${'x'.repeat(MAX_HINT_LENGTH - 4)} < 10 and > 5'`)}]`,
+			),
+			errors: [
+				{
+					messageId: 'hintTooLong',
+					data: { length: MAX_HINT_LENGTH - 4 + ' < 10 and > 5'.length, max: MAX_HINT_LENGTH },
+				},
+			],
+		},
+		...[
+			{ encoded: '&lt;script&gt;', text: '<script>' },
+			{ encoded: '&#65;&#x42;', text: 'AB' },
+			{ encoded: '&amp;lt;', text: '&lt;' },
+			{ encoded: '&unknown;', text: '&unknown;' },
+		].map(({ encoded, text }) => ({
+			name: `reports the decoded length of ${encoded} over the limit`,
+			code: createNodeDescriptionCode(
+				`properties: [${property(`hint: '${'x'.repeat(MAX_HINT_LENGTH)}${encoded}'`)}]`,
+			),
+			errors: [
+				{
+					messageId: 'hintTooLong' as const,
+					data: { length: MAX_HINT_LENGTH + text.length, max: MAX_HINT_LENGTH },
+				},
+			],
+		})),
 		{
 			name: 'reports the visible length of a hint with HTML markup',
 			filename: '/tmp/TestNode.node.ts',

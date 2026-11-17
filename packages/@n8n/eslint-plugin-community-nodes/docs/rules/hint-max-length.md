@@ -15,11 +15,16 @@ it holds documentation without cost to the panel layout.
 
 The rule reports a `hint` of more than 120 characters. Almost all first-party
 hints are within this limit, so it only cuts the long tail. The hint renders as
-HTML, so the rule counts only the visible text and ignores the markup.
+HTML, so the rule counts the text after it decodes HTML entities. It ignores HTML
+tags and their attributes. Plain-text comparisons such as `< 10` count as text.
 
 The rule checks the properties in every file, so it also checks properties that
 you define in a separate resource file, and the credential properties. It also
 checks the modes of a resource locator.
+
+A spread alone does not identify a node property. The rule checks spread-based
+overrides in property arrays and typed `INodeProperties` declarations. It ignores
+unrelated objects, such as default values and request bodies.
 
 ## Examples
 

@@ -36,6 +36,7 @@
     "culori": "^4.0.2",
     "domhandler": "^5.0.3",
     "fastest-levenshtein": "catalog:",
+    "htmlparser2": "^10.1.0",
     "pluralize": "^8.0.0",
     "postcss": "^8.4.38",
     "saxes": "^6.0.0"

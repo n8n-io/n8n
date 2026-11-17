@@ -1,6 +1,12 @@
 import { AST_NODE_TYPES, type TSESTree } from '@typescript-eslint/utils';
+import { Parser } from 'htmlparser2';
 
-import { createRule, findObjectProperty, getStringLiteralValue } from '../utils/index.js';
+import {
+	createRule,
+	findObjectProperty,
+	getPropertyKeyName,
+	getStringLiteralValue,
+} from '../utils/index.js';
 
 /**
  * Almost all first-party hints are within this limit, so it only cuts the long
@@ -9,22 +15,85 @@ import { createRule, findObjectProperty, getStringLiteralValue } from '../utils/
  */
 const MAX_HINT_LENGTH = 120;
 
-/**
- * Node properties and resource locator modes both have this shape. Matching on
- * shape instead of on the node class also checks properties that a node
- * imports from other files. A spread usually supplies the shape of a property
- * that only overrides some fields.
- */
+function isPropertyContext(node: TSESTree.ObjectExpression): boolean {
+	const container = node.parent.type === AST_NODE_TYPES.ArrayExpression ? node.parent : node;
+	const parent = container.parent;
+	if (
+		container.type === AST_NODE_TYPES.ArrayExpression &&
+		parent.type === AST_NODE_TYPES.PropertyDefinition &&
+		getPropertyKeyName(parent) === 'properties'
+	) {
+		return true;
+	}
+	if (
+		parent.type === AST_NODE_TYPES.VariableDeclarator &&
+		parent.id.type === AST_NODE_TYPES.Identifier
+	) {
+		const annotation = parent.id.typeAnnotation?.typeAnnotation;
+		const type =
+			container.type === AST_NODE_TYPES.ArrayExpression &&
+			annotation?.type === AST_NODE_TYPES.TSArrayType
+				? annotation.elementType
+				: annotation;
+		return (
+			type?.type === AST_NODE_TYPES.TSTypeReference &&
+			type.typeName.type === AST_NODE_TYPES.Identifier &&
+			type.typeName.name === 'INodeProperties'
+		);
+	}
+	if (
+		container.type !== AST_NODE_TYPES.ArrayExpression ||
+		parent.type !== AST_NODE_TYPES.Property ||
+		parent.parent.type !== AST_NODE_TYPES.ObjectExpression
+	) {
+		return false;
+	}
+
+	const owner = parent.parent;
+	const type = getStringLiteralValue(findObjectProperty(owner, 'type')?.value ?? null);
+	switch (getPropertyKeyName(parent)) {
+		case 'properties':
+			return true;
+		case 'options':
+			return type === 'collection';
+		case 'modes':
+			return type === 'resourceLocator';
+		case 'values': {
+			const options = owner.parent;
+			const optionsProperty =
+				options.type === AST_NODE_TYPES.ArrayExpression ? options.parent : null;
+			return (
+				optionsProperty?.type === AST_NODE_TYPES.Property &&
+				getPropertyKeyName(optionsProperty) === 'options' &&
+				optionsProperty.parent.type === AST_NODE_TYPES.ObjectExpression &&
+				getStringLiteralValue(findObjectProperty(optionsProperty.parent, 'type')?.value ?? null) ===
+					'fixedCollection'
+			);
+		}
+		default:
+			return false;
+	}
+}
+
+/** Match imported properties and locator modes by shape. A spread needs a property context. */
 function isPropertyLike(node: TSESTree.ObjectExpression): boolean {
 	return (
-		node.properties.some((property) => property.type === AST_NODE_TYPES.SpreadElement) ||
-		['displayName', 'name', 'type'].every((key) => findObjectProperty(node, key) !== null)
+		['displayName', 'name', 'type'].every((key) => findObjectProperty(node, key) !== null) ||
+		(node.properties.some((property) => property.type === AST_NODE_TYPES.SpreadElement) &&
+			isPropertyContext(node))
 	);
 }
 
 /** The editor renders a hint as HTML, so only the text takes up space. */
 function visibleLength(hint: string): number {
-	return hint.replace(/<[^>]*>/g, '').length;
+	let length = 0;
+	const parser = new Parser({
+		ontext: (text) => {
+			length += text.length;
+		},
+	});
+	parser.end(hint);
+	return length;
 }
 
 export const HintMaxLengthRule = createRule({
