@@ -77,4 +77,5 @@ export const CONVERT_COST: Record<string, [ops: number, allocations: number]> = 
 	"corpus/34-ascii-uri": [187, 33],
 	"corpus/35-text-errors": [2475, 123],
 	"corpus/36-optional-params": [12304, 1162],
+	"corpus/37-date-values": [1554, 164],
 };
