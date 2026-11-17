@@ -4,6 +4,7 @@ import type {
 	INodeExecutionData,
 	INodeProperties,
 } from 'n8n-workflow';
+import { requestPath } from 'n8n-workflow';
 
 import { updateDisplayOptions } from '../../../../../utils/utilities';
 import {
@@ -67,7 +68,7 @@ export async function execute(
 			let response = await discordApiRequest.call(
 				this,
 				'GET',
-				`/channels/${channelId}/messages/${messageId}`,
+				requestPath`/channels/${channelId}/messages/${messageId}`,
 			);
 
 			const simplify = this.getNodeParameter('options.simplify', i, false) as boolean;

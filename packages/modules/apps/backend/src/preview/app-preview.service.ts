@@ -1,5 +1,5 @@
 import { appSchema, appVersionSchema, type AppPreviewResponse } from '@n8n/api-types';
-import { CacheService, JwtService, UrlService } from '@n8n/backend-services';
+import { CacheService, JwtService } from '@n8n/backend-services';
 import { UserRepository, type User } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { AuthError, BadRequestError, NotFoundError } from '@n8n/errors';
@@ -39,8 +39,6 @@ export interface AppPreviewAdmission {
 
 @Service()
 export class AppPreviewService {
-	readonly editorOrigin: string;
-
 	constructor(
 		private readonly apps: AppRepository,
 		private readonly versions: AppVersionRepository,
@@ -49,10 +47,7 @@ export class AppPreviewService {
 		private readonly users: UserRepository,
 		private readonly cache: CacheService,
 		private readonly jwt: JwtService,
-		urls: UrlService,
-	) {
-		this.editorOrigin = new URL(urls.getInstanceBaseUrl()).origin;
-	}
+	) {}
 
 	async createGrant(
 		userId: string,

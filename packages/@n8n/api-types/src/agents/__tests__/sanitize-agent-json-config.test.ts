@@ -640,6 +640,60 @@ describe('sanitizeAgentJsonConfig', () => {
 		});
 		expect(AgentJsonConfigSchema.safeParse(sanitized).success).toBe(true);
 	});
+
+	it('keeps valid tool guardrails and strips unknown fields inside them', () => {
+		const sanitized = sanitizeAgentJsonConfig({
+			...baseConfig,
+			config: {
+				guardrails: {
+					tools: [
+						{
+							kind: 'pii',
+							id: 'pii_guard',
+							stage: 'after',
+							tools: [{ type: 'workflow', workflowId: 'wf-1', legacyRefField: true }],
+							type: 'selected',
+							entities: ['EMAIL_ADDRESS'],
+							legacyGuardrailField: true,
+						},
+						{
+							kind: 'jailbreak',
+							id: 'jailbreak_guard',
+							stage: 'before',
+							tools: [{ type: 'workflow', workflowId: 'wf-1' }],
+							threshold: 0.8,
+						},
+					],
+				},
+			},
+		});
+
+		expect(sanitized).toEqual({
+			...baseConfig,
+			config: {
+				guardrails: {
+					tools: [
+						{
+							kind: 'pii',
+							id: 'pii_guard',
+							stage: 'after',
+							tools: [{ type: 'workflow', workflowId: 'wf-1' }],
+							type: 'selected',
+							entities: ['EMAIL_ADDRESS'],
+						},
+						{
+							kind: 'jailbreak',
+							id: 'jailbreak_guard',
+							stage: 'before',
+							tools: [{ type: 'workflow', workflowId: 'wf-1' }],
+							threshold: 0.8,
+						},
+					],
+				},
+			},
+		});
+		expect(AgentJsonConfigSchema.safeParse(sanitized).success).toBe(true);
+	});
 });
 
 describe('sanitizeAgentSkillBodies', () => {

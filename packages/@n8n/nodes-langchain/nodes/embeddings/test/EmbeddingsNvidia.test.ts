@@ -179,9 +179,10 @@ describe('EmbeddingsNvidia', () => {
 
 			const result = await searchModels.call(ctx);
 
-			expect(ctx.helpers.httpRequestWithAuthentication).toHaveBeenCalledWith('nvidiaApi', {
-				url: 'https://integrate.api.nvidia.com/v1/models',
-			});
+			const [credentialType, options] = vi.mocked(ctx.helpers.httpRequestWithAuthentication).mock
+				.calls[0];
+			expect(credentialType).toBe('nvidiaApi');
+			expect(String(options.url)).toBe('https://integrate.api.nvidia.com/v1/models');
 			const ids = result.results.map((r) => r.value);
 			expect(ids).toEqual(['nvidia/llama-3.2-nv-embedqa-1b-v2', 'nvidia/nv-embedqa-e5-v5']);
 			expect(ids).not.toContain('nvidia/llama-3.3-nemotron-super-49b-v1');

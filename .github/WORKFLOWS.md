@@ -25,7 +25,8 @@ Complete reference for n8n's `.github/` folder.
 │   ├── update-changelog.mjs              # Generate CHANGELOG
 │   ├── trim-fe-packageJson.js            # Strip frontend devDeps
 │   ├── ensure-provenance-fields.mjs      # Add license/author fields
-│   ├── validate-docs-links.js            # Check documentation URLs
+│   ├── link-check/                       # Weekly link check config and report
+│   ├── check-inflight.mjs                # Reject inflight in checked-in pnpm lockfiles
 │   ├── send-build-stats.mjs              # Turbo build telemetry → webhook
 │   └── docker/
 │       ├── docker-tags.mjs               # Generate image tags
@@ -80,6 +81,10 @@ Complete reference for n8n's `.github/` folder.
 ---
 
 ## Quick Reference
+
+The PR format job runs `pnpm check:dependencies` on every PR and merge group.
+This check rejects the exact package `inflight` in all checked-in pnpm lockfiles.
+It includes development and optional dependencies. It allows `promise-inflight`.
 
 | Prefix     | Purpose                                 |
 |------------|-----------------------------------------|
@@ -174,7 +179,9 @@ These only run if specific files changed:
 | `packages/@n8n/task-runner-python/**`                                  | `ci-python.yml`             | any        |
 | `packages/cli/src/databases/**`, `*.entity.ts`, `*.repository.ts`      | `test-db.yml`               | any        |
 | `packages/frontend/@n8n/storybook/**`, design-system, chat             | `release-storybook.yml` | master     |
-| `docker/images/n8n-base/Dockerfile`                                    | `build-base-image.yml`      | any        |
+| `docs/backend/**`, `packages/@n8n/backend-docs-site/**`                | `release-docs-backend.yml` (PR preview, master deploys to n8n-backend-docs.pages.dev) | master     |
+| `docker/docker-bake.hcl`, `docker/images/n8n-base/Dockerfile`, `docker/images/n8n-base/Dockerfile.debian`, `.github/scripts/docker/base-debian-smoke-check.mjs`, `.github/scripts/docker/bake-inputs-changed.mjs` | `build-base-image.yml` (builds only the bases whose inputs changed; publishes on master only) | any        |
+| `docker/docker-bake.hcl`, `docker/images/node-pc/**`, `.github/scripts/docker/bake-inputs-changed.mjs` | `build-node-pc-image.yml` (builds pointer-compressed Node 26 as `n8nio/node-pc` and stock-configured Node 24 and 26 as `n8nio/node-patched` only when their own inputs changed; publishes from master only; a `workflow_dispatch` on master with `push: true` always builds and publishes all three variants) | any        |
 | `**/package.json`, `**/turbo.json`                                     | `build-windows.yml`         | master     |
 | `packages/@n8n/ai-workflow-builder.ee/evaluations/programmatic/python/**` | `test-evals-python.yml`  | any        |
 | `packages/quality/efficiency/scale/benchmark/**`                       | `build-benchmark-image.yml` | master     |
@@ -424,11 +431,15 @@ CALLER                             REUSABLE WORKFLOW
 ───────────────────────────────────────────────────────────────────────────────
 
 ci-pull-requests.yml
+    ├──────────────────────────▶  ci-pr-policy-reusable.yml
     ├──────────────────────────▶  test-unit-reusable.yml
     ├──────────────────────────▶  test-linting-reusable.yml
     ├──────────────────────────▶  test-e2e-reusable.yml
     └──────────────────────────▶  sec-ci-reusable.yml
-                                      └──────────▶  sec-poutine-reusable.yml
+                                       └──────────▶  sec-poutine-reusable.yml
+
+ci-pr-quality.yml
+    └──────────────────────────▶  ci-pr-policy-reusable.yml
 
 ci-master.yml
     ├──────────────────────────▶  test-unit-reusable.yml
@@ -507,6 +518,20 @@ test-workflows-nightly.yml  (manual dispatch only — nightly schedule disabled,
 │                                                                            │
 └────────────────────────────────────────────────────────────────────────────┘
 ```
+
+### Release PR verification
+
+When the selected ref contains `packages/quality/policy/code-health`,
+`release-create-pr.yml` verifies the npm-install dependency graph for all publishable
+packages before it creates a release PR. It resolves the selected ref once.
+Verification, release preparation, and the release base branch use
+that commit SHA, even if the selected branch advances. Verification runs in blocking
+mode. A failure stops PR creation and auto-merge setup. This gate also
+applies to patch, minor, and experimental releases that call this workflow.
+
+For older release refs without the verifier package, the verification job emits a
+notice and skips dependency verification, even in blocking mode. Release PR creation
+can continue without that check.
 
 ### Standalone prereleases
 
@@ -601,8 +626,8 @@ Runs on push to `master`:
 ```
 Push to master
 ├─ build-and-format (Blacksmith: build, then format check; populate master cache)
-├─ unit-test (matrix: Node 24.22.1, 26.12.1)
-│   └─ Coverage only on 24.22.1
+├─ unit-test (matrix: Node 24.22.2, 26.13.0)
+│   └─ Coverage only on 24.22.2
 ├─ lint
 ├─ (performance: CodSpeed benchmarks, paused until the plugin supports Vitest 5)
 ├─ verify-single-instance-npm (advisory; packages changed by this push)
@@ -621,7 +646,6 @@ Push to master
 | Daily 00:00               | `test-db.yml`                     | Database compatibility   |
 | Daily 00:00               | `test-e2e-performance-reusable.yml`| Browser performance and idle memory baselines |
 | Daily 00:00               | `release-storybook.yml`       | Storybook deploy         |
-| Daily 00:00               | `util-check-docs-urls.yml`        | Doc link validation      |
 | Daily 01:30, 02:30, 03:30 | `test-benchmark-nightly.yml`      | Performance benchmarks   |
 | Daily 02:00               | `test-get-n8n.yml`                | get.n8n.io installer health |
 | Daily 02:00               | `test-e2e-pc-nightly.yml`         | E2E on the `-pc` image   |
@@ -632,6 +656,8 @@ Push to master
 | Daily 08:00               | `build-v3-nightly.yml`            | Nightly v3 Docker images |
 | Monday 00:00              | `util-update-node-popularity.yml` | Node usage stats         |
 | Monday 02:00              | `test-e2e-coverage-weekly.yml`    | Weekly E2E coverage      |
+| Monday 06:00              | `test-link-check-weekly.yml`      | Broken links in `packages/` |
+| Monday 08:00              | `ci-detect-new-packages.yml`      | Report unpublished npm packages to Developer Platform |
 | Wednesday 04:00           | `util-update-get-n8n-versions.yml` | get-n8n stable versions |
 | Saturday 22:00            | `test-evals-ai.yml`               | AI workflow evals        |
 | 1st of month 04:00        | `util-refresh-cubic-schema.yml`   | Refresh vendored cubic schema |
@@ -684,7 +710,7 @@ Composite actions in `.github/actions/`:
 
 ```yaml
 inputs:
-  node-version:        # default: '26.12.1'
+  node-version:        # default: '26.13.0'
   enable-docker-cache: # default: 'false' (Blacksmith Buildx)
   docker-cache-key:    # required when enable-docker-cache is true
   build-command:       # default: 'pnpm build'
@@ -767,6 +793,7 @@ Workflows with `workflow_call` trigger:
 
 | Workflow                           | Inputs                                        | Purpose               |
 |------------------------------------|-----------------------------------------------|-----------------------|
+| `ci-pr-policy-reusable.yml`        | none                                          | Classify automated release PRs |
 | `test-unit-reusable.yml`           | `ref`, `nodeVersion`, `collectCoverage`       | Unit tests            |
 | `test-linting-reusable.yml`        | `ref`, `nodeVersion`, `affectedBase`          | Lint (affected packages when `affectedBase` is set) |
 | `test-e2e-reusable.yml`            | `branch`, `test-mode`, `shards`, `runner`     | Core E2E executor     |
@@ -795,6 +822,7 @@ Scripts in `.github/scripts/`:
 | `prepare-rerelease.mjs`       | Bump root + cli for a re-release | `release-recreate-failed-release.yml` |
 | `trim-fe-packageJson.js`      | Strip frontend devDeps     | `release-publish.yml`   |
 | `ensure-provenance-fields.mjs`| Add license/author fields  | `release-publish.yml`   |
+| `detect-new-packages.mjs`     | Find unpublished workspace packages | `ci-detect-new-packages.yml` |
 
 ### Docker Scripts
 
@@ -803,15 +831,19 @@ Scripts in `.github/scripts/`:
 | `docker/docker-config.mjs`| Build context   | `docker-build-push.yml`|
 | `docker/docker-tags.mjs`  | Image tags      | `docker-build-push.yml`|
 | `docker/kafka-native-smoke-check.mjs`| Verify librdkafka binary loads in built image | `docker-build-smoke.yml`|
+| `docker/edit-image-native-smoke-check.mjs`| Verify the Edit Image v2 bindings load and draw text with the image's Arial font | `docker-build-smoke.yml`|
+| `docker/native-addons-smoke-check.mjs`| Verify isolated-vm and sqlite3 work in the built image, and that it has no build toolchain | `docker-build-smoke.yml`|
 | `docker/assert-manifest-format.mjs`| Assert a merged manifest is an OCI image index with the expected platforms | `docker-build-push.yml`|
 | `docker/should-smoke-build.mjs`| Narrow the `pnpm-workspace.yaml` smoke trigger to native dependency pins | `docker-build-smoke.yml`|
+| `docker/base-debian-smoke-check.mjs`| Verify the Debian base image contract (tools, no package manager, fonts, global npm modules) on amd64 and arm64 | `build-base-image.yml`|
+| `docker/bake-inputs-changed.mjs`| Decide whether an image must build: compare its resolved bake inputs and Dockerfile between two commits | `build-base-image.yml`, `build-node-pc-image.yml`|
 | `attest-image-sbom.mjs` | Generate, validate, and optionally attest image SBOMs | `docker-build-push.yml`, `test-sbom-nightly.yml` |
 
 ### Validation Scripts
 
 | Script                  | Purpose           | Called By                 |
 |-------------------------|-------------------|---------------------------|
-| `validate-docs-links.js`| Check doc URLs    | `util-check-docs-urls.yml`|
+| `link-check/check-report.mjs` | Decide which lychee failures are broken links | `test-link-check-weekly.yml` |
 | `send-build-stats.mjs`  | Build telemetry   | `setup-nodejs` action     |
 | `resolve-pnpm-version.mjs` | Publish the pinned pnpm version and its executable cache key | `setup-nodejs` action |
 | `nightly-sbom-context.mjs` | Resolve the source SHA and image tag for nightly SBOM validation | `test-sbom-nightly.yml` |
@@ -944,6 +976,10 @@ must apply the `large-scale-change` label. The gate checks the actor from the
 label event and verifies their current team membership. The label alone is not
 sufficient. Label changes re-evaluate the status. Removing the label removes
 the exemption.
+
+An approval from the n8n Release Helper makes the **Required Reviews** status
+succeed without required OWNERS team approvals. The gate uses the latest review
+state from `n8n-release-helper[bot]`. Dismissing its approval removes the skip.
 
 Every path that writes the status runs in the base repository context, because
 a fork-context run has no secrets and a read-only token. PR changes arrive

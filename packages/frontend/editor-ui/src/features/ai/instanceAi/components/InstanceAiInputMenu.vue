@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed } from 'vue';
+import { computed, ref, watch } from 'vue';
 import {
 	N8nDropdownMenu,
 	N8nIcon,
@@ -18,15 +18,19 @@ import {
 	useInstanceAiInputMenuItems,
 } from '../composables/useInstanceAiInputMenuItems';
 
-const props = withDefaults(defineProps<{ disabled?: boolean; isStreaming?: boolean }>(), {
-	disabled: false,
-	isStreaming: false,
-});
+const props = withDefaults(
+	defineProps<{ disabled?: boolean; isStreaming?: boolean; projectId?: string }>(),
+	{
+		disabled: false,
+		isStreaming: false,
+	},
+);
 const emit = defineEmits<{ attachFiles: [] }>();
 const i18n = useI18n();
 const telemetry = useTelemetry();
-const { menuItems, disconnectedConnectionCount } = useInstanceAiInputMenuItems(() =>
-	emit('attachFiles'),
+const { menuItems, disconnectedConnectionCount, refreshSkills } = useInstanceAiInputMenuItems(
+	() => emit('attachFiles'),
+	() => props.projectId,
 );
 
 const tooltip = computed(() => {
@@ -64,8 +68,19 @@ function trackInputPlusButtonClick() {
 	telemetry.track(TELEMETRY_EVENT.INSTANCE_AI.USER_CLICKED_AI_ASSISTANT_INPUT_PLUS_BUTTON, {});
 }
 
+const isOpen = ref(false);
+
+watch(
+	() => props.disabled,
+	(disabled) => {
+		if (disabled) isOpen.value = false;
+	},
+);
+
 function handleUpdateDropdownModelValue(open: boolean) {
+	isOpen.value = open;
 	if (open) {
+		void refreshSkills();
 		trackInputPlusButtonClick();
 	}
 }
@@ -74,6 +89,7 @@ function handleUpdateDropdownModelValue(open: boolean) {
 <template>
 	<N8nTooltip :content="tooltip" :content-class="$style.triggerTooltip" placement="top">
 		<N8nDropdownMenu
+			:model-value="isOpen"
 			:items="menuItems"
 			placement="top-start"
 			:disabled="props.disabled"

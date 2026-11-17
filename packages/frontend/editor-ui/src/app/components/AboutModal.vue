@@ -10,17 +10,22 @@ import { useI18n } from '@n8n/i18n';
 import { getThirdPartyLicenses } from '@n8n/rest-api-client';
 import { useUIStore } from '@/app/stores/ui.store';
 
-import { ElCol, ElRow } from 'element-plus';
 import {
 	N8nButton,
 	N8nDialog,
 	N8nDialogBody,
-	N8nDialogFooter,
-	N8nLink,
+	N8nIcon,
+	N8nSettingsRow,
+	N8nSettingsRowGroup,
 	N8nText,
 } from '@n8n/design-system';
 
 defineOptions({ inheritAttrs: false });
+
+const SOURCE_CODE_HOST = 'github.com/n8n-io/n8n';
+const SOURCE_CODE_URL = `https://${SOURCE_CODE_HOST}`;
+const LICENSE_URL = `${SOURCE_CODE_URL}/blob/master/LICENSE.md`;
+
 const toast = useToast();
 const i18n = useI18n();
 const debugInfo = useDebugInfo();
@@ -34,13 +39,14 @@ onMounted(async () => {
 	await instanceRegistryStore.fetchClusterInfo();
 });
 
-async function closeDialog() {
-	uiStore.closeModal(ABOUT_MODAL_KEY);
+function onDialogOpenUpdate(open: boolean) {
+	if (!open) uiStore.closeModal(ABOUT_MODAL_KEY);
 }
 
-function onDialogOpenUpdate(open: boolean) {
-	if (!open) void closeDialog();
-}
+const copyInstanceId = async () => {
+	await clipboard.copy(rootStore.instanceId);
+	toast.showMessage({ title: i18n.baseText('about.instanceID.copied'), type: 'success' });
+};
 
 const downloadThirdPartyLicenses = async () => {
 	try {
@@ -74,80 +80,92 @@ const copyDebugInfoToClipboard = async () => {
 	<N8nDialog
 		:open="modalOpen"
 		size="large"
-		data-test-id="about-modal"
 		:header="i18n.baseText('about.aboutN8n')"
+		:aria-description="i18n.baseText('about.ariaDescription')"
+		data-test-id="about-modal"
 		@update:open="onDialogOpenUpdate"
 	>
-		<N8nDialogBody :class="$style.container">
-			<ElRow>
-				<ElCol :span="8" class="info-name">
-					<N8nText>{{ i18n.baseText('about.n8nVersion') }}</N8nText>
-				</ElCol>
-				<ElCol :span="16">
-					<N8nText>{{ rootStore.versionCli }}</N8nText>
-				</ElCol>
-			</ElRow>
-			<ElRow>
-				<ElCol :span="8" class="info-name">
-					<N8nText>{{ i18n.baseText('about.sourceCode') }}</N8nText>
-				</ElCol>
-				<ElCol :span="16">
-					<N8nLink to="https://github.com/n8n-io/n8n">https://github.com/n8n-io/n8n</N8nLink>
-				</ElCol>
-			</ElRow>
-			<ElRow>
-				<ElCol :span="8" class="info-name">
-					<N8nText>{{ i18n.baseText('about.license') }}</N8nText>
-				</ElCol>
-				<ElCol :span="16">
-					<N8nLink to="https://github.com/n8n-io/n8n/blob/master/LICENSE.md">
-						{{ i18n.baseText('about.n8nLicense') }}
-					</N8nLink>
-				</ElCol>
-			</ElRow>
-			<ElRow>
-				<ElCol :span="8" class="info-name">
-					<N8nText>{{ i18n.baseText('about.thirdPartyLicenses') }}</N8nText>
-				</ElCol>
-				<ElCol :span="16">
-					<N8nLink @click="downloadThirdPartyLicenses">
-						{{ i18n.baseText('about.thirdPartyLicensesLink') }}
-					</N8nLink>
-				</ElCol>
-			</ElRow>
-			<ElRow>
-				<ElCol :span="8" class="info-name">
-					<N8nText>{{ i18n.baseText('about.instanceID') }}</N8nText>
-				</ElCol>
-				<ElCol :span="16">
-					<N8nText>{{ rootStore.instanceId }}</N8nText>
-				</ElCol>
-			</ElRow>
-			<ElRow>
-				<ElCol :span="8" class="info-name">
-					<N8nText>{{ i18n.baseText('about.debug.title') }}</N8nText>
-				</ElCol>
-				<ElCol :span="16">
-					<N8nLink @click="copyDebugInfoToClipboard">
-						{{ i18n.baseText('about.debug.message') }}
-					</N8nLink>
-				</ElCol>
-			</ElRow>
+		<N8nDialogBody>
+			<N8nSettingsRowGroup>
+				<N8nSettingsRow :title="i18n.baseText('about.n8nVersion')">
+					<template #action>
+						<N8nText size="medium" color="text-dark" data-test-id="about-modal-version">
+							{{ rootStore.versionCli }}
+						</N8nText>
+					</template>
+				</N8nSettingsRow>
+
+				<N8nSettingsRow
+					:title="i18n.baseText('about.instanceID')"
+					:description="rootStore.instanceId"
+					:max-description-lines="1"
+				>
+					<template #action>
+						<N8nButton
+							variant="outline"
+							size="medium"
+							icon="copy"
+							:label="i18n.baseText('generic.copy')"
+							data-test-id="about-modal-copy-instance-id"
+							@click="copyInstanceId"
+						/>
+					</template>
+				</N8nSettingsRow>
+
+				<N8nSettingsRow :title="i18n.baseText('about.sourceCode')" :description="SOURCE_CODE_HOST">
+					<template #action>
+						<N8nButton variant="outline" size="medium" :href="SOURCE_CODE_URL" target="_blank">
+							{{ i18n.baseText('generic.open') }}
+							<N8nIcon icon="external-link" size="small" />
+						</N8nButton>
+					</template>
+				</N8nSettingsRow>
+
+				<N8nSettingsRow
+					:title="i18n.baseText('about.license')"
+					:description="i18n.baseText('about.n8nLicense')"
+				>
+					<template #action>
+						<N8nButton variant="outline" size="medium" :href="LICENSE_URL" target="_blank">
+							{{ i18n.baseText('generic.open') }}
+							<N8nIcon icon="external-link" size="small" />
+						</N8nButton>
+					</template>
+				</N8nSettingsRow>
+
+				<N8nSettingsRow
+					:title="i18n.baseText('about.thirdPartyLicenses')"
+					:description="i18n.baseText('about.thirdPartyLicenses.description')"
+				>
+					<template #action>
+						<N8nButton
+							variant="outline"
+							size="medium"
+							data-test-id="about-modal-third-party-licenses"
+							@click="downloadThirdPartyLicenses"
+						>
+							{{ i18n.baseText('generic.open') }}
+							<N8nIcon icon="external-link" size="small" />
+						</N8nButton>
+					</template>
+				</N8nSettingsRow>
+
+				<N8nSettingsRow
+					:title="i18n.baseText('about.debug.title')"
+					:description="i18n.baseText('about.debug.description')"
+				>
+					<template #action>
+						<N8nButton
+							variant="outline"
+							size="medium"
+							icon="copy"
+							:label="i18n.baseText('generic.copy')"
+							data-test-id="about-modal-copy-debug-info"
+							@click="copyDebugInfoToClipboard"
+						/>
+					</template>
+				</N8nSettingsRow>
+			</N8nSettingsRowGroup>
 		</N8nDialogBody>
-		<N8nDialogFooter>
-			<N8nButton
-				float="right"
-				:label="i18n.baseText('about.close')"
-				data-test-id="close-about-modal-button"
-				@click="closeDialog"
-			/>
-		</N8nDialogFooter>
 	</N8nDialog>
 </template>
-
-<style module lang="scss">
-.container > * {
-	margin-bottom: var(--spacing--sm);
-	overflow-wrap: break-word;
-}
-</style>

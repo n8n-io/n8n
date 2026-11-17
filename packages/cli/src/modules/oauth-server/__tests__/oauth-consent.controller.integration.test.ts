@@ -1,6 +1,7 @@
 import { testDb } from '@n8n/backend-test-utils';
 import type { User } from '@n8n/db';
 import { Container } from '@n8n/di';
+import { DataSource, type Repository } from '@n8n/typeorm';
 
 import { McpSettingsService } from '@/modules/mcp/mcp.settings.service';
 import { JwtService, UrlService } from '@n8n/backend-services';
@@ -8,8 +9,7 @@ import { ProtectedResourceRegistry } from '@n8n/backend-services/auth';
 import { createOwner, createMember } from '@test-integration/db/users';
 import { setupTestServer } from '@test-integration/utils';
 
-import type { OAuthClient } from '../database/entities/oauth-client.entity';
-import { OAuthClientRepository } from '../database/repositories/oauth-client.repository';
+import { OAuthClient } from '../database/entities/oauth-client.entity';
 import type { OAuthSessionPayload } from '../oauth-session.service';
 import { sessionCookieFor, TEST_FLOW_ID } from './oauth-flow-test-utils';
 
@@ -25,7 +25,7 @@ let supportedScopes: string[];
 const createSessionToken = (payload: OAuthSessionPayload): string => {
 	return jwtService.sign('oauthSession', payload, { expiresIn: '10m' });
 };
-let oauthClientRepository: OAuthClientRepository;
+let oauthClientRepository: Repository<OAuthClient>;
 
 beforeAll(async () => {
 	// The suite drives resource-less consent, which targets the default protected
@@ -34,7 +34,7 @@ beforeAll(async () => {
 	owner = await createOwner();
 	member = await createMember();
 	jwtService = Container.get(JwtService);
-	oauthClientRepository = Container.get(OAuthClientRepository);
+	oauthClientRepository = Container.get(DataSource).getRepository(OAuthClient);
 	supportedScopes = Container.get(ProtectedResourceRegistry).getDefaultResource()?.scopes ?? [];
 });
 
@@ -43,14 +43,10 @@ beforeAll(async () => {
  * `communityPackage:install` is advertised in discovery (which is
  * unauthenticated and describes what the resource supports) but withheld at
  * consent here, because the community-packages module is inactive in the test
- * instance so `install_community_node` would never register. `aiPreference:*`
- * is withheld too: the test instance has no PostHog, so no user is in the
- * preferences experiment arm and the preference tools never register.
+ * instance so `install_community_node` would never register.
  */
 const grantable = (scopes: string[]) =>
-	scopes.filter(
-		(scope) => scope !== 'communityPackage:install' && !scope.startsWith('aiPreference:'),
-	);
+	scopes.filter((scope) => scope !== 'communityPackage:install');
 
 afterEach(async () => {
 	await testDb.truncate(['OAuthClient', 'AuthorizationCode', 'UserConsent']);

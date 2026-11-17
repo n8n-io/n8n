@@ -6,6 +6,7 @@ import {
 	anthropicTokensUsageParser,
 	makeN8nLlmFailedAttemptHandler,
 	N8nLlmTracing,
+	openAiTokensUsageParser,
 } from '@n8n/ai-utilities';
 import {
 	NodeOperationError,
@@ -267,7 +268,7 @@ export class LmChatAzureOpenAi implements INodeType {
 					timeout,
 					maxRetries: options.maxRetries ?? 2,
 					configuration,
-					callbacks: [new N8nLlmTracing(this)],
+					callbacks: [new N8nLlmTracing(this, { tokensUsageParser: openAiTokensUsageParser })],
 					// The Foundry base URL already ends in /openai/v1, so LangChain appends /responses
 					// or /chat/completions to a path Azure serves either way.
 					useResponsesApi: responsesApiEnabled,
@@ -323,10 +324,13 @@ export class LmChatAzureOpenAi implements INodeType {
 				azureOpenAIApiDeploymentName: modelName,
 				...modelConfig,
 				...options,
+				// Set after options so nothing can unset it. An explicit '' keeps LangChain from
+				// reading AZURE_OPENAI_API_KEY when Entra ID is used
+				azureOpenAIApiKey: modelConfig.azureOpenAIApiKey ?? '',
 				azureOpenAIEndpoint,
 				timeout,
 				maxRetries: options.maxRetries ?? 2,
-				callbacks: [new N8nLlmTracing(this)],
+				callbacks: [new N8nLlmTracing(this, { tokensUsageParser: openAiTokensUsageParser })],
 				configuration: {
 					fetch: aiClientFetch,
 					fetchOptions: {

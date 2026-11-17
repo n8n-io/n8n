@@ -70,8 +70,9 @@ export class AuthenticatedN8nApiClient extends N8nApiClient {
 		});
 	}
 
-	async delete<T>(endpoint: string) {
+	async delete<T>(endpoint: string, init?: Omit<AxiosRequestConfig, 'url' | 'method'>) {
 		return await this.authenticatedRequest<T>(endpoint, {
+			...init,
 			method: 'DELETE',
 		});
 	}

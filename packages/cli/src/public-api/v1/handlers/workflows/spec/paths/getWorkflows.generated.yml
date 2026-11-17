@@ -2,7 +2,10 @@ operationId: getWorkflows
 tags:
   - Workflow
 summary: Retrieve all workflows
-description: Retrieve all workflows from your instance.
+description: |-
+  Retrieve all workflows from your instance.
+
+  Requires the `workflow:list` API key scope.
 x-required-scope: workflow:list
 parameters:
   - $ref: ../../../../shared/spec/parameters/offset.yml

@@ -15,7 +15,7 @@ describe('Test MicrosoftOutlookV2, Service Principal => folder:getAll', () => {
 	beforeAll(() => {
 		nock('https://graph.microsoft.com')
 			.matchHeader('Authorization', 'Bearer test-access-token')
-			.get('/v1.0/users/user%40example.com/mailFolders')
+			.get('/v1.0/users/user@example.com/mailFolders')
 			.query({ $top: 50 })
 			.reply(200, {
 				value: [

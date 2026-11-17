@@ -1,5 +1,5 @@
 import type { IDataObject, IExecuteFunctions, INode } from 'n8n-workflow';
-import { NodeOperationError } from 'n8n-workflow';
+import { NodeOperationError, requestPath } from 'n8n-workflow';
 import { mock, mockDeep } from 'vitest-mock-extended';
 
 import * as genericFunctions from '../../GenericFunctions';
@@ -54,7 +54,7 @@ describe('Google Calendar > Event > Create', () => {
 		]);
 		expect(genericFunctions.googleApiRequest).toHaveBeenCalledWith(
 			'POST',
-			'/calendar/v3/calendars/primary/events',
+			requestPath`/calendar/v3/calendars/primary/events`,
 			expect.objectContaining({
 				attendees: [
 					{ email: 'alice@example.com' },
@@ -73,7 +73,7 @@ describe('Google Calendar > Event > Create', () => {
 
 		expect(genericFunctions.googleApiRequest).toHaveBeenCalledWith(
 			'POST',
-			'/calendar/v3/calendars/primary/events',
+			requestPath`/calendar/v3/calendars/primary/events`,
 			expect.objectContaining({ attendees: [] }),
 			{},
 		);

@@ -7,7 +7,6 @@ import {
 	ExecutionNotFoundError,
 	ResumeRejectedError,
 	type ExecutionQueryService,
-	type ResumeLocation,
 	type ResumeRejection,
 	type ResumeRequestService,
 } from '../../execution';
@@ -16,8 +15,6 @@ import type { ResolveStepResponse, ResumeTargetResponse } from '../api.types';
 import { fail } from '../error-response';
 
 const IdParams = z.object({ id: z.string().uuid() });
-
-const ResumeTargetBody = z.object({ token: z.string().min(1) }).strict();
 
 const ResumeLocateBody = z
 	.object({
@@ -53,53 +50,6 @@ function sendRejection(res: Response, error: unknown): boolean {
 	return true;
 }
 
-async function sendLocation(
-	res: Response,
-	executionQuery: ExecutionQueryService,
-	locate: () => Promise<ResumeLocation>,
-): Promise<void> {
-	try {
-		const { executionId, target } = await locate();
-		// Read after the token check, so a bad token learns nothing about the
-		// execution. The response carries every step, because the resume method
-		// can resolve expressions against earlier outputs.
-		const execution = await executionQuery.getExecutionWithSteps(executionId);
-		const response: ResumeTargetResponse = {
-			execution: toExecutionSnapshot(execution),
-			target,
-		};
-		res.status(200).json(response);
-	} catch (error) {
-		if (error instanceof ExecutionNotFoundError) {
-			fail(res, 404, { error: 'not_found' });
-			return;
-		}
-		if (!sendRejection(res, error)) throw error;
-	}
-}
-
-/** `POST /workflow-executions/:id/resume-target`: phase one of a resume request. */
-export function createResumeTargetHandler(
-	resumeRequests: ResumeRequestService | undefined,
-	executionQuery: ExecutionQueryService,
-): RequestHandler {
-	if (!resumeRequests) return notConfigured;
-
-	return async (req, res) => {
-		const params = IdParams.safeParse(req.params);
-		const body = ResumeTargetBody.safeParse(req.body);
-		if (!params.success || !body.success) {
-			fail(res, 400, { error: 'invalid_request' });
-			return;
-		}
-
-		await sendLocation(res, executionQuery, async () => ({
-			executionId: params.data.id,
-			target: await resumeRequests.locate(params.data.id, body.data.token),
-		}));
-	};
-}
-
 /**
  * `POST /resume-requests/locate`: phase one of every kind of resume request.
  * Both an execution id and a step id are UUIDs, and the control plane does
@@ -124,11 +74,24 @@ export function createResumeRequestsRouter(
 		}
 
 		const { id, token, pathAndQuery } = body.data;
-		await sendLocation(
-			res,
-			executionQuery,
-			async () => await resumeRequests.locateByToken(id, token, pathAndQuery),
-		);
+		try {
+			const { executionId, target } = await resumeRequests.locateByToken(id, token, pathAndQuery);
+			// Read after the token check, so a bad token learns nothing about the
+			// execution. The response carries every step, because the resume method
+			// can resolve expressions against earlier outputs.
+			const execution = await executionQuery.getExecutionWithSteps(executionId);
+			const response: ResumeTargetResponse = {
+				execution: toExecutionSnapshot(execution),
+				target,
+			};
+			res.status(200).json(response);
+		} catch (error) {
+			if (error instanceof ExecutionNotFoundError) {
+				fail(res, 404, { error: 'not_found' });
+				return;
+			}
+			if (!sendRejection(res, error)) throw error;
+		}
 	});
 
 	return router;

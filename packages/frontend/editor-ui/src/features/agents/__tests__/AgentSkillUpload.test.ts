@@ -1,14 +1,10 @@
 import { flushPromises, mount } from '@vue/test-utils';
 import { fireEvent } from '@testing-library/vue';
-import { describe, expect, it, vi } from 'vitest';
+import { describe, expect, it } from 'vitest';
 import { mock } from 'vitest-mock-extended';
 import { nextTick } from 'vue';
 
 import AgentSkillUpload from '../components/AgentSkillUpload.vue';
-
-vi.mock('@n8n/i18n', () => ({
-	useI18n: () => ({ baseText: (key: string) => key }),
-}));
 
 const skillMarkdown = '---\nname: Research\ndescription: Use for research\n---\nMain instructions';
 
@@ -68,6 +64,47 @@ describe('AgentSkillUpload', () => {
 		]);
 	});
 
+	it.each(['original', 'reversed'])(
+		'rejects a folder with three skills in %s file order and allows another upload',
+		async (order) => {
+			const wrapper = mountUpload();
+			const input = wrapper.get('[data-testid="agent-skill-folder-file-input"]');
+			const files = ['research', 'writing', 'review'].flatMap((name) => [
+				makeFile(skillMarkdown, `skills/${name}/SKILL.md`),
+				makeFile('# Guide', `skills/${name}/references/guide.md`),
+			]);
+			files.push(makeFile('# Shared guide', 'skills/references/shared.md'));
+
+			await fireEvent.change(input.element, {
+				target: { files: order === 'reversed' ? files.toReversed() : files },
+			});
+			await flushPromises();
+
+			expect(wrapper.get('[role="alert"]').text()).toBe(
+				'This folder holds 3 skills. Upload one skill folder at a time.',
+			);
+			expect(wrapper.emitted('uploaded')).toBeUndefined();
+			expect(wrapper.emitted('import:skill')?.at(-1)).toEqual([
+				{
+					source: 'folder',
+					status: 'error',
+					error: 'agents.builder.skills.import.multipleSkills',
+				},
+			]);
+
+			await fireEvent.change(input.element, { target: { files: files.slice(0, 2) } });
+			await flushPromises();
+
+			expect(wrapper.find('[role="alert"]').exists()).toBe(false);
+			expect(wrapper.emitted('uploaded')?.at(-1)).toEqual([
+				expect.objectContaining({
+					name: 'Research',
+					references: [{ path: 'references/guide.md', content: '# Guide' }],
+				}),
+			]);
+		},
+	);
+
 	it('rejects scripts and allows another import', async () => {
 		const wrapper = mountUpload();
 		const input = wrapper.get('[data-testid="agent-skill-folder-file-input"]');
@@ -78,9 +115,7 @@ describe('AgentSkillUpload', () => {
 		});
 		await flushPromises();
 
-		expect(wrapper.get('[role="alert"]').text()).toBe(
-			'agents.builder.skills.import.scriptsUnsupported',
-		);
+		expect(wrapper.get('[role="alert"]').text()).toBe("Scripts aren't supported for skills yet.");
 		expect(wrapper.emitted('uploaded')).toBeUndefined();
 		expect(wrapper.emitted('import:skill')?.at(-1)).toEqual([
 			{
@@ -138,6 +173,41 @@ describe('AgentSkillUpload', () => {
 		]);
 		expect(wrapper.emitted('import:skill')?.at(-1)).toEqual([
 			{ source: 'folder', status: 'success', referenceCount: 1 },
+		]);
+	});
+
+	it('rejects a dropped parent folder with skills in separate directory batches', async () => {
+		const wrapper = mountUpload();
+		await nextTick();
+		const folder = directoryEntry('/skills', [
+			[fileEntry('/skills/references/shared.md', '# Shared guide')],
+			...['research', 'writing', 'review'].map((name) => [
+				directoryEntry(`/skills/${name}`, [
+					[fileEntry(`/skills/${name}/SKILL.md`, skillMarkdown)],
+					[
+						directoryEntry(`/skills/${name}/references`, [
+							[fileEntry(`/skills/${name}/references/guide.md`, '# Guide')],
+						]),
+					],
+				]),
+			]),
+		]);
+
+		await wrapper.get('[data-testid="agent-skill-drop-zone"]').trigger('drop', {
+			dataTransfer: { files: [], items: [{ webkitGetAsEntry: () => folder }] },
+		});
+		await flushPromises();
+
+		expect(wrapper.get('[role="alert"]').text()).toBe(
+			'This folder holds 3 skills. Upload one skill folder at a time.',
+		);
+		expect(wrapper.emitted('uploaded')).toBeUndefined();
+		expect(wrapper.emitted('import:skill')?.at(-1)).toEqual([
+			{
+				source: 'folder',
+				status: 'error',
+				error: 'agents.builder.skills.import.multipleSkills',
+			},
 		]);
 	});
 });

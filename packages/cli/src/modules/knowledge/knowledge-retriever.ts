@@ -1,13 +1,12 @@
-import type {
-	GlobKnowledgeFilesRequest,
-	GlobKnowledgeFilesResult,
-	ReadKnowledgeRequest,
-	ReadKnowledgeResult,
-	SearchKnowledgeRequest,
-	SearchKnowledgeResult,
-} from '@/modules/agents/agent-knowledge-retrieval';
-
 import type { KnowledgeConsumerScope } from './knowledge-consumer-scope';
+import type {
+	FindKnowledgeFilesRequest,
+	FindKnowledgeFilesResult,
+	ReadKnowledgeFileRequest,
+	ReadKnowledgeFileResult,
+	SearchKnowledgeTextRequest,
+	SearchKnowledgeTextResult,
+} from './retrieval/retrieval-schemas';
 
 /**
  * What the knowledge module offers to a consumer. The agents module exposes
@@ -23,18 +22,18 @@ export interface KnowledgeRetriever {
 	/** Matches uploaded file names against a glob. Runs in-process, without a sandbox. */
 	findFiles(
 		scope: KnowledgeConsumerScope,
-		request: GlobKnowledgeFilesRequest,
-	): Promise<GlobKnowledgeFilesResult>;
+		request: FindKnowledgeFilesRequest,
+	): Promise<FindKnowledgeFilesResult>;
 
 	/** Line-based regex search over file contents in the consumer's sandbox mirror. */
 	searchText(
 		scope: KnowledgeConsumerScope,
-		request: SearchKnowledgeRequest,
-	): Promise<SearchKnowledgeResult>;
+		request: SearchKnowledgeTextRequest,
+	): Promise<SearchKnowledgeTextResult>;
 
 	/** Reads line ranges of one file and returns a citation for each range. */
 	readFile(
 		scope: KnowledgeConsumerScope,
-		request: ReadKnowledgeRequest,
-	): Promise<ReadKnowledgeResult>;
+		request: ReadKnowledgeFileRequest,
+	): Promise<ReadKnowledgeFileResult>;
 }

@@ -1,5 +1,6 @@
 import { randomBytes } from 'crypto';
 import type { IHookFunctions, IWebhookFunctions } from 'n8n-workflow';
+import { requestPath } from 'n8n-workflow';
 
 import { FormstackTrigger } from '../FormstackTrigger.node';
 import { verifySignature } from '../FormstackTriggerHelpers';
@@ -76,7 +77,7 @@ describe('FormstackTrigger', () => {
 
 			expect(result).toBe(true);
 			expect(randomBytes).toHaveBeenCalledWith(32);
-			expect(apiRequest).toHaveBeenCalledWith('POST', `form/${formId}/webhook.json`, {
+			expect(apiRequest).toHaveBeenCalledWith('POST', requestPath`form/${formId}/webhook.json`, {
 				url: webhookUrl,
 				standardize_field_values: true,
 				include_field_type: true,
@@ -104,7 +105,7 @@ describe('FormstackTrigger', () => {
 			);
 
 			expect(result).toBe(true);
-			expect(apiRequest).toHaveBeenCalledWith('DELETE', `webhook/${webhookId}.json`, {});
+			expect(apiRequest).toHaveBeenCalledWith('DELETE', requestPath`webhook/${webhookId}.json`, {});
 			expect(webhookData.webhookId).toBeUndefined();
 			expect(webhookData.webhookSecret).toBeUndefined();
 		});

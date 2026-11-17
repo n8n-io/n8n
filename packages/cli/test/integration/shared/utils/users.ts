@@ -1,4 +1,4 @@
-import type { User, PublicUser } from '@n8n/db';
+import type { Person, PublicUser } from '@n8n/db';
 
 export const validateUser = (user: PublicUser) => {
 	expect(typeof user.id).toBe('string');
@@ -16,6 +16,6 @@ export const validateUser = (user: PublicUser) => {
 };
 
 export type UserInvitationResult = {
-	user: Pick<User, 'id' | 'email'> & { inviteAcceptUrl: string; emailSent: boolean };
+	user: Pick<Person, 'id' | 'email'> & { inviteAcceptUrl: string; emailSent: boolean };
 	error?: string;
 };

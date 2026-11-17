@@ -833,34 +833,32 @@ describe('memoryManagement', () => {
 			expect(mockChatHistory.addMessages).not.toHaveBeenCalled();
 		});
 
-		it('should use saveContext when all steps are from previous turns', async () => {
-			const aiMessage = new AIMessage({
-				content: 'Using tool',
-				tool_calls: [{ id: 'call-123', name: 'calculator', args: {}, type: 'tool_call' }],
+		it('should save the steps of every round of the turn', async () => {
+			const round = (id: string, tool: string): ToolCallData => ({
+				action: {
+					tool,
+					toolInput: {},
+					log: tool,
+					messageLog: [
+						new AIMessage({
+							content: '',
+							tool_calls: [{ id, name: tool, args: {}, type: 'tool_call' }],
+						}),
+					],
+					toolCallId: id,
+					type: 'tool_call',
+				},
+				observation: `${tool} result`,
 			});
 
-			const steps: ToolCallData[] = [
-				{
-					action: {
-						tool: 'calculator',
-						toolInput: { expression: '2+2' },
-						log: 'Calc',
-						messageLog: [aiMessage],
-						toolCallId: 'call-123',
-						type: 'tool_call',
-					},
-					observation: '4',
-				},
-			];
+			await saveToMemory('Question', 'Answer', mockMemory, [
+				round('call-1', 'search'),
+				round('call-2', 'calculator'),
+			]);
 
-			// All steps are from previous turns (previousStepsCount = 1)
-			await saveToMemory('New question', 'New answer', mockMemory, steps, 1);
-
-			expect(mockMemory.saveContext).toHaveBeenCalledWith(
-				{ input: 'New question' },
-				{ output: 'New answer' },
-			);
-			expect(mockChatHistory.addMessages).not.toHaveBeenCalled();
+			const saved: Array<{ getType: () => string }> = mockChatHistory.addMessages.mock.calls[0][0];
+			expect(saved.map((m) => m.getType())).toEqual(['human', 'ai', 'tool', 'ai', 'tool', 'ai']);
+			expect(mockMemory.saveContext).not.toHaveBeenCalled();
 		});
 	});
 

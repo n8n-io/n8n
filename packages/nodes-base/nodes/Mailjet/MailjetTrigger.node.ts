@@ -6,7 +6,7 @@ import type {
 	INodeTypeDescription,
 	IWebhookResponseData,
 } from 'n8n-workflow';
-import { NodeConnectionTypes } from 'n8n-workflow';
+import { NodeConnectionTypes, requestPath } from 'n8n-workflow';
 
 import { mailjetApiRequest } from './GenericFunctions';
 
@@ -78,7 +78,7 @@ export class MailjetTrigger implements INodeType {
 	webhookMethods = {
 		default: {
 			async checkExists(this: IHookFunctions): Promise<boolean> {
-				const endpoint = '/v3/rest/eventcallbackurl';
+				const endpoint = requestPath`/v3/rest/eventcallbackurl`;
 				const responseData = await mailjetApiRequest.call(this, 'GET', endpoint);
 
 				const event = this.getNodeParameter('event') as string;
@@ -99,7 +99,7 @@ export class MailjetTrigger implements INodeType {
 				const webhookUrl = this.getNodeWebhookUrl('default');
 				const webhookData = this.getWorkflowStaticData('node');
 				const event = this.getNodeParameter('event') as string;
-				const endpoint = '/v3/rest/eventcallbackurl';
+				const endpoint = requestPath`/v3/rest/eventcallbackurl`;
 				const body: IDataObject = {
 					Url: webhookUrl,
 					EventType: event,
@@ -112,8 +112,8 @@ export class MailjetTrigger implements INodeType {
 			},
 			async delete(this: IHookFunctions): Promise<boolean> {
 				const webhookData = this.getWorkflowStaticData('node');
-				const endpoint = `/v3/rest/eventcallbackurl/${webhookData.webhookId}`;
 				try {
+					const endpoint = requestPath`/v3/rest/eventcallbackurl/${webhookData.webhookId}`;
 					await mailjetApiRequest.call(this, 'DELETE', endpoint);
 				} catch (error) {
 					return false;

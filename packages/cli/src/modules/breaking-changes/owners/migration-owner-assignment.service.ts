@@ -1,6 +1,6 @@
 import type { BreakingChangeWorkflowOwner, MigrationOwnerCandidate } from '@n8n/api-types';
 import { WorkflowSharingService } from '@n8n/backend-services';
-import { UserRepository, WorkflowRepository, type User } from '@n8n/db';
+import { accountSummary, UserRepository, WorkflowRepository, type User } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { BadRequestError, NotFoundError } from '@n8n/errors';
 
@@ -55,9 +55,7 @@ export class MigrationOwnerAssignmentService {
 			includeRole: true,
 			includeAuthIdentities: true,
 		});
-		return users
-			.filter(canOwnFindings)
-			.map(({ id, firstName, lastName, email }) => ({ id, firstName, lastName, email }));
+		return users.filter(canOwnFindings).map(accountSummary);
 	}
 
 	/**
