@@ -17,6 +17,10 @@
 //!   with the reason, not retryable. A connection that closes without it
 //!   (the whole host or its server process stopped) blames no step: a step
 //!   alone on it fails as retryable. Several steps go again, each alone.
+//!   With `"again":true` the host stopped the worker because a step blocked
+//!   it, and it runs such a step in its slow lane the next time. No step is
+//!   to blame yet: each step goes again once as a new step, on any
+//!   connection. A step that is lost a second time follows the rule above.
 //! - `{"type":"service","id":"<step frame id>","service","op","args"}`: a
 //!   step that runs asks a service of n8n (spec 9.9). The shell sends the
 //!   `service` event with call id `<executionId>:<seq>.<n>` and gives the
@@ -89,6 +93,14 @@ pub fn parse(frame: []const u8) Control {
     return .{ .hello = .{ .version = version, .workers = workers } };
 }
 
+/// True when a `worker_lost` frame carries `"again":true`. Never fails: a
+/// frame without it, or with any other value, is false.
+pub fn lostAgain(frame: []const u8) bool {
+    const lost = http.member(frame, "worker_lost") orelse return false;
+    const again = http.member(lost, "again") orelse return false;
+    return std.mem.eql(u8, std.mem.trim(u8, again, " \t\r\n"), "true");
+}
+
 /// The connections to keep for a v2 hello: one per worker, within the limit.
 /// `--workers 0` (steps in the host's server process) gets one.
 pub fn connectionsFor(workers: u32) u32 {
@@ -155,6 +167,11 @@ test "worker_lost frames" {
     var long_buf: [max_reason + 64]u8 = undefined;
     const long = try std.fmt.bufPrint(&long_buf, "{{\"worker_lost\":{{\"reason\":\"{s}\"}}}}", .{&xs});
     try std.testing.expectEqualStrings("", parse(long).worker_lost);
+    try std.testing.expect(lostAgain("{\"worker_lost\":{\"reason\":\"a step blocks it\",\"again\":true}}"));
+    try std.testing.expect(!lostAgain("{\"worker_lost\":{\"reason\":\"a step blocks it\"}}"));
+    try std.testing.expect(!lostAgain("{\"worker_lost\":{\"reason\":\"x\",\"again\":false}}"));
+    try std.testing.expect(!lostAgain("{\"id\":\"1:2\",\"again\":true}"));
+    try std.testing.expectEqualStrings("a step blocks it", parse("{\"worker_lost\":{\"reason\":\"a step blocks it\",\"again\":true}}").worker_lost);
     // A reason of exactly `max_reason` bytes is kept.
     const fit = try std.fmt.bufPrint(&long_buf, "{{\"worker_lost\":{{\"reason\":\"{s}\"}}}}", .{xs[0..max_reason]});
     try std.testing.expectEqual(@as(usize, max_reason), parse(fit).worker_lost.len);
