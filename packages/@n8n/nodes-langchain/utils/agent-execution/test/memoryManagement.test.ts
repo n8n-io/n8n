@@ -1,5 +1,6 @@
 import type { BaseChatMemory } from '@langchain/classic/memory';
 import type { BaseChatModel } from '@langchain/core/language_models/chat_models';
+import type { BaseMessage } from '@langchain/core/messages';
 import {
 	HumanMessage,
 	AIMessage,
@@ -287,6 +288,16 @@ describe('memoryManagement', () => {
 			expect(removeEmptyTurns([new HumanMessage('q'), system, new AIMessage(''), ...kept])).toEqual(
 				[system, ...kept],
 			);
+		});
+
+		it('should use getType() of items that are not BaseMessage and keep items without it', () => {
+			const duck = (type: string, content: string) =>
+				({ getType: () => type, content }) as unknown as BaseMessage;
+			const plain = { role: 'human', content: 'x' } as unknown as BaseMessage;
+			const kept = [duck('human', 'Hi'), duck('ai', 'Hello'), plain];
+
+			expect(removeEmptyTurns([new HumanMessage('q'), new AIMessage(''), ...kept])).toEqual(kept);
+			expect(removeEmptyTurns([duck('human', 'q'), duck('ai', ''), ...kept])).toEqual(kept);
 		});
 
 		it('should drop a turn read from a stored row in the { type, data: { content } } shape', () => {

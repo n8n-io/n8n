@@ -1,13 +1,7 @@
 import type { BaseChatMemory } from '@langchain/classic/memory';
 import type { BaseChatModel } from '@langchain/core/language_models/chat_models';
 import type { BaseMessage } from '@langchain/core/messages';
-import {
-	AIMessage,
-	HumanMessage,
-	SystemMessage,
-	ToolMessage,
-	trimMessages,
-} from '@langchain/core/messages';
+import { AIMessage, HumanMessage, ToolMessage, trimMessages } from '@langchain/core/messages';
 import type { IDataObject, GenericValue } from 'n8n-workflow';
 
 import type { ToolCallData } from './types';
@@ -227,14 +221,17 @@ export function cleanupOrphanedMessages(chatHistory: BaseMessage[]): BaseMessage
 	return result;
 }
 
+// A custom memory can return items that are not BaseMessage. Items without getType() stay as they are.
+function messageType(message: BaseMessage): string | undefined {
+	return typeof message?.getType === 'function' ? message.getType() : undefined;
+}
+
 function hasEmptyContent(message: BaseMessage): boolean {
-	// isInstance, not getType(): a custom memory can return items that are not BaseMessage
-	if (AIMessage.isInstance(message)) {
-		// An AI message that only carries tool calls has no text by design
-		if ((message.tool_calls?.length ?? 0) > 0) return false;
-	} else if (!HumanMessage.isInstance(message)) {
+	const type = messageType(message);
+	if (type !== 'human' && type !== 'ai') return false;
+	// An AI message that only carries tool calls has no text by design
+	if ('tool_calls' in message && Array.isArray(message.tool_calls) && message.tool_calls.length > 0)
 		return false;
-	}
 
 	const { content } = message;
 	if (typeof content === 'string') return content.trim() === '';
@@ -260,13 +257,13 @@ export function removeEmptyTurns(chatHistory: BaseMessage[]): BaseMessage[] {
 	let turn: BaseMessage[] = [];
 	const flush = () => {
 		const keep = turn.some(hasEmptyContent)
-			? turn.filter((message) => SystemMessage.isInstance(message))
+			? turn.filter((message) => messageType(message) === 'system')
 			: turn;
 		result.push(...keep);
 		turn = [];
 	};
 	for (const message of chatHistory) {
-		if (HumanMessage.isInstance(message)) flush();
+		if (messageType(message) === 'human') flush();
 		turn.push(message);
 	}
 	flush();
