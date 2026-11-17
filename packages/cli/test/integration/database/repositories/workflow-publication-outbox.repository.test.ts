@@ -83,6 +83,16 @@ describe('WorkflowPublicationOutboxRepository', () => {
 			expect(claimed?.reason).toBe('publish');
 		});
 
+		it('keeps the transfer reason of a pending record when a user publish lands on it', async () => {
+			const workflow = await createActiveWorkflow();
+			await repository.enqueueByWorkflowIds([workflow.id], 'transfer');
+
+			await repository.enqueue(workflow.id, 'v-new', 'publish');
+
+			const claimed = await repository.claimNextPendingRecord();
+			expect(claimed).toMatchObject({ reason: 'transfer', publishedVersionId: 'v-new' });
+		});
+
 		it('keeps a pending record untouched when the reconciler re-enqueues over it', async () => {
 			const workflow = await createActiveWorkflow();
 			assert(workflow.activeVersionId);

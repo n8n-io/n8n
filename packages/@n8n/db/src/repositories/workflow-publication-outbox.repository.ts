@@ -63,8 +63,8 @@ export class WorkflowPublicationOutboxRepository extends BaseRepository<Workflow
 	 * Pass `trx` to run the UPSERT inside an existing transaction, e.g. to make
 	 * the enqueue atomic with a `workflow_entity` update.
 	 *
-	 * The conflict path also supersedes `reason`: a fresher enqueue's intent
-	 * wins (e.g. a user publish replacing a pending startup record).
+	 * The conflict path also supersedes `reason`, except a pending `transfer`,
+	 * which the applier still needs to register every trigger again.
 	 */
 	async enqueue(
 		workflowId: string,
@@ -108,7 +108,9 @@ export class WorkflowPublicationOutboxRepository extends BaseRepository<Workflow
 			`INSERT INTO ${tableName} ("workflowId", "publishedVersionId", "status", "reason")
 			 VALUES ($1, $2, '${Status.Pending}', $3)
 			 ON CONFLICT ("workflowId", "status") WHERE "status" IN ('${Status.Pending}', '${Status.InProgress}')
-			 DO UPDATE SET "publishedVersionId" = EXCLUDED."publishedVersionId", "reason" = EXCLUDED."reason", "updatedAt" = CURRENT_TIMESTAMP(3)`,
+			 DO UPDATE SET "publishedVersionId" = EXCLUDED."publishedVersionId",
+			   "reason" = CASE WHEN ${tableName}."reason" = '${WorkflowPublicationReason.Transfer}' THEN ${tableName}."reason" ELSE EXCLUDED."reason" END,
+			   "updatedAt" = CURRENT_TIMESTAMP(3)`,
 			[workflowId, publishedVersionId, reason],
 		);
 	}
@@ -125,7 +127,9 @@ export class WorkflowPublicationOutboxRepository extends BaseRepository<Workflow
 			`INSERT INTO ${tableName} ("workflowId", "publishedVersionId", "status", "reason")
 			 VALUES (?, ?, '${Status.Pending}', ?)
 			 ON CONFLICT ("workflowId", "status") WHERE "status" IN ('${Status.Pending}', '${Status.InProgress}')
-			 DO UPDATE SET "publishedVersionId" = excluded."publishedVersionId", "reason" = excluded."reason", "updatedAt" = STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')`,
+			 DO UPDATE SET "publishedVersionId" = excluded."publishedVersionId",
+			   "reason" = CASE WHEN ${tableName}."reason" = '${WorkflowPublicationReason.Transfer}' THEN ${tableName}."reason" ELSE excluded."reason" END,
+			   "updatedAt" = STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')`,
 			[workflowId, publishedVersionId, reason],
 		);
 	}
