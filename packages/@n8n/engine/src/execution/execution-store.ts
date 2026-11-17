@@ -66,8 +66,10 @@ export interface PrunableExecution {
 }
 
 export interface PrunableExecutionQuery {
-	/** Select only executions that ended more than this long ago. */
+	/** Select an execution that ended more than this long ago. */
 	maxAgeMs: number;
+	/** Also select an execution at or before this one, by finish time and id. See `findRetentionCountCutoff`. */
+	countCutoff?: Pick<PrunableExecution, 'id' | 'finishedAt'>;
 	limit: number;
 	/** The last row of the previous batch. The result starts after it. */
 	after?: Pick<PrunableExecution, 'id' | 'finishedAt'>;
@@ -184,13 +186,23 @@ export interface ExecutionStore {
 	loadLiveSubExecutionIds(parentExecutionId: string): Promise<string[]>;
 
 	/**
-	 * The ended executions that finished more than `maxAgeMs` ago, oldest first
-	 * by finish time and id, at most `limit`. The database clock sets the
-	 * cut-off. It skips an execution that still has a step that has not
-	 * settled, and an awaited sub-execution whose parent step still waits. A
-	 * plain read: it locks no row.
+	 * The ended executions that finished more than `maxAgeMs` ago or that are
+	 * at or before `countCutoff`, oldest first by finish time and id, at most
+	 * `limit`. The database clock sets the age cut-off. It skips an execution
+	 * that still has a step that has not settled, and an awaited sub-execution
+	 * whose parent step still waits. A plain read: it locks no row.
 	 */
 	findPrunableExecutions(query: PrunableExecutionQuery): Promise<PrunableExecution[]>;
+
+	/**
+	 * The newest ended execution that is not among the newest `maxCount` ended
+	 * executions, by finish time and id. `undefined` when there are `maxCount`
+	 * or fewer. The count includes the ended executions that
+	 * `findPrunableExecutions` skips.
+	 */
+	findRetentionCountCutoff(
+		maxCount: number,
+	): Promise<Pick<PrunableExecution, 'id' | 'finishedAt'> | undefined>;
 
 	/**
 	 * Deletes the given executions that have ended, with their step rows and

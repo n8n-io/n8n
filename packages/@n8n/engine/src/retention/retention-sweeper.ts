@@ -13,6 +13,8 @@ const MAX_TIMER_DELAY_MS = 2 ** 31 - 1;
 export interface ExecutionRetentionPolicy {
 	/** Delete an execution that ended more than this long ago. */
 	maxAgeMs: number;
+	/** Delete an ended execution that is not among the newest this many. `0` or none: no limit. */
+	maxCount?: number;
 	/** The time from the end of one pass to the start of the next. Defaults to an hour. */
 	intervalMs?: number;
 	/** How many executions one batch selects. Defaults to 100. */
@@ -20,7 +22,8 @@ export interface ExecutionRetentionPolicy {
 }
 
 /**
- * Deletes the executions that ended before the retention period, with their files.
+ * Deletes the executions that ended before the retention period or that are
+ * not among the newest `maxCount` ended executions, with their files.
  *
  * Each orchestrator process runs its own sweeper, without coordination. The first pass
  * starts after a random part of the interval, so processes that start together
@@ -29,6 +32,7 @@ export interface ExecutionRetentionPolicy {
  */
 export class RetentionSweeper {
 	private readonly maxAgeMs: number;
+	private readonly maxCount: number;
 	private readonly intervalMs: number;
 	private readonly batchSize: number;
 	private timer: NodeJS.Timeout | undefined;
@@ -44,10 +48,14 @@ export class RetentionSweeper {
 		private readonly random: () => number = Math.random,
 	) {
 		this.maxAgeMs = policy.maxAgeMs;
+		this.maxCount = policy.maxCount ?? 0;
 		this.intervalMs = policy.intervalMs ?? DEFAULT_RETENTION_SWEEP_INTERVAL_MS;
 		this.batchSize = policy.batchSize ?? DEFAULT_RETENTION_BATCH_SIZE;
 		if (!Number.isSafeInteger(this.maxAgeMs) || this.maxAgeMs < 0) {
 			throw new UnexpectedError('The retention policy value "maxAgeMs" is not valid');
+		}
+		if (!Number.isSafeInteger(this.maxCount) || this.maxCount < 0) {
+			throw new UnexpectedError('The retention policy value "maxCount" is not valid');
 		}
 		if (
 			!Number.isSafeInteger(this.intervalMs) ||
@@ -97,10 +105,16 @@ export class RetentionSweeper {
 	private async runPass(): Promise<void> {
 		let deleted = 0;
 		try {
+			// An execution that ends later only moves the cutoff forward, so one read per pass is safe.
+			const countCutoff =
+				this.maxCount > 0
+					? await this.executionStore.findRetentionCountCutoff(this.maxCount)
+					: undefined;
 			let after: PrunableExecution | undefined;
 			while (!this.stopped) {
 				const batch = await this.executionStore.findPrunableExecutions({
 					maxAgeMs: this.maxAgeMs,
+					countCutoff,
 					limit: this.batchSize,
 					after,
 				});
