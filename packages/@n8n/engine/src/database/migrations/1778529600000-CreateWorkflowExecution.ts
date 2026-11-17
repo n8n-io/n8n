@@ -111,6 +111,12 @@ export class CreateWorkflowExecution1778529600000 implements MigrationInterface 
 				columnNames: ['stale_after'],
 				where: "status = 'queued'",
 			}),
+			// For the retention sweep, oldest first.
+			new TableIndex({
+				name: 'idx_workflow_execution_finished_at_id',
+				columnNames: ['finished_at', 'id'],
+				where: 'finished_at IS NOT NULL',
+			}),
 		]);
 	}
 
