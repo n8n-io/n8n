@@ -1,4 +1,4 @@
-import type { PromotionDirection } from '@n8n/api-types';
+import type { PromotionDependencyReport, PromotionDirection } from '@n8n/api-types';
 
 import type { ResourceKey } from './promotionPreview.selection';
 
@@ -14,6 +14,13 @@ export type PromotionSelectionHandoff = {
 	selected: ResourceKey[];
 	/** Items that "Include it" added, with the project of each. */
 	extra: Array<[key: ResourceKey, projectId: string]>;
+	/**
+	 * The dependency report of the project page. The changes view computes its own for every
+	 * change, so only this one knows the gaps of the selection that came over.
+	 */
+	report?: PromotionDependencyReport;
+	/** The names of the included items that the changes view does not list, by key. */
+	names?: Array<[key: ResourceKey, name: string]>;
 };
 
 let pending: PromotionSelectionHandoff | undefined;

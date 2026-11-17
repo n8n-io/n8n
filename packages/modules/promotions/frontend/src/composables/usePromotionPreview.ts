@@ -11,7 +11,11 @@ import { computed, ref, shallowRef, watch, type Ref } from 'vue';
 
 import { useLatestFetch } from '@n8n/composables/useLatestFetch';
 
-import { getPromotionEnvironmentChanges, getPromotionPreview } from '../promotions.api';
+import {
+	getPromotionEnvironmentChanges,
+	getPromotionInstanceApplyPreview,
+	getPromotionPreview,
+} from '../promotions.api';
 import { loadPromotionFixture } from '../promotionFixtures';
 import type { ApplyCheckResult } from '../promotions.types';
 import { changesProjects, type ChangesProject } from '../promotionPreview.projects';
@@ -55,6 +59,18 @@ export type PromotionPreviewOptions = {
 	origin?: Ref<string | undefined>;
 	/** Development only: the name of a fixture that replaces the server. */
 	fixture?: Ref<string | undefined>;
+	/**
+	 * Only for the changes view of an Apply: true when the user may apply the whole instance.
+	 * The page then also reads which projects that Apply deletes.
+	 */
+	canApplyInstance?: Ref<boolean>;
+};
+
+/** What only the Apply of the whole instance does, and the revision that it accepts. */
+export type InstanceApplyScope = {
+	revision: string;
+	/** The team projects that the branch does not hold. The Apply deletes them. */
+	deletedProjects: Array<{ id: string; name: string }>;
 };
 
 /**
@@ -65,7 +81,7 @@ export type PromotionPreviewOptions = {
 export function usePromotionPreview(
 	projectId: Ref<string | undefined>,
 	direction: Ref<PromotionDirection>,
-	{ origin, fixture }: PromotionPreviewOptions = {},
+	{ origin, fixture, canApplyInstance }: PromotionPreviewOptions = {},
 ) {
 	const rootStore = useRootStore();
 	const { next } = useLatestFetch();
@@ -89,6 +105,8 @@ export function usePromotionPreview(
 		projects?: PromotionEnvironmentChangesProject[];
 		blockers?: PromotionProjectBlocker[];
 	}>({});
+	/** `null` when the page cannot run the Apply of the whole instance. */
+	const instanceApply = shallowRef<InstanceApplyScope | null>(null);
 	const fixtureEnvironment = shallowRef<PromotionPreviewEnvironment | null>(null);
 	/** The project whose environment serves the page. */
 	const lookupProjectId = computed(() => projectId.value ?? origin?.value);
@@ -153,6 +171,27 @@ export function usePromotionPreview(
 	const loadFixture = async (name: string) =>
 		await loadPromotionFixture(name, direction.value, lookupProjectId.value);
 
+	/**
+	 * A selection never deletes a project. Only the Apply of the whole instance does, so the
+	 * page asks its preview which projects go. A failure only turns that Apply off.
+	 */
+	async function loadInstanceApply(environmentId: string): Promise<InstanceApplyScope | null> {
+		try {
+			const { revision, check } = await getPromotionInstanceApplyPreview(
+				rootStore.publicApiContext,
+				environmentId,
+			);
+			return {
+				revision,
+				deletedProjects: check.conflicts.flatMap((conflict) =>
+					conflict.code === 'project-deletion' ? [conflict.project] : [],
+				),
+			};
+		} catch {
+			return null;
+		}
+	}
+
 	async function load() {
 		const isLatest = next();
 		const requested = {
@@ -190,6 +229,14 @@ export function usePromotionPreview(
 			let hasProjectBlocker = false;
 			if (requested.projectId === undefined) {
 				// The changes view as a preview. The projects and their blockers go to `scope`.
+				// Both previews load together, so the page waits once.
+				const instanceApplyRequest =
+					requested.direction === 'apply' &&
+					!requested.fixture &&
+					requested.lookupProjectId === undefined &&
+					canApplyInstance?.value === true
+						? loadInstanceApply(environment.value.id)
+						: Promise.resolve(null);
 				const {
 					projects: listedProjects,
 					blockers,
@@ -197,8 +244,14 @@ export function usePromotionPreview(
 					...changes
 				} = requested.fixture
 					? (await loadFixture(requested.fixture)).changes
-					: await getPromotionEnvironmentChanges(rootStore.publicApiContext, environment.value.id);
+					: await getPromotionEnvironmentChanges(
+							rootStore.publicApiContext,
+							environment.value.id,
+							requested.direction,
+						);
+				const wholeInstance = await instanceApplyRequest;
 				if (!isLatest()) return;
+				instanceApply.value = wholeInstance;
 				result = changes;
 				scope.value = { projects: listedProjects, blockers };
 				hasProjectBlocker = !!blockers?.length;
@@ -212,6 +265,7 @@ export function usePromotionPreview(
 						);
 				if (!isLatest()) return;
 				scope.value = {};
+				instanceApply.value = null;
 			}
 			preview.value = result;
 			lastRefreshedAt.value = new Date();
@@ -262,6 +316,7 @@ export function usePromotionPreview(
 		graph,
 		projects,
 		dependencyReport,
+		instanceApply,
 		environment,
 		canOperate,
 		repositoryName,

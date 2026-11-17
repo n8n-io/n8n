@@ -12,6 +12,8 @@ import {
 import { useI18n } from '@n8n/i18n';
 import { computed } from 'vue';
 
+import { useCredentialTypeNames } from '../../composables/useCredentialTypeNames';
+import { usePromotionDependencyLabels } from '../../composables/usePromotionDependencyLabels';
 import { placeholderGaps, type ApplyConfirmations } from '../../promotionDependencies';
 import type { ResourceKey } from '../../promotionPreview.selection';
 import PromotionWorkflowLinks from '../preview/PromotionWorkflowLinks.vue';
@@ -42,6 +44,9 @@ const emit = defineEmits<{
 }>();
 
 const i18n = useI18n();
+const { credentialTypeName } = useCredentialTypeNames();
+const { credentialNotMovedText } = usePromotionDependencyLabels();
+const hiddenKept = computed(() => props.report.hiddenKeptWorkflowCount ?? 0);
 
 const workflowLinks = (workflows: ReadonlyArray<{ id: string; name: string }>) =>
 	workflows.map(({ id, name }) => ({ key: `workflow:${id}`, name }));
@@ -131,7 +136,9 @@ const placeholders = computed(() =>
 						/>
 					</N8nText>
 				</div>
-				<N8nText step="2xs" color="text-light">{{ grant.credential.type }}</N8nText>
+				<N8nText step="2xs" color="text-light">
+					{{ credentialTypeName(grant.credential.type) }}
+				</N8nText>
 			</li>
 		</PromotionDependencySection>
 
@@ -242,9 +249,7 @@ const placeholders = computed(() =>
 												project: move.toProject.name,
 											},
 										})
-									: i18n.baseText('promotions.dependencies.moves.refused', {
-											interpolate: { credential: move.credential.name },
-										})
+									: credentialNotMovedText(move)
 							}}
 						</span>
 					</N8nText>
@@ -269,7 +274,7 @@ const placeholders = computed(() =>
 		</PromotionDependencySection>
 
 		<PromotionDependencySection
-			v-if="report.keptWorkflows.length > 0"
+			v-if="report.keptWorkflows.length > 0 || hiddenKept > 0"
 			:title="i18n.baseText('promotions.dependencies.kept.title')"
 			:description="i18n.baseText('promotions.dependencies.kept.description')"
 			tone="quiet"
@@ -295,6 +300,16 @@ const placeholders = computed(() =>
 						/>
 					</N8nText>
 				</div>
+			</li>
+			<li v-if="hiddenKept > 0" :class="$style.row" data-test-id="promotion-dependency-kept-hidden">
+				<N8nText step="2xs" color="text-base">
+					{{
+						i18n.baseText('promotions.dependencies.kept.hidden', {
+							adjustToNumber: hiddenKept,
+							interpolate: { count: String(hiddenKept) },
+						})
+					}}
+				</N8nText>
 			</li>
 		</PromotionDependencySection>
 

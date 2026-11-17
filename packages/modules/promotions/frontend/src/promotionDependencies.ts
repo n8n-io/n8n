@@ -1,6 +1,7 @@
 import type {
 	PromotionDependencyReport,
 	PromotionGap,
+	PromotionGapDetail,
 	PromotionGapExit,
 	PromotionGapGroup,
 	PromotionReferenceTarget,
@@ -50,6 +51,8 @@ export type GapTargetRow = {
 	include?: PromotionGap['include'];
 	ownerRequestSent: boolean;
 	placeholder: boolean;
+	/** More about the row, for its message. One entry for each kind of detail. */
+	details: PromotionGapDetail[];
 	gaps: PromotionGap[];
 };
 
@@ -74,10 +77,12 @@ export function groupGaps(gaps: readonly PromotionGap[]): GapGroup[] {
 				include: gap.include,
 				ownerRequestSent: gap.ownerRequestSent === true,
 				placeholder: gap.placeholder === true,
+				details: gap.detail ? [gap.detail] : [],
 				gaps: [gap],
 			});
 			continue;
 		}
+		if (gap.detail && !row.details.includes(gap.detail)) row.details.push(gap.detail);
 		row.gaps.push(gap);
 		for (const exit of gap.exits) if (!row.exits.includes(exit)) row.exits.push(exit);
 		row.include ??= gap.include;
@@ -250,7 +255,9 @@ export type PromotionOwnerRequest = {
 	target: { kind: 'credential' | 'workflow'; id: string };
 	/** The workflow of the user that holds the reference. */
 	consumerWorkflowId: string;
+	/** The reference itself. It proves that the user knows the target. */
+	gap: Pick<PromotionGap, 'consumer' | 'target'>;
 };
 
-/** Resolves when the request was sent. Rejects when it was not. */
-export type PromotionOwnerRequester = (request: PromotionOwnerRequest) => Promise<void>;
+/** Resolves `true` when the request was sent, and `false` when it was not. */
+export type PromotionOwnerRequester = (request: PromotionOwnerRequest) => Promise<boolean>;

@@ -107,6 +107,12 @@ const resourceEditors = {
 		await credentialsStore.fetchCredentialTypes(false);
 		return credentialsStore.getCredentialTypeByName(type) !== undefined;
 	},
+	credentialTypeName: async (type: string) => {
+		const { useCredentialsStore } = await import('@/features/credentials/credentials.store');
+		const credentialsStore = useCredentialsStore();
+		await credentialsStore.fetchCredentialTypes(false);
+		return credentialsStore.getCredentialTypeByName(type)?.displayName;
+	},
 	loadVariables: async () => {
 		const { useEnvironmentsStore } = await import(
 			'@/features/settings/environments.ee/environments.store'

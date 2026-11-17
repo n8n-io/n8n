@@ -9,6 +9,7 @@ import type {
 	PromoteSelectionResultDto,
 	PromotionDirection,
 	PromotionEnvironmentChanges,
+	PromotionInstanceApplyPreview,
 	PromotionOwnerRequestResult,
 	PromotionPreview,
 	PromotionProjectEnvironments,
@@ -58,23 +59,19 @@ export async function getPromotionResourceDetails(
 	);
 }
 
-/**
- * The endpoints of the changes view of an environment, across projects. The paths are
- * provisional. Change them here only.
- */
+/** The endpoints of the changes view of an environment, across projects. */
 const environmentPaths = {
-	changes: (environmentId: string) => `/promotions/environments/${environmentId}/changes`,
-	details: (environmentId: string) => `/promotions/environments/${environmentId}/changes/details`,
+	changes: (environmentId: string, direction: PromotionDirection) =>
+		`/promotions/environments/${environmentId}/changes/${direction}`,
+	details: (environmentId: string, direction: PromotionDirection) =>
+		`/promotions/environments/${environmentId}/changes/${direction}/details`,
 	promote: (environmentId: string) => `/promotions/environments/${environmentId}/promote-selection`,
 	apply: (environmentId: string) => `/promotions/environments/${environmentId}/apply-selection`,
-	continueApply: (environmentId: string) =>
-		`/promotions/environments/${environmentId}/apply-selection/continue`,
+	instanceApplyPreview: (environmentId: string) =>
+		`/promotions/environments/${environmentId}/changes`,
 };
 
-/**
- * A server from before the changes view sends the Apply preview of the whole instance: the same
- * rows, without the list of projects and without a direction.
- */
+/** The page also accepts the rows without the list of projects, and derives the projects. */
 export type EnvironmentChangesResponse = Omit<
 	PromotionEnvironmentChanges,
 	'direction' | 'projects'
@@ -82,25 +79,47 @@ export type EnvironmentChangesResponse = Omit<
 	Partial<Pick<PromotionEnvironmentChanges, 'direction' | 'projects'>>;
 
 /**
- * The changes of every project of the environment that the user can access, for the direction
- * of the environment.
+ * The changes of every project of the environment that the user can read. A project lists its
+ * changes only when the user can also run the operation in it.
  */
 export async function getPromotionEnvironmentChanges(
 	context: PublicApiContext,
 	environmentId: string,
+	direction: PromotionDirection,
 ): Promise<EnvironmentChangesResponse> {
-	return await makePublicApiRequest(context, 'GET', environmentPaths.changes(environmentId));
+	return await makePublicApiRequest(
+		context,
+		'GET',
+		environmentPaths.changes(environmentId, direction),
+	);
+}
+
+/**
+ * The preview of the Apply of the whole instance. Only this preview lists the projects that the
+ * Apply deletes, and its `revision` is the one that the whole-instance Apply accepts. It needs
+ * the global scope `promotions:apply` and an instance environment.
+ */
+export async function getPromotionInstanceApplyPreview(
+	context: PublicApiContext,
+	environmentId: string,
+): Promise<PromotionInstanceApplyPreview> {
+	return await makePublicApiRequest(
+		context,
+		'GET',
+		environmentPaths.instanceApplyPreview(environmentId),
+	);
 }
 
 export async function getPromotionEnvironmentDetails(
 	context: PublicApiContext,
 	environmentId: string,
+	direction: PromotionDirection,
 	payload: PromotionResourceDetailsRequestDto,
 ): Promise<PromotionResourceDetails> {
 	return await makePublicApiRequest(
 		context,
 		'POST',
-		environmentPaths.details(environmentId),
+		environmentPaths.details(environmentId, direction),
 		payload,
 	);
 }
@@ -119,7 +138,11 @@ export async function promoteEnvironmentSelection(
 	);
 }
 
-/** Applies a selection across projects. */
+/**
+ * Applies a selection across projects. The server keeps no session: to continue after a
+ * `blocked` result, send the same request again with `expectedSource`, and with
+ * `confirmDestructiveChanges` when the user confirmed the destructive changes.
+ */
 export async function applyEnvironmentSelection(
 	context: PublicApiContext,
 	environmentId: string,
@@ -129,20 +152,6 @@ export async function applyEnvironmentSelection(
 		context,
 		'POST',
 		environmentPaths.apply(environmentId),
-		payload,
-	);
-}
-
-/** The same Apply, with the confirmation of its destructive changes. */
-export async function continueApplyEnvironmentSelection(
-	context: PublicApiContext,
-	environmentId: string,
-	payload: ApplyEnvironmentSelectionRequestDto,
-): Promise<ApplyPackageResultDto> {
-	return await makePublicApiRequest(
-		context,
-		'POST',
-		environmentPaths.continueApply(environmentId),
 		payload,
 	);
 }

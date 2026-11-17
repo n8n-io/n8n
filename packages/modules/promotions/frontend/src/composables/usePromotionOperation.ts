@@ -22,7 +22,6 @@ import type { OperationSelection } from '../promotionOperation';
 import {
 	applyEnvironmentSelection,
 	applyProjectSelection,
-	continueApplyEnvironmentSelection,
 	continueApplyProjectSelection,
 	promoteEnvironmentSelection,
 	promoteProjectSelection,
@@ -33,7 +32,8 @@ import {
 	PROMOTIONS_SETTINGS_VIEW,
 } from '../promotions.constants';
 import { applyPromotion, continueApplyPromotion } from '../promotionsSettings.api';
-import type { ApplyCheckResult } from '../promotions.types';
+import type { AppliedResult, ApplyCheckResult } from '../promotions.types';
+import { hasApplyOutcome } from '../promotionApplyOutcome';
 import { usePromotionOutcome } from './usePromotionOutcome';
 
 export type OperationRequest = OperationSelection & {
@@ -50,6 +50,13 @@ export type OperationRequest = OperationSelection & {
 	 * instance runs. Only that Apply deletes projects.
 	 */
 	wholeInstance?: boolean;
+	/** The revision of the whole-instance preview. The changes view has another one. */
+	instanceRevision?: string;
+	/**
+	 * Apply only: the moves out of a project that the branch does not hold, as sentences. The
+	 * user confirms them like a destructive change.
+	 */
+	movesOutOfOperation?: string[];
 	/** The gaps and the other items of the dependency report that the user accepted. */
 	confirmations?: DependencyConfirmationPayload;
 	/** True when the user already confirmed the operation in the dialog of the gaps. */
@@ -125,25 +132,45 @@ export function usePromotionOperation(
 	 * selection of that request, so the page shows it until the selection changes.
 	 */
 	const gapsReport = shallowRef<PromotionDependencyReport | null>(null);
+	/**
+	 * The result of an Apply that did more than import: placeholders, grants, moves. The page
+	 * shows it before it leaves, because the user must act on it.
+	 */
+	const applied = shallowRef<{ result: AppliedResult; acrossProjects: boolean } | null>(null);
 
 	async function confirmApply({
 		confirmDestructiveChanges,
 		deletedProjects = [],
+		movesOutOfOperation = [],
 		wholeInstance,
 	}: OperationRequest) {
+		const dataTables = confirmDestructiveChanges
+			? [i18n.baseText('promotions.preview.confirmProjectDeletion.dataTables')]
+			: [];
 		if (deletedProjects.length > 0) {
 			const deletion = i18n.baseText('promotions.preview.confirmProjectDeletion.message', {
 				adjustToNumber: deletedProjects.length,
 				interpolate: { projects: deletedProjects.map((name) => `"${name}"`).join(', ') },
 			});
 			const answer = await message.confirm(
-				confirmDestructiveChanges
-					? `${deletion} ${i18n.baseText('promotions.preview.confirmProjectDeletion.dataTables')}`
-					: deletion,
+				// The moves run before the deletions, so the dialog names them first.
+				[...movesOutOfOperation, deletion, ...dataTables].join(' '),
 				i18n.baseText('promotions.preview.confirmProjectDeletion.title'),
 				{
 					type: 'warning',
 					confirmButtonText: i18n.baseText('promotions.preview.confirmProjectDeletion.confirm'),
+					cancelButtonText: i18n.baseText('generic.cancel'),
+				},
+			);
+			return answer === 'confirm';
+		}
+		if (movesOutOfOperation.length > 0) {
+			const answer = await message.confirm(
+				[...movesOutOfOperation, ...dataTables].join(' '),
+				i18n.baseText('promotions.preview.confirmMoves.title'),
+				{
+					type: 'warning',
+					confirmButtonText: i18n.baseText('promotions.preview.confirmMoves.confirm'),
 					cancelButtonText: i18n.baseText('generic.cancel'),
 				},
 			);
@@ -195,7 +222,11 @@ export function usePromotionOperation(
 		);
 	}
 
-	async function onPromoted(result: PromoteSelectionResultDto, projectIds: string[]) {
+	async function onPromoted(
+		result: PromoteSelectionResultDto,
+		projectIds: string[],
+		confirmedGapCount: number,
+	) {
 		if (result.status === 'gaps-changed') {
 			// Nothing was pushed. The report holds the gaps that the user must review.
 			gapsReport.value = result.dependencyReport;
@@ -208,7 +239,12 @@ export function usePromotionOperation(
 			await refresh();
 			return;
 		}
-		outcome.showPromoted(projectIds, result);
+		// A server that sends no report with the result: the confirmed gaps are the gaps.
+		outcome.showPromoted(
+			projectIds,
+			result,
+			result.dependencyReport?.gaps.length ?? confirmedGapCount,
+		);
 		await leave();
 	}
 
@@ -226,7 +262,11 @@ export function usePromotionOperation(
 			const result = (
 				await loadPromotionFixture(fixture.value, 'promote', id ?? origin?.value)
 			).promote(confirmedGapIds);
-			await onPromoted(result, id === undefined ? (projects ?? []).map((p) => p.projectId) : [id]);
+			await onPromoted(
+				result,
+				id === undefined ? (projects ?? []).map((p) => p.projectId) : [id],
+				confirmedGapIds.length,
+			);
 			return;
 		}
 		if (id !== undefined) {
@@ -235,7 +275,7 @@ export function usePromotionOperation(
 				folderIds,
 				...shared,
 			});
-			await onPromoted(result, [id]);
+			await onPromoted(result, [id], confirmedGapIds.length);
 			return;
 		}
 		if (!environmentId?.value || !projects?.length) return;
@@ -247,21 +287,36 @@ export function usePromotionOperation(
 		await onPromoted(
 			result,
 			projects.map((project) => project.projectId),
+			confirmedGapIds.length,
 		);
+	}
+
+	/** Leaves the page after an Apply, and tells the open views what changed. */
+	async function finishApplied(acrossProjects: boolean) {
+		const id = projectId.value;
+		await leave();
+		if (id !== undefined) await outcome.announceApplied(id);
+		else if (acrossProjects) await outcome.refreshProjects();
+	}
+
+	/** Closes the result of the Apply. The page then leaves, as after any Apply. */
+	async function closeApplied() {
+		const shown = applied.value;
+		if (!shown) return;
+		applied.value = null;
+		await finishApplied(shown.acrossProjects);
 	}
 
 	async function onApplied(result: ApplyPackageResultDto, acrossProjects: boolean) {
 		if (result.status === 'applied') {
-			const id = projectId.value;
-			if (id !== undefined) {
-				outcome.showApplied(result);
-				await leave();
-				await outcome.announceApplied(id);
+			if (projectId.value !== undefined) outcome.showApplied(result);
+			else outcome.showInstanceApplied(result);
+			// The user must act on a placeholder or a refused move, so the page lists them first.
+			if (hasApplyOutcome(result)) {
+				applied.value = { result, acrossProjects };
 				return;
 			}
-			outcome.showInstanceApplied(result);
-			await leave();
-			if (acrossProjects) await outcome.refreshProjects();
+			await finishApplied(acrossProjects);
 			return;
 		}
 		if (result.status === 'gaps-changed') gapsReport.value = result.dependencyReport;
@@ -283,6 +338,9 @@ export function usePromotionOperation(
 			expectedPreviewRevision: preview.value?.revision,
 			...request.confirmations,
 		};
+		// A move out of a project that the branch does not hold is confirmed like a destructive change.
+		const confirmDestructiveChanges =
+			request.confirmDestructiveChanges || !!request.movesOutOfOperation?.length;
 		const context = rootStore.publicApiContext;
 		const id = projectId.value;
 		if (fixture?.value) {
@@ -294,7 +352,7 @@ export function usePromotionOperation(
 		}
 		if (id !== undefined) {
 			const selection = { workflowIds: request.workflowIds, folderIds: request.folderIds };
-			const result = request.confirmDestructiveChanges
+			const result = confirmDestructiveChanges
 				? await continueApplyProjectSelection(context, id, {
 						...selection,
 						...expected,
@@ -305,25 +363,26 @@ export function usePromotionOperation(
 			return;
 		}
 		if (request.wholeInstance) {
+			// The whole-instance Apply compares with its own preview, not with the changes view.
+			const instance = { ...expected, expectedPreviewRevision: request.instanceRevision };
 			// Project deletions and destructive data table changes need the confirmation of Continue.
-			const confirm = request.confirmDestructiveChanges || !!request.deletedProjects?.length;
+			const confirm = confirmDestructiveChanges || !!request.deletedProjects?.length;
 			const result = confirm
 				? await continueApplyPromotion(context, source.environmentId, {
-						...expected,
+						...instance,
 						confirmDestructiveChanges: true,
 					})
-				: await applyPromotion(context, source.environmentId, expected);
+				: await applyPromotion(context, source.environmentId, instance);
 			await onApplied(result, true);
 			return;
 		}
 		if (!request.projects?.length) return;
-		const payload = { projects: request.projects, ...expected };
-		const result = request.confirmDestructiveChanges
-			? await continueApplyEnvironmentSelection(context, source.environmentId, {
-					...payload,
-					confirmDestructiveChanges: true,
-				})
-			: await applyEnvironmentSelection(context, source.environmentId, payload);
+		// No Continue route: the same request goes again, with the confirmation.
+		const result = await applyEnvironmentSelection(context, source.environmentId, {
+			projects: request.projects,
+			...expected,
+			...(confirmDestructiveChanges ? { confirmDestructiveChanges: true } : {}),
+		});
 		await onApplied(result, true);
 	}
 
@@ -340,7 +399,8 @@ export function usePromotionOperation(
 			const needsQuestion =
 				!request.confirmed ||
 				request.confirmDestructiveChanges ||
-				!!request.deletedProjects?.length;
+				!!request.deletedProjects?.length ||
+				!!request.movesOutOfOperation?.length;
 			if (direction.value === 'apply' && needsQuestion && !(await confirmApply(request))) return;
 			phase.value = 'running';
 			notice.value = null;
@@ -379,6 +439,8 @@ export function usePromotionOperation(
 		notice,
 		error,
 		gapsReport,
+		applied,
+		closeApplied,
 		submit,
 	};
 }

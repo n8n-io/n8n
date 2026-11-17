@@ -47,11 +47,18 @@ export function usePromotionOutcome() {
 	}
 
 	// A Promote across projects is one push. Each project hears about it.
-	function showPromoted(projectIds: string[], result: PromotePackageResultDto) {
+	function showPromoted(projectIds: string[], result: PromotePackageResultDto, gapCount = 0) {
 		for (const projectId of projectIds) promotionEventBus.emit('promoted', { projectId });
 		toast.showMessage({
-			title: i18n.baseText('promotions.operation.toast.success.title'),
-			type: result.warnings?.length ? 'warning' : 'success',
+			// An incomplete Promote says so: "Promoted with 2 gaps".
+			title:
+				gapCount > 0
+					? i18n.baseText('promotions.operation.toast.success.titleWithGaps', {
+							adjustToNumber: gapCount,
+							interpolate: { count: String(gapCount) },
+						})
+					: i18n.baseText('promotions.operation.toast.success.title'),
+			type: result.warnings?.length || gapCount > 0 ? 'warning' : 'success',
 			...promoteSuccessToast(result, {
 				pushed: i18n.baseText('promotions.result.pushed', {
 					interpolate: { branch: result.git.branchName },

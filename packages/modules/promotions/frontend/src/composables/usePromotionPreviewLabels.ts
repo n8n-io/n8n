@@ -23,10 +23,40 @@ const MOVED_DETAIL = {
 export function usePromotionPreviewLabels() {
 	const i18n = useI18n();
 
+	/** "Moved from Sales" on the row of the new project, "Moved to Ops" on the row of the old one. */
+	function movedLabel(resource: PromotionResource): string | undefined {
+		const { movedFromProject, movedToProject } = resource;
+		// The name is absent when the user cannot access the other project.
+		const project = (movedFromProject ?? movedToProject)?.name;
+		if (movedFromProject) {
+			return project
+				? i18n.baseText('promotions.preview.change.movedFrom', { interpolate: { project } })
+				: i18n.baseText('promotions.preview.change.movedFrom.other');
+		}
+		if (movedToProject) {
+			return project
+				? i18n.baseText('promotions.preview.change.movedTo', { interpolate: { project } })
+				: i18n.baseText('promotions.preview.change.movedTo.other');
+		}
+		return undefined;
+	}
+
+	/** What a move between projects does, for the card of the moved item. */
+	function moveNote(
+		resource: PromotionResource,
+		direction: PromotionDirection,
+	): string | undefined {
+		if (!resource.movedFromProject && !resource.movedToProject) return undefined;
+		return i18n.baseText(`promotions.preview.card.moved.${direction}`);
+	}
+
 	function changeLabel(
 		resource: PromotionResource,
 		direction: PromotionDirection,
 	): string | undefined {
+		// A move between projects is one change, whatever the comparison calls the row.
+		const moved = movedLabel(resource);
+		if (moved) return moved;
 		switch (resource.change) {
 			case 'added':
 				// The branch has it and this instance does not. Apply asks for it instead.
@@ -61,22 +91,9 @@ export function usePromotionPreviewLabels() {
 		const blocking = blockers.filter(isBlocking);
 		if (blocking.length === 0) return undefined;
 		if (resource.type === 'workflow') {
-			if (resource.movedToProject) {
-				return i18n.baseText('promotions.preview.marker.movedOut', {
-					interpolate: {
-						project:
-							resource.movedToProject.name ?? i18n.baseText('promotions.preview.personalProject'),
-					},
-				});
-			}
-			if (resource.movedFromProject) {
-				return i18n.baseText('promotions.preview.marker.movedIn', {
-					interpolate: {
-						// The name is absent when the user cannot access the other project.
-						project:
-							resource.movedFromProject.name ?? i18n.baseText('promotions.preview.anotherProject'),
-					},
-				});
+			// A move that the operation cannot do. The Blockers tab names both projects and the fix.
+			if (blocking.some(({ kind }) => kind === 'moved')) {
+				return i18n.baseText('promotions.preview.marker.moveRefused');
 			}
 			return i18n.baseText('promotions.preview.marker.workflow', {
 				adjustToNumber: blocking.length,
@@ -121,5 +138,5 @@ export function usePromotionPreviewLabels() {
 		});
 	}
 
-	return { changeLabel, blockerMessage, selectLabel, moveDetail };
+	return { changeLabel, moveNote, blockerMessage, selectLabel, moveDetail };
 }

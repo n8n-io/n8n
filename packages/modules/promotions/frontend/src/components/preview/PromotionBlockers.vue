@@ -96,12 +96,27 @@ type HardConflict = Exclude<
 	{ code: 'destructive-change' } | { code: 'project-deletion' }
 >;
 
+/**
+ * The import reports a move between projects that the user may not do as a workflow or a
+ * project conflict. Its `reason` names the move and the missing permission.
+ */
+function moveForbiddenDetail(conflict: HardConflict): string | undefined {
+	const reason = 'reason' in conflict ? conflict.reason : undefined;
+	if (!reason?.startsWith('The move of ')) return undefined;
+	const permission = /permission "([^"]+)"/.exec(reason)?.[1] ?? 'workflow:move';
+	return i18n.baseText('promotions.bindings.conflicts.moveForbidden', {
+		interpolate: { permission },
+	});
+}
+
 const conflictRow = (conflict: HardConflict, index: number): BlockerRow => {
 	if (conflict.code === 'moved') return movedRow(conflict.kind, conflict);
 	const row = {
 		key: `conflict:${index}`,
 		status: status('conflict'),
-		detail: i18n.baseText(`promotions.bindings.conflicts.${conflict.code}`),
+		detail:
+			moveForbiddenDetail(conflict) ??
+			i18n.baseText(`promotions.bindings.conflicts.${conflict.code}`),
 	};
 	if (conflict.kind === 'project') {
 		return {

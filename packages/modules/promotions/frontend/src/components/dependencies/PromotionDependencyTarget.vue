@@ -4,6 +4,7 @@ import { N8nIcon, N8nText } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { computed } from 'vue';
 
+import { useCredentialTypeNames } from '../../composables/useCredentialTypeNames';
 import { usePromotionDependencyLabels } from '../../composables/usePromotionDependencyLabels';
 import { resourceIcon } from '../../promotionPreview.tree';
 
@@ -17,6 +18,7 @@ const props = defineProps<{
 
 const i18n = useI18n();
 const { targetName } = usePromotionDependencyLabels();
+const { credentialTypeName } = useCredentialTypeNames();
 
 // The id tells two items apart when the report holds no name or no project for them.
 const showId = computed(() => !props.target.name || !props.target.project);
@@ -30,7 +32,7 @@ const showId = computed(() => !props.target.name || !props.target.project);
 				{{ targetName(target) }}
 			</N8nText>
 			<N8nText v-if="target.credentialType" step="2xs" color="text-light">
-				{{ target.credentialType }}
+				{{ credentialTypeName(target.credentialType) }}
 			</N8nText>
 			<N8nText
 				v-if="showId"

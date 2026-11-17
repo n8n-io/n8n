@@ -32,7 +32,11 @@ export function usePromotionDependencies({
 }: {
 	/** The report of the preview. It covers every change that the preview lists. */
 	source: Ref<PromotionDependencyReport | null>;
-	/** The report of an operation that stopped on changed gaps. It wins until the selection changes. */
+	/**
+	 * The report of an operation that stopped on changed gaps, or of the page that handed its
+	 * selection over. The server computed it for a selection, so it knows more than the preview
+	 * and wins until the next refresh.
+	 */
 	operationReport: Ref<PromotionDependencyReport | null>;
 	graph: Ref<SelectionGraph | null>;
 	/** Everything that the operation writes: the selection, what comes with it, and the included items. */
@@ -41,14 +45,6 @@ export function usePromotionDependencies({
 }) {
 	const confirmations = ref<ApplyConfirmations>(noConfirmations());
 
-	// The report of a stopped operation describes one selection only. A refresh builds a new set
-	// with the same keys, so the watch compares the keys.
-	watch(
-		() => [...included.value].sort().join('|'),
-		() => {
-			operationReport.value = null;
-		},
-	);
 	// A new preview source starts without confirmations. A refresh of the same page keeps them.
 	watch(
 		() => graph.value === null,
@@ -58,9 +54,11 @@ export function usePromotionDependencies({
 	);
 
 	const report = computed((): PromotionDependencyReport | null => {
-		if (operationReport.value) return operationReport.value;
-		if (!source.value || !graph.value) return null;
-		return scopeDependencyReport(source.value, {
+		// Both reports follow the selection: a gap leaves when the user includes its target or
+		// clears its consumer. Only the operation finds a gap that a cleared target opens.
+		const base = operationReport.value ?? source.value;
+		if (!base || !graph.value) return null;
+		return scopeDependencyReport(base, {
 			selected: included.value,
 			listed: new Set(graph.value.resources.keys()),
 		});
