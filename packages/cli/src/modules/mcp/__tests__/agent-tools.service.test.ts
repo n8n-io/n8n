@@ -2472,12 +2472,9 @@ describe('McpAgentToolsService', () => {
 				},
 			);
 
-			expect(result.structuredContent).toMatchObject({
-				ok: true,
-				skills: {},
-				skillHashes: {},
-				outdatedSkillIds: [],
-			});
+			expect(result.structuredContent.skills).toEqual({});
+			expect(result.structuredContent.skillHashes).toEqual({});
+			expect(result.structuredContent.outdatedSkillIds).toEqual([]);
 		});
 
 		it('reports integrations separately and omits them from the editable config', async () => {

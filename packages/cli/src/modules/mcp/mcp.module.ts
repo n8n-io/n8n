@@ -14,7 +14,11 @@ import { Container } from '@n8n/di';
 export class McpModule implements ModuleInterface {
 	async init() {
 		await import('./mcp.controller.js');
-		await import('./mcp.settings.controller.js');
+		const { McpSettingsController } = await import('./mcp.settings.controller.js');
+		const { License } = await import('@/license.js');
+		Container.get(License).onCertRefresh(() => {
+			void Container.get(McpSettingsController).refreshMcpModuleSettings();
+		});
 
 		// Register the instance MCP server as a protected resource of the shared
 		// OAuth server, so its tokens are minted and verified with the right
