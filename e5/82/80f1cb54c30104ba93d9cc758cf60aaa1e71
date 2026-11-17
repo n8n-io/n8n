@@ -1,0 +1,19 @@
+packages/modules/promotions/frontend/src/views/PromotionPreviewView.vue
+  s_cfb06e423e7532::t_6d09875f03f96a 511
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "e58280f1cb54c30104ba93d9cc758cf60aaa1e71",
+  "prompts": {},
+  "sessions": {
+    "s_cfb06e423e7532": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "bd87b83b-832e-4462-acfd-6d1f13a18aff",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "kgrhartlage <kai.hartlage@n8n.io>"
+    }
+  }
+}
