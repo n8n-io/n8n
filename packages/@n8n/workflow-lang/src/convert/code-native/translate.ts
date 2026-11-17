@@ -1806,6 +1806,77 @@ export function translateCode(input: CodeNativeInput): TranslateResult {
 	/** True when the code makes an Intl formatter: then \`format\` calls become helpers. */
 	const hasIntl = /\bIntl\s*\.\s*(DateTimeFormat|NumberFormat)\b/.test(input.code);
 
+	/** True when \`e\` is an argument of a locale formatting call: the call does not change it. */
+	const isFormatArgument = (e: ts.Node): boolean => {
+		const call = e.parent;
+		if (ts.isNewExpression(call)) {
+			const made = call.expression;
+			return (
+				(call.arguments ?? []).some((x) => x === e) &&
+				ts.isPropertyAccessExpression(made) &&
+				ts.isIdentifier(made.expression) &&
+				made.expression.text === 'Intl'
+			);
+		}
+		if (!ts.isCallExpression(call) || !call.arguments.some((x) => x === e)) return false;
+		const callee = call.expression;
+		return (
+			ts.isPropertyAccessExpression(callee) &&
+			['toLocaleString', 'toLocaleDateString', 'toLocaleTimeString'].includes(callee.name.text)
+		);
+	};
+
+	/**
+	 * The object literal of the options of a locale formatting call: the argument itself, or
+	 * the start value of a constant that the code gives only to such calls (so no code changes
+	 * the object). Null for another value.
+	 */
+	const optionsLiteral = (e: ts.Expression): ts.ObjectLiteralExpression | null => {
+		const x = stripParens(e);
+		if (ts.isObjectLiteralExpression(x)) return x;
+		if (!ts.isIdentifier(x)) return null;
+		const symbol = checker.getSymbolAtLocation(x);
+		const decls = symbol?.declarations ?? [];
+		const d = decls[0];
+		if (
+			symbol === undefined ||
+			decls.length !== 1 ||
+			!ts.isVariableDeclaration(d) ||
+			!ts.isIdentifier(d.name) ||
+			!ts.isVariableDeclarationList(d.parent) ||
+			(d.parent.flags & ts.NodeFlags.Const) === 0 ||
+			d.initializer === undefined
+		) {
+			return null;
+		}
+		const start = stripParens(d.initializer);
+		if (!ts.isObjectLiteralExpression(start)) return null;
+		let onlyFormats = true;
+		const scan = (n: ts.Node): void => {
+			if (!onlyFormats) return;
+			if (
+				ts.isIdentifier(n) &&
+				n !== d.name &&
+				n.text === x.text &&
+				checker.getSymbolAtLocation(n) === symbol &&
+				!isFormatArgument(n)
+			) {
+				onlyFormats = false;
+				return;
+			}
+			if (
+				ts.isShorthandPropertyAssignment(n) &&
+				checker.getShorthandAssignmentValueSymbol(n) === symbol
+			) {
+				onlyFormats = false;
+				return;
+			}
+			ts.forEachChild(n, scan);
+		};
+		scan(root);
+		return onlyFormats ? start : null;
+	};
+
 	/** The locale and options of literal arguments, or a blocker reason. */
 	const localeArgs = (
 		a0: ts.Expression | undefined,
@@ -1820,8 +1891,9 @@ export function translateCode(input: CodeNativeInput): TranslateResult {
 		const options: Record<string, unknown> = {};
 		let zone: string | null = null;
 		if (a1 !== undefined) {
-			if (!ts.isObjectLiteralExpression(a1)) return 'computed options';
-			for (const p of a1.properties) {
+			const literal = optionsLiteral(a1);
+			if (literal === null) return 'computed options';
+			for (const p of literal.properties) {
 				if (
 					!ts.isPropertyAssignment(p) ||
 					!(ts.isIdentifier(p.name) || ts.isStringLiteral(p.name))

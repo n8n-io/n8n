@@ -212,6 +212,60 @@ return [{ json: { stamp, total: total.toLocaleString('en-US'), rate: rate.toLoca
 		);
 	});
 
+	it('reads the options of a constant that only formatting calls get', () => {
+		const code = `const zone = 'Europe/Berlin';
+const options = { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric', timeZone: zone };
+const short = { hour: '2-digit', minute: '2-digit', hour12: false, timeZone: zone };
+const money = { style: 'currency', currency: 'EUR' };
+const when = new Date(${TIMES[0]});
+const f = new Intl.DateTimeFormat('de-DE', short);
+return [{ json: { day: when.toLocaleDateString('de-DE', options), again: new Date(${TIMES[1]}).toLocaleDateString('de-DE', options), time: f.format(when), sum: new Intl.NumberFormat('de-DE', money).format(1234.5) } }];`;
+		const options = {
+			weekday: 'long',
+			day: 'numeric',
+			month: 'long',
+			year: 'numeric',
+			timeZone: 'Europe/Berlin',
+		} as const;
+		expect(run(code)).toEqual([
+			{
+				day: new Date(TIMES[0]).toLocaleDateString('de-DE', options),
+				again: new Date(TIMES[1]).toLocaleDateString('de-DE', options),
+				time: new Intl.DateTimeFormat('de-DE', {
+					hour: '2-digit',
+					minute: '2-digit',
+					hour12: false,
+					timeZone: 'Europe/Berlin',
+				}).format(TIMES[0]),
+				sum: new Intl.NumberFormat('de-DE', { style: 'currency', currency: 'EUR' }).format(1234.5),
+			},
+		]);
+	});
+
+	it.each([
+		[
+			'options that the code changes',
+			"const o = { month: 'long' }; o.year = 'numeric'; return [{ json: { t: new Date(0).toLocaleDateString('en-US', o) } }];",
+		],
+		[
+			'options that another function gets',
+			"const o = { month: 'long' }; const f = (x) => x; f(o); return [{ json: { t: new Date(0).toLocaleDateString('en-US', o) } }];",
+		],
+		[
+			'options in a variable that can change',
+			"let o = { month: 'long' }; return [{ json: { t: new Date(0).toLocaleDateString('en-US', o) } }];",
+		],
+		[
+			'options with a spread',
+			"const base = { month: 'long' }; return [{ json: { t: new Date(0).toLocaleDateString('en-US', { ...base }) } }];",
+		],
+	])('keeps %s in the host', (_name, code) => {
+		const t = translateCode({ code, mode: 'all', kind: 'code', hasNode: () => false });
+		expect(t.ok ? [] : t.blockers.map((b) => b.feature)).toContain(
+			'locale formatting with computed options',
+		);
+	});
+
 	it('keeps a call that the helpers cannot format in the host', () => {
 		const t = translateCode({
 			code: "return [{ json: { t: new Date(0).toLocaleString('en-US', { timeZoneName: 'short' }) } }];",
