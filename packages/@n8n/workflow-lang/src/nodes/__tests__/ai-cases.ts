@@ -1379,6 +1379,23 @@ export const AGENT_ENGINE_CASES: EquivalenceCase[] = [
 /** Clusters that stay in the fallback host: the proof of the native form does not cover them. */
 export const AI_HOST_CASES: EquivalenceCase[] = [
 	{
+		name: 'chainLlm gemini credential with another host',
+		type: `${LC}chainLlm`,
+		typeVersion: 1.9,
+		parameters: { promptType: 'define', text: 'Q' },
+		credential: { type: 'googlePalmApi', data: { apiKey: 'k', host: 'https://proxy.example.com' } },
+		subNodes: [
+			{
+				name: 'Model',
+				type: `${LC}lmChatGoogleGemini`,
+				typeVersion: 1,
+				parameters: { modelName: 'models/gemini-2.5-flash', options: {} },
+				connection: 'ai_languageModel',
+			},
+		],
+		responses: [],
+	},
+	{
 		name: 'chainLlm anthropic credential with a gateway URL',
 		type: `${LC}chainLlm`,
 		typeVersion: 1.9,
@@ -2027,6 +2044,244 @@ const ANTHROPIC_MODEL_CASES: EquivalenceCase[] = [
 	),
 ];
 
+/** The chat model sub-node `lmChatGoogleGemini`. */
+function geminiChatModel(
+	typeVersion: number,
+	name: string,
+	options: Record<string, unknown> = {},
+): SubNodeCase {
+	return {
+		name: 'Model',
+		type: `${LC}lmChatGoogleGemini`,
+		typeVersion,
+		parameters: { modelName: name, options },
+		connection: 'ai_languageModel',
+	};
+}
+const flash = geminiChatModel(1, 'models/gemini-2.5-flash');
+const withGoogle = {
+	credential: {
+		type: 'googlePalmApi',
+		data: { apiKey: 'fake-google-key', host: 'https://generativelanguage.googleapis.com' },
+	},
+};
+const geminiFailed = (status: number, text = 'bad thing') => ({
+	status,
+	body: { error: { code: status, message: text, status: 'INVALID_ARGUMENT' } },
+});
+const GEMINI_URL =
+	'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent';
+
+/** The chain and the agent with the Google Gemini chat model. */
+const GEMINI_MODEL_CASES: EquivalenceCase[] = [
+	chain('gemini defaults', flash, [gemini([{ text: ' Hi ' }, { text: 'there ' }])], {}, withGoogle),
+	chain(
+		'gemini options and messages',
+		geminiChatModel(1.1, 'models/gemini-2.5-pro', {
+			maxOutputTokens: 100,
+			temperature: 0.2,
+			topK: 5,
+			topP: 0.8,
+			safetySettings: {
+				values: [{ category: 'HARM_CATEGORY_HARASSMENT', threshold: 'BLOCK_NONE' }],
+			},
+		}),
+		[gemini([{ text: 'thinking', thought: true }, { text: 'Hi' }])],
+		{ messages: systemFirst },
+		withGoogle,
+	),
+	chain(
+		'gemini model without a prefix',
+		geminiChatModel(1, 'gemini-2.0-flash'),
+		[gemini([])],
+		{
+			messages: { messageValues: [{ message: '' }] },
+			text: '',
+		},
+		withGoogle,
+	),
+	chain(
+		'gemini system message that is not first',
+		flash,
+		[gemini([{ text: 'x' }])],
+		{
+			messages: { messageValues: [{ message: 'A' }, { message: 'B' }] },
+		},
+		{ ...withGoogle, expectedError: 'System message should be the first one' },
+	),
+	chain(
+		'gemini blocked prompt',
+		flash,
+		[{ body: { promptFeedback: { blockReason: 'SAFETY' } } }],
+		{},
+		{
+			...withGoogle,
+			expectedError: 'Gemini blocked the prompt (reason: SAFETY)',
+		},
+	),
+	chain(
+		'gemini no candidates',
+		flash,
+		[{ body: { candidates: [] } }],
+		{},
+		{
+			...withGoogle,
+			expectedError: 'Gemini returned an empty response',
+		},
+	),
+	chain(
+		'gemini candidate without content',
+		flash,
+		[{ body: { candidates: [{ finishReason: 'SAFETY', index: 0 }] } }],
+		{},
+		{ ...withGoogle, expectedError: "Cannot read properties of undefined (reading 'parts')" },
+	),
+	chain(
+		'gemini part that is not text',
+		flash,
+		[gemini([{ text: 'a' }, { inlineData: { mimeType: 'image/png', data: 'AA' } }])],
+		{},
+		{ ...withGoogle, expectedError: 'Cannot coerce "inlineData" message part into a string.' },
+	),
+	...[
+		[400, STATUS_ERRORS[400]],
+		[401, STATUS_ERRORS[401]],
+		[403, 'Forbidden - perhaps check your credentials?'],
+		[404, STATUS_ERRORS[404]],
+		[409, STATUS_ERRORS[418]],
+	].map(([status, text]) =>
+		chain(
+			`gemini status ${status}`,
+			flash,
+			[geminiFailed(Number(status)), gemini([{ text: 'late' }])],
+			{},
+			{
+				...withGoogle,
+				expectedError: String(text),
+			},
+		),
+	),
+	chain(
+		'gemini status 429, then answer',
+		flash,
+		[geminiFailed(429), gemini([{ text: 'late' }])],
+		{},
+		withGoogle,
+	),
+	chain(
+		'gemini network, then answer',
+		flash,
+		[refused, gemini([{ text: 'late' }])],
+		{},
+		withGoogle,
+	),
+	chain(
+		'gemini status 500 seven times',
+		flash,
+		[geminiFailed(500, 'boom')],
+		{},
+		{
+			...withGoogle,
+			expectedError: `[GoogleGenerativeAI Error]: Error fetching from ${GEMINI_URL}: [500 ] boom`,
+		},
+	),
+	chain(
+		'gemini network seven times',
+		flash,
+		[refused],
+		{},
+		{
+			...withGoogle,
+			expectedError: `[GoogleGenerativeAI Error]: Error fetching from ${GEMINI_URL}: fetch failed`,
+		},
+	),
+	chain(
+		'gemini continue',
+		flash,
+		[geminiFailed(400), gemini([{ text: 'late' }])],
+		{},
+		{
+			...two,
+			...withGoogle,
+			settings: { onError: 'continueRegularOutput' },
+		},
+	),
+	agent(
+		'gemini',
+		3.1,
+		flash,
+		[gemini([{ text: ' Hi ' }, { text: 'there ' }])],
+		{
+			options: { systemMessage: 'Be brief' },
+		},
+		withGoogle,
+	),
+	agent(
+		'gemini, one text part',
+		2.2,
+		geminiChatModel(1.1, 'models/gemini-2.5-flash'),
+		[gemini([{ text: ' Hi ' }])],
+		{},
+		withGoogle,
+	),
+	agent(
+		'gemini, one text part, version 3.1',
+		3.1,
+		flash,
+		[gemini([{ text: ' Hi ' }])],
+		{},
+		withGoogle,
+	),
+	agent(
+		'gemini, thought and text',
+		3.1,
+		flash,
+		[gemini([{ text: ' thinking ', thought: true }, { text: ' Hi ' }])],
+		{},
+		withGoogle,
+	),
+	agent(
+		'gemini, thought only',
+		3,
+		flash,
+		[gemini([{ text: ' thinking ', thought: true }])],
+		{},
+		withGoogle,
+	),
+	agent('gemini, no parts', 3.1, flash, [gemini([])], {}, withGoogle),
+	agent(
+		'gemini, function call, version 3.1',
+		3.1,
+		flash,
+		[
+			gemini([{ text: 'pre' }, { functionCall: { name: 'x', args: { a: 1 } } }]),
+			gemini([{ text: 'after' }]),
+		],
+		{},
+		withGoogle,
+	),
+	agent(
+		'gemini, function call, version 2.2',
+		2.2,
+		flash,
+		[gemini([{ functionCall: { name: 'x', args: { a: 1 } } }]), gemini([{ text: 'after' }])],
+		{},
+		withGoogle,
+	),
+	agent(
+		'gemini, error output',
+		3,
+		flash,
+		[geminiFailed(400), gemini([{ text: 'ok' }])],
+		{},
+		{
+			...two,
+			...withGoogle,
+			settings: { onError: 'continueErrorOutput' },
+		},
+	),
+];
+
 /** The prompt that a chat trigger or a guardrails node gives. */
 const PROMPT_SOURCE_CASES: EquivalenceCase[] = [
 	chain(
@@ -2076,6 +2331,7 @@ export const ENGINE_CASES: EquivalenceCase[] = [
 	...AGENT_ENGINE_CASES,
 	...PROMPT_SOURCE_CASES,
 	...ANTHROPIC_MODEL_CASES,
+	...GEMINI_MODEL_CASES,
 	...TOOL_CALL_CASES,
 	...NETWORK_CASES,
 	...OPEN_ROUTER_CASES,

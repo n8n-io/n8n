@@ -236,6 +236,68 @@ function anthropicModel(sub: ClusterSubNode): Record<string, unknown> | string {
 	return { provider: 'anthropic', responses: false, model, options: kept };
 }
 
+/** True when the Google credential names another host than the API of Google. */
+const GEMINI_HOST: ClusterDerivation = {
+	name: 'f0a11c004',
+	kind: 'flag',
+	code: "(d) => (d.host ?? 'https://generativelanguage.googleapis.com') !== 'https://generativelanguage.googleapis.com'",
+};
+
+/**
+ * The text of a failed Gemini request has the URL with the host of the credential. The
+ * library node cannot read the host, so a credential with another host has no proof.
+ */
+function geminiDerivations(node: string): ClusterDerivation[] {
+	const flags = [GEMINI_HOST.name];
+	const allowed = [credentialFlagKey(flags, { [GEMINI_HOST.name]: false })];
+	return [
+		GEMINI_HOST,
+		{
+			name: `g${hash(`${node}|${allowed.join(',')}`)}`,
+			code: '',
+			kind: 'guard',
+			flags,
+			allowed,
+			node,
+		},
+	];
+}
+
+/** Options of `lmChatGoogleGemini` that map to the generation config. */
+const GEMINI_OPTIONS: Record<string, string> = {
+	maxOutputTokens: 'maxTokens',
+	temperature: 'temperature',
+	topK: 'topK',
+	topP: 'topP',
+};
+
+/** The chat model sub-node `lmChatGoogleGemini` (ChatGoogleGenerativeAI of LangChain). */
+function geminiModel(sub: ClusterSubNode): Record<string, unknown> | string {
+	const version = sub.typeVersion ?? 1;
+	if (![1, 1.1].includes(version)) return `model version ${version}`;
+	const p = sub.parameters ?? {};
+	const model = p.modelName;
+	// The text of a failed request has the model, so the model is a literal.
+	if (typeof model !== 'string' || model === '' || model.startsWith('=')) return 'model name';
+	const options = p.options ?? {};
+	if (!isRecord(options)) return 'model options';
+	const kept: Record<string, unknown> = {};
+	let safetySettings: unknown[] = [];
+	for (const [name, value] of Object.entries(options)) {
+		if (name === 'safetySettings') {
+			const values = isRecord(value) ? value.values : undefined;
+			if (values === undefined || values === null) continue;
+			if (!Array.isArray(values)) return 'safety settings';
+			safetySettings = values;
+			continue;
+		}
+		const to = GEMINI_OPTIONS[name];
+		if (to === undefined) return `model option ${name}`;
+		kept[to] = value;
+	}
+	return { provider: 'gemini', responses: false, model, options: kept, safetySettings };
+}
+
 /** The chat model of a root as the parameter `aiModel`, and the flags of its credential. */
 function chatModel(
 	root: string,
@@ -250,6 +312,12 @@ function chatModel(
 	if (sub.type === `${LC}lmChatOpenRouter`) {
 		const aiModel = openRouterModel(sub);
 		return typeof aiModel === 'string' ? aiModel : { aiModel, derivations: [] };
+	}
+	if (sub.type === `${LC}lmChatGoogleGemini`) {
+		const aiModel = geminiModel(sub);
+		return typeof aiModel === 'string'
+			? aiModel
+			: { aiModel, derivations: geminiDerivations(root) };
 	}
 	if (sub.type === `${LC}lmChatAnthropic`) {
 		const aiModel = anthropicModel(sub);

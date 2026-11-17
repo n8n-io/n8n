@@ -19919,6 +19919,1828 @@
 		],
 		"nodePaired": [true, true]
 	},
+	"chainLlm gemini defaults": {
+		"requests": [
+			{
+				"method": "POST",
+				"url": "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent",
+				"qs": {},
+				"headers": {
+					"x-goog-api-key": "fake-google-key"
+				},
+				"body": {
+					"generationConfig": {
+						"stopSequences": []
+					},
+					"safetySettings": [],
+					"contents": [
+						{
+							"role": "user",
+							"parts": [
+								{
+									"text": "Say hi to {name}"
+								}
+							]
+						}
+					]
+				}
+			}
+		],
+		"wire": [null],
+		"output": [
+			{
+				"text": "Hi there"
+			}
+		],
+		"subRuns": {
+			"Model": [
+				{
+					"error": null
+				}
+			]
+		},
+		"outputs": [
+			[
+				{
+					"text": "Hi there"
+				}
+			]
+		],
+		"paired": [
+			[
+				{
+					"item": 0
+				}
+			]
+		],
+		"nodePaired": [false]
+	},
+	"chainLlm gemini options and messages": {
+		"requests": [
+			{
+				"method": "POST",
+				"url": "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-pro:generateContent",
+				"qs": {},
+				"headers": {
+					"x-goog-api-key": "fake-google-key"
+				},
+				"body": {
+					"generationConfig": {
+						"stopSequences": [],
+						"maxOutputTokens": 100,
+						"temperature": 0.2,
+						"topP": 0.8,
+						"topK": 5
+					},
+					"safetySettings": [
+						{
+							"category": "HARM_CATEGORY_HARASSMENT",
+							"threshold": "BLOCK_NONE"
+						}
+					],
+					"systemInstruction": {
+						"role": "system",
+						"parts": [
+							{
+								"text": "Answer {briefly}"
+							}
+						]
+					},
+					"contents": [
+						{
+							"role": "model",
+							"parts": [
+								{
+									"text": "ok"
+								}
+							]
+						},
+						{
+							"role": "user",
+							"parts": [
+								{
+									"text": "first"
+								}
+							]
+						},
+						{
+							"role": "user",
+							"parts": [
+								{
+									"text": "second"
+								}
+							]
+						},
+						{
+							"role": "user",
+							"parts": [
+								{
+									"text": "Say hi to {name}"
+								}
+							]
+						}
+					]
+				}
+			}
+		],
+		"wire": [null],
+		"output": [
+			{
+				"text": "Hi"
+			}
+		],
+		"subRuns": {
+			"Model": [
+				{
+					"error": null
+				}
+			]
+		},
+		"outputs": [
+			[
+				{
+					"text": "Hi"
+				}
+			]
+		],
+		"paired": [
+			[
+				{
+					"item": 0
+				}
+			]
+		],
+		"nodePaired": [false]
+	},
+	"chainLlm gemini model without a prefix": {
+		"requests": [
+			{
+				"method": "POST",
+				"url": "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent",
+				"qs": {},
+				"headers": {
+					"x-goog-api-key": "fake-google-key"
+				},
+				"body": {
+					"generationConfig": {
+						"stopSequences": []
+					},
+					"safetySettings": [],
+					"systemInstruction": {
+						"role": "system",
+						"parts": []
+					},
+					"contents": [
+						{
+							"role": "user",
+							"parts": []
+						}
+					]
+				}
+			}
+		],
+		"wire": [null],
+		"output": [
+			{
+				"text": ""
+			}
+		],
+		"subRuns": {
+			"Model": [
+				{
+					"error": null
+				}
+			]
+		},
+		"outputs": [
+			[
+				{
+					"text": ""
+				}
+			]
+		],
+		"paired": [
+			[
+				{
+					"item": 0
+				}
+			]
+		],
+		"nodePaired": [false]
+	},
+	"chainLlm gemini system message that is not first": {
+		"requests": [],
+		"wire": [],
+		"subRuns": {
+			"Model": [
+				{
+					"error": "System message should be the first one"
+				}
+			]
+		},
+		"outputs": [],
+		"paired": [],
+		"error": "System message should be the first one"
+	},
+	"chainLlm gemini blocked prompt": {
+		"requests": [
+			{
+				"method": "POST",
+				"url": "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent",
+				"qs": {},
+				"headers": {
+					"x-goog-api-key": "fake-google-key"
+				},
+				"body": {
+					"generationConfig": {
+						"stopSequences": []
+					},
+					"safetySettings": [],
+					"contents": [
+						{
+							"role": "user",
+							"parts": [
+								{
+									"text": "Say hi to {name}"
+								}
+							]
+						}
+					]
+				}
+			}
+		],
+		"wire": [null],
+		"subRuns": {
+			"Model": [
+				{
+					"error": "Gemini blocked the prompt (reason: SAFETY)"
+				}
+			]
+		},
+		"outputs": [],
+		"paired": [],
+		"error": "Gemini blocked the prompt (reason: SAFETY)"
+	},
+	"chainLlm gemini no candidates": {
+		"requests": [
+			{
+				"method": "POST",
+				"url": "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent",
+				"qs": {},
+				"headers": {
+					"x-goog-api-key": "fake-google-key"
+				},
+				"body": {
+					"generationConfig": {
+						"stopSequences": []
+					},
+					"safetySettings": [],
+					"contents": [
+						{
+							"role": "user",
+							"parts": [
+								{
+									"text": "Say hi to {name}"
+								}
+							]
+						}
+					]
+				}
+			}
+		],
+		"wire": [null],
+		"subRuns": {
+			"Model": [
+				{
+					"error": "Gemini returned an empty response"
+				}
+			]
+		},
+		"outputs": [],
+		"paired": [],
+		"error": "Gemini returned an empty response"
+	},
+	"chainLlm gemini candidate without content": {
+		"requests": [
+			{
+				"method": "POST",
+				"url": "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent",
+				"qs": {},
+				"headers": {
+					"x-goog-api-key": "fake-google-key"
+				},
+				"body": {
+					"generationConfig": {
+						"stopSequences": []
+					},
+					"safetySettings": [],
+					"contents": [
+						{
+							"role": "user",
+							"parts": [
+								{
+									"text": "Say hi to {name}"
+								}
+							]
+						}
+					]
+				}
+			}
+		],
+		"wire": [null],
+		"subRuns": {
+			"Model": [
+				{
+					"error": "Cannot read properties of undefined (reading 'parts')"
+				}
+			]
+		},
+		"outputs": [],
+		"paired": [],
+		"error": "Cannot read properties of undefined (reading 'parts')"
+	},
+	"chainLlm gemini part that is not text": {
+		"requests": [
+			{
+				"method": "POST",
+				"url": "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent",
+				"qs": {},
+				"headers": {
+					"x-goog-api-key": "fake-google-key"
+				},
+				"body": {
+					"generationConfig": {
+						"stopSequences": []
+					},
+					"safetySettings": [],
+					"contents": [
+						{
+							"role": "user",
+							"parts": [
+								{
+									"text": "Say hi to {name}"
+								}
+							]
+						}
+					]
+				}
+			}
+		],
+		"wire": [null],
+		"subRuns": {
+			"Model": [
+				{
+					"error": null
+				}
+			]
+		},
+		"outputs": [],
+		"paired": [],
+		"error": "Cannot coerce \"inlineData\" message part into a string."
+	},
+	"chainLlm gemini status 400": {
+		"requests": [
+			{
+				"method": "POST",
+				"url": "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent",
+				"qs": {},
+				"headers": {
+					"x-goog-api-key": "fake-google-key"
+				},
+				"body": {
+					"generationConfig": {
+						"stopSequences": []
+					},
+					"safetySettings": [],
+					"contents": [
+						{
+							"role": "user",
+							"parts": [
+								{
+									"text": "Say hi to {name}"
+								}
+							]
+						}
+					]
+				}
+			}
+		],
+		"wire": [null],
+		"subRuns": {
+			"Model": [
+				{
+					"error": "Bad request - please check your parameters"
+				}
+			]
+		},
+		"outputs": [],
+		"paired": [],
+		"error": "Bad request - please check your parameters"
+	},
+	"chainLlm gemini status 401": {
+		"requests": [
+			{
+				"method": "POST",
+				"url": "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent",
+				"qs": {},
+				"headers": {
+					"x-goog-api-key": "fake-google-key"
+				},
+				"body": {
+					"generationConfig": {
+						"stopSequences": []
+					},
+					"safetySettings": [],
+					"contents": [
+						{
+							"role": "user",
+							"parts": [
+								{
+									"text": "Say hi to {name}"
+								}
+							]
+						}
+					]
+				}
+			}
+		],
+		"wire": [null],
+		"subRuns": {
+			"Model": [
+				{
+					"error": "Authorization failed - please check your credentials"
+				}
+			]
+		},
+		"outputs": [],
+		"paired": [],
+		"error": "Authorization failed - please check your credentials"
+	},
+	"chainLlm gemini status 403": {
+		"requests": [
+			{
+				"method": "POST",
+				"url": "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent",
+				"qs": {},
+				"headers": {
+					"x-goog-api-key": "fake-google-key"
+				},
+				"body": {
+					"generationConfig": {
+						"stopSequences": []
+					},
+					"safetySettings": [],
+					"contents": [
+						{
+							"role": "user",
+							"parts": [
+								{
+									"text": "Say hi to {name}"
+								}
+							]
+						}
+					]
+				}
+			}
+		],
+		"wire": [null],
+		"subRuns": {
+			"Model": [
+				{
+					"error": "Forbidden - perhaps check your credentials?"
+				}
+			]
+		},
+		"outputs": [],
+		"paired": [],
+		"error": "Forbidden - perhaps check your credentials?"
+	},
+	"chainLlm gemini status 404": {
+		"requests": [
+			{
+				"method": "POST",
+				"url": "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent",
+				"qs": {},
+				"headers": {
+					"x-goog-api-key": "fake-google-key"
+				},
+				"body": {
+					"generationConfig": {
+						"stopSequences": []
+					},
+					"safetySettings": [],
+					"contents": [
+						{
+							"role": "user",
+							"parts": [
+								{
+									"text": "Say hi to {name}"
+								}
+							]
+						}
+					]
+				}
+			}
+		],
+		"wire": [null],
+		"subRuns": {
+			"Model": [
+				{
+					"error": "The resource you are requesting could not be found"
+				}
+			]
+		},
+		"outputs": [],
+		"paired": [],
+		"error": "The resource you are requesting could not be found"
+	},
+	"chainLlm gemini status 409": {
+		"requests": [
+			{
+				"method": "POST",
+				"url": "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent",
+				"qs": {},
+				"headers": {
+					"x-goog-api-key": "fake-google-key"
+				},
+				"body": {
+					"generationConfig": {
+						"stopSequences": []
+					},
+					"safetySettings": [],
+					"contents": [
+						{
+							"role": "user",
+							"parts": [
+								{
+									"text": "Say hi to {name}"
+								}
+							]
+						}
+					]
+				}
+			}
+		],
+		"wire": [null],
+		"subRuns": {
+			"Model": [
+				{
+					"error": "Your request is invalid or could not be processed by the service"
+				}
+			]
+		},
+		"outputs": [],
+		"paired": [],
+		"error": "Your request is invalid or could not be processed by the service"
+	},
+	"chainLlm gemini status 429, then answer": {
+		"requests": [
+			{
+				"method": "POST",
+				"url": "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent",
+				"qs": {},
+				"headers": {
+					"x-goog-api-key": "fake-google-key"
+				},
+				"body": {
+					"generationConfig": {
+						"stopSequences": []
+					},
+					"safetySettings": [],
+					"contents": [
+						{
+							"role": "user",
+							"parts": [
+								{
+									"text": "Say hi to {name}"
+								}
+							]
+						}
+					]
+				}
+			},
+			{
+				"method": "POST",
+				"url": "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent",
+				"qs": {},
+				"headers": {
+					"x-goog-api-key": "fake-google-key"
+				},
+				"body": {
+					"generationConfig": {
+						"stopSequences": []
+					},
+					"safetySettings": [],
+					"contents": [
+						{
+							"role": "user",
+							"parts": [
+								{
+									"text": "Say hi to {name}"
+								}
+							]
+						}
+					]
+				}
+			}
+		],
+		"wire": [null, null],
+		"output": [
+			{
+				"text": "late"
+			}
+		],
+		"subRuns": {
+			"Model": [
+				{
+					"error": null
+				}
+			]
+		},
+		"outputs": [
+			[
+				{
+					"text": "late"
+				}
+			]
+		],
+		"paired": [
+			[
+				{
+					"item": 0
+				}
+			]
+		],
+		"nodePaired": [false]
+	},
+	"chainLlm gemini network, then answer": {
+		"requests": [
+			{
+				"method": "POST",
+				"url": "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent",
+				"qs": {},
+				"headers": {
+					"x-goog-api-key": "fake-google-key"
+				},
+				"body": {
+					"generationConfig": {
+						"stopSequences": []
+					},
+					"safetySettings": [],
+					"contents": [
+						{
+							"role": "user",
+							"parts": [
+								{
+									"text": "Say hi to {name}"
+								}
+							]
+						}
+					]
+				}
+			},
+			{
+				"method": "POST",
+				"url": "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent",
+				"qs": {},
+				"headers": {
+					"x-goog-api-key": "fake-google-key"
+				},
+				"body": {
+					"generationConfig": {
+						"stopSequences": []
+					},
+					"safetySettings": [],
+					"contents": [
+						{
+							"role": "user",
+							"parts": [
+								{
+									"text": "Say hi to {name}"
+								}
+							]
+						}
+					]
+				}
+			}
+		],
+		"wire": [null, null],
+		"output": [
+			{
+				"text": "late"
+			}
+		],
+		"subRuns": {
+			"Model": [
+				{
+					"error": null
+				}
+			]
+		},
+		"outputs": [
+			[
+				{
+					"text": "late"
+				}
+			]
+		],
+		"paired": [
+			[
+				{
+					"item": 0
+				}
+			]
+		],
+		"nodePaired": [false]
+	},
+	"chainLlm gemini status 500 seven times": {
+		"requests": [
+			{
+				"method": "POST",
+				"url": "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent",
+				"qs": {},
+				"headers": {
+					"x-goog-api-key": "fake-google-key"
+				},
+				"body": {
+					"generationConfig": {
+						"stopSequences": []
+					},
+					"safetySettings": [],
+					"contents": [
+						{
+							"role": "user",
+							"parts": [
+								{
+									"text": "Say hi to {name}"
+								}
+							]
+						}
+					]
+				}
+			},
+			{
+				"method": "POST",
+				"url": "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent",
+				"qs": {},
+				"headers": {
+					"x-goog-api-key": "fake-google-key"
+				},
+				"body": {
+					"generationConfig": {
+						"stopSequences": []
+					},
+					"safetySettings": [],
+					"contents": [
+						{
+							"role": "user",
+							"parts": [
+								{
+									"text": "Say hi to {name}"
+								}
+							]
+						}
+					]
+				}
+			},
+			{
+				"method": "POST",
+				"url": "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent",
+				"qs": {},
+				"headers": {
+					"x-goog-api-key": "fake-google-key"
+				},
+				"body": {
+					"generationConfig": {
+						"stopSequences": []
+					},
+					"safetySettings": [],
+					"contents": [
+						{
+							"role": "user",
+							"parts": [
+								{
+									"text": "Say hi to {name}"
+								}
+							]
+						}
+					]
+				}
+			},
+			{
+				"method": "POST",
+				"url": "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent",
+				"qs": {},
+				"headers": {
+					"x-goog-api-key": "fake-google-key"
+				},
+				"body": {
+					"generationConfig": {
+						"stopSequences": []
+					},
+					"safetySettings": [],
+					"contents": [
+						{
+							"role": "user",
+							"parts": [
+								{
+									"text": "Say hi to {name}"
+								}
+							]
+						}
+					]
+				}
+			},
+			{
+				"method": "POST",
+				"url": "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent",
+				"qs": {},
+				"headers": {
+					"x-goog-api-key": "fake-google-key"
+				},
+				"body": {
+					"generationConfig": {
+						"stopSequences": []
+					},
+					"safetySettings": [],
+					"contents": [
+						{
+							"role": "user",
+							"parts": [
+								{
+									"text": "Say hi to {name}"
+								}
+							]
+						}
+					]
+				}
+			},
+			{
+				"method": "POST",
+				"url": "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent",
+				"qs": {},
+				"headers": {
+					"x-goog-api-key": "fake-google-key"
+				},
+				"body": {
+					"generationConfig": {
+						"stopSequences": []
+					},
+					"safetySettings": [],
+					"contents": [
+						{
+							"role": "user",
+							"parts": [
+								{
+									"text": "Say hi to {name}"
+								}
+							]
+						}
+					]
+				}
+			},
+			{
+				"method": "POST",
+				"url": "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent",
+				"qs": {},
+				"headers": {
+					"x-goog-api-key": "fake-google-key"
+				},
+				"body": {
+					"generationConfig": {
+						"stopSequences": []
+					},
+					"safetySettings": [],
+					"contents": [
+						{
+							"role": "user",
+							"parts": [
+								{
+									"text": "Say hi to {name}"
+								}
+							]
+						}
+					]
+				}
+			}
+		],
+		"wire": [null, null, null, null, null, null, null],
+		"subRuns": {
+			"Model": [
+				{
+					"error": "[GoogleGenerativeAI Error]: Error fetching from https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent: [500 ] boom"
+				}
+			]
+		},
+		"outputs": [],
+		"paired": [],
+		"error": "[GoogleGenerativeAI Error]: Error fetching from https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent: [500 ] boom"
+	},
+	"chainLlm gemini network seven times": {
+		"requests": [
+			{
+				"method": "POST",
+				"url": "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent",
+				"qs": {},
+				"headers": {
+					"x-goog-api-key": "fake-google-key"
+				},
+				"body": {
+					"generationConfig": {
+						"stopSequences": []
+					},
+					"safetySettings": [],
+					"contents": [
+						{
+							"role": "user",
+							"parts": [
+								{
+									"text": "Say hi to {name}"
+								}
+							]
+						}
+					]
+				}
+			},
+			{
+				"method": "POST",
+				"url": "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent",
+				"qs": {},
+				"headers": {
+					"x-goog-api-key": "fake-google-key"
+				},
+				"body": {
+					"generationConfig": {
+						"stopSequences": []
+					},
+					"safetySettings": [],
+					"contents": [
+						{
+							"role": "user",
+							"parts": [
+								{
+									"text": "Say hi to {name}"
+								}
+							]
+						}
+					]
+				}
+			},
+			{
+				"method": "POST",
+				"url": "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent",
+				"qs": {},
+				"headers": {
+					"x-goog-api-key": "fake-google-key"
+				},
+				"body": {
+					"generationConfig": {
+						"stopSequences": []
+					},
+					"safetySettings": [],
+					"contents": [
+						{
+							"role": "user",
+							"parts": [
+								{
+									"text": "Say hi to {name}"
+								}
+							]
+						}
+					]
+				}
+			},
+			{
+				"method": "POST",
+				"url": "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent",
+				"qs": {},
+				"headers": {
+					"x-goog-api-key": "fake-google-key"
+				},
+				"body": {
+					"generationConfig": {
+						"stopSequences": []
+					},
+					"safetySettings": [],
+					"contents": [
+						{
+							"role": "user",
+							"parts": [
+								{
+									"text": "Say hi to {name}"
+								}
+							]
+						}
+					]
+				}
+			},
+			{
+				"method": "POST",
+				"url": "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent",
+				"qs": {},
+				"headers": {
+					"x-goog-api-key": "fake-google-key"
+				},
+				"body": {
+					"generationConfig": {
+						"stopSequences": []
+					},
+					"safetySettings": [],
+					"contents": [
+						{
+							"role": "user",
+							"parts": [
+								{
+									"text": "Say hi to {name}"
+								}
+							]
+						}
+					]
+				}
+			},
+			{
+				"method": "POST",
+				"url": "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent",
+				"qs": {},
+				"headers": {
+					"x-goog-api-key": "fake-google-key"
+				},
+				"body": {
+					"generationConfig": {
+						"stopSequences": []
+					},
+					"safetySettings": [],
+					"contents": [
+						{
+							"role": "user",
+							"parts": [
+								{
+									"text": "Say hi to {name}"
+								}
+							]
+						}
+					]
+				}
+			},
+			{
+				"method": "POST",
+				"url": "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent",
+				"qs": {},
+				"headers": {
+					"x-goog-api-key": "fake-google-key"
+				},
+				"body": {
+					"generationConfig": {
+						"stopSequences": []
+					},
+					"safetySettings": [],
+					"contents": [
+						{
+							"role": "user",
+							"parts": [
+								{
+									"text": "Say hi to {name}"
+								}
+							]
+						}
+					]
+				}
+			}
+		],
+		"wire": [null, null, null, null, null, null, null],
+		"subRuns": {
+			"Model": [
+				{
+					"error": "[GoogleGenerativeAI Error]: Error fetching from https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent: fetch failed"
+				}
+			]
+		},
+		"outputs": [],
+		"paired": [],
+		"error": "[GoogleGenerativeAI Error]: Error fetching from https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent: fetch failed"
+	},
+	"chainLlm gemini continue": {
+		"requests": [
+			{
+				"method": "POST",
+				"url": "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent",
+				"qs": {},
+				"headers": {
+					"x-goog-api-key": "fake-google-key"
+				},
+				"body": {
+					"generationConfig": {
+						"stopSequences": []
+					},
+					"safetySettings": [],
+					"contents": [
+						{
+							"role": "user",
+							"parts": [
+								{
+									"text": "Say hi to {name}"
+								}
+							]
+						}
+					]
+				}
+			},
+			{
+				"method": "POST",
+				"url": "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent",
+				"qs": {},
+				"headers": {
+					"x-goog-api-key": "fake-google-key"
+				},
+				"body": {
+					"generationConfig": {
+						"stopSequences": []
+					},
+					"safetySettings": [],
+					"contents": [
+						{
+							"role": "user",
+							"parts": [
+								{
+									"text": "Say hi to {name}"
+								}
+							]
+						}
+					]
+				}
+			}
+		],
+		"wire": [null, null],
+		"output": [
+			{
+				"error": "Bad request - please check your parameters"
+			},
+			{
+				"text": "late"
+			}
+		],
+		"subRuns": {
+			"Model": [
+				{
+					"error": "Bad request - please check your parameters"
+				},
+				{
+					"error": null
+				}
+			]
+		},
+		"outputs": [
+			[
+				{
+					"error": "Bad request - please check your parameters"
+				},
+				{
+					"text": "late"
+				}
+			]
+		],
+		"paired": [
+			[
+				{
+					"item": 0
+				},
+				{
+					"item": 1
+				}
+			]
+		],
+		"nodePaired": [true, false]
+	},
+	"agent gemini": {
+		"requests": [
+			{
+				"method": "POST",
+				"url": "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent",
+				"qs": {},
+				"headers": {
+					"x-goog-api-key": "fake-google-key"
+				},
+				"body": {
+					"generationConfig": {
+						"stopSequences": []
+					},
+					"safetySettings": [],
+					"systemInstruction": {
+						"role": "system",
+						"parts": [
+							{
+								"text": "Be brief"
+							}
+						]
+					},
+					"contents": [
+						{
+							"role": "user",
+							"parts": [
+								{
+									"text": "Ask {this}"
+								}
+							]
+						}
+					]
+				}
+			}
+		],
+		"wire": [null],
+		"output": [
+			{
+				"output": "Hi there"
+			}
+		],
+		"subRuns": {
+			"Model": [
+				{
+					"error": null
+				}
+			]
+		},
+		"outputs": [
+			[
+				{
+					"output": "Hi there"
+				}
+			]
+		],
+		"paired": [
+			[
+				{
+					"item": 0
+				}
+			]
+		],
+		"nodePaired": [true]
+	},
+	"agent gemini, one text part": {
+		"requests": [
+			{
+				"method": "POST",
+				"url": "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent",
+				"qs": {},
+				"headers": {
+					"x-goog-api-key": "fake-google-key"
+				},
+				"body": {
+					"generationConfig": {
+						"stopSequences": []
+					},
+					"safetySettings": [],
+					"contents": [
+						{
+							"role": "user",
+							"parts": [
+								{
+									"text": "Ask {this}"
+								}
+							]
+						}
+					]
+				}
+			}
+		],
+		"wire": [null],
+		"output": [
+			{
+				"output": " Hi "
+			}
+		],
+		"subRuns": {
+			"Model": [
+				{
+					"error": null
+				}
+			]
+		},
+		"outputs": [
+			[
+				{
+					"output": " Hi "
+				}
+			]
+		],
+		"paired": [
+			[
+				{
+					"item": 0
+				}
+			]
+		],
+		"nodePaired": [true]
+	},
+	"agent gemini, one text part, version 3.1": {
+		"requests": [
+			{
+				"method": "POST",
+				"url": "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent",
+				"qs": {},
+				"headers": {
+					"x-goog-api-key": "fake-google-key"
+				},
+				"body": {
+					"generationConfig": {
+						"stopSequences": []
+					},
+					"safetySettings": [],
+					"contents": [
+						{
+							"role": "user",
+							"parts": [
+								{
+									"text": "Ask {this}"
+								}
+							]
+						}
+					]
+				}
+			}
+		],
+		"wire": [null],
+		"output": [
+			{
+				"output": " Hi "
+			}
+		],
+		"subRuns": {
+			"Model": [
+				{
+					"error": null
+				}
+			]
+		},
+		"outputs": [
+			[
+				{
+					"output": " Hi "
+				}
+			]
+		],
+		"paired": [
+			[
+				{
+					"item": 0
+				}
+			]
+		],
+		"nodePaired": [true]
+	},
+	"agent gemini, thought and text": {
+		"requests": [
+			{
+				"method": "POST",
+				"url": "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent",
+				"qs": {},
+				"headers": {
+					"x-goog-api-key": "fake-google-key"
+				},
+				"body": {
+					"generationConfig": {
+						"stopSequences": []
+					},
+					"safetySettings": [],
+					"contents": [
+						{
+							"role": "user",
+							"parts": [
+								{
+									"text": "Ask {this}"
+								}
+							]
+						}
+					]
+				}
+			}
+		],
+		"wire": [null],
+		"output": [
+			{
+				"output": "Hi"
+			}
+		],
+		"subRuns": {
+			"Model": [
+				{
+					"error": null
+				}
+			]
+		},
+		"outputs": [
+			[
+				{
+					"output": "Hi"
+				}
+			]
+		],
+		"paired": [
+			[
+				{
+					"item": 0
+				}
+			]
+		],
+		"nodePaired": [true]
+	},
+	"agent gemini, thought only": {
+		"requests": [
+			{
+				"method": "POST",
+				"url": "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent",
+				"qs": {},
+				"headers": {
+					"x-goog-api-key": "fake-google-key"
+				},
+				"body": {
+					"generationConfig": {
+						"stopSequences": []
+					},
+					"safetySettings": [],
+					"contents": [
+						{
+							"role": "user",
+							"parts": [
+								{
+									"text": "Ask {this}"
+								}
+							]
+						}
+					]
+				}
+			}
+		],
+		"wire": [null],
+		"output": [
+			{
+				"output": "thinking"
+			}
+		],
+		"subRuns": {
+			"Model": [
+				{
+					"error": null
+				}
+			]
+		},
+		"outputs": [
+			[
+				{
+					"output": "thinking"
+				}
+			]
+		],
+		"paired": [
+			[
+				{
+					"item": 0
+				}
+			]
+		],
+		"nodePaired": [true]
+	},
+	"agent gemini, no parts": {
+		"requests": [
+			{
+				"method": "POST",
+				"url": "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent",
+				"qs": {},
+				"headers": {
+					"x-goog-api-key": "fake-google-key"
+				},
+				"body": {
+					"generationConfig": {
+						"stopSequences": []
+					},
+					"safetySettings": [],
+					"contents": [
+						{
+							"role": "user",
+							"parts": [
+								{
+									"text": "Ask {this}"
+								}
+							]
+						}
+					]
+				}
+			}
+		],
+		"wire": [null],
+		"output": [
+			{
+				"output": ""
+			}
+		],
+		"subRuns": {
+			"Model": [
+				{
+					"error": null
+				}
+			]
+		},
+		"outputs": [
+			[
+				{
+					"output": ""
+				}
+			]
+		],
+		"paired": [
+			[
+				{
+					"item": 0
+				}
+			]
+		],
+		"nodePaired": [true]
+	},
+	"agent gemini, function call, version 3.1": {
+		"requests": [
+			{
+				"method": "POST",
+				"url": "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent",
+				"qs": {},
+				"headers": {
+					"x-goog-api-key": "fake-google-key"
+				},
+				"body": {
+					"generationConfig": {
+						"stopSequences": []
+					},
+					"safetySettings": [],
+					"contents": [
+						{
+							"role": "user",
+							"parts": [
+								{
+									"text": "Ask {this}"
+								}
+							]
+						}
+					]
+				}
+			},
+			{
+				"method": "POST",
+				"url": "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent",
+				"qs": {},
+				"headers": {
+					"x-goog-api-key": "fake-google-key"
+				},
+				"body": {
+					"generationConfig": {
+						"stopSequences": []
+					},
+					"safetySettings": [],
+					"contents": [
+						{
+							"role": "user",
+							"parts": [
+								{
+									"text": "Ask {this}"
+								}
+							]
+						}
+					]
+				}
+			}
+		],
+		"wire": [null, null],
+		"output": [
+			{
+				"output": "after"
+			}
+		],
+		"subRuns": {
+			"Model": [
+				{
+					"error": null
+				},
+				{
+					"error": null
+				}
+			]
+		},
+		"outputs": [
+			[
+				{
+					"output": "after"
+				}
+			]
+		],
+		"paired": [
+			[
+				{
+					"item": 0
+				}
+			]
+		],
+		"nodePaired": [true]
+	},
+	"agent gemini, function call, version 2.2": {
+		"requests": [
+			{
+				"method": "POST",
+				"url": "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent",
+				"qs": {},
+				"headers": {
+					"x-goog-api-key": "fake-google-key"
+				},
+				"body": {
+					"generationConfig": {
+						"stopSequences": []
+					},
+					"safetySettings": [],
+					"contents": [
+						{
+							"role": "user",
+							"parts": [
+								{
+									"text": "Ask {this}"
+								}
+							]
+						}
+					]
+				}
+			},
+			{
+				"method": "POST",
+				"url": "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent",
+				"qs": {},
+				"headers": {
+					"x-goog-api-key": "fake-google-key"
+				},
+				"body": {
+					"generationConfig": {
+						"stopSequences": []
+					},
+					"safetySettings": [],
+					"contents": [
+						{
+							"role": "user",
+							"parts": [
+								{
+									"text": "Ask {this}"
+								}
+							]
+						},
+						{
+							"role": "model",
+							"parts": [
+								{
+									"functionCall": {
+										"name": "x",
+										"args": {
+											"a": 1
+										}
+									}
+								}
+							]
+						},
+						{
+							"role": "user",
+							"parts": [
+								{
+									"functionResponse": {
+										"name": "x",
+										"response": {
+											"result": "x is not a valid tool, try another one."
+										}
+									}
+								}
+							]
+						}
+					]
+				}
+			}
+		],
+		"wire": [null, null],
+		"output": [
+			{
+				"output": "after"
+			}
+		],
+		"subRuns": {
+			"Model": [
+				{
+					"error": null
+				},
+				{
+					"error": null
+				}
+			]
+		},
+		"outputs": [
+			[
+				{
+					"output": "after"
+				}
+			]
+		],
+		"paired": [
+			[
+				{
+					"item": 0
+				}
+			]
+		],
+		"nodePaired": [true]
+	},
+	"agent gemini, error output": {
+		"requests": [
+			{
+				"method": "POST",
+				"url": "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent",
+				"qs": {},
+				"headers": {
+					"x-goog-api-key": "fake-google-key"
+				},
+				"body": {
+					"generationConfig": {
+						"stopSequences": []
+					},
+					"safetySettings": [],
+					"contents": [
+						{
+							"role": "user",
+							"parts": [
+								{
+									"text": "Ask {this}"
+								}
+							]
+						}
+					]
+				}
+			},
+			{
+				"method": "POST",
+				"url": "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent",
+				"qs": {},
+				"headers": {
+					"x-goog-api-key": "fake-google-key"
+				},
+				"body": {
+					"generationConfig": {
+						"stopSequences": []
+					},
+					"safetySettings": [],
+					"contents": [
+						{
+							"role": "user",
+							"parts": [
+								{
+									"text": "Ask {this}"
+								}
+							]
+						}
+					]
+				}
+			}
+		],
+		"wire": [null, null],
+		"output": [
+			{
+				"output": "ok"
+			}
+		],
+		"subRuns": {
+			"Model": [
+				{
+					"error": "Bad request - please check your parameters"
+				},
+				{
+					"error": null
+				}
+			]
+		},
+		"outputs": [
+			[
+				{
+					"output": "ok"
+				}
+			],
+			[
+				{
+					"a": 1,
+					"error": "Bad request - please check your parameters"
+				}
+			]
+		],
+		"paired": [
+			[
+				{
+					"item": 1
+				}
+			],
+			[
+				{
+					"item": 0
+				}
+			]
+		],
+		"nodePaired": [true, true]
+	},
 	"agent 3, tool call, then answer": {
 		"requests": [
 			{
