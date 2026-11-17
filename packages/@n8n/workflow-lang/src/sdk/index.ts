@@ -498,21 +498,42 @@ export interface SqlResult {
 }
 
 /**
- * The request of an `smtp` effect: one message for one SMTP connection. The runtime reads
- * host, port, TLS settings, user and password from the credential of the slot. Code never
- * reads them. The runtime sends the message as nodemailer 10 sends it for the Send Email
- * node of n8n: EHLO, STARTTLS when the server offers it, AUTH PLAIN or LOGIN, the envelope,
- * DATA, and no QUIT.
+ * One file of a message of the `smtp` effect: a binary property of an item. `data` is the
+ * content in base64, or the mode name of n8n's binary data store with the file in `id`: the
+ * runtime then reads the stored file.
+ */
+export interface SmtpAttachment {
+	/** The file name. The runtime takes the content type from it, as nodemailer does. */
+	filename: string;
+	/** The content id of an inline file. */
+	cid?: string;
+	data: string;
+	id?: string;
+}
+
+/**
+ * The request of an `smtp` effect: the fields of one message for one SMTP connection. The
+ * runtime reads host, port, TLS settings, user and password from the credential of the
+ * slot. Code never reads them. The runtime builds the message from the fields as
+ * nodemailer 10 builds it for the Send Email node of n8n (`MailComposer`), and sends it as
+ * nodemailer does: EHLO, STARTTLS when the server offers it, AUTH PLAIN or LOGIN, the
+ * envelope from the headers, DATA, and no QUIT. A field that is empty is a field that is
+ * not set. The Message-ID, the Date header and the MIME boundaries have the format of
+ * nodemailer, with the random bytes and the clock of the runtime.
  */
 export interface SmtpRequest {
 	/** Name of a credential slot of the workflow, with a credential of the type `smtp`. */
 	credential: string;
-	/** The sender of the envelope. An empty text when the message has no sender. */
-	from: string;
-	/** The recipients of the envelope: the addresses of To, Cc and Bcc, each one time. */
-	to: string[];
-	/** The message: headers, an empty line, and the body. The runtime adds the dots of DATA. */
-	message: string;
+	/** The addresses of the From, To, Cc, Bcc and Reply-To headers, as the node gives them. */
+	from?: string;
+	to?: string;
+	cc?: string;
+	bcc?: string;
+	replyTo?: string;
+	subject?: string;
+	text?: string;
+	html?: string;
+	attachments?: SmtpAttachment[];
 	/** True: a certificate that cannot be checked is taken (the option of the node). */
 	allowUnauthorizedCerts?: boolean;
 }
@@ -529,7 +550,7 @@ export interface SmtpRejected {
 	recipient: string;
 }
 
-/** The `info` of nodemailer, without `envelope` and `messageId`: the caller has both. */
+/** The `info` of nodemailer. */
 export interface SmtpSent {
 	accepted: string[];
 	rejected: string[];
@@ -542,6 +563,9 @@ export interface SmtpSent {
 	messageSize: number;
 	/** The last reply of the server. */
 	response: string;
+	/** The sender (false when the message has none) and the recipients of the envelope. */
+	envelope: { from: string | false; to: string[] };
+	messageId: string;
 }
 
 /** An error of nodemailer. It is data, not a throw. */
