@@ -29,6 +29,15 @@ export class ServiceCallError extends Error {
 	}
 }
 
+/**
+ * True when an error that reached the process outside a result must end the step that made
+ * it: the error of a service call, while the step still runs. Each other error is logged
+ * only, as n8n does, and the step goes on to its own result.
+ */
+export function failsStep(error: unknown, step: { done: boolean } | undefined): boolean {
+	return step !== undefined && !step.done && error instanceof ServiceCallError;
+}
+
 const channels = new AsyncLocalStorage<ServiceChannel>();
 
 /** Runs `run` with the service channel of a step. */
