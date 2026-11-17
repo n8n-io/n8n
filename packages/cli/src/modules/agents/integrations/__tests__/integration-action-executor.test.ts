@@ -1597,8 +1597,9 @@ describe('ChatIntegrationActionExecutor', () => {
 			return { executor, descriptor, thread };
 		}
 
-		it('rejects a text-only respond because the reply text is already delivered', async () => {
+		it.each([false, true])('rejects a text-only respond with render_ui=%s', async (renderUi) => {
 			const { executor, descriptor, thread } = buildExecutor();
+			descriptor.conversationTools = renderUi ? ['render_ui'] : [];
 
 			const result = await executor.execute({
 				descriptor,
@@ -1616,6 +1617,11 @@ describe('ChatIntegrationActionExecutor', () => {
 				},
 			});
 			expect(thread.post).not.toHaveBeenCalled();
+			if (!result.ok) {
+				expect(result.error.message).toContain(
+					renderUi ? 'Use render_ui' : 'Call respond only with message.card',
+				);
+			}
 		});
 
 		it('allows a respond that carries a card', async () => {

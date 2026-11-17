@@ -3,9 +3,14 @@ import type { RichCardComponentType } from '@n8n/api-types';
 import { mock } from 'vitest-mock-extended';
 import type { z } from 'zod';
 
-import { AgentChatIntegration } from '../agent-chat-integration';
+import { AgentChatIntegration, ChatIntegrationRegistry } from '../agent-chat-integration';
+import { ChatIntegrationActionExecutor } from '../integration-action-executor';
+import { ChannelRateLimitGuard } from '../channel-rate-limit.guard';
 import { createConversationTools } from '../conversation-tools';
-import { encodeIntegrationMessageContext } from '../integration-message-context';
+import {
+	encodeIntegrationMessageContext,
+	readIntegrationMessageContext,
+} from '../integration-message-context';
 import { resolveIntegrationActionDefinitions } from '../integration-tool-definitions';
 import {
 	createIntegrationActionTool,
@@ -244,6 +249,30 @@ describe('conversation tools', () => {
 		);
 		expect(silence.endsTurn?.(output)).toBe(true);
 		expect(silence.endsTurn?.({ ok: false })).toBe(false);
+	});
+
+	it('keeps the required-reply policy for a direct mention through the real executor', async () => {
+		const params = setup();
+		const context = readIntegrationMessageContext(params.ctx.persistence);
+		if (!context || !params.ctx.persistence) throw new Error('Missing test context');
+		params.ctx.persistence.hostMetadata = encodeIntegrationMessageContext({
+			...context,
+			replyExpectation: 'required',
+		});
+		const executor = new ChatIntegrationActionExecutor(
+			mock(),
+			new ChatIntegrationRegistry(),
+			new ChannelRateLimitGuard(),
+			mock(),
+		);
+		const silence = createConversationTools({ ...params, actionExecutor: executor })
+			.map((tool) => tool.build())
+			.find((tool) => tool.name === 'do_not_respond');
+		if (!silence) throw new Error('Missing silence tool');
+		const output = await silence.handler!({ reason: 'The user asked for no reply' }, params.ctx);
+		expect(output).toMatchObject({ ok: false, error: { code: 'REPLY_REQUIRED' } });
+		expect(silence.endsTurn?.(output)).toBe(false);
+		expect(silence.description).toContain('Direct messages and direct mentions require a reply.');
 	});
 
 	it('moves UI and silence out of the grouped action schema', () => {

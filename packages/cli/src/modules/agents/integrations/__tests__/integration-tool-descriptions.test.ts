@@ -1,4 +1,31 @@
-import { buildFileUploadGuidance } from '../integration-tool-descriptions';
+import {
+	buildActionToolDescription,
+	buildFileUploadGuidance,
+} from '../integration-tool-descriptions';
+import { getIntegrationToolConnectionDescriptors } from '../integration-tool-factory';
+
+describe('buildActionToolDescription', () => {
+	it.each([false, true])('routes card requests with render_ui=%s', (renderUi) => {
+		const [descriptor] = getIntegrationToolConnectionDescriptors(
+			[{ type: 'slack', credentialId: 'cred-1' }],
+			'agent-1',
+			() => ({ conversationTools: renderUi ? ['render_ui'] : [] }),
+		);
+		const description = buildActionToolDescription(descriptor);
+		if (renderUi) {
+			expect(description).toContain('Your reply text is posted automatically.');
+			expect(description).toContain('Use render_ui to show a card in the current conversation.');
+			expect(description).toContain(
+				'Use respond for files or after switching to a different target.',
+			);
+			expect(description).not.toContain('Call respond only with message.card');
+			expect(description).not.toContain('Generic card examples:');
+		} else {
+			expect(description).toContain('Call respond only with message.card');
+			expect(description).toContain('Generic card examples:');
+		}
+	});
+});
 
 describe('buildFileUploadGuidance', () => {
 	const limits = { maxFiles: 10, maxFileBytes: 50 * 1024 * 1024 };
