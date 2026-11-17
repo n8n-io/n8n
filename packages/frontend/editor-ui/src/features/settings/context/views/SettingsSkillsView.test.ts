@@ -1839,7 +1839,7 @@ describe('SettingsSkillsView', () => {
 					'The skill stays in Global with its version history.',
 				);
 				expect(confirmation.container).toHaveTextContent(
-					'Agents can still use the skill, and you can edit it in n8n.',
+					'Agents can still use the skill. Users with edit access can edit it in n8n.',
 				);
 				expect(confirmation.container).toHaveTextContent('GitHub updates stop.');
 				expect(confirmation.container).not.toHaveTextContent('cannot undo');

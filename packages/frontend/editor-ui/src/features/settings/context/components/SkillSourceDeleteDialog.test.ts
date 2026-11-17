@@ -82,13 +82,17 @@ describe('SkillSourceDeleteDialog', () => {
 		const { getByRole, emitted } = renderDialog();
 		expect(getByRole('dialog')).toHaveTextContent('keep its skills with their version history');
 		expect(getByRole('dialog')).toHaveTextContent(
-			'Agents can still use the skills, and you can edit them in n8n.',
+			'Agents can still use the skills. Users with edit access can edit them in n8n.',
 		);
 		expect(getByRole('dialog')).toHaveTextContent('GitHub updates stop.');
 		await userEvent.click(getByRole('button', { name: 'Stop syncing' }));
 		await waitFor(() => expect(emitted('deleted')).toEqual([[]]));
 		expect(mockedStore(useSkillsStore).deleteSource).toHaveBeenCalledWith('source-1', {
 			keepSkills: true,
+		});
+		expect(showMessage).toHaveBeenCalledWith({
+			title: 'Source removed. Users with edit access can edit its skills in n8n.',
+			type: 'success',
 		});
 	});
 
