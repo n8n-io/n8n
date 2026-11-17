@@ -2,8 +2,9 @@
  * Host-side helper for injecting workspace packages into a remote Daytona /
  * n8n-sandbox sandbox during local development.
  *
- * Opt-in via `N8N_INSTANCE_AI_SANDBOX_LINK_SDK=1`. Production sandboxes
- * continue to install the registry-pinned version from `PACKAGE_JSON`.
+ * Local sandbox linking is opt-in via `N8N_INSTANCE_AI_SANDBOX_LINK_SDK=1`.
+ * Release snapshots use the same packer for their full workspace dependency
+ * closure. Runtime-created images use the registry-pinned `PACKAGE_JSON`.
  *
  * Why this exists: remote sandboxes have no line-of-sight to the dev's
  * monorepo. When a dev rebuilds the SDK or `n8n-workflow` locally, the
@@ -28,6 +29,8 @@ import { createRequire } from 'node:module';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { promisify } from 'node:util';
+
+import { getErrorMessage } from '@n8n/utils/errors/get-error-message';
 
 import type { Logger } from '../logger';
 
@@ -70,6 +73,12 @@ export interface WorkspacePackageTarball {
 	packagePath: string;
 }
 
+type WorkspacePackagePacker = (
+	logger: Logger,
+	packageName: string,
+	packagePath: string,
+) => Promise<WorkspacePackageTarball | null>;
+
 export function isLinkWorkspaceSdkEnabled(): boolean {
 	const v = process.env[ENV_FLAG];
 	return v === '1' || v === 'true';
@@ -84,9 +93,7 @@ export async function packWorkspacePackage(
 	packagePath: string | null = resolvePackagePath(packageName),
 ): Promise<WorkspacePackageTarball | null> {
 	if (!packagePath) {
-		logger.warn(
-			`${ENV_FLAG} is set but ${packageName} could not be resolved on the host — skipping sandbox link`,
-		);
+		logger.warn(`${packageName} could not be resolved on the host — skipping package pack`);
 		return null;
 	}
 
@@ -97,7 +104,7 @@ export async function packWorkspacePackage(
 		await stat(distPath);
 	} catch {
 		logger.warn(
-			`${ENV_FLAG} is set but ${packageName}/dist is missing — run \`pnpm build\` in ${packagePath} first. Skipping sandbox link.`,
+			`${packageName}/dist is missing — run \`pnpm build\` in ${packagePath} first. Skipping package pack.`,
 		);
 		return null;
 	}
@@ -149,12 +156,51 @@ export async function packSandboxLinkedWorkspacePackages(
 		);
 	}
 
+	let linkedPackages: HostWorkspacePackage[];
+	try {
+		linkedPackages = await findLinkedWorkspacePackages(SANDBOX_LINK_ROOT_PACKAGE, rootPath);
+	} catch (error) {
+		throw new Error(`${ENV_FLAG} is enabled, but ${getErrorMessage(error)}`, { cause: error });
+	}
+
 	const packed: WorkspacePackageTarball[] = [];
-	for (const pkg of await findLinkedWorkspacePackages(SANDBOX_LINK_ROOT_PACKAGE, rootPath)) {
+	for (const pkg of linkedPackages) {
 		const tarball = await packWorkspacePackage(logger, pkg.name, pkg.path);
 		if (!tarball) {
 			throw new Error(
 				`${ENV_FLAG} is enabled, but ${pkg.name} could not be packed. Run \`pnpm build\` in ${pkg.path}, or unset ${ENV_FLAG}.`,
+			);
+		}
+		packed.push(tarball);
+	}
+
+	return packed;
+}
+
+/** Pack the SDK and its complete runtime workspace dependency closure. */
+export async function packSnapshotWorkspacePackages(
+	logger: Logger,
+): Promise<WorkspacePackageTarball[]> {
+	const rootPath = resolvePackagePath(SANDBOX_LINK_ROOT_PACKAGE);
+	if (!rootPath) {
+		throw new Error(`${SANDBOX_LINK_ROOT_PACKAGE} could not be resolved on the host`);
+	}
+
+	const packages = await findLinkedWorkspacePackages(SANDBOX_LINK_ROOT_PACKAGE, rootPath, null);
+	return await packWorkspacePackageList(logger, packages);
+}
+
+export async function packWorkspacePackageList(
+	logger: Logger,
+	packages: readonly HostWorkspacePackage[],
+	packPackage: WorkspacePackagePacker = packWorkspacePackage,
+): Promise<WorkspacePackageTarball[]> {
+	const packed: WorkspacePackageTarball[] = [];
+	for (const pkg of packages) {
+		const tarball = await packPackage(logger, pkg.name, pkg.path);
+		if (!tarball) {
+			throw new Error(
+				`${pkg.name} could not be packed. Build the workflow SDK dependency graph first.`,
 			);
 		}
 		packed.push(tarball);
@@ -172,7 +218,7 @@ export async function packSandboxLinkedWorkspacePackages(
 export async function findLinkedWorkspacePackages(
 	rootName: string,
 	rootPath: string,
-	linked: ReadonlySet<string> = SANDBOX_LINKED_WORKSPACE_PACKAGES,
+	linked: ReadonlySet<string> | null = SANDBOX_LINKED_WORKSPACE_PACKAGES,
 ): Promise<HostWorkspacePackage[]> {
 	const found: HostWorkspacePackage[] = [];
 	const visited = new Set<string>();
@@ -192,11 +238,11 @@ export async function findLinkedWorkspacePackages(
 			const packageRequire = createRequire(path.join(packagePath, 'package.json'));
 			for (const [dependency, range] of Object.entries(dependencies)) {
 				if (typeof range !== 'string' || !range.startsWith('workspace:')) continue;
-				if (!linked.has(dependency)) continue;
+				if (linked && !linked.has(dependency)) continue;
 				const dependencyPath = resolvePackagePath(dependency, packageRequire);
 				if (!dependencyPath) {
 					throw new Error(
-						`${ENV_FLAG} is enabled, but ${dependency} (a dependency of ${name}) could not be resolved on the host. Run \`pnpm install\`, or unset ${ENV_FLAG}.`,
+						`${dependency} (a dependency of ${name}) could not be resolved on the host. Run \`pnpm install\`.`,
 					);
 				}
 				await visit(dependency, dependencyPath);

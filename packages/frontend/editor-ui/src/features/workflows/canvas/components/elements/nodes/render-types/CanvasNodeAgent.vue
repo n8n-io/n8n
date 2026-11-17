@@ -22,12 +22,12 @@ import CanvasNodeStatusIcons from './parts/CanvasNodeStatusIcons.vue';
 import CanvasNodeAgentChips from './parts/CanvasNodeAgentChips.vue';
 import { buildAgentCardChips } from './parts/canvasNodeAgentChips.utils';
 import { useAgentNavigation } from '@/features/agents/composables/useAgentNavigation';
-import { AGENT_NODE_SIZE } from '@/features/agents/utils/agentNode';
+import { DEFAULT_AGENT_WIDTH } from '@/features/agents/utils/agentNode';
 import { injectWorkflowExecutionStateStore } from '@/app/stores/workflowExecutionState.store';
 
 // Width comes from the shared constant so canvas placement and tidy-up layout
 // stay in sync with the rendered card.
-const cardStyle = { width: `${AGENT_NODE_SIZE[0]}px` };
+const cardStyle = { width: `${DEFAULT_AGENT_WIDTH}px` };
 
 const emit = defineEmits<{
 	update: [parameters: Record<string, unknown>];
@@ -225,6 +225,7 @@ watch(
 		@dblclick.stop="onActivate"
 		@contextmenu="onOpenContextMenu"
 	>
+		<span v-if="classes[$style.running] || classes[$style.waiting]" :class="$style.statusRing" />
 		<div :class="$style.surface">
 			<header :class="$style.header">
 				<div :class="$style.headerLabel">
@@ -314,7 +315,7 @@ watch(
 	// Own stacking context so the header/body/glow z-indexes below stay local and
 	// never compete with the connection handles (which must stay on top).
 	isolation: isolate;
-	// Width is bound inline from AGENT_NODE_SIZE — see cardStyle in the script.
+	// Width is bound inline from DEFAULT_AGENT_WIDTH — see cardStyle in the script.
 	border-radius: var(--agent-card--radius);
 }
 
@@ -498,23 +499,24 @@ watch(
 	border-color: var(--canvas-node--border-color--error, var(--color--danger));
 }
 
-/* stylelint-disable */
+// success/error can apply at the same time (e.g. a succeeded node waiting
+// for its next run) — drop their 2px ring border while the glow shows.
 .running::after,
 .waiting::after {
-	@include styles.status-animated-after;
-	// success/error can apply at the same time (e.g. a succeeded node waiting
-	// for its next run) — drop their 2px ring border while the glow shows.
 	border: none;
+}
+
+.statusRing {
+	@include styles.status-animated-ring;
 	border-radius: calc(var(--agent-card--radius) + 3px);
 }
 
-.running::after {
+.running > .statusRing {
 	@include styles.status-running-animation;
 }
-.waiting::after {
+.waiting > .statusRing {
 	@include styles.status-waiting-animation;
 }
 
 @include styles.status-animation-definitions;
-/* stylelint-enable */
 </style>

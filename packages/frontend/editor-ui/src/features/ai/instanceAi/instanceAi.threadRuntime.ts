@@ -1,4 +1,4 @@
-import { computed, nextTick, reactive, ref, shallowRef, triggerRef, watch } from 'vue';
+import { computed, reactive, ref, shallowRef, triggerRef, watch } from 'vue';
 import { v4 as uuidv4 } from 'uuid';
 import { ResponseError } from '@n8n/rest-api-client';
 import {
@@ -9,6 +9,7 @@ import {
 	isSafeObjectKey,
 	resolveBuilderToolName,
 	WORKFLOW_BUILDER_TOOL_NAMES,
+	type InstanceAiApprovalMode,
 	type InstanceAiConfirmation,
 	type InstanceAiConfirmRequest,
 	type InstanceAiConfirmResponse,
@@ -90,7 +91,10 @@ import {
 	syncLiveRunFromStatus,
 } from './instanceAi.liveRunState';
 import { isInstanceAiThreadSource } from './constants';
-import { instanceAiResponseNow } from './instanceAi.responseTiming';
+import {
+	instanceAiResponseNow,
+	observeInstanceAiResponseRender,
+} from './instanceAi.responseTiming';
 
 /**
  * State the editor handed off, snapshotted before its stores are torn down so
@@ -280,6 +284,24 @@ export function getPendingAppTargetFromThreadMetadata(
 		return undefined;
 	}
 	return { appId: target.appId, projectId: target.projectId };
+}
+
+/** Whether the thread builds or edits an agent. Auto approval mode does not apply there. */
+export function threadTargetsAgent(metadata: Record<string, unknown> | undefined): boolean {
+	return (
+		getAgentBuilderTargetFromThreadMetadata(metadata) !== undefined ||
+		getAgentBuilderTargetsFromThreadMetadata(metadata).length > 0 ||
+		getPendingAgentTargetFromThreadMetadata(metadata) !== undefined
+	);
+}
+
+/** The approval mode that the backend uses for the run of a message sent now. */
+export function messageApprovalMode(
+	settings: { approvalModesAvailable: boolean; approvalMode: InstanceAiApprovalMode },
+	buildsAgent: boolean,
+): InstanceAiApprovalMode | 'unavailable' {
+	if (!settings.approvalModesAvailable) return 'unavailable';
+	return buildsAgent ? 'manual' : settings.approvalMode;
 }
 
 export function getAgentPreviewViewFromThreadMetadata(
@@ -744,21 +766,12 @@ export function createThreadRuntime(
 		return event.payload.status === 'completed' ? 'completed' : null;
 	}
 
-	async function observeResponseRender(): Promise<{ atEpochMs: number; tabVisible: boolean }> {
-		await nextTick();
-		const tabVisible = document.visibilityState === 'visible';
-		if (tabVisible) {
-			await new Promise<void>((resolve) => requestAnimationFrame(() => resolve()));
-		}
-		return { atEpochMs: instanceAiResponseNow(), tabVisible };
-	}
-
 	function createResponseSignal(responseKind: ResponseKind | null): ResponseSignal {
 		if (responseKind === null) return { kind: 'discard' };
 		return {
 			kind: 'received',
 			responseKind,
-			rendered: observeResponseRender(),
+			rendered: observeInstanceAiResponseRender(),
 		};
 	}
 
@@ -1020,6 +1033,7 @@ export function createThreadRuntime(
 							input_thread_id: conf.inputThreadId ?? '',
 							instance_id: rootStore.instanceId,
 							type: 'approval',
+							runtime: 'instance-ai',
 							provided_inputs: [
 								{
 									label: conf.message,
@@ -1602,6 +1616,10 @@ export function createThreadRuntime(
 			prefill_type: isPrefill ? authorship.prefillType : null,
 			prefill_id: isPrefill ? (authorship.prefillId ?? null) : null,
 			prompt_modified: isPrefill ? (authorship.promptModified ?? false) : null,
+			approval_mode: messageApprovalMode(
+				instanceAiSettingsStore,
+				threadTargetsAgent(hooks.getThreadMetadata?.(threadId)),
+			),
 			mention_counts: mentionCounts,
 			attachment_count: attachmentCount,
 			selected_element_count: selectedElementCount,

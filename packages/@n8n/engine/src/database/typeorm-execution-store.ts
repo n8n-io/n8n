@@ -1,4 +1,4 @@
-import { In, type Repository } from '@n8n/typeorm';
+import { In, LessThanOrEqual, type Repository } from '@n8n/typeorm';
 
 import { WorkflowSeededStep, type WorkflowExecution } from './entities';
 import { parentLinkSql, toParentColumns } from './parent-link-columns';
@@ -7,6 +7,7 @@ import {
 	type ExecutionRecord,
 	type ExecutionStore,
 	type NewExecutionRecord,
+	type StaleQueuedExecution,
 } from '../execution/execution-store';
 import { DEFAULT_STALENESS_THRESHOLDS, type StalenessThresholds } from '../execution/staleness';
 import {
@@ -133,6 +134,25 @@ export class TypeOrmExecutionStore implements ExecutionStore {
 			{ status: 'cancelled', finishedAt, staleAfter: null },
 		);
 		return result.affected === 1 ? { finishedAt } : null;
+	}
+
+	async findStaleQueuedExecutions(at: Date, limit: number): Promise<StaleQueuedExecution[]> {
+		// Served by the partial index on `stale_after` for `queued` rows.
+		const rows = await this.repo.find({
+			select: { id: true, staleAfter: true },
+			where: { status: 'queued', staleAfter: LessThanOrEqual(at) },
+			order: { staleAfter: 'ASC' },
+			take: limit,
+		});
+		return rows.flatMap(({ id, staleAfter }) => (staleAfter ? [{ id, staleAfter }] : []));
+	}
+
+	async renewQueuedExecution(id: string, staleAfter: Date): Promise<boolean> {
+		const result = await this.repo.update(
+			{ id, status: 'queued', staleAfter },
+			{ staleAfter: this.staleAfterFor('queued') },
+		);
+		return result.affected === 1;
 	}
 
 	async refreshLiveStatus(id: string): Promise<void> {

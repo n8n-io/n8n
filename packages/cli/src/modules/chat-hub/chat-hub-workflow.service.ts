@@ -8,6 +8,7 @@ import {
 	isChatHubToolTypeAllowed,
 } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
+import { WorkflowVersionedSettingsService } from '@n8n/backend-services';
 import {
 	DEFAULT_CONTEXT_WINDOW_LENGTH,
 	EMBEDDINGS_NODE_TYPE_MAP,
@@ -98,6 +99,7 @@ export class ChatHubWorkflowService {
 		private readonly cipher: Cipher,
 		private readonly policyEnforcementService: PolicyEnforcementService,
 		private readonly deprecatedNodesValidationService: DeprecatedNodesValidationService,
+		private readonly workflowVersionedSettings: WorkflowVersionedSettingsService,
 	) {
 		this.logger = this.logger.scoped('chat-hub');
 	}
@@ -1542,6 +1544,9 @@ Respond the title only:`,
 
 		const workflowNodes = manual ? workflow.nodes : workflow.activeVersion!.nodes;
 		const workflowConnections = manual ? workflow.connections : workflow.activeVersion!.connections;
+		const workflowSettings = manual
+			? workflow.settings
+			: this.workflowVersionedSettings.forPublishedRun(workflow.settings, workflow.activeVersion!);
 
 		const chatTriggers = workflowNodes.filter((node) => node.type === CHAT_TRIGGER_NODE_TYPE);
 
@@ -1626,7 +1631,7 @@ Respond the title only:`,
 			// Force saving data on successful executions for custom agent workflows
 			// to be able to read the results after execution.
 			settings: {
-				...workflow.settings,
+				...workflowSettings,
 				saveDataSuccessExecution: 'all',
 			},
 		};

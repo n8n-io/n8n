@@ -27,6 +27,7 @@ import {
 	billingPreview,
 	billingResources,
 	COMMIT_SHA,
+	PREVIEW_REVISION as REVISION,
 	resource,
 } from '../__tests__/preview.fixtures';
 import { registerDiffSlotStubs } from '../__tests__/slots';
@@ -151,13 +152,10 @@ const check = (fields: Partial<ApplyCheckResult> = {}): ApplyCheckResult => ({
 	...fields,
 });
 
-const REVISION = 'a'.repeat(64);
-
-/** The Apply preview carries its blockers and its revision. */
+/** The Apply preview carries its blockers. */
 const previewWithCheck = ({ environmentId, git, ...previewCheck } = check()) => ({
 	...billingPreview(),
 	check: previewCheck,
-	revision: REVISION,
 });
 
 // Apply names the source of the preview it shows.
@@ -387,6 +385,7 @@ describe('PromotionPreviewView', () => {
 		expect(api.promoteProjectSelection).toHaveBeenCalledWith(expect.anything(), 'p1', {
 			workflowIds: ['w1', 'w3'],
 			folderIds: [],
+			expectedPreviewRevision: REVISION,
 		});
 	});
 
@@ -646,6 +645,7 @@ describe('PromotionPreviewView', () => {
 		expect(api.promoteProjectSelection).toHaveBeenCalledWith(expect.anything(), 'p1', {
 			workflowIds: ['w1', 'w2', 'w3', 'w4'],
 			folderIds: [],
+			expectedPreviewRevision: REVISION,
 		});
 		expect(showMessage).toHaveBeenCalledWith({
 			title: 'Changes promoted',
@@ -682,6 +682,7 @@ describe('PromotionPreviewView', () => {
 		expect(api.promoteProjectSelection).toHaveBeenCalledWith(expect.anything(), 'p1', {
 			workflowIds: ['w1', 'w3', 'w4'],
 			folderIds: [],
+			expectedPreviewRevision: REVISION,
 		});
 	});
 
@@ -697,6 +698,7 @@ describe('PromotionPreviewView', () => {
 			workflowIds: ['w1', 'w2', 'w3', 'w4'],
 			folderIds: [],
 			commitMessage: 'Route leads by region',
+			expectedPreviewRevision: REVISION,
 		});
 	});
 
@@ -729,6 +731,7 @@ describe('PromotionPreviewView', () => {
 			workflowIds: ['w1'],
 			folderIds: [],
 			commitMessage: 'Route leads by region',
+			expectedPreviewRevision: REVISION,
 		});
 
 		await rerender({ projectId: 'p2', direction: 'promote' });
@@ -920,6 +923,41 @@ describe('PromotionPreviewView', () => {
 			'This instance changed',
 		);
 		expect(api.getPromotionPreview).toHaveBeenCalledTimes(2);
+	});
+
+	it('should say why when the project changed after the page loaded, and promote the new preview with the same message', async () => {
+		const newRevision = 'b'.repeat(64);
+		vi.mocked(api.getPromotionPreview)
+			.mockResolvedValueOnce(billingPreview())
+			.mockResolvedValue(billingPreview({ revision: newRevision }));
+		vi.mocked(api.promoteProjectSelection)
+			.mockResolvedValueOnce({ status: 'preview-changed', environmentId: 'environment-1' })
+			.mockResolvedValue({
+				status: 'promoted',
+				environmentId: 'environment-1',
+				counts: { workflows: 4, folders: 0, credentials: 0, dataTables: 0, variables: 0, tags: 0 },
+				git: { branchName: 'main', commitSha: COMMIT_SHA },
+			});
+
+		const { getByTestId, queryByTestId } = await render();
+		await promote(getByTestId, 'Route leads by region');
+
+		expect(getByTestId('promotion-preview-operation-notice')).toHaveTextContent(
+			"This project or its branch changed after the page loaded, so Promote didn't push anything.",
+		);
+		expect(api.getPromotionPreview).toHaveBeenCalledTimes(2);
+		expect(router.currentRoute.value.name).not.toBe(VIEWS.PROJECTS_WORKFLOWS);
+
+		await waitFor(() => expect(queryByTestId('promote-selection-dialog')).not.toBeInTheDocument());
+		await promote(getByTestId);
+
+		expect(api.promoteProjectSelection).toHaveBeenLastCalledWith(expect.anything(), 'p1', {
+			workflowIds: ['w1', 'w2', 'w3', 'w4'],
+			folderIds: [],
+			commitMessage: 'Route leads by region',
+			expectedPreviewRevision: newRevision,
+		});
+		expect(router.currentRoute.value.name).toBe(VIEWS.PROJECTS_WORKFLOWS);
 	});
 
 	it('should not apply any selection while a folder moved into the project from another one, and say why', async () => {

@@ -43,13 +43,7 @@ import {
 	type ImportSelectionRequest,
 } from '@/modules/n8n-packages/n8n-packages.types';
 
-import {
-	plannedChanges,
-	previewRevision,
-	toPreviewCheck,
-	withoutTagIds,
-	withoutTags,
-} from './apply-preview';
+import { plannedChanges, toPreviewCheck, withoutTagIds, withoutTags } from './apply-preview';
 import { PACKAGE_SUBFOLDER } from './constants';
 import { crossProjectMoves, foldersInScope, type CrossProjectMoves } from './cross-project-moves';
 import { GitCommitPackageReader } from './git-commit-package-reader';
@@ -60,7 +54,7 @@ import {
 	collectVariableReferences,
 	compare,
 } from './package-references';
-import { buildPreview, resourceKey, type PreviewSide } from './promotion-preview';
+import { buildPreview, previewRevision, resourceKey, type PreviewSide } from './promotion-preview';
 
 export type ApplyPreview = {
 	resources: PromotionResource[];
@@ -297,7 +291,7 @@ export class ApplyPreviewService {
 		check: PromotionPreviewCheck,
 	): Promise<ApplyPreview> {
 		await this.addLocalState(resources);
-		return { resources, dependencies, check, revision: previewRevision(resources, check) };
+		return { resources, dependencies, check, revision: previewRevision({ resources, check }) };
 	}
 
 	/** A branch workflow file as Apply writes it. With workflow tags disabled, Apply keeps the local tags. */

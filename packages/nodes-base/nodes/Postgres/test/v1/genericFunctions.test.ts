@@ -1,4 +1,6 @@
 import { mock } from 'vitest-mock-extended';
+import { constructExecutionMetaData } from 'n8n-core';
+import type { IExecuteFunctions } from 'n8n-workflow';
 import pgPromise from 'pg-promise';
 
 import * as PostgresFun from '../../v1/genericFunctions';
@@ -379,4 +381,36 @@ describe('pgInsert', () => {
 			'insert into "myschema"."mytable"("t") values(\'2026-01-01T00:00:00Z\'::timestamp(3) with time zone) RETURNING *',
 		);
 	});
+});
+
+describe('pgQueryV2', () => {
+	const resolved = "select '1$&2', '1$$2', '^[0-9]+$'";
+
+	it.each([
+		{ literalExpressions: true, expected: resolved },
+		{ literalExpressions: undefined, expected: "select '1{{ $json.sql }}2', '1$2', '^[0-9]+" },
+	])(
+		'should insert the resolved query when literalExpressions is $literalExpressions',
+		async ({ literalExpressions, expected }) => {
+			const t = mock<PgpDatabase>();
+			t.any.mockResolvedValue([]);
+			db.task.mockImplementation(
+				async (callback: unknown) => await (callback as (task: PgpDatabase) => Promise<unknown>)(t),
+			);
+			const context = mock<IExecuteFunctions>({
+				getNodeParameter: ((name: string) =>
+					name === 'query' ? '{{ $json.sql }}' : {}) as IExecuteFunctions['getNodeParameter'],
+				evaluateExpression: () => resolved,
+				helpers: mock({ constructExecutionMetaData }),
+			});
+
+			await PostgresFun.pgQueryV2.call(context, pgp, db, [{ json: {} }], false, {
+				overrideMode: 'independently',
+				resolveExpression: true,
+				literalExpressions,
+			});
+
+			expect(t.any).toHaveBeenCalledWith(expected, undefined);
+		},
+	);
 });

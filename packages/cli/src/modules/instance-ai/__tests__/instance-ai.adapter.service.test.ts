@@ -77,6 +77,7 @@ import {
 	CANVAS_NODE_CONTEXT_FLAG,
 	CONFIG_EVALUATIONS_FLAG,
 	INSTANCE_AI_CONVERSATION_HISTORY_FLAG,
+	INSTANCE_AI_APPROVAL_MODES_FLAG,
 	INSTANCE_AI_NODE_USAGE_FLAG,
 	INSTANCE_ACTIVITY_CONTEXT_FLAG,
 	ASSISTANT_SKILLS_FLAG,
@@ -2118,6 +2119,29 @@ function createNodeAdapterServiceForTests(
 	};
 }
 
+describe('createContext models', () => {
+	it('keeps the main and utility models on the context', () => {
+		const { service, mockUser } = createNodeAdapterServiceForTests([]);
+		const utilityModelId = 'anthropic/claude-haiku-5-5';
+
+		const context = service.createContext(mockUser, {
+			modelId: 'anthropic/claude-opus-5-5',
+			utilityModelId,
+		});
+
+		expect(context.modelId).toBe('anthropic/claude-opus-5-5');
+		expect(context.utilityModelId).toBe(utilityModelId);
+	});
+
+	it('leaves the utility model unset when none is resolved', () => {
+		const { service, mockUser } = createNodeAdapterServiceForTests([]);
+
+		const context = service.createContext(mockUser, { modelId: 'openai/gpt-6.1-sol' });
+
+		expect(context).not.toHaveProperty('utilityModelId');
+	});
+});
+
 describe('executeNodeService adapter', () => {
 	const executeRequest = {
 		type: 'n8n-nodes-base.set',
@@ -3820,6 +3844,7 @@ describe('createWorkflowAdapter', () => {
 			expect(mockFolderRepository.findOneOrFailFolderInProject).toHaveBeenCalledWith(
 				'deep',
 				'team-project-id',
+				'workflow',
 			);
 		});
 
@@ -5183,6 +5208,27 @@ describe('createWorkflowAdapter', () => {
 			expect(mockCollaborationService.broadcastWorkflowUpdate).toHaveBeenCalledWith(
 				'wf-1',
 				'user-1',
+			);
+		});
+
+		it('restores the version-scoped settings of the version', async () => {
+			const { adapter, mockWorkflowService, mockWorkflowHistoryService } =
+				createWorkflowAdapterForTests();
+			mockWorkflowHistoryService.getVersion.mockResolvedValue({
+				versionId: 'v-1',
+				nodes: [],
+				connections: {},
+				nodeGroups: [],
+				settings: { engineType: 'v1' },
+			});
+
+			await adapter.restoreVersion?.('wf-1', 'v-1');
+
+			expect(mockWorkflowService.update).toHaveBeenCalledWith(
+				expect.anything(),
+				expect.anything(),
+				'wf-1',
+				expect.objectContaining({ restoredVersionSettings: { engineType: 'v1' } }),
 			);
 		});
 
@@ -8002,6 +8048,7 @@ describe('resolveExperimentGates', () => {
 		[INSTANCE_AI_NODE_USAGE_FLAG]: true,
 		[AI_ASSISTANT_AT_MENTIONS_FLAG]: true,
 		[INSTANCE_AI_FOLDER_EXPLORATION_FLAG]: INSTANCE_AI_FOLDER_EXPLORATION_ENABLED_VARIANT,
+		[INSTANCE_AI_APPROVAL_MODES_FLAG]: true,
 	};
 
 	it('resolves per-user gates with one user flag fetch', async () => {
@@ -8017,6 +8064,7 @@ describe('resolveExperimentGates', () => {
 			nodeUsageEnabled: true,
 			nodeContextEnabled: true,
 			folderExplorationEnabled: true,
+			approvalModesEnabled: true,
 			instanceContextEnabled: false,
 			assistantSkillsEnabled: false,
 		});
@@ -8123,6 +8171,7 @@ describe('resolveExperimentGates', () => {
 			nodeUsageEnabled: false,
 			nodeContextEnabled: false,
 			folderExplorationEnabled: false,
+			approvalModesEnabled: false,
 			instanceContextEnabled: false,
 			assistantSkillsEnabled: false,
 		});
@@ -8159,6 +8208,14 @@ describe('resolveExperimentGates', () => {
 		});
 	});
 
+	it('opens the approval modes gate only on a boolean true', async () => {
+		stubContainer({ ...allEnabled, [INSTANCE_AI_APPROVAL_MODES_FLAG]: 'variant' });
+
+		await expect(createAdapter().resolveExperimentGates(user)).resolves.toMatchObject({
+			approvalModesEnabled: false,
+		});
+	});
+
 	it('fails experiment gates closed when no flags resolve', async () => {
 		stubContainer({});
 
@@ -8171,6 +8228,7 @@ describe('resolveExperimentGates', () => {
 			nodeUsageEnabled: false,
 			nodeContextEnabled: false,
 			folderExplorationEnabled: false,
+			approvalModesEnabled: false,
 			instanceContextEnabled: false,
 			assistantSkillsEnabled: false,
 		});
@@ -8189,6 +8247,7 @@ describe('resolveExperimentGates', () => {
 			nodeUsageEnabled: false,
 			nodeContextEnabled: false,
 			folderExplorationEnabled: false,
+			approvalModesEnabled: false,
 			instanceContextEnabled: false,
 			assistantSkillsEnabled: false,
 		});

@@ -2317,6 +2317,7 @@ describe('Promotions in Public API', () => {
 				source: { environmentId: 'env1', branchName: 'main' },
 				resources: [],
 				dependencies: [],
+				revision: 'b'.repeat(64),
 			};
 			const getPreview = vi
 				.spyOn(Container.get(PromotionChangeService), 'getPreview')
@@ -2376,6 +2377,7 @@ describe('Promotions in Public API', () => {
 
 	describe('selective promote', () => {
 		const promoteResult = {
+			status: 'promoted' as const,
 			environmentId: 'env1',
 			counts: { workflows: 2, folders: 0, credentials: 0, dataTables: 0, variables: 0, tags: 0 },
 			git: { commitSha: 'a'.repeat(40), branchName: 'main' },

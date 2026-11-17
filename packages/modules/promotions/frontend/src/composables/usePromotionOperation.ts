@@ -33,8 +33,8 @@ export type OperationRequest = OperationSelection & {
 	commitMessage?: string;
 };
 
-/** Why the page reloaded the preview after an apply that wrote nothing. */
-type OperationNotice = 'sourceChanged' | 'instanceChanged' | 'newBlockers';
+/** Why the page reloaded the preview after an operation that wrote nothing. */
+type OperationNotice = 'sourceChanged' | 'instanceChanged' | 'projectChanged' | 'newBlockers';
 
 type OperationError = {
 	message: string;
@@ -149,11 +149,18 @@ export function usePromotionOperation(
 	}
 
 	async function promote(id: string, { workflowIds, folderIds, commitMessage }: OperationRequest) {
+		// Promote what the page shows. A project or branch that changed since is reported, not pushed.
 		const result = await promoteProjectSelection(rootStore.publicApiContext, id, {
 			workflowIds,
 			folderIds,
 			...(commitMessage && { commitMessage }),
+			expectedPreviewRevision: preview.value?.revision,
 		});
+		if (result.status === 'preview-changed') {
+			notice.value = 'projectChanged';
+			await refresh();
+			return;
+		}
 		outcome.showPromoted(id, result);
 		await leave();
 	}

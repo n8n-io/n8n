@@ -2,8 +2,8 @@ import type {
 	ApplyPackageResultDto,
 	ApplySelectionDto,
 	ContinueApplySelectionDto,
-	PromotePackageResultDto,
 	PromoteSelectionRequestDto,
+	PromoteSelectionResultDto,
 	PromotionDirection,
 	PromotionInstanceApplyPreview,
 	PromotionPreview,
@@ -90,7 +90,7 @@ export async function promoteProjectSelection(
 	context: PublicApiContext,
 	projectId: string,
 	payload: PromoteSelectionRequestDto,
-): Promise<PromotePackageResultDto> {
+): Promise<PromoteSelectionResultDto> {
 	return await makePublicApiRequest(
 		context,
 		'POST',

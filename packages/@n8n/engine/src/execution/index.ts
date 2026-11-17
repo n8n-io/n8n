@@ -29,7 +29,12 @@ export type {
 	WorkflowDocument,
 } from './execution.types';
 export { ExecutionNotFoundError } from './execution-store';
-export type { ExecutionRecord, ExecutionStore, NewExecutionRecord } from './execution-store';
+export type {
+	ExecutionRecord,
+	ExecutionStore,
+	NewExecutionRecord,
+	StaleQueuedExecution,
+} from './execution-store';
 export type {
 	ExecutionViewStore,
 	ExecutionView,

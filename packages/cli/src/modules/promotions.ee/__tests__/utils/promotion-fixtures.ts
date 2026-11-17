@@ -1,5 +1,6 @@
 import {
 	promotionProviderTypeCapabilities,
+	type PromoteSelectionResultDto,
 	type PromotionGitHostConfig,
 	type PromotionProviderConfig,
 } from '@n8n/api-types';
@@ -53,4 +54,11 @@ export async function writeInstancePromotionPackage(user: User, targetDir: strin
 		}),
 		{ targetDir },
 	);
+}
+
+/** Fails the test unless the selective promote pushed. Narrows the result to its pushed shape. */
+export function expectPushed(
+	result: PromoteSelectionResultDto,
+): asserts result is Extract<PromoteSelectionResultDto, { status: 'promoted' }> {
+	if (result.status !== 'promoted') throw new Error(`Expected a push, got "${result.status}"`);
 }
