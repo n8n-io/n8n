@@ -22,11 +22,14 @@ const nationalMine = (m) => !!m.market || NATIONAL_ALWAYS.has(m.home) || NATIONA
 const isMine = (m) => (String(m.competition).startsWith("INT-") ? nationalMine(m) : MINE.has(m.home) || MINE.has(m.away));
 const norm = (x) => String(x).normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
 function shown(m) {
-  if (state.q) return norm(`${m.home} ${m.away}`).includes(norm(state.q));
+  if (state.q) {
+    const fr = window.frNames ? window.frNames(`${m.home} ${m.away}`) : "";
+    return norm(`${m.home} ${m.away} ${fr}`).includes(norm(state.q));
+  }
   return state.comp === "all" || (state.comp === "mine" ? isMine(m) : m.competition === state.comp);
 }
 
-const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
+const esc = (s) => (window.frNames ? window.frNames(s) : String(s ?? "")).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
 const pct = (p, d = 0) => `${(100 * p).toFixed(d)} %`;
 const two = (x) => (x == null || !isFinite(x) ? "—" : x.toFixed(2));
 const COMP = { "ENG-PL": "Premier League", "ESP-LL": "Liga", "ITA-SA": "Serie A", "GER-BL": "Bundesliga",
