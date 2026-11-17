@@ -50,6 +50,7 @@ import {
 	N8nNewBadge,
 	N8nNotice,
 	N8nOption,
+	N8nScrollArea,
 	N8nSelect,
 	N8nText,
 	N8nTooltip,
@@ -485,11 +486,12 @@ function openDiffModal(id: string) {
 	});
 }
 
-const modalHeight = computed(() =>
+// A minimum, not a fixed height: the dialog grows to fit the tabs and footer, so its content does not scroll.
+const modalMinHeight = computed(() =>
 	groupedFilesByType.value[SOURCE_CONTROL_FILE_TYPE.workflow]?.length ||
 	groupedFilesByType.value[SOURCE_CONTROL_FILE_TYPE.credential]?.length
 		? 'min(80vh, 850px)'
-		: 'auto',
+		: undefined,
 );
 
 // Load data when modal opens
@@ -507,7 +509,8 @@ onMounted(() => {
 		width="812px"
 		:event-bus="data.eventBus"
 		:name="SOURCE_CONTROL_PULL_MODAL_KEY"
-		:height="modalHeight"
+		:min-height="modalMinHeight"
+		max-height="100%"
 		:custom-class="$style.sourceControlPull"
 		:before-close="close"
 	>
@@ -579,7 +582,7 @@ onMounted(() => {
 						</N8nOption>
 					</N8nSelect>
 				</div>
-				<div style="display: flex; flex: 1; min-height: 0">
+				<div style="display: flex; flex: 1">
 					<div :class="$style.tabs">
 						<template v-for="tab in tabs" :key="tab.value">
 							<button
@@ -595,7 +598,8 @@ onMounted(() => {
 							</button>
 						</template>
 					</div>
-					<div style="flex: 1">
+					<!-- Size containment keeps the list from growing the row, so the tabs set its minimum height. -->
+					<div style="flex: 1; contain: size">
 						<div :class="[$style.table]">
 							<div :class="[$style.tableHeader]">
 								<div :class="$style.headerTitle">
@@ -815,12 +819,24 @@ onMounted(() => {
 				<N8nText bold size="medium">Additional changes to be pulled:</N8nText>
 				<N8nText size="small">{{ otherFilesText }}</N8nText>
 			</div>
-			<N8nCallout v-if="hasDataTableConflicts" theme="warning" class="mb-xs">
+			<N8nCallout
+				v-if="hasDataTableConflicts"
+				theme="warning"
+				:class="[$style.dataTableWarning, 'mb-xs']"
+			>
 				<div :class="$style.warningContent">
 					<div>{{ dataTableWarningMessage }}</div>
-					<ul :class="$style.dataTableList">
-						<li v-for="table in conflictedDataTables" :key="table.id">{{ table.name }}</li>
-					</ul>
+					<N8nScrollArea max-height="10vh" type="auto">
+						<ul :class="$style.dataTableList">
+							<li
+								v-for="table in conflictedDataTables"
+								:key="table.id"
+								data-test-id="pull-modal-conflicting-data-table"
+							>
+								{{ table.name }}
+							</li>
+						</ul>
+					</N8nScrollArea>
 				</div>
 			</N8nCallout>
 			<div :class="$style.footer">
@@ -945,6 +961,12 @@ onMounted(() => {
 	flex-direction: row;
 	justify-content: flex-end;
 	margin-top: 8px;
+}
+
+// N8nCallout sizes its message to the text; stretch it so the list scrollbar sits at the box edge.
+.dataTableWarning > :first-child,
+.dataTableWarning :global(.n8n-text) {
+	flex-grow: 1;
 }
 
 .warningContent {
