@@ -350,6 +350,22 @@ describe('V1WorkflowConverter', () => {
 			expect(noOp?.config).toMatchObject({ continueOnFail: false });
 		});
 
+		it('keeps Always Output Data in the config only when it is on', () => {
+			const convert = (alwaysOutputData?: boolean) =>
+				converter
+					.convert(
+						workflow({
+							nodes: [manualTrigger, node('noop-uuid', 'No Operation', { alwaysOutputData })],
+							connections: { 'When clicking Execute': { main: [[main('No Operation')]] } },
+						}),
+					)
+					.nodes.find((n) => n.id === 'noop-uuid')?.config;
+
+			expect(convert(true)).toMatchObject({ alwaysOutputData: true });
+			expect(convert(false)).not.toHaveProperty('alwaysOutputData');
+			expect(convert(undefined)).not.toHaveProperty('alwaysOutputData');
+		});
+
 		it('keeps the credential references of a node in its config', () => {
 			const credentials = { httpHeaderAuth: { id: 'cred-1', name: 'Header Auth account' } };
 			const graph = converter.convert(
@@ -439,11 +455,6 @@ describe('V1WorkflowConverter', () => {
 
 		it.each<{ setting: string; extra: Partial<INode>; error: string }>([
 			{ setting: 'Retry On Fail', extra: { retryOnFail: true }, error: 'Retry On Fail' },
-			{
-				setting: 'Always Output Data',
-				extra: { alwaysOutputData: true },
-				error: 'Always Output Data',
-			},
 			{ setting: 'Execute Once', extra: { executeOnce: true }, error: 'Execute Once' },
 		])('rejects a node with $setting on', ({ extra, error }) => {
 			expect(convertNoOp(extra)).toThrow(UnsupportedWorkflowError);
@@ -451,9 +462,7 @@ describe('V1WorkflowConverter', () => {
 		});
 
 		it('accepts a node with the execution settings explicitly off', () => {
-			expect(
-				convertNoOp({ retryOnFail: false, alwaysOutputData: false, executeOnce: false }),
-			).not.toThrow();
+			expect(convertNoOp({ retryOnFail: false, executeOnce: false })).not.toThrow();
 		});
 
 		it('ignores the execution settings of the fired trigger', () => {
@@ -461,7 +470,7 @@ describe('V1WorkflowConverter', () => {
 				converter.convert(
 					workflow({
 						nodes: [
-							{ ...manualTrigger, retryOnFail: true, alwaysOutputData: true, executeOnce: true },
+							{ ...manualTrigger, retryOnFail: true, executeOnce: true },
 							node('noop-uuid', 'No Operation'),
 						],
 						connections: toNoOp,

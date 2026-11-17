@@ -80,12 +80,6 @@ describe('converter rules', () => {
 			kind: 'temporary',
 		},
 		{
-			shape: 'a node with Always Output Data',
-			target: node({ alwaysOutputData: true }),
-			code: 'ALWAYS_OUTPUT_DATA',
-			kind: 'temporary',
-		},
-		{
 			shape: 'a node with Execute Once',
 			target: node({ executeOnce: true }),
 			code: 'EXECUTE_ONCE',
@@ -204,8 +198,9 @@ describe('converter rules', () => {
 		},
 		{
 			shape: 'a node with the execution settings explicitly off',
-			target: node({ retryOnFail: false, alwaysOutputData: false, executeOnce: false }),
+			target: node({ retryOnFail: false, executeOnce: false }),
 		},
+		{ shape: 'a node with Always Output Data', target: node({ alwaysOutputData: true }) },
 		{
 			shape: 'a disabled node with Retry On Fail',
 			target: node({ retryOnFail: true, disabled: true }),

@@ -24,10 +24,9 @@ import type { TriggerStepConfig, V1NodeStepConfig } from './types';
 
 /** Node settings the step executor ignores, with the label the editor shows for each. */
 const UNSUPPORTED_EXECUTION_SETTINGS: Array<
-	[keyof Pick<INode, 'retryOnFail' | 'alwaysOutputData' | 'executeOnce'>, string]
+	[keyof Pick<INode, 'retryOnFail' | 'executeOnce'>, string]
 > = [
 	['retryOnFail', 'Retry On Fail'],
-	['alwaysOutputData', 'Always Output Data'],
 	['executeOnce', 'Execute Once'],
 ];
 
@@ -164,7 +163,8 @@ export class V1WorkflowConverter {
 			parameters: node.parameters,
 			continueOnFail: node.continueOnFail === true || node.onError === 'continueRegularOutput',
 		};
-		// Set only when present, so a node without credentials serializes without the key.
+		// Set only when present, so a node without them serializes without the keys.
+		if (node.alwaysOutputData === true) config.alwaysOutputData = true;
 		if (node.credentials !== undefined) config.credentials = node.credentials;
 
 		return { id: node.id, name: node.name, type: 'v1-node', config };

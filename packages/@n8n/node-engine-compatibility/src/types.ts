@@ -36,6 +36,8 @@ export interface V1NodeStepConfig {
 	typeVersion: number;
 	parameters: INodeParameters;
 	continueOnFail: boolean;
+	/** Set when the node has Always Output Data on. Absent otherwise. */
+	alwaysOutputData?: true;
 	/** The credential references of the v1 node, kept so a step can resolve them at run time. */
 	credentials?: INodeCredentials;
 }
