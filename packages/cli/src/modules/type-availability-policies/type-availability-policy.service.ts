@@ -1,5 +1,5 @@
 import type { NodeTypeAvailabilityScope } from '@n8n/api-types';
-import { EventService } from '@n8n/backend-services';
+import { EventService, loginIdOf } from '@n8n/backend-services';
 import { TransactionRunner, type OperationContext } from '@n8n/db';
 import { Service } from '@n8n/di';
 import {
@@ -9,7 +9,6 @@ import {
 } from 'n8n-workflow';
 
 import { ConflictError, NotFoundError, UserError } from '@n8n/errors';
-import { loginIdOf } from '@/events/login-id';
 import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
 import { NodeTypes } from '@/node-types';
 

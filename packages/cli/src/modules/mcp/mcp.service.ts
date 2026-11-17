@@ -20,6 +20,7 @@ import {
 	CredentialsFinderService,
 	NodeTypesProxy,
 	PostHogClient,
+	loginIdOf,
 } from '@n8n/backend-services';
 import { ExecutionsConfig, GlobalConfig, WorkflowsConfig } from '@n8n/config';
 import {
@@ -46,7 +47,6 @@ import type z from 'zod';
 import { ActiveExecutions } from '@/active-executions';
 import { CollaborationService } from '@/collaboration/collaboration.service';
 import { CredentialsService } from '@/credentials/credentials.service';
-import { loginIdOf } from '@/events/login-id';
 import { ExecutionListService } from '@/executions/execution-list.service';
 
 import { ExecutionService } from '@/executions/execution.service';

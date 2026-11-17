@@ -14,6 +14,7 @@ import {
 	WorkflowMutationHooksProxy,
 	WorkflowPublishGuardProxy,
 	WorkflowVersionedSettingsService,
+	loginIdOf,
 } from '@n8n/backend-services';
 import { GlobalConfig } from '@n8n/config';
 import type {
@@ -98,7 +99,6 @@ import { WorkflowValidationError } from '@/errors/response-errors/workflow-valid
 import { TriggerCredentialAccessError } from '@/errors/trigger-credential-access.error';
 import { WorkflowHistoryVersionNotFoundError } from '@/errors/workflow-history-version-not-found.error';
 import type { SystemDeactivationReason, WorkflowActionSource } from '@/events/maps/relay.event-map';
-import { loginIdOf } from '@/events/login-id';
 import { ExecutionPersistence } from '@/executions/execution-persistence';
 import { ExternalHooks, toWorkflowLifecycleHookActor } from '@/external-hooks';
 import { validateEntity } from '@/generic-helpers';

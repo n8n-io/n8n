@@ -1,4 +1,5 @@
 export { EventService, type EventMap } from './events/event.service';
+export { loginIdOf } from './events/login-id';
 export {
 	countsTowardExecutionLimit,
 	executionLimitDelta,

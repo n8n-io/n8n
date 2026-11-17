@@ -5,6 +5,7 @@ import {
 	EventService,
 	ExecutionRedactionServiceProxy,
 	WorkflowVersionedSettingsService,
+	loginIdOf,
 } from '@n8n/backend-services';
 import { GlobalConfig } from '@n8n/config';
 import type {
@@ -49,7 +50,6 @@ import { ActiveExecutions } from '@/active-executions';
 import { ConcurrencyControlService } from '@/concurrency/concurrency-control.service';
 import { AbortedExecutionRetryError } from '@/errors/aborted-execution-retry.error';
 import { MissingExecutionStopError } from '@/errors/missing-execution-stop.error';
-import { loginIdOf } from '@/events/login-id';
 import { QueuedExecutionRetryError } from '@/errors/queued-execution-retry.error';
 import {
 	BadRequestError,
