@@ -20,6 +20,11 @@
  * not change the exit code. Remove `open` from a case when its difference is
  * closed.
  *
+ * `E2E_POSTGRES=1` adds the cases of the Postgres node. They need a PostgreSQL server
+ * that n8n and this script can reach (`PG_HOST`, `PG_PORT`, `PG_USER`, `PG_PASSWORD`,
+ * `PG_DATABASE`). The script makes the schema `PG_SCHEMA` (default `compiled_e2e`), drops
+ * it at the end, and touches nothing else.
+ *
  * Exit code 0 means that all other cases passed. `RESULTS_FILE` gets the
  * details. `ONLY=b,c` runs only the named cases.
  */
@@ -305,6 +310,153 @@ const oauthRequest = (credential) => ({
 	credentials: { oAuth2Api: credential },
 });
 
+// ---------------------------------------------------------------- Postgres
+
+const PG = {
+	host: process.env.PG_HOST ?? '127.0.0.1',
+	port: Number(process.env.PG_PORT ?? 5432),
+	user: process.env.PG_USER ?? 'postgres',
+	password: process.env.PG_PASSWORD ?? '',
+	database: process.env.PG_DATABASE ?? 'postgres',
+};
+const PG_SCHEMA = process.env.PG_SCHEMA ?? 'compiled_e2e';
+
+/** Runs statements on the test database with the client of n8n's own Postgres node. */
+async function pgRun(...statements) {
+	const { default: pg } = await import('pg');
+	const client = new pg.Client(PG);
+	await client.connect();
+	try {
+		for (const statement of statements) await client.query(statement);
+	} finally {
+		await client.end();
+	}
+}
+
+/** The same rows before the run of each engine: a case that deletes rows has them again. */
+async function resetPeople() {
+	await pgRun(
+		`CREATE SCHEMA IF NOT EXISTS ${PG_SCHEMA}`,
+		`DROP TABLE IF EXISTS ${PG_SCHEMA}.people`,
+		`CREATE TABLE ${PG_SCHEMA}.people (id int PRIMARY KEY, name text, age int, score numeric(6,2), active boolean, meta jsonb)`,
+		`INSERT INTO ${PG_SCHEMA}.people VALUES
+			(1, 'Ada', 36, 91.50, true, '{"team": "a"}'),
+			(2, 'Bob', 25, 70.25, false, null),
+			(3, 'Cy', 52, 88.00, true, '{"team": "b", "tags": ["x"]}'),
+			(4, 'Di', 41, null, false, '[1, 2]')`,
+	);
+}
+
+const locator = (value) => ({ __rl: true, mode: 'name', value });
+
+const postgres = (credential, parameters, name = 'Postgres') => ({
+	id: name,
+	name,
+	type: 'n8n-nodes-base.postgres',
+	typeVersion: 2.6,
+	position: [400, 0],
+	parameters,
+	credentials: { postgres: credential },
+});
+
+/**
+ * The cases of the Postgres node. `native`: the node runs in `wfrt` (the `sql` effect), and
+ * no run moves it to the fallback host.
+ */
+function postgresCases(credential) {
+	const table = { schema: locator(PG_SCHEMA), table: locator('people') };
+	const native = (run) => run.tiersAfter?.Postgres === 'native';
+	return [
+		{
+			key: 'pa',
+			title: 'Postgres select with a condition and a sort order',
+			before: resetPeople,
+			nodes: [
+				postgres(credential, {
+					resource: 'database',
+					operation: 'select',
+					...table,
+					returnAll: true,
+					where: { values: [{ column: 'age', condition: '>', value: '={{ $json.body.age }}' }] },
+					sort: { values: [{ column: 'id', direction: 'DESC' }] },
+					options: {},
+				}),
+			],
+			calls: [{ body: { age: 30 } }, { body: { age: 50 } }],
+			tiers: { Postgres: 'native' },
+			check: (run) => native(run) && run.calls[0]?.response?.length === 3,
+		},
+		{
+			key: 'pb',
+			title: 'Postgres executeQuery with query parameters',
+			before: resetPeople,
+			nodes: [
+				postgres(credential, {
+					resource: 'database',
+					operation: 'executeQuery',
+					query: `SELECT id, name, score, active, meta FROM ${PG_SCHEMA}.people WHERE name = $1 OR age > $2 ORDER BY id`,
+					options: { queryReplacement: '={{ $json.body.name }}, {{ $json.body.age }}' },
+				}),
+			],
+			// A value with a quote stays a value: the runtime sends it as a bind value.
+			calls: [{ body: { name: 'Bob', age: 40 } }, { body: { name: "O'Hara; --", age: 50 } }],
+			tiers: { Postgres: 'native' },
+			check: (run) => native(run) && run.calls[0]?.response?.length === 3,
+		},
+		{
+			key: 'pc',
+			title: 'Postgres deleteTable with a condition',
+			before: resetPeople,
+			nodes: [
+				postgres(credential, {
+					resource: 'database',
+					operation: 'deleteTable',
+					...table,
+					deleteCommand: 'delete',
+					where: {
+						values: [{ column: 'name', condition: 'equal', value: '={{ $json.body.name }}' }],
+					},
+					options: {},
+				}),
+				postgres(
+					credential,
+					{
+						resource: 'database',
+						operation: 'executeQuery',
+						query: `SELECT id FROM ${PG_SCHEMA}.people ORDER BY id`,
+						options: {},
+					},
+					'Left',
+				),
+			],
+			calls: [{ body: { name: 'Bob' } }],
+			tiers: { Postgres: 'native', Left: 'native' },
+			check: (run) =>
+				native(run) && JSON.stringify(run.calls[0]?.response) === '[{"id":1},{"id":3},{"id":4}]',
+		},
+		{
+			key: 'pd',
+			title: 'Postgres query with an array column: the fallback host runs the node in the same run',
+			before: resetPeople,
+			nodes: [
+				postgres(credential, {
+					resource: 'database',
+					operation: 'executeQuery',
+					query: `SELECT id, ARRAY[id, age] AS pair FROM ${PG_SCHEMA}.people WHERE age > $1 ORDER BY id`,
+					options: { queryReplacement: '={{ $json.body.age }}' },
+				}),
+			],
+			// The first call reaches the limit in `wfrt`. The second call starts in the host.
+			calls: [{ body: { age: 40 } }, { body: { age: 30 } }],
+			tiers: { Postgres: 'native' },
+			check: (run) =>
+				run.tiersAfter?.Postgres === 'host' &&
+				JSON.stringify(run.calls[0]?.response) ===
+					'[{"id":3,"pair":[3,52]},{"id":4,"pair":[4,41]}]',
+		},
+	];
+}
+
 function workflowBody(name, engine, path, nodes, auth) {
 	const all = [webhook(path, auth), ...nodes, respond];
 	return {
@@ -330,6 +482,7 @@ async function runOn(engine, spec) {
 	const path = `e2e-${spec.key}-${engine}-${RUN}`;
 	const out = { engine, published: false, calls: [] };
 	try {
+		if (spec.before) await spec.before(engine);
 		const workflow = await rest(
 			'POST',
 			'/workflows',
@@ -420,6 +573,11 @@ async function runOn(engine, spec) {
 			`/executions?filter=${encodeURIComponent(JSON.stringify({ workflowId: workflow.id }))}&limit=20`,
 		);
 		out.executions = (list.results ?? list).map((e) => `${e.mode}/${e.status}`).sort();
+		if (engine === 'compiled') {
+			// Where each node runs after the calls: a limit of `wfrt` moves a node to the host.
+			const state = await rest('GET', `/compiled-engine/workflows/${workflow.id}/compile`);
+			out.tiersAfter = state.nodes;
+		}
 	} catch (error) {
 		out.error = error instanceof Error ? error.message : String(error);
 	}
@@ -698,6 +856,36 @@ async function main() {
 			check: (run) => run.calls[0]?.requests.length === 1,
 		},
 	];
+	cases.push({
+		key: 'w',
+		title: 'no item reaches the Respond node',
+		nodes: [
+			{
+				id: 'f',
+				name: 'Filter',
+				type: 'n8n-nodes-base.filter',
+				typeVersion: 2.2,
+				position: [400, 0],
+				parameters: {
+					conditions: {
+						options: { caseSensitive: true, typeValidation: 'strict', version: 2 },
+						conditions: [
+							{
+								id: 'a',
+								leftValue: '={{ $json.body.amount }}',
+								rightValue: 100,
+								operator: { type: 'number', operation: 'gt' },
+							},
+						],
+						combinator: 'and',
+					},
+					options: {},
+				},
+			},
+		],
+		calls: [{ body: { amount: 2 } }],
+		open: 'v1 answers with an empty body; the compiled engine answers with the run data of the last node',
+	});
 	if (process.env.E2E_FILL_MODULES === '1') {
 		// `wfrt` has a limit for its loaded modules. This case loads workflows until `wfrt`
 		// refuses one. The next workflow must then run on v1, with the result of v1. After this
@@ -724,6 +912,16 @@ async function main() {
 			},
 		});
 	}
+	const withPostgres = process.env.E2E_POSTGRES === '1';
+	if (withPostgres) {
+		const credential = await createCredential('Postgres', 'postgres', {
+			...PG,
+			ssl: 'disable',
+			allowUnauthorizedCerts: false,
+			sshTunnel: false,
+		});
+		cases.push(...postgresCases(credential));
+	}
 	for (const [index, { reference, data }] of headerCredentials.entries()) {
 		Object.assign(reference, await createCredential(`Header ${index}`, 'httpHeaderAuth', data));
 	}
@@ -735,6 +933,7 @@ async function main() {
 		writeFileSync(process.env.RESULTS_FILE, JSON.stringify(results, null, 2));
 	}
 	for (const server of servers) server?.close();
+	if (withPostgres) await pgRun(`DROP SCHEMA IF EXISTS ${PG_SCHEMA} CASCADE`);
 	const failures = results.filter((r) => !r.pass && !r.open).length;
 	const open = results.filter((r) => !r.pass && r.open).length;
 	console.log(
