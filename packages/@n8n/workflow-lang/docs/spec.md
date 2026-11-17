@@ -525,7 +525,8 @@ and closures as each reference does, and no static proof is necessary where
 code reads it back. `Date.of(v, method, text)` gives the Date of the Date
 value `v`. For another value it throws the TypeError of JavaScript for the
 call `text()`: `Cannot read properties of null (reading 'getTime')` for null
-or undefined, else `<text> is not a function`.
+or undefined, else `<text> is not a function`. `Date.is(v)` is true when `v`
+is a Date value: `v instanceof Date` of JavaScript.
 
 Each operation reads a Date value as JavaScript reads a Date:
 
@@ -548,15 +549,15 @@ No opcode is new and no opcode has another encoding. `ADD`, `SUB`, `MUL`,
 do for an operand that is not a number or a string, so code without a Date
 value runs the same instructions with the same cost. `TYPEOF`, `NOT`, `JT`,
 `JF`, `SEQ` and `SNE` need no change: a Date value is a reference that is
-not a closure. The new library names of `CALLN` are `Date.value` and
-`Date.of`.
+not a closure. The new library names of `CALLN` are `Date.value`,
+`Date.of` and `Date.is`.
 
 The reference runner has JavaScript Dates, so a Date is its own Date value
 there. The test VM holds a Date value as a JavaScript Date. The Zig runtime
 has the heap kind `date` (`DateObj`: the header and one f64, a leaf for the
 copy and the snapshot) behind a `ref` value, the Date arm of `toNumber`,
 `appendScalarString`, `toPrimitiveForCompare` and the two JSON writers, and
-the two library functions.
+the three library functions.
 
 The translation of Code nodes makes Date values only with the option
 `dateValues` (`ConvertOptions.dateValues`), which is off until one
@@ -566,7 +567,10 @@ stays in the host: a variable gives one Date value only, it must be a
 constant that starts with `new Date`, and no code calls a setter of a Date
 variable. A method of a Date that the code reads as a value, and a helper
 of the translation that is not proven to read a Date value as JavaScript
-does (`DATE_VALUE_HELPERS`), stay in the host too.
+does (`DATE_VALUE_HELPERS`), stay in the host too. A Date of JavaScript
+takes members and a Date value has none (the Zig runtime ignores the write,
+and `in` throws), so code that writes, deletes or tests a member of a value
+that can be a Date value stays in the host.
 
 **Setters.** A setter stores the new time value back into its variable:
 `d.setHours(0)` becomes `d = Date.prototype.setHours(d, 0)`. Because a

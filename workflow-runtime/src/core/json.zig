@@ -287,6 +287,11 @@ test "a Date value reads as a Date of JavaScript in each operation" {
     try std.testing.expectEqual(time, value.asNum(try lib.callNative(vm, of, &.{ d, method, callee })));
     try std.testing.expectEqual(time, value.asNum(try lib.callNative(vm, from_value, &.{d})));
     try std.testing.expect(std.math.isNan(value.asNum(try lib.callNative(vm, from_value, &.{bad}))));
+    const is = lib.nativeId("Date.is").?;
+    try std.testing.expect(vm.strictEquals(value.true_, try lib.callNative(vm, is, &.{d})));
+    try std.testing.expect(vm.strictEquals(value.true_, try lib.callNative(vm, is, &.{bad})));
+    try std.testing.expect(vm.strictEquals(value.false_, try lib.callNative(vm, is, &.{method})));
+    try std.testing.expect(vm.strictEquals(value.false_, try lib.callNative(vm, is, &.{value.num(time)})));
     // A value that is no Date value keeps its kind in `Date.value`.
     try std.testing.expect(vm.strictEquals(method, try lib.callNative(vm, to_value, &.{method})));
     try std.testing.expectError(error.Throw, lib.callNative(vm, of, &.{ method, method, callee }));

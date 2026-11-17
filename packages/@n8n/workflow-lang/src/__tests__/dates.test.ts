@@ -156,6 +156,7 @@ describe('Date rejections (WL013)', () => {
 			'another type',
 		],
 		['switch', 'const d = new Date();\nswitch (d) { default: return 1; }', 'switch'],
+		['Date.is of a typed Date', 'const d = new Date();\nreturn Date.is(d);', 'always true'],
 	])('rejects %s', (_name, body, text) => {
 		const found = diagnostics(wrap(body)).filter((d) => d.startsWith('WL013'));
 		expect(found.length).toBeGreaterThan(0);
@@ -181,12 +182,15 @@ return {
 	json: JSON.stringify(o),
 	ms: Date.of(v, 'getTime', 'v.getTime').getTime(),
 	iso: Date.of(o.d, 'toISOString', 'o.d.toISOString').toISOString(),
+	is: [Date.is(v), Date.is(o.list[0]), Date.is(o), Date.is(trigger.body.s), Date.is(5), Date.is(null)],
 	invalid: Number(o.list[0]),
 	out: v,
 	nested: o,
 };`,
 		);
-		expect(JSON.parse(JSON.stringify(output.result))).toEqual({
+		// A Date value leaves the module as its JSON.
+		const left: string = JSON.stringify(output.result);
+		expect(JSON.parse(left)).toEqual({
 			type: 'object',
 			plus: 'at Thu Feb 29 2024 12:00:00 GMT+0000 (Coordinated Universal Time)',
 			template: 'Thu Feb 29 2024 12:00:00 GMT+0000 (Coordinated Universal Time)',
@@ -199,6 +203,7 @@ return {
 			json: '{"d":"2024-02-29T12:00:00.000Z","list":[null]}',
 			ms: 1709208000000,
 			iso: '2024-02-29T12:00:00.000Z',
+			is: [true, true, false, false, false, false],
 			invalid: null,
 			out: '2024-02-29T12:00:00.000Z',
 			nested: { d: '2024-02-29T12:00:00.000Z', list: [null] },

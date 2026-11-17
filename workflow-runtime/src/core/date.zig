@@ -889,6 +889,7 @@ pub const Op = enum(u8) {
     zone_offset,
     value,
     of,
+    is,
     get_time,
     to_iso,
     to_json,
@@ -975,6 +976,7 @@ pub const names = [_]Entry{
     .{ .name = "Date.prototype.setUTCFullYear", .op = .set_full_year },
     .{ .name = "Date.value", .op = .value },
     .{ .name = "Date.of", .op = .of },
+    .{ .name = "Date.is", .op = .is },
 };
 
 pub fn id(name: []const u8) ?u16 {
@@ -1077,6 +1079,7 @@ fn callStatic(vm: *Vm, op: Op, args: []const Value) Err!Value {
             if (value.kindOf(v) != .number) return v;
             return value.box(.ref, try vm.r.newDate(value.asNum(v)));
         },
+        .is => return value.boolean(vm.dateTime(arg(args, 0)) != null),
         .of => {
             const v = arg(args, 0);
             if (vm.dateTime(v)) |t| return value.num(t);

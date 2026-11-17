@@ -33,6 +33,7 @@ export const DATE_CODE = 'WL013';
  * `Date.value(d)` gives the Date value of a Date: a value with the kind Date at run time, for a
  * place without the type Date. `Date.of(v, method, text)` is the Date of a value of unknown
  * kind, or the TypeError of JavaScript for the call `text()` when `v` is no Date value.
+ * `Date.is(v)` is true when `v` is a Date value: `v instanceof Date` of JavaScript.
  */
 export const DATE_STATICS: ReadonlySet<string> = new Set([
 	'now',
@@ -41,6 +42,7 @@ export const DATE_STATICS: ReadonlySet<string> = new Set([
 	'zoneOffset',
 	'value',
 	'of',
+	'is',
 ]);
 
 const GETTERS = [
@@ -116,6 +118,7 @@ export const DATE_FUNCTIONS: ReadonlySet<string> = new Set([
 	'Date.text',
 	'Date.value',
 	'Date.of',
+	'Date.is',
 	...[...DATE_METHODS].map((m) => `Date.prototype.${m}`),
 ]);
 
@@ -596,6 +599,9 @@ function callArgumentUse(
 		return reject('A Date cannot be called.', 'Call a Date method.');
 	}
 	if (dateStatic(checker, call.expression) === 'value') return RAW;
+	if (dateStatic(checker, call.expression) === 'is') {
+		return reject('`Date.is` of a value with the type Date is always true.', 'Remove the test.');
+	}
 	if (ctxCallMethod(checker, call)) return JSON_USE;
 	if (isPromiseAll(call)) return JSON_USE;
 	const global = globalCallName(checker, call);

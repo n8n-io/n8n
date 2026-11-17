@@ -333,9 +333,38 @@ describe('Date values in Code nodes', () => {
 		expect(feature(body(statements), true)).toBe('Date: a Date in a place that loses its kind');
 	});
 
+	it('tests the kind of a value with instanceof Date', () => {
+		const code = body(
+			'const a = [new Date(i.json.t), i.json.t]; if (a[1] instanceof Date) a.pop();',
+		);
+		expect(feature(code, false)).toBe('Date: a Date in a place that loses its kind');
+		expect(feature(code, true)).toContain('if (Date.is(a[1])) a.pop();');
+	});
+
 	it('refuses a method of a Date that the code reads as a value', () => {
 		const code = body('const a = [new Date(i.json.t)]; if (a[0].getTime) return { json: {} };');
 		expect(feature(code, true)).toBe('Date: method of a Date as a value');
+	});
+
+	it.each([
+		['a write', 'const a = [new Date(i.json.t)]; a[0].note = 1;'],
+		[
+			'a write to a parameter',
+			'const a = [new Date(i.json.t)]; const f = (o) => { o.note = 1; }; f(a[0]);',
+		],
+		['a delete', 'const a = [new Date(i.json.t)]; delete a[0].note;'],
+		['a test with in', "const a = [new Date(i.json.t)]; if ('note' in a[0]) return { json: {} };"],
+	])('refuses %s of a member of a value that can be a Date value', (_name, statements) => {
+		expect(feature(body(statements), true)).toBe(
+			'Date: a member of a value that can be a Date value',
+		);
+	});
+
+	it('keeps a write to a member of an object of the code and of the json of an item', () => {
+		const code = body(
+			'const o = {}; o.d = new Date(i.json.t); i.json.at = new Date(i.json.ms); const a = [o.d];',
+		);
+		expect(feature(code, true)).toContain('i.json.at = Date.value(new Date(i.json.ms))');
 	});
 
 	it('refuses a Date value with a helper that is not proven', () => {

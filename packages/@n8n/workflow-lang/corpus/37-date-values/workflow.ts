@@ -40,6 +40,7 @@ export default workflow({
 			copy: new Date(v).getTime(),
 			member: v.length === undefined,
 			keys: Object.keys(v).length,
+			is: [Date.is(v), Date.is(v.getTime), Date.is(1), Date.is('2020'), Date.is(null), Date.is({})],
 		});
 		const described = list.map((v) => describe(v));
 		const errors: string[] = [];

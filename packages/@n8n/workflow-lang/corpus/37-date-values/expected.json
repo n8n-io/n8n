@@ -27,7 +27,8 @@
 				"day": 4,
 				"copy": 1709208000000,
 				"member": true,
-				"keys": 0
+				"keys": 0,
+				"is": [true, false, false, false, false, false]
 			},
 			{
 				"type": "object",
@@ -54,7 +55,8 @@
 				"day": 4,
 				"copy": 0,
 				"member": true,
-				"keys": 0
+				"keys": 0,
+				"is": [true, false, false, false, false, false]
 			},
 			{
 				"type": "object",
@@ -81,7 +83,8 @@
 				"day": 3,
 				"copy": -1,
 				"member": true,
-				"keys": 0
+				"keys": 0,
+				"is": [true, false, false, false, false, false]
 			},
 			{
 				"type": "object",
@@ -108,7 +111,8 @@
 				"day": 4,
 				"copy": 1794441600123,
 				"member": true,
-				"keys": 0
+				"keys": 0,
+				"is": [true, false, false, false, false, false]
 			},
 			{
 				"type": "object",
@@ -135,7 +139,8 @@
 				"day": 6,
 				"copy": 8640000000000000,
 				"member": true,
-				"keys": 0
+				"keys": 0,
+				"is": [true, false, false, false, false, false]
 			},
 			{
 				"type": "object",
@@ -162,7 +167,8 @@
 				"day": null,
 				"copy": null,
 				"member": true,
-				"keys": 0
+				"keys": 0,
+				"is": [true, false, false, false, false, false]
 			},
 			{
 				"type": "object",
@@ -189,7 +195,8 @@
 				"day": 4,
 				"copy": 1709806830000,
 				"member": true,
-				"keys": 0
+				"keys": 0,
+				"is": [true, false, false, false, false, false]
 			},
 			{
 				"type": "object",
@@ -216,7 +223,8 @@
 				"day": 6,
 				"copy": 1582934400000,
 				"member": true,
-				"keys": 0
+				"keys": 0,
+				"is": [true, false, false, false, false, false]
 			},
 			{
 				"type": "object",
@@ -243,7 +251,8 @@
 				"day": null,
 				"copy": null,
 				"member": true,
-				"keys": 0
+				"keys": 0,
+				"is": [true, false, false, false, false, false]
 			}
 		],
 		"errors": [
@@ -297,7 +306,8 @@
 			"day": 4,
 			"copy": 0,
 			"member": true,
-			"keys": 0
+			"keys": 0,
+			"is": [true, false, false, false, false, false]
 		},
 		"identity": [true, false, true]
 	},

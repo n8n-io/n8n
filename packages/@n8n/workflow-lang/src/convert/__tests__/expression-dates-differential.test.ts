@@ -63,7 +63,7 @@ const USES = [
 	'isNaN(R)',
 	'Number(R)',
 	'R === R',
-	'`${R}`',
+	'`$' + '{R}`',
 	'String(R)',
 ];
 
@@ -120,7 +120,8 @@ function workflow(value: string, type: string, timezone?: string) {
 	};
 }
 
-type Outcome = 'equal' | 'refused' | 'known' | string;
+/** `equal`, `refused`, `known`, or the two results that differ. */
+type Outcome = string;
 
 /**
  * Differences that no Date causes, so this test does not fail on them: v1 writes NaN in a text

@@ -2874,6 +2874,102 @@ export function translateCode(input: CodeNativeInput): TranslateResult {
 				'The Date of `toJSDate()` goes to a place that reads more than its time value.',
 			);
 		};
+		/**
+		 * Refuses code that writes, deletes or tests a member of a value that can be a Date value.
+		 * A Date of JavaScript takes members, and a Date value has none. The object is no Date
+		 * value when it is a list or an object that the code writes there, a constant that starts
+		 * with one, or the \`json\` of an item.
+		 */
+		const guardMembers = (): void => {
+			const plain = (e: ts.Expression | undefined): boolean => {
+				if (e === undefined) return false;
+				const x = stripParens(e);
+				return ts.isObjectLiteralExpression(x) || ts.isArrayLiteralExpression(x);
+			};
+			const isJson = (e: ts.Expression): boolean => {
+				const x = stripParens(e);
+				return ts.isPropertyAccessExpression(x) && x.name.text === 'json';
+			};
+			const isWrite = (n: ts.Node): n is ts.BinaryExpression =>
+				ts.isBinaryExpression(n) &&
+				n.operatorToken.kind >= ts.SyntaxKind.FirstAssignment &&
+				n.operatorToken.kind <= ts.SyntaxKind.LastAssignment;
+			/** True when a member with the name \`json\` can get a value that is no plain object. */
+			let jsonChanges = false;
+			const findJson = (n: ts.Node): void => {
+				if (ts.isPropertyAssignment(n) && nameOf(n.name) === 'json') {
+					if (!plain(n.initializer) && !isJson(n.initializer)) jsonChanges = true;
+				} else if (ts.isPropertyAssignment(n) && nameOf(n.name) === null) jsonChanges = true;
+				else if (ts.isShorthandPropertyAssignment(n) && n.name.text === 'json') jsonChanges = true;
+				else if (isWrite(n)) {
+					const target = stripParens(n.left);
+					if (ts.isPropertyAccessExpression(target) && target.name.text === 'json') {
+						if (!plain(n.right) && !isJson(n.right)) jsonChanges = true;
+					} else if (
+						ts.isElementAccessExpression(target) &&
+						!ts.isNumericLiteral(target.argumentExpression) &&
+						!(
+							ts.isStringLiteralLike(target.argumentExpression) &&
+							target.argumentExpression.text !== 'json'
+						)
+					) {
+						jsonChanges = true;
+					}
+				}
+				ts.forEachChild(n, findJson);
+			};
+			findJson(root);
+			const noValue = (e: ts.Expression): boolean => {
+				const x = stripParens(e);
+				if (plain(x)) return true;
+				if (isJson(x)) return !jsonChanges;
+				if (!ts.isIdentifier(x)) return false;
+				const declarations = checker.getSymbolAtLocation(x)?.declarations ?? [];
+				const d = declarations.length === 1 ? declarations[0] : undefined;
+				return (
+					d !== undefined &&
+					ts.isVariableDeclaration(d) &&
+					ts.isVariableDeclarationList(d.parent) &&
+					(d.parent.flags & ts.NodeFlags.Const) !== 0 &&
+					plain(d.initializer)
+				);
+			};
+			const check = (object: ts.Expression): void => {
+				if (noValue(object)) return;
+				block(
+					'Date: a member of a value that can be a Date value',
+					'The code writes, deletes or tests a member of a value that can be a Date value. A Date value has no members.',
+				);
+			};
+			const find = (n: ts.Node): void => {
+				if (isWrite(n)) {
+					const target = stripParens(n.left);
+					if (ts.isPropertyAccessExpression(target) || ts.isElementAccessExpression(target)) {
+						check(target.expression);
+					}
+				} else if (ts.isDeleteExpression(n)) {
+					const target = stripParens(n.expression);
+					if (ts.isPropertyAccessExpression(target) || ts.isElementAccessExpression(target)) {
+						check(target.expression);
+					}
+				} else if (
+					(ts.isPrefixUnaryExpression(n) || ts.isPostfixUnaryExpression(n)) &&
+					(n.operator === ts.SyntaxKind.PlusPlusToken ||
+						n.operator === ts.SyntaxKind.MinusMinusToken)
+				) {
+					const target = stripParens(n.operand);
+					if (ts.isPropertyAccessExpression(target) || ts.isElementAccessExpression(target)) {
+						check(target.expression);
+					}
+				} else if (ts.isBinaryExpression(n) && n.operatorToken.kind === ts.SyntaxKind.InKeyword) {
+					check(n.right);
+				} else if (ts.isCallExpression(n) && globalCall(n) === 'Object.assign' && n.arguments[0]) {
+					check(n.arguments[0]);
+				}
+				ts.forEachChild(n, find);
+			};
+			find(root);
+		};
 		const walk = (n: ts.Node): void => {
 			if (ts.isShorthandPropertyAssignment(n)) {
 				const s = checker.getShorthandAssignmentValueSymbol(n);
@@ -2898,6 +2994,7 @@ export function translateCode(input: CodeNativeInput): TranslateResult {
 			ts.forEachChild(n, walk);
 		};
 		walk(root);
+		if (madeValues) guardMembers();
 		if (stored.size === 0) return;
 		/** True when the value of \`e\` is a number for certain: an index of a list. */
 		const isIndex = (e: ts.Expression): boolean => {
@@ -4448,6 +4545,14 @@ export function translateCode(input: CodeNativeInput): TranslateResult {
 					const o = seq;
 					open(n.getStart(sf), '((');
 					closing(n.left.getEnd(), n.getEnd(), ') === 0 && false)', o);
+					visit(n.left);
+					return;
+				}
+				if (date && input.dateValues === true && !isDateValue(left)) {
+					// A Date that the code makes is a Date value, and no other value is a Date.
+					const o = seq;
+					open(n.getStart(sf), 'Date.is(');
+					closing(n.left.getEnd(), n.getEnd(), ')', o);
 					visit(n.left);
 					return;
 				}

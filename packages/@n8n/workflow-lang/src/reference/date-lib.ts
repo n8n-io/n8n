@@ -62,6 +62,8 @@ export function callDate(name: string, args: unknown[]): { value: unknown } | un
 			return { value: typeof args[0] === 'number' ? new Date(args[0]) : args[0] };
 		case 'Date.of':
 			return { value: dateOf(args[0], String(args[1]), String(args[2])).getTime() };
+		case 'Date.is':
+			return { value: args[0] instanceof Date };
 		case 'Date.json':
 			return { value: typeof args[0] === 'number' ? new Date(args[0]).toJSON() : args[0] };
 		case 'Date.text':

@@ -242,6 +242,8 @@ interface DateConstructor {
   value(date: Date): unknown;
   /** Spec section 4.5: the Date of a Date value, or the TypeError of JavaScript for the call \`text()\` of the method. */
   of(value: unknown, method: string, text: string): Date;
+  /** Spec section 4.5: true when the value is a Date value (\`value instanceof Date\` of JavaScript). */
+  is(value: unknown): boolean;
 }
 declare var Date: DateConstructor;
 
