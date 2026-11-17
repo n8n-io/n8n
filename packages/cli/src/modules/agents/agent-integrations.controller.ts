@@ -20,7 +20,10 @@ import { buildChannelStatusReport } from './integrations/channel-status-report';
 import { ChatIntegrationService } from './integrations/chat-integration.service';
 import { deriveWhatsAppVerifyToken } from './integrations/integration-helpers';
 import { ChatPageInviteService } from './integrations/platforms/webhook/chat-page-invites.service';
-import { WebhookChannelService } from './integrations/platforms/webhook/webhook-channel.service';
+import {
+	ChatSurfaceSettingsSchema,
+	WebhookChannelService,
+} from './integrations/platforms/webhook/webhook-channel.service';
 import { channelIntegrationRecorder } from './integrations/recording/channel-integration-recorder';
 import { AgentChannelStatusRepository } from './repositories/agent-channel-status.repository';
 import { AgentRepository } from './repositories/agent.repository';
@@ -48,22 +51,20 @@ export class AgentIntegrationsController {
 	@Get('/:agentId/chat-page')
 	@ProjectScope('agent:read')
 	async chatPage(_req: AuthenticatedRequest, _res: Response, @Param('agentId') agentId: string) {
-		return {
-			url: `${this.urlService.getAgentWebhookUrl(agentId)}/chat`,
-			access: await this.webhookChannel.chatPageAccess(agentId),
-		};
+		const { enabled, methods } = await this.webhookChannel.chatSurface(agentId);
+		return { url: `${this.urlService.getAgentWebhookUrl(agentId)}/chat`, enabled, methods };
 	}
 
 	@Put('/:agentId/chat-page')
 	@ProjectScope('agent:update')
 	async setChatPage(
-		req: AuthenticatedRequest<{ projectId: string }, unknown, { access?: string }>,
+		req: AuthenticatedRequest<{ projectId: string }, unknown, unknown>,
 		_res: Response,
 		@Param('agentId') agentId: string,
 	) {
-		const access = req.body?.access === 'public' ? 'public' : 'users';
-		await this.webhookChannel.setChatPageAccess(agentId, access);
-		return { access };
+		const parsed = ChatSurfaceSettingsSchema.safeParse(req.body);
+		if (!parsed.success) throw new BadRequestError('Invalid chat surface settings');
+		return await this.webhookChannel.setChatSurface(agentId, parsed.data);
 	}
 
 	// SPIKE (agent-chat-embed): magic links per recipient. The link goes to the server log, not to the client.

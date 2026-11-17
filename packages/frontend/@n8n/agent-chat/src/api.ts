@@ -8,8 +8,8 @@
  *   { type: 'notice', text }            e.g. an action that needs approval
  *   { type: 'error', message, code? }
  *   { type: 'done' }
- * GET {base}/config  →  { name, access, user, signInUrl, loginUrl }
- * Auth (spike): access "users" needs an n8n user. Same origin (hosted page)
+ * GET {base}/config  →  { name, methods, user, signInUrl, loginUrl }
+ * Auth (spike): without `methods.public` the caller needs an identity of an enabled method. Same origin (hosted page)
  * uses the n8n cookie. Another origin (embed) signs in in a popup on the
  * instance and polls POST {loginUrl}/{requestId} for a short-lived token, which
  * it sends as `Authorization: Bearer`. No third-party cookie is involved.
@@ -26,7 +26,7 @@ export type ChatEvent =
 export interface ChatConfig {
 	name: string;
 	welcomeMessage?: string;
-	access: 'users' | 'public';
+	methods: { n8nUsers: boolean; magicLinks: boolean; public: boolean };
 	user: { name: string; kind?: 'n8n-user' | 'invite' } | null;
 	signInUrl: string;
 	loginUrl: string;

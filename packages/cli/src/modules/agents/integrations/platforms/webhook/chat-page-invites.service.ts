@@ -95,7 +95,7 @@ export class ChatPageInviteService {
 		const session = randomBytes(32).toString('base64url');
 		await this.settingsRepository.upsertByKey(
 			`agentChatSession.${sha256(session)}`,
-			JSON.stringify({ agentId, inviteId: invite.id }),
+			JSON.stringify({ agentId, inviteId: invite.id, issuedAt: Date.now() }),
 			false,
 			{},
 		);
@@ -103,11 +103,15 @@ export class ChatPageInviteService {
 	}
 
 	/** The principal of a session, checked against the invite on every request (revoke and expiry apply at once). */
-	async sessionUser(agentId: string, session: string): Promise<ChatPageUser | undefined> {
+	async sessionUser(
+		agentId: string,
+		session: string,
+		notBefore = 0,
+	): Promise<ChatPageUser | undefined> {
 		const row = await this.settingsRepository.findByKey(`agentChatSession.${sha256(session)}`);
 		if (!row) return undefined;
-		const entry = JSON.parse(row.value) as { agentId: string; inviteId: string };
-		if (entry.agentId !== agentId) return undefined;
+		const entry = JSON.parse(row.value) as { agentId: string; inviteId: string; issuedAt?: number };
+		if (entry.agentId !== agentId || (entry.issuedAt ?? 0) <= notBefore) return undefined;
 		const invite = (await this.list(agentId)).find((candidate) => candidate.id === entry.inviteId);
 		if (!invite || typeof this.state(invite) === 'string') return undefined;
 		return { key: `invite-${invite.id}`, kind: 'invite', name: invite.label };

@@ -51,8 +51,9 @@ const token = ref<string | undefined>(stored?.token);
 const userName = ref<string | undefined>(stored?.user);
 const signingIn = ref(false);
 const sameOrigin = new URL(props.base, location.href).origin === location.origin;
+// No identity and the chat is not public: the visitor cannot chat yet (or at all).
 const needsLogin = computed(
-	() => config.value?.access === 'users' && !config.value.user && !token.value,
+	() => !!config.value && !config.value.methods.public && !config.value.user && !token.value,
 );
 const signedInAs = computed(() => config.value?.user?.name ?? userName.value);
 
@@ -74,7 +75,7 @@ async function loadConfig() {
 	try {
 		config.value = await fetchConfig(props.base, token.value);
 		// A token the server no longer knows (expired, restart): sign in again.
-		if (token.value && config.value.access === 'users' && !config.value.user) signOut();
+		if (token.value && !config.value.user) signOut();
 	} catch (error) {
 		loadError.value = (error as Error).message;
 	}
@@ -180,7 +181,11 @@ async function send() {
 				reply.error = true;
 				// The server forgot the conversation: start a new one on the next message.
 				if (event.code === 'conversation_not_found') conversationId.value = undefined;
-				if (event.code === 'login_required') signOut();
+				// Access changed (method turned off, session ended): show the current way in.
+				if (['login_required', 'invite_required', 'no_access_method'].includes(event.code ?? '')) {
+					if (token.value) void signOut();
+					void loadConfig();
+				}
 			}
 			scrollDown();
 		}
@@ -263,10 +268,22 @@ function onKeydown(event: KeyboardEvent) {
 					</button>
 				</div>
 				<div v-if="needsLogin" class="agent-chat__signin" data-testid="agent-chat-signin">
-					<p>Sign in with your n8n account to chat with {{ title }}.</p>
-					<button class="agent-chat__send" type="button" :disabled="signingIn" @click="signIn">
-						{{ signingIn ? 'Waiting for sign-in…' : 'Sign in with n8n' }}
-					</button>
+					<template v-if="config?.methods.n8nUsers">
+						<p>Sign in with your n8n account to chat with {{ title }}.</p>
+						<button class="agent-chat__send" type="button" :disabled="signingIn" @click="signIn">
+							{{ signingIn ? 'Waiting for sign-in…' : 'Sign in with n8n' }}
+						</button>
+					</template>
+					<p v-if="config?.methods.magicLinks" data-testid="agent-chat-invite-needed">
+						{{ config.methods.n8nUsers ? 'Or open' : 'Open' }} the invite link you received to chat
+						with {{ title }}.
+					</p>
+					<p
+						v-if="!config?.methods.n8nUsers && !config?.methods.magicLinks"
+						data-testid="agent-chat-unavailable"
+					>
+						This chat is not available.
+					</p>
 				</div>
 				<div
 					v-for="(message, index) in messages"

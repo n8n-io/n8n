@@ -17,6 +17,7 @@ import { ensureError } from '@n8n/utils/errors/ensure-error';
 import { sanitizeErrorDetail } from '@n8n/utils/redaction/sanitize-error-detail';
 import { NodeHelpers, type INodeParameters } from 'n8n-workflow';
 import { randomUUID } from 'node:crypto';
+import { z } from 'zod';
 
 import { CredentialsHelper } from '@/credentials-helper';
 
@@ -47,12 +48,44 @@ import { authenticateWebhookRequest } from './webhook-auth';
 
 const MAX_LOGGED_ERROR_LENGTH = 500;
 
+/** The refusal for a caller without an accepted identity, worded for the enabled methods. */
+export function accessError(surface: ChatSurfaceSettings) {
+	if (surface.methods.n8nUsers)
+		return new WebhookChannelError(401, 'login_required', 'Sign in with your n8n account to chat.');
+	if (surface.methods.magicLinks)
+		return new WebhookChannelError(
+			401,
+			'invite_required',
+			'Open the invite link you received to chat.',
+		);
+	return new WebhookChannelError(403, 'no_access_method', 'This chat is not available.');
+}
+
 export interface WebhookChannelReply {
 	status: number;
 	body: unknown;
 }
 
-export type ChatPageAccess = 'users' | 'public';
+/**
+ * SPIKE (agent-chat-embed): the chat surface settings of the n8n Chat channel.
+ * Shaped like a channel setting (the product puts it in the n8n_chat entry's
+ * `settings`). Everything is off by default. Methods are independent; `public`
+ * lets anyone in, the others still give an identity when enabled.
+ */
+export const CHAT_SURFACE_METHODS = ['n8nUsers', 'magicLinks', 'public'] as const;
+export type ChatSurfaceMethod = (typeof CHAT_SURFACE_METHODS)[number];
+const method = z.boolean().default(false);
+export const ChatSurfaceSettingsSchema = z.object({
+	/** "Share outside n8n": off means no hosted page, no embed, 404 on every chat route. */
+	enabled: z.boolean().default(false),
+	methods: z.object({ n8nUsers: method, magicLinks: method, public: method }).default({}),
+});
+export type ChatSurfaceSettings = z.infer<typeof ChatSurfaceSettingsSchema>;
+interface StoredChatSurface extends ChatSurfaceSettings {
+	/** Chat sessions of a method issued before this time are dead (set when the method or the surface is turned off). */
+	revokedBefore?: Partial<Record<ChatSurfaceMethod, number>>;
+}
+
 export interface ChatPageUser {
 	/** Principal key, part of the thread id: `user-<userId>` or `invite-<inviteId>`. */
 	key: string;
@@ -168,15 +201,9 @@ export class WebhookChannelService {
 			const page = await this.chatPage(request.agentId);
 			if (!page)
 				throw new WebhookChannelError(404, 'agent_not_found', 'This agent has no chat page');
-			const { agent, access } = page;
+			const { agent, surface } = page;
 			const user = request.user;
-			if (access === 'users' && !user) {
-				throw new WebhookChannelError(
-					401,
-					'login_required',
-					'Sign in with your n8n account to chat.',
-				);
-			}
+			if (!user && !surface.methods.public) throw accessError(surface);
 			const body = (request.body ?? {}) as Record<string, unknown>;
 			const message = typeof body.message === 'string' ? body.message.trim() : '';
 			if (!message) throw new WebhookChannelError(400, 'invalid_request', 'message is required');
@@ -244,26 +271,49 @@ export class WebhookChannelService {
 	}
 
 	/**
-	 * SPIKE: the chat page of an agent, or undefined when there is none. It needs
-	 * the n8n Chat channel in the published version. Access defaults to n8n users.
+	 * SPIKE: the chat page of an agent, or undefined when there is none (404). It
+	 * needs the n8n Chat channel in the published version and "Share outside n8n" on.
 	 */
 	async chatPage(agentId: string) {
+		const surface = await this.chatSurface(agentId);
+		if (!surface.enabled) return;
 		const agent = await this.agentRepository.findById(agentId);
 		const published = agent?.activeVersion?.schema?.integrations ?? [];
 		if (!agent || !published.some((entry) => entry.type === N8N_CHAT_INTEGRATION_TYPE)) return;
 		if (!(await this.settings.getEnabled())) return;
-		return { agent, access: await this.chatPageAccess(agentId) };
+		return { agent, surface };
 	}
 
-	// ponytail: stored in the settings table to keep the agent config schema untouched;
-	// the product keeps it in the n8n Chat channel config.
-	async chatPageAccess(agentId: string): Promise<ChatPageAccess> {
-		const row = await this.settingsRepository.findByKey(`agentChatPage.${agentId}`);
-		return row?.value === 'public' ? 'public' : 'users';
+	// ponytail: stored in the settings table to keep the agent config schema untouched. Unlike
+	// the agent's behaviour it applies at once, without a publish (an access change must not wait).
+	async chatSurface(agentId: string): Promise<StoredChatSurface> {
+		const row = await this.settingsRepository.findByKey(`agentChatSurface.${agentId}`);
+		const stored: Partial<StoredChatSurface> = row
+			? (JSON.parse(row.value) as StoredChatSurface)
+			: {};
+		return {
+			...ChatSurfaceSettingsSchema.parse(stored),
+			revokedBefore: stored.revokedBefore ?? {},
+		};
 	}
 
-	async setChatPageAccess(agentId: string, access: ChatPageAccess) {
-		await this.settingsRepository.upsertByKey(`agentChatPage.${agentId}`, access, false, {});
+	/** Saves the settings. Turning a method (or the whole surface) off ends that method's chat sessions. */
+	async setChatSurface(agentId: string, input: unknown): Promise<ChatSurfaceSettings> {
+		const next = ChatSurfaceSettingsSchema.parse(input);
+		const current = await this.chatSurface(agentId);
+		const revokedBefore = { ...current.revokedBefore };
+		for (const name of CHAT_SURFACE_METHODS) {
+			const wasOn = current.enabled && current.methods[name];
+			if (wasOn && !(next.enabled && next.methods[name])) revokedBefore[name] = Date.now();
+		}
+		const stored: StoredChatSurface = { ...next, revokedBefore };
+		await this.settingsRepository.upsertByKey(
+			`agentChatSurface.${agentId}`,
+			JSON.stringify(stored),
+			false,
+			{},
+		);
+		return next;
 	}
 
 	/** Resumes the run with the caller's decision on one approval request. */

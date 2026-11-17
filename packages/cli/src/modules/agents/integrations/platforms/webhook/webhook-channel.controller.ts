@@ -24,7 +24,10 @@ const SESSION_COOKIE = 'n8n-chat-session';
 const REQUEST_ID = /^[A-Za-z0-9_-]{20,100}$/;
 const TOKEN_TTL = 60 * 60 * 1000;
 const REQUEST_TTL = 3 * 60 * 1000;
-const chatTokens = new Map<string, { user: ChatPageUser; agentId: string; expires: number }>();
+const chatTokens = new Map<
+	string,
+	{ user: ChatPageUser; agentId: string; expires: number; issued: number }
+>();
 const loginRequests = new Map<string, { token: string; user: ChatPageUser; expires: number }>();
 
 /**
@@ -109,7 +112,7 @@ export class WebhookChannelController {
 		const user = await this.chatUser(req);
 		res.json({
 			name: page.agent.name,
-			access: page.access,
+			methods: page.surface.methods,
 			user: user ? { name: user.name, kind: user.kind } : null,
 			// Hosted page: same origin, so the n8n cookie works after a normal sign-in.
 			signInUrl: this.signInUrl(chatUrl),
@@ -136,6 +139,10 @@ export class WebhookChannelController {
 		cors: CHAT_CORS,
 	})
 	async chatMessage(req: Request<{ agentId: string }>, res: Response) {
+		if (!(await this.webhookChannel.chatPage(req.params.agentId))) {
+			res.status(404).json({ code: 'agent_not_found', message: 'This agent has no chat page.' });
+			return;
+		}
 		const user = await this.chatUser(req);
 		res.status(200);
 		res.setHeader('Content-Type', 'application/x-ndjson; charset=utf-8');
@@ -167,7 +174,12 @@ export class WebhookChannelController {
 	) {
 		const { agentId } = req.params;
 		const requestId = req.query.request ?? '';
-		if (!REQUEST_ID.test(requestId) || !(await this.webhookChannel.chatPage(agentId))) {
+		const page = await this.webhookChannel.chatPage(agentId);
+		if (!page?.surface.methods.n8nUsers) {
+			res.status(404).send('Sign-in with n8n is not enabled for this chat.');
+			return;
+		}
+		if (!REQUEST_ID.test(requestId)) {
 			res.status(400).send('Invalid sign-in request.');
 			return;
 		}
@@ -179,7 +191,7 @@ export class WebhookChannelController {
 		}
 		// ponytail: in-memory, single main only; the product stores tokens in the DB (or signs them).
 		const token = randomBytes(32).toString('base64url');
-		chatTokens.set(token, { user, agentId, expires: Date.now() + TOKEN_TTL });
+		chatTokens.set(token, { user, agentId, expires: Date.now() + TOKEN_TTL, issued: Date.now() });
 		loginRequests.set(requestId, { token, user, expires: Date.now() + REQUEST_TTL });
 		res.setHeader('Content-Type', 'text/html; charset=utf-8');
 		res.send(loginDoneHtml(user.name));
@@ -231,8 +243,15 @@ export class WebhookChannelController {
 		}
 		const body = (req.body ?? {}) as { token?: unknown; replace?: unknown };
 		const token = typeof body.token === 'string' ? body.token : '';
-		if (!(await this.webhookChannel.chatPage(agentId))) {
+		const page = await this.webhookChannel.chatPage(agentId);
+		if (!page) {
 			res.status(404).json({ code: 'agent_not_found', message: 'This agent has no chat page.' });
+			return;
+		}
+		if (!page.surface.methods.magicLinks) {
+			res
+				.status(403)
+				.json({ code: 'method_disabled', message: 'Invite links are not enabled for this chat.' });
 			return;
 		}
 		const checked = await this.invites.check(agentId, token);
@@ -276,23 +295,30 @@ export class WebhookChannelController {
 	/**
 	 * The chat user: a widget token first (embed), then cookies (hosted page).
 	 * Cookies count only on same-origin calls with the chat header, so a page on
-	 * another site cannot ride on them (security proposal [H2]).
+	 * another site cannot ride on them (security proposal [H2]). Only identities of
+	 * enabled methods count, and sessions issued before a method was turned off are dead.
 	 */
 	private async chatUser(req: Request<{ agentId: string }>): Promise<ChatPageUser | undefined> {
+		const { agentId } = req.params;
+		const { methods, revokedBefore = {} } = await this.webhookChannel.chatSurface(agentId);
 		const bearer = /^Bearer (.+)$/.exec(req.headers.authorization ?? '')?.[1];
 		if (bearer) {
 			const entry = chatTokens.get(bearer);
-			if (entry && entry.agentId === req.params.agentId && entry.expires > Date.now())
-				return entry.user;
-			return undefined;
+			const valid =
+				methods.n8nUsers &&
+				entry?.agentId === agentId &&
+				entry.expires > Date.now() &&
+				entry.issued > (revokedBefore.n8nUsers ?? 0);
+			return valid ? entry.user : undefined;
 		}
 		if (!isSameOriginChatCall(req)) return undefined;
 		const session = readCookie(req, SESSION_COOKIE);
-		if (session) {
-			const invited = await this.invites.sessionUser(req.params.agentId, session);
+		if (session && methods.magicLinks) {
+			const notBefore = revokedBefore.magicLinks ?? 0;
+			const invited = await this.invites.sessionUser(agentId, session, notBefore);
 			if (invited) return invited;
 		}
-		return await this.cookieUser(req);
+		return methods.n8nUsers ? await this.cookieUser(req) : undefined;
 	}
 
 	private async cookieUser(req: Request): Promise<ChatPageUser | undefined> {
