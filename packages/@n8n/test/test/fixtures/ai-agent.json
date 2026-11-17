@@ -1,0 +1,68 @@
+{
+	"id": "ai-agent-1",
+	"name": "Answer question",
+	"nodes": [
+		{
+			"id": "f0000000-0000-4000-8000-000000000001",
+			"name": "When chat message received",
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [0, 0],
+			"parameters": {}
+		},
+		{
+			"id": "f0000000-0000-4000-8000-000000000002",
+			"name": "AI Agent",
+			"type": "@n8n/n8n-nodes-langchain.agent",
+			"typeVersion": 2.2,
+			"position": [220, 0],
+			"parameters": { "promptType": "define", "text": "={{ $json.question }}", "options": {} }
+		},
+		{
+			"id": "f0000000-0000-4000-8000-000000000003",
+			"name": "OpenAI Chat Model",
+			"type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+			"typeVersion": 1.2,
+			"position": [220, 200],
+			"parameters": {
+				"model": { "__rl": true, "value": "gpt-4o-mini", "mode": "list" },
+				"options": {}
+			},
+			"credentials": { "openAiApi": { "id": "cred-openai-1", "name": "OpenAI account" } }
+		},
+		{
+			"id": "f0000000-0000-4000-8000-000000000004",
+			"name": "Format answer",
+			"type": "n8n-nodes-base.set",
+			"typeVersion": 3.4,
+			"position": [440, 0],
+			"parameters": {
+				"assignments": {
+					"assignments": [
+						{ "id": "a1", "name": "answer", "value": "={{ $json.output }}", "type": "string" }
+					]
+				},
+				"options": {}
+			}
+		},
+		{
+			"id": "f0000000-0000-4000-8000-000000000005",
+			"name": "Acme lookup",
+			"type": "n8n-nodes-acme.lookup",
+			"typeVersion": 1,
+			"position": [660, 0],
+			"parameters": { "query": "={{ $json.answer }}" }
+		}
+	],
+	"connections": {
+		"When chat message received": {
+			"main": [[{ "node": "AI Agent", "type": "main", "index": 0 }]]
+		},
+		"OpenAI Chat Model": {
+			"ai_languageModel": [[{ "node": "AI Agent", "type": "ai_languageModel", "index": 0 }]]
+		},
+		"AI Agent": { "main": [[{ "node": "Format answer", "type": "main", "index": 0 }]] },
+		"Format answer": { "main": [[{ "node": "Acme lookup", "type": "main", "index": 0 }]] }
+	},
+	"settings": { "executionOrder": "v1" }
+}

@@ -1,0 +1,53 @@
+{
+	"id": "prices-1",
+	"name": "Prices",
+	"nodes": [
+		{
+			"id": "e0000000-0000-4000-8000-000000000001",
+			"name": "Products",
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [0, 0],
+			"parameters": {}
+		},
+		{
+			"id": "e0000000-0000-4000-8000-000000000002",
+			"name": "Get price",
+			"type": "n8n-nodes-base.httpRequest",
+			"typeVersion": 4.2,
+			"position": [220, 0],
+			"parameters": { "url": "=https://prices.example.com/products/{{ $json.id }}", "options": {} }
+		},
+		{
+			"id": "e0000000-0000-4000-8000-000000000003",
+			"name": "Label",
+			"type": "n8n-nodes-base.set",
+			"typeVersion": 3.4,
+			"position": [440, 0],
+			"parameters": {
+				"assignments": {
+					"assignments": [
+						{
+							"id": "p1",
+							"name": "id",
+							"value": "={{ $('Products').item.json.id }}",
+							"type": "number"
+						},
+						{
+							"id": "p2",
+							"name": "price",
+							"value": "={{ $('Get price').item.json.price }}",
+							"type": "number"
+						}
+					]
+				},
+				"options": {}
+			}
+		}
+	],
+	"connections": {
+		"Products": { "main": [[{ "node": "Get price", "type": "main", "index": 0 }]] },
+		"Get price": { "main": [[{ "node": "Label", "type": "main", "index": 0 }]] }
+	},
+	"settings": { "executionOrder": "v1" }
+}
