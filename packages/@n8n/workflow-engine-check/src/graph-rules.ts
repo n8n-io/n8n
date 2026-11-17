@@ -37,10 +37,13 @@ interface Loop {
  * `validateExecutableGraph`, for the graph that each live trigger starts.
  */
 export function findGraphReasons(nodes: INode[], connections: IConnections): EngineV2Reason[] {
+	const nodesByName = new Map(nodes.map((node) => [node.name, node]));
+	const liveTriggers = nodes.filter(
+		(node) => node.disabled !== true && isTriggerNodeType(node.type),
+	);
 	const reasonsByKey = new Map<string, EngineV2Reason>();
-	for (const trigger of nodes) {
-		if (trigger.disabled === true || !isTriggerNodeType(trigger.type)) continue;
-		for (const reason of findReasonsForTrigger(nodes, connections, trigger)) {
+	for (const trigger of liveTriggers) {
+		for (const reason of findReasonsForTrigger(nodes, nodesByName, connections, trigger)) {
 			reasonsByKey.set(`${reason.code}|${reason.message}`, reason);
 		}
 	}
@@ -49,10 +52,10 @@ export function findGraphReasons(nodes: INode[], connections: IConnections): Eng
 
 function findReasonsForTrigger(
 	nodes: INode[],
+	nodesByName: Map<string, INode>,
 	connections: IConnections,
 	trigger: INode,
 ): EngineV2Reason[] {
-	const nodesByName = new Map(nodes.map((node) => [node.name, node]));
 	const reason: MakeReason = (code, kind, problem, nodeName) =>
 		makeReason({
 			code,
@@ -273,8 +276,7 @@ function findInputSlotReasons(
 	reason: MakeReason,
 ): EngineV2Reason[] {
 	const countBySlot = new Map<string, { to: string; inputIndex: number; count: number }>();
-	for (const edge of edges) {
-		if (returns.has(edge) || loopNodes.has(edge.to)) continue;
+	for (const edge of edges.filter((e) => !returns.has(e) && !loopNodes.has(e.to))) {
 		const key = `${edge.to}#${edge.inputIndex}`;
 		const slot = countBySlot.get(key) ?? { to: edge.to, inputIndex: edge.inputIndex, count: 0 };
 		slot.count += 1;
