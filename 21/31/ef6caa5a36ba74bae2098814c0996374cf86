@@ -1,0 +1,23 @@
+packages/cli/src/credentials/credentials.service.ts
+  s_14465026d4072d::t_23ed92f691bf82 32-33,1972-1974,1977-1978,1989-1990,1992-1999,2002
+packages/cli/test/integration/credentials/credentials.api.test.ts
+  s_14465026d4072d::t_f867b738c10180 2082-2149
+packages/cli/src/credentials/__tests__/credentials.service.test.ts
+  s_14465026d4072d::t_1a3f5a9b95a859 36,1629,1635-1640,1657,1659-1661,1663,1666,1680-1699,1702,1705-1710,1714-1715,1717-1726,1730-1731,1733-1735
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "2131ef6caa5a36ba74bae2098814c0996374cf86",
+  "prompts": {},
+  "sessions": {
+    "s_14465026d4072d": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "fc7ddd00-fe3c-4eb9-b9ec-6d5addfb6c4a",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Yuliia Pominchuk <yuliia.pominchuk@n8n.io>"
+    }
+  }
+}
