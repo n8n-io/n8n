@@ -37,7 +37,7 @@ const toMenuItem = (link: AppNavLink): IMenuItem => ({
 <template>
 	<div :class="$style.panel" data-test-id="app-nav-panel">
 		<header :class="$style.header">
-			<N8nText tag="h2" size="medium" bold color="text-dark" :class="$style.title">
+			<N8nText tag="h2" size="large" bold color="text-dark" :class="$style.title">
 				{{ title }}
 			</N8nText>
 			<KeyboardShortcutTooltip
