@@ -17,6 +17,7 @@ const multipart = @import("multipart.zig");
 const static_data = @import("static_data.zig");
 const workload = @import("workload.zig");
 const cred_flags = @import("cred_flags.zig");
+const held = @import("held.zig");
 const Arena = @import("arena.zig").Arena;
 const reserveMem = @import("arena.zig").reserve;
 const poison = @import("arena.zig").poison;
@@ -58,6 +59,12 @@ pub const Config = struct {
     /// Schedule triggers in META start executions. The fixture runner turns
     /// them off: there the fixture gives the trigger value.
     schedules: bool = true,
+    /// Work that waits for a slot or a region (`held.zig`): starts, results
+    /// and runs, and the bytes of the trigger or result of each. A start, a
+    /// result or a run that finds no region waits here and goes on when one
+    /// is free. A full queue is a limit.
+    held_entries: u32 = 1024,
+    held_bytes: u32 = 8 << 20,
     max_pending: u32 = 1 << 16,
     max_actions: u32 = 1 << 16,
     max_batch_events: u32 = 1 << 14,
@@ -95,6 +102,7 @@ pub const Config = struct {
         n += @as(usize, c.max_static_data) * (@as(usize, c.static_data_bytes) + static_data.max_id + 8);
         n += (@as(usize, c.slots) + c.max_batch_events) * @sizeOf(StaticCommit);
         n += @as(usize, c.max_modules) * (@as(usize, cred_flags.doc_bytes) + static_data.max_id + 8);
+        n += @as(usize, c.held_entries) * @sizeOf(HeldQueue.Entry) + c.held_bytes + @as(usize, c.slots) * 3;
         return n + (1 << 20);
     }
 };
@@ -438,6 +446,82 @@ pub const Counters = struct {
     promotions: u64 = 0,
     instructions: u64 = 0,
     batches: u64 = 0,
+    /// Limits (`limits`): how often a pool was empty when work asked for it,
+    /// what waited for memory, and what failed at a limit.
+    /// A start found no free execution slot.
+    no_slot: u64 = 0,
+    /// Starts, runs and results that began to wait for a slot or a region.
+    start_waits: u64 = 0,
+    run_waits: u64 = 0,
+    result_waits: u64 = 0,
+    /// Work that could not wait: the queue of waiting work was full.
+    held_refused: u64 = 0,
+    /// Executions that ended with the status `limit`.
+    limit_finished: u64 = 0,
+    /// Starts whose trigger does not fit the largest region.
+    too_large: u64 = 0,
+    /// Effects that found the table of effects in flight full.
+    pending_full: u64 = 0,
+};
+
+/// What waits in `State.held` for a slot or a region.
+const HeldKind = enum(u8) {
+    /// A start. Payload: the trigger text, then the text of the `started`
+    /// action when it differs (`two_texts`).
+    start,
+    /// An execution whose code needs a larger region. No payload.
+    run,
+    /// The result of an effect that does not fit the region. Payload: the
+    /// payload of the result event.
+    result,
+};
+
+const Held = struct {
+    kind: HeldKind,
+    /// A start: the smallest region class that can hold the trigger, as far
+    /// as the tries so far say.
+    need: u8 = 0,
+    /// A start: the reply for a failure goes to `conn` only.
+    quiet: bool = false,
+    two_texts: bool = false,
+    /// A result: `effect_ok` or `effect_err`.
+    event: EventKind = .effect_ok,
+    module: u16 = 0,
+    route: u16 = 0xFFFF,
+    /// A start: the id that the execution gets, and the id n8n gave or 0.
+    /// A run or a result: the execution.
+    exec_id: u64 = 0,
+    given_id: u64 = 0,
+    /// A start: the `heap.exec_flag_*` bits. A result: the effect.
+    seq: u32 = 0,
+    /// A start: the length of the trigger text. A result: `Event.aux`.
+    aux: u32 = 0,
+    conn: u64 = 0,
+    clock_offset_ms: i64 = 0,
+};
+
+const HeldQueue = held.Queue(Held);
+
+/// The fill of the bounded tables on the path of an execution, for the
+/// shell's `--stats` line and `GET /_admin/limits`.
+pub const Limits = struct {
+    slots: u32,
+    slots_used: u32,
+    region_counts: [4]u32,
+    regions_used: [4]u32,
+    pending: u32,
+    pending_max: u32,
+    timers: u32,
+    timers_max: u32,
+    parked: u32,
+    parked_max: u32,
+    held: u32,
+    held_max: u32,
+    held_high: u32,
+    held_bytes: u32,
+    held_bytes_max: u32,
+    held_bytes_high: u32,
+    held_starts: u32,
 };
 
 const SlotId = u32;
@@ -511,6 +595,19 @@ pub const State = struct {
     /// Safe builds: which pool entries a slot holds.
     pool_owned: [4][]bool,
     pool_nfree: [4]u32,
+    /// How often each class had no free region when work asked for one.
+    pool_empty: [4]u64,
+
+    /// Work that waits for a slot or a region, oldest first (`serveHeld`).
+    held: HeldQueue,
+    /// The starts in `held`. While one waits, the shell reads no new start.
+    held_starts: u32 = 0,
+    /// The execution in each slot has a run in `held`, and the count of its
+    /// results there. One entry for each slot, from startup.
+    slot_run_wait: []bool,
+    slot_held: []u16,
+    /// A region or a slot went back since the last `serveHeld`.
+    region_freed: bool = false,
 
     /// Execution id → slot, without tombstones (`exec_index.zig`).
     by_exec: exec_index.ExecIndex(SlotId) = .empty,
@@ -598,6 +695,14 @@ pub const State = struct {
             for (s.pool_free[c], 0..) |*f, i| f.* = @intCast(cfg.region_counts[c] - 1 - i);
             s.pool_nfree[c] = cfg.region_counts[c];
         }
+        s.pool_empty = @splat(0);
+        s.held = try HeldQueue.init(gpa, cfg.held_entries, cfg.held_bytes);
+        s.held_starts = 0;
+        s.slot_run_wait = try gpa.alloc(bool, cfg.slots);
+        @memset(s.slot_run_wait, false);
+        s.slot_held = try gpa.alloc(u16, cfg.slots);
+        @memset(s.slot_held, 0);
+        s.region_freed = false;
         s.by_exec = .empty;
         try s.by_exec.ensureTotalCapacity(gpa, cfg.slots);
         s.parked = .empty;
@@ -660,7 +765,8 @@ pub const State = struct {
     pub fn pendingDispatch(s: *State, exec_id: u64, seq: u32, scratch: *Arena) ?Action {
         const slot = s.by_exec.get(exec_id) orelse return null;
         const p = s.pending.get(.{ .exec_id = exec_id, .seq = seq }) orelse return null;
-        if (p.kind != .http) return null;
+        // The args of these kinds are the payload of their dispatch.
+        if (p.kind != .http and p.kind != .service) return null;
         var vm = vmFor(s, slot, scratch);
         const fi = interp.fibreForEffect(&vm, seq) orelse return null;
         const req = interp.pendingEffect(&vm, fi);
@@ -683,6 +789,12 @@ pub const State = struct {
         return a;
     }
 
+    /// True when effect `seq` of execution `exec_id` waits for its result
+    /// and the execution is in memory: `pendingDispatch` can give its args.
+    pub fn effectWaits(s: *const State, exec_id: u64, seq: u32) bool {
+        return s.by_exec.get(exec_id) != null and s.pending.get(.{ .exec_id = exec_id, .seq = seq }) != null;
+    }
+
     /// True when an execution with this id is loaded or parked.
     pub fn knowsExecution(s: *const State, id: u64) bool {
         return s.by_exec.get(id) != null or s.parked.get(id) != null;
@@ -697,6 +809,47 @@ pub const State = struct {
 
     pub fn liveExecutions(s: *const State) u32 {
         return s.cfg.slots - s.nfree_slots;
+    }
+
+    /// True when a start with a trigger text of `text_len` bytes can get a
+    /// slot and a region now, after `queued` starts that the shell queued
+    /// and the core did not see yet. The shell reads a new start from its
+    /// connection only while this is true (back-pressure). The region class
+    /// is a lower bound from the length of the text: a start that needs more
+    /// waits in the core (`holdStart`), and no new start is read until it runs.
+    pub fn startRoom(s: *const State, text_len: usize, queued: u32) bool {
+        if (s.held_starts > 0) return false;
+        if (s.nfree_slots <= queued) return false;
+        var free: u64 = 0;
+        var c: usize = classFor(s, @intCast(@min(text_len, std.math.maxInt(u32))));
+        while (c < 4) : (c += 1) free += s.pool_nfree[c];
+        return free > queued;
+    }
+
+    /// The fill of the bounded tables of the core.
+    pub fn limits(s: *const State) Limits {
+        std.debug.assert(s.nfree_slots <= s.cfg.slots and s.held_starts <= s.held.n);
+        var used: [4]u32 = @splat(0);
+        for (&used, s.cfg.region_counts, s.pool_nfree) |*u, n, free| u.* = n - free;
+        return .{
+            .slots = s.cfg.slots,
+            .slots_used = s.cfg.slots - s.nfree_slots,
+            .region_counts = s.cfg.region_counts,
+            .regions_used = used,
+            .pending = s.pending.count(),
+            .pending_max = s.cfg.max_pending,
+            .timers = s.ntimers,
+            .timers_max = s.cfg.max_timers,
+            .parked = s.parked.count(),
+            .parked_max = s.cfg.max_parked,
+            .held = s.held.n,
+            .held_max = @intCast(s.held.entries.len),
+            .held_high = s.held.high_n,
+            .held_bytes = s.held.live,
+            .held_bytes_max = @intCast(s.held.bytes.len),
+            .held_bytes_high = s.held.high_bytes,
+            .held_starts = s.held_starts,
+        };
     }
 
     pub fn parkedCount(s: *const State) u32 {
@@ -749,7 +902,12 @@ pub fn step(s: *State, now_ms: i64, events: []const Event, scratch: *Arena) Step
     }
     try fireTimers(s, scratch);
     debugCheckRoots(s, "fireTimers");
+    // Work that waits for memory goes first: the regions that the events
+    // of this batch gave back, then those that the runs give back.
+    try serveHeld(s, scratch);
     try runReady(s, scratch);
+    try serveHeld(s, scratch);
+    debugCheckRoots(s, "serveHeld");
     try applyStaticCommits(s, scratch);
     if (s.map_removals > s.cfg.slots / 4) {
         s.by_exec.rehash(std.hash_map.AutoContext(u64){});
@@ -759,7 +917,8 @@ pub fn step(s: *State, now_ms: i64, events: []const Event, scratch: *Arena) Step
         s.pending.rehash(std.hash_map.AutoContext(EffectKey){});
         s.pending_removals = 0;
     }
-    return .{ .has_ready = s.nready > 0, .next_timer_ms = nextWake(s) };
+    // Held work that a late release can serve runs in the next batch.
+    return .{ .has_ready = s.nready > 0 or (s.region_freed and s.held.n > 0), .next_timer_ms = nextWake(s) };
 }
 
 /// The earliest timer or schedule slot.
@@ -796,7 +955,7 @@ fn applyEvent(s: *State, ev: Event, scratch: *Arena) StepError!void {
             if (mod < s.nmodules and s.modules[mod].durability == .none) s.log_modes[s.cur_event] = .skip;
             _ = try startExecution(s, mod, ev.payload, ev.conn, 0xFFFF, .{ .flags = ev.seq, .id = ev.exec_id }, scratch);
         },
-        .effect_ok, .effect_err => try effectResult(s, ev, scratch),
+        .effect_ok, .effect_err => try effectResult(s, ev, scratch, true),
         .restore => {
             s.log_modes[s.cur_event] = .header_only;
             restore(s, ev.exec_id, ev.payload);
@@ -1330,7 +1489,8 @@ fn manualRun(s: *State, ev: Event, scratch: *Arena) StepError!void {
     if (gate != .ok) return classRefuse(s, mod, gate, ev.conn, scratch);
     if (s.modules[mod].durability == .none) s.log_modes[s.cur_event] = .skip;
     const started = try startExecution(s, mod, if (trigger.len == 0) "null" else trigger, ev.conn, 0xFFFF, .{ .flags = ev.seq | heap.exec_flag_manual, .id = ev.exec_id, .quiet = true, .clock_offset_ms = clock_offset_ms }, scratch);
-    if (!started) {
+    // A start that waits for memory has its id: n8n gets the same answer.
+    if (started == .refused) {
         s.log_modes[s.cur_event] = .skip;
         return;
     }
@@ -1572,8 +1732,9 @@ fn httpRequest(s: *State, ev: Event, scratch: *Arena) StepError!void {
     const started = try startExecution(s, s.routes[ri].module, trigger, ev.conn, @intCast(ri), .{ .started_text = full }, scratch);
     // The started action holds the trigger bytes until the batch ends.
     if (!s.cfg.lifecycle) t.end();
-    if (started) s.routes[ri].active += 1;
-    if (!started and none_tier) s.log_modes[s.cur_event] = .skip;
+    // A start that waits counts for its route when it runs (`serveHeldStart`).
+    if (started == .started) s.routes[ri].active += 1;
+    if (started == .refused and none_tier) s.log_modes[s.cur_event] = .skip;
 }
 
 pub const Request = struct { method: []const u8, target: []const u8, headers: []const u8, body: []const u8 };
@@ -1773,7 +1934,7 @@ fn resumeRoute(s: *State, conn: u64, rest: []const u8, query: []const u8, body: 
     // Without a seq, the URL is the execution's resume token (ctx.execution()
     // `resumeUrl`): it answers the one approval that waits now.
     const seq = if (seq_text.len > 0) std.fmt.parseInt(u32, seq_text, 10) catch return reply(s, conn, 400, "{\"error\":\"bad effect\"}") else waitingApproval(s, id, s.regions[slot].exec().next_effect) orelse return reply(s, conn, 409, "{\"error\":\"the execution does not wait for one approval\"}");
-    try effectResult(s, .{ .kind = .effect_ok, .exec_id = id, .seq = seq, .payload = if (body.len == 0) "{\"approved\":true}" else body }, scratch);
+    try effectResult(s, .{ .kind = .effect_ok, .exec_id = id, .seq = seq, .payload = if (body.len == 0) "{\"approved\":true}" else body }, scratch, true);
     try reply(s, conn, 202, "{\"status\":\"resumed\"}");
 }
 
@@ -1831,7 +1992,10 @@ fn durOf(s: *const State, slot: SlotId) Durability {
 // ---- execution lifecycle --------------------------------------------------------------
 
 fn takeRegion(s: *State, class: u8) ?struct { idx: u32, region: heap.Region } {
-    if (s.pool_nfree[class] == 0) return null;
+    if (s.pool_nfree[class] == 0) {
+        s.pool_empty[class] += 1;
+        return null;
+    }
     s.pool_nfree[class] -= 1;
     if (mem.enabled) mem.rd(s.cfg.probe, .region_pool, .core_row, &s.pool_free[class][s.pool_nfree[class]], 4);
     const idx = s.pool_free[class][s.pool_nfree[class]];
@@ -1870,6 +2034,7 @@ fn giveRegion(s: *State, class: u8, idx: u32, used: u32, owner: SlotId) void {
     // Last in, first out: the next execution reuses memory still in cache.
     s.pool_free[class][s.pool_nfree[class]] = idx;
     s.pool_nfree[class] += 1;
+    s.region_freed = true;
 }
 
 fn takeSlot(s: *State) ?SlotId {
@@ -1897,6 +2062,7 @@ fn releaseSlot(s: *State, slot: SlotId) void {
         const r = &s.routes[s.slot_route[slot]];
         if (r.active > 0) r.active -= 1;
     }
+    if (s.slot_run_wait[slot] or s.slot_held[slot] > 0) dropHeldOf(s, slot);
     s.slot_state[slot] = .free;
     s.free_slots[s.nfree_slots] = slot;
     s.nfree_slots += 1;
@@ -1944,22 +2110,29 @@ pub const StartOptions = struct {
     clock_offset_ms: i64 = 0,
 };
 
-/// Create an execution and decode its trigger. Returns false when the shard
-/// has no slot or memory; the caller then replies with a limit status.
-fn startExecution(s: *State, mod: u16, trigger: []const u8, conn: u64, route: u16, opts: StartOptions, scratch: *Arena) StepError!bool {
+/// What became of a start.
+const Started = enum {
+    /// The execution has a slot and a region and is ready to run.
+    started,
+    /// No slot or region is free: the start waits in `held` and runs when
+    /// one is (`serveHeld`). It has its execution id.
+    held,
+    /// The start failed and `conn` has the reply.
+    refused,
+};
+
+/// Create an execution and decode its trigger. With no free slot or region
+/// the start waits (`held`): a full pool delays work, it does not fail it.
+fn startExecution(s: *State, mod: u16, trigger: []const u8, conn: u64, route: u16, opts: StartOptions, scratch: *Arena) StepError!Started {
     std.debug.assert(opts.clock_offset_ms >= -max_clock_offset_ms and opts.clock_offset_ms <= max_clock_offset_ms);
     if (mod >= s.nmodules or s.modules[mod].state != .live) {
         try reply(s, conn, 404, "{\"error\":\"unknown module\"}");
-        return false;
+        return .refused;
     }
-    if (opts.id != 0 and (opts.id & given_id_flag == 0 or s.knowsExecution(opts.id))) {
+    if (opts.id != 0 and (opts.id & given_id_flag == 0 or s.knowsExecution(opts.id) or heldStartWithId(s, opts.id))) {
         try reply(s, conn, 409, "{\"error\":\"bad or used execution id\"}");
-        return false;
+        return .refused;
     }
-    const slot = takeSlot(s) orelse {
-        try reply(s, conn, 503, "{\"error\":\"no execution slots\"}");
-        return false;
-    };
     const none_tier = s.modules[mod].durability == .none;
     if (opts.id == 0 and none_tier and s.next_none > s.none_reserved) {
         // A new block, logged and synced before this batch replies.
@@ -1975,7 +2148,86 @@ fn startExecution(s: *State, mod: u16, trigger: []const u8, conn: u64, route: u1
     if (opts.id == 0) {
         if (none_tier) s.next_none += 1 else s.next_exec += 1;
     }
-    // From the module's start class up, then the smaller classes.
+    return switch (try tryStart(s, mod, trigger, conn, route, opts, exec_id, scratch)) {
+        .started => .started,
+        .refused => .refused,
+        .wait => |need| holdStart(s, mod, trigger, conn, route, opts, exec_id, need),
+    };
+}
+
+/// The start of execution `exec_id` found no slot or region: it waits in
+/// `held`. `need` is the smallest region class that can hold its trigger.
+fn holdStart(s: *State, mod: u16, trigger: []const u8, conn: u64, route: u16, opts: StartOptions, exec_id: u64, need: u8) StepError!Started {
+    std.debug.assert(exec_id != 0 and need < 4 and s.modules[mod].state == .live);
+    const none_tier = s.modules[mod].durability == .none;
+    const meta: Held = .{
+        .kind = .start,
+        .need = need,
+        .quiet = opts.quiet,
+        .two_texts = opts.started_text != null,
+        .module = mod,
+        .route = route,
+        .exec_id = exec_id,
+        .given_id = opts.id,
+        .seq = opts.flags,
+        .aux = @intCast(trigger.len),
+        // The caller of a quiet start has its answer when the start waits.
+        .conn = if (opts.quiet) 0 else conn,
+        .clock_offset_ms = opts.clock_offset_ms,
+    };
+    s.held.add(meta, &.{ trigger, opts.started_text orelse "" }) catch {
+        // The queue of waiting work is full: the caller tries again. The id
+        // goes back, and the event leaves no record, so a replay gives the
+        // same ids to the starts that ran.
+        s.counters.held_refused += 1;
+        if (opts.id == 0) {
+            if (none_tier) s.next_none -= 1 else s.next_exec -= 1;
+        }
+        s.log_modes[s.cur_event] = .skip;
+        try reply(s, conn, 503, "{\"error\":\"too many starts wait for memory; try again\"}");
+        return .refused;
+    };
+    // The module stays loaded while the start waits.
+    modRef(s, mod);
+    s.held_starts += 1;
+    s.counters.start_waits += 1;
+    return .held;
+}
+
+/// True when a start that waits has the id `id`, which n8n gave.
+fn heldStartWithId(s: *const State, id: u64) bool {
+    std.debug.assert(id != 0);
+    if (s.held_starts == 0) return false;
+    for (s.held.entries[0..s.held.n]) |e| {
+        if (e.meta.kind == .start and e.meta.exec_id == id) return true;
+    }
+    return false;
+}
+
+/// The result of one try to start an execution.
+const TryStart = union(enum) {
+    started,
+    refused,
+    /// No slot or region now. The value is the smallest region class that
+    /// can hold the trigger, as far as this try says.
+    wait: u8,
+};
+
+/// How the tries to give a region to a starting execution ended.
+const StartRegion = union(enum) {
+    /// The slot has a region with the decoded trigger.
+    ok,
+    not_json,
+    /// No region held the trigger. The value is the largest class whose
+    /// region was too small, plus one: 4 when the largest region was.
+    none: u8,
+};
+
+/// Give `slot` a region that holds the trigger of execution `exec_id`:
+/// from the module's start class up, then the smaller classes.
+fn startRegion(s: *State, slot: SlotId, mod: u16, exec_id: u64, trigger: []const u8, scratch: *Arena) StartRegion {
+    std.debug.assert(exec_id != 0 and s.modules[mod].state != .empty);
+    var need: u8 = 0;
     const first = s.modules[mod].start_class;
     var tries: u8 = 0;
     var class: u8 = first;
@@ -1994,22 +2246,47 @@ fn startExecution(s: *State, mod: u16, trigger: []const u8, conn: u64, route: u1
         // Only a module whose code reads a flag pays for the copy.
         const flags: ?[]const u8 = if (s.modules[mod].wf_id_len > 0 and s.modules[mod].m.flag_names.len > 0) s.cred_flags.get(s.modules[mod].workflowId()) else null;
         if (initWithTrigger(&vm, exec_id, execSeed(s, exec_id), trigger, vars, statics, flags)) |_| {
-            break;
-        } else |err| switch (err) {
-            error.RegionFull => giveRegion(s, class, got.idx, s.regions[slot].used, slot),
-            else => {
-                giveRegion(s, class, got.idx, s.regions[slot].used, slot);
-                s.free_slots[s.nfree_slots] = slot;
-                s.nfree_slots += 1;
-                try reply(s, conn, 400, "{\"error\":\"trigger is not valid JSON\"}");
-                return false;
-            },
+            return .ok;
+        } else |err| {
+            giveRegion(s, class, got.idx, s.regions[slot].used, slot);
+            if (err != error.RegionFull) return .not_json;
+            need = @max(need, class + 1);
         }
-    } else {
-        s.free_slots[s.nfree_slots] = slot;
-        s.nfree_slots += 1;
-        try reply(s, conn, 413, "{\"error\":\"trigger too large\"}");
-        return false;
+    }
+    return .{ .none = need };
+}
+
+/// Take a slot and a region for execution `exec_id` and decode its trigger.
+fn tryStart(s: *State, mod: u16, trigger: []const u8, conn: u64, route: u16, opts: StartOptions, exec_id: u64, scratch: *Arena) StepError!TryStart {
+    std.debug.assert(exec_id != 0 and mod < s.nmodules and s.modules[mod].state != .empty);
+    const slot = takeSlot(s) orelse {
+        s.counters.no_slot += 1;
+        return .{ .wait = 0 };
+    };
+    const freed_before = s.region_freed;
+    switch (startRegion(s, slot, mod, exec_id, trigger, scratch)) {
+        .ok => {},
+        .not_json => {
+            s.free_slots[s.nfree_slots] = slot;
+            s.nfree_slots += 1;
+            try reply(s, conn, 400, "{\"error\":\"trigger is not valid JSON\"}");
+            return .refused;
+        },
+        .none => |need| {
+            s.free_slots[s.nfree_slots] = slot;
+            s.nfree_slots += 1;
+            // A region of the classes that can hold the trigger was not
+            // free: the start waits for one. The regions that this try took
+            // and gave back are no news for the work that waits.
+            if (need < 4) {
+                s.region_freed = freed_before;
+                return .{ .wait = need };
+            }
+            // The trigger does not fit the largest region: it can never run.
+            s.counters.too_large += 1;
+            try reply(s, conn, 413, "{\"error\":\"trigger too large\"}");
+            return .refused;
+        },
     }
     var flags = opts.flags & (heap.exec_flag_trace | heap.exec_flag_manual | heap.exec_flag_quiet);
     if (flags & heap.exec_flag_trace != 0 or s.modules[mod].save_data) flags |= heap.exec_flag_data;
@@ -2033,7 +2310,7 @@ fn startExecution(s: *State, mod: u16, trigger: []const u8, conn: u64, route: u1
     s.counters.started += 1;
     if (mem.enabled) noteSlotStart(s, slot, mod);
     markReady(s, slot);
-    return true;
+    return .started;
 }
 
 fn initWithTrigger(vm: *ops.Vm, exec_id: u64, seed: u64, trigger: []const u8, vars: ?[]const u8, statics: ?[]const u8, flags: ?[]const u8) json.DecodeError!void {
@@ -2080,6 +2357,179 @@ fn promote(s: *State, slot: SlotId, class: u8) bool {
     s.regions[slot] = dst;
     s.slot_class[slot] = next;
     s.slot_region_idx[slot] = got.idx;
+    return true;
+}
+
+/// What a try to make room in the region of an execution gave.
+const Grow = enum {
+    /// The region has more free bytes: try the value again.
+    grown,
+    /// No region that can take the execution is free: the work waits for one.
+    wait,
+    /// The value does not fit although a region was there for it: a limit.
+    limit,
+};
+
+/// Make room in the region of `slot` after a value did not fit. `tries`
+/// counts the calls for the same value: the first one compacts, the later
+/// ones move the execution up a class.
+fn growFor(s: *State, slot: SlotId, tries: u32) Grow {
+    const class = s.slot_class[slot];
+    const free = s.regions[slot].free();
+    const grown = if (tries == 0) growRegion(s, slot) else promote(s, slot, class);
+    if (grown and (s.slot_class[slot] != class or s.regions[slot].free() > free)) return .grown;
+    // The largest class waits for a region to compact into. A value that
+    // does not fit after that does not fit at all.
+    return if (regionAbove(s, s.slot_class[slot])) .limit else .wait;
+}
+
+/// True when a region is free that an execution with a region of `class`
+/// can grow into: a larger one, or for the largest class one to compact into.
+fn regionAbove(s: *const State, class: u8) bool {
+    std.debug.assert(class < 4);
+    if (class == 3) return s.pool_nfree[3] > 0;
+    var c: usize = class + 1;
+    while (c < 4) : (c += 1) {
+        if (s.pool_nfree[c] > 0) return true;
+    }
+    return false;
+}
+
+/// True when a region of class `need` or larger is free.
+fn regionFrom(s: *const State, need: u8) bool {
+    var c: usize = need;
+    while (c < 4) : (c += 1) {
+        if (s.pool_nfree[c] > 0) return true;
+    }
+    return false;
+}
+
+/// The execution in `slot` waits for a larger region: with `result`, the
+/// result of an effect that did not fit; without, its code. False when the
+/// queue of waiting work is full: the caller ends the execution at the limit.
+fn waitForRegion(s: *State, slot: SlotId, result: ?Event) bool {
+    std.debug.assert(s.slot_state[slot] != .free);
+    const class = s.slot_class[slot];
+    if (result) |ev| {
+        const meta: Held = .{ .kind = .result, .need = class, .event = ev.kind, .exec_id = ev.exec_id, .seq = ev.seq, .aux = ev.aux };
+        s.held.add(meta, &.{ev.payload}) catch {
+            s.counters.held_refused += 1;
+            return false;
+        };
+        s.slot_held[slot] += 1;
+        s.counters.result_waits += 1;
+        return true;
+    }
+    // One entry for each execution: more of its code waits behind the same one.
+    if (s.slot_run_wait[slot]) return true;
+    s.held.add(.{ .kind = .run, .need = class, .exec_id = s.slot_exec[slot] }, &.{}) catch {
+        s.counters.held_refused += 1;
+        return false;
+    };
+    s.slot_run_wait[slot] = true;
+    s.counters.run_waits += 1;
+    return true;
+}
+
+/// Take the entries of the execution in `slot` out of `held`: it ended.
+fn dropHeldOf(s: *State, slot: SlotId) void {
+    const id = s.slot_exec[slot];
+    var i: u32 = 0;
+    var left: u32 = s.held.n;
+    while (left > 0 and i < s.held.n) : (left -= 1) {
+        const m = s.held.entries[i].meta;
+        if (m.kind != .start and m.exec_id == id) s.held.remove(i) else i += 1;
+    }
+    s.slot_run_wait[slot] = false;
+    s.slot_held[slot] = 0;
+}
+
+/// Give the slots and regions that went back to the work that waits, oldest
+/// first. A promotion gives a smaller region back, which can serve an older
+/// entry: one more pass for each class at most.
+fn serveHeld(s: *State, scratch: *Arena) StepError!void {
+    var pass: u8 = 0;
+    while (pass < 4 and s.region_freed and s.held.n > 0) : (pass += 1) {
+        s.region_freed = false;
+        var i: u32 = 0;
+        var left: u32 = s.held.n;
+        while (left > 0 and i < s.held.n) : (left -= 1) {
+            const served = switch (s.held.entries[i].meta.kind) {
+                .start => try serveHeldStart(s, i, scratch),
+                .run, .result => try serveHeldSlot(s, i, scratch),
+            };
+            // A served entry left the queue: the next one has its index.
+            if (!served) i += 1;
+        }
+    }
+}
+
+/// Start the execution of entry `i` when a slot and a region are free for
+/// it. True when the entry left the queue.
+fn serveHeldStart(s: *State, i: u32, scratch: *Arena) StepError!bool {
+    const m = s.held.entries[i].meta;
+    std.debug.assert(m.kind == .start and s.held_starts > 0);
+    if (s.nfree_slots == 0 or !regionFrom(s, m.need)) return false;
+    // The `started` action keeps the texts until the batch ends.
+    const t = scratch.begin();
+    const text = try scratchDupe(scratch, s.held.payload(i));
+    const opts: StartOptions = .{
+        .flags = m.seq,
+        .started_text = if (m.two_texts) text[m.aux..] else null,
+        .id = m.given_id,
+        .quiet = m.quiet,
+        .clock_offset_ms = m.clock_offset_ms,
+    };
+    // The route of a webhook start, when it is still the route of this module.
+    const route: u16 = if (m.route < s.nroutes and s.routes[m.route].module == m.module) m.route else 0xFFFF;
+    switch (try tryStart(s, m.module, text[0..m.aux], m.conn, route, opts, m.exec_id, scratch)) {
+        .wait => |need| {
+            t.end();
+            s.held.entries[i].meta.need = @max(m.need, need);
+            return false;
+        },
+        .started => if (route != 0xFFFF) {
+            s.routes[route].active += 1;
+        },
+        // n8n has the id of a manual run that waited: it gets the end.
+        .refused => if (m.given_id != 0) {
+            const dur = s.modules[m.module].durability;
+            try emit(s, .{ .kind = .finished, .exec_id = m.exec_id, .aux = @backingInt(heap.ExecStatus.limit), .module = m.module, .payload = "{\"error\":\"limit\"}", .durability = dur });
+        },
+    }
+    s.held.remove(i);
+    s.held_starts -= 1;
+    modUnref(s, m.module);
+    return true;
+}
+
+/// Move the execution of entry `i` (a run or a result) to a larger region
+/// when one is free, and let it go on. True when the entry left the queue.
+fn serveHeldSlot(s: *State, i: u32, scratch: *Arena) StepError!bool {
+    const m = s.held.entries[i].meta;
+    std.debug.assert(m.kind == .run or m.kind == .result);
+    // `releaseSlot` takes the entries of an execution that ends.
+    const slot = s.by_exec.get(m.exec_id) orelse unreachable;
+    const class = s.slot_class[slot];
+    // The execution moved up since this entry began to wait: it has room.
+    const moved = class > m.need;
+    if (!moved and !regionAbove(s, class)) return false;
+    if (!moved and class < 3) {
+        const up = promote(s, slot, class);
+        std.debug.assert(up and s.slot_class[slot] > class);
+    }
+    if (m.kind == .run) {
+        s.held.remove(i);
+        s.slot_run_wait[slot] = false;
+        markReady(s, slot);
+        return true;
+    }
+    // The actions of the result keep its text until the batch ends.
+    const payload = try scratchDupe(scratch, s.held.payload(i));
+    s.held.remove(i);
+    std.debug.assert(s.slot_held[slot] > 0);
+    s.slot_held[slot] -= 1;
+    try effectResult(s, .{ .kind = m.event, .exec_id = m.exec_id, .seq = m.seq, .aux = m.aux, .payload = payload }, scratch, false);
     return true;
 }
 
@@ -2171,11 +2621,11 @@ fn runOne(s: *State, slot: SlotId, scratch: *Arena) StepError!void {
             },
             .region_full => {
                 t.end();
-                // A second full region in a row means one value is larger
-                // than compaction frees: move up a class instead.
-                const grown = if (fulls == 0) growRegion(s, slot) else promote(s, slot, s.slot_class[slot]);
+                // Compact, then move up a class; with none free, the run waits.
+                const grow = growFor(s, slot, fulls);
                 fulls += 1;
-                if (!grown or fulls > 6) return finishLimit(s, slot, scratch);
+                if (grow == .wait and waitForRegion(s, slot, null)) return;
+                if (grow != .grown or fulls > 6) return finishLimit(s, slot, scratch);
                 continue;
             },
             .limit => return finishLimit(s, slot, scratch),
@@ -2224,6 +2674,7 @@ fn handleEffect(s: *State, slot: SlotId, vm: *ops.Vm, req: interp.EffectReq, scr
     // A full table of effects in flight ends this execution with `limit`,
     // not the shard.
     if (s.pending.count() >= s.cfg.max_pending) {
+        s.counters.pending_full += 1;
         try finishLimit(s, slot, scratch);
         return true;
     }
@@ -2482,6 +2933,7 @@ fn finishLimit(s: *State, slot: SlotId, scratch: *Arena) StepError!void {
     // The region may be full: report the limit without allocating in it.
     _ = &vm;
     s.counters.finished_failed += 1;
+    s.counters.limit_finished += 1;
     if (!s.slot_responded[slot]) {
         s.slot_responded[slot] = true;
         try replyFailed(s, s.slot_conn[slot], "{\"error\":\"limit\"}", durOf(s, slot));
@@ -2503,10 +2955,12 @@ fn dropPending(s: *State, exec_id: u64, next_effect: u32) void {
 
 // ---- effect results ---------------------------------------------------------------
 
-fn effectResult(s: *State, ev: Event, scratch: *Arena) StepError!void {
+/// `from_event`: the result is the current event of the batch. False for a
+/// result that waited for a region (`serveHeld`): its event is in the log.
+fn effectResult(s: *State, ev: Event, scratch: *Arena, from_event: bool) StepError!void {
     if (mem.enabled) noteResult(s, ev);
     const slot = s.by_exec.get(ev.exec_id) orelse return;
-    if (s.modules[s.slot_module[slot]].durability == .none) s.log_modes[s.cur_event] = .skip;
+    if (from_event and s.modules[s.slot_module[slot]].durability == .none) s.log_modes[s.cur_event] = .skip;
     const key: EffectKey = .{ .exec_id = ev.exec_id, .seq = ev.seq };
     // One lookup: the entry stays valid until it is removed below, because
     // nothing in between adds or removes pending rows.
@@ -2537,8 +2991,9 @@ fn effectResult(s: *State, ev: Event, scratch: *Arena) StepError!void {
         t.end();
         _ = statics catch |e| switch (e) {
             error.RegionFull => {
-                const grown = if (attempts == 0) growRegion(s, slot) else promote(s, slot, s.slot_class[slot]);
-                if (!grown) return finishLimit(s, slot, scratch);
+                const grow = growFor(s, slot, attempts);
+                if (grow == .wait and waitForRegion(s, slot, ev)) return;
+                if (grow != .grown) return finishLimit(s, slot, scratch);
                 continue;
             },
             else => {},
@@ -2546,8 +3001,10 @@ fn effectResult(s: *State, ev: Event, scratch: *Arena) StepError!void {
         const v = decoded catch |e| switch (e) {
             error.RegionFull => {
                 // Compaction first; after that only a larger class helps.
-                const grown = if (attempts == 0) growRegion(s, slot) else promote(s, slot, s.slot_class[slot]);
-                if (!grown) return finishLimit(s, slot, scratch);
+                const grow = growFor(s, slot, attempts);
+                // No larger region is free: the result waits for one.
+                if (grow == .wait and waitForRegion(s, slot, ev)) return;
+                if (grow != .grown) return finishLimit(s, slot, scratch);
                 continue;
             },
             error.Syntax => value.undef,
@@ -2887,6 +3344,8 @@ fn evict(s: *State, slot: SlotId, attention: bool, scratch: *Arena) StepError!vo
     // A full parked table: the execution stays in memory (found by a load
     // test: the table overflowed and the shard stopped).
     if (s.parked.count() >= s.cfg.max_parked) return;
+    // A run or a result of the execution waits for a region: it stays too.
+    if (s.slot_run_wait[slot] or s.slot_held[slot] > 0) return;
     const src = &s.regions[slot];
     // The compacted copy is never larger than the source.
     if (s.parked_bytes + snapFootprint(@sizeOf(SnapHeader) + src.used) > s.cfg.snap_bytes) return;
@@ -3235,7 +3694,27 @@ pub fn checkInvariants(s: *const State) !void {
         refs += lm.refs;
         if (lm.state == .live) current += 1;
     }
-    if (refs != current + s.by_exec.count() + s.parked.count()) return error.ModuleRefMismatch;
+    // A start that waits for memory holds its module too.
+    if (refs != current + s.by_exec.count() + s.parked.count() + s.held_starts) return error.ModuleRefMismatch;
+    try checkHeld(s);
+}
+
+/// The work that waits: each entry of a run or a result has its execution
+/// in memory, and the slots count their entries.
+fn checkHeld(s: *const State) !void {
+    var starts: u32 = 0;
+    var of_slots: u32 = 0;
+    for (s.held.entries[0..s.held.n]) |e| {
+        if (e.meta.kind == .start) {
+            starts += 1;
+        } else if (s.by_exec.get(e.meta.exec_id) == null) return error.HeldWithoutExecution;
+    }
+    if (starts != s.held_starts) return error.HeldStartCountMismatch;
+    for (s.slot_state, s.slot_run_wait, s.slot_held) |st, run, n| {
+        if (st == .free and (run or n > 0)) return error.FreeSlotWaits;
+        of_slots += @as(u32, @intFromBool(run)) + n;
+    }
+    if (of_slots + starts != s.held.n) return error.HeldCountMismatch;
 }
 
 test "an unchecked JSON body parses alone, or becomes its text as before" {

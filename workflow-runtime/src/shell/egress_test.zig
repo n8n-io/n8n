@@ -996,3 +996,162 @@ test "regression: with no free file descriptor a request waits for a socket and 
     try std.testing.expectEqual(@as(u32, 1), results.err);
     try std.testing.expectEqual(@as(u32, 0), client.gauges().active);
 }
+
+// ---- large buffers: a full pool delays work (back-pressure) ------------------------
+
+/// A plain HTTP server for `n` connections. It reads one request on each,
+/// then sends the head and the first half of a body of `body_len` bytes on
+/// every connection, and the second half after that: the responses overlap.
+const SlowBodyServer = struct {
+    lfd: c_int,
+    n: u32,
+    body_len: usize,
+    stop: std.atomic.Value(bool) = .init(false),
+    failed: bool = false,
+
+    fn run(s: *SlowBodyServer) void {
+        s.serve() catch {
+            s.failed = true;
+        };
+    }
+
+    /// Write all of `bytes`; the client may read slowly.
+    fn writeAll(s: *SlowBodyServer, fd: c_int, bytes: []const u8) !void {
+        var sent: usize = 0;
+        var tries: u32 = 0;
+        while (sent < bytes.len and tries < 20_000 and !s.stop.load(.acquire)) : (tries += 1) {
+            switch (sys.writeSome(fd, bytes[sent..])) {
+                .n => |k| sent += k,
+                .again => Server.nap(),
+                .closed => return error.Closed,
+            }
+        }
+        if (sent < bytes.len) return error.Slow;
+    }
+
+    fn serve(s: *SlowBodyServer) !void {
+        std.debug.assert(s.n <= 8 and s.body_len <= 200_000);
+        var fds: [8]c_int = @splat(-1);
+        defer for (fds) |fd| if (fd >= 0) sys.close(fd);
+        var buf: [4096]u8 = undefined;
+        for (0..s.n) |i| {
+            var waited: u32 = 0;
+            fds[i] = while (waited < 10_000) : (waited += 1) {
+                if (sys.acceptOne(s.lfd)) |fd| break fd;
+                if (s.stop.load(.acquire)) return;
+                Server.nap();
+            } else return error.NoClient;
+            // The request of this connection.
+            var got: usize = 0;
+            var tries: u32 = 0;
+            while (std.mem.indexOf(u8, buf[0..got], "\r\n\r\n") == null and tries < 10_000) : (tries += 1) {
+                switch (sys.readSome(fds[i], buf[got..])) {
+                    .n => |k| got += k,
+                    .again => Server.nap(),
+                    .closed => return error.Closed,
+                }
+            }
+        }
+        var body: [200_000]u8 = undefined;
+        @memset(body[0..s.body_len], 'b');
+        const head = try std.fmt.bufPrint(&buf, "HTTP/1.1 200 OK\r\ncontent-type: text/plain\r\ncontent-length: {d}\r\n\r\n", .{s.body_len});
+        const half = s.body_len / 2;
+        for (fds[0..s.n]) |fd| {
+            try s.writeAll(fd, head);
+            try s.writeAll(fd, body[0..half]);
+        }
+        for (0..50) |_| Server.nap();
+        // A response that waits for a large buffer is not read: its
+        // connection takes the rest only after another response ended.
+        for (fds[0..s.n]) |fd| try s.writeAll(fd, body[half..s.body_len]);
+        while (!s.stop.load(.acquire)) Server.nap();
+    }
+};
+
+/// Counts the responses with status 200 and a body of `want` bytes.
+const BigResults = struct {
+    want: usize,
+    ok: u32 = 0,
+    err: u32 = 0,
+
+    fn done(ctx: *anyopaque, exec_id: u64, seq: u32, r: egress.Result) void {
+        _ = exec_id; // One kind of request: the count says all.
+        _ = seq; // The same.
+        const self: *BigResults = @ptrCast(@alignCast(ctx));
+        switch (r) {
+            .ok => |resp| {
+                if (resp.status == 200 and resp.body.len == self.want and std.mem.indexOfNone(u8, resp.body, "b") == null) self.ok += 1 else self.err += 1;
+            },
+            .err => |msg| {
+                std.debug.print("egress error: {s}\n", .{msg});
+                self.err += 1;
+            },
+        }
+    }
+};
+
+test "back-pressure: responses that need the one large buffer take it in turn; none fails" {
+    var arena = std.heap.ArenaAllocator.init(std.testing.allocator);
+    defer arena.deinit();
+    const a = arena.allocator();
+    const fp = try freePort(41000);
+    defer sys.close(fp.lfd);
+    const body_len = 150_000;
+    var server: SlowBodyServer = .{ .lfd = fp.lfd, .n = 4, .body_len = body_len };
+    const th = try std.Thread.spawn(.{}, SlowBodyServer.run, .{&server});
+    defer th.join();
+    defer server.stop.store(true, .release);
+
+    var poller = try sys.Poller.init();
+    defer poller.deinit();
+    var results: BigResults = .{ .want = body_len };
+    const client = try a.create(egress.Client);
+    // One large buffer for four responses of 150 KB.
+    try client.init(a, .{ .max_conns = 4, .max_reqs = 4, .big_slots = 1, .max_body = 1 << 18 }, .{ .ctx = &results, .done = BigResults.done }, &poller, kind_conn, kind_dns);
+    defer client.deinit();
+    var args_buf: [128]u8 = undefined;
+    const args = try std.fmt.bufPrint(&args_buf, "{{\"url\":\"http://127.0.0.1:{d}/x\",\"method\":\"GET\"}}", .{fp.port});
+    for (0..4) |i| client.start(i + 1, 0, args, null, null, 0, 0, sys.nowMs());
+    drive(client, &poller, &results, 4);
+    try std.testing.expect(!server.failed);
+    try std.testing.expectEqual(@as(u32, 4), results.ok);
+    try std.testing.expectEqual(@as(u32, 0), results.err);
+    // Three of them waited for the buffer of the one before.
+    try std.testing.expectEqual(@as(u64, 3), client.counters.big_waits);
+    try std.testing.expectEqual(@as(u64, 0), client.counters.big_refused);
+    try std.testing.expectEqual(@as(u32, 1), client.freeBig());
+    try std.testing.expectEqual(@as(u32, 0), client.gauges().active);
+}
+
+test "back-pressure: tryStart says when the table of requests or the large buffers are full, and gives no result" {
+    var arena = std.heap.ArenaAllocator.init(std.testing.allocator);
+    defer arena.deinit();
+    const a = arena.allocator();
+    // A listener that accepts nothing: a request to it stays in flight.
+    const fp = try freePort(41000);
+    defer sys.close(fp.lfd);
+    var poller = try sys.Poller.init();
+    defer poller.deinit();
+    var results: Results = .{};
+    const client = try a.create(egress.Client);
+    try client.init(a, .{ .max_conns = 4, .max_reqs = 2, .big_slots = 1, .max_body = 1 << 18 }, .{ .ctx = &results, .done = Results.done }, &poller, kind_conn, kind_dns);
+    defer client.deinit();
+    const filler = try a.alloc(u8, 100_000);
+    @memset(filler, 'a');
+    const large = try std.fmt.allocPrint(a, "{{\"url\":\"http://127.0.0.1:{d}/x\",\"method\":\"POST\",\"body\":\"{s}\"}}", .{ fp.port, filler });
+    const small = try std.fmt.allocPrint(a, "{{\"url\":\"http://127.0.0.1:{d}/x\",\"method\":\"GET\"}}", .{fp.port});
+    // The body of the first request takes the one large buffer.
+    try std.testing.expect(client.tryStart(1, 0, large, null, null, 0, 0, sys.nowMs()) == .started);
+    try std.testing.expectEqual(@as(u32, 0), client.freeBig());
+    // The second finds none: nothing was done, and its row is free again.
+    try std.testing.expect(client.tryStart(2, 0, large, null, null, 0, 0, sys.nowMs()) == .big);
+    try std.testing.expectEqual(@as(u32, 1), client.freeRequests());
+    try std.testing.expect(client.tryStart(3, 0, small, null, null, 0, 0, sys.nowMs()) == .started);
+    // Every row is in use.
+    try std.testing.expect(client.tryStart(4, 0, small, null, null, 0, 0, sys.nowMs()) == .row);
+    try std.testing.expectEqual(@as(u32, 0), results.ok + results.err);
+    try std.testing.expectEqual(@as(u32, 2), client.gauges().active);
+    // `start` keeps its contract: a caller that does not wait gets the limit as an error.
+    client.start(5, 0, small, null, null, 0, 0, sys.nowMs());
+    try std.testing.expectEqual(@as(u32, 1), results.err);
+}

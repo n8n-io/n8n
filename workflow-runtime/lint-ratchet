@@ -14,9 +14,9 @@ anyerror 14
 inferred-error 16
 unreachable-comment 74
 optional-unwrap 21
-switch-else 81
+switch-else 80
 unbounded-loop 24
-fn-length 41
+fn-length 40
 nesting 26
 fn-assert 143
 discard 121

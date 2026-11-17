@@ -22,6 +22,9 @@ pub const Route = union(enum) {
     put_workflow_class: []const u8,
     /// `GET /_admin/classes`: the workload classes with their counters.
     get_classes,
+    /// `GET /_admin/limits`: the fill of each bounded table and pool of the
+    /// shard, and how often work waited for one or failed at one.
+    get_limits,
     list_workflows,
     put_credentials,
     put_variables,
@@ -62,6 +65,7 @@ pub fn route(method: []const u8, target: []const u8) Route {
         return .not_found;
     }
     if (eq(u8, a, "classes") and b == null and eq(u8, method, "GET")) return .get_classes;
+    if (eq(u8, a, "limits") and b == null and eq(u8, method, "GET")) return .get_limits;
     if (eq(u8, a, "credentials") and b == null and eq(u8, method, "PUT")) return .put_credentials;
     if (eq(u8, a, "variables") and b == null and eq(u8, method, "PUT")) return .put_variables;
     if (eq(u8, a, "executions")) {
@@ -1351,6 +1355,8 @@ test "workload classes: the routes, and the class of a load" {
     const gpa = std.testing.allocator;
     try std.testing.expect(route("GET", "/_admin/classes") == .get_classes);
     try std.testing.expect(route("POST", "/_admin/classes") == .not_found);
+    try std.testing.expect(route("GET", "/_admin/limits") == .get_limits);
+    try std.testing.expect(route("PUT", "/_admin/limits") == .not_found);
     try std.testing.expectEqualStrings("wf1", route("PUT", "/_admin/workflows/wf1/class").put_workflow_class);
     try std.testing.expect(route("GET", "/_admin/workflows/wf1/class") == .not_found);
     const p = try loadPayload(gpa, "wf1", "{\"versionId\":\"v1\",\"class\":\"background\",\"module\":\"AAAA\"}");
