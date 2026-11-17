@@ -17,6 +17,7 @@ import type {
 	NativeToolDeferralConfig,
 } from '../../types';
 import type { AgentPersistenceOptions, ExecutionOptions } from '../../types/sdk/agent';
+import type { ReasoningReplayScope } from '../../types/sdk/provider';
 import { lockAdditionalProperties } from '../../utils/json-schema';
 import { getCatalogModelId, getModelIdString } from '../../utils/model';
 import { isZodSchema } from '../../utils/zod';
@@ -300,6 +301,7 @@ export class RuntimeContextBuilder {
 					}
 				: undefined,
 			splitModelId(this.modelId).provider,
+			this.replayReasoningScope(),
 		);
 		const preparedMessages =
 			this.nativeToolDeferral?.prepareMessages?.(messages, tools.aiTools, tools.searchToolName) ??
@@ -510,6 +512,12 @@ export class RuntimeContextBuilder {
 			fragments.unshift(UNTRUSTED_OUTPUT_DOCTRINE);
 		}
 		return fragments;
+	}
+
+	/** The reasoning replay scope asked for in the thinking config, if any. */
+	private replayReasoningScope(): ReasoningReplayScope | undefined {
+		const thinking = this.config.thinking;
+		return thinking && 'replayReasoning' in thinking ? thinking.replayReasoning : undefined;
 	}
 
 	/** Build the providerOptions object for provider-specific thinking config. */
