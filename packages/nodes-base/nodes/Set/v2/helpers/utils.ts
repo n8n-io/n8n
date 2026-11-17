@@ -23,7 +23,7 @@ import type {
 
 import type { SetNodeOptions } from './interfaces';
 import { INCLUDE } from './interfaces';
-import { getResolvables, sanitizeDataPathKey } from '../../../../utils/utilities';
+import { resolveExpressions, sanitizeDataPathKey } from '../../../../utils/utilities';
 
 const configureFieldHelper = (dotNotation?: boolean) => {
 	if (dotNotation !== false) {
@@ -224,22 +224,20 @@ export function resolveRawData(
 	rawData: string,
 	i: number,
 ) {
-	const resolvables = getResolvables(rawData);
-	let returnData: string = rawData;
-
-	if (resolvables.length) {
-		for (const resolvable of resolvables) {
-			const resolvedValue = this.evaluateExpression(`${resolvable}`, i);
-
-			// Use a function replacer to avoid issues with special replacement patterns like $&
-			if (typeof resolvedValue === 'object' && resolvedValue !== null) {
-				returnData = returnData.replace(resolvable, () => JSON.stringify(resolvedValue));
-			} else {
-				returnData = returnData.replace(resolvable, () => String(resolvedValue));
-			}
-		}
-	}
-	return returnData;
+	// Existing workflows expect each expression to be replaced in turn, with `$` kept literal.
+	// Doubling `$` makes the legacy String.replace insert the value literally.
+	return resolveExpressions(
+		rawData,
+		(resolvable) => {
+			const resolvedValue = this.evaluateExpression(resolvable, i);
+			const value =
+				typeof resolvedValue === 'object' && resolvedValue !== null
+					? JSON.stringify(resolvedValue)
+					: String(resolvedValue);
+			return value.replaceAll('$', '$$$$');
+		},
+		{ legacy: true },
+	);
 }
 
 export function prepareReturnItem(

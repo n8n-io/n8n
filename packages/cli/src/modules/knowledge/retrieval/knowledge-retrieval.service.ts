@@ -2,16 +2,16 @@ import { Service } from '@n8n/di';
 
 import type { KnowledgeConsumerScope } from '../knowledge-consumer-scope';
 import type { KnowledgeRetrievalObserver, KnowledgeRetriever } from '../knowledge-retriever';
-import { KnowledgeSandboxProviderRegistry } from '../knowledge-sandbox-provider-registry';
+import { KnowledgeSandboxProviderProxy } from '../knowledge-sandbox-provider-proxy';
 import { KnowledgeFileRepository } from '../repositories/knowledge-file.repository';
 import { KnowledgeMirrorService } from './mirror.service';
 import type {
-	GlobKnowledgeFilesRequest,
-	GlobKnowledgeFilesResult,
-	ReadKnowledgeRequest,
-	ReadKnowledgeResult,
-	SearchKnowledgeRequest,
-	SearchKnowledgeResult,
+	FindKnowledgeFilesRequest,
+	FindKnowledgeFilesResult,
+	ReadKnowledgeFileRequest,
+	ReadKnowledgeFileResult,
+	SearchKnowledgeTextRequest,
+	SearchKnowledgeTextResult,
 } from './retrieval-schemas';
 
 /**
@@ -25,7 +25,7 @@ export class KnowledgeRetrievalService implements KnowledgeRetriever {
 	constructor(
 		private readonly fileRepository: KnowledgeFileRepository,
 		private readonly mirrorService: KnowledgeMirrorService,
-		private readonly sandboxProvider: KnowledgeSandboxProviderRegistry,
+		private readonly sandboxProviderProxy: KnowledgeSandboxProviderProxy,
 	) {}
 
 	async hasFiles(scope: KnowledgeConsumerScope): Promise<boolean> {
@@ -38,34 +38,34 @@ export class KnowledgeRetrievalService implements KnowledgeRetriever {
 			return;
 		}
 
-		await this.sandboxProvider.warm(scope);
+		await this.sandboxProviderProxy.warm(scope);
 	}
 
 	/** Deletes the sandbox of the scope. Reads no file row, so it also runs while the module is off. Never throws. */
 	async destroySandbox(scope: KnowledgeConsumerScope): Promise<void> {
-		await this.sandboxProvider.destroy(scope);
+		await this.sandboxProviderProxy.destroy(scope);
 	}
 
 	async findFiles(
 		scope: KnowledgeConsumerScope,
-		request: GlobKnowledgeFilesRequest,
-	): Promise<GlobKnowledgeFilesResult> {
-		return await this.mirrorService.globKnowledgeFiles(scope, request);
+		request: FindKnowledgeFilesRequest,
+	): Promise<FindKnowledgeFilesResult> {
+		return await this.mirrorService.findFiles(scope, request);
 	}
 
 	async searchText(
 		scope: KnowledgeConsumerScope,
-		request: SearchKnowledgeRequest,
+		request: SearchKnowledgeTextRequest,
 		observer?: KnowledgeRetrievalObserver,
-	): Promise<SearchKnowledgeResult> {
-		return await this.mirrorService.searchKnowledge(scope, request, observer);
+	): Promise<SearchKnowledgeTextResult> {
+		return await this.mirrorService.searchText(scope, request, observer);
 	}
 
 	async readFile(
 		scope: KnowledgeConsumerScope,
-		request: ReadKnowledgeRequest,
+		request: ReadKnowledgeFileRequest,
 		observer?: KnowledgeRetrievalObserver,
-	): Promise<ReadKnowledgeResult> {
-		return await this.mirrorService.readKnowledge(scope, request, observer);
+	): Promise<ReadKnowledgeFileResult> {
+		return await this.mirrorService.readFile(scope, request, observer);
 	}
 }

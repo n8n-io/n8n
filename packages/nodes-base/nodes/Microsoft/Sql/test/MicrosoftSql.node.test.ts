@@ -142,6 +142,42 @@ describe('MicrosoftSql Node', () => {
 	});
 
 	test.each([
+		{ typeVersion: 1.3, expected: "SELECT '{{ $json.b }}$$', 'b'" },
+		{ typeVersion: 1.2, expected: "SELECT 'b$$', '{{ $json.b }}'" },
+		{ typeVersion: 1, expected: "SELECT 'b$$', '{{ $json.b }}'" },
+	])(
+		'resolves each expression once for version $typeVersion',
+		async ({ typeVersion, expected }) => {
+			const mockRequest = { query: vi.fn().mockResolvedValue({ recordsets: [[]] }) };
+			mockedConnectionPool.mockImplementation(function () {
+				return mock<mssql.ConnectionPool>({
+					connect: vi.fn().mockResolvedValue(undefined),
+					close: vi.fn(),
+					request: vi.fn().mockReturnValue(mockRequest),
+				});
+			});
+			const values: Record<string, string> = {
+				'{{ $json.a }}': '{{ $json.b }}$$',
+				'{{ $json.b }}': 'b',
+			};
+			const context = getMockedExecuteFunctions({
+				getNode: vi.fn().mockReturnValue({ typeVersion, parameters: {} }),
+				getNodeParameter: vi.fn().mockImplementation((paramName: string) => {
+					if (paramName === 'operation') return 'executeQuery';
+					if (paramName === 'query') return "SELECT '{{ $json.a }}', '{{ $json.b }}'";
+					if (paramName === 'options.queryReplacement') return '';
+					return undefined;
+				}),
+				evaluateExpression: vi.fn((expression: string) => values[expression]),
+			});
+
+			await new MicrosoftSql().execute.call(context);
+
+			expect(mockRequest.query).toHaveBeenCalledWith(expected);
+		},
+	);
+
+	test.each([
 		{
 			label: 'comma-separated string',
 			rawQueryReplacement: '5, Alice',

@@ -7,6 +7,7 @@ import SecuritySettings from './SecuritySettings.vue';
 import { EnterpriseEditionFeature } from '@/app/constants';
 import { useSettingsStore } from '@n8n/stores/settings.store';
 import { useUsersStore } from '@n8n/stores/users.store';
+import { ref } from 'vue';
 import { usePostHog } from '@/app/stores/posthog.store';
 import { PUBLIC_API_RATE_LIMIT_SETTINGS_FLAG } from './rateLimits/rateLimits';
 
@@ -36,6 +37,22 @@ vi.mock('@n8n/rest-api-client/api/public-api-rate-limit-settings', () => {
 		updatePublicApiRateLimitSettings: vi.fn(),
 	};
 });
+
+const policyAccess = vi.hoisted(() => ({ canManage: false }));
+vi.mock('@n8n/frontend-module-type-availability-policies', async (importOriginal) => ({
+	...(await importOriginal<typeof import('@n8n/frontend-module-type-availability-policies')>()),
+	// The access rules have their own tests in the module, so the row only reads the result.
+	usePolicyAdminAccess: () => ({
+		canManagePolicies: ref(policyAccess.canManage),
+		entryRouteName: ref('PolicyEntryView'),
+	}),
+}));
+
+const routerPush = vi.fn();
+vi.mock('vue-router', async (importOriginal) => ({
+	...(await importOriginal<typeof import('vue-router')>()),
+	useRouter: () => ({ push: routerPush }),
+}));
 
 const showToast = vi.fn();
 const showError = vi.fn();
@@ -89,6 +106,38 @@ describe('SecuritySettings', () => {
 		settingsStore.isEnterpriseFeatureEnabled[EnterpriseEditionFeature.WorkflowReviews] = false;
 		checkEnvFeatureFlag.mockReturnValue(false);
 		usersStore.updateEnforceMfa = vi.fn().mockResolvedValue(undefined);
+		policyAccess.canManage = false;
+	});
+
+	describe('node and credential policies', () => {
+		it('shows the row with a Preview badge to a user who can manage the policies', async () => {
+			policyAccess.canManage = true;
+			const { findByTestId, getByTestId } = renderView();
+
+			const row = await findByTestId('security-type-policies-row');
+
+			expect(row).toHaveTextContent('Node and credential policies');
+			expect(row).toHaveTextContent('Configure');
+			expect(within(row).getByTestId('security-type-policies-preview-badge')).toBeInTheDocument();
+			expect(getByTestId('security-type-policies-section')).toHaveTextContent('Access control');
+		});
+
+		it('opens the entry page of the policies from the row', async () => {
+			policyAccess.canManage = true;
+			const { findByTestId } = renderView();
+
+			await userEvent.click(await findByTestId('security-type-policies-row'));
+
+			expect(routerPush).toHaveBeenCalledWith({ name: 'PolicyEntryView' });
+		});
+
+		it('hides the row from a user who cannot manage the policies', async () => {
+			const { queryByTestId } = renderView();
+
+			await waitFor(() => expect(getSecuritySettings).toHaveBeenCalled());
+
+			expect(queryByTestId('security-type-policies-section')).not.toBeInTheDocument();
+		});
 	});
 
 	describe('API key rate limits', () => {

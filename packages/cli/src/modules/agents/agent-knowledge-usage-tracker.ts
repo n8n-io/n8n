@@ -1,11 +1,12 @@
+import { TelemetryProxy } from '@n8n/backend-services';
 import { Time } from '@n8n/constants';
 import { Service } from '@n8n/di';
 import { TELEMETRY_EVENT } from '@n8n/telemetry';
 import { smartDecimal } from '@n8n/utils/number/smart-decimal';
 
-import type { AgentRunTelemetryType } from '@/interfaces';
 import type { KnowledgePreparationWait } from '@/modules/knowledge/knowledge-retriever';
-import { Telemetry } from '@/telemetry';
+
+import type { AgentRunTelemetryType } from './agent-telemetry.types';
 
 export type KnowledgeToolCall = 'file_find' | 'file_search' | 'file_read' | 'vector_store_search';
 
@@ -108,7 +109,7 @@ interface TrackedRun {
 export class AgentKnowledgeUsageTracker {
 	private readonly runs = new Map<string, TrackedRun>();
 
-	constructor(private readonly telemetry: Telemetry) {}
+	constructor(private readonly telemetry: TelemetryProxy) {}
 
 	sendRunUsage(
 		runId: string,

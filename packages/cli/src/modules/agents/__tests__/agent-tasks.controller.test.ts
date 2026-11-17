@@ -6,7 +6,7 @@ import { NotFoundError } from '@n8n/errors';
 import type { AgentTaskService } from '../agent-task.service';
 import { AgentTasksController } from '../agent-tasks.controller';
 import type { AgentRepository } from '../repositories/agent.repository';
-import type { CollaborationService } from '@/collaboration/collaboration.service';
+import type { AgentWriteLockService } from '../agent-write-lock.service';
 import {
 	expectProjectScopedAgentRoutes,
 	getRoutesByHandlerName,
@@ -15,14 +15,14 @@ import {
 function makeController({
 	agentTaskService = mock<AgentTaskService>(),
 	agentRepository = mock<AgentRepository>(),
-	collaborationService = mock<CollaborationService>(),
+	agentWriteLockService = mock<AgentWriteLockService>(),
 }: {
 	agentTaskService?: Mocked<AgentTaskService>;
 	agentRepository?: Mocked<AgentRepository>;
-	collaborationService?: Mocked<CollaborationService>;
+	agentWriteLockService?: Mocked<AgentWriteLockService>;
 } = {}) {
 	return {
-		controller: new AgentTasksController(agentTaskService, agentRepository, collaborationService),
+		controller: new AgentTasksController(agentTaskService, agentRepository, agentWriteLockService),
 		agentTaskService,
 		agentRepository,
 	};

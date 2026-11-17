@@ -988,6 +988,7 @@ overrides:
   ast-types: 0.16.1
   baseline-browser-mapping: ^2.11.0
   '@azure/identity': 4.13.0
+  '@azure/msal-node@5.0.0-beta.0 - 7.0': 7.1.0
   '@lezer/common': ^1.2.0
   '@mistralai/mistralai': ^2.2.1
   '@n8n/typeorm>@sentry/node': 11.8.0
@@ -1120,7 +1121,7 @@ patchedDependencies:
   '@chat-adapter/teams@4.37.0': af5fb1d38a2af55399bd8b6934e77348a9b061fec6177c101dd9d7a787ae8a6c
   '@chat-adapter/whatsapp@4.37.0': 950356dafb986b5cc9bd53069f7653b47b790a60b3590495cf53392ea4df2de4
   '@confluentinc/kafka-javascript@1.9.1': c597d3e3d9d6d0d33588b7dc1e88d55f270ba155721aad464bd7fb03e28f5003
-  '@google/generative-ai@0.24.0': 81ecf039d41dad42ab21d944df2ddb6726a70f915cfa7c16e17f56caca3622ad
+  '@google/generative-ai@0.24.0': a52d090b4f2f056a41a583fa659204daa4c4a57ee1f6d53346e1b3e7d75cee17
   '@icetee/ftp@0.3.15': 19c547038e6400d80f724f77c3fad97093f9233d7596bf2dba38d3e0adb7dab9
   '@langchain/google-common@2.1.24': b50436a6c7b0a82d54472dff331ba1b42ab8b816995f83295eef2ee4b482a87d
   '@langchain/google-genai@2.1.24': 30296ce7b3b93ff0d018303d33ea17b86653042ddfeabfbdac48b9633320a60e
@@ -1991,6 +1992,9 @@ importers:
       '@n8n/permissions':
         specifier: workspace:*
         version: link:../permissions
+      '@n8n/telemetry':
+        specifier: workspace:*
+        version: link:../telemetry
       '@n8n/utils':
         specifier: workspace:*
         version: link:../utils
@@ -3898,7 +3902,7 @@ importers:
         version: 1.19.0(@modelcontextprotocol/sdk@1.32.0(supports-color@8.1.1)(zod@3.25.76))(bufferutil@4.0.9)(supports-color@8.1.1)(utf-8-validate@5.0.10)
       '@google/generative-ai':
         specifier: 0.24.0
-        version: 0.24.0(patch_hash=81ecf039d41dad42ab21d944df2ddb6726a70f915cfa7c16e17f56caca3622ad)
+        version: 0.24.0(patch_hash=a52d090b4f2f056a41a583fa659204daa4c4a57ee1f6d53346e1b3e7d75cee17)
       '@huggingface/inference':
         specifier: 4.0.5
         version: 4.0.5
@@ -8841,9 +8845,15 @@ importers:
       '@n8n/api-types':
         specifier: workspace:*
         version: link:../../../@n8n/api-types
+      '@n8n/composables':
+        specifier: workspace:*
+        version: link:../../../frontend/@n8n/composables
       '@n8n/design-system':
         specifier: workspace:*
         version: link:../../../frontend/@n8n/design-system
+      '@n8n/frontend-constants':
+        specifier: workspace:*
+        version: link:../../../frontend/@n8n/frontend-constants
       '@n8n/frontend-module-sdk':
         specifier: workspace:*
         version: link:../../../frontend/@n8n/frontend-module-sdk
@@ -8874,6 +8884,9 @@ importers:
       vue:
         specifier: catalog:frontend
         version: 3.5.26(typescript@6.0.2)
+      vue-router:
+        specifier: catalog:frontend
+        version: 4.5.0(vue@3.5.26(typescript@6.0.2))
     devDependencies:
       '@iconify/json':
         specifier: 'catalog:'
@@ -10910,24 +10923,16 @@ packages:
     resolution: {integrity: sha512-shSDU7Ioecya+Aob5xliW9IGq1Ui8y4EVSdWGyI1Gbm4Vg61WpP95LuzcY214/wEjSn6w4PZYD4/iVldErHayQ==}
     engines: {node: '>=0.8.0'}
 
-  '@azure/msal-common@16.13.0':
-    resolution: {integrity: sha512-rOAy0KUcyBbdwVJ+f3uPpthXatFLLZN+/KWAsTLzk1aB23Xl9DRmmXYwSvBFOZyXj4jUQQ5FKxxRkhAFW1fOow==}
-    engines: {node: '>=0.8.0'}
-
-  '@azure/msal-common@16.5.2':
-    resolution: {integrity: sha512-GkDEL6TYo3HgT3UuqakdgE9PZfc1hMki6+Hwgy1uddb/EauvAKfu85vVhuofRSo22D1xTnWt8Ucwfg4vSCVwvA==}
+  '@azure/msal-common@16.14.2':
+    resolution: {integrity: sha512-HOBR0Gfo39TMrkxNG8k6cfjRkrRjXZc3JQs3ebMWQc9S4cihuknMYra3sgmzbZB752oQBqBN9+WF7c826p2vIQ==}
     engines: {node: '>=0.8.0'}
 
   '@azure/msal-node@3.8.4':
     resolution: {integrity: sha512-lvuAwsDpPDE/jSuVQOBMpLbXuVuLsPNRwWCyK3/6bPlBk0fGWegqoZ0qjZclMWyQ2JNvIY3vHY7hoFmFmFQcOw==}
     engines: {node: '>=16'}
 
-  '@azure/msal-node@5.1.5':
-    resolution: {integrity: sha512-ObTeMoNPmq19X3z40et9Xvs4ZoWVeJg43PZMRLG5iwVL+2nCtAerG3YTDItqPp1CfXNwmCXBbg8jn1DOx65c3g==}
-    engines: {node: '>=20'}
-
-  '@azure/msal-node@5.6.0':
-    resolution: {integrity: sha512-uFY9NxrWHw8PwZx7gAX6PDn+9vdfS05+levc/kwkx77IkjfaldnQbbcQzzDIZ5Hq5Zdr6/z92oAIoRWKp6MnOA==}
+  '@azure/msal-node@7.1.0':
+    resolution: {integrity: sha512-s1O6hSY/C/dmqykTmmeHY6GhSkDuY8N1gxyhuLyaCwbY7N+UBvU2Wu4flas7+NxZiAPcXNPVpgt3n/HP/5yL+w==}
     engines: {node: '>=20'}
 
   '@azure/opentelemetry-instrumentation-azure-sdk@1.1.0-beta.1':
@@ -29359,9 +29364,7 @@ snapshots:
 
   '@azure/msal-common@15.13.3': {}
 
-  '@azure/msal-common@16.13.0': {}
-
-  '@azure/msal-common@16.5.2': {}
+  '@azure/msal-common@16.14.2': {}
 
   '@azure/msal-node@3.8.4':
     dependencies:
@@ -29369,14 +29372,9 @@ snapshots:
       jsonwebtoken: 9.0.3
       uuid: 13.0.1
 
-  '@azure/msal-node@5.1.5':
+  '@azure/msal-node@7.1.0':
     dependencies:
-      '@azure/msal-common': 16.5.2
-      jsonwebtoken: 9.0.3
-
-  '@azure/msal-node@5.6.0':
-    dependencies:
-      '@azure/msal-common': 16.13.0
+      '@azure/msal-common': 16.14.2
       jsonwebtoken: 9.0.3
 
   '@azure/opentelemetry-instrumentation-azure-sdk@1.1.0-beta.1(supports-color@8.1.1)':
@@ -30851,7 +30849,7 @@ snapshots:
       - supports-color
       - utf-8-validate
 
-  '@google/generative-ai@0.24.0(patch_hash=81ecf039d41dad42ab21d944df2ddb6726a70f915cfa7c16e17f56caca3622ad)': {}
+  '@google/generative-ai@0.24.0(patch_hash=a52d090b4f2f056a41a583fa659204daa4c4a57ee1f6d53346e1b3e7d75cee17)': {}
 
   '@graphql-typed-document-node/core@3.2.0(graphql@16.11.0)':
     dependencies:
@@ -31416,7 +31414,7 @@ snapshots:
 
   '@langchain/google-genai@2.1.24(patch_hash=30296ce7b3b93ff0d018303d33ea17b86653042ddfeabfbdac48b9633320a60e)(@langchain/core@1.2.8(@opentelemetry/api@1.9.1)(@opentelemetry/exporter-trace-otlp-proto@0.221.0(@opentelemetry/api@1.9.1))(@opentelemetry/sdk-trace-base@2.10.0(@opentelemetry/api@1.9.1))(openai@6.46.0(@aws-sdk/credential-provider-node@3.972.80)(@smithy/signature-v4@5.7.2)(ws@8.21.1(bufferutil@4.0.9)(utf-8-validate@5.0.10))(zod@3.25.76))(ws@8.21.1(bufferutil@4.0.9)(utf-8-validate@5.0.10)))':
     dependencies:
-      '@google/generative-ai': 0.24.0(patch_hash=81ecf039d41dad42ab21d944df2ddb6726a70f915cfa7c16e17f56caca3622ad)
+      '@google/generative-ai': 0.24.0(patch_hash=a52d090b4f2f056a41a583fa659204daa4c4a57ee1f6d53346e1b3e7d75cee17)
       '@langchain/core': 1.2.8(@opentelemetry/api@1.9.1)(@opentelemetry/exporter-trace-otlp-proto@0.221.0(@opentelemetry/api@1.9.1))(@opentelemetry/sdk-trace-base@2.10.0(@opentelemetry/api@1.9.1))(openai@6.46.0(@aws-sdk/credential-provider-node@3.972.80)(@smithy/signature-v4@5.7.2)(ws@8.21.1(bufferutil@4.0.9)(utf-8-validate@5.0.10))(zod@3.25.76))(ws@8.21.1(bufferutil@4.0.9)(utf-8-validate@5.0.10))
       uuid: 13.0.1
 
@@ -31832,7 +31830,7 @@ snapshots:
   '@microsoft/agents-hosting@1.6.1(@opentelemetry/api-logs@0.221.0)(@opentelemetry/api@1.9.1)(supports-color@8.1.1)':
     dependencies:
       '@azure/core-auth': 1.10.1(supports-color@8.1.1)
-      '@azure/msal-node': 5.1.5
+      '@azure/msal-node': 7.1.0
       '@microsoft/agents-activity': 1.6.1
       '@microsoft/agents-telemetry': 1.6.1(@opentelemetry/api-logs@0.221.0)(@opentelemetry/api@1.9.1)(supports-color@8.1.1)
       jsonwebtoken: 9.0.3
@@ -31931,7 +31929,7 @@ snapshots:
 
   '@microsoft/teams.apps@2.0.16(debug@4.4.3(supports-color@8.1.1))(supports-color@8.1.1)':
     dependencies:
-      '@azure/msal-node': 5.6.0
+      '@azure/msal-node': 7.1.0
       '@microsoft/teams.api': 2.0.16(debug@4.4.3(supports-color@8.1.1))(supports-color@8.1.1)
       '@microsoft/teams.common': 2.0.16(debug@4.4.3(supports-color@8.1.1))(supports-color@8.1.1)
       '@microsoft/teams.graph': 2.0.16(debug@4.4.3(supports-color@8.1.1))(supports-color@8.1.1)

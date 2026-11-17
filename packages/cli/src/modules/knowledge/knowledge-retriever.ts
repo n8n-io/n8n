@@ -1,11 +1,11 @@
 import type { KnowledgeConsumerScope } from './knowledge-consumer-scope';
 import type {
-	GlobKnowledgeFilesRequest,
-	GlobKnowledgeFilesResult,
-	ReadKnowledgeRequest,
-	ReadKnowledgeResult,
-	SearchKnowledgeRequest,
-	SearchKnowledgeResult,
+	FindKnowledgeFilesRequest,
+	FindKnowledgeFilesResult,
+	ReadKnowledgeFileRequest,
+	ReadKnowledgeFileResult,
+	SearchKnowledgeTextRequest,
+	SearchKnowledgeTextResult,
 } from './retrieval/retrieval-schemas';
 
 /** How long one search or read waited before its command ran. */
@@ -39,20 +39,20 @@ export interface KnowledgeRetriever {
 	/** Matches uploaded file names against a glob. Runs in-process, without a sandbox. */
 	findFiles(
 		scope: KnowledgeConsumerScope,
-		request: GlobKnowledgeFilesRequest,
-	): Promise<GlobKnowledgeFilesResult>;
+		request: FindKnowledgeFilesRequest,
+	): Promise<FindKnowledgeFilesResult>;
 
 	/** Line-based regex search over file contents in the consumer's sandbox mirror. */
 	searchText(
 		scope: KnowledgeConsumerScope,
-		request: SearchKnowledgeRequest,
+		request: SearchKnowledgeTextRequest,
 		observer?: KnowledgeRetrievalObserver,
-	): Promise<SearchKnowledgeResult>;
+	): Promise<SearchKnowledgeTextResult>;
 
 	/** Reads line ranges of one file and returns a citation for each range. */
 	readFile(
 		scope: KnowledgeConsumerScope,
-		request: ReadKnowledgeRequest,
+		request: ReadKnowledgeFileRequest,
 		observer?: KnowledgeRetrievalObserver,
-	): Promise<ReadKnowledgeResult>;
+	): Promise<ReadKnowledgeFileResult>;
 }
