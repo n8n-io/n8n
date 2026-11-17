@@ -43,12 +43,6 @@ export type PaginationProps = Omit<
 	 */
 	showSizes?: boolean;
 	/**
-	 * Show "Page size" as a label joined to the page size selector, in the small size, and the
-	 * options as plain numbers instead of "10/page".
-	 * @defaultValue false
-	 */
-	showSizesLabel?: boolean;
-	/**
 	 * Show the go-to-page jumper.
 	 * @defaultValue false
 	 */

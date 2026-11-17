@@ -187,6 +187,20 @@ describe('InstancePolicyTable', () => {
 		await waitFor(() => expect(rowNames(getByTestId('instance-policy-table'))[0]).toBe('Type 00'));
 	});
 
+	it('shows the chosen number of rows from the Page size control', async () => {
+		const many = Array.from({ length: 30 }, (_, index) =>
+			row(`type${index}`, `Type ${String(index).padStart(2, '0')}`),
+		);
+		const { getByTestId, getByText, getByRole } = setup(many);
+		expect(rowNames(getByTestId('instance-policy-table'))).toHaveLength(25);
+		expect(getByText('Page size')).toBeInTheDocument();
+
+		await userEvent.click(getByRole('combobox', { name: 'Page size' }));
+		await userEvent.click(await findPopupItem(OPTION, '10'));
+
+		await waitFor(() => expect(rowNames(getByTestId('instance-policy-table'))).toHaveLength(10));
+	});
+
 	it('moves to the last page when its rows leave the filter', async () => {
 		const many = Array.from({ length: 26 }, (_, index) =>
 			row(`type${index}`, `Type ${String(index).padStart(2, '0')}`),

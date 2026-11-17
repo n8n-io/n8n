@@ -7,6 +7,7 @@ import {
 	N8nIcon,
 	N8nInput,
 	N8nNodeIcon,
+	N8nPagination,
 	N8nSelect2,
 	N8nText,
 	type DropdownMenuItemProps,
@@ -70,6 +71,8 @@ const search = ref('');
 const accessFilter = ref<AccessFilter>('all');
 const sortBy = ref<TableOptions['sortBy']>([{ id: 'displayName', desc: false }]);
 const page = ref(0);
+const PAGE_SIZES = [10, 25, 50, 100];
+const PAGE_SIZE_ITEMS = PAGE_SIZES.map((size) => ({ value: String(size), label: String(size) }));
 const itemsPerPage = ref(25);
 
 const headers = computed<Array<TableHeader<InstancePolicyTableRow>>>(() => [
@@ -190,6 +193,11 @@ const accessMenuItems = computed<Record<PolicyAction, Array<DropdownMenuItemProp
 	() => ({ allow: menuItems('allow'), deny: menuItems('deny'), delegate: menuItems('delegate') }),
 );
 
+function onPageSizeChange(value: unknown) {
+	const size = Number(value);
+	if (PAGE_SIZES.includes(size)) itemsPerPage.value = size;
+}
+
 function onRowClick(_event: MouseEvent, { item }: { item: InstancePolicyTableRow }) {
 	emit('open', item.name);
 }
@@ -229,15 +237,13 @@ function onAccessChange(row: InstancePolicyTableRow, access: PolicyAction) {
 		</div>
 		<N8nDataTableServer
 			v-model:sort-by="sortBy"
-			v-model:page="page"
-			v-model:items-per-page="itemsPerPage"
 			:headers="headers"
 			:items="pageRows"
 			:items-length="filteredRows.length"
 			:loading="loading"
 			item-value="name"
 			:pin-columns="1"
-			show-sizes-label
+			:pagination="false"
 			data-test-id="instance-policy-table"
 			@click:row="onRowClick"
 		>
@@ -282,10 +288,37 @@ function onAccessChange(row: InstancePolicyTableRow, access: PolicyAction) {
 				</div>
 			</template>
 		</N8nDataTableServer>
+		<div v-if="filteredRows.length > PAGE_SIZES[0]" :class="$style.footer">
+			<N8nPagination
+				:page="page + 1"
+				:items-per-page="itemsPerPage"
+				:total="filteredRows.length"
+				:show-sizes="false"
+				:show-total="false"
+				@update:page="(value: number) => (page = value - 1)"
+			/>
+			<!-- The design joins the label to the select, which the shared pager does not offer. -->
+			<div :class="$style.pageSize">
+				<span :class="$style.pageSizeLabel" aria-hidden="true">
+					{{ i18n.baseText('typeAvailabilityPolicies.instancePolicy.table.pageSize') }}
+				</span>
+				<N8nSelect2
+					:model-value="String(itemsPerPage)"
+					:items="PAGE_SIZE_ITEMS"
+					size="small"
+					:class="$style.pageSizeSelect"
+					:aria-label="i18n.baseText('typeAvailabilityPolicies.instancePolicy.table.pageSize')"
+					data-test-id="instance-policy-page-size"
+					@update:model-value="onPageSizeChange"
+				/>
+			</div>
+		</div>
 	</div>
 </template>
 
 <style lang="scss" module>
+@use '@n8n/design-system/css/mixins/input' as input-mixin;
+
 .table {
 	display: flex;
 	flex-direction: column;
@@ -315,5 +348,37 @@ function onAccessChange(row: InstancePolicyTableRow, access: PolicyAction) {
 	display: flex;
 	align-items: center;
 	gap: var(--spacing--2xs);
+}
+.footer {
+	display: flex;
+	align-items: center;
+	justify-content: flex-end;
+	gap: var(--spacing--xs);
+}
+
+.pageSize {
+	@include input-mixin.size-variables('small');
+
+	display: inline-flex;
+	align-items: stretch;
+}
+
+.pageSizeLabel {
+	display: inline-flex;
+	align-items: center;
+	padding: 0 var(--spacing--2xs);
+	border: 1px solid var(--border-color);
+	border-inline-end: none;
+	border-start-start-radius: var(--input--radius);
+	border-end-start-radius: var(--input--radius);
+	background-color: var(--color--background--light-2);
+	color: var(--color--text--tint-1);
+	font-size: var(--input--font-size);
+	white-space: nowrap;
+}
+
+.pageSize .pageSizeSelect {
+	border-start-start-radius: 0;
+	border-end-start-radius: 0;
 }
 </style>

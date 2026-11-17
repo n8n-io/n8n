@@ -2986,6 +2986,7 @@
 	"typeAvailabilityPolicies.instancePolicy.table.workflows": "Workflows",
 	"typeAvailabilityPolicies.instancePolicy.table.activeWorkflows": "Active workflows",
 	"typeAvailabilityPolicies.instancePolicy.table.noValue": "—",
+	"typeAvailabilityPolicies.instancePolicy.table.pageSize": "Page size",
 	"typeAvailabilityPolicies.instancePolicy.table.access.allow": "Allowed",
 	"typeAvailabilityPolicies.instancePolicy.table.access.deny": "Restricted",
 	"typeAvailabilityPolicies.instancePolicy.table.access.delegate": "Open to project opt-in",

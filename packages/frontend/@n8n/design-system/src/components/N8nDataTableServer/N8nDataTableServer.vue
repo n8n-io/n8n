@@ -86,11 +86,6 @@ const props = withDefaults(
 		 * @default false
 		 */
 		showAll?: boolean;
-		/**
-		 * Passed to `N8nPagination`, which documents its effects.
-		 * @default false
-		 */
-		showSizesLabel?: boolean;
 		rowProps?: { class?: VueClass } | ((row: T, index: number) => { class?: VueClass });
 		/**
 		 * How many leading columns stay in place while the table scrolls horizontally.
@@ -127,7 +122,6 @@ const props = withDefaults(
 		pageSizes: () => [10, 25, 50, 100],
 		pagination: true,
 		showAll: false,
-		showSizesLabel: false,
 		rowProps: undefined,
 		pinColumns: 0,
 		pinEndColumns: 0,
@@ -717,7 +711,6 @@ const table = useVueTable({
 				"
 				:page-sizes="pageSizes"
 				:show-all="showAll"
-				:show-sizes-label="showSizesLabel"
 				:show-total="false"
 				@update:page="page = $event - 1"
 				@update:items-per-page="itemsPerPage = $event"
