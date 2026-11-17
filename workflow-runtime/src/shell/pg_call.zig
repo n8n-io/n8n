@@ -194,7 +194,7 @@ pub const Info = struct {
     /// A column type without a native form, two columns of one name, or
     /// more than `max_columns` columns.
     unsupported: bool = false,
-    /// A date, or an array of dates or timestamps: with `dates: legacy` it has no native form.
+    /// A date, or an array of dates or timestamps, that has no native form with `dates: legacy`.
     has_date: bool = false,
     /// A date or a timestamp, or an array of them: its text depends on the DateStyle of the session.
     has_time: bool = false,
@@ -224,7 +224,7 @@ pub const Desc = struct {
             const col = try cols.next() orelse break;
             const class = pgwire.classOf(col.oid, opt);
             info.unsupported = info.unsupported or class == .unsupported;
-            info.has_date = info.has_date or pgwire.isDateType(col.oid);
+            info.has_date = info.has_date or pgwire.noLegacyForm(col.oid, opt.utc);
             info.has_time = info.has_time or pgwire.isTimeType(col.oid);
             info.has_interval = info.has_interval or pgwire.isIntervalType(col.oid);
             try o.byte(@backingInt(class));
@@ -382,11 +382,14 @@ test "sql call: rows and errors become the result JSON" {
     try d.writeRow(&o, "\x00\x03\x00\x00\x00\x0242\xff\xff\xff\xff\x00\x00\x00\x0290", .{});
     try std.testing.expectEqualStrings("{\"id\":42,\"na\\\"me\":null,\"big\":\"90\"}", obuf[0..o.len]);
     try std.testing.expectError(error.Malformed, d.writeRow(&o, "\x00\x02\x00\x00\x00\x0242\xff\xff\xff\xff", .{}));
-    // Two columns of one name, and a bytea[] column, have no native form.
+    // Two columns of one name have no native form. A bytea[] column has one.
     const twice = "\x00\x02id\x00" ++ head ++ "\x00\x00\x00\x17" ++ tail ++ "id\x00" ++ head ++ "\x00\x00\x00\x17" ++ tail;
     try std.testing.expect((try d.load(twice, .{}, true)).unsupported);
     const bytes = "\x00\x01a\x00" ++ head ++ "\x00\x00\x03\xe9" ++ tail;
-    try std.testing.expect((try d.load(bytes, .{}, true)).unsupported);
+    try std.testing.expect(!(try d.load(bytes, .{}, true)).unsupported);
+    o.len = 0;
+    try d.writeRow(&o, "\x00\x01\x00\x00\x00\x10{\"\\\\x00ff\",NULL}", .{});
+    try std.testing.expectEqualStrings("{\"a\":[{\"type\":\"Buffer\",\"data\":[0,255]},null]}", obuf[0..o.len]);
     // An int4[] column and an interval column have a native form; the call looks at the styles of the session.
     const array = "\x00\x02a\x00" ++ head ++ "\x00\x00\x03\xef" ++ tail ++ "i\x00" ++ head ++ "\x00\x00\x04\xa2" ++ tail;
     const ainfo = try d.load(array, .{}, true);
@@ -394,11 +397,21 @@ test "sql call: rows and errors become the result JSON" {
     o.len = 0;
     try d.writeRow(&o, "\x00\x02\x00\x00\x00\x08{1,NULL}\x00\x00\x00\x051 day", .{});
     try std.testing.expectEqualStrings("{\"a\":[1,null],\"i\":{\"days\":1}}", obuf[0..o.len]);
-    // An array of timestamps depends on the DateStyle and on `dates: legacy`.
+    // An array of timestamps with a zone depends on the DateStyle. It has a form with `dates: legacy`.
     const stamps = "\x00\x01t\x00" ++ head ++ "\x00\x00\x04\xa1" ++ tail;
     const sinfo = try d.load(stamps, .{}, true);
-    try std.testing.expect(!sinfo.unsupported and sinfo.has_time and sinfo.has_date);
-    try std.testing.expect((try d.load(stamps, .{ .legacy_dates = true }, true)).unsupported);
+    try std.testing.expect(!sinfo.unsupported and sinfo.has_time and !sinfo.has_date);
+    try std.testing.expect(!(try d.load(stamps, .{ .legacy_dates = true }, true)).unsupported);
+    // A date with `dates: legacy` is in the zone of the process of v1: a form only when that zone is UTC.
+    const day = "\x00\x01d\x00" ++ head ++ "\x00\x00\x04\x3a" ++ tail;
+    const dinfo = try d.load(day, .{}, true);
+    try std.testing.expect(!dinfo.unsupported and dinfo.has_time and dinfo.has_date);
+    try std.testing.expect((try d.load(day, .{ .legacy_dates = true }, true)).unsupported);
+    const uinfo = try d.load(day, .{ .legacy_dates = true, .utc = true }, true);
+    try std.testing.expect(!uinfo.unsupported and !uinfo.has_date);
+    o.len = 0;
+    try d.writeRow(&o, "\x00\x01\x00\x00\x00\x0a1990-02-03", .{ .legacy_dates = true, .utc = true });
+    try std.testing.expectEqualStrings("{\"d\":\"1990-02-03T00:00:00.000Z\"}", obuf[0..o.len]);
     o.len = 0;
     const err = "SERROR\x00VERROR\x00C23505\x00Mduplicate key\x00Dkey (id)=(1)\x00nt_pkey\x00\x00";
     try writeError(&o, err);

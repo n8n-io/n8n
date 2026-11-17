@@ -38,14 +38,14 @@ stateDiagram-v2
 - **Validate, then run.** All statements of a call are parsed and described before one of them runs. The call
   ends with a marker, and runs in the fallback host, when: the server refuses to prepare a text that pg-promise
   can run (more than one command, a parameter without a type or without a value, a parameter where only a literal
-  can be), a result column has a type without a native form (`bytea[]`, a timestamp without a zone or an array of
-  them unless `--sql-timestamp-zone utc`, a date or an array of dates or timestamps with `dates: legacy`), two
+  can be), a result column has a type without a native form (a timestamp without a zone or an array of
+  them unless `--sql-timestamp-zone utc`, the same for a date or an array of dates with `dates: legacy`), two
   columns have one name, the DateStyle of the session is not ISO and a column has a date or a timestamp, or the
   IntervalStyle of the session is not `postgres` and a column has an interval.
 - **Modes.** `single` with one statement and `independently` run each statement alone. `single` with more than
   one statement and `transaction` send `BEGIN`, all statements in one write, then `COMMIT` or `ROLLBACK`.
 - **A failure after the statement ran.** A result over `--sql-max-result-kb`, or a value without a native form (a
-  timestamp before the year 1000, a text that is not in the form that the server writes), shows only in the rows.
+  timestamp before the year 100, a text that is not in the form that the server writes), shows only in the rows.
   A statement that gives rows and does not start with `SELECT` therefore runs between `BEGIN` and `COMMIT`, so the
   client can roll it back and give the marker. A `SELECT` runs again in the host.
 - **When a marker is allowed.** The call keeps one fact: a statement that can have changed the database is
@@ -132,6 +132,9 @@ The client reads each value as text and writes the JSON that node-postgres (pg-t
 | `json[]`, `jsonb[]` | the JSON values |
 | `date[]` | the texts of the server |
 | `timestamptz[]`, and `timestamp[]` with `--sql-timestamp-zone utc` | as `timestamptz` for each element |
+| `timestamptz`, `timestamp` and their arrays, old values | The years 0100 to 9999 have the ISO text. A value before Christ (`... BC`) and a value with seconds in its zone offset (`+00:53:28`, the local mean time of a named zone) stay the text of the server, because `new Date` gives no date for them. A year below 100 and a year above 9999 give the marker `sql-type`: JavaScript reads "0099" as 1999 and "0031" as no date |
+| `bytea[]` | a `Buffer` object for each element, only in the hex format of `bytea_output` (the default); the escape format gives the marker `sql-type` |
+| With `dates: legacy`: `timestamptz[]`; and `date`, `date[]`, `timestamp[]` with `--sql-timestamp-zone utc` | the JSON of the `Date` of postgres-date 1.0.7: the ISO text (a year outside 0 to 9999 has a sign and six digits); null for `infinity` and for a time outside the range of a JavaScript date. Also before Christ, and with the rule of postgres-date for the years 0 to 99 (February 29 of the year 0 is March 1) |
 | `interval`, `interval[]` | the object of postgres-interval: `years`, `months`, `days`, `hours`, `minutes`, `seconds`, `milliseconds`, without the parts that are 0. Only the `postgres` IntervalStyle |
 | `point`, `point[]` | `{ "x": x, "y": y }` |
 | `circle` | `{ "x": x, "y": y, "radius": r }` |
@@ -173,8 +176,8 @@ gives the marker `sql-credential`: that workflow stays in the fallback host.
 
 - A call in `independently` mode that committed a statement with an effect cannot run again in the host. A later
   statement then fails the step with a plain limit error in three cases: its result makes the call larger than
-  `--sql-max-result-kb`; a value has no native form (a timestamp before the year 1000 or with an offset in
-  seconds, an interval after a `SET intervalstyle` of the same call); or the statement could not be prepared
+  `--sql-max-result-kb`; a value has no native form (a timestamp before the year 100 or after the year 9999, a
+  `bytea[]` in the escape format, an interval after a `SET intervalstyle` of the same call); or the statement could not be prepared
   before the call ran (its table is made by a statement of the call) and a column has a type without a native
   form. The checks that can run before the first statement do run there (Parse, Describe, the styles of the
   session), so only these cases stay. Rejected: one transaction with a savepoint for each statement. It lets the
@@ -192,10 +195,10 @@ gives the marker `sql-credential`: that workflow stays in the fallback host.
   rolled back, but the error is not the one of v1.
 - When the connection closes while a statement runs, the step fails. The v1 node gives an error of the query.
 - TLS verification errors have the text of OpenSSL, not of Node.js.
-- Not built: `bytea[]` columns (node-postgres gives the bytes of the hex text, not of the value); arrays of dates
-  and timestamps with `dates: legacy`; SSH tunnels; CA and client
-  certificates; a retry on a connection that the
-  server closed while idle.
+- Two columns of one name give the marker `sql-type`. node-postgres gives one key, at the place of the first
+  column and with the value of the last.
+- Not built: timestamps in the years below 100 and above 9999 (the marker `sql-type`); SSH tunnels; CA and client
+  certificates; a retry on a connection that the server closed while idle.
 
 ## Cost
 

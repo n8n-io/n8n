@@ -706,9 +706,9 @@ fn fuzzPgwireValue(_: void, smith: *Smith) !void {
     for (obuf[128..]) |b| if (b != 0xEE) return error.PgwireValueOverrun;
     // An array is one JSON array; an interval, a point and a circle are one object.
     const ends: [2]u8 = switch (class) {
-        .array_bool, .array_int, .array_float, .array_text, .array_json, .array_timestamp, .array_interval, .array_point => "[]".*,
+        .array_bool, .array_int, .array_float, .array_text, .array_json, .array_timestamp, .array_interval, .array_point, .array_legacy_date, .array_bytea => "[]".*,
         .interval, .point, .circle => "{}".*,
-        .boolean, .int, .int8, .float, .numeric, .json, .bytea, .timestamp, .text, .unsupported => .{ obuf[0], obuf[o.len - 1] },
+        .boolean, .int, .int8, .float, .numeric, .json, .bytea, .timestamp, .text, .legacy_date, .unsupported => .{ obuf[0], obuf[o.len - 1] },
     };
     if (obuf[0] != ends[0] or obuf[o.len - 1] != ends[1]) return error.PgwireValueShape;
     // A text column is one JSON string: no raw quote or control byte inside.

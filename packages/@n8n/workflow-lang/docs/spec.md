@@ -1820,12 +1820,12 @@ await ctx.sql({
   | `json`, `jsonb` | the JSON value |
   | `bytea` | `{ "type": "Buffer", "data": [byte, ...] }` |
   | `date` | the text of the server |
-  | `timestamptz` | `new Date(text).toISOString()`; a text that is not a date (`infinity`) stays |
+  | `timestamptz` | `new Date(text).toISOString()`; a text that is not a date for JavaScript stays: `infinity`, a value before Christ (`... BC`), a zone offset with seconds (`+00:53:28`) |
   | `timestamp` | as `timestamptz`, only with `--sql-timestamp-zone utc`: v1 reads the text in the zone of its process |
   | `interval` | the object of postgres-interval: `{ years, months, days, hours, minutes, seconds, milliseconds }` without the parts that are 0 (`{}` for an empty interval) |
   | `point` | `{ "x": number, "y": number }`; NaN and the infinities are null |
   | `circle` | `{ "x": number, "y": number, "radius": number }` |
-  | `bool[]`, `int2[]`, `int4[]`, `oid[]`, `float4[]`, `float8[]`, `json[]`, `jsonb[]`, `date[]`, `timestamptz[]`, `timestamp[]`, `interval[]`, `point[]` | an array with the JSON of the element type for each element; an inner array is an inner array; `timestamp[]` only with `--sql-timestamp-zone utc` |
+  | `bool[]`, `int2[]`, `int4[]`, `oid[]`, `float4[]`, `float8[]`, `json[]`, `jsonb[]`, `bytea[]`, `date[]`, `timestamptz[]`, `timestamp[]`, `interval[]`, `point[]` | an array with the JSON of the element type for each element; an inner array is an inner array; `timestamp[]` only with `--sql-timestamp-zone utc` |
   | `int8[]` | an array of texts, with each `largeNumbers` value: v1 changes only a column of type `int8` |
   | `numeric[]` | an array of numbers (`parseFloat`, NaN is null), with each `largeNumbers` value |
   | `text[]`, `varchar[]`, `char[]`, `uuid[]`, `cidr[]`, `inet[]`, `macaddr[]`, `money[]`, `time[]`, `timetz[]`, `numrange[]` | an array of texts |
@@ -1842,7 +1842,7 @@ await ctx.sql({
   | Marker | Cause |
   |---|---|
   | `(limit: sql-max-result)` | the result is larger than `--sql-max-result-kb` |
-  | `(limit: sql-type)` | a column type without an exact native form: `bytea[]`; `date`, `date[]`, `timestamp[]` and `timestamptz[]` with `dates: 'legacy'`; `timestamp` and `timestamp[]` without `--sql-timestamp-zone utc`; or a value without one (a timestamp before the year 1000) |
+  | `(limit: sql-type)` | a column type without an exact native form: `timestamp` and `timestamp[]` without `--sql-timestamp-zone utc`, and the same for `date` and `date[]` with `dates: 'legacy'` (v1 reads them in the zone of its process); or a value without one (a timestamp in a year below 100 or above 9999, a `bytea[]` in the escape format). With `dates: 'legacy'` and a native form, `date`, `date[]`, `timestamp[]` and `timestamptz[]` have the JSON of the `Date` of postgres-date |
   | `(limit: sql-statement)` | the text is not one command with bind values: more than one command, a parameter whose type the server cannot find where a literal has one (`42P18`), a parameter where the command takes none (`42P02`), a syntax error at a `$n` |
   | `(limit: sql-credential)` | the credential uses the SSH tunnel, or a CA or client certificate |
   | `(limit: sql-host)` | thrown by a library node, before it sends a statement, for an input that it cannot send with bind values |
@@ -1856,7 +1856,7 @@ await ctx.sql({
   than `--sql-max-request-kb`.
 
   A result over the limit, and a value without a native form (a timestamp
-  before the year 1000), show only after the statement ran. `wfrt`
+  in a year below 100), show only after the statement ran. `wfrt`
   therefore runs a statement that gives rows and does not start with
   `SELECT` between `BEGIN` and `COMMIT`, and does `ROLLBACK` before it
   gives the marker. A `SELECT` runs again in the host. One case has no

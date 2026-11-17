@@ -184,10 +184,22 @@ test "pg live: arrays, interval, point and circle have the JSON of node-postgres
     ,
         \\{"results":[{"rows":[{"p":{"x":1.5,"y":-2},"pn":{"x":null,"y":null},"pe":{"x":100000000000000000000,"y":1e-7},"c":{"x":1,"y":2,"radius":3},"ci":{"x":100000000000000000000,"y":-1e-7,"radius":null},"pa":[{"x":1,"y":2},null],"np":null,"ca":"{\"<(1,2),3>\"}","fz":[0,1e+300],"o":[26]}],"command":"SELECT","rowCount":1}]}
     );
-    // The types that stay without a native form.
-    try h.expectError("db", "\"statements\":[{\"text\":\"select array['\\\\\\\\x00ff'::bytea] as b\"}]", "(limit: sql-type)");
+    // bytea[], and timestamps that JavaScript reads in another way or not at all (checked with pg-promise 11.9.1).
+    try h.expectPart("db", "\"statements\":[{\"text\":\"select array[decode('00ff', 'hex'), null, ''::bytea] as b, array[array[decode('01', 'hex')]] as n\"}]", "{\"b\":[{\"type\":\"Buffer\",\"data\":[0,255]},null,{\"type\":\"Buffer\",\"data\":[]}],\"n\":[[{\"type\":\"Buffer\",\"data\":[1]}]]}");
+    try h.expectPart("db", "\"statements\":[{\"text\":\"select '0500-06-01 00:00:00.5+00'::timestamptz as a, '0044-03-15 12:00:00+00 BC'::timestamptz as b, array['0999-12-31 23:59:59+00'::timestamptz] as c\"}]", "{\"a\":\"0500-06-01T00:00:00.500Z\",\"b\":\"0044-03-15 12:00:00+00 BC\",\"c\":[\"0999-12-31T23:59:59.000Z\"]}");
+    // `dates: legacy`: an array of timestamps with a zone has the dates of postgres-date.
+    try h.expectPart("db", "\"dates\":\"legacy\",\"statements\":[{\"text\":\"select array['2024-01-02 03:04:05.57+00'::timestamptz, '0001-02-28 23:00:00+00 BC', null, 'infinity'] as t\"}]", "{\"t\":[\"2024-01-02T03:04:05.570Z\",\"0000-02-28T23:00:00.000Z\",null,null]}");
+    // The types that stay without a native form: the zone of the process of v1 is not known.
     try h.expectError("db", "\"statements\":[{\"text\":\"select array[now()::timestamp] as t\"}]", "(limit: sql-type)");
-    try h.expectError("db", "\"dates\":\"legacy\",\"statements\":[{\"text\":\"select array[now()] as t\"}]", "(limit: sql-type)");
+    try h.expectError("db", "\"dates\":\"legacy\",\"statements\":[{\"text\":\"select array[current_date] as t\"}]", "(limit: sql-type)");
+    // With `--sql-timestamp-zone utc`, a date and the arrays of dates and timestamps have a form with `dates: legacy`.
+    const utc = try Harness.create(t, .{ .utc = true });
+    defer utc.destroy();
+    try utc.expectPart("db",
+        \\"dates":"legacy","statements":[{"text":"select '1990-02-03'::date as d, array['2024-01-02'::date, 'infinity', '0044-03-15 BC', null] as ds, array['2024-01-02 03:04:05.57'::timestamp, '0001-02-29 10:00:00 BC'] as ts"}]
+    ,
+        \\{"d":"1990-02-03T00:00:00.000Z","ds":["2024-01-02T00:00:00.000Z",null,"-000043-03-15T00:00:00.000Z",null],"ts":["2024-01-02T03:04:05.570Z","0000-03-01T10:00:00.000Z"]}
+    );
     // An interval in another style of the session has no native form; the marker comes before the statement runs.
     try h.expectPart("db", "\"statements\":[{\"text\":\"set intervalstyle = 'iso_8601'\"}]", "\"command\":\"SET\"");
     try h.expectError("db", "\"statements\":[{\"text\":\"select '1 day'::interval as i\"}]", "(limit: sql-type)");
@@ -264,7 +276,7 @@ test "pg live: a call without an exact native form ends with a marker and commit
     defer h.destroy();
     try h.expectPart("db", reset, "\"command\":\"TRUNCATE\"");
     try h.expectError("db", "\"statements\":[{\"text\":\"insert into wfrt_pg_t values (1, 'a'); select 1\"}]", "(limit: sql-statement)");
-    try h.expectError("db", "\"statements\":[{\"text\":\"insert into wfrt_pg_t values (1, 'a') returning array[v::bytea]\"}]", "(limit: sql-type)");
+    try h.expectError("db", "\"statements\":[{\"text\":\"insert into wfrt_pg_t values (1, 'a') returning array[now()::timestamp]\"}]", "(limit: sql-type)");
     // The v1 node writes the value into the text; as a bind these have no form.
     try h.expectError("db", "\"statements\":[{\"text\":\"select $1 is null as a\",\"values\":[null]},{\"text\":\"insert into wfrt_pg_t values (1, 'a')\"}]", "(limit: sql-statement)");
     try h.expectError("db", "\"statements\":[{\"text\":\"select * from wfrt_pg_t order by id limit 1 offset $2\",\"values\":[1]}]", "(limit: sql-statement)");
@@ -380,7 +392,7 @@ test "pg live: a simple statement gives what the same text gives as one simple q
     try h.expectPart("db", "\"statements\":[{\"text\":\"copy wfrt_pg_t from stdin\",\"simple\":true}]", "\"code\":\"57014\",\"message\":\"COPY from stdin failed: No source stream defined\"");
     // A limit or a type without a native form shows after commands ran: the text is rolled back.
     try h.expectError("db", "\"statements\":[{\"text\":\"delete from wfrt_pg_t; select repeat('x', 5000) as big\",\"simple\":true}]", "(limit: sql-max-result)");
-    try h.expectError("db", "\"statements\":[{\"text\":\"delete from wfrt_pg_t returning array[v::bytea] as b\",\"simple\":true}]", "(limit: sql-type)");
+    try h.expectError("db", "\"statements\":[{\"text\":\"delete from wfrt_pg_t returning array[now()::timestamp] as b\",\"simple\":true}]", "(limit: sql-type)");
     try h.expectError("db", "\"statements\":[{\"text\":\"delete from wfrt_pg_t returning id as a, id as a\",\"simple\":true}]", "(limit: sql-type)");
     try h.expectError("db", "\"statements\":[{\"text\":\"select 1 as a; select repeat('x', 5000) as big\",\"simple\":true}]", "(limit: sql-max-result)");
     try h.expectResult(count, n1);
@@ -429,7 +441,7 @@ const script = [_]fake.Rule{
     .{ .text = "insert into t values ($1)", .tag = "INSERT 0 1" },
     .{ .text = "insert into t values ($1) -- twice", .run_fail = .{ .code = "23505", .message = "duplicate key value" } },
     .{ .text = "insert into t values (1); select 1", .parse_fail = .{ .code = "42601", .message = "cannot insert multiple commands into a prepared statement" } },
-    .{ .text = "insert into t values (1) returning b", .cols = &.{.{ .name = "b", .oid = 1001 }}, .rows = &.{&.{"{}"}}, .tag = "INSERT 0 1" },
+    .{ .text = "insert into t values (1) returning b", .cols = &.{.{ .name = "b", .oid = 1114 }}, .rows = &.{&.{"{}"}}, .tag = "INSERT 0 1" },
     .{ .text = "insert into t values (1) returning big", .cols = &.{.{ .name = "big", .oid = text_oid }}, .rows = &.{&.{&hundred}}, .repeat = 50, .tag = "INSERT 0 50" },
     .{ .text = "select big", .cols = &.{.{ .name = "big", .oid = text_oid }}, .rows = &.{&.{&hundred}}, .repeat = 50, .tag = "SELECT 50" },
     .{ .text = "select one_big_row", .cols = &.{.{ .name = "big", .oid = text_oid }}, .rows = &.{&.{&nine_k}}, .tag = "SELECT 1" },
@@ -758,8 +770,8 @@ test "pg fake: arrays, interval, point and circle columns, and the styles of the
         \\{"results":[{"rows":[{"a":[1,null,[2]],"t":["a","b c",null],"i":{"days":1,"hours":2},"p":{"x":1.5,"y":-2},"c":{"x":1,"y":2,"radius":3},"n":[1.5,null]},{"a":null,"t":null,"i":null,"p":null,"c":null,"n":null}],"command":"SELECT","rowCount":2}]}
     );
     try h.expectResult("\"statements\":[{\"text\":\"select stamps\"}]", "{\"results\":[{\"rows\":[{\"s\":[\"2024-01-02T03:04:05.000Z\"]}],\"command\":\"SELECT\",\"rowCount\":1}]}");
-    // With `dates: legacy` the v1 node gives Date objects for the elements: no native form.
-    try h.expectError("\"dates\":\"legacy\",\"statements\":[{\"text\":\"select stamps\"}]", "(limit: sql-type)");
+    // With `dates: legacy` the v1 node gives Date objects for the elements: the same JSON here.
+    try h.expectResult("\"dates\":\"legacy\",\"statements\":[{\"text\":\"select stamps\"}]", "{\"results\":[{\"rows\":[{\"s\":[\"2024-01-02T03:04:05.000Z\"]}],\"command\":\"SELECT\",\"rowCount\":1}]}");
     _ = try h.takeLog();
     // An interval text in another style shows only in the row: the insert is rolled back.
     try h.expectError("\"statements\":[{\"text\":\"insert into t values (1) returning i\"}]", "(limit: sql-type)");
@@ -874,7 +886,7 @@ const simple_rules = [_]fake.Rule{
     .{ .text = "insert into t values (1)", .tag = "INSERT 0 1" },
     .{ .text = "insert into t values ($1)", .tag = "INSERT 0 1" },
     .{ .text = "insert into t values (2)", .run_fail = .{ .code = "23505", .message = "duplicate key value" } },
-    .{ .text = "insert into t values (1) returning b", .cols = &.{.{ .name = "b", .oid = 1001 }}, .rows = &.{&.{"{}"}}, .tag = "INSERT 0 1" },
+    .{ .text = "insert into t values (1) returning b", .cols = &.{.{ .name = "b", .oid = 1114 }}, .rows = &.{&.{"{}"}}, .tag = "INSERT 0 1" },
     .{ .text = "insert into d values (1)", .tag = "INSERT 0 1", .commit_fail = deferred_fail },
     .{ .text = "select x into t2 from t", .tag = "SELECT 3" },
     .{ .text = "vacuum t", .tag = "VACUUM", .no_block = true },
