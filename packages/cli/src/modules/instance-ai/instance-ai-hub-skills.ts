@@ -112,6 +112,12 @@ function createDeferredHubSource(
 								: 'Hub skill labels include their scope. Paths under .n8n/skills/hub are virtual skill identifiers, not workspace files. Load by exact skillId. Read references with load_skill and a relative filePath from linkedFiles. If multiple available skills match the request and the intended skill is unclear, ask which skill to use.',
 					}
 				: undefined,
+		// Hub skills can change or be revoked while a thread is open. Skip the check
+		// when the Hub list failed: the catalog notice covers that case.
+		shouldAppendSkillUpdates: (id) =>
+			summaries !== null &&
+			id.startsWith(HUB_SKILL_ID_PREFIX) &&
+			!builtIns.registry.skills.some((entry) => entry.id === id),
 		loadSkill: async (id) => (hubSkills.has(id) ? await load(id) : await builtIns.loadSkill(id)),
 		loadFile: async (id, path, onError) => {
 			const selected = hubSkills.get(id);

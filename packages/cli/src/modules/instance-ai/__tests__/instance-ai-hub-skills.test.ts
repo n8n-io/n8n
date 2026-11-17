@@ -92,6 +92,22 @@ describe('Assistant Hub runtime skills', () => {
 	});
 
 	it.each([
+		{ flag: 'on', expected: true },
+		{ flag: 'off', expected: true },
+		{ flag: 'unavailable', expected: false },
+	])('checks loaded Hub skills for updates when the flag is $flag', async ({ flag, expected }) => {
+		const builtIns = createRuntimeSkillSource([builtIn]);
+		const provider = providerFor([content()]);
+		if (flag === 'unavailable') provider.isEnabled.mockRejectedValue(new Error('Unavailable'));
+		if (flag === 'off') provider.isEnabled.mockResolvedValue(false);
+		const { source } = await load(provider, builtIns);
+
+		// A failed Hub list must not report every loaded Hub skill as removed.
+		expect(source.shouldAppendSkillUpdates?.('hub-previously-loaded')).toBe(expected);
+		expect(source.shouldAppendSkillUpdates?.(builtIn.id)).toBe(false);
+	});
+
+	it.each([
 		{ label: 'empty', contents: [] },
 		{ label: 'invalid', contents: [content({ name: '' })] },
 	])(

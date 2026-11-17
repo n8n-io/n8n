@@ -192,6 +192,12 @@ export interface RuntimeSkillSource {
 		notice?: string;
 	};
 	/**
+	 * Skills whose content can change or be revoked while a thread is open, for
+	 * example Hub skills. At each model call, the runtime tells the model when a
+	 * loaded skill of this kind has a new hash or is no longer in the catalog.
+	 */
+	shouldAppendSkillUpdates?: (skillId: string) => boolean;
+	/**
 	 * Lazy setup that runs before a skill is loaded, not when the agent is built.
 	 * It must not change catalog fields (id, name, description, category,
 	 * recommendedToolGroups), because the catalog is rendered before it runs.
