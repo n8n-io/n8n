@@ -36,6 +36,8 @@ import { isNodeEventMessage, type EventMessageTypes } from '../eventbus/event-me
 /**
  * Service for recovering key properties in executions.
  */
+export type AutodeactivationOutcome = 'deactivated' | 'inactive' | 'missing' | 'failed';
+
 @Service()
 export class ExecutionRecoveryService {
 	constructor(
@@ -70,68 +72,72 @@ export class ExecutionRecoveryService {
 				lastExecutions.length >= maxLastExecutions &&
 				lastExecutions.length === numberOfCrashedExecutions
 			) {
-				const workflowExists = await this.autoDeactivateWorkflow(workflowId);
-				if (!workflowExists) continue;
+				const outcome = await this.autoDeactivateWorkflow(workflowId);
+				if (outcome === 'missing') continue;
 
 				await this.executionCrashService.markWorkflowExecutionsAsCrashed(workflowId);
 			}
 		}
 	}
 
-	/** Returns `false` when the workflow does not exist. */
 	async autoDeactivateWorkflow(
 		workflowId: string,
 		reason: Exclude<AutodeactivationReason, 'memory-pressure'> = 'crashes',
-	): Promise<boolean> {
+	): Promise<AutodeactivationOutcome> {
 		// Get workflow to preserve existing meta
 		const workflow = await this.workflowRepository.findOne({ where: { id: workflowId } });
 
 		if (!workflow) {
 			this.logger.warn(`Workflow ${workflowId} not found, skipping workflow auto-deactivation`);
-			return false;
+			return 'missing';
 		}
 
-		if (workflow.activeVersionId !== null) {
-			try {
-				// Lazy resolution breaks the DI cycle: WorkflowService →
-				// ActiveWorkflowManager → MessageEventBus → this service
-				const { WorkflowService } = await import('@/workflows/workflow.service.js');
-				await Container.get(WorkflowService).deactivateWorkflowAsSystem(
-					workflowId,
-					'crash-recovery',
-				);
-				const cause =
-					reason === 'crashes'
-						? 'too many crashed executions'
-						: 'repeated crashes of n8n while it was running';
-				this.logger.warn(`Autodeactivated workflow ${workflowId} due to ${cause}.`);
+		if (workflow.activeVersionId === null) return 'inactive';
 
-				const recipient = await this.getAutodeactivationRecipient(workflow);
-				await this.userManagementMailer.notifyWorkflowAutodeactivated({
-					recipient,
-					workflow,
-					reason,
-				});
+		try {
+			// Lazy resolution breaks the DI cycle: WorkflowService →
+			// ActiveWorkflowManager → MessageEventBus → this service
+			const { WorkflowService } = await import('@/workflows/workflow.service.js');
+			await Container.get(WorkflowService).deactivateWorkflowAsSystem(workflowId, 'crash-recovery');
+		} catch (error) {
+			// A throw here would abort startup recovery for the remaining
+			// workflows and leave the event bus's recovery-in-progress marker
+			// behind, making every future startup skip recovery entirely.
+			this.logger.error(`Failed to auto-deactivate workflow ${workflowId}`, {
+				workflowId,
+				error: ensureError(error),
+			});
+			return 'failed';
+		}
+		const cause =
+			reason === 'crashes'
+				? 'too many crashed executions'
+				: 'repeated crashes of n8n while it was running';
+		this.logger.warn(`Autodeactivated workflow ${workflowId} due to ${cause}.`);
 
-				this.push.once('editorUiConnected', async () => {
-					await sleep(1000);
-					await this.workflowPushNotifier.notify(workflowId, {
-						type: 'workflowAutoDeactivated',
-						data: { workflowId },
-					});
+		try {
+			const recipient = await this.getAutodeactivationRecipient(workflow);
+			await this.userManagementMailer.notifyWorkflowAutodeactivated({
+				recipient,
+				workflow,
+				reason,
+			});
+
+			this.push.once('editorUiConnected', async () => {
+				await sleep(1000);
+				await this.workflowPushNotifier.notify(workflowId, {
+					type: 'workflowAutoDeactivated',
+					data: { workflowId },
 				});
-			} catch (error) {
-				// A throw here would abort startup recovery for the remaining
-				// workflows and leave the event bus's recovery-in-progress marker
-				// behind, making every future startup skip recovery entirely.
-				this.logger.error(`Failed to auto-deactivate workflow ${workflowId}`, {
-					workflowId,
-					error: ensureError(error),
-				});
-			}
+			});
+		} catch (error) {
+			this.logger.error(`Failed to notify about the auto-deactivation of workflow ${workflowId}`, {
+				workflowId,
+				error: ensureError(error),
+			});
 		}
 
-		return true;
+		return 'deactivated';
 	}
 
 	/**

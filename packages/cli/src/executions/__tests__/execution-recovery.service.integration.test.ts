@@ -721,7 +721,7 @@ describe('ExecutionRecoveryService', () => {
 				/**
 				 * Act
 				 */
-				const workflowExists = await executionRecoveryService.autoDeactivateWorkflow(
+				const outcome = await executionRecoveryService.autoDeactivateWorkflow(
 					workflow.id,
 					'process-crashes',
 				);
@@ -729,7 +729,7 @@ describe('ExecutionRecoveryService', () => {
 				/**
 				 * Assert
 				 */
-				expect(workflowExists).toBe(true);
+				expect(outcome).toBe('deactivated');
 				const updatedWorkflow = await getWorkflowById(workflow.id);
 				expect(updatedWorkflow?.activeVersionId).toBeNull();
 				expect(userManagementMailer.notifyWorkflowAutodeactivated).toHaveBeenCalledWith(
@@ -738,9 +738,9 @@ describe('ExecutionRecoveryService', () => {
 			});
 
 			test('should report a missing workflow on request', async () => {
-				const workflowExists = await executionRecoveryService.autoDeactivateWorkflow('missing');
+				const outcome = await executionRecoveryService.autoDeactivateWorkflow('missing');
 
-				expect(workflowExists).toBe(false);
+				expect(outcome).toBe('missing');
 			});
 
 			test('should deactivate workflow if the last crashed executions were not saved', async () => {

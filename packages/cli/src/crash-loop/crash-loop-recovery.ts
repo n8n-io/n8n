@@ -42,10 +42,11 @@ export class CrashLoopRecovery {
 		this.logger.warn('Deactivating workflow that was alone in flight at the last crashes', {
 			...suspect,
 		});
-		await this.executionRecoveryService.autoDeactivateWorkflow(
+		const outcome = await this.executionRecoveryService.autoDeactivateWorkflow(
 			suspect.workflowId,
 			'process-crashes',
 		);
-		this.journal.clearWorkflow(suspect.workflowId);
+		// A failed deactivation keeps the streak, so the next crash retries at once.
+		if (outcome !== 'failed') this.journal.clearWorkflow(suspect.workflowId);
 	}
 }

@@ -2,7 +2,7 @@ import { Logger } from '@n8n/backend-common';
 import { Service } from '@n8n/di';
 import { ensureError } from '@n8n/utils/errors/ensure-error';
 import { isRecord } from '@n8n/utils/is-record';
-import { readFileSync, renameSync, writeFileSync } from 'node:fs';
+import { readFileSync, renameSync, rmSync, writeFileSync } from 'node:fs';
 
 import { journalFile } from '@/crash-journal';
 import { isWorkflowNodeTaskPayload } from '@/scheduling/workflow-node-task-payload';
@@ -135,9 +135,19 @@ export class WorkflowCrashJournal {
 			writeFileSync(`${this.file}.tmp`, JSON.stringify(state));
 			renameSync(`${this.file}.tmp`, this.file);
 		} catch (error) {
-			this.logger.debug('Failed to write the workflow crash journal', {
-				error: ensureError(error),
-			});
+			// A stale file would blame a workflow for the wrong crash, so the next session starts from nothing.
+			let cleared = true;
+			try {
+				rmSync(this.file, { force: true });
+			} catch {
+				cleared = false;
+			}
+			this.logger.warn(
+				cleared
+					? 'Failed to write the workflow crash journal, cleared it'
+					: 'Failed to write and to clear the workflow crash journal',
+				{ error: ensureError(error) },
+			);
 		}
 	}
 }

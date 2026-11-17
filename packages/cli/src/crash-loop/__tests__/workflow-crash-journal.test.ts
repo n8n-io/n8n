@@ -1,11 +1,26 @@
 import { mockLogger } from '@n8n/backend-test-utils';
-import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
 import { CRASH_WINDOW_MS, WorkflowCrashJournal } from '../workflow-crash-journal';
 
-const crashJournal = vi.hoisted(() => ({ file: '' }));
+const crashJournal = vi.hoisted(() => ({ file: '', failWrites: false, failRemoves: false }));
+
+vi.mock('node:fs', async (importOriginal) => {
+	const fs = await importOriginal<typeof import('node:fs')>();
+	return {
+		...fs,
+		writeFileSync: (...args: Parameters<typeof fs.writeFileSync>) => {
+			if (crashJournal.failWrites) throw new Error('ENOSPC');
+			fs.writeFileSync(...args);
+		},
+		rmSync: (...args: Parameters<typeof fs.rmSync>) => {
+			if (crashJournal.failRemoves) throw new Error('EROFS');
+			fs.rmSync(...args);
+		},
+	};
+});
 
 vi.mock('@/crash-journal', () => ({
 	get journalFile() {
@@ -39,9 +54,13 @@ describe('WorkflowCrashJournal', () => {
 	beforeEach(() => {
 		dir = mkdtempSync(join(tmpdir(), 'workflow-crash-journal-'));
 		crashJournal.file = join(dir, 'crash.journal');
+		crashJournal.failWrites = false;
+		crashJournal.failRemoves = false;
 	});
 
 	afterEach(() => {
+		crashJournal.failWrites = false;
+		crashJournal.failRemoves = false;
 		rmSync(dir, { recursive: true, force: true });
 	});
 
@@ -169,6 +188,36 @@ describe('WorkflowCrashJournal', () => {
 			newSession().startSession(true, t0);
 
 			expect(newSession().startSession(true, t0 + HOUR)).toBeUndefined();
+		});
+
+		it('clears the file when a write fails, so the next session blames no workflow', () => {
+			crashWith(attempt('1', 'wf-a'));
+			newSession().startSession(true, t0);
+			const journal = newSession();
+			journal.startSession(false, t0 + HOUR);
+			const settle = journal.recordStart(attempt('2', 'wf-a'));
+			crashJournal.failWrites = true;
+			settle();
+
+			expect(existsSync(journalPath())).toBe(false);
+			crashJournal.failWrites = false;
+			expect(newSession().startSession(true, t0 + 2 * HOUR)).toBeUndefined();
+		});
+
+		it('does not throw when the write and the cleanup both fail', () => {
+			const logger = mockLogger();
+			const journal = new WorkflowCrashJournal(logger);
+			journal.startSession(false, t0);
+			const settle = journal.recordStart(attempt('1', 'wf-a'));
+			crashJournal.failWrites = true;
+			crashJournal.failRemoves = true;
+
+			expect(() => settle()).not.toThrow();
+
+			expect(logger.warn).toHaveBeenCalledWith(
+				'Failed to write and to clear the workflow crash journal',
+				expect.objectContaining({ error: expect.any(Error) }),
+			);
 		});
 
 		it('starts over from a corrupt file', () => {

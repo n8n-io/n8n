@@ -23,6 +23,7 @@ describe('CrashLoopRecovery', () => {
 		const journal = mock<WorkflowCrashJournal>();
 		journal.startSession.mockReturnValue(suspect);
 		const executionRecoveryService = mock<ExecutionRecoveryService>();
+		executionRecoveryService.autoDeactivateWorkflow.mockResolvedValue('deactivated');
 		const logger = mockLogger();
 		const recovery = new CrashLoopRecovery(
 			logger,
@@ -55,6 +56,17 @@ describe('CrashLoopRecovery', () => {
 			'process-crashes',
 		);
 		expect(journal.clearWorkflow).toHaveBeenCalledExactlyOnceWith('wf-a');
+	});
+
+	it('keeps the streak when the deactivation fails', async () => {
+		const { recovery, journal, executionRecoveryService } = setup({
+			suspect: { workflowId: 'wf-a', crashes: 3 },
+		});
+		executionRecoveryService.autoDeactivateWorkflow.mockResolvedValue('failed');
+
+		await recovery.recover();
+
+		expect(journal.clearWorkflow).not.toHaveBeenCalled();
 	});
 
 	it('does not deactivate a suspect below the crash threshold', async () => {
