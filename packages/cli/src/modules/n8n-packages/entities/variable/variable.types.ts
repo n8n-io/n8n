@@ -36,6 +36,11 @@ export interface VariableImportRequest {
 	requirements: PlacedVariableRequirement[] | undefined;
 	missingMode: VariableMissingMode;
 	conflictPolicy: VariableConflictPolicy;
+	/**
+	 * Promotion-only. Names that only another project of the package holds. When the project of
+	 * the import does not resolve such a name, it is not missing and nothing is created.
+	 */
+	referenceOnlyNames?: ReadonlySet<string>;
 }
 
 export interface VariableResolutionFailure {

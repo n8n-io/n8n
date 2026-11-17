@@ -86,6 +86,8 @@ export class VariableImporter {
 				}
 				continue;
 			}
+			// A variable of another project: the reference is already broken on the source.
+			if (request.referenceOnlyNames?.has(requirement.name)) continue;
 			missing.push({ name: requirement.name });
 			if (createsMissing) {
 				const value = usesPackageValue ? requirement.packageValue : undefined;

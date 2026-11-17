@@ -440,6 +440,12 @@ export type PromotionLayoutProperties = {
 	 * A workflow of another project of the package still references them.
 	 */
 	retainedWorkflowIds?: string[];
+	/**
+	 * `reference-only`: a data table or a project variable that another project of the package
+	 * owns is not created, not changed and not required for a workflow of this project. The
+	 * reference stays as it is. Omitted: the import treats each reference as before.
+	 */
+	crossProjectResourcePolicy?: 'reference-only';
 };
 
 /* eslint-disable @typescript-eslint/naming-convention */
@@ -522,6 +528,12 @@ export interface ImportCredentialDependencies {
 	 * and the other projects of the import that use it get use access.
 	 */
 	placeholderCredentialIds?: string[];
+	/**
+	 * The project that creates each placeholder, by source id, when the caller already decided
+	 * it. The import then does not use its own order of the projects. The project still needs
+	 * the right to create a credential.
+	 */
+	placeholderHomes?: Record<string, string>;
 	/**
 	 * Source ids whose reference the import writes unchanged when the consumer project cannot
 	 * use the credential. Without an entry here, such a reference blocks the import.

@@ -230,6 +230,8 @@ export interface CredentialApplyResult extends CredentialBindResult {
  */
 export interface CredentialDependencyRequest {
 	placeholderIds: ReadonlySet<string>;
+	/** The project that creates each placeholder, when the caller decided it. */
+	placeholderHomes?: ReadonlyMap<string, string>;
 	allowedUnresolvedIds: ReadonlySet<string>;
 	/** Credentials with a confirmed grant for the project of this scope. */
 	grantIds: ReadonlySet<string>;
