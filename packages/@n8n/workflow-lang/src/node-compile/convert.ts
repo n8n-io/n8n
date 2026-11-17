@@ -12,6 +12,7 @@ import type {
 	RandomShape,
 	UnitOrigin,
 } from './specialise.ts';
+import { hasExecuteMethod, isRoutedDescription, routedEntry } from './routing.ts';
 import { hasExpression, specialiseNode } from './specialise.ts';
 import type { FieldCheck, ParameterValidation } from './validate.ts';
 import { VERIFIED } from './verified.generated.ts';
@@ -288,7 +289,12 @@ export function nodeDescriptionOf(value: unknown): NodeDescription | undefined {
 	const name: unknown = Reflect.get(value, 'name');
 	const properties: unknown = Reflect.get(value, 'properties');
 	if (typeof name !== 'string' || !Array.isArray(properties)) return undefined;
-	return { name, properties };
+	const description: NodeDescription = { name, properties };
+	for (const key of ['requestDefaults', 'requestOperations', 'credentials']) {
+		const member: unknown = Reflect.get(value, key);
+		if (member !== undefined) Reflect.set(description, key, member);
+	}
+	return description;
 }
 
 function hashOf(text: string): string {
@@ -540,11 +546,24 @@ export function compileNodeInstance(
 	} catch (error) {
 		return { errors: [error instanceof Error ? error.message : String(error)] };
 	}
+	const entryText = sources.readFile(entry);
+	const routed =
+		isRoutedDescription(description) && entryText !== undefined && !hasExecuteMethod(entryText)
+			? routedEntry({
+					description,
+					parameters,
+					version: node.version,
+					entry,
+					readFile: sources.readFile,
+					hasCredential: (type) => Object.hasOwn(credentials, type),
+				})
+			: undefined;
+	if (routed !== undefined && 'errors' in routed) return routed;
 	const input = {
 		type: node.type,
 		version: node.version,
-		entry,
-		readFile: sources.readFile,
+		entry: routed?.entry ?? entry,
+		readFile: routed?.readFile ?? sources.readFile,
 		parameters,
 		aliases: sources.aliases,
 		parameterKind: (name: string) => parameterKindOf(description, name),
@@ -564,7 +583,7 @@ export function compileNodeInstance(
 	};
 	const result = specialiseNode(input);
 	if (result.source === undefined || result.retyped === undefined)
-		return { errors: result.errors, origins: result.origins };
+		return { errors: [...(routed?.refusals ?? []), ...result.errors], origins: result.origins };
 
 	const evaluated = result.evaluated ?? [];
 	const isEvaluated = (path: string) => evaluated.some((entry) => entry.path === path);
