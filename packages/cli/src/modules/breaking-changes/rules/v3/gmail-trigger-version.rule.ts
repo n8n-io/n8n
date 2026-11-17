@@ -38,7 +38,7 @@ export class GmailTriggerVersionRule implements IBreakingChangeWorkflowRule {
 			{
 				action: 'Replace the node with Gmail Trigger 1.4',
 				description:
-					"Add a new Gmail Trigger node with the same name and connections. If the version 1.4 behavior works for this workflow, set the finding to Won't fix instead.",
+					"Add a new Gmail Trigger node with the same name, connections, credential and settings. If the version 1.4 behavior works for this workflow, set the finding to Won't fix instead.",
 			},
 			{
 				action: 'Raise "Max Emails per Poll"',
