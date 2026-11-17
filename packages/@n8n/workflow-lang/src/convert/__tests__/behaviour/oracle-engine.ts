@@ -277,6 +277,10 @@ export interface OracleResult {
 	responses: unknown[];
 	/** True when the run stopped at a node that waits for a resume (Wait, Form, send and wait). */
 	waiting?: boolean;
+	/** The custom data of the execution (`resultData.metadata`), when a node saved some. */
+	customData?: Record<string, string>;
+	/** The metadata of the runs of each node that has some (the Time Saved node). */
+	nodeMetadata?: Record<string, unknown[]>;
 }
 
 interface RunData {
@@ -286,8 +290,12 @@ interface RunData {
 		resultData: {
 			runData: Record<
 				string,
-				Array<{ data?: { main: Array<Array<{ json: unknown; binary?: object | null }> | null> } }>
+				Array<{
+					data?: { main: Array<Array<{ json: unknown; binary?: object | null }> | null> };
+					metadata?: unknown;
+				}>
 			>;
+			metadata?: Record<string, string>;
 			error?: { message: string };
 			lastNodeExecuted?: string;
 		};
@@ -453,11 +461,18 @@ export async function runOracle(
 		}
 		nodes[name] = Array.from({ length: outputs.length }, (_, k) => outputs[k] ?? []);
 	}
+	const nodeMetadata: Record<string, unknown[]> = {};
+	for (const [name, runs] of Object.entries(run.data.resultData.runData)) {
+		const found = runs.map((r) => r.metadata).filter((m) => m !== undefined);
+		if (found.length > 0) nodeMetadata[name] = found;
+	}
 	return {
 		error: run.data.resultData.error?.message ?? null,
 		order,
 		nodes,
 		responses,
+		...(run.data.resultData.metadata ? { customData: run.data.resultData.metadata } : {}),
+		...(Object.keys(nodeMetadata).length > 0 ? { nodeMetadata } : {}),
 		waiting:
 			run.status === 'waiting' || (run.data.waitTill !== undefined && run.data.waitTill !== null),
 	};

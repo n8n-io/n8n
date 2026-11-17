@@ -201,6 +201,9 @@ export class CompiledRunRecorder {
 
 	waitingNode: string | undefined;
 
+	/** The minutes that a Time Saved node saved in its run that is open. At most the nodes of the workflow. */
+	private readonly timeSaved = new Map<string, number>();
+
 	constructor(workflow: { nodes: INode[]; connections: IConnections }) {
 		this.parents = parentsOf(workflow.connections);
 		this.nodesByName = new Map(workflow.nodes.map((node) => [node.name, node]));
@@ -227,6 +230,46 @@ export class CompiledRunRecorder {
 	private nodeOf(step: string): string {
 		if (this.nodesByName.has(step) || !step.endsWith(HOST_STEP_SUFFIX)) return step;
 		return step.slice(0, -HOST_STEP_SUFFIX.length);
+	}
+
+	/**
+	 * The node of a helper step. The converter names the other steps of a node
+	 * `<node> (<role>)`, for example the wait between two tries (`retry`) and the calls
+	 * that read the size of a deduplication history. v1 has one run for the node, so a
+	 * helper step has no run of its own. The converter gives no helper step the name of
+	 * a node of the workflow.
+	 */
+	private helperOf(step: string): string | undefined {
+		if (this.nodesByName.has(step) || !step.endsWith(')')) return undefined;
+		for (let at = step.lastIndexOf(' ('); at > 0; at = step.lastIndexOf(' (', at - 1)) {
+			const node = step.slice(0, at);
+			if (this.nodesByName.has(node)) return node;
+		}
+		return undefined;
+	}
+
+	/**
+	 * Records the minutes that the node of a step saved (the Time Saved node). v1 keeps them
+	 * in the metadata of the run of the node (`setMetadata`). False for a step with no node.
+	 */
+	setTimeSaved(step: string, minutes: number): boolean {
+		const node = this.helperOf(step) ?? this.nodeOf(step);
+		if (!this.nodesByName.has(node)) return false;
+		this.timeSaved.set(node, minutes);
+		return true;
+	}
+
+	/** A helper step that failed is the failure of its node. Its other events add nothing. */
+	private onHelperStep(node: string, event: WfrtStepEvent): NodeUpdate[] {
+		const updates: NodeUpdate[] = [];
+		if (event.status !== 'failed') return updates;
+		this.flushTrigger(updates, node);
+		this.closeOthers(node, event.at, updates);
+		const run = this.ensureOpen(node, event.at, updates);
+		run.endTime = event.at;
+		run.error = event.error ?? 'The step failed';
+		this.failedNode = { nodeName: node, message: run.error };
+		return updates;
 	}
 
 	/** The run data of the runs that have ended. */
@@ -258,7 +301,10 @@ export class CompiledRunRecorder {
 	onStep(event: WfrtStepEvent): NodeUpdate[] {
 		const updates: NodeUpdate[] = [];
 		const step = this.nodeOf(event.step);
-		if (!this.nodesByName.has(step)) return updates;
+		if (!this.nodesByName.has(step)) {
+			const owner = this.helperOf(event.step);
+			return owner === undefined ? updates : this.onHelperStep(owner, event);
+		}
 		this.flushTrigger(updates, step);
 		if (event.status === 'retrying') return updates;
 		this.closeOthers(step, event.at, updates);
@@ -379,8 +425,9 @@ export class CompiledRunRecorder {
 	}
 
 	private executionError(event: WfrtFinishedEvent): ExecutionError {
-		if (!this.failedNode && event.step && this.nodesByName.has(event.step)) {
-			this.failedNode = { nodeName: event.step, message: event.error ?? 'The step failed' };
+		const failedStep = event.step ? (this.helperOf(event.step) ?? event.step) : undefined;
+		if (!this.failedNode && failedStep && this.nodesByName.has(failedStep)) {
+			this.failedNode = { nodeName: failedStep, message: event.error ?? 'The step failed' };
 		}
 		if (event.status === 'cancelled') {
 			return new WorkflowOperationError('The execution was stopped');
@@ -450,6 +497,11 @@ export class CompiledRunRecorder {
 			task.error = node
 				? new NodeOperationError(node, run.error)
 				: new WorkflowOperationError(run.error);
+		}
+		const minutes = this.timeSaved.get(run.nodeName);
+		if (minutes !== undefined) {
+			task.metadata = { timeSaved: { minutes } };
+			this.timeSaved.delete(run.nodeName);
 		}
 		(this.runData[run.nodeName] ??= []).push(task);
 		this.lastNode = run.nodeName;

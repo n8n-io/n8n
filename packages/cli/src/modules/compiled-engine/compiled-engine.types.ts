@@ -390,6 +390,12 @@ const HOST_LIMIT_MARKERS = [
  */
 export const HOST_STEP_SUFFIX = ' (fallback host)';
 
+/**
+ * The service of the data that n8n keeps for the execution that runs (spec section 9.9):
+ * `setCustomData` (the Execution Data node) and `setTimeSaved` (the Time Saved node).
+ */
+export const EXECUTION_SERVICE = 'execution';
+
 /** True when the error of a step says that the node must run in the fallback host. */
 export function needsFallbackHost(message: string | undefined): boolean {
 	if (!message) return false;

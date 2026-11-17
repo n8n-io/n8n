@@ -44,8 +44,14 @@ export class CompiledServiceCalls {
 		this.logger = this.logger.scoped('compiled-engine');
 	}
 
-	/** Runs the call once for each call id and attempt, and sends the answer to `wfrt`. */
-	async handle(event: WfrtServiceEvent): Promise<void> {
+	/**
+	 * Runs the call once for each call id and attempt, and sends the answer to `wfrt`. `run`
+	 * is the backend of a call that needs the state of its execution (the `execution` service).
+	 */
+	async handle(
+		event: WfrtServiceEvent,
+		run: () => Promise<ServiceAnswer> = async () => await this.run(event),
+	): Promise<void> {
 		const now = Date.now();
 		for (const [key, entry] of this.answers) {
 			if (now - entry.at > ANSWER_TTL_MS) this.answers.delete(key);
@@ -53,7 +59,7 @@ export class CompiledServiceCalls {
 		const key = `${event.callId}#${event.attempt}`;
 		let entry = this.answers.get(key);
 		if (!entry) {
-			entry = { at: now, answer: this.run(event) };
+			entry = { at: now, answer: run() };
 			this.answers.set(key, entry);
 		}
 		const answer = await entry.answer;

@@ -1,0 +1,188 @@
+{
+	"name": "Custom data",
+	"nodes": [
+		{
+			"id": "webhook",
+			"name": "Webhook",
+			"type": "n8n-nodes-base.webhook",
+			"typeVersion": 2,
+			"position": [0, 0],
+			"parameters": {
+				"httpMethod": "POST",
+				"path": "custom",
+				"options": {}
+			}
+		},
+		{
+			"id": "split-out",
+			"name": "Split Out",
+			"type": "n8n-nodes-base.splitOut",
+			"typeVersion": 1,
+			"position": [200, 0],
+			"parameters": {
+				"fieldToSplitOut": "body.rows",
+				"options": {}
+			}
+		},
+		{
+			"id": "data",
+			"name": "Data",
+			"type": "n8n-nodes-base.executionData",
+			"typeVersion": 1.1,
+			"position": [400, 0],
+			"parameters": {
+				"operation": "save",
+				"dataToSave": {
+					"values": [
+						{
+							"key": "id",
+							"value": "={{ $json.id }}"
+						},
+						{
+							"key": "={{ $json.kind }}_count",
+							"value": "={{ $json.n }}"
+						},
+						{
+							"key": "flag",
+							"value": "={{ $json.flag }}"
+						},
+						{
+							"key": "long",
+							"value": "={{ $json.text }}"
+						},
+						{
+							"key": "=k{{ $json.n }}",
+							"value": "first"
+						},
+						{
+							"key": "=k{{ $json.n }}",
+							"value": "={{ $json.missing }}"
+						}
+					]
+				}
+			}
+		},
+		{
+			"id": "old",
+			"name": "Old",
+			"type": "n8n-nodes-base.executionData",
+			"typeVersion": 1,
+			"position": [600, 0],
+			"parameters": {
+				"dataToSave": {
+					"values": [
+						{
+							"key": "plain",
+							"value": "fixed"
+						},
+						{
+							"key": "extra",
+							"value": "over the limit"
+						},
+						{
+							"key": "id",
+							"value": "={{ $json.n }}"
+						}
+					]
+				}
+			}
+		},
+		{
+			"id": "per-item",
+			"name": "Per Item",
+			"type": "n8n-nodes-base.timeSaved",
+			"typeVersion": 1,
+			"position": [800, 0],
+			"parameters": {
+				"mode": "perItem",
+				"minutesSaved": 3
+			}
+		},
+		{
+			"id": "once",
+			"name": "Once",
+			"type": "n8n-nodes-base.timeSaved",
+			"typeVersion": 1,
+			"position": [1000, 0],
+			"parameters": {
+				"minutesSaved": 5
+			}
+		},
+		{
+			"id": "done",
+			"name": "Done",
+			"type": "n8n-nodes-base.noOp",
+			"typeVersion": 1,
+			"position": [1200, 0],
+			"parameters": {}
+		}
+	],
+	"connections": {
+		"Webhook": {
+			"main": [
+				[
+					{
+						"node": "Split Out",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Split Out": {
+			"main": [
+				[
+					{
+						"node": "Data",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Data": {
+			"main": [
+				[
+					{
+						"node": "Old",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Old": {
+			"main": [
+				[
+					{
+						"node": "Per Item",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Per Item": {
+			"main": [
+				[
+					{
+						"node": "Once",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Once": {
+			"main": [
+				[
+					{
+						"node": "Done",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	}
+}

@@ -1,0 +1,31 @@
+{
+	"description": "Execution Data (custom data of the execution, with the limits of v1) and Time Saved",
+	"trigger": {
+		"body": {
+			"rows": [
+				{
+					"id": "first",
+					"kind": "a",
+					"n": 1,
+					"flag": false,
+					"text": "tttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttt"
+				},
+				{
+					"id": 2,
+					"kind": "b",
+					"n": 2,
+					"flag": null,
+					"text": "short"
+				},
+				{
+					"id": true,
+					"kind": "c",
+					"n": 3,
+					"flag": 0,
+					"text": ""
+				}
+			]
+		}
+	},
+	"compare": ["Done"]
+}

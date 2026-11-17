@@ -24,6 +24,7 @@ import type { TranslatedValue } from './expression.ts';
 import { constantText, INDEX, ITEM, isExpression, jsonLiteral, segments } from './expression.ts';
 import { camelIdentifier } from './naming.ts';
 import { lowerFallback } from './steps.ts';
+import type { N8nNode } from './types.ts';
 import { isRecord, text } from './types.ts';
 
 function flat(code: Code): string {
@@ -889,6 +890,139 @@ export function lowerAggregate(c: NodeContext): void {
 	);
 }
 
+/** The service of n8n that keeps data of the execution that runs (spec 9.9). */
+const EXECUTION_SERVICE = 'execution';
+
+/** True when the node stops the workflow on an error and does not try again. */
+function stopsOnError(node: N8nNode): boolean {
+	return (
+		!node.continueOnFail &&
+		!node.retryOnFail &&
+		(node.onError === undefined || node.onError === 'stopWorkflow')
+	);
+}
+
+/** The `key` and `value` entries of an Execution Data node, or null when they are no list. */
+function customDataEntries(node: N8nNode): Array<Record<string, unknown>> | null {
+	const data = node.parameters?.dataToSave;
+	if (data === undefined) return [];
+	if (!isRecord(data)) return null;
+	const list = data.values === undefined ? [] : data.values;
+	return Array.isArray(list) && list.every(isRecord) ? list : null;
+}
+
+/**
+ * True when the Execution Data node has a native form (`lowerExecutionData`): a fixed
+ * operation, a list of data to save, and no "continue on fail" or "retry on fail" (v1 gives
+ * an error item for a failed item there). Every other node keeps the form of `lowerFallback`.
+ */
+export function isNativeExecutionData(node: N8nNode): boolean {
+	const operation = node.parameters?.operation;
+	if (operation !== undefined && (typeof operation !== 'string' || operation.startsWith('='))) {
+		return false;
+	}
+	return stopsOnError(node) && customDataEntries(node) !== null;
+}
+
+/**
+ * Execution Data: saves custom data of the execution. n8n keeps the data and applies the
+ * rules of v1 (`setAllWorkflowExecutionMetadata`): the node sends the values of each item,
+ * in the order of the items. When an expression of an item fails, the node first sends the
+ * values of the items before it, as v1 saves them before it fails.
+ *
+ * `lowererOf` gives this lowering only to a node that `isNativeExecutionData` accepts. A
+ * runtime without service calls, or an expression that does not translate, keeps the form
+ * of `lowerFallback`.
+ */
+export function lowerExecutionData(c: NodeContext): void {
+	const { w } = c;
+	const list = customDataEntries(c.node) ?? [];
+	const saves = (c.parameters.operation ?? 'save') === 'save' && list.length > 0;
+	if (!saves) {
+		w.line(`const ${c.output(0)}: Json[] = ${c.input};`);
+		return;
+	}
+	let pairs: TranslatedValue;
+	try {
+		if (c.services === false) throw new NodeFailure('execution-data', 'No service calls.');
+		// v1 reads the collection: a DateTime inside it is its text.
+		pairs = c.compiled(
+			list.map((entry) => [entry.key, entry.value]),
+			'dataToSave.values',
+			{ luxonValue: 'text' },
+		);
+	} catch (e) {
+		if (!(e instanceof NodeFailure)) throw e;
+		lowerFallback(c);
+		return;
+	}
+	const out = c.output(0);
+	const sets = c.local('Sets');
+	const failed = c.local('Failed');
+	const error = c.local('Error');
+	c.helper('customDataValues');
+	w.open(`if (${c.input}.length > 0) {`);
+	w.line(`const ${sets}: Json[] = [];`);
+	w.line(`let ${failed} = false;`);
+	w.line(`let ${error}: Json = null;`);
+	w.open('try {');
+	w.open(`for (let ${INDEX} = 0; ${INDEX} < ${c.input}.length; ${INDEX}++) {`);
+	w.line(`const ${ITEM}: Json = ${c.input}[${INDEX}];`);
+	w.line(`${sets}.push(customDataValues(${c.print(pairs.code)}, ${String(c.version >= 1.1)}));`);
+	w.close();
+	w.depth--;
+	w.open('} catch (caught) {');
+	w.line(`${failed} = true;`);
+	w.line(`${error} = caught;`);
+	w.close();
+	w.open(`if (${sets}.length > 0) {`);
+	w.line(
+		`await ctx.service({ name: ${str(c.node.name)}, service: '${EXECUTION_SERVICE}', op: 'setCustomData', args: { items: ${sets} } });`,
+	);
+	w.close();
+	w.line(`if (${failed}) throw ${error};`);
+	w.close();
+	w.line(`const ${out}: Json[] = ${c.input};`);
+}
+
+/**
+ * True when the Time Saved node has a native form (`lowerTimeSaved`): a fixed mode, and
+ * minutes that are a fixed number of zero or more (v1 fails for another value).
+ */
+export function isNativeTimeSaved(node: N8nNode): boolean {
+	const p = node.parameters ?? {};
+	const mode = p.mode === undefined ? 'once' : p.mode;
+	const minutes = p.minutesSaved === undefined ? 0 : p.minutesSaved;
+	return (
+		stopsOnError(node) &&
+		typeof mode === 'string' &&
+		!mode.startsWith('=') &&
+		typeof minutes === 'number' &&
+		Number.isFinite(minutes) &&
+		minutes >= 0
+	);
+}
+
+/**
+ * Time Saved: the node records the minutes on its own run (`setMetadata` of v1) and gives
+ * its items on. n8n keeps the run data, so the node sends the minutes to n8n.
+ *
+ * `lowererOf` gives this lowering only to a node that `isNativeTimeSaved` accepts.
+ */
+export function lowerTimeSaved(c: NodeContext): void {
+	if (c.services === false) {
+		lowerFallback(c);
+		return;
+	}
+	const p = c.parameters;
+	const minutes = typeof p.minutesSaved === 'number' ? p.minutesSaved : 0;
+	const total = p.mode === 'perItem' ? `${c.input}.length * ${String(minutes)}` : String(minutes);
+	c.w.line(
+		`if (${c.input}.length > 0) await ctx.service({ name: ${str(c.node.name)}, service: '${EXECUTION_SERVICE}', op: 'setTimeSaved', args: { minutes: ${total} } });`,
+	);
+	c.w.line(`const ${c.output(0)}: Json[] = ${c.input};`);
+}
+
 /**
  * Remove Duplicates version 2, "Remove items processed in previous executions" and "Clear
  * deduplication history". n8n keeps the history: each call of the v1 node to the
@@ -927,7 +1061,14 @@ function lowerDeduplicationStore(c: NodeContext): void {
 		);
 	}
 	const { w } = c;
-	// A step name is unique: the calls that read the size of the history have their own names.
+	// A step name is unique: the calls that read the size of the history are helper steps,
+	// with the name `<node> (<role>)`. n8n shows a helper step as a part of its node, so no
+	// node of the workflow can have that name.
+	for (const suffix of [' (history size)', ' (history size after)']) {
+		if (c.workflow.nodes.some((n) => n.name === `${c.node.name}${suffix}`)) {
+			host('A node of the workflow has the name of a helper step of this node.', 'operation');
+		}
+	}
 	const call = (op: string, options: string, items?: string, suffix = ''): string =>
 		`await ctx.service({ name: ${str(`${c.node.name}${suffix}`)}, service: 'deduplication', op: '${op}', args: { ${
 			items === undefined ? '' : `items: ${items}, `
