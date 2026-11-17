@@ -461,6 +461,22 @@ describe('V1WorkflowConverter', () => {
 			expect(convertNoOp(extra)).toThrow(error);
 		});
 
+		it('rejects a Split In Batches node with Always Output Data on, which the engine runs itself', () => {
+			const loop = node('loop-uuid', 'Loop', {
+				type: 'n8n-nodes-base.splitInBatches',
+				typeVersion: 3,
+				alwaysOutputData: true,
+			});
+			expect(() =>
+				converter.convert(
+					workflow({
+						nodes: [manualTrigger, loop],
+						connections: { 'When clicking Execute': { main: [[main('Loop')]] } },
+					}),
+				),
+			).toThrow('Split In Batches node with Always Output Data');
+		});
+
 		it('accepts a node with the execution settings explicitly off', () => {
 			expect(convertNoOp({ retryOnFail: false, executeOnce: false })).not.toThrow();
 		});

@@ -154,6 +154,12 @@ export class V1WorkflowConverter {
 		if (node.type === MERGE_TYPE) this.assertSupportedMergeMode(node);
 
 		if (node.type === SPLIT_IN_BATCHES_TYPE) {
+			// The engine runs a batch node itself, and does not apply this setting.
+			if (node.alwaysOutputData === true) {
+				throw new UnsupportedWorkflowError(
+					`Node "${node.name}" is a Split In Batches node with Always Output Data, which is not supported yet.`,
+				);
+			}
 			return { id: node.id, name: node.name, type: 'batch', config: toBatchConfig(node) };
 		}
 
