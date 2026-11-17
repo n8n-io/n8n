@@ -23,6 +23,7 @@ import {
 	checkOneResult,
 	checkRawFailures,
 	emitCall,
+	hostOwnParameters,
 	hostParameters,
 	settingsField,
 } from './steps.ts';
@@ -341,7 +342,7 @@ export function lowerHostNode(
 	mainCount?: number,
 	extra: Array<[string, Code]> = [],
 ): void {
-	const parameters = hostParameters(c, c.parameters, '');
+	const parameters = hostParameters(c, hostOwnParameters(c), '');
 	const perItem = parameters.usage.item || parameters.usage.index;
 	checkOneResult(c, perItem);
 	checkRawFailures(c, parameters.failures, perItem);

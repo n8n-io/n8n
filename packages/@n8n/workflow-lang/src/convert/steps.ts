@@ -29,6 +29,7 @@ import type { NodeContext } from './context.ts';
 import { NodeFailure } from './context.ts';
 import type { Failure, TranslatedValue } from './expression.ts';
 import { hostSafety, INDEX, isExpression, ITEM, neverThrows } from './expression.ts';
+import { stripNoDataExpressions } from './node-parameters.ts';
 import { isRecord } from './types.ts';
 
 export interface StepCall {
@@ -1122,10 +1123,26 @@ export function lowerFallback(c: NodeContext): void {
 	lowerHost(c);
 }
 
+/**
+ * The parameters of a node for the fallback host. As v1: a parameter that takes no
+ * expression (`noDataExpression`) is the text after its `=`. The converter does not evaluate
+ * it, and the node in the host reads that text. A text that reads other nodes keeps its `=`:
+ * the host has no run data here, so the converter translates it.
+ */
+export function hostOwnParameters(c: NodeContext): Record<string, unknown> {
+	return stripNoDataExpressions(
+		c.node.type,
+		c.version,
+		c.parameters,
+		(text) => !/\$\(|\$node\b|\$items\b/.test(text),
+	);
+}
+
 /** Writes the node as a call of the fallback host, with its v1 parameters. */
 function lowerHost(c: NodeContext): void {
+	const own = hostOwnParameters(c);
 	for (const path of SELF_EVALUATED[c.node.type] ?? []) {
-		let v: unknown = c.parameters;
+		let v: unknown = own;
 		for (const k of path) v = isRecord(v) ? v[k] : undefined;
 		if (typeof v === 'string' && v.includes('{{') && /\$\(|\$node\b|\$items\b/.test(v)) {
 			// The escape of the generator runs the node in the host with the run data it reads.
@@ -1137,14 +1154,14 @@ function lowerHost(c: NodeContext): void {
 		}
 	}
 	const rawPaths = (RAW_PARAMETERS[c.node.type] ?? []).filter((path) => {
-		let v: unknown = c.parameters;
+		let v: unknown = own;
 		for (const k of path) v = isRecord(v) ? v[k] : undefined;
 		// The host has no run data here, so text that reads other nodes is translated instead.
 		return typeof v === 'string' && !/\$\(|\$node\b|\$items\b/.test(v);
 	});
-	let input: unknown = c.parameters;
+	let input: unknown = own;
 	if (rawPaths.length > 0) {
-		input = structuredClone(c.parameters);
+		input = structuredClone(own);
 		for (const path of rawPaths) {
 			let v: unknown = input;
 			for (const k of path.slice(0, -1)) v = isRecord(v) ? v[k] : undefined;
@@ -1155,7 +1172,7 @@ function lowerHost(c: NodeContext): void {
 	// n8n's engine gives their v1 values (undefined stays undefined, Luxon stays Luxon).
 	const parameters = hostParameters(c, input, '');
 	for (const path of rawPaths) {
-		let v: unknown = c.parameters;
+		let v: unknown = own;
 		for (const k of path) v = isRecord(v) ? v[k] : undefined;
 		if (typeof v === 'string') putRaw(parameters.code, path, v);
 	}
