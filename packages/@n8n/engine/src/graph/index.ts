@@ -1,4 +1,4 @@
-export { isBatchStepConfig } from './workflow-graph';
+export { isBatchStepConfig, isConcurrentBatchConfig } from './workflow-graph';
 export type {
 	BatchStepConfig,
 	GraphEdge,

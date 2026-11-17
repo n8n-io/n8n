@@ -1,4 +1,10 @@
-import type { GraphEdge, StoredWorkflowGraph, WorkflowGraph, WorkflowLoop } from '../graph';
+import {
+	isConcurrentBatchConfig,
+	type GraphEdge,
+	type StoredWorkflowGraph,
+	type WorkflowGraph,
+	type WorkflowLoop,
+} from '../graph';
 import { stepKeyId, isSettledStatus, type StepKey, type StepKeyId } from './execution.types';
 import { classifyEdge, sourceRow, targetKey, type EdgeClass } from './iteration-mapping';
 import { isTerminalStep } from './loop-ledger';
@@ -84,6 +90,9 @@ export function decideSuccessors(
 	for (const edge of outgoingEdges) {
 		const edgeClass = classifyEdge(edge, loops);
 		if (batchStep && !batchStepDecides(edgeClass, batchStep)) continue;
+		// A concurrent loop advances on its passes, not on the body's return;
+		// `decideConcurrentLoopStep` plans the next pass and the terminal row.
+		if (edgeClass === 'back' && isConcurrentLoop(graph, edge.to)) continue;
 
 		const target = targetKey(edge, edgeClass, settled);
 		const targetId = stepKeyId(target);
@@ -99,6 +108,11 @@ export function decideSuccessors(
 	}
 
 	return decisions;
+}
+
+export function isConcurrentLoop(graph: WorkflowGraph, batchNodeId: string): boolean {
+	const node = graph.nodes.find((n) => n.id === batchNodeId);
+	return isConcurrentBatchConfig(node?.config);
 }
 
 /** Which side of its loop a batch step decides: the body, or what follows. */

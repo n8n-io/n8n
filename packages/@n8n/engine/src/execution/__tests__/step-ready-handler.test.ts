@@ -150,6 +150,8 @@ function makeStepStore(step: Partial<StepRecord> = {}, overrides: Partial<StepSt
 		countSettledSteps: vi.fn().mockResolvedValue(0),
 		hasFailedSteps: vi.fn().mockResolvedValue(false),
 		loadFailedSteps: vi.fn().mockResolvedValue([]),
+		countSettledStepsOfNode: vi.fn().mockResolvedValue(0),
+		countActiveSteps: vi.fn().mockResolvedValue(0),
 		suspendStep: vi.fn().mockResolvedValue(true),
 		resumeStep: vi.fn().mockResolvedValue(true),
 		resumeDueSteps: vi.fn().mockResolvedValue([]),

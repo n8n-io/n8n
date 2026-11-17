@@ -22,12 +22,29 @@ export type StepConfig = unknown;
 export interface BatchStepConfig {
 	/** How many items each pass takes. At least 1, so every pass makes progress. */
 	batchSize: number;
+	/**
+	 * How many passes may run the loop body at the same time. Absent or 1, the
+	 * loop is sequential: a pass starts once the pass before it has returned.
+	 * Above 1, a pass starts as soon as fewer than this many passes are still
+	 * running, so the body must not read what an earlier pass produced.
+	 */
+	maxConcurrency?: number;
 }
 
 export function isBatchStepConfig(config: unknown): config is BatchStepConfig {
 	if (typeof config !== 'object' || config === null) return false;
-	const { batchSize } = config as { batchSize?: unknown };
-	return typeof batchSize === 'number' && Number.isInteger(batchSize) && batchSize >= 1;
+	const { batchSize, maxConcurrency } = config as { batchSize?: unknown; maxConcurrency?: unknown };
+	if (!(typeof batchSize === 'number' && Number.isInteger(batchSize) && batchSize >= 1))
+		return false;
+	return (
+		maxConcurrency === undefined ||
+		(typeof maxConcurrency === 'number' && Number.isInteger(maxConcurrency) && maxConcurrency >= 1)
+	);
+}
+
+/** Whether a batch node runs its loop body for several passes at once. */
+export function isConcurrentBatchConfig(config: unknown): boolean {
+	return isBatchStepConfig(config) && (config.maxConcurrency ?? 1) > 1;
 }
 
 export interface GraphNode {

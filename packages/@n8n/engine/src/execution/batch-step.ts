@@ -1,7 +1,7 @@
 import { UnexpectedError, type JsonValue } from '../common';
 import type { BatchStepConfig } from '../graph';
 import type { StepSlots } from './execution.types';
-import { DONE_SLOT, LOOP_SLOT } from './loop-ledger';
+import { DONE_SLOT, HAS_MORE_SLOT, LOOP_SLOT } from './loop-ledger';
 
 /**
  * The two database reads a batch node needs.
@@ -31,7 +31,16 @@ export async function runBatchStep(
 	const start = iteration * config.batchSize;
 	const slice = originalItems.slice(start, start + config.batchSize);
 
-	if (slice.length > 0) return slot(LOOP_SLOT, slice);
+	if (slice.length > 0) {
+		const outputs = slot(LOOP_SLOT, slice);
+		// A concurrent loop advances on the pass itself, not on the body's return,
+		// so the pass says whether a next pass exists. The marker is only read by
+		// the planner: a host maps it to an empty extra output.
+		if ((config.maxConcurrency ?? 1) > 1 && start + config.batchSize < originalItems.length) {
+			outputs[HAS_MORE_SLOT] = true;
+		}
+		return outputs;
+	}
 
 	const arrivals = await reader.readArrivals(iteration);
 	const accumulated = arrivals.flatMap((arrival, index) =>
