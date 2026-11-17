@@ -4975,6 +4975,24 @@ describe('AgentChatPanel', () => {
 				]);
 			});
 
+			it('sends nothing, emits nothing and keeps the draft when beforeSend refuses the send', async () => {
+				const beforeSend = vi.fn(() => {
+					throw new Error('refused');
+				});
+				const wrapper = mountPanel({ beforeSend });
+				hostVm(wrapper).setDraft('hello');
+				await nextTick();
+
+				composer(wrapper).vm.$emit('submit');
+				await flushPromises();
+
+				expect(beforeSend).toHaveBeenCalledOnce();
+				expect(sendMessageMock).not.toHaveBeenCalled();
+				expect(wrapper.emitted('message-sending')).toBeUndefined();
+				expect(wrapper.emitted('draft-cleared')).toBeUndefined();
+				expect(composer(wrapper).props('modelValue')).toBe('hello');
+			});
+
 			it('marks a message as not the first once the thread has a user message', async () => {
 				messagesMock.value = [{ id: 'm1', role: 'user', content: 'hi' } as ChatMessage];
 				sendMessageMock.mockResolvedValueOnce('sent');

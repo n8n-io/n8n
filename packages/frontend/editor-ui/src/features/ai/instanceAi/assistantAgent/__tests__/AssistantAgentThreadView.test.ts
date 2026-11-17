@@ -330,7 +330,8 @@ vi.mock('../../components/LimitedModeNotice.vue', () => ({
 	}),
 }));
 
-// The real banner reads the cloud plan stores, and has its own tests.
+// The real banner reads the cloud plan stores, and has its own tests. Like the real
+// banner, the stub shows the dismiss button only when the banner is dismissible.
 vi.mock('@/features/ai/assistant/components/Agent/CreditWarningBanner.vue', () => ({
 	default: defineComponent({
 		props: {
@@ -346,10 +347,12 @@ vi.mock('@/features/ai/assistant/components/Agent/CreditWarningBanner.vue', () =
 					{ 'data-test-id': 'credit-warning-banner-stub', 'data-dismissible': props.dismissible },
 					[
 						props.message,
-						h('button', {
-							'data-test-id': 'credit-warning-banner-dismiss',
-							onClick: () => emit('dismiss'),
-						}),
+						props.dismissible
+							? h('button', {
+									'data-test-id': 'credit-warning-banner-dismiss',
+									onClick: () => emit('dismiss'),
+								})
+							: null,
 					],
 				),
 	}),
@@ -826,13 +829,14 @@ describe('AssistantAgentThreadView', () => {
 
 		it('disables the composer, refuses host sends and shows a banner that cannot be dismissed when no credits are left', async () => {
 			setCredits(100, 100);
-			const { getByTestId } = renderView({
+			const { getByTestId, queryByTestId } = renderView({
 				props: { threadId: 'thread-1', projectId: 'project-1' },
 			});
 			await flushPromises();
 
 			const banner = getByTestId('credit-warning-banner-stub');
 			expect(banner).toHaveAttribute('data-dismissible', 'false');
+			expect(queryByTestId('credit-warning-banner-dismiss')).not.toBeInTheDocument();
 			expect(banner).toHaveTextContent("You've run out of Assistant credits");
 			expect(panelProps.current.disabled).toBe(true);
 			await expect(beforeSend()).rejects.toThrow();
