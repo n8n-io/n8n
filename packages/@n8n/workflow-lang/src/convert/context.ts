@@ -126,6 +126,14 @@ export interface NodeContext {
 	connected(index: number): boolean;
 	/** Names of the nodes that run before this one, which a code step may read. */
 	ranBefore(name: string): string | null;
+	/**
+	 * True when v1 pairs input item k of this node with item k of node `name`: a path of
+	 * nodes with one connection in, which give one item for each item, leads from `name`
+	 * to this node.
+	 */
+	pairsByPosition(name: string): boolean;
+	/** The output of node `name` that `$('name')` reads from this node. */
+	readOutput(name: string): number;
 	/** True in the engine shape: the node is a function that can run more than once. */
 	engine: boolean;
 	/** Code of the run index of the node (`$runIndex`). */

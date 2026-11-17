@@ -596,6 +596,28 @@ export class ModuleGenerator {
 	}
 
 	/**
+	 * True when v1 pairs input item k of `current` with item k of `target`: each node on the
+	 * way has one connection in and gives one item for each item, so the items of `target`
+	 * are the input items of `current` in number and order.
+	 */
+	private pairsByPosition(b: Body, current: string, target: string): boolean {
+		if (b.engine || !this.known(b, target)) return false;
+		let cur = current;
+		for (let guard = 0; guard < b.graph.nodes.size; guard++) {
+			const inc = b.graph.incoming(cur);
+			if (inc.length !== 1 || inc[0].input !== 0 || !this.known(b, inc[0].from)) return false;
+			const from = inc[0].from;
+			if (from === target) return true;
+			const parent = b.graph.nodes.get(from);
+			if (!parent || parent.executeOnce || !(ONE_TO_ONE.has(parent.type) || parent.disabled)) {
+				return false;
+			}
+			cur = from;
+		}
+		return false;
+	}
+
+	/**
 	 * The nodes whose paired items an expression needs: the nodes on the path between a node
 	 * with `$('Node')` or `$node["Node"]` in a parameter and that node, when the path has one
 	 * parent at each step (the walk of `pairedItem`).
@@ -903,6 +925,8 @@ export class ModuleGenerator {
 							this.branchOf(b, node.name, `${b.prefix}${name}`),
 						)
 					: null,
+			pairsByPosition: (name) => this.pairsByPosition(b, node.name, `${b.prefix}${name}`),
+			readOutput: (name) => this.branchOf(b, node.name, `${b.prefix}${name}`),
 			engine: b.engine,
 			traceAll: this.traceMode === 'all',
 			responded: this.waitsForRespondNode ? RESPONDED : undefined,
