@@ -21,7 +21,6 @@ function createTaskInput(): CodeTaskInput {
 		language: 'javascript',
 		code: 'return $input.all();',
 		nodeMode: 'runOnceForAllItems',
-		workflowMode: 'manual',
 		continueOnFail: false,
 		data: {
 			workflow: {
@@ -78,14 +77,32 @@ describe('parseCodeTaskInput', () => {
 		expect(parsed).toStrictEqual({ ok: true, result: file });
 	});
 
-	it('should accept a task input with a chunk', () => {
-		const input = { ...createTaskInput(), chunk: { startIndex: 10, count: 5 } };
+	it('should accept a task input with a chunk in the runOnceForEachItem mode', () => {
+		const input: CodeTaskInput = {
+			...createTaskInput(),
+			nodeMode: 'runOnceForEachItem',
+			chunk: { startIndex: 10, count: 5 },
+		};
 
 		const file = toFile(input);
 
 		const parsed = parseCodeTaskInput(file);
 
 		expect(parsed).toStrictEqual({ ok: true, result: file });
+	});
+
+	it('should reject a task input with a chunk in the runOnceForAllItems mode', () => {
+		const input: CodeTaskInput = {
+			...createTaskInput(),
+			nodeMode: 'runOnceForAllItems',
+			chunk: { startIndex: 10, count: 5 },
+		};
+
+		const parsed = parseCodeTaskInput(toFile(input));
+
+		expect(parsed.ok).toBe(false);
+		if (parsed.ok) return;
+		expect(parsed.error.problems).toEqual([expect.stringMatching(/^chunk: /)]);
 	});
 
 	it('should keep the additional properties for the user code', () => {

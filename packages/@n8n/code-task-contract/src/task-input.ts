@@ -83,19 +83,24 @@ const chunkSchema = z.object({
 });
 
 /** The content of the task input file (`task.json`). n8n writes it, the runtime reads it. */
-export const codeTaskInputSchema = z.object({
-	version: z.literal(CODE_TASK_CONTRACT_VERSION),
-	taskId: z.string().min(1),
-	language: z.literal('javascript'),
-	code: z.string(),
-	nodeMode: z.enum(CODE_EXECUTION_MODES),
-	workflowMode: z.enum(WORKFLOW_EXECUTE_MODES),
-	continueOnFail: z.boolean(),
-	chunk: chunkSchema.optional(),
-	/** More globals for the user code, for example `query` of the Code Tool. */
-	additionalProperties: z.record(z.string(), z.unknown()).optional(),
-	data: taskDataSchema,
-});
+export const codeTaskInputSchema = z
+	.object({
+		version: z.literal(CODE_TASK_CONTRACT_VERSION),
+		taskId: z.string().min(1),
+		language: z.literal('javascript'),
+		code: z.string(),
+		nodeMode: z.enum(CODE_EXECUTION_MODES),
+		continueOnFail: z.boolean(),
+		/** Only for the `runOnceForEachItem` mode. */
+		chunk: chunkSchema.optional(),
+		/** More globals for the user code, for example `query` of the Code Tool. */
+		additionalProperties: z.record(z.string(), z.unknown()).optional(),
+		data: taskDataSchema,
+	})
+	.refine((input) => input.chunk === undefined || input.nodeMode === 'runOnceForEachItem', {
+		path: ['chunk'],
+		error: 'A chunk is only allowed in the runOnceForEachItem mode',
+	});
 
 export type CodeTaskInput = z.infer<typeof codeTaskInputSchema>;
 export type CodeTaskData = CodeTaskInput['data'];
