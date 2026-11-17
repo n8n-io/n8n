@@ -297,6 +297,7 @@ export class N8nPackageParser {
 			...(sourcePublished !== undefined ? { sourcePublished } : {}),
 			// Read from `wire` only past `deserialize`, which is what validates it.
 			...(wire.tagIds !== undefined ? { tagIds: wire.tagIds } : {}),
+			...(metadata.ownerEmail !== undefined ? { ownerEmail: metadata.ownerEmail } : {}),
 		};
 	}
 

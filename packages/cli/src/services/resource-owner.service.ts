@@ -1,7 +1,12 @@
 import { ModuleRegistry } from '@n8n/backend-common';
 import { EventService } from '@n8n/backend-services';
 import type { OperationContext, User } from '@n8n/db';
-import { ProjectRelationRepository, UserRepository, WorkflowRepository } from '@n8n/db';
+import {
+	PersonRepository,
+	ProjectRelationRepository,
+	UserRepository,
+	WorkflowRepository,
+} from '@n8n/db';
 import { Container, Service } from '@n8n/di';
 import { BadRequestError, ForbiddenError, NotFoundError } from '@n8n/errors';
 import { hasGlobalScope, PROJECT_ADMIN_ROLE_SLUG, PROJECT_OWNER_ROLE_SLUG } from '@n8n/permissions';
@@ -38,6 +43,7 @@ export class ResourceOwnerService {
 		private readonly workflowRepository: WorkflowRepository,
 		private readonly projectRelationRepository: ProjectRelationRepository,
 		private readonly userRepository: UserRepository,
+		private readonly personRepository: PersonRepository,
 		private readonly moduleRegistry: ModuleRegistry,
 		private readonly eventService: EventService,
 	) {}
@@ -93,6 +99,57 @@ export class ResourceOwnerService {
 			return actor.id;
 		}
 		return await this.resolveFallbackOwner(actor, projectId, type, ctx);
+	}
+
+	async findOwnerEmails(resources: Array<{ id: string; ownerUserId: string | null }>) {
+		const ownerUserIds = new Set(resources.flatMap(({ ownerUserId }) => ownerUserId ?? []));
+		const people = await this.personRepository.findManyByIds([...ownerUserIds]);
+		const emailByUserId = new Map(people.map(({ id, email }) => [id, email]));
+		return new Map(
+			resources.map(({ id, ownerUserId }) => [
+				id,
+				(ownerUserId && emailByUserId.get(ownerUserId)) || null,
+			]),
+		);
+	}
+
+	async applyImportedOwner(
+		actor: User | undefined,
+		resource: { type: OwnedResourceType; id: string; isNew: boolean },
+		ownerEmail: string | null | undefined,
+		ctx: OperationContext,
+	) {
+		if (ownerEmail === undefined) return { ownerUnmatched: false };
+
+		const store = await this.storeFor(resource.type);
+		const [current] = (await store?.findOwners([resource.id], ctx)) ?? [];
+		if (!current) throw new NotFoundError(`Could not find the ${resource.type}`);
+
+		const { projectId, ownerUserId } = current;
+		const keepsOwner =
+			!resource.isNew &&
+			ownerUserId !== null &&
+			(await this.findValidOwnerIds([ownerUserId], projectId, ctx)).has(ownerUserId);
+		if (keepsOwner) return { ownerUnmatched: false };
+
+		const matchedOwnerId = await this.findValidOwnerIdByEmail(ownerEmail, projectId, ctx);
+		const newOwnerUserId =
+			matchedOwnerId ?? (await this.ownerForNewResource(actor, projectId, resource.type, ctx));
+		if (newOwnerUserId !== ownerUserId) {
+			await store?.setOwnerUserId([resource.id], newOwnerUserId, ctx);
+			if (!resource.isNew) {
+				this.emitOwnerChanged({
+					type: resource.type,
+					id: resource.id,
+					projectId,
+					actor,
+					previousOwnerUserId: ownerUserId,
+					newOwnerUserId,
+					reason: 'import',
+				});
+			}
+		}
+		return { ownerUnmatched: ownerEmail !== null && matchedOwnerId === null };
 	}
 
 	async reconcileAfterMove(
@@ -160,6 +217,20 @@ export class ResourceOwnerService {
 		return new Set(
 			await this.projectRelationRepository.findPersonMemberIds(projectId, userIds, ctx),
 		);
+	}
+
+	private async findValidOwnerIdByEmail(
+		email: string | null,
+		projectId: string,
+		ctx: OperationContext,
+	) {
+		if (email === null) return null;
+
+		const person = await this.personRepository.findByEmail(email);
+		if (!person) return null;
+
+		const validOwnerIds = await this.findValidOwnerIds([person.id], projectId, ctx);
+		return validOwnerIds.has(person.id) ? person.id : null;
 	}
 
 	private async resolveFallbackOwner(

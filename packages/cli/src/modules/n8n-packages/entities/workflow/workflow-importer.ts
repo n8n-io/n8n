@@ -3,6 +3,7 @@ import { Service } from '@n8n/di';
 
 import { ForbiddenError } from '@n8n/errors';
 import { PROJECT_ROOT } from 'n8n-workflow';
+import { ResourceOwnerService } from '@/services/resource-owner.service';
 import {
 	WorkflowCreationService,
 	type WorkflowCreateBatchContext,
@@ -61,6 +62,7 @@ export class WorkflowImporter {
 		private readonly workflowCreationService: WorkflowCreationService,
 		private readonly workflowService: WorkflowService,
 		private readonly workflowFinderService: WorkflowFinderService,
+		private readonly resourceOwnerService: ResourceOwnerService,
 	) {}
 
 	async plan(
@@ -267,11 +269,20 @@ export class WorkflowImporter {
 			};
 		}
 
+		const workflow = await this.persistWorkflow(context, item, bindings, batchContext);
+		const { ownerUnmatched } = await this.resourceOwnerService.applyImportedOwner(
+			context.user,
+			{ type: 'workflow', id: workflow.id, isNew: item.action === 'create' },
+			item.ownerEmail,
+			context.ctx ?? {},
+		);
+
 		return {
 			status: item.action === 'create' ? 'created' : 'updated',
-			workflow: await this.persistWorkflow(context, item, bindings, batchContext),
+			workflow,
 			sourceWorkflowId: item.sourceWorkflowId,
 			item,
+			...(ownerUnmatched ? { ownerUnmatched } : {}),
 		};
 	}
 

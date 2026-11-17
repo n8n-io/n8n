@@ -112,6 +112,11 @@ properties:
                   - setupUrl
             type: object
           description: Channel outcome for each external channel in the imported definition. A credential from the package never connects a channel. Empty for skipped Agents.
+        ownerUnmatched:
+          type: boolean
+          enum:
+            - true
+          description: Present when the package names an owner by email and no person with that email can own the Agent in the target project. The import then used the default owner.
       required:
         - sourceAgentId
         - localId
@@ -208,6 +213,11 @@ properties:
             - updated
             - skipped
           description: Import outcome for this package workflow.
+        ownerUnmatched:
+          type: boolean
+          enum:
+            - true
+          description: Present when the package names an owner by email and no person with that email can own the workflow in the target project. The import then used the default owner.
       required:
         - sourceWorkflowId
         - localId

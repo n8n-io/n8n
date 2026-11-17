@@ -17,6 +17,7 @@ import {
 	type ImportedChannel,
 } from '@/modules/agents/integrations/resolve-imported-channels';
 import type { AgentImportIdentity } from '@/modules/agents/repositories/agent.repository';
+import { ResourceOwnerService } from '@/services/resource-owner.service';
 
 import { agentBodyIssues } from './agent-body-issues';
 import { AgentImportMatchService } from './agent-import-match.service';
@@ -50,6 +51,7 @@ export class AgentImporter {
 		private readonly settingsService: AgentsSettingsService,
 		private readonly skillImporter: SkillImporter,
 		private readonly urlService: UrlService,
+		private readonly resourceOwnerService: ResourceOwnerService,
 	) {}
 
 	async plan(
@@ -200,6 +202,12 @@ export class AgentImporter {
 				);
 			}
 			agent = await this.applyArchiveTransition(context, item, agent);
+			const { ownerUnmatched } = await this.resourceOwnerService.applyImportedOwner(
+				context.user,
+				{ type: 'agent', id: agent.id, isNew: item.action === 'create' },
+				item.metadata.ownerEmail,
+				context.ctx ?? {},
+			);
 			const channels = item.channels.map((channel) => this.withSetupUrl(channel, agent));
 			outcomes.push({
 				status: item.action === 'create' ? 'created' : 'updated',
@@ -207,6 +215,7 @@ export class AgentImporter {
 				sourceAgentId: item.sourceAgentId,
 				publishingAction: item.publishingAction,
 				channels,
+				...(ownerUnmatched ? { ownerUnmatched } : {}),
 				...(channels.some(({ status }) => status === 'setup-required')
 					? { blockedFromPublish: 'channel-setup-required' as const }
 					: {}),

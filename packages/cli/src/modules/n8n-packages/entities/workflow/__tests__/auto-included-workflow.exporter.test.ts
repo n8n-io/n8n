@@ -3,6 +3,8 @@ import type { INode } from 'n8n-workflow';
 import { jsonParse } from 'n8n-workflow';
 import { mock } from 'vitest-mock-extended';
 
+import type { ResourceOwnerService } from '@/services/resource-owner.service';
+
 import { CapturingWriter } from '../../../io/__tests__/utils/capturing-writer';
 import type { ManifestEntry } from '../../../spec/manifest.schema';
 import { CredentialRequirementsExtractor } from '../../credential/credential-requirements.extractor';
@@ -62,6 +64,7 @@ function makeExporter(
 		dataTableExtractor ?? new DataTableRequirementsExtractor(),
 		variableExtractor ?? new VariableRequirementsExtractor(),
 		new TagRequirementsExtractor(),
+		mock<ResourceOwnerService>({ findOwnerEmails: async () => new Map() }),
 	);
 }
 
