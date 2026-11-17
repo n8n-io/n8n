@@ -265,16 +265,21 @@ export class GitHubSkillSourceClient extends SkillSourceClient {
 		ref: RemoteSkillRef,
 		auth?: SkillSourceAuth,
 		revision?: string,
+		checkedRefs?: RemoteSkillRef[],
 	): Promise<FetchedSkill> {
 		const parsed = readLocator(locator);
 		const { path } = readRef(ref);
 		const sha = revision ?? (await this.head(parsed, auth));
-		// A later import can add a skill outside the folder used to connect this source.
-		const archive = await this.archiveAt(
-			isInside(path, parsed.path) ? parsed : { ...parsed, path },
-			sha,
-			auth,
-		);
+		// A source check reads all linked folders from one archive, including later imports.
+		const roots = [
+			...new Set([
+				parsed.path,
+				...[ref, ...(checkedRefs ?? [])]
+					.map((item) => readRef(item).path)
+					.filter((folder) => !isInside(folder, parsed.path)),
+			]),
+		].sort();
+		const archive = await this.archiveAt(parsed, sha, auth, roots);
 		const inRepository = (file: string) => (path ? `${path}/${file}` : file);
 		const skillFile = inRepository(SKILL_FILE);
 		if (archive.oversized.has(skillFile)) {
@@ -309,11 +314,18 @@ export class GitHubSkillSourceClient extends SkillSourceClient {
 			return { path: file, text };
 		});
 		if (notices.length > 0) {
-			content.frontmatter = {
-				...content.frontmatter,
-				n8n_source: this.webUrl(locator, ref),
-				n8n_licenses: notices,
-			};
+			const noticePath = 'references/SOURCE.md';
+			if (content.files.some((file) => file.path === noticePath)) {
+				throw new SkillParseError('The source already contains references/SOURCE.md.');
+			}
+			// References survive skill downloads and MCP reads, which omit extra frontmatter.
+			content.files.push({
+				path: noticePath,
+				content: [
+					`# Source and license notices\n\nSource: ${this.webUrl(locator, ref)}`,
+					...notices.map((notice) => `## ${notice.path}\n\n${notice.text}`),
+				].join('\n\n'),
+			});
 		}
 		return {
 			content,
@@ -413,21 +425,23 @@ export class GitHubSkillSourceClient extends SkillSourceClient {
 	}
 
 	/**
-	 * The archive of the folder of the link. Each link keeps only the files under its folder.
-	 * The cache key holds the access, as for `head`, so one credential never gets an archive
-	 * that another one read.
+	 * One archive for the requested folders. The cache key includes access, so one
+	 * credential never gets an archive that another one read.
 	 */
 	private async archiveAt(
 		locator: GitHubLocator,
 		sha: string,
 		auth?: SkillSourceAuth,
+		roots = [locator.path],
 	): Promise<RepositoryArchive> {
-		const { owner, repository, path } = locator;
+		const { owner, repository } = locator;
 		// The folder keeps its case, as the paths in the archive do.
-		const key = `${owner}/${repository}@${sha}`.toLowerCase() + `:${path}#${accessKey(auth)}`;
+		const key =
+			`${owner}/${repository}@${sha}`.toLowerCase() +
+			`:${JSON.stringify(roots)}#${accessKey(auth)}`;
 		const cached = this.archives.get(key);
 		if (cached) return await cached;
-		const archive = this.downloads(async () => await this.download(locator, sha, auth));
+		const archive = this.downloads(async () => await this.download(locator, sha, auth, roots));
 		this.archives.set(key, archive, { size: 1 });
 		archive.then(
 			(read) => {
@@ -456,8 +470,9 @@ export class GitHubSkillSourceClient extends SkillSourceClient {
 		locator: GitHubLocator,
 		sha: string,
 		auth?: SkillSourceAuth,
+		roots = [locator.path],
 	): Promise<RepositoryArchive> {
-		const { owner, repository, path } = locator;
+		const { owner, repository } = locator;
 		const [o, r, s] = [owner, repository, sha].map(encodeURIComponent);
 		const target = auth
 			? {
@@ -489,7 +504,7 @@ export class GitHubSkillSourceClient extends SkillSourceClient {
 				throwForStatus(response.statusCode, response.headers, auth);
 			}
 			return await readRepositoryArchive(response.body, {
-				root: path,
+				root: roots,
 				signal: deadline.signal,
 				limits: this.archiveLimits,
 			});

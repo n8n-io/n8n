@@ -14,6 +14,10 @@ describe('SkillCatalog', () => {
 		const view = renderCatalog();
 		await userEvent.click(view.getByTestId('skill-catalog-category'));
 		await userEvent.click(await view.findByRole('option', { name: 'Write and plan content' }));
+		expect(view.queryByTestId('skill-catalog-n8n-error-handling-official')).not.toBeInTheDocument();
+		expect(
+			view.getByTestId('skill-catalog-coreyhaines31/marketingskills/copywriting'),
+		).toBeVisible();
 		await userEvent.type(view.getByTestId('skill-catalog-search'), 'copywriting');
 		expect(view.getAllByTestId('skill-catalog-details')).toHaveLength(1);
 		await userEvent.type(view.getByTestId('skill-catalog-search'), ' no match');

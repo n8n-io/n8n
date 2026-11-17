@@ -57,7 +57,11 @@ const skillSourceTarget = {
 };
 
 /** Reads a link and lists the skills in it, for the picker. Writes nothing. */
-export class DiscoverSkillSourceDto extends Z.class(skillSourceTarget) {}
+export class DiscoverSkillSourceDto extends Z.class({
+	...skillSourceTarget,
+	/** Reuse a matching source in the selected scope, if one exists. */
+	reuseExistingSource: z.boolean().optional(),
+}) {}
 
 export const SKILL_SOURCE_MAX_SKILLS = 200;
 
@@ -223,6 +227,8 @@ export type DiscoveredSkill = {
 
 export type SkillSourceDiscovery = {
 	source: SkillSourceSummary;
+	/** The matching source to send back when connecting the selected skills. */
+	existingSourceId?: string;
 	duplicate: SkillSourceDuplicate;
 	skills: DiscoveredSkill[];
 	/** True when the source has more skills than n8n lists (`too_many_skills`). */

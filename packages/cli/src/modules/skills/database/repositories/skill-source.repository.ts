@@ -87,7 +87,10 @@ export class SkillSourceRepository {
 
 	private readonly links: SkillSourceLinkTable;
 
-	constructor(dataSource: DataSource, transactionRunner: TransactionRunner) {
+	constructor(
+		dataSource: DataSource,
+		private readonly transactionRunner: TransactionRunner,
+	) {
 		this.sources = new SkillSourceTable(dataSource, transactionRunner);
 		this.links = new SkillSourceLinkTable(dataSource, transactionRunner);
 	}
@@ -198,6 +201,12 @@ export class SkillSourceRepository {
 			if (isUniqueConstraintError(error)) throw new DuplicateSkillSourceError();
 			throw error;
 		}
+	}
+
+	async invalidateCheckCursor(sourceId: string, ctx: OperationContext): Promise<void> {
+		await this.sources
+			.managerFor(ctx)
+			.update(SkillSourceConnection, { id: sourceId }, { probeCursor: null });
 	}
 
 	/** Replaces validated access only while the source still has the scope and credential read. */
@@ -479,40 +488,57 @@ export class SkillSourceRepository {
 			errorReason: string | null;
 			/** `to` null clears the cursor, so the next check reads every skill again. */
 			probeCursor?: { from: string | null; to: string | null };
+			/** Members read by this check, before any concurrent import. */
+			checkedSkillIds?: string[];
 			/** A result from an old credential must not overwrite its replacement. */
 			credentialId?: string | null;
 		},
 	): Promise<boolean> {
-		const manager = this.sources.managerFor({});
-		const { checkedAt, errorReason, probeCursor, readScope } = result;
-		const unchanged = {
-			id: sourceId,
-			lastCheckedAt: Or(IsNull(), LessThanOrEqual(checkedAt)),
-			...(result.credentialId !== undefined
-				? { credentialId: result.credentialId ?? IsNull() }
-				: {}),
-			...(readScope
-				? {
-						projectId: readScope.projectId ?? IsNull(),
-						credentialId: readScope.credentialId ?? IsNull(),
-					}
-				: {}),
-		};
-		const written = await manager.update(SkillSourceConnection, unchanged, {
-			lastCheckedAt: checkedAt,
-			lastErrorReason: errorReason,
+		return await this.transactionRunner.run({}, async (ctx) => {
+			await this.lockForMemberChange(sourceId, ctx);
+			const manager = this.sources.managerFor(ctx);
+			const { checkedAt, errorReason, readScope, checkedSkillIds } = result;
+			let { probeCursor } = result;
+			// The source lock prevents an import from changing membership before the cursor write.
+			if (
+				probeCursor &&
+				checkedSkillIds &&
+				(await this.links.managerFor(ctx).existsBy(SkillSourceLink, {
+					sourceId,
+					...(checkedSkillIds.length ? { skillId: Not(In(checkedSkillIds)) } : {}),
+				}))
+			) {
+				probeCursor = { ...probeCursor, to: null };
+			}
+			const unchanged = {
+				id: sourceId,
+				lastCheckedAt: Or(IsNull(), LessThanOrEqual(checkedAt)),
+				...(result.credentialId !== undefined
+					? { credentialId: result.credentialId ?? IsNull() }
+					: {}),
+				...(readScope
+					? {
+							projectId: readScope.projectId ?? IsNull(),
+							credentialId: readScope.credentialId ?? IsNull(),
+						}
+					: {}),
+			};
+			const written = await manager.update(SkillSourceConnection, unchanged, {
+				lastCheckedAt: checkedAt,
+				lastErrorReason: errorReason,
+			});
+			if ((written.affected ?? 0) === 0) return false;
+			if (!probeCursor) return true;
+			const moved = await manager.update(
+				SkillSourceConnection,
+				{ ...unchanged, probeCursor: probeCursor.from ?? IsNull() },
+				{ probeCursor: probeCursor.to },
+			);
+			if ((moved.affected ?? 0) === 0) {
+				await manager.update(SkillSourceConnection, unchanged, { probeCursor: null });
+			}
+			return true;
 		});
-		if ((written.affected ?? 0) === 0) return false;
-		if (!probeCursor) return true;
-		const moved = await manager.update(
-			SkillSourceConnection,
-			{ ...unchanged, probeCursor: probeCursor.from ?? IsNull() },
-			{ probeCursor: probeCursor.to },
-		);
-		if ((moved.affected ?? 0) === 0) {
-			await manager.update(SkillSourceConnection, unchanged, { probeCursor: null });
-		}
-		return true;
 	}
 
 	/**

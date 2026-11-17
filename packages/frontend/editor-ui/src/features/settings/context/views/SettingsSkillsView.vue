@@ -1275,7 +1275,7 @@ onMounted(async () => {
 					</template>
 				</N8nActionDropdown>
 			</div>
-	
+
 			<SkillsTable
 				v-if="!showRecommendedEmptyState"
 				v-model:table-options="tableOptions"

@@ -955,6 +955,7 @@ describe('SkillSourceConnectDialog', () => {
 				scope: 'project',
 				projectId: 'team-1',
 				allowedSkippedFiles: [],
+				reuseExistingSource: true,
 			});
 		});
 
@@ -972,6 +973,7 @@ describe('SkillSourceConnectDialog', () => {
 				scope: 'instance',
 				credentialId: TOKEN.id,
 				allowedSkippedFiles: [],
+				reuseExistingSource: true,
 			});
 		});
 
@@ -992,18 +994,21 @@ describe('SkillSourceConnectDialog', () => {
 		});
 
 		it('reuses a source in the selected scope after a fresh review', async () => {
-			skillsStore.discoverSource
-				.mockResolvedValueOnce(
-					discovery({
-						duplicate: { kind: 'blocked', where: 'scope', sourceId: 'src-1' },
-					}),
-				)
-				.mockResolvedValueOnce(discovery());
+			skillsStore.discoverSource.mockResolvedValue(discovery({ existingSourceId: 'src-1' }));
 			skillsStore.connectSource.mockResolvedValue({ sourceId: 'src-1', imported: [], failed: [] });
 			const view = renderDialog({ props: { open: true, scopeOptions: SCOPES, preset } });
 			await selectScope(view, 'project:team-1');
 			await next(view);
 			await view.findByTestId('skill-source-review');
+			expect(skillsStore.discoverSource).toHaveBeenCalledTimes(1);
+			expect(skillsStore.discoverSource).toHaveBeenCalledWith(
+				expect.objectContaining({
+					url: preset.url,
+					scope: 'project',
+					projectId: 'team-1',
+					reuseExistingSource: true,
+				}),
+			);
 			await userEvent.click(view.getByTestId('skill-source-import'));
 			expect(skillsStore.connectSource).toHaveBeenCalledWith(
 				expect.objectContaining({
@@ -1015,16 +1020,15 @@ describe('SkillSourceConnectDialog', () => {
 		});
 
 		it('offers the existing source when its branch or credential differs', async () => {
-			skillsStore.discoverSource
-				.mockResolvedValueOnce(
-					discovery({
-						duplicate: { kind: 'blocked', where: 'scope', sourceId: 'src-1' },
-					}),
-				)
-				.mockRejectedValueOnce(new ResponseError('Source changed', { meta: { reason: 'stale' } }));
+			skillsStore.discoverSource.mockResolvedValue(
+				discovery({
+					duplicate: { kind: 'blocked', where: 'scope', sourceId: 'src-1' },
+				}),
+			);
 			const view = renderDialog({ props: { open: true, scopeOptions: SCOPES, preset } });
 			await next(view);
 			await userEvent.click(await view.findByText('View source'));
+			expect(skillsStore.discoverSource).toHaveBeenCalledTimes(1);
 			expect(view.emitted('openSource')).toEqual([['src-1']]);
 			expect(skillsStore.connectSource).not.toHaveBeenCalled();
 		});

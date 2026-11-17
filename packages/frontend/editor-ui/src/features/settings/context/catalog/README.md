@@ -36,7 +36,7 @@ complete source folder before adding an entry. Check its instructions, reference
 links, tool requirements, license notices, and parser limits. Record the source
 commit. Do not execute scripts from a candidate repository during this review.
 
-The server retains applicable license and notice files in skill frontmatter.
+The server retains applicable license and notice files in a Markdown reference.
 Those notices remain in exported content and take part in update review.
 
 `allowedSkippedFiles` lists exact paths reviewed as development-only material.

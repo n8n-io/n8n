@@ -402,19 +402,24 @@ describe('GitHubSkillSourceClient', () => {
 	it('keeps source and ancestor license notices with a folder import', async () => {
 		github.push('acme/notices', {
 			'LICENSE-MIT': 'Root license',
+			'LICENSE_EE.md': 'Additional license',
+			'LICENSE-APACHE-2.0': 'Apache notice',
 			'skills/a/SKILL.md': skillMd('a'),
 			'skills/a/NOTICE.txt': 'Author notice',
 			'skills/other/LICENSE': 'Other license',
 		});
 		const locator = await client.parseLocator('https://github.com/acme/notices/tree/main/skills/a');
 		const fetched = await client.fetchLatest(locator, { path: 'skills/a' });
-		expect(fetched.content.frontmatter).toMatchObject({
-			n8n_source: 'https://github.com/acme/notices/tree/main/skills/a',
-			n8n_licenses: [
-				{ path: 'LICENSE-MIT', text: 'Root license' },
-				{ path: 'skills/a/NOTICE.txt', text: 'Author notice' },
-			],
-		});
+		expect(fetched.content.files).toEqual([
+			{
+				path: 'references/SOURCE.md',
+				content: expect.stringContaining('https://github.com/acme/notices/tree/main/skills/a'),
+			},
+		]);
+		for (const text of ['Root license', 'Additional license', 'Apache notice', 'Author notice']) {
+			expect(fetched.content.files[0].content).toContain(text);
+		}
+		expect(fetched.content.files[0].content).not.toContain('Other license');
 		expect(fetched.skippedFiles).toEqual([]);
 	});
 
@@ -467,6 +472,23 @@ describe('GitHubSkillSourceClient', () => {
 		});
 		const locator = await client.parseLocator('https://github.com/acme/more/tree/main/skills/a');
 		expect((await client.fetchLatest(locator, { path: 'skills/b' })).content.name).toBe('b');
+	});
+
+	it('shares one bounded archive read across sibling skills in a source check', async () => {
+		const revision = github.push('acme/more', {
+			'skills/a/SKILL.md': skillMd('a'),
+			'skills/b/SKILL.md': skillMd('b'),
+			'skills/c/SKILL.md': skillMd('c'),
+			'unrelated/SKILL.md': skillMdOfSize('large', 2000),
+		});
+		client = clientWithLimits({ maxTextBytes: 1000 });
+		const locator = await client.parseLocator('https://github.com/acme/more/tree/main/skills/a');
+		const refs = ['a', 'b', 'c'].map((name) => ({ path: `skills/${name}` }));
+		const fetched = await Promise.all(
+			refs.map(async (ref) => await client.fetchLatest(locator, ref, undefined, revision, refs)),
+		);
+		expect(fetched.map((skill) => skill.content.name)).toEqual(['a', 'b', 'c']);
+		expect(github.requests.archives).toBe(1);
 	});
 
 	it('refuses license notices that exceed the retained notice limit', async () => {

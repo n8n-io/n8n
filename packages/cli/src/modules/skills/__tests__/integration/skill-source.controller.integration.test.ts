@@ -22,6 +22,7 @@ import { SkillSourceConnection } from '../../database/entities/skill-source-conn
 import { SkillSourceNotFoundError } from '../../errors/skill-source-not-found.error';
 import { SkillSourceReadError } from '../../errors/skill-source-read.error';
 import { SkillsTelemetry } from '../../services/skills-telemetry.service';
+import { SkillService } from '../../services/skill.service';
 import { GitHubSkillSourceClient } from '../../sources/github/github-skill-source-client';
 import type { RemoteSkillRef } from '../../sources/skill-source-client';
 import { FakeGitHub } from '../test-utils/fake-github';
@@ -1045,7 +1046,14 @@ describe('SkillSourceController', () => {
 		it('adds another folder and keeps one source, then refuses a repeated import', async () => {
 			const first = await connectDocx();
 			const target = { url: REPO, scope: 'instance', existingSourceId: first.sourceId };
-			const { data: preview } = await discover(owner, target);
+			const connected = vi.spyOn(Container.get(SkillsTelemetry), 'connectedSource');
+			const { data: preview } = await discover(owner, {
+				url: REPO,
+				scope: 'instance',
+				reuseExistingSource: true,
+			});
+			expect(preview.existingSourceId).toBe(first.sourceId);
+			expect(connected).not.toHaveBeenCalled();
 			expect(preview.duplicate).toEqual({ kind: 'none' });
 			expect(preview.skills.find((skill) => skill.name === 'docx')?.nameTaken).toBe(true);
 			const skillKeys = keysOf(preview, ['pdf']);
@@ -1065,6 +1073,43 @@ describe('SkillSourceController', () => {
 			expect(repeated.meta).toEqual({ reason: 'name_taken' });
 			expect(await countSources()).toBe(1);
 		});
+
+		it('keeps imported notices in the skill data used by downloads and MCP', async () => {
+			github.push('acme/skills', { ...FILES, LICENSE: 'Copyright Acme. Permission notice.' });
+			const { imported } = await connectDocx();
+			const skillId = imported[0].skillId;
+			const detail = (await owner.get(`/skills/${skillId}`).expect(200)).body.data;
+			expect(detail.skill.references).toContainEqual({
+				path: 'references/SOURCE.md',
+				content: expect.stringContaining('Copyright Acme. Permission notice.'),
+			});
+			expect(detail.skill.references[0].content).toContain(`${REPO}/tree/main/skills/docx`);
+			await owner
+				.patch(`/skills/${skillId}`)
+				.send({
+					availableToMCP: true,
+					baseSkillHash: detail.skillHash,
+				})
+				.expect(200);
+			const mcp = await Container.get(SkillService).readForMcp(ownerUser, skillId);
+			expect(mcp?.skill.references).toEqual(detail.skill.references);
+		});
+
+		it.each(['scope', 'branch'])(
+			'leaves a different %s blocked during automatic reuse',
+			async (difference) => {
+				await connectDocx();
+				github.push('acme/skills', FILES, 'develop');
+				const { data } = await discover(owner, {
+					url: difference === 'branch' ? `${REPO}/tree/develop` : REPO,
+					scope: difference === 'scope' ? 'project' : 'instance',
+					...(difference === 'scope' ? { projectId: team.id } : {}),
+					reuseExistingSource: true,
+				});
+				expect(data.duplicate.kind).toBe('blocked');
+				expect(data.existingSourceId).toBeUndefined();
+			},
+		);
 
 		it('refuses to reuse a source in another scope', async () => {
 			const first = await connectDocx();

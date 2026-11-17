@@ -8,6 +8,7 @@ import {
 	N8nDialogBody,
 	N8nDialogDescription,
 	N8nDialogFooter,
+	N8nExternalLink,
 	N8nHeading,
 	N8nIcon,
 	N8nInput,
@@ -209,9 +210,9 @@ function installs(entry: SkillCatalogEntry) {
 					>{{ i18n.baseText('settings.context.skills.catalog.license') }}:
 					{{ selected.license }}</N8nText
 				>
-				<a :href="selected.url" target="_blank" rel="noopener noreferrer">{{
+				<N8nExternalLink :href="selected.url">{{
 					i18n.baseText('settings.context.skills.catalog.source')
-				}}</a>
+				}}</N8nExternalLink>
 				<N8nText v-if="!canCreate" color="text-light">{{
 					i18n.baseText('settings.context.skills.catalog.noPermission')
 				}}</N8nText>

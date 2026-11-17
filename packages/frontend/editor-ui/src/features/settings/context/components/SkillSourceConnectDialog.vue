@@ -645,25 +645,13 @@ async function onNext() {
 	};
 	discovering.value = true;
 	try {
-		let result = await skillsStore.discoverSource({ ...target, ...parseScope(requestedScope) });
+		let result = await skillsStore.discoverSource({
+			...target,
+			...parseScope(requestedScope),
+			...(props.preset ? { reuseExistingSource: true } : {}),
+		});
 		if (!isCurrent()) return;
-		const duplicate = result.duplicate;
-		if (
-			props.preset &&
-			duplicate.kind === 'blocked' &&
-			duplicate.sourceId &&
-			(duplicate.where === 'scope' || parseScope(requestedScope).scope === 'instance')
-		) {
-			target.existingSourceId = duplicate.sourceId;
-			try {
-				result = await skillsStore.discoverSource({ ...target, ...parseScope(requestedScope) });
-			} catch (error) {
-				if (!(error instanceof ResponseError) || error.meta?.reason !== 'stale') throw error;
-				// A different branch or credential needs the existing source's settings.
-				delete target.existingSourceId;
-			}
-			if (!isCurrent()) return;
-		}
+		if (result.existingSourceId) target.existingSourceId = result.existingSourceId;
 		if (props.preset) {
 			result = {
 				...result,

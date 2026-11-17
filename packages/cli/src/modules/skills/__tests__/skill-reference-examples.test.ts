@@ -7,6 +7,22 @@ const skill = (body = 'Read the examples.') => ({
 });
 
 describe('GitHub reference examples', () => {
+	it.each([
+		['JSON', 'json'],
+		['TS', 'typescript'],
+	])('retains uppercase %s references', (extension, language) => {
+		const path = `references/example.${extension}`;
+		const { content, skippedFiles } = readGitHubSkillFolder('examples', [
+			skill(`Read [example](${path}).`),
+			{ path, content: 'example' },
+		]);
+		expect(content.instructions).toContain(`${path}.md`);
+		expect(content.files[0]).toMatchObject({
+			path: `${path}.md`,
+			content: expect.stringContaining('```' + language + '\nexample'),
+		});
+		expect(skippedFiles).toEqual([]);
+	});
 	it('updates local links and file names without changing URLs or code blocks', () => {
 		const { content } = readGitHubSkillFolder('examples', [
 			skill('Read `references/examples/workflow.json` and `usage.ts`.'),

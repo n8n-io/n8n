@@ -45,10 +45,10 @@ export function archiveSize(archive: RepositoryArchive): number {
 	return bytes;
 }
 
-function tooLarge(root: string): SkillSourceReadError {
+function tooLarge(root: string | string[]): SkillSourceReadError {
 	return new SkillSourceReadError(
 		'archive_too_large',
-		root === ''
+		(Array.isArray(root) ? root.includes('') : root === '')
 			? 'The repository is too large for n8n to read. Link to the folder of the skills.'
 			: 'The folder is too large for n8n to read. Link to a smaller folder.',
 	);
@@ -62,9 +62,10 @@ function tooLarge(root: string): SkillSourceReadError {
  */
 export async function readRepositoryArchive(
 	source: Readable,
-	options: { root?: string; signal?: AbortSignal; limits?: ArchiveLimits } = {},
+	options: { root?: string | string[]; signal?: AbortSignal; limits?: ArchiveLimits } = {},
 ): Promise<RepositoryArchive> {
 	const { root = '', signal, limits = DEFAULT_ARCHIVE_LIMITS } = options;
+	const roots = Array.isArray(root) ? root : [root];
 	const paths: string[] = [];
 	const text = new Map<string, string>();
 	const oversized = new Set<string>();
@@ -98,8 +99,11 @@ export async function readRepositoryArchive(
 			const path = withoutTopFolder(entry.path);
 			if (
 				path === undefined ||
-				(!isInside(path, root) &&
-					!(isLicensePath(path) && isInside(root, path.split('/').slice(0, -1).join('/'))))
+				!roots.some(
+					(folder) =>
+						isInside(path, folder) ||
+						(isLicensePath(path) && isInside(folder, path.split('/').slice(0, -1).join('/'))),
+				)
 			) {
 				entry.resume();
 				return;
@@ -185,7 +189,5 @@ function keepsText(path: string): boolean {
 
 /** License notices stay with imported content, including notices above a linked folder. */
 export function isLicensePath(path: string): boolean {
-	return /^(licen[cs]e|copying|notice)(-[a-z0-9]+)*(\.(txt|md|markdown))?$/i.test(
-		path.split('/').at(-1) ?? '',
-	);
+	return /^(licen[cs]e|copying|notice)([-_.][a-z0-9]+)*$/i.test(path.split('/').at(-1) ?? '');
 }

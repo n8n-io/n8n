@@ -9,7 +9,7 @@ export function readGitHubSkillFolder(folderName: string, files: SkillFolderFile
 	const conversions = new Map<string, string>();
 	const paths = new Set(files.map((file) => file.path));
 	for (const file of files) {
-		if (!/\.(json|ts)$/.test(file.path)) continue;
+		if (!/\.(json|ts)$/i.test(file.path)) continue;
 		const target = `${file.path}.md`;
 		if (!agentSkillReferencePathSchema.safeParse(target).success) continue;
 		if (paths.has(target)) {
@@ -28,7 +28,7 @@ export function readGitHubSkillFolder(folderName: string, files: SkillFolderFile
 				fenceLength = Math.max(fenceLength, match[0].length + 1);
 			}
 			const fence = '`'.repeat(fenceLength);
-			const language = file.path.endsWith('.json') ? 'json' : 'typescript';
+			const language = file.path.toLowerCase().endsWith('.json') ? 'json' : 'typescript';
 			return {
 				path: target,
 				content: `Stored as a Markdown reference by n8n. Original file: ${file.path}\n\n${fence}${language}\n${file.content}\n${fence}\n`,

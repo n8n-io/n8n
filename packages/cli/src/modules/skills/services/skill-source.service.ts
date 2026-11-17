@@ -162,13 +162,25 @@ export class SkillSourceService {
 		try {
 			const source = await this.parse(payload, user, target.projectId);
 			report.provider = source.type;
-			const existingSource = await this.reusableSource(payload.existingSourceId, source, target);
-			const duplicate = await this.duplicateOf(
+			let existingSource = await this.reusableSource(payload.existingSourceId, source, target);
+			let duplicate = await this.duplicateOf(
 				user,
 				source.identityKey,
 				target.projectId,
 				existingSource?.id,
 			);
+			if (payload.reuseExistingSource && duplicate.kind === 'blocked' && duplicate.sourceId) {
+				const candidate = await this.sourceRepository.findById(duplicate.sourceId);
+				if (this.matchesSource(candidate, source, target)) {
+					existingSource = candidate;
+					duplicate = await this.duplicateOf(
+						user,
+						source.identityKey,
+						target.projectId,
+						candidate.id,
+					);
+				}
+			}
 			report.duplicate_result = duplicate.kind;
 			const discovered = await this.discoverAll(source);
 			const skills = await this.readAll(source, discovered);
@@ -193,6 +205,7 @@ export class SkillSourceService {
 			}
 			return {
 				source: { type: source.type, ...client.describe(locator), webUrl: client.webUrl(locator) },
+				...(existingSource ? { existingSourceId: existingSource.id } : {}),
 				duplicate,
 				skills: skills.map((read): DiscoveredSkill => {
 					const preview = read.fetched
@@ -868,6 +881,8 @@ export class SkillSourceService {
 					const reason = failed[0]?.reason ?? 'no_skills_found';
 					throw new SkillSourceRequestError(reason, noImportMessage(failed, reason));
 				}
+				if (existingSourceId)
+					await this.sourceRepository.invalidateCheckCursor(existingSourceId, ctx);
 			});
 		} catch (error) {
 			// The transaction rolled back, so nothing came in.
@@ -898,17 +913,25 @@ export class SkillSourceService {
 	): Promise<SkillSourceConnection | undefined> {
 		if (!id) return undefined;
 		const existing = await this.sourceRepository.findById(id, ctx);
-		if (
-			!existing ||
-			(existing.credentialRequired && !source.auth) ||
-			existing.identityKey !== source.identityKey ||
-			existing.projectId !== target.projectId ||
-			existing.credentialId !== (source.auth?.credentialId ?? null) ||
-			source.client.describe(existing.locator).ref !== source.client.describe(source.locator).ref
-		) {
+		if (!this.matchesSource(existing, source, target)) {
 			throw new SkillSourceRequestError('stale', 'The source changed. Review the import again.');
 		}
 		return existing;
+	}
+
+	private matchesSource(
+		existing: SkillSourceConnection | null,
+		source: ParsedSource,
+		target: SkillTarget,
+	): existing is SkillSourceConnection {
+		return (
+			existing !== null &&
+			(!existing.credentialRequired || !!source.auth) &&
+			existing.identityKey === source.identityKey &&
+			existing.projectId === target.projectId &&
+			existing.credentialId === (source.auth?.credentialId ?? null) &&
+			source.client.describe(existing.locator).ref === source.client.describe(source.locator).ref
+		);
 	}
 
 	/** One event for each skill that the picker shows as needing review or blocked. */
