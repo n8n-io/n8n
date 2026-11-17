@@ -1199,6 +1199,8 @@ function lowerHttpLibrary(c: NodeContext): void {
 	let credentialType: string | undefined;
 	/** The name and the code of the content type that the node sets for its body. */
 	let contentTypeHeader: [string, string] | null = null;
+	/** True when the node stores the body of the response as a file of the item. */
+	let storesFile = false;
 	const options = isRecord(p.options) ? p.options : {};
 	if (v >= 3) {
 		if (
@@ -1331,11 +1333,30 @@ function lowerHttpLibrary(c: NodeContext): void {
 				? options.response.response
 				: {};
 		if (response.responseFormat === 'file') {
-			throw new NodeFailure(
-				'http-binary',
-				'The response format "file" (binary data) is not supported.',
-				'options.response',
-			);
+			// The runtime stores the body of the response as binary data (`responseBinary`, spec
+			// 7.1). The caller says when its runtime does. The runtime has a largest size of a
+			// stored file and v1 has none, so the node has its fallback-host form too, and it
+			// sends only GET requests: v1 can send a GET again.
+			const reason =
+				c.nodeSources?.storesResponses !== true
+					? 'the runtime of the caller does not store a response as binary data'
+					: method !== 'GET'
+						? 'the method is not a fixed GET'
+						: response.neverError === true
+							? 'with "never error" v1 stores the body of a failed request too'
+							: c.node.onError === 'continueErrorOutput'
+								? 'the node has an error output'
+								: readPaging(c, options) !== null
+									? 'the node has pagination'
+									: null;
+			if (reason !== null) {
+				throw new NodeFailure(
+					'http-binary',
+					`The response format "file" (binary data) is not supported here: ${reason}.`,
+					'options.response',
+				);
+			}
+			storesFile = true;
 		}
 		// The library node reads these response options (`src/nodes/http-request.ts`).
 		const kept: Array<[string, Code]> = [];
@@ -1530,6 +1551,20 @@ function lowerHttpLibrary(c: NodeContext): void {
 	// v1 sends the pages of each item in a loop (n8n-core requestWithAuthenticationPaginated).
 	if (paging) {
 		emitPaging(c, paging, parameters.code, call.fields);
+		return;
+	}
+	if (storesFile) {
+		// A file over the largest size of the runtime: the fallback host runs the v1 node.
+		const inHost = (to: NodeContext) => lowerHostNode(to, 1, [['host', raw("'fallback'")]]);
+		const hostForm = hostFormOf(c, inHost);
+		if (hostForm === null) {
+			throw new NodeFailure(
+				'http-binary',
+				'The response format "file" has no fallback-host form here.',
+				'options.response',
+			);
+		}
+		emitWithHostForm(c, false, (to, hostLimit) => emitStep(to, { ...call, hostLimit }), hostForm);
 		return;
 	}
 	// v1 sends one request for each item.
