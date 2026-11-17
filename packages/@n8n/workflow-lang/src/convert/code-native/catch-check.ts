@@ -19,6 +19,8 @@ import ts from 'typescript';
 export interface CatchPlan {
 	/** Nodes to write as `errText(<error>)`. */
 	errText: ts.Node[];
+	/** \`e instanceof Error\` tests of the error that are true for certain. */
+	isError: ts.Node[];
 	/** Receivers of method calls to check, with V8's text of the callee. */
 	checks: Array<{ receiver: ts.Expression; method: string; text: string }>;
 }
@@ -200,7 +202,7 @@ export function planCatch(
 	const decl = clause?.variableDeclaration;
 	if (!clause || !decl || !ts.isIdentifier(decl.name)) return 'a catch without a plain error name';
 	const sym = checker.getSymbolAtLocation(decl.name);
-	const plan: CatchPlan = { errText: [], checks: [] };
+	const plan: CatchPlan = { errText: [], isError: [], checks: [] };
 
 	// Uses of the error.
 	let reason: string | null = null;
@@ -248,6 +250,17 @@ export function planCatch(
 				return;
 			}
 			if (ts.isThrowStatement(p)) return;
+			if (
+				known.ownErrors &&
+				ts.isBinaryExpression(p) &&
+				p.left === x &&
+				p.operatorToken.kind === ts.SyntaxKind.InstanceOfKeyword &&
+				ts.isIdentifier(p.right) &&
+				p.right.text === 'Error'
+			) {
+				plan.isError.push(p);
+				return;
+			}
 			// Truthiness and `typeof`: an error is an object in both engines.
 			if (
 				(ts.isConditionalExpression(p) && p.condition === x) ||
@@ -288,7 +301,7 @@ export function planBody(
 	checker: ts.TypeChecker,
 	known: PlanKnown,
 ): { plan: CatchPlan; reason: string | null } {
-	const plan: CatchPlan = { errText: [], checks: [] };
+	const plan: CatchPlan = { errText: [], isError: [], checks: [] };
 	const reason = planOperations(body, checker, { ...known, all: true }, plan);
 	return { plan, reason };
 }
@@ -299,6 +312,8 @@ interface PlanKnown {
 	awaited?: (n: ts.AwaitExpression) => 'http' | 'call' | null;
 	/** The code makes requests, so a caught error can be the error of a failed request. */
 	requests?: boolean;
+	/** Each error that the code can catch is an Error of the code itself (\`ownErrors\` in \`translate.ts\`). */
+	ownErrors?: boolean;
 	/** The walk goes on after the first reason against, and collects every method check. */
 	all?: boolean;
 }

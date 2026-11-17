@@ -16,6 +16,9 @@ useUtc();
 
 type Outcome = { ok: true; value: unknown } | { ok: false };
 
+// The fallback host allows `require('crypto')`, as a deployment of v1 that runs such code.
+process.env.WF_FALLBACK_CODE_ALLOW_MODULES = 'crypto';
+
 function native(
 	code: string,
 	mode: CodeMode,
@@ -312,5 +315,161 @@ return items.map((i) => { i.json.when = d; return { json: { a: i.json.when.toLoc
 		const code = `const parse = (v) => new Date(v);
 return items.map((i) => ({ json: { text: parse(i.json.n).toLocaleString('en-US', { dateStyle: 'medium' }) } }));`;
 		expect(blockersOf(code)).toContain('Date: toLocaleString of a value of unknown kind');
+	});
+});
+
+describe('match, matchAll and search with a pattern that is no regular expression', () => {
+	const input = [
+		{ s: 'abbabX', p: 'a(b)' },
+		{ s: 'a+b a+b', p: '\\+' },
+		{ s: 'zz', p: 5 },
+	];
+
+	it('makes the regular expression of the pattern, as JavaScript', () => {
+		const code = `const pick = (v) => v;
+return items.map((i) => ({ json: {
+	m: i.json.s.match(i.json.p), a: i.json.s.match('b+'), s: i.json.s.search(i.json.p),
+	all: [...i.json.s.matchAll(i.json.p)].map((m) => m[0] + m.index),
+	r: i.json.s.match(pick(/B/gi)), u: i.json.s.match(i.json.none), n: 'null1'.match(null), g: 'a.b'.match('.').index,
+} }));`;
+		expect(same(code, 'all', input).ok).toBe(true);
+	});
+
+	it('works in code that has no regular expression', () => {
+		const code =
+			"return items.map((i) => ({ json: { m: i.json.s.match('b'), s: i.json.s.search('b') } }));";
+		expect(same(code, 'all', input).ok).toBe(true);
+	});
+});
+
+describe('hashes of the crypto module', () => {
+	const input = [
+		{ s: '', k: '' },
+		{ s: 'héllo wörld 😀 abc', k: 'key' },
+		{ s: 'a'.repeat(150), k: 'k'.repeat(90) },
+		{ s: 'b'.repeat(55), k: 'k'.repeat(64) },
+		{ s: 'c'.repeat(56), k: 'k'.repeat(65) },
+	];
+	const withCrypto = <T>(run: () => T): T => run();
+
+	it('gives the digests of Node.js for MD5, SHA-1 and SHA-256, with and without a key', () => {
+		const code = `const crypto = require('crypto');
+const { createHmac } = require('crypto');
+return items.map((i) => {
+	const h = crypto.createHash('sha256');
+	h.update(i.json.s);
+	h.update('|');
+	return { json: {
+		a: h.digest('hex'),
+		m: crypto.createHash('md5').update(i.json.s).digest('hex'),
+		s1: crypto.createHash('SHA1').update(i.json.s).digest('base64'),
+		hm: createHmac('sha256', i.json.k).update(i.json.s).digest('hex'),
+		h1: crypto.createHmac('sha1', i.json.k).update(i.json.s, 'utf8').digest('base64url'),
+		h5: require('crypto').createHmac('md5', i.json.k).update(i.json.s).digest('base64'),
+	} };
+});`;
+		expect(withCrypto(() => same(code, 'all', input)).ok).toBe(true);
+	});
+
+	it.each([
+		[
+			'text that is a number',
+			"return [{ json: { a: crypto.createHash('md5').update(items[0].json.n).digest('hex') } }];",
+		],
+		[
+			'a key that is missing',
+			"return [{ json: { a: crypto.createHmac('md5', items[0].json.none).update('a').digest('hex') } }];",
+		],
+		[
+			'a second digest',
+			"const h = crypto.createHash('md5'); h.digest('hex'); return [{ json: { a: h.digest('hex') } }];",
+		],
+	])('gives the error of Node.js for %s', (_, body) => {
+		const r = withCrypto(() =>
+			same(`const crypto = require('crypto');\n${body}`, 'all', [{ n: 5 }]),
+		);
+		expect(r.ok).toBe(false);
+	});
+
+	it.each([
+		[
+			'another function of the module',
+			"const crypto = require('crypto'); return [{ json: { a: crypto.randomUUID() } }];",
+		],
+		[
+			'another algorithm',
+			"const crypto = require('crypto'); return [{ json: { a: crypto.createHash('sha512').update('a').digest('hex') } }];",
+		],
+		[
+			'a digest as bytes',
+			"const crypto = require('crypto'); return [{ json: { a: crypto.createHash('md5').update('a').digest().length } }];",
+		],
+		[
+			'the module as a value',
+			"const crypto = require('crypto'); const c = crypto; return [{ json: { a: c.createHash('md5').update('a').digest('hex') } }];",
+		],
+		['another module', "const os = require('os'); return [{ json: { a: os.EOL } }];"],
+	])('keeps %s in the host', (_, code) => {
+		expect(blockersOf(code)).toContain('require');
+	});
+});
+
+describe('Promise.all and Promise.resolve in code without requests', () => {
+	it('gives the list and the value', () => {
+		const code = `const work = async (i) => ({ json: { n: i.json.n * 2 } });
+const out = await Promise.all(items.map(work));
+const one = await Promise.resolve(out.length);
+out.push({ json: { one } });
+return Promise.all(out.map(async (o, k) => ({ json: { ...o.json, k } })));`;
+		expect(same(code).ok).toBe(true);
+	});
+
+	it.each([[1], ['a😀b'], [{ a: 1 }], [null]])('gives the result of V8 for the value %j', (n) => {
+		const code = 'return [{ json: { r: await Promise.all(items[0].json.n) } }];';
+		same(code, 'all', [{ n }]);
+	});
+
+	it.each([
+		[
+			'a call in a try block',
+			'try { return await Promise.all(items.map(async (i) => i)); } catch { return []; }',
+		],
+		[
+			'callbacks that wait',
+			'return await Promise.all(items.map(async (i) => { await 0; return i; }));',
+		],
+		['a promise that the code keeps', 'const p = Promise.all(items); return await p;'],
+	])('keeps %s in the host', (_, code) => {
+		expect(blockersOf(code)).toContain('Promise');
+	});
+});
+
+describe('instanceof', () => {
+	it('is certain for a Date of the code, a value of the input and a caught error', () => {
+		const code = `const d = new Date(items[0].json.t);
+return items.map((i) => {
+	let m;
+	try { m = JSON.parse(i.json.s).a.b; } catch (e) { m = e instanceof Error ? e.message : 'other'; }
+	return { json: { a: d instanceof Date, b: i.json.t instanceof Date, c: i.json.s instanceof Date ? 1 : 2, m } };
+});`;
+		const input = [
+			{ t: 5, s: '{' },
+			{ t: 6, s: '{"a":null}' },
+		];
+		expect(same(code, 'all', input).ok).toBe(true);
+	});
+
+	it.each([
+		['an Array test', 'return items.map((i) => ({ json: { a: i.json.l instanceof Array } }));'],
+		[
+			'an error that can be a thrown text',
+			"try { throw 'x'; } catch (e) { return [{ json: { a: e instanceof Error } }]; }",
+		],
+		[
+			'a Date test of a value of unknown kind',
+			'const pick = (v) => v; const d = new Date(0); return [{ json: { a: pick(d) instanceof Date } }];',
+		],
+	])('keeps %s in the host', (_, code) => {
+		expect(blockersOf(code).join()).toMatch(/instanceof|catch reads the error/);
 	});
 });
