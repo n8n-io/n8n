@@ -136,8 +136,6 @@ export class LmChatDeepSeek implements INodeType {
 			},
 			{
 				...modelProperty,
-				// DeepSeek retired `deepseek-chat` and `deepseek-reasoner` on 2026-07-24.
-				// `deepseek-flash` is the current V4.1 Flash model.
 				default: 'deepseek-flash',
 				builderHint: {
 					propertyHint:

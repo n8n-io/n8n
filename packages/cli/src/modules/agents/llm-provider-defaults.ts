@@ -63,8 +63,6 @@ export const LLM_PROVIDER_DEFAULTS: Record<string, LlmProviderDefault> = {
 	},
 	deepSeekApi: {
 		provider: 'deepseek',
-		// DeepSeek retired `deepseek-chat` on 2026-07-24; `deepseek-flash` is the
-		// current V4.1 Flash model.
 		defaultModel: 'deepseek-flash',
 	},
 	cohereApi: {

@@ -59,10 +59,7 @@ describe('LmChatDeepSeek', () => {
 
 	describe('description', () => {
 		const modelProperties = () =>
-			new LmChatDeepSeek().description.properties.filter(
-				// `@n8n/ai-utilities` is mocked, so its notice field is undefined here.
-				(property) => property?.name === 'model',
-			);
+			new LmChatDeepSeek().description.properties.filter((property) => property?.name === 'model');
 
 		it('should offer versions 1 and 1.1', () => {
 			expect(node.description.version).toEqual([1, 1.1]);
