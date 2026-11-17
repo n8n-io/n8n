@@ -1022,7 +1022,16 @@ test "outbox: a full outbox says so, and files and dirs keep their modes" {
 /// The permission bits of a file or dir.
 fn modeOf(path: []const u8) !c_uint {
     var b: [path_bytes]u8 = undefined;
+    const z = dirPath(path, &b);
+    // Linux has no `stat` in the C layer of the standard library: it has `statx`.
+    if (@import("builtin").os.tag == .linux) {
+        const linux = std.os.linux;
+        var sx: linux.Statx = undefined;
+        const rc = linux.statx(linux.AT.FDCWD, z, 0, .{ .MODE = true }, &sx);
+        if (rc != 0) return error.Stat;
+        return @intCast(sx.mode & 0o777);
+    }
     var st: std.c.Stat = undefined;
-    if (std.c.stat(dirPath(path, &b), &st) != 0) return error.Stat;
+    if (std.c.stat(z, &st) != 0) return error.Stat;
     return @intCast(st.mode & 0o777);
 }

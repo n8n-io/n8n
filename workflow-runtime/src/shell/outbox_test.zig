@@ -980,8 +980,17 @@ fn modeOf(path: []const u8) !c_uint {
     var b: [512]u8 = undefined;
     @memcpy(b[0..path.len], path);
     b[path.len] = 0;
+    const z = b[0..path.len :0];
+    // Linux has no `stat` in the C layer of the standard library: it has `statx`.
+    if (@import("builtin").os.tag == .linux) {
+        const linux = std.os.linux;
+        var sx: linux.Statx = undefined;
+        const rc = linux.statx(linux.AT.FDCWD, z, 0, .{ .MODE = true }, &sx);
+        if (rc != 0) return error.Stat;
+        return @intCast(sx.mode & 0o777);
+    }
     var st: std.c.Stat = undefined;
-    if (std.c.stat(b[0..path.len :0], &st) != 0) return error.Stat;
+    if (std.c.stat(z, &st) != 0) return error.Stat;
     return @intCast(st.mode & 0o777);
 }
 
