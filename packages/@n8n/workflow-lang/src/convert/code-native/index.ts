@@ -221,6 +221,63 @@ export function previousRunsOnce(c: NodeContext): boolean | undefined {
 }
 
 /**
+ * Writes a native Code node with "retry on fail", as v1's engine runs it
+ * (`WorkflowExecute`): up to `min(5, max(2, maxTries || 3))` tries, with
+ * `waitBetweenTries` (0 to 5000 ms, default 1000) before each next try. The engine tries
+ * again when the node throws, and when the first item of its result has an `error` that is
+ * not undefined, null or false: under an error setting that continues, the Code node gives
+ * such an item for an error of its code. After the last try, the node fails or gives its
+ * result as without the setting.
+ */
+function retried(c: NodeContext, expr: string, onError: string): void {
+	const { w, input } = c;
+	const out = c.output(0);
+	const tries = Math.min(5, Math.max(2, c.node.maxTries || 3));
+	const delay = Math.min(5000, Math.max(0, c.node.waitBetweenTries || 1000));
+	const errors = onError === 'continueErrorOutput' ? c.output(1, 'Errors') : null;
+	c.helper('retryError');
+	if (errors) w.line(`const ${errors}: Json[] = [];`);
+	w.line(`let ${out}: Json[] = [];`);
+	w.open(`if (${input}.length > 0) {`);
+	// The item of the error output of the last try, or null.
+	if (errors) w.line('let failedItem: Json = null;');
+	w.open(`for (let tryIndex = 0; tryIndex < ${tries}; tryIndex++) {`);
+	if (delay > 0) {
+		w.line(
+			`if (tryIndex > 0) await ctx.wait({ name: ${JSON.stringify(`${c.node.name} (retry)`)}, duration: ${delay} });`,
+		);
+	}
+	w.line('let thrown = false;');
+	if (errors) w.line('failedItem = null;');
+	w.open('try {');
+	w.block(`${out} = ${expr};`);
+	w.close('} catch (error) {');
+	w.depth++;
+	// The engine tries again after each error; the last one fails the node, as does a result
+	// that is not valid under each error setting.
+	w.line(
+		onError === 'stopWorkflow'
+			? `if (tryIndex + 1 >= ${tries}) throw error;`
+			: `if (error.$invalid && tryIndex + 1 >= ${tries}) throw error;`,
+	);
+	w.line('thrown = true;');
+	if (onError !== 'stopWorkflow') {
+		w.open('if (!error.$invalid) {');
+		// The Code node gives the error as an item, and the engine sees a failed first item.
+		if (errors) {
+			w.line(`${out} = [];`);
+			w.line(`failedItem = { ...${input}[0], error: error.message };`);
+		} else w.line(`${out} = [{ error: error.message }];`);
+		w.close();
+	}
+	w.close();
+	w.line(`if (!thrown && !retryError(${out}[0])) break;`);
+	w.close();
+	if (errors) w.line(`if (failedItem !== null) ${errors}.push(failedItem);`);
+	w.close();
+}
+
+/**
  * Writes the node as native code and returns true, or returns false (with an
  * info diagnostic) when the host step must run it.
  */
@@ -291,6 +348,10 @@ export function lowerCodeNative(c: NodeContext): boolean {
 		expr = parts.expression;
 	} else {
 		expr = attempt.expression(input, lists, allLists, plainInput);
+	}
+	if (c.node.retryOnFail === true) {
+		retried(c, expr, onError);
+		return true;
 	}
 	if (onError === 'stopWorkflow') {
 		// The result list comes from a JSON parse (`codeItems`), and no other code assigns it.

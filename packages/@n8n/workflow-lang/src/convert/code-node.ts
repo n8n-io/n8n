@@ -347,8 +347,6 @@ export function lowerCode(c: NodeContext): void {
 	const body = eachItem
 		? eachItemCode(user, context, functionItem)
 		: allItemsCode(user, context, legacyFunction);
-	if (c.node.retryOnFail)
-		c.warn('retry', 'Code steps have no retry policy; the setting is dropped.');
 	c.markFallback();
 	const fields: Array<[string, Code]> = [['code', raw(templateLiteral(body))]];
 	// Luxon's default zone in the code, as v1 sets it from the workflow.
@@ -391,8 +389,6 @@ function lowerPython(c: NodeContext): void {
 	const p = c.parameters;
 	const user = typeof p.pythonCode === 'string' ? p.pythonCode : '';
 	const body = p.mode === 'runOnceForEachItem' ? pythonEachItem(user) : pythonAllItems(user);
-	if (c.node.retryOnFail)
-		c.warn('retry', 'Code steps have no retry policy; the setting is dropped.');
 	c.markFallback();
 	emitStep(c, {
 		method: 'code',

@@ -130,4 +130,88 @@ describe('native Code nodes in a workflow', () => {
 		expect(items('Set')).toEqual([{ id: 'undefined' }]);
 		expect(items('Filter')).toEqual([]);
 	});
+
+	// v1's engine (`WorkflowExecute`): the node runs again after an error, and after a result
+	// whose first item has an `error`, with a wait before each next try.
+	describe('retry on fail', () => {
+		const retry = { retryOnFail: true, maxTries: 3, waitBetweenTries: 250 };
+		const run = async (jsCode: string, settings: Record<string, unknown>) => {
+			const wf = {
+				name: 'Retry',
+				nodes: [hook, code('Flaky', jsCode, settings)],
+				connections:
+					settings.onError === 'continueErrorOutput'
+						? { Hook: { main: [[{ node: 'Flaky', type: 'main', index: 0 }]] } }
+						: chain(['Hook', 'Flaky']),
+			};
+			const out = convertWorkflow(wf, { trace: 'all' });
+			expect(out.ok).toBe(true);
+			expect(out.fallbackNodes).toEqual([]);
+			const ran = await runReference(out.source, {
+				trigger: { body: { id: 7 } },
+				now: 0,
+				seed: 1,
+				effects: {},
+				trace: true,
+			});
+			const waits = ran.effects.filter((e) => e.kind === 'wait' && e.step === 'Flaky (retry)');
+			const items = (ran.trace ?? []).filter((t) => t.step === 'Flaky').pop()?.items;
+			return { ran, waits: waits.length, items };
+		};
+
+		it('runs the code once when it gives a result', async () => {
+			const r = await run('return [{ json: { ok: true } }];', retry);
+			expect(r.waits).toBe(0);
+			expect(r.items).toEqual([{ ok: true }]);
+		});
+
+		it('runs failing code up to the number of tries, then fails the node', async () => {
+			const r = await run("throw new Error('down');", retry);
+			expect(r.waits).toBe(2);
+			expect(r.ran.status).toBe('error');
+			expect(JSON.stringify(r.ran.result)).toContain('down [line 1]');
+		});
+
+		it('uses the limits of v1 for the tries and the wait', async () => {
+			const r = await run("throw new Error('down');", {
+				retryOnFail: true,
+				maxTries: 9,
+				waitBetweenTries: 60_000,
+			});
+			expect(r.waits).toBe(4);
+			const wait = r.ran.effects.find((e) => e.kind === 'wait');
+			expect(wait?.args).toEqual({ name: 'Flaky (retry)', duration: 5000 });
+		});
+
+		it('tries again when the first item of the result has an error', async () => {
+			const r = await run("return [{ json: { error: 'soft' } }, { json: { n: 2 } }];", retry);
+			expect(r.waits).toBe(2);
+			expect(r.items).toEqual([{ error: 'soft' }, { n: 2 }]);
+		});
+
+		it('gives the error item after the last try under "continue"', async () => {
+			const r = await run("throw new Error('down');", {
+				...retry,
+				onError: 'continueRegularOutput',
+			});
+			expect(r.waits).toBe(2);
+			expect(r.items).toEqual([{ error: 'down [line 1]' }]);
+		});
+
+		it('gives the error output its item after the last try', async () => {
+			const r = await run("throw new Error('down');", {
+				...retry,
+				onError: 'continueErrorOutput',
+			});
+			expect(r.waits).toBe(2);
+			expect(r.ran.status).toBe('ok');
+		});
+
+		it('fails the node for a result that is not valid, after the tries', async () => {
+			const r = await run('return 5;', { ...retry, onError: 'continueRegularOutput' });
+			expect(r.waits).toBe(2);
+			expect(r.ran.status).toBe('error');
+			expect(JSON.stringify(r.ran.result)).toContain("Code doesn't return items properly");
+		});
+	});
 });
