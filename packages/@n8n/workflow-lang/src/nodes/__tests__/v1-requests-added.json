@@ -1,0 +1,32 @@
+{
+	"rssFeedRead version 1.1": {
+		"requests": [
+			{
+				"method": "GET",
+				"url": "https://feeds.example.com/feed.xml",
+				"qs": {},
+				"headers": {
+					"user-agent": "rss-parser",
+					"accept": "application/rss+xml"
+				}
+			}
+		],
+		"wire": [
+			{
+				"accept": "application/rss+xml",
+				"userAgent": "rss-parser"
+			}
+		],
+		"output": [
+			{
+				"title": "One",
+				"link": "https://example.com/1",
+				"pubDate": "Mon, 06 May 2024 10:00:00 GMT",
+				"content": "First & only",
+				"contentSnippet": "First & only",
+				"guid": "id-1",
+				"isoDate": "2024-05-06T10:00:00.000Z"
+			}
+		]
+	}
+}

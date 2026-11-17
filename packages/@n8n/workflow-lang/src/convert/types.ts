@@ -104,7 +104,12 @@ export interface ConvertResult {
 	 */
 	credentialMints?: Record<
 		string,
-		Array<{ name: string; kind: 'google-service-account'; service: string; scopes: string[] }>
+		Array<{
+			name: string;
+			kind: 'google-service-account' | 'google-service-account-http';
+			service: string;
+			scopes: string[];
+		}>
 	>;
 	/** The n8n credential behind each credential slot of the source. */
 	credentials?: Record<string, { id: string | null; name: string; type: string }>;

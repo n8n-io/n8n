@@ -60,7 +60,11 @@ export interface CompiledArtifact {
 export interface CredentialMintRequest {
 	/** The key of the token under `data.n8nMinted` in the credentials document. */
 	name: string;
-	kind: 'google-service-account';
+	/**
+	 * `google-service-account-http`: the token of the HTTP Request node, with the scopes of the
+	 * credential data. `service` and `scopes` say nothing then.
+	 */
+	kind: 'google-service-account' | 'google-service-account-http';
 	/** The key of the scopes in the scopes table of the Google nodes. */
 	service: string;
 	scopes: string[];

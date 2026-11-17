@@ -2360,6 +2360,20 @@ const handPorted: EquivalenceCase[] = [
 		],
 	},
 	{
+		// Version 1.1 sends the Accept header of rss-parser. `version` is for the library node
+		// (the converter adds it); the v1 node has no such parameter.
+		name: 'rssFeedRead version 1.1',
+		type: 'n8n-nodes-base.rssFeedRead',
+		typeVersion: 1.1,
+		parameters: { url: 'https://feeds.example.com/feed.xml', options: {}, version: 1.1 },
+		responses: [
+			{
+				headers: { 'content-type': 'application/rss+xml; charset=utf-8' },
+				body: '<rss version="2.0">\n<channel><title>Feed</title>\n<item><title>One</title><link>https://example.com/1</link><description>First &amp; only</description><guid>id-1</guid><pubDate>Mon, 06 May 2024 10:00:00 GMT</pubDate></item>\n</channel></rss>',
+			},
+		],
+	},
+	{
 		name: 'rssFeedRead atom',
 		type: 'n8n-nodes-base.rssFeedRead',
 		typeVersion: 1.2,

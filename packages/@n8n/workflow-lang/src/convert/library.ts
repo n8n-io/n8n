@@ -32,6 +32,7 @@ import {
 	lowerCluster,
 	lowerHostNode,
 } from './host-node.ts';
+import type { CredentialMint } from '../node-compile/specialise.ts';
 import { googleMint } from '../node-compile/specialise.ts';
 import type { Paging } from './http-pagination.ts';
 import { emitPaging, readPaging } from './http-pagination.ts';
@@ -105,6 +106,8 @@ function pick(p: Record<string, unknown>, names: string[]): Record<string, unkno
 }
 
 export const ADAPTERS: Record<string, Adapter> = {
+	// The node version, for the Accept header of a version below 1.2.
+	'n8n-nodes-base.rssFeedRead': (p, version) => (version < 1.2 ? { ...p, version } : p),
 	// The defaults of the v1 node description, and the item index for the error texts of
 	// `assertBinaryData`. An operation without a library form keeps its parameters: the
 	// `supports` list refuses it.
@@ -636,8 +639,9 @@ export const MIN_VERSIONS: Record<string, number> = {
 	'n8n-nodes-base.mySql': 2,
 	// Version 2.1 gave the node its own readers for time columns.
 	'n8n-nodes-base.postgres': 2.1,
-	// 1.2 has the relaxed Accept header; version 1 reads the feed once for all items.
-	'n8n-nodes-base.rssFeedRead': 1.2,
+	// Version 1 reads the feed once for all items. Version 1.1 has another Accept header,
+	// which the library node sends for `version` (`ADAPTERS`).
+	'n8n-nodes-base.rssFeedRead': 1.1,
 };
 
 /**
@@ -1069,6 +1073,70 @@ const SERVICE_ACCOUNT_SCOPES: Record<string, { service: string; scopes: string[]
 		],
 	},
 };
+
+/**
+ * The token of an HTTP Request node with a Google service account (`googleApi` as a
+ * predefined credential type). n8n makes it with the `authenticate` of the credential type,
+ * which signs with the scopes of the credential data, and the node sends it.
+ */
+export const GOOGLE_HTTP_MINT: CredentialMint = {
+	name: 'mgooglehttp',
+	kind: 'google-service-account-http',
+	service: 'httpRequest',
+	scopes: [],
+};
+
+/**
+ * Adds the header that `GoogleApi.authenticate` adds to a request of the HTTP Request node:
+ * `Authorization: Bearer <token>`, after the headers of the node. True when the node sends
+ * the token. False when the node has no exact form, and the caller then reports the type:
+ * - the caller makes no tokens, or does not give the public fields of the credential;
+ * - the credential is not set up for the HTTP Request node (`httpNode`): v1 then sends the
+ *   request without a token, which a later change of the credential would not follow;
+ * - a header of the node can have the name `authorization` in any case: v1 keeps a header
+ *   whose name differs only in case next to the header of the credential.
+ */
+function serviceAccountToken(
+	c: NodeContext,
+	p: Record<string, unknown>,
+	options: Record<string, unknown>,
+	credentialType: string | undefined,
+	entries: Array<[string, Code]>,
+): boolean {
+	if (credentialType !== 'googleApi' || p.authentication !== 'predefinedCredentialType') {
+		return false;
+	}
+	if (!c.addCredentialMints) return false;
+	const id = c.node.credentials?.googleApi?.id;
+	const fields = c.nodeSources?.publicCredential?.('googleApi', id ?? null)?.fields;
+	if (fields?.httpNode !== true) return false;
+	const isAuthorization = (name: unknown) =>
+		typeof name !== 'string' || name.startsWith('=') || name.toLowerCase() === 'authorization';
+	if (p.sendHeaders === true) {
+		if (p.specifyHeaders === 'json') return false;
+		const rows = isRecord(p.headerParameters) ? p.headerParameters.parameters : [];
+		if (!Array.isArray(rows)) return false;
+		if (rows.some((row) => !isRecord(row) || isAuthorization(row.name))) return false;
+	}
+	const outer = isRecord(options.pagination) ? options.pagination.pagination : undefined;
+	const paged = isRecord(outer) && isRecord(outer.parameters) ? outer.parameters.parameters : [];
+	if (
+		Array.isArray(paged) &&
+		paged.some((row) => !isRecord(row) || (row.type === 'headers' && isAuthorization(row.name)))
+	) {
+		return false;
+	}
+	const slot = c.credential('googleApi');
+	if (slot === undefined) return false;
+	c.addCredentialMints(slot, [GOOGLE_HTTP_MINT]);
+	c.helper('withBearer');
+	const token = str(`Bearer {{$credentials.n8nMinted.${GOOGLE_HTTP_MINT.name}.access_token}}`);
+	const at = entries.findIndex(([key]) => key === 'headers');
+	const code = raw(`withBearer(${at < 0 ? '{}' : flatCode(entries[at][1])}, ${token})`);
+	if (at < 0) entries.push(['headers', code]);
+	else entries[at] = ['headers', code];
+	return true;
+}
 
 export function lowerLibrary(c: NodeContext): void {
 	const type = c.node.type;
@@ -1964,7 +2032,9 @@ function lowerHttpLibrary(c: NodeContext): void {
 	) {
 		entries.push(['errorItems', raw('true')]);
 	}
-	requireInjectable(credentialType);
+	if (!(v >= 3 && serviceAccountToken(c, p, options, credentialType, entries))) {
+		requireInjectable(credentialType);
+	}
 	// n8n refreshes an expired OAuth2 token for the library node: it needs the
 	// n8n credential behind the slot. The id is not a secret.
 	if (credentialType !== undefined) entries.push(['credentialType', literal(credentialType)]);
