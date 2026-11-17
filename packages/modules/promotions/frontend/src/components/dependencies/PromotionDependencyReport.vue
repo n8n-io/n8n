@@ -55,8 +55,15 @@ const emit = defineEmits<{
 }>();
 
 const i18n = useI18n();
-const { groupTitle, groupDescription, warningText, noteText, hardBlockText, hardBlockDetail } =
-	usePromotionDependencyLabels();
+const {
+	groupTitle,
+	groupDescription,
+	usageLabel,
+	warningText,
+	noteText,
+	hardBlockText,
+	hardBlockDetails,
+} = usePromotionDependencyLabels();
 
 const groups = computed(() => groupGaps(props.report.gaps));
 const gapCount = computed(() => props.report.gaps.length);
@@ -120,6 +127,22 @@ function placeholderProject(row: GapTargetRow): string | undefined {
 	return props.projectNames.get(row.gaps[0].consumer.projectId) ?? '';
 }
 
+/** Promote: the sentence of the spec for one caller of a deleted workflow. */
+function deletionCallerText(
+	target: { name: string },
+	caller: { name: string; projectId: string; projectName?: string },
+): string {
+	// A newer server can send the name on the row. Else the page knows it, or the sentence has none.
+	const project = caller.projectName ?? props.projectNames.get(caller.projectId);
+	return project
+		? i18n.baseText('promotions.dependencies.deletions.promote.caller', {
+				interpolate: { caller: caller.name, project, target: target.name },
+			})
+		: i18n.baseText('promotions.dependencies.deletions.promote.caller.noProject', {
+				interpolate: { caller: caller.name, target: target.name },
+			});
+}
+
 const consumerLink = (consumer: { id: string; name: string }) => [
 	{ key: `workflow:${consumer.id}`, name: consumer.name },
 ];
@@ -163,13 +186,15 @@ const consumerLink = (consumer: { id: string; name: string }) => [
 					{{ hardBlockText(block) }}
 				</N8nText>
 				<N8nText
-					v-if="hardBlockDetail(block)"
+					v-for="line in hardBlockDetails(block)"
+					:key="line"
 					tag="p"
 					step="2xs"
 					color="text-base"
 					:class="$style.indented"
+					data-test-id="promotion-dependency-hard-block-detail"
 				>
-					{{ hardBlockDetail(block) }}
+					{{ line }}
 				</N8nText>
 				<N8nText
 					v-if="block.consumer"
@@ -238,6 +263,52 @@ const consumerLink = (consumer: { id: string; name: string }) => [
 			@inspect="emit('inspect', $event)"
 		/>
 
+		<!-- Promote: the source has the same broken reference, so the list only informs. -->
+		<PromotionDependencySection
+			v-if="direction === 'promote' && report.deletionCallers.length > 0"
+			:title="i18n.baseText('promotions.dependencies.deletions.title')"
+			:description="i18n.baseText('promotions.dependencies.deletions.description.promote')"
+			tone="quiet"
+			icon="triangle-alert"
+			data-test-id="promotion-dependency-promote-deletions"
+		>
+			<li
+				v-for="{ target, callers, hiddenCallerCount } in report.deletionCallers"
+				:key="target.id"
+				:class="$style.row"
+			>
+				<PromotionDependencyTarget
+					:target="{ kind: 'workflow', id: target.id, name: target.name }"
+				/>
+				<N8nText
+					v-for="caller in callers"
+					:key="caller.id"
+					tag="p"
+					step="xs"
+					color="text-base"
+					:class="$style.indented"
+					data-test-id="promotion-dependency-promote-deletion-caller"
+				>
+					{{ deletionCallerText(target, caller) }}
+				</N8nText>
+				<N8nText
+					v-if="hiddenCallerCount > 0"
+					tag="p"
+					step="xs"
+					color="text-base"
+					:class="$style.indented"
+					data-test-id="promotion-dependency-hidden-callers"
+				>
+					{{
+						i18n.baseText('promotions.dependencies.deletions.hidden', {
+							adjustToNumber: hiddenCallerCount,
+							interpolate: { count: String(hiddenCallerCount) },
+						})
+					}}
+				</N8nText>
+			</li>
+		</PromotionDependencySection>
+
 		<PromotionDependencySection
 			v-if="report.warnings.length > 0"
 			:title="
@@ -257,7 +328,7 @@ const consumerLink = (consumer: { id: string; name: string }) => [
 					{{ warningText(warning) }}
 				</N8nText>
 				<N8nText tag="p" step="2xs" color="text-light" :class="$style.indented">
-					{{ i18n.baseText(`promotions.dependencies.usage.${warning.usage}`) }}
+					{{ usageLabel(warning.usage) }}
 					<PromotionWorkflowLinks
 						:workflows="consumerLink(warning.consumer)"
 						@inspect="emit('inspect', $event)"
@@ -283,7 +354,7 @@ const consumerLink = (consumer: { id: string; name: string }) => [
 					{{ noteText(note) }}
 				</N8nText>
 				<N8nText tag="p" step="2xs" color="text-light" :class="note.target ? $style.indented : ''">
-					{{ i18n.baseText(`promotions.dependencies.usage.${note.usage}`) }}
+					{{ usageLabel(note.usage) }}
 					<PromotionWorkflowLinks
 						:workflows="consumerLink(note.consumer)"
 						@inspect="emit('inspect', $event)"

@@ -5,7 +5,10 @@ import { useI18n } from '@n8n/i18n';
 import { computed } from 'vue';
 
 import { useCredentialTypeNames } from '../../composables/useCredentialTypeNames';
-import { usePromotionDependencyLabels } from '../../composables/usePromotionDependencyLabels';
+import {
+	targetKindOf,
+	usePromotionDependencyLabels,
+} from '../../composables/usePromotionDependencyLabels';
 import { resourceIcon } from '../../promotionPreview.tree';
 
 /**
@@ -13,7 +16,10 @@ import { resourceIcon } from '../../promotionPreview.tree';
  * project in the report, it names no project.
  */
 const props = defineProps<{
-	target: Pick<PromotionReferenceTarget, 'kind' | 'id' | 'name' | 'credentialType' | 'project'>;
+	target: Pick<PromotionReferenceTarget, 'id' | 'name' | 'credentialType' | 'project'> & {
+		/** A newer server can name a kind that this client does not know. */
+		kind: PromotionReferenceTarget['kind'] | (string & {});
+	};
 }>();
 
 const i18n = useI18n();
@@ -22,11 +28,15 @@ const { credentialTypeName } = useCredentialTypeNames();
 
 // The id tells two items apart when the report holds no name or no project for them.
 const showId = computed(() => !props.target.name || !props.target.project);
+const icon = computed(() => {
+	const kind = targetKindOf(props.target.kind);
+	return kind === 'other' ? 'box' : resourceIcon(kind);
+});
 </script>
 
 <template>
 	<span :class="$style.target" data-test-id="promotion-dependency-target">
-		<N8nIcon :icon="resourceIcon(target.kind)" size="small" :class="$style.icon" />
+		<N8nIcon :icon="icon" size="small" :class="$style.icon" />
 		<span :class="$style.text">
 			<N8nText step="xs" bold color="text-dark" :class="$style.name">
 				{{ targetName(target) }}

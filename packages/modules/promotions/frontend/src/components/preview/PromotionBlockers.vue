@@ -18,6 +18,7 @@ import { computed, onBeforeUnmount, ref, watch } from 'vue';
 import { usePromotionBindingCreation } from '../../composables/usePromotionBindingCreation';
 import { usePromotionBindings } from '../../composables/usePromotionBindings';
 import { usePromotionPreviewLabels } from '../../composables/usePromotionPreviewLabels';
+import { missingScopeOf } from '../../promotionOperation';
 import type { ApplyCheckResult, BlockedApplyResult } from '../../promotions.types';
 import { resourceIcon } from '../../promotionPreview.tree';
 import PromotionWorkflowLinks from './PromotionWorkflowLinks.vue';
@@ -98,10 +99,17 @@ type HardConflict = Exclude<
 
 const conflictRow = (conflict: HardConflict, index: number): BlockerRow => {
 	if (conflict.code === 'moved') return movedRow(conflict.kind, conflict);
+	// A refused move names the permission that the user lacks.
+	const missingScope =
+		conflict.code === 'workflow-forbidden' ? missingScopeOf(conflict) : undefined;
 	const row = {
 		key: `conflict:${index}`,
 		status: status('conflict'),
-		detail: i18n.baseText(`promotions.bindings.conflicts.${conflict.code}`),
+		detail: missingScope
+			? i18n.baseText('promotions.bindings.conflicts.workflow-forbidden.missingScope', {
+					interpolate: { permission: missingScope },
+				})
+			: i18n.baseText(`promotions.bindings.conflicts.${conflict.code}`),
 	};
 	if (conflict.kind === 'project') {
 		return {
