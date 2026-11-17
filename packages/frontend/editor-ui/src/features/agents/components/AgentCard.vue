@@ -296,12 +296,12 @@ async function toggleMCPAccess(enabled: boolean) {
 				</span>
 			</template>
 			<template #updated>
-				<N8nText size="small" color="text-light" :class="$style.meta">
+				<N8nText size="medium" color="text-light" :class="$style.meta">
 					<TimeAgo :date="String(agent.updatedAt)" />
 				</N8nText>
 			</template>
 			<template #created>
-				<N8nText size="small" color="text-light" :class="$style.meta">
+				<N8nText size="medium" color="text-light" :class="$style.meta">
 					{{ formattedCreatedAtDate }}
 				</N8nText>
 			</template>

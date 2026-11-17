@@ -219,7 +219,7 @@ const onBreadcrumbItemClick = async (item: PathItem) => {
 					</template>
 					<template #updated>
 						<N8nText
-							size="small"
+							size="medium"
 							color="text-light"
 							:class="$style.meta"
 							data-test-id="folder-card-last-updated"
@@ -229,7 +229,7 @@ const onBreadcrumbItemClick = async (item: PathItem) => {
 					</template>
 					<template #created>
 						<N8nText
-							size="small"
+							size="medium"
 							color="text-light"
 							:class="$style.meta"
 							data-test-id="folder-card-created"

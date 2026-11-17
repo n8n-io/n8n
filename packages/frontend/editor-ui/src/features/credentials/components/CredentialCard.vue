@@ -313,12 +313,12 @@ function moveResource() {
 				</span>
 			</template>
 			<template #updated>
-				<N8nText size="small" color="text-light" :class="$style.meta">
+				<N8nText size="medium" color="text-light" :class="$style.meta">
 					<TimeAgo :date="data.updatedAt" />
 				</N8nText>
 			</template>
 			<template #created>
-				<N8nText size="small" color="text-light" :class="$style.meta">
+				<N8nText size="medium" color="text-light" :class="$style.meta">
 					{{ formattedCreatedAtDate }}
 				</N8nText>
 			</template>

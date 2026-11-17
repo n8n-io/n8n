@@ -112,7 +112,7 @@ const dataTableHasDependents = computed(() => hasDependencies(props.dataTable.id
 					</template>
 					<template #updated>
 						<N8nText
-							size="small"
+							size="medium"
 							color="text-light"
 							:class="$style.meta"
 							data-test-id="data-table-card-last-updated"
@@ -122,7 +122,7 @@ const dataTableHasDependents = computed(() => hasDependencies(props.dataTable.id
 					</template>
 					<template #created>
 						<N8nText
-							size="small"
+							size="medium"
 							color="text-light"
 							:class="$style.meta"
 							data-test-id="data-table-card-created"
