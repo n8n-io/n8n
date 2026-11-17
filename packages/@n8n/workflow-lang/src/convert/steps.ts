@@ -750,6 +750,19 @@ function renamed(c: NodeContext, out: string, errors: string): NodeContext {
 	return { ...c, output: (index) => (index === 0 ? out : errors) };
 }
 
+/** The empty list of answers of a library node that can hand the node over to the host. */
+const REPLAY_START = '{ list: [], bytes: 0, full: false }';
+
+/**
+ * The two option entries of a list of answers: `compiled` goes into the parameters of the
+ * library node, which adds the answer of each GET request. `host` goes into the options of
+ * the host step. The list is empty when the answers did not fit (the library node keeps a
+ * bounded list): the v1 node then sends each request again.
+ */
+export function replayOf(name: string): { compiled: [string, Code]; host: [string, Code] } {
+	return { compiled: ['replay', raw(name)], host: ['replay', raw(`${name}.list`)] };
+}
+
 /**
  * Writes the fallback-host form of a node (the code of `lowerHost`) one level below the
  * current place. Null when the host form has no code here: the caller does not compile the node.
@@ -785,12 +798,17 @@ export function hostFormOf(
  * has a largest size for a stored file (`--binary-max-file-mb`) and v1 has none. The module
  * marks the error of that limit when it sent only GET requests (`RUNS_IN_HOST`): v1 can
  * send a GET again. The node then runs in the host, in the same run, as the v1 node.
+ *
+ * `replay` is the name of the list of answers of the node (`replayOf`): the compiled form
+ * adds the answer of each GET request to it, and the host form gives the list to the host
+ * step. The host gives each answer to the v1 node, so no request goes out a second time.
  */
 export function emitWithHostForm(
 	c: NodeContext,
 	errorOutput: boolean,
 	emitForm: (to: NodeContext, hostLimit: boolean) => void,
 	host: HostForm,
+	replay?: string,
 ): void {
 	const { w } = c;
 	const out = c.output(0);
@@ -798,6 +816,7 @@ export function emitWithHostForm(
 	const inHost = c.local('RunsInHost');
 	const compiled = renamed(c, c.local('Compiled'), c.local('CompiledErrors'));
 	c.helper('fileLimitInHost');
+	if (replay !== undefined) w.line(`const ${replay}: Json = ${REPLAY_START};`);
 	w.line(`let ${out}: Json[] = [];`);
 	if (errors) w.line(`let ${errors}: Json[] = [];`);
 	w.line(`let ${inHost} = false;`);

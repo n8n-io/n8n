@@ -185,6 +185,13 @@ export interface NodeCall extends StepOptions {
 	 * runtime sends it and keeps what the step changed. Fallback host only.
 	 */
 	staticData?: boolean;
+	/**
+	 * Fallback host only. The answers of the GET requests that a library node received before
+	 * it handed the node over to the host: `{ method, url, qs, response: { status, headers,
+	 * body } }` for each request, in the order of the requests. The host gives each answer once
+	 * to the v1 node for the same request, and sends each other request.
+	 */
+	replay?: unknown[];
 }
 
 /** Outputs of other nodes that n8n expressions read in the fallback host. */
