@@ -5,8 +5,6 @@ topology: SQLite or Postgres, regular or queue mode, one or more mains,
 workers, task runners through the launcher, and engine v2. Postgres and Redis
 run in containers. n8n runs as local processes from your checkout or worktree.
 
-Design and status: [`.agents/specs/rig.md`](../../../../.agents/specs/rig.md).
-
 ## Setup
 
 You need Docker or Podman, Node, and a build of the repository (`pnpm build`).
