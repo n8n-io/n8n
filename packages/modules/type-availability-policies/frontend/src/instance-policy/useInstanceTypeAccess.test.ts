@@ -1,6 +1,8 @@
 import type { InstanceTypeAccessResponse } from '@n8n/api-types';
 import { useRBACStore } from '@n8n/stores/rbac.store';
 import { useSettingsStore } from '@n8n/stores/settings.store';
+import { ResponseError } from '@n8n/rest-api-client';
+import { createDeferredPromise } from '@n8n/utils/promise/deferred-promise';
 import { waitFor } from '@testing-library/vue';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 
@@ -91,5 +93,42 @@ describe('useInstanceTypeAccess', () => {
 
 		// The reload after the save still answers with version 1, so the pick must stay.
 		expect(types.value[0].access).toBe('deny');
+
+		// Another admin allows it again. The list of that version replaces the pick.
+		mocks.fetchInstanceAccess.mockResolvedValue({ ...nodeAccess(3) });
+		useInstancePolicyStore().policies.node = nodePolicy(3);
+		await waitFor(() => expect(types.value[0].access).toBe('allow'));
+	});
+
+	it('keeps a later pick on the same row when an earlier save fails', async () => {
+		await setup();
+		const firstSave = createDeferredPromise<InstancePolicy<'node'> & { warnings: [] }>();
+		mocks.saveInstancePolicy
+			.mockReturnValueOnce(firstSave.promise)
+			.mockResolvedValue({ ...nodePolicy(3), warnings: [] });
+		const { types, changeAccess } = useInstanceTypeAccess('node', (policy) => policy);
+		await waitFor(() => expect(types.value).toHaveLength(1));
+
+		// A failed save drops its pick, but only its own, not the one made after it.
+		const first = changeAccess('n8n-nodes-base.slack', 'delegate');
+		const second = changeAccess('n8n-nodes-base.slack', 'deny');
+		firstSave.reject(new ResponseError('boom', { httpStatusCode: 500 }));
+		await first;
+
+		expect(types.value[0].access).toBe('deny');
+		await second;
+	});
+
+	it('shows the server value again when the page cannot edit the policy', async () => {
+		await setup();
+		mocks.saveInstancePolicy.mockRejectedValue(
+			new ResponseError('several documents', { httpStatusCode: 409 }),
+		);
+		const { types, changeAccess } = useInstanceTypeAccess('node', (policy) => policy);
+		await waitFor(() => expect(types.value).toHaveLength(1));
+
+		await changeAccess('n8n-nodes-base.slack', 'deny');
+
+		expect(types.value[0].access).toBe('allow');
 	});
 });

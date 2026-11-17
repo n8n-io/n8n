@@ -18,7 +18,7 @@ import {
 import { useI18n, type BaseTextKey } from '@n8n/i18n';
 import { computed, ref, watch } from 'vue';
 
-import type { TypeIcon } from './credentialTypeIcon';
+import type { TypeIcon } from './instancePolicyTable.types';
 import type { InstanceTypeAccessRow } from './useInstanceTypeAccess';
 
 export type InstancePolicyTableRow = InstanceTypeAccessRow & {
@@ -60,7 +60,6 @@ const USAGE_COLUMNS: Array<{ key: string; title: BaseTextKey }> = [
 	},
 ];
 
-// The order of the filter options.
 const ACCESS_ORDER: PolicyAction[] = ['allow', 'delegate', 'deny'];
 
 const search = ref('');
@@ -91,20 +90,20 @@ const headers = computed<Array<TableHeader<InstancePolicyTableRow>>>(() => [
 ]);
 
 const collator = new Intl.Collator();
-const ACCESS_RANK: Record<PolicyAction, number> = { allow: 0, delegate: 1, deny: 2 };
-
 // Sorting first means a search or a filter only removes rows from a list that is already in order.
 const sortedRows = computed(() => {
 	const [sort] = sortBy.value;
+	const direction = sort?.desc ? -1 : 1;
 	const byName = (a: InstancePolicyTableRow, b: InstancePolicyTableRow) =>
 		collator.compare(a.displayName, b.displayName);
+	// The direction flips only the sorted column. Rows with the same access keep A to Z.
 	const compare =
 		sort?.id === 'access'
 			? (a: InstancePolicyTableRow, b: InstancePolicyTableRow) =>
-					ACCESS_RANK[a.access] - ACCESS_RANK[b.access] || byName(a, b)
-			: byName;
-	const sorted = [...props.rows].sort(compare);
-	return sort?.desc ? sorted.reverse() : sorted;
+					direction * (ACCESS_ORDER.indexOf(a.access) - ACCESS_ORDER.indexOf(b.access)) ||
+					byName(a, b)
+			: (a: InstancePolicyTableRow, b: InstancePolicyTableRow) => direction * byName(a, b);
+	return [...props.rows].sort(compare);
 });
 
 const searchedRows = computed(() => {
@@ -183,9 +182,9 @@ function menuItems(current: PolicyAction): Array<DropdownMenuItemProps<PolicyAct
 	}));
 }
 
-const ACCESS_MENU_ITEMS = computed<
-	Record<PolicyAction, Array<DropdownMenuItemProps<PolicyAction>>>
->(() => ({ allow: menuItems('allow'), deny: menuItems('deny'), delegate: menuItems('delegate') }));
+const accessMenuItems = computed<Record<PolicyAction, Array<DropdownMenuItemProps<PolicyAction>>>>(
+	() => ({ allow: menuItems('allow'), deny: menuItems('deny'), delegate: menuItems('delegate') }),
+);
 
 function onAccessChange(row: InstancePolicyTableRow, access: PolicyAction) {
 	if (access !== row.access) emit('change', row.name, access);
@@ -230,7 +229,6 @@ function onAccessChange(row: InstancePolicyTableRow, access: PolicyAction) {
 			:loading="loading"
 			item-value="name"
 			:pin-columns="1"
-			:page-sizes="[10, 25, 50, 100]"
 			show-sizes-label
 			data-test-id="instance-policy-table"
 		>
@@ -243,7 +241,7 @@ function onAccessChange(row: InstancePolicyTableRow, access: PolicyAction) {
 			<template #[`item.access`]="{ item }">
 				<N8nDropdownMenu
 					v-if="item.editable"
-					:items="ACCESS_MENU_ITEMS[item.access]"
+					:items="accessMenuItems[item.access]"
 					placement="bottom-start"
 					:data-test-id="`instance-policy-access-${item.name}`"
 					@select="(access: PolicyAction) => onAccessChange(item, access)"

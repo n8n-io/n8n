@@ -1,14 +1,10 @@
 import type { Themed } from 'n8n-workflow';
 
+import type { TypeIcon } from './instancePolicyTable.types';
 import type { AppliedTheme } from '../composables/useAppliedTheme';
 import type { CredentialTypeSummary } from '../type-availability-policies.api';
 
-/** The props of `N8nNodeIcon` for one row. */
-export type TypeIcon =
-	| { type: 'file'; src: string }
-	| { type: 'icon'; name: string; color?: string };
-
-/** A credential that names a node type's icon gets this, because node icons need `nodes.json`. */
+/** For a type with no icon this module can resolve, for example one that names a node type. */
 export const FALLBACK_TYPE_ICON: TypeIcon = { type: 'icon', name: 'key-round' };
 
 function themed(value: Themed<string> | undefined, theme: AppliedTheme): string | undefined {

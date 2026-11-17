@@ -103,6 +103,31 @@ describe('InstancePolicyTable', () => {
 		);
 	});
 
+	it('keeps the names A to Z inside each access group when the Access sort is reversed', async () => {
+		const { getByTestId, getByRole } = setup([...ROWS, row('zoomApi', 'Zoom API', 'deny')]);
+
+		await userEvent.click(getByRole('columnheader', { name: /Access/ }));
+		await userEvent.click(getByRole('columnheader', { name: /Access/ }));
+
+		await waitFor(() =>
+			expect(rowNames(getByTestId('instance-policy-table'))).toEqual([
+				'Bitly API',
+				'Zoom API',
+				'Airtable API',
+				'Notion API',
+			]),
+		);
+	});
+
+	it('does not emit a change when the admin picks the current access', async () => {
+		const { getByTestId, emitted } = setup();
+
+		await userEvent.click(accessTrigger(getByTestId, 'airtableApi'));
+		await userEvent.click(await findPopupItem(MENU_ITEM, 'Allowed'));
+
+		expect(emitted('change')).toBeUndefined();
+	});
+
 	it('shows the usage columns with no value yet', () => {
 		const { getByRole, getByTestId } = setup();
 

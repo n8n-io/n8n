@@ -123,6 +123,8 @@ describe('CredentialTypesTab', () => {
 		);
 		expect(mocks.saveInstancePolicy).toHaveBeenCalledTimes(1);
 		expect(mocks.fetchInstancePolicy).not.toHaveBeenCalledWith(expect.anything(), 'node');
+		// The change applies at once: no dialog asks the admin to confirm it.
+		expect(document.querySelector('[role="dialog"],[role="alertdialog"]')).toBeNull();
 		await waitFor(() => expect(mocks.fetchInstanceAccess).toHaveBeenCalledTimes(2));
 		expect(accessCell(getByTestId)).toHaveTextContent('Restricted');
 	});
@@ -142,12 +144,19 @@ describe('CredentialTypesTab', () => {
 	it('loads the access list again when the policy changed after the page loaded', async () => {
 		mocks.saveInstancePolicy.mockRejectedValue(new ResponseError('stale', { httpStatusCode: 409 }));
 		mocks.fetchInstancePolicy.mockResolvedValueOnce(policy(1)).mockResolvedValue(policy(5));
+		mocks.fetchInstanceAccess
+			.mockResolvedValueOnce(access(1))
+			.mockResolvedValue(
+				access(5, [{ name: 'bitlyApi', access: 'deny', matchedRuleId: 'other-admin' }]),
+			);
 		const { findByText, getByTestId } = await setup();
 		await findByText('Bitly API');
 
 		await restrictBitly(getByTestId);
 
 		await waitFor(() => expect(mocks.fetchInstanceAccess).toHaveBeenCalledTimes(2));
+		await waitFor(() => expect(accessCell(getByTestId)).toHaveTextContent('Restricted'));
+		expect(mocks.saveInstancePolicy).toHaveBeenCalledTimes(1);
 	});
 
 	it('shows the saved value again when the page cannot edit the policy', async () => {
@@ -208,9 +217,26 @@ describe('CredentialTypesTab', () => {
 			access(1, [{ name: 'bitlyApi', access: 'delegate', matchedRuleId: null }]),
 		);
 
+		mocks.saveInstancePolicy.mockResolvedValue({ ...policy(2), warnings: [] });
 		const { findByText, getByTestId } = await setup();
 		await findByText('Bitly API');
 
 		expect(accessCell(getByTestId)).toHaveAccessibleName('Access of Bitly API');
+		await restrictBitly(getByTestId);
+
+		await waitFor(() =>
+			expect(mocks.saveInstancePolicy).toHaveBeenCalledWith(
+				expect.anything(),
+				'credential',
+				expect.objectContaining({
+					rules: [
+						expect.objectContaining({
+							action: 'deny',
+							selector: { kind: 'name', value: 'bitlyApi' },
+						}),
+					],
+				}),
+			),
+		);
 	});
 });

@@ -87,7 +87,7 @@ const props = withDefaults(
 		 */
 		showAll?: boolean;
 		/**
-		 * Show a visible "Page size" label before the page size selector.
+		 * Passed to `N8nPagination`, which documents its effects.
 		 * @default false
 		 */
 		showSizesLabel?: boolean;
