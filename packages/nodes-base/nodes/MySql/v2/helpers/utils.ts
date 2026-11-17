@@ -10,6 +10,11 @@ import type {
 import { NodeOperationError } from 'n8n-workflow';
 import { UserError } from '@n8n/errors';
 
+import {
+	assertCursorColumnNotNull,
+	assertCursorColumnType,
+	assertUniqueCursorColumn,
+} from '@utils/sql-keyset-paging';
 import { isInsideQuotes } from '@utils/sql-query-parameters';
 
 import type {
@@ -619,15 +624,58 @@ export async function getUniqueKeyColumns(
 	);
 }
 
-export async function hasEmptyText(
-	pool: Mysql2Pool,
-	table: string,
-	column: string,
-): Promise<boolean> {
+/** LENGTH leaves out values of only spaces, which most collations see as equal to ''. */
+async function hasEmptyText(pool: Mysql2Pool, table: string, column: string): Promise<boolean> {
 	const [rows] = await pool.query<RowDataPacket[]>(
-		`SELECT 1 FROM ${escapeSqlIdentifier(table)} WHERE ${escapeSqlIdentifier(column)} = '' LIMIT 1`,
+		`SELECT 1 FROM ${escapeSqlIdentifier(table)} WHERE ${escapeSqlIdentifier(column)} = '' AND LENGTH(${escapeSqlIdentifier(column)}) = 0 LIMIT 1`,
 	);
 	return rows.length > 0;
+}
+
+const TEXT_TYPES = 'char|varchar|tinytext|text|mediumtext|longtext';
+const TEXT_TYPE = new RegExp(`^(${TEXT_TYPES})\\b`);
+// n8n outputs the other types as objects, or with another time zone or precision
+const START_AFTER_TYPE = new RegExp(
+	`^(tinyint|smallint|mediumint|int|bigint|decimal|${TEXT_TYPES})\\b`,
+);
+
+/**
+ * Throws if Start After cannot page by the column without skipped or repeated rows.
+ * `uniqueColumns` comes from getUniqueKeyColumns.
+ */
+export async function checkStartAfterColumn(
+	pool: Mysql2Pool,
+	node: INode,
+	itemIndex: number,
+	table: string,
+	column: string,
+	uniqueColumns: Awaited<ReturnType<typeof getUniqueKeyColumns>>,
+	decimalNumbers: boolean,
+	lookForEmptyText: boolean,
+) {
+	const key = uniqueColumns.find((unique) => unique.column === column.toLowerCase());
+	assertUniqueCursorColumn(node, itemIndex, key ? [column] : [], column);
+	if (!key) return;
+
+	assertCursorColumnNotNull(node, itemIndex, column, key.nullable);
+	assertCursorColumnType(node, itemIndex, column, key.type, START_AFTER_TYPE);
+	if (key.type.startsWith('decimal') && decimalNumbers) {
+		throw new NodeOperationError(
+			node,
+			`Turn off Output Decimals as Numbers to page by "${column}"`,
+			{
+				itemIndex,
+				description: `"${column}" is a DECIMAL column. As numbers, n8n can round its values in the output, so the next page can repeat or skip rows.`,
+			},
+		);
+	}
+	if (lookForEmptyText && TEXT_TYPE.test(key.type) && (await hasEmptyText(pool, table, column))) {
+		throw new NodeOperationError(node, `Column "${column}" has empty text in one row`, {
+			itemIndex,
+			description:
+				'An empty Value gets the first page. If a page ends on this row, the next page is the first page again, and the loop can repeat forever. With Sort DESC, the last page always ends on this row. Use another unique column, for example the primary key.',
+		});
+	}
 }
 
 export function replaceEmptyStringsByNulls(
