@@ -64,7 +64,7 @@ export class PromotePreviewService {
 			};
 		}
 		const branch = await readBranch();
-		const instance = await exportInstancePackage(this.packagesService, user, projectId);
+		const instance = await exportInstancePackage(this.packagesService, user, [projectId]);
 		// Promote compares with the branch manifest to see renames and moves. The manifest can list
 		// other projects while this project has no files on the branch yet, and the move markers
 		// still need it.

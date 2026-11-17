@@ -42,12 +42,12 @@ import { encodeRefreshGrant, OAuth2FlowService } from '../oauth-flow.service';
 import { OAuthServerService } from '../oauth-server.service';
 import { OAuthTokenService } from '../oauth-token.service';
 
-// The flow service is driven directly via the DI container; the test server is
-// set up only for the real DB + module registration (resolvers, token service).
-// inbound-auth-core goes first: it binds the contracts the flow service injects.
+// The integration runner reuses the migrated SQLite template in CI.
+// Initialize only the modules that the flow service needs.
+// inbound-auth-core binds the contracts that oauth-server injects, so it goes first.
 setupTestServer({
-	modules: ['inbound-auth-core', 'oauth-server', 'mcp'],
-	endpointGroups: ['mcp'],
+	modules: ['inbound-auth-core', 'oauth-server'],
+	endpointGroups: ['oauth-server'],
 });
 
 const IDP_ISSUER = 'https://idp.example';

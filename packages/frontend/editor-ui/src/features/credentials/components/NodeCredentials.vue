@@ -847,6 +847,7 @@ function createNewCredential(
 		props.node.name,
 		props.node,
 		{
+			...(props.forAgent ? { fixedCredentialsOnly: true } : {}),
 			hideAskAssistant: hideAskAssistant.value,
 			closeOnSave: true,
 			...(isToolContext ? { appendToBody: true } : {}),
@@ -1196,6 +1197,7 @@ function editCredential(credentialType: string): void {
 	assert(credential?.id);
 
 	uiStore.openExistingCredential(credential.id, {
+		...(props.forAgent ? { fixedCredentialsOnly: true } : {}),
 		hideAskAssistant: hideAskAssistant.value,
 		...(isToolContext ? { appendToBody: true } : {}),
 		instanceAiCredentialHelp: resolveInstanceAiCredentialHelp(),

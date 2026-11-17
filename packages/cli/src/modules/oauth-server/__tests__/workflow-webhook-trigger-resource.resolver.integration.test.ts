@@ -20,8 +20,8 @@ import { OAuthTokenService } from '@/modules/oauth-server/oauth-token.service';
 import { CacheService, UrlService } from '@n8n/backend-services';
 import { ProtectedResourceRegistry } from '@n8n/backend-services/auth';
 
-// The OAuth server owns webhook metadata. Loading instance MCP also loads its tool graph
-// in the setup hook and can exceed the hook timeout under CI load.
+// This suite starts backend modules and a database. The integration runner reuses
+// the migrated SQLite template in CI.
 const testServer = setupTestServer({
 	modules: ['inbound-auth-core', 'oauth-server'],
 	endpointGroups: ['oauth-server'],

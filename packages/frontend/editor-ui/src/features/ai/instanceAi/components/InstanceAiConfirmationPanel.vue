@@ -151,6 +151,7 @@ function buildApprovalTitle(item: PendingConfirmationItem): string {
 		toolName: item.toolCall.toolName,
 		args: item.toolCall.args,
 		resourceName: item.toolCall.confirmation.resourceName,
+		approvalDetails: item.toolCall.confirmation.approvalDetails,
 	});
 }
 

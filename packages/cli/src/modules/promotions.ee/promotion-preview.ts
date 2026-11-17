@@ -243,10 +243,12 @@ function applyOperationRules(
 		direction,
 		before,
 		planned,
+		removals,
 	}: {
 		direction: PromotionDirection;
 		before: SideResource | undefined;
 		planned: ReadonlyMap<string, PlannedChange> | null;
+		removals?: ReadonlySet<string>;
 	},
 ): PromotionResource | null {
 	const { type, change } = resource;
@@ -258,11 +260,13 @@ function applyOperationRules(
 		change: 'unchanged',
 	});
 
+	if (removals?.has(resource.key)) return { ...withoutChanges, change: 'deleted' };
 	if (change === 'deleted') {
 		// Neither direction deletes dependencies. Their files and rows stay.
 		if (type !== 'workflow' && type !== 'project' && type !== 'folder') return null;
 		// Projects and folders stay too. They remain as context for the deleted workflows inside them.
-		if (type !== 'workflow') return unchanged();
+		// When the plan lists the removals, a workflow that it keeps stays too.
+		if (type !== 'workflow' || removals) return unchanged();
 	}
 
 	if (direction === 'promote') return resource;
@@ -414,6 +418,11 @@ export function buildPreview({
 		direction: PromotionDirection;
 		/** Apply only: what the import plan does, by resource key. */
 		planned: ReadonlyMap<string, PlannedChange> | null;
+		/**
+		 * Whole-instance Apply only: the keys of everything that Apply deletes. Any other resource
+		 * that the branch lacks stays, such as a sub-workflow that the branch calls.
+		 */
+		removals?: ReadonlySet<string>;
 	} | null;
 	/** Both sides are indexed across all of them, so a workflow that moves between them stays one row. */
 	projectIds: readonly string[];
