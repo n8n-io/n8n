@@ -1,0 +1,173 @@
+{
+	"id": "NewSignup0001",
+	"name": "New signup",
+	"nodes": [
+		{
+			"id": "c0000000-0000-4000-8000-000000000001",
+			"name": "Webhook",
+			"type": "n8n-nodes-base.webhook",
+			"typeVersion": 2,
+			"position": [0, 0],
+			"webhookId": "6f1c4b8e-1111-4000-8000-000000000001",
+			"parameters": {
+				"httpMethod": "POST",
+				"path": "new-signup",
+				"options": {}
+			}
+		},
+		{
+			"id": "c0000000-0000-4000-8000-000000000002",
+			"name": "Get customer",
+			"type": "n8n-nodes-base.httpRequest",
+			"typeVersion": 4.2,
+			"position": [220, 0],
+			"retryOnFail": true,
+			"maxTries": 2,
+			"parameters": {
+				"url": "={{ $vars.crmBaseUrl }}/customers/{{ $json.body.customerId }}",
+				"authentication": "genericCredentialType",
+				"genericAuthType": "httpHeaderAuth",
+				"options": {}
+			},
+			"credentials": {
+				"httpHeaderAuth": {
+					"id": "CrmApiKey0001"
+				}
+			}
+		},
+		{
+			"id": "c0000000-0000-4000-8000-000000000003",
+			"name": "Is enterprise?",
+			"type": "n8n-nodes-base.if",
+			"typeVersion": 2.2,
+			"position": [440, 0],
+			"parameters": {
+				"conditions": {
+					"options": {
+						"caseSensitive": true,
+						"leftValue": "",
+						"typeValidation": "strict",
+						"version": 2
+					},
+					"conditions": [
+						{
+							"id": "d1",
+							"leftValue": "={{ $json.plan }}",
+							"rightValue": "enterprise",
+							"operator": {
+								"type": "string",
+								"operation": "equals"
+							}
+						}
+					],
+					"combinator": "and"
+				},
+				"options": {}
+			}
+		},
+		{
+			"id": "c0000000-0000-4000-8000-000000000004",
+			"name": "Run sales workflow",
+			"type": "n8n-nodes-base.executeWorkflow",
+			"typeVersion": 1.2,
+			"position": [660, -100],
+			"parameters": {
+				"workflowId": {
+					"__rl": true,
+					"value": "NotifySales001",
+					"mode": "list",
+					"cachedResultName": "Notify sales"
+				},
+				"workflowInputs": {
+					"mappingMode": "defineBelow",
+					"value": {
+						"customerName": "={{ $json.name }}"
+					},
+					"matchingColumns": [],
+					"schema": [
+						{
+							"id": "customerName",
+							"displayName": "customerName",
+							"required": false,
+							"defaultMatch": false,
+							"display": true,
+							"canBeUsedToMatch": true,
+							"type": "string"
+						}
+					],
+					"attemptToConvertTypes": false,
+					"convertFieldsToString": true
+				},
+				"options": {}
+			}
+		},
+		{
+			"id": "c0000000-0000-4000-8000-000000000005",
+			"name": "Send welcome email",
+			"type": "n8n-nodes-base.emailSend",
+			"typeVersion": 2.1,
+			"position": [660, 100],
+			"onError": "continueRegularOutput",
+			"parameters": {
+				"fromEmail": "hello@example.com",
+				"toEmail": "={{ $json.email }}",
+				"subject": "=Welcome, {{ $json.name }}",
+				"emailFormat": "text",
+				"text": "=Hello {{ $json.name }}, welcome to the {{ $json.plan }} plan.",
+				"options": {}
+			},
+			"credentials": {
+				"smtp": {
+					"id": "MailServer001"
+				}
+			}
+		}
+	],
+	"connections": {
+		"Webhook": {
+			"main": [
+				[
+					{
+						"node": "Get customer",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Get customer": {
+			"main": [
+				[
+					{
+						"node": "Is enterprise?",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Is enterprise?": {
+			"main": [
+				[
+					{
+						"node": "Run sales workflow",
+						"type": "main",
+						"index": 0
+					}
+				],
+				[
+					{
+						"node": "Send welcome email",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"settings": {
+		"executionOrder": "v1"
+	},
+	"parentFolderId": null,
+	"isArchived": false
+}

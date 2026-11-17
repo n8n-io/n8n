@@ -1,4 +1,4 @@
-import { WorkflowExecute } from 'n8n-core';
+import { startPreparedWorkflow } from 'n8n/dist/testing.js';
 import type { INode, IRun } from 'n8n-workflow';
 import {
 	createRunExecutionData,
@@ -73,6 +73,15 @@ function createExecutionContext(
 	subWorkflows: SubWorkflowState,
 	executionId: string,
 ): ExecutionContext {
+	if (handle.definition.settings?.engineType === 'v2') {
+		throw new WorkflowTestError(
+			'INVALID_WORKFLOW',
+			'Engine v2 workflows require an n8n instance.',
+			{
+				workflow: handle.name,
+			},
+		);
+	}
 	checkNodeTypesInstalled(handle);
 	const workflowData = toWorkflowData(handle.definition);
 	const workflow = new Workflow({
@@ -101,15 +110,20 @@ async function runEngine(context: ExecutionContext): Promise<IRun> {
 	const { input = {} } = context.options;
 	const items = (Array.isArray(input) ? input : [input]).map((json) => ({ json: deepCopy(json) }));
 	const trigger = selectTrigger(context);
-	captureWebhookResponse(context, trigger);
+	context.hooks.addHandler('workflowExecuteBefore', () => captureWebhookResponse(context, trigger));
 	const runExecutionData = createRunExecutionData({
 		executionData: {
 			nodeExecutionStack: [{ node: trigger, data: { main: [items] }, source: null }],
 		},
 	});
-	const engine = new WorkflowExecute(context.additionalData, 'trigger', runExecutionData);
 	return await withClockAndEnv(context.options, async () => {
-		const run = await engine.processRunExecutionData(context.workflow);
+		const { execution } = await startPreparedWorkflow({
+			workflow: context.workflow,
+			additionalData: context.additionalData,
+			runExecutionData,
+			mode: 'trigger',
+		});
+		const run = await execution;
 		await context.subWorkflows.settle(context);
 		return run;
 	});

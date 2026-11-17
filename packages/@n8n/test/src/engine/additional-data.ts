@@ -18,8 +18,8 @@ export function createAdditionalData(context: ExecutionSetup): IWorkflowExecuteA
 		externalSecretsProxy: createExternalSecretsProxy(context),
 		variables: createVariables(context),
 		currentNodeExecutionIndex: 0,
-		executeWorkflow: async (workflowInfo, _additionalData, options) =>
-			await executeSubWorkflow(context, workflowInfo, options),
+		executeWorkflow: async (workflowInfo, additionalData, options) =>
+			await executeSubWorkflow(context, workflowInfo, options, additionalData),
 		startRunnerTask: async (...args) => await startRunnerTask(context, args),
 		getRunExecutionData: async (executionId) => context.subWorkflows.executionData.get(executionId),
 		getRuntimeCredential: async () => undefined,

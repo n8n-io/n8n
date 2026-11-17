@@ -89,22 +89,6 @@ export const assertNever = (_value: never) => {};
 export const isPositiveInteger = (maybeInt: string) => /^[1-9]\d*$/.test(maybeInt);
 
 /**
- * Check if a execute method should be assigned to the node
- */
-export const shouldAssignExecuteMethod = (nodeType: INodeType) => {
-	const isDeclarativeNode = nodeType?.description?.requestDefaults !== undefined;
-
-	return (
-		!nodeType.execute &&
-		!nodeType.supplyData &&
-		!nodeType.poll &&
-		!nodeType.trigger &&
-		(!nodeType.webhook || isDeclarativeNode) &&
-		(!nodeType.methods || isDeclarativeNode)
-	);
-};
-
-/**
  * Recursively gets all key paths of an object or array, filtered by the provided value filter.
  * @param obj - The object or array to search.
  * @param keys - The array to store matching keys.

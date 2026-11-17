@@ -17,12 +17,7 @@ import { Time } from '@n8n/constants';
 import { ExecutionRepository, WorkflowRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 import type { JSONSchema7 } from 'json-schema';
-import {
-	type ExecutionLifecycleHooks,
-	ExternalSecretsProxy,
-	StorageConfig,
-	WorkflowExecute,
-} from 'n8n-core';
+import { type ExecutionLifecycleHooks, ExternalSecretsProxy, StorageConfig } from 'n8n-core';
 import type {
 	AiEvent,
 	ExecuteAgentData,
@@ -37,10 +32,8 @@ import type {
 	IExecuteData,
 	IWorkflowExecutionTelemetryMetadata,
 	IExecuteWorkflowInfo,
-	INode,
 	INodeExecutionData,
 	INodeParameters,
-	IRun,
 	IRunExecutionData,
 	IWorkflowBase,
 	IWorkflowExecuteAdditionalData,
@@ -52,8 +45,6 @@ import type {
 import {
 	Workflow,
 	createRunExecutionData,
-	mergeRunsPerBranch,
-	collectSubWorkflowOutput,
 	getSubWorkflowOutputPolicy,
 	attachDynamicCredentialsUsage,
 	summarizeDynamicCredentialsUsage,
@@ -74,6 +65,14 @@ import { getLifecycleHooksForSubExecutions } from '@/execution-lifecycle/executi
 import { ExecutionPersistence } from '@/executions/execution-persistence';
 import { isManualOrChatExecution } from '@/executions/execution.utils';
 import { FailedRunFactory } from '@/executions/failed-run-factory';
+import { startPreparedWorkflow } from '@/executions/start-prepared-workflow';
+import { inheritSubWorkflowContext } from '@/executions/sub-workflow-context';
+import { resolveSubWorkflowOutput } from '@/executions/sub-workflow-output';
+
+export {
+	buildSubWorkflowOutput,
+	triggerReturnsLastRunOnly,
+} from '@/executions/sub-workflow-output';
 import {
 	CredentialsPermissionChecker,
 	SubworkflowPolicyChecker,
@@ -560,48 +559,6 @@ async function listAgents(userId: string): Promise<Array<{ id: string; name: str
 	}));
 }
 
-/**
- * Whether the sub-workflow's `Execute Workflow Trigger` wants the legacy single-run output.
- * v1.2+ triggers always opt into the new merged-runs default;
- * pre-1.2 triggers can opt in via the `returnOutput` parameter
- * and otherwise stay on `lastRunOnly` for backward compatibility.
- * Sub-workflows without an `Execute Workflow Trigger` keep the legacy output too.
- * See n8n-io/n8n#9989
- */
-export function triggerReturnsLastRunOnly(nodes: INode[]): boolean {
-	const trigger = nodes.find((node) => node.type === 'n8n-nodes-base.executeWorkflowTrigger');
-	const triggerVersion = trigger?.typeVersion ?? 1;
-	return triggerVersion < 1.2 && trigger?.parameters?.returnOutput !== 'allRuns';
-}
-
-/**
- * Returns the items the parent workflow gets back from the sub-workflow's last node.
- * By default, items from every run of the terminal node are concatenated per output branch.
- * The trigger declares its preference.
- * The caller can additionally force the legacy single-run output via `returnLastRunOnly`
- * (used by LangChain tool/retriever callers that need a single-answer output).
- * Pinned data on the last node always wins in manual mode.
- * See n8n-io/n8n#9989.
- */
-export function buildSubWorkflowOutput(
-	data: IRun,
-	workflowNodes: INode[],
-	callerReturnsLastRunOnly: boolean,
-): Array<INodeExecutionData[] | null> {
-	const lastRunOnly = callerReturnsLastRunOnly || triggerReturnsLastRunOnly(workflowNodes);
-	const runs = WorkflowHelpers.getLastExecutedNodeRuns(data);
-	const { lastNodeExecuted, pinData = {} } = data.data.resultData;
-	const manualPinDataOverride =
-		data.mode === 'manual' &&
-		lastNodeExecuted !== undefined &&
-		pinData[lastNodeExecuted] !== undefined;
-
-	if (!lastRunOnly && runs.length > 0 && !manualPinDataOverride) {
-		return mergeRunsPerBranch(runs);
-	}
-	return WorkflowHelpers.getLastExecutedNodeData(data)?.data?.main ?? [null];
-}
-
 async function startExecution(
 	additionalData: IWorkflowExecuteAdditionalData,
 	options: ExecuteWorkflowOptions,
@@ -739,25 +696,10 @@ async function startExecution(
 		});
 		additionalDataIntegrated.hooks = hooks;
 		additionalDataIntegrated.executionId = executionId;
-		additionalDataIntegrated.parentCallbackManager = options.parentCallbackManager;
-
-		// Make sure we pass on the original executeWorkflow function we received
-		// This one already contains changes to talk to parent process
-		// and get executionID from `activeExecutions` running on main process
 		additionalDataIntegrated.executeWorkflow = additionalData.executeWorkflow;
 		additionalDataIntegrated.executeAgent = additionalData.executeAgent;
 		additionalDataIntegrated.listAgents = additionalData.listAgents;
-		// Propagate the root execution mode so nested subworkflows retain the original
-		// mode (e.g. 'manual') even though their own WorkflowExecute runs as 'integrated'
-		additionalDataIntegrated.rootExecutionMode =
-			additionalData.rootExecutionMode ?? options.executionMode;
-		// Propagate the eval run id so sub-workflows of an eval run expose `$evaluation.runId`
-		additionalDataIntegrated.evaluationRunId = additionalData.evaluationRunId;
-		if (additionalData.httpResponse) {
-			additionalDataIntegrated.httpResponse = additionalData.httpResponse;
-		}
-		// Propagate streaming state to subworkflows
-		additionalDataIntegrated.streamingEnabled = additionalData.streamingEnabled;
+		inheritSubWorkflowContext(additionalDataIntegrated, additionalData, options);
 
 		const executionsConfig = Container.get(ExecutionsConfig);
 
@@ -772,13 +714,13 @@ async function startExecution(
 		const runExecutionData = runData.executionData as IRunExecutionData;
 
 		// Execute the workflow
-		const workflowExecute = new WorkflowExecute(
-			additionalDataIntegrated,
-			runData.executionMode,
+		const { execution } = await startPreparedWorkflow({
+			workflow,
+			additionalData: additionalDataIntegrated,
+			mode: runData.executionMode,
 			runExecutionData,
-			Container.get(StorageConfig).modeTag,
-		);
-		const execution = workflowExecute.processRunExecutionData(workflow);
+			storedAt: Container.get(StorageConfig).modeTag,
+		});
 		activeExecutions.attachWorkflowExecution(executionId, execution);
 		data = await execution;
 	} catch (error) {
@@ -869,9 +811,7 @@ async function startExecution(
 	if (data.finished === true || data.status === 'waiting') {
 		return {
 			executionId,
-			data: data.data.subWorkflowOutput
-				? await collectSubWorkflowOutput(data, workflow, data.data.subWorkflowOutput)
-				: buildSubWorkflowOutput(data, workflowData.nodes, options.returnLastRunOnly ?? false),
+			data: await resolveSubWorkflowOutput(data, workflow, options.returnLastRunOnly ?? false),
 			waitTill: data.waitTill,
 			// Report private-credential usage to the caller (detached runs return earlier, skipping this).
 			...summarizeDynamicCredentialsUsage(data.data, workflowCredentialIds),

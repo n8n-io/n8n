@@ -2,7 +2,7 @@ import { Container } from '@n8n/di';
 import get from 'lodash/get';
 import { BinaryDataService } from 'n8n-core';
 import { createResultError, createResultOk, type Result } from '@n8n/utils/result';
-import type { INodeExecutionData, ITaskData, WebhookResponseData } from 'n8n-workflow';
+import type { INodeExecutionData, ITaskData } from 'n8n-workflow';
 import { BINARY_ENCODING } from 'n8n-workflow';
 import { OperationalError } from '@n8n/errors';
 import type { Readable } from 'node:stream';
@@ -29,7 +29,7 @@ type StreamResponse = {
  * until we find one that has data.
  */
 export async function extractWebhookLastNodeResponse(
-	responseDataType: WebhookResponseData | undefined,
+	responseDataType: string | undefined,
 	lastNodeTaskData: ITaskData,
 	checkAllMainOutputs: boolean = false,
 	options: {

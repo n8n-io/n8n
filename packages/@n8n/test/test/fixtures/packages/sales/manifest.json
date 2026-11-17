@@ -1,0 +1,175 @@
+{
+	"packageFormatVersion": "1",
+	"sourceN8nVersion": "2.48.0",
+	"sourceId": "source-instance-1",
+	"workflows": [
+		{
+			"id": "NewSignup0001",
+			"name": "New signup",
+			"target": "workflows/new-signup-NewSignup0001",
+			"isArchived": false
+		},
+		{
+			"id": "NotifySales001",
+			"name": "Notify sales",
+			"target": "workflows/notify-sales-NotifySales001",
+			"isArchived": false
+		}
+	],
+	"credentials": [
+		{
+			"id": "CrmApiKey0001",
+			"name": "CRM API key",
+			"target": "credentials/crm-api-key-CrmApiKey0001"
+		},
+		{
+			"id": "MailServer001",
+			"name": "Mail server",
+			"target": "credentials/mail-server-MailServer001"
+		},
+		{
+			"id": "SlackAccount1",
+			"name": "Slack account",
+			"target": "credentials/slack-account-SlackAccount1"
+		}
+	],
+	"variables": [
+		{
+			"id": "VarCrmBase001",
+			"name": "crmBaseUrl",
+			"target": "variables/crmbaseurl-VarCrmBase001"
+		}
+	],
+	"requirements": {
+		"credentials": [
+			{
+				"id": "CrmApiKey0001",
+				"name": "CRM API key",
+				"type": "httpHeaderAuth",
+				"usedBy": [
+					{
+						"kind": "workflow",
+						"id": "NewSignup0001"
+					}
+				]
+			},
+			{
+				"id": "MailServer001",
+				"name": "Mail server",
+				"type": "smtp",
+				"usedBy": [
+					{
+						"kind": "workflow",
+						"id": "NewSignup0001"
+					}
+				]
+			},
+			{
+				"id": "SlackAccount1",
+				"name": "Slack account",
+				"type": "slackApi",
+				"usedBy": [
+					{
+						"kind": "workflow",
+						"id": "NotifySales001"
+					}
+				]
+			}
+		],
+		"variables": [
+			{
+				"name": "crmBaseUrl",
+				"usedBy": [
+					{
+						"kind": "workflow",
+						"id": "NewSignup0001"
+					}
+				]
+			}
+		],
+		"workflows": [
+			{
+				"id": "NotifySales001",
+				"name": "Notify sales",
+				"usedBy": [
+					{
+						"kind": "workflow",
+						"id": "NewSignup0001"
+					}
+				]
+			}
+		],
+		"nodeTypes": [
+			{
+				"type": "n8n-nodes-base.webhook",
+				"typeVersion": 2,
+				"usedBy": [
+					{
+						"kind": "workflow",
+						"id": "NewSignup0001"
+					}
+				]
+			},
+			{
+				"type": "n8n-nodes-base.httpRequest",
+				"typeVersion": 4.2,
+				"usedBy": [
+					{
+						"kind": "workflow",
+						"id": "NewSignup0001"
+					}
+				]
+			},
+			{
+				"type": "n8n-nodes-base.if",
+				"typeVersion": 2.2,
+				"usedBy": [
+					{
+						"kind": "workflow",
+						"id": "NewSignup0001"
+					}
+				]
+			},
+			{
+				"type": "n8n-nodes-base.executeWorkflow",
+				"typeVersion": 1.2,
+				"usedBy": [
+					{
+						"kind": "workflow",
+						"id": "NewSignup0001"
+					}
+				]
+			},
+			{
+				"type": "n8n-nodes-base.emailSend",
+				"typeVersion": 2.1,
+				"usedBy": [
+					{
+						"kind": "workflow",
+						"id": "NewSignup0001"
+					}
+				]
+			},
+			{
+				"type": "n8n-nodes-base.executeWorkflowTrigger",
+				"typeVersion": 1.1,
+				"usedBy": [
+					{
+						"kind": "workflow",
+						"id": "NotifySales001"
+					}
+				]
+			},
+			{
+				"type": "n8n-nodes-base.slack",
+				"typeVersion": 2.2,
+				"usedBy": [
+					{
+						"kind": "workflow",
+						"id": "NotifySales001"
+					}
+				]
+			}
+		]
+	}
+}

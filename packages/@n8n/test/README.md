@@ -10,13 +10,19 @@ npm install --save-dev @n8n/test nock
 
 Install the version of `@n8n/test` that is equal to the n8n version that you use in production.
 
+The library depends on the `n8n` backend package. It uses the same prepared engine startup, credential preparation, Code task data, child context and output, webhook response, and package reader operations as the application. The backend entry is `n8n/dist/testing.js`.
+
+The test supplies trigger output and instance state. It does not check application permissions, persistence, or queue dispatch. Static contract issues remain diagnostics; they do not add checks to production execution. The API is unreleased and can change.
+
+The adapter builds the supplied workflow and instance state before the shared startup boundary. It resolves child workflows from the loaded set. These steps replace application storage access and remain test-specific.
+
 ## The four steps
 
 ```
 load ─► mockNode / configureNode / nock ─► executeWorkflow ─► assert on the result
 ```
 
-1. Load the workflows with `loadWorkflows` or `loadWorkflow`.
+1. Load the workflows with `loadPackage`, `loadWorkflows`, or `loadWorkflow`.
 2. Replace the parts that must not run. Use `mockNode`, `configureNode`, or nock.
 3. Execute one workflow with `executeWorkflow`.
 4. Assert on the result. The result holds the data of each node.
@@ -94,22 +100,21 @@ test('requests the customer from the CRM', async () => {
 
 A request that no nock mock matches fails the execution. Clear the nock state after each test.
 
-## Sub-workflow test
+## Package test
 
-Load the parent and its children in one set with `loadWorkflows`.
+`loadPackage` asynchronously reads a package from n8n package export. The package can be a directory or a `.n8np` file. It uses the production package readers and import limits.
 
 ```typescript
 import { expect, test } from 'vitest';
-import { executeWorkflow, loadWorkflows, mockNode } from '@n8n/test';
-import newSignup from './new-signup.json';
-import notifySales from './notify-sales.json';
+import { executeWorkflow, loadPackage, mockNode } from '@n8n/test';
 
-test('the parent sends the fields that the child declares', () => {
-  expect(loadWorkflows([newSignup, notifySales]).issues()).toEqual([]);
+test('the package is complete', async () => {
+  const workflows = await loadPackage('./packages/sales');
+  expect(workflows.issues()).toEqual([]);
 });
 
 test('runs the sales workflow as a real child', async () => {
-  const workflows = loadWorkflows([newSignup, notifySales]);
+  const workflows = await loadPackage('./packages/sales');
   const parent = workflows.get('New signup');
   mockNode(parent.node('Get customer'), [{ id: 42, name: 'Ada', plan: 'enterprise' }]);
   mockNode(workflows.get('Notify sales').node('Post to Slack'), [{ ok: true }]);
@@ -124,10 +129,11 @@ test('runs the sales workflow as a real child', async () => {
 });
 ```
 
-- `workflows.get` accepts a name or an ID.
+- `workflows.get` accepts a name, an ID, or the `target` path from the manifest.
 - A sub-workflow call runs the child from the set. Mock the calling node to stop at the boundary.
 - `workflows.requirements` lists the credentials, variables, data tables, child workflows, and node types that the workflows need.
-- `workflows.issues()` reports a contract mismatch between a parent and its child, and a contract that the library cannot check.
+- `workflows.issues()` reports a child that the package does not hold, a node type that is not installed, and a contract mismatch between a parent and its child. For a set from `loadWorkflows`, `issues()` reports only the contract checks.
+- The library does not read values from the package. The test supplies each credential, variable, and secret.
 
 ## `executeWorkflow` options
 
@@ -149,7 +155,7 @@ test('runs the sales workflow as a real child', async () => {
 | Field | Meaning |
 | --- | --- |
 | `result.output` | JSON of the items from all runs of the end node, in run order. Throws if more than one end node ran. |
-| `result.response` | The webhook response: status, headers, and body. Only for webhook triggers. |
+| `await result.response` | The webhook response: status, headers, and body. Only for webhook triggers. |
 | `result.staticData` | The workflow static data at the end of the execution. |
 | `result.customData` | The execution custom data that the workflow set. |
 | `result.node(node).runs` | One entry for each run of the node. Accepts a name or a reference. |
@@ -178,7 +184,6 @@ A failed execution rejects with a `WorkflowTestError`. The error has `code`, `wo
 | `HTTP_NOT_MOCKED` | A request matched no nock mock, and `allowHttp` does not permit the host. |
 | `SUB_WORKFLOW_NOT_IN_SET` | A node calls a child that the set does not hold. |
 | `SUB_WORKFLOW_SOURCE_NOT_SUPPORTED` | A node loads its child from a local file or a URL. |
-| `CONTRACT_MISMATCH` | A parent sends fields that its child does not declare, or the reverse. |
 | `CODE_NODE_NOT_MOCKED` | A Python Code node has no mock. |
 | `WAIT_NOT_MOCKED` | A node waits for a webhook, a form, or a reply, and has no mock. |
 | `DATA_TABLE_NOT_MOCKED` | A Data Table node has no mock. |
@@ -188,9 +193,10 @@ A failed execution rejects with a `WorkflowTestError`. The error has `code`, `wo
 | `NODE_NOT_FOUND` | `workflow.node(name)` received an unknown name, or `result.node(node)` received a reference from another workflow. |
 | `NODE_RUN_COUNT` | A shortcut on `result.node(node)` read a node that ran more than one time or did not run. |
 | `MULTIPLE_END_NODES` | `result.output` read a workflow that ended on more than one node. |
-| `WORKFLOW_NOT_FOUND` | `workflows.get` received an unknown name or ID. |
+| `WORKFLOW_NOT_FOUND` | `workflows.get` received an unknown name, ID, or target. |
 | `WORKFLOW_AMBIGUOUS` | More than one workflow has the name. |
 | `INVALID_WORKFLOW` | The workflow JSON has an unknown value, or a child has no Execute Workflow Trigger. |
+| `INVALID_PACKAGE` | The package path does not exist, or the package has no manifest, an invalid manifest, or an invalid workflow file. |
 | `INVALID_OPTION` | An option of `executeWorkflow` has an invalid value. |
 | `EXECUTION_IN_PROGRESS` | A second execution started before the first one finished. |
 
@@ -209,6 +215,8 @@ These differences from production remain:
 
 ## Known limits
 
+- **Execution engine.** The library uses engine v1. A workflow that selects engine v2 fails before execution.
+
 - **One execution at a time.** Await each `executeWorkflow` call before you start the next. Test files can run in separate processes.
 - **An execution that never resolves** leaves the process environment, the network block, and the execution lock in place for the rest of the test file.
 - **Net connect.** An execution enables net connect when it ends. A test that calls `nock.disableNetConnect()` itself must call it again after each execution.
@@ -221,7 +229,9 @@ These differences from production remain:
 - **Data tables** need `mockNode`.
 - **Binary data.** Mocks and results hold JSON only.
 - **Sub-workflow sources.** The sources `database` and `parameter` work. The sources `localFile` and `url` fail.
+- **Detached children.** Concurrent parent and child HTTP requests can be attributed to the wrong active node. Await child workflows when checking request records.
 - **Fixed runtime values.** `$execution.mode` is always `production`. `$execution.id` is `test-execution-1` for the parent. Each child run gets the next number.
 - **Not used.** Pinned data in the workflow JSON. The error workflow.
 - **Redaction** replaces only the credential values that the test supplied. It cannot find a value that a node derived from a secret.
 - **Only HTTP.** The library cannot intercept a database connection, SMTP, SSH, a file write, or a shell command. Use `mockNode` for these nodes.
+- **Packages.** The library reads archived workflows in a package as normal workflows.

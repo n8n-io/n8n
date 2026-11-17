@@ -2,6 +2,14 @@ import { executeWorkflow, loadWorkflow, mockNode } from '../src';
 import type { WorkflowDefinition } from '../src';
 import refusals from './fixtures/refusals.json';
 
+test('rejects a workflow that selects engine v2', async () => {
+	const workflow = loadWorkflow({ ...refusals, settings: { engineType: 'v2' } });
+	await expect(executeWorkflow(workflow)).rejects.toMatchObject({
+		code: 'INVALID_WORKFLOW',
+		message: 'Engine v2 workflows require an n8n instance.',
+	});
+});
+
 function startThen(name: string): WorkflowDefinition {
 	return {
 		...refusals,

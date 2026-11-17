@@ -618,8 +618,7 @@ export class N8nPackagesService {
 	private async readDirectoryProjectPackage(source: {
 		sourceDir: string;
 	}): Promise<DirectoryProjectPackage> {
-		const reader = new DirectoryPackageReader(source.sourceDir, this.packageImportConfig);
-		await reader.listEntries();
+		const reader = await DirectoryPackageReader.open(source.sourceDir, this.packageImportConfig);
 		const manifest = await this.readImportManifest(reader);
 		if (isProjectPackage(manifest)) {
 			return { status: 'project', reader, manifest };

@@ -14,7 +14,6 @@ import {
 	serializedWorkflowMetadataSchema,
 	type ManifestEntry,
 	type PackageManifest,
-	packageManifestSchema,
 } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import { WorkflowEntity } from '@n8n/db';
@@ -22,7 +21,7 @@ import { Service } from '@n8n/di';
 import { jsonParse } from 'n8n-workflow';
 import { ZodError, type ZodType, type ZodTypeDef } from 'zod';
 
-import { BadRequestError, UserError } from '@n8n/errors';
+import { UserError } from '@n8n/errors';
 import { CredentialTypes } from '@/credential-types';
 import { NodeTypes } from '@/node-types';
 import * as WorkflowHelpers from '@/workflow-helpers';
@@ -44,6 +43,7 @@ import {
 	workflowMetadataFilePath,
 } from '../io/manifest-entry';
 import type { PackageReader } from '../io/package-reader';
+import { readPackageManifest } from '../io/read-package-manifest';
 import {
 	serializedAgentSchema,
 	serializedAgentMetadataSchema,
@@ -67,14 +67,7 @@ export class N8nPackageParser {
 	) {}
 
 	async getManifest(reader: PackageReader): Promise<PackageManifest> {
-		try {
-			return packageManifestSchema.parse(await reader.readManifest());
-		} catch (error) {
-			if (error instanceof BadRequestError) throw error;
-			if (error instanceof ZodError)
-				throw new BadRequestError('Package manifest failed validation');
-			throw new BadRequestError('Failed to read package manifest');
-		}
+		return await readPackageManifest(reader);
 	}
 
 	async getWorkflows(reader: PackageReader, basePrefix = ''): Promise<PreparedWorkflow[]> {
