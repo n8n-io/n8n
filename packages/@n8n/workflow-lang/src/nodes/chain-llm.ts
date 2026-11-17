@@ -23,8 +23,9 @@
  *
  * Supported: the prompt as text, the system, AI and user text messages, and the
  * chat models `lmChatOpenAi` (versions 1 to 1.3: Chat Completions API and Responses
- * API), `lmChatOpenRouter` and `lmChatAnthropic` (versions 1 to 1.5, without thinking
- * options), with the options that map to fields of the request body.
+ * API), `lmChatOpenRouter`, `lmChatAnthropic` (versions 1 to 1.5, without thinking
+ * options) and `lmChatGoogleGemini` (versions 1 and 1.1), with the options that map to
+ * fields of the request body.
  * Not supported (the converter keeps these in the fallback host): an output
  * parser, a fallback model, image messages, the JSON response format, the reasoning
  * effort, built-in tools, a custom base URL of the model node, and other model providers.
@@ -53,6 +54,8 @@ interface AiModel {
 	responses?: boolean;
 	model?: string;
 	options?: ModelOptions;
+	/** The Gemini model: `options.safetySettings.values`. */
+	safetySettings?: unknown[];
 }
 
 /** The parameters of the root for one input item. */
@@ -100,6 +103,8 @@ interface ModelRequest {
 	body: Record<string, unknown>;
 	/** True for the Messages API of Anthropic. */
 	anthropic?: boolean;
+	/** True for the generateContent API of Google Gemini. */
+	gemini?: boolean;
 	/** The request cannot go out: the error of the LangChain client, on the run of the model. */
 	refused?: string;
 }
@@ -241,6 +246,27 @@ function connectionMessage(text: string): string {
  */
 function answerToolCalls(request: ModelRequest, data: unknown): string | undefined {
 	const messages = request.body.messages;
+	const contents = request.body.contents;
+	if (request.gemini === true && Array.isArray(contents)) {
+		const calls: unknown[] = [];
+		const results: unknown[] = [];
+		for (const part of geminiParts(data)) {
+			const call = part.functionCall;
+			if (part.type !== 'functionCall' || !isObject(call)) {
+				return 'AI Agent: the model called a tool, and the agent has no tools';
+			}
+			calls.push({ functionCall: { name: call.name, args: call.args } });
+			results.push({
+				functionResponse: {
+					name: call.name,
+					response: { result: `${String(call.name)} is not a valid tool, try another one.` },
+				},
+			});
+		}
+		contents.push({ role: 'model', parts: calls });
+		contents.push({ role: 'user', parts: results });
+		return undefined;
+	}
 	if (request.anthropic === true && Array.isArray(messages)) {
 		const blocks: unknown[] = [];
 		const results: unknown[] = [];
@@ -522,6 +548,78 @@ function anthropicRequest(item: ItemParameters, ai: AiModel, agent: boolean): Mo
 	return request;
 }
 
+/** The model of a Gemini request as the client writes it in the URL. */
+function geminiModel(model: string): string {
+	return model.includes('/') ? model : `models/${model}`;
+}
+
+/** The request of the Gemini chat model (`lmChatGoogleGemini`, ChatGoogleGenerativeAI of LangChain). */
+function geminiRequest(item: ItemParameters, ai: AiModel, agent: boolean): ModelRequest {
+	const options = ai.options ?? {};
+	const messages = chatMessages(item, '', agent);
+	const request: ModelRequest = { responses: false, gemini: true, body: {} };
+	const body: Record<string, unknown> = {
+		generationConfig: {
+			stopSequences: [],
+			maxOutputTokens: options.maxTokens,
+			temperature: options.temperature,
+			topP: options.topP,
+			topK: options.topK,
+		},
+		safetySettings: ai.safetySettings ?? [],
+	};
+	const contents: unknown[] = [];
+	for (let i = 0; i < messages.length; i++) {
+		const message = messages[i];
+		// LangChain sends no part for an empty text.
+		const parts = message.content === '' ? [] : [{ text: message.content }];
+		if (message.role !== 'system') {
+			contents.push({
+				role: message.role === 'assistant' ? 'model' : 'user',
+				parts,
+			});
+		} else if (i === 0) {
+			body.systemInstruction = { role: 'system', parts };
+		} else {
+			request.refused = 'System message should be the first one';
+		}
+	}
+	body.contents = contents;
+	request.body = body;
+	return request;
+}
+
+/**
+ * The content blocks of a Gemini answer, as LangChain makes them from the parts of the
+ * first candidate: text, thinking (a thought part), or a block named after the part.
+ */
+function geminiParts(data: unknown): Array<Record<string, unknown>> {
+	const candidates = isObject(data) && Array.isArray(data.candidates) ? data.candidates : [];
+	if (candidates.length === 0) {
+		const feedback = isObject(data) && isObject(data.promptFeedback) ? data.promptFeedback : {};
+		if (feedback.blockReason) {
+			throw new Error(`Gemini blocked the prompt (reason: ${String(feedback.blockReason)})`);
+		}
+		throw new Error('Gemini returned an empty response');
+	}
+	const first: unknown = candidates[0];
+	const content = isObject(first) ? first.content : undefined;
+	if (!isObject(content)) {
+		throw new Error("Cannot read properties of undefined (reading 'parts')");
+	}
+	const blocks: Array<Record<string, unknown>> = [];
+	for (const part of Array.isArray(content.parts) ? content.parts : []) {
+		if (!isObject(part)) continue;
+		if (part.text !== undefined) {
+			if (part.thought === true) blocks.push({ type: 'thinking', thinking: part.text });
+			else blocks.push({ type: 'text', text: part.text });
+		} else {
+			blocks.push({ ...part, type: Object.keys(part)[0] });
+		}
+	}
+	return blocks;
+}
+
 /** The text of a failed answer as the Anthropic client writes it: the status, then the body. */
 function anthropicClientMessage(status: number, body: unknown): string {
 	const text = typeof body === 'string' ? body : body === undefined ? '' : JSON.stringify(body);
@@ -547,6 +645,7 @@ function refusesSampling(message: string): boolean {
 /** The request body of the item, and true when it goes to the Responses API. */
 function requestOf(item: ItemParameters, ai: AiModel, agent: boolean): ModelRequest {
 	if (ai.provider === 'anthropic') return anthropicRequest(item, ai, agent);
+	if (ai.provider === 'gemini') return geminiRequest(item, ai, agent);
 	const options = ai.options ?? {};
 	const maxTokens = options.maxTokens === -1 ? undefined : options.maxTokens;
 	const model = ai.model ?? '';
@@ -668,6 +767,53 @@ export default defineNode<ChainParameters>({
 		};
 
 		/**
+		 * One call of the Gemini model. The client sends the key in a header, not in the query
+		 * as the credential type does, so the request names the key itself. LangChain tries a
+		 * failed request 7 times. The text of the last failure has the URL of the request: the
+		 * converter gives this node only credentials with the host of Google.
+		 */
+		const sendGemini = async (
+			request: ModelRequest,
+			run: { error: string | null },
+		): Promise<{ data?: unknown; error?: string }> => {
+			const path = `/v1beta/${geminiModel(ai.model ?? '')}:generateContent`;
+			for (let attempt = 1; ; attempt++) {
+				let status = 0;
+				let body: unknown;
+				try {
+					const response = await ctx.http<unknown>({
+						method: 'POST',
+						url: `{{$credentials.host}}${path}`,
+						headers: { 'x-goog-api-key': '{{$credentials.apiKey}}' },
+						qs: {},
+						body: request.body,
+						credential,
+						inject: false,
+					});
+					status = response.status;
+					body = response.body;
+				} catch {
+					status = 0;
+				}
+				if (status > 0 && status < 400) return { data: body };
+				if (NO_RETRY.includes(status)) {
+					run.error =
+						STATUS_MESSAGES[String(status)] ??
+						'Your request is invalid or could not be processed by the service';
+					return { error: run.error };
+				}
+				if (attempt >= 7) {
+					const error = isObject(body) && isObject(body.error) ? body.error : {};
+					const text = typeof error.message === 'string' ? error.message : '';
+					const reason = status > 0 ? `[${status} ] ${text}` : 'fetch failed';
+					run.error = `[GoogleGenerativeAI Error]: Error fetching from https://generativelanguage.googleapis.com${path}: ${reason}`;
+					return { error: run.error };
+				}
+				await ctx.wait({ duration: retryWait(ctx.random(), attempt) });
+			}
+		};
+
+		/**
 		 * One call of the model, with the tries of LangChain's caller. It records the run of the
 		 * model sub-node when the request starts, and gives the body of the answer or the error.
 		 */
@@ -679,6 +825,7 @@ export default defineNode<ChainParameters>({
 				return { error: run.error };
 			}
 			if (request.anthropic === true) return await sendAnthropic(request, run);
+			if (request.gemini === true) return await sendGemini(request, run);
 			for (let attempt = 1; ; attempt++) {
 				let status = 0;
 				let body: unknown;
@@ -718,7 +865,12 @@ export default defineNode<ChainParameters>({
 		 * version 3 gives the call to n8n's engine: the engine then runs the whole node again.
 		 */
 		const one = async (item: ItemParameters, iteration: number): Promise<Outcome> => {
-			if (ai.provider !== 'openAi' && ai.provider !== 'openRouter' && ai.provider !== 'anthropic') {
+			if (
+				ai.provider !== 'openAi' &&
+				ai.provider !== 'openRouter' &&
+				ai.provider !== 'anthropic' &&
+				ai.provider !== 'gemini'
+			) {
 				return { error: 'Basic LLM Chain: the chat model is not in the compiled library' };
 			}
 			if (agent && version >= 3 && iteration >= maxIterations) {
@@ -736,6 +888,7 @@ export default defineNode<ChainParameters>({
 				let parts: Array<Record<string, unknown>> = [];
 				try {
 					if (request.anthropic === true) parts = anthropicParts(answer.data);
+					else if (request.gemini === true) parts = geminiParts(answer.data);
 					else if (request.responses) parts = responseParts(answer.data);
 					else parts = [{ type: 'text', text: completionText(answer.data) }];
 				} catch (error) {
@@ -746,7 +899,9 @@ export default defineNode<ChainParameters>({
 					const calls =
 						request.anthropic === true
 							? parts.some((part) => part.type === 'tool_use')
-							: callsTool(answer.data, request.responses);
+							: request.gemini === true
+								? parts.some((part) => part.type === 'functionCall')
+								: callsTool(answer.data, request.responses);
 					if (calls) {
 						// The agent has no tools. Version 3 gives the calls to the engine, which has no
 						// tool to run and runs the agent again. Version 2 answers each call itself.
@@ -758,9 +913,10 @@ export default defineNode<ChainParameters>({
 						if (failed !== undefined) return { error: failed };
 						continue;
 					}
-					const output: Item = {
-						output: agentOutput(parts, request.responses || request.anthropic === true),
-					};
+					// One text part of Gemini is a text answer; more parts are a list of blocks.
+					const single = request.gemini === true && parts.length === 1 && parts[0].type === 'text';
+					const blocks = request.responses || request.anthropic === true || request.gemini === true;
+					const output: Item = { output: agentOutput(parts, blocks && !single) };
 					if (parameters.returnIntermediateSteps === true) output.intermediateSteps = [];
 					return { item: output };
 				}

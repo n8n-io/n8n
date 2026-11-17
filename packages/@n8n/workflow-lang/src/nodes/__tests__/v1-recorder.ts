@@ -34,7 +34,11 @@ import type {
 } from './equivalence.ts';
 import { normalizeRequest } from './equivalence.ts';
 import { fixtureBytes } from '../../reference/binary-response.ts';
+import { installNetworkGuard } from './no-network.ts';
 import { networkErrorText } from './equivalence.ts';
+
+// Code of v1 nodes runs in this process: no connection may leave the machine.
+installNetworkGuard();
 
 const here = dirname(fileURLToPath(import.meta.url));
 const packagesDir = join(here, '../../../../..');
@@ -613,8 +617,36 @@ function installFakeFetch(responses: EquivalenceCase['responses'], recorded: Raw
 			headers: { 'content-type': 'application/json', ...(r.headers ?? {}) },
 		});
 	};
+	// Some model nodes (Google Gemini) send with `proxyFetch` of `@n8n/ai-utilities`, which has
+	// its own undici dispatcher and does not use the global `fetch`. It goes to the fake too.
+	const restoreProxyFetch = replaceProxyFetch(
+		async (options: AnyRecord) => await globalThis.fetch(options.input, options.init),
+	);
 	return () => {
 		globalThis.fetch = real;
+		restoreProxyFetch();
+	};
+}
+
+/** Replaces the export `proxyFetch` of `@n8n/ai-utilities`. Returns the function that restores it. */
+function replaceProxyFetch(fake: (options: AnyRecord) => Promise<Response>): () => void {
+	let utilities: AnyRecord;
+	try {
+		const hostRequire = createRequire(join(FALLBACK_HOST_DIR, 'package.json'));
+		const langchain = createRequire(hostRequire.resolve('@n8n/n8n-nodes-langchain/package.json'));
+		utilities = langchain('@n8n/ai-utilities');
+	} catch {
+		return () => {};
+	}
+	const before = Object.getOwnPropertyDescriptor(utilities, 'proxyFetch');
+	if (!before?.configurable) throw new Error('proxyFetch of @n8n/ai-utilities cannot be replaced');
+	Object.defineProperty(utilities, 'proxyFetch', {
+		value: fake,
+		configurable: true,
+		enumerable: true,
+	});
+	return () => {
+		Object.defineProperty(utilities, 'proxyFetch', before);
 	};
 }
 
