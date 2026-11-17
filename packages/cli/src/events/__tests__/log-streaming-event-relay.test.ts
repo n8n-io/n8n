@@ -425,6 +425,25 @@ describe('LogStreamingEventRelay', () => {
 			});
 		});
 
+		it.each([
+			['workflow-owner-changed', 'n8n.audit.workflow.owner.changed', { workflowId: 'wf789' }],
+			['agent-owner-changed', 'n8n.audit.agent.owner.changed', { agentId: 'agent789' }],
+		] as const)('should log on `%s` event when no user caused it', (event, eventName, resource) => {
+			const change = {
+				projectId: 'proj123',
+				previousOwnerUserId: '456',
+				newOwnerUserId: null,
+				reason: 'member-removed',
+			} as const;
+
+			eventService.emit(event, { ...change, ...resource, user: null } as never);
+
+			expect(eventBus.sendAuditEvent).toHaveBeenCalledWith({
+				eventName,
+				payload: { userId: null, ...change, ...resource },
+			});
+		});
+
 		it('should log on `workflow-unarchived` event', () => {
 			const event: RelayEventMap['workflow-unarchived'] = {
 				user: {
