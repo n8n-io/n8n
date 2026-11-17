@@ -34,7 +34,7 @@ import type {
 	PublicationResult,
 	TriggerPublicationStatus,
 } from '@/workflows/publication/publication-result';
-import { computeTriggerDiff } from '@/workflows/publication/trigger-diff';
+import { computeTriggerDiff, type TriggerDiff } from '@/workflows/publication/trigger-diff';
 import { TriggerNodeIdTooLongError } from '@/workflows/publication/trigger-node-id-too-long.error';
 import {
 	isTriggerLikeNodeType,
@@ -62,7 +62,7 @@ type PartitionedVersion = { runnable: WorkflowTriggerVersion; unresolvable: Unre
  * e.g. the n8n Trigger's "Instance Started" event fires exactly for the
  * leader's startup pass. Records from before the `reason` column existed
  * default to `publish` at the DB level, i.e. today's `update` behavior.
- * A first publication overrides `publish` → `activate`; see
+ * A first publication overrides `publish` or `transfer` → `activate`; see
  * {@link WorkflowPublicationApplier.resolveActivationMode}.
  */
 const ACTIVATION_MODE_BY_REASON: Record<WorkflowPublicationReason, WorkflowActivateMode> = {
@@ -70,7 +70,16 @@ const ACTIVATION_MODE_BY_REASON: Record<WorkflowPublicationReason, WorkflowActiv
 	[WorkflowPublicationReason.Startup]: 'init',
 	[WorkflowPublicationReason.LeadershipTakeover]: 'leadershipChange',
 	[WorkflowPublicationReason.Reconcile]: 'update',
+	[WorkflowPublicationReason.Transfer]: 'update',
 };
+
+/** Removes every old trigger and adds every new one, so unchanged triggers also register again. */
+function replaceAllTriggers(oldTriggers: INode[], newTriggers: INode[]): TriggerDiff {
+	return {
+		toRemove: new Set(oldTriggers.map((node) => node.id)),
+		toAdd: new Set(newTriggers.map((node) => node.id)),
+	};
+}
 
 /**
  * Reconciles a workflow's triggers to a published version, one outbox record at
@@ -184,9 +193,11 @@ export class WorkflowPublicationApplier {
 		const desiredTriggerNodes = this.workflowTriggerActivator.getEnabledTriggerNodes(newVersion);
 		const triggerKinds = this.workflowTriggerActivator.getTriggerKinds(desiredTriggerNodes);
 
-		const { toAdd, toRemove } = computeTriggerDiff(oldTriggerCandidates, desiredTriggerNodes, {
-			versionChanged: oldVersion !== null && oldVersion.versionId !== newVersion.versionId,
-		});
+		const versionChanged = oldVersion !== null && oldVersion.versionId !== newVersion.versionId;
+		const { toAdd, toRemove } =
+			record.reason === WorkflowPublicationReason.Transfer
+				? replaceAllTriggers(oldTriggerCandidates, desiredTriggerNodes)
+				: computeTriggerDiff(oldTriggerCandidates, desiredTriggerNodes, { versionChanged });
 
 		this.logger.debug(
 			`Calculated trigger diff for workflow publication: ${toAdd.size} to add, ${toRemove.size} to remove`,
@@ -548,7 +559,9 @@ export class WorkflowPublicationApplier {
 		oldVersion: WorkflowHistory | null,
 	): WorkflowActivateMode {
 		const reason = record.reason ?? WorkflowPublicationReason.Publish;
-		if (reason === WorkflowPublicationReason.Publish && oldVersion === null) return 'activate';
+		const isUserIntent =
+			reason === WorkflowPublicationReason.Publish || reason === WorkflowPublicationReason.Transfer;
+		if (isUserIntent && oldVersion === null) return 'activate';
 		return ACTIVATION_MODE_BY_REASON[reason];
 	}
 
