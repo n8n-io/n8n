@@ -109,3 +109,45 @@ No telemetry event changes. A Promote that returns `gaps-changed` counts as
 
 The foundation changes make some existing test files fail the typecheck
 (mostly fixtures without `allowIncomplete`). They are left as they are.
+
+### D13. Dependency check engine (stream B)
+
+The engine is in `packages/cli/src/modules/promotions.ee/dependency-check/`. It decided these
+points:
+
+- **Gap id.** `<consumer workflow id>|<usage>|<target id>`. A grant id is
+  `<credential id>|<consumer project id>`.
+- **Instance credential on Apply.** The requirement row gets a third reason,
+  `instance-credential`. Without it an Apply cannot tell an instance credential that the
+  destination lacks from a credential that is not on the branch. The Promote must write it
+  (`requirementReasons()` gives the reason of each row).
+- **A reason counts only while the branch does not hold the target.** A row of a target that
+  is on the branch is ignored, so an old `broken-on-source` cannot hide a new gap.
+- **`blocked` and a credential without a home.** The report is `blocked` while a top-level
+  credential that the destination lacks has no selected home, in both modes. `credentialHomes`
+  lifts it.
+- **`blocked` and the callers of a deleted workflow.** `deletionCallers` does not set
+  `blocked`. The operation must stop while the list is not empty and
+  `confirmDeletionCallers` is not set.
+- **Placeholder flag.** Each credential gap of an environment that allows incomplete applies
+  gets `placeholder: true` when the destination does not hold the id, also a gap with the exit
+  "include". Without it the import has no credential to bind.
+- **Placeholder on the source.** The gap keeps the group of its project and has no exit
+  "include". It has the detail `placeholder-on-source`.
+- **Written credentials.** The check counts a credential as written when a selected workflow
+  of its own project uses it, or when the selection names it in `credentialIds` (D8), and the
+  user can read it.
+- **A target that the user can operate and cannot read** is in the group
+  `read-only-project` with "Ask the owner".
+- **Archived or refused by the caller policy, in a project that the user cannot access.** The
+  gap is in the group `no-access` with "Ask the owner", so the report does not say why.
+- **A credential of a personal project that is not shared with the consumer project** counts
+  as working on the source (unknown), so it is a `personal` gap and not a warning.
+- **"In an open review".** A review holds a target when the changes of the review add or
+  modify it. The report gives the review id and no URL.
+- **The published version (open decision 8).** The check reads the nodes of the published
+  version of each written workflow. A call to a deleted workflow is always read. A credential
+  is read only when the Apply moves the workflow to another project. The callers that the
+  Apply does not write come from the workflow index.
+- **New optional fields of the report:** `detail` on a gap, `blockedReason` on a credential
+  move, and `hiddenKeptWorkflowCount`.
