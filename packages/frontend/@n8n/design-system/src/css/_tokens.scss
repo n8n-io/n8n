@@ -646,7 +646,7 @@
 	// The navigation panel and the content sit above the rail and cast a soft shadow onto it.
 	--app-shell--surface--radius: var(--radius--lg);
 	--app-shell--surface--shadow:
-		-0.5px 0 0 oklch(0% 0 0 / 0.06), -4px 0 16px oklch(0% 0 0 / 0.05);
+		-0.5px 0 0 oklch(0% 0 0 / 0.04), -2px 0 12px oklch(0% 0 0 / 0.03);
 
 	// Params
 	--icon--color: var(--color--text--tint-1);
@@ -1262,7 +1262,7 @@
 	--app-shell--nav-panel--color--background: var(--color--neutral-950);
 	--app-shell--content--color--background: var(--color--neutral-900);
 	--app-shell--surface--shadow:
-		-0.5px 0 0 var(--color--white-alpha-100), -4px 0 16px oklch(0% 0 0 / 0.5);
+		-0.5px 0 0 var(--color--white-alpha-50), -2px 0 12px oklch(0% 0 0 / 0.35);
 
 	/* Ag Grid */
 	--grid--row--color--background--selected: var(--color--purple-900);
