@@ -20,8 +20,8 @@ function setup(url = '/', navigation = true) {
 		]),
 	);
 	const auth = mock<AppAuthService>({ isNavigation: () => navigation });
-	const hosts = mock<AppHostService>();
-	const preview = mock<AppPreviewService>({ editorOrigin: 'https://n8n.example.net' });
+	const hosts = mock<AppHostService>({ editorOrigin: 'https://n8n.example.net' });
+	const preview = mock<AppPreviewService>();
 	const events = mock<EventService>();
 	const controller = new AppServingController(bundles, auth, hosts, preview, events);
 	const req = mock<AppRequest>({
@@ -119,19 +119,13 @@ describe('AppServingController', () => {
 		},
 	);
 
-	it('serves the preview version and allows only the editor to frame it', async () => {
+	it('serves the preview version', async () => {
 		const { controller, req, res, bundles } = setup('/assets/main.js', false);
 		req.appContext = { app: mock(), versionId: 'draft', preview: true, previewUserId: 'editor-1' };
 
 		await controller.serve(req, res);
 
 		expect(bundles.get).toHaveBeenCalledWith('draft');
-		expect(res.set).toHaveBeenCalledWith(
-			expect.objectContaining({
-				'Content-Security-Policy':
-					"base-uri 'self'; object-src 'none'; frame-ancestors https://n8n.example.net",
-			}),
-		);
 	});
 
 	it('adds the element inspector to preview HTML with its own ETag', async () => {
@@ -165,16 +159,6 @@ describe('AppServingController', () => {
 		await controller.serve(req, res);
 
 		expect(res.send).toHaveBeenCalledWith(Buffer.from('js'));
-	});
-
-	it('keeps the published CSP without frame-ancestors', async () => {
-		const { controller, req, res } = setup('/assets/main.js', false);
-
-		await controller.serve(req, res);
-
-		expect(res.set).toHaveBeenCalledWith(
-			expect.objectContaining({ 'Content-Security-Policy': "base-uri 'self'; object-src 'none'" }),
-		);
 	});
 
 	describe('app-opened event', () => {

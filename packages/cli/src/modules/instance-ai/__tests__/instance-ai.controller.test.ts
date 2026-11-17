@@ -50,12 +50,14 @@ import type { AuthenticatedRequest } from '@n8n/db';
 import { ControllerRegistryMetadata } from '@n8n/decorators';
 import { Container } from '@n8n/di';
 import type { Scope } from '@n8n/permissions';
+import { TELEMETRY_EVENT } from '@n8n/telemetry';
 import { createDeferredPromise } from '@n8n/utils/promise/deferred-promise';
 import type { Response } from 'express';
 import { mock } from 'vitest-mock-extended';
 
 import { BadRequestError, ConflictError, ForbiddenError, NotFoundError } from '@n8n/errors';
 import type { ProjectService } from '@/services/project.service.ee';
+import type { TelemetryProxy } from '@n8n/backend-services';
 
 import type { InstanceAiBrowserSessionService } from '../browser/instance-ai-browser-session.service';
 import type { DurableEventLog } from '../event-bus/durable-event-log';
@@ -102,6 +104,7 @@ describe('InstanceAiController', () => {
 	const onboarding = mock<InstanceAiOnboardingService>();
 	const threadTabsService = mock<InstanceAiThreadTabsService>();
 	const globalConfig = mock<GlobalConfig>({ instanceAi: { evalInstance: false } });
+	const telemetry = mock<TelemetryProxy>();
 
 	const controller = new InstanceAiController(
 		instanceAiService,
@@ -118,6 +121,7 @@ describe('InstanceAiController', () => {
 		preferenceCardService,
 		globalConfig,
 		threadTabsService,
+		telemetry,
 	);
 
 	const req = mock<AuthenticatedRequest>({ user: { id: USER_ID } });
@@ -775,6 +779,43 @@ describe('InstanceAiController', () => {
 			expect(sseRes.write).not.toHaveBeenCalled();
 		});
 
+		it('should write a run-sync frame for a background task, but not for one detached from its turn', async () => {
+			memoryService.checkThreadOwnership.mockResolvedValue('owned');
+			instanceAiService.getThreadStatus.mockReturnValue({
+				hasActiveRun: false,
+				isSuspended: false,
+				backgroundTasks: [
+					{ status: 'running', runId: 'run-builder', messageGroupId: 'mg-builder' },
+					{
+						status: 'running',
+						runId: 'run-browser',
+						messageGroupId: 'mg-browser',
+						detachedFromTurn: true,
+					},
+				],
+			} as never);
+			instanceAiService.getRunIdsForMessageGroup.mockImplementation((groupId) => [
+				groupId === 'mg-builder' ? 'run-builder' : 'run-browser',
+			]);
+			eventLog.getEventsForRuns.mockResolvedValue([RUN_START] as never);
+			eventBus.subscribe.mockReturnValue(vi.fn());
+			const { sseReq, sseRes, frames } = sseIo();
+
+			await controller.events(sseReq, sseRes, THREAD_ID, { lastEventId: undefined } as never);
+
+			const runSyncGroups = frames()
+				.filter((frame) => frame.startsWith('event: run-sync\n'))
+				.map(
+					(frame) =>
+						(
+							JSON.parse(frame.slice('event: run-sync\ndata: '.length)) as {
+								messageGroupId: string;
+							}
+						).messageGroupId,
+				);
+			expect(runSyncGroups).toEqual(['mg-builder']);
+		});
+
 		it('should close SSE stream when thread ownership changes after pre-creation subscribe', async () => {
 			// Simulate: thread does not exist at connect time
 			memoryService.checkThreadOwnership.mockResolvedValueOnce('not_found');
@@ -1006,13 +1047,17 @@ describe('InstanceAiController', () => {
 			expect(scopeOf('cancel')).toEqual({ scope: 'instanceAi:message', globalOnly: true });
 		});
 
-		it('should cancel the run', async () => {
+		it('should cancel the run and track the stop', async () => {
 			memoryService.checkThreadOwnership.mockResolvedValue('owned');
 
 			const result = await controller.cancel(req, res, THREAD_ID);
 
 			expect(result).toEqual({ ok: true });
 			expect(instanceAiService.routeCancelRun).toHaveBeenCalledWith(THREAD_ID);
+			expect(telemetry.track).toHaveBeenCalledWith(TELEMETRY_EVENT.INSTANCE_AI.USER_STOPPED_RUN, {
+				user_id: USER_ID,
+				thread_id: THREAD_ID,
+			});
 		});
 
 		it('should throw ForbiddenError for other user thread', async () => {
@@ -1638,6 +1683,41 @@ describe('InstanceAiController', () => {
 			});
 		});
 
+		it("should leave out a background task's turn, but not the turn of one detached from it", async () => {
+			instanceAiService.getActiveRunId.mockReturnValue(undefined);
+			instanceAiService.getThreadStatus.mockReturnValue({
+				hasActiveRun: false,
+				isSuspended: false,
+				backgroundTasks: [
+					{ status: 'running', runId: 'run-builder', messageGroupId: 'mg-builder' },
+					{
+						status: 'running',
+						runId: 'run-browser',
+						messageGroupId: 'mg-browser',
+						detachedFromTurn: true,
+					},
+				],
+			} as never);
+			memoryService.getRichMessages.mockResolvedValue(
+				mock<Omit<InstanceAiRichMessagesResponse, 'nextEventId'>>(),
+			);
+			const query = mock<InstanceAiThreadMessagesQuery>({
+				limit: 50,
+				page: 0,
+				cursor: 'cursor-1',
+				raw: undefined,
+			});
+
+			await controller.getThreadMessages(req, res, THREAD_ID, query);
+
+			expect(memoryService.getRichMessages).toHaveBeenCalledWith(USER_ID, THREAD_ID, {
+				limit: 50,
+				cursor: 'cursor-1',
+				excludeRunIds: ['run-builder'],
+				excludeMessageGroupIds: ['mg-builder'],
+			});
+		});
+
 		it('should carry the latest applied-preferences payload when a turn reported one', async () => {
 			memoryService.getRichMessages.mockResolvedValue(
 				mock<Omit<InstanceAiRichMessagesResponse, 'nextEventId'>>(),
@@ -1735,6 +1815,7 @@ describe('InstanceAiController — durable-log SSE replay', () => {
 		mock<InstanceAiPreferenceCardService>(),
 		mock<GlobalConfig>(),
 		mock<InstanceAiThreadTabsService>(),
+		mock<TelemetryProxy>(),
 	);
 
 	beforeEach(() => {

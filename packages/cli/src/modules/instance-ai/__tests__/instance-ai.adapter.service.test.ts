@@ -77,6 +77,7 @@ import {
 	CANVAS_NODE_CONTEXT_FLAG,
 	CONFIG_EVALUATIONS_FLAG,
 	INSTANCE_AI_CONVERSATION_HISTORY_FLAG,
+	INSTANCE_AI_APPROVAL_MODES_FLAG,
 	INSTANCE_AI_NODE_USAGE_FLAG,
 	INSTANCE_ACTIVITY_CONTEXT_FLAG,
 	ASSISTANT_SKILLS_FLAG,
@@ -2717,6 +2718,13 @@ describe('createDataTableAdapter', () => {
 			await expect(adapter.getSchema('dt-1')).rejects.toThrow('Data table "dt-1" not found');
 		});
 
+		it('rejects a table it cannot find with a user error', async () => {
+			mockedUserHasScopes.mockResolvedValue(false);
+			const { adapter } = createDataTableAdapterForTests();
+
+			await expect(adapter.resolveTableReference?.('dt-1')).rejects.toThrow(UserError);
+		});
+
 		it('resolves table references with the requested permission scope', async () => {
 			const { adapter } = createDataTableAdapterForTests();
 
@@ -3843,6 +3851,7 @@ describe('createWorkflowAdapter', () => {
 			expect(mockFolderRepository.findOneOrFailFolderInProject).toHaveBeenCalledWith(
 				'deep',
 				'team-project-id',
+				'workflow',
 			);
 		});
 
@@ -8046,6 +8055,7 @@ describe('resolveExperimentGates', () => {
 		[INSTANCE_AI_NODE_USAGE_FLAG]: true,
 		[AI_ASSISTANT_AT_MENTIONS_FLAG]: true,
 		[INSTANCE_AI_FOLDER_EXPLORATION_FLAG]: INSTANCE_AI_FOLDER_EXPLORATION_ENABLED_VARIANT,
+		[INSTANCE_AI_APPROVAL_MODES_FLAG]: true,
 	};
 
 	it('resolves per-user gates with one user flag fetch', async () => {
@@ -8061,6 +8071,7 @@ describe('resolveExperimentGates', () => {
 			nodeUsageEnabled: true,
 			nodeContextEnabled: true,
 			folderExplorationEnabled: true,
+			approvalModesEnabled: true,
 			instanceContextEnabled: false,
 			assistantSkillsEnabled: false,
 		});
@@ -8167,6 +8178,7 @@ describe('resolveExperimentGates', () => {
 			nodeUsageEnabled: false,
 			nodeContextEnabled: false,
 			folderExplorationEnabled: false,
+			approvalModesEnabled: false,
 			instanceContextEnabled: false,
 			assistantSkillsEnabled: false,
 		});
@@ -8203,6 +8215,14 @@ describe('resolveExperimentGates', () => {
 		});
 	});
 
+	it('opens the approval modes gate only on a boolean true', async () => {
+		stubContainer({ ...allEnabled, [INSTANCE_AI_APPROVAL_MODES_FLAG]: 'variant' });
+
+		await expect(createAdapter().resolveExperimentGates(user)).resolves.toMatchObject({
+			approvalModesEnabled: false,
+		});
+	});
+
 	it('fails experiment gates closed when no flags resolve', async () => {
 		stubContainer({});
 
@@ -8215,6 +8235,7 @@ describe('resolveExperimentGates', () => {
 			nodeUsageEnabled: false,
 			nodeContextEnabled: false,
 			folderExplorationEnabled: false,
+			approvalModesEnabled: false,
 			instanceContextEnabled: false,
 			assistantSkillsEnabled: false,
 		});
@@ -8233,6 +8254,7 @@ describe('resolveExperimentGates', () => {
 			nodeUsageEnabled: false,
 			nodeContextEnabled: false,
 			folderExplorationEnabled: false,
+			approvalModesEnabled: false,
 			instanceContextEnabled: false,
 			assistantSkillsEnabled: false,
 		});

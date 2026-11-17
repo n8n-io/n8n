@@ -4,6 +4,7 @@ import postgresVersions from 'n8n-containers/postgres-versions.json';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
 import type {
+	ExecutionStatus,
 	ResumeCause,
 	StepSlots,
 	StepStatus,
@@ -43,7 +44,7 @@ describe('workflow_step_execution table (integration)', () => {
 
 	/** Steps FK to an execution, so create a parent row first. */
 	async function createExecution(
-		overrides: { workflowId?: string; status?: 'running' | 'completed' | 'failed' } = {},
+		overrides: { workflowId?: string; status?: ExecutionStatus } = {},
 	): Promise<string> {
 		const repo = dataSource.getRepository(WorkflowExecution);
 		const execution = repo.create({
@@ -82,10 +83,24 @@ describe('workflow_step_execution table (integration)', () => {
 		waitDeclaration?: WaitDeclaration;
 		waitTill?: Date | null;
 		resumeCause?: ResumeCause;
+		staleAfter?: Date | null;
 	}): Promise<{ id: string }> {
 		const repo = dataSource.getRepository(WorkflowStepExecution);
 		const row = await repo.save(repo.create(record));
 		return { id: row.id };
+	}
+
+	async function waitUntilQueryBlocksOnLock(queryFragment: string): Promise<void> {
+		for (let attempt = 0; attempt < 500; attempt++) {
+			const [{ blocked }] = await dataSource.query<Array<{ blocked: number }>>(
+				`SELECT count(*)::int AS blocked FROM pg_stat_activity
+				 WHERE wait_event_type = 'Lock' AND pid <> pg_backend_pid() AND query LIKE $1`,
+				[`%${queryFragment}%`],
+			);
+			if (blocked > 0) return;
+			await new Promise((resolve) => setTimeout(resolve, 10));
+		}
+		throw new Error(`No query containing "${queryFragment}" blocked on a lock`);
 	}
 
 	it('persists and retrieves a step row', async () => {
@@ -438,6 +453,68 @@ describe('workflow_step_execution table (integration)', () => {
 			.findOneOrFail({ where: { id } });
 		expect(found.status).toBe('queued');
 		expect(found.waitDeclaration).toBeNull();
+	});
+
+	it.each<[ExecutionStatus, StepStatus, boolean]>([
+		['running', 'waiting', true],
+		['waiting', 'waiting', true],
+		['completed', 'cancelled', false],
+		['failed', 'cancelled', false],
+		['cancelled', 'cancelled', false],
+	])(
+		'TypeOrmStepStore.suspendStep in a %s execution moves a running step to %s',
+		async (executionStatus, stepStatus, recorded) => {
+			const executionId = await createExecution({ status: executionStatus });
+			const store = new TypeOrmStepStore(dataSource.getRepository(WorkflowStepExecution));
+			const { id } = await seedStep({
+				executionId,
+				nodeId: 'a',
+				iteration: 0,
+				status: 'running',
+				staleAfter: new Date('2099-01-01T00:00:00.000Z'),
+			});
+
+			const wait = { resumeAt: '2099-01-01T00:00:00.000Z', outputsAtDeadline: [] };
+			expect(await store.suspendStep(id, wait)).toBe(recorded);
+
+			const found = await dataSource
+				.getRepository(WorkflowStepExecution)
+				.findOneOrFail({ where: { id } });
+			expect(found.status).toBe(stepStatus);
+			// the declaration of an unrecorded wait is not written
+			expect(found.waitDeclaration !== null).toBe(recorded);
+			expect(found.waitTill !== null).toBe(recorded);
+			expect(found.staleAfter).toBeNull();
+		},
+	);
+
+	it('TypeOrmStepStore.suspendStep waits out a concurrently committing cancellation and cancels the step', async () => {
+		const executionId = await createExecution();
+		const store = new TypeOrmStepStore(dataSource.getRepository(WorkflowStepExecution));
+		const { id } = await seedStep({ executionId, nodeId: 'a', iteration: 0, status: 'running' });
+
+		// A cancelExecution mid-transaction, with the row lock held and the status
+		// uncommitted. Without the lock, the suspension would read `running`.
+		const cancellation = dataSource.createQueryRunner();
+		await cancellation.connect();
+		await cancellation.startTransaction();
+		await cancellation.query("UPDATE workflow_execution SET status = 'cancelled' WHERE id = $1", [
+			executionId,
+		]);
+
+		const suspend = store.suspendStep(id, { resumeBinding: 'execution' });
+		try {
+			await waitUntilQueryBlocksOnLock('FOR SHARE');
+			await cancellation.commitTransaction();
+		} finally {
+			// An open transaction keeps its lock, and `suspend` would never settle.
+			if (cancellation.isTransactionActive) await cancellation.rollbackTransaction();
+			await cancellation.release();
+			await Promise.allSettled([suspend]);
+		}
+
+		expect(await suspend).toBe(false);
+		expect((await store.loadStep(id)).status).toBe('cancelled');
 	});
 
 	it('TypeOrmStepStore.countSettledSteps does not count a waiting step', async () => {
@@ -1309,6 +1386,173 @@ describe('workflow_step_execution table (integration)', () => {
 			await store.cancelPendingSteps(executionId);
 
 			expect(await loadStaleAfter(id)).toBeNull();
+		});
+
+		it('findStaleQueuedSteps returns the queued steps whose time has passed, oldest first', async () => {
+			const repo = dataSource.getRepository(WorkflowStepExecution);
+			// The rows of the earlier tests share this table, so remove them from the search.
+			await repo.update({ status: 'queued' }, { staleAfter: null });
+			const executionId = await createExecution();
+			const store = stalenessStore();
+			const seed = async (nodeId: string, staleAfter: Date | null, claim = false) => {
+				const { id } = await createStep(store, executionId, {
+					nodeId,
+					iteration: 0,
+					status: 'queued',
+				});
+				if (claim) await store.claimStep(id);
+				await repo.update({ id }, { staleAfter });
+				return id;
+			};
+			const newer = await seed('newer', new Date('2020-01-01T00:02:00.000Z'));
+			const older = await seed('older', new Date('2020-01-01T00:01:00.000Z'));
+			// not returned: the time has not passed, the status is not `queued`, or no time exists
+			await seed('later', new Date('2020-01-01T00:04:00.000Z'));
+			await seed('running', new Date('2020-01-01T00:01:00.000Z'), true);
+			await seed('no-time', null);
+			const at = new Date('2020-01-01T00:03:00.000Z');
+
+			expect(await store.findStaleQueuedSteps(at, 10)).toEqual([
+				{ id: older, executionId, staleAfter: new Date('2020-01-01T00:01:00.000Z') },
+				{ id: newer, executionId, staleAfter: new Date('2020-01-01T00:02:00.000Z') },
+			]);
+			expect(await store.findStaleQueuedSteps(at, 1)).toEqual([
+				{ id: older, executionId, staleAfter: new Date('2020-01-01T00:01:00.000Z') },
+			]);
+		});
+
+		it('renewQueuedStep moves the time forward once for one observed value', async () => {
+			const executionId = await createExecution();
+			const store = stalenessStore();
+			const { id } = await createStep(store, executionId, {
+				nodeId: 'a',
+				iteration: 0,
+				status: 'queued',
+			});
+			const observed = await loadStaleAfter(id);
+			if (!observed) throw new Error('expected a stale_after value');
+
+			const before = Date.now();
+			expect(await store.renewQueuedStep(id, observed)).toBe(true);
+			const after = Date.now();
+
+			const renewed = await loadStaleAfter(id);
+			expect(renewed?.getTime()).toBeGreaterThanOrEqual(before + staleness.queuedMs);
+			expect(renewed?.getTime()).toBeLessThanOrEqual(after + staleness.queuedMs);
+			// a second caller that read the same value changes nothing
+			expect(await store.renewQueuedStep(id, observed)).toBe(false);
+			expect(await loadStaleAfter(id)).toEqual(renewed);
+		});
+
+		it('findStaleRunningSteps returns the running steps whose time has passed, oldest first', async () => {
+			const repo = dataSource.getRepository(WorkflowStepExecution);
+			// The rows of the earlier tests share this table, so remove them from the search.
+			await repo.update({ status: 'running' }, { staleAfter: null });
+			const executionId = await createExecution();
+			const store = stalenessStore();
+			const seed = async (nodeId: string, staleAfter: Date | null, claim = true) => {
+				const { id } = await createStep(store, executionId, {
+					nodeId,
+					iteration: 0,
+					status: 'queued',
+				});
+				if (claim) await store.claimStep(id);
+				await repo.update({ id }, { staleAfter });
+				return id;
+			};
+			const newer = await seed('newer', new Date('2020-01-01T00:02:00.000Z'));
+			const older = await seed('older', new Date('2020-01-01T00:01:00.000Z'));
+			// not returned: the time has not passed, the status is not `running`, or no time exists
+			await seed('later', new Date('2020-01-01T00:04:00.000Z'));
+			await seed('queued', new Date('2020-01-01T00:01:00.000Z'), false);
+			await seed('no-time', null);
+			const at = new Date('2020-01-01T00:03:00.000Z');
+
+			expect(await store.findStaleRunningSteps(at, 10)).toEqual([
+				{ id: older, staleAfter: new Date('2020-01-01T00:01:00.000Z') },
+				{ id: newer, staleAfter: new Date('2020-01-01T00:02:00.000Z') },
+			]);
+			expect(await store.findStaleRunningSteps(at, 1)).toEqual([
+				{ id: older, staleAfter: new Date('2020-01-01T00:01:00.000Z') },
+			]);
+		});
+
+		describe('failStaleRunningStep', () => {
+			const error = { name: 'StaleRunningStepError', message: 'still running' };
+
+			async function claimedStep(store: TypeOrmStepStore) {
+				const executionId = await createExecution();
+				const { id } = await createStep(store, executionId, {
+					nodeId: 'a',
+					iteration: 0,
+					status: 'queued',
+				});
+				await store.claimStep(id);
+				const observed = await loadStaleAfter(id);
+				if (!observed) throw new Error('expected a stale_after value');
+				return { id, observed };
+			}
+
+			it('fails the step once for one observed value, and clears the time', async () => {
+				const store = stalenessStore();
+				const { id, observed } = await claimedStep(store);
+
+				expect(await store.failStaleRunningStep(id, observed, error)).toBe(true);
+
+				expect(await store.loadStep(id)).toMatchObject({ status: 'failed', error });
+				expect(await loadStaleAfter(id)).toBeNull();
+				expect(await store.failStaleRunningStep(id, observed, error)).toBe(false);
+			});
+
+			it('changes nothing when the step completed after the read', async () => {
+				const store = stalenessStore();
+				const { id, observed } = await claimedStep(store);
+				await store.completeStep(id, [[]]);
+
+				expect(await store.failStaleRunningStep(id, observed, error)).toBe(false);
+
+				expect(await store.loadStep(id)).toMatchObject({ status: 'completed', error: null });
+			});
+
+			it('changes nothing when the observed time is not the time of the row', async () => {
+				const store = stalenessStore();
+				const { id, observed } = await claimedStep(store);
+				// The step waited, resumed and was claimed again, so it has a new time.
+				const earlier = new Date(observed.getTime() - 1_000);
+
+				expect(await store.failStaleRunningStep(id, earlier, error)).toBe(false);
+
+				expect(await store.loadStep(id)).toMatchObject({ status: 'running' });
+				expect(await loadStaleAfter(id)).toEqual(observed);
+			});
+
+			it('makes a late outcome write of the worker change nothing', async () => {
+				const store = stalenessStore();
+				const { id, observed } = await claimedStep(store);
+				await store.failStaleRunningStep(id, observed, error);
+
+				expect(await store.completeStep(id, [[]])).toBe(false);
+				expect(await store.failStep(id, { name: 'Error', message: 'late' })).toBe(false);
+
+				expect(await store.loadStep(id)).toMatchObject({ status: 'failed', error });
+			});
+		});
+
+		it('renewQueuedStep changes nothing once the step left queued', async () => {
+			const executionId = await createExecution();
+			const store = stalenessStore();
+			const { id } = await createStep(store, executionId, {
+				nodeId: 'a',
+				iteration: 0,
+				status: 'queued',
+			});
+			const observed = await loadStaleAfter(id);
+			if (!observed) throw new Error('expected a stale_after value');
+			await store.claimStep(id);
+			const afterClaim = await loadStaleAfter(id);
+
+			expect(await store.renewQueuedStep(id, observed)).toBe(false);
+			expect(await loadStaleAfter(id)).toEqual(afterClaim);
 		});
 	});
 

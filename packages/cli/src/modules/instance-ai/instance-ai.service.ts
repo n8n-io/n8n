@@ -1,9 +1,7 @@
 import { settleAbandonedToolCallsInMemory } from '@n8n/agents';
 import type { Message, ScopedMemoryTaskEvent } from '@n8n/agents';
 import {
-	mcpConnectRequestSchema,
-	credentialSetupHintSchema,
-	TEMPLATED_CUSTOM_AUTH_CREDENTIAL_TYPE,
+	type InstanceAiApprovalMode,
 	type InstanceAiAttachment,
 	type InstanceAiHandoffContext,
 	type InstanceAiAgentAttachment,
@@ -27,7 +25,7 @@ import {
 	WORKFLOW_BUILDER_TOOL_NAMES,
 } from '@n8n/api-types';
 import { getN8nVersion, Logger, ModuleRegistry } from '@n8n/backend-common';
-import { EventService, Publisher } from '@n8n/backend-services';
+import { EventService, Publisher, TelemetryProxy } from '@n8n/backend-services';
 import { GlobalConfig, type AiConfig, type InstanceAiConfig } from '@n8n/config';
 import { UserRepository, type User } from '@n8n/db';
 import { OnPubSubEvent, type PubSubCommandMap } from '@n8n/decorators';
@@ -105,14 +103,16 @@ import {
 	UserError,
 } from '@n8n/errors';
 import { InstanceAiBuilderDelegateAdapterService } from './instance-ai-builder-delegate.adapter';
+import { trackBuilderAskedForInput } from './builder-input-telemetry';
 import { modelStreamStallOptions } from '@/utils/model-stream-stall-options';
 import { AiService } from '@/services/ai.service';
-import { Telemetry } from '@/telemetry';
 import { assertNever } from '@/utils';
 
 import { buildPreferencesAppliedTelemetry } from './ai-preferences-telemetry';
 import { InstanceAiSkillTelemetry } from './instance-ai-skill-telemetry';
 import { InstanceAiBrowserSessionService } from './browser/instance-ai-browser-session.service';
+import { InstanceAiCloudBrowserTaskService } from './browser/instance-ai-cloud-browser-task.service';
+import { InstanceAiCloudBrowserService } from './browser/instance-ai-cloud-browser.service';
 import { dropRejectedAttachmentsFromHistory } from './drop-rejected-attachments';
 import { EvalThreadCredentialAllowlistService } from './eval/thread-credential-allowlist.service';
 import { DurableEventLog } from './event-bus/durable-event-log';
@@ -227,10 +227,6 @@ function describeMemoryTaskOutcome(value: unknown): { outcome?: string; reason?:
 		outcome: value.status,
 		...(typeof value.reason === 'string' ? { reason: value.reason } : {}),
 	};
-}
-
-function toTelemetryInputType(inputType: string): string {
-	return inputType === 'app-blueprint' ? 'app_blueprint' : inputType;
 }
 
 const WORKFLOW_SETUP_ROUTING_CLAIM_TTL_MS = 15 * 60 * 1000;
@@ -436,6 +432,8 @@ export class InstanceAiService {
 
 	private readonly terminalOutcome: InstanceAiTerminalOutcomeService;
 
+	private readonly cloudBrowserTaskService: InstanceAiCloudBrowserTaskService;
+
 	private readonly liveness: InstanceAiLivenessService<SuspendedRunState<User>>;
 
 	/** Owns DB persistence of suspended runs + orphan-confirmation restoration. */
@@ -481,6 +479,7 @@ export class InstanceAiService {
 		private readonly interruptedRunSweeper: InterruptedRunSweeper,
 		private readonly settingsService: InstanceAiSettingsService,
 		private readonly browserSessionService: InstanceAiBrowserSessionService,
+		private readonly cloudBrowserService: InstanceAiCloudBrowserService,
 		private readonly memoryService: InstanceAiMemoryService,
 		private readonly agentMemory: TypeORMAgentMemory,
 		private readonly checkpointStore: TypeORMAgentCheckpointStore,
@@ -490,7 +489,7 @@ export class InstanceAiService {
 		private readonly observationRepo: InstanceAiObservationRepository,
 		private readonly observationCursorRepo: InstanceAiObservationCursorRepository,
 		private readonly eventLogRepository: InstanceAiEventLogRepository,
-		private readonly telemetry: Telemetry,
+		private readonly telemetry: TelemetryProxy,
 		private readonly userRepository: UserRepository,
 		private readonly temporaryWorkflowService: InstanceAiTemporaryWorkflowService,
 		private readonly errorReporter: ErrorReporter,
@@ -586,6 +585,32 @@ export class InstanceAiService {
 				const { tracingProxyConfig } = await this.createProxyRunConfig({ id: ownerId });
 				return { userId: ownerId, proxyConfig: tracingProxyConfig };
 			},
+		});
+		this.cloudBrowserTaskService = new InstanceAiCloudBrowserTaskService({
+			logger: this.logger,
+			eventBus: this.eventBus,
+			backgroundTaskManager: this.backgroundTasks,
+			cloudBrowserService: this.cloudBrowserService,
+			creditService: this.creditService,
+			tracing: this.tracing,
+			resolveTracingProxyConfig: async (user) =>
+				(await this.createProxyRunConfig(user)).tracingProxyConfig,
+			createRunDebugStepHooks: ({ taskId, threadId, title }) => {
+				if (!this.isRunDebugEnabled()) return undefined;
+				this.runDebugBuffer.ensure(taskId, threadId, `cloud browser: ${title}`);
+				return createRunDebugStepHooks(this.runDebugBuffer, { runId: taskId, threadId });
+			},
+			agentMemory: this.agentMemory,
+			runState: this.runState,
+			suspendedThreads: this.suspendedThreads,
+			startFollowUpRun: async (user, threadId, message, messageGroupId) =>
+				await this.startInternalFollowUpRun(
+					user,
+					threadId,
+					message,
+					messageGroupId,
+					'background_task_completed',
+				),
 		});
 		this.terminalOutcome = new InstanceAiTerminalOutcomeService({
 			// The terminal guard and outcome-replay dedup must see the run's events
@@ -1279,6 +1304,7 @@ export class InstanceAiService {
 				type: 'agent-completed',
 				runId: task.runId,
 				agentId: task.agentId,
+				...(task.detachedFromTurn ? { detachedFromTurn: true } : {}),
 				payload: {
 					role: task.role,
 					result: '',
@@ -1363,6 +1389,7 @@ export class InstanceAiService {
 			type: 'agent-completed',
 			runId: task.runId,
 			agentId: task.agentId,
+			...(task.detachedFromTurn ? { detachedFromTurn: true } : {}),
 			payload: { role: task.role, result: '', status: 'cancelled' },
 		});
 
@@ -1715,6 +1742,7 @@ export class InstanceAiService {
 
 	async shutdown(): Promise<void> {
 		this.liveness.shutdown();
+		this.cloudBrowserTaskService.shutdown();
 
 		const { activeRuns, suspendedRuns, pendingThreadIds } = this.runState.shutdown();
 		const threadsWithPendingHitl = new Set(pendingThreadIds);
@@ -2098,6 +2126,11 @@ export class InstanceAiService {
 			touchBackgroundTask: (taskId) => this.backgroundTasks.touchTask(threadId, taskId),
 			sendCorrectionToTask: (taskId, correction) =>
 				this.sendCorrectionToTask(threadId, taskId, correction),
+			cloudBrowser: {
+				isAvailable: async () => await this.cloudBrowserService.isAvailable(),
+				startTask: async (input, runOptions) =>
+					await this.cloudBrowserTaskService.startTask(input, runOptions),
+			},
 		};
 	}
 
@@ -2199,6 +2232,25 @@ export class InstanceAiService {
 		}
 
 		return false;
+	}
+
+	/**
+	 * Delivers pending cloud browser task results to the thread's orchestrator after a run ends.
+	 * This handles tasks that finished while the run was active. Every run calls this method when
+	 * it ends, but the method skips delivery if the cloud browser is disabled or unavailable.
+	 * It logs errors without propagating them to the calling run.
+	 */
+	private async maybeDeliverCloudBrowserTaskResults(user: User, threadId: string): Promise<void> {
+		try {
+			if (!this.settingsService.isCloudBrowserEnabled()) return;
+			if (!(await this.cloudBrowserService.isAvailable())) return;
+			await this.cloudBrowserTaskService.deliverPendingResults(user, threadId);
+		} catch (error) {
+			this.logger.error('Failed to deliver the cloud browser task results', {
+				threadId,
+				error: getErrorMessage(error),
+			});
+		}
 	}
 
 	/**
@@ -2951,7 +3003,12 @@ export class InstanceAiService {
 				if (signal.aborted && !this.shouldPreserveHitlOnShutdown(runId)) return;
 
 				if (result.confirmationEvent) {
-					this.trackConfirmationRequest(user.id, threadId, result.confirmationEvent);
+					this.trackConfirmationRequest(
+						user.id,
+						threadId,
+						result.confirmationEvent,
+						context.approvalMode,
+					);
 					this.eventBus.publish(threadId, result.confirmationEvent);
 				}
 
@@ -3278,6 +3335,7 @@ export class InstanceAiService {
 				await this.taskProjector.syncFromWorkflowLoop(threadId, runId);
 				if (reschedule) {
 					await this.maybeStartWorkflowSetupFollowUp(user, threadId);
+					await this.maybeDeliverCloudBrowserTaskResults(user, threadId);
 				}
 			}
 			if (errorReporterExecutionToken) {
@@ -4030,7 +4088,12 @@ export class InstanceAiService {
 				if (opts.signal.aborted && !this.shouldPreserveHitlOnShutdown(opts.runId)) return;
 
 				if (result.confirmationEvent) {
-					this.trackConfirmationRequest(opts.user.id, opts.threadId, result.confirmationEvent);
+					this.trackConfirmationRequest(
+						opts.user.id,
+						opts.threadId,
+						result.confirmationEvent,
+						opts.orchestrationContext?.domainContext?.approvalMode,
+					);
 					this.eventBus.publish(opts.threadId, result.confirmationEvent);
 				}
 
@@ -4400,6 +4463,7 @@ export class InstanceAiService {
 				await this.taskProjector.syncFromWorkflowLoop(opts.threadId, opts.runId);
 				if (reschedule) {
 					await this.maybeStartWorkflowSetupFollowUp(opts.user, opts.threadId);
+					await this.maybeDeliverCloudBrowserTaskResults(opts.user, opts.threadId);
 				}
 			}
 			if (errorReporterExecutionToken) {
@@ -4599,81 +4663,19 @@ export class InstanceAiService {
 		userId: string,
 		threadId: string,
 		confirmationEvent: { payload: Record<string, unknown> },
+		approvalMode: InstanceAiApprovalMode | undefined,
 	): void {
 		const payload = confirmationEvent.payload;
 		const inputThreadId = nanoid();
 		payload.inputThreadId = inputThreadId;
-
-		const inputType = payload.inputType as string | undefined;
-		const mcpConnectServers = mcpConnectRequestSchema.safeParse(payload.mcpConnectRequest).data
-			?.servers;
-		let type: string;
-		if (inputType) {
-			type = toTelemetryInputType(inputType);
-		} else if (Array.isArray(payload.setupRequests) && payload.setupRequests.length > 0) {
-			type = 'setup';
-		} else if (Array.isArray(payload.credentialRequests) && payload.credentialRequests.length > 0) {
-			type = 'credential-setup';
-		} else if (mcpConnectServers) {
-			type = 'mcp-connect';
-		} else {
-			type = 'approval';
-		}
-
-		let numSteps = 1;
-		if (Array.isArray(payload.questions)) {
-			numSteps = payload.questions.length;
-		} else if (Array.isArray(payload.setupRequests)) {
-			numSteps = payload.setupRequests.length;
-		} else if (Array.isArray(payload.credentialRequests)) {
-			numSteps = payload.credentialRequests.length;
-		} else if (mcpConnectServers) {
-			numSteps = mcpConnectServers.length;
-		}
-
-		const credentialRequests = (
-			Array.isArray(payload.credentialRequests) ? payload.credentialRequests : []
-		).filter(
-			(request): request is { credentialType?: unknown; setupHint?: unknown } =>
-				typeof request === 'object' && request !== null,
-		);
-
-		// Whether any requested credential is a recipe-driven Templated Custom Auth
-		// one (recipe-seeded modal), to compare completion against plain types.
-		const containsTemplatedCred = credentialRequests.some(
-			(request) =>
-				request.credentialType === TEMPLATED_CUSTOM_AUTH_CREDENTIAL_TYPE ||
-				(request.setupHint !== null && request.setupHint !== undefined),
-		);
-
-		this.telemetry.track('Builder asked for input', {
-			user_id: userId,
-			thread_id: threadId,
-			input_thread_id: inputThreadId,
-			type,
-			num_steps: numSteps,
-			contains_templated_cred: containsTemplatedCred,
+		trackBuilderAskedForInput(this.telemetry, {
+			userId,
+			threadId,
+			inputThreadId,
+			payload,
+			runtime: 'instance-ai',
+			approvalMode,
 		});
-
-		// Recipe content at spec time — production visibility into template and
-		// link quality (the offline eval suite grades the same fields). One event
-		// per recipe; secret-free by construction: recipes are agent-authored
-		// before any user input.
-		for (const request of credentialRequests) {
-			const parsedHint = credentialSetupHintSchema.safeParse(request.setupHint);
-			if (!parsedHint.success) continue;
-			const hint = parsedHint.data;
-			this.telemetry.track(TELEMETRY_EVENT.INSTANCE_AI.BUILDER_SPECCED_TEMPLATED_CRED, {
-				thread_id: threadId,
-				input_thread_id: inputThreadId,
-				template: hint.template,
-				placeholders: hint.placeholders,
-				test_url: hint.testUrl,
-				docs_url: hint.docsUrl,
-				service_host: hint.serviceHost,
-				accepted_status_codes: hint.acceptedStatusCodes,
-			});
-		}
 	}
 
 	private async finalizeCancelledSuspendedRun(

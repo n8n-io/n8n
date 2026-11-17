@@ -22,6 +22,14 @@ export const DEFAULT_SCIM_DEPROVISIONING_POLICY: Readonly<ScimDeprovisioningPoli
 	transferProjectId: null,
 };
 
+/** A missing or broken value gives the default policy. */
+function parsePolicy(value: string | undefined): ScimDeprovisioningPolicy {
+	const result = scimDeprovisioningPolicySchema.safeParse(
+		jsonParse<unknown>(value ?? '', { fallbackValue: null }),
+	);
+	return result.success ? result.data : { ...DEFAULT_SCIM_DEPROVISIONING_POLICY };
+}
+
 export interface ScimSettingsChange {
 	enabled: boolean;
 	/**
@@ -91,18 +99,32 @@ export class ScimSettingsService {
 	/** What SCIM DELETE does. A missing or broken value gives the default policy. */
 	async getDeprovisioningPolicy(): Promise<ScimDeprovisioningPolicy> {
 		const row = await this.settingsRepository.findByKey(DEPROVISIONING_KEY);
-		const result = scimDeprovisioningPolicySchema.safeParse(
-			jsonParse<unknown>(row?.value ?? '', { fallbackValue: null }),
-		);
-
-		return result.success ? result.data : { ...DEFAULT_SCIM_DEPROVISIONING_POLICY };
+		return parsePolicy(row?.value);
 	}
 
-	async setDeprovisioningPolicy(policy: ScimDeprovisioningPolicy): Promise<void> {
-		await this.settingsRepository.upsert(
-			{ key: DEPROVISIONING_KEY, value: JSON.stringify(policy), loadOnStartup: false },
-			['key'],
-		);
+	/**
+	 * Saves the policy and returns the policy that it replaced. The read and
+	 * the write run under one row lock, so a parallel save cannot report the
+	 * wrong previous policy.
+	 */
+	async setDeprovisioningPolicy(
+		policy: ScimDeprovisioningPolicy,
+	): Promise<ScimDeprovisioningPolicy> {
+		return await this.transactionRunner.run({}, async (ctx) => {
+			const row = await this.settingsRepository.getOrCreateWithWriteLock(
+				DEPROVISIONING_KEY,
+				JSON.stringify(DEFAULT_SCIM_DEPROVISIONING_POLICY),
+				false,
+				ctx,
+			);
+			await this.settingsRepository.upsertByKey(
+				DEPROVISIONING_KEY,
+				JSON.stringify(policy),
+				false,
+				ctx,
+			);
+			return parsePolicy(row.value);
+		});
 	}
 
 	/**

@@ -6,7 +6,16 @@ paths:
   /audit:
     post:
       $ref: ./handlers/audit/spec/paths/generateAudit.generated.yml
+  /agents:
+    post:
+      $ref: ./handlers/agents/spec/paths/createAgent.generated.yml
+    get:
+      $ref: ./handlers/agents/spec/paths/listAgents.generated.yml
   /agents/{agentId}:
+    get:
+      $ref: ./handlers/agents/spec/paths/getAgent.generated.yml
+    put:
+      $ref: ./handlers/agents/spec/paths/updateAgent.generated.yml
     delete:
       $ref: ./handlers/agents/spec/paths/deleteAgent.generated.yml
   /community-packages:

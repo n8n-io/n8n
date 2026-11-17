@@ -7,7 +7,7 @@ import {
 } from '@n8n/agents/sandbox';
 import { applyBranchReadOnlyOverrides, buildProxyHeaders } from '@n8n/api-types';
 import { getN8nVersion, Logger, ModuleRegistry } from '@n8n/backend-common';
-import { InstanceWriteAccessService, UrlService } from '@n8n/backend-services';
+import { InstanceWriteAccessService, UrlService, TelemetryProxy } from '@n8n/backend-services';
 import { GlobalConfig, type AiConfig, type InstanceAiConfig } from '@n8n/config';
 import { type User } from '@n8n/db';
 import { Container, Service } from '@n8n/di';
@@ -21,6 +21,7 @@ import {
 	createSetupItemsEmitter,
 	isSetupPanelEnabled,
 	orchestratorAgentId,
+	threadTargetsAgent,
 	type InstanceAiContext,
 	type InstanceAiTraceContext,
 	type ModelConfig,
@@ -40,7 +41,8 @@ import { modelStreamStallOptions } from '@/utils/model-stream-stall-options';
 import { AiUsageService } from '@/services/ai-usage.service';
 import { AiService } from '@/services/ai.service';
 import { ProxyTokenManager } from '@/services/proxy-token-manager';
-import { Telemetry } from '@/telemetry';
+import { InstanceAiApprovalModeService } from '../approval-review/approval-mode.service';
+import { InstanceAiApprovalReviewerFactory } from '../approval-review/approval-reviewer.factory';
 import { resolveBrowserUseState } from '../browser/browser-use-availability';
 import { InstanceAiBrowserSessionService } from '../browser/instance-ai-browser-session.service';
 import {
@@ -110,6 +112,8 @@ export interface AssistantTurnEnvironmentParams {
 	instanceContextGates?: InstanceContextGates;
 	experimentGates?: InstanceAiFeatureFlags;
 	tracing?: InstanceAiTraceContext;
+	/** The message attaches an agent, as the Agent Builder panel does before it binds its thread. */
+	attachesAgent?: boolean;
 }
 
 export type AssistantProxyRunConfig = Awaited<
@@ -148,7 +152,7 @@ export class AssistantTurnEnvironmentFactory {
 		private readonly browserSessionService: InstanceAiBrowserSessionService,
 		private readonly aiService: AiService,
 		private readonly instanceWriteAccess: InstanceWriteAccessService,
-		private readonly telemetry: Telemetry,
+		private readonly telemetry: TelemetryProxy,
 		private readonly turnOverrides: AssistantTurnOverrides,
 		private readonly modelService: InstanceAiModelService,
 		private readonly creditService: InstanceAiCreditService,
@@ -156,6 +160,8 @@ export class AssistantTurnEnvironmentFactory {
 		private readonly conversationHistoryService: InstanceAiConversationHistoryService,
 		private readonly aiUsageService: AiUsageService,
 		private readonly skillsService: InstanceAiSkillsService,
+		private readonly approvalModeService: InstanceAiApprovalModeService,
+		private readonly approvalReviewerFactory: InstanceAiApprovalReviewerFactory,
 	) {
 		this.logger = logger.scoped('instance-ai');
 		this.instanceAiConfig = globalConfig.instanceAi;
@@ -330,6 +336,7 @@ export class AssistantTurnEnvironmentFactory {
 			assistantSkillsEnabled,
 			modelId,
 			utilityModelId,
+			onHelperUsage: this.creditService.helperUsageClaimer(user, threadId, runId),
 			modelFetch: this.modelService.getModelFetch(),
 			allowSendingParameterValues,
 			temporaryWorkflowMarkers: runtime.temporaryWorkflowMarkers,
@@ -349,6 +356,37 @@ export class AssistantTurnEnvironmentFactory {
 		}
 
 		context.runId = runId;
+
+		// Auto mode reviews an approval before its card shows. Manual mode keeps every card,
+		// and keeps a user's MCP settings as they are. In Auto, a user's MCP settings can only
+		// make the admin's stricter, so an admin's Ask first still reaches the review.
+		// Auto mode is not part of the Agent Builder: a thread that builds or edits an agent
+		// keeps every card.
+		const buildsAgent = params.attachesAgent === true || threadTargetsAgent(thread?.metadata);
+		const approvalMode = buildsAgent
+			? 'manual'
+			: this.approvalModeService.resolveMode(user, gates.approvalModesEnabled);
+		if (gates.approvalModesEnabled) context.approvalMode = approvalMode;
+		context.enforceAdminMcpPermissions = approvalMode === 'auto';
+		if (approvalMode === 'auto') {
+			context.approvalReviewer = this.approvalReviewerFactory.create({
+				user,
+				threadId,
+				runId,
+				resourceId: runtime.resourceId,
+				abortSignal,
+				memory,
+				eventBus: runtime.eventBus,
+				resolveJudgeModel: async () =>
+					await this.modelService.resolveApprovalJudgeModelConfig(user, modelId, {
+						proxyBaseUrl,
+						tokenManager,
+						proxyContext,
+					}),
+				modelFetch: this.modelService.getModelFetch(),
+				getTracing: () => orchestrationContext.tracing,
+			});
+		}
 
 		// Setup panel v2: wire the durable `setup-items` sink only while the flag
 		// is on — its presence is the package-side gate. Seeded with the thread's
@@ -569,6 +607,27 @@ export class AssistantTurnEnvironmentFactory {
 			nodeDefinitionDirs: nodeDefDirs.length > 0 ? nodeDefDirs : undefined,
 			domainContext: context,
 		};
+
+		const { cloudBrowser } = runtime;
+		if (adminSettings.cloudBrowserEnabled && cloudBrowser && (await cloudBrowser.isAvailable())) {
+			orchestrationContext.startCloudBrowserTask = async (input) =>
+				await cloudBrowser.startTask(input, {
+					runId,
+					user,
+					threadId,
+					messageGroupId,
+					modelId,
+					modelStreamStallOptions: orchestrationContext.modelStreamStallOptions,
+					tracing: orchestrationContext.tracing,
+					domainGate: {
+						tracker: domainTracker,
+						runId,
+						permissionMode: context.permissions?.fetchUrl,
+						createCredentialPermissionMode: context.permissions?.createCredential,
+					},
+					getCredentialFields: context.credentialService.getCredentialFields,
+				});
+		}
 
 		return {
 			context,

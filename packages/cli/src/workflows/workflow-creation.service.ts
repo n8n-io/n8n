@@ -441,7 +441,12 @@ export class WorkflowCreationService {
 		em?: EntityManager,
 	): Promise<Folder> {
 		try {
-			return await this.folderService.findFolderInProjectOrFail(parentFolderId, projectId, em);
+			return await this.folderService.findFolderInProjectOrFail(
+				parentFolderId,
+				projectId,
+				'workflow',
+				em,
+			);
 		} catch {
 			throw new NotFoundError(`Could not find the folder: ${parentFolderId}`);
 		}

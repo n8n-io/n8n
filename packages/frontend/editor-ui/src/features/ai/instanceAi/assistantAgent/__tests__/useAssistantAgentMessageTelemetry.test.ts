@@ -5,7 +5,9 @@ import { setActivePinia } from 'pinia';
 
 import { EMPTY_ASSISTANT_MENTION_COUNTS } from '@/features/ai/assistant-at-mentions/assistantAtMentions.types';
 
+import { useInstanceAiSettingsStore } from '../../instanceAiSettings.store';
 import { resolveAuthorship, USER_TYPED_MESSAGE } from '../../prefills';
+import { useAssistantAgentThreadsStore } from '../assistantAgentThreads.store';
 import { useAssistantAgentMessageTelemetry } from '../useAssistantAgentMessageTelemetry';
 
 const { telemetryTrack } = vi.hoisted(() => ({ telemetryTrack: vi.fn() }));
@@ -52,12 +54,56 @@ describe('useAssistantAgentMessageTelemetry', () => {
 			prefill_type: null,
 			prefill_id: null,
 			prompt_modified: null,
+			approval_mode: 'unavailable',
 			mention_counts: EMPTY_ASSISTANT_MENTION_COUNTS,
 			attachment_count: 3,
 			selected_element_count: 1,
 			runtime: 'agents',
 		});
 	});
+
+	test.each([
+		{ available: false, attachesAgent: false, metadata: undefined, expected: 'unavailable' },
+		{ available: true, attachesAgent: false, metadata: undefined, expected: 'auto' },
+		{ available: true, attachesAgent: true, metadata: undefined, expected: 'manual' },
+		{
+			available: true,
+			attachesAgent: false,
+			metadata: { instanceAiAgentBuilderTarget: { agentId: 'agent-1', projectId: 'p1' } },
+			expected: 'manual',
+		},
+	])(
+		'reports the approval mode $expected (agent attached: $attachesAgent)',
+		({ available, attachesAgent, metadata, expected }) => {
+			const settingsStore = useInstanceAiSettingsStore();
+			settingsStore.approvalModesAvailable = available;
+			settingsStore.approvalMode = 'auto';
+			useAssistantAgentThreadsStore().openedThreads = [
+				{
+					id: 'thread-1',
+					title: null,
+					updatedAt: '2026-11-16T10:00:00.000Z',
+					projectId: 'p1',
+					metadata,
+				},
+			];
+			const telemetry = useAssistantAgentMessageTelemetry('thread-1');
+
+			telemetry.trackSend({
+				text: 'Add a Slack tool',
+				files: [],
+				clientContext: {
+					attachments: attachesAgent ? [{ type: 'agent', id: 'agent-1', projectId: 'p1' }] : [],
+				},
+				isFirstMessage: false,
+			});
+
+			expect(telemetryTrack).toHaveBeenCalledWith(
+				EVENT,
+				expect.objectContaining({ approval_mode: expected }),
+			);
+		},
+	);
 
 	it('reports a pre-fill, and whether the user edited it, until the composer text is cleared', () => {
 		const telemetry = useAssistantAgentMessageTelemetry('thread-1');

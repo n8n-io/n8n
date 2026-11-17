@@ -20,6 +20,8 @@ export const SKILL_SOURCE_REASONS = [
 	'parse_error',
 	'blocked_by_check',
 	'review_required',
+	'stale',
+	'name_clash',
 	'name_taken',
 	'duplicate_source',
 	'credential_invalid',
@@ -68,6 +70,53 @@ export class ConnectSkillSourceDto extends Z.class({
 	reviewedSkillKeys: z.array(z.string().min(1).max(2048)).max(SKILL_SOURCE_MAX_SKILLS).optional(),
 }) {}
 
+/** Checks or moves a source without reading its remote repository. */
+export class MoveSkillSourceDto extends Z.class({
+	...skillSourceScope,
+	/** The scope shown when the dialog opened. Reject a stale request. */
+	fromProjectId: z.string().min(1).max(36).nullable(),
+	credentialId: z.string().min(1).max(36).optional(),
+}) {}
+
+const skillSourceDuplicateSchema = z.discriminatedUnion('kind', [
+	z.object({ kind: z.literal('none') }),
+	z.object({
+		kind: z.literal('blocked'),
+		where: z.enum(['global', 'scope']),
+		sourceId: z.string().nullable(),
+	}),
+	z.object({
+		kind: z.literal('warning'),
+		projects: z.array(z.object({ id: z.string(), name: z.string() })),
+	}),
+]);
+
+export const skillSourceMovePreviewSchema = z.object({
+	skillCount: z.number(),
+	canMove: z.boolean(),
+	/** A null name or destination hides a skill the user cannot read. */
+	nameConflicts: z.array(
+		z.object({
+			moving: z.object({ id: z.string(), name: z.string().nullable() }),
+			existing: z.object({ id: z.string(), name: z.string() }).nullable(),
+		}),
+	),
+	usageConflicts: z.array(
+		z.object({
+			skill: z.object({ id: z.string(), name: z.string().nullable() }),
+			agents: z.array(z.object({ id: z.string(), name: z.string() })),
+			hiddenAgents: z.number(),
+		}),
+	),
+	duplicate: skillSourceDuplicateSchema,
+	credential: z.object({
+		required: z.boolean(),
+		reason: z.enum(['credential_missing', 'credential_out_of_scope']).nullable(),
+	}),
+});
+
+export type SkillSourceMovePreview = z.infer<typeof skillSourceMovePreviewSchema>;
+
 /** The source that a link points to. */
 export type SkillSourceSummary = {
 	type: 'github';
@@ -85,10 +134,7 @@ export type SkillSourceSummary = {
  * chosen scope. `sourceId` is set when the user may add skills to that source.
  * `warning`: the same source is in other projects that the user can see.
  */
-export type SkillSourceDuplicate =
-	| { kind: 'none' }
-	| { kind: 'blocked'; where: 'global' | 'scope'; sourceId: string | null }
-	| { kind: 'warning'; projects: Array<{ id: string; name: string }> };
+export type SkillSourceDuplicate = z.infer<typeof skillSourceDuplicateSchema>;
 
 /** The rules of the security check. The build spec lists them in Appendix B. */
 export const SKILL_SCAN_RULES = [
@@ -302,9 +348,79 @@ export type SkillSourceListItem = {
 	canReplaceCredential: boolean;
 	/** Whether the user may review updates and check the source now. */
 	canReview: boolean;
+	/** Whether the user may remove the source from this scope. The destination is checked separately. */
+	canMove: boolean;
 	/** Whether the user may delete the source and its synced skills. */
 	canDelete: boolean;
 };
+
+const reviewedUpdate = {
+	contentHash: z.string().regex(/^[a-f0-9]{64}$/),
+	baseVersionId: z.string().min(1).max(36),
+};
+
+export class ReviewSkillSourceUpdateQueryDto extends Z.class(reviewedUpdate) {}
+
+/** Applies every selected update in one transaction. */
+export class AcceptSkillSourceUpdatesDto extends Z.class({
+	updates: z
+		.array(z.object({ skillId: z.string().min(1).max(36), ...reviewedUpdate }))
+		.min(1)
+		.max(SKILL_SOURCE_MAX_SKILLS)
+		.refine(
+			(updates) => new Set(updates.map(({ skillId }) => skillId)).size === updates.length,
+			'Select each skill once',
+		),
+	reviewedWarnings: z.boolean().default(false),
+}) {}
+
+export class SkillSourceCommitQueryDto extends Z.class({
+	revision: z.string().min(1).max(255),
+}) {}
+
+export type SkillUpdateCommit = {
+	revision: string;
+	webUrl: string | null;
+	message: string | null;
+	author: string | null;
+	date: string | null;
+};
+
+export type SkillPendingUpdate = {
+	revisionUrl: string | null;
+	skillId: string;
+	name: string;
+	location: string;
+	webUrl: string;
+	contentHash: string;
+	baseVersionId: string;
+	revision: string;
+	check: SkillScanResult;
+	nameClash: { name: string; where: 'scope' | 'agent' } | null;
+	changes: { added: number; removed: number };
+	nextVersion: number;
+};
+
+export type SkillSourceUpdates = {
+	updates: SkillPendingUpdate[];
+	commit: SkillUpdateCommit | null;
+};
+
+export type SkillUpdateFile = {
+	path: string;
+	before: string;
+	after: string;
+	status?: 'added' | 'removed';
+};
+
+/** Names are limited to agents the user can read. */
+export type SkillUpdateAgents = {
+	agents: Array<{ id: string; name: string }>;
+	hiddenAgentCount: number;
+};
+
+export type SkillUpdateReview = SkillUpdateAgents & { files: SkillUpdateFile[] };
+export type SkillSourceAcceptResponse = SkillUpdateAgents & { updatedCount: number };
 
 /** A refused source delete names only the agents that the user may read. */
 export const skillSourceDeleteBlockSchema = z.object({

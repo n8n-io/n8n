@@ -8,6 +8,7 @@ import type { ExecutionStatus, WorkflowExecuteMode } from 'n8n-workflow';
 
 import { toLedgerOutcome } from './counting-rules';
 import type {
+	ExecutionLedgerBacklogStats,
 	ExecutionLedgerEndedFacts,
 	ExecutionLedgerStartedFacts,
 	ExecutionLedgerWriter,
@@ -53,6 +54,11 @@ export class ExecutionLedger {
 	/** Lets callers skip building facts when the module is off. */
 	get isEnabled() {
 		return this.writer !== undefined;
+	}
+
+	async getBacklogStats(): Promise<ExecutionLedgerBacklogStats> {
+		if (!this.writer) throw new UnexpectedError('No execution ledger writer is registered');
+		return await this.writer.getBacklogStats();
 	}
 
 	/**

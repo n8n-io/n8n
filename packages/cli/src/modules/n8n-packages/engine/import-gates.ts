@@ -116,10 +116,7 @@ export function assertWorkflowRemovalsAllowed(
 	}
 }
 
-/**
- * Plan-derived: requires a scope only when a plan creates or changes a table. Project packages
- * have no pre-plan create gate, so this gate also covers them.
- */
+/** Plan-derived: requires a scope only when a plan creates or changes a table. */
 export function assertDataTableWritesAllowed(
 	apiKeyScopes: string[] | undefined,
 	dataTablePlans: DataTableImportPlan[],
