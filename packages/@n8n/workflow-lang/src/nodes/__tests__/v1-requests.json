@@ -1092,6 +1092,18 @@
 				"qsFormat": "brackets"
 			}
 		],
+		"wire": [
+			{
+				"accept": "application/json",
+				"contentType": "application/json",
+				"userAgent": "n8n"
+			},
+			{
+				"accept": "application/json",
+				"contentType": "application/json",
+				"userAgent": "n8n"
+			}
+		],
 		"output": [
 			{
 				"id": "recNew",
@@ -1169,6 +1181,22 @@
 					]
 				},
 				"qsFormat": "brackets"
+			}
+		],
+		"wire": [
+			{
+				"accept": "application/json",
+				"contentType": "application/json",
+				"userAgent": "n8n"
+			},
+			{
+				"accept": "application/json",
+				"userAgent": "n8n"
+			},
+			{
+				"accept": "application/json",
+				"contentType": "application/json",
+				"userAgent": "n8n"
 			}
 		],
 		"output": [
@@ -3206,7 +3234,11 @@
 	"gmail draft.create with an address that has no at sign": {
 		"requests": [],
 		"wire": [],
-		"error": "Invalid email address (item 0)"
+		"error": "Invalid email address (item 0)",
+		"errorDetail": {
+			"description": "The email address '\"Doe' in the 'To' field isn't valid",
+			"httpCode": null
+		}
 	},
 	"gmail message.send names that are not ASCII and a subject with a line break": {
 		"requests": [
@@ -5695,6 +5727,2438 @@
 			}
 		]
 	},
+	"telegram message.sendMessage: failed request 400 with a JSON body": {
+		"requests": [
+			{
+				"method": "POST",
+				"url": "https://api.telegram.org/bot123:fake-bot-token/sendMessage",
+				"qs": {},
+				"headers": {},
+				"body": {
+					"chat_id": "-100123",
+					"text": "Build *green*\n\n_This message was sent automatically with _[n8n](https://n8n.io/?utm_source=n8n-internal&utm_medium=powered_by&utm_campaign=n8n-nodes-base.telegram)",
+					"disable_web_page_preview": true,
+					"parse_mode": "Markdown"
+				},
+				"qsFormat": "brackets"
+			}
+		],
+		"wire": [
+			{
+				"accept": "application/json",
+				"contentType": "application/json",
+				"userAgent": "n8n"
+			}
+		],
+		"error": "Bad request - please check your parameters",
+		"errorDetail": {
+			"description": "The value is not valid.",
+			"httpCode": "400"
+		}
+	},
+	"telegram message.sendMessage: failed request 400 with a text body": {
+		"requests": [
+			{
+				"method": "POST",
+				"url": "https://api.telegram.org/bot123:fake-bot-token/sendMessage",
+				"qs": {},
+				"headers": {},
+				"body": {
+					"chat_id": "-100123",
+					"text": "Build *green*\n\n_This message was sent automatically with _[n8n](https://n8n.io/?utm_source=n8n-internal&utm_medium=powered_by&utm_campaign=n8n-nodes-base.telegram)",
+					"disable_web_page_preview": true,
+					"parse_mode": "Markdown"
+				},
+				"qsFormat": "brackets"
+			}
+		],
+		"wire": [
+			{
+				"accept": "application/json",
+				"contentType": "application/json",
+				"userAgent": "n8n"
+			}
+		],
+		"error": "Bad request - please check your parameters",
+		"errorDetail": {
+			"description": "The service is not there.",
+			"httpCode": "400"
+		}
+	},
+	"telegram message.sendMessage: failed request 401 with a JSON body": {
+		"requests": [
+			{
+				"method": "POST",
+				"url": "https://api.telegram.org/bot123:fake-bot-token/sendMessage",
+				"qs": {},
+				"headers": {},
+				"body": {
+					"chat_id": "-100123",
+					"text": "Build *green*\n\n_This message was sent automatically with _[n8n](https://n8n.io/?utm_source=n8n-internal&utm_medium=powered_by&utm_campaign=n8n-nodes-base.telegram)",
+					"disable_web_page_preview": true,
+					"parse_mode": "Markdown"
+				},
+				"qsFormat": "brackets"
+			}
+		],
+		"wire": [
+			{
+				"accept": "application/json",
+				"contentType": "application/json",
+				"userAgent": "n8n"
+			}
+		],
+		"error": "Authorization failed - please check your credentials",
+		"errorDetail": {
+			"description": "The value is not valid.",
+			"httpCode": "401"
+		}
+	},
+	"telegram message.sendMessage: failed request 401 with a text body": {
+		"requests": [
+			{
+				"method": "POST",
+				"url": "https://api.telegram.org/bot123:fake-bot-token/sendMessage",
+				"qs": {},
+				"headers": {},
+				"body": {
+					"chat_id": "-100123",
+					"text": "Build *green*\n\n_This message was sent automatically with _[n8n](https://n8n.io/?utm_source=n8n-internal&utm_medium=powered_by&utm_campaign=n8n-nodes-base.telegram)",
+					"disable_web_page_preview": true,
+					"parse_mode": "Markdown"
+				},
+				"qsFormat": "brackets"
+			}
+		],
+		"wire": [
+			{
+				"accept": "application/json",
+				"contentType": "application/json",
+				"userAgent": "n8n"
+			}
+		],
+		"error": "Authorization failed - please check your credentials",
+		"errorDetail": {
+			"description": "The service is not there.",
+			"httpCode": "401"
+		}
+	},
+	"telegram message.sendMessage: failed request 403 with a JSON body": {
+		"requests": [
+			{
+				"method": "POST",
+				"url": "https://api.telegram.org/bot123:fake-bot-token/sendMessage",
+				"qs": {},
+				"headers": {},
+				"body": {
+					"chat_id": "-100123",
+					"text": "Build *green*\n\n_This message was sent automatically with _[n8n](https://n8n.io/?utm_source=n8n-internal&utm_medium=powered_by&utm_campaign=n8n-nodes-base.telegram)",
+					"disable_web_page_preview": true,
+					"parse_mode": "Markdown"
+				},
+				"qsFormat": "brackets"
+			}
+		],
+		"wire": [
+			{
+				"accept": "application/json",
+				"contentType": "application/json",
+				"userAgent": "n8n"
+			}
+		],
+		"error": "Forbidden - perhaps check your credentials?",
+		"errorDetail": {
+			"description": "The value is not valid.",
+			"httpCode": "403"
+		}
+	},
+	"telegram message.sendMessage: failed request 403 with a text body": {
+		"requests": [
+			{
+				"method": "POST",
+				"url": "https://api.telegram.org/bot123:fake-bot-token/sendMessage",
+				"qs": {},
+				"headers": {},
+				"body": {
+					"chat_id": "-100123",
+					"text": "Build *green*\n\n_This message was sent automatically with _[n8n](https://n8n.io/?utm_source=n8n-internal&utm_medium=powered_by&utm_campaign=n8n-nodes-base.telegram)",
+					"disable_web_page_preview": true,
+					"parse_mode": "Markdown"
+				},
+				"qsFormat": "brackets"
+			}
+		],
+		"wire": [
+			{
+				"accept": "application/json",
+				"contentType": "application/json",
+				"userAgent": "n8n"
+			}
+		],
+		"error": "Forbidden - perhaps check your credentials?",
+		"errorDetail": {
+			"description": "The service is not there.",
+			"httpCode": "403"
+		}
+	},
+	"telegram message.sendMessage: failed request 404 with a JSON body": {
+		"requests": [
+			{
+				"method": "POST",
+				"url": "https://api.telegram.org/bot123:fake-bot-token/sendMessage",
+				"qs": {},
+				"headers": {},
+				"body": {
+					"chat_id": "-100123",
+					"text": "Build *green*\n\n_This message was sent automatically with _[n8n](https://n8n.io/?utm_source=n8n-internal&utm_medium=powered_by&utm_campaign=n8n-nodes-base.telegram)",
+					"disable_web_page_preview": true,
+					"parse_mode": "Markdown"
+				},
+				"qsFormat": "brackets"
+			}
+		],
+		"wire": [
+			{
+				"accept": "application/json",
+				"contentType": "application/json",
+				"userAgent": "n8n"
+			}
+		],
+		"error": "The resource you are requesting could not be found",
+		"errorDetail": {
+			"description": "The value is not valid.",
+			"httpCode": "404"
+		}
+	},
+	"telegram message.sendMessage: failed request 404 with a text body": {
+		"requests": [
+			{
+				"method": "POST",
+				"url": "https://api.telegram.org/bot123:fake-bot-token/sendMessage",
+				"qs": {},
+				"headers": {},
+				"body": {
+					"chat_id": "-100123",
+					"text": "Build *green*\n\n_This message was sent automatically with _[n8n](https://n8n.io/?utm_source=n8n-internal&utm_medium=powered_by&utm_campaign=n8n-nodes-base.telegram)",
+					"disable_web_page_preview": true,
+					"parse_mode": "Markdown"
+				},
+				"qsFormat": "brackets"
+			}
+		],
+		"wire": [
+			{
+				"accept": "application/json",
+				"contentType": "application/json",
+				"userAgent": "n8n"
+			}
+		],
+		"error": "The resource you are requesting could not be found",
+		"errorDetail": {
+			"description": "The service is not there.",
+			"httpCode": "404"
+		}
+	},
+	"telegram message.sendMessage: failed request 429 with a JSON body": {
+		"requests": [
+			{
+				"method": "POST",
+				"url": "https://api.telegram.org/bot123:fake-bot-token/sendMessage",
+				"qs": {},
+				"headers": {},
+				"body": {
+					"chat_id": "-100123",
+					"text": "Build *green*\n\n_This message was sent automatically with _[n8n](https://n8n.io/?utm_source=n8n-internal&utm_medium=powered_by&utm_campaign=n8n-nodes-base.telegram)",
+					"disable_web_page_preview": true,
+					"parse_mode": "Markdown"
+				},
+				"qsFormat": "brackets"
+			}
+		],
+		"wire": [
+			{
+				"accept": "application/json",
+				"contentType": "application/json",
+				"userAgent": "n8n"
+			}
+		],
+		"error": "The service is receiving too many requests from you",
+		"errorDetail": {
+			"description": "The value is not valid.",
+			"httpCode": "429"
+		}
+	},
+	"telegram message.sendMessage: failed request 429 with a text body": {
+		"requests": [
+			{
+				"method": "POST",
+				"url": "https://api.telegram.org/bot123:fake-bot-token/sendMessage",
+				"qs": {},
+				"headers": {},
+				"body": {
+					"chat_id": "-100123",
+					"text": "Build *green*\n\n_This message was sent automatically with _[n8n](https://n8n.io/?utm_source=n8n-internal&utm_medium=powered_by&utm_campaign=n8n-nodes-base.telegram)",
+					"disable_web_page_preview": true,
+					"parse_mode": "Markdown"
+				},
+				"qsFormat": "brackets"
+			}
+		],
+		"wire": [
+			{
+				"accept": "application/json",
+				"contentType": "application/json",
+				"userAgent": "n8n"
+			}
+		],
+		"error": "The service is receiving too many requests from you",
+		"errorDetail": {
+			"description": "The service is not there.",
+			"httpCode": "429"
+		}
+	},
+	"telegram message.sendMessage: failed request 500 with a JSON body": {
+		"requests": [
+			{
+				"method": "POST",
+				"url": "https://api.telegram.org/bot123:fake-bot-token/sendMessage",
+				"qs": {},
+				"headers": {},
+				"body": {
+					"chat_id": "-100123",
+					"text": "Build *green*\n\n_This message was sent automatically with _[n8n](https://n8n.io/?utm_source=n8n-internal&utm_medium=powered_by&utm_campaign=n8n-nodes-base.telegram)",
+					"disable_web_page_preview": true,
+					"parse_mode": "Markdown"
+				},
+				"qsFormat": "brackets"
+			}
+		],
+		"wire": [
+			{
+				"accept": "application/json",
+				"contentType": "application/json",
+				"userAgent": "n8n"
+			}
+		],
+		"error": "The service was not able to process your request",
+		"errorDetail": {
+			"description": "The value is not valid.",
+			"httpCode": "500"
+		}
+	},
+	"telegram message.sendMessage: failed request 500 with a text body": {
+		"requests": [
+			{
+				"method": "POST",
+				"url": "https://api.telegram.org/bot123:fake-bot-token/sendMessage",
+				"qs": {},
+				"headers": {},
+				"body": {
+					"chat_id": "-100123",
+					"text": "Build *green*\n\n_This message was sent automatically with _[n8n](https://n8n.io/?utm_source=n8n-internal&utm_medium=powered_by&utm_campaign=n8n-nodes-base.telegram)",
+					"disable_web_page_preview": true,
+					"parse_mode": "Markdown"
+				},
+				"qsFormat": "brackets"
+			}
+		],
+		"wire": [
+			{
+				"accept": "application/json",
+				"contentType": "application/json",
+				"userAgent": "n8n"
+			}
+		],
+		"error": "The service was not able to process your request",
+		"errorDetail": {
+			"description": "The service is not there.",
+			"httpCode": "500"
+		}
+	},
+	"airtable record.create: failed request 400 with a JSON body": {
+		"requests": [
+			{
+				"method": "POST",
+				"url": "https://api.airtable.com/v0/appBase1/Tasks%20and%20Notes",
+				"qs": {},
+				"headers": {
+					"authorization": "Bearer fake-airtable-pat"
+				},
+				"body": {
+					"typecast": true,
+					"fields": {
+						"Name": "Write port",
+						"Count": 2
+					}
+				},
+				"qsFormat": "brackets"
+			}
+		],
+		"wire": [
+			{
+				"accept": "application/json",
+				"contentType": "application/json",
+				"userAgent": "n8n"
+			}
+		],
+		"error": "Bad request - please check your parameters",
+		"errorDetail": {
+			"description": "The value is not valid.",
+			"httpCode": "400"
+		}
+	},
+	"airtable record.create: failed request 400 with a text body": {
+		"requests": [
+			{
+				"method": "POST",
+				"url": "https://api.airtable.com/v0/appBase1/Tasks%20and%20Notes",
+				"qs": {},
+				"headers": {
+					"authorization": "Bearer fake-airtable-pat"
+				},
+				"body": {
+					"typecast": true,
+					"fields": {
+						"Name": "Write port",
+						"Count": 2
+					}
+				},
+				"qsFormat": "brackets"
+			}
+		],
+		"wire": [
+			{
+				"accept": "application/json",
+				"contentType": "application/json",
+				"userAgent": "n8n"
+			}
+		],
+		"error": "Bad request - please check your parameters",
+		"errorDetail": {
+			"description": "The service is not there.",
+			"httpCode": "400"
+		}
+	},
+	"airtable record.create: failed request 401 with a JSON body": {
+		"requests": [
+			{
+				"method": "POST",
+				"url": "https://api.airtable.com/v0/appBase1/Tasks%20and%20Notes",
+				"qs": {},
+				"headers": {
+					"authorization": "Bearer fake-airtable-pat"
+				},
+				"body": {
+					"typecast": true,
+					"fields": {
+						"Name": "Write port",
+						"Count": 2
+					}
+				},
+				"qsFormat": "brackets"
+			}
+		],
+		"wire": [
+			{
+				"accept": "application/json",
+				"contentType": "application/json",
+				"userAgent": "n8n"
+			}
+		],
+		"error": "Authorization failed - please check your credentials",
+		"errorDetail": {
+			"description": "The value is not valid.",
+			"httpCode": "401"
+		}
+	},
+	"airtable record.create: failed request 401 with a text body": {
+		"requests": [
+			{
+				"method": "POST",
+				"url": "https://api.airtable.com/v0/appBase1/Tasks%20and%20Notes",
+				"qs": {},
+				"headers": {
+					"authorization": "Bearer fake-airtable-pat"
+				},
+				"body": {
+					"typecast": true,
+					"fields": {
+						"Name": "Write port",
+						"Count": 2
+					}
+				},
+				"qsFormat": "brackets"
+			}
+		],
+		"wire": [
+			{
+				"accept": "application/json",
+				"contentType": "application/json",
+				"userAgent": "n8n"
+			}
+		],
+		"error": "Authorization failed - please check your credentials",
+		"errorDetail": {
+			"description": "The service is not there.",
+			"httpCode": "401"
+		}
+	},
+	"airtable record.create: failed request 403 with a JSON body": {
+		"requests": [
+			{
+				"method": "POST",
+				"url": "https://api.airtable.com/v0/appBase1/Tasks%20and%20Notes",
+				"qs": {},
+				"headers": {
+					"authorization": "Bearer fake-airtable-pat"
+				},
+				"body": {
+					"typecast": true,
+					"fields": {
+						"Name": "Write port",
+						"Count": 2
+					}
+				},
+				"qsFormat": "brackets"
+			}
+		],
+		"wire": [
+			{
+				"accept": "application/json",
+				"contentType": "application/json",
+				"userAgent": "n8n"
+			}
+		],
+		"error": "Forbidden - perhaps check your credentials?",
+		"errorDetail": {
+			"description": "The value is not valid.",
+			"httpCode": "403"
+		}
+	},
+	"airtable record.create: failed request 403 with a text body": {
+		"requests": [
+			{
+				"method": "POST",
+				"url": "https://api.airtable.com/v0/appBase1/Tasks%20and%20Notes",
+				"qs": {},
+				"headers": {
+					"authorization": "Bearer fake-airtable-pat"
+				},
+				"body": {
+					"typecast": true,
+					"fields": {
+						"Name": "Write port",
+						"Count": 2
+					}
+				},
+				"qsFormat": "brackets"
+			}
+		],
+		"wire": [
+			{
+				"accept": "application/json",
+				"contentType": "application/json",
+				"userAgent": "n8n"
+			}
+		],
+		"error": "Forbidden - perhaps check your credentials?",
+		"errorDetail": {
+			"description": "The service is not there.",
+			"httpCode": "403"
+		}
+	},
+	"airtable record.create: failed request 404 with a JSON body": {
+		"requests": [
+			{
+				"method": "POST",
+				"url": "https://api.airtable.com/v0/appBase1/Tasks%20and%20Notes",
+				"qs": {},
+				"headers": {
+					"authorization": "Bearer fake-airtable-pat"
+				},
+				"body": {
+					"typecast": true,
+					"fields": {
+						"Name": "Write port",
+						"Count": 2
+					}
+				},
+				"qsFormat": "brackets"
+			}
+		],
+		"wire": [
+			{
+				"accept": "application/json",
+				"contentType": "application/json",
+				"userAgent": "n8n"
+			}
+		],
+		"error": "The resource you are requesting could not be found",
+		"errorDetail": {
+			"description": "The value is not valid.",
+			"httpCode": "404"
+		}
+	},
+	"airtable record.create: failed request 404 with a text body": {
+		"requests": [
+			{
+				"method": "POST",
+				"url": "https://api.airtable.com/v0/appBase1/Tasks%20and%20Notes",
+				"qs": {},
+				"headers": {
+					"authorization": "Bearer fake-airtable-pat"
+				},
+				"body": {
+					"typecast": true,
+					"fields": {
+						"Name": "Write port",
+						"Count": 2
+					}
+				},
+				"qsFormat": "brackets"
+			}
+		],
+		"wire": [
+			{
+				"accept": "application/json",
+				"contentType": "application/json",
+				"userAgent": "n8n"
+			}
+		],
+		"error": "The resource you are requesting could not be found",
+		"errorDetail": {
+			"description": "The service is not there.",
+			"httpCode": "404"
+		}
+	},
+	"airtable record.create: failed request 429 with a JSON body": {
+		"requests": [
+			{
+				"method": "POST",
+				"url": "https://api.airtable.com/v0/appBase1/Tasks%20and%20Notes",
+				"qs": {},
+				"headers": {
+					"authorization": "Bearer fake-airtable-pat"
+				},
+				"body": {
+					"typecast": true,
+					"fields": {
+						"Name": "Write port",
+						"Count": 2
+					}
+				},
+				"qsFormat": "brackets"
+			}
+		],
+		"wire": [
+			{
+				"accept": "application/json",
+				"contentType": "application/json",
+				"userAgent": "n8n"
+			}
+		],
+		"error": "The service is receiving too many requests from you",
+		"errorDetail": {
+			"description": "The value is not valid.",
+			"httpCode": "429"
+		}
+	},
+	"airtable record.create: failed request 429 with a text body": {
+		"requests": [
+			{
+				"method": "POST",
+				"url": "https://api.airtable.com/v0/appBase1/Tasks%20and%20Notes",
+				"qs": {},
+				"headers": {
+					"authorization": "Bearer fake-airtable-pat"
+				},
+				"body": {
+					"typecast": true,
+					"fields": {
+						"Name": "Write port",
+						"Count": 2
+					}
+				},
+				"qsFormat": "brackets"
+			}
+		],
+		"wire": [
+			{
+				"accept": "application/json",
+				"contentType": "application/json",
+				"userAgent": "n8n"
+			}
+		],
+		"error": "The service is receiving too many requests from you",
+		"errorDetail": {
+			"description": "The service is not there.",
+			"httpCode": "429"
+		}
+	},
+	"airtable record.create: failed request 500 with a JSON body": {
+		"requests": [
+			{
+				"method": "POST",
+				"url": "https://api.airtable.com/v0/appBase1/Tasks%20and%20Notes",
+				"qs": {},
+				"headers": {
+					"authorization": "Bearer fake-airtable-pat"
+				},
+				"body": {
+					"typecast": true,
+					"fields": {
+						"Name": "Write port",
+						"Count": 2
+					}
+				},
+				"qsFormat": "brackets"
+			}
+		],
+		"wire": [
+			{
+				"accept": "application/json",
+				"contentType": "application/json",
+				"userAgent": "n8n"
+			}
+		],
+		"error": "The service was not able to process your request",
+		"errorDetail": {
+			"description": "The value is not valid.",
+			"httpCode": "500"
+		}
+	},
+	"airtable record.create: failed request 500 with a text body": {
+		"requests": [
+			{
+				"method": "POST",
+				"url": "https://api.airtable.com/v0/appBase1/Tasks%20and%20Notes",
+				"qs": {},
+				"headers": {
+					"authorization": "Bearer fake-airtable-pat"
+				},
+				"body": {
+					"typecast": true,
+					"fields": {
+						"Name": "Write port",
+						"Count": 2
+					}
+				},
+				"qsFormat": "brackets"
+			}
+		],
+		"wire": [
+			{
+				"accept": "application/json",
+				"contentType": "application/json",
+				"userAgent": "n8n"
+			}
+		],
+		"error": "The service was not able to process your request",
+		"errorDetail": {
+			"description": "The service is not there.",
+			"httpCode": "500"
+		}
+	},
+	"airtable record.update by id typecast: failed request 400 with a JSON body": {
+		"requests": [
+			{
+				"method": "PATCH",
+				"url": "https://api.airtable.com/v0/appBase1/tbl1",
+				"qs": {},
+				"headers": {
+					"authorization": "Bearer fake-airtable-pat"
+				},
+				"body": {
+					"typecast": true,
+					"records": [
+						{
+							"id": "rec9",
+							"fields": {
+								"Name": "Ada",
+								"Count": "7",
+								"Tags": ["a", "b"],
+								"Notes": null
+							}
+						}
+					]
+				},
+				"qsFormat": "brackets"
+			}
+		],
+		"wire": [
+			{
+				"accept": "application/json",
+				"contentType": "application/json",
+				"userAgent": "n8n"
+			}
+		],
+		"error": "Bad request - please check your parameters",
+		"errorDetail": {
+			"description": "The value is not valid.",
+			"httpCode": "400"
+		}
+	},
+	"airtable record.update by id typecast: failed request 400 with a text body": {
+		"requests": [
+			{
+				"method": "PATCH",
+				"url": "https://api.airtable.com/v0/appBase1/tbl1",
+				"qs": {},
+				"headers": {
+					"authorization": "Bearer fake-airtable-pat"
+				},
+				"body": {
+					"typecast": true,
+					"records": [
+						{
+							"id": "rec9",
+							"fields": {
+								"Name": "Ada",
+								"Count": "7",
+								"Tags": ["a", "b"],
+								"Notes": null
+							}
+						}
+					]
+				},
+				"qsFormat": "brackets"
+			}
+		],
+		"wire": [
+			{
+				"accept": "application/json",
+				"contentType": "application/json",
+				"userAgent": "n8n"
+			}
+		],
+		"error": "Bad request - please check your parameters",
+		"errorDetail": {
+			"description": "The service is not there.",
+			"httpCode": "400"
+		}
+	},
+	"airtable record.update by id typecast: failed request 401 with a JSON body": {
+		"requests": [
+			{
+				"method": "PATCH",
+				"url": "https://api.airtable.com/v0/appBase1/tbl1",
+				"qs": {},
+				"headers": {
+					"authorization": "Bearer fake-airtable-pat"
+				},
+				"body": {
+					"typecast": true,
+					"records": [
+						{
+							"id": "rec9",
+							"fields": {
+								"Name": "Ada",
+								"Count": "7",
+								"Tags": ["a", "b"],
+								"Notes": null
+							}
+						}
+					]
+				},
+				"qsFormat": "brackets"
+			}
+		],
+		"wire": [
+			{
+				"accept": "application/json",
+				"contentType": "application/json",
+				"userAgent": "n8n"
+			}
+		],
+		"error": "Authorization failed - please check your credentials",
+		"errorDetail": {
+			"description": "The value is not valid.",
+			"httpCode": "401"
+		}
+	},
+	"airtable record.update by id typecast: failed request 401 with a text body": {
+		"requests": [
+			{
+				"method": "PATCH",
+				"url": "https://api.airtable.com/v0/appBase1/tbl1",
+				"qs": {},
+				"headers": {
+					"authorization": "Bearer fake-airtable-pat"
+				},
+				"body": {
+					"typecast": true,
+					"records": [
+						{
+							"id": "rec9",
+							"fields": {
+								"Name": "Ada",
+								"Count": "7",
+								"Tags": ["a", "b"],
+								"Notes": null
+							}
+						}
+					]
+				},
+				"qsFormat": "brackets"
+			}
+		],
+		"wire": [
+			{
+				"accept": "application/json",
+				"contentType": "application/json",
+				"userAgent": "n8n"
+			}
+		],
+		"error": "Authorization failed - please check your credentials",
+		"errorDetail": {
+			"description": "The service is not there.",
+			"httpCode": "401"
+		}
+	},
+	"airtable record.update by id typecast: failed request 403 with a JSON body": {
+		"requests": [
+			{
+				"method": "PATCH",
+				"url": "https://api.airtable.com/v0/appBase1/tbl1",
+				"qs": {},
+				"headers": {
+					"authorization": "Bearer fake-airtable-pat"
+				},
+				"body": {
+					"typecast": true,
+					"records": [
+						{
+							"id": "rec9",
+							"fields": {
+								"Name": "Ada",
+								"Count": "7",
+								"Tags": ["a", "b"],
+								"Notes": null
+							}
+						}
+					]
+				},
+				"qsFormat": "brackets"
+			}
+		],
+		"wire": [
+			{
+				"accept": "application/json",
+				"contentType": "application/json",
+				"userAgent": "n8n"
+			}
+		],
+		"error": "Forbidden - perhaps check your credentials?",
+		"errorDetail": {
+			"description": "The value is not valid.",
+			"httpCode": "403"
+		}
+	},
+	"airtable record.update by id typecast: failed request 403 with a text body": {
+		"requests": [
+			{
+				"method": "PATCH",
+				"url": "https://api.airtable.com/v0/appBase1/tbl1",
+				"qs": {},
+				"headers": {
+					"authorization": "Bearer fake-airtable-pat"
+				},
+				"body": {
+					"typecast": true,
+					"records": [
+						{
+							"id": "rec9",
+							"fields": {
+								"Name": "Ada",
+								"Count": "7",
+								"Tags": ["a", "b"],
+								"Notes": null
+							}
+						}
+					]
+				},
+				"qsFormat": "brackets"
+			}
+		],
+		"wire": [
+			{
+				"accept": "application/json",
+				"contentType": "application/json",
+				"userAgent": "n8n"
+			}
+		],
+		"error": "Forbidden - perhaps check your credentials?",
+		"errorDetail": {
+			"description": "The service is not there.",
+			"httpCode": "403"
+		}
+	},
+	"airtable record.update by id typecast: failed request 404 with a JSON body": {
+		"requests": [
+			{
+				"method": "PATCH",
+				"url": "https://api.airtable.com/v0/appBase1/tbl1",
+				"qs": {},
+				"headers": {
+					"authorization": "Bearer fake-airtable-pat"
+				},
+				"body": {
+					"typecast": true,
+					"records": [
+						{
+							"id": "rec9",
+							"fields": {
+								"Name": "Ada",
+								"Count": "7",
+								"Tags": ["a", "b"],
+								"Notes": null
+							}
+						}
+					]
+				},
+				"qsFormat": "brackets"
+			}
+		],
+		"wire": [
+			{
+				"accept": "application/json",
+				"contentType": "application/json",
+				"userAgent": "n8n"
+			}
+		],
+		"error": "The resource you are requesting could not be found",
+		"errorDetail": {
+			"description": "The value is not valid.",
+			"httpCode": "404"
+		}
+	},
+	"airtable record.update by id typecast: failed request 404 with a text body": {
+		"requests": [
+			{
+				"method": "PATCH",
+				"url": "https://api.airtable.com/v0/appBase1/tbl1",
+				"qs": {},
+				"headers": {
+					"authorization": "Bearer fake-airtable-pat"
+				},
+				"body": {
+					"typecast": true,
+					"records": [
+						{
+							"id": "rec9",
+							"fields": {
+								"Name": "Ada",
+								"Count": "7",
+								"Tags": ["a", "b"],
+								"Notes": null
+							}
+						}
+					]
+				},
+				"qsFormat": "brackets"
+			}
+		],
+		"wire": [
+			{
+				"accept": "application/json",
+				"contentType": "application/json",
+				"userAgent": "n8n"
+			}
+		],
+		"error": "The resource you are requesting could not be found",
+		"errorDetail": {
+			"description": "The service is not there.",
+			"httpCode": "404"
+		}
+	},
+	"airtable record.update by id typecast: failed request 429 with a JSON body": {
+		"requests": [
+			{
+				"method": "PATCH",
+				"url": "https://api.airtable.com/v0/appBase1/tbl1",
+				"qs": {},
+				"headers": {
+					"authorization": "Bearer fake-airtable-pat"
+				},
+				"body": {
+					"typecast": true,
+					"records": [
+						{
+							"id": "rec9",
+							"fields": {
+								"Name": "Ada",
+								"Count": "7",
+								"Tags": ["a", "b"],
+								"Notes": null
+							}
+						}
+					]
+				},
+				"qsFormat": "brackets"
+			}
+		],
+		"wire": [
+			{
+				"accept": "application/json",
+				"contentType": "application/json",
+				"userAgent": "n8n"
+			}
+		],
+		"error": "The service is receiving too many requests from you",
+		"errorDetail": {
+			"description": "The value is not valid.",
+			"httpCode": "429"
+		}
+	},
+	"airtable record.update by id typecast: failed request 429 with a text body": {
+		"requests": [
+			{
+				"method": "PATCH",
+				"url": "https://api.airtable.com/v0/appBase1/tbl1",
+				"qs": {},
+				"headers": {
+					"authorization": "Bearer fake-airtable-pat"
+				},
+				"body": {
+					"typecast": true,
+					"records": [
+						{
+							"id": "rec9",
+							"fields": {
+								"Name": "Ada",
+								"Count": "7",
+								"Tags": ["a", "b"],
+								"Notes": null
+							}
+						}
+					]
+				},
+				"qsFormat": "brackets"
+			}
+		],
+		"wire": [
+			{
+				"accept": "application/json",
+				"contentType": "application/json",
+				"userAgent": "n8n"
+			}
+		],
+		"error": "The service is receiving too many requests from you",
+		"errorDetail": {
+			"description": "The service is not there.",
+			"httpCode": "429"
+		}
+	},
+	"airtable record.update by id typecast: failed request 500 with a JSON body": {
+		"requests": [
+			{
+				"method": "PATCH",
+				"url": "https://api.airtable.com/v0/appBase1/tbl1",
+				"qs": {},
+				"headers": {
+					"authorization": "Bearer fake-airtable-pat"
+				},
+				"body": {
+					"typecast": true,
+					"records": [
+						{
+							"id": "rec9",
+							"fields": {
+								"Name": "Ada",
+								"Count": "7",
+								"Tags": ["a", "b"],
+								"Notes": null
+							}
+						}
+					]
+				},
+				"qsFormat": "brackets"
+			}
+		],
+		"wire": [
+			{
+				"accept": "application/json",
+				"contentType": "application/json",
+				"userAgent": "n8n"
+			}
+		],
+		"error": "The service was not able to process your request",
+		"errorDetail": {
+			"description": "The value is not valid.",
+			"httpCode": "500"
+		}
+	},
+	"airtable record.update by id typecast: failed request 500 with a text body": {
+		"requests": [
+			{
+				"method": "PATCH",
+				"url": "https://api.airtable.com/v0/appBase1/tbl1",
+				"qs": {},
+				"headers": {
+					"authorization": "Bearer fake-airtable-pat"
+				},
+				"body": {
+					"typecast": true,
+					"records": [
+						{
+							"id": "rec9",
+							"fields": {
+								"Name": "Ada",
+								"Count": "7",
+								"Tags": ["a", "b"],
+								"Notes": null
+							}
+						}
+					]
+				},
+				"qsFormat": "brackets"
+			}
+		],
+		"wire": [
+			{
+				"accept": "application/json",
+				"contentType": "application/json",
+				"userAgent": "n8n"
+			}
+		],
+		"error": "The service was not able to process your request",
+		"errorDetail": {
+			"description": "The service is not there.",
+			"httpCode": "500"
+		}
+	},
+	"notion databasePage.getAll v2.2 json filter: failed request 400 with a JSON body": {
+		"requests": [
+			{
+				"method": "POST",
+				"url": "https://api.notion.com/v1/databases/ab1545b247fb49fa92d6f4b49f4d8116/query",
+				"qs": {},
+				"headers": {
+					"notion-version": "2021-08-16",
+					"authorization": "Bearer fake-notion-secret "
+				},
+				"body": {
+					"filter": {
+						"property": "Done",
+						"checkbox": {
+							"equals": true
+						}
+					},
+					"sorts": [],
+					"page_size": 50
+				},
+				"qsFormat": "brackets"
+			}
+		],
+		"wire": [
+			{
+				"accept": "application/json",
+				"contentType": "application/json",
+				"userAgent": "n8n"
+			}
+		],
+		"error": "Bad request - please check your parameters",
+		"errorDetail": {
+			"description": "The value is not valid.",
+			"httpCode": "400"
+		}
+	},
+	"notion databasePage.getAll v2.2 json filter: failed request 400 with a text body": {
+		"requests": [
+			{
+				"method": "POST",
+				"url": "https://api.notion.com/v1/databases/ab1545b247fb49fa92d6f4b49f4d8116/query",
+				"qs": {},
+				"headers": {
+					"notion-version": "2021-08-16",
+					"authorization": "Bearer fake-notion-secret "
+				},
+				"body": {
+					"filter": {
+						"property": "Done",
+						"checkbox": {
+							"equals": true
+						}
+					},
+					"sorts": [],
+					"page_size": 50
+				},
+				"qsFormat": "brackets"
+			}
+		],
+		"wire": [
+			{
+				"accept": "application/json",
+				"contentType": "application/json",
+				"userAgent": "n8n"
+			}
+		],
+		"error": "Bad request - please check your parameters",
+		"errorDetail": {
+			"description": "The service is not there.",
+			"httpCode": "400"
+		}
+	},
+	"notion databasePage.getAll v2.2 json filter: failed request 401 with a JSON body": {
+		"requests": [
+			{
+				"method": "POST",
+				"url": "https://api.notion.com/v1/databases/ab1545b247fb49fa92d6f4b49f4d8116/query",
+				"qs": {},
+				"headers": {
+					"notion-version": "2021-08-16",
+					"authorization": "Bearer fake-notion-secret "
+				},
+				"body": {
+					"filter": {
+						"property": "Done",
+						"checkbox": {
+							"equals": true
+						}
+					},
+					"sorts": [],
+					"page_size": 50
+				},
+				"qsFormat": "brackets"
+			}
+		],
+		"wire": [
+			{
+				"accept": "application/json",
+				"contentType": "application/json",
+				"userAgent": "n8n"
+			}
+		],
+		"error": "Authorization failed - please check your credentials",
+		"errorDetail": {
+			"description": "The value is not valid.",
+			"httpCode": "401"
+		}
+	},
+	"notion databasePage.getAll v2.2 json filter: failed request 401 with a text body": {
+		"requests": [
+			{
+				"method": "POST",
+				"url": "https://api.notion.com/v1/databases/ab1545b247fb49fa92d6f4b49f4d8116/query",
+				"qs": {},
+				"headers": {
+					"notion-version": "2021-08-16",
+					"authorization": "Bearer fake-notion-secret "
+				},
+				"body": {
+					"filter": {
+						"property": "Done",
+						"checkbox": {
+							"equals": true
+						}
+					},
+					"sorts": [],
+					"page_size": 50
+				},
+				"qsFormat": "brackets"
+			}
+		],
+		"wire": [
+			{
+				"accept": "application/json",
+				"contentType": "application/json",
+				"userAgent": "n8n"
+			}
+		],
+		"error": "Authorization failed - please check your credentials",
+		"errorDetail": {
+			"description": "The service is not there.",
+			"httpCode": "401"
+		}
+	},
+	"notion databasePage.getAll v2.2 json filter: failed request 403 with a JSON body": {
+		"requests": [
+			{
+				"method": "POST",
+				"url": "https://api.notion.com/v1/databases/ab1545b247fb49fa92d6f4b49f4d8116/query",
+				"qs": {},
+				"headers": {
+					"notion-version": "2021-08-16",
+					"authorization": "Bearer fake-notion-secret "
+				},
+				"body": {
+					"filter": {
+						"property": "Done",
+						"checkbox": {
+							"equals": true
+						}
+					},
+					"sorts": [],
+					"page_size": 50
+				},
+				"qsFormat": "brackets"
+			}
+		],
+		"wire": [
+			{
+				"accept": "application/json",
+				"contentType": "application/json",
+				"userAgent": "n8n"
+			}
+		],
+		"error": "Forbidden - perhaps check your credentials?",
+		"errorDetail": {
+			"description": "The value is not valid.",
+			"httpCode": "403"
+		}
+	},
+	"notion databasePage.getAll v2.2 json filter: failed request 403 with a text body": {
+		"requests": [
+			{
+				"method": "POST",
+				"url": "https://api.notion.com/v1/databases/ab1545b247fb49fa92d6f4b49f4d8116/query",
+				"qs": {},
+				"headers": {
+					"notion-version": "2021-08-16",
+					"authorization": "Bearer fake-notion-secret "
+				},
+				"body": {
+					"filter": {
+						"property": "Done",
+						"checkbox": {
+							"equals": true
+						}
+					},
+					"sorts": [],
+					"page_size": 50
+				},
+				"qsFormat": "brackets"
+			}
+		],
+		"wire": [
+			{
+				"accept": "application/json",
+				"contentType": "application/json",
+				"userAgent": "n8n"
+			}
+		],
+		"error": "Forbidden - perhaps check your credentials?",
+		"errorDetail": {
+			"description": "The service is not there.",
+			"httpCode": "403"
+		}
+	},
+	"notion databasePage.getAll v2.2 json filter: failed request 404 with a JSON body": {
+		"requests": [
+			{
+				"method": "POST",
+				"url": "https://api.notion.com/v1/databases/ab1545b247fb49fa92d6f4b49f4d8116/query",
+				"qs": {},
+				"headers": {
+					"notion-version": "2021-08-16",
+					"authorization": "Bearer fake-notion-secret "
+				},
+				"body": {
+					"filter": {
+						"property": "Done",
+						"checkbox": {
+							"equals": true
+						}
+					},
+					"sorts": [],
+					"page_size": 50
+				},
+				"qsFormat": "brackets"
+			}
+		],
+		"wire": [
+			{
+				"accept": "application/json",
+				"contentType": "application/json",
+				"userAgent": "n8n"
+			}
+		],
+		"error": "The resource you are requesting could not be found",
+		"errorDetail": {
+			"description": "The value is not valid.",
+			"httpCode": "404"
+		}
+	},
+	"notion databasePage.getAll v2.2 json filter: failed request 404 with a text body": {
+		"requests": [
+			{
+				"method": "POST",
+				"url": "https://api.notion.com/v1/databases/ab1545b247fb49fa92d6f4b49f4d8116/query",
+				"qs": {},
+				"headers": {
+					"notion-version": "2021-08-16",
+					"authorization": "Bearer fake-notion-secret "
+				},
+				"body": {
+					"filter": {
+						"property": "Done",
+						"checkbox": {
+							"equals": true
+						}
+					},
+					"sorts": [],
+					"page_size": 50
+				},
+				"qsFormat": "brackets"
+			}
+		],
+		"wire": [
+			{
+				"accept": "application/json",
+				"contentType": "application/json",
+				"userAgent": "n8n"
+			}
+		],
+		"error": "The resource you are requesting could not be found",
+		"errorDetail": {
+			"description": "The service is not there.",
+			"httpCode": "404"
+		}
+	},
+	"notion databasePage.getAll v2.2 json filter: failed request 429 with a JSON body": {
+		"requests": [
+			{
+				"method": "POST",
+				"url": "https://api.notion.com/v1/databases/ab1545b247fb49fa92d6f4b49f4d8116/query",
+				"qs": {},
+				"headers": {
+					"notion-version": "2021-08-16",
+					"authorization": "Bearer fake-notion-secret "
+				},
+				"body": {
+					"filter": {
+						"property": "Done",
+						"checkbox": {
+							"equals": true
+						}
+					},
+					"sorts": [],
+					"page_size": 50
+				},
+				"qsFormat": "brackets"
+			}
+		],
+		"wire": [
+			{
+				"accept": "application/json",
+				"contentType": "application/json",
+				"userAgent": "n8n"
+			}
+		],
+		"error": "The service is receiving too many requests from you",
+		"errorDetail": {
+			"description": "The value is not valid.",
+			"httpCode": "429"
+		}
+	},
+	"notion databasePage.getAll v2.2 json filter: failed request 429 with a text body": {
+		"requests": [
+			{
+				"method": "POST",
+				"url": "https://api.notion.com/v1/databases/ab1545b247fb49fa92d6f4b49f4d8116/query",
+				"qs": {},
+				"headers": {
+					"notion-version": "2021-08-16",
+					"authorization": "Bearer fake-notion-secret "
+				},
+				"body": {
+					"filter": {
+						"property": "Done",
+						"checkbox": {
+							"equals": true
+						}
+					},
+					"sorts": [],
+					"page_size": 50
+				},
+				"qsFormat": "brackets"
+			}
+		],
+		"wire": [
+			{
+				"accept": "application/json",
+				"contentType": "application/json",
+				"userAgent": "n8n"
+			}
+		],
+		"error": "The service is receiving too many requests from you",
+		"errorDetail": {
+			"description": "The service is not there.",
+			"httpCode": "429"
+		}
+	},
+	"notion databasePage.getAll v2.2 json filter: failed request 500 with a JSON body": {
+		"requests": [
+			{
+				"method": "POST",
+				"url": "https://api.notion.com/v1/databases/ab1545b247fb49fa92d6f4b49f4d8116/query",
+				"qs": {},
+				"headers": {
+					"notion-version": "2021-08-16",
+					"authorization": "Bearer fake-notion-secret "
+				},
+				"body": {
+					"filter": {
+						"property": "Done",
+						"checkbox": {
+							"equals": true
+						}
+					},
+					"sorts": [],
+					"page_size": 50
+				},
+				"qsFormat": "brackets"
+			}
+		],
+		"wire": [
+			{
+				"accept": "application/json",
+				"contentType": "application/json",
+				"userAgent": "n8n"
+			}
+		],
+		"error": "The service was not able to process your request",
+		"errorDetail": {
+			"description": "The value is not valid.",
+			"httpCode": "500"
+		}
+	},
+	"notion databasePage.getAll v2.2 json filter: failed request 500 with a text body": {
+		"requests": [
+			{
+				"method": "POST",
+				"url": "https://api.notion.com/v1/databases/ab1545b247fb49fa92d6f4b49f4d8116/query",
+				"qs": {},
+				"headers": {
+					"notion-version": "2021-08-16",
+					"authorization": "Bearer fake-notion-secret "
+				},
+				"body": {
+					"filter": {
+						"property": "Done",
+						"checkbox": {
+							"equals": true
+						}
+					},
+					"sorts": [],
+					"page_size": 50
+				},
+				"qsFormat": "brackets"
+			}
+		],
+		"wire": [
+			{
+				"accept": "application/json",
+				"contentType": "application/json",
+				"userAgent": "n8n"
+			}
+		],
+		"error": "The service was not able to process your request",
+		"errorDetail": {
+			"description": "The service is not there.",
+			"httpCode": "500"
+		}
+	},
+	"notion databasePage.create: failed request 400 with a JSON body": {
+		"requests": [
+			{
+				"method": "GET",
+				"url": "https://api.notion.com/v1/data_sources/ab1545b247fb49fa92d6f4b49f4d8116",
+				"qs": {},
+				"headers": {
+					"notion-version": "2026-03-11",
+					"authorization": "Bearer fake-notion-secret "
+				}
+			}
+		],
+		"wire": [
+			{
+				"accept": "application/json",
+				"userAgent": "n8n"
+			}
+		],
+		"error": "Bad request - please check your parameters",
+		"errorDetail": {
+			"description": "The value is not valid.",
+			"httpCode": "400"
+		}
+	},
+	"notion databasePage.create: failed request 400 with a text body": {
+		"requests": [
+			{
+				"method": "GET",
+				"url": "https://api.notion.com/v1/data_sources/ab1545b247fb49fa92d6f4b49f4d8116",
+				"qs": {},
+				"headers": {
+					"notion-version": "2026-03-11",
+					"authorization": "Bearer fake-notion-secret "
+				}
+			}
+		],
+		"wire": [
+			{
+				"accept": "application/json",
+				"userAgent": "n8n"
+			}
+		],
+		"error": "Bad request - please check your parameters",
+		"errorDetail": {
+			"description": "Request failed with status code 400",
+			"httpCode": "400"
+		}
+	},
+	"notion databasePage.create: failed request 403 with a JSON body": {
+		"requests": [
+			{
+				"method": "GET",
+				"url": "https://api.notion.com/v1/data_sources/ab1545b247fb49fa92d6f4b49f4d8116",
+				"qs": {},
+				"headers": {
+					"notion-version": "2026-03-11",
+					"authorization": "Bearer fake-notion-secret "
+				}
+			}
+		],
+		"wire": [
+			{
+				"accept": "application/json",
+				"userAgent": "n8n"
+			}
+		],
+		"error": "Forbidden - perhaps check your credentials?",
+		"errorDetail": {
+			"description": "The value is not valid.",
+			"httpCode": "403"
+		}
+	},
+	"notion databasePage.create: failed request 403 with a text body": {
+		"requests": [
+			{
+				"method": "GET",
+				"url": "https://api.notion.com/v1/data_sources/ab1545b247fb49fa92d6f4b49f4d8116",
+				"qs": {},
+				"headers": {
+					"notion-version": "2026-03-11",
+					"authorization": "Bearer fake-notion-secret "
+				}
+			}
+		],
+		"wire": [
+			{
+				"accept": "application/json",
+				"userAgent": "n8n"
+			}
+		],
+		"error": "Forbidden - perhaps check your credentials?",
+		"errorDetail": {
+			"description": "Request failed with status code 403",
+			"httpCode": "403"
+		}
+	},
+	"notion databasePage.create: failed request 404 with a JSON body": {
+		"requests": [
+			{
+				"method": "GET",
+				"url": "https://api.notion.com/v1/data_sources/ab1545b247fb49fa92d6f4b49f4d8116",
+				"qs": {},
+				"headers": {
+					"notion-version": "2026-03-11",
+					"authorization": "Bearer fake-notion-secret "
+				}
+			}
+		],
+		"wire": [
+			{
+				"accept": "application/json",
+				"userAgent": "n8n"
+			}
+		],
+		"error": "The resource you are requesting could not be found",
+		"errorDetail": {
+			"description": "The value is not valid.",
+			"httpCode": "404"
+		}
+	},
+	"notion databasePage.create: failed request 404 with a text body": {
+		"requests": [
+			{
+				"method": "GET",
+				"url": "https://api.notion.com/v1/data_sources/ab1545b247fb49fa92d6f4b49f4d8116",
+				"qs": {},
+				"headers": {
+					"notion-version": "2026-03-11",
+					"authorization": "Bearer fake-notion-secret "
+				}
+			}
+		],
+		"wire": [
+			{
+				"accept": "application/json",
+				"userAgent": "n8n"
+			}
+		],
+		"error": "The resource you are requesting could not be found",
+		"errorDetail": {
+			"description": "Request failed with status code 404",
+			"httpCode": "404"
+		}
+	},
+	"notion databasePage.create: failed request 429 with a JSON body": {
+		"requests": [
+			{
+				"method": "GET",
+				"url": "https://api.notion.com/v1/data_sources/ab1545b247fb49fa92d6f4b49f4d8116",
+				"qs": {},
+				"headers": {
+					"notion-version": "2026-03-11",
+					"authorization": "Bearer fake-notion-secret "
+				}
+			}
+		],
+		"wire": [
+			{
+				"accept": "application/json",
+				"userAgent": "n8n"
+			}
+		],
+		"error": "The service is receiving too many requests from you",
+		"errorDetail": {
+			"description": "The value is not valid.",
+			"httpCode": "429"
+		}
+	},
+	"notion databasePage.create: failed request 429 with a text body": {
+		"requests": [
+			{
+				"method": "GET",
+				"url": "https://api.notion.com/v1/data_sources/ab1545b247fb49fa92d6f4b49f4d8116",
+				"qs": {},
+				"headers": {
+					"notion-version": "2026-03-11",
+					"authorization": "Bearer fake-notion-secret "
+				}
+			}
+		],
+		"wire": [
+			{
+				"accept": "application/json",
+				"userAgent": "n8n"
+			}
+		],
+		"error": "The service is receiving too many requests from you",
+		"errorDetail": {
+			"description": "Request failed with status code 429",
+			"httpCode": "429"
+		}
+	},
+	"notion databasePage.create: failed request 500 with a JSON body": {
+		"requests": [
+			{
+				"method": "GET",
+				"url": "https://api.notion.com/v1/data_sources/ab1545b247fb49fa92d6f4b49f4d8116",
+				"qs": {},
+				"headers": {
+					"notion-version": "2026-03-11",
+					"authorization": "Bearer fake-notion-secret "
+				}
+			}
+		],
+		"wire": [
+			{
+				"accept": "application/json",
+				"userAgent": "n8n"
+			}
+		],
+		"error": "The service was not able to process your request",
+		"errorDetail": {
+			"description": "The value is not valid.",
+			"httpCode": "500"
+		}
+	},
+	"notion databasePage.create: failed request 500 with a text body": {
+		"requests": [
+			{
+				"method": "GET",
+				"url": "https://api.notion.com/v1/data_sources/ab1545b247fb49fa92d6f4b49f4d8116",
+				"qs": {},
+				"headers": {
+					"notion-version": "2026-03-11",
+					"authorization": "Bearer fake-notion-secret "
+				}
+			}
+		],
+		"wire": [
+			{
+				"accept": "application/json",
+				"userAgent": "n8n"
+			}
+		],
+		"error": "The service was not able to process your request",
+		"errorDetail": {
+			"description": "Request failed with status code 500",
+			"httpCode": "500"
+		}
+	},
+	"supabase row.get: failed request 400 with a JSON body": {
+		"requests": [
+			{
+				"method": "GET",
+				"url": "https://proj1.supabase.co/rest/v1/leads",
+				"qs": {
+					"id": "eq.42"
+				},
+				"headers": {
+					"prefer": "return=representation",
+					"apikey": "fake-supabase-key",
+					"authorization": "Bearer fake-supabase-key"
+				}
+			}
+		],
+		"wire": [
+			{
+				"accept": "application/json",
+				"userAgent": "n8n"
+			}
+		],
+		"error": "Bad request - please check your parameters: The value is not valid.",
+		"errorDetail": {
+			"description": "The value is not valid.",
+			"httpCode": "400"
+		}
+	},
+	"supabase row.get: failed request 400 with a text body": {
+		"requests": [
+			{
+				"method": "GET",
+				"url": "https://proj1.supabase.co/rest/v1/leads",
+				"qs": {
+					"id": "eq.42"
+				},
+				"headers": {
+					"prefer": "return=representation",
+					"apikey": "fake-supabase-key",
+					"authorization": "Bearer fake-supabase-key"
+				}
+			}
+		],
+		"wire": [
+			{
+				"accept": "application/json",
+				"userAgent": "n8n"
+			}
+		],
+		"error": "Bad request - please check your parameters: Request failed with status code 400",
+		"errorDetail": {
+			"description": "Request failed with status code 400",
+			"httpCode": "400"
+		}
+	},
+	"supabase row.get: failed request 403 with a JSON body": {
+		"requests": [
+			{
+				"method": "GET",
+				"url": "https://proj1.supabase.co/rest/v1/leads",
+				"qs": {
+					"id": "eq.42"
+				},
+				"headers": {
+					"prefer": "return=representation",
+					"apikey": "fake-supabase-key",
+					"authorization": "Bearer fake-supabase-key"
+				}
+			}
+		],
+		"wire": [
+			{
+				"accept": "application/json",
+				"userAgent": "n8n"
+			}
+		],
+		"error": "Forbidden - perhaps check your credentials?: The value is not valid.",
+		"errorDetail": {
+			"description": "The value is not valid.",
+			"httpCode": "403"
+		}
+	},
+	"supabase row.get: failed request 403 with a text body": {
+		"requests": [
+			{
+				"method": "GET",
+				"url": "https://proj1.supabase.co/rest/v1/leads",
+				"qs": {
+					"id": "eq.42"
+				},
+				"headers": {
+					"prefer": "return=representation",
+					"apikey": "fake-supabase-key",
+					"authorization": "Bearer fake-supabase-key"
+				}
+			}
+		],
+		"wire": [
+			{
+				"accept": "application/json",
+				"userAgent": "n8n"
+			}
+		],
+		"error": "Forbidden - perhaps check your credentials?: Request failed with status code 403",
+		"errorDetail": {
+			"description": "Request failed with status code 403",
+			"httpCode": "403"
+		}
+	},
+	"supabase row.get: failed request 404 with a JSON body": {
+		"requests": [
+			{
+				"method": "GET",
+				"url": "https://proj1.supabase.co/rest/v1/leads",
+				"qs": {
+					"id": "eq.42"
+				},
+				"headers": {
+					"prefer": "return=representation",
+					"apikey": "fake-supabase-key",
+					"authorization": "Bearer fake-supabase-key"
+				}
+			}
+		],
+		"wire": [
+			{
+				"accept": "application/json",
+				"userAgent": "n8n"
+			}
+		],
+		"error": "The resource you are requesting could not be found: The value is not valid.",
+		"errorDetail": {
+			"description": "The value is not valid.",
+			"httpCode": "404"
+		}
+	},
+	"supabase row.get: failed request 404 with a text body": {
+		"requests": [
+			{
+				"method": "GET",
+				"url": "https://proj1.supabase.co/rest/v1/leads",
+				"qs": {
+					"id": "eq.42"
+				},
+				"headers": {
+					"prefer": "return=representation",
+					"apikey": "fake-supabase-key",
+					"authorization": "Bearer fake-supabase-key"
+				}
+			}
+		],
+		"wire": [
+			{
+				"accept": "application/json",
+				"userAgent": "n8n"
+			}
+		],
+		"error": "The resource you are requesting could not be found: Request failed with status code 404",
+		"errorDetail": {
+			"description": "Request failed with status code 404",
+			"httpCode": "404"
+		}
+	},
+	"supabase row.get: failed request 429 with a JSON body": {
+		"requests": [
+			{
+				"method": "GET",
+				"url": "https://proj1.supabase.co/rest/v1/leads",
+				"qs": {
+					"id": "eq.42"
+				},
+				"headers": {
+					"prefer": "return=representation",
+					"apikey": "fake-supabase-key",
+					"authorization": "Bearer fake-supabase-key"
+				}
+			}
+		],
+		"wire": [
+			{
+				"accept": "application/json",
+				"userAgent": "n8n"
+			}
+		],
+		"error": "The service is receiving too many requests from you: The value is not valid.",
+		"errorDetail": {
+			"description": "The value is not valid.",
+			"httpCode": "429"
+		}
+	},
+	"supabase row.get: failed request 429 with a text body": {
+		"requests": [
+			{
+				"method": "GET",
+				"url": "https://proj1.supabase.co/rest/v1/leads",
+				"qs": {
+					"id": "eq.42"
+				},
+				"headers": {
+					"prefer": "return=representation",
+					"apikey": "fake-supabase-key",
+					"authorization": "Bearer fake-supabase-key"
+				}
+			}
+		],
+		"wire": [
+			{
+				"accept": "application/json",
+				"userAgent": "n8n"
+			}
+		],
+		"error": "The service is receiving too many requests from you: Request failed with status code 429",
+		"errorDetail": {
+			"description": "Request failed with status code 429",
+			"httpCode": "429"
+		}
+	},
+	"supabase row.get: failed request 500 with a JSON body": {
+		"requests": [
+			{
+				"method": "GET",
+				"url": "https://proj1.supabase.co/rest/v1/leads",
+				"qs": {
+					"id": "eq.42"
+				},
+				"headers": {
+					"prefer": "return=representation",
+					"apikey": "fake-supabase-key",
+					"authorization": "Bearer fake-supabase-key"
+				}
+			}
+		],
+		"wire": [
+			{
+				"accept": "application/json",
+				"userAgent": "n8n"
+			}
+		],
+		"error": "The service was not able to process your request: The value is not valid.",
+		"errorDetail": {
+			"description": "The value is not valid.",
+			"httpCode": "500"
+		}
+	},
+	"supabase row.get: failed request 500 with a text body": {
+		"requests": [
+			{
+				"method": "GET",
+				"url": "https://proj1.supabase.co/rest/v1/leads",
+				"qs": {
+					"id": "eq.42"
+				},
+				"headers": {
+					"prefer": "return=representation",
+					"apikey": "fake-supabase-key",
+					"authorization": "Bearer fake-supabase-key"
+				}
+			}
+		],
+		"wire": [
+			{
+				"accept": "application/json",
+				"userAgent": "n8n"
+			}
+		],
+		"error": "The service was not able to process your request: Request failed with status code 500",
+		"errorDetail": {
+			"description": "Request failed with status code 500",
+			"httpCode": "500"
+		}
+	},
+	"gmail message.send text: failed request 400 with a JSON body": {
+		"requests": [
+			{
+				"method": "POST",
+				"url": "https://www.googleapis.com/gmail/v1/users/me/messages/send",
+				"qs": {},
+				"headers": {
+					"accept": "application/json",
+					"authorization": "Bearer fake-gmail-token"
+				},
+				"body": {
+					"raw": "VG86IGFkYUBleGFtcGxlLmNvbSwgQm9iIDxib2JAZXhhbXBsZS5jb20-DQpDYzogY0BleGFtcGxlLmNvbQ0KUmVwbHktVG86IG9wc0BleGFtcGxlLmNvbQ0KU3ViamVjdDogV2Vla2x5IHJlcG9ydA0KTWVzc2FnZS1JRDogPDEzOGM0ZDNiLWRkYTMtYmQ4NC02OTExLWY3ZDM1NjI0MTFjZkBleGFtcGxlLmNvbT4NCkNvbnRlbnQtVHJhbnNmZXItRW5jb2Rpbmc6IDdiaXQNCkRhdGU6IFR1ZSwgMTcgTm92IDIwMjYgMTQ6Mzk6MDggKzAwMDANCk1JTUUtVmVyc2lvbjogMS4wDQpDb250ZW50LVR5cGU6IHRleHQvcGxhaW47IGNoYXJzZXQ9dXRmLTgNCg0KQWxsIGdyZWVuLgoKLS0tClRoaXMgZW1haWwgd2FzIHNlbnQgYXV0b21hdGljYWxseSB3aXRoIG44bgpodHRwczovL244bi5pbw0K"
+				},
+				"qsFormat": "repeat"
+			}
+		],
+		"wire": [
+			{
+				"accept": "application/json",
+				"contentType": "application/json",
+				"userAgent": "n8n"
+			}
+		],
+		"error": "Bad request - please check your parameters (item 0)",
+		"errorDetail": {
+			"description": "The value is not valid.",
+			"httpCode": null
+		}
+	},
+	"gmail message.send text: failed request 400 with a text body": {
+		"requests": [
+			{
+				"method": "POST",
+				"url": "https://www.googleapis.com/gmail/v1/users/me/messages/send",
+				"qs": {},
+				"headers": {
+					"accept": "application/json",
+					"authorization": "Bearer fake-gmail-token"
+				},
+				"body": {
+					"raw": "VG86IGFkYUBleGFtcGxlLmNvbSwgQm9iIDxib2JAZXhhbXBsZS5jb20-DQpDYzogY0BleGFtcGxlLmNvbQ0KUmVwbHktVG86IG9wc0BleGFtcGxlLmNvbQ0KU3ViamVjdDogV2Vla2x5IHJlcG9ydA0KTWVzc2FnZS1JRDogPGNhNjEwNjRjLTcxNWMtZDY0Yi1kNTE2LWJhZWVlMGM1M2Q0YkBleGFtcGxlLmNvbT4NCkNvbnRlbnQtVHJhbnNmZXItRW5jb2Rpbmc6IDdiaXQNCkRhdGU6IFR1ZSwgMTcgTm92IDIwMjYgMTQ6Mzk6MDggKzAwMDANCk1JTUUtVmVyc2lvbjogMS4wDQpDb250ZW50LVR5cGU6IHRleHQvcGxhaW47IGNoYXJzZXQ9dXRmLTgNCg0KQWxsIGdyZWVuLgoKLS0tClRoaXMgZW1haWwgd2FzIHNlbnQgYXV0b21hdGljYWxseSB3aXRoIG44bgpodHRwczovL244bi5pbw0K"
+				},
+				"qsFormat": "repeat"
+			}
+		],
+		"wire": [
+			{
+				"accept": "application/json",
+				"contentType": "application/json",
+				"userAgent": "n8n"
+			}
+		],
+		"error": "Bad request - please check your parameters (item 0)",
+		"errorDetail": {
+			"description": "The service is not there.",
+			"httpCode": null
+		}
+	},
+	"gmail message.send text: failed request 403 with a JSON body": {
+		"requests": [
+			{
+				"method": "POST",
+				"url": "https://www.googleapis.com/gmail/v1/users/me/messages/send",
+				"qs": {},
+				"headers": {
+					"accept": "application/json",
+					"authorization": "Bearer fake-gmail-token"
+				},
+				"body": {
+					"raw": "VG86IGFkYUBleGFtcGxlLmNvbSwgQm9iIDxib2JAZXhhbXBsZS5jb20-DQpDYzogY0BleGFtcGxlLmNvbQ0KUmVwbHktVG86IG9wc0BleGFtcGxlLmNvbQ0KU3ViamVjdDogV2Vla2x5IHJlcG9ydA0KTWVzc2FnZS1JRDogPDJmMTVmNTE3LTEyOWMtMGVkYi02YmU3LTkyZDZmZjQ1YzAyMEBleGFtcGxlLmNvbT4NCkNvbnRlbnQtVHJhbnNmZXItRW5jb2Rpbmc6IDdiaXQNCkRhdGU6IFR1ZSwgMTcgTm92IDIwMjYgMTQ6Mzk6MDggKzAwMDANCk1JTUUtVmVyc2lvbjogMS4wDQpDb250ZW50LVR5cGU6IHRleHQvcGxhaW47IGNoYXJzZXQ9dXRmLTgNCg0KQWxsIGdyZWVuLgoKLS0tClRoaXMgZW1haWwgd2FzIHNlbnQgYXV0b21hdGljYWxseSB3aXRoIG44bgpodHRwczovL244bi5pbw0K"
+				},
+				"qsFormat": "repeat"
+			}
+		],
+		"wire": [
+			{
+				"accept": "application/json",
+				"contentType": "application/json",
+				"userAgent": "n8n"
+			}
+		],
+		"error": "Forbidden - perhaps check your credentials? (item 0)",
+		"errorDetail": {
+			"description": "The value is not valid.",
+			"httpCode": null
+		}
+	},
+	"gmail message.send text: failed request 403 with a text body": {
+		"requests": [
+			{
+				"method": "POST",
+				"url": "https://www.googleapis.com/gmail/v1/users/me/messages/send",
+				"qs": {},
+				"headers": {
+					"accept": "application/json",
+					"authorization": "Bearer fake-gmail-token"
+				},
+				"body": {
+					"raw": "VG86IGFkYUBleGFtcGxlLmNvbSwgQm9iIDxib2JAZXhhbXBsZS5jb20-DQpDYzogY0BleGFtcGxlLmNvbQ0KUmVwbHktVG86IG9wc0BleGFtcGxlLmNvbQ0KU3ViamVjdDogV2Vla2x5IHJlcG9ydA0KTWVzc2FnZS1JRDogPDdmMWYxMjMwLWY4MjUtODQxNi1hYzhiLThmM2RkZDM2Y2RkNEBleGFtcGxlLmNvbT4NCkNvbnRlbnQtVHJhbnNmZXItRW5jb2Rpbmc6IDdiaXQNCkRhdGU6IFR1ZSwgMTcgTm92IDIwMjYgMTQ6Mzk6MDggKzAwMDANCk1JTUUtVmVyc2lvbjogMS4wDQpDb250ZW50LVR5cGU6IHRleHQvcGxhaW47IGNoYXJzZXQ9dXRmLTgNCg0KQWxsIGdyZWVuLgoKLS0tClRoaXMgZW1haWwgd2FzIHNlbnQgYXV0b21hdGljYWxseSB3aXRoIG44bgpodHRwczovL244bi5pbw0K"
+				},
+				"qsFormat": "repeat"
+			}
+		],
+		"wire": [
+			{
+				"accept": "application/json",
+				"contentType": "application/json",
+				"userAgent": "n8n"
+			}
+		],
+		"error": "Forbidden - perhaps check your credentials? (item 0)",
+		"errorDetail": {
+			"description": "The service is not there.",
+			"httpCode": null
+		}
+	},
+	"gmail message.send text: failed request 404 with a JSON body": {
+		"requests": [
+			{
+				"method": "POST",
+				"url": "https://www.googleapis.com/gmail/v1/users/me/messages/send",
+				"qs": {},
+				"headers": {
+					"accept": "application/json",
+					"authorization": "Bearer fake-gmail-token"
+				},
+				"body": {
+					"raw": "VG86IGFkYUBleGFtcGxlLmNvbSwgQm9iIDxib2JAZXhhbXBsZS5jb20-DQpDYzogY0BleGFtcGxlLmNvbQ0KUmVwbHktVG86IG9wc0BleGFtcGxlLmNvbQ0KU3ViamVjdDogV2Vla2x5IHJlcG9ydA0KTWVzc2FnZS1JRDogPGY3ZjdlMmFmLTUzYWItNmM1OC1iYjVlLThiNzhmMWQ5Y2U3OUBleGFtcGxlLmNvbT4NCkNvbnRlbnQtVHJhbnNmZXItRW5jb2Rpbmc6IDdiaXQNCkRhdGU6IFR1ZSwgMTcgTm92IDIwMjYgMTQ6Mzk6MDggKzAwMDANCk1JTUUtVmVyc2lvbjogMS4wDQpDb250ZW50LVR5cGU6IHRleHQvcGxhaW47IGNoYXJzZXQ9dXRmLTgNCg0KQWxsIGdyZWVuLgoKLS0tClRoaXMgZW1haWwgd2FzIHNlbnQgYXV0b21hdGljYWxseSB3aXRoIG44bgpodHRwczovL244bi5pbw0K"
+				},
+				"qsFormat": "repeat"
+			}
+		],
+		"wire": [
+			{
+				"accept": "application/json",
+				"contentType": "application/json",
+				"userAgent": "n8n"
+			}
+		],
+		"error": "The resource you are requesting could not be found (item 0)",
+		"errorDetail": {
+			"description": "The value is not valid.",
+			"httpCode": null
+		}
+	},
+	"gmail message.send text: failed request 404 with a text body": {
+		"requests": [
+			{
+				"method": "POST",
+				"url": "https://www.googleapis.com/gmail/v1/users/me/messages/send",
+				"qs": {},
+				"headers": {
+					"accept": "application/json",
+					"authorization": "Bearer fake-gmail-token"
+				},
+				"body": {
+					"raw": "VG86IGFkYUBleGFtcGxlLmNvbSwgQm9iIDxib2JAZXhhbXBsZS5jb20-DQpDYzogY0BleGFtcGxlLmNvbQ0KUmVwbHktVG86IG9wc0BleGFtcGxlLmNvbQ0KU3ViamVjdDogV2Vla2x5IHJlcG9ydA0KTWVzc2FnZS1JRDogPDg5Y2I4ZTY0LTBhMmMtZjEzMS1kMjM2LTM5ZjA5NjA1NjFiNUBleGFtcGxlLmNvbT4NCkNvbnRlbnQtVHJhbnNmZXItRW5jb2Rpbmc6IDdiaXQNCkRhdGU6IFR1ZSwgMTcgTm92IDIwMjYgMTQ6Mzk6MDggKzAwMDANCk1JTUUtVmVyc2lvbjogMS4wDQpDb250ZW50LVR5cGU6IHRleHQvcGxhaW47IGNoYXJzZXQ9dXRmLTgNCg0KQWxsIGdyZWVuLgoKLS0tClRoaXMgZW1haWwgd2FzIHNlbnQgYXV0b21hdGljYWxseSB3aXRoIG44bgpodHRwczovL244bi5pbw0K"
+				},
+				"qsFormat": "repeat"
+			}
+		],
+		"wire": [
+			{
+				"accept": "application/json",
+				"contentType": "application/json",
+				"userAgent": "n8n"
+			}
+		],
+		"error": "The resource you are requesting could not be found (item 0)",
+		"errorDetail": {
+			"description": "The service is not there.",
+			"httpCode": null
+		}
+	},
+	"gmail message.send text: failed request 429 with a JSON body": {
+		"requests": [
+			{
+				"method": "POST",
+				"url": "https://www.googleapis.com/gmail/v1/users/me/messages/send",
+				"qs": {},
+				"headers": {
+					"accept": "application/json",
+					"authorization": "Bearer fake-gmail-token"
+				},
+				"body": {
+					"raw": "VG86IGFkYUBleGFtcGxlLmNvbSwgQm9iIDxib2JAZXhhbXBsZS5jb20-DQpDYzogY0BleGFtcGxlLmNvbQ0KUmVwbHktVG86IG9wc0BleGFtcGxlLmNvbQ0KU3ViamVjdDogV2Vla2x5IHJlcG9ydA0KTWVzc2FnZS1JRDogPDEyNmIwYmEwLTZiNTctZWI3NS02YjIxLTFkMTE5NDQ3MDdjZUBleGFtcGxlLmNvbT4NCkNvbnRlbnQtVHJhbnNmZXItRW5jb2Rpbmc6IDdiaXQNCkRhdGU6IFR1ZSwgMTcgTm92IDIwMjYgMTQ6Mzk6MDggKzAwMDANCk1JTUUtVmVyc2lvbjogMS4wDQpDb250ZW50LVR5cGU6IHRleHQvcGxhaW47IGNoYXJzZXQ9dXRmLTgNCg0KQWxsIGdyZWVuLgoKLS0tClRoaXMgZW1haWwgd2FzIHNlbnQgYXV0b21hdGljYWxseSB3aXRoIG44bgpodHRwczovL244bi5pbw0K"
+				},
+				"qsFormat": "repeat"
+			}
+		],
+		"wire": [
+			{
+				"accept": "application/json",
+				"contentType": "application/json",
+				"userAgent": "n8n"
+			}
+		],
+		"error": "The service is receiving too many requests from you (item 0)",
+		"errorDetail": {
+			"description": "The value is not valid.",
+			"httpCode": null
+		}
+	},
+	"gmail message.send text: failed request 429 with a text body": {
+		"requests": [
+			{
+				"method": "POST",
+				"url": "https://www.googleapis.com/gmail/v1/users/me/messages/send",
+				"qs": {},
+				"headers": {
+					"accept": "application/json",
+					"authorization": "Bearer fake-gmail-token"
+				},
+				"body": {
+					"raw": "VG86IGFkYUBleGFtcGxlLmNvbSwgQm9iIDxib2JAZXhhbXBsZS5jb20-DQpDYzogY0BleGFtcGxlLmNvbQ0KUmVwbHktVG86IG9wc0BleGFtcGxlLmNvbQ0KU3ViamVjdDogV2Vla2x5IHJlcG9ydA0KTWVzc2FnZS1JRDogPDk0NzVkZmJjLTk5MjgtNmFmZi1kOTcwLTk4MzNhNDQ4ODNiMkBleGFtcGxlLmNvbT4NCkNvbnRlbnQtVHJhbnNmZXItRW5jb2Rpbmc6IDdiaXQNCkRhdGU6IFR1ZSwgMTcgTm92IDIwMjYgMTQ6Mzk6MDggKzAwMDANCk1JTUUtVmVyc2lvbjogMS4wDQpDb250ZW50LVR5cGU6IHRleHQvcGxhaW47IGNoYXJzZXQ9dXRmLTgNCg0KQWxsIGdyZWVuLgoKLS0tClRoaXMgZW1haWwgd2FzIHNlbnQgYXV0b21hdGljYWxseSB3aXRoIG44bgpodHRwczovL244bi5pbw0K"
+				},
+				"qsFormat": "repeat"
+			}
+		],
+		"wire": [
+			{
+				"accept": "application/json",
+				"contentType": "application/json",
+				"userAgent": "n8n"
+			}
+		],
+		"error": "The service is receiving too many requests from you (item 0)",
+		"errorDetail": {
+			"description": "The service is not there.",
+			"httpCode": null
+		}
+	},
+	"gmail message.send text: failed request 500 with a JSON body": {
+		"requests": [
+			{
+				"method": "POST",
+				"url": "https://www.googleapis.com/gmail/v1/users/me/messages/send",
+				"qs": {},
+				"headers": {
+					"accept": "application/json",
+					"authorization": "Bearer fake-gmail-token"
+				},
+				"body": {
+					"raw": "VG86IGFkYUBleGFtcGxlLmNvbSwgQm9iIDxib2JAZXhhbXBsZS5jb20-DQpDYzogY0BleGFtcGxlLmNvbQ0KUmVwbHktVG86IG9wc0BleGFtcGxlLmNvbQ0KU3ViamVjdDogV2Vla2x5IHJlcG9ydA0KTWVzc2FnZS1JRDogPDY4NTJkMDM5LTk1ZjgtNDhkOC1lMWQ2LTg1YjBjMzFlYmZhMEBleGFtcGxlLmNvbT4NCkNvbnRlbnQtVHJhbnNmZXItRW5jb2Rpbmc6IDdiaXQNCkRhdGU6IFR1ZSwgMTcgTm92IDIwMjYgMTQ6Mzk6MDggKzAwMDANCk1JTUUtVmVyc2lvbjogMS4wDQpDb250ZW50LVR5cGU6IHRleHQvcGxhaW47IGNoYXJzZXQ9dXRmLTgNCg0KQWxsIGdyZWVuLgoKLS0tClRoaXMgZW1haWwgd2FzIHNlbnQgYXV0b21hdGljYWxseSB3aXRoIG44bgpodHRwczovL244bi5pbw0K"
+				},
+				"qsFormat": "repeat"
+			}
+		],
+		"wire": [
+			{
+				"accept": "application/json",
+				"contentType": "application/json",
+				"userAgent": "n8n"
+			}
+		],
+		"error": "The service was not able to process your request (item 0)",
+		"errorDetail": {
+			"description": "The value is not valid.",
+			"httpCode": null
+		}
+	},
+	"gmail message.send text: failed request 500 with a text body": {
+		"requests": [
+			{
+				"method": "POST",
+				"url": "https://www.googleapis.com/gmail/v1/users/me/messages/send",
+				"qs": {},
+				"headers": {
+					"accept": "application/json",
+					"authorization": "Bearer fake-gmail-token"
+				},
+				"body": {
+					"raw": "VG86IGFkYUBleGFtcGxlLmNvbSwgQm9iIDxib2JAZXhhbXBsZS5jb20-DQpDYzogY0BleGFtcGxlLmNvbQ0KUmVwbHktVG86IG9wc0BleGFtcGxlLmNvbQ0KU3ViamVjdDogV2Vla2x5IHJlcG9ydA0KTWVzc2FnZS1JRDogPDczMzFiODZlLWYyMTgtNzMyMi00ZGU0LTQxOGMxMTQ4NjM1YUBleGFtcGxlLmNvbT4NCkNvbnRlbnQtVHJhbnNmZXItRW5jb2Rpbmc6IDdiaXQNCkRhdGU6IFR1ZSwgMTcgTm92IDIwMjYgMTQ6Mzk6MDggKzAwMDANCk1JTUUtVmVyc2lvbjogMS4wDQpDb250ZW50LVR5cGU6IHRleHQvcGxhaW47IGNoYXJzZXQ9dXRmLTgNCg0KQWxsIGdyZWVuLgoKLS0tClRoaXMgZW1haWwgd2FzIHNlbnQgYXV0b21hdGljYWxseSB3aXRoIG44bgpodHRwczovL244bi5pbw0K"
+				},
+				"qsFormat": "repeat"
+			}
+		],
+		"wire": [
+			{
+				"accept": "application/json",
+				"contentType": "application/json",
+				"userAgent": "n8n"
+			}
+		],
+		"error": "The service was not able to process your request (item 0)",
+		"errorDetail": {
+			"description": "The service is not there.",
+			"httpCode": null
+		}
+	},
 	"dataTable row.get by id": {
 		"requests": [],
 		"services": [
@@ -7018,7 +9482,23 @@
 				"qsFormat": "brackets"
 			}
 		],
-		"error": "`columns.schema` is required when `columns.mappingMode` is `defineBelow`"
+		"wire": [
+			{
+				"accept": "application/json",
+				"contentType": "application/json",
+				"userAgent": "n8n"
+			},
+			{
+				"accept": "application/json",
+				"contentType": "application/json",
+				"userAgent": "n8n"
+			}
+		],
+		"error": "`columns.schema` is required when `columns.mappingMode` is `defineBelow`",
+		"errorDetail": {
+			"description": "Provide a `columns.schema` array describing each sheet column (`{ id, displayName, required, defaultMatch, display, type, canBeUsedToMatch }` per entry) alongside `columns.value`. Switch to `mappingMode: \"autoMapInputData\"` and `value: {}` if you want n8n to map input fields to columns by name instead.",
+			"httpCode": null
+		}
 	},
 	"googleSheets sheet.append v4.7 columns in another order and one more in the sheet": {
 		"requests": [
@@ -7117,7 +9597,23 @@
 				"qsFormat": "brackets"
 			}
 		],
-		"error": "Column names were updated after the node's setup"
+		"wire": [
+			{
+				"accept": "application/json",
+				"contentType": "application/json",
+				"userAgent": "n8n"
+			},
+			{
+				"accept": "application/json",
+				"contentType": "application/json",
+				"userAgent": "n8n"
+			}
+		],
+		"error": "Column names were updated after the node's setup",
+		"errorDetail": {
+			"description": "Refresh the columns list in the 'Column to Match On' parameter. Missing columns: D, E",
+			"httpCode": null
+		}
 	},
 	"googleSheets sheet.clear whole sheet": {
 		"requests": [
@@ -7932,7 +10428,11 @@
 				"userAgent": "n8n"
 			}
 		],
-		"error": "Bad request - please check your parameters"
+		"error": "Bad request - please check your parameters",
+		"errorDetail": {
+			"description": "The request is not valid.",
+			"httpCode": "400"
+		}
 	},
 	"googleSheets failed sheet lookup 400": {
 		"requests": [
@@ -7955,7 +10455,11 @@
 				"userAgent": "n8n"
 			}
 		],
-		"error": "Bad request - please check your parameters"
+		"error": "Bad request - please check your parameters",
+		"errorDetail": {
+			"description": "400 - {}",
+			"httpCode": "400"
+		}
 	},
 	"googleCalendar failed request 400": {
 		"requests": [
@@ -7976,7 +10480,11 @@
 				"userAgent": "n8n"
 			}
 		],
-		"error": "Bad request - please check your parameters"
+		"error": "Bad request - please check your parameters",
+		"errorDetail": {
+			"description": "The request is not valid.",
+			"httpCode": "400"
+		}
 	},
 	"microsoftOutlook failed request 400": {
 		"requests": [
@@ -7997,7 +10505,11 @@
 				"userAgent": "n8n"
 			}
 		],
-		"error": "Request failed with status code 400"
+		"error": "plain text",
+		"errorDetail": {
+			"description": "",
+			"httpCode": "400"
+		}
 	},
 	"googleSheets failed request 403": {
 		"requests": [
@@ -8038,7 +10550,11 @@
 				"userAgent": "n8n"
 			}
 		],
-		"error": "Forbidden - perhaps check your credentials?"
+		"error": "Forbidden - perhaps check your credentials?",
+		"errorDetail": {
+			"description": "The request is not valid.",
+			"httpCode": "403"
+		}
 	},
 	"googleSheets failed sheet lookup 403": {
 		"requests": [
@@ -8061,7 +10577,11 @@
 				"userAgent": "n8n"
 			}
 		],
-		"error": "Forbidden - perhaps check your credentials?"
+		"error": "Forbidden - perhaps check your credentials?",
+		"errorDetail": {
+			"description": "403 - {}",
+			"httpCode": "403"
+		}
 	},
 	"googleCalendar failed request 403": {
 		"requests": [
@@ -8082,7 +10602,11 @@
 				"userAgent": "n8n"
 			}
 		],
-		"error": "Forbidden - perhaps check your credentials?"
+		"error": "Forbidden - perhaps check your credentials?",
+		"errorDetail": {
+			"description": "The request is not valid.",
+			"httpCode": "403"
+		}
 	},
 	"microsoftOutlook failed request 403": {
 		"requests": [
@@ -8103,7 +10627,11 @@
 				"userAgent": "n8n"
 			}
 		],
-		"error": "Forbidden - perhaps check your credentials?"
+		"error": "Forbidden - perhaps check your credentials?",
+		"errorDetail": {
+			"description": "The request is not valid.",
+			"httpCode": "403"
+		}
 	},
 	"googleSheets failed request 404": {
 		"requests": [
@@ -8144,7 +10672,11 @@
 				"userAgent": "n8n"
 			}
 		],
-		"error": "The resource you are requesting could not be found"
+		"error": "The resource you are requesting could not be found",
+		"errorDetail": {
+			"description": "The request is not valid.",
+			"httpCode": "404"
+		}
 	},
 	"googleSheets failed sheet lookup 404": {
 		"requests": [
@@ -8167,7 +10699,11 @@
 				"userAgent": "n8n"
 			}
 		],
-		"error": "The resource you are requesting could not be found"
+		"error": "The resource you are requesting could not be found",
+		"errorDetail": {
+			"description": "404 - {}",
+			"httpCode": "404"
+		}
 	},
 	"googleCalendar failed request 404": {
 		"requests": [
@@ -8188,7 +10724,11 @@
 				"userAgent": "n8n"
 			}
 		],
-		"error": "The resource you are requesting could not be found"
+		"error": "The resource you are requesting could not be found",
+		"errorDetail": {
+			"description": "The request is not valid.",
+			"httpCode": "404"
+		}
 	},
 	"microsoftOutlook failed request 404": {
 		"requests": [
@@ -8209,7 +10749,11 @@
 				"userAgent": "n8n"
 			}
 		],
-		"error": "The resource you are requesting could not be found"
+		"error": "The resource you are requesting could not be found",
+		"errorDetail": {
+			"description": "The request is not valid.",
+			"httpCode": "404"
+		}
 	},
 	"googleSheets failed request 429": {
 		"requests": [
@@ -8250,7 +10794,11 @@
 				"userAgent": "n8n"
 			}
 		],
-		"error": "The service is receiving too many requests from you"
+		"error": "The service is receiving too many requests from you",
+		"errorDetail": {
+			"description": "The request is not valid.",
+			"httpCode": "429"
+		}
 	},
 	"googleSheets failed sheet lookup 429": {
 		"requests": [
@@ -8273,7 +10821,11 @@
 				"userAgent": "n8n"
 			}
 		],
-		"error": "The service is receiving too many requests from you"
+		"error": "The service is receiving too many requests from you",
+		"errorDetail": {
+			"description": "429 - {}",
+			"httpCode": "429"
+		}
 	},
 	"googleCalendar failed request 429": {
 		"requests": [
@@ -8294,7 +10846,11 @@
 				"userAgent": "n8n"
 			}
 		],
-		"error": "The service is receiving too many requests from you"
+		"error": "The service is receiving too many requests from you",
+		"errorDetail": {
+			"description": "The request is not valid.",
+			"httpCode": "429"
+		}
 	},
 	"microsoftOutlook failed request 429": {
 		"requests": [
@@ -8315,7 +10871,11 @@
 				"userAgent": "n8n"
 			}
 		],
-		"error": "The service is receiving too many requests from you"
+		"error": "The service is receiving too many requests from you",
+		"errorDetail": {
+			"description": "The request is not valid.",
+			"httpCode": "429"
+		}
 	},
 	"googleSheets failed request 500": {
 		"requests": [
@@ -8356,7 +10916,11 @@
 				"userAgent": "n8n"
 			}
 		],
-		"error": "The service was not able to process your request"
+		"error": "The service was not able to process your request",
+		"errorDetail": {
+			"description": "The request is not valid.",
+			"httpCode": "500"
+		}
 	},
 	"googleSheets failed sheet lookup 500": {
 		"requests": [
@@ -8379,7 +10943,11 @@
 				"userAgent": "n8n"
 			}
 		],
-		"error": "The service was not able to process your request"
+		"error": "The service was not able to process your request",
+		"errorDetail": {
+			"description": "500 - {}",
+			"httpCode": "500"
+		}
 	},
 	"googleCalendar failed request 500": {
 		"requests": [
@@ -8400,7 +10968,11 @@
 				"userAgent": "n8n"
 			}
 		],
-		"error": "The service was not able to process your request"
+		"error": "The service was not able to process your request",
+		"errorDetail": {
+			"description": "The request is not valid.",
+			"httpCode": "500"
+		}
 	},
 	"microsoftOutlook failed request 500": {
 		"requests": [
@@ -8421,7 +10993,11 @@
 				"userAgent": "n8n"
 			}
 		],
-		"error": "The service was not able to process your request"
+		"error": "The service was not able to process your request",
+		"errorDetail": {
+			"description": "The request is not valid.",
+			"httpCode": "500"
+		}
 	},
 	"microsoftOutlook failed request 400 with the message of Microsoft Graph": {
 		"requests": [
@@ -8442,7 +11018,11 @@
 				"userAgent": "n8n"
 			}
 		],
-		"error": "The request is not valid."
+		"error": "The request is not valid.",
+		"errorDetail": {
+			"description": "",
+			"httpCode": "400"
+		}
 	},
 	"microsoftOutlook failed send 403": {
 		"requests": [
@@ -8479,7 +11059,11 @@
 				"userAgent": "n8n"
 			}
 		],
-		"error": "Forbidden - perhaps check your credentials?"
+		"error": "Forbidden - perhaps check your credentials?",
+		"errorDetail": {
+			"description": "The request is not valid.",
+			"httpCode": "403"
+		}
 	},
 	"microsoftTeams channel.create": {
 		"requests": [
@@ -8549,8 +11133,12 @@
 	},
 	"microsoftTeams channel.create team id that is not a GUID": {
 		"requests": [],
-		"accepts": [],
-		"error": "ERROR: Team parameter's value is invalid. This is likely because the URL entered is incorrect"
+		"wire": [],
+		"error": "ERROR: Team parameter's value is invalid. This is likely because the URL entered is incorrect",
+		"errorDetail": {
+			"description": null,
+			"httpCode": null
+		}
 	},
 	"microsoftTeams channel.create team id with text after the GUID": {
 		"requests": [
@@ -8605,8 +11193,18 @@
 				"qsFormat": "brackets"
 			}
 		],
-		"accepts": ["application/json"],
-		"error": "The channel you are trying to delete doesn't exist"
+		"wire": [
+			{
+				"accept": "application/json",
+				"contentType": "application/json",
+				"userAgent": "n8n"
+			}
+		],
+		"error": "The channel you are trying to delete doesn't exist",
+		"errorDetail": {
+			"description": "Check that the 'Channel' parameter is correctly set",
+			"httpCode": null
+		}
 	},
 	"microsoftTeams channel.get": {
 		"requests": [
@@ -8640,18 +11238,36 @@
 				"qsFormat": "brackets"
 			}
 		],
-		"accepts": ["application/json"],
-		"error": "The channel you are trying to get doesn't exist"
+		"wire": [
+			{
+				"accept": "application/json",
+				"contentType": "application/json",
+				"userAgent": "n8n"
+			}
+		],
+		"error": "The channel you are trying to get doesn't exist",
+		"errorDetail": {
+			"description": "Check that the 'Channel' parameter is correctly set",
+			"httpCode": null
+		}
 	},
 	"microsoftTeams channel.get channel id with a slash": {
 		"requests": [],
-		"accepts": [],
-		"error": "The ID is not valid"
+		"wire": [],
+		"error": "The ID is not valid",
+		"errorDetail": {
+			"description": "Remove any slashes, backslashes, question marks or hashes, and make sure the ID is not double-encoded.",
+			"httpCode": null
+		}
 	},
 	"microsoftTeams channel.get empty channel id": {
 		"requests": [],
-		"accepts": [],
-		"error": "A required ID is empty"
+		"wire": [],
+		"error": "A required ID is empty",
+		"errorDetail": {
+			"description": "Set the chat, team, channel, plan, bucket, task, meeting, user or member ID and try again.",
+			"httpCode": null
+		}
 	},
 	"microsoftTeams channel.getAll with a limit": {
 		"requests": [
@@ -8720,8 +11336,18 @@
 				"qsFormat": "brackets"
 			}
 		],
-		"accepts": ["application/json"],
-		"error": "Refusing to send credentials to an unexpected host"
+		"wire": [
+			{
+				"accept": "application/json",
+				"contentType": "application/json",
+				"userAgent": "n8n"
+			}
+		],
+		"error": "Refusing to send credentials to an unexpected host",
+		"errorDetail": {
+			"description": null,
+			"httpCode": null
+		}
 	},
 	"microsoftTeams channel.update": {
 		"requests": [
@@ -9043,8 +11669,18 @@
 				"qsFormat": "brackets"
 			}
 		],
-		"accepts": ["application/json"],
-		"error": "The chat you are trying to get doesn't exist"
+		"wire": [
+			{
+				"accept": "application/json",
+				"contentType": "application/json",
+				"userAgent": "n8n"
+			}
+		],
+		"error": "The chat you are trying to get doesn't exist",
+		"errorDetail": {
+			"description": "Select the chat from the list, or check that the chat ID is correct and that you are a member of the chat",
+			"httpCode": null
+		}
 	},
 	"microsoftTeams chat.getAll with a limit": {
 		"requests": [
@@ -9243,8 +11879,18 @@
 				"qsFormat": "brackets"
 			}
 		],
-		"accepts": ["application/json"],
-		"error": "The message you are trying to get doesn't exist"
+		"wire": [
+			{
+				"accept": "application/json",
+				"contentType": "application/json",
+				"userAgent": "n8n"
+			}
+		],
+		"error": "The message you are trying to get doesn't exist",
+		"errorDetail": {
+			"description": "Check that the 'Message ID' parameter is correctly set",
+			"httpCode": null
+		}
 	},
 	"microsoftTeams chatMessage.getAll with a limit": {
 		"requests": [
@@ -9512,8 +12158,18 @@
 				"qsFormat": "brackets"
 			}
 		],
-		"accepts": ["application/json"],
-		"error": "The service was not able to process your request"
+		"wire": [
+			{
+				"accept": "application/json",
+				"contentType": "application/json",
+				"userAgent": "n8n"
+			}
+		],
+		"error": "The service was not able to process your request",
+		"errorDetail": {
+			"description": "500 - {}",
+			"httpCode": "500"
+		}
 	},
 	"microsoftTeams task.get status 404": {
 		"requests": [
@@ -9527,8 +12183,18 @@
 				"qsFormat": "brackets"
 			}
 		],
-		"accepts": ["application/json"],
-		"error": "The resource you are requesting could not be found"
+		"wire": [
+			{
+				"accept": "application/json",
+				"contentType": "application/json",
+				"userAgent": "n8n"
+			}
+		],
+		"error": "No task",
+		"errorDetail": {
+			"description": null,
+			"httpCode": "404"
+		}
 	},
 	"microsoftTeams task.create status 400": {
 		"requests": [
@@ -9547,8 +12213,18 @@
 				"qsFormat": "brackets"
 			}
 		],
-		"accepts": ["application/json"],
-		"error": "Bad request - please check your parameters"
+		"wire": [
+			{
+				"accept": "application/json",
+				"contentType": "application/json",
+				"userAgent": "n8n"
+			}
+		],
+		"error": "Bad request - please check your parameters",
+		"errorDetail": {
+			"description": "bad",
+			"httpCode": "400"
+		}
 	},
 	"microsoftTeams chatMember.remove status 403": {
 		"requests": [
@@ -9562,8 +12238,18 @@
 				"qsFormat": "brackets"
 			}
 		],
-		"accepts": ["application/json"],
-		"error": "Forbidden - perhaps check your credentials?"
+		"wire": [
+			{
+				"accept": "application/json",
+				"contentType": "application/json",
+				"userAgent": "n8n"
+			}
+		],
+		"error": "Forbidden - perhaps check your credentials?",
+		"errorDetail": {
+			"description": "Microsoft refuses this call on a one-on-one chat and when removing the last owner.",
+			"httpCode": null
+		}
 	},
 	"microsoftTeams chat.getAll status 429 on the second page": {
 		"requests": [
@@ -9590,8 +12276,23 @@
 				"qsFormat": "brackets"
 			}
 		],
-		"accepts": ["application/json", "application/json"],
-		"error": "The service is receiving too many requests from you"
+		"wire": [
+			{
+				"accept": "application/json",
+				"contentType": "application/json",
+				"userAgent": "n8n"
+			},
+			{
+				"accept": "application/json",
+				"contentType": "application/json",
+				"userAgent": "n8n"
+			}
+		],
+		"error": "The service is receiving too many requests from you",
+		"errorDetail": {
+			"description": "429 - {}",
+			"httpCode": "429"
+		}
 	},
 	"microsoftTeams channel.update status 418": {
 		"requests": [
@@ -9608,8 +12309,18 @@
 				"qsFormat": "brackets"
 			}
 		],
-		"accepts": ["application/json"],
-		"error": "Your request is invalid or could not be processed by the service"
+		"wire": [
+			{
+				"accept": "application/json",
+				"contentType": "application/json",
+				"userAgent": "n8n"
+			}
+		],
+		"error": "Your request is invalid or could not be processed by the service",
+		"errorDetail": {
+			"description": "418 - {}",
+			"httpCode": "418"
+		}
 	},
 	"microsoftTeams task.get status 501": {
 		"requests": [
@@ -9623,23 +12334,45 @@
 				"qsFormat": "brackets"
 			}
 		],
-		"accepts": ["application/json"],
-		"error": "The service failed to process your request"
+		"wire": [
+			{
+				"accept": "application/json",
+				"contentType": "application/json",
+				"userAgent": "n8n"
+			}
+		],
+		"error": "The service failed to process your request",
+		"errorDetail": {
+			"description": "501 - {}",
+			"httpCode": "501"
+		}
 	},
 	"microsoftTeams task.get id of dots": {
 		"requests": [],
-		"accepts": [],
-		"error": "The ID is not valid"
+		"wire": [],
+		"error": "The ID is not valid",
+		"errorDetail": {
+			"description": "An ID cannot consist only of dots.",
+			"httpCode": null
+		}
 	},
 	"microsoftTeams task.get id with a bad percent code": {
 		"requests": [],
-		"accepts": [],
-		"error": "The ID is not valid"
+		"wire": [],
+		"error": "The ID is not valid",
+		"errorDetail": {
+			"description": "The ID contains a malformed percent-encoding. Copy it again and try again.",
+			"httpCode": null
+		}
 	},
 	"microsoftTeams task.get id that decodes to a percent sign": {
 		"requests": [],
-		"accepts": [],
-		"error": "The ID is not valid"
+		"wire": [],
+		"error": "The ID is not valid",
+		"errorDetail": {
+			"description": "Remove any slashes, backslashes, question marks or hashes, and make sure the ID is not double-encoded.",
+			"httpCode": null
+		}
 	},
 	"microsoftTeams task.get id with other letters and spaces around it": {
 		"requests": [
@@ -9797,8 +12530,12 @@
 	},
 	"openAi text.message empty prompt": {
 		"requests": [],
-		"accepts": [],
-		"error": "A non-empty prompt is required."
+		"wire": [],
+		"error": "A non-empty prompt is required.",
+		"errorDetail": {
+			"description": null,
+			"httpCode": null
+		}
 	},
 	"openAi text.message custom header": {
 		"requests": [
@@ -9970,8 +12707,18 @@
 				"qsFormat": "brackets"
 			}
 		],
-		"accepts": ["application/json"],
-		"error": "Bad request - please check your parameters"
+		"wire": [
+			{
+				"accept": "application/json",
+				"contentType": "application/json",
+				"userAgent": "n8n"
+			}
+		],
+		"error": "Bad request - please check your parameters",
+		"errorDetail": {
+			"description": "bad thing",
+			"httpCode": "400"
+		}
 	},
 	"openAi text.response status 400": {
 		"requests": [
@@ -10002,8 +12749,18 @@
 				"qsFormat": "brackets"
 			}
 		],
-		"accepts": ["application/json"],
-		"error": "Bad request - please check your parameters"
+		"wire": [
+			{
+				"accept": "application/json",
+				"contentType": "application/json",
+				"userAgent": "n8n"
+			}
+		],
+		"error": "Bad request - please check your parameters",
+		"errorDetail": {
+			"description": "bad thing",
+			"httpCode": "400"
+		}
 	},
 	"openAi text.message status 401": {
 		"requests": [
@@ -10026,8 +12783,18 @@
 				"qsFormat": "brackets"
 			}
 		],
-		"accepts": ["application/json"],
-		"error": "Authorization failed - please check your credentials"
+		"wire": [
+			{
+				"accept": "application/json",
+				"contentType": "application/json",
+				"userAgent": "n8n"
+			}
+		],
+		"error": "Authorization failed - please check your credentials",
+		"errorDetail": {
+			"description": "bad thing",
+			"httpCode": "401"
+		}
 	},
 	"openAi text.response status 401": {
 		"requests": [
@@ -10058,8 +12825,18 @@
 				"qsFormat": "brackets"
 			}
 		],
-		"accepts": ["application/json"],
-		"error": "Authorization failed - please check your credentials"
+		"wire": [
+			{
+				"accept": "application/json",
+				"contentType": "application/json",
+				"userAgent": "n8n"
+			}
+		],
+		"error": "Authorization failed - please check your credentials",
+		"errorDetail": {
+			"description": "bad thing",
+			"httpCode": "401"
+		}
 	},
 	"openAi text.message status 404": {
 		"requests": [
@@ -10082,8 +12859,18 @@
 				"qsFormat": "brackets"
 			}
 		],
-		"accepts": ["application/json"],
-		"error": "The resource you are requesting could not be found"
+		"wire": [
+			{
+				"accept": "application/json",
+				"contentType": "application/json",
+				"userAgent": "n8n"
+			}
+		],
+		"error": "The resource you are requesting could not be found",
+		"errorDetail": {
+			"description": "bad thing",
+			"httpCode": "404"
+		}
 	},
 	"openAi text.response status 404": {
 		"requests": [
@@ -10114,8 +12901,18 @@
 				"qsFormat": "brackets"
 			}
 		],
-		"accepts": ["application/json"],
-		"error": "The resource you are requesting could not be found"
+		"wire": [
+			{
+				"accept": "application/json",
+				"contentType": "application/json",
+				"userAgent": "n8n"
+			}
+		],
+		"error": "The resource you are requesting could not be found",
+		"errorDetail": {
+			"description": "bad thing",
+			"httpCode": "404"
+		}
 	},
 	"openAi text.message status 418": {
 		"requests": [
@@ -10138,8 +12935,18 @@
 				"qsFormat": "brackets"
 			}
 		],
-		"accepts": ["application/json"],
-		"error": "Your request is invalid or could not be processed by the service"
+		"wire": [
+			{
+				"accept": "application/json",
+				"contentType": "application/json",
+				"userAgent": "n8n"
+			}
+		],
+		"error": "Your request is invalid or could not be processed by the service",
+		"errorDetail": {
+			"description": "bad thing",
+			"httpCode": "418"
+		}
 	},
 	"openAi text.response status 418": {
 		"requests": [
@@ -10170,8 +12977,18 @@
 				"qsFormat": "brackets"
 			}
 		],
-		"accepts": ["application/json"],
-		"error": "Your request is invalid or could not be processed by the service"
+		"wire": [
+			{
+				"accept": "application/json",
+				"contentType": "application/json",
+				"userAgent": "n8n"
+			}
+		],
+		"error": "Your request is invalid or could not be processed by the service",
+		"errorDetail": {
+			"description": "bad thing",
+			"httpCode": "418"
+		}
 	},
 	"openAi text.message status 429": {
 		"requests": [
@@ -10194,8 +13011,18 @@
 				"qsFormat": "brackets"
 			}
 		],
-		"accepts": ["application/json"],
-		"error": "The service is receiving too many requests from you"
+		"wire": [
+			{
+				"accept": "application/json",
+				"contentType": "application/json",
+				"userAgent": "n8n"
+			}
+		],
+		"error": "The service is receiving too many requests from you",
+		"errorDetail": {
+			"description": "bad thing",
+			"httpCode": "429"
+		}
 	},
 	"openAi text.response status 429": {
 		"requests": [
@@ -10226,8 +13053,18 @@
 				"qsFormat": "brackets"
 			}
 		],
-		"accepts": ["application/json"],
-		"error": "The service is receiving too many requests from you"
+		"wire": [
+			{
+				"accept": "application/json",
+				"contentType": "application/json",
+				"userAgent": "n8n"
+			}
+		],
+		"error": "The service is receiving too many requests from you",
+		"errorDetail": {
+			"description": "bad thing",
+			"httpCode": "429"
+		}
 	},
 	"openAi text.message status 500": {
 		"requests": [
@@ -10250,8 +13087,18 @@
 				"qsFormat": "brackets"
 			}
 		],
-		"accepts": ["application/json"],
-		"error": "The service was not able to process your request"
+		"wire": [
+			{
+				"accept": "application/json",
+				"contentType": "application/json",
+				"userAgent": "n8n"
+			}
+		],
+		"error": "The service was not able to process your request",
+		"errorDetail": {
+			"description": "bad thing",
+			"httpCode": "500"
+		}
 	},
 	"openAi text.response status 500": {
 		"requests": [
@@ -10282,8 +13129,18 @@
 				"qsFormat": "brackets"
 			}
 		],
-		"accepts": ["application/json"],
-		"error": "The service was not able to process your request"
+		"wire": [
+			{
+				"accept": "application/json",
+				"contentType": "application/json",
+				"userAgent": "n8n"
+			}
+		],
+		"error": "The service was not able to process your request",
+		"errorDetail": {
+			"description": "bad thing",
+			"httpCode": "500"
+		}
 	},
 	"openAi text.message status 503": {
 		"requests": [
@@ -10306,8 +13163,18 @@
 				"qsFormat": "brackets"
 			}
 		],
-		"accepts": ["application/json"],
-		"error": "Service unavailable - try again later or consider setting this node to retry automatically (in the node settings)"
+		"wire": [
+			{
+				"accept": "application/json",
+				"contentType": "application/json",
+				"userAgent": "n8n"
+			}
+		],
+		"error": "Service unavailable - try again later or consider setting this node to retry automatically (in the node settings)",
+		"errorDetail": {
+			"description": "bad thing",
+			"httpCode": "503"
+		}
 	},
 	"openAi text.response status 503": {
 		"requests": [
@@ -10338,8 +13205,18 @@
 				"qsFormat": "brackets"
 			}
 		],
-		"accepts": ["application/json"],
-		"error": "Service unavailable - try again later or consider setting this node to retry automatically (in the node settings)"
+		"wire": [
+			{
+				"accept": "application/json",
+				"contentType": "application/json",
+				"userAgent": "n8n"
+			}
+		],
+		"error": "Service unavailable - try again later or consider setting this node to retry automatically (in the node settings)",
+		"errorDetail": {
+			"description": "bad thing",
+			"httpCode": "503"
+		}
 	},
 	"openAi text.message status 599": {
 		"requests": [
@@ -10362,8 +13239,18 @@
 				"qsFormat": "brackets"
 			}
 		],
-		"accepts": ["application/json"],
-		"error": "The service failed to process your request"
+		"wire": [
+			{
+				"accept": "application/json",
+				"contentType": "application/json",
+				"userAgent": "n8n"
+			}
+		],
+		"error": "The service failed to process your request",
+		"errorDetail": {
+			"description": "bad thing",
+			"httpCode": "599"
+		}
 	},
 	"openAi text.response status 599": {
 		"requests": [
@@ -10394,8 +13281,18 @@
 				"qsFormat": "brackets"
 			}
 		],
-		"accepts": ["application/json"],
-		"error": "The service failed to process your request"
+		"wire": [
+			{
+				"accept": "application/json",
+				"contentType": "application/json",
+				"userAgent": "n8n"
+			}
+		],
+		"error": "The service failed to process your request",
+		"errorDetail": {
+			"description": "bad thing",
+			"httpCode": "599"
+		}
 	},
 	"anthropic text.message defaults": {
 		"requests": [
@@ -11048,7 +13945,11 @@
 	"anthropic text.message empty prompt": {
 		"requests": [],
 		"wire": [],
-		"error": "A non-empty prompt is required."
+		"error": "A non-empty prompt is required.",
+		"errorDetail": {
+			"description": null,
+			"httpCode": null
+		}
 	},
 	"anthropic text.message status 400": {
 		"requests": [
@@ -11081,7 +13982,11 @@
 				"userAgent": "n8n"
 			}
 		],
-		"error": "Bad request - please check your parameters"
+		"error": "Bad request - please check your parameters",
+		"errorDetail": {
+			"description": "bad thing",
+			"httpCode": null
+		}
 	},
 	"anthropic text.message status 401": {
 		"requests": [
@@ -11140,7 +14045,11 @@
 				"userAgent": "n8n"
 			}
 		],
-		"error": "Authorization failed - please check your credentials"
+		"error": "Authorization failed - please check your credentials",
+		"errorDetail": {
+			"description": "bad thing",
+			"httpCode": null
+		}
 	},
 	"anthropic text.message status 404": {
 		"requests": [
@@ -11173,7 +14082,11 @@
 				"userAgent": "n8n"
 			}
 		],
-		"error": "The resource you are requesting could not be found"
+		"error": "The resource you are requesting could not be found",
+		"errorDetail": {
+			"description": "bad thing",
+			"httpCode": null
+		}
 	},
 	"anthropic text.message status 418": {
 		"requests": [
@@ -11206,7 +14119,11 @@
 				"userAgent": "n8n"
 			}
 		],
-		"error": "Your request is invalid or could not be processed by the service"
+		"error": "Your request is invalid or could not be processed by the service",
+		"errorDetail": {
+			"description": "bad thing",
+			"httpCode": null
+		}
 	},
 	"anthropic text.message status 429": {
 		"requests": [
@@ -11239,7 +14156,11 @@
 				"userAgent": "n8n"
 			}
 		],
-		"error": "The service is receiving too many requests from you"
+		"error": "The service is receiving too many requests from you",
+		"errorDetail": {
+			"description": "bad thing",
+			"httpCode": null
+		}
 	},
 	"anthropic text.message status 500": {
 		"requests": [
@@ -11272,7 +14193,11 @@
 				"userAgent": "n8n"
 			}
 		],
-		"error": "The service was not able to process your request"
+		"error": "The service was not able to process your request",
+		"errorDetail": {
+			"description": "bad thing",
+			"httpCode": null
+		}
 	},
 	"anthropic text.message status 503": {
 		"requests": [
@@ -11305,7 +14230,11 @@
 				"userAgent": "n8n"
 			}
 		],
-		"error": "Service unavailable - try again later or consider setting this node to retry automatically (in the node settings)"
+		"error": "Service unavailable - try again later or consider setting this node to retry automatically (in the node settings)",
+		"errorDetail": {
+			"description": "bad thing",
+			"httpCode": null
+		}
 	},
 	"anthropic text.message status 599": {
 		"requests": [
@@ -11338,7 +14267,11 @@
 				"userAgent": "n8n"
 			}
 		],
-		"error": "The service failed to process your request"
+		"error": "The service failed to process your request",
+		"errorDetail": {
+			"description": "bad thing",
+			"httpCode": null
+		}
 	},
 	"googleGemini text.message defaults": {
 		"requests": [
@@ -11752,8 +14685,18 @@
 				}
 			}
 		],
-		"accepts": ["application/json"],
-		"error": "Google returned a different model"
+		"wire": [
+			{
+				"accept": "application/json",
+				"contentType": "application/json",
+				"userAgent": "n8n"
+			}
+		],
+		"error": "Google returned a different model",
+		"errorDetail": {
+			"description": "Requested \"models/gemma-3-27b-it\", but Google returned \"gemini-2.5-flash\". Check that the selected model is available for your API key.",
+			"httpCode": null
+		}
 	},
 	"googleGemini text.message answer without candidates": {
 		"requests": [
@@ -11780,13 +14723,27 @@
 				}
 			}
 		],
-		"accepts": ["application/json"],
-		"error": "Cannot read properties of undefined (reading 'flatMap')"
+		"wire": [
+			{
+				"accept": "application/json",
+				"contentType": "application/json",
+				"userAgent": "n8n"
+			}
+		],
+		"error": "Cannot read properties of undefined (reading 'flatMap')",
+		"errorDetail": {
+			"description": null,
+			"httpCode": null
+		}
 	},
 	"googleGemini text.message empty prompt": {
 		"requests": [],
-		"accepts": [],
-		"error": "A non-empty prompt is required."
+		"wire": [],
+		"error": "A non-empty prompt is required.",
+		"errorDetail": {
+			"description": null,
+			"httpCode": null
+		}
 	},
 	"googleGemini text.message status 401, then answer": {
 		"requests": [
@@ -11835,7 +14792,18 @@
 				}
 			}
 		],
-		"accepts": ["application/json", "application/json"],
+		"wire": [
+			{
+				"accept": "application/json",
+				"contentType": "application/json",
+				"userAgent": "n8n"
+			},
+			{
+				"accept": "application/json",
+				"contentType": "application/json",
+				"userAgent": "n8n"
+			}
+		],
 		"output": [
 			{
 				"content": {
@@ -11876,8 +14844,18 @@
 				}
 			}
 		],
-		"accepts": ["application/json"],
-		"error": "Bad request - please check your parameters"
+		"wire": [
+			{
+				"accept": "application/json",
+				"contentType": "application/json",
+				"userAgent": "n8n"
+			}
+		],
+		"error": "Bad request - please check your parameters",
+		"errorDetail": {
+			"description": "bad thing",
+			"httpCode": null
+		}
 	},
 	"googleGemini text.message status 401": {
 		"requests": [
@@ -11926,8 +14904,23 @@
 				}
 			}
 		],
-		"accepts": ["application/json", "application/json"],
-		"error": "Authorization failed - please check your credentials"
+		"wire": [
+			{
+				"accept": "application/json",
+				"contentType": "application/json",
+				"userAgent": "n8n"
+			},
+			{
+				"accept": "application/json",
+				"contentType": "application/json",
+				"userAgent": "n8n"
+			}
+		],
+		"error": "Authorization failed - please check your credentials",
+		"errorDetail": {
+			"description": "bad thing",
+			"httpCode": null
+		}
 	},
 	"googleGemini text.message status 404": {
 		"requests": [
@@ -11954,8 +14947,18 @@
 				}
 			}
 		],
-		"accepts": ["application/json"],
-		"error": "The resource you are requesting could not be found"
+		"wire": [
+			{
+				"accept": "application/json",
+				"contentType": "application/json",
+				"userAgent": "n8n"
+			}
+		],
+		"error": "The resource you are requesting could not be found",
+		"errorDetail": {
+			"description": "bad thing",
+			"httpCode": null
+		}
 	},
 	"googleGemini text.message status 418": {
 		"requests": [
@@ -11982,8 +14985,18 @@
 				}
 			}
 		],
-		"accepts": ["application/json"],
-		"error": "Your request is invalid or could not be processed by the service"
+		"wire": [
+			{
+				"accept": "application/json",
+				"contentType": "application/json",
+				"userAgent": "n8n"
+			}
+		],
+		"error": "Your request is invalid or could not be processed by the service",
+		"errorDetail": {
+			"description": "bad thing",
+			"httpCode": null
+		}
 	},
 	"googleGemini text.message status 429": {
 		"requests": [
@@ -12010,8 +15023,18 @@
 				}
 			}
 		],
-		"accepts": ["application/json"],
-		"error": "The service is receiving too many requests from you"
+		"wire": [
+			{
+				"accept": "application/json",
+				"contentType": "application/json",
+				"userAgent": "n8n"
+			}
+		],
+		"error": "The service is receiving too many requests from you",
+		"errorDetail": {
+			"description": "bad thing",
+			"httpCode": null
+		}
 	},
 	"googleGemini text.message status 500": {
 		"requests": [
@@ -12038,8 +15061,18 @@
 				}
 			}
 		],
-		"accepts": ["application/json"],
-		"error": "The service was not able to process your request"
+		"wire": [
+			{
+				"accept": "application/json",
+				"contentType": "application/json",
+				"userAgent": "n8n"
+			}
+		],
+		"error": "The service was not able to process your request",
+		"errorDetail": {
+			"description": "bad thing",
+			"httpCode": null
+		}
 	},
 	"googleGemini text.message status 503": {
 		"requests": [
@@ -12066,8 +15099,18 @@
 				}
 			}
 		],
-		"accepts": ["application/json"],
-		"error": "Service unavailable - try again later or consider setting this node to retry automatically (in the node settings)"
+		"wire": [
+			{
+				"accept": "application/json",
+				"contentType": "application/json",
+				"userAgent": "n8n"
+			}
+		],
+		"error": "Service unavailable - try again later or consider setting this node to retry automatically (in the node settings)",
+		"errorDetail": {
+			"description": "bad thing",
+			"httpCode": null
+		}
 	},
 	"googleGemini text.message status 599": {
 		"requests": [
@@ -12094,8 +15137,18 @@
 				}
 			}
 		],
-		"accepts": ["application/json"],
-		"error": "The service failed to process your request"
+		"wire": [
+			{
+				"accept": "application/json",
+				"contentType": "application/json",
+				"userAgent": "n8n"
+			}
+		],
+		"error": "The service failed to process your request",
+		"errorDetail": {
+			"description": "bad thing",
+			"httpCode": null
+		}
 	},
 	"googleGemini text.message stop, wrong option type": {
 		"requests": [

@@ -421,7 +421,7 @@ describe('node compiler: binary data of a response', () => {
 			[{ status: 404, headers: {}, body: { message: 'gone' } }],
 		);
 		expect(out.status).toBe('error');
-		expect(JSON.stringify(out.result)).toContain('Request failed with status code 404');
+		expect(JSON.stringify(out.result)).toContain('"statusCode":404');
 	});
 
 	it.each([

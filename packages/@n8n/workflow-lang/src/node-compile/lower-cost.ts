@@ -458,9 +458,7 @@ function requestForm(name: string, has: (key: RequestKey) => boolean, flags: Req
 		${members.join(',\n\t\t')},
 	});
 	if (response.status >= 400${flags.lenient === '' ? '' : ` && !(${flags.lenient})`}) {
-		const failure = new Error('Request failed with status code ' + response.status);
-		failure.response = { status: response.status, data: response.body, headers: response.headers };
-		failure.statusCode = response.status;
+		const failure = __httpFailure(response, ${flags.legacy}, (${json}) === true);
 		throw ${flags.wrapped === 'true' ? '__apiError(failure, undefined)' : 'failure'};
 	}
 	return ${flags.full === '' ? '' : `${flags.full} ? { body: response.body, headers: response.headers, statusCode: response.status } : `}response.body;

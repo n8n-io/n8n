@@ -14,7 +14,7 @@
  * the fallback host. OAuth2 only (`triggerOAuth2`); sheets in mode `url` run
  * in the host.
  */
-import { defineNode, type Item } from '@n8n/workflow-lang';
+import { apiError, defineNode, type Item } from '@n8n/workflow-lang';
 
 interface Locator {
 	mode?: string;
@@ -140,7 +140,7 @@ export default defineNode<SheetsTriggerParameters>({
 				body: undefined,
 				credential,
 			});
-			if (response.status >= 400) throw new Error(`Google Sheets: HTTP status ${response.status}`);
+			if (response.status >= 400) throw apiError(response, { helper: 'legacy' });
 			return response.body;
 		};
 

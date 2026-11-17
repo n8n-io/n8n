@@ -18,7 +18,7 @@
  * error where this port says nothing. The time budget of a poll is 5 minutes
  * of the batch clock (`getPollBudgetMs` outside the durable scheduler).
  */
-import { defineNode, type Item } from '@n8n/workflow-lang';
+import { apiError, defineNode, type Item } from '@n8n/workflow-lang';
 
 interface TriggerFilters {
 	includeSpamTrash?: boolean;
@@ -174,7 +174,7 @@ export default defineNode<GmailTriggerParameters>({
 				body: undefined,
 				credential,
 			});
-			if (response.status >= 400) throw new Error(`Gmail: HTTP status ${response.status}`);
+			if (response.status >= 400) throw apiError(response, { helper: 'legacy' });
 			return response.body;
 		};
 

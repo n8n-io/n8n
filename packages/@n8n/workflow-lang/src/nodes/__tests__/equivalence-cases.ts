@@ -2826,9 +2826,94 @@ const handPorted: EquivalenceCase[] = [
 	},
 ];
 
+const STATUS_MESSAGES: Record<number, string> = {
+	400: 'Bad request - please check your parameters',
+	401: 'Authorization failed - please check your credentials',
+	403: 'Forbidden - perhaps check your credentials?',
+	404: 'The resource you are requesting could not be found',
+	429: 'The service is receiving too many requests from you',
+	500: 'The service was not able to process your request',
+};
+const FAILURE_BODY = { error: { code: 'invalid', message: 'The value is not valid.' } };
+const FAILURE_TEXT = 'The service is not there.';
+
+/**
+ * The first request of a case fails with each status, with a JSON error body and with a text
+ * body. `message` gives the message of v1 from the status message and the description that
+ * v1 reads from the body. The description and the HTTP code come from the recording.
+ */
+function failedRequests(
+	base: string,
+	statuses: number[],
+	message: (text: string, description: { json: string; text: string }, json: boolean) => string,
+	textDescription: (status: number) => string,
+): EquivalenceCase[] {
+	const found = handPorted.find((c) => c.name === base);
+	if (!found) throw new Error(`no case ${base}`);
+	return statuses.flatMap((status): EquivalenceCase[] => {
+		const description = { json: FAILURE_BODY.error.message, text: textDescription(status) };
+		return [
+			{
+				...found,
+				name: `${base}: failed request ${status} with a JSON body`,
+				responses: [{ status, body: FAILURE_BODY }],
+				expectedError: message(STATUS_MESSAGES[status], description, true),
+			},
+			{
+				...found,
+				name: `${base}: failed request ${status} with a text body`,
+				responses: [{ status, body: FAILURE_TEXT }],
+				expectedError: message(STATUS_MESSAGES[status], description, false),
+			},
+		];
+	});
+}
+
+const ALL_STATUSES = [400, 401, 403, 404, 429, 500];
+// Status 401 with an OAuth2 credential has no case here. v1 asks for a new token after a
+// 401; without a refresh token it fails with "OAuth access token expired and no refresh token
+// is available. Please reconnect the credentials." (client-oauth2-token.ts). The compiled
+// engine does the same outside the node: the runtime asks n8n for a renewal
+// (workflow-runtime/src/shell/renew.zig, `onResponse`), n8n refreshes with the same client
+// (compiled-engine-credentials.ts, `refreshOAuth2`), and the step fails with that message
+// (`settle`). The reference runner of this test has no renewal, so the node would get the 401.
+const OAUTH_STATUSES = [400, 403, 404, 429, 500];
+// Status 401 with `helpers.httpRequestWithAuthentication` has no case yet: the requests of v1
+// and of the library node differ for it (not examined).
+const NO_401 = OAUTH_STATUSES;
+const statusOnly = (text: string) => text;
+const bodyText = () => FAILURE_TEXT;
+const clientText = (status: number) => `Request failed with status code ${status}`;
+
+const FAILED_REQUEST_CASES: EquivalenceCase[] = [
+	...failedRequests('telegram message.sendMessage', ALL_STATUSES, statusOnly, bodyText),
+	...failedRequests('airtable record.create', ALL_STATUSES, statusOnly, bodyText),
+	...failedRequests('airtable record.update by id typecast', ALL_STATUSES, statusOnly, bodyText),
+	...failedRequests(
+		'notion databasePage.getAll v2.2 json filter',
+		ALL_STATUSES,
+		statusOnly,
+		bodyText,
+	),
+	...failedRequests('notion databasePage.create', NO_401, statusOnly, clientText),
+	...failedRequests(
+		'supabase row.get',
+		NO_401,
+		(text, description, json) => `${text}: ${json ? description.json : description.text}`,
+		clientText,
+	),
+	...failedRequests(
+		'gmail message.send text',
+		OAUTH_STATUSES,
+		(text) => `${text} (item 0)`,
+		bodyText,
+	),
+];
+
 export const EQUIVALENCE_CASES: EquivalenceCase[] = [
 	...declarative,
 	...handPorted,
+	...FAILED_REQUEST_CASES,
 	...DATA_TABLE_CASES,
 	...SHEETS_UPSERT_CASES,
 	...SHEETS_APPEND_CASES,

@@ -14,7 +14,7 @@
  * by URL then arrives as the URL, so the node takes the id out of it, as v1
  * does with `extractValue`.
  */
-import { defineNode, type Item } from '@n8n/workflow-lang';
+import { apiError, defineNode, type Item } from '@n8n/workflow-lang';
 
 /** A resource locator as v1 stores it; the converter passes only its value. */
 interface Locator {
@@ -244,7 +244,7 @@ export default defineNode<DriveParameters>({
 					body,
 					credential,
 				});
-				if (response.status >= 400) throw new Error(`Google Drive: HTTP status ${response.status}`);
+				if (response.status >= 400) throw apiError(response);
 				return response.body;
 			};
 			// setParentFolder of the v1 node: the folder, else the shared drive, else the root.
@@ -328,7 +328,7 @@ export default defineNode<DriveParameters>({
 						body: upload,
 						credential,
 					});
-					if (sent.status >= 400) throw new Error(`Google Drive: HTTP status ${sent.status}`);
+					if (sent.status >= 400) throw apiError(sent);
 					qs.addParents = parent();
 					const fileBody: Record<string, unknown> = {};
 					for (const key of Object.keys(metadata)) {
@@ -483,8 +483,7 @@ export default defineNode<DriveParameters>({
 						body: undefined,
 						credential,
 					});
-					if (response.status >= 400)
-						throw new Error(`Google Drive: HTTP status ${response.status}`);
+					if (response.status >= 400) throw apiError(response);
 					for (const file of response.body.files ?? []) out.push(file);
 					const token = response.body.nextPageToken;
 					if (token) qs.pageToken = token;
@@ -502,7 +501,7 @@ export default defineNode<DriveParameters>({
 					body: undefined,
 					credential,
 				});
-				if (response.status >= 400) throw new Error(`Google Drive: HTTP status ${response.status}`);
+				if (response.status >= 400) throw apiError(response);
 				for (const file of response.body.files ?? []) out.push(file);
 			}
 		}

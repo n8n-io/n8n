@@ -19,7 +19,7 @@
  * Difference from v1: the simplified output builds `property_<name>` keys with
  * a snake case function that splits words like change-case for ASCII names.
  */
-import { defineNode, type Item } from '@n8n/workflow-lang';
+import { apiError, defineNode, type Item } from '@n8n/workflow-lang';
 
 const API = 'https://api.notion.com/v1';
 const VERSION_HEADERS = { 'Notion-Version': '2026-03-11' };
@@ -570,7 +570,7 @@ export default defineNode<NotionParameters>({
 					body,
 					credential,
 				});
-				if (response.status >= 400) throw new Error(`Notion: HTTP status ${response.status}`);
+				if (response.status >= 400) throw apiError(response, { helper: 'legacy' });
 				return response.body;
 			};
 			const icon = (o: NotionOptions, typed: boolean): Record<string, unknown> | undefined => {
@@ -710,7 +710,7 @@ export default defineNode<NotionParameters>({
 					body: undefined,
 					credential,
 				});
-				if (source.status >= 400) throw new Error(`Notion: HTTP status ${source.status}`);
+				if (source.status >= 400) throw apiError(source);
 				if (!isObject(source.body.properties)) {
 					throw new Error('Notion did not return data source properties');
 				}
@@ -761,7 +761,7 @@ export default defineNode<NotionParameters>({
 					body,
 					credential,
 				});
-				if (response.status >= 400) throw new Error(`Notion: HTTP status ${response.status}`);
+				if (response.status >= 400) throw apiError(response);
 				for (const page of simple ? simplifyAll([response.body]) : [response.body]) out.push(page);
 			}
 			return out;
@@ -800,7 +800,7 @@ export default defineNode<NotionParameters>({
 						body: { ...body },
 						credential,
 					});
-					if (response.status >= 400) throw new Error(`Notion: HTTP status ${response.status}`);
+					if (response.status >= 400) throw apiError(response);
 					body.start_cursor = response.body.next_cursor;
 					const results = response.body.results;
 					if (Array.isArray(results)) {

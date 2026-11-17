@@ -14,7 +14,7 @@
  * from v1: v1 removes one slash at the end of the host. This node does not,
  * so a host that ends with a slash gives a URL with two slashes.
  */
-import { defineNode, type Item } from '@n8n/workflow-lang';
+import { apiError, defineNode, type FailedResponse, type Item } from '@n8n/workflow-lang';
 
 interface Condition {
 	keyName?: unknown;
@@ -206,19 +206,13 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 }
 
 /**
- * The description of the NodeApiError of v1: the `message` of a JSON error
- * body, or its `error.message`. With "continue on fail", v1 puts it into the
- * error item of `getAll` and `update`.
+ * The error of supabaseApiRequest of the v1 node: the NodeApiError of `helpers.httpRequest`
+ * with its description after the message.
  */
-function errorText(body: unknown, status: number): string {
-	if (isRecord(body)) {
-		if (typeof body.message === 'string' && body.message) return body.message;
-		const inner = body.error;
-		if (isRecord(inner) && typeof inner.message === 'string' && inner.message) {
-			return inner.message;
-		}
-	}
-	return `Supabase: HTTP status ${status}`;
+function requestFailure(response: FailedResponse): Error {
+	const failure = apiError(response);
+	if (failure.description) failure.message = `${failure.message}: ${String(failure.description)}`;
+	return failure;
 }
 
 /** returnJsonArray of n8n: the items of an array, or one item. */
@@ -322,7 +316,7 @@ export default defineNode<SupabaseParameters>({
 				body: records,
 				credential,
 			});
-			if (response.status >= 400) throw new Error(errorText(response.body, response.status));
+			if (response.status >= 400) throw requestFailure(response);
 			return itemsOf(response.body);
 		}
 		if (resource !== 'row' || !['getAll', 'get', 'update'].includes(operation)) {
@@ -351,7 +345,7 @@ export default defineNode<SupabaseParameters>({
 				body,
 				credential,
 			});
-			if (response.status >= 400) throw new Error(errorText(response.body, response.status));
+			if (response.status >= 400) throw requestFailure(response);
 			return response.body;
 		};
 		const conditions = parameters.filters?.conditions ?? [];

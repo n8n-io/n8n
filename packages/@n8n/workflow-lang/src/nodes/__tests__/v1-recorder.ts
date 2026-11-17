@@ -32,7 +32,7 @@ import type {
 	ServiceCallRecord,
 	WireHeaders,
 } from './equivalence.ts';
-import { normalizeRequest } from './equivalence.ts';
+import { errorDetailOfResult as errorDetailOf, normalizeRequest } from './equivalence.ts';
 import { fixtureBytes } from '../../reference/binary-response.ts';
 import { installNetworkGuard } from './no-network.ts';
 import { networkErrorText } from './equivalence.ts';
@@ -479,21 +479,17 @@ function installFakeHttp(
 		headers: Record<string, string>,
 		full: boolean,
 		bytes: boolean,
+		legacy: { json: boolean } | null,
 	) => {
 		const body = bytes ? fixtureBytes(given) : given;
-		if (status >= 400) {
-			throw Object.assign(new Error(`Request failed with status code ${status}`), {
-				response: { status, data: body, headers },
-				statusCode: status,
-			});
-		}
+		if (status >= 400) throw clientFailure(status, body, headers, legacy);
 		return full ? { statusCode: status, statusMessage: 'OK', headers, body } : body;
 	};
 	const client = {
 		async request(options: AnyRecord) {
 			if (preAuthentication.active) {
 				preAuthentication.requests++;
-				return answer(200, sessionAnswer(), {}, options.returnFullResponse === true, false);
+				return answer(200, sessionAnswer(), {}, options.returnFullResponse === true, false, null);
 			}
 			recorded.push({
 				method: options.method,
@@ -518,12 +514,20 @@ function installFakeHttp(
 				r.headers ?? {},
 				options.returnFullResponse === true,
 				responseBytes && options.encoding === 'arraybuffer',
+				null,
 			);
 		},
 		async requestLegacy(options: AnyRecord) {
 			if (preAuthentication.active) {
 				preAuthentication.requests++;
-				return answer(200, sessionAnswer(), {}, options.resolveWithFullResponse === true, false);
+				return answer(
+					200,
+					sessionAnswer(),
+					{},
+					options.resolveWithFullResponse === true,
+					false,
+					null,
+				);
 			}
 			let body = options.body;
 			// As the legacy request of n8n: a form is the body only when the request has no
@@ -566,6 +570,7 @@ function installFakeHttp(
 				r.headers ?? {},
 				options.resolveWithFullResponse === true,
 				responseBytes && options.encoding === null,
+				{ json: options.json === true },
 			);
 		},
 		close() {},
@@ -574,6 +579,44 @@ function installFakeHttp(
 		requests: () => client,
 		// The model sub-nodes ask for the egress filter of the execution; the fake `fetch` answers.
 		egressFilter: () => network.passthroughEgressFilter,
+	});
+}
+
+/** The class name is what n8n-workflow reads to find the status (`constructor.name`). */
+class AxiosError extends Error {}
+
+/**
+ * The error of the HTTP client of n8n for an answer with a failure status, as the real
+ * client gave it to a local server (members that hold the request itself are left out).
+ * `helpers.httpRequest`: the message of axios, and the body in `response.data`.
+ * `helpers.request` (`legacy`): the message `<status> - <body as JSON>`, the body in
+ * `error` (the text of the body without the `json` option) and no `response.data`.
+ */
+function clientFailure(
+	status: number,
+	body: unknown,
+	headers: Record<string, string>,
+	legacy: { json: boolean } | null,
+): Error {
+	const shared = {
+		name: 'AxiosError',
+		isAxiosError: true,
+		code: status >= 500 ? 'ERR_BAD_RESPONSE' : 'ERR_BAD_REQUEST',
+		status,
+	};
+	if (legacy === null) {
+		return Object.assign(new AxiosError(`Request failed with status code ${status}`), {
+			...shared,
+			response: { status, headers, data: body },
+		});
+	}
+	const data =
+		legacy.json || typeof body === 'string' || Buffer.isBuffer(body) ? body : JSON.stringify(body);
+	return Object.assign(new AxiosError(`${status} - ${JSON.stringify(data)}`), {
+		...shared,
+		response: { status, headers },
+		statusCode: status,
+		error: data,
 	});
 }
 
@@ -896,8 +939,12 @@ async function recordInEngine(
 		outputs: workflow.deepCopy(Array.from(outputs, (list) => list ?? [])),
 		paired: workflow.deepCopy(Array.from(paired, (list) => list ?? [])),
 		...(nodePaired ? { nodePaired } : {}),
-		...(nodeError && !stopped ? { nodeError: String(nodeError.message) } : {}),
-		...(result.error && stopped ? { error: String(result.error.message) } : {}),
+		...(nodeError && !stopped
+			? { nodeError: String(nodeError.message), errorDetail: errorDetailOf(nodeError) }
+			: {}),
+		...(result.error && stopped
+			? { error: String(result.error.message), errorDetail: errorDetailOf(result.error) }
+			: {}),
 	};
 }
 
@@ -998,6 +1045,7 @@ async function recordNode(
 			wire: recorded.map((request) => request.wire ?? null),
 			...(testCase.serviceResults ? { services } : {}),
 			error: message,
+			errorDetail: errorDetailOf(error),
 		};
 	}
 }
