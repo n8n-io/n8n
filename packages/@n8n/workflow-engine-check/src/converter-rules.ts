@@ -87,6 +87,17 @@ function findSplitInBatchesReasons(node: INode): EngineV2Reason[] {
 	const reasons: EngineV2Reason[] = [];
 	const { options } = node.parameters;
 
+	// The engine runs a batch node itself, and does not apply this setting.
+	if (node.alwaysOutputData === true) {
+		reasons.push(
+			temporaryReason(
+				node,
+				'SPLIT_IN_BATCHES_NODE_SETTING',
+				'it is a Loop Over Items node with Always Output Data',
+			),
+		);
+	}
+
 	if (typeof options === 'string') {
 		reasons.push(
 			finalReason(

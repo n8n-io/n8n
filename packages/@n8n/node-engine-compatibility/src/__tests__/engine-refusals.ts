@@ -99,6 +99,12 @@ export const engineRefusals: EngineRefusal[] = [
 		check: { code: 'SPLIT_IN_BATCHES_BATCH_SIZE' },
 	},
 	{
+		name: 'a Split In Batches node has Always Output Data on',
+		workflow: fromTrigger('Loop', [{ ...splitInBatches('Loop'), alwaysOutputData: true }]),
+		engineError: 'Split In Batches node with Always Output Data',
+		check: { code: 'SPLIT_IN_BATCHES_NODE_SETTING' },
+	},
+	{
 		name: 'a Split In Batches node has a batch size below 1',
 		workflow: batchNode({ batchSize: 0 }),
 		engineError: 'must be a whole number of at least 1',

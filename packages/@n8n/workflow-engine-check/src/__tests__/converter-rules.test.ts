@@ -110,6 +110,12 @@ describe('converter rules', () => {
 			kind: 'temporary',
 		},
 		{
+			shape: 'a Split In Batches node with Always Output Data',
+			target: { ...splitInBatches({ batchSize: 10 }), alwaysOutputData: true },
+			code: 'SPLIT_IN_BATCHES_NODE_SETTING',
+			kind: 'temporary',
+		},
+		{
 			shape: 'a Split In Batches node with a batch size expression',
 			target: splitInBatches({ batchSize: '={{ 5 }}' }),
 			code: 'SPLIT_IN_BATCHES_BATCH_SIZE',

@@ -490,6 +490,28 @@ describe('V1WorkflowConverter', () => {
 			expect(convertNoOp({ executeOnce: true })).toThrow('Execute Once');
 		});
 
+		it.each<{ setting: string; extra: Partial<INode> }>([
+			{ setting: 'Always Output Data', extra: { alwaysOutputData: true } },
+			{ setting: 'Retry On Fail', extra: { retryOnFail: true } },
+		])(
+			'rejects a Split In Batches node with $setting on, which the engine runs itself',
+			({ setting, extra }) => {
+				const loop = node('loop-uuid', 'Loop', {
+					type: 'n8n-nodes-base.splitInBatches',
+					typeVersion: 3,
+					...extra,
+				});
+				expect(() =>
+					converter.convert(
+						workflow({
+							nodes: [manualTrigger, loop],
+							connections: { 'When clicking Execute': { main: [[main('Loop')]] } },
+						}),
+					),
+				).toThrow(`Split In Batches node with ${setting}`);
+			},
+		);
+
 		it('accepts a node with Execute Once explicitly off', () => {
 			expect(convertNoOp({ executeOnce: false })).not.toThrow();
 		});
