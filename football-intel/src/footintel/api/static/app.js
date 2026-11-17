@@ -83,7 +83,7 @@ const RATE = new Set(["home_win", "draw", "away_win", "over_0_5", "over_1_5", "o
   "second_half_more_goals", "ht_level_decided", "extra_time", "penalty_shootout", "draw"]);
 const isRate = (m) => RATE.has(m) || m.startsWith("score_") || m.startsWith("total_goals_");
 
-const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+const esc = (s) => (window.frNames ? window.frNames(s) : String(s ?? "")).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
 const pct = (v, d = 1) => (v == null ? "n/d" : `${(100 * v).toFixed(d)} %`);
 const num = (v, d = 2) => (v == null ? "n/d" : Number(v).toFixed(d));
 const val = (m, v) => (isRate(m) ? pct(v) : num(v));
@@ -785,7 +785,7 @@ async function performance() {
   const ev = p.e || "1X2:home";
   const scope = p.s || "all";
   let html = `<h1>Performance et fiabilité du modèle</h1>
-  <p class="muted">Backtest chronologique : chaque saison est prédite par des modèles entraînés sur les saisons antérieures. Run n° ${d.backtest_run?.id} du ${fdate(d.backtest_run?.started_at)}.</p>
+  <p class="muted">Chaque saison est prédite par des modèles entraînés seulement sur les saisons d'avant.${d.backtest_run?.id ? ` Calcul n° ${d.backtest_run.id} du ${fdate(d.backtest_run.started_at)}.` : ""}</p>
   <div class="grid two">
     <div class="card"><h2>Log loss et Brier par modèle</h2><p class="question">Quel modèle prédit le mieux ? (plus bas = meilleur)</p>
       <div class="table-wrap"><table><thead><tr><th>Modèle</th><th class="num">n</th><th class="num">Log loss</th><th class="num">Brier</th><th class="num">ECE</th><th class="num">Plus/moins 2,5</th><th class="num">BTTS</th></tr></thead><tbody>
@@ -1026,9 +1026,9 @@ function mySide(m) {
 }
 function myFlag(m) {
   const p = myPref(m);
-  const fair = (x) => `<br><span class="muted">intéressant si betPawa paie plus de <b>${odds2(1 / x)}</b></span>`;
+  const fair = (x) => `betPawa doit payer plus de <b>${odds2(1 / x)}</b>`;
   if (p && p.market === "btts" && m.p_btts != null) {
-    return `<span class="flag safe"><span class="play">À surveiller</span> · <b>les 2 équipes marquent</b> ${pct(m.p_btts, 0)}${fair(m.p_btts)}<br><span class="muted small">source : modèle</span></span>`;
+    return `<span class="flag safe"><span class="play">À surveiller</span> · <b>les 2 équipes marquent</b> ${pct(m.p_btts, 0)}<br><span class="muted">${fair(m.p_btts)}</span></span>`;
   }
   if (!m.fg) return "";
   const side = mySide(m);
@@ -1037,8 +1037,18 @@ function myFlag(m) {
   // Bookmakers' figures first when known: betPawa's price is judged against them.
   const fg = m.fg_mkt ? m.fg_mkt[side] : m.fg[side];
   const up = m.up1_mkt ? m.up1_mkt[i] : m.up1[i];
-  const src = m.fg_mkt ? "source : bookmakers" : "source : modèle";
-  return `<span class="flag safe"><span class="play">À surveiller</span> · <b>${esc(team)} marque en 1er</b> ${pct(fg, 0)}${fair(fg)}<br><span class="muted">1UP ${esc(team)} ${pct(up, 0)}, plus de ${odds2(1 / up)}</span><br><span class="muted small">${src}</span></span>`;
+  // The source is shown only when it is the bookmakers: the model is the default.
+  const src = m.fg_mkt ? ` <span class="src-tag">bookmakers</span>` : "";
+  return `<span class="flag safe"><span class="play">À surveiller</span> · <b>${esc(team)} marque en 1er</b> ${pct(fg, 0)}${src}<br><span class="muted">${fair(fg)} · ou 1UP ${esc(team)} ${pct(up, 0)} (plus de ${odds2(1 / up)})</span></span>`;
+}
+
+// One short line for the tickets that could not be built, instead of one line each.
+function missingLine(missing, nFollowed) {
+  if (!missing || !missing.length) return "";
+  const tags = missing.map((m) => m.tag);
+  const list = tags.length === 1 ? tags[0] : `${tags.slice(0, -1).join(", ")} et ${tags[tags.length - 1]}`;
+  const needs = Math.min(...missing.map((m) => m.needs));
+  return `<p class="muted small">${tags.length === 1 ? "Ticket" : "Tickets"} ${esc(list)} non ${tags.length === 1 ? "construit" : "construits"} : il faut au moins ${needs} matchs de vos équipes, il y en a ${nFollowed}.</p>`;
 }
 
 /* Tickets du jour (D69): three combos of 10 or more per match day, with every alternative
@@ -1073,7 +1083,7 @@ function ticketsView(t) {
     const all = d.matches.map((m) => fold(`<span class="muted">${time(m.kickoff_utc)}</span> ${esc(m.match)}${m.followed ? "" : ' <span class="badge">autre</span>'}${(m.scenarios || []).length ? ' <span class="badge">scénario</span>' : ""}`,
       notes(m) + altTable(m.alternatives, null), { inner: true })).join("");
     return `<section><div class="day"><h2>${esc(label.charAt(0).toUpperCase() + label.slice(1))}</h2><span>${d.tickets.length} tickets</span></div>
-      ${(d.missing || []).map((m) => `<p class="muted">Pas de ticket ${esc(m.tag)} : il faut au moins ${m.needs} matchs de vos équipes, il y en a ${d.n_followed}.</p>`).join("")}
+      ${missingLine(d.missing, d.n_followed)}
       <div class="grid">${tickets}</div>
       <div class="card" style="margin-top:var(--space-4)"><h2>Toutes les alternatives du jour</h2>
         <p class="question">Chaque match avec tous ses pronostics, du plus sûr au moins sûr après la marge de betPawa.</p>${all}</div></section>`;
@@ -1281,7 +1291,7 @@ async function today() {
     tickets = `<div class="empty"><p class="muted">Pas de ticket pour l'instant : ils sont calculés chaque matin pour les deux prochains jours de matchs.</p></div>`;
   } else {
     const when = tday.date === now ? "" : ` pour ${dayLabel(tday.date).toLowerCase()}`;
-    const missing = (tday.missing || []).map((m) => `<p class="muted">Pas de ticket ${esc(m.tag)} : il faut au moins ${m.needs} matchs de vos équipes, il y en a ${tday.n_followed}.</p>`).join("");
+    const missing = missingLine(tday.missing, tday.n_followed);
     tickets = `<p class="lead">Les combinaisons de vos équipes les plus susceptibles de passer, à une cote d'au moins 10${esc(when)}.</p>
       ${missing}<div class="grid">${tday.tickets.map(ticketCard).join("")}</div>
       <p class="more"><a class="btn ghost" href="#/tickets">Voir tous les choix possibles, match par match</a></p>`;

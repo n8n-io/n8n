@@ -11,7 +11,7 @@ a tool or a lesson must survive the session. Keep it under 150 lines.
   short sentences, few numbers. No jargon (log loss, ECE, PSI, IC, millième, calibration, edge).
   Say what happened, what it means for his bets, and what to do. One example beats a table.
 - **football-intel/**: football prediction platform (Python, FastAPI, PostgreSQL).
-  Source of truth: `football-intel/docs/DECISIONS.md` (D1–D84), `docs/RESULTS.md`,
+  Source of truth: `football-intel/docs/DECISIONS.md` (D1–D85), `docs/RESULTS.md`,
   `docs/DATA_SOURCES.md`. Active model `routed_competition`; it equals the market and
   has no measured edge (CLV −2.5 % at average price, D54).
 - **PitUp**: delivery marketplace in Lubumbashi (customers, partner shops, couriers).
@@ -74,6 +74,7 @@ newest one when the owner says "reprends où on s'est arrêtés". Project plugin
 | DannyMac180/fable-advisor (2026-11-16) | Not installed: delegates work to subagents; its own measure shows about 2.8x the cost on small tasks |
 | Braffolk/fable5-world-demo, SebLague/Path-Creator, mhgolkar/Arrow, ellisonleao/magictools, Roobyx/awesome-game-design, opencodeiiita/GamingSphere, hesreallyhim/awesome-claude-code (2026-11-16) | Not installed: game projects and link lists, not skills. 3D world demo (MIT, Three.js) distilled into threejs/references/procedural-world-lessons.md; Path-Creator is Unity; Arrow is a Godot narrative tool. GamingSphere has no licence; awesome-claude-code is CC BY-NC-ND |
 | Austin1serb/Anthropic-Leaked-Source-Code (2026-11-16) | Refused, not downloaded: leaked proprietary code. Cassie is built on the official Claude Agent SDK instead |
+| UXAspects/UXAspects, SixArm/ui-ux-design-guide, notsobigcompany/BigUIPaging (2026-11-17) | Not installed: Angular component library (our site is plain JS); a UI/UX glossary with no licence file (our design skills cover it); SwiftUI paging for iOS (only if PitUp gets a native iOS app). The site cleanup was done with our own design skills instead (D85) |
 | higgsfield-ai/higgsfield, o3de, ai-agent frameworks lists | Not relevant (GPU training framework; game engine — owner may revisit) |
 | 3641397194-wq/gpt6-Astra, claude-code-best/claude-code, asgeirtj/system_prompts_leaks | Refused: jailbreak injector with unknown relay; unauthorised reconstruction of proprietary code; leaked confidential prompts |
 

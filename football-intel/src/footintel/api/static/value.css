@@ -148,3 +148,12 @@ h1, h2, .day { font-family: var(--font); letter-spacing: -0.02em; }
   .match, .formula, .coupon, .fi-card { -webkit-backdrop-filter: none; backdrop-filter: none; }
   :root, :root[data-theme="dark"] { --surface: #12151b; --glass-bar: #0b0e13; }
   :root[data-theme="light"] { --surface: #ffffff; --glass-bar: #eaeef3; } }
+
+/* Phone: one row of competition filters that scrolls sideways, instead of five rows. */
+@media (max-width: 640px) {
+  .filters { flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; padding-bottom: 2px;
+             margin-left: -16px; margin-right: -16px; padding-left: 16px; padding-right: 16px;
+             -webkit-overflow-scrolling: touch; scroll-snap-type: x proximity; scroll-padding-inline: 16px; }
+  .filters::-webkit-scrollbar { display: none; }
+  .filters button { flex: 0 0 auto; scroll-snap-align: start; }
+}

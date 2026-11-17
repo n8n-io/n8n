@@ -518,3 +518,7 @@ h1 { font-size: 26px; letter-spacing: -0.025em; }
   :root, :root[data-theme="dark"] { --surface: #12151b; --sunk: #1b1f27; --glass-bar: #07090d; }
   :root[data-theme="light"] { --surface: #ffffff; --sunk: #f3f5f8; --glass-bar: #eaeef3; }
 }
+
+/* Small tag when a figure comes from the bookmakers (the model is the default). */
+.src-tag { display: inline-block; margin-left: 4px; padding: 0 6px; border-radius: 999px;
+           border: 1px solid var(--line); font-size: 11px; color: var(--muted); vertical-align: 1px; }
