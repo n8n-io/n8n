@@ -87,8 +87,11 @@ export type NativeAttempt =
 				allLists?: string[],
 				plainInput?: boolean,
 				files?: string,
+				made?: string,
 			) => string;
 			helpers: (plainInput?: boolean) => string[];
+			/** `Translation.preparesBinary`: the code makes binary data. */
+			preparesBinary?: boolean;
 			/** `Translation.binaryNames`: the code reads the bytes of binary data of its input. */
 			binaryNames?: string[] | 'all';
 			/**
@@ -153,6 +156,19 @@ export function attemptNative(
 		return { ok: false, blockers };
 	}
 	const t = r.translation;
+	// The node runs code that makes binary data two times (\`codePrepareBinary\`).
+	if (t.preparesBinary && !t.repeatable) {
+		return {
+			ok: false,
+			blockers: [
+				{
+					feature: 'this (this.helpers)',
+					message:
+						'`prepareBinaryData` has a native form only in code that can run two times: no random number and no static data.',
+				},
+			],
+		};
+	}
 	// The traced form of the same code gives the line of an error (\`translate.ts\`).
 	const second = translateCode({ ...src, hasNode, ...context, traced: true });
 	if (!second.ok) {
@@ -178,8 +194,15 @@ export function attemptNative(
 		nodes: t.nodes,
 		zones: [...t.zones],
 		allNodes: t.allNodes,
-		expression: (input, lists, allLists = [], plainInput = false, files = '{}') =>
-			emitExpression(t, src.mode, input, lists, allLists, plainInput, traced, files),
+		expression: (
+			input,
+			lists,
+			allLists = [],
+			plainInput = false,
+			files = '{}',
+			made = '{ plan: [] }',
+		) => emitExpression(t, src.mode, input, lists, allLists, plainInput, traced, files, made),
+		...(t.preparesBinary ? { preparesBinary: true } : {}),
 		...(t.binaryNames !== undefined ? { binaryNames: t.binaryNames } : {}),
 		helpers: (plainInput = false) => emitHelpers(t, src.mode, plainInput, traced),
 		...(t.usesHttp
@@ -340,6 +363,37 @@ export function storedFilesReader(name: string, step: string, names: string[] | 
 }
 
 /**
+ * The declaration of the async function `name` that stores the files of the plan of a Code
+ * node that makes binary data (`codePrepareBinary`), with the call `store` of the
+ * `binaryData` service: `prepareBinaryData` of n8n-core, in the binary data mode of the
+ * instance. It ends with the mark of `RUNS_IN_HOST` for each reason that the service names.
+ */
+export function plannedFilesStore(name: string, step: string): string {
+	const mark = (reason: string) =>
+		`throw new Error(${JSON.stringify(`${reason} ${RUNS_IN_HOST}`)});`;
+	return [
+		`const ${name} = async (made: Json): Promise<Json[]> => {`,
+		'\tconst entries: Json[] = [];',
+		'\tfor (const planned of made.plan) {',
+		`\t\tconst args: Json = { data: planned.data, limit: ${STORED_MAX_BYTES} };`,
+		'\t\tif (planned.fileName !== undefined) args.fileName = planned.fileName;',
+		'\t\tif (planned.mimeType !== undefined) args.mimeType = planned.mimeType;',
+		'\t\tlet answer: Json = null;',
+		'\t\ttry {',
+		`\t\t\tanswer = await ctx.service({ name: ${JSON.stringify(step)}, service: 'binaryData', op: 'store', args });`,
+		'\t\t} catch (error) {',
+		`\t\t\t${mark('The binaryData service gave no answer')}`,
+		'\t\t}',
+		"\t\tconst entry: Json = answer === null || answer === undefined || typeof answer !== 'object' ? undefined : answer.entry;",
+		`\t\tif (entry === null || entry === undefined || typeof entry !== 'object' || Array.isArray(entry)) ${mark('The binaryData service gave no binary data')}`,
+		'\t\tentries.push(entry);',
+		'\t}',
+		'\treturn entries;',
+		'};',
+	].join('\n');
+}
+
+/**
  * Writes the node as native code and returns true, or returns false (with an
  * info diagnostic) when the host step must run it. `hostForm` gives the fallback-host form of
  * the node, for code that can end with the mark of `RUNS_IN_HOST`.
@@ -403,35 +457,76 @@ export function lowerCodeNative(c: NodeContext, hostForm?: () => HostForm | null
 	for (const z of attempt.zones ?? []) c.useZone?.(z);
 	const out = c.output(0);
 	const allLists = (attempt.allNodes ?? []).map((name) => c.ranBefore(name) ?? '[]');
-	if (attempt.binaryNames !== undefined) {
+	if (attempt.binaryNames !== undefined || attempt.preparesBinary === true) {
 		// The code reads the bytes of binary data of its input: the stored files are read before
 		// the code runs, and above a size limit the fallback host runs the node.
+		// The code makes binary data: the first run of the code makes the plan of its files, the
+		// node stores them, and the second run gives the code the stored entries. An error of the
+		// first run can come from the values that it gives in place of the entries, so the
+		// fallback host runs the node then.
+		// A step name is unique: the service calls are helper steps with the name
+		// `<node> (<role>)`, so no node of the workflow can have that name.
+		const steps = { read: `${c.node.name} (read files)`, store: `${c.node.name} (store files)` };
 		const host =
 			onError === 'stopWorkflow' &&
 			c.node.retryOnFail !== true &&
 			c.services !== false &&
-			c.scope.binaryMode !== 'combined'
+			c.scope.binaryMode !== 'combined' &&
+			!c.workflow.nodes.some((n) => n.name === steps.read || n.name === steps.store)
 				? (hostForm?.() ?? null)
 				: null;
 		if (host === null) {
 			c.info(
 				'code-host',
-				'The code runs in the fallback host: it reads the bytes of binary data, which has a native form only with service calls, with the binary mode `separate`, without an error setting that continues and without "retry on fail".',
+				'The code runs in the fallback host: it reads the bytes of binary data or makes binary data, which has a native form only with service calls, with the binary mode `separate`, without an error setting that continues and without "retry on fail".',
 				field,
 			);
 			return false;
 		}
 		const read = c.local('ReadFiles');
-		const files = c.local('Files');
-		w.block(storedFilesReader(read, c.node.name, attempt.binaryNames));
+		const store = c.local('StoreFiles');
+		const files = attempt.binaryNames !== undefined ? c.local('Files') : '{}';
+		const made = c.local('Made');
+		const mark = (reason: string) =>
+			`throw new Error(${JSON.stringify(`${reason} ${RUNS_IN_HOST}`)});`;
+		if (attempt.binaryNames !== undefined) {
+			w.block(storedFilesReader(read, steps.read, attempt.binaryNames));
+		}
+		if (attempt.preparesBinary === true) w.block(plannedFilesStore(store, steps.store));
+		const run = () => attempt.expression(input, lists, allLists, plainInput, files, made);
 		emitWithHostForm(
 			c,
 			false,
 			(to) => {
-				to.w.line(`const ${files}: Json = await ${read}(${input});`);
-				to.w.block(
-					`const ${to.output(0)}: Json[] = ${input}.length > 0 ? ${attempt.expression(input, lists, allLists, plainInput, files)} : [];`,
+				const out = to.output(0);
+				if (attempt.binaryNames !== undefined) {
+					to.w.line(`const ${files}: Json = await ${read}(${input});`);
+				}
+				if (attempt.preparesBinary !== true) {
+					to.w.block(`const ${out}: Json[] = ${input}.length > 0 ? ${run()} : [];`);
+					return;
+				}
+				to.w.line(`const ${made}: Json = { plan: [] };`);
+				to.w.line(`let ${out}: Json[] = [];`);
+				to.w.open(`if (${input}.length > 0) {`);
+				to.w.open('try {');
+				to.w.block(`${out} = ${run()};`);
+				to.w.close('} catch (error) {');
+				to.w.depth++;
+				to.w.line(mark('The first run of code that makes binary data failed'));
+				to.w.close();
+				to.w.line(
+					`if (${made}.host === true) ${mark('The code makes binary data outside the limits')}`,
 				);
+				to.w.open(`if (${made}.plan.length > 0) {`);
+				to.w.line(`${made}.entries = await ${store}(${made});`);
+				to.w.line(`${made}.next = 0;`);
+				to.w.block(`${out} = ${run()};`);
+				to.w.line(
+					`if (${made}.host === true || ${made}.next !== ${made}.plan.length) ${mark('The second run of code that makes binary data differs from its first run')}`,
+				);
+				to.w.close();
+				to.w.close();
 			},
 			host,
 		);

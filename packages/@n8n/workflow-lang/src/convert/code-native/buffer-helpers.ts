@@ -186,6 +186,42 @@ function bufByteLength(text: Json, encoding: Json): number {
 	return utf8Bytes(text).length;
 }`,
 	},
+	codePrepareBinary: {
+		uses: ['bufText'],
+		source: `/**
+ * this.helpers.prepareBinaryData(bytes, fileName, mimeType). The node runs the code two times
+ * (\`lowerCodeNative\`). The first run makes the plan: \`made.plan\` gets the base64 text and
+ * the names of each call, and the call gives a value that is not the entry. The node stores
+ * the files of the plan (\`made.entries\`). In the second run, each call gives the stored
+ * entry of the same call of the plan, so the code gets what v1 gives. A call that differs
+ * from the plan, or a file outside the limits, sets \`made.host\`: the fallback host runs the
+ * node.
+ */
+function codePrepareBinary(made: Json, bytes: number[], fileName: Json, mimeType: Json): Json {
+	const data: string = bufText(bytes, 'base64');
+	if (made.entries === undefined) {
+		if (
+			made.plan.length >= 32 ||
+			bytes.length > 262144 ||
+			(fileName !== undefined && typeof fileName !== 'string') ||
+			(mimeType !== undefined && typeof mimeType !== 'string')
+		) {
+			made.host = true;
+			throw new Error('The code makes binary data outside the limits ${RUNS_IN_HOST}');
+		}
+		made.plan.push({ data, fileName, mimeType });
+		return { $prepared: made.plan.length - 1 };
+	}
+	const planned: Json = made.plan[made.next];
+	if (planned === undefined || planned.data !== data || planned.fileName !== fileName || planned.mimeType !== mimeType) {
+		made.host = true;
+		throw new Error('The code makes other binary data in its second run ${RUNS_IN_HOST}');
+	}
+	const entry: Json = made.entries[made.next];
+	made.next += 1;
+	return entry;
+}`,
+	},
 	codeBinaryBytes: {
 		uses: ['base64Bytes'],
 		source: `/**

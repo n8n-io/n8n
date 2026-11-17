@@ -15,6 +15,7 @@ import type { Translation } from './translate.ts';
 import {
 	ALL_NODES,
 	FILES,
+	MADE,
 	MATCHES,
 	FIRST_JSON,
 	HTTP,
@@ -100,6 +101,7 @@ function emitParts(
 	step: string | null,
 	traced: Translation | undefined,
 	files: string,
+	made: string,
 ): { params: string; lines: string[]; args: string } {
 	const raw = (k: number) => `${P}r${k}`;
 	const params = [
@@ -108,6 +110,8 @@ function emitParts(
 		...(t.usesAllNodes ? [`${ALL_NODES}: Json`] : []),
 		// The base64 text of the stored files of the input items (\`Translation.binaryNames\`).
 		...(t.binaryNames !== undefined ? [`${FILES}: Json`] : []),
+		// The plan and the stored entries of \`prepareBinaryData\` (\`codePrepareBinary\`).
+		...(t.preparesBinary ? [`${MADE}: Json`] : []),
 	].join(', ');
 	/** The values that the code reads: the items of other nodes, and the input items. */
 	const values = (source: string): string[] => {
@@ -231,6 +235,7 @@ function emitParts(
 		...lists,
 		...(t.usesAllNodes ? [`{ ${all} }`] : []),
 		...(t.binaryNames !== undefined ? [files] : []),
+		...(t.preparesBinary ? [made] : []),
 	].join(', ');
 	return { params, lines: [...head.map((h) => `\t${h}`), `\t${main}`], args };
 }
@@ -249,8 +254,20 @@ export function emitAsync(
 	plainInput = false,
 	traced?: Translation,
 	files = '{}',
+	made = '{ plan: [] }',
 ): { declaration: string; expression: string } {
-	const parts = emitParts(t, mode, input, lists, allLists, plainInput, form.step, traced, files);
+	const parts = emitParts(
+		t,
+		mode,
+		input,
+		lists,
+		allLists,
+		plainInput,
+		form.step,
+		traced,
+		files,
+		made,
+	);
 	return {
 		declaration: [
 			`const ${form.fn} = async (${parts.params}): Promise<Json[]> => {`,
@@ -274,7 +291,8 @@ export function emitExpression(
 	plainInput = false,
 	traced?: Translation,
 	files = '{}',
+	made = '{ plan: [] }',
 ): string {
-	const parts = emitParts(t, mode, input, lists, allLists, plainInput, null, traced, files);
+	const parts = emitParts(t, mode, input, lists, allLists, plainInput, null, traced, files, made);
 	return [`((${parts.params}): Json[] => {`, ...parts.lines, `})(${parts.args})`].join('\n');
 }

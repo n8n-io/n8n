@@ -147,6 +147,12 @@ export interface Translation {
 	 * each stored file of the input items, by its id.
 	 */
 	binaryNames?: string[] | 'all';
+	/**
+	 * The code calls `this.helpers.prepareBinaryData`. The code function then has the parameter
+	 * `__wf_made` (`codePrepareBinary`): the node runs the code two times, and stores the files
+	 * of the first run with the `binaryData` service between the runs (`lowerCodeNative`).
+	 */
+	preparesBinary: boolean;
 }
 
 export type TranslateResult =
@@ -163,6 +169,8 @@ export const P = '__wf_';
 export const ITEMS = `${P}items`;
 /** The base64 text of the stored files of the input items, by id (`Translation.binaryNames`). */
 export const FILES = `${P}files`;
+/** The plan and the stored entries of `this.helpers.prepareBinaryData` (`codePrepareBinary`). */
+export const MADE = `${P}made`;
 export const ITEM = `${P}item`;
 export const INDEX = `${P}i`;
 export const FIRST_JSON = `${P}json0`;
@@ -2589,6 +2597,7 @@ export function translateCode(input: CodeNativeInput): TranslateResult {
 	let usesBuffers = false;
 	let readsBinary = false;
 	let binaryNames: string[] | 'all' = [];
+	let preparesBinary = false;
 	const isBufferGlobal = (e: ts.Expression): boolean => {
 		const x = stripParens(e);
 		return ts.isIdentifier(x) && x.text === 'Buffer' && isFree(x);
@@ -2711,6 +2720,48 @@ export function translateCode(input: CodeNativeInput): TranslateResult {
 		const receiver = callee.expression;
 		const statics = isBufferGlobal(receiver);
 		const binary = isBinaryBufferCall(n);
+		if (
+			name === 'prepareBinaryData' &&
+			!n.questionDotToken &&
+			!callee.questionDotToken &&
+			requestKind(receiver) === 'helpers'
+		) {
+			let call: ts.Node = n;
+			while (ts.isParenthesizedExpression(call.parent)) call = call.parent;
+			if (
+				input.kind !== 'code' ||
+				usesHttp ||
+				args.length < 1 ||
+				args.length > 3 ||
+				args.some((a) => ts.isSpreadElement(a)) ||
+				!ts.isAwaitExpression(call.parent) ||
+				!isBuf(args[0]) ||
+				(hasThis(receiver) && !thisIsContext(n))
+			) {
+				block(
+					'this (this.helpers)',
+					'`prepareBinaryData` has a native form only as an awaited call with a Buffer, in code that makes no requests.',
+				);
+				return true;
+			}
+			usesBuffers = true;
+			preparesBinary = true;
+			helpers.add('codePrepareBinary');
+			const o = seq;
+			replace(n.getStart(sf), args[0].getStart(sf), `codePrepareBinary(${MADE}, `);
+			for (let k = 0; k + 1 < args.length; k++) {
+				closing(args[k].getEnd(), args[k + 1].getStart(sf), ', ', o);
+			}
+			closing(
+				args[args.length - 1].getEnd(),
+				n.getEnd(),
+				`${', undefined'.repeat(3 - args.length)})`,
+				o,
+			);
+			emitBuf(args[0]);
+			for (const a of args.slice(1)) visit(a);
+			return true;
+		}
 		const maker = isBuf(n);
 		const reads =
 			isBuf(receiver) && (name === 'toString' || name === 'equals' || name === 'toJSON');
@@ -4586,6 +4637,7 @@ export function translateCode(input: CodeNativeInput): TranslateResult {
 		helpers,
 		mutates,
 		...(readsBinary ? { binaryNames } : {}),
+		preparesBinary,
 		usesHttp,
 		repeatable: !usesHttp && !nondeterministicRandom && !/getWorkflowStaticData/.test(input.code),
 		errorTextGap,
