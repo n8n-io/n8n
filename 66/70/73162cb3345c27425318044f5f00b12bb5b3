@@ -1,0 +1,24 @@
+packages/cli/test/integration/policy/workflow-transfer-unpublish.policy.test.ts
+  s_043f5ea13b0ca2::t_857a02c58fa225 308
+  s_043f5ea13b0ca2::t_08ea870601aa5d 338
+  s_043f5ea13b0ca2::t_b596cd8324c1d1 327
+  s_043f5ea13b0ca2::t_31598671c4d179 320
+packages/cli/src/workflows/workflow.service.ts
+  s_043f5ea13b0ca2::t_f4193f252d05e1 1831
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "667073162cb3345c27425318044f5f00b12bb5b3",
+  "prompts": {},
+  "sessions": {
+    "s_043f5ea13b0ca2": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "80b31086-dd76-4604-92db-53cbedccf87b",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Veljko Terzic <veljko.terzic@n8n.io>"
+    }
+  }
+}

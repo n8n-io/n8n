@@ -1,0 +1,36 @@
+packages/workflow/src/run-execution-data/run-execution-data.v1.ts
+  s_b17367ec50942d::t_60e838664f4349 17
+  s_b17367ec50942d::t_25013b7703d829 75-76
+packages/cli/src/executions/__tests__/execution.service.test.ts
+  s_b17367ec50942d::t_556497cfcbc2a4 554-564
+packages/cli/src/workflow-execute-additional-data.ts
+  s_b17367ec50942d::t_25013b7703d829 361-362
+packages/cli/src/__tests__/workflow-runner.test.ts
+  s_b17367ec50942d::t_fd2d08787bbeec 1285-1295
+packages/cli/src/scaling/job-processor.ts
+  s_b17367ec50942d::t_25013b7703d829 233
+packages/cli/src/scaling/__tests__/job-processor.service.test.ts
+  s_b17367ec50942d::t_fd2d08787bbeec 914-951
+packages/cli/src/workflow-runner.ts
+  s_b17367ec50942d::t_25013b7703d829 695
+packages/cli/src/executions/execution.service.ts
+  s_b17367ec50942d::t_0328c47fa092b2 358-359
+packages/cli/src/__tests__/workflow-execute-additional-data.test.ts
+  s_b17367ec50942d::t_fd2d08787bbeec 304-332,334-341
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "0486e350699eb0b519f179891767910115db8455",
+  "prompts": {},
+  "sessions": {
+    "s_b17367ec50942d": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ca290928-60e5-49b0-b475-01674966e49d",
+        "model": "claude-fable-5-2"
+      },
+      "human_author": "Lorent Lempereur <lorent.lempereur@n8n.io>"
+    }
+  }
+}

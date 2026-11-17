@@ -1,0 +1,57 @@
+packages/@n8n/backend-services/src/index.ts
+  s_dfe3f914c8bb46::t_bf2559ded335c3 175-176
+packages/@n8n/backend-services/src/services/__tests__/execution-retention.service.test.ts
+  s_dfe3f914c8bb46::t_0a6bc77af8c7b0 1-19
+packages/@n8n/backend-services/src/services/execution-retention.service.ts
+  s_dfe3f914c8bb46::t_9891d49b41a52c 1-27
+packages/@n8n/db/src/repositories/execution.repository.ts
+  s_dfe3f914c8bb46::t_283ba503fd0aed 768,812-821
+packages/cli/src/__tests__/wait-tracker.test.ts
+  s_dfe3f914c8bb46::t_d0771154c3c398 229-274
+packages/cli/src/__tests__/workflow-helpers.test.ts
+  s_dfe3f914c8bb46::t_a522bc6963557a 8,1043-1094
+packages/cli/src/executions/__tests__/execution-persistence.test.ts
+  s_dfe3f914c8bb46::t_9fd41619674abe 1,105,115,121-132
+packages/cli/src/executions/execution-persistence.ts
+  s_dfe3f914c8bb46::t_505976e7702b9d 2,118,810-811
+packages/cli/src/modules/redaction/executions/strategies/__tests__/full-item-redaction.strategy.test.ts
+  s_dfe3f914c8bb46::t_c5fb713ba80769 685-725
+packages/cli/src/modules/redaction/executions/strategies/full-item-redaction.strategy.ts
+  s_dfe3f914c8bb46::t_287633693321a4 37,60-61,63
+packages/cli/src/services/pruning/__tests__/executions-pruning.service.test.ts
+  s_dfe3f914c8bb46::t_a703e974fe8892 1,20-25
+packages/cli/src/services/pruning/executions-pruning.service.ts
+  s_dfe3f914c8bb46::t_4cbe881755bf22 4,30,37-39
+packages/cli/src/wait-tracker.ts
+  s_dfe3f914c8bb46::t_5aa47df420b470 10,27,150-153,162,168-171,176,186-189,199-200,222-238
+packages/cli/src/workflow-helpers.ts
+  s_dfe3f914c8bb46::t_2d2d75a4a3b6a0 14,488-489,503-510,512-535,537-542,545-581,584-594,596,605
+packages/cli/test/integration/executions-pruning.service.test.ts
+  s_dfe3f914c8bb46::t_9985b4166c0f36 1,38,46,60-75
+packages/core/src/execution-engine/__tests__/workflow-execute.test.ts
+  s_dfe3f914c8bb46::t_e2706527568703 2601-2610
+packages/core/src/execution-engine/node-execution-context/__tests__/execute-context.test.ts
+  s_dfe3f914c8bb46::t_ef365d9729b225 449-504
+packages/core/src/execution-engine/node-execution-context/base-execute-context.ts
+  s_dfe3f914c8bb46::t_68677239320c67 236-272,279-280,293-296,299-300,321-340,342,346-374
+packages/core/src/execution-engine/workflow-execute.ts
+  s_dfe3f914c8bb46::t_d5e26b819d2fe4 1553-1556
+packages/workflow/src/interfaces.ts
+  s_dfe3f914c8bb46::t_3a3860665a6bcb 2580-2583,2624-2628,2630-2631,3637-3638,3645-3646,3672-3680
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "aa7c69cd1f985b8c08d87c927e4759ef19bb3c61",
+  "prompts": {},
+  "sessions": {
+    "s_dfe3f914c8bb46": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a177de-1655-75e1-b502-74f6cb945148",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "Michael Drury <michael.drury@n8n.io>"
+    }
+  }
+}
