@@ -35,6 +35,7 @@ import { ExecutionRecoveryService } from '@/executions/execution-recovery.servic
 import { ExternalHooks } from '@/external-hooks';
 import { Push } from '@/push';
 import { OwnershipService } from '@/services/ownership.service';
+import type { UserManagementMailer } from '@/user-management/email/user-management-mailer';
 import { WorkflowPublicationNotifier } from '@/workflows/publication/workflow-publication-notifier';
 import { WorkflowPushNotifier } from '@/workflows/workflow-push-notifier.service';
 import type { EventService } from '@n8n/backend-services';
@@ -55,6 +56,7 @@ describe('ExecutionRecoveryService', () => {
 	const workflowPushNotifier = new WorkflowPushNotifier(push, workflowSharingService);
 	mockInstance(WorkflowPublicationNotifier);
 	const eventService = mock<EventService>();
+	const userManagementMailer = mock<UserManagementMailer>();
 
 	let executionRecoveryService: ExecutionRecoveryService;
 	let executionRepository: ExecutionRepository;
@@ -77,7 +79,7 @@ describe('ExecutionRecoveryService', () => {
 			executionPersistence,
 			globalConfig.executions,
 			workflowRepository,
-			mock(),
+			userManagementMailer,
 			ownershipService,
 			projectRelationRepository,
 			workflowPushNotifier,
@@ -719,7 +721,10 @@ describe('ExecutionRecoveryService', () => {
 				/**
 				 * Act
 				 */
-				const workflowExists = await executionRecoveryService.autoDeactivateWorkflow(workflow.id);
+				const workflowExists = await executionRecoveryService.autoDeactivateWorkflow(
+					workflow.id,
+					'process-crashes',
+				);
 
 				/**
 				 * Assert
@@ -727,6 +732,9 @@ describe('ExecutionRecoveryService', () => {
 				expect(workflowExists).toBe(true);
 				const updatedWorkflow = await getWorkflowById(workflow.id);
 				expect(updatedWorkflow?.activeVersionId).toBeNull();
+				expect(userManagementMailer.notifyWorkflowAutodeactivated).toHaveBeenCalledWith(
+					expect.objectContaining({ reason: 'process-crashes' }),
+				);
 			});
 
 			test('should report a missing workflow on request', async () => {
