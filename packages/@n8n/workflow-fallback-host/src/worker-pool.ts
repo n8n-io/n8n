@@ -10,8 +10,15 @@
  *
  * - Wall-clock limit: a step that has not answered after `stepTimeoutMs`
  *   fails with a timeout. Its worker goes on with the other steps.
- * - CPU guard: the pool pings each worker. A worker that does not answer for
- *   `blockedMs` runs synchronous code that does not end. The pool stops it.
+ * - CPU guard: the pool pings each worker. A worker of the normal lane that
+ *   does not answer for `blockedMs` runs synchronous code that delays its
+ *   other steps. The pool stops it, and its steps run again in the slow lane.
+ * - Lanes (`lanes.ts`, `docs/isolation.md`): a step that blocks the event
+ *   loop of a worker for `lagMs` gets a mark on its key (workflow id and step
+ *   name). The next steps with that key run in the slow lane: alone in a
+ *   worker, one at a time, with the full `stepTimeoutMs`. A code step whose
+ *   key has no mark starts there. The workers of the normal lane give such
+ *   steps to the pool (`RELAY_JOB`).
  * - Memory: each worker has a heap limit (`memoryMb`). A worker over it stops,
  *   the host does not.
  * - A worker that stops for any reason (blocked, out of memory, a native
@@ -22,8 +29,8 @@
  *   what node code leaves behind (caches, timers, sockets) over a long run.
  *
  * When a worker stops with more than one step in it, the pool does not know
- * which step caused it. It runs each of those steps again, alone, on its own
- * new worker. A step that stops its own worker again is the cause: it fails.
+ * which step caused it. It runs each of those steps again, alone, in the
+ * slow lane. A step that stops its worker there is the cause: it fails.
  * The other steps get their real result. So a step can run twice; the
  * runtime gives steps at-least-once semantics already (crash recovery and
  * idempotency keys).
@@ -48,8 +55,9 @@ import { type ChildProcess, fork } from 'node:child_process';
 import type { Socket } from 'node:net';
 
 import { workerLost } from './hello';
+import { type LaneChange, laneKey, LaneTable, SlowQueue, workflowOfKey } from './lanes';
 import { encodeFrame, FrameDecoder, isJsonObject } from './protocol';
-import type { StepRequest, StepResponse } from './protocol';
+import type { JsonObject, StepRequest, StepResponse } from './protocol';
 import type { ControlMessage, FromWorker, StepWorkerData, ToWorker } from './step-worker';
 
 /** Same as `WORKER_DATA_ENV` of `step-worker.ts`, which this file must not load. */
@@ -67,6 +75,12 @@ const WORKER_FRAME_HEADER = 8;
  */
 const CONTROL_JOB = 0;
 
+/** The job number of a step for the slow lane. Same as `RELAY_JOB` of `step-worker.ts`. */
+const RELAY_JOB = 0xffff_ffff;
+
+/** The most keys that the pool keeps for one worker. */
+const MAX_WORKER_KEYS = 256;
+
 export interface WorkerPoolOptions {
 	/** The compiled `step-worker.js`. */
 	script: string;
@@ -74,8 +88,22 @@ export interface WorkerPoolOptions {
 	workerData: StepWorkerData;
 	/** The longest wall-clock time of one step. */
 	stepTimeoutMs: number;
-	/** How long a worker may not answer a ping before the pool stops it. */
+	/** How long a worker of the normal lane may not answer a ping before the pool stops it. */
 	blockedMs: number;
+	/** Workers of the slow lane. Default: one for each four workers, from 2 to 4. */
+	slowSize?: number;
+	/** An event loop delay of this length, or longer, is a block. */
+	lagMs?: number;
+	/** The most steps that wait for the slow lane. One workflow gets at most half. */
+	slowQueueMax?: number;
+	/** How long a key stays in the slow lane after a step with it blocked a worker. */
+	slowTtlMs?: number;
+	/** How long a key that ran alone without a block stays in the normal lane unchecked. */
+	clearTtlMs?: number;
+	/** The most keys with a mark. */
+	maxKeys?: number;
+	/** False: a code step with a key that has no mark runs in the normal lane. */
+	codeStartsSlow?: boolean;
 	/** The heap limit of each worker (old generation), in MB. */
 	memoryMb: number;
 	/** Steps after which a worker is replaced. */
@@ -95,7 +123,32 @@ export interface WorkerMemory {
 }
 
 export const DEFAULT_STEP_TIMEOUT_MS = 300_000;
-export const DEFAULT_BLOCKED_MS = 30_000;
+export const DEFAULT_BLOCKED_MS = 5_000;
+export const DEFAULT_LAG_MS = 100;
+export const DEFAULT_SLOW_QUEUE = 256;
+export const DEFAULT_SLOW_TTL_MS = 600_000;
+export const DEFAULT_MAX_KEYS = 4096;
+
+/** The counters of the lanes, for the load test and for monitoring. */
+export interface PoolStats {
+	/** Steps in the workers of the normal lane, at their last answer. */
+	normalInFlight: number;
+	slowInFlight: number;
+	/** Steps that wait for a worker of the slow lane. */
+	slowWaiting: number;
+	/** Steps that went to the slow lane, since the start. */
+	movedToSlow: number;
+	/** Workers of the normal lane that the CPU guard stopped. */
+	guardStops: number;
+	/** Blocks of `lagMs` or longer that the workers reported. */
+	blockEvents: number;
+	/** The longest block that a worker reported, in milliseconds. */
+	maxBlockMs: number;
+	/** Steps that failed because the slow lane was full or the wait was too long. */
+	slowRejected: number;
+	/** Keys with a mark. */
+	marks: number;
+}
 export const DEFAULT_WORKER_MEMORY_MB = 4096;
 export const DEFAULT_RECYCLE_STEPS = 20_000;
 export const DEFAULT_RECYCLE_RSS_MB = 1536;
@@ -121,9 +174,22 @@ interface Job {
 	body: Buffer;
 	/** Gets the response JSON. */
 	resolve: (response: Buffer) => void;
-	/** This run is the second, alone on its own worker. */
-	alone: boolean;
+	/** The step runs in the slow lane. */
+	slow: boolean;
 	timer?: NodeJS.Timeout;
+	/** The key of the step (`lanes.ts`), when the pool knows it. */
+	key?: string;
+	/** The worker that gave the step to the pool, and its number there. */
+	origin?: { worker: PoolWorker; relay: number };
+	/** When the step started to wait for the slow lane. */
+	queuedAt?: number;
+	/** The worker that runs the step. */
+	runner?: PoolWorker;
+	/**
+	 * The step need not run in the slow lane: this gives it back to the worker
+	 * that it came from, which then runs it.
+	 */
+	bounce?: () => void;
 }
 
 interface PoolWorker {
@@ -133,8 +199,16 @@ interface PoolWorker {
 	/** V8 wrote its out-of-memory message to stderr. */
 	outOfMemory: boolean;
 	jobs: Map<number, Job>;
-	/** Runs only its one job, then stops. */
-	alone: boolean;
+	/** `slow`: it runs one step at a time, without the CPU guard. */
+	lane: 'normal' | 'slow';
+	/** The keys of the steps that run in it, as far as it reported them. */
+	keys: Set<string>;
+	/** The steps that it gave to the pool for the slow lane, by its relay number. */
+	relays: Map<number, Job>;
+	/** Slow lane: the step that runs in it blocked it. */
+	blockedInJob: boolean;
+	/** The CPU guard stopped it: each of its steps runs again in the slow lane. */
+	moved: boolean;
 	lastPong: number;
 	pingSeq: number;
 	/** The worker has loaded its modules; the CPU guard applies from then on. */
@@ -183,8 +257,32 @@ export class WorkerPool {
 
 	private pongsAnswered = 0;
 
+	private readonly lanes: LaneTable;
+
+	private readonly slowQueue: SlowQueue<Job>;
+
+	/** The keys with a step in the slow lane that shows if the key blocks. At most one for each slow worker. */
+	private readonly trying = new Set<string>();
+
+	private readonly counters = {
+		movedToSlow: 0,
+		guardStops: 0,
+		blockEvents: 0,
+		maxBlockMs: 0,
+		slowRejected: 0,
+	};
+
 	constructor(private readonly options: WorkerPoolOptions) {
-		for (let i = 0; i < options.size; i++) this.workers.push(this.spawn(false));
+		const slowTtlMs = options.slowTtlMs ?? DEFAULT_SLOW_TTL_MS;
+		this.lanes = new LaneTable({
+			max: options.maxKeys ?? DEFAULT_MAX_KEYS,
+			slowTtlMs,
+			clearTtlMs: options.clearTtlMs ?? slowTtlMs,
+		});
+		this.slowQueue = new SlowQueue(options.slowQueueMax ?? DEFAULT_SLOW_QUEUE);
+		for (let i = 0; i < options.size; i++) this.workers.push(this.spawn('normal'));
+		const slowSize = options.slowSize ?? Math.min(4, Math.max(2, Math.ceil(options.size / 4)));
+		for (let i = 0; i < slowSize; i++) this.workers.push(this.spawn('slow'));
 		const every = Math.max(50, Math.min(1000, Math.floor(options.blockedMs / 4)));
 		this.heartbeat = setInterval(() => this.check(), every);
 		this.heartbeat.unref();
@@ -205,13 +303,16 @@ export class WorkerPool {
 	async runFrame(body: Buffer): Promise<Buffer> {
 		if (this.closed) return failureBody(body, 'The fallback host is stopping', true);
 		return await new Promise((resolve) => {
-			this.dispatch({ seq: this.nextSeq(), body, resolve, alone: false });
+			this.dispatch({ seq: this.nextSeq(), body, resolve, slow: false });
 		});
 	}
 
 	async close(): Promise<void> {
 		this.closed = true;
 		clearInterval(this.heartbeat);
+		for (const job of this.slowQueue.remove(() => true)) {
+			job.resolve(failureBody(job.body, 'The fallback host is stopping', true));
+		}
 		await Promise.all(
 			this.workers.map(
 				async (w) =>
@@ -236,7 +337,7 @@ export class WorkerPool {
 		// with two connections could make it blame a step that did not stop it.
 		let worker: PoolWorker | undefined;
 		for (const w of this.workers) {
-			if (w.alone || w.gone || w.draining || w.stopReason || !w.child.connected) continue;
+			if (w.lane === 'slow' || w.gone || w.draining || w.stopReason || !w.child.connected) continue;
 			if (!worker || connectionsOf(w) < connectionsOf(worker)) worker = w;
 		}
 		if (!worker || this.closed) {
@@ -265,7 +366,7 @@ export class WorkerPool {
 	private handOver(target: PoolWorker, waiting: WaitingConn): void {
 		const { socket, rest, keep } = waiting;
 		if (socket.destroyed) return;
-		const live = this.workers.filter((w) => !w.alone && !w.gone && !w.draining);
+		const live = this.workers.filter((w) => w.lane === 'normal' && !w.gone && !w.draining);
 		this.connSeq = (this.connSeq + 1) % 0x1_0000_0000;
 		const conn = this.connSeq;
 		const message: ToWorker = {
@@ -299,7 +400,25 @@ export class WorkerPool {
 
 	/** Steps that each worker runs now; for tests and stats. */
 	load(): number[] {
-		return this.workers.filter((w) => !w.alone).map((w) => w.jobs.size);
+		return this.workers.filter((w) => w.lane === 'normal').map((w) => w.jobs.size);
+	}
+
+	/** The counters of the lanes; for tests, the load test and monitoring. */
+	stats(): PoolStats {
+		let normalInFlight = 0;
+		let slowInFlight = 0;
+		for (const worker of this.workers) {
+			if (worker.lane === 'slow') slowInFlight += worker.jobs.size;
+			// A worker counts the steps that it gave to the slow lane as its own.
+			else normalInFlight += Math.max(0, worker.directInflight - worker.relays.size);
+		}
+		return {
+			normalInFlight,
+			slowInFlight,
+			slowWaiting: this.slowQueue.size,
+			...this.counters,
+			marks: this.lanes.size,
+		};
 	}
 
 	/** Pings that the pool sent, and pongs that a worker answered; for tests and monitoring. */
@@ -334,7 +453,7 @@ export class WorkerPool {
 
 	/** The memory of each pool worker, after a garbage collection where possible. */
 	async memory(): Promise<WorkerMemory[]> {
-		const live = this.workers.filter((w) => !w.alone && !w.gone && w.ready);
+		const live = this.workers.filter((w) => w.lane === 'normal' && !w.gone && w.ready);
 		return await Promise.all(
 			live.map(
 				async (w) =>
@@ -349,25 +468,69 @@ export class WorkerPool {
 	}
 
 	private dispatch(job: Job): void {
+		if (job.slow) {
+			this.enqueueSlow(job);
+			return;
+		}
 		let worker: PoolWorker | undefined;
-		if (job.alone) {
-			worker = this.spawn(true);
-			this.workers.push(worker);
-		} else {
-			for (const w of this.workers) {
-				if (w.alone || w.gone || w.draining) continue;
-				if (!worker || w.jobs.size < worker.jobs.size) worker = w;
-			}
+		for (const w of this.workers) {
+			if (w.lane === 'slow' || w.gone || w.draining) continue;
+			if (!worker || w.jobs.size < worker.jobs.size) worker = w;
 		}
 		if (!worker) {
 			job.resolve(failureBody(job.body, 'No fallback host worker is running', true));
 			return;
 		}
-		const target = worker;
+		this.send(worker, job);
+	}
+
+	/**
+	 * Puts a step in the queue of the slow lane. A full queue is a limit: the
+	 * step fails, and it can run again.
+	 */
+	private enqueueSlow(job: Job): void {
+		job.key ??= keyOfBody(job.body);
+		job.queuedAt = Date.now();
+		this.counters.movedToSlow += 1;
+		if (!this.slowQueue.push(workflowOfKey(job.key), job)) {
+			if (job.bounce) {
+				job.bounce();
+				return;
+			}
+			this.counters.slowRejected += 1;
+			job.resolve(
+				failureBody(
+					job.body,
+					'The slow lane of the fallback host is full (limit); the step can run again',
+					true,
+				),
+			);
+			return;
+		}
+		this.pumpSlow();
+	}
+
+	/** Gives the steps that wait to the workers of the slow lane that run no step. */
+	private pumpSlow(): void {
+		for (const worker of this.workers) {
+			if (this.slowQueue.size === 0) return;
+			if (worker.lane !== 'slow' || !worker.ready || worker.jobs.size > 0) continue;
+			if (worker.gone || worker.stopReason) continue;
+			const job = this.slowQueue.shift();
+			if (!job) return;
+			worker.blockedInJob = false;
+			this.send(worker, job);
+		}
+	}
+
+	private send(target: PoolWorker, job: Job): void {
 		target.jobs.set(job.seq, job);
 		target.steps += 1;
+		job.runner = target;
 		const limit = this.options.recycleSteps ?? DEFAULT_RECYCLE_STEPS;
-		if (!target.alone && target.steps >= limit) this.drain(target, `it ran ${target.steps} steps`);
+		if (target.lane === 'normal' && target.steps >= limit) {
+			this.drain(target, `it ran ${target.steps} steps`);
+		}
 		// The clock starts when the worker has loaded its modules.
 		if (target.ready) this.startClock(target, job);
 		// A write to a worker that just stopped fails; its exit handler then
@@ -377,8 +540,8 @@ export class WorkerPool {
 	}
 
 	private nextSeq(): number {
-		this.seq = (this.seq + 1) % 0x1_0000_0000;
-		// `CONTROL_JOB` is no job number.
+		this.seq = (this.seq + 1) % RELAY_JOB;
+		// `CONTROL_JOB` and `RELAY_JOB` are no job numbers.
 		if (this.seq === CONTROL_JOB) this.seq = 1;
 		return this.seq;
 	}
@@ -394,11 +557,27 @@ export class WorkerPool {
 		job.resolve(
 			failureBody(job.body, `The step did not finish within ${this.options.stepTimeoutMs} ms`),
 		);
-		// A worker that runs only this step is not needed any more.
-		if (worker.alone) this.stop(worker, 'its step timed out');
+		// The code of the step can still run there: the slow lane gets a new worker.
+		if (worker.lane === 'slow') {
+			this.verdict(job, true);
+			this.stop(worker, 'its step timed out');
+		}
 	}
 
-	private spawn(alone: boolean): PoolWorker {
+	/** Tells the workers of the normal lane the new marks of keys. */
+	private broadcast(changes: Array<LaneChange | undefined>): void {
+		for (const change of changes) {
+			if (!change) continue;
+			const frame = controlFrame({ control: 'lane', ...change });
+			for (const worker of this.workers) {
+				if (worker.lane === 'slow' || worker.gone) continue;
+				const data = worker.data;
+				if (data && !data.destroyed) data.write(frame);
+			}
+		}
+	}
+
+	private spawn(lane: 'normal' | 'slow'): PoolWorker {
 		const child = fork(this.options.script, [], {
 			execArgv: [`--max-old-space-size=${this.options.memoryMb}`, ...(this.options.execArgv ?? [])],
 			env: {
@@ -408,6 +587,9 @@ export class WorkerPool {
 					stepTimeoutMs: this.options.stepTimeoutMs,
 					recycleSteps: this.options.recycleSteps ?? DEFAULT_RECYCLE_STEPS,
 					...this.options.workerData,
+					...(lane === 'slow' ? { lane } : {}),
+					lagMs: this.options.lagMs ?? DEFAULT_LAG_MS,
+					codeStartsSlow: this.options.codeStartsSlow !== false,
 				}),
 			},
 			serialization: 'advanced',
@@ -421,7 +603,11 @@ export class WorkerPool {
 			data,
 			outOfMemory: false,
 			jobs: new Map(),
-			alone,
+			lane,
+			keys: new Set(),
+			relays: new Map(),
+			blockedInJob: false,
+			moved: false,
 			lastPong: Date.now(),
 			pingSeq: 0,
 			ready: false,
@@ -463,6 +649,12 @@ export class WorkerPool {
 			});
 			// A worker that stops closes the socket; its exit handler handles its jobs.
 			data.on('error', () => {});
+			// A new worker of the normal lane gets the marks. It reads them before its first step.
+			if (lane === 'normal') {
+				for (const change of this.lanes.entries(Date.now())) {
+					data.write(controlFrame({ control: 'lane', ...change }));
+				}
+			}
 		}
 		child.on('error', (error) => {
 			worker.stopReason ??= `it failed: ${error.message}`;
@@ -506,6 +698,7 @@ export class WorkerPool {
 				worker.lastPong = Date.now();
 				for (const job of worker.jobs.values()) if (!job.timer) this.startClock(worker, job);
 				for (const waiting of worker.pending.splice(0)) this.handOver(worker, waiting);
+				if (worker.lane === 'slow') this.pumpSlow();
 				return;
 		}
 	}
@@ -518,7 +711,107 @@ export class WorkerPool {
 		worker.directInflight = inflight;
 		const limit = this.options.recycleSteps ?? DEFAULT_RECYCLE_STEPS;
 		const total = worker.steps + worker.directSteps;
-		if (!worker.alone && total >= limit) this.drain(worker, `it ran ${total} steps`);
+		if (worker.lane === 'normal' && total >= limit) this.drain(worker, `it ran ${total} steps`);
+	}
+
+	/** A worker says that synchronous code held its event loop for `ms`. */
+	private onBlocked(worker: PoolWorker, ms: number, keys: string[], complete: boolean): void {
+		this.counters.blockEvents += 1;
+		this.counters.maxBlockMs = Math.max(this.counters.maxBlockMs, ms);
+		// The slow lane runs one step at a time: that step is the cause.
+		if (worker.lane === 'slow') worker.blockedInJob = true;
+		else this.broadcast(this.lanes.suspects(keys, complete, false, Date.now()));
+	}
+
+	/**
+	 * A service call of a step in the slow lane goes to the worker that has the
+	 * runtime connection of the step, and the answer goes back (`service-calls.ts`).
+	 */
+	private onService(worker: PoolWorker, id: number, message: JsonObject): void {
+		if (message.control === 'service') {
+			const origin = worker.jobs.get(id)?.origin;
+			if (origin && !origin.worker.gone) {
+				writeControl(origin.worker, { ...message, id: origin.relay });
+				return;
+			}
+			writeControl(worker, {
+				control: 'serviceResult',
+				id,
+				ok: false,
+				error: 'The service needs a runtime connection of protocol version 2; this step has none',
+			});
+			return;
+		}
+		const job = worker.relays.get(id);
+		if (job?.runner && !job.runner.gone) writeControl(job.runner, { ...message, id: job.seq });
+	}
+
+	/**
+	 * A worker gives a step to the slow lane:
+	 * `<u32 relay><u8 wait><u16 key length><key><request JSON>`.
+	 */
+	private onRelay(worker: PoolWorker, frame: Buffer): void {
+		if (frame.length < 7) return;
+		const relay = frame.readUInt32LE(0);
+		const wait = frame.readUInt8(4) === 1;
+		const keyEnd = 7 + frame.readUInt16LE(5);
+		if (frame.length < keyEnd) return;
+		const key = frame.toString('utf8', 7, keyEnd);
+		const answer = (response: Buffer) => {
+			const data = worker.data;
+			if (worker.gone || !data || data.destroyed) return;
+			const header = Buffer.allocUnsafe(12);
+			header.writeUInt32LE(8 + response.length, 0);
+			header.writeUInt32LE(RELAY_JOB, 4);
+			header.writeUInt32LE(relay, 8);
+			data.write(header);
+			if (response.length > 0) data.write(response);
+		};
+		const job: Job = {
+			seq: this.nextSeq(),
+			body: frame.subarray(keyEnd),
+			key,
+			slow: true,
+			origin: { worker, relay },
+			resolve: (response) => {
+				worker.relays.delete(relay);
+				answer(response);
+			},
+		};
+		if (!wait) {
+			job.bounce = () => job.resolve(Buffer.alloc(0));
+			// One step shows if the key blocks. The next steps of the key wait for
+			// that answer only. A key does not wait for the steps of other keys.
+			if (!this.trying.has(key)) {
+				if (this.slowQueue.size > 0 || !this.hasFreeSlowWorker()) {
+					answer(Buffer.alloc(0));
+					return;
+				}
+				this.trying.add(key);
+			}
+		}
+		worker.relays.set(relay, job);
+		this.dispatch(job);
+	}
+
+	/**
+	 * A step ran alone in the slow lane, so the pool knows if its key blocks.
+	 * The steps that waited for this answer go back to the normal lane when
+	 * the key does not block.
+	 */
+	private verdict(job: Job, blocked: boolean): void {
+		const key = job.key;
+		if (key === undefined) return;
+		this.broadcast([this.lanes.ran(key, blocked, Date.now())]);
+		if (!this.trying.delete(key) || blocked) return;
+		const waiting = this.slowQueue.remove((j) => j.bounce !== undefined && j.key === key);
+		for (const other of waiting) other.bounce?.();
+	}
+
+	private hasFreeSlowWorker(): boolean {
+		return this.workers.some(
+			(w) => w.lane === 'slow' && w.ready && w.jobs.size === 0 && !w.gone && !w.stopReason,
+		);
 	}
 
 	/** A control frame of a worker on the step socket: its answer to a ping. */
@@ -530,8 +823,30 @@ export class WorkerPool {
 			this.stop(worker, 'it wrote a control frame that is not JSON');
 			return;
 		}
-		if (!isJsonObject(parsed) || parsed.control !== 'pong') return;
+		if (!isJsonObject(parsed)) return;
+		if (parsed.control === 'start') {
+			if (typeof parsed.key === 'string' && worker.keys.size < MAX_WORKER_KEYS) {
+				worker.keys.add(parsed.key);
+			}
+			return;
+		}
+		if (parsed.control === 'blocked') {
+			const keys = Array.isArray(parsed.keys)
+				? parsed.keys.filter((k) => typeof k === 'string')
+				: [];
+			const ms = typeof parsed.ms === 'number' ? parsed.ms : 0;
+			this.onBlocked(worker, ms, keys, parsed.complete === true);
+			return;
+		}
+		if (parsed.control === 'service' || parsed.control === 'serviceResult') {
+			if (typeof parsed.id === 'number') this.onService(worker, parsed.id, parsed);
+			return;
+		}
+		if (parsed.control !== 'pong') return;
 		const { rss, steps, inflight } = parsed;
+		if (Array.isArray(parsed.keys)) {
+			worker.keys = new Set(parsed.keys.filter((k) => typeof k === 'string'));
+		}
 		if (typeof rss !== 'number' || typeof steps !== 'number' || typeof inflight !== 'number') {
 			this.stop(worker, 'it wrote a control frame without its counts');
 			return;
@@ -549,20 +864,47 @@ export class WorkerPool {
 			this.onControl(worker, frame.subarray(4));
 			return;
 		}
+		if (seq === RELAY_JOB) {
+			this.onRelay(worker, frame.subarray(4));
+			return;
+		}
 		const job = worker.jobs.get(seq);
 		if (!job) return; // It timed out already.
 		worker.jobs.delete(seq);
 		clearTimeout(job.timer);
 		job.resolve(frame.subarray(4));
-		if (worker.alone) this.stop(worker, 'its step ended');
+		if (worker.lane === 'slow') this.afterSlowStep(worker, job);
 		else if (worker.draining && worker.jobs.size === 0 && worker.conns.size === 0) {
 			this.stop(worker, 'recycled');
 		}
 	}
 
+	/** A step ended in the slow lane. */
+	private afterSlowStep(worker: PoolWorker, job: Job): void {
+		this.verdict(job, worker.blockedInJob);
+		const steps = this.options.recycleSteps ?? DEFAULT_RECYCLE_STEPS;
+		const rss = (this.options.recycleRssMb ?? DEFAULT_RECYCLE_RSS_MB) * 1024 * 1024;
+		// It runs no step now. Its exit starts the new worker.
+		if (worker.steps >= steps || worker.rss > rss) this.stop(worker, 'recycled');
+		else this.pumpSlow();
+	}
+
 	/** Pings each worker and stops a worker that has not answered for too long. */
 	private check(): void {
 		const now = Date.now();
+		const late = this.slowQueue.remove(
+			(job) => now - (job.queuedAt ?? now) > this.options.stepTimeoutMs,
+		);
+		for (const job of late) {
+			this.counters.slowRejected += 1;
+			job.resolve(
+				failureBody(
+					job.body,
+					`The step waited longer than ${this.options.stepTimeoutMs} ms for the slow lane (limit); the step can run again`,
+					true,
+				),
+			);
+		}
 		for (const worker of this.workers) {
 			if (worker.gone || worker.stopReason) continue;
 			if (!worker.ready) {
@@ -575,12 +917,19 @@ export class WorkerPool {
 				break;
 			}
 			if (worker.stopReason) continue;
-			if (now - worker.lastPong > this.options.blockedMs) {
+			// A step of the slow lane delays no other step: only its time limit stops it.
+			if (worker.lane === 'normal' && now - worker.lastPong > this.options.blockedMs) {
+				// Each key that ran in it can be the cause. The slow lane shows which one.
+				worker.moved = true;
+				this.counters.guardStops += 1;
+				this.broadcast(
+					this.lanes.suspects([...worker.keys], worker.keys.size < MAX_WORKER_KEYS, true, now),
+				);
 				this.stop(worker, `it did not answer for ${this.options.blockedMs} ms (a step blocks it)`);
 				continue;
 			}
 			const rssLimit = (this.options.recycleRssMb ?? DEFAULT_RECYCLE_RSS_MB) * 1024 * 1024;
-			if (!worker.alone && !worker.draining && worker.rss > rssLimit) {
+			if (worker.lane === 'normal' && !worker.draining && worker.rss > rssLimit) {
 				this.drain(worker, `it uses ${Math.round(worker.rss / 1024 / 1024)} MB`);
 			}
 			this.ping(worker);
@@ -605,7 +954,7 @@ export class WorkerPool {
 		if (worker.draining || this.closed) return;
 		worker.draining = true;
 		this.options.log(`Recycling a worker: ${reason}.`);
-		this.workers.push(this.spawn(false));
+		this.workers.push(this.spawn('normal'));
 		// A worker with runtime connections sends `goaway` on them, and `idle` when they closed.
 		if (worker.conns.size > 0) {
 			const message: ToWorker = { type: 'drain' };
@@ -637,13 +986,17 @@ export class WorkerPool {
 		// The runtime connects again; another worker takes the connection.
 		for (const waiting of worker.pending.splice(0)) waiting.socket.destroy();
 		// No reason when the host stops: the steps did not cause it.
-		closeConnectionsOf(worker, this.closed ? undefined : reason);
-		// A recycled worker has its replacement already.
-		if (!worker.alone && !worker.draining && !this.closed) {
-			this.options.log(
-				`A worker stopped: ${reason}. ${jobs.length + worker.directInflight} step(s) were in it, ${connCount} runtime connection(s).`,
-			);
-			this.workers.push(this.spawn(false));
+		closeConnectionsOf(worker, this.closed ? undefined : reason, worker.moved);
+		// The steps that it gave to the slow lane and that still wait have no place for their answer.
+		this.slowQueue.remove((j) => j.origin?.worker === worker);
+		// A recycled worker of the normal lane has its replacement already.
+		if (!this.closed && (worker.lane === 'slow' || !worker.draining)) {
+			if (worker.lane === 'normal') {
+				this.options.log(
+					`A worker stopped: ${reason}. ${jobs.length + worker.directInflight} step(s) were in it, ${connCount} runtime connection(s).`,
+				);
+			}
+			this.workers.push(this.spawn(worker.lane));
 		}
 		// Only a step that was alone in its worker is surely the cause.
 		const sole = jobs.length === 1 && worker.abandoned === 0;
@@ -651,11 +1004,13 @@ export class WorkerPool {
 			clearTimeout(job.timer);
 			if (this.closed) {
 				job.resolve(failureBody(job.body, 'The fallback host is stopping', true));
-			} else if (sole || job.alone) {
+			} else if (worker.lane === 'slow' || (sole && !worker.moved)) {
 				// The step was alone in its worker, so it caused the stop.
+				if (worker.lane === 'slow') this.verdict(job, true);
 				job.resolve(failureBody(job.body, `The step stopped its host worker: ${reason}`));
 			} else {
-				this.dispatch({ seq: this.nextSeq(), body: job.body, resolve: job.resolve, alone: true });
+				// The key and the origin stay: the step is the same.
+				this.dispatch({ ...job, seq: this.nextSeq(), slow: true, timer: undefined });
 			}
 		}
 	}
@@ -671,14 +1026,14 @@ function connectionsOf(worker: PoolWorker): number {
 	return worker.conns.size + worker.pending.length;
 }
 
-function closeConnectionsOf(worker: PoolWorker, reason: string | undefined): void {
+function closeConnectionsOf(worker: PoolWorker, reason: string | undefined, again: boolean): void {
 	for (const socket of worker.conns.values()) {
 		if (!socket) continue;
 		if (reason === undefined || socket.destroyed || !socket.writable) {
 			socket.destroy();
 			continue;
 		}
-		socket.end(encodeFrame(workerLost(reason)), () => socket.destroy());
+		socket.end(encodeFrame(workerLost(reason, again)), () => socket.destroy());
 	}
 	worker.conns.clear();
 }
@@ -716,6 +1071,32 @@ function controlFrame(body: ControlMessage): Buffer {
 	frame.writeUInt32LE(CONTROL_JOB, 4);
 	json.copy(frame, WORKER_FRAME_HEADER);
 	return frame;
+}
+
+function writeControl(worker: PoolWorker, body: JsonObject): void {
+	const data = worker.data;
+	if (!data || data.destroyed) return;
+	const json = Buffer.from(JSON.stringify(body), 'utf8');
+	const header = Buffer.allocUnsafe(WORKER_FRAME_HEADER);
+	header.writeUInt32LE(4 + json.length, 0);
+	header.writeUInt32LE(CONTROL_JOB, 4);
+	data.write(header);
+	data.write(json);
+}
+
+/** The key of a request body (`lanes.ts`). A body that is not a request has the empty key. */
+function keyOfBody(body: Buffer): string {
+	try {
+		const parsed: unknown = JSON.parse(body.toString('utf8'));
+		if (!isJsonObject(parsed)) return laneKey(undefined, '');
+		const { workflowId, step } = parsed;
+		return laneKey(
+			typeof workflowId === 'string' ? workflowId : undefined,
+			typeof step === 'string' ? step : '',
+		);
+	} catch {
+		return laneKey(undefined, '');
+	}
 }
 
 /** `<u32 length><u32 job><body>`: one step for a worker. */

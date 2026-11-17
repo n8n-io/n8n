@@ -81,6 +81,8 @@ describe('fallback host worker pool under faults', () => {
 			blockedMs: 1_500,
 			stepTimeoutMs: 20_000,
 			memoryMb: 384,
+			// The bad steps must run with the healthy steps, in the normal lane.
+			codeStartsSlow: false,
 			log: (message) => logs.push(message),
 		});
 		client = await RuntimeClient.connect(host.socketPath);
@@ -193,10 +195,13 @@ describe('fallback host worker pool under faults', () => {
 	});
 
 	it('stops a step that loops forever, and only that step', async () => {
+		// The CPU guard stops the worker, and the step runs again in the slow lane. There it
+		// delays no other step, so only the time limit of a step ends it.
 		const r = await withHealthy('loop', code('loop-bad', 'for (;;) {}'));
 		expect(r.ok).toBe(false);
-		expect(r).toMatchObject({ error: expect.stringContaining('did not answer') });
-	}, 30_000);
+		expect(r).toMatchObject({ error: expect.stringContaining('did not finish within 20000 ms') });
+		expect(host.pool?.stats().guardStops).toBe(1);
+	}, 40_000);
 
 	it('stops a step that uses all memory, and only that step', async () => {
 		const r = await withHealthy(

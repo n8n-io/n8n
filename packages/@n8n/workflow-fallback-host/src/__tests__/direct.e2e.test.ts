@@ -133,7 +133,8 @@ describe('fallback host protocol version 2', () => {
 	it('closes the connections of a worker that stops', async () => {
 		process.env.WF_FALLBACK_CODE_ALLOW_MODULES = '*';
 		try {
-			host = await startTestHost(5_000, { size: 1, blockedMs: 1_000 });
+			// The code step runs in the worker of the connection, not in the slow lane.
+			host = await startTestHost(5_000, { size: 1, blockedMs: 1_000, codeStartsSlow: false });
 			const conn = await DirectConn.open(host.socketPath);
 			// A native crash: the worker process ends at once.
 			void conn.send(
