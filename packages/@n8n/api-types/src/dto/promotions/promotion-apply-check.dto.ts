@@ -167,6 +167,23 @@ const crossProjectMoveSchema = z.object({
 	projectExists: z.boolean(),
 	/** The project that holds the item on this instance. */
 	instanceProject: promotionInstanceProjectSchema,
+	/**
+	 * Why the Apply cannot do the move. Apply transfers an item between two team projects when
+	 * the operation can change both.
+	 * - `personal-project`: this instance holds the item in a personal project.
+	 * - `other-project-forbidden`: the user has no right to apply in the other project.
+	 * - `other-project-not-covered`: the environment does not cover the other project.
+	 * - `project-not-on-branch`: the branch does not hold the project that the item leaves. Only
+	 *   an Apply on the environment can do this move, after a confirmation.
+	 */
+	blockedBy: z
+		.enum([
+			'personal-project',
+			'other-project-forbidden',
+			'other-project-not-covered',
+			'project-not-on-branch',
+		])
+		.optional(),
 });
 
 /**
@@ -182,8 +199,8 @@ export const promotionPlannedMoveSchema = z.object({
 	/** The project that holds the item on the branch. */
 	toProject: promotionInstanceProjectSchema,
 	/**
-	 * True when the branch does not hold `fromProject`. Only an instance Apply can do this move,
-	 * after the user confirms the destructive changes.
+	 * True when the branch does not hold `fromProject`. Only an Apply on the environment can do
+	 * this move, after the user confirms it with `confirmDestructiveChanges`.
 	 */
 	needsConfirmation: z.boolean(),
 	/** Workflow only: the workflow has shares on this instance. The move removes them. */
@@ -329,6 +346,22 @@ export const promotionPreviewCheckSchema = promotionApplyCheckSchema.extend({
 	/** Folders that the branch and this instance hold in different projects, as for workflows. */
 	movedFolders: z.array(crossProjectMoveSchema),
 });
+
+/** A move between two team projects that an Apply did. */
+export const promotionAppliedMoveSchema = z.object({
+	kind: z.enum(['workflow', 'folder']),
+	id: z.string(),
+	name: z.string(),
+	/** The project that held the item before the Apply. `name` is left out when the user cannot access it. */
+	fromProject: promotionInstanceProjectSchema,
+	toProject: promotionInstanceProjectSchema,
+	/**
+	 * Workflow only: the new project refused the published version, so the move unpublished the
+	 * workflow. This is the only case where an Apply unpublishes. Show it as a warning.
+	 */
+	unpublished: z.object({ reason: z.string() }).optional(),
+});
+export type PromotionAppliedMove = z.infer<typeof promotionAppliedMoveSchema>;
 
 export type PromotionBindingProject = z.infer<typeof promotionBindingProjectSchema>;
 export type PromotionMissingProject = z.infer<typeof promotionMissingProjectSchema>;

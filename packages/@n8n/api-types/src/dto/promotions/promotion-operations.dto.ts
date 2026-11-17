@@ -5,6 +5,7 @@ import { z } from 'zod';
 import { n8nIdSchema } from '../../schemas/id.schema';
 import { Z } from '../../zod-class';
 import {
+	promotionAppliedMoveSchema,
 	promotionApplyCheckSchema,
 	promotionBindingWarningSchema,
 } from './promotion-apply-check.dto';
@@ -181,6 +182,8 @@ const confirmDestructiveChangesSchema = z
 			'Rows and other columns are kept. ' +
 			'On a full apply, also deletes the team projects that a `project-deletion` conflict reports, ' +
 			'with everything in them. ' +
+			'On an apply of an environment, also moves the workflows and folders that `plannedMoves` ' +
+			'reports with `needsConfirmation`: they leave a project that the branch does not hold. ' +
 			'Without `expectedPreviewRevision`, the confirmation covers every such change and deletion ' +
 			'when Continue runs, including those that are not in the reviewed result.',
 	});
@@ -239,6 +242,8 @@ export const applyPackageResultSchema = z.discriminatedUnion('status', [
 		status: z.literal('applied'),
 		counts: applyPackageCountsSchema,
 		warnings: z.array(promotionBindingWarningSchema),
+		/** The workflows and folders that the Apply moved between two team projects. */
+		moves: z.array(promotionAppliedMoveSchema).optional(),
 		...promotionApplyDependencyResultShape,
 		/** Set when the Apply checked its dependencies. An incomplete Apply lists its gaps here. */
 		dependencyReport: promotionDependencyReportSchema.optional(),

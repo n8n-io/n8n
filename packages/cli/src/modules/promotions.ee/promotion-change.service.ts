@@ -153,11 +153,18 @@ export class PromotionChangeService {
 			this.promotionsService.readApplyPackageAtCommit(projectId, branch.commitSha),
 			exportInstancePackage(this.packagesService, user, [projectId]),
 		]);
-		const preview = await this.applyPreviewService.build({ user, projectId, files, instance });
-		// The revision keeps the check of the plan. The report replaces the rows that it describes.
 		const input = await this.environmentResolver.resolveForProject(projectId, 'apply');
-		const { check, dependencyReport } = await this.dependencyGate.projectApplyPreviewReport(
-			{ user, input, files, projectId },
+		const { selection, ...preview } = await this.applyPreviewService.build({
+			user,
+			projectId,
+			input,
+			files,
+			instance,
+		});
+		// The revision keeps the check of the plan. The report replaces the rows that it describes.
+		// It reads the selection of the plan, which holds the projects that the moves added.
+		const { check, dependencyReport } = await this.dependencyGate.applyPreviewReport(
+			{ user, input, files, selection: this.dependencyGate.toCheckSelection(selection) },
 			preview.check,
 		);
 		return {
@@ -179,8 +186,8 @@ export class PromotionChangeService {
 	): Promise<PromotionInstanceApplyPreview> {
 		const { commitSha, source, files } =
 			await this.promotionsService.readInstanceApplyPackage(environmentId);
-		const preview = await this.applyPreviewService.buildInstance({ user, files });
 		const input = await this.environmentResolver.resolveForEnvironment(environmentId, 'apply');
+		const preview = await this.applyPreviewService.buildInstance({ user, input, files });
 		const { check, dependencyReport } = await this.dependencyGate.applyPreviewReport(
 			{ user, input, files, selection: 'instance' },
 			preview.check,

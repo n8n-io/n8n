@@ -494,3 +494,138 @@ branch. A Promote to the base branch and an Apply close the requests at once.
 - "Create project" and "Apply the owner project first" are not exits of a gap.
   A missing owner project gives "include" for a global admin and "ask the
   owner" for any other user.
+## Decisions of the user interface (stream E)
+
+### E1. The dependency report follows the selection in the client
+
+The preview is one `GET` and does not know the selection. The page keeps the
+part of the report that belongs to the selection
+(`scopeDependencyReport` in `promotionDependencies.ts`):
+
+- A gap, a warning, a note and a hard block stay while their consumer workflow
+  is in the operation.
+- A gap with `include` leaves the list when the operation holds
+  `include.resourceKey`.
+- A gap of the group `deleted-by-apply` leaves the list when the user clears
+  the deleted workflow.
+
+So the best preview report holds each reference whose target does not come
+with its consumer, also when the target is another change of the same preview.
+The operation is the authority: it computes the gaps again and returns
+`gaps-changed`. The page then shows the report of that result until the
+selection changes.
+
+### E2. An Apply of every change is the Apply of the whole instance
+
+The changes view of an Apply sends the whole-instance Apply
+(`/environments/:id/apply`) when the selection holds every change, the user can
+apply every project, and the view was not opened from a project page. Only that
+Apply deletes projects. Any other selection uses `apply-selection`. A Promote
+always uses `promote-selection`, because only that result has a `status`.
+
+### E3. From a project page to the changes view
+
+"Include it" for an item of another project opens
+`/promotions/<direction>?from=<projectId>&include=<resourceKey>`. The exact
+selection goes in memory (`promotionSelectionHandoff.ts`), because a selection
+can be too long for a URL. After a reload the view selects every change of the
+`from` project and the `include` items. `from` also names the project whose
+environment serves the view, so a project admin needs no global scope.
+
+### E4. Confirmations of an Apply
+
+The page disables the Apply until the user accepts each grant, accepts or
+removes each deletion that has callers, and selects a home for each credential
+without an owner. It sends only the confirmations of items that the report
+still shows.
+
+### E5. The instance Promote opens the changes view
+
+The "Promote" button of the settings page opens the changes view with every
+change selected. The commit message dialog follows. `PromoteInstanceDialog.vue`
+has no caller left and stays in place.
+
+### E6. Values of a hard block
+
+A `credential-type-mismatch` shows both types when `detail` holds the keys
+`sourceType` and `destinationType`.
+
+### E7. Where a placeholder goes
+
+The page names the project of the first consumer of a credential gap as the
+project of its placeholder. The server decides the real project.
+
+## Decisions of the stream "integration of moves"
+
+### I1. The confirmation of a move out of a project that the branch does not hold
+
+There is no new request field. `confirmDestructiveChanges` also confirms these
+moves, for the whole-instance Apply and for the Apply of an environment
+selection. The check lists them in `plannedMoves` with `needsConfirmation:
+true`. An Apply with such a move returns `blocked` until the request confirms.
+A project Apply never confirms: the move is a `moved` conflict there.
+
+### I2. The server adds the other project of a move to the operation
+
+- Apply: when the branch holds the old project, the plan gets it as a project
+  without a selection. So the import writes both projects, and it also applies
+  the project details of the old project. A moved row that the user selects
+  under the old project goes to the selection of the new project.
+- Promote: a selected workflow that another team project owns now goes to the
+  selection of that project. The old project of a move is checked and not
+  exported: only the moved paths change under it on the branch. The run of the
+  review lists it, so the open-review gate holds both projects.
+
+### I3. The rights of a move and the refusal
+
+A move needs the right of the operation in each of the two projects, and the
+environment must cover both. The server checks the projects that it adds.
+- Promote refuses with a message (status 403, or 400 when the environment does
+  not cover the project). The message names the other project only when the
+  user can read it.
+- Apply reports a `moved` conflict with the new optional field `blockedBy`:
+  `personal-project`, `other-project-forbidden`, `other-project-not-covered` or
+  `project-not-on-branch`. The preview and the operation give the same check.
+
+### I4. A project of the branch that the source no longer has
+
+A Promote does not check a right in a project that no longer exists on this
+instance. Its items already left it here, and the branch follows.
+
+### I5. The shape of a moved row
+
+One row for each move. The row of the new project has `movedFromProject`. On a
+view that does not hold the new project, the row of the old project keeps the
+change `deleted` and has `movedToProject`. Both are selectable. `name` is left
+out when the user cannot read the project. A move into a personal project has
+`movedToProject` without a name, and the operation refuses it.
+
+### I6. A move that the import does not plan
+
+Only an item that this instance holds in a personal project still stops an
+Apply as `moved`. A copy with the same source id (F6) and a moved folder that
+the selection does not hold no longer stop it.
+
+### I7. The moves in the result of an Apply
+
+The `applied` result has the optional list `moves`. A move that unpublished a
+workflow has `unpublished.reason`. A client shows it as a warning. The list
+`warnings` keeps its shape.
+
+### I8. The preview of a project Apply plans the moves out of the project
+
+A workflow that left the project is planned under its new project, so the
+check of the page also holds what stops that workflow in the new project.
+
+### G12. The dependency check and the moves between projects (merge of G and I)
+
+The plan of the moves can add a project to the selection of an Apply, and it can plan two
+times. So the dependency check runs for each selection that is planned, and the Apply uses the
+decision of the last one: the check reads the selection with the projects that the moves
+added. The check writes nothing. The confirmed grants are given after the last decision and
+before the Apply compares its plan (this replaces "give the grants, then plan" of G4 for the
+selection routes; the import plans a confirmed grant as given). The previews and the route
+`dependency-report` read the same selection after the moves, so the gap ids match. A moved
+workflow counts in its new project: a credential of the old project that the new project
+cannot use is a grant or a gap, also when only the published version uses it. The check does
+not model data tables and project variables, so their warning after a move is not built.

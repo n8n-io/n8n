@@ -1252,6 +1252,13 @@ properties:
                   type: string
               required:
                 - id
+            blockedBy:
+              type: string
+              enum:
+                - personal-project
+                - other-project-forbidden
+                - other-project-not-covered
+                - project-not-on-branch
             kind:
               type: string
               enum:

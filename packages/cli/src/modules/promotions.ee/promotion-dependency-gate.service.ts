@@ -102,7 +102,9 @@ export type ApplyDependencyDecision =
 				PromotionLayoutProperties,
 				'credentialDependencies' | 'retainedWorkflowIds'
 			>;
-			/** The grants that this call gave, or found in place. They stay when the Apply then stops. */
+			/** The confirmed grants that the report lists. `giveConfirmedGrants` gives them. */
+			pendingGrants: PromotionCredentialGrant[];
+			/** The grants that the Apply gave, or found in place. They stay when the Apply then stops. */
 			grants: PromotionCredentialGrant[];
 			/** The home of each top-level credential that the user selected and the check accepted. */
 			homes: Map<string, { id: string; name: string }>;
@@ -356,14 +358,15 @@ export class PromotionDependencyGate {
 	 * environment is strict and gaps exist, when the report has a hard block, and while the
 	 * Apply deletes a workflow that other workflows call and the user did not accept that.
 	 *
-	 * Otherwise it gives each confirmed grant that the report lists, now: a grant stays when the
-	 * Apply then stops on something else. A grant that the report does not list is ignored.
+	 * It writes nothing, so an operation can call it for each selection that it plans: the plan
+	 * of the moves between projects can add a project to the selection. The import plans a
+	 * confirmed grant as given. Call `giveConfirmedGrants` for the final decision, before the
+	 * Apply compares its plan. A grant that the report does not list is ignored.
 	 */
 	async decideApply(
 		context: Omit<ApplyDependencyContext, 'credentialHomes'>,
 		confirmations: ApplyConfirmations,
 	): Promise<ApplyDependencyDecision> {
-		const { user } = context;
 		const { report, actions } = await this.applyOutcome({
 			...context,
 			...(confirmations.credentialHomes ? { credentialHomes: confirmations.credentialHomes } : {}),
@@ -377,18 +380,7 @@ export class PromotionDependencyGate {
 		}
 
 		const confirmedGrantIds = new Set(confirmations.confirmedGrantIds ?? []);
-		const confirmedGrants = report.grants.filter(({ id }) => confirmedGrantIds.has(id));
-		const grants: PromotionCredentialGrant[] = [];
-		for (const grant of confirmedGrants) {
-			const { status } = await this.credentialsService.grantProjectAccess(
-				user,
-				grant.credential.id,
-				grant.project.id,
-			);
-			if (status === 'granted' || status === 'already-usable') grants.push(grant);
-		}
-		// A confirmed grant that was not given still stops the Apply, as an access requirement.
-		const given = grants.map(({ id }) => id);
+		const pendingGrants = report.grants.filter(({ id }) => confirmedGrantIds.has(id));
 
 		const homes = await this.acceptedHomes(report, confirmations.credentialHomes);
 		const placeholderIds = actions.placeholders.map(({ credential }) => credential.id);
@@ -403,7 +395,7 @@ export class PromotionDependencyGate {
 					.filter(({ target }) => target.kind === 'credential' && !placeholders.has(target.id))
 					.map(({ target }) => target.id),
 			),
-			credentialGrants: grants.map(({ credential, project }) => ({
+			credentialGrants: pendingGrants.map(({ credential, project }) => ({
 				credentialId: credential.id,
 				projectId: project.id,
 			})),
@@ -420,10 +412,33 @@ export class PromotionDependencyGate {
 					? { retainedWorkflowIds: actions.keptWorkflowIds }
 					: {}),
 			},
-			grants,
+			pendingGrants,
+			grants: [],
 			homes,
-			confirmedGrantIds: given,
+			confirmedGrantIds: [],
 		};
+	}
+
+	/**
+	 * Gives each confirmed grant that the report lists, now: a grant stays when the Apply then
+	 * stops on something else, and a retry finds it in place. A confirmed grant that was not
+	 * given still stops the Apply, as an access requirement.
+	 */
+	async giveConfirmedGrants(
+		user: User,
+		decision: Extract<ApplyDependencyDecision, { status: 'continue' }>,
+	): Promise<void> {
+		const given: PromotionCredentialGrant[] = [];
+		for (const grant of decision.pendingGrants) {
+			const { status } = await this.credentialsService.grantProjectAccess(
+				user,
+				grant.credential.id,
+				grant.project.id,
+			);
+			if (status === 'granted' || status === 'already-usable') given.push(grant);
+		}
+		decision.grants = given;
+		decision.confirmedGrantIds = given.map(({ id }) => id);
 	}
 
 	/** The check of the operation, without the rows that the report describes. */

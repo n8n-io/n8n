@@ -6,8 +6,10 @@ import { computed } from 'vue';
 
 import { usePromotionPreviewLabels } from '../../composables/usePromotionPreviewLabels';
 import { blockersOf, type BlockerIndex } from '../../promotionOperation';
+import { projectSelectableKeys, type ChangesProject } from '../../promotionPreview.projects';
 import {
 	availableKeys,
+	keysCheckState,
 	selectionCheck,
 	type DisabledKeys,
 	type Inclusion,
@@ -33,13 +35,17 @@ const props = withDefaults(
 		blockers: BlockerIndex;
 		/** False for a list that users only read, such as a review. Rows then only open their card. */
 		selectable?: boolean;
+		/** Only for the changes view of an environment: the projects that head the groups. */
+		projects?: readonly ChangesProject[];
 	}>(),
-	{ selectable: true },
+	{ selectable: true, projects: () => [] },
 );
 
 const emit = defineEmits<{
 	toggle: [key: ResourceKey];
 	toggleContainer: [key: ResourceKey];
+	/** The checkbox of a project group: every change of the project that users can add. */
+	toggleKeys: [keys: ResourceKey[]];
 	selectAll: [];
 	clear: [];
 	inspect: [key: ResourceKey];
@@ -59,6 +65,27 @@ function markers(resource: PromotionResource) {
 	return { blocked, meta: blocked ? undefined : meta };
 }
 
+/** The header of a project group: its select-all checkbox, and why users cannot select in it. */
+function projectHeader(projectId: string | undefined) {
+	const project = props.projects.find(({ id }) => id === projectId);
+	if (!project) return undefined;
+	const keys = projectSelectableKeys(props.graph, project.id);
+	const state = keysCheckState(keys, props.selected, props.disabled);
+	const canAdd = keys.some((key) => !props.disabled.has(key));
+	return {
+		project,
+		keys,
+		state,
+		selectedCount: keys.filter((key) => props.selected.has(key)).length,
+		disabled: props.locked || (!canAdd && state === 'unchecked'),
+		notice: !project.canOperate
+			? i18n.baseText(`promotions.preview.tree.project.readOnly.${props.direction}`)
+			: project.blocker
+				? i18n.baseText('promotions.preview.tree.project.reviewOpen')
+				: undefined,
+	};
+}
+
 const rows = computed(() =>
 	flattenPreviewTree(props.tree).map(({ item, indent }) => {
 		const resource = props.graph.resources.get(item.id);
@@ -66,6 +93,9 @@ const rows = computed(() =>
 			item,
 			indent,
 			resource,
+			header: item.kind === 'project' ? projectHeader(item.projectId) : undefined,
+			// A project with a change of its own has a card. Its header opens it.
+			hasCard: !!resource && resource.change !== 'unchanged',
 			check: resource
 				? selectionCheck(props.graph, resource, {
 						selected: props.selected,
@@ -117,11 +147,90 @@ function onToggle(resource: PromotionResource) {
 		</div>
 
 		<ul :class="$style.list" role="list">
-			<template v-for="{ item, indent, resource, check, marker } in rows" :key="item.id">
-				<li v-if="item.kind === 'section'" :class="$style.heading">
+			<template
+				v-for="{ item, indent, resource, check, marker, header, hasCard } in rows"
+				:key="item.id"
+			>
+				<li
+					v-if="item.kind === 'section'"
+					:class="$style.heading"
+					:style="{ '--preview-tree--indent': indent }"
+				>
 					<N8nText step="2xs" bold color="text-base">
 						{{ item.label }}
 					</N8nText>
+				</li>
+				<li
+					v-else-if="item.kind === 'project' && header"
+					:class="[
+						$style.row,
+						$style.project,
+						{ [$style.inspected]: inspectedKey === item.id, [$style.resource]: hasCard },
+					]"
+					data-test-id="promotion-preview-tree-project"
+					:data-project-id="header.project.id"
+				>
+					<N8nCheckbox
+						v-if="selectable"
+						:model-value="header.state === 'checked'"
+						:indeterminate="header.state === 'indeterminate'"
+						:disabled="header.disabled"
+						:aria-label="
+							i18n.baseText('promotions.preview.tree.project.select', {
+								interpolate: { project: header.project.name },
+							})
+						"
+						data-test-id="promotion-preview-tree-project-checkbox"
+						@update:model-value="emit('toggleKeys', header.keys)"
+					/>
+					<component
+						:is="hasCard ? 'button' : 'span'"
+						:type="hasCard ? 'button' : undefined"
+						:class="[$style.name, { [$style.static]: !hasCard }]"
+						:style="{ '--preview-tree--indent': 0 }"
+						:aria-current="inspectedKey === item.id ? 'true' : undefined"
+						@click="hasCard && emit('inspect', item.id)"
+					>
+						<N8nIcon v-if="item.icon" :icon="item.icon" size="small" :class="$style.icon" />
+						<span :class="$style.text">
+							<N8nText step="xs" bold color="text-dark" :class="$style.label">
+								{{ item.label }}
+							</N8nText>
+						</span>
+					</component>
+					<N8nText
+						step="2xs"
+						color="text-light"
+						:class="$style.meta"
+						data-test-id="promotion-preview-tree-project-count"
+					>
+						{{
+							header.keys.length === 0
+								? i18n.baseText('promotions.preview.tree.project.empty')
+								: i18n.baseText('promotions.preview.tree.project.count', {
+										interpolate: {
+											selected: String(header.selectedCount),
+											total: String(header.keys.length),
+										},
+									})
+						}}
+					</N8nText>
+					<N8nTooltip v-if="header.notice" placement="right" as-child>
+						<template #content>{{ header.notice }}</template>
+						<span
+							role="img"
+							tabindex="0"
+							:aria-label="header.notice"
+							:class="$style.blockerMarker"
+							data-test-id="promotion-preview-tree-project-notice"
+						>
+							<N8nIcon
+								:icon="header.project.canOperate ? 'circle-alert' : 'lock'"
+								size="small"
+								:color="header.project.canOperate ? 'warning' : 'text-light'"
+							/>
+						</span>
+					</N8nTooltip>
 				</li>
 				<li
 					v-else-if="resource && check && marker"
@@ -237,6 +346,16 @@ function onToggle(resource: PromotionResource) {
 	align-items: center;
 	min-height: var(--height--sm);
 	padding: 0 var(--spacing--2xs);
+	padding-left: calc(var(--spacing--2xs) + var(--preview-tree--indent, 0) * var(--spacing--lg));
+}
+
+/* A project heads its group, so it stands apart from the group above it. */
+.project:not(:first-child) {
+	margin-top: var(--spacing--xs);
+}
+
+.static {
+	cursor: default;
 }
 
 .heading:not(:first-child) {
