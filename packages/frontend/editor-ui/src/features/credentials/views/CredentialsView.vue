@@ -18,7 +18,7 @@ import { useProjectsStore } from '@/features/collaboration/projects/projects.sto
 import { useSettingsStore } from '@n8n/stores/settings.store';
 import { useSourceControlStore } from '@/features/integrations/sourceControl.ee/sourceControl.store';
 import { listenForModalChanges, useUIStore } from '@/app/stores/ui.store';
-import type { Project } from '@/features/collaboration/projects/projects.types';
+import type { Project, ProjectType } from '@/features/collaboration/projects/projects.types';
 import { isCredentialsResource } from '@/app/utils/typeGuards';
 import { useI18n, type BaseTextKey } from '@n8n/i18n';
 import { getResourcePermissions } from '@n8n/permissions';
@@ -138,7 +138,11 @@ watch(
 	{ immediate: true },
 );
 
-function createRestrictionResolver() {
+type ResolvedRestrictionLookup = { lookup: TypeRestrictionLookup; projectType?: ProjectType };
+
+function createRestrictionResolver(): (
+	credential: ICredentialsResponse,
+) => ResolvedRestrictionLookup {
 	const currentProject = getCurrentProjectRestrictionLookup();
 	if (!overview.isOverviewSubPage) return () => ({ lookup: currentProject });
 
