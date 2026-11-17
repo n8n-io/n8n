@@ -1601,6 +1601,10 @@ const HELPERS: Record<string, string> = {
 	}
 	return null;
 }`,
+	__urlTextParam: `function __urlTextParam(text: any, key: any): any {
+	if (typeof text !== 'string') throw new Error('URL parameters from a value that is not text has no compiled form');
+	return __urlParam(text.charAt(0) === '?' ? text : '?' + text, key);
+}`,
 	__urlForm: `function __urlForm(value: any): string {
 	if (value === null || typeof value !== 'object' || Array.isArray(value)) throw new Error('URL parameters from a value that is not an object has no compiled form');
 	const parts: string[] = [];
@@ -1824,6 +1828,7 @@ const HELPER_USES: Record<string, string[]> = {
 	__url: ['__urlText'],
 	__urlCanParse: ['__url', '__urlText', '__isLimit'],
 	__urlParam: ['__urlDecode'],
+	__urlTextParam: ['__urlParam', '__urlDecode'],
 	__urlForm: ['__urlFormText'],
 	__assertParam: ['__error'],
 	__locatorValue: ['__error', '__regexExec'],
@@ -2024,6 +2029,7 @@ const TEXT_HELPERS = new Set([
 	'__url',
 	'__urlCanParse',
 	'__urlParam',
+	'__urlTextParam',
 	'__urlForm',
 	...Object.keys(MOMENT_HELPERS),
 ]);
@@ -3757,6 +3763,21 @@ class Specialiser {
 						);
 				}
 			}
+			if (
+				ts.isCallExpression(node) &&
+				ts.isPropertyAccessExpression(node.expression) &&
+				node.expression.name.text === 'get' &&
+				node.arguments.length === 1 &&
+				!ts.isSpreadElement(node.arguments[0]) &&
+				ts.isNewExpression(node.expression.expression) &&
+				ts.isIdentifier(node.expression.expression.expression) &&
+				node.expression.expression.expression.text === 'URLSearchParams' &&
+				node.expression.expression.arguments?.length === 1 &&
+				!ts.isSpreadElement(node.expression.expression.arguments[0]) &&
+				!localNames.has('URLSearchParams') &&
+				['url', 'node:url'].includes(unit.file.imports.get('URLSearchParams')?.from ?? 'url')
+			)
+				return this.helper('__urlTextParam', ...args(node.expression.expression), ...args(node));
 			if (
 				ts.isCallExpression(node) &&
 				ts.isPropertyAccessExpression(node.expression) &&
@@ -7325,6 +7346,32 @@ class Specialiser {
 					'the credential is used as a whole value: only its fields can go into a request',
 				);
 			}
+		}
+		this.orderConstants();
+	}
+
+	private orderConstants() {
+		const constants = this.output.filter((unit) => !ts.isFunctionDeclaration(unit.node));
+		if (constants.length < 2) return;
+		const byName = new Map(constants.map((unit) => [unit.name, unit]));
+		const placed = new Set<string>();
+		const ordered: typeof constants = [];
+		const place = (unit: (typeof constants)[number], open: Set<string>) => {
+			if (placed.has(unit.name) || open.has(unit.name)) return;
+			open.add(unit.name);
+			const walk = (n: ts.Node) => {
+				const used = ts.isIdentifier(n) && n.text !== unit.name ? byName.get(n.text) : undefined;
+				if (used) place(used, open);
+				ts.forEachChild(n, walk);
+			};
+			walk(unit.node);
+			placed.add(unit.name);
+			ordered.push(unit);
+		};
+		for (const unit of constants) place(unit, new Set());
+		let next = 0;
+		for (let k = 0; k < this.output.length; k++) {
+			if (!ts.isFunctionDeclaration(this.output[k].node)) this.output[k] = ordered[next++];
 		}
 	}
 
