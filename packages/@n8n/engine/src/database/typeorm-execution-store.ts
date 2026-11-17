@@ -60,9 +60,8 @@ export class TypeOrmExecutionStore implements ExecutionStore {
 	}
 
 	/**
-	 * Takes a share lock on the parent row for the rest of the transaction. The
-	 * UPDATE that ends the parent needs the row lock too, so it either commits
-	 * first and this read sees the end, or waits and then finds the sub-execution.
+	 * Takes a shared lock on the parent row. We do this to prevent a race between
+	 * sub-execution creation and parent status update (cancellation, failure).
 	 */
 	private async holdParentNotEnded(manager: EntityManager, parentId: string): Promise<void> {
 		const row = await manager
