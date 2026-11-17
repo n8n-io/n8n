@@ -6,7 +6,7 @@ import {
 	type InstanceAiWebSearchSource,
 } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
-import { EventService } from '@n8n/backend-services';
+import { EventService, TelemetryProxy } from '@n8n/backend-services';
 import { GlobalConfig } from '@n8n/config';
 import type { InstanceAiConfig, DeploymentConfig } from '@n8n/config';
 import { SettingsRepository } from '@n8n/db';
@@ -16,7 +16,6 @@ import { ensureError } from '@n8n/utils/errors/ensure-error';
 
 import { InstanceCredentialBroker } from '@/credentials/instance-credential-broker';
 import type { InstanceCredentialUse } from '@/credentials/instance-credential-broker';
-import { Telemetry } from '@/telemetry';
 
 import {
 	CREDENTIAL_TO_MODEL_PROVIDER,
@@ -64,7 +63,7 @@ export class InstanceAiSetupTelemetryService {
 		private readonly logger: Logger,
 		globalConfig: GlobalConfig,
 		eventService: EventService,
-		private readonly telemetry: Telemetry,
+		private readonly telemetry: TelemetryProxy,
 		private readonly settingsRepository: SettingsRepository,
 		private readonly instanceCredentialBroker: InstanceCredentialBroker,
 		private readonly settingsService: InstanceAiSettingsService,

@@ -47,6 +47,12 @@ import { MODAL_CONFIRM, VIEWS } from '@/app/constants';
 import { useUIStore } from '@/app/stores/ui.store';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 import ToolsConnectionModal from '@/features/shared/toolsConnection/ToolsConnectionModal.vue';
+import {
+	RECOMMENDED_SKILLS,
+	type RecommendedSkillId,
+} from '@/experiments/recommendedSkills/recommendedSkills';
+import { useRecommendedSkillsExperiment } from '@/experiments/recommendedSkills/useRecommendedSkillsExperiment';
+import { useRecommendedSkillLoader } from '@/experiments/recommendedSkills/useRecommendedSkillLoader';
 import type {
 	SkillConnectionItem,
 	ToolCategoryKey,
@@ -353,6 +359,41 @@ const pickerItems = computed<SkillConnectionItem[]>(() =>
 	}),
 );
 
+const {
+	showRecommendedSkills,
+	trackCardsShown: trackRecommendedSkillsShown,
+	trackSkillAdded: trackRecommendedSkillAdded,
+} = useRecommendedSkillsExperiment();
+const recommendedSkillId = ref<RecommendedSkillId>();
+const { loadRecommendedSkill } = useRecommendedSkillLoader();
+const pickerCategories = computed<ToolCategoryKey[]>(() =>
+	showRecommendedSkills.value
+		? ['all', 'project', 'global', 'recommended']
+		: ['all', 'project', 'global'],
+);
+const pickerItemsWithRecommended = computed<SkillConnectionItem[]>(() =>
+	showRecommendedSkills.value
+		? [
+				...pickerItems.value,
+				...RECOMMENDED_SKILLS.map((recommended) => {
+					const similarNameReason = getSimilarNameReason(recommended.name);
+					return {
+						id: `recommended:${recommended.id}`,
+						kind: 'skill' as const,
+						skillId: recommended.id,
+						title: recommended.name,
+						description: i18n.baseText(recommended.cardTextKey),
+						category: 'recommended' as const,
+						status: 'none' as const,
+						attached: false,
+						disabled: similarNameReason !== undefined,
+						...(similarNameReason ? { disabledReason: similarNameReason } : {}),
+					};
+				}),
+			]
+		: pickerItems.value,
+);
+
 const previewSkill = ref<SkillDetail | null>(null);
 const previewPath = ref(SKILL_FILE);
 const previewLoading = ref(false);
@@ -519,8 +560,10 @@ const showScopeBadge = computed(
 		(showScope.value ||
 			(!!props.data.skillRefsEnabled && (!isEditing.value || !!savedTarget.value))),
 );
-const scopeEditable = computed(() =>
-	showScope.value ? canChangeScope.value && !isSaving.value : showAvailabilitySelect.value,
+const scopeEditable = computed(
+	() =>
+		scopeChoices.value.length > 1 &&
+		(showScope.value ? canChangeScope.value && !isSaving.value : showAvailabilitySelect.value),
 );
 
 function onScopeChoice(value: string) {
@@ -543,13 +586,15 @@ function scopeItemIcon(choice: ScopeChoice): IconOrEmoji {
 }
 
 function scopeItems(testIdPrefix: string): Array<DropdownMenuItemProps<string>> {
-	return scopeChoices.value.map((choice) => ({
-		id: `scope:${choice.value}`,
-		label: choice.label,
-		icon: scopeItemIcon(choice),
-		checked: choice.value === selectedScopeValue.value,
-		testId: `${testIdPrefix}${choice.value}`,
-	}));
+	return scopeChoices.value
+		.filter((choice) => !isEditing.value || choice.value !== selectedScopeValue.value)
+		.map((choice) => ({
+			id: `scope:${choice.value}`,
+			label: choice.label,
+			icon: scopeItemIcon(choice),
+			checked: choice.value === selectedScopeValue.value,
+			testId: `${testIdPrefix}${choice.value}`,
+		}));
 }
 
 /** "Add to <agent>" toggles the attachment of a hub skill to the agent it was opened from. */
@@ -876,13 +921,25 @@ async function loadSkillAccess(skillId: string) {
 	}
 }
 
+async function selectRecommendedSkill(id: string) {
+	const recommended = RECOMMENDED_SKILLS.find((candidate) => candidate.id === id);
+	if (!recommended) return;
+	const loadedSkill = await loadRecommendedSkill(recommended);
+	if (!loadedSkill || step.value !== 'select') return;
+	onSkillUploaded(loadedSkill);
+	createMethod.value = 'manual';
+	recommendedSkillId.value = recommended.id;
+}
+
 function onPickerItemAttach(item: ToolConnectionItem) {
 	if (item.kind !== 'skill' || item.disabled || item.attached) return;
-	void attachLibrarySkill(item.skillId);
+	if (item.category === 'recommended') void selectRecommendedSkill(item.skillId);
+	else void attachLibrarySkill(item.skillId);
 }
 
 async function onPickerItemPreview(item: ToolConnectionItem) {
 	if (item.kind !== 'skill' || item.disabled) return;
+	if (item.category === 'recommended') return await selectRecommendedSkill(item.skillId);
 	previewLoading.value = true;
 	try {
 		previewSkill.value = await getSkillDetail(rootStore.restApiContext, item.skillId);
@@ -921,7 +978,10 @@ function onPreviewAdd() {
 
 onMounted(() => {
 	if (startsManual) void refreshDefaultName();
-	if (hasPicker) void loadLibrarySkills();
+	if (hasPicker) {
+		void loadLibrarySkills();
+		if (showRecommendedSkills.value) trackRecommendedSkillsShown('agent_skill_modal');
+	}
 	if (props.data.skillId && props.data.skillRefsEnabled) void loadSkillAccess(props.data.skillId);
 });
 
@@ -1204,6 +1264,9 @@ async function onSave() {
 		...(isEditing.value ? {} : { method: createMethod.value }),
 	});
 	if (saved) {
+		if (recommendedSkillId.value) {
+			trackRecommendedSkillAdded(recommendedSkillId.value, undefined, 'agent_skill_modal');
+		}
 		if (props.inline) showSavedSkill(payload);
 		else closeModal();
 	}
@@ -1400,8 +1463,8 @@ function onRemove() {
 		<div v-if="hasPicker" v-show="step === 'select'" :class="$style.picker">
 			<ToolsConnectionModal
 				:open="modalOpen && step === 'select'"
-				:items="pickerItems"
-				:categories="['all', 'project', 'global']"
+				:items="pickerItemsWithRecommended"
+				:categories="pickerCategories"
 				:category-labels="data.projectLabel ? { project: data.projectLabel } : undefined"
 				:detail-item="null"
 				:search-placeholder="i18n.baseText('agents.builder.skills.picker.search.placeholder')"
@@ -1416,12 +1479,22 @@ function onRemove() {
 					description: i18n.baseText('agents.builder.skills.picker.create.description'),
 					testId: 'agent-skill-picker-create',
 				}"
-				:connect-label="() => i18n.baseText('agents.builder.skills.picker.add')"
+				:connect-label="
+					(item) =>
+						i18n.baseText(
+							item.category === 'recommended'
+								? 'experiments.recommendedSkills.use'
+								: 'agents.builder.skills.picker.add',
+						)
+				"
 				:connect-aria-label="
 					(item) =>
-						i18n.baseText('agents.builder.skills.picker.addAriaLabel', {
-							interpolate: { name: item.title },
-						})
+						i18n.baseText(
+							item.category === 'recommended'
+								? 'experiments.recommendedSkills.useAriaLabel'
+								: 'agents.builder.skills.picker.addAriaLabel',
+							{ interpolate: { name: item.title } },
+						)
 				"
 				embedded
 				show-connect-actions

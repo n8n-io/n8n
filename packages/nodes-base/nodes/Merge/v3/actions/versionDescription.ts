@@ -13,8 +13,8 @@ export const versionDescription: INodeTypeDescription = {
 	name: 'merge',
 	group: ['transform'],
 	description: 'Merges data of multiple streams once data from both is available',
-	version: [3, 3.1, 3.2],
 	annotations: READ_ONLY_ANNOTATIONS,
+	version: [3, 3.1, 3.2, 3.3],
 	defaults: {
 		name: 'Merge',
 	},
@@ -39,7 +39,7 @@ const ordersApi = node({
 
 const mergeNode = merge({
   type: 'n8n-nodes-base.merge',
-  version: 3.2,
+  version: 3.3,
   config: {
     name: 'Merge by ID',
     parameters: {
@@ -72,7 +72,7 @@ const branchB = node({
 
 const mergeNode = merge({
   type: 'n8n-nodes-base.merge',
-  version: 3.2,
+  version: 3.3,
   config: {
     name: 'Append',
     parameters: { mode: 'append', numberInputs: 2 }
@@ -86,7 +86,7 @@ branchB.to(mergeNode.input(1));
 <pattern title="Three or more inputs with SQL (combineBySql)">
 const mergeNode = merge({
   type: 'n8n-nodes-base.merge',
-  version: 3.2,
+  version: 3.3,
   config: {
     name: 'SQL Merge',
     parameters: {

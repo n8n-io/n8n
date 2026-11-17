@@ -5,7 +5,10 @@ import { mock } from 'vitest-mock-extended';
 
 import { KnowledgeConfig } from '../../knowledge.config';
 import { KnowledgeUploadError } from '../knowledge-upload.error';
-import { isAllowedKnowledgeFile, KnowledgeUploadMiddleware } from '../knowledge-upload.middleware';
+import {
+	hasAllowedKnowledgeFileExtension,
+	KnowledgeUploadMiddleware,
+} from '../knowledge-upload.middleware';
 
 const { multerFactoryMock, uploadArrayMock } = vi.hoisted(() => ({
 	multerFactoryMock: vi.fn(),
@@ -101,14 +104,14 @@ describe('KnowledgeUploadMiddleware', () => {
 	it.each(['data.csv', 'notes.md', 'notes.markdown', 'document.pdf', 'plain.txt'])(
 		'allows %s',
 		(originalname) => {
-			expect(isAllowedKnowledgeFile({ originalname })).toBe(true);
+			expect(hasAllowedKnowledgeFileExtension({ originalname })).toBe(true);
 		},
 	);
 
 	it.each(['archive.zip', 'image.png', 'script.js', 'document.pdf.exe', 'README'])(
 		'rejects %s',
 		(originalname) => {
-			expect(isAllowedKnowledgeFile({ originalname })).toBe(false);
+			expect(hasAllowedKnowledgeFileExtension({ originalname })).toBe(false);
 		},
 	);
 });

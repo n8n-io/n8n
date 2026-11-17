@@ -14,6 +14,7 @@ import {
 	MAX_PROMOTION_DISCOVERY_ITEMS_PER_PAGE,
 	PromotePackageDto,
 	PromotePackageResultDto,
+	PromoteSelectionResultDto,
 	PromoteSelectionRequestDto,
 	PromotionCheckoutPublicDto,
 	PromotionEnvironmentListPublicDto,
@@ -21,6 +22,7 @@ import {
 	PromotionEnvironmentProjectPublicDto,
 	PromotionEnvironmentPublicDto,
 	PromotionMissingProjectListPublicDto,
+	PromotionInstanceApplyPreviewDto,
 	PromotionPreviewDto,
 	PromotionProviderCreatedPublicDto,
 	PromotionProviderListPublicDto,
@@ -590,7 +592,7 @@ export class PromotionsPublicController {
 	@ApiSummary('Beta: Apply a package to the instance')
 	@ApiDescription(
 		BETA_NOTE +
-			'Checks the full package at the configured branch tip. Optionally send expectedSource with the environmentId, branchName, and full commitSha from the reviewed change preview; status `source-changed` means the branch moved since that review and nothing was imported. Returns status `blocked` before import writes if bindings need setup, if the import conflicts with this instance, or if the apply would delete team projects that the package does not hold. Retain environmentId and git for Continue. Status `applied` includes counts and warnings. Inspect status before reading counts. Existing target variable values, including empty strings, are preserved. Workflows and folders move within their project to match the branch, and folders take the name on the branch. Apply cannot move a workflow or folder between projects. It returns a `moved` conflict in `blocked` with both projects. For a personal project, the conflict gives only the ID. Requires a connected Apply environment with instance scope. The importer checks user write permissions; granular API-key write scopes are not passed to it. Another operation on the same environment returns 423.',
+			'Checks the full package at the configured branch tip. Optionally send expectedSource with the environmentId, branchName, and full commitSha from the reviewed change preview; status `source-changed` means the branch moved since that review and nothing was imported. Optionally send expectedPreviewRevision with the `revision` of the reviewed preview; status `preview-changed` means this instance changed since that review and nothing was imported. Returns status `blocked` before import writes if bindings need setup, if the import conflicts with this instance, or if the apply would delete team projects that the package does not hold. Retain environmentId and git for Continue. Status `applied` includes counts and warnings. Inspect status before reading counts. Existing target variable values, including empty strings, are preserved. Workflows and folders move within their project to match the branch, and folders take the name on the branch. Apply cannot move a workflow or folder between projects. It returns a `moved` conflict in `blocked` with both projects. For a personal project, the conflict gives only the ID. Requires a connected Apply environment with instance scope. The importer checks user write permissions; granular API-key write scopes are not passed to it. Another operation on the same environment returns 423.',
 	)
 	@ApiTags(tags)
 	@ApiResponse(200, ApplyPackageResultDto)
@@ -610,7 +612,7 @@ export class PromotionsPublicController {
 		return await (await this.promotionsService()).apply(
 			promotionEnvironmentId,
 			req.user,
-			input.expectedSource,
+			input,
 			req.publicApiClient,
 			req.ctx,
 		);
@@ -623,7 +625,7 @@ export class PromotionsPublicController {
 	@ApiSummary('Beta: Continue Apply after binding setup')
 	@ApiDescription(
 		BETA_NOTE +
-			'Rechecks the configured source and current target bindings. Send expectedSource with the environmentId, branchName, and full commitSha from the reviewed Apply result. Send `confirmDestructiveChanges: true` to also apply destructive data table changes and delete the reported team projects. Status `source-changed` requires a new Apply review. Status `blocked` returns every blocker again, without import writes. Status `applied` includes counts and warnings. Inspect status before reading counts. Existing target variable values are preserved. Requires the same connected instance environment and permissions as Apply. The importer checks user write permissions; granular API-key write scopes are not passed to it. No server session or exactly-once guarantee is provided. Another operation on the same environment returns 423.',
+			'Rechecks the configured source and current target bindings. Send expectedSource with the environmentId, branchName, and full commitSha from the reviewed Apply result. Send `confirmDestructiveChanges: true` to also apply destructive data table changes and delete the reported team projects. Send expectedPreviewRevision to confirm only what the reviewed preview showed. Status `source-changed` or `preview-changed` requires a new Apply review. Status `blocked` returns every blocker again, without import writes. Status `applied` includes counts and warnings. Inspect status before reading counts. Existing target variable values are preserved. Requires the same connected instance environment and permissions as Apply. The importer checks user write permissions; granular API-key write scopes are not passed to it. No server session or exactly-once guarantee is provided. Another operation on the same environment returns 423.',
 	)
 	@ApiTags(tags)
 	@ApiResponse(200, ApplyPackageResultDto)
@@ -650,13 +652,73 @@ export class PromotionsPublicController {
 
 	// -- Change preview ------------------------------------------------------
 
+	@Get('/environments/:promotionEnvironmentId/changes')
+	@Licensed(LICENSE_FEATURES.PROMOTIONS)
+	@ApiKeyScope('promotions:apply')
+	@GlobalScope('promotions:apply')
+	@ApiSummary('Beta: Preview the Apply of the whole instance')
+	@ApiDescription(
+		BETA_NOTE +
+			'Shows what applying the branch tip of an instance Apply environment changes on this instance, for every project of the package. `resources` and `dependencies` have the same shape as the project change preview. Resources are not selectable: Apply applies the whole package. A team project that the package does not hold is listed as `deleted`, with the folders, workflows, credentials, data tables and variables that it owns. Workflows and folders that a kept project no longer holds are listed as `deleted` too. `check` lists what blocks the Apply. A `project-deletion` conflict needs `confirmDestructiveChanges` on Continue. Send `revision` as expectedPreviewRevision and `commitSha` in expectedSource to apply only what this preview shows. Requires a connected Apply environment with instance scope.',
+	)
+	@ApiTags(tags)
+	@ApiResponse(200, PromotionInstanceApplyPreviewDto)
+	@ApiErrorResponse(400)
+	@ApiErrorResponse(404)
+	@ApiErrorResponse(503)
+	async getInstanceApplyChanges(
+		req: AuthenticatedRequest,
+		_res: Response,
+		@Param('promotionEnvironmentId', promotionEnvironmentIdParamSchema)
+		promotionEnvironmentId: string,
+	): Promise<PromotionInstanceApplyPreviewDto> {
+		return await (await this.changeService()).getInstanceApplyPreview(
+			req.user,
+			promotionEnvironmentId,
+		);
+	}
+
+	@Post('/environments/:promotionEnvironmentId/changes/details')
+	@Licensed(LICENSE_FEATURES.PROMOTIONS)
+	@ApiKeyScope('promotions:apply')
+	@GlobalScope('promotions:apply')
+	@RateLimitAccess('read')
+	@ApiSummary('Beta: Read the content of resources in the whole-instance Apply preview')
+	@ApiDescription(
+		BETA_NOTE +
+			'Returns the content before and after the change for up to 50 resources of the whole-instance Apply preview. Send the `commitSha` and the resource `key` values from the preview. The branch side is read at that commit. The instance side is read now, so a `revision` that differs from the preview means the resource changed after the preview. A data table that a deleted project owns but no workflow uses has its current content as `before`. `missingKeys` lists requested resources that neither side holds anymore, and such credentials and variables, which have no content to show. Credential content holds expressions only. Variable values are left out, and `valueHidden` is true, unless the API key and the user have the variable:list scope.',
+	)
+	@ApiTags(tags)
+	@ApiResponse(200, PromotionResourceDetailsDto)
+	@ApiErrorResponse(400)
+	@ApiErrorResponse(404)
+	@ApiErrorResponse(503)
+	async getInstanceApplyChangeDetails(
+		req: AuthenticatedRequest,
+		_res: Response,
+		@Param('promotionEnvironmentId', promotionEnvironmentIdParamSchema)
+		promotionEnvironmentId: string,
+		@Body input: PromotionResourceDetailsRequestDto,
+	): Promise<PromotionResourceDetailsDto> {
+		return await (await this.changeService()).getInstanceApplyDetails(
+			req.user,
+			promotionEnvironmentId,
+			input,
+			{
+				canSeeVariableValues:
+					hasGlobalScope(req.user, 'variable:list') &&
+					(req.tokenGrant?.apiKeyScopes?.includes('variable:list') ?? false),
+			},
+		);
+	}
+
 	@Get('/projects/:projectId/changes/:direction')
 	@Licensed(LICENSE_FEATURES.PROMOTIONS)
 	@ApiKeyScope({ anyOf: ['promotions:promote', 'promotions:apply'] })
 	@ApiSummary('Beta: Preview the changes of a project in one direction')
 	@ApiDescription(
 		BETA_NOTE +
-			'Compares a team project on this instance with the branch of its promotion environment for that direction. For `promote` the preview is what a promotion sends to the branch, and the key needs the promotions:promote scope. For `apply` the preview is what applying the branch changes on this instance, and the key needs the promotions:apply scope. `resources` lists the changed projects, folders, workflows, credentials, data tables, variables and tags, each with its `key`, `type`, `id`, `change` and the `parentKey` of the project or folder that holds it. It also lists unchanged resources that give context, such as parent folders. Select the workflows and folders where `selectable` is true by `workflowIds` and `folderIds`; the project itself is always included. `dependencies` links each workflow to the resources it uses; selecting the workflow sends a dependency when `included` is true. A deleted promote workflow with `movedToProject`, or an added one with `movedFromProject`, moved between projects; promoting it is refused until it moves back. `blocker` is set when an open review holds the changes of a Promote. For `apply`, `check` lists what blocks the Apply, and `revision` identifies this preview: send it as expectedPreviewRevision. `commitSha` is the commit the preview was read from. Requires the environment to be connected first.',
+			'Compares a team project on this instance with the branch of its promotion environment for that direction. For `promote` the preview is what a promotion sends to the branch, and the key needs the promotions:promote scope. For `apply` the preview is what applying the branch changes on this instance, and the key needs the promotions:apply scope. `resources` lists the changed projects, folders, workflows, credentials, data tables, variables and tags, each with its `key`, `type`, `id`, `change` and the `parentKey` of the project or folder that holds it. It also lists unchanged resources that give context, such as parent folders. Select the workflows and folders where `selectable` is true by `workflowIds` and `folderIds`; the project itself is always included. `dependencies` links each workflow to the resources it uses; selecting the workflow sends a dependency when `included` is true. A deleted promote workflow with `movedToProject`, or an added one with `movedFromProject`, moved between projects; promoting it is refused until it moves back. `blocker` is set when an open review holds the changes of a Promote. For `apply`, `check` lists what blocks the Apply. `revision` identifies this preview: send it as expectedPreviewRevision with Promote or Apply. `commitSha` is the commit the preview was read from. Requires the environment to be connected first.',
 	)
 	@ApiTags(tags)
 	@ApiResponse(200, PromotionPreviewDto)
@@ -717,10 +779,10 @@ export class PromotionsPublicController {
 	@ApiSummary("Beta: Promote a selection of a project's workflows and folders")
 	@ApiDescription(
 		BETA_NOTE +
-			"Promotes a chosen set of a team project's workflows and folders to the branch of the project's Promote environment. The project's own details (name, icon, description and telemetry tags) are always written, so a request without workflowIds and folderIds promotes only the project. A selected folder is written with the folders above it; a renamed or moved folder moves the workflows inside it on the branch, without changing their content. Status 400 with 'Nothing to promote' means the branch already matches the selection. Send ids only; the server reads each one now, so the push carries the current state. Live and archived workflows the project owns are exported, so an archived id stays on the branch as archived; an id whose workflow is gone from the instance leaves the branch, matching the project's change list. A workflow that moved into or out of the project since the branch was written is refused with 400; move it back first. A deletion the branch does not hold under this project rejects the whole request before any write. Requires a Promote environment to resolve for the project (its own Promote environment, otherwise the instance Promote environment), and requires it to be connected first. The API key also needs variable:list when the workflows reference variables. Another operation on the same environment returns 423.",
+			"Promotes a chosen set of a team project's workflows and folders to the branch of the project's Promote environment. The project's own details (name, icon, description and telemetry tags) are always written, so a request without workflowIds and folderIds promotes only the project. A selected folder is written with the folders above it; a renamed or moved folder moves the workflows inside it on the branch, without changing their content. Status 400 with 'Nothing to promote' means the branch already matches the selection. Send ids only; the server reads each one now, so the push carries the current state. Live and archived workflows the project owns are exported, so an archived id stays on the branch as archived; an id whose workflow is gone from the instance leaves the branch, matching the project's change list. A workflow that moved into or out of the project since the branch was written is refused with 400; move it back first. A deletion the branch does not hold under this project rejects the whole request before any write. Requires a Promote environment to resolve for the project (its own Promote environment, otherwise the instance Promote environment), and requires it to be connected first. The API key also needs variable:list when the workflows reference variables. Optionally send expectedPreviewRevision with the revision of the reviewed Promote preview. Status `preview-changed` means the project on this instance or its branch changed since that review, and nothing was pushed. Status `promoted` includes counts and git. Inspect status before reading counts. Another operation on the same environment returns 423.",
 	)
 	@ApiTags(tags)
-	@ApiResponse(200, PromotePackageResultDto)
+	@ApiResponse(200, PromoteSelectionResultDto)
 	@ApiErrorResponse(400)
 	@ApiErrorResponse(404)
 	@ApiErrorResponse(409)
@@ -731,7 +793,7 @@ export class PromotionsPublicController {
 		_res: Response,
 		@Param('projectId', projectIdParamSchema) projectId: string,
 		@Body input: PromoteSelectionRequestDto,
-	): Promise<PromotePackageResultDto> {
+	): Promise<PromoteSelectionResultDto> {
 		return await (await this.promotionsService()).promoteProjectSelection(projectId, req.user, {
 			...input,
 			// Variable values only travel when the key may list them.

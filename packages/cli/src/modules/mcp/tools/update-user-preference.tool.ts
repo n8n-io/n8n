@@ -5,8 +5,7 @@ import type { User } from '@n8n/db';
 import { TELEMETRY_EVENT } from '@n8n/telemetry';
 import z from 'zod';
 
-import type { AiPreferenceService, UrlService } from '@n8n/backend-services';
-import type { Telemetry } from '@/telemetry';
+import type { AiPreferenceService, UrlService, TelemetryProxy } from '@n8n/backend-services';
 
 import {
 	MCP_GET_USER_PREFERENCES_TOOL_NAME,
@@ -66,7 +65,7 @@ const outputSchema = {
 export const createUpdateUserPreferenceTool = (
 	user: User,
 	aiPreferenceService: AiPreferenceService,
-	telemetry: Telemetry,
+	telemetry: TelemetryProxy,
 	urlService: UrlService,
 	logger: Logger,
 ): ToolDefinition<typeof inputSchema> => ({

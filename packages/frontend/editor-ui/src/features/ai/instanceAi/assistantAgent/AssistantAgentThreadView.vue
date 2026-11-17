@@ -40,6 +40,7 @@ import InstanceAiFixWithAiPanel from '../components/InstanceAiFixWithAiPanel.vue
 import InstanceAiInputMenu from '../components/InstanceAiInputMenu.vue';
 import InstanceAiPreviewTabBar from '../components/InstanceAiPreviewTabBar.vue';
 import InstanceAiResourcePicker from '../components/InstanceAiResourcePicker.vue';
+import InstanceAiSkillPreview from '../components/InstanceAiSkillPreview.vue';
 import InstanceAiViewHeader from '../components/InstanceAiViewHeader.vue';
 import InstanceAiWorkflowPreview, {
 	type WorkflowFailuresReport,
@@ -365,8 +366,11 @@ const preview = useCanvasPreview({
 provide('openWorkflowPreview', preview.openWorkflowPreview);
 provide('openDataTablePreview', preview.openDataTablePreview);
 provide('openAppPreview', preview.openAppPreview);
+provide('openSkillPreview', preview.openSkillPreview);
 provide('openAgentPreview', preview.openAgentPreview);
 provide('openAgentChatPreview', openAgentChatPreview);
+
+const openSkillTabs = computed(() => preview.openTabs.value.filter((tab) => tab.type === 'skill'));
 
 watch(
 	[() => preview.activeTabId.value, () => preview.isPreviewVisible.value],
@@ -891,6 +895,15 @@ function removeStagedNodes(chipId: string): void {
 							@preview-open-change="handleAgentTestDockOpenChange"
 							@assistant-handoff="handleAgentPreviewAssistantHandoff"
 						/>
+						<!-- Retain each open skill's draft while another artifact is visible. -->
+						<KeepAlive v-for="tab in openSkillTabs" :key="tab.id">
+							<InstanceAiSkillPreview
+								v-if="preview.isPreviewVisible.value && preview.activeSkillId.value === tab.id"
+								:class="$style.previewSlot"
+								:skill-id="tab.id"
+								:refresh-key="preview.skillRefreshKey.value"
+							/>
+						</KeepAlive>
 					</div>
 				</N8nTabsRoot>
 			</N8nResizeWrapper>

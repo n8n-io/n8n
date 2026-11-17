@@ -6,12 +6,11 @@ import { mock } from 'vitest-mock-extended';
 import type { AgentProjectDeletionRepository } from '../repositories/agent-project-deletion.repository';
 import type { ErrorReporter, StorageConfig } from 'n8n-core';
 
-import type { Telemetry } from '@/telemetry';
-
 import type { AgentChatAttachmentService } from '../agent-chat-attachment.service';
 import { AgentExecutionService, type RecordMessageParams } from '../agent-execution.service';
 import { SESSION_STOPPED_REASON } from '../agent-session-stop-reason';
 import type { AgentExecutionUpdateBroadcaster } from '../agent-execution-update-broadcaster';
+import type { AgentUsageTelemetryService } from '../agent-usage-telemetry.service';
 import type {
 	AgentExecutionThread,
 	AgentThreadAccess,
@@ -106,7 +105,7 @@ describe('AgentExecutionService', () => {
 	let agentExecutionThreadRepository: Mocked<AgentExecutionThreadRepository>;
 	let n8nMemory: Mocked<N8nMemory>;
 	let memoryBackend: Mocked<N8nMemoryImplementation>;
-	let telemetry: Mocked<Telemetry>;
+	let telemetry: Mocked<AgentUsageTelemetryService>;
 	let agentExecutionLogStore: Mocked<AgentExecutionLogStore>;
 	let storageConfig: Mocked<StorageConfig>;
 	let errorReporter: Mocked<ErrorReporter>;
@@ -136,7 +135,7 @@ describe('AgentExecutionService', () => {
 		n8nMemory = mock<N8nMemory>();
 		memoryBackend = mock<N8nMemoryImplementation>();
 		n8nMemory.getImplementation.mockReturnValue(memoryBackend);
-		telemetry = mock<Telemetry>();
+		telemetry = mock<AgentUsageTelemetryService>();
 		agentExecutionLogStore = mock<AgentExecutionLogStore>();
 		storageConfig = mock<StorageConfig>({ modeTag: 'db' });
 		errorReporter = mock<ErrorReporter>();

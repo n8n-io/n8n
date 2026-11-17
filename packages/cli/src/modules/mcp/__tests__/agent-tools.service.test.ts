@@ -8,6 +8,7 @@ import {
 	NodeTypesProxy,
 	ProjectScopeService,
 	UrlService,
+	TelemetryProxy,
 } from '@n8n/backend-services';
 import { mockInstance, mockLogger } from '@n8n/backend-test-utils';
 import { OutboundHttp } from '@n8n/backend-network';
@@ -82,7 +83,6 @@ import { McpRegistryService } from '@/modules/mcp-registry/registry/mcp-registry
 import type { RegisterToolFn } from '@/modules/mcp/mcp.types';
 import { OauthService } from '@/oauth/oauth.service';
 import { userHasScopes } from '@/permissions.ee/check-access';
-import { Telemetry } from '@/telemetry';
 
 import { AGENT_TOOLS, TOOLS_BY_SCOPE } from '../mcp-scopes';
 import { USER_CALLED_MCP_TOOL_EVENT } from '../mcp.constants';
@@ -153,7 +153,7 @@ const agentEntity = (overrides: Record<string, unknown> = {}): ProjectAgent =>
 describe('McpAgentToolsService', () => {
 	// One fake skill refs seam for the MCP service and the services it writes through.
 	const agentSkillRefs = createAgentSkillRefsService();
-	const telemetry = mockInstance(Telemetry);
+	const telemetry = mockInstance(TelemetryProxy);
 	const credentialsService = mockInstance(CredentialsService);
 	const agentsService = mockInstance(AgentsService);
 	const agentConfigService = mockInstance(AgentConfigService);
@@ -249,7 +249,7 @@ describe('McpAgentToolsService', () => {
 	const useRealCustomToolPersistence = (agent: ProjectAgent) => {
 		const agentRepository = mock<AgentRepository>();
 		const runtimeCacheService = mock<AgentRuntimeCacheService>();
-		const lifecycleTelemetry = mock<Telemetry>();
+		const lifecycleTelemetry = mock<TelemetryProxy>();
 		const modificationTelemetry = new AgentModificationTelemetryService(
 			lifecycleTelemetry,
 			mock<InstanceSettings>(),
@@ -336,6 +336,7 @@ describe('McpAgentToolsService', () => {
 					'archive_agent',
 					'call_agent',
 					'create_agent',
+					'move_agent',
 					'discover_agent_assets',
 					'get_agent',
 					'get_agent_builder_reference',
@@ -999,6 +1000,32 @@ describe('McpAgentToolsService', () => {
 			expect(result.structuredContent).toMatchObject({ error: 'write failed' });
 			expect(agentsService.delete).not.toHaveBeenCalled();
 			expect(agentConfigService.updateConfig).not.toHaveBeenCalled();
+		});
+	});
+
+	describe('move_agent', () => {
+		it('moves an Agent to a folder or the project root', async () => {
+			agentsService.findByIdForUser.mockResolvedValue(agentEntity());
+			agentsService.move.mockResolvedValue(true);
+
+			for (const parentFolderId of ['agent-folder', null]) {
+				const result = await callTool('move_agent', { agentId: 'agent-1', parentFolderId });
+
+				expect(result.isError).toBeUndefined();
+				expect(agentsService.move).toHaveBeenLastCalledWith('agent-1', 'project-1', parentFolderId);
+			}
+		});
+
+		it('reports a failed placement', async () => {
+			agentsService.findByIdForUser.mockResolvedValue(agentEntity());
+			agentsService.move.mockRejectedValue(new Error('Invalid destination'));
+
+			const result = await callTool('move_agent', {
+				agentId: 'agent-1',
+				parentFolderId: 'invalid',
+			});
+
+			expect(result.isError).toBe(true);
 		});
 	});
 

@@ -420,7 +420,7 @@ export class ImportOrchestrator {
 				{ ...input.context, projectPendingCreation: input.projectPendingCreation },
 				input.agents,
 				input.skills ?? [],
-				input.options,
+				{ ...input.options, checkRootPlacement: input.checkRootPlacement },
 			);
 			input = scopeAgentRequirements(input, agentPlan);
 		}
