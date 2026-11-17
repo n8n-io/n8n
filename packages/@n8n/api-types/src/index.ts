@@ -22,6 +22,7 @@ export type * from './worker-pools';
 export * from './node-type-availability';
 export type * from './sub-workflow-policy-check';
 export type * from './credential-type-availability';
+export type * from './instance-type-access';
 export type * from './transfer-preview';
 export type * from './transfer-result';
 export * from './redaction-enforcement';
@@ -420,6 +421,7 @@ export {
 	buildUpdateWorkflowSessionGrantKey,
 	buildCredentialDestinationGrantKey,
 	buildDataTablesSessionGrantKey,
+	buildOwnedDataTableGrantKey,
 	buildWorkflowActionSessionGrantKey,
 	buildWorkspaceSessionGrantKey,
 	buildCleanupTestExecutionsSessionGrantKey,
@@ -503,6 +505,7 @@ export {
 	INSTANCE_AI_APPROVAL_MODES_FLAG,
 	INSTANCE_AI_FOLDER_EXPLORATION_FLAG,
 	INSTANCE_ACTIVITY_CONTEXT_FLAG,
+	INSTANCE_AI_CLOUD_BROWSER_FLAG,
 	INSTANCE_AI_FOLDER_EXPLORATION_ENABLED_VARIANT,
 	INSTANCE_CONTEXT_SURFACE_DEPTH,
 	instanceContextSurfaceSchema,
@@ -1034,7 +1037,10 @@ export {
 	instanceAiApprovalModeSchema,
 	instanceAiAutoApprovalDeciderSchema,
 	autoApprovalPayloadSchema,
+	DATA_TABLE_CHANGE_SEVERITY,
+	isSessionGrantableDataTableAction,
 	type InstanceAiApprovalDetails,
+	type InstanceAiDataTableChangeDetails,
 	type InstanceAiApprovalMode,
 	type InstanceAiApprovalPreferences,
 	type InstanceAiAutoApprovalDecider,
@@ -1094,8 +1100,10 @@ export {
 	type ScimTransferTargetsResponse,
 } from './schemas/scim-config.schema';
 export {
+	DEFAULT_EXECUTION_LIMIT_SETTINGS,
 	EXECUTION_LIMIT_MAX_EXECUTIONS_CEILING,
 	EXECUTION_LIMIT_PERIOD_UNITS,
+	executionLimitMaxExecutionsSchema,
 	executionLimitSettingsSchema,
 	type ExecutionLimitPeriodUnit,
 	type ExecutionLimitSettings,

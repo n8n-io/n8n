@@ -882,6 +882,34 @@ VALUES (
 			delete node.onError;
 		});
 
+		it.each([
+			{ nodeVersion: 1.2, expected: "select '1$&2', '1$$2', '^[0-9]+$'" },
+			{ nodeVersion: 1.1, expected: "select '1{{ $json.sql }}2', '1$2', '^[0-9]+" },
+		])(
+			'should insert the resolved query for version $nodeVersion',
+			async ({ nodeVersion, expected }) => {
+				const nodeParameters: IDataObject = {
+					operation: 'execute',
+					query: '{{ $json.sql }}',
+					resource: 'database',
+					options: { nodeVersion },
+				};
+				const nodeOptions = nodeParameters.options as IDataObject;
+				const mockThis = createMockExecuteFunction(nodeParameters);
+				mockThis.evaluateExpression = vi.fn().mockReturnValue("select '1$&2', '1$$2', '^[0-9]+$'");
+				const runQueries = vi.fn<RunQueriesFn>();
+				const items: INodeExecutionData[] = [{ json: {} }];
+
+				await executeSQL.execute.call(mockThis, runQueries, items, nodeOptions, pool);
+
+				expect(runQueries).toHaveBeenCalledWith(
+					[{ query: expected, values: [] }],
+					items,
+					nodeOptions,
+				);
+			},
+		);
+
 		it('should call runQueries with binds passed using bindInfo and single item', async () => {
 			const expectedQuery = 'SELECT :en as name, dname from dept where deptno = :dno';
 			const items = [

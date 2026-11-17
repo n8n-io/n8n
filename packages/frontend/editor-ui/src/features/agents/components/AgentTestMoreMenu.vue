@@ -49,7 +49,7 @@ const props = withDefaults(
 		hideLayoutToggle?: boolean;
 		isLangSmithExportEnabled: boolean;
 		isExporting: boolean;
-		getConversationMarkdown: () => string;
+		getConversationMarkdown: () => Promise<string>;
 		usageUpdates?: Record<string, AgentUsageUpdate>;
 	}>(),
 	{ canDeleteSession: false, isDeletingSession: false, usageUpdates: () => ({}) },
@@ -218,7 +218,7 @@ async function copyLink() {
 
 async function copyConversation() {
 	try {
-		const conversation = props.getConversationMarkdown();
+		const conversation = await props.getConversationMarkdown();
 		if (!conversation) return;
 		await clipboard.copy(conversation);
 		toast.showMessage({

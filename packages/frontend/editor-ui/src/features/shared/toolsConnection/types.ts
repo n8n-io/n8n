@@ -174,7 +174,8 @@ export type ToolCategoryKey =
 	| 'agents'
 	| 'project'
 	| 'global'
-	| 'data';
+	| 'data'
+	| 'recommended';
 
 /** Used when an item carries no explicit `category`. */
 export const CATEGORY_BY_KIND: Record<ConnectionItemKind, ToolCategoryKey> = {

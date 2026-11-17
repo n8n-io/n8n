@@ -832,6 +832,201 @@ describe('InstanceAiMemoryService.getRichMessages — durable-log fold-on-read',
 		expect(toolCall?.preferenceCard?.state).toBe('undone');
 	});
 
+	it('keeps a turn paired when its detached background agent logs facts after a later message', async () => {
+		// A detached cloud browser agent logs its steps under the run that started it, after that
+		// run finished and after the user moved on. The anchor must ignore them, or the turn loses
+		// its tree and the tree shows again after the later messages.
+		const t = (seconds: number) => new Date(2026, 0, 1, 0, 0, seconds);
+		mockListMessages.mockResolvedValue({
+			messages: [
+				{ id: 'msg-u1', role: 'user', content: 'read the article', createdAt: t(0) },
+				{
+					id: 'msg-a1',
+					role: 'assistant',
+					content: [{ type: 'text', text: 'the task is running' }],
+					createdAt: t(8),
+				},
+				{ id: 'msg-u2', role: 'user', content: 'something else', createdAt: t(20) },
+				{
+					id: 'msg-a2',
+					role: 'assistant',
+					content: [{ type: 'text', text: 'an answer' }],
+					createdAt: t(40),
+				},
+			],
+		});
+		setLogRows([
+			eventRow(
+				{
+					type: 'run-start',
+					runId: 'run_1',
+					agentId: 'agent-001',
+					payload: { messageId: 'm-1', messageGroupId: 'mg-1' },
+				},
+				t(5),
+			),
+			eventRow(
+				{
+					type: 'agent-spawned',
+					runId: 'run_1',
+					agentId: 'agent-browser',
+					detachedFromTurn: true,
+					payload: {
+						parentId: 'agent-001',
+						role: 'cloud-browser',
+						kind: 'cloud-browser',
+						tools: [],
+						taskId: 'task-1',
+					},
+				},
+				t(6),
+			),
+			eventRow(
+				{
+					type: 'run-finish',
+					runId: 'run_1',
+					agentId: 'agent-001',
+					payload: { status: 'completed' },
+				},
+				t(9),
+			),
+			eventRow(
+				{
+					type: 'run-start',
+					runId: 'run_2',
+					agentId: 'agent-002',
+					payload: { messageId: 'm-2', messageGroupId: 'mg-2' },
+				},
+				t(25),
+			),
+			eventRow(
+				{
+					type: 'text-block',
+					runId: 'run_2',
+					agentId: 'agent-002',
+					payload: { text: 'an answer' },
+				},
+				t(26),
+			),
+			// The browser agent finishes after the next message.
+			eventRow(
+				{
+					type: 'agent-completed',
+					runId: 'run_1',
+					agentId: 'agent-browser',
+					payload: { role: 'cloud-browser', result: 'done', status: 'completed' },
+				},
+				t(30),
+			),
+			eventRow(
+				{
+					type: 'run-finish',
+					runId: 'run_2',
+					agentId: 'agent-002',
+					payload: { status: 'completed' },
+				},
+				t(39),
+			),
+		]);
+
+		const service = createService();
+		const result = await service.getRichMessages('user-1', 'thread-1');
+
+		expect(result.messages.map((message) => message.id)).toEqual([
+			'msg-u1',
+			'msg-a1',
+			'msg-u2',
+			'msg-a2',
+		]);
+		const browserAgent = result.messages[1].agentTree?.children[0];
+		expect(browserAgent?.agentId).toBe('agent-browser');
+		expect(browserAgent?.status).toBe('completed');
+	});
+
+	it('keeps the later facts of a detached background agent when its turn was cancelled', async () => {
+		// The user stopped the reply, but the cloud browser task kept running and logged its
+		// steps under the cancelled run. Its events carry the flag, so the fold keeps them.
+		const t = (seconds: number) => new Date(2026, 0, 1, 0, 0, seconds);
+		mockListMessages.mockResolvedValue({
+			messages: [
+				{ id: 'msg-u1', role: 'user', content: 'read the article', createdAt: t(0) },
+				{
+					id: 'msg-a1',
+					role: 'assistant',
+					content: [{ type: 'text', text: 'the task is running' }],
+					createdAt: t(8),
+				},
+			],
+		});
+		setLogRows([
+			eventRow(
+				{
+					type: 'run-start',
+					runId: 'run_1',
+					agentId: 'agent-001',
+					payload: { messageId: 'm-1', messageGroupId: 'mg-1' },
+				},
+				t(5),
+			),
+			eventRow(
+				{
+					type: 'agent-spawned',
+					runId: 'run_1',
+					agentId: 'agent-browser',
+					detachedFromTurn: true,
+					payload: {
+						parentId: 'agent-001',
+						role: 'cloud-browser',
+						kind: 'cloud-browser',
+						tools: [],
+						taskId: 'task-1',
+					},
+				},
+				t(6),
+			),
+			eventRow(
+				{
+					type: 'run-finish',
+					runId: 'run_1',
+					agentId: 'agent-001',
+					payload: { status: 'cancelled', reason: 'user_cancelled' },
+				},
+				t(7),
+			),
+			eventRow(
+				{
+					type: 'tool-call',
+					runId: 'run_1',
+					agentId: 'agent-browser',
+					detachedFromTurn: true,
+					payload: { toolCallId: 'tc-browse', toolName: 'browser_navigate', args: {} },
+				},
+				t(10),
+			),
+			eventRow(
+				{
+					type: 'agent-completed',
+					runId: 'run_1',
+					agentId: 'agent-browser',
+					detachedFromTurn: true,
+					payload: { role: 'cloud-browser', result: 'done', status: 'completed' },
+				},
+				t(12),
+			),
+		]);
+
+		const service = createService();
+		const result = await service.getRichMessages('user-1', 'thread-1');
+
+		const tree = result.messages[1].agentTree;
+		expect(tree?.status).toBe('cancelled');
+		const browserAgent = tree?.children[0];
+		expect(browserAgent?.agentId).toBe('agent-browser');
+		expect(browserAgent?.status).toBe('completed');
+		expect(browserAgent?.result).toBe('done');
+		expect(browserAgent?.toolCalls.map((toolCall) => toolCall.toolCallId)).toEqual(['tc-browse']);
+	});
+
 	it('keeps interleaved runs of one group in thread order', async () => {
 		// Background runs execute concurrently with their parent, so a group's
 		// facts interleave in the log. The fold must feed the reducer in seq

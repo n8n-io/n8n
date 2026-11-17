@@ -8,6 +8,10 @@ import { InstanceSettings } from 'n8n-core';
 @BackendModule({ name: 'agents' })
 export class AgentsModule implements ModuleInterface {
 	async init() {
+		const { FolderContentService } = await import('@/services/folder-content.service.js');
+		const { AgentFolderService } = await import('./agent-folder.service.js');
+		Container.get(FolderContentService).register('agent', Container.get(AgentFolderService));
+
 		const { SandboxSettingsService } = await import('@/services/sandbox-settings.service.js');
 		Container.get(SandboxSettingsService).registerCredentialUses();
 
@@ -61,6 +65,11 @@ export class AgentsModule implements ModuleInterface {
 
 		const { registerUserDeletionHandler } = await import('./register-user-deletion-handler.js');
 		registerUserDeletionHandler();
+
+		// Share pickers show the project of each agent's service account.
+		const { ServiceAccountProjects } = await import('@/services/service-account-projects.js');
+		const { AgentServiceAccountService } = await import('./agent-service-account.service.js');
+		Container.get(ServiceAccountProjects).register(Container.get(AgentServiceAccountService));
 
 		// Register blob backends for agent execution logs.
 		// The fs backend is always available; s3/az reuse the clients base-command
