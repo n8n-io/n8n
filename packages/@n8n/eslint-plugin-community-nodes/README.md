@@ -32,6 +32,22 @@ export default [
 ];
 ```
 
+## Compiled engine check (experimental)
+
+This plugin does not check if a node compiles for the compiled workflow engine.
+That check is a separate command, because it is not a per-file check: it needs
+the built node description, it follows imports across the files of the node,
+and it compiles each resource and operation one at a time, which takes seconds.
+Run it from the n8n repository after you build your package:
+
+```sh
+node packages/@n8n/workflow-lang/src/cli.ts lint-node <path to X.node.ts or to the built package>
+```
+
+The command prints, for each operation, if it compiles. For each failure it
+prints `file:line:col CODE message` and what to change. Add `--json` for data.
+The rules are in `packages/@n8n/workflow-lang/docs/node-compile-rules.md`.
+
 ## Rules
 
 <!-- begin auto-generated rules list -->

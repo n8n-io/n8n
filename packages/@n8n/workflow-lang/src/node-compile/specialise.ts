@@ -80,9 +80,18 @@ export interface ParameterKind {
 	modes?: Record<string, { pattern: string; flags: string } | null>;
 }
 
+export interface UnitOrigin {
+	unit: string;
+	file: string;
+	declared: string;
+	owner?: string;
+}
+
 export interface SpecialiseResult {
 	source?: string;
 	errors: string[];
+
+	origins?: UnitOrigin[];
 
 	notes: string[];
 
@@ -2028,6 +2037,7 @@ class Specialiser {
 
 	private readonly contextCallees = new Set<string>();
 	private changed = false;
+	private entryUnit: Unit | undefined;
 
 	constructor(input: SpecialiseInput) {
 		this.input = input;
@@ -2048,6 +2058,23 @@ class Specialiser {
 	private error(where: string, message: string) {
 		const text = `${where}: ${message}`;
 		if (!this.errors.includes(text)) this.errors.push(text);
+	}
+
+	origins(): UnitOrigin[] {
+		const all = [...(this.entryUnit ? [this.entryUnit] : []), ...this.units.values()];
+		return all.map((unit) => {
+			const { node } = unit;
+			const owner =
+				ts.isMethodDeclaration(node) && ts.isClassLike(node.parent)
+					? node.parent.name?.text
+					: undefined;
+			return {
+				unit: unit.name,
+				file: unit.file.path,
+				declared: node.name?.getText(unit.file.sf) ?? unit.name,
+				...(owner === undefined ? {} : { owner }),
+			};
+		});
 	}
 
 	private helper(name: string, ...args: ts.Expression[]): ts.CallExpression {
@@ -6626,7 +6653,8 @@ class Specialiser {
 				linked: [],
 			};
 		}
-		this.process({ name: 'execute', node: execute, file: entry, withContext: true }, true);
+		this.entryUnit = { name: 'execute', node: execute, file: entry, withContext: true };
+		this.process(this.entryUnit, true);
 		for (let k = 0; k < this.queue.length; k++) {
 			if (k > 2000) {
 				this.error('link', 'more than 2,000 declarations');
@@ -7797,13 +7825,16 @@ function finish(root: ts.Node): ts.Node {
 }
 
 export function specialiseNode(input: SpecialiseInput): SpecialiseResult {
+	const specialiser = new Specialiser(input);
 	try {
-		return new Specialiser(input).run();
+		const result = specialiser.run();
+		return result.errors.length > 0 ? { ...result, origins: specialiser.origins() } : result;
 	} catch (error) {
 		return {
 			errors: [error instanceof Error ? error.message : String(error)],
 			notes: [],
 			linked: [],
+			origins: specialiser.origins(),
 		};
 	}
 }

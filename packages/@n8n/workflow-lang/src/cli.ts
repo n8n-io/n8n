@@ -7,6 +7,7 @@
  *   wfc ref <file.ts> <fixture.json>
  *   wfc convert <workflow.json> [-o <file.ts>]
  *   wfc credentials --export <file> [--workflow <file.ts>] [--map <slot>=<name>] -o <file>
+ *   wfc lint-node <X.node.ts | built package> [--json] [--operation resource.operation] [--version <n>|all]
  */
 import { createHash } from 'node:crypto';
 import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
@@ -29,7 +30,7 @@ function formatDiagnostic(d: Diagnostic, file: string): string {
 
 function usage(): never {
 	process.stderr.write(
-		'usage:\n  wfc compile <file.ts> -o <dir>\n  wfc disasm <file.wfm>\n  wfc ref <file.ts> <fixture.json>\n',
+		'usage:\n  wfc compile <file.ts> -o <dir>\n  wfc disasm <file.wfm>\n  wfc ref <file.ts> <fixture.json>\n  wfc lint-node <X.node.ts | built package> [--json] [--operation resource.operation]\n',
 	);
 	process.exit(2);
 }
@@ -40,6 +41,11 @@ async function main(args: string[]) {
 		const { runConvert } = await import('./convert/cli.ts');
 		process.exitCode = runConvert(rest);
 		return;
+	}
+	if (command === 'lint-node') {
+		// Says if each operation of a node compiles, and what to change if not. Loaded on use.
+		const { runLintNode } = await import('./node-compile/lint.ts');
+		process.exit(runLintNode(rest));
 	}
 	if (command === 'compile') {
 		const file = rest[0];
