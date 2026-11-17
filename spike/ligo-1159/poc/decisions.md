@@ -109,3 +109,64 @@ No telemetry event changes. A Promote that returns `gaps-changed` counts as
 
 The foundation changes make some existing test files fail the typecheck
 (mostly fixtures without `allowIncomplete`). They are left as they are.
+
+## Decisions of the user interface (stream E)
+
+### E1. The dependency report follows the selection in the client
+
+The preview is one `GET` and does not know the selection. The page keeps the
+part of the report that belongs to the selection
+(`scopeDependencyReport` in `promotionDependencies.ts`):
+
+- A gap, a warning, a note and a hard block stay while their consumer workflow
+  is in the operation.
+- A gap with `include` leaves the list when the operation holds
+  `include.resourceKey`.
+- A gap of the group `deleted-by-apply` leaves the list when the user clears
+  the deleted workflow.
+
+So the best preview report holds each reference whose target does not come
+with its consumer, also when the target is another change of the same preview.
+The operation is the authority: it computes the gaps again and returns
+`gaps-changed`. The page then shows the report of that result until the
+selection changes.
+
+### E2. An Apply of every change is the Apply of the whole instance
+
+The changes view of an Apply sends the whole-instance Apply
+(`/environments/:id/apply`) when the selection holds every change, the user can
+apply every project, and the view was not opened from a project page. Only that
+Apply deletes projects. Any other selection uses `apply-selection`. A Promote
+always uses `promote-selection`, because only that result has a `status`.
+
+### E3. From a project page to the changes view
+
+"Include it" for an item of another project opens
+`/promotions/<direction>?from=<projectId>&include=<resourceKey>`. The exact
+selection goes in memory (`promotionSelectionHandoff.ts`), because a selection
+can be too long for a URL. After a reload the view selects every change of the
+`from` project and the `include` items. `from` also names the project whose
+environment serves the view, so a project admin needs no global scope.
+
+### E4. Confirmations of an Apply
+
+The page disables the Apply until the user accepts each grant, accepts or
+removes each deletion that has callers, and selects a home for each credential
+without an owner. It sends only the confirmations of items that the report
+still shows.
+
+### E5. The instance Promote opens the changes view
+
+The "Promote" button of the settings page opens the changes view with every
+change selected. The commit message dialog follows. `PromoteInstanceDialog.vue`
+has no caller left and stays in place.
+
+### E6. Values of a hard block
+
+A `credential-type-mismatch` shows both types when `detail` holds the keys
+`sourceType` and `destinationType`.
+
+### E7. Where a placeholder goes
+
+The page names the project of the first consumer of a credential gap as the
+project of its placeholder. The server decides the real project.
