@@ -559,7 +559,7 @@ Outcome
 - Never a personal project.
 - The other consumer projects get access through ticket 1, in the same Continue.
 
-Dependencies: 1. Related: LIGO-1056, LIGO-1243, LIGO-1268.
+Dependencies: 1. Related: LIGO-1056, LIGO-1243.
 
 **3. LIGO-1250: package import fails or duplicates a missing credential that several projects use** (existing)
 
@@ -707,7 +707,7 @@ Tickets 14 to 17 are tickets 12 to 15 of `consolidated-solution.md`, with these 
 
 | Item | Where |
 |---|---|
-| Instance Apply deletes by absence on a partial branch | Decision 4. It now blocks ticket 5. Related: LIGO-1268. |
+| Instance Apply deletes by absence on a partial branch | Decision 4. It now blocks ticket 5. |
 | A confirmed project deletion deletes credentials that other projects use | Decision 4. |
 | The global state of a credential on the branch | Later, when users ask. |
 | Owner drift of an existing credential | Decision 9. |
@@ -724,7 +724,6 @@ Tickets 14 to 17 are tickets 12 to 15 of `consolidated-solution.md`, with these 
 | LIGO-1091 | Close. "Created one time" is LIGO-1250. Access is ticket 1. Sharing lists are rejected. |
 | LIGO-1258 | Keep. Ticket 14. |
 | LIGO-1363 | Reopen, or open ticket 15. |
-| LIGO-1268 | Link to decision 4. It now blocks ticket 5. |
 | LIGO-1056 | Related to ticket 2. |
 
 ## 10. Open decisions for a human
@@ -745,8 +744,9 @@ Tickets 14 to 17 are tickets 12 to 15 of `consolidated-solution.md`, with these 
 
 - Recommendation: an item list on Continue. The server grants only the listed items. Same as decision 2 of `consolidated-solution.md`.
 
-**Decision 4. What does an instance Apply delete when the branch is a partial view?** (LIGO-1268)
+**Decision 4. What does an instance Apply delete when the branch is a partial view?**
 
+- Background: LIGO-1268 (done) lets a project Promote write to a branch with no full export, so a branch can be a partial view. LIGO-1269 (done) asks for confirmation before an instance Apply deletes a project that the branch lacks. No ticket covers the workflows of a project that the branch holds.
 - Facts: an instance Apply hard-deletes the workflows of a package project that the branch lacks, with no confirmation. (F44) A credential-only Promote of ticket 5 puts a project on the branch with no workflows.
 - Options as in decision 4 of `consolidated-solution.md`: a separate decision, a coverage declaration, or deletion only on a branch that an instance Promote wrote last.
 - This decision now blocks ticket 5.

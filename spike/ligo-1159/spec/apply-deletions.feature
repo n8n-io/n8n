@@ -2,7 +2,7 @@
 # for the behavior that it describes.
 #
 # Not specified here: what an instance Apply deletes when the branch is a
-# partial view. Open decision 4 (LIGO-1268) has no recommendation yet.
+# partial view. Open decision 4 has no recommendation yet.
 Feature: Guards against deletion on Apply
   Apply does not delete a resource that the applied workflows still need, and
   it reports a deletion that breaks a caller on the destination.

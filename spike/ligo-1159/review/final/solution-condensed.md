@@ -96,7 +96,7 @@ flowchart LR
 | 1 | Does a personal dependency stop the whole instance Promote? | Yes, with the full list before the write to the branch. |
 | 2 | How does a cycle across projects reach the branch? | Instance Promote and instance Apply only. |
 | 3 | Which consent does a credential grant need? | The user confirms each grant. |
-| 4 | What does instance Apply delete on a partial branch? (LIGO-1268) | Decide first. It blocks ticket 5. |
+| 4 | What does instance Apply delete on a partial branch? | Decide first. It blocks ticket 5. |
 | 5 | How does the Promote block roll out? | Warning for one release, then block. |
 | 6 | Does a move into a personal project keep blocking? | Yes. |
 | 7 | What happens to the shares of a moved workflow? | Removed, as in the editor. |

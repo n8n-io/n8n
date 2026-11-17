@@ -716,7 +716,7 @@ const SCENARIOS = [
     { t: 'Sales promotes Sync orders', op: PRO('Project Promote · Sales · Sync orders'), v: 'pass', br: 'W@P C@Q', d: 'The check passes. The branch is closed.' },
     { t: 'An admin starts an instance Apply', op: APP('Instance Apply · whole package'), v: 'risk', dst: 'W@P K@Q!del C@Q+P',
       d: 'An instance Apply treats the package as authoritative. It hard-deletes Refresh CRM cache, because the branch holds Platform without it. There is no confirmation for a workflow deletion. A partial Promote of workflows has the same risk today. This model makes it more frequent.',
-      msgs: [['block', 'Unresolved', 'What does an instance Apply delete when the branch is a partial view? (LIGO-1268)', 1]] },
+      msgs: [['block', 'Unresolved', 'What does an instance Apply delete when the branch is a partial view?', 1]] },
   ] },
 ];
 
@@ -812,7 +812,7 @@ const DECISIONS = [
   ['Does a personal dependency stop the whole instance Promote?', ['a: yes. The dialog lists each problem before the write to the branch, with the fix. One personal dependency stops every team.', 'b: no. The Promote leaves out the workflows with a personal dependency and lists them.'], 'Option a. Option b makes the branch differ from the source with no visible sign on the destination. Only admins run an instance Promote, and they can fix or move the dependency.', ['p-instance']],
   ['How does a cycle across two projects reach the branch?', ['a: only through an instance Promote and an instance Apply.', 'b: a selective Promote and Apply that span several projects.'], 'Option a. Cycles between items of two projects are rare. Option b changes the scope of project Promote and Apply. Revisit with project-level rights (LIGO-1006).', ['p-cycle', 'a-cycle']],
   ['Which consent does a credential grant on Apply need?', ['An item list on Continue. The server grants only the listed items.'], 'The item list on Continue.', ['a-cred', 'a-access']],
-  ['What does an instance Apply delete when the branch is a partial view? (LIGO-1268)', ['A separate decision, a coverage declaration, or deletion only on a branch that an instance Promote wrote last.', 'Fact: an instance Apply hard-deletes the workflows of a package project that the branch lacks, with no confirmation.'], 'No recommendation yet. This decision blocks the selection of credentials in a project Promote.', ['r-partial', 'a-guard']],
+  ['What does an instance Apply delete when the branch is a partial view?', ['A separate decision, a coverage declaration, or deletion only on a branch that an instance Promote wrote last.', 'Fact: an instance Apply hard-deletes the workflows of a package project that the branch lacks, with no confirmation.'], 'No recommendation yet. This decision blocks the selection of credentials in a project Promote.', ['r-partial', 'a-guard']],
   ['How does the Promote block roll out?', ['a: warning for one release, then block.', 'b: block at once.', 'c: a setting that the admin turns on.'], 'Option a. Promotes that pass today start to fail. Teams need one release to promote their dependencies.', ['e-promote']],
   ['Does a move into a personal project keep blocking the instance Promote?', ['Yes or no.'], 'Yes. It also follows from the personal block of this model.', ['m-personal']],
   ['What happens to the shares of a workflow when Apply moves it?', ['As in the editor move: the shares are removed.'], 'As in the editor move. The preview says so.', ['m-move']],

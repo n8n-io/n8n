@@ -551,7 +551,7 @@ Outcome
 - The other consumer projects get access through ticket 1, in the same Continue.
 
 Dependencies: 1. Without 1, the user creates the credential and then stops on the access block.
-Existing ticket: none. Related: LIGO-1056 (the rule "do not guess the owner" holds, because the user selects), LIGO-1243 (no submission maps it; check for overlap), LIGO-1268.
+Existing ticket: none. Related: LIGO-1056 (the rule "do not guess the owner" holds, because the user selects), LIGO-1243 (no submission maps it; check for overlap).
 
 **3. LIGO-1250: package import fails or duplicates a missing credential that several projects use** (existing)
 
@@ -753,7 +753,7 @@ Dependencies: 12, 13 and 14 released at least one release earlier.
 
 | Item | Reason | Where |
 |---|---|---|
-| Instance Apply deletes by absence on a branch that is a partial view | Not a cross-project case, but the same root. It needs its own decision. | Decision 4. Related: LIGO-1268. |
+| Instance Apply deletes by absence on a branch that is a partial view | Not a cross-project case, but the same root. It needs its own decision. | Decision 4. |
 | A confirmed project deletion deletes credentials that other projects use | Guard 1 of ticket 2 covers a credential that a workflow of the package uses. A credential that only workflows outside the package use is still deleted. Existing behavior. Same decision. | Decision 4. |
 | A move into a personal project blocks instance Promote | Kept. | Decision 6. |
 | Owner change of a credential on the source | Does not travel. | Section 3. |
@@ -772,7 +772,6 @@ Dependencies: 12, 13 and 14 released at least one release earlier.
 | LIGO-1091 | Close. "Created one time" is LIGO-1250. Access is ticket 1. Sharing lists and workflow sharing are rejected. | [B, C] |
 | LIGO-1258 | Keep as it is: ticket 12. The Promote side is the new ticket 15. | [C]. B extends LIGO-1258 to cover the Promote. |
 | LIGO-1363 | Reopen, or open ticket 13 for the remaining part. | [B, C] |
-| LIGO-1268 | Link to decision 4 and to ticket 2. | [C] |
 
 ## 9. Open decisions for a human
 
@@ -797,7 +796,7 @@ Dependencies: 12, 13 and 14 released at least one release earlier.
 - Option b: no. Keep the failure and name the workflows. Still add the Apply gate for project flows. (Status quo; D)
 - Recommendation: option a, after ticket 4 and one release. B and C state that LIGO-1089 already points to this option. I did not read the ticket.
 
-**Decision 4. What does an instance Apply delete when the branch is a partial view?** (D03, LIGO-1268)
+**Decision 4. What does an instance Apply delete when the branch is a partial view?** (D03)
 
 - Facts: an instance Apply hard-deletes workflows that the branch lacks, with no confirmation, and offers the deletion of projects that the branch lacks. A branch built by project Promotes is a partial view.
 - Plan change after the red-team review: guard 1 of section 6.7 ships in phase 1. An instance Apply keeps a project while it owns a credential that a workflow of the package uses, and returns a warning. This decision can replace the guard with a wider rule.

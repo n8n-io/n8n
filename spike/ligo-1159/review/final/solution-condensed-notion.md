@@ -63,7 +63,7 @@ flowchart LR
 - Existing branches keep working. No migration and no format change.
 - Personal projects are not promoted. A move into a personal project stays refused.
 - Variables, tags, and the data tables of a project work as today.
-- An instance Apply still deletes the projects and workflows that the branch does not hold. This matters more when partial Promotes build the branch. It needs its own decision (LIGO-1268) before credentials can be promoted on their own.
+- An instance Apply still deletes the projects and workflows that the branch does not hold. This matters more when partial Promotes build the branch. It needs its own decision before credentials can be promoted on their own.
 
 ## The cost
 
