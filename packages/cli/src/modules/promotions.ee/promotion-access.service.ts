@@ -124,6 +124,13 @@ export class PromotionAccessService {
 		return new Set(teamIds.filter((id) => linked.has(id)));
 	}
 
+	/** Every team project that the environment covers. */
+	async listCoveredProjectIds(input: PromotionOperationInput): Promise<string[]> {
+		if (input.scope === 'instance') return await this.teamProjectIds();
+		const linked = await this.linkRepository.findProjectIdsByEnvironment(input.environmentId);
+		return linked.length > 0 ? await this.teamProjectIds(linked) : [];
+	}
+
 	private async teamProjectIds(projectIds?: readonly string[]): Promise<string[]> {
 		if (!projectIds) return await this.projectRepository.findTeamProjectIds();
 		const rows = await this.projectRepository.findTypesByIds([...new Set(projectIds)]);

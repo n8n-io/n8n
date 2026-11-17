@@ -22,9 +22,17 @@ const selectivePushOptionsSchema = z.object({
 	workflowIds: z.array(z.string().min(1)),
 	deletedWorkflowIds: z.array(z.string().min(1)),
 	folderIds: z.array(z.string().min(1)),
+	/** Credentials of the project to write also when no selected workflow of it uses them. */
+	credentialIds: z.array(z.string().min(1)).optional(),
 });
 
 export type SelectivePushOptions = z.infer<typeof selectivePushOptionsSchema>;
+
+/** One Promote can write several projects. Each project has its own selection. */
+export type SelectivePushSelection = SelectivePushOptions | readonly SelectivePushOptions[];
+
+const projectsOf = (selection: SelectivePushSelection): readonly SelectivePushOptions[] =>
+	'projectId' in selection ? [selection] : selection;
 
 const ENTITY_FILES = {
 	'project.json': 'projects',
@@ -78,7 +86,15 @@ export class WorkingCopyUpdater {
 		this.logger = this.logger.scoped('promotions');
 	}
 
-	validateSelection(selection: SelectivePushOptions): void {
+	validateSelection(selection: SelectivePushSelection): void {
+		const projects = projectsOf(selection);
+		if (new Set(projects.map(({ projectId }) => projectId)).size !== projects.length) {
+			throw new BadRequestError('The selection holds a project more than once');
+		}
+		for (const project of projects) this.validateProjectSelection(project);
+	}
+
+	private validateProjectSelection(selection: SelectivePushOptions): void {
 		const parsed = selectivePushOptionsSchema.safeParse(selection);
 		if (!parsed.success) {
 			throw new BadRequestError(`Invalid selection: ${parsed.error.issues[0].message}`);
@@ -107,13 +123,15 @@ export class WorkingCopyUpdater {
 	 * folder. Extra or missing ids mean the overlay would change the branch in a
 	 * way the caller did not ask for, so stop before any file work.
 	 */
-	assertStagingMatchesSelection(staging: PackageManifest, selection: SelectivePushOptions): void {
+	assertStagingMatchesSelection(staging: PackageManifest, selection: SelectivePushSelection): void {
+		const projects = projectsOf(selection);
+		const workflowIds = projects.flatMap((project) => project.workflowIds);
 		const stagedIds = new Set((staging.workflows ?? []).map((workflow) => workflow.id));
-		const selectedIds = new Set(selection.workflowIds);
+		const selectedIds = new Set(workflowIds);
 		const stagedFolderIds = new Set((staging.folders ?? []).map((folder) => folder.id));
 		const missing = [
-			...selection.workflowIds.filter((id) => !stagedIds.has(id)),
-			...selection.folderIds.filter((id) => !stagedFolderIds.has(id)),
+			...workflowIds.filter((id) => !stagedIds.has(id)),
+			...projects.flatMap(({ folderIds }) => folderIds).filter((id) => !stagedFolderIds.has(id)),
 		];
 		const extra = [...stagedIds].filter((id) => !selectedIds.has(id));
 		if (missing.length === 0 && extra.length === 0) return;
@@ -122,6 +140,44 @@ export class WorkingCopyUpdater {
 		if (missing.length > 0) parts.push(`missing ${missing.join(', ')}`);
 		if (extra.length > 0) parts.push(`extra ${extra.join(', ')}`);
 		throw new BadRequestError(`The export does not match the selection (${parts.join('; ')})`);
+	}
+
+	/**
+	 * A credential travels with the selected workflows of its owner project, or by its own
+	 * selection. An export of several projects also writes a credential of one project that only a
+	 * workflow of another project uses. Remove that file from the staging export, so the
+	 * reference stays a requirement row.
+	 */
+	async dropUnselectedCredentials(
+		stagingFolder: string,
+		staging: PackageManifest,
+		selection: SelectivePushSelection,
+	): Promise<PackageManifest> {
+		const projects = projectsOf(selection);
+		const usedBy = new Map(
+			(staging.requirements?.credentials ?? []).map((row) => [
+				row.id,
+				row.usedBy.filter(({ kind }) => kind === 'workflow').map(({ id }) => id),
+			]),
+		);
+		const kept: ManifestEntry[] = [];
+		for (const entry of staging.credentials ?? []) {
+			const owner = projects.find(({ projectId }) => {
+				const target = staging.projects?.find(({ id }) => id === projectId)?.target;
+				return target !== undefined && isUnder(entry.target, target);
+			});
+			const selected =
+				owner === undefined ||
+				owner.credentialIds?.includes(entry.id) === true ||
+				(usedBy.get(entry.id) ?? []).some((id) => owner.workflowIds.includes(id));
+			if (selected) {
+				kept.push(entry);
+				continue;
+			}
+			const directory = await this.resolveLeafTarget(stagingFolder, entry.target, 'Dependency');
+			await fs.rm(directory, { recursive: true, force: true });
+		}
+		return { ...staging, ...(staging.credentials ? { credentials: kept } : {}) };
 	}
 
 	/**
@@ -284,12 +340,16 @@ export class WorkingCopyUpdater {
 
 	async assertSelectionFitsBranch(
 		exportFolder: string,
-		selection: SelectivePushOptions,
+		selection: SelectivePushSelection,
 	): Promise<ScannedBranch> {
 		try {
 			const branch = await this.scanBranch(exportFolder);
-			this.assertDeletionsOnBranch(branch.state, selection);
-			this.assertNoCrossProjectMoves(branch.state, selection);
+			for (const project of projectsOf(selection)) {
+				this.assertDeletionsOnBranch(branch.state, project);
+				// Seam for cross-project moves: a selected workflow that the branch holds under another
+				// project is refused here.
+				this.assertNoCrossProjectMoves(branch.state, project);
+			}
 			return branch;
 		} catch (error) {
 			if (error instanceof BadRequestError) throw error;
@@ -356,14 +416,21 @@ export class WorkingCopyUpdater {
 	 */
 	private assertNoCrossProjectContainerMoves(
 		branch: BranchLayout,
-		projectId: string,
+		staging: PackageManifest,
+		projectIds: readonly string[],
 		moves: readonly ContainerMove[],
 	): void {
-		const projectTarget = branch.projects?.find((p) => p.id === projectId)?.target;
-		const foreign = moves.find(
-			({ from }) =>
-				projectTarget === undefined || !(from === projectTarget || isUnder(from, projectTarget)),
-		);
+		const holder = (projects: BranchLayout['projects'], target: string) =>
+			projects?.find((project) => project.target === target || isUnder(target, project.target));
+		// A container must stay in its project, and that project must be one of the selection.
+		const foreign = moves.find(({ from, to }) => {
+			const project = holder(branch.projects, from);
+			return (
+				project === undefined ||
+				!projectIds.includes(project.id) ||
+				holder(staging.projects, to)?.id !== project.id
+			);
+		});
 		if (foreign) {
 			throw new BadRequestError(
 				`"${foreign.from}" belongs to another project on the branch. Promotion can't move it between projects. Move it back on this instance, then promote again.`,
@@ -383,11 +450,14 @@ export class WorkingCopyUpdater {
 		exportFolder: string,
 		stagingFolder: string,
 		staging: PackageManifest,
-		selection: SelectivePushOptions,
+		selection: SelectivePushSelection,
 		branch: ScannedBranch,
 	): Promise<void> {
 		this.validateSelection(selection);
 		this.assertStagingMatchesSelection(staging, selection);
+		const projects = projectsOf(selection);
+		const projectIds = projects.map(({ projectId }) => projectId);
+		const deletedWorkflowIds = projects.flatMap((project) => project.deletedWorkflowIds);
 		const parent = path.dirname(exportFolder);
 		// Keep the temp and backup dirs one level above the git clone (`parent`),
 		// so a crash never leaves them inside the working tree for a commit to pick
@@ -402,14 +472,15 @@ export class WorkingCopyUpdater {
 			const { state: existing, dependencies } = branch;
 
 			const otherProjectTargets = (existing.projects ?? [])
-				.filter((p) => p.id !== selection.projectId)
+				.filter((p) => !projectIds.includes(p.id))
 				.map((p) => p.target);
 			const moves = containerMoves(existing, staging);
-			this.assertNoCrossProjectContainerMoves(existing, selection.projectId, moves);
+			// Seam for cross-project moves: a folder that changes project is refused here.
+			this.assertNoCrossProjectContainerMoves(existing, staging, projectIds, moves);
 			const remaining: BranchLayout = {
 				...existing,
 				workflows: (existing.workflows ?? []).filter(
-					(workflow) => !selection.deletedWorkflowIds.includes(workflow.id),
+					(workflow) => !deletedWorkflowIds.includes(workflow.id),
 				),
 			};
 			// Reject a symlink at the export path itself before any writes. Symlinks
@@ -426,11 +497,7 @@ export class WorkingCopyUpdater {
 
 			await fs.cp(exportFolder, workFolder, { recursive: true, verbatimSymlinks: true });
 
-			for (const target of staleWorkflowTargets(
-				existing,
-				staging,
-				new Set(selection.deletedWorkflowIds),
-			)) {
+			for (const target of staleWorkflowTargets(existing, staging, new Set(deletedWorkflowIds))) {
 				await fs.rm(await this.assertRemovableLeafTarget(workFolder, target, remaining, staging), {
 					recursive: true,
 					force: true,
@@ -459,7 +526,7 @@ export class WorkingCopyUpdater {
 				exportFolder: workFolder,
 				staging,
 				sourceId: this.instanceSettings.instanceId,
-				selectedWorkflowIds: selection.workflowIds,
+				selectedWorkflowIds: projects.flatMap((project) => project.workflowIds),
 				containerMoves: moves,
 			});
 

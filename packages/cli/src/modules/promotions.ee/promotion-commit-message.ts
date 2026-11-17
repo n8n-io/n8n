@@ -59,3 +59,35 @@ export function buildSelectionPromotionCommitMessage({
 	];
 	return [title, ...sections].filter(Boolean).join('\n\n');
 }
+
+/**
+ * The commit message of a selection promote across several projects that has no message from
+ * the caller. The first line becomes the title of the one review. Each project has its lists.
+ */
+export function buildMultiProjectPromotionCommitMessage(
+	projects: Array<{
+		projectName: string;
+		added: NamedRef[];
+		updated: NamedRef[];
+		removed: NamedRef[];
+		folders?: NamedRef[];
+		credentials?: NamedRef[];
+	}>,
+): string {
+	const workflowCount = projects.reduce(
+		(count, { added, updated, removed }) => count + added.length + updated.length + removed.length,
+		0,
+	);
+	const title = `Promote ${plural(workflowCount, 'workflow')} from ${plural(projects.length, 'project')}`;
+	const sections = projects.flatMap(
+		({ projectName, added, updated, removed, folders = [], credentials = [] }) => [
+			`Project "${projectName}"`,
+			listSection('Added', added),
+			listSection('Updated', updated),
+			listSection('Removed', removed),
+			listSection('Folders', folders),
+			listSection('Credentials', credentials),
+		],
+	);
+	return [title, ...sections].filter(Boolean).join('\n\n');
+}

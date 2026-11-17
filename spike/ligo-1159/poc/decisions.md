@@ -109,3 +109,65 @@ No telemetry event changes. A Promote that returns `gaps-changed` counts as
 
 The foundation changes make some existing test files fail the typecheck
 (mostly fixtures without `allowIncomplete`). They are left as they are.
+
+## Decisions of the stream "selection across projects"
+
+### A1. New routes, old routes stay
+
+The operations across projects have their own routes on the environment:
+`GET /promotions/environments/:id/changes/:direction`,
+`POST /promotions/environments/:id/changes/:direction/details`,
+`POST /promotions/environments/:id/promote-selection` and
+`POST /promotions/environments/:id/apply-selection`. The whole-instance routes
+(`/changes`, `/promote`, `/apply`) do not change and stay for instance
+environments and global admins. There is no `apply-selection/continue`: the
+request has `expectedSource` and `confirmDestructiveChanges`, so a client sends
+the same route again.
+
+### A2. The projects of the changes view
+
+- The view lists the projects that the environment covers and that the user can
+  read. An instance environment covers every team project. A projects
+  environment covers its linked projects.
+- The export acts as the user, so a project has resources only when the user
+  also holds `project:export` in it. Else the project is listed without
+  resources.
+- The Apply plan covers only the projects that the user can apply. A project
+  that the user can only read is compared by its files, and it never adds a
+  conflict to the check.
+- A project of the branch that this instance lacks is listed only for a user
+  with the global right on an instance environment, because the Apply creates
+  it.
+- A project that the branch lacks is listed without resources on Apply.
+- A user without a project in the environment gets status 403.
+
+### A3. A credential in a Promote across projects follows the selection
+
+A credential file is written under its owner project only when a selected
+workflow of that project uses it, or when it is in `credentialIds` of that
+project. An export of several projects would also write a credential of project
+B that only a workflow of project A uses. The Promote removes that file again,
+so the reference stays a requirement row and the dependency check can report
+the gap. `credentialIds` refuses a credential that the project does not own, an
+instance credential and a placeholder.
+
+### A4. A selected credential in an Apply across projects
+
+A selected credential that this instance holds goes to the import as a
+requirement of its project without consumers. The import matches it and
+updates it by the existing rules. A selected credential that this instance
+lacks is a `missingBindings` row with `ownerProject`, and it can have no
+consumers. The schema of the row now accepts an empty `consumers` list.
+
+### A5. The open-review gate in the operation
+
+A Promote whose selection holds a project with an open review returns status
+409, for the project route and for the environment route. The preview shows
+the same state as `blocker` or `blockers`.
+
+### A6. What a selection cannot do
+
+A selection never removes a project from the branch and never deletes a
+project on the instance. Only the whole-instance Promote and Apply do that. A
+credential file without a consumer on the branch stays through selection
+Promotes, and a whole-instance Promote removes it.

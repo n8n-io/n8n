@@ -1,5 +1,7 @@
 import type {
 	PromotionDirection,
+	PromotionEnvironmentChanges,
+	PromotionEnvironmentChangesProject,
 	PromotionProjectEnvironments,
 	PromotionInstanceApplyPreview,
 	PromotionPreview,
@@ -21,7 +23,7 @@ import { ProjectRepository, type User } from '@n8n/db';
 import { Service } from '@n8n/di';
 import type { z } from 'zod';
 
-import { BadRequestError } from '@n8n/errors';
+import { BadRequestError, ForbiddenError } from '@n8n/errors';
 import { diffDataTableSchema } from '@/modules/n8n-packages/entities/data-table/data-table-compat';
 import { gitBlobSha } from '@/modules/n8n-packages/io/hashing-package-writer';
 import { PACKAGE_ENTITY_LAYOUT, entityIdOfSegment } from '@/modules/n8n-packages/io/manifest-entry';
@@ -41,10 +43,15 @@ import {
 	scopeManifestToProject,
 } from './promotion-preview';
 import { PromotionAccessService } from './promotion-access.service';
+import { PromotionEnvironmentProjectsService } from './promotion-environment-projects.service';
 import { PromotionEnvironmentResolver } from './promotion-environment.resolver';
 import { ApplyPreviewService } from './apply-preview.service';
 import { PromotePreviewService } from './promote-preview.service';
-import { exportInstancePackage, type InstancePackage } from './instance-package';
+import {
+	EMPTY_INSTANCE_PACKAGE,
+	exportInstancePackage,
+	type InstancePackage,
+} from './instance-package';
 import {
 	LocalPackageEntities,
 	type LocalDataTable,
@@ -65,6 +72,7 @@ export class PromotionChangeService {
 		private readonly environmentResolver: PromotionEnvironmentResolver,
 		private readonly projectRepository: ProjectRepository,
 		private readonly accessService: PromotionAccessService,
+		private readonly environmentProjects: PromotionEnvironmentProjectsService,
 	) {}
 
 	/**
@@ -163,6 +171,107 @@ export class PromotionChangeService {
 			await this.promotionsService.readInstanceApplyPackage(environmentId);
 		const preview = await this.applyPreviewService.buildInstance({ user, files });
 		return { commitSha, source, ...preview };
+	}
+
+	/**
+	 * The changes view of an environment, for Promote and for Apply. It lists the changes of every
+	 * project of the environment that the user can read, and each resource names its project.
+	 * It needs no global promotion scope, and it works for both environment scopes.
+	 */
+	async getEnvironmentChanges(
+		user: User,
+		environmentId: string,
+		direction: PromotionDirection,
+	): Promise<PromotionEnvironmentChanges> {
+		const input = await this.environmentResolver.resolveForEnvironment(environmentId, direction);
+		if (direction === 'promote') {
+			const preview = await this.promotionsService.buildPromoteEnvironmentPreview(user, input);
+			this.assertSeesProject(preview.projects);
+			return preview;
+		}
+		const { commitSha, source, files } =
+			await this.promotionsService.readEnvironmentApplyPackage(input);
+		const { projects, resources, dependencies, check, dependencyReport, revision } =
+			await this.promotionsService.buildApplyEnvironmentPreview(user, input, files);
+		this.assertSeesProject(projects);
+		return {
+			direction,
+			commitSha,
+			source,
+			projects,
+			resources,
+			dependencies,
+			check,
+			...(dependencyReport ? { dependencyReport } : {}),
+			revision,
+		};
+	}
+
+	/**
+	 * The file content of resources of the changes view of an environment, like
+	 * {@link getDetails}. Only the projects that the user can read are indexed, so a key of
+	 * another project counts as missing.
+	 */
+	async getEnvironmentChangeDetails(
+		user: User,
+		environmentId: string,
+		direction: PromotionDirection,
+		{ commitSha, keys }: PromotionResourceDetailsRequestDto,
+		{ canSeeVariableValues }: { canSeeVariableValues: boolean },
+	): Promise<PromotionResourceDetails> {
+		const input = await this.environmentResolver.resolveForEnvironment(environmentId, direction);
+		const requestedIds = new Set(keys.map((key) => key.slice(key.indexOf(':') + 1)));
+		const readBranch = async (paths: readonly string[]) =>
+			commitSha === null
+				? new Map<string, string>()
+				: await this.promotionsService.readEnvironmentFilesAtCommit(input, commitSha, paths);
+		const manifestPath = `${PACKAGE_SUBFOLDER}/${MANIFEST_FILE}`;
+		const branchManifest = parsePackageManifest(
+			(await readBranch([manifestPath])).get(manifestPath),
+		);
+		const { projects, exportableProjectIds, existingProjectIds } =
+			await this.environmentProjects.forView(user, input, direction, branchManifest?.projects);
+		this.assertSeesProject(projects);
+
+		const projectIds = projects.map(({ id }) => id);
+		const exportedIds = projectIds.filter(
+			(id) => existingProjectIds.has(id) && exportableProjectIds.has(id),
+		);
+		const instance =
+			exportedIds.length > 0
+				? await exportInstancePackage(this.packagesService, user, exportedIds, {
+						// Keep the content of the requested resources only. Variables match by name, not by ID.
+						keepContent: (path) =>
+							requestedIds.has(entityIdOfPath(path)) ||
+							path.includes(`/${PACKAGE_ENTITY_LAYOUT.variables.directory}/`),
+					})
+				: EMPTY_INSTANCE_PACKAGE;
+		const branchIndex = indexProjects(
+			{ manifest: branchManifest, blobByPath: new Map() },
+			projectIds,
+		);
+		const instanceIndex = indexProjects(
+			{ manifest: instance.manifest, blobByPath: blobsByPath(instance.files) },
+			exportedIds,
+		);
+		const missingKeys = keys.filter((key) => !branchIndex.has(key) && !instanceIndex.has(key));
+		const details = await this.assembleDetails({
+			keys,
+			direction,
+			branchIndex,
+			instanceIndex,
+			instance,
+			readBranch,
+			canSeeVariableValues,
+		});
+		return { details, missingKeys };
+	}
+
+	/** A user without a project in the environment gets no view, not an empty one. */
+	private assertSeesProject(projects: readonly PromotionEnvironmentChangesProject[]): void {
+		if (projects.length === 0) {
+			throw new ForbiddenError('You do not have access to a project of this environment');
+		}
 	}
 
 	/**

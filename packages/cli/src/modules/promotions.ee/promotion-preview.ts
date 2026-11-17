@@ -1,8 +1,10 @@
 import type {
 	PromotionBlocker,
 	PromotionDirection,
+	PromotionEnvironmentChangesProject,
 	PromotionPreview,
 	PromotionPreviewCheck,
+	PromotionProjectBlocker,
 	PromotionResource,
 	PromotionResourceDependency,
 	PromotionResourceType,
@@ -539,6 +541,9 @@ export function previewRevision(shown: {
 	check?: PromotionPreviewCheck;
 	source?: PromotionPreview['source'];
 	blocker?: PromotionBlocker;
+	/** Only for the changes view of an environment. */
+	projects?: PromotionEnvironmentChangesProject[];
+	blockers?: PromotionProjectBlocker[];
 }): string {
 	return createHash('sha256')
 		.update(canonicalJson({ schemaVersion: PREVIEW_SCHEMA_VERSION, ...shown }))

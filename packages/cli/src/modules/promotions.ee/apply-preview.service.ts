@@ -1,5 +1,6 @@
 import type {
 	PromotionBindingConflict,
+	PromotionEnvironmentChangesProject,
 	PromotionPreviewCheck,
 	PromotionResource,
 	PromotionResourceDependency,
@@ -38,6 +39,8 @@ import {
 	VariableMissingMode,
 	WorkflowIdPolicy,
 	WorkflowPublishingPolicy,
+	importSelectionProjects,
+	type ImportProjectSelection,
 	type ImportRequest,
 	type ImportSelection,
 	type ImportSelectionRequest,
@@ -48,7 +51,11 @@ import { PACKAGE_SUBFOLDER } from './constants';
 import { crossProjectMoves, foldersInScope, type CrossProjectMoves } from './cross-project-moves';
 import { GitCommitPackageReader } from './git-commit-package-reader';
 import { LocalPackageEntities } from './local-package-entities.service';
-import { exportInstancePackage, type InstancePackage } from './instance-package';
+import {
+	EMPTY_INSTANCE_PACKAGE,
+	exportInstancePackage,
+	type InstancePackage,
+} from './instance-package';
 import {
 	collectCredentialReferences,
 	collectVariableReferences,
@@ -192,6 +199,100 @@ export class ApplyPreviewService {
 			tagsDisabled: this.globalConfig.tags.disabled,
 		});
 		return await this.finish(resources, dependencies, check);
+	}
+
+	/**
+	 * Plans the Apply of several projects in one plan, for the changes view of an environment.
+	 * `resolveProjects` gets the projects of the package and returns the projects of the view.
+	 * - Only the projects that the user can apply are planned, so a project that the user can
+	 *   only read does not block the plan. Such a project is compared by its files.
+	 * - A project that the branch lacks is listed without resources.
+	 */
+	async buildForProjects({
+		user,
+		files,
+		resolveProjects,
+	}: {
+		user: User;
+		files: ReadonlyMap<string, Buffer>;
+		resolveProjects: (branchProjects: ReadonlyArray<{ id: string; name: string }>) => Promise<{
+			projects: PromotionEnvironmentChangesProject[];
+			exportableProjectIds: ReadonlySet<string>;
+			existingProjectIds: ReadonlySet<string>;
+		}>;
+	}): Promise<
+		ApplyPreview & {
+			projects: PromotionEnvironmentChangesProject[];
+			plan: PackageImportPlan | null;
+			inventory: PackageDirectoryInventory;
+			selection: ImportSelection | null;
+		}
+	> {
+		const { reader, inventory } = await this.readPackage(files);
+		const { projects, exportableProjectIds, existingProjectIds } = await resolveProjects(
+			inventory.projects.map(({ id, name }) => ({ id, name })),
+		);
+		const branchProjectIds = new Set(inventory.projects.map(({ id }) => id));
+		const onBranch = projects.filter(({ id }) => branchProjectIds.has(id));
+		const comparedIds = onBranch
+			.filter(({ id }) => !existingProjectIds.has(id) || exportableProjectIds.has(id))
+			.map(({ id }) => id);
+		const exportedIds = comparedIds.filter((id) => existingProjectIds.has(id));
+		const [allMoves, instance] = await Promise.all([
+			this.findCrossProjectMoves(inventory),
+			exportedIds.length > 0
+				? exportInstancePackage(this.packagesService, user, exportedIds)
+				: EMPTY_INSTANCE_PACKAGE,
+		]);
+		const moves = visibleMoves(allMoves, new Set(projects.map(({ id }) => id)));
+		const movedWorkflowIds = new Set(allMoves.workflows.map(({ id }) => id));
+
+		const planned: ImportProjectSelection[] = [];
+		for (const { id, canOperate } of onBranch) {
+			if (!canOperate) continue;
+			planned.push(
+				classifyProjectWorkflows(
+					inventory,
+					id,
+					await this.sharedWorkflowRepository.findOwnedWorkflowIdsByProjects([id]),
+					movedWorkflowIds,
+				),
+			);
+		}
+		const selection = toImportSelection(planned);
+		const plan = selection
+			? await this.packagesService.planPackageSelection(
+					applySelectionRequest(user, false),
+					reader,
+					selection,
+					'check',
+				)
+			: null;
+		const check = plan && selection ? this.check(plan, inventory, selection, moves) : emptyCheck();
+		const { resources, dependencies } = compareWithBranch({
+			operation: { direction: 'apply', planned: plan && plannedChanges(plan) },
+			projectIds: comparedIds,
+			instance,
+			files,
+			manifest: plan?.manifest ?? (await reader.readManifest()),
+			tagsDisabled: this.globalConfig.tags.disabled,
+		});
+		const operable = new Set(projects.filter(({ canOperate }) => canOperate).map(({ id }) => id));
+		for (const resource of resources) {
+			resource.selectable =
+				resource.selectable && resource.projectId !== undefined && operable.has(resource.projectId);
+		}
+		await this.addLocalState(resources);
+		return {
+			resources,
+			dependencies,
+			check,
+			revision: previewRevision({ resources, check, projects }),
+			projects,
+			plan,
+			inventory,
+			selection,
+		};
 	}
 
 	/**
@@ -342,12 +443,19 @@ export class ApplyPreviewService {
 		selection: ImportSelection | undefined,
 		moves: CrossProjectMoves,
 	): PromotionPreviewCheck {
-		const selected = selection && new Set(selection.selectedWorkflowIds);
+		// A selection can hold several projects. Each workflow counts in its own project only.
+		const selected =
+			selection &&
+			new Map(
+				importSelectionProjects(selection).map(({ selectedProjectId, selectedWorkflowIds }) => [
+					selectedProjectId,
+					new Set(selectedWorkflowIds),
+				]),
+			);
 		const scoped = {
 			...inventory,
 			workflows: inventory.workflows.filter(
-				({ id, projectId }) =>
-					!selection || (projectId === selection.selectedProjectId && selected?.has(id)),
+				({ id, projectId }) => !selected || selected.get(projectId)?.has(id) === true,
 			),
 		};
 		return toPreviewCheck({
@@ -426,6 +534,44 @@ function compareWithBranch({
 	});
 }
 
+/** One selection for the import, from the selection of each project. `null` without a project. */
+export function toImportSelection(projects: ImportProjectSelection[]): ImportSelection | null {
+	const [first, ...otherProjects] = projects;
+	if (!first) return null;
+	return otherProjects.length > 0 ? { ...first, otherProjects } : first;
+}
+
+/**
+ * The moves whose branch project the user can see. The project on this instance is named only
+ * when the user can see it too.
+ */
+function visibleMoves(
+	moves: CrossProjectMoves,
+	visibleProjectIds: ReadonlySet<string>,
+): CrossProjectMoves {
+	const visible = (list: CrossProjectMoves['workflows']) =>
+		list
+			.filter(({ project }) => visibleProjectIds.has(project.id))
+			.map((move) =>
+				visibleProjectIds.has(move.instanceProject.id)
+					? move
+					: { ...move, instanceProject: { id: move.instanceProject.id } },
+			);
+	return { workflows: visible(moves.workflows), folders: visible(moves.folders) };
+}
+
+function emptyCheck(): PromotionPreviewCheck {
+	return {
+		missingProjects: [],
+		missingBindings: [],
+		accessRequirements: [],
+		conflicts: [],
+		warnings: [],
+		movedWorkflows: [],
+		movedFolders: [],
+	};
+}
+
 function plannedRemovals(plan: PackageImportPlan): string[] {
 	return plan.scopes.flatMap(({ plan: scope }) => [
 		...scope.removalPlan.removals.map(({ id }) => resourceKey('workflow', id)),
@@ -458,7 +604,7 @@ function classifyProjectWorkflows(
 	projectId: string,
 	ownedWorkflowIds: string[],
 	movedWorkflowIds: ReadonlySet<string>,
-): ImportSelection {
+): ImportProjectSelection {
 	const selectedWorkflowIds = inventory.workflows
 		.filter((workflow) => workflow.projectId === projectId)
 		.map(({ id }) => id);
