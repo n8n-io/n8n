@@ -23,7 +23,7 @@ import {
 } from '@n8n/design-system';
 import PrivateCredentialIcon from '@/features/resolvers/components/PrivateCredentialIcon.vue';
 import { useSettingsStore } from '@n8n/stores/settings.store';
-import ExecutionEngineBadge from '@/features/execution/executions/components/ExecutionEngineBadge.vue';
+import EngineBadge from '@/app/components/EngineBadge.vue';
 import { getExecutionEngine } from '@/features/execution/executions/executions.utils';
 type Command = 'retrySaved' | 'retryOriginal' | 'delete';
 
@@ -58,10 +58,9 @@ const locale = useI18n();
 const executionHelpers = useExecutionHelpers();
 const settingsStore = useSettingsStore();
 
+const engine = computed(() => getExecutionEngine(props.execution.id));
 const engineTooltip = computed(() =>
-	locale.baseText('executionsList.engine.tooltip', {
-		interpolate: { engine: getExecutionEngine(props.execution.id) },
-	}),
+	locale.baseText('executionsList.engine.tooltip', { interpolate: { engine: engine.value } }),
 );
 
 const isStopping = ref(false);
@@ -297,7 +296,7 @@ async function handleActionItemClick(commandData: Command) {
 		</td>
 		<td>
 			<template v-if="execution.id && settingsStore.isEngineV2Enabled">
-				<ExecutionEngineBadge :execution-id="execution.id" class="mr-3xs" />
+				<EngineBadge :engine="engine" class="mr-3xs" data-test-id="execution-engine-badge" />
 				<N8nTooltip :content="engineTooltip" placement="top">
 					<span data-test-id="execution-id">{{ execution.id }}</span>
 				</N8nTooltip>

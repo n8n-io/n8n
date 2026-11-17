@@ -7,7 +7,6 @@ import { EnterpriseEditionFeature } from '@/app/constants';
 import type { IWorkflowDb, IWorkflowShortResponse } from '@/Interface';
 import type { ExecutionFilterMetadata, ExecutionFilterType } from '../executions.types';
 import { WORKFLOW_ENGINE_TYPES, type WorkflowEngineType } from 'n8n-workflow';
-import { getExecutionEngineLabel } from '@/features/execution/executions/executions.utils';
 import { i18n as locale } from '@n8n/i18n';
 import { useSettingsStore } from '@n8n/stores/settings.store';
 import { makeRestApiRequest } from '@n8n/rest-api-client';
@@ -154,7 +153,7 @@ const engineFilterOptions = computed<Array<{ id: 'all' | WorkflowEngineType; nam
 		{ id: 'all', name: locale.baseText('executionsFilter.engine.all') },
 		...WORKFLOW_ENGINE_TYPES.map((engine) => ({
 			id: engine,
-			name: getExecutionEngineLabel(engine),
+			name: locale.baseText('generic.engine', { interpolate: { engine } }),
 		})),
 	],
 );
