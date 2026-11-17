@@ -7,7 +7,7 @@
 | createdAt | timestamp(3) with time zone | CURRENT_TIMESTAMP(3) | false |  |  |  |
 | fencingTokenCounter | bigint | 0 | false |  |  | The source of fencing tokens, never reset so that a recreated key gets a higher token |
 | kind | varchar(24) |  | false | [public.lease](public.lease.md) [public.lease_session](public.lease_session.md) |  | The name of the lease kind |
-| lastFullSyncAt | timestamp(3) with time zone |  | true |  |  | The time at which a main last claimed the periodic full sync |
+| lastFullSyncAt | timestamp(3) with time zone |  | true |  |  | The time at which a process last claimed the periodic full sync |
 | syncLockExpiresAt | timestamp(3) with time zone |  | true |  |  | The time at which the sync lock expires |
 | syncLockRoundId | uuid |  | true |  |  | The sync round that holds the sync lock, or null when the lock is free |
 | updatedAt | timestamp(3) with time zone | CURRENT_TIMESTAMP(3) | false |  |  |  |
@@ -49,14 +49,13 @@ erDiagram
 "public.lease" {
   timestamp_3__with_time_zone claimedAt
   timestamp_3__with_time_zone createdAt
-  text data
+  json data
   varchar_64_ dataHash
   bigint fencingToken
   varchar_255_ key
   varchar_24_ leaseKind FK
   uuid leaseSessionId
   timestamp_3__with_time_zone readyAt
-  boolean revoked
   timestamp_3__with_time_zone revokedAt
   timestamp_3__with_time_zone updatedAt
 }

@@ -108,7 +108,7 @@ Auto-generated from the PostgreSQL migrations in @n8n/db. Do not edit by hand.
 | [public.instance_monitoring_report](public.instance_monitoring_report.md) | 10 |  | BASE TABLE |
 | [public.instance_version_history](public.instance_version_history.md) | 5 |  | BASE TABLE |
 | [public.invalid_auth_token](public.invalid_auth_token.md) | 2 |  | BASE TABLE |
-| [public.lease](public.lease.md) | 12 |  | BASE TABLE |
+| [public.lease](public.lease.md) | 11 |  | BASE TABLE |
 | [public.lease_kind](public.lease_kind.md) | 7 |  | BASE TABLE |
 | [public.lease_session](public.lease_session.md) | 7 |  | BASE TABLE |
 | [public.mcp_registry_server](public.mcp_registry_server.md) | 7 |  | BASE TABLE |
@@ -1548,14 +1548,13 @@ erDiagram
 "public.lease" {
   timestamp_3__with_time_zone claimedAt
   timestamp_3__with_time_zone createdAt
-  text data
+  json data
   varchar_64_ dataHash
   bigint fencingToken
   varchar_255_ key
   varchar_24_ leaseKind FK
   uuid leaseSessionId
   timestamp_3__with_time_zone readyAt
-  boolean revoked
   timestamp_3__with_time_zone revokedAt
   timestamp_3__with_time_zone updatedAt
 }
