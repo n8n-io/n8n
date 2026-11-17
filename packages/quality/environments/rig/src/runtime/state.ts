@@ -1,5 +1,13 @@
 import { spawnSync } from 'node:child_process';
-import { existsSync, mkdirSync, readFileSync, renameSync, rmSync, writeFileSync } from 'node:fs';
+import {
+	existsSync,
+	mkdirSync,
+	readdirSync,
+	readFileSync,
+	renameSync,
+	rmSync,
+	writeFileSync,
+} from 'node:fs';
 import { dirname } from 'node:path';
 import { z } from 'zod';
 
@@ -92,6 +100,16 @@ export function liveState(paths: EnvPaths, component: string): ComponentState | 
 	if (isStateAlive(state)) return state;
 	clearState(paths, component, state.pid);
 	return undefined;
+}
+
+/** The states of all running components, including components that left the topology. */
+export function liveStates(paths: EnvPaths): ComponentState[] {
+	if (!existsSync(paths.stateDir)) return [];
+	return readdirSync(paths.stateDir)
+		.filter((file) => file.endsWith('.json'))
+		.map((file) => readState(paths, file.slice(0, -'.json'.length)))
+		.filter((state): state is ComponentState => state !== undefined)
+		.filter((state) => liveState(paths, state.component) !== undefined);
 }
 
 export function currentTty(): string | null {

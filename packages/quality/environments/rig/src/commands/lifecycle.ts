@@ -24,9 +24,9 @@ import { setInDotenv, setInDotenvFile } from '../env/dotenv';
 import { ensureSecrets } from '../env/secrets';
 import { RigError } from '../errors';
 import { servicesDown } from '../services/compose';
-import { liveState } from '../runtime/state';
+import { liveState, liveStates } from '../runtime/state';
 import { validateTopology } from '../topology/validate';
-import { table, ui } from '../ui/output';
+import { printError, table, ui } from '../ui/output';
 import { confirm, isInteractive } from '../ui/prompt';
 import { envArg, loadEnv, newSupervisor, offerRestart, stopComponents } from './common';
 import { editFile } from '../integrations/editor';
@@ -306,9 +306,29 @@ export const useCommand = defineCommand({
 	},
 });
 
+/**
+ * Stops all components, including components that left the topology. Throws
+ * when one still runs, so the caller does not delete its state or data.
+ */
 export async function stopEverything(env: RigEnv): Promise<void> {
-	const stopped = await stopComponents(newSupervisor(env), env.components());
+	const supervisor = newSupervisor(env);
+	const stopped = await stopComponents(supervisor, env.components());
+	for (const state of liveStates(env.paths)) {
+		try {
+			await supervisor.stopUntracked(state);
+			stopped.push(state.component);
+		} catch (error) {
+			printError(error);
+		}
+	}
 	if (stopped.length > 0) ui.success(`Stopped ${stopped.join(', ')}`);
+	const running = liveStates(env.paths);
+	if (running.length > 0) {
+		throw new RigError(
+			`Cannot stop ${running.map((s) => `${s.component} (pid ${s.pid})`).join(', ')}.`,
+			'Stop these processes, then try again.',
+		);
+	}
 }
 
 const isSqliteFile = (name: string) => name.startsWith('database.sqlite');

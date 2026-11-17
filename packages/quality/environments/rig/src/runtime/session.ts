@@ -12,7 +12,7 @@ import { type PrefixPrinter, printError, ui } from '../ui/output';
 import { needsBrowserChoice, openUrl } from '../integrations/browser';
 import { isInteractive, select } from '../ui/prompt';
 import { liveState } from './state';
-import { type Owner, type Supervisor } from './supervisor';
+import { inheritedOwner, type Owner, type Supervisor } from './supervisor';
 import { RIG } from '../self/build-info';
 
 const SIGNALS: NodeJS.Signals[] = ['SIGINT', 'SIGTERM', 'SIGHUP'];
@@ -36,6 +36,8 @@ export interface SessionOptions {
 	targets: Component[];
 	dependencies: DependencyMode;
 	autoRestart: boolean;
+	/** Also runs the launchers or direct runners that the target processes need. */
+	withRunners: boolean;
 }
 
 /** Collects dependencies of the targets that are not targets themselves. */
@@ -480,9 +482,12 @@ export class Session {
 						const previous = liveState(this.env.paths, component.name);
 						await this.supervisor.stop(component);
 						if (this.quitting) return;
-						const pid = await this.supervisor.start(component, 'self', {
+						// A component that another live terminal owns stays with that terminal.
+						const pid = await this.supervisor.start(component, inheritedOwner(previous, 'self'), {
 							inspect: previous?.inspect,
 						});
+						// A component that a configuration change added has no log follower yet.
+						this.supervisor.follow(component.name, false);
 						this.lastPid.set(component.name, pid);
 						const result = await this.supervisor.waitReady(component, pid, this.abort.signal);
 						if (result === 'exited') {
@@ -601,8 +606,21 @@ export class Session {
 			.map((t) => env.component(t.name))
 			.filter((c): c is Component => c !== undefined);
 
+		// A change can make a process need a launcher or runners. They start with its next restart.
+		const added: Component[] = [];
+		if (this.options.withRunners) {
+			const names = new Set(this.targets.map((t) => t.name));
+			added.push(...env.runnerHosts().filter((c) => names.has(c.host.name) && !names.has(c.name)));
+			this.targets.push(...added);
+			this.printer.register(added.map((c) => c.name));
+		}
+
 		const drifted: string[] = [];
 		for (const target of this.targets) {
+			if (added.includes(target)) {
+				if (!liveState(env.paths, target.name)) drifted.push(target.name);
+				continue;
+			}
 			const state = liveState(env.paths, target.name);
 			if (!state) continue;
 			try {
