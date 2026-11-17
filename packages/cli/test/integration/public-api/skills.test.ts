@@ -284,7 +284,7 @@ describe('POST /skills', () => {
 			references: [],
 			skillHash: expect.any(String),
 		});
-		expect(await findSkill(response.body.id)).toMatchObject({ projectId: null });
+		expect(await findSkill(response.body.id)).toMatchObject({ projectId: null, source: 'api' });
 	});
 
 	test.each([

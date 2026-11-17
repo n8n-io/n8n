@@ -111,7 +111,7 @@ export class SkillsPublicController {
 		_res: Response,
 		@Body body: CreateSkillPublicDto,
 	): Promise<SkillPublicDto> {
-		return toSkillPublicDto(await this.skillService.create(req.user, body));
+		return toSkillPublicDto(await this.skillService.create(req.user, body, 'api'));
 	}
 
 	@Patch('/:skillId')
@@ -132,7 +132,7 @@ export class SkillsPublicController {
 		@Param('skillId', skillIdParamSchema) skillId: string,
 		@Body body: UpdateSkillPublicDto,
 	): Promise<SkillPublicDto> {
-		await this.skillService.update(req.user, skillId, body);
+		await this.skillService.update(req.user, skillId, body, 'api');
 		return toSkillPublicDto(await this.skillService.get(req.user, skillId));
 	}
 
@@ -151,7 +151,7 @@ export class SkillsPublicController {
 		_res: Response,
 		@Param('skillId', skillIdParamSchema) skillId: string,
 	): Promise<void> {
-		await this.skillService.delete(req.user, skillId);
+		await this.skillService.delete(req.user, skillId, 'api');
 	}
 }
 

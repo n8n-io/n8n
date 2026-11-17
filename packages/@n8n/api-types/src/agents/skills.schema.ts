@@ -37,9 +37,10 @@ export type SkillScope = z.infer<typeof skillScopeSchema>;
 /**
  * How a skill was created: `ui` on the skills settings page, `agent` from the agent builder or the
  * migration, `mcp` from an MCP client, `assistant` from n8n Assistant, `import` from an
- * n8n package import, `github` by Skill Sync from a GitHub source. A synced skill is read-only.
+ * n8n package import, `github` by Skill Sync from a GitHub source, `api` from the public API.
+ * A synced skill is read-only.
  */
-export type SkillSource = 'ui' | 'agent' | 'mcp' | 'assistant' | 'import' | 'github';
+export type SkillSource = 'ui' | 'agent' | 'mcp' | 'assistant' | 'import' | 'github' | 'api';
 
 /** The user who created a skill, as the settings list names them. */
 export type SkillUserDto = {

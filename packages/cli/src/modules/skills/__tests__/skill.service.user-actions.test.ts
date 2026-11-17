@@ -640,6 +640,19 @@ describe('SkillService user actions', () => {
 			);
 		});
 
+		it('reports a create from the public API with its own method', async () => {
+			vi.mocked(hasGlobalScope).mockReturnValue(true);
+
+			await service.create(user, payload({}), 'api');
+
+			expect(skillsTelemetry.created).toHaveBeenCalledWith(
+				user.id,
+				[{ id: 'skill_new', projectId: null }],
+				'api',
+				'api',
+			);
+		});
+
 		it('reports a create without a method as manual', async () => {
 			vi.mocked(hasGlobalScope).mockReturnValue(true);
 

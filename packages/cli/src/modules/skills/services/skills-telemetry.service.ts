@@ -10,8 +10,11 @@ import { SkillRepository } from '../database/repositories/skill.repository';
 /** Package imports report no skill telemetry. */
 export type SkillTelemetrySource = Exclude<SkillSource, 'import'>;
 
-/** `manual` and `upload` come from the skill modal. `ai` is text an assistant wrote. */
-export type SkillTelemetryMethod = 'manual' | 'upload' | 'ai' | 'sync';
+/**
+ * `manual` and `upload` come from the skill modal. `ai` is text an assistant wrote. `api` is text
+ * sent through the public API.
+ */
+export type SkillTelemetryMethod = 'manual' | 'upload' | 'ai' | 'sync' | 'api';
 
 type SkillPlace = { scope: 'project'; project_id: string } | { scope: 'instance' };
 

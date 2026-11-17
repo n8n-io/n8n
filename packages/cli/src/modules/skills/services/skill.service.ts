@@ -7,6 +7,7 @@ import {
 	type ListSkillAgentsQueryDto,
 	type ListSkillsQueryDto,
 	type SaveSkillDto,
+	type SkillCreateMethod,
 	type SkillAgentOption,
 	type SkillDetail,
 	type SkillListCollapsedSource,
@@ -112,6 +113,15 @@ function assertUnchangedSince(
 			'The skill was changed somewhere else. Reload to get the latest version.',
 		);
 	}
+}
+
+function createMethodOf(
+	source: SkillTelemetrySource,
+	method: SkillCreateMethod | undefined,
+): SkillTelemetryMethod {
+	if (source === 'ui') return method ?? 'manual';
+	if (source === 'api') return 'api';
+	return 'ai';
 }
 
 function assertHasInstructions(skill: AgentSkill): void {
@@ -376,7 +386,7 @@ export class SkillService {
 			user.id,
 			[{ id, ...target }],
 			source,
-			source === 'ui' ? (payload.method ?? 'manual') : 'ai',
+			createMethodOf(source, payload.method),
 		);
 		// No second access check: a custom role can create skills it cannot read later.
 		const [skill] = await this.skillRepository.findByIds([id]);

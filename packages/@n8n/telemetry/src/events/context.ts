@@ -54,16 +54,16 @@ const skillProjectId = z
  * package import reports no skill telemetry.
  */
 const skillSource = z
-	.enum(['ui', 'agent', 'mcp', 'assistant', 'github'])
+	.enum(['ui', 'agent', 'mcp', 'assistant', 'github', 'api'])
 	.describe(
-		'`ui` is the Skills settings page. `agent` is the agent builder: a person in its skill modal, or n8n Assistant when it builds the agent. `mcp` is an MCP client. `assistant` is n8n Assistant outside the agent builder. `github` is Skill Sync from a GitHub source',
+		'`ui` is the Skills settings page. `agent` is the agent builder: a person in its skill modal, or n8n Assistant when it builds the agent. `mcp` is an MCP client. `assistant` is n8n Assistant outside the agent builder. `github` is Skill Sync from a GitHub source. `api` is the public API',
 	);
 
 /** Whether a person or an assistant wrote the text. */
 const skillMethod = z
-	.enum(['manual', 'upload', 'ai', 'sync'])
+	.enum(['manual', 'upload', 'ai', 'sync', 'api'])
 	.describe(
-		'`manual` is text typed in the skill modal. `upload` is a SKILL.md file or folder parsed in the browser. `ai` is text that n8n Assistant or an MCP client wrote. `sync` is a skill that Skill Sync imported from a source. Count only `manual` and `upload` for the skills people write by hand',
+		'`manual` is text typed in the skill modal. `upload` is a SKILL.md file or folder parsed in the browser. `ai` is text that n8n Assistant or an MCP client wrote. `sync` is a skill that Skill Sync imported from a source. `api` is text sent through the public API, whose author is unknown. Count only `manual` and `upload` for the skills people write by hand',
 	);
 
 /** The type of a Skill Sync source. */
@@ -417,7 +417,7 @@ export const CONTEXT_TELEMETRY = defineTelemetryEvents({
 	USER_CREATED_SKILL: {
 		name: 'User created skill',
 		description:
-			'A skill was created from the settings page, the agent builder, n8n Assistant or an MCP client. Fires once the create commits. A copy that the server makes on its own, such as the data migration or an agent duplicate, reports nothing.',
+			'A skill was created from the settings page, the agent builder, n8n Assistant, an MCP client or the public API. Fires once the create commits. A copy that the server makes on its own, such as the data migration or an agent duplicate, reports nothing.',
 		properties: z.object({
 			user_id: userId,
 			skill_id: skillId,
@@ -687,7 +687,7 @@ export const CONTEXT_TELEMETRY = defineTelemetryEvents({
 	USER_DELETED_SKILL: {
 		name: 'User deleted skill',
 		description:
-			'A user deleted a skill from the settings page, n8n Assistant or an MCP client. Fires once the delete commits. Removing a skill from one agent keeps the skill and reports nothing here.',
+			'A user deleted a skill from the settings page, n8n Assistant, an MCP client or the public API. Fires once the delete commits. Removing a skill from one agent keeps the skill and reports nothing here.',
 		properties: z.object({
 			user_id: userId,
 			skill_id: skillId,
