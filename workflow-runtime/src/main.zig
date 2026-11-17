@@ -27,7 +27,7 @@ const usage =
     \\        [--credentials FILE] [--egress-max-body-mb M] [--egress-big-slots K] [--insecure-tls]
     \\        [--binary-max-file-mb M] [--binary-buffer-mb M] [--binary-max-transfers N]
     \\        [--sql-max-requests N] [--sql-max-conns N] [--sql-pool-conns N] [--sql-max-result-kb K]
-    \\        [--sql-max-request-kb K] [--sql-max-statements N] [--sql-timestamp-zone utc] [--sql-mysql]
+    \\        [--sql-max-request-kb K] [--sql-max-statements N] [--sql-timestamp-zone utc] [--sql-mysql] [--sql-mssql]
     \\        [--smtp-native] [--smtp-max-requests N] [--smtp-max-message-kb K]
     \\        [--admin-port P --admin-secret-env VAR] [--event-queue-mb M] [--max-outbox-mb M] [--test-clock]
     \\        [--profile embedded] [--max-conns N] [--max-request-mb M] [--request-big-slots K]
@@ -335,6 +335,11 @@ fn serve(process_gpa: std.mem.Allocator, io: std.Io, args: []const [:0]const u8)
         if (std.mem.eql(u8, k, "--sql-mysql")) {
             // Calls with the dialect `mysql` go to the native MySQL client (`shell/my.zig`).
             opts.sql_mysql = true;
+            continue;
+        }
+        if (std.mem.eql(u8, k, "--sql-mssql")) {
+            // Calls with the dialect `mssql` go to the native SQL Server client (`shell/ms.zig`).
+            opts.sql_mssql = true;
             continue;
         }
         if (std.mem.eql(u8, k, "--gym-env")) {
@@ -773,6 +778,9 @@ test {
     _ = @import("shell/my_call.zig");
     _ = @import("shell/my.zig");
     _ = @import("shell/my_test.zig");
+    _ = @import("shell/ms_call.zig");
+    _ = @import("shell/ms.zig");
+    _ = @import("shell/ms_test.zig");
     _ = @import("shell/server.zig");
     _ = @import("shell/uring.zig");
     _ = @import("shell/fuzz_test.zig");

@@ -72,6 +72,7 @@ const SSL_CTRL_MODE = 33;
 const SSL_CTRL_SET_READ_AHEAD = 41;
 const SSL_CTRL_SET_TLSEXT_HOSTNAME = 55;
 const SSL_CTRL_SET_MIN_PROTO_VERSION = 123;
+const SSL_CTRL_SET_MAX_PROTO_VERSION = 124;
 const TLS1_2_VERSION = 0x0303;
 const SSL_MODE_ENABLE_PARTIAL_WRITE = 1;
 const SSL_MODE_ACCEPT_MOVING_WRITE_BUFFER = 2;
@@ -317,6 +318,50 @@ pub const Session = struct {
         try s.setHost(host, is_ip, offer_h2);
         SSL_set_connect_state(ssl);
         return s;
+    }
+
+    /// As `connectBio`, without ALPN and with TLS 1.2: for the TLS handshake
+    /// of TDS 7, which goes inside PRELOGIN packets. SQL Server has TLS 1.3
+    /// only with TDS 8. With TLS 1.3 the tickets of the server come after
+    /// the handshake, where no rule says whether a packet is around them.
+    pub fn connectBioPlain(ctx: Context, io: *BioBuf, host: []const u8, is_ip: bool) Error!Session {
+        if (!enabled) return error.TlsUnavailable;
+        const ssl = SSL_new(ctx.ctx orelse return error.TlsInit) orelse return error.TlsInit;
+        errdefer SSL_free(ssl);
+        const bio = BIO_new(ctx.bio_method orelse return error.TlsInit) orelse return error.TlsInit;
+        BIO_set_data(bio, io);
+        // One BIO for both directions: SSL_set_bio takes one reference.
+        SSL_set_bio(ssl, bio, bio);
+        io.reset();
+        if (SSL_ctrl(ssl, SSL_CTRL_SET_MAX_PROTO_VERSION, TLS1_2_VERSION, null) != 1) return error.TlsInit;
+        var z: [256]u8 = @splat(0);
+        if (host.len >= z.len) return error.TlsInit;
+        @memcpy(z[0..host.len], host);
+        const hz: [*:0]const u8 = z[0..host.len :0];
+        if (is_ip) {
+            if (X509_VERIFY_PARAM_set1_ip_asc(SSL_get0_param(ssl), hz) != 1) return error.TlsInit;
+        } else {
+            if (SSL_ctrl(ssl, SSL_CTRL_SET_TLSEXT_HOSTNAME, 0, @ptrCast(@constCast(hz))) != 1) return error.TlsInit;
+            if (SSL_set1_host(ssl, hz) != 1) return error.TlsInit;
+        }
+        SSL_set_connect_state(ssl);
+        return .{ .ssl = ssl, .io = io };
+    }
+
+    /// A server session whose ciphertext goes through `io` (a test server
+    /// that takes the TLS handshake inside the packets of its protocol).
+    /// `client_ctx` gives the BIO type.
+    pub fn acceptBio(ctx: Context, client_ctx: Context, io: *BioBuf) Error!Session {
+        if (!enabled) return error.TlsUnavailable;
+        const ssl = SSL_new(ctx.ctx orelse return error.TlsInit) orelse return error.TlsInit;
+        errdefer SSL_free(ssl);
+        const bio = BIO_new(client_ctx.bio_method orelse return error.TlsInit) orelse return error.TlsInit;
+        BIO_set_data(bio, io);
+        // One BIO for both directions: SSL_set_bio takes one reference.
+        SSL_set_bio(ssl, bio, bio);
+        io.reset();
+        SSL_set_accept_state(ssl);
+        return .{ .ssl = ssl, .io = io };
     }
 
     fn setHost(s: *Session, host: []const u8, is_ip: bool, offer_h2: bool) Error!void {

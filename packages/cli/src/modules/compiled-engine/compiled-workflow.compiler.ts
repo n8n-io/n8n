@@ -235,6 +235,9 @@ export class CompiledWorkflowCompiler {
 	/** `N8N_COMPILED_ENGINE_SQL_MYSQL`. */
 	private readonly sqlMysql: boolean;
 
+	/** `N8N_COMPILED_ENGINE_SQL_MSSQL`. */
+	private readonly sqlMssql: boolean;
+
 	/** True when n8n has a session store for the `chatMemory` service (`N8N_COMPILED_ENGINE_CHAT_MEMORY_MB`). */
 	private readonly chatMemory: boolean;
 
@@ -254,6 +257,7 @@ export class CompiledWorkflowCompiler {
 	) {
 		this.compileNodes = config.compileNodes;
 		this.sqlMysql = config.sqlMysql;
+		this.sqlMssql = config.sqlMssql;
 		this.chatMemory = config.chatMemoryMb > 0;
 		this.logger = this.logger.scoped('compiled-engine');
 		this.artifacts = new ArtifactCache(
@@ -337,6 +341,7 @@ export class CompiledWorkflowCompiler {
 			.update(this.processes.storesResponses ? 'stores-responses' : '')
 			// A MySQL node is a call of the `sql` effect only when `wfrt` has the MySQL client.
 			.update(this.sqlMysql ? 'sql-mysql' : '')
+			.update(this.sqlMssql ? 'sql-mssql' : '')
 			// An agent with a memory is a library node only when n8n has the session store.
 			.update(this.chatMemory ? 'chat-memory' : '')
 			// A Code node that loads a module runs natively only when n8n allows the module.
@@ -430,6 +435,8 @@ export class CompiledWorkflowCompiler {
 			sql: true,
 			// `wfrt` runs the dialect `mysql` only with `--sql-mysql` (N8N_COMPILED_ENGINE_SQL_MYSQL).
 			...(this.sqlMysql ? { mysql: true } : {}),
+			// `wfrt` runs the dialect `mssql` only with `--sql-mssql` (N8N_COMPILED_ENGINE_SQL_MSSQL).
+			...(this.sqlMssql ? { mssql: true } : {}),
 			// n8n answers the service `chatMemory` (`CompiledServiceCalls`): an AI Agent with a
 			// Simple Memory node runs as a library node. Without the store it runs in the host.
 			...(this.chatMemory ? { chatMemory: true } : {}),

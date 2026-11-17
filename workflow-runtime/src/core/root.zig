@@ -37,6 +37,7 @@ pub const mywire = @import("mywire.zig");
 pub const smtp = @import("smtp.zig");
 pub const mail = @import("mail.zig");
 pub const tdswire = @import("tdswire.zig");
+pub const tdscase_tables = @import("tdscase_tables.zig");
 
 test {
     @import("std").testing.refAllDecls(@This());

@@ -120,7 +120,12 @@ describe('CompiledWorkflowCompiler: nodes with conditions on a credential', () =
 			mock<InstanceSettings>({ instanceId: 'instance' }),
 			credentials,
 			mock<CredentialTypes>(),
-			mock<CompiledEngineConfig>({ compileNodes: true, artifactCacheMb: 1, sqlMysql: false }),
+			mock<CompiledEngineConfig>({
+				compileNodes: true,
+				artifactCacheMb: 1,
+				sqlMysql: false,
+				sqlMssql: false,
+			}),
 		);
 	});
 
@@ -219,7 +224,12 @@ describe('CompiledWorkflowCompiler: nodes with conditions on a credential', () =
 			mock<InstanceSettings>({ instanceId: 'instance' }),
 			credentials,
 			mock<CredentialTypes>(),
-			mock<CompiledEngineConfig>({ compileNodes: true, artifactCacheMb: 1, sqlMysql: false }),
+			mock<CompiledEngineConfig>({
+				compileNodes: true,
+				artifactCacheMb: 1,
+				sqlMysql: false,
+				sqlMssql: false,
+			}),
 		);
 		restarted.restoreHostNodes(stored);
 		expect(restarted.hostNodes()).toEqual(stored);
@@ -253,7 +263,12 @@ describe('CompiledWorkflowCompiler: nodes with conditions on a credential', () =
 			mock<InstanceSettings>({ instanceId: 'instance' }),
 			credentials,
 			mock<CredentialTypes>(),
-			mock<CompiledEngineConfig>({ compileNodes: false, artifactCacheMb: 1, sqlMysql: false }),
+			mock<CompiledEngineConfig>({
+				compileNodes: false,
+				artifactCacheMb: 1,
+				sqlMysql: false,
+				sqlMssql: false,
+			}),
 		);
 
 		await compiler.compile(input);
@@ -284,7 +299,12 @@ describe('CompiledWorkflowCompiler: nodes with conditions on a credential', () =
 			mock<InstanceSettings>({ instanceId: 'instance' }),
 			credentials,
 			mock<CredentialTypes>(),
-			mock<CompiledEngineConfig>({ compileNodes: true, artifactCacheMb: 1, sqlMysql: true }),
+			mock<CompiledEngineConfig>({
+				compileNodes: true,
+				artifactCacheMb: 1,
+				sqlMysql: true,
+				sqlMssql: false,
+			}),
 		);
 
 		const on = await withSetting.compile(input);
@@ -305,7 +325,12 @@ describe('CompiledWorkflowCompiler: nodes with conditions on a credential', () =
 			mock<InstanceSettings>({ instanceId: 'instance' }),
 			credentials,
 			mock<CredentialTypes>(),
-			mock<CompiledEngineConfig>({ compileNodes: false, artifactCacheMb: 1, sqlMysql: false }),
+			mock<CompiledEngineConfig>({
+				compileNodes: false,
+				artifactCacheMb: 1,
+				sqlMysql: false,
+				sqlMssql: false,
+			}),
 		);
 		const first = await compiler.compile(input);
 		expect(first.module?.toString()).toBe('compiled');
