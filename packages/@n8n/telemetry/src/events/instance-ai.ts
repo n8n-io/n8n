@@ -476,10 +476,11 @@ export const INSTANCE_AI_TELEMETRY = defineTelemetryEvents({
 	USER_STOPPED_RUN: {
 		name: 'User stopped AI Assistant run',
 		description:
-			'The user stopped the n8n Assistant while it was working, for example with the stop button. Fires once per stop request.',
+			'The user stopped the n8n Assistant while it was working, for example with the stop button. On the instance-ai runtime, fires once per stop request, also when no run is active. On the agents runtime, fires only when a turn was running or waiting for the user.',
 		properties: z.object({
 			user_id: z.string(),
 			thread_id: z.string(),
+			runtime: assistantRuntime,
 		}),
 	},
 	DEFAULT_EDITOR_PREFERENCE_CHANGED: {
