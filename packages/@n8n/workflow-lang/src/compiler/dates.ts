@@ -453,7 +453,10 @@ export function dateUse(checker: ts.TypeChecker, node: ts.Expression): DateUse {
 			? RAW
 			: reject('A Date cannot change its type with `as`.', 'Use d.toISOString() or d.getTime().');
 	}
-	if (ts.isConditionalExpression(p)) return p.condition === node ? CONDITION : RAW;
+	if (ts.isConditionalExpression(p)) {
+		if (p.condition === node) return CONDITION;
+		return isDateish(checker, p) ? RAW : JSON_USE;
+	}
 	if (ts.isTemplateSpan(p)) return TEXT;
 	if (ts.isPropertyAccessExpression(p) && p.expression === node) {
 		const call = p.parent;
@@ -524,12 +527,13 @@ function binaryUse(checker: ts.TypeChecker, p: ts.BinaryExpression, node: ts.Exp
 	const other = isLeft ? p.right : p.left;
 	switch (op) {
 		case ts.SyntaxKind.QuestionQuestionToken:
-			return RAW;
+			return isDateish(checker, p) ? RAW : JSON_USE;
 		case ts.SyntaxKind.AmpersandAmpersandToken:
 		case ts.SyntaxKind.BarBarToken:
-			return isLeft ? CONDITION : RAW;
+			if (isLeft) return CONDITION;
+			return isDateish(checker, p) ? RAW : JSON_USE;
 		case ts.SyntaxKind.CommaToken:
-			return RAW;
+			return isLeft || isDateish(checker, p) ? RAW : JSON_USE;
 		case ts.SyntaxKind.PlusToken:
 		case ts.SyntaxKind.PlusEqualsToken:
 			// JavaScript converts a Date in `+` with its toString form.
