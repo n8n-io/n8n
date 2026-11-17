@@ -12,8 +12,7 @@ import {
 import { v4 as uuid } from 'uuid';
 
 import { FolderNotFoundError } from '@/errors/folder-not-found.error';
-import { FolderFinderService } from '@n8n/backend-services';
-import { Telemetry } from '@/telemetry';
+import { FolderFinderService, TelemetryProxy } from '@n8n/backend-services';
 import { WorkflowService } from '@/workflows/workflow.service';
 
 import z from 'zod';
@@ -51,7 +50,7 @@ describe('search-workflows MCP tool', () => {
 				getMany: vi.fn().mockResolvedValue({ workflows, count: 1 }),
 			});
 
-			const telemetry = mockInstance(Telemetry, {
+			const telemetry = mockInstance(TelemetryProxy, {
 				track: vi.fn(),
 			});
 
@@ -431,7 +430,7 @@ describe('search-workflows MCP tool', () => {
 		test('fails with a recoverable error instead of widening the search', async () => {
 			const workflowService = emptyResult();
 			const folderFinder = mockFolderFinder([]);
-			const telemetry = mockInstance(Telemetry, { track: vi.fn() });
+			const telemetry = mockInstance(TelemetryProxy, { track: vi.fn() });
 			const tool = createSearchWorkflowsTool(
 				user,
 				workflowService as unknown as WorkflowService,
@@ -454,7 +453,7 @@ describe('search-workflows MCP tool', () => {
 	describe('input schema', () => {
 		const folderIdSchemaOf = () => {
 			const workflowService = mockInstance(WorkflowService, { getMany: vi.fn() });
-			const telemetry = mockInstance(Telemetry, { track: vi.fn() });
+			const telemetry = mockInstance(TelemetryProxy, { track: vi.fn() });
 			const tool = createSearchWorkflowsTool(
 				user,
 				workflowService as unknown as WorkflowService,
@@ -493,7 +492,7 @@ describe('search-workflows MCP tool', () => {
 		// All other MCP schemas (nodeSchema, tagSchema, workflowDetails) are passthrough.
 		test('tolerates unknown properties on workflow items (passthrough)', () => {
 			const workflowService = mockInstance(WorkflowService, { getMany: vi.fn() });
-			const telemetry = mockInstance(Telemetry, { track: vi.fn() });
+			const telemetry = mockInstance(TelemetryProxy, { track: vi.fn() });
 			const tool = createSearchWorkflowsTool(
 				user,
 				workflowService as unknown as WorkflowService,

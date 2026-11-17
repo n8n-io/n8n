@@ -142,7 +142,7 @@ export class ProjectExporter {
 		request: ProjectExportRequest,
 		selectedWorkflowIds: ReadonlySet<string> | undefined,
 	): Promise<FolderExportResult> {
-		const folderIds = await this.folderFinder.findFolderIdsInProject(projectId);
+		const folderIds = await this.folderFinder.findFolderIdsInProject(projectId, 'workflow');
 		if (folderIds.length === 0) {
 			return {
 				entries: [],

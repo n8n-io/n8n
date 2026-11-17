@@ -59,12 +59,14 @@ import {
 import { PromotionWorkingDirectoryService } from '../promotion-working-directory.service';
 import type { PromotionsGitService } from '../promotions-git.service';
 import { ApplyPreviewService } from '../apply-preview.service';
+import type { PromotePreviewService } from '../promote-preview.service';
 import { GitCommitPackageReader } from '../git-commit-package-reader';
 import { PromotionGitError } from '../promotions-git.error';
 import { PromotionsService } from '../promotions.service';
 import type { PromotionOperationInput, ResolvedPromotionConfig } from '../promotions.types';
 import { WorkingCopyUpdater } from '../working-copy-updater';
 import { holdEnvironmentLock } from './utils/environment-lock';
+import { expectPushed } from './utils/promotion-fixtures';
 
 // These dependencies are injected as mocks. Do not load their implementation graphs.
 vi.mock('@/modules/n8n-packages/n8n-packages.service', () => ({
@@ -114,6 +116,7 @@ describe('PromotionsService', () => {
 	const runRepository = mock<PromotionRunRepository>();
 	const reviewsService = mock<PromotionReviewsService>();
 	const eventService = mock<EventService>();
+	const promotePreviewService = mock<PromotePreviewService>();
 	const actor = Object.assign(new Person(), {
 		id: 'actor',
 		firstName: 'Ada',
@@ -234,6 +237,7 @@ describe('PromotionsService', () => {
 			folderService,
 			n8nPackagesService,
 			applyPreviewService,
+			promotePreviewService,
 			inventoryReader,
 			packageImportConfig,
 			runRepository,
@@ -1560,6 +1564,7 @@ describe('PromotionsService', () => {
 				commitMessage: 'm',
 				canExportVariableValues: true,
 			});
+			expectPushed(result);
 
 			const targetBranchName = result.git.branchName;
 			expect(targetBranchName).toMatch(
@@ -1619,6 +1624,7 @@ describe('PromotionsService', () => {
 				commitMessage: 'm',
 				canExportVariableValues: true,
 			});
+			expectPushed(result);
 
 			expect(reviewsService.openMergeRequest).toHaveBeenCalledWith(
 				input,
@@ -1663,6 +1669,7 @@ describe('PromotionsService', () => {
 				workflowIds: ['w1'],
 				canExportVariableValues: true,
 			});
+			expectPushed(result);
 
 			expect(reviewsService.openMergeRequest).toHaveBeenCalledWith(
 				input,
@@ -2166,6 +2173,30 @@ describe('PromotionsService', () => {
 				},
 				'promoteSelectionResolved',
 			);
+
+		it('reports a changed preview without success counts or an opened review', async () => {
+			promotePreviewService.build.mockResolvedValueOnce(
+				mock<Awaited<ReturnType<PromotePreviewService['build']>>>({ revision: 'current' }),
+			);
+
+			expect(
+				await service.promoteProjectSelection('p1', actor, {
+					workflowIds: ['w1'],
+					expectedPreviewRevision: 'reviewed',
+					canExportVariableValues: true,
+				}),
+			).toEqual({ status: 'preview-changed', environmentId: ENVIRONMENT_ID });
+			expect(eventService.emit).toHaveBeenCalledExactlyOnceWith('promotion-promoted', {
+				user: actor,
+				environmentId: ENVIRONMENT_ID,
+				scope: 'project',
+				projectId: 'p1',
+				selectedWorkflowCount: 1,
+				selectedFolderCount: 0,
+				outcome: 'preview_changed',
+				durationMs: expect.any(Number),
+			});
+		});
 
 		it('promotes live and archived workflows and pushes only missing ones as deletions', async () => {
 			sharedWorkflowRepository.findOwnerProjectsByWorkflowIds.mockResolvedValue(
