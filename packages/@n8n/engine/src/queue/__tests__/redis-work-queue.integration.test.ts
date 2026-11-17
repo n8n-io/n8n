@@ -49,7 +49,7 @@ function createEngineProcess(key: string, concurrency = 1, blockTimeoutSeconds =
 	const dispose = async () => {
 		await Promise.all([publisher.quit(), consumer.quit()]);
 	};
-	return { queue, publisher, dispose };
+	return { queue, publisher, consumer, dispose };
 }
 
 const newKey = () => `engine:test:${randomUUID()}`;
@@ -132,14 +132,20 @@ describe('RedisWorkQueue (integration)', () => {
 	it('gives a message that a pending fetch returns after stop back to the list and does not run it', async () => {
 		const key = newKey();
 		const engine = startProcess(key, 1, 2);
+		const consumerId = await engine.consumer.client('ID');
+		const giveBack = vi.spyOn(engine.publisher, 'rpush');
 		const handler = vi.fn(async () => {});
 		engine.queue.start(handler);
+		await vi.waitFor(async () =>
+			expect(await engine.publisher.client('LIST', 'ID', consumerId)).toContain('cmd=brpop'),
+		);
 
 		const stopping = engine.queue.stop();
 		await engine.queue.publish({ n: 1 });
 		await stopping;
 
 		expect(handler).not.toHaveBeenCalled();
+		expect(giveBack).toHaveBeenCalledWith(key, '{"n":1}');
 		expect(await engine.publisher.lrange(key, 0, -1)).toEqual(['{"n":1}']);
 	});
 });
