@@ -1212,7 +1212,7 @@ describe('AiSdkLanguageModelAdapter', () => {
 			]);
 		});
 
-		it('ignores chunks after the finish', async () => {
+		it('sends one finish with the usage of a later finish chunk and ignores other late chunks', async () => {
 			const adapter = new AiSdkLanguageModelAdapter(
 				createFakeChatModel({
 					chunks: [
@@ -1237,6 +1237,10 @@ describe('AiSdkLanguageModelAdapter', () => {
 				'text-end',
 				'finish',
 			]);
+			expect(parts.at(-1)).toMatchObject({
+				finishReason: { unified: 'stop' },
+				usage: { inputTokens: { total: 1 }, outputTokens: { total: 1 } },
+			});
 		});
 
 		it('forwards error chunks', async () => {
