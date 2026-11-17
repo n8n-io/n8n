@@ -79,6 +79,7 @@ export const upCommand = defineCommand({
 			targets,
 			dependencies: 'none',
 			autoRestart: Boolean(args['auto-restart']),
+			withRunners: true,
 		}).run();
 	},
 });
@@ -137,7 +138,12 @@ export const runCommand = defineCommand({
 		},
 	},
 	async run({ args, rawArgs }) {
-		const env = loadEnv(args.env);
+		// One-off values can decide which launchers and runners a process needs.
+		const oneOff = parseAssignments(repeatedFlag(rawArgs, ['-e', '--e']));
+		const env = loadEnv(args.env).withOverrides({
+			oneOff,
+			inheritEnv: Boolean(args['inherit-env']),
+		});
 		const names = positionals(args);
 		const selected = names.flatMap((name) => env.select(name));
 		if (args.launcher) {
@@ -146,14 +152,12 @@ export const runCommand = defineCommand({
 			selected.push(...env.runnerHosts().filter((l) => hosts.has(l.host.name)));
 		}
 		const targets = [...new Map(selected.map((c) => [c.name, c])).values()];
-		const oneOff = parseAssignments(repeatedFlag(rawArgs, ['-e', '--e']));
 
 		await preflight(env, targets, { services: args.services });
 		const printer = new PrefixPrinter();
 		const supervisor = new Supervisor({
 			env,
 			printer,
-			resolveOverrides: { oneOff, inheritEnv: Boolean(args['inherit-env']) },
 			// Only the named components get the inspector, not the launchers or dependencies.
 			inspect: inspectOption(args, selected),
 		});
@@ -171,6 +175,7 @@ export const runCommand = defineCommand({
 			targets,
 			dependencies,
 			autoRestart: Boolean(args['auto-restart']),
+			withRunners: args.launcher,
 		}).run();
 	},
 });

@@ -77,6 +77,23 @@ describe('direct runners', () => {
 	});
 });
 
+describe('readiness probe', () => {
+	it('should use the ports of the resolved env', () => {
+		const env = makeEnv('p', PRESETS.queue.topology).withOverrides({
+			oneOff: { N8N_PORT: '15678', QUEUE_HEALTH_CHECK_PORT: '15778' },
+		});
+		const main = env.component('main-1');
+		const worker = env.component('worker-1');
+		if (!main || !worker) throw new Error('no main or worker');
+		expect(readinessProbe(main, env.resolve(main).env).url).toBe(
+			'http://127.0.0.1:15678/healthz/readiness',
+		);
+		expect(readinessProbe(worker, env.resolve(worker).env).url).toBe(
+			'http://127.0.0.1:15778/healthz/readiness',
+		);
+	});
+});
+
 describe('env hash', () => {
 	it('should ignore one-off values and the parent shell, and see env file changes', () => {
 		const env = makeEnv('h', {});
@@ -111,6 +128,19 @@ describe('task hosts in queue mode', () => {
 		const env = makeEnv('q', PRESETS.queue.topology);
 		writeFileSync(env.paths.layerFile('main'), 'OFFLOAD_MANUAL_EXECUTIONS_TO_WORKERS=false\n');
 		expect(env.launchers().map((l) => l.name)).toEqual(['launcher@main-1', 'launcher@worker-1']);
+	});
+
+	it('should give a main its launcher when a one-off value turns off offloading', () => {
+		const env = makeEnv('q', PRESETS.queue.topology).withOverrides({
+			oneOff: { OFFLOAD_MANUAL_EXECUTIONS_TO_WORKERS: 'false' },
+		});
+		expect(env.runnerHosts().map((l) => l.name)).toEqual(['launcher@main-1', 'launcher@worker-1']);
+		expect(
+			env
+				.reload()
+				.runnerHosts()
+				.map((l) => l.name),
+		).toContain('launcher@main-1');
 	});
 
 	it('should set the default in regular mode too, where the main keeps its launcher', () => {

@@ -5,18 +5,37 @@ import { createServer } from 'node:net';
 
 import type { Component } from '../topology/components';
 
-/** The readiness URL of a component. `healthPath` is `N8N_ENDPOINT_HEALTH` from the resolved env. */
-export function readinessUrl(component: Component, healthPath = '/healthz'): string {
+/** A port from the resolved env. A layer or `rig run -e` can override the port of rig. */
+function effectivePort(value: string | undefined, fallback: number): number {
+	const port = Number(value);
+	return Number.isInteger(port) && port > 0 && port < 65536 ? port : fallback;
+}
+
+/** The readiness URL of a component with its resolved env. */
+export function readinessUrl(component: Component, env: Record<string, string> = {}): string {
 	if (component.kind === 'launcher') {
-		return `http://127.0.0.1:${component.host.ports.launcherHealth}/healthz`;
+		const port = effectivePort(
+			env.N8N_RUNNERS_LAUNCHER_HEALTH_CHECK_PORT,
+			component.host.ports.launcherHealth,
+		);
+		return `http://127.0.0.1:${port}/healthz`;
 	}
 	if (component.kind === 'runner') {
 		const { ports } = component.host;
-		return `http://127.0.0.1:${component.language === 'js' ? ports.jsHealth : ports.pyHealth}/healthz`;
+		const port = effectivePort(
+			env.N8N_RUNNERS_HEALTH_CHECK_SERVER_PORT,
+			component.language === 'js' ? ports.jsHealth : ports.pyHealth,
+		);
+		return `http://127.0.0.1:${port}/healthz`;
 	}
-	if (component.role === 'engine') return `http://127.0.0.1:${component.ports.http}/healthz`;
+	if (component.role === 'engine') {
+		return `http://127.0.0.1:${effectivePort(env.N8N_ENGINE_PORT, component.ports.http)}/healthz`;
+	}
+	const portKey = component.role === 'worker' ? 'QUEUE_HEALTH_CHECK_PORT' : 'N8N_PORT';
+	const port = effectivePort(env[portKey], component.ports.http);
+	const healthPath = env.N8N_ENDPOINT_HEALTH ?? '/healthz';
 	const path = healthPath.startsWith('/') ? healthPath : `/${healthPath}`;
-	return `http://127.0.0.1:${component.ports.http}${path}/readiness`;
+	return `http://127.0.0.1:${port}${path}/readiness`;
 }
 
 /** A readiness check: a URL, and the CA for an HTTPS URL with a private CA. */
@@ -30,7 +49,7 @@ export interface Probe {
  * the engine serves `/healthz` over HTTPS with the CA of rig.
  */
 export function readinessProbe(component: Component, env: Record<string, string>): Probe {
-	const url = readinessUrl(component, env.N8N_ENDPOINT_HEALTH);
+	const url = readinessUrl(component, env);
 	if (component.kind === 'process' && component.role === 'engine' && env.N8N_ENGINE_TLS_CA_FILE) {
 		return { url: url.replace(/^http:/, 'https:'), caFile: env.N8N_ENGINE_TLS_CA_FILE };
 	}

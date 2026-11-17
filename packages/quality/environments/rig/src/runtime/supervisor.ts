@@ -6,7 +6,6 @@ import pc from 'picocolors';
 import { z } from 'zod';
 
 import type { RigEnv } from '../environment';
-import type { ResolveContext } from '../env/resolve';
 import { RigError } from '../errors';
 import { ensureLauncherBinary } from '../launcher/binary';
 import { nodeBinary, runnerCommand, writeLauncherConfig } from '../launcher/config';
@@ -43,6 +42,21 @@ const N8N_SUBCOMMANDS: Record<ProcessComponent['role'], string> = {
 
 const KILL_WAIT_MS = 5000;
 
+/** The default of `N8N_GRACEFUL_SHUTDOWN_TIMEOUT`. */
+const DEFAULT_SHUTDOWN_SECONDS = 30;
+
+/**
+ * The owner of a restarted component: this process, or another `rig` process
+ * that still runs. Without a live owner, the restart uses the fallback.
+ */
+export function inheritedOwner(previous: ComponentState | undefined, fallback: Owner): Owner {
+	if (previous?.ownerPid === process.pid) return 'self';
+	if (previous?.ownerPid && isPidAlive(previous.ownerPid)) {
+		return { pid: previous.ownerPid, tty: previous.ownerTty };
+	}
+	return fallback;
+}
+
 const READY_TIMEOUT_MS: Record<Component['role'], number> = {
 	main: 10 * 60_000,
 	worker: 5 * 60_000,
@@ -63,8 +77,6 @@ export type InspectMode = 'inspect' | 'inspect-brk';
 export interface SupervisorOptions {
 	env: RigEnv;
 	printer: PrefixPrinter;
-	/** Overrides for `rig run -e` and `--inherit-env`. */
-	resolveOverrides?: Partial<ResolveContext>;
 	/** Starts these n8n processes with the Node inspector. */
 	inspect?: { mode: InspectMode; components: Set<string> };
 }
@@ -77,7 +89,6 @@ export function inspectAddress(component: ProcessComponent): string {
 export class Supervisor {
 	env: RigEnv;
 	private readonly printer: PrefixPrinter;
-	private readonly resolveOverrides: Partial<ResolveContext>;
 	private readonly inspect?: SupervisorOptions['inspect'];
 	private readonly children = new Map<number, ChildProcess>();
 	private readonly exitCodes = new Map<number, string>();
@@ -88,7 +99,6 @@ export class Supervisor {
 	constructor(options: SupervisorOptions) {
 		this.env = options.env;
 		this.printer = options.printer;
-		this.resolveOverrides = options.resolveOverrides ?? {};
 		this.inspect = options.inspect;
 	}
 
@@ -104,7 +114,7 @@ export class Supervisor {
 	}
 
 	hash(component: Component): string {
-		return this.env.componentHash(component, this.resolveOverrides);
+		return this.env.componentHash(component);
 	}
 
 	private async command(
@@ -171,7 +181,7 @@ export class Supervisor {
 		const ports = portsOf(component, this.env.topology);
 		if (inspect && component.kind === 'process') ports.push(component.ports.inspect);
 		await this.assertPortsFree(component, ports);
-		const { env } = this.env.resolve(component, this.resolveOverrides);
+		const { env } = this.env.resolve(component);
 		const command = await this.command(component, repoRoot, inspect);
 		if (component.kind === 'runner') {
 			// The token is single-use, so it is not part of the env hash.
@@ -250,7 +260,7 @@ export class Supervisor {
 
 	/** Asks the task broker of the host for a grant token, as the launcher does. */
 	private async grantToken(component: RunnerComponent): Promise<string> {
-		const { env: hostEnv } = this.env.resolve(component.host, this.resolveOverrides);
+		const { env: hostEnv } = this.env.resolve(component.host);
 		const url = `http://127.0.0.1:${component.host.ports.broker}/runners/auth`;
 		try {
 			const response = await fetch(url, {
@@ -272,7 +282,7 @@ export class Supervisor {
 	}
 
 	async waitReady(component: Component, pid: number, signal?: AbortSignal) {
-		const { env } = this.env.resolve(component, this.resolveOverrides);
+		const { env } = this.env.resolve(component);
 		return await waitUntilReady({
 			probe: readinessProbe(component, env),
 			isRunning: () => isPidAlive(pid),
@@ -282,7 +292,7 @@ export class Supervisor {
 	}
 
 	async isComponentReady(component: Component): Promise<boolean> {
-		const { env } = this.env.resolve(component, this.resolveOverrides);
+		const { env } = this.env.resolve(component);
 		return await isReady(readinessProbe(component, env));
 	}
 
@@ -290,10 +300,20 @@ export class Supervisor {
 	async stop(component: Component): Promise<boolean> {
 		const state = liveState(this.env.paths, component.name);
 		if (!state) return false;
-		this.stopping.add(component.name);
+		const { env } = this.env.resolve(component);
+		await this.stopProcess(state, (shutdownSeconds(component, env) + 5) * 1000);
+		return true;
+	}
+
+	/** Stops a tracked process that is no longer in the topology, so rig cannot resolve its env. */
+	async stopUntracked(state: ComponentState): Promise<void> {
+		await this.stopProcess(state, (DEFAULT_SHUTDOWN_SECONDS + 5) * 1000);
+	}
+
+	private async stopProcess(state: ComponentState, graceMs: number): Promise<void> {
+		const name = state.component;
+		this.stopping.add(name);
 		try {
-			const { env } = this.env.resolve(component, this.resolveOverrides);
-			const graceMs = (shutdownSeconds(component, env) + 5) * 1000;
 			signalGroup(state.pid, 'SIGTERM');
 			const deadline = Date.now() + graceMs;
 			while (isPidAlive(state.pid) && Date.now() < deadline) {
@@ -305,16 +325,15 @@ export class Supervisor {
 			while (isPidAlive(state.pid) && Date.now() < killDeadline) await sleep(50);
 			if (isPidAlive(state.pid)) {
 				this.printer.event(
-					component.name,
+					name,
 					pc.yellow(`pid ${state.pid} did not exit after SIGKILL. Check it with \`ps\`.`),
 				);
 			}
 			// The launcher's runners are in its group. Make sure they are gone too.
 			signalGroup(state.pid, 'SIGKILL', false);
-			clearState(this.env.paths, component.name, state.pid);
-			return true;
+			clearState(this.env.paths, name, state.pid);
 		} finally {
-			this.stopping.delete(component.name);
+			this.stopping.delete(name);
 		}
 	}
 
@@ -322,13 +341,7 @@ export class Supervisor {
 	async restart(component: Component, owner?: Owner): Promise<number> {
 		const previous = liveState(this.env.paths, component.name);
 		await this.stop(component);
-		const keepOwner: Owner =
-			owner ??
-			(previous?.ownerPid === process.pid
-				? 'self'
-				: previous?.ownerPid && isPidAlive(previous.ownerPid)
-					? { pid: previous.ownerPid, tty: previous.ownerTty }
-					: 'background');
+		const keepOwner = owner ?? inheritedOwner(previous, 'background');
 		return await this.start(component, keepOwner, { inspect: previous?.inspect });
 	}
 
@@ -389,7 +402,7 @@ function shutdownSeconds(component: Component, env: Record<string, string>): num
 		const grace = positiveSeconds(env.N8N_RUNNERS_GRACEFUL_SHUTDOWN_TIMEOUT, 30);
 		return grace + positiveSeconds(env.N8N_RUNNERS_SHUTDOWN_FORCE_KILL_MARGIN, 10);
 	}
-	return positiveSeconds(env.N8N_GRACEFUL_SHUTDOWN_TIMEOUT, 30);
+	return positiveSeconds(env.N8N_GRACEFUL_SHUTDOWN_TIMEOUT, DEFAULT_SHUTDOWN_SECONDS);
 }
 
 function signalGroup(pid: number, signal: NodeJS.Signals, fallbackToPid = true): void {

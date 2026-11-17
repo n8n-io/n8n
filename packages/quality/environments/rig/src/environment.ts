@@ -123,16 +123,19 @@ export class RigEnv {
 	readonly globalConfig: GlobalConfig;
 	readonly repoRoot: string | undefined;
 	readonly source: ResolvedSource;
+	/** Overrides for `rig run -e` and `--inherit-env`. Every resolve applies them. */
+	private readonly overrides: Partial<ResolveContext>;
 
 	constructor(
 		readonly name: string,
 		readonly paths: EnvPaths,
-		options: { source?: ResolvedSource } = {},
+		options: { source?: ResolvedSource; overrides?: Partial<ResolveContext> } = {},
 	) {
 		this.topology = loadTopology(paths.envYaml);
 		this.globalConfig = loadGlobalConfig();
 		this.source = options.source ?? resolveSource(this.topology.source, this.globalConfig.repo);
 		this.repoRoot = this.source.root;
+		this.overrides = options.overrides ?? {};
 	}
 
 	launcherSource(): LauncherSource {
@@ -152,7 +155,15 @@ export class RigEnv {
 
 	reload(): RigEnv {
 		// Keep the checkout: a running session must not switch sources.
-		return new RigEnv(this.name, this.paths, { source: this.source });
+		return new RigEnv(this.name, this.paths, { source: this.source, overrides: this.overrides });
+	}
+
+	/** The same environment, with overrides that also decide which launchers and runners exist. */
+	withOverrides(overrides: Partial<ResolveContext>): RigEnv {
+		return new RigEnv(this.name, this.paths, {
+			source: this.source,
+			overrides: { ...this.overrides, ...overrides },
+		});
 	}
 
 	context(overrides: Partial<ResolveContext> = {}): ResolveContext {
@@ -161,6 +172,7 @@ export class RigEnv {
 			paths: this.paths,
 			repoRoot: this.repoRoot,
 			tunnelUrl: this.tunnelUrl(),
+			...this.overrides,
 			...overrides,
 		};
 	}
