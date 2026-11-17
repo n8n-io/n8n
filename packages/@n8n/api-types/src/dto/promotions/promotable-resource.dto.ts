@@ -21,6 +21,10 @@ export const promoteRequestSchema = z.object({
 		description:
 			'Folders of the project to promote. Promote writes a selected folder with its current name and place, even when it is empty.',
 	}),
+	credentialIds: promotionSelectedIdsSchema('credentialIds').openapi({
+		description:
+			'Credentials that the project owns, to promote also when no selected workflow of the project uses them. Without it, a credential comes only with a selected workflow of the project that uses it.',
+	}),
 	commitMessage: promotionCommitMessageSchema,
 	expectedPreviewRevision: expectedPreviewRevisionSchema,
 	confirmedGapIds: confirmedGapIdsSchema,

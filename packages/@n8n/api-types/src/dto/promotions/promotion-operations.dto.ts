@@ -209,6 +209,12 @@ const applySelectionShape = {
 		description:
 			'Folders of the project on the branch. Apply creates a selected folder, or moves and renames it to match the branch.',
 	}),
+	credentialIds: promotionSelectedIdsSchema('credentialIds').openapi({
+		description:
+			'Credentials that the branch holds under the project. Apply updates a selected credential that this instance holds, moves it to the project when another project owns it here, and reports one that this instance lacks in `missingBindings`. ' +
+			'When you leave it out, Apply writes each credential of the project on the branch that this instance already holds, and each credential that a selected workflow of the project uses. ' +
+			'Send an empty list to write only the credentials that the selected workflows use.',
+	}),
 };
 
 export class ApplySelectionDto extends Z.class(
