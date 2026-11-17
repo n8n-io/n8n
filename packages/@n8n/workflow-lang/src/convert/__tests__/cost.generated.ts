@@ -71,7 +71,7 @@ export const CONVERT_COST: Record<string, [ops: number, allocations: number]> = 
 	"corpus/28-string-append": [658482, 65544],
 	"corpus/29-text-codecs": [86, 26],
 	"corpus/30-xml": [368, 29],
-	"corpus/31-rss-feed": [6269, 232],
+	"corpus/31-rss-feed": [6297, 232],
 	"corpus/32-luxon-expression": [33012, 1208],
 	"corpus/33-static-data": [114, 14],
 	"corpus/34-ascii-uri": [187, 33],
