@@ -2,6 +2,7 @@ import { VIEWS, LOCAL_STORAGE_THEME, LOCAL_STORAGE_SIDEBAR_WIDTH } from '@/app/c
 import { CREDENTIAL_EDIT_MODAL_KEY } from '@/features/credentials/credentials.constants';
 import { DELETE_USER_MODAL_KEY } from '@/features/settings/users/users.constants';
 import {
+	CREATE_FOLDER_MODAL_KEY,
 	DELETE_FOLDER_MODAL_KEY,
 	MOVE_FOLDER_MODAL_KEY,
 } from '@/features/core/folders/folders.constants';
@@ -544,6 +545,16 @@ export const useUIStore = defineStore(STORES.UI, () => {
 		openModal(COMMUNITY_PACKAGE_CONFIRM_MODAL_KEY);
 	};
 
+	const openCreateFolderModal = (
+		parentName: string,
+		onConfirm: (name: string) => Promise<void> | void,
+	) => {
+		openModalWithData({
+			name: CREATE_FOLDER_MODAL_KEY,
+			data: { parentName, onConfirm },
+		});
+	};
+
 	const openDeleteFolderModal = (
 		id: string,
 		workflowListEventBus: EventBus<WorkflowListEventMap>,
@@ -688,6 +699,7 @@ export const useUIStore = defineStore(STORES.UI, () => {
 		setProcessingExecutionResults,
 		markStateDirty,
 		markStateClean,
+		openCreateFolderModal,
 		openDeleteFolderModal,
 		openMoveToFolderModal,
 		moduleTabs,

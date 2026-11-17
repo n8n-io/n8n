@@ -16,14 +16,11 @@ import { useUsersStore } from '@n8n/stores/users.store';
 import { useUIStore } from '@/app/stores/ui.store';
 import { useFoldersStore } from '@/features/core/folders/folders.store';
 import { foldersEventBus } from '@/features/core/folders/folders.eventBus';
-import { useFolders } from '@/features/core/folders/composables/useFolders';
-import { useMessage } from '@/app/composables/useMessage';
 import { useTelemetry } from '@n8n/composables/useTelemetry';
 import { VARIABLE_MODAL_KEY } from '@/features/settings/environments.ee/environments.constants';
 import { PROJECT_DATA_TABLES } from '@/features/core/dataTable/constants';
 import { COMMUNITY_PLUS_ENROLLMENT_MODAL } from '@/features/settings/usage/usage.constants';
 import { getResourcePermissions } from '@n8n/permissions';
-import { MODAL_CONFIRM } from '@/app/constants';
 import { usePageRedirectionHelper } from '@/app/composables/usePageRedirectionHelper';
 import type { Scope } from '@n8n/permissions';
 import type { RouteLocationRaw } from 'vue-router';
@@ -75,11 +72,9 @@ export const useGlobalEntityCreation = () => {
 	const usersStore = useUsersStore();
 	const uiStore = useUIStore();
 	const foldersStore = useFoldersStore();
-	const folderHelpers = useFolders();
 
 	const router = useRouter();
 	const i18n = useI18n();
-	const message = useMessage();
 	const toast = useToast();
 	const telemetry = useTelemetry();
 	const { createAgent } = useCreateAgent();
@@ -532,38 +527,26 @@ export const useGlobalEntityCreation = () => {
 			project.type === 'personal'
 				? i18n.baseText('projects.menu.personal')
 				: (project.name ?? i18n.baseText('commandBar.projects.unnamed'));
-		const promptResponse = await message.prompt(
-			i18n.baseText('folders.add.to.parent.message', {
-				interpolate: { parent: parentName },
-			}),
-			{
-				confirmButtonText: i18n.baseText('generic.create'),
-				cancelButtonText: i18n.baseText('generic.cancel'),
-				inputValidator: folderHelpers.validateFolderName,
-				customClass: 'add-folder-modal',
-			},
-		);
-
-		if (promptResponse.action !== MODAL_CONFIRM || !promptResponse.value) return;
-
-		try {
-			const newFolder = await foldersStore.createFolder(promptResponse.value, project.id);
-			const newFolderURL = router.resolve({
-				name: VIEWS.PROJECTS_FOLDERS,
-				params: { projectId: project.id, folderId: newFolder.id },
-			}).href;
-			toast.showToast({
-				title: i18n.baseText('folders.add.success.title'),
-				message: i18n.baseText('folders.add.success.message', {
-					interpolate: { link: newFolderURL, folderName: newFolder.name },
-				}),
-				type: 'success',
-			});
-			foldersEventBus.emit('folder-created', { projectId: project.id });
-			telemetry.track('User created folder', { folder_id: newFolder.id });
-		} catch (error) {
-			toast.showError(error, i18n.baseText('folders.create.error.title'));
-		}
+		uiStore.openCreateFolderModal(parentName, async (folderName) => {
+			try {
+				const newFolder = await foldersStore.createFolder(folderName, project.id);
+				const newFolderURL = router.resolve({
+					name: VIEWS.PROJECTS_FOLDERS,
+					params: { projectId: project.id, folderId: newFolder.id },
+				}).href;
+				toast.showToast({
+					title: i18n.baseText('folders.add.success.title'),
+					message: i18n.baseText('folders.add.success.message', {
+						interpolate: { link: newFolderURL, folderName: newFolder.name },
+					}),
+					type: 'success',
+				});
+				foldersEventBus.emit('folder-created', { projectId: project.id });
+				telemetry.track('User created folder', { folder_id: newFolder.id });
+			} catch (error) {
+				toast.showError(error, i18n.baseText('folders.create.error.title'));
+			}
+		});
 	};
 
 	const handleSelect = (id: string) => {
