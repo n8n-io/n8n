@@ -129,6 +129,7 @@ Auto-generated from the SQLite migrations in @n8n/db. Do not edit by hand.
 | [project_secrets_provider_access](project_secrets_provider_access.md) | 5 |  | table |
 | [promotion_environment](promotion_environment.md) | 9 |  | table |
 | [promotion_environment_project](promotion_environment_project.md) | 5 |  | table |
+| [promotion_owner_request](promotion_owner_request.md) | 14 |  | table |
 | [promotion_provider](promotion_provider.md) | 8 |  | table |
 | [promotion_review](promotion_review.md) | 10 |  | table |
 | [promotion_run](promotion_run.md) | 8 |  | table |
@@ -383,6 +384,9 @@ erDiagram
 "promotion_environment" }o--|| "promotion_provider" : "FOREIGN KEY (providerId) REFERENCES promotion_provider (id) ON UPDATE NO ACTION ON DELETE RESTRICT MATCH NONE"
 "promotion_environment_project" }o--|| "promotion_environment" : "FOREIGN KEY (environmentId) REFERENCES promotion_environment (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "promotion_environment_project" |o--|| "project" : "FOREIGN KEY (projectId) REFERENCES project (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
+"promotion_owner_request" }o--|| "user" : "FOREIGN KEY (requesterId) REFERENCES user (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
+"promotion_owner_request" }o--o| "project" : "FOREIGN KEY (ownerProjectId) REFERENCES project (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
+"promotion_owner_request" }o--|| "promotion_environment" : "FOREIGN KEY (environmentId) REFERENCES promotion_environment (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "promotion_review" }o--o| "user" : "FOREIGN KEY (approvedById) REFERENCES user (id) ON UPDATE NO ACTION ON DELETE SET NULL MATCH NONE"
 "promotion_review" }o--o| "user" : "FOREIGN KEY (createdById) REFERENCES user (id) ON UPDATE NO ACTION ON DELETE SET NULL MATCH NONE"
 "promotion_review" }o--o| "promotion_environment" : "FOREIGN KEY (environmentId) REFERENCES promotion_environment (id) ON UPDATE NO ACTION ON DELETE SET NULL MATCH NONE"
@@ -1719,6 +1723,22 @@ erDiagram
   varchar_16_ direction PK
   varchar environmentId FK
   varchar_36_ projectId PK
+  datetime_3_ updatedAt
+}
+"promotion_owner_request" {
+  varchar_16_ closeReason
+  varchar_36_ consumerWorkflowId
+  datetime_3_ createdAt
+  varchar_255_ credentialType
+  varchar_16_ direction
+  varchar environmentId FK
+  varchar id PK
+  varchar_36_ ownerProjectId FK
+  varchar requesterId FK
+  varchar_36_ resourceId
+  varchar_16_ resourceKind
+  varchar_255_ resourceName
+  varchar_16_ state
   datetime_3_ updatedAt
 }
 "promotion_provider" {

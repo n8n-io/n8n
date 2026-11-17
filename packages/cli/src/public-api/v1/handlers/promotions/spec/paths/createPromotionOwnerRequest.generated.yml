@@ -1,0 +1,82 @@
+operationId: createPromotionOwnerRequest
+tags:
+  - Promotions
+summary: 'Beta: Ask the owner of a dependency to promote or apply it'
+description: |-
+  **Beta** — breaking changes may still occur without major version bump.
+
+  Sends a request to the owner of a credential or a workflow that a workflow of the user references, when the user cannot promote or apply the project that owns it. The environment gives the operation: a Promote environment asks the owner for a Promote, an Apply environment asks for an Apply on this instance. `consumerWorkflowId` is the workflow that holds the reference. The user must be able to run the operation in the project of that workflow, and the workflow must reference the target without an expression. For an Apply environment the workflow is read from the branch. The request goes to the Inbox of the users who can run the operation in the owner project, or to the instance admins when the owner project is not on this instance. The response is always `sent`. It does not say whether the target exists, which project owns it, or who received the request. A second request for the same target, operation and environment creates nothing while the first one is open. The key needs the promotions:promote scope for a Promote environment and the promotions:apply scope for an Apply environment.
+
+  Requires one of these API key scopes: `promotions:promote`, `promotions:apply`.
+x-required-scope: promotions:promote,promotions:apply
+parameters:
+  - $ref: ../../../../shared/spec/parameters/idempotencyKey.yml
+  - schema:
+      type: string
+      format: uuid
+    required: true
+    description: The ID of the promotion environment.
+    name: promotionEnvironmentId
+    in: path
+requestBody:
+  required: true
+  content:
+    application/json:
+      schema:
+        type: object
+        properties:
+          target:
+            type: object
+            properties:
+              kind:
+                type: string
+                enum:
+                  - credential
+                  - workflow
+              id:
+                type: string
+                minLength: 1
+                maxLength: 36
+            required:
+              - kind
+              - id
+          consumerWorkflowId:
+            type: string
+            minLength: 1
+            maxLength: 36
+        required:
+          - target
+          - consumerWorkflowId
+        additionalProperties: false
+responses:
+  '200':
+    description: Operation successful.
+    content:
+      application/json:
+        schema:
+          type: object
+          properties:
+            status:
+              type: string
+              enum:
+                - sent
+          required:
+            - status
+  '400':
+    $ref: ../../../../shared/spec/responses/badRequest.yml
+  '401':
+    $ref: ../../../../shared/spec/responses/unauthorized.yml
+  '403':
+    $ref: ../../../../shared/spec/responses/forbidden.yml
+  '404':
+    $ref: ../../../../shared/spec/responses/notFound.yml
+  '409':
+    $ref: ../../../../shared/spec/responses/conflict.yml
+  '415':
+    $ref: ../../../../shared/spec/responses/unsupportedMediaType.yml
+  '422':
+    $ref: ../../../../shared/spec/responses/unprocessableEntity.yml
+  '429':
+    $ref: ../../../../shared/spec/responses/tooManyRequests.yml
+  '503':
+    $ref: ../../../../shared/spec/responses/serviceUnavailable.yml

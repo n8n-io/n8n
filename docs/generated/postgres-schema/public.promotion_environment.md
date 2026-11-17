@@ -6,7 +6,7 @@
 | ---- | ---- | ------- | -------- | -------- | ------- | ------- |
 | createdAt | timestamp(3) with time zone | CURRENT_TIMESTAMP(3) | false |  |  |  |
 | direction | varchar(16) |  | false |  |  | PromotionDirection enum: "apply", "promote". Cannot change after creation. |
-| id | uuid |  | false | [public.promotion_environment_project](public.promotion_environment_project.md) [public.promotion_review](public.promotion_review.md) [public.promotion_run](public.promotion_run.md) |  | Also the name of the local checkout directory. |
+| id | uuid |  | false | [public.promotion_environment_project](public.promotion_environment_project.md) [public.promotion_owner_request](public.promotion_owner_request.md) [public.promotion_review](public.promotion_review.md) [public.promotion_run](public.promotion_run.md) |  | Also the name of the local checkout directory. |
 | name | varchar(128) |  | false |  |  |  |
 | providerId | varchar(36) |  | false |  | [public.promotion_provider](public.promotion_provider.md) | The provider whose credentials this environment uses. |
 | remote | json |  | false |  |  | Where to push and pull. The provider type picks the shape: plain Git stores remoteUrl, a Git host stores repositoryPath. Has its own schemaVersion. |
@@ -46,6 +46,7 @@
 erDiagram
 
 "public.promotion_environment_project" }o--|| "public.promotion_environment" : "FOREIGN KEY (#quot;environmentId#quot;) REFERENCES promotion_environment(id) ON DELETE CASCADE"
+"public.promotion_owner_request" }o--|| "public.promotion_environment" : "FOREIGN KEY (#quot;environmentId#quot;) REFERENCES promotion_environment(id) ON DELETE CASCADE"
 "public.promotion_review" }o--o| "public.promotion_environment" : "FOREIGN KEY (#quot;environmentId#quot;) REFERENCES promotion_environment(id) ON DELETE SET NULL"
 "public.promotion_run" }o--o| "public.promotion_environment" : "FOREIGN KEY (#quot;environmentId#quot;) REFERENCES promotion_environment(id) ON DELETE SET NULL"
 "public.promotion_environment" }o--|| "public.promotion_provider" : "FOREIGN KEY (#quot;providerId#quot;) REFERENCES promotion_provider(id) ON DELETE RESTRICT"
@@ -66,6 +67,22 @@ erDiagram
   varchar_16_ direction
   uuid environmentId FK
   varchar_36_ projectId FK
+  timestamp_3__with_time_zone updatedAt
+}
+"public.promotion_owner_request" {
+  varchar_16_ closeReason
+  varchar_36_ consumerWorkflowId
+  timestamp_3__with_time_zone createdAt
+  varchar_255_ credentialType
+  varchar_16_ direction
+  uuid environmentId FK
+  uuid id
+  varchar_36_ ownerProjectId FK
+  uuid requesterId FK
+  varchar_36_ resourceId
+  varchar_16_ resourceKind
+  varchar_255_ resourceName
+  varchar_16_ state
   timestamp_3__with_time_zone updatedAt
 }
 "public.promotion_review" {

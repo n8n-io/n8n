@@ -17,7 +17,7 @@ CREATE TABLE "promotion_environment" ("id" varchar PRIMARY KEY NOT NULL, "name" 
 | ---- | ---- | ------- | -------- | -------- | ------- | ------- |
 | createdAt | datetime(3) | STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW') | false |  |  |  |
 | direction | varchar(16) |  | false |  |  |  |
-| id | varchar |  | false | [promotion_environment_project](promotion_environment_project.md) [promotion_review](promotion_review.md) [promotion_run](promotion_run.md) |  |  |
+| id | varchar |  | false | [promotion_environment_project](promotion_environment_project.md) [promotion_owner_request](promotion_owner_request.md) [promotion_review](promotion_review.md) [promotion_run](promotion_run.md) |  |  |
 | name | varchar(128) |  | false |  |  |  |
 | providerId | varchar(36) |  | false |  | [promotion_provider](promotion_provider.md) |  |
 | remote | TEXT |  | false |  |  |  |
@@ -49,6 +49,7 @@ CREATE TABLE "promotion_environment" ("id" varchar PRIMARY KEY NOT NULL, "name" 
 erDiagram
 
 "promotion_environment_project" }o--|| "promotion_environment" : "FOREIGN KEY (environmentId) REFERENCES promotion_environment (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
+"promotion_owner_request" }o--|| "promotion_environment" : "FOREIGN KEY (environmentId) REFERENCES promotion_environment (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "promotion_review" }o--o| "promotion_environment" : "FOREIGN KEY (environmentId) REFERENCES promotion_environment (id) ON UPDATE NO ACTION ON DELETE SET NULL MATCH NONE"
 "promotion_run" }o--o| "promotion_environment" : "FOREIGN KEY (environmentId) REFERENCES promotion_environment (id) ON UPDATE NO ACTION ON DELETE SET NULL MATCH NONE"
 "promotion_environment" }o--|| "promotion_provider" : "FOREIGN KEY (providerId) REFERENCES promotion_provider (id) ON UPDATE NO ACTION ON DELETE RESTRICT MATCH NONE"
@@ -69,6 +70,22 @@ erDiagram
   varchar_16_ direction PK
   varchar environmentId FK
   varchar_36_ projectId PK
+  datetime_3_ updatedAt
+}
+"promotion_owner_request" {
+  varchar_16_ closeReason
+  varchar_36_ consumerWorkflowId
+  datetime_3_ createdAt
+  varchar_255_ credentialType
+  varchar_16_ direction
+  varchar environmentId FK
+  varchar id PK
+  varchar_36_ ownerProjectId FK
+  varchar requesterId FK
+  varchar_36_ resourceId
+  varchar_16_ resourceKind
+  varchar_255_ resourceName
+  varchar_16_ state
   datetime_3_ updatedAt
 }
 "promotion_review" {

@@ -151,3 +151,33 @@ points:
   Apply does not write come from the workflow index.
 - **New optional fields of the report:** `detail` on a gap, `blockedReason` on a credential
   move, and `hiddenKeptWorkflowCount`.
+### D-ask-1. Ask the owner: who receives a request (stream D)
+
+A recipient is a user who can run the operation of the request in the owner
+project (`PromotionAccessService`): an admin of the project, or a user with the
+global scope of the operation. When the owner project is not on the instance,
+only a user with the global scope receives the request.
+
+### D-ask-2. Ask the owner: a request with no owner to go to (stream D)
+
+The endpoint answers `sent`, stores nothing and writes a log line when:
+
+- the target does not exist, or it is in a personal project (Promote);
+- the branch does not hold the target in a project folder (Apply);
+- the requester can already run the operation in the owner project.
+
+The endpoint refuses with 403 and one message when the consumer workflow does
+not exist, or when the user cannot run the operation in its project. It answers
+400 when the consumer workflow does not reference the target.
+
+### D-ask-3. Ask the owner: how a request closes by itself (stream D)
+
+- `PromotionOwnerRequestService.closeSatisfied()` closes the requests for the
+  resources that a Promote or an Apply wrote.
+- The inbox also checks the open requests when it loads its first page. An
+  Apply request closes when this instance holds the resource. A Promote request
+  closes when the base branch holds it. The inbox reads the branch of an
+  environment at most one time in a minute.
+- A placeholder credential on the destination counts as "on the destination".
+- The delete of the environment, of the owner project or of the requester
+  deletes the request.

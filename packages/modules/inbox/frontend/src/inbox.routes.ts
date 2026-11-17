@@ -3,6 +3,7 @@ import type { LocationQuery, RouteLocationNormalizedLoaded, RouteLocationRaw } f
 
 import {
 	INBOX_ASSISTANT_RESULT_VIEW,
+	INBOX_PROMOTION_OWNER_REQUEST_VIEW,
 	INBOX_PROMOTION_REVIEW_VIEW,
 	INBOX_VIEW,
 	type InboxSelection,
@@ -20,7 +21,8 @@ export function isInboxRoute(route: Pick<InboxRoute, 'name'>): boolean {
 		route.name === INBOX_VIEW ||
 		route.name === WORKFLOW_REVIEW_REQUESTS_VIEW ||
 		route.name === INBOX_ASSISTANT_RESULT_VIEW ||
-		route.name === INBOX_PROMOTION_REVIEW_VIEW
+		route.name === INBOX_PROMOTION_REVIEW_VIEW ||
+		route.name === INBOX_PROMOTION_OWNER_REQUEST_VIEW
 	);
 }
 
@@ -32,6 +34,10 @@ export function selectionFromRoute({ name, params, query }: InboxRoute): InboxSe
 	if (name === INBOX_PROMOTION_REVIEW_VIEW) {
 		const id = stringParam(params.reviewId);
 		return id ? { type: 'promotion_review', id } : null;
+	}
+	if (name === INBOX_PROMOTION_OWNER_REQUEST_VIEW) {
+		const id = stringParam(params.requestId);
+		return id ? { type: 'promotion_owner_request', id } : null;
 	}
 	if (name !== INBOX_ASSISTANT_RESULT_VIEW) return null;
 	const id = stringParam(params.resultId);
@@ -58,7 +64,12 @@ export function inboxItemLocation(item: InboxItem, route?: InboxRoute): RouteLoc
 	if (item.type === 'promotion_review') {
 		return { name: INBOX_PROMOTION_REVIEW_VIEW, params: { reviewId: item.id }, query: next };
 	}
-	// A request to the owner has no detail page yet, so it stays on the list.
-	if (item.type === 'promotion_owner_request') return { name: INBOX_VIEW, query: next };
+	if (item.type === 'promotion_owner_request') {
+		return {
+			name: INBOX_PROMOTION_OWNER_REQUEST_VIEW,
+			params: { requestId: item.id },
+			query: next,
+		};
+	}
 	return { name: WORKFLOW_REVIEW_REQUESTS_VIEW, params: { reviewId: item.id }, query: next };
 }

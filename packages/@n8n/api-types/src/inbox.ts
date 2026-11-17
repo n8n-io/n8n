@@ -74,6 +74,8 @@ export type InboxPromotionOwnerRequestItem = {
 		name: string;
 		credentialType?: string;
 	};
+	/** The key of the resource in a promotion preview, such as `credential:<id>`. */
+	resourceKey?: string;
 	/** Not set when the owner project is not on this instance. The instance admins get the item. */
 	ownerProject?: { id: string; name: string };
 	requester: {
@@ -85,6 +87,8 @@ export type InboxPromotionOwnerRequestItem = {
 	/** The operation that the request offers to the owner. */
 	operation: 'promote' | 'apply';
 	environment: { id: string; name: string };
+	/** Why a closed request closed: a recipient dismissed it, or the resource arrived. */
+	closeReason?: 'dismissed' | 'satisfied';
 	createdAt: string;
 	updatedAt: string;
 };

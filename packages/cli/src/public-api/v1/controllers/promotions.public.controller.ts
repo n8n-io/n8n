@@ -5,6 +5,7 @@ import {
 	ContinueApplyPackageDto,
 	ContinueApplySelectionDto,
 	CreatePromotionEnvironmentDto,
+	CreatePromotionOwnerRequestDto,
 	CreatePromotionProviderDto,
 	ListPromotionEnvironmentsQueryDto,
 	ListPromotionProvidersQueryDto,
@@ -23,6 +24,7 @@ import {
 	PromotionEnvironmentPublicDto,
 	PromotionMissingProjectListPublicDto,
 	PromotionInstanceApplyPreviewDto,
+	PromotionOwnerRequestResultDto,
 	PromotionPreviewDto,
 	PromotionProjectEnvironmentsDto,
 	PromotionProviderCreatedPublicDto,
@@ -886,6 +888,41 @@ export class PromotionsPublicController {
 			input,
 			req.publicApiClient,
 			req.ctx,
+		);
+	}
+
+	// -- Ask the owner -------------------------------------------------------
+
+	@Post('/environments/:promotionEnvironmentId/owner-requests')
+	@Licensed(LICENSE_FEATURES.PROMOTIONS)
+	@ApiKeyScope({ anyOf: ['promotions:promote', 'promotions:apply'] })
+	@ApiSummary('Beta: Ask the owner of a dependency to promote or apply it')
+	@ApiDescription(
+		BETA_NOTE +
+			'Sends a request to the owner of a credential or a workflow that a workflow of the user references, when the user cannot promote or apply the project that owns it. The environment gives the operation: a Promote environment asks the owner for a Promote, an Apply environment asks for an Apply on this instance. `consumerWorkflowId` is the workflow that holds the reference. The user must be able to run the operation in the project of that workflow, and the workflow must reference the target without an expression. For an Apply environment the workflow is read from the branch. The request goes to the Inbox of the users who can run the operation in the owner project, or to the instance admins when the owner project is not on this instance. The response is always `sent`. It does not say whether the target exists, which project owns it, or who received the request. A second request for the same target, operation and environment creates nothing while the first one is open. The key needs the promotions:promote scope for a Promote environment and the promotions:apply scope for an Apply environment.',
+	)
+	@ApiTags(tags)
+	@ApiResponse(200, PromotionOwnerRequestResultDto)
+	@ApiErrorResponse(400)
+	@ApiErrorResponse(403)
+	@ApiErrorResponse(404)
+	@ApiErrorResponse(503)
+	async createPromotionOwnerRequest(
+		req: AuthenticatedRequest,
+		_res: Response,
+		@Param('promotionEnvironmentId', promotionEnvironmentIdParamSchema)
+		promotionEnvironmentId: string,
+		@Body input: CreatePromotionOwnerRequestDto,
+	): Promise<PromotionOwnerRequestResultDto> {
+		this.assertModuleActive();
+		const { PromotionOwnerRequestService } = await import(
+			'@/modules/promotions.ee/promotion-owner-request.service.js'
+		);
+		return await Container.get(PromotionOwnerRequestService).create(
+			req.user,
+			promotionEnvironmentId,
+			input,
+			req.tokenGrant?.apiKeyScopes ?? [],
 		);
 	}
 

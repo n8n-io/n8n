@@ -100,6 +100,11 @@
 			"reason": "Promotion configuration for the project (which environment it uses for each direction), not user data. Dropped via the projectId FK cascade when the source project is deleted, as in ownership-transfer flows."
 		},
 		{
+			"name": "PromotionOwnerRequest",
+			"path": "packages/cli/src/modules/promotions.ee/database/entities/promotion-owner-request.entity.ts",
+			"reason": "A request to the admins of the project to promote or apply one resource. It is a notification, not user data. A request does not follow the resource to another project. Dropped via the ownerProjectId FK cascade when the project is deleted."
+		},
+		{
 			"name": "Skill",
 			"path": "packages/cli/src/modules/skills/database/entities/skill.entity.ts",
 			"reason": "Project-scoped skills belong to the project's agents, which are not transferred either (see Agent); both are dropped via FK cascade. Instance skills carry no projectId."

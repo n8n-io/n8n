@@ -12,8 +12,10 @@ import {
 import { useI18n } from '@n8n/i18n';
 import { useRootStore } from '@n8n/stores/useRootStore';
 
+import { ownerRequestIcon, ownerRequestOutcome } from '../promotions/promotionOwnerRequest.utils';
 import WorkflowReviewStatusDot from '../reviews/components/WorkflowReviewStatusDot.vue';
 import { getWorkflowReviewStatusDisplay } from '../reviews/workflowReviewStatus.utils';
+import { formatUserDisplayName } from '../reviews/workflowReviews.utils';
 
 defineProps<{ item: InboxItem; selected: boolean }>();
 const emit = defineEmits<{ select: [] }>();
@@ -59,7 +61,7 @@ function statusTooltip(item: InboxItem) {
 		case 'promotion_review':
 			return i18n.baseText(`inbox.promotionReview.state.${item.reviewState}`);
 		case 'promotion_owner_request':
-			return i18n.baseText(item.state === 'open' ? 'inbox.tabs.open' : 'inbox.tabs.closed');
+			return i18n.baseText(`inbox.promotionOwnerRequest.outcome.${ownerRequestOutcome(item)}`);
 	}
 }
 </script>
@@ -110,7 +112,11 @@ function statusTooltip(item: InboxItem) {
 						v-else-if="item.type === 'promotion_owner_request'"
 						:class="[
 							$style.statusDot,
-							item.state === 'closed' ? $style.closed : $style.needsAttention,
+							item.state === 'open'
+								? $style.needsAttention
+								: item.closeReason === 'satisfied'
+									? $style.merged
+									: $style.closed,
 						]"
 						role="img"
 						:aria-label="statusTooltip(item)"
@@ -143,8 +149,9 @@ function statusTooltip(item: InboxItem) {
 				<N8nBadge
 					v-else-if="item.type === 'promotion_owner_request'"
 					variant="outline"
-					leading-icon="git-branch"
+					:leading-icon="ownerRequestIcon[item.resource.kind]"
 					:class="$style.workflowBadge"
+					:title="item.resource.name"
 					>{{ i18n.baseText('inbox.promotionOwnerRequest.badge') }}</N8nBadge
 				>
 				<N8nBadge
@@ -161,6 +168,17 @@ function statusTooltip(item: InboxItem) {
 						size="xsmall"
 						color="warning"
 						>{{ i18n.baseText(`inbox.promotionReview.remoteError.${item.remoteError}`) }}</N8nText
+					>
+					<N8nText
+						v-if="item.type === 'promotion_owner_request' && formatUserDisplayName(item.requester)"
+						:class="$style.requester"
+						size="xsmall"
+						color="text-light"
+						>{{
+							i18n.baseText('inbox.promotionOwnerRequest.row.from', {
+								interpolate: { requester: formatUserDisplayName(item.requester) },
+							})
+						}}</N8nText
 					>
 					<N8nText :class="$style.time" size="xsmall" color="text-light">
 						<N8nTimeAgo :date="item.updatedAt" :locale="rootStore.defaultLocale" />
@@ -251,6 +269,12 @@ function statusTooltip(item: InboxItem) {
 
 .time {
 	white-space: nowrap;
+}
+.requester {
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+	max-width: 10rem;
 }
 .statusDot {
 	/* The tooltip trigger is not a flex container, so the dot sets its own box. */
