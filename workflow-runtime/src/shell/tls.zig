@@ -279,9 +279,9 @@ pub const Session = struct {
     /// A client session on a connected socket. `host` is the URL host:
     /// it is sent as SNI and checked against the certificate. An IP
     /// literal is checked as an IP address and is not sent as SNI.
-    /// `offer_h2` offers `h2` and `http/1.1` with ALPN; else only
-    /// `http/1.1`.
-    pub fn connect(ctx: Context, fd: c_int, host: []const u8, is_ip: bool, offer_h2: bool) Error!Session {
+    /// `alpn` is the protocol list to offer, in the wire form; empty
+    /// offers none (PostgreSQL after an SSL request, as node-postgres).
+    pub fn connect(ctx: Context, fd: c_int, host: []const u8, is_ip: bool, alpn: []const u8) Error!Session {
         if (!enabled) return error.TlsUnavailable;
         const ssl = SSL_new(ctx.ctx orelse return error.TlsInit) orelse return error.TlsInit;
         errdefer SSL_free(ssl);
@@ -297,8 +297,7 @@ pub const Session = struct {
             if (SSL_ctrl(ssl, SSL_CTRL_SET_TLSEXT_HOSTNAME, 0, @ptrCast(@constCast(hz))) != 1) return error.TlsInit;
             if (SSL_set1_host(ssl, hz) != 1) return error.TlsInit;
         }
-        const alpn: []const u8 = if (offer_h2) alpn_h2_h1 else alpn_h1;
-        if (SSL_set_alpn_protos(ssl, alpn.ptr, @intCast(alpn.len)) != 0) return error.TlsInit;
+        if (alpn.len > 0 and SSL_set_alpn_protos(ssl, alpn.ptr, @intCast(alpn.len)) != 0) return error.TlsInit;
         SSL_set_connect_state(ssl);
         return .{ .ssl = ssl };
     }

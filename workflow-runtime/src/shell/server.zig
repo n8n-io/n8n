@@ -12,6 +12,7 @@ const shard_mod = @import("shard.zig");
 const sys = @import("sys.zig");
 const http = @import("http.zig");
 const egress = @import("egress.zig");
+const pg = @import("pg.zig");
 const creds = @import("creds.zig");
 const admin = @import("admin.zig");
 const renew = @import("renew.zig");
@@ -65,6 +66,9 @@ pub const Options = struct {
     /// origin limits and rules, timeouts, HTTP/2. `serve` fills the fields
     /// that have their own options below.
     egress: egress.Config = .{ .max_conns = 8192 },
+    /// The PostgreSQL client of the `sql` effect (`--sql-*` flags): calls,
+    /// connections, and the sizes of a call and of a result (`pg.Config`).
+    sql: pg.Config = .{},
     /// Largest outbound response or request body.
     egress_max_body: u32 = 16 << 20,
     /// Large buffers for bodies over 16 KB, reserved at start.
@@ -298,6 +302,9 @@ const Kind = enum(u8) {
     ring_epoll = 11,
     /// A file operation of the binary data store (`blob_store.zig`).
     ring_file = 12,
+    /// A connection and a name lookup of the PostgreSQL client (`pg.zig`).
+    sql = 13,
+    sql_dns = 14,
 };
 
 /// A connection to the admin port. Its buffers are reserved at startup. A
@@ -462,6 +469,7 @@ pub const Runner = struct {
     free_conns: std.ArrayList(u32),
     dirty: std.ArrayList(u32),
     egress: *egress.Client,
+    sql: *pg.Client,
     /// Effect errors raised while actions run outlive the batch arena:
     /// they go to the next batch. Two arenas take turns.
     carry: [2]Arena,
@@ -667,6 +675,12 @@ pub const Runner = struct {
         ecfg.blobs = r.blobs;
         ecfg.max_uploads = opts.binary_max_transfers;
         try r.egress.init(gpa, ecfg, .{ .ctx = r, .done = egressDone, .stored = egressStored }, &r.poller, @backingInt(Kind.egress), @backingInt(Kind.dns));
+        r.sql = try gpa.create(pg.Client);
+        var scfg = opts.sql;
+        scfg.insecure_tls = opts.insecure_tls;
+        scfg.ca_file = opts.ca_file;
+        scfg.dns_servers = opts.gym_dns;
+        try r.sql.init(gpa, scfg, &r.poller, @backingInt(Kind.sql), @backingInt(Kind.sql_dns));
         // Virtual memory: pages are used only as large frames come and go.
         // Without --fallback the shard keeps no host buffers.
         r.fb_conns = try gpa.alloc(FbConn, if (opts.fallback != null) fbf.max_conns else 0);
@@ -809,6 +823,7 @@ pub const Runner = struct {
         if (r.svc) |*t| t.deinit();
         if (r.renewals) |*t| t.deinit();
         r.egress.deinit();
+        r.sql.deinit();
         if (r.blobs) |b| b.deinit();
         if (r.ring) |ring| ring.deinit(r.ring_fba.allocator());
         r.poller.deinit();
@@ -825,7 +840,7 @@ pub const Runner = struct {
         var next_timer: ?i64 = r.start_out.next_timer_ms;
         while (!r.stop.load(.monotonic)) {
             var timeout: i32 = 50;
-            if (has_ready or r.events.items.len > 0 or r.sh.wakes.items.len > 0 or r.nlost > 0 or r.egress.hasWork()) timeout = 0;
+            if (has_ready or r.events.items.len > 0 or r.sh.wakes.items.len > 0 or r.nlost > 0 or r.egress.hasWork() or r.sql.hasWork()) timeout = 0;
             // The stream has durable lines that one pass did not send.
             if (r.stream_more or r.renewalsPending()) timeout = 0;
             // A stored response has a result that found no room.
@@ -844,6 +859,8 @@ pub const Runner = struct {
             if (r.stream != null and (r.stream_more or r.queue.bytes > 0 or r.queue.notice_len > 0)) r.flushStream();
             const now = sys.nowMs();
             r.egress.afterEvents(now);
+            r.sql.afterEvents(now);
+            r.drainSql();
             r.drainEgressLost();
             r.drainStored(now);
             r.serviceFallback(now);
@@ -907,6 +924,8 @@ pub const Runner = struct {
             },
             .egress => r.egress.onConn(idx, gen, ev, sys.nowMs()),
             .dns => r.egress.onDns(@intCast(idx), ev),
+            .sql => r.sql.onConn(idx, gen, ev, sys.nowMs()),
+            .sql_dns => r.sql.onDns(@intCast(idx), ev),
             .fallback => {
                 if (idx >= r.fb_conns.len) return;
                 const c = &r.fb_conns[idx];
@@ -1455,6 +1474,7 @@ pub const Runner = struct {
             .http => r.startEgress(a),
             .node, .code => r.sendFallback(a),
             .service => r.startService(a),
+            .sql => r.startSql(a),
             // A person answers through POST /resume/<exec>/<seq>. The PoC
             // does not send the notification itself.
             .approval => {
@@ -1465,6 +1485,33 @@ pub const Runner = struct {
                 std.debug.print("approval waiting: POST /resume/{s}/{d}\n", .{ core.formatExecId(a.exec_id, &idb), a.seq });
             },
             else => {},
+        }
+    }
+
+    // ---- PostgreSQL (pg.zig, spec 9.10) ----------------------------------------
+
+    fn startSql(r: *Runner, a: core.Action) void {
+        const msg = r.sql.start(a.exec_id, a.seq, a.payload, r.credsFor(a.module), sys.nowMs()) orelse return;
+        r.effectError(a.exec_id, a.seq, msg);
+    }
+
+    /// Hand the results of finished `sql` calls to the core, oldest first,
+    /// as the events of the batch have room. A call keeps its slot and its
+    /// result until then, so results that wait hold back new calls.
+    fn drainSql(r: *Runner) void {
+        // Each pass frees one call slot.
+        for (0..r.opts.sql.max_reqs) |_| {
+            const d = r.sql.nextDone() orelse return;
+            if (r.events.items.len + r.resultReserve() >= r.events.capacity) return;
+            const kind: core.EventKind = if (d.ok) .effect_ok else .effect_err;
+            if (r.batch.dupe(d.payload)) |p| {
+                r.events.appendAssumeCapacity(.{ .kind = kind, .exec_id = d.exec_id, .seq = d.seq, .payload = p });
+            } else |_| {
+                // The batch memory is full of other results: they go first.
+                if (r.events.items.len > 0) return;
+                r.events.appendAssumeCapacity(.{ .kind = .effect_err, .exec_id = d.exec_id, .seq = d.seq, .payload = "sql: the result does not fit in the batch memory (limit)" });
+            }
+            r.sql.release(d.req);
         }
     }
 

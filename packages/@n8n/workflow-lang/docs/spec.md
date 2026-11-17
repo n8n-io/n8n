@@ -1765,8 +1765,10 @@ await ctx.sql({
   ```
 
   In the modes `single` and `transaction`, `results` ends with the first
-  failure. A row is an object with a key for each column, in column order;
-  the last column of a name wins. `SqlError` has `message` and the fields of
+  failure. A failure of `COMMIT` (a deferred constraint) is one more
+  failure entry after the entries of the statements. A text without a
+  command gives `command: null`. A row is an object with a key for each
+  column, in column order. `SqlError` has `message` and the fields of
   the error response of the server with the names of node-postgres
   (`length`, `severity`, `code`, `detail`, `hint`, `position`,
   `internalPosition`, `internalQuery`, `where`, `schema`, `table`, `column`,
@@ -1812,9 +1814,25 @@ await ctx.sql({
   | `(limit: sql-credential)` | the credential uses the SSH tunnel, or a CA or client certificate |
   | `(limit: sql-host)` | thrown by a library node, before it sends a statement, for an input that it cannot send with bind values |
 
+  `wfrt` also gives `(limit: sql-type)` for a result with two columns of
+  one name or more than 512 columns, and when the DateStyle of the session
+  is not ISO; and `(limit: sql-statement)` for a parameter without a value,
+  for a call with more than 16 different statements, and for a call larger
+  than `--sql-max-request-kb`.
+
+  A result over the limit, and a value without a native form (a timestamp
+  before the year 1000), show only after the statement ran. `wfrt`
+  therefore runs a statement that gives rows and does not start with
+  `SELECT` between `BEGIN` and `COMMIT`, and does `ROLLBACK` before it
+  gives the marker. A `SELECT` runs again in the host. One case has no
+  marker: in the mode `independently`, after a statement of the call is
+  committed, such a failure of a later statement is a plain limit error.
+
   Other effect errors have no marker: arguments that are not valid, a slot
-  that is not there, a full queue of the pool (`(limit)`), the total
-  timeout.
+  that is not there, no free call slot (`(limit)`), the total timeout (the
+  runtime cancels the statement and closes the connection), a connection
+  that closes while a statement runs. `workflow-runtime/docs/sql-effect.md`
+  has the limits and the design of the client.
 * **Credential.** The slot holds the fields of the n8n credential type
   `postgres`. TLS is as in v1 (`getPostgresConfig`):
   `allowUnauthorizedCerts` gives TLS without verification, else an `ssl`

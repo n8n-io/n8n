@@ -236,6 +236,19 @@ pub fn socketError(fd: c_int) c_int {
     return v;
 }
 
+/// The name of an errno value as Node.js writes it (`ECONNREFUSED`).
+pub fn errnoName(code: c_int) []const u8 {
+    const names = [_]struct { e: c.E, name: []const u8 }{
+        .{ .e = .CONNREFUSED, .name = "ECONNREFUSED" }, .{ .e = .TIMEDOUT, .name = "ETIMEDOUT" },
+        .{ .e = .HOSTUNREACH, .name = "EHOSTUNREACH" }, .{ .e = .NETUNREACH, .name = "ENETUNREACH" },
+        .{ .e = .CONNRESET, .name = "ECONNRESET" },     .{ .e = .ADDRNOTAVAIL, .name = "EADDRNOTAVAIL" },
+    };
+    for (names) |n| {
+        if (@backingInt(n.e) == code) return n.name;
+    }
+    return "ECONNREFUSED";
+}
+
 /// The text of an errno value, for error messages.
 pub fn errnoText(code: c_int) []const u8 {
     return std.mem.span(strerror(code));
