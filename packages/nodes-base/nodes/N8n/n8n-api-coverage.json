@@ -199,6 +199,9 @@
 		"PUT /workflows/{id}/transfer": {
 			"status": "gap"
 		},
+		"PUT /workflows/{workflowId}/owner": {
+			"status": "gap"
+		},
 		"GET /workflows/{id}/tags": {
 			"status": "gap"
 		},

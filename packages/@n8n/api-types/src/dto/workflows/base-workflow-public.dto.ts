@@ -176,6 +176,7 @@ export const workflowWritePublicShape = {
 	isArchived: readOnlyPublicSchema(workflowCreateReadOnlyFieldDocs.isArchived),
 	versionId: readOnlyPublicSchema(workflowCreateReadOnlyFieldDocs.versionId),
 	triggerCount: readOnlyPublicSchema(workflowCreateReadOnlyFieldDocs.triggerCount),
+	ownerUserId: readOnlyPublicSchema(workflowCreateReadOnlyFieldDocs.ownerUserId),
 	nodes: z.array(workflowNodeWritePublicSchema).openapi(workflowCreateFieldDocs.nodes),
 	connections: z
 		.custom<IConnections>(

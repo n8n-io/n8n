@@ -1,0 +1,59 @@
+operationId: setWorkflowOwner
+tags:
+  - Workflow
+summary: Set the owner of a workflow
+description: |-
+  Set or clear the owner of a workflow. The new owner must be a person who is a member of the project that contains the workflow. A caller with the `workflow:manageOwner` permission can set or clear the owner. The current owner can give the workflow to another member, but cannot clear the owner.
+
+  Requires the `workflow:manageOwner` API key scope.
+x-required-scope: workflow:manageOwner
+parameters:
+  - schema:
+      type: string
+    required: true
+    description: The ID of the workflow.
+    name: workflowId
+    in: path
+requestBody:
+  required: true
+  content:
+    application/json:
+      schema:
+        type: object
+        properties:
+          ownerUserId:
+            type: string
+            nullable: true
+            format: uuid
+            description: ID of the user who owns the workflow, or null when the workflow has no owner.
+        required:
+          - ownerUserId
+        additionalProperties: false
+responses:
+  '200':
+    description: Operation successful.
+    content:
+      application/json:
+        schema:
+          type: object
+          properties:
+            ownerUserId:
+              type: string
+              nullable: true
+              format: uuid
+              description: ID of the user who owns the workflow, or null when the workflow has no owner.
+          required:
+            - ownerUserId
+          additionalProperties: false
+  '400':
+    $ref: ../../../../shared/spec/responses/badRequest.yml
+  '401':
+    $ref: ../../../../shared/spec/responses/unauthorized.yml
+  '403':
+    $ref: ../../../../shared/spec/responses/forbidden.yml
+  '404':
+    $ref: ../../../../shared/spec/responses/notFound.yml
+  '415':
+    $ref: ../../../../shared/spec/responses/unsupportedMediaType.yml
+  '429':
+    $ref: ../../../../shared/spec/responses/tooManyRequests.yml

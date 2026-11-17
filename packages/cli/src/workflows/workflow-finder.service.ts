@@ -28,6 +28,7 @@ export type FindWorkflowsForUserOptions = {
 		tagNames?: string[];
 		folderId?: string;
 		projectId?: string;
+		ownerUserId?: string | null;
 	};
 	offset?: number;
 	limit?: number;
@@ -449,7 +450,7 @@ export class WorkflowFinderService {
 			includeActiveVersion = false,
 			includeParentFolder = false,
 		} = options;
-		const { name, active, tagNames, folderId, projectId } = filters;
+		const { name, active, tagNames, folderId, projectId, ownerUserId } = filters;
 
 		const [projectRoles, workflowRoles] = await Promise.all([
 			this.roleService.rolesWithScope('project', scopes),
@@ -477,6 +478,7 @@ export class WorkflowFinderService {
 			meta: true,
 			versionId: true,
 			triggerCount: true,
+			ownerUserId: true,
 			// Shares and tags are passed as collections below, not selected here.
 			...(includeActiveVersion && { activeVersion: true }),
 			...(includePinnedData && { pinData: true }),
@@ -492,6 +494,7 @@ export class WorkflowFinderService {
 					...(active !== undefined && { active }),
 					...(tagNames?.length && { tags: tagNames }),
 					...(projectId && { projectId }),
+					...(ownerUserId !== undefined && { ownerUserId }),
 					...(parentFolderIds && { parentFolderIds }),
 				},
 				select,
