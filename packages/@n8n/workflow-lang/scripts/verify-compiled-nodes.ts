@@ -22,6 +22,7 @@ import type { ContinueForm, ErrorPairing } from '../src/node-compile/__tests__/v
 import type { CaseCost } from '../src/node-compile/__tests__/verify.ts';
 import {
 	compileForCheck,
+	credentialAsGiven,
 	costOfCase,
 	differenceFromV1,
 	flagKeyOf,
@@ -566,6 +567,35 @@ function parameterVariants(
 		if (property.type === 'collection') {
 			for (const member of property.options ?? []) {
 				if (!member.name) continue;
+				if (member.type === 'fixedCollection') {
+					const inner: Property = {
+						name: `${name}.${member.name}`,
+						type: member.type,
+						options: member.options,
+						typeOptions: member.typeOptions,
+					};
+					const groups = (member.options ?? []).map((group) => groupVariant(inner, group));
+					const built = groups.filter((group): group is Variant => group !== undefined);
+					if (built.length === 0 || built.length !== groups.length) continue;
+					const [only] = built;
+					take({
+						condition: `${name}.${member.name}`,
+						name,
+						member: member.name,
+						values: built.flatMap((group) =>
+							group.values.map((entry) => ({ [group.member ?? '']: entry })),
+						),
+						...(built.length === 1 && only.form
+							? {
+									form: {
+										value: { [only.member ?? '']: only.form.value },
+										fields: only.form.fields,
+									},
+								}
+							: {}),
+					});
+					continue;
+				}
 				const values = samplesOf(member, member.default);
 				const itemValues = itemValuesOf(member, values[0]);
 				const field = fieldNameOf(`${name}_${member.name}`);
@@ -806,7 +836,10 @@ for (const name of one === undefined ? [] : Object.keys(known).sort()) {
 				const instance = { type, version, parameters };
 				const fields = credential
 					? {
-							[credential]: publicCredential(registry.get(credential), fakeCredential(credential)),
+							[credential]: publicCredential(
+								registry.get(credential),
+								credentialAsGiven(credential, fakeCredential(credential)),
+							),
 						}
 					: {};
 				const compiled = compileForCheck(sources, instance, fields);
@@ -856,6 +889,10 @@ for (const name of one === undefined ? [] : Object.keys(known).sort()) {
 						(await differenceFromV1(make('error', parameters, bad), sources, registry, checking));
 					if (difference !== undefined) {
 						if (!light) why(`v1: ${difference}`, weight);
+						else if (examples.length < 400)
+							examples.push(
+								`${verifiedKey(type, version, compiled.resolved)} with another authentication: ${difference.slice(0, 200)}`,
+							);
 						continue;
 					}
 					const first = readsFiles ? FILE_ITEMS[0] : {};

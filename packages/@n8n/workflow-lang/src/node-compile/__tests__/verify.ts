@@ -20,6 +20,7 @@ import type {
 } from '../../nodes/__tests__/equivalence.ts';
 import { applyCredential, normalizeRequest } from '../../nodes/__tests__/equivalence.ts';
 import { recordV1, recordV1Cached } from '../../nodes/__tests__/v1-recorder.ts';
+import { resolveCredentialData } from '../../../scripts/gym/v1-credentials.ts';
 import { compile } from '../../compiler/index.ts';
 import { decodeModule } from '../../compiler/decode.ts';
 import { libraryNodeTypes } from '../../library/node-sources.ts';
@@ -76,8 +77,22 @@ export function credentialsOf(
 ): Record<string, PublicCredential> {
 	if (!c.credential) return {};
 	return {
-		[c.credential.type]: publicCredential(registry.get(c.credential.type), c.credential.data),
+		[c.credential.type]: publicCredential(
+			registry.get(c.credential.type),
+			credentialAsGiven(c.credential.type, c.credential.data),
+		),
 	};
+}
+
+export function credentialAsGiven(
+	type: string,
+	data: Record<string, unknown>,
+): Record<string, unknown> {
+	try {
+		return resolveCredentialData(type, data);
+	} catch {
+		return data;
+	}
 }
 
 const escaped = (text: string) =>
