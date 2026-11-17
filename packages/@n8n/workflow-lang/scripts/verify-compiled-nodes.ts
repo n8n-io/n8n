@@ -52,6 +52,8 @@ import {
 	ITEM_PARAMETER_PREFIX,
 	PAIRED_ITEMS,
 	itemErrorCondition,
+	evaluatedCondition,
+	evaluatedParameterNames,
 	errorModeCondition,
 	itemParameterCondition,
 	oneCallCondition,
@@ -342,6 +344,104 @@ function expressionForms(parameters: Json, fixed: Json): ExpressionForm[] {
 	return forms;
 }
 
+const QUERY_JOB = { jobId: 'job1', location: 'EU' };
+const QUERY_ROWS = {
+	jobComplete: true,
+	schema: {
+		fields: [
+			{ name: 'id', type: 'INTEGER', mode: 'NULLABLE' },
+			{ name: 'tags', type: 'STRING', mode: 'REPEATED' },
+			{ name: 'at', type: 'TIMESTAMP', mode: 'NULLABLE' },
+			{ name: 'meta', type: 'JSON', mode: 'NULLABLE' },
+			{
+				name: 'owner',
+				type: 'RECORD',
+				mode: 'NULLABLE',
+				fields: [{ name: 'name', type: 'STRING', mode: 'NULLABLE' }],
+			},
+		],
+	},
+	rows: [
+		{
+			f: [
+				{ v: '1' },
+				{ v: [{ v: 'a' }, { v: 'b' }] },
+				{ v: '1705339800.5' },
+				{ v: '{"k":1}' },
+				{ v: { f: [{ v: 'Ada' }] } },
+			],
+		},
+		{
+			f: [
+				{ v: '2' },
+				{ v: [] },
+				{ v: 'not a time' },
+				{ v: 'not json' },
+				{ v: { f: [{ v: null }] } },
+			],
+		},
+	],
+};
+const QUERY_DONE = { jobReference: QUERY_JOB, status: { state: 'DONE' } };
+const QUERY_RUNNING = { jobReference: QUERY_JOB, status: { state: 'RUNNING' } };
+
+interface OperationAnswers {
+	ok: Json;
+	more: Array<{ label: string; bodies: Json[] }>;
+}
+
+const OPERATION_ANSWERS: Record<string, OperationAnswers> = {
+	'n8n-nodes-base.googleBigQuery:database.executeQuery': {
+		ok: { ...QUERY_DONE, ...QUERY_ROWS },
+		more: [
+			{
+				label: 'the job is not done',
+				bodies: [QUERY_RUNNING, { jobComplete: false }, { jobComplete: false }, QUERY_ROWS],
+			},
+			{
+				label: 'the result has two pages',
+				bodies: [QUERY_DONE, { ...QUERY_ROWS, pageToken: 'page2' }, QUERY_ROWS],
+			},
+			{
+				label: 'the job that is not done has errors',
+				bodies: [QUERY_RUNNING, { jobComplete: false, errors: [{ message: 'the query failed' }] }],
+			},
+			{ label: 'no job', bodies: [{ status: { state: 'DONE' } }] },
+		],
+	},
+};
+
+const EVALUATED_VALUES: unknown[][] = [
+	['one', 7, 'a$&b'],
+	[['p', 'q'], { k: 1 }, null],
+];
+
+function evaluatedForms(parameters: Json, fixed: Json): ExpressionForm[] {
+	const forms: ExpressionForm[] = [];
+	for (const [name, value] of Object.entries(parameters)) {
+		if (name in fixed || typeof value !== 'string' || value.startsWith('=')) continue;
+		const fields = EVALUATED_VALUES.map((_, k) => `${name.replace(/\W/g, '_')}_part${k}`);
+		forms.push({
+			name,
+			value: [value, ...fields.map((field) => itemFieldExpression(field).slice(1))].join(' '),
+			fields: Object.fromEntries(fields.map((field, k) => [field, EVALUATED_VALUES[k]])),
+		});
+	}
+	return forms;
+}
+
+function failingEvaluatedForm(form: ExpressionForm, at: number): ExpressionForm {
+	const field = `${form.name.replace(/\W/g, '_')}_failing`;
+	return {
+		name: form.name,
+		value: `${String(form.value)} ${itemFailureExpression(field).slice(1)}`,
+		fields: {
+			...form.fields,
+			[field]: [0, 1, 2].map((k) => (k === at ? FAILING_VALUE : `ok${k}`)),
+		},
+	};
+}
+
 const MAX_WIDER_FORMS = 6;
 const MAX_VARIANT_FORMS_ALONE = 6;
 const NOT_AN_EXPRESSION = new Set(['resource', 'operation', 'authentication']);
@@ -595,7 +695,16 @@ for (const name of one === undefined ? [] : Object.keys(known).sort()) {
 					responses,
 				});
 				const makesFiles = compiled.source.includes('__prepareBinary(');
-				const plain = { ok: true, id: 'r1', result: { id: 'r1' }, data: [{ id: 'r1' }] };
+				const answers =
+					OPERATION_ANSWERS[
+						`${type}:${String(compiled.resolved.resource ?? '')}.${String(compiled.resolved.operation ?? '')}`
+					];
+				const plain = answers?.ok ?? {
+					ok: true,
+					id: 'r1',
+					result: { id: 'r1' },
+					data: [{ id: 'r1' }],
+				};
 				const ok = makesFiles
 					? [...token, DOWNLOAD_ANSWER]
 					: [...token, { body: readsFiles ? { ...plain, ...UPLOAD_ANSWER } : plain }];
@@ -614,6 +723,21 @@ for (const name of one === undefined ? [] : Object.keys(known).sort()) {
 							examples.push(
 								`${verifiedKey(type, version, compiled.resolved)} with another authentication: ${difference.slice(0, 200)}`,
 							);
+						continue;
+					}
+					let shaped: string | undefined;
+					for (const { label, bodies } of answers?.more ?? []) {
+						const responses = [...token, ...bodies.map((body) => ({ body }))];
+						const found = await differenceFromV1(
+							make(label, parameters, responses),
+							sources,
+							registry,
+							checking,
+						);
+						if (found !== undefined) shaped ??= `v1: ${label}: ${found}`;
+					}
+					if (shaped !== undefined) {
+						if (!other) why(shaped, weight);
 						continue;
 					}
 					const first = readsFiles ? FILE_ITEMS[0] : {};
@@ -1132,6 +1256,50 @@ for (const name of one === undefined ? [] : Object.keys(known).sort()) {
 							failureReasons[text] = (failureReasons[text] ?? 0) + 1;
 						}
 					}
+					const provenEvaluated: string[] = [];
+					const evaluatedFrom: Json = widerAgrees ? more : parameters;
+					for (const form of /\bgetResolvables\(/.test(compiled.source)
+						? evaluatedForms(evaluatedFrom, start)
+						: []) {
+						const probe = compileForCheck(
+							sources,
+							{ type, version, parameters: { ...evaluatedFrom, [form.name]: form.value } },
+							fields,
+						);
+						if ('errors' in probe || !evaluatedParameterNames(probe).includes(form.name)) continue;
+						for (const mode of [undefined, ...formOf.keys()]) {
+							const how = {
+								...checking,
+								pairing: mode === undefined ? undefined : formOf.get(mode),
+							};
+							const label = `expressions in the text of ${form.name}`;
+							const cases = [
+								expressionCase(label, [form], false, mode),
+								expressionCase(`${label}, a field is missing`, [form], true, mode),
+								expressionCase(
+									`${label}, one fails for item 1`,
+									[failingEvaluatedForm(form, 1)],
+									false,
+									mode,
+								),
+								expressionCase(
+									`${label}, one fails for item 0`,
+									[failingEvaluatedForm(form, 0)],
+									false,
+									mode,
+								),
+							];
+							let difference: string | undefined;
+							for (const tested of cases)
+								difference ??= await differenceFromV1(tested, sources, registry, how);
+							if (difference === undefined)
+								provenEvaluated.push(evaluatedCondition(form.name, mode));
+							else if (!other) {
+								const text = `${mode ?? 'stopWorkflow'}: ${label}: ${difference}`.slice(0, 110);
+								failureReasons[text] = (failureReasons[text] ?? 0) + 1;
+							}
+						}
+					}
 					if (failingForm && !other) expressions.failing = (expressions.failing ?? 0) + 1;
 					const rejectedEach = new Set<string>();
 					for (const variant of combined ? agreed : []) {
@@ -1181,6 +1349,10 @@ for (const name of one === undefined ? [] : Object.keys(known).sort()) {
 						...provenEach.map((name) => itemParameterCondition(name)),
 						...provenUnder.filter(ofKeptMode),
 						...provenErrors.filter((name) => name === ITEM_ERROR || ofKeptMode(name)),
+						...provenEvaluated.filter(
+							(name) =>
+								!CONTINUE_MODES.some((mode) => name.endsWith(`@${mode}`)) || ofKeptMode(name),
+						),
 					].filter(checkedEach);
 					const modes = proven.filter(ofKeptMode);
 					const conditions = [
