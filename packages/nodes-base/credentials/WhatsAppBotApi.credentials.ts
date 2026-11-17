@@ -32,12 +32,13 @@ export class WhatsAppBotApi implements ICredentialType {
 			description: 'The bot phone number ID, from the WhatsApp > API Setup page of the Meta app',
 		},
 		{
-			displayName: 'WhatsApp Business Account ID',
+			displayName: 'Messaging Account ID',
 			name: 'businessAccountId',
 			type: 'string',
 			default: '',
 			required: true,
-			description: 'The WABA ID that owns the phone number, from the same API Setup page',
+			description:
+				'The messaging account ID that owns the phone number, from the WhatsApp > API Setup page of the Meta app',
 		},
 		{
 			displayName: 'App Secret',

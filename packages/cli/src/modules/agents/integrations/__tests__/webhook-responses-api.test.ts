@@ -3,6 +3,7 @@ import type { Request, Response } from 'express';
 import { mock } from 'vitest-mock-extended';
 
 import {
+	parseApprovalDecision,
 	parseResponsesRequest,
 	responsesApiFallback,
 	toResponseBody,
@@ -37,6 +38,28 @@ describe('parseResponsesRequest', () => {
 	])('rejects %s with a 400 on its parameter', (_, body, param) => {
 		expect(() => parseResponsesRequest(body)).toThrow(
 			expect.objectContaining({ status: 400, param }) as Error,
+		);
+	});
+});
+
+describe('parseApprovalDecision', () => {
+	it.each([[{ approved: true }], [{ approved: true, scope: 'session' }], [{ approved: false }]])(
+		'reads %o',
+		(body) => {
+			expect(parseApprovalDecision(body)).toEqual(body);
+		},
+	);
+
+	it('drops unknown fields', () => {
+		expect(parseApprovalDecision({ approved: true, extra: 1 })).toEqual({ approved: true });
+	});
+
+	it.each([
+		['a missing decision', {}, 'approved'],
+		['a scope that is not known', { approved: true, scope: 'forever' }, 'scope'],
+	])('rejects %s with a 400 on its parameter', (_, body, param) => {
+		expect(() => parseApprovalDecision(body)).toThrow(
+			expect.objectContaining({ status: 400, code: 'invalid_request', param }) as Error,
 		);
 	});
 });
@@ -79,6 +102,60 @@ describe('toResponseBody', () => {
 				},
 			],
 		});
+	});
+});
+
+describe('toResponseBody with approvals', () => {
+	it('renders one approval request for each action after the message', () => {
+		const body = toResponseBody({
+			conversationId: 'c-1',
+			text: '',
+			approvals: [
+				{
+					toolCallId: 'call-1',
+					payload: {
+						type: 'approval',
+						toolName: 'send_email',
+						displayName: 'Send email',
+						supportsSessionApproval: true,
+						args: { to: 'ana@example.com' },
+					},
+					url: 'https://n8n.example.com/agent-webhook/agent-1/approvals/c-1/run-1/call-1',
+				},
+				{
+					toolCallId: 'call-2',
+					payload: { type: 'approval', toolName: 'delete_file', args: { path: 'a.txt' } },
+					url: 'https://n8n.example.com/agent-webhook/agent-1/approvals/c-1/run-1/call-2',
+				},
+			],
+			createdAt: new Date('2026-11-03T00:00:00Z'),
+		});
+
+		expect(body.status).toBe('completed');
+		expect(body.output).toEqual([
+			expect.objectContaining({
+				type: 'message',
+				content: [expect.objectContaining({ text: '' })],
+			}),
+			{
+				type: 'approval_request',
+				id: 'call-1',
+				name: 'send_email',
+				display_name: 'Send email',
+				arguments: '{"to":"ana@example.com"}',
+				supports_session_approval: true,
+				url: 'https://n8n.example.com/agent-webhook/agent-1/approvals/c-1/run-1/call-1',
+			},
+			{
+				type: 'approval_request',
+				id: 'call-2',
+				name: 'delete_file',
+				display_name: 'delete_file',
+				arguments: '{"path":"a.txt"}',
+				supports_session_approval: false,
+				url: 'https://n8n.example.com/agent-webhook/agent-1/approvals/c-1/run-1/call-2',
+			},
+		]);
 	});
 });
 

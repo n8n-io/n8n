@@ -59,9 +59,10 @@ Add components under `src/`. Keep files small and focused.
      user approves the blueprint. Approval creates the app. Build from the
      blueprint returned by the tool, not from your proposal. Then call `apps`
      with `action: "open"` and the returned `app.id` before you edit files. After
-     the app is open, inspect the available resources, refine the implementation
-     details, create what is missing, and add the bindings the app needs. If the
-     user cancels, do not create, open, or edit app files.
+     the app is open, build and commit the app layout with empty data first.
+     Create data tables, workflows and agents only after that commit. See
+     [Build order for a new app](#build-order-for-a-new-app).
+     If the user cancels, do not create, open, or edit app files.
    - If the conversation lists a pending app, use `create`. n8n reuses the
      pending id after approval.
    - Existing app: use the `appId` from the conversation context. If the
@@ -94,7 +95,8 @@ Add components under `src/`. Keep files small and focused.
    build passes.
 5. **Commit once for each finished change.** A commit saves the folder (without
    `node_modules` and `dist`) as one version, and n8n builds it again. Never
-   commit half-done work: every commit is a version.
+   commit half-done work: every commit is a version. An app layout with empty
+   data is a finished step.
 6. **Check the build.** A commit returns `buildStatus`. On `failed`, read
    `diagnostics` (stage, message, log), fix the source and commit again. After
    three failed builds in a row, stop and explain the problem to the user.
@@ -104,6 +106,24 @@ version. Your folder is kept. Note your changes, call `discard` to load the
 newer draft, and apply your changes again. `discard` keeps `node_modules`. Run
 `npm ci --ignore-scripts --no-audit --no-fund --prefer-offline` only if the
 newer draft changed the package files.
+
+## Build order for a new app
+
+The user must see the app in the preview before you create any data table,
+workflow or agent. This rule has no exceptions: follow it also when the data
+is simple, or when you could build against real data at once.
+
+1. **Layout first.** Build the views and actions of the blueprint with empty
+   data: lists and tables show their empty state. Do not add sample or mock
+   data. Build and commit. Tell the user that the preview shows the layout and
+   that you connect the data next.
+2. **Data next.** Create the data tables, workflows and agents that the
+   blueprint marks as `new`. Then add the bindings (see [Call n8n](#call-n8n)).
+3. **Connect the data.** Change the app to load and save its data through its
+   bindings, then build and commit.
+
+If the blueprint marks no resource as `new`, there is nothing to create. Bind
+the existing resources before the first commit and use the real data.
 
 ## Call n8n
 

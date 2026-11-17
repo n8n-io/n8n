@@ -469,7 +469,7 @@ describe('Custom Telemetry Tags', () => {
 		expect(helperB.attributes['n8n.node.custom.service']).toBeUndefined();
 	});
 
-	it('should attach workflow custom telemetry tags only to the workflow span', async () => {
+	it('should attach workflow custom telemetry tags to the workflow span and node spans', async () => {
 		const project = await createTeamProject();
 		const workflow = await createWorkflow(
 			{
@@ -498,8 +498,8 @@ describe('Custom Telemetry Tags', () => {
 		);
 		expect(workflowSpan.attributes['n8n.workflow.custom.retryCount']).toBe('3');
 		expect(workflowSpan.attributes['n8n.workflow.custom.isCritical']).toBe('true');
-		expect(nodeSpan.attributes['n8n.workflow.custom.environment']).toBeUndefined();
-		expect(nodeSpan.attributes['n8n.workflow.custom.workflowName']).toBeUndefined();
+		expect(nodeSpan.attributes['n8n.workflow.custom.environment']).toBe('production');
+		expect(nodeSpan.attributes['n8n.workflow.custom.workflowName']).toBe('Custom Tags Workflow');
 	});
 
 	it('should send tags under their own keys when the prefixes are empty', async () => {

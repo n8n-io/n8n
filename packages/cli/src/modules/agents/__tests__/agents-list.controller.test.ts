@@ -4,11 +4,15 @@ import { mock } from 'vitest-mock-extended';
 import { NotFoundError } from '@n8n/errors';
 
 import type { AgentsService } from '../agents.service';
+import { mapAgentListItem } from '../agent-response.mapper';
 import { AgentsListController } from '../agents-list.controller';
+import type { AgentResponseMapper } from '../agent-response.mapper';
 
 describe('AgentsListController', () => {
 	function makeController(agentsService = mock<AgentsService>()) {
-		const controller = new AgentsListController(agentsService);
+		const agentResponseMapper = mock<AgentResponseMapper>();
+		agentResponseMapper.toAgentListItem.mockImplementation((agent) => mapAgentListItem(agent));
+		const controller = new AgentsListController(agentsService, agentResponseMapper);
 		return { controller, agentsService };
 	}
 
@@ -19,7 +23,7 @@ describe('AgentsListController', () => {
 		const { controller, agentsService } = makeController();
 		const response = { count: 2, data: [{ id: 'agent-1' }, { id: 'agent-2' }] } as never;
 		const res = mock<Response>();
-		const query = { skip: 0, take: 50, sortBy: 'updatedAt:desc' } as never;
+		const query = { offset: 0, limit: 50, sortBy: 'updatedAt:desc' } as never;
 
 		agentsService.findListableByUserPaginated.mockResolvedValue(response);
 
@@ -27,13 +31,20 @@ describe('AgentsListController', () => {
 
 		expect(agentsService.findListableByUserPaginated).toHaveBeenCalledWith(user, query);
 		expect(agentsService.findChatReachableByUserPaginated).not.toHaveBeenCalled();
-		expect(res.json).toHaveBeenCalledWith(response);
+		expect(res.json).toHaveBeenCalledWith({
+			count: 2,
+			data: [
+				expect.objectContaining({ id: 'agent-1', hasConfig: false, personalisation: null }),
+				expect.objectContaining({ id: 'agent-2', hasConfig: false, personalisation: null }),
+			],
+		});
+		expect(res.json.mock.calls[0]?.[0].data[0]).not.toHaveProperty('config');
 	});
 
 	it('passes a name filter to the overview list', async () => {
 		const { controller, agentsService } = makeController();
 		const res = mock<Response>();
-		const query = { skip: 0, take: 10, filter: { query: 'support' } } as never;
+		const query = { offset: 0, limit: 10, filter: { query: 'support' } } as never;
 
 		agentsService.findListableByUserPaginated.mockResolvedValue({ count: 0, data: [] } as never);
 
@@ -46,7 +57,7 @@ describe('AgentsListController', () => {
 		const { controller, agentsService } = makeController();
 		const response = { count: 1, data: [{ id: 'agent-1' }] } as never;
 		const res = mock<Response>();
-		const query = { skip: 0, take: 10, filter: { availableInChat: value } } as never;
+		const query = { offset: 0, limit: 10, filter: { availableInChat: value } } as never;
 
 		agentsService.findChatReachableByUserPaginated.mockResolvedValue(response);
 
@@ -60,7 +71,7 @@ describe('AgentsListController', () => {
 	it('returns an empty page when the user has no accessible agents', async () => {
 		const { controller, agentsService } = makeController();
 		const res = mock<Response>();
-		const query = { skip: 0, take: 50 } as never;
+		const query = { offset: 0, limit: 50 } as never;
 		const emptyResponse = { count: 0, data: [] } as never;
 
 		agentsService.findListableByUserPaginated.mockResolvedValue(emptyResponse);

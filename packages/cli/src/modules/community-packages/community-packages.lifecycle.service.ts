@@ -2,6 +2,7 @@ import type { PackagePolicyRestrictions } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import { EventService, InstalledTypeRestrictionsProxy, PushProxy } from '@n8n/backend-services';
 import { InstanceSettingsLoaderConfig } from '@n8n/config';
+import type { OperationContext } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { InstanceSettings } from 'n8n-core';
 import { ensureError } from '@n8n/utils/errors/ensure-error';
@@ -14,6 +15,7 @@ import {
 } from '@/constants';
 import { BadRequestError, InternalServerError, NotFoundError } from '@n8n/errors';
 import { IncompatibleNodesApiVersionError } from '@/errors/response-errors/incompatible-nodes-api-version.error';
+import { loginIdOf } from '@/events/login-id';
 import type { UserLike } from '@/events/maps/relay.event-map';
 
 import { selectVettedVersion } from './community-node-types-utils';
@@ -134,6 +136,7 @@ export class CommunityPackagesLifecycleService {
 		args: { name: string | undefined; version?: string },
 		user: UserLike,
 		presentation: CommunityPackageInstallPresentation,
+		ctx: OperationContext = {},
 	): Promise<InstalledPackages> {
 		this.assertNotManagedByEnv();
 		const { name } = args;
@@ -212,6 +215,7 @@ export class CommunityPackagesLifecycleService {
 				success: false,
 				packageVersion,
 				failureReason: errorMessage,
+				loginId: loginIdOf(ctx),
 			});
 
 			// Rethrow unwrapped: the actionable copy and its metadata must reach the UI.
@@ -246,6 +250,7 @@ export class CommunityPackagesLifecycleService {
 			packageNodeNames: installedPackage.installedNodes.map((node) => node.name),
 			packageAuthor: installedPackage.authorName,
 			packageAuthorEmail: installedPackage.authorEmail,
+			loginId: loginIdOf(ctx),
 		});
 
 		return installedPackage;
@@ -276,6 +281,7 @@ export class CommunityPackagesLifecycleService {
 		args: { name: string | undefined; version?: string },
 		user: UserLike,
 		whenMissing: MissingInstalledPackageBehavior,
+		ctx: OperationContext = {},
 	): Promise<InstalledPackages> {
 		this.assertNotManagedByEnv();
 		const { name } = args;
@@ -350,6 +356,7 @@ export class CommunityPackagesLifecycleService {
 				packageNodeNames: newInstalledPackage.installedNodes.map((n) => n.name),
 				packageAuthor: newInstalledPackage.authorName,
 				packageAuthorEmail: newInstalledPackage.authorEmail,
+				loginId: loginIdOf(ctx),
 			});
 
 			return newInstalledPackage;
@@ -381,6 +388,7 @@ export class CommunityPackagesLifecycleService {
 		packageName: string | undefined,
 		user: UserLike,
 		whenMissing: MissingInstalledPackageBehavior,
+		ctx: OperationContext = {},
 	): Promise<void> {
 		this.assertNotManagedByEnv();
 		if (!packageName) {
@@ -431,6 +439,7 @@ export class CommunityPackagesLifecycleService {
 			packageNodeNames: installedPackage.installedNodes.map((node) => node.name),
 			packageAuthor: installedPackage.authorName,
 			packageAuthorEmail: installedPackage.authorEmail,
+			loginId: loginIdOf(ctx),
 		});
 	}
 }

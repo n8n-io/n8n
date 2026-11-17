@@ -1,3 +1,5 @@
+import { expect } from '@playwright/test';
+
 import type { n8nPage } from '../pages/n8nPage';
 
 /**
@@ -8,8 +10,8 @@ export class ExecutionsComposer {
 
 	/**
 	 * Creates workflow executions by executing the workflow multiple times.
-	 * Waits for each execution to complete (by waiting for the POST /rest/workflows/:id/run response)
-	 * before starting the next one.
+	 * Waits for the POST /rest/workflows/:id/run response and for the run to finish before
+	 * starting the next one. The response only confirms the run started.
 	 *
 	 * @param count - Number of executions to create
 	 * @example
@@ -27,6 +29,7 @@ export class ExecutionsComposer {
 
 			await this.n8n.canvas.clickExecuteWorkflowButton();
 			await responsePromise;
+			await expect(this.n8n.canvas.getExecuteWorkflowButtonSpinner()).toBeHidden();
 		}
 	}
 

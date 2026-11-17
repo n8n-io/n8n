@@ -920,6 +920,25 @@ describe('SettingsSkillsView', () => {
 			});
 		});
 
+		it('passes the fetched project type to the modal for an unlisted personal project', async () => {
+			const projectSkill = {
+				scope: 'project' as const,
+				projectId: 'other-personal',
+				projectName: 'Ada Lovelace <ada@example.com>',
+				projectType: 'personal' as const,
+			};
+			skillsStore.skills = [skill(projectSkill)];
+			skillsStore.count = 1;
+			skillsStore.fetchSkill.mockResolvedValue(detail(projectSkill));
+			const { getByText } = renderView();
+			await new Promise(process.nextTick);
+
+			await userEvent.click(getByText('research-search'));
+
+			await waitFor(() => expect(lastModalData().projectType).toBe('personal'));
+			expect(lastModalData().initialScope).toBe('project:other-personal');
+		});
+
 		it('lets the user move a skill that agents use, and hands the modal who uses it', async () => {
 			const usedBy = {
 				drafts: [
@@ -1321,6 +1340,7 @@ describe('SettingsSkillsView', () => {
 				sourceId: 'src-1',
 				type: 'github' as const,
 				label: 'acme/skills',
+				ref: 'main',
 				webUrl: 'https://github.com/acme/skills/tree/main/research-search',
 				canStopSyncing: false,
 			};
@@ -1356,7 +1376,11 @@ describe('SettingsSkillsView', () => {
 				updatesBlocked: 0,
 				health: 'connected' as const,
 				lastCheckedAt: null,
+				missingSkills: [],
+				canReplaceCredential: true,
 				canReview: true,
+				canMove: true,
+				canDelete: true,
 			};
 
 			async function renderWithSource() {
@@ -1389,6 +1413,25 @@ describe('SettingsSkillsView', () => {
 					expect.objectContaining({ groupBy: 'source' }),
 				);
 				expect(view.getByTestId('skill-group-title')).toHaveTextContent('acme/skills · main');
+			});
+
+			it('confirms source deletion and reloads the sources, skills, and creators', async () => {
+				const view = await renderWithSource();
+				await userEvent.click(view.getByTestId('skill-group-actions').querySelector('button')!);
+				const action = await screen.findByTestId('action-deleteSource');
+				await userEvent.click(action);
+				const dialog = await screen.findByRole('dialog');
+				expect(dialog).toHaveTextContent("This can't be undone.");
+				expect(skillsStore.deleteSource).not.toHaveBeenCalled();
+				skillsStore.fetchSkills.mockClear();
+				skillsStore.fetchSources.mockClear();
+				skillsStore.fetchCreators.mockClear();
+				await userEvent.click(within(dialog).getByRole('button', { name: 'Delete source' }));
+				await waitFor(() => expect(skillsStore.deleteSource).toHaveBeenCalledWith('src-1'));
+				await waitFor(() => expect(skillsStore.fetchSkills).toHaveBeenCalled());
+				expect(skillsStore.fetchSources).toHaveBeenCalled();
+				expect(skillsStore.fetchCreators).toHaveBeenCalled();
+				await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
 			});
 
 			it('opens and focuses the page of a duplicate source', async () => {
@@ -1605,10 +1648,6 @@ describe('SettingsSkillsView', () => {
 
 			it.each([
 				{
-					reason: 'rate_limited',
-					text: 'GitHub limits how often n8n can read it. Try again in a few minutes.',
-				},
-				{
 					reason: 'credential_missing',
 					text: 'The credential of this source no longer exists, or this scope can no longer use it.',
 				},
@@ -1630,7 +1669,7 @@ describe('SettingsSkillsView', () => {
 				const view = await renderWithSource();
 				skillsStore.checkSource.mockRejectedValue(new Error('Network down'));
 				skillsStore.fetchSources.mockImplementation(async () => {
-					const failedSource = { ...source, health: 'unreachable' as const };
+					const failedSource = { ...source, health: 'source_unavailable' as const };
 					skillsStore.sources = [failedSource];
 					return [failedSource];
 				});
@@ -1638,9 +1677,26 @@ describe('SettingsSkillsView', () => {
 				await clickCheck(view);
 
 				await waitFor(() =>
-					expect(view.getByRole('button', { name: 'Unreachable' })).toBeInTheDocument(),
+					expect(view.getByRole('button', { name: 'Source unavailable' })).toBeInTheDocument(),
 				);
 				expect(view.queryByTestId('skill-group-checking')).toBeNull();
+			});
+
+			it('reports a rate limit as delayed checking instead of an error', async () => {
+				skillsStore.checkSource.mockRejectedValue(
+					new ResponseError('Wait', { meta: { reason: 'rate_limited' } }),
+				);
+				const view = await renderWithSource();
+				await clickCheck(view);
+				await waitFor(() =>
+					expect(showMessageMock).toHaveBeenCalledWith({
+						title: 'Checking delayed',
+						message: 'GitHub has limited requests. n8n will check again later.',
+						type: 'info',
+					}),
+				);
+				expect(showErrorMock).not.toHaveBeenCalled();
+				expect(skillsStore.fetchSources).toHaveBeenCalled();
 			});
 
 			it('keeps the error of a failure without a reason', async () => {
@@ -1660,6 +1716,7 @@ describe('SettingsSkillsView', () => {
 				sourceId: 'src-1',
 				type: 'github' as const,
 				label: 'acme/skills',
+				ref: 'main',
 				webUrl: 'https://github.com/acme/skills/tree/main/research-search',
 				canStopSyncing: true,
 			};
@@ -1711,7 +1768,7 @@ describe('SettingsSkillsView', () => {
 				await openSynced();
 
 				expect(lastModalData().scopeLockedReason).toBe(
-					'Set by the source acme/skills. The skill moves only with its source. To move this skill on its own, stop syncing it first.',
+					'Set by the source acme/skills. To move all its skills, select Change scope in the source menu. To move only this skill, stop syncing it first.',
 				);
 			});
 

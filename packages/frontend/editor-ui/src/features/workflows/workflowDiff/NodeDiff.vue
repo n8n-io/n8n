@@ -11,6 +11,8 @@ const props = withDefaults(
 		SlotCodeDiffProps & {
 			outputFormat?: 'side-by-side' | 'line-by-line';
 			language?: string;
+			/** The number of unchanged lines to show around each change. */
+			context?: number;
 			hideStat?: boolean;
 			hideHeader?: boolean;
 			forceInlineComparison?: boolean;

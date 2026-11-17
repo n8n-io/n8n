@@ -1,6 +1,6 @@
 import type { Workspace } from '@n8n/agents';
 import { Tool } from '@n8n/agents/tool';
-import { UserError } from 'n8n-workflow';
+import { UserError } from '@n8n/errors';
 import { z } from 'zod';
 
 import type { AgentSandboxFilesService } from '../agent-sandbox-files.service';

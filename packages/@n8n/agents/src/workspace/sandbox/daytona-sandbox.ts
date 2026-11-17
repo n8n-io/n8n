@@ -55,6 +55,8 @@ const MAX_TRANSIENT_ACQUISITION_RETRIES = 2;
 const MAX_CONSECUTIVE_ABSENT_CONFLICTS = 3;
 /** Floor for a single wait on a sandbox state transition, regardless of remaining budget. */
 const MIN_STATE_WAIT_SECONDS = 30;
+/** Acquisition budget of a {@link DaytonaSandboxOptions.quickStart} start. */
+const QUICK_START_TIMEOUT_MS = 5_000;
 const TRANSIENT_HTTP_STATUS_CODES = new Set([408, 429]);
 const SNAPSHOT_ACTIVATION_POLL_MS = 5_000;
 
@@ -141,6 +143,14 @@ export interface DaytonaSandboxOptions {
 	target?: string;
 	timeout?: number;
 	createTimeoutSeconds?: number;
+	/**
+	 * Give the first start() a budget of a few seconds instead of `timeout`, and never
+	 * delete a sandbox that is still being created. Use it to retry after a start failed:
+	 * the sandbox is then usually still starting, and a full wait would block the caller
+	 * for minutes again. A start still resumes or creates the sandbox, so each retry moves
+	 * it forward. Later recoveries of an acquired sandbox use the full `timeout`.
+	 */
+	quickStart?: boolean;
 	/** Base backoff for sandbox acquisition retries. Defaults to 1s. */
 	createRetryBackoffBaseMs?: number;
 	language?: 'typescript' | 'javascript' | 'python';
@@ -260,6 +270,11 @@ export class DaytonaSandbox extends BaseSandbox {
 		return this.createdFresh;
 	}
 
+	/** A quick start applies only until this instance first acquires the remote sandbox. */
+	private get isQuickStart(): boolean {
+		return this.options.quickStart === true && !this.remoteAcquired;
+	}
+
 	get instance(): Sandbox {
 		if (!this.sandbox) {
 			throw new Error(`Daytona sandbox "${this.id}" is not running`);
@@ -272,7 +287,7 @@ export class DaytonaSandbox extends BaseSandbox {
 
 		// One budget for the entire acquisition (lookup, waits, creates, conflict reconcile),
 		// so no single stuck operation can consume the whole turn.
-		const deadline = Date.now() + this.timeout;
+		const deadline = Date.now() + (this.isQuickStart ? QUICK_START_TIMEOUT_MS : this.timeout);
 		try {
 			const client = await this.getDaytona();
 			const existing = await this.findExistingSandbox(client, deadline);
@@ -654,7 +669,7 @@ export class DaytonaSandbox extends BaseSandbox {
 	 * a sandbox that never becomes ready can't consume the whole timeout. On a wait timeout:
 	 *  - a provisioning sandbox ({@link PROVISIONING_SANDBOX_STATES}: no workspace state yet)
 	 *    is treated as wedged and deleted so the caller can create a fresh one with the rest
-	 *    of the budget;
+	 *    of the budget. A quick start keeps it: a few seconds do not show that it is wedged;
 	 *  - a sandbox that carries workspace state (resuming, or one of
 	 *    {@link STATEFUL_TRANSITION_SANDBOX_STATES}) is kept and the acquisition fails with a
 	 *    classified error instead — deleting it would lose the thread's files.
@@ -680,7 +695,7 @@ export class DaytonaSandbox extends BaseSandbox {
 		} catch (error) {
 			const { DaytonaTimeoutError } = loadDaytona();
 			if (!(error instanceof DaytonaTimeoutError)) throw error;
-			if (PROVISIONING_SANDBOX_STATES.has(state)) {
+			if (PROVISIONING_SANDBOX_STATES.has(state) && !this.isQuickStart) {
 				this.options.logger?.warn(
 					'Daytona sandbox is stuck in a transitional state; deleting it so a fresh one can be created',
 					{ sandboxName: this.sandboxName, state, waitSeconds },

@@ -29,7 +29,7 @@ const nodes: INode[] = [
 test.describe(
 	'Engine type setting',
 	{
-		annotation: [{ type: 'owner', description: 'Catalysts' }],
+		annotation: [{ type: 'owner', description: 'Core Execution' }],
 	},
 	() => {
 		test.beforeEach(async ({ n8n }) => {

@@ -16,7 +16,7 @@ describe('Microsoft Excel (SharePoint), Service Principal workbook => getAll smo
 	nock('https://graph.microsoft.com')
 		.matchHeader('Authorization', 'Bearer test-access-token')
 		.get(
-			"/v1.0/sites/contoso.sharepoint.com%2Cg1%2Cg2/drives/b!drive1/root/search(q='.xlsx%20OR%20.xlsm')",
+			"/v1.0/sites/contoso.sharepoint.com,g1,g2/drives/b!drive1/root/search(q='.xlsx%20OR%20.xlsm')",
 		)
 		.query({ $top: '10' })
 		.reply(200, {

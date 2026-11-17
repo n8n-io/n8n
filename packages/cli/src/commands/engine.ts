@@ -25,7 +25,7 @@ export class Engine extends BaseCommand {
 	// The data plane runs the nodes, so it hosts the task broker the Code node's
 	// runners connect to. Same module and env as `n8n start`.
 	// TODO(CET-332): remove once Code nodes run on the sandbox service.
-	override needsTaskRunner = true;
+	override needsCodeExecution = true;
 
 	override needsExpressionEngine = true;
 
@@ -40,11 +40,10 @@ export class Engine extends BaseCommand {
 		assertControlPlaneIsolated(process.env);
 		const engineConfig = Container.get(EngineConfig);
 		assertRemoteControlPlane(engineConfig);
-		const { EngineTlsMaterial } = await import('@/modules/engine-v2/engine-tls-material.js');
-		Container.get(EngineTlsMaterial).assertSecureTransport(
-			{ N8N_ENGINE_CONTROL_PLANE_BASE_URL: engineConfig.controlPlaneBaseUrl },
-			this.logger,
-		);
+		const { EngineMtls } = await import('@/modules/engine-v2/engine-mtls.js');
+		Container.get(EngineMtls).assertSecureTransport({
+			N8N_ENGINE_CONTROL_PLANE_BASE_URL: engineConfig.controlPlaneBaseUrl,
+		});
 
 		this.logger.info('Starting engine v2 data plane...');
 		this.logger.debug(`Host ID: ${this.instanceSettings.hostId}`);

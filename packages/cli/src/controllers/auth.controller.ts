@@ -4,7 +4,7 @@ import {
 	SSO_LOGIN_REQUIRED_ERROR_CODE,
 } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
-import { EventService } from '@n8n/backend-services';
+import { EventService, PostHogClient } from '@n8n/backend-services';
 import { Time } from '@n8n/constants';
 import type { Person, PublicUser, AuthProviderType } from '@n8n/db';
 import {
@@ -32,7 +32,6 @@ import { RESPONSE_ERROR_MESSAGES } from '@/constants';
 import { AuthError, BadRequestError, ForbiddenError, InternalServerError } from '@n8n/errors';
 import { License } from '@/license';
 import { MfaService } from '@/mfa/mfa.service';
-import { PostHogClient } from '@/posthog';
 import { AuthlessRequest } from '@/requests';
 import { UserService } from '@/services/user.service';
 import {

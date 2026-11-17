@@ -52,6 +52,12 @@ const ObservationalMemoryConfigSchema = z.object({
 	renderTokenBudget: z.number().int().min(1).optional(),
 	observationLogTailLimit: z.number().int().min(1).optional(),
 	lockTtlMs: z.number().int().min(0).optional(),
+	windowShares: z
+		.object({
+			// 0 removes the default cap; the model's context window still applies.
+			maxContextWindowTokens: z.number().int().min(0).optional(),
+		})
+		.optional(),
 });
 
 export const EPISODIC_MEMORY_GUIDANCE_MAX_TOPICS = 20;
@@ -470,8 +476,8 @@ export const BudgetGuardrailConfigSchema = z
 
 /**
  * PII entity set for `pii` tool guardrails. Mirrors `PIIEntity` in
- * `@n8n/nodes-langchain` (`nodes/Guardrails/actions/checks/pii.ts`) —
- * api-types cannot depend on that package. Keep in sync.
+ * `@n8n/ai-utilities` (`src/guardrails/checks/pii.ts`) — api-types cannot
+ * depend on that package (it depends on api-types). Keep in sync.
  */
 export const TOOL_GUARDRAIL_PII_ENTITIES = [
 	// Global
