@@ -44,6 +44,7 @@ import {
 	flagKeyOf,
 	flagVariants,
 	FAILING_VALUE,
+	forgetPagingChoices,
 	itemFailureExpression,
 	itemFieldExpression,
 	MINTED_TOKEN_RESPONSE,
@@ -1047,6 +1048,7 @@ for (const name of one === undefined || !(one in known) ? [] : [one]) {
 		if (!node || sources.entry(type, version) === undefined) continue;
 		for (const usual of operations(node)) {
 			if (!inPart(operationsSeen++, operationsOfOne)) continue;
+			forgetPagingChoices();
 			operationsChecked++;
 			reportProgress();
 			if (caseStore !== undefined && Date.now() - casesSaved > SAVE_CASES_EVERY_MS) {
@@ -1123,6 +1125,10 @@ for (const name of one === undefined || !(one in known) ? [] : [one]) {
 						(await differenceFromV1(make('error', parameters, bad), sources, registry, checking));
 					if (difference !== undefined) {
 						if (!other) why(`v1: ${difference}`, weight);
+						if (!other && examples.length < 400)
+							examples.push(
+								`${verifiedKey(type, version, compiled.resolved)}: ${difference.slice(0, 200)}`,
+							);
 						else if (examples.length < 400)
 							examples.push(
 								`${verifiedKey(type, version, compiled.resolved)} with another authentication: ${difference.slice(0, 200)}`,
@@ -1142,6 +1148,10 @@ for (const name of one === undefined || !(one in known) ? [] : [one]) {
 					}
 					if (shaped !== undefined) {
 						if (!other) why(shaped, weight);
+						else if (examples.length < 400)
+							examples.push(
+								`${verifiedKey(type, version, compiled.resolved)} with another authentication: ${shaped.slice(0, 200)}`,
+							);
 						continue;
 					}
 					const first = readsFiles ? FILE_ITEMS[0] : {};
@@ -1790,6 +1800,10 @@ for (const name of one === undefined || !(one in known) ? [] : [one]) {
 					const message = error instanceof Error ? error.message : String(error);
 					if (TRANSIENT.test(message)) transient = true;
 					why(`check failed: ${message}`, weight);
+					if (examples.length < 400)
+						examples.push(
+							`${verifiedKey(type, version, compiled.resolved)}: check failed: ${message.slice(0, 200)}`,
+						);
 				}
 			}
 		}

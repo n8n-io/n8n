@@ -106,8 +106,8 @@ describe('the code of the recorder in the key of a recording', () => {
 		const before = keys();
 		edit(
 			'nodes/__tests__/v1-recorder.ts',
-			"executionId: 'equivalence',\n\t\t\t\tstepId",
-			"executionId: 'other',\n\t\t\t\tstepId",
+			"type: 'v1-node',",
+			"type: 'v1-other',",
 		);
 		expect(changed(before)).toEqual([true, true, true]);
 	});

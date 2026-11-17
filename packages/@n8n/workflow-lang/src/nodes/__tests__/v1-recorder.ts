@@ -96,7 +96,54 @@ function load(): Modules {
 			join(dirname(coreRequire.resolve('@n8n/backend-network')), 'http/axios/utils.js'),
 		),
 	};
+	installVirtualSleep(hostRequire, coreRequire);
 	return modules;
+}
+
+/** The pauses of the case that runs now, in milliseconds; undefined when no case runs. */
+let nodeWaits: number[] | undefined;
+const MAX_TIMER_MS = 2147483647;
+
+/**
+ * Replaces `sleep` of `@n8n/utils/sleep` (the `sleep` of `n8n-workflow` reads it at each call).
+ * A pause of a case (in the code of the node, or of the engine before a retry) takes no real
+ * time: the recorder keeps its duration, as the timer of Node.js rounds it, and the check
+ * compares it with the waits of the compiled workflow.
+ */
+function installVirtualSleep(...requires: NodeJS.Require[]): void {
+	const nodesRequire = createRequire(join(NODE_PACKAGES['n8n-nodes-base'], 'package.json'));
+	const patched = new Set<AnyRecord>();
+	for (const required of [nodesRequire, ...requires]) {
+		let module: AnyRecord;
+		try {
+			module = required('@n8n/utils/sleep');
+		} catch {
+			continue;
+		}
+		if (patched.has(module)) continue;
+		patched.add(module);
+		const real = module.sleep;
+		module.sleep = async (ms: unknown, abortSignal?: AbortSignal): Promise<void> => {
+			if (nodeWaits === undefined) return await real(ms, abortSignal);
+			if (abortSignal?.aborted) throw abortSignal.reason;
+			if (nodeWaits.length >= MAX_FAKE_REQUESTS)
+				throw new Error(`the node paused more than ${MAX_FAKE_REQUESTS} times`);
+			const wanted = Number(ms);
+			nodeWaits.push(wanted >= 1 && wanted <= MAX_TIMER_MS ? Math.trunc(wanted) : 1);
+			await new Promise<void>((resolve) => setImmediate(resolve));
+		};
+	}
+}
+
+/** Runs a case: its pauses go into `waits`. */
+async function inNode<T>(waits: number[], work: () => Promise<T>): Promise<T> {
+	const outer = nodeWaits;
+	nodeWaits = waits;
+	try {
+		return await work();
+	} finally {
+		nodeWaits = outer;
+	}
 }
 
 interface KnownEntry {
@@ -845,6 +892,7 @@ async function recordInEngine(
 		return out;
 	};
 	let nodePaired: boolean[] | undefined;
+	const waits: number[] = [];
 	const observed = {
 		getByName: (type: string) => nodeTypes.getByName(type),
 		getByNameAndVersion: (type: string, version?: number) => {
@@ -941,7 +989,7 @@ async function recordInEngine(
 		subNodes.length > 0 ? installFakeFetch(testCase.responses, recorded, shared) : null;
 	let run: AnyRecord;
 	try {
-		run = await engine.processRunExecutionData(graph);
+		run = await inNode(waits, async () => await engine.processRunExecutionData(graph));
 	} finally {
 		restoreFetch?.();
 	}
@@ -982,6 +1030,7 @@ async function recordInEngine(
 		outputs: workflow.deepCopy(Array.from(outputs, (list) => list ?? [])),
 		paired: workflow.deepCopy(Array.from(paired, (list) => list ?? [])),
 		...(nodePaired ? { nodePaired } : {}),
+		...(waits.length > 0 ? { waits } : {}),
 		...(nodeError && !stopped
 			? { nodeError: String(nodeError.message), errorDetail: errorDetailOf(nodeError) }
 			: {}),
@@ -1058,28 +1107,35 @@ async function recordNode(
 	});
 
 	const recorded: RawRequest[] = [];
+	const waits: number[] = [];
+	const waited = () => (waits.length > 0 ? { waits } : {});
 	installFakeHttp(testCase.responses, recorded, testCase.responseBytes === true);
 	try {
-		const result = await executor.execute({
-			node: graphNode,
-			inputs: [(testCase.items ?? [{}]).map(inputItem)],
-			context: {
-				executionId: 'equivalence',
-				stepId: 'step',
-				workflowId: 'equivalence',
-				mode: 'production',
-				iteration: 0,
-				callerContext: { hostMode: 'integrated' },
-				responseExpectation: { kind: 'none' },
-			},
-			respond: engine.noopResponseEmitter,
-		});
+		const result = await inNode(
+			waits,
+			async () =>
+				await executor.execute({
+					node: graphNode,
+					inputs: [(testCase.items ?? [{}]).map(inputItem)],
+					context: {
+						executionId: 'equivalence',
+						stepId: 'step',
+						workflowId: 'equivalence',
+						mode: 'production',
+						iteration: 0,
+						callerContext: { hostMode: 'integrated' },
+						responseExpectation: { kind: 'none' },
+					},
+					respond: engine.noopResponseEmitter,
+				}),
+		);
 		const items: AnyRecord[] = result.outputs?.[0] ?? [];
 		return {
 			requests: recorded.map(normalizeRequest),
 			wire: recorded.map((request) => request.wire ?? null),
 			...(testCase.serviceResults ? { services } : {}),
 			output: load().workflow.deepCopy(items.map(outputItem)),
+			...waited(),
 		};
 	} catch (error) {
 		const message = error instanceof Error ? error.message : String(error);
@@ -1089,6 +1145,7 @@ async function recordNode(
 			...(testCase.serviceResults ? { services } : {}),
 			error: message,
 			errorDetail: errorDetailOf(error),
+			...waited(),
 		};
 	}
 }
@@ -1098,7 +1155,7 @@ const CACHE_MAX_ENTRIES = 400_000;
 /** The share of the entries that a full cache removes: the ones that were read or written longest ago. */
 const CACHE_EVICT_SHARE = 0.1;
 /** The form of a recording. A new member of `Recording` needs a new value, so old files are not read. */
-const RECORDING_FORM = 'wire-2';
+const RECORDING_FORM = 'waits-2';
 
 /** The node type that `recordInEngine` puts before the node of the case. */
 export const START_TYPE = 'n8n-nodes-base.manualTrigger';
