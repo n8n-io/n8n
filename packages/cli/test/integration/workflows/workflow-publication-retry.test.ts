@@ -478,6 +478,23 @@ describe('Workflow publication retry (integration)', () => {
 		expect(await retryDelay(workflow.id)).toBe(2 * FIRST_RETRY_DELAY_SECONDS);
 	});
 
+	test('a restart pass does not start a new period for a partial workflow whose retries stopped', async () => {
+		const workflow = await createPublishedWorkflow(
+			flakyNode('stopped-partial'),
+			scheduleNode('stopped-partial'),
+		);
+		fixture.failure = UNREACHABLE;
+		await publish(workflow);
+		await setRetryNote(workflow.id, LONG_AGO, MAX_RETRY_DELAY_SECONDS);
+		await makeRetryDueAfterFailingSince(workflow.id, failingFor(RETRY_PERIOD_MS + ONE_HOUR_MS));
+		await reconciler.reconcile('reconcile');
+		await activeWorkflowTriggers.remove(workflow.id);
+
+		await reconciler.reconcile('startup');
+
+		expect(await retryDelay(workflow.id)).toBeNull();
+	});
+
 	test.each(EARLIER_STEP_CASES)(
 		'a restart pass makes one attempt for a workflow that an earlier step enqueued: %s',
 		async (_, arrange) => {

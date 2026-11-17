@@ -60,8 +60,8 @@ export class WorkflowPublicationRetryStateRepository extends BaseRepository<Work
 	/**
 	 * Doubles the delay of a due retry of the same target, up to the cap, and
 	 * stops the retries once the target has failed for the retry period. Starts
-	 * any other note at the first delay. A note that is not due yet stays as it
-	 * is, because that failure did not come from its schedule.
+	 * a note for another target at the first delay. A note that is not due yet,
+	 * or that has no delay, stays as it is.
 	 */
 	async scheduleRetry(
 		workflowId: string,
@@ -71,8 +71,7 @@ export class WorkflowPublicationRetryStateRepository extends BaseRepository<Work
 		const { type } = this.globalConfig.database;
 		const tableName = this.getTableName('workflow_publication_retry_state');
 		const params = type === 'postgresdb' ? '$1, $2' : '?, ?';
-		const startsNewNote =
-			'retry."targetVersionId" <> excluded."targetVersionId" OR retry."retryDelaySeconds" IS NULL';
+		const startsNewNote = 'retry."targetVersionId" <> excluded."targetVersionId"';
 		const retryPeriodEndsAt = plusSeconds(type, 'retry."createdAt"', `${RETRY_PERIOD_SECONDS}`);
 
 		await this.managerFor(ctx).query(
