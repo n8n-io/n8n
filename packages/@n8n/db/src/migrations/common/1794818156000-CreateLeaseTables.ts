@@ -28,7 +28,7 @@ export class CreateLeaseTables1794818156000 implements ReversibleMigration {
 					.comment('The time at which the sync lock expires'),
 				column('lastFullSyncAt')
 					.timestampTimezone()
-					.comment('The time at which a main last claimed the periodic full sync'),
+					.comment('The time at which a process last claimed the periodic full sync'),
 			)
 			.withTimestamps.withCheck(
 				`CHK_${tablePrefix}lease_kind_fencingTokenCounter`,
@@ -38,12 +38,12 @@ export class CreateLeaseTables1794818156000 implements ReversibleMigration {
 		await createTable('lease_session')
 			.withColumns(
 				column('id').uuid.primary.comment(
-					'The session ID, new for each session, also after a main loses a session',
+					'The session ID, new for each session, also after a process loses a session',
 				),
 				column('leaseKind').varchar(24).notNull,
 				column('hostId').varchar(255).notNull.comment('The host that runs the main'),
 				column('bootId').uuid.notNull.comment(
-					'The process start of the main, used for same-host takeover',
+					'The start of the process, used for same-host takeover',
 				),
 				column('leaseDurationSeconds').int.notNull.comment(
 					'The lease length of the session, in seconds',
