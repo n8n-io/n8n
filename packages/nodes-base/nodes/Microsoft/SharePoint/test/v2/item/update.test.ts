@@ -482,9 +482,16 @@ describe('buildItemFieldsPayload', () => {
 	});
 
 	it('types an empty array as a string collection', () => {
-		expect(buildItemFieldsPayload({ PersonLookupId: [] }, []).fields).toEqual({
-			'PersonLookupId@odata.type': 'Collection(Edm.String)',
-			PersonLookupId: [],
+		expect(buildItemFieldsPayload({ Tags: [] }, []).fields).toEqual({
+			'Tags@odata.type': 'Collection(Edm.String)',
+			Tags: [],
+		});
+	});
+
+	it.each([[[]], [['1', '2']]])('adds no collection type to a lookup ID field: %j', (array) => {
+		const schema = [{ id: 'PersonLookupId', type: 'number' }] as ResourceMapperValue['schema'];
+		expect(buildItemFieldsPayload({ PersonLookupId: array }, schema).fields).toEqual({
+			PersonLookupId: array,
 		});
 	});
 

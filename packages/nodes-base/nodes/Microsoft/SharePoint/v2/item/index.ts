@@ -228,13 +228,14 @@ export function buildItemFieldsPayload(
 		}
 
 		// Graph rejects a multi-choice array that has no collection type. An empty
-		// array is typed too, so that it can clear the column. An array that contains
-		// a non-string stays untyped: the collection type for lookup columns is not
-		// confirmed. The key check stops a type entry for a key that the write below drops.
+		// array is typed too, so that it can clear the column. Number fields are the
+		// lookup and person IDs: their collection type is not confirmed, so they stay
+		// as they are. The key check stops a type entry for a key that the write below drops.
 		if (
 			isSafeObjectProperty(key) &&
 			Array.isArray(fieldValue) &&
-			fieldValue.every((entry) => typeof entry === 'string')
+			fieldValue.every((entry) => typeof entry === 'string') &&
+			schema?.find((field) => field.id === key)?.type !== 'number'
 		) {
 			setSafeObjectProperty(fields, `${key}@odata.type`, 'Collection(Edm.String)');
 		}
