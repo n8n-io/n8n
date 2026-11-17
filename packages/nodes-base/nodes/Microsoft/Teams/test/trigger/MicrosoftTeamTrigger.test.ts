@@ -1118,17 +1118,47 @@ describe('Microsoft Teams Trigger Node', () => {
 				value: [
 					{ subscriptionId: 'sub1', clientState: 'secret', resourceData: { id: '1' } },
 					{ subscriptionId: 'subX', clientState: 'wrong', resourceData: { id: '2' } },
+					{ subscriptionId: 'sub1', clientState: 'secret', resourceData: { id: '3' } },
 				],
 			});
 
 			const result = await new MicrosoftTeamsTrigger().webhook.call(ctx);
 
 			expect(res.status).not.toHaveBeenCalled();
-			expect(result).toEqual({ workflowData: [[{ json: { id: '1' } }]] });
+			expect(result).toEqual({ workflowData: [[{ json: { id: '1' } }, { json: { id: '3' } }]] });
 			expect(ctx.logger.debug).toHaveBeenCalledWith(
 				'Microsoft Teams Trigger: rejected notifications without the stored clientState',
 				expect.objectContaining({ workflowId: 'wf1', rejected: 1, subscriptionIds: ['subX'] }),
 			);
+		});
+
+		it('emits every change notification of a batch as an item of one execution', async () => {
+			const change = (id: string) => ({
+				subscriptionId: 'sub1',
+				clientState: 'secret',
+				resourceData: { id },
+			});
+			const { ctx, res } = arrange({ value: [change('m1'), change('m2'), change('m3')] });
+
+			const result = await new MicrosoftTeamsTrigger().webhook.call(ctx);
+
+			expect(res.status).not.toHaveBeenCalled();
+			expect(result).toEqual({
+				workflowData: [[{ json: { id: 'm1' } }, { json: { id: 'm2' } }, { json: { id: 'm3' } }]],
+			});
+		});
+
+		it('emits the notification without clientState when it has no resourceData', async () => {
+			const bare = { subscriptionId: 'sub1', clientState: 'secret', changeType: 'created' };
+			const { ctx } = arrange({ value: [bare, { ...bare, resourceData: { id: 'm2' } }] });
+
+			const result = await new MicrosoftTeamsTrigger().webhook.call(ctx);
+
+			expect(result).toEqual({
+				workflowData: [
+					[{ json: { subscriptionId: 'sub1', changeType: 'created' } }, { json: { id: 'm2' } }],
+				],
+			});
 		});
 
 		it('caps the logged subscription ids of the rejected notifications', async () => {
@@ -1349,7 +1379,7 @@ describe('Microsoft Teams Trigger Node', () => {
 			expect(res.status).toHaveBeenCalledWith(202);
 			expect(result).toEqual({
 				noWebhookResponse: true,
-				workflowData: [[{ json: change1.resourceData }], [{ json: change2.resourceData }]],
+				workflowData: [[{ json: change1.resourceData }, { json: change2.resourceData }]],
 			});
 		});
 

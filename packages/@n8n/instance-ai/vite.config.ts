@@ -35,6 +35,7 @@ const INDEX_LAZY_REQUIRE_TEST_SPECS = new Set([
 	'./runtime/liveness-policy',
 	'./workflow-loop',
 	'./workflow-loop/runtime',
+	'./approval-review/approval-judge',
 ]);
 
 /**

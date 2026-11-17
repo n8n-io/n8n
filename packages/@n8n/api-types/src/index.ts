@@ -22,6 +22,7 @@ export type * from './worker-pools';
 export * from './node-type-availability';
 export type * from './sub-workflow-policy-check';
 export type * from './credential-type-availability';
+export type * from './instance-type-access';
 export type * from './transfer-preview';
 export type * from './transfer-result';
 export * from './redaction-enforcement';
@@ -188,7 +189,12 @@ export {
 	workflowIdParamSchema,
 	workflowVersionIdParamSchema,
 } from './schemas/public-api-path-params.schema';
-export { folderNameSchema, folderIdSchema } from './schemas/folder.schema';
+export {
+	folderNameSchema,
+	folderIdSchema,
+	folderResourceTypeSchema,
+	type FolderResourceType,
+} from './schemas/folder.schema';
 export {
 	SYSTEM_RESOLVER_ID,
 	credentialResolverSchema,
@@ -490,15 +496,15 @@ export {
 	AI_ASSISTANT_AT_MENTIONS_FLAG,
 	INSTANCE_AI_CONVERSATION_HISTORY_FLAG,
 	INSTANCE_AI_CONVERSATION_HISTORY_ENABLED_VARIANT,
-	INSTANCE_AI_PROGRESSIVE_BUILDING_FLAG,
 	INSTANCE_AI_SETUP_PANEL_FLAG,
 	INSTANCE_AI_SETUP_PANEL_ENABLED_VARIANT,
-	INSTANCE_AI_PROGRESSIVE_BUILDING_ENABLED_VARIANT,
 	INSTANCE_AI_CONCISE_STYLE_FLAG,
 	INSTANCE_AI_CONCISE_STYLE_ENABLED_VARIANT,
 	INSTANCE_AI_NODE_USAGE_FLAG,
+	INSTANCE_AI_APPROVAL_MODES_FLAG,
 	INSTANCE_AI_FOLDER_EXPLORATION_FLAG,
 	INSTANCE_ACTIVITY_CONTEXT_FLAG,
+	INSTANCE_AI_CLOUD_BROWSER_FLAG,
 	INSTANCE_AI_FOLDER_EXPLORATION_ENABLED_VARIANT,
 	INSTANCE_CONTEXT_SURFACE_DEPTH,
 	instanceContextSurfaceSchema,
@@ -589,13 +595,11 @@ export {
 	INSTANCE_AI_THREAD_SOURCE_FALLBACK,
 	INSTANCE_AI_PREFILL_TYPES,
 	INSTANCE_AI_PREFILL_TYPE_FALLBACK,
-	instanceAiBuildModeSchema,
 	instanceAiPromptConfigurationSchema,
 	INSTANCE_AI_RUN_LIMIT_REASONS,
 } from './schemas/instance-ai.schema';
 
 export type {
-	InstanceAiBuildMode,
 	InstanceAiPromptConfiguration,
 	InstanceAiPrefillType,
 	InstanceAiPrefillTypeReported,
@@ -655,6 +659,7 @@ export type {
 	InstanceAiToolResultEvent,
 	InstanceAiToolErrorEvent,
 	InstanceAiConfirmationRequestEvent,
+	InstanceAiAutoApprovalEvent,
 	InstanceAiSetupItem,
 	InstanceAiSetupItemsEvent,
 	InstanceAiPreferencesAppliedEvent,
@@ -1024,11 +1029,18 @@ export {
 	SSO_ERROR_LOGIN_FAILED,
 } from './constants/role-mapping';
 export { SSO_LOGIN_REQUIRED_ERROR_CODE } from './constants/auth';
-export { N8N_CLIENT_HEADER, N8N_CLIENT_EDITOR_UI } from './constants/client';
+export { N8N_CLIENT_HEADER, N8N_CLIENT_EDITOR_UI, N8N_CLIENT_N8N_NODE } from './constants/client';
 
 export {
 	instanceAiApprovalDetailsSchema,
+	instanceAiApprovalModeSchema,
+	instanceAiAutoApprovalDeciderSchema,
+	autoApprovalPayloadSchema,
 	type InstanceAiApprovalDetails,
+	type InstanceAiApprovalMode,
+	type InstanceAiApprovalPreferences,
+	type InstanceAiAutoApprovalDecider,
+	type InstanceAiAutoApprovalPayload,
 } from './schemas/instance-ai-approval.schema';
 export type {
 	ExecutionListPagination,

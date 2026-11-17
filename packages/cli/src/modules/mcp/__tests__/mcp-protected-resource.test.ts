@@ -213,6 +213,7 @@ describe('McpProtectedResource', () => {
 			expect(scopeTools['project:write']).not.toContain('create_folder');
 			expect(scopeTools['project:write']).not.toContain('update_folder');
 			expect(scopeTools['workflow:write']).not.toContain('move_workflows_to_folder');
+			expect(scopeTools['agent:write']).not.toContain('move_agent');
 			expect(scopeTools['project:write']).not.toContain('search_folders');
 			expect(scopeTools['project:read']).not.toContain('search_folders');
 			expect(scopeTools['project:read']).toContain('search_projects');

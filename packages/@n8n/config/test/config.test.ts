@@ -373,8 +373,10 @@ describe('GlobalConfig', () => {
 			vertexServiceAccountJson: '',
 			mcpServers: '',
 			browserUseEnabled: true,
+			cloudBrowserEnabled: true,
 			observerMessageTokens: 30_000,
-			memoryModel: '',
+			utilityModel: '',
+			approvalJudgeModel: '',
 			midRunObservation: true,
 			sandboxEnabled: false,
 			sandboxProvider: 'n8n-sandbox',
@@ -548,6 +550,9 @@ describe('GlobalConfig', () => {
 			ownerReconciliationBatchSize: 500,
 			ownerQuarantineGraceSeconds: 86400,
 			ownerSettleSeconds: 300,
+		},
+		leases: {
+			enabled: false,
 		},
 		evaluation: {
 			collectionsEnabled: false,

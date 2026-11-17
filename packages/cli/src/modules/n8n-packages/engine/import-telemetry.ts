@@ -1,5 +1,7 @@
 import type { EventService } from '@n8n/backend-services';
 
+import { loginIdOf } from '@/events/login-id';
+
 import { resolveCredentialConflictPolicy } from '../entities/credential/credential-conflict-policy';
 import type { AgentImportOutcome } from '../entities/agent/agent-import.types';
 import type { CredentialBindingRequest } from '../entities/credential/credential.types';
@@ -193,5 +195,6 @@ export function emitPackageImportedEvent(
 				requirements: tagRequirements,
 			},
 		},
+		loginId: loginIdOf(request.ctx),
 	});
 }

@@ -25,7 +25,7 @@ export class AgentSandboxController {
 		@Param('projectId') projectId: string,
 		@Param('agentId') agentId: string,
 	): Promise<{ accepted: true }> {
-		this.assertKnowledgeBaseEnabled();
+		this.assertFileKnowledgeEnabled();
 		res.status(202);
 		setImmediate(() => {
 			void this.warmKnowledgeSandboxInBackground(projectId, agentId);
@@ -34,7 +34,7 @@ export class AgentSandboxController {
 		return { accepted: true };
 	}
 
-	private assertKnowledgeBaseEnabled() {
+	private assertFileKnowledgeEnabled() {
 		if (!this.knowledgeAvailabilityService.isFileKnowledgeEnabled()) {
 			throw new NotFoundError('Agent knowledge base is not enabled');
 		}

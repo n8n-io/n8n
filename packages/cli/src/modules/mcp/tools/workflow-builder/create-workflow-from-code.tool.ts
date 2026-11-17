@@ -1,6 +1,7 @@
 import type { Logger } from '@n8n/backend-common';
 import {
 	type Folder,
+	type OperationContext,
 	type Project,
 	type ProjectRepository,
 	type User,
@@ -12,7 +13,7 @@ import type { CredentialsService } from '@/credentials/credentials.service';
 import type { DataTableUserOperations } from '@n8n/backend-module-data-table';
 import type { INodeTypes } from 'n8n-workflow';
 import type { AiGatewayService } from '@/services/ai-gateway.service';
-import type { UrlService } from '@n8n/backend-services';
+import type { UrlService, TelemetryProxy } from '@n8n/backend-services';
 import type { WorkflowCreationService } from '@/workflows/workflow-creation.service';
 import type { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 
@@ -49,7 +50,6 @@ import type { ToolDefinition, UserCalledMCPToolEventPayload } from '../../mcp.ty
 import { getSdkReferenceHint } from '../workflow-validation.utils';
 
 import { NotFoundError } from '@n8n/errors';
-import type { Telemetry } from '@/telemetry';
 import {
 	dropInvalidWorkflowGroups,
 	makeGetNodeTypeForGrouping,
@@ -221,7 +221,7 @@ type RecoverPersistedCreateArgs = {
 	user: User;
 	workflowFinderService: WorkflowFinderService;
 	urlService: UrlService;
-	telemetry: Telemetry;
+	telemetry: TelemetryProxy;
 	telemetryPayload: UserCalledMCPToolEventPayload;
 	error: unknown;
 	logger: Logger;
@@ -322,7 +322,7 @@ export const createCreateWorkflowFromCodeTool = (
 	workflowCreationService: WorkflowCreationService,
 	workflowFinderService: WorkflowFinderService,
 	urlService: UrlService,
-	telemetry: Telemetry,
+	telemetry: TelemetryProxy,
 	nodeTypes: INodeTypes,
 	credentialsService: CredentialsService,
 	projectRepository: ProjectRepository,
@@ -331,6 +331,7 @@ export const createCreateWorkflowFromCodeTool = (
 	options: CreateWorkflowFromCodeToolOptions = {},
 	logger: Logger,
 	postSaveMetrics: McpPostSaveMetricsService,
+	ctx: OperationContext = {},
 ): ToolDefinition<typeof inputSchema> => ({
 	name: MCP_CREATE_WORKFLOW_FROM_CODE_TOOL.toolName,
 	config: {
@@ -500,13 +501,18 @@ export const createCreateWorkflowFromCodeTool = (
 				buildCreateVersionMetadata(newWorkflow.nodes),
 			);
 
-			const savedWorkflow = await workflowCreationService.createWorkflow(user, newWorkflow, {
-				projectId: effectiveProjectId,
-				parentFolderId: folderId,
-				source: 'n8n-mcp',
-				versionName: versionMetadata.name,
-				versionDescription: versionMetadata.description,
-			});
+			const savedWorkflow = await workflowCreationService.createWorkflow(
+				user,
+				newWorkflow,
+				{
+					projectId: effectiveProjectId,
+					parentFolderId: folderId,
+					source: 'n8n-mcp',
+					versionName: versionMetadata.name,
+					versionDescription: versionMetadata.description,
+				},
+				ctx,
+			);
 			// The saved workflow carries the project-validated parent folder, echoed
 			// back as targetFolder.
 			landingFolder = savedWorkflow.parentFolder ?? null;

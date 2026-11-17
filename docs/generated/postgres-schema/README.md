@@ -38,7 +38,7 @@ Auto-generated from the PostgreSQL migrations in @n8n/db. Do not edit by hand.
 | [public.agent_thread_grants](public.agent_thread_grants.md) | 4 |  | BASE TABLE |
 | [public.agent_version_skill_dependency](public.agent_version_skill_dependency.md) | 4 |  | BASE TABLE |
 | [public.agent_workflow_dependency](public.agent_workflow_dependency.md) | 3 |  | BASE TABLE |
-| [public.agents](public.agents.md) | 18 |  | BASE TABLE |
+| [public.agents](public.agents.md) | 19 |  | BASE TABLE |
 | [public.agents_memory_entries](public.agents_memory_entries.md) | 13 |  | BASE TABLE |
 | [public.agents_memory_entry_candidates](public.agents_memory_entry_candidates.md) | 14 |  | BASE TABLE |
 | [public.agents_memory_entry_locks](public.agents_memory_entry_locks.md) | 6 |  | BASE TABLE |
@@ -82,7 +82,7 @@ Auto-generated from the PostgreSQL migrations in @n8n/db. Do not edit by hand.
 | [public.execution_entity](public.execution_entity.md) | 20 |  | BASE TABLE |
 | [public.execution_ledger](public.execution_ledger.md) | 16 |  | BASE TABLE |
 | [public.execution_metadata](public.execution_metadata.md) | 4 |  | BASE TABLE |
-| [public.folder](public.folder.md) | 6 |  | BASE TABLE |
+| [public.folder](public.folder.md) | 7 |  | BASE TABLE |
 | [public.folder_tag](public.folder_tag.md) | 2 |  | BASE TABLE |
 | [public.idempotency_key](public.idempotency_key.md) | 9 |  | BASE TABLE |
 | [public.insights_by_period](public.insights_by_period.md) | 6 |  | BASE TABLE |
@@ -108,6 +108,9 @@ Auto-generated from the PostgreSQL migrations in @n8n/db. Do not edit by hand.
 | [public.instance_monitoring_report](public.instance_monitoring_report.md) | 10 |  | BASE TABLE |
 | [public.instance_version_history](public.instance_version_history.md) | 5 |  | BASE TABLE |
 | [public.invalid_auth_token](public.invalid_auth_token.md) | 2 |  | BASE TABLE |
+| [public.lease](public.lease.md) | 11 |  | BASE TABLE |
+| [public.lease_kind](public.lease_kind.md) | 7 |  | BASE TABLE |
+| [public.lease_session](public.lease_session.md) | 7 |  | BASE TABLE |
 | [public.mcp_registry_server](public.mcp_registry_server.md) | 7 |  | BASE TABLE |
 | [public.migration_finding](public.migration_finding.md) | 10 |  | BASE TABLE |
 | [public.migration_finding_sync](public.migration_finding_sync.md) | 3 |  | BASE TABLE |
@@ -148,7 +151,7 @@ Auto-generated from the PostgreSQL migrations in @n8n/db. Do not edit by hand.
 | [public.shared_workflow](public.shared_workflow.md) | 5 |  | BASE TABLE |
 | [public.skill](public.skill.md) | 8 |  | BASE TABLE |
 | [public.skill_file](public.skill_file.md) | 5 |  | BASE TABLE |
-| [public.skill_source](public.skill_source.md) | 13 |  | BASE TABLE |
+| [public.skill_source](public.skill_source.md) | 14 |  | BASE TABLE |
 | [public.skill_source_link](public.skill_source_link.md) | 14 |  | BASE TABLE |
 | [public.skill_version](public.skill_version.md) | 12 |  | BASE TABLE |
 | [public.tag_entity](public.tag_entity.md) | 4 |  | BASE TABLE |
@@ -264,6 +267,7 @@ erDiagram
 "public.agent_workflow_dependency" }o--|| "public.agents" : "FOREIGN KEY (#quot;agentId#quot;) REFERENCES agents(id) ON DELETE CASCADE"
 "public.agents" }o--o| "public.user" : "FOREIGN KEY (#quot;identityId#quot;) REFERENCES #quot;user#quot;(id) ON DELETE SET NULL"
 "public.agents" }o--o| "public.project" : "FOREIGN KEY (#quot;projectId#quot;) REFERENCES project(id) ON DELETE CASCADE"
+"public.agents" }o--o| "public.folder" : "FOREIGN KEY (#quot;parentFolderId#quot;) REFERENCES folder(id) ON DELETE RESTRICT"
 "public.agents" }o--o| "public.agent_history" : "FOREIGN KEY (#quot;activeVersionId#quot;) REFERENCES agent_history(#quot;versionId#quot;) ON DELETE SET NULL"
 "public.agents_memory_entries" }o--|| "public.agents" : "FOREIGN KEY (#quot;agentId#quot;) REFERENCES agents(id) ON DELETE CASCADE"
 "public.agents_memory_entries" }o--|| "public.agents_resources" : "FOREIGN KEY (#quot;resourceId#quot;) REFERENCES agents_resources(id) ON DELETE CASCADE"
@@ -370,6 +374,8 @@ erDiagram
 "public.instance_ai_thread_tabs" }o--|| "public.instance_ai_threads" : "FOREIGN KEY (#quot;threadId#quot;) REFERENCES instance_ai_threads(id) ON DELETE CASCADE"
 "public.instance_ai_threads" }o--|| "public.project" : "FOREIGN KEY (#quot;projectId#quot;) REFERENCES project(id) ON DELETE CASCADE"
 "public.instance_credential_assignment" }o--|| "public.credentials_entity" : "FOREIGN KEY (#quot;credentialId#quot;) REFERENCES credentials_entity(id) ON DELETE RESTRICT"
+"public.lease" }o--|| "public.lease_kind" : "FOREIGN KEY (#quot;leaseKind#quot;) REFERENCES lease_kind(kind) ON DELETE CASCADE"
+"public.lease_session" }o--|| "public.lease_kind" : "FOREIGN KEY (#quot;leaseKind#quot;) REFERENCES lease_kind(kind) ON DELETE CASCADE"
 "public.migration_finding" }o--|| "public.workflow_entity" : "FOREIGN KEY (#quot;workflowId#quot;) REFERENCES workflow_entity(id) ON DELETE CASCADE"
 "public.migration_workflow_owner" }o--o| "public.user" : "FOREIGN KEY (#quot;userId#quot;) REFERENCES #quot;user#quot;(id) ON DELETE SET NULL"
 "public.migration_workflow_owner" }o--o| "public.user" : "FOREIGN KEY (#quot;assignedById#quot;) REFERENCES #quot;user#quot;(id) ON DELETE SET NULL"
@@ -842,6 +848,7 @@ erDiagram
   json integrations
   boolean isArchived
   varchar_128_ name
+  varchar_36_ parentFolderId FK
   varchar_255_ projectId FK
   integer publicationRevision
   integer revision
@@ -1300,6 +1307,7 @@ erDiagram
   varchar_128_ name
   varchar_36_ parentFolderId FK
   varchar_36_ projectId FK
+  varchar_16_ resourceType
   timestamp_3__with_time_zone updatedAt
 }
 "public.folder_tag" {
@@ -1539,6 +1547,37 @@ erDiagram
 "public.invalid_auth_token" {
   timestamp_3__with_time_zone expiresAt
   varchar_512_ token
+}
+"public.lease" {
+  timestamp_3__with_time_zone claimedAt
+  timestamp_3__with_time_zone createdAt
+  json data
+  varchar_64_ dataHash
+  bigint fencingToken
+  varchar_255_ key
+  varchar_24_ leaseKind FK
+  uuid leaseSessionId
+  timestamp_3__with_time_zone readyAt
+  timestamp_3__with_time_zone revokedAt
+  timestamp_3__with_time_zone updatedAt
+}
+"public.lease_kind" {
+  timestamp_3__with_time_zone createdAt
+  bigint fencingTokenCounter
+  varchar_24_ kind
+  timestamp_3__with_time_zone lastFullSyncAt
+  timestamp_3__with_time_zone syncLockExpiresAt
+  uuid syncLockRoundId
+  timestamp_3__with_time_zone updatedAt
+}
+"public.lease_session" {
+  uuid bootId
+  timestamp_3__with_time_zone createdAt
+  timestamp_3__with_time_zone expiresAt
+  varchar_255_ hostId
+  uuid id
+  integer leaseDurationSeconds
+  varchar_24_ leaseKind FK
 }
 "public.mcp_registry_server" {
   timestamp_3__with_time_zone createdAt
@@ -1913,6 +1952,7 @@ erDiagram
   timestamp_3__with_time_zone createdAt
   uuid createdById FK
   varchar_36_ credentialId FK
+  boolean credentialRequired
   uuid id
   varchar_255_ identityKey
   timestamp_3__with_time_zone lastCheckedAt

@@ -1,5 +1,9 @@
 import type { InstanceAiEventLifecycle } from './instance-ai-event-lifecycle';
-import { instanceAiApprovalDetailsSchema } from './instance-ai-approval.schema';
+import {
+	autoApprovalPayloadSchema,
+	instanceAiApprovalDetailsSchema,
+} from './instance-ai-approval.schema';
+import type { InstanceAiAutoApprovalDecider } from './instance-ai-approval.schema';
 import { WorkflowExecuteModeList } from 'n8n-workflow';
 import { z } from 'zod';
 
@@ -277,6 +281,7 @@ export const instanceAiEventTypeSchema = z.enum([
 	'tool-error',
 	'tool-interrupted',
 	'confirmation-request',
+	'auto-approval',
 	'instance-context',
 	'skill-update',
 	'tasks-update',
@@ -349,6 +354,7 @@ export const instanceAiAgentKindSchema = z.enum([
 	'data-table',
 	'eval-setup',
 	'agent-builder',
+	'cloud-browser',
 ]);
 export type InstanceAiAgentKind = z.infer<typeof instanceAiAgentKindSchema>;
 
@@ -785,6 +791,8 @@ export type InstanceGatewayResourceDecision = z.infer<typeof instanceGatewayReso
 
 export const gatewayConfirmationRequiredWirePayloadSchema = z.object({
 	toolGroup: z.string(),
+	/** What resource the approval is for: a site to open (`host`) or a credential to save (`credential-write`). */
+	kind: z.enum(['host', 'credential-write']).optional(),
 	resource: z.string(),
 	description: z.string(),
 	/** Available decision options. */
@@ -1352,6 +1360,8 @@ const eventBase = {
 	/** Epoch ms stamped once at publish — replays (SSE reconnect, history
 	 *  folds) use it to reconstruct real timing instead of "now". */
 	ts: z.number().optional(),
+	/** Set on events of an agent that outlives the turn that started it, such as a cloud browser task. */
+	detachedFromTurn: z.boolean().optional(),
 };
 
 export const instanceAiEventSchema = z.discriminatedUnion('type', [
@@ -1400,6 +1410,7 @@ export const instanceAiEventSchema = z.discriminatedUnion('type', [
 		...eventBase,
 		payload: confirmationRequestPayloadSchema,
 	}),
+	z.object({ type: z.literal('auto-approval'), ...eventBase, payload: autoApprovalPayloadSchema }),
 	z.object({
 		type: z.literal('instance-context'),
 		...eventBase,
@@ -1448,6 +1459,7 @@ export type InstanceAiConfirmationRequestEvent = Extract<
 	InstanceAiEvent,
 	{ type: 'confirmation-request' }
 >;
+export type InstanceAiAutoApprovalEvent = Extract<InstanceAiEvent, { type: 'auto-approval' }>;
 export type InstanceAiTasksUpdateEvent = Extract<InstanceAiEvent, { type: 'tasks-update' }>;
 export type InstanceAiSetupItemsEvent = Extract<InstanceAiEvent, { type: 'setup-items' }>;
 export type InstanceAiPreferencesAppliedEvent = Extract<
@@ -1761,14 +1773,6 @@ export type InstanceAiThreadArtifactsContext = z.infer<
 	typeof instanceAiThreadArtifactsContextSchema
 >;
 
-/**
- * Build style for a run. `progressive` makes the agent build a minimal working
- * slice first, gate increments on real executions, and extend on actual
- * execution data. `default` uses the standard building policy.
- */
-export const instanceAiBuildModeSchema = z.enum(['default', 'progressive']);
-export type InstanceAiBuildMode = z.infer<typeof instanceAiBuildModeSchema>;
-
 export const instanceAiPromptConfigurationSchema = z.object({
 	version: z.string(),
 	systemPromptVersion: z.string(),
@@ -1798,9 +1802,7 @@ export class InstanceAiSendMessageRequest extends Z.class({
 	 *  user. Its device support is only visible there. Omit to advertise none.
 	 *  The backend still applies the admin switch, so this can only narrow. */
 	browserUseAvailable: z.boolean().optional(),
-	/** Explicit override for evals. Omit to use the backend experiment assignment. */
-	mode: instanceAiBuildModeSchema.optional(),
-	/** Pin a published prompt profile. Takes precedence over mode. */
+	/** Pin a published prompt profile. Omit to use the backend experiment assignment. */
 	promptVersion: instanceAiPromptVersionSchema.optional(),
 	/** Eval override: observer threshold for THIS thread, so driving compaction
 	 *  for one case does not lower it for every conversation on the instance. */
@@ -1971,6 +1973,7 @@ export class InstanceAiEnsureThreadRequest extends Z.class({
  * there first, and binds it to the thread in the same request.
  */
 export class InstanceAiPersistPendingAgentRequest extends Z.class({
+	parentFolderId: z.string().min(1).max(36).nullable().optional(),
 	projectId: z.string().min(1),
 	agentId: clientMintedAgentIdSchema,
 	name: z.string().min(1),
@@ -2068,6 +2071,8 @@ export interface InstanceAiToolCallState {
 		| 'default';
 	confirmation?: InstanceAiConfirmation;
 	confirmationStatus?: 'pending' | 'approved' | 'denied';
+	/** Set when Auto mode ran the call without showing its approval card. */
+	autoApproval?: { message: string; reason: string; decidedBy: InstanceAiAutoApprovalDecider };
 	/** Set by a `preference-card` fact; absent means the tool result is the state. */
 	preferenceCard?: {
 		state: 'edited' | 'undone';
@@ -2106,6 +2111,8 @@ export interface InstanceAiAgentNode {
 	tools?: string[];
 	/** Background task ID — present only for background agents. */
 	taskId?: string;
+	/** The agent outlives the run that started it, so the run's end does not end it. */
+	detachedFromTurn?: boolean;
 	/** Agent kind for card dispatch (builder, data-table, eval-setup). */
 	kind?: InstanceAiAgentKind;
 	/** Current activity for the Agent card. */
@@ -2340,6 +2347,8 @@ export interface InstanceAiThreadStatusResponse {
 		runId?: string;
 		/** The messageGroupId this task was spawned under. */
 		messageGroupId?: string;
+		/** The task keeps running after its turn has ended, and the turn does not stay live for it. */
+		detachedFromTurn?: boolean;
 	}>;
 	/** In-flight observational-memory jobs (observer/reflector). Used by eval harnesses. */
 	memoryTasks?: InstanceAiMemoryTaskSnapshot[];
@@ -2559,6 +2568,7 @@ export interface InstanceAiAdminSettingsResponse {
 	n8nSandboxServiceUrl: string | null;
 	envManaged: InstanceAiEnvManagedFields;
 	browserUseEnabled: boolean;
+	cloudBrowserEnabled: boolean;
 }
 
 export type InstanceAiComponentSource = 'ui' | 'env' | 'none';
@@ -2670,6 +2680,7 @@ export class InstanceAiAdminSettingsUpdateRequest extends Z.class({
 	searchDisabled: z.boolean().optional(),
 	n8nSandboxServiceUrl: z.string().url().nullable().optional(),
 	browserUseEnabled: z.boolean().optional(),
+	cloudBrowserEnabled: z.boolean().optional(),
 }) {}
 
 export const instanceAiVerificationFailureSchema = z.enum([
@@ -2876,9 +2887,6 @@ export const INSTANCE_AI_CONVERSATION_HISTORY_FLAG = '109_instance_ai_conversati
 
 export const INSTANCE_AI_CONVERSATION_HISTORY_ENABLED_VARIANT = 'variant';
 
-export const INSTANCE_AI_PROGRESSIVE_BUILDING_FLAG = '111_instance_ai_progressive_building';
-export const INSTANCE_AI_PROGRESSIVE_BUILDING_ENABLED_VARIANT = 'variant';
-
 /**
  * Selects the concise reply style (`concise@1`) for Instance AI runs. Off by
  * default. `N8N_INSTANCE_AI_PROMPT_VERSION` pins a profile for the whole
@@ -2886,6 +2894,13 @@ export const INSTANCE_AI_PROGRESSIVE_BUILDING_ENABLED_VARIANT = 'variant';
  */
 export const INSTANCE_AI_CONCISE_STYLE_FLAG = '124_instance_ai_concise_style';
 export const INSTANCE_AI_CONCISE_STYLE_ENABLED_VARIANT = 'variant';
+
+/**
+ * Rollout flag for approval modes: the Manual and Auto selector in the chat.
+ * Off means every user stays in Manual. On means a user without a saved
+ * choice gets Auto.
+ */
+export const INSTANCE_AI_APPROVAL_MODES_FLAG = '144_instance_ai_approval_modes';
 
 export const INSTANCE_AI_SETUP_PANEL_FLAG = '118_instance_ai_setup_overhaul';
 export const INSTANCE_AI_SETUP_PANEL_ENABLED_VARIANT = 'variant';
@@ -2905,6 +2920,9 @@ export const INSTANCE_AI_FOLDER_EXPLORATION_FLAG = '110_instance_ai_folder_explo
 
 /** Instance rollout gate for shared activity recording and retrieval. */
 export const INSTANCE_ACTIVITY_CONTEXT_FLAG = '114_instance_activity_context';
+
+/** Rollout gate for cloud browser use in the n8n Assistant. */
+export const INSTANCE_AI_CLOUD_BROWSER_FLAG = '129_instance_ai_cloud_browser';
 
 /**
  * `110_instance_ai_folder_exploration` is multivariate — the enabled arm is a
@@ -2953,6 +2971,8 @@ export interface InstanceAiEvalExecutionResult {
 
 export class InstanceAiEvalExecutionRequest extends Z.class({
 	scenarioHints: z.string().max(2000).optional(),
+	/** What the scenario tests. Used only to pick the start trigger when the workflow has several. */
+	scenarioDescription: z.string().optional(),
 	/**
 	 * AI root nodes (Agent, Chain) that should stay pinned — opt-out from the
 	 * default-on wire-server interception path. Useful when the caller wants
@@ -3121,7 +3141,6 @@ export class InstanceAiAssistantEvalCreateThreadRequest extends Z.class({
  * overrides of the thread, so an omitted field clears its override.
  */
 export class InstanceAiAssistantEvalThreadOverridesRequest extends Z.class({
-	mode: instanceAiBuildModeSchema.optional(),
 	promptVersion: instanceAiPromptVersionSchema.optional(),
 }) {}
 
