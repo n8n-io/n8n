@@ -8,24 +8,14 @@ const core = core_lib.core;
 const logfmt = core_lib.logfmt;
 const Arena = core_lib.arena.Arena;
 const sys = @import("sys.zig");
+const logoff = @import("logoff.zig");
 
 /// How long a due schedule fire waits when the outbox is full.
 const schedule_retry_ms: i64 = 200;
 
 /// Where log bytes go. The server writes files; the simulation keeps bytes
 /// in memory and can drop the unsynced tail to model a crash.
-pub const LogSink = struct {
-    ctx: *anyopaque,
-    appendFn: *const fn (ctx: *anyopaque, bytes: []const u8) anyerror!void,
-    syncFn: *const fn (ctx: *anyopaque) anyerror!void,
-
-    pub fn append(l: LogSink, bytes: []const u8) !void {
-        return l.appendFn(l.ctx, bytes);
-    }
-    pub fn sync(l: LogSink) !void {
-        return l.syncFn(l.ctx);
-    }
-};
+pub const LogSink = logoff.Sink;
 
 /// Snapshots of evicted executions, in one buffer reserved at startup.
 /// The core keeps the bytes of parked snapshots (each rounded up to 8)
@@ -123,7 +113,8 @@ pub const SnapStore = struct {
 pub const Tick = struct {
     actions: []const core.Action,
     out: core.Output,
-    /// The input batch is durable: it was synced in this tick.
+    /// The input batch is durable: it was synced in this tick. With the log
+    /// offload it is false: the writer syncs later (`logoff.Offload.poll`).
     synced: bool,
     log_bytes: usize,
     /// The input events this batch took: a prefix. The rest wait for the
@@ -145,6 +136,10 @@ pub const Shard = struct {
     st: core.State,
     scratch: Arena,
     log: ?LogSink,
+    /// The log offload (docs/log-offload.md), when it is on: records go to
+    /// its ring, and a sync is a request to its writer. Null: the shard
+    /// writes and syncs the log itself.
+    off: ?*logoff.Offload = null,
     log_buf: []u8,
     log_events: []core.Event,
     batch_events: std.ArrayList(core.Event),
@@ -291,7 +286,12 @@ pub const Shard = struct {
         if (sh.log != null and !sh.replaying) {
             log_bytes = try sh.writeLog(now_ms, evs);
             if (log_bytes > 0) sh.unsynced = true;
-            if (sh.needsSync()) {
+            const need = sh.syncNeed();
+            if (sh.off) |o| {
+                // The outputs wait in the hold queue, not the shard.
+                o.endRecord(need);
+                if (need != .no) sh.unsynced = false;
+            } else if (need != .no) {
                 try sh.syncLog();
                 synced = true;
             }
@@ -333,18 +333,19 @@ pub const Shard = struct {
         if (sh.evicted(id)) sh.addRestore(id);
     }
 
-    fn needsSync(sh: *const Shard) bool {
+    fn syncNeed(sh: *const Shard) logoff.SyncNeed {
         // A schedule fire is durable before any of its effects go out:
         // after a crash the slot neither fires twice nor is lost.
         for (sh.batch_events.items, 0..) |ev, i| {
-            if (ev.kind == .schedule and sh.st.log_modes[i] != .skip) return true;
+            if (ev.kind == .schedule and sh.st.log_modes[i] != .skip) return .all;
         }
+        var need: logoff.SyncNeed = .no;
         for (sh.st.emitted()) |a| {
-            if (a.durability == .sync and (a.kind == .dispatch or a.kind == .reply or a.kind == .finished or a.kind == .attention)) return true;
+            if (a.durability == .sync and (a.kind == .dispatch or a.kind == .reply or a.kind == .finished or a.kind == .attention)) need = .tier;
             // A block of `none`-tier ids is durable before any of its ids go out.
-            if (a.kind == .reserve_none) return true;
+            if (a.kind == .reserve_none) return .all;
         }
-        return false;
+        return need;
     }
 
     fn writeLog(sh: *Shard, now_ms: i64, evs: []const core.Event) !usize {
@@ -380,15 +381,20 @@ pub const Shard = struct {
         if (n == 0) return 0;
         const size = logfmt.encodedSize(sh.log_events[0..n]);
         if (size > sh.log_buf.len) return error.BatchTooLarge;
-        const rec = logfmt.encode(sh.log_buf, sh.batch_seq, now_ms, sh.log_events[0..n]);
+        // With the offload the record is encoded in the ring when the ring
+        // has room in one piece: the only copy of its bytes on this thread.
+        const in_ring: ?[]u8 = if (sh.off) |o| o.reserve(size) else null;
+        const rec = logfmt.encode(in_ring orelse sh.log_buf, sh.batch_seq, now_ms, sh.log_events[0..n]);
         std.debug.assert(rec.len == size);
         if (mem.enabled) {
             mem.wrSlice(sh.st.cfg.probe, .event_buf, .shell_buf, sh.log_events[0..n]);
             mem.wrSlice(sh.st.cfg.probe, .log_buf, .shell_buf, rec);
             mem.scan(sh.st.cfg.probe, .byte_copy, rec.len);
-            mem.syscall(sh.st.cfg.probe, .log_write);
+            if (sh.off == null) mem.syscall(sh.st.cfg.probe, .log_write);
         }
-        try sh.log.?.append(rec);
+        if (sh.off) |o| {
+            if (in_ring != null) o.commit(size) else try o.append(rec);
+        } else try sh.log.?.append(rec);
         sh.counters.log_bytes += rec.len;
         sh.counters.log_appends += 1;
         return rec.len;
@@ -396,6 +402,12 @@ pub const Shard = struct {
 
     pub fn syncLog(sh: *Shard) !void {
         if (!sh.unsynced) return;
+        if (sh.off) |o| {
+            // The writer syncs; the shard does not wait.
+            o.requestSync();
+            sh.unsynced = false;
+            return;
+        }
         try sh.log.?.sync();
         if (mem.enabled) mem.syscall(sh.st.cfg.probe, .log_sync);
         sh.counters.syncs += 1;

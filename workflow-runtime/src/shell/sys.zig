@@ -402,6 +402,62 @@ pub fn close(fd: c_int) void {
     _ = c.close(fd);
 }
 
+/// A wake-up from one thread to another: a pipe with two non-blocking
+/// ends. The reader can put `r` in a poller. A full pipe drops a `notify`,
+/// which is correct: the reader has a wake-up that it did not read yet.
+pub const Wake = struct {
+    r: c_int,
+    w: c_int,
+
+    pub fn init() error{Pipe}!Wake {
+        var fds: [2]c_int = .{ -1, -1 };
+        if (c.pipe(&fds) != 0) return error.Pipe;
+        setNonBlocking(fds[0]);
+        setNonBlocking(fds[1]);
+        std.debug.assert(fds[0] >= 0 and fds[1] >= 0);
+        return .{ .r = fds[0], .w = fds[1] };
+    }
+
+    pub fn deinit(k: Wake) void {
+        close(k.r);
+        close(k.w);
+    }
+
+    /// True when the byte went into the pipe.
+    pub fn notify(k: Wake) bool {
+        const one = [1]u8{1};
+        return c.write(k.w, &one, 1) == 1;
+    }
+
+    /// Read the wake-ups that wait. Returns their count (at most 256).
+    pub fn drain(k: Wake) usize {
+        var buf: [64]u8 = @splat(0);
+        var total: usize = 0;
+        for (0..4) |_| {
+            const n = c.read(k.r, &buf, buf.len);
+            if (n <= 0) break;
+            total += @intCast(n);
+            if (n < buf.len) break;
+        }
+        return total;
+    }
+
+    /// Block until a wake-up comes or `timeout_ms` passes, then read it.
+    pub fn wait(k: Wake, timeout_ms: i32) usize {
+        std.debug.assert(timeout_ms >= 0);
+        var p = [1]c.pollfd{.{ .fd = k.r, .events = c.POLL.IN, .revents = 0 }};
+        if (c.poll(&p, 1, timeout_ms) <= 0) return 0;
+        return k.drain();
+    }
+};
+
+/// The CPU time that the calling thread used, in nanoseconds.
+pub fn threadCpuNs() u64 {
+    var ts: c.timespec = .{ .sec = 0, .nsec = 0 };
+    if (c.clock_gettime(c.CLOCK.THREAD_CPUTIME_ID, &ts) != 0) return 0;
+    return @as(u64, @intCast(ts.sec)) * 1_000_000_000 + @as(u64, @intCast(ts.nsec));
+}
+
 // ---- files of the binary data store (blob_store.zig) ------------------------
 
 /// One operation on the files of the binary data store, as data. The store

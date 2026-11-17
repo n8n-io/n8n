@@ -40,7 +40,7 @@ pub const Report = struct {
 };
 
 /// The in-memory log. `synced` marks what survives a crash.
-const MemLog = struct {
+pub const MemLog = struct {
     bytes: std.ArrayList(u8) = .empty,
     synced: usize = 0,
     gpa: std.mem.Allocator,
@@ -53,10 +53,10 @@ const MemLog = struct {
         const l: *MemLog = @ptrCast(@alignCast(ctx));
         l.synced = l.bytes.items.len;
     }
-    fn sink(l: *MemLog) shard_mod.LogSink {
+    pub fn sink(l: *MemLog) shard_mod.LogSink {
         return .{ .ctx = l, .appendFn = append, .syncFn = sync };
     }
-    fn crash(l: *MemLog) void {
+    pub fn crash(l: *MemLog) void {
         l.bytes.shrinkRetainingCapacity(l.synced);
     }
 };
