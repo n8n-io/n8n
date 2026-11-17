@@ -162,7 +162,6 @@ function toSkillListPublicItem(skill: SkillListItem) {
 		description: skill.description,
 		scope: skill.scope,
 		projectId: skill.projectId,
-		source: skill.source,
 		latestVersion: skill.latestVersion,
 		availableToAssistant: skill.availableToAssistant,
 		availableToMCP: skill.availableToMCP,

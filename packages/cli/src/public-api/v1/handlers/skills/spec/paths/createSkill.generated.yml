@@ -27,10 +27,6 @@ requestBody:
           skill:
             type: object
             properties:
-              name:
-                type: string
-                minLength: 1
-                maxLength: 128
               description:
                 type: string
                 minLength: 1
@@ -56,10 +52,14 @@ requestBody:
                     - content
                   additionalProperties: false
                 maxItems: 20
+              name:
+                type: string
+                minLength: 1
+                maxLength: 128
             required:
-              - name
               - description
               - instructions
+              - name
             additionalProperties: false
           availableToAssistant:
             type: boolean

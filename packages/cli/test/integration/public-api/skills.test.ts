@@ -3,7 +3,6 @@ import { createTeamProject, linkUserToProject, testModules } from '@n8n/backend-
 import type { Project, User } from '@n8n/db';
 import { ProjectRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
-import type { ApiKeyScope } from '@n8n/permissions';
 
 import {
 	createSkill,
@@ -38,6 +37,7 @@ const uiOnlyFields = [
 	'syncState',
 	'syncedFrom',
 	'sourceId',
+	'source',
 ];
 
 let owner: User;
@@ -84,13 +84,7 @@ describe('authentication and gates', () => {
 	test.each(routes)(
 		'$method $path answers 403 when the API key lacks $scope',
 		async ({ method, path, scope }) => {
-			const otherScopes: ApiKeyScope[] = [
-				'skill:list',
-				'skill:read',
-				'skill:create',
-				'skill:update',
-				'skill:delete',
-			].filter((candidate): candidate is ApiKeyScope => candidate !== scope);
+			const otherScopes = routes.map((route) => route.scope).filter((other) => other !== scope);
 			const user = await createOwnerWithApiKey({ scopes: otherScopes });
 
 			const response = await api(user)[method](path).send({});
@@ -172,7 +166,6 @@ describe('GET /skills', () => {
 					description: 'Write in our voice',
 					scope: 'project',
 					projectId: teamProject.id,
-					source: 'ui',
 					latestVersion: 1,
 					availableToAssistant: false,
 					availableToMCP: false,
@@ -221,8 +214,8 @@ describe('GET /skills', () => {
 		expect(pagedIds).toEqual(ids.sort());
 	});
 
-	test('answers 400 for an invalid limit', async () => {
-		await api(owner).get('/skills?limit=-1').expect(400);
+	test.each(['limit=-1', 'projectId='])('answers 400 for %s', async (query) => {
+		await api(owner).get(`/skills?${query}`).expect(400);
 	});
 });
 
@@ -243,7 +236,6 @@ describe('GET /skills/:skillId', () => {
 			references: [{ path: 'references/style.md', content: 'Short words.' }],
 			scope: 'project',
 			projectId: teamProject.id,
-			source: 'ui',
 			latestVersion: 1,
 			availableToAssistant: false,
 			availableToMCP: false,
@@ -322,6 +314,13 @@ describe('POST /skills', () => {
 		['with an unknown field', { scope: 'instance', skill: skillContent, method: 'upload' }],
 		['with an unknown scope', { scope: 'global', skill: skillContent }],
 		['for a project skill without a project', { scope: 'project', skill: skillContent }],
+		[
+			'with a reference outside references/',
+			{
+				scope: 'instance',
+				skill: { ...skillContent, references: [{ path: '../secret.md', content: 'x' }] },
+			},
+		],
 	])('answers 400 %s', async (_case, body) => {
 		await api(owner).post('/skills').send(body).expect(400);
 	});
@@ -351,6 +350,22 @@ describe('PATCH /skills/:skillId', () => {
 			version: 2,
 			instructions: 'Use plain words.',
 		});
+	});
+
+	test('keeps the references that an update leaves out', async () => {
+		const references = [{ path: 'references/style.md', content: 'Short words.' }];
+		const created = await api(owner)
+			.post('/skills')
+			.send({ scope: 'instance', skill: { ...skillContent, references } })
+			.expect(201);
+		expect(created.body.references).toEqual(references);
+
+		const response = await api(owner)
+			.patch(`/skills/${created.body.id}`)
+			.send({ baseSkillHash: created.body.skillHash, instructions: 'Use plain words.' })
+			.expect(200);
+
+		expect(response.body).toMatchObject({ instructions: 'Use plain words.', references });
 	});
 
 	test('moves a project skill to the instance', async () => {

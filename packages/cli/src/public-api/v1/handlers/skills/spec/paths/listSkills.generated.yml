@@ -43,8 +43,6 @@ responses:
                   projectId:
                     type: string
                     nullable: true
-                  source:
-                    type: string
                   latestVersion:
                     type: number
                   availableToAssistant:
@@ -61,7 +59,6 @@ responses:
                   - description
                   - scope
                   - projectId
-                  - source
                   - latestVersion
                   - availableToAssistant
                   - availableToMCP

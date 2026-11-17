@@ -21,9 +21,8 @@ requestBody:
       schema:
         type: object
         properties:
-          baseSkillHash:
-            type: string
-            minLength: 1
+          availableToAssistant:
+            type: boolean
           name:
             type: string
             minLength: 1
@@ -53,6 +52,9 @@ requestBody:
                 - content
               additionalProperties: false
             maxItems: 20
+          baseSkillHash:
+            type: string
+            minLength: 1
           scope:
             type: string
             enum:
@@ -61,8 +63,6 @@ requestBody:
           projectId:
             type: string
             maxLength: 36
-          availableToAssistant:
-            type: boolean
           availableToMCP:
             type: boolean
         required:

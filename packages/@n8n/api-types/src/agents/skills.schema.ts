@@ -297,40 +297,20 @@ export class SaveSkillDto extends Z.class({
 	availableToMCP: z.boolean().optional(),
 }) {}
 
-const skillContentPublicSchema = z
-	.object({
-		name: skillNameSchema,
-		description: agentSkillShape.description,
-		instructions: agentSkillShape.instructions,
-		references: agentSkillShape.references,
-	})
-	.strict();
-
 export class CreateSkillPublicDto extends Z.class(
 	{
 		scope: skillScopeSchema,
 		projectId: z.string().max(36).optional(),
-		skill: skillContentPublicSchema,
+		skill: agentSkillSchema
+			.pick({ description: true, instructions: true, references: true })
+			.extend({ name: skillNameSchema }),
 		availableToAssistant: z.boolean().optional(),
 		availableToMCP: z.boolean().optional(),
 	},
 	{ strict: true },
 ) {}
 
-export class UpdateSkillPublicDto extends Z.class(
-	{
-		baseSkillHash: z.string().min(1),
-		name: skillNameSchema.optional(),
-		description: agentSkillShape.description.optional(),
-		instructions: agentSkillShape.instructions.optional(),
-		references: agentSkillShape.references.optional(),
-		scope: skillScopeSchema.optional(),
-		projectId: z.string().max(36).optional(),
-		availableToAssistant: z.boolean().optional(),
-		availableToMCP: z.boolean().optional(),
-	},
-	{ strict: true },
-) {}
+export class UpdateSkillPublicDto extends Z.class(SaveSkillDto.schema.shape, { strict: true }) {}
 
 export class ListSkillsPublicQueryDto extends Z.class({
 	cursor: z.string().optional(),
@@ -344,7 +324,6 @@ const skillListPublicItemShape = {
 	description: z.string(),
 	scope: skillScopeSchema,
 	projectId: z.string().nullable(),
-	source: z.string(),
 	latestVersion: z.number(),
 	availableToAssistant: z.boolean(),
 	availableToMCP: z.boolean(),
