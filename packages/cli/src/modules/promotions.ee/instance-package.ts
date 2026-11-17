@@ -1,4 +1,5 @@
-import type { User } from '@n8n/db';
+import { SharedCredentialsRepository, type User } from '@n8n/db';
+import { Container } from '@n8n/di';
 
 import { HashingPackageWriter } from '@/modules/n8n-packages/io/hashing-package-writer';
 import type { N8nPackagesService } from '@/modules/n8n-packages/n8n-packages.service';
@@ -53,12 +54,31 @@ export function instancePromotionExportRequest({
 	};
 }
 
+/**
+ * The credentials that the projects own and that a package can hold. A placeholder is never
+ * content, and an instance credential is not promoted.
+ */
+async function ownedProjectCredentialIds(projectIds: readonly string[]): Promise<string[]> {
+	if (projectIds.length === 0) return [];
+	const owned = await Container.get(SharedCredentialsRepository).findOwnedCredentialsByProjects([
+		...projectIds,
+	]);
+	return owned
+		.filter(({ usageScope, isPlaceholder }) => usageScope !== 'instance' && !isPlaceholder)
+		.map(({ id }) => id);
+}
+
+/**
+ * The export holds each credential of the projects, also one that no workflow of the projects
+ * uses: the owner promotes or applies it for the projects that use it.
+ */
 export async function exportInstancePackage(
 	packagesService: N8nPackagesService,
 	user: User,
 	projectIds: string[],
 	{ keepContent }: { keepContent?: (path: string) => boolean } = {},
 ): Promise<InstancePackage> {
+	const credentialIds = await ownedProjectCredentialIds(projectIds);
 	const writer = new HashingPackageWriter();
 	const contents = new Map<string, string>();
 	const { manifest } = await packagesService.exportPackageToWriter(
@@ -71,6 +91,7 @@ export async function exportInstancePackage(
 			includeVariableValues: true,
 			versionPolicy: ExportVersionPolicy.Latest,
 			dependencyPolicy: ExportDependencyPolicy.ReferenceOnly,
+			...(credentialIds.length > 0 ? { credentialIds } : {}),
 		},
 		{
 			writeDirectory: (path) => writer.writeDirectory(path),

@@ -78,8 +78,9 @@ export const promotionResourceSchema = z
 				'How the operation changes the resource. `unchanged` resources give context, such as a parent folder or a workflow that uses a changed credential.',
 		}),
 		/**
-		 * Whether the user can select the resource directly: a workflow, or a project or folder that
-		 * is added or modified. Dependencies come with the workflows that use them.
+		 * Whether the user can select the resource directly: a workflow, a project or folder that
+		 * is added or modified, or a changed credential of the project. Other dependencies come with
+		 * the workflows that use them.
 		 */
 		selectable: z.boolean().openapi({
 			description:
@@ -98,6 +99,11 @@ export const promotionResourceSchema = z
 		 * the user cannot access the project.
 		 */
 		movedFromProject: promotionInstanceProjectSchema.optional(),
+		/**
+		 * Promote only, on a credential of the project: the branch already references the credential
+		 * and does not hold it, so a workflow of another project waits for it.
+		 */
+		neededByBranch: z.boolean().optional(),
 		revision: revisionSchema,
 	})
 	.openapi('PromotionResource');

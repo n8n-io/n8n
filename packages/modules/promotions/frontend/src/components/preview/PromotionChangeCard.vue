@@ -46,8 +46,10 @@ const props = withDefaults(
 		diffActive?: boolean;
 		/** False for a list that users only read. */
 		selectable?: boolean;
+		/** True when a gap of the dependency report names this resource. */
+		gap?: boolean;
 	}>(),
-	{ selectable: true },
+	{ selectable: true, gap: false },
 );
 
 const emit = defineEmits<{
@@ -57,6 +59,7 @@ const emit = defineEmits<{
 	refresh: [];
 	activateDiff: [];
 	deactivateDiff: [];
+	viewDependencies: [];
 }>();
 
 const i18n = useI18n();
@@ -95,8 +98,16 @@ const footer = computed((): Footer | undefined => {
 	const named = (keys: readonly ResourceKey[]) => keys.map((key) => ({ key, name: nameOf(key) }));
 	if (users.length > 0)
 		return { keypath: 'promotions.preview.card.usedBy', workflows: named(users) };
-	if (callers.length > 0)
-		return { keypath: 'promotions.preview.card.calledBy', workflows: named(callers) };
+	// A reference that the operation does not carry: a workflow is called, anything else is used.
+	if (callers.length > 0) {
+		return {
+			keypath:
+				resource.type === 'workflow'
+					? 'promotions.preview.card.calledBy'
+					: 'promotions.preview.card.usedBy',
+			workflows: named(callers),
+		};
+	}
 	return undefined;
 });
 
@@ -193,6 +204,22 @@ const tagNote = computed(() => {
 					>
 						{{ moved }}
 					</N8nCallout>
+					<N8nCallout v-if="gap" theme="warning" slim data-test-id="promotion-preview-card-gap">
+						{{ i18n.baseText(`promotions.preview.card.gap.${direction}`) }}
+						<template #trailingContent>
+							<N8nButton variant="outline" size="small" @click="emit('viewDependencies')">
+								{{ i18n.baseText('promotions.dependencies.summary.view') }}
+							</N8nButton>
+						</template>
+					</N8nCallout>
+					<N8nCallout
+						v-if="resource.neededByBranch"
+						theme="info"
+						slim
+						data-test-id="promotion-preview-card-needed"
+					>
+						{{ i18n.baseText('promotions.preview.card.neededByBranch') }}
+					</N8nCallout>
 					<!-- A workflow diff shows these states in its own area. -->
 					<template v-if="!hasDiff">
 						<N8nCallout v-if="entry?.status === 'missing'" theme="warning" slim>
@@ -226,7 +253,7 @@ const tagNote = computed(() => {
 				</div>
 
 				<N8nText
-					v-if="resource.change === 'unchanged'"
+					v-if="resource.change === 'unchanged' && !gap"
 					step="xs"
 					color="text-light"
 					:class="$style.padded"
@@ -234,11 +261,11 @@ const tagNote = computed(() => {
 					{{ i18n.baseText('promotions.preview.card.noChanges') }}
 				</N8nText>
 				<N8nLoading
-					v-else-if="entry?.status === 'loading' && !hasDiff"
+					v-else-if="resource.change !== 'unchanged' && entry?.status === 'loading' && !hasDiff"
 					:rows="2"
 					:class="$style.padded"
 				/>
-				<template v-else>
+				<template v-else-if="resource.change !== 'unchanged'">
 					<DataTableChangeDetails
 						v-if="dataTable"
 						:class="$style.padded"

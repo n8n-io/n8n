@@ -269,6 +269,23 @@ export function usePromotionOperation(
 			);
 			return;
 		}
+		// Only the route of the environment takes a credential that the user selected directly.
+		// It compares another preview, so the revision of the project page is not sent.
+		if (id !== undefined && request.credentialIds?.length && environmentId?.value) {
+			const { expectedPreviewRevision: _revision, ...withoutRevision } = shared;
+			const result = await promoteEnvironmentSelection(
+				rootStore.publicApiContext,
+				environmentId.value,
+				{
+					projects: [
+						{ projectId: id, workflowIds, folderIds, credentialIds: request.credentialIds },
+					],
+					...withoutRevision,
+				},
+			);
+			await onPromoted(result, [id], confirmedGapIds.length);
+			return;
+		}
 		if (id !== undefined) {
 			const result = await promoteProjectSelection(rootStore.publicApiContext, id, {
 				workflowIds,
@@ -347,6 +364,23 @@ export function usePromotionOperation(
 			const result = (
 				await loadPromotionFixture(fixture.value, 'apply', id ?? origin?.value)
 			).apply(request.confirmations?.confirmedGapIds ?? []);
+			await onApplied(result, false);
+			return;
+		}
+		if (id !== undefined && request.credentialIds?.length) {
+			const { expectedPreviewRevision: _revision, ...withoutRevision } = expected;
+			const result = await applyEnvironmentSelection(context, source.environmentId, {
+				projects: [
+					{
+						projectId: id,
+						workflowIds: request.workflowIds,
+						folderIds: request.folderIds,
+						credentialIds: request.credentialIds,
+					},
+				],
+				...withoutRevision,
+				...(confirmDestructiveChanges ? { confirmDestructiveChanges: true } : {}),
+			});
 			await onApplied(result, false);
 			return;
 		}

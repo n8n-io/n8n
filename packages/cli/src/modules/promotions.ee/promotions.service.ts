@@ -2,6 +2,7 @@ import {
 	parsePromotionRunDetails,
 	promotionRunTypeSchema,
 	type ApplyEnvironmentSelectionRequestDto,
+	type PromotionResource,
 	type ApplyPackageDto,
 	type ApplyPackageResultDto,
 	type ApplySelectionDto,
@@ -959,7 +960,10 @@ export class PromotionsService {
 				user,
 				input,
 				files,
-				selection: this.dependencyGate.toCheckSelection(preview.selection),
+				selection: this.dependencyGate.toCheckSelection(
+					preview.selection,
+					selectableCredentialIds(preview.resources),
+				),
 			},
 			preview.check,
 		);
@@ -2877,4 +2881,21 @@ function blockingCheck(
 			...otherConflicts,
 		],
 	};
+}
+
+/**
+ * The changed credentials that the user can select in a preview, by project. "Select all" holds
+ * them, so the report of the preview counts them as part of the operation.
+ */
+export function selectableCredentialIds(
+	resources: readonly PromotionResource[],
+	defaultProjectId?: string,
+): Map<string, string[]> {
+	const byProject = new Map<string, string[]>();
+	for (const { type, selectable, change, id, projectId = defaultProjectId } of resources) {
+		if (type !== 'credential' || !selectable || change === 'unchanged') continue;
+		if (projectId === undefined) continue;
+		byProject.set(projectId, [...(byProject.get(projectId) ?? []), id]);
+	}
+	return byProject;
 }

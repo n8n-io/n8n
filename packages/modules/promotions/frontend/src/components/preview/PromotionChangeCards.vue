@@ -35,8 +35,10 @@ const props = withDefaults(
 		 * project. The list shows a heading where the group changes.
 		 */
 		headingOf?: (resource: PromotionResource) => string | undefined;
+		/** The rows that a gap of the dependency report names. */
+		gapKeys?: ReadonlySet<ResourceKey>;
 	}>(),
-	{ selectable: true, headingOf: undefined },
+	{ selectable: true, headingOf: undefined, gapKeys: () => new Set<ResourceKey>() },
 );
 
 const activeWorkflow = defineModel<ResourceKey | undefined>('activeWorkflow');
@@ -47,6 +49,7 @@ const emit = defineEmits<{
 	inspect: [key: ResourceKey];
 	toggle: [key: ResourceKey];
 	toggleContainer: [key: ResourceKey];
+	viewDependencies: [];
 }>();
 
 const check = (resource: PromotionResource) =>
@@ -120,6 +123,8 @@ defineExpose({ scrollToCard });
 				:blockers="blockersOf(blockers, resource)"
 				:diff-active="activeWorkflow === resource.key"
 				:selectable="selectable"
+				:gap="gapKeys.has(resource.key)"
+				@view-dependencies="emit('viewDependencies')"
 				@activate-diff="activeWorkflow = resource.key"
 				@deactivate-diff="activeWorkflow = undefined"
 				@inspect="emit('inspect', $event)"

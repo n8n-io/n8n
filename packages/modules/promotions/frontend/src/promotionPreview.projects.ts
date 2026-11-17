@@ -132,6 +132,8 @@ export function toEnvironmentSelection(
 		const entry = entryOf(projectId);
 		if (resource.type === 'workflow') entry.workflowIds.add(resource.id);
 		if (resource.type === 'folder') entry.folderIds.add(resource.id);
+		// A credential of the project that the user selected directly.
+		if (resource.type === 'credential') entry.credentialIds.add(resource.id);
 	}
 	for (const [key, projectId] of extra) {
 		const [type, ...id] = key.split(':');

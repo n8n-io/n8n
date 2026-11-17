@@ -37,8 +37,10 @@ const props = withDefaults(
 		selectable?: boolean;
 		/** Only for the changes view of an environment: the projects that head the groups. */
 		projects?: readonly ChangesProject[];
+		/** The rows that a gap of the dependency report names: referenced, and not in the operation. */
+		gapKeys?: ReadonlySet<ResourceKey>;
 	}>(),
-	{ selectable: true, projects: () => [] },
+	{ selectable: true, projects: () => [], gapKeys: () => new Set<ResourceKey>() },
 );
 
 const emit = defineEmits<{
@@ -62,7 +64,14 @@ function markers(resource: PromotionResource) {
 		resource.type !== 'workflow' && blockers?.some(({ kind }) => kind === 'warning')
 			? i18n.baseText('promotions.preview.marker.warning')
 			: undefined;
-	return { blocked, meta: blocked ? undefined : meta };
+	// A gap or a waiting project matters more than a warning of the check.
+	const gap = props.gapKeys.has(resource.key)
+		? i18n.baseText('promotions.preview.marker.gap')
+		: undefined;
+	const needed = resource.neededByBranch
+		? i18n.baseText('promotions.preview.marker.neededByBranch')
+		: undefined;
+	return { blocked, meta: blocked ? undefined : (gap ?? needed ?? meta), gap: !blocked && !!gap };
 }
 
 /** The header of a project group: its select-all checkbox, and why users cannot select in it. */
@@ -261,7 +270,13 @@ function onToggle(resource: PromotionResource) {
 						<N8nIcon v-if="item.icon" :icon="item.icon" size="small" :class="$style.icon" />
 						<span :class="$style.text">
 							<N8nText step="xs" color="text-dark" :class="$style.label">{{ item.label }}</N8nText>
-							<N8nText v-if="marker.meta" step="2xs" color="text-light" :class="$style.meta">
+							<N8nText
+								v-if="marker.meta"
+								step="2xs"
+								:color="marker.gap ? 'warning' : 'text-light'"
+								:class="$style.meta"
+								data-test-id="promotion-preview-tree-meta"
+							>
 								{{ marker.meta }}
 							</N8nText>
 						</span>

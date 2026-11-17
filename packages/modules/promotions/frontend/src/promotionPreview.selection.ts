@@ -250,6 +250,10 @@ export function selectionCheck(
 			disabled: locked || (!canAdd && check === 'unchecked'),
 		};
 	}
+	// A credential of the project comes with a selected workflow that uses it.
+	if (resource.selectable && inclusion.reasons.get(resource.key)?.kind === 'required') {
+		return { checked: true, indeterminate: false, disabled: true };
+	}
 	if (resource.selectable) {
 		const checked = selected.has(resource.key);
 		return {

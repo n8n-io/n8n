@@ -763,13 +763,20 @@ function selectionOfChanges(
 ): CheckSelection[] {
 	const byProject = new Map<
 		string,
-		Required<Pick<CheckSelection, 'workflowIds' | 'deletedWorkflowIds'>>
+		Required<Pick<CheckSelection, 'workflowIds' | 'deletedWorkflowIds' | 'credentialIds'>>
 	>();
-	for (const { type, change, id, projectId = defaultProjectId } of resources) {
-		if (type !== 'workflow' || change === 'unchanged') continue;
+	for (const { type, change, id, selectable, projectId = defaultProjectId } of resources) {
+		const isCredential = type === 'credential' && selectable;
+		if ((type !== 'workflow' && !isCredential) || change === 'unchanged') continue;
 		if (projectId === undefined || !operableProjectIds.has(projectId)) continue;
-		const entry = byProject.get(projectId) ?? { workflowIds: [], deletedWorkflowIds: [] };
-		(change === 'deleted' ? entry.deletedWorkflowIds : entry.workflowIds).push(id);
+		const entry = byProject.get(projectId) ?? {
+			workflowIds: [],
+			deletedWorkflowIds: [],
+			credentialIds: [],
+		};
+		// A changed credential of the project is a change of its own: "select all" sends it.
+		if (isCredential) entry.credentialIds.push(id);
+		else (change === 'deleted' ? entry.deletedWorkflowIds : entry.workflowIds).push(id);
 		byProject.set(projectId, entry);
 	}
 	return [...byProject].map(([projectId, entry]) => ({ projectId, ...entry }));

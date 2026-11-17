@@ -12,7 +12,12 @@ import type { ResourceKey, SelectionGraph } from './promotionPreview.selection';
  * The request and the blockers of a promote or an apply from the preview page.
  */
 
-export type OperationSelection = { workflowIds: string[]; folderIds: string[] };
+export type OperationSelection = {
+	workflowIds: string[];
+	folderIds: string[];
+	/** The credentials of the project that the user selected directly. */
+	credentialIds?: string[];
+};
 
 /**
  * What users selected. The server adds the project, the dependencies and the folders above, so
@@ -24,12 +29,22 @@ export function toOperationRequest(
 ): OperationSelection {
 	const workflowIds = new Set<string>();
 	const folderIds = new Set<string>();
+	const credentialIds = new Set<string>();
 	for (const key of selected) {
 		const resource = graph.resources.get(key);
 		if (resource?.type === 'workflow') workflowIds.add(resource.id);
 		if (resource?.type === 'folder') folderIds.add(resource.id);
+		// A credential that a selected workflow of the project uses comes with that workflow.
+		const carried = (graph.requiredBy.get(key) ?? []).some((user) => selected.has(user));
+		if (resource?.type === 'credential' && resource.selectable && !carried) {
+			credentialIds.add(resource.id);
+		}
 	}
-	return { workflowIds: [...workflowIds].sort(), folderIds: [...folderIds].sort() };
+	return {
+		workflowIds: [...workflowIds].sort(),
+		folderIds: [...folderIds].sort(),
+		...(credentialIds.size > 0 ? { credentialIds: [...credentialIds].sort() } : {}),
+	};
 }
 
 /**

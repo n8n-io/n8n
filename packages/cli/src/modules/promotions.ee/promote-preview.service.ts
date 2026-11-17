@@ -101,7 +101,7 @@ export class PromotePreviewService {
 					})
 				: compared.resources;
 			const operable = new Set(projects.filter(({ canOperate }) => canOperate).map(({ id }) => id));
-			resources = marked.map((resource) => ({
+			resources = markNeededByBranch(marked, promoteBase).map((resource) => ({
 				...resource,
 				selectable:
 					resource.selectable &&
@@ -211,15 +211,18 @@ export class PromotePreviewService {
 		});
 		// The moved row is on the page of each of the two projects. The Promote from either page
 		// writes both sides.
-		const resources = promoteBase
-			? await this.movesService.markPromoteMoves({
-					user,
-					resources: compared,
-					branch: promoteBase,
-					desired: instance.manifest,
-					projectIds: [projectId],
-				})
-			: compared;
+		const resources = markNeededByBranch(
+			promoteBase
+				? await this.movesService.markPromoteMoves({
+						user,
+						resources: compared,
+						branch: promoteBase,
+						desired: instance.manifest,
+						projectIds: [projectId],
+					})
+				: compared,
+			promoteBase,
+		);
 		const source = { environmentId: branch.environmentId, branchName: branch.branchName };
 		// The caller already checked that the user can promote the project.
 		const dependencyReport = skipDependencyReport
@@ -240,6 +243,28 @@ export class PromotePreviewService {
 			revision: previewRevision({ source, resources }),
 		};
 	}
+}
+
+/**
+ * Marks each credential that the branch already references and does not hold: a workflow of
+ * another project waits for it. The row says nothing about that workflow or its project.
+ */
+function markNeededByBranch(
+	resources: PromotionResource[],
+	branch: PackageManifest | null,
+): PromotionResource[] {
+	const onBranch = new Set((branch?.credentials ?? []).map(({ id }) => id));
+	const needed = new Set(
+		(branch?.requirements?.credentials ?? [])
+			.filter(({ id, usedBy }) => !onBranch.has(id) && usedBy.length > 0)
+			.map(({ id }) => id),
+	);
+	if (needed.size === 0) return resources;
+	return resources.map((resource) =>
+		resource.type === 'credential' && resource.selectable && needed.has(resource.id)
+			? { ...resource, neededByBranch: true }
+			: resource,
+	);
 }
 
 /** The whole branch manifest, across every project of the package. */

@@ -50,7 +50,11 @@ import {
 	usePromotionSelectionReport,
 	type ReportSelection,
 } from '../composables/usePromotionSelectionReport';
-import type { GapTargetRow, PromotionOwnerRequester } from '../promotionDependencies';
+import {
+	targetKey,
+	type GapTargetRow,
+	type PromotionOwnerRequester,
+} from '../promotionDependencies';
 import { loadPromotionFixture, promotionFixtureName } from '../promotionFixtures';
 import { changedProjectsOf, scopePlannedMoves } from '../promotionMoves';
 import { getPromotionEnvironmentDetails, getPromotionResourceDetails } from '../promotions.api';
@@ -188,9 +192,12 @@ function seedSelection(current: SelectionGraph): SelectionSeed | null {
 	// An owner request on a project page: only the requested item is selected.
 	if (!isEnvironment.value) {
 		const requested = isOwnerRequest.value ? inspectedKey.value : undefined;
-		return requested !== undefined && current.resources.get(requested)?.selectable
-			? { selected: [requested], extra: new Map() }
-			: null;
+		if (requested === undefined) return null;
+		// An item that is not a change any more leaves the selection empty.
+		return {
+			selected: current.resources.get(requested)?.selectable ? [requested] : [],
+			extra: new Map(),
+		};
 	}
 	if (origin.value === undefined) return null;
 	const handoff = takePromotionSelectionHandoff(props.direction, origin.value);
@@ -260,6 +267,12 @@ const dependencies = usePromotionDependencies({
 	included: inOperation,
 	direction,
 });
+
+/** The rows that a gap names: a selected workflow references them, and the operation lacks them. */
+const gapKeys = computed(
+	(): ReadonlySet<ResourceKey> =>
+		new Set((dependencies.report.value?.gaps ?? []).map(({ target }) => targetKey(target))),
+);
 
 // The moves between projects of the items in the operation.
 const moveLabels = usePromotionMoveLabels();
@@ -525,11 +538,18 @@ const reportSelection = computed((): ReportSelection | null => {
 	if (!graph.value || !environmentId || fixture.value || wholeInstance.value) return null;
 	if (state.value !== 'ready' || !dependencyReport.value) return null;
 	if (selection.selected.value.size === 0 && selection.extra.value.size === 0) return null;
-	const { projects: selected, workflowIds, folderIds } = request.value;
+	const { projects: selected, workflowIds, folderIds, credentialIds } = request.value;
 	const selectedProjects =
 		props.projectId === undefined
 			? (selected ?? [])
-			: [{ projectId: props.projectId, workflowIds, folderIds }];
+			: [
+					{
+						projectId: props.projectId,
+						workflowIds,
+						folderIds,
+						...(credentialIds?.length ? { credentialIds } : {}),
+					},
+				];
 	if (selectedProjects.length === 0) return null;
 	return {
 		environmentId,
@@ -801,29 +821,6 @@ async function onRefresh() {
 	await refresh();
 }
 
-/**
- * An owner request for an item without a checkbox, such as a credential. Only the changes view
- * can hold it, so the page continues there with that item alone.
- */
-watch(
-	[projectId, inspectedKey, isOwnerRequest],
-	async ([id, key, requested]) => {
-		if (id === undefined || key === undefined || !requested || !key.startsWith('credential:')) {
-			return;
-		}
-		setPromotionSelectionHandoff({
-			direction: props.direction,
-			fromProjectId: id,
-			selected: [],
-			extra: [[key, id]],
-		});
-		await router.replace({
-			name: PROMOTION_ENVIRONMENT_VIEWS[props.direction],
-			query: { from: id, include: key, requested: '1', ...fixtureQuery.value },
-		});
-	},
-	{ immediate: true },
-);
 watch(
 	fixture,
 	async (name) => {
@@ -1009,6 +1006,7 @@ const treeResizer = useResizablePanel({
 						:direction="direction"
 						:blockers="blockers"
 						:projects="projects"
+						:gap-keys="gapKeys"
 						@show-blockers="showBlockers"
 						@toggle="selection.toggle"
 						@toggle-container="selection.toggleAllInside"
@@ -1149,6 +1147,8 @@ const treeResizer = useResizablePanel({
 						:inspected-key="inspectedKey"
 						:blockers="blockers"
 						:heading-of="cardHeading"
+						:gap-keys="gapKeys"
+						@view-dependencies="activeTab = 'dependencies'"
 						@retry="details.retry"
 						@refresh="refresh"
 						@inspect="inspect"

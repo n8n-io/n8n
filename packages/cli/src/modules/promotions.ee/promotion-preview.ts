@@ -153,6 +153,11 @@ export function indexSide(side: PreviewSide, projectId: string): Map<string, Sid
 			if (entry) add(collection, entry, resourceKey(RESOURCE_TYPES[collection], id));
 		}
 	}
+	// A credential of the project is a resource of its own, also when no workflow uses it:
+	// the owner promotes or applies it for the projects that use it.
+	for (const credential of (manifest.credentials ?? []).filter(inProject)) {
+		add('credentials', credential, resourceKey('credential', credential.id));
+	}
 
 	// A workflow reads the project's variable first, so it shadows a global one with the same name.
 	for (const { name } of requirements?.variables ?? []) {
@@ -178,7 +183,11 @@ export function indexProjects(
 	if (!side.manifest) return index;
 	for (const projectId of projectIds) {
 		const scoped = { ...side, manifest: scopeManifestToProject(side.manifest, projectId) };
-		for (const [key, resource] of indexSide(scoped, projectId)) index.set(key, resource);
+		for (const [key, resource] of indexSide(scoped, projectId)) {
+			// The row of the owner project wins over the row of a project that only uses the item.
+			if (resource.parentKey === null && index.has(key)) continue;
+			index.set(key, resource);
+		}
 	}
 	return index;
 }
@@ -244,11 +253,14 @@ function applyOperationRules(
 		before,
 		planned,
 		removals,
+		foreignCredential,
 	}: {
 		direction: PromotionDirection;
 		before: SideResource | undefined;
 		planned: ReadonlyMap<string, PlannedChange> | null;
 		removals?: ReadonlySet<string>;
+		/** A credential of a project that the view does not hold. The operation does not write it. */
+		foreignCredential: boolean;
 	},
 ): PromotionResource | null {
 	const { type, change } = resource;
@@ -269,6 +281,9 @@ function applyOperationRules(
 		if (type !== 'workflow' || removals) return unchanged();
 	}
 
+	// A credential is written only under its owner project. A credential of a project that the
+	// view does not hold is a reference, so the row shows no change.
+	if (foreignCredential) return unchanged();
 	if (direction === 'promote') return resource;
 
 	// The import plan decides for projects, folders, tags, data tables and bound credentials. A tag
@@ -296,10 +311,30 @@ function applyOperationRules(
 	};
 }
 
-/** A workflow, or a project or folder that the operation adds or changes. */
-function isSelectable({ type, change }: PromotionResource): boolean {
+const PROJECTS_PREFIX = `${PACKAGE_ENTITY_LAYOUT.projects.directory}/`;
+
+/**
+ * True for a credential that a project outside the view owns. A Promote never writes a top-level
+ * credential file. On an Apply, a top-level file is a credential of an existing branch, and
+ * the workflow that uses it brings it.
+ */
+function isForeignCredential(
+	{ type, parentKey, target }: Pick<SideResource, 'type' | 'parentKey' | 'target'>,
+	direction: PromotionDirection,
+): boolean {
+	if (type !== 'credential' || parentKey !== null) return false;
+	return direction === 'promote' || target.startsWith(PROJECTS_PREFIX);
+}
+
+/**
+ * A workflow, or a project or folder that the operation adds or changes. Also a changed
+ * credential under its owner project: the owner can send it without a workflow.
+ */
+function isSelectable({ type, change, parentKey }: PromotionResource): boolean {
 	if (type === 'workflow') return true;
-	return (type === 'project' || type === 'folder') && (change === 'added' || change === 'modified');
+	const changed = change === 'added' || change === 'modified';
+	if (type === 'credential') return changed && parentKey !== null;
+	return (type === 'project' || type === 'folder') && changed;
 }
 
 function compareResource(
@@ -341,13 +376,29 @@ function dependencyLinks(
 	desired: PreviewSide,
 	desiredIndex: SideIndex,
 	projectIds: readonly string[],
+	direction: PromotionDirection | undefined,
 ) {
 	const links: PromotionResourceDependency[] = [];
 	const missingWorkflows = new Map<string, PromotionResource>();
 	if (!desired.manifest) return { links, missingWorkflows };
 	for (const projectId of projectIds) {
 		const manifest = scopeManifestToProject(desired.manifest, projectId);
-		addProjectLinks(manifest, desiredIndex, projectId, links, missingWorkflows);
+		const projectKey = resourceKey('project', projectId);
+		// A credential travels with a workflow of its owner project only. On an Apply, a top-level
+		// credential of an existing branch travels too.
+		const travelling = direction
+			? new Set(
+					[...desiredIndex.values()]
+						.filter(
+							(resource) =>
+								resource.type === 'credential' &&
+								(resource.parentKey === projectKey ||
+									(resource.parentKey === null && !isForeignCredential(resource, direction))),
+						)
+						.map(({ key }) => key),
+				)
+			: null;
+		addProjectLinks(manifest, desiredIndex, projectId, links, missingWorkflows, travelling);
 	}
 	return { links, missingWorkflows };
 }
@@ -358,6 +409,8 @@ function addProjectLinks(
 	projectId: string,
 	links: PromotionResourceDependency[],
 	missingWorkflows: Map<string, PromotionResource>,
+	/** The credentials that travel with a workflow of this project. `null`: every credential. */
+	ownedCredentialKeys: ReadonlySet<string> | null,
 ) {
 	const add = (
 		requirement: { usedBy: PackageRequirementConsumer[] },
@@ -371,7 +424,11 @@ function addProjectLinks(
 	const requirements = manifest.requirements;
 	for (const collection of ['credentials', 'dataTables', 'tags'] as const) {
 		for (const requirement of requirements?.[collection] ?? []) {
-			add(requirement, resourceKey(RESOURCE_TYPES[collection], requirement.id));
+			const key = resourceKey(RESOURCE_TYPES[collection], requirement.id);
+			// In any other project the reference stays a requirement row.
+			const travels =
+				collection !== 'credentials' || !ownedCredentialKeys || ownedCredentialKeys.has(key);
+			add(requirement, key, travels);
 		}
 	}
 	for (const requirement of requirements?.variables ?? []) {
@@ -441,12 +498,23 @@ export function buildPreview({
 		const current = after ?? before;
 		if (!current) continue;
 		const compared = compareResource(current, before, after);
-		const resource = operation ? applyOperationRules(compared, { ...operation, before }) : compared;
+		const resource = operation
+			? applyOperationRules(compared, {
+					...operation,
+					before,
+					foreignCredential: isForeignCredential(current, operation.direction),
+				})
+			: compared;
 		if (resource)
 			all.set(key, operation ? { ...resource, selectable: isSelectable(resource) } : resource);
 	}
 
-	const { links, missingWorkflows } = dependencyLinks(desired, desiredIndex, projectIds);
+	const { links, missingWorkflows } = dependencyLinks(
+		desired,
+		desiredIndex,
+		projectIds,
+		operation?.direction,
+	);
 	for (const [key, row] of missingWorkflows) {
 		if (!all.has(key)) all.set(key, row);
 	}

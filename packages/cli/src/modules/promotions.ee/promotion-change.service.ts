@@ -58,7 +58,7 @@ import {
 	type LocalDataTable,
 	type LocalTag,
 } from './local-package-entities.service';
-import { PromotionsService } from './promotions.service';
+import { PromotionsService, selectableCredentialIds } from './promotions.service';
 
 export type DetailSide = { content: string | null; blobSha: string | null };
 
@@ -164,7 +164,15 @@ export class PromotionChangeService {
 		// The revision keeps the check of the plan. The report replaces the rows that it describes.
 		// It reads the selection of the plan, which holds the projects that the moves added.
 		const { check, dependencyReport } = await this.dependencyGate.applyPreviewReport(
-			{ user, input, files, selection: this.dependencyGate.toCheckSelection(selection) },
+			{
+				user,
+				input,
+				files,
+				selection: this.dependencyGate.toCheckSelection(
+					selection,
+					selectableCredentialIds(preview.resources, projectId),
+				),
+			},
 			preview.check,
 		);
 		return {
@@ -196,6 +204,8 @@ export class PromotionChangeService {
 			commitSha,
 			source,
 			...preview,
+			// The revision stays the one of the plan: the Apply compares it without the report.
+			resources: withKeptItems(preview.resources, dependencyReport),
 			check,
 			...(dependencyReport ? { dependencyReport } : {}),
 		};
@@ -587,4 +597,38 @@ export function toDetail({
 			return { ...detail, dataTableChanges: diffDataTableSchema(incoming, current) };
 		}
 	}
+}
+
+/**
+ * The plan lists what reconciliation deletes. The dependency check then keeps a workflow that
+ * the package still calls, and a project that owns a credential that the package uses. The rows
+ * of the kept items show no change, so the preview lists only what the Apply deletes.
+ */
+function withKeptItems(
+	resources: PromotionPreview['resources'],
+	report: PromotionPreview['dependencyReport'],
+): PromotionPreview['resources'] {
+	const keptWorkflowKeys = new Set(
+		(report?.keptWorkflows ?? []).map(({ id }) => resourceKey('workflow', id)),
+	);
+	const keptProjectKeys = new Set(
+		(report?.keptProjects ?? []).map(({ project }) => resourceKey('project', project.id)),
+	);
+	if (keptWorkflowKeys.size === 0 && keptProjectKeys.size === 0) return resources;
+	const byKey = new Map(resources.map((resource) => [resource.key, resource]));
+	const inKeptProject = (resource: PromotionPreview['resources'][number]) => {
+		const seen = new Set<string>();
+		let current: typeof resource | undefined = resource;
+		while (current && !seen.has(current.key)) {
+			if (keptProjectKeys.has(current.key)) return true;
+			seen.add(current.key);
+			current = current.parentKey === null ? undefined : byKey.get(current.parentKey);
+		}
+		return false;
+	};
+	return resources.map((resource) =>
+		resource.change === 'deleted' && (keptWorkflowKeys.has(resource.key) || inKeptProject(resource))
+			? { ...resource, change: 'unchanged' as const }
+			: resource,
+	);
 }
