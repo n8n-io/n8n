@@ -85,7 +85,8 @@ export class InstanceSettings {
 	/**
 	 * Fingerprint the license is bound to: `N8N_INSTANCE_ID` when set, otherwise
 	 * stored once from `instanceId` and never changed, so a later change of
-	 * `instanceId` cannot invalidate the license.
+	 * `instanceId` cannot invalidate the license. `License` falls back to
+	 * `derivedInstanceId` when this value is shorter than 32 characters.
 	 */
 	licenseFingerprint: string;
 
