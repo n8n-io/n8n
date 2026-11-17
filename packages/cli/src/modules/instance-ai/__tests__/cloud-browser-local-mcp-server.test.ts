@@ -1200,6 +1200,21 @@ describe('CloudBrowserLocalMcpServer', () => {
 			});
 		});
 
+		it('skips a call when the user takes control while it waits for the access check', async () => {
+			const { server, toolkits, start } = setup();
+			await start({ url: 'https://example.com' });
+			const click = toolkits[0].tools.find(({ name }) => name === 'browser_click')!;
+			click.getAffectedResources = () => {
+				server.giveControlToUser();
+				return [hostResource('current.example.com')];
+			};
+
+			const result = await server.callTool({ name: 'browser_click', arguments: { ref: 'e1' } });
+
+			expect(result).toEqual(skippedResult);
+			expect(clickOn(toolkits[0])).not.toHaveBeenCalled();
+		});
+
 		it('runs tool calls again after control returns', async () => {
 			const { server, toolkits, start } = setup();
 			await start({ url: 'https://example.com' });

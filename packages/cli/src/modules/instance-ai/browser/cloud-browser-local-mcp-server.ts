@@ -139,20 +139,22 @@ const SESSION_UNAVAILABLE_MESSAGES: Record<SessionUnavailableReason, string> = {
 
 const USER_NOT_IN_CONTROL_MESSAGE = 'The user does not have control of the browser.';
 
+const CALL_SKIPPED_RESULT: McpToolCallResult = {
+	content: [
+		{
+			type: 'text',
+			text: 'The user took control of the browser, so this call did not run. Call browser_snapshot to see the page, then continue.',
+		},
+	],
+};
+
 /**
  * The result of a tool call that waited while the user had control. The call is skipped, because
  * the page may have changed.
  */
 function skippedToolCallResult(result: CloudBrowserUserControlResult): McpToolCallResult {
 	if (!result.returned) return browserErrorResult(result.error);
-	return {
-		content: [
-			{
-				type: 'text',
-				text: 'The user took control of the browser, so this call did not run. Call browser_snapshot to see the page, then continue.',
-			},
-		],
-	};
+	return CALL_SKIPPED_RESULT;
 }
 
 const URL_ERROR = 'browser_start_session needs a URL.';
@@ -560,7 +562,12 @@ export class CloudBrowserLocalMcpServer implements LocalMcpServer, CloudBrowserU
 	): Promise<McpToolCallResult> {
 		session.runningBrowserTools++;
 		try {
-			return await executeBrowserTool(tool, args, this.options.toolContext, checkAccess);
+			return await executeBrowserTool(tool, args, this.options.toolContext, async (parsedArgs) => {
+				const accessResult = await checkAccess?.(parsedArgs);
+				// The user may take control while the call waits. Skip it so the tool does not run.
+				if (this.userControl) return CALL_SKIPPED_RESULT;
+				return accessResult;
+			});
 		} finally {
 			session.runningBrowserTools--;
 			if (session.runningBrowserTools === 0) setActivePageToCurrentWindow(session);
