@@ -21,8 +21,10 @@ const props = withDefaults(
 		projectId: string;
 		agentId: string;
 		disabled?: boolean;
+		/** Render the body and modals only, without the panel wrapper. */
+		embedded?: boolean;
 	}>(),
-	{ disabled: false },
+	{ disabled: false, embedded: false },
 );
 
 const emit = defineEmits<{ 'update:config': [changes: Partial<AgentJsonConfig>] }>();
@@ -114,9 +116,11 @@ const sessionValue = computed(() => {
 </script>
 
 <template>
-	<AgentPanel
-		:header="i18n.baseText('agents.builder.budget.title')"
-		header-visibility="visually-hidden"
+	<component
+		:is="embedded ? 'div' : AgentPanel"
+		v-bind="embedded ? {} : { header: i18n.baseText('agents.builder.budget.title') }"
+		:header-visibility="embedded ? undefined : 'visually-hidden'"
+		:class="embedded ? $style.embedded : undefined"
 		data-testid="agent-budget-panel"
 	>
 		<div :class="[disabled && shared.disabled, $style.body]">
@@ -266,10 +270,15 @@ const sessionValue = computed(() => {
 			@update:open="sessionOpen = $event"
 			@save="emit('update:config', $event)"
 		/>
-	</AgentPanel>
+	</component>
 </template>
-
 <style lang="scss" module>
+.embedded {
+	display: flex;
+	flex-direction: column;
+	width: 100%;
+}
+
 .body {
 	display: flex;
 	flex-direction: column;
