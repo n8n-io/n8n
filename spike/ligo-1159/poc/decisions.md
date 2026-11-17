@@ -385,3 +385,65 @@ A selection never removes a project from the branch and never deletes a
 project on the instance. Only the whole-instance Promote and Apply do that. A
 credential file without a consumer on the branch stays through selection
 Promotes, and a whole-instance Promote removes it.
+
+## Decisions of the stream "integration of moves"
+
+### I1. The confirmation of a move out of a project that the branch does not hold
+
+There is no new request field. `confirmDestructiveChanges` also confirms these
+moves, for the whole-instance Apply and for the Apply of an environment
+selection. The check lists them in `plannedMoves` with `needsConfirmation:
+true`. An Apply with such a move returns `blocked` until the request confirms.
+A project Apply never confirms: the move is a `moved` conflict there.
+
+### I2. The server adds the other project of a move to the operation
+
+- Apply: when the branch holds the old project, the plan gets it as a project
+  without a selection. So the import writes both projects, and it also applies
+  the project details of the old project. A moved row that the user selects
+  under the old project goes to the selection of the new project.
+- Promote: a selected workflow that another team project owns now goes to the
+  selection of that project. The old project of a move is checked and not
+  exported: only the moved paths change under it on the branch. The run of the
+  review lists it, so the open-review gate holds both projects.
+
+### I3. The rights of a move and the refusal
+
+A move needs the right of the operation in each of the two projects, and the
+environment must cover both. The server checks the projects that it adds.
+- Promote refuses with a message (status 403, or 400 when the environment does
+  not cover the project). The message names the other project only when the
+  user can read it.
+- Apply reports a `moved` conflict with the new optional field `blockedBy`:
+  `personal-project`, `other-project-forbidden`, `other-project-not-covered` or
+  `project-not-on-branch`. The preview and the operation give the same check.
+
+### I4. A project of the branch that the source no longer has
+
+A Promote does not check a right in a project that no longer exists on this
+instance. Its items already left it here, and the branch follows.
+
+### I5. The shape of a moved row
+
+One row for each move. The row of the new project has `movedFromProject`. On a
+view that does not hold the new project, the row of the old project keeps the
+change `deleted` and has `movedToProject`. Both are selectable. `name` is left
+out when the user cannot read the project. A move into a personal project has
+`movedToProject` without a name, and the operation refuses it.
+
+### I6. A move that the import does not plan
+
+Only an item that this instance holds in a personal project still stops an
+Apply as `moved`. A copy with the same source id (F6) and a moved folder that
+the selection does not hold no longer stop it.
+
+### I7. The moves in the result of an Apply
+
+The `applied` result has the optional list `moves`. A move that unpublished a
+workflow has `unpublished.reason`. A client shows it as a warning. The list
+`warnings` keeps its shape.
+
+### I8. The preview of a project Apply plans the moves out of the project
+
+A workflow that left the project is planned under its new project, so the
+check of the page also holds what stops that workflow in the new project.
