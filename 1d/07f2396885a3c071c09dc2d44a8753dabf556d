@@ -1,0 +1,18 @@
+packages/@n8n/code-task-contract/src/constants.ts
+  h_8fb27e0cdf6d1e 2-3
+packages/@n8n/code-task-contract/src/errors/invalid-code-task-file.error.ts
+  h_8fb27e0cdf6d1e 3
+packages/@n8n/code-task-contract/src/task-input.ts
+  h_8fb27e0cdf6d1e 19-20
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "1d07f2396885a3c071c09dc2d44a8753dabf556d",
+  "prompts": {},
+  "humans": {
+    "h_8fb27e0cdf6d1e": {
+      "author": "Tomi Turtiainen <10324676+tomi@users.noreply.github.com>"
+    }
+  }
+}

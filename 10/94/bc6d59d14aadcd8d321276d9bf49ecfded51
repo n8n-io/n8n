@@ -1,0 +1,44 @@
+packages/@n8n/code-runtime/src/worker.ts
+  h_8fb27e0cdf6d1e 7
+packages/cli/src/modules/code-sandbox/__tests__/code-sandbox-backend.test.ts
+  h_8fb27e0cdf6d1e 136,157,171,187,202,215,232,246,272,295,308,339
+packages/cli/src/modules/code-sandbox/__tests__/sandbox-scope-client.test.ts
+  h_8fb27e0cdf6d1e 63,91,106,123
+packages/cli/src/modules/code-sandbox/code-sandbox-backend.ts
+  h_8fb27e0cdf6d1e 329
+packages/cli/src/modules/code-sandbox/code-sandbox-timings.ts
+  h_8fb27e0cdf6d1e 31
+packages/cli/src/modules/code-sandbox/code-sandbox.config.ts
+  h_8fb27e0cdf6d1e 10-15,42-47,60,65-67,118-121
+packages/cli/src/modules/code-sandbox/code-sandbox.module.ts
+  h_8fb27e0cdf6d1e 23
+packages/cli/src/modules/code-sandbox/sandbox-scope-client.ts
+  h_8fb27e0cdf6d1e 17,48,75,101,143,275,353
+packages/cli/src/modules/code-sandbox/task-api-client.ts
+  h_8fb27e0cdf6d1e 32,48,86,140
+spike/code-sandbox/README.md
+  h_8fb27e0cdf6d1e 27,105,172,175-176
+spike/code-sandbox/scripts/analyze.mjs
+  h_8fb27e0cdf6d1e 75
+spike/code-sandbox/scripts/direct-pass.mjs
+  h_8fb27e0cdf6d1e 62,199,214,223,246
+spike/code-sandbox/scripts/full-pass.sh
+  h_8fb27e0cdf6d1e 59-60,157,161,166,261
+spike/code-sandbox/scripts/pool-pass.sh
+  h_8fb27e0cdf6d1e 81,100,122,127
+spike/code-sandbox/scripts/process-churn.mjs
+  h_8fb27e0cdf6d1e 14,25,45,47-48,63,79
+spike/code-sandbox/scripts/report-data.mjs
+  h_8fb27e0cdf6d1e 449
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "1094bc6d59d14aadcd8d321276d9bf49ecfded51",
+  "prompts": {},
+  "humans": {
+    "h_8fb27e0cdf6d1e": {
+      "author": "Tomi Turtiainen <10324676+tomi@users.noreply.github.com>"
+    }
+  }
+}

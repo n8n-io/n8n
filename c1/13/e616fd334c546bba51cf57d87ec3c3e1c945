@@ -1,0 +1,25 @@
+packages/@n8n/instance-ai/src/tools/agent-context.tool.ts
+  s_552260377b044c::t_0d9c9cfbe2f03d 104
+  s_552260377b044c::t_1cc7feb38017b3 105
+  s_552260377b044c::t_82720c6188ea91 59
+packages/cli/src/modules/agents/__tests__/format-agent-session-context.test.ts
+  s_552260377b044c::t_1096c806bdd858 491-504
+packages/cli/src/modules/agents/format-agent-session-context.ts
+  s_552260377b044c::t_c8340b51211739 299-308,313,321-322,343,348
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "c113e616fd334c546bba51cf57d87ec3c3e1c945",
+  "prompts": {},
+  "sessions": {
+    "s_552260377b044c": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "6e8fab18-020e-4479-84ae-7b6d4daa1b1b",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "r00gm <raul00gm@gmail.com>"
+    }
+  }
+}
