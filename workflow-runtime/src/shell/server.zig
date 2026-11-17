@@ -40,6 +40,9 @@ pub const IoMode = enum { poll, uring, auto };
 
 pub const Options = struct {
     port: u16 = 8080,
+    /// `--host`: the IPv4 address of the webhook port. The default is every
+    /// address of the machine.
+    host: [4]u8 = .{ 0, 0, 0, 0 },
     shards: u32 = 1,
     log_dir: ?[]const u8 = null,
     fallback: ?[]const u8 = null,
@@ -624,7 +627,7 @@ pub const Runner = struct {
         r.nlost = 0;
         r.batch = Arena.init(try reserve(gpa, u8, opts.batch_bytes));
         r.poller = try sys.Poller.init();
-        r.lfd = try sys.listenTcp(.{ 0, 0, 0, 0 }, opts.port, true);
+        r.lfd = try sys.listenTcp(opts.host, opts.port, true);
         try r.poller.addRead(r.lfd, token(.listener, 0, 0));
         r.ring = null;
         r.ring_store = null;

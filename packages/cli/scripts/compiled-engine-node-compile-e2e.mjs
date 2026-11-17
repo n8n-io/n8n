@@ -26,6 +26,8 @@
 import { writeFileSync } from 'node:fs';
 import { createHmac } from 'node:crypto';
 import { createServer } from 'node:http';
+import { connect } from 'node:net';
+import { networkInterfaces } from 'node:os';
 import { parse } from 'flatted';
 
 const BASE = (process.env.N8N_URL ?? 'http://localhost:5678').replace(/\/$/, '');
@@ -460,6 +462,42 @@ async function runCase(spec) {
 	);
 }
 
+// ---------------------------------------------------------------- the webhook port of wfrt
+
+/** True when a TCP connection to the address opens. */
+const opens = async (host, port) =>
+	await new Promise((resolve) => {
+		const socket = connect({ host, port, timeout: 2000 });
+		const done = (open) => {
+			socket.destroy();
+			resolve(open);
+		};
+		socket.once('connect', () => done(true));
+		socket.once('error', () => done(false));
+		socket.once('timeout', () => done(false));
+	});
+
+/**
+ * n8n starts `wfrt` on the loopback address: its webhook port takes a connection there, and
+ * not on another address of this machine. `WFRT_PORT` is `N8N_COMPILED_ENGINE_PORT`.
+ */
+async function listenAddressCase() {
+	const port = Number(process.env.WFRT_PORT ?? 5690);
+	const others = Object.values(networkInterfaces())
+		.flat()
+		.filter((address) => address && address.family === 'IPv4' && !address.internal)
+		.map((address) => address.address);
+	const onLoopback = await opens('127.0.0.1', port);
+	const onOthers = [];
+	for (const address of others) onOthers.push(await opens(address, port));
+	const pass = onLoopback && others.length > 0 && onOthers.every((open) => !open);
+	results.push({ case: 'w', pass, onLoopback, others, onOthers });
+	console.log(
+		`${pass ? 'ok  ' : 'FAIL'} w the webhook port of wfrt is open on the loopback address only` +
+			` | loopback ${onLoopback}, ${others.length} other address(es) open: ${JSON.stringify(onOthers)}`,
+	);
+}
+
 // ---------------------------------------------------------------- main
 
 async function main() {
@@ -731,6 +769,7 @@ async function main() {
 		if (only && !only.includes(spec.key)) continue;
 		await runCase(spec);
 	}
+	if (!only || only.includes('w')) await listenAddressCase();
 	if (process.env.RESULTS_FILE) {
 		writeFileSync(process.env.RESULTS_FILE, JSON.stringify(results, null, 2));
 	}

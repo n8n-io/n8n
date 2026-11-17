@@ -2,7 +2,10 @@ import { mock } from 'vitest-mock-extended';
 
 import type { BinaryDataConfig } from 'n8n-core';
 
+import type { GlobalConfig } from '@n8n/config';
+
 import { CompiledEngineProcesses, wfrtUserAgent } from '../compiled-engine-processes';
+import { CompiledEngineConfig } from '../compiled-engine.config';
 
 type BinaryEnv = {
 	binaryData(pathVariable: string): Record<string, string>;
@@ -77,5 +80,43 @@ describe('wfrtUserAgent', () => {
 		expect(wfrtUserAgent('')).toBeUndefined();
 		expect(wfrtUserAgent('a\r\nx: y')).toBeUndefined();
 		expect(wfrtUserAgent('a'.repeat(257))).toBeUndefined();
+	});
+});
+
+describe('the listen address of wfrt', () => {
+	const argsWith = (listenAddress: string) => {
+		const config = mock<CompiledEngineConfig>({
+			listenAddress,
+			port: 5690,
+			adminPort: 5691,
+			targetRate: 0,
+			maxConnections: 0,
+			http2: true,
+			connectionPool: 'shared',
+			readTimeoutMs: 0,
+			originLimits: '',
+			dataDir: '/tmp/compiled-engine-test',
+		});
+		const globalConfig = mock<GlobalConfig>({ endpoints: { payloadSizeMax: 16 } });
+		const processes = new CompiledEngineProcesses(
+			config,
+			mock(),
+			mock(),
+			globalConfig,
+			mock(),
+			mock(),
+			mock(),
+		);
+		return (processes as unknown as { wfrtArgs(): string[] }).wfrtArgs();
+	};
+	const hostOf = (args: string[]) => args[args.indexOf('--host') + 1];
+
+	it('starts wfrt on the loopback address by default', () => {
+		expect(new CompiledEngineConfig().listenAddress).toBe('127.0.0.1');
+		expect(hostOf(argsWith('127.0.0.1'))).toBe('127.0.0.1');
+	});
+
+	it('starts wfrt on the address of the setting', () => {
+		expect(hostOf(argsWith('0.0.0.0'))).toBe('0.0.0.0');
 	});
 });

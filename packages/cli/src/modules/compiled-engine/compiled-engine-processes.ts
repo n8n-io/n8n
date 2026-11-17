@@ -157,6 +157,9 @@ export class CompiledEngineProcesses {
 			// The same limit as n8n's own request bodies (N8N_PAYLOAD_SIZE_MAX).
 			'--max-request-mb',
 			String(this.globalConfig.endpoints.payloadSizeMax),
+			// The webhook port is for n8n on this machine, unless the setting says another address.
+			'--host',
+			this.config.listenAddress,
 			'--port',
 			String(this.config.port),
 			'--admin-port',

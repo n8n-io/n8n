@@ -82,8 +82,11 @@ export class WfrtAdminClient {
 		return `http://127.0.0.1:${this.config.adminPort}`;
 	}
 
+	/** Where n8n reaches the webhook port of `wfrt`: its listen address, or the loopback address when it listens on every address. */
 	get publicUrl() {
-		return `http://127.0.0.1:${this.config.port}`;
+		const address = this.config.listenAddress;
+		const host = !address || address === '0.0.0.0' ? '127.0.0.1' : address;
+		return `http://${host}:${this.config.port}`;
 	}
 
 	async putWorkflow(workflowId: string, upload: WfrtWorkflowUpload) {

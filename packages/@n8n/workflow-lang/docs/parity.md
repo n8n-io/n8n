@@ -71,7 +71,7 @@ N8N_URL=http://localhost:5678 node packages/cli/scripts/compiled-engine-node-com
 A node ran compiled from its source when the compile response has the diagnostic `node-compiled` for it. The place
 `native` in the response does not tell a compiled node from a library node.
 
-State on 2026-11-17, third pass: 22 cases, all equal to v1. Case q needs `E2E_FILL_MODULES=1` and a test
+State on 2026-11-17, third pass: 23 cases, all pass. Case q needs `E2E_FILL_MODULES=1` and a test
 instance: it loads workflows until `wfrt` refuses one.
 
 | Case | Runs as | Result |
@@ -98,6 +98,7 @@ instance: it loads workflows until `wfrt` refuses one.
 | t. Webhook with header authentication | Webhook node of n8n, then module code | Equal to v1: 200 with the header, 403 without it |
 | u. Discourse, credential with allowed domains that have the host | fallback host | Equal to v1: one request |
 | v. Discourse, credential with allowed domains that do not have the host | fallback host | Equal to v1: one request. The v1 node does not read the allowed domains of an app node |
+| w. The webhook port of `wfrt` | n8n module | Open on the loopback address, not on another address of the machine |
 
 The run used `N8N_ENFORCE_GLOBAL_USER_AGENT=true` and `N8N_GLOBAL_USER_AGENT_VALUE`: the two engines sent that user agent.
 
@@ -124,6 +125,8 @@ Closed by this check:
 | `user-agent: n8n-wfrt`; the user agent settings of n8n were not used | The default is `n8n`. n8n starts `wfrt` with `--egress-user-agent` and gives the fallback host the two settings (tests: `request.zig`, processes test, case p) |
 | A node that is compiled from its source sent the `accept` header of the runtime | The request helper of the node compiler gives the http effect `acceptAs` (`legacy` or `request`) and the `json` option; the runtime writes the default of that helper of n8n (`request.zig` test). The verifier now compares `accept`: the recorder keeps the default that the HTTP client of n8n adds. Before the change 16 of 19 operations of Discourse and Gotify differed; after it 35 of 38 operations of Discourse, Gotify and Mattermost verify, as before. The cost of an operation rises by 3 to 6 instructions for each request |
 | The body of a failed webhook answer had no test in the runtime | `server.zig` and `workflow_test.zig` tests |
+| `wfrt` listened for webhooks on every address of the machine | n8n starts `wfrt` with `--host 127.0.0.1`. `N8N_COMPILED_ENGINE_LISTEN_ADDRESS` sets another address (module test, case w) |
+| The tests of the sync service took two times as long with each test (20 s and more for the last ones) and failed on a loaded machine: a mock of the artifact wrapped the shared slot list again at each call. The first test that builds a credentials document paid for the load of the TypeScript compiler | Plain objects in the sync tests; the credentials test loads the workflow language in `beforeAll` with its own time limit. The tests wait for no clock and start no `wfrt` |
 
 Open, found by this check:
 
@@ -134,7 +137,6 @@ Open, found by this check:
 | No fallback after `wfrt` took a webhook request and then stopped: n8n cannot know if the run started, so the caller gets 502 | `compiled-webhook.forwarder.ts` | An idempotent start |
 | A version with a node type that n8n cannot load does not run: v1 cannot run it either | `workflow-publication-applier.ts` | Nothing: it is the behaviour of v1 |
 | The warning of a workflow that runs on v1 is in the log and in the compile response, not in the publication result | `workflow-publication-applier.ts` | A warning member of the publication result |
-| `wfrt` listens on all addresses, and each loaded workflow has a webhook route there without the checks of the Webhook node of n8n | `compiled-engine-processes.ts` (`--port`) | Bind the webhook port of `wfrt` to the loopback address |
 | The options of the HTTP Request node `redirect` (follow, maximum), `timeout`, `proxy`, `batching` and `allowUnauthorizedCerts` are not read by the converter | `convert/library.ts` | Read them, or keep the node in the fallback host |
 | The allowed domains have no compiled form for the GraphQL node and for nodes with a declarative description: with a value other than `all` such a node runs in the fallback host, with the code of v1 (cases u, v for an app node) | this work | A compiled form of `getCredentialAllowedDomains` |
 | The message of a refused host has at most 96 bytes of the host and 280 bytes of the list | `request.zig` | A longer message buffer |
