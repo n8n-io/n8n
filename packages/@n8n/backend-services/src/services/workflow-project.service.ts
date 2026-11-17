@@ -1,7 +1,6 @@
 import { CacheService } from './cache/cache.service';
-import { Project, SharedWorkflowRepository } from '@n8n/db';
+import { isEntityNotFoundError, Project, SharedWorkflowRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
-import { NotFoundError } from '@n8n/errors';
 
 @Service()
 export class WorkflowProjectService {
@@ -41,14 +40,22 @@ export class WorkflowProjectService {
 			if (project) return project;
 		}
 
-		const project = await this.sharedWorkflowRepository.getWorkflowOwningProject(workflowId);
-		if (project) return await this.setWorkflowProjectCacheEntry(workflowId, project);
-		for (const resolve of this.privateOwners.values()) {
-			const owner = await resolve(workflowId);
-			// Private owners follow their module's current scope. Do not cache them as shared workflows.
-			if (owner) return owner;
+		try {
+			const sharedWorkflow = await this.sharedWorkflowRepository.findOneOrFail({
+				where: { workflowId, role: 'workflow:owner' },
+				relations: ['project'],
+			});
+			return await this.setWorkflowProjectCacheEntry(workflowId, sharedWorkflow.project);
+		} catch (error) {
+			if (!isEntityNotFoundError(error)) throw error;
+			for (const resolve of this.privateOwners.values()) {
+				const owner = await resolve(workflowId);
+				// Private owners follow their module's current scope. Do not cache them as shared workflows.
+				if (owner) return owner;
+			}
+			// Callers detect a workflow without an owner by this error.
+			throw error;
 		}
-		throw new NotFoundError('Workflow project not found');
 	}
 
 	async setWorkflowProjectCacheEntry(workflowId: string, project: Project): Promise<Project> {
