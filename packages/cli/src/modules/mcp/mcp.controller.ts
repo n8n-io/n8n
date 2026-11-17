@@ -245,7 +245,14 @@ export class McpController {
 		// 2026-07-28 protocol and, via the stateless legacy fallback, 2025-era
 		// clients on this same endpoint.
 		const handler = createMcpHandler(
-			async () => await this.mcpService.getServer(req.user, featureFlags, getClientInfo(req), auth),
+			async () =>
+				await this.mcpService.getServer(
+					req.user,
+					featureFlags,
+					getClientInfo(req),
+					auth,
+					req.ctx ?? {},
+				),
 			{
 				legacy: 'stateless',
 				onerror: (error) => {

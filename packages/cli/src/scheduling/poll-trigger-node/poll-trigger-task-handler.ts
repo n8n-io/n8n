@@ -87,8 +87,12 @@ export class PollTriggerTaskHandler implements TaskHandler {
 			{ bypassCache: true }, // the poll cursor in staticData must be read live, not from the publish-time cache.
 		);
 
-		if (workflowData === null) {
-			this.logger.debug('Workflow has no published version. Skipping the occurrence.', logContext);
+		// The published-version mapping outlives an unpublish until the leader applies it.
+		if (workflowData === null || workflowData.activeVersionId === null) {
+			this.logger.debug(
+				'Workflow is unpublished or has no published version. Skipping the occurrence.',
+				logContext,
+			);
 			return report.notDispatched();
 		}
 

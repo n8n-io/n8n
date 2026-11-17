@@ -230,6 +230,9 @@ export async function testWebhookTriggerNode(
 			);
 		},
 		prepareBinaryData: options.helpers?.prepareBinaryData ?? vi.fn(),
+		...(options.helpers?.httpRequestWithAuthentication
+			? { httpRequestWithAuthentication: options.helpers.httpRequestWithAuthentication }
+			: {}),
 	});
 
 	const request = mock<express.Request>({
@@ -239,6 +242,12 @@ export async function testWebhookTriggerNode(
 	const response = mock<express.Response>({ status: vi.fn(() => mock<express.Response>()) });
 	const webhookFunctions = mock<IWebhookFunctions>({
 		helpers,
+		logger: mock<WorkflowLogger>({
+			debug: vi.fn(),
+			info: vi.fn(),
+			warn: vi.fn(),
+			error: vi.fn(),
+		}),
 		nodeHelpers: {
 			copyBinaryFile: vi.fn(async () => mock<IBinaryData>()),
 		},

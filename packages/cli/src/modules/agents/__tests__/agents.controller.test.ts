@@ -15,7 +15,7 @@ import { AgentRunnableStateService } from '../agent-runnable-state.service';
 import type { AgentsService } from '../agents.service';
 import type { AgentValidationService } from '../agent-validation.service';
 import { AgentsController } from '../agents.controller';
-import type { CollaborationService } from '@/collaboration/collaboration.service';
+import type { AgentWriteLockService } from '../agent-write-lock.service';
 import {
 	expectProjectScopedAgentRoutes,
 	getRoutesByHandlerName,
@@ -33,7 +33,7 @@ function makeController({
 	agentValidationService = mock<AgentValidationService>(),
 	credentialsService = mock<CredentialsService>(),
 	agentDefaultModelResolverService = mock<AgentDefaultModelResolverService>(),
-	collaborationService = mock<CollaborationService>(),
+	agentWriteLockService = mock<AgentWriteLockService>(),
 	agentConfigService = mock<AgentConfigService>(),
 	skillRefs = createAgentSkillRefsService(),
 }: {
@@ -47,7 +47,7 @@ function makeController({
 	agentValidationService?: Mocked<AgentValidationService>;
 	credentialsService?: Mocked<CredentialsService>;
 	agentDefaultModelResolverService?: Mocked<AgentDefaultModelResolverService>;
-	collaborationService?: Mocked<CollaborationService>;
+	agentWriteLockService?: Mocked<AgentWriteLockService>;
 	agentConfigService?: Mocked<AgentConfigService>;
 	skillRefs?: ReturnType<typeof createAgentSkillRefsService>;
 } = {}) {
@@ -64,14 +64,14 @@ function makeController({
 			agentsService as unknown as AgentsService,
 			agentResponseMapper,
 			agentDefaultModelResolverService,
-			collaborationService,
+			agentWriteLockService,
 			agentConfigService,
 		),
 		agentsService,
 		agentPublishService,
 		agentValidationService,
 		agentConfigService,
-		collaborationService,
+		agentWriteLockService,
 	};
 }
 
@@ -209,8 +209,8 @@ describe('AgentsController create', () => {
 		expect(result).not.toHaveProperty('schema');
 	});
 
-	it.each([undefined, { instructions: 'Help users' }])(
-		'fills an omitted model with the project default: %j',
+	it.each([undefined, { name: 'Support Agent', model: '', instructions: 'Help users' }])(
+		'seeds the default model only when the config is omitted: %j',
 		async (config) => {
 			const { controller, agentsService, agentDefaultModelResolverService } =
 				makeCreateController('server-minted');
@@ -228,8 +228,13 @@ describe('AgentsController create', () => {
 				pushRef: undefined,
 				config,
 				id: undefined,
-				defaultModel: { model: 'openai/gpt-5-mini', credential: 'managed' },
+				...(config === undefined
+					? { defaultModel: { model: 'openai/gpt-5-mini', credential: 'managed' } }
+					: {}),
 			});
+			expect(agentDefaultModelResolverService.resolve).toHaveBeenCalledTimes(
+				config === undefined ? 1 : 0,
+			);
 		},
 	);
 
@@ -309,8 +314,8 @@ describe('AgentsController list', () => {
 		const response = { count: 1, data: [{ id: 'agent-1' }] } as never;
 		const res = mock<Response>();
 		const query = {
-			skip: 0,
-			take: 10,
+			offset: 0,
+			limit: 10,
 		} as never;
 		agentsService.findByProjectIdPaginated.mockResolvedValue(response);
 
@@ -330,15 +335,15 @@ describe('AgentsController list', () => {
 		const response = { count: 1, data: [{ id: 'agent-1' }] } as never;
 		const res = mock<Response>();
 		const query = {
-			skip: 0,
-			take: 50,
+			offset: 0,
+			limit: 50,
 			sortBy: 'name:asc',
 			filter: { query: 'support' },
 		} as never;
 		agentsService.findByProjectIdPaginated.mockResolvedValue(response);
 		const listReq = {
 			params: { projectId: 'project-1' },
-			query: { skip: '0', take: '50', sortBy: 'name:asc', filter: '{"query":"support"}' },
+			query: { offset: '0', limit: '50', sortBy: 'name:asc', filter: '{"query":"support"}' },
 			user: { id: 'user-1' },
 		} as never;
 
@@ -522,7 +527,7 @@ describe('AgentsController agent resource', () => {
 			versionId: 'v2',
 			updatedAt: saved.updatedAt,
 		} as never);
-		const { controller, collaborationService, agentValidationService } = makeController({
+		const { controller, agentWriteLockService, agentValidationService } = makeController({
 			agentsService: agentsService as never,
 			agentConfigService,
 		});
@@ -542,7 +547,7 @@ describe('AgentsController agent resource', () => {
 			{ config: saved.schema, baseConfigHash: 'previous-hash' } as never,
 		);
 
-		expect(collaborationService.validateAgentWriteLock).toHaveBeenCalledWith(
+		expect(agentWriteLockService.validateAgentWriteLock).toHaveBeenCalledWith(
 			'user-1',
 			'tab-1',
 			'project-1',
@@ -606,9 +611,9 @@ describe('AgentsController agent resource', () => {
 
 	it('rejects an update when another tab holds the write lock', async () => {
 		const agentConfigService = mock<AgentConfigService>();
-		const collaborationService = mock<CollaborationService>();
-		collaborationService.validateAgentWriteLock.mockRejectedValue(new LockedError('locked'));
-		const { controller } = makeController({ agentConfigService, collaborationService });
+		const agentWriteLockService = mock<AgentWriteLockService>();
+		agentWriteLockService.validateAgentWriteLock.mockRejectedValue(new LockedError('locked'));
+		const { controller } = makeController({ agentConfigService, agentWriteLockService });
 
 		await expect(
 			controller.update(
@@ -628,10 +633,10 @@ describe('AgentsController agent resource', () => {
 
 describe('AgentsController.getWriteLock', () => {
 	it('passes the agent id from the route param, not the response object', async () => {
-		const collaborationService = mock<CollaborationService>();
+		const agentWriteLockService = mock<AgentWriteLockService>();
 		const lock = { clientId: 'tab-1', userId: 'user-1' };
-		collaborationService.getAgentWriteLock.mockResolvedValue(lock);
-		const { controller } = makeController({ collaborationService });
+		agentWriteLockService.getAgentWriteLock.mockResolvedValue(lock);
+		const { controller } = makeController({ agentWriteLockService });
 
 		// The registry calls handlers as (req, res, ...decoratedArgs).
 		const result = await controller.getWriteLock(
@@ -643,7 +648,7 @@ describe('AgentsController.getWriteLock', () => {
 			'agent-1',
 		);
 
-		expect(collaborationService.getAgentWriteLock).toHaveBeenCalledWith('project-1', 'agent-1');
+		expect(agentWriteLockService.getAgentWriteLock).toHaveBeenCalledWith('project-1', 'agent-1');
 		expect(result).toEqual(lock);
 	});
 });

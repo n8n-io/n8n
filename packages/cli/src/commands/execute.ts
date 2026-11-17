@@ -33,7 +33,7 @@ export class Execute extends BaseCommand<z.infer<typeof flagsSchema>> {
 
 	override needsExpressionEngine = true;
 
-	override needsTaskRunner = true;
+	override needsCodeExecution = true;
 
 	async init() {
 		await super.init();

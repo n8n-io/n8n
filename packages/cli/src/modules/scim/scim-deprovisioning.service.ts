@@ -103,8 +103,13 @@ export class ScimDeprovisioningService {
 		});
 	}
 
-	/** Saves the policy. A transfer target that is not valid gives a 400, and nothing is saved. */
-	async savePolicy(policy: ScimDeprovisioningPolicy): Promise<ScimDeprovisioningPolicy> {
+	/**
+	 * Saves the policy and returns it with the policy that it replaced. A
+	 * transfer target that is not valid gives a 400, and nothing is saved.
+	 */
+	async savePolicy(
+		policy: ScimDeprovisioningPolicy,
+	): Promise<{ saved: ScimDeprovisioningPolicy; previous: ScimDeprovisioningPolicy }> {
 		if (policy.transferProjectId) {
 			const project = await this.findTarget(policy.transferProjectId);
 			if (!project || !isValidScimTransferTarget(project)) {
@@ -114,8 +119,8 @@ export class ScimDeprovisioningService {
 			}
 		}
 
-		await this.scimSettingsService.setDeprovisioningPolicy(policy);
-		return policy;
+		const previous = await this.scimSettingsService.setDeprovisioningPolicy(policy);
+		return { saved: policy, previous };
 	}
 
 	/**

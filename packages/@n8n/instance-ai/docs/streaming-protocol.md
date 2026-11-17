@@ -287,6 +287,23 @@ also emit `tool-error` if its resume path throws.
 | `projectId` | string | Scopes actions to a project (e.g., credential creation) |
 | `domainAccess` | `{url, host}` | Renders domain-access approval UI instead of generic confirm |
 
+### `auto-approval`
+
+Auto approval mode ran a tool call without its approval card. The event comes
+before the call's `tool-result`. `decidedBy` is `judge` when the judge model
+approved the call, or `rule` when the action is on the low-risk list.
+`message` is the text that the card would have shown, and `reason` is the
+judge's one-sentence reason, or the fixed rule's explanation when `decidedBy`
+is `rule`. The reducer folds the fact onto the tool call as
+`autoApproval`, and the thread shows it as a collapsed line.
+
+```json
+{"type":"auto-approval","runId":"run_abc123","agentId":"orchestrator-run_abc123","payload":{"toolCallId":"tc_abc123","message":"Publish \"Lead router\"","reason":"The user asked to publish this workflow.","decidedBy":"judge"}}
+```
+
+An approval that Auto mode sends to the user produces a normal
+`confirmation-request`.
+
 ### `tasks-update`
 
 A task checklist has been created or updated. The frontend renders a live
@@ -724,6 +741,7 @@ creating duplicate messages.
 | `agent-spawned` | `parentId`, `role`, `tools` | Sub-agent created |
 | `agent-completed` | `role`, `result` | Sub-agent finished |
 | `confirmation-request` | `requestId`, `toolCallId`, `severity`, `message`, ... | HITL approval gate |
+| `auto-approval` | `toolCallId`, `message`, `reason`, `decidedBy` (`judge` or `rule`) | Auto approval mode ran the call without its card |
 | `tasks-update` | `tasks` | Task checklist created/updated |
 | `instance-context` | `injection` | What the turn was handed as instance context (once, before the agent runs) |
 | `setup-items` | `workflowId`, `items` | Setup panel snapshot for a workflow (full list, last wins) |

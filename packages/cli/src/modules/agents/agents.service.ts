@@ -19,7 +19,7 @@ import {
 	type AgentN8nChatThreadSummary,
 	type AgentN8nChatThreadsResponse,
 	type AgentSkill,
-	type ListAgentsQueryDto,
+	type ListAgentsOptions,
 } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import { EventService, ProjectScopeService } from '@n8n/backend-services';
@@ -27,7 +27,9 @@ import { GlobalConfig } from '@n8n/config';
 import {
 	In,
 	isUniqueConstraintError,
+	type OperationContext,
 	ProjectRelationRepository,
+	ProjectRepository,
 	TransactionRunner,
 	type TagEntity,
 	type User,
@@ -47,6 +49,7 @@ import { TagService } from '@/services/tag.service';
 import {
 	BadRequestError,
 	ConflictError,
+	ForbiddenError,
 	NotFoundError,
 	UnexpectedError,
 	UserError,
@@ -163,6 +166,7 @@ export class AgentsService {
 		private readonly logger: Logger,
 		private readonly agentRepository: AgentRepository,
 		private readonly projectRelationRepository: ProjectRelationRepository,
+		private readonly projectRepository: ProjectRepository,
 		private readonly agentChatAttachmentService: AgentChatAttachmentService,
 		private readonly agentKnowledgeService: AgentKnowledgeService,
 		private readonly runtimeCacheService: AgentRuntimeCacheService,
@@ -186,6 +190,30 @@ export class AgentsService {
 		private readonly tagService: TagService,
 		private readonly agentServiceAccount: AgentServiceAccountService,
 	) {}
+
+	/**
+	 * Target project for a create whose `projectId` comes from the request body
+	 * (Public API): the caller's personal project when omitted, else a project
+	 * the caller may create agents in. Enforces `agent:create` project scope.
+	 */
+	async resolveOwningProjectId(user: User, projectId?: string): Promise<string> {
+		if (!projectId) {
+			const personalProject = await this.projectRepository.getPersonalProjectForUserOrFail(user.id);
+			return personalProject.id;
+		}
+
+		if (!(await this.projectRepository.exists({ where: { id: projectId } }))) {
+			throw new NotFoundError('Project not found');
+		}
+
+		if (!(await this.projectScopeService.hasScopes(user, projectId, ['agent:create']))) {
+			throw new ForbiddenError(
+				"You don't have the permissions to create an agent in this project.",
+			);
+		}
+
+		return projectId;
+	}
 
 	/**
 	 * `id` lets the caller mint the agent id before deciding to persist it, so a
@@ -535,15 +563,23 @@ export class AgentsService {
 
 	async findByProjectIdPaginated(
 		projectId: string,
-		options: ListAgentsQueryDto,
+		options: ListAgentsOptions,
 	): Promise<AgentListResult> {
 		return await this.addListSkillVersions(
 			await this.agentRepository.findByProjectIdsPaginated([projectId], options),
 		);
 	}
 
-	async findById(agentId: string, projectId: string): Promise<ProjectAgent | null> {
-		return await this.agentRepository.findByIdAndProjectId(agentId, projectId);
+	/**
+	 * With `projectId`: scoped lookup (internal REST). Without it the agent is
+	 * resolved by ID alone — Public API, where `@ProjectScope` has already
+	 * authorized the user against the agent's project. Returns no instance
+	 * agent.
+	 */
+	async findById(agentId: string, projectId?: string): Promise<ProjectAgent | null> {
+		return projectId
+			? await this.agentRepository.findByIdAndProjectId(agentId, projectId)
+			: await this.agentRepository.findById(agentId);
 	}
 
 	/**
@@ -738,7 +774,7 @@ export class AgentsService {
 	 */
 	async findChatReachableByUserPaginated(
 		user: User,
-		options: ListAgentsQueryDto,
+		options: ListAgentsOptions,
 	): Promise<AgentChatListResponse> {
 		if (!(await this.settingsService.getEnabled())) return { count: 0, data: [] };
 		const [projectIds, ownedProjectIds] = await Promise.all([
@@ -843,7 +879,7 @@ export class AgentsService {
 	/** The agents overview list: every project where the user holds `agent:list`. */
 	async findListableByUserPaginated(
 		user: User,
-		options: ListAgentsQueryDto,
+		options: ListAgentsOptions,
 	): Promise<AgentListResult> {
 		const projectIds = await this.projectScopeService.getProjectIds(user, ['agent:list']);
 		return await this.addListSkillVersions(
@@ -890,11 +926,16 @@ export class AgentsService {
 	 *
 	 * `requireArchived`: reject the delete of an agent that a user did not
 	 * archive first.
+	 *
+	 * `actor` is the user who deletes the agent. The audit event of the service
+	 * account removal names this user.
 	 */
 	async delete(
 		agentId: string,
+		actor: User,
 		projectId?: string,
 		{ requireArchived = false }: { requireArchived?: boolean } = {},
+		ctx: OperationContext = {},
 	): Promise<DeletedAgentSnapshot | null> {
 		const agent = projectId
 			? await this.agentRepository.findByIdAndProjectId(agentId, projectId)
@@ -921,6 +962,11 @@ export class AgentsService {
 		// Cleanup is keyed to the agent's own project, so the Public API path
 		// (no `projectId` argument) cleans up the same as the project-scoped one.
 		const { projectId: agentProjectId } = agent;
+
+		// Remove the account before any cleanup that cannot be undone. If the
+		// removal fails, for example because a policy blocks the transfer of its
+		// work, the agent stays as it was.
+		await this.agentServiceAccount.deleteForAgent(agent, actor, agentProjectId, ctx);
 
 		await this.deleteKnowledgeFiles(agentProjectId, agentId);
 

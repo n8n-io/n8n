@@ -1,9 +1,15 @@
 import isEqual from 'lodash/isEqual';
-import { N8N_CHAT_INTEGRATION_TYPE, isCredentialAgentIntegration } from '@n8n/api-types';
+import {
+	DEFAULT_AGENTS_LIST_LIMIT,
+	N8N_CHAT_INTEGRATION_TYPE,
+	isCredentialAgentIntegration,
+} from '@n8n/api-types';
 import type {
 	AgentIntegrationConfig,
+	AgentListFilter,
+	AgentsListSortBy,
 	AgentVectorStoreProvider,
-	ListAgentsQueryDto,
+	ListAgentsOptions,
 } from '@n8n/api-types';
 import { GlobalConfig } from '@n8n/config';
 import {
@@ -270,7 +276,7 @@ export class AgentRepository extends BaseRepository<Agent> {
 
 	async findByProjectIdsPaginated(
 		projectIds: string[] | null,
-		options: ListAgentsQueryDto,
+		options: ListAgentsOptions,
 		{
 			withProject = false,
 			usageCounts,
@@ -299,7 +305,10 @@ export class AgentRepository extends BaseRepository<Agent> {
 		}
 		this.applyFilters(query, options.filter);
 		this.applySorting(query, options.sortBy, usageCounts);
-		query.skip(options.skip).take(options.take);
+		// `offset`/`limit` are the HTTP-agnostic names; TypeORM's `skip`/`take`
+		// dedupe the joined tag rows. The default limit keeps a programmatic
+		// caller that omits `limit` from querying unboundedly.
+		query.skip(options.offset ?? 0).take(options.limit ?? DEFAULT_AGENTS_LIST_LIMIT);
 
 		const [data, count] = await query.getManyAndCount();
 		return { count, data: data.filter(isProjectAgent) };
@@ -313,7 +322,7 @@ export class AgentRepository extends BaseRepository<Agent> {
 	async findN8nChatListPaginated(
 		reachableProjectIds: string[] | null,
 		ownedProjectIds: string[],
-		options: ListAgentsQueryDto,
+		options: ListAgentsOptions,
 		usageCounts?: Map<string, number>,
 	): Promise<AgentListResult> {
 		if (reachableProjectIds?.length === 0 && ownedProjectIds.length === 0) {
@@ -348,7 +357,8 @@ export class AgentRepository extends BaseRepository<Agent> {
 			includeArchived: false,
 		});
 		this.applySorting(query, options.sortBy, usageCounts);
-		query.skip(options.skip).take(options.take);
+		// The default limit keeps a caller that omits `limit` from querying unboundedly.
+		query.skip(options.offset ?? 0).take(options.limit ?? DEFAULT_AGENTS_LIST_LIMIT);
 
 		const [data, count] = await query.getManyAndCount();
 		return { count, data: data.filter(isProjectAgent) };
@@ -411,7 +421,7 @@ export class AgentRepository extends BaseRepository<Agent> {
 
 	private applyFilters(
 		query: SelectQueryBuilder<Agent>,
-		filter: ListAgentsQueryDto['filter'],
+		filter: AgentListFilter | undefined,
 	): void {
 		if (!filter?.includeArchived) {
 			query.andWhere('agent.isArchived = :isArchived', { isArchived: false });
@@ -435,6 +445,14 @@ export class AgentRepository extends BaseRepository<Agent> {
 			query.andWhere(filter.availableInChat ? carriesChannel : `NOT (${carriesChannel})`, {
 				n8nChatType: N8N_CHAT_INTEGRATION_TYPE,
 			});
+		}
+		if (filter?.active !== undefined) {
+			query.andWhere(
+				filter.active ? 'agent.activeVersionId IS NOT NULL' : 'agent.activeVersionId IS NULL',
+			);
+		}
+		if (filter?.projectId) {
+			query.andWhere('agent.projectId = :filterProjectId', { filterProjectId: filter.projectId });
 		}
 	}
 
@@ -490,7 +508,7 @@ export class AgentRepository extends BaseRepository<Agent> {
 
 	private applySorting(
 		query: SelectQueryBuilder<Agent>,
-		sortBy?: ListAgentsQueryDto['sortBy'],
+		sortBy?: AgentsListSortBy,
 		usageCounts?: Map<string, number>,
 	): void {
 		const [field = 'updatedAt', direction = 'desc'] = sortBy?.split(':') ?? [];
@@ -556,6 +574,83 @@ export class AgentRepository extends BaseRepository<Agent> {
 		);
 	}
 
+	async moveToFolder(
+		agentId: string,
+		projectId: string,
+		parentFolderId: string | null,
+		ctx: OperationContext = {},
+	): Promise<boolean> {
+		const result = await this.managerFor(ctx).update(
+			Agent,
+			{ id: agentId, projectId, scope: projectScope },
+			{ parentFolderId },
+		);
+
+		return (result.affected ?? 0) > 0;
+	}
+
+	async findInFolders(projectId: string, folderIds: string[]): Promise<ProjectAgent[]> {
+		const agents: ProjectAgent[] = [];
+
+		for (const batch of chunkIds([...new Set(folderIds)])) {
+			const found = await this.find({
+				where: { projectId, scope: projectScope, parentFolderId: In(batch) },
+			});
+			agents.push(...found.filter(isProjectAgent));
+		}
+
+		return agents;
+	}
+
+	async countByFolder(projectId: string, folderIds: string[]): Promise<Map<string, number>> {
+		const counts = new Map<string, number>();
+
+		for (const batch of chunkIds([...new Set(folderIds)])) {
+			const rows = await this.createQueryBuilder('agent')
+				.select('agent.parentFolderId', 'folderId')
+				.addSelect('COUNT(agent.id)', 'count')
+				.where(projectScopeSql)
+				.andWhere('agent.projectId = :projectId', { projectId })
+				.andWhere('agent.parentFolderId IN (:...folderIds)', { folderIds: batch })
+				.andWhere('agent.isArchived = :isArchived', { isArchived: false })
+				.groupBy('agent.parentFolderId')
+				.getRawMany<{ folderId: string; count: string }>();
+
+			for (const row of rows) {
+				counts.set(row.folderId, Number(row.count));
+			}
+		}
+
+		return counts;
+	}
+
+	async relocateFolderContents(
+		projectId: string,
+		fromFolderId: string,
+		toFolderId: string | null,
+		ctx: OperationContext,
+	): Promise<void> {
+		await this.managerFor(ctx).update(
+			Agent,
+			{ projectId, scope: projectScope, parentFolderId: fromFolderId },
+			{ parentFolderId: toFolderId },
+		);
+	}
+
+	async moveArchivedFolderContentsToRoot(
+		projectId: string,
+		folderIds: string[],
+		ctx: OperationContext,
+	): Promise<void> {
+		for (const batch of chunkIds([...new Set(folderIds)])) {
+			await this.managerFor(ctx).update(
+				Agent,
+				{ projectId, scope: projectScope, parentFolderId: In(batch), isArchived: true },
+				{ parentFolderId: null },
+			);
+		}
+	}
+
 	async isN8nChatPublished(id: string, projectId: string): Promise<boolean> {
 		const agent = await this.findByIdAndProjectId(id, projectId);
 		return hasN8nChatChannel(agent?.activeVersion?.schema?.integrations);
@@ -606,6 +701,11 @@ export class AgentRepository extends BaseRepository<Agent> {
 	async findIdentityId(id: string): Promise<string | null> {
 		const agent = await this.findOne({ select: ['identityId'], where: { id } });
 		return agent?.identityId ?? null;
+	}
+
+	/** The agent that acts as this identity, if there is one. */
+	async findByIdentityId(identityId: string): Promise<Pick<Agent, 'id' | 'name'> | null> {
+		return await this.findOne({ select: ['id', 'name'], where: { identityId } });
 	}
 
 	/** Sets the identity only when the agent has none. Returns false when another write set it first. */
