@@ -26,9 +26,7 @@ export function createArtifactPreviewMemory() {
 	const logsPanelMemory = {
 		// The user collapsed the panel in this thread, so later runs do not open it again.
 		collapsedByUser: false,
-		// Only a panel that opened automatically collapses after a successful run.
-		autoOpened: false,
-		// Latest started run per workflow id. Only the success of that run collapses the panel.
+		// Latest started run per workflow id. Only the failure of that run opens the panel.
 		latestStartedExecutionIds: new Map<string, string>(),
 	};
 

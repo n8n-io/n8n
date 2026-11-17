@@ -262,6 +262,30 @@ describe('Test PostgresV2, executeQuery operation', () => {
 		);
 	});
 
+	it.each([
+		{ nodeVersion: 2.9, expected: "select '1$&2', '1$$2', '^[0-9]+$'" },
+		{ nodeVersion: 2.8, expected: "select '1{{ $json.sql }}2', '1$2', '^[0-9]+" },
+	])(
+		'should insert the resolved query for version $nodeVersion',
+		async ({ nodeVersion, expected }) => {
+			const nodeParameters: IDataObject = {
+				operation: 'executeQuery',
+				query: '{{ $json.sql }}',
+				options: { nodeVersion },
+			};
+			const nodeOptions = nodeParameters.options as IDataObject;
+			const mockExecute = createMockExecuteFunction(nodeParameters);
+			mockExecute.evaluateExpression = vi.fn().mockReturnValue("select '1$&2', '1$$2', '^[0-9]+$'");
+
+			await executeQuery.execute.call(mockExecute, runQueries, items, nodeOptions);
+
+			expect(runQueries).toHaveBeenCalledWith(
+				[{ query: expected, values: [], options: { partial: true } }],
+				nodeOptions,
+			);
+		},
+	);
+
 	it('should call runQueries and insert enclosed placeholder into values', async () => {
 		const nodeParameters: IDataObject = {
 			operation: 'executeQuery',

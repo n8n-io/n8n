@@ -10,6 +10,7 @@ import {
 	N8nSettingsRow,
 	N8nSettingsRowConfigure,
 	N8nSettingsRowGroup,
+	N8nText,
 } from '@n8n/design-system';
 
 import { useDocumentTitle } from '@/app/composables/useDocumentTitle';
@@ -24,7 +25,7 @@ const router = useRouter();
 const documentTitle = useDocumentTitle();
 const contextStore = useContextStore();
 const skillsStore = useSkillsStore();
-// The skills row follows the skills module. Preferences are always on.
+// The skills row follows the skills consumers. Preferences are always on.
 const skillsEnabled = isContextSkillsEnabled();
 const { showError } = useToast();
 
@@ -115,9 +116,15 @@ onMounted(async () => {
 			<N8nSettingsRow
 				v-else
 				:title="i18n.baseText('settings.context.skills.title')"
-				:description="i18n.baseText('settings.context.comingSoon')"
+				:description="i18n.baseText('settings.context.skills.disabled.description')"
 				data-test-id="settings-context-skills-row"
-			/>
+			>
+				<template #action>
+					<N8nText size="small" color="text-light">
+						{{ i18n.baseText('settings.context.skills.disabled.status') }}
+					</N8nText>
+				</template>
+			</N8nSettingsRow>
 		</N8nSettingsRowGroup>
 	</N8nSettingsLayout>
 </template>

@@ -38,7 +38,6 @@ export class InMemoryWorkQueue<TMessage> implements WorkQueue<TMessage> {
 
 	private idleWaiters: Array<() => void> = [];
 
-	// eslint-disable-next-line @typescript-eslint/require-await -- satisfies async interface; dispatch is scheduled, not awaited
 	async publish(message: TMessage): Promise<void> {
 		this.pending.push(message);
 		this.fillSlots();
