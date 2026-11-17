@@ -34,6 +34,7 @@ export class TelemetryProxy implements TelemetryTracker {
 	track(event: string | TelemetryEventDef, properties?: ITelemetryTrackProperties): void {
 		if (!this.provider) return;
 
+		// No overload accepts the union, so narrow it before each call.
 		if (typeof event === 'string') {
 			this.provider.track(event, properties);
 		} else {
