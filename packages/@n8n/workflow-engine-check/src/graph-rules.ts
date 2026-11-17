@@ -34,15 +34,17 @@ interface Loop {
 
 /**
  * Mirrors the loop detection of `V1WorkflowConverter` and the graph rules of
- * `validateExecutableGraph`, for the graph that each live trigger starts.
+ * `validateExecutableGraph`, for the graph that each live trigger starts. With no live
+ * trigger the converter does not root the graph, so the rules see every node.
  */
 export function findGraphReasons(nodes: INode[], connections: IConnections): EngineV2Reason[] {
 	const nodesByName = new Map(nodes.map((node) => [node.name, node]));
 	const liveTriggers = nodes.filter(
 		(node) => node.disabled !== true && isTriggerNodeType(node.type),
 	);
+	const roots = liveTriggers.length > 0 ? liveTriggers : [undefined];
 	const reasonsByKey = new Map<string, EngineV2Reason>();
-	for (const trigger of liveTriggers) {
+	for (const trigger of roots) {
 		for (const reason of findReasonsForTrigger(nodes, nodesByName, connections, trigger)) {
 			reasonsByKey.set(`${reason.code}|${reason.message}`, reason);
 		}
@@ -54,7 +56,7 @@ function findReasonsForTrigger(
 	nodes: INode[],
 	nodesByName: Map<string, INode>,
 	connections: IConnections,
-	trigger: INode,
+	trigger: INode | undefined,
 ): EngineV2Reason[] {
 	const reason: MakeReason = (code, kind, problem, nodeName) =>
 		makeReason({
@@ -65,7 +67,7 @@ function findReasonsForTrigger(
 		});
 	const isLoopNode = (name: string) => nodesByName.get(name)?.type === SPLIT_IN_BATCHES_TYPE;
 
-	const { liveNodes, edges } = toTriggerGraph(nodes, connections, trigger);
+	const { liveNodes, edges } = toRootedGraph(nodes, connections, trigger);
 	const loops: Loop[] = [];
 	const returns = new Set<Edge>();
 
@@ -148,7 +150,8 @@ function findReasonsForTrigger(
 			),
 		),
 		...loops.flatMap((loop) => findLoopShapeReasons(loop, edges, returnedTo, reason)),
-		...findCutOffReasons(trigger.name, edges, reason),
+		// Without a trigger the start node is unknown, so the check cannot tell which nodes are cut off.
+		...(trigger === undefined ? [] : findCutOffReasons(trigger.name, edges, reason)),
 		...findInputSlotReasons(edges, returns, new Set(loops.map((loop) => loop.loopNode)), reason),
 	];
 }
@@ -307,20 +310,23 @@ function findInputSlotReasons(
 }
 
 /**
- * The `main` edges between live nodes that the trigger reaches, as the converter builds
- * them: an edge through a disabled node joins the edges into its first input to the
- * edges out of it, and duplicate edges count once.
+ * The `main` edges between live nodes that the trigger reaches, or between all live nodes
+ * when there is no trigger, as the converter builds them: an edge through a disabled node
+ * joins the edges into its first input to the edges out of it, and duplicate edges count once.
  */
-function toTriggerGraph(
+function toRootedGraph(
 	nodes: INode[],
 	connections: IConnections,
-	trigger: INode,
+	trigger: INode | undefined,
 ): { liveNodes: string[]; edges: Edge[] } {
-	const reachable = new Set([
-		trigger.name,
-		...getChildNodes(connections, trigger.name, NodeConnectionTypes.Main, -1),
-	]);
-	const rooted = nodes.filter((node) => reachable.has(node.name));
+	let rooted = nodes;
+	if (trigger !== undefined) {
+		const reachable = new Set([
+			trigger.name,
+			...getChildNodes(connections, trigger.name, NodeConnectionTypes.Main, -1),
+		]);
+		rooted = nodes.filter((node) => reachable.has(node.name));
+	}
 	const names = new Set(rooted.map((node) => node.name));
 
 	let edges: Edge[] = [];

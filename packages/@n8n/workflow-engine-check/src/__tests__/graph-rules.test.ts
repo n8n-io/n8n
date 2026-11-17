@@ -72,6 +72,31 @@ describe('graph rules', () => {
 			node: 'A',
 		},
 		{
+			shape: 'a cycle in a workflow whose only trigger is disabled',
+			connections: [
+				['Trigger', 'A'],
+				['A', 'B'],
+				['B', 'A'],
+			],
+			disabled: ['Trigger'],
+			code: 'CYCLE_WITHOUT_SPLIT_IN_BATCHES',
+			kind: 'temporary',
+			node: 'A',
+		},
+		{
+			shape: 'a loop that a body node leaves, in a workflow without a trigger',
+			connections: [
+				['Start', 'Loop'],
+				['Loop', 'Body', 1],
+				['Body', 'Loop'],
+				['Loop', 'After', 0],
+				['Body', 'Side', 1],
+			],
+			code: 'LOOP_EXITS_MID_BODY',
+			kind: 'temporary',
+			node: 'Body',
+		},
+		{
 			shape: 'a cycle that appears when a disabled node is bypassed',
 			connections: [
 				['Trigger', 'A'],
@@ -337,6 +362,15 @@ describe('graph rules', () => {
 				['LoopTwo', 'BodyTwo', 1],
 				['BodyTwo', 'LoopTwo'],
 				['LoopTwo', 'After', 0],
+			],
+		},
+		{
+			shape: 'a simple loop in a workflow without a trigger',
+			connections: [
+				['Start', 'Loop'],
+				['Loop', 'Body', 1],
+				['Body', 'Loop'],
+				['Loop', 'After', 0],
 			],
 		},
 		{
