@@ -254,7 +254,13 @@ describe('Durable channel approval lifecycle', () => {
 				graph.nodes[1].parameters.message =
 					'={{ $json.toolName + " requested by " + $json.requester.name }}';
 				const workflow = await createWorkflowWithHistory(
-					{ ...graph, name: 'Decision workflow' },
+					{
+						id: graph.id,
+						name: 'Decision workflow',
+						nodes: graph.nodes,
+						connections: graph.connections,
+						settings: graph.settings,
+					},
 					project,
 				);
 				await setActiveVersion(workflow.id, workflow.versionId);

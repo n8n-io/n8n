@@ -15,13 +15,15 @@ it('remaps the decision workflow and preserves interaction identity during impor
 	workflows.findBySourceWorkflowIds.mockResolvedValue({ matches: new Map(), lineageConflicts: [] });
 	const finder = mock<WorkflowFinderService>();
 	finder.findWorkflowsByIdsForUser.mockResolvedValue([]);
-	finder.findWorkflowIdsWithScopeForUser.mockResolvedValue([]);
+	finder.findWorkflowIdsWithScopeForUser.mockResolvedValue(new Set());
 	const projects = mock<ProjectScopeService>();
 	projects.getProjectIds.mockResolvedValue(null);
 	const service = new AgentImportBindings(agents, workflows, finder, projects);
 	const item: AgentPlanItem = {
 		name: 'Reviewer',
 		availableInMCP: false,
+		isArchived: false,
+		archiveTransition: null,
 		tools: {},
 		tasks: {},
 		metadata: { versionId: null, publishedVersionId: null },
@@ -33,6 +35,7 @@ it('remaps the decision workflow and preserves interaction identity during impor
 		config: {
 			name: 'Reviewer',
 			model: 'anthropic/test',
+			instructions: 'Review tool calls.',
 			hitlConfigurations: [
 				{
 					id: 'interaction_review',

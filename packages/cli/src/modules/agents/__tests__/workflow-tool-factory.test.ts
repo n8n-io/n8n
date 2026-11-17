@@ -503,7 +503,14 @@ it('checks the approved workflow version before starting an execution', async ()
 		context,
 	);
 	await expect(
-		tool.handler?.({}, { continuation: { __agentApprovalWorkflowVersion: 'approved-version' } }),
+		tool.handler?.(
+			{},
+			{
+				suspend: vi.fn(),
+				resumeData: undefined,
+				continuation: { __agentApprovalWorkflowVersion: 'approved-version' },
+			},
+		),
 	).rejects.toThrow('workflow changed while approval was pending');
 	expect(context.workflowRunner.run).not.toHaveBeenCalled();
 });

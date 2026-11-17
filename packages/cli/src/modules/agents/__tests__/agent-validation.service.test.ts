@@ -1,9 +1,9 @@
 import type { AgentHistoryRepository } from '../repositories/agent-history.repository';
 import type { CredentialProvider } from '@n8n/agents';
 import { AI_GATEWAY_MANAGED_TAG, type AgentJsonConfig } from '@n8n/api-types';
-import type { TransactionRunner, WorkflowRepository } from '@n8n/db';
+import type { TransactionRunner, WorkflowRepository, WorkflowEntity } from '@n8n/db';
 import type { PolicyViolation } from '@n8n/decorators';
-import { mock } from 'vitest-mock-extended';
+import { mock, mockDeep } from 'vitest-mock-extended';
 
 import type { NodeTypesProxy } from '@n8n/backend-services';
 import type { AiGatewayService } from '@/services/ai-gateway.service';
@@ -2108,7 +2108,7 @@ describe('human review validation', () => {
 			workflowRepository.findOneByAgentToolReference.mockResolvedValue(
 				state === 'missing'
 					? null
-					: mock({
+					: mockDeep<WorkflowEntity>({
 							id: 'decision',
 							isArchived: state === 'archived',
 							activeVersionId: state === 'unpublished' ? null : 'version',

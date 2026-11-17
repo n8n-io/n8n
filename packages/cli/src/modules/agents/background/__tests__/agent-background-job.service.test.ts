@@ -1854,7 +1854,19 @@ describe('reconcile — workflow jobs', () => {
 				status: 'success',
 				workflowData: { connections: {} },
 				data: createRunExecutionData({
-					resultData: { runData: { Review: [{ data: { main: [[{ json: { approved } }]] } }] } },
+					resultData: {
+						runData: {
+							Review: [
+								{
+									executionTime: 0,
+									startTime: 0,
+									executionIndex: 0,
+									source: [],
+									data: { main: [[{ json: { approved } }]] },
+								},
+							],
+						},
+					},
 				}),
 			} as IExecutionResponse);
 

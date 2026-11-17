@@ -62,7 +62,11 @@ function workflowPersistence(approvalArgumentsRedacted?: boolean) {
 	};
 }
 
-function setup(agentConfiguration: AgentJsonConfig = configuration, reviewIds = ['review']) {
+function setup(
+	agentConfiguration: AgentJsonConfig = configuration,
+	reviewIds = ['review'],
+	metadata?: BuiltTool['metadata'],
+) {
 	const jobs = mock<AgentBackgroundJobRepository>();
 	const executions = mock<ExecutionPersistence>();
 	const loader = mock<CallableWorkflowLoader>();
@@ -78,7 +82,7 @@ function setup(agentConfiguration: AgentJsonConfig = configuration, reviewIds = 
 		runtimeConfig,
 	);
 	const handler = vi.fn().mockResolvedValue('executed');
-	const tool: BuiltTool = { name: 'write', description: 'Write a record', handler };
+	const tool: BuiltTool = { name: 'write', description: 'Write a record', handler, metadata };
 	const wrapped = service.wrap(
 		tool,
 		{ type: 'configuration', configurationIds: reviewIds },
@@ -844,7 +848,7 @@ it('does not treat an unknown continuation as a prior approval', async () => {
 	expect(handler).not.toHaveBeenCalled();
 });
 
-function sequenceFixture() {
+function sequenceFixture(metadata?: BuiltTool['metadata']) {
 	const config: AgentJsonConfig = {
 		...configuration,
 		hitlConfigurations: [
@@ -852,7 +856,7 @@ function sequenceFixture() {
 			{ id: 'second', name: 'Second', method: 'workflow', workflowId: 'workflow-second' },
 		],
 	};
-	const fixture = setup(config, ['second', 'first']);
+	const fixture = setup(config, ['second', 'first'], metadata);
 	Container.set(WorkflowRunner, mock<WorkflowRunner>());
 	fixture.loader.loadWorkflow.mockImplementation(
 		async (_project, reference) =>
@@ -903,8 +907,7 @@ describe('ordered human reviews', () => {
 		},
 	);
 	it('keeps every review bound to the same workflow tool version', async () => {
-		const fixture = sequenceFixture();
-		fixture.tool.metadata = { kind: 'workflow', workflowId: 'protected' };
+		const fixture = sequenceFixture({ kind: 'workflow', workflowId: 'protected' });
 		let version = 0;
 		fixture.loader.loadWorkflow.mockImplementation(
 			async (_project, reference) =>
