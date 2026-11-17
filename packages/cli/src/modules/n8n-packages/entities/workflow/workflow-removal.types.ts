@@ -27,6 +27,8 @@ export interface WorkflowRemovalRequest {
 	 * conflict policy. An empty list uses the normal reconciliation rules.
 	 */
 	explicitDeleteIds?: string[];
+	/** Workflows that a transfer moves to another project. They are never removed here. */
+	movedOutWorkflowIds?: ReadonlySet<string>;
 }
 
 /** A workflow on the target that the package does not account for. */

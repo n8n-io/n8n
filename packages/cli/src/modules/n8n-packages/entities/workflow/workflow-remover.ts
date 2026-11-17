@@ -55,10 +55,12 @@ export class WorkflowRemover {
 
 		// Archived rows load too: reconciliation treats them as already removed, so they are never
 		// candidates — but a folder holding one is still occupied and must survive folder removal.
-		const placements = await this.workflowFinderService.findOwnedWorkflowPlacementsInProject(
-			context.projectId,
-			{ includeArchived: true },
-		);
+		// A workflow that moves to another project is not here when the removals run.
+		const placements = (
+			await this.workflowFinderService.findOwnedWorkflowPlacementsInProject(context.projectId, {
+				includeArchived: true,
+			})
+		).filter(({ id }) => !request.movedOutWorkflowIds?.has(id));
 		if (placements.length === 0) return nothingToRemove;
 
 		// Folder removal runs after the workflow writes, so occupancy follows the planned moves.
@@ -94,7 +96,10 @@ export class WorkflowRemover {
 		context: ImportContext,
 		request: WorkflowRemovalRequest,
 	): Promise<WorkflowRemovalPlan> {
-		const requested = new Set(request.explicitDeleteIds);
+		// A workflow that moves to another project is not a deletion.
+		const requested = new Set(
+			request.explicitDeleteIds?.filter((id) => !request.movedOutWorkflowIds?.has(id)),
+		);
 		// Check planned target ids before reading placements so absent and archived targets count too.
 		const conflicts = request.workflowItems
 			.filter((item) => requested.has(targetIdOf(item)))

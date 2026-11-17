@@ -12,6 +12,7 @@ import type {
 	FolderPlanItem,
 	PreparedFolder,
 } from './folder-import.types';
+import type { ScopeCrossProjectMoves } from '../../engine/cross-project-mover';
 import { LayoutConflictPolicy } from '../../n8n-packages.types';
 import type { FolderConflict, ImportedFolderSummary } from '../../n8n-packages.types';
 
@@ -26,9 +27,20 @@ interface ExistingFolder {
 export class FolderImporter {
 	constructor(private readonly folderService: FolderService) {}
 
-	async plan(context: FolderImportContext, folders: PreparedFolder[]): Promise<FolderImportPlan> {
+	async plan(
+		context: FolderImportContext,
+		folders: PreparedFolder[],
+		/** The transfers that run before this plan is written. */
+		crossProjectMoves?: ScopeCrossProjectMoves,
+	): Promise<FolderImportPlan> {
 		const ordered = orderParentsFirst(folders);
 		const existing = await this.findExisting(ordered.map(({ sourceFolderId }) => sourceFolderId));
+		// Read each folder where the transfers leave it: in this project, and at the root when the
+		// folder is the top of a transferred tree.
+		for (const [id, folder] of existing) {
+			if (crossProjectMoves?.movedInFolderIds.has(id)) folder.projectId = context.projectId;
+			if (crossProjectMoves?.rootedFolderIds.has(id)) folder.parentFolderId = null;
+		}
 
 		const items: FolderPlanItem[] = [];
 		const conflicts: FolderConflict[] = [];

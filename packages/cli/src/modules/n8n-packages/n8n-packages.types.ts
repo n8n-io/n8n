@@ -405,7 +405,69 @@ export type PromotionLayoutProperties = {
 	layoutConflictPolicy?: LayoutConflictPolicy;
 	/** Omitted means `allow`. */
 	credentialPersonalRoute?: CredentialPersonalRoute;
+	/** Omitted means `refuse`. */
+	crossProjectMovePolicy?: CrossProjectMovePolicy;
+	/**
+	 * Under `transfer`: the user confirmed the moves out of projects that this import does not
+	 * write. Without it, such a move is a blocking issue.
+	 */
+	confirmedMovesOutOfOperation?: boolean;
 };
+
+/* eslint-disable @typescript-eslint/naming-convention */
+/** What the import does with a workflow or folder that another team project holds on the target. */
+export const CrossProjectMovePolicy = {
+	/** The id is in use in another project, so the import reports a conflict. */
+	Refuse: 'refuse',
+	/** The import transfers the item to the project of the package. The id and the history stay. */
+	Transfer: 'transfer',
+} as const;
+/* eslint-enable @typescript-eslint/naming-convention */
+
+export type CrossProjectMovePolicy =
+	(typeof CrossProjectMovePolicy)[keyof typeof CrossProjectMovePolicy];
+
+/** A workflow or folder that the import moves between two team projects. */
+export interface PlannedCrossProjectMove {
+	kind: 'workflow' | 'folder';
+	id: string;
+	/** The name on the target before the import. */
+	name: string;
+	/** The project that holds the item on the target. */
+	fromProjectId: string;
+	/** The project that holds the item in the package. */
+	toProjectId: string;
+	/** `false`: the import does not write `fromProjectId`, so the move needs a confirmation. */
+	fromProjectInOperation: boolean;
+	/** The move is a blocking issue until the request confirms it. */
+	needsConfirmation: boolean;
+	/** Workflow only: the workflow has shares on the target. The transfer removes them. */
+	losesShares?: boolean;
+	/** Workflow only: the target has a published version, which the transfer publishes again. */
+	published?: boolean;
+}
+
+/** A move that the import did. */
+export interface CrossProjectMoveSummary
+	extends Pick<PlannedCrossProjectMove, 'kind' | 'id' | 'name' | 'fromProjectId' | 'toProjectId'> {
+	/** Set when the new project refused the published version, so the transfer unpublished it. */
+	unpublished?: { reason: string };
+}
+
+/** Why the import cannot transfer a workflow or folder between projects. */
+export interface CrossProjectMoveBlocked {
+	/**
+	 * - `forbidden`: the user lacks `missingScope` on the item or in the new project.
+	 * - `unconfirmed`: the import does not write the old project and the move is not confirmed.
+	 */
+	kind: 'forbidden' | 'unconfirmed';
+	entity: 'workflow' | 'folder';
+	id: string;
+	name: string;
+	fromProjectId: string;
+	toProjectId: string;
+	missingScope?: string;
+}
 
 export type ResolvedImportRequest = ImportRequest & ResolvedImportFolderProperties;
 
@@ -702,6 +764,7 @@ export type BlockingIssue =
 	| ({ type: 'workflow-removal-forbidden' } & WorkflowRemovalFailure)
 	| ({ type: 'workflow-removal-conflict' } & WorkflowRemovalConflict)
 	| ({ type: 'folder-removal-forbidden' } & FolderRemovalFailure)
+	| ({ type: 'cross-project-move-blocked' } & CrossProjectMoveBlocked)
 	| ({
 			type: 'data-table-unresolved';
 			usedBy: PackageRequirementConsumer[];
@@ -892,6 +955,8 @@ export interface ImportResult {
 	removedWorkflows: RemovedWorkflowSummary[];
 	/** Folders the package did not define that were left empty by the removals above. */
 	removedFolders: RemovedFolderSummary[];
+	/** Workflows and folders that the import moved between projects (`crossProjectMovePolicy=transfer`). */
+	moves?: CrossProjectMoveSummary[];
 	folders: ImportedFolderSummary[];
 	projects: ImportedProjectSummary[];
 	bindings: SerializedBindings;

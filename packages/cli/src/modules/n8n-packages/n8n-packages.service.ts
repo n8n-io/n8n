@@ -749,6 +749,12 @@ export class N8nPackagesService {
 				? { credentialPersonalRoute: request.credentialPersonalRoute }
 				: {}),
 			publishingPolicy: request.publishingPolicy ?? WorkflowPublishingPolicy.MatchSource,
+			...(request.crossProjectMovePolicy !== undefined
+				? { crossProjectMovePolicy: request.crossProjectMovePolicy }
+				: {}),
+			...(request.confirmedMovesOutOfOperation !== undefined
+				? { confirmedMovesOutOfOperation: request.confirmedMovesOutOfOperation }
+				: {}),
 			selection,
 		};
 	}

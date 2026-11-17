@@ -204,6 +204,21 @@ export class WorkflowFinderService {
 		return found;
 	}
 
+	/** The workflows that at least one project other than the owner can use. */
+	async findSharedWorkflowIds(workflowIds: string[]): Promise<Set<string>> {
+		const found = new Set<string>();
+		for (const chunk of chunkIds(workflowIds)) {
+			const sharings = await this.sharedWorkflowRepository.find({
+				select: { workflowId: true, role: true },
+				where: { workflowId: In(chunk) },
+			});
+			for (const { workflowId, role } of sharings) {
+				if (role !== 'workflow:owner') found.add(workflowId);
+			}
+		}
+		return found;
+	}
+
 	async findExistingWorkflowIds(workflowIds: string[]): Promise<Set<string>> {
 		if (workflowIds.length === 0) return new Set();
 

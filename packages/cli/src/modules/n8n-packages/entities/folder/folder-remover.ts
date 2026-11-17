@@ -36,11 +36,15 @@ export class FolderRemover {
 			occupiedFolderIds: string[];
 			/** The folder plan. Its moves run before removal, so emptiness and depth follow them. */
 			folderItems: FolderPlanItem[];
+			/** Folders that a transfer moves to another project. They are never removed here. */
+			movedOutFolderIds?: ReadonlySet<string>;
 		},
 	): Promise<FolderRemovalPlan> {
 		const nothingToRemove = { removals: [], failures: [] };
 
-		const current = await this.folderService.getFolderPlacementsInProject(context.projectId);
+		const current = (
+			await this.folderService.getFolderPlacementsInProject(context.projectId)
+		).filter(({ id }) => !input.movedOutFolderIds?.has(id));
 		if (current.length === 0) return nothingToRemove;
 		const placements = withPlannedParents(current, plannedFolderParents(input.folderItems));
 
