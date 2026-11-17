@@ -589,7 +589,9 @@ function callArgumentUse(
 			global === 'RangeError'
 		)
 			return TEXT;
-		if (global === 'Number') return RAW;
+		// JavaScript converts a Date to its time value for these functions (ToNumber).
+		if (global === 'Number' || global === 'isNaN' || global === 'isFinite') return RAW;
+		if (global.startsWith('Math.')) return RAW;
 		return reject(
 			`A Date cannot be passed to \`${global}\`.`,
 			'Pass d.getTime() or d.toISOString().',
@@ -729,6 +731,8 @@ export function checkDates(checker: ts.TypeChecker, sf: ts.SourceFile, report: R
 		if (DATE_SETTERS.has(method)) {
 			const callee = skipOuter(call.expression);
 			const recv = ts.isPropertyAccessExpression(callee) ? skipOuter(callee.expression) : callee;
+			// A setter on `new Date(...)` changes a Date that no other code can read.
+			if (isDateConstructor(checker, recv)) return;
 			const sym = ts.isIdentifier(recv) ? checker.getSymbolAtLocation(recv) : undefined;
 			const decl = sym?.valueDeclaration;
 			if (!sym || !decl || !ts.isVariableDeclaration(decl) || !ts.isIdentifier(decl.name)) {
@@ -833,15 +837,28 @@ export function checkDates(checker: ts.TypeChecker, sf: ts.SourceFile, report: R
 			);
 		}
 		const scope = decl.parent.parent.parent ?? sf;
+		/** True when `n` runs once in the block of the variable, not in a loop or an inner function. */
+		const straight = (n: ts.Node): boolean => {
+			for (let p = n.parent; p && p !== scope; p = p.parent) {
+				if (isFunctionLike(p) || ts.isIterationStatement(p, false)) return false;
+			}
+			return true;
+		};
+		/**
+		 * True when no setter runs after the store at `n`: the store and each setter run once,
+		 * in the order of the source, and the store is the last. Then the copy equals the Date.
+		 */
+		const settled = (n: ts.Node): boolean =>
+			straight(n) && receivers.every((x) => straight(x) && x.getEnd() <= n.getStart());
 		const visitRefs = (n: ts.Node): void => {
 			if (ts.isIdentifier(n) && n !== decl.name && checker.getSymbolAtLocation(n) === sym) {
-				checkMutatedRef(n, fresh);
+				checkMutatedRef(n, fresh, settled);
 			}
 			if (
 				ts.isShorthandPropertyAssignment(n) &&
 				checker.getShorthandAssignmentValueSymbol(n) === sym
 			) {
-				if (!consumedNow(n.parent)) {
+				if (!consumedNow(n.parent) && !settled(n)) {
 					r(
 						n,
 						'A Date that a setter changes cannot be stored in an object: JavaScript shares the object.',
@@ -854,7 +871,11 @@ export function checkDates(checker: ts.TypeChecker, sf: ts.SourceFile, report: R
 		if (receivers.length > 0) visitRefs(scope);
 	}
 
-	function checkMutatedRef(id: ts.Identifier, fresh: (e: ts.Expression | undefined) => boolean) {
+	function checkMutatedRef(
+		id: ts.Identifier,
+		fresh: (e: ts.Expression | undefined) => boolean,
+		settled: (n: ts.Node) => boolean,
+	) {
 		if (ts.isShorthandPropertyAssignment(id.parent)) return;
 		let node: ts.Expression = id;
 		// Climb through the parents that pass the value on.
@@ -901,7 +922,7 @@ export function checkDates(checker: ts.TypeChecker, sf: ts.SourceFile, report: R
 			(ts.isArrowFunction(p) && p.body === node)
 		) {
 			const use = ts.isVariableDeclaration(p) ? RAW : returnUse(checker, containingFunction(node));
-			if (use.kind === 'raw') {
+			if (use.kind === 'raw' && !(ts.isReturnStatement(p) && returnsOwnLocal(id, p))) {
 				r(
 					node,
 					'A Date that a setter changes cannot be copied: JavaScript shares the object.',
@@ -925,7 +946,7 @@ export function checkDates(checker: ts.TypeChecker, sf: ts.SourceFile, report: R
 		}
 		if ((ts.isPropertyAssignment(p) && p.initializer === node) || ts.isArrayLiteralExpression(p)) {
 			const literal = ts.isPropertyAssignment(p) ? p.parent : p;
-			if (!consumedNow(literal)) {
+			if (!consumedNow(literal) && !settled(node)) {
 				r(
 					node,
 					'A Date that a setter changes cannot be stored in an object or array: JavaScript shares the object.',
@@ -933,6 +954,28 @@ export function checkDates(checker: ts.TypeChecker, sf: ts.SourceFile, report: R
 				);
 			}
 		}
+	}
+
+	/**
+	 * True when `ret` returns a variable of its own function that no inner function names:
+	 * the variable is gone after the return, so the caller holds the only Date.
+	 */
+	function returnsOwnLocal(id: ts.Identifier, ret: ts.ReturnStatement): boolean {
+		const sym = checker.getSymbolAtLocation(id);
+		const decl = sym?.valueDeclaration;
+		const fn = containingFunction(ret);
+		if (!sym || !decl || !fn || containingFunction(decl) !== fn) return false;
+		let shared = false;
+		const scan = (n: ts.Node, inner: boolean): void => {
+			if (shared) return;
+			if (inner && ts.isIdentifier(n) && checker.getSymbolAtLocation(n) === sym) shared = true;
+			if (inner && ts.isShorthandPropertyAssignment(n)) {
+				if (checker.getShorthandAssignmentValueSymbol(n) === sym) shared = true;
+			}
+			ts.forEachChild(n, (c) => scan(c, inner || (c !== fn && isFunctionLike(c))));
+		};
+		scan(fn, false);
+		return !shared;
 	}
 
 	/** True when a literal is copied at once: a ctx call argument, JSON.stringify, or the result of run. */

@@ -96,6 +96,8 @@ export interface CodeNativeInput {
 	 * native form: the bytes of a stored file need a call of the runtime that reads them.
 	 */
 	inlineBinary?: boolean;
+	/** Parameters and results of functions keep the type `Json` (see `Translation.typedDates`). */
+	plainDates?: boolean;
 }
 
 export interface Blocker {
@@ -146,6 +148,12 @@ export interface Translation {
 	allNodes: string[];
 	/** The code reads `.index`, `.input` or `.groups` of matches (registry `__wf_matches`). */
 	usesMatchProps: boolean;
+	/**
+	 * A parameter or a result of a function of the code has the type Date, because each call
+	 * gives a Date. When this form does not compile, the caller translates again with
+	 * `plainDates`.
+	 */
+	typedDates: boolean;
 }
 
 export type TranslateResult =
@@ -999,13 +1007,225 @@ export function translateCode(input: CodeNativeInput): TranslateResult {
 		find(c.block);
 		return used;
 	};
+	/** Parameters of local functions that get a Date from each call: they keep the type Date. */
+	const dateParams = new Set<ts.Node>();
+	/** Local functions whose every result is a Date: their result keeps the type Date. */
+	const dateFunctions = new Set<ts.Node>();
+	/** The local function that `id` names, when its declaration is the only one. */
+	const localFunctionOf = (id: ts.Expression): ts.FunctionLikeDeclaration | undefined => {
+		const x = stripParens(id);
+		if (!ts.isIdentifier(x)) return undefined;
+		const declarations = checker.getSymbolAtLocation(x)?.declarations ?? [];
+		if (declarations.length !== 1) return undefined;
+		const d = declarations[0];
+		if (ts.isFunctionDeclaration(d)) return d.body ? d : undefined;
+		if (
+			!ts.isVariableDeclaration(d) ||
+			!ts.isVariableDeclarationList(d.parent) ||
+			(d.parent.flags & ts.NodeFlags.Const) === 0 ||
+			d.initializer === undefined
+		) {
+			return undefined;
+		}
+		const f = stripParens(d.initializer);
+		return ts.isArrowFunction(f) || ts.isFunctionExpression(f) ? f : undefined;
+	};
 	const isDateValue = (e: ts.Expression): boolean => {
 		const x = stripParens(e);
 		if (isNewDate(x)) return true;
+		if (ts.isCallExpression(x) && !x.questionDotToken) {
+			const f = localFunctionOf(x.expression);
+			return f !== undefined && dateFunctions.has(f);
+		}
 		if (!ts.isIdentifier(x)) return false;
 		const sym = checker.getSymbolAtLocation(x);
 		return sym !== undefined && dateVars.has(sym);
 	};
+	/** The start value of a variable that holds a Date: \`isDateInit\`, or a call of a Date function. */
+	const isDateStart = (e: ts.Expression | undefined): boolean => {
+		if (isDateInit(e)) return true;
+		if (e === undefined) return false;
+		const x = stripParens(e);
+		if (ts.isCallExpression(x)) return isDateValue(x);
+		return ts.isConditionalExpression(x) && isDateStart(x.whenTrue) && isDateStart(x.whenFalse);
+	};
+	/**
+	 * The calls of each local function that the code only calls by its name, without a spread
+	 * argument. A function that the code uses as a value has no entry: its callers are not known.
+	 */
+	const directCalls = new Map<ts.FunctionLikeDeclaration, ts.CallExpression[]>();
+	/** True when the translation gave a parameter or a result the type Date. */
+	let typedDates = false;
+	const inferDates = (infer: boolean): void => {
+		const functions = new Map<ts.Symbol, ts.FunctionLikeDeclaration>();
+		const callsOf = new Map<ts.Symbol, ts.CallExpression[] | null>();
+		const declarations: ts.VariableDeclaration[] = [];
+		const collect = (n: ts.Node): void => {
+			if (ts.isFunctionDeclaration(n) && n.name && n.body) {
+				const s = checker.getSymbolAtLocation(n.name);
+				if (s && localFunctionOf(n.name) === n) functions.set(s, n);
+			}
+			if (ts.isVariableDeclaration(n) && ts.isIdentifier(n.name)) {
+				declarations.push(n);
+				const f = localFunctionOf(n.name);
+				const s = checker.getSymbolAtLocation(n.name);
+				if (s && f) functions.set(s, f);
+			}
+			ts.forEachChild(n, collect);
+		};
+		collect(root);
+		if (functions.size === 0) return;
+		for (const s of functions.keys()) callsOf.set(s, []);
+		const uses = (n: ts.Node): void => {
+			if (ts.isShorthandPropertyAssignment(n)) {
+				const s = checker.getShorthandAssignmentValueSymbol(n);
+				if (s && callsOf.has(s)) callsOf.set(s, null);
+			} else if (ts.isIdentifier(n)) {
+				const s = checker.getSymbolAtLocation(n);
+				const p = n.parent;
+				const list = s ? callsOf.get(s) : undefined;
+				const isName = (ts.isFunctionDeclaration(p) || ts.isVariableDeclaration(p)) && p.name === n;
+				if (s && list !== undefined && list !== null && !isName) {
+					if (
+						ts.isCallExpression(p) &&
+						p.expression === n &&
+						!p.questionDotToken &&
+						!p.arguments.some((a) => ts.isSpreadElement(a))
+					) {
+						list.push(p);
+					} else callsOf.set(s, null);
+				}
+			}
+			ts.forEachChild(n, uses);
+		};
+		uses(root);
+		for (const [s, list] of callsOf) {
+			const f = functions.get(s);
+			if (f && list !== null) directCalls.set(f, list);
+		}
+		const plain = (f: ts.FunctionLikeDeclaration): boolean => {
+			if (f.asteriskToken || f.modifiers?.some((m) => m.kind === ts.SyntaxKind.AsyncKeyword)) {
+				return false;
+			}
+			let ok = true;
+			const scan = (n: ts.Node): void => {
+				if (ts.isIdentifier(n) && n.text === 'arguments') ok = false;
+				if (ok) ts.forEachChild(n, scan);
+			};
+			scan(f);
+			return ok;
+		};
+		const assigned = (f: ts.FunctionLikeDeclaration, symbol: ts.Symbol): boolean => {
+			let found = false;
+			const same = (e: ts.Expression): boolean => {
+				const x = stripParens(e);
+				return ts.isIdentifier(x) && checker.getSymbolAtLocation(x) === symbol;
+			};
+			const scan = (n: ts.Node): void => {
+				if (found) return;
+				if (
+					ts.isBinaryExpression(n) &&
+					n.operatorToken.kind >= ts.SyntaxKind.FirstAssignment &&
+					n.operatorToken.kind <= ts.SyntaxKind.LastAssignment &&
+					same(n.left)
+				) {
+					found = true;
+				} else if (
+					(ts.isPrefixUnaryExpression(n) || ts.isPostfixUnaryExpression(n)) &&
+					(n.operator === ts.SyntaxKind.PlusPlusToken ||
+						n.operator === ts.SyntaxKind.MinusMinusToken) &&
+					same(n.operand)
+				) {
+					found = true;
+				} else if (
+					(ts.isArrayLiteralExpression(n) || ts.isObjectLiteralExpression(n)) &&
+					ts.isBinaryExpression(n.parent) &&
+					n.parent.left === n
+				) {
+					found = true;
+				} else if (
+					(ts.isForOfStatement(n) || ts.isForInStatement(n)) &&
+					ts.isIdentifier(n.initializer) &&
+					same(n.initializer)
+				) {
+					found = true;
+				}
+				ts.forEachChild(n, scan);
+			};
+			scan(f);
+			return found;
+		};
+		const returnsDate = (f: ts.FunctionLikeDeclaration): boolean => {
+			const body = f.body;
+			if (body === undefined) return false;
+			const isResult = (e: ts.Expression | undefined): boolean =>
+				isDateStart(e) || (e !== undefined && isDateValue(e));
+			if (!ts.isBlock(body)) return isResult(body);
+			const last = body.statements[body.statements.length - 1];
+			if (last === undefined || !ts.isReturnStatement(last)) return false;
+			let ok = true;
+			const scan = (n: ts.Node): void => {
+				if (!ok || isFunctionNode(n)) return;
+				if (ts.isReturnStatement(n) && !isResult(n.expression)) ok = false;
+				ts.forEachChild(n, scan);
+			};
+			ts.forEachChild(body, scan);
+			return ok;
+		};
+		const dateDeclaration = (d: ts.VariableDeclaration): boolean =>
+			ts.isVariableDeclarationList(d.parent) &&
+			(d.parent.flags & ts.NodeFlags.BlockScoped) !== 0 &&
+			!ts.isForOfStatement(d.parent.parent) &&
+			!ts.isForInStatement(d.parent.parent) &&
+			!d.type &&
+			isDateStart(d.initializer);
+		for (let round = 0; infer && round < 6; round++) {
+			let changed = false;
+			for (const d of declarations) {
+				const s = checker.getSymbolAtLocation(d.name);
+				if (s && !dateVars.has(s) && dateDeclaration(d)) {
+					dateVars.add(s);
+					changed = true;
+				}
+			}
+			for (const [f, calls] of directCalls) {
+				if (!plain(f)) continue;
+				f.parameters.forEach((p, k) => {
+					if (
+						dateParams.has(p) ||
+						!ts.isIdentifier(p.name) ||
+						p.type ||
+						p.initializer ||
+						p.dotDotDotToken ||
+						p.questionToken ||
+						calls.length === 0
+					) {
+						return;
+					}
+					const s = checker.getSymbolAtLocation(p.name);
+					if (
+						s === undefined ||
+						!calls.every((c) => c.arguments[k] !== undefined && isDateValue(c.arguments[k])) ||
+						assigned(f, s)
+					) {
+						return;
+					}
+					dateParams.add(p);
+					dateVars.add(s);
+					typedDates = true;
+					changed = true;
+				});
+				if (!dateFunctions.has(f) && !f.type && returnsDate(f)) {
+					dateFunctions.add(f);
+					typedDates = true;
+					changed = true;
+				}
+			}
+			if (!changed) break;
+		}
+		if (!typedDates) dateVars.clear();
+	};
+	if (!input.nodeCode && !input.expression) inferDates(input.plainDates !== true);
 
 	const isFree = (id: ts.Identifier): boolean => {
 		const sym = checker.getSymbolAtLocation(id);
@@ -1256,8 +1476,16 @@ export function translateCode(input: CodeNativeInput): TranslateResult {
 
 	const annotateParameters = (fn: ts.SignatureDeclaration) => {
 		const bareArrow = isBareArrow(fn);
+		const result = dateFunctions.has(fn) ? 'Date' : 'Json';
 		for (const p of fn.parameters) {
 			if (p.type) continue;
+			if (dateParams.has(p)) {
+				if (bareArrow) {
+					insert(p.getStart(sf), '(', -1);
+					insert(p.name.getEnd(), `: Date): ${result}`, 1);
+				} else insert(p.name.getEnd(), ': Date', 0);
+				continue;
+			}
 			if (p.dotDotDotToken) {
 				if (restParameters.has(p)) {
 					// Each call gives the rest arguments as one list (\`planRest\`).
@@ -1274,7 +1502,7 @@ export function translateCode(input: CodeNativeInput): TranslateResult {
 			}
 			if (bareArrow) {
 				insert(p.getStart(sf), '(', -1);
-				insert(p.name.getEnd(), ': Json): Json', 1);
+				insert(p.name.getEnd(), `: Json): ${result}`, 1);
 				continue;
 			}
 			if (p.initializer || p.questionToken) {
@@ -1290,16 +1518,17 @@ export function translateCode(input: CodeNativeInput): TranslateResult {
 
 	const annotateReturn = (fn: ts.FunctionLikeDeclaration) => {
 		if (fn.type || fn.asteriskToken || isBareArrow(fn)) return;
+		const result = dateFunctions.has(fn) ? ': Date' : ': Json';
 		if (ts.isArrowFunction(fn)) {
 			const arrow = fn.equalsGreaterThanToken;
 			const close = fn
 				.getChildren(sf)
 				.find((c) => c.kind === ts.SyntaxKind.CloseParenToken && c.getEnd() <= arrow.getStart(sf));
-			if (close) insert(close.getEnd(), ': Json', 0);
+			if (close) insert(close.getEnd(), result, 0);
 			return;
 		}
 		const close = fn.getChildren(sf).find((c) => c.kind === ts.SyntaxKind.CloseParenToken);
-		if (close) insert(close.getEnd(), ': Json', 0);
+		if (close) insert(close.getEnd(), result, 0);
 	};
 
 	// ---- mutation ----------------------------------------------------------
@@ -2179,6 +2408,33 @@ export function translateCode(input: CodeNativeInput): TranslateResult {
 				isNotDate(d.initializer, depth + 1)
 			) {
 				return true;
+			}
+		}
+		if (ts.isIdentifier(x) && !isFree(x)) {
+			// A parameter of a function that the code only calls by its name: no call gives a Date.
+			const symbol = checker.getSymbolAtLocation(x);
+			const declarations = symbol?.declarations ?? [];
+			const d = declarations.length === 1 ? declarations[0] : undefined;
+			if (
+				d !== undefined &&
+				ts.isParameter(d) &&
+				ts.isIdentifier(d.name) &&
+				!d.dotDotDotToken &&
+				isFunctionNode(d.parent)
+			) {
+				const calls = directCalls.get(d.parent);
+				const k = d.parent.parameters.indexOf(d);
+				if (
+					calls !== undefined &&
+					calls.length > 0 &&
+					(d.initializer === undefined || isNotDate(d.initializer, depth + 1)) &&
+					calls.every(
+						(c) => c.arguments[k] === undefined || isNotDate(c.arguments[k], depth + 1),
+					) &&
+					assignedNoDate(symbol, depth + 1)
+				) {
+					return true;
+				}
 			}
 		}
 		if (!isInputValue(x, 0)) return false;
@@ -3267,9 +3523,17 @@ export function translateCode(input: CodeNativeInput): TranslateResult {
 			const loopHead =
 				ts.isVariableDeclarationList(n.parent) &&
 				(ts.isForOfStatement(n.parent.parent) || ts.isForInStatement(n.parent.parent));
-			if (blockScoped && !loopHead && !n.type && !isDateInit(n.initializer)) {
+			const typedFunction =
+				ts.isIdentifier(n.name) && typedDates ? localFunctionOf(n.name) : undefined;
+			if (
+				typedFunction !== undefined &&
+				(dateFunctions.has(typedFunction) ||
+					typedFunction.parameters.some((p) => dateParams.has(p)))
+			) {
+				// The constant keeps the type of its function, with the Date types.
+			} else if (blockScoped && !loopHead && !n.type && !isDateStart(n.initializer)) {
 				insert(n.name.getEnd(), ': Json', 0);
-			} else if (blockScoped && isDateInit(n.initializer) && ts.isIdentifier(n.name)) {
+			} else if (blockScoped && isDateStart(n.initializer) && ts.isIdentifier(n.name)) {
 				const sym = checker.getSymbolAtLocation(n.name);
 				if (sym) dateVars.add(sym);
 			}
@@ -3639,7 +3903,7 @@ export function translateCode(input: CodeNativeInput): TranslateResult {
 						}
 					}
 				}
-				if (name === 'toString' && !isNewDate(callee.expression)) {
+				if (name === 'toString' && !isDateValue(callee.expression)) {
 					toHelper(
 						n,
 						callee,
@@ -3735,6 +3999,12 @@ export function translateCode(input: CodeNativeInput): TranslateResult {
 						return;
 					}
 					if (g === 'Date' && name === 'now') nondeterministic = true;
+					if (g === 'Math') {
+						// JavaScript reads the time value of a Date here.
+						for (const a of n.arguments) {
+							if (isDateValue(a)) closing(a.getEnd(), a.getEnd(), '.getTime()', seq++);
+						}
+					}
 					if (g === 'console') {
 						// Logs go nowhere in a run. The arguments are still evaluated, as in JavaScript.
 						if (!ts.isExpressionStatement(n.parent)) {
@@ -4585,6 +4855,7 @@ export function translateCode(input: CodeNativeInput): TranslateResult {
 		usesAllNodes,
 		allNodes: usesAllNodes ? (input.allNodes ?? []) : [],
 		usesMatchProps,
+		typedDates,
 	};
 	if (blockers.length > 0) return { ok: false, blockers, partial: translation };
 	return { ok: true, translation };

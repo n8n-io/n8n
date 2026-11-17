@@ -133,12 +133,23 @@ export function issueOf(d: Diagnostic): LegacyIssue {
 
 /** A short name for a Date rule (WL013), used to rank the missing features. */
 function dateFeature(message: string): string {
+	if (message.includes('setter') || message.includes('can change only'))
+		return 'Date: setter on a shared Date';
 	if (message.includes("'en-US'")) return 'Date: locale options';
 	if (message.includes('object or array') || message.includes('from an array'))
 		return 'Date: read from an object';
 	if (message.includes('type any')) return 'Date: any value';
 	if (message.includes('identity')) return 'Date: identity';
 	if (message.includes('condition')) return 'Date: condition';
+	if (message.includes('can only be used as')) return 'Date: the global as a value';
+	if (message.includes('or another type')) return 'Date: a Date or another type';
+	if (message.includes('cannot be passed to')) return 'Date: argument of a function';
+	if (message.includes('is not a Date method') || message.includes('can only be called'))
+		return 'Date: method outside the library';
+	if (message.includes('typeof')) return 'Date: typeof';
+	if (message.includes('in an array are ISO')) return 'Date: array of Dates as text';
+	if (message.includes('reduce')) return 'Date: reduce accumulator';
+	if (message.includes('operator')) return 'Date: operator';
 	return 'Date: other';
 }
 

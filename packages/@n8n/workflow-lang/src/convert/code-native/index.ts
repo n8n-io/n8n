@@ -130,7 +130,14 @@ export function attemptNative(
 			],
 		};
 	}
-	const r: TranslateResult = translateCode({ ...src, hasNode, ...context });
+	let options: Parameters<typeof translateCode>[0] = { ...src, hasNode, ...context };
+	let r: TranslateResult = translateCode(options);
+	// The form with typed Dates is exact or it does not compile; then the plain form applies.
+	const typed = r.ok ? r.translation.typedDates : r.partial?.typedDates === true;
+	if (typed && !(r.ok && checkTranslation(r.translation, src.mode).ok)) {
+		options = { ...options, plainDates: true };
+		r = translateCode(options);
+	}
 	if (!r.ok) {
 		if (!collectAll || !r.partial) return r;
 		// Analysis: the compiler finds the blockers that the translation does not know.
@@ -148,7 +155,7 @@ export function attemptNative(
 	}
 	const t = r.translation;
 	// The traced form of the same code gives the line of an error (\`translate.ts\`).
-	const second = translateCode({ ...src, hasNode, ...context, traced: true });
+	const second = translateCode({ ...options, traced: true });
 	if (!second.ok) {
 		return {
 			ok: false,

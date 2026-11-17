@@ -2234,8 +2234,9 @@ class FnLowering {
 		if (DATE_SETTERS.has(method)) {
 			// A Date is a number, so a setter stores the new value in the variable.
 			const recv = skipOuter(callee.expression);
-			if (!ts.isIdentifier(recv)) throw new LowerError(e, `\`${method}\` needs a variable.`);
-			this.storeSymbol(this.symbolOf(recv), d, false, recv);
+			if (ts.isIdentifier(recv)) this.storeSymbol(this.symbolOf(recv), d, false, recv);
+			else if (!isDateConstructor(this.checker, recv))
+				throw new LowerError(e, `\`${method}\` needs a variable.`);
 		}
 		fb.release(m);
 		return true;

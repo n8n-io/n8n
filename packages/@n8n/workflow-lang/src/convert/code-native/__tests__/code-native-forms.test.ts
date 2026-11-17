@@ -315,10 +315,117 @@ return items.map((i) => { i.json.when = d; return { json: { a: i.json.when.toLoc
 		expect(blockersOf(code)).toContain('Date: toLocaleString of a value of unknown kind');
 	});
 
-	it('keeps date options on a value of unknown kind in the host', () => {
+	it('formats the result of a function that gives a Date for each call', () => {
 		const code = `const parse = (v) => new Date(v);
 return items.map((i) => ({ json: { text: parse(i.json.n).toLocaleString('en-US', { dateStyle: 'medium' }) } }));`;
+		expect(same(code).ok).toBe(true);
+	});
+
+	it('keeps date options on a value of unknown kind in the host', () => {
+		const code = `const parse = (v) => (v ? new Date(v) : v);
+return items.map((i) => ({ json: { text: parse(i.json.n).toLocaleString('en-US', { dateStyle: 'medium' }) } }));`;
 		expect(blockersOf(code)).toContain('Date: toLocaleString of a value of unknown kind');
+	});
+
+	it('formats a parameter that gets no Date from each call', () => {
+		const code = `const stamp = new Date(1700000000000).toISOString();
+function show(v) { return v.toLocaleString('en-US'); }
+return items.map((i) => ({ json: { stamp, a: show(i.json.n * 1000.5), b: show('n' + i.json.id) } }));`;
+		expect(same(code).ok).toBe(true);
+	});
+});
+
+describe('a Date as a parameter or a result of a function of the code', () => {
+	const dates = [
+		{ t: '2024-03-07T10:20:30.000Z', u: '2023-11-05T06:30:00Z', ms: 1700000000000 },
+		{ t: 'not a date', u: 1700000000000, ms: 5 },
+		{ t: '2024-01-31T23:59:59.999+05:00', u: null },
+	];
+
+	it('subtracts, compares and prints a Date parameter as JavaScript does', () => {
+		const code = `function days(a, b) { return Math.round((b - a) / 86400000); }
+function older(a, b) { return a < b; }
+function show(d) { return \`on \${d}\` + ' / ' + d + ' / ' + String(d) + ' / ' + d.toString(); }
+const valid = (d) => d instanceof Date && !isNaN(d);
+return items.map((i) => {
+	const a = new Date(i.json.t);
+	const b = new Date(i.json.u);
+	return { json: { days: days(a, b), older: older(a, b), show: show(a), valid: valid(a), max: Math.max(a, b), min: Math.min(a, b) } };
+});`;
+		expect(same(code, 'all', dates).ok).toBe(true);
+	});
+
+	it('keeps an invalid Date through a function and its result', () => {
+		const code = `function addDays(d, n) { const r = new Date(d); r.setDate(r.getDate() + n); return r; }
+function startOfDay(t) { const d = new Date(t); d.setHours(0, 0, 0, 0); return d; }
+return items.map((i) => {
+	const x = addDays(new Date(i.json.ms), 3);
+	const s = startOfDay(i.json.u);
+	return { json: { x, y: addDays(x, -10).getTime(), w: x.getDay(), s, t: s.getTime(), text: \`\${s}\` } };
+});`;
+		expect(same(code, 'all', dates).ok).toBe(true);
+	});
+
+	it('gives the time value of a setter on a new Date', () => {
+		const code = `return items.map((i) => ({ json: {
+	t: new Date(i.json.t).setHours(0, 0, 0, 0),
+	d: new Date(new Date(i.json.u).setDate(1)),
+	m: new Date(i.json.ms).setUTCMonth(5, 2),
+} }));`;
+		expect(same(code, 'all', dates).ok).toBe(true);
+	});
+
+	it('stores a Date in an item after its last setter', () => {
+		const code = `const d = new Date(items[0].json.t);
+d.setDate(d.getDate() - 1);
+d.setHours(0, 0, 0, 0);
+const first = { d, list: [d] };
+return items.map((i) => { const e = new Date(i.json.ms); e.setUTCDate(1); return { json: { first, e, when: { start: e } } }; });`;
+		expect(same(code, 'all', dates).ok).toBe(true);
+	});
+
+	it.each([
+		[
+			'before a setter',
+			'const d = new Date(5); const out = [{ json: { d } }]; d.setDate(2); return out;',
+		],
+		[
+			'in a loop with a setter',
+			'const d = new Date(5); const out = []; for (let i = 0; i < 2; i++) { d.setDate(i); out.push({ json: { d } }); } return out;',
+		],
+		[
+			'with a setter in a function',
+			'const d = new Date(5); const bump = () => { d.setDate(1); }; const o = { d }; bump(); return [{ json: o }];',
+		],
+	])('keeps a store of a Date %s in the host', (_, code) => {
+		const t = translateCode({ code, mode: 'all', kind: 'code', hasNode: () => false });
+		expect(t.ok && checkTranslation(t.translation, 'all').ok).toBe(false);
+	});
+
+	it('gives the text of toString of a Date in a variable', () => {
+		const code = `return items.map((i) => { const a = new Date(i.json.t); return { json: { a: a.toString(), n: (5).toString() } }; });`;
+		expect(same(code, 'all', dates).ok).toBe(true);
+	});
+
+	it('folds a Date test of a parameter when each call decides it', () => {
+		const code = `function text(v) { if (v instanceof Date) return v.toISOString(); return String(v); }
+function iso(v) { return v instanceof Date ? v.getTime() : -1; }
+return items.map((i) => ({ json: { a: text('n' + i.json.ms), b: text(5), c: iso(new Date(i.json.ms)) } }));`;
+		expect(same(code, 'all', dates).ok).toBe(true);
+	});
+
+	it('keeps a Date test of a parameter that gets a Date from some calls in the host', () => {
+		const code = `function text(v) { if (v instanceof Date) return v.toISOString(); return String(v); }
+return items.map((i) => ({ json: { a: text(new Date(i.json.ms)), b: text(5) } }));`;
+		expect(blockersOf(code)).toContain('instanceof');
+	});
+
+	it('keeps the type Json for a function that the code uses as a value', () => {
+		const code = `function make(t) { return new Date(t); }
+const list = items.map((i) => i.json.ms).map(make);
+return [{ json: { n: list.length } }];`;
+		const t = translateCode({ code, mode: 'all', kind: 'code', hasNode: () => false });
+		expect(t.ok && t.translation.typedDates).toBe(false);
 	});
 });
 
