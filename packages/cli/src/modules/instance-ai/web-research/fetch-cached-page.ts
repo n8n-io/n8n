@@ -32,8 +32,8 @@ export async function fetchCachedPage(params: FetchCachedPageParams): Promise<Fe
 
 /**
  * A fresh fetch authorizes each redirect hop. A cache hit skips those hops, so
- * check the cross-host final URL here. The error propagates so the tool can
- * suspend for approval instead of returning cached content from an unapproved host.
+ * check the cross-host final URL here. The error propagates, so the fetch fails
+ * instead of returning cached content from an unapproved host.
  */
 async function authorizeCachedRedirect(params: FetchCachedPageParams, cached: FetchedPage) {
 	if (!params.authorizeUrl || !cached.finalUrl) return;

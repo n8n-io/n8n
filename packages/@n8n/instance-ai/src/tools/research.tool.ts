@@ -260,7 +260,7 @@ async function handleFetchUrl(
  */
 function slicePage(page: FetchedPage, offset: number, maxContentLength: number) {
 	const content = sanitizeWebContent(page.content);
-	const end = offset + maxContentLength;
+	const end = sliceEnd(content, offset, maxContentLength);
 	const hasMore = end < content.length;
 	return {
 		...page,
@@ -269,6 +269,14 @@ function slicePage(page: FetchedPage, offset: number, maxContentLength: number) 
 		truncated: hasMore || page.truncated,
 		...(hasMore ? { nextOffset: end } : {}),
 	};
+}
+
+/** Move the end back by one when it would split a surrogate pair, so the next part starts on a whole character. */
+function sliceEnd(content: string, offset: number, maxContentLength: number) {
+	const end = offset + maxContentLength;
+	const code = content.charCodeAt(end - 1);
+	const endsOnHighSurrogate = code >= 0xd800 && code <= 0xdbff;
+	return endsOnHighSurrogate && end - 1 > offset ? end - 1 : end;
 }
 
 // ── Tool factory ────────────────────────────────────────────────────────────

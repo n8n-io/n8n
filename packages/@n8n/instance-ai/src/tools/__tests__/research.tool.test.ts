@@ -753,15 +753,18 @@ describe('research tool', () => {
 		describe('paging', () => {
 			const fullContent = 'a'.repeat(40) + 'FACT' + 'b'.repeat(56);
 
-			async function fetchPageSlice(input: { maxContentLength?: number; offset?: number }) {
+			async function fetchPageSlice(
+				input: { maxContentLength?: number; offset?: number },
+				content = fullContent,
+			) {
 				const context = createMockContext({ permissions: { fetchUrl: 'always_allow' } });
 				context.webResearchService!.fetchUrl = vi.fn().mockResolvedValue({
 					url: 'https://example.com',
 					finalUrl: 'https://example.com',
 					title: 'Example',
-					content: fullContent,
+					content,
 					truncated: false,
-					contentLength: fullContent.length,
+					contentLength: content.length,
 				});
 				const tool = createResearchTool(context);
 				return (await executeTool(
@@ -814,6 +817,16 @@ describe('research tool', () => {
 				expect(unwrap(result.content)).toBe('');
 				expect(result.truncated).toBe(false);
 				expect(result.nextOffset).toBeUndefined();
+			});
+
+			it('should not split a surrogate pair at the end of a slice', async () => {
+				const content = 'abc😀def';
+
+				const first = await fetchPageSlice({ maxContentLength: 4 }, content);
+				const second = await fetchPageSlice({ offset: first.nextOffset }, content);
+
+				expect(unwrap(first.content)).toBe('abc');
+				expect(unwrap(second.content)).toBe('😀def');
 			});
 
 			it('should keep truncated when the page was cut before it reached the tool', async () => {
