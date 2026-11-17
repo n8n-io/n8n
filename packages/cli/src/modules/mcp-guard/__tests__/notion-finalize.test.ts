@@ -49,4 +49,20 @@ describe('withTitles', () => {
 		);
 		expect(flagged).toEqual([]);
 	});
+
+	it('accepts an id without dashes that the real text shows with them', () => {
+		const { flagged } = removeUnprovenLiterals(
+			{ note: '2765b6e0c94f80f0919a000b9cdd2af1' },
+			'data source collection://2765b6e0-c94f-80f0-919a-000b9cdd2af1',
+		);
+		expect(flagged).toEqual([]);
+	});
+
+	it('still flags an id that the real text does not show', () => {
+		const { flagged } = removeUnprovenLiterals(
+			{ note: '11111111222233334444555566667777' },
+			'data source collection://2765b6e0-c94f-80f0-919a-000b9cdd2af1',
+		);
+		expect(flagged).toHaveLength(1);
+	});
 });

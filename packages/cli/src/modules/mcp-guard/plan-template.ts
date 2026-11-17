@@ -164,8 +164,9 @@ const isFree = (key: string, value: string, known: string): boolean =>
 	STRUCTURE_VALUES.has(value) ||
 	REF.test(value) ||
 	known.includes(normalizeText(value)) ||
-	// An id with dashes is the id that a url shows without them.
-	(WHOLE_UUID.test(value) && known.includes(normalizeText(value).replace(/-/g, '')));
+	// An id has two spellings: with dashes, and without them as a url shows it.
+	(WHOLE_UUID.test(value) &&
+		known.replace(/-/g, '').includes(normalizeText(value).replace(/-/g, '')));
 
 export interface UnprovenLiteral {
 	path: string;
