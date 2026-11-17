@@ -136,6 +136,22 @@ gives the marker `sql-credential`: that workflow stays in the fallback host.
   certificates; the simple query protocol for a text with more than one command; a retry on a connection that the
   server closed while idle.
 
+## Cost
+
+Measured on 2026-11-17 with a ReleaseSafe build (`zig build -Drelease=true`) on macOS (Apple silicon), one shard,
+`wfrt load --conns 64 --seconds 10`, PostgreSQL 17 in a container on the same machine. The machine ran other
+builds at the same time (load average near 80), so the rate is low; the CPU time of the process is the stable
+number. The workflow is a webhook, one `ctx.sql` call (`select $1::int4 + 1 as a, $2 as label` with two bind
+values) and `ctx.respond` with the result.
+
+| Workflow | Requests | CPU of `wfrt` for each request (user + system) |
+|---|---|---|
+| webhook, `sql`, respond (`--sql-pool-conns 16 --sql-max-requests 512`) | 64,278 and 63,936 in 10 s | 43.1 µs and 43.6 µs (16.5 µs user, 26.6 µs system) |
+| webhook, respond with the same body, no `sql` | 245,686 in 10 s | 15.6 µs (4.7 µs user, 10.9 µs system) |
+
+The `sql` call adds about 28 µs for each request: about 12 µs user and 16 µs system. No profile of
+the call was made.
+
 ## Tests
 
 - `src/core/pgwire.zig`, `src/shell/pg_call.zig`: unit tests of the codec, the bind types and the result JSON.
