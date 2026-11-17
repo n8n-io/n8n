@@ -334,10 +334,10 @@ describe('useSkillsStore', () => {
 			updateSkillSyncSettings.mockResolvedValue({ enabled: false });
 			const store = useSkillsStore();
 
-			await store.setSkillSyncEnabled(false);
+			await store.setSkillSyncEnabled(true);
 
 			expect(updateSkillSyncSettings).toHaveBeenCalledWith(useRootStore().restApiContext, {
-				enabled: false,
+				enabled: true,
 			});
 			expect(settingsStore.moduleSettings.skills?.skillSyncEnabled).toBe(false);
 		});

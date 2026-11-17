@@ -315,6 +315,7 @@ async function load(focusSourceId?: string) {
 	} catch (error) {
 		if (!isLatest()) return;
 		if (query.groupBy === 'source' && (await isSkillSyncTurnedOff())) return;
+		if (!isLatest()) return;
 		loadFailed.value = true;
 		showError(error, i18n.baseText('settings.context.skills.error.load'));
 	} finally {
