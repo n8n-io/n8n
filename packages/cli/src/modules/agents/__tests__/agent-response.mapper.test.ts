@@ -3,6 +3,7 @@ import type { User } from '@n8n/db';
 import { mock } from 'vitest-mock-extended';
 
 import type { CredentialsService } from '@/credentials/credentials.service';
+import type { FolderService } from '@/services/folder.service';
 
 import type { AgentPublishService } from '../agent-publish.service';
 import { AgentResponseMapper, mapAgentListItem } from '../agent-response.mapper';
@@ -69,7 +70,7 @@ describe('AgentResponseMapper', () => {
 			publish,
 			skillRefs,
 		);
-		return { mapper: new AgentResponseMapper(runnable), skillRefs };
+		return { mapper: new AgentResponseMapper(runnable, mock<FolderService>()), skillRefs };
 	}
 
 	it('returns the composed config and leaves storage columns off the response', async () => {

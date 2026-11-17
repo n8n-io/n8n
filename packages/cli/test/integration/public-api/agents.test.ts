@@ -6,6 +6,7 @@ import { InstanceSettings } from 'n8n-core';
 
 import { AgentRepository } from '@/modules/agents/repositories/agent.repository';
 
+import { createFolder } from '../shared/db/folders';
 import { cleanupRolesAndScopes, createCustomRoleWithScopeSlugs } from '../shared/db/roles';
 import { createMemberWithApiKey, createOwnerWithApiKey } from '../shared/db/users';
 import { setupTestServer } from '../shared/utils/';
@@ -192,6 +193,7 @@ describe('POST /agents', () => {
 			id: expect.any(String),
 			name: 'My Agent',
 			projectId: personalProject.id,
+			parentFolder: null,
 			availableInMCP: false,
 			isArchived: false,
 			activeVersionId: null,
@@ -367,7 +369,7 @@ describe('GET /agents/:agentId', () => {
 
 	afterEach(async () => {
 		await agentRepository.delete({});
-		await testDb.truncate(['ProjectRelation', 'Project']);
+		await testDb.truncate(['Folder', 'ProjectRelation', 'Project']);
 	});
 
 	const createAgent = async (projectId: string, id: string) =>
@@ -381,6 +383,27 @@ describe('GET /agents/:agentId', () => {
 			skills: {},
 			versionId: 'draft-version',
 		});
+
+	test('should return the parent folder in the workflow public API format', async () => {
+		const owner = await createOwnerWithApiKey();
+		const project = await createTeamProject('Agent project', owner);
+		const ancestor = await createFolder(project, { resourceType: 'agent' });
+		const folder = await createFolder(project, { resourceType: 'agent', parentFolder: ancestor });
+		const agent = await createAgent(project.id, 'agent-in-folder');
+		await agentRepository.update(agent.id, { parentFolderId: folder.id });
+
+		const response = await testServer.publicApiAgentFor(owner).get(`/agents/${agent.id}`);
+
+		expect(response.statusCode, JSON.stringify(response.body)).toBe(200);
+		expect(response.body.parentFolder).toEqual({
+			id: folder.id,
+			name: folder.name,
+			parentFolderId: ancestor.id,
+			createdAt: folder.createdAt.toISOString(),
+			updatedAt: folder.updatedAt.toISOString(),
+		});
+		expect(response.body).not.toHaveProperty('parentFolderId');
+	});
 
 	test('should fail due to missing API Key', async () => {
 		const response = await testServer.publicApiAgentWithoutApiKey().get('/agents/abc123');
@@ -440,6 +463,7 @@ describe('GET /agents/:agentId', () => {
 			id: created.body.id,
 			name: 'Readable Agent',
 			projectId: created.body.projectId,
+			parentFolder: null,
 			availableInMCP: false,
 			isArchived: false,
 			activeVersionId: null,

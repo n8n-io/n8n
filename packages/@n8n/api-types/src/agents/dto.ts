@@ -31,6 +31,7 @@ import {
 } from './agent-skill.schema';
 import { agentTaskSchema } from './agent-task.schema';
 import { alsoNullable } from '../dto/openapi-nullable';
+import { workflowParentFolderPublicSchema } from '../dto/workflows/workflow-public.dto';
 import {
 	AGENT_MEMORY_FILTER_SOURCES,
 	AGENT_MEMORY_SOURCE_FACETS,
@@ -413,7 +414,6 @@ const agentPublicShape = {
 	id: z.string(),
 	name: z.string(),
 	projectId: z.string(),
-	parentFolderId: z.string().nullable().optional(),
 	project: agentProjectResponseSchema,
 	availableInMCP: z.boolean(),
 	isArchived: z.boolean(),
@@ -441,10 +441,17 @@ const agentBuilderStateShape = {
 };
 
 /** Fields a later public GET and PUT share. Builder-only state stays off this shape. */
-export class AgentPublicDto extends Z.class(agentPublicShape) {}
+export class AgentPublicDto extends Z.class({
+	...agentPublicShape,
+	parentFolder: workflowParentFolderPublicSchema.nullable(),
+}) {}
 
 /** Single-agent response. `config` is the document `PUT` writes back. */
-export class AgentDto extends AgentPublicDto.extend(agentBuilderStateShape) {}
+export class AgentDto extends Z.class({
+	...agentPublicShape,
+	parentFolderId: z.string().nullable().optional(),
+	...agentBuilderStateShape,
+}) {}
 
 /**
  * Response of the Public API `DELETE /agents/:agentId`. Metadata of the

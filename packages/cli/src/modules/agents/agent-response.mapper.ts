@@ -5,8 +5,10 @@ import type {
 	AgentPublicDto,
 	AgentSkillVersionInfo,
 } from '@n8n/api-types';
-import type { User } from '@n8n/db';
+import type { Folder, User } from '@n8n/db';
 import { Service } from '@n8n/di';
+
+import { FolderService } from '@/services/folder.service';
 
 import type { ValidAgentConfigValidationResponse } from './agent-publish.service';
 import { AgentRunnableStateService, type AgentRunnableState } from './agent-runnable-state.service';
@@ -14,7 +16,19 @@ import type { Agent } from './entities/agent.entity';
 
 @Service()
 export class AgentResponseMapper {
-	constructor(private readonly runnableState: AgentRunnableStateService) {}
+	constructor(
+		private readonly runnableState: AgentRunnableStateService,
+		private readonly folderService: FolderService,
+	) {}
+
+	async toPublicDto(agent: Agent, projectId: string, user: User): Promise<AgentPublicDto> {
+		const dto = await this.toAgentDto(agent, projectId, user);
+		const [folder] = agent.parentFolderId
+			? await this.folderService.getFoldersByIds([agent.parentFolderId])
+			: [];
+
+		return toAgentPublicDto(dto, folder);
+	}
 
 	async toAgentDto(
 		agent: Agent,
@@ -68,11 +82,20 @@ export function mapAgentDto(agent: Agent, state: AgentRunnableState): AgentDto {
  * Public API single-agent shape: `AgentDto` minus builder-only state.
  * Create, GET, and PUT responses share this one shape.
  */
-export function toAgentPublicDto(agent: AgentDto): AgentPublicDto {
+export function toAgentPublicDto(agent: AgentDto, folder?: Folder): AgentPublicDto {
 	return {
 		id: agent.id,
 		name: agent.name,
 		projectId: agent.projectId,
+		parentFolder: folder
+			? {
+					id: folder.id,
+					name: folder.name,
+					parentFolderId: folder.parentFolderId,
+					createdAt: folder.createdAt.toISOString(),
+					updatedAt: folder.updatedAt.toISOString(),
+				}
+			: null,
 		project: agent.project,
 		availableInMCP: agent.availableInMCP,
 		isArchived: agent.isArchived,

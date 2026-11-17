@@ -451,6 +451,75 @@ it.each([undefined, true, false])(
 	},
 );
 
+it.each(['workflow', 'agent'] as const)(
+	'does not expand a restricted project selection when a %s folder is also selected',
+	async (resourceType) => {
+		const folder = await createFolder(project, { resourceType });
+
+		if (resourceType === 'agent') {
+			await repository.update(child.id, { projectId: project.id, parentFolderId: folder.id });
+		}
+
+		const { manifest } = await Container.get(N8nPackagesService).exportPackageToWriter(
+			{
+				user: owner,
+				projectIds: [project.id],
+				projectWorkflowIds: [],
+				folderIds: [folder.id],
+			},
+			new CapturingWriter(),
+		);
+
+		expect(manifest.agents?.map(({ id }) => id) ?? []).toEqual(
+			resourceType === 'agent' ? [child.id] : [],
+		);
+	},
+);
+
+it('exports a selected nested Agent folder without its ancestors', async () => {
+	const ancestor = await createFolder(project, { name: 'Team', resourceType: 'agent' });
+	const selected = await createFolder(project, {
+		name: 'Support',
+		resourceType: 'agent',
+		parentFolder: ancestor,
+	});
+	const nested = await createFolder(project, {
+		name: 'Escalations',
+		resourceType: 'agent',
+		parentFolder: selected,
+	});
+	await repository.update(parent.id, { parentFolderId: selected.id });
+	await repository.update(child.id, { projectId: project.id, parentFolderId: nested.id });
+	const writer = new CapturingWriter();
+
+	const { manifest } = await Container.get(N8nPackagesService).exportPackageToWriter(
+		{ user: owner, folderIds: [selected.id] },
+		writer,
+	);
+
+	expect(manifest.folders?.map(({ id }) => id).sort()).toEqual([selected.id, nested.id].sort());
+	expect(manifest.agents?.map(({ id }) => id).sort()).toEqual([parent.id, child.id].sort());
+
+	for (const [agent, folder] of [
+		[parent, selected],
+		[child, nested],
+	] as const) {
+		const folderTarget = manifest.folders?.find(({ id }) => id === folder.id)?.target;
+		const agentTarget = manifest.agents?.find(({ id }) => id === agent.id)?.target;
+
+		expect(agentTarget).toMatch(`${folderTarget}/agents/`);
+	}
+
+	const serialized = writer.files
+		.filter(({ path }) => path.endsWith('/folder.json'))
+		.map(({ content }) => JSON.parse(content));
+
+	expect(serialized).toEqual([
+		expect.objectContaining({ id: selected.id, parentFolderId: null }),
+		expect.objectContaining({ id: nested.id, parentFolderId: selected.id }),
+	]);
+});
+
 it('exports folder ancestors once for Agents that share a folder', async () => {
 	const folder = await createFolder(project, { name: 'Team', resourceType: 'agent' });
 	const childFolder = await createFolder(project, {

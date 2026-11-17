@@ -119,13 +119,21 @@ export class AgentSelectionExporter {
 					throw new PackageExportBlockedError('The Agent folder is not accessible');
 				}
 
-				for (const folder of chain) {
-					if (folder.resourceType !== 'agent' || folder.homeProject.id !== snapshot.projectId) {
-						throw new PackageExportBlockedError(
-							'The Agent folder has an invalid resource type or project',
-						);
-					}
+				if (
+					chain.some(
+						(folder) =>
+							folder.resourceType !== 'agent' || folder.homeProject.id !== snapshot.projectId,
+					)
+				) {
+					throw new PackageExportBlockedError(
+						'The Agent folder has an invalid resource type or project',
+					);
+				}
 
+				// Reuse the selected subtree's location without adding its excluded ancestors.
+				const existingAncestorIndex = chain.findLastIndex((folder) => folderTargets.has(folder.id));
+
+				for (const folder of chain.slice(Math.max(0, existingAncestorIndex))) {
 					let target = folderTargets.get(folder.id);
 
 					if (!target) {
@@ -175,9 +183,12 @@ export class AgentSelectionExporter {
 			'agent:export',
 		]);
 		const projectIds = request.projectIds ?? [];
-		const projectAgentIds = await repository.findIdsInProjectsForExport(projectIds, {
-			includeArchived: request.includeArchived,
-		});
+		const projectAgentIds =
+			request.projectWorkflowIds === undefined
+				? await repository.findIdsInProjectsForExport(projectIds, {
+						includeArchived: request.includeArchived,
+					})
+				: [];
 		const folderAgentIds = request.folderIds?.length
 			? await repository.findIdsInFoldersForExport(request.folderIds, exportableProjects, {
 					includeArchived: request.includeArchived,
