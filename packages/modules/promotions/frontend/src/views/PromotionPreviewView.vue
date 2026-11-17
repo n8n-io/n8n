@@ -207,7 +207,10 @@ function seedSelection(current: SelectionGraph): SelectionSeed | null {
 		extra: new Map(
 			included.flatMap((key): Array<[ResourceKey, string]> => {
 				const resource = current.resources.get(key);
-				const owner = resource ? projectIdOf(current.resources, resource) : undefined;
+				// An item without a row, such as a credential: the URL names its project.
+				const owner = resource
+					? projectIdOf(current.resources, resource)
+					: queryValue(route.query.includeProject);
 				return owner === undefined ? [] : [[key, owner]];
 			}),
 		),
@@ -721,7 +724,12 @@ async function onInclude({ include, target }: GapTargetRow) {
 	});
 	await router.push({
 		name: PROMOTION_ENVIRONMENT_VIEWS[props.direction],
-		query: { from: props.projectId, include: include.resourceKey, ...fixtureQuery.value },
+		query: {
+			from: props.projectId,
+			include: include.resourceKey,
+			includeProject: include.projectId,
+			...fixtureQuery.value,
+		},
 	});
 }
 

@@ -14,6 +14,7 @@ import {
 import { VIEWS } from '@n8n/frontend-constants/views';
 import { useI18n } from '@n8n/i18n';
 import { computed } from 'vue';
+import { useRouter } from 'vue-router';
 
 import { useCredentialTypeNames } from '../../composables/useCredentialTypeNames';
 import { usePromotionDependencyLabels } from '../../composables/usePromotionDependencyLabels';
@@ -35,6 +36,7 @@ const props = defineProps<{
 const emit = defineEmits<{ 'update:open': [value: boolean] }>();
 
 const i18n = useI18n();
+const router = useRouter();
 const { credentialTypeName } = useCredentialTypeNames();
 const { credentialNotMovedText } = usePromotionDependencyLabels();
 
@@ -42,10 +44,9 @@ const outcome = computed(() => applyOutcome(props.result));
 const unpublished = computed(() => outcome.value.moves.filter((move) => move.unpublished));
 const intro = computed(() => i18n.baseText('promotions.applyResult.intro'));
 
-const credentialRoute = (projectId: string, credentialId: string) => ({
-	name: VIEWS.PROJECTS_CREDENTIALS,
-	params: { projectId, credentialId },
-});
+// The credential opens in a new tab, so the result stays on this page. A new tab needs a URL.
+const credentialHref = (projectId: string, credentialId: string) =>
+	router.resolve({ name: VIEWS.PROJECTS_CREDENTIALS, params: { projectId, credentialId } }).href;
 </script>
 
 <template>
@@ -109,7 +110,7 @@ const credentialRoute = (projectId: string, credentialId: string) => ({
 							</N8nText>
 						</div>
 						<N8nLink
-							:to="credentialRoute(placeholder.projectId, placeholder.id)"
+							:to="credentialHref(placeholder.projectId, placeholder.id)"
 							new-window
 							size="small"
 							data-test-id="promotion-apply-result-open-credential"
