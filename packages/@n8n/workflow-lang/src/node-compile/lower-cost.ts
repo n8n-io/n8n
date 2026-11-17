@@ -459,7 +459,7 @@ function requestForm(name: string, has: (key: RequestKey) => boolean, flags: Req
 	});
 	if (response.status >= 400${flags.lenient === '' ? '' : ` && !(${flags.lenient})`}) {
 		const failure = __httpFailure(response, ${flags.legacy}, (${json}) === true);
-		throw ${flags.wrapped === 'true' ? '__apiError(failure, undefined)' : 'failure'};
+		throw ${flags.wrapped === 'true' && !flags.raw ? '__apiError(failure, undefined)' : 'failure'};
 	}
 	return ${flags.full === '' ? '' : `${flags.full} ? { body: response.body, headers: response.headers, statusCode: response.status } : `}response.body;
 }`;
@@ -467,6 +467,7 @@ function requestForm(name: string, has: (key: RequestKey) => boolean, flags: Req
 
 interface RequestFlags {
 	wrapped: string;
+	raw: boolean;
 	legacy: boolean;
 	headersAreObjects: boolean;
 	tokenOptions: boolean;
@@ -592,11 +593,13 @@ function lowerRequests(sf: ts.SourceFile): string | undefined {
 		}
 		if (!isCallOf(n, REQUEST)) return;
 		generalCalls++;
-		const [options, wrapped, legacy, extra] = n.arguments;
+		const [options, wrapped, legacy, extra, , raw] = n.arguments;
 		const isWrapped = flagOf(wrapped);
 		const isLegacy = flagOf(legacy);
+		const isRaw = flagOf(raw);
 		if (options === undefined || isWrapped === undefined || isLegacy === undefined) return;
-		if (n.arguments.length > 5 || n.arguments.some(ts.isSpreadElement)) return;
+		if (isRaw === undefined || n.arguments.length > 6 || n.arguments.some(ts.isSpreadElement))
+			return;
 		const absent = extra === undefined ? undefined : primitiveOf(extra);
 		if (extra !== undefined && !(absent && (absent.value === undefined || absent.value === null)))
 			return;
@@ -612,6 +615,7 @@ function lowerRequests(sf: ts.SourceFile): string | undefined {
 		const flags = {
 			constants: template.constants,
 			wrapped: wrapped === undefined ? 'undefined' : String(isWrapped),
+			raw: isRaw,
 			legacy: isLegacy,
 			headersAreObjects: shape.headersAreObjects,
 			tokenOptions,
@@ -646,6 +650,7 @@ function lowerRequests(sf: ts.SourceFile): string | undefined {
 			flags.lenient !== '',
 			flags.full !== '',
 			flags.json !== 'undefined',
+			isRaw,
 		];
 		const id = bits.reduce((sum, bit, k) => sum + (bit ? 2 ** k : 0), 0).toString(36);
 		const fixed = JSON.stringify(template.constants);

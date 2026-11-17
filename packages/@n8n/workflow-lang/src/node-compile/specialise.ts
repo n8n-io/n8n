@@ -101,6 +101,7 @@ export type RandomShape =
 export interface ParameterKind {
 	type: string;
 	extract: boolean;
+	label?: string;
 	modes?: Record<string, { pattern: string; flags: string } | null>;
 	mapper?: { adds: boolean; conversions: boolean };
 }
@@ -454,6 +455,10 @@ const REQUEST_HEAD = 'async function __request(options, wrapped, legacy) {';
 const REQUEST_HEAD_WITH_TOKEN_OPTIONS = `async function __request(options, wrapped, legacy, extra, nested) {
 	const oauth2 = extra === undefined || extra === null ? undefined : nested ? extra.oauth2 : extra;
 	const tokenOptions = oauth2 === undefined || oauth2 === null ? {} : oauth2;`;
+const REQUEST_HEAD_RAW = 'async function __request(options, wrapped, legacy, extra, nested, raw) {';
+const REQUEST_THROWS = 'throw wrapped ? __apiError(failure, undefined) : failure;';
+const REQUEST_THROWS_RAW =
+	'throw wrapped && raw !== true ? __apiError(failure, undefined) : failure;';
 const REQUEST_CREDENTIAL = '\t\tinject: wrapped,\n\t\tcredential,\n';
 const REQUEST_INJECT = '\t\tinject: wrapped,\n';
 const REQUEST_STATUS = '\tif (response.status >= 400';
@@ -1272,6 +1277,12 @@ const HELPERS: Record<string, string> = {
 	for (let k = 0; k < found.length; k += 2) match.push(found[k] < 0 ? undefined : input.slice(found[k], found[k + 1]));
 	return match;
 }`,
+	__locatorValue: `function __locatorValue(value: any, pattern: string, flags: string, label: string): any {
+	if (typeof value !== 'string') throw __error("ERROR: This parameter's value is invalid. Please enter a valid mode.", 'NodeOperationError', undefined);
+	const found: any = __regexExec(pattern, value, flags);
+	if (found === null) throw __error('ERROR: ' + label + " parameter's value is invalid. This is likely because the URL entered is incorrect", 'NodeOperationError', undefined);
+	return found[1];
+}`,
 	__isMapper: `function __isMapper(value: any): boolean {
 	if (value === null || value === undefined || typeof value !== 'object') return false;
 	const keys: any = Object.keys(value);
@@ -1815,6 +1826,7 @@ const HELPER_USES: Record<string, string[]> = {
 	__urlParam: ['__urlDecode'],
 	__urlForm: ['__urlFormText'],
 	__assertParam: ['__error'],
+	__locatorValue: ['__error', '__regexExec'],
 	__assertParamTypes: ['__error'],
 	__validateParams: ['__error', '__paramFits'],
 	__jsonParse: ['__error'],
@@ -2193,6 +2205,8 @@ function isCredentialMarker(e: ts.Node): e is ts.CallExpression {
 }
 
 const CREDENTIAL_PREFIX = '__CREDENTIAL_';
+const CREDENTIAL_ARGUMENT_FORM =
+	'a credential as an argument of a function that is not a declaration with a plain parameter has no compiled form';
 const isWholeCredential = (e: ts.Node): e is ts.Identifier =>
 	ts.isIdentifier(e) && e.text.startsWith(CREDENTIAL_PREFIX);
 function plainBindings(
@@ -2293,6 +2307,15 @@ function extractedBy(rule: { pattern: string; flags: string }, value: unknown): 
 		return found && found.length === 2 && typeof found[1] === 'string' ? found[1] : undefined;
 	} catch {
 		return undefined;
+	}
+}
+
+function extractsOneGroup(rule: { pattern: string; flags: string }): boolean {
+	if (!checkRegex(rule.pattern, rule.flags).ok) return false;
+	try {
+		return new RegExp(`${rule.pattern}|`, rule.flags).exec('')?.length === 2;
+	} catch {
+		return false;
 	}
 }
 
@@ -2919,7 +2942,21 @@ class Specialiser {
 				if (rule === undefined && locator.mode !== 'id' && locator.mode !== 'list') return node;
 				if (rule) {
 					const extracted = dynamic ? undefined : extractedBy(rule, locator.value);
-					return extracted === undefined ? node : f.createStringLiteral(extracted);
+					if (extracted !== undefined) return f.createStringLiteral(extracted);
+					if (kind?.label === undefined || !extractsOneGroup(rule)) return node;
+					return this.helper(
+						'__locatorValue',
+						dynamic
+							? f.createPropertyAccessChain(
+									read,
+									f.createToken(ts.SyntaxKind.QuestionDotToken),
+									'value',
+								)
+							: expressionOf(locator.value),
+						f.createStringLiteral(rule.pattern),
+						f.createStringLiteral(rule.flags),
+						f.createStringLiteral(kind.label),
+					);
 				}
 				if (dynamic) {
 					return this.helper(
@@ -3528,6 +3565,8 @@ class Specialiser {
 							? args(node, extraAt)[0]
 							: undefined;
 					if (tokenOptions) this.requestTokenOptions = true;
+					const raw = wrapped && (helperName === 'requestOAuth2' || helperName === 'requestOAuth1');
+					if (raw) this.requestRawFailures = true;
 					const typeNode = viaCall ? node.arguments[1] : node.arguments[0];
 					const renewed =
 						wrapped &&
@@ -3550,9 +3589,13 @@ class Specialiser {
 							: (later ?? options),
 						wrapped ? f.createTrue() : f.createFalse(),
 						legacy ? f.createTrue() : f.createFalse(),
-						...(tokenOptions
-							? [tokenOptions, helperName === 'requestOAuth2' ? f.createFalse() : f.createTrue()]
+						...(tokenOptions || raw
+							? [
+									tokenOptions ?? f.createIdentifier('undefined'),
+									helperName === 'requestOAuth2' ? f.createFalse() : f.createTrue(),
+								]
 							: []),
+						...(raw ? [f.createTrue()] : []),
 					);
 				}
 
@@ -6304,17 +6347,34 @@ class Specialiser {
 	private withContextArguments(statement: ts.Statement, unit: Unit): ts.Statement {
 		const asThis = this.thisParameters.get(unit.name);
 		const asCredential = this.credentialParameters.get(unit.name);
-		if (!ts.isFunctionDeclaration(statement) || !statement.body || (!asThis && !asCredential))
+		if (!asThis && !asCredential) return statement;
+		const declaration =
+			ts.isVariableStatement(statement) && statement.declarationList.declarations.length === 1
+				? statement.declarationList.declarations[0]
+				: undefined;
+		const arrow =
+			declaration?.initializer && ts.isArrowFunction(declaration.initializer)
+				? declaration.initializer
+				: undefined;
+		const target = ts.isFunctionDeclaration(statement) && statement.body ? statement : arrow;
+		if (!target) {
+			if (asCredential) this.error(unit.name, CREDENTIAL_ARGUMENT_FORM);
 			return statement;
+		}
 		const thisNames = new Set<string>();
 		const constants: ts.Statement[] = [];
-		const parameters = statement.parameters.map((p, k) => {
-			if (!ts.isIdentifier(p.name)) return p;
-			if (asThis?.has(k)) {
+		const parameters = target.parameters.map((p, k) => {
+			const type = asCredential?.get(k);
+			const plain = ts.isIdentifier(p.name);
+			if (type !== undefined && !plain && (p.initializer || p.dotDotDotToken)) {
+				this.error(unit.name, CREDENTIAL_ARGUMENT_FORM);
+				return p;
+			}
+			if (!plain && type === undefined) return p;
+			if (ts.isIdentifier(p.name) && asThis?.has(k) && ts.isFunctionDeclaration(target)) {
 				thisNames.add(p.name.text);
 				return f.createParameterDeclaration(undefined, undefined, `__t${k}`);
 			}
-			const type = asCredential?.get(k);
 			if (type === undefined) return p;
 			constants.push(
 				f.createVariableStatement(
@@ -6322,7 +6382,7 @@ class Specialiser {
 					f.createVariableDeclarationList(
 						[
 							f.createVariableDeclaration(
-								p.name.text,
+								p.name,
 								undefined,
 								undefined,
 								f.createIdentifier(CREDENTIAL_PREFIX + type),
@@ -6338,17 +6398,42 @@ class Specialiser {
 			if (ts.isIdentifier(n) && thisNames.has(n.text) && isValueUse(n)) return f.createThis();
 			return ts.visitEachChild(n, toThis, undefined);
 		};
-		const body =
-			thisNames.size > 0 ? (ts.visitNode(statement.body, toThis) as ts.Block) : statement.body;
-		return f.updateFunctionDeclaration(
+		const given = target.body ?? f.createBlock([]);
+		const block = ts.isBlock(given) ? given : f.createBlock([f.createReturnStatement(given)], true);
+		const body = thisNames.size > 0 ? (ts.visitNode(block, toThis) as ts.Block) : block;
+		const withConstants = f.updateBlock(body, [...constants, ...body.statements]);
+		if (ts.isFunctionDeclaration(target))
+			return f.updateFunctionDeclaration(
+				target,
+				target.modifiers,
+				target.asteriskToken,
+				target.name,
+				target.typeParameters,
+				parameters,
+				target.type,
+				withConstants,
+			);
+		if (!declaration || !ts.isVariableStatement(statement)) return statement;
+		return f.updateVariableStatement(
 			statement,
 			statement.modifiers,
-			statement.asteriskToken,
-			statement.name,
-			statement.typeParameters,
-			parameters,
-			statement.type,
-			f.updateBlock(body, [...constants, ...body.statements]),
+			f.updateVariableDeclarationList(statement.declarationList, [
+				f.updateVariableDeclaration(
+					declaration,
+					declaration.name,
+					declaration.exclamationToken,
+					declaration.type,
+					f.updateArrowFunction(
+						target,
+						target.modifiers,
+						target.typeParameters,
+						parameters,
+						target.type,
+						target.equalsGreaterThanToken,
+						constants.length > 0 || thisNames.size > 0 ? withConstants : target.body,
+					),
+				),
+			]),
 		);
 	}
 
@@ -7742,6 +7827,8 @@ class Specialiser {
 	private readsItemBytes = false;
 	private requestTokenOptions = false;
 
+	private requestRawFailures = false;
+
 	private serviceBytes(root: ts.Node): ts.Node {
 		const inputs = new Set<string>();
 		const fromInput = (e: ts.Expression): boolean => {
@@ -8152,9 +8239,16 @@ class Specialiser {
 					REQUEST_STATUS,
 					this.input.ownHost === undefined ? REQUEST_STATUS : REQUEST_STATUS_OWNED,
 				)
+				.replace(REQUEST_THROWS, this.requestRawFailures ? REQUEST_THROWS_RAW : REQUEST_THROWS)
 				.replace(
 					REQUEST_HEAD,
-					this.requestTokenOptions ? REQUEST_HEAD_WITH_TOKEN_OPTIONS : REQUEST_HEAD,
+					this.requestTokenOptions
+						? this.requestRawFailures
+							? REQUEST_HEAD_WITH_TOKEN_OPTIONS.replace('nested) {', 'nested, raw) {')
+							: REQUEST_HEAD_WITH_TOKEN_OPTIONS
+						: this.requestRawFailures
+							? REQUEST_HEAD_RAW
+							: REQUEST_HEAD,
 				)
 				.replace(
 					REQUEST_CREDENTIAL,
