@@ -1596,10 +1596,6 @@ describe('SourceControlService', () => {
 		});
 	});
 
-// 追加单测：packages/cli/src/modules/source-control.ee/__tests__/source-control.service.test.ts
-// 插入位置：describe('initializeRepository', ...) 块之后、describe('sanityCheck', ...) 之前
-// （本包 vitest globals 已启用；preferencesService/gitService/sourceControlService 为该文件既有的套件级对象）
-
 	describe('setBranch', () => {
 		beforeEach(() => {
 			gitService.setBranch.mockResolvedValue({ branches: ['main'], currentBranch: 'main' });
