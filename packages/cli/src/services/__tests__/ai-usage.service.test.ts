@@ -137,17 +137,21 @@ describe('AiUsageService', () => {
 	});
 
 	describe('isModelTrainingAllowed()', () => {
+		// Each plan's default is the opposite of the stored choice, so only the stored value can pass.
 		it.each([
-			['true', true],
-			['false', false],
-		])('should return the stored choice %s on every plan', async (stored, expected) => {
-			license.isEnterprisePlan.mockReturnValue(true);
-			cacheService.get.mockResolvedValue(undefined);
-			settingsRepository.findByKey.mockResolvedValue({ value: stored } as Settings);
+			['true', true, true],
+			['false', false, false],
+		])(
+			'should return the stored choice %s over the plan default (Enterprise: %s)',
+			async (stored, isEnterprise, expected) => {
+				license.isEnterprisePlan.mockReturnValue(isEnterprise);
+				cacheService.get.mockResolvedValue(undefined);
+				settingsRepository.findByKey.mockResolvedValue({ value: stored } as Settings);
 
-			expect(await aiUsageService.isModelTrainingAllowed()).toBe(expected);
-			expect(cacheService.set).toHaveBeenCalledWith('ai.allowModelTraining', stored);
-		});
+				expect(await aiUsageService.isModelTrainingAllowed()).toBe(expected);
+				expect(cacheService.set).toHaveBeenCalledWith('ai.allowModelTraining', stored);
+			},
+		);
 
 		it.each([
 			[false, true],

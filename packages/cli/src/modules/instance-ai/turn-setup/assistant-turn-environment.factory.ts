@@ -175,7 +175,10 @@ export class AssistantTurnEnvironmentFactory {
 	}> {
 		if (!this.aiService.isProxyEnabled()) return {};
 
-		const allowModelTraining = await this.aiUsageService.isModelTrainingAllowed();
+		// Tag the traces when the setting cannot be read, so a read error never fails the turn.
+		const allowModelTraining = await this.aiUsageService
+			.isModelTrainingAllowed()
+			.catch(() => false);
 		const client = await this.aiService.getClient();
 		const proxyBaseUrl = client.getApiProxyBaseUrl();
 		const tokenManager = new ProxyTokenManager(async () => {
