@@ -7,6 +7,10 @@ packages/cli/src/scheduling/poll-trigger-node/__tests__/poll-trigger-task-handle
 packages/cli/src/scheduling/poll-trigger-node/poll-trigger-task-handler.ts
   s_cc52d4d80ec002::t_b9b04192bf79b0 80,86,98,110,159,181-184,190,204,208,212,222
   ai_agent 220
+packages/cli/src/modules/promotions.ee/__tests__/promotions.service.test.ts
+  s_6095578164712d::t_b699562d0b9c97 1543
+packages/cli/src/modules/promotions.ee/promotions.service.ts
+  s_6095578164712d::t_365a99fd05caa2 531-532
 ---
 {
   "schema_version": "authorship/3.0.0",
@@ -21,6 +25,14 @@ packages/cli/src/scheduling/poll-trigger-node/poll-trigger-task-handler.ts
         "model": "gpt-6-astra"
       },
       "human_author": "Lorent Lempereur <lorent.lempereur@n8n.io>"
+    },
+    "s_6095578164712d": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "c3001f0d-59a3-43bc-820b-25a740e9965d",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Irénée <irenee.ajeneza@n8n.io>"
     },
     "s_923c8f43bce732": {
       "agent_id": {

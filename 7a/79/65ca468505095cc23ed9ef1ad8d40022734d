@@ -1,0 +1,42 @@
+packages/cli/src/modules/instance-ai/__tests__/instance-ai.adapter.service.test.ts
+  s_5631b188ce818f::t_4b8b5cfa73edfc 9301-9318
+packages/@n8n/instance-ai/src/workspace/lazy-runtime-workspace.ts
+  s_5631b188ce818f::t_3fea56922250cd 77
+  s_5631b188ce818f::t_952c59cf6808ac 50-55
+packages/@n8n/instance-ai/docs/tools.md
+  s_5631b188ce818f::t_0a5bdab30169d9 1313
+  s_5631b188ce818f::t_c462e903a3ad43 64
+packages/@n8n/instance-ai/src/tools/apps/__tests__/apps.tool.test.ts
+  s_5631b188ce818f::t_c900678281bdf0 255-285
+packages/cli/src/modules/instance-ai/instance-ai.adapter.service.ts
+  s_5631b188ce818f::t_637db24fc9d368 3559-3560
+  s_5631b188ce818f::t_6c496d5dc11cf4 6
+  s_5631b188ce818f::t_6d2af450a8fd1d 3548,3561-3562
+packages/@n8n/instance-ai/src/workspace/__tests__/lazy-runtime-workspace.test.ts
+  s_5631b188ce818f::t_952c59cf6808ac 92-94
+packages/@n8n/instance-ai/src/tools/apps/apps.tool.ts
+  s_5631b188ce818f::t_a876928e6ad659 33-36,131-143
+packages/@n8n/instance-ai/skills/app-builder/SKILL.md
+  s_5631b188ce818f::t_5198f3a08e3f21 48-51
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "7a7965ca468505095cc23ed9ef1ad8d40022734d",
+  "prompts": {},
+  "humans": {
+    "h_44f8d1c0f2f8c4": {
+      "author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_5631b188ce818f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "84992bfe-521e-4b79-80af-ca4ae976b51f",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    }
+  }
+}

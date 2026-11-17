@@ -1,0 +1,34 @@
+packages/@n8n/backend-services/src/services/__tests__/role.service.rolesWithScope.test.ts
+  s_26323d3f4cbbe8::t_c3d7fe0bb59be7 62-67
+  s_26323d3f4cbbe8::t_6c8d826bbd26f3 57-61,68-77
+packages/@n8n/permissions/src/utilities/__tests__/roles-with-scope.test.ts
+  s_26323d3f4cbbe8::t_c28a13490a49c6 31-32,36
+packages/cli/src/services/__tests__/dynamic-node-parameters.service.test.ts
+  s_26323d3f4cbbe8::t_86c29b1cef102b 669-692
+  s_ffade853fd5bfb::t_cad07a3597c856 668
+  s_ffade853fd5bfb::t_84220ba7e263d9 661-667,693-729
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "cc9216dad4056ad6359018608d2fb4df155769ab",
+  "prompts": {},
+  "sessions": {
+    "s_26323d3f4cbbe8": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "91aa5fe8-1cf1-4961-b5bb-012476d75856",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": null
+    },
+    "s_ffade853fd5bfb": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "6f20fdff-6f39-4123-83e9-02b5e9c84dee",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "Andreas Fitzek <andreas.fitzek@n8n.io>"
+    }
+  }
+}

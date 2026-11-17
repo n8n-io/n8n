@@ -1,0 +1,85 @@
+packages/cli/src/modules/promotions.ee/__tests__/branch-manifest.test.ts
+  s_b3123eaa9590ea::t_1504b42ced72a7 74
+  s_b3123eaa9590ea::t_420b8676fb8396 105,119
+  s_b3123eaa9590ea::t_e229343c46aa2e 1-29,31-73,75-104,106-118,120-161
+  s_b3123eaa9590ea::t_ce14cdfad8c904 30
+packages/cli/src/modules/promotions.ee/base-branch-files.ts
+  s_b3123eaa9590ea::t_c2f0045b7a50ec 43-45,51-57
+packages/cli/src/modules/promotions.ee/promotion-review-changes.service.ts
+  s_b3123eaa9590ea::t_12056d0c6ce821 247,250-251
+  s_b3123eaa9590ea::t_0f13b320004bee 29,243-246,248-249,252-254,259
+  s_b3123eaa9590ea::t_b900e282969a41 30
+packages/cli/src/modules/promotions.ee/branch-manifest.ts
+  s_b3123eaa9590ea::t_c92c19ea820a64 148-150
+  s_b3123eaa9590ea::t_986e361e489b97 28
+  s_b3123eaa9590ea::t_12056d0c6ce821 97-103,105,107,111,114-117,120-121,125,127-128,178-179,193,199-200,203-205,210-211,217
+  s_b3123eaa9590ea::t_2a706aebd2b8d6 1,11-12,69-87,92,106,108-110,118-119,122,153-154,198,201-202,212,215-216
+  s_b3123eaa9590ea::t_00114d427f0a6a 177,180-186,188-189,191,196-197,207-209,214
+  s_b3123eaa9590ea::t_b355f1f5029884 176
+  s_b3123eaa9590ea::t_b8b8994a1f51d1 45-48,54-60
+  s_b3123eaa9590ea::t_b95f3b67ed9ab3 61,66-67
+  s_b3123eaa9590ea::t_62cc0fc40fc7dc 2-10,13-27,29-44,49-53,62-65,68,88-91,93-96,104,112-113,123-124,126,129-147,151-152,155-175,187,190,192,194-195,206,213,218
+packages/cli/src/modules/promotions.ee/__tests__/promotions-package.integration.test.ts
+  s_b3123eaa9590ea::t_b2cc245e768d6c 91,419-440,810,3509
+packages/cli/src/modules/promotions.ee/promotion-change.service.ts
+  s_b3123eaa9590ea::t_a511feede0cb86 55,356,358,368-369,371-375,378-388,539-542,545-549
+  s_b3123eaa9590ea::t_b900e282969a41 57
+  s_b3123eaa9590ea::t_12056d0c6ce821 359-360,370,376-377,543-544
+packages/cli/src/modules/promotions.ee/__tests__/import-manifest-bridge.test.ts
+  s_b3123eaa9590ea::t_1504b42ced72a7 1,8,31-41
+  s_b3123eaa9590ea::t_b95f3b67ed9ab3 118-122,126-127,157-163,166-168
+  s_b3123eaa9590ea::t_91de5b0ba8466c 10,44-50,117,154,218,276,320,345,372
+packages/cli/src/modules/promotions.ee/git-commit-package-reader.ts
+  s_b3123eaa9590ea::t_b900e282969a41 10,46-53
+  s_b3123eaa9590ea::t_c2f0045b7a50ec 29-31,33-37
+  s_b3123eaa9590ea::t_e7c88b05c681cc 9,11,40,42
+packages/cli/src/modules/promotions.ee/__tests__/promotions.service.test.ts
+  s_b3123eaa9590ea::t_5209e94f7b2008 84-94,100-104,106,108-116,385,448-451,515-516,525,531-532,800-803
+  s_b3123eaa9590ea::t_c58dd544cff62a 639-642,1596-1598
+  s_b3123eaa9590ea::t_586358c641c008 40
+  s_b3123eaa9590ea::t_dd6d072effc128 105,107
+  s_b3123eaa9590ea::t_c9689c776388e8 15
+  s_b3123eaa9590ea::t_96a351f2f0e641 95-99,1599-1604
+packages/cli/src/modules/promotions.ee/__tests__/working-copy-updater.test.ts
+  s_b3123eaa9590ea::t_2fa1062f5e70f3 30,122-132,135-136
+  s_b3123eaa9590ea::t_91de5b0ba8466c 31,133-134
+packages/cli/src/modules/promotions.ee/import-manifest-bridge.ts
+  s_b3123eaa9590ea::t_b900e282969a41 15,39,112
+packages/cli/src/modules/promotions.ee/promotions.service.ts
+  s_b3123eaa9590ea::t_c2f0045b7a50ec 62-66,1127-1129,1136-1137
+  s_b3123eaa9590ea::t_b900e282969a41 69,277-279
+  s_b3123eaa9590ea::t_986e361e489b97 67,1296,1346,1371,1379,1619-1621,1623-1627,1630,1634,1636,1640
+  s_b3123eaa9590ea::t_4b3adf2de4ac8f 1181-1183,1185-1186,1188-1193
+  s_b3123eaa9590ea::t_0f13b320004bee 1366-1370,1372-1373,1375,1378
+  s_b3123eaa9590ea::t_c92c19ea820a64 1376-1377
+  s_b3123eaa9590ea::t_12056d0c6ce821 1179-1180,1184,1187,1374
+packages/cli/src/modules/promotions.ee/promotions.types.ts
+  s_b3123eaa9590ea::t_12056d0c6ce821 81-82
+  s_b3123eaa9590ea::t_4b3adf2de4ac8f 79
+packages/cli/src/modules/promotions.ee/project-manifests.ts
+  s_b3123eaa9590ea::t_4febe70b1955d6 1-19,29-69,84-90,92,94-103,114-116,120,157,159-202,204-226,231-232,237,239-241,243-313,316-318,322-323,375
+  s_b3123eaa9590ea::t_78e2a49ea4bd30 319-321
+  s_b3123eaa9590ea::t_b355f1f5029884 21,23-28,117-119,121-156,158,234-236,238,325-326,330-338,340-344,346,353-355,357-374
+  s_b3123eaa9590ea::t_12056d0c6ce821 327,329,345,348-350,352
+  s_b3123eaa9590ea::t_5ef192efa2aeb9 20,22,70-83,91,93,104-113,203,227-230,233,242,314-315,324,328,339,347,351,356
+packages/cli/src/modules/promotions.ee/__tests__/project-manifests.test.ts
+  s_b3123eaa9590ea::t_236c177ef2a429 1-247
+packages/cli/src/modules/promotions.ee/blob-cache.ts
+  s_b3123eaa9590ea::t_2a706aebd2b8d6 1-29
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "4677c20b35f2b48c3839dbfb8061a2841d6b2e8a",
+  "prompts": {},
+  "sessions": {
+    "s_b3123eaa9590ea": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ca14baa9-48c7-4b9c-8882-614adc7aee20",
+        "model": "claude-sonnet-5-5"
+      },
+      "human_author": "Sandra Zollner <sandra.zollner@n8n.io>"
+    }
+  }
+}

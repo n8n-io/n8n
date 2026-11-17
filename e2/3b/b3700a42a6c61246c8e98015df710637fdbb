@@ -1,0 +1,23 @@
+packages/frontend/editor-ui/src/features/settings/context/components/SkillSourceHealth.test.ts
+  s_b35db572acb2e0::t_6d89fb4898a509 39
+packages/frontend/editor-ui/src/features/settings/context/components/SkillScopeBadge.vue
+  s_b35db572acb2e0::t_6d89fb4898a509 25
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_b35db572acb2e0::t_3939030f23c67a 4103
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "e23bb3700a42a6c61246c8e98015df710637fdbb",
+  "prompts": {},
+  "sessions": {
+    "s_b35db572acb2e0": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a1c03e-43d9-7472-8eeb-eca19f4195b3",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "Arvin Ansari <arvin.ansari@n8n.io>"
+    }
+  }
+}

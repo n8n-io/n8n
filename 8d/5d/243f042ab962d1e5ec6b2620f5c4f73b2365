@@ -1,0 +1,60 @@
+packages/frontend/editor-ui/src/features/ai/instanceAi/components/InstanceAiAppBlueprint.vue
+  s_adfecd6a2aa84c::t_60bc67913fdcdf 2,15-16,54-55
+packages/frontend/editor-ui/src/features/ai/instanceAi/assistantAgent/AssistantConfirmationCard.vue
+  s_adfecd6a2aa84c::t_7de92d199c7c73 19
+  s_adfecd6a2aa84c::t_60bc67913fdcdf 349
+  s_adfecd6a2aa84c::t_e3dd2ec6839ece 82-88
+packages/@n8n/api-types/src/index.ts
+  s_adfecd6a2aa84c::t_6b1e36527212d4 455
+  s_adfecd6a2aa84c::t_0c7c97a733ec4d 612
+packages/@n8n/instance-ai/src/errors/app-namespace-taken.error.ts
+  s_adfecd6a2aa84c::t_4b118563ba9ea7 1-8
+packages/cli/src/modules/instance-ai/instance-ai.adapter.service.ts
+  s_adfecd6a2aa84c::t_a9e9b78f2c5e82 121,3571-3581
+packages/@n8n/instance-ai/src/tools/apps/__tests__/apps.tool.test.ts
+  s_adfecd6a2aa84c::t_e7488f4330300e 12,330-368
+packages/@n8n/api-types/src/schemas/instance-ai.schema.ts
+  s_adfecd6a2aa84c::t_6f67caece4d804 1027-1029
+  s_adfecd6a2aa84c::t_240dde7f21d091 885-890
+packages/@n8n/instance-ai/src/errors/index.ts
+  s_adfecd6a2aa84c::t_b6333cb6abd03f 3
+packages/frontend/editor-ui/src/features/ai/instanceAi/components/AppBlueprintCard.vue
+  s_adfecd6a2aa84c::t_7fa6cbcc933ad3 6,28-31,67,69,71-75,142,145,147-153,225-233,355,358-361
+  s_adfecd6a2aa84c::t_a1f2cbfd4162f5 68,70,146
+  s_adfecd6a2aa84c::t_cfdfd726d0e1e0 80
+  s_adfecd6a2aa84c::t_af0b2b7cba5cfb 141,353-354,356-357
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_adfecd6a2aa84c::t_5151c903003a11 453
+  s_adfecd6a2aa84c::t_f1804126c571e2 465
+packages/@n8n/instance-ai/src/tools/apps/apps.tool.ts
+  s_adfecd6a2aa84c::t_5d59569884109f 6,19,280,315-327
+packages/frontend/editor-ui/src/features/ai/instanceAi/components/__tests__/AppBlueprintCard.test.ts
+  s_adfecd6a2aa84c::t_a1f2cbfd4162f5 117-125
+  s_adfecd6a2aa84c::t_802f8cc5a6e23b 91-116,126-135
+packages/@n8n/instance-ai/src/stream/map-chunk.ts
+  s_adfecd6a2aa84c::t_e1e0239387a274 16,346-349,400
+packages/frontend/editor-ui/src/features/ai/instanceAi/components/AgentTimeline.vue
+  s_adfecd6a2aa84c::t_60bc67913fdcdf 281-285,350-351
+packages/@n8n/instance-ai/src/stream/__tests__/map-chunk.test.ts
+  s_adfecd6a2aa84c::t_e511f3e20efe74 650-679
+packages/frontend/editor-ui/src/features/ai/instanceAi/assistantAgent/__tests__/AssistantConfirmationCard.test.ts
+  s_adfecd6a2aa84c::t_c43bcf3db2c8f9 186-211
+packages/@n8n/instance-ai/src/index.ts
+  s_adfecd6a2aa84c::t_b6333cb6abd03f 274
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "8d5d243f042ab962d1e5ec6b2620f5c4f73b2365",
+  "prompts": {},
+  "sessions": {
+    "s_adfecd6a2aa84c": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3aca02d2-b712-4db9-a3f8-592e5952bc55",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Jaakko Husso <jaakko@n8n.io>"
+    }
+  }
+}

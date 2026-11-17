@@ -1,0 +1,19 @@
+packages/cli/src/public-api/v1/handlers/promotions/spec/paths/disconnectPromotionCheckout.generated.yml
+  s_405658a64a449e::t_317e05d7793b07 5
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "29eb4bdfd9d7acb362731b3edb4431a74805b30e",
+  "prompts": {},
+  "sessions": {
+    "s_405658a64a449e": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "a5185420-81e8-43f2-ab8c-8d4f4ae2ad0b",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Irénée <irenee.ajeneza@n8n.io>"
+    }
+  }
+}

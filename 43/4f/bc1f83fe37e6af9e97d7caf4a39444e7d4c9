@@ -1,0 +1,26 @@
+packages/quality/testing/playwright/services/api-helper.ts
+  s_5881e3ab4ab722::t_ee7dae8fd1fc0c 31,110,142
+packages/quality/testing/playwright/services/promotions-api-helper.ts
+  s_5881e3ab4ab722::t_353ce725ece9ae 31-33
+  s_5881e3ab4ab722::t_7f3a25a39ff6d2 1-30,34-88
+packages/quality/testing/playwright/tests/infrastructure/promotions/checkout-cleanup-multi-main.spec.ts
+  s_5881e3ab4ab722::t_353ce725ece9ae 2,19-20,43
+  s_5881e3ab4ab722::t_affe794ebcb3c7 1,3-18,21-42,44-55,57-162
+  s_5881e3ab4ab722::t_9324f70a0f1aef 56
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "434fbc1f83fe37e6af9e97d7caf4a39444e7d4c9",
+  "prompts": {},
+  "sessions": {
+    "s_5881e3ab4ab722": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "4c585ad0-65da-427b-ac44-35469347a316",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Irénée <irenee.ajeneza@n8n.io>"
+    }
+  }
+}

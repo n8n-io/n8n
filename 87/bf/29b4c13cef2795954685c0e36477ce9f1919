@@ -1,0 +1,23 @@
+packages/cli/src/executions/__tests__/execution.service.test.ts
+  s_b9d718c7d65683::t_217b0cd6487e94 559-574,580,589-592
+packages/cli/src/executions/execution.service.ts
+  s_b9d718c7d65683::t_20af583197a25d 313-315,317
+packages/cli/test/integration/public-api/executions.test.ts
+  s_b9d718c7d65683::t_706c3d7d01deeb 605-685
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "87bf29b4c13cef2795954685c0e36477ce9f1919",
+  "prompts": {},
+  "sessions": {
+    "s_b9d718c7d65683": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ff1c25de-ae5f-475d-b1a6-fe91cb0bc1cb",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Yuliia Pominchuk <yuliia.pominchuk@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,41 @@
+packages/@n8n/api-types/src/agents/dto.ts
+  s_9416adef5f807e::t_68e9c5fc5ff27a 30,596-600
+packages/@n8n/api-types/src/index.ts
+  s_9416adef5f807e::t_f99906bc2fbbe0 1100-1101
+packages/@n8n/api-types/src/schemas/agent-safe-testing.schema.ts
+  s_9416adef5f807e::t_7b38025c09cc67 6-13
+packages/cli/src/modules/agents/__tests__/agent-chat.controller.test.ts
+  s_9416adef5f807e::t_49acf59e3b6415 1236-1260
+packages/cli/src/modules/agents/__tests__/agent-message-queue-consumer.service.test.ts
+  s_9416adef5f807e::t_bb0e7e1e091e07 171-185
+packages/cli/src/modules/agents/__tests__/agent-test-run.service.test.ts
+  s_9416adef5f807e::t_19a0e29a45a96b 603,609-635
+packages/cli/src/modules/agents/agent-chat.controller.ts
+  s_9416adef5f807e::t_acca74e80ca485 262,307
+packages/cli/src/modules/agents/agent-message-queue-consumer.service.ts
+  s_9416adef5f807e::t_ab9fa2f6c31cde 319
+packages/cli/src/modules/agents/agent-test-run.service.ts
+  s_9416adef5f807e::t_b9d2f3f92e3fbf 8-12,81-82,243,247,400,412
+packages/cli/src/modules/agents/simulation/__tests__/simulation-session.service.test.ts
+  s_9416adef5f807e::t_639b9c97f772c6 134,138-148,404-411
+packages/cli/src/modules/agents/simulation/simulation-session.service.ts
+  s_9416adef5f807e::t_2b7f1601da4fd0 43-47,101-104
+packages/cli/src/modules/agents/types/agent-queued-message.ts
+  s_9416adef5f807e::t_2548f48d5d17f6 2-6,42-43
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "7e9bec63f46cf1674aebfd19a339e5c4704f67c3",
+  "prompts": {},
+  "sessions": {
+    "s_9416adef5f807e": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "1bf350b5-81ad-4f81-8310-868370228261",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Thiago Pacheco <hi@sudoish.com>"
+    }
+  }
+}

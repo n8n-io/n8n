@@ -1,0 +1,55 @@
+packages/frontend/editor-ui/src/features/agents/components/AgentFolderBrowser.vue
+  s_b86bd8b73ec329::t_74a5fa34189cf3 190-192,230-231,235,275,277,281,288
+  s_b86bd8b73ec329::t_94256a843ea1cc 232,238,251
+  s_b86bd8b73ec329::t_60e2f27de23e1c 242-244
+  s_b86bd8b73ec329::t_01f65d2276d650 12,239-240,246-250
+  s_b86bd8b73ec329::t_e329165fdafc22 241,245
+  s_b86bd8b73ec329::t_5e95d557c59ecc 4
+  s_b86bd8b73ec329::t_a779f5c59f5106 13,26,30,65,83-85
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentFolderBrowser.test.ts
+  s_b86bd8b73ec329::t_94256a843ea1cc 53,109,54-56,59,64-66,145,161-162
+  s_b86bd8b73ec329::t_6c864afc02202e 181,183,123,132,136,142,67,77,144,146,163-164,178,182,184-193,197-198
+  s_b86bd8b73ec329::t_60e2f27de23e1c 108,111-118,120,124-125,133-135,137-141
+  s_b86bd8b73ec329::t_01f65d2276d650 121-122,149-150,152-156,158,160
+  s_b86bd8b73ec329::t_8272be99d81754 126-131
+  s_b86bd8b73ec329::t_49283fa0691c19 147-148,151,157,159
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentsListView.test.ts
+  s_b86bd8b73ec329::t_2f6d8c63848533 218,276,278-279,55,88,219-229,236,285-312,319-329,332-334,341-342,344-349,353-354,356-371,373-374,387-388,390-392,402-403,415,422-431,437-440,450-462
+  s_b86bd8b73ec329::t_b90970d115542b 6-7,21-23,28,40,52-54,64,68,76,87,89-90,118,186,190,235,240-242,246-248
+  s_b86bd8b73ec329::t_db28245fd1a73c 65-67,69,75,82-84,86,113-117,119-120,244-245,313-318,330-331,335-340,350-352,375-386,393-401,404-414,416-419,421,432-436,441-449
+  s_59270bcc1c75b9::t_10bdcafb412427 85,420
+  s_b86bd8b73ec329::t_857a6ee760f008 343,355,372,389
+packages/frontend/editor-ui/src/features/agents/agents-design-language.md
+  s_b86bd8b73ec329::t_8272be99d81754 20-27
+  s_b86bd8b73ec329::t_bceac25538bc19 34-38,29,33
+  s_b86bd8b73ec329::t_6c864afc02202e 28,30-32
+packages/frontend/editor-ui/src/features/agents/views/AgentsListView.vue
+  s_59270bcc1c75b9::t_1f3b6a55c4d3dd 308-309
+  s_b86bd8b73ec329::t_a020e2c18f382e 41,458-463,465-467,469-472,483-485,492,496-499,114,206,210,319,331
+  s_b86bd8b73ec329::t_5db4c5dd860139 108
+  s_b86bd8b73ec329::t_f3fdcb09ce8659 8-10,44-45,65,67,103,106-107,110-113,118,127,164-170,172,184-205,207-209,211-212,214-217,220-221,227-229,314,316-318,330,332,439,477,482,504,511,530
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "d5869eadcf90f00d25ab7c5a52bf5e5b3bef55e5",
+  "prompts": {},
+  "sessions": {
+    "s_59270bcc1c75b9": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "6f0208db-1247-4519-b410-1b1bf7dfc1ff",
+        "model": "claude-fable-5-2"
+      },
+      "human_author": "Eugene Molodkin <eugene@n8n.io>"
+    },
+    "s_b86bd8b73ec329": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a1c5ff-a9a5-7263-8c36-bf54b75e063d",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "Eugene Molodkin <eugene@n8n.io>"
+    }
+  }
+}

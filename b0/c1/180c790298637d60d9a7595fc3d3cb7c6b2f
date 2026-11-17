@@ -1,0 +1,39 @@
+packages/cli/src/modules/agents/__tests__/execution-to-message-mapper.test.ts
+  s_26b7f836c1099b::t_c293a928193a35 470-474,478-512
+  ai_agent 475-477
+packages/frontend/editor-ui/src/features/ai/shared/agentsChat/replyFiles.ts
+  s_26b7f836c1099b::t_f2c6cf4cca8e4b 24-31,33-35,41,54
+packages/frontend/editor-ui/src/features/agents/__tests__/useAgentChatStream.test.ts
+  s_26b7f836c1099b::t_d019305e875d6f 2685-2775,2777-2780
+  ai_agent 2776
+packages/frontend/editor-ui/src/features/agents/composables/useAgentChatStream.ts
+  s_26b7f836c1099b::t_81c84e5ec51de0 1274
+packages/cli/src/modules/agents/integrations/integration-tool-factory.ts
+  s_26b7f836c1099b::t_723caf5842b6ab 66
+packages/cli/src/modules/agents/integrations/integration-tool-execution.ts
+  s_26b7f836c1099b::t_4aafb0422adbf7 360-361
+packages/frontend/editor-ui/src/features/ai/shared/agentsChat/__tests__/messageMappers.attachments.test.ts
+  s_26b7f836c1099b::t_768d0b34ed7e2a 3,171-190,198-238
+  ai_agent 191-197
+packages/cli/src/modules/agents/integrations/__tests__/n8n-chat-integration.test.ts
+  s_26b7f836c1099b::t_3db7b6dcce464c 1,10
+  s_26b7f836c1099b::t_1616d67d8e0074 328-417
+packages/frontend/editor-ui/src/features/ai/shared/agentsChat/messageMappers.ts
+  s_26b7f836c1099b::t_81c84e5ec51de0 27,477
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "b0c1180c790298637d60d9a7595fc3d3cb7c6b2f",
+  "prompts": {},
+  "sessions": {
+    "s_26b7f836c1099b": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "4b53fc54-c29e-43fe-89fb-3fab9412b6d0",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Benjamin Schroth <benjamin@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,36 @@
+packages/@n8n/permissions/src/constants.ee.ts
+  s_08690fb8a4caf5::t_c91d9cecb825a3 130-137,139
+  s_08690fb8a4caf5::t_3a3431deee9a5a 138
+packages/@n8n/permissions/src/roles/__tests__/custom-role-scopes.test.ts
+  s_08690fb8a4caf5::t_f5463d8d2078e2 64
+packages/cli/test/integration/public-api/n8n-packages-import-agents.test.ts
+  s_08690fb8a4caf5::t_fb6a6491450e51 829-856
+packages/cli/src/public-api/v1/controllers/openapi/n8n-packages.openapi.ts
+  s_08690fb8a4caf5::t_930fd02d393c75 69-70
+packages/@n8n/permissions/src/public-api-permissions.ee.ts
+  s_08690fb8a4caf5::t_c91d9cecb825a3 17,135,213
+packages/frontend/editor-ui/src/features/agents/components/AgentBuilderHeader.vue
+  s_08690fb8a4caf5::t_930fd02d393c75 236
+packages/cli/src/modules/agents/utils/agent-published-snapshot.ts
+  s_08690fb8a4caf5::t_930fd02d393c75 47,49
+packages/cli/src/modules/agents/agent-execution-orchestrator.service.ts
+  s_08690fb8a4caf5::t_930fd02d393c75 1246-1247
+packages/cli/src/public-api/v1/handlers/n8n-packages/spec/paths/importPackage.generated.yml
+  s_08690fb8a4caf5::t_dca565cce38e86 14
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "3b6cd21c0ce542a7b547be50051f94646b6859cc",
+  "prompts": {},
+  "sessions": {
+    "s_08690fb8a4caf5": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "33b03ae9-9b4e-49ba-ac90-ae160b5918c5",
+        "model": "claude-fable-5-2"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}

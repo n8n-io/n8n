@@ -1,0 +1,33 @@
+packages/@n8n/nodes-langchain/nodes/agents/Agent/agents/ToolsAgent/V3/helpers/executeBatch.ts
+  s_ea243bd11a1db0::t_9802385a44427b 59
+packages/@n8n/nodes-langchain/utils/agent-execution/test/hitlToolCallRoundTrip.test.ts
+  s_ea243bd11a1db0::t_6a629981901d72 1-140
+packages/@n8n/nodes-langchain/utils/agent-execution/test/createEngineRequests.test.ts
+  s_ea243bd11a1db0::t_a969f4fa06eb85 342-358,398,425,459,530
+packages/@n8n/nodes-langchain/utils/agent-execution/processHitlResponses.ts
+  s_ea243bd11a1db0::t_9802385a44427b 105-107
+  s_ea243bd11a1db0::t_93de3604c1bde2 111-112,133-137
+packages/@n8n/nodes-langchain/utils/agent-execution/createEngineRequests.ts
+  s_ea243bd11a1db0::t_58abd9a6b4dee2 47
+  s_ea243bd11a1db0::t_93de3604c1bde2 3,6,45-46,48-50,52-53,56-64,285-286,292-293
+  s_ea243bd11a1db0::t_5f431054afcbcf 51
+  s_ea243bd11a1db0::t_196c8d20fdab52 54-55,288-291
+packages/@n8n/nodes-langchain/nodes/ToolExecutor/ToolExecutor.node.ts
+  s_ea243bd11a1db0::t_9802385a44427b 160
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "52eef91caab9d667f618a2db65c06006078b1299",
+  "prompts": {},
+  "sessions": {
+    "s_ea243bd11a1db0": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "d0511f34-1b43-4a87-aa54-605b6fdea81d",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Benjamin Schroth <benjamin@n8n.io>"
+    }
+  }
+}

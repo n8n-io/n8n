@@ -1,0 +1,11 @@
+packages/cli/src/modules/agents/__tests__/agent-message-queue.service.test.ts
+  ai_agent 270-287
+packages/cli/src/modules/agents/agent-message-queue.service.ts
+  ai_agent 63-65,478,480,482-489
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "a07bbbe78162f0bb0d59e027556daaa93512f589",
+  "prompts": {}
+}

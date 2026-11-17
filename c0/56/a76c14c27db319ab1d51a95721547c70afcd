@@ -1,0 +1,30 @@
+packages/@n8n/cli/docs/commands/package.md
+  s_127a9acd7ce7b7::t_919258f7af3241 47-50
+packages/cli/src/modules/n8n-packages/__tests__/export-agent-package.integration.test.ts
+  s_127a9acd7ce7b7::t_8c90fc7bf963ed 32,42-43,84,259,315-353
+  s_127a9acd7ce7b7::t_c1cb65da201cff 354
+packages/cli/src/modules/n8n-packages/entities/agent/__tests__/agent.exporter.test.ts
+  s_127a9acd7ce7b7::t_5a3f0a5ce2c66d 94,159-168,170-171
+packages/cli/src/modules/n8n-packages/entities/agent/agent.serializer.ts
+  s_127a9acd7ce7b7::t_1aa1e5401d5322 1,58-67,79
+packages/cli/src/modules/n8n-packages/engine/import-orchestrator.ts
+  s_127a9acd7ce7b7::t_7a260ffa76971c 787-790
+packages/cli/src/modules/n8n-packages/entities/agent/__tests__/agent-requirements.extractor.test.ts
+  s_127a9acd7ce7b7::t_5a3f0a5ce2c66d 211-226
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "c056a76c14c27db319ab1d51a95721547c70afcd",
+  "prompts": {},
+  "sessions": {
+    "s_127a9acd7ce7b7": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "2cde20d3-48ef-4bcf-b24f-c198afd6fca7",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}

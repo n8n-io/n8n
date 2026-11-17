@@ -1,0 +1,29 @@
+packages/frontend/editor-ui/src/features/agents/components/AgentChatPanel.vue
+  s_f6ecac1d27039d::t_727bcd4d4d9d6f 1714
+  s_f6ecac1d27039d::t_27c087adcea5ee 1794
+  s_f6ecac1d27039d::t_eedce4c2432415 39,773,776-781,800
+packages/frontend/editor-ui/src/app/utils/fileUtils.test.ts
+  s_f6ecac1d27039d::t_b10e3d74c018e4 72-82
+packages/frontend/editor-ui/src/app/utils/fileUtils.ts
+  s_f6ecac1d27039d::t_eedce4c2432415 20-29,31
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentChatPanel.test.ts
+  s_f6ecac1d27039d::t_ccba7b62cee62e 8-13,1364,1369-1372,3482,3486,3493-3494,3555
+packages/@n8n/api-types/src/agents/agent-chat-attachments.constants.ts
+  s_f6ecac1d27039d::t_eedce4c2432415 1-27
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "4f7562e6fac27ba6402a5419e3642c16e8302f49",
+  "prompts": {},
+  "sessions": {
+    "s_f6ecac1d27039d": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "89b89260-50b9-4dc9-b922-745d32a048d8",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Benjamin Schroth <benjamin@n8n.io>"
+    }
+  }
+}

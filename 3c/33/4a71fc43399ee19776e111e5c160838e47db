@@ -1,0 +1,44 @@
+packages/cli/src/modules/n8n-packages/engine/import-orchestrator.ts
+  s_127a9acd7ce7b7::t_b37e8a32dd9540 9,434
+packages/cli/src/modules/n8n-packages/engine/project-package-importer.ts
+  s_127a9acd7ce7b7::t_1ca17607701593 17,31,160-161,163,355-357,359,365,481-488
+  s_127a9acd7ce7b7::t_02f6afb095ccb7 489-490
+packages/cli/src/modules/n8n-packages/entities/agent/agent-importer.ts
+  s_127a9acd7ce7b7::t_b37e8a32dd9540 22,58,94-97
+packages/cli/src/modules/n8n-packages/n8n-packages.service.ts
+  s_127a9acd7ce7b7::t_1ca17607701593 53,563,591,626,646,663,666,687,703,817-818,829-839
+  s_127a9acd7ce7b7::t_26efde27c0c517 840-841
+packages/cli/src/modules/n8n-packages/n8n-packages.types.ts
+  s_127a9acd7ce7b7::t_a397bed3ee33cf 334-341,409-413
+  s_127a9acd7ce7b7::t_02243e7cdf5caa 333
+packages/cli/src/modules/n8n-packages/entities/agent/agent-skill-link-policy.ts
+  s_127a9acd7ce7b7::t_b37e8a32dd9540 1-24
+packages/cli/src/modules/n8n-packages/__tests__/agent-import-planning.integration.test.ts
+  s_127a9acd7ce7b7::t_7196e7548267b8 680-711
+packages/cli/src/modules/n8n-packages/__tests__/import-agents-from-directory.integration.test.ts
+  s_127a9acd7ce7b7::t_ccd437f98c59ae 285
+  s_127a9acd7ce7b7::t_b17c139ee9c569 200-203,205-210,212-217
+  s_127a9acd7ce7b7::t_b4dcf965276778 95-106,109,242
+  s_127a9acd7ce7b7::t_092101545a9284 1-94,107-108,110-199,204,211,218-241,243-284,286-307
+packages/cli/src/modules/n8n-packages/__tests__/import-agent-package.integration.test.ts
+  s_127a9acd7ce7b7::t_b31d2301287768 143-145,159
+packages/cli/src/modules/n8n-packages/entities/agent/__tests__/agent-skill-link-policy.test.ts
+  s_127a9acd7ce7b7::t_ac07cdd968d072 1-7,9-17,23-36
+  s_127a9acd7ce7b7::t_b17c139ee9c569 8,18-22
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "3c334a71fc43399ee19776e111e5c160838e47db",
+  "prompts": {},
+  "sessions": {
+    "s_127a9acd7ce7b7": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "2cde20d3-48ef-4bcf-b24f-c198afd6fca7",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}

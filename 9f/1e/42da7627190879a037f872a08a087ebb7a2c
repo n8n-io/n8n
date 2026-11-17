@@ -1,0 +1,21 @@
+packages/cli/test/integration/database/repositories/workflow-history.repository.test.ts
+  s_11556d3276b9c3::t_cb5386f45a9e92 620,624-625
+  s_11556d3276b9c3::t_841ab1421b977c 46
+  s_11556d3276b9c3::t_25a91b2652166b 670,682,687-693,698,701
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "9f1e42da7627190879a037f872a08a087ebb7a2c",
+  "prompts": {},
+  "sessions": {
+    "s_11556d3276b9c3": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "9a51ecc0-aade-48b4-a168-45cad688ea5c",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Veljko Terzic <veljko.terzic@n8n.io>"
+    }
+  }
+}

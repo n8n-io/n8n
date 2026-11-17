@@ -1,0 +1,28 @@
+packages/frontend/editor-ui/src/app/composables/usePushConnection/handlers/executionStarted.test.ts
+  s_fe81b129ac97c3::t_c85a3a654d49bf 79-84
+  s_fe81b129ac97c3::t_31343c928688c2 4-5,14-15
+  s_fe81b129ac97c3::t_a15a400699674a 37,42-78
+  s_fe81b129ac97c3::t_04a0a1d6394ab5 85-86
+packages/frontend/editor-ui/src/app/composables/usePushConnection/handlers/executionIssues.test.ts
+  s_fe81b129ac97c3::t_5eaba18e0fbb34 1-79,87-101
+  s_fe81b129ac97c3::t_c343adc0ee525d 80-86
+packages/frontend/editor-ui/src/app/composables/usePushConnection/handlers/executionStarted.ts
+  s_fe81b129ac97c3::t_b6595a4630964a 5
+  s_fe81b129ac97c3::t_31225f8c03ced7 74
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "31a45b2cf12806cd52253fc17996b4bb9ef55d7b",
+  "prompts": {},
+  "sessions": {
+    "s_fe81b129ac97c3": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "7846b604-588b-48eb-bd5a-278f131418d5",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Veljko Terzic <veljko.terzic@n8n.io>"
+    }
+  }
+}

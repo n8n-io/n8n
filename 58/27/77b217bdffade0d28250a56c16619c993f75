@@ -1,0 +1,63 @@
+packages/@n8n/api-types/src/ui-extensions.ts
+  s_e665c8e900c39a::t_86395db651beb6 50-54
+packages/cli/src/modules/mcp/tools/create-side-panel-view.tool.ts
+  s_e665c8e900c39a::t_6b350d43377209 35
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_85c95d3931e97d::t_bf698312e58b11 5791-5792,5799-5800
+packages/frontend/editor-ui/src/app/composables/useUiExtensionPageContext.ts
+  s_e665c8e900c39a::t_345fedf417de59 2,6,28-38,79
+packages/modules/ui-extensions/frontend/src/__tests__/render-builtin-view.ts
+  s_044ef61ef38ea6::t_01b48c635478ec 71-77,84
+packages/modules/ui-extensions/frontend/src/examples/checklist.view.js
+  s_85c95d3931e97d::t_f64e4650cbf19d 7,28-33
+packages/modules/ui-extensions/frontend/src/examples/checklist.view.test.ts
+  s_044ef61ef38ea6::t_3a32647ea00117 58-72
+packages/modules/ui-extensions/frontend/src/examples/integrations.view.js
+  s_85c95d3931e97d::t_b25427643329ce 2-3,18,20,22-25,30-33,49-50,66-71
+packages/modules/ui-extensions/frontend/src/examples/integrations.view.test.ts
+  s_044ef61ef38ea6::t_43864e7ba1639b 13,16,18-21,26,28-29,33-45,53
+packages/modules/ui-extensions/frontend/src/examples/pageSummary.view.js
+  s_85c95d3931e97d::t_2c5c2ac3ba6854 28-30
+packages/modules/ui-extensions/frontend/src/examples/pageSummary.view.test.ts
+  s_044ef61ef38ea6::t_0c1bbf3a2c335a 17-19,28,30
+packages/modules/ui-extensions/frontend/src/ui-extensions.builtin.ts
+  s_85c95d3931e97d::t_8859bb92fff582 56-57
+packages/modules/ui-extensions/frontend/src/ui-extensions.context.ts
+  s_e665c8e900c39a::t_c12977ac597cf3 13
+packages/frontend/editor-ui/src/app/composables/useUiExtensionPageContext.test.ts
+  s_044ef61ef38ea6::t_7a393d8d818126 73-77,79-84,92,102-115,121,123-124
+packages/quality/testing/playwright/tests/e2e/ui-extensions/side-panel.spec.ts
+  s_044ef61ef38ea6::t_82e0fd1d584f99 196,198,200-201,203-204,207,209,213
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "582777b217bdffade0d28250a56c16619c993f75",
+  "prompts": {},
+  "sessions": {
+    "s_044ef61ef38ea6": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "0cae1352-0601-4229-a79c-7bc30c70ce01",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "alex <alex@n8n.io>"
+    },
+    "s_85c95d3931e97d": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "5414b146-7e78-4316-b391-228e75b753d9",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "alex <alex@n8n.io>"
+    },
+    "s_e665c8e900c39a": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "94394284-28f4-4380-9cd7-c61db99d6dab",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "alex <alex@n8n.io>"
+    }
+  }
+}

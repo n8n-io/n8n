@@ -1,0 +1,25 @@
+packages/cli/src/services/__tests__/folder-operations.test.ts
+  s_f47d4602e7ba0b::t_46cb11515c5fcf 148-150
+  s_f47d4602e7ba0b::t_81a59b6a19ec69 136,138,145
+  s_f47d4602e7ba0b::t_34dc78b4eda79f 9,153-155
+  s_f47d4602e7ba0b::t_b0ebc7cdc2fc23 13-14,117-119,135,156,160-161
+  s_f47d4602e7ba0b::t_8d15b3384e0899 120-134,137,139-141,144,146,151,157-159
+packages/cli/src/workflows/__tests__/workflow.service.ee.test.ts
+  s_f47d4602e7ba0b::t_b0ebc7cdc2fc23 1552
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "66b7dbdbfad15d909e10e0a47b4e77205f6391a3",
+  "prompts": {},
+  "sessions": {
+    "s_f47d4602e7ba0b": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a1d536-382e-7c22-8084-f34bb0a03002",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "Eugene Molodkin <eugene@n8n.io>"
+    }
+  }
+}

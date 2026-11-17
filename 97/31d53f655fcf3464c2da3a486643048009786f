@@ -1,0 +1,55 @@
+packages/cli/test/integration/public-api/executions.test.ts
+  s_0e3f3f11685a8c::t_93ba253bb2e465 12,119-139
+  s_0e3f3f11685a8c::t_3def8b28f2cc94 140,471-492
+  s_0e3f3f11685a8c::t_962880da7c8315 141
+packages/cli/src/executions/execution.utils.ts
+  s_0e3f3f11685a8c::t_0b9fe7fd2d29e0 1,17-23
+  s_0e3f3f11685a8c::t_38605aef98979e 24
+packages/cli/src/push/websocket.push.ts
+  s_0e3f3f11685a8c::t_ed83ea435b2f5d 61
+  s_0e3f3f11685a8c::t_ef0ababf465da1 38
+packages/cli/src/push/__tests__/websocket.push.test.ts
+  s_0e3f3f11685a8c::t_ed83ea435b2f5d 133-145
+  s_0e3f3f11685a8c::t_87036be14cec0d 7,123-132,184-226
+packages/cli/src/executions/execution.service.ts
+  s_0e3f3f11685a8c::t_0b9fe7fd2d29e0 123-126,136-137,157,277,291-292
+  s_0e3f3f11685a8c::t_c8e1aa6f5d15ec 17,52
+packages/cli/src/public-api/v1/handlers/executions/executions.handler.ts
+  s_0e3f3f11685a8c::t_c8e1aa6f5d15ec 13,89-90,140
+packages/cli/src/executions/__tests__/execution.service.test.ts
+  s_0e3f3f11685a8c::t_251af3a8f60424 6
+  s_0e3f3f11685a8c::t_0483fccc2f7a05 76-78
+  s_0e3f3f11685a8c::t_21daa96564ec78 67-71,73-75,79-86
+  s_0e3f3f11685a8c::t_5e1f2c3fd20531 72
+packages/cli/test/integration/executions.controller.test.ts
+  s_0e3f3f11685a8c::t_3def8b28f2cc94 9-11,17,97-146
+  s_0e3f3f11685a8c::t_795e1b44873db9 147-148
+packages/cli/src/push/__tests__/sse.push.test.ts
+  s_0e3f3f11685a8c::t_2719b56fb88a5f 116,137-169
+  s_0e3f3f11685a8c::t_ed83ea435b2f5d 117-136
+packages/cli/src/push/abstract.push.ts
+  s_0e3f3f11685a8c::t_ef0ababf465da1 6,15-19,28-29,48,51-52,54-56,59,62,77-81,84,89,94-96,100-101,110-115,120,122-123,126,129-130,135,139-140,144
+  s_0e3f3f11685a8c::t_ed83ea435b2f5d 68-70
+  s_0e3f3f11685a8c::t_f085384a9e864a 71-74
+packages/cli/src/push/sse.push.ts
+  s_0e3f3f11685a8c::t_ed83ea435b2f5d 28
+packages/cli/test/integration/workflows/workflows.controller.test.ts
+  s_0e3f3f11685a8c::t_93ba253bb2e465 34,3756-3778
+  s_0e3f3f11685a8c::t_a41f1e6304864b 3779-3780
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "9731d53f655fcf3464c2da3a486643048009786f",
+  "prompts": {},
+  "sessions": {
+    "s_0e3f3f11685a8c": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "563523b5-f124-4c48-b5a1-661d3f667ed7",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": null
+    }
+  }
+}

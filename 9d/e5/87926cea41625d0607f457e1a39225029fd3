@@ -1,0 +1,19 @@
+packages/cli/src/executions/execution.service.ts
+  s_b9d718c7d65683::t_af4a123f3ae62a 42,50-56,296-311
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "9de587926cea41625d0607f457e1a39225029fd3",
+  "prompts": {},
+  "sessions": {
+    "s_b9d718c7d65683": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ff1c25de-ae5f-475d-b1a6-fe91cb0bc1cb",
+        "model": "unknown"
+      },
+      "human_author": "Yuliia Pominchuk <yuliia.pominchuk@n8n.io>"
+    }
+  }
+}

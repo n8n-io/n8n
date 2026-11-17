@@ -1,0 +1,31 @@
+packages/cli/src/modules/instance-ai/__tests__/internal-messages.test.ts
+  s_f642d601d434a5::t_6aac7a161f0697 1056-1057,1067-1081
+  s_f642d601d434a5::t_8f205cccf50783 1082
+packages/cli/src/modules/instance-ai/internal-messages.ts
+  s_f642d601d434a5::t_6aac7a161f0697 535-538,540-541,543,545
+packages/modules/apps/frontend/src/components/AppPreview.test.ts
+  s_f642d601d434a5::t_28777b02ea85d6 410-421
+packages/modules/apps/frontend/src/components/AppPreview.vue
+  s_f642d601d434a5::t_28777b02ea85d6 178
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "dbbf2ac938bb43ed6966548e9fccdff2612d495a",
+  "prompts": {},
+  "humans": {
+    "h_44f8d1c0f2f8c4": {
+      "author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_f642d601d434a5": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "24c7f81e-bd86-4e1f-88c9-69e2ad0fd6b8",
+        "model": "claude-sonnet-5-5"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    }
+  }
+}

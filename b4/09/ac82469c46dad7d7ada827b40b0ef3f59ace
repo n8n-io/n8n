@@ -1,0 +1,29 @@
+packages/cli/src/modules/agents/__tests__/agents-builder-tools.service.test.ts
+  s_97e0cec992ca1a::t_8373fb94790055 587-596
+packages/cli/src/modules/agents/builder/agents-builder-tools.service.ts
+  s_3db0fdbe5cc86d::t_51ebb78b32f60f 1084-1088,1092,1659
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "b409ac82469c46dad7d7ada827b40b0ef3f59ace",
+  "prompts": {},
+  "sessions": {
+    "s_3db0fdbe5cc86d": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "69a0b42e-2ba5-415f-b028-bc9d4b285615",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "r00gm <raul00gm@gmail.com>"
+    },
+    "s_97e0cec992ca1a": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "e9e0cc2f-e652-4df0-9d63-2d04f684949e",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "r00gm <raul00gm@gmail.com>"
+    }
+  }
+}

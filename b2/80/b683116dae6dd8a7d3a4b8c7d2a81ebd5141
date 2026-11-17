@@ -1,0 +1,19 @@
+packages/@n8n/module-cli/src/frontend.test.mjs
+  s_fdd6cf6d79ee0b::t_6a773b1de6865b 154
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "b280b683116dae6dd8a7d3a4b8c7d2a81ebd5141",
+  "prompts": {},
+  "sessions": {
+    "s_fdd6cf6d79ee0b": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_e79590a04ffeZvlC8mMYsLMXAC",
+        "model": "openai/gpt-5.6-sol"
+      },
+      "human_author": "Matsuuu <matias.huhta@n8n.io>"
+    }
+  }
+}

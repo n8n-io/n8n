@@ -1,0 +1,29 @@
+packages/frontend/editor-ui/src/features/agents/components/AgentHitlConfigurationModal.vue
+  s_dfe3f914c8bb46::t_e118f198f07cc6 13,110-117,242,444,452-460,470-471,476
+  s_dfe3f914c8bb46::t_bfe06831600ee6 445,472-475
+  s_dfe3f914c8bb46::t_f7d016cc487e24 446-451
+packages/frontend/editor-ui/src/features/agents/agents-design-language.md
+  s_dfe3f914c8bb46::t_e118f198f07cc6 493-494
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_dfe3f914c8bb46::t_e118f198f07cc6 17-18
+  s_dfe3f914c8bb46::t_029df0860ff4ab 16
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentHitlConfigurationModal.test.ts
+  s_dfe3f914c8bb46::t_f7d016cc487e24 84-88,136,156,199,225-229,235-238,240-243,249-259,262-269,276-278
+  s_dfe3f914c8bb46::t_7f3e545d409e7b 3,75,77,126-135,137-155,157-160,197-198,205-206,208,210-212,222-224,230-234,239,244-248,260-261,270-275,279-284
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "f2a356a1e4f3903b20453b2a2c08ffbd6c41683a",
+  "prompts": {},
+  "sessions": {
+    "s_dfe3f914c8bb46": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a177de-1655-75e1-b502-74f6cb945148",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "Michael Drury <michael.drury@n8n.io>"
+    }
+  }
+}

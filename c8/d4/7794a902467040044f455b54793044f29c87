@@ -1,0 +1,42 @@
+packages/core/src/errors/__tests__/error-reporter.sentry-sdk.test.ts
+  s_eb494d32ca16a6::t_754bc31e9cf545 5-6
+  s_ed6bb18de3e3ec::t_7924294d546afd 18,29
+  s_ed6bb18de3e3ec::t_a06f3da2af7ce0 105-108
+  s_ed6bb18de3e3ec::t_5a5c1b9dc5db49 99-100,103
+  s_ed6bb18de3e3ec::t_62c2a9fec440ce 114
+  s_ed6bb18de3e3ec::t_ccbff3eaf82270 16-17,19,33-64,83,98,102,104,109-113,115-122
+  s_ed6bb18de3e3ec::t_28dd9409770820 4
+  s_eb494d32ca16a6::t_f8865a258b77ab 97,101,123-127
+packages/@n8n/task-runner-python/tests/unit/test_sentry.py
+  s_ed6bb18de3e3ec::t_1f72460529f7eb 71
+  s_ed6bb18de3e3ec::t_5ee451af83129f 271-327
+  s_ed6bb18de3e3ec::t_3bcdd7592bfc07 2-4
+packages/core/src/errors/error-reporter.ts
+  s_eb494d32ca16a6::t_5a4da2f60df961 305
+packages/@n8n/task-runner-python/src/sentry.py
+  s_ed6bb18de3e3ec::t_8519238165ffc8 56
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "c8d47794a902467040044f455b54793044f29c87",
+  "prompts": {},
+  "sessions": {
+    "s_eb494d32ca16a6": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "01bedbcc-d3d0-41b2-874f-db52e01b895e",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "sim <olivier.dejong@n8n.io>"
+    },
+    "s_ed6bb18de3e3ec": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "148caa73-55c4-4c4b-8349-3f5248bfca19",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "sim <olivier.dejong@n8n.io>"
+    }
+  }
+}

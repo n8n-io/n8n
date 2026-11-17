@@ -1,0 +1,19 @@
+packages/frontend/editor-ui/src/app/constants/regex.ts
+  s_7b2e1c257d0740::t_c788e5f485cb42 3
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "a35a36cf792299e4b42aac82d6cc53858c4e32bf",
+  "prompts": {},
+  "sessions": {
+    "s_7b2e1c257d0740": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_e36a054c6ffe0a0mrspksoiqOZ",
+        "model": "openai/gpt-5.6-sol"
+      },
+      "human_author": "Matsuuu <matias.huhta@n8n.io>"
+    }
+  }
+}

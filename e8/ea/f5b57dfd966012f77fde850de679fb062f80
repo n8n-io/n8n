@@ -1,0 +1,21 @@
+packages/frontend/editor-ui/src/features/agents/components/AgentCard.vue
+  s_08690fb8a4caf5::t_46dcbb72ed1bbf 84-87
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentCard.test.ts
+  s_08690fb8a4caf5::t_b563192999e32a 369-377
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "e8eaf5b57dfd966012f77fde850de679fb062f80",
+  "prompts": {},
+  "sessions": {
+    "s_08690fb8a4caf5": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "33b03ae9-9b4e-49ba-ac90-ae160b5918c5",
+        "model": "claude-fable-5-2"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,25 @@
+packages/@n8n/cli/docs/commands/package.md
+  s_3773c4b1047d3d::t_9d53eff17bad64 115
+packages/cli/src/public-api/v1/controllers/openapi/n8n-packages.openapi.ts
+  s_3773c4b1047d3d::t_90640ce48d6630 61-64,121-123
+packages/cli/src/public-api/v1/handlers/n8n-packages/spec/paths/importPackage.generated.yml
+  s_3773c4b1047d3d::t_481e0c698cbe0e 14
+packages/cli/src/public-api/v1/handlers/n8n-packages/spec/paths/importPackageSelection.generated.yml
+  s_3773c4b1047d3d::t_d987cad11a166f 12
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "e4ec9cbfa4661c3087129b27183ceabf9d286e4f",
+  "prompts": {},
+  "sessions": {
+    "s_3773c4b1047d3d": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a19b62-3774-7a81-9f65-3fd6d0a7bb8b",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "kgrhartlage <kai.hartlage@n8n.io>"
+    }
+  }
+}

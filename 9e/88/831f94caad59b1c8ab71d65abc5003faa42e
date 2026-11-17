@@ -1,0 +1,20 @@
+.claude/plugins/n8n/commands/browse.md
+  s_392e98ad28eb12::t_a42dfec3d99302 5
+  s_392e98ad28eb12::t_ccf53570fab203 76
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "9e88831f94caad59b1c8ab71d65abc5003faa42e",
+  "prompts": {},
+  "sessions": {
+    "s_392e98ad28eb12": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "fca8bd93-ba99-46a8-817b-95d3d7b7fe8a",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Csaba Tuncsik <csaba.tuncsik@gmail.com>"
+    }
+  }
+}

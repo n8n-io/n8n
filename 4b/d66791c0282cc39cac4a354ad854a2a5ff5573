@@ -4,16 +4,16 @@ packages/cli/src/credentials/__tests__/credentials.service.test.ts
 packages/cli/src/credentials/__tests__/credentials.controller.test.ts
   s_907853c6014ba7::t_16f0c152fd24f6 1165
 packages/cli/src/modules/source-control.ee/__tests__/source-control-import.service.ee.test.ts
-  s_907853c6014ba7::t_970c91bb794eb5 155-156,3224-3250,3252-3253,3260,3908-3909,3917,3925,3930-3949,3964,3991,4023,4040
+  s_907853c6014ba7::t_970c91bb794eb5 155-156,3224-3250,3224-3226,3231,3233,3239,3248-3250,3252-3253,3260,3908-3909,3917,3925,3930-3949,3964,3991,4023,4040
   s_907853c6014ba7::t_a544d16272228a 8
 packages/cli/src/modules/source-control.ee/source-control-import.service.ee.ts
-  s_907853c6014ba7::t_0065d0cd96bc9d 1855-1857
-  s_907853c6014ba7::t_c218ef06668290 1914,1921-1928
+  s_907853c6014ba7::t_0065d0cd96bc9d 1855-1857,1855-1856
+  s_907853c6014ba7::t_c218ef06668290 1914,1921-1928,1923-1928
   s_907853c6014ba7::t_a01096c453e06c 1852
 packages/@n8n/db/src/repositories/credentials.repository.ts
   s_907853c6014ba7::t_f14a8de5e2f1ca 321-341
 packages/cli/src/credentials/credentials.service.ts
-  s_907853c6014ba7::t_f4a6f9b6d76669 1478-1494
+  s_907853c6014ba7::t_f4a6f9b6d76669 1478-1494,1478-1496
   s_907853c6014ba7::t_ce09b0dd58c7ba 1415,1421,1430,1470,1475-1477
 packages/cli/src/modules/source-control.ee/source-control.service.ee.ts
   s_907853c6014ba7::t_372f86ba80f605 709-712

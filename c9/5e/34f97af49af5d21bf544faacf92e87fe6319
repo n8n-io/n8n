@@ -4,9 +4,14 @@
   "git_ai_version": "1.7.5",
   "base_commit_sha": "c95e34f97af49af5d21bf544faacf92e87fe6319",
   "prompts": {},
-  "humans": {
-    "h_435b1d7d3e52c0": {
-      "author": "Andreas Fitzek <andreas.fitzek@n8n.io>"
+  "sessions": {
+    "s_5ec9fb7c5f46fb": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "a16b234b-5b66-47c5-8348-61d21a362278",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Irénée <irenee.ajeneza@n8n.io>"
     }
   }
 }

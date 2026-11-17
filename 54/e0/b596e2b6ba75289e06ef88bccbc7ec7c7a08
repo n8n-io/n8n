@@ -1,0 +1,24 @@
+packages/frontend/@n8n/design-system/src/components/N8nButton/Button.vue
+  s_f9831d8f0ed93e::t_2d80b714d175cf 106-107
+  s_f9831d8f0ed93e::t_cfe23aa3e56aa6 424
+packages/frontend/@n8n/design-system/src/components/N8nButton/Button.stories.ts
+  s_f9831d8f0ed93e::t_f97010aad01b88 2,6-7
+  s_f9831d8f0ed93e::t_00d09798110dbb 130,133-138,140-163,165-183
+  s_f9831d8f0ed93e::t_6c5b868f03f959 164
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "54e0b596e2b6ba75289e06ef88bccbc7ec7c7a08",
+  "prompts": {},
+  "sessions": {
+    "s_f9831d8f0ed93e": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "8a83f255-a230-4236-9460-cfd7fca88ac2",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "kgrhartlage <kai.hartlage@n8n.io>"
+    }
+  }
+}

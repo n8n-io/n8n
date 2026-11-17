@@ -1,0 +1,210 @@
+packages/frontend/@n8n/design-system/src/components/N8nStatusDot/StatusDot.stories.ts
+  s_0137c3e58fb21b::t_b4320a2b7440c8 11-15,19,26,35-76,85,91,97,99-106,115
+packages/@n8n/api-types/src/dto/promotions/promotion-environment.dto.ts
+  s_0137c3e58fb21b::t_b4320a2b7440c8 5,7,252-258
+  s_0137c3e58fb21b::t_3e561dacb09e8e 259
+packages/@n8n/api-types/src/dto/promotions/promotion-apply-check.dto.ts
+  s_0137c3e58fb21b::t_b4320a2b7440c8 290
+packages/cli/src/modules/agents/system-agents/__tests__/system-agent-chat.controller.test.ts
+  s_0137c3e58fb21b::t_b4320a2b7440c8 17,37-38,51,62,252,254-257,260,265,273-279,337-338,355
+packages/cli/src/modules/engine-v2/engine-sub-workflow.contract.ts
+  s_0137c3e58fb21b::t_b4320a2b7440c8 1-90
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentBuilderView.test.ts
+  s_0137c3e58fb21b::t_b4320a2b7440c8 16-19,1060-1095
+  s_0137c3e58fb21b::t_5b8546d4539b67 1096
+packages/frontend/editor-ui/src/features/integrations/promotions.ee/components/ApplyInstanceDialog.vue
+  s_0137c3e58fb21b::t_b4320a2b7440c8 41-42,57,118,229
+packages/frontend/@n8n/design-system/src/css/slider.scss
+  s_0137c3e58fb21b::t_b4320a2b7440c8 5-8,11
+packages/cli/src/modules/engine-v2/engine-sub-workflow.service.ts
+  s_0137c3e58fb21b::t_b4320a2b7440c8 1-225
+packages/frontend/editor-ui/src/features/agents/__tests__/N8nChatActionCard.test.ts
+  s_0137c3e58fb21b::t_b4320a2b7440c8 205,207,233
+packages/frontend/editor-ui/src/features/agents/components/interactive/N8nChatActionCard.vue
+  s_0137c3e58fb21b::t_b4320a2b7440c8 3-10,80-81,164-165,167,169-177
+packages/frontend/editor-ui/src/features/core/folders/components/DeleteFolderModal.vue
+  s_0137c3e58fb21b::t_b4320a2b7440c8 14-21,170-175,177-225
+packages/frontend/@n8n/design-system/src/components/N8nUserSelect/UserSelect.vue
+  s_0137c3e58fb21b::t_b4320a2b7440c8 106-107,139,143,145
+packages/@n8n/engine/src/server/index.ts
+  s_0137c3e58fb21b::t_b4320a2b7440c8 18
+packages/@n8n/cli/src/commands/project/create.ts
+  s_0137c3e58fb21b::t_b4320a2b7440c8 19
+packages/cli/src/modules/engine-v2/__tests__/engine-sub-workflow.controller.test.ts
+  s_0137c3e58fb21b::t_b4320a2b7440c8 1-107
+packages/@n8n/permissions/src/scope-information.ts
+  s_0137c3e58fb21b::t_b4320a2b7440c8 206
+packages/@n8n/cli/src/index.ts
+  s_0137c3e58fb21b::t_b4320a2b7440c8 45,51,126-127
+packages/@n8n/engine/src/server/start-execution.schema.ts
+  s_0137c3e58fb21b::t_b4320a2b7440c8 1-35
+packages/cli/test/integration/engine-v2-sub-workflow-resolve.test.ts
+  s_0137c3e58fb21b::t_b4320a2b7440c8 1-256
+packages/cli/src/modules/engine-v2/__tests__/engine-sub-workflow-client.test.ts
+  s_0137c3e58fb21b::t_b4320a2b7440c8 1-119
+packages/@n8n/cli/src/commands/promotion-environment/list-missing-projects.ts
+  s_0137c3e58fb21b::t_b4320a2b7440c8 1-26
+packages/frontend/@n8n/design-system/src/components/N8nStatusDot/StatusDot.vue
+  s_0137c3e58fb21b::t_b4320a2b7440c8 2-3,8,10,13-14,18-25,55-64
+  s_0137c3e58fb21b::t_1c2a5f272334ce 65
+packages/frontend/editor-ui/src/features/ai/instanceAi/embed/AssistantAgentPanelThread.vue
+  s_0137c3e58fb21b::t_b4320a2b7440c8 1-284
+packages/cli/src/modules/agents/system-agents/system-agent-chat.controller.ts
+  s_0137c3e58fb21b::t_b4320a2b7440c8 33,61,121,123,134-136,393-396,402
+packages/frontend/editor-ui/src/features/collaboration/projects/views/ProjectSettings.test.ts
+  s_0137c3e58fb21b::t_b4320a2b7440c8 294
+packages/frontend/editor-ui/src/features/integrations/promotions.ee/components/ApplyInstanceDialog.test.ts
+  s_0137c3e58fb21b::t_b4320a2b7440c8 193,201-210,225,227-230
+packages/cli/src/modules/agents/repositories/agent-thread.repository.ts
+  s_0137c3e58fb21b::t_b4320a2b7440c8 4,28-33
+  s_0137c3e58fb21b::t_2b3427baed6826 34-35
+packages/cli/src/public-api/v1/controllers/promotions.public.controller.ts
+  s_0137c3e58fb21b::t_b4320a2b7440c8 25,440-460
+  s_0137c3e58fb21b::t_e90180609b0df5 461-462
+packages/frontend/editor-ui/src/features/ai/instanceAi/embed/InstanceAiChatPanel.vue
+  s_0137c3e58fb21b::t_b4320a2b7440c8 27,32,38,40-43,47-56,116-118,123-163,176,184-186,192,214-215,254,283,292,339-353,384-387,389,398-400,414-460,472-475,477-478,480-481,520-523,536-538,566-568,709-732,734
+packages/cli/src/modules/instance-ai/assistant-agent/__tests__/assistant-agent.provider.test.ts
+  s_0137c3e58fb21b::t_b4320a2b7440c8 311-427,907-1017
+packages/cli/src/modules/engine-v2/engine-control-plane-server.ts
+  s_0137c3e58fb21b::t_b4320a2b7440c8 15,20,24-28,44,135-145
+  s_0137c3e58fb21b::t_2fd5f2281c9a03 146
+packages/@n8n/engine/src/auth/action-token.ts
+  s_0137c3e58fb21b::t_b4320a2b7440c8 9,14
+packages/cli/src/services/engine-v2-workflow-payload.ts
+  s_0137c3e58fb21b::t_b4320a2b7440c8 1-45
+packages/@n8n/engine/src/index.ts
+  s_0137c3e58fb21b::t_b4320a2b7440c8 19,69
+packages/frontend/editor-ui/src/features/integrations/promotions.ee/components/PromotionEnvironmentCard.vue
+  s_0137c3e58fb21b::t_b4320a2b7440c8 20,127-136,156-162,206
+packages/@n8n/api-types/src/agents/types.ts
+  s_0137c3e58fb21b::t_b4320a2b7440c8 725-726
+packages/cli/src/modules/engine-v2/engine-sub-workflow-client.ts
+  s_0137c3e58fb21b::t_b4320a2b7440c8 1-78
+packages/frontend/editor-ui/src/features/ai/instanceAi/components/__tests__/InstanceAiThreadList.test.ts
+  s_0137c3e58fb21b::t_b4320a2b7440c8 265,466-514
+  s_0137c3e58fb21b::t_2bb1305c0fc013 515
+packages/frontend/editor-ui/src/app/views/WorkflowsView.test.ts
+  s_0137c3e58fb21b::t_b4320a2b7440c8 669-749
+packages/frontend/editor-ui/src/features/settings/apiKeys/components/ApiKeyScopes.test.ts
+  s_0137c3e58fb21b::t_b4320a2b7440c8 195
+packages/nodes-base/nodes/N8n/n8n-api-coverage.json
+  s_0137c3e58fb21b::t_b4320a2b7440c8 283-285
+packages/cli/test/integration/public-api/promotions.test.ts
+  s_0137c3e58fb21b::t_b4320a2b7440c8 192,194-198,1748-1750,1754
+packages/cli/src/modules/engine-v2/__tests__/engine-control-plane-server.test.ts
+  s_0137c3e58fb21b::t_b4320a2b7440c8 13,55
+packages/cli/src/services/engine-v2-dispatcher.service.ts
+  s_0137c3e58fb21b::t_b4320a2b7440c8 2,37,230-234,238,254,394-400
+packages/cli/src/modules/agents/integrations/n8n-memory.ts
+  s_0137c3e58fb21b::t_b4320a2b7440c8 47-48,111-120
+  s_0137c3e58fb21b::t_53d410ca22470a 121
+packages/frontend/editor-ui/src/features/collaboration/projects/components/ProjectDeleteDialog.vue
+  s_0137c3e58fb21b::t_b4320a2b7440c8 11-20,71-76,95-116,118-140
+packages/@n8n/cli/src/client.ts
+  s_0137c3e58fb21b::t_b4320a2b7440c8 8-9,200-206,451-456,659-660
+packages/cli/src/modules/promotions.ee/__tests__/promotions.service.test.ts
+  s_0137c3e58fb21b::t_b4320a2b7440c8 1976-2027
+packages/frontend/editor-ui/src/features/ai/instanceAi/components/InstanceAiThreadList.vue
+  s_0137c3e58fb21b::t_b4320a2b7440c8 37-39,178-195,408-412,419-420,422-423
+packages/frontend/editor-ui/src/features/ai/instanceAi/components/InstanceAiViewHeader.vue
+  s_0137c3e58fb21b::t_b4320a2b7440c8 6,22
+packages/frontend/@n8n/design-system/src/css/sassDeprecations.test.ts
+  s_0137c3e58fb21b::t_b4320a2b7440c8 1-44
+packages/frontend/@n8n/eslint-plugin-design-system/src/rules/no-direct-component-imports.test.ts
+  s_0137c3e58fb21b::t_b4320a2b7440c8 64,309-345,350,364-368,394-421
+packages/@n8n/cli/src/base-command.ts
+  s_0137c3e58fb21b::t_b4320a2b7440c8 10
+packages/frontend/editor-ui/src/features/integrations/promotions.ee/components/PromotionMissingProjectsButton.vue
+  s_0137c3e58fb21b::t_b4320a2b7440c8 1-113
+packages/frontend/editor-ui/src/features/integrations/promotions.ee/views/PromotionsSettingsView.test.ts
+  s_0137c3e58fb21b::t_b4320a2b7440c8 24,33,83-87,92-120,122,125-126,133-134,140-141
+packages/frontend/editor-ui/src/features/ai/instanceAi/embed/__tests__/InstanceAiChatPanel.test.ts
+  s_0137c3e58fb21b::t_b4320a2b7440c8 7,12-14,45-53,108-122,126,951-1073
+  s_0137c3e58fb21b::t_2444a4b0f4e471 1074
+packages/@n8n/instance-ai/src/index.ts
+  s_0137c3e58fb21b::t_b4320a2b7440c8 50,118-120,291,320-322
+  s_0137c3e58fb21b::t_b9a05e602ef166 323
+packages/frontend/editor-ui/src/app/views/WorkflowsView.vue
+  s_0137c3e58fb21b::t_b4320a2b7440c8 652-653,659-666,997,1005,1037,1044,1079,1107
+packages/frontend/editor-ui/src/features/settings/users/components/DeleteUserModal.vue
+  s_0137c3e58fb21b::t_b4320a2b7440c8 19-20,25,144-185
+packages/frontend/editor-ui/src/features/ai/instanceAi/embed/__tests__/AssistantAgentPanelThread.test.ts
+  s_0137c3e58fb21b::t_b4320a2b7440c8 1-231
+packages/cli/src/modules/promotions.ee/promotions.service.ts
+  s_0137c3e58fb21b::t_b4320a2b7440c8 16,113-120,999-1023,1033,1035-1058,1071-1076,1078-1079,1081
+packages/@n8n/cli/README.md
+  s_0137c3e58fb21b::t_b4320a2b7440c8 64
+packages/frontend/@n8n/design-system/src/components/index.ts
+  s_0137c3e58fb21b::t_b4320a2b7440c8 169
+packages/frontend/@n8n/design-system/src/components/N8nStatusDot/StatusDot.types.ts
+  s_0137c3e58fb21b::t_b4320a2b7440c8 1-3,6-9,11-21
+packages/frontend/editor-ui/src/features/ai/instanceAi/assistantAgent/assistantAgentThreads.ts
+  s_0137c3e58fb21b::t_b4320a2b7440c8 45-48
+packages/frontend/editor-ui/src/features/core/dataTable/components/AddDataTableModal.vue
+  s_0137c3e58fb21b::t_b4320a2b7440c8 21-22,26,204-209,364-379
+packages/frontend/editor-ui/src/features/settings/migrationReport/MigrationRuleDetail.test.ts
+  s_0137c3e58fb21b::t_b4320a2b7440c8 5-6,1556-1560,1566-1574
+packages/cli/src/modules/promotions.ee/__tests__/promotions-package.integration.test.ts
+  s_0137c3e58fb21b::t_b4320a2b7440c8 2351-2397
+packages/@n8n/cli/docs/commands/promotions.md
+  s_0137c3e58fb21b::t_b4320a2b7440c8 509-533
+packages/@n8n/instance-ai/src/tools/orchestration/agent-target-binding.ts
+  s_0137c3e58fb21b::t_b4320a2b7440c8 302-326
+  s_0137c3e58fb21b::t_960985183f6095 301
+packages/cli/src/modules/engine-v2/engine-v2.constants.ts
+  s_0137c3e58fb21b::t_b4320a2b7440c8 12-14
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_0137c3e58fb21b::t_b4320a2b7440c8 4527-4544
+packages/frontend/editor-ui/src/features/agents/views/AgentBuilderView.vue
+  s_0137c3e58fb21b::t_b4320a2b7440c8 187,1728-1729,1733-1744
+packages/frontend/@n8n/eslint-plugin-design-system/src/rules/wrapped-component-bans.ts
+  s_0137c3e58fb21b::t_b4320a2b7440c8 89
+packages/cli/src/modules/instance-ai/assistant-agent/assistant-agent.provider.ts
+  s_0137c3e58fb21b::t_b4320a2b7440c8 19-20,22,242,273,394-437
+  s_0137c3e58fb21b::t_37a4b51ad0fd66 438
+packages/frontend/@n8n/design-system/src/components/N8nUserSelect/UserSelect.test.ts
+  s_0137c3e58fb21b::t_b4320a2b7440c8 448-449,452-453
+packages/@n8n/cli/src/commands/promotion-environment/create-missing-projects.ts
+  s_0137c3e58fb21b::t_b4320a2b7440c8 1-117
+packages/frontend/editor-ui/src/features/integrations/promotions.ee/components/PromotionMissingProjectsDialog.test.ts
+  s_0137c3e58fb21b::t_b4320a2b7440c8 1-122
+packages/@n8n/cli/skills/n8n-cli/SKILL.md
+  s_0137c3e58fb21b::t_b4320a2b7440c8 218-222
+packages/cli/src/modules/engine-v2/engine-sub-workflow.controller.ts
+  s_0137c3e58fb21b::t_b4320a2b7440c8 1-23
+packages/frontend/editor-ui/src/features/integrations/promotions.ee/components/PromotionMissingProjectsDialog.vue
+  s_0137c3e58fb21b::t_b4320a2b7440c8 1-471
+packages/@n8n/engine/src/server/routes/workflow-executions.ts
+  s_0137c3e58fb21b::t_b4320a2b7440c8 14,18-22,26,32
+packages/frontend/editor-ui/src/features/integrations/promotions.ee/promotionsSettings.api.ts
+  s_0137c3e58fb21b::t_b4320a2b7440c8 15,154-162
+  s_0137c3e58fb21b::t_44b889cb65ab2f 163-164
+packages/cli/src/modules/agents/integrations/__tests__/n8n-memory.test.ts
+  s_0137c3e58fb21b::t_b4320a2b7440c8 343-361
+packages/frontend/@n8n/design-system/src/components/N8nStatusDot/StatusDot.test.ts
+  s_0137c3e58fb21b::t_b4320a2b7440c8 11,20,30-65
+packages/frontend/editor-ui/src/features/agents/components/AgentChatPanel.vue
+  s_0137c3e58fb21b::t_b4320a2b7440c8 1332-1336,1396
+packages/@n8n/api-types/src/dto/index.ts
+  s_0137c3e58fb21b::t_b4320a2b7440c8 816
+packages/cli/src/public-api/v1/handlers/promotions/spec/paths/getPromotionEnvironmentMissingProjects.generated.yml
+  s_0137c3e58fb21b::t_d28aa8f304fb8a 1-93
+packages/cli/src/public-api/v1/openapi.decorator-routes.generated.yml
+  s_0137c3e58fb21b::t_52861e92a369f7 297-299
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "2ea85cbea4141caab0c7a1cf1e2c904c485956d2",
+  "prompts": {},
+  "sessions": {
+    "s_0137c3e58fb21b": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_e640dc0daffeXacAfiwbc1Qrur",
+        "model": "openai/gpt-5.6-sol"
+      },
+      "human_author": "Matsuuu <matias.huhta@n8n.io>"
+    }
+  }
+}
