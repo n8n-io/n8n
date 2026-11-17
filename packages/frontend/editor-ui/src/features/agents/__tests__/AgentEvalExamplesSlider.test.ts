@@ -33,6 +33,18 @@ describe('AgentEvalExamplesSlider', () => {
 		expect(queryByTestId('agent-eval-examples-slider-loading')).not.toBeInTheDocument();
 	});
 
+	it('names the slider with the visible count and keeps preview controls available', async () => {
+		const { getByRole, getAllByTestId } = renderComponent({ props: { disabled: true } });
+		const slider = getByRole('slider', { name: '2 of 2 checks' });
+
+		expect(slider).toHaveAttribute('aria-valuemin', '1');
+		expect(slider).toHaveAttribute('aria-valuemax', '2');
+		await fireEvent.keyDown(slider, { key: 'Home' });
+
+		expect(getByRole('slider', { name: '1 of 2 checks' })).toHaveAttribute('aria-valuenow', '1');
+		expect(getAllByTestId('instance-ai-test-agent-examples-example')).toHaveLength(1);
+	});
+
 	it('shows a spinner saying cases are being generated, instead of the slider/list/input', () => {
 		const { getByTestId, getByText, queryByTestId } = renderComponent({
 			props: { loading: true, examples: [] },
@@ -161,14 +173,14 @@ describe('AgentEvalExamplesSlider', () => {
 		await rerender({ loading: false, examples: fiveExamples });
 
 		// Defaults to 2, not stuck at the pre-generation 1.
-		expect(getByText('2 checks')).toBeInTheDocument();
+		expect(getByText('2 of 5 checks')).toBeInTheDocument();
 		const slider = getByRole('slider');
 		expect(slider).toHaveAttribute('aria-valuemax', '5');
 
 		// The range is real (1..5), not collapsed to 1..1 — dragging moves it.
 		slider.focus();
 		await fireEvent.keyDown(slider, { key: 'ArrowRight' });
-		expect(getByText('3 checks')).toBeInTheDocument();
+		expect(getByText('3 of 5 checks')).toBeInTheDocument();
 		expect(getAllByTestId('instance-ai-test-agent-examples-example')).toHaveLength(3);
 	});
 

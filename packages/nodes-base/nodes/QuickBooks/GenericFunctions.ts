@@ -1,7 +1,7 @@
 import { capitalCase } from 'change-case';
 import omit from 'lodash/omit';
 import pickBy from 'lodash/pickBy';
-import { NodeApiError } from 'n8n-workflow';
+import { NodeApiError, requestPath, requestUrl } from 'n8n-workflow';
 import type {
 	IDataObject,
 	IExecuteFunctions,
@@ -12,6 +12,8 @@ import type {
 	INodePropertyOptions,
 	IRequestOptions,
 	JsonObject,
+	RequestPath,
+	WithRequestTarget,
 } from 'n8n-workflow';
 
 import type { CustomField, GeneralAddress, Ref } from './descriptions/Shared.interface';
@@ -23,10 +25,10 @@ import type { DateFieldsUi, Option, QuickBooksOAuth2Credentials, TransactionRepo
 export async function quickBooksApiRequest(
 	this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions,
 	method: IHttpRequestMethods,
-	endpoint: string,
+	endpoint: RequestPath,
 	qs: IDataObject,
 	body: IDataObject,
-	option: IDataObject = {},
+	option: Pick<IRequestOptions, 'encoding'> = {},
 ): Promise<any> {
 	const resource = this.getNodeParameter('resource', 0) as string;
 	const operation = this.getNodeParameter('operation', 0) as string;
@@ -42,9 +44,9 @@ export async function quickBooksApiRequest(
 
 	const credentials = await this.getCredentials<QuickBooksOAuth2Credentials>('quickBooksOAuth2Api');
 
-	const options: IRequestOptions = {
+	const options: WithRequestTarget<IRequestOptions, 'uri'> = {
 		method,
-		uri: `${credentials.environment === 'sandbox' ? sandboxUrl : productionUrl}${endpoint}`,
+		uri: requestUrl`${credentials.environment === 'sandbox' ? sandboxUrl : productionUrl}${endpoint}`,
 		qs,
 		body,
 		json: !isDownload,
@@ -91,7 +93,7 @@ export async function quickBooksApiRequest(
 export async function quickBooksApiRequestAllItems(
 	this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions,
 	method: IHttpRequestMethods,
-	endpoint: string,
+	endpoint: RequestPath,
 	qs: IDataObject,
 	body: IDataObject,
 	resource: string,
@@ -126,7 +128,7 @@ export async function quickBooksApiRequestAllItems(
 export async function handleListing(
 	this: IExecuteFunctions,
 	i: number,
-	endpoint: string,
+	endpoint: RequestPath,
 	resource: string,
 ): Promise<any> {
 	let responseData;
@@ -163,7 +165,7 @@ export async function getSyncToken(
 	resource: string,
 ) {
 	const resourceId = this.getNodeParameter(`${resource}Id`, i);
-	const getEndpoint = `/v3/company/${companyId}/${resource}/${resourceId}`;
+	const getEndpoint = requestPath`/v3/company/${companyId}/${resource}/${resourceId}`;
 	const propertyName = capitalCase(resource);
 	const {
 		[propertyName]: { SyncToken },
@@ -183,7 +185,7 @@ export async function getRefAndSyncToken(
 	ref: string,
 ) {
 	const resourceId = this.getNodeParameter(`${resource}Id`, i);
-	const endpoint = `/v3/company/${companyId}/${resource}/${resourceId}`;
+	const endpoint = requestPath`/v3/company/${companyId}/${resource}/${resourceId}`;
 	const responseData = await quickBooksApiRequest.call(this, 'GET', endpoint, {}, {});
 
 	return {
@@ -205,7 +207,7 @@ export async function handleBinaryData(
 ) {
 	const binaryProperty = this.getNodeParameter('binaryProperty', i);
 	const fileName = this.getNodeParameter('fileName', i) as string;
-	const endpoint = `/v3/company/${companyId}/${resource}/${resourceId}/pdf`;
+	const endpoint = requestPath`/v3/company/${companyId}/${resource}/${resourceId}/pdf`;
 	const data = await quickBooksApiRequest.call(this, 'GET', endpoint, {}, {}, { encoding: null });
 
 	items[i].binary = items[i].binary ?? {};
@@ -228,7 +230,7 @@ export async function loadResource(this: ILoadOptionsFunctions, resource: string
 			callbackQueryString: { realmId },
 		},
 	} = await this.getCredentials<QuickBooksOAuth2Credentials>('quickBooksOAuth2Api');
-	const endpoint = `/v3/company/${realmId}/query`;
+	const endpoint = requestPath`/v3/company/${realmId}/query`;
 
 	const resourceItems = await quickBooksApiRequestAllItems.call(
 		this,

@@ -6,7 +6,8 @@ import {
 	type StorageConfig,
 	WorkflowExecute,
 } from 'n8n-core';
-import { NodeHelpers, UserError } from 'n8n-workflow';
+import { NodeHelpers } from 'n8n-workflow';
+import { UserError } from '@n8n/errors';
 import type {
 	Workflow,
 	IWorkflowExecutionDataProcess,
@@ -68,12 +69,9 @@ describe('ManualExecutionService', () => {
 			expect(executionStartNode?.name).toEqual('node2');
 		});
 
-		it('Should return triggerToStartFrom trigger node', () => {
+		it.each([true, false])('returns the selected trigger when pinned data is %s', (pinned) => {
 			const data = mock<IWorkflowExecutionDataProcess>({
-				pinData: {
-					node1: [mock<INodeExecutionData>()],
-					node2: [mock<INodeExecutionData>()],
-				},
+				pinData: pinned ? { node3: [mock<INodeExecutionData>()] } : undefined,
 				triggerToStartFrom: { name: 'node3' },
 			});
 			const workflow = mock<Workflow>({

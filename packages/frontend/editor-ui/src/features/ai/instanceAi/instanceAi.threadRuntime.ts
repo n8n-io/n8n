@@ -1,17 +1,15 @@
-import { computed, nextTick, reactive, ref, shallowRef, triggerRef, watch } from 'vue';
+import { computed, reactive, ref, shallowRef, triggerRef, watch } from 'vue';
 import { v4 as uuidv4 } from 'uuid';
 import { ResponseError } from '@n8n/rest-api-client';
 import {
-	buildDataTablesSessionGrantKey,
-	buildExecuteNodeSessionGrantKey,
-	buildRunStepSessionGrantKey,
-	buildRunWorkflowSessionGrantKey,
-	buildUpdateWorkflowSessionGrantKey,
 	INSTANCE_AI_EPHEMERAL_EVENT_TYPES,
 	INSTANCE_AI_THREAD_SOURCE_FALLBACK,
 	aiPreferencesAppliedPayloadSchema,
 	instanceAiEventSchema,
 	isSafeObjectKey,
+	resolveBuilderToolName,
+	WORKFLOW_BUILDER_TOOL_NAMES,
+	type InstanceAiApprovalMode,
 	type InstanceAiConfirmation,
 	type InstanceAiConfirmRequest,
 	type InstanceAiConfirmResponse,
@@ -35,6 +33,7 @@ import {
 import { isRecord } from '@n8n/utils/is-record';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { useInstanceAiSettingsStore } from './instanceAiSettings.store';
+import { buildAlwaysAllowKey } from './alwaysAllow';
 import {
 	redactTelemetryProperties,
 	TELEMETRY_EVENT,
@@ -62,12 +61,15 @@ import {
 	EMPTY_ASSISTANT_MENTION_COUNTS,
 	type AssistantMentionCounts,
 } from '@/features/ai/assistant-at-mentions/assistantAtMentions.types';
-import { handleEvent as reduceEvent, createRunStateFromTree } from './instanceAi.reducer';
-import { getLatestBuildResult, type RememberedManualExecution } from './canvasPreview.utils';
 import {
-	useResourceRegistry,
-	type TransientWorkflowArtifactReference,
-} from './useResourceRegistry';
+	handleEvent as reduceEvent,
+	createRunStateFromTree,
+	normalizeAgentTreeToolNames,
+} from './instanceAi.reducer';
+import { createArtifactPreviewMemory } from './artifactPreviewMemory';
+import { toArtifactTurns } from './agentTreeArtifactTurns';
+import { getLatestBuildResult } from './canvasPreview.utils';
+import { useResourceRegistry } from './useResourceRegistry';
 import { buildThreadArtifactsContext, type OpenThreadTab } from './threadArtifacts';
 import { useResponseFeedback } from './useResponseFeedback';
 import {
@@ -75,7 +77,9 @@ import {
 	INSTANCE_AI_AGENT_BUILDER_TARGETS_METADATA_KEY,
 	INSTANCE_AI_AGENT_PREVIEW_SESSION_METADATA_KEY,
 	INSTANCE_AI_AGENT_PREVIEW_VIEW_METADATA_KEY,
+	INSTANCE_AI_APP_TARGETS_METADATA_KEY,
 	INSTANCE_AI_PENDING_AGENT_METADATA_KEY,
+	INSTANCE_AI_PENDING_APP_TARGET_METADATA_KEY,
 	NEW_CONVERSATION_TITLE,
 } from './constants';
 import {
@@ -87,15 +91,10 @@ import {
 	syncLiveRunFromStatus,
 } from './instanceAi.liveRunState';
 import { isInstanceAiThreadSource } from './constants';
-import { instanceAiResponseNow } from './instanceAi.responseTiming';
-import { resolvePlanTasks } from './planReview.utils';
-
-/** The plan review the composer is currently collecting feedback for. */
-export interface PendingPlanReview {
-	requestId: string;
-	inputThreadId?: string;
-	taskCount: number;
-}
+import {
+	instanceAiResponseNow,
+	observeInstanceAiResponseRender,
+} from './instanceAi.responseTiming';
 
 /**
  * State the editor handed off, snapshotted before its stores are torn down so
@@ -127,13 +126,15 @@ type SetupChatTelemetryContext = Pick<
 >;
 
 const MAX_DEBUG_EVENTS = 1000;
+/** Stored message rows per history read. One rendered turn can span many rows. */
+const HISTORY_PAGE_SIZE = 100;
 /** Tool calls that end the onboarding flow: the agent's explicit exit, or the start of a build. */
 /** How an onboarding thread ended; the telemetry value of each exit. */
 export type OnboardingExitOutcome = 'build' | 'left' | 'run_failed';
 /** Tool calls that end the onboarding flow, with the outcome each one reports. */
 const ONBOARDING_EXIT_OUTCOMES = new Map<string, OnboardingExitOutcome>([
 	['leave-onboarding', 'left'],
-	['build-workflow', 'build'],
+	[WORKFLOW_BUILDER_TOOL_NAMES.BUILD_WORKFLOW, 'build'],
 ]);
 /** Mirrors the backend's per-thread event buffer cap (MAX_EVENTS_PER_THREAD × 2). */
 const MAX_SEEN_EVENT_IDS = 1000;
@@ -156,10 +157,10 @@ interface PendingResponseMetric {
 	isFirstUserMessage: boolean;
 	actionSource: InstanceAiThreadSourcePersisted;
 	generation: number;
-	// Context of the message that started the run, repeated on the response event
-	// so outcome cuts by context need no join back to the send event.
+	// Repeat the message context on the response event for outcome analysis.
 	mentionCounts: AssistantMentionCounts;
 	attachmentCount: number;
+	selectedElementCount: number;
 }
 
 /**
@@ -174,7 +175,7 @@ export interface ThreadRuntimeHooks {
 	onTitleUpdated: (threadId: string, title: string) => void;
 	/** A run finished — refresh the thread list to pick up server-generated titles. */
 	onRunFinish: () => void;
-	/** SSE delivered a tool call that ends the onboarding flow (`leave-onboarding` or `build-workflow`), or a failed run. */
+	/** SSE delivered a tool call that ends the onboarding flow (`leave-onboarding` or `workflow_builder_build_workflow`), or a failed run. */
 	onOnboardingLeft?: (
 		threadId: string,
 		outcome: OnboardingExitOutcome,
@@ -250,6 +251,59 @@ export function getPendingAgentTargetFromThreadMetadata(
 	return { agentId: target.agentId, projectId: target.projectId };
 }
 
+export function getAppTargetsFromThreadMetadata(metadata: Record<string, unknown> | undefined) {
+	const targets = metadata?.[INSTANCE_AI_APP_TARGETS_METADATA_KEY];
+	if (!Array.isArray(targets)) return [];
+	return targets.flatMap((target) => {
+		if (
+			!isRecord(target) ||
+			typeof target.appId !== 'string' ||
+			typeof target.projectId !== 'string'
+		) {
+			return [];
+		}
+		return [
+			{
+				appId: target.appId,
+				projectId: target.projectId,
+				...(typeof target.name === 'string' ? { name: target.name } : {}),
+			},
+		];
+	});
+}
+
+export function getPendingAppTargetFromThreadMetadata(
+	metadata: Record<string, unknown> | undefined,
+) {
+	const target = metadata?.[INSTANCE_AI_PENDING_APP_TARGET_METADATA_KEY];
+	if (
+		!isRecord(target) ||
+		typeof target.appId !== 'string' ||
+		typeof target.projectId !== 'string'
+	) {
+		return undefined;
+	}
+	return { appId: target.appId, projectId: target.projectId };
+}
+
+/** Whether the thread builds or edits an agent. Auto approval mode does not apply there. */
+export function threadTargetsAgent(metadata: Record<string, unknown> | undefined): boolean {
+	return (
+		getAgentBuilderTargetFromThreadMetadata(metadata) !== undefined ||
+		getAgentBuilderTargetsFromThreadMetadata(metadata).length > 0 ||
+		getPendingAgentTargetFromThreadMetadata(metadata) !== undefined
+	);
+}
+
+/** The approval mode that the backend uses for the run of a message sent now. */
+export function messageApprovalMode(
+	settings: { approvalModesAvailable: boolean; approvalMode: InstanceAiApprovalMode },
+	buildsAgent: boolean,
+): InstanceAiApprovalMode | 'unavailable' {
+	if (!settings.approvalModesAvailable) return 'unavailable';
+	return buildsAgent ? 'manual' : settings.approvalMode;
+}
+
 export function getAgentPreviewViewFromThreadMetadata(
 	metadata: Record<string, unknown> | undefined,
 ) {
@@ -292,7 +346,7 @@ function getAgentPreviewTargetFromThreadMetadata(
 function collectActionableConfirmations(
 	node: InstanceAiAgentNode,
 	messageId: string,
-	resolved: Map<string, 'approved' | 'changes-requested' | 'denied' | 'deferred'>,
+	resolved: Map<string, 'approved' | 'denied' | 'deferred'>,
 	out: PendingConfirmationItem[],
 ): void {
 	for (const tc of node.toolCalls) {
@@ -318,8 +372,8 @@ function collectActionableConfirmations(
 
 /** Confirmations the panel owns: everything except the timeline-rendered kinds. */
 function isPanelConfirmation(item: PendingConfirmationItem): boolean {
-	const conf = item.toolCall.confirmation;
-	return conf.inputType !== 'plan-review' && !conf.mcpConnectRequest;
+	const confirmation = item.toolCall.confirmation;
+	return !confirmation.mcpConnectRequest && !confirmation.appBlueprint;
 }
 
 /**
@@ -329,7 +383,7 @@ function isPanelConfirmation(item: PendingConfirmationItem): boolean {
  */
 function hasUnresolvedConfirmation(
 	node: InstanceAiAgentNode,
-	resolved: Map<string, 'approved' | 'changes-requested' | 'denied' | 'deferred'>,
+	resolved: Map<string, 'approved' | 'denied' | 'deferred'>,
 ): boolean {
 	for (const tc of node.toolCalls) {
 		if (
@@ -528,11 +582,11 @@ export function createThreadRuntime(
 	 */
 	const appliedPreferences = ref<AiPreferencesAppliedPayload | null>(null);
 	const debugEvents = ref<Array<{ timestamp: string; event: InstanceAiEvent }>>([]);
-	const resolvedConfirmationIds = reactive(
-		new Map<string, 'approved' | 'changes-requested' | 'denied' | 'deferred'>(),
-	);
+	const resolvedConfirmationIds = reactive(new Map<string, 'approved' | 'denied' | 'deferred'>());
 	const pendingMessageCount = ref(0);
 	const hydrationStatus = ref<'idle' | 'hydrating' | 'ready'>('idle');
+	/** Server cursor of the next older history page. `undefined` once the thread start is loaded. */
+	const olderMessagesCursor = ref<string>();
 	const sseState = ref<InstanceAiSSEConnectionState>('disconnected');
 	const lastEventId = ref<number | undefined>(undefined);
 	/** Focused preview tab id while the artifacts preview is open. */
@@ -549,7 +603,6 @@ export function createThreadRuntime(
 	// the disconnect. Not reactive: only consulted inside onSSEMessage.
 	const seenEventIds = new Set<number>();
 	const amendContext = ref<{ agentId: string; role: string } | null>(null);
-	const updatingPlanRequestIds = reactive(new Set<string>());
 
 	// Workflow + execution the editor was showing at hand-off, to load once when
 	// the artifact first opens. Transient (never persisted): set by the editor
@@ -578,45 +631,15 @@ export function createThreadRuntime(
 	function clearPendingWorkflowAttachment(): void {
 		pendingWorkflowAttachment.value = null;
 	}
-	const transientWorkflowReferences = reactive(
-		new Map<string, TransientWorkflowArtifactReference>(),
-	);
-	function upsertTransientWorkflowReference(reference: TransientWorkflowArtifactReference): void {
-		transientWorkflowReferences.set(reference.referenceId, { ...reference });
-	}
-	function removeTransientWorkflowReference(referenceId: string): void {
-		transientWorkflowReferences.delete(referenceId);
-	}
 
-	// Latest user-triggered (non-agent) preview run per workflow. Lives on the
-	// thread runtime so it survives the preview canvas unmounting on a tab switch
-	// and is re-seeded on remount; a fresh runtime per thread resets it (INS-611).
-	// Plain Map: only read imperatively (on push events / remount), never rendered.
-	const rememberedManualExecutions = new Map<string, RememberedManualExecution>();
-	function rememberManualExecution(
-		workflowId: string,
-		executionId: string,
-		agentExecutionId: string | undefined,
-	): void {
-		rememberedManualExecutions.set(workflowId, { executionId, agentExecutionId });
-	}
-	function getRememberedManualExecution(workflowId: string): RememberedManualExecution | undefined {
-		return rememberedManualExecutions.get(workflowId);
-	}
-	function forgetManualExecution(workflowId: string): void {
-		rememberedManualExecutions.delete(workflowId);
-	}
-
-	// Artifact logs panel auto-open bookkeeping. It lives here because the preview
-	// remounts on every tab switch. A fresh runtime per thread resets it (INS-1192).
-	const logsPanelMemory = {
-		// The user collapsed the panel in this thread, so later runs do not open it again.
-		collapsedByUser: false,
-		// Only a panel that opened automatically collapses after a successful run.
-		autoOpened: false,
-		// Latest started run per workflow id. Only the success of that run collapses the panel.
-		latestStartedExecutionIds: new Map<string, string>(),
-	};
+	// Preview state that survives the preview canvas unmounting on a tab switch.
+	// A fresh runtime per thread resets it (INS-611, INS-1192).
+	const {
+		rememberManualExecution,
+		getRememberedManualExecution,
+		forgetManualExecution,
+		logsPanelMemory,
+	} = createArtifactPreviewMemory();
 
 	// --- Reducer routing state ---
 	// Plain Maps: the routing tables themselves are never rendered. The run
@@ -639,6 +662,8 @@ export function createThreadRuntime(
 	const isSendingMessage = computed(() => pendingMessageCount.value > 0);
 	const hasMessages = computed(() => messages.value.length > 0);
 	const isHydratingThread = computed(() => hydrationStatus.value === 'hydrating');
+	const hasOlderMessages = computed(() => olderMessagesCursor.value !== undefined);
+	const artifactTurns = computed(() => toArtifactTurns(messages.value));
 
 	const {
 		producedArtifacts,
@@ -646,19 +671,20 @@ export function createThreadRuntime(
 		linkableResourceNameIndex,
 		producedArtifactOrigins,
 		seedArtifactOrigins,
-	} = useResourceRegistry(
-		() => messages.value,
-		(id) => workflowsListStore.getWorkflowById(id)?.name,
-		() => archivedWorkflowIds.value,
-		() => getAgentBuilderTargetFromThreadMetadata(hooks.getThreadMetadata?.(threadId)),
-		() => {
+	} = useResourceRegistry(() => artifactTurns.value, {
+		workflowNameLookup: (id) => workflowsListStore.getWorkflowById(id)?.name,
+		archivedWorkflowIds: () => archivedWorkflowIds.value,
+		agentBuilderTarget: () =>
+			getAgentBuilderTargetFromThreadMetadata(hooks.getThreadMetadata?.(threadId)),
+		pendingAgentTarget: () => {
 			const pending = getPendingAgentTargetFromThreadMetadata(hooks.getThreadMetadata?.(threadId));
 			return pending ? { ...pending, name: i18n.baseText('agents.new.defaultName') } : undefined;
 		},
-		() => pendingWorkflowAttachment.value ?? undefined,
-		() => [...transientWorkflowReferences.values()],
-		() => getAgentBuilderTargetsFromThreadMetadata(hooks.getThreadMetadata?.(threadId)),
-	);
+		pendingWorkflowAttachment: () => pendingWorkflowAttachment.value ?? undefined,
+		agentBuilderTargets: () =>
+			getAgentBuilderTargetsFromThreadMetadata(hooks.getThreadMetadata?.(threadId)),
+		appTargets: () => getAppTargetsFromThreadMetadata(hooks.getThreadMetadata?.(threadId)),
+	});
 
 	const { feedbackByResponseId, rateableResponseId, submitFeedback, resetFeedback } =
 		useResponseFeedback({
@@ -705,16 +731,7 @@ export function createThreadRuntime(
 	// canvas preview opens: `latestBuildResult.toolCallId` changes only on a live
 	// build, so re-hydrating past messages or rebuilding the same workflow won't
 	// re-fire. Emitted once per workflow id for this runtime.
-	const latestBuildResult = computed(() => {
-		for (let i = messages.value.length - 1; i >= 0; i--) {
-			const tree = messages.value[i].agentTree;
-			if (tree) {
-				const result = getLatestBuildResult(tree);
-				if (result) return result;
-			}
-		}
-		return null;
-	});
+	const latestBuildResult = computed(() => getLatestBuildResult(artifactTurns.value) ?? null);
 	const reportedBuiltWorkflowIds = new Set<string>();
 
 	watch(
@@ -749,21 +766,12 @@ export function createThreadRuntime(
 		return event.payload.status === 'completed' ? 'completed' : null;
 	}
 
-	async function observeResponseRender(): Promise<{ atEpochMs: number; tabVisible: boolean }> {
-		await nextTick();
-		const tabVisible = document.visibilityState === 'visible';
-		if (tabVisible) {
-			await new Promise<void>((resolve) => requestAnimationFrame(() => resolve()));
-		}
-		return { atEpochMs: instanceAiResponseNow(), tabVisible };
-	}
-
 	function createResponseSignal(responseKind: ResponseKind | null): ResponseSignal {
 		if (responseKind === null) return { kind: 'discard' };
 		return {
 			kind: 'received',
 			responseKind,
-			rendered: observeResponseRender(),
+			rendered: observeInstanceAiResponseRender(),
 		};
 	}
 
@@ -788,6 +796,7 @@ export function createThreadRuntime(
 				tab_visible: tabVisible,
 				mention_counts: metric.mentionCounts,
 				attachment_count: metric.attachmentCount,
+				selected_element_count: metric.selectedElementCount,
 			});
 		});
 	}
@@ -829,6 +838,11 @@ export function createThreadRuntime(
 
 	// Scoped to the active run's message (not all messages) so a stale
 	// confirmation left on an older message can't suppress stall detection.
+	/**
+	 * True while the active run is paused until the user resolves a confirmation of
+	 * any kind, including the ones that the timeline renders inline. Unlike
+	 * `isAwaitingConfirmation`, it is false once the run has ended.
+	 */
 	const isAwaitingUserInput = computed(() => {
 		const runId = activeRunId.value;
 		if (runId === null) return false;
@@ -899,41 +913,12 @@ export function createThreadRuntime(
 		actionableConfirmations.value.filter(isPanelConfirmation),
 	);
 
-	/**
-	 * The plan review the composer currently routes messages into, if any.
-	 *
-	 * Newest wins: a revised plan stacks a fresh card on top of the superseded
-	 * one, so the last card is the one the user is looking at. This is the
-	 * opposite of the panel, which queues oldest-first.
-	 *
-	 * Only a card in the transcript tail counts. A later turn strands the older
-	 * card — a suspended run keeps its confirmation row alive and releases its
-	 * concurrency slot, so a new turn starts without settling it. Resuming that
-	 * requestId would revive an abandoned run, and a revision never appends a
-	 * message of its own, so "still the last message" holds for the whole review.
-	 */
-	const pendingPlanReview = computed((): PendingPlanReview | null => {
-		for (let i = actionableConfirmations.value.length - 1; i >= 0; i--) {
-			const item = actionableConfirmations.value[i];
-			const conf = item.toolCall.confirmation;
-			if (conf.inputType !== 'plan-review') continue;
-			// Newest-first: an older card sits even further back in the transcript.
-			if (item.messageId !== messages.value.at(-1)?.id) return null;
-			return {
-				requestId: conf.requestId,
-				inputThreadId: conf.inputThreadId,
-				taskCount: resolvePlanTasks(item.toolCall).length,
-			};
-		}
-		return null;
-	});
-
 	/** True while the run is paused awaiting the user to resolve a confirmation. */
 	const isAwaitingConfirmation = computed(() => pendingConfirmations.value.length > 0);
 
 	function resolveConfirmation(
 		requestId: string,
-		action: 'approved' | 'changes-requested' | 'denied' | 'deferred',
+		action: 'approved' | 'denied' | 'deferred',
 	): void {
 		resolvedConfirmationIds.set(requestId, action);
 	}
@@ -969,70 +954,6 @@ export function createThreadRuntime(
 	// `submit-workflow` is keyed on `workflowId` presence so a create grant
 	// doesn't silently auto-approve later updates.
 	const sessionAlwaysAllowKeys = ref<Set<string>>(new Set());
-
-	function resolveAlwaysAllowWorkflowId(
-		args: Record<string, unknown>,
-		confirmationWorkflowId?: string,
-	): string {
-		if (typeof args.workflowId === 'string' && args.workflowId.length > 0) {
-			return args.workflowId;
-		}
-		if (typeof confirmationWorkflowId === 'string' && confirmationWorkflowId.length > 0) {
-			return confirmationWorkflowId;
-		}
-		return '';
-	}
-
-	/**
-	 * Returns null when an edit grant cannot be scoped to a workflow ID — storing a
-	 * generic `build-workflow:` key would auto-approve later foreign edits.
-	 */
-	function buildAlwaysAllowKey(
-		toolName: string,
-		args: Record<string, unknown>,
-		confirmationWorkflowId?: string,
-	): string | null {
-		if (toolName === 'submit-workflow') {
-			const isUpdate = typeof args.workflowId === 'string' && args.workflowId.length > 0;
-			return `submit-workflow:${isUpdate ? 'update' : 'create'}`;
-		}
-		const action = typeof args.action === 'string' ? args.action : '';
-		const workflowId = resolveAlwaysAllowWorkflowId(args, confirmationWorkflowId);
-		// Running a workflow grants "always allow" per workflow, so the grant applies only to the
-		// workflow the user approved.
-		if (toolName === 'executions' && action === 'run') {
-			return buildRunWorkflowSessionGrantKey(workflowId);
-		}
-		// Running one node grants "always allow" per node, so a debug loop on one
-		// node stops prompting while the rest of the workflow still asks. Without
-		// a node name the key cannot be scoped — refuse to store one (fail closed).
-		if (toolName === 'executions' && action === 'run-step') {
-			const nodeName = typeof args.nodeName === 'string' ? args.nodeName : '';
-			if (!workflowId || !nodeName) return null;
-			return buildRunStepSessionGrantKey(workflowId, nodeName);
-		}
-		// Editing a workflow (build-workflow save or workflows update) is also per-workflow,
-		// matching the backend `workflows:update:<id>` thread grant. Bound build-workflow
-		// saves often omit args.workflowId — use confirmation.workflowId from the suspend
-		// payload instead. Without either ID, refuse to store a key (fail closed).
-		if ((toolName === 'workflows' && action === 'update') || toolName === 'build-workflow') {
-			if (!workflowId) return null;
-			return buildUpdateWorkflowSessionGrantKey(workflowId);
-		}
-		if (toolName === 'data-tables') {
-			return buildDataTablesSessionGrantKey(action);
-		}
-		// Executing a node grants "always allow" per node type + resource + operation,
-		// mirroring the backend thread grant. Without a type, fail closed.
-		if (toolName === 'nodes' && action === 'execute') {
-			const nodeType = typeof args.type === 'string' ? args.type : '';
-			if (!nodeType) return null;
-			const config = isRecord(args.config) ? args.config : undefined;
-			const parameters = isRecord(config?.parameters) ? config.parameters : undefined;
-			return buildExecuteNodeSessionGrantKey(nodeType, parameters);
-		}
-		return `${toolName}:${action}`;
-	}
 
 	function addAlwaysAllowKey(
 		toolName: string,
@@ -1112,6 +1033,7 @@ export function createThreadRuntime(
 							input_thread_id: conf.inputThreadId ?? '',
 							instance_id: rootStore.instanceId,
 							type: 'approval',
+							runtime: 'instance-ai',
 							provided_inputs: [
 								{
 									label: conf.message,
@@ -1224,7 +1146,9 @@ export function createThreadRuntime(
 			// A failed or interrupted run (provider down, key rejected, crash, ...) ends the onboarding
 			// too, so the user gets the normal chrome back instead of a stuck flow.
 			if (parsed.data.type === 'tool-call') {
-				const outcome = ONBOARDING_EXIT_OUTCOMES.get(parsed.data.payload.toolName);
+				const outcome = ONBOARDING_EXIT_OUTCOMES.get(
+					resolveBuilderToolName(parsed.data.payload.toolName),
+				);
 				const reason = parsed.data.payload.args.reason;
 				if (outcome) {
 					hooks.onOnboardingLeft?.(
@@ -1432,6 +1356,7 @@ export function createThreadRuntime(
 		hydrationGeneration += 1;
 		hydrationPromise = null;
 		hydrationStatus.value = 'idle';
+		olderMessagesCursor.value = undefined;
 		messages.value = [];
 		archivedWorkflowIds.value = new Set();
 		latestTasks.value = null;
@@ -1453,7 +1378,6 @@ export function createThreadRuntime(
 		activeArtifactId.value = undefined;
 		openTabs.value = undefined;
 		pendingWorkflowAttachment.value = null;
-		transientWorkflowReferences.clear();
 		pendingHandoff.value = null;
 		disarmGenerationStallWatchdog();
 	}
@@ -1477,7 +1401,11 @@ export function createThreadRuntime(
 
 		const promise = (async (): Promise<HistoricalHydrationStatus> => {
 			try {
-				const result = await fetchThreadMessagesApi(rootStore.restApiContext, threadId, 100);
+				const result = await fetchThreadMessagesApi(
+					rootStore.restApiContext,
+					threadId,
+					HISTORY_PAGE_SIZE,
+				);
 				if (capturedHydrationGeneration !== hydrationGeneration) return 'stale';
 				// A live event that arrived while the request was in flight is newer than
 				// the persisted fact, so it wins. Parsed like the SSE path parses its frames,
@@ -1488,8 +1416,12 @@ export function createThreadRuntime(
 				}
 				// Only hydrate if SSE hasn't delivered messages while the request was in flight.
 				if (messages.value.length > 0) return 'skipped';
+				olderMessagesCursor.value = result.nextCursor;
 				// Backend now returns InstanceAiMessage[] directly — no conversion needed.
 				if (result.messages.length > 0) {
+					for (const msg of result.messages) {
+						if (msg.agentTree) normalizeAgentTreeToolNames(msg.agentTree);
+					}
 					messages.value = result.messages;
 					latestTasks.value = findLatestTasksFromMessages(result.messages);
 					latestSetupItems.value = findLatestSetupItemsFromMessages(result.messages);
@@ -1523,6 +1455,53 @@ export function createThreadRuntime(
 
 		hydrationPromise = promise;
 		return await promise;
+	}
+
+	/** Prepends the history page before the oldest loaded message. Throws when the request fails. */
+	async function loadOlderMessages(): Promise<void> {
+		const cursor = olderMessagesCursor.value;
+		if (cursor === undefined) return;
+		const capturedHydrationGeneration = hydrationGeneration;
+
+		const result = await fetchThreadMessagesApi(
+			rootStore.restApiContext,
+			threadId,
+			HISTORY_PAGE_SIZE,
+			undefined,
+			cursor,
+		);
+		if (capturedHydrationGeneration !== hydrationGeneration) return;
+		// A message group can show on both sides of a page edge, for example when a
+		// background run outlives its turn. The loaded copy is newer, so it wins.
+		const loadedIds = new Set(messages.value.map((msg) => msg.id));
+		const loadedGroupIds = new Set(messages.value.map((msg) => msg.messageGroupId));
+		const older = result.messages.filter(
+			(msg) =>
+				!loadedIds.has(msg.id) && !(msg.messageGroupId && loadedGroupIds.has(msg.messageGroupId)),
+		);
+		for (const msg of older) {
+			if (msg.agentTree) normalizeAgentTreeToolNames(msg.agentTree);
+		}
+		// The older page holds past builds and agent changes. The watchers that open
+		// the preview or send events for new ones run synchronously and skip them
+		// while the thread hydrates.
+		hydrationStatus.value = 'hydrating';
+		try {
+			messages.value = [...older, ...messages.value];
+		} finally {
+			hydrationStatus.value = 'ready';
+		}
+		olderMessagesCursor.value = result.nextCursor;
+
+		// Same routing rebuild as the first page, so a resumed older run (an old
+		// confirmation the user approves now) reduces into its existing state.
+		const routing = buildRoutingFromMessages(older);
+		routing.runStateByGroupId.forEach((value, key) => {
+			if (!runStateByGroupId.has(key)) runStateByGroupId.set(key, value);
+		});
+		routing.groupIdByRunId.forEach((value, key) => {
+			if (!groupIdByRunId.has(key)) groupIdByRunId.set(key, value);
+		});
 	}
 
 	async function loadThreadStatus(): Promise<void> {
@@ -1619,6 +1598,7 @@ export function createThreadRuntime(
 		actionSource: InstanceAiThreadSourcePersisted,
 		mentionCounts: AssistantMentionCounts,
 		attachmentCount: number,
+		selectedElementCount: number,
 	): void {
 		const isPrefill = authorship.kind === 'prefill';
 		const setupContext =
@@ -1636,8 +1616,13 @@ export function createThreadRuntime(
 			prefill_type: isPrefill ? authorship.prefillType : null,
 			prefill_id: isPrefill ? (authorship.prefillId ?? null) : null,
 			prompt_modified: isPrefill ? (authorship.promptModified ?? false) : null,
+			approval_mode: messageApprovalMode(
+				instanceAiSettingsStore,
+				threadTargetsAgent(hooks.getThreadMetadata?.(threadId)),
+			),
 			mention_counts: mentionCounts,
 			attachment_count: attachmentCount,
+			selected_element_count: selectedElementCount,
 		});
 	}
 
@@ -1656,7 +1641,7 @@ export function createThreadRuntime(
 				handoffContext,
 				Intl.DateTimeFormat().resolvedOptions().timeZone,
 				pushRef,
-				instanceAiSettingsStore.computerUseChannels,
+				instanceAiSettingsStore.isBrowserUseAvailable,
 				openTabs.value === null
 					? undefined
 					: buildThreadArtifactsContext(
@@ -1735,12 +1720,15 @@ export function createThreadRuntime(
 			seedArtifactOrigins(mentionedWorkflowIds, 'mentioned');
 			const optimistic = pushOptimisticUserMessage(message, attachments, handoffContext);
 			const attachmentCount = attachments?.length ?? 0;
+			const selectedElementCount =
+				attachments?.filter(({ type }) => type === 'element').length ?? 0;
 			trackUserMessageSent(
 				isFirstMessage,
 				authorship,
 				actionSource,
 				mentionCounts,
 				attachmentCount,
+				selectedElementCount,
 			);
 
 			const runId = await dispatchUserMessage(message, attachments, handoffContext, pushRef);
@@ -1757,6 +1745,7 @@ export function createThreadRuntime(
 				generation: metricGeneration,
 				mentionCounts,
 				attachmentCount,
+				selectedElementCount,
 			});
 			return true;
 		} finally {
@@ -1799,70 +1788,6 @@ export function createThreadRuntime(
 		}
 		amendContext.value = { agentId, role };
 	}
-
-	// --- Plan review ---
-
-	/**
-	 * Send the user's typed feedback as a request to revise the plan.
-	 *
-	 * Deliberately adds nothing to the transcript. A revision does not re-arm the
-	 * run (`shouldRearmRunAfterConfirm` is false for `approved: false`), so the
-	 * revised card merges into the assistant message that already sits above the
-	 * transcript tail — a user bubble appended here would read as if the feedback
-	 * came after the revision it caused. The card's "Changes requested" and
-	 * "Updating plan…" states are the in-flight affordance instead.
-	 */
-	async function requestPlanChanges(requestId: string, message: string): Promise<boolean> {
-		// A second submit landing mid-flight would POST the same requestId again, and
-		// the rejection would clear the "Updating plan…" state of the accepted one.
-		if (updatingPlanRequestIds.has(requestId)) return false;
-		markPlanUpdatePending(requestId);
-
-		const ok = await confirmAction(requestId, {
-			kind: 'approval',
-			approved: false,
-			userInput: message,
-		});
-
-		if (!ok) {
-			clearPlanUpdatePending(requestId);
-			return false;
-		}
-
-		resolveConfirmation(requestId, 'changes-requested');
-		return true;
-	}
-
-	function markPlanUpdatePending(requestId: string): void {
-		updatingPlanRequestIds.add(requestId);
-	}
-
-	function clearPlanUpdatePending(requestId: string): void {
-		updatingPlanRequestIds.delete(requestId);
-	}
-
-	// A revised card takes over the review, so the card it supersedes is no longer
-	// updating. Nothing else retires that marker: request-changes never re-arms the
-	// run, so the stream below stays live for the whole revision. A null review is
-	// not a supersede — the old call settles before the revised card suspends, and
-	// that gap is the wait itself.
-	watch(
-		() => pendingPlanReview.value?.requestId,
-		(requestId) => {
-			if (!requestId) return;
-			for (const id of updatingPlanRequestIds) {
-				if (id !== requestId) updatingPlanRequestIds.delete(id);
-			}
-		},
-	);
-
-	// Defensive cleanup: if a stream ends without a matching clear, drop the
-	// pending markers so we don't leave a card stuck in "Updating plan…".
-	watch(isStreaming, (streaming) => {
-		if (!streaming && updatingPlanRequestIds.size > 0) {
-			updatingPlanRequestIds.clear();
-		}
-	});
 
 	// --- Confirmations ---
 
@@ -1952,14 +1877,14 @@ export function createThreadRuntime(
 		sseState,
 		lastEventId,
 		amendContext,
-		updatingPlanRequestIds,
 
 		// computeds
-		pendingPlanReview,
 		isStreaming,
 		isSendingMessage,
 		hasMessages,
 		isHydratingThread,
+		hasOlderMessages,
+		artifactTurns,
 		producedArtifacts,
 		resourceNameIndex,
 		linkableResourceNameIndex,
@@ -1975,6 +1900,7 @@ export function createThreadRuntime(
 		contextualSuggestion,
 		pendingConfirmations,
 		isAwaitingConfirmation,
+		isAwaitingUserInput,
 
 		// actions
 		setPendingHandoff,
@@ -1982,9 +1908,6 @@ export function createThreadRuntime(
 		pendingWorkflowAttachment,
 		setPendingWorkflowAttachment,
 		clearPendingWorkflowAttachment,
-		transientWorkflowReferences,
-		upsertTransientWorkflowReference,
-		removeTransientWorkflowReference,
 		rememberManualExecution,
 		getRememberedManualExecution,
 		forgetManualExecution,
@@ -1995,15 +1918,13 @@ export function createThreadRuntime(
 		connectSSE,
 		closeSSE,
 		loadHistoricalMessages,
+		loadOlderMessages,
 		loadThreadStatus,
 		registerSetupChatTelemetryContext,
 		sendMessage,
 		cancelRun,
 		cancelBackgroundTask,
 		amendAgent,
-		requestPlanChanges,
-		markPlanUpdatePending,
-		clearPlanUpdatePending,
 		confirmAction,
 		confirmResourceDecision,
 		resolveConfirmation,

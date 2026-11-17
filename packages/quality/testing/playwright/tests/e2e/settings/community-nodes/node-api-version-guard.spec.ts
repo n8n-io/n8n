@@ -81,9 +81,9 @@ test.describe(
 				expect(response.status()).toBe(400);
 				const rejection = await api.communityPackages.readRejection(response);
 				expect(rejection.message).toContain("isn't compatible with your version of n8n");
-				expect(String(rejection.meta.requiredNodesApiVersion)).toBe('3');
-				expect(String(rejection.meta.supportedNodesApiVersion)).toBe(
-					String(supportedNodesApiVersion),
+				expect(rejection.meta.requiredNodesApiVersion).toBe('3.0');
+				expect(String(rejection.meta.supportedNodesApiVersion)).toMatch(
+					new RegExp(`^${supportedNodesApiVersion}(\\.\\d+)?$`),
 				);
 				await expectAbsent(api, packageDisk, v3);
 			});
@@ -109,7 +109,7 @@ test.describe(
 				const response = await api.communityPackages.update(legacyV3.name, legacyV3.version);
 				expect(response.status()).toBe(400);
 				const rejection = await api.communityPackages.readRejection(response);
-				expect(String(rejection.meta.requiredNodesApiVersion)).toBe('3');
+				expect(rejection.meta.requiredNodesApiVersion).toBe('3.0');
 
 				await expectInstalled(api, packageDisk, legacy);
 				const state = await packageDisk.stateOf(legacyV3.name);

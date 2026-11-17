@@ -16,7 +16,7 @@ function buildEvent(workflowId: string, success = true): CapturedEvent {
 			type: 'tool-result',
 			payload: {
 				toolCallId: `call-${workflowId}-${String(success)}`,
-				toolName: 'build-workflow',
+				toolName: 'workflow_builder_build_workflow',
 				result: { workflowId, success },
 			},
 		},
@@ -88,6 +88,7 @@ async function runLoop(options: RunOptions): Promise<RunRecord> {
 		}),
 		getThreadStatus: vi.fn().mockResolvedValue({ backgroundTasks: [] }),
 		cancelRun: vi.fn().mockResolvedValue(undefined),
+		assistantAgents: () => undefined,
 	} as unknown as N8nClient;
 
 	const logger = {

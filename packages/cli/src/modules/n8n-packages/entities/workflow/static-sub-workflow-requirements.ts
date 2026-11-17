@@ -1,10 +1,10 @@
 import { PackageExportBlockedError } from '../package-export.errors';
-import type { WorkflowSubWorkflowRequirement } from './workflow.types';
+import type { WorkflowDependencyRequirement } from './workflow.types';
 
 const MAX_DISPLAYED_MISSING_WORKFLOWS = 20;
 
 export function assertStaticSubWorkflowsIncluded(
-	workflowRequirements: WorkflowSubWorkflowRequirement[],
+	workflowRequirements: WorkflowDependencyRequirement[],
 	exportedWorkflowIds: Set<string>,
 ): void {
 	const missingSubWorkflowIds = new Set<string>();

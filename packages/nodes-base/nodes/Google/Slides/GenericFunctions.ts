@@ -5,15 +5,17 @@ import type {
 	ILoadOptionsFunctions,
 	IRequestOptions,
 	JsonObject,
+	RequestPath,
+	WithRequestTarget,
 } from 'n8n-workflow';
-import { NodeApiError } from 'n8n-workflow';
+import { NodeApiError, requestUrl } from 'n8n-workflow';
 
 import { getGoogleAccessToken } from '../GenericFunctions';
 
 export async function googleApiRequest(
 	this: IExecuteFunctions | ILoadOptionsFunctions,
 	method: IHttpRequestMethods,
-	resource: string,
+	resource: RequestPath,
 	body: IDataObject = {},
 	qs: IDataObject = {},
 ) {
@@ -22,14 +24,14 @@ export async function googleApiRequest(
 		0,
 		'serviceAccount',
 	) as string;
-	const options: IRequestOptions & { headers: IDataObject } = {
+	const options: WithRequestTarget<IRequestOptions, 'uri'> & { headers: IDataObject } = {
 		headers: {
 			'Content-Type': 'application/json',
 		},
 		method,
 		body,
 		qs,
-		uri: `https://slides.googleapis.com/v1${resource}`,
+		uri: requestUrl`https://slides.googleapis.com/v1${resource}`,
 		json: true,
 	};
 

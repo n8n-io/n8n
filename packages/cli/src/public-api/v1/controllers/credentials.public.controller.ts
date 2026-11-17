@@ -7,7 +7,9 @@ import {
 	CredentialSchemaPublicDto,
 	CredentialTestPublicDto,
 	DeleteCredentialPublicDto,
+	DependencyListPublicDto,
 	ListCredentialsQueryDto,
+	ListDependenciesQueryDto,
 	UpdateCredentialPublicDto,
 	TransferCredentialPublicDto,
 } from '@n8n/api-types';
@@ -38,22 +40,28 @@ import type { NextFunction, Request, Response } from 'express';
 import type { ICredentialDataDecryptedObject } from 'n8n-workflow';
 
 import { CredentialDescriptionsService } from '@/credentials/credential-descriptions.service';
+import { getExternalSecretExpressionPaths } from '@/credentials/external-secrets.utils';
+import { CredentialsOverwrites } from '@/credentials-overwrites';
 import { CredentialTypes } from '@/credential-types';
 import { CredentialsService } from '@/credentials/credentials.service';
 import { EnterpriseCredentialsService } from '@/credentials/credentials.service.ee';
 import { CredentialsHelper } from '@/credentials-helper';
 import { CredentialNotFoundError } from '@/errors/credential-not-found.error';
 import { BadRequestError, ForbiddenError, NotFoundError } from '@n8n/errors';
+import { WorkflowDependencyQueryService } from '@/modules/workflow-index/workflow-dependency-query.service';
+import { loginIdOf } from '@/events/login-id';
 import {
 	assertValidUpdateProperties,
 	buildSharedForCredential,
 	toJsonSchema,
 	validateCredentialData,
 } from '@/public-api/v1/handlers/credentials/credentials.utils';
+import { toDependencyListPublicDto } from '@/public-api/v1/shared/dependency.mapper';
 import {
 	encodeNextCursor,
 	resolveOffsetPagination,
 } from '@/public-api/v1/shared/services/pagination.service';
+import type { PublicApiRequest } from '@/public-api/public-api-client';
 
 /**
  * Allows us to type the input to `toCredentialPublicDto` and have the return type of each service method satisfy that input type.
@@ -92,7 +100,7 @@ function toCredentialPublicDto(
 	};
 }
 
-/** The delete response adds `usageScope` to the standard credential fields. Carry over from legacy EOV handler. */
+/** The delete response adds `usageScope` to the standard credential fields. */
 function toDeleteCredentialPublicDto(
 	credential: CredentialsEntity,
 	includeDescription: boolean,
@@ -129,6 +137,8 @@ export class CredentialsPublicController {
 		private readonly eventService: EventService,
 		private readonly enterpriseCredentialsService: EnterpriseCredentialsService,
 		private readonly credentialDescriptions: CredentialDescriptionsService,
+		private readonly credentialsOverwrites: CredentialsOverwrites,
+		private readonly workflowDependencyQueryService: WorkflowDependencyQueryService,
 	) {}
 
 	@Middleware()
@@ -208,7 +218,7 @@ export class CredentialsPublicController {
 	@ApiErrorResponse(404)
 	@ApiErrorResponse(409)
 	async createCredential(
-		req: AuthenticatedRequest,
+		req: PublicApiRequest,
 		_res: Response,
 		@Body body: CreateCredentialPublicDto,
 	): Promise<CredentialPublicDto> {
@@ -241,11 +251,16 @@ export class CredentialsPublicController {
 			...(includeDescription && {
 				credentialDescriptionLength: credential.description?.length ?? 0,
 			}),
-			publicApi: true,
+			publicApi: req.publicApiClient,
 			projectId: project?.id,
 			projectType: project?.type,
 			isDynamic: credential.isResolvable ?? false,
 			jweEnabled: body.data.jweEnabled === true,
+			managedAppVersion: this.credentialsOverwrites.getManagedAppVersion(
+				credential.type,
+				body.data,
+			),
+			loginId: loginIdOf(req.ctx),
 		});
 
 		return toCredentialPublicDto(credential, includeDescription);
@@ -332,7 +347,35 @@ export class CredentialsPublicController {
 			throw new NotFoundError('Credential not found');
 		}
 
-		return toCredentialPublicDto(updatedCredential, await this.credentialDescriptions.isEnabled());
+		const includeDescription = await this.credentialDescriptions.isEnabled();
+		// Without `data` in the body the stored data is unchanged, so its flags still apply.
+		const credentialData =
+			decryptedDataForDeps ?? (await this.credentialsService.decrypt(existingCredential, true));
+
+		this.eventService.emit('credentials-updated', {
+			user: req.user,
+			credentialType: updatedCredential.type,
+			credentialId: updatedCredential.id,
+			credentialName: updatedCredential.name,
+			...(includeDescription && {
+				credentialDescriptionLength: updatedCredential.description?.length ?? 0,
+			}),
+			isDynamic: updatedCredential.isResolvable ?? false,
+			usesExternalSecrets: getExternalSecretExpressionPaths(credentialData).length > 0,
+			jweEnabled: credentialData.jweEnabled === true,
+			supportsManagedAuth: this.credentialsOverwrites.supportsManagedAuth(updatedCredential.type),
+			usesManagedAuth: this.credentialsOverwrites.usesManagedAuth(
+				updatedCredential.type,
+				credentialData,
+			),
+			managedAppVersion: this.credentialsOverwrites.getManagedAppVersion(
+				updatedCredential.type,
+				credentialData,
+			),
+			loginId: loginIdOf(req.ctx),
+		});
+
+		return toCredentialPublicDto(updatedCredential, includeDescription);
 	}
 
 	private assertKnownCredentialType(type: string): void {
@@ -440,7 +483,7 @@ export class CredentialsPublicController {
 			throw new NotFoundError('Not Found');
 		}
 
-		await this.credentialsService.delete(req.user, credentialId);
+		await this.credentialsService.delete(req.user, credentialId, {}, req.ctx);
 
 		return toDeleteCredentialPublicDto(credential, await this.credentialDescriptions.isEnabled());
 	}
@@ -511,5 +554,33 @@ export class CredentialsPublicController {
 			.filter((property) => property.type !== 'hidden');
 
 		return toJsonSchema(properties);
+	}
+
+	@Get('/:credentialId/dependencies')
+	@ApiKeyScope('credential:read')
+	@ProjectScope('credential:read')
+	@ApiSummary('List credential dependencies')
+	@ApiDescription('List the workflows and agents that use the credential.')
+	@ApiTags(['Credential'])
+	@ApiResponse(200, DependencyListPublicDto)
+	@ApiErrorResponse(404)
+	async getCredentialDependencies(
+		req: AuthenticatedRequest,
+		_res: Response,
+		@Param('credentialId', credentialIdParamSchema) credentialId: string,
+		@Query query: ListDependenciesQueryDto,
+	): Promise<DependencyListPublicDto> {
+		const pagination = resolveOffsetPagination(query);
+		if (!(await this.credentialsFinderService.findById(credentialId))) {
+			throw new NotFoundError('Credential not found');
+		}
+
+		const result = await this.workflowDependencyQueryService.getResourceDependencies(
+			[credentialId],
+			'credential',
+			req.user,
+		);
+
+		return toDependencyListPublicDto(result[credentialId], pagination);
 	}
 }

@@ -3,8 +3,8 @@ import type { Logger } from '@n8n/backend-common';
 import type { HttpRequestClient, OutboundHttp } from '@n8n/backend-network';
 import { mock } from 'vitest-mock-extended';
 
-import type { AgentChatIntegrationContext } from '../agent-chat-integration';
-import { LinearIntegration } from '../platforms/linear-integration';
+import type { AgentChatIntegrationContext, EpisodicScopeContext } from '../agent-chat-integration';
+import { LinearIntegration } from '../platforms/linear/linear-integration';
 
 vi.mock('../esm-loader', () => ({
 	loadLinearAdapter: vi.fn(),
@@ -48,6 +48,90 @@ describe('LinearIntegration', () => {
 		credential,
 		ingressEnabled: true,
 		webhookUrlFor: () => 'https://example.test/webhook',
+	});
+
+	describe('episodic ownership', () => {
+		const origin = { type: 'linear', issueId: 'issue-1', teamId: 'team-1' } as const;
+
+		function context(overrides: Partial<EpisodicScopeContext> = {}): EpisodicScopeContext {
+			return {
+				agentId: 'agent-1',
+				credentialId: 'cred-1',
+				integrationType: 'linear',
+				threadId: 'linear:issue-1',
+				author: { id: 'U1', name: 'Alice' },
+				origin,
+				...overrides,
+			};
+		}
+
+		it('reads and writes only the team owner', () => {
+			expect(integration.resolveEpisodicScope(context())).toEqual({
+				writeScopeId: 'linear:agent-1:cred-1:team-1',
+				readScopeIds: ['linear:agent-1:cred-1:team-1'],
+			});
+		});
+
+		it('keeps team ownership across issues, authors, projects and names', () => {
+			const next = context({
+				threadId: 'linear:issue-2:c:comment-1',
+				author: { id: 'U2', name: 'Bob' },
+				origin: {
+					...origin,
+					issueId: 'issue-2',
+					identifier: 'ENG-2',
+					title: 'Renamed',
+					projectId: 'project-2',
+					teamName: 'Renamed team',
+				},
+			});
+			expect(integration.resolveEpisodicScope(next)).toEqual(
+				integration.resolveEpisodicScope(context()),
+			);
+		});
+
+		it.each([
+			{ overrides: { agentId: 'agent-2' }, scopeId: 'linear:agent-2:cred-1:team-1' },
+			{ overrides: { credentialId: 'cred-2' }, scopeId: 'linear:agent-1:cred-2:team-1' },
+			{
+				overrides: { origin: { ...origin, teamId: 'team-2' } },
+				scopeId: 'linear:agent-1:cred-1:team-2',
+			},
+		] satisfies Array<{ overrides: Partial<EpisodicScopeContext>; scopeId: string }>)(
+			'separates scopes for %j',
+			({ overrides, scopeId }) => {
+				const scope = integration.resolveEpisodicScope(context(overrides));
+
+				expect(scope).toEqual({ writeScopeId: scopeId, readScopeIds: [scopeId] });
+				expect(scope).not.toEqual(integration.resolveEpisodicScope(context()));
+			},
+		);
+
+		it.each([
+			{ agentId: '' },
+			{ credentialId: '' },
+			{ integrationType: 'slack' },
+			{ origin: undefined },
+			{ origin: { type: 'linear', issueId: 'issue-1' } },
+			{ origin: { ...origin, teamId: '' } },
+			{ origin: { type: 'discord', channelId: 'C1' } },
+		] satisfies Partial<EpisodicScopeContext>[])(
+			'disables memory for unresolved identity %j',
+			(overrides) => {
+				expect(integration.resolveEpisodicScope(context(overrides))).toBeNull();
+			},
+		);
+
+		it('encodes scope components without delimiter collisions', () => {
+			expect(
+				integration.resolveEpisodicScope(
+					context({ agentId: 'agent:1', origin: { ...origin, teamId: 'team:1' } }),
+				),
+			).toEqual({
+				writeScopeId: 'linear:agent%3A1:cred-1:team%3A1',
+				readScopeIds: ['linear:agent%3A1:cred-1:team%3A1'],
+			});
+		});
 	});
 
 	it('only advertises the Linear OAuth credential type to agents', () => {

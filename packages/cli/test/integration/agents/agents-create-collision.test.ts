@@ -5,13 +5,21 @@
  * That needs a real primary key, which is what these cover.
  */
 
-import { createTeamProject, testDb, testModules } from '@n8n/backend-test-utils';
+import { createTeamProject, mockInstance, testDb, testModules } from '@n8n/backend-test-utils';
 import { Container } from '@n8n/di';
 import { ConflictError } from '@n8n/errors';
+import { TELEMETRY_EVENT } from '@n8n/telemetry';
+import { nanoid } from 'nanoid';
 
 import { AgentsService } from '@/modules/agents/agents.service';
 import { AgentsSettingsService } from '@/modules/agents/agents-settings.service';
+import { AgentUpdateBroadcaster } from '@/modules/agents/agent-update-broadcaster';
+import { NodeToolAiGatewayService } from '@/modules/agents/json-config/node-tool-ai-gateway.service';
 import { AgentRepository } from '@/modules/agents/repositories/agent.repository';
+import { AgentTaskRepository } from '@/modules/agents/repositories/agent-task.repository';
+import { Telemetry } from '@/telemetry';
+
+import { createOwner } from '../shared/db/users';
 
 // Nothing here is policed, so the actor only has to be well formed.
 const actor = { kind: 'user', user: { id: 'user-1' } } as const;
@@ -19,6 +27,9 @@ const actor = { kind: 'user', user: { id: 'user-1' } } as const;
 describe('AgentsService.create — client-minted id', () => {
 	let agentsService: AgentsService;
 	let agentRepo: AgentRepository;
+	const telemetry = mockInstance(Telemetry);
+	mockInstance(AgentUpdateBroadcaster);
+	mockInstance(NodeToolAiGatewayService);
 
 	beforeAll(async () => {
 		await testModules.loadModules(['agents']);
@@ -43,6 +54,32 @@ describe('AgentsService.create — client-minted id', () => {
 			name: 'Fresh Agent',
 			projectId: project.id,
 		});
+	});
+
+	it('drops other agents task references when creating with a server-assigned id', async () => {
+		const project = await createTeamProject();
+		const user = await createOwner();
+		const source = await agentsService.create(project.id, 'Source Agent', { actor });
+		const taskRepository = Container.get(AgentTaskRepository);
+		const task = await taskRepository.save(
+			taskRepository.create({
+				id: `task_${nanoid(16)}`,
+				agentId: source.id,
+				name: 'Daily summary',
+				objective: 'Summarize the daily activity',
+				cronExpression: '0 9 * * *',
+				timezone: null,
+			}),
+		);
+
+		const { agent, config } = await agentsService.createOrAdopt(project.id, 'New Agent', {
+			actor: { kind: 'user', user },
+			user,
+			config: { tasks: [{ type: 'task', id: task.id, enabled: true }] },
+		});
+
+		expect(config?.tasks).toEqual([]);
+		expect((await agentRepo.findById(agent.id))?.schema?.tasks).toEqual([]);
 	});
 
 	it.each(['create', 'createOrAdopt'] as const)(
@@ -82,6 +119,43 @@ describe('AgentsService.create — client-minted id', () => {
 
 		expect(adopted).toBe(true);
 		expect(agent.name).toBe('First');
+	});
+
+	it('keeps the winning configuration and reports one creation when editor and builder race', async () => {
+		const project = await createTeamProject();
+		const user = await createOwner();
+		const id = nanoid(16);
+		const track = telemetry.track.mockClear();
+		const sources = ['user', 'builder'] as const;
+		const results = await Promise.all(
+			sources.map(
+				async (createdBy) =>
+					await agentsService.createOrAdopt(project.id, createdBy, {
+						id,
+						user,
+						actor: { kind: 'user', user },
+						createdBy,
+						adoptOnCollision: true,
+						config: { instructions: `${createdBy} configuration` },
+					}),
+			),
+		);
+
+		expect(results.filter(({ adopted }) => !adopted)).toHaveLength(1);
+		const winner = results.find(({ adopted }) => !adopted)!;
+		expect(results.map(({ config }) => config)).toEqual([winner.config, winner.config]);
+		expect(await agentRepo.findById(id)).toMatchObject({
+			name: winner.agent.name,
+			schema: { instructions: winner.config?.instructions },
+		});
+		const event =
+			winner.agent.name === 'user'
+				? TELEMETRY_EVENT.AGENTS.USER_CREATED_AGENT
+				: TELEMETRY_EVENT.AGENTS.BUILDER_CREATED_AGENT;
+		expect(track).toHaveBeenCalledExactlyOnceWith(
+			event,
+			expect.objectContaining({ agent_id: id, event_version: '3' }),
+		);
 	});
 
 	it('leaves an agent in its own project when another project reuses its id', async () => {

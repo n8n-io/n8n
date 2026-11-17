@@ -1,82 +1,11 @@
+import type { ImportBlockingIssue } from '@n8n/api-types';
 import { ApiError } from '../../client';
 
-type BlockingIssue =
-	| {
-			type: 'workflow-conflict';
-			sourceWorkflowId: string;
-			existingWorkflowId: string;
-			name: string;
-	  }
-	| {
-			type: 'workflow-lineage-conflict';
-			sourceWorkflowId: string;
-			projectId: string;
-			existingWorkflows: Array<{ id: string; name: string; isArchived: boolean }>;
-	  }
-	| { type: 'project-conflict'; sourceProjectId: string; name: string }
-	| { type: 'workflow-removal-forbidden'; workflowId: string; name: string; projectId: string }
-	| {
-			type: 'workflow-removal-conflict';
-			sourceWorkflowId: string;
-			workflowId: string;
-			projectId: string;
-	  }
-	| {
-			type: 'workflow-archive-forbidden';
-			sourceWorkflowId: string;
-			existingWorkflowId: string;
-			name: string;
-			projectId: string;
-			transition: 'archive' | 'unarchive';
-	  }
-	| { type: 'folder-removal-forbidden'; folderId: string; name: string; projectId: string }
-	| { type: 'credential-unresolved'; kind: string; sourceId: string; usedByWorkflows: string[] }
-	| { type: 'variable-unresolved'; name: string; usedByWorkflows: string[] }
-	| { type: 'variable-conflict'; name: string; projectId?: string; usedByWorkflows: string[] }
-	| {
-			type: 'variable-limit-exceeded';
-			limit: number;
-			remaining: number;
-			requested: number;
-			names: string[];
-			usedByWorkflows: string[];
-	  }
-	| {
-			type: 'missing-node-type';
-			nodeType: string;
-			typeVersion: number;
-			usedByWorkflows: string[];
-	  }
-	| {
-			type: 'tag-unresolved';
-			kind: string;
-			sourceId?: string;
-			name?: string;
-			missingScope?: string;
-			usedByWorkflows: string[];
-	  }
-	| {
-			type: 'data-table-unresolved';
-			kind: string;
-			sourceId?: string;
-			name?: string;
-			missingScope?: string;
-			missingColumns?: string[];
-			typeMismatches?: Array<{ column: string }>;
-			extraColumns?: string[];
-			overwriteChanges?: DataTableSchemaChange[];
-			currentName?: string;
-			conflictingTableId?: string;
-			usedByWorkflows: string[];
-	  };
+type RequirementConsumer = { kind: string; id: string };
 
-type DataTableSchemaChange = { destructive?: boolean } & (
-	| { kind: 'add-column'; column: string }
-	| { kind: 'remove-column'; column: string }
-	| { kind: 'change-column-type'; column: string; from: string; to: string }
-	| { kind: 'reorder-columns' }
-	| { kind: 'rename-table'; from: string; to: string }
-);
+type DataTableSchemaChange = NonNullable<
+	Extract<ImportBlockingIssue, { type: 'data-table-unresolved' }>['overwriteChanges']
+>[number];
 
 function describeSchemaChange(change: DataTableSchemaChange): string {
 	switch (change.kind) {
@@ -86,6 +15,8 @@ function describeSchemaChange(change: DataTableSchemaChange): string {
 			return `remove column ${change.column}`;
 		case 'change-column-type':
 			return `change column ${change.column} from ${change.from} to ${change.to}`;
+		case 'rename-column':
+			return `rename column ${change.from} to ${change.to}`;
 		case 'reorder-columns':
 			return 'reorder columns';
 		case 'rename-table':
@@ -93,9 +24,34 @@ function describeSchemaChange(change: DataTableSchemaChange): string {
 	}
 }
 
+function formatConsumers(consumers: RequirementConsumer[] | undefined): string {
+	if (!Array.isArray(consumers)) return '';
+	return consumers
+		.filter((consumer) => typeof consumer?.kind === 'string' && typeof consumer.id === 'string')
+		.map(({ kind, id }) => `${kind} ${id}`)
+		.join(', ');
+}
+
 function formatIssue(issue: unknown): string {
 	if (typeof issue !== 'object' || issue === null) return JSON.stringify(issue);
-	const it = issue as Partial<BlockingIssue> & Record<string, unknown>;
+	const it = issue as Partial<ImportBlockingIssue> & Record<string, unknown>;
+	if (it.type === 'agent-conflict') {
+		const task = it.sourceTaskId ? `, task ${it.sourceTaskId}` : '';
+		const targets = Array.isArray(it.targetIds) ? it.targetIds.join(', ') : '';
+		return `Agent ${it.sourceAgentId}${task} conflicts in project ${it.projectId} (${it.kind}; targets: ${targets})`;
+	}
+	if (it.type === 'agent-invalid') {
+		return `Agent ${it.sourceAgentId} at ${it.path}: ${it.message}`;
+	}
+	if (it.type === 'agent-dependency-unresolved') {
+		return `Agent ${it.sourceAgentId} in project ${it.projectId}: ${it.dependencyType} ${it.referenceId} is ${it.reason} at ${it.path}`;
+	}
+	if (it.type === 'agent-policy-violation') {
+		const reasons = Array.isArray(it.violations)
+			? it.violations.map(({ message }) => message).join('; ')
+			: '';
+		return `Agent "${it.name}" (${it.sourceAgentId}) refused by policy: ${reasons}`;
+	}
 	if (it.type === 'workflow-conflict') {
 		return `workflow "${it.name}" (source ${it.sourceWorkflowId}) already exists as ${it.existingWorkflowId}`;
 	}
@@ -123,38 +79,61 @@ function formatIssue(issue: unknown): string {
 		return `folder "${it.name}" (${it.folderId}) in project ${it.projectId} is not in the package and would be removed, but you lack permission to remove it`;
 	}
 	if (it.type === 'credential-unresolved') {
-		const usedBy = Array.isArray(it.usedByWorkflows) ? it.usedByWorkflows.join(', ') : '';
-		return `credential ${it.sourceId} unresolved (${it.kind}), used by workflow(s) ${usedBy}`;
+		const usedBy = formatConsumers(it.usedBy);
+		return `credential ${it.sourceId} unresolved (${it.kind}), used by ${usedBy}`;
+	}
+	if (it.type === 'credential-policy-violation') {
+		const usedBy = formatConsumers(it.usedBy);
+		const reasons = Array.isArray(it.violations)
+			? it.violations.map(({ message }) => message).join('; ')
+			: '';
+		if (it.targetId) {
+			return `update of credential ${it.targetId} (${it.credentialType}) from package credential "${it.name ?? it.sourceId}" (${it.sourceId}) refused by policy: ${reasons}, used by ${usedBy}`;
+		}
+		return `credential "${it.name ?? it.sourceId}" (${it.sourceId}, ${it.credentialType}) refused by policy: ${reasons}, used by ${usedBy}`;
+	}
+	if (it.type === 'credential-conflict') {
+		const usedBy = formatConsumers(it.usedBy);
+		const sources = Array.isArray(it.sourceIds) ? it.sourceIds.join(', ') : '';
+		if (it.kind === 'divergent') {
+			return `credential "${it.name}" (${it.targetId}) receives different values from package credentials ${sources}, used by ${usedBy}`;
+		}
+		return `credential "${it.name}" (${it.targetId}) differs from package credential ${sources}, used by ${usedBy}`;
+	}
+	if (it.type === 'credential-update-forbidden') {
+		const usedBy = formatConsumers(it.usedBy);
+		const sources = Array.isArray(it.sourceIds) ? it.sourceIds.join(', ') : '';
+		return `credential "${it.name}" (${it.targetId}) matches package credential ${sources}, but you lack permission to update it. Use keep-existing or ask its owner. Used by ${usedBy}`;
 	}
 	if (it.type === 'variable-unresolved') {
-		const usedBy = Array.isArray(it.usedByWorkflows) ? it.usedByWorkflows.join(', ') : '';
-		return `variable "${it.name}" unresolved, used by workflow(s) ${usedBy}`;
+		const usedBy = formatConsumers(it.usedBy);
+		return `variable "${it.name}" unresolved, used by ${usedBy}`;
 	}
 	if (it.type === 'variable-conflict') {
-		const usedBy = Array.isArray(it.usedByWorkflows) ? it.usedByWorkflows.join(', ') : '';
+		const usedBy = formatConsumers(it.usedBy);
 		const scope = it.projectId ? `project ${it.projectId}` : 'the global scope';
-		return `variable "${it.name}" in ${scope} holds a different value, used by workflow(s) ${usedBy}`;
+		return `variable "${it.name}" in ${scope} holds a different value, used by ${usedBy}`;
 	}
 	if (it.type === 'variable-limit-exceeded') {
-		const usedBy = Array.isArray(it.usedByWorkflows) ? it.usedByWorkflows.join(', ') : '';
+		const usedBy = formatConsumers(it.usedBy);
 		const names = Array.isArray(it.names) ? it.names.join(', ') : '';
-		return `variable limit reached: ${it.requested} new variable(s) (${names}) with ${it.remaining} of ${it.limit} remaining, used by workflow(s) ${usedBy}`;
+		return `variable limit reached: ${it.requested} new variable(s) (${names}) with ${it.remaining} of ${it.limit} remaining, used by ${usedBy}`;
 	}
 	if (it.type === 'missing-node-type') {
-		const usedBy = Array.isArray(it.usedByWorkflows) ? it.usedByWorkflows.join(', ') : '';
-		return `node type ${it.nodeType} @ v${it.typeVersion} missing on this instance, used by workflow(s) ${usedBy}`;
+		const usedBy = formatConsumers(it.usedBy);
+		return `node type ${it.nodeType} @ v${it.typeVersion} missing on this instance, used by ${usedBy}`;
 	}
 	if (it.type === 'tag-unresolved') {
-		const usedBy = Array.isArray(it.usedByWorkflows) ? it.usedByWorkflows.join(', ') : '';
+		const usedBy = formatConsumers(it.usedBy);
 		if (it.kind === 'permission-denied') {
-			return `tag import requires the ${it.missingScope} scope, needed by workflow(s) ${usedBy}`;
+			return `tag import requires the ${it.missingScope} scope, needed by ${usedBy}`;
 		}
-		return `tag "${it.name}" (${it.sourceId}) unresolved (${it.kind}), used by workflow(s) ${usedBy}`;
+		return `tag "${it.name}" (${it.sourceId}) unresolved (${it.kind}), used by ${usedBy}`;
 	}
 	if (it.type === 'data-table-unresolved') {
-		const usedBy = Array.isArray(it.usedByWorkflows) ? it.usedByWorkflows.join(', ') : '';
+		const usedBy = formatConsumers(it.usedBy);
 		if (it.kind === 'permission-denied') {
-			return `data table import requires the ${it.missingScope} scope, needed by workflow(s) ${usedBy}`;
+			return `data table import requires the ${it.missingScope} scope, needed by ${usedBy}`;
 		}
 		if (it.kind === 'schema-incompatible') {
 			const reasons = [
@@ -165,17 +144,17 @@ function formatIssue(issue: unknown): string {
 				it.extraColumns?.length ? `extra columns: ${it.extraColumns.join(', ')}` : '',
 			].filter(Boolean);
 			const changes = it.overwriteChanges?.length
-				? `\n      --data-table-schema-conflict-policy=overwrite would: ${it.overwriteChanges.map((change) => (change.destructive ? `${describeSchemaChange(change)} (data lost)` : describeSchemaChange(change))).join(', ')}`
+				? `\n      --data-table-schema-conflict-policy=overwrite would: ${it.overwriteChanges.map((change) => (change.destructive ? `${describeSchemaChange(change)} (values removed)` : describeSchemaChange(change))).join(', ')}`
 				: '';
-			return `data table "${it.name}" (${it.sourceId}) does not match the package schema (${reasons.join('; ')}), used by workflow(s) ${usedBy}${changes}`;
+			return `data table "${it.name}" (${it.sourceId}) does not match the package schema (${reasons.join('; ')}), used by ${usedBy}${changes}`;
 		}
 		if (it.kind === 'name-conflict') {
 			const action = it.currentName
 				? `"${it.currentName}" (${it.sourceId}) cannot be renamed to "${it.name}"`
 				: `"${it.name}" (${it.sourceId}) cannot be created`;
-			return `data table ${action}: the name is also used by table ${it.conflictingTableId}, used by workflow(s) ${usedBy}`;
+			return `data table ${action}: the name is also used by table ${it.conflictingTableId}, used by ${usedBy}`;
 		}
-		return `data table "${it.name}" (${it.sourceId}) unresolved (${it.kind}), used by workflow(s) ${usedBy}`;
+		return `data table "${it.name}" (${it.sourceId}) unresolved (${it.kind}), used by ${usedBy}`;
 	}
 	return JSON.stringify(issue);
 }

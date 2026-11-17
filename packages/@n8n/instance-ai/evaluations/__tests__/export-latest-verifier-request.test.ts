@@ -1,5 +1,6 @@
+import { buildNativeVerifierRequestBody, VERIFIER_MAX_OUTPUT_TOKENS } from '../checklist/verifier';
 import { findStoredTestCaseResult, findStoredVerifierRun } from '../eval-results-artifact';
-import { getScenarios } from '../export-latest-verifier-request';
+import { buildVerifierRequestBody, getScenarios } from '../export-latest-verifier-request';
 
 function evalResult(marker: string) {
 	return {
@@ -80,5 +81,52 @@ describe('export-latest-verifier-request helpers', () => {
 		expect(storedRun?.runIndex).toBe(1);
 		expect(storedRun?.evalResult.nodeResults).toHaveProperty('target-node');
 		expect(storedRun?.workflowId).toBe('wf-target');
+	});
+
+	it('asks for the reasoning before the verdict in the replayed request schema', () => {
+		const body = buildVerifierRequestBody('user message', 'openai/gpt-5.5');
+
+		// Structured output writes keys in schema order, so `pass` must come after `reasoning`.
+		const item = body.text.format.schema.properties.results.items;
+		const keys = ['id', 'reasoning', 'pass', 'failureCategory', 'rootCause'];
+		expect(Object.keys(item.properties)).toEqual(keys);
+		expect(item.required).toEqual(keys);
+	});
+
+	it('sends the same output limit and reasoning effort as the live verifier', () => {
+		const body = buildVerifierRequestBody('user message', 'openai/gpt-5.5');
+
+		expect(body.max_output_tokens).toBe(VERIFIER_MAX_OUTPUT_TOKENS);
+		expect(body.reasoning).toEqual({ effort: 'high' });
+	});
+
+	it('uses the same instructions, schema and request settings as the live verifier', () => {
+		expect(buildVerifierRequestBody('user message', 'openai/gpt-5.5')).toEqual(
+			buildNativeVerifierRequestBody('user message', 'gpt-5.5'),
+		);
+	});
+
+	it('targets the judge model, not the builder model', () => {
+		vi.stubEnv('N8N_INSTANCE_AI_MODEL', 'openai/gpt-5.5');
+		vi.stubEnv('N8N_INSTANCE_AI_EVAL_JUDGE_MODEL', 'openai/gpt-5.4-mini');
+		try {
+			expect(buildVerifierRequestBody('user message').model).toBe('gpt-5.4-mini');
+		} finally {
+			vi.unstubAllEnvs();
+		}
+	});
+
+	it('refuses an openai id with an empty model, which the live verifier does not route to OpenAI', () => {
+		// resolveEvalModelConfig('openai/').provider is '' (splitModelId keeps a blank model
+		// as the raw id), so the live verifier sends no native Responses request for it.
+		expect(() => buildVerifierRequestBody('user message', 'openai/')).toThrow(
+			/only an OpenAI judge/i,
+		);
+	});
+
+	it('refuses a judge model that does not use the native OpenAI request', () => {
+		expect(() => buildVerifierRequestBody('user message', 'anthropic/claude-sonnet-5-5')).toThrow(
+			/only an OpenAI judge/i,
+		);
 	});
 });

@@ -15,7 +15,7 @@ const { getProxyForUrl } = vi.hoisted(() => ({
 vi.mock('proxy-from-env', () => ({ getProxyForUrl }));
 
 const options = (o: Partial<http.RequestOptions>): http.RequestOptions => o as http.RequestOptions;
-const createAgent = () => vi.fn((proxyUrl: string) => ({ proxyUrl }));
+const createAgent = () => vi.fn((proxyUrl: string) => ({ proxyUrl, destroy: vi.fn() }));
 
 describe('EnvProxyRouter', () => {
 	beforeEach(() => getProxyForUrl.mockReset());
@@ -109,5 +109,18 @@ describe('EnvProxyRouter', () => {
 
 		expect(createProxyAgent).toHaveBeenCalledTimes(2);
 		expect(a).not.toBe(b);
+	});
+
+	it('destroys cached proxy agents and creates a new one after destroy', () => {
+		getProxyForUrl.mockReturnValue('http://proxy.internal:3128');
+		const createProxyAgent = createAgent();
+		const router = new EnvProxyRouter('http', 80, createProxyAgent);
+
+		const first = router.resolve(options({ host: 'a.example' }));
+		router.destroy();
+		const second = router.resolve(options({ host: 'a.example' }));
+
+		expect(first?.destroy).toHaveBeenCalledTimes(1);
+		expect(second).not.toBe(first);
 	});
 });

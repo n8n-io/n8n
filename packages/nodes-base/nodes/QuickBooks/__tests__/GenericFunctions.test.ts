@@ -1,8 +1,9 @@
 import { mockDeep } from 'vitest-mock-extended';
-import { NodeApiError } from 'n8n-workflow';
 import type { IDataObject, IExecuteFunctions } from 'n8n-workflow';
+import { NodeApiError, requestPath } from 'n8n-workflow';
 
 import {
+	getSyncToken,
 	handleListing,
 	processLines,
 	quickBooksApiRequest,
@@ -25,7 +26,7 @@ describe('quickBooksApiRequest', () => {
 			.mockReturnValueOnce('invoice')
 			.mockReturnValueOnce('send');
 
-		await quickBooksApiRequest.call(mockExecuteFunctions, 'POST', '/test', {}, {});
+		await quickBooksApiRequest.call(mockExecuteFunctions, 'POST', requestPath`/test`, {}, {});
 
 		expect(mockExecuteFunctions.helpers.requestOAuth2).toHaveBeenCalledWith(
 			'quickBooksOAuth2Api',
@@ -42,7 +43,7 @@ describe('quickBooksApiRequest', () => {
 			.mockReturnValueOnce('invoice')
 			.mockReturnValueOnce('void');
 
-		await quickBooksApiRequest.call(mockExecuteFunctions, 'POST', '/test', {}, {});
+		await quickBooksApiRequest.call(mockExecuteFunctions, 'POST', requestPath`/test`, {}, {});
 
 		expect(mockExecuteFunctions.helpers.requestOAuth2).toHaveBeenCalledWith(
 			'quickBooksOAuth2Api',
@@ -59,7 +60,7 @@ describe('quickBooksApiRequest', () => {
 			.mockReturnValueOnce('payment')
 			.mockReturnValueOnce('delete');
 
-		await quickBooksApiRequest.call(mockExecuteFunctions, 'POST', '/test', {}, {});
+		await quickBooksApiRequest.call(mockExecuteFunctions, 'POST', requestPath`/test`, {}, {});
 
 		expect(mockExecuteFunctions.helpers.requestOAuth2).toHaveBeenCalledWith(
 			'quickBooksOAuth2Api',
@@ -77,7 +78,7 @@ describe('quickBooksApiRequest', () => {
 			.mockReturnValueOnce('get')
 			.mockReturnValueOnce(true);
 
-		await quickBooksApiRequest.call(mockExecuteFunctions, 'GET', '/test', {}, {});
+		await quickBooksApiRequest.call(mockExecuteFunctions, 'GET', requestPath`/test`, {}, {});
 
 		expect(mockExecuteFunctions.helpers.requestOAuth2).toHaveBeenCalledWith(
 			'quickBooksOAuth2Api',
@@ -92,7 +93,7 @@ describe('quickBooksApiRequest', () => {
 
 describe('QuickBooks listings', () => {
 	const mockExecuteFunctions = mockDeep<IExecuteFunctions>();
-	const endpoint = '/v3/company/123/query';
+	const endpoint = requestPath`/v3/company/123/query`;
 	const filter = 'WHERE Active = true ORDERBY Id';
 	const query = `SELECT * FROM customer ${filter}`;
 	const requestQueries: string[] = [];
@@ -250,6 +251,29 @@ describe('QuickBooks listings', () => {
 
 		expect(result).toEqual(customers);
 		expect(mockExecuteFunctions.helpers.requestOAuth2).toHaveBeenCalledTimes(1);
+	});
+});
+
+describe('getSyncToken', () => {
+	it('should encode the resource ID as one path segment', async () => {
+		const context = mockDeep<IExecuteFunctions>();
+		context.getNodeParameter.mockImplementation((name: string) =>
+			name === 'invoiceId' ? '130/send?x=1' : 'invoice',
+		);
+		context.getCredentials.mockResolvedValue({ environment: 'production' });
+		context.helpers.requestOAuth2.mockResolvedValue({ Invoice: { SyncToken: '2' } });
+
+		await getSyncToken.call(context, 0, '9130357766900000', 'invoice');
+
+		expect(context.helpers.requestOAuth2).toHaveBeenCalledWith(
+			'quickBooksOAuth2Api',
+			expect.objectContaining({
+				uri: expect.objectContaining({
+					value:
+						'https://quickbooks.api.intuit.com/v3/company/9130357766900000/invoice/130%2Fsend%3Fx=1',
+				}),
+			}),
+		);
 	});
 });
 

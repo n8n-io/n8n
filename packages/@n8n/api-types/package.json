@@ -1,6 +1,6 @@
 {
   "name": "@n8n/api-types",
-  "version": "1.43.0",
+  "version": "1.48.0",
   "scripts": {
     "clean": "rimraf dist .turbo",
     "dev": "pnpm watch",
@@ -19,6 +19,10 @@
   "main": "dist/index.js",
   "module": "src/index.ts",
   "types": "dist/index.d.ts",
+  "sideEffects": [
+    "./src/openapi-extend.ts",
+    "./dist/openapi-extend.js"
+  ],
   "files": [
     "dist/**/*"
   ],
@@ -42,7 +46,9 @@
     "n8n-workflow": "workspace:*",
     "validator": "catalog:",
     "xss": "catalog:",
-    "@n8n/permissions": "workspace:*"
+    "@n8n/permissions": "workspace:*",
+    "@n8n/inbound-auth": "workspace:*",
+    "@n8n/utils": "workspace:*"
   },
   "peerDependencies": {
     "zod": "catalog:"

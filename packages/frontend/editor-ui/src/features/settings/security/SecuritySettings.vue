@@ -1,17 +1,20 @@
 <script lang="ts" setup>
 import { computed, ref } from 'vue';
+import { useRouter } from 'vue-router';
 import { useAsyncState } from '@vueuse/core';
-import { ElSwitch } from 'element-plus';
 import { I18nT } from 'vue-i18n';
 import {
 	N8nAlertDialog,
 	N8nBadge,
 	N8nNotice,
+	N8nPreviewBadge,
 	N8nSettingsLayout,
 	N8nSettingsPageHeader,
 	N8nSettingsRow,
+	N8nSettingsRowConfigure,
 	N8nSettingsRowGroup,
 	N8nSettingsSection,
+	N8nSwitch,
 	N8nText,
 	N8nTooltip,
 } from '@n8n/design-system';
@@ -27,8 +30,13 @@ import { useUsersStore } from '@n8n/stores/users.store';
 import { usePageRedirectionHelper } from '@/app/composables/usePageRedirectionHelper';
 import DataRedactionSection from './DataRedactionSection.vue';
 import WorkflowReviewsSection from './WorkflowReviewsSection.vue';
+import ApiKeyRateLimitsSection from './rateLimits/ApiKeyRateLimitsSection.vue';
+import { PUBLIC_API_RATE_LIMIT_SETTINGS_FLAG } from './rateLimits/rateLimits';
+import { usePostHog } from '@/app/stores/posthog.store';
 import { useWorkflowReviewsFeature } from '@/features/workflow-reviews/composables/useWorkflowReviewsFeature';
+import { usePolicyAdminAccess } from '@n8n/frontend-module-type-availability-policies';
 
+const router = useRouter();
 const rootStore = useRootStore();
 const settingsStore = useSettingsStore();
 const usersStore = useUsersStore();
@@ -36,6 +44,17 @@ const i18n = useI18n();
 const { showToast, showError } = useToast();
 const pageRedirectionHelper = usePageRedirectionHelper();
 const { isWorkflowReviewsAvailable } = useWorkflowReviewsFeature();
+const posthogStore = usePostHog();
+const { canManagePolicies: canManageTypePolicies, entryRouteName: typePoliciesRouteName } =
+	usePolicyAdminAccess();
+
+function openTypePolicies() {
+	void router.push({ name: typePoliciesRouteName.value });
+}
+
+const isRateLimitSettingsEnabled = computed(() =>
+	posthogStore.isFeatureEnabled(PUBLIC_API_RATE_LIMIT_SETTINGS_FLAG),
+);
 
 const mfaTooltipKey = 'settings.personal.mfa.enforce.unlicensed_tooltip';
 const personalSpaceTooltipKey = 'settings.security.personalSpace.unlicensed_tooltip';
@@ -216,7 +235,7 @@ const sharingCountText = computed(() => {
 					</template>
 					<template #action>
 						<EnterpriseEdition :features="[EnterpriseEditionFeature.EnforceMFA]">
-							<ElSwitch
+							<N8nSwitch
 								:model-value="settingsStore.isMFAEnforced"
 								size="large"
 								:disabled="isManagedByEnv"
@@ -225,7 +244,7 @@ const sharingCountText = computed(() => {
 							/>
 							<template #fallback>
 								<N8nTooltip>
-									<ElSwitch
+									<N8nSwitch
 										:model-value="settingsStore.isMFAEnforced"
 										size="large"
 										:disabled="true"
@@ -274,7 +293,7 @@ const sharingCountText = computed(() => {
 					</template>
 					<template #action>
 						<EnterpriseEdition :features="[EnterpriseEditionFeature.PersonalSpacePolicy]">
-							<ElSwitch
+							<N8nSwitch
 								v-if="state !== undefined"
 								v-model="personalSpaceSharing"
 								size="large"
@@ -283,7 +302,7 @@ const sharingCountText = computed(() => {
 							/>
 							<template #fallback>
 								<N8nTooltip>
-									<ElSwitch
+									<N8nSwitch
 										v-if="state !== undefined"
 										:model-value="personalSpaceSharing"
 										size="large"
@@ -333,7 +352,7 @@ const sharingCountText = computed(() => {
 					</template>
 					<template #action>
 						<EnterpriseEdition :features="[EnterpriseEditionFeature.PersonalSpacePolicy]">
-							<ElSwitch
+							<N8nSwitch
 								v-if="state !== undefined"
 								v-model="personalSpacePublishing"
 								size="large"
@@ -342,7 +361,7 @@ const sharingCountText = computed(() => {
 							/>
 							<template #fallback>
 								<N8nTooltip>
-									<ElSwitch
+									<N8nSwitch
 										v-if="state !== undefined"
 										:model-value="personalSpacePublishing"
 										size="large"
@@ -385,17 +404,45 @@ const sharingCountText = computed(() => {
 		</N8nSettingsSection>
 
 		<N8nSettingsSection
+			v-if="canManageTypePolicies"
+			:title="i18n.baseText('settings.security.nodeAndCredentialPolicies.section')"
+			data-test-id="security-type-policies-section"
+		>
+			<N8nSettingsRowGroup>
+				<N8nSettingsRow
+					clickable
+					data-test-id="security-type-policies-row"
+					data-attr="security-type-policies-row"
+					@click="openTypePolicies"
+				>
+					<template #info>
+						<N8nText :bold="true">
+							{{ i18n.baseText('settings.security.nodeAndCredentialPolicies.title') }}
+							<N8nPreviewBadge class="ml-4xs" data-test-id="security-type-policies-preview-badge" />
+						</N8nText>
+						<N8nText size="small" color="text-light">
+							{{ i18n.baseText('settings.security.nodeAndCredentialPolicies.description') }}
+						</N8nText>
+					</template>
+					<template #action>
+						<N8nSettingsRowConfigure :value="i18n.baseText('generic.configure')" />
+					</template>
+				</N8nSettingsRow>
+			</N8nSettingsRowGroup>
+		</N8nSettingsSection>
+
+		<N8nSettingsSection
 			v-if="isSecuritySettingsSettled && isWorkflowReviewsAvailable && state !== undefined"
 			:title="i18n.baseText('settings.security.workflowReviews.title')"
 			data-test-id="security-workflow-reviews-section"
 		>
-			<N8nSettingsRowGroup>
-				<WorkflowReviewsSection
-					:initial-enabled="state.workflowReviewsEnabled"
-					:managed-by-env="isManagedByEnv"
-				/>
-			</N8nSettingsRowGroup>
+			<WorkflowReviewsSection
+				:initial-enabled="state.workflowReviewsEnabled"
+				:managed-by-env="isManagedByEnv"
+			/>
 		</N8nSettingsSection>
+
+		<ApiKeyRateLimitsSection v-if="isRateLimitSettingsEnabled" />
 
 		<N8nAlertDialog
 			:open="showPublishingDialog"

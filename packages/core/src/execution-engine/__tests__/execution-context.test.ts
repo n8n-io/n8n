@@ -3,7 +3,6 @@ import { Container } from '@n8n/di';
 import {
 	createEmptyRunExecutionData,
 	createRunExecutionData,
-	UnexpectedError,
 	type IExecutionContext,
 	type IN8NOAuthMetadata,
 	type INode,
@@ -12,6 +11,7 @@ import {
 	type Workflow,
 	type WorkflowExecuteMode,
 } from 'n8n-workflow';
+import { UnexpectedError } from '@n8n/errors';
 import { mock } from 'vitest-mock-extended';
 
 import type { Cipher } from '@/encryption';
@@ -1566,6 +1566,8 @@ describe('establishExecutionContext', () => {
 			Container.reset();
 		});
 
+		const grant = { audiences: ['https://host/mcp/wf'], executeAccessWorkflowId: 'wf' };
+
 		const pathOf = async (context: IExecutionContext) => {
 			const decrypted = await service.decryptExecutionContext(context);
 			return (decrypted.credentials!.metadata as IN8NOAuthMetadata).executionPath;
@@ -1575,7 +1577,7 @@ describe('establishExecutionContext', () => {
 			const sealed = await service.buildTriggerIdentityCredentials(
 				'oauth-token',
 				'https://host/mcp/wf',
-				undefined,
+				grant,
 				'user-123',
 			);
 			const runExecutionData = createRunExecutionData({
@@ -1610,7 +1612,7 @@ describe('establishExecutionContext', () => {
 			const sealed = await service.buildTriggerIdentityCredentials(
 				'oauth-token',
 				'https://host/mcp/wf',
-				undefined,
+				grant,
 				'user-123',
 			);
 			const runExecutionData = createRunExecutionData({
@@ -1645,7 +1647,7 @@ describe('establishExecutionContext', () => {
 			const sealed = await service.buildTriggerIdentityCredentials(
 				'oauth-token',
 				'https://host/mcp/wf',
-				undefined,
+				grant,
 				'user-123',
 			);
 			const runExecutionData = createRunExecutionData({
@@ -1679,10 +1681,11 @@ describe('establishExecutionContext', () => {
 			]);
 		});
 
-		it('leaves a legacy (subject-less) carrier untouched', async () => {
-			const legacy = await service.buildTriggerIdentityCredentials(
+		it('leaves a subject-less carrier untouched', async () => {
+			const subjectless = await service.buildTriggerIdentityCredentials(
 				'oauth-token',
 				'https://host/mcp/wf',
+				grant,
 			);
 			const runExecutionData = createRunExecutionData({
 				startData: {},
@@ -1699,7 +1702,7 @@ describe('establishExecutionContext', () => {
 				version: 1,
 				establishedAt: 1,
 				source: 'webhook',
-				credentials: legacy,
+				credentials: subjectless,
 			};
 			const additionalData = mock<IWorkflowExecuteAdditionalData>({
 				executionId: 'exec-real',

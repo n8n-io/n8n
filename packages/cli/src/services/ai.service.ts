@@ -101,10 +101,4 @@ export class AiService {
 			{ retryOnTimeout: false },
 		);
 	}
-
-	/** Forfeit the remaining Instance AI quota for this instance. Idempotent server-side. */
-	async lockInstanceAiQuota(user: IUser, activatedAt?: number) {
-		const client = await this.getClient();
-		return await client.lockInstanceAiQuota(user, { activatedAt });
-	}
 }

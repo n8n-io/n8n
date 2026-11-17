@@ -3,6 +3,8 @@ import { Container } from '@n8n/di';
 import type { RequestHandler } from 'express';
 
 import { ScimAuthMiddleware } from './scim-auth.middleware';
+import { scimBodyParser } from './scim-body-parser';
+import { scimOptInGate } from './scim-opt-in';
 import { ScimConfig } from './scim.config';
 
 const scimAuth = () => Container.get(ScimAuthMiddleware).getAuthMiddleware();
@@ -12,7 +14,10 @@ const scimConfig = Container.get(ScimConfig);
 /**
  * Options shared by all SCIM endpoints: the built-in cookie auth is skipped
  * and replaced by bearer-token auth (`ScimAuthMiddleware`), since requests
- * come from the identity provider, not a browser session.
+ * come from the identity provider, not a browser session. The opt-in gate
+ * runs first, so every route answers 404 while the opt-in is off.
+ * `ScimController` adds the request observer before route matching. The
+ * observer reports a rejected request when its response ends.
  */
 export const scimRoute: {
 	skipAuth: boolean;
@@ -26,6 +31,6 @@ export const scimRoute: {
 	// Identity providers call these with their own User-Agent, which the global
 	// bot filter would otherwise drop before `ScimAuthMiddleware` runs.
 	allowBots: true,
-	middlewares: [scimAuth()],
+	middlewares: [scimOptInGate, scimBodyParser, scimAuth()],
 	ipRateLimit: createIpRateLimit(scimConfig.rateLimit),
 };

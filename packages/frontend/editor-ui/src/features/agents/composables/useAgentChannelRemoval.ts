@@ -3,12 +3,13 @@ import { useI18n } from '@n8n/i18n';
 import { computed, onBeforeUnmount, ref, watch } from 'vue';
 
 import { getAgentChannelPlatform } from '../channels/registry';
-import type { AgentChannelRuntime } from '../channels/types';
+import type { AgentChannelRestart, AgentChannelRuntime } from '../channels/types';
 import type { useAgentIntegrationStatus } from './useAgentIntegrationStatus';
 
 interface PendingDisconnect {
 	channelType: string;
 	credentialId: string;
+	restartWith?: AgentChannelRestart;
 }
 
 export function useAgentChannelRemoval(options: {
@@ -21,7 +22,7 @@ export function useAgentChannelRemoval(options: {
 		'disconnect' | 'fetchStatus' | 'loadingMap'
 	>;
 	runtimeFor: (type: string) => AgentChannelRuntime | Promise<AgentChannelRuntime>;
-	onRemoved: (channelType: string) => void;
+	onRemoved: (channelType: string, options: { restartWith?: AgentChannelRestart }) => void;
 }) {
 	const toast = useToast();
 	const i18n = useI18n();
@@ -71,27 +72,35 @@ export function useAgentChannelRemoval(options: {
 			if (result.warning) {
 				const presentation = getAgentChannelPlatform(
 					pending.channelType,
-				).presentDisconnectWarning?.(result.warning, { text: (key) => i18n.baseText(key) });
+				).presentDisconnectWarning?.(result.warning, {
+					text: (key, interpolate) => i18n.baseText(key, interpolate ? { interpolate } : undefined),
+				});
 				if (presentation) {
 					toast.showMessage({ type: 'warning', ...presentation, duration: 0 });
 				}
 			}
 			pendingDisconnect.value = null;
-			options.onRemoved(pending.channelType);
+			options.onRemoved(pending.channelType, { restartWith: pending.restartWith });
 		} catch (error) {
 			showError(error);
 		}
 	}
 
-	async function requestDisconnect(channelType: string, credentialId: string) {
+	async function requestDisconnect(
+		channelType: string,
+		credentialId: string,
+		restartWith?: AgentChannelRestart,
+	) {
 		if (isBlocked(channelType) || pendingDisconnect.value) return;
 		removing.value = true;
 		try {
 			const runtime = await options.runtimeFor(channelType);
 			if (!isCurrentAgent() || options.disabled()) return;
-			const pending = { channelType, credentialId };
+			const pending = { channelType, credentialId, restartWith };
 			const platform = getAgentChannelPlatform(channelType);
+			// A restart was confirmed by the view that asked for it.
 			if (
+				restartWith === undefined &&
 				platform.shouldConfirmDisconnect?.(runtime, credentialId, {
 					isPublished: options.isPublished(),
 				})

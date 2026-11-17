@@ -8,7 +8,7 @@ import { test, expect } from '../../../../../fixtures/base';
 test.describe(
 	'NDV',
 	{
-		annotation: [{ type: 'owner', description: 'Adore' }],
+		annotation: [{ type: 'owner', description: 'NODES' }],
 	},
 	() => {
 		test('should show up when double clicked on a node and close when Back to canvas clicked', async ({

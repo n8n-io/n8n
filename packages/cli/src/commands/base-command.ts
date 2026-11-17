@@ -1,5 +1,4 @@
 import 'reflect-metadata';
-import { N8N_VERSION, N8N_RELEASE_DATE } from '@/constants';
 import {
 	inDevelopment,
 	inTest,
@@ -10,6 +9,7 @@ import {
 	ModulesConfig,
 } from '@n8n/backend-common';
 import { installGlobalProxyAgent } from '@n8n/backend-network';
+import { NodeTypesProxy, PostHogClient } from '@n8n/backend-services';
 import { AzureBlobConfig, AzureByteStore, ObjectStoreConfig, S3ByteStore } from '@n8n/blob-storage';
 import { GlobalConfig } from '@n8n/config';
 import { LICENSE_FEATURES } from '@n8n/constants';
@@ -29,7 +29,9 @@ import {
 	StorageConfig,
 } from 'n8n-core';
 import { sleep } from '@n8n/utils/sleep';
-import { Expression, UnexpectedError } from 'n8n-workflow';
+import { Expression } from 'n8n-workflow';
+import { UnexpectedError } from '@n8n/errors';
+import type { NativeVerifyMismatch } from 'n8n-workflow';
 
 import type { AbstractServer } from '@/abstract-server';
 import * as CrashJournal from '@/crash-journal';
@@ -48,10 +50,8 @@ import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
 import { CommunityPackagesConfig } from '@/modules/community-packages/community-packages.config';
 import { NodeTypes } from '@/node-types';
 import { POLICY_MODULES } from '@/policy/policy-modules';
-import { PostHogClient } from '@/posthog';
 import { instanceSystemTasks } from '@/scheduling/system-tasks/instance-system-tasks';
 import { ShutdownService } from '@/shutdown/shutdown.service';
-import { resolveBackendHealthEndpointPath } from '@/utils/health-endpoint.util';
 
 export abstract class BaseCommand<F = never> {
 	readonly flags: F;
@@ -98,8 +98,8 @@ export abstract class BaseCommand<F = never> {
 	 */
 	protected needsDb = true;
 
-	/** Whether to init task runner. */
-	protected needsTaskRunner = false;
+	/** Whether to init the code execution backend, either task runners or the code sandbox. */
+	protected needsCodeExecution = false;
 
 	/** Whether to init the expression engine. Only commands that evaluate workflow expressions need it. */
 	protected needsExpressionEngine = false;
@@ -122,50 +122,13 @@ export abstract class BaseCommand<F = never> {
 		this.dbConnection = Container.get(DbConnection);
 		this.errorReporter = Container.get(ErrorReporter);
 
-		const {
-			backendDsn,
-			environment,
-			deploymentName,
-			profilesSampleRate,
-			tracesSampleRate,
-			tracesSlowSpanThresholdMs,
-			webhookTracesSampleRate,
-			eventLoopBlockThreshold,
-			eventLoopBlockMaxEventsPerHour,
-			eventLoopBlockDetectionEnabled,
-		} = this.globalConfig.sentry;
-		await this.errorReporter.init({
-			serverType: this.instanceSettings.instanceType,
-			dsn: backendDsn,
-			environment,
-			release: `n8n@${N8N_VERSION}`,
-			serverName: deploymentName,
-			releaseDate: N8N_RELEASE_DATE,
-			withEventLoopBlockDetection: eventLoopBlockDetectionEnabled,
-			eventLoopBlockThreshold,
-			eventLoopBlockMaxEventsPerHour,
-			tracesSampleRate,
-			slowSpanThresholdMs: tracesSlowSpanThresholdMs,
-			webhookEndpoint: this.globalConfig.endpoints.webhook,
-			webhookTracesSampleRate,
-			profilesSampleRate,
-			healthEndpoint: resolveBackendHealthEndpointPath(this.globalConfig),
-			eligibleIntegrations: {
-				Express: true,
-				Http: true,
-				Postgres: this.globalConfig.database.type === 'postgresdb',
-				Redis:
-					this.globalConfig.executions.mode === 'queue' ||
-					this.globalConfig.cache.backend === 'redis',
-			},
-		});
-
 		process.once('SIGTERM', this.onTerminationSignal('SIGTERM'));
 		process.once('SIGINT', this.onTerminationSignal('SIGINT'));
 
 		this.nodeTypes = Container.get(NodeTypes);
 
 		await Container.get(LoadNodesAndCredentials).init();
+		Container.get(NodeTypesProxy).registerProvider(this.nodeTypes);
 
 		const useRedisForLocking =
 			this.globalConfig.executions.mode === 'queue' ||
@@ -237,18 +200,7 @@ export abstract class BaseCommand<F = never> {
 		this.instanceSettings.setMultiMainEnabled(isMultiMainEnabled);
 		this.instanceSettings.setMultiMainLicensed(isMultiMainEnabled); // no license check here, as the start command already implements that
 
-		const taskRunnersConfig = this.globalConfig.taskRunners;
-
-		if (this.needsTaskRunner) {
-			if (taskRunnersConfig.insecureMode) {
-				this.logger.warn(
-					'TASK RUNNER CONFIGURED TO START IN INSECURE MODE. This is discouraged for production use. Please consider using secure mode instead.',
-				);
-			}
-
-			const { TaskRunnerModule } = await import('@/task-runners/task-runner-module.js');
-			await Container.get(TaskRunnerModule).start();
-		}
+		if (this.needsCodeExecution) await this.initCodeExecution();
 
 		// TODO: remove this after the cyclic dependencies around the event-bus are resolved
 		Container.get(MessageEventBus);
@@ -269,8 +221,10 @@ export abstract class BaseCommand<F = never> {
 				lazyAcquire,
 				compileCache,
 				nativeEvaluation,
+				nativeEvaluationVerifySample,
 			} = this.globalConfig.expressionEngine;
 			const observability = Container.get(ExpressionObservabilityProvider);
+			this.logNativeVerifyModeStatus();
 			try {
 				await Expression.initExpressionEngine({
 					engine,
@@ -282,6 +236,11 @@ export abstract class BaseCommand<F = never> {
 					lazyAcquire,
 					compileCache,
 					nativeEvaluation,
+					nativeEvaluationVerifySample,
+					reportNativeVerifyMismatch: this.errorReporter.isSentryActive()
+						? (mismatch) => this.reportNativeVerifyMismatch(mismatch)
+						: undefined,
+					canReportNativeVerifyMismatch: () => this.errorReporter.isSentryActive(),
 					observability,
 				});
 			} catch (error) {
@@ -295,6 +254,45 @@ export abstract class BaseCommand<F = never> {
 			// vm-configured instance fails loudly instead of silently using the legacy engine
 			Expression.setExpressionEngine(this.globalConfig.expressionEngine.engine);
 		}
+	}
+
+	private logNativeVerifyModeStatus() {
+		const { nativeEvaluation, nativeEvaluationVerifySample, engine } =
+			this.globalConfig.expressionEngine;
+		if (nativeEvaluationVerifySample > 0) {
+			if (nativeEvaluation) {
+				this.logger.warn(
+					'Native evaluation verify mode does nothing because native evaluation is enabled',
+				);
+			} else if (engine === 'legacy') {
+				this.logger.warn(
+					'Native evaluation verify mode does nothing because the expression engine is legacy',
+				);
+			} else if (!this.errorReporter.isSentryActive()) {
+				this.logger.warn('Native evaluation verify mode does nothing because Sentry is not active');
+			} else {
+				this.logger.info('Native evaluation verify mode is active', {
+					sample: nativeEvaluationVerifySample,
+					engine,
+				});
+			}
+		}
+	}
+
+	private reportNativeVerifyMismatch({
+		engine,
+		skeleton,
+		nativeResultType,
+		engineResultType,
+		workflowId,
+	}: NativeVerifyMismatch) {
+		// Not warn: it wraps the message in an Error, which is deduplicated by stack.
+		this.errorReporter.info('Native evaluation result differs from the expression engine', {
+			tags: { expressionEngine: engine },
+			extra: { skeleton, nativeResultType, engineResultType, workflowId },
+			fingerprint: ['native-evaluation-verify-mismatch', skeleton],
+			shouldIsolate: true,
+		});
 	}
 
 	/**
@@ -574,6 +572,41 @@ export abstract class BaseCommand<F = never> {
 	 */
 	async initPolicyEnforcement() {
 		await this.moduleRegistry.initModules(this.instanceSettings.instanceType, POLICY_MODULES);
+	}
+
+	/** One-off commands that run workflows init only the modules they need. */
+	async initExecutionLedger() {
+		await this.moduleRegistry.initModules(this.instanceSettings.instanceType, ['execution-ledger']);
+	}
+
+	/** Starts one code execution backend. An instance never loads both. */
+	private async initCodeExecution() {
+		const { backend } = this.globalConfig.codeExecution;
+
+		switch (backend) {
+			case 'task-runners': {
+				if (this.globalConfig.taskRunners.insecureMode) {
+					this.logger.warn(
+						'TASK RUNNER CONFIGURED TO START IN INSECURE MODE. This is discouraged for production use. Please consider using secure mode instead.',
+					);
+				}
+
+				const { TaskRunnerModule } = await import('@/task-runners/task-runner-module.js');
+				await Container.get(TaskRunnerModule).start();
+				return;
+			}
+
+			case 'sandbox': {
+				const { CodeSandboxModule } = await import('@n8n/backend-module-code-sandbox');
+				Container.get(CodeSandboxModule).start();
+				return;
+			}
+
+			default: {
+				const exhaustive: never = backend;
+				throw new UnexpectedError(`Unknown code execution backend: ${JSON.stringify(exhaustive)}`);
+			}
+		}
 	}
 
 	async cleanupTestRunner() {

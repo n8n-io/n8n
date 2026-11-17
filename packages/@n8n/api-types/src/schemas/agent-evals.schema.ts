@@ -78,6 +78,8 @@ export const agentEvalVerdictSchema = z.object({
 	outcome: agentEvalVerdictOutcomeSchema.nullable(),
 	/** The judge's explanation, or the error message when `status` is `'error'`. */
 	reasoning: z.string().nullable(),
+	/** One instruction that would fix a failed rule. Only set on a `fail` outcome, and absent on older rows. */
+	suggestion: z.string().nullable().optional(),
 });
 export type AgentEvalVerdict = z.infer<typeof agentEvalVerdictSchema>;
 
@@ -336,8 +338,8 @@ export type CreateDraftDatasetResult = {
 
 // Request body for the preview-run endpoint: drafts exactly one case (the
 // same way `generateDraftCases` would with `count: 1, save: false`) and
-// immediately executes it against the agent through the same path Preview
-// Chat uses — no Data Table, no dataset, no eval-run row. Lets "try it once"
+// immediately executes it with the same mocked tools as saved checks — no
+// Data Table, dataset, or eval-run row. Lets "try it once"
 // (and its "needs work" retries) run freely without leaving anything behind.
 const previewRunOptionsShape = {
 	suggestion: z.string().min(1).optional(),
@@ -377,3 +379,40 @@ const rerunResultOptionsShape = {
 export const rerunResultOptionsSchema = z.object(rerunResultOptionsShape);
 export type RerunResultOptions = z.infer<typeof rerunResultOptionsSchema>;
 export class RerunResultOptionsDto extends Z.class(rerunResultOptionsShape) {}
+
+// Applies the fix suggestions stored on failed results: the backend rewrites the
+// agent's instructions once to include all of them, then reruns only these results.
+export const MAX_APPLY_SUGGESTIONS = 10;
+const applyAgentEvalSuggestionsShape = {
+	resultIds: z.array(z.string().min(1)).min(1).max(MAX_APPLY_SUGGESTIONS),
+};
+export const applyAgentEvalSuggestionsSchema = z.object(applyAgentEvalSuggestionsShape);
+export type ApplyAgentEvalSuggestionsOptions = z.infer<typeof applyAgentEvalSuggestionsSchema>;
+export class ApplyAgentEvalSuggestionsDto extends Z.class(applyAgentEvalSuggestionsShape) {}
+
+export type ApplyAgentEvalSuggestionsResult = {
+	/** Hash of the saved agent config, so the editor can adopt it without a conflict. */
+	configHash: string;
+	/** The reran results, in the order they were requested. */
+	results: AgentEvalResultRecord[];
+};
+
+// Applies the suggestion on a preview run's failed first check. A preview run
+// saves nothing, so the case travels in the body instead of a result id: the
+// backend rewrites the agent's instructions with the suggestion, then runs the
+// same case again.
+const applyPreviewSuggestionShape = {
+	input: z.string().trim().min(1).max(10_000),
+	whatToCheck: z.string().trim().min(1).max(10_000),
+	suggestion: z.string().trim().min(1).max(10_000),
+};
+export const applyPreviewSuggestionSchema = z.object(applyPreviewSuggestionShape);
+export type ApplyPreviewSuggestionOptions = z.infer<typeof applyPreviewSuggestionSchema>;
+export class ApplyPreviewSuggestionDto extends Z.class(applyPreviewSuggestionShape) {}
+
+export type ApplyPreviewSuggestionResult = {
+	/** Hash of the saved agent config, so the editor can adopt it without a conflict. */
+	configHash: string;
+	/** The same case, run again against the rewritten instructions. */
+	preview: PreviewRunResult;
+};

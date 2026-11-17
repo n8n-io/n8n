@@ -4,7 +4,8 @@ import { Time } from '@n8n/constants';
 import { Container, Service } from '@n8n/di';
 import { isRecord } from '@n8n/utils/is-record';
 import { caching } from 'cache-manager';
-import { jsonStringify, UserError } from 'n8n-workflow';
+import { jsonStringify } from 'n8n-workflow';
+import { UserError } from '@n8n/errors';
 
 import { UncacheableValueError } from '../../errors/cache-errors/uncacheable-value.error';
 
@@ -138,7 +139,7 @@ export class CacheService extends TypedEmitter<CacheEvents> {
 	async setHash(key: string, hash: Hash) {
 		if (!this.cache) await this.init();
 
-		if (!key?.length) return;
+		if (!key?.length || Object.keys(hash).length === 0) return;
 
 		for (const hashKey in hash) {
 			if (hash[hashKey] === undefined || hash[hashKey] === null) return;
@@ -151,7 +152,15 @@ export class CacheService extends TypedEmitter<CacheEvents> {
 
 		const hashObject: Hash = (await this.get(key)) ?? {};
 
-		Object.assign(hashObject, hash);
+		for (const [field, value] of Object.entries(hash)) {
+			// Skip `__proto__`. On a plain object, `hash['__proto__'] = value` does not add a field.
+			// It changes the object's prototype.
+			if (field === '__proto__') {
+				continue;
+			}
+
+			hashObject[field] = value;
+		}
 
 		await this.set(key, hashObject);
 	}
@@ -309,7 +318,10 @@ export class CacheService extends TypedEmitter<CacheEvents> {
 		} else {
 			const hashObject = await this.cache.store.get<Hash<T>>(cacheKey);
 
-			hashValue = hashObject?.[hashKey] as MaybeHash<T>;
+			hashValue =
+				hashObject && Object.hasOwn(hashObject, hashKey)
+					? (hashObject[hashKey] as MaybeHash<T>)
+					: undefined;
 		}
 
 		if (hashValue !== undefined) {

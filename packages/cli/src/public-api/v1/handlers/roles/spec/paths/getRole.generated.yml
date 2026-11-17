@@ -2,11 +2,11 @@ operationId: getRole
 tags:
   - Role
 summary: Retrieve a role
-description: Returns a single role with its scopes. Set `withUsageCount` to include how many users and projects use the role.
+description: |-
+  Returns a single role with its scopes. Set `withUsageCount` to include how many users and projects use the role.
+
+  Requires the `role:read` API key scope.
 x-required-scope: role:read
-x-eov-operation-id: unreachable
-x-eov-operation-handler: v1/handlers/decorator-routed.handler
-x-decorator-routed: true
 parameters:
   - schema:
       type: string
@@ -79,3 +79,5 @@ responses:
     $ref: ../../../../shared/spec/responses/forbidden.yml
   '404':
     $ref: ../../../../shared/spec/responses/notFound.yml
+  '429':
+    $ref: ../../../../shared/spec/responses/tooManyRequests.yml

@@ -5,7 +5,7 @@ import { Service } from '@n8n/di';
 import { singleFlight } from '@n8n/utils/promise/single-flight';
 
 import { PolicyEnforcementService } from '@/policy/policy-enforcement.service';
-import type { RestrictedNodeTypesProvider } from '@/workflows/restricted-node-types-provider-proxy.service';
+import type { RestrictedNodeTypesProvider } from '@n8n/backend-services';
 
 import { NODE_TYPES_KIND } from './constants';
 import type {
@@ -26,7 +26,9 @@ export class NodeTypePolicyRestrictedTypesProvider implements RestrictedNodeType
 	readonly findRestrictedWorkflowIds = singleFlight(async (): Promise<WorkflowIdsQuery | null> => {
 		const restricted = await this.findRestrictedNodeTypes();
 
-		return restricted && this.restrictedWorkflowRepository.restrictedWorkflowIdsQuery(restricted);
+		return (
+			restricted && this.restrictedWorkflowRepository.restrictedWorkflowIdsQuery(restricted, {})
+		);
 	});
 
 	constructor(
@@ -44,7 +46,7 @@ export class NodeTypePolicyRestrictedTypesProvider implements RestrictedNodeType
 			return null;
 		}
 
-		const inUse = await this.restrictedWorkflowRepository.findRunningNodeTypes();
+		const inUse = await this.restrictedWorkflowRepository.findRunningNodeTypes({});
 		if (inUse.length === 0) return null;
 
 		const { withoutProjectPolicy, byProject } =

@@ -37,19 +37,38 @@ export class PromotionProviderRepository extends BaseRepository<PromotionProvide
 		await this.update({ id }, changes);
 	}
 
+	async updateProviderIfUnchanged(
+		id: string,
+		expected: Pick<PromotionProvider, 'config' | 'auth'>,
+		changes: Partial<Pick<PromotionProvider, 'name' | 'config' | 'auth'>>,
+	): Promise<boolean> {
+		// PostgreSQL json needs jsonb equality. SQLite stores serialized JSON text.
+		const configUnchanged =
+			this.manager.connection.options.type === 'postgres'
+				? 'CAST("config" AS jsonb) = CAST(:expectedConfig AS jsonb)'
+				: '"config" = :expectedConfig';
+		const result = await this.createQueryBuilder()
+			.update(PromotionProvider)
+			.set(changes)
+			.where('"id" = :id', { id })
+			.andWhere('"auth" = :expectedAuth', { expectedAuth: expected.auth })
+			.andWhere(configUnchanged, { expectedConfig: JSON.stringify(expected.config) })
+			.execute();
+		return result.affected === 1;
+	}
+
 	/**
-	 * The foreign key from `promotion_connection` is the final guard, so a
-	 * connection created after the caller's check still cannot lose its provider.
+	 * The foreign key from `promotion_environment` is the final guard, so an
+	 * environment created after the caller's check still cannot lose its provider.
 	 */
-	async deleteProvider(id: string): Promise<void> {
+	/** Returns false when no row was deleted, for example after a concurrent delete. */
+	async deleteProvider(id: string): Promise<boolean> {
 		try {
-			await this.delete({ id });
+			const result = await this.delete({ id });
+			return (result.affected ?? 0) > 0;
 		} catch (error) {
 			if (isForeignKeyConstraintError(error)) {
-				throw new PromotionConflictError(
-					'provider-in-use',
-					'This provider is used by a connection',
-				);
+				throw new PromotionConflictError('This provider is used by a promotion environment');
 			}
 			throw error;
 		}

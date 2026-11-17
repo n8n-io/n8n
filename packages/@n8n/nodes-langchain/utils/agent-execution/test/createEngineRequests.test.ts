@@ -339,6 +339,23 @@ describe('createEngineRequests', () => {
 	});
 
 	describe('HITL (Human-in-the-Loop) tools handling', () => {
+		// Same schema shape as the gated tools built by createHitlToolkit
+		const createHitlTool = (name: string, metadata: ToolMetadata) =>
+			new DynamicStructuredTool({
+				name,
+				description: `A gated tool named ${name}`,
+				schema: z.object({
+					toolParameters: z.object({}).passthrough(),
+					hitlParameters: z.object({
+						hitlParam1: z.string(),
+						hitlParam2: z.string(),
+						query: z.unknown(),
+					}),
+				}),
+				func: async () => '',
+				metadata,
+			});
+
 		it('should extract HITL metadata when gatedToolNodeName is present', async () => {
 			const tools = [
 				createMockTool('gated_tool', {
@@ -378,7 +395,7 @@ describe('createEngineRequests', () => {
 
 		it('should merge hitlParameters into input when HITL metadata is present', async () => {
 			const tools = [
-				createMockTool('gated_tool', {
+				createHitlTool('gated_tool', {
 					sourceNodeName: 'ToolNode',
 					gatedToolNodeName: 'HITLNode',
 				}),
@@ -405,6 +422,7 @@ describe('createEngineRequests', () => {
 			expect(result).toHaveLength(1);
 			expect(result[0].input).toEqual({
 				toolParameters: { param1: 'value1' },
+				tool: 'gated_tool',
 				hitlParam1: 'hitlValue1',
 				hitlParam2: 'hitlValue2',
 			});
@@ -438,7 +456,7 @@ describe('createEngineRequests', () => {
 
 		it('should handle HITL tool with toolkit flag', async () => {
 			const tools = [
-				createMockTool('gated_toolkit_tool', {
+				createHitlTool('gated_toolkit_tool', {
 					sourceNodeName: 'ToolkitNode',
 					gatedToolNodeName: 'HITLNode',
 					isFromToolkit: true,
@@ -507,9 +525,9 @@ describe('createEngineRequests', () => {
 					param1: 'value1',
 				},
 			});
-			// Input should remain the same when hitlParameters is missing
 			expect(result[0].input).toEqual({
 				toolParameters: { param1: 'value1' },
+				tool: 'gated_tool',
 			});
 		});
 
@@ -991,6 +1009,317 @@ describe('createEngineRequests', () => {
 
 			expect(result).toHaveLength(1);
 			expect(result[0].metadata.google).toBeUndefined();
+		});
+	});
+
+	describe('Tool argument collision handling', () => {
+		it('stashes user `tool` argument before injecting routing key', () => {
+			const tools = [
+				createMockTool('MCP_Client_search', {
+					sourceNodeName: 'MCP_Client',
+					isFromToolkit: true,
+					isMcpTool: true,
+				}),
+			];
+
+			const toolCalls: ToolCallRequest[] = [
+				{
+					tool: 'MCP_Client_search',
+					toolInput: { tool: 'user-value', extra: 123 },
+					toolCallId: 'call_123',
+				},
+			];
+
+			const result = createEngineRequests(toolCalls, 0, tools);
+
+			expect(result).toHaveLength(1);
+			expect(result[0].input).toEqual({
+				tool: 'MCP_Client_search',
+				extra: 123,
+				_n8nOriginalToolArg: { tool: 'user-value' },
+			});
+		});
+
+		it('does not stash arguments for toolkit tools without the MCP marker', () => {
+			const tools = [
+				createMockTool('Toolkit_search', {
+					sourceNodeName: 'Toolkit',
+					isFromToolkit: true,
+				}),
+			];
+
+			const result = createEngineRequests(
+				[
+					{
+						tool: 'Toolkit_search',
+						toolInput: { tool: 'user-value', query: 'test' },
+						toolCallId: 'call_123',
+					},
+				],
+				0,
+				tools,
+			);
+
+			expect(result[0].input).toEqual({ tool: 'Toolkit_search', query: 'test' });
+			expect(result[0].input).not.toHaveProperty('_n8nOriginalToolArg');
+		});
+
+		it('stashes user `toolCallId` arguments before the engine overwrites them', () => {
+			const tools = [
+				createMockTool('MCP_Client_search', {
+					sourceNodeName: 'MCP_Client',
+					isFromToolkit: true,
+					isMcpTool: true,
+				}),
+			];
+
+			const result = createEngineRequests(
+				[
+					{
+						tool: 'MCP_Client_search',
+						toolInput: { toolCallId: 'user-id', query: 'test' },
+						toolCallId: 'call_123',
+					},
+				],
+				0,
+				tools,
+			);
+
+			expect(result[0].input).toEqual({
+				tool: 'MCP_Client_search',
+				toolCallId: 'user-id',
+				query: 'test',
+				_n8nOriginalToolArg: { toolCallId: 'user-id' },
+			});
+		});
+
+		it('does not stash when user `tool` is absent', () => {
+			const tools = [
+				createMockTool('MCP_Client_search', {
+					sourceNodeName: 'MCP_Client',
+					isFromToolkit: true,
+					isMcpTool: true,
+				}),
+			];
+
+			const toolCalls: ToolCallRequest[] = [
+				{
+					tool: 'MCP_Client_search',
+					toolInput: { extra: 123 },
+					toolCallId: 'call_123',
+				},
+			];
+
+			const result = createEngineRequests(toolCalls, 0, tools);
+
+			expect(result).toHaveLength(1);
+			expect(result[0].input).toEqual({
+				tool: 'MCP_Client_search',
+				extra: 123,
+			});
+			expect('_n8nOriginalToolArg' in (result[0].input as Record<string, unknown>)).toBe(false);
+		});
+
+		it('discards an incoming stash key before stashing the user `tool` argument', () => {
+			const tools = [
+				createMockTool('MCP_Client_search', {
+					sourceNodeName: 'MCP_Client',
+					isFromToolkit: true,
+					isMcpTool: true,
+				}),
+			];
+
+			const toolCalls: ToolCallRequest[] = [
+				{
+					tool: 'MCP_Client_search',
+					toolInput: { tool: 'user', _n8nOriginalToolArg: 'injected', extra: 1 },
+					toolCallId: 'call_123',
+				},
+			];
+
+			const result = createEngineRequests(toolCalls, 0, tools);
+
+			expect(result).toHaveLength(1);
+			expect(result[0].input).toEqual({
+				tool: 'MCP_Client_search',
+				_n8nOriginalToolArg: { tool: 'user' },
+				extra: 1,
+			});
+		});
+
+		it('does not let a model-supplied stash key override the user `tool` argument', () => {
+			const tools = [
+				createMockTool('MCP_Client_search', {
+					sourceNodeName: 'MCP_Client',
+					isFromToolkit: true,
+					isMcpTool: true,
+				}),
+			];
+
+			const toolCalls: ToolCallRequest[] = [
+				{
+					tool: 'MCP_Client_search',
+					toolInput: { tool: 'REAL', _n8nOriginalToolArg: 'INJECTED' },
+					toolCallId: 'call_123',
+				},
+			];
+
+			const result = createEngineRequests(toolCalls, 0, tools);
+
+			expect(result).toHaveLength(1);
+			expect(result[0].input).toEqual({
+				tool: 'MCP_Client_search',
+				_n8nOriginalToolArg: { tool: 'REAL' },
+			});
+			expect(JSON.stringify(result)).not.toContain('INJECTED');
+		});
+
+		it('discards an incoming stash key when user `tool` is absent', () => {
+			const tools = [
+				createMockTool('MCP_Client_search', {
+					sourceNodeName: 'MCP_Client',
+					isFromToolkit: true,
+					isMcpTool: true,
+				}),
+			];
+
+			const toolCalls: ToolCallRequest[] = [
+				{
+					tool: 'MCP_Client_search',
+					toolInput: { _n8nOriginalToolArg: 'INJECTED', extra: 1 },
+					toolCallId: 'call_123',
+				},
+			];
+
+			const result = createEngineRequests(toolCalls, 0, tools);
+
+			expect(result).toHaveLength(1);
+			expect(result[0].input).toEqual({ tool: 'MCP_Client_search', extra: 1 });
+			expect(JSON.stringify(result)).not.toContain('INJECTED');
+		});
+
+		it.each([
+			{ label: 'empty string', value: '' },
+			{ label: 'null', value: null },
+		])('stashes tool when value is $label', ({ value }) => {
+			const tools = [
+				createMockTool('MCP_Client_search', {
+					sourceNodeName: 'MCP_Client',
+					isFromToolkit: true,
+					isMcpTool: true,
+				}),
+			];
+
+			const toolCalls: ToolCallRequest[] = [
+				{
+					tool: 'MCP_Client_search',
+					toolInput: { tool: value },
+					toolCallId: 'call_123',
+				},
+			];
+
+			const result = createEngineRequests(toolCalls, 0, tools);
+
+			expect(result).toHaveLength(1);
+			expect(result[0].input).toEqual({
+				tool: 'MCP_Client_search',
+				_n8nOriginalToolArg: { tool: value },
+			});
+		});
+
+		it('non-MCP tools remain unchanged (no stash)', () => {
+			const tools = [
+				createMockTool('MCP_Client_search', {
+					sourceNodeName: 'MCP_Client',
+					isFromToolkit: false,
+				}),
+			];
+
+			const toolCalls: ToolCallRequest[] = [
+				{
+					tool: 'MCP_Client_search',
+					toolInput: { tool: 'user-value', extra: 1 },
+					toolCallId: 'call_123',
+				},
+			];
+
+			const result = createEngineRequests(toolCalls, 0, tools);
+
+			expect(result).toHaveLength(1);
+			expect(result[0].input).toEqual({
+				tool: 'user-value',
+				extra: 1,
+			});
+			expect('_n8nOriginalToolArg' in (result[0].input as Record<string, unknown>)).toBe(false);
+		});
+
+		it('stashes non-primitive tool values exactly', () => {
+			const tools = [
+				createMockTool('MCP_Client_search', {
+					sourceNodeName: 'MCP_Client',
+					isFromToolkit: true,
+					isMcpTool: true,
+				}),
+			];
+
+			const toolCalls: ToolCallRequest[] = [
+				{
+					tool: 'MCP_Client_search',
+					toolInput: { tool: { nested: 'value' }, extra: 1 },
+					toolCallId: 'call_123',
+				},
+			];
+
+			const result = createEngineRequests(toolCalls, 0, tools);
+
+			expect(result).toHaveLength(1);
+			expect(result[0].input).toEqual({
+				tool: 'MCP_Client_search',
+				extra: 1,
+				_n8nOriginalToolArg: { tool: { nested: 'value' } },
+			});
+		});
+
+		it('stashes only for colliding tool calls in a batch', () => {
+			const tools = [
+				createMockTool('MCP_Client_search', {
+					sourceNodeName: 'MCP_Client',
+					isFromToolkit: true,
+					isMcpTool: true,
+				}),
+				createMockTool('MCP_Client_other', {
+					sourceNodeName: 'MCP_Client',
+					isFromToolkit: true,
+					isMcpTool: true,
+				}),
+			];
+
+			const toolCalls: ToolCallRequest[] = [
+				{
+					tool: 'MCP_Client_search',
+					toolInput: { tool: 'a', extra: 'one' },
+					toolCallId: 'call_1',
+				},
+				{
+					tool: 'MCP_Client_other',
+					toolInput: { extra: 'two' },
+					toolCallId: 'call_2',
+				},
+			];
+
+			const result = createEngineRequests(toolCalls, 0, tools);
+
+			expect(result).toHaveLength(2);
+			expect(result[0].input).toEqual({
+				tool: 'MCP_Client_search',
+				extra: 'one',
+				_n8nOriginalToolArg: { tool: 'a' },
+			});
+			expect(result[1].input).toEqual({
+				tool: 'MCP_Client_other',
+				extra: 'two',
+			});
+			expect('_n8nOriginalToolArg' in (result[1].input as Record<string, unknown>)).toBe(false);
 		});
 	});
 

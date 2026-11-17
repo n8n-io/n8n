@@ -1,12 +1,21 @@
+import { DateTime } from 'luxon';
+
 import { ExpressionExtensionError } from '../../errors/expression-extension.error';
 import { ExpressionError } from '../../errors/expression.error';
+import { extend } from '../../extensions';
 import type { IWorkflowDataProxyData } from '../../interfaces';
 import {
 	ARRAY_METHODS,
+	EXTENSION_METHODS,
+	ITERATOR_NATIVES,
 	MAX_DEPTH,
 	MAX_RESULT_LENGTH,
+	MAX_STEPS,
+	MAX_WORK,
 	NUMBER_METHODS,
 	STRING_METHODS,
+	TIME_MEMBERS,
+	TIME_METHODS,
 	hasOwn,
 	isArray,
 	isObj,
@@ -24,6 +33,30 @@ import {
 // the grammar stops compilation until it is handled here.
 
 /**
+ * One evaluation's state: the data proxy, the value bound to the callback
+ * parameter while a body runs, and the step and work budgets spent so far.
+ * Only one callback is ever in scope (a nested one is unrepresentable), so a
+ * single slot holds the parameter, and both budgets are shared by every node
+ * of the expression.
+ */
+export class Env {
+	param: unknown = undefined;
+
+	steps = 0;
+
+	work = 0;
+
+	readonly parameters = new Map<string | number, unknown>();
+
+	constructor(readonly data: IWorkflowDataProxyData) {}
+
+	charge(units: number): void {
+		this.work += units;
+		if (this.work > MAX_WORK) throw new EngineFallbackError('too_much_work');
+	}
+}
+
+/**
  * Thrown when a runtime value falls outside what parsing proved statically
  * (a whitelisted string method on a non-string receiver, an operator on an
  * object operand, a result above MAX_RESULT_LENGTH). The whole evaluation is
@@ -32,7 +65,20 @@ import {
  * nested `$parameter` expression, or a getter on a data object. Expressions
  * are pure and workflow data is JSON, so the only cost is the repeated work.
  */
-export class EngineFallbackError extends Error {}
+export class EngineFallbackError extends Error {
+	constructor(readonly reason: NativeFallbackReason) {
+		super();
+	}
+}
+
+/** Why a runtime value sent an expression back to the engine. */
+export type NativeFallbackReason =
+	| 'too_large'
+	| 'too_deep'
+	| 'too_much_work'
+	| 'unsupported_method'
+	| 'unsupported_type'
+	| 'replace_pattern';
 
 /**
  * Thrown by an optional member/call on a nullish receiver and caught by the
@@ -62,7 +108,7 @@ export function bounded<T>(value: T): T {
 	const isSizeable = typeof value === 'string' || isArray(value);
 
 	if (isSizeable && value.length > MAX_RESULT_LENGTH) {
-		throw new EngineFallbackError();
+		throw new EngineFallbackError('too_large');
 	}
 
 	return value;
@@ -90,11 +136,12 @@ const binaryOps: Record<BinaryOp, (l: any, r: any) => unknown> = Object.freeze({
 });
 /* eslint-enable @typescript-eslint/no-explicit-any */
 
-function evalMember(
-	node: Extract<SimpleNode, { kind: 'member' }>,
-	data: IWorkflowDataProxyData,
-): unknown {
-	const object = evalNode(node.object, data);
+function evalMember(node: Extract<SimpleNode, { kind: 'member' }>, env: Env): unknown {
+	if (node.object.kind === 'timeRoot') {
+		return evalTimeRead(env.data[node.object.name], TIME_MEMBERS.get(toStr(node.key)));
+	}
+
+	const object = evalNode(node.object, env);
 
 	if (node.optional && (object === null || object === undefined)) {
 		throw chainShortCircuit;
@@ -114,19 +161,38 @@ function evalMember(
 		node.key in object &&
 		!hasOwn(object, node.key);
 	if (inherited) {
-		throw new EngineFallbackError();
+		throw new EngineFallbackError('unsupported_type');
 	}
 
-	const value = object[node.key];
+	// A node reference member (`.item`, `.json`) resolves through the proxy.
+	if (node.object.kind === 'nodeRef') env.charge(1);
+
+	const value = isParameterRead(node) ? readParameter(object, node.key, env) : object[node.key];
 
 	// Neither crosses an engine boundary the same way twice (the vm bridge
 	// drops a nested function but fails on an inherited one; legacy throws),
 	// so the configured engine decides rather than this module guessing.
 	if (typeof value === 'function' || typeof value === 'symbol') {
-		throw new EngineFallbackError();
+		throw new EngineFallbackError('unsupported_type');
 	}
 
 	return value;
+}
+
+const isParameterRead = (node: Extract<SimpleNode, { kind: 'member' }>): boolean =>
+	node.object.kind === 'root' && node.object.name === '$parameter';
+
+/**
+ * A `$parameter` read resolves a nested `=` expression through the proxy on
+ * every access, each in its own evaluation with its own budgets. A callback
+ * body would resolve it once per element, multiplying the budgets. The vm
+ * bridge resolves each parameter once per evaluation; do the same, so nested
+ * work is one budget per key the expression names.
+ */
+function readParameter(proxy: Record<string | number, unknown>, key: string | number, env: Env) {
+	if (!env.parameters.has(key)) env.parameters.set(key, proxy[key]);
+
+	return env.parameters.get(key);
 }
 
 /**
@@ -145,7 +211,7 @@ function methodFor(receiver: unknown, name: string): NativeMethod {
 		method = ARRAY_METHODS.get(name);
 	}
 
-	if (method === undefined) throw new EngineFallbackError();
+	if (method === undefined) throw new EngineFallbackError('unsupported_method');
 
 	return method;
 }
@@ -166,9 +232,10 @@ function isAllowedArgument(method: string, arg: unknown): boolean {
  * interrupted, so the input size is the budget. A receiver above the result
  * cap goes to the engine before any work is done, and the amplifying methods
  * (which can allocate far beyond MAX_RESULT_LENGTH before bounded() sees the
- * result) bail on an upper bound of their output.
+ * result) bail on an upper bound of their output. Returns that bound, which
+ * the caller charges against the expression's work budget.
  */
-function assertPreflightSize(receiver: unknown, method: string, args: unknown[]): void {
+function preflightSize(receiver: unknown, method: string, args: unknown[]): number {
 	let upperBound = typeof receiver === 'number' ? 0 : (receiver as { length: number }).length;
 
 	if (method === 'concat') {
@@ -187,7 +254,8 @@ function assertPreflightSize(receiver: unknown, method: string, args: unknown[])
 		// `$$` is an escaped literal `$`; strip those pairs first so that `$$&`
 		// (a literal "$&") stays native while `$$$&` (a literal "$" then `$&`)
 		// bails. With a string pattern every other `$` is literal.
-		if (/\$[&`']/.test(replacement.replaceAll('$$', ''))) throw new EngineFallbackError();
+		if (/\$[&`']/.test(replacement.replaceAll('$$', '')))
+			throw new EngineFallbackError('replace_pattern');
 
 		upperBound =
 			method === 'replace'
@@ -204,8 +272,10 @@ function assertPreflightSize(receiver: unknown, method: string, args: unknown[])
 	}
 
 	if (upperBound > MAX_RESULT_LENGTH) {
-		throw new EngineFallbackError();
+		throw new EngineFallbackError('too_large');
 	}
+
+	return upperBound;
 }
 
 /**
@@ -238,11 +308,36 @@ const STRINGIFIES_ELEMENTS = new Set(['join', 'toSorted']);
 function assertPrimitiveElements(receiver: unknown[]): void {
 	// The receiver cap applies before the scan, so the scan never walks more
 	// than the cap either.
-	if (receiver.length > MAX_RESULT_LENGTH) throw new EngineFallbackError();
+	if (receiver.length > MAX_RESULT_LENGTH) throw new EngineFallbackError('too_large');
 
 	for (const element of receiver) {
-		if (!isPrimitive(element)) throw new EngineFallbackError();
+		if (!isPrimitive(element)) throw new EngineFallbackError('unsupported_type');
 	}
+}
+
+/**
+ * toSorted() stringifies both operands of every comparison, and includes(),
+ * indexOf() and lastIndexOf() compare each element with the search value, so
+ * their work follows element content, not element count. Returns that
+ * content, which the caller charges on top of the preflight bound.
+ */
+function elementContentWork(receiver: unknown[], method: string): number {
+	if (method === 'toSorted') {
+		let content = 0;
+		for (const element of receiver) content += toStr(element).length;
+
+		// Each comparison reads both operands, so a pass can read the content twice.
+		return 2 * content * Math.ceil(Math.log2(receiver.length + 1));
+	}
+
+	if (method === 'includes' || method === 'indexOf' || method === 'lastIndexOf') {
+		let content = 0;
+		for (const element of receiver) content += typeof element === 'string' ? element.length : 1;
+
+		return content;
+	}
+
+	return 0;
 }
 
 /**
@@ -251,7 +346,7 @@ function assertPrimitiveElements(receiver: unknown[]): void {
  * cap hands off: the engine owns data that deep.
  */
 function contentWeight(value: unknown, budget: number, depth = 0): number {
-	if (depth > MAX_DEPTH) throw new EngineFallbackError();
+	if (depth > MAX_DEPTH) throw new EngineFallbackError('too_deep');
 	if (typeof value === 'string') return value.length;
 	if (!isObj(value)) return 1;
 
@@ -287,14 +382,14 @@ function assertConcatWeight(receiver: unknown[], args: unknown[]): void {
 		if (weight > MAX_RESULT_LENGTH) break;
 		weight += contentWeight(arg, MAX_RESULT_LENGTH - weight);
 	}
-	if (weight > MAX_RESULT_LENGTH) throw new EngineFallbackError();
+	if (weight > MAX_RESULT_LENGTH) throw new EngineFallbackError('too_large');
 }
 
-function evalCall(
-	node: Extract<SimpleNode, { kind: 'call' }>,
-	data: IWorkflowDataProxyData,
-): unknown {
-	const receiver = evalNode(node.receiver, data);
+function evalReceiver(
+	node: Extract<SimpleNode, { kind: 'call' | 'iterate' }>,
+	env: Env,
+): NonNullable<unknown> {
+	const receiver = evalNode(node.receiver, env);
 	const receiverMissing = receiver === null || receiver === undefined;
 
 	if (node.optional && receiverMissing) {
@@ -305,60 +400,167 @@ function evalCall(
 		throw new TypeError(`Cannot read properties of ${toStr(receiver)} (reading '${node.method}')`);
 	}
 
+	return receiver;
+}
+
+function evalCall(node: Extract<SimpleNode, { kind: 'call' }>, env: Env): unknown {
 	if (node.receiver.kind === 'nodeRef') {
-		return evalNodeRefCall(receiver, node.method);
+		return evalNodeRefCall(evalReceiver(node, env), node.method, env);
 	}
+
+	if (node.receiver.kind === 'timeRoot') {
+		return evalTimeRead(evalReceiver(node, env), TIME_METHODS.get(node.method));
+	}
+
+	if (EXTENSION_METHODS.has(node.method)) return evalExtension(node, env);
+
+	const receiver = evalReceiver(node, env);
 
 	// An own property shadowing the method (an engine-resolved $parameter value
 	// can carry one) would take precedence in the engines.
 	if (hasOwn(receiver, node.method)) {
-		throw new EngineFallbackError();
+		throw new EngineFallbackError('unsupported_method');
 	}
 
 	const method = methodFor(receiver, node.method);
-
-	const args = node.args.map((argument) => evalNode(argument, data));
-	if (!args.every((arg) => isAllowedArgument(node.method, arg))) {
-		throw new EngineFallbackError();
-	}
+	const args = evalArgs(node, env);
 
 	if (isArray(receiver)) {
 		if (STRINGIFIES_ELEMENTS.has(node.method)) assertPrimitiveElements(receiver);
 		if (node.method === 'concat') assertConcatWeight(receiver, args);
 	}
-	assertPreflightSize(receiver, node.method, args);
+	env.charge(preflightSize(receiver, node.method, args));
+	if (isArray(receiver)) env.charge(elementContentWork(receiver, node.method));
 
 	return bounded(method.apply(receiver, args));
+}
+
+function evalArgs(node: Extract<SimpleNode, { kind: 'call' }>, env: Env): unknown[] {
+	const args = node.args.map((argument) => evalNode(argument, env));
+	if (!args.every((arg) => isAllowedArgument(node.method, arg))) {
+		throw new EngineFallbackError('unsupported_type');
+	}
+
+	return args;
+}
+
+/**
+ * An allowlisted extension runs through extend(), the same host dispatch the
+ * engines call. extendSyntax rewrites the call into that dispatch whatever
+ * the receiver holds: an own property does not shadow it, and a missing
+ * receiver is extend()'s own error, not a TypeError. Every extension is at
+ * most linear in its receiver, so the receiver's content is the work charged
+ * and the pre-flight bound. A receiver that can be a root proxy is declined
+ * at parse time (mayBeRoot), and a result the engines would copy
+ * differently (a Date, a class instance, an iterator) is theirs too.
+ */
+function evalExtension(node: Extract<SimpleNode, { kind: 'call' }>, env: Env): unknown {
+	const receiver = evalNode(node.receiver, env);
+	if (node.optional && (receiver === null || receiver === undefined)) {
+		throw chainShortCircuit;
+	}
+
+	const args = evalArgs(node, env);
+	const weight = contentWeight(receiver, MAX_RESULT_LENGTH);
+	if (weight > MAX_RESULT_LENGTH) throw new EngineFallbackError('too_large');
+	env.charge(weight);
+
+	const result: unknown = extend(receiver, node.method, args);
+	if (isObj(result) && !isArray(result) && Object.getPrototypeOf(result) !== Object.prototype) {
+		throw new EngineFallbackError('unsupported_type');
+	}
+
+	return bounded(result);
+}
+
+/**
+ * `some`/`every`/`find`/`filter`/`map` with a callback body. The native
+ * method drives the iteration; the body runs per element with the element
+ * bound to the parameter, under the shared step and work budgets. map is the one
+ * method whose result is new content per element, so it is bounded by the
+ * content weight of its results the way concat is bounded by its operands.
+ */
+function evalIterate(node: Extract<SimpleNode, { kind: 'iterate' }>, env: Env): unknown {
+	const receiver = evalReceiver(node, env);
+
+	if (!isArray(receiver) || hasOwn(receiver, node.method)) {
+		throw new EngineFallbackError('unsupported_method');
+	}
+
+	const method = ITERATOR_NATIVES.get(node.method);
+	if (method === undefined) throw new EngineFallbackError('unsupported_method');
+
+	env.charge(preflightSize(receiver, node.method, []));
+
+	let weight = 0;
+	const visit = (element: unknown) => {
+		if (++env.steps > MAX_STEPS) throw new EngineFallbackError('too_much_work');
+
+		env.param = element;
+		const result = evalNode(node.body, env);
+
+		if (node.method === 'map') {
+			weight += contentWeight(result, MAX_RESULT_LENGTH - weight);
+			if (weight > MAX_RESULT_LENGTH) throw new EngineFallbackError('too_large');
+		}
+
+		return result;
+	};
+
+	return bounded(method.call(receiver, visit));
 }
 
 /**
  * `first()`, `last()` and `all()` on a node proxy. The proxy hands back a
  * host function that reads run data for the node the reference names, which
  * is what the engines call too (the vm bridge routes it through typed RPC).
+ * The host can copy every item per call (combined binary mode does), so the
+ * result is charged per element; a callback body repeats the call per visit.
  */
-function evalNodeRefCall(proxy: unknown, method: string): unknown {
+function evalNodeRefCall(proxy: unknown, method: string, env: Env): unknown {
 	const fn: unknown = Reflect.get(proxy as object, method);
-	if (typeof fn !== 'function') throw new EngineFallbackError();
+	if (typeof fn !== 'function') throw new EngineFallbackError('unsupported_method');
 
-	return bounded(fn.call(proxy));
+	const result = bounded(fn.call(proxy));
+
+	// A node name that is an Object.prototype key resolves through a plain
+	// object lookup on the host. Only the item shapes stay native.
+	const expected = method === 'all' ? isArray(result) : result === undefined || isItem(result);
+	if (!expected) throw new EngineFallbackError('unsupported_type');
+
+	env.charge(isArray(result) ? result.length : 1);
+
+	return result;
 }
 
-function evalNodeRef(
-	node: Extract<SimpleNode, { kind: 'nodeRef' }>,
-	data: IWorkflowDataProxyData,
-): unknown {
-	if (node.ref === 'input') return data.$input;
-	if (node.ref === 'legacy') return data.$node[node.name];
+const isItem = (value: unknown): boolean => isObj(value) && !isArray(value);
 
-	return data.$(node.name);
+/**
+ * A captured Luxon getter or zero-argument method on `$now`/`$today`. The
+ * root is the proxy's own DateTime (anything else is the engine's), and the
+ * result is a primitive by allowlist; a non-primitive would mean a patched
+ * prototype, which is also the engine's.
+ */
+function evalTimeRead(root: unknown, fn: NativeMethod | undefined): unknown {
+	if (fn === undefined || !DateTime.isDateTime(root))
+		throw new EngineFallbackError('unsupported_method');
+
+	const result = fn.call(root);
+	if (!isPrimitive(result)) throw new EngineFallbackError('unsupported_type');
+
+	return result;
 }
 
-function evalChain(
-	node: Extract<SimpleNode, { kind: 'chain' }>,
-	data: IWorkflowDataProxyData,
-): unknown {
+function evalNodeRef(node: Extract<SimpleNode, { kind: 'nodeRef' }>, env: Env): unknown {
+	if (node.ref === 'input') return env.data.$input;
+	if (node.ref === 'legacy') return env.data.$node[node.name];
+
+	return env.data.$(node.name);
+}
+
+function evalChain(node: Extract<SimpleNode, { kind: 'chain' }>, env: Env): unknown {
 	try {
-		return evalNode(node.expression, data);
+		return evalNode(node.expression, env);
 	} catch (error) {
 		if (error === chainShortCircuit) return undefined;
 
@@ -366,79 +568,87 @@ function evalChain(
 	}
 }
 
-function evalUnary(
-	node: Extract<SimpleNode, { kind: 'unary' }>,
-	data: IWorkflowDataProxyData,
-): unknown {
-	const argument = evalNode(node.argument, data);
+function evalUnary(node: Extract<SimpleNode, { kind: 'unary' }>, env: Env): unknown {
+	const argument = evalNode(node.argument, env);
 
 	if (node.op === '!') {
 		return !argument;
 	}
 
 	if (!isPrimitive(argument)) {
-		throw new EngineFallbackError();
+		throw new EngineFallbackError('unsupported_type');
 	}
 
 	return node.op === '-' ? -toNum(argument) : toNum(argument);
 }
 
-function evalBinary(
-	node: Extract<SimpleNode, { kind: 'binary' }>,
-	data: IWorkflowDataProxyData,
-): unknown {
-	const left = evalNode(node.left, data);
-	const right = evalNode(node.right, data);
+function evalBinary(node: Extract<SimpleNode, { kind: 'binary' }>, env: Env): unknown {
+	const left = evalNode(node.left, env);
+	const right = evalNode(node.right, env);
 
 	if (!isPrimitive(left) || !isPrimitive(right)) {
-		throw new EngineFallbackError();
+		throw new EngineFallbackError('unsupported_type');
 	}
 
-	return binaryOps[node.op](left, right);
+	const result = binaryOps[node.op](left, right);
+
+	// `+` is the one operator that allocates; a body concatenating a payload
+	// string per element repeats that allocation.
+	if (typeof result === 'string') env.charge(result.length);
+
+	return result;
 }
 
-function evalLogical(
-	node: Extract<SimpleNode, { kind: 'logical' }>,
-	data: IWorkflowDataProxyData,
-): unknown {
-	const left = evalNode(node.left, data);
+function evalLogical(node: Extract<SimpleNode, { kind: 'logical' }>, env: Env): unknown {
+	const left = evalNode(node.left, env);
 
 	switch (node.op) {
 		case '&&':
-			return left ? evalNode(node.right, data) : left;
+			return left ? evalNode(node.right, env) : left;
 		case '||':
-			return left ? left : evalNode(node.right, data);
+			return left ? left : evalNode(node.right, env);
 		case '??':
-			return left ?? evalNode(node.right, data);
+			return left ?? evalNode(node.right, env);
 	}
 }
 
-function evalNode(node: SimpleNode, data: IWorkflowDataProxyData): unknown {
+function evalNode(node: SimpleNode, env: Env): unknown {
 	switch (node.kind) {
 		case 'literal':
 			return node.value;
 		case 'root':
-			return data[node.name];
+			return env.data[node.name];
 		case 'nodeRef':
-			return evalNodeRef(node, data);
+			return evalNodeRef(node, env);
+		case 'timeRoot':
+			return env.data[node.name];
 		case 'undefined':
 			return undefined;
 		case 'member':
-			return evalMember(node, data);
+			return evalMember(node, env);
 		case 'chain':
-			return evalChain(node, data);
+			return evalChain(node, env);
 		case 'unary':
-			return evalUnary(node, data);
+			return evalUnary(node, env);
 		case 'binary':
-			return evalBinary(node, data);
+			return evalBinary(node, env);
 		case 'logical':
-			return evalLogical(node, data);
+			return evalLogical(node, env);
 		case 'conditional':
-			return evalNode(node.test, data)
-				? evalNode(node.consequent, data)
-				: evalNode(node.alternate, data);
+			return evalNode(node.test, env)
+				? evalNode(node.consequent, env)
+				: evalNode(node.alternate, env);
 		case 'call':
-			return evalCall(node, data);
+			return evalCall(node, env);
+		case 'array':
+			// A literal is built afresh on every evaluation, once per visit in a body.
+			env.charge(node.elements.length);
+
+			return node.elements.map((element) => element.value);
+		case 'param':
+			return env.param;
+		case 'iterate':
+			return evalIterate(node, env);
 	}
 }
 
@@ -447,9 +657,9 @@ function evalNode(node: SimpleNode, data: IWorkflowDataProxyData): unknown {
  * handler, which rethrows ExpressionErrors and swallows everything else (the
  * chunk then yields undefined). Mirror that exactly.
  */
-export function evalChunk(node: SimpleNode, data: IWorkflowDataProxyData): unknown {
+export function evalChunk(node: SimpleNode, env: Env): unknown {
 	try {
-		return evalNode(node, data);
+		return evalNode(node, env);
 	} catch (error) {
 		const rethrow =
 			error instanceof EngineFallbackError ||

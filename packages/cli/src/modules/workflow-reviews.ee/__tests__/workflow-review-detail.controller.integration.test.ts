@@ -5,7 +5,7 @@ import {
 	mockInstance,
 	testDb,
 } from '@n8n/backend-test-utils';
-import type { Project, User } from '@n8n/db';
+import type { Person, Project, User } from '@n8n/db';
 import {
 	WorkflowRepository,
 	WorkflowReviewRequestReviewerRepository,
@@ -34,7 +34,7 @@ const workflowValidationService = mockInstance(WorkflowValidationService);
 const testServer = utils.setupTestServer({
 	endpointGroups: ['workflow-reviews', 'workflows'],
 	enabledFeatures: ['feat:workflowReviews'],
-	modules: ['workflow-reviews'],
+	modules: ['workflow-reviews', 'inbox'],
 });
 
 let owner: User;
@@ -151,7 +151,7 @@ describe('GET /workflow-review-requests/:workflowReviewRequestId', () => {
 			decision: 'pending',
 			title: 'Please review',
 			description: 'Some context',
-			requester: { id: owner.id, email: owner.email },
+			requester: { id: owner.id, email: (owner as Person).email },
 			reviewers: [{ id: reviewer.id, email: reviewer.email }],
 		});
 		// The covered workflows live only in `workflows` — the inbox card's flat
@@ -485,8 +485,8 @@ describe('GET /workflow-review-requests/:workflowReviewRequestId', () => {
 		const workflow = await createWorkflow({}, teamProject);
 		await seedRequest(workflow.id, null, owner);
 
-		await ownerAgent.get('/workflow-review-requests/inbox').expect(200);
-		await ownerAgent.get('/workflow-review-requests/summary').expect(200);
+		await ownerAgent.get('/inbox').expect(200);
+		await ownerAgent.get('/inbox/summary').expect(200);
 		// 400 (missing workflowId), not 404 — proves it still reaches its own handler
 		await ownerAgent.get('/workflow-review-requests/eligible-reviewers').expect(400);
 	});

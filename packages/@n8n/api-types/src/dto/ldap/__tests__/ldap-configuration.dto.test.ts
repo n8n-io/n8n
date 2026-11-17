@@ -1,3 +1,5 @@
+import { z } from 'zod';
+
 import {
 	zodObjectFieldsAreAllRequired,
 	zodObjectKeysMatch,
@@ -31,10 +33,23 @@ describe('LDAP DTOs', () => {
 			searchPageSize: 1000,
 			searchTimeout: 5000,
 			enforceEmailUniqueness: true,
+			linkExistingAccountsByEmail: true,
 		};
 
-		it('requires every field with no optional or default - guards against .optional() / .default() on PUT fields', () => {
-			expect(zodObjectFieldsAreAllRequired(UpdateLdapConfigurationPublicDto.schema)).toBe(true);
+		it('requires every field except linkExistingAccountsByEmail - guards against .optional() / .default() on PUT fields', () => {
+			const { linkExistingAccountsByEmail, ...requiredFields } =
+				UpdateLdapConfigurationPublicDto.schema.shape;
+
+			expect(zodObjectFieldsAreAllRequired(z.object(requiredFields))).toBe(true);
+			expect(linkExistingAccountsByEmail.isOptional()).toBe(true);
+		});
+
+		it('accepts a configuration that omits linkExistingAccountsByEmail', () => {
+			const { linkExistingAccountsByEmail: _, ...body } = fullBody;
+
+			const result = UpdateLdapConfigurationPublicDto.safeParse(body);
+			expect(result.success).toBe(true);
+			expect(result.data?.linkExistingAccountsByEmail).toBeUndefined();
 		});
 
 		it('uses the same fields as the GET response', () => {

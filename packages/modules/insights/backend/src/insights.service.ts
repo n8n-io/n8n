@@ -9,9 +9,8 @@ import type { User } from '@n8n/db';
 import { Container, Service } from '@n8n/di';
 import { DateTime } from 'luxon';
 import { InstanceSettings } from 'n8n-core';
-import { UserError } from 'n8n-workflow';
 
-import { ForbiddenError } from '@n8n/errors';
+import { ForbiddenError, UserError } from '@n8n/errors';
 import type { PeriodUnit, TypeUnit, ByTimeInsightType } from './insights-shared';
 import { NumberToType } from './insights-shared';
 import type { InsightsAccessFilter } from './insights-by-period.repository';
@@ -331,6 +330,22 @@ export class InsightsService {
 		return new Map(
 			rows.map((row) => [row.periodStart.slice(0, 10), (row.succeeded ?? 0) + (row.failed ?? 0)]),
 		);
+	}
+
+	async getDailyBillableExecutions({
+		startDate,
+		endDate,
+	}: { startDate: Date; endDate: Date }): Promise<Map<string, number>> {
+		const rows = await this.insightsByPeriodRepository.getDailyBillableExecutions({
+			startDate,
+			endDate,
+		});
+
+		return new Map(rows.map(({ day, billable }) => [day, billable]));
+	}
+
+	async getFirstBillableDay(): Promise<string | null> {
+		return await this.insightsByPeriodRepository.getFirstBillableDay();
 	}
 
 	private async queryInsightsByTime({

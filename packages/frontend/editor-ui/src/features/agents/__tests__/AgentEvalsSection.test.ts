@@ -76,8 +76,8 @@ vi.mock('../components/AgentEvalsEmptyStatePreview.vue', () => ({
 // bare identifier, which only auto-unwraps for genuine refs. A plain object
 // would read as itself (always truthy) instead of its `.value`.
 const isFeatureEnabled = ref(false);
-vi.mock('@/experiments/testAgentPreview/useTestAgentPreviewExperiment', () => ({
-	useTestAgentPreviewExperiment: () => ({ isFeatureEnabled }),
+vi.mock('@/features/agents/composables/useTestAgentPreviewFlag', () => ({
+	useTestAgentPreviewFlag: () => ({ isFeatureEnabled }),
 }));
 
 const PROJECT_ID = 'project-1';
@@ -172,6 +172,24 @@ describe('AgentEvalsSection', () => {
 			await userEvent.click(getByTestId('agent-evals-generate-button'));
 
 			expect(emitted('generate')).toBeTruthy();
+		});
+
+		it('enables generation only after the agent is saved', async () => {
+			const { getByTestId, emitted, rerender } = await render(
+				{ datasets: [] },
+				{ agentUnsaved: true },
+			);
+			const button = getByTestId('agent-evals-generate-button');
+
+			expect(button).toBeDisabled();
+			await userEvent.click(button);
+			expect(emitted('generate')).toBeUndefined();
+
+			await rerender({ agentUnsaved: false });
+
+			expect(button).toBeEnabled();
+			await userEvent.click(button);
+			expect(emitted('generate')).toHaveLength(1);
 		});
 
 		it('disables the CTA for users who cannot edit the agent', async () => {
@@ -295,7 +313,7 @@ describe('AgentEvalsSection', () => {
 		expect(store.startRun).toHaveBeenCalledWith(PROJECT_ID, AGENT_ID, 'd1');
 	});
 
-	describe("the experiment's empty-state preview", () => {
+	describe('the eval rollout empty-state preview', () => {
 		beforeEach(() => {
 			isFeatureEnabled.value = true;
 		});

@@ -11,6 +11,7 @@ export * from './cron';
 export * from './data-table.types';
 export * from './execution-context';
 export * from './execution-context-establishment-hooks';
+export * from './execution-cancellation';
 export * from './redaction-channels';
 export * from './dynamic-credentials-helpers';
 export * from './safe-regex';
@@ -37,6 +38,7 @@ export * from './expression';
 export * from './expressions/expression-helpers';
 export * from './from-ai-parse-utils';
 export * from './node-helpers';
+export * from './node-annotations';
 export * from './node-validation';
 export * from './node-grouping-validation';
 export * from './empty-group-anchor';
@@ -62,6 +64,7 @@ export * from './type-validation';
 export * from './credential-domain-restrictions';
 export * from './credential-only-nodes';
 export * from './schemas';
+export * from './generate-schema-from-example';
 export * from './run-execution-data/run-execution-data';
 export { WorkflowExpression } from './workflow-expression';
 export { LoggerProxy, NodeHelpers, ObservableObject, TelemetryHelpers };
@@ -118,9 +121,12 @@ export * from './node-parameters/node-parameter-value-type-guard';
 export * from './node-parameters/path-utils';
 export * from './evaluation-helpers';
 export * from './workflow-diff';
+export * from './workflow-settings-scope';
 export * from './connections-diff';
 export * from './workflow-environments-helper';
 export { evaluateJmespathQuery, JmespathQueryError } from './jmespath-query';
+export { decodePathValue, requestPath, requestUrl } from './request-target';
+export type { RequestPath, RequestUrl } from './request-target';
 
 export type {
 	DocMetadata,

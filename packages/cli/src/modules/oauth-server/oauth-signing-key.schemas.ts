@@ -1,6 +1,6 @@
 import { z } from 'zod';
 
-import { EcPublicJwkSchema } from '@/jwks/jwks.schemas';
+import { EcPublicJwkSchema } from '@n8n/api-types';
 
 import {
 	OAUTH_SIGNING_ALGORITHM,

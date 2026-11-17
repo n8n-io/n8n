@@ -106,47 +106,22 @@ describe('ChatExecutionManager', () => {
 			vi.spyOn(chatExecutionManager as any, 'isChatDrivenExecution').mockReturnValue(true);
 		});
 
-		it('should update execution status to canceled if it is running', async () => {
-			const executionId = '1';
-			const execution = { id: executionId, status: 'running' } as any;
+		it.each(['running', 'waiting', 'unknown'])(
+			'should mark a %s execution as canceled and record its stop time',
+			async (status) => {
+				const executionId = '1';
+				const execution = { id: executionId, status } as any;
 
-			executionPersistence.findSingleExecution.mockResolvedValue(execution);
+				executionPersistence.findSingleExecution.mockResolvedValue(execution);
 
-			await chatExecutionManager.cancelExecution(executionId);
+				await chatExecutionManager.cancelExecution(executionId);
 
-			expect(executionRepository.update).toHaveBeenCalledWith(
-				{ id: executionId },
-				{ status: 'canceled' },
-			);
-		});
-
-		it('should update execution status to canceled if it is waiting', async () => {
-			const executionId = '2';
-			const execution = { id: executionId, status: 'waiting' } as any;
-
-			executionPersistence.findSingleExecution.mockResolvedValue(execution);
-
-			await chatExecutionManager.cancelExecution(executionId);
-
-			expect(executionRepository.update).toHaveBeenCalledWith(
-				{ id: executionId },
-				{ status: 'canceled' },
-			);
-		});
-
-		it('should update execution status to canceled if it is unknown', async () => {
-			const executionId = '3';
-			const execution = { id: executionId, status: 'unknown' } as any;
-
-			executionPersistence.findSingleExecution.mockResolvedValue(execution);
-
-			await chatExecutionManager.cancelExecution(executionId);
-
-			expect(executionRepository.update).toHaveBeenCalledWith(
-				{ id: executionId },
-				{ status: 'canceled' },
-			);
-		});
+				expect(executionRepository.update).toHaveBeenCalledWith(
+					{ id: executionId },
+					{ status: 'canceled', stoppedAt: expect.any(Date) },
+				);
+			},
+		);
 
 		it('should not update execution status if it is not running', async () => {
 			const executionId = '1';

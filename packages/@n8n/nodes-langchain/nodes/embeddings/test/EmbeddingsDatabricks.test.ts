@@ -94,12 +94,12 @@ describe('EmbeddingsDatabricks', () => {
 				name: 'embeddingsDatabricks',
 				group: ['transform'],
 				version: 1,
-				hidden: true,
 				credentials: [{ name: 'databricksOAuth2Api', required: true }],
 				inputs: [],
 				outputs: ['ai_embedding'],
 				outputNames: ['Embeddings'],
 			});
+			expect(node.description.hidden).toBeUndefined();
 		});
 	});
 
@@ -190,9 +190,12 @@ describe('EmbeddingsDatabricks', () => {
 			await node.supplyData.call(ctx, 0);
 
 			const [, databricksHandler] = mockedMakeN8nLlmFailedAttemptHandler.mock.calls[0];
-			expect(() => databricksHandler?.(Object.assign(new Error('429 x'), { status: 429 }))).toThrow(
-				'Databricks rate limit reached for system.ai.gte-large-en',
-			);
+			const rateLimited = Object.assign(new Error('429 x'), { status: 429 });
+			expect(() => databricksHandler?.(rateLimited)).not.toThrow();
+			expect(rateLimited).toMatchObject({
+				message: 'Databricks rate limit reached for system.ai.gte-large-en',
+				description: expect.stringMatching(/throttling requests to this model service/),
+			});
 		});
 
 		it('should reject non-https hosts', async () => {

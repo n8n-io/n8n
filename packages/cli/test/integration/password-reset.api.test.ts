@@ -6,7 +6,7 @@ import {
 	testDb,
 	mockInstance,
 } from '@n8n/backend-test-utils';
-import type { User } from '@n8n/db';
+import type { Person } from '@n8n/db';
 import { GLOBAL_MEMBER_ROLE, GLOBAL_OWNER_ROLE, UserRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { compare } from 'bcryptjs';
@@ -18,7 +18,7 @@ import { AuthService } from '@/auth/auth.service';
 import config from '@/config';
 import { ExternalHooks } from '@/external-hooks';
 import { License } from '@/license';
-import { JwtService } from '@/services/jwt.service';
+import { JwtService } from '@n8n/backend-services';
 import { PasswordUtility } from '@/services/password.utility';
 import { setCurrentAuthenticationMethod } from '@/sso.ee/sso-helpers';
 import { UserManagementMailer } from '@/user-management/email';
@@ -28,8 +28,8 @@ import { getAuthToken, setupTestServer } from './shared/utils';
 
 config.set('userManagement.jwtSecret', randomString(5, 10));
 
-let owner: User;
-let member: User;
+let owner: Person;
+let member: Person;
 
 const externalHooks = mockInstance(ExternalHooks);
 const mailer = mockInstance(UserManagementMailer, { isEmailSetUp: true });
@@ -169,8 +169,8 @@ describe('GET /resolve-password-token', () => {
 	});
 
 	test('should fail after password has changed', async () => {
-		const updatedUser = mock<User>({ ...owner, password: 'another-password' });
-		const resetPasswordToken = authService.generatePasswordResetToken(updatedUser);
+		const updatedPerson = mock<Person>({ ...owner, password: 'another-password' });
+		const resetPasswordToken = authService.generatePasswordResetToken(updatedPerson);
 
 		const response = await testServer.authlessAgent
 			.get('/resolve-password-token')
@@ -196,9 +196,9 @@ describe('POST /change-password', () => {
 		const authToken = getAuthToken(response);
 		expect(authToken).toBeDefined();
 
-		const { password: storedPassword } = await Container.get(UserRepository).findOneByOrFail({
+		const { password: storedPassword } = (await Container.get(UserRepository).findOneByOrFail({
 			id: owner.id,
-		});
+		})) as Person;
 
 		const comparisonResult = await Container.get(PasswordUtility).compare(
 			passwordToStore,
@@ -240,9 +240,9 @@ describe('POST /change-password', () => {
 				.post('/change-password')
 				.query(invalidPayload);
 			expect(response.statusCode).toBe(400);
-			const { password: storedPassword } = await Container.get(UserRepository).findOneByOrFail({
+			const { password: storedPassword } = (await Container.get(UserRepository).findOneByOrFail({
 				id: owner.id,
-			});
+			})) as Person;
 			expect(owner.password).toBe(storedPassword);
 		}
 	});
@@ -276,9 +276,9 @@ describe('POST /change-password', () => {
 		const authToken = getAuthToken(response);
 		expect(authToken).toBeDefined();
 
-		const { password: storedPassword } = await Container.get(UserRepository).findOneByOrFail({
+		const { password: storedPassword } = (await Container.get(UserRepository).findOneByOrFail({
 			id: owner.id,
-		});
+		})) as Person;
 
 		const comparisonResult = await compare(passwordToStore, storedPassword!);
 		expect(comparisonResult).toBe(true);

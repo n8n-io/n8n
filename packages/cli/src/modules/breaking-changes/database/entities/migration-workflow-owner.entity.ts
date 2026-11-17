@@ -1,3 +1,4 @@
+import type { MigrationOwnerSource } from '@n8n/api-types';
 import { DateTimeColumn, WithTimestamps } from '@n8n/db';
 import type { User, WorkflowEntity } from '@n8n/db';
 import {
@@ -9,9 +10,6 @@ import {
 	PrimaryColumn,
 	type Relation,
 } from '@n8n/typeorm';
-
-/** `suggested` by the heuristic, or `assigned` by a person. Only a person changes an assignment. */
-export type MigrationOwnerSource = 'suggested' | 'assigned';
 
 /**
  * The user responsible for fixing a workflow's migration findings, one row per

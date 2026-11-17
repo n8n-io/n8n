@@ -2,6 +2,8 @@ import { z } from 'zod';
 
 import { Z } from '../../zod-class';
 
+const versionSchema = z.number().int().nonnegative();
+
 const policyAttachmentInputSchema = z.object({
 	policyId: z.string().min(1),
 	priority: z.number().int(),
@@ -10,6 +12,7 @@ const policyAttachmentInputSchema = z.object({
 
 const replaceAttachmentsShape = {
 	attachments: z.array(policyAttachmentInputSchema),
+	version: versionSchema,
 };
 
 /**

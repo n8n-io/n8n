@@ -1,12 +1,34 @@
-import { AgentTeamsPackageDto } from '@n8n/api-types';
-import type { TeamsAgentSetupState, TeamsCredentialCheck } from '@n8n/api-types';
+import {
+	AgentTeamsPackageDto,
+	AgentTeamsProvisionAppDto,
+	AgentTeamsProvisionBotDto,
+	AgentTeamsPublishDto,
+} from '@n8n/api-types';
+import type {
+	CreateTeamsManagerCredentialResponse,
+	TeamsAgentSetupState,
+	TeamsCredentialCheck,
+	TeamsFileAccessCheck,
+	TeamsManagedSetupState,
+	TeamsAzureSubscription,
+	TeamsCatalogState,
+	TeamsProvisionedAppSummary,
+	TeamsProvisionedBotSummary,
+} from '@n8n/api-types';
 import { Time } from '@n8n/constants';
 import type { AuthenticatedRequest } from '@n8n/db';
 import type { CorsOptions } from '@n8n/decorators';
 import { Body, Get, Options, Param, Post, ProjectScope, RestController } from '@n8n/decorators';
+import { BadRequestError } from '@n8n/errors';
 import type { Request, Response } from 'express';
 
 import { TeamsCredentialCheckService } from './integrations/platforms/teams/teams-credential-check.service';
+import { TeamsBotProvisioningService } from './integrations/platforms/teams/teams-bot-provisioning.service';
+import { TeamsCatalogService } from './integrations/platforms/teams/teams-catalog.service';
+import { TeamsCredentialNotesService } from './integrations/platforms/teams/teams-credential-notes.service';
+import { TeamsEntraProvisioningService } from './integrations/platforms/teams/teams-entra-provisioning.service';
+import { TeamsSetupTelemetryService } from './integrations/platforms/teams/teams-setup-telemetry.service';
+import { TeamsManagedSetupService } from './integrations/platforms/teams/teams-managed-setup.service';
 import { TeamsSetupService } from './integrations/platforms/teams/teams-setup.service';
 
 /**
@@ -26,7 +48,241 @@ export class AgentTeamsIntegrationsController {
 	constructor(
 		private readonly setupService: TeamsSetupService,
 		private readonly credentialCheckService: TeamsCredentialCheckService,
+		private readonly managedSetupService: TeamsManagedSetupService,
+		private readonly entraProvisioningService: TeamsEntraProvisioningService,
+		private readonly botProvisioningService: TeamsBotProvisioningService,
+		private readonly catalogService: TeamsCatalogService,
+		private readonly setupTelemetry: TeamsSetupTelemetryService,
+		private readonly credentialNotes: TeamsCredentialNotesService,
 	) {}
+
+	/**
+	 * Publishes the app to the organisation, or submits it for review when the
+	 * account may not publish directly. Which of the two happened is in the
+	 * state this returns.
+	 */
+	@Post('/:agentId/integrations/teams/publish')
+	@ProjectScope('agent:update')
+	async publishApp(
+		req: AuthenticatedRequest<{ projectId: string }>,
+		_res: Response,
+		@Param('agentId') agentId: string,
+		@Body payload: AgentTeamsPublishDto,
+	): Promise<TeamsCatalogState> {
+		const report = {
+			agentId,
+			projectId: req.params.projectId,
+			userId: req.user.id,
+			step: 'install' as const,
+		};
+		try {
+			const state = await this.catalogService.publish({
+				user: req.user,
+				projectId: req.params.projectId,
+				agentId,
+				managerCredentialId: payload.managerCredentialId,
+				credentialId: payload.credentialId,
+				settings: payload.settings,
+			});
+			// Which route the account actually got is the answer the publish call
+			// gives back. Only two of its four answers are routes, though: an app
+			// Microsoft has not listed yet, or has rejected, took neither.
+			this.setupTelemetry.succeeded({
+				...report,
+				...(state.status === 'published' || state.status === 'submitted'
+					? { installRoute: state.status }
+					: {}),
+			});
+			return state;
+		} catch (error) {
+			this.setupTelemetry.failed(report, error);
+			throw error;
+		}
+	}
+
+	@Get('/:agentId/integrations/teams/catalog')
+	@ProjectScope('agent:update')
+	async getCatalogState(
+		req: AuthenticatedRequest<
+			{ projectId: string },
+			{},
+			{},
+			{ managerCredentialId?: string; credentialId?: string }
+		>,
+		_res: Response,
+		@Param('agentId') agentId: string,
+	): Promise<TeamsCatalogState> {
+		const managerCredentialId = req.query.managerCredentialId;
+		if (typeof managerCredentialId !== 'string' || managerCredentialId.length === 0) {
+			return { status: 'unknown', teamsAppId: null };
+		}
+		const credentialId = req.query.credentialId;
+		return await this.catalogService.getState({
+			user: req.user,
+			projectId: req.params.projectId,
+			agentId,
+			managerCredentialId,
+			...(typeof credentialId === 'string' && credentialId.length > 0 ? { credentialId } : {}),
+		});
+	}
+
+	/**
+	 * An empty list is the ordinary answer for a Microsoft 365 tenant, which
+	 * comes with no Azure subscription. The setup then offers the next option
+	 * rather than treating it as a failure.
+	 */
+	@Get('/:agentId/integrations/teams/azure-subscriptions')
+	@ProjectScope('agent:update')
+	async listAzureSubscriptions(
+		req: AuthenticatedRequest<{ projectId: string }, {}, {}, { managerCredentialId?: string }>,
+		_res: Response,
+		@Param('agentId') _agentId: string,
+	): Promise<TeamsAzureSubscription[]> {
+		const managerCredentialId = req.query.managerCredentialId;
+		// An empty answer here means "no Azure subscription", which sends the user
+		// down the manual ladder. A missing credential is a caller bug, not that.
+		if (typeof managerCredentialId !== 'string' || managerCredentialId.length === 0) {
+			throw new BadRequestError('Sign in with Microsoft before looking for a subscription.');
+		}
+		return await this.botProvisioningService.listSubscriptions({
+			user: req.user,
+			managerCredentialId,
+		});
+	}
+
+	/**
+	 * The rung the whole ladder exists to measure, reported where the user takes
+	 * it. The lookup above cannot report it: it answers again on every remount
+	 * and every change of sign-in, and a tenant with no Azure subscription is the
+	 * ordinary case, so it would count the dialog being opened. Leaving the
+	 * recommended flow is an act, and it happens once.
+	 */
+	@Post('/:agentId/integrations/teams/manual-bot-route')
+	@ProjectScope('agent:update')
+	reportManualBotRoute(
+		req: AuthenticatedRequest<{ projectId: string }>,
+		_res: Response,
+		@Param('agentId') agentId: string,
+	): void {
+		this.setupTelemetry.succeeded({
+			agentId,
+			projectId: req.params.projectId,
+			userId: req.user.id,
+			step: 'create_bot',
+			botRoute: 'manual',
+		});
+	}
+
+	@Post('/:agentId/integrations/teams/provision-bot')
+	@ProjectScope('agent:update')
+	async provisionBot(
+		req: AuthenticatedRequest<{ projectId: string }>,
+		_res: Response,
+		@Param('agentId') agentId: string,
+		@Body payload: AgentTeamsProvisionBotDto,
+	): Promise<TeamsProvisionedBotSummary> {
+		const projectId = req.params.projectId;
+		const report = {
+			agentId,
+			projectId,
+			userId: req.user.id,
+			step: 'create_bot' as const,
+			botRoute: 'provisioned' as const,
+		};
+		try {
+			// Inside the try: a credential that has gone is a way this step fails,
+			// and reading it outside would leave that failure unrecorded.
+			const identity = await this.setupService.botIdentityFor(
+				req.user,
+				{ projectId, agentId },
+				payload.credentialId,
+			);
+			const summary = await this.botProvisioningService.provisionBot({
+				user: req.user,
+				projectId,
+				agentId,
+				agentName: identity.agentName,
+				credentialId: payload.credentialId,
+				managerCredentialId: payload.managerCredentialId,
+				subscriptionId: payload.subscriptionId,
+				msaAppId: identity.clientId,
+				msaAppTenantId: identity.tenantId,
+				messagingEndpoint: identity.messagingEndpoint,
+			});
+			this.setupTelemetry.succeeded(report);
+			return summary;
+		} catch (error) {
+			this.setupTelemetry.failed(report, error);
+			throw error;
+		}
+	}
+
+	/**
+	 * Registers the customer's Entra app and writes the channel credential from
+	 * it, so the user never sees a client secret.
+	 */
+	@Post('/:agentId/integrations/teams/provision-app')
+	@ProjectScope('agent:update')
+	async provisionApp(
+		req: AuthenticatedRequest<{ projectId: string }>,
+		_res: Response,
+		@Param('agentId') agentId: string,
+		@Body payload: AgentTeamsProvisionAppDto,
+	): Promise<TeamsProvisionedAppSummary> {
+		const report = {
+			agentId,
+			projectId: req.params.projectId,
+			userId: req.user.id,
+			step: 'create_app' as const,
+		};
+		try {
+			const summary = await this.entraProvisioningService.provision({
+				user: req.user,
+				projectId: req.params.projectId,
+				agentId,
+				agentName: await this.setupService.agentNameFor(req.params.projectId, agentId),
+				managerCredentialId: payload.managerCredentialId,
+			});
+			this.setupTelemetry.succeeded(report);
+			return summary;
+		} catch (error) {
+			this.setupTelemetry.failed(report, error);
+			throw error;
+		}
+	}
+
+	/**
+	 * Whether the recommended setup can run here, and which Microsoft sign-ins
+	 * the project already has. Returns `managedSetupAvailable: false` rather
+	 * than failing, so the frontend can simply not offer the mode.
+	 */
+	@Get('/:agentId/integrations/teams/managed-setup')
+	@ProjectScope('agent:update')
+	async getManagedSetupState(
+		req: AuthenticatedRequest<{ projectId: string }>,
+		_res: Response,
+		@Param('agentId') agentId: string,
+	): Promise<TeamsManagedSetupState> {
+		return await this.managedSetupService.getSetupState({
+			projectId: req.params.projectId,
+			agentId,
+			user: req.user,
+		});
+	}
+
+	@Post('/:agentId/integrations/teams/manager-credential')
+	@ProjectScope('agent:update')
+	async createManagerCredential(
+		req: AuthenticatedRequest<{ projectId: string }>,
+		_res: Response,
+		@Param('agentId') agentId: string,
+	): Promise<CreateTeamsManagerCredentialResponse> {
+		return await this.managedSetupService.createManagerCredential({
+			projectId: req.params.projectId,
+			agentId,
+			user: req.user,
+		});
+	}
 
 	/**
 	 * Proves the credential can reach Microsoft before the channel is connected.
@@ -41,6 +297,20 @@ export class AgentTeamsIntegrationsController {
 		@Param('credentialId') credentialId: string,
 	): Promise<TeamsCredentialCheck> {
 		return await this.credentialCheckService.check(req.user, req.params.projectId, credentialId);
+	}
+
+	@Get('/:agentId/integrations/teams/file-access/:credentialId')
+	@ProjectScope('agent:update')
+	async checkFileAccess(
+		req: AuthenticatedRequest<{ projectId: string }>,
+		_res: Response,
+		@Param('credentialId') credentialId: string,
+	): Promise<TeamsFileAccessCheck> {
+		return await this.credentialCheckService.checkFileAccess(
+			req.user,
+			req.params.projectId,
+			credentialId,
+		);
 	}
 
 	@Get('/:agentId/integrations/teams/setup')
@@ -70,12 +340,14 @@ export class AgentTeamsIntegrationsController {
 		@Param('agentId') agentId: string,
 		@Body payload: AgentTeamsPackageDto,
 	): Promise<void> {
-		const archive = await this.setupService.buildPackage(
+		const { archive, fingerprint, credentialId } = await this.setupService.buildPackage(
 			req.user,
 			{ projectId: req.params.projectId, agentId },
 			payload.credentialId,
 			payload.settings,
 		);
+		// The settings compare against this to say Teams holds an older version.
+		await this.credentialNotes.write(req.user, credentialId, { teamsAppFingerprint: fingerprint });
 
 		res.setHeader('Content-Type', 'application/zip');
 		res.setHeader('Content-Disposition', 'attachment; filename="n8n-agent-teams-app.zip"');

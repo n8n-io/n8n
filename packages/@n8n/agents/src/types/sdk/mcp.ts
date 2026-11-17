@@ -82,10 +82,18 @@ export interface McpServerConfig {
 	configureTools?: (tools: McpToolDescriptor[]) => McpToolConfiguration;
 
 	/**
+	 * Set when `configureTools` never returns `requireApproval`. The agent then
+	 * does not need checkpoint storage for this server just because `configureTools`
+	 * exists. A static `requireApproval` still counts.
+	 */
+	configureToolsNonInterrupting?: boolean;
+
+	/**
 	 * Custom fetch implementation used by URL-based transports (SSE,
 	 * StreamableHTTP).
-	 * Ignored for stdio transport. When omitted, the SDK transports fall back
-	 * to the global `fetch`.
+	 * Ignored for stdio transport. When omitted, a redirect-aware wrapper uses
+	 * the global `fetch`.
+	 * When auth headers are configured, a wrapper scopes them to the starting origin.
 	 */
 	fetch?: typeof fetch;
 

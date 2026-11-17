@@ -4,7 +4,7 @@ import type { AuthenticatedRequest } from '@n8n/db';
 import type { INode } from 'n8n-workflow';
 import type z from 'zod';
 
-import type { Mcpauth_type, McpCallerAuth } from '@/services/oauth-token-verifier-proxy.service';
+import type { Mcpauth_type, McpCallerAuth } from '@n8n/backend-services/auth';
 
 import type { SUPPORTED_PRODUCTION_MCP_TRIGGERS } from './mcp.constants';
 import type { WorkflowDetailsOutputSchema } from './tools/get-workflow-details.tool';
@@ -197,6 +197,7 @@ export type UserConnectedToMCPEventPayload = {
 	http_status?: number;
 	mcp_apps_enabled?: boolean;
 	mcp_apps_variant?: McpAppsTelemetryVariant;
+	'$feature/140_mcp_empty_preferences_note'?: string;
 	error?: string;
 };
 

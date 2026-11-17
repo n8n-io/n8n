@@ -24,6 +24,8 @@ defineOptions({
 });
 
 export interface N8nChatInputProps {
+	/** Blocks workflow canvas shortcuts while the textarea has focus. Defaults to true. */
+	blockCanvasShortcuts?: boolean;
 	modelValue?: string;
 	placeholder?: string;
 	maxLength?: number;
@@ -62,6 +64,7 @@ export interface N8nChatInputProps {
 const INFINITE_CREDITS = -1;
 
 const props = withDefaults(defineProps<N8nChatInputProps>(), {
+	blockCanvasShortcuts: true,
 	modelValue: '',
 	placeholder: '',
 	maxLength: 5000,
@@ -359,7 +362,7 @@ defineExpose({
 							[$style.adaptiveTextarea]: effectiveLayout() === 'adaptive',
 						},
 						'ignore-key-press-node-creator',
-						'ignore-key-press-canvas',
+						{ 'ignore-key-press-canvas': blockCanvasShortcuts },
 					]"
 					:style="textareaStyle"
 					:placeholder="hasNoCredits ? '' : placeholder"
@@ -531,7 +534,7 @@ defineExpose({
 
 	.overLimit {
 		color: var(--color--danger);
-		font-weight: var(--font-weight--bold);
+		font-weight: var(--font-weight--medium);
 	}
 }
 

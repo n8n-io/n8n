@@ -98,6 +98,7 @@ const {
 	searchFilter,
 	onSearchFilter,
 	getWorkflowName,
+	getWorkflowBaseName,
 	applyDefaultExecuteWorkflowNodeName,
 	populateNextWorkflowsPage,
 	setWorkflowsResources,
@@ -184,8 +185,7 @@ function onInputChange(workflowId: NodeParameterValue): void {
 		cachedResultUrl: getWorkflowUrl(workflowId),
 	};
 	if (isListMode.value) {
-		const resource = workflowsListStore.getWorkflowById(workflowId);
-		if (resource?.name) {
+		if (getWorkflowBaseName(workflowId)) {
 			params.cachedResultName = getWorkflowName(workflowId);
 		}
 	}

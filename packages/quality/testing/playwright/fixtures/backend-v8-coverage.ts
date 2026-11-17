@@ -3,7 +3,13 @@ import { request } from '@playwright/test';
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 
-import { BACKEND_BY_SPEC_DIR, COVERAGE_ENABLED, slugify, specId } from '../coverage-options';
+import {
+	BACKEND_BOOT_DIR,
+	BACKEND_BY_SPEC_DIR,
+	COVERAGE_ENABLED,
+	slugify,
+	specId,
+} from '../coverage-options';
 
 type BackendCoverageTestFixtures = { backendCoverage: undefined; mainUrls: string[] };
 type BackendCoverageWorkerFixtures = { n8nUrl: string };
@@ -17,9 +23,11 @@ let warnedHookError = false;
  * The frontend fixture (`v8-coverage.ts`) collects the browser's `page.coverage`
  * per spec; this is its server-side counterpart. Around each test it brackets a
  * coverage window on the n8n main via the test-only `/rest/e2e/coverage` hook:
- * `start` (reset window) before the test, `take` (this spec's delta) after, then
+ * `start` (reset window) before the test, `take` (this spec's window) after, then
  * writes the raw V8 `{result}` to `BACKEND_BY_SPEC_DIR/<slug>/` exactly like the
- * frontend fixture writes browser raws. `emit-spec-backend-lcovs` later resolves
+ * frontend fixture writes browser raws. The first `start` on a container also
+ * returns the coverage of its boot, which goes to `BACKEND_BOOT_DIR`.
+ * `emit-spec-backend-lcovs` later resolves
  * these to repo `.ts` source and the impact map gains backend rows, so a backend
  * change (e.g. an If-node edit) scopes E2E instead of running the whole suite.
  *
@@ -61,9 +69,17 @@ export const backendV8CoverageFixtures: Fixtures<
 				);
 			}
 
-			const ctx = await request.newContext({ baseURL: n8nUrl });
 			try {
-				await ctx.post('/rest/e2e/coverage/start');
+				const { body } = await postHook(n8nUrl, '/rest/e2e/coverage/start');
+				// The first start on an n8n process returns the code that ran at boot.
+				const boot = (body as { data?: { boot?: unknown[] } })?.data?.boot;
+				if (Array.isArray(boot) && boot.length) {
+					mkdirSync(BACKEND_BOOT_DIR, { recursive: true });
+					writeFileSync(
+						join(BACKEND_BOOT_DIR, `raw-${slugify(n8nUrl)}-${Date.now()}.json`),
+						JSON.stringify({ result: boot }),
+					);
+				}
 			} catch {
 				// Hook unreachable — fall through; teardown take will no-op.
 			}
@@ -72,10 +88,9 @@ export const backendV8CoverageFixtures: Fixtures<
 			await use(undefined);
 
 			try {
-				const res = await ctx.post('/rest/e2e/coverage/take');
+				const { status, body } = await postHook(n8nUrl, '/rest/e2e/coverage/take');
 				// n8n wraps controller returns in { data: ... } (response-helper.ts).
-				const body = (await res.json()) as { data?: { result?: unknown[] } };
-				const result = body?.data?.result ?? [];
+				const result = (body as { data?: { result?: unknown[] } })?.data?.result ?? [];
 				if (Array.isArray(result) && result.length) {
 					const spec = specId(testInfo);
 					const specDir = join(BACKEND_BY_SPEC_DIR, slugify(spec));
@@ -89,7 +104,7 @@ export const backendV8CoverageFixtures: Fixtures<
 				} else if (!warnedHookError) {
 					warnedHookError = true;
 					console.warn(
-						`backend coverage: /rest/e2e/coverage/take returned ${res.status()} with ` +
+						`backend coverage: /rest/e2e/coverage/take returned ${status} with ` +
 							`${Array.isArray(result) ? result.length : 'no'} entries — no backend rows this run.`,
 					);
 				}
@@ -98,10 +113,23 @@ export const backendV8CoverageFixtures: Fixtures<
 					warnedHookError = true;
 					console.warn(`backend coverage: take failed — ${String(error)}`);
 				}
-			} finally {
-				await ctx.dispose();
 			}
 		},
 		{ auto: true },
 	],
 };
+
+/**
+ * POST to a coverage hook on a new connection. A connection kept open from
+ * `start` can be closed by the server's keep-alive timeout as `take` reuses it,
+ * which fails `take` with "socket hang up".
+ */
+async function postHook(baseURL: string, path: string) {
+	const ctx = await request.newContext({ baseURL });
+	try {
+		const res = await ctx.post(path);
+		return { status: res.status(), body: (await res.json()) as unknown };
+	} finally {
+		await ctx.dispose();
+	}
+}

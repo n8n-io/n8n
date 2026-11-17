@@ -1,6 +1,7 @@
+import { DatabaseConfig, statementTimeoutSeconds } from '@n8n/config';
 import { Time } from '@n8n/constants';
-import { intervalFromSeconds, SystemTask } from '@n8n/decorators';
-import type { SystemTaskEffects, SystemTaskPlacement, SystemTaskSchedule } from '@n8n/decorators';
+import { clusterTarget, intervalFromSeconds, SystemTask, timeoutAfterLimit } from '@n8n/decorators';
+import type { SystemTaskSchedule } from '@n8n/decorators';
 
 import { WorkflowHistoryManager } from '@/workflows/workflow-history/workflow-history-manager';
 
@@ -11,18 +12,27 @@ export class WorkflowHistoryPruningTask implements SystemTask {
 
 	readonly schedule: SystemTaskSchedule = intervalFromSeconds(Time.hours.toSeconds);
 
-	readonly effects: SystemTaskEffects = 'idempotent';
+	readonly target = clusterTarget({
+		scheduler: {
+			retryOnFailure: true,
+			// The signal stops the run only between batches, so the timeout waits for a statement to end.
+			timeoutSeconds: timeoutAfterLimit(
+				statementTimeoutSeconds(this.databaseConfig),
+				5 * Time.minutes.toSeconds,
+			),
+		},
+		leaderTimer: {
+			// Only the leader prunes, so a new leader runs once at takeover instead of waiting an hour.
+			runOnTakeover: true,
+		},
+	});
 
-	readonly placement: SystemTaskPlacement = {
-		scope: 'cluster',
-		durable: true,
-		// Only the leader prunes, so a new leader runs once at takeover instead of waiting an hour.
-		runOnTakeover: true,
-	};
+	constructor(
+		private readonly databaseConfig: DatabaseConfig,
+		private readonly workflowHistoryManager: WorkflowHistoryManager,
+	) {}
 
-	constructor(private readonly workflowHistoryManager: WorkflowHistoryManager) {}
-
-	async run(): Promise<void> {
-		await this.workflowHistoryManager.prune();
+	async run(signal: AbortSignal): Promise<void> {
+		await this.workflowHistoryManager.prune(signal);
 	}
 }

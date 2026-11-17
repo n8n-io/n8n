@@ -12,10 +12,9 @@ import type { InstanceType } from '@n8n/constants';
 import type { IWorkflowDb, Project, User, WorkflowEntity } from '@n8n/db';
 import { WorkflowRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
-import { ForbiddenError } from '@n8n/errors';
+import { ForbiddenError, UserError } from '@n8n/errors';
 import { DateTime } from 'luxon';
 import type { InstanceSettings } from 'n8n-core';
-import { UserError } from 'n8n-workflow';
 import type { MockInstance, Mocked } from 'vitest';
 import type { MockProxy } from 'vitest-mock-extended';
 import { mock } from 'vitest-mock-extended';
@@ -1614,6 +1613,40 @@ describe('InsightsService (Integration)', () => {
 				new Map([
 					['2025-06-10', 6],
 					['2025-06-11', 4],
+				]),
+			);
+		});
+	});
+
+	describe('getDailyBillableExecutions', () => {
+		test('returns only billable executions for each UTC day that has them', async () => {
+			const insightsService = Container.get(InsightsService);
+			const workflow = await createWorkflow({}, await createTeamProject());
+			const rows: Array<[InsightsByPeriod['type'], number, string]> = [
+				['success', 5, '2025-06-10T10:00:00'],
+				['success', 7, '2025-06-11T10:00:00'],
+				['billable', 4, '2025-06-11T10:00:00'],
+				['failure', 2, '2025-06-12T10:00:00'],
+				['billable', 1, '2025-06-12T10:00:00'],
+			];
+			for (const [type, value, periodStart] of rows) {
+				await createCompactedInsightsEvent(workflow, {
+					type,
+					value,
+					periodUnit: 'hour',
+					periodStart: DateTime.fromISO(periodStart, { zone: 'utc' }),
+				});
+			}
+
+			const executions = await insightsService.getDailyBillableExecutions({
+				startDate: new Date('2025-06-10T00:00:00.000Z'),
+				endDate: new Date('2025-06-12T00:00:00.000Z'),
+			});
+
+			expect(executions).toEqual(
+				new Map([
+					['2025-06-11', 4],
+					['2025-06-12', 1],
 				]),
 			);
 		});

@@ -52,7 +52,7 @@ exports[`FormBox > should render the component 1`] = `
                         
                         Name 
                         <span
-                          class="n8n-text primary size-small bold"
+                          class="n8n-text danger size-small bold"
                         >
                           
                           *
@@ -138,7 +138,7 @@ exports[`FormBox > should render the component 1`] = `
                         
                         Email 
                         <span
-                          class="n8n-text primary size-medium bold"
+                          class="n8n-text danger size-medium bold"
                         >
                           
                           *
@@ -224,7 +224,7 @@ exports[`FormBox > should render the component 1`] = `
                         
                         Password 
                         <span
-                          class="n8n-text primary size-medium bold"
+                          class="n8n-text danger size-medium bold"
                         >
                           
                           *

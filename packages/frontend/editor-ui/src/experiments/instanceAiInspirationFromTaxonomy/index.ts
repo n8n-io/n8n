@@ -1,3 +1,4 @@
+// Experiment cleanup (142_aia_inspiration_from_taxonomy_v3)
 export { INSTANCE_AI_TAXONOMY_PROMPT_SUGGESTIONS_VERSION } from './prompts';
 export {
 	isPersonalizedPromptSuggestionResolution,
@@ -6,4 +7,5 @@ export {
 	resolveTaxonomySegment,
 	type TaxonomyPromptSuggestionResolution,
 } from './metadata';
+export { default as TaxonomyPromptSuggestions } from './components/TaxonomyPromptSuggestions.vue';
 export { useInstanceAiInspirationFromTaxonomyExperiment } from './useInstanceAiInspirationFromTaxonomyExperiment';

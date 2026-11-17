@@ -5,7 +5,7 @@ import type {
 	INodeType,
 	INodeTypeDescription,
 } from 'n8n-workflow';
-import { NodeConnectionTypes } from 'n8n-workflow';
+import { NodeConnectionTypes, requestPath } from 'n8n-workflow';
 
 import { humanticAiApiRequest } from './GenericFunctions';
 import { profileFields, profileOperations } from './ProfileDescription';
@@ -75,7 +75,7 @@ export class HumanticAi implements INodeType {
 						responseData = await humanticAiApiRequest.call(
 							this,
 							'POST',
-							'/user-profile/create',
+							requestPath`/user-profile/create`,
 							{},
 							qs,
 							{
@@ -93,7 +93,7 @@ export class HumanticAi implements INodeType {
 						responseData = await humanticAiApiRequest.call(
 							this,
 							'GET',
-							'/user-profile/create',
+							requestPath`/user-profile/create`,
 							{},
 							qs,
 						);
@@ -115,7 +115,13 @@ export class HumanticAi implements INodeType {
 						qs.persona = (options.persona as string[]).join(',');
 					}
 
-					responseData = await humanticAiApiRequest.call(this, 'GET', '/user-profile', {}, qs);
+					responseData = await humanticAiApiRequest.call(
+						this,
+						'GET',
+						requestPath`/user-profile`,
+						{},
+						qs,
+					);
 					responseData = responseData.results;
 				}
 				if (operation === 'update') {
@@ -131,7 +137,7 @@ export class HumanticAi implements INodeType {
 						responseData = await humanticAiApiRequest.call(
 							this,
 							'POST',
-							'/user-profile/create',
+							requestPath`/user-profile/create`,
 							{},
 							qs,
 							{
@@ -157,7 +163,7 @@ export class HumanticAi implements INodeType {
 						responseData = await humanticAiApiRequest.call(
 							this,
 							'POST',
-							'/user-profile/create',
+							requestPath`/user-profile/create`,
 							body,
 							qs,
 						);

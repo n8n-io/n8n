@@ -62,11 +62,12 @@ describe('WorkflowSharingService', () => {
 				scopes: ['workflow:read'],
 			});
 
-			expect(sharedWorkflowRepository.findWorkflowIdsAccessibleToUser).toHaveBeenCalledWith(
-				member.id,
-				['workflow:owner'],
-				['project:viewer'],
-			);
+			expect(sharedWorkflowRepository.findWorkflowIdsAccessibleToUser).toHaveBeenCalledWith({
+				userId: member.id,
+				workflowRoleSlugs: ['workflow:owner'],
+				projectRoleSlugs: ['project:viewer'],
+				projectId: undefined,
+			});
 			expect(result).toEqual(['workflow-1']);
 		});
 	});
@@ -152,6 +153,30 @@ describe('WorkflowSharingService', () => {
 				globalRoleSlugs: ['global:owner', 'global:admin'],
 			});
 			expect(result).toEqual(['owner-1']);
+		});
+
+		it('resolves and uses the roles for the given scope', async () => {
+			roleService.rolesWithScope.mockImplementation(async (namespace) => {
+				if (namespace === 'workflow') return ['workflow:update-role'];
+				if (namespace === 'global') return ['global:update-role'];
+				return ['project:update-role'];
+			});
+			sharedWorkflowRepository.findProjectIdsByRole.mockResolvedValue([]);
+			userRepository.findIdsWithGlobalOrProjectRoles.mockResolvedValue([]);
+
+			await service.getUserIdsWithAccessToWorkflow('workflow-1', 'workflow:update');
+
+			expect(roleService.rolesWithScope).toHaveBeenCalledWith('workflow', ['workflow:update']);
+			expect(roleService.rolesWithScope).toHaveBeenCalledWith('global', ['workflow:update']);
+			expect(roleService.rolesWithScope).toHaveBeenCalledWith('project', ['workflow:update']);
+			expect(sharedWorkflowRepository.findProjectIdsByRole).toHaveBeenCalledWith('workflow-1', [
+				'workflow:update-role',
+			]);
+			expect(userRepository.findIdsWithGlobalOrProjectRoles).toHaveBeenCalledWith({
+				projectIds: [],
+				projectRoleSlugs: ['project:update-role'],
+				globalRoleSlugs: ['global:update-role'],
+			});
 		});
 	});
 

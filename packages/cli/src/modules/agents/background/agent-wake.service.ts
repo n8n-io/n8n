@@ -5,12 +5,18 @@ import { UserRepository } from '@n8n/db';
 import { OnPubSubEvent } from '@n8n/decorators';
 import { Service } from '@n8n/di';
 import { InstanceSettings } from 'n8n-core';
-import { OperationalError, UnexpectedError } from 'n8n-workflow';
+import { OperationalError, UnexpectedError } from '@n8n/errors';
+import { randomUUID } from 'node:crypto';
 
+import { AgentExecutionThreadRepository } from '../repositories/agent-execution-thread.repository';
 import { userHasScopes } from '@/permissions.ee/check-access';
-import { Publisher } from '@/scaling/pubsub/publisher.service';
+import { Publisher } from '@n8n/backend-services';
 
 import { AgentConversationStateService } from '../agent-conversation-state.service';
+import { AgentExecutionRecordingError } from '../agent-execution-recording.error';
+import { AgentPlanService } from '../agent-plan.service';
+import { planLeaves } from '../plans/agent-plan-state';
+import { isFinal as isFinalPlanStatus } from '../plans/agent-plan.validation';
 import {
 	AgentExecutionOrchestratorService,
 	type ExecuteForWakeConfig,
@@ -22,7 +28,7 @@ import {
 	AGENT_BACKGROUND_UPDATES_OPEN_TAG,
 	formatWakeMessage,
 } from './background-job-messages';
-import type { Agent } from '../entities/agent.entity';
+import type { ProjectAgent } from '../entities/agent.entity';
 import type { AgentBackgroundJob } from '../entities/agent-background-job.entity';
 import { ChatIntegrationRegistry } from '../integrations/agent-chat-integration';
 import { AgentBackgroundJobRepository } from '../repositories/agent-background-job.repository';
@@ -52,6 +58,7 @@ export class AgentWakeService {
 	private readonly activeWakes = new Set<string>();
 
 	constructor(
+		private readonly threadRepository: AgentExecutionThreadRepository,
 		private readonly jobRepository: AgentBackgroundJobRepository,
 		private readonly conversationState: AgentConversationStateService,
 		private readonly agentRepository: AgentRepository,
@@ -64,12 +71,14 @@ export class AgentWakeService {
 		private readonly agentsConfig: AgentsConfig,
 		private readonly logger: Logger,
 		private readonly backgroundJobService: AgentBackgroundJobService,
+		private readonly planService: AgentPlanService,
 	) {
 		this.logger = this.logger.scoped('agents');
 	}
 
 	async requestWake(threadId: string): Promise<void> {
 		if (!this.agentsConfig.backgroundTasksEnabled) return;
+
 		if (this.instanceSettings.isWorker) {
 			await this.publisher.publishCommand({
 				command: 'wake-agent-background-job',
@@ -83,12 +92,15 @@ export class AgentWakeService {
 	@OnPubSubEvent('wake-agent-background-job', { instanceType: 'main' })
 	handleWakeRelay({ threadId }: { threadId: string }): void {
 		if (!this.agentsConfig.backgroundTasksEnabled) return;
+
 		this.scheduleLocal(threadId);
 	}
 
 	async drainUnconsumed(): Promise<void> {
 		if (!this.agentsConfig.backgroundTasksEnabled) return;
+
 		const threadIds = await this.jobRepository.findThreadsWithUnconsumedMail();
+
 		for (const threadId of threadIds) this.scheduleLocal(threadId);
 	}
 
@@ -116,7 +128,10 @@ export class AgentWakeService {
 		]);
 		const jobs = pending.filter(
 			(job) =>
-				job.parentResourceId === resourceId && job.status !== 'suspended' && !job.pauseRequestId,
+				job.parentResourceId === resourceId &&
+				job.status !== 'suspended' &&
+				!job.pauseRequestId &&
+				!job.wakeAttemptId,
 		);
 		if (jobs.length === 0 && !stoppedHere) return undefined;
 
@@ -131,11 +146,11 @@ export class AgentWakeService {
 		const updates: string[] = [];
 		if (jobs.length > 0)
 			updates.push(
-				`${jobs.length} background job(s) settled: ${summaries}. Call check_background_jobs once before you finish this turn, only if you have not already checked in this turn. Collect all relevant jobs in that call.`,
+				`${jobs.length} background job(s) settled: ${summaries}. Call background_jobs with action "check" once before you finish this turn, only if you have not already checked in this turn. Collect all relevant jobs in that call.`,
 			);
 		if (stoppedHere)
 			updates.push(
-				'The user requested a stop for background tasks. Sub-agents pause at their checkpoints. Workflows stop through execution cancellation. One combined report follows when the selected tasks are inactive. Do not replace or resume these tasks automatically. First call resume_background_jobs when the latest user message explicitly asks to continue. If that message arrived before the report, ask the user to wait and retry. Cancelled workflows need new calls through their normal tools. Check conversation history and current jobs before repeating a workflow call.',
+				'The user requested a stop for background tasks. Sub-agents pause at their checkpoints. Workflows stop through execution cancellation. One combined report follows when the selected tasks are inactive. Do not replace or resume these tasks automatically. First call background_jobs with action "resume" when the latest user message explicitly asks to continue. If that message arrived before the report, ask the user to wait and retry. Cancelled workflows need new calls through their normal tools. Check conversation history and current jobs before repeating a workflow call.',
 			);
 		return `${AGENT_BACKGROUND_UPDATES_OPEN_TAG}${updates.join('\n')}${AGENT_BACKGROUND_UPDATES_CLOSE_TAG}`;
 	}
@@ -166,13 +181,34 @@ export class AgentWakeService {
 	}
 
 	private async deliverInsideLease(threadId: string, signal: AbortSignal): Promise<void> {
+		const pendingStops = await this.threadRepository.findPendingStopReports(threadId);
+
+		// The Stop report describes the state that Stop left. Wakes on its thread run after it.
+		if (pendingStops.some((stop) => stop.threadId === threadId)) return;
+
+		// The report delivers the results of captured jobs. Late results wake as usual.
+		const owned = new Set(pendingStops.map((stop) => stop.pause.id));
 		let pending = await this.jobRepository.findWakeableUnconsumed(threadId);
+
+		pending = pending.filter((job) => !job.pauseRequestId || !owned.has(job.pauseRequestId));
 		const stopped = pending.filter((job) => job.pauseRequestId);
+
 		if (stopped.length > 0) {
 			// A worker can stop after settlement and before it replaces older checkpoints.
 			for (const job of stopped) await this.backgroundJobService.retainLatestStopGroup(job);
-			pending = await this.jobRepository.findWakeableUnconsumed(threadId);
+
+			pending = (await this.jobRepository.findWakeableUnconsumed(threadId)).filter(
+				(job) => !job.pauseRequestId || !owned.has(job.pauseRequestId),
+			);
 		}
+
+		// A started wake already received these results. Finish its consumption update.
+		const received = pending.filter((job) => job.wakeAttemptId);
+		if (received.length > 0) {
+			if (!(await this.consumeReceived(threadId, received))) return;
+			pending = pending.filter((job) => !job.wakeAttemptId);
+		}
+
 		for (const job of pending.filter(
 			(item) => item.status === 'suspended' && !item.pauseRequestId,
 		)) {
@@ -199,6 +235,12 @@ export class AgentWakeService {
 			return;
 		}
 
+		const ids = jobs.map((job) => job.id);
+		// The claim persists before the agent starts, so recovery on any main can tell
+		// that the agent received these results, also after a restart.
+		const wakeAttemptId = randomUUID();
+		let ran = false;
+		let started = false;
 		try {
 			const { agent, identity } = await this.resolveWakeTarget(first);
 			const { running, suspendedCheckpoint } = await this.conversationState.inspect(
@@ -206,23 +248,70 @@ export class AgentWakeService {
 				threadId,
 			);
 			if (running || suspendedCheckpoint !== null) return;
-			await this.runWake(agent, identity, jobs, threadId, first.parentResourceId, signal);
+			await this.runWake(agent, identity, jobs, threadId, first.parentResourceId, signal, {
+				onAdmitted: async () => await this.jobRepository.claimForWake(threadId, ids, wakeAttemptId),
+				onRuntimeStarted: () => {
+					started = true;
+				},
+			});
+			ran = true;
 
 			if (signal.aborted) return;
 			await this.backgroundJobService.markMailConsumed(
 				threadId,
-				jobs.map((job) => job.id),
+				ids,
 				Boolean(first.pauseRequestId),
 			);
 			this.failures.delete(threadId);
 
 			// Check for results that arrived during this reply; an empty queue stops further checks.
 			this.scheduleLocal(threadId);
-		} catch {
-			if (signal.aborted) return;
+		} catch (error) {
+			if (signal.aborted) {
+				// The agent did not run. Release the claim so a later wake delivers these results.
+				if (!started) await this.releaseClaim(threadId, wakeAttemptId);
+				return;
+			}
+			if (ran || isStartedRecordingFailure(error)) {
+				// The agent ran. Another run would repeat its tool actions.
+				await this.consumeReceived(threadId, jobs);
+				return;
+			}
+			// Ordinary failures retry. Release the claim so the next wake can select these results.
+			await this.releaseClaim(threadId, wakeAttemptId);
 			// Keep provider and tool error details in the execution record.
 			// Log only that the wake failed.
 			this.recordFailure(threadId, generation);
+		}
+	}
+
+	private async releaseClaim(threadId: string, wakeAttemptId: string): Promise<void> {
+		try {
+			await this.jobRepository.releaseWakeClaim(threadId, wakeAttemptId);
+		} catch (error) {
+			// Recovery then treats the results as received. No replay is safer than a lost retry.
+			this.logger.warn('Failed to release background job results after a failed wake', {
+				threadId,
+				error,
+			});
+		}
+	}
+
+	/** Mark results consumed that a started wake received. Recovery retries on failure. */
+	private async consumeReceived(threadId: string, jobs: AgentBackgroundJob[]): Promise<boolean> {
+		try {
+			await this.backgroundJobService.markMailConsumed(
+				threadId,
+				jobs.map((job) => job.id),
+				true,
+			);
+			return true;
+		} catch (error) {
+			this.logger.warn('Failed to mark background job results consumed after a wake', {
+				threadId,
+				error,
+			});
+			return false;
 		}
 	}
 
@@ -326,37 +415,76 @@ export class AgentWakeService {
 		return { agent, identity };
 	}
 
+	private async isFinalBatch(threadId: string, jobs: AgentBackgroundJob[]): Promise<boolean> {
+		const first = jobs[0];
+		if (first.pauseRequestId) return false;
+
+		const plan = await this.planService.findActivePlan(threadId, {});
+		const leaves = plan ? planLeaves(plan.data) : [];
+		if (plan && !(leaves.length > 0 && leaves.every((task) => isFinalPlanStatus(task.status)))) {
+			return false;
+		}
+
+		const deliveredIds = new Set(jobs.map((job) => job.id));
+		return !(await this.jobRepository.findByParentThread(threadId)).some(
+			(job) =>
+				this.hasSameParentIdentity(job, first) &&
+				(['running', 'suspended', 'paused'].includes(job.status) ||
+					(job.notifiedAt === null && !deliveredIds.has(job.id))),
+		);
+	}
+
 	private async runWake(
-		agent: Agent,
+		agent: ProjectAgent,
 		identity: ExecuteForWakeConfig['identity'],
 		jobs: AgentBackgroundJob[],
 		threadId: string,
 		resourceId: string,
 		signal: AbortSignal,
+		{ onAdmitted, onRuntimeStarted }: Pick<ExecuteForWakeConfig, 'onAdmitted' | 'onRuntimeStarted'>,
 	): Promise<void> {
 		this.activeWakes.add(threadId);
+
 		try {
+			// The final marker is only a UI hint. A failed lookup must not block delivery.
+			let isFinal = false;
+			try {
+				isFinal = await this.isFinalBatch(threadId, jobs);
+			} catch (error) {
+				this.logger.warn('Failed to check whether background results are final', {
+					threadId,
+					error,
+				});
+			}
+
 			await this.orchestrator.executeForWake({
 				agentId: agent.id,
 				projectId: agent.projectId,
 				message: formatWakeMessage(jobs),
 				pauseReport: Boolean(jobs[0]?.pauseRequestId),
 				backgroundJobSignal: {
-					tasks: jobs.flatMap(({ id, title, kind, status }) =>
+					...(isFinal ? { isFinal: true } : {}),
+					tasks: jobs.flatMap(({ id, title, kind, status, files }) =>
 						status === 'running' ||
 						status === 'suspended' ||
 						status === 'paused' ||
 						jobs[0]?.pauseRequestId
 							? []
-							: [{ id, title, kind, status }],
+							: [{ id, title, kind, status, ...(files?.length ? { files } : {}) }],
 					),
 				},
 				memory: { threadId, resourceId },
 				identity,
 				abortSignal: signal,
+				onAdmitted,
+				onRuntimeStarted,
 			});
 		} finally {
 			this.activeWakes.delete(threadId);
 		}
 	}
+}
+
+function isStartedRecordingFailure(error: unknown): boolean {
+	return error instanceof AgentExecutionRecordingError && error.executionStarted;
 }

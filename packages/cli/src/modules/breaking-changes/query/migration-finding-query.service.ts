@@ -1,14 +1,19 @@
-import type {
-	BreakingChangeAffectedWorkflow,
-	BreakingChangeLightReportResult,
-	BreakingChangeRuleDetailResult,
-	BreakingChangeRuleDetailWorkflow,
-	BreakingChangeVersion,
-	BreakingChangeWorkflowIssue,
-	BreakingChangeWorkflowRuleResult,
-} from '@n8n/api-types';
-import { Logger } from '@n8n/backend-common';
 import {
+	migrationFindingListedStatusSchema,
+	type BreakingChangeAffectedWorkflow,
+	type BreakingChangeLightReportResult,
+	type BreakingChangeRuleDetailResult,
+	type BreakingChangeRuleDetailWorkflow,
+	type BreakingChangeVersion,
+	type BreakingChangeWorkflowIssue,
+	type BreakingChangeWorkflowOwner,
+	type BreakingChangeWorkflowRuleResult,
+	type MigrationFindingListedStatus,
+} from '@n8n/api-types';
+import { getN8nVersion, Logger } from '@n8n/backend-common';
+import {
+	SharedWorkflowRepository,
+	UserRepository,
 	WorkflowRepository,
 	WorkflowStatisticsRepository,
 	type WorkflowEntity,
@@ -23,16 +28,18 @@ import { RuleRegistry } from '../breaking-changes.rule-registry.service';
 import { BreakingChangeService } from '../breaking-changes.service';
 import { MigrationFindingSyncRepository } from '../database/repositories/migration-finding-sync.repository';
 import { MigrationFindingRepository } from '../database/repositories/migration-finding.repository';
+import { MigrationWorkflowOwnerRepository } from '../database/repositories/migration-workflow-owner.repository';
 import { groupNodesByType } from '../group-nodes-by-type';
+import { toWorkflowOwner } from '../owners/workflow-owner';
 import { summarizeExecutionStatistics } from '../summarize-execution-statistics';
 import {
+	createWorkflowScanContext,
 	isInstanceRule,
 	isWorkflowLevelRule,
 	type IBreakingChangeBatchWorkflowRule,
 	type IBreakingChangeWorkflowRule,
 	type WorkflowLevelRule,
 } from '../types';
-import { N8N_VERSION } from '../../../constants';
 
 type LightWorkflowResult = BreakingChangeLightReportResult['report']['workflowResults'][number];
 
@@ -47,10 +54,19 @@ const workflowFilter = (scope: ReportScope) =>
 	scope.kind === 'workflows' ? scope.workflowIds : undefined;
 
 /** The rule fields both report types share. */
-type RuleDescription = Omit<BreakingChangeWorkflowRuleResult, 'affectedWorkflows'>;
+export type RuleDescription = Omit<BreakingChangeWorkflowRuleResult, 'affectedWorkflows'>;
+
+/** What n8n Assistant can do with a rule's findings. A rule that does not opt in offers none. */
+const assistantActionOf = (rule: WorkflowLevelRule) => rule.getMetadata().assistant ?? 'none';
+
+/** One open, notified, or won't fix finding of a workflow, with its rule and the rule's current issues. */
+export type WorkflowFinding = RuleDescription & {
+	status: MigrationFindingListedStatus;
+	issues: BreakingChangeWorkflowIssue[];
+};
 
 /** The same fields the scan loads, so a rule sees the same workflow data on both paths. */
-const WORKFLOW_FIELDS = ['name', 'active', 'activeVersionId', 'nodes', 'updatedAt'];
+const WORKFLOW_FIELDS = ['name', 'active', 'activeVersionId', 'versionId', 'nodes', 'updatedAt'];
 
 /**
  * Reads the migration report from the `migration_finding` table and shapes it into the
@@ -67,6 +83,9 @@ export class MigrationFindingQueryService {
 		private readonly workflowStatisticsRepository: WorkflowStatisticsRepository,
 		private readonly findingRepository: MigrationFindingRepository,
 		private readonly syncRepository: MigrationFindingSyncRepository,
+		private readonly ownerRepository: MigrationWorkflowOwnerRepository,
+		private readonly userRepository: UserRepository,
+		private readonly sharedWorkflowRepository: SharedWorkflowRepository,
 		private readonly logger: Logger,
 		private readonly errorReporter: ErrorReporter,
 	) {
@@ -74,7 +93,7 @@ export class MigrationFindingQueryService {
 	}
 
 	/**
-	 * The overview: one entry per workflow rule with its open and won't fix finding counts,
+	 * The overview: one entry per workflow rule with its unresolved (open, notified or fixed unpublished) and won't fix finding counts,
 	 * plus live instance results.
 	 */
 	async getLightReport(
@@ -94,11 +113,11 @@ export class MigrationFindingQueryService {
 			totalWorkflows,
 			instanceResults,
 		] = await Promise.all([
-			this.findingRepository.countOpenByRule(targetVersion, filter, {}),
+			this.findingRepository.countUnresolvedByRule(targetVersion, filter, {}),
 			this.findingRepository.countWontFixByRule(targetVersion, filter, {}),
-			this.findingRepository.countDistinctOpenWorkflows(targetVersion, filter, {}),
+			this.findingRepository.countDistinctUnresolvedWorkflows(targetVersion, filter, {}),
 			this.syncRepository.getForVersion(targetVersion, {}),
-			scope.kind === 'instance' ? this.workflowRepository.count() : scope.workflowIds.length,
+			this.workflowRepository.countUnarchived(filter),
 			// Instance rules read config and environment, not workflows, so they stay live.
 			// They describe the instance, so only the instance scope sees them.
 			scope.kind === 'instance'
@@ -126,10 +145,9 @@ export class MigrationFindingQueryService {
 
 		return {
 			report: {
-				// Before the first sync there is nothing to date, so the read time stands in.
-				generatedAt: sync?.syncedAt ?? new Date(),
+				generatedAt: sync?.syncedAt,
 				targetVersion,
-				currentVersion: N8N_VERSION,
+				currentVersion: getN8nVersion(),
 				instanceResults,
 				workflowResults,
 			},
@@ -141,7 +159,7 @@ export class MigrationFindingQueryService {
 	}
 
 	/**
-	 * The detail of one workflow rule: every open and won't fix finding in scope
+	 * The detail of one workflow rule: every open, notified and won't fix finding in scope
 	 * with its status, workflow, statistics and issues.
 	 */
 	async getRuleFindings(
@@ -161,32 +179,125 @@ export class MigrationFindingQueryService {
 			{},
 		);
 		const workflowIds = findings.map((finding) => finding.workflowId);
-		const [workflows, statistics] = await Promise.all([
+		const [workflows, statistics, ownersByWorkflow, projectsByWorkflow] = await Promise.all([
 			this.workflowRepository.findByIds(workflowIds, { fields: WORKFLOW_FIELDS }),
 			this.workflowStatisticsRepository.findByWorkflowIds(workflowIds),
+			this.loadOwners(workflowIds),
+			this.sharedWorkflowRepository.findOwnerProjectsByWorkflowIds(workflowIds),
 		]);
 		const statisticsByWorkflow = groupByWorkflowId(statistics);
 		// A batch rule decides from all workflows at once, so its issues come from a scan of that rule.
 		const issuesByWorkflow =
 			'collectWorkflowData' in rule
 				? await this.issuesFromScan(targetVersion, rule)
-				: await this.issuesFromRecheck(rule, workflows);
+				: await this.issuesFromLatestOrPublished(rule, workflows);
 
 		const affectedWorkflows: BreakingChangeRuleDetailWorkflow[] = [];
 		for (const finding of findings) {
+			const project = projectsByWorkflow.get(finding.workflowId);
 			affectedWorkflows.push({
 				id: finding.workflowId,
 				name: finding.workflow.name,
 				active: !!finding.workflow.activeVersionId,
+				isArchived: finding.workflow.isArchived,
 				lastUpdatedAt: finding.workflow.updatedAt,
 				...summarizeExecutionStatistics(statisticsByWorkflow.get(finding.workflowId) ?? []),
 				// A workflow the rule no longer flags stays listed, without issues, until the next sync.
 				issues: issuesByWorkflow.get(finding.workflowId) ?? [],
 				status: finding.status,
+				notifiedAt: finding.notifiedAt ?? undefined,
+				owner: ownersByWorkflow.get(finding.workflowId),
+				homeProjectId: project?.id,
+				homeProjectName: project?.name,
+				homeProjectType: project?.type,
 			});
 		}
 
-		return { ...(await this.describeRule(rule, affectedWorkflows)), affectedWorkflows };
+		return {
+			...(await this.describeRule(rule, affectedWorkflows)),
+			affectedWorkflows,
+			assistantAction: assistantActionOf(rule),
+		};
+	}
+
+	/**
+	 * One finding for a hand-off to n8n Assistant: the rule and the workflow's current issues.
+	 * Undefined unless the rule targets this version, checks one workflow at a time and offers
+	 * the Assistant. The caller loads the workflow and checks access.
+	 */
+	async describeWorkflowFinding(
+		targetVersion: BreakingChangeVersion,
+		ruleId: string,
+		workflow: WorkflowEntity,
+	): Promise<
+		| {
+				rule: RuleDescription;
+				issues: BreakingChangeWorkflowIssue[];
+				assistantAction: 'fix' | 'review';
+				/** The draft is clean, but the published version still has the issue. */
+				unpublishedFix: boolean;
+		  }
+		| undefined
+	> {
+		const rule = this.ruleRegistry.getRule(ruleId);
+		if (!rule || !('detectWorkflow' in rule) || rule.getMetadata().version !== targetVersion) {
+			return undefined;
+		}
+		const assistantAction = assistantActionOf(rule);
+		if (assistantAction === 'none') return undefined;
+
+		// A rule that throws leaves the workflow out of the map: that is not a clean draft.
+		const draftIssues = (await this.issuesFromRecheck(rule, [workflow])).get(workflow.id);
+		const issues = draftIssues ?? [];
+		const unpublishedFix =
+			draftIssues?.length === 0 && (await this.publishedVersionHasIssues(rule, workflow));
+
+		return { rule: await this.describeRule(rule), issues, assistantAction, unpublishedFix };
+	}
+
+	/** Whether the published version, when the draft is ahead of it, still breaks the rule. */
+	private async publishedVersionHasIssues(
+		rule: IBreakingChangeWorkflowRule,
+		workflow: WorkflowEntity,
+	): Promise<boolean> {
+		const nodes = (await this.breakingChangeService.loadPublishedNodes([workflow])).get(
+			workflow.id,
+		);
+		if (!nodes) return false;
+		const issues = await this.issuesFromRecheck(rule, [{ ...workflow, nodes }]);
+		return (issues.get(workflow.id) ?? []).length > 0;
+	}
+
+	/**
+	 * The open, notified, and won't fix findings of one workflow, oldest first.
+	 * Returns `undefined` when the report never flagged the workflow, in any status.
+	 * It reads the finding table, so a caller that needs a save it just made
+	 * reflected runs the sync service's single-workflow re-check first.
+	 */
+	async getWorkflowFindings(
+		targetVersion: BreakingChangeVersion,
+		workflowId: string,
+	): Promise<WorkflowFinding[] | undefined> {
+		const rows = await this.findingRepository.listForWorkflows(targetVersion, [workflowId], {});
+		if (rows.length === 0) return undefined;
+		const [workflow] = await this.workflowRepository.findByIds([workflowId], {
+			fields: WORKFLOW_FIELDS,
+		});
+		if (!workflow) return [];
+
+		const result: WorkflowFinding[] = [];
+		for (const finding of rows) {
+			const status = migrationFindingListedStatusSchema.safeParse(finding.status);
+			const rule = this.ruleRegistry.getRule(finding.ruleId);
+			if (!status.success || !rule || !isWorkflowLevelRule(rule)) continue;
+			// A batch rule decides from all workflows at once, so one workflow has no issue list of its own.
+			const issues =
+				'detectWorkflow' in rule
+					? ((await this.issuesFromRecheck(rule, [workflow])).get(workflow.id) ?? [])
+					: [];
+			result.push({ ...(await this.describeRule(rule)), status: status.data, issues });
+		}
+		return result;
 	}
 
 	private async describeRule(
@@ -205,6 +316,24 @@ export class MigrationFindingQueryService {
 		};
 	}
 
+	/** The owner per workflow id. A deleted user leaves the owner row without a user, so no owner. */
+	private async loadOwners(
+		workflowIds: string[],
+	): Promise<Map<string, BreakingChangeWorkflowOwner>> {
+		const rows = await this.ownerRepository.findByWorkflowIds(workflowIds, {});
+		const userIds = [...new Set(rows.flatMap((row) => (row.userId ? [row.userId] : [])))];
+		const users = userIds.length > 0 ? await this.userRepository.findManyByIds(userIds) : [];
+		const usersById = new Map(users.map((user) => [user.id, user]));
+
+		const owners = new Map<string, BreakingChangeWorkflowOwner>();
+		for (const row of rows) {
+			const user = row.userId ? usersById.get(row.userId) : undefined;
+			if (!user) continue;
+			owners.set(row.workflowId, toWorkflowOwner(user, row.source));
+		}
+		return owners;
+	}
+
 	/** Issues per workflow id for one batch rule, from a scan of that rule alone. */
 	private async issuesFromScan(
 		targetVersion: BreakingChangeVersion,
@@ -217,6 +346,31 @@ export class MigrationFindingQueryService {
 	}
 
 	/**
+	 * Issues per workflow id from the latest version. A workflow without issues there,
+	 * and with an older version published, takes the issues of the published version:
+	 * a finding stays listed until the published version is clean too, whatever its status.
+	 */
+	private async issuesFromLatestOrPublished(
+		rule: IBreakingChangeWorkflowRule,
+		workflows: WorkflowEntity[],
+	): Promise<Map<string, BreakingChangeWorkflowIssue[]>> {
+		const issuesByWorkflow = await this.issuesFromRecheck(rule, workflows);
+
+		const withoutIssues = workflows.filter(
+			(workflow) => (issuesByWorkflow.get(workflow.id)?.length ?? 0) === 0,
+		);
+		const publishedNodes = await this.breakingChangeService.loadPublishedNodes(withoutIssues);
+		const published = withoutIssues.flatMap((workflow) => {
+			const nodes = publishedNodes.get(workflow.id);
+			return nodes ? [{ ...workflow, nodes }] : [];
+		});
+		for (const [workflowId, issues] of await this.issuesFromRecheck(rule, published)) {
+			if (issues.length > 0) issuesByWorkflow.set(workflowId, issues);
+		}
+		return issuesByWorkflow;
+	}
+
+	/**
 	 * Re-runs one rule on the given workflows for their issue lists, which the table does not store.
 	 * A rule that throws for a workflow yields no issues for it.
 	 */
@@ -225,9 +379,14 @@ export class MigrationFindingQueryService {
 		workflows: WorkflowEntity[],
 	): Promise<Map<string, BreakingChangeWorkflowIssue[]>> {
 		const issuesByWorkflow = new Map<string, BreakingChangeWorkflowIssue[]>();
+		const context = createWorkflowScanContext();
 		for (const workflow of workflows) {
 			try {
-				const result = await rule.detectWorkflow(workflow, groupNodesByType(workflow.nodes));
+				const result = await rule.detectWorkflow(
+					workflow,
+					groupNodesByType(workflow.nodes),
+					context,
+				);
 				issuesByWorkflow.set(workflow.id, result.issues);
 			} catch (error) {
 				this.logger.warn('Breaking change rule failed for workflow, listing it without issues', {
