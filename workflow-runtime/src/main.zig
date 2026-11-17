@@ -757,6 +757,7 @@ test {
     _ = @import("shell/growth.zig");
     _ = @import("shell/egress_test.zig");
     _ = @import("shell/pg_call.zig");
+    _ = @import("shell/smtp_call.zig");
     _ = @import("shell/pg.zig");
     _ = @import("shell/pg_test.zig");
     _ = @import("shell/sql_net.zig");
