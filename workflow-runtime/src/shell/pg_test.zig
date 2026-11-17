@@ -31,10 +31,13 @@ const Harness = struct {
     next_seq: u32 = 1,
 
     /// The slots: `db` (the test server), and slots that differ in one value.
-    fn init(h: *Harness, t: Target, cfg: pg.Config) !void {
-        h.arena = std.heap.ArenaAllocator.init(std.testing.allocator);
-        const a = h.arena.allocator();
-        h.poller = try sys.Poller.init();
+    /// The harness lives in its own arena: `destroy` frees all of it.
+    fn create(t: Target, cfg: pg.Config) !*Harness {
+        var arena = std.heap.ArenaAllocator.init(std.testing.allocator);
+        errdefer arena.deinit();
+        const a = arena.allocator();
+        const h = try a.create(Harness);
+        h.* = .{ .arena = arena, .poller = try sys.Poller.init(), .client = try a.create(pg.Client), .store = try creds.Store.parse(a, "{}") };
         const doc = try std.fmt.allocPrint(a,
             \\{{"db":{{"type":"postgres","data":{{"host":"{0s}","port":{1s},"user":"postgres","password":"{2s}","database":"postgres","ssl":"disable","maxConnections":100}}}},
             \\"wrong":{{"data":{{"host":"{0s}","port":{1s},"user":"postgres","password":"not-the-password","database":"postgres"}}}},
@@ -48,14 +51,17 @@ const Harness = struct {
             \\"ssh":{{"data":{{"host":"{0s}","port":{1s},"user":"postgres","password":"{2s}","database":"postgres","sshTunnel":true}}}}}}
         , .{ t.host, t.port, t.password });
         h.store = try creds.Store.parse(a, doc);
-        h.client = try a.create(pg.Client);
         try h.client.init(a, cfg, &h.poller, kind_conn, kind_dns);
+        // The arena as it is after the last allocation above.
+        h.arena = arena;
+        return h;
     }
 
-    fn deinit(h: *Harness) void {
+    fn destroy(h: *Harness) void {
         h.client.deinit();
         h.poller.deinit();
-        h.arena.deinit();
+        var arena = h.arena;
+        arena.deinit();
     }
 
     fn begin(h: *Harness, args: []const u8) !u32 {
@@ -70,7 +76,7 @@ const Harness = struct {
 
     /// Run the event loop until one call ends; give its seq and its answer.
     fn wait(h: *Harness, seq_out: *u32) !Answer {
-        var ready: [64]sys.Ready = undefined;
+        var ready: [64]sys.Ready = @splat(.{ .token = 0, .readable = false, .writable = false, .eof = false });
         for (0..4000) |_| {
             if (h.client.nextDone()) |d| {
                 const text = try h.arena.allocator().dupe(u8, d.payload);
@@ -122,9 +128,8 @@ const count = "\"statements\":[{\"text\":\"select count(*)::int4 as n from wfrt_
 
 test "pg live: values go as binds and every column type has the JSON of node-postgres" {
     const t = target() orelse return error.SkipZigTest;
-    var h: Harness = undefined;
-    try h.init(t, .{});
-    defer h.deinit();
+    const h = try Harness.create(t, .{});
+    defer h.destroy();
     try h.expectResult(
         \\"statements":[{"text":"select $1::int4 + 1 as a, $2 as t, $3 as n, $4 as big, $5 as b, $6::text as z","values":[7,"x'y; drop table x --",1.5,3000000000,true,null]}]
     ,
@@ -148,11 +153,54 @@ test "pg live: values go as binds and every column type has the JSON of node-pos
     try std.testing.expectEqual(@as(u64, 1), h.client.counters.connects);
 }
 
+test "pg live: arrays, interval, point and circle have the JSON of node-postgres" {
+    const t = target() orelse return error.SkipZigTest;
+    const h = try Harness.create(t, .{});
+    defer h.destroy();
+    // Each result was checked with pg-promise and the type parsers of the v1 node (version 2.7).
+    // int8[] stays text and numeric[] is a number, also with `largeNumbers: numbers`.
+    try h.expectResult(
+        \\"largeNumbers":"numbers","statements":[{"text":"select array[1,null,3]::int2[] as i2, array[9007199254740993,null,-5]::int8[] as i8, array[1.5,'NaN','Infinity',null]::float8[] as f8, array[1.50,null,'NaN',12345678901234567890.123]::numeric[] as n, array[true,false,null] as b, '{{1,2},{3,4}}'::int4[] as nested, '[0:2]={7,8,9}'::int4[] as dims, '{}'::text[] as e, 1.50::numeric as sn"}]
+    ,
+        \\{"results":[{"rows":[{"i2":[1,null,3],"i8":["9007199254740993",null,"-5"],"f8":[1.5,null,null,null],"n":[1.5,null,null,12345678901234567000],"b":[true,false,null],"nested":[[1,2],[3,4]],"dims":[7,8,9],"e":[],"sn":1.5}],"command":"SELECT","rowCount":1}]}
+    );
+    try h.expectResult(
+        \\"statements":[{"text":"select array['a',null,'NULL','null','','a b','q\"uote','back\\slash','{x}','a,b']::text[] as t, array['c']::char(3)[] as c, array['c81d4e2e-bcf2-11e6-869b-7df92533d2db',null]::uuid[] as u, '{{{a,b}},{{c,NULL}}}'::text[] as n3, array['v',null]::varchar[] as v, array[1.50]::numeric[] as n"}]
+    ,
+        \\{"results":[{"rows":[{"t":["a",null,"NULL","null","","a b","q\"uote","back\\slash","{x}","a,b"],"c":["c  "],"u":["c81d4e2e-bcf2-11e6-869b-7df92533d2db",null],"n3":[[["a","b"]],[["c",null]]],"v":["v",null],"n":[1.5]}],"command":"SELECT","rowCount":1}]}
+    );
+    try h.expectResult(
+        \\"statements":[{"text":"select array['{\"k\": [1, \"a\"]}', null, 'null', '1', '\"s\"']::jsonb[] as jb, array['{\"k\":  1}', 'null']::json[] as j, array['2024-01-02', null, 'infinity']::date[] as d, array['2024-01-02 03:04:05.123456+00', null, 'infinity', '2024-06-01 00:00:00+05:30']::timestamptz[] as tz"}]
+    ,
+        \\{"results":[{"rows":[{"jb":[{"k": [1, "a"]},null,null,1,"s"],"j":[{"k":  1},null],"d":["2024-01-02",null,"infinity"],"tz":["2024-01-02T03:04:05.123Z",null,"infinity","2024-05-31T18:30:00.000Z"]}],"command":"SELECT","rowCount":1}]}
+    );
+    try h.expectResult(
+        \\"statements":[{"text":"select '1 year 2 mons 3 days 04:05:06.789'::interval as a, '00:00:00'::interval as z, '-1 year -2 mons +3 days -04:05:06'::interval as neg, '-00:00:01.5'::interval as ms, '100:00:00.000001'::interval as h, array['1 day 02:00:00', null, '00:00:00']::interval[] as arr, null::interval as nul"}]
+    ,
+        \\{"results":[{"rows":[{"a":{"years":1,"months":2,"days":3,"hours":4,"minutes":5,"seconds":6,"milliseconds":789},"z":{},"neg":{"years":-1,"months":-2,"days":3,"hours":-4,"minutes":-5,"seconds":-6},"ms":{"seconds":-1,"milliseconds":-500},"h":{"hours":100,"milliseconds":0.001},"arr":[{"days":1,"hours":2},null,{}],"nul":null}],"command":"SELECT","rowCount":1}]}
+    );
+    try h.expectResult(
+        \\"statements":[{"text":"select '(1.5,-2)'::point as p, '(NaN,Infinity)'::point as pn, '(1e20,1e-7)'::point as pe, '<(1,2),3>'::circle as c, '<(1e20,-1e-7),Infinity>'::circle as ci, array['(1,2)',null]::point[] as pa, null::point as np, array['<(1,2),3>']::circle[] as ca, array['-0'::float8, 1e300] as fz, array[26]::oid[] as o"}]
+    ,
+        \\{"results":[{"rows":[{"p":{"x":1.5,"y":-2},"pn":{"x":null,"y":null},"pe":{"x":100000000000000000000,"y":1e-7},"c":{"x":1,"y":2,"radius":3},"ci":{"x":100000000000000000000,"y":-1e-7,"radius":null},"pa":[{"x":1,"y":2},null],"np":null,"ca":"{\"<(1,2),3>\"}","fz":[0,1e+300],"o":[26]}],"command":"SELECT","rowCount":1}]}
+    );
+    // The types that stay without a native form.
+    try h.expectError("db", "\"statements\":[{\"text\":\"select array['\\\\\\\\x00ff'::bytea] as b\"}]", "(limit: sql-type)");
+    try h.expectError("db", "\"statements\":[{\"text\":\"select array[now()::timestamp] as t\"}]", "(limit: sql-type)");
+    try h.expectError("db", "\"dates\":\"legacy\",\"statements\":[{\"text\":\"select array[now()] as t\"}]", "(limit: sql-type)");
+    // An interval in another style of the session has no native form; the marker comes before the statement runs.
+    try h.expectPart("db", "\"statements\":[{\"text\":\"set intervalstyle = 'iso_8601'\"}]", "\"command\":\"SET\"");
+    try h.expectError("db", "\"statements\":[{\"text\":\"select '1 day'::interval as i\"}]", "(limit: sql-type)");
+    try h.expectError("db", "\"statements\":[{\"text\":\"select array['1 day'::interval] as i\"}]", "(limit: sql-type)");
+    try h.expectPart("db", "\"statements\":[{\"text\":\"set intervalstyle = 'postgres'\"}]", "\"command\":\"SET\"");
+    try h.expectPart("db", "\"statements\":[{\"text\":\"select '1 day'::interval as i\"}]", "{\"i\":{\"days\":1}}");
+    try std.testing.expectEqual(@as(u64, 1), h.client.counters.connects);
+}
+
 test "pg live: the three modes commit and roll back as the v1 node does" {
     const t = target() orelse return error.SkipZigTest;
-    var h: Harness = undefined;
-    try h.init(t, .{});
-    defer h.deinit();
+    const h = try Harness.create(t, .{});
+    defer h.destroy();
     try h.expectPart("db", reset, "\"command\":\"TRUNCATE\"");
     // transaction: the second insert fails, and the first is rolled back.
     const tx =
@@ -187,12 +235,11 @@ test "pg live: the three modes commit and roll back as the v1 node does" {
 
 test "pg live: a call without an exact native form ends with a marker and commits nothing" {
     const t = target() orelse return error.SkipZigTest;
-    var h: Harness = undefined;
-    try h.init(t, .{ .max_result = 2048 });
-    defer h.deinit();
+    const h = try Harness.create(t, .{ .max_result = 2048 });
+    defer h.destroy();
     try h.expectPart("db", reset, "\"command\":\"TRUNCATE\"");
     try h.expectError("db", "\"statements\":[{\"text\":\"insert into wfrt_pg_t values (1, 'a'); select 1\"}]", "(limit: sql-statement)");
-    try h.expectError("db", "\"statements\":[{\"text\":\"insert into wfrt_pg_t values (1, 'a') returning array[id]\"}]", "(limit: sql-type)");
+    try h.expectError("db", "\"statements\":[{\"text\":\"insert into wfrt_pg_t values (1, 'a') returning array[v::bytea]\"}]", "(limit: sql-type)");
     // The v1 node writes the value into the text; as a bind these have no form.
     try h.expectError("db", "\"statements\":[{\"text\":\"select $1 is null as a\",\"values\":[null]},{\"text\":\"insert into wfrt_pg_t values (1, 'a')\"}]", "(limit: sql-statement)");
     try h.expectError("db", "\"statements\":[{\"text\":\"select * from wfrt_pg_t order by id limit 1 offset $2\",\"values\":[1]}]", "(limit: sql-statement)");
@@ -219,9 +266,8 @@ test "pg live: a call without an exact native form ends with a marker and commit
 
 test "pg live: login methods and connect errors" {
     const t = target() orelse return error.SkipZigTest;
-    var h: Harness = undefined;
-    try h.init(t, .{});
-    defer h.deinit();
+    const h = try Harness.create(t, .{});
+    defer h.destroy();
     try h.expectPart("wrong", count, "{\"results\":[],\"connect\":{\"length\":");
     try h.expectPart("wrong", count, "\"code\":\"28P01\",\"message\":\"password authentication failed for user \\\"postgres\\\"\"");
     try h.expectPart("nodb", count, "\"code\":\"3D000\",\"message\":\"database \\\"wfrt_no_such_db\\\" does not exist\"");
@@ -242,9 +288,8 @@ test "pg live: login methods and connect errors" {
 
 test "pg live: a pool has a fixed size, calls wait in order, and a slow statement is cancelled" {
     const t = target() orelse return error.SkipZigTest;
-    var h: Harness = undefined;
-    try h.init(t, .{ .max_reqs = 3, .pool_conns = 1 });
-    defer h.deinit();
+    const h = try Harness.create(t, .{ .max_reqs = 3, .pool_conns = 1 });
+    defer h.destroy();
     const slow = "{\"credential\":\"db\",\"dialect\":\"postgres\",\"statements\":[{\"text\":\"select pg_sleep(0.05)::text as s, $1::int4 as i\",\"values\":[%]}]}";
     var seqs: [3]u32 = @splat(0);
     inline for (0..3) |i| seqs[i] = try h.begin(slow[0 .. slow.len - 5] ++ std.fmt.comptimePrint("{d}", .{i}) ++ "]}]}");
@@ -606,4 +651,38 @@ test "pg fake: a connection that closes while a statement runs fails the step" {
     try h.expectResult(select_x, one_row);
     try std.testing.expectEqual(@as(u64, 2), h.client.counters.connects);
     try std.testing.expectEqual(@as(u32, 2), h.server.logins);
+}
+
+const typed_cols = [_]fake.Col{ .{ .name = "a", .oid = 1007 }, .{ .name = "t", .oid = 1009 }, .{ .name = "i", .oid = 1186 }, .{ .name = "p", .oid = 600 }, .{ .name = "c", .oid = 718 }, .{ .name = "n", .oid = 1231 } };
+const typed_rules = [_]fake.Rule{
+    .{ .text = "select typed", .cols = &typed_cols, .rows = &.{ &.{ "{1,NULL,{2}}", "{a,\"b c\",NULL}", "1 day 02:00:00", "(1.5,-2)", "<(1,2),3>", "{1.50,NaN}" }, &.{ null, null, null, null, null, null } }, .tag = "SELECT 2" },
+    .{ .text = "insert into t values (1) returning i", .cols = &.{.{ .name = "i", .oid = 1186 }}, .rows = &.{&.{"P1D"}}, .tag = "INSERT 0 1" },
+    .{ .text = "select stamps", .cols = &.{.{ .name = "s", .oid = 1185 }}, .rows = &.{&.{"{\"2024-01-02 03:04:05+00\"}"}}, .tag = "SELECT 1" },
+};
+
+test "pg fake: arrays, interval, point and circle columns, and the styles of the session" {
+    const h = try FakeHarness.create(.{ .max_result = 2048 }, .trust);
+    defer h.destroy();
+    h.server.rules = &typed_rules;
+    try h.expectResult("\"largeNumbers\":\"numbers\",\"statements\":[{\"text\":\"select typed\"}]",
+        \\{"results":[{"rows":[{"a":[1,null,[2]],"t":["a","b c",null],"i":{"days":1,"hours":2},"p":{"x":1.5,"y":-2},"c":{"x":1,"y":2,"radius":3},"n":[1.5,null]},{"a":null,"t":null,"i":null,"p":null,"c":null,"n":null}],"command":"SELECT","rowCount":2}]}
+    );
+    try h.expectResult("\"statements\":[{\"text\":\"select stamps\"}]", "{\"results\":[{\"rows\":[{\"s\":[\"2024-01-02T03:04:05.000Z\"]}],\"command\":\"SELECT\",\"rowCount\":1}]}");
+    // With `dates: legacy` the v1 node gives Date objects for the elements: no native form.
+    try h.expectError("\"dates\":\"legacy\",\"statements\":[{\"text\":\"select stamps\"}]", "(limit: sql-type)");
+    _ = try h.takeLog();
+    // An interval text in another style shows only in the row: the insert is rolled back.
+    try h.expectError("\"statements\":[{\"text\":\"insert into t values (1) returning i\"}]", "(limit: sql-type)");
+    try std.testing.expectEqualStrings("parse insert into t values (1) returning i\nBEGIN\nbind\nrun insert into t values (1) returning i\nROLLBACK\n", try h.takeLog());
+
+    // A session whose IntervalStyle or DateStyle is not the one that the client reads:
+    // the marker comes when the statement is described, before it runs.
+    const other = try FakeHarness.create(.{}, .trust);
+    defer other.destroy();
+    other.server.rules = &typed_rules;
+    other.server.intervalstyle = "iso_8601";
+    other.server.datestyle = "German, DMY";
+    try other.expectError("\"statements\":[{\"text\":\"insert into t values (1) returning i\"}]", "(limit: sql-type)");
+    try other.expectError("\"statements\":[{\"text\":\"select stamps\"}]", "(limit: sql-type)");
+    try std.testing.expect(std.mem.indexOf(u8, other.server.logText(), "run ") == null);
 }

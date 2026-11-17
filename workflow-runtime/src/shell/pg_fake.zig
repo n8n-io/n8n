@@ -126,6 +126,7 @@ pub const Server = struct {
     auth: Auth = .trust,
     password: []const u8 = "",
     datestyle: []const u8 = "ISO, MDY",
+    intervalstyle: []const u8 = "postgres",
     rules: []const Rule = &.{},
     conns: [max_conns]Conn = @splat(.{}),
     log: []u8 = &.{},
@@ -398,7 +399,7 @@ pub const Server = struct {
         out.open('R');
         out.int32(0);
         out.close();
-        const params = [_][2][]const u8{ .{ "server_version", "17.0" }, .{ "DateStyle", s.datestyle } };
+        const params = [_][2][]const u8{ .{ "server_version", "17.0" }, .{ "DateStyle", s.datestyle }, .{ "IntervalStyle", s.intervalstyle } };
         for (params) |p| {
             out.open('S');
             out.cstr(p[0]);

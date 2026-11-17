@@ -184,9 +184,12 @@ pub const Info = struct {
     /// A column type without a native form, two columns of one name, or
     /// more than `max_columns` columns.
     unsupported: bool = false,
+    /// A date, or an array of dates or timestamps: with `dates: legacy` it has no native form.
     has_date: bool = false,
-    /// A date or a timestamp: its text depends on the DateStyle of the session.
+    /// A date or a timestamp, or an array of them: its text depends on the DateStyle of the session.
     has_time: bool = false,
+    /// An interval, or an array of them: its text depends on the IntervalStyle of the session.
+    has_interval: bool = false,
 };
 
 /// The columns of the result that is read now: for each one its class and
@@ -211,8 +214,9 @@ pub const Desc = struct {
             const col = try cols.next() orelse break;
             const class = pgwire.classOf(col.oid, opt);
             info.unsupported = info.unsupported or class == .unsupported;
-            info.has_date = info.has_date or col.oid == 1082;
-            info.has_time = info.has_time or col.oid == 1082 or col.oid == 1114 or col.oid == 1184;
+            info.has_date = info.has_date or pgwire.isDateType(col.oid);
+            info.has_time = info.has_time or pgwire.isTimeType(col.oid);
+            info.has_interval = info.has_interval or pgwire.isIntervalType(col.oid);
             try o.byte(@backingInt(class));
             const at = o.len;
             try o.put(&.{ 0, 0 });
@@ -361,11 +365,23 @@ test "sql call: rows and errors become the result JSON" {
     try d.writeRow(&o, "\x00\x03\x00\x00\x00\x0242\xff\xff\xff\xff\x00\x00\x00\x0290", .{});
     try std.testing.expectEqualStrings("{\"id\":42,\"na\\\"me\":null,\"big\":\"90\"}", obuf[0..o.len]);
     try std.testing.expectError(error.Malformed, d.writeRow(&o, "\x00\x02\x00\x00\x00\x0242\xff\xff\xff\xff", .{}));
-    // Two columns of one name, and an array column, have no native form.
+    // Two columns of one name, and a bytea[] column, have no native form.
     const twice = "\x00\x02id\x00" ++ head ++ "\x00\x00\x00\x17" ++ tail ++ "id\x00" ++ head ++ "\x00\x00\x00\x17" ++ tail;
     try std.testing.expect((try d.load(twice, .{}, true)).unsupported);
-    const array = "\x00\x01a\x00" ++ head ++ "\x00\x00\x03\xef" ++ tail;
-    try std.testing.expect((try d.load(array, .{}, true)).unsupported);
+    const bytes = "\x00\x01a\x00" ++ head ++ "\x00\x00\x03\xe9" ++ tail;
+    try std.testing.expect((try d.load(bytes, .{}, true)).unsupported);
+    // An int4[] column and an interval column have a native form; the call looks at the styles of the session.
+    const array = "\x00\x02a\x00" ++ head ++ "\x00\x00\x03\xef" ++ tail ++ "i\x00" ++ head ++ "\x00\x00\x04\xa2" ++ tail;
+    const ainfo = try d.load(array, .{}, true);
+    try std.testing.expect(!ainfo.unsupported and ainfo.has_interval and !ainfo.has_time and !ainfo.has_date);
+    o.len = 0;
+    try d.writeRow(&o, "\x00\x02\x00\x00\x00\x08{1,NULL}\x00\x00\x00\x051 day", .{});
+    try std.testing.expectEqualStrings("{\"a\":[1,null],\"i\":{\"days\":1}}", obuf[0..o.len]);
+    // An array of timestamps depends on the DateStyle and on `dates: legacy`.
+    const stamps = "\x00\x01t\x00" ++ head ++ "\x00\x00\x04\xa1" ++ tail;
+    const sinfo = try d.load(stamps, .{}, true);
+    try std.testing.expect(!sinfo.unsupported and sinfo.has_time and sinfo.has_date);
+    try std.testing.expect((try d.load(stamps, .{ .legacy_dates = true }, true)).unsupported);
     o.len = 0;
     const err = "SERROR\x00VERROR\x00C23505\x00Mduplicate key\x00Dkey (id)=(1)\x00nt_pkey\x00\x00";
     try writeError(&o, err);

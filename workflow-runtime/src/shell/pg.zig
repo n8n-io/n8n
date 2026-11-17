@@ -158,6 +158,7 @@ const Stmt = struct {
     unsupported: bool = false,
     has_date: bool = false,
     has_time: bool = false,
+    has_interval: bool = false,
     /// The bind values that the client declared for it.
     params: u16 = 0,
     /// The last call that used it.
@@ -192,6 +193,8 @@ const Conn = struct {
     key: u32 = 0,
     /// The DateStyle of the session is ISO.
     iso: bool = true,
+    /// The IntervalStyle of the session is `postgres`.
+    interval_pg: bool = true,
     idle_at_ms: i64 = 0,
     calls: u32 = 0,
     flight: Flight = .none,
@@ -1082,6 +1085,13 @@ pub const Client = struct {
         // The same for its value.
         const value = rd.cstr() catch return;
         if (std.mem.eql(u8, name, "DateStyle")) cn.iso = std.mem.startsWith(u8, value, "ISO");
+        if (std.mem.eql(u8, name, "IntervalStyle")) cn.interval_pg = std.mem.eql(u8, value, "postgres");
+    }
+
+    /// True when the text of a date or of an interval of this session is
+    /// not in the style that the client reads.
+    fn styleBlocks(cn: *const Conn, has_time: bool, has_interval: bool) bool {
+        return (has_time and !cn.iso) or (has_interval and !cn.interval_pg);
     }
 
     // ---- a call: prepare -------------------------------------------------------
@@ -1182,6 +1192,7 @@ pub const Client = struct {
                 e.unsupported = info.unsupported;
                 e.has_date = info.has_date;
                 e.has_time = info.has_time;
+                e.has_interval = info.has_interval;
                 e.has_rows = true;
                 cn.prep_ok = true;
             },
@@ -1220,7 +1231,7 @@ pub const Client = struct {
         if (cn.multi) return c.endCall(ci, .statement);
         for (r.slots[0..r.call.count]) |s| {
             const e = &cn.cache[s];
-            const no_form = e.unsupported or (r.call.legacy_dates and e.has_date) or (e.has_time and !cn.iso);
+            const no_form = e.unsupported or (r.call.legacy_dates and e.has_date) or styleBlocks(cn, e.has_time, e.has_interval);
             if (e.ok and no_form) return c.endCall(ci, .no_form);
         }
         c.startSegment(ci, 0);
@@ -1336,7 +1347,7 @@ pub const Client = struct {
             if (err == error.Malformed) return c.dropConn(ci, "sql: the database sent a message that is not valid", .{});
             return setAbort(cn, .no_form);
         };
-        if (info.unsupported or (info.has_time and !cn.iso)) return setAbort(cn, .no_form);
+        if (info.unsupported or styleBlocks(cn, info.has_time, info.has_interval)) return setAbort(cn, .no_form);
         c.openEntry(ci);
     }
 

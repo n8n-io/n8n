@@ -38,15 +38,42 @@ stateDiagram-v2
 - **Validate, then run.** All statements of a call are parsed and described before one of them runs. The call
   ends with a marker, and runs in the fallback host, when: the server refuses to prepare a text that pg-promise
   can run (more than one command, a parameter without a type or without a value, a parameter where only a literal
-  can be), a result column has a type without a native form (arrays, interval, point, circle, a timestamp without
-  a zone unless `--sql-timestamp-zone utc`, a date with `dates: legacy`), two columns have one name, or the
-  DateStyle of the session is not ISO.
+  can be), a result column has a type without a native form (`bytea[]`, a timestamp without a zone or an array of
+  them unless `--sql-timestamp-zone utc`, a date or an array of dates or timestamps with `dates: legacy`), two
+  columns have one name, the DateStyle of the session is not ISO and a column has a date or a timestamp, or the
+  IntervalStyle of the session is not `postgres` and a column has an interval.
 - **Modes.** `single` with one statement and `independently` run each statement alone. `single` with more than
   one statement and `transaction` send `BEGIN`, all statements in one write, then `COMMIT` or `ROLLBACK`.
 - **A failure after the statement ran.** A result over `--sql-max-result-kb`, or a value without a native form (a
-  timestamp before the year 1000), shows only in the rows. A statement that gives rows and does not start with
-  `SELECT` therefore runs between `BEGIN` and `COMMIT`, so the client can roll it back and give the marker. A
-  `SELECT` runs again in the host.
+  timestamp before the year 1000, a text that is not in the form that the server writes), shows only in the rows.
+  A statement that gives rows and does not start with `SELECT` therefore runs between `BEGIN` and `COMMIT`, so the
+  client can roll it back and give the marker. A `SELECT` runs again in the host.
+
+## Column types
+
+The client reads each value as text and writes the JSON that node-postgres (pg-types 2.2.0) and the v1 node
+(version 2.7 and later) give. Each form was compared with pg-promise against a server (`pg live` tests).
+
+| Type | JSON |
+|---|---|
+| `bool`, `int2`, `int4`, `oid`, `float4`, `float8`, `int8`, `numeric`, `json`, `jsonb`, `bytea`, `date`, `timestamptz`, `timestamp` | see spec section 9.10 |
+| `int2[]`, `int4[]`, `oid[]` | numbers |
+| `float4[]`, `float8[]`, `numeric[]` | numbers (`parseFloat`); NaN and the infinities are null. `largeNumbers` changes nothing: v1 changes only a column of type `numeric` |
+| `int8[]` | texts. `largeNumbers` changes nothing |
+| `bool[]` | booleans |
+| `text[]`, `varchar[]`, `char[]`, `uuid[]`, `cidr[]`, `inet[]`, `macaddr[]`, `money[]`, `time[]`, `timetz[]`, `numrange[]`, `regproc[]` | texts |
+| `json[]`, `jsonb[]` | the JSON values |
+| `date[]` | the texts of the server |
+| `timestamptz[]`, and `timestamp[]` with `--sql-timestamp-zone utc` | as `timestamptz` for each element |
+| `interval`, `interval[]` | the object of postgres-interval: `years`, `months`, `days`, `hours`, `minutes`, `seconds`, `milliseconds`, without the parts that are 0. Only the `postgres` IntervalStyle |
+| `point`, `point[]` | `{ "x": x, "y": y }` |
+| `circle` | `{ "x": x, "y": y, "radius": r }` |
+| each other type, also each other array type (`circle[]`, `name[]`) | the text of the server |
+
+An array is a JSON array. `NULL` without quotes is null, an inner array is an inner JSON array, and bounds before
+the values (`[0:2]={7,8,9}`) are ignored, as postgres-array 2.0.0 does. The reader takes only the text that the
+server writes (no space outside quotes, a backslash only inside quotes, 6 dimensions at most); another text gives
+the marker `sql-type`.
 
 ## Limits
 
@@ -84,7 +111,8 @@ gives the marker `sql-credential`: that workflow stays in the fallback host.
   cannot run in a transaction block (`VACUUM`, `CREATE DATABASE`) fails with another message.
 - When the connection closes while a statement runs, the step fails. The v1 node gives an error of the query.
 - TLS verification errors have the text of OpenSSL, not of Node.js.
-- Not built: array, interval, point and circle columns; the escape format of `bytea`; SSH tunnels; CA and client
+- Not built: `bytea[]` columns (node-postgres gives the bytes of the hex text, not of the value); arrays of dates
+  and timestamps with `dates: legacy`; the escape format of `bytea`; SSH tunnels; CA and client
   certificates; the simple query protocol for a text with more than one command; a retry on a connection that the
   server closed while idle.
 
