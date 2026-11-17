@@ -8552,6 +8552,7 @@
 	"instanceAi.projectSelect.noResults": "No results",
 	"instanceAi.projectSelect.personalSpace": "Personal space",
 	"instanceAi.agentPreview.building": "n8n Assistant is making changes…",
+	"instanceAi.workflowDraft.newWorkflow": "New workflow",
 	"instanceAi.workflowDraft.building": "Draft · building…",
 	"instanceAi.workflowDraft.unsaved": "Draft · not saved",
 	"instanceAi.workflowDraft.ariaLabel": "Unsaved workflow preview",
