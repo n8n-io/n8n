@@ -5,6 +5,7 @@ import type { AgentApprovalRoute, McpToolPermissions } from '@n8n/api-types';
 import { computed, ref, watch } from 'vue';
 
 import AgentApprovalRouteSelect from './AgentApprovalRouteSelect.vue';
+import { hitlMcpServerKey, mcpPermissionsRequireApproval } from '../utils/hitlConfiguration';
 import { MODAL_CONFIRM } from '@/app/constants';
 import { useAgentConfirmationModal } from '../composables/useAgentConfirmationModal';
 import McpConnectionStatusCallout from '@/features/shared/toolsConnection/McpConnectionStatusCallout.vue';
@@ -186,11 +187,10 @@ defineExpose({
 				v-if="
 					data.approvalContext &&
 					data.supportsToolApproval !== false &&
-					(draftPermissions.categories.read === 'require_approval' ||
-						draftPermissions.categories.write === 'require_approval' ||
-						Object.values(draftPermissions.tools ?? {}).includes('require_approval'))
+					mcpPermissionsRequireApproval(draftPermissions)
 				"
 				v-model="approvalRoute"
+				:tool-key="hitlMcpServerKey(data.mcpServer.name)"
 				:label="i18n.baseText('agents.hitl.mcpRoute')"
 				:context="data.approvalContext"
 				:project-id="data.projectId"

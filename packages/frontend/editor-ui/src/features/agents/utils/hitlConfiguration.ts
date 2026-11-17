@@ -21,6 +21,14 @@ export function hitlMcpServerKey(name: string): string {
 	return `mcp:${name}`;
 }
 
+/** Keys of every tool and MCP server that a review can attach to. */
+export function hitlToolKeys(config: AgentJsonConfig | null): string[] {
+	return [
+		...(config?.tools ?? []).map(hitlToolKey),
+		...(config?.mcpServers ?? []).map((server) => hitlMcpServerKey(server.name)),
+	];
+}
+
 export function hitlConfigurationToolKeys(config: AgentJsonConfig | null, id?: string): string[] {
 	if (!id) return [];
 	return [
@@ -39,14 +47,18 @@ export function hitlConfigurationToolKeys(config: AgentJsonConfig | null, id?: s
 	];
 }
 
-function enableMcpApproval(permissions?: McpToolPermissions): McpToolPermissions {
-	if (
-		permissions &&
+/** A review route applies to an MCP server only when one of its permissions requires approval. */
+export function mcpPermissionsRequireApproval(permissions?: McpToolPermissions): boolean {
+	return (
+		!!permissions &&
 		[...Object.values(permissions.categories), ...Object.values(permissions.tools ?? {})].includes(
 			'require_approval',
 		)
-	)
-		return permissions;
+	);
+}
+
+function enableMcpApproval(permissions?: McpToolPermissions): McpToolPermissions {
+	if (permissions && mcpPermissionsRequireApproval(permissions)) return permissions;
 	return {
 		categories: {
 			read: permissions?.categories.read === 'blocked' ? 'blocked' : 'require_approval',

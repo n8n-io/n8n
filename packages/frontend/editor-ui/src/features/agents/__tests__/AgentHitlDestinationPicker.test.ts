@@ -66,6 +66,7 @@ it('ignores an old response when the search changes', async () => {
 	await flushPromises();
 	await wrapper.find('input').setValue('new');
 	await vi.waitFor(() => expect(load).toHaveBeenCalledTimes(2));
+	expect(load).toHaveBeenLastCalledWith('new', undefined);
 	await flushPromises();
 	first.resolve({ options: [{ id: 'old', name: 'Old result' }], nextCursor: 'old-page' });
 	await flushPromises();

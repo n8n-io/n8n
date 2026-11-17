@@ -44,6 +44,8 @@ const props = defineProps<{
 	configuration?: AgentHitlConfiguration;
 	nextNumber: number;
 	hideRemove?: boolean;
+	/** Preselects the tool that opened this modal. */
+	includeToolKey?: string;
 }>();
 const emit = defineEmits<{
 	save: [configuration: AgentHitlConfiguration, toolKeys?: string[]];
@@ -197,9 +199,12 @@ const saveDisabledReason = computed(() => {
 	return '';
 });
 const workflowSelectOpen = ref(false);
-const selectedToolKeys = ref(
-	hitlConfigurationToolKeys(props.context.getConfig(), props.configuration?.id),
-);
+const selectedToolKeys = ref([
+	...new Set([
+		...hitlConfigurationToolKeys(props.context.getConfig(), props.configuration?.id),
+		...(props.includeToolKey ? [props.includeToolKey] : []),
+	]),
+]);
 const toolSelectionChanged = ref(false);
 const workflowItems = computed<ComboboxItem[]>(() => [
 	{
@@ -263,6 +268,8 @@ onMounted(load);
 async function createWorkflow() {
 	if (creating.value) return;
 	creating.value = true;
+	// Open the tab while the select event still counts as a user gesture, so browsers do not block it.
+	const tab = window.open('', '_blank');
 	try {
 		const triggerId = uuid();
 		const agentName = props.context.getConfig()?.name ?? i18n.baseText('agents.hitl.unnamedAgent');
@@ -310,8 +317,12 @@ async function createWorkflow() {
 			name: VIEWS.WORKFLOW,
 			params: { workflowId: workflow.id, nodeId: triggerId },
 		});
-		window.open(href, '_blank');
+		if (tab) {
+			tab.opener = null;
+			tab.location.href = href;
+		} else window.open(href, '_blank');
 	} catch (error) {
+		tab?.close();
 		toast.showError(error, i18n.baseText('agents.hitl.createFailed'));
 	} finally {
 		creating.value = false;
@@ -479,6 +490,7 @@ const rowLayout = computed(() => (fieldsWidth.value < 480 ? 'vertical' : 'horizo
 								v-model="telegramId"
 								size="large"
 								inputmode="numeric"
+								:aria-label="field.label"
 								:class="$style.control"
 								data-testid="agent-hitl-telegram-user"
 							/>

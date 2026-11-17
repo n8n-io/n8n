@@ -3,6 +3,7 @@ import { enableAutoUnmount, mount } from '@vue/test-utils';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import SessionHitlItem from '../components/timeline-items/SessionHitlItem.vue';
 import type { TimelineItem } from '../session-timeline.types';
+import { VIEWS } from '@/app/constants/navigation';
 
 const resolve = vi.hoisted(() => vi.fn(() => ({ href: '/workflow/decision/executions/42' })));
 vi.mock('vue-router', () => ({ useRouter: () => ({ resolve }) }));
@@ -84,9 +85,10 @@ describe('SessionHitlItem', () => {
 			});
 			await wrapper.get('button').trigger('click');
 			const link = wrapper.get('[data-test-id="open-approval-execution"]');
-			expect(resolve).toHaveBeenCalledWith(
-				expect.objectContaining({ params: { workflowId: 'decision', executionId: '42' } }),
-			);
+			expect(resolve).toHaveBeenLastCalledWith({
+				name: VIEWS.EXECUTION_PREVIEW,
+				params: { workflowId: 'decision', executionId: '42' },
+			});
 			expect(link.attributes('href')).toBe('/workflow/decision/executions/42');
 			expect(link.attributes('target')).toBe('_blank');
 		},

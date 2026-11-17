@@ -30,6 +30,11 @@ import {
 } from '../composables/useAgentToolRefAdapter';
 import { nodeToMcpServer } from '../composables/useMcpServerAdapter';
 import { isRestrictedByInlineTool } from '../utils/validationIssues';
+import {
+	hitlMcpServerKey,
+	hitlToolKey,
+	mcpPermissionsRequireApproval,
+} from '../utils/hitlConfiguration';
 import type {
 	AgentJsonMcpServerConfig,
 	AgentJsonToolRef,
@@ -184,6 +189,14 @@ const customToolTitle = computed(() => {
 const title = computed(() => (isCustomTool.value ? customToolTitle.value : nodeName.value));
 
 const supportsApproval = computed(() => props.data.supportsToolApproval !== false);
+const mcpRequiresApproval = computed(
+	() => supportsApproval.value && mcpPermissionsRequireApproval(mcpPermissions.value),
+);
+const approvalToolKey = computed(() =>
+	isMcpServerModalData(props.data)
+		? hitlMcpServerKey(props.data.mcpServer.name)
+		: hitlToolKey(props.data.toolRef),
+);
 const hasReviewContext = computed(
 	() => supportsApproval.value && !!props.data.approvalContext && !!props.data.projectId,
 );
@@ -302,7 +315,8 @@ function confirm(): boolean {
 		const updatedServer = nodeToMcpServer(currentMcpNode, mcpData.mcpServer);
 		mcpData.onConfirm({
 			...updatedServer,
-			approvalRoute: approvalRoute.value,
+			// Drop the route when no permission needs approval, so a stale review does not stay attached.
+			approvalRoute: mcpRequiresApproval.value ? approvalRoute.value : undefined,
 			toolPermissions: supportsApproval.value
 				? mcpPermissions.value
 				: {
@@ -425,6 +439,7 @@ defineExpose({ canSave, confirm, remove, changeTitle });
 						v-if="data.approvalContext && data.projectId"
 						:embedded="embedded"
 						v-model="approvalRoute"
+						:tool-key="approvalToolKey"
 						v-model:approval-required="approvalRequired"
 						:context="data.approvalContext"
 						:project-id="data.projectId"
@@ -479,14 +494,10 @@ defineExpose({ canSave, confirm, remove, changeTitle });
 				data.approvalContext &&
 				data.projectId &&
 				supportsApproval &&
-				((!isMcpTool && showApprovalSetting) ||
-					(isMcpTool &&
-						mcpPermissions &&
-						(mcpPermissions.categories.read === 'require_approval' ||
-							mcpPermissions.categories.write === 'require_approval' ||
-							Object.values(mcpPermissions.tools ?? {}).includes('require_approval'))))
+				((!isMcpTool && showApprovalSetting) || (isMcpTool && mcpRequiresApproval))
 			"
 			v-model="approvalRoute"
+			:tool-key="approvalToolKey"
 			:label="isMcpTool ? i18n.baseText('agents.hitl.mcpRoute') : undefined"
 			:approval-required="isMcpTool ? undefined : approvalRequired"
 			@update:approval-required="approvalRequired = $event"

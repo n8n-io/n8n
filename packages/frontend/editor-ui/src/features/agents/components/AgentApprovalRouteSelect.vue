@@ -10,6 +10,7 @@ import AgentPillField from './AgentPillField.vue';
 import AgentChipButton from './AgentChipButton.vue';
 import AgentToolConfigApprovalSetting from './AgentToolConfigApprovalSetting.vue';
 import AgentHitlConfigurationModal from './AgentHitlConfigurationModal.vue';
+import { hitlToolKeys } from '../utils/hitlConfiguration';
 
 const props = withDefaults(
 	defineProps<{
@@ -20,6 +21,8 @@ const props = withDefaults(
 		embedded?: boolean;
 		label?: string;
 		approvalRequired?: boolean;
+		/** Key of the tool or MCP server that this route belongs to. */
+		toolKey?: string;
 	}>(),
 	{ approvalRequired: undefined },
 );
@@ -104,8 +107,13 @@ function edit(id: string) {
 function save(configuration: AgentHitlConfiguration, toolKeys?: string[]) {
 	if (props.disabled) return;
 	props.context.saveConfiguration(configuration, toolKeys);
-	if (!selectedIds.value.includes(configuration.id))
-		update([...selectedIds.value, configuration.id]);
+	// The modal's Tools selection decides membership when it lists this tool.
+	const toolKey = props.toolKey;
+	const listed = !!toolKey && hitlToolKeys(props.context.getConfig()).includes(toolKey);
+	const attached = !toolKeys || !toolKey || !listed || toolKeys.includes(toolKey);
+	const isSelected = selectedIds.value.includes(configuration.id);
+	if (attached && !isSelected) update([...selectedIds.value, configuration.id]);
+	else if (!attached && isSelected) remove(configuration.id);
 	modalOpen.value = false;
 }
 watch(
@@ -174,6 +182,7 @@ watch(
 			:context="context"
 			:project-id="projectId"
 			:next-number="configurations.length + 1"
+			:include-tool-key="toolKey"
 			@save="save"
 			@close="modalOpen = false"
 		/>

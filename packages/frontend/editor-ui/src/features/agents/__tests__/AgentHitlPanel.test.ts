@@ -106,3 +106,10 @@ it('saves a configuration and its selected tools in one config update', async ()
 		},
 	]);
 });
+it('closes the configuration modal when the edit lock turns on', async () => {
+	const wrapper = render();
+	await wrapper.get('[data-testid="agent-hitl-configuration"]').trigger('click');
+	expect(wrapper.findComponent(AgentHitlConfigurationModal).exists()).toBe(true);
+	await wrapper.setProps({ disabled: true });
+	expect(wrapper.findComponent(AgentHitlConfigurationModal).exists()).toBe(false);
+});

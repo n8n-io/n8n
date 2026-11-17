@@ -42,6 +42,13 @@ watch(
 		editing.value = undefined;
 	},
 );
+// save() ignores a locked agent, so close the modal instead of discarding edits silently.
+watch(
+	() => props.disabled,
+	(disabled) => {
+		if (disabled) modalOpen.value = false;
+	},
+);
 
 function remove(id = editing.value?.id) {
 	if (props.disabled || !id) return;

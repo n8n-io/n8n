@@ -23,6 +23,7 @@ import type {
 } from '@/features/shared/toolsConnection/types';
 
 import { useAgentMcpDiscovery } from './useAgentMcpDiscovery';
+import { mcpPermissionsRequireApproval } from '../utils/hitlConfiguration';
 import {
 	isAiGatewayMcpEntry,
 	toMcpEntryAuth,
@@ -273,7 +274,10 @@ export function useAgentRegistryMcpConfig(
 				: toolPermissions;
 		data.value?.onConfirm({
 			...connectedServer,
-			approvalRoute,
+			// Drop the route when no permission needs approval, so a stale review does not stay attached.
+			approvalRoute: mcpPermissionsRequireApproval(normalizedToolPermissions)
+				? approvalRoute
+				: undefined,
 			name: normalizedTitle.value,
 			toolPermissions: normalizedToolPermissions,
 			connectionTimeoutMs,

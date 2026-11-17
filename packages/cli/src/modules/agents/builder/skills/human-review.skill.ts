@@ -43,7 +43,11 @@ Use a new \`review_<nanoid>\` ID for each new definition.
 - Teams, WhatsApp, Linear, and n8n Chat are not built-in review destinations.
   Support for an Agent conversation channel does not imply review support.
 - Resolve real destination IDs. Follow \`agent-builder-resource-locators\`
-  when a node option lookup is needed. Never invent IDs or ask the target
+  when a node option lookup is needed. For Slack, look up the channel or user
+  selector of the Slack node (\`n8n-nodes-base.slack\`). For Discord, look up
+  the server, channel, or user selectors of the Discord node
+  (\`n8n-nodes-base.discord\`). Use the credential of the Agent connection for
+  the lookup. Telegram has no lookup. Never invent IDs or ask the target
   Agent to choose a stable destination at runtime. If a lookup is unavailable,
   leave that selection pending and explain what is missing.
 - Use the workflow name or the platform and destination as the review name.

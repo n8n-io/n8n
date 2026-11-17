@@ -140,6 +140,81 @@ it('creates a review from the plus menu and appends it without changing existing
 		{ type: 'configuration', configurationIds: ['slack', 'new'] },
 	]);
 });
+describe('with the modal Tools selection', () => {
+	const created: AgentHitlConfiguration = {
+		id: 'new',
+		name: 'PII review',
+		method: 'workflow',
+		workflowId: 'wf2',
+	};
+	function renderForTool(modelValue?: AgentApprovalRoute) {
+		const result = render(modelValue);
+		result.config.value = {
+			...result.config.value,
+			tools: [
+				{ type: 'workflow', workflow: 'Write' },
+				{ type: 'workflow', workflow: 'Delete' },
+			],
+		};
+		return result;
+	}
+	async function saveFromModal(
+		wrapper: ReturnType<typeof render>['wrapper'],
+		configuration: AgentHitlConfiguration,
+		toolKeys: string[],
+	) {
+		await wrapper.setProps({ toolKey: 'tool:workflow:Write' });
+		await openMenu(wrapper);
+		await wrapper.findAll('[role="menuitem"]')[0].trigger('click');
+		await flushPromises();
+		const modal = wrapper.getComponent(AgentHitlConfigurationModal);
+		expect(modal.props('includeToolKey')).toBe('tool:workflow:Write');
+		modal.vm.$emit('save', configuration, toolKeys);
+		await flushPromises();
+	}
+
+	it('keeps the review on this tool when the selection includes it', async () => {
+		const { wrapper, saveConfiguration } = renderForTool();
+		await saveFromModal(wrapper, created, ['tool:workflow:Write', 'tool:workflow:Delete']);
+		expect(saveConfiguration).toHaveBeenCalledWith(created, [
+			'tool:workflow:Write',
+			'tool:workflow:Delete',
+		]);
+		expect(wrapper.emitted('update:modelValue')?.[0]).toEqual([
+			{ type: 'configuration', configurationIds: ['new'] },
+		]);
+	});
+
+	it('does not attach the review when the user removes this tool', async () => {
+		const { wrapper } = renderForTool();
+		await saveFromModal(wrapper, created, ['tool:workflow:Delete']);
+		expect(wrapper.emitted('update:modelValue')).toBeUndefined();
+	});
+
+	it('detaches an edited review when the user removes this tool', async () => {
+		const { wrapper } = renderForTool({
+			type: 'configuration',
+			configurationIds: ['workflow', 'slack'],
+		});
+		await wrapper.setProps({ toolKey: 'tool:workflow:Write' });
+		await wrapper.findAll('[data-testid="agent-review-pill"] button')[0].trigger('click');
+		wrapper
+			.getComponent(AgentHitlConfigurationModal)
+			.vm.$emit('save', configurations[0], ['tool:workflow:Delete']);
+		await flushPromises();
+		expect(wrapper.emitted('update:modelValue')?.[0]).toEqual([
+			{ type: 'configuration', configurationIds: ['slack'] },
+		]);
+	});
+
+	it('attaches the review to a tool that is not in the saved config yet', async () => {
+		const { wrapper } = render();
+		await saveFromModal(wrapper, created, []);
+		expect(wrapper.emitted('update:modelValue')?.[0]).toEqual([
+			{ type: 'configuration', configurationIds: ['new'] },
+		]);
+	});
+});
 it('disables attachment and removal under a read-only lock', async () => {
 	const { wrapper } = render({ type: 'configuration', configurationIds: ['workflow'] });
 	await wrapper.setProps({ disabled: true });

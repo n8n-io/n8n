@@ -13,9 +13,10 @@ defineProps<{
 <template>
 	<div :class="[$style.row, { [$style.vertical]: layout === 'vertical' }]" :data-layout="layout">
 		<div :class="$style.info">
-			<label :for="controlId">
+			<!-- Rows without a control ID rely on the control's own accessible name. -->
+			<component :is="controlId ? 'label' : 'span'" :for="controlId">
 				<N8nText size="medium" color="text-dark" bold :class="$style.label">{{ title }}</N8nText>
-			</label>
+			</component>
 			<N8nText v-if="description" size="small" :class="$style.description">
 				{{ description }}
 			</N8nText>

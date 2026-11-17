@@ -9808,7 +9808,7 @@
 	"agents.publish.modal.description.liveInN8nChat": "It's live in n8n Chat — anyone in {projectName} can talk to it.",
 	"agents.publish.modal.talkToAgent": "Talk to agent",
 	"agents.publish.modal.unpublishedWorkflows.title": "Publish the workflows first",
-	"agents.publish.modal.unpublishedWorkflows.description": "Your agent uses these workflows as tools, and they are not published yet. Publish them, then publish your agent.",
+	"agents.publish.modal.unpublishedWorkflows.description": "Your agent uses these workflows as tools or for human review, and they are not published yet. Publish them, then publish your agent.",
 	"agents.unpublish.modal.title": "Unpublish {name}",
 	"agents.unpublish.modal.description": "This will prevent all production executions from using this agent until you publish again.",
 	"agents.unpublish.modal.button.unpublish": "Unpublish",

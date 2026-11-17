@@ -55,13 +55,19 @@ const config: AgentJsonConfig = {
 	model: 'anthropic/test',
 	instructions: 'Help',
 };
-function render(configuration?: AgentHitlConfiguration, agentConfig = config, agentId = 'agent') {
+function render(
+	configuration?: AgentHitlConfiguration,
+	agentConfig = config,
+	agentId = 'agent',
+	includeToolKey?: string,
+) {
 	return mount(AgentHitlConfigurationModal, {
 		props: {
 			projectId: 'project',
 			nextNumber: 8,
 			context: { agentId, getConfig: () => agentConfig, saveConfiguration: vi.fn() },
 			configuration,
+			includeToolKey,
 		},
 		global: {
 			stubs: {
@@ -387,6 +393,45 @@ it('opens a saved expiry and allows requests with no expiry again', async () => 
 	]);
 });
 
+it('opens the new workflow tab before the creation requests finish', async () => {
+	const tab = { opener: {}, location: { href: '' }, close: vi.fn() };
+	mocks.open.mockReturnValue(tab);
+	const wrapper = render();
+	await flushPromises();
+	const create = wrapper
+		.getComponent(N8nCombobox2)
+		.props('items')
+		?.find((item) => 'value' in item && item.value === '__create_hitl_workflow__');
+	if (create && 'onSelect' in create) create.onSelect?.(new Event('select'));
+	expect(mocks.open).toHaveBeenCalledWith('', '_blank');
+	expect(mocks.create).not.toHaveBeenCalled();
+	await flushPromises();
+	expect(tab.opener).toBeNull();
+	expect(tab.location.href).toBe('/workflow/new');
+	expect(mocks.open).toHaveBeenCalledTimes(1);
+});
+it('closes the blank tab when workflow creation fails', async () => {
+	const tab = { opener: {}, location: { href: '' }, close: vi.fn() };
+	mocks.open.mockReturnValue(tab);
+	mocks.create.mockRejectedValue(new Error('failed'));
+	const wrapper = render();
+	await flushPromises();
+	const create = wrapper
+		.getComponent(N8nCombobox2)
+		.props('items')
+		?.find((item) => 'value' in item && item.value === '__create_hitl_workflow__');
+	if (create && 'onSelect' in create) create.onSelect?.(new Event('select'));
+	await flushPromises();
+	expect(tab.close).toHaveBeenCalledOnce();
+	expect(mocks.showError).toHaveBeenCalled();
+});
+it('preselects the tool that opened the modal', async () => {
+	const wrapper = render(undefined, config, 'agent', 'tool:workflow:Write');
+	await flushPromises();
+	expect(wrapper.getComponent(AgentHitlToolsSelect).props('modelValue')).toEqual([
+		'tool:workflow:Write',
+	]);
+});
 it('keeps tool attachment changes local until Save', async () => {
 	const configuration: AgentHitlConfiguration = {
 		id: 'review',
