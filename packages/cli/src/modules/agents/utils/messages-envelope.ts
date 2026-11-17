@@ -177,16 +177,22 @@ export function ownCheckpoint(
  * The messages response of a thread. The history already holds the turns,
  * so inactive checkpoint messages stay out. A thread without history shows
  * only its open suspensions.
+ *
+ * An open suspension belongs to the newest turn. Thus a page of older turns
+ * (`olderPage`) ignores the checkpoint.
  */
 export function threadMessagesResponse(
-	history: Pick<AgentChatMessagesResponse, 'messages' | 'activeExecutionId'> | null,
+	history: Pick<AgentChatMessagesResponse, 'messages' | 'activeExecutionId' | 'nextCursor'> | null,
 	checkpoint: SerializableAgentState | null,
+	{ olderPage = false }: { olderPage?: boolean } = {},
 ): AgentChatMessagesResponse {
-	if (!history) return { ...withOpenSuspensions([], checkpoint), activeExecutionId: null };
+	const openCheckpoint = olderPage ? null : checkpoint;
+	if (!history) return { ...withOpenSuspensions([], openCheckpoint), activeExecutionId: null };
 	return {
-		...withOpenSuspensions(history.messages, checkpoint, {
+		...withOpenSuspensions(history.messages, openCheckpoint, {
 			appendInactiveCheckpointMessages: false,
 		}),
 		activeExecutionId: history.activeExecutionId,
+		...(history.nextCursor !== undefined ? { nextCursor: history.nextCursor } : {}),
 	};
 }

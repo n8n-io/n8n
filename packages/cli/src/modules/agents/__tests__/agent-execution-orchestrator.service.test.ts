@@ -3938,6 +3938,57 @@ describe('AgentExecutionOrchestratorService', () => {
 		).resolves.toEqual({ messages: [], activeExecutionId: 'execution-1' });
 	});
 
+	it('returns one page of turns with the cursor of its oldest turn', async () => {
+		const { service, executionService } = makeService();
+		const createdAt = new Date('2026-04-26T10:00:00.000Z');
+		executionService.getThreadDetailPage.mockResolvedValue({
+			thread: { id: 'thread-1' },
+			executions: [
+				{ id: 'execution-2', userMessage: 'Hi', createdAt, timeline: [] },
+				{ id: 'execution-3', userMessage: 'Again', createdAt, timeline: [] },
+			],
+			hasOlder: true,
+		} as never);
+
+		const result = await service.getConversationHistory({
+			threadId: 'thread-1',
+			projectId,
+			agentId,
+			userId,
+			page: { limit: 2 },
+		});
+
+		expect(executionService.getThreadDetailPage).toHaveBeenCalledWith(
+			'thread-1',
+			projectId,
+			agentId,
+			userId,
+			{ limit: 2 },
+		);
+		expect(executionService.getThreadDetail).not.toHaveBeenCalled();
+		expect(result?.messages.map(({ id }) => id)).toEqual(['execution-2:user', 'execution-3:user']);
+		expect(result?.nextCursor).toBe('2026-04-26T10:00:00.000Z|execution-2');
+	});
+
+	it('returns no cursor on the oldest page', async () => {
+		const { service, executionService } = makeService();
+		executionService.getThreadDetailPage.mockResolvedValue({
+			thread: { id: 'thread-1' },
+			executions: [{ id: 'execution-1', userMessage: 'Hi', createdAt: new Date(), timeline: [] }],
+			hasOlder: false,
+		} as never);
+
+		const result = await service.getConversationHistory({
+			threadId: 'thread-1',
+			projectId,
+			agentId,
+			userId,
+			page: { limit: 2 },
+		});
+
+		expect(result?.nextCursor).toBeNull();
+	});
+
 	it('rejects expired checkpoints and resumes active checkpoints without passing resourceId', async () => {
 		const {
 			service,

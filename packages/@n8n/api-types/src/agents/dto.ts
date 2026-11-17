@@ -207,6 +207,16 @@ export class ListSystemAgentThreadsQueryDto extends Z.class({
 	search: threadTitleSearchSchema,
 }) {}
 
+/**
+ * One page of a chat thread's messages. Without `limit`, the route returns the
+ * whole thread. With `limit`, it returns the newest turns before `cursor`.
+ */
+export class AgentChatMessagesQueryDto extends Z.class({
+	// The `nextCursor` of the previous page. The route decodes it.
+	cursor: z.string().min(1).max(512).optional(),
+	limit: z.string().optional(),
+}) {}
+
 /** A new title for a thread of a system agent. */
 export class RenameSystemAgentThreadDto extends Z.class({
 	title: z.string().trim().min(1).max(255),

@@ -204,6 +204,27 @@ export class AgentMessageRepository extends BaseRepository<AgentMessageEntity> {
 		return inputs;
 	}
 
+	/**
+	 * Whether `executionId` continues `predecessorId`. A continuation, such as
+	 * a resume after a suspension, reuses the input messages of the execution
+	 * that it continues.
+	 */
+	async continuesExecution(executionId: string, predecessorId: string): Promise<boolean> {
+		return await this.manager
+			.createQueryBuilder(AgentExecutionMessageLink, 'link')
+			.innerJoin(
+				AgentExecutionMessageLink,
+				'predecessor',
+				'predecessor.messageId = link.messageId AND predecessor.executionId = :predecessorId AND predecessor.direction = :direction',
+				{ predecessorId, direction: 'input' },
+			)
+			.where('link.executionId = :executionId AND link.direction = :direction', {
+				executionId,
+				direction: 'input',
+			})
+			.getExists();
+	}
+
 	async saveRuntimeMessages(
 		params: RuntimeMessageScope & {
 			resourceId: string;

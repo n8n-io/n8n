@@ -7,12 +7,13 @@ import {
 	N8nIcon,
 	N8nIconButton,
 	N8nLink,
+	N8nSpinner,
 	N8nText,
 } from '@n8n/design-system';
 import { APPROVAL_TOOL_NAME, N8N_CHAT_ACTION_TOOL_NAME } from '@n8n/api-types';
 import { isAwaitingCard } from '@/features/ai/shared/agentsChat/n8nChatInteraction';
 import { useI18n } from '@n8n/i18n';
-import { useResizeObserver, useSessionStorage } from '@vueuse/core';
+import { useInfiniteScroll, useResizeObserver, useSessionStorage } from '@vueuse/core';
 import { TIME } from '@/app/constants/durations';
 import type { RouteLocationRaw } from 'vue-router';
 import {
@@ -85,6 +86,10 @@ const props = defineProps<{
 	preparingSummary?: boolean;
 	/** The results were not summarized in time. */
 	summaryMissing?: boolean;
+	/** The thread has turns older than `messages`. */
+	hasOlderMessages?: boolean;
+	/** Adds the next older page to `messages`. Rejects when the page fails to load. */
+	loadOlderMessages?: () => Promise<void>;
 }>();
 
 const emit = defineEmits<{
@@ -400,7 +405,8 @@ const formatChatDividerTimestamp = useChatDividerTimestamp();
  * Divider label by group id: the first user message gets one, and so does any
  * later user message whose gap since the previous one exceeds the window above.
  * Messages without a `createdAt` (older history) are skipped and never become
- * the "previous" reference.
+ * the "previous" reference. While older pages are not loaded, the first message
+ * gets no divider: the gap to the message before it is not known yet.
  */
 const dividerLabels = computed(() => {
 	const labels = new Map<string, string>();
@@ -413,8 +419,9 @@ const dividerLabels = computed(() => {
 		// A new local day always earns a divider, even inside the window: without
 		// it a chat that crosses midnight files today's messages under a
 		// "Yesterday at ..." heading.
-		if (
-			previousUserCreatedAt === undefined ||
+		if (previousUserCreatedAt === undefined) {
+			if (!props.hasOlderMessages) labels.set(group.id, formatChatDividerTimestamp(createdAt));
+		} else if (
 			createdAt - previousUserCreatedAt > TIME.HOUR ||
 			!isSameLocalDay(new Date(createdAt), new Date(previousUserCreatedAt))
 		) {
@@ -676,11 +683,13 @@ onMounted(() => {
 // New message appended. If it's the user's own message we always follow to
 // the bottom (they just sent — they want to see the response). For
 // assistant messages and state transitions, follow only if the user is
-// sticking to the bottom.
+// sticking to the bottom. Older messages added above the last one keep the
+// view where it is.
 watch(
-	() => props.messages.length,
-	(newLen, oldLen) => {
+	[() => props.messages.length, () => props.messages.at(-1)?.id],
+	([newLen, lastId], [oldLen, oldLastId]) => {
 		if ((oldLen ?? 0) < newLen) {
+			if (oldLen && lastId === oldLastId) return;
 			const last = props.messages[newLen - 1];
 			if (last?.role === CHAT_MESSAGE_ROLE.USER) {
 				scrollToBottom();
@@ -690,6 +699,100 @@ watch(
 		autoScrollIfSticky();
 	},
 	{ flush: 'post' },
+);
+
+/** Distance from the top, in px, at which older messages start to load. */
+const OLDER_MESSAGES_DISTANCE_PX = 200;
+
+// Stops a failed load from retrying in a loop. The retry button, or a scroll
+// away from the top, allows a new try.
+const loadOlderFailed = ref(false);
+// On mount the view is at the top before it scrolls to the bottom. Thus older
+// messages load only after the first scroll event.
+const viewScrolled = ref(false);
+
+function onScrollForOlderMessages(el: HTMLElement): void {
+	viewScrolled.value = true;
+	if (el.scrollTop > OLDER_MESSAGES_DISTANCE_PX) loadOlderFailed.value = false;
+}
+
+/** Frames to wait for content above the anchor (markdown, highlighters) to stop growing. */
+const MAX_ANCHOR_SETTLE_FRAMES = 30;
+
+/**
+ * The first message in view, which stays in place when older messages load
+ * above it. Timestamp dividers are not anchors: a page of older turns can
+ * remove the divider of the old first turn.
+ */
+function findScrollAnchor(container: HTMLElement): HTMLElement | undefined {
+	const viewTop = container.getBoundingClientRect().top;
+	const candidates = [...container.children].filter(
+		(child): child is HTMLElement =>
+			child instanceof HTMLElement &&
+			child.dataset.olderMessagesStatus === undefined &&
+			child.dataset.testid !== 'agent-chat-timestamp-divider',
+	);
+	return (
+		candidates.find((child) => child.getBoundingClientRect().bottom > viewTop) ?? candidates[0]
+	);
+}
+
+const nextFrame = async () => await new Promise((resolve) => requestAnimationFrame(resolve));
+
+const { isLoading: isLoadingOlderMessages } = useInfiniteScroll(
+	scrollRef,
+	async () => {
+		const container = scrollRef.value;
+		if (!container || !props.loadOlderMessages) return;
+		// Measure only how far the first message moves: the user can scroll, and a
+		// live reply can grow below the view, while the page loads.
+		const contentTop = (el: HTMLElement) => el.getBoundingClientRect().top + container.scrollTop;
+		const anchor = findScrollAnchor(container);
+		let anchorTop = anchor ? contentTop(anchor) : 0;
+		// This code moves the view itself. Browser scroll anchoring would move it a
+		// second time, and the view would jump down by the height of the page.
+		container.style.overflowAnchor = 'none';
+		try {
+			try {
+				await props.loadOlderMessages();
+			} catch {
+				loadOlderFailed.value = true;
+				return;
+			}
+			await nextTick();
+			if (!anchor) return;
+			// Keep the messages that the user reads in place, also while the older
+			// messages finish their render and grow.
+			let stableFrames = 0;
+			for (let frame = 0; frame < MAX_ANCHOR_SETTLE_FRAMES && stableFrames < 2; frame++) {
+				if (!container.contains(anchor)) return;
+				const moved = contentTop(anchor) - anchorTop;
+				if (moved === 0) {
+					stableFrames++;
+				} else {
+					stableFrames = 0;
+					container.scrollTop += moved;
+					anchorTop += moved;
+				}
+				await nextFrame();
+			}
+		} finally {
+			container.style.overflowAnchor = '';
+		}
+	},
+	{
+		direction: 'top',
+		distance: OLDER_MESSAGES_DISTANCE_PX,
+		onScroll: (event) => {
+			if (event.target instanceof HTMLElement) onScrollForOlderMessages(event.target);
+		},
+		// A thread too short to scroll loads older messages until it fills the view.
+		canLoadMore: (el) =>
+			!!props.hasOlderMessages &&
+			!!props.loadOlderMessages &&
+			!loadOlderFailed.value &&
+			(viewScrolled.value || (el !== null && el.scrollHeight <= el.clientHeight)),
+	},
 );
 
 watch(() => props.messagingState, autoScrollIfSticky, { flush: 'post' });
@@ -722,6 +825,28 @@ watch(
 
 <template>
 	<div ref="scrollRef" :class="$style.messages" @scroll.passive="onScroll">
+		<!-- Takes no space, so the messages do not move when it shows or hides. -->
+		<div
+			v-if="isLoadingOlderMessages || loadOlderFailed"
+			:class="$style.olderMessagesStatus"
+			data-older-messages-status
+		>
+			<N8nSpinner v-if="isLoadingOlderMessages" data-testid="agent-chat-older-messages-loading" />
+			<!-- A thread too short to scroll cannot leave the top, so it needs a button to try again. -->
+			<div
+				v-else
+				:class="$style.olderMessagesError"
+				role="alert"
+				data-testid="agent-chat-older-messages-error"
+			>
+				<N8nText size="small" color="text-light">
+					{{ i18n.baseText('agents.chat.loadOlder.error') }}
+				</N8nText>
+				<N8nButton variant="ghost" size="xsmall" @click="loadOlderFailed = false">
+					{{ i18n.baseText('generic.retry') }}
+				</N8nButton>
+			</div>
+		</div>
 		<template v-for="group in displayGroups" :key="group.id">
 			<div
 				v-if="dividerLabels.has(group.id)"
@@ -1169,6 +1294,31 @@ watch(
 	&::-webkit-scrollbar {
 		display: none;
 	}
+}
+
+// Sticks to the top of the view. The zero height and the negative margin
+// cancel the flex gap, so the status takes no space.
+.olderMessagesStatus {
+	position: sticky;
+	top: 0;
+	z-index: 1;
+	display: flex;
+	justify-content: center;
+	align-items: flex-start;
+	height: 0;
+	margin-bottom: calc(-1 * var(--spacing--sm));
+	overflow: visible;
+}
+
+.olderMessagesError {
+	display: flex;
+	align-items: center;
+	gap: var(--spacing--2xs);
+	padding: var(--spacing--4xs) var(--spacing--4xs) var(--spacing--4xs) var(--spacing--sm);
+	background-color: var(--background--surface);
+	border: var(--border);
+	border-radius: var(--radius--full);
+	box-shadow: var(--shadow--xs);
 }
 
 .message {

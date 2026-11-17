@@ -95,6 +95,8 @@ import { createAgentExecutionCounter } from './utils/agent-execution-counter';
 import { resolveAgentRunSource } from './utils/agent-published-snapshot';
 import { buildInboundUserMessage } from './utils/inbound-attachments';
 import { executionsToMessagesDto } from './utils/execution-to-message-mapper';
+import type { AgentExecution } from './entities/agent-execution.entity';
+import { encodeChatHistoryCursor, type ChatHistoryPageRequest } from './utils/chat-history-page';
 
 /** Written on a manual task run so a later approval can rebuild that starter's runtime. */
 const TASK_RUN_STARTER_USER_KEY = 'n8nTaskRunStarterUserId';
@@ -103,6 +105,12 @@ function taskRunStarterUserId(hostMetadata: JSONObject | undefined): string | un
 	const value = hostMetadata?.[TASK_RUN_STARTER_USER_KEY];
 	return typeof value === 'string' && value.length > 0 ? value : undefined;
 }
+
+/** User-visible history of a chat thread, or of one page of its turns. */
+export type ConversationHistory = Pick<
+	AgentChatMessagesResponse,
+	'messages' | 'activeExecutionId' | 'nextCursor'
+>;
 
 export interface AgentMemoryScope {
 	threadId: string;
@@ -412,8 +420,25 @@ export class AgentExecutionOrchestratorService {
 		projectId: string;
 		agentId: string;
 		userId: string;
-	}): Promise<Pick<AgentChatMessagesResponse, 'messages' | 'activeExecutionId'> | null> {
-		const { threadId, projectId, agentId, userId } = params;
+		/** One page of turns. Without it, the history holds the whole thread. */
+		page?: ChatHistoryPageRequest;
+	}): Promise<ConversationHistory | null> {
+		const { threadId, projectId, agentId, userId, page } = params;
+		if (page) {
+			const detail = await this.agentExecutionService.getThreadDetailPage(
+				threadId,
+				projectId,
+				agentId,
+				userId,
+				page,
+			);
+			if (!detail) return null;
+			const oldest = detail.executions[0];
+			return {
+				...this.toConversationHistory(detail.executions),
+				nextCursor: detail.hasOlder && oldest ? encodeChatHistoryCursor(oldest) : null,
+			};
+		}
 		const detail = await this.agentExecutionService.getThreadDetail(
 			threadId,
 			projectId,
@@ -421,10 +446,14 @@ export class AgentExecutionOrchestratorService {
 			userId,
 		);
 		if (!detail) return null;
+		return this.toConversationHistory(detail.executions);
+	}
+
+	private toConversationHistory(executions: AgentExecution[]): ConversationHistory {
 		return {
-			messages: executionsToMessagesDto(detail.executions),
+			messages: executionsToMessagesDto(executions),
 			activeExecutionId:
-				detail.executions.findLast((execution) => execution.status === 'running')?.id ?? null,
+				executions.findLast((execution) => execution.status === 'running')?.id ?? null,
 		};
 	}
 

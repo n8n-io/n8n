@@ -79,6 +79,7 @@ import {
 	type ThreadFailureSummary,
 } from './utils/execution-failure-summary';
 import { applyFatalSessionOutcome } from './utils/fatal-session-outcome';
+import type { ChatHistoryPageRequest } from './utils/chat-history-page';
 
 export interface RecordMessageParams {
 	threadId: string;
@@ -141,6 +142,12 @@ interface TimelineSnapshotParams extends AgentExecutionLogRef {
 export interface ThreadDetail {
 	thread: AgentExecutionThread;
 	executions: AgentExecution[];
+}
+
+/** One page of a thread's turns, oldest first. */
+export interface ThreadDetailPage extends ThreadDetail {
+	/** Whether the thread has turns older than this page. */
+	hasOlder: boolean;
 }
 
 export interface ThreadListItem
@@ -966,6 +973,50 @@ export class AgentExecutionService {
 		await this.hydrateExecutionInputs(executions, thread.agentName);
 		await this.hydrateTimelines(agentId, threadId, executions);
 		return { thread, executions };
+	}
+
+	/**
+	 * Get the newest `limit` turns of a thread before `before`, oldest first.
+	 * Validates projectId and agentId ownership.
+	 *
+	 * A page never splits a continuation, such as a resume after a suspension,
+	 * from the execution that it continues. The transcript merges the tool calls
+	 * and the input messages of these executions, so they must load together.
+	 * Thus a page can hold more than `limit` executions.
+	 */
+	async getThreadDetailPage(
+		threadId: string,
+		projectId: string,
+		agentId: string,
+		userId: string,
+		{ limit, before }: ChatHistoryPageRequest,
+	): Promise<ThreadDetailPage | null> {
+		const thread = await this.agentExecutionThreadRepository.findOneBy({ id: threadId });
+		if (!thread) return null;
+		if (!threadBelongsTo(thread, projectId, agentId, userId)) return null;
+
+		const rows = await this.agentExecutionRepository.findByThreadIdNewestFirst(
+			threadId,
+			limit + 1,
+			before,
+		);
+		const executions = rows.slice(0, limit);
+		let older: AgentExecution | undefined = rows[limit];
+		while (
+			older &&
+			(await this.messageRepository.continuesExecution(
+				executions[executions.length - 1].id,
+				older.id,
+			))
+		) {
+			executions.push(older);
+			[older] = await this.agentExecutionRepository.findByThreadIdNewestFirst(threadId, 1, older);
+		}
+		executions.reverse();
+
+		await this.hydrateExecutionInputs(executions, thread.agentName);
+		await this.hydrateTimelines(agentId, threadId, executions);
+		return { thread, executions, hasOlder: older !== undefined };
 	}
 
 	private async hydrateExecutionInputs(

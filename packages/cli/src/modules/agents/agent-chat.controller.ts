@@ -4,6 +4,7 @@ import {
 	type AgentSessionFilesResponse,
 	AgentChatMessageDto,
 	AgentChatCancelDto,
+	AgentChatMessagesQueryDto,
 	AgentTaskCancellationDto,
 	type AgentTaskCancellationState,
 	AgentChatQueueUpdateDto,
@@ -64,6 +65,7 @@ import {
 	productionChatMemoryResourceId,
 	userIdFromDraftChatMemoryResourceId,
 } from './utils/agent-memory-scope';
+import { parseChatHistoryPage } from './utils/chat-history-page';
 import {
 	ownCheckpoint,
 	threadMessagesResponse,
@@ -450,8 +452,11 @@ export class AgentChatController {
 	@ProjectScope('agent:execute')
 	async getProductionChatMessages(
 		req: AuthenticatedRequest<{ projectId: string; agentId: string; threadId: string }>,
+		_res: Response,
+		@Query query: AgentChatMessagesQueryDto = {},
 	): Promise<AgentChatMessagesResponse> {
 		const { projectId, agentId, threadId } = req.params;
+		const page = parseChatHistoryPage(query);
 		await this.requireProductionChat(agentId, projectId);
 		await this.requireProductionThread(threadId, projectId, agentId, req.user.id);
 		const history = await this.agentExecutionOrchestratorService.getConversationHistory({
@@ -459,12 +464,14 @@ export class AgentChatController {
 			projectId,
 			agentId,
 			userId: req.user.id,
+			page,
 		});
 		if (!history) throw new NotFoundError('Session not found');
 		const checkpoint = await this.checkpointStorage.findSuspendedForThread(agentId, threadId);
 		return threadMessagesResponse(
 			history,
 			ownCheckpoint(checkpoint, productionChatMemoryResourceId(req.user.id)),
+			{ olderPage: page?.before !== undefined },
 		);
 	}
 
@@ -1063,8 +1070,11 @@ export class AgentChatController {
 	@ProjectScope('agent:read')
 	async getChatMessages(
 		req: AuthenticatedRequest<{ projectId: string; agentId: string; threadId: string }>,
+		_res: Response,
+		@Query query: AgentChatMessagesQueryDto = {},
 	): Promise<AgentChatMessagesResponse> {
 		const { projectId, agentId, threadId } = req.params;
+		const page = parseChatHistoryPage(query);
 		const agent = await this.agentsService.findById(agentId, projectId);
 		if (!agent) throw new NotFoundError(`Agent "${agentId}" not found`);
 		const thread = await this.agentExecutionService.findThreadById(threadId);
@@ -1079,6 +1089,7 @@ export class AgentChatController {
 			projectId,
 			agentId,
 			userId: req.user.id,
+			page,
 		});
 		const checkpoint = await this.findReadableCheckpoint(
 			thread,
@@ -1088,7 +1099,7 @@ export class AgentChatController {
 			req.user.id,
 		);
 		if (!history && !checkpoint) throw new NotFoundError(`Thread "${threadId}" not found`);
-		return threadMessagesResponse(history, checkpoint);
+		return threadMessagesResponse(history, checkpoint, { olderPage: page?.before !== undefined });
 	}
 
 	@Get('/:agentId/chat/messages')
