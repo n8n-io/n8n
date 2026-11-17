@@ -531,10 +531,14 @@ export function lowerSet(c: NodeContext): void {
 		}
 	}
 	const dotted = values.some(([name]) => dot && (name.includes('.') || name.includes('[')));
+	// A name that repeats: v1 sets the fields one after the other, so the last value wins and
+	// the field keeps the place of the first. An object literal cannot repeat a name.
+	const repeated = new Set(values.map(([name]) => name)).size < values.length;
 	const needsBlock =
 		include === 'selected' ||
 		include === 'except' ||
 		dotted ||
+		repeated ||
 		rawCode !== null ||
 		computedNames.size > 0;
 	// v1 catches a failed item and continues with the error as its item (`continueOnFail`).

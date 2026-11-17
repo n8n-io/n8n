@@ -1,0 +1,9 @@
+{
+	"description": "Edit Fields with a field name that repeats: the last value wins, in the place of the first",
+	"trigger": {
+		"body": {
+			"a": "first",
+			"b": "second"
+		}
+	}
+}

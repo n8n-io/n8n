@@ -38,6 +38,7 @@ export const CONVERT_COST: Record<string, [ops: number, allocations: number]> = 
 	"convert/33-code-binary-output": [1234, 117],
 	"convert/34-stale-output-connection": [421, 40],
 	"convert/35-dedupe-history": [1382, 88],
+	"convert/36-set-repeated-name": [247, 20],
 	"convert/small": [126, 14],
 	"corpus/01-order-approval": [160, 17],
 	"corpus/02-loops": [265, 13],

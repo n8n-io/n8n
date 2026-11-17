@@ -1,0 +1,53 @@
+{
+	"name": "Set twice",
+	"nodes": [
+		{
+			"id": "w",
+			"name": "Webhook",
+			"type": "n8n-nodes-base.webhook",
+			"typeVersion": 2,
+			"position": [0, 0],
+			"parameters": { "httpMethod": "POST", "path": "s", "options": {} }
+		},
+		{
+			"id": "s",
+			"name": "Fields",
+			"type": "n8n-nodes-base.set",
+			"typeVersion": 3.4,
+			"position": [200, 0],
+			"parameters": {
+				"assignments": {
+					"assignments": [
+						{ "id": "a", "name": "x", "value": "={{ $json.body.a }}", "type": "string" },
+						{ "id": "b", "name": "y", "value": "k", "type": "string" },
+						{ "id": "c", "name": "x", "value": "={{ $json.body.b }}", "type": "string" }
+					]
+				},
+				"options": {}
+			}
+		},
+		{
+			"id": "s2",
+			"name": "Only",
+			"type": "n8n-nodes-base.set",
+			"typeVersion": 3.4,
+			"position": [400, 0],
+			"parameters": {
+				"assignments": {
+					"assignments": [
+						{ "id": "a", "name": "n", "value": "={{ $json.x }}", "type": "string" },
+						{ "id": "b", "name": "n", "value": 3, "type": "number" },
+						{ "id": "c", "name": "p.q", "value": "1", "type": "string" },
+						{ "id": "d", "name": "p.q", "value": "={{ $json.y }}", "type": "string" }
+					]
+				},
+				"includeOtherFields": true,
+				"options": {}
+			}
+		}
+	],
+	"connections": {
+		"Webhook": { "main": [[{ "node": "Fields", "type": "main", "index": 0 }]] },
+		"Fields": { "main": [[{ "node": "Only", "type": "main", "index": 0 }]] }
+	}
+}
