@@ -260,10 +260,11 @@ The runtime builds the message, so the node has no MIME code. It does what `send
   fallback host for that item only (the step `<node> (fallback host)`). The items before it are not sent
   again. n8n then moves the node to the host for the next runs.
 - **The gate.** The converter links the node only with the option `smtp` (the n8n setting
-  `N8N_COMPILED_ENGINE_SMTP_NATIVE`, off by default, as `mysql` is). The node stays in the host with "retry
-  on fail": v1 then runs the node again for all items and sends the messages before the failure again.
-  With the attribution and no instance id, the node stays in the host. `sendAndWait` is not a call of the
-  library node.
+  `N8N_COMPILED_ENGINE_SMTP_NATIVE`, off by default, as `mysql` is). With the attribution and no instance
+  id, the node stays in the host. `sendAndWait` is not a call of the library node.
+- **Retry on fail.** v1 runs the node again for all items, so it sends the messages before the failure
+  again. The step does the same: the loop of the tries is around the loop of the items. With "retry on
+  fail" and the error output together, the node stays in the host.
 
 ## Tests
 
