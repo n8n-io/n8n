@@ -11,6 +11,8 @@ const FIRST_RETRY_DELAY_SECONDS = 60;
 
 const MAX_RETRY_DELAY_SECONDS = 4 * 60 * 60;
 
+const RETRY_PERIOD_SECONDS = 3 * 24 * 60 * 60;
+
 type DatabaseType = GlobalConfig['database']['type'];
 
 /** SQL for the current database time, in the format `updatedAt` is stored in. */
@@ -18,11 +20,15 @@ export function databaseNow(type: DatabaseType): string {
 	return type === 'postgresdb' ? 'CURRENT_TIMESTAMP(3)' : "STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')";
 }
 
+function plusSeconds(type: DatabaseType, timestamp: string, seconds: string): string {
+	return type === 'postgresdb'
+		? `${timestamp} + make_interval(secs => ${seconds})`
+		: `STRFTIME('%Y-%m-%d %H:%M:%f', ${timestamp}, '+' || ${seconds} || ' seconds')`;
+}
+
 /** SQL for the time the retry note under `alias` becomes due. */
 export function retryDueAt(type: DatabaseType, alias: string): string {
-	return type === 'postgresdb'
-		? `${alias}."updatedAt" + make_interval(secs => ${alias}."retryDelaySeconds")`
-		: `STRFTIME('%Y-%m-%d %H:%M:%f', ${alias}."updatedAt", '+' || ${alias}."retryDelaySeconds" || ' seconds')`;
+	return plusSeconds(type, `${alias}."updatedAt"`, `${alias}."retryDelaySeconds"`);
 }
 
 @Service()
@@ -49,8 +55,9 @@ export class WorkflowPublicationRetryStateRepository extends BaseRepository<Work
 
 	/**
 	 * Doubles the delay of a due retry of the same target, up to the cap, and
-	 * starts any other note at the first delay. A note that is not due yet stays
-	 * as it is, because that failure did not come from its schedule.
+	 * stops the retries once the target has failed for the retry period. Starts
+	 * any other note at the first delay. A note that is not due yet stays as it
+	 * is, because that failure did not come from its schedule.
 	 */
 	async scheduleRetry(
 		workflowId: string,
@@ -60,22 +67,30 @@ export class WorkflowPublicationRetryStateRepository extends BaseRepository<Work
 		const { type } = this.globalConfig.database;
 		const tableName = this.getTableName('workflow_publication_retry_state');
 		const params = type === 'postgresdb' ? '$1, $2' : '?, ?';
+		const startsNewNote =
+			'retry."targetVersionId" <> excluded."targetVersionId" OR retry."retryDelaySeconds" IS NULL';
+		const retryPeriodEndsAt = plusSeconds(type, 'retry."createdAt"', `${RETRY_PERIOD_SECONDS}`);
 
 		await this.managerFor(ctx).query(
 			`INSERT INTO ${tableName} AS retry ("workflowId", "targetVersionId", "retryDelaySeconds")
 			 VALUES (${params}, ${FIRST_RETRY_DELAY_SECONDS})
 			 ON CONFLICT ("workflowId") DO UPDATE SET
 				 "retryDelaySeconds" = CASE
-					 WHEN retry."targetVersionId" <> excluded."targetVersionId" OR retry."retryDelaySeconds" IS NULL
+					 WHEN ${startsNewNote}
 						 THEN ${FIRST_RETRY_DELAY_SECONDS}
+					 WHEN ${retryPeriodEndsAt} <= ${databaseNow(type)}
+						 THEN NULL
 					 WHEN retry."retryDelaySeconds" * 2 > ${MAX_RETRY_DELAY_SECONDS}
 						 THEN ${MAX_RETRY_DELAY_SECONDS}
 					 ELSE retry."retryDelaySeconds" * 2
 				 END,
+				 "createdAt" = CASE
+					 WHEN ${startsNewNote} THEN ${databaseNow(type)}
+					 ELSE retry."createdAt"
+				 END,
 				 "targetVersionId" = excluded."targetVersionId",
 				 "updatedAt" = ${databaseNow(type)}
-			 WHERE retry."targetVersionId" <> excluded."targetVersionId"
-				 OR retry."retryDelaySeconds" IS NULL
+			 WHERE ${startsNewNote}
 				 OR ${retryDueAt(type, 'retry')} <= ${databaseNow(type)}`,
 			[workflowId, targetVersionId],
 		);

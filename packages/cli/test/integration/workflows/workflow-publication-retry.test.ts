@@ -110,6 +110,10 @@ const FIRST_RETRY_DELAY_SECONDS = 60;
 
 const MAX_RETRY_DELAY_SECONDS = 14400;
 
+const RETRY_PERIOD_MS = 3 * 24 * 60 * 60 * 1000;
+
+const ONE_HOUR_MS = 60 * 60 * 1000;
+
 const DOUBLING_CURVE = [60, 120, 240, 480, 960, 1920, 3840, 7680, 14400, 14400];
 
 const POLICY_REFUSAL = new PolicyViolationError([
@@ -164,6 +168,22 @@ async function setRetryNote(
 		.set({ updatedAt: failedAt, retryDelaySeconds })
 		.where({ workflowId })
 		.execute();
+}
+
+async function makeRetryDueAfterFailingSince(
+	workflowId: string,
+	failingSince: Date,
+): Promise<void> {
+	await retryStateRepository
+		.createQueryBuilder()
+		.update()
+		.set({ updatedAt: LONG_AGO, createdAt: failingSince })
+		.where({ workflowId })
+		.execute();
+}
+
+function failingFor(ms: number): Date {
+	return new Date(Date.now() - ms);
 }
 
 async function countRecords(workflowId: string): Promise<number> {
@@ -421,6 +441,39 @@ describe('Workflow publication retry (integration)', () => {
 		}
 
 		expect(delays).toEqual(DOUBLING_CURVE);
+	});
+
+	test('keeps retrying a target that has failed for less than three days', async () => {
+		const workflow = await failReconcileWhileUnreachable(flakyNode('within-period'));
+		fixture.failure = UNREACHABLE;
+		await setRetryNote(workflow.id, LONG_AGO, MAX_RETRY_DELAY_SECONDS);
+		await makeRetryDueAfterFailingSince(workflow.id, failingFor(RETRY_PERIOD_MS - ONE_HOUR_MS));
+
+		await reconciler.reconcile('reconcile');
+
+		expect(await retryDelay(workflow.id)).toBe(MAX_RETRY_DELAY_SECONDS);
+	});
+
+	test('stops retrying a target that has failed for more than three days', async () => {
+		const workflow = await failReconcileWhileUnreachable(flakyNode('past-period'));
+		fixture.failure = UNREACHABLE;
+		await setRetryNote(workflow.id, LONG_AGO, MAX_RETRY_DELAY_SECONDS);
+		await makeRetryDueAfterFailingSince(workflow.id, failingFor(RETRY_PERIOD_MS + ONE_HOUR_MS));
+
+		await reconciler.reconcile('reconcile');
+
+		expect(await retryDelay(workflow.id)).toBeNull();
+	});
+
+	test('a new target version starts a new three-day period', async () => {
+		const workflow = await failReconcileWhileUnreachable(flakyNode('new-target'));
+		await makeRetryDueAfterFailingSince(workflow.id, LONG_AGO);
+
+		await retryStateRepository.scheduleRetry(workflow.id, 'next-version');
+		await makeRetryDue(workflow.id);
+		await retryStateRepository.scheduleRetry(workflow.id, 'next-version');
+
+		expect(await retryDelay(workflow.id)).toBe(2 * FIRST_RETRY_DELAY_SECONDS);
 	});
 
 	test.each(EARLIER_STEP_CASES)(

@@ -2,7 +2,7 @@ import type { MigrationContext, ReversibleMigration } from '../migration-types';
 
 const firstRetryDelaySeconds = 60;
 
-export class AddRetryDelayToWorkflowPublicationRetryState1794320866222
+export class AddRetryDelayToWorkflowPublicationRetryState1794922948806
 	implements ReversibleMigration
 {
 	async up(context: MigrationContext) {

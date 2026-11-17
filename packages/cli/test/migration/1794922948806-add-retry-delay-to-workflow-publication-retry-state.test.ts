@@ -9,7 +9,7 @@ import { DbConnection } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { DataSource, type TableColumn } from '@n8n/typeorm';
 
-const MIGRATION_NAME = 'AddRetryDelayToWorkflowPublicationRetryState1794320866222';
+const MIGRATION_NAME = 'AddRetryDelayToWorkflowPublicationRetryState1794922948806';
 
 const SCHEDULED = 60;
 const PERMANENT = null;
