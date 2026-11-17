@@ -20,7 +20,7 @@ export class DockerOnlyDeploymentRule implements IBreakingChangeInstanceRule {
 			version: 'v3',
 			title: 'Docker becomes the only supported deployment method',
 			description:
-				'Support for running n8n via npm is removed. The new version must be run via the official Docker image.',
+				'Support for running n8n via npm is removed. Move this instance to the official Docker image before you update.',
 			category: BreakingChangeCategory.infrastructure,
 			impact: 'upgradeBlocked',
 			documentationUrl: 'https://docs.n8n.io/deploy/host-n8n',
