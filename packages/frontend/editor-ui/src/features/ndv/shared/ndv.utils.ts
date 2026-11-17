@@ -878,9 +878,12 @@ export const PANE_DEFAULT_DISPLAY_MODE = {
  * It does not check `canRender`: the caller must also fall back when
  * `getAvailableDisplayMode` finds nothing for the current data.
  */
+export function isBuiltInDisplayMode(mode: DisplayMode): mode is BuiltInDisplayMode {
+	return BUILT_IN_DISPLAY_MODES.some((builtIn) => builtIn === mode);
+}
+
 export function resolveDisplayMode(stored: DisplayMode, pane: RunDataDisplayModePane): DisplayMode {
-	const isBuiltIn = BUILT_IN_DISPLAY_MODES.some((mode) => mode === stored);
-	return isBuiltIn || runDataDisplayModeRegistry.has(stored)
+	return isBuiltInDisplayMode(stored) || runDataDisplayModeRegistry.has(stored)
 		? stored
 		: PANE_DEFAULT_DISPLAY_MODE[pane];
 }
