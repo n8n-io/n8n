@@ -39,6 +39,8 @@ import {
 	type Item,
 	type SqlError,
 	type SqlResult,
+	type SqlRows,
+	type SqlSets,
 	type SqlStatement,
 	type SqlValue,
 } from '@n8n/workflow-lang';
@@ -1230,6 +1232,14 @@ function errorMessage(error: SqlError, queries: Query[]): string {
 	return out;
 }
 
+/** The rows of one statement: of all its commands when the statement is a simple one. */
+function rowsOf(entry: SqlRows | SqlSets): Item[] {
+	if (!('sets' in entry)) return entry.rows;
+	const out: Item[] = [];
+	for (const set of entry.sets) for (const row of set.rows) out.push(row);
+	return out;
+}
+
 /** The items of one result of v1: the rows, or `success` for a query that is not a select. */
 function rowsOrSuccess(rows: Item[], query: Query, legacyEmpty: Item[] | null): Item[] {
 	if (rows.length > 0) return rows;
@@ -1429,7 +1439,7 @@ export default defineNode<PostgresParameters>({
 			const entry = result.results[0];
 			if (entry === undefined) throw new Error('Postgres: the runtime gave no result');
 			if ('error' in entry) throw new Error(entry.error.message);
-			return entry.rows;
+			return rowsOf(entry);
 		};
 
 		const queries: Query[] = [];
@@ -1557,7 +1567,7 @@ export default defineNode<PostgresParameters>({
 				const entry = result.results[0];
 				if (entry === undefined) throw new Error('Postgres: the runtime gave no result');
 				if ('error' in entry) throw new Error(errorMessage(entry.error, queries));
-				for (const row of rowsOrSuccess(entry.rows, queries[i], legacyEach)) out.push(row);
+				for (const row of rowsOrSuccess(rowsOf(entry), queries[i], legacyEach)) out.push(row);
 			}
 			return out;
 		}
@@ -1572,13 +1582,13 @@ export default defineNode<PostgresParameters>({
 			for (let i = 0; i < result.results.length; i++) {
 				const entry = result.results[i];
 				if ('error' in entry) continue;
-				for (const row of rowsOrSuccess(entry.rows, queries[i], legacyEach)) out.push(row);
+				for (const row of rowsOrSuccess(rowsOf(entry), queries[i], legacyEach)) out.push(row);
 			}
 			return out;
 		}
 		for (const entry of result.results) {
 			if ('error' in entry) continue;
-			for (const row of entry.rows) out.push(row);
+			for (const row of rowsOf(entry)) out.push(row);
 		}
 		if (out.length > 0) return out;
 		if (legacySingle !== null) return legacySingle;

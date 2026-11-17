@@ -348,10 +348,17 @@ export interface ServiceRequest {
 /** A bind value of a SQL statement. Node code turns an object into JSON text itself. */
 export type SqlValue = string | number | boolean | null;
 
-/** One SQL command. `text` holds `$1..$n`; the runtime sends `values` as bind values. */
+/**
+ * One SQL command. `text` holds `$1..$n`; the runtime sends `values` as bind values.
+ * With `simple: true`, the runtime sends `text` as it is with the simple query protocol,
+ * as the v1 node does. The text can then hold more than one command, and `values` must be
+ * absent. The database runs the text as it is, so only a formatter that equals pg-promise
+ * writes a value into it.
+ */
 export interface SqlStatement {
 	text: string;
 	values?: SqlValue[];
+	simple?: true;
 }
 
 /**
@@ -409,6 +416,11 @@ export interface SqlRows {
 	rows: Item[];
 }
 
+/** The result of a statement with `simple: true`: the rows of each command that completed, in order. */
+export interface SqlSets {
+	sets: SqlRows[];
+}
+
 export interface SqlFailure {
 	error: SqlError;
 }
@@ -419,7 +431,7 @@ export interface SqlFailure {
  * `connect`: the connection failed, and `results` is empty.
  */
 export interface SqlResult {
-	results: Array<SqlRows | SqlFailure>;
+	results: Array<SqlRows | SqlSets | SqlFailure>;
 	connect?: SqlError;
 }
 

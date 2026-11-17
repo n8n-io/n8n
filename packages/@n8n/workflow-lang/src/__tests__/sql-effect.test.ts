@@ -34,6 +34,7 @@ const READ = wrap(`const out = await ctx.sql({
 		const first = out.results[0];
 		if (out.connect !== undefined) return { failed: out.connect.message };
 		if ('error' in first) return { failed: first.error.message };
+		if ('sets' in first) return { sets: first.sets.length };
 		return { ids: first.rows.map((row) => row.id), command: first.command };`);
 
 const fixture = (result: unknown) => ({
@@ -109,6 +110,40 @@ describe('the sql effect', () => {
 		},
 	);
 
+	it('gives the text of a simple statement as it is, and the sets of its commands', async () => {
+		const source = wrap(`const out = await ctx.sql({
+			name: 'Read',
+			credential: 'db',
+			dialect: 'postgres',
+			statements: [{ text: 'SELECT 1 AS a; UPDATE notes SET seen = true', simple: true }],
+		});
+		const first = out.results[0];
+		if (!('sets' in first)) return { sets: -1 };
+		return { commands: first.sets.map((set) => set.command), a: first.sets[0].rows[0].a };`);
+		const result = {
+			results: [
+				{
+					sets: [
+						{ command: 'SELECT', rowCount: 1, rows: [{ a: 1 }] },
+						{ command: 'UPDATE', rowCount: 3, rows: [] },
+					],
+				},
+			],
+		};
+		const compiled = compile(source);
+		expect(compiled.diagnostics).toEqual([]);
+		const reference = await runReference(source, fixture(result));
+		expect(reference.result).toEqual({ commands: ['SELECT', 'UPDATE'], a: 1 });
+		expect(reference.effects[0].args).toEqual({
+			name: 'Read',
+			credential: 'db',
+			dialect: 'postgres',
+			statements: [{ text: 'SELECT 1 AS a; UPDATE notes SET seen = true', simple: true }],
+		});
+		const bytecode = runModule(decodeModule(compiled.module ?? new Uint8Array()), fixture(result));
+		expect(JSON.stringify(bytecode)).toBe(JSON.stringify(reference));
+	});
+
 	it('fails the step for an effect error', async () => {
 		const failed = { $error: 'sql: the column "tags" has the type 1007 (limit: sql-type)' };
 		const reference = await runReference(READ, fixture(failed));
@@ -138,6 +173,14 @@ describe('the sql effect', () => {
 		[
 			'an object as a bind value',
 			"credential: 'db', dialect: 'postgres', statements: [{ text: 'SELECT $1', values: [{ a: 1 }] }]",
+		],
+		[
+			'a simple statement with bind values',
+			"credential: 'db', dialect: 'postgres', statements: [{ text: 'SELECT $1', values: [1], simple: true }]",
+		],
+		[
+			'a simple statement whose flag is not the literal true',
+			"credential: 'db', dialect: 'postgres', statements: [{ text: 'SELECT 1', simple: trigger.body.age > 1 }]",
 		],
 	])('rejects %s with WL032', (_name, options) => {
 		expect(codes(call(options))).toContain('WL032');

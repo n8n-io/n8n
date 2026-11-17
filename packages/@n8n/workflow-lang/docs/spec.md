@@ -1732,6 +1732,7 @@ await ctx.sql({
 	dialect: 'postgres',
 	mode,                    // 'single' (default) | 'transaction' | 'independently'
 	statements: [{ text: 'SELECT id FROM t WHERE a = $1', values: ['x'] }],
+	                         // or { text, simple: true }: the text as it is, no values
 	largeNumbers,            // 'text' (default) | 'numbers'
 	dates,                   // 'text' (default) | 'legacy'
 	connectTimeoutMs,
@@ -1750,6 +1751,23 @@ await ctx.sql({
   other number is `numeric`. An array or an object is an error: node code
   gives an object as JSON text. A statement is one SQL command, with 1 to
   256 statements in a call (`--sql-max-statements`).
+* **Simple statements.** `{ text, simple: true }` is a statement that the
+  runtime sends as it is, with the simple query protocol, as the v1 node
+  sends its queries. It has no `values`. Its text can hold more than one
+  command, and the server runs these commands as one implicit transaction
+  when the text has no transaction command of its own. The entry of the
+  statement in `results` is `{ sets }`: one `SqlRows` for each command
+  that completed, in order, and `sets: []` for a text without a command.
+  When a command fails, the server ends the text there, and the entry is
+  `{ error }`. The modes do not change: a simple statement that is the
+  only statement of a call in the mode `single` runs alone, with no
+  `BEGIN` from the runtime. The column values have the JSON of the table
+  below. The runtime does not read or change the text, so a simple
+  statement is only as safe as the code that makes its text. The library
+  node of Postgres makes the text with one formatter that gives the text of
+  pg-promise (`src/nodes/shared/pg-format.ts`), only for a query that has
+  no exact form with bind values. This gives the statement of v1 and the
+  safety of v1, and no more.
 * **Modes.** `single`: one statement runs alone. More than one statement
   runs between `BEGIN` and `COMMIT`; the first failure does `ROLLBACK` and
   ends the call. `transaction`: `BEGIN` also for one statement; else as
@@ -1759,10 +1777,11 @@ await ctx.sql({
 
   ```ts
   interface SqlResult {
-    results: Array<SqlRows | SqlFailure>; // in statement order
-    connect?: SqlError;                   // the connection failed: results is []
+    results: Array<SqlRows | SqlSets | SqlFailure>; // in statement order
+    connect?: SqlError;                             // the connection failed: results is []
   }
   interface SqlRows { command: string; rowCount: number | null; rows: Item[] }
+  interface SqlSets { sets: SqlRows[] }             // a statement with `simple: true`
   interface SqlFailure { error: SqlError }
   ```
 
@@ -1859,7 +1878,9 @@ await ctx.sql({
 * **Validation.** `WL032`: a `ctx.sql` call without `credential`, with a
   `dialect` that is not the literal `'postgres'`, without `statements`, with
   a literal statement without `text`, with a `text` that is a template with
-  a value in it, or with a literal array or object as a bind value.
+  a value in it, with a literal array or object as a bind value, or with a
+  literal statement that has `simple` and `values`, or a `simple` that is
+  not the literal `true`.
 * **Fixtures.** The reference runner and the test VM answer a `sql` effect
   from the fixture by step name, as for the other effects. `{ "$error":
   "<text>" }` is an effect error.
