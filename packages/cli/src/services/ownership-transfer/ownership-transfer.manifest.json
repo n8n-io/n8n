@@ -40,6 +40,11 @@
 			"reason": "Per-project worker-pool config; scoped to the deleted project and dropped via FK cascade."
 		},
 		{
+			"name": "ProjectWorkflowReviewSettings",
+			"path": "packages/@n8n/db/src/entities/project-workflow-review-settings.ee.ts",
+			"reason": "Per-project workflow review config; scoped to the deleted project and dropped via FK cascade."
+		},
+		{
 			"name": "RoleMappingRule",
 			"path": "packages/@n8n/db/src/entities/role-mapping-rule.ts",
 			"reason": "SSO role-mapping config attached to the project, not user data."
