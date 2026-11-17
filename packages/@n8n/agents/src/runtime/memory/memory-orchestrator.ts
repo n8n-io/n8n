@@ -57,6 +57,7 @@ import type { ObservationResumeState } from '../../types/sdk/observation';
 import type { AgentRuntimeConfig } from '../../types/runtime/agent-runtime';
 import { promptSizeOf } from '../loop/prompt-size-usage';
 import { computeSideCallCost } from '../loop/side-call-cost';
+import { stripEncryptedReasoning } from '../model/encrypted-reasoning';
 import type { AgentMessageList } from '../model/message-list';
 import { getPromptCacheRetentionMs } from '../model/prompt-cache';
 import { estimateObservationTokens, type TokenCounter } from '../model/model-token-counter';
@@ -584,6 +585,40 @@ export class MemoryOrchestrator {
 			logger.warn('Failed to remove rejected input', {
 				error,
 				threadId: options.persistence.threadId,
+			});
+		}
+	}
+
+	/**
+	 * Stop the replay of encrypted reasoning that the provider rejected, for this
+	 * request and for later turns. Changed history is written back once, so the
+	 * next turn does not fail first. This turn's messages are saved at its end.
+	 * Best-effort: if the write fails, the next turn strips the history again.
+	 */
+	async stripRejectedReasoning(
+		list: AgentMessageList,
+		options: (RunOptions & ExecutionOptions) | undefined,
+	): Promise<void> {
+		const changed = stripEncryptedReasoning(list.messages());
+		const turn = new Set(list.turnDelta());
+		const history = changed.filter((message) => !turn.has(message));
+		const memory = this.config.memory;
+		const persistence = options?.persistence;
+		if (!memory || !persistence || history.length === 0) return;
+		try {
+			// No host metadata: these messages belong to earlier runs.
+			await this.saveMessagesWithSpan(
+				memory,
+				persistence.threadId,
+				persistence.resourceId,
+				history,
+				this.runtimeTelemetry.resolve(options),
+				undefined,
+			);
+		} catch (error) {
+			logger.warn('Failed to persist history without rejected reasoning', {
+				error,
+				threadId: persistence.threadId,
 			});
 		}
 	}

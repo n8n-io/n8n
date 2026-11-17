@@ -458,10 +458,7 @@ describe('research tool', () => {
 
 			expect(context.webResearchService!.fetchUrl).toHaveBeenCalledWith(
 				'https://example.com',
-				expect.objectContaining({
-					maxContentLength: undefined,
-					authorizeUrl: expect.any(Function),
-				}),
+				expect.objectContaining({ authorizeUrl: expect.any(Function) }),
 			);
 			// Content should be sanitized and wrapped in untrusted-data boundary tags.
 			const content = (result as { content: string }).content;
@@ -753,35 +750,105 @@ describe('research tool', () => {
 			expect(context.webResearchService!.fetchUrl).toHaveBeenCalled();
 		});
 
-		it('should pass maxContentLength to fetchUrl', async () => {
-			const fetchedPage = {
-				url: 'https://example.com',
-				finalUrl: 'https://example.com',
-				title: 'Example',
-				content: 'Short content',
-				truncated: false,
-				contentLength: 13,
-			};
-			const context = createMockContext({
-				permissions: { fetchUrl: 'always_allow' },
-			});
-			context.webResearchService!.fetchUrl = vi.fn().mockResolvedValue(fetchedPage);
+		describe('paging', () => {
+			const fullContent = 'a'.repeat(40) + 'FACT' + 'b'.repeat(56);
 
-			const tool = createResearchTool(context);
-			await executeTool(
-				tool,
-				{
-					action: 'fetch-url' as const,
+			async function fetchPageSlice(
+				input: { maxContentLength?: number; offset?: number },
+				content = fullContent,
+			) {
+				const context = createMockContext({ permissions: { fetchUrl: 'always_allow' } });
+				context.webResearchService!.fetchUrl = vi.fn().mockResolvedValue({
 					url: 'https://example.com',
-					maxContentLength: 5000,
-				},
-				createAgentCtx() as never,
-			);
+					finalUrl: 'https://example.com',
+					title: 'Example',
+					content,
+					truncated: false,
+					contentLength: content.length,
+				});
+				const tool = createResearchTool(context);
+				return (await executeTool(
+					tool,
+					{ action: 'fetch-url' as const, url: 'https://example.com', ...input },
+					createAgentCtx() as never,
+				)) as { content: string; truncated: boolean; contentLength: number; nextOffset?: number };
+			}
 
-			expect(context.webResearchService!.fetchUrl).toHaveBeenCalledWith(
-				'https://example.com',
-				expect.objectContaining({ maxContentLength: 5000 }),
-			);
+			function unwrap(content: string) {
+				return content
+					.replace(/^<untrusted_data[^>]*>\n?/, '')
+					.replace(/\n?<\/untrusted_data>$/, '');
+			}
+
+			it('should return at most maxContentLength characters from the start', async () => {
+				const result = await fetchPageSlice({ maxContentLength: 40 });
+
+				expect(unwrap(result.content)).toBe('a'.repeat(40));
+				expect(result.truncated).toBe(true);
+				expect(result.nextOffset).toBe(40);
+				expect(result.contentLength).toBe(100);
+			});
+
+			it('should return the slice that starts at offset', async () => {
+				const result = await fetchPageSlice({ maxContentLength: 10, offset: 40 });
+
+				expect(unwrap(result.content)).toBe('FACT' + 'b'.repeat(6));
+				expect(result.nextOffset).toBe(50);
+			});
+
+			it('should mark the last slice as complete', async () => {
+				const result = await fetchPageSlice({ maxContentLength: 30, offset: 80 });
+
+				expect(unwrap(result.content)).toBe('b'.repeat(20));
+				expect(result.truncated).toBe(false);
+				expect(result.nextOffset).toBeUndefined();
+			});
+
+			it('should return the full page when it fits in the default length', async () => {
+				const result = await fetchPageSlice({});
+
+				expect(unwrap(result.content)).toBe(fullContent);
+				expect(result.truncated).toBe(false);
+			});
+
+			it('should return no content when offset is past the end', async () => {
+				const result = await fetchPageSlice({ offset: 500 });
+
+				expect(unwrap(result.content)).toBe('');
+				expect(result.truncated).toBe(false);
+				expect(result.nextOffset).toBeUndefined();
+			});
+
+			it('should not split a surrogate pair at the end of a slice', async () => {
+				const content = 'abc😀def';
+
+				const first = await fetchPageSlice({ maxContentLength: 4 }, content);
+				const second = await fetchPageSlice({ offset: first.nextOffset }, content);
+
+				expect(unwrap(first.content)).toBe('abc');
+				expect(unwrap(second.content)).toBe('😀def');
+			});
+
+			it('should keep truncated when the page was cut before it reached the tool', async () => {
+				const context = createMockContext({ permissions: { fetchUrl: 'always_allow' } });
+				context.webResearchService!.fetchUrl = vi.fn().mockResolvedValue({
+					url: 'https://example.com',
+					finalUrl: 'https://example.com',
+					title: 'Huge',
+					content: 'short',
+					truncated: true,
+					contentLength: 9_000_000,
+				});
+				const tool = createResearchTool(context);
+				const result = (await executeTool(
+					tool,
+					{ action: 'fetch-url' as const, url: 'https://example.com' },
+					createAgentCtx() as never,
+				)) as { truncated: boolean; nextOffset?: number };
+
+				expect(result.truncated).toBe(true);
+				expect(result.nextOffset).toBeUndefined();
+			});
 		});
 
 		// ── Same-eTLD+1 redirect auto-allow (TRUST-73) ───────────────

@@ -297,7 +297,7 @@ describe('InstanceAiMessage', () => {
 		});
 
 		expect(getByTestId('instance-ai-out-of-credits')).toBeInTheDocument();
-		expect(getByText("You've run out of AI credits")).toBeInTheDocument();
+		expect(getByText("You've run out of Assistant credits")).toBeInTheDocument();
 		// Raw provider text and status code are hidden for the tailored state.
 		expect(queryByText('Have reached end of quota')).not.toBeInTheDocument();
 		expect(queryByText('403')).not.toBeInTheDocument();

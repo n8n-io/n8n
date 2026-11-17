@@ -126,6 +126,7 @@ erDiagram
   varchar_128_ name
   TEXT nodeGroups
   TEXT nodes
+  JSON settings
   datetime_3_ updatedAt
   varchar_36_ versionId PK
   varchar_36_ workflowId FK
@@ -415,6 +416,7 @@ erDiagram
   varchar_128_ name
   varchar_36_ parentFolderId FK
   varchar_36_ projectId FK
+  varchar_16_ resourceType
   datetime_3_ updatedAt
 }
 ```

@@ -548,6 +548,17 @@ describe('ToolsConnectionModal', () => {
 			expect(queryByTestId('tab-global')).toBeNull();
 		});
 
+		it('keeps recommended items out of the all tab', () => {
+			const { getByTestId } = renderWith({
+				items: [skill('tone', 'project'), skill('humanizer', 'recommended')],
+				categories: [...SKILL_CATEGORIES, 'recommended'],
+				hideEmptyCategories: true,
+			});
+
+			expect(getByTestId('tab-all').textContent).toContain('All (1)');
+			expect(getByTestId('tab-recommended').textContent).toContain('Recommended (1)');
+		});
+
 		it('hides the tab strip when only the all tab is left', () => {
 			const empty = renderWith({
 				items: [],

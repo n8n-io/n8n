@@ -6,7 +6,7 @@ import type {
 	INodeExecutionData,
 	INodeProperties,
 } from 'n8n-workflow';
-import { NodeApiError } from 'n8n-workflow';
+import { NodeApiError, requestPath } from 'n8n-workflow';
 
 import {
 	getCursorPaginatorCalls,
@@ -295,7 +295,7 @@ const getFields: INodeProperties[] = [
 										const callTranscripts = await gongApiPaginateRequest.call(
 											this,
 											'POST',
-											'/v2/calls/transcript',
+											requestPath`/v2/calls/transcript`,
 											{ filter: { callIds: [(item.json.metaData as IDataObject).id] } },
 											{},
 											item.index ?? 0,

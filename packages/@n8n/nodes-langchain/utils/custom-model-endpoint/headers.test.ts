@@ -1,4 +1,4 @@
-import { UserError } from 'n8n-workflow';
+import { UserError } from '@n8n/errors';
 
 import { buildRequestHeaders, toHeaderRecord } from './headers';
 import type { EndpointCredential, LoginMethod } from './types';

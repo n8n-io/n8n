@@ -1,8 +1,8 @@
 // An in-memory `SkillUsage` for unit tests. It passes the contract cases in
 // `skill-usage.contract.ts`, as the real one of the agents module does.
 import type { SkillAgentOption, SkillUsedBy } from '@n8n/api-types';
-import { UserError } from '@n8n/errors';
 
+import { SkillAgentNameTakenError } from '../errors/skill-agent-name-taken.error';
 import { SkillUsage, type SkillAgent } from '../services/skill-usage.contracts';
 import { renameIntroducesClash } from '../utils/skill-names';
 import type { SeededSkillUsageWorld, SkillUsageWorld } from './skill-usage.contract';
@@ -80,6 +80,15 @@ export class FakeSkillUsage extends SkillUsage {
 		]);
 	}
 
+	async findUsingAgentIdsBySkill(skillIds: string[]): Promise<Map<string, string[]>> {
+		const using = new Map<string, string[]>();
+		for (const skillId of unique(skillIds)) {
+			const agents = await this.findUsingAgentIds(skillId);
+			if (agents.length > 0) using.set(skillId, agents);
+		}
+		return using;
+	}
+
 	async findSkillIdsUsedByAgent(agentId: string): Promise<string[]> {
 		return unique([
 			...this.world.drafts.filter((ref) => ref.agent === agentId).map((ref) => ref.skill),
@@ -110,15 +119,11 @@ export class FakeSkillUsage extends SkillUsage {
 		});
 		if (clashing.length > 0) {
 			const names = clashing.map((key) => this.agent(key).name);
-			throw new UserError(
-				`Cannot rename to "${newName}": ${names.join(', ')} already ${
-					names.length > 1 ? 'use' : 'uses'
-				} a skill with a name like that.`,
-			);
+			throw new SkillAgentNameTakenError(newName, names);
 		}
 	}
 
-	async markFollowersChanged(skillId: string): Promise<string[]> {
+	async findFollowingAgentIds(skillId: string): Promise<string[]> {
 		return this.followers(skillId);
 	}
 

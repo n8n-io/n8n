@@ -33,6 +33,7 @@ import {
 import { classifyEdge, sourceRow } from './iteration-mapping';
 import { exitSourcesInto, loadTerminalIterations } from './loop-ledger';
 import { InvalidParentLinkError, type StartExecutionService } from './start-execution.service';
+import { stepErrorDetails } from './step-error-details';
 import type { StepRecord, StepStore } from './step-store';
 import { createStoreLoopReader } from './store-loop-reader';
 import { validateStepContext } from './validate-step-context';
@@ -118,7 +119,7 @@ export class StepReadyHandler {
 			| { kind: 'outputs'; outputs: StepSlots }
 			| { kind: 'wait'; wait: ExecutorWaitDeclaration }
 			| { kind: 'subExecution'; subExecution: SubExecutionDeclaration }
-			| { kind: 'error'; error: unknown };
+			| { kind: 'error'; error: StepError };
 		try {
 			let result: StepExecutionResult;
 			if (dispatch.kind === 'replay') {
@@ -136,7 +137,7 @@ export class StepReadyHandler {
 				run = { kind: 'outputs', outputs: result.outputs };
 			}
 		} catch (error) {
-			run = { kind: 'error', error };
+			run = { kind: 'error', error: toStepError(error) };
 		}
 
 		if (run.kind === 'subExecution') {
@@ -148,7 +149,7 @@ export class StepReadyHandler {
 			const started = await this.handleDetachedSubExecution(step, execution, subExecution);
 			run =
 				started.kind === 'error'
-					? { kind: 'error', error: started.error }
+					? { kind: 'error', error: toStepError(started.error) }
 					: { kind: 'outputs', outputs: subExecution.outputs };
 		}
 
@@ -158,13 +159,16 @@ export class StepReadyHandler {
 		} else if (run.kind === 'wait') {
 			recorded = await this.stepStore.suspendStep(event.stepId, run.wait);
 		} else {
-			recorded = await this.stepStore.failStep(event.stepId, toStepError(run.error));
+			recorded = await this.stepStore.failStep(event.stepId, run.error);
 		}
 
 		// Recording is a CAS on `running`, so losing it means something else took the
 		// step over while we ran — announce only outcomes we actually wrote, and let
 		// whoever holds it now announce theirs. TODO(CAT-2938): reconciliation is the
 		// only thing that can take a step over, and it doesn't exist yet.
+		//
+		// A wait in an ended execution is not recorded either: `suspendStep` cancels
+		// the step.
 		if (!recorded) return;
 
 		// A wait is no outcome: nothing settled, so no planning follows.
@@ -182,7 +186,7 @@ export class StepReadyHandler {
 		lifecycleEventPublisher.publish(
 			run.kind === 'outputs'
 				? { type: 'step:completed', ...stepEventFields(step, node), outputs: run.outputs }
-				: { type: 'step:failed', ...stepEventFields(step, node) },
+				: { type: 'step:failed', ...stepEventFields(step, node), error: run.error },
 		);
 
 		await this.orchestrationQueue.publish({
@@ -204,7 +208,8 @@ export class StepReadyHandler {
 		node: GraphNode,
 		subExecution: SubExecutionDeclaration,
 	): Promise<void> {
-		// A CAS on `running`: losing it means something else took the step over.
+		// A CAS on `running`: losing it means something else took the step over, or
+		// the execution has ended.
 		const recorded = await this.stepStore.suspendStep(event.stepId, {
 			subExecutionId: subExecution.executionId,
 		});
@@ -215,11 +220,12 @@ export class StepReadyHandler {
 		const started = await this.startSubExecution(step, execution, subExecution);
 		if (started.kind === 'started') return;
 
-		const failed = await this.stepStore.failWaitingStep(step.id, toStepError(started.error));
+		const error = toStepError(started.error);
+		const failed = await this.stepStore.failWaitingStep(step.id, error);
 		if (!failed) return;
 		this.lifecycleEventPublisherFactory
 			.create(execution)
-			.publish({ type: 'step:failed', ...stepEventFields(step, node) });
+			.publish({ type: 'step:failed', ...stepEventFields(step, node), error });
 		await this.orchestrationQueue.publish({
 			type: 'step:settled',
 			executionId: event.executionId,
@@ -510,7 +516,13 @@ function stepEventFields(step: StepRecord, node: GraphNode) {
 
 function toStepError(error: unknown): StepError {
 	if (error instanceof Error) {
-		return { name: error.name, message: error.message, stack: error.stack };
+		const details = stepErrorDetails(error);
+		return {
+			name: error.name,
+			message: error.message,
+			stack: error.stack,
+			...(details === undefined ? {} : { details }),
+		};
 	}
 	return { name: 'Error', message: String(error) };
 }

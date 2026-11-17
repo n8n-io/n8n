@@ -18,6 +18,7 @@ import {
 import { gitBlobSha } from '@/modules/n8n-packages/io/hashing-package-writer';
 import { entityFilePath } from '@/modules/n8n-packages/io/manifest-entry';
 import { N8nPackagesService } from '@/modules/n8n-packages/n8n-packages.service';
+import type { PublicApiCaller } from '@/public-api/public-api-client';
 import { FolderService } from '@/services/folder.service';
 import {
 	CredentialConflictPolicy,
@@ -32,20 +33,14 @@ import {
 	type ImportSelectionRequest,
 } from '@/modules/n8n-packages/n8n-packages.types';
 
-import {
-	plannedChanges,
-	previewRevision,
-	toPreviewCheck,
-	withoutTagIds,
-	withoutTags,
-} from './apply-preview';
+import { plannedChanges, toPreviewCheck, withoutTagIds, withoutTags } from './apply-preview';
 import { PACKAGE_SUBFOLDER } from './constants';
 import { crossProjectMoves, foldersInScope, type CrossProjectMoves } from './cross-project-moves';
 import { GitCommitPackageReader } from './git-commit-package-reader';
 import { LocalPackageEntities } from './local-package-entities.service';
 import type { InstancePackage } from './instance-package';
 import { collectCredentialReferences, collectVariableReferences } from './package-references';
-import { buildPreview } from './promotion-preview';
+import { buildPreview, previewRevision } from './promotion-preview';
 
 export type ApplyPreview = {
 	resources: PromotionResource[];
@@ -60,10 +55,12 @@ export type ApplyPreview = {
  */
 export function applySelectionRequest(
 	user: User,
+	publicApi: PublicApiCaller,
 	confirmDestructiveChanges = false,
 ): ImportSelectionRequest {
 	return {
 		user,
+		publicApi,
 		projectConflictPolicy: ProjectConflictPolicy.Overwrite,
 		// Hard delete, so that the next preview has nothing left to show.
 		overwriteDeletionPolicy: OverwriteDeletionPolicy.HardDelete,
@@ -132,7 +129,7 @@ export class ApplyPreviewService {
 		const onBranch = inventory.projects.some(({ id }) => id === projectId);
 		const plan = onBranch
 			? await this.packagesService.planPackageSelection(
-					applySelectionRequest(user),
+					applySelectionRequest(user, false),
 					reader,
 					selection,
 					'check',
@@ -170,7 +167,7 @@ export class ApplyPreviewService {
 		});
 		await this.addLocalState(resources);
 
-		return { resources, dependencies, check, revision: previewRevision(resources, check) };
+		return { resources, dependencies, check, revision: previewRevision({ resources, check }) };
 	}
 
 	/** A branch workflow file as Apply writes it. With workflow tags disabled, Apply keeps the local tags. */

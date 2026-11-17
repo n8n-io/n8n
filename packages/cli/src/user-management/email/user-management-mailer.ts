@@ -1,7 +1,7 @@
 import { inTest, Logger } from '@n8n/backend-common';
 import { EventService, UrlService } from '@n8n/backend-services';
 import { GlobalConfig } from '@n8n/config';
-import type { ApiKey, User } from '@n8n/db';
+import type { ApiKey, OperationContext, User } from '@n8n/db';
 import { accountSummary, accountFirstName, isPerson, PersonRepository } from '@n8n/db';
 import { Container, Service } from '@n8n/di';
 import { AssignableProjectRole } from '@n8n/permissions';
@@ -21,7 +21,9 @@ import type {
 import { NodeMailer } from './node-mailer';
 
 import { InternalServerError } from '@n8n/errors';
+import { loginIdOf } from '@/events/login-id';
 import type { RelayEventMap } from '@/events/maps/relay.event-map';
+import type { PublicApiCaller } from '@/public-api/public-api-client';
 import { toError } from '@/utils';
 
 const REVOKED_AT_FORMATTER = new Intl.DateTimeFormat('en-GB', {
@@ -273,6 +275,8 @@ export class UserManagementMailer {
 		getTemplateData,
 		subjectBuilder,
 		messageType,
+		publicApi = false,
+		ctx,
 	}: {
 		mailerTemplate: TemplateName;
 		recipients: T[];
@@ -280,6 +284,8 @@ export class UserManagementMailer {
 		getTemplateData: (recipient: T) => Record<string, any>;
 		subjectBuilder: () => string;
 		messageType: RelayEventMap['user-transactional-email-sent']['messageType'];
+		publicApi?: PublicApiCaller;
+		ctx?: OperationContext;
 	}): Promise<SendEmailResult> {
 		if (!this.mailer) return { emailSent: false };
 		if (recipients.length === 0) return { emailSent: false };
@@ -309,7 +315,7 @@ export class UserManagementMailer {
 			this.eventService.emit('user-transactional-email-sent', {
 				userId: sharer.id,
 				messageType,
-				publicApi: false,
+				publicApi,
 			});
 
 			return {
@@ -320,7 +326,8 @@ export class UserManagementMailer {
 			this.eventService.emit('email-failed', {
 				user: sharer,
 				messageType,
-				publicApi: false,
+				publicApi,
+				loginId: loginIdOf(ctx),
 			});
 
 			const error = toError(e);
@@ -426,10 +433,14 @@ export class UserManagementMailer {
 		sharer,
 		newSharees,
 		project,
+		publicApi,
+		ctx,
 	}: {
 		sharer: User;
 		newSharees: Array<{ userId: string; role: AssignableProjectRole }>;
 		project: { id: string; name: string };
+		publicApi?: PublicApiCaller;
+		ctx?: OperationContext;
 	}): Promise<SendEmailResult> {
 		const recipients = await this.personRepository.getEmailsByIds(newSharees.map((s) => s.userId));
 		const baseUrl = this.urlService.getInstanceBaseUrl();
@@ -457,6 +468,8 @@ export class UserManagementMailer {
 			}),
 			subjectBuilder: () => `${accountFirstName(sharer)} has invited you to a project`,
 			messageType: 'Project shared',
+			publicApi,
+			ctx,
 		});
 	}
 

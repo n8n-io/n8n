@@ -54,7 +54,7 @@ export interface PreparedAgent extends Omit<SerializedAgent, 'id' | 'isArchived'
 	metadata: SerializedAgentMetadata;
 }
 
-export interface AgentImportMatchContext extends Pick<ImportContext, 'user' | 'projectId'> {
+export interface AgentImportMatchContext extends Pick<ImportContext, 'user' | 'ctx' | 'projectId'> {
 	/** Set only after the project planner authorizes creation of this destination. */
 	projectPendingCreation?: boolean;
 }

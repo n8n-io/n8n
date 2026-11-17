@@ -1,5 +1,6 @@
 import userEvent from '@testing-library/user-event';
 import { fireEvent, render, screen, waitFor, within } from '@testing-library/vue';
+import { defineComponent, h } from 'vue';
 
 import N8nCommandBar from './CommandBar.vue';
 import type { CommandBarItem, CommandBarSection, CommandBarTab } from './types';
@@ -410,5 +411,140 @@ describe('N8nCommandBar', () => {
 		await fireEvent.scroll(screen.getByTestId('command-bar-items-list'));
 
 		expect(wrapper.emitted('loadMore')).toHaveLength(1);
+	});
+
+	it('leaves keys to a dialog opened over the command bar', async () => {
+		const wrapper = await renderCommandBar();
+		const input = getInput();
+		await waitFor(() => expect(input).toHaveFocus());
+		const stacked = document.createElement('div');
+		stacked.setAttribute('role', 'dialog');
+		const button = document.createElement('button');
+		stacked.appendChild(button);
+		document.body.appendChild(stacked);
+		button.focus();
+
+		await fireEvent.keyDown(button, { key: 'x' });
+		await fireEvent.keyDown(button, { key: 'ArrowDown' });
+
+		expect(input).toHaveValue('');
+		expect(wrapper.emitted('update:query')).toBeUndefined();
+		expect(getSelectedTitle()).toContain('Sync leads');
+		stacked.remove();
+	});
+
+	it('stays open on Cmd+K in a dialog opened over the command bar', async () => {
+		const wrapper = await renderCommandBar();
+		await waitFor(() => expect(getInput()).toHaveFocus());
+		const stacked = document.createElement('div');
+		stacked.setAttribute('role', 'dialog');
+		const button = document.createElement('button');
+		stacked.appendChild(button);
+		document.body.appendChild(stacked);
+
+		await fireEvent.keyDown(button, { key: 'k', metaKey: true });
+
+		expect(wrapper.emitted('update:open')).toBeUndefined();
+		expect(screen.getByTestId('command-bar')).toBeInTheDocument();
+		stacked.remove();
+	});
+
+	describe('trailing component', () => {
+		const activate = vi.fn();
+		const Trailing = defineComponent({
+			props: {
+				label: { type: String, default: '' },
+				rowElement: { type: Object, default: null },
+				isActive: Boolean,
+			},
+			setup: (props, { expose }) => {
+				expose({ activate });
+				return () =>
+					h(
+						'span',
+						{
+							'data-test-id': 'trailing',
+							'data-row-tag': (props.rowElement as HTMLElement | null)?.getAttribute('role'),
+							'data-active': String(props.isActive),
+						},
+						props.label,
+					);
+			},
+		});
+
+		beforeEach(() => activate.mockClear());
+		const trailingSections: CommandBarSection[] = [
+			{
+				id: 'nodes',
+				items: [
+					{ id: 'available', title: 'Available node' },
+					{
+						id: 'restricted',
+						title: 'Restricted node',
+						disabled: true,
+						trailing: { component: Trailing, props: { label: 'Restricted here' } },
+					},
+				],
+			},
+		];
+
+		it('renders in place of the lock and receives its row', async () => {
+			await renderCommandBar({ sections: trailingSections, tabs: [] });
+
+			const trailing = screen.getByTestId('trailing');
+			expect(trailing).toHaveTextContent('Restricted here');
+			expect(trailing).toHaveAttribute('data-row-tag', 'option');
+			const row = trailing.closest('[role="option"]') as HTMLElement;
+			expect(row.querySelector('[data-icon="lock"]')).toBeNull();
+		});
+
+		it('is active only when the user selects its row', async () => {
+			const user = userEvent.setup();
+			await renderCommandBar({ sections: trailingSections, tabs: [] });
+			const trailing = screen.getByTestId('trailing');
+			expect(trailing).toHaveAttribute('data-active', 'false');
+
+			await user.keyboard('{ArrowDown}');
+			expect(trailing).toHaveAttribute('data-active', 'true');
+
+			await user.keyboard('{ArrowUp}');
+			expect(trailing).toHaveAttribute('data-active', 'false');
+
+			await fireEvent.pointerMove(trailing.closest('[role="option"]') as HTMLElement);
+			expect(trailing).toHaveAttribute('data-active', 'true');
+		});
+
+		it('is not active when its row is selected by default', async () => {
+			await renderCommandBar({
+				sections: [{ id: 'nodes', items: [trailingSections[0].items[1]] }],
+				tabs: [],
+			});
+
+			expect(getSelectedTitle()).toContain('Restricted node');
+			expect(screen.getByTestId('trailing')).toHaveAttribute('data-active', 'false');
+		});
+
+		it('activates on Enter once the user moves to its disabled row', async () => {
+			const user = userEvent.setup();
+			const wrapper = await renderCommandBar({ sections: trailingSections, tabs: [] });
+
+			await user.keyboard('{ArrowDown}{Enter}');
+
+			expect(activate).toHaveBeenCalledOnce();
+			expect(wrapper.emitted('select')).toBeUndefined();
+		});
+
+		it('does not activate on Enter while its row is only selected by default', async () => {
+			const user = userEvent.setup();
+			await renderCommandBar({
+				sections: [{ id: 'nodes', items: [trailingSections[0].items[1]] }],
+				tabs: [],
+			});
+			await waitFor(() => expect(getInput()).toHaveFocus());
+
+			await user.keyboard('{Enter}');
+
+			expect(activate).not.toHaveBeenCalled();
+		});
 	});
 });

@@ -68,6 +68,7 @@ describe('the prefill_type property on the message event', () => {
 		action_source: 'assistant_page',
 		prefill_id: null,
 		prompt_modified: false,
+		approval_mode: 'unavailable',
 		mention_counts: { total: 0, workflow: 0, node: 0, group: 0 },
 		attachment_count: 0,
 		selected_element_count: 0,

@@ -12,8 +12,14 @@ import {
 	type CredentialProvider,
 } from '@n8n/agents';
 import { createTeamProject, mockLogger, testDb, testModules } from '@n8n/backend-test-utils';
-import { AgentsConfig, AiConfig } from '@n8n/config';
-import { SettingsRepository, UserRepository, type OperationContext, type User } from '@n8n/db';
+import { AgentsConfig, AiConfig, GlobalConfig } from '@n8n/config';
+import {
+	ServiceAccountRepository,
+	SettingsRepository,
+	UserRepository,
+	type OperationContext,
+	type User,
+} from '@n8n/db';
 import { Container } from '@n8n/di';
 import { DataSource, EntityManager, type Repository } from '@n8n/typeorm';
 import { generateNanoId } from '@n8n/utils/generate-nano-id';
@@ -27,7 +33,7 @@ import { v4 as uuid } from 'uuid';
 import { mock } from 'vitest-mock-extended';
 import { z } from 'zod';
 
-import type { Telemetry } from '@/telemetry';
+import type { AgentUsageTelemetryService } from '@/modules/agents/agent-usage-telemetry.service';
 import type { Publisher } from '@n8n/backend-services';
 import type { ExternalHooks } from '@/external-hooks';
 import { AgentBackgroundJobRepository } from '@/modules/agents/repositories/agent-background-job.repository';
@@ -214,7 +220,7 @@ describe('AgentExecutionRepository', () => {
 			executions,
 			threads,
 			memory,
-			mock<Telemetry>(),
+			mock<AgentUsageTelemetryService>(),
 			attachmentService,
 			executionLogStore,
 			mock<StorageConfig>({ modeTag: 'db' }),
@@ -256,7 +262,14 @@ describe('AgentExecutionRepository', () => {
 			executions,
 			executionService,
 			checkpointStorage,
-			connection ? new AgentRepository(connection, txRunner) : agentRepo,
+			connection
+				? new AgentRepository(
+						connection,
+						txRunner,
+						Container.get(GlobalConfig),
+						Container.get(ServiceAccountRepository),
+					)
+				: agentRepo,
 			attachmentService,
 			queueUpdates,
 			messageRepository,
@@ -1534,7 +1547,7 @@ describe('AgentExecutionRepository', () => {
 				storage,
 				executionService,
 				turns,
-				mock<Telemetry>(),
+				mock<AgentUsageTelemetryService>(),
 				runtimeCache,
 				mock<IntegrationMessageContextService>(),
 				mock<AgentRunTracingService>(),
