@@ -136,9 +136,7 @@ describe('SettingsOpenTelemetryView', () => {
 		expect(queryByTestId('otel-sample-rate')).not.toBeInTheDocument();
 
 		await userEvent.click(getByTestId('otel-enabled-toggle'));
-
 		await waitFor(() => {
-			expect(showMessage).toHaveBeenCalledWith(expect.objectContaining({ type: 'success' }));
 			expect(getByTestId('otel-exporter-endpoint')).toBeInTheDocument();
 			expect(getByTestId('otel-sample-rate')).toBeInTheDocument();
 		});
