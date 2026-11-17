@@ -33,6 +33,14 @@
     "Ukraine": "Ukraine", "United Arab Emirates": "Émirats arabes unis", "United States": "États-Unis",
     "Uzbekistan": "Ouzbékistan", "Vietnam": "Viêt Nam", "Wales": "Pays de Galles", "Yemen": "Yémen",
     "Zambia": "Zambie", "Zimbabwe": "Zimbabwe",
+    "Malta": "Malte", "Andorra": "Andorre", "San Marino": "Saint-Marin", "Haiti": "Haïti",
+    "Trinidad and Tobago": "Trinité-et-Tobago", "El Salvador": "Salvador", "Bahrain": "Bahreïn",
+    "Cook Islands": "Îles Cook", "Solomon Islands": "Îles Salomon", "New Caledonia": "Nouvelle-Calédonie",
+    "Fiji": "Fidji", "Liberia": "Libéria", "South Sudan": "Soudan du Sud", "Somalia": "Somalie",
+    "Eritrea": "Érythrée", "Mauritius": "Maurice", "Cambodia": "Cambodge", "Turkmenistan": "Turkménistan",
+    "Nepal": "Népal", "Bhutan": "Bhoutan", "Grenada": "Grenade", "Saint Lucia": "Sainte-Lucie",
+    "Saint Kitts and Nevis": "Saint-Christophe-et-Niévès", "Dominica": "Dominique",
+    "Saint Vincent and the Grenadines": "Saint-Vincent-et-les-Grenadines",
   };
   for (const k of Object.keys(FR)) if (FR[k] === k) delete FR[k];
   // Longest names first, so "Northern Ireland" wins over a shorter name inside it.
