@@ -1,7 +1,5 @@
 import { z, type ZodError } from 'zod';
 
-import { parseRegexLiteral } from 'n8n-workflow';
-
 import { isDraftAgentConfig } from './agent-config-lifecycle';
 import { AgentIntegrationConfigSchema } from './agent-integration.schema';
 import { AGENT_MODEL_STRING_REGEX } from './model-providers';
@@ -530,19 +528,6 @@ export const TOOL_GUARDRAIL_PII_ENTITIES = [
 
 export type ToolGuardrailPiiEntity = (typeof TOOL_GUARDRAIL_PII_ENTITIES)[number];
 
-const ParseableRegexSchema = z
-	.string()
-	.min(1)
-	.refine((value) => {
-		try {
-			const { source, flags } = parseRegexLiteral(value);
-			new RegExp(source, flags);
-			return true;
-		} catch {
-			return false;
-		}
-	}, 'Enter a valid regular expression');
-
 /**
  * A typed ref to a tool configured on the agent, resolving to a runtime tool
  * name at reconstruction.
@@ -603,11 +588,6 @@ export const ToolGuardrailConfigSchema = z.discriminatedUnion('kind', [
 		allowSubdomains: z.boolean().optional(),
 	}),
 	z.object({
-		kind: z.literal('customRegex'),
-		...toolGuardrailBaseShape,
-		regex: z.array(z.object({ name: z.string().min(1), value: ParseableRegexSchema })).min(1),
-	}),
-	z.object({
 		kind: z.literal('jailbreak'),
 		...toolGuardrailBaseShape,
 		...modelToolGuardrailShape,
@@ -615,11 +595,6 @@ export const ToolGuardrailConfigSchema = z.discriminatedUnion('kind', [
 	z.object({ kind: z.literal('nsfw'), ...toolGuardrailBaseShape, ...modelToolGuardrailShape }),
 	z.object({
 		kind: z.literal('topicalAlignment'),
-		...toolGuardrailBaseShape,
-		...modelToolGuardrailShape,
-	}),
-	z.object({
-		kind: z.literal('customPrompt'),
 		...toolGuardrailBaseShape,
 		...modelToolGuardrailShape,
 	}),

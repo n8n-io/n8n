@@ -86,6 +86,25 @@ export const NarrowWithLongLabel: Story = {
 	},
 };
 
+export const LongDescription: Story = {
+	args: {
+		title: 'Allow n8n Assistant to change 2 data tables?',
+		description: ['Customers', 'Orders']
+			.map((table) =>
+				[
+					`Data table "${table}":`,
+					'Create the table with columns "name" (text), "email" (text), "amount" (number)',
+					'Add 20 rows',
+					...Array.from(
+						{ length: 20 },
+						(_, index) => `Row ${index + 1}: set "name" to "Person ${index + 1}"`,
+					),
+				].join('\n'),
+			)
+			.join('\n\n'),
+	},
+};
+
 export const CollapsedArguments: Story = {
 	args: {
 		args: { query: 'Example tool input' },

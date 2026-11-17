@@ -1,5 +1,5 @@
 import { jsonParse } from 'n8n-workflow';
-import { z } from 'zod';
+import { z, type ZodRawShape } from 'zod';
 
 import type { ZodOpenAPIMetadata } from '@asteasolutions/zod-to-openapi';
 
@@ -31,6 +31,7 @@ import {
 } from './agent-skill.schema';
 import { agentTaskSchema } from './agent-task.schema';
 import { alsoNullable } from '../dto/openapi-nullable';
+import { workflowParentFolderPublicSchema } from '../dto/workflows/workflow-public.dto';
 import {
 	AGENT_MEMORY_FILTER_SOURCES,
 	AGENT_MEMORY_SOURCE_FACETS,
@@ -110,6 +111,8 @@ const agentListFilterSchema = z
 		availableInMCP: z.boolean().optional(),
 		availableInChat: z.boolean().optional(),
 		includeArchived: z.boolean().optional(),
+		parentFolderId: z.string().min(1).max(36).nullable().optional(),
+		includeDescendants: z.boolean().optional(),
 		active: z.boolean().optional(),
 		projectId: z.string().min(1).optional(),
 	})
@@ -247,6 +250,7 @@ const createAgentToolEntrySchema = z.object({
 
 const createAgentShape = {
 	name: z.string().trim().min(1).max(128),
+	parentFolderId: z.string().min(1).max(36).nullable().optional(),
 	id: clientMintedAgentIdSchema.optional(),
 	config: AgentJsonConfigSchema.optional(),
 	schema: AgentJsonConfigSchema.optional(),
@@ -265,6 +269,8 @@ const createAgentSchema = z
 type CreateAgent = z.infer<typeof createAgentSchema>;
 
 export class CreateAgentDto implements CreateAgent {
+	declare parentFolderId?: CreateAgent['parentFolderId'];
+
 	declare name: CreateAgent['name'];
 
 	declare id?: CreateAgent['id'];
@@ -320,6 +326,10 @@ export class CreateAgentPublicDto extends Z.class(
 	},
 	{ strict: true },
 ) {}
+
+export class MoveAgentDto extends Z.class({
+	parentFolderId: z.string().min(1).max(36).nullable(),
+}) {}
 
 export class UpdateAgentConfigDto extends Z.class({
 	config: z.record(z.unknown()),
@@ -431,10 +441,17 @@ const agentBuilderStateShape = {
 };
 
 /** Fields a later public GET and PUT share. Builder-only state stays off this shape. */
-export class AgentPublicDto extends Z.class(agentPublicShape) {}
+export class AgentPublicDto extends Z.class({
+	...agentPublicShape,
+	parentFolder: workflowParentFolderPublicSchema.nullable(),
+}) {}
 
 /** Single-agent response. `config` is the document `PUT` writes back. */
-export class AgentDto extends AgentPublicDto.extend(agentBuilderStateShape) {}
+export class AgentDto extends Z.class({
+	...agentPublicShape,
+	parentFolderId: z.string().nullable().optional(),
+	...agentBuilderStateShape,
+}) {}
 
 /**
  * Response of the Public API `DELETE /agents/:agentId`. Metadata of the
@@ -489,6 +506,8 @@ const agentListItemShape = {
 	id: z.string(),
 	name: z.string(),
 	projectId: z.string(),
+	parentFolderId: z.string().nullable().optional(),
+	folderPath: z.array(z.string()).optional(),
 	project: agentProjectResponseSchema,
 	availableInMCP: z.boolean(),
 	isArchived: z.boolean(),
@@ -522,6 +541,7 @@ const updateAgentObjectSchema = z
 		id: strippedAgentField,
 		name: strippedAgentField,
 		projectId: strippedAgentField,
+		parentFolderId: strippedAgentField,
 		project: strippedAgentField,
 		availableInMCP: strippedAgentField,
 		isArchived: strippedAgentField,
@@ -581,6 +601,72 @@ export class UpdateAgentDto implements UpdateAgent {
 
 	static parse(data: unknown) {
 		return updateAgentSchema.parse(data);
+	}
+}
+
+/**
+ * Response fields a PUT body may carry but must not write. Derived from the
+ * agent response DTO schemas, so the strict schema cannot drift from them: a
+ * new response field is accepted-and-ignored here without a list to maintain.
+ * `config` and `configHash` are real inputs of this DTO, not managed fields.
+ */
+const serverManagedAgentResponseFields: ZodRawShape = Object.fromEntries(
+	[...Object.keys(AgentPublicDto.schema.shape), ...Object.keys(AgentDto.schema.shape), 'adopted']
+		.filter((field) => field !== 'config' && field !== 'configHash')
+		.map((field) => [field, strippedAgentField]),
+);
+
+const updateAgentPublicObjectSchema = z
+	.object({
+		// `null` is the retrieved body of an agent that has no configuration
+		// yet, so the round-trip accepts it. The handler turns a null config
+		// into a no-op for such an agent and rejects it for one with a config.
+		config: AgentJsonConfigSchema.nullable().openapi(alsoNullable({ type: 'object' })),
+		baseConfigHash: z.string().nullable().optional(),
+		configHash: z.string().nullable().optional(),
+		...serverManagedAgentResponseFields,
+	})
+	.strict();
+
+const updateAgentPublicSchema = updateAgentPublicObjectSchema
+	.superRefine((value, ctx) => {
+		if (value.baseConfigHash === undefined && value.configHash === undefined) {
+			ctx.addIssue({
+				code: z.ZodIssueCode.custom,
+				message: 'baseConfigHash or configHash is required',
+				path: ['baseConfigHash'],
+			});
+		}
+	})
+	.transform(({ config, baseConfigHash, configHash }) => ({
+		config,
+		baseConfigHash: baseConfigHash !== undefined ? baseConfigHash : (configHash ?? null),
+	}));
+
+type UpdateAgentPublic = z.infer<typeof updateAgentPublicSchema>;
+
+/**
+ * Body of the Public API `PUT /agents/:agentId`. Accepts a `GET /agents/:agentId`
+ * body: server-managed fields are ignored, not rejected. `configHash` is the
+ * concurrency token when `baseConfigHash` is absent.
+ */
+export class UpdateAgentPublicDto implements UpdateAgentPublic {
+	declare config: UpdateAgentPublic['config'];
+
+	declare baseConfigHash: UpdateAgentPublic['baseConfigHash'];
+
+	static schema = updateAgentPublicSchema;
+
+	constructor(data: z.input<typeof updateAgentPublicObjectSchema>) {
+		Object.assign(this, updateAgentPublicSchema.parse(data));
+	}
+
+	static safeParse(data: unknown) {
+		return updateAgentPublicSchema.safeParse(data);
+	}
+
+	static parse(data: unknown) {
+		return updateAgentPublicSchema.parse(data);
 	}
 }
 

@@ -1566,6 +1566,7 @@ describe('PromotionsService', () => {
 				expect.objectContaining({
 					projectIds: ['p1'],
 					projectWorkflowIds: ['w1', 'w2'],
+					includeAgents: false,
 					includeArchived: true,
 					canExportVariableValues: true,
 					dependencyPolicy: ExportDependencyPolicy.ReferenceOnly,
@@ -2614,6 +2615,44 @@ describe('PromotionsService', () => {
 		});
 	});
 
+	describe('instance Apply preview reads', () => {
+		const commitSha = 'c'.repeat(40);
+
+		beforeEach(() => {
+			resolver.resolveForEnvironment.mockResolvedValue(applyInput());
+			gitService.hasCheckout.mockResolvedValue(false);
+		});
+
+		it('clones on demand before reading the package when this main has no checkout', async () => {
+			gitService.listBranchTree.mockResolvedValue({ commitSha, lsTreeOutput: '' });
+			gitService.readTreeAtCommit.mockResolvedValue(
+				new Map([['manifest.json', Buffer.from('{}')]]),
+			);
+
+			await service.readInstanceApplyPackage(ENVIRONMENT_ID);
+
+			expect(gitService.clone).toHaveBeenCalledExactlyOnceWith(
+				expect.objectContaining({ branchName: 'dev', environmentId: ENVIRONMENT_ID }),
+			);
+			expect(gitService.clone.mock.invocationCallOrder[0]).toBeLessThan(
+				gitService.listBranchTree.mock.invocationCallOrder[0],
+			);
+		});
+
+		it('clones on demand before reading files at a commit when this main has no checkout', async () => {
+			gitService.findPathsAtCommit.mockResolvedValue(new Set());
+
+			await service.readInstanceApplyFilesAtCommit(ENVIRONMENT_ID, commitSha, [
+				'n8n/manifest.json',
+			]);
+
+			expect(gitService.clone).toHaveBeenCalledOnce();
+			expect(gitService.clone.mock.invocationCallOrder[0]).toBeLessThan(
+				gitService.ensureCommit.mock.invocationCallOrder[0],
+			);
+		});
+	});
+
 	describe('readReviewCommits', () => {
 		it('reads review files without the commit fetch of the change details', async () => {
 			const commitSha = 'c'.repeat(40);
@@ -2738,7 +2777,7 @@ describe('PromotionsService', () => {
 				folders: folders.map((entry) => ({
 					path: 'projects/any/folders/payments/folder.json',
 					...entry,
-					folder: { ...entry.folder, parentFolderId: null },
+					folder: { ...entry.folder, parentFolderId: null, resourceType: 'workflow' as const },
 				})),
 				credentials: [],
 				variables: [],
@@ -2937,7 +2976,7 @@ describe('PromotionsService', () => {
 
 				const attempt =
 					method === 'apply'
-						? service.apply(ENVIRONMENT_ID, actor, request.expectedSource)
+						? service.apply(ENVIRONMENT_ID, actor, request)
 						: service.continueApply(ENVIRONMENT_ID, actor, request);
 
 				await expect(attempt).rejects.toThrow(PromotionLockLostError);
@@ -3154,7 +3193,12 @@ describe('PromotionsService', () => {
 			const payments = (projectId: string) => ({
 				path: 'projects/any/folders/payments/folder.json',
 				projectId,
-				folder: { id: 'f1', name: 'Payments', parentFolderId: null },
+				folder: {
+					id: 'f1',
+					name: 'Payments',
+					parentFolderId: null,
+					resourceType: 'workflow' as const,
+				},
 			});
 
 			beforeEach(async () => {
