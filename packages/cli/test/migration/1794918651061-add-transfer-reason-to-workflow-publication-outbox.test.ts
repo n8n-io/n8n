@@ -8,7 +8,7 @@ import { DbConnection } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { DataSource } from '@n8n/typeorm';
 
-const MIGRATION_NAME = 'AddTransferReasonToWorkflowPublicationOutbox1794818518295';
+const MIGRATION_NAME = 'AddTransferReasonToWorkflowPublicationOutbox1794918651061';
 
 describe('AddTransferReasonToWorkflowPublicationOutbox Migration', () => {
 	let dataSource: DataSource;
