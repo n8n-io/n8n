@@ -104,36 +104,11 @@ function onDialogOpenUpdate(open: boolean) {
 <template>
 	<N8nDialog :open="modalOpen" size="2xlarge" @update:open="onDialogOpenUpdate">
 		<N8nDialogHeader :class="$style.header">
-			<div :class="$style.column">
-				<div :class="$style.row">
-					<N8nIcon :icon="'bell'" :color="'primary'" :size="'large'" />
-					<N8nDialogTitle>
-						{{ versionsStore.whatsNew.title }}
-					</N8nDialogTitle>
-				</div>
-
-				<div :class="$style.row">
-					<N8nHeading size="medium" color="text-light">{{
-						dateformat(versionsStore.latestVersion.createdAt, `d mmmm, yyyy`)
-					}}</N8nHeading>
-					<template v-if="versionsStore.hasVersionUpdates">
-						<N8nText :size="'medium'" :class="$style.text" :color="'text-base'">•</N8nText>
-						<N8nLink
-							size="medium"
-							theme="primary"
-							data-test-id="whats-new-modal-next-versions-link"
-							@click="openUpdatesPanel"
-						>
-							{{
-								i18n.baseText('whatsNew.versionsBehind', {
-									interpolate: {
-										count: nextVersions.length > 99 ? '99+' : nextVersions.length,
-									},
-								})
-							}}
-						</N8nLink>
-					</template>
-				</div>
+			<div :class="$style.row">
+				<N8nIcon :icon="'bell'" :color="'primary'" :size="'large'" />
+				<N8nDialogTitle>
+					{{ versionsStore.whatsNew.title }}
+				</N8nDialogTitle>
 			</div>
 
 			<N8nTooltip
@@ -152,6 +127,28 @@ function onDialogOpenUpdate(open: boolean) {
 			</N8nTooltip>
 		</N8nDialogHeader>
 		<N8nDialogBody :class="$style.container">
+			<div :class="$style.meta">
+				<N8nHeading size="medium" color="text-light">{{
+					dateformat(versionsStore.latestVersion.createdAt, `d mmmm, yyyy`)
+				}}</N8nHeading>
+				<template v-if="versionsStore.hasVersionUpdates">
+					<N8nText :size="'medium'" :class="$style.text" :color="'text-base'">•</N8nText>
+					<N8nLink
+						size="medium"
+						theme="primary"
+						data-test-id="whats-new-modal-next-versions-link"
+						@click="openUpdatesPanel"
+					>
+						{{
+							i18n.baseText('whatsNew.versionsBehind', {
+								interpolate: {
+									count: nextVersions.length > 99 ? '99+' : nextVersions.length,
+								},
+							})
+						}}
+					</N8nLink>
+				</template>
+			</div>
 			<N8nCallout
 				v-if="versionsStore.hasSignificantUpdates"
 				:class="$style.callout"
@@ -260,17 +257,20 @@ function onDialogOpenUpdate(open: boolean) {
 	}
 }
 
-.column {
-	display: flex;
-	flex-direction: column;
-	gap: var(--spacing--2xs);
-}
-
 .row {
 	display: flex;
 	flex-direction: row;
 	align-items: center;
 	gap: var(--spacing--2xs);
+}
+
+// Sits in the scrolling body so the release date leaves with the notes.
+.meta {
+	display: flex;
+	flex-direction: row;
+	align-items: center;
+	gap: var(--spacing--2xs);
+	margin-bottom: var(--spacing--sm);
 }
 
 .container {
@@ -286,7 +286,9 @@ function onDialogOpenUpdate(open: boolean) {
 }
 
 .article {
-	&:not(:first-child) {
+	// The date row is the first child, so space articles from each other and from the callout.
+	.callout + &,
+	& + & {
 		padding: var(--spacing--sm) 0;
 	}
 }
