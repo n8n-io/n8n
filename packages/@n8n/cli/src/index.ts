@@ -38,6 +38,7 @@ import ProjectUpdate from './commands/project/update';
 import PromotionEnvironmentAddProject from './commands/promotion-environment/add-project';
 import PromotionEnvironmentApply from './commands/promotion-environment/apply';
 import PromotionEnvironmentApplyContinue from './commands/promotion-environment/apply-continue';
+import PromotionEnvironmentApplyEnvironmentSelection from './commands/promotion-environment/apply-environment-selection';
 import PromotionEnvironmentApplySelection from './commands/promotion-environment/apply-selection';
 import PromotionEnvironmentApplySelectionContinue from './commands/promotion-environment/apply-selection-continue';
 import PromotionEnvironmentConnect from './commands/promotion-environment/connect';
@@ -48,9 +49,11 @@ import PromotionEnvironmentDisconnect from './commands/promotion-environment/dis
 import PromotionEnvironmentGet from './commands/promotion-environment/get';
 import PromotionEnvironmentList from './commands/promotion-environment/list';
 import PromotionEnvironmentListChanges from './commands/promotion-environment/list-changes';
+import PromotionEnvironmentListEnvironmentChanges from './commands/promotion-environment/list-environment-changes';
 import PromotionEnvironmentListMissingProjects from './commands/promotion-environment/list-missing-projects';
 import PromotionEnvironmentListProjects from './commands/promotion-environment/list-projects';
 import PromotionEnvironmentPromote from './commands/promotion-environment/promote';
+import PromotionEnvironmentPromoteEnvironmentSelection from './commands/promotion-environment/promote-environment-selection';
 import PromotionEnvironmentPromoteSelection from './commands/promotion-environment/promote-selection';
 import PromotionEnvironmentRemoveProject from './commands/promotion-environment/remove-project';
 import PromotionEnvironmentUpdate from './commands/promotion-environment/update';
@@ -126,13 +129,18 @@ export const commands = {
 	'promotion-environment:list-missing-projects': PromotionEnvironmentListMissingProjects,
 	'promotion-environment:create-missing-projects': PromotionEnvironmentCreateMissingProjects,
 	'promotion-environment:list-changes': PromotionEnvironmentListChanges,
+	'promotion-environment:list-environment-changes': PromotionEnvironmentListEnvironmentChanges,
 	'promotion-environment:add-project': PromotionEnvironmentAddProject,
 	'promotion-environment:remove-project': PromotionEnvironmentRemoveProject,
 	'promotion-environment:promote': PromotionEnvironmentPromote,
 	'promotion-environment:promote-selection': PromotionEnvironmentPromoteSelection,
+	'promotion-environment:promote-environment-selection':
+		PromotionEnvironmentPromoteEnvironmentSelection,
 	'promotion-environment:apply': PromotionEnvironmentApply,
 	'promotion-environment:apply-continue': PromotionEnvironmentApplyContinue,
 	'promotion-environment:apply-selection': PromotionEnvironmentApplySelection,
+	'promotion-environment:apply-environment-selection':
+		PromotionEnvironmentApplyEnvironmentSelection,
 	'promotion-environment:apply-selection-continue': PromotionEnvironmentApplySelectionContinue,
 
 	'credential:list': CredentialList,

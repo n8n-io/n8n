@@ -6,7 +6,10 @@ import type {
 } from '@n8n/api-types/dist/dto/packages/import-package-request.dto';
 import type { ImportResultDto } from '@n8n/api-types/dist/dto/packages/import-result.dto';
 import type { PromotionMissingProject } from '@n8n/api-types/dist/dto/promotions/promotion-apply-check.dto';
-import type { PromotionPreview } from '@n8n/api-types/dist/dto/promotions/promotion-preview.dto';
+import type {
+	PromotionEnvironmentChanges,
+	PromotionPreview,
+} from '@n8n/api-types/dist/dto/promotions/promotion-preview.dto';
 import type { CreateProjectPublicDto } from '@n8n/api-types/dist/dto/project/project-public.dto';
 
 export interface PaginatedResponse<T> {
@@ -118,6 +121,27 @@ export type PromoteSelectionResult =
 	| (PromotePackageResult & { status: 'promoted' })
 	| { status: 'preview-changed'; environmentId: string };
 
+/** The dependency report of an operation. `--json` prints it in full. */
+export type PromotionDependencyReport = Record<string, unknown>;
+
+/** Outcome of a Promote across projects. Only `promoted` pushed anything. */
+export type PromoteEnvironmentSelectionResult =
+	| PromoteSelectionResult
+	| {
+			status: 'gaps-changed';
+			environmentId: string;
+			dependencyReport: PromotionDependencyReport;
+	  };
+
+/** The items of one project in a selection across projects. */
+export interface PromotionEnvironmentSelectionProject {
+	projectId: string;
+	workflowIds?: string[];
+	folderIds?: string[];
+	/** Credentials of the project that no selected workflow of the project uses. */
+	credentialIds?: string[];
+}
+
 /** The reviewed source that Apply must still match. Any mismatch reports `source-changed`. */
 export interface PromotionExpectedSource {
 	environmentId: string;
@@ -164,9 +188,13 @@ export type ApplyPackageResult =
 	  })
 	| (ApplyPackageIdentity & { status: 'blocked'; check: PromotionApplyCheck })
 	| (ApplyPackageIdentity & { status: 'source-changed' })
-	| (ApplyPackageIdentity & { status: 'preview-changed' });
+	| (ApplyPackageIdentity & { status: 'preview-changed' })
+	| (ApplyPackageIdentity & {
+			status: 'gaps-changed';
+			dependencyReport: PromotionDependencyReport;
+	  });
 
-export type { PromotionPreview };
+export type { PromotionEnvironmentChanges, PromotionPreview };
 
 /** A repository that the token of a Git host provider can access. */
 export interface PromotionRepository {
@@ -527,6 +555,44 @@ export class N8nClient {
 			confirmDestructiveChanges,
 			expectedPreviewRevision,
 		});
+	}
+
+	async listEnvironmentPromotionChanges(id: string, direction: PromotionDirection) {
+		return await this.get<PromotionEnvironmentChanges>(
+			`/promotions/environments/${id}/changes/${direction}`,
+		);
+	}
+
+	async promoteEnvironmentSelection(
+		id: string,
+		body: {
+			projects: PromotionEnvironmentSelectionProject[];
+			commitMessage?: string;
+			expectedPreviewRevision?: string;
+			confirmedGapIds?: string[];
+		},
+	) {
+		// Fields that are undefined are dropped by JSON serialization, so the server defaults apply.
+		return await this.post<PromoteEnvironmentSelectionResult>(
+			`/promotions/environments/${id}/promote-selection`,
+			body,
+		);
+	}
+
+	async applyEnvironmentSelection(
+		id: string,
+		body: {
+			projects: PromotionEnvironmentSelectionProject[];
+			expectedSource?: PromotionExpectedSource;
+			expectedPreviewRevision?: string;
+			confirmDestructiveChanges?: boolean;
+			confirmedGapIds?: string[];
+		},
+	) {
+		return await this.post<ApplyPackageResult>(
+			`/promotions/environments/${id}/apply-selection`,
+			body,
+		);
 	}
 
 	// ─── Workflows ─────────────────────────────────────────────────

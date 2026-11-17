@@ -567,6 +567,87 @@ Rows and other columns are kept. The flag applies all such changes when the
 command runs. This includes changes that the blocked Apply did not report.
 Without the flag, a destructive change blocks the command, and it exits `4`.
 
+## Operations across projects
+
+One Promote or one Apply can hold items of several projects. These commands
+address an environment, not a project. You need the right to run the operation
+in each project of the selection. You do not need a global promotion scope.
+
+### `promotion-environment list-environment-changes`
+
+Preview what Promote or Apply changes across the projects of an environment.
+
+```bash
+n8n-cli promotion-environment list-environment-changes env-1 promote
+n8n-cli promotion-environment list-environment-changes env-2 apply --json
+```
+
+The table has the columns of [`list-changes`](#promotion-environment-list-changes)
+and a `PROJECT` column with the ID of the project of each resource. The command
+lists only the projects that you can read. `SELECTABLE` is `true` only in a
+project where you can run the operation.
+
+Use `--json` to get the full preview:
+
+- `projects`: each project of the view, with `canOperate`.
+- `blockers`, for `promote` only: the projects whose changes an open review
+  holds. Such a project has no resources.
+- `check`, for `apply` only: what blocks the Apply.
+- `revision`: the value to pass to `--expected-preview-revision`.
+
+### `promotion-environment promote-environment-selection`
+
+Promote items of one or more projects in one commit. When the environment
+creates a branch for each Promote, the command opens one review for all the
+projects.
+
+```bash
+n8n-cli promotion-environment promote-environment-selection env-1 \
+  -w proj-a:wf-1 -w proj-b:wf-2
+n8n-cli promotion-environment promote-environment-selection env-1 \
+  -w proj-a:wf-1 --credential proj-b:cred-1
+n8n-cli promotion-environment promote-environment-selection env-1 -p proj-a
+```
+
+| Flag | Description |
+|------|-------------|
+| `-w, --workflow` | Workflow to promote, as `<projectId>:<workflowId>`. Repeat the flag for more than one. |
+| `--folder` | Folder to promote, as `<projectId>:<folderId>`. Repeat the flag for more than one. |
+| `--credential` | Credential to promote that no selected workflow of its project uses, as `<projectId>:<credentialId>`. |
+| `-p, --project` | Project to promote without an item of it. The project of a listed item is always included. |
+| `-m, --message` | Commit message. If you omit it, the commit uses a generated message. |
+| `--expected-preview-revision` | `revision` of the preview that you reviewed, from `list-environment-changes env-1 promote --json`. |
+| `--confirm-gap` | ID of a dependency gap that you accept. Repeat the flag for more than one. |
+
+The command fails when an open review holds the changes of a project of the
+selection, or when the environment does not cover a project. It exits `3` when
+the preview changed, and `4` when the dependency gaps differ from the gaps that
+you confirmed. Nothing is pushed in either case.
+
+### `promotion-environment apply-environment-selection`
+
+Apply items of one or more projects in one plan. A reference to a workflow of
+the same Apply counts as present, in any project of the selection.
+
+```bash
+n8n-cli promotion-environment apply-environment-selection env-2 \
+  -w proj-a:wf-1 -w proj-b:wf-2
+n8n-cli promotion-environment apply-environment-selection env-2 \
+  -w proj-a:wf-1 --credential proj-b:cred-1 \
+  --expected-environment-id=env-2 --expected-branch=main --expected-commit-sha=<full sha>
+```
+
+The selection flags are the same as for `promote-environment-selection`. The
+`--expected-*` flags, `--expected-preview-revision` and
+`--confirm-destructive-changes` work as for
+[`apply-selection`](#promotion-environment-apply-selection). `--credential`
+selects a credential that the branch holds under the project. Apply updates it
+when this instance holds it, and reports it as a missing binding when not.
+
+There is no separate Continue command. When the command exits `4`, resolve the
+blockers. Then run the command that it printed: the same selection with the
+`--expected-*` flags.
+
 ## `promotion-environment list-missing-projects` / `create-missing-projects`
 
 Create the team projects of the Apply package that do not exist on this
