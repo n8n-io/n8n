@@ -32,7 +32,7 @@ Do not change:
 - A statement that is still true in substance, where the fix adds detail but
   does not change what the reader understands.
 - A new feature or subsystem that no page covers. Do not add pages or
-  sections. List it in the PR description instead.
+  sections. List it in the [report](#report) instead.
 
 Every fix must name the commit that made the statement wrong. If you cannot
 name a commit, do not make the fix. If you are not sure, do not make the fix.
@@ -40,33 +40,33 @@ A run that changes nothing is a valid result.
 
 ## Procedure
 
-1. For each page in `docs/backend` and `docs/backend/how-to`, read
+1. Run `git fetch origin master`. Every `git log` below runs on
+   `origin/master`, and "the current code" means the code on `origin/master`.
+2. For each page in `docs/backend` and `docs/backend/how-to`, read
    `last_reviewed` in the frontmatter.
-2. Find the code that the page describes. Most pages name few files, so do
-   not stop at the paths in the text:
-   - Search with `git grep` for each name in a code span: paths, symbols,
-     decorators, and environment variables.
-   - For each statement that names no code, find the code that does what the
-     statement says.
-   - Note the folders of all this code.
-3. List the commits on master since that date in those folders:
-   `git log --since=<last_reviewed> --no-merges --format='%h %ad %s' --date=short -- <folders>`.
-4. Steps 2 and 3 can miss code that a page describes. So also read the subject
-   of every backend commit since the oldest `last_reviewed`:
-   `git log --since=<oldest last_reviewed> --no-merges --format='%h %ad %s' --date=short -- packages ':!packages/frontend' ':!packages/testing'`.
-   Mark each commit that can change a statement on any page, for example a
-   move, a removal, a replacement, or a new default.
-5. Ignore commits that change only tests, types, or formatting. Read the diffs
-   of the other commits from steps 3 and 4. If a page has no such commits, go
+3. For each page, list the folders of the code that the page describes. Most
+   pages name few files, so also find the code for the statements that name no
+   code. Do not check that each name in the page exists. Step 9 does that.
+4. For each page, list the commits in those folders since its
+   `last_reviewed`:
+   `git log origin/master --since=<last_reviewed> --no-merges --format='%h %ad %s' --date=short -- <folders>`.
+5. Steps 3 and 4 can miss code that a page describes. So, once for all pages,
+   read the subject of every backend commit since the oldest `last_reviewed`:
+   `git log origin/master --since=<oldest last_reviewed> --no-merges --format='%h %ad %s' --date=short -- packages ':!packages/frontend' ':!packages/testing'`.
+   Mark each commit that can change a statement on a page, for example a
+   move, a removal, a replacement, or a new default. Note the pages that it
+   can change.
+6. Ignore commits that change only tests, types, or formatting. Read the diffs
+   of the other commits from steps 4 and 5. If a page has no such commits, go
    to the next page.
-6. Compare each statement of the page with the current code, not only with the
+7. Compare each statement of the page with the current code, not only with the
    diff. Fix the statements that meet the bar in [When to fix](#when-to-fix).
-7. Keep the voice of the page. Follow the writing rules in `AGENTS.md` and the
+8. Keep the voice of the page. Follow the writing rules in `AGENTS.md` and the
    Vale styles in `docs/backend/styles`. Keep each sentence to 25 words or
    fewer.
-8. Run `node scripts/backend-docs-check.mjs`. It must pass. If `vale` is
-   installed, also run `vale --config=docs/backend/.vale.ini docs/backend`.
-   CI runs Vale and Lychee on the PR.
+9. Run `node scripts/backend-docs-check.mjs`. It must pass. It checks that the
+   paths and environment variables that the pages name exist. CI runs Vale
+   and Lychee on the PR.
 
 Change only files in `docs/backend`.
 
@@ -78,7 +78,10 @@ records that check.
 
 If no page has a fix, change nothing and open no PR.
 
-## PR description
+## Report
+
+Write the report as the PR description. If there is no PR, give the same
+report as the final output of the run.
 
 - **Fixes:** one line for each fix, with the page, what was wrong, and the
   short commit hash.
