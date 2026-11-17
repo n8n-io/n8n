@@ -5,6 +5,7 @@ import { WAIT_NODE_TYPE } from 'n8n-workflow';
 import type { ExecutionSetup } from '../execution-context';
 import { runMock } from '../mock-node';
 import { refuseUnmockedNode } from '../runtime/refusals';
+import { refuseUnsupportedSource } from '../sub-workflows/execution';
 
 export function createNodeHandler(context: ExecutionSetup): EvalNodeMockHandler {
 	return async (functions) => {
@@ -13,6 +14,7 @@ export function createNodeHandler(context: ExecutionSetup): EvalNodeMockHandler 
 		const mock = context.handle.mocks.get(functions.getNode().name);
 		if (mock) return await runMock(context, functions, mock);
 		refuseUnmockedNode(context, functions);
+		refuseUnsupportedSource(context, functions.getNode());
 		if (isTimeWait(functions)) return [functions.getInputData()];
 		return undefined;
 	};

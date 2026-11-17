@@ -3,6 +3,8 @@ import { deepCopy } from 'n8n-workflow';
 
 import { WorkflowTestError } from './errors';
 import type { MockOutput } from './mock-node';
+import { subWorkflowIssues, type WorkflowSetIssue } from './sub-workflows/issues';
+import { deriveRequirements, type WorkflowSetRequirements } from './sub-workflows/requirements';
 
 export type NodeDefinition = Omit<INode, 'position' | 'onError' | 'credentials'> & {
 	position: number[];
@@ -32,7 +34,10 @@ export interface NodeReference {
 export class WorkflowHandle {
 	readonly mocks = new Map<string, MockOutput>();
 
-	constructor(readonly definition: WorkflowDefinition) {}
+	constructor(
+		readonly definition: WorkflowDefinition,
+		readonly set: WorkflowSet,
+	) {}
 
 	get id() {
 		return this.definition.id;
@@ -59,7 +64,17 @@ export class WorkflowSet {
 	readonly workflows: WorkflowHandle[];
 
 	constructor(definitions: WorkflowDefinition[]) {
-		this.workflows = definitions.map((definition) => new WorkflowHandle(deepCopy(definition)));
+		this.workflows = definitions.map(
+			(definition) => new WorkflowHandle(deepCopy(definition), this),
+		);
+	}
+
+	get requirements(): WorkflowSetRequirements {
+		return deriveRequirements(this);
+	}
+
+	issues(): WorkflowSetIssue[] {
+		return subWorkflowIssues(this);
 	}
 
 	get(selector: string): WorkflowHandle {

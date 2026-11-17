@@ -1,0 +1,36 @@
+{
+	"id": "notify-sales-1",
+	"name": "Notify sales",
+	"nodes": [
+		{
+			"id": "e0000000-0000-4000-8000-000000000001",
+			"name": "When called by another workflow",
+			"type": "n8n-nodes-base.executeWorkflowTrigger",
+			"typeVersion": 1.1,
+			"position": [0, 0],
+			"parameters": {
+				"workflowInputs": { "values": [{ "name": "customerName" }] }
+			}
+		},
+		{
+			"id": "e0000000-0000-4000-8000-000000000002",
+			"name": "Post to Slack",
+			"type": "n8n-nodes-base.slack",
+			"typeVersion": 2.2,
+			"position": [220, 0],
+			"parameters": {
+				"select": "channel",
+				"channelId": { "__rl": true, "value": "C0123SALES", "mode": "id" },
+				"text": "=New enterprise signup: {{ $json.customerName }}",
+				"otherOptions": {}
+			},
+			"credentials": { "slackApi": { "id": "cred-slack-1", "name": "Slack account" } }
+		}
+	],
+	"connections": {
+		"When called by another workflow": {
+			"main": [[{ "node": "Post to Slack", "type": "main", "index": 0 }]]
+		}
+	},
+	"settings": { "executionOrder": "v1" }
+}

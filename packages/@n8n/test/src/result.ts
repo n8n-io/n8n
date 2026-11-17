@@ -4,6 +4,7 @@ import { deepCopy, NodeConnectionTypes } from 'n8n-workflow';
 import { WorkflowTestError } from './errors';
 import type { CompletedNodeRun, ExecutionContext, NodeRunRecord } from './execution-context';
 import { toWebhookResponse } from './runtime/webhook-response';
+import type { SubWorkflowRun } from './sub-workflows/execution';
 import type { NodeReference } from './workflow-set';
 
 export interface NodeRunError {
@@ -92,6 +93,16 @@ export class WorkflowTestResult {
 		return new NodeResult(
 			name,
 			completed.map((run) => this.toNodeRun(run)),
+		);
+	}
+
+	workflow(name: string): { runs: SubWorkflowRun[] } {
+		const runs = this.context.subWorkflows.runs.filter((run) => run.workflow === name);
+		const inSet = this.context.set.workflows.some((workflow) => workflow.name === name);
+		if (runs.length > 0 || inSet) return { runs };
+		throw new WorkflowTestError(
+			'WORKFLOW_NOT_FOUND',
+			`No sub-workflow named "${name}" ran, and the set holds no workflow with that name.`,
 		);
 	}
 

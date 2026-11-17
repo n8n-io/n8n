@@ -94,6 +94,41 @@ test('requests the customer from the CRM', async () => {
 
 A request that no nock mock matches fails the execution. Clear the nock state after each test.
 
+## Sub-workflow test
+
+Load the parent and its children in one set with `loadWorkflows`.
+
+```typescript
+import { expect, test } from 'vitest';
+import { executeWorkflow, loadWorkflows, mockNode } from '@n8n/test';
+import newSignup from './new-signup.json';
+import notifySales from './notify-sales.json';
+
+test('the parent sends the fields that the child declares', () => {
+  expect(loadWorkflows([newSignup, notifySales]).issues()).toEqual([]);
+});
+
+test('runs the sales workflow as a real child', async () => {
+  const workflows = loadWorkflows([newSignup, notifySales]);
+  const parent = workflows.get('New signup');
+  mockNode(parent.node('Get customer'), [{ id: 42, name: 'Ada', plan: 'enterprise' }]);
+  mockNode(workflows.get('Notify sales').node('Post to Slack'), [{ ok: true }]);
+
+  const result = await executeWorkflow(parent, {
+    input: { body: { customerId: 42 } },
+    variables: { crmBaseUrl: 'https://crm.example.com' },
+  });
+
+  const [salesRun] = result.workflow('Notify sales').runs;
+  expect(salesRun.calledBy).toEqual({ workflow: 'New signup', node: 'Run sales workflow' });
+});
+```
+
+- `workflows.get` accepts a name or an ID.
+- A sub-workflow call runs the child from the set. Mock the calling node to stop at the boundary.
+- `workflows.requirements` lists the credentials, variables, data tables, child workflows, and node types that the workflows need.
+- `workflows.issues()` reports a contract mismatch between a parent and its child, and a contract that the library cannot check.
+
 ## `executeWorkflow` options
 
 | Option | Meaning |
@@ -118,6 +153,7 @@ A request that no nock mock matches fails the execution. Clear the nock state af
 | `result.staticData` | The workflow static data at the end of the execution. |
 | `result.customData` | The execution custom data that the workflow set. |
 | `result.node(node).runs` | One entry for each run of the node. Accepts a name or a reference. |
+| `result.workflow(name).runs` | One entry for each run of a child. Each entry has `calledBy`, `node(name)`, and `output`. |
 | `run.input`, `run.output`, `run.outputs` | JSON of the items that entered and left the node. |
 | `run.parameters` | The resolved parameters, one entry for each input item. |
 | `run.requests` | The HTTP requests that the node made. A streamed request body shows as `[stream]`. |
@@ -140,7 +176,9 @@ A failed execution rejects with a `WorkflowTestError`. The error has `code`, `wo
 | `VARIABLE_NOT_SUPPLIED` | The workflow reads a variable that the test did not supply. |
 | `SECRET_NOT_SUPPLIED` | The workflow reads a secret that the test did not supply. |
 | `HTTP_NOT_MOCKED` | A request matched no nock mock, and `allowHttp` does not permit the host. |
-| `SUB_WORKFLOW_SOURCE_NOT_SUPPORTED` | A node with no mock calls a sub-workflow. |
+| `SUB_WORKFLOW_NOT_IN_SET` | A node calls a child that the set does not hold. |
+| `SUB_WORKFLOW_SOURCE_NOT_SUPPORTED` | A node loads its child from a local file or a URL. |
+| `CONTRACT_MISMATCH` | A parent sends fields that its child does not declare, or the reverse. |
 | `CODE_NODE_NOT_MOCKED` | A Python Code node has no mock. |
 | `WAIT_NOT_MOCKED` | A node waits for a webhook, a form, or a reply, and has no mock. |
 | `DATA_TABLE_NOT_MOCKED` | A Data Table node has no mock. |
@@ -152,7 +190,7 @@ A failed execution rejects with a `WorkflowTestError`. The error has `code`, `wo
 | `MULTIPLE_END_NODES` | `result.output` read a workflow that ended on more than one node. |
 | `WORKFLOW_NOT_FOUND` | `workflows.get` received an unknown name or ID. |
 | `WORKFLOW_AMBIGUOUS` | More than one workflow has the name. |
-| `INVALID_WORKFLOW` | The workflow JSON has an unknown value. |
+| `INVALID_WORKFLOW` | The workflow JSON has an unknown value, or a child has no Execute Workflow Trigger. |
 | `INVALID_OPTION` | An option of `executeWorkflow` has an invalid value. |
 | `EXECUTION_IN_PROGRESS` | A second execution started before the first one finished. |
 
@@ -181,9 +219,9 @@ These differences from production remain:
 - **AI nodes.** Mock the agent node. Its model, memory, and tool sub-nodes then do not run.
 - **Waits.** A Wait node with a time interval continues immediately. A wait for a webhook, a form, or a reply needs `mockNode`.
 - **Data tables** need `mockNode`.
-- **Sub-workflows.** A node that calls a sub-workflow needs `mockNode`.
 - **Binary data.** Mocks and results hold JSON only.
-- **Fixed runtime values.** `$execution.mode` is always `production`. `$execution.id` is `test-execution-1`.
+- **Sub-workflow sources.** The sources `database` and `parameter` work. The sources `localFile` and `url` fail.
+- **Fixed runtime values.** `$execution.mode` is always `production`. `$execution.id` is `test-execution-1` for the parent. Each child run gets the next number.
 - **Not used.** Pinned data in the workflow JSON. The error workflow.
 - **Redaction** replaces only the credential values that the test supplied. It cannot find a value that a node derived from a secret.
 - **Only HTTP.** The library cannot intercept a database connection, SMTP, SSH, a file write, or a shell command. Use `mockNode` for these nodes.

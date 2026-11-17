@@ -1,6 +1,12 @@
 import nock from 'nock';
 
-import { executeWorkflow, loadWorkflow, mockNode, type WorkflowDefinition } from '../src';
+import {
+	executeWorkflow,
+	loadWorkflow,
+	loadWorkflows,
+	mockNode,
+	type WorkflowDefinition,
+} from '../src';
 
 const crm = 'https://crm.example.com';
 
@@ -127,6 +133,48 @@ test('fails a require of a module that is not allowed, as in production', async 
 		node: 'Transform',
 		message: expect.stringContaining("Module 'fs' is disallowed"),
 	});
+});
+
+test('runs a Code node inside a real child workflow', async () => {
+	const child: WorkflowDefinition = {
+		id: 'child-1',
+		name: 'Child',
+		nodes: [
+			{
+				id: 'c1',
+				name: 'When called',
+				type: 'n8n-nodes-base.executeWorkflowTrigger',
+				typeVersion: 1.1,
+				position: [0, 0],
+				parameters: { inputSource: 'passthrough' },
+			},
+			{
+				id: 'c2',
+				name: 'Greet',
+				type: 'n8n-nodes-base.code',
+				typeVersion: 2,
+				position: [220, 0],
+				parameters: { jsCode: "return [{ json: { greeting: 'Hi ' + $json.name } }];" },
+			},
+		],
+		connections: { 'When called': { main: [[{ node: 'Greet', type: 'main', index: 0 }]] } },
+	};
+	const parent = codeWorkflow('return [];');
+	parent.nodes[1] = {
+		id: '2',
+		name: 'Run child',
+		type: 'n8n-nodes-base.executeWorkflow',
+		typeVersion: 1.2,
+		position: [220, 0],
+		parameters: { workflowId: { __rl: true, value: 'child-1', mode: 'id' }, options: {} },
+	};
+	parent.connections = { Start: { main: [[{ node: 'Run child', type: 'main', index: 0 }]] } };
+	const workflows = loadWorkflows([parent, child]);
+
+	const result = await executeWorkflow(workflows.get('Code'), { input: { name: 'Ada' } });
+
+	expect(result.workflow('Child').runs[0].node('Greet').output).toEqual([{ greeting: 'Hi Ada' }]);
+	expect(result.output).toEqual([{ greeting: 'Hi Ada' }]);
 });
 
 test('still runs a mocked Code node from its mock', async () => {

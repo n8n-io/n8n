@@ -12,7 +12,8 @@ import type { HttpRequest } from './http/http-request';
 import type { TestCredential } from './instance-state/credentials';
 import type { Redaction } from './http/redact';
 import type { WebhookCapture } from './runtime/webhook-response';
-import type { NodeReference, WorkflowHandle } from './workflow-set';
+import type { SubWorkflowState } from './sub-workflows/execution';
+import type { NodeReference, WorkflowHandle, WorkflowSet } from './workflow-set';
 
 export interface ExecuteWorkflowOptions {
 	input?: IDataObject | IDataObject[];
@@ -50,6 +51,7 @@ export interface NodeRunLog {
 export interface ExecutionSetup {
 	executionId: string;
 	options: ExecuteWorkflowOptions;
+	set: WorkflowSet;
 	handle: WorkflowHandle;
 	workflowData: IWorkflowBase;
 	workflow: Workflow;
@@ -58,6 +60,7 @@ export interface ExecutionSetup {
 	fatalError?: WorkflowTestError;
 	redactions: Redaction[];
 	webhook?: WebhookCapture;
+	subWorkflows: SubWorkflowState;
 }
 
 export interface ExecutionContext extends ExecutionSetup {

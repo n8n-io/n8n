@@ -13,6 +13,9 @@ export {
 } from './mock-node';
 export type { NodeResult, NodeRun, NodeRunError, WorkflowTestResult } from './result';
 export type { WebhookResponse } from './runtime/webhook-response';
+export type { CalledBy, SubWorkflowRun } from './sub-workflows/execution';
+export type { WorkflowSetIssue } from './sub-workflows/issues';
+export type * from './sub-workflows/requirements';
 export {
 	loadWorkflow,
 	loadWorkflows,
