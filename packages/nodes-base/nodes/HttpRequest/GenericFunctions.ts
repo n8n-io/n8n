@@ -191,7 +191,10 @@ export function getSecrets(credentials: ICredentialDataDecryptedObject): string[
 	return secrets;
 }
 
-export const getOAuth2AdditionalParameters = (nodeCredentialType: string) => {
+export const getOAuth2AdditionalParameters = (
+	nodeCredentialType: string,
+	includeMicrosoft403 = false,
+) => {
 	const oAuth2Options: { [credentialType: string]: IOAuth2Options } = {
 		bitlyOAuth2Api: {
 			tokenType: 'Bearer',
@@ -232,10 +235,6 @@ export const getOAuth2AdditionalParameters = (nodeCredentialType: string) => {
 		microsoftAzureMonitorOAuth2Api: {
 			tokenExpiredStatusCode: 403,
 		},
-		microsoftOAuth2Api: {
-			tokenExpiredStatusCode: [401, 403],
-			skipRefreshWhileTokenIsFresh: true,
-		},
 		philipsHueOAuth2Api: {
 			tokenType: 'Bearer',
 		},
@@ -254,6 +253,14 @@ export const getOAuth2AdditionalParameters = (nodeCredentialType: string) => {
 			includeCredentialsOnRefreshOnBody: true,
 		},
 	};
+
+	if (includeMicrosoft403) {
+		oAuth2Options.microsoftOAuth2Api = {
+			tokenExpiredStatusCode: [401, 403],
+			skipRefreshWhileTokenIsFresh: true,
+		};
+	}
+
 	return oAuth2Options[nodeCredentialType];
 };
 
