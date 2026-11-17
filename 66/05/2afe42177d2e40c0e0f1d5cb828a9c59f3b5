@@ -1,0 +1,73 @@
+packages/cli/src/modules/skills/sources/github/github-archive.ts
+  s_bc27ac3adda411::t_9adb4e479b6b1a 102-106,192
+  s_bc27ac3adda411::t_9d6f0dac55085d 51
+  s_bc27ac3adda411::t_e805ad5ae92b64 48,65,68
+packages/@n8n/api-types/src/skills/skill-sources.schema.ts
+  s_bc27ac3adda411::t_3823032431af5e 60-64,230-231
+packages/cli/src/modules/skills/services/skill-source.service.ts
+  s_bc27ac3adda411::t_3823032431af5e 165-166,172-175,182-183,208,916,922-926,929-932
+  s_bc27ac3adda411::t_9adb4e479b6b1a 176-181,884-885,927-928,933-934
+packages/cli/src/modules/skills/__tests__/integration/skill-source.controller.integration.test.ts
+  s_bc27ac3adda411::t_29f46030fd887e 25,1049,1055-1056,1077-1086,1094-1097
+  s_bc27ac3adda411::t_9adb4e479b6b1a 1050-1054,1087-1093,1098-1112
+packages/cli/src/modules/skills/__tests__/integration/skill-source-check.integration.test.ts
+  s_bc27ac3adda411::t_1e46cc518bc45e 657
+  s_bc27ac3adda411::t_9adb4e479b6b1a 613-616,619-622,650-652
+  s_bc27ac3adda411::t_c54f3774267ee6 617-618,625-635
+  s_bc27ac3adda411::t_45344eb99b0cc8 611-612,623-624,636-649,653-656,658-672
+packages/cli/src/modules/skills/__tests__/skill-reference-examples.test.ts
+  s_bc27ac3adda411::t_9adb4e479b6b1a 10-13,20-23
+  s_bc27ac3adda411::t_98db8dd727c381 14-19,24-25
+packages/cli/src/modules/skills/sources/skill-source-client.ts
+  s_bc27ac3adda411::t_e805ad5ae92b64 192-193
+packages/cli/src/modules/skills/__tests__/github-skill-source-client.test.ts
+  s_bc27ac3adda411::t_9adb4e479b6b1a 413-418,487-489
+  s_bc27ac3adda411::t_98db8dd727c381 405-406,419-422,477-486,490-491
+packages/cli/src/modules/skills/sources/github/github-skill-source-client.ts
+  s_bc27ac3adda411::t_17a6522ae9eb82 507
+  s_bc27ac3adda411::t_dbad90178f4a4c 317-328
+  s_bc27ac3adda411::t_dc69c1bc8bb870 428-429
+  s_bc27ac3adda411::t_e805ad5ae92b64 268,273,435,437,444,473,475
+  s_bc27ac3adda411::t_9adb4e479b6b1a 274-282,439-441
+packages/frontend/editor-ui/src/features/settings/context/catalog/SkillCatalog.vue
+  s_bc27ac3adda411::t_3823032431af5e 11,213,215
+packages/cli/src/modules/skills/database/repositories/skill-source.repository.ts
+  s_bc27ac3adda411::t_9adb4e479b6b1a 90-93,207-209,503-510
+  s_bc27ac3adda411::t_4d4b689f6e7ce5 206,210-211,491-492
+  s_bc27ac3adda411::t_2548825f3fac7a 497-502,511-540
+packages/frontend/editor-ui/src/features/agents/utils/__tests__/agentSkillExport.test.ts
+  s_bc27ac3adda411::t_379f17c5eeb1b9 68-77
+packages/cli/src/modules/skills/sources/github/skill-reference-examples.ts
+  s_bc27ac3adda411::t_3823032431af5e 12,31
+packages/frontend/editor-ui/src/features/settings/context/components/SkillSourceConnectDialog.vue
+  s_bc27ac3adda411::t_65074284ed463a 648-652,654
+packages/frontend/editor-ui/src/features/settings/context/catalog/README.md
+  s_bc27ac3adda411::t_dbad90178f4a4c 39
+packages/frontend/editor-ui/src/features/settings/context/components/SkillSourceConnectDialog.test.ts
+  s_bc27ac3adda411::t_9adb4e479b6b1a 1004-1011,1023-1027
+  s_bc27ac3adda411::t_c9b9a781519395 958,976,997,1003,1031
+packages/frontend/editor-ui/src/features/settings/context/views/SettingsSkillsView.vue
+  s_bc27ac3adda411::t_65074284ed463a 1278
+packages/frontend/editor-ui/src/features/settings/context/catalog/SkillCatalog.test.ts
+  s_bc27ac3adda411::t_9adb4e479b6b1a 18-20
+  s_bc27ac3adda411::t_17a6522ae9eb82 17
+packages/cli/src/modules/skills/services/skill-sync.service.ts
+  s_bc27ac3adda411::t_17a6522ae9eb82 738,745,773,776
+  s_bc27ac3adda411::t_4d4b689f6e7ce5 623
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "66052afe42177d2e40c0e0f1d5cb828a9c59f3b5",
+  "prompts": {},
+  "sessions": {
+    "s_bc27ac3adda411": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a1e944-3dbf-7aa3-9124-352b45e22dd3",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "Arvin Ansari <arvin.ansari@n8n.io>"
+    }
+  }
+}
