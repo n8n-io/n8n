@@ -1,31 +1,27 @@
 import type { DataSource } from '@n8n/typeorm';
-import { PostgreSqlContainer, type StartedPostgreSqlContainer } from '@testcontainers/postgresql';
-import postgresVersions from 'n8n-containers/postgres-versions.json';
 import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
 
 import { AllowAllAdmittance } from '../../admittance';
 import { SharedSecretIdentityVerifier } from '../../auth';
-import { createDataSource, createStores } from '../../database';
+import { createStores } from '../../database';
 import { generateId } from '../../database/generate-id';
 import { noopExecutionResponseSender } from '../../response-channel';
 import { createEngineRuntime } from '../../runtime';
+import { startTestDatabase, type TestDatabase } from '../../database/__tests__/test-database';
 
 const staleness = { queuedMs: 50, runningStepMs: 60_000 };
 
 describe('queued execution with no event (integration)', () => {
-	let container: StartedPostgreSqlContainer;
+	let database: TestDatabase;
 	let dataSource: DataSource;
 
 	beforeAll(async () => {
-		container = await new PostgreSqlContainer(postgresVersions.primary).start();
-		dataSource = createDataSource(container.getConnectionUri());
-		await dataSource.initialize();
-		await dataSource.runMigrations();
+		database = await startTestDatabase();
+		dataSource = database.dataSource;
 	}, 120_000);
 
 	afterAll(async () => {
-		if (dataSource?.isInitialized) await dataSource.destroy();
-		if (container) await container.stop();
+		if (database) await database.stop();
 	});
 
 	it('runs an execution whose event was never published', async () => {

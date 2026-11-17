@@ -63,9 +63,11 @@ export class EngineConfig {
 	baseUrl: string = '';
 
 	/**
-	 * Postgres connection URL for the engine's data plane. When unset, the
-	 * engine boots in healthcheck-only mode and workflow execution endpoints
-	 * are not mounted.
+	 * Connection URL for the engine's data plane: a Postgres URL, or a SQLite
+	 * file as `sqlite:///path/to/engine.sqlite`. When unset on a main that runs
+	 * on SQLite, the in-process engine uses `engine-v2.sqlite` in the n8n user
+	 * folder. When unset elsewhere, the engine boots in healthcheck-only mode
+	 * and workflow execution endpoints are not mounted.
 	 *
 	 * This is in development and not ready for use.
 	 */

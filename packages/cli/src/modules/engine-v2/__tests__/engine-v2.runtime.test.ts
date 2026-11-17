@@ -1,6 +1,6 @@
 import type { HttpRequestClient } from '@n8n/backend-network';
 import { mockLogger } from '@n8n/backend-test-utils';
-import type { EngineConfig } from '@n8n/config';
+import type { DatabaseConfig, EngineConfig, InstanceSettingsConfig } from '@n8n/config';
 import {
 	mintApprovalCallback,
 	mintResumeToken,
@@ -166,6 +166,8 @@ describe('EngineV2Runtime', () => {
 			credentialTypes,
 			additionalDataBuilder,
 			binaryDataService,
+			mock<DatabaseConfig>({ type: 'postgresdb' }),
+			mock<InstanceSettingsConfig>({ n8nFolder: '/tmp/n8n' }),
 		);
 
 	const stepContext = {

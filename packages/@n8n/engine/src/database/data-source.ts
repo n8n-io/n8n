@@ -4,10 +4,11 @@ import { DataSource, type DataSourceOptions } from '@n8n/typeorm';
 
 import { entities } from './entities';
 import { migrations } from './migrations';
+import { createSqliteDataSource, isSqliteUrl } from './sqlite/sqlite-data-source';
 
 /**
- * Build a TypeORM `DataSource` for the engine's Postgres from a connection URL
- * (`postgres://user:pass@host:port/db`).
+ * Build a TypeORM `DataSource` for the engine's database from a connection URL:
+ * `postgres://user:pass@host:port/db`, or `sqlite:///path/to/engine.sqlite`.
  *
  * This is the persistence adapter's construction helper; composition roots
  * (`serve.ts`, or the host in integrated mode) call it and own the
@@ -22,6 +23,8 @@ export function createDataSource(
 	url: string,
 	{ poolSize, connectTimeoutMS }: { poolSize?: number; connectTimeoutMS?: number } = {},
 ): DataSource {
+	if (isSqliteUrl(url)) return createSqliteDataSource(url, { poolSize });
+
 	const options: DataSourceOptions = {
 		type: 'postgres',
 		url,

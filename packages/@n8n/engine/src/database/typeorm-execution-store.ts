@@ -28,12 +28,12 @@ type InsertValues = Parameters<Repository<WorkflowExecution>['insert']>[0];
 /** TypeORM-backed `ExecutionStore` adapter. */
 export class TypeOrmExecutionStore implements ExecutionStore {
 	constructor(
-		private readonly repo: Repository<WorkflowExecution>,
-		private readonly staleness: StalenessThresholds = DEFAULT_STALENESS_THRESHOLDS,
+		protected readonly repo: Repository<WorkflowExecution>,
+		protected readonly staleness: StalenessThresholds = DEFAULT_STALENESS_THRESHOLDS,
 	) {}
 
 	/** The `stale_after` value of an execution that enters `status` now. */
-	private staleAfterFor(status: ExecutionStatus): Date | null {
+	protected staleAfterFor(status: ExecutionStatus): Date | null {
 		return status === 'queued' ? new Date(Date.now() + this.staleness.queuedMs) : null;
 	}
 

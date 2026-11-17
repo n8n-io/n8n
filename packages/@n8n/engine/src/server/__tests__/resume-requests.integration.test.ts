@@ -1,7 +1,5 @@
 import type { DataSource } from '@n8n/typeorm';
-import { PostgreSqlContainer, type StartedPostgreSqlContainer } from '@testcontainers/postgresql';
 import type { Application } from 'express';
-import postgresVersions from 'n8n-containers/postgres-versions.json';
 import request from 'supertest';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
@@ -12,7 +10,7 @@ import {
 	mintResumeToken,
 	mintStepBoundResumeToken,
 } from '../../auth/resume-token';
-import { createDataSource, createStores } from '../../database';
+import { createStores } from '../../database';
 import { generateId } from '../../database/generate-id';
 import { ExecutionNotFoundError, type WaitDeclaration } from '../../execution';
 import { MAX_SLOT_INDEX, type WorkflowGraph } from '../../graph';
@@ -20,6 +18,7 @@ import { noopExecutionResponseSender } from '../../response-channel';
 import { createEngineRuntime } from '../../runtime';
 import type { ResumeTargetResponse } from '../api.types';
 import { createEngineServer, type EngineServerDeps } from '../create-engine-server';
+import { startTestDatabase, type TestDatabase } from '../../database/__tests__/test-database';
 
 const identitySecret = 'a'.repeat(32);
 const resumeSecret = 'r'.repeat(32);
@@ -55,15 +54,13 @@ const auth = () => ({
 	authorization: `Bearer ${mintIdentityToken(identitySecret, { cpId: 'cp-1', tenantId: 't-1' })}`,
 });
 
-let container: StartedPostgreSqlContainer;
+let database: TestDatabase;
 let dataSource: DataSource;
 let app: Application;
 
 beforeAll(async () => {
-	container = await new PostgreSqlContainer(postgresVersions.primary).start();
-	dataSource = createDataSource(container.getConnectionUri());
-	await dataSource.initialize();
-	await dataSource.runMigrations();
+	database = await startTestDatabase();
+	dataSource = database.dataSource;
 	// Not started: no worker claims the resumed step, so the row shows what resolve left.
 	({ app } = createEngineRuntime({
 		dataSource,
@@ -75,8 +72,7 @@ beforeAll(async () => {
 }, 120_000);
 
 afterAll(async () => {
-	if (dataSource?.isInitialized) await dataSource.destroy();
-	if (container) await container.stop();
+	if (database) await database.stop();
 });
 
 /** A running execution whose wait steps are suspended with the given declarations. */

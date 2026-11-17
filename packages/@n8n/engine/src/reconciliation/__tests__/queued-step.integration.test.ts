@@ -1,36 +1,32 @@
 import type { DataSource } from '@n8n/typeorm';
-import { PostgreSqlContainer, type StartedPostgreSqlContainer } from '@testcontainers/postgresql';
-import postgresVersions from 'n8n-containers/postgres-versions.json';
 import request from 'supertest';
 import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
 
 import { AllowAllAdmittance } from '../../admittance';
 import { mintIdentityToken, SharedSecretIdentityVerifier } from '../../auth';
-import { createDataSource, createStores } from '../../database';
+import { createStores } from '../../database';
 import { generateId } from '../../database/generate-id';
 import type { IStepExecutor } from '../../dependencies';
 import type { StartExecutionResult, StepStore } from '../../execution';
 import type { WorkflowGraph } from '../../graph';
 import { noopExecutionResponseSender } from '../../response-channel';
 import { createEngineRuntime } from '../../runtime';
+import { startTestDatabase, type TestDatabase } from '../../database/__tests__/test-database';
 
 const staleness = { queuedMs: 50, runningStepMs: 60_000 };
 const secret = 'a'.repeat(32);
 
 describe('queued step with no event (integration)', () => {
-	let container: StartedPostgreSqlContainer;
+	let database: TestDatabase;
 	let dataSource: DataSource;
 
 	beforeAll(async () => {
-		container = await new PostgreSqlContainer(postgresVersions.primary).start();
-		dataSource = createDataSource(container.getConnectionUri());
-		await dataSource.initialize();
-		await dataSource.runMigrations();
+		database = await startTestDatabase();
+		dataSource = database.dataSource;
 	}, 120_000);
 
 	afterAll(async () => {
-		if (dataSource?.isInitialized) await dataSource.destroy();
-		if (container) await container.stop();
+		if (database) await database.stop();
 	});
 
 	/** A runtime with short thresholds, and the step store that it uses. */

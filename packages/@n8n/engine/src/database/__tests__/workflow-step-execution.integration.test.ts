@@ -1,6 +1,4 @@
 import type { DataSource } from '@n8n/typeorm';
-import { PostgreSqlContainer, type StartedPostgreSqlContainer } from '@testcontainers/postgresql';
-import postgresVersions from 'n8n-containers/postgres-versions.json';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
 import type {
@@ -10,36 +8,30 @@ import type {
 	StepStatus,
 	WaitDeclaration,
 } from '../../execution/execution.types';
-import { StepNotFoundError, type NewStepRecord } from '../../execution/step-store';
-import { createDataSource } from '../data-source';
+import type { ExecutionViewStore } from '../../execution/execution-view-store';
+import { StepNotFoundError, type NewStepRecord, type StepStore } from '../../execution/step-store';
 import { WorkflowExecution } from '../entities/workflow-execution.entity';
 import { WorkflowStepExecution } from '../entities/workflow-step-execution.entity';
 import { generateId } from '../generate-id';
-import { TypeOrmExecutionViewStore } from '../typeorm-execution-view-store';
-import { TypeOrmStepStore } from '../typeorm-step-store';
+import { createStores } from '../create-stores';
+import { rawQuery, startTestDatabase, testDialect, type TestDatabase } from './test-database';
 
 describe('workflow_step_execution table (integration)', () => {
-	let container: StartedPostgreSqlContainer;
+	let database: TestDatabase;
 	let dataSource: DataSource;
 
 	beforeAll(async () => {
-		container = await new PostgreSqlContainer(postgresVersions.primary).start();
-		dataSource = createDataSource(container.getConnectionUri());
-		await dataSource.initialize();
-		await dataSource.runMigrations();
+		database = await startTestDatabase();
+		dataSource = database.dataSource;
 	}, 120_000);
 
 	afterAll(async () => {
-		if (dataSource?.isInitialized) await dataSource.destroy();
-		if (container) await container.stop();
+		if (database) await database.stop();
 	});
 
 	/** The read path over the same table, for the step-view cases below. */
-	function viewStore(): TypeOrmExecutionViewStore {
-		return new TypeOrmExecutionViewStore(
-			dataSource.getRepository(WorkflowExecution),
-			dataSource.getRepository(WorkflowStepExecution),
-		);
+	function viewStore(): ExecutionViewStore {
+		return createStores(dataSource).executionViewStore;
 	}
 
 	/** Steps FK to an execution, so create a parent row first. */
@@ -65,7 +57,7 @@ describe('workflow_step_execution table (integration)', () => {
 
 	/** Most cases need one step; the store's API is the batch `createSteps`. */
 	async function createStep(
-		store: TypeOrmStepStore,
+		store: StepStore,
 		executionId: string,
 		record: NewStepRecord,
 	): Promise<{ id: string }> {
@@ -119,7 +111,7 @@ describe('workflow_step_execution table (integration)', () => {
 
 	it('TypeOrmStepStore.createSteps persists a queued step and returns its id', async () => {
 		const executionId = await createExecution();
-		const store = new TypeOrmStepStore(dataSource.getRepository(WorkflowStepExecution));
+		const store = createStores(dataSource).stepStore;
 
 		const { id } = await createStep(store, executionId, {
 			nodeId: 'x',
@@ -136,7 +128,7 @@ describe('workflow_step_execution table (integration)', () => {
 
 	it('TypeOrmStepStore.createSteps persists a batch and returns ids in input order', async () => {
 		const executionId = await createExecution();
-		const store = new TypeOrmStepStore(dataSource.getRepository(WorkflowStepExecution));
+		const store = createStores(dataSource).stepStore;
 
 		const ids = await store.createSteps(executionId, [
 			{ nodeId: 'trigger', iteration: 0, status: 'completed', outputs: [{}] },
@@ -159,7 +151,7 @@ describe('workflow_step_execution table (integration)', () => {
 	});
 
 	it('TypeOrmStepStore.createSteps is a no-op for an empty batch', async () => {
-		const store = new TypeOrmStepStore(dataSource.getRepository(WorkflowStepExecution));
+		const store = createStores(dataSource).stepStore;
 		expect(await store.createSteps('00000000-0000-7000-8000-000000000000', [])).toEqual([]);
 	});
 
@@ -187,7 +179,7 @@ describe('workflow_step_execution table (integration)', () => {
 	])('TypeOrmStepStore.createSteps rejects $violation at runtime', async ({ record, message }) => {
 		// the casts simulate a caller outside the type system
 		const executionId = await createExecution();
-		const store = new TypeOrmStepStore(dataSource.getRepository(WorkflowStepExecution));
+		const store = createStores(dataSource).stepStore;
 
 		await expect(
 			store.createSteps(executionId, [record as unknown as NewStepRecord]),
@@ -210,7 +202,7 @@ describe('workflow_step_execution table (integration)', () => {
 	});
 
 	it('rejects a step referencing a non-existent execution (foreign key)', async () => {
-		const store = new TypeOrmStepStore(dataSource.getRepository(WorkflowStepExecution));
+		const store = createStores(dataSource).stepStore;
 		await expect(
 			createStep(store, '00000000-0000-7000-8000-000000000000', {
 				nodeId: 'a',
@@ -222,7 +214,7 @@ describe('workflow_step_execution table (integration)', () => {
 
 	it('TypeOrmStepStore.loadStep returns the step, or throws when absent', async () => {
 		const executionId = await createExecution();
-		const store = new TypeOrmStepStore(dataSource.getRepository(WorkflowStepExecution));
+		const store = createStores(dataSource).stepStore;
 		const { id } = await createStep(store, executionId, {
 			nodeId: 'node-a',
 			iteration: 0,
@@ -249,7 +241,7 @@ describe('workflow_step_execution table (integration)', () => {
 
 	it('TypeOrmStepStore.claimStep only claims a queued step', async () => {
 		const executionId = await createExecution();
-		const store = new TypeOrmStepStore(dataSource.getRepository(WorkflowStepExecution));
+		const store = createStores(dataSource).stepStore;
 		const { id } = await createStep(store, executionId, {
 			nodeId: 'a',
 			iteration: 0,
@@ -272,7 +264,7 @@ describe('workflow_step_execution table (integration)', () => {
 
 	it('TypeOrmStepStore.claimStep refuses once any step in the execution failed', async () => {
 		const executionId = await createExecution();
-		const store = new TypeOrmStepStore(dataSource.getRepository(WorkflowStepExecution));
+		const store = createStores(dataSource).stepStore;
 		// b is planned first, then a's failure lands before b's step:ready is claimed
 		const { id } = await createStep(store, executionId, {
 			nodeId: 'b',
@@ -296,7 +288,7 @@ describe('workflow_step_execution table (integration)', () => {
 
 	it('TypeOrmStepStore.createSteps creates nothing once any step in the execution failed', async () => {
 		const executionId = await createExecution();
-		const store = new TypeOrmStepStore(dataSource.getRepository(WorkflowStepExecution));
+		const store = createStores(dataSource).stepStore;
 		await seedStep({ executionId, nodeId: 'a', iteration: 0, status: 'failed' });
 
 		// rows planned after the cancellation sweep would be stuck queued forever
@@ -309,67 +301,73 @@ describe('workflow_step_execution table (integration)', () => {
 		expect(await stepRepo.count({ where: { executionId } })).toBe(1);
 	});
 
-	it('TypeOrmStepStore.createSteps waits out a concurrently committing failure and creates nothing', async () => {
-		const executionId = await createExecution();
-		const store = new TypeOrmStepStore(dataSource.getRepository(WorkflowStepExecution));
-		const failing = await seedStep({ executionId, nodeId: 'a', iteration: 0, status: 'running' });
+	it.skipIf(testDialect === 'sqlite')(
+		'TypeOrmStepStore.createSteps waits out a concurrently committing failure and creates nothing',
+		async () => {
+			const executionId = await createExecution();
+			const store = createStores(dataSource).stepStore;
+			const failing = await seedStep({ executionId, nodeId: 'a', iteration: 0, status: 'running' });
 
-		const failure = dataSource.createQueryRunner();
-		await failure.connect();
-		await failure.startTransaction();
-		await failure.query('SELECT id FROM workflow_execution WHERE id = $1 FOR NO KEY UPDATE', [
-			executionId,
-		]);
-		await failure.query("UPDATE workflow_step_execution SET status = 'failed' WHERE id = $1", [
-			failing.id,
-		]);
+			const failure = dataSource.createQueryRunner();
+			await failure.connect();
+			await failure.startTransaction();
+			await failure.query('SELECT id FROM workflow_execution WHERE id = $1 FOR NO KEY UPDATE', [
+				executionId,
+			]);
+			await failure.query("UPDATE workflow_step_execution SET status = 'failed' WHERE id = $1", [
+				failing.id,
+			]);
 
-		// the insert must park on the execution lock until the failure commits
-		const create = store.createSteps(executionId, [
-			{ nodeId: 'b', iteration: 0, status: 'queued' },
-		]);
-		await new Promise((resolve) => setTimeout(resolve, 150));
-		await failure.commitTransaction();
-		await failure.release();
+			// the insert must park on the execution lock until the failure commits
+			const create = store.createSteps(executionId, [
+				{ nodeId: 'b', iteration: 0, status: 'queued' },
+			]);
+			await new Promise((resolve) => setTimeout(resolve, 150));
+			await failure.commitTransaction();
+			await failure.release();
 
-		expect(await create).toEqual([]);
-	});
+			expect(await create).toEqual([]);
+		},
+	);
 
-	it('TypeOrmStepStore.claimStep waits out a concurrently committing failure and refuses', async () => {
-		const executionId = await createExecution();
-		const store = new TypeOrmStepStore(dataSource.getRepository(WorkflowStepExecution));
-		const failing = await seedStep({ executionId, nodeId: 'a', iteration: 0, status: 'running' });
-		const { id } = await createStep(store, executionId, {
-			nodeId: 'b',
-			iteration: 0,
-			status: 'queued',
-		});
+	it.skipIf(testDialect === 'sqlite')(
+		'TypeOrmStepStore.claimStep waits out a concurrently committing failure and refuses',
+		async () => {
+			const executionId = await createExecution();
+			const store = createStores(dataSource).stepStore;
+			const failing = await seedStep({ executionId, nodeId: 'a', iteration: 0, status: 'running' });
+			const { id } = await createStep(store, executionId, {
+				nodeId: 'b',
+				iteration: 0,
+				status: 'queued',
+			});
 
-		// A failStep mid-transaction, with the lock held and the failed row
-		// uncommitted. Without the lock, the claim would see no failure and succeed.
-		const failure = dataSource.createQueryRunner();
-		await failure.connect();
-		await failure.startTransaction();
-		await failure.query('SELECT id FROM workflow_execution WHERE id = $1 FOR NO KEY UPDATE', [
-			executionId,
-		]);
-		await failure.query("UPDATE workflow_step_execution SET status = 'failed' WHERE id = $1", [
-			failing.id,
-		]);
+			// A failStep mid-transaction, with the lock held and the failed row
+			// uncommitted. Without the lock, the claim would see no failure and succeed.
+			const failure = dataSource.createQueryRunner();
+			await failure.connect();
+			await failure.startTransaction();
+			await failure.query('SELECT id FROM workflow_execution WHERE id = $1 FOR NO KEY UPDATE', [
+				executionId,
+			]);
+			await failure.query("UPDATE workflow_step_execution SET status = 'failed' WHERE id = $1", [
+				failing.id,
+			]);
 
-		// the claim must park on the execution lock until the failure commits
-		const claim = store.claimStep(id);
-		await new Promise((resolve) => setTimeout(resolve, 150));
-		await failure.commitTransaction();
-		await failure.release();
+			// the claim must park on the execution lock until the failure commits
+			const claim = store.claimStep(id);
+			await new Promise((resolve) => setTimeout(resolve, 150));
+			await failure.commitTransaction();
+			await failure.release();
 
-		expect(await claim).toBeNull();
-		expect((await store.loadStep(id)).status).toBe('queued');
-	});
+			expect(await claim).toBeNull();
+			expect((await store.loadStep(id)).status).toBe('queued');
+		},
+	);
 
 	it('TypeOrmStepStore.completeStep persists outputs and marks the step completed', async () => {
 		const executionId = await createExecution();
-		const store = new TypeOrmStepStore(dataSource.getRepository(WorkflowStepExecution));
+		const store = createStores(dataSource).stepStore;
 		const { id } = await seedStep({ executionId, nodeId: 'a', iteration: 0, status: 'running' });
 
 		expect(await store.completeStep(id, [[{ json: { ok: true } }]])).toBe(true);
@@ -381,7 +379,7 @@ describe('workflow_step_execution table (integration)', () => {
 
 	it('TypeOrmStepStore.completeStep and failStep only record a step that is running', async () => {
 		const executionId = await createExecution();
-		const store = new TypeOrmStepStore(dataSource.getRepository(WorkflowStepExecution));
+		const store = createStores(dataSource).stepStore;
 		const { id } = await createStep(store, executionId, {
 			nodeId: 'a',
 			iteration: 0,
@@ -402,7 +400,7 @@ describe('workflow_step_execution table (integration)', () => {
 
 	it('TypeOrmStepStore.suspendStep records the declaration and its deadline, marking the step waiting', async () => {
 		const executionId = await createExecution();
-		const store = new TypeOrmStepStore(dataSource.getRepository(WorkflowStepExecution));
+		const store = createStores(dataSource).stepStore;
 		const { id } = await seedStep({ executionId, nodeId: 'a', iteration: 0, status: 'running' });
 		const wait = {
 			resumeAt: '2099-01-01T00:00:00.000Z',
@@ -424,7 +422,7 @@ describe('workflow_step_execution table (integration)', () => {
 
 	it('TypeOrmStepStore.suspendStep leaves the deadline null for a wait that has none', async () => {
 		const executionId = await createExecution();
-		const store = new TypeOrmStepStore(dataSource.getRepository(WorkflowStepExecution));
+		const store = createStores(dataSource).stepStore;
 		const { id } = await seedStep({ executionId, nodeId: 'a', iteration: 0, status: 'running' });
 
 		expect(await store.suspendStep(id, { resumeBinding: 'execution' })).toBe(true);
@@ -439,7 +437,7 @@ describe('workflow_step_execution table (integration)', () => {
 
 	it('TypeOrmStepStore.suspendStep only suspends a step that is running', async () => {
 		const executionId = await createExecution();
-		const store = new TypeOrmStepStore(dataSource.getRepository(WorkflowStepExecution));
+		const store = createStores(dataSource).stepStore;
 		const { id } = await createStep(store, executionId, {
 			nodeId: 'a',
 			iteration: 0,
@@ -465,7 +463,7 @@ describe('workflow_step_execution table (integration)', () => {
 		'TypeOrmStepStore.suspendStep in a %s execution moves a running step to %s',
 		async (executionStatus, stepStatus, recorded) => {
 			const executionId = await createExecution({ status: executionStatus });
-			const store = new TypeOrmStepStore(dataSource.getRepository(WorkflowStepExecution));
+			const store = createStores(dataSource).stepStore;
 			const { id } = await seedStep({
 				executionId,
 				nodeId: 'a',
@@ -488,38 +486,41 @@ describe('workflow_step_execution table (integration)', () => {
 		},
 	);
 
-	it('TypeOrmStepStore.suspendStep waits out a concurrently committing cancellation and cancels the step', async () => {
-		const executionId = await createExecution();
-		const store = new TypeOrmStepStore(dataSource.getRepository(WorkflowStepExecution));
-		const { id } = await seedStep({ executionId, nodeId: 'a', iteration: 0, status: 'running' });
+	it.skipIf(testDialect === 'sqlite')(
+		'TypeOrmStepStore.suspendStep waits out a concurrently committing cancellation and cancels the step',
+		async () => {
+			const executionId = await createExecution();
+			const store = createStores(dataSource).stepStore;
+			const { id } = await seedStep({ executionId, nodeId: 'a', iteration: 0, status: 'running' });
 
-		// A cancelExecution mid-transaction, with the row lock held and the status
-		// uncommitted. Without the lock, the suspension would read `running`.
-		const cancellation = dataSource.createQueryRunner();
-		await cancellation.connect();
-		await cancellation.startTransaction();
-		await cancellation.query("UPDATE workflow_execution SET status = 'cancelled' WHERE id = $1", [
-			executionId,
-		]);
+			// A cancelExecution mid-transaction, with the row lock held and the status
+			// uncommitted. Without the lock, the suspension would read `running`.
+			const cancellation = dataSource.createQueryRunner();
+			await cancellation.connect();
+			await cancellation.startTransaction();
+			await cancellation.query("UPDATE workflow_execution SET status = 'cancelled' WHERE id = $1", [
+				executionId,
+			]);
 
-		const suspend = store.suspendStep(id, { resumeBinding: 'execution' });
-		try {
-			await waitUntilQueryBlocksOnLock('FOR SHARE');
-			await cancellation.commitTransaction();
-		} finally {
-			// An open transaction keeps its lock, and `suspend` would never settle.
-			if (cancellation.isTransactionActive) await cancellation.rollbackTransaction();
-			await cancellation.release();
-			await Promise.allSettled([suspend]);
-		}
+			const suspend = store.suspendStep(id, { resumeBinding: 'execution' });
+			try {
+				await waitUntilQueryBlocksOnLock('FOR SHARE');
+				await cancellation.commitTransaction();
+			} finally {
+				// An open transaction keeps its lock, and `suspend` would never settle.
+				if (cancellation.isTransactionActive) await cancellation.rollbackTransaction();
+				await cancellation.release();
+				await Promise.allSettled([suspend]);
+			}
 
-		expect(await suspend).toBe(false);
-		expect((await store.loadStep(id)).status).toBe('cancelled');
-	});
+			expect(await suspend).toBe(false);
+			expect((await store.loadStep(id)).status).toBe('cancelled');
+		},
+	);
 
 	it('TypeOrmStepStore.countSettledSteps does not count a waiting step', async () => {
 		const executionId = await createExecution();
-		const store = new TypeOrmStepStore(dataSource.getRepository(WorkflowStepExecution));
+		const store = createStores(dataSource).stepStore;
 		const { id } = await seedStep({ executionId, nodeId: 'a', iteration: 0, status: 'running' });
 		await store.suspendStep(id, { resumeBinding: 'execution' });
 
@@ -529,7 +530,7 @@ describe('workflow_step_execution table (integration)', () => {
 
 	it('TypeOrmStepStore.resumeStep queues a waiting step and records what resumed it', async () => {
 		const executionId = await createExecution();
-		const store = new TypeOrmStepStore(dataSource.getRepository(WorkflowStepExecution));
+		const store = createStores(dataSource).stepStore;
 		const wait: WaitDeclaration = { resumeBinding: 'execution' };
 		const { id } = await seedStep({
 			executionId,
@@ -553,7 +554,7 @@ describe('workflow_step_execution table (integration)', () => {
 
 	it('TypeOrmStepStore.resumeStep only resumes a waiting step', async () => {
 		const executionId = await createExecution();
-		const store = new TypeOrmStepStore(dataSource.getRepository(WorkflowStepExecution));
+		const store = createStores(dataSource).stepStore;
 		const resume: ResumeCause = { kind: 'deadline' };
 
 		for (const status of ['queued', 'running', 'completed', 'cancelled'] as const) {
@@ -571,7 +572,7 @@ describe('workflow_step_execution table (integration)', () => {
 
 	it('TypeOrmStepStore.claimStep hands back the declaration and the resume of a resumed step', async () => {
 		const executionId = await createExecution();
-		const store = new TypeOrmStepStore(dataSource.getRepository(WorkflowStepExecution));
+		const store = createStores(dataSource).stepStore;
 		const wait: WaitDeclaration = {
 			resumeAt: '2099-01-01T00:00:00.000Z',
 			outputsAtDeadline: [[{ json: { passed: 'through' } }]],
@@ -616,7 +617,7 @@ describe('workflow_step_execution table (integration)', () => {
 
 	it('TypeOrmStepStore.resumeDueSteps queues the waits that are due and leaves the rest', async () => {
 		const executionId = await createExecution();
-		const store = new TypeOrmStepStore(dataSource.getRepository(WorkflowStepExecution));
+		const store = createStores(dataSource).stepStore;
 		const { id } = await seedWaitingStep(executionId, 'a', new Date('2020-01-01T00:00:00.000Z'));
 		// a second wait, still in the future at the instant the sweep asks about
 		const { id: laterId } = await seedWaitingStep(
@@ -643,7 +644,7 @@ describe('workflow_step_execution table (integration)', () => {
 
 	it('TypeOrmStepStore.resumeDueSteps ignores a wait that only a resume request ends', async () => {
 		const executionId = await createExecution();
-		const store = new TypeOrmStepStore(dataSource.getRepository(WorkflowStepExecution));
+		const store = createStores(dataSource).stepStore;
 		const { id } = await seedWaitingStep(executionId, 'a', null);
 
 		// no deadline, so no instant makes it due. The sweep is instance-wide and
@@ -660,7 +661,7 @@ describe('workflow_step_execution table (integration)', () => {
 
 	it('TypeOrmStepStore.resumeDueSteps ignores a step that is not waiting', async () => {
 		const executionId = await createExecution();
-		const store = new TypeOrmStepStore(dataSource.getRepository(WorkflowStepExecution));
+		const store = createStores(dataSource).stepStore;
 		// a resumed step keeps its declaration and its past deadline, so only the
 		// status keeps the sweep from resuming it twice
 		const { id } = await seedWaitingStep(executionId, 'a', new Date('2020-01-01T00:00:00.000Z'));
@@ -671,7 +672,7 @@ describe('workflow_step_execution table (integration)', () => {
 
 	it('TypeOrmStepStore.resumeDueSteps caps the batch at the limit, oldest deadline first', async () => {
 		const executionId = await createExecution();
-		const store = new TypeOrmStepStore(dataSource.getRepository(WorkflowStepExecution));
+		const store = createStores(dataSource).stepStore;
 		const { id: oldest } = await seedWaitingStep(
 			executionId,
 			'oldest',
@@ -710,38 +711,41 @@ describe('workflow_step_execution table (integration)', () => {
 
 	// These two pin the concurrency contract that makes `resumeDueSteps` one
 	// statement rather than a scan and a transition per row.
-	it('TypeOrmStepStore.resumeDueSteps skips the rows another sweeper holds, taking the rest of the backlog', async () => {
-		const executionId = await createExecution();
-		const store = new TypeOrmStepStore(dataSource.getRepository(WorkflowStepExecution));
-		const [first, second, third, fourth] = await seedBacklog(executionId, 4);
+	it.skipIf(testDialect === 'sqlite')(
+		'TypeOrmStepStore.resumeDueSteps skips the rows another sweeper holds, taking the rest of the backlog',
+		async () => {
+			const executionId = await createExecution();
+			const store = createStores(dataSource).stepStore;
+			const [first, second, third, fourth] = await seedBacklog(executionId, 4);
 
-		// stand in for a concurrent sweeper mid-claim: hold the two oldest locked
-		const other = dataSource.createQueryRunner();
-		await other.connect();
-		await other.startTransaction();
-		const held = (await other.query(
-			`SELECT id FROM workflow_step_execution
+			// stand in for a concurrent sweeper mid-claim: hold the two oldest locked
+			const other = dataSource.createQueryRunner();
+			await other.connect();
+			await other.startTransaction();
+			const held = (await other.query(
+				`SELECT id FROM workflow_step_execution
 			 WHERE status = 'waiting' AND wait_till <= $1
 			 ORDER BY wait_till
 			 LIMIT 2
 			 FOR UPDATE SKIP LOCKED`,
-			[SWEEP_DUE],
-		)) as Array<{ id: string }>;
-		expect(held.map(({ id }) => id)).toEqual([first, second]);
+				[SWEEP_DUE],
+			)) as Array<{ id: string }>;
+			expect(held.map(({ id }) => id)).toEqual([first, second]);
 
-		// SKIP LOCKED, so this sweep neither blocks on them nor takes them again:
-		// it moves past the held head and drains the next two
-		const resumed = await store.resumeDueSteps(SWEEP_DUE, 2);
+			// SKIP LOCKED, so this sweep neither blocks on them nor takes them again:
+			// it moves past the held head and drains the next two
+			const resumed = await store.resumeDueSteps(SWEEP_DUE, 2);
 
-		await other.commitTransaction();
-		await other.release();
+			await other.commitTransaction();
+			await other.release();
 
-		expect(resumed.map(({ id }) => id).sort()).toEqual([third, fourth].sort());
-	});
+			expect(resumed.map(({ id }) => id).sort()).toEqual([third, fourth].sort());
+		},
+	);
 
 	it('TypeOrmStepStore.resumeDueSteps hands no step to two concurrent sweeps', async () => {
 		const executionId = await createExecution();
-		const store = new TypeOrmStepStore(dataSource.getRepository(WorkflowStepExecution));
+		const store = createStores(dataSource).stepStore;
 		const backlog = await seedBacklog(executionId, 4);
 
 		// both ask for more than the whole backlog at once
@@ -767,7 +771,7 @@ describe('workflow_step_execution table (integration)', () => {
 	 */
 	it('TypeOrmStepStore.nextWaitDeadline returns the earliest waiting deadline', async () => {
 		const executionId = await createExecution();
-		const store = new TypeOrmStepStore(dataSource.getRepository(WorkflowStepExecution));
+		const store = createStores(dataSource).stepStore;
 		const earliest = new Date('2018-01-01T00:00:00.000Z');
 		await seedWaitingStep(executionId, 'later', new Date('2018-06-01T00:00:00.000Z'));
 		await seedWaitingStep(executionId, 'earliest', earliest);
@@ -777,7 +781,7 @@ describe('workflow_step_execution table (integration)', () => {
 
 	it('TypeOrmStepStore.nextWaitDeadline ignores rows the sweep cannot fire', async () => {
 		const executionId = await createExecution();
-		const store = new TypeOrmStepStore(dataSource.getRepository(WorkflowStepExecution));
+		const store = createStores(dataSource).stepStore;
 		const waiting = new Date('2018-01-01T00:00:00.000Z');
 		await seedWaitingStep(executionId, 'waiting', waiting);
 		// a wait that only a request ends carries no deadline at all
@@ -796,7 +800,7 @@ describe('workflow_step_execution table (integration)', () => {
 	it('TypeOrmStepStore.cancelPendingSteps cancels queued and waiting steps and nothing else', async () => {
 		const executionId = await createExecution();
 		const otherExecutionId = await createExecution();
-		const store = new TypeOrmStepStore(dataSource.getRepository(WorkflowStepExecution));
+		const store = createStores(dataSource).stepStore;
 		const { id: queuedId } = await createStep(store, executionId, {
 			nodeId: 'a',
 			iteration: 0,
@@ -840,7 +844,7 @@ describe('workflow_step_execution table (integration)', () => {
 
 	it('TypeOrmStepStore.resumeDueSteps ignores a wait that cancelPendingSteps cancelled', async () => {
 		const executionId = await createExecution();
-		const store = new TypeOrmStepStore(dataSource.getRepository(WorkflowStepExecution));
+		const store = createStores(dataSource).stepStore;
 		// due long ago, so only the status can keep the sweep away from it
 		const { id } = await seedWaitingStep(executionId, 'a', new Date('2019-02-01T00:00:00.000Z'));
 
@@ -853,7 +857,7 @@ describe('workflow_step_execution table (integration)', () => {
 
 	it('TypeOrmStepStore.cancelStep settles a running step and nothing else', async () => {
 		const executionId = await createExecution();
-		const store = new TypeOrmStepStore(dataSource.getRepository(WorkflowStepExecution));
+		const store = createStores(dataSource).stepStore;
 		const running = await seedStep({ executionId, nodeId: 'a', iteration: 0, status: 'running' });
 		const queued = await createStep(store, executionId, {
 			nodeId: 'b',
@@ -870,7 +874,7 @@ describe('workflow_step_execution table (integration)', () => {
 
 	it('TypeOrmStepStore.failStep persists the error and marks the step failed', async () => {
 		const executionId = await createExecution();
-		const store = new TypeOrmStepStore(dataSource.getRepository(WorkflowStepExecution));
+		const store = createStores(dataSource).stepStore;
 		const { id } = await seedStep({ executionId, nodeId: 'a', iteration: 0, status: 'running' });
 
 		const error = {
@@ -890,7 +894,7 @@ describe('workflow_step_execution table (integration)', () => {
 
 	it('TypeOrmStepStore.failWaitingStep fails a waiting step and persists the error', async () => {
 		const executionId = await createExecution();
-		const store = new TypeOrmStepStore(dataSource.getRepository(WorkflowStepExecution));
+		const store = createStores(dataSource).stepStore;
 		const { id } = await seedStep({
 			executionId,
 			nodeId: 'a',
@@ -912,7 +916,7 @@ describe('workflow_step_execution table (integration)', () => {
 		'TypeOrmStepStore.failWaitingStep leaves a %s step alone',
 		async (status) => {
 			const executionId = await createExecution();
-			const store = new TypeOrmStepStore(dataSource.getRepository(WorkflowStepExecution));
+			const store = createStores(dataSource).stepStore;
 			const { id } = await seedStep({ executionId, nodeId: 'a', iteration: 0, status });
 
 			expect(await store.failWaitingStep(id, { name: 'Error', message: 'x' })).toBe(false);
@@ -927,7 +931,7 @@ describe('workflow_step_execution table (integration)', () => {
 
 	it('TypeOrmStepStore.loadStepsByNodeIds returns every pass of the named nodes, with outputs', async () => {
 		const executionId = await createExecution();
-		const store = new TypeOrmStepStore(dataSource.getRepository(WorkflowStepExecution));
+		const store = createStores(dataSource).stepStore;
 		await seedStep({
 			executionId,
 			nodeId: 'a',
@@ -968,7 +972,7 @@ describe('workflow_step_execution table (integration)', () => {
 
 	it('TypeOrmStepStore.createSteps persists a skipped step (settled at birth)', async () => {
 		const executionId = await createExecution();
-		const store = new TypeOrmStepStore(dataSource.getRepository(WorkflowStepExecution));
+		const store = createStores(dataSource).stepStore;
 
 		const { id } = await createStep(store, executionId, {
 			nodeId: 'x',
@@ -983,7 +987,7 @@ describe('workflow_step_execution table (integration)', () => {
 
 	it('TypeOrmStepStore.loadStepsByKeys returns rows keyed by step key, omitting absent keys', async () => {
 		const executionId = await createExecution();
-		const store = new TypeOrmStepStore(dataSource.getRepository(WorkflowStepExecution));
+		const store = createStores(dataSource).stepStore;
 		const { id: aId } = await seedStep({
 			executionId,
 			nodeId: 'a',
@@ -1021,7 +1025,7 @@ describe('workflow_step_execution table (integration)', () => {
 
 	it('TypeOrmStepStore.loadStepSummariesByKeys reports per-slot liveness without payloads', async () => {
 		const executionId = await createExecution();
-		const store = new TypeOrmStepStore(dataSource.getRepository(WorkflowStepExecution));
+		const store = createStores(dataSource).stepStore;
 		const { id: aId } = await seedStep({
 			executionId,
 			nodeId: 'a',
@@ -1065,20 +1069,20 @@ describe('workflow_step_execution table (integration)', () => {
 	});
 
 	it('TypeOrmStepStore.loadStepSummariesByKeys is a no-op for no keys', async () => {
-		const store = new TypeOrmStepStore(dataSource.getRepository(WorkflowStepExecution));
+		const store = createStores(dataSource).stepStore;
 		expect(await store.loadStepSummariesByKeys('00000000-0000-7000-8000-000000000000', [])).toEqual(
 			{},
 		);
 	});
 
 	it('TypeOrmStepStore.loadStepsByKeys is a no-op for no keys', async () => {
-		const store = new TypeOrmStepStore(dataSource.getRepository(WorkflowStepExecution));
+		const store = createStores(dataSource).stepStore;
 		expect(await store.loadStepsByKeys('00000000-0000-7000-8000-000000000000', [])).toEqual({});
 	});
 
 	it('TypeOrmStepStore.countSettledSteps counts terminal rows only, per execution', async () => {
 		const executionId = await createExecution();
-		const store = new TypeOrmStepStore(dataSource.getRepository(WorkflowStepExecution));
+		const store = createStores(dataSource).stepStore;
 		await store.createSteps(executionId, [
 			{ nodeId: 'trigger', iteration: 0, status: 'completed', outputs: [{}] },
 			{ nodeId: 'a', iteration: 0, status: 'skipped' },
@@ -1121,7 +1125,7 @@ describe('workflow_step_execution table (integration)', () => {
 	it('TypeOrmStepStore.createSteps skips a node already planned, keeping the rest', async () => {
 		const executionId = await createExecution();
 		const repo = dataSource.getRepository(WorkflowStepExecution);
-		const store = new TypeOrmStepStore(repo);
+		const store = createStores(dataSource).stepStore;
 		await createStep(store, executionId, { nodeId: 'a', iteration: 0, status: 'queued' });
 
 		// 'a' is taken; 'b' is not, and must still land — the whole point of skipping
@@ -1138,7 +1142,7 @@ describe('workflow_step_execution table (integration)', () => {
 	});
 
 	it('scopes the one-step-per-node key to a single execution', async () => {
-		const store = new TypeOrmStepStore(dataSource.getRepository(WorkflowStepExecution));
+		const store = createStores(dataSource).stepStore;
 		const executionId = await createExecution();
 		const otherExecutionId = await createExecution();
 		await createStep(store, executionId, { nodeId: 'a', iteration: 0, status: 'queued' });
@@ -1154,7 +1158,7 @@ describe('workflow_step_execution table (integration)', () => {
 	// per run, so uniqueness holds per (execution, node, iteration).
 	it('TypeOrmStepStore.createSteps accepts the same node at a new iteration and dedups within one', async () => {
 		const executionId = await createExecution();
-		const store = new TypeOrmStepStore(dataSource.getRepository(WorkflowStepExecution));
+		const store = createStores(dataSource).stepStore;
 		await createStep(store, executionId, { nodeId: 'b', iteration: 0, status: 'queued' });
 
 		const created = await store.createSteps(executionId, [
@@ -1168,7 +1172,7 @@ describe('workflow_step_execution table (integration)', () => {
 
 	it('TypeOrmStepStore.createSteps rejects a negative or fractional iteration at runtime', async () => {
 		const executionId = await createExecution();
-		const store = new TypeOrmStepStore(dataSource.getRepository(WorkflowStepExecution));
+		const store = createStores(dataSource).stepStore;
 
 		for (const iteration of [-1, 0.5]) {
 			await expect(
@@ -1182,7 +1186,7 @@ describe('workflow_step_execution table (integration)', () => {
 
 	it('TypeOrmStepStore.loadStepsByKeys and loadStepSummariesByKeys distinguish iterations of one node', async () => {
 		const executionId = await createExecution();
-		const store = new TypeOrmStepStore(dataSource.getRepository(WorkflowStepExecution));
+		const store = createStores(dataSource).stepStore;
 		await store.createSteps(executionId, [
 			{ nodeId: 'b', iteration: 0, status: 'completed', outputs: [null, [{ json: { n: 0 } }]] },
 			{ nodeId: 'b', iteration: 1, status: 'queued' },
@@ -1208,7 +1212,7 @@ describe('workflow_step_execution table (integration)', () => {
 
 	it('TypeOrmStepStore.claimStep hands back the claimed iteration', async () => {
 		const executionId = await createExecution();
-		const store = new TypeOrmStepStore(dataSource.getRepository(WorkflowStepExecution));
+		const store = createStores(dataSource).stepStore;
 		const [step] = await store.createSteps(executionId, [
 			{ nodeId: 'b', iteration: 3, status: 'queued' },
 		]);
@@ -1223,7 +1227,7 @@ describe('workflow_step_execution table (integration)', () => {
 
 	it("TypeOrmStepStore.loadLatestStepSummaries returns each node's highest-iteration row", async () => {
 		const executionId = await createExecution();
-		const store = new TypeOrmStepStore(dataSource.getRepository(WorkflowStepExecution));
+		const store = createStores(dataSource).stepStore;
 		await store.createSteps(executionId, [
 			{ nodeId: 'b', iteration: 0, status: 'completed', outputs: [null, [{ json: {} }]] },
 			{ nodeId: 'b', iteration: 1, status: 'completed', outputs: [[{ json: {} }], null] },
@@ -1253,8 +1257,8 @@ describe('workflow_step_execution table (integration)', () => {
 	describe('stale_after', () => {
 		const staleness = { queuedMs: 10_000, runningStepMs: 50_000 };
 
-		function stalenessStore(): TypeOrmStepStore {
-			return new TypeOrmStepStore(dataSource.getRepository(WorkflowStepExecution), staleness);
+		function stalenessStore(): StepStore {
+			return createStores(dataSource, staleness).stepStore;
 		}
 
 		async function loadStaleAfter(id: string): Promise<Date | null> {
@@ -1345,7 +1349,7 @@ describe('workflow_step_execution table (integration)', () => {
 			);
 		});
 
-		it.each<[string, (store: TypeOrmStepStore, id: string) => Promise<boolean>]>([
+		it.each<[string, (store: StepStore, id: string) => Promise<boolean>]>([
 			['completeStep', async (store, id) => await store.completeStep(id, [])],
 			[
 				'suspendStep',
@@ -1430,6 +1434,8 @@ describe('workflow_step_execution table (integration)', () => {
 				status: 'queued',
 			});
 			const observed = await loadStaleAfter(id);
+			// A renewal in the millisecond of the creation would write the same value.
+			await new Promise((resolve) => setTimeout(resolve, 2));
 			if (!observed) throw new Error('expected a stale_after value');
 
 			const before = Date.now();
@@ -1462,40 +1468,48 @@ describe('workflow_step_execution table (integration)', () => {
 		});
 	});
 
-	it('carries the unique key and the partial indexes in the schema', async () => {
-		const indexes: Array<{ indexname: string; indexdef: string }> = await dataSource.query(
-			"SELECT indexname, indexdef FROM pg_indexes WHERE tablename = 'workflow_step_execution'",
-		);
-		const byName = Object.fromEntries(indexes.map((row) => [row.indexname, row.indexdef]));
+	it.skipIf(testDialect === 'sqlite')(
+		'carries the unique key and the partial indexes in the schema',
+		async () => {
+			const indexes: Array<{ indexname: string; indexdef: string }> = await dataSource.query(
+				"SELECT indexname, indexdef FROM pg_indexes WHERE tablename = 'workflow_step_execution'",
+			);
+			const byName = Object.fromEntries(indexes.map((row) => [row.indexname, row.indexdef]));
 
-		expect(byName.uniq_workflow_step_execution_execution_id_node_id_iteration).toContain(
-			'UNIQUE INDEX',
-		);
-		expect(byName.uniq_workflow_step_execution_execution_id_node_id_iteration).toContain(
-			'(execution_id, node_id, iteration)',
-		);
-		expect(byName.idx_workflow_step_execution_failed).toContain("WHERE ((status)::text = 'failed'");
-		// the sweep's index: due waits only, so it must not cover settled rows
-		expect(byName.idx_workflow_step_execution_wait_till).toContain('(wait_till)');
-		expect(byName.idx_workflow_step_execution_wait_till).toContain(
-			"WHERE ((status)::text = 'waiting'",
-		);
-		expect(byName.idx_workflow_step_execution_unsettled).toContain('(execution_id, status)');
-		expect(byName.idx_workflow_step_execution_unsettled).toContain('WHERE ((status)::text = ANY');
-		expect(byName.idx_workflow_step_execution_stale_after).toContain('(status, stale_after)');
-		expect(byName.idx_workflow_step_execution_stale_after).toContain('WHERE ((status)::text = ANY');
+			expect(byName.uniq_workflow_step_execution_execution_id_node_id_iteration).toContain(
+				'UNIQUE INDEX',
+			);
+			expect(byName.uniq_workflow_step_execution_execution_id_node_id_iteration).toContain(
+				'(execution_id, node_id, iteration)',
+			);
+			expect(byName.idx_workflow_step_execution_failed).toContain(
+				"WHERE ((status)::text = 'failed'",
+			);
+			// the sweep's index: due waits only, so it must not cover settled rows
+			expect(byName.idx_workflow_step_execution_wait_till).toContain('(wait_till)');
+			expect(byName.idx_workflow_step_execution_wait_till).toContain(
+				"WHERE ((status)::text = 'waiting'",
+			);
+			expect(byName.idx_workflow_step_execution_unsettled).toContain('(execution_id, status)');
+			expect(byName.idx_workflow_step_execution_unsettled).toContain('WHERE ((status)::text = ANY');
+			expect(byName.idx_workflow_step_execution_stale_after).toContain('(status, stale_after)');
+			expect(byName.idx_workflow_step_execution_stale_after).toContain(
+				'WHERE ((status)::text = ANY',
+			);
 
-		const [column]: Array<{ is_nullable: string; column_default: string }> = await dataSource.query(
-			`SELECT is_nullable, column_default FROM information_schema.columns
+			const [column]: Array<{ is_nullable: string; column_default: string }> =
+				await dataSource.query(
+					`SELECT is_nullable, column_default FROM information_schema.columns
 				 WHERE table_name = 'workflow_step_execution' AND column_name = 'iteration'`,
-		);
-		expect(column).toEqual({ is_nullable: 'NO', column_default: '0' });
-	});
+				);
+			expect(column).toEqual({ is_nullable: 'NO', column_default: '0' });
+		},
+	);
 
 	it('TypeOrmExecutionViewStore.loadExecutionWithStepsView returns every row of the execution, none of another', async () => {
 		const executionId = await createExecution();
 		const otherExecutionId = await createExecution();
-		const store = new TypeOrmStepStore(dataSource.getRepository(WorkflowStepExecution));
+		const store = createStores(dataSource).stepStore;
 		await store.createSteps(executionId, [
 			{ nodeId: 'a', iteration: 0, status: 'completed', outputs: [[{ json: { ok: true } }]] },
 			{ nodeId: 'b', iteration: 0, status: 'queued' },
@@ -1520,7 +1534,7 @@ describe('workflow_step_execution table (integration)', () => {
 
 	it('TypeOrmExecutionViewStore.loadExecutionWithStepsView reports the steps oldest first', async () => {
 		const executionId = await createExecution();
-		const store = new TypeOrmStepStore(dataSource.getRepository(WorkflowStepExecution));
+		const store = createStores(dataSource).stepStore;
 		// Separate calls, so the rows do not share a created_at and the order is
 		// decided by time rather than by the tie-breakers.
 		await store.createSteps(executionId, [{ nodeId: 'a', iteration: 0, status: 'queued' }]);
@@ -1534,7 +1548,7 @@ describe('workflow_step_execution table (integration)', () => {
 
 	it('TypeOrmExecutionViewStore.loadExecutionWithStepsView carries outputs, error and timestamps', async () => {
 		const executionId = await createExecution();
-		const store = new TypeOrmStepStore(dataSource.getRepository(WorkflowStepExecution));
+		const store = createStores(dataSource).stepStore;
 		await store.createSteps(executionId, [
 			{ nodeId: 'a', iteration: 0, status: 'completed', outputs: [[{ json: { ok: true } }]] },
 		]);
@@ -1567,13 +1581,16 @@ describe('workflow_step_execution table (integration)', () => {
 		const older = await createExecution({ workflowId, status: 'completed' });
 		const newest = await createExecution({ workflowId, status: 'completed' });
 		// Two inserts can share a millisecond, so make created_at decide explicitly.
-		await dataSource.query(
-			"UPDATE workflow_execution SET created_at = created_at - interval '1 minute' WHERE id = $1",
+		await rawQuery(
+			dataSource,
+			testDialect === 'sqlite'
+				? "UPDATE workflow_execution SET created_at = strftime('%Y-%m-%d %H:%M:%f', created_at, '-1 minute') WHERE id = $1"
+				: "UPDATE workflow_execution SET created_at = created_at - interval '1 minute' WHERE id = $1",
 			[older],
 		);
 		await createExecution({ workflowId, status: 'failed' });
 		await createExecution({ workflowId: generateId(), status: 'completed' });
-		const store = new TypeOrmStepStore(dataSource.getRepository(WorkflowStepExecution));
+		const store = createStores(dataSource).stepStore;
 		await store.createSteps(older, [{ nodeId: 'old', iteration: 0, status: 'queued' }]);
 		await store.createSteps(newest, [
 			{ nodeId: 'a', iteration: 0, status: 'completed', outputs: [[{ json: { ok: true } }]] },

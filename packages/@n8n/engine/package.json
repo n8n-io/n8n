@@ -35,6 +35,7 @@
     "jsonwebtoken": "catalog:",
     "pg": "catalog:",
     "reflect-metadata": "catalog:",
+    "sqlite3": "5.1.7",
     "uuid": "catalog:",
     "zod": "catalog:"
   },

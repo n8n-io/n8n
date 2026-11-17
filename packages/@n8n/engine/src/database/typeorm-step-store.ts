@@ -77,12 +77,12 @@ function stepKeyFilter(keys: StepKey[]): {
 /** TypeORM-backed `StepStore` adapter. */
 export class TypeOrmStepStore implements StepStore {
 	constructor(
-		private readonly repo: Repository<WorkflowStepExecution>,
-		private readonly staleness: StalenessThresholds = DEFAULT_STALENESS_THRESHOLDS,
+		protected readonly repo: Repository<WorkflowStepExecution>,
+		protected readonly staleness: StalenessThresholds = DEFAULT_STALENESS_THRESHOLDS,
 	) {}
 
 	/** The `stale_after` value of a step that enters `status` now. */
-	private staleAfterFor(status: StepStatus): Date | null {
+	protected staleAfterFor(status: StepStatus): Date | null {
 		if (status === 'queued') return new Date(Date.now() + this.staleness.queuedMs);
 		if (status === 'running') return new Date(Date.now() + this.staleness.runningStepMs);
 		return null;
@@ -341,7 +341,7 @@ export class TypeOrmStepStore implements StepStore {
 		return await this.failStepFrom('waiting', id, error);
 	}
 
-	private async failStepFrom(from: StepStatus, id: string, error: StepError): Promise<boolean> {
+	protected async failStepFrom(from: StepStatus, id: string, error: StepError): Promise<boolean> {
 		// Locking the execution row makes concurrent claims and planning inserts
 		// wait for this failure to commit (see `claimStep` and `createSteps`).
 		// NO KEY UPDATE, not UPDATE, so plain FK checks don't queue behind it.
@@ -366,7 +366,7 @@ export class TypeOrmStepStore implements StepStore {
 	 * statement so a step's status and its outcome can't be observed apart.
 	 * The same statement writes `stale_after` for the new status.
 	 */
-	private async transition(
+	protected async transition(
 		id: string,
 		from: StepStatus,
 		to: StepStatus,
@@ -489,7 +489,7 @@ const CREATION_STATUSES: readonly StepStatus[] = ['queued', 'completed', 'skippe
  * Re-checks `NewStepRecord`'s union at runtime for callers outside the type
  * system. The widened parameter keeps the checks from narrowing to `never`.
  */
-function assertCreatableRecord(record: {
+export function assertCreatableRecord(record: {
 	nodeId: string;
 	iteration: number;
 	status: StepStatus;

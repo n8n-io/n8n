@@ -1,6 +1,4 @@
 import type { DataSource } from '@n8n/typeorm';
-import { PostgreSqlContainer, type StartedPostgreSqlContainer } from '@testcontainers/postgresql';
-import postgresVersions from 'n8n-containers/postgres-versions.json';
 import request from 'supertest';
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 
@@ -8,7 +6,6 @@ import { AllowAllAdmittance } from '../../admittance';
 import { mintIdentityToken, SharedSecretIdentityVerifier } from '../../auth';
 import { UnexpectedError } from '../../common';
 import {
-	createDataSource,
 	createStores,
 	WorkflowExecution,
 	WorkflowSeededStep,
@@ -31,6 +28,7 @@ import {
 import { noopExecutionResponseSender, type ExecutionResponseSender } from '../../response-channel';
 import { createEngineRuntime } from '../../runtime';
 import { startEngineServer } from '../../testing/start-engine-server';
+import { dbTimestamp, rawQuery, startTestDatabase } from '../../database/__tests__/test-database';
 import type { SearchExecutionsResponse } from '../api.types';
 
 const sampleGraph: WorkflowGraph = {
@@ -221,10 +219,11 @@ describe('POST /api/workflow-executions/search (integration)', () => {
 		const ids: string[] = [];
 		for (let i = 0; i < 5; i++) ids.push(await start(workflowId));
 		const timestamp = '2026-09-07T12:00:00.000Z';
-		await dataSource.query('UPDATE workflow_execution SET created_at = $1 WHERE workflow_id = $2', [
-			timestamp,
-			workflowId,
-		]);
+		await rawQuery(
+			dataSource,
+			'UPDATE workflow_execution SET created_at = $1 WHERE workflow_id = $2',
+			[dbTimestamp(timestamp), workflowId],
+		);
 		const seen: string[] = [];
 		let before: { id: string; createdAt: string } | undefined;
 		for (let i = 0; i < 3; i++) {
@@ -285,7 +284,7 @@ const startBody = (overrides: Record<string, unknown> = {}) => ({
 	...overrides,
 });
 
-let container: StartedPostgreSqlContainer;
+let database: Awaited<ReturnType<typeof startTestDatabase>>;
 let dataSource: DataSource;
 let workQueue: WorkQueue<OrchestrationMessage>;
 let stepQueue: WorkQueue<StepMessage>;
@@ -297,10 +296,8 @@ let stop: () => Promise<void>;
 // One container for the file: both suites talk to the same schema, and each
 // test gets a fresh server over it.
 beforeAll(async () => {
-	container = await new PostgreSqlContainer(postgresVersions.primary).start();
-	dataSource = createDataSource(container.getConnectionUri());
-	await dataSource.initialize();
-	await dataSource.runMigrations();
+	database = await startTestDatabase();
+	dataSource = database.dataSource;
 }, 120_000);
 
 beforeEach(async () => {
@@ -333,8 +330,7 @@ afterEach(async () => {
 });
 
 afterAll(async () => {
-	if (dataSource?.isInitialized) await dataSource.destroy();
-	if (container) await container.stop();
+	if (database) await database.stop();
 });
 
 describe('POST /api/workflow-executions (integration)', () => {

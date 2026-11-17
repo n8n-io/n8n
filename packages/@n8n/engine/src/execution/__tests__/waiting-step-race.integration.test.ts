@@ -1,12 +1,10 @@
 import type { DataSource } from '@n8n/typeorm';
-import { PostgreSqlContainer, type StartedPostgreSqlContainer } from '@testcontainers/postgresql';
-import postgresVersions from 'n8n-containers/postgres-versions.json';
 import request from 'supertest';
 import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
 
 import { AllowAllAdmittance } from '../../admittance';
 import { mintIdentityToken, SharedSecretIdentityVerifier } from '../../auth';
-import { createDataSource, WorkflowExecution, WorkflowStepExecution } from '../../database';
+import { WorkflowExecution, WorkflowStepExecution } from '../../database';
 import { generateId } from '../../database/generate-id';
 import type { IStepExecutor } from '../../dependencies';
 import type { WorkflowGraph } from '../../graph';
@@ -15,6 +13,7 @@ import { noopExecutionResponseSender } from '../../response-channel';
 import { createEngineRuntime, type EngineRuntime } from '../../runtime';
 import type { StartExecutionResult } from '../start-execution.service';
 import type { StepStore } from '../step-store';
+import { startTestDatabase, type TestDatabase } from '../../database/__tests__/test-database';
 
 const secret = 'a'.repeat(32);
 
@@ -48,19 +47,16 @@ function resolveAfterSuspend(stepStore: StepStore, suspended: { resolve: () => v
 }
 
 describe('a step that starts to wait after its execution ended (integration)', () => {
-	let container: StartedPostgreSqlContainer;
+	let database: TestDatabase;
 	let dataSource: DataSource;
 
 	beforeAll(async () => {
-		container = await new PostgreSqlContainer(postgresVersions.primary).start();
-		dataSource = createDataSource(container.getConnectionUri());
-		await dataSource.initialize();
-		await dataSource.runMigrations();
+		database = await startTestDatabase();
+		dataSource = database.dataSource;
 	}, 120_000);
 
 	afterAll(async () => {
-		if (dataSource?.isInitialized) await dataSource.destroy();
-		if (container) await container.stop();
+		if (database) await database.stop();
 	});
 
 	function createRuntime({

@@ -1,36 +1,33 @@
 import type { DataSource, Repository } from '@n8n/typeorm';
-import { PostgreSqlContainer, type StartedPostgreSqlContainer } from '@testcontainers/postgresql';
-import postgresVersions from 'n8n-containers/postgres-versions.json';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
-import { ExecutionNotFoundError } from '../../execution/execution-store';
-import type { NewExecutionRecord } from '../../execution/execution-store';
+import {
+	ExecutionNotFoundError,
+	type ExecutionStore,
+	type NewExecutionRecord,
+} from '../../execution/execution-store';
 import type { ExecutionStatus, StepStatus } from '../../execution/execution.types';
-import { createDataSource } from '../data-source';
 import { WorkflowExecution } from '../entities/workflow-execution.entity';
 import { WorkflowSeededStep } from '../entities/workflow-seeded-step.entity';
 import { WorkflowStepExecution } from '../entities/workflow-step-execution.entity';
 import { generateId } from '../generate-id';
-import { TypeOrmExecutionStore } from '../typeorm-execution-store';
-import { TypeOrmExecutionViewStore } from '../typeorm-execution-view-store';
+import { createStores } from '../create-stores';
+import { startTestDatabase, testDialect, type TestDatabase } from './test-database';
 
 /** Opaque to the engine: stored and reported, never read into. */
 const sampleWorkflow = { id: 'wf-3', name: 'Sample', nodes: [{ name: 'A' }], connections: {} };
 
 describe('workflow_execution table (integration)', () => {
-	let container: StartedPostgreSqlContainer;
+	let database: TestDatabase;
 	let dataSource: DataSource;
 
 	beforeAll(async () => {
-		container = await new PostgreSqlContainer(postgresVersions.primary).start();
-		dataSource = createDataSource(container.getConnectionUri());
-		await dataSource.initialize();
-		await dataSource.runMigrations();
+		database = await startTestDatabase();
+		dataSource = database.dataSource;
 	}, 120_000);
 
 	afterAll(async () => {
-		if (dataSource?.isInitialized) await dataSource.destroy();
-		if (container) await container.stop();
+		if (database) await database.stop();
 	});
 
 	it('persists and retrieves a workflow_execution row', async () => {
@@ -83,10 +80,7 @@ describe('workflow_execution table (integration)', () => {
 			finishedAt,
 		});
 		await repo.save(created);
-		const viewStore = new TypeOrmExecutionViewStore(
-			repo,
-			dataSource.getRepository(WorkflowStepExecution),
-		);
+		const viewStore = createStores(dataSource).executionViewStore;
 
 		const view = await viewStore.loadExecutionView(created.id);
 
@@ -122,7 +116,7 @@ describe('workflow_execution table (integration)', () => {
 		});
 		await repo.save(created);
 
-		const record = await new TypeOrmExecutionStore(repo).loadExecution(created.id);
+		const record = await createStores(dataSource).executionStore.loadExecution(created.id);
 
 		// The execution path never reads the document, so the query never ships it.
 		expect(record).toEqual({
@@ -146,7 +140,7 @@ describe('workflow_execution table (integration)', () => {
 	])(
 		'TypeOrmExecutionStore round-trips the lifecycle event subscription: %s',
 		async (_name, lifecycleEventSubscription, expected) => {
-			const store = new TypeOrmExecutionStore(dataSource.getRepository(WorkflowExecution));
+			const store = createStores(dataSource).executionStore;
 			const id = generateId();
 			await store.createExecution({
 				id,
@@ -171,10 +165,7 @@ describe('workflow_execution table (integration)', () => {
 	it.each(['loadExecutionView', 'loadExecutionWithStepsView'] as const)(
 		'TypeOrmExecutionViewStore.%s throws for an unknown id',
 		async (method) => {
-			const viewStore = new TypeOrmExecutionViewStore(
-				dataSource.getRepository(WorkflowExecution),
-				dataSource.getRepository(WorkflowStepExecution),
-			);
+			const viewStore = createStores(dataSource).executionViewStore;
 
 			await expect(
 				viewStore[method]('00000000-0000-0000-0000-000000000000'),
@@ -222,7 +213,7 @@ describe('workflow_execution table (integration)', () => {
 	});
 
 	it('TypeOrmExecutionStore.loadExecutionStatus reads the status, and throws for an unknown id', async () => {
-		const store = new TypeOrmExecutionStore(dataSource.getRepository(WorkflowExecution));
+		const store = createStores(dataSource).executionStore;
 		const id = generateId();
 		await store.createExecution(newRecord(id));
 
@@ -249,7 +240,10 @@ describe('workflow_execution table (integration)', () => {
 			}),
 		);
 
-		const finished = await new TypeOrmExecutionStore(repo).finishExecution(created.id, 'failed');
+		const finished = await createStores(dataSource).executionStore.finishExecution(
+			created.id,
+			'failed',
+		);
 
 		const row = await repo.findOneOrFail({ where: { id: created.id } });
 		expect(row.status).toBe('failed');
@@ -277,7 +271,10 @@ describe('workflow_execution table (integration)', () => {
 				}),
 			);
 
-			const finished = await new TypeOrmExecutionStore(repo).finishExecution(created.id, 'failed');
+			const finished = await createStores(dataSource).executionStore.finishExecution(
+				created.id,
+				'failed',
+			);
 
 			expect(finished).toBeNull();
 			const row = await repo.findOneOrFail({ where: { id: created.id } });
@@ -292,7 +289,7 @@ describe('workflow_execution table (integration)', () => {
 			const repo = dataSource.getRepository(WorkflowExecution);
 			const { id } = await saveExecution(repo, { status, finishedAt: null });
 
-			const cancelled = await new TypeOrmExecutionStore(repo).cancelExecution(id);
+			const cancelled = await createStores(dataSource).executionStore.cancelExecution(id);
 
 			const row = await repo.findOneOrFail({ where: { id } });
 			expect(row.status).toBe('cancelled');
@@ -309,7 +306,7 @@ describe('workflow_execution table (integration)', () => {
 			const finishedAt = new Date('2099-01-01T00:00:00.000Z');
 			const { id } = await saveExecution(repo, { status, finishedAt });
 
-			const cancelled = await new TypeOrmExecutionStore(repo).cancelExecution(id);
+			const cancelled = await createStores(dataSource).executionStore.cancelExecution(id);
 
 			expect(cancelled).toBeNull();
 			const row = await repo.findOneOrFail({ where: { id } });
@@ -378,7 +375,7 @@ describe('workflow_execution table (integration)', () => {
 			const repo = dataSource.getRepository(WorkflowExecution);
 			const id = await seed(from, stepStatuses);
 
-			await new TypeOrmExecutionStore(repo).refreshLiveStatus(id);
+			await createStores(dataSource).executionStore.refreshLiveStatus(id);
 
 			const row = await repo.findOneOrFail({ where: { id } });
 			expect(row.status).toBe(expected);
@@ -389,7 +386,7 @@ describe('workflow_execution table (integration)', () => {
 			const id = await seed('running', ['running']);
 			const before = await repo.findOneOrFail({ where: { id } });
 
-			await new TypeOrmExecutionStore(repo).refreshLiveStatus(id);
+			await createStores(dataSource).executionStore.refreshLiveStatus(id);
 
 			// The timestamp is the only trace of the write: the status is the same.
 			const after = await repo.findOneOrFail({ where: { id } });
@@ -398,7 +395,7 @@ describe('workflow_execution table (integration)', () => {
 	});
 
 	it('TypeOrmExecutionStore.createExecution stores seeded outputs by node and pass, read back by key', async () => {
-		const store = new TypeOrmExecutionStore(dataSource.getRepository(WorkflowExecution));
+		const store = createStores(dataSource).executionStore;
 		const id = generateId();
 		await store.createExecution({
 			id,
@@ -440,7 +437,7 @@ describe('workflow_execution table (integration)', () => {
 	});
 
 	it('TypeOrmExecutionStore.createExecution stores the parent link, and loadExecution reads it back', async () => {
-		const store = new TypeOrmExecutionStore(dataSource.getRepository(WorkflowExecution));
+		const store = createStores(dataSource).executionStore;
 		const parent = { executionId: generateId(), stepId: generateId(), awaited: true };
 		const id = generateId();
 
@@ -452,8 +449,8 @@ describe('workflow_execution table (integration)', () => {
 	describe('stale_after', () => {
 		const staleness = { queuedMs: 10_000, runningStepMs: 50_000 };
 
-		function stalenessStore(): TypeOrmExecutionStore {
-			return new TypeOrmExecutionStore(dataSource.getRepository(WorkflowExecution), staleness);
+		function stalenessStore(): ExecutionStore {
+			return createStores(dataSource, staleness).executionStore;
 		}
 
 		async function loadStaleAfter(id: string): Promise<Date | null> {
@@ -529,6 +526,8 @@ describe('workflow_execution table (integration)', () => {
 			const observed = await loadStaleAfter(id);
 			if (!observed) throw new Error('expected a stale_after value');
 
+			// A renewal in the millisecond of the creation would write the same value.
+			await new Promise((resolve) => setTimeout(resolve, 2));
 			const before = Date.now();
 			expect(await store.renewQueuedExecution(id, observed)).toBe(true);
 			const after = Date.now();
@@ -553,35 +552,41 @@ describe('workflow_execution table (integration)', () => {
 			expect(await loadStaleAfter(id)).toBeNull();
 		});
 
-		it('has a partial index on the value for queued executions', async () => {
-			const [index]: Array<{ indexdef: string }> = await dataSource.query(
-				`SELECT indexdef FROM pg_indexes
+		it.skipIf(testDialect === 'sqlite')(
+			'has a partial index on the value for queued executions',
+			async () => {
+				const [index]: Array<{ indexdef: string }> = await dataSource.query(
+					`SELECT indexdef FROM pg_indexes
 				 WHERE tablename = 'workflow_execution' AND indexname = 'idx_workflow_execution_stale_after'`,
+				);
+
+				expect(index.indexdef).toContain('(stale_after)');
+				expect(index.indexdef).toContain("WHERE ((status)::text = 'queued'");
+			},
+		);
+	});
+
+	it.skipIf(testDialect === 'sqlite')(
+		'carries the parent CHECK and the partial parent index in the schema',
+		async () => {
+			const indexes: Array<{ indexname: string; indexdef: string }> = await dataSource.query(
+				"SELECT indexname, indexdef FROM pg_indexes WHERE tablename = 'workflow_execution'",
+			);
+			const byName = Object.fromEntries(indexes.map((row) => [row.indexname, row.indexdef]));
+			expect(byName.idx_workflow_execution_parent_execution_id).toContain('(parent_execution_id)');
+			expect(byName.idx_workflow_execution_parent_execution_id).toContain(
+				'WHERE (parent_execution_id IS NOT NULL)',
 			);
 
-			expect(index.indexdef).toContain('(stale_after)');
-			expect(index.indexdef).toContain("WHERE ((status)::text = 'queued'");
-		});
-	});
-
-	it('carries the parent CHECK and the partial parent index in the schema', async () => {
-		const indexes: Array<{ indexname: string; indexdef: string }> = await dataSource.query(
-			"SELECT indexname, indexdef FROM pg_indexes WHERE tablename = 'workflow_execution'",
-		);
-		const byName = Object.fromEntries(indexes.map((row) => [row.indexname, row.indexdef]));
-		expect(byName.idx_workflow_execution_parent_execution_id).toContain('(parent_execution_id)');
-		expect(byName.idx_workflow_execution_parent_execution_id).toContain(
-			'WHERE (parent_execution_id IS NOT NULL)',
-		);
-
-		const [check]: Array<{ definition: string }> = await dataSource.query(
-			`SELECT pg_get_constraintdef(oid) AS definition FROM pg_constraint
+			const [check]: Array<{ definition: string }> = await dataSource.query(
+				`SELECT pg_get_constraintdef(oid) AS definition FROM pg_constraint
 				 WHERE conname = 'chk_workflow_execution_parent'`,
-		);
-		expect(check.definition).toBe(
-			'CHECK ((((parent_execution_id IS NULL) AND (parent_step_id IS NULL) AND (parent_awaited IS NULL)) OR ((parent_execution_id IS NOT NULL) AND (parent_step_id IS NOT NULL) AND (parent_awaited IS NOT NULL))))',
-		);
-	});
+			);
+			expect(check.definition).toBe(
+				'CHECK ((((parent_execution_id IS NULL) AND (parent_step_id IS NULL) AND (parent_awaited IS NULL)) OR ((parent_execution_id IS NOT NULL) AND (parent_step_id IS NOT NULL) AND (parent_awaited IS NOT NULL))))',
+			);
+		},
+	);
 });
 
 function newRecord(id: string): NewExecutionRecord {

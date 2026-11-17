@@ -2894,6 +2894,9 @@ importers:
       reflect-metadata:
         specifier: 'catalog:'
         version: 0.2.2
+      sqlite3:
+        specifier: 5.1.7
+        version: 5.1.7
       uuid:
         specifier: 'catalog:'
         version: 11.1.1

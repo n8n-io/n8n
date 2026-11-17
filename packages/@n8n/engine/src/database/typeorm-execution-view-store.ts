@@ -42,8 +42,8 @@ function assertPageableOrder(query: ExecutionListQuery): void {
  */
 export class TypeOrmExecutionViewStore implements ExecutionViewStore {
 	constructor(
-		private readonly executions: Repository<WorkflowExecution>,
-		private readonly steps: Repository<WorkflowStepExecution>,
+		protected readonly executions: Repository<WorkflowExecution>,
+		protected readonly steps: Repository<WorkflowStepExecution>,
 	) {}
 
 	async listExecutionViews(query: ExecutionListQuery): Promise<ExecutionListItemView[]> {
@@ -76,11 +76,11 @@ export class TypeOrmExecutionViewStore implements ExecutionViewStore {
 		return await this.buildListQuery(query).getCount();
 	}
 
-	private buildListQuery(query: ExecutionListFilter): SelectQueryBuilder<WorkflowExecution> {
+	protected buildListQuery(query: ExecutionListFilter): SelectQueryBuilder<WorkflowExecution> {
 		return this.applyFilter(this.executions.createQueryBuilder('execution'), 'execution', query);
 	}
 
-	private applyFilter<T extends SelectQueryBuilder<WorkflowExecution>>(
+	protected applyFilter<T extends SelectQueryBuilder<WorkflowExecution>>(
 		qb: T,
 		alias: string,
 		query: ExecutionListFilter,
@@ -151,14 +151,14 @@ export class TypeOrmExecutionViewStore implements ExecutionViewStore {
 		return row;
 	}
 
-	private selectExecution(id: string): SelectQueryBuilder<WorkflowExecution> {
+	protected selectExecution(id: string): SelectQueryBuilder<WorkflowExecution> {
 		return this.selectExecutionColumns(this.executions.createQueryBuilder('execution')).where(
 			'execution.id = :id',
 			{ id },
 		);
 	}
 
-	private selectExecutionColumns(
+	protected selectExecutionColumns(
 		qb: SelectQueryBuilder<WorkflowExecution>,
 	): SelectQueryBuilder<WorkflowExecution> {
 		return qb
@@ -183,7 +183,7 @@ export class TypeOrmExecutionViewStore implements ExecutionViewStore {
 	 * times. Grouping by the primary key is what lets the execution columns
 	 * survive the aggregate.
 	 */
-	private withSteps(
+	protected withSteps(
 		qb: SelectQueryBuilder<WorkflowExecution>,
 	): SelectQueryBuilder<WorkflowExecution> {
 		return qb

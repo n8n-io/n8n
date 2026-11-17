@@ -1,6 +1,9 @@
 import type { DataSource } from '@n8n/typeorm';
 
 import { WorkflowExecution, WorkflowStepExecution } from './entities';
+import { SqliteExecutionStore } from './sqlite/sqlite-execution-store';
+import { SqliteExecutionViewStore } from './sqlite/sqlite-execution-view-store';
+import { SqliteStepStore } from './sqlite/sqlite-step-store';
 import { TypeOrmExecutionStore } from './typeorm-execution-store';
 import { TypeOrmExecutionViewStore } from './typeorm-execution-view-store';
 import { TypeOrmStepStore } from './typeorm-step-store';
@@ -23,6 +26,13 @@ export function createStores(
 ): EngineStores {
 	const executions = dataSource.getRepository(WorkflowExecution);
 	const steps = dataSource.getRepository(WorkflowStepExecution);
+	if (dataSource.options.type === 'sqlite-pooled' || dataSource.options.type === 'sqlite') {
+		return {
+			executionStore: new SqliteExecutionStore(executions, staleness),
+			stepStore: new SqliteStepStore(steps, staleness),
+			executionViewStore: new SqliteExecutionViewStore(executions, steps),
+		};
+	}
 	return {
 		executionStore: new TypeOrmExecutionStore(executions, staleness),
 		stepStore: new TypeOrmStepStore(steps, staleness),

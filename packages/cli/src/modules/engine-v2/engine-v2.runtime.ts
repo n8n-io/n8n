@@ -1,6 +1,6 @@
 import type { HttpRequestClient } from '@n8n/backend-network';
 import { Logger } from '@n8n/backend-common';
-import { EngineConfig } from '@n8n/config';
+import { DatabaseConfig, EngineConfig, InstanceSettingsConfig } from '@n8n/config';
 import { Service } from '@n8n/di';
 import type { EngineRuntime, ExecutionResponseSender, LifecycleEventCallback } from '@n8n/engine';
 import {
@@ -19,6 +19,7 @@ import { BinaryDataService, FileLocation } from 'n8n-core';
 import type { IWorkflowExecuteAdditionalData } from 'n8n-workflow';
 import { UserError } from '@n8n/errors';
 import assert from 'node:assert';
+import path from 'node:path';
 import type { Server } from 'node:http';
 
 import { CredentialTypes } from '@/credential-types';
@@ -78,6 +79,8 @@ export class EngineV2Runtime {
 		private readonly credentialTypes: CredentialTypes,
 		private readonly additionalDataBuilder: EngineAdditionalDataBuilder,
 		private readonly binaryDataService: BinaryDataService,
+		private readonly databaseConfig: DatabaseConfig,
+		private readonly instanceSettingsConfig: InstanceSettingsConfig,
 	) {
 		this.logger = this.logger.scoped('engine-v2');
 		this.dataTablesHttp = transport.forScope('data-tables:use');
@@ -105,7 +108,8 @@ export class EngineV2Runtime {
 	}
 
 	private async initDb(): Promise<void> {
-		const { databaseUrl, databasePoolSize, databaseConnectionTimeoutMs } = this.engineConfig;
+		const { databasePoolSize, databaseConnectionTimeoutMs } = this.engineConfig;
+		const databaseUrl = this.engineConfig.databaseUrl || this.defaultSqliteUrl();
 
 		if (!databaseUrl) {
 			throw new UserError(
@@ -119,6 +123,18 @@ export class EngineV2Runtime {
 		});
 		await this.dataSource.initialize();
 		await this.dataSource.runMigrations();
+	}
+
+	/**
+	 * A host on SQLite gets an engine database beside its own, in a file of its
+	 * own, so a single-instance setup runs engine v2 with no extra service. A
+	 * host on Postgres still names the engine's database itself.
+	 */
+	private defaultSqliteUrl(): string | undefined {
+		if (this.databaseConfig.type !== 'sqlite') return undefined;
+		const file = path.join(this.instanceSettingsConfig.n8nFolder, 'engine-v2.sqlite');
+		this.logger.info(`Engine v2 stores its data plane in ${file}`);
+		return `sqlite://${file}`;
 	}
 
 	private initEngine({ responseSender, lifecycleEventSender }: EngineV2ChannelSenders): void {
