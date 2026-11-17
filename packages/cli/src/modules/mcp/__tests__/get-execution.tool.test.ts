@@ -1,7 +1,15 @@
+import { Logger } from '@n8n/backend-common';
 import { mockInstance } from '@n8n/backend-test-utils';
 import { ExecutionRepository, User } from '@n8n/db';
-import { createEmptyRunExecutionData, type IRunExecutionData } from 'n8n-workflow';
+import {
+	createEmptyRunExecutionData,
+	jsonParse,
+	type ExecutionStatus,
+	type INode,
+	type IRunExecutionData,
+} from 'n8n-workflow';
 import type { Mock } from 'vitest';
+import { z } from 'zod';
 
 import { USER_CALLED_MCP_TOOL_EVENT } from '../mcp.constants';
 import { createGetExecutionTool } from '../tools/get-execution.tool';
@@ -889,6 +897,284 @@ describe('get-execution MCP tool', () => {
 						status: 'waiting',
 						waitTill: '2025-01-01T12:00:00.000Z',
 					},
+				});
+			});
+		});
+
+		describe('failure summary', () => {
+			const metadata = (status: ExecutionStatus) => ({
+				id: 'execution-1',
+				workflowId: 'workflow-1',
+				mode: 'manual',
+				status,
+				startedAt: new Date('2025-01-01T00:00:00.000Z'),
+				stoppedAt: new Date('2025-01-01T00:01:00.000Z'),
+				retryOf: null,
+				retrySuccessId: null,
+				waitTill: null,
+			});
+
+			const task = (executionStatus: ExecutionStatus) => [
+				{ startTime: 0, executionIndex: 0, executionTime: 0, source: [], executionStatus },
+			];
+
+			const failedExecution = (status: ExecutionStatus, error: Record<string, unknown>) => {
+				const data = createEmptyRunExecutionData();
+				data.resultData.runData = { Trigger: task('success'), 'HTTP Request': task(status) };
+				data.resultData.lastNodeExecuted = 'HTTP Request';
+				data.resultData.error = error as unknown as IRunExecutionData['resultData']['error'];
+				return { ...metadata(status), data, workflowData: { nodes: [] as INode[] } };
+			};
+
+			const callTool = async (includeData?: boolean) => {
+				const tool = createGetExecutionTool(
+					user,
+					executionRepository,
+					workflowFinderService,
+					telemetry,
+					executionRedactionServiceProxy,
+				);
+				const result = await tool.handler(
+					{
+						workflowId: 'workflow-1',
+						executionId: 'execution-1',
+						includeData,
+						nodeNames: undefined,
+						truncateData: undefined,
+					},
+					{} as never,
+				);
+				const strictOutputSchema = z.object(tool.config.outputSchema!).strict();
+				expect(strictOutputSchema.safeParse(result.structuredContent).success).toBe(true);
+				const [content] = result.content as Array<{ type: 'text'; text: string }>;
+				expect(jsonParse(content.text)).toEqual(result.structuredContent);
+				return result.structuredContent as {
+					execution: Record<string, unknown> | null;
+					data?: unknown;
+					error?: string;
+				};
+			};
+
+			const mockStoredExecution = (execution: ReturnType<typeof failedExecution>) => {
+				(executionRepository.findIfAccessible as Mock).mockResolvedValue(
+					metadata(execution.status),
+				);
+				(executionPersistence.findSingleExecution as Mock).mockResolvedValue(execution);
+			};
+
+			beforeEach(() => {
+				mockInstance(Logger);
+				(workflowFinderService.findWorkflowForUser as Mock).mockResolvedValue(mockWorkflow);
+			});
+
+			test('returns the failed node, error message and description for an error execution', async () => {
+				mockStoredExecution(
+					failedExecution('error', {
+						message: 'The resource you are requesting could not be found',
+						description: 'Not found',
+						stack: 'NodeApiError: at secret/path.ts',
+					}),
+				);
+
+				const output = await callTool();
+
+				expect(executionRepository.findIfAccessible).toHaveBeenCalledWith('execution-1', [
+					'workflow-1',
+				]);
+				expect(executionPersistence.findSingleExecution).toHaveBeenCalledWith('execution-1', {
+					includeData: true,
+					unflattenData: true,
+				});
+				expect(executionRedactionServiceProxy.processExecution).toHaveBeenCalledWith(
+					expect.objectContaining({ id: 'execution-1' }),
+					{ user },
+				);
+				expect(output.execution?.failure).toEqual({
+					nodeName: 'HTTP Request',
+					message: 'The resource you are requesting could not be found',
+					description: 'Not found',
+				});
+				expect(output).not.toHaveProperty('data');
+				expect(output).not.toHaveProperty('error');
+			});
+
+			test('cuts the error description at 500 characters', async () => {
+				mockStoredExecution(
+					failedExecution('error', { message: 'Failed', description: 'x'.repeat(2000) }),
+				);
+
+				const output = await callTool();
+
+				expect(output.execution?.failure).toEqual({
+					nodeName: 'HTTP Request',
+					message: 'Failed',
+					description: 'x'.repeat(500),
+				});
+			});
+
+			test('returns the failure summary for a crashed execution', async () => {
+				mockStoredExecution(failedExecution('crashed', { message: 'Workflow did crash' }));
+
+				const output = await callTool();
+
+				expect(output.execution?.failure).toEqual({
+					nodeName: 'HTTP Request',
+					message: 'Workflow did crash',
+				});
+			});
+
+			test('returns the crashed node when crash recovery sets a successful node as the last node executed', async () => {
+				const execution = failedExecution('crashed', { message: 'Workflow did crash' });
+				execution.data.resultData.lastNodeExecuted = 'Trigger';
+				mockStoredExecution(execution);
+
+				const output = await callTool();
+
+				expect(output.execution?.failure).toEqual({
+					nodeName: 'HTTP Request',
+					message: 'Workflow did crash',
+				});
+			});
+
+			test('skips a failed node that continues on error when it looks for the failed node', async () => {
+				const execution = failedExecution('crashed', { message: 'Workflow did crash' });
+				execution.data.resultData.runData = {
+					Trigger: task('success'),
+					Fallback: task('error'),
+					'HTTP Request': task('crashed'),
+				};
+				execution.data.resultData.lastNodeExecuted = 'Trigger';
+				execution.workflowData.nodes = [
+					{ name: 'Fallback', onError: 'continueRegularOutput' } as INode,
+				];
+				mockStoredExecution(execution);
+
+				const output = await callTool();
+
+				expect(output.execution?.failure).toEqual({
+					nodeName: 'HTTP Request',
+					message: 'Workflow did crash',
+				});
+			});
+
+			test('finds the failed node by its run error when the runs have no status', async () => {
+				const execution = failedExecution('error', { message: 'Failed' });
+				const run = { startTime: 0, executionIndex: 0, executionTime: 0, source: [] };
+				execution.data.resultData.runData = {
+					Trigger: [run],
+					'HTTP Request': [{ ...run, error: { message: 'Failed' } as never }],
+				};
+				execution.data.resultData.lastNodeExecuted = 'Trigger';
+				mockStoredExecution(execution);
+
+				const output = await callTool();
+
+				expect(output.execution?.failure).toEqual({ nodeName: 'HTTP Request', message: 'Failed' });
+			});
+
+			test('omits the node name when no node failed', async () => {
+				const execution = failedExecution('error', { message: 'Workflow has issues' });
+				execution.data.resultData.runData = { Trigger: task('success') };
+				execution.data.resultData.lastNodeExecuted = 'Trigger';
+				mockStoredExecution(execution);
+
+				const output = await callTool();
+
+				expect(output.execution?.failure).toEqual({ message: 'Workflow has issues' });
+			});
+
+			test('returns the last node executed when it has no run data', async () => {
+				const execution = failedExecution('error', { message: 'Workflow ran out of memory' });
+				execution.data.resultData.runData = {};
+				mockStoredExecution(execution);
+
+				const output = await callTool();
+
+				expect(output.execution?.failure).toEqual({
+					nodeName: 'HTTP Request',
+					message: 'Workflow ran out of memory',
+				});
+			});
+
+			test('does not add a failure summary for a crashed execution without an error', async () => {
+				const execution = failedExecution('crashed', {});
+				delete execution.data.resultData.error;
+				execution.data.resultData.runData = { Trigger: task('success') };
+				execution.data.resultData.lastNodeExecuted = 'Trigger';
+				mockStoredExecution(execution);
+
+				const output = await callTool();
+
+				expect(output.execution).not.toHaveProperty('failure');
+			});
+
+			test('does not load execution data or add a failure summary for a successful execution', async () => {
+				(executionRepository.findIfAccessible as Mock).mockResolvedValue(metadata('success'));
+
+				const output = await callTool();
+
+				expect(executionPersistence.findSingleExecution).not.toHaveBeenCalled();
+				expect(executionRedactionServiceProxy.processExecution).not.toHaveBeenCalled();
+				expect(output.execution).not.toHaveProperty('failure');
+			});
+
+			test('returns only the redacted form of the error when the execution data is redacted', async () => {
+				const secretText = 'token sk-secret-value is invalid';
+				const execution = failedExecution('error', {
+					message: secretText,
+					description: secretText,
+				});
+				mockStoredExecution(execution);
+				(executionRedactionServiceProxy.processExecution as Mock).mockImplementation(
+					async (target: typeof execution) => {
+						delete target.data.resultData.error;
+						target.data.resultData.redactedError = { type: 'NodeApiError', httpCode: '401' };
+						return target;
+					},
+				);
+
+				const output = await callTool();
+
+				expect(output.execution?.failure).toEqual({
+					nodeName: 'HTTP Request',
+					message: 'NodeApiError error (401) (details hidden by n8n)',
+				});
+				expect(JSON.stringify(output)).not.toContain('sk-secret-value');
+			});
+
+			test('omits the failure summary when the redaction check fails', async () => {
+				mockStoredExecution(failedExecution('error', { message: 'sk-secret-value' }));
+				(executionRedactionServiceProxy.processExecution as Mock).mockRejectedValue(
+					new Error('Redaction failed'),
+				);
+
+				const output = await callTool();
+
+				expect(output.execution).toMatchObject({ id: 'execution-1', status: 'error' });
+				expect(output.execution).not.toHaveProperty('failure');
+				expect(JSON.stringify(output)).not.toContain('sk-secret-value');
+			});
+
+			test('does not add a failure summary when includeData is true', async () => {
+				const execution = failedExecution('error', { message: 'Failed' });
+				(executionPersistence.findWithUnflattenedData as Mock).mockResolvedValue(execution);
+
+				const output = await callTool(true);
+
+				expect(executionPersistence.findWithUnflattenedData).toHaveBeenCalledTimes(1);
+				expect(executionPersistence.findSingleExecution).not.toHaveBeenCalled();
+				expect(output.execution).not.toHaveProperty('failure');
+				expect(output.data).toEqual(execution.data);
+			});
+
+			test('returns a result valid against the output schema when the execution is not found', async () => {
+				(executionRepository.findIfAccessible as Mock).mockResolvedValue(null);
+
+				const output = await callTool();
+
+				expect(output).toEqual({
+					execution: null,
+					error: "Execution 'execution-1' not found for workflow 'workflow-1'",
 				});
 			});
 		});

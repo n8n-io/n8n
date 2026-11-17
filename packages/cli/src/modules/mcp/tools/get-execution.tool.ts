@@ -1,7 +1,17 @@
+import { Logger } from '@n8n/backend-common';
 import { type ExecutionRepository, type User } from '@n8n/db';
 import { Container } from '@n8n/di';
+import { formatRedactedError } from '@n8n/instance-ai/errors';
 import { ensureError } from '@n8n/utils/errors/ensure-error';
-import type { IPinData, IRunData, IRunExecutionData, ITaskDataConnections } from 'n8n-workflow';
+import type {
+	ExecutionStatus,
+	INode,
+	IPinData,
+	IRunData,
+	IRunExecutionData,
+	ITaskData,
+	ITaskDataConnections,
+} from 'n8n-workflow';
 import { jsonStringify, replaceCircularReferences } from 'n8n-workflow';
 import z from 'zod';
 
@@ -11,6 +21,7 @@ import type { ToolDefinition, UserCalledMCPToolEventPayload } from '../mcp.types
 import { getMcpWorkflow } from './workflow-validation.utils';
 
 import { ExecutionPersistence } from '@/executions/execution-persistence';
+import { loadExecutionForViewer } from '@/executions/execution-viewer-reader';
 import type { ExecutionRedactionServiceProxy } from '@n8n/backend-services';
 import type { Telemetry } from '@/telemetry';
 import type { WorkflowFinderService } from '@/workflows/workflow-finder.service';
@@ -40,6 +51,23 @@ const inputSchema = z.object({
 		),
 });
 
+const FAILURE_DESCRIPTION_MAX_LENGTH = 500;
+
+const FAILED_EXECUTION_STATUSES: ExecutionStatus[] = ['error', 'crashed'];
+
+const failureSchema = z
+	.object({
+		nodeName: z.string().optional(),
+		message: z.string(),
+		description: z.string().optional(),
+	})
+	.optional()
+	.describe(
+		'Summary of the failure for executions with status error or crashed (only present when includeData is false)',
+	);
+
+type ExecutionFailure = z.infer<typeof failureSchema>;
+
 const outputSchema = {
 	execution: z
 		.object({
@@ -52,6 +80,7 @@ const outputSchema = {
 			retryOf: z.string().nullable().optional(),
 			retrySuccessId: z.string().nullable().optional(),
 			waitTill: z.string().nullable().optional(),
+			failure: failureSchema,
 		})
 		.passthrough()
 		.nullable()
@@ -73,7 +102,7 @@ export const createGetExecutionTool = (
 	name: 'get_workflow_execution',
 	config: {
 		description:
-			'Get workflow execution details by execution ID and workflow ID. By default returns metadata only. Set includeData to true to include node execution data, optionally filtered by nodeNames and truncated by truncateData.',
+			'Get workflow execution details by execution ID and workflow ID. By default returns metadata only. Set includeData to true to include node execution data, optionally filtered by nodeNames and truncated by truncateData. The metadata of a failed execution includes the failed node and the error message, so includeData is not necessary to find the cause of the failure.',
 		inputSchema: inputSchema.shape,
 		outputSchema,
 		annotations: {
@@ -109,6 +138,7 @@ export const createGetExecutionTool = (
 			// split into branches so TypeScript can narrow each return type.
 			let execution;
 			let executionData: IRunExecutionData | null | undefined;
+			let failure: ExecutionFailure;
 			if (includeData) {
 				const fullExecution = await Container.get(ExecutionPersistence).findWithUnflattenedData(
 					executionId,
@@ -124,6 +154,9 @@ export const createGetExecutionTool = (
 				executionData = fullExecution?.data ?? null;
 			} else {
 				execution = await executionRepository.findIfAccessible(executionId, [workflowId]);
+				if (execution && FAILED_EXECUTION_STATUSES.includes(execution.status)) {
+					failure = await findFailureSummary(executionId, user);
+				}
 			}
 
 			if (!execution) {
@@ -143,6 +176,7 @@ export const createGetExecutionTool = (
 				retryOf: execution.retryOf ?? null,
 				retrySuccessId: execution.retrySuccessId ?? null,
 				waitTill: execution.waitTill?.toISOString() ?? null,
+				...(failure && { failure }),
 			};
 
 			let filteredData: IRunExecutionData | null | undefined;
@@ -216,6 +250,74 @@ export const createGetExecutionTool = (
 		}
 	},
 });
+
+async function findFailureSummary(executionId: string, user: User): Promise<ExecutionFailure> {
+	try {
+		const execution = await loadExecutionForViewer(executionId, user);
+		return execution && toFailureSummary(execution.data.resultData, execution.workflowData.nodes);
+	} catch (error) {
+		Container.get(Logger).warn('MCP get_workflow_execution could not load the failure summary', {
+			executionId,
+			error: ensureError(error),
+		});
+		return undefined;
+	}
+}
+
+function continuesOnError(node: INode) {
+	return (
+		node.continueOnFail === true ||
+		node.onError === 'continueRegularOutput' ||
+		node.onError === 'continueErrorOutput'
+	);
+}
+
+function isFailedRun(run: ITaskData) {
+	return (
+		run.error !== undefined ||
+		run.redactedError !== undefined ||
+		(run.executionStatus !== undefined && FAILED_EXECUTION_STATUSES.includes(run.executionStatus))
+	);
+}
+
+function findFailedNodeName(
+	{ runData = {}, lastNodeExecuted }: IRunExecutionData['resultData'],
+	nodes: INode[],
+) {
+	const nodeNamesThatContinueOnError = new Set(
+		nodes.filter(continuesOnError).map((node) => node.name),
+	);
+	const hasFailed = (nodeName: string) => {
+		const lastRun = runData[nodeName]?.at(-1);
+		return (
+			lastRun !== undefined && !nodeNamesThatContinueOnError.has(nodeName) && isFailedRun(lastRun)
+		);
+	};
+
+	if (lastNodeExecuted && (!runData[lastNodeExecuted] || hasFailed(lastNodeExecuted))) {
+		return lastNodeExecuted;
+	}
+	return Object.keys(runData).find(hasFailed);
+}
+
+function toFailureSummary(
+	resultData: IRunExecutionData['resultData'],
+	nodes: INode[],
+): ExecutionFailure {
+	const { error, redactedError } = resultData;
+	const failedNodeName = findFailedNodeName(resultData, nodes);
+	const nodeName = failedNodeName ? { nodeName: failedNodeName } : {};
+	if (redactedError) return { ...nodeName, message: formatRedactedError(redactedError) };
+	if (!error) return undefined;
+
+	return {
+		...nodeName,
+		message: error.message,
+		...(error.description && {
+			description: error.description.slice(0, FAILURE_DESCRIPTION_MAX_LENGTH),
+		}),
+	};
+}
 
 function filterExecutionData(
 	data: IRunExecutionData,
