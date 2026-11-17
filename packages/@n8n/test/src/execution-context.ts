@@ -9,13 +9,21 @@ import type {
 
 import type { WorkflowTestError } from './errors';
 import type { HttpRequest } from './http/http-request';
+import type { TestCredential } from './instance-state/credentials';
+import type { Redaction } from './http/redact';
 import type { NodeReference, WorkflowHandle } from './workflow-set';
 
 export interface ExecuteWorkflowOptions {
 	input?: IDataObject | IDataObject[];
 	trigger?: string | NodeReference;
 	staticData?: IDataObject;
+	now?: string | Date;
+	credentials?: Record<string, TestCredential>;
+	variables?: Record<string, string | null>;
+	secrets?: Record<string, Record<string, string | null>>;
+	env?: Record<string, string>;
 	allowHttp?: boolean | string[];
+	redact?: boolean;
 }
 
 export interface NodeRunRecord {
@@ -47,6 +55,7 @@ export interface ExecutionSetup {
 	hooks: ExecutionLifecycleHooks;
 	runs: NodeRunLog;
 	fatalError?: WorkflowTestError;
+	redactions: Redaction[];
 }
 
 export interface ExecutionContext extends ExecutionSetup {

@@ -4,6 +4,7 @@ import nock from 'nock';
 import { WorkflowTestError } from '../errors';
 import type { ExecutionSetup } from '../execution-context';
 import { recordClientRequest, recordRequest } from './http-request';
+import { redact, secretsToRedact } from './redact';
 import { isUndiciMessage, toHttpRequest } from './undici-request';
 
 const HTTP_REQUEST_CREATED = 'http.client.request.created';
@@ -61,7 +62,7 @@ function checkUndiciRequest(guard: Guard, message: unknown) {
 	const { request } = message;
 	const url = new URL(request.path, request.origin);
 	const record = guard.root.runs.open.at(-1)?.record;
-	if (record) recordRequest(record, toHttpRequest(request, url));
+	if (record) recordRequest(guard.root, record, toHttpRequest(request, url));
 	if (permits(guard.allowHttp, url.hostname)) return;
 	// undici 6 and 7 abort a request with this internal field before they send it.
 	request.error = failUnmocked(
@@ -75,7 +76,7 @@ function failUnmocked({ root }: Guard, request: string, reason: string) {
 	const node = root.runs.open.at(-1)?.node;
 	const error = new WorkflowTestError(
 		'HTTP_NOT_MOCKED',
-		`Node "${node}" sent ${request}, which ${reason}.`,
+		`Node "${node}" sent ${redact(request, secretsToRedact(root))}, which ${reason}.`,
 		{
 			workflow: root.handle.name,
 			node,

@@ -1,6 +1,8 @@
 export { WorkflowTestError, type WorkflowTestErrorCode } from './errors';
 export { executeWorkflow } from './execute-workflow';
 export type { HttpRequest } from './http/http-request';
+export { configureNode, type NodeConfiguration } from './instance-state/configure-node';
+export { createCredential, type TestCredential } from './instance-state/credentials';
 export type { ExecuteWorkflowOptions } from './execution-context';
 export {
 	mockNode,
