@@ -132,6 +132,8 @@ export type ResumeAttemptClaim =
 	| { outcome: 'conflict' };
 
 export interface UpdateExecutionConditions {
+	/** Match the wait that the caller read before replacing its response. */
+	requireWaitTill?: Date;
 	requireStatus?: ExecutionStatus;
 	requireStatuses?: readonly ExecutionStatus[];
 	requireNotFinished?: boolean;

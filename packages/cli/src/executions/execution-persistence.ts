@@ -1151,6 +1151,7 @@ export class ExecutionPersistence {
 		}
 
 		const where: FindOptionsWhere<ExecutionEntity> = { id: executionId };
+		if (conditions?.requireWaitTill) where.waitTill = conditions.requireWaitTill;
 		if (conditions?.requireStatus) where.status = conditions.requireStatus;
 		if (conditions?.requireStatuses) where.status = In([...conditions.requireStatuses]);
 		// TODO(CAT-3214): `ExecutionEntity.finished` is deprecated and we should rely on statuses
