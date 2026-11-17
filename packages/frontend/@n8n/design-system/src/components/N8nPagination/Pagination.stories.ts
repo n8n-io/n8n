@@ -126,6 +126,18 @@ export const WithPageSizes: Story = {
 	},
 };
 
+export const WithPageSizeLabel: Story = {
+	render: Template,
+	args: {
+		total: 500,
+		itemsPerPage: 25,
+		pageSizes: [10, 25, 50, 100],
+		showTotal: false,
+		showSizes: true,
+		showSizesLabel: true,
+	},
+};
+
 export const WithAll: Story = {
 	name: 'With Page Sizes (All)',
 	render: Template,

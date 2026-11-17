@@ -39,6 +39,7 @@ const props = withDefaults(defineProps<PaginationProps>(), {
 	showAll: false,
 	showTotal: true,
 	showSizes: true,
+	showSizesLabel: false,
 	showJumper: false,
 	hideOnSinglePage: false,
 	defaultPage: 1,
@@ -139,7 +140,7 @@ function isNextDisabled(page: number, pageCount: number) {
 function pageSizeItems() {
 	const items = props.pageSizes.map((s) => ({
 		value: String(s),
-		label: t('pagination.pageSizeOption', { size: s }),
+		label: props.showSizesLabel ? String(s) : t('pagination.pageSizeOption', { size: s }),
 	}));
 
 	if (props.showAll) {
@@ -339,8 +340,23 @@ function handlePagerKeydown(event: KeyboardEvent) {
 			</PaginationList>
 		</PaginationRoot>
 
+		<div v-if="showSizes && showSizesLabel" :class="$style.sizesGroup">
+			<span :class="$style.sizesLabel" aria-hidden="true">
+				{{ t('pagination.pageSize') }}
+			</span>
+			<N8nSelect
+				:class="[$style.pageSizes, $style.groupedSizes]"
+				:model-value="String(currentItemsPerPage)"
+				:items="pageSizeItems()"
+				size="small"
+				:disabled="disabled"
+				:aria-label="t('pagination.pageSize')"
+				data-test-id="pagination-sizes"
+				@update:model-value="handleItemsPerPageUpdate"
+			/>
+		</div>
 		<N8nSelect
-			v-if="showSizes"
+			v-else-if="showSizes"
 			:class="$style.pageSizes"
 			:model-value="String(currentItemsPerPage)"
 			:items="pageSizeItems()"
@@ -374,6 +390,7 @@ function handlePagerKeydown(event: KeyboardEvent) {
 
 <style lang="scss" module>
 @use '@n8n/design-system/css/mixins/focus';
+@use '@n8n/design-system/css/mixins/input' as input-mixin;
 
 .paginationContainer {
 	display: flex;
@@ -383,6 +400,33 @@ function handlePagerKeydown(event: KeyboardEvent) {
 	.pageSizes {
 		width: max-content;
 	}
+}
+
+/* The label and the select read as one control: the label is a box joined to the select's start. */
+.sizesGroup {
+	@include input-mixin.size-variables('small');
+
+	display: inline-flex;
+	align-items: stretch;
+}
+
+.sizesLabel {
+	display: inline-flex;
+	align-items: center;
+	padding: 0 var(--spacing--2xs);
+	border: 1px solid var(--border-color);
+	border-inline-end: none;
+	border-start-start-radius: var(--input--radius);
+	border-end-start-radius: var(--input--radius);
+	background-color: var(--color--background--light-2);
+	color: var(--color--text--tint-1);
+	font-size: var(--input--font-size);
+	white-space: nowrap;
+}
+
+.sizesGroup .groupedSizes {
+	border-start-start-radius: 0;
+	border-end-start-radius: 0;
 }
 
 .medium {

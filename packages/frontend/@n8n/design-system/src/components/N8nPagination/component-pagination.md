@@ -30,6 +30,7 @@ Extends Reka UI [`PaginationRootProps`](https://reka-ui.com/docs/components/pagi
 - `showAll?: boolean` - Show an All option in the page size selector. Selecting it emits `PAGINATION_ALL_ITEMS_PER_PAGE` (`-1`) and shows every item on one page. Default: `false`
 - `showTotal?: boolean` - Show the total item count. Default: `true`
 - `showSizes?: boolean` - Show the page size selector. Default: `true`
+- `showSizesLabel?: boolean` - Show "Page size" as a label box joined to the page size selector, in the small size, with the options as plain numbers. Default: `false`
 - `showJumper?: boolean` - Show the go-to-page jumper. Default: `false`
 - `hideOnSinglePage?: boolean` - Hide the component when there is only one page. Default: `false`
 - `size?: 'small' | 'medium'` - Size variant. Default: `'medium'`

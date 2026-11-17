@@ -4,12 +4,15 @@ import type {
 	CredentialTransferPreview,
 	CredentialTypePolicyEffectivePublicDto,
 	FolderTransferPreview,
+	InstanceTypeAccessResponse,
 	PolicyEffectivePublicDto,
 	PolicyEffectiveWriteResultPublicDto,
 	SubWorkflowPolicyCheckResponse,
 	WorkflowTransferPreview,
 } from '@n8n/api-types';
-import { makeRestApiRequest } from '@n8n/rest-api-client';
+import { get, makeRestApiRequest } from '@n8n/rest-api-client';
+import { isRecord } from '@n8n/utils/is-record';
+import type { Themed } from 'n8n-workflow';
 import type { IRestApiContext } from '@n8n/rest-api-client';
 
 import type { RestrictedTypeKind } from './type-availability-policies.constants';
@@ -57,6 +60,63 @@ export async function saveInstancePolicy<K extends RestrictedTypeKind>(
 		defaultAction: policy.defaultAction,
 		version: policy.version,
 	});
+}
+
+export async function fetchInstanceAccess(
+	context: IRestApiContext,
+	kind: RestrictedTypeKind,
+): Promise<InstanceTypeAccessResponse> {
+	return await makeRestApiRequest(context, 'GET', `${INSTANCE_POLICY_ENDPOINT[kind]}/access`);
+}
+
+/** What the admin pages show of a credential type. */
+export type CredentialTypeSummary = {
+	displayName: string;
+	icon?: Themed<string>;
+	iconUrl?: Themed<string>;
+	iconColor?: string;
+	extends?: string[];
+};
+
+function toThemed(value: unknown): Themed<string> | undefined {
+	if (typeof value === 'string') return value;
+	if (isRecord(value) && typeof value.light === 'string' && typeof value.dark === 'string') {
+		return { light: value.light, dark: value.dark };
+	}
+	return undefined;
+}
+
+/**
+ * Credential types by name. Reads the static file that the editor also loads, because the server
+ * releases the type descriptions from memory after startup.
+ */
+export async function fetchCredentialTypeSummaries(
+	baseUrl: string,
+): Promise<Map<string, CredentialTypeSummary>> {
+	const types: unknown = await get(baseUrl, 'types/credentials.json');
+	if (!Array.isArray(types)) return new Map();
+
+	return new Map(
+		types.flatMap((type: unknown) => {
+			if (
+				!isRecord(type) ||
+				typeof type.name !== 'string' ||
+				typeof type.displayName !== 'string'
+			) {
+				return [];
+			}
+			const summary: CredentialTypeSummary = {
+				displayName: type.displayName,
+				icon: toThemed(type.icon),
+				iconUrl: toThemed(type.iconUrl),
+				iconColor: typeof type.iconColor === 'string' ? type.iconColor : undefined,
+				extends: Array.isArray(type.extends)
+					? type.extends.filter((parent): parent is string => typeof parent === 'string')
+					: undefined,
+			};
+			return [[type.name, summary] as const];
+		}),
+	);
 }
 
 export async function fetchAvailableTypes(

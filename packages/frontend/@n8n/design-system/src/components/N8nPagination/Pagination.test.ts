@@ -277,6 +277,27 @@ describe('components/N8nPagination', () => {
 			});
 		});
 
+		it('should show a Page size label and plain number options when showSizesLabel is set', async () => {
+			const wrapper = render(Pagination, {
+				props: { page: 1, itemsPerPage: 25, total: 100, pageSizes: [10, 25], showSizesLabel: true },
+			});
+
+			expect(wrapper.getByText('Page size')).toBeInTheDocument();
+			expect(wrapper.getByRole('combobox')).toHaveTextContent('25');
+			await userEvent.click(wrapper.getByRole('combobox'));
+
+			await waitFor(() => {
+				expect(wrapper.getByRole('option', { name: '10' })).toBeInTheDocument();
+				expect(wrapper.queryByRole('option', { name: '10/page' })).not.toBeInTheDocument();
+			});
+		});
+
+		it('should not show a Page size label by default', () => {
+			const wrapper = render(Pagination, { props: { page: 1, itemsPerPage: 10, total: 100 } });
+
+			expect(wrapper.queryByText('Page size')).not.toBeInTheDocument();
+		});
+
 		it('should offer All when showAll is set', async () => {
 			const wrapper = render(Pagination, {
 				props: {
