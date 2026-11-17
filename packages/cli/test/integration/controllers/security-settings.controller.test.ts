@@ -137,8 +137,10 @@ describe('SecuritySettingsController', () => {
 		beforeEach(() => {
 			testServer.license.enable('feat:workflowReviews');
 			securitySettingsService.updateSecuritySettings.mockResolvedValue({});
-			workflowReviewPolicyService.get.mockResolvedValue({ enabled: false });
-			workflowReviewPolicyService.update.mockResolvedValue({ enabled: true });
+			workflowReviewPolicyService.update.mockResolvedValue({
+				before: { enabled: false },
+				after: { enabled: true },
+			});
 		});
 
 		it('GET should include workflowReviews when licensed', async () => {

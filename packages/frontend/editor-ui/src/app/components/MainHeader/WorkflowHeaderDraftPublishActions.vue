@@ -130,8 +130,19 @@ const hasUnpublishedChanges = computed(
 /** Re-applying the live version needs no review, e.g. to retry a failed publication. */
 const savedVersionIsLive = computed(() => !!activeVersion.value && !hasUnpublishedChanges.value);
 
+/** An approved version needs no new review, e.g. when the publish after the approval failed. */
+const savedVersionIsApproved = computed(() => {
+	const review = reviewStatusStore.latestReviewRequest(props.id);
+	return (
+		review?.decision === 'approved' &&
+		review.workflowVersionId === workflowDocumentStore.value.versionId &&
+		!uiStore.hasUnsavedWorkflowChanges
+	);
+});
+
 const mustSubmitForReview = computed(
-	() => isApprovalAlwaysRequired.value && !savedVersionIsLive.value,
+	() =>
+		isApprovalAlwaysRequired.value && !savedVersionIsLive.value && !savedVersionIsApproved.value,
 );
 
 const effectiveReviewRequired = computed(() =>

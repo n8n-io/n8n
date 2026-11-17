@@ -1087,6 +1087,35 @@ describe('SecuritySettings', () => {
 			});
 		});
 
+		it('shows workflow reviews as off when the approval save returns them disabled', async () => {
+			getSecuritySettings.mockResolvedValue({
+				...defaultSettings,
+				workflowReviews: { enabled: true, alwaysRequired: false },
+			});
+			// Another admin turned reviews off after this page loaded.
+			updateSecuritySettings.mockResolvedValue({
+				workflowReviews: { enabled: false, alwaysRequired: true },
+			});
+
+			const { findByTestId, findByRole, getByTestId } = renderView();
+
+			await userEvent.click(
+				await findByTestId('security-workflow-reviews-require-approval-select'),
+			);
+			await userEvent.click(await findByRole('option', { name: 'Always required' }));
+
+			await waitFor(() =>
+				expect(settingsStore.settings.workflowReviews).toEqual({
+					enabled: false,
+					alwaysRequired: true,
+				}),
+			);
+			expect(getByTestId('security-workflow-reviews-toggle')).toHaveAttribute(
+				'aria-checked',
+				'false',
+			);
+		});
+
 		it('should disable workflow reviews toggle when managed by env', async () => {
 			getSecuritySettings.mockResolvedValue({
 				...defaultSettings,

@@ -58,8 +58,7 @@ export class SecuritySettingsController {
 			await this.securitySettingsService.updateSecuritySettings(otherFields, req.user);
 
 		if (workflowReviews !== undefined) {
-			const before = await this.workflowReviewPolicyService.get();
-			const after = await this.workflowReviewPolicyService.update(workflowReviews);
+			const { before, after } = await this.workflowReviewPolicyService.update(workflowReviews);
 			updatedSettings.workflowReviews = after;
 
 			if (before.enabled !== after.enabled) {

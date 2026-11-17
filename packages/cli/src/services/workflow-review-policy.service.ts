@@ -33,14 +33,16 @@ export class WorkflowReviewPolicyService {
 	}
 
 	async set(enabled: boolean): Promise<WorkflowReviewsPolicy> {
-		return await this.update({ enabled });
+		return (await this.update({ enabled })).after;
 	}
 
 	/**
 	 * The read, the merge and the write run under one row lock, so parallel updates keep each
-	 * other's keys.
+	 * other's keys. `before` comes from the same lock, so callers can compare the two safely.
 	 */
-	async update(patch: Partial<WorkflowReviewsPolicy>): Promise<WorkflowReviewsPolicy> {
+	async update(
+		patch: Partial<WorkflowReviewsPolicy>,
+	): Promise<{ before: WorkflowReviewsPolicy; after: WorkflowReviewsPolicy }> {
 		const definedChanges = Object.fromEntries(
 			Object.entries(patch).filter(([, value]) => value !== undefined),
 		);
@@ -53,10 +55,8 @@ export class WorkflowReviewPolicyService {
 				ctx,
 			);
 
-			const parsed = workflowReviewsPolicySchema.safeParse({
-				...parsePolicy(row.value),
-				...definedChanges,
-			});
+			const before = parsePolicy(row.value);
+			const parsed = workflowReviewsPolicySchema.safeParse({ ...before, ...definedChanges });
 			if (!parsed.success) {
 				throw new UserError('Invalid workflow reviews settings');
 			}
@@ -68,7 +68,7 @@ export class WorkflowReviewPolicyService {
 				ctx,
 			);
 
-			return parsed.data;
+			return { before, after: parsed.data };
 		});
 	}
 }

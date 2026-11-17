@@ -97,6 +97,8 @@ async function persistAlwaysRequired(selected: SelectValue | undefined): Promise
 			workflowReviews: { alwaysRequired: value },
 		});
 		if (response.workflowReviews) {
+			// Another admin may have turned reviews off since this page loaded.
+			enabled.value = response.workflowReviews.enabled;
 			alwaysRequired.value = response.workflowReviews.alwaysRequired === true;
 			settingsStore.setWorkflowReviewsPolicy(response.workflowReviews);
 		}

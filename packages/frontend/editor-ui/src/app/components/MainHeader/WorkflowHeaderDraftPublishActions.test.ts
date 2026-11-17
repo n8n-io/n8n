@@ -1588,6 +1588,39 @@ describe('WorkflowHeaderDraftPublishActions', () => {
 			expect(openModalSpy).toHaveBeenCalledWith({ name: WORKFLOW_PUBLISH_MODAL_KEY, data: {} });
 		});
 
+		it('offers Publish for an approved version whose publication after the approval failed', async () => {
+			setWorkflowReviewGates({ alwaysRequired: true });
+			setHomeProjectType('team');
+			setupEnabledPublishButton();
+			workflowDocumentStore.setActiveState({
+				activeVersionId: 'version-0',
+				activeVersion: createMockActiveVersion('version-0'),
+			});
+			vi.mocked(fetchWorkflowReviewRequests).mockResolvedValue({
+				count: 1,
+				data: [
+					{
+						id: 'req-1',
+						state: 'closed',
+						decision: 'approved',
+						workflowVersionId: 'version-1',
+						workflowVersionName: null,
+						description: null,
+						createdAt: '2026-07-20T10:00:00.000Z',
+						updatedAt: '2026-07-20T10:00:00.000Z',
+						decisionBy: null,
+						viewerCanOpen: true,
+					},
+				],
+			});
+
+			const { getByTestId } = renderComponent();
+
+			await waitFor(() =>
+				expect(getByTestId('workflow-open-publish-modal-button')).toHaveTextContent('Publish'),
+			);
+		});
+
 		it('shows Review required on and locked with the reason for a published team workflow', async () => {
 			setWorkflowReviewGates({ alwaysRequired: true });
 			setHomeProjectType('team');
