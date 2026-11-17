@@ -14,6 +14,7 @@ export class WorkflowSelect extends BaseSelect {
 			'ownedBy', // non-entity field
 			'parentFolder',
 			'nodes',
+			'connections',
 			'isArchived',
 			'description',
 		]);
