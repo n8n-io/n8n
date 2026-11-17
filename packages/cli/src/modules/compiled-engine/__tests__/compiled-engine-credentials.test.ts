@@ -166,6 +166,50 @@ describe('CompiledEngineCredentials', () => {
 		});
 	});
 
+	describe('a Postgres credential', () => {
+		const database = { ...binding, slot: 'db', type: 'postgres' };
+		const values = {
+			host: 'db.example.com',
+			port: 5432,
+			database: 'shop',
+			user: 'app',
+			password: 'pg-secret',
+			ssl: 'require',
+			allowUnauthorizedCerts: false,
+			sshTunnel: false,
+			maxConnections: 100,
+		};
+
+		it('gives wfrt the connection values under the names that its sql client reads', async () => {
+			helper.getDecrypted.mockResolvedValue({ ...values });
+			const document = await credentials().buildDocument('wf1', [database]);
+			expect(document.db).toMatchObject({ type: 'postgres', data: values });
+			// The values are not for a request: the slot has no injection and no renewal.
+			expect(document.db).not.toHaveProperty('inject');
+			expect(document.db).not.toHaveProperty('renewal');
+		});
+
+		it('keeps the tunnel and certificate values, so wfrt gives the node to the fallback host', async () => {
+			const tunnel = { ...values, sshTunnel: true, caCertificate: 'ca', clientCertificate: 'c' };
+			helper.getDecrypted.mockResolvedValue({ ...tunnel });
+			const document = await credentials().buildDocument('wf1', [database]);
+			expect(document.db).toMatchObject({ data: tunnel });
+		});
+
+		it('writes no value of the credential to the log', async () => {
+			helper.getDecrypted.mockResolvedValue({ ...values });
+			await credentials().buildDocument('wf1', [database]);
+			const logged = JSON.stringify([
+				logger.debug.mock.calls,
+				logger.info.mock.calls,
+				logger.warn.mock.calls,
+				logger.error.mock.calls,
+			]);
+			expect(logged).not.toContain('pg-secret');
+			expect(logged).not.toContain('db.example.com');
+		});
+	});
+
 	describe('renewal', () => {
 		it('tells wfrt that an OAuth2 slot is renewed on 401', async () => {
 			const document = await credentials().buildDocument('wf1', [binding]);

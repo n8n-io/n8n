@@ -2,7 +2,11 @@ import { mock } from 'vitest-mock-extended';
 
 import type { BinaryDataConfig } from 'n8n-core';
 
-import { CompiledEngineProcesses, wfrtUserAgent } from '../compiled-engine-processes';
+import {
+	CompiledEngineProcesses,
+	sqlTimestampZone,
+	wfrtUserAgent,
+} from '../compiled-engine-processes';
 
 type BinaryEnv = {
 	binaryData(pathVariable: string): Record<string, string>;
@@ -77,5 +81,15 @@ describe('wfrtUserAgent', () => {
 		expect(wfrtUserAgent('')).toBeUndefined();
 		expect(wfrtUserAgent('a\r\nx: y')).toBeUndefined();
 		expect(wfrtUserAgent('a'.repeat(257))).toBeUndefined();
+	});
+});
+
+describe('sqlTimestampZone', () => {
+	it('tells wfrt to read a timestamp without a zone as UTC only when n8n runs in UTC', () => {
+		expect(sqlTimestampZone('UTC')).toBe('utc');
+		expect(sqlTimestampZone('Etc/UTC')).toBe('utc');
+		expect(sqlTimestampZone('Europe/Berlin')).toBeUndefined();
+		// London is not UTC in summer.
+		expect(sqlTimestampZone('Europe/London')).toBeUndefined();
 	});
 });

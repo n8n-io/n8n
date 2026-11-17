@@ -35,7 +35,11 @@ const guard = {
 const flag = { name: 'f00000001', code: '(c) => (c.apiKey.length < 64)', kind: 'flag' as const };
 
 interface ConvertOptions {
-	nodeSources?: { runsInHost?: (nodeName: string) => boolean };
+	sql?: boolean;
+	nodeSources?: {
+		runsInHost?: (nodeName: string) => boolean;
+		entry?: (type: string, version: number) => string | undefined;
+	};
 }
 
 describe('CompiledWorkflowCompiler: nodes with conditions on a credential', () => {
@@ -237,6 +241,43 @@ describe('CompiledWorkflowCompiler: nodes with conditions on a credential', () =
 
 		await compiler.compile(input);
 
+		expect(credentials.unprovenFlagNodes).not.toHaveBeenCalled();
+	});
+
+	it('tells the converter that the runtime runs the sql effect', async () => {
+		credentials.unprovenFlagNodes.mockResolvedValue([]);
+
+		await compiler.compile(input);
+
+		const options: ConvertOptions = convertWorkflow.mock.calls[0][1];
+		expect(options.sql).toBe(true);
+	});
+
+	it('moves a library node to the host after a limit when nodes are not compiled from their code', async () => {
+		compiler = new CompiledWorkflowCompiler(
+			processes,
+			subWorkflows,
+			logger,
+			nodeTypes,
+			urlService,
+			mock<InstanceSettings>({ instanceId: 'instance' }),
+			credentials,
+			mock<CredentialTypes>(),
+			mock<CompiledEngineConfig>({ compileNodes: false, artifactCacheMb: 1 }),
+		);
+		const first = await compiler.compile(input);
+		expect(first.module?.toString()).toBe('compiled');
+		const firstOptions: ConvertOptions = convertWorkflow.mock.calls[0][1];
+		expect(firstOptions.nodeSources).toBeUndefined();
+
+		compiler.runInHost('wf1', 'Acme');
+		const inHost = await compiler.compile(input);
+
+		expect(inHost.module?.toString()).toBe('host');
+		expect(inHost.key).not.toBe(first.key);
+		const options: ConvertOptions = convertWorkflow.mock.calls[1][1];
+		// The sources give no file, so no node compiles from its code.
+		expect(options.nodeSources?.entry?.('n8n-nodes-base.acme', 1)).toBeUndefined();
 		expect(credentials.unprovenFlagNodes).not.toHaveBeenCalled();
 	});
 });
