@@ -6249,6 +6249,7 @@
 				"qsFormat": "brackets"
 			}
 		],
+		"accepts": ["application/json", "application/json"],
 		"output": [
 			{
 				"id": "19:abc123@thread.tacv2",
@@ -6275,6 +6276,7 @@
 				"qsFormat": "brackets"
 			}
 		],
+		"accepts": ["application/json"],
 		"output": [
 			{
 				"id": "19:abc123@thread.tacv2",
@@ -6284,6 +6286,7 @@
 	},
 	"microsoftTeams channel.create team id that is not a GUID": {
 		"requests": [],
+		"accepts": [],
 		"error": "ERROR: Team parameter's value is invalid. This is likely because the URL entered is incorrect"
 	},
 	"microsoftTeams channel.create team id with text after the GUID": {
@@ -6301,6 +6304,7 @@
 				"qsFormat": "brackets"
 			}
 		],
+		"accepts": ["application/json"],
 		"output": [
 			{
 				"id": "19:abc123@thread.tacv2"
@@ -6319,6 +6323,7 @@
 				"qsFormat": "brackets"
 			}
 		],
+		"accepts": ["application/json"],
 		"output": [
 			{
 				"success": true
@@ -6337,6 +6342,7 @@
 				"qsFormat": "brackets"
 			}
 		],
+		"accepts": ["application/json"],
 		"error": "The channel you are trying to delete doesn't exist"
 	},
 	"microsoftTeams channel.get": {
@@ -6351,6 +6357,7 @@
 				"qsFormat": "brackets"
 			}
 		],
+		"accepts": ["application/json"],
 		"output": [
 			{
 				"id": "19:abc123@thread.tacv2",
@@ -6370,14 +6377,17 @@
 				"qsFormat": "brackets"
 			}
 		],
+		"accepts": ["application/json"],
 		"error": "The channel you are trying to get doesn't exist"
 	},
 	"microsoftTeams channel.get channel id with a slash": {
 		"requests": [],
+		"accepts": [],
 		"error": "The ID is not valid"
 	},
 	"microsoftTeams channel.get empty channel id": {
 		"requests": [],
+		"accepts": [],
 		"error": "A required ID is empty"
 	},
 	"microsoftTeams channel.getAll with a limit": {
@@ -6392,6 +6402,7 @@
 				"qsFormat": "brackets"
 			}
 		],
+		"accepts": ["application/json"],
 		"output": [
 			{
 				"id": "c1"
@@ -6424,6 +6435,7 @@
 				"qsFormat": "brackets"
 			}
 		],
+		"accepts": ["application/json", "application/json"],
 		"output": [
 			{
 				"id": "c1"
@@ -6445,6 +6457,7 @@
 				"qsFormat": "brackets"
 			}
 		],
+		"accepts": ["application/json"],
 		"error": "Refusing to send credentials to an unexpected host"
 	},
 	"microsoftTeams channel.update": {
@@ -6463,6 +6476,7 @@
 				"qsFormat": "brackets"
 			}
 		],
+		"accepts": ["application/json"],
 		"output": [
 			{
 				"success": true
@@ -6502,6 +6516,7 @@
 				"qsFormat": "brackets"
 			}
 		],
+		"accepts": ["application/json", "application/json"],
 		"output": [
 			{
 				"id": "1700000000001",
@@ -6537,6 +6552,7 @@
 				"qsFormat": "brackets"
 			}
 		],
+		"accepts": ["application/json"],
 		"output": [
 			{
 				"id": "1700000000002"
@@ -6555,6 +6571,7 @@
 				"qsFormat": "brackets"
 			}
 		],
+		"accepts": ["application/json"],
 		"output": [
 			{
 				"id": "1700000000001"
@@ -6587,6 +6604,7 @@
 				"qsFormat": "brackets"
 			}
 		],
+		"accepts": ["application/json", "application/json"],
 		"output": [
 			{
 				"id": "m1"
@@ -6611,6 +6629,7 @@
 				"qsFormat": "brackets"
 			}
 		],
+		"accepts": ["application/json"],
 		"output": [
 			{
 				"id": "m1"
@@ -6634,6 +6653,7 @@
 				"qsFormat": "brackets"
 			}
 		],
+		"accepts": ["application/json"],
 		"output": [
 			{
 				"id": "r1"
@@ -6658,6 +6678,7 @@
 				"qsFormat": "brackets"
 			}
 		],
+		"accepts": ["application/json"],
 		"output": [
 			{
 				"id": "1700000000003"
@@ -6682,6 +6703,7 @@
 				"qsFormat": "brackets"
 			}
 		],
+		"accepts": ["application/json"],
 		"output": [
 			{
 				"id": "1700000000003"
@@ -6700,6 +6722,7 @@
 				"qsFormat": "brackets"
 			}
 		],
+		"accepts": ["application/json"],
 		"output": [
 			{
 				"success": true
@@ -6718,6 +6741,7 @@
 				"qsFormat": "brackets"
 			}
 		],
+		"accepts": ["application/json"],
 		"output": [
 			{
 				"success": true
@@ -6736,6 +6760,7 @@
 				"qsFormat": "brackets"
 			}
 		],
+		"accepts": ["application/json"],
 		"output": [
 			{
 				"id": "19:7e2f1174_0c5cfdbb@unq.gbl.spaces",
@@ -6755,6 +6780,7 @@
 				"qsFormat": "brackets"
 			}
 		],
+		"accepts": ["application/json"],
 		"error": "The chat you are trying to get doesn't exist"
 	},
 	"microsoftTeams chat.getAll with a limit": {
@@ -6783,6 +6809,7 @@
 				"qsFormat": "brackets"
 			}
 		],
+		"accepts": ["application/json", "application/json"],
 		"output": [
 			{
 				"id": "a"
@@ -6809,6 +6836,7 @@
 				"qsFormat": "brackets"
 			}
 		],
+		"accepts": ["application/json"],
 		"output": [
 			{
 				"id": "a"
@@ -6827,6 +6855,7 @@
 				"qsFormat": "brackets"
 			}
 		],
+		"accepts": ["application/json"],
 		"output": [
 			{
 				"id": "mem1"
@@ -6845,6 +6874,7 @@
 				"qsFormat": "brackets"
 			}
 		],
+		"accepts": ["application/json"],
 		"output": [
 			{
 				"success": true
@@ -6884,6 +6914,7 @@
 				"qsFormat": "brackets"
 			}
 		],
+		"accepts": ["application/json", "application/json"],
 		"output": [
 			{
 				"id": "1700000000009"
@@ -6911,6 +6942,7 @@
 				"qsFormat": "brackets"
 			}
 		],
+		"accepts": ["application/json"],
 		"output": [
 			{
 				"id": "1700000000010"
@@ -6929,6 +6961,7 @@
 				"qsFormat": "brackets"
 			}
 		],
+		"accepts": ["application/json"],
 		"output": [
 			{
 				"id": "1700000000009"
@@ -6947,6 +6980,7 @@
 				"qsFormat": "brackets"
 			}
 		],
+		"accepts": ["application/json"],
 		"error": "The message you are trying to get doesn't exist"
 	},
 	"microsoftTeams chatMessage.getAll with a limit": {
@@ -6963,6 +6997,7 @@
 				"qsFormat": "brackets"
 			}
 		],
+		"accepts": ["application/json"],
 		"output": [
 			{
 				"id": "m1"
@@ -6995,6 +7030,7 @@
 				"qsFormat": "brackets"
 			}
 		],
+		"accepts": ["application/json", "application/json"],
 		"output": [
 			{
 				"id": "m1"
@@ -7029,6 +7065,7 @@
 				"qsFormat": "brackets"
 			}
 		],
+		"accepts": ["application/json"],
 		"output": [
 			{
 				"id": "task-1",
@@ -7053,6 +7090,7 @@
 				"qsFormat": "brackets"
 			}
 		],
+		"accepts": ["application/json"],
 		"output": [
 			{
 				"id": "task-2"
@@ -7081,6 +7119,7 @@
 				"qsFormat": "brackets"
 			}
 		],
+		"accepts": ["application/json", "application/json"],
 		"output": [
 			{
 				"success": true
@@ -7099,6 +7138,7 @@
 				"qsFormat": "brackets"
 			}
 		],
+		"accepts": ["application/json"],
 		"output": [
 			{
 				"id": "task-1"
@@ -7126,6 +7166,7 @@
 				"qsFormat": "brackets"
 			}
 		],
+		"accepts": ["application/json", "application/json"],
 		"output": [
 			{
 				"id": "t1"
@@ -7144,6 +7185,7 @@
 				"qsFormat": "brackets"
 			}
 		],
+		"accepts": ["application/json"],
 		"output": [
 			{
 				"id": "t1"
@@ -7188,9 +7230,189 @@
 				"qsFormat": "brackets"
 			}
 		],
+		"accepts": ["application/json", "application/json"],
 		"output": [
 			{
 				"success": true
+			}
+		]
+	},
+	"microsoftTeams task.get status 500": {
+		"requests": [
+			{
+				"method": "GET",
+				"url": "https://graph.microsoft.com/v1.0/planner/tasks/task-1",
+				"qs": {},
+				"headers": {
+					"authorization": "Bearer fake-teams-token"
+				},
+				"qsFormat": "brackets"
+			}
+		],
+		"accepts": ["application/json"],
+		"error": "The service was not able to process your request"
+	},
+	"microsoftTeams task.get status 404": {
+		"requests": [
+			{
+				"method": "GET",
+				"url": "https://graph.microsoft.com/v1.0/planner/tasks/task-1",
+				"qs": {},
+				"headers": {
+					"authorization": "Bearer fake-teams-token"
+				},
+				"qsFormat": "brackets"
+			}
+		],
+		"accepts": ["application/json"],
+		"error": "The resource you are requesting could not be found"
+	},
+	"microsoftTeams task.create status 400": {
+		"requests": [
+			{
+				"method": "POST",
+				"url": "https://graph.microsoft.com/v1.0/planner/tasks",
+				"qs": {},
+				"headers": {
+					"authorization": "Bearer fake-teams-token"
+				},
+				"body": {
+					"planId": "plan-1",
+					"bucketId": "bucket-1",
+					"title": "x"
+				},
+				"qsFormat": "brackets"
+			}
+		],
+		"accepts": ["application/json"],
+		"error": "Bad request - please check your parameters"
+	},
+	"microsoftTeams chatMember.remove status 403": {
+		"requests": [
+			{
+				"method": "DELETE",
+				"url": "https://graph.microsoft.com/v1.0/chats/19:7e2f1174_0c5cfdbb@unq.gbl.spaces/members/m1",
+				"qs": {},
+				"headers": {
+					"authorization": "Bearer fake-teams-token"
+				},
+				"qsFormat": "brackets"
+			}
+		],
+		"accepts": ["application/json"],
+		"error": "Forbidden - perhaps check your credentials?"
+	},
+	"microsoftTeams chat.getAll status 429 on the second page": {
+		"requests": [
+			{
+				"method": "GET",
+				"url": "https://graph.microsoft.com/v1.0/chats",
+				"qs": {
+					"$top": "50"
+				},
+				"headers": {
+					"authorization": "Bearer fake-teams-token"
+				},
+				"qsFormat": "brackets"
+			},
+			{
+				"method": "GET",
+				"url": "https://graph.microsoft.com/v1.0/chats",
+				"qs": {
+					"$skiptoken": "n"
+				},
+				"headers": {
+					"authorization": "Bearer fake-teams-token"
+				},
+				"qsFormat": "brackets"
+			}
+		],
+		"accepts": ["application/json", "application/json"],
+		"error": "The service is receiving too many requests from you"
+	},
+	"microsoftTeams channel.update status 418": {
+		"requests": [
+			{
+				"method": "PATCH",
+				"url": "https://graph.microsoft.com/v1.0/teams/61165b04-e4cc-4026-b43f-926b4e2a7182/channels/19:abc123@thread.tacv2",
+				"qs": {},
+				"headers": {
+					"authorization": "Bearer fake-teams-token"
+				},
+				"body": {
+					"displayName": "x"
+				},
+				"qsFormat": "brackets"
+			}
+		],
+		"accepts": ["application/json"],
+		"error": "Your request is invalid or could not be processed by the service"
+	},
+	"microsoftTeams task.get status 501": {
+		"requests": [
+			{
+				"method": "GET",
+				"url": "https://graph.microsoft.com/v1.0/planner/tasks/task-1",
+				"qs": {},
+				"headers": {
+					"authorization": "Bearer fake-teams-token"
+				},
+				"qsFormat": "brackets"
+			}
+		],
+		"accepts": ["application/json"],
+		"error": "The service failed to process your request"
+	},
+	"microsoftTeams task.get id of dots": {
+		"requests": [],
+		"accepts": [],
+		"error": "The ID is not valid"
+	},
+	"microsoftTeams task.get id with a bad percent code": {
+		"requests": [],
+		"accepts": [],
+		"error": "The ID is not valid"
+	},
+	"microsoftTeams task.get id that decodes to a percent sign": {
+		"requests": [],
+		"accepts": [],
+		"error": "The ID is not valid"
+	},
+	"microsoftTeams task.get id with other letters and spaces around it": {
+		"requests": [
+			{
+				"method": "GET",
+				"url": "https://graph.microsoft.com/v1.0/planner/tasks/täsk-😀 x",
+				"qs": {},
+				"headers": {
+					"authorization": "Bearer fake-teams-token"
+				},
+				"qsFormat": "brackets"
+			}
+		],
+		"accepts": ["application/json"],
+		"output": [
+			{
+				"id": "t"
+			}
+		]
+	},
+	"microsoftTeams task.get id that is a number": {
+		"requests": [
+			{
+				"method": "GET",
+				"url": "https://graph.microsoft.com/v1.0/planner/tasks/42",
+				"qs": {},
+				"headers": {
+					"authorization": "Bearer fake-teams-token"
+				},
+				"qsFormat": "brackets"
+			}
+		],
+		"accepts": ["application/json"],
+		"output": [
+			{
+				"id": "42"
 			}
 		]
 	}

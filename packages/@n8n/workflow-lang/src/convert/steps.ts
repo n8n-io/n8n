@@ -62,6 +62,12 @@ export interface StepCall {
 	 * input has one item. A Code node gives items without paired items, so it does not.
 	 */
 	pairedErrorItem?: boolean;
+	/**
+	 * The v1 node pairs each output item with the input item of its run (`itemData: { item }`
+	 * for each result and for the error item). The step then keeps the index of the input item
+	 * of each item of output 0, for `$('Node').item` in a later node.
+	 */
+	pairsByCall?: boolean;
 }
 
 /** Fails the node when a raw expression would not give the v1 value in the host. */
@@ -254,7 +260,21 @@ export function emitStep(c: NodeContext, call: StepCall): void {
 	}
 
 	w.line(`const ${out}: Json[] = [];`);
-	if (call.usesIndex) {
+	// The index of the input item of each item of output 0 (`paired`), as a compiled node gives it.
+	const pairs =
+		call.pairsByCall === true &&
+		c.pairsWanted === true &&
+		c.setPairs !== undefined &&
+		!errorRetry(c)
+			? `${out}Pairs`
+			: null;
+	if (pairs) {
+		w.line(`const ${pairs}: Json = { items: ${out}, paired: [] };`);
+		c.setPairs?.(pairs);
+	}
+	const push = (value: string) =>
+		pairs ? `{ ${out}.push(${value}); ${pairs}.paired.push(${INDEX}); }` : `${out}.push(${value});`;
+	if (call.usesIndex || pairs) {
 		w.open(`for (let ${INDEX} = 0; ${INDEX} < ${input}.length; ${INDEX}++) {`);
 		w.line(`const ${ITEM} = ${input}[${INDEX}];`);
 	} else {
@@ -264,11 +284,11 @@ export function emitStep(c: NodeContext, call: StepCall): void {
 	if (onError === 'stopWorkflow' && c.traceAll) {
 		w.open('try {');
 		emitCall(c, 'result', 'let result: Json[]', fn, opts, 'result[0]', call.hostLimit);
-		w.line(`for (const r of result) ${out}.push(r);`);
+		w.line(`for (const r of result) ${push('r')}`);
 		failTrace(c, call.hostLimit);
 	} else if (onError === 'stopWorkflow') {
 		emitCall(c, 'result', 'let result: Json[]', fn, opts, 'result[0]', call.hostLimit);
-		w.line(`for (const r of result) ${out}.push(r);`);
+		w.line(`for (const r of result) ${push('r')}`);
 	} else {
 		w.open('try {');
 		emitCall(
@@ -283,11 +303,11 @@ export function emitStep(c: NodeContext, call: StepCall): void {
 			w.line(`for (const r of result[0]?.items ?? []) ${out}.push(r);`);
 			nodeErrorTrace(c);
 		} else {
-			w.line(`for (const r of result) ${out}.push(r);`);
+			w.line(`for (const r of result) ${push('r')}`);
 		}
 		w.close('} catch (error) {');
 		w.depth++;
-		w.line(errors ? `${errors}.push(${errorOutputItem(c)});` : `${out}.push(${errorItem(c)});`);
+		w.line(errors ? `${errors}.push(${errorOutputItem(c)});` : push(errorItem(c)));
 		w.close();
 	}
 	w.close();

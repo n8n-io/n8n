@@ -31,8 +31,14 @@
  * `chatMessage.undoSoftDeleteMessage` (v1 keeps the signed-in user for all
  * items of a run), `activityNotification.send` and `onlineMeeting`.
  *
- * A failed request gives `Microsoft Teams: HTTP status <n>`, as the other
- * library nodes do, but for the failures that v1 names itself.
+ * A failed request gives the message of v1 for the HTTP status (the
+ * NodeApiError of n8n-workflow), or the message that the operation of v1
+ * writes itself.
+ *
+ * Cost: the ids go through one native pattern match, not a loop for each
+ * character. The node reads `resource` and `operation` at run time; the node
+ * compiler folds them for one instance, so a compiled operation of version
+ * 1.1 (which does not check the ids) still costs less.
  */
 import { defineNode, type Item } from '@n8n/workflow-lang';
 
@@ -101,22 +107,11 @@ function asText(value: unknown): string {
 	return '[object Object]';
 }
 
-/** The start of the text when it is a version 4 GUID in lower case (GUID_V4_REGEX of the v1 node). */
+/** GUID_V4_REGEX of the v1 node: a version 4 GUID in lower case at the start of the text. */
+const GUID_START = '^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}';
+
 function guidPrefix(text: string): string | null {
-	if (text.length < 36) return null;
-	for (let k = 0; k < 36; k++) {
-		const ch = text.charAt(k);
-		if (k === 8 || k === 13 || k === 18 || k === 23) {
-			if (ch !== '-') return null;
-		} else if (k === 14) {
-			if (ch !== '4') return null;
-		} else if (k === 19) {
-			if (!'89ab'.includes(ch)) return null;
-		} else if (!'0123456789abcdef'.includes(ch)) {
-			return null;
-		}
-	}
-	return text.slice(0, 36);
+	return RegExp.exec(GUID_START, '', text, 0) === null ? null : text.slice(0, 36);
 }
 
 /**
@@ -138,9 +133,15 @@ function locatorValue(value: unknown, guid: boolean, displayName: string): unkno
 	return found;
 }
 
+const ID_PLAIN = '^(?!\\.+$)[\\x20-\\x22\\x24\\x26-\\x2e\\x30-\\x3e\\x40-\\x5b\\x5d-\\x7e]+$';
+const ID_REJECT = '[\\x00-\\x1f/\\\\?#%]|^\\.+$';
+
 /** validateMicrosoftGraphId of the v1 node: the id as it goes into a Graph path. */
 function graphId(id: unknown): string {
-	const trimmed = (id === null || id === undefined ? '' : asText(id)).trim();
+	const trimmed =
+		typeof id === 'string' ? id.trim() : (id === null || id === undefined ? '' : asText(id)).trim();
+	// The usual id: printable ASCII with no character that v1 decodes or refuses.
+	if (RegExp.exec(ID_PLAIN, '', trimmed, 0) !== null) return trimmed;
 	if (trimmed === '') throw new Error('A required ID is empty');
 	let value = '';
 	try {
@@ -148,38 +149,49 @@ function graphId(id: unknown): string {
 	} catch {
 		throw new Error('The ID is not valid');
 	}
-	let dots = true;
-	let rejected = false;
-	for (let k = 0; k < value.length; k++) {
-		const code = value.charCodeAt(k);
-		if (code === 46) continue;
-		dots = false;
-		// A surrogate without its pair is not valid text. v1 tests it before the other characters.
-		if (code >= 0xd800 && code <= 0xdbff) {
-			const next = k + 1 < value.length ? value.charCodeAt(k + 1) : 0;
-			if (next < 0xdc00 || next > 0xdfff) throw new Error('The ID is not valid');
-			k++;
-		} else if (code >= 0xdc00 && code <= 0xdfff) {
-			throw new Error('The ID is not valid');
-		} else if (
-			code < 32 ||
-			code === 47 ||
-			code === 92 ||
-			code === 63 ||
-			code === 35 ||
-			code === 37
-		) {
-			// Control characters, `/`, `\`, `?`, `#` and `%`.
-			rejected = true;
+	// Control characters, `/`, `\\`, `?`, `#` and `%`, or only dots.
+	if (RegExp.exec(ID_REJECT, '', value, 0) !== null) throw new Error('The ID is not valid');
+	// A surrogate without its pair is not valid text. ASCII text has none.
+	if (!Ascii.is(value)) {
+		for (let k = 0; k < value.length; k++) {
+			const code = value.charCodeAt(k);
+			if (code >= 0xd800 && code <= 0xdbff) {
+				const next = k + 1 < value.length ? value.charCodeAt(k + 1) : 0;
+				if (next < 0xdc00 || next > 0xdfff) throw new Error('The ID is not valid');
+				k++;
+			} else if (code >= 0xdc00 && code <= 0xdfff) {
+				throw new Error('The ID is not valid');
+			}
 		}
 	}
-	if (dots || rejected) throw new Error('The ID is not valid');
 	return value;
 }
 
-/** The body of an answer, or the error of a failed request. */
+/** The message of a NodeApiError of n8n-workflow for an HTTP status (STATUS_CODE_MESSAGES). */
+function statusMessage(status: number): string {
+	if (status === 400) return 'Bad request - please check your parameters';
+	if (status === 401) return 'Authorization failed - please check your credentials';
+	if (status === 402) return 'Payment required - perhaps check your payment details?';
+	if (status === 403) return 'Forbidden - perhaps check your credentials?';
+	if (status === 404) return 'The resource you are requesting could not be found';
+	if (status === 405) {
+		return 'Method not allowed - please check you are using the right HTTP method';
+	}
+	if (status === 429) return 'The service is receiving too many requests from you';
+	if (status === 500) return 'The service was not able to process your request';
+	if (status === 502) return 'Bad gateway - the service failed to handle your request';
+	if (status === 503) {
+		return 'Service unavailable - try again later or consider setting this node to retry automatically (in the node settings)';
+	}
+	if (status === 504) return 'Gateway timed out - perhaps try again later?';
+	return status < 500
+		? 'Your request is invalid or could not be processed by the service'
+		: 'The service failed to process your request';
+}
+
+/** The body of an answer, or the error that v1 raises for a failed request. */
 function sent(answer: GraphAnswer): unknown {
-	if (answer.status >= 400) throw new Error(`Microsoft Teams: HTTP status ${answer.status}`);
+	if (answer.status >= 400) throw new Error(statusMessage(answer.status));
 	return answer.body;
 }
 
@@ -208,17 +220,10 @@ function trimmedText(value: unknown): string {
  */
 function nextPath(link: unknown): string {
 	if (typeof link !== 'string') throw new Error(REFUSED);
-	const scheme = 'https://';
-	if (link.slice(0, scheme.length).toLowerCase() !== scheme) throw new Error(REFUSED);
-	let end = link.length;
-	for (let k = scheme.length; k < link.length; k++) {
-		const ch = link.charAt(k);
-		if (ch === '/' || ch === '?' || ch === '#') {
-			end = k;
-			break;
-		}
-	}
-	const host = link.slice(scheme.length, end).toLowerCase();
+	const found = RegExp.exec('^https://([^/?#]*)', 'i', link, 0);
+	if (found === null) throw new Error(REFUSED);
+	const end = found[1];
+	const host = link.slice(found[2], end).toLowerCase();
 	if (!GRAPH_HOSTS.includes(host)) throw new Error(REFUSED);
 	const hash = link.indexOf('#', end);
 	const rest = hash >= 0 ? link.slice(end, hash) : link.slice(end);
@@ -458,17 +463,17 @@ export default defineNode<TeamsParameters>({
 			qs: Record<string, unknown>,
 			ifMatch?: unknown,
 		): Promise<GraphAnswer> => {
-			const headers: Record<string, string> = { 'Content-Type': 'application/json' };
-			if (ifMatch !== undefined && ifMatch !== null) headers['If-Match'] = asText(ifMatch);
-			const response = await ctx.http<unknown>({
+			return await ctx.http<unknown>({
 				method,
 				url: `${BASE}${path}`,
-				headers,
+				headers:
+					ifMatch === undefined || ifMatch === null
+						? { 'Content-Type': 'application/json' }
+						: { 'Content-Type': 'application/json', 'If-Match': asText(ifMatch) },
 				qs,
 				body,
 				credential,
 			});
-			return { status: response.status, body: response.body };
 		};
 		// microsoftApiRequestAllItems of the v1 node, for the property `value`.
 		const all = async (
@@ -698,8 +703,10 @@ export default defineNode<TeamsParameters>({
 			throw new Error(`Microsoft Teams: ${resource}.${operation} is not in the compiled library`);
 		};
 
+		// The converter calls the node once for each item.
+		if (items === undefined || items.length === 1) return asItems(await one());
 		const out: Item[] = [];
-		for (const _item of items ?? [{}]) {
+		for (const _item of items) {
 			for (const entry of asItems(await one())) out.push(entry);
 		}
 		return out;
