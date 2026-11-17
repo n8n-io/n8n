@@ -36,7 +36,6 @@ describe('WorkflowsPublicController', () => {
 			mock(), // redactionEnforcementService
 			mock(), // workflowDependencyQueryService
 			mock(), // workflowExecutionService
-			mock(), // testWebhooks
 		);
 	});
 

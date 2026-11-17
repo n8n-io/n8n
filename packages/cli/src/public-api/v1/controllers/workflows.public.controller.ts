@@ -63,7 +63,7 @@ import type { Response } from 'express';
 import { PROJECT_ROOT } from 'n8n-workflow';
 
 import { FolderNotFoundError } from '@/errors/folder-not-found.error';
-import { ConflictError, ResponseError, BadRequestError, NotFoundError } from '@n8n/errors';
+import { ResponseError, BadRequestError, NotFoundError, UnexpectedError } from '@n8n/errors';
 import { SharedWorkflowNotFoundError } from '@/errors/shared-workflow-not-found.error';
 import { WorkflowHistoryVersionNotFoundError } from '@/errors/workflow-history-version-not-found.error';
 import { RedactionEnforcementService } from '@/modules/redaction/redaction-enforcement.service';
@@ -77,16 +77,18 @@ import {
 	resolveOffsetPagination,
 } from '@/public-api/v1/shared/services/pagination.service';
 import { TagService } from '@/services/tag.service';
-import { TestWebhooks } from '@/webhooks/test-webhooks';
 import { WorkflowCreationService } from '@/workflows/workflow-creation.service';
 import { createWorkflowEntityFromPayload } from '@/workflows/workflow-entity-mapper';
-import { WorkflowExecutionService } from '@/workflows/workflow-execution.service';
+import {
+	TRIGGER_EVENT_REQUIRED_MESSAGE,
+	WorkflowExecutionService,
+} from '@/workflows/workflow-execution.service';
 import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 import { WorkflowHistoryService } from '@/workflows/workflow-history/workflow-history.service';
 import { WorkflowService } from '@/workflows/workflow.service';
 import { EnterpriseWorkflowService } from '@/workflows/workflow.service.ee';
 import type { PublicApiRequest } from '@/public-api/public-api-client';
-import { WorkflowRequest } from '@/workflows/workflow.request';
+import type { WorkflowRequest } from '@/workflows/workflow.request';
 
 const ACTIVATE_DEACTIVATE_DEPRECATED_SINCE = new Date('2026-07-23T00:00:00Z');
 const OLD_VERSION_PATH_DEPRECATED_SINCE = new Date('2026-08-26T00:00:00Z');
@@ -108,10 +110,6 @@ const PUBLISH_CONFLICT_DESCRIPTION =
 	'`workflowReviewRequestId` are present), publication of a version without an approved ' +
 	'review when the instance requires one (then `reason` is `review_required` and `versionId` ' +
 	'is present), or a webhook path conflict.';
-
-const RUN_NEEDS_TRIGGER_EVENT_MESSAGE =
-	'The run data does not reach the destination node from a trigger, and the trigger needs an ' +
-	'external event to start. Add run data for the trigger node to `runData`, or pin data on the trigger.';
 
 function toPublicJson(value: unknown): Record<string, unknown> | null {
 	return value !== null && typeof value === 'object' && !Array.isArray(value)
@@ -240,7 +238,6 @@ export class WorkflowsPublicController {
 		private readonly redactionEnforcementService: RedactionEnforcementService,
 		private readonly workflowDependencyQueryService: WorkflowDependencyQueryService,
 		private readonly workflowExecutionService: WorkflowExecutionService,
-		private readonly testWebhooks: TestWebhooks,
 	) {}
 
 	private get workflowTagsEnabled(): boolean {
@@ -962,7 +959,7 @@ export class WorkflowsPublicController {
 			'The API key or the user does not have the required permission, or the instance is in read-only mode.',
 	})
 	@ApiErrorResponse(404)
-	@ApiErrorResponse(409, { description: RUN_NEEDS_TRIGGER_EVENT_MESSAGE })
+	@ApiErrorResponse(409, { description: TRIGGER_EVENT_REQUIRED_MESSAGE })
 	async runWorkflow(
 		req: PublicApiRequest,
 		_res: Response,
@@ -995,12 +992,14 @@ export class WorkflowsPublicController {
 			workflow,
 			runPayload,
 			req.user,
+			undefined,
+			undefined,
+			false,
 		);
 
-		// Webhook triggered workflows do not contain an executionId because the run data does not reach the destination node from a trigger. The trigger needs an external event to start.
+		// `waitForWebhook: false` makes the service throw instead of waiting, so this cannot happen.
 		if (!('executionId' in result)) {
-			await this.testWebhooks.cancelWebhook(workflow.id);
-			throw new ConflictError(RUN_NEEDS_TRIGGER_EVENT_MESSAGE);
+			throw new UnexpectedError('Manual run waited for a webhook although waiting was turned off');
 		}
 
 		await this.workflowService.emitWorkflowExecuted(req.user, workflow, result.executionId);

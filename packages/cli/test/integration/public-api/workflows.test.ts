@@ -4683,7 +4683,7 @@ describe('POST /workflows/:workflowId/run', () => {
 	});
 
 	describe('when the run must wait for a trigger event', () => {
-		test('should return 409, cancel the test webhook, and start no execution', async () => {
+		test('should return 409, register no test webhook, and start no execution', async () => {
 			const webhookId = uuid();
 			const webhookWorkflow = await createWorkflow(
 				{
@@ -4705,6 +4705,7 @@ describe('POST /workflows/:workflowId/run', () => {
 				},
 				ownerPersonalProject,
 			);
+			const registerWebhooks = vi.spyOn(Container.get(TestWebhooks), 'registerWebhooks');
 			const cancelWebhook = vi.spyOn(Container.get(TestWebhooks), 'cancelWebhook');
 
 			const response = await authOwnerAgent.post(`/workflows/${webhookWorkflow.id}/run`).send({
@@ -4713,10 +4714,14 @@ describe('POST /workflows/:workflowId/run', () => {
 			});
 
 			expect(response.statusCode).toBe(409);
-			expect(cancelWebhook).toHaveBeenCalledWith(webhookWorkflow.id);
+			expect(registerWebhooks).not.toHaveBeenCalled();
+			expect(cancelWebhook).not.toHaveBeenCalled();
 
 			const executions = await fetchExecutionsForWorkflow(webhookWorkflow.id);
 			expect(executions).toHaveLength(0);
+
+			registerWebhooks.mockRestore();
+			cancelWebhook.mockRestore();
 		});
 	});
 });
