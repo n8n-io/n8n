@@ -862,6 +862,35 @@ const handPorted: EquivalenceCase[] = [
 		responses: [{ status: 202, body: '' }],
 	},
 	{
+		name: 'microsoftOutlook message.move',
+		type: 'n8n-nodes-base.microsoftOutlook',
+		typeVersion: 2,
+		parameters: {
+			resource: 'message',
+			operation: 'move',
+			messageId: { __rl: true, mode: 'id', value: 'AAMkAGI2=' },
+			folderId: { __rl: true, mode: 'list', value: 'AQMkADAw-folder' },
+		},
+		items: [{}, {}],
+		credential: outlook,
+		responses: [{ status: 201, body: { id: 'AAMkAGI3=', parentFolderId: 'AQMkADAw-folder' } }],
+	},
+	{
+		name: 'microsoftOutlook message.delete shared mailbox',
+		type: 'n8n-nodes-base.microsoftOutlook',
+		typeVersion: 2,
+		parameters: {
+			resource: 'message',
+			operation: 'delete',
+			messageId: { __rl: true, mode: 'list', value: 'AAMkAGI2=' },
+		},
+		credential: {
+			...outlook,
+			data: { ...outlook.data, useShared: true, userPrincipalName: 'team@example.com' },
+		},
+		responses: [{ status: 204, body: '' }],
+	},
+	{
 		name: 'microsoftOutlook message.send shared mailbox',
 		type: 'n8n-nodes-base.microsoftOutlook',
 		typeVersion: 2,
@@ -2160,6 +2189,21 @@ const handPorted: EquivalenceCase[] = [
 		},
 		credential: calendar,
 		responses: ok({ items: [{ id: 'e1' }, { id: 'e2' }] }),
+	},
+	{
+		name: 'googleCalendar event.delete',
+		type: 'n8n-nodes-base.googleCalendar',
+		typeVersion: 1.3,
+		parameters: {
+			resource: 'event',
+			operation: 'delete',
+			calendar: { __rl: true, mode: 'id', value: 'mia@acme.test' },
+			eventId: 'ev_123',
+			options: { sendUpdates: 'all' },
+		},
+		items: [{}, {}],
+		credential: calendar,
+		responses: [{ status: 204, body: '' }],
 	},
 	{
 		// A date that is not ISO 8601 (the default format of the Date & Time node).

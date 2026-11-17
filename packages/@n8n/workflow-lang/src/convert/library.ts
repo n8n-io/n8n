@@ -230,6 +230,10 @@ export const ADAPTERS: Record<string, Adapter> = {
 			...(version >= 2.2 ? { replyToHeader: true } : {}),
 		};
 	},
+	// v1 reads the id of a folder URL with a regular expression: such a call runs in the host
+	// (the marker `folderUrl` is not in the `supports` list).
+	'n8n-nodes-base.microsoftOutlook': (p) =>
+		isRecord(p.folderId) && p.folderId.mode === 'url' ? { ...p, folderUrl: true } : p,
 	'n8n-nodes-base.slack': (p, version) => {
 		const out: Record<string, unknown> = { ...p };
 		const other = isRecord(p.otherOptions) ? p.otherOptions : {};

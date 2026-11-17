@@ -74,10 +74,10 @@ interface SheetsParameters {
 	readVersion?: number;
 	clear?: string;
 	keepFirstRow?: boolean;
-	startIndex?: unknown;
+	startIndex?: string | number;
 	rowsToDelete?: number;
 	columnsToDelete?: number;
-	range?: unknown;
+	range?: string;
 	toDelete?: string;
 	numberToDelete?: number;
 	/** Append checks the sheet's columns against `columns.schema` (version 4.4 and later). */

@@ -1,7 +1,7 @@
 /**
  * Compiled library node: a hand port of `n8n-nodes-base.microsoftOutlook`
- * version 2, operation `message.send` (Microsoft Graph `sendMail`), with the
- * Outlook OAuth2 credential.
+ * version 2, operations `message.send` (Microsoft Graph `sendMail`),
+ * `message.move` and `message.delete`, with the Outlook OAuth2 credential.
  *
  * The URL of the mailbox depends on credential fields (`graphApiBaseUrl`,
  * `useShared`, `userPrincipalName`). The credentials file holds it as the
@@ -20,6 +20,20 @@ interface OutlookParameters {
 	subject?: unknown;
 	bodyContent?: unknown;
 	additionalFields?: Record<string, unknown>;
+	messageId?: unknown;
+	folderId?: unknown;
+}
+
+/** The value of a resource locator; the converter passes only the value. */
+function locatorValue(value: unknown): unknown {
+	return isRecord(value) && value.__rl === true ? value.value : value;
+}
+
+/** String(value) of JavaScript for the id of a path. */
+function idText(value: unknown): string {
+	if (typeof value === 'string') return value;
+	if (typeof value === 'number' || typeof value === 'boolean') return `${value}`;
+	return value === null ? 'null' : value === undefined ? 'undefined' : '[object Object]';
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -67,6 +81,8 @@ export default defineNode<OutlookParameters>({
 		resource: 'message',
 		operation: { message: 'send' },
 		operations: {
+			'message.move': ['authentication="microsoftOutlookOAuth2Api"', 'messageId', 'folderId'],
+			'message.delete': ['authentication="microsoftOutlookOAuth2Api"', 'messageId'],
 			'message.send': [
 				'authentication="microsoftOutlookOAuth2Api"',
 				'toRecipients',
@@ -89,6 +105,42 @@ export default defineNode<OutlookParameters>({
 	async run(ctx, parameters, items, credential) {
 		const resource = parameters.resource ?? 'message';
 		const operation = parameters.operation ?? 'send';
+		if (resource === 'message' && (operation === 'move' || operation === 'delete')) {
+			if (
+				(parameters.authentication ?? 'microsoftOutlookOAuth2Api') !== 'microsoftOutlookOAuth2Api'
+			) {
+				throw new Error(
+					'Microsoft Outlook: only the Outlook OAuth2 credential is in the compiled library',
+				);
+			}
+			const done: Item[] = [];
+			for (const _item of items ?? [{}]) {
+				const message = `{{$credentials.n8nDerived.outlookApiUrl}}/messages/${idText(locatorValue(parameters.messageId))}`;
+				const response =
+					operation === 'move'
+						? await ctx.http<unknown>({
+								method: 'POST',
+								url: `${message}/move`,
+								headers: { 'Content-Type': 'application/json' },
+								qs: {},
+								body: { destinationId: locatorValue(parameters.folderId) },
+								credential,
+							})
+						: await ctx.http<unknown>({
+								method: 'DELETE',
+								url: message,
+								headers: { 'Content-Type': 'application/json' },
+								qs: {},
+								body: undefined,
+								credential,
+							});
+				if (response.status >= 400) {
+					throw new Error(`Microsoft Outlook: HTTP status ${response.status}`);
+				}
+				done.push({ success: true });
+			}
+			return done;
+		}
 		if (resource !== 'message' || operation !== 'send') {
 			throw new Error(`Microsoft Outlook: ${resource}.${operation} is not in the compiled library`);
 		}

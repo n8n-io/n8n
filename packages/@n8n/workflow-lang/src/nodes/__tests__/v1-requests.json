@@ -1404,7 +1404,8 @@
 						]
 					},
 					"saveToSentItems": false
-				}
+				},
+				"qsFormat": "brackets"
 			},
 			{
 				"method": "POST",
@@ -1453,13 +1454,99 @@
 						]
 					},
 					"saveToSentItems": false
-				}
+				},
+				"qsFormat": "brackets"
+			}
+		],
+		"wire": [
+			{
+				"accept": "application/json",
+				"contentType": "application/json",
+				"userAgent": "n8n"
+			},
+			{
+				"accept": "application/json",
+				"contentType": "application/json",
+				"userAgent": "n8n"
 			}
 		],
 		"output": [
 			{
 				"success": true
 			},
+			{
+				"success": true
+			}
+		]
+	},
+	"microsoftOutlook message.move": {
+		"requests": [
+			{
+				"method": "POST",
+				"url": "https://graph.microsoft.com/v1.0/me/messages/AAMkAGI2=/move",
+				"qs": {},
+				"headers": {
+					"authorization": "Bearer fake-outlook-token"
+				},
+				"body": {
+					"destinationId": "AQMkADAw-folder"
+				},
+				"qsFormat": "brackets"
+			},
+			{
+				"method": "POST",
+				"url": "https://graph.microsoft.com/v1.0/me/messages/AAMkAGI2=/move",
+				"qs": {},
+				"headers": {
+					"authorization": "Bearer fake-outlook-token"
+				},
+				"body": {
+					"destinationId": "AQMkADAw-folder"
+				},
+				"qsFormat": "brackets"
+			}
+		],
+		"wire": [
+			{
+				"accept": "application/json",
+				"contentType": "application/json",
+				"userAgent": "n8n"
+			},
+			{
+				"accept": "application/json",
+				"contentType": "application/json",
+				"userAgent": "n8n"
+			}
+		],
+		"output": [
+			{
+				"success": true
+			},
+			{
+				"success": true
+			}
+		]
+	},
+	"microsoftOutlook message.delete shared mailbox": {
+		"requests": [
+			{
+				"method": "DELETE",
+				"url": "https://graph.microsoft.com/v1.0/users/team@example.com/messages/AAMkAGI2=",
+				"qs": {},
+				"headers": {
+					"authorization": "Bearer fake-outlook-token"
+				},
+				"qsFormat": "brackets"
+			}
+		],
+		"wire": [
+			{
+				"accept": "application/json",
+				"contentType": "application/json",
+				"userAgent": "n8n"
+			}
+		],
+		"output": [
 			{
 				"success": true
 			}
@@ -1489,7 +1576,15 @@
 						]
 					},
 					"saveToSentItems": true
-				}
+				},
+				"qsFormat": "brackets"
+			}
+		],
+		"wire": [
+			{
+				"accept": "application/json",
+				"contentType": "application/json",
+				"userAgent": "n8n"
 			}
 		],
 		"output": [
@@ -4345,6 +4440,48 @@
 			},
 			{
 				"id": "e2"
+			}
+		]
+	},
+	"googleCalendar event.delete": {
+		"requests": [
+			{
+				"method": "DELETE",
+				"url": "https://www.googleapis.com/calendar/v3/calendars/mia%40acme.test/events/ev_123",
+				"qs": {},
+				"headers": {
+					"authorization": "Bearer fake-calendar-token"
+				},
+				"qsFormat": "brackets"
+			},
+			{
+				"method": "DELETE",
+				"url": "https://www.googleapis.com/calendar/v3/calendars/mia%40acme.test/events/ev_123",
+				"qs": {},
+				"headers": {
+					"authorization": "Bearer fake-calendar-token"
+				},
+				"qsFormat": "brackets"
+			}
+		],
+		"wire": [
+			{
+				"accept": "application/json",
+				"contentType": "application/json",
+				"userAgent": "n8n"
+			},
+			{
+				"accept": "application/json",
+				"contentType": "application/json",
+				"userAgent": "n8n"
+			}
+		],
+		"output": [
+			{
+				"success": true
+			},
+			{
+				"success": true
 			}
 		]
 	},
