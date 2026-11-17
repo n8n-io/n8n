@@ -197,7 +197,8 @@ describe('convertWorkflow', () => {
 				[
 					webhookNode(),
 					node('Format date', 'dateTime', 2, [200, 0], {
-						value: '={{ $jmespath($json, "body.at") }}',
+						operation: 'formatDate',
+						date: '={{ $jmespath($json, "body.at") }}',
 					}),
 				],
 				connect([['Webhook', 0, 'Format date', 0]]),
@@ -213,7 +214,8 @@ describe('convertWorkflow', () => {
 				[
 					webhookNode(),
 					node('Format date', 'dateTime', 2, [200, 0], {
-						value: "={{ $('Webhook').item.json.at.toDateTime() }}",
+						operation: 'formatDate',
+						date: "={{ $('Webhook').item.json.at.toDateTime() }}",
 					}),
 				],
 				connect([['Webhook', 0, 'Format date', 0]]),

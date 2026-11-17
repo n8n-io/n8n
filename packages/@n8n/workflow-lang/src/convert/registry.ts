@@ -4,6 +4,7 @@
  */
 import { lowerCode } from './code-node.ts';
 import type { Lowerer, NodeContext } from './context.ts';
+import { isNativeDateTime, lowerDateTime } from './date-time.ts';
 import { libraryNodeTypes, lowerHttpRequest, lowerLibrary, NATIVE_ROOTS } from './library.ts';
 import { lowerSplitInBatches } from './loops.ts';
 import {
@@ -119,6 +120,9 @@ export function lowererOf(node: N8nNode): Lowerer | string {
 	if (node.type === TEST_DATA_TYPE) return lowerTestData;
 	if (node.type.startsWith(LANGCHAIN_PREFIX)) return lowerAiNode;
 	if (!node.type.startsWith(BASE)) return lowerOtherPackage;
+	// Date & Time has a native form for some calls only (`date-time.ts`). The other calls are
+	// node code: the node compiler or the fallback host (`lowerFallback`).
+	if (node.type === `${BASE}dateTime` && isNativeDateTime(node)) return lowerDateTime;
 	return lowerFallback;
 }
 

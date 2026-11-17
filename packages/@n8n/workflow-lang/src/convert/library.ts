@@ -1110,7 +1110,7 @@ function lowerHttpLibrary(c: NodeContext): void {
 		});
 		const nested = mode === 'set' && out.some(([name]) => name.includes('.') || name.includes('['));
 		// From version 4.3, v1 sends a repeated name as an array. The library node writes an
-		// array in a body (`arrays`), and not in the query or in a header.
+		// array in a body and in the query (`arrays`), and not in a header.
 		if (mode === 'append' && repeated && !arrays) {
 			throw new NodeFailure('http', 'A parameter name repeats.', path);
 		}
@@ -1199,6 +1199,8 @@ function lowerHttpLibrary(c: NodeContext): void {
 	let credentialType: string | undefined;
 	/** The name and the code of the content type that the node sets for its body. */
 	let contentTypeHeader: [string, string] | null = null;
+	/** True when the node stores the body of the response as a file of the item. */
+	let storesFile = false;
 	const options = isRecord(p.options) ? p.options : {};
 	if (v >= 3) {
 		if (
@@ -1221,8 +1223,22 @@ function lowerHttpLibrary(c: NodeContext): void {
 							isRecord(p.queryParameters) ? p.queryParameters.parameters : [],
 							'queryParameters.parameters',
 							v >= 4.3 ? 'append' : 'assign',
+							false,
+							true,
 						),
 			);
+			// v1 writes the query with the qs library: a list is `key[0]=…`, an object is
+			// `key[name]=…`, and only `A-Z a-z 0-9 - . _ ~` stay as they are (spec 7.1, `brackets`).
+			// The option `queryParameterArrays` has two other formats, which the runtime has not.
+			const arrays = options.queryParameterArrays;
+			if (arrays !== undefined && arrays !== 'indices') {
+				throw new NodeFailure(
+					'http',
+					'The format of arrays in the query is not supported by the library node.',
+					'options.queryParameterArrays',
+				);
+			}
+			entries.push(['qsFormat', raw("'brackets'")]);
 		}
 		if (p.sendHeaders === true) {
 			add(
@@ -1317,11 +1333,30 @@ function lowerHttpLibrary(c: NodeContext): void {
 				? options.response.response
 				: {};
 		if (response.responseFormat === 'file') {
-			throw new NodeFailure(
-				'http-binary',
-				'The response format "file" (binary data) is not supported.',
-				'options.response',
-			);
+			// The runtime stores the body of the response as binary data (`responseBinary`, spec
+			// 7.1). The caller says when its runtime does. The runtime has a largest size of a
+			// stored file and v1 has none, so the node has its fallback-host form too, and it
+			// sends only GET requests: v1 can send a GET again.
+			const reason =
+				c.nodeSources?.storesResponses !== true
+					? 'the runtime of the caller does not store a response as binary data'
+					: method !== 'GET'
+						? 'the method is not a fixed GET'
+						: response.neverError === true
+							? 'with "never error" v1 stores the body of a failed request too'
+							: c.node.onError === 'continueErrorOutput'
+								? 'the node has an error output'
+								: readPaging(c, options) !== null
+									? 'the node has pagination'
+									: null;
+			if (reason !== null) {
+				throw new NodeFailure(
+					'http-binary',
+					`The response format "file" (binary data) is not supported here: ${reason}.`,
+					'options.response',
+				);
+			}
+			storesFile = true;
 		}
 		// The library node reads these response options (`src/nodes/http-request.ts`).
 		const kept: Array<[string, Code]> = [];
@@ -1369,10 +1404,9 @@ function lowerHttpLibrary(c: NodeContext): void {
 				'options',
 			);
 		}
-		// v1 follows redirects from version 4, or when the option says so. The library node
-		// follows them always (at most 21), so each other setting runs in the host.
-		// An option without its own values has the defaults of the node: follow from version 4,
-		// at most 21 redirects.
+		// v1 follows redirects from version 4, or when the option says so. An option without
+		// its own values has the defaults of the node: follow from version 4, at most 21
+		// redirects. The library node gets the largest number of redirects (0: follow none).
 		const redirect = options.redirect;
 		const redirectOptions =
 			isRecord(redirect) && isRecord(redirect.redirect) ? redirect.redirect : undefined;
@@ -1381,16 +1415,33 @@ function lowerHttpLibrary(c: NodeContext): void {
 				? v >= 4
 				: redirectOptions !== undefined && (redirectOptions.followRedirects ?? v >= 4) === true;
 		const maxRedirects = redirectOptions?.maxRedirects;
-		if (!follows || (maxRedirects !== undefined && maxRedirects !== 21)) {
+		if (maxRedirects !== undefined && typeof maxRedirects !== 'number') {
 			throw new NodeFailure(
 				'http',
-				'A request that does not follow redirects, or that has its own limit of redirects, is not supported.',
+				'The limit of redirects is not a fixed number.',
 				'options.redirect',
 			);
 		}
-		// The runtime has no setting for these: the certificate check, a proxy, client
-		// certificates, and the format of arrays in the query.
-		for (const key of ['allowUnauthorizedCerts', 'proxy', 'queryParameterArrays']) {
+		// v1 reads a limit of 0 as no limit of its own.
+		const redirects = !follows
+			? 0
+			: maxRedirects !== undefined && maxRedirects > 0
+				? maxRedirects
+				: 21;
+		if (redirects !== 21) {
+			// A page request follows redirects in the runtime, which has one limit.
+			if (paging) {
+				throw new NodeFailure(
+					'http',
+					'Pagination with its own redirect settings is not supported.',
+					'options.redirect',
+				);
+			}
+			entries.push(['redirects', literal(redirects)]);
+		}
+		// The runtime has no setting for these: the certificate check, a proxy and client
+		// certificates.
+		for (const key of ['allowUnauthorizedCerts', 'proxy']) {
 			const value = options[key];
 			if (value === undefined || value === false || value === '') continue;
 			throw new NodeFailure(
@@ -1406,8 +1457,17 @@ function lowerHttpLibrary(c: NodeContext): void {
 				'provideSslCertificates',
 			);
 		}
-		// `options.timeout` has no effect here: the request of a library node has the time
-		// limit of the runtime (300,000 ms, the default of v1) and no setting for another one.
+		// v1 stops a request after `options.timeout` ms. Without it the limit is 300,000 ms,
+		// which is the default of the runtime too.
+		const timeout = options.timeout;
+		if (typeof timeout === 'number' && timeout > 0) {
+			entries.push(['timeoutMs', literal(timeout)]);
+		} else if (typeof timeout === 'string' && timeout.startsWith('=')) {
+			const t = c.compiled(timeout, 'options.timeout');
+			usage.item ||= t.usage.item;
+			usage.index ||= t.usage.index;
+			entries.push(['timeoutMs', raw(`(Number(${flatCode(t.code)}) || 300000)`)]);
+		}
 	} else {
 		const auth = p.authentication;
 		const authTypes: Record<string, string> = {
@@ -1491,6 +1551,20 @@ function lowerHttpLibrary(c: NodeContext): void {
 	// v1 sends the pages of each item in a loop (n8n-core requestWithAuthenticationPaginated).
 	if (paging) {
 		emitPaging(c, paging, parameters.code, call.fields);
+		return;
+	}
+	if (storesFile) {
+		// A file over the largest size of the runtime: the fallback host runs the v1 node.
+		const inHost = (to: NodeContext) => lowerHostNode(to, 1, [['host', raw("'fallback'")]]);
+		const hostForm = hostFormOf(c, inHost);
+		if (hostForm === null) {
+			throw new NodeFailure(
+				'http-binary',
+				'The response format "file" has no fallback-host form here.',
+				'options.response',
+			);
+		}
+		emitWithHostForm(c, false, (to, hostLimit) => emitStep(to, { ...call, hostLimit }), hostForm);
 		return;
 	}
 	// v1 sends one request for each item.

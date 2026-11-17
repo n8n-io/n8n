@@ -45,6 +45,15 @@ interface HttpRequestParameters {
 	 * 4.3 send the credential to another origin after a redirect, and the other versions do not.
 	 */
 	sendCredentialsOnCrossOriginRedirect?: boolean;
+	/**
+	 * The largest number of redirects that the node follows (`options.redirect` of v1). The
+	 * default is 21. With 0 the node follows no redirect.
+	 */
+	redirects?: number;
+	/** `options.timeout` of v1: the time limit of each request in ms. */
+	timeoutMs?: number;
+	/** How the query goes into the URL: v1 writes it with the qs library (`brackets`). */
+	qsFormat?: 'repeat' | 'brackets';
 	/** The n8n credential behind `credential`. */
 	credentialId?: string;
 	/** The n8n credential type behind `credential`. */
@@ -542,7 +551,7 @@ function responseItems(
 export default defineNode<HttpRequestParameters>({
 	type: 'n8n-nodes-base.httpRequest',
 	version: 4,
-	async run(ctx, parameters, _items, credential) {
+	async run(ctx, parameters, items, credential) {
 		const method = parameters.method ?? 'GET';
 		const options = parameters.response ?? {};
 		const version = parameters.version ?? 4;
@@ -572,10 +581,12 @@ export default defineNode<HttpRequestParameters>({
 				url,
 				headers: withAccept(textValues(headers), options, version),
 				qs: query,
+				qsFormat: parameters.qsFormat,
 				body,
 				credential,
 				tokenExpiredStatusCode,
 				allowedDomains: true,
+				timeoutMs: parameters.timeoutMs,
 			});
 			const items = responseItems(
 				pageResponse.body,
@@ -603,6 +614,8 @@ export default defineNode<HttpRequestParameters>({
 			}
 			return [pageItem];
 		}
+		// `responseFormat: file`: the runtime stores the body of a 2xx response (spec 7.1).
+		const responseBinary = options.responseFormat === 'file' ? {} : undefined;
 		const parts = requestParts(parameters);
 		const sent = { ...parts, headers: withAccept(parts.headers, options, version) };
 		let response: HttpResponse<unknown>;
@@ -612,6 +625,7 @@ export default defineNode<HttpRequestParameters>({
 				url: parameters.url,
 				headers: sent.headers,
 				qs: parameters.qs ?? {},
+				qsFormat: parameters.qsFormat,
 				body: sent.body,
 				multipart: sent.multipart,
 				credential,
@@ -619,10 +633,17 @@ export default defineNode<HttpRequestParameters>({
 				allowedDomains: true,
 				// The node sends the request of each redirect itself, with the rules of the v1 node.
 				followRedirects: false,
+				timeoutMs: parameters.timeoutMs,
+				responseBinary,
 			});
 		} catch (error) {
-			if (!continues) throw error;
-			return [failedRequestItem(error, version)];
+			if (responseBinary !== undefined) {
+				const limit = fileLimitError(error);
+				// oxlint-disable-next-line typescript/only-throw-error
+				if (limit !== undefined) throw limit;
+			}
+			if (!continues) throw requestError(error);
+			return [failedRequestItem(error, version, false, parameters.timeoutMs)];
 		}
 		const sendsCredentials =
 			parameters.sendCredentialsOnCrossOriginRedirect ?? (version >= 3 && version < 4.4);
@@ -630,7 +651,8 @@ export default defineNode<HttpRequestParameters>({
 		// 307 and 308 keep the method and the body.
 		let url = parameters.url;
 		let current = method;
-		for (let hop = 0; hop < 21; hop++) {
+		const limit = parameters.redirects ?? 21;
+		for (let hop = 0; hop < limit; hop++) {
 			const status = response.status;
 			const location = response.headers.location;
 			if (![301, 302, 303, 307, 308].includes(status) || typeof location !== 'string') break;
@@ -658,20 +680,94 @@ export default defineNode<HttpRequestParameters>({
 					tokenExpiredStatusCode,
 					allowedDomains: true,
 					followRedirects: false,
+					timeoutMs: parameters.timeoutMs,
+					responseBinary,
 				});
 			} catch (error) {
-				if (!continues) throw error;
-				return [failedRequestItem(error, version, true)];
+				if (responseBinary !== undefined) {
+					const tooLarge = fileLimitError(error);
+					// oxlint-disable-next-line typescript/only-throw-error
+					if (tooLarge !== undefined) throw tooLarge;
+				}
+				if (!continues) throw requestError(error);
+				return [failedRequestItem(error, version, true, parameters.timeoutMs)];
 			}
 		}
 		const status = response.status;
+		if (status >= 300 && status < 400) {
+			// A redirect that the node does not follow. After the largest number of redirects,
+			// v1 fails with the error of its HTTP client, also with "never error".
+			if (limit > 0 && typeof response.headers.location === 'string') {
+				const message = 'Maximum number of redirects exceeded';
+				if (continues) {
+					const item: Item = {
+						error: {
+							message,
+							name: 'Error [ERR_FR_TOO_MANY_REDIRECTS]',
+							code: 'ERR_FR_TOO_MANY_REDIRECTS',
+						},
+					};
+					if (version >= 4.5) {
+						item.details = {
+							message,
+							httpCode: 'ERR_FR_TOO_MANY_REDIRECTS',
+							body: null,
+							context: { itemIndex: 0 },
+						};
+					}
+					return [item];
+				}
+				// oxlint-disable-next-line typescript/only-throw-error
+				throw {
+					name: 'NodeApiError',
+					message,
+					description: '',
+					httpCode: 'ERR_FR_TOO_MANY_REDIRECTS',
+				};
+			}
+			// Each other status from 300 to 399 is an error of v1: n8n has no text for it, so
+			// the message is the message of the HTTP client.
+			if (options.neverError !== true) {
+				const message = `${status} - ${JSON.stringify(bodyText(response.body))}`;
+				const description = errorDescription(response.body);
+				if (continues) {
+					const item: Item = {
+						error: { message, name: 'AxiosError', code: 'ERR_BAD_RESPONSE', status },
+					};
+					if (version >= 4.5) {
+						const details: Item = {
+							message,
+							httpCode: String(status),
+							body: response.body,
+							context: { itemIndex: 0 },
+						};
+						if (description !== undefined) details.description = description;
+						item.details = details;
+					}
+					return [item];
+				}
+				// oxlint-disable-next-line typescript/only-throw-error
+				throw {
+					name: 'NodeApiError',
+					message,
+					description: description ?? '',
+					httpCode: String(status),
+				};
+			}
+		}
 		if (status >= 400 && options.neverError !== true) {
 			if (continues) {
-				const reason = requestReason(
-					status,
-					`${status} - ${JSON.stringify(bodyText(response.body))}`,
-					response.body,
-				);
+				const message = `${status} - ${JSON.stringify(bodyText(response.body))}`;
+				// With the response format "file" the error of v1's HTTP client has no body.
+				const reason =
+					responseBinary === undefined
+						? requestReason(status, message, response.body)
+						: {
+								name: 'AxiosError',
+								message,
+								code: status >= 500 ? 'ERR_BAD_RESPONSE' : 'ERR_BAD_REQUEST',
+								status,
+							};
 				return [requestFailureItem(reason, status, response.body, version)];
 			}
 			// n8n's NodeApiError: the message and the description are separate fields.
@@ -684,6 +780,9 @@ export default defineNode<HttpRequestParameters>({
 				description: description ?? '',
 				httpCode: String(status),
 			};
+		}
+		if (responseBinary !== undefined && status < 300) {
+			return [fileItem(response, items?.[0], options, url)];
 		}
 		return responseItems(response.body, response.headers, status, options, version);
 	},
@@ -722,12 +821,136 @@ function refusedDomainItem(message: string, redirected: boolean): Item | undefin
 	};
 }
 
-/** The item of a request that the runtime reports as a failure (`ctx.http` throws). */
-function failedRequestItem(error: unknown, version: number, redirected = false): Item {
+/** The end of the error of the runtime for a body over the largest size of a stored file. */
+const FILE_LIMIT = '(limit: binary-max-file)';
+
+/**
+ * The error of the largest size of a stored file with the mark for the converted workflow:
+ * the node sent only GET requests, so the fallback host can run the v1 node (which has no such
+ * limit). Undefined for another error.
+ */
+function fileLimitError(error: unknown): unknown {
 	const message =
 		typeof error === 'object' && error !== null && 'message' in error
 			? String(error.message)
 			: String(error);
+	if (!message.endsWith(FILE_LIMIT)) return undefined;
+	return {
+		name: 'Error',
+		message: `${message} (no request to repeat: the fallback host runs the node)`,
+	};
+}
+
+/** The path of a URL (`new URL(url).pathname`), or undefined for text that is not a URL. */
+function urlPath(url: string): string | undefined {
+	const scheme = url.indexOf('://');
+	if (scheme < 0) return undefined;
+	let end = url.length;
+	for (const mark of ['?', '#']) {
+		const at = url.indexOf(mark, scheme + 3);
+		if (at >= 0 && at < end) end = at;
+	}
+	const slash = url.indexOf('/', scheme + 3);
+	return slash < 0 || slash >= end ? '/' : url.slice(slash, end);
+}
+
+/**
+ * The item of a response that the runtime stored as a file (`responseFormat: file`), as the
+ * v1 node makes it: the JSON of the input item (or the parts of the full response), and the
+ * binary data of the input item with the file under the output name.
+ */
+function fileItem(
+	response: HttpResponse<unknown>,
+	input: Item | undefined,
+	options: ResponseOptions,
+	url: string,
+): Item {
+	const body = response.body;
+	const stored = isRecord(body) && isRecord(body.$binary) ? body.$binary : {};
+	const file: Record<string, unknown> = { ...stored };
+	// `setFilename` of the v1 node, for a file without a name.
+	const extension = file.fileExtension;
+	if (!file.fileName && typeof extension === 'string' && extension !== '') {
+		const path = urlPath(url);
+		file.fileName =
+			path !== undefined && path.endsWith(extension)
+				? path.split('/').pop()
+				: `${options.outputPropertyName ?? 'data'}.${extension}`;
+	}
+	const item: Item = {};
+	const binary: Record<string, unknown> = {};
+	if (input !== undefined) {
+		for (const key of Object.keys(input)) {
+			if (key !== '$binary') {
+				if (options.fullResponse !== true) item[key] = input[key];
+			} else if (isRecord(input.$binary)) {
+				for (const name of Object.keys(input.$binary)) binary[name] = input.$binary[name];
+			}
+		}
+	}
+	if (options.fullResponse === true) {
+		item.headers = response.headers;
+		item.statusCode = response.status;
+		item.statusMessage = reasonPhrase(response.status);
+	}
+	binary[options.outputPropertyName ?? 'data'] = file;
+	item.$binary = binary;
+	return item;
+}
+
+/** The message of n8n for a request that reached its time limit (`ECONNABORTED`). */
+const TIMEOUT_MESSAGE = 'The connection was aborted, perhaps the server is offline';
+
+/** True for the error of the runtime for a request that reached its time limit (spec 7.1). */
+function timedOut(message: string): boolean {
+	return message.indexOf('the request timed out after') >= 0;
+}
+
+/** The error of a failed request as the v1 node throws it. */
+function requestError(error: unknown): unknown {
+	const message =
+		typeof error === 'object' && error !== null && 'message' in error
+			? String(error.message)
+			: String(error);
+	if (!timedOut(message)) return error;
+	return {
+		name: 'NodeApiError',
+		message: TIMEOUT_MESSAGE,
+		description: '',
+		httpCode: 'ECONNABORTED',
+	};
+}
+
+/** The item of a request that the runtime reports as a failure (`ctx.http` throws). */
+function failedRequestItem(
+	error: unknown,
+	version: number,
+	redirected = false,
+	timeoutMs?: number,
+): Item {
+	const message =
+		typeof error === 'object' && error !== null && 'message' in error
+			? String(error.message)
+			: String(error);
+	if (timedOut(message)) {
+		// The error of v1's HTTP client for a request that reached its time limit.
+		const item: Item = {
+			error: {
+				message: `timeout of ${timeoutMs ?? 300000}ms exceeded`,
+				name: 'AxiosError',
+				code: 'ECONNABORTED',
+			},
+		};
+		if (version >= 4.5) {
+			item.details = {
+				message: TIMEOUT_MESSAGE,
+				httpCode: 'ECONNABORTED',
+				body: null,
+				context: { itemIndex: 0 },
+			};
+		}
+		return item;
+	}
 	const refused = refusedDomainItem(message, redirected);
 	if (refused !== undefined) return refused;
 	const status = failureStatus(message);
