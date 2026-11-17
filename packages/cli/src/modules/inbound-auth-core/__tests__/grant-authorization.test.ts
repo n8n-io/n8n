@@ -91,17 +91,29 @@ describe('authorizeAgainstGrant', () => {
 		expect(projectScopeService.hasScopes).not.toHaveBeenCalled();
 	});
 
-	it('requires both the workflow and the project requirement when the grant names both', async () => {
-		withExecuteAccessTo();
-		projectScopeService.hasScopes.mockResolvedValue(true);
+	describe('when the grant names both a workflow and a project', () => {
+		const grant = { ...appGrant, executeAccessWorkflowId: 'wf-1' };
 
-		await expect(
-			authorizeAgainstGrant(
-				workflowFinderService,
-				{ ...appGrant, executeAccessWorkflowId: 'wf-1' },
-				user,
-			),
-		).resolves.toBe(false);
-		expect(projectScopeService.hasScopes).not.toHaveBeenCalled();
+		it('allows a holder who passes both', async () => {
+			withExecuteAccessTo('wf-1');
+			projectScopeService.hasScopes.mockResolvedValue(true);
+
+			await expect(authorizeAgainstGrant(workflowFinderService, grant, user)).resolves.toBe(true);
+		});
+
+		it('denies a holder who has lost workflow access, without checking the project', async () => {
+			withExecuteAccessTo();
+			projectScopeService.hasScopes.mockResolvedValue(true);
+
+			await expect(authorizeAgainstGrant(workflowFinderService, grant, user)).resolves.toBe(false);
+			expect(projectScopeService.hasScopes).not.toHaveBeenCalled();
+		});
+
+		it('denies a holder who has lost the project scopes', async () => {
+			withExecuteAccessTo('wf-1');
+			projectScopeService.hasScopes.mockResolvedValue(false);
+
+			await expect(authorizeAgainstGrant(workflowFinderService, grant, user)).resolves.toBe(false);
+		});
 	});
 });
