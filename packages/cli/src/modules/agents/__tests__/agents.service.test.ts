@@ -8,7 +8,6 @@ import {
 	type ListAgentsOptions,
 } from '@n8n/api-types';
 import { TELEMETRY_EVENT } from '@n8n/telemetry';
-import type { Telemetry } from '@/telemetry';
 import type { GlobalConfig } from '@n8n/config';
 import { AgentConfigPreparationService } from '../agent-config-preparation.service';
 import { AgentModificationTelemetryService } from '../agent-modification-telemetry.service';
@@ -20,6 +19,7 @@ import type {
 	CredentialsFinderService,
 	EventService,
 	ProjectScopeService,
+	TelemetryProxy,
 } from '@n8n/backend-services';
 import { mockLogger } from '@n8n/backend-test-utils';
 import {
@@ -113,7 +113,7 @@ function makeService() {
 	const workflowRepository = mock<WorkflowRepository>();
 	workflowRepository.findManyByAgentToolReferences.mockResolvedValue([]);
 	agentTaskRepository.findByAgentId.mockResolvedValue([]);
-	const telemetry = mock<Telemetry>();
+	const telemetry = mock<TelemetryProxy>();
 	const broadcaster = mock<AgentUpdateBroadcaster>();
 	const saveCompletion = new AgentSaveCompletionService(
 		eventService,

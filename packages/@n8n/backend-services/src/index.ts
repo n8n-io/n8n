@@ -120,6 +120,7 @@ export {
 	InstanceRegistryProxyService,
 	type InstanceRegistryProvider,
 } from './services/instance-registry-proxy.service';
+export { TelemetryProxy, type TelemetryTracker } from './services/telemetry-proxy.service';
 export { ExecutingUserIdentifierProxy } from './credentials/executing-user-identifier-proxy';
 export type { IExecutingUserIdentifier } from './credentials/executing-user-identifier.interface';
 export { ExecutionLedger, type CreatedExecution } from './executions/execution-ledger.service';

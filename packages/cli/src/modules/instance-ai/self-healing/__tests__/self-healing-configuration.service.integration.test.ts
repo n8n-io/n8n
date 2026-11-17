@@ -24,14 +24,17 @@ import {
 import { Container } from '@n8n/di';
 import { TELEMETRY_EVENT } from '@n8n/telemetry';
 import { DataSource } from '@n8n/typeorm';
-import { RoleCacheService, WorkflowMutationHooksProxy } from '@n8n/backend-services';
+import {
+	RoleCacheService,
+	WorkflowMutationHooksProxy,
+	TelemetryProxy,
+} from '@n8n/backend-services';
 import type { IWorkflowBase } from 'n8n-workflow';
 import { randomUUID } from 'node:crypto';
 
 import { ActiveWorkflowManager } from '@/active-workflow-manager';
 import { AuthHandlerRegistry } from '@/auth/auth-handler.registry';
 import { ControllerRegistry } from '@/controller.registry';
-import { Telemetry } from '@/telemetry';
 import { UserService } from '@/services/user.service';
 import { EnterpriseWorkflowService } from '@/workflows/workflow.service.ee';
 import { createFolder } from '@test-integration/db/folders';
@@ -56,6 +59,7 @@ import { SelfHealingConfigurationService } from '../self-healing-configuration.s
 import { disableInstanceAdmins } from './support/configuration';
 
 mockInstance(ActiveWorkflowManager);
+mockInstance(TelemetryProxy);
 const runtime = mockInstance(InstanceAiService);
 const server = setupTestServer({
 	modules: ['instance-ai'],
@@ -1591,8 +1595,8 @@ describe('configuration telemetry', () => {
 	const event = TELEMETRY_EVENT.SELF_HEALING.INSTANCE_CHANGED_SELF_HEALING_CONFIGURATION;
 
 	function trackChanges() {
-		// The test server replaces the telemetry service with a mock.
-		const track = vi.mocked(Container.get(Telemetry).track);
+		// The test replaces TelemetryProxy with a mock.
+		const track = vi.mocked(Container.get(TelemetryProxy).track);
 		track.mockClear();
 		return () => {
 			const calls: unknown[][] = track.mock.calls;

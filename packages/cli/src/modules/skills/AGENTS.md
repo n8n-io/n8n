@@ -70,11 +70,7 @@ The skills module cannot import the agents module, because the agents module imp
 Two checks enforce two rules. The code-health rule `skills-module-boundary` resolves each import to a file, so relative imports cannot bypass it. The ESLint and oxlint configs of cli match the import strings and show errors in the editor. If you change a rule, change it in the code-health rule and in both lint configs.
 
 - Code outside the module imports only `@/modules/skills`. Tests outside the module can also import `@/modules/skills/testing`.
-- Code in the module imports nothing from cli outside the module, except an allowlist. The allowlist only shrinks. The rule also stops imports of the agents, MCP and instance-ai modules.
-
-| Allowed import                                    | Used in                                        | Needed before a move to a package                                      |
-| ------------------------------------------------- | ---------------------------------------------- | ---------------------------------------------------------------------- |
-| `Telemetry` (`@/telemetry`)                       | `SkillsTelemetry`                              | A shared package, or a contract that cli implements                    |
+- Code in the module imports nothing from cli outside the module. The allowlist in the code-health rule is empty, and it must stay empty. The rule also stops imports of the agents, MCP and instance-ai modules.
 
 These rules keep the module ready to move to `packages/modules/skills/backend`, like `packages/modules/insights/backend`. The ownership transfer manifest (`src/services/ownership-transfer/ownership-transfer.manifest.json`) also holds the path of `skill.entity.ts`.
 

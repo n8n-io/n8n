@@ -1,7 +1,6 @@
+import type { TelemetryProxy } from '@n8n/backend-services';
 import { TELEMETRY_EVENT } from '@n8n/telemetry';
 import { mock } from 'vitest-mock-extended';
-
-import type { Telemetry } from '@/telemetry';
 
 import type {
 	AgentKnowledgeSnapshot,
@@ -23,7 +22,7 @@ describe('AgentKnowledgeSnapshotTask', () => {
 
 	function makeTask() {
 		const snapshotService = mock<AgentKnowledgeSnapshotService>();
-		const telemetry = mock<Telemetry>();
+		const telemetry = mock<TelemetryProxy>();
 		snapshotService.collect.mockResolvedValue(snapshot);
 
 		return {
