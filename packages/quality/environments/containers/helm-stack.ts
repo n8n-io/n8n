@@ -5,7 +5,6 @@ import {
 	existsSync,
 	mkdirSync,
 	mkdtempSync,
-	readdirSync,
 	rmSync,
 	unlinkSync,
 	writeFileSync,
@@ -23,8 +22,6 @@ const execAsync = promisify(execCallback);
 const DEFAULT_K3S_IMAGE = 'rancher/k3s:v1.32.2-k3s1';
 const DEFAULT_CHART_REPO = 'https://github.com/n8n-io/n8n-hosting.git';
 // A tag, not a branch, so that a chart change cannot break this stack unseen.
-// The stack needs chart 2.0 or later: it uses the chart's CI fixtures and the
-// `env` values layout.
 const DEFAULT_CHART_REF = 'v2.0.0-rc.2';
 const DEFAULT_EXAMPLE = 'standalone';
 const N8N_NODE_PORT = 30080;
@@ -38,16 +35,13 @@ export interface HelmStackConfig {
 	n8nImage?: string;
 	/** K3s image (default: rancher/k3s:v1.32.2-k3s1) */
 	k3sImage?: string;
-	/** Git ref for the n8n-hosting repo (default: v2.0.0-rc.2) */
+	/** Git ref for the n8n-hosting repo (default: the pinned tag) */
 	helmChartRef?: string;
 	/** Git repo URL for the Helm chart (default: n8n-io/n8n-hosting) */
 	helmChartRepo?: string;
 	/** Total startup timeout in ms (default: 300_000) */
 	startupTimeoutMs?: number;
-	/**
-	 * Chart example to install: a file name in `charts/n8n/examples`, without
-	 * `.yaml` (default: standalone). `minimal` is queue mode.
-	 */
+	/** Chart example to install: a file name in `charts/n8n/examples`, without `.yaml` (default: standalone) */
 	example?: string;
 	/** Additional environment variables to inject into n8n pods via Helm set-flags (merge-last-wins over defaults) */
 	env?: Record<string, string>;
@@ -188,31 +182,15 @@ async function cloneChartToHost(
 
 // -- Example values file selection --------------------------------------------
 
-/**
- * The chart installs each example in its own CI with an overlay from
- * `ci/install/`, which replaces the example's placeholders with the chart's CI
- * fixtures. This stack applies the same two files, so a profile is a chart
- * example name.
- */
+/** The example, then the overlay that the chart CI installs it with. */
 function resolveValuesFiles(chartDir: string, example: string): string[] {
 	const chartPath = join(chartDir, 'charts', 'n8n');
-	const overlayDir = join(chartPath, 'ci', 'install');
 	const files = [
 		join(chartPath, 'examples', `${example}.yaml`),
-		join(overlayDir, `${example}.yaml`),
+		join(chartPath, 'ci', 'install', `${example}.yaml`),
 	];
-
-	if (!/^[a-z0-9-]+$/.test(example) || !files.every((file) => existsSync(file))) {
-		const available = existsSync(overlayDir)
-			? readdirSync(overlayDir)
-					.filter((file) => file.endsWith('.yaml'))
-					.map((file) => file.slice(0, -'.yaml'.length))
-			: [];
-		throw new Error(
-			`Unknown chart example "${example}". Examples in this chart ref: ${available.join(', ') || 'none (the stack needs chart 2.0 or later)'}`,
-		);
-	}
-
+	const missing = files.find((file) => !existsSync(file));
+	if (missing) throw new Error(`Unknown chart example "${example}": ${missing} not found`);
 	return files;
 }
 
@@ -227,102 +205,33 @@ function parseImageName(imageName: string): { repository: string; tag: string } 
 		: { repository: imageName, tag: 'latest' };
 }
 
-/**
- * The chart starts a task-runner sidecar by default and gives it the tag of the
- * n8n image. The runner image is built beside the n8n image with the same tag,
- * so only the repository differs: `ghcr.io/n8n-io/n8n` → `ghcr.io/n8n-io/runners`.
- */
-function getRunnersRepository(n8nRepository: string): string {
-	return n8nRepository.replace(/[^/]+$/, 'runners');
-}
-
 function buildHelmSetFlags(
-	imageName: string,
+	image: { repository: string; tag: string; runnersRepository: string },
 	baseUrl: string,
 	envOverrides?: Record<string, string>,
 ): string[] {
-	const { repository, tag } = parseImageName(imageName);
-
 	const env: Record<string, string> = {
 		N8N_DIAGNOSTICS_ENABLED: 'false',
 		N8N_DYNAMIC_BANNERS_ENABLED: 'false',
-		...envOverrides,
 	};
+	// License env vars from host (same pattern as testcontainers stack)
+	for (const name of ['N8N_LICENSE_TENANT_ID', 'N8N_LICENSE_ACTIVATION_KEY', 'N8N_LICENSE_CERT']) {
+		const value = process.env[name];
+		if (value) env[name] = value;
+	}
+	Object.assign(env, envOverrides);
 
 	// Dynamic overrides on top of the example and overlay values files (-f).
-	const flags = [
-		`--set image.repository=${repository}`,
-		`--set image.tag=${tag}`,
-		`--set taskRunners.image.repository=${getRunnersRepository(repository)}`,
+	return [
+		`--set image.repository=${image.repository}`,
+		`--set image.tag=${image.tag}`,
+		`--set taskRunners.image.repository=${image.runnersRepository}`,
 		// The chart defaults public URLs to https. This stack serves plain HTTP
 		// on a NodePort. Webhook URLs follow the editor URL.
 		`--set editor.url=${baseUrl}`,
 		// --set-string because K8s env values must be strings
 		...Object.entries(env).map(([name, value]) => `--set-string env.shared.${name}=${value}`),
 	];
-	if (process.env.N8N_LICENSE_CERT && envOverrides?.N8N_LICENSE_CERT === undefined) {
-		flags.push(
-			'--set env.shared.N8N_LICENSE_CERT.secretKeyRef.name=n8n-license-cert',
-			'--set env.shared.N8N_LICENSE_CERT.secretKeyRef.key=certificate',
-		);
-	}
-	if (process.env.N8N_LICENSE_ACTIVATION_KEY) {
-		if (envOverrides?.N8N_LICENSE_ACTIVATION_KEY === undefined) {
-			flags.push(
-				'--set license.enabled=true',
-				'--set license.existingSecret.name=n8n-license',
-				'--set license.existingSecret.key=license-key',
-			);
-		}
-		if (envOverrides?.N8N_LICENSE_TENANT_ID === undefined) {
-			flags.push(
-				'--set env.shared.N8N_LICENSE_TENANT_ID.secretKeyRef.name=n8n-license',
-				'--set env.shared.N8N_LICENSE_TENANT_ID.secretKeyRef.key=tenant-id',
-			);
-		}
-	}
-	return flags;
-}
-
-// -- Cluster preparation ------------------------------------------------------
-
-/**
- * Runs the chart's own CI preparation script. It creates the Secrets that the
- * overlays name and starts the Postgres and Redis fixtures, so this stack
- * follows the chart when those change. The default tenant ID matches n8n and
- * lets the script create the licence Secret when the host sets only the key.
- */
-async function prepareCluster(
-	chartDir: string,
-	env: NodeJS.ProcessEnv,
-	deadline: StartupDeadline,
-): Promise<void> {
-	log('Creating Secrets and starting the Postgres and Redis fixtures...');
-	await execOnHost(
-		`cd "${chartDir}" && bash charts/n8n/ci/prepare-cluster.sh`,
-		{
-			...env,
-			ACTIVATION_KEY: process.env.N8N_LICENSE_ACTIVATION_KEY,
-			TENANT_ID: process.env.N8N_LICENSE_TENANT_ID || '1',
-		},
-		'Prepare cluster',
-		deadline,
-	);
-
-	if (env.N8N_LICENSE_CERT) {
-		const certificatePath = join(chartDir, 'license-cert');
-		writeFileSync(certificatePath, env.N8N_LICENSE_CERT, { mode: 0o600 });
-		try {
-			await execOnHost(
-				`kubectl create secret generic n8n-license-cert --from-file=certificate="${certificatePath}"`,
-				env,
-				'Create licence certificate Secret',
-				deadline,
-			);
-		} finally {
-			unlinkSync(certificatePath);
-		}
-	}
 }
 
 // -- Health check -------------------------------------------------------------
@@ -367,7 +276,10 @@ export async function createHelmStack(config: HelmStackConfig = {}): Promise<Hel
 
 	const containerName = `n8n-helm-${example}-${Date.now().toString(36)}`;
 	const { repository, tag } = parseImageName(n8nImage);
-	const runnersImage = `${getRunnersRepository(repository)}:${tag}`;
+	// The runner image is built beside the n8n image with the same tag:
+	// `ghcr.io/n8n-io/n8n` → `ghcr.io/n8n-io/runners`.
+	const runnersRepository = repository.replace(/[^/]+$/, 'runners');
+	const runnersImage = `${runnersRepository}:${tag}`;
 
 	log('Starting K3s + Helm stack');
 	log(`  Example: ${example}`);
@@ -381,8 +293,7 @@ export async function createHelmStack(config: HelmStackConfig = {}): Promise<Hel
 	let valuesFiles: string[];
 	let k3s: StartedK3sContainer;
 	try {
-		// Step 1: Download the chart to the host. The chart defines the examples,
-		// so an unknown example fails here, before K3s starts.
+		// Step 1: Download the chart first, so that an unknown example fails before K3s starts
 		chartDir = await cloneChartToHost(helmChartRepo, helmChartRef, startupDeadline);
 		valuesFiles = resolveValuesFiles(chartDir, example);
 
@@ -460,13 +371,23 @@ export async function createHelmStack(config: HelmStackConfig = {}): Promise<Hel
 		await preloadImage(k3s, runnersImage, startupDeadline);
 		log('Images preloaded');
 
-		// Step 6: Create the Secrets and start the fixtures that the overlays name
-		await prepareCluster(chartDir, env, startupDeadline);
+		// Step 6: Run the chart's own CI preparation script, so this stack follows the chart
+		log('Creating Secrets and starting the Postgres and Redis fixtures...');
+		await execOnHost(
+			`cd "${chartDir}" && bash charts/n8n/ci/prepare-cluster.sh`,
+			env,
+			'Prepare cluster',
+			startupDeadline,
+		);
 
 		// Step 7: Install the chart with the example, its overlay, and dynamic overrides
 		log('Installing Helm chart (this may take a few minutes)...');
 		const valuesFlags = valuesFiles.map((file) => `-f "${file}"`).join(' ');
-		const setFlags = buildHelmSetFlags(n8nImage, baseUrl, envOverrides).join(' ');
+		const setFlags = buildHelmSetFlags(
+			{ repository, tag, runnersRepository },
+			baseUrl,
+			envOverrides,
+		).join(' ');
 		log(`Using values files: ${valuesFiles.join(', ')}`);
 		const helmOutput = await execOnHost(
 			`helm install n8n "${chartDir}/charts/n8n" ${valuesFlags} ${setFlags} --wait --timeout 5m`,

@@ -98,9 +98,7 @@ N8N_BASE_URL=http://localhost:<port> RESET_E2E_DB=true \
 pnpm stack:helm:clean
 ```
 
-The stack reads licence variables from the host environment. When `N8N_LICENSE_ACTIVATION_KEY` is set, the chart's preparation script creates the `n8n-license` Secret. The tenant ID defaults to `1` when `N8N_LICENSE_TENANT_ID` is absent or empty. The stack enables chart licensing and references this Secret for the activation key and tenant ID. Explicit `--env` values override the host values for each variable.
-
-The stack also supports `N8N_LICENSE_CERT` without an activation key. It stores the certificate in a Kubernetes Secret and adds a shared pod environment reference.
+The stack passes `N8N_LICENSE_ACTIVATION_KEY`, `N8N_LICENSE_TENANT_ID`, and `N8N_LICENSE_CERT` from the host environment to the n8n pods. An `--env` value overrides the host value.
 
 ### Test a Specific Version Matrix
 
@@ -142,13 +140,11 @@ The `test-e2e-helm.yml` workflow handles everything:
 
 Manual dispatch accepts `branch` and `helm-chart-ref`. Use `branch` to test `3.x`.
 
+To add a profile, add the chart example name to the workflow matrix. The stack does not run the chart's `ci/install/<example>.pre.sh` hooks, so examples that have one are not supported.
+
 ### Why a Code node execution
 
 The chart runs n8n with external task runners. In queue mode, the chart also sends manual executions to the worker, and only the worker pod has the runner sidecar. A Code node execution passes only when main, Redis, the worker, and the sidecar work together.
-
-### Add a profile
-
-Add the chart example name to the workflow matrix. An example that needs a cluster add-on has a `ci/install/<example>.pre.sh` hook in the chart. The stack does not run these hooks yet.
 
 ## Troubleshooting
 

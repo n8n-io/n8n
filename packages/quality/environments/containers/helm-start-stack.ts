@@ -36,8 +36,8 @@ ${colors.yellow}Options:${colors.reset}
                         (PostgreSQL + Redis + one worker).
   --image <image>       n8n Docker image (default: n8nio/n8n:local). The runner image is the
                         same name with "runners" as the last path segment.
-  --chart-ref <ref>     Git branch/tag for n8n-hosting repo (default: v2.0.0-rc.2).
-                        Needs chart 2.0 or later.
+  --chart-ref <ref>     Git branch/tag for n8n-hosting repo (default: the tag pinned in
+                        helm-stack.ts). Needs chart 2.0 or later.
   --chart-repo <url>    Git repo URL (default: https://github.com/n8n-io/n8n-hosting.git)
   --k3s-image <image>   K3s image (default: rancher/k3s:v1.32.2-k3s1)
   --env <KEY=VALUE>     Set environment variable in n8n pods (repeatable)

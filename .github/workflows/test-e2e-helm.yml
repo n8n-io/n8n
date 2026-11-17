@@ -1,9 +1,7 @@
 name: 'Test: E2E Helm Chart'
 run-name: "${{ github.event_name == 'workflow_dispatch' && format('Test: E2E Helm Chart (branch={0}, chart={1})', inputs.branch || 'default', inputs['helm-chart-ref'] || 'pinned') || '' }}"
 
-# Runs an n8n build from this repository on the public Helm chart. The chart
-# repository (n8n-hosting) tests chart changes against released n8n. This
-# workflow tests the other direction: unreleased n8n on the released chart.
+# Scope and design: packages/quality/environments/containers/HELM-TESTING.md
 
 on:
   schedule:
@@ -74,7 +72,6 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        # Chart example names. `minimal` is queue mode with one worker.
         example: [standalone, minimal]
     steps:
       - name: Checkout
@@ -120,10 +117,6 @@ jobs:
           KUBECONFIG_PATH=$(cat /tmp/n8n-helm-kubeconfig.txt)
           echo "KUBECONFIG=${KUBECONFIG_PATH}" >> "$GITHUB_ENV"
 
-      # The chart runs n8n with external task runners. In queue mode it also
-      # sends manual executions to the worker, and only the worker pod has the
-      # runner sidecar. So a Code node execution passes only when the chart
-      # topology works: main, Redis, worker, and sidecar.
       - name: Run Code node execution test
         working-directory: packages/quality/testing/playwright
         run: |
