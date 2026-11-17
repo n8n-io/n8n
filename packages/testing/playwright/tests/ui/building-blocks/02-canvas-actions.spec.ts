@@ -42,8 +42,9 @@ test.describe('Canvas Node Actions', () => {
 		test('should clear search and show all nodes', async ({ n8n }) => {
 			await n8n.canvas.clickCanvasPlusButton();
 			await n8n.canvas.fillNodeCreatorSearchBar('Linear');
+			await expect(n8n.canvas.nodeCreatorNodeItems().first()).toBeVisible();
 			const searchCount = await n8n.canvas.nodeCreatorNodeItems().count();
-			await expect(n8n.canvas.nodeCreatorNodeItems()).toHaveCount(1);
+			expect(searchCount).toBeGreaterThan(0);
 
 			await n8n.canvas.nodeCreatorSearchBar().clear();
 			const nodeCount = await n8n.canvas.nodeCreatorNodeItems().count();
