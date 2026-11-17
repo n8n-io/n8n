@@ -57,7 +57,7 @@ import { calleeTriggerItems, findSubworkflowStart, resolveCallee } from './subwo
 import { DEFAULT_TIMEZONE, isTriggerType, planTrigger, pollSchedules } from './triggers.ts';
 import type { WebhookUrls } from './triggers.ts';
 import type { ConvertDiagnostic, N8nNode, N8nWorkflow } from './types.ts';
-import { isRecord, text } from './types.ts';
+import { isRecord, keepSourceNode, text } from './types.ts';
 
 export interface ConvertOptions {
 	/** Name for the header comment when the workflow has none. */
@@ -284,7 +284,7 @@ export function readWorkflow(input: unknown): N8nWorkflow | string {
 		if (!isRecord(n) || typeof n.name !== 'string' || typeof n.type !== 'string') {
 			return 'A node has no name or no type.';
 		}
-		nodes.push({
+		const node: N8nNode = {
 			...n,
 			name: n.name,
 			type: n.type,
@@ -322,7 +322,8 @@ export function readWorkflow(input: unknown): N8nWorkflow | string {
 			continueOnFail: n.continueOnFail === true,
 			notes: typeof n.notes === 'string' ? n.notes : undefined,
 			webhookId: typeof n.webhookId === 'string' ? n.webhookId : undefined,
-		});
+		};
+		nodes.push(keepSourceNode(node, n));
 	}
 	const connections = isRecord(input.connections) ? input.connections : {};
 	return {

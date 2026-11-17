@@ -120,3 +120,19 @@ export function text(value: unknown, fallback = ''): string {
 	if (typeof value === 'number' || typeof value === 'boolean') return String(value);
 	return fallback;
 }
+
+const SOURCE_NODES = new WeakMap<object, Record<string, unknown>>();
+
+/** Keeps the node of the workflow JSON for the node that the converter made from it. */
+export function keepSourceNode(node: N8nNode, source: Record<string, unknown>): N8nNode {
+	SOURCE_NODES.set(node, source);
+	return node;
+}
+
+/**
+ * The node as the workflow JSON has it, with each member that n8n stores and no member
+ * that the converter adds. Undefined for a copy of a node.
+ */
+export function sourceNode(node: N8nNode): Record<string, unknown> | undefined {
+	return SOURCE_NODES.get(node);
+}

@@ -928,6 +928,6 @@ export const POSTGRES_VERSION_CASES: PostgresCase[] = [
 		'the input items in version 2.1',
 		'plain',
 		auto(),
-		older(2.1, { items: [{ label: 'a' }], host: true }),
+		older(2.1, { items: [{ label: 'a' }], convertHost: true }),
 	),
 ];

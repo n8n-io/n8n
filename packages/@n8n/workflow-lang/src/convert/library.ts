@@ -24,8 +24,17 @@ import { constantText, emptyUsage, INDEX, ITEM, jsonLiteral } from './expression
 import { isClusterRoot, LANGCHAIN_PREFIX, lowerAiNode, lowerHostNode } from './host-node.ts';
 import type { Paging } from './http-pagination.ts';
 import { emitPaging, readPaging } from './http-pagination.ts';
-import { emitStep, emitWithHostForm, hostFormOf, nodeCall, tryCompiledNode } from './steps.ts';
-import { isRecord, text } from './types.ts';
+import { getNodeParameters, nodeDescription } from './node-parameters.ts';
+import type { StepCall } from './steps.ts';
+import {
+	emitStep,
+	emitWithHostForm,
+	errorRetry,
+	hostFormOf,
+	nodeCall,
+	tryCompiledNode,
+} from './steps.ts';
+import { isRecord, sourceNode, text } from './types.ts';
 
 let libraryTypes: Set<string> | undefined;
 
@@ -247,8 +256,21 @@ const ADAPTERS: Record<
 			return columns ? { ...out, columns } : { ...out, postgresHost: true };
 		}
 		if (operation !== 'executeQuery') return out;
-		if (typeof p.query === 'string' && !p.query.startsWith('=')) {
-			const parts = p.query.match(/({{[\s\S]*?}})/g) ?? [];
+		// The query takes no expression (`noDataExpression`): n8n removes its `=` when it loads
+		// the workflow, and the v1 node evaluates each `{{ }}` part of the text itself.
+		const stored = p.query;
+		let query = stored;
+		if (typeof stored === 'string' && stored.startsWith('=')) {
+			const stripped = stored.slice(1);
+			// n8n keeps the `=` of a `$fromAI` call, and a second `=` makes an expression again.
+			if (stripped.startsWith('=') || stripped.includes('$fromAI')) {
+				return { ...out, postgresHost: true };
+			}
+			out.query = stripped;
+			query = stripped;
+		}
+		if (typeof query === 'string') {
+			const parts = query.match(/({{[\s\S]*?}})/g) ?? [];
 			if (parts.length > 0) out.queryParts = parts.map((r) => `=${r}`);
 		}
 		const given = options.queryReplacement;
@@ -553,8 +575,34 @@ export function lowerLibrary(c: NodeContext): void {
 			const hostForm = hostFormOf(c, inHost);
 			// Without a host form, a limit could not send the node to the host.
 			if (hostForm === null) return inHost(c);
+			const onError =
+				c.node.onError ?? (c.node.continueOnFail ? 'continueRegularOutput' : 'stopWorkflow');
+			if (onError === 'stopWorkflow') {
+				const call = nodeCall(c, type, batch, c.credential(), false);
+				emitWithHostForm(
+					c,
+					false,
+					(to, hostLimit) => emitStep(to, { ...call, hostLimit }),
+					hostForm,
+				);
+				return;
+			}
+			// Under a continue setting, the library node makes the error items of v1 itself. They
+			// hold a copy of the node, so the node gets one.
+			const copy = postgresNodeCopy(c);
+			if (copy === null || batch.code.kind !== 'object') return inHost(c);
+			const errorOutput = onError === 'continueErrorOutput';
+			batch.code.entries.push(
+				['errorMode', literal(errorOutput ? 'errorOutput' : 'regular')],
+				['node', copy],
+			);
 			const call = nodeCall(c, type, batch, c.credential(), false);
-			emitWithHostForm(c, false, (to, hostLimit) => emitStep(to, { ...call, hostLimit }), hostForm);
+			emitWithHostForm(
+				c,
+				errorOutput,
+				(to) => emitPostgresContinue(to, call, errorOutput),
+				hostForm,
+			);
 			return;
 		}
 		// v1 runs the node once: a failure under "continue on fail" gives one error item.
@@ -570,18 +618,95 @@ export function lowerLibrary(c: NodeContext): void {
 }
 
 /**
+ * The node as n8n holds it in a run, for the error items of the v1 Postgres node: the node of
+ * the workflow, with the parameters that the `Workflow` constructor of n8n gives it (the
+ * defaults of the node type, without the hidden parameters). Null: the converter cannot
+ * make the copy, and the node runs in the host.
+ */
+function postgresNodeCopy(c: NodeContext): Code | null {
+	const description = nodeDescription(c.node.type, c.version);
+	const source = sourceNode(c.node);
+	if (!description || !source) return null;
+	const parameters = getNodeParameters(
+		description.properties,
+		c.node.parameters ?? {},
+		true,
+		false,
+		c.version,
+		description,
+	);
+	const shown = parameters ?? {};
+	// n8n removes the `=` of a parameter that takes no expression (`noDataExpression`).
+	for (const property of description.properties) {
+		const value = shown[property.name];
+		if (property.noDataExpression !== true || typeof value !== 'string') continue;
+		if (!value.startsWith('=')) continue;
+		// n8n keeps the `=` of a value that is only a `$fromAI` call.
+		if (value.includes('$fromAI')) return null;
+		shown[property.name] = value.slice(1);
+	}
+	return jsonLiteral(JSON.stringify({ ...source, parameters: shown }));
+}
+
+/**
+ * The call of the Postgres library node under a continue setting. The node gives one item
+ * `{ items, errors, nodeError? }`: the items of the usual output, the items of the error
+ * output, and the message of the error when the v1 node fails as a whole (n8n then gives
+ * the input items on and keeps the error on the run).
+ */
+function emitPostgresContinue(to: NodeContext, call: StepCall, errorOutput: boolean): void {
+	const { w } = to;
+	const out = to.output(0);
+	const errors = errorOutput ? to.output(1, 'Errors') : null;
+	const name = str(to.node.name);
+	w.line(`let ${out}: Json[] = [];`);
+	if (errors) w.line(`let ${errors}: Json[] = [];`);
+	w.open(`if (${to.input}.length > 0) {`);
+	const options: Code = {
+		kind: 'object',
+		entries: [
+			['name', raw(name)],
+			...call.fields.filter(([key]) => key !== 'retry'),
+			['items', raw(to.input)],
+		],
+	};
+	const retry = errorRetry(to);
+	if (retry) {
+		// "Retry on fail" of v1: the node runs again while its first item is an error, or
+		// while it fails as a whole. Each run is a run of v1 too.
+		w.line('let result: Json[] = [];');
+		w.open(`for (let tryIndex = 0; tryIndex < ${retry.tries}; tryIndex++) {`);
+		if (retry.delay > 0) {
+			w.line(
+				`if (tryIndex > 0) await ctx.wait({ name: ${str(`${to.node.name} (retry)`)}, duration: ${retry.delay} });`,
+			);
+		}
+		const again = 'result = await ctx.node(';
+		w.block(`${again}${to.print(options, again)});`);
+		w.line('if (result[0]?.retry !== true) break;');
+		w.close();
+	} else {
+		const head = 'const result: Json[] = await ctx.node(';
+		w.block(`${head}${to.print(options, head)});`);
+	}
+	w.line(`${out} = result[0]?.items ?? [];`);
+	if (errors) w.line(`${errors} = result[0]?.errors ?? [];`);
+	w.line(
+		`if (typeof result[0]?.nodeError === 'string') ctx.trace(${name}, { $error: { message: result[0].nodeError, description: '' } });`,
+	);
+	w.close();
+}
+
+/**
  * True when a Postgres node runs in the host whatever its parameters are: the runtime has no
- * `ctx.sql` effects (`ConvertOptions.sql`), the node continues on an error (the v1 node
- * makes its own error items then, with a copy of the node and a time in them), or the
- * caller says that the node runs in the host.
+ * `ctx.sql` effects (`ConvertOptions.sql`), or the caller says that the node runs in the
+ * host.
  */
 function postgresInHost(c: NodeContext): boolean {
 	if (c.node.type !== 'n8n-nodes-base.postgres') return false;
-	const onError =
-		c.node.onError ?? (c.node.continueOnFail ? 'continueRegularOutput' : 'stopWorkflow');
 	// n8n moved the node to the host after a limit of the `sql` effect (`NodeSources.runsInHost`).
 	const moved = c.nodeSources?.runsInHost?.(c.node.name) === true;
-	return c.sql !== true || onError !== 'stopWorkflow' || moved;
+	return c.sql !== true || moved;
 }
 
 function keyValues(list: unknown): Array<{ name: unknown; value: unknown }> {

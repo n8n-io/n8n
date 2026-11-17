@@ -1,7 +1,11 @@
 /**
  * Compiled library node: a hand port of `n8n-nodes-base.postgres` versions
  * 2.1 to 2.8 (`insert`, `update` and `upsert` from version 2.2), operations `executeQuery`, `select`, `deleteTable`, `insert`,
- * `update` and `upsert`, for a node that stops the workflow on an error.
+ * `update` and `upsert`.
+ *
+ * With a continue setting of the node (`errorMode`), the node makes the error items of v1
+ * itself, from the errors that the `sql` effect gives as data. No statement runs a second
+ * time. The result is then one item `{ items, errors, nodeError?, retry? }` (spec 9.10).
  *
  * The v1 node writes values into the query text with pg-promise and sends
  * simple queries. This node never writes a value into the text: each value
@@ -38,6 +42,7 @@ import {
 	defineNode,
 	type Item,
 	type SqlError,
+	type SqlFailure,
 	type SqlResult,
 	type SqlRows,
 	type SqlSets,
@@ -128,11 +133,22 @@ interface PostgresParameters {
 	queryParts?: unknown[];
 	/** The parameters of each input item. Set by the converter. */
 	batch?: PostgresParameters[];
+	/**
+	 * The node continues on an error: `regular` for the usual output, `errorOutput` for the
+	 * error output. Set by the converter.
+	 */
+	errorMode?: string;
+	/** The node as n8n holds it in a run, for the error items of v1. Set by the converter. */
+	node?: unknown;
 }
 
 interface Query {
 	query: string;
 	values: unknown[];
+	/** The query text of v1, with the places of pg-promise. An error of v1 shows it. */
+	template: string;
+	/** The number of values of v1 for `template`. */
+	slots: number;
 	/** The error of pg-promise for a name of this query. v1 raises it when it sends the query. */
 	nameError?: string;
 	/**
@@ -142,7 +158,57 @@ interface Query {
 	made?: 'select' | 'write';
 }
 
+/** An output item of v1 with the index of the input item that it pairs with. */
+interface Out {
+	json: Item;
+	paired?: number;
+}
+
+/** What `parsePostgresError` of v1 and the NodeOperationError of n8n make of an error. */
+interface Parsed {
+	message: string;
+	description?: string;
+	itemIndex?: number;
+	messages: string[];
+}
+
 const HOST_MARKER = '(limit: sql-host)';
+/** `COMMON_ERRORS` of n8n-workflow: a message that holds a code gets the text of the code. */
+const COMMON_ERRORS = [
+	['ECONNREFUSED', 'The service refused the connection - perhaps it is offline'],
+	[
+		'ECONNRESET',
+		'The connection to the server was closed unexpectedly, perhaps it is offline. You can retry the request immediately or wait and retry later.',
+	],
+	[
+		'ENOTFOUND',
+		'The connection cannot be established, this usually occurs due to an incorrect host (domain) value',
+	],
+	[
+		'ETIMEDOUT',
+		"The connection timed out, consider setting the 'Retry on Fail' option in the node settings",
+	],
+	[
+		'ERRADDRINUSE',
+		'The port is already occupied by some other application, if possible change the port or kill the application that is using it',
+	],
+	['EADDRNOTAVAIL', 'The address is not available, ensure that you have the right IP address'],
+	['ECONNABORTED', 'The connection was aborted, perhaps the server is offline'],
+	['EHOSTUNREACH', 'The host is unreachable, perhaps the server is offline'],
+	['EAI_AGAIN', 'The DNS server returned an error, perhaps the server is offline'],
+	['ENOENT', 'The file or directory does not exist'],
+	['EISDIR', 'The file path was expected but the given path is a directory'],
+	['ENOTDIR', 'The directory path was expected but the given path is a file'],
+	['EACCES', 'Forbidden by access permissions, make sure you have the right permissions'],
+	['EEXIST', 'The file or directory already exists'],
+	['EPERM', 'Operation not permitted, make sure you have the right permissions'],
+	['GETADDRINFO', 'The server closed the connection unexpectedly'],
+];
+const CONNECT_ERRORS = [
+	['ECONNREFUSED', 'Connection refused'],
+	['ENOTFOUND', 'Host not found'],
+	['ETIMEDOUT', 'Connection timed out'],
+];
 /** `RUNS_IN_HOST` of the converter: the workflow runs the host form of the node in the same run. */
 const RUNS_IN_HOST = '(no request to repeat: the fallback host runs the node)';
 const CONDITIONS = ['equal', '!=', 'LIKE', '>', '<', '>=', '<=', 'IS NULL', 'IS NOT NULL', '='];
@@ -206,6 +272,24 @@ function hostError(reason: string): Error {
 	return new Error(
 		`Postgres: ${reason}. The fallback host runs the node ${HOST_MARKER} ${RUNS_IN_HOST}`,
 	);
+}
+
+function messageOf(error: unknown): string {
+	return typeof error === 'object' && error !== null && 'message' in error
+		? String(error.message)
+		: String(error);
+}
+
+/** The next name place of the query text of v1. */
+function nameSlot(query: Query): string {
+	query.slots++;
+	return `$${query.slots}:name`;
+}
+
+/** The next value place of the query text of v1. */
+function valueSlot(query: Query): string {
+	query.slots++;
+	return `$${query.slots}`;
 }
 
 function isDigit(c: string): boolean {
@@ -732,7 +816,7 @@ function executeQueryOf(p: PostgresParameters, version: number): Query {
 			nextIndex++;
 		}
 	}
-	return { query, values };
+	return { query, values, template: query, slots: values.length };
 }
 
 /** `getWhereClauses` of the v1 node. */
@@ -759,6 +843,7 @@ function addWhere(query: Query, clauses: Clause[], combine: unknown): void {
 	if (clauses.length === 0) return;
 	const combineWith = combine === 'OR' ? 'OR' : 'AND';
 	let text = ' WHERE';
+	let template = ' WHERE';
 	for (let index = 0; index < clauses.length; index++) {
 		const clause = clauses[index];
 		let condition = String(clause.condition);
@@ -768,15 +853,20 @@ function addWhere(query: Query, clauses: Clause[], combine: unknown): void {
 			const numeric = Number(value);
 			if (String(value).trim() !== '' && !isNaN(numeric)) value = numeric;
 		}
+		const nameOfV1 = nameSlot(query);
 		let place = '';
+		let placeOfV1 = '';
 		if (condition !== 'IS NULL' && condition !== 'IS NOT NULL') {
 			query.values.push(value);
 			place = ` $${query.values.length}`;
+			placeOfV1 = ` ${valueSlot(query)}`;
 		}
 		const operator = index === clauses.length - 1 ? '' : ` ${combineWith}`;
 		text += ` ${nameIn(query, clause.column)} ${condition}${place}${operator}`;
+		template += ` ${nameOfV1} ${condition}${placeOfV1}${operator}`;
 	}
 	query.query += text;
+	query.template += template;
 }
 
 /** The query of one item of `select`. */
@@ -787,18 +877,25 @@ function selectOf(p: PostgresParameters): Query {
 	if (Array.isArray(columns)) all = columns.includes('*');
 	else if (typeof columns === 'string') all = columns.includes('*');
 	else throw hostError('The output columns are not a list');
-	const query: Query = { query: '', values: [], made: 'select' };
+	const query: Query = { query: '', values: [], made: 'select', template: '', slots: 2 };
 	const from = `${nameIn(query, p.schema)}.${nameIn(query, p.table)}`;
 	query.query = all ? `SELECT * FROM ${from}` : `SELECT ${nameIn(query, columns)} FROM ${from}`;
+	query.template = all
+		? 'SELECT * FROM $1:name.$2:name'
+		: `SELECT ${nameSlot(query)} FROM $1:name.$2:name`;
 	addWhere(query, whereClauses(p), p.combineConditions ?? 'AND');
 	const rules = p.sort?.values;
 	if (Array.isArray(rules) && rules.length > 0) {
 		const parts: string[] = [];
+		const partsOfV1: string[] = [];
 		for (const rule of rules) {
 			const sort: SortRule = isRecord(rule) ? rule : {};
-			parts.push(` ${nameIn(query, sort.column)} ${sort.direction === 'DESC' ? 'DESC' : 'ASC'}`);
+			const direction = sort.direction === 'DESC' ? 'DESC' : 'ASC';
+			parts.push(` ${nameIn(query, sort.column)} ${direction}`);
+			partsOfV1.push(` ${nameSlot(query)} ${direction}`);
 		}
 		query.query += ` ORDER BY${parts.join(',')}`;
+		query.template += ` ORDER BY${partsOfV1.join(',')}`;
 	} else if (rules !== undefined && rules !== null && !Array.isArray(rules)) {
 		throw hostError('The sort rules are not a list');
 	}
@@ -808,22 +905,28 @@ function selectOf(p: PostgresParameters): Query {
 		if (isNaN(limit)) throw new Error('Failed to parse value to number');
 		query.values.push(limit);
 		query.query += ` LIMIT $${query.values.length}`;
+		query.template += ` LIMIT ${valueSlot(query)}`;
 	}
 	return query;
 }
 
 /** The query of one item of `deleteTable`. */
 function deleteOf(p: PostgresParameters): Query {
-	const query: Query = { query: '', values: [], made: 'write' };
+	const query: Query = { query: '', values: [], made: 'write', template: '', slots: 2 };
 	const from = `${nameIn(query, p.schema)}.${nameIn(query, p.table)}`;
 	const cascade = p.options?.cascade ? ' CASCADE' : '';
-	if (p.deleteCommand === 'drop') query.query = `DROP TABLE IF EXISTS ${from}${cascade}`;
+	if (p.deleteCommand === 'drop') {
+		query.query = `DROP TABLE IF EXISTS ${from}${cascade}`;
+		query.template = `DROP TABLE IF EXISTS $1:name.$2:name${cascade}`;
+	}
 	if (p.deleteCommand === 'truncate') {
 		const identity = (p.restartSequences ?? false) ? ' RESTART IDENTITY' : '';
 		query.query = `TRUNCATE TABLE ${from}${identity}${cascade}`;
+		query.template = `TRUNCATE TABLE $1:name.$2:name${identity}${cascade}`;
 	}
 	if (p.deleteCommand === 'delete') {
 		query.query = `DELETE FROM ${from}`;
+		query.template = 'DELETE FROM $1:name.$2:name';
 		addWhere(query, whereClauses(p), p.combineConditions ?? 'AND');
 	}
 	if (query.query === '') {
@@ -1111,8 +1214,13 @@ function addReturning(query: Query, options: PostgresOptions | undefined): void 
 	if (!Array.isArray(columns) && typeof columns !== 'string') {
 		throw hostError('The output columns are not a list');
 	}
-	if (columns.includes('*')) query.query += ' RETURNING *';
-	else query.query += ` RETURNING ${nameIn(query, columns)}`;
+	if (columns.includes('*')) {
+		query.query += ' RETURNING *';
+		query.template += ' RETURNING *';
+	} else {
+		query.query += ` RETURNING ${nameIn(query, columns)}`;
+		query.template += ` RETURNING ${nameSlot(query)}`;
+	}
 }
 
 /** The names of the columns to match on, for `update` and `upsert`. */
@@ -1137,11 +1245,12 @@ function columnNames(query: Query, names: string[]): string {
 
 /** The query of one item of `insert`, from the checked values. */
 function insertOf(p: PostgresParameters, item: Record<string, unknown>, version: number): Query {
-	const query: Query = { query: '', values: [], made: 'write' };
+	const query: Query = { query: '', values: [], made: 'write', template: '', slots: 3 };
 	const into = `INSERT INTO ${nameIn(query, p.schema)}.${nameIn(query, p.table)}`;
 	const names = Object.keys(item);
 	if (version >= 2.6 && names.length === 0) {
 		query.query = `${into} DEFAULT VALUES`;
+		query.template = 'INSERT INTO $1:name.$2:name DEFAULT VALUES';
 	} else {
 		if (names.length === 0 && query.nameError === undefined) {
 			query.nameError = 'Cannot retrieve sql names from an empty array/object.';
@@ -1151,6 +1260,7 @@ function insertOf(p: PostgresParameters, item: Record<string, unknown>, version:
 		for (const name of names) places.push(place(query, item[name]));
 		const conflict = p.options?.skipOnConflict ? ' ON CONFLICT DO NOTHING' : '';
 		query.query = `${into}(${columns}) VALUES(${places.join(',')})${conflict}`;
+		query.template = `INSERT INTO $1:name.$2:name($3:name) VALUES($3:csv)${conflict}`;
 	}
 	addReturning(query, p.options);
 	return query;
@@ -1158,12 +1268,19 @@ function insertOf(p: PostgresParameters, item: Record<string, unknown>, version:
 
 /** The query of one item of `update`, from the checked values. */
 function updateOf(p: PostgresParameters, item: Record<string, unknown>, matching: string[]): Query {
-	const query: Query = { query: '', values: [], made: 'write' };
+	const query: Query = { query: '', values: [], made: 'write', template: '', slots: 2 };
 	const table = `${nameIn(query, p.schema)}.${nameIn(query, p.table)}`;
+	// v1 numbers the places of the conditions before the places of the updates.
+	const conditionsOfV1: string[] = [];
+	for (let k = 0; k < matching.length; k++) {
+		conditionsOfV1.push(`${nameSlot(query)} = ${valueSlot(query)}`);
+	}
 	const updates: string[] = [];
+	const updatesOfV1: string[] = [];
 	for (const name of Object.keys(item)) {
 		if (matching.includes(name)) continue;
 		updates.push(`${nameIn(query, name)} = ${place(query, item[name])}`);
+		updatesOfV1.push(`${nameSlot(query)} = ${valueSlot(query)}`);
 	}
 	if (updates.length === 0) {
 		throw new Error(
@@ -1175,33 +1292,49 @@ function updateOf(p: PostgresParameters, item: Record<string, unknown>, matching
 		conditions.push(`${nameIn(query, name)} = ${place(query, item[name])}`);
 	}
 	query.query = `UPDATE ${table} SET ${updates.join(', ')} WHERE ${conditions.join(' AND ')}`;
+	query.template = `UPDATE $1:name.$2:name SET ${updatesOfV1.join(', ')} WHERE ${conditionsOfV1.join(' AND ')}`;
 	addReturning(query, p.options);
 	return query;
 }
 
 /** The query of one item of `upsert`, from the checked values. */
 function upsertOf(p: PostgresParameters, item: Record<string, unknown>, matching: string[]): Query {
-	const query: Query = { query: '', values: [], made: 'write' };
+	const query: Query = { query: '', values: [], made: 'write', template: '', slots: 2 };
 	const into = `INSERT INTO ${nameIn(query, p.schema)}.${nameIn(query, p.table)}`;
 	const names = Object.keys(item);
 	const columns = columnNames(query, names);
 	const places: string[] = [];
 	for (const name of names) places.push(place(query, item[name]));
 	const conflict: string[] = [];
-	for (const name of matching) conflict.push(nameIn(query, name));
+	const conflictOfV1: string[] = [];
+	for (const name of matching) {
+		conflict.push(nameIn(query, name));
+		conflictOfV1.push(nameSlot(query));
+	}
+	query.slots++;
+	const itemSlot = query.slots;
 	const updates: string[] = [];
+	const updatesOfV1: string[] = [];
 	for (const name of names) {
 		if (matching.includes(name)) continue;
 		updates.push(`${nameIn(query, name)} = ${place(query, item[name])}`);
+		updatesOfV1.push(`${nameSlot(query)} = ${valueSlot(query)}`);
 	}
 	const action = updates.length > 0 ? ` DO UPDATE  SET ${updates.join(', ')}` : ' DO NOTHING ';
+	const actionOfV1 =
+		updates.length > 0 ? ` DO UPDATE  SET ${updatesOfV1.join(', ')}` : ' DO NOTHING ';
 	query.query = `${into}(${columns}) VALUES(${places.join(',')}) ON CONFLICT (${conflict.join(',')})${action}`;
+	query.template = `INSERT INTO $1:name.$2:name($${itemSlot}:name) VALUES($${itemSlot}:csv) ON CONFLICT (${conflictOfV1.join(',')})${actionOfV1}`;
 	addReturning(query, p.options);
 	return query;
 }
 
-/** The message of `parsePostgresError` of the v1 node. */
-function errorMessage(error: SqlError, queries: Query[]): string {
+/**
+ * `parsePostgresError` of the v1 node, and what the NodeOperationError of n8n does with its
+ * result. `index`: the index of the query that failed, when v1 gives it.
+ */
+function parseError(error: SqlError, queries: Query[], index: number | undefined): Parsed {
+	let itemIndex = index;
 	let message = error.message;
 	const head = 'syntax error at or near "';
 	const at = message.indexOf(head);
@@ -1217,19 +1350,40 @@ function errorMessage(error: SqlError, queries: Query[]): string {
 		for (let k = 0; k < rest.length; k++) if (rest[k] === '"') quote = k;
 		if (quote !== -1) {
 			const snippet = rest.slice(0, quote);
-			const failed = queries.findIndex((q) => q.query.includes(snippet));
+			const failed = queries.findIndex((q) => q.template.includes(snippet));
 			if (failed !== -1) {
-				const lines = queries[failed].query.split('\n');
+				if (!itemIndex) itemIndex = failed;
+				const lines = queries[failed].template.split('\n');
 				const line = lines.findIndex((l) => l.includes(snippet));
 				message = `Syntax error at line ${line + 1} near "${snippet}"`;
 			}
 		}
 	}
 	let out = message;
-	if (message.includes('ECONNREFUSED')) out = 'Connection refused';
-	if (message.includes('ENOTFOUND')) out = 'Host not found';
-	if (message.includes('ETIMEDOUT')) out = 'Connection timed out';
-	return out;
+	let description: string | undefined = error.detail || error.hint || undefined;
+	const failedQuery = queries[itemIndex || 0];
+	if (!description && failedQuery !== undefined && failedQuery.template !== '') {
+		description = `Failed query: ${failedQuery.template}`;
+	}
+	for (const [code, text] of CONNECT_ERRORS) {
+		if (!message.includes(code)) continue;
+		out = text;
+		const rest = message.split(`${code} `)[1];
+		if (rest !== undefined) description = rest.trim();
+	}
+	if (!description || description === out) description = undefined;
+	const messages: string[] = [];
+	const upper = out.toUpperCase();
+	for (const [code, text] of COMMON_ERRORS) {
+		if (!upper.includes(code)) continue;
+		messages.push(out);
+		out = text;
+		break;
+	}
+	const parsed: Parsed = { message: out, messages };
+	if (description !== undefined) parsed.description = description;
+	if (itemIndex !== undefined) parsed.itemIndex = itemIndex;
+	return parsed;
 }
 
 /** The rows of one statement: of all its commands when the statement is a simple one. */
@@ -1269,6 +1423,8 @@ export default defineNode<PostgresParameters>({
 				'replacement',
 				'queryParts',
 				'batch',
+				'errorMode',
+				'node',
 			],
 			'database.select': [
 				'schema',
@@ -1289,6 +1445,8 @@ export default defineNode<PostgresParameters>({
 				'options.replaceEmptyStrings',
 				'nodeVersion',
 				'batch',
+				'errorMode',
+				'node',
 			],
 			'database.insert': [
 				'schema',
@@ -1308,6 +1466,8 @@ export default defineNode<PostgresParameters>({
 				'options.replaceEmptyStrings',
 				'nodeVersion',
 				'batch',
+				'errorMode',
+				'node',
 			],
 			'database.update': [
 				'schema',
@@ -1326,6 +1486,8 @@ export default defineNode<PostgresParameters>({
 				'options.replaceEmptyStrings',
 				'nodeVersion',
 				'batch',
+				'errorMode',
+				'node',
 			],
 			'database.upsert': [
 				'schema',
@@ -1344,6 +1506,8 @@ export default defineNode<PostgresParameters>({
 				'options.replaceEmptyStrings',
 				'nodeVersion',
 				'batch',
+				'errorMode',
+				'node',
 			],
 			'database.deleteTable': [
 				'schema',
@@ -1362,6 +1526,8 @@ export default defineNode<PostgresParameters>({
 				'options.replaceEmptyStrings',
 				'nodeVersion',
 				'batch',
+				'errorMode',
+				'node',
 			],
 		},
 	},
@@ -1373,6 +1539,17 @@ export default defineNode<PostgresParameters>({
 		const operation = parameters.operation ?? first.operation;
 		const version = parameters.nodeVersion ?? first.nodeVersion ?? 0;
 		if (version < 2.1) throw hostError('The node version is below 2.1');
+		// A continue setting of the node: v1 gives error items, and this node gives
+		// `[{ items, errors, nodeError? }]` to the converted workflow.
+		const errorMode = parameters.errorMode;
+		if (errorMode !== undefined && errorMode !== 'regular' && errorMode !== 'errorOutput') {
+			throw hostError('The error setting is unknown');
+		}
+		const nodeCopy = parameters.node;
+		if (errorMode !== undefined && !isRecord(nodeCopy)) {
+			throw hostError('The node has no copy of itself for its error items');
+		}
+		const inputs: Item[] = items ?? [];
 		// Before version 2.3, the result of a query without rows depends on the operation only.
 		// In the modes `transaction` and `independently`, v1 then wraps its item two times.
 		const select = operation === 'select';
@@ -1386,14 +1563,22 @@ export default defineNode<PostgresParameters>({
 			throw hostError('The query batching mode is unknown');
 		}
 
+		let calls = 0;
+		// An error that is not an error of v1: it fails the step also under a continue setting.
+		let effectFailed = false;
+		// The first call found no connection, as the connection that v1 opens before all else.
+		let connectFailure: Parsed | undefined;
+		const broken = (): Error => {
+			effectFailed = true;
+			return new Error('Postgres: the runtime gave no result');
+		};
 		// `sent`: a statement of an earlier call ran, so the host must not run the node again.
-		// `lookup`: the call only reads, alone, as v1 reads the columns of a table.
 		const send = async (
 			list: SqlStatement[],
 			sent: boolean,
-			lookup: boolean,
+			batching: 'single' | 'transaction' | 'independently',
 		): Promise<SqlResult> => {
-			const batching = mode === 'transaction' && !lookup ? 'transaction' : 'single';
+			calls++;
 			const largeNumbers = options.largeNumbersOutput === 'numbers' ? 'numbers' : 'text';
 			const dates = version >= 2.7 ? 'text' : 'legacy';
 			let result: SqlResult;
@@ -1419,183 +1604,374 @@ export default defineNode<PostgresParameters>({
 					});
 				}
 			} catch (error) {
-				const message =
-					typeof error === 'object' && error !== null && 'message' in error
-						? String(error.message)
-						: String(error);
+				effectFailed = true;
+				const message = messageOf(error);
 				if (!sent && message.includes('(limit: sql-')) {
 					throw new Error(`${message} ${RUNS_IN_HOST}`);
 				}
 				throw error;
 			}
-			if (result.connect !== undefined) throw new Error(errorMessage(result.connect, []));
+			if (result.connect !== undefined) {
+				const parsed = parseError(result.connect, [], undefined);
+				if (calls === 1) connectFailure = parsed;
+				else effectFailed = true;
+				throw new Error(parsed.message);
+			}
 			return result;
 		};
-		// The rows of one statement that only reads. v1 gives the error of the database as it is.
+		// The rows of one statement that only reads, alone, as v1 reads the columns of a table.
+		// v1 gives the error of the database as it is.
 		const read = async (text: string, given: unknown[]): Promise<Item[]> => {
 			const values: SqlValue[] = [];
 			for (const value of given) values.push(bindValue(value));
-			const result = await send([{ text, values }], false, true);
+			const result = await send([{ text, values }], false, 'single');
 			const entry = result.results[0];
-			if (entry === undefined) throw new Error('Postgres: the runtime gave no result');
+			if (entry === undefined) throw broken();
 			if ('error' in entry) throw new Error(entry.error.message);
 			return rowsOf(entry);
 		};
-
-		const queries: Query[] = [];
-		if (typeof operation === 'string' && WRITES.includes(operation)) {
-			if (version < 2.2) throw hostError('The node version is below 2.2');
-			const replace = options.replaceEmptyStrings ? true : false;
-			let schema = first.schema;
-			let table = first.table;
-			let columnsInfo = await read(TABLE_SCHEMA, [schema, table]);
-			for (let i = 0; i < each.length; i++) {
-				const p = each[i];
-				const columns = p.columns;
-				if (!isRecord(columns) || typeof columns.mappingMode !== 'string') {
-					throw hostError('The columns of the node are not a mapping');
+		// The spread of the NodeOperationError of v1, as an error item holds it.
+		const errorObject = (parsed: Parsed, withMessage: boolean): Item => {
+			const out: Item = { name: 'NodeOperationError', level: 'warning', shouldReport: true };
+			if (parsed.description !== undefined) out.description = parsed.description;
+			out.tags = { packageName: 'workflow' };
+			out.timestamp = Date.now();
+			out.context = parsed.itemIndex === undefined ? {} : { itemIndex: parsed.itemIndex };
+			out.functionality = 'regular';
+			out.node = nodeCopy;
+			out.messages = parsed.messages;
+			if (withMessage) out.message = parsed.message;
+			return out;
+		};
+		// The result under a continue setting. With the error output, n8n pairs the items that
+		// the node did not pair (`assignPairedItems`), and moves each item that is only an error
+		// to the error output, on top of its input item (`handleNodeErrorOutput`).
+		const finish = (outs: Out[]): Item[] => {
+			const main: Item[] = [];
+			const errors: Item[] = [];
+			const single = inputs.length === 1;
+			const same = outs.length === inputs.length;
+			const one = outs.length === 1 && inputs.length > 1;
+			let pairing = true;
+			for (let k = 0; k < outs.length; k++) {
+				const json = outs[k].json;
+				let paired = outs[k].paired;
+				if (paired === undefined && pairing) {
+					if (single || one) paired = 0;
+					else if (same) paired = k;
+					else pairing = false;
 				}
-				const matching = operation === 'insert' ? [] : matchingColumns(columns);
-				let item: Record<string, unknown> = {};
-				// v1 has undefined for these values, and does not check them against the columns.
-				const passed: string[] = [];
-				let unsure = false;
-				if (columns.mappingMode === 'autoMapInputData') item = inputValues(items?.[i], replace);
-				if (columns.mappingMode === 'defineBelow') {
-					const value = columns.value;
-					if (!isRecord(value)) throw hostError('The values of the columns are not an object');
-					const json = columnsInfo.filter((c) => c.data_type === 'json');
-					if (operation === 'insert' && json.length > 0) {
-						// `convertValuesToJsonWithPgp`: v1 reads the values without a cast.
-						unsure = true;
-						for (const key of Object.keys(value)) item[key] = value[key];
-						for (const column of json) {
-							const name = String(column.column_name);
-							const member = item[name];
-							if (member !== null && member !== undefined) item[name] = JSON.stringify(member);
+				let onlyError = errorMode === 'errorOutput' && json.error ? true : false;
+				for (const key of Object.keys(json)) {
+					if (key !== 'error' && key !== 'message' && key !== 'details') onlyError = false;
+				}
+				if (!onlyError) {
+					main.push(json);
+					continue;
+				}
+				const input = paired === undefined ? undefined : inputs[paired];
+				if (input === undefined) {
+					errors.push(json);
+					continue;
+				}
+				const merged: Item = {};
+				for (const key of Object.keys(input)) if (key !== '$binary') merged[key] = input[key];
+				for (const key of Object.keys(json)) merged[key] = json[key];
+				errors.push(merged);
+			}
+			// "Retry on fail" of n8n runs the node again while the first item that the node gives
+			// has an error.
+			const firstError = outs[0]?.json.error;
+			if (firstError !== undefined && firstError !== null && firstError !== false) {
+				return [{ items: main, errors, retry: true }];
+			}
+			return [{ items: main, errors }];
+		};
+		// The items of a call in the mode `single` that gave no row.
+		const emptySingle = (queries: Query[]): Item[] => {
+			if (legacySingle !== null) return legacySingle;
+			for (const q of queries) {
+				if (q.made === 'write') return [{ success: true }];
+				if (q.made === undefined && !isSelectQuery(q.query)) return [{ success: true }];
+			}
+			return [];
+		};
+
+		try {
+			const queries: Query[] = [];
+			if (typeof operation === 'string' && WRITES.includes(operation)) {
+				if (version < 2.2) throw hostError('The node version is below 2.2');
+				const replace = options.replaceEmptyStrings ? true : false;
+				let schema = first.schema;
+				let table = first.table;
+				let columnsInfo = await read(TABLE_SCHEMA, [schema, table]);
+				for (let i = 0; i < each.length; i++) {
+					try {
+						const p = each[i];
+						const columns = p.columns;
+						if (!isRecord(columns) || typeof columns.mappingMode !== 'string') {
+							throw hostError('The columns of the node are not a mapping');
 						}
-					} else {
-						item = mappedValues(value, columns.schema, i, operation === 'insert');
-						for (const key of Object.keys(item)) {
-							if (item[key] === undefined) {
-								item[key] = null;
-								passed.push(key);
+						const matching = operation === 'insert' ? [] : matchingColumns(columns);
+						let item: Record<string, unknown> = {};
+						// v1 has undefined for these values, and does not check them against the columns.
+						const passed: string[] = [];
+						let unsure = false;
+						if (columns.mappingMode === 'autoMapInputData') item = inputValues(items?.[i], replace);
+						if (columns.mappingMode === 'defineBelow') {
+							const value = columns.value;
+							if (!isRecord(value)) throw hostError('The values of the columns are not an object');
+							const json = columnsInfo.filter((c) => c.data_type === 'json');
+							if (operation === 'insert' && json.length > 0) {
+								// `convertValuesToJsonWithPgp`: v1 reads the values without a cast.
+								unsure = true;
+								for (const key of Object.keys(value)) item[key] = value[key];
+								for (const column of json) {
+									const name = String(column.column_name);
+									const member = item[name];
+									if (member !== null && member !== undefined) item[name] = JSON.stringify(member);
+								}
+							} else {
+								item = mappedValues(value, columns.schema, i, operation === 'insert');
+								for (const key of Object.keys(item)) {
+									if (item[key] === undefined) {
+										item[key] = null;
+										passed.push(key);
+									}
+								}
 							}
 						}
+						if (operation === 'update') {
+							// `doesRowExist` of the v1 node.
+							const exists: Query = { query: '', values: [], template: '', slots: 0 };
+							const from = `${nameIn(exists, p.schema)}.${nameIn(exists, p.table)}`;
+							const conditions: string[] = [];
+							for (const name of matching) {
+								conditions.push(`${nameIn(exists, name)}=${place(exists, item[name])}`);
+							}
+							if (exists.nameError !== undefined) throw new Error(exists.nameError);
+							const rows = await read(
+								`SELECT EXISTS(SELECT 1 FROM ${from} WHERE ${conditions.join(' AND ')})`,
+								exists.values,
+							);
+							if (rows[0]?.exists !== true) {
+								throw new Error("The row you are trying to update doesn't exist");
+							}
+						}
+						if (operation === 'upsert') {
+							const key = matching[0];
+							if (key === undefined || !item[key]) {
+								throw new Error(
+									"Column to match on not found in input item. Add a column to match on or set the 'Data Mode' to 'Define Below' to define the value to match on.",
+								);
+							}
+							if (Object.keys(item).length === 1) {
+								throw new Error(
+									"Add values to update or insert to the input item or set the 'Data Mode' to 'Define Below' to define the values to insert or update.",
+								);
+							}
+						}
+						if (p.schema !== schema || p.table !== table) {
+							schema = p.schema;
+							table = p.table;
+							columnsInfo = await read(TABLE_SCHEMA, [schema, table]);
+						}
+						if (version >= 2.4) item = withArrayText(item, columnsInfo);
+						checkItem(item, columnsInfo, unsure, passed);
+						if (operation === 'insert') queries.push(insertOf(p, item, version));
+						else if (operation === 'update') queries.push(updateOf(p, item, matching));
+						else queries.push(upsertOf(p, item, matching));
+					} catch (error) {
+						if (errorMode === undefined || effectFailed) throw error;
+						if (messageOf(error).includes('(limit: sql-')) throw error;
+						// v1 keeps the error object of this item in an error item. Its JSON has no
+						// message, but a later node can read the message. Only reads ran.
+						throw hostError('An item fails before its query under a continue setting');
 					}
 				}
-				if (operation === 'update') {
-					// `doesRowExist` of the v1 node.
-					const exists: Query = { query: '', values: [] };
-					const from = `${nameIn(exists, p.schema)}.${nameIn(exists, p.table)}`;
-					const conditions: string[] = [];
-					for (const name of matching) {
-						conditions.push(`${nameIn(exists, name)}=${place(exists, item[name])}`);
-					}
-					if (exists.nameError !== undefined) throw new Error(exists.nameError);
-					const rows = await read(
-						`SELECT EXISTS(SELECT 1 FROM ${from} WHERE ${conditions.join(' AND ')})`,
-						exists.values,
-					);
-					if (rows[0]?.exists !== true) {
-						throw new Error("The row you are trying to update doesn't exist");
-					}
+			} else {
+				for (const p of each) {
+					if (operation === 'executeQuery') queries.push(executeQueryOf(p, version));
+					else if (operation === 'select') queries.push(selectOf(p));
+					else if (operation === 'deleteTable') queries.push(deleteOf(p));
+					else throw hostError('The operation is not in the compiled library');
 				}
-				if (operation === 'upsert') {
-					const key = matching[0];
-					if (key === undefined || !item[key]) {
-						throw new Error(
-							"Column to match on not found in input item. Add a column to match on or set the 'Data Mode' to 'Define Below' to define the value to match on.",
-						);
-					}
-					if (Object.keys(item).length === 1) {
-						throw new Error(
-							"Add values to update or insert to the input item or set the 'Data Mode' to 'Define Below' to define the values to insert or update.",
-						);
-					}
-				}
-				if (p.schema !== schema || p.table !== table) {
-					schema = p.schema;
-					table = p.table;
-					columnsInfo = await read(TABLE_SCHEMA, [schema, table]);
-				}
-				if (version >= 2.4) item = withArrayText(item, columnsInfo);
-				checkItem(item, columnsInfo, unsure, passed);
-				if (operation === 'insert') queries.push(insertOf(p, item, version));
-				else if (operation === 'update') queries.push(updateOf(p, item, matching));
-				else queries.push(upsertOf(p, item, matching));
 			}
-		} else {
-			for (const p of each) {
-				if (operation === 'executeQuery') queries.push(executeQueryOf(p, version));
-				else if (operation === 'select') queries.push(selectOf(p));
-				else if (operation === 'deleteTable') queries.push(deleteOf(p));
-				else throw hostError('The operation is not in the compiled library');
+			const statements: SqlStatement[] = [];
+			const joined = mode === 'single' && queries.length > 1;
+			// pg-promise raises the error of a name when it writes the query: before all queries in
+			// the mode `single`, and after the queries before it in the other modes.
+			const badName = queries.findIndex((q) => q.nameError !== undefined);
+			const nameFailure = (index: number, at: number | undefined): Parsed =>
+				parseError({ message: queries[index].nameError ?? '' }, queries, at);
+			if (errorMode === undefined) {
+				if (badName > 0 && mode !== 'single') {
+					throw hostError('A name is not valid after queries that run');
+				}
+				if (badName !== -1) throw new Error(nameFailure(badName, undefined).message);
 			}
-		}
-		const statements: SqlStatement[] = [];
-		const joined = mode === 'single' && queries.length > 1;
-		// pg-promise raises the error of a name when it writes the query: before all queries in
-		// the mode `single`, and after the queries before it in the other modes.
-		const badName = queries.findIndex((q) => q.nameError !== undefined);
-		if (badName > 0 && mode !== 'single')
-			throw hostError('A name is not valid after queries that run');
-		if (badName !== -1) throw new Error(queries[badName].nameError ?? '');
-		if (mode !== 'independently' && queries.length > MAX_STATEMENTS) {
-			throw hostError('The node has more statements than one call takes');
-		}
-		// The text of the query before, with its number of values: the check gives the same.
-		let checked = '';
-		let checkedValues = -1;
-		for (const q of queries) {
-			const text = q.made !== undefined ? q.query : clean(q.query);
-			if (q.made === undefined && (text !== checked || q.values.length !== checkedValues)) {
-				checkQuery(text, q.values.length, joined);
-				checked = text;
-				checkedValues = q.values.length;
+			if (mode !== 'independently' && queries.length > MAX_STATEMENTS) {
+				throw hostError('The node has more statements than one call takes');
 			}
-			const values: SqlValue[] = [];
-			for (const value of q.values) values.push(bindValue(value));
-			statements.push({ text, values });
-		}
+			// The text of the query before, with its number of values: the check gives the same.
+			let checked = '';
+			let checkedValues = -1;
+			for (const q of queries) {
+				const text = q.made !== undefined ? q.query : clean(q.query);
+				if (q.made === undefined && (text !== checked || q.values.length !== checkedValues)) {
+					checkQuery(text, q.values.length, joined);
+					checked = text;
+					checkedValues = q.values.length;
+				}
+				const values: SqlValue[] = [];
+				for (const value of q.values) values.push(bindValue(value));
+				statements.push({ text, values });
+			}
 
-		const out: Item[] = [];
-		if (mode === 'independently') {
-			// v1 stops at the first failure, so each statement is one call.
-			for (let i = 0; i < statements.length; i++) {
-				const result = await send([statements[i]], i > 0, false);
-				const entry = result.results[0];
-				if (entry === undefined) throw new Error('Postgres: the runtime gave no result');
-				if ('error' in entry) throw new Error(errorMessage(entry.error, queries));
-				for (const row of rowsOrSuccess(rowsOf(entry), queries[i], legacyEach)) out.push(row);
+			const out: Item[] = [];
+			if (errorMode === undefined) {
+				if (mode === 'independently') {
+					// v1 stops at the first failure, so each statement is one call.
+					for (let i = 0; i < statements.length; i++) {
+						const result = await send([statements[i]], i > 0, 'single');
+						const entry = result.results[0];
+						if (entry === undefined) throw broken();
+						if ('error' in entry) throw new Error(parseError(entry.error, queries, i).message);
+						for (const row of rowsOrSuccess(rowsOf(entry), queries[i], legacyEach)) out.push(row);
+					}
+					return out;
+				}
+				const result = await send(statements, false, mode);
+				for (let i = 0; i < result.results.length; i++) {
+					const entry = result.results[i];
+					if ('error' in entry) {
+						const at = mode === 'single' ? undefined : i;
+						throw new Error(parseError(entry.error, queries, at).message);
+					}
+				}
+				if (result.results.length !== statements.length) throw broken();
+				for (let i = 0; i < result.results.length; i++) {
+					const entry = result.results[i];
+					if ('error' in entry) continue;
+					const rows = rowsOf(entry);
+					const given = mode === 'transaction' ? rowsOrSuccess(rows, queries[i], legacyEach) : rows;
+					for (const row of given) out.push(row);
+				}
+				if (mode === 'transaction' || out.length > 0) return out;
+				return emptySingle(queries);
 			}
-			return out;
-		}
-		const result = await send(statements, false, false);
-		for (const entry of result.results) {
-			if ('error' in entry) throw new Error(errorMessage(entry.error, queries));
-		}
-		if (result.results.length !== statements.length) {
-			throw new Error('Postgres: the runtime gave no result');
-		}
-		if (mode === 'transaction') {
-			for (let i = 0; i < result.results.length; i++) {
-				const entry = result.results[i];
-				if ('error' in entry) continue;
-				for (const row of rowsOrSuccess(rowsOf(entry), queries[i], legacyEach)) out.push(row);
+
+			// Under a continue setting, an error of a query is data. No query runs two times.
+			const outs: Out[] = [];
+			if (mode === 'single') {
+				let failure: Parsed | undefined;
+				if (badName !== -1) {
+					if (calls === 0) await read('SELECT 1', []);
+					failure = nameFailure(badName, undefined);
+				} else {
+					const result = await send(statements, false, 'single');
+					for (const entry of result.results) {
+						if (failure === undefined && 'error' in entry) {
+							failure = parseError(entry.error, queries, undefined);
+						}
+					}
+					if (failure === undefined && result.results.length !== statements.length) throw broken();
+					for (let i = 0; i < result.results.length; i++) {
+						const entry = result.results[i];
+						if ('error' in entry) continue;
+						for (const row of rowsOf(entry)) outs.push({ json: row, paired: i });
+					}
+				}
+				if (failure !== undefined) {
+					return finish([
+						{ json: { message: failure.message, error: errorObject(failure, false) } },
+					]);
+				}
+				if (outs.length === 0) {
+					for (const row of emptySingle(queries)) outs.push({ json: row, paired: 0 });
+				}
+				return finish(outs);
 			}
-			return out;
+			if (mode === 'transaction') {
+				// v1 ends at the first failure and gives the items before it. A name that is not
+				// valid fails when its query is next, and the queries before it are committed.
+				const count = badName === -1 ? statements.length : badName;
+				if (count === 0 && calls === 0) await read('SELECT 1', []);
+				const results =
+					count > 0 ? (await send(statements.slice(0, count), false, 'transaction')).results : [];
+				for (let i = 0; i < results.length; i++) {
+					const entry = results[i];
+					if ('error' in entry) {
+						// A failure of the commit is not in the `try` of v1: the node fails.
+						if (i >= count) throw new Error(entry.error.message);
+						const parsed = parseError(entry.error, queries, i);
+						outs.push({ json: { error: errorObject(parsed, false) }, paired: i });
+						return finish(outs);
+					}
+					for (const row of rowsOrSuccess(rowsOf(entry), queries[i], legacyEach)) {
+						outs.push({ json: row, paired: i });
+					}
+				}
+				if (results.length !== count) throw broken();
+				if (badName !== -1) {
+					const parsed = nameFailure(badName, badName);
+					outs.push({ json: { error: errorObject(parsed, false) }, paired: badName });
+				}
+				return finish(outs);
+			}
+			// `independently`: each query runs alone, and a failure does not stop the next one.
+			const good: number[] = [];
+			for (let i = 0; i < queries.length; i++) {
+				if (queries[i].nameError === undefined) good.push(i);
+			}
+			if (good.length === 0 && calls === 0) await read('SELECT 1', []);
+			const entries: Array<SqlRows | SqlSets | SqlFailure | undefined> = [];
+			for (let start = 0; start < good.length; start += MAX_STATEMENTS) {
+				const part = good.slice(start, start + MAX_STATEMENTS);
+				const list: SqlStatement[] = [];
+				for (const index of part) list.push(statements[index]);
+				const result = await send(list, start > 0, 'independently');
+				if (result.results.length !== part.length) throw broken();
+				for (let k = 0; k < part.length; k++) entries[part[k]] = result.results[k];
+			}
+			for (let i = 0; i < queries.length; i++) {
+				const entry = entries[i];
+				if (entry === undefined) {
+					const parsed = nameFailure(i, i);
+					outs.push({ json: { error: errorObject(parsed, false) }, paired: i });
+				} else if ('error' in entry) {
+					const parsed = parseError(entry.error, queries, i);
+					outs.push({ json: { error: errorObject(parsed, false) }, paired: i });
+				} else {
+					for (const row of rowsOrSuccess(rowsOf(entry), queries[i], legacyEach)) {
+						outs.push({ json: row, paired: i });
+					}
+				}
+			}
+			return finish(outs);
+		} catch (error) {
+			let failure: unknown = error;
+			if (effectFailed || messageOf(failure).includes('(limit: sql-')) throw failure;
+			if (calls === 0) {
+				// v1 opens a connection before it reads a parameter: a failure of the connection
+				// comes before the failure of a parameter.
+				try {
+					await read('SELECT 1', []);
+				} catch (probe) {
+					failure = probe;
+				}
+				if (effectFailed || messageOf(failure).includes('(limit: sql-')) throw failure;
+			}
+			if (errorMode === undefined) throw failure;
+			if (connectFailure !== undefined) {
+				const outs: Out[] = [];
+				for (let k = 0; k < inputs.length; k++) {
+					outs.push({ json: { error: errorObject(connectFailure, true) }, paired: k });
+				}
+				return finish(outs);
+			}
+			// The node of v1 fails: n8n gives the input items on, and keeps the error on the run.
+			return [{ items: inputs, errors: [], nodeError: messageOf(failure), retry: true }];
 		}
-		for (const entry of result.results) {
-			if ('error' in entry) continue;
-			for (const row of rowsOf(entry)) out.push(row);
-		}
-		if (out.length > 0) return out;
-		if (legacySingle !== null) return legacySingle;
-		for (const q of queries) {
-			if (q.made === 'write') return [{ success: true }];
-			if (q.made === undefined && !isSelectQuery(q.query)) return [{ success: true }];
-		}
-		return [];
 	},
 });

@@ -1899,12 +1899,54 @@ await ctx.sql({
 * **Converter.** `ConvertOptions.sql: true` says that the runtime runs
   `sql` effects. The Postgres node (versions 2.1 and later, operations
   `executeQuery`, `select` and `deleteTable`, and from version 2.2 `insert`,
-  `update` and `upsert`, a node that stops the workflow on an error) is then
+  `update` and `upsert`) is then
   the library node `src/nodes/postgres.ts`, with the fallback-host form of
   the node after it for a call that ends with a marker. Each other Postgres
-  node runs in the fallback host: a node with a continue setting (its error
-  items hold a copy of the node and a time), and a node with
-  `replaceEmptyStrings` and an expression.
+  node runs in the fallback host: a node of version 2.0 or 1, and a node
+  with `replaceEmptyStrings` and an expression.
+
+  A node with a continue setting (`continueRegularOutput`,
+  `continueErrorOutput`, `continueOnFail`) is the library node too. An
+  error of a query is data of the `sql` effect, so the node makes the error
+  items of v1 from the one run of its statements. No statement runs a
+  second time to get an error item. The converter gives the node its error
+  setting (`errorMode`) and the node as n8n holds it in a run (`node`: the
+  stored node, with the parameters that the `Workflow` constructor of n8n
+  makes). The node gives one item `{ items, errors, nodeError?, retry? }`.
+  `retry` is true when the first item of the node has an error, or the node
+  fails as a whole: with "retry on fail", the workflow then runs the node
+  again after the wait, as n8n does, up to the number of tries. Each of
+  these runs is a run of v1 too:
+
+  | v1 | Result |
+  |---|---|
+  | The connection fails | One item `{ error }` for each input item, paired with it. `error` is the spread of the `NodeOperationError` of v1 and its `message` |
+  | A query fails, mode `single` | One item `{ message, error }` |
+  | A query fails, mode `transaction` | The items of the queries before it, then `{ error }`, paired with the input item of the query. Nothing is committed |
+  | A query fails, mode `independently` | `{ error }` in the place of the items of the query. The other queries run |
+  | A name of a query is not valid (pg-promise fails when it writes the text) | As a failed query. In the mode `transaction`, the queries before it are committed |
+  | The node fails as a whole (a parameter that is not valid, a failure of the commit) | `items` is the input items, and `nodeError` has the message: n8n gives the input on and keeps the error on the run |
+  | `insert`, `update`, `upsert`: an item fails before its query | The fallback host. v1 keeps the error object in the item, and its JSON has no message while a later node can read one |
+
+  `error` has `name`, `level`, `shouldReport`, `description`, `tags`,
+  `timestamp`, `context` (`itemIndex` in the modes `transaction` and
+  `independently`), `functionality`, `node` and `messages`. `description`
+  is the detail or the hint of the server, else `Failed query: ` and the
+  query text of v1 with its pg-promise places. `timestamp` is the time of
+  the node (`Date.now()`); the equivalence test compares its form only.
+  With the error output, the node pairs the items as n8n does
+  (`assignPairedItems`) and moves each item that is only an error (a
+  truthy `error`, and no key other than `error`, `message` and `details`)
+  to `errors`, on top of the JSON of its input item
+  (`handleNodeErrorOutput`). This also moves a row of a query whose only
+  column is `error`.
+
+  n8n removes the `=` of the `query` parameter when it loads the workflow
+  (`noDataExpression`), and the v1 node evaluates each `{{ }}` part of the
+  text. The converter does the same: it gives the value of each part in
+  `queryParts`. A query with `$fromAI`, or with two `=` at its start, runs
+  in the fallback host. The equivalence test runs each case of the v1 node
+  in n8n's engine (`WorkflowExecute`), which loads the node as n8n does.
 
 ## 10. Fallback host steps (AI clusters, binary data, Python)
 

@@ -3,6 +3,7 @@
  * library node on a real database with the same tables, and the test compares
  * the output or the error, and the tables afterwards.
  */
+import { POSTGRES_CONTINUE_CASES } from './postgres-continue-cases.ts';
 import {
 	POSTGRES_QUERY_TEXT_CASES,
 	POSTGRES_VERSION_CASES,
@@ -25,7 +26,11 @@ export interface PostgresCase {
 	/** The converter keeps the node in the host. */
 	convertHost?: boolean;
 	/** The error setting of the node. */
-	onError?: string;
+	onError?: 'continueRegularOutput' | 'continueErrorOutput';
+	/** Other settings of the node in the workflow. */
+	settings?: Record<string, unknown>;
+	/** Values of the credential that differ from the test database (a failure of the connection). */
+	credential?: Record<string, unknown>;
 }
 
 const located = {
@@ -347,12 +352,6 @@ export const POSTGRES_CASES: PostgresCase[] = [
 		{ queryReplacement: '={{ $json.ages }}' },
 		{ items: [{ ages: [[34, 27]] }], host: true },
 	),
-	query(
-		'a node that continues on fail',
-		'SELECT 1 AS a',
-		{},
-		{ convertHost: true, onError: 'continueRegularOutput' },
-	),
 	query('a version below 2.1', 'SELECT 1 AS a', {}, { typeVersion: 2, convertHost: true }),
 
 	select('all rows of two columns', {
@@ -481,4 +480,5 @@ export const POSTGRES_CASES: PostgresCase[] = [
 	...POSTGRES_QUERY_TEXT_CASES,
 	...POSTGRES_WRITE_CASES,
 	...POSTGRES_VERSION_CASES,
+	...POSTGRES_CONTINUE_CASES,
 ];

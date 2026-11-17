@@ -3,10 +3,13 @@
  *
  * With `PG_TEST_PORT` set and a database there (`PG_TEST_HOST`, `PG_TEST_DATABASE`,
  * `PG_TEST_USER`, `PG_TEST_PASSWORD`; the test makes and drops the schema `pgcase`),
- * each case runs the v1 node with its real driver, then the converted workflow with
+ * each case runs the v1 node with its real driver in n8n's engine (`WorkflowExecute`, which
+ * loads the node as n8n does), then the converted workflow with
  * the library node. A reference implementation of the `sql` effect answers the library
  * node with real bind values (`sql-reference.ts`). The test compares the
- * output or the error, and the tables after the run. `PG_RECORD=1` writes
+ * output or the error, and the tables after the run. A case with an error setting runs
+ * the v1 node in n8n's engine (`WorkflowExecute`), which makes the error items and the
+ * error output. The time in an error item is compared by its form only. `PG_RECORD=1` writes
  * `postgres-recordings.json`: what v1 gave, the `sql` calls of the library
  * node and their results.
  *
@@ -14,7 +17,7 @@
  * and checks its `sql` calls and its output against the recording, in the
  * reference runner and in the bytecode VM.
  */
-import { existsSync, readFileSync, writeFileSync } from 'node:fs';
+import { existsSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -30,7 +33,41 @@ import { databaseReachable, runSqlEffect, runTexts } from './sql-reference.ts';
 import { recordV1, recorderAvailable } from './v1-recorder.ts';
 
 const here = dirname(fileURLToPath(import.meta.url));
-const RECORDINGS = join(here, 'postgres-recordings.json');
+/**
+ * The recordings are in `postgres-recordings.json`, `postgres-recordings-2.json` and so on:
+ * the formatter of the repository refuses a file of more than 1 MiB.
+ */
+const RECORDING_FILE_BYTES = 900_000;
+const recordingFile = (index: number) =>
+	join(here, index === 0 ? 'postgres-recordings.json' : `postgres-recordings-${index + 1}.json`);
+
+function readRecordings(): Record<string, PostgresRecording> {
+	const all: Record<string, PostgresRecording> = {};
+	for (let index = 0; existsSync(recordingFile(index)); index++) {
+		Object.assign(all, JSON.parse(readFileSync(recordingFile(index), 'utf8')));
+	}
+	return all;
+}
+
+function writeRecordings(all: Record<string, PostgresRecording>): void {
+	const files: Array<Record<string, PostgresRecording>> = [{}];
+	let bytes = 0;
+	for (const [name, recording] of Object.entries(all)) {
+		const size = JSON.stringify({ [name]: recording }, null, '\t').length;
+		if (bytes > 0 && bytes + size > RECORDING_FILE_BYTES) {
+			files.push({});
+			bytes = 0;
+		}
+		files[files.length - 1][name] = recording;
+		bytes += size;
+	}
+	files.forEach((file, index) =>
+		writeFileSync(recordingFile(index), `${JSON.stringify(file, null, '\t')}\n`),
+	);
+	for (let index = files.length; existsSync(recordingFile(index)); index++) {
+		rmSync(recordingFile(index));
+	}
+}
 const NODE = 'Node';
 const HOST_NODE = 'Node (fallback host)';
 
@@ -41,7 +78,7 @@ interface SqlCallRecord {
 
 interface PostgresRecording {
 	/** The output items of the v1 node, or its error message. */
-	v1: { output?: unknown[]; error?: string };
+	v1: { output?: unknown; error?: string };
 	/** The tables after the run of the v1 node. */
 	state: string[];
 	/** The `sql` calls of the library node, with the results of the database. */
@@ -70,9 +107,7 @@ const live =
 	recorderAvailable() &&
 	(await databaseReachable(credential));
 const record = live && process.env.PG_RECORD === '1';
-const stored: Record<string, PostgresRecording> = existsSync(RECORDINGS)
-	? JSON.parse(readFileSync(RECORDINGS, 'utf8'))
-	: {};
+const stored: Record<string, PostgresRecording> = readRecordings();
 const written: Record<string, PostgresRecording> = {};
 
 function jsonCopy<T>(value: T): T {
@@ -98,6 +133,37 @@ function withoutSourcePlace(value: unknown): unknown {
 	return out;
 }
 
+/**
+ * A copy with 0 for the time of each error object of v1 (`timestamp` of a
+ * NodeOperationError): the time of the run is not a part of the result.
+ */
+function withoutTime(value: unknown): unknown {
+	if (Array.isArray(value)) return value.map(withoutTime);
+	if (!isRecord(value)) return value;
+	const out: Record<string, unknown> = {};
+	for (const [key, member] of Object.entries(value)) {
+		const time =
+			key === 'timestamp' && typeof member === 'number' && value.name === 'NodeOperationError';
+		out[key] = time ? 0 : withoutTime(member);
+	}
+	return out;
+}
+
+/** The node of a case with an error setting, as the recorder gives it to n8n's engine. */
+function engineNode(c: PostgresCase) {
+	return {
+		id: 'step',
+		name: NODE,
+		type: 'n8n-nodes-base.postgres',
+		typeVersion: c.typeVersion,
+		position: [200, 0],
+		parameters: c.parameters,
+		credentials: { postgres: { id: 'case', name: 'case' } },
+		...(c.onError ? { onError: c.onError } : {}),
+		...c.settings,
+	};
+}
+
 function workflowOf(c: PostgresCase) {
 	return {
 		name: 'Postgres',
@@ -116,15 +182,18 @@ function workflowOf(c: PostgresCase) {
 				position: [200, 0],
 				parameters: { fieldToSplitOut: 'body.rows', options: {} },
 			},
-			{
-				name: NODE,
-				type: 'n8n-nodes-base.postgres',
-				typeVersion: c.typeVersion,
-				position: [400, 0],
-				parameters: c.parameters,
-				credentials: { postgres: { id: '1', name: 'pg' } },
-				...(c.onError ? { onError: c.onError } : {}),
-			},
+			c.onError && c.convertHost !== true
+				? engineNode(c)
+				: {
+						name: NODE,
+						type: 'n8n-nodes-base.postgres',
+						typeVersion: c.typeVersion,
+						position: [400, 0],
+						parameters: c.parameters,
+						credentials: { postgres: { id: '1', name: 'pg' } },
+						...(c.onError ? { onError: c.onError } : {}),
+						...c.settings,
+					},
 		],
 		connections: {
 			Hook: { main: [[{ node: 'Split', type: 'main', index: 0 }]] },
@@ -150,7 +219,7 @@ function fixtureOf(c: PostgresCase, effects: Record<string, unknown[]>): Fixture
 }
 
 interface Outcome {
-	output?: unknown[];
+	output?: unknown;
 	error?: string;
 	host: boolean;
 	sql: EffectRecord[];
@@ -164,8 +233,17 @@ function outcomeOf(run: Awaited<ReturnType<typeof runReference>>): Outcome {
 		const message = isRecord(run.result) ? String(run.result.message) : String(run.result);
 		return { error: message, host, sql };
 	}
-	const traced = [...(run.trace ?? [])].reverse().find((t) => t.step === NODE);
+	// The last trace of the node with items: a trace of an error of the node has none.
+	const traced = [...(run.trace ?? [])]
+		.reverse()
+		.find((t) => t.step === NODE && Array.isArray(t.items));
 	return { output: Array.isArray(traced?.items) ? traced.items : [], host, sql };
+}
+
+/** The answer of the fallback host for the node of a case. The test does not compare it. */
+function hostAnswer(c: PostgresCase, v1: PostgresRecording['v1']): unknown {
+	if (v1.error !== undefined) return { $error: v1.error };
+	return c.onError ? [{ items: [] }] : v1.output;
 }
 
 async function reset(): Promise<void> {
@@ -177,18 +255,26 @@ async function reset(): Promise<void> {
 async function runLive(c: PostgresCase): Promise<PostgresRecording> {
 	await reset();
 	const before = await runTexts(credential, POSTGRES_STATE);
+	const used = { ...credential, ...c.credential };
+	// With settings, also empty ones, the recorder runs the node in n8n's engine.
+	const settings = { ...(c.onError ? { onError: c.onError } : {}), ...c.settings };
 	const v1 = await recordV1({
 		name: c.name,
 		type: 'n8n-nodes-base.postgres',
 		typeVersion: c.typeVersion,
 		parameters: c.parameters,
 		items: c.items,
-		credential: { type: 'postgres', data: credential },
+		credential: { type: 'postgres', data: used },
 		responses: [],
+		settings,
 	});
 	const v1State = await runTexts(credential, POSTGRES_STATE);
+	// With an error setting: the usual output, or both outputs with the error output.
+	const lists = v1.outputs ?? [];
+	const engineOutput =
+		c.onError === 'continueErrorOutput' ? [lists[0] ?? [], lists[1] ?? []] : (lists[0] ?? []);
 	const expected: PostgresRecording['v1'] = jsonCopy(
-		v1.error === undefined ? { output: v1.output ?? [] } : { error: v1.error },
+		v1.error === undefined ? { output: withoutTime(engineOutput) } : { error: v1.error },
 	);
 
 	await reset();
@@ -199,7 +285,7 @@ async function runLive(c: PostgresCase): Promise<PostgresRecording> {
 			if (effect.kind === 'sql') {
 				let result: unknown;
 				try {
-					result = await runSqlEffect(effect.args, credential, { timestampZone: 'utc' });
+					result = await runSqlEffect(effect.args, used, { timestampZone: 'utc' });
 				} catch (error) {
 					result = { $error: error instanceof Error ? error.message : String(error) };
 				}
@@ -210,7 +296,7 @@ async function runLive(c: PostgresCase): Promise<PostgresRecording> {
 			if (effect.kind === 'node' && effect.step === HOST_NODE) {
 				// The host runs the v1 node: the tables must be as they were before the node.
 				stateAtHost = await runTexts(credential, POSTGRES_STATE);
-				return expected.error === undefined ? expected.output : { $error: expected.error };
+				return hostAnswer(c, expected);
 			}
 			return undefined;
 		},
@@ -221,7 +307,7 @@ async function runLive(c: PostgresCase): Promise<PostgresRecording> {
 		expect(stateAtHost).toEqual(before);
 	} else {
 		expect(outcome.host).toBe(false);
-		expect({ output: outcome.output, error: outcome.error }).toEqual({
+		expect({ output: withoutTime(outcome.output), error: outcome.error }).toEqual({
 			output: expected.output,
 			error: expected.error,
 		});
@@ -237,7 +323,14 @@ async function runLive(c: PostgresCase): Promise<PostgresRecording> {
 
 describe('Postgres library node and the v1 node', () => {
 	afterAll(() => {
-		if (record) writeFileSync(RECORDINGS, `${JSON.stringify(written, null, '\t')}\n`);
+		if (!record) return;
+		// A run of some cases (`-t`) keeps the recordings of the other cases.
+		const kept: Record<string, PostgresRecording> = {};
+		for (const c of POSTGRES_CASES) {
+			const recording = written[c.name] ?? stored[c.name];
+			if (c.convertHost !== true && recording !== undefined) kept[c.name] = recording;
+		}
+		writeRecordings(kept);
 	});
 
 	describe.each(POSTGRES_CASES.map((c) => ({ ...c, label: c.name })))('$label', (c) => {
@@ -271,16 +364,14 @@ describe('Postgres library node and the v1 node', () => {
 				expect(compiled.diagnostics).toEqual([]);
 				const fixture = fixtureOf(c, {
 					[NODE]: recording.calls.map((call) => call.result),
-					[HOST_NODE]: [
-						recording.v1.error === undefined ? recording.v1.output : { $error: recording.v1.error },
-					],
+					[HOST_NODE]: [hostAnswer(c, recording.v1)],
 				});
 				const run = await runReference(source, fixture);
 				const outcome = outcomeOf(run);
 				expect(outcome.sql.map((e) => e.args)).toEqual(recording.calls.map((call) => call.args));
 				expect(outcome.host).toBe(recording.host === true);
 				if (recording.host !== true) {
-					expect({ output: outcome.output, error: outcome.error }).toEqual({
+					expect({ output: withoutTime(outcome.output), error: outcome.error }).toEqual({
 						output: recording.v1.output,
 						error: recording.v1.error,
 					});
