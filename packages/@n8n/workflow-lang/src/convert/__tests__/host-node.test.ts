@@ -223,7 +223,7 @@ describe('AI clusters', () => {
 			const workflow = chain(prompt, { model: 'claude' });
 			const nodes = workflow.nodes.map((n) =>
 				typeof n === 'object' && n !== null && 'name' in n && n.name === 'Model'
-					? { ...n, type: `${LC}lmChatAnthropic` }
+					? { ...n, type: `${LC}lmChatGoogleGemini` }
 					: n,
 			);
 			const { source, fallbackNodes } = converted({ ...workflow, nodes });

@@ -181,6 +181,61 @@ function openRouterModel(sub: ClusterSubNode): Record<string, unknown> | string 
 	return { provider: 'openRouter', responses: false, model, options: kept };
 }
 
+/** True when the Anthropic credential names another URL than the API of Anthropic (a gateway). */
+const ANTHROPIC_GATEWAY: ClusterDerivation = {
+	name: 'f0a11c003',
+	kind: 'flag',
+	code: "(d) => (d.url ?? 'https://api.anthropic.com') !== 'https://api.anthropic.com'",
+};
+
+/**
+ * With a gateway the v1 model node gives its own error for a model that the gateway does not
+ * know, and the text has the URL of the credential. The library node cannot read the URL, so
+ * a credential with a gateway has no proof: the caller runs the cluster in the host.
+ */
+function anthropicDerivations(node: string): ClusterDerivation[] {
+	const flags = [ANTHROPIC_GATEWAY.name];
+	const allowed = [credentialFlagKey(flags, { [ANTHROPIC_GATEWAY.name]: false })];
+	return [
+		ANTHROPIC_GATEWAY,
+		{
+			name: `g${hash(`${node}|${allowed.join(',')}`)}`,
+			code: '',
+			kind: 'guard',
+			flags,
+			allowed,
+			node,
+		},
+	];
+}
+
+/** Options of `lmChatAnthropic` that map to the request. The thinking options stay in the host. */
+const ANTHROPIC_OPTIONS: Record<string, string> = {
+	maxTokensToSample: 'maxTokens',
+	temperature: 'temperature',
+	topK: 'topK',
+	topP: 'topP',
+};
+
+/** The chat model sub-node `lmChatAnthropic` (ChatAnthropic of LangChain). */
+function anthropicModel(sub: ClusterSubNode): Record<string, unknown> | string {
+	const version = sub.typeVersion ?? 1;
+	if (![1, 1.1, 1.2, 1.3, 1.4, 1.5].includes(version)) return `model version ${version}`;
+	const p = sub.parameters ?? {};
+	const model = version >= 1.3 ? (isRecord(p.model) ? p.model.value : undefined) : p.model;
+	// An empty model fails in the sub-node itself; an expression can give one.
+	if (typeof model !== 'string' || model === '' || model.startsWith('=')) return 'model name';
+	const options = p.options ?? {};
+	if (!isRecord(options)) return 'model options';
+	const kept: Record<string, unknown> = {};
+	for (const [name, value] of Object.entries(options)) {
+		const to = ANTHROPIC_OPTIONS[name];
+		if (to === undefined) return `model option ${name}`;
+		kept[to] = value;
+	}
+	return { provider: 'anthropic', responses: false, model, options: kept };
+}
+
 /** The chat model of a root as the parameter `aiModel`, and the flags of its credential. */
 function chatModel(
 	root: string,
@@ -195,6 +250,12 @@ function chatModel(
 	if (sub.type === `${LC}lmChatOpenRouter`) {
 		const aiModel = openRouterModel(sub);
 		return typeof aiModel === 'string' ? aiModel : { aiModel, derivations: [] };
+	}
+	if (sub.type === `${LC}lmChatAnthropic`) {
+		const aiModel = anthropicModel(sub);
+		return typeof aiModel === 'string'
+			? aiModel
+			: { aiModel, derivations: anthropicDerivations(root) };
 	}
 	return `model ${sub.type.replace(LC, '')}`;
 }

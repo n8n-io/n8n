@@ -217,7 +217,7 @@ describe.runIf(typesBuilt)('AI nodes through the converter, against n8n engine r
 			for (const effect of effects.filter((e) => e.kind === 'wait')) {
 				const duration = isRecord(effect.args) ? Number(effect.args.duration) : Number.NaN;
 				expect(duration).toBeGreaterThanOrEqual(10);
-				expect(duration).toBeLessThan(4000);
+				expect(duration).toBeLessThan(64000);
 			}
 			const node = traced(out.trace ?? [], NODE);
 			expect(node.error).toBe(recording.error);

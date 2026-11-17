@@ -1378,6 +1378,26 @@ export const AGENT_ENGINE_CASES: EquivalenceCase[] = [
 
 /** Clusters that stay in the fallback host: the proof of the native form does not cover them. */
 export const AI_HOST_CASES: EquivalenceCase[] = [
+	{
+		name: 'chainLlm anthropic credential with a gateway URL',
+		type: `${LC}chainLlm`,
+		typeVersion: 1.9,
+		parameters: { promptType: 'define', text: 'Q' },
+		credential: { type: 'anthropicApi', data: { apiKey: 'k', url: 'https://proxy.example.com' } },
+		subNodes: [
+			{
+				name: 'Model',
+				type: `${LC}lmChatAnthropic`,
+				typeVersion: 1.3,
+				parameters: {
+					model: { __rl: true, mode: 'list', value: 'claude-sonnet-4-5' },
+					options: {},
+				},
+				connection: 'ai_languageModel',
+			},
+		],
+		responses: [],
+	},
 	chain(
 		'credential with an organization and a custom header',
 		gpt,
@@ -1718,6 +1738,295 @@ const OPEN_ROUTER_CASES: EquivalenceCase[] = [
 	),
 ];
 
+/** The chat model sub-node `lmChatAnthropic`. From version 1.3 the model is a resource locator. */
+function anthropicModel(
+	typeVersion: number,
+	name: string,
+	options: Record<string, unknown> = {},
+): SubNodeCase {
+	return {
+		name: 'Model',
+		type: `${LC}lmChatAnthropic`,
+		typeVersion,
+		parameters: {
+			model: typeVersion >= 1.3 ? { __rl: true, mode: 'list', value: name } : name,
+			options,
+		},
+		connection: 'ai_languageModel',
+	};
+}
+const sonnet = anthropicModel(1.3, 'claude-sonnet-4-5');
+const withAnthropic = { credential: anthropic };
+const anthropicFailed = (status: number, text = 'bad thing') => ({
+	status,
+	body: { type: 'error', error: { type: 'invalid_request_error', message: text } },
+});
+const systemFirst = {
+	messageValues: [
+		{ message: 'Answer {briefly}' },
+		{ type: 'AIMessagePromptTemplate', message: 'ok' },
+		{ type: 'HumanMessagePromptTemplate', message: 'first' },
+		{ type: 'HumanMessagePromptTemplate', message: 'second' },
+	],
+};
+
+/** The chain and the agent with the Anthropic chat model. */
+const ANTHROPIC_MODEL_CASES: EquivalenceCase[] = [
+	chain(
+		'anthropic defaults',
+		sonnet,
+		[claude([claudeText(' Hi '), claudeText('there ')])],
+		{},
+		withAnthropic,
+	),
+	chain(
+		'anthropic version 1.5',
+		anthropicModel(1.5, 'claude-sonnet-4-5'),
+		[claude([{ type: 'thinking', thinking: 'hm', signature: 's' }, claudeText('Hi')])],
+		{ messages: systemFirst },
+		withAnthropic,
+	),
+	chain(
+		'anthropic version 1.2',
+		anthropicModel(1.2, 'claude-3-5-sonnet-20240620', {
+			maxTokensToSample: 300,
+			temperature: 0.2,
+		}),
+		[claude([])],
+		{ messages: { messageValues: [{ message: '' }] }, text: '' },
+		withAnthropic,
+	),
+	...[
+		['claude-3-haiku-20240307', { temperature: 0.2 }],
+		['claude-3-haiku-20240307', { topP: 0.9 }],
+		['claude-3-7-sonnet-20250219', { topK: 3 }],
+		['claude-3-5-haiku-latest', { topK: -1, topP: 0.5 }],
+		['claude-haiku-4-5', { temperature: 0.2, topK: 4 }],
+		['claude-sonnet-4-20250514', { temperature: 0.3 }],
+		['claude-sonnet-4-6', { temperature: 0.3 }],
+		['claude-opus-4', { temperature: 0.2 }],
+		['claude-opus-4-20250514', { temperature: 0.2, maxTokensToSample: 8192 }],
+		['claude-opus-4-5', { temperature: 0.2 }],
+		['claude-opus-4-6-20260101', { temperature: 0.2 }],
+		['claude-opus-4-7', { temperature: 0.2, topK: 5, topP: 0.8, maxTokensToSample: 50 }],
+		['claude-opus-4-10', { temperature: 0.2 }],
+		['claude-opus-5', { temperature: 0.2 }],
+		['claude-sonnet-5', { temperature: 0.2 }],
+		['claude-fable-5-2', { topP: 0.2 }],
+		['claude-2.1', { temperature: 0.2 }],
+		['claude-instant-1', { temperature: 0.2 }],
+		['my-gateway-model', { temperature: 0.2, topK: 2 }],
+	].map(([name, options]) =>
+		chain(
+			`anthropic sampling ${String(name)} ${Object.keys(options).join(' ')}`,
+			anthropicModel(1.5, String(name), typeof options === 'object' ? options : {}),
+			[claude([claudeText('Hi')])],
+			{},
+			withAnthropic,
+		),
+	),
+	chain(
+		'anthropic system message that is not first',
+		sonnet,
+		[claude([claudeText('x')])],
+		{
+			messages: {
+				messageValues: [{ type: 'AIMessagePromptTemplate', message: 'a' }, { message: 'late' }],
+			},
+		},
+		{
+			...withAnthropic,
+			expectedError: 'System messages are only permitted as the first passed message.',
+		},
+	),
+	chain(
+		'anthropic tokens above the limit without a stream',
+		anthropicModel(1.3, 'claude-sonnet-4-5', {
+			maxTokensToSample: 30000,
+		}),
+		[claude([claudeText('x')])],
+		{},
+		{
+			...withAnthropic,
+			expectedError:
+				'Streaming is required for operations that may take longer than 10 minutes. See https://github.com/anthropics/anthropic-sdk-typescript#long-requests for more details',
+		},
+	),
+	chain(
+		'anthropic opus 4.1 default tokens',
+		anthropicModel(1.5, 'claude-opus-4-1-20250805'),
+		[claude([claudeText('x')])],
+		{},
+		{
+			...withAnthropic,
+			expectedError:
+				'Streaming is required for operations that may take longer than 10 minutes. See https://github.com/anthropics/anthropic-sdk-typescript#long-requests for more details',
+		},
+	),
+	chain(
+		'anthropic tool use in the answer',
+		sonnet,
+		[
+			claude(
+				[claudeText('I call'), { type: 'tool_use', id: 'tu', name: 'x', input: {} }],
+				'tool_use',
+			),
+		],
+		{},
+		{ ...withAnthropic, expectedError: 'Cannot coerce "tool_use" message part into a string.' },
+	),
+	chain(
+		'anthropic custom header',
+		sonnet,
+		[claude([claudeText('Hi')])],
+		{},
+		{
+			credential: {
+				type: 'anthropicApi',
+				data: { apiKey: 'k', header: true, headerName: 'X-Custom', headerValue: 'v1' },
+			},
+		},
+	),
+	...[
+		[400, STATUS_ERRORS[400]],
+		[401, STATUS_ERRORS[401]],
+		[403, 'Forbidden - perhaps check your credentials?'],
+		[404, STATUS_ERRORS[404]],
+		[409, STATUS_ERRORS[418]],
+	].map(([status, text]) =>
+		chain(
+			`anthropic status ${status}`,
+			sonnet,
+			[anthropicFailed(Number(status)), claude([claudeText('late')])],
+			{},
+			{
+				...withAnthropic,
+				expectedError: String(text),
+			},
+		),
+	),
+	chain(
+		'anthropic status 429, then answer',
+		sonnet,
+		[anthropicFailed(429), claude([claudeText('late')])],
+		{},
+		withAnthropic,
+	),
+	chain(
+		'anthropic status 500 seven times',
+		sonnet,
+		[anthropicFailed(500, 'boom')],
+		{},
+		{
+			...withAnthropic,
+			expectedError:
+				'500 {"type":"error","error":{"type":"invalid_request_error","message":"boom"}}',
+		},
+	),
+	chain(
+		'anthropic status 502 with a text body, then answer',
+		sonnet,
+		[{ status: 502, body: 'Bad Gateway' }, claude([claudeText('late')])],
+		{},
+		withAnthropic,
+	),
+	chain(
+		'anthropic network, then answer',
+		sonnet,
+		[refused, claude([claudeText('late')])],
+		{},
+		withAnthropic,
+	),
+	chain(
+		'anthropic sampling parameter refused',
+		anthropicModel(1.3, 'claude-sonnet-4-5', { temperature: 0.2 }),
+		[anthropicFailed(400, '`temperature` is deprecated for this model.')],
+		{},
+		{
+			...withAnthropic,
+			expectedError:
+				'The model "claude-sonnet-4-5" does not support the Sampling Temperature, Top K, or Top P options. Remove them from Options and try again.',
+		},
+	),
+	chain(
+		'anthropic sampling parameter not supported, status 500',
+		sonnet,
+		[anthropicFailed(500, 'top_k: not supported')],
+		{},
+		{
+			...withAnthropic,
+			expectedError:
+				'The model "claude-sonnet-4-5" does not support the Sampling Temperature, Top K, or Top P options. Remove them from Options and try again.',
+		},
+	),
+	chain(
+		'anthropic continue',
+		sonnet,
+		[anthropicFailed(400), claude([claudeText('late')])],
+		{},
+		{
+			...two,
+			...withAnthropic,
+			settings: { onError: 'continueRegularOutput' },
+		},
+	),
+	agent(
+		'anthropic',
+		3.1,
+		sonnet,
+		[claude([claudeText(' Hi '), claudeText('there ')])],
+		{
+			options: { systemMessage: 'Be brief' },
+		},
+		withAnthropic,
+	),
+	agent(
+		'anthropic, version 2.2, thinking only',
+		2.2,
+		anthropicModel(1.5, 'claude-sonnet-4-5'),
+		[claude([{ type: 'thinking', thinking: ' hm ', signature: 's' }])],
+		{},
+		withAnthropic,
+	),
+	agent(
+		'anthropic, tool use, version 3.1',
+		3.1,
+		sonnet,
+		[
+			claude([{ type: 'tool_use', id: 'tu', name: 'x', input: { a: 1 } }], 'tool_use'),
+			claude([claudeText('after')]),
+		],
+		{},
+		withAnthropic,
+	),
+	agent(
+		'anthropic, tool use, version 2.2',
+		2.2,
+		sonnet,
+		[
+			claude(
+				[claudeText('pre'), { type: 'tool_use', id: 'tu', name: 'x', input: { a: 1 } }],
+				'tool_use',
+			),
+			claude([claudeText('after')]),
+		],
+		{},
+		withAnthropic,
+	),
+	agent(
+		'anthropic, error output',
+		3,
+		sonnet,
+		[anthropicFailed(400), claude([claudeText('ok')])],
+		{},
+		{
+			...two,
+			...withAnthropic,
+			settings: { onError: 'continueErrorOutput' },
+		},
+	),
+];
+
 /** The prompt that a chat trigger or a guardrails node gives. */
 const PROMPT_SOURCE_CASES: EquivalenceCase[] = [
 	chain(
@@ -1766,6 +2075,7 @@ export const ENGINE_CASES: EquivalenceCase[] = [
 	...AI_ENGINE_CASES,
 	...AGENT_ENGINE_CASES,
 	...PROMPT_SOURCE_CASES,
+	...ANTHROPIC_MODEL_CASES,
 	...TOOL_CALL_CASES,
 	...NETWORK_CASES,
 	...OPEN_ROUTER_CASES,
