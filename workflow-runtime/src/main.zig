@@ -22,7 +22,7 @@ const usage =
     \\  run <module.wfm> <fixture.json>   run one fixture, print the result JSON
     \\  corpus <dir>                      run every corpus/<case> and compare with expected.json
     \\  sim [--seeds N] [--first S] [--execs E] [--crash PER_MILLE]
-    \\  serve --port P [--host IPv4] [--shards N] [--log-dir D] [--fallback SOCK] [--fallback-wait-ms MS] [--stats]
+    \\  serve --port P [--host IPv4] [--shards N] [--log-dir D] [--fallback SOCK] [--fallback-wait-ms MS] [--fallback-steps-per-worker N] [--fallback-workflow-steps N] [--stats]
     \\        [--credentials FILE] [--egress-max-body-mb M] [--egress-big-slots K] [--insecure-tls]
     \\        [--binary-max-file-mb M] [--binary-buffer-mb M] [--binary-max-transfers N]
     \\        [--sql-max-requests N] [--sql-max-conns N] [--sql-pool-conns N] [--sql-max-result-kb K]
@@ -341,6 +341,8 @@ fn serve(process_gpa: std.mem.Allocator, io: std.Io, args: []const [:0]const u8)
         if (std.mem.eql(u8, k, "--log-dir")) opts.log_dir = v;
         if (std.mem.eql(u8, k, "--fallback")) opts.fallback = v;
         if (std.mem.eql(u8, k, "--fallback-wait-ms")) opts.fallback_wait_ms = @max(0, try std.fmt.parseInt(i64, v, 10));
+        if (std.mem.eql(u8, k, "--fallback-steps-per-worker")) opts.fallback_steps_per_worker = @max(1, try std.fmt.parseInt(u32, v, 10));
+        if (std.mem.eql(u8, k, "--fallback-workflow-steps")) opts.fallback_workflow_steps = try std.fmt.parseInt(u32, v, 10);
         if (std.mem.eql(u8, k, "--rbuf-kb")) opts.rbuf = 1024 * try std.fmt.parseInt(u32, v, 10);
         if (std.mem.eql(u8, k, "--egress-max-body-mb")) opts.egress_max_body = (try std.fmt.parseInt(u32, v, 10)) << 20;
         if (std.mem.eql(u8, k, "--egress-big-slots")) opts.egress_big_slots = try std.fmt.parseInt(u32, v, 10);
@@ -563,7 +565,12 @@ fn serve(process_gpa: std.mem.Allocator, io: std.Io, args: []const [:0]const u8)
         var batches: u64 = 0;
         var log_bytes: u64 = 0;
         var writes: u64 = 0;
+        var host = [4]u64{ 0, 0, 0, 0 };
         for (stats) |*st| {
+            host[0] += st.host_inflight.load(.monotonic);
+            host[1] += st.host_waiting.load(.monotonic);
+            host[2] += st.host_waited.load(.monotonic);
+            host[3] += st.host_refused.load(.monotonic);
             req += st.requests.load(.monotonic);
             batches += st.batches.load(.monotonic);
             log_bytes += st.log_bytes.load(.monotonic);
@@ -571,7 +578,7 @@ fn serve(process_gpa: std.mem.Allocator, io: std.Io, args: []const [:0]const u8)
         }
         const now = @import("shell/sys.zig").nowNs();
         const dt = @as(f64, @floatFromInt(now - last_t)) / 1e9;
-        std.debug.print("req/s={d:.0} total={d} batches={d} log_bytes={d} writes={d}\n", .{ @as(f64, @floatFromInt(req - last)) / dt, req, batches, log_bytes, writes });
+        std.debug.print("req/s={d:.0} total={d} batches={d} log_bytes={d} writes={d} host_inflight={d} host_waiting={d} host_waited={d} host_refused={d}\n", .{ @as(f64, @floatFromInt(req - last)) / dt, req, batches, log_bytes, writes, host[0], host[1], host[2], host[3] });
         last = req;
         last_t = now;
     }

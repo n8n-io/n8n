@@ -52,6 +52,13 @@ pub const Options = struct {
     /// `--fallback-wait-ms`: how long a step waits for a host connection
     /// while no connection is usable (spec 9.1). 0 fails the step at once.
     fallback_wait_ms: i64 = 30_000,
+    /// `--fallback-steps-per-worker`: the host steps that a shard keeps in
+    /// flight for each host worker. A step beyond the total waits.
+    fallback_steps_per_worker: u32 = 256,
+    /// `--fallback-workflow-steps`: the host steps that one workflow keeps
+    /// in flight in a shard. 0: a quarter of the total, at least 1. A step
+    /// beyond it waits and takes no place of another workflow.
+    fallback_workflow_steps: u32 = 0,
     modules: []const []const u8 = &.{},
     routes: []const RouteArg = &.{},
     max_conns: u32 = 4096,
@@ -292,6 +299,7 @@ const fb_hello_ms = 15_000;
 const fb_lost = "the fallback host connection closed before the step ended; the step can run again (retryable)";
 const fb_down = "no fallback host is connected; the step can run again when it is back (retryable)";
 const fb_full = "too many fallback host steps are in flight (limit); the step can run again (retryable)";
+const fb_busy = "the step waited too long for a free place in the fallback host (limit); the step can run again (retryable)";
 const fb_wfull = "the frames to the fallback host fill its write buffer (limit); the step can run again (retryable)";
 const fb_name = "the step name is too long for a fallback host frame (limit)";
 const fb_big = "the fallback host result is larger than the batch memory (limit)";
@@ -305,6 +313,11 @@ const fb_max_inflight = 1 << 16;
 /// Steps that wait for a host connection at one time. A step beyond it fails
 /// with `fb_full`.
 const fb_max_wait = 1 << 10;
+/// Steps of one workflow that wait at one time: half of the queue, so one
+/// workflow cannot fill it.
+const fb_max_wait_workflow = fb_max_wait / 2;
+/// Passes over the wait queue in one call of `sendWaiting`.
+const fb_wait_rounds = 8;
 
 const Kind = enum(u8) {
     listener = 1,
@@ -406,7 +419,22 @@ pub const Stats = struct {
     finished: std.atomic.Value(u64) = .init(0),
     rejected: std.atomic.Value(u64) = .init(0),
     syscalls_write: std.atomic.Value(u64) = .init(0),
+    /// Host steps that have a place in the fallback host now.
+    host_inflight: std.atomic.Value(u64) = .init(0),
+    /// Host steps that wait for a place or for a connection now.
+    host_waiting: std.atomic.Value(u64) = .init(0),
+    /// Host steps that waited at least once.
+    host_waited: std.atomic.Value(u64) = .init(0),
+    /// Host steps that failed at a limit: a full wait queue or a wait that ended.
+    host_refused: std.atomic.Value(u64) = .init(0),
 };
+
+/// Adds `by` (1 or -1) to a counter of `Stats`.
+fn gauge(v: *std.atomic.Value(u64), by: i2) void {
+    std.debug.assert(by == 1 or by == -1);
+    const before = if (by == 1) v.fetchAdd(1, .monotonic) else v.fetchSub(1, .monotonic);
+    std.debug.assert(by == 1 or before > 0);
+}
 
 /// The log file. Records collect in a buffer (reserved at startup) and go
 /// to the file in one write when the shard syncs: at once for the `sync`
@@ -520,6 +548,30 @@ pub const Runner = struct {
     /// Steps that found no usable connection, in arrival order. Their frames
     /// wait in the journal, and go out when a connection is usable.
     fb_waitq: std.ArrayList(FbKey),
+    /// Host steps with a place (on a connection or in `fb_aloneq`), and
+    /// those of each workflow, by module slot.
+    fb_admitted: u32,
+    fb_wf_inflight: []u32,
+    /// Host steps in `fb_waitq`, those of each workflow, and the number of
+    /// workflows with a step that waits.
+    fb_waiting_n: u32,
+    fb_wf_waiting: []u32,
+    fb_wf_waiters: u32,
+    /// The pass over `fb_waitq` in which a workflow last sent a step, and
+    /// how many it sent in that pass.
+    fb_turn: u32,
+    fb_wf_turn: []u32,
+    fb_wf_sent: []u32,
+    /// The number of the last step that each workflow sent to the host
+    /// (`fb_serve` counts them). The workflow with the smallest number
+    /// waited longest for its turn.
+    fb_serve: u64,
+    fb_wf_last: []u64,
+    /// Room for one number of each workflow, to find the workflows whose turn it is.
+    fb_wf_order: []u64,
+    /// A place or a connection became free, or a step started to wait:
+    /// `sendWaiting` has work.
+    fb_wait_dirty: bool,
     /// Keys to remove after a pass over `fb_inflight`.
     fb_scratch: std.ArrayList(FbKey),
     /// Host steps that failed in the shell (lost connection, no host, a
@@ -725,6 +777,24 @@ pub const Runner = struct {
         try r.fb_inflight.ensureTotalCapacity(gpa, fb_max_inflight);
         r.fb_aloneq = try std.ArrayList(FbKey).initCapacity(gpa, fb_max_inflight);
         r.fb_waitq = try std.ArrayList(FbKey).initCapacity(gpa, fb_max_wait);
+        r.fb_admitted = 0;
+        r.fb_waiting_n = 0;
+        r.fb_wf_waiters = 0;
+        r.fb_turn = 0;
+        r.fb_wait_dirty = false;
+        r.fb_wf_inflight = try gpa.alloc(u32, r.sh.st.modules.len);
+        r.fb_wf_waiting = try gpa.alloc(u32, r.sh.st.modules.len);
+        r.fb_wf_turn = try gpa.alloc(u32, r.sh.st.modules.len);
+        r.fb_wf_sent = try gpa.alloc(u32, r.sh.st.modules.len);
+        r.fb_serve = 0;
+        r.fb_wf_last = try gpa.alloc(u64, r.sh.st.modules.len);
+        r.fb_wf_order = try gpa.alloc(u64, r.sh.st.modules.len);
+        @memset(r.fb_wf_last, 0);
+        @memset(r.fb_wf_order, 0);
+        @memset(r.fb_wf_inflight, 0);
+        @memset(r.fb_wf_waiting, 0);
+        @memset(r.fb_wf_turn, 0);
+        @memset(r.fb_wf_sent, 0);
         r.fb_scratch = try std.ArrayList(FbKey).initCapacity(gpa, fb_max_inflight);
         // Room for every frame in flight, plus the failures of one batch of actions.
         r.fb_failq = try std.ArrayList(FbFail).initCapacity(gpa, 2 * fb_max_inflight);
@@ -836,6 +906,12 @@ pub const Runner = struct {
         r.fb_inflight.deinit(r.gpa);
         r.fb_aloneq.deinit(r.gpa);
         r.fb_waitq.deinit(r.gpa);
+        r.gpa.free(r.fb_wf_inflight);
+        r.gpa.free(r.fb_wf_waiting);
+        r.gpa.free(r.fb_wf_turn);
+        r.gpa.free(r.fb_wf_sent);
+        r.gpa.free(r.fb_wf_last);
+        r.gpa.free(r.fb_wf_order);
         r.fb_scratch.deinit(r.gpa);
         r.fb_failq.deinit(r.gpa);
         if (r.flog) |l| {
@@ -2701,6 +2777,9 @@ pub const Runner = struct {
     fn sendFrame(r: *Runner, a: core.Action, args: []const u8, send: bool) void {
         const key: FbKey = .{ .exec_id = a.exec_id, .seq = a.seq, .send = send };
         if (r.fb_inflight.count() + r.fb_failq.items.len >= fb_max_inflight) return r.failHost(key, fb_full);
+        // Fair admission: a step beyond the total or beyond the share of its
+        // workflow waits, and so does a step behind a step of its workflow.
+        if (!r.hostHasPlace(a.module) or r.fb_wf_waiting[a.module] > 0) return r.waitFrame(key, a, args, send);
         const ci = r.pickConn(sys.nowMs()) orelse return r.waitFrame(key, a, args, send);
         const c = &r.fb_conns[ci];
         const start = c.wbuf.items.len;
@@ -2717,7 +2796,78 @@ pub const Runner = struct {
         // A v1 host never needs the copy: a lost connection fails its steps.
         if (r.fb_version != 1) r.journal(&entry, c.wbuf.items[start..]);
         r.fb_inflight.putAssumeCapacity(key, entry);
+        r.fbAdmit(a.module);
         c.inflight += 1;
+    }
+
+    /// The host steps that the shard keeps in flight: `--fallback-steps-per-worker`
+    /// for each connection that it keeps (one for each host worker).
+    fn hostCapTotal(r: *const Runner) u32 {
+        return @max(1, r.fb_target *| r.opts.fallback_steps_per_worker);
+    }
+
+    /// The host steps that one workflow keeps in flight.
+    fn hostCapWorkflow(r: *const Runner) u32 {
+        const total = r.hostCapTotal();
+        if (r.opts.fallback_workflow_steps > 0) return @min(total, r.opts.fallback_workflow_steps);
+        return @max(1, total / 4);
+    }
+
+    /// True when a step of the workflow in `module` can go to the host now.
+    fn hostHasPlace(r: *const Runner, module: u32) bool {
+        return r.fb_admitted < r.hostCapTotal() and r.fb_wf_inflight[module] < r.hostCapWorkflow();
+    }
+
+    /// A host step takes a place: one of the total and one of its workflow.
+    fn fbAdmit(r: *Runner, module: u32) void {
+        r.fb_admitted += 1;
+        r.fb_wf_inflight[module] += 1;
+        r.fb_serve += 1;
+        r.fb_wf_last[module] = r.fb_serve;
+        gauge(&r.stats.host_inflight, 1);
+        std.debug.assert(r.fb_admitted <= fb_max_inflight);
+    }
+
+    /// A host step starts to wait in `fb_waitq`.
+    fn fbWaits(r: *Runner, module: u32) void {
+        if (r.fb_wf_waiting[module] == 0) r.fb_wf_waiters += 1;
+        r.fb_wf_waiting[module] += 1;
+        r.fb_waiting_n += 1;
+        r.fb_wait_dirty = true;
+        gauge(&r.stats.host_waiting, 1);
+        gauge(&r.stats.host_waited, 1);
+        std.debug.assert(r.fb_wf_waiters >= 1 and r.fb_wf_waiters <= r.fb_waiting_n);
+    }
+
+    /// A host step leaves its state: it gives its place back, or it stops
+    /// to wait. Each change of `FbEntry.conn` between a place and
+    /// `fb_waiting`, and each removal from `fb_inflight`, goes through here.
+    fn fbLeave(r: *Runner, e: *const FbEntry) void {
+        if (e.conn == fb_waiting) {
+            std.debug.assert(r.fb_waiting_n > 0 and r.fb_wf_waiting[e.module] > 0);
+            r.fb_waiting_n -= 1;
+            r.fb_wf_waiting[e.module] -= 1;
+            if (r.fb_wf_waiting[e.module] == 0) r.fb_wf_waiters -= 1;
+            gauge(&r.stats.host_waiting, -1);
+            return;
+        }
+        std.debug.assert(r.fb_admitted > 0 and r.fb_wf_inflight[e.module] > 0);
+        r.fb_admitted -= 1;
+        r.fb_wf_inflight[e.module] -= 1;
+        r.fb_wait_dirty = true;
+        gauge(&r.stats.host_inflight, -1);
+    }
+
+    /// Removes a host step from the table, with its place or its wait.
+    fn fbRemove(r: *Runner, key: FbKey) void {
+        const kv = r.fb_inflight.fetchRemove(key) orelse return;
+        r.fbLeave(&kv.value);
+    }
+
+    /// A host step failed at a limit of the wait queue.
+    fn refuseHost(r: *Runner, key: FbKey, msg: []const u8) void {
+        gauge(&r.stats.host_refused, 1);
+        r.failHost(key, msg);
     }
 
     /// The connection for a new step: open, not draining and not running a
@@ -2784,7 +2934,8 @@ pub const Runner = struct {
     fn waitFrame(r: *Runner, key: FbKey, a: core.Action, args: []const u8, send: bool) void {
         // A shard without a host has no journal: nothing can wait.
         if (r.fb_journal[0].len == 0 or r.opts.fallback_wait_ms <= 0) return r.failHost(key, fb_down);
-        if (r.fb_waitq.items.len == r.fb_waitq.capacity) return r.failHost(key, fb_full);
+        if (r.fb_waitq.items.len == r.fb_waitq.capacity) return r.refuseHost(key, fb_full);
+        if (r.fb_wf_waiting[a.module] >= fb_max_wait_workflow) return r.refuseHost(key, fb_full);
         var entry: FbEntry = .{ .conn = fb_waiting, .module = a.module, .step = a.step, .attempt = a.attempt, .wait_till = sys.nowMs() + r.opts.fallback_wait_ms };
         r.journalFrame(&entry, a, args, send) catch |err| return r.failHost(key, switch (err) {
             error.Full => fb_wfull,
@@ -2792,6 +2943,7 @@ pub const Runner = struct {
         });
         r.fb_inflight.putAssumeCapacity(key, entry);
         r.fb_waitq.appendAssumeCapacity(key);
+        r.fbWaits(a.module);
     }
 
     /// Writes a frame that waits into the journal. The copy is the frame that
@@ -2810,34 +2962,114 @@ pub const Runner = struct {
         std.debug.assert(r.fb_jlen <= cap);
     }
 
-    /// Sends the steps that wait for a connection, in arrival order, as far as
-    /// connections are usable. Each pass removes one key, so the queue bounds
-    /// the loop.
+    /// Sends the steps that wait, as far as places and connections are free.
+    /// The workflows take turns: each pass over the queue gives each
+    /// workflow an equal part of the free places, in arrival order. With
+    /// fewer places than workflows, the workflows that sent a step longest
+    /// ago go first. A workflow at its share is passed over, so it delays no
+    /// other workflow. The passes and the queue length bound the work.
     fn sendWaiting(r: *Runner) void {
-        var done: usize = 0;
-        while (done < r.fb_waitq.items.len) {
-            const ci = r.pickConn(sys.nowMs()) orelse break;
-            const key = r.fb_waitq.items[done];
-            done += 1;
+        if (!r.fb_wait_dirty or r.fb_waitq.items.len == 0) return;
+        var round: u32 = 0;
+        while (round < fb_wait_rounds) : (round += 1) {
+            const room = r.hostCapTotal() -| r.fb_admitted;
+            if (room == 0) return;
+            const turn = r.waitTurn(room);
+            switch (r.sendWaitingPass(@max(1, room / @max(1, r.fb_wf_waiters)), turn)) {
+                .sent => {},
+                // No connection takes steps: try again in the next loop.
+                .stopped => return,
+                .idle => {
+                    r.fb_wait_dirty = false;
+                    return;
+                },
+            }
+        }
+    }
+
+    const WaitPass = enum { sent, stopped, idle };
+
+    /// The largest `fb_wf_last` of a workflow whose turn it is, for `room`
+    /// free places. With a place for each workflow that waits, each has its
+    /// turn. Else the `room` workflows with the smallest numbers have it.
+    fn waitTurn(r: *Runner, room: u32) u64 {
+        std.debug.assert(room >= 1);
+        if (room >= r.fb_wf_waiters) return std.math.maxInt(u64);
+        r.fb_turn +%= 1;
+        var n: usize = 0;
+        for (r.fb_waitq.items) |key| {
+            const e = r.fb_inflight.getPtr(key) orelse continue;
+            const m = e.module;
+            if (r.fb_wf_turn[m] == r.fb_turn) continue;
+            r.fb_wf_turn[m] = r.fb_turn;
+            if (!r.hostHasPlace(m)) continue;
+            r.fb_wf_order[n] = r.fb_wf_last[m];
+            n += 1;
+        }
+        std.debug.assert(n <= r.fb_wf_order.len);
+        if (n <= room) return std.math.maxInt(u64);
+        std.mem.sort(u64, r.fb_wf_order[0..n], {}, std.sort.asc(u64));
+        return r.fb_wf_order[room - 1];
+    }
+
+    /// One pass over the wait queue. Each workflow whose turn it is
+    /// (`fb_wf_last` at most `turn`) sends at most `quota` steps. The steps
+    /// that stay keep their order.
+    fn sendWaitingPass(r: *Runner, quota: u32, turn: u64) WaitPass {
+        std.debug.assert(quota >= 1);
+        r.fb_turn +%= 1;
+        const now = sys.nowMs();
+        var out: usize = 0;
+        var sent: u32 = 0;
+        var stopped = false;
+        for (r.fb_waitq.items) |key| {
             const e = r.fb_inflight.getPtr(key) orelse continue;
             std.debug.assert(e.conn == fb_waiting and e.jlen > 0);
-            const c = &r.fb_conns[ci];
-            const frame = r.fb_journal[r.fb_jcur][e.joff..][0..e.jlen];
-            const start = c.wbuf.items.len;
-            c.wbuf.appendSliceBounded(frame) catch {
-                c.wbuf.shrinkRetainingCapacity(start);
-                _ = r.fb_inflight.remove(key);
-                r.failHost(key, fb_wfull);
+            const m = e.module;
+            if (r.fb_wf_turn[m] != r.fb_turn) {
+                r.fb_wf_turn[m] = r.fb_turn;
+                r.fb_wf_sent[m] = 0;
+                // The first look decides: a step that goes out changes the number.
+                r.fb_wf_order[m] = r.fb_wf_last[m];
+            }
+            const goes = !stopped and r.fb_wf_sent[m] < quota and r.fb_wf_order[m] <= turn and r.hostHasPlace(m);
+            const conn: ?u8 = if (goes) r.pickConn(now) else null;
+            if (conn) |ci| {
+                const ok = r.sendWaitingStep(key, e, ci);
+                sent += @intFromBool(ok);
+                r.fb_wf_sent[m] += @intFromBool(ok);
                 continue;
-            };
-            e.conn = ci;
-            e.wait_till = 0;
-            c.inflight += 1;
-            r.flushConnFallback(ci);
+            }
+            // The step had its turn and a place, but no connection takes steps.
+            stopped = stopped or goes;
+            r.fb_waitq.items[out] = key;
+            out += 1;
         }
-        if (done == 0) return;
-        std.mem.copyForwards(FbKey, r.fb_waitq.items[0 .. r.fb_waitq.items.len - done], r.fb_waitq.items[done..]);
-        r.fb_waitq.shrinkRetainingCapacity(r.fb_waitq.items.len - done);
+        r.fb_waitq.shrinkRetainingCapacity(out);
+        std.debug.assert(r.fb_waitq.items.len >= r.fb_waiting_n);
+        if (stopped) return .stopped;
+        return if (sent > 0) .sent else .idle;
+    }
+
+    /// Puts the frame of a step that waited on connection `ci`. False when
+    /// the write buffer has no room: the step fails.
+    fn sendWaitingStep(r: *Runner, key: FbKey, e: *FbEntry, ci: u8) bool {
+        const c = &r.fb_conns[ci];
+        const frame = r.fb_journal[r.fb_jcur][e.joff..][0..e.jlen];
+        const start = c.wbuf.items.len;
+        c.wbuf.appendSliceBounded(frame) catch {
+            c.wbuf.shrinkRetainingCapacity(start);
+            r.fbRemove(key);
+            r.failHost(key, fb_wfull);
+            return false;
+        };
+        r.fbLeave(e);
+        e.conn = ci;
+        e.wait_till = 0;
+        r.fbAdmit(e.module);
+        c.inflight += 1;
+        r.flushConnFallback(ci);
+        return true;
     }
 
     /// Fails the steps that waited longer than `--fallback-wait-ms`. The wait
@@ -2852,8 +3084,10 @@ pub const Runner = struct {
             if (e.wait_till > now) break;
             // A full failure queue keeps its steps for the next loop.
             if (r.fb_failq.items.len == r.fb_failq.capacity) break;
-            _ = r.fb_inflight.remove(key);
-            r.fb_failq.appendAssumeCapacity(.{ .key = key, .msg = fb_down });
+            r.fbRemove(key);
+            gauge(&r.stats.host_refused, 1);
+            // With a connection, the step waited for a place, not for the host.
+            r.fb_failq.appendAssumeCapacity(.{ .key = key, .msg = if (r.anyConnOpen()) fb_busy else fb_down });
         }
         if (done == 0) return;
         std.mem.copyForwards(FbKey, r.fb_waitq.items[0 .. r.fb_waitq.items.len - done], r.fb_waitq.items[done..]);
@@ -3099,7 +3333,7 @@ pub const Runner = struct {
         c.lost_ready = false;
         c.lost_seen = false;
         c.lost_again = false;
-        for (r.fb_scratch.items) |k| _ = r.fb_inflight.remove(k);
+        for (r.fb_scratch.items) |k| r.fbRemove(k);
         r.fb_scratch.clearRetainingCapacity();
         std.debug.assert(r.fb_conns[ci].fd < 0 and r.fb_conns[ci].inflight == 0);
         std.debug.print("a fallback host connection closed; {d} step(s) were on it\n", .{on_conn});
@@ -3124,12 +3358,14 @@ pub const Runner = struct {
         while (it.next()) |kv| {
             const e = kv.value_ptr;
             if (e.conn != ci or !e.canGoAgain()) continue;
+            r.fbLeave(e);
             e.conn = fb_waiting;
             e.again = true;
             e.wait_till = wait_till;
             // The step runs again: its calls get the same ids.
             e.calls = 0;
             r.fb_waitq.appendAssumeCapacity(kv.key_ptr.*);
+            r.fbWaits(e.module);
         }
         std.debug.assert(r.fb_waitq.items.len <= r.fb_waitq.capacity);
     }
@@ -3173,7 +3409,7 @@ pub const Runner = struct {
     /// The host is gone: the steps that wait to go again fail as retryable.
     fn failAloneQueue(r: *Runner) void {
         for (r.fb_aloneq.items) |k| {
-            _ = r.fb_inflight.remove(k);
+            r.fbRemove(k);
             std.debug.assert(r.fb_failq.items.len < r.fb_failq.capacity);
             r.fb_failq.appendAssumeCapacity(.{ .key = k, .msg = fb_lost });
         }
@@ -3200,7 +3436,7 @@ pub const Runner = struct {
             std.debug.assert(e.conn == fb_queued and e.jlen > 0);
             const frame = r.fb_journal[r.fb_jcur][e.joff..][0..e.jlen];
             c.wbuf.appendSliceBounded(frame) catch {
-                _ = r.fb_inflight.remove(key);
+                r.fbRemove(key);
                 r.failHost(key, fb_wfull);
                 continue;
             };
@@ -3319,6 +3555,7 @@ pub const Runner = struct {
                 if (r.fb_version != 2) std.debug.print("the fallback host speaks version 2: {d} worker(s)\n", .{h.workers});
                 r.fb_version = 2;
                 r.fb_target = fbf.connectionsFor(h.workers);
+                r.fb_wait_dirty = true;
                 // The connection takes steps now, so the steps that wait go first.
                 r.sendWaiting();
                 r.flushConnFallback(ci);
@@ -3371,7 +3608,7 @@ pub const Runner = struct {
         const key: FbKey = .{ .exec_id = exec_id, .seq = seq, .send = send };
         const entry = r.fb_inflight.get(key) orelse return;
         if (entry.conn != ci) return;
-        _ = r.fb_inflight.remove(key);
+        r.fbRemove(key);
         std.debug.assert(c.inflight > 0);
         c.inflight -= 1;
         if (entry.alone) c.alone = false;
@@ -4065,6 +4302,7 @@ fn fakeHostStep(r: *Runner, ci: u8, exec_id: u64, seq: u32) void {
     r.journal(&e, buf[0 .. 4 + body.len]);
     std.debug.assert(e.jlen > 0);
     r.fb_inflight.putAssumeCapacity(.{ .exec_id = exec_id, .seq = seq, .send = false }, e);
+    r.fbAdmit(0);
     r.fb_conns[ci].inflight += 1;
 }
 
@@ -4488,11 +4726,12 @@ test "fallback: a full wait queue fails the next step with the limit error" {
     try t.start();
     defer t.deinit();
     const r = t.r;
-    for (0..fb_max_wait) |i| {
+    // One workflow gets half of the queue.
+    for (0..fb_max_wait_workflow) |i| {
         const a = fakeAction(7 + i, 1);
         r.sendFrame(a, a.payload, false);
     }
-    try std.testing.expectEqual(@as(usize, fb_max_wait), r.fb_waitq.items.len);
+    try std.testing.expectEqual(@as(usize, fb_max_wait_workflow), r.fb_waitq.items.len);
     try std.testing.expectEqual(@as(usize, 0), r.fb_failq.items.len);
     const a = fakeAction(99, 1);
     r.sendFrame(a, a.payload, false);
@@ -4500,7 +4739,157 @@ test "fallback: a full wait queue fails the next step with the limit error" {
     r.serviceFallback(sys.nowMs());
     try std.testing.expectEqualStrings(fb_full, (findEvent(r, 99, 1) orelse return error.NoEvent).payload);
     // The steps that wait keep their places.
-    try std.testing.expectEqual(@as(usize, fb_max_wait), r.fb_waitq.items.len);
+    try std.testing.expectEqual(@as(usize, fb_max_wait_workflow), r.fb_waitq.items.len);
+    try std.testing.expectEqual(@as(u64, 1), r.stats.host_refused.load(.monotonic));
+}
+
+/// A dispatch of step 0 of the module in slot `module`.
+fn fakeActionOf(module: u16, exec_id: u64) core.Action {
+    var a = fakeAction(exec_id, 1);
+    a.module = module;
+    return a;
+}
+
+/// The host answers the step of execution `exec_id` on `fd`, and the shell takes the answer.
+fn hostAnswers(r: *Runner, fd: c_int, ci: u8, exec_id: u64) !void {
+    var ans: [96]u8 = @splat(0);
+    try hostWrite(fd, try std.fmt.bufPrint(&ans, "{{\"id\":\"{d}:1\",\"ok\":true,\"result\":[]}}", .{exec_id}));
+    r.events.clearRetainingCapacity();
+    r.readFallback(ci);
+    r.serviceFallback(sys.nowMs());
+}
+
+/// The frames that the host reads on a connection, one by one. One read can hold several.
+const HostFrames = struct {
+    fd: c_int,
+    buf: [4096]u8 = @splat(0),
+    len: usize = 0,
+
+    /// The execution of the next frame.
+    fn nextExec(f: *HostFrames) !u64 {
+        var tries: u32 = 0;
+        while (tries < 500) : (tries += 1) {
+            if (f.len >= 4) {
+                const n = std.mem.readInt(u32, f.buf[0..4], .little);
+                if (f.len >= 4 + n) {
+                    const id = http.plainString(http.member(f.buf[4..][0..n], "id") orelse return error.NoId) orelse return error.NoId;
+                    const colon = std.mem.indexOfScalar(u8, id, ':') orelse return error.NoId;
+                    const exec = try std.fmt.parseInt(u64, id[0..colon], 10);
+                    std.mem.copyForwards(u8, f.buf[0 .. f.len - 4 - n], f.buf[4 + n .. f.len]);
+                    f.len -= 4 + n;
+                    return exec;
+                }
+            }
+            switch (sys.readSome(f.fd, f.buf[f.len..])) {
+                .n => |k| f.len += k,
+                .again => napTest(),
+                .closed => return error.Closed,
+            }
+        }
+        return error.ReadTimeout;
+    }
+};
+
+test "fallback: a workflow at its share waits, and the step of another workflow goes out" {
+    var mod_arena = std.heap.ArenaAllocator.init(std.testing.allocator);
+    defer mod_arena.deinit();
+    // The modules differ, so each gets its own slot.
+    const mods = [_][]const u8{ try programs.loop(mod_arena.allocator(), "{\"durability\":\"none\"}"), try programs.loop(mod_arena.allocator(), "{\"durability\":\"batched\"}") };
+    var t: TestRunner = .{ .arena = undefined, .fallback = no_host, .modules = &mods };
+    try t.start();
+    defer t.deinit();
+    const r = t.r;
+    r.fb_version = 2;
+    // 4 places in total, 1 for each workflow.
+    r.opts.fallback_steps_per_worker = 4;
+    const h = try fakeHostConn(r, 0);
+    defer sys.close(h);
+    var frames: HostFrames = .{ .fd = h };
+    try std.testing.expectEqual(@as(u32, 1), r.hostCapWorkflow());
+    for ([_]u64{ 10, 11, 12 }) |exec| {
+        const a = fakeActionOf(0, exec);
+        r.sendFrame(a, a.payload, false);
+    }
+    const other = fakeActionOf(1, 20);
+    r.sendFrame(other, other.payload, false);
+    r.flushFallback();
+    // The first workflow holds its one place; its other steps wait. The second workflow is not delayed.
+    try std.testing.expectEqual(@as(u32, 2), r.fb_admitted);
+    try std.testing.expectEqual(@as(u32, 1), r.fb_wf_inflight[0]);
+    try std.testing.expectEqual(@as(u32, 2), r.fb_wf_waiting[0]);
+    try std.testing.expectEqual(@as(u32, 1), r.fb_wf_inflight[1]);
+    try std.testing.expectEqual(@as(u64, 10), try frames.nextExec());
+    try std.testing.expectEqual(@as(u64, 20), try frames.nextExec());
+    // A place of the workflow becomes free: its next step goes out, in arrival order.
+    try hostAnswers(r, h, 0, 10);
+    try std.testing.expectEqual(@as(u64, 11), try frames.nextExec());
+    try hostAnswers(r, h, 0, 11);
+    try std.testing.expectEqual(@as(u64, 12), try frames.nextExec());
+    try hostAnswers(r, h, 0, 12);
+    try hostAnswers(r, h, 0, 20);
+    try std.testing.expectEqual(@as(u32, 0), r.fb_admitted);
+    try std.testing.expectEqual(@as(u32, 0), r.fb_waiting_n);
+    try std.testing.expectEqual(@as(u32, 0), r.fb_wf_waiters);
+    try std.testing.expectEqual(@as(u32, 0), r.fb_inflight.count());
+    try std.testing.expectEqual(@as(u64, 0), r.stats.host_inflight.load(.monotonic));
+    try std.testing.expectEqual(@as(u64, 0), r.stats.host_waiting.load(.monotonic));
+    try std.testing.expectEqual(@as(u64, 2), r.stats.host_waited.load(.monotonic));
+}
+
+test "fallback: the workflows that wait take turns for a free place" {
+    var mod_arena = std.heap.ArenaAllocator.init(std.testing.allocator);
+    defer mod_arena.deinit();
+    // The modules differ, so each gets its own slot.
+    const mods = [_][]const u8{ try programs.loop(mod_arena.allocator(), "{\"durability\":\"none\"}"), try programs.loop(mod_arena.allocator(), "{\"durability\":\"batched\"}"), try programs.loop(mod_arena.allocator(), "{\"durability\":\"sync\"}") };
+    var t: TestRunner = .{ .arena = undefined, .fallback = no_host, .modules = &mods };
+    try t.start();
+    defer t.deinit();
+    const r = t.r;
+    r.fb_version = 2;
+    // One place in total.
+    r.opts.fallback_steps_per_worker = 1;
+    const h = try fakeHostConn(r, 0);
+    defer sys.close(h);
+    var frames: HostFrames = .{ .fd = h };
+    // Workflow 0 has the place and two more steps; then workflows 1 and 2 come.
+    const order = [_][2]u64{ .{ 0, 10 }, .{ 0, 11 }, .{ 0, 12 }, .{ 1, 20 }, .{ 2, 30 } };
+    for (order) |o| {
+        const a = fakeActionOf(@intCast(o[0]), o[1]);
+        r.sendFrame(a, a.payload, false);
+    }
+    r.flushFallback();
+    try std.testing.expectEqual(@as(usize, 4), r.fb_waitq.items.len);
+    try std.testing.expectEqual(@as(u32, 3), r.fb_wf_waiters);
+    // Workflows 1 and 2 did not send yet, so they go before the next steps of workflow 0.
+    var last: u64 = try frames.nextExec();
+    try std.testing.expectEqual(@as(u64, 10), last);
+    for ([_]u64{ 20, 30, 11, 12 }) |want| {
+        try hostAnswers(r, h, 0, last);
+        last = try frames.nextExec();
+        try std.testing.expectEqual(want, last);
+        try std.testing.expectEqual(@as(u32, 1), r.fb_admitted);
+    }
+    try hostAnswers(r, h, 0, last);
+    try std.testing.expectEqual(@as(u32, 0), r.fb_inflight.count());
+    try std.testing.expectEqual(@as(u32, 0), r.fb_waiting_n);
+}
+
+test "fallback: a lost connection gives the places of its steps back" {
+    var t: TestRunner = .{ .arena = undefined, .fallback = no_host };
+    try t.start();
+    defer t.deinit();
+    const r = t.r;
+    r.fb_version = 2;
+    r.fb_target = 1;
+    const h0 = try fakeHostConn(r, 0);
+    fakeHostStep(r, 0, 7, 1);
+    try std.testing.expectEqual(@as(u32, 1), r.fb_admitted);
+    try hostWrite(h0, "{\"worker_lost\":{\"reason\":\"it ran out of memory\"}}");
+    sys.close(h0);
+    r.readFallback(0);
+    try std.testing.expectEqual(@as(u32, 0), r.fb_admitted);
+    try std.testing.expectEqual(@as(u32, 0), r.fb_wf_inflight[0]);
+    try std.testing.expectEqual(@as(u64, 0), r.stats.host_inflight.load(.monotonic));
 }
 
 test "fallback: with --fallback-wait-ms 0 a step with no host fails at once" {
