@@ -156,7 +156,15 @@ describe('the sql effect', () => {
 	it.each([
 		['no credential', "dialect: 'postgres', statements: [{ text: 'SELECT 1' }]"],
 		['no dialect', "credential: 'db', statements: [{ text: 'SELECT 1' }]"],
-		['another dialect', "credential: 'db', dialect: 'mysql', statements: [{ text: 'SELECT 1' }]"],
+		['another dialect', "credential: 'db', dialect: 'mssql', statements: [{ text: 'SELECT 1' }]"],
+		[
+			'a MySQL statement that is not simple',
+			"credential: 'db', dialect: 'mysql', statements: [{ text: 'SELECT 1' }]",
+		],
+		[
+			'a MySQL statement with bind values',
+			"credential: 'db', dialect: 'mysql', statements: [{ text: 'SELECT ?', values: [1] }]",
+		],
 		['no statements', "credential: 'db', dialect: 'postgres'"],
 		[
 			'a statement without text',
@@ -191,6 +199,16 @@ describe('the sql effect', () => {
 			codes(
 				call(
 					"credential: 'db', dialect: 'postgres', statements: [{ text: 'SELECT $1, $2, $3, $4', values: ['a', 1, true, null] }]",
+				),
+			),
+		).toEqual([]);
+	});
+
+	it('accepts the text statements of MySQL, with a group', () => {
+		expect(
+			codes(
+				call(
+					"credential: 'db', dialect: 'mysql', mode: 'independently', decimals: 'numbers', statements: [{ text: 'SELECT 1; SELECT 2', simple: true, group: 0 }]",
 				),
 			),
 		).toEqual([]);

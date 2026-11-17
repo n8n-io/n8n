@@ -153,6 +153,13 @@ export interface ConvertOptions {
 	 * library node has the call.
 	 */
 	sql?: boolean;
+	/**
+	 * The `sql` effect of the runtime has a MySQL client (spec 9.11). The default is false: the
+	 * MySQL node runs in the fallback host. With true, it runs as a library node when the
+	 * library node has the call. It is a flag of its own because a runtime can have the
+	 * Postgres client and no MySQL client.
+	 */
+	mysql?: boolean;
 }
 
 export interface InstanceInfo {
@@ -835,6 +842,7 @@ export class ModuleGenerator {
 			},
 			services: this.options.services,
 			sql: this.options.sql,
+			mysql: this.options.mysql,
 			codeNodes:
 				this.options.codeNodes === 'host' || this.options.hostCodeNodes?.includes(node.name)
 					? 'host'

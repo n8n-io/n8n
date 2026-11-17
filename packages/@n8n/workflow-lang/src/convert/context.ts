@@ -105,6 +105,8 @@ export interface NodeContext {
 	services?: boolean;
 	/** True when the runtime runs `ctx.sql` effects (`ConvertOptions.sql`). */
 	sql?: boolean;
+	/** True when the `sql` effect of the runtime has a MySQL client (`ConvertOptions.mysql`). */
+	mysql?: boolean;
 	/** Records a time zone that the node's native code formats dates in (META \`zones\`). */
 	useZone?(zone: string): void;
 	/**

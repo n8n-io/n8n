@@ -310,7 +310,92 @@ const ADAPTERS: Record<
 		replacement.texts = texts;
 		return out;
 	},
+	// The MySQL library node (spec 9.11) gets the node version, the values of the `{{ }}`
+	// parts of the query text in `queryParts`, and the entries of the raw text of the query
+	// parameters, as v1 reads them (`resolveQueryReplacementSegments`): the raw text of an
+	// expression is split at each comma outside a `{{ }}`, and v1 evaluates each `{{ }}` of an
+	// entry. A value that the library node cannot read gets a marker that is not in the
+	// `supports` list, so the node runs in the host.
+	//
+	// With `replaceEmptyStrings`, v1 writes null into the empty strings of the input items
+	// before it evaluates the parameters of each item, so a node with an expression runs in
+	// the host.
+	'n8n-nodes-base.mySql': (p, version) => {
+		const out: Record<string, unknown> = { ...p, nodeVersion: version };
+		const options = isRecord(p.options) ? p.options : {};
+		const replace = options.replaceEmptyStrings ?? false;
+		if (replace !== false && (replace !== true || hasExpression(p))) {
+			return { ...out, mysqlHost: true };
+		}
+		if ((p.operation ?? 'insert') !== 'executeQuery') return out;
+		// The query takes no expression (`noDataExpression`): n8n removes its `=` when it loads
+		// the workflow, and the v1 node evaluates each `{{ }}` part of the text itself.
+		const stored = p.query;
+		let query = stored;
+		if (typeof stored === 'string' && stored.startsWith('=')) {
+			const stripped = stored.slice(1);
+			// n8n keeps the `=` of a `$fromAI` call, and a second `=` makes an expression again.
+			if (stripped.startsWith('=') || stripped.includes('$fromAI')) {
+				return { ...out, mysqlHost: true };
+			}
+			out.query = stripped;
+			query = stripped;
+		}
+		if (typeof query === 'string') {
+			const parts = query.match(/({{[\s\S]*?}})/g) ?? [];
+			if (parts.length > 0) out.queryParts = parts.map((r) => `=${r}`);
+		}
+		const given = options.queryReplacement;
+		const replacement: Record<string, unknown> = { present: 'queryReplacement' in options };
+		out.replacement = replacement;
+		if (given === undefined || given === '') return out;
+		if (typeof given !== 'string') return { ...out, mysqlHost: true };
+		// A raw text that is not an expression: v1 splits the text at each comma.
+		if (!given.startsWith('=')) return out;
+		const segments = mysqlSegments(given);
+		if (segments === null) return { ...out, mysqlHost: true };
+		replacement.segments = segments;
+		return out;
+	},
 };
+
+/**
+ * The entries of the raw text of the MySQL query parameters (`splitRawSqlQueryParameters` of
+ * n8n): the text between the commas that are not in a `{{ }}`. An entry is text, one `{{ }}`
+ * (`one`), or text with `{{ }}` parts (`sources` and their `values`). Null: an entry would
+ * be read as an expression, so the node runs in the host.
+ */
+function mysqlSegments(raw: string): Array<Record<string, unknown>> | null {
+	const text = raw.replace(/^=+/, '');
+	if (text === '') return [];
+	const spans: Array<[number, number]> = [];
+	let from = 0;
+	for (const resolvable of text.match(/({{[\s\S]*?}})/g) ?? []) {
+		const start = text.indexOf(resolvable, from);
+		if (start === -1) continue;
+		spans.push([start, start + resolvable.length]);
+		from = start + resolvable.length;
+	}
+	const inside = (index: number) => spans.some(([start, end]) => index >= start && index < end);
+	const entries: string[] = [];
+	let entryStart = 0;
+	for (let i = 0; i < text.length; i++) {
+		if (text[i] === ',' && !inside(i)) {
+			entries.push(text.slice(entryStart, i));
+			entryStart = i + 1;
+		}
+	}
+	entries.push(text.slice(entryStart));
+	const segments: Array<Record<string, unknown>> = [];
+	for (const entry of entries.map((e) => e.trim())) {
+		const sources = entry.match(/({{[\s\S]*?}})/g) ?? [];
+		if (sources.length === 1 && sources[0] === entry) segments.push({ one: `=${entry}` });
+		else if (entry.startsWith('=')) return null;
+		else if (sources.length === 0) segments.push({ text: entry });
+		else segments.push({ text: entry, sources, values: sources.map((r) => `=${r}`) });
+	}
+	return segments;
+}
 
 /** True when a parameter value holds an expression that n8n or the Postgres node evaluates. */
 function hasExpression(value: unknown): boolean {
@@ -393,6 +478,8 @@ export const MIN_VERSIONS: Record<string, number> = {
 	// Version 2 is the node on the shared Microsoft Graph transport; the node compiler takes
 	// versions 1 and 1.1.
 	'n8n-nodes-base.microsoftTeams': 2,
+	// Version 2 is the node with the operations in `actions/`; version 1 is another node.
+	'n8n-nodes-base.mySql': 2,
 	// Version 2.1 gave the node its own readers for time columns.
 	'n8n-nodes-base.postgres': 2.1,
 	// 1.2 has the relaxed Accept header; version 1 reads the feed once for all items.
@@ -411,6 +498,7 @@ const BATCH_OPERATIONS: Record<string, (key: string, p: Record<string, unknown>)
 	'n8n-nodes-base.dataTable': (key, p) => key === 'row.insert' && dataTableBulk(p),
 	// The v1 router makes the queries of all items, then runs them in one batching mode.
 	'n8n-nodes-base.postgres': () => true,
+	'n8n-nodes-base.mySql': () => true,
 	// Append and append or update read the sheet once, then write the rows of all items.
 	'n8n-nodes-base.googleSheets': (key) => key === 'sheet.appendOrUpdate' || key === 'sheet.append',
 };
@@ -535,7 +623,9 @@ export function lowerLibrary(c: NodeContext): void {
 	// A Data Table node calls n8n's data-table service (`ctx.service`, spec 9.9). With
 	// `ConvertOptions.services: false` (a runtime without the admin client) it runs in the host.
 	const service =
-		(type === 'n8n-nodes-base.dataTable' && c.services === false) || postgresInHost(c);
+		(type === 'n8n-nodes-base.dataTable' && c.services === false) ||
+		postgresInHost(c) ||
+		mysqlInHost(c);
 	const unsupported = (support && !librarySupports(support, adapted)) || older;
 	// The library node comes first. An operation that it does not have is compiled from the
 	// source of the v1 node when that compiles, and else runs in the host.
@@ -570,13 +660,15 @@ export function lowerLibrary(c: NodeContext): void {
 		};
 		// A Postgres call that has no exact form with bind values, or that reaches a limit of
 		// the runtime before a statement is committed, runs in the host in the same run.
-		if (type === 'n8n-nodes-base.postgres') {
+		if (type === 'n8n-nodes-base.postgres' || type === 'n8n-nodes-base.mySql') {
 			const inHost = (to: NodeContext) => lowerHostNode(to, 1, [['host', raw("'fallback'")]]);
 			const hostForm = hostFormOf(c, inHost);
 			// Without a host form, a limit could not send the node to the host.
 			if (hostForm === null) return inHost(c);
 			const onError =
 				c.node.onError ?? (c.node.continueOnFail ? 'continueRegularOutput' : 'stopWorkflow');
+			// The MySQL library node does not make the error items of v1 yet (spec 9.11).
+			if (type === 'n8n-nodes-base.mySql' && onError !== 'stopWorkflow') return inHost(c);
 			if (onError === 'stopWorkflow') {
 				const call = nodeCall(c, type, batch, c.credential(), false);
 				emitWithHostForm(
@@ -707,6 +799,17 @@ function postgresInHost(c: NodeContext): boolean {
 	// n8n moved the node to the host after a limit of the `sql` effect (`NodeSources.runsInHost`).
 	const moved = c.nodeSources?.runsInHost?.(c.node.name) === true;
 	return c.sql !== true || moved;
+}
+
+/**
+ * True when a MySQL node runs in the host whatever its parameters are: the `sql` effect of
+ * the runtime has no MySQL client (`ConvertOptions.mysql`), or the caller says that the
+ * node runs in the host.
+ */
+function mysqlInHost(c: NodeContext): boolean {
+	if (c.node.type !== 'n8n-nodes-base.mySql') return false;
+	const moved = c.nodeSources?.runsInHost?.(c.node.name) === true;
+	return c.mysql !== true || moved;
 }
 
 function keyValues(list: unknown): Array<{ name: unknown; value: unknown }> {
