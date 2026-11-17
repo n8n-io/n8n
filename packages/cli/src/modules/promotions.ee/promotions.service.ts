@@ -1361,6 +1361,7 @@ export class PromotionsService {
 		});
 
 		return {
+			input,
 			environmentId: input.environmentId,
 			branchName,
 			commitSha,

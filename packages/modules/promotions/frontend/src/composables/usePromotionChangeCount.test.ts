@@ -19,7 +19,12 @@ type Pending = {
 
 const preview = (count: number): PromotionPreview => ({
 	commitSha: 'a'.repeat(40),
-	source: { environmentId: 'config-1', branchName: 'main' },
+	source: {
+		environmentId: 'config-1',
+		environmentName: 'Production',
+		providerType: 'git',
+		branchName: 'main',
+	},
 	resources: Array.from({ length: count }, (_, index) =>
 		resource({
 			key: `workflow:workflow-${index}`,

@@ -34,6 +34,7 @@ import {
 	indexSide,
 	parseBranchJson,
 	parsePackageManifest,
+	previewSource,
 	scopeManifestToProject,
 } from './promotion-preview';
 import { PromotionEnvironmentResolver } from './promotion-environment.resolver';
@@ -99,11 +100,7 @@ export class PromotionChangeService {
 			exportInstancePackage(this.packagesService, user, projectId),
 		]);
 		const preview = await this.applyPreviewService.build({ user, projectId, files, instance });
-		return {
-			commitSha: branch.commitSha,
-			source: { environmentId: branch.environmentId, branchName: branch.branchName },
-			...preview,
-		};
+		return { commitSha: branch.commitSha, source: previewSource(branch.input), ...preview };
 	}
 
 	/**

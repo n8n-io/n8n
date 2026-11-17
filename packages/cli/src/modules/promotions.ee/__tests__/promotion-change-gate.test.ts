@@ -30,6 +30,8 @@ const nobody = userWith();
 const branched = (createBranchOnPromotion: boolean) =>
 	mock<PromotionOperationInput>({
 		environmentId: 'env-1',
+		environmentName: 'Staging',
+		providerType: 'gitlab',
 		config: {
 			direction: 'promote',
 			settings: { schemaVersion: 1, baseBranchName: 'staging', createBranchOnPromotion },
@@ -70,7 +72,13 @@ describe('PromotionChangeService.getPreview review gate', () => {
 
 		expect(preview).toEqual({
 			commitSha: null,
-			source: { environmentId: 'env-1', branchName: 'staging' },
+			source: {
+				environmentId: 'env-1',
+				environmentName: 'Staging',
+				providerType: 'gitlab',
+				branchName: 'staging',
+				createBranchOnPromotion: true,
+			},
 			resources: [],
 			dependencies: [],
 			blocker: { code: 'reviewOpen', reviewId: 'review-1' },

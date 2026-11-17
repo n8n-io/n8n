@@ -10,10 +10,6 @@ import userEvent from '@testing-library/user-event';
 import { mock } from 'vitest-mock-extended';
 import { computed, reactive, ref } from 'vue';
 
-import {
-	invalidateInstancePromotionConnection,
-	useInstancePromotionConnection,
-} from '../composables/useInstancePromotionConnection';
 import type * as PromotionsApi from '../promotionsSettings.api';
 import type { PromotionEnvironment } from '../promotionsSettings.api';
 import { PROMOTIONS_SETTINGS_SCOPES } from '../promotions.constants';
@@ -90,7 +86,6 @@ describe('PromotionsSettingsView', () => {
 			git: null,
 			data: [{ id: 'missing-project', name: 'Billing' }],
 		});
-		invalidateInstancePromotionConnection();
 		createTestingPinia({ stubActions: false });
 		shell.isProtected = false;
 		environmentsSettings.setProtected.mockImplementation(async (value) => {
@@ -157,15 +152,13 @@ describe('PromotionsSettingsView', () => {
 		expect(api.fetchMissingPromotionProjects).toHaveBeenCalledTimes(2);
 	});
 
-	it('removes the environment, then its provider, then refreshes the cached environments', async () => {
+	it('removes the environment, then its provider', async () => {
 		useRBACStore().setGlobalScopes([...PROMOTIONS_SETTINGS_SCOPES, 'project:create']);
 		api.fetchPromotionEnvironments.mockResolvedValue([applyEnvironment]);
 		api.fetchPromotionEnvironment.mockResolvedValue(applyEnvironment);
 		const removal = Promise.withResolvers<undefined>();
 		api.deletePromotionEnvironment.mockReturnValueOnce(removal.promise);
 		mockConfirm.mockResolvedValue('confirm');
-		const cachedEnvironments = useInstancePromotionConnection();
-		await cachedEnvironments.load();
 		renderView();
 
 		const card = await screen.findByTestId('promotion-environment-card-apply');
@@ -194,8 +187,6 @@ describe('PromotionsSettingsView', () => {
 		expect(api.deletePromotionEnvironment.mock.invocationCallOrder[0]).toBeLessThan(
 			api.deleteProviderIfUnused.mock.invocationCallOrder[0],
 		);
-		await cachedEnvironments.load();
-		expect(cachedEnvironments.hasApplyConfig.value).toBe(false);
 	});
 
 	it.each([

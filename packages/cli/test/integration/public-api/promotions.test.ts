@@ -2314,7 +2314,12 @@ describe('Promotions in Public API', () => {
 		it('checks the scope of the requested direction, for the preview and its details', async () => {
 			const preview = {
 				commitSha: 'a'.repeat(40),
-				source: { environmentId: 'env1', branchName: 'main' },
+				source: {
+					environmentId: 'env1',
+					environmentName: 'Production',
+					providerType: 'git' as const,
+					branchName: 'main',
+				},
 				resources: [],
 				dependencies: [],
 				revision: 'b'.repeat(64),

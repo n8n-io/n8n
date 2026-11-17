@@ -68,11 +68,8 @@ const documentTitle = useDocumentTitle({
 const projectId = toRef(props, 'projectId');
 const direction = toRef(props, 'direction');
 
-const { state, preview, check, graph, environment, refreshing, refreshFailed, refresh } =
+const { state, preview, check, graph, source, refreshing, refreshFailed, refresh } =
 	usePromotionPreview(projectId, direction);
-const promoteEnvironment = computed(() =>
-	environment.value?.direction === 'promote' ? environment.value : null,
-);
 // The page shows and enforces only the blockers of the workflows it lists.
 const scopedCheck = computed(() =>
 	check.value && graph.value ? scopeCheck(check.value, graph.value) : null,
@@ -114,14 +111,16 @@ const projectName = computed(() =>
 			)?.name,
 );
 const title = computed(() => {
-	if (!environment.value?.name) {
+	if (!source.value) {
 		return i18n.baseText(`promotions.preview.title.${props.direction}`);
 	}
 	return i18n.baseText(
 		projectName.value
 			? `promotions.preview.title.project.${props.direction}`
 			: `settings.promotions.${props.direction}.dialog.title`,
-		{ interpolate: { project: projectName.value ?? '', environment: environment.value.name } },
+		{
+			interpolate: { project: projectName.value ?? '', environment: source.value.environmentName },
+		},
 	);
 });
 watch(title, (value) => documentTitle.set(value), { immediate: true });
@@ -382,16 +381,10 @@ const treeResizer = useResizablePanel({
 			@click:button="router.push({ name: PROMOTIONS_SETTINGS_VIEW })"
 		/>
 		<N8nEmptyState
-			v-else-if="state === 'connectionFailed' || state === 'error'"
+			v-else-if="state === 'error'"
 			:class="$style.state"
 			:icon="{ type: 'icon', value: 'circle-alert' }"
-			:heading="
-				i18n.baseText(
-					state === 'connectionFailed'
-						? 'promotions.preview.state.connectionFailed'
-						: 'promotions.preview.state.error',
-				)
-			"
+			:heading="i18n.baseText('promotions.preview.state.error')"
 			:button-text="i18n.baseText('promotions.preview.state.retry')"
 			data-test-id="promotion-preview-error"
 			@click:button="refresh"
@@ -515,13 +508,13 @@ const treeResizer = useResizablePanel({
 		</template>
 
 		<PromoteSelectionDialog
-			v-if="promoteDialogOpen && promoteEnvironment"
+			v-if="promoteDialogOpen && source"
 			v-model:open="promoteDialogOpen"
 			v-model:commit-message="promoteCommitMessage"
 			:change-count="includedChanges"
-			:base-branch-name="promoteEnvironment.settings.baseBranchName"
-			:create-branch-on-promotion="promoteEnvironment.settings.createBranchOnPromotion"
-			:provider-type="promoteEnvironment.provider.type"
+			:base-branch-name="source.branchName"
+			:create-branch-on-promotion="source.createBranchOnPromotion ?? false"
+			:provider-type="source.providerType"
 			@confirm="onPromoteConfirm"
 		/>
 	</div>

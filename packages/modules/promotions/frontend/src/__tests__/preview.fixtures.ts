@@ -80,7 +80,12 @@ export const billingResources = {
 
 export const billingPreview = (overrides: Partial<PromotionPreview> = {}): PromotionPreview => ({
 	commitSha: COMMIT_SHA,
-	source: { environmentId: 'environment-1', branchName: 'main' },
+	source: {
+		environmentId: 'environment-1',
+		environmentName: 'Production',
+		providerType: 'git',
+		branchName: 'main',
+	},
 	resources: Object.values(billingResources),
 	dependencies: [
 		{ workflowKey: 'workflow:w1', resourceKey: 'dataTable:t1', included: true },

@@ -16,10 +16,10 @@ import {
 	buildPreview,
 	parsePackageManifest,
 	previewRevision,
+	previewSource,
 	scopeManifestToProject,
 } from './promotion-preview';
 import { PromotionReviewGateService } from './promotion-review-gate.service';
-import { checkoutBranchName } from './promotions-git.utils';
 import type { BranchPackage, PromotionOperationInput } from './promotions.types';
 
 /**
@@ -53,10 +53,7 @@ export class PromotePreviewService {
 				? await this.reviewGate.findPromoteBlocker(projectId, input.environmentId)
 				: null;
 		if (blocker) {
-			const source = {
-				environmentId: input.environmentId,
-				branchName: checkoutBranchName(input.config),
-			};
+			const source = previewSource(input);
 			return {
 				commitSha: null,
 				source,
@@ -88,7 +85,8 @@ export class PromotePreviewService {
 		const resources = promoteBase
 			? await this.markCrossProjectMoves(projectId, compared, promoteBase)
 			: compared;
-		const source = { environmentId: branch.environmentId, branchName: branch.branchName };
+		// The branch read resolves the environment again. Name the one it read.
+		const source = previewSource(branch.input);
 		return {
 			commitSha: branch.commitSha,
 			source,
