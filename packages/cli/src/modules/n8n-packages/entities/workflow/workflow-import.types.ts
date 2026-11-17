@@ -36,6 +36,8 @@ export interface PreparedWorkflow {
 	 * this set; when absent, taggings are left untouched.
 	 */
 	tagIds?: string[];
+	/** From `workflow-metadata.json`. Absent in a package from an older n8n version. */
+	ownerEmail?: string | null;
 }
 
 /**
@@ -127,4 +129,6 @@ export type PersistedWorkflowOutcome =
 			 * a credential that was stubbed or created incomplete, or a node type this instance does not have.
 			 */
 			blockedFromPublish?: WorkflowPublishingBlockedReason;
+			/** Set when no valid owner in the target project has the email of the source owner. */
+			ownerUnmatched?: boolean;
 	  };

@@ -549,7 +549,10 @@ describe('SourceControlService', () => {
 		gitFiles = {
 			'workflows/deletedOutOfScope.json': toExportableWorkflow(deletedOutOfScopeWorkflow, projectB),
 			'workflows/deletedInScope.json': toExportableWorkflow(deletedInScopeWorkflow, projectA),
-			'workflows/globalAdminWFA.json': toExportableWorkflow(globalAdminWorkflows[0], globalAdmin),
+			'workflows/globalAdminWFA.json': {
+				...toExportableWorkflow(globalAdminWorkflows[0], globalAdmin),
+				ownerEmail: 'owner-on-remote@example.com',
+			},
 			'workflows/globalOwnerWFA.json': toExportableWorkflow(globalOwnerWorkflows[0], globalOwner),
 			'workflows/globalMemberWFA.json': toExportableWorkflow(
 				globalMemberWorkflows[0],
@@ -716,6 +719,18 @@ describe('SourceControlService', () => {
 					// The modified workflows‚
 					expect(new Set(modifiedWorkflows.map((wf) => wf.id))).toEqual(
 						new Set([movedOutOfScopeWorkflow.id, movedIntoScopeWorkflow.id]),
+					);
+				});
+
+				it('does not report a workflow that differs from the remote only by its owner', async () => {
+					const result = await service.getStatus(globalAdmin, {
+						direction: 'push',
+						preferLocalVersion: true,
+						verbose: false,
+					});
+
+					expect(result).not.toContainEqual(
+						expect.objectContaining({ id: globalAdminScope.workflows[0].id }),
 					);
 				});
 

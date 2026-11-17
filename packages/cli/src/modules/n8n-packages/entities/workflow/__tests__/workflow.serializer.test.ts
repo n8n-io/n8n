@@ -119,7 +119,7 @@ describe('WorkflowSerializer description', () => {
 	});
 
 	it('does not put the description in the metadata file', () => {
-		expect(serializer.serializeMetadata(workflow('Syncs orders'))).not.toHaveProperty(
+		expect(serializer.serializeMetadata(workflow('Syncs orders'), null)).not.toHaveProperty(
 			'description',
 		);
 	});
@@ -149,24 +149,26 @@ describe('WorkflowSerializer.serializeMetadata', () => {
 		});
 
 	it('names the exported version as the live one when it is', () => {
-		expect(serializer.serializeMetadata(workflow())).toEqual({
+		expect(serializer.serializeMetadata(workflow(), 'owner@example.com')).toEqual({
 			versionId: 'version-2',
 			publishedVersionId: 'version-2',
+			ownerEmail: 'owner@example.com',
 		});
 	});
 
 	it('names the live version when the export carries a later draft', () => {
 		const draft = workflow({ versionId: 'version-3', activeVersionId: 'version-2' });
 
-		expect(serializer.serializeMetadata(draft)).toEqual({
+		expect(serializer.serializeMetadata(draft, null)).toEqual({
 			versionId: 'version-3',
 			publishedVersionId: 'version-2',
+			ownerEmail: null,
 		});
 	});
 
 	it('names no version when the workflow has no live one', () => {
 		const neverPublished = workflow({ activeVersionId: null });
 
-		expect(serializer.serializeMetadata(neverPublished).publishedVersionId).toBeNull();
+		expect(serializer.serializeMetadata(neverPublished, null).publishedVersionId).toBeNull();
 	});
 });

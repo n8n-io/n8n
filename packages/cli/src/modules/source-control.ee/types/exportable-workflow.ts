@@ -12,6 +12,7 @@ export interface ExportableWorkflow {
 	triggerCount: number;
 	versionId?: string;
 	owner: RemoteResourceOwner;
+	ownerEmail?: string | null;
 	parentFolderId: string | null;
 	isArchived: boolean;
 	nodeGroups: IWorkflowGroup[];

@@ -2,6 +2,8 @@ import type { Folder } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { UnexpectedError } from '@n8n/errors';
 
+import { ResourceOwnerService } from '@/services/resource-owner.service';
+
 import type { NodeTypeSource } from './node-type-usage';
 import type { AutoIncludedWorkflow } from './auto-included-workflow-resolver';
 import { WorkflowSerializer } from './workflow.serializer';
@@ -70,6 +72,7 @@ export class AutoIncludedWorkflowExporter {
 		private readonly dataTableRequirementsExtractor: DataTableRequirementsExtractor,
 		private readonly variableRequirementsExtractor: VariableRequirementsExtractor,
 		private readonly tagRequirementsExtractor: TagRequirementsExtractor,
+		private readonly resourceOwnerService: ResourceOwnerService,
 	) {}
 
 	async export(
@@ -95,6 +98,9 @@ export class AutoIncludedWorkflowExporter {
 		const variables: WorkflowVariableRequirement[] = [];
 		const tags: WorkflowTagUsage[] = [];
 		const nodeTypes: NodeTypeSource[] = [];
+		const ownerEmails = await this.resourceOwnerService.findOwnerEmails(
+			request.workflows.map(({ workflow }) => workflow),
+		);
 
 		for (const included of request.workflows) {
 			if (workflowEntriesById.has(included.workflow.id)) continue;
@@ -104,7 +110,10 @@ export class AutoIncludedWorkflowExporter {
 				await this.resolveWorkflowBaseDir(included, shells),
 				included.workflow,
 				this.workflowSerializer.serialize(included.workflow, { includeTags: request.includeTags }),
-				this.workflowSerializer.serializeMetadata(included.workflow),
+				this.workflowSerializer.serializeMetadata(
+					included.workflow,
+					ownerEmails.get(included.workflow.id) ?? null,
+				),
 			);
 			workflowEntries.push(entry);
 			workflowEntriesById.set(entry.id, entry);

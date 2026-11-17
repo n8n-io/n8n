@@ -8,6 +8,7 @@ import { z } from 'zod';
 export const serializedWorkflowMetadataSchema = z.object({
 	versionId: z.string(),
 	publishedVersionId: z.string().min(1).nullable(),
+	ownerEmail: z.string().nullable().optional(),
 });
 
 export type SerializedWorkflowMetadata = z.infer<typeof serializedWorkflowMetadataSchema>;
