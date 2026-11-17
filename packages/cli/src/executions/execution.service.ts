@@ -1,5 +1,5 @@
 import type { DeleteExecutionsDto } from '@n8n/api-types';
-import { EXECUTION_ENGINES, ExecutionRedactionQueryDtoSchema } from '@n8n/api-types';
+import { ExecutionRedactionQueryDtoSchema } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import {
 	EventService,
@@ -43,6 +43,7 @@ import {
 	createEmptyRunExecutionData,
 	createErrorExecutionData,
 	runDataUsedDynamicCredentials,
+	WORKFLOW_ENGINE_TYPES,
 } from 'n8n-workflow';
 
 import { ActiveExecutions } from '@/active-executions';
@@ -96,7 +97,7 @@ export const schemaGetExecutionsQueryFilter = {
 		vote: { type: 'string' },
 		projectId: { type: 'string' },
 		workflowVersionId: { type: 'string' },
-		engine: { type: 'string', enum: [...EXECUTION_ENGINES] },
+		engine: { type: 'string', enum: [...WORKFLOW_ENGINE_TYPES] },
 	},
 	$defs: {
 		metadata: {
@@ -497,7 +498,7 @@ export class ExecutionService {
 		// Read the engine from the raw filter: if a field fails the schema, the
 		// filters are dropped and a delete by date would match every v1 row.
 		const engine: unknown = requestFiltersRaw?.engine;
-		if (engine !== undefined && !EXECUTION_ENGINES.some((known) => known === engine)) {
+		if (engine !== undefined && !WORKFLOW_ENGINE_TYPES.some((known) => known === engine)) {
 			throw new BadRequestError('Unknown engine in the executions filter');
 		}
 

@@ -4,10 +4,11 @@ import type {
 	ExecutionSummary,
 	WorkflowExecuteMode,
 	IRunExecutionData,
+	WorkflowEngineType,
 } from 'n8n-workflow';
 import type { IWorkflowDb } from '@/Interface';
 import type { Scope } from '@n8n/permissions';
-import type { ExecutionEngine, ExecutionListPagination } from '@n8n/api-types';
+import type { ExecutionListPagination } from '@n8n/api-types';
 
 export type ExecutionFilterMetadata = {
 	key: string;
@@ -27,7 +28,7 @@ export type ExecutionFilterType = {
 	vote: ExecutionFilterVote;
 	metadata: ExecutionFilterMetadata[];
 	workflowVersionId: 'all' | string;
-	engine: 'all' | ExecutionEngine;
+	engine: 'all' | WorkflowEngineType;
 };
 
 export type ExecutionsQueryFilter = {
@@ -42,7 +43,7 @@ export type ExecutionsQueryFilter = {
 	annotationTags?: string[];
 	vote?: ExecutionFilterVote;
 	workflowVersionId?: string;
-	engine?: ExecutionEngine;
+	engine?: WorkflowEngineType;
 };
 
 export interface IExecutionBase {

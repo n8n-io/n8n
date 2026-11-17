@@ -6,7 +6,7 @@ import { useTelemetry } from '@n8n/composables/useTelemetry';
 import { EnterpriseEditionFeature } from '@/app/constants';
 import type { IWorkflowDb, IWorkflowShortResponse } from '@/Interface';
 import type { ExecutionFilterMetadata, ExecutionFilterType } from '../executions.types';
-import type { ExecutionEngine } from '@n8n/api-types';
+import type { WorkflowEngineType } from 'n8n-workflow';
 import { i18n as locale } from '@n8n/i18n';
 import { useSettingsStore } from '@n8n/stores/settings.store';
 import { makeRestApiRequest } from '@n8n/rest-api-client';
@@ -150,11 +150,13 @@ const statuses = computed(() => [
 	{ id: 'waiting', name: locale.baseText('executionsList.waiting') },
 ]);
 
-const engineFilterOptions = computed<Array<{ id: 'all' | ExecutionEngine; name: string }>>(() => [
-	{ id: 'all', name: locale.baseText('executionsFilter.engine.all') },
-	{ id: 'v1', name: locale.baseText('executionsList.engine.v1') },
-	{ id: 'v2', name: locale.baseText('executionsList.engine.v2') },
-]);
+const engineFilterOptions = computed<Array<{ id: 'all' | WorkflowEngineType; name: string }>>(
+	() => [
+		{ id: 'all', name: locale.baseText('executionsFilter.engine.all') },
+		{ id: 'v1', name: locale.baseText('executionsList.engine.v1') },
+		{ id: 'v2', name: locale.baseText('executionsList.engine.v2') },
+	],
+);
 
 const voteFilterOptions = computed(() => [
 	{ id: 'all', name: locale.baseText('executionsFilter.annotation.rating.all') },

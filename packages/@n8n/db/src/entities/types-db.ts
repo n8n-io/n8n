@@ -1,4 +1,3 @@
-import type { ExecutionEngine } from '@n8n/api-types';
 import type { Scope } from '@n8n/permissions';
 import type { FindOperator } from '@n8n/typeorm';
 import type express from 'express';
@@ -18,6 +17,7 @@ import type {
 	IBinaryKeyData,
 	IPairedItemData,
 	ExecutionTracingContext,
+	WorkflowEngineType,
 } from 'n8n-workflow';
 import { z } from 'zod';
 
@@ -234,7 +234,7 @@ export namespace ExecutionSummaries {
 		workflowVersionId: string;
 		isArchived: boolean;
 		workflowBooleanSettings: Array<{ key: string; value: boolean }>;
-		engine: ExecutionEngine;
+		engine: WorkflowEngineType;
 	}>;
 
 	export type StopExecutionFilterQuery = { workflowId: string } & Pick<
@@ -425,7 +425,7 @@ export interface IGetExecutionsQueryFilter {
 	metadata?: Array<{ key: string; value: string; exactMatch?: boolean }>;
 	startedAfter?: string;
 	startedBefore?: string;
-	engine?: ExecutionEngine;
+	engine?: WorkflowEngineType;
 }
 
 export type ResourceType = 'folder' | 'workflow';

@@ -5,7 +5,6 @@ import {
 	isTrimmedNodeExecutionData,
 } from 'n8n-workflow';
 import { UUID_V7_PATTERN } from '@n8n/constants';
-import type { ExecutionEngine } from '@n8n/api-types';
 import { CANCELLABLE_EXECUTION_STATUSES } from './executions.constants';
 import type {
 	ITaskData,
@@ -17,6 +16,7 @@ import type {
 	INodeTypeBaseDescription,
 	INodeExecutionData,
 	IWorkflowDataProxyAdditionalKeys,
+	WorkflowEngineType,
 } from 'n8n-workflow';
 import type { INodeUi, IWorkflowDb } from '@/Interface';
 import type { WorkflowObjectAccessors } from '@/app/types/workflow';
@@ -251,7 +251,7 @@ export function isEngineV2ExecutionId(executionId: string): boolean {
 }
 
 /** The engine that ran an execution, read from its ID. */
-export function getExecutionEngine(executionId: string): ExecutionEngine {
+export function getExecutionEngine(executionId: string): WorkflowEngineType {
 	return isEngineV2ExecutionId(executionId) ? 'v2' : 'v1';
 }
 
