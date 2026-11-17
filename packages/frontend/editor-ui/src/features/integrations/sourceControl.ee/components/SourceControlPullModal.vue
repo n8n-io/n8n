@@ -486,7 +486,6 @@ function openDiffModal(id: string) {
 	});
 }
 
-// A minimum, not a fixed height: the dialog grows to fit the tabs and footer, so its content does not scroll.
 const modalMinHeight = computed(() =>
 	groupedFilesByType.value[SOURCE_CONTROL_FILE_TYPE.workflow]?.length ||
 	groupedFilesByType.value[SOURCE_CONTROL_FILE_TYPE.credential]?.length
@@ -598,8 +597,7 @@ onMounted(() => {
 							</button>
 						</template>
 					</div>
-					<!-- Size containment keeps the list from growing the row, so the tabs set its minimum height. -->
-					<div style="flex: 1; contain: size">
+					<div :class="$style.listColumn">
 						<div :class="[$style.table]">
 							<div :class="[$style.tableHeader]">
 								<div :class="$style.headerTitle">
@@ -965,7 +963,7 @@ onMounted(() => {
 
 // N8nCallout sizes its message to the text; stretch it so the list scrollbar sits at the box edge.
 .dataTableWarning > :first-child,
-.dataTableWarning :global(.n8n-text) {
+.dataTableWarning > :first-child > :global(.n8n-text) {
 	flex-grow: 1;
 }
 
@@ -987,6 +985,12 @@ onMounted(() => {
 			margin-bottom: 0;
 		}
 	}
+}
+
+// Size containment keeps the list from growing the row, so the tabs set its minimum height.
+.listColumn {
+	flex: 1;
+	contain: size;
 }
 
 .table {

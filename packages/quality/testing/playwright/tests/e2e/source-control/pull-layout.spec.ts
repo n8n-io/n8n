@@ -42,7 +42,6 @@ test.describe(
 				);
 
 				await api.enableFeature('sourceControl');
-				// Keep Git setup out of this layout test. Render the real modal and scroller.
 				await n8n.page.route('**/rest/source-control/preferences', async (route) => {
 					await route.fulfill({
 						json: {
