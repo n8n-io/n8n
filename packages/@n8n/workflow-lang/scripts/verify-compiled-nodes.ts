@@ -568,13 +568,13 @@ if (one === undefined) {
 		.sort()
 		.filter((name) => filter.test(name) && !/Trigger$/.test(name));
 	let next = 0;
-	let lost = 0;
+	const lost: string[] = [];
 	const worker = async () => {
 		while (next < names.length) {
 			const name = names[next++];
 			const result = await checkInProcess(name);
 			if (!result) {
-				lost++;
+				lost.push(name);
 				continue;
 			}
 			Object.assign(verified, result.verified);
@@ -603,8 +603,10 @@ if (one === undefined) {
 		}
 	};
 	await Promise.all(Array.from({ length: PARALLEL }, worker));
-	if (lost > 0)
-		console.log(`${lost} node(s) gave no result (a crash or more than forty-five minutes)`);
+	if (lost.length > 0)
+		console.log(
+			`${lost.length} node(s) gave no result (a crash or more than forty-five minutes): ${lost.join(', ')}`,
+		);
 }
 
 const requestPart = (reason: string) => /^v1: the requests differ: (\w+)/.exec(reason)?.[1];
@@ -719,6 +721,10 @@ for (const name of one === undefined ? [] : Object.keys(known).sort()) {
 						(await differenceFromV1(make('error', parameters, bad), sources, registry, checking));
 					if (difference !== undefined) {
 						if (!other) why(`v1: ${difference}`, weight);
+						if (!other && examples.length < 400)
+							examples.push(
+								`${verifiedKey(type, version, compiled.resolved)}: ${difference.slice(0, 200)}`,
+							);
 						else if (examples.length < 400)
 							examples.push(
 								`${verifiedKey(type, version, compiled.resolved)} with another authentication: ${difference.slice(0, 200)}`,
@@ -738,6 +744,10 @@ for (const name of one === undefined ? [] : Object.keys(known).sort()) {
 					}
 					if (shaped !== undefined) {
 						if (!other) why(shaped, weight);
+						else if (examples.length < 400)
+							examples.push(
+								`${verifiedKey(type, version, compiled.resolved)} with another authentication: ${shaped.slice(0, 200)}`,
+							);
 						continue;
 					}
 					const first = readsFiles ? FILE_ITEMS[0] : {};
@@ -1383,7 +1393,12 @@ for (const name of one === undefined ? [] : Object.keys(known).sort()) {
 					}
 					if (compiled.mints.length > 0) mintedVerified++;
 				} catch (error) {
-					why(`check failed: ${error instanceof Error ? error.message : String(error)}`, weight);
+					const failure = error instanceof Error ? error.message : String(error);
+					why(`check failed: ${failure}`, weight);
+					if (examples.length < 400)
+						examples.push(
+							`${verifiedKey(type, version, compiled.resolved)}: check failed: ${failure.slice(0, 200)}`,
+						);
 				}
 			}
 		}
