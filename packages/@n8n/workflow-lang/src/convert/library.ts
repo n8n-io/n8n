@@ -879,6 +879,20 @@ export function lowerNativeCluster(c: NodeContext): void {
 	) {
 		if (typeof native === 'string' && members.some((m) => m.connection === 'ai_tool')) {
 			c.info('ai-tools-host', `The agent with tools runs in the fallback host: ${native}.`);
+		} else {
+			const reason =
+				typeof native === 'string'
+					? native
+					: credential === undefined || credentialType === undefined
+						? 'model without a credential'
+						: NOT_INJECTABLE.has(credentialType)
+							? 'model credential type'
+							: !c.addCredentialDerivations
+								? 'no credential flags'
+								: c.chatMemory !== true || c.services === false
+									? 'memory without the service'
+									: 'memory with more than one user';
+			c.info('ai-cluster-host', `The AI cluster runs in the fallback host: ${reason}.`);
 		}
 		lowerAiNode(c);
 		return;
@@ -916,6 +930,10 @@ export function lowerNativeCluster(c: NodeContext): void {
 		first = code(native.forFirstItem);
 	} catch (error) {
 		if (!(error instanceof NodeFailure)) throw error;
+		c.info(
+			toolNodes.length > 0 ? 'ai-tools-host' : 'ai-cluster-host',
+			'The AI cluster runs in the fallback host: an expression of the cluster does not translate.',
+		);
 		lowerAiNode(c);
 		return;
 	}
@@ -931,6 +949,10 @@ export function lowerNativeCluster(c: NodeContext): void {
 		);
 		// Without a host form the gate has no second form, so the host runs the cluster always.
 		if (hostForm === null) {
+			c.info(
+				'ai-cluster-host',
+				'The AI cluster runs in the fallback host: memory without a host form.',
+			);
 			lowerAiNode(c);
 			return;
 		}

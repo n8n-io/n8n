@@ -785,13 +785,45 @@ call there is a step with LangChain objects in it.
 1. Chat models `lmChatAnthropic`, `lmChatGoogleGemini`, Azure and others: a request builder and an answer
    reader each (the recorder catches `fetch` for all of them). `lmChatAnthropic` has thinking modes and a
    list of models that take no sampling parameters.
-2. Structured output parser: the JSON schema check, the format instructions, and the auto-fix call.
+2. Structured output parser: the auto-fix call (the parser without auto-fixing is native on the
+   chain and on the agent).
 3. Tools Agent versions 1.6 to 1.9: the answer is a stream (server-sent events).
 4. Tools Agent with tools: see "Tools" below.
 5. `informationExtractor`, `textClassifier` (a chain with a fixed prompt and a parser).
 6. Other operations of the vendor nodes (image, audio, document, file).
 7. `options.reasoningEffort`, `responseFormat`, `textFormat` and built-in tools of the OpenAI model.
 8. Vector stores, document loaders and text splitters.
+
+### Output parser of the agent (built)
+
+The Tools Agent of versions 2 to 3.1 with the Structured Output Parser (versions 1.2 and 1.3, no
+auto-fixing) is native on each native chat model (`AGENT_PARSER_CASES` and `TOOL_PARSER_CASES` in
+`ai-cases.ts`, each against a v1 recording).
+
+- **Request.** v1 gives the model the schema of the parser as the tool `format_final_json_response`,
+  after the tools of the agent, and adds a fixed text about that tool to the system message (after
+  the system message of the node and an empty line, or as the only system message). The schema is the
+  JSON Schema of `{ output }` that the chain prints in its format instructions (`structuredOutput`
+  gives it as `schema`). The form of the tool is that of the provider: `function` with
+  `strict: false` (OpenAI Chat Completions), the same without `strict` (OpenRouter), a flat
+  `function` tool (Responses API), `input_schema` (Anthropic), and `functionDeclarations` without
+  the keys `additionalProperties`, `$schema` and `strict` at each level (Gemini:
+  `geminiToolSchema` is a port of `removeAdditionalProperties` of LangChain).
+- **Answer.** The first call of that tool in an answer is the answer: the parser reads the JSON
+  text of its arguments, and the other calls of the answer do not run. An answer without a call is
+  text: JSON that is not `{ output }` goes into `{ output }`, other text goes to the parser as it
+  is (the parser reads a code fence). Only the text parts of an answer count. The output item is
+  the result of the parser (`parseStructured`), with `intermediateSteps` on version 3 when the
+  option asks for them. The run data has one run of the parser sub-node for each answer that it
+  reads, with its error.
+- **Calls that are not JSON.** When no call of an answer has JSON arguments, the clients of Chat
+  Completions refuse the answer ("Model output doesn't fit required format", no run of the
+  parser). The Responses client drops such calls, and the parser reads the text of the answer.
+- **Not in use.** With the parameter `hasOutputParser` and no parser node, and with a parser node
+  and no parameter, v1 runs the agent and the chain without a parser. So does the native form.
+- **In the host:** a parser with a memory (v1 keeps the answer as JSON text in the session), an
+  auto-fixing parser, a model that supplies the parser, and each schema that `structuredOutput`
+  refuses.
 
 ### Tools (built for the OpenAI Chat Completions API; the rest is the plan below)
 
@@ -830,8 +862,8 @@ and in the values of query parameters, and, before version 3, a JSON body that i
 message): every other tool type (a tool form of an app node, `toolCode`, `toolWorkflow`, `toolHttpRequest`,
 MCP, vector stores: none has a recording), a tool with a credential, `$fromAI` in another parameter (a
 header, a body field, the method, a JSON body on version 3: v1 does not check the arguments there, and the
-HTTP Request library node has no form of the v1 error for a body that is no JSON), a memory, an output
-parser, the Responses API, a chat model other than OpenAI and OpenRouter, an error or retry setting of the
+HTTP Request library node has no form of the v1 error for a body that is no JSON), a memory, the
+Responses API, a chat model other than OpenAI and OpenRouter, an error or retry setting of the
 agent, a batch size above 1, a tool node with a node setting, a tool description that is an expression or
 comes from the operation, the response optimizer, a `$fromAI` key that is no literal, a default of another
 type than the argument, two tools with one function name, and `returnIntermediateSteps` before version 3.

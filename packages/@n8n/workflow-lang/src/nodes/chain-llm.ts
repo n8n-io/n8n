@@ -34,7 +34,10 @@
  * The chain also takes the Structured Output Parser of versions 1.2 and 1.3 without
  * auto-fixing (`outputParser`): the converter gives the format instructions that v1 adds to
  * the prompt, and the shape that zod checks the answer with.
- * Not supported (the converter keeps these in the fallback host): tools, other output
+ * The agent takes the same parser: it gives the model the schema as the tool
+ * `format_final_json_response`, and the parser reads the arguments of that call, or the text
+ * of an answer without a call (`docs/compiler-plan.md`, "Output parser of the agent").
+ * Not supported (the converter keeps these in the fallback host): other output
  * parsers, a fallback model, image messages, the JSON response format, the reasoning
  * effort, built-in tools, a custom base URL of the model node, and other model providers.
  */
@@ -82,6 +85,8 @@ interface OutputParser {
 	instructions?: string;
 	shape?: OutputShape;
 	outputRequired?: boolean;
+	/** The agent: the JSON Schema of the tool `format_final_json_response`. */
+	schema?: unknown;
 }
 
 /** The parameters of the root for one input item. */
@@ -284,10 +289,17 @@ function chatMessages(
 	const out: ChatMessage[] = [];
 	if (agent) {
 		const system = parameters.systemMessage;
-		if (system) {
+		// With an output parser, the text about the tool of the parser follows the system message.
+		if (system || instructions !== undefined) {
+			const own = system ? (typeof system === 'string' ? system : String(system)) : undefined;
 			out.push({
 				role: reasoning ? 'developer' : 'system',
-				content: typeof system === 'string' ? system : String(system),
+				content:
+					own === undefined
+						? (instructions ?? '')
+						: instructions === undefined
+							? own
+							: `${own}\n\n${instructions}`,
 			});
 		}
 		// The chat history of the memory comes after the system message.
@@ -604,6 +616,127 @@ function answerToolCalls(request: ModelRequest, data: unknown): string | undefin
 	return undefined;
 }
 
+/** The tool that the agent gives the model for an output parser (`getTools` of v1). */
+const FORMAT_TOOL = 'format_final_json_response';
+const FORMAT_TOOL_DESCRIPTION =
+	'Use this tool to format your final response to the user in a structured JSON format. This tool validates your output against a schema to ensure it meets the required format. ONLY use this tool when you have completed all necessary reasoning and are ready to provide your final answer. Do not use this tool for intermediate steps or for asking questions. The output from this tool will be directly returned to the user.';
+/** The text that the agent adds to the system message for an output parser. */
+const FORMAT_INSTRUCTIONS =
+	'IMPORTANT: For your response to user, you MUST use the `format_final_json_response` tool with your complete answer formatted according to the required schema. Do not attempt to format the JSON manually - always use this tool. Your response will be rejected if it is not properly formatted through this tool. Only use this tool once you are ready to provide your final answer.';
+
+/** Adds the tool of the output parser to the request of an agent, in the form of the provider. */
+function addFormatTool(request: ModelRequest, provider: string | undefined, schema: unknown): void {
+	const body = request.body;
+	if (request.anthropic === true) {
+		body.tools = [
+			{ name: FORMAT_TOOL, description: FORMAT_TOOL_DESCRIPTION, input_schema: schema },
+		];
+	} else if (request.gemini === true) {
+		body.tools = [
+			{
+				functionDeclarations: [
+					{ name: FORMAT_TOOL, description: FORMAT_TOOL_DESCRIPTION, parameters: schema },
+				],
+			},
+		];
+	} else if (request.responses) {
+		body.tools = [
+			{
+				type: 'function',
+				name: FORMAT_TOOL,
+				parameters: schema,
+				description: FORMAT_TOOL_DESCRIPTION,
+				strict: false,
+			},
+		];
+	} else if (provider === 'openAi') {
+		body.tools = [
+			{
+				type: 'function',
+				function: {
+					name: FORMAT_TOOL,
+					description: FORMAT_TOOL_DESCRIPTION,
+					parameters: schema,
+					strict: false,
+				},
+			},
+		];
+	} else {
+		// The client of the OpenRouter model sends no `strict`.
+		body.tools = [
+			{
+				type: 'function',
+				function: { name: FORMAT_TOOL, description: FORMAT_TOOL_DESCRIPTION, parameters: schema },
+			},
+		];
+	}
+}
+
+/**
+ * The tool calls of an answer that LangChain reads (calls whose arguments are JSON), for
+ * each provider. `asked` is true when the answer has a call, also one that is not JSON.
+ */
+function modelCalls(
+	request: ModelRequest,
+	data: unknown,
+	parts: Array<Record<string, unknown>>,
+): { asked: boolean; calls: Array<{ name: string; raw: unknown }> } {
+	const calls: Array<{ name: string; raw: unknown }> = [];
+	if (request.anthropic === true) {
+		for (const part of parts) {
+			if (part.type === 'tool_use') calls.push({ name: String(part.name), raw: part.input });
+		}
+		return { asked: calls.length > 0, calls };
+	}
+	if (request.gemini === true) {
+		for (const part of parts) {
+			const call = part.functionCall;
+			if (part.type === 'functionCall' && isObject(call)) {
+				calls.push({ name: String(call.name), raw: call.args });
+			}
+		}
+		return { asked: calls.length > 0, calls };
+	}
+	if (request.responses) {
+		let asked = false;
+		const output = isObject(data) && Array.isArray(data.output) ? data.output : [];
+		for (const item of output) {
+			if (!isObject(item) || item.type !== 'function_call') continue;
+			asked = true;
+			if (typeof item.arguments !== 'string') continue;
+			let raw: unknown;
+			try {
+				raw = JSON.parse(item.arguments);
+			} catch {
+				continue;
+			}
+			calls.push({ name: String(item.name), raw });
+		}
+		return { asked, calls };
+	}
+	const read = answerCalls(data);
+	for (const call of read.calls) calls.push({ name: call.name, raw: call.raw });
+	return { asked: read.asked, calls };
+}
+
+/**
+ * The text that the output parser of the agent reads for an answer without a tool call
+ * (`getAgentStepsParser` of v1): JSON that is not `{ output }` goes into `{ output }`.
+ */
+function parserInputOf(text: string): string {
+	let json: unknown;
+	try {
+		json = JSON.parse(text);
+	} catch {
+		return text;
+	}
+	if (isObject(json)) {
+		const keys = Object.keys(json);
+		if (keys.length === 1 && keys[0] === 'output') return JSON.stringify(json);
+	}
+	return JSON.stringify({ output: json });
+}
+
 const BAD_FORMAT = "Model output doesn't fit required format";
 const BAD_FORMAT_DESCRIPTION =
 	"To continue the execution when this happens, change the 'On Error' parameter in the root node's settings";
@@ -880,11 +1013,15 @@ function callsTool(data: unknown, responses: boolean): boolean {
  * text as it is. A Responses answer is a list of parts: the text parts joined and trimmed,
  * or else the thinking parts.
  */
-function agentOutput(parts: Array<Record<string, unknown>>, responses: boolean): string {
+function agentOutput(
+	parts: Array<Record<string, unknown>>,
+	responses: boolean,
+	textOnly = false,
+): string {
 	if (!responses) return String(parts[0]?.text ?? '');
 	let text = '';
 	for (const part of parts) if (part.type === 'text' && part.text) text += String(part.text);
-	if (text.trim() !== '') return text.trim();
+	if (text.trim() !== '' || textOnly) return text.trim();
 	let thinking = '';
 	for (const part of parts) {
 		if (part.type === 'thinking' && part.thinking) thinking += String(part.thinking);
@@ -1183,6 +1320,8 @@ export default defineNode<ChainParameters>({
 		// The runs of the output parser sub-node: one for each answer that it parses.
 		const parserRuns: Array<{ error: string | null }> = [];
 		const parser = parameters.kind === 'agent' ? undefined : parameters.outputParser;
+		// The agent gives the model the schema of the parser as a tool, and parses the answer.
+		const agentParser = parameters.kind === 'agent' ? parameters.outputParser : undefined;
 		// The OpenRouter model is the same LangChain client with another credential type, which
 		// injects the key only, and without the header of the OpenAI nodes.
 		const openAi = ai.provider === 'openAi';
@@ -1387,6 +1526,26 @@ export default defineNode<ChainParameters>({
 		};
 
 		/**
+		 * The output parser of the agent for one answer: the item, or the error of the parser.
+		 * `steps` are the tool calls of the item so far.
+		 */
+		const parseAnswer = (input: unknown, steps: AgentStep[]): Outcome => {
+			const parserRun: { error: string | null } = { error: null };
+			parserRuns.push(parserRun);
+			const parsed = parseStructured(
+				typeof input === 'string' ? input : JSON.stringify(input),
+				agentParser ?? {},
+			);
+			if (parsed.value !== undefined) {
+				const output: Item = parsed.value;
+				if (parameters.returnIntermediateSteps === true) output.intermediateSteps = steps;
+				return { item: output };
+			}
+			parserRun.error = parsed.error ?? null;
+			return { error: parsed.error, description: parsed.description };
+		};
+
+		/**
 		 * The root for one item. `again` is true when the answer calls a tool and the agent of
 		 * version 3 gives the call to n8n's engine: the engine then runs the whole node again.
 		 */
@@ -1416,7 +1575,14 @@ export default defineNode<ChainParameters>({
 				});
 				history = loaded.messages ?? [];
 			}
-			const request = requestOf(item, ai, agent, history, parser?.instructions);
+			const request = requestOf(
+				item,
+				ai,
+				agent,
+				history,
+				agentParser !== undefined ? FORMAT_INSTRUCTIONS : parser?.instructions,
+			);
+			if (agentParser !== undefined) addFormatTool(request, ai.provider, agentParser.schema);
 			for (let turn = 1; ; turn++) {
 				const answer = await send(request);
 				if (answer.error !== undefined) return { error: answer.error };
@@ -1432,12 +1598,28 @@ export default defineNode<ChainParameters>({
 					return { error: run.error };
 				}
 				if (agent) {
+					let unread = false;
+					if (agentParser !== undefined) {
+						const asked = modelCalls(request, answer.data, parts);
+						if (asked.asked && asked.calls.length === 0) {
+							// No call has arguments that are JSON. The Responses client drops such
+							// calls, and the answer is its text. The other clients refuse the answer.
+							if (!request.responses) {
+								return { error: BAD_FORMAT, description: BAD_FORMAT_DESCRIPTION };
+							}
+							unread = true;
+						}
+						// A call of the tool of the parser is the answer, also next to other calls.
+						for (const call of asked.calls) {
+							if (call.name === FORMAT_TOOL) return parseAnswer(call.raw, []);
+						}
+					}
 					const calls =
 						request.anthropic === true
 							? parts.some((part) => part.type === 'tool_use')
 							: request.gemini === true
 								? parts.some((part) => part.type === 'functionCall')
-								: callsTool(answer.data, request.responses);
+								: !unread && callsTool(answer.data, request.responses);
 					if (calls) {
 						// The agent has no tools. Version 3 gives the calls to the engine, which has no
 						// tool to run and runs the agent again. Version 2 answers each call itself.
@@ -1453,6 +1635,10 @@ export default defineNode<ChainParameters>({
 					// One text part of Gemini is a text answer; more parts are a list of blocks.
 					const single = request.gemini === true && parts.length === 1 && parts[0].type === 'text';
 					const blocks = request.responses || request.anthropic === true || request.gemini === true;
+					if (agentParser !== undefined) {
+						// The parser reads the text parts only: an answer without text is empty.
+						return parseAnswer(parserInputOf(agentOutput(parts, blocks && !single, true)), []);
+					}
 					const text = agentOutput(parts, blocks && !single);
 					await remember(promptText(item.text), text);
 					const output: Item = { output: text };
@@ -1486,7 +1672,7 @@ export default defineNode<ChainParameters>({
 		const tools = agent ? parameters.tools : undefined;
 		if (tools !== undefined) {
 			const fail = (error: string | undefined, description?: string) => [
-				{ items: [], runs, error: error ?? '', description: description ?? '' },
+				{ items: [], runs, parserRuns, error: error ?? '', description: description ?? '' },
 			];
 			const toolOf = (name: string): ToolSpec | undefined => {
 				for (const tool of tools) if (tool.name === name) return tool;
@@ -1494,19 +1680,36 @@ export default defineNode<ChainParameters>({
 			};
 			/** The request of an item: the tools, then the messages with the calls and results so far. */
 			const toolRequest = (item: ItemParameters, added: unknown[]): ModelRequest => {
-				const request = requestOf(item, ai, true, []);
+				const request = requestOf(
+					item,
+					ai,
+					true,
+					[],
+					agentParser !== undefined ? FORMAT_INSTRUCTIONS : undefined,
+				);
 				const body: Record<string, unknown> = {};
 				for (const key of Object.keys(request.body)) {
 					if (key === 'messages') {
-						body.tools = tools.map((tool) => ({
+						// The client of the OpenRouter model sends no `strict`.
+						const sentTools: unknown[] = tools.map((tool) => ({
 							type: 'function',
-							function: {
-								name: tool.name,
-								description: tool.description,
-								parameters: tool.schema,
-								strict: false,
-							},
+							function: openAi
+								? {
+										name: tool.name,
+										description: tool.description,
+										parameters: tool.schema,
+										strict: false,
+									}
+								: { name: tool.name, description: tool.description, parameters: tool.schema },
 						}));
+						// The tool of the output parser is the last tool.
+						if (agentParser !== undefined) {
+							const format: ModelRequest = { responses: false, body: {} };
+							addFormatTool(format, ai.provider, agentParser.schema);
+							const made = format.body.tools;
+							if (Array.isArray(made)) for (const tool of made) sentTools.push(tool);
+						}
+						body.tools = sentTools;
 						const messages: unknown[] = [];
 						const sent = request.body.messages;
 						if (Array.isArray(sent)) for (const message of sent) messages.push(message);
@@ -1527,6 +1730,8 @@ export default defineNode<ChainParameters>({
 				description?: string;
 				text?: string;
 				calls?: Array<{ id: unknown; name: string; raw: unknown }>;
+				/** With an output parser: the answer that the parser reads. */
+				parse?: { input: unknown };
 			}> => {
 				const request = toolRequest(item, added);
 				if (request.responses || request.anthropic === true || request.gemini === true) {
@@ -1545,9 +1750,17 @@ export default defineNode<ChainParameters>({
 					return { error: run.error };
 				}
 				const asked = answerCalls(answer.data);
-				if (!asked.asked) return { text };
+				if (!asked.asked) {
+					return agentParser === undefined ? { text } : { parse: { input: parserInputOf(text) } };
+				}
 				if (asked.calls.length === 0) {
 					return { error: BAD_FORMAT, description: BAD_FORMAT_DESCRIPTION };
+				}
+				if (agentParser !== undefined) {
+					// A call of the tool of the parser is the answer: the other calls do not run.
+					for (const call of asked.calls) {
+						if (call.name === FORMAT_TOOL) return { parse: { input: call.raw } };
+					}
 				}
 				return { text: asked.text, calls: asked.calls };
 			};
@@ -1623,7 +1836,11 @@ export default defineNode<ChainParameters>({
 						}
 						const turn = await turnOf(item, added);
 						if (turn.error !== undefined) return fail(turn.error, turn.description);
-						if (turn.calls !== undefined) {
+						if (turn.parse !== undefined) {
+							const outcome = parseAnswer(turn.parse.input, steps);
+							if (outcome.item === undefined) return fail(outcome.error, outcome.description);
+							items.push(outcome.item);
+						} else if (turn.calls !== undefined) {
 							if (carried === undefined) carried = steps;
 							const text =
 								turn.text !== undefined && turn.text.trim() !== '' ? turn.text : undefined;
@@ -1657,11 +1874,11 @@ export default defineNode<ChainParameters>({
 						}
 						if (i + 1 < batch.length && delay > 0) await ctx.wait({ duration: delay });
 					}
-					if (carried === undefined) return [{ items, runs }];
+					if (carried === undefined) return [{ items, runs, parserRuns }];
 					iteration++;
 					previous = carried;
 					if (calls.length > 0) {
-						return [{ items: [], runs, calls, state: { iteration, previous, calls } }];
+						return [{ items: [], runs, parserRuns, calls, state: { iteration, previous, calls } }];
 					}
 					// The agent has none of the tools that the model calls: the engine has no step
 					// to run, and runs the node again.
@@ -1698,6 +1915,12 @@ export default defineNode<ChainParameters>({
 					if (!stop) {
 						const turn = await turnOf(item, added);
 						if (turn.error !== undefined) return fail(turn.error, turn.description);
+						if (turn.parse !== undefined) {
+							const outcome = parseAnswer(turn.parse.input, []);
+							if (outcome.item === undefined) return fail(outcome.error, outcome.description);
+							items.push(outcome.item);
+							break;
+						}
 						if (turn.calls === undefined) {
 							items.push({ output: turn.text ?? '' });
 							break;
@@ -1738,6 +1961,7 @@ export default defineNode<ChainParameters>({
 								{
 									items: [],
 									runs,
+									parserRuns,
 									started,
 									error: refused,
 									description: 'Original error: ToolInputParsingException',
@@ -1750,6 +1974,7 @@ export default defineNode<ChainParameters>({
 								{
 									items: [],
 									runs,
+									parserRuns,
 									calls: steps,
 									state: { index: i, items, added, turn: turnCount, calls },
 								},
@@ -1774,7 +1999,7 @@ export default defineNode<ChainParameters>({
 				turnCount = 0;
 				if (i + 1 < batch.length && delay > 0) await ctx.wait({ duration: delay });
 			}
-			return [{ items, runs }];
+			return [{ items, runs, parserRuns }];
 		}
 
 		for (let iteration = 0; ; iteration++) {

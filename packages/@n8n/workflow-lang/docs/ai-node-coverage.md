@@ -50,6 +50,8 @@ chat trigger or with unconnected sub-nodes has no root node, and counts as nativ
 | `chain-llm.ts` (`kind: 'agent'`) | `agent` 2 to 3.1 (Tools Agent) with the same models; no tool, memory or parser | cases against the engine with the real sub-node |
 | `chain-llm.ts` (`kind: 'agent'`, `aiMemory`) | the same agent with `memoryBufferWindow` 1 to 1.3: session key (`customKey`), window 1 to 1000, batch size 1; no tool or parser. Only with `ConvertOptions.chatMemory` (default off: the store is the service `chatMemory`, which no client answers yet). The census tables below predate this row | cases against the engine with the real sub-nodes and a store of the test |
 
+| `chain-llm.ts` (`kind: 'agent'`, `outputParser`) | the same agent with `outputParserStructured` 1.2 and 1.3 without auto-fixing, on each native chat model, with or without the HTTP Request tool; no memory. Also `lmChatGoogleGemini` 1.2 and the default model of each version of that node. The census tables below predate this row | cases against the engine with the real sub-nodes |
+
 ### Root node types: workflows, and workflows where the node is native
 
 | Root node type | Workflows | Native now |

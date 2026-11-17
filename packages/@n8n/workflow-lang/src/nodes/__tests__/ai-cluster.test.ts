@@ -35,9 +35,11 @@ import {
 } from './equivalence.ts';
 
 const here = dirname(fileURLToPath(import.meta.url));
-const recordings: Record<string, Recording> = JSON.parse(
-	readFileSync(join(here, 'v1-requests.json'), 'utf8'),
-);
+// A recording that is made after `v1-requests.json` got its largest size is in the second file.
+const recordings: Record<string, Recording> = {
+	...JSON.parse(readFileSync(join(here, 'v1-requests.json'), 'utf8')),
+	...JSON.parse(readFileSync(join(here, 'v1-requests-added.json'), 'utf8')),
+};
 const typesBuilt = existsSync(join(DEFAULT_NODE_PACKAGES[0], 'dist/known/credentials.json'));
 
 const NODE = 'Node';
@@ -434,15 +436,18 @@ describe.runIf(typesBuilt)('AI nodes through the converter, against n8n engine r
 			],
 			[
 				'output parser',
-				[
-					model,
-					{
-						...model,
-						name: 'P',
-						type: `${LC}outputParserStructured`,
-						connection: 'ai_outputParser',
-					},
-				],
+				['P', 'Q'].reduce(
+					(subs, name) => [
+						...subs,
+						{
+							...model,
+							name,
+							type: `${LC}outputParserStructured`,
+							connection: 'ai_outputParser',
+						},
+					],
+					[model],
+				),
 			],
 			[
 				'memory memoryPostgresChat',
