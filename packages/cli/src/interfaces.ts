@@ -100,6 +100,7 @@ export interface IWorkflowToImport
 				teamId: string;
 				teamName: string;
 		  };
+	ownerEmail?: string | null;
 	parentFolderId: string | null;
 }
 

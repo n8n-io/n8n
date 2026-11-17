@@ -50,11 +50,12 @@ const serializePayload = definePackageSerializationPayload<
 >();
 
 type AgentMetadataKeyHandling = Record<
-	Exclude<keyof AgentPackageKeyHandling, 'versionId' | 'activeVersionId'>,
+	Exclude<keyof AgentPackageKeyHandling, 'versionId' | 'activeVersionId' | 'ownerUserId'>,
 	'exclude'
 > & {
 	versionId: 'copy';
 	activeVersionId: 'transform';
+	ownerUserId: 'transform';
 };
 
 const serializeMetadataPayload = definePackageSerializationPayload<
@@ -116,11 +117,15 @@ export class AgentSerializer {
 		return structuredClone(content);
 	}
 
-	serializeMetadata(source: Pick<Agent, 'versionId' | 'activeVersionId'>): SerializedAgentMetadata {
+	serializeMetadata(
+		source: Pick<Agent, 'versionId' | 'activeVersionId'>,
+		ownerEmail: string | null,
+	): SerializedAgentMetadata {
 		return serializedAgentMetadataSchema.parse(
 			serializeMetadataPayload({
 				versionId: source.versionId,
 				publishedVersionId: source.activeVersionId,
+				ownerEmail,
 			}),
 		);
 	}

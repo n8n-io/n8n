@@ -645,6 +645,7 @@ describe('auto-close on source-control pull', () => {
 			Container.get(WorkflowFinderService),
 			mock(),
 			mock(),
+			mock(), // resourceOwnerService
 		);
 	});
 

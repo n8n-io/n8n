@@ -598,6 +598,8 @@ export interface ImportedWorkflowSummary {
 	status: 'created' | 'updated' | 'skipped';
 	/** Set when the update also moved the workflow to another folder (`layoutConflictPolicy=follow-package`). */
 	moved?: true;
+	/** Set when no valid owner in the target project has the email of the source owner. */
+	ownerUnmatched?: true;
 }
 
 export interface ImportedAgentSummary {
@@ -609,6 +611,8 @@ export interface ImportedAgentSummary {
 	status: 'created' | 'updated' | 'skipped';
 	publishing: PublishingOutcome;
 	channels: ImportedAgentChannel[];
+	/** Set when no valid owner in the target project has the email of the source owner. */
+	ownerUnmatched?: true;
 }
 
 export interface ImportStatusCounts {

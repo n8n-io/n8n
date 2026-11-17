@@ -36,6 +36,7 @@ import {
 	UserRepository,
 	WorkflowPublishedVersionRepository,
 } from '@n8n/db';
+import { EventService } from '@n8n/backend-services';
 import type { NodesConfig } from '@n8n/config';
 import { Container } from '@n8n/di';
 import * as fastGlob from 'fast-glob';
@@ -60,6 +61,7 @@ import { WorkflowIndexService } from '@/modules/workflow-index/workflow-index.se
 import type { NodeTypes } from '@/node-types';
 import { PolicyEnforcementService } from '@/policy/policy-enforcement.service';
 import { PolicyViolationError } from '@/policy/policy-violation.error';
+import { ResourceOwnerService } from '@/services/resource-owner.service';
 import { DeprecatedNodesValidationService } from '@/workflows/deprecated-nodes-validation.service';
 import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 import { WorkflowHistoryService } from '@/workflows/workflow-history/workflow-history.service';
@@ -186,6 +188,7 @@ describe('SourceControlImportService', () => {
 				nodeTypes,
 			),
 			Container.get(WorkflowIndexService),
+			Container.get(ResourceOwnerService),
 		);
 	};
 
@@ -1962,6 +1965,7 @@ describe('SourceControlImportService', () => {
 			active: overrides.active ?? false,
 			isArchived: overrides.isArchived ?? false,
 			activeVersionId: overrides.activeVersionId ?? null,
+			...('ownerEmail' in overrides ? { ownerEmail: overrides.ownerEmail } : {}),
 		});
 
 		beforeEach(() => {
@@ -2056,6 +2060,71 @@ describe('SourceControlImportService', () => {
 						importingUser.id,
 					),
 				).rejects.toThrow(DeprecatedNodesError);
+			});
+		});
+
+		describe('owner', () => {
+			const pullInto = async (project: Project, workflow: IWorkflowToImport) => {
+				const importingUser = await getGlobalOwner();
+				const file = putWorkflowFile(workflow.id, {
+					...workflow,
+					owner: { type: 'team', teamId: project.id, teamName: project.name },
+				});
+				await service.importWorkflowFromWorkFolder(
+					[mock<SourceControlledFile>({ id: workflow.id, file })],
+					importingUser.id,
+				);
+				return (await workflowRepository.findOneByOrFail({ id: workflow.id })).ownerUserId;
+			};
+
+			it('gives a new workflow to the project member with the exported email', async () => {
+				const member = await createMember();
+				const project = await createTeamProject(undefined, member);
+
+				const ownerUserId = await pullInto(
+					project,
+					makeWorkflowImport({ ownerEmail: member.email }),
+				);
+
+				expect(ownerUserId).toBe(member.id);
+			});
+
+			it('gives a new workflow to the importing instance owner when the email matches nobody', async () => {
+				const project = await createTeamProject();
+
+				const ownerUserId = await pullInto(
+					project,
+					makeWorkflowImport({ ownerEmail: 'unknown@example.com' }),
+				);
+
+				expect(ownerUserId).toBe((await getGlobalOwner()).id);
+			});
+
+			it('keeps a valid owner, and fills a missing owner with one audit event', async () => {
+				const [currentOwner, exportedOwner] = [await createMember(), await createMember()];
+				const project = await createTeamProject(undefined, currentOwner);
+				await linkUserToProject(exportedOwner, project, 'project:editor');
+				const existing = await createWorkflowWithHistory({}, project);
+				await workflowRepository.update(existing.id, { ownerUserId: currentOwner.id });
+				const incoming = makeWorkflowImport({ id: existing.id, ownerEmail: exportedOwner.email });
+				const emit = vi.spyOn(Container.get(EventService), 'emit');
+
+				expect(await pullInto(project, incoming)).toBe(currentOwner.id);
+
+				await workflowRepository.update(existing.id, { ownerUserId: null });
+				expect(await pullInto(project, incoming)).toBe(exportedOwner.id);
+				expect(emit.mock.calls.filter(([event]) => event === 'workflow-owner-changed')).toEqual([
+					[
+						'workflow-owner-changed',
+						expect.objectContaining({ newOwnerUserId: exportedOwner.id, reason: 'import' }),
+					],
+				]);
+			});
+
+			it('leaves the owner as it is when the file has no owner email', async () => {
+				const project = await createTeamProject(undefined, await createMember());
+
+				expect(await pullInto(project, makeWorkflowImport())).toBeNull();
 			});
 		});
 
