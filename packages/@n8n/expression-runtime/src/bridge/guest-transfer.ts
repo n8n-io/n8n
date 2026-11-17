@@ -13,6 +13,57 @@ import {
 	TRANSFER_VALUE_KEY,
 } from '../runtime/transfer';
 
+const MAX_SMALL_INSTANCE_FIELDS = 100;
+
+const MAX_SMALL_INSTANCE_CHARS = 10_000;
+
+function isJsonPrimitive(value: unknown): boolean {
+	return (
+		value === null ||
+		value === undefined ||
+		typeof value === 'string' ||
+		typeof value === 'number' ||
+		typeof value === 'boolean'
+	);
+}
+
+/**
+ * The own fields of a class instance as a plain object. Undefined unless the
+ * instance has no `toJSON`, has only data fields that hold JSON primitives, and
+ * stays within MAX_SMALL_INSTANCE_FIELDS fields and MAX_SMALL_INSTANCE_CHARS characters.
+ * Never calls a getter. Undefined when a proxy trap throws.
+ */
+function smallInstanceFieldsOf(value: object): Record<string, unknown> | undefined {
+	try {
+		return readSmallInstanceFields(value);
+	} catch {
+		return undefined;
+	}
+}
+
+function readSmallInstanceFields(value: object): Record<string, unknown> | undefined {
+	const keys = Object.keys(value);
+	if (keys.length <= MAX_SMALL_INSTANCE_FIELDS && !('toJSON' in value)) {
+		const fields = keys.map((key) => ({
+			key,
+			descriptor: Object.getOwnPropertyDescriptor(value, key),
+		}));
+		const primitiveData = fields.every(
+			({ descriptor }) =>
+				descriptor !== undefined && 'value' in descriptor && isJsonPrimitive(descriptor.value),
+		);
+		const chars = fields.reduce(
+			(sum, { key, descriptor }) =>
+				sum + key.length + (typeof descriptor?.value === 'string' ? descriptor.value.length : 0),
+			0,
+		);
+		if (primitiveData && chars <= MAX_SMALL_INSTANCE_CHARS) {
+			return Object.fromEntries(fields.map(({ key, descriptor }) => [key, descriptor?.value]));
+		}
+	}
+	return undefined;
+}
+
 function isObject(value: unknown): value is object {
 	return typeof value === 'object' && value !== null;
 }
@@ -110,9 +161,10 @@ class GuestEncoder {
 	}
 
 	/**
-	 * Inside an Error, a class instance or a Promise gives undefined. Such an
-	 * instance can be a large host object, such as the request of an HTTP client
-	 * error. Structured clone cannot copy a Promise.
+	 * Inside an Error, a small class instance of primitive fields goes across as
+	 * a plain object. Any other class instance or a Promise gives undefined. Such
+	 * an instance can be a large host object, such as the request of an HTTP
+	 * client error. Structured clone cannot copy a Promise.
 	 *
 	 * Outside an Error, a class instance is marked opaque. Structured clone
 	 * flattens its prototype away, so a framing key on it would read as ours.
@@ -120,7 +172,9 @@ class GuestEncoder {
 	private encodeUnwalked(value: object): unknown {
 		const cloneable = isStructuredCloneBuiltin(value) && !(value instanceof Promise);
 		if (this.insideError && !cloneable) {
-			return undefined;
+			return value instanceof Promise
+				? undefined
+				: encodeOnce(value, this.walk, (instance) => this.encode(smallInstanceFieldsOf(instance)));
 		}
 		return isStructuredCloneBuiltin(value)
 			? value
