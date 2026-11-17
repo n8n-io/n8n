@@ -1,6 +1,6 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import userEvent from '@testing-library/user-event';
-import { waitFor } from '@testing-library/vue';
+import { fireEvent, waitFor } from '@testing-library/vue';
 import { createTestingPinia } from '@pinia/testing';
 import { setActivePinia } from 'pinia';
 import { defineComponent, h, nextTick } from 'vue';
@@ -189,6 +189,137 @@ describe('attach-only composer', () => {
 		expect(queryByTestId('instance-ai-input-menu')).not.toBeInTheDocument();
 		expect(queryByTestId('chat-input-attach-button')).not.toBeInTheDocument();
 		expect(container.querySelector('input[type="file"]')).not.toBeInTheDocument();
+	});
+});
+
+describe('InstanceAiInput — file attachments', () => {
+	beforeEach(() => {
+		setActivePinia(createTestingPinia({ stubActions: false }));
+	});
+
+	afterEach(() => {
+		vi.unstubAllGlobals();
+		vi.restoreAllMocks();
+	});
+
+	function stubObjectUrls() {
+		const createObjectURL = vi.fn((_file: Blob) => 'blob:preview');
+		const revokeObjectURL = vi.fn();
+		vi.stubGlobal('URL', { ...URL, createObjectURL, revokeObjectURL });
+		return { createObjectURL, revokeObjectURL };
+	}
+
+	function stubNoReducedMotion() {
+		vi.spyOn(window, 'matchMedia').mockImplementation((query) => ({
+			matches: query === '(prefers-reduced-motion: reduce)' ? false : true,
+			media: query,
+			onchange: null,
+			addListener: vi.fn(),
+			removeListener: vi.fn(),
+			addEventListener: vi.fn(),
+			removeEventListener: vi.fn(),
+			dispatchEvent: vi.fn(),
+		}));
+	}
+
+	it('focuses attachments with Up from an empty input and returns with Escape', async () => {
+		const { container, getByRole } = renderComponent();
+		const fileInput = container.querySelector<HTMLInputElement>('input[type="file"]')!;
+		await userEvent.upload(fileInput, new File(['notes'], 'notes.txt', { type: 'text/plain' }));
+		const textbox = getByRole('textbox');
+		await userEvent.click(textbox);
+		await userEvent.keyboard('{ArrowUp}');
+		expect(document.activeElement).toBe(container.querySelector('.n8n-attachment'));
+		await userEvent.keyboard('{Escape}');
+		expect(textbox).toHaveFocus();
+	});
+
+	it.each([
+		{ altKey: true },
+		{ ctrlKey: true },
+		{ metaKey: true },
+		{ shiftKey: true },
+		{ isComposing: true },
+		{ keyCode: 229 },
+		{ repeat: true },
+	])('keeps input focus for modified or composing Up: %j', async (options) => {
+		const { container, getByRole } = renderComponent();
+		await userEvent.upload(
+			container.querySelector<HTMLInputElement>('input[type="file"]')!,
+			new File(['notes'], 'notes.txt', { type: 'text/plain' }),
+		);
+		const textbox = getByRole('textbox');
+		await userEvent.click(textbox);
+		await fireEvent.keyDown(textbox, { key: 'ArrowUp', ...options });
+		expect(textbox).toHaveFocus();
+	});
+
+	it('keeps Up in the input when it has text or no attachments', async () => {
+		const { container, getByRole } = renderComponent();
+		const textbox = getByRole('textbox');
+		await userEvent.click(textbox);
+		await userEvent.keyboard('{ArrowUp}');
+		expect(textbox).toHaveFocus();
+		await userEvent.upload(
+			container.querySelector<HTMLInputElement>('input[type="file"]')!,
+			new File(['notes'], 'notes.txt', { type: 'text/plain' }),
+		);
+		await userEvent.click(textbox);
+		await userEvent.type(textbox, 'Draft');
+		await userEvent.keyboard('{ArrowUp}');
+		expect(textbox).toHaveFocus();
+	});
+
+	it('creates a preview URL for image files and revokes it when a file is removed', async () => {
+		stubNoReducedMotion();
+		const { createObjectURL, revokeObjectURL } = stubObjectUrls();
+		const { container, findByAltText, findByTestId } = renderComponent({
+			props: { attachOnlyMimeTypes: 'image/*' },
+		});
+		const file = new File(['image'], 'preview.png', { type: 'image/png' });
+		const fileInput = container.querySelector<HTMLInputElement>('input[type="file"]')!;
+
+		await userEvent.upload(fileInput, file);
+
+		expect(createObjectURL).toHaveBeenCalledWith(file);
+		expect(await findByAltText('preview.png')).toHaveAttribute('src', 'blob:preview');
+
+		await userEvent.click(await findByTestId('attachment-remove'));
+		await waitFor(() =>
+			expect(document.body.querySelector('img[role="presentation"]')).toBeInTheDocument(),
+		);
+		const sprite = document.body.querySelector('img[role="presentation"]')!;
+		await fireEvent.error(sprite);
+
+		await waitFor(() => expect(revokeObjectURL).toHaveBeenCalledWith('blob:preview'));
+	});
+
+	it('blocks submission until image removal finishes', async () => {
+		stubNoReducedMotion();
+		stubObjectUrls();
+		const { emitted, container, getByRole, getByTestId } = renderComponent({
+			props: { attachOnlyMimeTypes: 'image/*' },
+		});
+		const textbox = getByRole('textbox');
+		await userEvent.type(textbox, 'Send this message');
+
+		const file = new File(['image'], 'preview.png', { type: 'image/png' });
+		const fileInput = container.querySelector<HTMLInputElement>('input[type="file"]')!;
+		await userEvent.upload(fileInput, file);
+
+		const sendButton = getByTestId('instance-ai-send-button');
+		await userEvent.click(getByTestId('attachment-remove'));
+		await userEvent.click(sendButton);
+
+		await userEvent.click(textbox);
+		await userEvent.keyboard('{Enter}');
+		expect(emitted().submit).toBeUndefined();
+
+		const sprite = document.body.querySelector('img[role="presentation"]')!;
+		await fireEvent.error(sprite);
+		await waitFor(() => expect(document.querySelector('.n8n-attachment')).not.toBeInTheDocument());
+		await userEvent.click(sendButton);
+		await waitFor(() => expect(emitted().submit).toHaveLength(1));
 	});
 });
 
@@ -463,13 +594,13 @@ describe('InstanceAiInput — mention attachments', () => {
 		);
 	});
 
-	it('inserts quoted text and stages the workflow as a draft attachment', async () => {
+	it('stages the workflow as a draft attachment without inserting text', async () => {
 		const { getByRole, getByTestId, emitted } = renderMentionsInput();
 		const textbox = getByRole('textbox');
 		await userEvent.type(textbox, 'Compare ');
 		await userEvent.click(getByTestId('mention-picker-select'));
 
-		expect(textbox).toHaveValue('Compare "Orders"');
+		expect(textbox).toHaveValue('Compare ');
 		expect(getByTestId('attachment-preview-resource')).toHaveTextContent('Orders');
 		// The pick stays a draft: the workflow reaches the thread with the submit only.
 		expect(emitted().submit).toBeUndefined();
@@ -548,7 +679,7 @@ describe('InstanceAiInput — mention attachments', () => {
 		});
 		await userEvent.click(getByTestId('mention-picker-select-node'));
 
-		expect(getByRole('textbox')).toHaveValue('"Validate"');
+		expect(getByRole('textbox')).toHaveValue('');
 		await userEvent.click(getByTestId('instance-ai-send-button'));
 		const submit = emitted().submit?.[0] as [string, unknown[]];
 		expect(submit[1]).toEqual([

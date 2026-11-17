@@ -11,6 +11,10 @@ import { jsonParse } from 'n8n-workflow';
 import type { InjectionKey } from 'vue';
 import { z } from 'zod';
 
+import type { AssistantMentionCounts } from '@/features/ai/assistant-at-mentions/assistantAtMentions.types';
+
+import type { InstanceAiMessageAuthorship } from '../prefills';
+
 /** Id of the n8n Assistant system agent on the agents runtime. */
 export const ASSISTANT_AGENT_ID = 'assistant';
 
@@ -88,6 +92,21 @@ export interface AssistantAgentThreadLaunch {
 	source: InstanceAiThreadSource;
 	origin: InstanceAiThreadOrigin;
 	templateId?: string;
+	/** Hand-off context. Only the launch telemetry reads it. */
+	sourceContext?: Record<string, unknown>;
+}
+
+/** Link a thread that starts from a self-healing result to that result. */
+export function selfHealingLaunchTelemetry(launch: {
+	source: InstanceAiThreadSource;
+	sourceContext?: Record<string, unknown>;
+}) {
+	const { resultId, outcome } = launch.sourceContext ?? {};
+	if (launch.source !== 'self_healing_result' || typeof resultId !== 'string') return {};
+	return {
+		result_id: resultId,
+		...(typeof outcome === 'string' ? { result_kind: outcome } : {}),
+	};
 }
 
 const launchKey = (threadId: string) => `n8n-assistant-agent-launch:${threadId}`;
@@ -112,6 +131,7 @@ export function stashAssistantAgentLaunch(threadId: string, launch: AssistantAge
 		source: launch.source,
 		origin: launch.origin,
 		...(launch.templateId ? { template_id: launch.templateId } : {}),
+		...selfHealingLaunchTelemetry(launch),
 		runtime: 'agents',
 	});
 }
@@ -173,6 +193,9 @@ export interface PendingAssistantAgentMessage {
 	files: File[];
 	/** Workflow and other resource references. They go to the agent in the client context. */
 	references: InstanceAiAttachment[];
+	/** Who wrote the text, for the message telemetry of the thread view. */
+	authorship: InstanceAiMessageAuthorship;
+	mentionCounts?: AssistantMentionCounts;
 }
 
 let pendingMessage: PendingAssistantAgentMessage | undefined;

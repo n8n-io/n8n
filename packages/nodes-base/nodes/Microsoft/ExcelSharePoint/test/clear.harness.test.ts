@@ -18,7 +18,7 @@ const credentials = {
 
 const shareLookupMock = {
 	method: 'get' as const,
-	path: `/v1.0/shares/${shareId}/driveItem?%24select=id%2CparentReference`,
+	path: `/v1.0/shares/${shareId}/driveItem?%24select=id,parentReference`,
 	statusCode: 200,
 	responseBody: {
 		id: 'ITEM123',
@@ -40,7 +40,7 @@ describe('Microsoft Excel (SharePoint) Node — Sheet: Clear (whole sheet)', () 
 				shareLookupMock,
 				{
 					method: 'post',
-					path: '/v1.0/sites/contoso.sharepoint.com%2Cg1%2Cg2/drives/b!drive1/items/ITEM123/workbook/worksheets/Sheet1/range/clear',
+					path: '/v1.0/sites/contoso.sharepoint.com,g1,g2/drives/b!drive1/items/ITEM123/workbook/worksheets/Sheet1/range/clear',
 					statusCode: 200,
 					requestBody: { applyTo: 'All' },
 					responseBody: {},
@@ -61,7 +61,7 @@ describe('Microsoft Excel (SharePoint) Node — Sheet: Clear (with range)', () =
 				shareLookupMock,
 				{
 					method: 'post',
-					path: `/v1.0/sites/contoso.sharepoint.com%2Cg1%2Cg2/drives/b!drive1/items/ITEM123/workbook/worksheets/Sheet1/range(address='${encodeURIComponent('A1:B2')}')/clear`,
+					path: "/v1.0/sites/contoso.sharepoint.com,g1,g2/drives/b!drive1/items/ITEM123/workbook/worksheets/Sheet1/range(address='A1:B2')/clear",
 					statusCode: 200,
 					requestBody: { applyTo: 'Contents' },
 					responseBody: {},

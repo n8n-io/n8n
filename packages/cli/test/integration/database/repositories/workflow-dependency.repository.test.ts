@@ -372,6 +372,68 @@ describe('WorkflowDependencyRepository', () => {
 		});
 	});
 
+	describe('findWorkflowCalls()', () => {
+		it('should return the workflow calls of the given callers only', async () => {
+			const caller = await createWorkflow({ versionId: 'v1', nodes: [] });
+			const other = await createWorkflow({ versionId: 'v1', nodes: [] });
+			const add = async (workflowId: string, dependencyKey: string) => {
+				const dependencies = new WorkflowDependencies(workflowId, 1, 'current-version');
+				dependencies.add({ dependencyType: 'workflowCall', dependencyKey, dependencyInfo: null });
+				dependencies.add({
+					dependencyType: 'credentialId',
+					dependencyKey: 'cred',
+					dependencyInfo: null,
+				});
+				await workflowDependencyRepository.updateDependenciesForWorkflow(workflowId, dependencies);
+			};
+			await add(caller.id, 'child');
+			await add(other.id, 'other-child');
+
+			expect(await workflowDependencyRepository.findWorkflowCalls([caller.id])).toEqual([
+				{ callerWorkflowId: caller.id, calledWorkflowId: 'child' },
+			]);
+		});
+	});
+
+	describe('isCalledBy()', () => {
+		it('should match workflow calls of the given published versions only', async () => {
+			const workflow = await createWorkflow({ versionId: 'v1', nodes: [] });
+			const add = async (dependencyKey: string, publishedVersionId: string | null) => {
+				const dependencies = new WorkflowDependencies(workflow.id, 1, publishedVersionId);
+				dependencies.add({ dependencyType: 'workflowCall', dependencyKey, dependencyInfo: null });
+				await workflowDependencyRepository.updateDependenciesForWorkflow(workflow.id, dependencies);
+			};
+			await add('old-child', 'old-version');
+			await add('draft-child', null);
+			await add('child', 'current-version');
+
+			expect(await workflowDependencyRepository.isCalledBy('child', ['current-version'])).toBe(
+				true,
+			);
+			expect(await workflowDependencyRepository.isCalledBy('old-child', ['current-version'])).toBe(
+				false,
+			);
+			expect(
+				await workflowDependencyRepository.isCalledBy('draft-child', ['current-version']),
+			).toBe(false);
+		});
+
+		it('should skip other dependency types', async () => {
+			const workflow = await createWorkflow({ versionId: 'v1', nodes: [] });
+			const dependencies = new WorkflowDependencies(workflow.id, 1, 'current-version');
+			dependencies.add({
+				dependencyType: 'credentialId',
+				dependencyKey: 'cred',
+				dependencyInfo: null,
+			});
+			await workflowDependencyRepository.updateDependenciesForWorkflow(workflow.id, dependencies);
+
+			expect(await workflowDependencyRepository.isCalledBy('cred', ['current-version'])).toBe(
+				false,
+			);
+		});
+	});
+
 	describe('removePublishedDependenciesForUnpublishedWorkflow()', () => {
 		it('should remove the published rows of an unpublished workflow and keep its draft rows', async () => {
 			const workflow = await createWorkflow({ versionId: 'v1', nodes: [] });

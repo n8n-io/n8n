@@ -106,6 +106,14 @@ export const INSTANCE_TELEMETRY = defineTelemetryEvents({
 			smtp_set_up: z.boolean(),
 			ldap_allowed: z.boolean(),
 			saml_enabled: z.boolean(),
+			public_api_disabled: z
+				.boolean()
+				.describe('The operator switched the Public API off with N8N_PUBLIC_API_DISABLED'),
+			public_api_swagger_ui_disabled: z
+				.boolean()
+				.describe(
+					'The operator switched the Swagger UI of the Public API off with N8N_PUBLIC_API_SWAGGERUI_DISABLED',
+				),
 			license_plan_name: z.string(),
 			license_tenant_id: z.number(),
 			binary_data_s3: z

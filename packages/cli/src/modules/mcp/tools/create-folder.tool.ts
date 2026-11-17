@@ -1,11 +1,11 @@
 import { folderIdSchema, folderNameSchema } from '@n8n/api-types';
+import type { TelemetryProxy } from '@n8n/backend-services';
 import type { User } from '@n8n/db';
 import { PROJECT_ROOT } from 'n8n-workflow';
 import z from 'zod';
 
 import type { FolderService } from '@/services/folder.service';
 import type { ProjectService } from '@/services/project.service.ee';
-import type { Telemetry } from '@/telemetry';
 
 import { USER_CALLED_MCP_TOOL_EVENT } from '../mcp.constants';
 import type { ToolDefinition, UserCalledMCPToolEventPayload } from '../mcp.types';
@@ -30,7 +30,7 @@ export const createCreateFolderTool = (
 	user: User,
 	folderService: FolderService,
 	projectService: ProjectService,
-	telemetry: Telemetry,
+	telemetry: TelemetryProxy,
 ): ToolDefinition<typeof inputSchema> => ({
 	name: 'create_folder',
 	config: {

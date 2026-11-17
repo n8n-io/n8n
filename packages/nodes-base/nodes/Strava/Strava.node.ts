@@ -6,7 +6,7 @@ import type {
 	INodeType,
 	INodeTypeDescription,
 } from 'n8n-workflow';
-import { NodeConnectionTypes } from 'n8n-workflow';
+import { NodeConnectionTypes, requestPath } from 'n8n-workflow';
 
 import { activityFields, activityOperations } from './ActivityDescription';
 import { stravaApiRequest, stravaApiRequestAllItems } from './GenericFunctions';
@@ -97,13 +97,22 @@ export class Strava implements INodeType {
 
 						Object.assign(body, additionalFields);
 
-						responseData = await stravaApiRequest.call(this, 'POST', '/activities', body);
+						responseData = await stravaApiRequest.call(
+							this,
+							'POST',
+							requestPath`/activities`,
+							body,
+						);
 					}
 					//https://developers.strava.com/docs/reference/#api-Activities-getActivityById
 					if (operation === 'get') {
 						const activityId = this.getNodeParameter('activityId', i) as string;
 
-						responseData = await stravaApiRequest.call(this, 'GET', `/activities/${activityId}`);
+						responseData = await stravaApiRequest.call(
+							this,
+							'GET',
+							requestPath`/activities/${activityId}`,
+						);
 					}
 					if (['getLaps', 'getZones', 'getKudos', 'getComments'].includes(operation)) {
 						const path: IDataObject = {
@@ -120,7 +129,7 @@ export class Strava implements INodeType {
 						responseData = await stravaApiRequest.call(
 							this,
 							'GET',
-							`/activities/${activityId}/${path[operation]}`,
+							requestPath`/activities/${activityId}/${path[operation]}`,
 						);
 
 						if (!returnAll) {
@@ -138,7 +147,7 @@ export class Strava implements INodeType {
 						responseData = await stravaApiRequest.call(
 							this,
 							'GET',
-							`/activities/${activityId}/streams`,
+							requestPath`/activities/${activityId}/streams`,
 							{},
 							qs,
 						);
@@ -151,14 +160,20 @@ export class Strava implements INodeType {
 							responseData = await stravaApiRequestAllItems.call(
 								this,
 								'GET',
-								'/activities',
+								requestPath`/activities`,
 								{},
 								qs,
 							);
 						} else {
 							qs.per_page = this.getNodeParameter('limit', i);
 
-							responseData = await stravaApiRequest.call(this, 'GET', '/activities', {}, qs);
+							responseData = await stravaApiRequest.call(
+								this,
+								'GET',
+								requestPath`/activities`,
+								{},
+								qs,
+							);
 						}
 					}
 					//https://developers.strava.com/docs/reference/#api-Activities-updateActivityById
@@ -174,7 +189,7 @@ export class Strava implements INodeType {
 						responseData = await stravaApiRequest.call(
 							this,
 							'PUT',
-							`/activities/${activityId}`,
+							requestPath`/activities/${activityId}`,
 							body,
 						);
 					}

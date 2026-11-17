@@ -54,6 +54,8 @@ services:
       # Engine config
       - N8N_ENGINE_DATABASE_URL=postgres://postgres:password@postgres:5432/n8n_engine
       - N8N_ENGINE_AUTH_SECRET=benchmark-engine-v2-shared-auth-secret
+      # Plain HTTP between the planes: this setup has no TLS certificates
+      - N8N_ENGINE_TLS_INSECURE_ALLOW_PLAIN_HTTP=true
       - N8N_ENGINE_HOST=0.0.0.0
       - N8N_ENGINE_PORT=3000
       - N8N_ENGINE_CONTROL_PLANE_BASE_URL=http://n8n:3001
@@ -87,6 +89,8 @@ services:
       # Engine config
       - N8N_ENGINE_DATABASE_URL=postgres://postgres:password@postgres:5432/n8n_engine
       - N8N_ENGINE_AUTH_SECRET=benchmark-engine-v2-shared-auth-secret
+      # Plain HTTP between the planes: this setup has no TLS certificates
+      - N8N_ENGINE_TLS_INSECURE_ALLOW_PLAIN_HTTP=true
       - N8N_ENGINE_HOST=0.0.0.0
       - N8N_ENGINE_PORT=3000
       - N8N_ENGINE_CONTROL_PLANE_BASE_URL=http://n8n:3001
@@ -140,6 +144,8 @@ services:
       - N8N_ENGINE_MODE=remote
       - N8N_ENGINE_BASE_URL=http://n8n_engine_lb:3000
       - N8N_ENGINE_AUTH_SECRET=benchmark-engine-v2-shared-auth-secret
+      # Plain HTTP between the planes: this setup has no TLS certificates
+      - N8N_ENGINE_TLS_INSECURE_ALLOW_PLAIN_HTTP=true
       - N8N_ENGINE_CONTROL_PLANE_HOST=0.0.0.0
       - N8N_ENGINE_CONTROL_PLANE_PORT=3001
     ports:

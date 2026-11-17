@@ -1,4 +1,5 @@
 import type { ILoadOptionsFunctions, INodePropertyOptions } from 'n8n-workflow';
+import { requestPath } from 'n8n-workflow';
 
 import type { IRow } from '../actions/Interfaces';
 import {
@@ -16,7 +17,7 @@ export async function getTableNames(this: ILoadOptionsFunctions): Promise<INodeP
 		this,
 		{},
 		'GET',
-		'/api-gateway/api/v2/dtables/{{dtable_uuid}}/metadata',
+		(dtableUuid) => requestPath`/api-gateway/api/v2/dtables/${dtableUuid}/metadata`,
 	);
 	for (const table of tables) {
 		returnData.push({
@@ -37,7 +38,7 @@ export async function getTableNameAndId(
 		this,
 		{},
 		'GET',
-		'/api-gateway/api/v2/dtables/{{dtable_uuid}}/metadata',
+		(dtableUuid) => requestPath`/api-gateway/api/v2/dtables/${dtableUuid}/metadata`,
 	);
 	for (const table of tables) {
 		returnData.push({
@@ -58,7 +59,7 @@ export async function getSearchableColumns(
 			this,
 			{},
 			'GET',
-			'/api-gateway/api/v2/dtables/{{dtable_uuid}}/columns',
+			(dtableUuid) => requestPath`/api-gateway/api/v2/dtables/${dtableUuid}/columns`,
 			{},
 			{ table_name: tableName },
 		);
@@ -95,7 +96,7 @@ export async function getLinkColumns(this: ILoadOptionsFunctions): Promise<INode
 			this,
 			{},
 			'GET',
-			'/api-gateway/api/v2/dtables/{{dtable_uuid}}/columns',
+			(dtableUuid) => requestPath`/api-gateway/api/v2/dtables/${dtableUuid}/columns`,
 			{},
 			{ table_name: tableName },
 		);
@@ -129,7 +130,7 @@ export async function getLinkColumnsWithColumnKey(
 			this,
 			{},
 			'GET',
-			'/api-gateway/api/v2/dtables/{{dtable_uuid}}/columns',
+			(dtableUuid) => requestPath`/api-gateway/api/v2/dtables/${dtableUuid}/columns`,
 			{},
 			{ table_name: tableName },
 		);
@@ -159,7 +160,7 @@ export async function getAssetColumns(
 			this,
 			{},
 			'GET',
-			'/api-gateway/api/v2/dtables/{{dtable_uuid}}/columns',
+			(dtableUuid) => requestPath`/api-gateway/api/v2/dtables/${dtableUuid}/columns`,
 			{},
 			{ table_name: tableName },
 		);
@@ -186,7 +187,7 @@ export async function getSignatureColumns(
 			this,
 			{},
 			'GET',
-			'/api-gateway/api/v2/dtables/{{dtable_uuid}}/columns',
+			(dtableUuid) => requestPath`/api-gateway/api/v2/dtables/${dtableUuid}/columns`,
 			{},
 			{ table_name: tableName },
 		);
@@ -240,7 +241,7 @@ export async function getRowIds(this: ILoadOptionsFunctions): Promise<INodePrope
 			this,
 			{},
 			'POST',
-			'/api-gateway/api/v2/dtables/{{dtable_uuid}}/sql',
+			(dtableUuid) => requestPath`/api-gateway/api/v2/dtables/${dtableUuid}/sql`,
 			{
 				sql: `SELECT * FROM \`${escapeSqlIdentifier(tableName)}\` ${lockQuery} LIMIT 1000`,
 				convert_keys: false,
@@ -266,7 +267,7 @@ export async function getTableViews(this: ILoadOptionsFunctions): Promise<INodeP
 			this,
 			{},
 			'GET',
-			'/api-gateway/api/v2/dtables/{{dtable_uuid}}/views',
+			(dtableUuid) => requestPath`/api-gateway/api/v2/dtables/${dtableUuid}/views`,
 			{},
 			{ table_name: tableName },
 		);

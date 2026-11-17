@@ -11,6 +11,7 @@ import type {
 } from 'n8n-workflow';
 
 import { getEvalEgressProxy } from '@/execution-engine/eval-mock-helpers';
+import { addTraceHeaders } from './trace-headers';
 
 /**
  * @deprecated This is only used by legacy request helpers, that are also deprecated
@@ -27,6 +28,8 @@ export async function proxyRequestToAxios(
 	// Eval simulated-services runs: every request of the run reaches the sim server.
 	const evalEgressProxy = getEvalEgressProxy(additionalData);
 	if (evalEgressProxy) configObject.proxy = evalEgressProxy;
+
+	if (additionalData && node) addTraceHeaders(configObject, additionalData, node);
 
 	const client = Container.get(OutboundHttp).requests();
 

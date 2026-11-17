@@ -6,6 +6,8 @@ description: |-
   **Beta** — breaking changes may still occur without major version bump.
 
   Compares a team project on this instance with the branch of its promotion environment for that direction. For `promote` the preview is what a promotion sends to the branch, and the key needs the promotions:promote scope. For `apply` the preview is what applying the branch changes on this instance, and the key needs the promotions:apply scope. `resources` lists the changed projects, folders, workflows, credentials, data tables, variables and tags, each with its `key`, `type`, `id`, `change` and the `parentKey` of the project or folder that holds it. It also lists unchanged resources that give context, such as parent folders. Select the workflows and folders where `selectable` is true by `workflowIds` and `folderIds`; the project itself is always included. `dependencies` links each workflow to the resources it uses; selecting the workflow sends a dependency when `included` is true. A deleted promote workflow with `movedToProject`, or an added one with `movedFromProject`, moved between projects; promoting it is refused until it moves back. `blocker` is set when an open review holds the changes of a Promote. For `apply`, `check` lists what blocks the Apply, and `revision` identifies this preview: send it as expectedPreviewRevision. `commitSha` is the commit the preview was read from. Requires the environment to be connected first.
+
+  Requires one of these API key scopes: `promotions:promote`, `promotions:apply`.
 x-required-scope: promotions:promote,promotions:apply
 parameters:
   - schema:

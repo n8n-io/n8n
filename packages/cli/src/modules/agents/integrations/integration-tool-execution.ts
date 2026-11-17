@@ -236,6 +236,23 @@ export async function executeActionToolOperation(params: {
 		};
 	}
 
+	// Refuse before the approval gate, so nobody approves a send that cannot go out.
+	const recipientRefusal = actionExecutor.checkRecipient?.({
+		descriptor,
+		action: operation.action,
+		input: actionInput,
+		resourceId: persistence?.resourceId,
+		currentMessageContext:
+			params.currentMessageContext ??
+			(persistence ? getOptionalCurrentContext({ descriptor, persistence }) : undefined),
+	});
+	if (recipientRefusal) {
+		return {
+			ok: false,
+			error: { code: INTEGRATION_ERROR_CODES.ACTION_DECLINED, message: recipientRefusal },
+		};
+	}
+
 	const needsApproval =
 		operation.action !== approvedAction &&
 		actionNeedsApproval(descriptor.approval, operation.action) &&
@@ -293,6 +310,7 @@ export async function executeActionToolOperation(params: {
 		runId: ctx.runId,
 		toolCallId: ctx.toolCallId,
 		currentMessageContext,
+		resourceId: persistence?.resourceId,
 		...(projectId && persistence
 			? { fileScope: { projectId, threadId: persistence.threadId } }
 			: {}),
@@ -357,6 +375,8 @@ export async function executeActionToolOperation(params: {
 			action: operation.action,
 			integrationConnectionId: descriptor.integrationConnectionId,
 			messageContext: actionResult.messageContext,
+			// The resume returns only the user's answer. The chat reads the files of the card from here.
+			...(actionResult.files !== undefined ? { files: actionResult.files } : {}),
 		},
 		// An approval resume leaves APPROVAL_RESUME_SCHEMA on this tool call. Name
 		// the action-tool schema here so a follow-up card is not still expecting
@@ -432,6 +452,14 @@ function withPreviousSubject(
 		...(!context.subject && previousContext.subject ? { subject: previousContext.subject } : {}),
 		...(!context.agentUserId && previousContext.agentUserId
 			? { agentUserId: previousContext.agentUserId }
+			: {}),
+		// A reply in the same thread keeps the user who started the run. A send to
+		// another thread does not, because that thread belongs to another user.
+		...(!context.interactingUserId &&
+		previousContext.interactingUserId &&
+		context.target.threadId !== undefined &&
+		context.target.threadId === previousContext.target.threadId
+			? { interactingUserId: previousContext.interactingUserId }
 			: {}),
 		...(replyExpectation ? { replyExpectation } : {}),
 		...(replyTarget ? { replyTarget } : {}),

@@ -1,4 +1,5 @@
 import type { INodeProperties, IExecuteFunctions, IDataObject } from 'n8n-workflow';
+import { requestPath } from 'n8n-workflow';
 
 import { updateDisplayOptions } from '../../../../../utils/utilities';
 import { splunkApiJsonRequest } from '../../transport';
@@ -20,7 +21,7 @@ export async function execute(
 ): Promise<IDataObject | IDataObject[]> {
 	// https://docs.splunk.com/Documentation/Splunk/latest/RESTREF/RESTsearch#alerts.2Ffired_alerts
 
-	const endpoint = '/services/alerts/fired_alerts';
+	const endpoint = requestPath`/services/alerts/fired_alerts`;
 	const returnData = await splunkApiJsonRequest.call(this, 'GET', endpoint);
 
 	return returnData;

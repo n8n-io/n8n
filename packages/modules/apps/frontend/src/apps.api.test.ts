@@ -164,7 +164,7 @@ describe('apps.api', () => {
 			context,
 			'GET',
 			'/projects/project-1/agents/v2',
-			{ take: 100, sortBy: 'name:asc', filter: { query: sanitizedLikeQuery } },
+			{ limit: 100, sortBy: 'name:asc', filter: { query: sanitizedLikeQuery } },
 		);
 	});
 
@@ -198,7 +198,7 @@ describe('apps.api', () => {
 			context,
 			'GET',
 			'/projects/project-1/agents/v2',
-			{ take: 100, sortBy: 'name:asc' },
+			{ limit: 100, sortBy: 'name:asc' },
 		);
 	});
 

@@ -6,6 +6,7 @@ import type {
 	ILoadOptionsFunctions,
 	IWebhookFunctions,
 } from 'n8n-workflow';
+import { requestPath } from 'n8n-workflow';
 import type { Mock } from 'vitest';
 import { mock } from 'vitest-mock-extended';
 
@@ -73,7 +74,7 @@ describe('CalTriggerV2', () => {
 
 		expect(calApiRequestV2).toHaveBeenCalledWith(
 			'GET',
-			'/event-types',
+			requestPath`/event-types`,
 			{},
 			{},
 			{ headers: { 'cal-api-version': '2024-06-14' } },
@@ -90,7 +91,7 @@ describe('CalTriggerV2', () => {
 		const result = await trigger.webhookMethods.default.create.call(hookFunctions);
 
 		expect(result).toBe(true);
-		expect(calApiRequestV2).toHaveBeenCalledWith('POST', '/webhooks', {
+		expect(calApiRequestV2).toHaveBeenCalledWith('POST', requestPath`/webhooks`, {
 			subscriberUrl: webhookUrl,
 			triggers: events,
 			active: true,
@@ -106,7 +107,7 @@ describe('CalTriggerV2', () => {
 		const result = await trigger.webhookMethods.default.create.call(hookFunctions);
 
 		expect(result).toBe(true);
-		expect(calApiRequestV2).toHaveBeenCalledWith('POST', '/event-types/42/webhooks', {
+		expect(calApiRequestV2).toHaveBeenCalledWith('POST', requestPath`/event-types/42/webhooks`, {
 			subscriberUrl: webhookUrl,
 			triggers: events,
 			active: true,
@@ -137,7 +138,12 @@ describe('CalTriggerV2', () => {
 		const result = await trigger.webhookMethods.default.checkExists.call(hookFunctions);
 
 		expect(result).toBe(true);
-		expect(calApiRequestV2).toHaveBeenCalledWith('GET', '/webhooks', {}, { take: 250, skip: 0 });
+		expect(calApiRequestV2).toHaveBeenCalledWith(
+			'GET',
+			requestPath`/webhooks`,
+			{},
+			{ take: 250, skip: 0 },
+		);
 		expect(webhookData).toEqual({ webhookId: 123, webhookSecret });
 	});
 
@@ -157,7 +163,7 @@ describe('CalTriggerV2', () => {
 		expect(calApiRequestV2).toHaveBeenCalledTimes(10);
 		expect(calApiRequestV2).toHaveBeenLastCalledWith(
 			'GET',
-			'/webhooks',
+			requestPath`/webhooks`,
 			{},
 			{ take: 250, skip: 2250 },
 		);
@@ -172,7 +178,10 @@ describe('CalTriggerV2', () => {
 		const result = await trigger.webhookMethods.default.delete.call(hookFunctions);
 
 		expect(result).toBe(true);
-		expect(calApiRequestV2).toHaveBeenCalledWith('DELETE', '/event-types/42/webhooks/456');
+		expect(calApiRequestV2).toHaveBeenCalledWith(
+			'DELETE',
+			requestPath`/event-types/42/webhooks/456`,
+		);
 		expect(webhookData).toEqual({});
 	});
 
