@@ -1,0 +1,19 @@
+packages/frontend/editor-ui/src/features/ai/assistant/assistant.types.ts
+  s_95bfe39bb3e379::t_6d880c153fd8f2 162
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "643d84edadb35267f887d9900c85b4dbe6793e5b",
+  "prompts": {},
+  "sessions": {
+    "s_95bfe39bb3e379": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ef9b81f8-ba5a-4f3b-b102-ea87734cbdb4",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "r00gm <raul00gm@gmail.com>"
+    }
+  }
+}

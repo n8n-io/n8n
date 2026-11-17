@@ -1,0 +1,21 @@
+packages/cli/src/workflows/workflow-execution.service.ts
+  s_06fc4a3eebd292::t_85881223c4c91b 64-65
+packages/cli/src/public-api/v1/handlers/workflows/spec/paths/runWorkflow.generated.yml
+  s_06fc4a3eebd292::t_e6510c03df0b6a 78
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "42d086162d2f205d722b03b0a674bc2d80531114",
+  "prompts": {},
+  "sessions": {
+    "s_06fc4a3eebd292": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "4fbd68ab-5524-436f-933c-230ffa062c5b",
+        "model": "claude-sonnet-5-5"
+      },
+      "human_author": "Sam Wooler <swooler592@gmail.com>"
+    }
+  }
+}
