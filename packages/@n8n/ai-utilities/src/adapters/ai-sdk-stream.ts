@@ -67,6 +67,9 @@ export class AiSdkStreamConverter {
 	) {}
 
 	convert(chunk: StreamChunk): LanguageModelV4StreamPart[] {
+		// The AI SDK expects one finish at the end. Some APIs send the usage in a
+		// separate last chunk, so a chat model can send more after its finish.
+		if (this.finished) return [];
 		const providerMetadata = toProviderMetadata(this.provider, chunk.providerMetadata);
 
 		switch (chunk.type) {
@@ -108,6 +111,12 @@ export class AiSdkStreamConverter {
 	/** Closes what is still open when the chat model stream ends. */
 	end(): LanguageModelV4StreamPart[] {
 		return this.finished ? [] : this.finish('other', undefined, undefined);
+	}
+
+	/** Sends an error that stopped the stream, then closes what is still open. */
+	fail(error: unknown): LanguageModelV4StreamPart[] {
+		this.failed = true;
+		return [{ type: 'error', error }, ...this.end()];
 	}
 
 	private openParts(kind: TextKind): Map<string, string> {

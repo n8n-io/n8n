@@ -375,6 +375,21 @@ describe('AiSdkLanguageModelAdapter', () => {
 			]);
 		});
 
+		it('binds no tools when the tool choice is none', async () => {
+			const model = createFakeChatModel();
+			const adapter = new AiSdkLanguageModelAdapter(model);
+
+			const result = await adapter.doGenerate(
+				callOptions({
+					tools: [{ type: 'function', name: 'lookup', inputSchema: { type: 'object' } }],
+					toolChoice: { type: 'none' },
+				}),
+			);
+
+			expect(model.calls[0].tools, 'the model cannot call a tool').toEqual([]);
+			expect(result.warnings).toEqual([]);
+		});
+
 		it('uses structured output for a json response format when the model offers it', async () => {
 			const model = createFakeChatModel({ structuredOutput: true });
 			const adapter = new AiSdkLanguageModelAdapter(model);
@@ -644,11 +659,14 @@ describe('AiSdkLanguageModelAdapter', () => {
 		it('opens with stream-start and response-metadata', async () => {
 			const adapter = new AiSdkLanguageModelAdapter(createFakeChatModel());
 
-			const { stream } = await adapter.doStream(callOptions({ toolChoice: { type: 'none' } }));
+			const { stream } = await adapter.doStream(callOptions({ toolChoice: { type: 'required' } }));
 			const parts = await readAll(stream);
 
 			expect(parts.slice(0, 2)).toEqual([
-				{ type: 'stream-start', warnings: [{ type: 'unsupported', feature: 'toolChoice none' }] },
+				{
+					type: 'stream-start',
+					warnings: [{ type: 'unsupported', feature: 'toolChoice required' }],
+				},
 				{ type: 'response-metadata', modelId: 'fake-model' },
 			]);
 		});
@@ -813,15 +831,18 @@ describe('AiSdkLanguageModelAdapter', () => {
 
 			const { stream } = await adapter.doStream(callOptions());
 			const parts = (await readAll(stream)).slice(2);
-			const last = parts.at(-1);
+			const error = parts.find((part) => part.type === 'error');
 
 			expect(parts.map((part) => part.type)).toEqual([
 				'tool-input-start',
 				'tool-input-delta',
 				'error',
+				'tool-input-end',
+				'finish',
 			]);
-			expect(last?.type === 'error' && last.error).toBeInstanceOf(UserError);
-			expect(last).toMatchObject({
+			expect(parts.at(-1)).toMatchObject({ finishReason: { unified: 'error' } });
+			expect(error?.type === 'error' && error.error).toBeInstanceOf(UserError);
+			expect(error).toMatchObject({
 				error: {
 					message: 'The chat model "fake/fake-model" streamed a tool call without an id',
 				},
@@ -1191,6 +1212,33 @@ describe('AiSdkLanguageModelAdapter', () => {
 			]);
 		});
 
+		it('ignores chunks after the finish', async () => {
+			const adapter = new AiSdkLanguageModelAdapter(
+				createFakeChatModel({
+					chunks: [
+						{ type: 'text-delta', delta: 'Hi' },
+						{ type: 'finish', finishReason: 'stop' },
+						{ type: 'text-delta', delta: ' late' },
+						{
+							type: 'finish',
+							finishReason: 'stop',
+							usage: { promptTokens: 1, completionTokens: 1, totalTokens: 2 },
+						},
+					],
+				}),
+			);
+
+			const { stream } = await adapter.doStream(callOptions());
+			const parts = (await readAll(stream)).slice(2);
+
+			expect(parts.map((part) => part.type)).toEqual([
+				'text-start',
+				'text-delta',
+				'text-end',
+				'finish',
+			]);
+		});
+
 		it('forwards error chunks', async () => {
 			const error = new Error('bad');
 			const adapter = new AiSdkLanguageModelAdapter(
@@ -1209,7 +1257,7 @@ describe('AiSdkLanguageModelAdapter', () => {
 			expect(parts[1]).toMatchObject({ type: 'finish', finishReason: { unified: 'error' } });
 		});
 
-		it('turns a thrown stream error into an error part and ends the stream', async () => {
+		it('turns a thrown stream error into an error part and closes the open parts', async () => {
 			const error = new Error('network');
 			const model = createFakeChatModel();
 			model.stream = async function* () {
@@ -1221,11 +1269,13 @@ describe('AiSdkLanguageModelAdapter', () => {
 			const { stream } = await adapter.doStream(callOptions());
 			const parts = (await readAll(stream)).slice(2);
 
-			expect(parts).toEqual([
+			expect(parts.slice(0, -1)).toEqual([
 				{ type: 'text-start', id: 'text' },
 				{ type: 'text-delta', id: 'text', delta: 'Hel' },
 				{ type: 'error', error },
+				{ type: 'text-end', id: 'text' },
 			]);
+			expect(parts.at(-1)).toMatchObject({ type: 'finish', finishReason: { unified: 'error' } });
 		});
 
 		it('handles a failing read of a call that was aborted before the stream started', async () => {
@@ -1247,7 +1297,8 @@ describe('AiSdkLanguageModelAdapter', () => {
 			await new Promise((resolve) => setImmediate(resolve));
 			process.off('unhandledRejection', onUnhandled);
 
-			expect(parts).toEqual([{ type: 'error', error: reason }]);
+			expect(parts.map((part) => part.type)).toEqual(['error', 'finish']);
+			expect(parts[0]).toEqual({ type: 'error', error: reason });
 			expect(unhandled).toEqual([]);
 		});
 
@@ -1302,6 +1353,13 @@ describe('AiSdkLanguageModelAdapter', () => {
 			await expect(pending).resolves.toEqual({
 				done: false,
 				value: { type: 'error', error: new Error('stop') },
+			});
+			await expect(reader.read()).resolves.toEqual({
+				done: false,
+				value: { type: 'text-end', id: 'text' },
+			});
+			await expect(reader.read()).resolves.toMatchObject({
+				value: { type: 'finish', finishReason: { unified: 'error' } },
 			});
 			await expect(reader.read()).resolves.toEqual({ done: true, value: undefined });
 		});
