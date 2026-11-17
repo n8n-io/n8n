@@ -20,7 +20,7 @@ export class InMemoryBinaryDataRule implements IBreakingChangeInstanceRule {
 			version: 'v3',
 			title: 'In-memory binary data storage is removed',
 			description:
-				'The in-memory binary data storage mode (`default`) is removed. Instances using it must switch to `filesystem`, `s3`, or `database`.',
+				'The in-memory binary data storage mode (`default`) is removed. Before you update, set N8N_DEFAULT_BINARY_DATA_MODE to `filesystem`, `s3` or `database`.',
 			category: BreakingChangeCategory.infrastructure,
 			impact: 'behaviorChanges',
 		};
@@ -43,9 +43,19 @@ export class InMemoryBinaryDataRule implements IBreakingChangeInstanceRule {
 			],
 			recommendations: [
 				{
-					action: 'Switch the binary data mode',
+					action: 'Switch to `database` mode',
 					description:
-						'Set N8N_DEFAULT_BINARY_DATA_MODE to `filesystem`, `s3`, or `database` before updating, and ensure the chosen storage has adequate capacity.',
+						'Set N8N_DEFAULT_BINARY_DATA_MODE=database before updating. A separate engine process cannot use this mode.',
+				},
+				{
+					action: 'Switch to `filesystem` mode',
+					description:
+						'Set N8N_DEFAULT_BINARY_DATA_MODE=filesystem before updating, and make sure the disk has enough capacity. In queue mode or multi-main mode, every n8n process must read and write the same shared directory.',
+				},
+				{
+					action: 'Switch to `s3` mode',
+					description:
+						'Set N8N_DEFAULT_BINARY_DATA_MODE=s3 before updating. This mode needs a license that includes it and an S3 bucket configuration.',
 				},
 			],
 		};
