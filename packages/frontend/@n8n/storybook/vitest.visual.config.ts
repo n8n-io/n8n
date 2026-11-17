@@ -16,6 +16,7 @@ import { storybookTest } from '@storybook/addon-vitest/vitest-plugin';
 import { playwright } from '@vitest/browser-playwright';
 import { readdirSync, readFileSync } from 'node:fs';
 import path from 'node:path';
+import { searchForWorkspaceRoot } from 'vite';
 import { defineConfig, mergeConfig } from 'vitest/config';
 import type { ProvidedContext } from 'vitest';
 
@@ -26,6 +27,15 @@ const THEMES: Array<ProvidedContext['visualTheme']> = ['light', 'dark'];
 const configDir = path.resolve(__dirname, '.storybook');
 const designSystemSrc = path.resolve(__dirname, '../design-system/src');
 const diffDir = path.resolve(__dirname, '.vitest/visual');
+
+/**
+ * Reference images stay out of Git. A local run keeps them under `.vitest/`,
+ * and CI sets `N8N_VISUAL_REFERENCE_DIR` to the directory of its base render.
+ */
+const referenceDir = process.env.N8N_VISUAL_REFERENCE_DIR || path.join(diffDir, 'references');
+if (!path.isAbsolute(referenceDir)) {
+	throw new Error(`N8N_VISUAL_REFERENCE_DIR must be an absolute path, not "${referenceDir}".`);
+}
 
 const wsEndpoint = process.env.N8N_VISUAL_TESTS_WS_ENDPOINT;
 if (!wsEndpoint) {
@@ -39,6 +49,17 @@ if (!wsEndpoint) {
  * images on every computer. Vitest's default names use the host platform.
  */
 const IMAGE_PLATFORM = 'linux';
+
+/** The directory of a stories file, relative to `design-system/src`. */
+function storyDirOf(root: string, testFileDirectory: string): string {
+	const storyDir = path.relative(designSystemSrc, path.resolve(root, testFileDirectory));
+	if (storyDir.startsWith('..') || path.isAbsolute(storyDir)) {
+		throw new Error(
+			`Visual tests only cover stories in ${designSystemSrc}, not ${testFileDirectory}.`,
+		);
+	}
+	return storyDir;
+}
 
 /**
  * Story files without the `visual` tag give no tests, but Vitest still loads
@@ -60,6 +81,14 @@ function storyFilesWithoutVisualTag(): string[] {
 export default mergeConfig(
 	viteConfig,
 	defineConfig({
+		server: {
+			fs: {
+				// Vitest writes screenshots only inside these directories. A CI reference
+				// directory is often outside the repository. Setting `allow` turns off
+				// Vite's default, so keep the workspace root too.
+				allow: [searchForWorkspaceRoot(__dirname), referenceDir],
+			},
+		},
 		optimizeDeps: {
 			// Pre-bundle what the stories import. Without this, a cold Vite cache
 			// discovers them during the run and reloads the page, and every test fails.
@@ -107,20 +136,18 @@ export default mergeConfig(
 						viewport: { width: 1200, height: 900 },
 						expect: {
 							toMatchScreenshot: {
-								// Vitest's default location, `<story dir>/__screenshots__/<story file>/`.
+								// `<referenceDir>/<story dir in design-system/src>/<story file>/<name>`.
 								resolveScreenshotPath: ({
 									arg,
 									ext,
 									root,
 									browserName,
-									screenshotDirectory,
 									testFileDirectory,
 									testFileName,
 								}) =>
-									path.resolve(
-										root,
-										testFileDirectory,
-										screenshotDirectory,
+									path.join(
+										referenceDir,
+										storyDirOf(root, testFileDirectory),
 										testFileName,
 										`${arg}-${browserName}-${IMAGE_PLATFORM}${ext}`,
 									),
@@ -133,23 +160,13 @@ export default mergeConfig(
 									browserName,
 									testFileDirectory,
 									testFileName,
-								}) => {
-									const storyDir = path.relative(
-										designSystemSrc,
-										path.resolve(root, testFileDirectory),
-									);
-									if (storyDir.startsWith('..') || path.isAbsolute(storyDir)) {
-										throw new Error(
-											`Visual tests only cover stories in ${designSystemSrc}, not ${testFileDirectory}.`,
-										);
-									}
-									return path.join(
+								}) =>
+									path.join(
 										diffDir,
-										storyDir,
+										storyDirOf(root, testFileDirectory),
 										testFileName,
 										`${arg}-${browserName}-${IMAGE_PLATFORM}${ext}`,
-									);
-								},
+									),
 							},
 						},
 					},

@@ -191,39 +191,35 @@ A failed test writes the actual image and a diff image to
 Run the tests only with `pnpm --filter @n8n/storybook test:visual`. `vitest.visual.config.ts`
 stops with an error when it runs without the container, for example from an IDE extension.
 
-#### Update reference images
+#### Compare a change with a local baseline
 
-The reference images are in Git, next to each stories file:
-`src/<story directory>/__screenshots__/<story file>/<name>-chromium-linux.png`. The name is
-the story id, the state name if there is one, and the theme, with single hyphens: the `Default`
-story of `Core/Button` (id `core-button--default`) gives
+Git keeps no reference images, and you never commit them. The tests compare your change with
+a local baseline that you make on your computer:
+
+1. On `master`, run `pnpm --filter @n8n/storybook test:visual -u`. It writes a reference
+   image for each screenshot to `packages/frontend/@n8n/storybook/.vitest/visual/references/`.
+   `.gitignore` keeps that directory out of Git.
+2. Switch to your branch and run `pnpm --filter @n8n/storybook test:visual`. Each failed test
+   shows a changed or new screenshot. Look at the actual and diff images in `.vitest/visual/`.
+3. To accept the change in your baseline, run `pnpm --filter @n8n/storybook test:visual -u`
+   again. This changes only `.vitest/visual/references/`.
+
+The image names are the story id, the state name if there is one, and the theme, with single
+hyphens: the `Default` story of `Core/Button` (id `core-button--default`) gives
 `core-button-default-light-chromium-linux.png` and `core-button-default-hover-light-chromium-linux.png`.
-Update them like snapshots:
-
-1. Run `pnpm --filter @n8n/storybook test:visual -u`. It writes each missing image, and
-   each image that changed.
-2. Look at the changed images with `git diff` or in your Git client.
-3. Commit them with your change.
 
 Arguments go to Vitest, so `pnpm --filter @n8n/storybook test:visual N8nButton -u` updates
-the images of one component. Put the file filter before `-u`, because `-u` reads the next
-word as its value. `-u` does not delete the images of a story that you rename or
-remove. Delete those yourself.
+the baseline of one component. Put the file filter before `-u`, because `-u` reads the next
+word as its value. To keep the baseline in another directory, set `N8N_VISUAL_REFERENCE_DIR`
+to an absolute path.
 
-CI runs on `linux/amd64`. On Apple silicon, Docker runs the `linux/arm64` image, and its
-images pass in CI. If an image passes on your computer but fails in CI, make it on
-`linux/amd64`:
-
-```sh
-DOCKER_DEFAULT_PLATFORM=linux/amd64 pnpm --filter @n8n/storybook test:visual -u
-```
-
-On Apple silicon, Docker emulates `linux/amd64`, so this run is slower.
+No CI job runs the visual tests yet. A later change adds a job that renders the base branch
+and your branch, and compares them.
 
 When you update `playwright` in the catalog, set `PLAYWRIGHT_IMAGE` in
-`@n8n/storybook/scripts/run-visual-tests.ts` to the same version and digest. Then run
-`test:visual -u`. Until the two versions are the same, `pnpm test:visual` stops with an
-error.
+`@n8n/storybook/scripts/run-visual-tests.ts` to the same version and digest. Then make a new
+baseline with `test:visual -u`. Until the two versions are the same, `pnpm test:visual` stops
+with an error.
 
 If a run stops and leaves a container, remove it:
 
