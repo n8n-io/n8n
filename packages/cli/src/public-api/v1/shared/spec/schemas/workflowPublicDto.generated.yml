@@ -31,6 +31,10 @@ properties:
     nullable: true
   triggerCount:
     type: number
+  ownerUserId:
+    type: string
+    nullable: true
+    description: ID of the user who owns the workflow, or null when the workflow has no owner.
   nodes:
     type: array
     description: Nodes that make up the workflow
@@ -609,6 +613,7 @@ required:
   - versionCounter
   - sourceWorkflowId
   - triggerCount
+  - ownerUserId
   - nodes
   - connections
   - nodeGroups

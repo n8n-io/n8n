@@ -51,6 +51,11 @@ requestBody:
             type: integer
             description: Number of active trigger nodes in the workflow
             readOnly: true
+          ownerUserId:
+            type: string
+            description: Use `PUT /workflows/{workflowId}/owner` to change the owner.
+            readOnly: true
+            nullable: true
           nodes:
             type: array
             items:
@@ -615,6 +620,10 @@ responses:
               nullable: true
             triggerCount:
               type: number
+            ownerUserId:
+              type: string
+              nullable: true
+              description: ID of the user who owns the workflow, or null when the workflow has no owner.
             nodes:
               type: array
               description: Nodes that make up the workflow
@@ -1217,6 +1226,7 @@ responses:
             - versionCounter
             - sourceWorkflowId
             - triggerCount
+            - ownerUserId
             - nodes
             - connections
             - nodeGroups
