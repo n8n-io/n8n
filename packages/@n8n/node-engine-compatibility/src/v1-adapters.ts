@@ -132,14 +132,9 @@ function toV1RunData(
 		const iterations = Object.keys(outputsByIteration).map(Number);
 		if (iterations.length === 0) continue;
 
-		let lastShown: number;
-		if (!activeLoop) {
-			lastShown = Math.max(...iterations);
-		} else if (activeLoop.memberIds.has(completedNodeId)) {
-			lastShown = activeIteration;
-		} else {
-			lastShown = 0;
-		}
+		const lastShown = activeLoop?.memberIds.has(completedNodeId)
+			? activeIteration
+			: Math.max(...iterations);
 
 		// A pass the node was skipped on gets an empty run rather than a gap.
 		runData[nodeName] = Array.from({ length: lastShown + 1 }, (_, iteration) => {
