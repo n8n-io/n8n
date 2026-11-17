@@ -472,6 +472,7 @@ describe('Public API /ai-preferences', () => {
 				{ content: 'stay', projectId: viewerProject.id },
 				{ content: 'stay', userId: member.id },
 				{ content: 'stay', projectId: '', userId: member.id },
+				{ content: 'stay', projectId: '' },
 			]) {
 				const response = await testServer
 					.publicApiAgentFor(member)

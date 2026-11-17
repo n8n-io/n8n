@@ -41,7 +41,7 @@ export const userUuidParamSchema = z
 export const aiPreferenceIdParamSchema = z
 	.string()
 	.refine((value) => validator.isUUID(value), { message: 'must be a valid ID' })
-	.openapi({ param: { description: 'The ID of the AI preference.' } });
+	.openapi({ format: 'uuid', param: { description: 'The ID of the AI preference.' } });
 export const roleSlugParamSchema = stringIdParamSchema('The slug of the role.');
 export const roleMappingRuleIdParamSchema = stringIdParamSchema('The ID of the role mapping rule.');
 export const promotionEnvironmentIdParamSchema = z

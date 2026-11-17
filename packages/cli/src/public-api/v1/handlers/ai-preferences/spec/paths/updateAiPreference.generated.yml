@@ -10,6 +10,7 @@ x-required-scope: aiPreference:update
 parameters:
   - schema:
       type: string
+      format: uuid
     required: true
     description: The ID of the AI preference.
     name: preferenceId
