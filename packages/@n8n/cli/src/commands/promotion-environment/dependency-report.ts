@@ -26,8 +26,14 @@ export const applyConfirmationFlags = {
 	}),
 	confirmDeletionCallers: Flags.boolean({
 		description:
-			'Accept that the Apply deletes workflows that other workflows on this instance call. The report lists the callers.',
+			'Accept that the Apply deletes workflows that other workflows on this instance call. The report lists the callers. This accepts every caller, also one that the report did not list. Prefer --confirm-deletion.',
 		aliases: ['confirm-deletion-callers'],
+	}),
+	confirmDeletion: Flags.string({
+		description:
+			'ID of a deletion with callers that you accept, from the dependency report (repeat for more than one). The Apply stops when the callers changed since the report.',
+		aliases: ['confirm-deletion'],
+		multiple: true,
 	}),
 	credentialHome: Flags.string({
 		description:
@@ -41,6 +47,7 @@ type ConfirmationFlags = {
 	confirmGap?: string[];
 	confirmGrant?: string[];
 	confirmDeletionCallers?: boolean;
+	confirmDeletion?: string[];
 	credentialHome?: string[];
 };
 
@@ -60,6 +67,7 @@ export function toApplyConfirmations(flags: ConfirmationFlags): PromotionApplyCo
 		confirmedGapIds: flags.confirmGap,
 		confirmedGrantIds: flags.confirmGrant,
 		confirmDeletionCallers: flags.confirmDeletionCallers || undefined,
+		confirmedDeletionCallerIds: flags.confirmDeletion,
 		credentialHomes: Object.keys(homes).length > 0 ? homes : undefined,
 	};
 }
@@ -70,6 +78,9 @@ export function confirmationArgs(confirmations: PromotionApplyConfirmations): st
 		...(confirmations.confirmedGapIds ?? []).map((id) => ` --confirm-gap=${quote(id)}`),
 		...(confirmations.confirmedGrantIds ?? []).map((id) => ` --confirm-grant=${quote(id)}`),
 		...(confirmations.confirmDeletionCallers ? [' --confirm-deletion-callers'] : []),
+		...(confirmations.confirmedDeletionCallerIds ?? []).map(
+			(id) => ` --confirm-deletion=${quote(id)}`,
+		),
 		...Object.entries(confirmations.credentialHomes ?? {}).map(
 			([credentialId, projectId]) => ` --credential-home=${quote(`${credentialId}:${projectId}`)}`,
 		),
@@ -109,7 +120,8 @@ const EXITS: Record<string, string> = {
 
 const HARD_BLOCKS: Record<string, string> = {
 	'credential-type-mismatch': 'the destination holds a credential with this ID and another type',
-	'ambiguous-credential-owner': 'the branch holds this credential under more than one project',
+	'ambiguous-credential-owner':
+		'the branch holds this credential under more than one project. Keep the file of one project',
 	'instance-credential-missing': 'create the instance credential on the destination',
 	'incompatible-usage-scope': 'the usage scope on the destination is not compatible',
 	'placeholder-create-forbidden':
@@ -176,21 +188,31 @@ export function formatDependencyReport(report: PromotionDependencyReport): strin
 		lines.push(
 			'Credentials without an owner on the branch. Select a home with --credential-home=<credentialId>:<projectId>:',
 		);
-		for (const { credential, candidateProjects } of report.credentialHomeChoices) {
+		for (const {
+			credential,
+			candidateProjects,
+			noCandidateReason,
+		} of report.credentialHomeChoices) {
 			const projects = candidateProjects.map(({ id, name }) => `${name} (${id})`).join(', ');
-			lines.push(`  "${credential.name}" (${credential.id}). Projects: ${projects || 'none'}`);
+			const none =
+				noCandidateReason === 'missing-create-right'
+					? 'none: you may not create a credential in a project of this environment'
+					: 'none: you can access no project of this environment';
+			lines.push(`  "${credential.name}" (${credential.id}). Projects: ${projects || none}`);
 		}
 	}
 	if (report.deletionCallers.length > 0) {
-		lines.push('Workflows that call a workflow that this operation deletes:');
-		for (const { target, callers, hiddenCallerCount } of report.deletionCallers) {
+		lines.push(
+			'Workflows that call a workflow that this operation deletes. On Apply, pass each ID to --confirm-deletion:',
+		);
+		for (const { id, target, callers, hiddenCallerCount } of report.deletionCallers) {
 			const names = callers.map(({ name }) => `"${name}"`);
 			if (hiddenCallerCount > 0) {
 				names.push(
 					`${hiddenCallerCount} workflow${hiddenCallerCount === 1 ? '' : 's'} that you cannot access`,
 				);
 			}
-			lines.push(`  "${target.name}" is called by ${names.join(', ')}`);
+			lines.push(`  ${id ? `${id}  ` : ''}"${target.name}" is called by ${names.join(', ')}`);
 		}
 	}
 	for (const move of report.credentialMoves) {
@@ -199,7 +221,9 @@ export function formatDependencyReport(report: PromotionDependencyReport): strin
 				? `"${move.credential.name}" moves into ${move.toProject.name}. The projects that use it keep access.`
 				: move.blockedReason === 'managed' || move.blockedReason === 'end-user'
 					? `"${move.credential.name}" stays where it is: a ${move.blockedReason} credential never moves.`
-					: `"${move.credential.name}" has another owner on the destination. A user who may move it must apply.`,
+					: move.blockedReason === 'missing-create-right'
+						? `"${move.credential.name}" does not move into ${move.toProject.name}: you may not create a credential in that project.`
+						: `"${move.credential.name}" has another owner on the destination. A user who may move it must apply.`,
 		);
 	}
 	for (const { name, referencedBy } of report.keptWorkflows) {
@@ -219,6 +243,14 @@ export function formatDependencyReport(report: PromotionDependencyReport): strin
 				`  "${warning.consumer.name}" references the ${targetLabel(warning)}: ${warning.code === 'broken-on-source' ? 'the reference is broken on the source and stays broken' : 'the branch does not hold it'}.`,
 			);
 		}
+	}
+	for (const { code, consumer, resource } of report.resourceWarnings ?? []) {
+		const what = code === 'data-table-of-other-project' ? 'data table' : 'variable';
+		const label = resource.name ? `"${resource.name}"` : (resource.id ?? '');
+		const project = resource.project ? `project "${resource.project.name}"` : 'another project';
+		lines.push(
+			`Warning: "${consumer.name}" uses the ${what} ${label} of ${project}. The operation does not copy it.`,
+		);
 	}
 	const instanceCredentials = report.notes.filter(({ code }) => code === 'instance-credential');
 	for (const note of instanceCredentials) {

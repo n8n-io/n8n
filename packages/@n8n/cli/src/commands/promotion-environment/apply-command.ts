@@ -97,8 +97,8 @@ function stopMessage(result: ApplyPackageResult, continueCommand: ContinueComman
 			hasUnknownGap(report)
 				? 'This version of the CLI does not know every gap. Update the CLI before you confirm a gap.'
 				: report.allowIncomplete
-					? 'Close the gaps, or pass each gap ID to --confirm-gap. Add --confirm-deletion-callers to accept the listed callers. Then apply again.'
-					: 'Close the gaps, then apply again. Add --confirm-deletion-callers to accept the listed callers.',
+					? 'Close the gaps, or pass each gap ID to --confirm-gap. Pass the ID of each listed deletion to --confirm-deletion to accept its callers. Then apply again.'
+					: 'Close the gaps, then apply again. Pass the ID of each listed deletion to --confirm-deletion to accept its callers.',
 		].join('\n');
 	}
 	if (result.status === 'preview-changed') {
@@ -200,12 +200,13 @@ export function environmentContinueCommand(environmentId: string): ContinueComma
  */
 export function selectionContinueCommand(
 	projectId: string,
-	{ workflowIds = [], folderIds = [] }: PromotionSelection,
+	{ workflowIds = [], folderIds = [], credentialIds = [] }: PromotionSelection,
 ): ContinueCommand {
 	return (result) =>
 		`n8n-cli promotion-environment apply-selection-continue ${shellQuote(projectId)}` +
 		workflowIds.map((id) => ` -w ${shellQuote(id)}`).join('') +
 		folderIds.map((id) => ` --folder ${shellQuote(id)}`).join('') +
+		credentialIds.map((id) => ` --credential ${shellQuote(id)}`).join('') +
 		expectedSourceArgs(result);
 }
 
