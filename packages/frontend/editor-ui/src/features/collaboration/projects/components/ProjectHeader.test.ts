@@ -121,6 +121,7 @@ describe('ProjectHeader', () => {
 		usersStore = mockedStore(useUsersStore);
 		uiStore = mockedStore(useUIStore);
 		projectPages = useProjectPages();
+		navigationPage.current = undefined;
 
 		projectsStore.teamProjectsLimit = -1;
 		settingsStore.settings.folders = { enabled: false };
@@ -248,12 +249,15 @@ describe('ProjectHeader', () => {
 			expect(getByTestId('project-page-name')).toHaveTextContent('Credentials');
 		});
 
-		it('shows only the project while the navigation panel is open', () => {
+		it('shows the page name, without the project star, while the navigation panel is open', () => {
 			uiStore.sidebarMenuCollapsed = false;
+			projectsStore.currentProject = { name: 'My Project', type: 'team' } as Project;
 			const { getByTestId, queryByTestId } = renderComponent();
 
 			expect(queryByTestId('project-page-path')).not.toBeInTheDocument();
-			expect(getByTestId('project-name')).toHaveTextContent('My Project');
+			expect(queryByTestId('project-name')).not.toBeInTheDocument();
+			expect(getByTestId('project-page-name')).toHaveTextContent('Credentials');
+			expect(queryByTestId('project-favorite-btn')).not.toBeInTheDocument();
 		});
 
 		it('shows only the project when the navigation has no page for the route', () => {

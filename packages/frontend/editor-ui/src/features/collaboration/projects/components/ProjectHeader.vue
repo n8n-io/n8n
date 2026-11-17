@@ -191,6 +191,10 @@ const showPagePath = computed(
 		currentPage.value !== undefined &&
 		pathRoot.value !== undefined,
 );
+// While the panel is open, its header names the project, so the title names the page.
+const pageTitle = computed(() =>
+	!(uiStore.sidebarMenuCollapsed ?? false) && !showTabs.value ? currentPage.value?.label : undefined,
+);
 
 const personalSelfHealingTab = computed((): TabOptions<string> | null => {
 	const project = projectsStore.currentProject;
@@ -417,7 +421,10 @@ const menu = computed(() => {
 
 const showProjectIcon = computed(() => {
 	return (
-		!projectPages.isOverviewSubPage && !projectPages.isSharedSubPage && !isPersonalProject.value
+		!pageTitle.value &&
+		!projectPages.isOverviewSubPage &&
+		!projectPages.isSharedSubPage &&
+		!isPersonalProject.value
 	);
 });
 
@@ -588,6 +595,16 @@ const onSelect = (action: string, source: CreateSource) => {
 							>
 						</nav>
 						<N8nHeading
+							v-else-if="pageTitle"
+							:class="$style.projectName"
+							:title="pageTitle"
+							bold
+							tag="h2"
+							size="xlarge"
+							data-test-id="project-page-name"
+							>{{ pageTitle }}</N8nHeading
+						>
+						<N8nHeading
 							v-else-if="projectName"
 							:class="$style.projectName"
 							:title="projectName"
@@ -597,8 +614,9 @@ const onSelect = (action: string, source: CreateSource) => {
 							data-test-id="project-name"
 							>{{ projectName }}</N8nHeading
 						>
+						<!-- The star belongs to the project, so it shows only next to the project name. -->
 						<N8nIconButton
-							v-if="isTeamProject"
+							v-if="isTeamProject && !pageTitle"
 							:class="[$style.favoriteBtn, isProjectFavorited && $style.favoriteBtnActive]"
 							:icon="favoriteIcon"
 							:aria-label="i18n.baseText(isProjectFavorited ? 'favorites.remove' : 'favorites.add')"
@@ -609,7 +627,7 @@ const onSelect = (action: string, source: CreateSource) => {
 						/>
 						<PromotionPreviewBadges :class="$style.promotionBadges" />
 					</div>
-					<div v-if="projectDescription" :class="$style.projectDescriptionWrapper">
+					<div v-if="projectDescription && !pageTitle" :class="$style.projectDescriptionWrapper">
 						<N8nText :class="$style.descriptionText" color="text-light" data-test-id="project-subtitle">
 							{{ projectDescriptionTruncated || projectDescription }}
 						</N8nText>
