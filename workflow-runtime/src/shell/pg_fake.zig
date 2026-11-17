@@ -7,8 +7,10 @@
 //! columns, the rows and the command tag, or an error at Parse or at
 //! Execute, or says that the server gives no answer or closes. The server
 //! keeps the transaction state of a session as PostgreSQL does, and writes
-//! a line into `log` for each login, Parse, Bind, Execute, BEGIN, COMMIT,
-//! ROLLBACK and cancel request, so a test can say what the client sent.
+//! a line into `log` for each login, Parse, Bind, Execute, text of the
+//! simple protocol (BEGIN, COMMIT, ROLLBACK, a simple statement) and cancel
+//! request, so a test can say what the client sent. A simple text is split
+//! at each `;`, and each part is the text of a rule.
 const std = @import("std");
 const pgwire = @import("core").pgwire;
 const sys = @import("sys.zig");
@@ -38,6 +40,8 @@ pub const Rule = struct {
     /// The commit of the statement fails (a deferred constraint): at COMMIT,
     /// or at Sync when the statement runs outside a transaction block.
     commit_fail: ?Fail = null,
+    /// The command cannot run in a transaction block (`VACUUM`). Only for a simple text.
+    no_block: bool = false,
 };
 
 const max_conns = 8;
@@ -536,7 +540,9 @@ pub const Server = struct {
                 if (cn.tx == .idle) commitNow(cn);
                 return sendReady(cn);
             },
-            'Q' => return s.onQuery(cn, m.body),
+            'Q' => return s.onQuery(i, m.body),
+            // CopyFail: the fake has no COPY.
+            'f' => return,
             'X' => return s.closeConn(i),
             // The messages of the extended protocol follow.
             else => {},
@@ -565,29 +571,94 @@ pub const Server = struct {
         if (cn.tx == .open) cn.tx = .failed;
     }
 
-    /// BEGIN, COMMIT and ROLLBACK of the simple protocol.
-    fn onQuery(s: *Server, cn: *Conn, body: []const u8) pgwire.Error!void {
+    /// A text of the simple protocol: each command (the text between `;`)
+    /// is BEGIN, COMMIT, ROLLBACK or the text of a rule. A command that
+    /// fails ends the text. The log gets the whole text.
+    fn onQuery(s: *Server, i: u32, body: []const u8) pgwire.Error!void {
+        const cn = &s.conns[i];
         var rd: pgwire.Reader = .{ .s = body };
         const text = try rd.cstr();
         s.note(text, "");
-        var tag = text;
-        if (std.mem.eql(u8, text, "BEGIN")) {
+        var it = std.mem.tokenizeScalar(u8, text, ';');
+        var commands: u32 = 0;
+        // Each command takes one byte or more of the text.
+        for (0..text.len + 1) |_| {
+            const cmd = std.mem.trim(u8, it.next() orelse break, " \n");
+            if (cmd.len == 0) continue;
+            commands += 1;
+            const good = try s.oneCommand(i, cmd);
+            if (cn.fd < 0 or cn.phase == .hung) return;
+            if (!good) break;
+        }
+        if (commands == 0) {
+            cn.out.open('I');
+            cn.out.close();
+        }
+        // Outside a transaction block, the end of the text commits it.
+        if (cn.tx == .idle) commitNow(cn);
+        sendReady(cn);
+    }
+
+    /// One command of a simple text. False: it failed or gave no answer,
+    /// and the rest of the text is dropped.
+    fn oneCommand(s: *Server, i: u32, cmd: []const u8) pgwire.Error!bool {
+        const cn = &s.conns[i];
+        if (std.mem.eql(u8, cmd, "BEGIN") or std.mem.eql(u8, cmd, "COMMIT") or std.mem.eql(u8, cmd, "ROLLBACK")) return txCommand(cn, cmd);
+        if (cn.tx == .failed) return simpleFail(cn, .{ .code = "25P02", .message = "current transaction is aborted, commands ignored until end of transaction block" });
+        const ri = s.ruleFor(cmd) orelse return simpleFail(cn, .{ .code = "42601", .message = "the script has no rule for this text" });
+        const rule = s.rules[ri];
+        if (rule.parse_fail orelse rule.run_fail) |f| return simpleFail(cn, f);
+        if (rule.no_block and cn.tx != .idle) return simpleFail(cn, .{ .code = "25001", .message = "VACUUM cannot run inside a transaction block" });
+        switch (rule.act) {
+            .answer => {},
+            .hang => {
+                cn.phase = .hung;
+                return false;
+            },
+            .close => {
+                s.closeConn(i);
+                return false;
+            },
+        }
+        if (rule.cols.len > 0) try sendCols(&cn.out, rule.cols);
+        for (0..rule.repeat) |_| {
+            for (rule.rows) |row| sendRow(&cn.out, row);
+        }
+        if (rule.commit_fail) |f| cn.commit_fail = f;
+        cn.out.open('C');
+        cn.out.cstr(rule.tag);
+        cn.out.close();
+        return true;
+    }
+
+    /// BEGIN, COMMIT or ROLLBACK. False: the commit failed.
+    fn txCommand(cn: *Conn, cmd: []const u8) bool {
+        std.debug.assert(cmd.len > 0);
+        var tag = cmd;
+        if (cmd[0] == 'B') {
             cn.tx = .open;
-        } else if (std.mem.eql(u8, text, "COMMIT") or std.mem.eql(u8, text, "ROLLBACK")) {
+        } else {
             // COMMIT of a failed transaction rolls back, as PostgreSQL does.
             if (cn.tx == .failed) tag = "ROLLBACK";
-            const commits = cn.tx == .open and text[0] == 'C';
+            const commits = cn.tx == .open and cmd[0] == 'C';
             cn.tx = .idle;
             if (commits and cn.commit_fail != null) {
                 commitNow(cn);
-                return sendReady(cn);
+                return false;
             }
             cn.commit_fail = null;
-        } else return error.Malformed;
+        }
         cn.out.open('C');
         cn.out.cstr(tag);
         cn.out.close();
-        sendReady(cn);
+        return true;
+    }
+
+    /// The error of a command of a simple text: always false.
+    fn simpleFail(cn: *Conn, f: Fail) bool {
+        sendError(&cn.out, "ERROR", f);
+        if (cn.tx == .open) cn.tx = .failed;
+        return false;
     }
 
     fn slotOf(name: []const u8) pgwire.Error!usize {
@@ -635,15 +706,7 @@ pub const Server = struct {
             cn.out.open('n');
             return cn.out.close();
         }
-        cn.out.open('T');
-        cn.out.int16(std.math.cast(u16, rule.cols.len) orelse return error.Malformed);
-        for (rule.cols) |col| {
-            cn.out.cstr(col.name);
-            cn.out.bytes(&.{ 0, 0, 0, 0, 0, 0 });
-            cn.out.int32(col.oid);
-            cn.out.bytes(&.{ 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0, 0 });
-        }
-        cn.out.close();
+        try sendCols(&cn.out, rule.cols);
     }
 
     /// Bind: the log gets the values, so a test can show that they went as binds.
@@ -706,6 +769,19 @@ fn sendReady(cn: *Conn) void {
         .failed => 'E',
     });
     cn.out.close();
+}
+
+/// A RowDescription.
+fn sendCols(out: *Buf, cols: []const Col) pgwire.Error!void {
+    out.open('T');
+    out.int16(std.math.cast(u16, cols.len) orelse return error.Malformed);
+    for (cols) |col| {
+        out.cstr(col.name);
+        out.bytes(&.{ 0, 0, 0, 0, 0, 0 });
+        out.int32(col.oid);
+        out.bytes(&.{ 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0, 0 });
+    }
+    out.close();
 }
 
 fn sendRow(out: *Buf, row: Row) void {

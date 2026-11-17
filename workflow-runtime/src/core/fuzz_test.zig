@@ -735,6 +735,31 @@ test "fuzz pgwire column values" {
     });
 }
 
+/// The scan of a simple text ends for any bytes. A text of SELECT
+/// commands has no transaction word, and a transaction word at the start
+/// of the text is always seen.
+fn fuzzPgwireScan(_: void, smith: *Smith) !void {
+    var tbuf: [136]u8 = @splat(0);
+    const head = "commit;";
+    @memcpy(tbuf[0..head.len], head);
+    const len = smith.slice(tbuf[head.len..]);
+    const backslash = smith.value(bool);
+    const scan = pgwire.scanText(tbuf[head.len..][0..len], backslash);
+    if (scan.all_select and scan.transaction) return error.PgwireScanBoth;
+    const with_head = pgwire.scanText(tbuf[0 .. head.len + len], backslash);
+    if (!with_head.transaction or with_head.all_select) return error.PgwireScanMissed;
+}
+
+test "fuzz pgwire simple text scan" {
+    try std.testing.fuzz({}, fuzzPgwireScan, .{
+        .corpus = &.{
+            seed("insert into t values ('a;b'); select $q$ ; $q$; end"),
+            seed("select E'a\\'' /* x /* y */ */ -- c\n; \"n;\"\"m\" ; lock table t"),
+            seed("$a$ $ $1 'x"),
+        },
+    });
+}
+
 /// A server-first message of any bytes ends the SCRAM exchange with a
 /// message or an error.
 fn fuzzPgwireScram(_: void, smith: *Smith) !void {

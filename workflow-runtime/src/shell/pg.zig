@@ -7,7 +7,13 @@
 //! statement text. A statement is prepared once for each connection and
 //! used again by its key (the text and the parameter types).
 //!
-//! Validate, then run: the statements of a call are prepared and their
+//! A `simple` statement is a text that the library node made for a form
+//! that has no exact bind form. It goes as it is with the simple query
+//! protocol, can hold several commands, and is not prepared. Alone, it
+//! runs between `BEGIN` and `COMMIT` of the client unless it has a
+//! transaction command of its own, so the client can roll it back.
+//!
+//! Validate, then run: the bind statements of a call are prepared and their
 //! result columns are checked before one of them runs. A call that the
 //! client cannot do exactly ends with an error whose text has a marker
 //! (`(limit: sql-...)`); n8n then runs the node in the fallback host. A
@@ -222,7 +228,38 @@ const Conn = struct {
     /// The statement that runs now has its entry (its rows and its tag) at `entry_at`.
     entry_done: bool = false,
     rows: u32 = 0,
+    /// The session reads a backslash in a plain string as itself.
+    std_strings: bool = true,
+    /// The segment is one simple statement that runs alone.
+    seg_simple: bool = false,
+    /// The client put a transaction around that statement.
+    wrapped: bool = false,
+    /// The simple statement of the next segment runs as it is, without a transaction of the client.
+    bare_next: bool = false,
+    /// After ROLLBACK, the segment runs again as it is.
+    again: bool = false,
+    scan: pgwire.TextScan = .{},
+    /// The statements of the call, from the first one of the segment.
+    seg_it: ?pg_call.Statements = null,
+    /// The entry of the simple statement that runs now (`{"sets":[`) is open at `entry_at`.
+    sets_open: bool = false,
+    sets: u32 = 0,
+    /// The command that runs now gave its columns.
+    cmd_cols: bool = false,
+    /// A command of a simple text gave no columns: it can have an effect.
+    no_rows: bool = false,
+    /// A command of a simple text ended a transaction: the client cannot roll the text back.
+    tx_ended: bool = false,
+    /// A simple text of the segment failed.
+    text_failed: bool = false,
+    /// It failed because a command cannot run in a transaction block.
+    no_block: bool = false,
+    /// The transaction status of the last ReadyForQuery of a simple text.
+    status: u8 = 'I',
 };
+
+/// In `Req.slots`: the statement is simple and has no prepared statement.
+const simple_slot: u8 = 0xFF;
 
 const Cancel = struct { fd: c_int = -1, pid: u32 = 0, key: u32 = 0, at_ms: i64 = 0 };
 
@@ -1091,6 +1128,7 @@ pub const Client = struct {
         const value = rd.cstr() catch return;
         if (std.mem.eql(u8, name, "DateStyle")) cn.iso = std.mem.startsWith(u8, value, "ISO");
         if (std.mem.eql(u8, name, "IntervalStyle")) cn.interval_pg = std.mem.eql(u8, value, "postgres");
+        if (std.mem.eql(u8, name, "standard_conforming_strings")) cn.std_strings = std.mem.eql(u8, value, "on");
     }
 
     /// True when the text of a date or of an interval of this session is
@@ -1133,6 +1171,8 @@ pub const Client = struct {
         cn.nprep = 0;
         for (0..r.call.count) |i| {
             const st = it.next() orelse return c.endCall(ci, .statement);
+            r.slots[i] = simple_slot;
+            if (st.simple) continue;
             // The cache of the connection is not as the server has it: the connection closes.
             r.slots[i] = c.prepareOne(cn, &w, st) catch return c.dropConn(ci, "sql: the statements of the call cannot go as prepared statements" ++ marker_statement, .{});
         }
@@ -1235,6 +1275,8 @@ pub const Client = struct {
         cn.flight = .none;
         if (cn.multi) return c.endCall(ci, .statement);
         for (r.slots[0..r.call.count]) |s| {
+            // The columns of a simple statement show only when it runs.
+            if (s == simple_slot) continue;
             const e = &cn.cache[s];
             const no_form = e.unsupported or (r.call.legacy_dates and e.has_date) or styleBlocks(cn, e.has_time, e.has_interval);
             if (e.ok and no_form) return c.endCall(ci, .no_form);
@@ -1251,12 +1293,12 @@ pub const Client = struct {
         const r = &c.reqs[cn.req];
         std.debug.assert(from < r.call.count and cn.wlen == 0 and !cn.in_tx);
         const alone = r.call.mode == .independently or r.call.count == 1;
-        const e = &cn.cache[r.slots[from]];
-        // A statement that gives rows and is no SELECT runs in a transaction,
-        // so that a result without a native form can be rolled back.
-        const wrap = !e.ok or (e.has_rows and !e.select);
         cn.seg_from = from;
         cn.seg_to = if (alone) from + 1 else r.call.count;
+        cn.seg_it = cn.stmt_it;
+        cn.seg_simple = alone and r.call.mode != .transaction and r.slots[from] == simple_slot;
+        const wrap = if (cn.seg_simple) c.wrapsSimple(cn) else wrapsBind(cn, r.slots[from]);
+        cn.wrapped = cn.seg_simple and wrap;
         cn.in_tx = r.call.mode == .transaction or !alone or wrap;
         var w: pgwire.Writer = .{ .buf = cn.wbuf };
         c.buildSegment(cn, r, &w) catch {
@@ -1268,11 +1310,48 @@ pub const Client = struct {
         cn.flight = .run;
         cn.cur = from;
         cn.begin_pending = cn.in_tx;
+        resetSegment(cn);
+        c.sendPending(ci);
+    }
+
+    /// The state that the answers of a segment set starts clear.
+    fn resetSegment(cn: *Conn) void {
+        std.debug.assert(cn.flight == .run);
         cn.failed = false;
         cn.errored = false;
         cn.entry_open = false;
         cn.entry_done = false;
-        c.sendPending(ci);
+        cn.bare_next = false;
+        cn.again = false;
+        cn.sets_open = false;
+        cn.cmd_cols = false;
+        cn.no_rows = false;
+        cn.tx_ended = false;
+        cn.text_failed = false;
+        cn.no_block = false;
+        cn.status = 'I';
+    }
+
+    /// A statement that gives rows and is no SELECT runs in a transaction,
+    /// so that a result without a native form can be rolled back.
+    fn wrapsBind(cn: *const Conn, slot: u8) bool {
+        if (slot == simple_slot) return false;
+        const e = &cn.cache[slot];
+        return !e.ok or (e.has_rows and !e.select);
+    }
+
+    /// True when the simple statement that runs alone goes between `BEGIN`
+    /// and `COMMIT` of the client, so that the client can roll it back.
+    /// The server runs a text of several commands as one transaction, so the
+    /// effect is the same. A text with a transaction command of its own
+    /// runs as it is; a text of `SELECT` commands needs no transaction.
+    fn wrapsSimple(c: *Client, cn: *Conn) bool {
+        var it = cn.stmt_it orelse return false;
+        const st = it.next() orelse return false;
+        // A text that cannot be read ends the call in `buildSegment`.
+        const text = c.statementText(st.text) catch return false;
+        cn.scan = pgwire.scanText(text, !cn.std_strings);
+        return !cn.bare_next and !cn.scan.transaction and !cn.scan.all_select;
     }
 
     fn buildSegment(c: *Client, cn: *Conn, r: *const Req, w: *pgwire.Writer) PrepError!void {
@@ -1281,6 +1360,15 @@ pub const Client = struct {
         for (cn.seg_from..cn.seg_to) |i| {
             const st = it.next() orelse return error.Malformed;
             const s = r.slots[i];
+            if (s == simple_slot) {
+                const text = try c.statementText(st.text);
+                // In a transaction of the mode, the statements after this one are on
+                // the wire before its answer comes. A text that ends the transaction
+                // would let them run alone, so the call has no native form.
+                if (!cn.seg_simple and pgwire.scanText(text, !cn.std_strings).transaction) return error.Malformed;
+                try w.query(text);
+                continue;
+            }
             const e = &cn.cache[s];
             if (!e.ok and !e.parsing) {
                 // It did not prepare before (its table did not exist yet): it is parsed where it runs.
@@ -1304,6 +1392,7 @@ pub const Client = struct {
             if (m.tag == 'Z') cn.begin_pending = false;
             return;
         }
+        if (c.reqs[cn.req].slots[cn.cur] == simple_slot) return c.onSimpleMsg(ci, m);
         const skip = cn.failed or cn.abort != .none;
         switch (m.tag) {
             '1' => cn.cache[c.reqs[cn.req].slots[cn.cur]].ok = true,
@@ -1441,14 +1530,173 @@ pub const Client = struct {
         try o.byte('}');
     }
 
+    // ---- a call: a simple statement ---------------------------------------------
+
+    /// An answer to a simple statement: the server sends the columns, the
+    /// rows and the tag of each command of the text, or the error that
+    /// ends the text, then one ReadyForQuery.
+    fn onSimpleMsg(c: *Client, ci: u32, m: pgwire.Msg) void {
+        const cn = &c.conns[ci];
+        const skip = cn.failed or cn.abort != .none;
+        switch (m.tag) {
+            'T' => {
+                cn.cmd_cols = true;
+                if (!skip) c.onSimpleColumns(ci, m.body);
+            },
+            'D' => if (!skip) c.onRow(ci, m.body),
+            'C' => c.onSimpleComplete(ci, m.body, skip),
+            // A text without a command.
+            'I' => if (!skip and !cn.sets_open) c.openSets(ci),
+            'E' => c.onSimpleError(ci, m.body, skip),
+            'G' => c.refuseCopy(ci),
+            'Z' => c.onSimpleReady(ci, m.body, skip),
+            // The data of `COPY ... TO STDOUT`: node-postgres drops it.
+            else => {},
+        }
+    }
+
+    /// Open the entry of a simple statement: one set for each command.
+    fn openSets(c: *Client, ci: u32) void {
+        const cn = &c.conns[ci];
+        const r = &c.reqs[cn.req];
+        std.debug.assert(!cn.sets_open and !cn.entry_open);
+        var o = c.resultOut(r);
+        cn.entry_at = r.out_len;
+        cn.sets = 0;
+        if (r.results > 0) o.byte(',') catch return setAbort(cn, .max_result);
+        o.put("{\"sets\":[") catch return setAbort(cn, .max_result);
+        r.out_len = o.len;
+        cn.sets_open = true;
+    }
+
+    /// Open the set of the command that runs now.
+    fn openSet(c: *Client, ci: u32) void {
+        const cn = &c.conns[ci];
+        const r = &c.reqs[cn.req];
+        if (!cn.sets_open) c.openSets(ci);
+        if (!cn.sets_open) return;
+        var o = c.resultOut(r);
+        cn.rows = 0;
+        if (cn.sets > 0) o.byte(',') catch return setAbort(cn, .max_result);
+        o.put("{\"rows\":[") catch return setAbort(cn, .max_result);
+        r.out_len = o.len;
+        cn.entry_open = true;
+    }
+
+    /// The columns of one command. The client sees them only now, so a
+    /// type without a native form ends the call after commands ran.
+    fn onSimpleColumns(c: *Client, ci: u32, body: []const u8) void {
+        const cn = &c.conns[ci];
+        const r = &c.reqs[cn.req];
+        const info = cn.desc.load(body, c.options(r), true) catch |err| {
+            if (err == error.Malformed) return c.dropConn(ci, "sql: the database sent a message that is not valid", .{});
+            return setAbort(cn, .no_form);
+        };
+        const no_form = info.unsupported or (r.call.legacy_dates and info.has_date) or styleBlocks(cn, info.has_time, info.has_interval);
+        if (no_form) return setAbort(cn, .no_form);
+        c.openSet(ci);
+    }
+
+    /// The tag of one command: its set is complete.
+    fn onSimpleComplete(c: *Client, ci: u32, body: []const u8, skip: bool) void {
+        const cn = &c.conns[ci];
+        const r = &c.reqs[cn.req];
+        const tag = pgwire.commandTag(body) catch return c.dropConn(ci, "sql: the database sent a message that is not valid", .{});
+        if (endsTransaction(tag.command)) cn.tx_ended = true;
+        if (!cn.cmd_cols) cn.no_rows = true;
+        cn.cmd_cols = false;
+        if (skip) return;
+        if (!cn.entry_open) c.openSet(ci);
+        if (!cn.entry_open) return;
+        var o = c.resultOut(r);
+        writeTag(&o, tag) catch return setAbort(cn, .max_result);
+        r.out_len = o.len;
+        cn.sets += 1;
+        cn.entry_open = false;
+    }
+
+    /// A command of the text failed: the server drops the rest of the
+    /// text, and the entry of the statement is the error.
+    fn onSimpleError(c: *Client, ci: u32, body: []const u8, skip: bool) void {
+        const cn = &c.conns[ci];
+        const r = &c.reqs[cn.req];
+        const code = pg_call.errorField(body, 'C') orelse "";
+        cn.text_failed = true;
+        cn.no_block = std.mem.eql(u8, code, "25001") or std.mem.eql(u8, code, "2D000");
+        if (skip) return;
+        if (cn.sets_open) r.out_len = cn.entry_at else cn.entry_at = r.out_len;
+        cn.sets_open = false;
+        cn.entry_open = false;
+        var o = c.resultOut(r);
+        writeFailure(&o, body, r.results > 0) catch |err| {
+            if (err == error.Malformed) return c.dropConn(ci, "sql: the database sent a message that is not valid", .{});
+            return setAbort(cn, .max_result);
+        };
+        r.out_len = o.len;
+        r.results += 1;
+        cn.failed = cn.in_tx;
+        cn.errored = true;
+    }
+
+    /// `COPY ... FROM STDIN`: the client has no data, and answers as node-postgres does.
+    fn refuseCopy(c: *Client, ci: u32) void {
+        const cn = &c.conns[ci];
+        var w: pgwire.Writer = .{ .buf = cn.wbuf, .len = cn.wlen };
+        // Without room for the message, the time limit of the call ends the statement.
+        w.copyFail("No source stream defined") catch return;
+        cn.wlen = w.len;
+        c.sendPending(ci);
+    }
+
+    /// ReadyForQuery after a simple text: its entry is complete.
+    fn onSimpleReady(c: *Client, ci: u32, body: []const u8, skip: bool) void {
+        const cn = &c.conns[ci];
+        const r = &c.reqs[cn.req];
+        if (body.len != 1) return c.dropConn(ci, "sql: the database sent a message that is not valid", .{});
+        cn.status = body[0];
+        // The text ended the transaction of the client.
+        if (cn.in_tx and cn.status == 'I') cn.tx_ended = true;
+        const made = cn.sets_open or cn.text_failed;
+        if (!skip and !made) return c.dropConn(ci, "sql: the database sent a message that is not valid", .{});
+        if (!skip and cn.sets_open) {
+            var o = c.resultOut(r);
+            o.put("]}") catch return setAbort(cn, .max_result);
+            r.out_len = o.len;
+            r.results += 1;
+        }
+        cn.sets_open = false;
+        cn.entry_open = false;
+        cn.cur += 1;
+        if (cn.cur == cn.seg_to) c.segmentDone(ci);
+    }
+
+    /// True when the simple statement that ran alone can have changed the
+    /// database, so that the host cannot run the call again. A text in
+    /// the transaction of the client was rolled back at a failure or a
+    /// limit. A text that ran as it is counts, unless the server rolled it
+    /// back or each of its commands was a `SELECT` that gave rows.
+    fn simpleEffect(cn: *const Conn) bool {
+        std.debug.assert(cn.seg_simple);
+        if (cn.tx_ended) return true;
+        if (cn.text_failed or cn.errored) return false;
+        if (cn.wrapped) return cn.abort == .none;
+        return !cn.scan.all_select or cn.no_rows;
+    }
+
     /// Every statement of the segment has its answer: end the transaction.
     fn segmentDone(c: *Client, ci: u32) void {
         const cn = &c.conns[ci];
         std.debug.assert(cn.flight == .run and cn.cur == cn.seg_to);
         for (&cn.cache) |*s| s.parsing = false;
-        if (!cn.in_tx) return c.afterSegment(ci);
+        if (cn.tx_ended) c.reqs[cn.req].committed = true;
+        // A simple text that ran as it is left a transaction open: the client ends it.
+        const left_open = cn.seg_simple and !cn.in_tx and cn.status != 'I';
+        if (!cn.in_tx and !left_open) return c.afterSegment(ci);
+        // A command of the text cannot run in the transaction of the client:
+        // the transaction is rolled back and the text runs again as it is.
+        cn.again = cn.wrapped and cn.no_block and !cn.tx_ended and cn.status != 'I' and cn.abort == .none;
         var w: pgwire.Writer = .{ .buf = cn.wbuf };
-        cn.commit_sent = !cn.failed and cn.abort == .none;
+        cn.commit_sent = cn.in_tx and !cn.failed and cn.abort == .none;
         // The text fits the buffer.
         w.query(if (cn.commit_sent) "COMMIT" else "ROLLBACK") catch return c.dropConn(ci, closed_msg, .{});
         cn.wlen = w.len;
@@ -1469,14 +1717,29 @@ pub const Client = struct {
         }
         if (m.tag != 'Z' or c.conns[ci].state != .busy) return;
         cn.in_tx = false;
+        if (cn.again) return c.runAgain(ci);
         c.afterSegment(ci);
+    }
+
+    /// The simple text failed in the transaction of the client, which is
+    /// rolled back now: the text runs again as it is, as the v1 node sends it.
+    fn runAgain(c: *Client, ci: u32) void {
+        const cn = &c.conns[ci];
+        std.debug.assert(cn.seg_simple and cn.wrapped and cn.abort == .none and !cn.in_tx);
+        c.dropEntry(ci);
+        cn.stmt_it = cn.seg_it;
+        cn.bare_next = true;
+        c.startSegment(ci, cn.seg_from);
     }
 
     fn afterSegment(c: *Client, ci: u32) void {
         const cn = &c.conns[ci];
         const r = &c.reqs[cn.req];
         cn.flight = .none;
-        if (cn.abort != .none) return c.endCall(ci, cn.abort);
+        if (cn.abort != .none) {
+            if (cn.seg_simple and simpleEffect(cn)) r.committed = true;
+            return c.endCall(ci, cn.abort);
+        }
         if (cn.seg_to == r.call.count) return c.completeCall(ci);
         // More statements follow only in the mode `independently`: the segment
         // was one statement, and the next one runs also after a failure.
@@ -1490,6 +1753,7 @@ pub const Client = struct {
     /// gives rows. The host can run a call again while this is false for
     /// each of its statements.
     fn hasEffect(cn: *const Conn, r: *const Req) bool {
+        if (cn.seg_simple) return simpleEffect(cn);
         const e = &cn.cache[r.slots[cn.seg_from]];
         return !cn.errored and !(e.select and e.has_rows);
     }
@@ -1623,6 +1887,13 @@ pub const Client = struct {
         k.fd = -1;
     }
 };
+
+/// True for the tag of a command that ends a transaction, or that can
+/// (`PREPARE TRANSACTION`, `ROLLBACK TO`): after it, the client does not
+/// know what a `ROLLBACK` takes back.
+fn endsTransaction(command: []const u8) bool {
+    return std.mem.eql(u8, command, "COMMIT") or std.mem.eql(u8, command, "ROLLBACK") or std.mem.eql(u8, command, "PREPARE");
+}
 
 /// True when the server refuses to prepare a text that runs when
 /// pg-promise writes the values into it, as the v1 node does: two

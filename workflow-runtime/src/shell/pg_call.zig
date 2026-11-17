@@ -53,6 +53,8 @@ fn checkStatements(call: *Call, max_statements: u32) ?[]const u8 {
     while (n <= max_statements) : (n += 1) {
         const st = it.next() orelse break;
         if (st.text.len < 2 or st.text[0] != '"') return "sql: the text of a statement must be a string";
+        if (st.bad_simple) return "sql: simple of a statement must be true or false";
+        if (st.simple and st.values != null) return "sql: a simple statement takes no bind values";
         if (countParams(st.values) == null) return "sql: a bind value must be a string, a number, a boolean or null";
     }
     if (n == 0) return "sql: the call has no statement";
@@ -86,6 +88,11 @@ pub const Statement = struct {
     text: []const u8,
     /// The raw JSON array of the bind values, or null.
     values: ?[]const u8,
+    /// The text goes as it is with the simple query protocol: it can hold
+    /// more than one command, and it has no bind values.
+    simple: bool = false,
+    /// `simple` is not a boolean.
+    bad_simple: bool = false,
 };
 
 /// The statements of a call, in order.
@@ -100,7 +107,10 @@ pub const Statements = struct {
         const el = s.it.next() orelse return null;
         const values = http.member(el, "values");
         const no_values = values == null or std.mem.eql(u8, values.?, "null");
-        return .{ .text = http.member(el, "text") orelse "", .values = if (no_values) null else values };
+        const simple = http.member(el, "simple") orelse "false";
+        const on = std.mem.eql(u8, simple, "true");
+        const off = std.mem.eql(u8, simple, "false") or std.mem.eql(u8, simple, "null");
+        return .{ .text = http.member(el, "text") orelse "", .values = if (no_values) null else values, .simple = on, .bad_simple = !on and !off };
     }
 };
 
@@ -327,9 +337,16 @@ test "sql call: arguments are checked before anything runs" {
         "{\"credential\":\"db\",\"dialect\":\"postgres\",\"statements\":[{\"text\":\"select $1\",\"values\":[[1]]}]}",
         "{\"credential\":\"db\",\"dialect\":\"postgres\",\"statements\":[{\"text\":\"select $1\",\"values\":[{\"a\":1}]}]}",
         "{\"credential\":\"db\",\"dialect\":\"postgres\",\"mode\":\"batch\",\"statements\":[{\"text\":\"select 1\"}]}",
+        "{\"credential\":\"db\",\"dialect\":\"postgres\",\"statements\":[{\"text\":\"select 1\",\"simple\":true,\"values\":[]}]}",
+        "{\"credential\":\"db\",\"dialect\":\"postgres\",\"statements\":[{\"text\":\"select 1\",\"simple\":1}]}",
         "{\"credential\":\"db\",\"dialect\":\"postgres\",\"statements\":[{\"text\":\"a\"},{\"text\":\"b\"},{\"text\":\"c\"},{\"text\":\"d\"},{\"text\":\"e\"}]}",
     };
     for (bad) |args| try std.testing.expect(parseCall(args, 4, &call) != null);
+    // A simple statement has a text and no bind values.
+    const simple = "{\"credential\":\"db\",\"dialect\":\"postgres\",\"statements\":[{\"text\":\"select 1; select 2\",\"simple\":true},{\"text\":\"select 3\",\"simple\":false,\"values\":null}]}";
+    try std.testing.expectEqual(@as(?[]const u8, null), parseCall(simple, 4, &call));
+    var it = Statements.init(call.statements).?;
+    try std.testing.expect(it.next().?.simple and !it.next().?.simple);
 }
 
 test "sql call: bind values keep their types and are never part of the text" {

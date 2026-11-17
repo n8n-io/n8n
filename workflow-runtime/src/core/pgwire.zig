@@ -193,7 +193,8 @@ pub const Writer = struct {
         try w.close(o);
     }
 
-    /// A simple query: only for texts of the client itself (`BEGIN`).
+    /// A simple query: a text of the client itself (`BEGIN`), or the text
+    /// of a `simple` statement, which the library node made.
     pub fn query(w: *Writer, text: []const u8) Error!void {
         const o = try w.open('Q');
         w.cstr(text) catch |e| return w.undo(o, e);
@@ -295,6 +296,13 @@ pub const Writer = struct {
 
     pub fn sync(w: *Writer) Error!void {
         const o = try w.open('S');
+        try w.close(o);
+    }
+
+    /// CopyFail: the answer to `COPY ... FROM STDIN`. The client has no data for it.
+    pub fn copyFail(w: *Writer, message: []const u8) Error!void {
+        const o = try w.open('f');
+        w.cstr(message) catch |e| return w.undo(o, e);
         try w.close(o);
     }
 
@@ -1411,6 +1419,134 @@ pub fn startsWithSelect(text: []const u8) bool {
     return t.len == 6 or !(std.ascii.isAlphanumeric(t[6]) or t[6] == '_');
 }
 
+/// What the commands of a statement text are. The client reads this
+/// before it sends the text with the simple query protocol.
+pub const TextScan = struct {
+    /// A command starts with a word that starts or ends a transaction, or
+    /// that needs a transaction block: the text must run as it is.
+    transaction: bool = false,
+    /// The text has a command, and each command starts with `select`.
+    all_select: bool = false,
+};
+
+const block_words = [_][]const u8{ "begin", "start", "commit", "end", "rollback", "abort", "savepoint", "release", "prepare", "lock", "declare" };
+
+const TokenKind = enum { space, separator, word, other };
+const Token = struct { kind: TokenKind, len: usize };
+
+/// Look at the first word of each command of `text`. Strings, quoted
+/// names, dollar quotes and comments are passed over, as the server reads
+/// them. `backslash`: a plain string has backslash escapes (the session
+/// has `standard_conforming_strings` off). The client also looks at the
+/// command tags of the text that ran, so a word that this scan does not
+/// see cannot give a wrong marker.
+pub fn scanText(text: []const u8, backslash: bool) TextScan {
+    var scan: TextScan = .{};
+    var commands: u32 = 0;
+    var selects: u32 = 0;
+    var at_start = true;
+    var i: usize = 0;
+    // Each token has one byte or more.
+    for (0..text.len) |_| {
+        if (i >= text.len) break;
+        const t = tokenAt(text[i..], backslash);
+        std.debug.assert(t.len > 0 and t.len <= text.len - i);
+        const first = at_start and (t.kind == .word or t.kind == .other);
+        if (t.kind == .separator) at_start = true;
+        if (first) {
+            at_start = false;
+            commands += 1;
+            const word = if (t.kind == .word) text[i..][0..t.len] else "";
+            if (std.ascii.eqlIgnoreCase(word, "select")) selects += 1;
+            scan.transaction = scan.transaction or isBlockWord(word);
+        }
+        i += t.len;
+    }
+    scan.all_select = commands > 0 and selects == commands;
+    return scan;
+}
+
+fn isBlockWord(word: []const u8) bool {
+    for (block_words) |w| {
+        if (std.ascii.eqlIgnoreCase(word, w)) return true;
+    }
+    return false;
+}
+
+fn isWordByte(c: u8) bool {
+    return std.ascii.isAlphanumeric(c) or c == '_' or c >= 0x80;
+}
+
+/// The token at the start of `s`, which is not empty.
+fn tokenAt(s: []const u8, backslash: bool) Token {
+    std.debug.assert(s.len > 0);
+    const c = s[0];
+    const two = if (s.len > 1) s[1] else 0;
+    if (c == ' ' or (c >= 9 and c <= 13)) return .{ .kind = .space, .len = 1 };
+    if (c == '-' and two == '-') return .{ .kind = .space, .len = lineCommentLen(s) };
+    if (c == '/' and two == '*') return .{ .kind = .space, .len = blockCommentLen(s) };
+    if (c == ';') return .{ .kind = .separator, .len = 1 };
+    if (c == '\'') return .{ .kind = .other, .len = quotedLen(s, backslash) };
+    if (c == '"') return .{ .kind = .other, .len = quotedLen(s, false) };
+    if (c == '$') return .{ .kind = .other, .len = dollarQuoteLen(s) orelse 1 };
+    if (!isWordByte(c) or std.ascii.isDigit(c)) return .{ .kind = .other, .len = 1 };
+    var n: usize = 1;
+    while (n < s.len and (isWordByte(s[n]) or s[n] == '$')) n += 1;
+    // `E'...'`: a string with backslash escapes.
+    const escape_string = n == 1 and (c == 'e' or c == 'E') and two == '\'';
+    if (escape_string) return .{ .kind = .other, .len = 1 + quotedLen(s[1..], true) };
+    return .{ .kind = .word, .len = n };
+}
+
+fn lineCommentLen(s: []const u8) usize {
+    const end = std.mem.indexOfScalar(u8, s, '\n') orelse return s.len;
+    return end + 1;
+}
+
+/// A block comment, with the comments inside it. One without an end takes the rest.
+fn blockCommentLen(s: []const u8) usize {
+    std.debug.assert(s.len >= 2);
+    var depth: usize = 0;
+    var i: usize = 0;
+    while (i + 1 < s.len) {
+        const open_at = s[i] == '/' and s[i + 1] == '*';
+        const close_at = s[i] == '*' and s[i + 1] == '/';
+        if (open_at) depth += 1;
+        if (close_at) depth -= 1;
+        i += if (open_at or close_at) 2 else 1;
+        if (depth == 0) return i;
+    }
+    return s.len;
+}
+
+/// A string or a quoted name: the quote of `s[0]` twice is one quote
+/// inside it. One without an end takes the rest.
+fn quotedLen(s: []const u8, backslash: bool) usize {
+    std.debug.assert(s.len > 0);
+    const q = s[0];
+    var i: usize = 1;
+    while (i < s.len) {
+        const c = s[i];
+        const pair = (c == '\\' and backslash) or (c == q and i + 1 < s.len and s[i + 1] == q);
+        if (c == q and !pair) return i + 1;
+        i += if (pair) 2 else 1;
+    }
+    return s.len;
+}
+
+/// `$tag$ ... $tag$`, or null when `s` does not start a dollar quote
+/// (`$1`). One without an end takes the rest.
+fn dollarQuoteLen(s: []const u8) ?usize {
+    std.debug.assert(s.len > 0 and s[0] == '$');
+    var n: usize = 1;
+    while (n < s.len and isWordByte(s[n])) n += 1;
+    if (n >= s.len or s[n] != '$') return null;
+    if (n > 1 and std.ascii.isDigit(s[1])) return null;
+    const tag = s[0 .. n + 1];
+    const end = std.mem.indexOfPos(u8, s, tag.len, tag) orelse return s.len;
+    return end + tag.len;
+}
+
 // ---- tests --------------------------------------------------------------------
 
 fn jsonOf(buf: []u8, class: Class, text: []const u8, opt: Options) ValueError![]const u8 {
@@ -1688,4 +1824,45 @@ test "pgwire: the first word of a statement" {
     try std.testing.expect(startsWithSelect("select"));
     try std.testing.expect(!startsWithSelect("selection"));
     try std.testing.expect(!startsWithSelect("with x as (select 1) insert into t select * from x"));
+}
+
+test "pgwire: the first word of each command of a simple text" {
+    const plain = scanText("insert into t values (1); update t set a = 2", false);
+    try std.testing.expect(!plain.transaction and !plain.all_select);
+    const selects = scanText(" select 1;\n-- c\nSELECT 'a;b' /* x /* y */ ; */ ;", false);
+    try std.testing.expect(!selects.transaction and selects.all_select);
+    try std.testing.expect(!scanText("", false).all_select and !scanText(" ; ", false).all_select);
+    try std.testing.expect(!scanText("(select 1)", false).all_select);
+    const with_tx = [_][]const u8{
+        "insert into t values (1); COMMIT; insert into t values (2)",
+        "Begin; select 1",
+        "select 1;\tend",
+        "lock table t",
+        "select $1; rollback",
+        "select $a$ ; $a$; savepoint s",
+        "select 'it''s' ; \"a;\"\"b\" ; start transaction",
+        "select E'a\\'; x' ; abort",
+        "select 1 /* c */ ; -- d\n declare c cursor for select 1",
+    };
+    for (with_tx) |text| try std.testing.expect(scanText(text, false).transaction);
+    // The word is inside a string, a name, a dollar quote, a comment or a command.
+    const without = [_][]const u8{
+        "select 'a; commit'",
+        "select \"x; commit\" from t",
+        "do $body$ begin perform 1; end $body$",
+        "select $$ ; commit $$",
+        "select 1 -- ; commit",
+        "select 1 /* ; commit */",
+        "select case when a then 1 else 2 end from t",
+        "select e'a\\'; commit '",
+        "select 1; committed",
+    };
+    for (without) |text| try std.testing.expect(!scanText(text, false).transaction);
+    // With backslash escapes in plain strings, the string goes on after the escaped quote.
+    try std.testing.expect(scanText("select 'a\\'; commit", false).transaction);
+    try std.testing.expect(!scanText("select 'a\\'; commit'", true).transaction);
+    var buf: [32]u8 = @splat(0);
+    var w: Writer = .{ .buf = &buf };
+    try w.copyFail("no");
+    try std.testing.expectEqualSlices(u8, "f\x00\x00\x00\x07no\x00", buf[0..w.len]);
 }

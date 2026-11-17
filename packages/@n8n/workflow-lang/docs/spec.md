@@ -1760,9 +1760,10 @@ await ctx.sql({
   that completed, in order, and `sets: []` for a text without a command.
   When a command fails, the server ends the text there, and the entry is
   `{ error }`. The modes do not change: a simple statement that is the
-  only statement of a call in the mode `single` runs alone, with no
-  `BEGIN` from the runtime. The column values have the JSON of the table
-  below. The runtime does not read or change the text, so a simple
+  only statement of a call in the mode `single` runs alone, with the
+  effect of the text sent alone (`wfrt` can put `BEGIN` and `COMMIT`
+  around it for the rule of the marker, see below). The column values have
+  the JSON of the table below. The runtime does not change the text, so a simple
   statement is only as safe as the code that makes its text. The library
   node of Postgres makes the text with one formatter that gives the text of
   pg-promise (`src/nodes/shared/pg-format.ts`), only for a query that has
@@ -1864,6 +1865,17 @@ await ctx.sql({
   that gives rows), such a failure of a later statement is a plain limit
   error, and the statements after it do not run. A call whose statements
   before the failure only read, or failed, still ends with the marker.
+
+  `wfrt` cannot describe a simple statement before it runs. A simple
+  statement that runs alone goes between `BEGIN` and `COMMIT` of `wfrt`,
+  and `wfrt` does `ROLLBACK` before it gives the marker. A text runs as it
+  is, without that transaction, when each command starts with `SELECT`,
+  when a command starts with a transaction word (`BEGIN`, `COMMIT`,
+  `SAVEPOINT`, `LOCK` and others), or when a command cannot run in a
+  transaction block (`VACUUM`). For such a text that is not only `SELECT`
+  commands that gave rows, the failure is a plain limit error. In a
+  transaction of the mode, a simple text with a transaction word gives
+  `(limit: sql-statement)` before a statement is sent.
 
   Other effect errors have no marker: arguments that are not valid, a slot
   that is not there, no free call slot (`(limit)`), the total timeout (the
