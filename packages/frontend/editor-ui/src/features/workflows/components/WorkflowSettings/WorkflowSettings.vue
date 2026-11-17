@@ -191,6 +191,9 @@ const selectedResolverId = computed({
 
 const helpTexts = computed(() => ({
 	errorWorkflow: i18n.baseText('workflowSettings.helpTexts.errorWorkflow'),
+	errorWorkflowIncludeTriggerData: i18n.baseText(
+		'workflowSettings.helpTexts.errorWorkflowIncludeTriggerData',
+	),
 	timezone: i18n.baseText('workflowSettings.helpTexts.timezone'),
 	credentialResolver: i18n.baseText('workflowSettings.helpTexts.credentialResolver'),
 	saveDataErrorExecution: i18n.baseText('workflowSettings.helpTexts.saveDataErrorExecution'),
@@ -216,6 +219,7 @@ const defaultValues = ref({
 	workflowCallerPolicy: 'workflowsFromSameOwner',
 	availableInMCP: false,
 	redactCallerExecutions: true,
+	errorWorkflowIncludeTriggerData: false,
 });
 
 const executionLogic = computed(() => {
@@ -853,6 +857,11 @@ const toggleTimeout = () => {
 	workflowSettings.value.executionTimeout = workflowSettings.value.executionTimeout === -1 ? 0 : -1;
 };
 
+const toggleErrorWorkflowIncludeTriggerData = () => {
+	workflowSettings.value.errorWorkflowIncludeTriggerData =
+		!workflowSettings.value.errorWorkflowIncludeTriggerData;
+};
+
 const toggleAvailableInMCP = () => {
 	workflowSettings.value.availableInMCP = !workflowSettings.value.availableInMCP;
 };
@@ -984,6 +993,10 @@ onMounted(async () => {
 	}
 	if (workflowSettingsData.redactCallerExecutions === undefined) {
 		workflowSettingsData.redactCallerExecutions = defaultValues.value.redactCallerExecutions;
+	}
+	if (workflowSettingsData.errorWorkflowIncludeTriggerData === undefined) {
+		workflowSettingsData.errorWorkflowIncludeTriggerData =
+			defaultValues.value.errorWorkflowIncludeTriggerData;
 	}
 
 	originalBinaryMode.value = workflowSettingsData.binaryMode;
@@ -1179,6 +1192,31 @@ onBeforeUnmount(() => {
 								</div>
 							</N8nOption>
 						</N8nSelect>
+					</ElCol>
+				</ElRow>
+				<ElRow data-test-id="error-workflow-include-trigger-data">
+					<ElCol :span="10" :class="$style['setting-name']">
+						<label for="errorWorkflowIncludeTriggerData">
+							{{ i18n.baseText('workflowSettings.errorWorkflowIncludeTriggerData') }}
+							<N8nTooltip placement="top">
+								<template #content>
+									{{ helpTexts.errorWorkflowIncludeTriggerData }}
+								</template>
+								<N8nIcon icon="circle-help" />
+							</N8nTooltip>
+						</label>
+					</ElCol>
+					<ElCol :span="14">
+						<N8nSwitch
+							id="errorWorkflowIncludeTriggerData"
+							:class="$style['setting-switch']"
+							size="large"
+							:disabled="readOnlyEnv || !workflowPermissions.update"
+							:model-value="workflowSettings.errorWorkflowIncludeTriggerData ?? false"
+							data-test-id="workflow-settings-error-workflow-include-trigger-data"
+							data-attr="workflow-settings-error-workflow-include-trigger-data"
+							@update:model-value="toggleErrorWorkflowIncludeTriggerData"
+						/>
 					</ElCol>
 				</ElRow>
 				<ElRow v-if="isCredentialResolverEnabled" data-test-id="credential-resolver">
