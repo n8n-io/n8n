@@ -163,7 +163,7 @@ const genericCredentialRequest = async (ctx: ISupplyDataFunctions, itemIndex: nu
 
 const predefinedCredentialRequest = async (ctx: ISupplyDataFunctions, itemIndex: number) => {
 	const predefinedType = ctx.getNodeParameter('nodeCredentialType', itemIndex) as string;
-	const additionalOptions = getOAuth2AdditionalParameters(predefinedType);
+	const additionalOptions = getOAuth2AdditionalParameters(predefinedType, true);
 	const credentials = await ctx.getCredentials(predefinedType, itemIndex);
 
 	return async (options: IHttpRequestOptions) => {
