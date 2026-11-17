@@ -9,6 +9,7 @@ import { ProjectTypes } from '../projects.types';
 import { useProjectsStore } from '../projects.store';
 import { canConfigureSelfHealing, selfHealingLocation } from '../projects.utils';
 import ProjectTabs from './ProjectTabs.vue';
+import { useAppNavigation } from '@/app/components/appNavigation/useAppNavigation';
 import { ResourceListToolbarTargetKey } from '@/app/components/layouts/resourceListToolbar';
 import ProjectIcon from './ProjectIcon.vue';
 import { getResourcePermissions } from '@n8n/permissions';
@@ -31,7 +32,14 @@ import { useAgentPermissions } from '@/features/agents/composables/useAgentPermi
 import ReadyToRunButton from '@/features/workflows/readyToRun/components/ReadyToRunButton.vue';
 import { loadPromotionPreviewBadges } from '@n8n/frontend-module-promotions';
 
-import { N8nButton, N8nHeading, N8nIconButton, N8nText, N8nTooltip } from '@n8n/design-system';
+import {
+	N8nButton,
+	N8nHeading,
+	N8nIcon,
+	N8nIconButton,
+	N8nText,
+	N8nTooltip,
+} from '@n8n/design-system';
 import { VARIABLE_MODAL_KEY } from '@/features/settings/environments.ee/environments.constants';
 import { useTelemetry } from '@n8n/composables/useTelemetry';
 import { useCreateAgent } from '@/features/agents/composables/useCreateAgent';
@@ -165,6 +173,24 @@ const pageType = computed(() => {
 // The navigation panel lists the pages of Overview and of each project, so only the shared
 // pages, which the panel does not list, keep the tabs.
 const showTabs = computed(() => pageType.value === 'shared');
+
+// While the navigation panel is collapsed, the title shows the path to the page, such as
+// "Monetization > Credentials", so the user still sees which page is open.
+const navigation = useAppNavigation();
+const currentPage = computed(() =>
+	navigation
+		.sectionsFor(navigation.activeItemId.value)
+		.flatMap((section) => section.links)
+		.find((link) => link.active),
+);
+const pathRoot = computed(() => navigation.railItemById(navigation.activeItemId.value));
+const showPagePath = computed(
+	() =>
+		(uiStore.sidebarMenuCollapsed ?? false) &&
+		!showTabs.value &&
+		currentPage.value !== undefined &&
+		pathRoot.value !== undefined,
+);
 
 const personalSelfHealingTab = computed((): TabOptions<string> | null => {
 	const project = projectsStore.currentProject;
@@ -535,8 +561,34 @@ const onSelect = (action: string, source: CreateSource) => {
 				<ProjectIcon v-if="showProjectIcon" :icon="headerIcon" :border-less="true" size="medium" />
 				<div ref="projectInfoRef" :class="$style.projectInfo">
 					<div :class="$style.titleRow">
+						<nav
+							v-if="showPagePath && projectName && pathRoot && currentPage"
+							:class="$style.pagePath"
+							:aria-label="i18n.baseText('projects.header.pagePath')"
+							data-test-id="project-page-path"
+						>
+							<RouterLink
+								:to="pathRoot.to"
+								:class="$style.pagePathRoot"
+								:title="projectName"
+								data-test-id="project-name"
+							>
+								{{ projectName }}
+							</RouterLink>
+							<N8nIcon icon="chevron-right" size="large" :class="$style.pagePathSeparator" />
+							<N8nHeading
+								:class="$style.projectName"
+								:title="currentPage.label"
+								bold
+								tag="h2"
+								size="xlarge"
+								aria-current="page"
+								data-test-id="project-page-name"
+								>{{ currentPage.label }}</N8nHeading
+							>
+						</nav>
 						<N8nHeading
-							v-if="projectName"
+							v-else-if="projectName"
 							:class="$style.projectName"
 							:title="projectName"
 							bold
@@ -740,6 +792,37 @@ const onSelect = (action: string, source: CreateSource) => {
 	&.favoriteBtnActive {
 		color: var(--color--yellow-500);
 	}
+}
+
+.pagePath {
+	display: flex;
+	align-items: center;
+	gap: var(--spacing--3xs);
+	min-width: 0;
+}
+
+// The project is the way back; the page name carries the weight.
+.pagePathRoot {
+	min-width: 0;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+	color: var(--text-color--subtle);
+	font-size: var(--font-size--xl);
+	font-weight: var(--font-weight--medium);
+	line-height: var(--line-height--sm);
+	text-decoration: none;
+	// The project name gives way first, so the page name stays readable.
+	flex-shrink: 1;
+
+	&:hover {
+		color: var(--text-color);
+	}
+}
+
+.pagePathSeparator {
+	flex-shrink: 0;
+	color: var(--text-color--subtler);
 }
 
 .titleRow {

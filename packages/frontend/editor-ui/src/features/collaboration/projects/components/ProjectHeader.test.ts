@@ -40,6 +40,22 @@ vi.mock('vue-router', async () => {
 	};
 });
 
+// The navigation decides the page name for the title path.
+const navigationPage = vi.hoisted(() => ({
+	current: { id: 'credentials', label: 'Credentials', active: true } as
+		| { id: string; label: string; active: boolean }
+		| undefined,
+}));
+vi.mock('@/app/components/appNavigation/useAppNavigation', () => ({
+	useAppNavigation: () => ({
+		activeItemId: { value: 'project:p1' },
+		sectionsFor: () => [
+			{ id: 'pages', links: navigationPage.current ? [navigationPage.current] : [] },
+		],
+		railItemById: () => ({ id: 'project:p1', label: 'My Project', to: '/projects/p1' }),
+	}),
+}));
+
 const trackClickedNewAgent = vi.fn();
 vi.mock('@/features/agents/composables/useAgentTelemetry', () => ({
 	useAgentTelemetry: () => ({
@@ -84,6 +100,7 @@ const renderComponent = createComponentRenderer(ProjectHeader, {
 		stubs: {
 			ProjectTabs: projectTabsSpy,
 			ProjectCreateResource: ProjectCreateResourceStub,
+			RouterLink: { props: ['to'], template: '<a :href="to"><slot /></a>' },
 		},
 	},
 });
@@ -213,6 +230,39 @@ describe('ProjectHeader', () => {
 
 		expect(getByTestId('project-name')).toHaveTextContent('Personal');
 		expect(queryByTestId('project-subtitle')).not.toBeInTheDocument();
+	});
+
+	describe('page path', () => {
+		beforeEach(() => {
+			navigationPage.current = { id: 'credentials', label: 'Credentials', active: true };
+			projectsStore.currentProject = { name: 'My Project' } as Project;
+		});
+
+		it('shows the project and the page while the navigation panel is collapsed', () => {
+			uiStore.sidebarMenuCollapsed = true;
+			const { getByTestId } = renderComponent();
+
+			expect(getByTestId('project-page-path')).toBeInTheDocument();
+			expect(getByTestId('project-name')).toHaveTextContent('My Project');
+			expect(getByTestId('project-name')).toHaveAttribute('href', '/projects/p1');
+			expect(getByTestId('project-page-name')).toHaveTextContent('Credentials');
+		});
+
+		it('shows only the project while the navigation panel is open', () => {
+			uiStore.sidebarMenuCollapsed = false;
+			const { getByTestId, queryByTestId } = renderComponent();
+
+			expect(queryByTestId('project-page-path')).not.toBeInTheDocument();
+			expect(getByTestId('project-name')).toHaveTextContent('My Project');
+		});
+
+		it('shows only the project when the navigation has no page for the route', () => {
+			uiStore.sidebarMenuCollapsed = true;
+			navigationPage.current = undefined;
+			const { queryByTestId } = renderComponent();
+
+			expect(queryByTestId('project-page-path')).not.toBeInTheDocument();
+		});
 	});
 
 	it('Team project: should render the correct title and no subtitle if there is no description', async () => {
