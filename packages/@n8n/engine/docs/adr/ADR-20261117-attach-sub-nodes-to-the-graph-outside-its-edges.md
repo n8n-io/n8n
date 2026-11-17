@@ -1,6 +1,6 @@
 # Attach sub-nodes to the graph outside its edges
 
-Date: 2026-11-09
+Date: 2026-11-17
 
 Status: Active
 
@@ -19,7 +19,7 @@ an AI Agent, over typed connections (`ai_languageModel`, `ai_tool` and others). 
 pulls them while it runs. The converter keeps only the nodes that the trigger reaches over `main`
 connections, so it drops all sub-nodes, and the agent step fails at run time.
 
-With ADR-20261109-steps-declare-actions-that-the-engine-runs-as-steps, a tool node runs as a
+With ADR-20261117-steps-declare-actions-that-the-engine-runs-as-steps, a tool node runs as a
 spawned step, so it must be a node of the graph.
 
 ## Decision
@@ -42,10 +42,15 @@ spawned step, so it must be a node of the graph.
    as a target. For example, a tool that a human approval gates attaches to the approval node, and
    the approval node attaches to the agent. The converter stores the allowed kinds with the graph,
    so the check does not depend on the run that declares the actions. The engine compares the
-   strings and does not read them.
+   strings and does not read them. A node that allows target kinds can also declare actions. For
+   a v1 node, the converter infers both from its `ai_tool` attachments. An action can name the
+   node that its target attaches to, and that attachment must be on a valid path. Without that
+   name, the engine takes the direct attachment to the declaring step's node, and then the first
+   valid path.
 6. **The converter adds the sub-nodes of every node it keeps, recursively.** It drops disabled
-   sub-nodes and every attachment whose node it drops. The shim turns attachments back into v1
-   connections, so a root node reads its sub-nodes as in engine v1.
+   sub-nodes and every attachment whose node it drops. A node cannot be both a sub-node and a
+   node that the trigger reaches over `main`. The converter rejects such a workflow. The shim
+   turns attachments back into v1 connections, so a root node reads its sub-nodes as in engine v1.
 7. **A graph without attachments has none.** Graphs stored before this decision stay valid.
 
 ```mermaid
@@ -79,11 +84,15 @@ Solid arrows are edges. Dashed arrows are attachments.
   change.
 - Chat model and memory nodes become graph nodes, but they are never action targets.
 - A sub-node that two roots share is one node with two attachments.
-- Pinned data on a sub-node is not supported, because only reachable nodes can be seeded.
+- In a manual run, a pinned sub-node that is an action target answers every action with its
+  pinned output and does not run. Pinned data on a sub-node that runs inside its root's step, such
+  as a chat model or a memory, is not supported.
 - The read path shows a spawned step under its declaring node, with the output under the
-  attachment kind, as engine v1 does.
+  attachment kind, as engine v1 does. A spawned step whose target attaches to a node between it
+  and the declaring node, such as an approval, is shown under that node's run for the same call.
+  Live updates and the read build this view with the same code.
 - A sub-node that runs inside its root's step, such as a chat model, records its runs and token
-  usage in engine v1. These records are not stored. Where they go is a separate decision.
+  usage in engine v1. ADR-20261117-record-sub-node-runs-as-settled-steps decides where they go.
 - The target check allows any node on a path of allowed kinds. A tool of a nested agent is on such
   a path too, so the check alone cannot stop the outer agent from calling it.
 
@@ -91,6 +100,6 @@ Solid arrows are edges. Dashed arrows are attachments.
 
 RFC: -
 
-Documentation: -
+Documentation: https://github.com/n8n-io/n8n/pull/43694
 
-Related ADRs: ADR-20261109-steps-declare-actions-that-the-engine-runs-as-steps, ADR-20261109-store-rounds-in-their-own-table-and-spawned-steps-with-the-graph-steps
+Related ADRs: ADR-20261117-steps-declare-actions-that-the-engine-runs-as-steps, ADR-20261117-store-rounds-in-their-own-table-and-spawned-steps-with-the-graph-steps, ADR-20261117-record-sub-node-runs-as-settled-steps

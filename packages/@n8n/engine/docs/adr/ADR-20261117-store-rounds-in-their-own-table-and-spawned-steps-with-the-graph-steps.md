@@ -1,6 +1,6 @@
 # Store rounds in their own table and spawned steps with the graph steps
 
-Date: 2026-11-09
+Date: 2026-11-17
 
 Status: Active
 
@@ -10,7 +10,7 @@ Source: https://linear.app/n8n/issue/CET-648
 
 ## Context
 
-With ADR-20261109-steps-declare-actions-that-the-engine-runs-as-steps, one step row runs many
+With ADR-20261117-steps-declare-actions-that-the-engine-runs-as-steps, one step row runs many
 rounds, and each round can spawn steps. The terms in this record come from that record.
 
 The table `workflow_step_execution` holds one row for each node and iteration of an execution, with
@@ -27,19 +27,26 @@ derives inputs.
    the round payload (which the engine does not read). For a round with actions, one transaction
    writes the row, suspends the step and creates one queued spawned step for each action. So the
    execution never shows a round without its spawned steps. A round that ends with outputs settles
-   the step as any step does. A duplicate write does nothing.
-2. **A round row holds only what is new in that round.** The engine builds the continuation from all
-   round rows and their spawned steps: each action's outcome is its spawned step's outputs or error.
-   The node rebuilds its whole conversation from the continuation. An outcome is stored only once,
-   in its spawned step.
-3. **Spawned steps live in `workflow_step_execution`.** A `kind` column tells a graph step from a
-   spawned step. A spawned step also has its declaring step's id, the round and the call id. A check
-   constraint ties these columns to `kind`. The unique index on node and iteration applies to graph
-   steps only. A second unique index on declaring step, round and call id applies to spawned steps.
+   the step as any step does. A round without actions is written with an error, and no spawned
+   step. A duplicate write does nothing.
+2. **A round row should hold only what is new in that round.** The engine builds the continuation
+   from all round rows and their spawned steps: each action's outcome is its spawned step's outputs
+   or error. The node rebuilds its whole conversation from the continuation. An outcome is stored
+   only once, in its spawned step. The engine does not enforce this rule, and a v1 node behind
+   the shim does not follow it: its round payload repeats the earlier rounds.
+3. **Spawned steps live in `workflow_step_execution`.** A `kind` column tells a graph step, a
+   spawned step and a recorded step apart
+   (ADR-20261117-record-sub-node-runs-as-settled-steps). A spawned step also has its declaring
+   step's id, the round and its position in the round. These three are its key. The call id is
+   optional data. A check constraint ties these columns to `kind`. The unique index on node and
+   iteration applies to graph steps only. A second unique index on declaring step, round and
+   position applies to spawned steps.
 4. **A spawned step's node is the action's target node. Its iteration is the declaring step's
-   iteration.** Its declaring step can be a graph step or another spawned step.
+   iteration.** Its declaring step can be a graph step or another spawned step. Its v1 run index
+   is its call order among the spawned steps of the same node, by round and then by position.
 5. **A spawned step stores no input.** The engine derives it from the declaring step's gathered
-   input item for the action and from the action's arguments.
+   input item for the action and from the action's arguments. A spawned step sees expressions as
+   its declaring step does, in the same loop pass.
 6. **Every query that must see graph steps only is a named store method that filters on `kind`.**
    No caller writes the filter itself.
 7. **Round rows and spawned steps are deleted with their execution.**
@@ -65,7 +72,11 @@ derives inputs.
   count and fail-fast ignore spawned steps guard the most important ones.
 - The step table and its indexes grow with each action. Workflows without agents share that table.
 - To continue a step, the engine reads all its round rows and their spawned steps. That cost grows
-  with the number of rounds.
+  with the number of rounds. Each spawned step reads its declaring step's full input to take one
+  item.
+- For a v1 node behind the shim, the stored round payloads grow with the square of the number of
+  rounds. The node's iteration limit and the engine's round cap bound it. Storing the payloads
+  without repetition is deferred.
 - Round payloads and outputs stay inline. Large agent runs make rows large until large step data
   moves out of the database, which is a separate decision.
 - A round payload must be JSON. The node serialises its own state.
@@ -78,6 +89,6 @@ derives inputs.
 
 RFC: -
 
-Documentation: -
+Documentation: https://github.com/n8n-io/n8n/pull/43694
 
-Related ADRs: ADR-20261109-steps-declare-actions-that-the-engine-runs-as-steps, ADR-20261109-attach-sub-nodes-to-the-graph-outside-its-edges
+Related ADRs: ADR-20261117-steps-declare-actions-that-the-engine-runs-as-steps, ADR-20261117-attach-sub-nodes-to-the-graph-outside-its-edges, ADR-20261117-record-sub-node-runs-as-settled-steps
