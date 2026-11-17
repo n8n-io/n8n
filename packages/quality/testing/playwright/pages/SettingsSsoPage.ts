@@ -33,8 +33,8 @@ export class SettingsSsoPage extends BasePage {
 	}
 
 	getOidcSaveButton(): Locator {
-		// The SSO page saves through the settings save bar.
-		return this.page.getByTestId('settings-save-bar-save');
+		// One static Save settings button saves the SAML or OIDC form and SCIM.
+		return this.page.getByTestId('sso-save');
 	}
 
 	async isOidcLoginEnabled(): Promise<boolean> {

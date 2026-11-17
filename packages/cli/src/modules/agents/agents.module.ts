@@ -15,6 +15,10 @@ export class AgentsModule implements ModuleInterface {
 		const { registerSkillUsage } = await import('./register-skill-usage.js');
 		registerSkillUsage();
 
+		// Tell core which agent acts as a service account, so a user deletion keeps it.
+		const { registerServiceAccountUsage } = await import('./register-service-account-usage.js');
+		registerServiceAccountUsage();
+
 		// The knowledge module starts before this module. Hand it the sandbox its file mirror runs in.
 		const { registerKnowledgeSandboxProvider } = await import(
 			'./register-knowledge-sandbox-provider.js'
@@ -76,6 +80,11 @@ export class AgentsModule implements ModuleInterface {
 
 		const { registerFavoriteResolver } = await import('./register-favorite-resolver.js');
 		registerFavoriteResolver();
+
+		// Collaboration checks agent access on push messages through this lookup.
+		const { AgentProjectLookupProxy } = await import('@n8n/backend-services');
+		const { AgentRepository } = await import('./repositories/agent.repository.js');
+		Container.get(AgentProjectLookupProxy).registerProvider(Container.get(AgentRepository));
 
 		const { registerAgentUsageProvider } = await import('./register-agent-usage-provider.js');
 		registerAgentUsageProvider();
