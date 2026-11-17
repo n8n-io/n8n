@@ -810,6 +810,13 @@ export class AwsS3V2 implements INodeType {
 							? (this.getNodeParameter('urlExpiryTime', i, 3600) as number)
 							: 3600;
 
+						if (!Number.isInteger(requestedExpiresIn) || requestedExpiresIn < 1 || requestedExpiresIn > 604800) {
+							throw new NodeOperationError(
+								this.getNode(),
+								'URL expiry time must be an integer between 1 and 604800 seconds',
+							);
+						}
+
 						const usesTemporaryCredentials =
 							credentialsType === 'awsAssumeRole' ||
 							(credentialsType === 'aws' &&
