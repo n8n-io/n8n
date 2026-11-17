@@ -120,7 +120,9 @@ const STRUCTURE_KEYS: ReadonlySet<string> = new Set([
 	'timezone',
 ]);
 // Type names of the gym's world formats. They are not in the real data under these names.
+// "Untitled" is the name that Notion shows for a page without a title.
 const STRUCTURE_VALUES: ReadonlySet<string> = new Set([
+	'Untitled',
 	'title',
 	'rich_text',
 	'number',
@@ -161,7 +163,9 @@ const isFree = (key: string, value: string, known: string): boolean =>
 	STRUCTURE_KEYS.has(key) ||
 	STRUCTURE_VALUES.has(value) ||
 	REF.test(value) ||
-	known.includes(normalizeText(value));
+	known.includes(normalizeText(value)) ||
+	// An id with dashes is the id that a url shows without them.
+	(WHOLE_UUID.test(value) && known.includes(normalizeText(value).replace(/-/g, '')));
 
 export interface UnprovenLiteral {
 	path: string;

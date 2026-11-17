@@ -4,6 +4,7 @@ import { LINEAR_INSTRUCTIONS, NOTION_INSTRUCTIONS } from './hydration-prompts';
 import { linearLookups, notionLookups, withUserEmails } from './linear-lookups';
 import { LINEAR_READ_TOOLS, LINEAR_WRITE_TOOLS } from './linear-tools';
 import type { McpCaller } from './mcp-upstream';
+import { withTitles } from './notion-finalize';
 import { NotionHydrator } from './notion-hydrator';
 import { NOTION_READ_TOOLS, NOTION_WRITE_TOOLS } from './notion-tools';
 import type { Hydrator } from './router';
@@ -88,6 +89,7 @@ export const NOTION_PROFILE: GuardServiceProfile = {
 	credentialField: 'access_token',
 	placeholderSeed: { world_version: 1, persona: { name: 'Guard', email: 'guard@unknown.invalid' } },
 	lookups: notionLookups,
+	finalize: withTitles,
 	instructions: NOTION_INSTRUCTIONS,
 	createHydrator: (deps) => new NotionHydrator(deps),
 };
