@@ -25,17 +25,6 @@ export function refuseUnmockedNode(context: ExecutionSetup, functions: IExecuteF
 	);
 }
 
-export function refuseCodeTask(context: ExecutionSetup, node: INode): never {
-	return failExecution(
-		context,
-		new WorkflowTestError(
-			'CODE_NODE_NOT_MOCKED',
-			`Node "${node.name}" runs code, which a test cannot run. Mock the node with mockNode().`,
-			{ workflow: context.handle.name, node: node.name },
-		),
-	);
-}
-
 export function refuseSubWorkflow(context: ExecutionSetup, node: INode | undefined): never {
 	return failExecution(
 		context,

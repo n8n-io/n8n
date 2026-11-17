@@ -1,0 +1,41 @@
+{
+	"id": "webhook-respond-1",
+	"name": "Create order",
+	"nodes": [
+		{
+			"id": "d4000000-0001-4000-8000-000000000001",
+			"name": "Webhook",
+			"type": "n8n-nodes-base.webhook",
+			"typeVersion": 2.1,
+			"position": [0, 0],
+			"webhookId": "d4000000-0001-4000-8000-0000000000aa",
+			"parameters": {
+				"httpMethod": "POST",
+				"path": "orders",
+				"responseMode": "responseNode",
+				"options": {}
+			}
+		},
+		{
+			"id": "d4000000-0001-4000-8000-000000000002",
+			"name": "Respond to Webhook",
+			"type": "n8n-nodes-base.respondToWebhook",
+			"typeVersion": 1.5,
+			"position": [220, 0],
+			"parameters": {
+				"respondWith": "json",
+				"responseBody": "={{ { \"orderId\": $json.body.id, \"status\": \"created\" } }}",
+				"options": {
+					"responseCode": 201,
+					"responseHeaders": {
+						"entries": [{ "name": "X-Order-Id", "value": "={{ $json.body.id }}" }]
+					}
+				}
+			}
+		}
+	],
+	"connections": {
+		"Webhook": { "main": [[{ "node": "Respond to Webhook", "type": "main", "index": 0 }]] }
+	},
+	"settings": { "executionOrder": "v1" }
+}

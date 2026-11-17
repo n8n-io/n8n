@@ -11,6 +11,7 @@ import type { WorkflowTestError } from './errors';
 import type { HttpRequest } from './http/http-request';
 import type { TestCredential } from './instance-state/credentials';
 import type { Redaction } from './http/redact';
+import type { WebhookCapture } from './runtime/webhook-response';
 import type { NodeReference, WorkflowHandle } from './workflow-set';
 
 export interface ExecuteWorkflowOptions {
@@ -56,6 +57,7 @@ export interface ExecutionSetup {
 	runs: NodeRunLog;
 	fatalError?: WorkflowTestError;
 	redactions: Redaction[];
+	webhook?: WebhookCapture;
 }
 
 export interface ExecutionContext extends ExecutionSetup {
