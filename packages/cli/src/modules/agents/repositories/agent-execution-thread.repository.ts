@@ -293,7 +293,7 @@ export class AgentExecutionThreadRepository extends BaseRepository<AgentExecutio
 				{ userId },
 			);
 		this.applyListFilters(query, filters, userId, this.updatedAtExpression());
-		return await this.paginateByUpdatedAt(query, limit, cursor);
+		return await this.paginateByUpdatedAt(query, limit, cursor, filters.sessionIds !== undefined);
 	}
 
 	/**
@@ -415,10 +415,21 @@ export class AgentExecutionThreadRepository extends BaseRepository<AgentExecutio
 		query: SelectQueryBuilder<AgentExecutionThread>,
 		limit: number,
 		cursor?: string,
+		stable = false,
 	): Promise<AgentExecutionThreadPage> {
-		query.orderBy('thread.updatedAt', 'DESC').take(limit + 1);
+		const updatedAt = this.updatedAtExpression();
+		query.orderBy(stable ? updatedAt : 'thread.updatedAt', 'DESC').take(limit + 1);
+		if (stable) query.addOrderBy('thread.id', 'DESC');
 		if (cursor) {
-			query.andWhere(`${this.updatedAtExpression()} < :cursor`, { cursor: new Date(cursor) });
+			const [timestamp, id] = stable ? cursor.split('|') : [cursor];
+			const date = new Date(timestamp);
+			if (Number.isNaN(date.getTime())) throw new UserError('Invalid session cursor');
+			query.andWhere(
+				id
+					? `(${updatedAt} < :cursor OR (${updatedAt} = :cursor AND thread.id < :cursorId))`
+					: `${updatedAt} < :cursor`,
+				{ cursor: date, cursorId: id },
+			);
 		}
 		const threads = await query.getMany();
 		const hasMore = threads.length > limit;
@@ -426,7 +437,9 @@ export class AgentExecutionThreadRepository extends BaseRepository<AgentExecutio
 
 		return {
 			threads,
-			nextCursor: hasMore ? threads[threads.length - 1].updatedAt.toISOString() : null,
+			nextCursor: hasMore
+				? `${threads[threads.length - 1].updatedAt.toISOString()}${stable ? `|${threads[threads.length - 1].id}` : ''}`
+				: null,
 		};
 	}
 
@@ -436,6 +449,11 @@ export class AgentExecutionThreadRepository extends BaseRepository<AgentExecutio
 		userId: string,
 		updatedAt: string,
 	) {
+		if (filters.sessionIds !== undefined) {
+			query.andWhere(filters.sessionIds.length ? 'thread.id IN (:...sessionIds)' : '1 = 0', {
+				sessionIds: filters.sessionIds,
+			});
+		}
 		if (filters.scope === 'mine') {
 			query.andWhere('thread.ownerId = :userId', { userId });
 		}

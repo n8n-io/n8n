@@ -1,4 +1,5 @@
 import type { FolderRepository } from '@n8n/db';
+import { AgentAttentionFlagRepository } from '@/modules/agents/repositories/agent-attention-flag.repository';
 import { AgentProjectDeletionRepository } from '@/modules/agents/repositories/agent-project-deletion.repository';
 import type {
 	AgentSessionOrigin,
@@ -186,7 +187,13 @@ describe('AgentExecutionRepository', () => {
 			connection ?? repository.manager.connection,
 			mockLogger(),
 		);
-		const executions = connection ? new AgentExecutionRepository(connection, txRunner) : repository;
+		const executions = connection
+			? new AgentExecutionRepository(
+					connection,
+					txRunner,
+					new AgentAttentionFlagRepository(connection, txRunner),
+				)
+			: repository;
 		const threads = connection
 			? new AgentExecutionThreadRepository(
 					connection,
@@ -233,6 +240,7 @@ describe('AgentExecutionRepository', () => {
 			messageRepository,
 			systemAgents,
 			Container.get(AgentProjectDeletionRepository),
+			new AgentAttentionFlagRepository(connection ?? repository.manager.connection, txRunner),
 		);
 		const queueUpdates = mock<AgentExecutionUpdateBroadcaster>();
 		const settingsService = new AgentsSettingsService(

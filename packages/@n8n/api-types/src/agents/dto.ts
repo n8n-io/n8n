@@ -176,11 +176,16 @@ export class ListAgentSessionsQueryDto extends Z.class({
 	scope: z.enum(['all', 'mine']).optional(),
 	updatedAfter: z.coerce.date().optional(),
 	updatedBefore: z.coerce.date().optional(),
+	/** Comma-separated session IDs, or repeated query parameters. An empty list matches nothing. */
+	sessionIds: z.preprocess(
+		(value) => (typeof value === 'string' ? (value === '' ? [] : value.split(',')) : value),
+		z.array(z.string().min(1).max(128)).max(500).optional(),
+	),
 }) {}
 
 export type AgentSessionQueryFilters = Pick<
 	ListAgentSessionsQueryDto,
-	'status' | 'origin' | 'scope' | 'updatedAfter' | 'updatedBefore' | 'previewOnly'
+	'status' | 'origin' | 'scope' | 'updatedAfter' | 'updatedBefore' | 'previewOnly' | 'sessionIds'
 >;
 
 export class ListAgentMemoryEntriesQueryDto extends Z.class({
