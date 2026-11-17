@@ -19,11 +19,18 @@ import {
 	statSync,
 	writeFileSync,
 } from 'node:fs';
+import { createServer as createHttpServer } from 'node:http';
 import { createRequire } from 'node:module';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-import type { EquivalenceCase, RawRequest, Recording, ServiceCallRecord } from './equivalence.ts';
+import type {
+	EquivalenceCase,
+	RawRequest,
+	Recording,
+	ServiceCallRecord,
+	WireHeaders,
+} from './equivalence.ts';
 import { normalizeRequest } from './equivalence.ts';
 import { fixtureBytes } from '../../reference/binary-response.ts';
 
@@ -343,6 +350,107 @@ function outputItem(item: AnyRecord): unknown {
 	return item.binary === undefined ? item.json : { ...item.json, $binary: item.binary };
 }
 
+interface WireProbe {
+	url: string;
+	client: AnyRecord;
+	seen: Map<string, WireHeaders>;
+	next: number;
+}
+
+let wireProbe: Promise<WireProbe> | undefined;
+let realHttp: AnyRecord | undefined;
+
+/**
+ * A local server and the real HTTP client of n8n. The client is taken from the container
+ * before the fake one takes its place (`installFakeHttp`).
+ */
+async function startWireProbe(): Promise<WireProbe> {
+	const seen = new Map<string, WireHeaders>();
+	const text = (value: string | string[] | undefined) =>
+		value === undefined ? undefined : Array.isArray(value) ? value.join(', ') : value;
+	const server = createHttpServer((request, response) => {
+		const type = text(request.headers['content-type']);
+		seen.set(request.url ?? '', {
+			accept: text(request.headers.accept),
+			contentType: type?.replace(/;\s*boundary=.*$/, ''),
+			userAgent: text(request.headers['user-agent']),
+		});
+		request.resume();
+		request.on('end', () => {
+			response.writeHead(200, { 'content-type': 'application/json' });
+			response.end('{}');
+		});
+	});
+	await new Promise<void>((resolve) => server.listen(0, '127.0.0.1', resolve));
+	// The server must not keep the process alive.
+	server.unref();
+	const address = server.address();
+	const port = typeof address === 'object' && address !== null ? address.port : 0;
+	if (realHttp === undefined) throw new Error('the HTTP client of n8n was not kept');
+	return {
+		url: `http://127.0.0.1:${port}`,
+		client: realHttp.requests({ useDefaultSsrfPolicy: false }),
+		seen,
+		next: 0,
+	};
+}
+
+/**
+ * Sends a copy of a request of the v1 node to the local server with the real client of
+ * n8n, and gives the headers that came. The copy has no query, no proxy and no base URL;
+ * the headers, the body, the form, the `json` option and the authentication are those of
+ * the node. A body that can be read one time only (a stream, a form object) is not sent.
+ */
+async function wireOf(kind: 'request' | 'legacy', options: AnyRecord): Promise<WireHeaders | null> {
+	const { forms } = load();
+	const once = (value: unknown) =>
+		value !== null &&
+		typeof value === 'object' &&
+		(forms.isFormDataInstance(value) || typeof Reflect.get(value, 'pipe') === 'function');
+	if (once(options.body) || once(options.formData)) return null;
+	wireProbe ??= startWireProbe();
+	const probe = await wireProbe;
+	const path = `/probe/${probe.next++}`;
+	const plain = (value: unknown) =>
+		value !== null &&
+		typeof value === 'object' &&
+		!Array.isArray(value) &&
+		!Buffer.isBuffer(value) &&
+		Object.getPrototypeOf(value) === Object.prototype;
+	const copy: AnyRecord = {
+		...options,
+		...(options.headers === undefined || options.headers === null
+			? {}
+			: { headers: { ...options.headers } }),
+		...(plain(options.body) ? { body: { ...options.body } } : {}),
+		baseURL: undefined,
+		qs: undefined,
+		proxy: undefined,
+		allowedDomains: undefined,
+		agentOptions: undefined,
+		timeout: 5000,
+	};
+	if (kind === 'legacy') {
+		copy.uri = `${probe.url}${path}`;
+		delete copy.url;
+		copy.simple = false;
+		copy.followRedirect = false;
+		copy.useStream = false;
+	} else {
+		copy.url = `${probe.url}${path}`;
+		copy.ignoreHttpStatusErrors = true;
+		copy.disableFollowRedirect = true;
+	}
+	try {
+		await (kind === 'legacy' ? probe.client.requestLegacy(copy) : probe.client.request(copy));
+	} catch {
+		// The headers came when the server has them; an error after that does not count.
+	}
+	const wire = probe.seen.get(path) ?? null;
+	probe.seen.delete(path);
+	return wire;
+}
+
 /** Installs a fake `OutboundHttp` that records requests and answers from a list. */
 function installFakeHttp(
 	responses: EquivalenceCase['responses'],
@@ -350,6 +458,7 @@ function installFakeHttp(
 	responseBytes: boolean,
 ) {
 	const { di, network } = load();
+	realHttp ??= di.Container.get(network.OutboundHttp);
 	let index = 0;
 	// A node that pages until an empty answer never stops on a repeated last answer.
 	const next = () => {
@@ -388,7 +497,7 @@ function installFakeHttp(
 				headers: snapshot(options.headers),
 				body: snapshot(options.body),
 				auth: snapshot(options.auth),
-				acceptDefault: options.json ? 'application/json' : 'application/json, text/plain, */*',
+				wire: await wireOf('request', options),
 			});
 			const r = next();
 			if ((r.status ?? 200) >= 400 && options.ignoreHttpStatusErrors) {
@@ -410,7 +519,12 @@ function installFakeHttp(
 				return answer(200, sessionAnswer(), {}, options.resolveWithFullResponse === true, false);
 			}
 			let body = options.body;
-			if (options.form !== undefined) body = { $form: options.form };
+			// As the legacy request of n8n: a form is the body only when the request has no
+			// body; with a body, the fields of the form join the JSON body.
+			if (options.form !== undefined && options.body === undefined) body = { $form: options.form };
+			else if (options.form !== undefined && options.body) {
+				body = Object.assign(options.body, options.form);
+			}
 			if (options.formData !== undefined) body = multipartOf(options) ?? body;
 			// How the request library writes `qs` (spec 7.1 `qsFormat`): `querystring` with
 			// `useQuerystring` or `arrayFormat: 'repeat'`, else qs's `stringify` (brackets).
@@ -429,7 +543,7 @@ function installFakeHttp(
 				body: snapshot(body),
 				auth: snapshot(options.auth),
 				qsFormat: repeat ? 'repeat' : 'brackets',
-				acceptDefault: options.json === true ? 'application/json' : '*/*',
+				wire: await wireOf('legacy', options),
 			});
 			const r = next();
 			// `simple: false`: the request library gives the answer of a failed request.
@@ -729,7 +843,7 @@ async function recordInEngine(
 	}
 	return {
 		requests: recorded.map(normalizeRequest),
-		accepts: recorded.map((request) => request.acceptDefault ?? null),
+		wire: recorded.map((request) => request.wire ?? null),
 		...(testCase.serviceResults ? { services } : {}),
 		...(subNodes.length > 0 && !result.error
 			? { output: workflow.deepCopy(outputs[0] ?? []), subRuns }
@@ -828,7 +942,7 @@ async function recordNode(
 		const items: AnyRecord[] = result.outputs?.[0] ?? [];
 		return {
 			requests: recorded.map(normalizeRequest),
-			accepts: recorded.map((request) => request.acceptDefault ?? null),
+			wire: recorded.map((request) => request.wire ?? null),
 			...(testCase.serviceResults ? { services } : {}),
 			output: load().workflow.deepCopy(items.map(outputItem)),
 		};
@@ -836,7 +950,7 @@ async function recordNode(
 		const message = error instanceof Error ? error.message : String(error);
 		return {
 			requests: recorded.map(normalizeRequest),
-			accepts: recorded.map((request) => request.acceptDefault ?? null),
+			wire: recorded.map((request) => request.wire ?? null),
 			...(testCase.serviceResults ? { services } : {}),
 			error: message,
 		};
@@ -873,7 +987,7 @@ let buildIdentity: string | undefined;
  * not change: the size and time of the build outputs, and the text of the recorder.
  */
 /** The form of a recording. A new member of `Recording` needs a new value, so old files are not read. */
-const RECORDING_FORM = 'accepts-1';
+const RECORDING_FORM = 'wire-1';
 
 function identityOfBuild(): string {
 	if (buildIdentity !== undefined) return buildIdentity;

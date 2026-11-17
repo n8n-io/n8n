@@ -281,6 +281,8 @@ export default defineNode<AirtableParameters>({
 					body.fields = mappedFields(parameters, Boolean(options.typecast), true);
 				}
 				const response = await ctx.http<Item>({
+					acceptAs: 'legacy',
+					json: true,
 					method: 'POST',
 					url,
 					headers: {},
@@ -308,6 +310,8 @@ export default defineNode<AirtableParameters>({
 			const typecast = Boolean(options.typecast);
 			const patch = async (body: Record<string, unknown>) =>
 				await ctx.http<AirtableList>({
+					acceptAs: 'legacy',
+					json: true,
 					method: 'PATCH',
 					url,
 					headers: {},
@@ -348,6 +352,8 @@ export default defineNode<AirtableParameters>({
 					if (response.status === 422 && byId && operation === 'upsert') {
 						// The record id does not exist: v1 creates the record.
 						const created = await ctx.http<AirtableList>({
+							acceptAs: 'legacy',
+							json: true,
 							method: 'POST',
 							url,
 							headers: {},
@@ -378,6 +384,8 @@ export default defineNode<AirtableParameters>({
 						};
 						for (;;) {
 							const page = await ctx.http<AirtableList>({
+								acceptAs: 'legacy',
+								json: true,
 								method: 'GET',
 								url,
 								headers: {},
@@ -436,6 +444,8 @@ export default defineNode<AirtableParameters>({
 				// apiRequestAllItems of the v1 node: pages of 100 until there is no offset.
 				for (;;) {
 					const response = await ctx.http<AirtableList>({
+						acceptAs: 'legacy',
+						json: true,
 						method: 'GET',
 						url,
 						headers: {},

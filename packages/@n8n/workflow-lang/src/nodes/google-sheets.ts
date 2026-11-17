@@ -458,6 +458,8 @@ export default defineNode<SheetsParameters>({
 			);
 		}
 		const meta = await ctx.http<{ sheets?: Array<{ properties?: SheetProperties }> }>({
+			acceptAs: 'legacy',
+			json: true,
 			method: 'GET',
 			url: base,
 			headers,
@@ -499,6 +501,8 @@ export default defineNode<SheetsParameters>({
 			// Version 4.2 and later read once for each input item.
 			for (const _item of inputs) {
 				const response = await ctx.http<{ values?: Row[] }>({
+					acceptAs: 'legacy',
+					json: true,
 					method: 'GET',
 					url: `${base}/values/${encodeRange(range)}`,
 					headers,
@@ -546,6 +550,8 @@ export default defineNode<SheetsParameters>({
 			if (inputs.length === 0 || dataMode === 'nothing') return [];
 			const headerRowNumber = Number(options.locationDefine?.values?.headerRow || 1);
 			const current = await ctx.http<{ values?: Row[] }>({
+				acceptAs: 'legacy',
+				json: true,
 				method: 'GET',
 				url: `${base}/values/${encodeRange(title)}`,
 				headers,
@@ -601,6 +607,8 @@ export default defineNode<SheetsParameters>({
 					names = headerRow;
 				} else {
 					const response = await ctx.http<{ values?: Row[] }>({
+						acceptAs: 'legacy',
+						json: true,
 						method: 'GET',
 						url: `${base}/values/${encodeRange(`${title}!${headerAt}:${headerAt}`)}`,
 						headers,
@@ -616,6 +624,8 @@ export default defineNode<SheetsParameters>({
 						const first = Object.keys(inputs[0]).filter((k) => k !== ROW_NUMBER);
 						const range = `${title}!${headerAt}:${headerAt}`;
 						const write = await ctx.http<unknown>({
+							acceptAs: 'legacy',
+							json: true,
 							method: 'PUT',
 							url: `${base}/values/${encodeRange(range)}`,
 							headers,
@@ -638,6 +648,8 @@ export default defineNode<SheetsParameters>({
 						names = names.concat(added);
 						const range = `${title}!${headerAt}:${headerAt}`;
 						const write = await ctx.http<unknown>({
+							acceptAs: 'legacy',
+							json: true,
 							method: 'PUT',
 							url: `${base}/values/${encodeRange(range)}`,
 							headers,
@@ -667,6 +679,8 @@ export default defineNode<SheetsParameters>({
 			if (input.length === 0) return [];
 			if (columnNames === undefined) {
 				const response = await ctx.http<{ values?: Row[] }>({
+					acceptAs: 'legacy',
+					json: true,
 					method: 'GET',
 					url: `${base}/values/${encodeRange(`${title}!${headerRowNumber}:${headerRowNumber}`)}`,
 					headers,
@@ -683,6 +697,8 @@ export default defineNode<SheetsParameters>({
 			if (options.useAppend) {
 				// appendData of the v1 node reads the sheet again to find the last row.
 				const again = await ctx.http<{ values?: Row[] }>({
+					acceptAs: 'legacy',
+					json: true,
 					method: 'GET',
 					url: `${base}/values/${encodeRange(title)}`,
 					headers,
@@ -695,6 +711,8 @@ export default defineNode<SheetsParameters>({
 			} else {
 				// A trailing empty row must exist, or the update fails.
 				const grow = await ctx.http<unknown>({
+					acceptAs: 'legacy',
+					json: true,
 					method: 'POST',
 					url: `${base}:batchUpdate`,
 					headers,
@@ -708,6 +726,8 @@ export default defineNode<SheetsParameters>({
 			const rows = toRows(input, columnNames, options.useAppend ? null : '');
 			const range = `${title}!${lastRow}:${lastRow + rows.length - 1}`;
 			const write = await ctx.http<unknown>({
+				acceptAs: 'legacy',
+				json: true,
 				method: options.useAppend ? 'POST' : 'PUT',
 				url: `${base}/values/${encodeRange(range)}${options.useAppend ? ':append' : ''}`,
 				headers,
@@ -734,6 +754,8 @@ export default defineNode<SheetsParameters>({
 				: 1;
 			let dataMode = firstColumns.mappingMode ?? 'defineBelow';
 			const read = await ctx.http<{ values?: Row[] }>({
+				acceptAs: 'legacy',
+				json: true,
 				method: 'GET',
 				url: `${base}/values/${encodeRange(title)}`,
 				headers,
@@ -819,6 +841,8 @@ export default defineNode<SheetsParameters>({
 					names = names.concat(added);
 					const range = `${title}!${keyRowIndex + 1}:${keyRowIndex + 1}`;
 					const write = await ctx.http<unknown>({
+						acceptAs: 'legacy',
+						json: true,
 						method: 'PUT',
 						url: `${base}/values/${encodeRange(range)}`,
 						headers,
@@ -858,6 +882,8 @@ export default defineNode<SheetsParameters>({
 			}
 			if (updates.length > 0) {
 				const write = await ctx.http<unknown>({
+					acceptAs: 'legacy',
+					json: true,
 					method: 'POST',
 					url: `${base}/values:batchUpdate`,
 					headers,
@@ -871,6 +897,8 @@ export default defineNode<SheetsParameters>({
 				const lastRow = sheetData.length + 1;
 				if (!firstOptions.useAppend) {
 					const grow = await ctx.http<unknown>({
+						acceptAs: 'legacy',
+						json: true,
 						method: 'POST',
 						url: `${base}:batchUpdate`,
 						headers,
@@ -883,6 +911,8 @@ export default defineNode<SheetsParameters>({
 				const rows = toRows(appends, names, firstOptions.useAppend ? null : '');
 				const range = `${title}!${lastRow}:${lastRow + rows.length - 1}`;
 				const write = await ctx.http<unknown>({
+					acceptAs: 'legacy',
+					json: true,
 					method: firstOptions.useAppend ? 'POST' : 'PUT',
 					url: `${base}/values/${encodeRange(range)}${firstOptions.useAppend ? ':append' : ''}`,
 					headers,
@@ -902,6 +932,8 @@ export default defineNode<SheetsParameters>({
 			? parseInt(String(location.firstDataRow), 10) - 1
 			: 1;
 		const current = await ctx.http<{ values?: Row[] }>({
+			acceptAs: 'legacy',
+			json: true,
 			method: 'GET',
 			url: `${base}/values/${encodeRange(title)}`,
 			headers,
@@ -954,6 +986,8 @@ export default defineNode<SheetsParameters>({
 			}
 			if (byRow.length === 0) return [];
 			const written = await ctx.http<unknown>({
+				acceptAs: 'legacy',
+				json: true,
 				method: 'POST',
 				url: `${base}/values:batchUpdate`,
 				headers,
@@ -1013,6 +1047,8 @@ export default defineNode<SheetsParameters>({
 		}
 		if (updates.length === 0) return [];
 		const write = await ctx.http<unknown>({
+			acceptAs: 'legacy',
+			json: true,
 			method: 'POST',
 			url: `${base}/values:batchUpdate`,
 			headers,

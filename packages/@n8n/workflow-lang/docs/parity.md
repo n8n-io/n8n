@@ -145,3 +145,30 @@ Open, found by this check:
 | The fault of the benchmark run (a host worker with `Unhandled rejection ... Unknown service "credentials"`) was not reproduced: each call of the service in the host and in n8n-core is awaited | `step-worker.ts`, `service-calls.ts` | The log of the benchmark machine with the node type of the step |
 | No end-to-end case has a workflow that does not compile: the converter gave no compile error for the workflows that were tried. Case q uses a module that `wfrt` refuses | this work | A workflow that the converter refuses |
 | `COMPILER_VERSION` did not change: an artifact cache on disk keeps modules of the old library HTTP Request node and the old request helper | `compiler/index.ts` | A new version, or an empty cache |
+
+## Default request headers of v1 (2026-11-17)
+
+Measured on the wire, with the real HTTP client of n8n and its global axios defaults (`@n8n/backend-network`:
+`http/axios/legacy.ts`, `request.ts`, `config.ts`, `user-agent.ts`). The recorder of the verifier now sends each
+request of the v1 node to a local server and keeps `accept`, `content-type` and `user-agent` (`WireHeaders`).
+
+| Header | `helpers.request`, `requestWithAuthentication`, `requestOAuth1`, `requestOAuth2` | `helpers.httpRequest`, `httpRequestWithAuthentication` |
+|---|---|---|
+| `accept`, when the node gives none | `application/json` for `json: true` (legacy.ts:244), else `*/*` (legacy.ts:301) | `application/json` for a true `json` (request.ts:120), else `application/json, text/plain, */*` (axios) |
+| `content-type`, object or list body | `application/json` (legacy.ts:309, or axios) | `application/json` (axios) |
+| `content-type`, text body | `application/json` unless `json` is false or the text is empty (legacy.ts:309); else the form type for POST, PUT, PATCH; else none | the form type for POST, PUT, PATCH; else none |
+| `content-type`, `form` | the form type; with a body, the form fields join the JSON body (legacy.ts:120, 160) | not an option |
+| `content-type`, `formData` | `multipart/form-data` with a boundary (legacy.ts:138) | from the form object (request.ts:99) |
+| No body | no `content-type` (config.ts:22, 39); `content-length: 0` for POST, PUT, PATCH | the same |
+| Empty body | removed from GET, HEAD, OPTIONS by the helpers that authenticate (core `authentication.ts:218`, `oauth.ts:409`, `607`); `helpers.request` alone keeps it | removed from GET, HEAD, OPTIONS (request.ts:166); GET sends no body (request.ts:221); an empty object is not sent |
+| `user-agent` | `n8n`, or the settings of n8n (user-agent.ts) | the same |
+| `accept-encoding`, `connection` | `gzip, compress, deflate, br`, `close` (axios, agents) | the same |
+
+The runtime writes these defaults when the http effect has `acceptAs` (`legacy` or `request`) and `json`
+(`request.zig`: `acceptLine`, `textBodyType`, the empty body rules). The request helper of the node compiler and its
+lowered forms give the two members; a constant `json` option is a constant of the lowered form. The library nodes
+give them too (HTTP Request has the `accept` header of the v1 node instead).
+
+Not done: `helpers.request` sends a text body that is not JSON as a JSON string (axios); `accept-encoding` and
+`connection` are those of the runtime; the default headers of n8n for `api.openai.com` (config.ts:52); the
+`accept` of the HTTP Request node before version 3.

@@ -464,6 +464,8 @@ export default defineNode<TeamsParameters>({
 			ifMatch?: unknown,
 		): Promise<GraphAnswer> => {
 			return await ctx.http<unknown>({
+				acceptAs: 'legacy',
+				json: true,
 				method,
 				url: `${BASE}${path}`,
 				headers:

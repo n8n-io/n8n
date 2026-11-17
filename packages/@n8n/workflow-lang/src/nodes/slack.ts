@@ -187,6 +187,8 @@ export default defineNode<SlackParameters>({
 			body: unknown,
 		) => {
 			const response = await ctx.http<SlackResponse>({
+				acceptAs: 'legacy',
+				json: true,
 				method,
 				url: `https://slack.com/api${path}`,
 				headers: { 'content-type': 'application/json; charset=utf-8' },
@@ -310,6 +312,8 @@ export default defineNode<SlackParameters>({
 		const out: Item[] = [];
 		for (const _item of items ?? [{}]) {
 			const response = await ctx.http<SlackResponse>({
+				acceptAs: 'legacy',
+				json: true,
 				method: 'POST',
 				url: 'https://slack.com/api/chat.postMessage',
 				headers: { 'content-type': 'application/json; charset=utf-8' },

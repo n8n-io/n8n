@@ -153,7 +153,8 @@ const REQUEST_SOURCE = `async function __request(options, wrapped, legacy) {
 	const auth = options.auth;
 	const headers = __assign({}, __plain(options.headers ?? {}));
 	const parts = legacy ? __formParts(options, headers) : undefined;
-	const form = parts === undefined ? options.form : undefined;
+	const form = parts === undefined && options.body === undefined ? options.form : undefined;
+	const joined = legacy && parts === undefined && options.body && options.form !== undefined && options.form !== null ? __assign(options.body, options.form) : options.body;
 	const bytes = legacy ? options.encoding === null : options.encoding === 'arraybuffer';
 	if (form !== undefined && form !== null) headers['content-type'] = 'application/x-www-form-urlencoded';
 	const response = await ctx.http({
@@ -161,7 +162,7 @@ const REQUEST_SOURCE = `async function __request(options, wrapped, legacy) {
 		url: options.uri ?? options.url,
 		headers,
 		qs: __plain(options.qs ?? {}),
-		body: parts !== undefined ? undefined : form !== undefined && form !== null ? __form(__plain(form)) : __plain(__sendBody(options.body)),
+		body: parts !== undefined ? undefined : form !== undefined && form !== null ? __form(__plain(form)) : __plain(__sendBody(joined)),
 		multipart: parts,
 		acceptAs: legacy ? 'legacy' : 'request',
 		json: options.json,

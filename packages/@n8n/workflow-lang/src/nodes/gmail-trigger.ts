@@ -165,6 +165,8 @@ export default defineNode<GmailTriggerParameters>({
 		const api = 'https://www.googleapis.com/gmail/v1/users/me';
 		const get = async <T>(url: string, qs: Record<string, unknown>): Promise<T> => {
 			const response = await ctx.http<T>({
+				acceptAs: 'legacy',
+				json: true,
 				method: 'GET',
 				url,
 				headers,

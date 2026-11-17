@@ -389,6 +389,7 @@ function flagOf(e: ts.Expression | undefined): boolean | undefined {
 }
 
 function requestForm(name: string, has: (key: RequestKey) => boolean, flags: RequestFlags): string {
+	const json = flags.constants.json ?? flags.json;
 	const parts = flags.legacy && has('formData');
 	const form = has('form');
 	const lines: string[] = [];
@@ -402,12 +403,22 @@ function requestForm(name: string, has: (key: RequestKey) => boolean, flags: Req
 	const copied = form || !flags.headersAreObjects;
 	lines.push(`const headers = ${copied ? `__assign({}, ${given})` : given};`);
 	if (parts) lines.push('const parts = __formParts(options, headers);');
+	const formTests = [
+		...(parts ? ['parts === undefined'] : []),
+		...(has('body') ? ['options.body === undefined'] : []),
+	];
 	if (form)
 		lines.push(
-			`const form = ${parts ? 'parts === undefined ? options.form : undefined' : 'options.form'};`,
+			formTests.length === 0
+				? 'const form = options.form;'
+				: `const form = ${formTests.join(' && ')} ? options.form : undefined;`,
 			"if (form !== undefined && form !== null) headers['content-type'] = 'application/x-www-form-urlencoded';",
 		);
-	const sent = has('body') ? '__plain(__sendBody(options.body))' : 'undefined';
+	const joined =
+		form && flags.legacy
+			? `${parts ? 'parts === undefined && ' : ''}options.body && options.form !== undefined && options.form !== null ? __assign(options.body, options.form) : options.body`
+			: 'options.body';
+	const sent = has('body') ? `__plain(__sendBody(${joined}))` : 'undefined';
 	const encoded = form
 		? `form !== undefined && form !== null ? __form(__plain(form)) : ${sent}`
 		: sent;
@@ -431,7 +442,7 @@ function requestForm(name: string, has: (key: RequestKey) => boolean, flags: Req
 		qs: ${has('qs') ? '__plain(options.qs ?? {})' : '{}'},
 		body: ${parts ? `parts !== undefined ? undefined : ${encoded}` : encoded},
 		multipart: ${parts ? 'parts' : 'undefined'},
-		acceptAs: ${flags.legacy ? "'legacy'" : "'request'"},${flags.json === 'undefined' ? '' : `\n\t\tjson: ${flags.json},`}
+		acceptAs: ${flags.legacy ? "'legacy'" : "'request'"},${json === 'undefined' ? '' : `\n\t\tjson: ${json},`}
 		responseBinary: undefined,
 		basicAuth: ${has('auth') ? "auth ? { user: auth.user ?? auth.username ?? '', password: auth.pass ?? auth.password ?? '' } : undefined" : 'undefined'},
 		inject: ${flags.wrapped},
@@ -459,9 +470,10 @@ interface RequestFlags {
 	constants: RequestConstants;
 }
 
-type RequestConstants = Partial<Record<'method' | 'uri' | 'url' | 'headers', string>>;
+type RequestConstants = Partial<Record<'method' | 'uri' | 'url' | 'headers' | 'json', string>>;
 const FORM_READS = new Set<string>([
 	...REQUEST_KEYS,
+	'json',
 	'encoding',
 	'simple',
 	'resolveWithFullResponse',
@@ -518,6 +530,9 @@ function requestTemplate(
 			dead.push(p);
 		} else if (key === 'headers' && isConstantHeaders(value)) {
 			constants.headers = text;
+			dead.push(p);
+		} else if (key === 'json' && isPlainLiteral(value)) {
+			constants.json = text;
 			dead.push(p);
 		} else if (!FORM_READS.has(key) && isPlainLiteral(value)) dead.push(p);
 	}

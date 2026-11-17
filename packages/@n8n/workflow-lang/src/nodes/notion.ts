@@ -561,6 +561,8 @@ export default defineNode<NotionParameters>({
 			const headers = { 'Notion-Version': '2021-08-16' };
 			const request = async (method: string, path: string, body: unknown) => {
 				const response = await ctx.http<Item>({
+					acceptAs: 'legacy',
+					json: true,
 					method,
 					url: `${API}${path}`,
 					headers,
@@ -699,6 +701,8 @@ export default defineNode<NotionParameters>({
 			for (const _item of items ?? [{}]) {
 				// getTitleKey of the v1 node: the name of the title property of the data source.
 				const source = await ctx.http<Item>({
+					acceptAs: 'legacy',
+					json: true,
 					method: 'GET',
 					url: `${API}/data_sources/${toPathSegment(dataSourceId)}`,
 					headers: { ...VERSION_HEADERS },
@@ -748,6 +752,8 @@ export default defineNode<NotionParameters>({
 						: { type: 'emoji', emoji: icon };
 				}
 				const response = await ctx.http<Item>({
+					acceptAs: 'legacy',
+					json: true,
 					method: 'POST',
 					url: `${API}/pages`,
 					headers: { ...VERSION_HEADERS },
@@ -785,6 +791,8 @@ export default defineNode<NotionParameters>({
 				const pages: Item[] = [];
 				for (;;) {
 					const response = await ctx.http<Item>({
+						acceptAs: 'legacy',
+						json: true,
 						method: 'POST',
 						url: `${API}/data_sources/${toPathSegment(dataSourceId)}/query`,
 						headers: { ...VERSION_HEADERS },

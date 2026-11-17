@@ -26,6 +26,8 @@
 			"step": "Post answer",
 			"kind": "http",
 			"args": {
+				"acceptAs": "legacy",
+				"json": true,
 				"method": "POST",
 				"url": "https://slack.com/api/chat.postMessage",
 				"headers": {

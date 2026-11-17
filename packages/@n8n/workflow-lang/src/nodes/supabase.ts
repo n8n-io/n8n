@@ -313,6 +313,8 @@ export default defineNode<SupabaseParameters>({
 			const headers: Record<string, string> = { Prefer: 'return=representation' };
 			if (first.useCustomSchema === true) headers['Content-Profile'] = first.schema ?? 'public';
 			const response = await ctx.http<unknown>({
+				acceptAs: 'request',
+				json: true,
 				method: 'POST',
 				url: `{{$credentials.host}}/rest/v1/${pathSegment(first.tableId)}`,
 				headers,
@@ -340,6 +342,8 @@ export default defineNode<SupabaseParameters>({
 		}
 		const request = async (url: string, qs: Record<string, unknown>, body: unknown) => {
 			const response = await ctx.http<unknown>({
+				acceptAs: 'request',
+				json: true,
 				method,
 				url: `{{$credentials.host}}/rest/v1${url}`,
 				headers,

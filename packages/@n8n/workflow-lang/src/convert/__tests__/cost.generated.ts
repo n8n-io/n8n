@@ -56,7 +56,7 @@ export const CONVERT_COST: Record<string, [ops: number, allocations: number]> = 
 	"corpus/16-sort": [2820, 149],
 	"corpus/17-approval-wait-respond": [147, 19],
 	"corpus/18-library-http": [667, 62],
-	"corpus/19-library-slack-perplexity": [704, 72],
+	"corpus/19-library-slack-perplexity": [708, 72],
 	"corpus/20-array-methods": [604, 38],
 	"corpus/21-dates": [3370, 378],
 	"corpus/22-schedule": [42, 9],
