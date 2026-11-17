@@ -30179,6 +30179,3591 @@
 		],
 		"nodePaired": [true, true]
 	},
+	"agent memory, version 2": {
+		"requests": [
+			{
+				"method": "POST",
+				"url": "https://api.openai.com/v1/chat/completions",
+				"qs": {},
+				"headers": {
+					"authorization": "Bearer sk-fake",
+					"openai-platform": "org-qkmJQuJ2WnvoIKMr2UJwIJkZ"
+				},
+				"body": {
+					"model": "gpt-4o",
+					"stream": false,
+					"messages": [
+						{
+							"role": "system",
+							"content": "Be brief"
+						},
+						{
+							"role": "user",
+							"content": "one"
+						}
+					]
+				}
+			},
+			{
+				"method": "POST",
+				"url": "https://api.openai.com/v1/chat/completions",
+				"qs": {},
+				"headers": {
+					"authorization": "Bearer sk-fake",
+					"openai-platform": "org-qkmJQuJ2WnvoIKMr2UJwIJkZ"
+				},
+				"body": {
+					"model": "gpt-4o",
+					"stream": false,
+					"messages": [
+						{
+							"role": "system",
+							"content": "Be brief"
+						},
+						{
+							"role": "user",
+							"content": "one"
+						},
+						{
+							"role": "assistant",
+							"content": "first"
+						},
+						{
+							"role": "user",
+							"content": "two"
+						}
+					]
+				}
+			},
+			{
+				"method": "POST",
+				"url": "https://api.openai.com/v1/chat/completions",
+				"qs": {},
+				"headers": {
+					"authorization": "Bearer sk-fake",
+					"openai-platform": "org-qkmJQuJ2WnvoIKMr2UJwIJkZ"
+				},
+				"body": {
+					"model": "gpt-4o",
+					"stream": false,
+					"messages": [
+						{
+							"role": "system",
+							"content": "Be brief"
+						},
+						{
+							"role": "user",
+							"content": "one"
+						},
+						{
+							"role": "assistant",
+							"content": "first"
+						},
+						{
+							"role": "user",
+							"content": "two"
+						},
+						{
+							"role": "assistant",
+							"content": "second"
+						},
+						{
+							"role": "user",
+							"content": "three"
+						}
+					]
+				}
+			}
+		],
+		"wire": [null, null, null],
+		"output": [
+			{
+				"output": "first"
+			},
+			{
+				"output": "second"
+			},
+			{
+				"output": "third"
+			}
+		],
+		"subRuns": {
+			"Model": [
+				{
+					"error": null
+				},
+				{
+					"error": null
+				},
+				{
+					"error": null
+				}
+			],
+			"Memory": [
+				{
+					"error": null
+				},
+				{
+					"error": null
+				},
+				{
+					"error": null
+				},
+				{
+					"error": null
+				},
+				{
+					"error": null
+				},
+				{
+					"error": null
+				}
+			]
+		},
+		"outputs": [
+			[
+				{
+					"output": "first"
+				},
+				{
+					"output": "second"
+				},
+				{
+					"output": "third"
+				}
+			]
+		],
+		"paired": [
+			[
+				{
+					"item": 0
+				},
+				{
+					"item": 1
+				},
+				{
+					"item": 2
+				}
+			]
+		],
+		"nodePaired": [true, true, true]
+	},
+	"agent memory, version 2.1": {
+		"requests": [
+			{
+				"method": "POST",
+				"url": "https://api.openai.com/v1/chat/completions",
+				"qs": {},
+				"headers": {
+					"authorization": "Bearer sk-fake",
+					"openai-platform": "org-qkmJQuJ2WnvoIKMr2UJwIJkZ"
+				},
+				"body": {
+					"model": "gpt-4o",
+					"stream": false,
+					"messages": [
+						{
+							"role": "system",
+							"content": "Be brief"
+						},
+						{
+							"role": "user",
+							"content": "one"
+						}
+					]
+				}
+			},
+			{
+				"method": "POST",
+				"url": "https://api.openai.com/v1/chat/completions",
+				"qs": {},
+				"headers": {
+					"authorization": "Bearer sk-fake",
+					"openai-platform": "org-qkmJQuJ2WnvoIKMr2UJwIJkZ"
+				},
+				"body": {
+					"model": "gpt-4o",
+					"stream": false,
+					"messages": [
+						{
+							"role": "system",
+							"content": "Be brief"
+						},
+						{
+							"role": "user",
+							"content": "one"
+						},
+						{
+							"role": "assistant",
+							"content": "first"
+						},
+						{
+							"role": "user",
+							"content": "two"
+						}
+					]
+				}
+			},
+			{
+				"method": "POST",
+				"url": "https://api.openai.com/v1/chat/completions",
+				"qs": {},
+				"headers": {
+					"authorization": "Bearer sk-fake",
+					"openai-platform": "org-qkmJQuJ2WnvoIKMr2UJwIJkZ"
+				},
+				"body": {
+					"model": "gpt-4o",
+					"stream": false,
+					"messages": [
+						{
+							"role": "system",
+							"content": "Be brief"
+						},
+						{
+							"role": "user",
+							"content": "one"
+						},
+						{
+							"role": "assistant",
+							"content": "first"
+						},
+						{
+							"role": "user",
+							"content": "two"
+						},
+						{
+							"role": "assistant",
+							"content": "second"
+						},
+						{
+							"role": "user",
+							"content": "three"
+						}
+					]
+				}
+			}
+		],
+		"wire": [null, null, null],
+		"output": [
+			{
+				"output": "first"
+			},
+			{
+				"output": "second"
+			},
+			{
+				"output": "third"
+			}
+		],
+		"subRuns": {
+			"Model": [
+				{
+					"error": null
+				},
+				{
+					"error": null
+				},
+				{
+					"error": null
+				}
+			],
+			"Memory": [
+				{
+					"error": null
+				},
+				{
+					"error": null
+				},
+				{
+					"error": null
+				},
+				{
+					"error": null
+				},
+				{
+					"error": null
+				},
+				{
+					"error": null
+				}
+			]
+		},
+		"outputs": [
+			[
+				{
+					"output": "first"
+				},
+				{
+					"output": "second"
+				},
+				{
+					"output": "third"
+				}
+			]
+		],
+		"paired": [
+			[
+				{
+					"item": 0
+				},
+				{
+					"item": 1
+				},
+				{
+					"item": 2
+				}
+			]
+		],
+		"nodePaired": [true, true, true]
+	},
+	"agent memory, version 2.2": {
+		"requests": [
+			{
+				"method": "POST",
+				"url": "https://api.openai.com/v1/chat/completions",
+				"qs": {},
+				"headers": {
+					"authorization": "Bearer sk-fake",
+					"openai-platform": "org-qkmJQuJ2WnvoIKMr2UJwIJkZ"
+				},
+				"body": {
+					"model": "gpt-4o",
+					"stream": false,
+					"messages": [
+						{
+							"role": "system",
+							"content": "Be brief"
+						},
+						{
+							"role": "user",
+							"content": "one"
+						}
+					]
+				}
+			},
+			{
+				"method": "POST",
+				"url": "https://api.openai.com/v1/chat/completions",
+				"qs": {},
+				"headers": {
+					"authorization": "Bearer sk-fake",
+					"openai-platform": "org-qkmJQuJ2WnvoIKMr2UJwIJkZ"
+				},
+				"body": {
+					"model": "gpt-4o",
+					"stream": false,
+					"messages": [
+						{
+							"role": "system",
+							"content": "Be brief"
+						},
+						{
+							"role": "user",
+							"content": "one"
+						},
+						{
+							"role": "assistant",
+							"content": "first"
+						},
+						{
+							"role": "user",
+							"content": "two"
+						}
+					]
+				}
+			},
+			{
+				"method": "POST",
+				"url": "https://api.openai.com/v1/chat/completions",
+				"qs": {},
+				"headers": {
+					"authorization": "Bearer sk-fake",
+					"openai-platform": "org-qkmJQuJ2WnvoIKMr2UJwIJkZ"
+				},
+				"body": {
+					"model": "gpt-4o",
+					"stream": false,
+					"messages": [
+						{
+							"role": "system",
+							"content": "Be brief"
+						},
+						{
+							"role": "user",
+							"content": "one"
+						},
+						{
+							"role": "assistant",
+							"content": "first"
+						},
+						{
+							"role": "user",
+							"content": "two"
+						},
+						{
+							"role": "assistant",
+							"content": "second"
+						},
+						{
+							"role": "user",
+							"content": "three"
+						}
+					]
+				}
+			}
+		],
+		"wire": [null, null, null],
+		"output": [
+			{
+				"output": "first"
+			},
+			{
+				"output": "second"
+			},
+			{
+				"output": "third"
+			}
+		],
+		"subRuns": {
+			"Model": [
+				{
+					"error": null
+				},
+				{
+					"error": null
+				},
+				{
+					"error": null
+				}
+			],
+			"Memory": [
+				{
+					"error": null
+				},
+				{
+					"error": null
+				},
+				{
+					"error": null
+				},
+				{
+					"error": null
+				},
+				{
+					"error": null
+				},
+				{
+					"error": null
+				}
+			]
+		},
+		"outputs": [
+			[
+				{
+					"output": "first"
+				},
+				{
+					"output": "second"
+				},
+				{
+					"output": "third"
+				}
+			]
+		],
+		"paired": [
+			[
+				{
+					"item": 0
+				},
+				{
+					"item": 1
+				},
+				{
+					"item": 2
+				}
+			]
+		],
+		"nodePaired": [true, true, true]
+	},
+	"agent memory, version 3": {
+		"requests": [
+			{
+				"method": "POST",
+				"url": "https://api.openai.com/v1/chat/completions",
+				"qs": {},
+				"headers": {
+					"authorization": "Bearer sk-fake",
+					"openai-platform": "org-qkmJQuJ2WnvoIKMr2UJwIJkZ"
+				},
+				"body": {
+					"model": "gpt-4o",
+					"stream": false,
+					"messages": [
+						{
+							"role": "system",
+							"content": "Be brief"
+						},
+						{
+							"role": "user",
+							"content": "one"
+						}
+					]
+				}
+			},
+			{
+				"method": "POST",
+				"url": "https://api.openai.com/v1/chat/completions",
+				"qs": {},
+				"headers": {
+					"authorization": "Bearer sk-fake",
+					"openai-platform": "org-qkmJQuJ2WnvoIKMr2UJwIJkZ"
+				},
+				"body": {
+					"model": "gpt-4o",
+					"stream": false,
+					"messages": [
+						{
+							"role": "system",
+							"content": "Be brief"
+						},
+						{
+							"role": "user",
+							"content": "one"
+						},
+						{
+							"role": "assistant",
+							"content": "first"
+						},
+						{
+							"role": "user",
+							"content": "two"
+						}
+					]
+				}
+			},
+			{
+				"method": "POST",
+				"url": "https://api.openai.com/v1/chat/completions",
+				"qs": {},
+				"headers": {
+					"authorization": "Bearer sk-fake",
+					"openai-platform": "org-qkmJQuJ2WnvoIKMr2UJwIJkZ"
+				},
+				"body": {
+					"model": "gpt-4o",
+					"stream": false,
+					"messages": [
+						{
+							"role": "system",
+							"content": "Be brief"
+						},
+						{
+							"role": "user",
+							"content": "one"
+						},
+						{
+							"role": "assistant",
+							"content": "first"
+						},
+						{
+							"role": "user",
+							"content": "two"
+						},
+						{
+							"role": "assistant",
+							"content": "second"
+						},
+						{
+							"role": "user",
+							"content": "three"
+						}
+					]
+				}
+			}
+		],
+		"wire": [null, null, null],
+		"output": [
+			{
+				"output": "first"
+			},
+			{
+				"output": "second"
+			},
+			{
+				"output": "third"
+			}
+		],
+		"subRuns": {
+			"Model": [
+				{
+					"error": null
+				},
+				{
+					"error": null
+				},
+				{
+					"error": null
+				}
+			],
+			"Memory": [
+				{
+					"error": null
+				},
+				{
+					"error": null
+				},
+				{
+					"error": null
+				},
+				{
+					"error": null
+				},
+				{
+					"error": null
+				},
+				{
+					"error": null
+				}
+			]
+		},
+		"outputs": [
+			[
+				{
+					"output": "first"
+				},
+				{
+					"output": "second"
+				},
+				{
+					"output": "third"
+				}
+			]
+		],
+		"paired": [
+			[
+				{
+					"item": 0
+				},
+				{
+					"item": 1
+				},
+				{
+					"item": 2
+				}
+			]
+		],
+		"nodePaired": [true, true, true]
+	},
+	"agent memory, version 3.1": {
+		"requests": [
+			{
+				"method": "POST",
+				"url": "https://api.openai.com/v1/chat/completions",
+				"qs": {},
+				"headers": {
+					"authorization": "Bearer sk-fake",
+					"openai-platform": "org-qkmJQuJ2WnvoIKMr2UJwIJkZ"
+				},
+				"body": {
+					"model": "gpt-4o",
+					"stream": false,
+					"messages": [
+						{
+							"role": "system",
+							"content": "Be brief"
+						},
+						{
+							"role": "user",
+							"content": "one"
+						}
+					]
+				}
+			},
+			{
+				"method": "POST",
+				"url": "https://api.openai.com/v1/chat/completions",
+				"qs": {},
+				"headers": {
+					"authorization": "Bearer sk-fake",
+					"openai-platform": "org-qkmJQuJ2WnvoIKMr2UJwIJkZ"
+				},
+				"body": {
+					"model": "gpt-4o",
+					"stream": false,
+					"messages": [
+						{
+							"role": "system",
+							"content": "Be brief"
+						},
+						{
+							"role": "user",
+							"content": "one"
+						},
+						{
+							"role": "assistant",
+							"content": "first"
+						},
+						{
+							"role": "user",
+							"content": "two"
+						}
+					]
+				}
+			},
+			{
+				"method": "POST",
+				"url": "https://api.openai.com/v1/chat/completions",
+				"qs": {},
+				"headers": {
+					"authorization": "Bearer sk-fake",
+					"openai-platform": "org-qkmJQuJ2WnvoIKMr2UJwIJkZ"
+				},
+				"body": {
+					"model": "gpt-4o",
+					"stream": false,
+					"messages": [
+						{
+							"role": "system",
+							"content": "Be brief"
+						},
+						{
+							"role": "user",
+							"content": "one"
+						},
+						{
+							"role": "assistant",
+							"content": "first"
+						},
+						{
+							"role": "user",
+							"content": "two"
+						},
+						{
+							"role": "assistant",
+							"content": "second"
+						},
+						{
+							"role": "user",
+							"content": "three"
+						}
+					]
+				}
+			}
+		],
+		"wire": [null, null, null],
+		"output": [
+			{
+				"output": "first"
+			},
+			{
+				"output": "second"
+			},
+			{
+				"output": "third"
+			}
+		],
+		"subRuns": {
+			"Model": [
+				{
+					"error": null
+				},
+				{
+					"error": null
+				},
+				{
+					"error": null
+				}
+			],
+			"Memory": [
+				{
+					"error": null
+				},
+				{
+					"error": null
+				},
+				{
+					"error": null
+				},
+				{
+					"error": null
+				},
+				{
+					"error": null
+				},
+				{
+					"error": null
+				}
+			]
+		},
+		"outputs": [
+			[
+				{
+					"output": "first"
+				},
+				{
+					"output": "second"
+				},
+				{
+					"output": "third"
+				}
+			]
+		],
+		"paired": [
+			[
+				{
+					"item": 0
+				},
+				{
+					"item": 1
+				},
+				{
+					"item": 2
+				}
+			]
+		],
+		"nodePaired": [true, true, true]
+	},
+	"agent memory, window of one exchange": {
+		"requests": [
+			{
+				"method": "POST",
+				"url": "https://api.openai.com/v1/chat/completions",
+				"qs": {},
+				"headers": {
+					"authorization": "Bearer sk-fake",
+					"openai-platform": "org-qkmJQuJ2WnvoIKMr2UJwIJkZ"
+				},
+				"body": {
+					"model": "gpt-4o",
+					"stream": false,
+					"messages": [
+						{
+							"role": "system",
+							"content": "Be brief"
+						},
+						{
+							"role": "user",
+							"content": "one"
+						}
+					]
+				}
+			},
+			{
+				"method": "POST",
+				"url": "https://api.openai.com/v1/chat/completions",
+				"qs": {},
+				"headers": {
+					"authorization": "Bearer sk-fake",
+					"openai-platform": "org-qkmJQuJ2WnvoIKMr2UJwIJkZ"
+				},
+				"body": {
+					"model": "gpt-4o",
+					"stream": false,
+					"messages": [
+						{
+							"role": "system",
+							"content": "Be brief"
+						},
+						{
+							"role": "user",
+							"content": "one"
+						},
+						{
+							"role": "assistant",
+							"content": "first"
+						},
+						{
+							"role": "user",
+							"content": "two"
+						}
+					]
+				}
+			},
+			{
+				"method": "POST",
+				"url": "https://api.openai.com/v1/chat/completions",
+				"qs": {},
+				"headers": {
+					"authorization": "Bearer sk-fake",
+					"openai-platform": "org-qkmJQuJ2WnvoIKMr2UJwIJkZ"
+				},
+				"body": {
+					"model": "gpt-4o",
+					"stream": false,
+					"messages": [
+						{
+							"role": "system",
+							"content": "Be brief"
+						},
+						{
+							"role": "user",
+							"content": "two"
+						},
+						{
+							"role": "assistant",
+							"content": "second"
+						},
+						{
+							"role": "user",
+							"content": "three"
+						}
+					]
+				}
+			}
+		],
+		"wire": [null, null, null],
+		"output": [
+			{
+				"output": "first"
+			},
+			{
+				"output": "second"
+			},
+			{
+				"output": "third"
+			}
+		],
+		"subRuns": {
+			"Model": [
+				{
+					"error": null
+				},
+				{
+					"error": null
+				},
+				{
+					"error": null
+				}
+			],
+			"Memory": [
+				{
+					"error": null
+				},
+				{
+					"error": null
+				},
+				{
+					"error": null
+				},
+				{
+					"error": null
+				},
+				{
+					"error": null
+				},
+				{
+					"error": null
+				}
+			]
+		},
+		"outputs": [
+			[
+				{
+					"output": "first"
+				},
+				{
+					"output": "second"
+				},
+				{
+					"output": "third"
+				}
+			]
+		],
+		"paired": [
+			[
+				{
+					"item": 0
+				},
+				{
+					"item": 1
+				},
+				{
+					"item": 2
+				}
+			]
+		],
+		"nodePaired": [true, true, true]
+	},
+	"agent memory, responses": {
+		"requests": [
+			{
+				"method": "POST",
+				"url": "https://api.openai.com/v1/responses",
+				"qs": {},
+				"headers": {
+					"authorization": "Bearer sk-fake",
+					"openai-platform": "org-qkmJQuJ2WnvoIKMr2UJwIJkZ"
+				},
+				"body": {
+					"input": [
+						{
+							"type": "message",
+							"role": "developer",
+							"content": "Be brief"
+						},
+						{
+							"type": "message",
+							"role": "user",
+							"content": "one"
+						}
+					],
+					"model": "gpt-5",
+					"stream": false,
+					"text": {}
+				}
+			},
+			{
+				"method": "POST",
+				"url": "https://api.openai.com/v1/responses",
+				"qs": {},
+				"headers": {
+					"authorization": "Bearer sk-fake",
+					"openai-platform": "org-qkmJQuJ2WnvoIKMr2UJwIJkZ"
+				},
+				"body": {
+					"input": [
+						{
+							"type": "message",
+							"role": "developer",
+							"content": "Be brief"
+						},
+						{
+							"type": "message",
+							"role": "user",
+							"content": "one"
+						},
+						{
+							"type": "message",
+							"role": "assistant",
+							"content": "first"
+						},
+						{
+							"type": "message",
+							"role": "user",
+							"content": "two"
+						}
+					],
+					"model": "gpt-5",
+					"stream": false,
+					"text": {}
+				}
+			},
+			{
+				"method": "POST",
+				"url": "https://api.openai.com/v1/responses",
+				"qs": {},
+				"headers": {
+					"authorization": "Bearer sk-fake",
+					"openai-platform": "org-qkmJQuJ2WnvoIKMr2UJwIJkZ"
+				},
+				"body": {
+					"input": [
+						{
+							"type": "message",
+							"role": "developer",
+							"content": "Be brief"
+						},
+						{
+							"type": "message",
+							"role": "user",
+							"content": "one"
+						},
+						{
+							"type": "message",
+							"role": "assistant",
+							"content": "first"
+						},
+						{
+							"type": "message",
+							"role": "user",
+							"content": "two"
+						},
+						{
+							"type": "message",
+							"role": "assistant",
+							"content": "second"
+						},
+						{
+							"type": "message",
+							"role": "user",
+							"content": "three"
+						}
+					],
+					"model": "gpt-5",
+					"stream": false,
+					"text": {}
+				}
+			}
+		],
+		"wire": [null, null, null],
+		"output": [
+			{
+				"output": "first"
+			},
+			{
+				"output": "second"
+			},
+			{
+				"output": "third"
+			}
+		],
+		"subRuns": {
+			"Model": [
+				{
+					"error": null
+				},
+				{
+					"error": null
+				},
+				{
+					"error": null
+				}
+			],
+			"Memory": [
+				{
+					"error": null
+				},
+				{
+					"error": null
+				},
+				{
+					"error": null
+				},
+				{
+					"error": null
+				},
+				{
+					"error": null
+				},
+				{
+					"error": null
+				}
+			]
+		},
+		"outputs": [
+			[
+				{
+					"output": "first"
+				},
+				{
+					"output": "second"
+				},
+				{
+					"output": "third"
+				}
+			]
+		],
+		"paired": [
+			[
+				{
+					"item": 0
+				},
+				{
+					"item": 1
+				},
+				{
+					"item": 2
+				}
+			]
+		],
+		"nodePaired": [true, true, true]
+	},
+	"agent memory, anthropic": {
+		"requests": [
+			{
+				"method": "POST",
+				"url": "https://api.anthropic.com/v1/messages",
+				"qs": {},
+				"headers": {
+					"anthropic-version": "2023-06-01",
+					"x-api-key": "sk-ant-fake"
+				},
+				"body": {
+					"model": "claude-sonnet-4-5",
+					"stream": false,
+					"max_tokens": 16384,
+					"tools": [],
+					"messages": [
+						{
+							"role": "user",
+							"content": "one"
+						}
+					],
+					"system": "Be brief"
+				}
+			},
+			{
+				"method": "POST",
+				"url": "https://api.anthropic.com/v1/messages",
+				"qs": {},
+				"headers": {
+					"anthropic-version": "2023-06-01",
+					"x-api-key": "sk-ant-fake"
+				},
+				"body": {
+					"model": "claude-sonnet-4-5",
+					"stream": false,
+					"max_tokens": 16384,
+					"tools": [],
+					"messages": [
+						{
+							"role": "user",
+							"content": "one"
+						},
+						{
+							"role": "assistant",
+							"content": "first"
+						},
+						{
+							"role": "user",
+							"content": "two"
+						}
+					],
+					"system": "Be brief"
+				}
+			},
+			{
+				"method": "POST",
+				"url": "https://api.anthropic.com/v1/messages",
+				"qs": {},
+				"headers": {
+					"anthropic-version": "2023-06-01",
+					"x-api-key": "sk-ant-fake"
+				},
+				"body": {
+					"model": "claude-sonnet-4-5",
+					"stream": false,
+					"max_tokens": 16384,
+					"tools": [],
+					"messages": [
+						{
+							"role": "user",
+							"content": "one"
+						},
+						{
+							"role": "assistant",
+							"content": "first"
+						},
+						{
+							"role": "user",
+							"content": "two"
+						},
+						{
+							"role": "assistant",
+							"content": "second"
+						},
+						{
+							"role": "user",
+							"content": "three"
+						}
+					],
+					"system": "Be brief"
+				}
+			}
+		],
+		"wire": [null, null, null],
+		"output": [
+			{
+				"output": "first"
+			},
+			{
+				"output": "second"
+			},
+			{
+				"output": "third"
+			}
+		],
+		"subRuns": {
+			"Model": [
+				{
+					"error": null
+				},
+				{
+					"error": null
+				},
+				{
+					"error": null
+				}
+			],
+			"Memory": [
+				{
+					"error": null
+				},
+				{
+					"error": null
+				},
+				{
+					"error": null
+				},
+				{
+					"error": null
+				},
+				{
+					"error": null
+				},
+				{
+					"error": null
+				}
+			]
+		},
+		"outputs": [
+			[
+				{
+					"output": "first"
+				},
+				{
+					"output": "second"
+				},
+				{
+					"output": "third"
+				}
+			]
+		],
+		"paired": [
+			[
+				{
+					"item": 0
+				},
+				{
+					"item": 1
+				},
+				{
+					"item": 2
+				}
+			]
+		],
+		"nodePaired": [true, true, true]
+	},
+	"agent memory, gemini": {
+		"requests": [
+			{
+				"method": "POST",
+				"url": "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent",
+				"qs": {},
+				"headers": {
+					"x-goog-api-key": "fake-google-key"
+				},
+				"body": {
+					"generationConfig": {
+						"stopSequences": []
+					},
+					"safetySettings": [],
+					"systemInstruction": {
+						"role": "system",
+						"parts": [
+							{
+								"text": "Be brief"
+							}
+						]
+					},
+					"contents": [
+						{
+							"role": "user",
+							"parts": [
+								{
+									"text": "one"
+								}
+							]
+						}
+					]
+				}
+			},
+			{
+				"method": "POST",
+				"url": "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent",
+				"qs": {},
+				"headers": {
+					"x-goog-api-key": "fake-google-key"
+				},
+				"body": {
+					"generationConfig": {
+						"stopSequences": []
+					},
+					"safetySettings": [],
+					"systemInstruction": {
+						"role": "system",
+						"parts": [
+							{
+								"text": "Be brief"
+							}
+						]
+					},
+					"contents": [
+						{
+							"role": "user",
+							"parts": [
+								{
+									"text": "one"
+								}
+							]
+						},
+						{
+							"role": "model",
+							"parts": [
+								{
+									"text": "first"
+								}
+							]
+						},
+						{
+							"role": "user",
+							"parts": [
+								{
+									"text": "two"
+								}
+							]
+						}
+					]
+				}
+			},
+			{
+				"method": "POST",
+				"url": "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent",
+				"qs": {},
+				"headers": {
+					"x-goog-api-key": "fake-google-key"
+				},
+				"body": {
+					"generationConfig": {
+						"stopSequences": []
+					},
+					"safetySettings": [],
+					"systemInstruction": {
+						"role": "system",
+						"parts": [
+							{
+								"text": "Be brief"
+							}
+						]
+					},
+					"contents": [
+						{
+							"role": "user",
+							"parts": [
+								{
+									"text": "one"
+								}
+							]
+						},
+						{
+							"role": "model",
+							"parts": [
+								{
+									"text": "first"
+								}
+							]
+						},
+						{
+							"role": "user",
+							"parts": [
+								{
+									"text": "two"
+								}
+							]
+						},
+						{
+							"role": "model",
+							"parts": [
+								{
+									"text": "second"
+								}
+							]
+						},
+						{
+							"role": "user",
+							"parts": [
+								{
+									"text": "three"
+								}
+							]
+						}
+					]
+				}
+			}
+		],
+		"wire": [null, null, null],
+		"output": [
+			{
+				"output": "first"
+			},
+			{
+				"output": "second"
+			},
+			{
+				"output": "third"
+			}
+		],
+		"subRuns": {
+			"Model": [
+				{
+					"error": null
+				},
+				{
+					"error": null
+				},
+				{
+					"error": null
+				}
+			],
+			"Memory": [
+				{
+					"error": null
+				},
+				{
+					"error": null
+				},
+				{
+					"error": null
+				},
+				{
+					"error": null
+				},
+				{
+					"error": null
+				},
+				{
+					"error": null
+				}
+			]
+		},
+		"outputs": [
+			[
+				{
+					"output": "first"
+				},
+				{
+					"output": "second"
+				},
+				{
+					"output": "third"
+				}
+			]
+		],
+		"paired": [
+			[
+				{
+					"item": 0
+				},
+				{
+					"item": 1
+				},
+				{
+					"item": 2
+				}
+			]
+		],
+		"nodePaired": [true, true, true]
+	},
+	"agent memory, key from the first item": {
+		"requests": [
+			{
+				"method": "POST",
+				"url": "https://api.openai.com/v1/chat/completions",
+				"qs": {},
+				"headers": {
+					"authorization": "Bearer sk-fake",
+					"openai-platform": "org-qkmJQuJ2WnvoIKMr2UJwIJkZ"
+				},
+				"body": {
+					"model": "gpt-4o",
+					"stream": false,
+					"messages": [
+						{
+							"role": "user",
+							"content": "one"
+						}
+					]
+				}
+			},
+			{
+				"method": "POST",
+				"url": "https://api.openai.com/v1/chat/completions",
+				"qs": {},
+				"headers": {
+					"authorization": "Bearer sk-fake",
+					"openai-platform": "org-qkmJQuJ2WnvoIKMr2UJwIJkZ"
+				},
+				"body": {
+					"model": "gpt-4o",
+					"stream": false,
+					"messages": [
+						{
+							"role": "user",
+							"content": "one"
+						},
+						{
+							"role": "assistant",
+							"content": "first"
+						},
+						{
+							"role": "user",
+							"content": "two"
+						}
+					]
+				}
+			}
+		],
+		"wire": [null, null],
+		"output": [
+			{
+				"output": "first"
+			},
+			{
+				"output": "second"
+			}
+		],
+		"subRuns": {
+			"Model": [
+				{
+					"error": null
+				},
+				{
+					"error": null
+				}
+			],
+			"Memory": [
+				{
+					"error": null
+				},
+				{
+					"error": null
+				},
+				{
+					"error": null
+				},
+				{
+					"error": null
+				}
+			]
+		},
+		"outputs": [
+			[
+				{
+					"output": "first"
+				},
+				{
+					"output": "second"
+				}
+			]
+		],
+		"paired": [
+			[
+				{
+					"item": 0
+				},
+				{
+					"item": 1
+				}
+			]
+		],
+		"nodePaired": [true, true]
+	},
+	"agent memory, version 1.1 of the memory": {
+		"requests": [
+			{
+				"method": "POST",
+				"url": "https://api.openai.com/v1/chat/completions",
+				"qs": {},
+				"headers": {
+					"authorization": "Bearer sk-fake",
+					"openai-platform": "org-qkmJQuJ2WnvoIKMr2UJwIJkZ"
+				},
+				"body": {
+					"model": "gpt-4o",
+					"stream": false,
+					"messages": [
+						{
+							"role": "user",
+							"content": "one"
+						}
+					]
+				}
+			},
+			{
+				"method": "POST",
+				"url": "https://api.openai.com/v1/chat/completions",
+				"qs": {},
+				"headers": {
+					"authorization": "Bearer sk-fake",
+					"openai-platform": "org-qkmJQuJ2WnvoIKMr2UJwIJkZ"
+				},
+				"body": {
+					"model": "gpt-4o",
+					"stream": false,
+					"messages": [
+						{
+							"role": "user",
+							"content": "one"
+						},
+						{
+							"role": "assistant",
+							"content": "first"
+						},
+						{
+							"role": "user",
+							"content": "two"
+						}
+					]
+				}
+			}
+		],
+		"wire": [null, null],
+		"output": [
+			{
+				"output": "first"
+			},
+			{
+				"output": "second"
+			}
+		],
+		"subRuns": {
+			"Model": [
+				{
+					"error": null
+				},
+				{
+					"error": null
+				}
+			],
+			"Memory": [
+				{
+					"error": null
+				},
+				{
+					"error": null
+				},
+				{
+					"error": null
+				},
+				{
+					"error": null
+				}
+			]
+		},
+		"outputs": [
+			[
+				{
+					"output": "first"
+				},
+				{
+					"output": "second"
+				}
+			]
+		],
+		"paired": [
+			[
+				{
+					"item": 0
+				},
+				{
+					"item": 1
+				}
+			]
+		],
+		"nodePaired": [true, true]
+	},
+	"agent memory, version 1 of the memory": {
+		"requests": [
+			{
+				"method": "POST",
+				"url": "https://api.openai.com/v1/chat/completions",
+				"qs": {},
+				"headers": {
+					"authorization": "Bearer sk-fake",
+					"openai-platform": "org-qkmJQuJ2WnvoIKMr2UJwIJkZ"
+				},
+				"body": {
+					"model": "gpt-4o",
+					"stream": false,
+					"messages": [
+						{
+							"role": "user",
+							"content": "one"
+						}
+					]
+				}
+			},
+			{
+				"method": "POST",
+				"url": "https://api.openai.com/v1/chat/completions",
+				"qs": {},
+				"headers": {
+					"authorization": "Bearer sk-fake",
+					"openai-platform": "org-qkmJQuJ2WnvoIKMr2UJwIJkZ"
+				},
+				"body": {
+					"model": "gpt-4o",
+					"stream": false,
+					"messages": [
+						{
+							"role": "user",
+							"content": "one"
+						},
+						{
+							"role": "assistant",
+							"content": "first"
+						},
+						{
+							"role": "user",
+							"content": "two"
+						}
+					]
+				}
+			}
+		],
+		"wire": [null, null],
+		"output": [
+			{
+				"output": "first"
+			},
+			{
+				"output": "second"
+			}
+		],
+		"subRuns": {
+			"Model": [
+				{
+					"error": null
+				},
+				{
+					"error": null
+				}
+			],
+			"Memory": [
+				{
+					"error": null
+				},
+				{
+					"error": null
+				},
+				{
+					"error": null
+				},
+				{
+					"error": null
+				}
+			]
+		},
+		"outputs": [
+			[
+				{
+					"output": "first"
+				},
+				{
+					"output": "second"
+				}
+			]
+		],
+		"paired": [
+			[
+				{
+					"item": 0
+				},
+				{
+					"item": 1
+				}
+			]
+		],
+		"nodePaired": [true, true]
+	},
+	"agent memory, empty key": {
+		"requests": [],
+		"wire": [],
+		"subRuns": {
+			"Memory": [
+				{
+					"error": "Key parameter is empty"
+				}
+			]
+		},
+		"outputs": [],
+		"paired": [],
+		"error": "Error in sub-node Memory",
+		"errorDetail": {
+			"description": "Key parameter is empty",
+			"httpCode": null
+		}
+	},
+	"agent memory, empty key, version 2.2": {
+		"requests": [],
+		"wire": [],
+		"subRuns": {
+			"Memory": [
+				{
+					"error": "Key parameter is empty"
+				}
+			]
+		},
+		"outputs": [],
+		"paired": [],
+		"error": "Error in sub-node Memory",
+		"errorDetail": {
+			"description": "Key parameter is empty",
+			"httpCode": null
+		}
+	},
+	"agent memory, number as key": {
+		"requests": [
+			{
+				"method": "POST",
+				"url": "https://api.openai.com/v1/chat/completions",
+				"qs": {},
+				"headers": {
+					"authorization": "Bearer sk-fake",
+					"openai-platform": "org-qkmJQuJ2WnvoIKMr2UJwIJkZ"
+				},
+				"body": {
+					"model": "gpt-4o",
+					"stream": false,
+					"messages": [
+						{
+							"role": "user",
+							"content": "one"
+						}
+					]
+				}
+			},
+			{
+				"method": "POST",
+				"url": "https://api.openai.com/v1/chat/completions",
+				"qs": {},
+				"headers": {
+					"authorization": "Bearer sk-fake",
+					"openai-platform": "org-qkmJQuJ2WnvoIKMr2UJwIJkZ"
+				},
+				"body": {
+					"model": "gpt-4o",
+					"stream": false,
+					"messages": [
+						{
+							"role": "user",
+							"content": "one"
+						},
+						{
+							"role": "assistant",
+							"content": "first"
+						},
+						{
+							"role": "user",
+							"content": "two"
+						}
+					]
+				}
+			}
+		],
+		"wire": [null, null],
+		"output": [
+			{
+				"output": "first"
+			},
+			{
+				"output": "second"
+			}
+		],
+		"subRuns": {
+			"Model": [
+				{
+					"error": null
+				},
+				{
+					"error": null
+				}
+			],
+			"Memory": [
+				{
+					"error": null
+				},
+				{
+					"error": null
+				},
+				{
+					"error": null
+				},
+				{
+					"error": null
+				}
+			]
+		},
+		"outputs": [
+			[
+				{
+					"output": "first"
+				},
+				{
+					"output": "second"
+				}
+			]
+		],
+		"paired": [
+			[
+				{
+					"item": 0
+				},
+				{
+					"item": 1
+				}
+			]
+		],
+		"nodePaired": [true, true]
+	},
+	"agent memory, failed call is not kept": {
+		"requests": [
+			{
+				"method": "POST",
+				"url": "https://api.openai.com/v1/chat/completions",
+				"qs": {},
+				"headers": {
+					"authorization": "Bearer sk-fake",
+					"openai-platform": "org-qkmJQuJ2WnvoIKMr2UJwIJkZ"
+				},
+				"body": {
+					"model": "gpt-4o",
+					"stream": false,
+					"messages": [
+						{
+							"role": "system",
+							"content": "Be brief"
+						},
+						{
+							"role": "user",
+							"content": "one"
+						}
+					]
+				}
+			},
+			{
+				"method": "POST",
+				"url": "https://api.openai.com/v1/chat/completions",
+				"qs": {},
+				"headers": {
+					"authorization": "Bearer sk-fake",
+					"openai-platform": "org-qkmJQuJ2WnvoIKMr2UJwIJkZ"
+				},
+				"body": {
+					"model": "gpt-4o",
+					"stream": false,
+					"messages": [
+						{
+							"role": "system",
+							"content": "Be brief"
+						},
+						{
+							"role": "user",
+							"content": "two"
+						}
+					]
+				}
+			},
+			{
+				"method": "POST",
+				"url": "https://api.openai.com/v1/chat/completions",
+				"qs": {},
+				"headers": {
+					"authorization": "Bearer sk-fake",
+					"openai-platform": "org-qkmJQuJ2WnvoIKMr2UJwIJkZ"
+				},
+				"body": {
+					"model": "gpt-4o",
+					"stream": false,
+					"messages": [
+						{
+							"role": "system",
+							"content": "Be brief"
+						},
+						{
+							"role": "user",
+							"content": "two"
+						},
+						{
+							"role": "assistant",
+							"content": "second"
+						},
+						{
+							"role": "user",
+							"content": "three"
+						}
+					]
+				}
+			}
+		],
+		"wire": [null, null, null],
+		"output": [
+			{
+				"error": "Bad request - please check your parameters"
+			},
+			{
+				"output": "second"
+			},
+			{
+				"output": "third"
+			}
+		],
+		"subRuns": {
+			"Model": [
+				{
+					"error": "Bad request - please check your parameters"
+				},
+				{
+					"error": null
+				},
+				{
+					"error": null
+				}
+			],
+			"Memory": [
+				{
+					"error": null
+				},
+				{
+					"error": null
+				},
+				{
+					"error": null
+				},
+				{
+					"error": null
+				},
+				{
+					"error": null
+				}
+			]
+		},
+		"outputs": [
+			[
+				{
+					"error": "Bad request - please check your parameters"
+				},
+				{
+					"output": "second"
+				},
+				{
+					"output": "third"
+				}
+			]
+		],
+		"paired": [
+			[
+				{
+					"item": 0
+				},
+				{
+					"item": 1
+				},
+				{
+					"item": 2
+				}
+			]
+		],
+		"nodePaired": [true, true, true]
+	},
+	"agent memory, failed call is not kept, version 2.2": {
+		"requests": [
+			{
+				"method": "POST",
+				"url": "https://api.openai.com/v1/chat/completions",
+				"qs": {},
+				"headers": {
+					"authorization": "Bearer sk-fake",
+					"openai-platform": "org-qkmJQuJ2WnvoIKMr2UJwIJkZ"
+				},
+				"body": {
+					"model": "gpt-4o",
+					"stream": false,
+					"messages": [
+						{
+							"role": "system",
+							"content": "Be brief"
+						},
+						{
+							"role": "user",
+							"content": "one"
+						}
+					]
+				}
+			},
+			{
+				"method": "POST",
+				"url": "https://api.openai.com/v1/chat/completions",
+				"qs": {},
+				"headers": {
+					"authorization": "Bearer sk-fake",
+					"openai-platform": "org-qkmJQuJ2WnvoIKMr2UJwIJkZ"
+				},
+				"body": {
+					"model": "gpt-4o",
+					"stream": false,
+					"messages": [
+						{
+							"role": "system",
+							"content": "Be brief"
+						},
+						{
+							"role": "user",
+							"content": "one"
+						},
+						{
+							"role": "assistant",
+							"content": "first"
+						},
+						{
+							"role": "user",
+							"content": "two"
+						}
+					]
+				}
+			},
+			{
+				"method": "POST",
+				"url": "https://api.openai.com/v1/chat/completions",
+				"qs": {},
+				"headers": {
+					"authorization": "Bearer sk-fake",
+					"openai-platform": "org-qkmJQuJ2WnvoIKMr2UJwIJkZ"
+				},
+				"body": {
+					"model": "gpt-4o",
+					"stream": false,
+					"messages": [
+						{
+							"role": "system",
+							"content": "Be brief"
+						},
+						{
+							"role": "user",
+							"content": "one"
+						},
+						{
+							"role": "assistant",
+							"content": "first"
+						},
+						{
+							"role": "user",
+							"content": "three"
+						}
+					]
+				}
+			}
+		],
+		"wire": [null, null, null],
+		"output": [
+			{
+				"output": "first"
+			},
+			{
+				"error": "Bad request - please check your parameters"
+			},
+			{
+				"output": "third"
+			}
+		],
+		"subRuns": {
+			"Model": [
+				{
+					"error": null
+				},
+				{
+					"error": "Bad request - please check your parameters"
+				},
+				{
+					"error": null
+				}
+			],
+			"Memory": [
+				{
+					"error": null
+				},
+				{
+					"error": null
+				},
+				{
+					"error": null
+				},
+				{
+					"error": null
+				},
+				{
+					"error": null
+				}
+			]
+		},
+		"outputs": [
+			[
+				{
+					"output": "first"
+				},
+				{
+					"error": "Bad request - please check your parameters"
+				},
+				{
+					"output": "third"
+				}
+			]
+		],
+		"paired": [
+			[
+				{
+					"item": 0
+				},
+				{
+					"item": 1
+				},
+				{
+					"item": 2
+				}
+			]
+		],
+		"nodePaired": [true, true, true]
+	},
+	"agent memory, empty answer": {
+		"requests": [
+			{
+				"method": "POST",
+				"url": "https://api.openai.com/v1/chat/completions",
+				"qs": {},
+				"headers": {
+					"authorization": "Bearer sk-fake",
+					"openai-platform": "org-qkmJQuJ2WnvoIKMr2UJwIJkZ"
+				},
+				"body": {
+					"model": "gpt-4o",
+					"stream": false,
+					"messages": [
+						{
+							"role": "system",
+							"content": "Be brief"
+						},
+						{
+							"role": "user",
+							"content": "one"
+						}
+					]
+				}
+			},
+			{
+				"method": "POST",
+				"url": "https://api.openai.com/v1/chat/completions",
+				"qs": {},
+				"headers": {
+					"authorization": "Bearer sk-fake",
+					"openai-platform": "org-qkmJQuJ2WnvoIKMr2UJwIJkZ"
+				},
+				"body": {
+					"model": "gpt-4o",
+					"stream": false,
+					"messages": [
+						{
+							"role": "system",
+							"content": "Be brief"
+						},
+						{
+							"role": "user",
+							"content": "two"
+						}
+					]
+				}
+			}
+		],
+		"wire": [null, null],
+		"output": [
+			{
+				"output": ""
+			},
+			{
+				"output": "second"
+			}
+		],
+		"subRuns": {
+			"Model": [
+				{
+					"error": null
+				},
+				{
+					"error": null
+				}
+			],
+			"Memory": [
+				{
+					"error": null
+				},
+				{
+					"error": null
+				},
+				{
+					"error": null
+				}
+			]
+		},
+		"outputs": [
+			[
+				{
+					"output": ""
+				},
+				{
+					"output": "second"
+				}
+			]
+		],
+		"paired": [
+			[
+				{
+					"item": 0
+				},
+				{
+					"item": 1
+				}
+			]
+		],
+		"nodePaired": [true, true]
+	},
+	"agent memory, empty answer, version 2.2": {
+		"requests": [
+			{
+				"method": "POST",
+				"url": "https://api.openai.com/v1/chat/completions",
+				"qs": {},
+				"headers": {
+					"authorization": "Bearer sk-fake",
+					"openai-platform": "org-qkmJQuJ2WnvoIKMr2UJwIJkZ"
+				},
+				"body": {
+					"model": "gpt-4o",
+					"stream": false,
+					"messages": [
+						{
+							"role": "system",
+							"content": "Be brief"
+						},
+						{
+							"role": "user",
+							"content": "one"
+						}
+					]
+				}
+			},
+			{
+				"method": "POST",
+				"url": "https://api.openai.com/v1/chat/completions",
+				"qs": {},
+				"headers": {
+					"authorization": "Bearer sk-fake",
+					"openai-platform": "org-qkmJQuJ2WnvoIKMr2UJwIJkZ"
+				},
+				"body": {
+					"model": "gpt-4o",
+					"stream": false,
+					"messages": [
+						{
+							"role": "system",
+							"content": "Be brief"
+						},
+						{
+							"role": "user",
+							"content": "one"
+						},
+						{
+							"role": "assistant",
+							"content": ""
+						},
+						{
+							"role": "user",
+							"content": "two"
+						}
+					]
+				}
+			}
+		],
+		"wire": [null, null],
+		"output": [
+			{
+				"output": ""
+			},
+			{
+				"output": "second"
+			}
+		],
+		"subRuns": {
+			"Model": [
+				{
+					"error": null
+				},
+				{
+					"error": null
+				}
+			],
+			"Memory": [
+				{
+					"error": null
+				},
+				{
+					"error": null
+				},
+				{
+					"error": null
+				},
+				{
+					"error": null
+				}
+			]
+		},
+		"outputs": [
+			[
+				{
+					"output": ""
+				},
+				{
+					"output": "second"
+				}
+			]
+		],
+		"paired": [
+			[
+				{
+					"item": 0
+				},
+				{
+					"item": 1
+				}
+			]
+		],
+		"nodePaired": [true, true]
+	},
+	"agent memory, tool call without tools": {
+		"requests": [
+			{
+				"method": "POST",
+				"url": "https://api.openai.com/v1/chat/completions",
+				"qs": {},
+				"headers": {
+					"authorization": "Bearer sk-fake",
+					"openai-platform": "org-qkmJQuJ2WnvoIKMr2UJwIJkZ"
+				},
+				"body": {
+					"model": "gpt-4o",
+					"stream": false,
+					"messages": [
+						{
+							"role": "system",
+							"content": "Be brief"
+						},
+						{
+							"role": "user",
+							"content": "one"
+						}
+					]
+				}
+			},
+			{
+				"method": "POST",
+				"url": "https://api.openai.com/v1/chat/completions",
+				"qs": {},
+				"headers": {
+					"authorization": "Bearer sk-fake",
+					"openai-platform": "org-qkmJQuJ2WnvoIKMr2UJwIJkZ"
+				},
+				"body": {
+					"model": "gpt-4o",
+					"stream": false,
+					"messages": [
+						{
+							"role": "system",
+							"content": "Be brief"
+						},
+						{
+							"role": "user",
+							"content": "one"
+						},
+						{
+							"role": "assistant",
+							"content": "first"
+						},
+						{
+							"role": "user",
+							"content": "two"
+						}
+					]
+				}
+			},
+			{
+				"method": "POST",
+				"url": "https://api.openai.com/v1/chat/completions",
+				"qs": {},
+				"headers": {
+					"authorization": "Bearer sk-fake",
+					"openai-platform": "org-qkmJQuJ2WnvoIKMr2UJwIJkZ"
+				},
+				"body": {
+					"model": "gpt-4o",
+					"stream": false,
+					"messages": [
+						{
+							"role": "system",
+							"content": "Be brief"
+						},
+						{
+							"role": "user",
+							"content": "one"
+						},
+						{
+							"role": "assistant",
+							"content": "first"
+						},
+						{
+							"role": "user",
+							"content": "one"
+						}
+					]
+				}
+			},
+			{
+				"method": "POST",
+				"url": "https://api.openai.com/v1/chat/completions",
+				"qs": {},
+				"headers": {
+					"authorization": "Bearer sk-fake",
+					"openai-platform": "org-qkmJQuJ2WnvoIKMr2UJwIJkZ"
+				},
+				"body": {
+					"model": "gpt-4o",
+					"stream": false,
+					"messages": [
+						{
+							"role": "system",
+							"content": "Be brief"
+						},
+						{
+							"role": "user",
+							"content": "one"
+						},
+						{
+							"role": "assistant",
+							"content": "first"
+						},
+						{
+							"role": "user",
+							"content": "one"
+						},
+						{
+							"role": "assistant",
+							"content": "again one"
+						},
+						{
+							"role": "user",
+							"content": "two"
+						}
+					]
+				}
+			}
+		],
+		"wire": [null, null, null, null],
+		"output": [
+			{
+				"output": "again one"
+			},
+			{
+				"output": "again two"
+			}
+		],
+		"subRuns": {
+			"Model": [
+				{
+					"error": null
+				},
+				{
+					"error": null
+				},
+				{
+					"error": null
+				},
+				{
+					"error": null
+				}
+			],
+			"Memory": [
+				{
+					"error": null
+				},
+				{
+					"error": null
+				},
+				{
+					"error": null
+				},
+				{
+					"error": null
+				},
+				{
+					"error": null
+				},
+				{
+					"error": null
+				},
+				{
+					"error": null
+				}
+			]
+		},
+		"outputs": [
+			[
+				{
+					"output": "again one"
+				},
+				{
+					"output": "again two"
+				}
+			]
+		],
+		"paired": [
+			[
+				{
+					"item": 0
+				},
+				{
+					"item": 1
+				}
+			]
+		],
+		"nodePaired": [true, true]
+	},
+	"agent memory, tool call without tools, version 2.2": {
+		"requests": [
+			{
+				"method": "POST",
+				"url": "https://api.openai.com/v1/chat/completions",
+				"qs": {},
+				"headers": {
+					"authorization": "Bearer sk-fake",
+					"openai-platform": "org-qkmJQuJ2WnvoIKMr2UJwIJkZ"
+				},
+				"body": {
+					"model": "gpt-4o",
+					"stream": false,
+					"messages": [
+						{
+							"role": "system",
+							"content": "Be brief"
+						},
+						{
+							"role": "user",
+							"content": "one"
+						}
+					]
+				}
+			},
+			{
+				"method": "POST",
+				"url": "https://api.openai.com/v1/chat/completions",
+				"qs": {},
+				"headers": {
+					"authorization": "Bearer sk-fake",
+					"openai-platform": "org-qkmJQuJ2WnvoIKMr2UJwIJkZ"
+				},
+				"body": {
+					"model": "gpt-4o",
+					"stream": false,
+					"messages": [
+						{
+							"role": "system",
+							"content": "Be brief"
+						},
+						{
+							"role": "user",
+							"content": "one"
+						},
+						{
+							"role": "assistant",
+							"content": "",
+							"tool_calls": [
+								{
+									"id": "call_1",
+									"type": "function",
+									"function": {
+										"name": "lookup",
+										"arguments": "{\"a\":1}"
+									}
+								}
+							]
+						},
+						{
+							"role": "tool",
+							"content": "lookup is not a valid tool, try another one.",
+							"tool_call_id": "call_1"
+						}
+					]
+				}
+			},
+			{
+				"method": "POST",
+				"url": "https://api.openai.com/v1/chat/completions",
+				"qs": {},
+				"headers": {
+					"authorization": "Bearer sk-fake",
+					"openai-platform": "org-qkmJQuJ2WnvoIKMr2UJwIJkZ"
+				},
+				"body": {
+					"model": "gpt-4o",
+					"stream": false,
+					"messages": [
+						{
+							"role": "system",
+							"content": "Be brief"
+						},
+						{
+							"role": "user",
+							"content": "one"
+						},
+						{
+							"role": "assistant",
+							"content": "after"
+						},
+						{
+							"role": "user",
+							"content": "two"
+						}
+					]
+				}
+			}
+		],
+		"wire": [null, null, null],
+		"output": [
+			{
+				"output": "after"
+			},
+			{
+				"output": "second"
+			}
+		],
+		"subRuns": {
+			"Model": [
+				{
+					"error": null
+				},
+				{
+					"error": null
+				},
+				{
+					"error": null
+				}
+			],
+			"Memory": [
+				{
+					"error": null
+				},
+				{
+					"error": null
+				},
+				{
+					"error": null
+				},
+				{
+					"error": null
+				}
+			]
+		},
+		"outputs": [
+			[
+				{
+					"output": "after"
+				},
+				{
+					"output": "second"
+				}
+			]
+		],
+		"paired": [
+			[
+				{
+					"item": 0
+				},
+				{
+					"item": 1
+				}
+			]
+		],
+		"nodePaired": [true, true]
+	},
+	"agent memory, object as key": {
+		"requests": [],
+		"wire": [],
+		"subRuns": {
+			"Memory": [
+				{
+					"error": "Invalid session ID"
+				}
+			]
+		},
+		"outputs": [],
+		"paired": [],
+		"error": "Error in sub-node Memory",
+		"errorDetail": {
+			"description": "Invalid session ID",
+			"httpCode": null
+		}
+	},
+	"agent memory, no prompt": {
+		"requests": [],
+		"wire": [],
+		"subRuns": {},
+		"outputs": [],
+		"paired": [],
+		"error": "No prompt specified",
+		"errorDetail": {
+			"description": "The prompt field is empty or the expression used could not be resolved. Please check the configured prompt value.",
+			"httpCode": null
+		}
+	},
+	"agent memory, no prompt, version 2.2": {
+		"requests": [],
+		"wire": [],
+		"subRuns": {},
+		"outputs": [],
+		"paired": [],
+		"error": "No prompt specified",
+		"errorDetail": {
+			"description": "The prompt field is empty or the expression used could not be resolved. Please check the configured prompt value.",
+			"httpCode": null
+		}
+	},
+	"agent memory, max iterations, version 2.2": {
+		"requests": [
+			{
+				"method": "POST",
+				"url": "https://api.openai.com/v1/chat/completions",
+				"qs": {},
+				"headers": {
+					"authorization": "Bearer sk-fake",
+					"openai-platform": "org-qkmJQuJ2WnvoIKMr2UJwIJkZ"
+				},
+				"body": {
+					"model": "gpt-4o",
+					"stream": false,
+					"messages": [
+						{
+							"role": "system",
+							"content": "Be brief"
+						},
+						{
+							"role": "user",
+							"content": "one"
+						}
+					]
+				}
+			},
+			{
+				"method": "POST",
+				"url": "https://api.openai.com/v1/chat/completions",
+				"qs": {},
+				"headers": {
+					"authorization": "Bearer sk-fake",
+					"openai-platform": "org-qkmJQuJ2WnvoIKMr2UJwIJkZ"
+				},
+				"body": {
+					"model": "gpt-4o",
+					"stream": false,
+					"messages": [
+						{
+							"role": "system",
+							"content": "Be brief"
+						},
+						{
+							"role": "user",
+							"content": "one"
+						},
+						{
+							"role": "assistant",
+							"content": "Agent stopped due to max iterations."
+						},
+						{
+							"role": "user",
+							"content": "two"
+						}
+					]
+				}
+			}
+		],
+		"wire": [null, null],
+		"output": [
+			{
+				"output": "Agent stopped due to max iterations."
+			},
+			{
+				"output": "second"
+			}
+		],
+		"subRuns": {
+			"Model": [
+				{
+					"error": null
+				},
+				{
+					"error": null
+				}
+			],
+			"Memory": [
+				{
+					"error": null
+				},
+				{
+					"error": null
+				},
+				{
+					"error": null
+				},
+				{
+					"error": null
+				}
+			]
+		},
+		"outputs": [
+			[
+				{
+					"output": "Agent stopped due to max iterations."
+				},
+				{
+					"output": "second"
+				}
+			]
+		],
+		"paired": [
+			[
+				{
+					"item": 0
+				},
+				{
+					"item": 1
+				}
+			]
+		],
+		"nodePaired": [true, true]
+	},
+	"agent memory, max iterations": {
+		"requests": [
+			{
+				"method": "POST",
+				"url": "https://api.openai.com/v1/chat/completions",
+				"qs": {},
+				"headers": {
+					"authorization": "Bearer sk-fake",
+					"openai-platform": "org-qkmJQuJ2WnvoIKMr2UJwIJkZ"
+				},
+				"body": {
+					"model": "gpt-4o",
+					"stream": false,
+					"messages": [
+						{
+							"role": "system",
+							"content": "Be brief"
+						},
+						{
+							"role": "user",
+							"content": "one"
+						}
+					]
+				}
+			},
+			{
+				"method": "POST",
+				"url": "https://api.openai.com/v1/chat/completions",
+				"qs": {},
+				"headers": {
+					"authorization": "Bearer sk-fake",
+					"openai-platform": "org-qkmJQuJ2WnvoIKMr2UJwIJkZ"
+				},
+				"body": {
+					"model": "gpt-4o",
+					"stream": false,
+					"messages": [
+						{
+							"role": "system",
+							"content": "Be brief"
+						},
+						{
+							"role": "user",
+							"content": "one"
+						},
+						{
+							"role": "assistant",
+							"content": "first"
+						},
+						{
+							"role": "user",
+							"content": "two"
+						}
+					]
+				}
+			}
+		],
+		"wire": [null, null],
+		"subRuns": {
+			"Model": [
+				{
+					"error": null
+				},
+				{
+					"error": null
+				}
+			],
+			"Memory": [
+				{
+					"error": null
+				},
+				{
+					"error": null
+				},
+				{
+					"error": null
+				}
+			]
+		},
+		"outputs": [],
+		"paired": [],
+		"error": "Max iterations (1) reached. The agent could not complete the task within the allowed number of iterations.",
+		"errorDetail": {
+			"description": null,
+			"httpCode": null
+		}
+	},
+	"agent memory, empty answer, anthropic, version 2.2": {
+		"requests": [
+			{
+				"method": "POST",
+				"url": "https://api.anthropic.com/v1/messages",
+				"qs": {},
+				"headers": {
+					"anthropic-version": "2023-06-01",
+					"x-api-key": "sk-ant-fake"
+				},
+				"body": {
+					"model": "claude-sonnet-4-5",
+					"stream": false,
+					"max_tokens": 16384,
+					"tools": [],
+					"messages": [
+						{
+							"role": "user",
+							"content": "one"
+						}
+					],
+					"system": "Be brief"
+				}
+			},
+			{
+				"method": "POST",
+				"url": "https://api.anthropic.com/v1/messages",
+				"qs": {},
+				"headers": {
+					"anthropic-version": "2023-06-01",
+					"x-api-key": "sk-ant-fake"
+				},
+				"body": {
+					"model": "claude-sonnet-4-5",
+					"stream": false,
+					"max_tokens": 16384,
+					"tools": [],
+					"messages": [
+						{
+							"role": "user",
+							"content": "one"
+						},
+						{
+							"role": "assistant",
+							"content": ""
+						},
+						{
+							"role": "user",
+							"content": "two"
+						}
+					],
+					"system": "Be brief"
+				}
+			}
+		],
+		"wire": [null, null],
+		"output": [
+			{
+				"output": ""
+			},
+			{
+				"output": "second"
+			}
+		],
+		"subRuns": {
+			"Model": [
+				{
+					"error": null
+				},
+				{
+					"error": null
+				}
+			],
+			"Memory": [
+				{
+					"error": null
+				},
+				{
+					"error": null
+				},
+				{
+					"error": null
+				},
+				{
+					"error": null
+				}
+			]
+		},
+		"outputs": [
+			[
+				{
+					"output": ""
+				},
+				{
+					"output": "second"
+				}
+			]
+		],
+		"paired": [
+			[
+				{
+					"item": 0
+				},
+				{
+					"item": 1
+				}
+			]
+		],
+		"nodePaired": [true, true]
+	},
+	"agent memory, empty answer, gemini, version 2.2": {
+		"requests": [
+			{
+				"method": "POST",
+				"url": "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent",
+				"qs": {},
+				"headers": {
+					"x-goog-api-key": "fake-google-key"
+				},
+				"body": {
+					"generationConfig": {
+						"stopSequences": []
+					},
+					"safetySettings": [],
+					"systemInstruction": {
+						"role": "system",
+						"parts": [
+							{
+								"text": "Be brief"
+							}
+						]
+					},
+					"contents": [
+						{
+							"role": "user",
+							"parts": [
+								{
+									"text": "one"
+								}
+							]
+						}
+					]
+				}
+			},
+			{
+				"method": "POST",
+				"url": "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent",
+				"qs": {},
+				"headers": {
+					"x-goog-api-key": "fake-google-key"
+				},
+				"body": {
+					"generationConfig": {
+						"stopSequences": []
+					},
+					"safetySettings": [],
+					"systemInstruction": {
+						"role": "system",
+						"parts": [
+							{
+								"text": "Be brief"
+							}
+						]
+					},
+					"contents": [
+						{
+							"role": "user",
+							"parts": [
+								{
+									"text": "one"
+								}
+							]
+						},
+						{
+							"role": "model",
+							"parts": []
+						},
+						{
+							"role": "user",
+							"parts": [
+								{
+									"text": "two"
+								}
+							]
+						}
+					]
+				}
+			}
+		],
+		"wire": [null, null],
+		"output": [
+			{
+				"output": ""
+			},
+			{
+				"output": "second"
+			}
+		],
+		"subRuns": {
+			"Model": [
+				{
+					"error": null
+				},
+				{
+					"error": null
+				}
+			],
+			"Memory": [
+				{
+					"error": null
+				},
+				{
+					"error": null
+				},
+				{
+					"error": null
+				},
+				{
+					"error": null
+				}
+			]
+		},
+		"outputs": [
+			[
+				{
+					"output": ""
+				},
+				{
+					"output": "second"
+				}
+			]
+		],
+		"paired": [
+			[
+				{
+					"item": 0
+				},
+				{
+					"item": 1
+				}
+			]
+		],
+		"nodePaired": [true, true]
+	},
+	"agent memory, retry": {
+		"requests": [
+			{
+				"method": "POST",
+				"url": "https://api.openai.com/v1/chat/completions",
+				"qs": {},
+				"headers": {
+					"authorization": "Bearer sk-fake",
+					"openai-platform": "org-qkmJQuJ2WnvoIKMr2UJwIJkZ"
+				},
+				"body": {
+					"model": "gpt-4o",
+					"stream": false,
+					"messages": [
+						{
+							"role": "system",
+							"content": "Be brief"
+						},
+						{
+							"role": "user",
+							"content": "one"
+						}
+					]
+				}
+			},
+			{
+				"method": "POST",
+				"url": "https://api.openai.com/v1/chat/completions",
+				"qs": {},
+				"headers": {
+					"authorization": "Bearer sk-fake",
+					"openai-platform": "org-qkmJQuJ2WnvoIKMr2UJwIJkZ"
+				},
+				"body": {
+					"model": "gpt-4o",
+					"stream": false,
+					"messages": [
+						{
+							"role": "system",
+							"content": "Be brief"
+						},
+						{
+							"role": "user",
+							"content": "one"
+						},
+						{
+							"role": "assistant",
+							"content": "first"
+						},
+						{
+							"role": "user",
+							"content": "two"
+						}
+					]
+				}
+			},
+			{
+				"method": "POST",
+				"url": "https://api.openai.com/v1/chat/completions",
+				"qs": {},
+				"headers": {
+					"authorization": "Bearer sk-fake",
+					"openai-platform": "org-qkmJQuJ2WnvoIKMr2UJwIJkZ"
+				},
+				"body": {
+					"model": "gpt-4o",
+					"stream": false,
+					"messages": [
+						{
+							"role": "system",
+							"content": "Be brief"
+						},
+						{
+							"role": "user",
+							"content": "one"
+						},
+						{
+							"role": "assistant",
+							"content": "first"
+						},
+						{
+							"role": "user",
+							"content": "one"
+						}
+					]
+				}
+			},
+			{
+				"method": "POST",
+				"url": "https://api.openai.com/v1/chat/completions",
+				"qs": {},
+				"headers": {
+					"authorization": "Bearer sk-fake",
+					"openai-platform": "org-qkmJQuJ2WnvoIKMr2UJwIJkZ"
+				},
+				"body": {
+					"model": "gpt-4o",
+					"stream": false,
+					"messages": [
+						{
+							"role": "system",
+							"content": "Be brief"
+						},
+						{
+							"role": "user",
+							"content": "one"
+						},
+						{
+							"role": "assistant",
+							"content": "first"
+						},
+						{
+							"role": "user",
+							"content": "one"
+						},
+						{
+							"role": "assistant",
+							"content": "again one"
+						},
+						{
+							"role": "user",
+							"content": "two"
+						}
+					]
+				}
+			}
+		],
+		"wire": [null, null, null, null],
+		"output": [
+			{
+				"output": "again one"
+			},
+			{
+				"output": "again two"
+			}
+		],
+		"subRuns": {
+			"Model": [
+				{
+					"error": null
+				},
+				{
+					"error": "Bad request - please check your parameters"
+				},
+				{
+					"error": null
+				},
+				{
+					"error": null
+				}
+			],
+			"Memory": [
+				{
+					"error": null
+				},
+				{
+					"error": null
+				},
+				{
+					"error": null
+				},
+				{
+					"error": null
+				},
+				{
+					"error": null
+				},
+				{
+					"error": null
+				},
+				{
+					"error": null
+				}
+			]
+		},
+		"outputs": [
+			[
+				{
+					"output": "again one"
+				},
+				{
+					"output": "again two"
+				}
+			]
+		],
+		"paired": [
+			[
+				{
+					"item": 0
+				},
+				{
+					"item": 1
+				}
+			]
+		],
+		"nodePaired": [true, true]
+	},
 	"googleSheets sheet.clear rows and keep the first row": {
 		"requests": [
 			{

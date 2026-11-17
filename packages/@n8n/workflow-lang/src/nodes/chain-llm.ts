@@ -26,7 +26,13 @@
  * API), `lmChatOpenRouter`, `lmChatAnthropic` (versions 1 to 1.5, without thinking
  * options) and `lmChatGoogleGemini` (versions 1 and 1.1), with the options that map to
  * fields of the request body.
- * Not supported (the converter keeps these in the fallback host): an output
+ * The agent can have the window buffer memory (`memoryBufferWindow`, parameter `aiMemory`).
+ * v1 keeps the messages of a session in the memory of the n8n process, under the workflow id
+ * and the session key, and drops a session that no agent used for one hour. This node keeps
+ * them in the workflow static data (`MEMORY_STORE`), with the same window and the same hour.
+ * The static data survives a restart of n8n, and the node keeps `MEMORY_SESSIONS` sessions
+ * at most: the process memory of v1 does neither.
+ * Not supported (the converter keeps these in the fallback host): tools, an output
  * parser, a fallback model, image messages, the JSON response format, the reasoning
  * effort, built-in tools, a custom base URL of the model node, and other model providers.
  */
@@ -67,6 +73,74 @@ interface ItemParameters {
 	systemMessage?: unknown;
 }
 
+/** The memory sub-node of the agent. v1 reads its parameters for the first input item only. */
+interface AiMemory {
+	/** The name of the sub-node: the error of the memory names it. */
+	node?: string;
+	/** The session key (`sessionKey`). */
+	key?: unknown;
+	/** `contextWindowLength`: the count of exchanges that the model gets. */
+	window?: number;
+}
+
+/** One message of a session: the prompt of the user, or the answer of the agent. */
+interface StoredMessage {
+	ai: boolean;
+	text: string;
+}
+
+interface Session {
+	/** The time of the last agent run that used the session. */
+	at: number;
+	messages: StoredMessage[];
+}
+
+/** The node name of the static data that holds the sessions of all memory nodes of a workflow. */
+const MEMORY_STORE = '@n8n/n8n-nodes-langchain.memoryBufferWindow';
+/** v1 drops a session that no agent used for one hour. */
+const MEMORY_IDLE = 60 * 60 * 1000;
+/** The maximum count of sessions of a workflow. The session that was idle the longest goes first. */
+const MEMORY_SESSIONS = 1024;
+
+function isSession(value: unknown): value is Session {
+	return isObject(value) && typeof value.at === 'number' && Array.isArray(value.messages);
+}
+
+/**
+ * The session of the key in the store, as getMemory of the v1 node gives it: first the idle
+ * sessions go, then the session is made when it is not there, and its time is set.
+ */
+function openSession(store: Record<string, unknown>, key: string, now: number): Session {
+	let count = 0;
+	for (const name of Object.keys(store)) {
+		const session = store[name];
+		if (!isSession(session) || session.at < now - MEMORY_IDLE) delete store[name];
+		else count += 1;
+	}
+	const name = `s:${key}`;
+	const found = store[name];
+	if (isSession(found)) {
+		found.at = now;
+		return found;
+	}
+	while (count >= MEMORY_SESSIONS) {
+		let oldest = '';
+		let at = 0;
+		for (const other of Object.keys(store)) {
+			const session = store[other];
+			if (isSession(session) && (oldest === '' || session.at < at)) {
+				oldest = other;
+				at = session.at;
+			}
+		}
+		delete store[oldest];
+		count -= 1;
+	}
+	const session: Session = { at: now, messages: [] };
+	store[name] = session;
+	return session;
+}
+
 interface ChainParameters {
 	/**
 	 * `agent`: the root is a Tools Agent (`@n8n/n8n-nodes-langchain.agent`, versions 2 to 3.1)
@@ -86,6 +160,10 @@ interface ChainParameters {
 	continueOnFail?: boolean;
 	/** The chat model sub-node. v1 reads its parameters for the first input item only. */
 	aiModel?: AiModel;
+	/** The agent: the window buffer memory sub-node. */
+	aiMemory?: AiMemory;
+	/** The time of the run in milliseconds: the idle time of a session counts from it. */
+	now?: number;
 	batch?: ItemParameters[];
 }
 
@@ -154,7 +232,12 @@ const ROLES: Record<string, string> = {
  * The messages of the v1 prompt template. The chain: the message list, then the prompt as a
  * user message. The agent: the system message when the option has a value, then the prompt.
  */
-function chatMessages(parameters: ItemParameters, model: string, agent: boolean): ChatMessage[] {
+function chatMessages(
+	parameters: ItemParameters,
+	model: string,
+	agent: boolean,
+	history: StoredMessage[],
+): ChatMessage[] {
 	const reasoning = isReasoningModel(model);
 	const out: ChatMessage[] = [];
 	if (agent) {
@@ -164,6 +247,10 @@ function chatMessages(parameters: ItemParameters, model: string, agent: boolean)
 				role: reasoning ? 'developer' : 'system',
 				content: typeof system === 'string' ? system : String(system),
 			});
+		}
+		// The chat history of the memory comes after the system message.
+		for (const message of history) {
+			out.push({ role: message.ai ? 'assistant' : 'user', content: message.text });
 		}
 		out.push({ role: 'user', content: promptText(parameters.text) });
 		return out;
@@ -502,10 +589,15 @@ function anthropicSamples(model: string): boolean {
 }
 
 /** The request of the Anthropic chat model (`lmChatAnthropic`, ChatAnthropic of LangChain). */
-function anthropicRequest(item: ItemParameters, ai: AiModel, agent: boolean): ModelRequest {
+function anthropicRequest(
+	item: ItemParameters,
+	ai: AiModel,
+	agent: boolean,
+	history: StoredMessage[],
+): ModelRequest {
 	const options = ai.options ?? {};
 	const model = ai.model ?? '';
-	const messages = chatMessages(item, '', agent);
+	const messages = chatMessages(item, '', agent, history);
 	const request: ModelRequest = { responses: false, anthropic: true, body: {} };
 	let maxTokens = options.maxTokens;
 	if (maxTokens === undefined) {
@@ -554,9 +646,14 @@ function geminiModel(model: string): string {
 }
 
 /** The request of the Gemini chat model (`lmChatGoogleGemini`, ChatGoogleGenerativeAI of LangChain). */
-function geminiRequest(item: ItemParameters, ai: AiModel, agent: boolean): ModelRequest {
+function geminiRequest(
+	item: ItemParameters,
+	ai: AiModel,
+	agent: boolean,
+	history: StoredMessage[],
+): ModelRequest {
 	const options = ai.options ?? {};
-	const messages = chatMessages(item, '', agent);
+	const messages = chatMessages(item, '', agent, history);
 	const request: ModelRequest = { responses: false, gemini: true, body: {} };
 	const body: Record<string, unknown> = {
 		generationConfig: {
@@ -643,13 +740,18 @@ function refusesSampling(message: string): boolean {
 }
 
 /** The request body of the item, and true when it goes to the Responses API. */
-function requestOf(item: ItemParameters, ai: AiModel, agent: boolean): ModelRequest {
-	if (ai.provider === 'anthropic') return anthropicRequest(item, ai, agent);
-	if (ai.provider === 'gemini') return geminiRequest(item, ai, agent);
+function requestOf(
+	item: ItemParameters,
+	ai: AiModel,
+	agent: boolean,
+	history: StoredMessage[],
+): ModelRequest {
+	if (ai.provider === 'anthropic') return anthropicRequest(item, ai, agent, history);
+	if (ai.provider === 'gemini') return geminiRequest(item, ai, agent, history);
 	const options = ai.options ?? {};
 	const maxTokens = options.maxTokens === -1 ? undefined : options.maxTokens;
 	const model = ai.model ?? '';
-	const messages = chatMessages(item, model, agent);
+	const messages = chatMessages(item, model, agent, history);
 	if (ai.responses === true || prefersResponses(model)) {
 		return {
 			responses: true,
@@ -692,6 +794,8 @@ export default defineNode<ChainParameters>({
 				'delayBetweenBatches',
 				'continueOnFail',
 				'aiModel',
+				'aiMemory',
+				'now',
 				'batch',
 			],
 		},
@@ -719,6 +823,40 @@ export default defineNode<ChainParameters>({
 		const step = batched ? size : 1;
 		const maxIterations = parameters.maxIterations ?? 10;
 		const tries = (ai.options?.maxRetries ?? 2) + 1;
+		const memoryRuns: Array<{ error: string | null }> = [];
+		// The memory sub-node gives its session once for the run, before the first item.
+		let session: Session | undefined;
+		const memory = agent ? parameters.aiMemory : undefined;
+		if (memory !== undefined) {
+			const key = memory.key;
+			let refused: string | undefined;
+			if (key === '' || key === undefined || key === null) refused = 'Key parameter is empty';
+			else if (typeof key !== 'string' && typeof key !== 'number' && typeof key !== 'boolean') {
+				refused = 'Invalid session ID';
+			}
+			if (refused !== undefined) {
+				return [
+					{
+						items: [],
+						runs,
+						memoryRuns: [{ error: refused }],
+						error: `Error in sub-node ${memory.node ?? ''}`,
+						description: refused,
+					},
+				];
+			}
+			session = openSession(ctx.staticData('node', MEMORY_STORE), String(key), parameters.now ?? 0);
+		}
+		const window = (memory?.window ?? 5) * 2;
+		/** The agent keeps the prompt and its answer in the session, and the window of them. */
+		const remember = (input: string, output: string): void => {
+			if (session === undefined) return;
+			if (version >= 3 && (input === '' || output === '')) return;
+			memoryRuns.push({ error: null });
+			session.messages.push({ ai: false, text: input });
+			session.messages.push({ ai: true, text: output });
+			while (session.messages.length > window) session.messages.shift();
+		};
 
 		/**
 		 * One call of the Anthropic model. The credential type injects the key and the custom
@@ -880,7 +1018,12 @@ export default defineNode<ChainParameters>({
 			}
 			// An expression that finds no value gives undefined, as in v1.
 			if (item.text === undefined) return { error: 'No prompt specified' };
-			const request = requestOf(item, ai, agent);
+			let history: StoredMessage[] = [];
+			if (session !== undefined) {
+				memoryRuns.push({ error: null });
+				history = session.messages.slice(-window);
+			}
+			const request = requestOf(item, ai, agent, history);
 			for (let turn = 1; ; turn++) {
 				const answer = await send(request);
 				if (answer.error !== undefined) return { error: answer.error };
@@ -907,6 +1050,7 @@ export default defineNode<ChainParameters>({
 						// tool to run and runs the agent again. Version 2 answers each call itself.
 						if (version >= 3) return { again: true };
 						if (turn >= maxIterations) {
+							remember(promptText(item.text), 'Agent stopped due to max iterations.');
 							return { item: { output: 'Agent stopped due to max iterations.' } };
 						}
 						const failed = answerToolCalls(request, answer.data);
@@ -916,7 +1060,9 @@ export default defineNode<ChainParameters>({
 					// One text part of Gemini is a text answer; more parts are a list of blocks.
 					const single = request.gemini === true && parts.length === 1 && parts[0].type === 'text';
 					const blocks = request.responses || request.anthropic === true || request.gemini === true;
-					const output: Item = { output: agentOutput(parts, blocks && !single) };
+					const text = agentOutput(parts, blocks && !single);
+					remember(promptText(item.text), text);
+					const output: Item = { output: text };
 					if (parameters.returnIntermediateSteps === true) output.intermediateSteps = [];
 					return { item: output };
 				}
@@ -948,14 +1094,14 @@ export default defineNode<ChainParameters>({
 					} else if (parameters.continueOnFail === true) {
 						items.push({ error: outcome.error });
 					} else {
-						return [{ items: [], runs, error: outcome.error }];
+						return [{ items: [], runs, memoryRuns, error: outcome.error }];
 					}
 				}
 				if (batched && start + step < batch.length && delay > 0) {
 					await ctx.wait({ duration: delay });
 				}
 			}
-			if (!again) return [{ items, runs }];
+			if (!again) return [{ items, runs, memoryRuns }];
 		}
 	},
 });

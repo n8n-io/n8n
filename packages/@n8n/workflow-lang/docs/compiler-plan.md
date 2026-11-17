@@ -577,12 +577,32 @@ engine: for every case the test compares the method, the URL, the JSON body (key
 message order and each default) and the headers after the credential is applied. Headers that name the client
 library (`user-agent`, `x-stainless-*`, `accept`) are not compared; a compiled node does not send them.
 
-### Memory (decision, not built)
+### Memory: the window buffer memory (built for the agent without tools)
 
-Window buffer memory (`memoryBufferWindow`) keeps the last K exchanges of a session in the memory of the n8n
-process, keyed by workflow id and session key. It does not survive a restart of n8n. Decision: keep it in the
-workflow static data under the node name and the session key, with the same window. Database memories
-(`memoryPostgresChat`, `memoryRedisChat`) can use the SQL effect or a service call.
+What v1 keeps and where: `memoryBufferWindow` keeps all messages of a session in the memory of the n8n
+process (a map with the key `<workflow id>__<session key>`). It gives the model the last `contextWindowLength`
+exchanges. At each use it drops every session that no agent used for more than one hour. Nothing survives a
+restart of n8n, and each n8n process has its own map. The agent reads the memory sub-node once for a run, with
+the first input item.
+
+The native agent (`chain-llm.ts`, parameter `aiMemory`) keeps the sessions in the workflow static data, under
+the node name `@n8n/n8n-nodes-langchain.memoryBufferWindow` (all memory nodes of a workflow share it, as in v1).
+It stores only the window of each session, drops idle sessions after the same hour (the converter gives the
+time of the run), and gives the runs of the memory sub-node (`memoryRuns`: one for a read, one for a write).
+Order for one item: the prompt check, the read, the model, the write. Versions 3 and 3.1 do not write an empty
+answer; versions 2 to 2.2 do. A failed item writes nothing. An empty session key fails with
+"Error in sub-node <name>" and the description "Key parameter is empty".
+
+Native: agent 2 to 3.1, memory versions 1 to 1.3 with a session key (`customKey`, or `sessionKey` before
+version 1.2), a window of 1 to 1000, batch size 1. In the host: the session of the chat trigger (`fromInput`:
+v1 reads the trigger and adds the node name), a window of 0 (all messages), a batch size above 1 (the order of
+the writes depends on the answers), a key expression with a retry or a "continue" setting (no proof of the
+memory error there), `maxTokensFromMemory`, and the database memories.
+
+Differences from v1, by design: the static data survives a restart of n8n and is shared by all n8n processes;
+it holds the text of the window in the database of n8n; a workflow keeps 1,024 sessions at most (the session
+that was idle the longest goes first); v1 fixes the window when it makes the session, and the native node reads
+the parameter in each run. Two executions that use one session at the same time: the last one to end wins.
 
 ### Known differences from v1 in the native nodes
 
@@ -612,7 +632,10 @@ call there is a step with LangChain objects in it.
    list of models that take no sampling parameters.
 2. Structured output parser: the JSON schema check, the format instructions, and the auto-fix call.
 3. Tools Agent versions 1.6 to 1.9: the answer is a stream (server-sent events).
-4. Tools Agent with tools, then window buffer memory.
+4. Tools Agent with tools. The tool runs must be steps of the converted source (version 3 gives each call to
+   the engine, which runs the tool node), so that a tool uses the compiled or library form of its node. Needs:
+   `$fromAI` in the expression translator, the function schema of each tool for each provider, the messages
+   of a call and its result, and the step data of `intermediateSteps`. The memory then also keeps the calls.
 5. `informationExtractor`, `textClassifier` (a chain with a fixed prompt and a parser).
 6. Other operations of the vendor nodes (image, audio, document, file).
 7. `options.reasoningEffort`, `responseFormat`, `textFormat` and built-in tools of the OpenAI model.
