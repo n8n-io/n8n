@@ -52,6 +52,11 @@ export const PUSH_NODES_OFFSET = DEFAULT_NODE_SIZE[0] * 2 + GRID_SIZE;
 // Horizontal gap the auto-layout leaves between adjacent nodes (dagre `ranksep`).
 // Shared so manual placement and cleanup stay in lockstep.
 export const NODE_X_SPACING = GRID_SIZE * 8;
+// Vertical gap the auto-layout leaves between nodes in one column (dagre `nodesep`)
+export const NODE_Y_SPACING = GRID_SIZE * 6;
+// Gaps the auto-layout leaves between an AI node and its sub-nodes
+export const AI_X_SPACING = GRID_SIZE * 3;
+export const AI_Y_SPACING = GRID_SIZE * 8;
 // Center-to-center horizontal step when placing a node directly after another
 // (plus button, connection drop, mid-flow insert). Must equal a node width plus
 // NODE_X_SPACING so a freshly placed node lands exactly where cleanup would put it.
@@ -516,34 +521,36 @@ export function getGenericHints({
 }
 
 /**
- * Generate vertical insertion offsets for the given node count
+ * Generates vertical offsets for the given node count, centered on 0.
+ * Each offset is one `nodeSize + spacing` step from the next one:
  *
- * 2 nodes -> [-nodeSize, nodeSize],
- * 3 nodes -> [-nodeSize - 2 * gridSize, 0, nodeSize + 2 * gridSize],
- * 4 nodes ->	[-2 * nodeSize - 2 * gridSize, -nodeSize, nodeSize, 2 * nodeSize + 2 * gridSize]
- * 5 nodes ->	[-2 * nodeSize - 2 * gridSize, -nodeSize, 0, nodeSize, 2 * nodeSize + 2 * gridSize]
+ * 2 nodes -> [-step / 2, step / 2]
+ * 3 nodes -> [-step, 0, step]
  */
-export function generateOffsets(nodeCount: number, nodeSize: number, gridSize: number) {
-	const offsets = [];
-	const half = Math.floor(nodeCount / 2);
-	const isOdd = nodeCount % 2 === 1;
+export function generateOffsets(nodeCount: number, nodeSize: number, spacing: number) {
+	const step = nodeSize + spacing;
 
-	if (nodeCount === 0) {
-		return [];
-	}
+	return Array.from({ length: nodeCount }, (_, index) => (index - (nodeCount - 1) / 2) * step);
+}
 
-	for (let i = -half; i <= half; i++) {
-		if (i === 0) {
-			if (isOdd) {
-				offsets.push(0);
-			}
-		} else {
-			const offset = i * nodeSize + Math.sign(i) * (Math.abs(i) - (isOdd ? 0 : 1)) * gridSize;
-			offsets.push(offset);
-		}
-	}
+/**
+ * Gets the position of a node that comes after the source node. The node is one
+ * NODE_X_SPACING gap past the source's right edge, and its main input handle is
+ * on the line of the source's main output handle, the same as after tidy-up.
+ * For a source with more than one main output, `fan` moves the node to the row of
+ * output `index`. The rows are one new node height plus NODE_Y_SPACING apart.
+ */
+export function getNextNodeSlot(
+	source: { position: XYPosition; width: number; handleOffset: number },
+	target: { height: number; handleOffset: number },
+	fan: { index: number; count: number } = { index: 0, count: 1 },
+): XYPosition {
+	const fanOffset = generateOffsets(fan.count, target.height, NODE_Y_SPACING)[fan.index] ?? 0;
 
-	return offsets;
+	return [
+		source.position[0] + source.width + NODE_X_SPACING,
+		source.position[1] + source.handleOffset + fanOffset - target.handleOffset,
+	];
 }
 
 /**

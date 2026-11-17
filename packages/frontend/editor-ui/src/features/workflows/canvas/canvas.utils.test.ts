@@ -4,6 +4,7 @@ import {
 	createCanvasConnectionHandleString,
 	createCanvasConnectionId,
 	createEmptyCanvasRenderData,
+	getMainHandleOffset,
 	insertSpacersBetweenEndpoints,
 	mapCanvasConnectionToLegacyConnection,
 	mapLegacyConnectionsToCanvasConnections,
@@ -1002,6 +1003,27 @@ describe('mapLegacyEndpointsToCanvasConnectionPort', () => {
 			{ type: NodeConnectionTypes.AiMemory, maxConnections: 1, index: 0, label: 'Optional Tool' },
 		]);
 	});
+});
+
+describe('getMainHandleOffset', () => {
+	it.each([
+		[96, 48],
+		[160, 80],
+		[80, 40],
+	])('should put the handles of a %s px high node at half its height', (height, expected) => {
+		expect(getMainHandleOffset(height, false)).toBe(expected);
+	});
+
+	it.each([
+		[128, 64],
+		[206, 96],
+		[356, 176],
+	])(
+		'should put the handle of a %s px high agent card on the grid line nearest its center',
+		(height, expected) => {
+			expect(getMainHandleOffset(height, true)).toBe(expected);
+		},
+	);
 });
 
 describe('checkOverlap', () => {
