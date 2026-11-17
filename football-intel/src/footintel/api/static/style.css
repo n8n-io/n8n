@@ -526,3 +526,13 @@ h1 { font-size: 26px; letter-spacing: -0.025em; }
 /* "Hier" block (D86): cards stacked with a little space, titles inside cards start at the top. */
 .today-block > .card + .card { margin-top: 12px; }
 .today-block .card > h3:first-child { margin-top: 0; }
+
+/* "Tous les résultats" (D87): one folding group per competition. */
+.res-group { border-top: 1px solid var(--line); padding: 10px 0; }
+.res-group:first-of-type { border-top: 0; }
+.res-group > summary { cursor: pointer; list-style: none; display: flex; justify-content: space-between;
+                       gap: 12px; align-items: baseline; min-height: 32px; }
+.res-group > summary::-webkit-details-marker { display: none; }
+.res-group > summary::after { content: "+"; color: var(--muted); margin-left: 4px; }
+.res-group[open] > summary::after { content: "–"; }
+.res-group > summary > span { margin-left: auto; text-align: right; }

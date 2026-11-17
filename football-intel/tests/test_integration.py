@@ -752,3 +752,28 @@ def test_national_teams_get_their_own_rows_forecasts_and_stay_out_of_club_data(d
     assert p.p_home > p.p_away and p.status == "companion"  # Turkey beat Andorra 3-0 at home
     # Club features never see national-team matches.
     assert load_matches(db)["competition"].str.startswith("INT-").sum() == 0
+
+
+def test_day_results_lists_every_result_of_the_last_day_played(db):
+    """D87: the "Hier" block shows every finished match of the last day, forecast or not."""
+    from footintel.analysis.bilan import day_results
+    from footintel.connectors.base import OutcomeRecord
+
+    def rec(comp, home, away, d, goals):
+        return MatchRecord(source_code="football_data_uk", external_id=f"SYN|{comp}|{home}|{d}",
+                           competition_code=comp, season_start_year=2026, kickoff_date=d, kickoff_utc=None,
+                           home_team=home, away_team=away, status="finished" if goals else "scheduled",
+                           outcome=OutcomeRecord(*goals, "H" if goals[0] > goals[1] else "D") if goals else None)
+    with session_scope(db) as s:
+        store = MatchStore(s, "football_data_uk")
+        store.upsert(rec("ENG-PL", "Synthetic FC 1", "Synthetic FC 2", date(2026, 11, 14), (2, 0)), RunStats())
+        store.upsert(rec("GER-BL", "Synthetic FC 3", "Synthetic FC 4", date(2026, 11, 14), (1, 1)), RunStats())
+        store.upsert(rec("ENG-PL", "Synthetic FC 5", "Synthetic FC 6", date(2026, 11, 12), (0, 1)), RunStats())
+        store.upsert(rec("ENG-PL", "Synthetic FC 7", "Synthetic FC 8", date(2026, 11, 15), None), RunStats())
+
+    out = day_results(db, date(2026, 11, 16))
+    # The 15th has no result yet: the last day played is the 14th, in both competitions.
+    assert out["date"] == "2026-11-14"
+    assert {(m["competition"], m["score"], m["model"]) for m in out["matches"]} == {
+        ("ENG-PL", "2-0", None), ("GER-BL", "1-1", None)}
+    assert day_results(db, date(2026, 11, 30)) == {"date": None, "matches": []}

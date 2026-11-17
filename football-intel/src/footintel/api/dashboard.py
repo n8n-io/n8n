@@ -553,12 +553,15 @@ def lecture() -> dict:
 def bilan() -> dict:
     """Bilan (D76): the archived tickets of the last 7 days settled, and the model's and the
     bookmakers' favourite against the result for the finished matches."""
-    from footintel.analysis.bilan import forecast_results, ticket_results
+    from footintel.analysis.bilan import day_results, forecast_results, ticket_results
     from footintel.config import get_settings
+    from footintel.notify.tickets import local_today
 
     engine = get_engine()
     return {"tickets": ticket_results(engine, get_settings().artifacts_dir),
-            "matches": forecast_results(engine)}
+            "matches": forecast_results(engine),
+            # D87: every result of the last day played, for the "Hier" block of the Today page.
+            "yesterday": day_results(engine, local_today())}
 
 
 @router.get("/value-board")
