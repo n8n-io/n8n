@@ -64,6 +64,9 @@ export const MCP_SAVE_USER_PREFERENCE_TOOL_NAME = 'save_user_preference';
 export const MCP_UPDATE_USER_PREFERENCE_TOOL_NAME = 'update_user_preference';
 export const MCP_UNDO_USER_PREFERENCE_TOOL_NAME = 'undo_user_preference';
 export const MCP_CREATE_SIDE_PANEL_VIEW_TOOL_NAME = 'create_side_panel_view';
+export const MCP_CREATE_CUSTOM_PAGE_TOOL_NAME = 'create_custom_page';
+export const MCP_LIST_UI_EXTENSIONS_TOOL_NAME = 'list_ui_extensions';
+export const MCP_DELETE_UI_EXTENSION_TOOL_NAME = 'delete_ui_extension';
 
 /**
  * Installs a vetted community package so its nodes become usable. Not in

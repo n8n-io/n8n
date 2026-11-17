@@ -1,5 +1,6 @@
 import type { AppEventMap } from '@n8n/backend-module-apps';
 import type { DataTableEventMap } from '@n8n/backend-module-data-table';
+import type { UiExtensionsEventMap } from '@n8n/backend-module-ui-extensions';
 import type {
 	AuthenticationMethod,
 	BreakingChangeLightReportResult,
@@ -98,7 +99,7 @@ export type ProjectSummary = {
 	name: string;
 };
 
-type ModuleEventMap = DataTableEventMap & AppEventMap;
+type ModuleEventMap = DataTableEventMap & AppEventMap & UiExtensionsEventMap;
 
 export type RelayEventMap = ModuleEventMap & {
 	// #region Lifecycle

@@ -91,7 +91,7 @@ export class McpProtectedResource implements ProtectedResource {
 				(agentsAvailable || !AGENT_SCOPES.has(scope)) &&
 				(skillsAvailable || !SKILL_SCOPES.has(scope)) &&
 				(migrationReportAvailable || !MIGRATION_REPORT_SCOPES.has(scope)) &&
-				(uiExtensionsAvailable || scope !== 'sidePanelView:write'),
+				(uiExtensionsAvailable || scope !== 'uiExtension:write'),
 		);
 	}
 

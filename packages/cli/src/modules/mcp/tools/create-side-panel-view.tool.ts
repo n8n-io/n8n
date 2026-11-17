@@ -9,7 +9,6 @@ import type { User } from '@n8n/db';
 import { UserError } from '@n8n/errors';
 import z from 'zod';
 
-import type { Push } from '@/push';
 import type { Telemetry } from '@/telemetry';
 
 import { MCP_CREATE_SIDE_PANEL_VIEW_TOOL_NAME, USER_CALLED_MCP_TOOL_EVENT } from '../mcp.constants';
@@ -66,7 +65,6 @@ const outputSchema = {
 export const createCreateSidePanelViewTool = (
 	user: User,
 	viewsService: UiExtensionViewsService,
-	push: Push,
 	telemetry: Telemetry,
 ): ToolDefinition<typeof inputSchema> => ({
 	name: MCP_CREATE_SIDE_PANEL_VIEW_TOOL_NAME,
@@ -102,12 +100,11 @@ export const createCreateSidePanelViewTool = (
 		try {
 			const { view, created } = await viewsService.upsert(user.id, {
 				viewId,
+				kind: 'view',
 				title,
 				icon,
 				source,
 			});
-
-			push.sendToUsers({ type: 'uiExtensionViewsChanged', data: {} }, [user.id]);
 
 			telemetryPayload.results = { success: true, data: { viewId: view.id, created } };
 			telemetry.track(USER_CALLED_MCP_TOOL_EVENT, telemetryPayload);

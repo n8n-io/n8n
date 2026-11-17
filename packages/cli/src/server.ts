@@ -22,6 +22,7 @@ import { ControllerRegistry } from '@/controller.registry';
 import { CredentialsOverwrites } from '@/credentials-overwrites';
 import { MessageEventBus } from '@/eventbus/message-event-bus/message-event-bus';
 import { LogStreamingEventRelay } from '@/events/relays/log-streaming.event-relay';
+import { UiExtensionsPushEventRelay } from '@/events/relays/ui-extensions-push.event-relay';
 import type { ICredentialsOverwrite } from '@/interfaces';
 import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
 import { handleMfaDisable, isMfaFeatureEnabled } from '@/mfa/helpers';
@@ -311,6 +312,7 @@ export class Server extends AbstractServer {
 		// ----------------------------------------
 		// Before initialize(), which runs crash recovery.
 		Container.get(LogStreamingEventRelay).init();
+		Container.get(UiExtensionsPushEventRelay).init();
 		const eventBus = Container.get(MessageEventBus);
 		await eventBus.initialize();
 

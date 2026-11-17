@@ -78,7 +78,7 @@ import { getAllowedToolNames } from './mcp-scopes';
 import {
 	areAgentToolsAvailable,
 	canReadMigrationReport,
-	canUseSidePanelViewTool,
+	canUseUiExtensionTools,
 	isCommunityNodeInstallAvailable,
 	isUiExtensionsAvailable,
 } from './mcp-tool-availability';
@@ -902,26 +902,30 @@ export class McpService {
 			createUndoUserPreferenceTool(user, this.aiPreferenceService, this.telemetry, this.logger),
 		);
 
-		// Not builder-gated. The tool belongs to the `ui-extensions` module, so it loads only
-		// when that module is active.
+		// Not builder-gated. The tools belong to the `ui-extensions` module, so they load only
+		// when that module is active. The service emits each change, and a cli relay pushes it.
 		if (
 			isUiExtensionsAvailable(this.moduleRegistry) &&
-			canUseSidePanelViewTool(auth?.grantedScopes)
+			canUseUiExtensionTools(auth?.grantedScopes)
 		) {
-			const [{ UiExtensionViewsService }, { Push }, { createCreateSidePanelViewTool }] =
-				await Promise.all([
-					import('@n8n/backend-module-ui-extensions'),
-					import('@/push/index.js'),
-					import('./tools/create-side-panel-view.tool.js'),
-				]);
-			registerIfAllowed(
-				createCreateSidePanelViewTool(
-					user,
-					Container.get(UiExtensionViewsService),
-					Container.get(Push),
-					this.telemetry,
-				),
-			);
+			const [
+				{ UiExtensionViewsService },
+				{ createCreateSidePanelViewTool },
+				{ createCreateCustomPageTool },
+				{ createListUiExtensionsTool },
+				{ createDeleteUiExtensionTool },
+			] = await Promise.all([
+				import('@n8n/backend-module-ui-extensions'),
+				import('./tools/create-side-panel-view.tool.js'),
+				import('./tools/create-custom-page.tool.js'),
+				import('./tools/list-ui-extensions.tool.js'),
+				import('./tools/delete-ui-extension.tool.js'),
+			]);
+			const viewsService = Container.get(UiExtensionViewsService);
+			registerIfAllowed(createCreateSidePanelViewTool(user, viewsService, this.telemetry));
+			registerIfAllowed(createCreateCustomPageTool(user, viewsService, this.telemetry));
+			registerIfAllowed(createListUiExtensionsTool(user, viewsService, this.telemetry));
+			registerIfAllowed(createDeleteUiExtensionTool(user, viewsService, this.telemetry));
 		}
 
 		// Not builder-gated: reading the report and running its built-in fixes need no builder.

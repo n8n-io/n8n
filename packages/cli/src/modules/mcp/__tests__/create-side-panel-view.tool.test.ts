@@ -3,17 +3,17 @@ import { mockInstance } from '@n8n/backend-test-utils';
 import { User } from '@n8n/db';
 import { UserError } from '@n8n/errors';
 
-import { Push } from '@/push';
 import { Telemetry } from '@/telemetry';
 
 import { USER_CALLED_MCP_TOOL_EVENT } from '../mcp.constants';
-import { canUseSidePanelViewTool } from '../mcp-tool-availability';
+import { canUseUiExtensionTools } from '../mcp-tool-availability';
 import { createCreateSidePanelViewTool } from '../tools/create-side-panel-view.tool';
 
 describe('create_side_panel_view MCP tool', () => {
 	const user = Object.assign(new User(), { id: 'user-1' });
 	const savedView = {
 		id: 'view-1',
+		kind: 'view' as const,
 		title: 'Stats',
 		source: 'export default {}',
 		updatedAt: '2026-01-01T00:00:00.000Z',
@@ -23,10 +23,9 @@ describe('create_side_panel_view MCP tool', () => {
 		const viewsService = mockInstance(UiExtensionViewsService, {
 			upsert: vi.fn().mockResolvedValue({ view: savedView, created: true }),
 		});
-		const push = mockInstance(Push, { sendToUsers: vi.fn() });
 		const telemetry = mockInstance(Telemetry, { track: vi.fn() });
-		const tool = createCreateSidePanelViewTool(user, viewsService, push, telemetry);
-		return { viewsService, push, telemetry, tool };
+		const tool = createCreateSidePanelViewTool(user, viewsService, telemetry);
+		return { viewsService, telemetry, tool };
 	};
 
 	it('is a write tool with an output schema', () => {
@@ -53,8 +52,9 @@ describe('create_side_panel_view MCP tool', () => {
 		}
 	});
 
-	it('saves the view for the calling user and pushes the change to that user only', async () => {
-		const { viewsService, push, telemetry, tool } = setup();
+	// The service emits the change, and a cli relay pushes it to the user.
+	it('saves a view for the calling user', async () => {
+		const { viewsService, telemetry, tool } = setup();
 
 		const result = await tool.handler(
 			{ title: 'Stats', icon: 'chart-column', source: 'export default {}' },
@@ -63,13 +63,11 @@ describe('create_side_panel_view MCP tool', () => {
 
 		expect(viewsService.upsert).toHaveBeenCalledWith('user-1', {
 			viewId: undefined,
+			kind: 'view',
 			title: 'Stats',
 			icon: 'chart-column',
 			source: 'export default {}',
 		});
-		expect(push.sendToUsers).toHaveBeenCalledWith({ type: 'uiExtensionViewsChanged', data: {} }, [
-			'user-1',
-		]);
 		expect(result).toMatchObject({
 			structuredContent: { viewId: 'view-1', title: 'Stats', created: true },
 		});
@@ -96,8 +94,8 @@ describe('create_side_panel_view MCP tool', () => {
 		expect(result).toMatchObject({ structuredContent: { created: false } });
 	});
 
-	it('returns an error result and pushes nothing when the service refuses the view', async () => {
-		const { viewsService, push, telemetry, tool } = setup();
+	it('returns an error result when the service refuses the view', async () => {
+		const { viewsService, telemetry, tool } = setup();
 		viewsService.upsert.mockRejectedValue(new UserError('You can have at most 20 views.'));
 
 		const result = await tool.handler({ title: 'Stats', source: 'x' }, {} as never);
@@ -106,21 +104,19 @@ describe('create_side_panel_view MCP tool', () => {
 			isError: true,
 			structuredContent: { error: 'You can have at most 20 views.' },
 		});
-		expect(push.sendToUsers).not.toHaveBeenCalled();
 		expect(telemetry.track).toHaveBeenCalledWith(
 			USER_CALLED_MCP_TOOL_EVENT,
 			expect.objectContaining({ results: expect.objectContaining({ success: false }) }),
 		);
 	});
 
-	it('tracks and rethrows an unexpected error, and pushes nothing', async () => {
-		const { viewsService, push, telemetry, tool } = setup();
+	it('tracks and rethrows an unexpected error', async () => {
+		const { viewsService, telemetry, tool } = setup();
 		viewsService.upsert.mockRejectedValue(new Error('db down'));
 
 		await expect(tool.handler({ title: 'Stats', source: 'x' }, {} as never)).rejects.toThrow(
 			'db down',
 		);
-		expect(push.sendToUsers).not.toHaveBeenCalled();
 		expect(telemetry.track).toHaveBeenCalledWith(
 			USER_CALLED_MCP_TOOL_EVENT,
 			expect.objectContaining({ results: { success: false, error: 'db down' } }),
@@ -128,14 +124,15 @@ describe('create_side_panel_view MCP tool', () => {
 	});
 });
 
-describe('canUseSidePanelViewTool', () => {
+describe('canUseUiExtensionTools', () => {
 	it.each([
 		{ scopes: undefined, expected: true },
-		{ scopes: ['sidePanelView:write', 'workflow:read'], expected: true },
-		{ scopes: ['sidePanelView:write'], expected: false },
+		{ scopes: ['uiExtension:write', 'workflow:read'], expected: true },
+		{ scopes: ['uiExtension:write'], expected: false },
+		{ scopes: ['sidePanelView:write', 'workflow:read'], expected: false },
 		{ scopes: ['workflow:read'], expected: false },
 		{ scopes: [], expected: false },
 	])('is $expected for $scopes', ({ scopes, expected }) => {
-		expect(canUseSidePanelViewTool(scopes)).toBe(expected);
+		expect(canUseUiExtensionTools(scopes)).toBe(expected);
 	});
 });

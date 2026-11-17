@@ -261,18 +261,22 @@ describe('McpProtectedResource', () => {
 			expect(await resource.getScopeTools()).not.toHaveProperty('agent:write');
 		});
 
-		it('advertises the side panel view scope while the ui-extensions module is active', async () => {
-			expect(resource.scopes).toContain('sidePanelView:write');
-			expect((await resource.getScopeTools())['sidePanelView:write']).toEqual([
+		it('advertises the view and page scope while the ui-extensions module is active', async () => {
+			expect(resource.scopes).toContain('uiExtension:write');
+			expect(resource.scopes).not.toContain('sidePanelView:write');
+			expect((await resource.getScopeTools())['uiExtension:write']).toEqual([
 				'create_side_panel_view',
+				'create_custom_page',
+				'list_ui_extensions',
+				'delete_ui_extension',
 			]);
 		});
 
-		it('drops the side panel view scope while the ui-extensions module is inactive', async () => {
+		it('drops the view and page scope while the ui-extensions module is inactive', async () => {
 			moduleRegistry.isActive.mockImplementation((name) => name !== 'ui-extensions');
 
-			expect(resource.scopes).not.toContain('sidePanelView:write');
-			expect(await resource.getScopeTools()).not.toHaveProperty('sidePanelView:write');
+			expect(resource.scopes).not.toContain('uiExtension:write');
+			expect(await resource.getScopeTools()).not.toHaveProperty('uiExtension:write');
 		});
 	});
 

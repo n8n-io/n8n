@@ -16,8 +16,10 @@ export const UI_EXTENSION_MESSAGE_SOURCE = 'n8n-ui-extension';
 export const UI_EXTENSION_VIEW_FACTORY_GLOBAL = '__n8nUiExtensionView';
 export const UI_EXTENSION_PROTOCOL_VERSION = 1;
 
-/** The most views that one user can have. */
+/** The most side panel views that one user can have. */
 export const UI_EXTENSION_MAX_VIEWS_PER_USER = 20;
+/** The most pages that one user can have. Pages and views have separate limits. */
+export const UI_EXTENSION_MAX_PAGES_PER_USER = 20;
 export const UI_EXTENSION_VIEW_TITLE_MAX_LENGTH = 40;
 export const UI_EXTENSION_VIEW_SOURCE_MAX_LENGTH = 100_000;
 export const UI_EXTENSION_ERROR_MESSAGE_MAX_LENGTH = 1_000;
@@ -89,8 +91,18 @@ export const uiExtensionPageContextSchema = z.discriminatedUnion('page', [
 export type UiExtensionPageContext = z.infer<typeof uiExtensionPageContextSchema>;
 export type UiExtensionPage = UiExtensionPageContext['page'];
 
+/**
+ * A `view` is a tab of the side panel. A `page` is an item of the main sidebar
+ * that opens in the main area. Both run in the same sandboxed frame.
+ */
+export const uiExtensionKindSchema = z.enum(['view', 'page']);
+
+export type UiExtensionKind = z.infer<typeof uiExtensionKindSchema>;
+
 export const uiExtensionViewSchema = z.object({
 	id: z.string(),
+	/** Records stored before pages existed have no kind, so they read as views. */
+	kind: uiExtensionKindSchema.default('view'),
 	title: uiExtensionViewTitleSchema,
 	icon: uiExtensionViewIconSchema.optional(),
 	source: uiExtensionViewSourceSchema,
@@ -118,6 +130,12 @@ export const UI_EXTENSION_DATA_LIMITS = {
 	valueLength: 200,
 	errorLength: 500,
 	targetsPerNode: 10,
+	overviewWorkflows: 200,
+	overviewRuns: 50,
+	overviewServices: 30,
+	overviewAccountsPerService: 5,
+	overviewWorkflowsPerService: 5,
+	overviewFailures: 5,
 } as const;
 
 const limitedText = (max: number) => z.string().max(max);
@@ -187,6 +205,60 @@ export const uiExtensionServiceNodeDataSchema = z.object({
 
 export type UiExtensionServiceNodeData = z.infer<typeof uiExtensionServiceNodeDataSchema>;
 
+const countSchema = z.number().int().nonnegative();
+
+/**
+ * The services that the workflows of the user connect to, for the built-in
+ * Services overview page. It comes from the newest workflows and runs only.
+ */
+export const uiExtensionOverviewDataSchema = z.object({
+	workflows: z.object({
+		total: countSchema,
+		active: countSchema,
+		/** How many workflows the overview looked at, the newest by update. */
+		scanned: countSchema,
+	}),
+	runs: z.object({
+		/** How many runs the overview looked at, the newest first. */
+		scanned: countSchema,
+		succeeded: countSchema,
+		failed: countSchema,
+	}),
+	services: z
+		.array(
+			z.object({
+				nodeType: z.string(),
+				displayName: z.string(),
+				workflowCount: countSchema,
+				activeWorkflowCount: countSchema,
+				/** From the newest run of each workflow that uses the service. */
+				health: z.enum(['ok', 'failing', 'unknown']),
+				/** The names of the credentials on the nodes of the service. */
+				accounts: z.array(z.string()).max(UI_EXTENSION_DATA_LIMITS.overviewAccountsPerService),
+				workflows: z
+					.array(
+						z.object({
+							id: z.string(),
+							name: z.string(),
+							active: z.boolean(),
+							lastRun: z
+								.object({
+									status: uiExtensionRunStatusSchema,
+									stoppedAt: z.string().nullable(),
+								})
+								.nullable(),
+						}),
+					)
+					.max(UI_EXTENSION_DATA_LIMITS.overviewWorkflowsPerService),
+			}),
+		)
+		.max(UI_EXTENSION_DATA_LIMITS.overviewServices),
+	/** The newest failed runs. */
+	failures: z.array(uiExtensionRunSchema).max(UI_EXTENSION_DATA_LIMITS.overviewFailures),
+});
+
+export type UiExtensionOverviewData = z.infer<typeof uiExtensionOverviewDataSchema>;
+
 /** Run and service data. The editor sends it to built-in views only. */
 export const uiExtensionPanelDataSchema = z.object({
 	state: z.enum(['loading', 'ready', 'error']),
@@ -208,6 +280,8 @@ export const uiExtensionPanelDataSchema = z.object({
 		.array(uiExtensionServiceNodeDataSchema)
 		.max(UI_EXTENSION_DATA_LIMITS.serviceNodes)
 		.nullable(),
+	/** Only the built-in Services overview page gets it. */
+	overview: uiExtensionOverviewDataSchema.optional(),
 });
 
 export type UiExtensionPanelData = z.infer<typeof uiExtensionPanelDataSchema>;
@@ -254,12 +328,13 @@ export const uiExtensionFrameMessageSchema = z.discriminatedUnion('type', [
 	}),
 	/** Asks the editor to fetch the data again. The editor acts on it for built-in views only. */
 	z.object({ ...envelope, type: z.literal('refresh') }),
-	/** Asks the editor to open a run or an http(s) URL. The editor acts on it for built-in views only. */
+	/** Asks the editor to open a run, a workflow or an http(s) URL. The editor acts on it for built-in views only. */
 	z.object({
 		...envelope,
 		type: z.literal('open'),
 		target: z.discriminatedUnion('kind', [
 			z.object({ kind: z.literal('execution'), workflowId: z.string(), executionId: z.string() }),
+			z.object({ kind: z.literal('workflow'), workflowId: z.string() }),
 			z.object({ kind: z.literal('url'), url: z.string().refine(isUiExtensionOpenableUrl) }),
 		]),
 	}),

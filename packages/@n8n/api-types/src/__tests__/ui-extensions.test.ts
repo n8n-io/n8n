@@ -2,6 +2,7 @@ import {
 	isUiExtensionOpenableUrl,
 	UI_EXTENSION_DATA_LIMITS,
 	uiExtensionFrameMessageSchema,
+	uiExtensionOverviewDataSchema,
 	uiExtensionPanelDataSchema,
 	uiExtensionHostMessageSchema,
 	uiExtensionViewIconSchema,
@@ -28,6 +29,75 @@ describe('ui-extensions schemas', () => {
 		expect(uiExtensionViewSchema.parse({ ...view, title: '  Stats  ' }).title).toBe('Stats');
 		expect(uiExtensionViewSchema.safeParse({ ...view, title: '   ' }).success).toBe(false);
 		expect(uiExtensionViewSchema.safeParse({ ...view, title: 'x'.repeat(41) }).success).toBe(false);
+	});
+
+	it('reads a stored record without a kind as a view, and accepts a page', () => {
+		const view = { id: 'v', title: 'T', source: 'x', updatedAt: '' };
+
+		expect(uiExtensionViewSchema.parse(view).kind).toBe('view');
+		expect(uiExtensionViewSchema.parse({ ...view, kind: 'page' }).kind).toBe('page');
+		expect(uiExtensionViewSchema.safeParse({ ...view, kind: 'tab' }).success).toBe(false);
+	});
+
+	describe('overview data', () => {
+		const overview = () => ({
+			workflows: { total: 3, active: 1, scanned: 3 },
+			runs: { scanned: 2, succeeded: 1, failed: 1 },
+			services: [
+				{
+					nodeType: 'n8n-nodes-base.slack',
+					displayName: 'Slack',
+					workflowCount: 1,
+					activeWorkflowCount: 1,
+					health: 'ok',
+					accounts: ['Slack account'],
+					workflows: [
+						{ id: 'w', name: 'W', active: true, lastRun: { status: 'success', stoppedAt: null } },
+					],
+				},
+			],
+			failures: [],
+		});
+
+		it('accepts overview data as part of the panel data', () => {
+			expect(uiExtensionOverviewDataSchema.safeParse(overview()).success).toBe(true);
+			expect(
+				uiExtensionPanelDataSchema.safeParse({
+					state: 'ready',
+					runs: null,
+					services: null,
+					overview: overview(),
+				}).success,
+			).toBe(true);
+		});
+
+		it.each([
+			[
+				'too many services',
+				{
+					services: Array(UI_EXTENSION_DATA_LIMITS.overviewServices + 1).fill(
+						overview().services[0],
+					),
+				},
+			],
+			[
+				'too many accounts',
+				{
+					services: [
+						{
+							...overview().services[0],
+							accounts: Array(UI_EXTENSION_DATA_LIMITS.overviewAccountsPerService + 1).fill('a'),
+						},
+					],
+				},
+			],
+			['an unknown health', { services: [{ ...overview().services[0], health: 'great' }] }],
+			['a negative count', { workflows: { total: -1, active: 0, scanned: 0 } }],
+		])('rejects overview data with %s', (_case, overrides) => {
+			expect(uiExtensionOverviewDataSchema.safeParse({ ...overview(), ...overrides }).success).toBe(
+				false,
+			);
+		});
 	});
 
 	it('accepts a context message for each page', () => {
@@ -152,6 +222,8 @@ describe('ui-extensions schemas', () => {
 				parse({ type: 'open', target: { kind: 'execution', workflowId: 'w', executionId: '1' } }),
 			).toBe(true);
 			expect(parse({ type: 'open', target: { kind: 'url', url: 'https://x.test' } })).toBe(true);
+			expect(parse({ type: 'open', target: { kind: 'workflow', workflowId: 'w' } })).toBe(true);
+			expect(parse({ type: 'open', target: { kind: 'workflow' } })).toBe(false);
 			expect(parse({ type: 'open', target: { kind: 'url', url: 'javascript:alert(1)' } })).toBe(
 				false,
 			);

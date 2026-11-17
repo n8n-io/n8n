@@ -81,22 +81,23 @@ export function isCommunityNodeInstallAvailable(
 }
 
 /**
- * Whether this instance serves side panel views. Consent and registration both
- * use it, so the scope is never offered for a tool that cannot register.
+ * Whether this instance serves side panel views and pages. Consent and
+ * registration both use it, so the scope is never offered for a tool that
+ * cannot register.
  */
 export function isUiExtensionsAvailable(moduleRegistry: ModuleRegistry): boolean {
 	return moduleRegistry.isActive('ui-extensions');
 }
 
 /**
- * Whether `create_side_panel_view` registers for this grant. A view can send out
+ * Whether the view and page tools register for this grant. A view can send out
  * anything that it can see, and it sees the workflows that are available in MCP.
  * So an OAuth grant also needs `workflow:read`. `undefined` is an API key, which
  * can already read those workflows.
  */
-export function canUseSidePanelViewTool(grantedScopes: string[] | undefined): boolean {
+export function canUseUiExtensionTools(grantedScopes: string[] | undefined): boolean {
 	return (
 		grantedScopes === undefined ||
-		(grantedScopes.includes('sidePanelView:write') && grantedScopes.includes('workflow:read'))
+		(grantedScopes.includes('uiExtension:write') && grantedScopes.includes('workflow:read'))
 	);
 }

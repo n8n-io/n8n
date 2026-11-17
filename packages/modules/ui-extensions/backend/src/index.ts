@@ -5,3 +5,4 @@ export {
 	UiExtensionViewNotFoundError,
 	type UpsertUiExtensionViewInput,
 } from './ui-extension-views.service';
+export type { UiExtensionsEventMap } from './ui-extensions.events';

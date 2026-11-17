@@ -365,7 +365,11 @@ describe('McpService scope enforcement', () => {
 				'update_user_preference',
 				'undo_user_preference',
 				'create_side_panel_view',
+				'create_custom_page',
+				'delete_ui_extension',
 			]);
+			// Read-only instances keep it.
+			expect(registeredTools.has('list_ui_extensions')).toBe(true);
 			for (const name of blockedTools) expect(registeredTools.has(name), name).toBe(true);
 			for (const name of ['execute_workflow', 'test_workflow', 'search_workflows']) {
 				expect(registeredTools.has(name), name).toBe(true);
@@ -749,30 +753,33 @@ describe('McpService scope enforcement', () => {
 		});
 	});
 
-	describe('create_side_panel_view registration', () => {
-		const TOOL = 'create_side_panel_view';
-
+	describe.each([
+		'create_side_panel_view',
+		'create_custom_page',
+		'list_ui_extensions',
+		'delete_ui_extension',
+	])('%s registration', (TOOL) => {
 		it('registers the tool for an API key', async () => {
 			const server = await buildService().getServer(user, mcpFeatureFlags());
 			expect(getRegisteredToolNames(server).has(TOOL)).toBe(true);
 		});
 
-		it('registers the tool for a grant with the view scope and workflow:read', async () => {
+		it('registers the tool for a grant with the view and page scope and workflow:read', async () => {
 			const server = await buildService().getServer(user, mcpFeatureFlags(), undefined, {
-				grantedScopes: ['sidePanelView:write', 'workflow:read'],
+				grantedScopes: ['uiExtension:write', 'workflow:read'],
 			});
 			expect(getRegisteredToolNames(server).has(TOOL)).toBe(true);
 		});
 
-		// A view can send out what it sees, so a grant that cannot read workflows gets no view.
+		// A view can send out what it sees, so a grant that cannot read workflows gets no view or page.
 		it('withholds the tool from a grant without workflow:read', async () => {
 			const server = await buildService().getServer(user, mcpFeatureFlags(), undefined, {
-				grantedScopes: ['sidePanelView:write'],
+				grantedScopes: ['uiExtension:write'],
 			});
 			expect(getRegisteredToolNames(server).has(TOOL)).toBe(false);
 		});
 
-		it('withholds the tool from a grant without the view scope', async () => {
+		it('withholds the tool from a grant without the view and page scope', async () => {
 			const server = await buildService().getServer(user, mcpFeatureFlags(), undefined, {
 				grantedScopes: ['workflow:read', 'workflow:write'],
 			});

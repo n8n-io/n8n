@@ -1,5 +1,10 @@
-import { UI_EXTENSION_MAX_VIEWS_PER_USER, type UiExtensionView } from '@n8n/api-types';
+import {
+	UI_EXTENSION_MAX_PAGES_PER_USER,
+	UI_EXTENSION_MAX_VIEWS_PER_USER,
+	type UiExtensionView,
+} from '@n8n/api-types';
 import type { Logger } from '@n8n/backend-common';
+import type { EventService } from '@n8n/backend-services';
 import type { OperationContext, Settings, SettingsRepository, TransactionRunner } from '@n8n/db';
 import { UserError } from '@n8n/errors';
 import type { Mocked } from 'vitest';
@@ -14,12 +19,14 @@ import {
 describe('UiExtensionViewsService', () => {
 	let settingsRepository: Mocked<SettingsRepository>;
 	let transactionRunner: Mocked<TransactionRunner>;
+	let eventService: Mocked<EventService>;
 	let service: UiExtensionViewsService;
 
 	const trxCtx = mock<OperationContext>();
 
-	const view = (id: string): UiExtensionView => ({
+	const view = (id: string, kind: UiExtensionView['kind'] = 'view'): UiExtensionView => ({
 		id,
+		kind,
 		title: `View ${id}`,
 		source: 'export default { template: "<p>hi</p>" }',
 		updatedAt: '2026-01-01T00:00:00.000Z',
@@ -37,7 +44,13 @@ describe('UiExtensionViewsService', () => {
 		transactionRunner = mock<TransactionRunner>();
 		transactionRunner.run.mockImplementation(async (_ctx, fn) => await fn(trxCtx));
 		settingsRepository.getOrCreateWithWriteLock.mockResolvedValue(storedViews([]));
-		service = new UiExtensionViewsService(mock<Logger>(), settingsRepository, transactionRunner);
+		eventService = mock<EventService>();
+		service = new UiExtensionViewsService(
+			mock<Logger>(),
+			settingsRepository,
+			transactionRunner,
+			eventService,
+		);
 	});
 
 	describe('list', () => {
@@ -70,6 +83,15 @@ describe('UiExtensionViewsService', () => {
 
 			await expect(service.list('user-1')).resolves.toEqual([]);
 		});
+	});
+
+	it('lists a stored record without a kind as a view', async () => {
+		const { kind: _kind, ...legacy } = view('a');
+		settingsRepository.findByKey.mockResolvedValue(
+			mock<Settings>({ value: JSON.stringify([legacy, view('p', 'page')]) }),
+		);
+
+		await expect(service.list('user-1')).resolves.toEqual([view('a'), view('p', 'page')]);
 	});
 
 	it('skips a stored entry that is not a view and keeps the others', async () => {
@@ -196,6 +218,169 @@ describe('UiExtensionViewsService', () => {
 			const { view: created } = await service.upsert('user-1', { title: 'B', source: 'x' });
 
 			expect(writtenViews()).toEqual([view('a'), created]);
+		});
+	});
+
+	describe('kinds', () => {
+		it('creates a page with its kind', async () => {
+			const result = await service.upsert('user-1', { kind: 'page', title: 'P', source: 'x' });
+
+			expect(result.view.kind).toBe('page');
+			expect(writtenViews()).toEqual([result.view]);
+		});
+
+		it('creates a view when no kind is given', async () => {
+			const result = await service.upsert('user-1', { title: 'V', source: 'x' });
+
+			expect(result.view.kind).toBe('view');
+		});
+
+		it('does not let a page replace a view, or a view replace a page', async () => {
+			settingsRepository.getOrCreateWithWriteLock.mockResolvedValue(
+				storedViews([view('v'), view('p', 'page')]),
+			);
+
+			await expect(
+				service.upsert('user-1', { viewId: 'v', kind: 'page', title: 'T', source: 'x' }),
+			).rejects.toThrow(UiExtensionViewNotFoundError);
+			await expect(
+				service.upsert('user-1', { viewId: 'p', kind: 'view', title: 'T', source: 'x' }),
+			).rejects.toThrow(UiExtensionViewNotFoundError);
+			expect(settingsRepository.upsertByKey).not.toHaveBeenCalled();
+		});
+
+		it('counts the page limit apart from the view limit', async () => {
+			const views = Array.from({ length: UI_EXTENSION_MAX_VIEWS_PER_USER }, (_, i) =>
+				view(`v${i}`),
+			);
+			settingsRepository.getOrCreateWithWriteLock.mockResolvedValue(storedViews(views));
+
+			const page = await service.upsert('user-1', { kind: 'page', title: 'P', source: 'x' });
+			expect(page.created).toBe(true);
+			await expect(service.upsert('user-1', { title: 'V', source: 'x' })).rejects.toThrow(
+				UiExtensionViewLimitError,
+			);
+		});
+
+		it('rejects a new page past the page limit', async () => {
+			const pages = Array.from({ length: UI_EXTENSION_MAX_PAGES_PER_USER }, (_, i) =>
+				view(`p${i}`, 'page'),
+			);
+			settingsRepository.getOrCreateWithWriteLock.mockResolvedValue(
+				storedViews([view('v'), ...pages]),
+			);
+
+			const error = await service
+				.upsert('user-1', { kind: 'page', title: 'P', source: 'x' })
+				.catch((e: unknown) => e);
+
+			expect(error).toBeInstanceOf(UiExtensionViewLimitError);
+			expect((error as Error).message).toContain('pageId');
+			expect(settingsRepository.upsertByKey).not.toHaveBeenCalled();
+		});
+	});
+
+	describe('remove', () => {
+		it('removes the record under a write lock and keeps the others', async () => {
+			settingsRepository.getOrCreateWithWriteLock.mockResolvedValue(
+				storedViews([view('a'), view('p', 'page'), view('b')]),
+			);
+
+			await expect(service.remove('user-1', 'p')).resolves.toEqual(view('p', 'page'));
+
+			expect(settingsRepository.getOrCreateWithWriteLock).toHaveBeenCalledExactlyOnceWith(
+				'uiExtensions.views.user-1',
+				'[]',
+				false,
+				trxCtx,
+			);
+			expect(settingsRepository.upsertByKey).toHaveBeenCalledExactlyOnceWith(
+				'uiExtensions.views.user-1',
+				expect.any(String),
+				false,
+				trxCtx,
+			);
+			expect(writtenViews()).toEqual([view('a'), view('b')]);
+		});
+
+		it('throws for an ID that the user does not have, and writes nothing', async () => {
+			settingsRepository.getOrCreateWithWriteLock.mockResolvedValue(storedViews([view('a')]));
+
+			await expect(service.remove('user-1', 'missing')).rejects.toThrow(
+				UiExtensionViewNotFoundError,
+			);
+			expect(settingsRepository.upsertByKey).not.toHaveBeenCalled();
+			expect(eventService.emit).not.toHaveBeenCalled();
+		});
+
+		it('does not remove a record of another user', async () => {
+			// Only user A's row holds the record. User B's row is empty.
+			settingsRepository.getOrCreateWithWriteLock.mockImplementation(async (key) =>
+				key === 'uiExtensions.views.user-a'
+					? storedViews([view('a-view')])
+					: mock<Settings>({ key, value: '[]' }),
+			);
+
+			await expect(service.remove('user-b', 'a-view')).rejects.toThrow(
+				UiExtensionViewNotFoundError,
+			);
+			expect(settingsRepository.getOrCreateWithWriteLock).toHaveBeenCalledWith(
+				'uiExtensions.views.user-b',
+				'[]',
+				false,
+				trxCtx,
+			);
+			expect(settingsRepository.getOrCreateWithWriteLock).not.toHaveBeenCalledWith(
+				'uiExtensions.views.user-a',
+				expect.anything(),
+				expect.anything(),
+				expect.anything(),
+			);
+			expect(settingsRepository.upsertByKey).not.toHaveBeenCalled();
+		});
+	});
+
+	describe('change event', () => {
+		it('emits one event after a save', async () => {
+			const { view: created } = await service.upsert('user-1', {
+				kind: 'page',
+				title: 'P',
+				source: 'x',
+			});
+
+			expect(eventService.emit).toHaveBeenCalledExactlyOnceWith('ui-extension-changed', {
+				userId: 'user-1',
+				extensionId: created.id,
+				kind: 'page',
+				change: 'saved',
+			});
+		});
+
+		it('emits one event after a removal', async () => {
+			settingsRepository.getOrCreateWithWriteLock.mockResolvedValue(storedViews([view('a')]));
+
+			await service.remove('user-1', 'a');
+
+			expect(eventService.emit).toHaveBeenCalledExactlyOnceWith('ui-extension-changed', {
+				userId: 'user-1',
+				extensionId: 'a',
+				kind: 'view',
+				change: 'removed',
+			});
+		});
+
+		it('emits nothing when the write fails', async () => {
+			settingsRepository.getOrCreateWithWriteLock.mockResolvedValue(storedViews([view('a')]));
+			settingsRepository.upsertByKey.mockRejectedValue(new Error('db down'));
+
+			await expect(service.upsert('user-1', { title: 'T', source: 'x' })).rejects.toThrow();
+			await expect(service.remove('user-1', 'a')).rejects.toThrow();
+			expect(eventService.emit).not.toHaveBeenCalled();
+		});
+
+		it('emits nothing when the input is not valid', async () => {
+			await expect(service.upsert('user-1', { title: '', source: 'x' })).rejects.toThrow();
+			expect(eventService.emit).not.toHaveBeenCalled();
 		});
 	});
 });

@@ -8941,6 +8941,9 @@ importers:
       '@n8n/backend-common':
         specifier: workspace:*
         version: link:../../../@n8n/backend-common
+      '@n8n/backend-services':
+        specifier: workspace:*
+        version: link:../../../@n8n/backend-services
       '@n8n/db':
         specifier: workspace:*
         version: link:../../../@n8n/db
