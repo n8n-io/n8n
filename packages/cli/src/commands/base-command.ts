@@ -167,6 +167,7 @@ export abstract class BaseCommand<F = never> {
 			try {
 				await this.instanceSettings.initialize(Container.get(DeploymentKeyRepository), {
 					canSeed: this.seedsInstanceIdentity,
+					keepDerivedInstanceId: await this.keepsDerivedInstanceId(),
 				});
 			} catch (error) {
 				if (this.seedsInstanceIdentity) throw error;
@@ -319,6 +320,24 @@ export abstract class BaseCommand<F = never> {
 		// Imported here so one-off CLI commands do not load the runner's scheduler graph.
 		const { SystemTaskRunner } = await import('@/scheduling/system-tasks/system-task-runner.js');
 		await Container.get(SystemTaskRunner).init();
+	}
+
+	/**
+	 * Whether a new `instance.id` must be the encryption-key-derived one: one-off
+	 * commands never seed, and a license certificate is bound to the derived ID.
+	 */
+	protected async keepsDerivedInstanceId(): Promise<boolean> {
+		if (!this.seedsInstanceIdentity) return true;
+		try {
+			return Boolean(await Container.get(License).loadCertStr());
+		} catch (error) {
+			// A wrong "no" would cost the install its license, so treat an unreadable cert as present.
+			this.logger.warn(
+				'Could not check for a license certificate, so a new instance ID will be the derived one',
+				{ error: ensureError(error) },
+			);
+			return true;
+		}
 	}
 
 	/**
