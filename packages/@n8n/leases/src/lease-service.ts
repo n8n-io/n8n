@@ -11,7 +11,10 @@ export class LeaseService<TTransaction> {
 
 	constructor(private readonly provider: LeaseProvider<TTransaction>) {}
 
-	/** Register a kind with the provider. Rejects when the name is invalid or already registered. */
+	/**
+	 * Register a kind with the provider. Rejects when the name is invalid or already registered.
+	 * A rejection from the provider is permanent: the kind stays registered and cannot be registered again.
+	 */
 	async registerKind(kind: LeaseKind<TTransaction>): Promise<void> {
 		const { name } = kind;
 		if (name.length > MAX_LEASE_KIND_LENGTH || !LEASE_KIND_NAME_PATTERN.test(name)) {
