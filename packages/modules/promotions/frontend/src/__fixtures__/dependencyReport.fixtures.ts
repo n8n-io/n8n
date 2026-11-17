@@ -694,6 +694,7 @@ export function createPromotionFixture(
 		/** "Ask the owner" without a server: the request goes through after a short wait. */
 		ownerRequester: (async () => {
 			await new Promise((resolve) => setTimeout(resolve, 600));
+			return true;
 		}) satisfies PromotionOwnerRequester,
 	};
 }

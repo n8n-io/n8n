@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { PromotionDependencyReport, PromotionDirection } from '@n8n/api-types';
+import type { PromotionDependencyReport, PromotionDirection, PromotionGap } from '@n8n/api-types';
 import { N8nCallout, N8nIcon, N8nText } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { computed, ref } from 'vue';
@@ -35,6 +35,12 @@ const props = defineProps<{
 	environmentId?: string;
 	/** Sends "Ask the owner". Without it the action shows and is not available. */
 	ownerRequester?: PromotionOwnerRequester;
+	/** True for a request that this session already sent, so a refreshed report still says so. */
+	isRequestSent?: (gap: PromotionGap) => boolean;
+	/** True when the server sent no report. The page then shows only what it knows without one. */
+	unchecked?: boolean;
+	/** True while the server checks a new selection. The list then shows the page's own view. */
+	checking?: boolean;
 }>();
 
 const emit = defineEmits<{
@@ -80,16 +86,25 @@ async function askOwner(row: GapTargetRow) {
 	const [gap] = row.gaps;
 	if (!requester || !gap || !props.environmentId) return;
 	ownerRequests.value.set(row.key, 'sending');
+	let sent = false;
 	try {
-		await requester({
+		sent = await requester({
 			environmentId: props.environmentId,
 			target: { kind: row.target.kind, id: row.target.id },
 			consumerWorkflowId: gap.consumer.id,
+			gap,
 		});
-		ownerRequests.value.set(row.key, 'sent');
 	} catch {
-		ownerRequests.value.set(row.key, 'failed');
+		sent = false;
 	}
+	ownerRequests.value.set(row.key, sent ? 'sent' : 'failed');
+}
+
+/** One request covers every consumer of the target, so the first reference stands for the row. */
+function ownerRequestOf(row: GapTargetRow): OwnerRequestState | undefined {
+	const state = ownerRequests.value.get(row.key);
+	if (state) return state;
+	return row.gaps.some((gap) => props.isRequestSent?.(gap)) ? 'sent' : undefined;
 }
 
 /** The project that gets the placeholder of a credential gap: the project of its consumer. */
@@ -109,7 +124,13 @@ const consumerLink = (consumer: { id: string; name: string }) => [
 	<div :class="$style.report" data-test-id="promotion-dependency-report">
 		<slot />
 
-		<N8nCallout :theme="status.theme" slim role="status" data-test-id="promotion-dependency-status">
+		<N8nCallout
+			v-if="!unchecked"
+			:theme="status.theme"
+			slim
+			role="status"
+			data-test-id="promotion-dependency-status"
+		>
 			{{ statusText }}
 		</N8nCallout>
 
@@ -187,7 +208,7 @@ const consumerLink = (consumer: { id: string; name: string }) => [
 				:direction="direction"
 				:locked="locked"
 				:can-ask-owner="!!ownerRequester && !!environmentId"
-				:owner-request="ownerRequests.get(row.key)"
+				:owner-request="ownerRequestOf(row)"
 				:placeholder-project="placeholderProject(row)"
 				@include="emit('include', row)"
 				@ask-owner="askOwner(row)"
@@ -195,6 +216,8 @@ const consumerLink = (consumer: { id: string; name: string }) => [
 				@inspect="emit('inspect', $event)"
 			/>
 		</PromotionDependencySection>
+
+		<slot name="moves" />
 
 		<PromotionApplyConfirmations
 			v-if="direction === 'apply'"
@@ -264,16 +287,30 @@ const consumerLink = (consumer: { id: string; name: string }) => [
 			</li>
 		</PromotionDependencySection>
 
-		<N8nText
-			tag="p"
-			step="2xs"
-			color="text-light"
-			:class="$style.footnote"
-			data-test-id="promotion-dependency-footnote"
-		>
-			<N8nIcon icon="info" size="small" />
-			{{ i18n.baseText('promotions.dependencies.footnote') }}
-		</N8nText>
+		<div :class="$style.footnotes">
+			<N8nText
+				v-if="checking"
+				tag="p"
+				step="2xs"
+				color="text-light"
+				:class="$style.footnote"
+				role="status"
+				data-test-id="promotion-dependency-checking"
+			>
+				<N8nIcon icon="refresh-cw" size="small" />
+				{{ i18n.baseText('promotions.dependencies.checking') }}
+			</N8nText>
+			<N8nText
+				tag="p"
+				step="2xs"
+				color="text-light"
+				:class="$style.footnote"
+				data-test-id="promotion-dependency-footnote"
+			>
+				<N8nIcon icon="info" size="small" />
+				{{ i18n.baseText('promotions.dependencies.footnote') }}
+			</N8nText>
+		</div>
 	</div>
 </template>
 
@@ -304,6 +341,12 @@ const consumerLink = (consumer: { id: string; name: string }) => [
 
 .count {
 	white-space: nowrap;
+}
+
+.footnotes {
+	display: flex;
+	flex-direction: column;
+	gap: var(--spacing--4xs);
 }
 
 .footnote {

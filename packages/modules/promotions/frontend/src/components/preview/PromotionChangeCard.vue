@@ -61,8 +61,9 @@ const emit = defineEmits<{
 
 const i18n = useI18n();
 const nameOf = (key: string) => props.graph.resources.get(key)?.name ?? key;
-const { changeLabel, blockerMessage, selectLabel } = usePromotionPreviewLabels();
+const { changeLabel, moveNote, blockerMessage, selectLabel } = usePromotionPreviewLabels();
 const blocker = computed(() => blockerMessage(props.resource, props.blockers));
+const moved = computed(() => moveNote(props.resource, props.direction));
 
 // Cards start open. Inspecting a resource from the tree opens its card again.
 const open = defineModel<boolean>('open', { default: true });
@@ -183,6 +184,15 @@ const tagNote = computed(() => {
 
 			<CollapsibleContent>
 				<div :class="$style.notices">
+					<N8nCallout
+						v-if="moved"
+						theme="info"
+						slim
+						icon="arrow-left-right"
+						data-test-id="promotion-preview-card-moved"
+					>
+						{{ moved }}
+					</N8nCallout>
 					<!-- A workflow diff shows these states in its own area. -->
 					<template v-if="!hasDiff">
 						<N8nCallout v-if="entry?.status === 'missing'" theme="warning" slim>

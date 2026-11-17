@@ -555,6 +555,83 @@ A `credential-type-mismatch` shows both types when `detail` holds the keys
 The page names the project of the first consumer of a credential gap as the
 project of its placeholder. The server decides the real project.
 
+## Decisions of the frontend integration (stream J)
+
+### J1. The Apply of every change is still the Apply of the whole instance (E2 again)
+
+A selection never deletes a project (A6). So the changes view of an Apply keeps
+the whole-instance route (`/environments/:id/apply`, `/apply/continue`) for one
+case: every change is selected, the user can apply every project, the view was
+not opened from a project page, and the user has the global scope
+`promotions:apply`. The page then also reads the whole-instance preview
+(`GET /environments/:id/changes`). It gives the projects that the Apply
+deletes and the `revision` that the whole-instance route accepts. The revision
+of the changes view is not sent to that route. When that preview fails (for
+example a projects environment), every selection uses `apply-selection`.
+The page names the projects in a callout: a warning when the Apply deletes
+them, an information when a selection keeps them. Every other selection, and
+every Promote, uses the new routes.
+
+### J2. The report follows the selection in the client, and the last server report wins (E1 again)
+
+The preview computes the report for every change that it lists. The preview
+routes take no selection. So the page keeps the client-side filter of E1, with
+two additions:
+
+- The report of an operation that stopped (`gaps-changed`) stays the base of
+  the page after the selection changes. The filter of E1 runs on it. A manual
+  refresh drops it.
+- A project page hands its report over to the changes view with its selection
+  ("Include it" for an item of another project). The changes view lists no gap
+  for that selection by itself, because its preview holds every change.
+
+A gap that a cleared item opens shows only after the operation returns
+`gaps-changed`. The Dependencies tab says that the check runs again. A preview
+that takes the selection would remove this delay; see the report of stream J.
+
+### J3. An included item counts as part of the operation, listed or not
+
+A credential that "Include it" adds can have no row in the preview. The page
+counts it as a change, shows it in "Also in this Promote", and lets the user
+remove it there. A preview without rows is still usable when it holds such an
+item.
+
+### J4. A move out of a project that the branch does not hold
+
+The page confirms it with the dialog of the destructive changes and sends
+`confirmDestructiveChanges: true`, as F4 says for an instance Apply. It sends
+the same flag for a selection across projects. A project page cannot confirm
+the move: the row says to use the Apply of the environment.
+
+### J5. A moved row is a change, not a blocker
+
+The page no longer blocks a Promote of a moved workflow in the client. The
+server refuses the moves that it cannot do, and the page shows its message.
+On Apply, the moves of `check.movedWorkflows` and `check.movedFolders` still
+block, and the moves of `check.plannedMoves` are changes.
+
+### J6. The result of an Apply stays on the page when a person must act
+
+An Apply that created a placeholder, gave a grant, moved or did not move a
+credential, moved an item between projects, kept a workflow or left a gap
+shows a result dialog before the page leaves. Any other Apply leaves with the
+toast, as before.
+
+### J7. The link of an owner request
+
+The Inbox link adds `requested=1`. The preview then selects only the requested
+item. A credential has no checkbox on a project page, so the page continues in
+the changes view with only that credential (`?from=<project>&include=<key>`).
+
+### J8. Display names of credential types
+
+The capability `resourceEditors` of the shell gets one optional method,
+`credentialTypeName(type)`. The raw type name shows until the name arrives,
+and for a type that the instance does not know.
+
+### J9. `PromoteInstanceDialog.vue` stays
+
+Its test file still imports it, and the proof of concept deletes no test.
 ## Decisions of the stream "integration of moves"
 
 ### I1. The confirmation of a move out of a project that the branch does not hold
@@ -629,3 +706,19 @@ selection routes; the import plans a confirmed grant as given). The previews and
 workflow counts in its new project: a credential of the old project that the new project
 cannot use is a grant or a gap, also when only the published version uses it. The check does
 not model data tables and project variables, so their warning after a move is not built.
+
+### J10. The report of the selection comes from the server (replaces the limit of J2)
+
+The page asks `POST .../changes/:direction/dependency-report` for the report of
+the current selection, after a pause of 300 ms, on the changes view and on a
+project page. The answer goes to the slot of the last server report. The
+client-side filter of E1 is only the view while the request runs, and the
+submit button waits for the answer. A request that fails leaves the filtered
+view; the operation checks again. The Apply of the whole instance (J1) reads
+the report of its own preview instead, because only that report lists the
+workflows and projects that reconciliation keeps.
+
+### J11. A gap of an unknown group cannot be confirmed
+
+The page disables the operation, also on an environment that allows
+incomplete operations, and says to update n8n or close the gap.

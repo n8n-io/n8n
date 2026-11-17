@@ -1,7 +1,12 @@
 <script setup lang="ts">
-import type { PromotionDirection } from '@n8n/api-types';
+import type {
+	PromotionDependencyReport as DependencyReport,
+	PromotionDirection,
+	PromotionResource,
+} from '@n8n/api-types';
 import { useDocumentTitle } from '@n8n/composables/useDocumentTitle';
 import {
+	N8nBadge,
 	N8nButton,
 	N8nCallout,
 	N8nEmptyState,
@@ -12,6 +17,7 @@ import {
 	N8nResizeWrapper,
 	N8nTabs,
 	N8nText,
+	N8nTooltip,
 	useResizablePanel,
 } from '@n8n/design-system';
 import { VIEWS } from '@n8n/frontend-constants/views';
@@ -23,21 +29,30 @@ import { useRootStore } from '@n8n/stores/useRootStore';
 import { computed, nextTick, ref, shallowRef, toRef, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 
+import PromotionApplyResultDialog from '../components/dependencies/PromotionApplyResultDialog.vue';
 import PromotionDependencyReport from '../components/dependencies/PromotionDependencyReport.vue';
 import PromotionDependencySummary from '../components/dependencies/PromotionDependencySummary.vue';
 import PromotionIncompleteDialog from '../components/dependencies/PromotionIncompleteDialog.vue';
+import PromotionPlannedMoves from '../components/dependencies/PromotionPlannedMoves.vue';
 import PromotionBlockers from '../components/preview/PromotionBlockers.vue';
 import PromotionChangeCards from '../components/preview/PromotionChangeCards.vue';
 import PromotionResourceTree from '../components/preview/PromotionResourceTree.vue';
 import PromotionReviewBlocker from '../components/preview/PromotionReviewBlocker.vue';
 import PromoteSelectionDialog from '../components/PromoteSelectionDialog.vue';
 import { usePromotionDependencies } from '../composables/usePromotionDependencies';
+import { usePromotionMoveLabels } from '../composables/usePromotionMoveLabels';
 import { usePromotionOperation, type OperationRequest } from '../composables/usePromotionOperation';
+import { usePromotionOwnerRequest } from '../composables/usePromotionOwnerRequest';
 import { usePromotionResourceDetails } from '../composables/usePromotionResourceDetails';
 import { usePromotionPreview } from '../composables/usePromotionPreview';
 import { usePromotionSelection, type SelectionSeed } from '../composables/usePromotionSelection';
+import {
+	usePromotionSelectionReport,
+	type ReportSelection,
+} from '../composables/usePromotionSelectionReport';
 import type { GapTargetRow, PromotionOwnerRequester } from '../promotionDependencies';
 import { loadPromotionFixture, promotionFixtureName } from '../promotionFixtures';
+import { changedProjectsOf, scopePlannedMoves } from '../promotionMoves';
 import { getPromotionEnvironmentDetails, getPromotionResourceDetails } from '../promotions.api';
 import {
 	PROMOTION_ENVIRONMENT_VIEWS,
@@ -49,7 +64,6 @@ import {
 	indexBlockers,
 	isBlocking,
 	listBlockers,
-	crossProjectMoveBlockers,
 	toOperationRequest,
 	scopeCheck,
 	touchesDestructiveChange,
@@ -103,33 +117,45 @@ const origin = computed(() => (isEnvironment.value ? queryValue(route.query.from
 // Development only: `?fixture=<name>` replaces the server with the fixtures.
 const fixture = computed(() => promotionFixtureName(route.query.fixture));
 const fixtureQuery = computed(() => (fixture.value ? { fixture: fixture.value } : {}));
+// The link of an owner request in the Inbox: the page then holds only the requested item.
+const isOwnerRequest = computed(() => queryValue(route.query.requested) !== undefined);
+// Only a user with the global scope can apply the whole instance, which also deletes projects.
+const canApplyInstance = computed(
+	() =>
+		isEnvironment.value && props.direction === 'apply' && rbacStore.hasScope('promotions:apply'),
+);
 
 const {
-	state,
+	state: previewState,
 	preview,
 	check,
 	graph,
 	projects,
 	dependencyReport,
+	instanceApply,
 	environment,
 	refreshing,
 	refreshFailed,
 	refresh,
-} = usePromotionPreview(projectId, direction, { origin, fixture });
+} = usePromotionPreview(projectId, direction, { origin, fixture, canApplyInstance });
 const promoteEnvironment = computed(() =>
 	environment.value?.direction === 'promote' ? environment.value : null,
 );
 // A project page shows and enforces only the blockers of the workflows it lists.
 const scopedCheck = computed(() => {
 	if (!check.value || !graph.value) return null;
-	return isEnvironment.value ? check.value : scopeCheck(check.value, graph.value);
+	const scoped = isEnvironment.value ? check.value : scopeCheck(check.value, graph.value);
+	// With a dependency report, its grants are the grant step. The check only mirrors them for
+	// older clients.
+	return dependencyReport.value ? { ...scoped, accessRequirements: [] } : scoped;
 });
 // A project-wide conflict blocks all of them, so it also stops a selection without workflows.
 const selectableResourceKeys = computed(() => (graph.value ? selectableKeys(graph.value) : []));
-const blockerList = computed(() => [
-	...(scopedCheck.value ? listBlockers(scopedCheck.value, selectableResourceKeys.value) : []),
-	...(props.direction === 'promote' && graph.value ? crossProjectMoveBlockers(graph.value) : []),
-]);
+// A move between two team projects is a change, not a blocker. The server refuses the moves
+// that it cannot do, and an Apply lists them in its check.
+const blockerList = computed(() =>
+	scopedCheck.value ? listBlockers(scopedCheck.value, selectableResourceKeys.value) : [],
+);
 const blockers = computed(() => indexBlockers(blockerList.value));
 // Users cannot add a blocked workflow, or a change of a project that they can only read or
 // that an open review holds.
@@ -146,21 +172,52 @@ const operation = usePromotionOperation(projectId, direction, {
 	fixture,
 });
 
+// The inspected card lives in the URL, so a direct link opens it. Replacing the entry keeps
+// browser Back on the page that opened the preview.
+const inspectedKey = computed(() =>
+	typeof route.query.resource === 'string' ? route.query.resource : undefined,
+);
+/** The names of the included items that the page does not list, such as a credential. */
+const includedNames = ref(new Map<ResourceKey, string>());
+
 /**
  * The first selection of a changes view that continues a project page. A reload loses the
  * handoff, so the URL gives the changes of that project and the included items.
  */
 function seedSelection(current: SelectionGraph): SelectionSeed | null {
-	if (!isEnvironment.value || origin.value === undefined) return null;
+	// An owner request on a project page: only the requested item is selected.
+	if (!isEnvironment.value) {
+		const requested = isOwnerRequest.value ? inspectedKey.value : undefined;
+		return requested !== undefined && current.resources.get(requested)?.selectable
+			? { selected: [requested], extra: new Map() }
+			: null;
+	}
+	if (origin.value === undefined) return null;
 	const handoff = takePromotionSelectionHandoff(props.direction, origin.value);
-	if (handoff) return { selected: handoff.selected, extra: new Map(handoff.extra) };
+	if (handoff) {
+		// The report of the project page knows the gaps of this selection. The preview of the
+		// changes view covers every change, so it lists none of them.
+		if (handoff.report) operation.gapsReport.value = handoff.report;
+		includedNames.value = new Map(handoff.names);
+		return { selected: handoff.selected, extra: new Map(handoff.extra) };
+	}
 	const included = [route.query.include].flat().flatMap((key) => queryValue(key) ?? []);
+	// An owner request for an item without a checkbox, such as a credential: only that item.
+	if (isOwnerRequest.value) {
+		return {
+			selected: [],
+			extra: new Map(included.map((key): [ResourceKey, string] => [key, origin.value ?? ''])),
+		};
+	}
 	return {
 		selected: projectSelectableKeys(current, origin.value),
 		extra: new Map(
 			included.flatMap((key): Array<[ResourceKey, string]> => {
 				const resource = current.resources.get(key);
-				const owner = resource ? projectIdOf(current.resources, resource) : undefined;
+				// An item without a row, such as a credential: the URL names its project.
+				const owner = resource
+					? projectIdOf(current.resources, resource)
+					: queryValue(route.query.includeProject);
 				return owner === undefined ? [] : [[key, owner]];
 			}),
 		),
@@ -172,13 +229,60 @@ const selection = usePromotionSelection(graph, {
 	locked: operation.isBusy,
 	seed: seedSelection,
 });
+// A preview without changes still has something to write when the user included an item that
+// it does not list, such as the credential of an owner request.
+const state = computed(() =>
+	previewState.value === 'empty' && selection.extra.value.size > 0 ? 'ready' : previewState.value,
+);
+/** Everything in the operation: the selection, what comes with it, and the included items. */
+const inOperation = computed(
+	(): ReadonlySet<ResourceKey> =>
+		new Set([...selection.inclusion.value.included, ...selection.extra.value.keys()]),
+);
+/** Included items without a row of their own, such as a credential that no listed workflow uses. */
+const unlistedIncluded = computed(() =>
+	[...selection.extra.value.keys()]
+		.filter((key) => !graph.value?.resources.has(key))
+		.map((key) => ({
+			key,
+			name: includedNames.value.get(key) ?? key.slice(key.indexOf(':') + 1),
+		})),
+);
 const dependencies = usePromotionDependencies({
-	source: dependencyReport,
-	operationReport: operation.gapsReport,
+	// The Apply of the whole instance has its own report: only it lists what reconciliation keeps.
+	source: computed(() =>
+		wholeInstance.value
+			? (instanceApply.value?.report ?? dependencyReport.value)
+			: dependencyReport.value,
+	),
+	operationReport: computed(() => (wholeInstance.value ? null : operation.gapsReport.value)),
 	graph,
-	included: computed(() => selection.inclusion.value.included),
+	included: inOperation,
 	direction,
 });
+
+// The moves between projects of the items in the operation.
+const moveLabels = usePromotionMoveLabels();
+const plannedMoves = computed(() =>
+	graph.value
+		? scopePlannedMoves(check.value?.plannedMoves ?? [], {
+				selected: inOperation.value,
+				listed: new Set(graph.value.resources.keys()),
+			})
+		: [],
+);
+// The server lists the projects of every planned move. A selection with fewer moves counts its own.
+const changedProjects = computed(() =>
+	plannedMoves.value.length === (check.value?.plannedMoves?.length ?? 0)
+		? (check.value?.changedProjects ?? changedProjectsOf(plannedMoves.value))
+		: changedProjectsOf(plannedMoves.value),
+);
+// Only the changes view can confirm a move out of a project that the branch does not hold.
+const movesOutOfOperation = computed(() =>
+	isEnvironment.value
+		? plannedMoves.value.filter(({ needsConfirmation }) => needsConfirmation)
+		: [],
+);
 
 const activeWorkflowKey = ref<ResourceKey>();
 const details = usePromotionResourceDetails(
@@ -196,6 +300,7 @@ const details = usePromotionResourceDetails(
 			? await getPromotionEnvironmentDetails(
 					rootStore.publicApiContext,
 					environment.value?.id ?? '',
+					props.direction,
 					request,
 				)
 			: await getPromotionResourceDetails(
@@ -252,11 +357,6 @@ const tree = computed(() => {
 });
 const order = computed(() => (graph.value ? cardOrder(tree.value, graph.value.resources) : []));
 
-// The inspected card lives in the URL, so a direct link opens it. Replacing the entry keeps
-// browser Back on the page that opened the preview.
-const inspectedKey = computed(() =>
-	typeof route.query.resource === 'string' ? route.query.resource : undefined,
-);
 const cards = ref<InstanceType<typeof PromotionChangeCards>>();
 
 const hasDiff = (key: ResourceKey) => {
@@ -323,14 +423,16 @@ const changedCount = computed(() =>
 		: 0,
 );
 /**
- * An Apply that holds every change of the environment is the Apply of the whole instance. Only
- * that Apply also writes what users cannot select, such as the deletion of a project.
+ * An Apply that holds every change of the environment is the Apply of the whole instance, for
+ * a user who may run it. A selection never deletes a project. Only that Apply does, so the
+ * deletion of a project needs every change selected.
  */
 const wholeInstance = computed(
 	() =>
 		isEnvironment.value &&
 		props.direction === 'apply' &&
 		origin.value === undefined &&
+		!!instanceApply.value &&
 		!!graph.value &&
 		selection.extra.value.size === 0 &&
 		projects.value.every(({ canOperate }) => canOperate) &&
@@ -346,8 +448,13 @@ const includedChanges = computed(() => {
 	if (!graph.value) return 0;
 	return wholeInstance.value
 		? changedCount.value
-		: includedChangeCount(graph.value, selection.inclusion.value);
+		: includedChangeCount(graph.value, selection.inclusion.value) + unlistedIncluded.value.length;
 });
+/** The projects that only the Apply of the whole instance deletes. */
+const deletedProjects = computed(() => instanceApply.value?.deletedProjects ?? []);
+const deletedProjectNames = computed(() =>
+	deletedProjects.value.map(({ name }) => `"${name}"`).join(', '),
+);
 // The header of the changes view says what the operation holds: "3 changes in 2 projects".
 const selectionSummary = computed(() => {
 	if (!isEnvironment.value || !graph.value) return undefined;
@@ -373,14 +480,15 @@ const request = computed((): OperationRequest => {
 	const confirmations = dependencies.payload.value;
 	const none = { workflowIds: [], folderIds: [] };
 	if (!graph.value) return { ...none, confirmDestructiveChanges: false };
+	const movesOut = movesOutOfOperation.value.map((move) => moveLabels.moveOutSentence(move));
 	if (wholeInstance.value) {
 		return {
 			...none,
 			wholeInstance: true,
+			instanceRevision: instanceApply.value?.revision,
 			confirmDestructiveChanges: blockerList.value.some(({ kind }) => kind === 'destructive'),
-			deletedProjects: (check.value?.conflicts ?? []).flatMap((conflict) =>
-				conflict.code === 'project-deletion' ? conflict.project.name : [],
-			),
+			deletedProjects: deletedProjects.value.map(({ name }) => name),
+			movesOutOfOperation: movesOut,
 			confirmations,
 		};
 	}
@@ -398,6 +506,7 @@ const request = computed((): OperationRequest => {
 				projects.value.map(({ id }) => id),
 			),
 			confirmDestructiveChanges,
+			movesOutOfOperation: movesOut,
 			confirmations,
 		};
 	}
@@ -407,8 +516,39 @@ const request = computed((): OperationRequest => {
 		confirmations,
 	};
 });
+/**
+ * What the page asks the server to check: the selection of the operation. `null` when there is
+ * nothing to ask. The whole-instance Apply reads the report of its own preview instead.
+ */
+const reportSelection = computed((): ReportSelection | null => {
+	const environmentId = environment.value?.id;
+	if (!graph.value || !environmentId || fixture.value || wholeInstance.value) return null;
+	if (state.value !== 'ready' || !dependencyReport.value) return null;
+	if (selection.selected.value.size === 0 && selection.extra.value.size === 0) return null;
+	const { projects: selected, workflowIds, folderIds } = request.value;
+	const selectedProjects =
+		props.projectId === undefined
+			? (selected ?? [])
+			: [{ projectId: props.projectId, workflowIds, folderIds }];
+	if (selectedProjects.length === 0) return null;
+	return {
+		environmentId,
+		projects: selectedProjects,
+		credentialHomes: dependencies.confirmations.value.credentialHomes,
+		revision: preview.value?.revision,
+	};
+});
+const { checking: checkingDependencies } = usePromotionSelectionReport({
+	selection: reportSelection,
+	direction,
+	report: operation.gapsReport,
+});
+
 const isDestructive = computed(
-	() => request.value.confirmDestructiveChanges || !!request.value.deletedProjects?.length,
+	() =>
+		request.value.confirmDestructiveChanges ||
+		!!request.value.deletedProjects?.length ||
+		!!request.value.movesOutOfOperation?.length,
 );
 const hasSelectedBlocked = computed(() =>
 	[...selection.selected.value].some((key) => blockers.value.blocked.has(key)),
@@ -419,9 +559,11 @@ const actionableChanges = computed(() => {
 	const actionable = new Set(
 		[...selection.selected.value].filter((key) => !blockers.value.blocked.has(key)),
 	);
-	return includedChangeCount(
-		graph.value,
-		resolveInclusion(graph.value, actionable, selection.extra.value.keys()),
+	return (
+		includedChangeCount(
+			graph.value,
+			resolveInclusion(graph.value, actionable, selection.extra.value.keys()),
+		) + unlistedIncluded.value.length
 	);
 });
 const submitBlockedReason = computed(() => {
@@ -451,6 +593,8 @@ const canSubmit = computed(
 		state.value === 'ready' &&
 		!refreshing.value &&
 		!operation.isBusy.value &&
+		// The button follows the report of the current selection, so it waits for it.
+		!checkingDependencies.value &&
 		!submitBlockedReason.value &&
 		!dependencies.stop.value &&
 		actionableChanges.value > 0 &&
@@ -512,8 +656,27 @@ const blockerCount = computed(() => blockerList.value.filter(isBlocking).length)
 const showBlockersTab = computed(
 	() => props.direction === 'apply' && !!scopedCheck.value && state.value === 'ready',
 );
-// The tab exists when the server sends a report. An older server sends none.
-const showDependenciesTab = computed(() => !!dependencies.report.value && state.value === 'ready');
+// The tab exists when the server sends a report, or when the Apply moves items between projects.
+const showDependenciesTab = computed(
+	() => (!!dependencies.report.value || plannedMoves.value.length > 0) && state.value === 'ready',
+);
+/** A report with nothing in it, for a server that sends none. The tab then shows only the moves. */
+const reportOrEmpty = computed(
+	(): DependencyReport =>
+		dependencies.report.value ?? {
+			allowIncomplete: environment.value?.allowIncomplete ?? false,
+			blocked: false,
+			gaps: [],
+			warnings: [],
+			notes: [],
+			grants: [],
+			credentialMoves: [],
+			deletionCallers: [],
+			keptWorkflows: [],
+			credentialHomeChoices: [],
+			hardBlocks: [],
+		},
+);
 watch([showBlockersTab, showDependenciesTab], ([blockersTab, dependenciesTab]) => {
 	if (
 		(activeTab.value === 'blockers' && !blockersTab) ||
@@ -574,12 +737,14 @@ watch(operation.notice, (notice) => {
  * items of its own project, so an item of another project continues in the changes view, with
  * the selection of this page.
  */
-async function onInclude({ include }: GapTargetRow) {
+async function onInclude({ include, target }: GapTargetRow) {
 	if (!include || !graph.value) return;
 	const ownItem =
 		include.projectId === props.projectId &&
 		graph.value.resources.get(include.resourceKey)?.selectable === true;
+	const name: [ResourceKey, string] = [include.resourceKey, target.name ?? target.id];
 	if (props.projectId === undefined || ownItem) {
+		includedNames.value = new Map([...includedNames.value, name]);
 		selection.include(include.resourceKey, include.projectId);
 		return;
 	}
@@ -588,10 +753,17 @@ async function onInclude({ include }: GapTargetRow) {
 		fromProjectId: props.projectId,
 		selected: [...selection.selected.value],
 		extra: [[include.resourceKey, include.projectId]],
+		report: dependencies.report.value ?? undefined,
+		names: [name],
 	});
 	await router.push({
 		name: PROMOTION_ENVIRONMENT_VIEWS[props.direction],
-		query: { from: props.projectId, include: include.resourceKey, ...fixtureQuery.value },
+		query: {
+			from: props.projectId,
+			include: include.resourceKey,
+			includeProject: include.projectId,
+			...fixtureQuery.value,
+		},
 	});
 }
 
@@ -606,10 +778,52 @@ const removableDeletions = computed(
 		),
 );
 
-// "Ask the owner". The owner-request composable plugs in here: replace `undefined` with its
-// send function. The fixtures bring their own.
-const defaultOwnerRequester: PromotionOwnerRequester | undefined = undefined;
+// "Ask the owner". The request goes to the inbox of the owner project. The fixtures bring
+// their own sender.
+const ownerRequest = usePromotionOwnerRequest(() => environment.value?.id);
+const defaultOwnerRequester: PromotionOwnerRequester = async ({ gap }) =>
+	await ownerRequest.send(gap);
 const ownerRequester = shallowRef<PromotionOwnerRequester | undefined>(defaultOwnerRequester);
+
+// The heading of each group of cards in the changes view: the project of the change.
+const cardHeading = computed(() => {
+	if (!isEnvironment.value) return undefined;
+	const resources = graph.value?.resources;
+	const shared = i18n.baseText('promotions.preview.cards.shared');
+	return (resource: PromotionResource) => {
+		const owner = resources ? projectIdOf(resources, resource) : undefined;
+		return (owner === undefined ? undefined : projectNames.value.get(owner)) ?? shared;
+	};
+});
+
+/** A new preview has a new revision, so the page asks for the report of the selection again. */
+async function onRefresh() {
+	await refresh();
+}
+
+/**
+ * An owner request for an item without a checkbox, such as a credential. Only the changes view
+ * can hold it, so the page continues there with that item alone.
+ */
+watch(
+	[projectId, inspectedKey, isOwnerRequest],
+	async ([id, key, requested]) => {
+		if (id === undefined || key === undefined || !requested || !key.startsWith('credential:')) {
+			return;
+		}
+		setPromotionSelectionHandoff({
+			direction: props.direction,
+			fromProjectId: id,
+			selected: [],
+			extra: [[key, id]],
+		});
+		await router.replace({
+			name: PROMOTION_ENVIRONMENT_VIEWS[props.direction],
+			query: { from: id, include: key, requested: '1', ...fixtureQuery.value },
+		});
+	},
+	{ immediate: true },
+);
 watch(
 	fixture,
 	async (name) => {
@@ -640,7 +854,33 @@ const treeResizer = useResizablePanel({
 			<N8nLink :to="backRoute" theme="text" size="small" data-test-id="promotion-preview-back">
 				<span :class="$style.back"><N8nIcon icon="arrow-left" size="small" />{{ backLabel }}</span>
 			</N8nLink>
-			<N8nHeading tag="h1" size="xlarge" :class="$style.title">{{ title }}</N8nHeading>
+			<div :class="$style.titleRow">
+				<N8nHeading tag="h1" size="xlarge">{{ title }}</N8nHeading>
+				<!-- Strict or incomplete decides what a gap does, so the page always says which. -->
+				<N8nTooltip
+					v-if="environment && state === 'ready'"
+					:content="
+						i18n.baseText(
+							environment.allowIncomplete
+								? `promotions.preview.mode.incomplete.tooltip.${direction}`
+								: `promotions.preview.mode.strict.tooltip.${direction}`,
+						)
+					"
+				>
+					<N8nBadge
+						:variant="environment.allowIncomplete ? 'info' : 'subtle'"
+						data-test-id="promotion-preview-mode"
+					>
+						{{
+							i18n.baseText(
+								environment.allowIncomplete
+									? 'promotions.preview.mode.incomplete'
+									: 'promotions.preview.mode.strict',
+							)
+						}}
+					</N8nBadge>
+				</N8nTooltip>
+			</div>
 			<N8nText
 				v-if="selectionSummary && state === 'ready'"
 				size="small"
@@ -666,7 +906,7 @@ const treeResizer = useResizablePanel({
 						:loading="refreshing"
 						:disabled="operation.isBusy.value"
 						data-test-id="promotion-preview-refresh"
-						@click="refresh"
+						@click="onRefresh"
 					>
 						{{ i18n.baseText('promotions.preview.refresh') }}
 					</N8nButton>
@@ -805,7 +1045,15 @@ const treeResizer = useResizablePanel({
 						@view="activeTab = 'dependencies'"
 					/>
 					<N8nCallout
-						v-if="origin !== undefined"
+						v-if="isOwnerRequest"
+						theme="info"
+						slim
+						data-test-id="promotion-preview-owner-request"
+					>
+						{{ i18n.baseText(`promotions.preview.ownerRequest.${direction}`) }}
+					</N8nCallout>
+					<N8nCallout
+						v-else-if="origin !== undefined"
 						theme="info"
 						slim
 						data-test-id="promotion-preview-across-projects"
@@ -816,6 +1064,66 @@ const treeResizer = useResizablePanel({
 							})
 						}}
 					</N8nCallout>
+					<!-- A selection never deletes a project. The page says when the Apply does. -->
+					<N8nCallout
+						v-if="deletedProjects.length > 0"
+						:theme="wholeInstance ? 'warning' : 'info'"
+						slim
+						data-test-id="promotion-preview-project-deletions"
+					>
+						{{
+							i18n.baseText(
+								wholeInstance
+									? 'promotions.preview.projectDeletions.wholeInstance'
+									: 'promotions.preview.projectDeletions.selection',
+								{
+									adjustToNumber: deletedProjects.length,
+									interpolate: { projects: deletedProjectNames },
+								},
+							)
+						}}
+					</N8nCallout>
+					<N8nCallout
+						v-if="changedProjects.length > 0"
+						theme="info"
+						slim
+						icon="arrow-left-right"
+						data-test-id="promotion-preview-changed-projects"
+					>
+						{{ moveLabels.changedProjectsText(changedProjects) }}
+						<template #trailingContent>
+							<N8nButton variant="outline" size="small" @click="activeTab = 'dependencies'">
+								{{ i18n.baseText('promotions.moves.view') }}
+							</N8nButton>
+						</template>
+					</N8nCallout>
+					<div
+						v-if="unlistedIncluded.length > 0"
+						:class="$style.included"
+						data-test-id="promotion-preview-included"
+					>
+						<N8nText size="small" color="text-base">
+							{{ i18n.baseText(`promotions.preview.included.${direction}`) }}
+						</N8nText>
+						<ul :class="$style.includedList" role="list">
+							<li v-for="item in unlistedIncluded" :key="item.key" :class="$style.includedItem">
+								<N8nIcon icon="key-round" size="small" />
+								<N8nText size="small" bold color="text-dark">{{ item.name }}</N8nText>
+								<N8nButton
+									variant="ghost"
+									size="mini"
+									icon="x"
+									:disabled="operation.isBusy.value"
+									:aria-label="
+										i18n.baseText('promotions.preview.included.remove', {
+											interpolate: { name: item.name },
+										})
+									"
+									@click="selection.exclude(item.key)"
+								/>
+							</li>
+						</ul>
+					</div>
 					<N8nCallout v-if="refreshFailed" theme="warning" slim>
 						{{ i18n.baseText('promotions.preview.refreshFailed') }}
 					</N8nCallout>
@@ -840,6 +1148,7 @@ const treeResizer = useResizablePanel({
 						:entries="details.entries.value"
 						:inspected-key="inspectedKey"
 						:blockers="blockers"
+						:heading-of="cardHeading"
 						@retry="details.retry"
 						@refresh="refresh"
 						@inspect="inspect"
@@ -862,10 +1171,13 @@ const treeResizer = useResizablePanel({
 				</N8nCallout>
 			</PromotionBlockers>
 			<PromotionDependencyReport
-				v-if="showDependenciesTab && dependencies.report.value"
+				v-if="showDependenciesTab"
 				v-show="activeTab === 'dependencies'"
 				:class="$style.dependencies"
-				:report="dependencies.report.value"
+				:report="reportOrEmpty"
+				:unchecked="!dependencies.report.value"
+				:checking="checkingDependencies"
+				:is-request-sent="ownerRequest.isSent"
 				:direction="direction"
 				:confirmations="dependencies.confirmations.value"
 				:locked="operation.isBusy.value"
@@ -879,7 +1191,15 @@ const treeResizer = useResizablePanel({
 				@grant="dependencies.setGrant"
 				@deletion-callers="dependencies.setDeletionCallers"
 				@credential-home="dependencies.setCredentialHome"
-			/>
+			>
+				<template v-if="plannedMoves.length > 0" #moves>
+					<PromotionPlannedMoves
+						:moves="plannedMoves"
+						:can-confirm="isEnvironment"
+						@inspect="inspectFromTab"
+					/>
+				</template>
+			</PromotionDependencyReport>
 		</template>
 
 		<PromoteSelectionDialog
@@ -904,6 +1224,13 @@ const treeResizer = useResizablePanel({
 			"
 			@confirm="onIncompleteConfirm"
 		/>
+		<PromotionApplyResultDialog
+			v-if="operation.applied.value"
+			:open="true"
+			:result="operation.applied.value.result"
+			:project-names="projectNames"
+			@update:open="operation.closeApplied"
+		/>
 	</div>
 </template>
 
@@ -926,7 +1253,11 @@ const treeResizer = useResizablePanel({
 	background-color: var(--background--surface);
 }
 
-.title {
+.titleRow {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: var(--spacing--xs);
 	margin-bottom: var(--spacing--2xs);
 }
 
@@ -993,6 +1324,32 @@ const treeResizer = useResizablePanel({
 	min-height: 0;
 	border-right: var(--border);
 	background-color: var(--background--surface);
+}
+
+.included {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: var(--spacing--2xs);
+	padding: var(--spacing--2xs) var(--spacing--xs);
+	border: var(--border);
+	border-radius: var(--radius);
+	background-color: var(--background--surface);
+}
+
+.includedList {
+	display: flex;
+	flex-wrap: wrap;
+	gap: var(--spacing--2xs);
+	margin: 0;
+	padding: 0;
+	list-style: none;
+}
+
+.includedItem {
+	display: inline-flex;
+	align-items: center;
+	gap: var(--spacing--4xs);
 }
 
 .cards {

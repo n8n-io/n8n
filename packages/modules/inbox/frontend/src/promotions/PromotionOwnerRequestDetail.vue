@@ -88,7 +88,8 @@ function openOperation() {
 	if (!ownerProject) return;
 	void router.push({
 		path: `/projects/${encodeURIComponent(ownerProject.id)}/promotions/${operation}`,
-		query: { resource: resourceKey ?? `${resource.kind}:${resource.id}` },
+		// `requested` tells the preview to select only this item.
+		query: { resource: resourceKey ?? `${resource.kind}:${resource.id}`, requested: '1' },
 	});
 }
 

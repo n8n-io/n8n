@@ -142,6 +142,8 @@ export type ResourceEditorKind = 'credential' | 'variable';
 export interface ResourceEditors {
 	/** Loads the credential types once. Resolves `true` when this instance knows the type. */
 	hasCredentialType(type: string): Promise<boolean>;
+	/** The display name of a credential type. `undefined` when this instance does not know the type. */
+	credentialTypeName?(type: string): Promise<string | undefined>;
 	loadVariables(): Promise<void>;
 	createVariable(variable: CreateEnvironmentVariable): Promise<EnvironmentVariable>;
 	openCredentialEditor(type: string, options: CredentialEditorOptions): void;

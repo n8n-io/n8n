@@ -1,7 +1,9 @@
 import type {
+	PromotionCredentialMove,
 	PromotionDependencyNote,
 	PromotionDependencyWarning,
 	PromotionDirection,
+	PromotionGapDetail,
 	PromotionGapState,
 	PromotionHardBlock,
 	PromotionReferenceTarget,
@@ -10,6 +12,14 @@ import type {
 import { useI18n, type BaseTextKey } from '@n8n/i18n';
 
 import type { GapGroupId, GapTargetRow } from '../promotionDependencies';
+
+const GAP_DETAIL_KEYS: Record<PromotionGapDetail, BaseTextKey> = {
+	'placeholder-on-source': 'promotions.dependencies.detail.placeholder-on-source',
+	'sharing-not-licensed': 'promotions.dependencies.detail.sharing-not-licensed',
+	'confirmed-gap': 'promotions.dependencies.detail.confirmed-gap',
+	'legacy-reference': 'promotions.dependencies.detail.legacy-reference',
+	'published-version': 'promotions.dependencies.detail.published-version',
+};
 
 const HARD_BLOCK_KEYS: Record<PromotionHardBlock['code'], BaseTextKey> = {
 	'credential-type-mismatch': 'promotions.dependencies.hardBlock.credential-type-mismatch',
@@ -67,6 +77,24 @@ export function usePromotionDependencyLabels() {
 		return undefined;
 	}
 
+	/** A client can ignore a detail that it does not know, so an unknown value gives no text. */
+	function detailText(detail: PromotionGapDetail): string | undefined {
+		const key = GAP_DETAIL_KEYS[detail];
+		return key ? i18n.baseText(key) : undefined;
+	}
+
+	/** Why a credential keeps its owner. A managed and an end-user credential never move. */
+	function credentialNotMovedText(move: PromotionCredentialMove): string {
+		const interpolate = { credential: move.credential.name, project: move.toProject.name };
+		if (move.blockedReason === 'managed' || move.blockedReason === 'end-user') {
+			return i18n.baseText('promotions.dependencies.moves.stays', { interpolate });
+		}
+		if (move.blockedReason === 'missing-create-right') {
+			return i18n.baseText('promotions.dependencies.moves.noCreateRight', { interpolate });
+		}
+		return i18n.baseText('promotions.dependencies.moves.refused', { interpolate });
+	}
+
 	const warningText = (warning: PromotionDependencyWarning) =>
 		i18n.baseText(`promotions.dependencies.warning.${warning.code}`);
 
@@ -100,6 +128,8 @@ export function usePromotionDependencyLabels() {
 		stateLabel,
 		usageLabel,
 		rowFix,
+		detailText,
+		credentialNotMovedText,
 		warningText,
 		noteText,
 		hardBlockText,

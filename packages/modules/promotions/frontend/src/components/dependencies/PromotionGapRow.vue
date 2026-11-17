@@ -46,7 +46,7 @@ const i18n = useI18n();
 const router = useRouter();
 const rbacStore = useRBACStore();
 const settingsStore = useSettingsStore();
-const { targetName, stateLabel, usageLabel, rowFix } = usePromotionDependencyLabels();
+const { targetName, stateLabel, usageLabel, rowFix, detailText } = usePromotionDependencyLabels();
 
 const has = (exit: GapTargetRow['exits'][number]) =>
 	!props.readOnly && props.row.exits.includes(exit);
@@ -63,6 +63,12 @@ const usages = computed(() => {
 });
 
 const fix = computed(() => rowFix(props.group, props.row));
+const details = computed(() =>
+	props.row.details.flatMap((detail) => {
+		const text = detailText(detail);
+		return text ? [{ detail, text }] : [];
+	}),
+);
 const name = computed(() => targetName(props.row.target));
 
 // The review opens in the Inbox when the user can read it there, else on the Git host.
@@ -112,6 +118,17 @@ const ownerRequestSent = computed(
 			</N8nText>
 			<N8nText v-if="fix" tag="p" step="2xs" color="text-base" :class="$style.detail">
 				{{ fix }}
+			</N8nText>
+			<N8nText
+				v-for="{ detail, text } in details"
+				:key="detail"
+				tag="p"
+				step="2xs"
+				color="text-base"
+				:class="$style.detail"
+				data-test-id="promotion-gap-detail"
+			>
+				{{ text }}
 			</N8nText>
 			<N8nText
 				v-if="placeholderProject !== undefined"
