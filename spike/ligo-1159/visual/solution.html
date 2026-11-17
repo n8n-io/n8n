@@ -184,7 +184,7 @@ svg.arrows text{font-size:10px;fill:#5f6f86;paint-order:stroke;stroke:#ffffffd9;
 .t-edge span{position:absolute;left:0;right:6px;top:-2px;text-align:center;font-size:10.5px;color:var(--muted);font-weight:650}
 .t-col{min-width:0;flex:1}
 .t-frow{display:flex;align-items:flex-start;margin-top:5px;padding-left:14px}
-.t-frow .t-edge{width:38px}
+.t-frow .t-edge{width:62px} .t-frow .t-frow{padding-left:4px}
 .tree.has-path .t-node:not(.on){opacity:.32}
 .tree.has-path .t-down:not(.on),.tree.has-path .t-edge:not(.on){opacity:.3}
 .t-node.on{box-shadow:0 0 0 3px #141b2630;transform:scale(1.02)}
@@ -263,6 +263,11 @@ table.t .see{font-size:11px;color:var(--info);font-weight:600;white-space:nowrap
 .dec .rec b{color:#7a2d8f}
 .dec .links{margin-top:8px;display:flex;gap:6px;flex-wrap:wrap}
 .dec .links button{border:0;background:#eef1f5;border-radius:6px;padding:3px 8px;font:inherit;font-size:11.5px;cursor:pointer;color:var(--info);font-weight:600}
+.conf{margin-top:10px;background:var(--risk-bg);border:1px solid #efc2da;border-radius:8px;padding:8px 11px;font-size:12.5px;color:#4a1634;max-width:860px}
+.conf + .conf{margin-top:6px}
+.conf .conf-t{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--risk);margin-bottom:2px}
+.conf ul{margin:4px 0 0;padding-left:18px}
+.lg-chip.dash{border-style:dashed;background:#f3f5f8;border-left:1.5px dashed #c3ccd8} .lg-chip.inc{border-color:#1590b2;background:var(--gap-bg);border-left:1.5px solid #1590b2}
 details.card{padding:0} details.card summary{padding:12px 16px;cursor:pointer;font-weight:650}
 details.card[open] summary{border-bottom:1px solid var(--line)}
 footer{color:var(--faint);font-size:12px;padding:26px 0 40px}
@@ -272,11 +277,11 @@ footer{color:var(--faint);font-size:12px;padding:26px 0 40px}
 <body>
 <header class="top"><div class="wrap">
   <h1>Cross-project promotion: complete by default, never stuck</h1>
-  <div class="sub">LIGO-1159 · chosen solution, revision of 2026-11-17 (evening) · final state · detailed record: <span class="mono">review/final/solution.md</span></div>
+  <div class="sub">LIGO-1159 · chosen solution, revision of 2026-11-17 (evening), amended after the specification review · final state · detailed record: <span class="mono">review/final/solution.md</span></div>
   <blockquote><b>A dependency goes before, or with, what uses it.</b></blockquote>
 </div></header>
 <nav class="toc"><div class="wrap">
-  <a href="#rule">The rule</a><a href="#overview">The whole flow</a><a href="#explorer">Scenario explorer</a><a href="#scope">Scope</a><a href="#compare">Chosen vs alternatives</a><a href="#decisions">Open decisions</a><a href="#more">Rejected and unsettled</a>
+  <a href="#rule">The rule</a><a href="#overview">The whole flow</a><a href="#explorer">Scenario explorer</a><a href="#scope">Scope</a><a href="#compare">Chosen vs alternatives</a><a href="#decisions">Open decisions</a><a href="#more">Rejected and unsettled</a><a href="#conflicts">Sources disagree</a>
 </div></nav>
 
 <div class="wrap">
@@ -285,10 +290,11 @@ footer{color:var(--faint);font-size:12px;padding:26px 0 40px}
   <p class="lead">A dependency is a sub-workflow, an error workflow or a credential that a workflow needs. A reference that will not resolve after the operation is a <b>gap</b>. Each gap gets the best exit that the user can take.</p>
   <div class="principles" id="principles"></div>
   <div class="terms">
-    <div><b>Gap</b>: a reference from an item of the operation to a resource that will not resolve after the operation.</div>
+    <div><b>Gap</b>: a static reference from an item of the operation to a resource that will not resolve after the operation.</div>
     <div><b>Strict environment</b>: "allow incomplete" is off. A gap stops the operation. This is the default.</div>
     <div><b>Incomplete operation</b>: a Promote or Apply that writes items with gaps, after the user confirms the list. Opt-in for each environment.</div>
-    <div><b>Placeholder</b>: an empty credential that an incomplete Apply creates in the project that uses it. It moves to its owner when the real credential arrives.</div>
+    <div><b>Placeholder</b>: an empty credential with a marker. An incomplete Apply creates it in a project that uses it, when the destination does not hold the credential. It moves to its owner when the real credential arrives.</div>
+    <div><b>Works on the source</b>: the target exists, is not archived, and the item can use it. When the check cannot tell, the reference counts as working.</div>
     <div><b>Changes view</b>: the changes grouped by project. A selection can span the projects that the user can access.</div>
     <div><b>Cast used on this page</b>: Sales (P) owns the workflows, Platform (Q) owns the credential, Ops (R) owns the sub-workflow. Alice has a personal project.</div>
   </div>
@@ -339,6 +345,7 @@ footer{color:var(--faint);font-size:12px;padding:26px 0 40px}
       <div class="legend">
         <span><i class="lg-chip"></i>workflow</span><span><i class="lg-chip c"></i>credential</span>
         <span><i class="lg-chip ph"></i>missing here</span><span><i class="lg-chip st"></i>empty placeholder</span>
+        <span><i class="lg-chip inc"></i>written with confirmed gaps</span><span><i class="lg-chip dash"></i>dashed: not written, not merged, archived or not live. The chip says which.</span>
         <span><i class="lg-line"></i>reference that resolves</span><span><i class="lg-line d"></i>reference that does not resolve</span>
         <span><i class="lg-share">shared with</i>credential access of a project</span>
       </div>
@@ -376,7 +383,7 @@ footer{color:var(--faint);font-size:12px;padding:26px 0 40px}
 
 <section id="decisions">
   <h2>Open decisions for a human</h2>
-  <p class="lead">Each scenario that depends on one of these decisions carries its number. The scenarios show the recommended answer. Central credentials (IAM, Q1) and one repository for each project (LIGO-1399) are decided elsewhere.</p>
+  <p class="lead">Each scenario that depends on one of these decisions carries its number. The scenarios show the recommended answer. Decisions 5 to 8 come from the specification review. Central credentials (IAM, Q1) and one repository for each project (LIGO-1399) are decided elsewhere.</p>
   <div class="decs" id="decs"></div>
 </section>
 
@@ -384,6 +391,7 @@ footer{color:var(--faint);font-size:12px;padding:26px 0 40px}
   <h2>Rejected options and what is not settled</h2>
   <p class="lead">For the review: what the solution says no to, and what it leaves open.</p>
   <details class="card" open><summary id="rejsum">Rejected options</summary><table class="t" id="rejtable"></table></details>
+  <details class="card" open style="margin-top:14px" id="conflicts"><summary id="confsum">Where solution.md and the specification disagree</summary><table class="t" id="conftable"></table></details>
   <div class="two" style="margin-top:14px">
     <div class="card"><h3>Flag: repositories for each project (separate spike)</h3>
       <p style="margin:0 0 6px;color:#344054">Self-contained by default. LIGO-1399 decides the details. Problems to solve:</p><ul>
@@ -393,13 +401,20 @@ footer{color:var(--faint);font-size:12px;padding:26px 0 40px}
       <li>Instance resources belong to no project.</li></ul>
       <p style="margin:6px 0 0;color:#344054">"Allow incomplete" gives that spike its "reference only" option.</p></div>
     <div class="card"><h3>What the code does not settle</h3><ul>
-      <li>The editor publish path for a workflow whose credential is an empty placeholder (decision 2).</li>
-      <li>A credential transfer on the source from Q to Q2 before Q promoted again. The package can then hold one credential id under two project folders. The reader behavior for a duplicate id is not verified.</li>
+      <li>The publish paths for a workflow whose credential is a placeholder (decision 2).</li>
       <li>A static reference in a disabled node. The check treats it as a reference. Not verified against the requirement exporter.</li>
       <li>The cost of the branch inventory check on a large branch. Not measured.</li></ul>
-      <h3 style="margin-top:12px">Limits</h3><ul>
+      <h3 style="margin-top:12px">Known limits</h3><ul>
       <li>References made by expressions are not checked. An expression needs an execution context. This is permanent.</li>
-      <li>No format change, so an older destination applies the branch as today. It has no Apply gate: a gap arrives as a broken reference.</li></ul></div>
+      <li>An older destination applies the branch as today. It has no Apply gate: a gap arrives as a broken reference.</li>
+      <li>A move into a personal project stops the Promote in both modes, also every instance Promote.</li>
+      <li>A move out of a project that the package does not hold needs an instance Apply.</li>
+      <li>After the upgrade, each workflow that uses a top-level credential has a gap at its next Promote.</li>
+      <li>A review across projects holds the open-review gate of each of its projects. Who can see it is not decided (LIGO-1006).</li>
+      <li>A global credential that a personal project owns is a personal dependency for each workflow that uses it.</li>
+      <li>The result of a check shows that an id exists, also for a target that the user cannot access.</li>
+      <li>A workflow that an instance Apply keeps is not checked further.</li>
+      <li>Not covered by scenarios: agents, instance to instance, the life cycle of a request to the owner, and the API and CLI shape of a confirmation.</li></ul></div>
   </div>
 </section>
 <footer>Specification: <span class="mono">spike/ligo-1159/spec/*.feature</span>. Each scenario of the explorer names the Gherkin scenarios that specify it.</footer>
@@ -417,7 +432,7 @@ const PROJECTS = {
 const ITEMS = {
   W: { t: 'wf', n: 'Sync orders' }, S: { t: 'wf', n: 'Notify on-call' }, C: { t: 'cred', n: 'CRM key' }, H: { t: 'wf', n: 'Format order' },
   T: { t: 'cred', n: "Alice's token" }, K: { t: 'wf', n: 'Refresh CRM cache' }, D: { t: 'wf', n: 'Daily report' }, L: { t: 'wf', n: 'Legacy alert' },
-  Z: { t: 'wf', n: 'Deleted workflow' }, DT: { t: 'table', n: 'Shifts' },
+  Z: { t: 'wf', n: 'Deleted workflow' }, DT: { t: 'table', n: 'Shifts' }, SK: { t: 'cred', n: 'Sales key' }, WL: { t: 'wf', n: 'Sync orders' },
 };
 const TYPE = { wf: 'workflow', cred: 'credential', table: 'data table' };
 const LANES = [
@@ -432,32 +447,40 @@ const FLAGSUB = { blocked: 'blocked · not written', held: 'not written', warn: 
 const TREES = {
   promote: { title: 'Promote check, for each static reference', rows: [
     { id: 'R', k: 'start', text: 'Static reference from an item that this Promote writes' },
-    { id: 'E', k: 'q', text: 'Does the target work on the source?', down: 'yes', side: { label: 'no', id: 'W1', k: 'warn', text: 'Warning: broken on the source. Promote continues.' } },
+    { id: 'E', k: 'q', text: 'Does the target work on the source?', down: 'yes, or unknown', side: { label: 'no', id: 'W1', k: 'warn', text: 'Warning: broken on the source. Promote continues.', note: 'the branch records the reason' } },
     { id: 'P', k: 'q', text: 'Target in a personal project?', down: 'no', side: { label: 'yes', id: 'G2', k: 'gap', text: 'Gap: personal. Fix: move it to a team project.', note: 'strict: block · allowed: confirm and continue' } },
+    { id: 'N', k: 'q', text: 'Credential with usage scope "instance"?', down: 'no', side: { label: 'yes', id: 'NT', k: 'action', text: 'Note: not promoted. It must exist on the destination.' } },
     { id: 'Q', k: 'q', text: 'On the branch after this Promote?', down: 'no', side: { label: 'yes', id: 'OK', k: 'pass', text: 'Pass' } },
-    { id: 'A', k: 'q', text: 'Can the user promote its project?', down: 'no', side: { label: 'yes', id: 'I', k: 'action', text: 'Gap with the action "Include it"' } },
-    { id: 'G3', k: 'gap', text: 'Gap: no access. "Ask the owner". The report shows only what the workflow holds.', note: 'strict: block · allowed: confirm and continue' },
+    { id: 'A', k: 'q', text: 'Can the user include it?', note: 'project in the environment · right to promote · read access', down: 'no', side: { label: 'yes', id: 'I', k: 'action', text: 'Gap with the action "Include it"' } },
+    { id: 'G3', k: 'gap', text: 'Gap: no access, or outside the environment. "Ask the owner". The report shows only what the workflow holds.', note: 'strict: block · allowed: confirm and continue' },
   ] },
-  apply: { title: 'Apply check, for each reference', rows: [
+  apply: { title: 'Apply check, for each reference, on the state after the Apply', rows: [
     { id: 'R', k: 'start', text: 'Reference from an item that this Apply writes' },
-    { id: 'Q1', k: 'q', text: 'Written by this Apply?', down: 'no', side: { label: 'yes', id: 'C1', k: 'pass', text: 'Pass' } },
-    { id: 'Q2', k: 'q', text: 'On the destination, not archived, and not deleted by this Apply?', down: 'no', side: { label: 'yes', id: 'Q3', k: 'q', text: 'Usable by the consumer project?', fork: [
-      { label: 'yes', id: 'SP', k: 'pass', text: 'Pass' }, { label: 'no', id: 'N', k: 'grant', text: 'Grant that the user confirms' } ] } },
-    { id: 'Q4', k: 'q', text: 'On the branch?', down: 'yes', side: { label: 'no', id: 'T0', k: 'q', text: 'Type of the target?', fork: [
-      { label: 'workflow', id: 'WN', k: 'warn', text: 'Warning: the reference stays broken' },
-      { label: 'credential', id: 'G4', k: 'gap', text: 'Gap: credential not on the branch', note: 'strict: block · allowed: placeholder in the consumer project' } ] } },
-    { id: 'T', k: 'q', text: 'Type of the target?', down: 'workflow', side: { label: 'credential', id: 'B1', k: 'action', text: 'Create it one time in its owner project', note: 'then: usable by the consumer project?' } },
-    { id: 'A', k: 'q', text: 'Can the user apply its project?', down: 'no', side: { label: 'yes', id: 'I', k: 'action', text: 'Gap with the action "Include it"' } },
-    { id: 'G1', k: 'gap', text: 'Gap: no access. "Ask the owner".', note: 'strict: block · allowed: the reference stays unresolved' },
+    { id: 'X', k: 'q', text: 'Does the selection of this Apply delete the target?', down: 'no', side: { label: 'yes', id: 'GD', k: 'gap', text: 'Gap: this Apply deletes the target', note: 'fix: remove the deletion from the selection' } },
+    { id: 'D', k: 'q', text: 'On the destination after this Apply: written by it, or already there?', down: 'no', side: { label: 'yes', id: 'AR', k: 'q', text: 'Archived?', fork: [
+      { label: 'yes', id: 'GA', k: 'gap', text: 'Gap: archived. Fix: restore it.' },
+      { label: 'no', id: 'U', k: 'q', text: 'Usable by the consumer project?', fork: [
+        { label: 'yes', id: 'SP', k: 'pass', text: 'Pass' },
+        { label: 'credential', id: 'GR', k: 'grant', text: 'Grant that the user confirms', note: 'without the right to share: a gap' },
+        { label: 'workflow', id: 'CP', k: 'gap', text: 'Gap: the caller policy refuses the caller' } ] } ] } },
+    { id: 'B', k: 'q', text: 'On the branch?', down: 'yes', side: { label: 'no', id: 'T', k: 'q', text: 'Reason on the branch?', fork: [
+      { label: 'broken', id: 'WN', k: 'warn', text: 'Warning: broken on the source. The reference stays broken.' },
+      { label: 'confirmed', id: 'G2', k: 'gap', text: 'Gap: an incomplete Promote left it out', note: 'strict: block · allowed: placeholder for a credential' },
+      { label: 'none', id: 'L', k: 'q', text: 'An existing branch', fork: [
+        { label: 'workflow', id: 'LW', k: 'warn', text: 'Warning' },
+        { label: 'credential', id: 'LC', k: 'gap', text: 'Gap: credential not on the branch' } ] } ] } },
+    { id: 'A', k: 'q', text: 'Can the user apply its project?', down: 'no', side: { label: 'yes', id: 'I', k: 'action', text: 'Gap with the action "Include it"', note: 'credential: a person creates it in its owner project' } },
+    { id: 'G1', k: 'gap', text: 'Gap: no access. "Ask the owner".', note: 'strict: block · allowed: a placeholder for a credential, an unresolved reference for a workflow' },
   ] },
 };
-const PP = { pass: 'R E P Q OK', include: 'R E P Q A I', noaccess: 'R E P Q A G3', personal: 'R E P G2', broken: 'R E W1' };
-const AP = { written: 'R Q1 C1', usable: 'R Q1 Q2 Q3 SP', grant: 'R Q1 Q2 Q3 N', notbranch: 'R Q1 Q2 Q4 T0 WN', credoff: 'R Q1 Q2 Q4 T0 G4', cred: 'R Q1 Q2 Q4 T B1', include: 'R Q1 Q2 Q4 T A I', noaccess: 'R Q1 Q2 Q4 T A G1', policy: 'R Q1 Q2 Q3' };
+const PP = { pass: 'R E P N Q OK', include: 'R E P N Q A I', noaccess: 'R E P N Q A G3', personal: 'R E P G2', broken: 'R E W1', instance: 'R E P N NT' };
+const AP = { written: 'R X D AR U SP', usable: 'R X D AR U SP', grant: 'R X D AR U GR', policy: 'R X D AR U CP', archived: 'R X D AR GA', deleted: 'R X GD',
+  broken: 'R X D B T WN', confirmed: 'R X D B T G2', notbranch: 'R X D B T L LW', credoff: 'R X D B T L LC', cred: 'R X D B A I', include: 'R X D B A I', noaccess: 'R X D B A G1' };
 
 /* ---------- scenarios ---------- */
 const F = { pd: 'promote-dependencies.feature', pc: 'promote-credentials.feature', ip: 'instance-promote.feature', pdel: 'promote-deletions.feature',
   ad: 'apply-dependencies.feature', ac: 'apply-credentials.feature', adel: 'apply-deletions.feature', eb: 'existing-branches.feature', mv: 'moves.feature', sc: 'scope.feature',
-  dr: 'dependency-report.feature', ai: 'allow-incomplete.feature', ao: 'ask-the-owner.feature', sx: 'selection-across-projects.feature' };
+  dr: 'dependency-report.feature', perm: 'permissions.feature', ai: 'allow-incomplete.feature', ao: 'ask-the-owner.feature', sx: 'selection-across-projects.feature' };
 const PRO = (label) => ({ k: 'promote', label }), APP = (label) => ({ k: 'apply', label }), SRC = (label) => ({ k: 'src', label }), DST = (label) => ({ k: 'dst', label });
 
 const SCENARIOS = [
@@ -465,14 +488,14 @@ const SCENARIOS = [
 { id: 'p-other', group: 'Promote', title: 'A dependency of another project that the user cannot access', flow: '3.2, 3.6', lanes: 'sb', rows: ['P', 'Q', 'R'], decisions: [1],
   intro: 'The central case on a strict environment. Sync orders in Sales uses a credential of Platform and calls a sub-workflow of Ops. The builder can access Sales only. Promote never adds the content of another project by itself.',
   refs: [['W', 'C', 'uses'], ['W', 'S', 'calls']],
-  spec: [[F.pd, 'A gap stops the Promote and nothing is written'], [F.dr, 'The report shows the reference as the node holds it'], [F.ao, 'The user asks the owner'], [F.ao, 'The requester gets no information about the owner project'], [F.pd, 'The Promote passes after each owner team promotes its dependency']],
+  spec: [[F.pd, 'A gap stops the Promote and nothing is written'], [F.dr, 'The report shows the reference as the node holds it'], [F.ao, 'The user asks the owner'], [F.ao, 'The requester gets no information about the owner project'], [F.ao, 'The admins of the owner project receive the request'], [F.ao, 'The request shows the resource and the requester'], [F.ao, 'The owner team promotes the requested resource'], [F.pd, 'The Promote passes after each owner team promotes its dependency']],
   steps: [
     { t: 'Starting point', d: 'The source holds the workflow and both dependencies. The branch holds neither dependency.', src: 'W@P C@Q S@R', br: '' },
     { t: 'Sales promotes Sync orders', op: PRO('Project Promote · Sales · Sync orders'), v: 'block', br: 'W@P!blocked',
       d: 'The report shows two gaps. The builder cannot access Platform or Ops, so each gap shows only what the node of Sync orders already holds: the name, the type and the id. No project, no state, no review. The environment is strict, so the Promote stops. Each gap offers "Ask the owner".',
       msgs: [['block', 'CRM key', 'A credential that you cannot access is not on the branch.', 1], ['block', 'Notify on-call', 'A workflow that you cannot access is not on the branch.', 1], ['action', '', 'Ask the owner. The builder sees "Request sent", and no name of the owner project.']],
       checks: [['W', 'C', 'promote', PP.noaccess, 'gap'], ['W', 'S', 'promote', PP.noaccess, 'gap']] },
-    { t: 'Ops promotes Notify on-call', op: PRO('Project Promote · Ops · Notify on-call'), v: 'pass', br: 'S@R', d: 'The request is in the promotion inbox of Ops. The owner team promotes its own item. It has no dependency, so it passes.' },
+    { t: 'Ops promotes Notify on-call', op: PRO('Project Promote · Ops · Notify on-call'), v: 'pass', br: 'S@R', d: 'The request is in the promotion inbox of Ops. It shows the requested resource and the requesting user, and not the project of the requester (decision 1). It offers the Promote of Notify on-call. The owner team promotes its own item. It has no dependency, so it passes.' },
     { t: 'Platform promotes the credential', op: PRO('Project Promote · Platform · credential CRM key'), v: 'pass', br: 'C@Q S@R', isNew: true,
       d: 'A project Promote can select the credentials that the project owns, also when no selected workflow uses them. The Promote writes the file under the Platform folder: the branch path names the owner.' },
     { t: 'Sales promotes Sync orders again', op: PRO('Project Promote · Sales · Sync orders'), v: 'pass', br: 'W@P C@Q S@R', d: 'Both dependencies are on the branch. The report shows no gap.',
@@ -517,23 +540,27 @@ const SCENARIOS = [
     { t: 'Platform promotes the credential', op: PRO('Project Promote · Platform · CRM key · opens a review'), v: 'info', br: 'C@Q!review', d: 'The Promote opens a review. The base branch does not hold the credential until the review is merged.' },
     { t: 'Sales previews the Promote of Sync orders', op: PRO('Preview · Sales · Sync orders'), v: 'block', br: 'C@Q!review W@P!blocked',
       d: 'The user can access Platform, so the report shows the state of the gap and links to the review. A user without access to Platform would see neither the state nor the review.',
-      msgs: [['block', 'CRM key · Platform', 'In an open review. Open the review.', 1]] },
+      msgs: [['block', 'CRM key · Platform', 'In an open review. Open the review.', 1]], checks: [['W', 'C', 'promote', PP.include, 'gap']] },
     { t: 'The review is merged', v: 'info', br: 'C@Q', d: 'The credential is now on the branch under Platform.' },
     { t: 'Sales promotes Sync orders', op: PRO('Project Promote · Sales · Sync orders'), v: 'pass', br: 'W@P C@Q', d: 'The gap is closed.', checks: [['W', 'C', 'promote', PP.pass, 'pass']] },
   ] },
-{ id: 'p-incomplete', group: 'Promote', title: 'Promote with gaps on an environment that allows it', flow: '3.5', lanes: 'sb', rows: ['P', 'Q', 'R'],
-  intro: 'An admin turned on "Allow incomplete promotions" for this promote environment. It is off by default and needs no extra permission.',
+{ id: 'p-incomplete', group: 'Promote', title: 'Promote with gaps on an environment that allows it', flow: '3.5, 4.2', lanes: 'sbd', rows: ['P', 'Q', 'R'], decisions: [7],
+  intro: 'An admin turned on "Allow incomplete promotions" for this promote environment. It is off by default and needs no extra permission. The apply environment stays strict: each direction has its own setting.',
   refs: [['W', 'C', 'uses'], ['W', 'S', 'calls']],
-  spec: [[F.ai, 'The user confirms the list of gaps'], [F.ai, 'The Promote writes the item and records the gaps'], [F.ai, 'The review description lists the gaps'], [F.ai, 'The gaps of the branch stop the Apply']],
+  spec: [[F.ai, 'The user confirms the list of gaps'], [F.ai, 'The Promote writes the item and records the gaps'], [F.ai, 'The review description lists the gaps'], [F.ai, 'The confirmation must match the current gaps'], [F.ai, 'Each direction has its own setting'], [F.ai, 'The gaps of the branch stop the Apply'], [F.ai, 'A credential that is not on the branch stops a strict Apply'], [F.ai, 'Each gap is one reference']],
   steps: [
-    { t: 'Starting point', d: 'The branch holds neither dependency. The builder can access Sales only.', src: 'W@P C@Q S@R', br: '' },
+    { t: 'Starting point', d: 'The branch holds neither dependency. The builder can access Sales only. The destination holds none of these items.', src: 'W@P C@Q S@R', br: '', dst: '' },
     { t: 'The preview lists the gaps', op: PRO('Preview · Sales · Sync orders'), v: 'block', br: 'W@P!held',
       d: 'Each gap still offers "Ask the owner". The environment allows incomplete, so the preview also offers to continue.',
       msgs: [['block', 'CRM key', 'A credential that you cannot access is not on the branch.', 1], ['block', 'Notify on-call', 'A workflow that you cannot access is not on the branch.', 1], ['action', '', 'Promote with 2 gaps']],
       checks: [['W', 'C', 'promote', PP.noaccess, 'gap'], ['W', 'S', 'promote', PP.noaccess, 'gap']] },
     { t: 'The user confirms and promotes', op: PRO('Project Promote · Sales · 2 gaps confirmed'), v: 'gap', br: 'W@P!incomplete',
-      d: 'The Promote writes Sync orders. The two references become requirement rows, with no file. The review description and the commit message list the gaps, so the reviewer sees them. A strict apply environment still stops on these gaps.',
+      d: 'The Promote writes Sync orders. The two references become requirement rows, with no file. Each row records the reason: a confirmed gap. "2 gaps" counts references. The review description and the commit message list the gaps, so the reviewer sees them. The confirmation must match the current gaps: when a new gap appears after the preview, the Promote stops and asks the user to confirm the new list.',
       msgs: [['warn', 'Review description', 'Gaps: CRM key, Notify on-call.', 1]] },
+    { t: 'A strict Apply of Sales', op: APP('Project Apply · Sales · Sync orders'), v: 'block', dst: 'W@P!blocked',
+      d: 'The apply environment is strict. The branch records both references as confirmed gaps (decision 7). Neither target is on the destination, so the Apply stops before any write. A strict apply environment stays strict after an incomplete Promote.',
+      msgs: [['block', 'CRM key', 'CRM key is not on the branch. The owner team must promote it.'], ['block', 'Notify on-call', 'Not on the branch: an incomplete Promote left it out.', 1]],
+      checks: [['W', 'C', 'apply', AP.confirmed, 'gap'], ['W', 'S', 'apply', AP.confirmed, 'gap']] },
   ] },
 { id: 'p-personal', group: 'Promote', title: 'A dependency is in a personal project', flow: '3.10', lanes: 'sb', rows: ['P', 'U'],
   intro: 'A personal resource is never on the branch. A reference to it is a gap with a fix: move the resource to a team project.',
@@ -545,13 +572,13 @@ const SCENARIOS = [
     { t: 'Alice moves the credential to Sales', op: SRC('Editor · move the credential to Sales'), v: 'info', src: 'W@P T@P', br: '', d: 'The editor transfer of a credential is the fix. The same holds for a personal sub-workflow or error workflow.' },
     { t: 'Sales promotes both', op: PRO('Project Promote · Sales · Sync orders + credential'), v: 'pass', br: 'W@P T@P', d: 'The credential is now content of a team project. It goes to the branch under the Sales folder, in the same Promote.', checks: [['W', 'T', 'promote', PP.pass, 'pass']] },
   ] },
-{ id: 'p-broken', group: 'Promote', title: 'Already broken on the source: a warning, not a gap', flow: '1, decision 13', lanes: 'sb', rows: ['P', 'R'], homes: { Z: 'R' }, broken: ['Z'],
+{ id: 'p-broken', group: 'Promote', title: 'Already broken on the source: a warning, not a gap', flow: '1, decision 13', lanes: 'sb', rows: ['P', 'R'], homes: { Z: 'R' }, broken: ['Z'], decisions: [7],
   intro: 'Two workflows of Sales each call a sub-workflow of Ops. Both targets are absent from the branch, but for different reasons. The first question of the check decides: does the target work on the source?',
-  refs: [['W', 'Z', 'calls'], ['D', 'S', 'calls']], spec: [[F.pd, 'A workflow calls a workflow that does not exist on the source'], [F.pd, 'The same Promote check stops a reference that works on the source']],
+  refs: [['W', 'Z', 'calls'], ['D', 'S', 'calls']], spec: [[F.pd, 'A workflow calls a workflow that does not exist on the source'], [F.pd, 'The same Promote check stops a reference that works on the source'], [F.pd, 'The Promote records that a reference is broken on the source']],
   steps: [
     { t: 'Starting point', d: 'Sync orders calls a workflow that someone deleted: the call already fails on the source. Daily report calls Notify on-call, which exists and works on the source. The branch is empty.', src: 'W@P D@P S@R', br: '' },
     { t: 'Sales promotes Sync orders', op: PRO('Project Promote · Sales · Sync orders'), v: 'warn', br: 'W@P!warn',
-      d: 'The target does not work on the source, so the check stops at its first question. Promote copies the workflow as it is. The same reference is broken in the same place. Nothing became worse.',
+      d: 'The target does not work on the source, so the check stops at its first question. Promote copies the workflow as it is. The same reference is broken in the same place. Nothing became worse. The branch records the reason, so that Apply can warn too (decision 7).',
       msgs: [['warn', 'Sync orders', 'This reference is broken.'], ['note', 'Why not a gap', 'No Promote can put a deleted workflow on the branch. Promotion copies the source. It does not repair it.', 1]],
       checks: [['W', 'Z', 'promote', PP.broken, 'warn']] },
     { t: 'Sales promotes Daily report', op: PRO('Project Promote · Sales · Daily report'), v: 'block', br: 'W@P!warn D@P!blocked',
@@ -559,12 +586,12 @@ const SCENARIOS = [
       msgs: [['block', 'Notify on-call', 'A workflow that you cannot access is not on the branch.', 1], ['note', 'The test', 'Would the destination be worse than the source? Broken on both sides: no, warning. Works on the source only: yes, gap.', 1]],
       checks: [['D', 'S', 'promote', PP.noaccess, 'gap']] },
   ] },
-{ id: 'p-cycle', group: 'Promote', title: 'Workflows that call each other across two projects', flow: '3.1', lanes: 'sb', rows: ['P', 'R'],
+{ id: 'p-cycle', group: 'Promote', title: 'Workflows that call each other across two projects', flow: '3.1', lanes: 'sb', rows: ['P', 'R'], decisions: [4],
   intro: 'A true cycle between items of two projects. Neither item can go first, so both go in one Promote across projects.',
-  refs: [['W', 'S', 'calls'], ['S', 'W', 'calls']], spec: [[F.sx, 'One Promote writes a cycle between two projects'], [F.sx, 'A cycle with a project that the user cannot promote is a gap']],
+  refs: [['W', 'S', 'calls'], ['S', 'W', 'calls']], spec: [[F.sx, 'One Promote writes a cycle between two projects'], [F.sx, 'A cycle with a project that the user cannot promote is a gap'], [F.sx, 'Two owners who each can promote one project cannot close a cycle']],
   steps: [
     { t: 'Starting point', d: 'Sync orders in Sales calls Notify on-call in Ops, and Notify on-call calls Sync orders.', src: 'W@P S@R', br: '' },
-    { t: 'Sales promotes Sync orders alone', op: PRO('Project Promote · Sales · Sync orders'), v: 'block', br: 'W@P!blocked', d: 'Notify on-call is a gap. The user can promote Ops, so the gap offers "Include it". A user who cannot promote Ops gets "Ask the owner", and the owner team includes Sync orders in its turn.',
+    { t: 'Sales promotes Sync orders alone', op: PRO('Project Promote · Sales · Sync orders'), v: 'block', br: 'W@P!blocked', d: 'Notify on-call is a gap. The user can promote Ops, so the gap offers "Include it". A user who cannot promote Ops gets "Ask the owner". Two owners who each can promote one project cannot close the cycle that way: a user with the right in both projects promotes it (decision 4).',
       msgs: [['action', 'Notify on-call', 'Include it']], checks: [['W', 'S', 'promote', PP.include, 'gap']] },
     { t: 'The user includes Notify on-call', op: PRO('Promote across projects · Sales + Ops'), v: 'pass', br: 'W@P S@R', isNew: true, d: 'One Promote writes both items, so each reference is in the same Promote. No instance Promote is needed.',
       checks: [['W', 'S', 'promote', PP.pass, 'pass'], ['S', 'W', 'promote', PP.pass, 'pass']] },
@@ -585,7 +612,7 @@ const SCENARIOS = [
     { t: 'Starting point', d: 'Source and branch are in step. Daily report calls Notify on-call.', src: 'D@P S@R', br: 'D@P S@R' },
     { t: 'Ops deletes Notify on-call on the source', op: SRC('Editor · delete Notify on-call'), v: 'info', src: 'D@P', d: 'The source now has a broken reference.' },
     { t: 'Ops promotes the deletion', op: PRO('Project Promote · Ops · deletion of Notify on-call'), v: 'warn', br: 'D@P', d: 'Promote continues. The source already has the same broken reference, so the branch still matches the source.',
-      msgs: [['warn', 'Preview', 'Daily report in project Sales calls Notify on-call. After the Apply, Daily report has a broken reference.']] },
+      msgs: [['warn', 'Preview', 'Daily report in project Sales calls Notify on-call. The reference of Daily report is broken on the branch.']] },
   ] },
 { id: 'p-instance', group: 'Promote', title: 'Instance Promote lists every gap before the write to the branch', flow: '3.1, 3.10', lanes: 'sb', rows: ['P', 'Q', 'R', 'U'], homes: { Z: 'R' }, broken: ['Z'],
   intro: 'An instance Promote selects every change of every team project, so a dependency between team projects is always in the same Promote. Only personal dependencies, broken references and moves remain.',
@@ -601,16 +628,52 @@ const SCENARIOS = [
     { t: 'The admin starts the instance Promote again', op: PRO('Instance Promote · all team projects'), v: 'warn', br: 'W@P T@P K@Q C@Q D@R!warn', d: 'The Promote continues. The reference to the deleted workflow is a warning.',
       msgs: [['warn', 'Daily report', 'This reference is broken.']], checks: [['W', 'T', 'promote', PP.pass, 'pass'], ['D', 'Z', 'promote', PP.broken, 'warn']] },
   ] },
+{ id: 'p-expression', group: 'Promote', title: 'A reference that an expression computes is not checked', flow: '3.2', lanes: 'sb', rows: ['P', 'R'],
+  intro: 'Sync orders calls Notify on-call by its id. It also calls a workflow whose id an expression computes. The check reads static references only.',
+  refs: [['W', 'S', 'calls']], spec: [[F.dr, 'A reference that an expression computes is not checked']],
+  steps: [
+    { t: 'Starting point', d: 'Notify on-call is already on the branch under Ops. The second call of Sync orders has no fixed id: an expression computes it when the workflow runs. The page draws no arrow for it, because no target is known before the run.',
+      src: 'W@P S@R', br: 'S@R', sub: { 'src:W': 'workflow · 1 call by expression' } },
+    { t: 'Sales promotes Sync orders', op: PRO('Project Promote · Sales · Sync orders'), v: 'pass', br: 'W@P S@R', sub: { 'src:W': 'workflow · 1 call by expression', 'br:W': 'written · 1 call not checked' },
+      d: 'The static call to Notify on-call passes. The report shows a note for the call by expression. That reference is not a gap, so it does not stop the Promote on a strict environment. Apply shows the same report.',
+      msgs: [['note', 'Call by expression', 'Resolved at run time. Not checked.'], ['note', 'Why', 'An expression needs an execution context that Promote and Apply do not have. This is a permanent limit.', 1]],
+      checks: [['W', 'S', 'promote', PP.pass, 'pass']] },
+  ] },
+{ id: 'p-gate', group: 'Promote', title: 'A selection across projects meets an open review', flow: '3.1, 3.3', lanes: 'sb', rows: ['P', 'R'],
+  intro: 'The promote environment opens a review for each Promote. The open-review gate checks each project of the selection, not only the project where the user starts.',
+  refs: [['W', 'S', 'calls']], spec: [[F.sx, 'The open-review gate checks each project of the selection'], [F.sx, 'A Promote across projects opens one review']],
+  steps: [
+    { t: 'Starting point', d: 'An earlier Promote of Ops opened a review. The review holds the changes of Ops, here Daily report, and is not merged. The user can promote Sales and Ops.', src: 'W@P S@R D@R', br: 'D@R!review' },
+    { t: 'The user previews the Promote of the selection', op: PRO('Preview · Sales + Ops · Sync orders + Notify on-call'), v: 'block', br: 'D@R!review W@P!blocked S@R!blocked',
+      d: 'The selection holds Sync orders of Sales and Notify on-call of Ops. The reference check passes: Notify on-call is in the same Promote. The open-review gate is a separate check. It checks each project of the selection, and Ops has an open review. A project with an open review cannot get a second Promote.',
+      msgs: [['block', 'Ops', 'Project Ops has an open review.', 1]],
+      checks: [['W', 'S', 'promote', PP.pass, 'pass']] },
+    { t: 'The review of Ops is merged', v: 'info', br: 'D@R', d: 'Daily report is now on the branch under Ops. Ops has no open review.' },
+    { t: 'The user promotes the selection', op: PRO('Promote across projects · Sales + Ops'), v: 'pass', br: 'D@R W@P S@R', isNew: true, sub: { 'br:W': 'in the new review', 'br:S': 'in the new review' },
+      d: 'The gate passes for each project. One Promote opens one review, and the review lists the projects Sales and Ops.',
+      checks: [['W', 'S', 'promote', PP.pass, 'pass']] },
+  ] },
+{ id: 'p-needed', group: 'Promote', title: 'The owner team sees the credentials that the branch needs', flow: '3.3, 3.7', lanes: 'sb', rows: ['P', 'Q'],
+  intro: 'Sync orders is on the branch, but CRM key is not. The preview of Platform, the owner project, lists the credential, so the owner team knows what to promote.',
+  refs: [['W', 'C', 'uses']], spec: [[F.pc, 'A workflow on the branch uses a credential that the branch does not hold'], [F.pc, 'The owner team promotes a credential that only other projects use']],
+  steps: [
+    { t: 'Starting point', d: 'The branch holds Sync orders under Sales and does not hold CRM key under a project. An incomplete Promote can leave the branch in this state. No workflow of Platform uses CRM key.', src: 'W@P C@Q', br: 'W@P' },
+    { t: 'Platform previews its Promote', op: PRO('Preview · Platform'), v: 'info', marks: { 'src:C': 'warn' },
+      d: 'The preview of the owner project lists CRM key as a credential that project Sales uses on the branch.',
+      msgs: [['note', 'CRM key', 'A credential that project Sales uses on the branch.', 1]] },
+    { t: 'Platform promotes the credential', op: PRO('Project Promote · Platform · credential CRM key'), v: 'pass', br: 'W@P C@Q', isNew: true,
+      d: 'A project Promote can select the credentials that the project owns, also when only other projects use them. The Promote writes CRM key under the Platform folder: the branch path names the owner. Sync orders on the branch now finds CRM key.' },
+  ] },
 
 /* ===== Apply ===== */
 { id: 'a-cred', group: 'Apply', title: 'A shared credential on a new destination', flow: '3.7', lanes: 'bd', rows: ['P', 'Q'],
   intro: 'CRM key belongs to Platform on the branch. Workflows of Sales and Platform use it. Apply creates it one time in its owner project, and Sales gets access through a grant that the user confirms.',
   refs: [['W', 'C', 'uses'], ['K', 'C', 'uses']],
-  spec: [[F.ac, 'The Apply stops and names the owner project and the consumer project'], [F.ac, 'The user creates the credential in the owner project'], [F.ac, 'The user grants access and the Apply imports']],
+  spec: [[F.ac, 'The Apply stops and names the owner project and the consumer project'], [F.ac, 'The Apply dialog offers only the owner project as the home'], [F.perm, 'A dependency never gives a permission'], [F.ac, 'The user creates the credential in the owner project'], [F.ac, 'The user grants access and the Apply imports']],
   steps: [
     { t: 'Starting point', d: 'The destination has both projects and no credential. The user applies only Sales.', br: 'W@P K@Q C@Q', dst: '' },
-    { t: 'The admin applies Sales', op: APP('Project Apply · Sales'), v: 'block', dst: 'W@P!blocked', d: 'Apply stops before any write. The branch path names the owner, so the user has no home to select.',
-      msgs: [['block', 'CRM key', 'Missing. Owner on the branch: Platform. Consumer: Sales.', 1], ['action', '', 'Add credential CRM key in Platform.']], checks: [['W', 'C', 'apply', AP.cred, 'block']] },
+    { t: 'The admin applies Sales', op: APP('Project Apply · Sales'), v: 'block', dst: 'W@P!blocked', d: 'Apply stops before any write. The branch path names the owner, so the user has no home to select. The admin can apply Platform, so the gap offers "Include it". The branch carries no secret values, so including a credential that the destination lacks adds one step: a person creates it in its owner project. Apply creates no credential for a user without that right: a dependency never gives a permission.',
+      msgs: [['block', 'CRM key', 'Missing. Owner on the branch: Platform. Consumer: Sales.', 1], ['action', '', 'Include it: add credential CRM key in Platform.']], checks: [['W', 'C', 'apply', AP.cred, 'gap']] },
     { t: 'The admin adds CRM key in Platform', op: DST('Admin adds CRM key in Platform'), v: 'info', dst: 'W@P!blocked C@Q', pop: ['C'],
       d: 'The credential is created one time, in its owner project, with the id of the source. The dialog then lists the access that the applied workflows need.',
       msgs: [['action', 'Access to grant', 'CRM key for project Sales.']], checks: [['W', 'C', 'apply', AP.grant, 'grant']] },
@@ -643,7 +706,7 @@ const SCENARIOS = [
   steps: [
     { t: 'Starting point', d: 'The destination has Sales only.', br: 'W@P C@Q', dst: '', noproj: { dst: ['Q'] } },
     { t: 'The admin applies Sales', op: APP('Project Apply · Sales'), v: 'block', dst: 'W@P!blocked', d: 'The step offers two ways forward. Creating the project needs project:create and a free team project in the licence quota.',
-      msgs: [['action', 'CRM key', 'Create project Platform'], ['action', 'CRM key', 'Apply project Platform first']], checks: [['W', 'C', 'apply', AP.cred, 'block']] },
+      msgs: [['action', 'CRM key', 'Create project Platform'], ['action', 'CRM key', 'Apply project Platform first']], checks: [['W', 'C', 'apply', AP.cred, 'gap']] },
     { t: 'The admin creates Platform and adds CRM key', op: DST('Admin creates Platform, adds CRM key'), v: 'info', dst: 'W@P!blocked C@Q', pop: ['C'], noproj: {}, d: 'The credential lands in the owner project that the branch names.',
       msgs: [['action', 'Access to grant', 'CRM key for project Sales.']], checks: [['W', 'C', 'apply', AP.grant, 'grant']] },
     { t: 'The admin grants access and applies', op: APP('Continue · grant list: CRM key → Sales'), v: 'pass', dst: 'W@P C@Q+P', d: 'Apply shares the credential with Sales and imports.', checks: [['W', 'C', 'apply', AP.usable, 'pass']] },
@@ -677,37 +740,37 @@ const SCENARIOS = [
     { t: 'The admin applies both in one Apply', op: APP('Apply across projects · Sales + Ops'), v: 'pass', dst: 'W@P S@R', isNew: true, d: 'The same Apply writes both items, so each reference counts as present.', checks: [['W', 'S', 'apply', AP.written, 'pass'], ['S', 'W', 'apply', AP.written, 'pass']] },
   ] },
 { id: 'a-archived', group: 'Apply', title: 'The dependency is archived on the destination', flow: '3.4', lanes: 'bd', rows: ['P', 'R'],
-  intro: 'Present means: the target exists and is not archived. An archived dependency is a gap with a fix, not a dead end.',
-  refs: [['W', 'S', 'calls']], spec: [[F.ad, 'An archived dependency is a gap with a fix'], [F.ad, 'An archived dependency stops a strict Apply'], [F.ad, 'The Apply passes after a user restores the dependency']],
+  intro: 'An archived target is on the destination, but nothing can use it. An archived dependency is a gap with a fix, not a dead end. Apply does not restore a workflow, also when the same Apply writes it.',
+  refs: [['W', 'S', 'calls']], spec: [[F.ad, 'An archived dependency is a gap with a fix'], [F.ad, 'An archived dependency stops a strict Apply'], [F.ad, 'The Apply passes after a user restores the dependency'], [F.ad, 'An included workflow that is archived on the destination stays a gap']],
   steps: [
     { t: 'Starting point', d: 'Notify on-call is on the destination, but somebody archived it.', br: 'W@P S@R', dst: 'S@R!archived' },
     { t: 'The admin applies Sales', op: APP('Project Apply · Sales'), v: 'block', dst: 'W@P!blocked S@R!archived', d: 'The environment is strict, so Apply stops. With "allow incomplete" the user could confirm the gap.',
-      msgs: [['block', 'Notify on-call', 'Archived on the destination. Restore it.']] },
+      msgs: [['block', 'Notify on-call', 'Archived on the destination. Restore it.']], checks: [['W', 'S', 'apply', AP.archived, 'gap']] },
     { t: 'A user restores Notify on-call', op: DST('Restore Notify on-call'), v: 'info', dst: 'S@R', d: 'The dependency is present again.' },
     { t: 'The admin applies Sales again', op: APP('Project Apply · Sales'), v: 'pass', dst: 'W@P S@R', d: 'The report shows no gap.', checks: [['W', 'S', 'apply', AP.usable, 'pass']] },
   ] },
-{ id: 'a-notonbranch', group: 'Apply', title: 'A workflow dependency is not on the branch', flow: '3.4', lanes: 'bd', rows: ['P', 'R'], homes: { Z: 'R' }, broken: ['Z'],
-  intro: 'The reference is broken on the source, or an earlier version wrote the branch. Apply cannot fix it, so it warns in both modes.',
-  refs: [['D', 'Z', 'calls']], spec: [[F.ad, 'A workflow calls a workflow that is broken on the source']],
+{ id: 'a-notonbranch', group: 'Apply', title: 'A workflow dependency is not on the branch', flow: '3.4', lanes: 'bd', rows: ['P', 'R'], homes: { Z: 'R' }, broken: ['Z'], decisions: [7],
+  intro: 'The reference is broken on the source, and the branch records that reason. Apply cannot fix it, so it warns in both modes. A branch that an earlier version wrote records no reason: a workflow reference is a warning there too.',
+  refs: [['D', 'Z', 'calls']], spec: [[F.ad, 'A workflow calls a workflow that is broken on the source'], [F.ad, 'A branch without reasons gives a warning for a workflow reference']],
   steps: [
     { t: 'Starting point', d: 'Daily report calls a workflow that the branch does not hold.', br: 'D@P', dst: '' },
     { t: 'The admin applies Sales', op: APP('Project Apply · Sales'), v: 'warn', dst: 'D@P!warn', d: 'Apply continues. The workflow arrives with the broken reference, as today, but now the result says so.',
-      msgs: [['warn', 'Daily report', 'The reference to a workflow is not on the branch. Broken on the source, or an existing branch.', 1]], checks: [['D', 'Z', 'apply', AP.notbranch, 'warn']] },
+      msgs: [['warn', 'Daily report', 'The reference to a workflow is not on the branch. Reason on the branch: broken on the source.', 1]], checks: [['D', 'Z', 'apply', AP.broken, 'warn']] },
   ] },
 { id: 'a-policy', group: 'Apply', title: 'The sub-workflow exists and does not allow the caller', flow: '3.4', lanes: 'bd', rows: ['P', 'R'],
   intro: 'A call across two projects can pass the presence check and fail at run time. The caller policy comes from the called workflow, or from an instance setting, and two instances can differ.',
-  refs: [['W', 'S', 'calls']], spec: [[F.ad, 'The caller policy on the destination refuses the caller']],
+  refs: [['W', 'S', 'calls']], spec: [[F.ad, 'The caller policy on the destination refuses the caller'], [F.ad, 'An included sub-workflow refuses the caller']],
   steps: [
     { t: 'Starting point', d: 'Notify on-call is on the destination. Its caller policy refuses callers of other projects.', br: 'W@P S@R', dst: 'S@R!policy' },
-    { t: 'The admin applies Sales', op: APP('Project Apply · Sales'), v: 'block', dst: 'W@P!blocked S@R!policy', d: 'For a reference across two projects to a workflow that the Apply does not write, the check reads the caller policy on the destination. A refusal is a gap, with the reason.',
-      msgs: [['block', 'Sync orders', 'Notify on-call does not allow callers of project Sales.', 1]], checks: [['W', 'S', 'apply', AP.policy, 'block']] },
+    { t: 'The admin applies Sales', op: APP('Project Apply · Sales'), v: 'block', dst: 'W@P!blocked S@R!policy', d: 'The check reads the state after the Apply. A target that is present must also be usable: the check reads the caller policy, also for a sub-workflow that the same Apply writes. A refusal is a gap, with the reason.',
+      msgs: [['block', 'Sync orders', 'Notify on-call does not allow callers of project Sales.', 1]], checks: [['W', 'S', 'apply', AP.policy, 'gap']] },
   ] },
-{ id: 'a-callers', group: 'Apply', title: 'Apply deletes a workflow that the destination still calls', flow: 'kept', lanes: 'bd', rows: ['R', 'X'],
+{ id: 'a-callers', group: 'Apply', title: 'Apply deletes a workflow that the destination still calls', flow: 'kept', lanes: 'bd', rows: ['R', 'X'], decisions: [8],
   intro: 'A caller that the Apply does not write keeps the id of the deleted workflow. Today nothing reports it.',
-  refs: [['L', 'S', 'calls']], spec: [[F.adel, 'A workflow on the destination calls a workflow that the Apply deletes'], [F.adel, 'The user accepts the broken callers']],
+  refs: [['L', 'S', 'calls']], spec: [[F.adel, 'A workflow on the destination calls a workflow that the Apply deletes'], [F.adel, 'The user accepts the broken callers'], [F.adel, 'A caller that the user cannot access is a count'], [F.adel, 'The deletion check reads the published version of a caller']],
   steps: [
     { t: 'Starting point', d: 'Ops deleted Notify on-call and promoted the deletion. On the destination, Legacy alert in project Support still calls it. Support is not in the package.', br: '', dst: 'S@R L@X', noproj: { br: ['X'] } },
-    { t: 'The admin applies Ops', op: APP('Project Apply · Ops · deletion'), v: 'warn', dst: 'S@R!del L@X', d: 'Before any write, Apply lists each workflow on the destination that calls a workflow that this Apply deletes. The user accepts or cancels.',
+    { t: 'The admin applies Ops', op: APP('Project Apply · Ops · deletion'), v: 'warn', dst: 'S@R!del L@X', d: 'Before any write, Apply lists each workflow on the destination that calls a workflow that this Apply deletes. It names a caller only when the user can access it, and gives a count for the others. The check also reads the published version of a caller (decision 8). The user accepts or cancels.',
       msgs: [['warn', 'Callers', 'Legacy alert in project Support calls Notify on-call.', 1], ['action', '', 'Accept, or cancel.']] },
     { t: 'The admin accepts', op: APP('Continue · accepted'), v: 'warn', dst: 'L@X!warn', d: 'Apply deletes the workflow. Legacy alert has a broken reference, and the user knows it.' },
   ] },
@@ -727,24 +790,67 @@ const SCENARIOS = [
     { t: 'The admin applies Sales', op: APP('Project Apply · Sales'), v: 'warn', dst: 'W@P!warn DT@R', d: 'Apply plans no table for Sales, writes the workflow and returns a warning. Promote shows the same warning.',
       msgs: [['warn', 'Sync orders', 'References data table Shifts of another project. The table is not copied.', 1]] },
   ] },
+{ id: 'a-live', group: 'Apply', title: 'An incomplete Apply of a workflow that is live', flow: '3.5, 3.8, 3.9', lanes: 'bd', rows: ['P', 'R'],
+  intro: 'Sync orders is live on the destination. The apply environment allows incomplete applies. The user cannot apply Ops. Promotion Apply never publishes and never unpublishes.',
+  refs: [['W', 'S', 'calls']], spec: [[F.ai, 'A live workflow keeps its live version'], [F.ai, 'A workflow dependency stays unresolved'], [F.ai, 'The reference resolves by itself when the dependency arrives']],
+  steps: [
+    { t: 'Starting point', d: 'The destination holds a published version of Sync orders. The branch holds a new version, which calls Notify on-call. The destination does not hold Notify on-call.', br: 'W@P S@R', dst: 'WL@P', sub: { 'dst:WL': 'published · live version' } },
+    { t: 'The user confirms the gap and applies Sales', op: APP('Project Apply · Sales · 1 gap confirmed'), v: 'gap', dst: 'WL@P W@P!incomplete', sub: { 'dst:WL': 'live version · stays live', 'dst:W': 'new version · waits' },
+      d: 'Apply imports the new version of Sync orders. The reference stays unresolved. Apply does not change the publish state, so the version that was live stays live. The new version waits until a user publishes it.',
+      msgs: [['warn', 'Notify on-call', 'Not on the destination. The reference stays unresolved.', 1]], checks: [['W', 'S', 'apply', AP.noaccess, 'gap']] },
+    { t: 'Ops applies Notify on-call', op: APP('Project Apply · Ops · Notify on-call'), v: 'pass', dst: 'WL@P W@P S@R', sub: { 'dst:WL': 'live version · stays live', 'dst:W': 'new version · waits' },
+      d: 'The target arrives with the same id. The reference of the new version resolves by itself. The live version does not change.' },
+    { t: 'An admin publishes Sync orders', op: DST('Admin publishes Sync orders'), v: 'info', dst: 'W@P S@R', sub: { 'dst:W': 'published · new version live' }, d: 'A person decides when the new version goes live.' },
+  ] },
+{ id: 'a-noshare', group: 'Apply', title: 'The user may not share the credential', flow: '3.7, 3.12', lanes: 'bd', rows: ['P', 'Q'],
+  intro: 'CRM key is on the destination in Platform, and Sales cannot use it. Each write of an Apply has its own permission check. A grant needs the right to share the credential, and this user does not hold it.',
+  refs: [['W', 'C', 'uses']], spec: [[F.ac, 'The user may not share the credential'], [F.perm, 'An action appears only when the user holds its permission'], [F.ac, 'The instance has no sharing licence'], [F.ac, 'An API key without the grant scope cannot grant access'], [F.ac, 'One Continue grants access and applies']],
+  steps: [
+    { t: 'Starting point', d: 'CRM key is on the destination in Platform. Sales has no access to it. The user may not share CRM key.', br: 'W@P C@Q', dst: 'C@Q' },
+    { t: 'The user applies Sales', op: APP('Project Apply · Sales'), v: 'block', dst: 'W@P!blocked C@Q',
+      d: 'Apply stops before any write. The user does not hold credential:share on CRM key, so the Apply offers no grant. The row of CRM key says who can grant access. Variants: when the destination has no sharing licence, the access stays a block with the licence as the reason. When an API key without the grant scope confirms the grant, the Apply shares no credential and stops on the access of CRM key.',
+      msgs: [['block', 'CRM key for project Sales', 'No grant offered. The row says who can grant access.', 1]] },
+    { t: 'A user who may share CRM key applies', op: APP('Continue · grant list: CRM key → Sales'), v: 'pass', dst: 'W@P C@Q+P',
+      d: 'A user who may share CRM key applies Sales. The Apply lists the access to grant. One Continue grants access and applies.',
+      checks: [['W', 'C', 'apply', AP.usable, 'pass']] },
+  ] },
+{ id: 'a-hidden', group: 'Apply', title: 'The user cannot read all credentials', flow: '3.12', lanes: 'bd', rows: ['P', 'Q'],
+  intro: 'Promotion acts as the user. A user who cannot read all credentials gets no reason for a credential that the Apply does not find. Today only global owners and admins apply, and they can read everything. This case is for project-level promotion rights.',
+  refs: [['W', 'C', 'uses']], spec: [[F.perm, 'The Apply does not say whether the credential is missing or hidden']],
+  steps: [
+    { t: 'Starting point', d: 'The user may apply Sales, but does not hold the right to read all credentials on the destination. The destination holds CRM key in Platform, and the user cannot read it.', br: 'W@P C@Q', dst: 'C@Q', sub: { 'dst:C': 'this user cannot read it' } },
+    { t: 'The user applies Sales', op: APP('Project Apply · Sales'), v: 'block', dst: 'W@P!blocked C@Q', sub: { 'dst:C': 'this user cannot read it' },
+      d: 'The Apply does not find CRM key for this user. The step does not say whether the credential is missing or hidden, so it reads the same when the destination does not hold CRM key. The step offers no creation of CRM key.',
+      msgs: [['block', 'CRM key', 'missing or not accessible, ask an administrator']] },
+  ] },
+{ id: 'a-kept', group: 'Apply', title: 'Instance Apply keeps a workflow that the package still calls', flow: '3.4', lanes: 'bd', rows: ['P', 'R'],
+  intro: 'An instance Apply deletes the workflows that the package lacks in a package project. A workflow of the package that still references one of them keeps it. This is the second of three deletion rules. First: a deletion in the selection that an item of the same Apply still references is a gap. Third: a caller that the Apply does not write is listed, and the user accepts or cancels.',
+  refs: [['W', 'S', 'calls']], spec: [[F.adel, 'The caller is in another project of the package'], [F.adel, 'The selection deletes a workflow that an item of the same Apply calls']],
+  steps: [
+    { t: 'Starting point', d: 'The branch holds Sync orders under Sales, and project Ops without Notify on-call. Sync orders calls Notify on-call. The destination holds Notify on-call in Ops.', br: 'W@P', dst: 'S@R' },
+    { t: 'The admin starts an instance Apply', op: APP('Instance Apply · whole package'), v: 'pass', dst: 'W@P S@R', marks: { 'dst:S': 'pass' }, sub: { 'dst:S': 'kept · Sync orders calls it' },
+      d: 'The package lacks Notify on-call, but Sync orders, a workflow of the package, calls it. The Apply does not delete Notify on-call. The result lists it as kept, with Sync orders as its caller.',
+      msgs: [['ok', 'Result', 'Notify on-call is kept. Caller: Sync orders.', 1]] },
+  ] },
 
 /* ===== Credentials: the owner follows the branch ===== */
-{ id: 'c-placeholder', group: 'Credentials', title: 'A placeholder, then the real credential', flow: '3.7, 4.4', lanes: 'bd', rows: ['P', 'Q'], decisions: [2, 3],
-  intro: 'An incomplete Apply cannot bind a credential that is on neither side, so it creates an empty placeholder in the project that uses it. When the real credential arrives, the owner on the destination follows the branch.',
+{ id: 'c-placeholder', group: 'Credentials', title: 'A placeholder, then the real credential', flow: '3.7, 4.4', lanes: 'bd', rows: ['P', 'Q'], decisions: [2, 3, 5, 6, 7],
+  intro: 'An incomplete Apply cannot bind a credential that the destination does not hold, so it creates one empty placeholder in a project that uses it. The placeholder has a marker. When the real credential arrives, the owner on the destination follows the branch.',
   refs: [['W', 'C', 'uses']],
-  spec: [[F.ai, 'A credential that is not on the branch gets a placeholder'], [F.ac, 'A placeholder gets its home'], [F.ac, 'A secret typed into the placeholder survives the move'], [F.ai, 'The editor refuses to publish a workflow that uses an empty placeholder'], [F.ai, 'A credential that is not on the branch stops a strict Apply']],
+  spec: [[F.ai, 'A credential that is not on the branch gets a placeholder'], [F.ac, 'A placeholder gets its home'], [F.ac, 'A secret typed into the placeholder survives the move'], [F.ai, 'The editor refuses to publish a workflow that uses an empty placeholder'], [F.ai, 'A credential that is not on the branch stops a strict Apply'], [F.ac, 'The move needs the rights of the user in the project of the branch only'], [F.perm, 'The user cannot access the old owner project'], [F.ai, 'A placeholder needs the right to create a credential in the consumer project'], [F.ai, 'A placeholder with a name from the branch and no secret is still a placeholder']],
   steps: [
     { t: 'Starting point', d: 'An incomplete Promote wrote Sync orders without CRM key. The apply environment allows incomplete. On a strict environment, this Apply would stop: "CRM key is not on the branch. The owner team must promote it."', br: 'W@P', dst: '' },
     { t: 'The user confirms the gap and applies Sales', op: APP('Project Apply · Sales · 1 gap confirmed'), v: 'gap', dst: 'W@P!unpub C@P!stub',
-      d: 'Apply creates an empty placeholder with the id, the name and the type of the source credential, in Sales, and binds Sync orders to it. The new workflow lands unpublished. The editor refuses to publish it while the placeholder is empty (decision 2).',
-      msgs: [['warn', 'CRM key', 'Not on the branch. An empty placeholder is created in Sales.', 1]], checks: [['W', 'C', 'apply', AP.credoff, 'gap']] },
+      d: 'The branch records CRM key as a confirmed gap (decision 7). Apply creates an empty placeholder with the id, the name and the type of the source credential, in Sales, and binds Sync orders to it. This needs the right to create credentials in Sales: the confirmation gives no permission. The placeholder has a marker (decision 6). The new workflow lands unpublished. No publish path accepts it while the credential is a placeholder (decision 2).',
+      msgs: [['warn', 'CRM key', 'Not on the branch. An empty placeholder is created in Sales.', 1]], checks: [['W', 'C', 'apply', AP.confirmed, 'gap']] },
     { t: 'Platform promotes the credential', v: 'info', br: 'W@P C@Q', d: 'The branch now holds CRM key under Platform.' },
-    { t: 'The admin applies Platform', op: APP('Project Apply · Platform'), v: 'pass', dst: 'W@P!unpub C@Q+P',
-      d: 'The destination holds CRM key in Sales, and the branch places it in Platform. Apply moves it to Platform, keeps every share, so Sales can still use it, then writes the values from the branch. The move needs rights in Platform only. A secret that an admin typed into the placeholder stays (decision 3).',
+    { t: 'The admin applies Platform', op: APP('Project Apply · Platform'), v: 'pass', dst: 'W@P!unpub C@Q+P!stub',
+      d: 'The destination holds CRM key in Sales, and the branch places it in Platform. Apply moves it to Platform, keeps every share, so Sales can still use it, then updates the name and the expression values from the branch. The branch carries no secret values, so the credential is still a placeholder. A placeholder moves with rights in Platform only (decision 5). A secret that an admin typed into the placeholder stays (decision 3).',
       msgs: [['ok', 'Preview', 'CRM key moves into Platform. The projects that use it keep access.', 1]], checks: [['W', 'C', 'apply', AP.usable, 'pass']] },
+    { t: 'A member of Platform enters the secret values', op: DST('Platform enters the secret values of CRM key'), v: 'info', dst: 'W@P!unpub C@Q+P', d: 'A person saves the values. The marker of the placeholder goes away.' },
     { t: 'An admin publishes Sync orders', op: DST('Admin publishes Sync orders'), v: 'info', dst: 'W@P C@Q+P', d: 'Source, branch and destination now agree on the owner of CRM key.' },
   ] },
-{ id: 'c-ownerchange', group: 'Credentials', title: 'The owner of a credential changes on the source', flow: '3.7', lanes: 'sbd', rows: ['P', 'Q', 'R'],
+{ id: 'c-ownerchange', group: 'Credentials', title: 'The owner of a credential changes on the source', flow: '3.7', lanes: 'sbd', rows: ['P', 'Q', 'R'], decisions: [5],
   intro: 'The same rule covers an owner change. The credential keeps its id. Only the project that owns it changes.',
   refs: [['W', 'C', 'uses']], spec: [[F.pc, 'A Promote of the new owner moves the credential on the branch'], [F.ac, 'The owner of a credential changed on the source'], [F.ac, 'An Apply of the owner project moves the credential and keeps every share']],
   steps: [
@@ -752,18 +858,33 @@ const SCENARIOS = [
     { t: 'A user moves CRM key to Ops on the source', op: SRC('Editor · move CRM key to Ops'), v: 'info', src: 'W@P C@R', d: 'The move happens on the source. The Promote check of Sales still finds the credential by id under any project folder.' },
     { t: 'Ops promotes the credential', op: PRO('Project Promote · Ops · credential CRM key'), v: 'pass', br: 'W@P C@R', d: 'The file moves from the Platform folder to the Ops folder on the branch.' },
     { t: 'The admin applies Ops', op: APP('Project Apply · Ops'), v: 'pass', dst: 'W@P C@R+P+Q',
-      d: 'Apply moves CRM key to Ops and keeps every share: Sales and Platform can still use it. A move made by hand on the destination would be undone the same way.',
+      d: 'CRM key holds values, so the move needs a user who may move it (decision 5). The admin may. Apply moves CRM key to Ops and keeps every share: Sales and Platform can still use it. A move made by hand on the destination would be undone the same way.',
       msgs: [['ok', 'Preview', 'CRM key moves into Ops. The projects that use it keep access.', 1]], checks: [['W', 'C', 'apply', AP.usable, 'pass']] },
+  ] },
+{ id: 'c-rights', group: 'Credentials', title: 'A credential with values moves only when the user may move it', flow: '3.7, 3.12', lanes: 'bd', rows: ['P', 'Q', 'R'], decisions: [5],
+  intro: 'The branch places CRM key in Platform. The destination holds it in Ops, with secret values. A move changes who can edit, share and delete the credential, so rights in Platform are not enough. Only a placeholder moves with rights in the project of the branch alone.',
+  refs: [['W', 'C', 'uses']],
+  spec: [[F.ac, 'A credential with values does not move without the right to move it'], [F.perm, 'The user may not move a credential with values'], [F.ac, 'A move made by hand on the destination is undone'], [F.ac, 'The members of the old owner project become users of the credential'], [F.ac, 'Some credentials never move']],
+  steps: [
+    { t: 'Starting point', d: 'A destination admin moved CRM key from Platform to Ops in the editor. Sales can use it. The branch still places it in Platform.', br: 'W@P C@Q', dst: 'W@P C@R+P' },
+    { t: 'A user who may not move CRM key applies Platform', op: APP('Project Apply · Platform'), v: 'warn', marks: { 'dst:C': 'warn' }, sub: { 'dst:C': 'not moved · not updated' },
+      d: 'The user has rights in Platform and cannot access Ops. CRM key is not a placeholder, and the user may not move it. Apply does not move and does not update the credential. The Apply continues.',
+      msgs: [['warn', 'Result', 'CRM key has another owner on the destination. A user who may move it must apply.']] },
+    { t: 'A user who may move CRM key previews the Apply', op: APP('Preview · Platform'), v: 'info',
+      d: 'The preview announces the move. It names the old owner project only when the user can access it.',
+      msgs: [['ok', 'Preview', 'CRM key moves into Platform. The projects that use it keep access.']] },
+    { t: 'That user applies Platform', op: APP('Project Apply · Platform'), v: 'pass', dst: 'W@P C@Q+P+R',
+      d: 'Apply moves CRM key to Platform and keeps every share. Ops becomes a user of the credential: a member of Ops who could edit CRM key can use it, and cannot edit it. The move by hand is undone. A managed credential and an end-user credential never move: the Apply continues and the result says that the credential stays where it is.' },
   ] },
 
 /* ===== Existing branches ===== */
 { id: 'e-home', group: 'Existing branches', title: 'Apply: a credential at the top level', flow: '3.13', lanes: 'bd', rows: ['TOP', 'P', 'Q'],
-  intro: 'There is no migration. A branch that an earlier version wrote can hold a credential with no owner. This is the only place where the home selector stays.',
+  intro: 'There is no migration. A branch that an earlier version wrote can hold a credential with no owner. This is the one case where the user selects the home, in both modes.',
   refs: [['W', 'C', 'uses']], spec: [[F.eb, 'The Apply dialog shows the home selector'], [F.eb, 'An existing API client reads the conflict that it knows']],
   steps: [
     { t: 'Starting point', d: 'An earlier version wrote the credential at the top level of the branch. No owner is named.', br: 'C@TOP W@P', dst: '' },
     { t: 'The admin applies Sales', op: APP('Project Apply · Sales'), v: 'block', dst: 'W@P!blocked', d: 'Today this is the hard conflict unknown-owner and the dialog offers no action. The response keeps that conflict, so an existing client reads a block that it knows. The dialog adds a home selector.',
-      msgs: [['action', 'CRM key', 'Select a team project as the home. No project is selected in advance. The consumer projects are first. Projects that this Apply deletes are left out. Never a personal project.']], checks: [['W', 'C', 'apply', AP.cred, 'block']] },
+      msgs: [['action', 'CRM key', 'Select a team project as the home. No project is selected in advance. The consumer projects are first. Projects that this Apply deletes are left out. Never a personal project.']], checks: [['W', 'C', 'apply', AP.credoff, 'gap']] },
     { t: 'The admin selects Platform and adds the credential', op: DST('Admin selects the home: Platform'), v: 'info', dst: 'W@P!blocked C@Q', pop: ['C'], d: 'The step states the rights of the home project, and that an Apply of the home project updates the credential from the branch.',
       msgs: [['action', 'Access to grant', 'CRM key for project Sales.']], checks: [['W', 'C', 'apply', AP.grant, 'grant']] },
     { t: 'The admin grants access and applies', op: APP('Continue · grant list: CRM key → Sales'), v: 'pass', dst: 'W@P C@Q+P', d: 'Apply shares the credential with Sales and imports.', checks: [['W', 'C', 'apply', AP.usable, 'pass']] },
@@ -783,13 +904,28 @@ const SCENARIOS = [
 /* ===== Moves ===== */
 { id: 'm-move', group: 'Moves', title: 'A move between two team projects', flow: '3.11', lanes: 'sbd', rows: ['P', 'R'],
   intro: 'Today Promote refuses a move between projects and Apply reports a moved conflict. The target: one change that keeps the id.',
-  refs: [], spec: [[F.mv, 'The preview shows one moved row'], [F.mv, 'A project Promote writes both sides in one commit'], [F.mv, 'An instance Apply transfers the workflow and keeps the id'], [F.mv, 'The moved workflow loses its shares'], [F.mv, 'A project Apply says that it changes two projects']],
+  refs: [], spec: [[F.mv, 'The preview shows one moved row'], [F.mv, 'A project Promote writes both sides in one commit'], [F.mv, 'An instance Apply transfers the workflow and keeps the id'], [F.mv, 'The moved workflow loses its shares'], [F.mv, 'A project Apply says that it changes two projects'], [F.mv, 'A moved folder takes its workflows and its folders with it']],
   steps: [
     { t: 'Starting point', d: 'Source, branch and destination hold Sync orders in Sales.', src: 'W@P', br: 'W@P', dst: 'W@P' },
     { t: 'A user moves Sync orders to Ops', op: SRC('Editor · move Sync orders to Ops'), v: 'info', src: 'W@R', d: 'The move happens on the source.' },
     { t: 'Promote writes the move', op: PRO('Promote · from Sales or from Ops · moved row'), v: 'pass', br: 'W@R', d: 'The preview shows one moved row, "Moved from Sales to Ops", on the page of each project. The Promote writes both sides in one commit.' },
     { t: 'Apply transfers the workflow', op: APP('Apply · moved row'), v: 'pass', dst: 'W@R',
-      d: 'Apply transfers the item when the operation holds both projects. The id, the history and the executions stay. The preview and the API response name the other project that the move changes, and say that the workflow loses its shares. The credentials of the workflow are dependencies in Ops.' },
+      d: 'Apply transfers the item when the operation holds both projects. The id, the history and the executions stay. The preview and the API response name the other project that the move changes, and say that the workflow loses its shares. The credentials of the workflow are dependencies in Ops. A folder moves the same way, with its whole subtree.' },
+  ] },
+{ id: 'm-creds', group: 'Moves', title: 'A moved workflow leaves its credential behind', flow: '3.11, 3.7', lanes: 'sbd', rows: ['P', 'R'], decisions: [8],
+  intro: 'Sync orders uses Sales key, a credential of Sales. A user moves the workflow to Ops. Credentials do not move with a workflow: the credential stays in Sales, and Ops needs a grant that the user confirms.',
+  refs: [['W', 'SK', 'uses']], spec: [[F.mv, 'The credentials of a moved workflow are dependencies in the new project'], [F.ac, 'One Continue grants access and applies'], [F.mv, 'The old project stays while a moved workflow uses its credential'], [F.mv, 'The grant check of a move reads the published version']],
+  steps: [
+    { t: 'Starting point', d: 'Source, branch and destination hold Sync orders and Sales key in Sales.', src: 'W@P SK@P', br: 'W@P SK@P', dst: 'W@P SK@P' },
+    { t: 'A user moves Sync orders to Ops', op: SRC('Editor · move Sync orders to Ops'), v: 'info', src: 'W@R SK@P', d: 'The move happens on the source. Sales key stays in Sales.' },
+    { t: 'Promote writes the move', op: PRO('Project Promote · Ops · moved row'), v: 'pass', br: 'W@R SK@P',
+      d: 'The Promote writes the move in one commit. Sales key is already on the branch under Sales, so the check passes.', checks: [['W', 'SK', 'promote', PP.pass, 'pass']] },
+    { t: 'The admin starts an instance Apply', op: APP('Instance Apply · whole package'), v: 'block', dst: 'W@R!blocked SK@P', sub: { 'dst:W': 'moved row · not written' },
+      d: 'The credentials of a moved workflow are dependencies in the new project. Sales key stays in Sales on the destination. Ops cannot use it, so the Apply lists the access to grant. The check reads the state after the Apply, and also the published version of the workflow (decision 8). The first Apply call grants nothing.',
+      msgs: [['action', 'Access to grant', 'Sales key for project Ops.']], checks: [['W', 'SK', 'apply', AP.grant, 'grant']] },
+    { t: 'The admin grants access and applies', op: APP('Continue · grant list: Sales key → Ops'), v: 'pass', dst: 'W@R SK@P+R', checks: [['W', 'SK', 'apply', AP.usable, 'pass']],
+      d: 'One Continue grants access and applies. Apply transfers Sync orders to Ops and keeps its id. Sales key stays in Sales, and Ops can use it. Variant: the source deleted Sales after the move, and an instance Promote wrote the branch. The destination still holds Sales key and Sync orders in Sales. The instance Apply does not delete Sales, and shows a warning.',
+      msgs: [['warn', 'Variant · Project Sales', 'Not deleted: it owns Sales key, which Sync orders uses.', 1]] },
   ] },
 { id: 'm-deleted', group: 'Moves', title: 'A move out of a project that the source deleted', flow: '3.11', lanes: 'sbd', rows: ['P', 'R'],
   intro: 'The source deleted project Sales and transferred its workflows to Ops. An instance Promote writes this move today. Today every instance Apply then stops until the user moves the item by hand.',
@@ -824,33 +960,33 @@ const JOURNEY = { id: 'journey', lanes: 'sbd', rows: ['P', 'Q', 'R'], refs: [['W
       d: 'The report shows two gaps. The builder cannot access Platform or Ops, so each gap shows only what the node already holds, and offers "Ask the owner". The environment is strict, so the Promote stops.',
       msgs: [['block', 'CRM key', 'A credential that you cannot access is not on the branch.', 1], ['block', 'Notify on-call', 'A workflow that you cannot access is not on the branch.', 1], ['action', '', 'Ask the owner. Each request goes to the inbox of the owner project.']],
       today: 'This Promote passes. The credential goes to the top level of the branch with no owner, and the sub-workflow becomes a reference that nothing checks.',
-      variants: ['p-other', 'p-include', 'p-same', 'p-review', 'p-incomplete', 'p-personal', 'p-broken', 'p-instance'] },
+      variants: ['p-other', 'p-include', 'p-same', 'p-review', 'p-gate', 'p-incomplete', 'p-personal', 'p-broken', 'p-expression', 'p-instance'] },
     { short: 'Ops promotes', t: 'Ops promotes Notify on-call', op: PRO('Project Promote · Ops · Notify on-call'), v: 'pass', br: 'S@R',
       d: 'Ops reads the request in its inbox and promotes its own item. It has no dependency, so it passes.', variants: ['p-order', 'p-cycle'] },
     { short: 'Platform promotes the credential', t: 'Platform promotes the credential on its own', op: PRO('Project Promote · Platform · credential CRM key'), v: 'pass', br: 'C@Q S@R', isNew: true,
       d: 'A project Promote can select the credentials that the project owns. The Promote writes the credential under the Platform folder: the branch path is the owner.',
       today: 'A Promote can select only workflows and folders. A credential reaches the branch only with a workflow that uses it.',
-      variants: [] },
+      variants: ['p-needed'] },
     { short: 'Sales promotes again', t: 'Sales promotes Sync orders again', op: PRO('Project Promote · Sales · Sync orders'), v: 'pass', br: 'W@P C@Q S@R',
       d: 'Both dependencies are on the branch, so the report shows no gap.', variants: ['p-common'] },
     { short: 'Apply Sales', t: 'The admin applies Sales on the destination', op: APP('Project Apply · Sales'), v: 'block', dst: 'W@P!blocked',
       d: 'Two dependencies of Sync orders are on the branch and not on the destination. The admin can apply Ops, so Notify on-call offers "Include it". CRM key is missing, and the branch names its owner. The environment is strict, so Apply stops before any write.',
       msgs: [['action', 'Notify on-call · Ops', 'Include it'], ['block', 'CRM key', 'Missing. Owner on the branch: Platform. Consumer: Sales.', 1]],
       today: 'Apply has no check for a missing sub-workflow. Sync orders arrives with a broken reference and nothing reports it.',
-      variants: ['a-wfdep', 'a-incwf', 'c-placeholder', 'a-archived', 'a-cycle', 'a-policy', 'a-notonbranch'] },
+      variants: ['a-wfdep', 'a-incwf', 'a-live', 'c-placeholder', 'a-archived', 'a-cycle', 'a-policy', 'a-notonbranch'] },
     { short: 'Add credential', t: 'The admin adds CRM key in Platform', op: DST('Admin adds CRM key in Platform'), v: 'info', dst: 'C@Q', pop: ['C'],
       d: 'A person enters the secret values on the destination. The credential is created one time, in the owner project that the branch names, with the id of the source.',
       today: 'When the branch names no owner for the credential, Apply reports a hard conflict and the dialog offers no action.',
-      variants: ['a-cred', 'a-noproject', 'e-home', 'c-ownerchange'] },
+      variants: ['a-cred', 'a-noproject', 'a-hidden', 'e-home', 'c-ownerchange', 'c-rights'] },
     { short: 'Apply both', t: 'The admin applies Sales and Ops together and confirms the grant', op: APP('Apply across projects · Sales + Ops · grant: CRM key → Sales'), v: 'pass', dst: 'W@P C@Q+P S@R', parity: true,
       d: 'One Apply writes Notify on-call and Sync orders. Sales needs access to a credential that Platform owns: the admin confirms the grant, and Apply shares it. Apply never removes a share.',
       msgs: [['action', 'Access to grant', 'CRM key for project Sales.'], ['ok', 'Result', 'Source, branch and destination hold the same items, under the same owners, with the same references.', 1]],
       today: 'Apply blocks with "Ask an administrator" and offers no action. The administrator shares the credential by hand in the editor, then applies again.',
-      variants: ['a-access', 'a-common', 'a-table'] },
+      variants: ['a-access', 'a-noshare', 'a-common', 'a-table'] },
   ] };
 const OUTSIDE = [
-  ['Later changes: deletions', ['p-delete', 'a-callers', 'a-guard']],
-  ['Later changes: moves', ['m-move', 'm-deleted', 'm-personal']],
+  ['Later changes: deletions', ['p-delete', 'a-callers', 'a-kept', 'a-guard']],
+  ['Later changes: moves', ['m-move', 'm-creds', 'm-deleted', 'm-personal']],
   ['Branches that an earlier version wrote', ['e-promote', 'e-home']],
 ];
 
@@ -859,56 +995,61 @@ const PRINCIPLES = [
   ['On Promote', 'The dependency must be on the branch after the Promote: already there, or included in it.', 'p-other', 'source → branch'],
   ['On Apply', 'The dependency must be on the destination after the Apply: already there, or included in it.', 'a-wfdep', 'branch → destination'],
   ['An exit for each gap', '"Include it" when the user can promote or apply its project. "Ask the owner" when the user cannot. A user never sees what they cannot access.', 'p-include'],
-  ['Strict by default', 'A gap stops the operation. An admin can turn on "allow incomplete" for each environment. The user then confirms the gaps, and nothing with a gap goes live.', 'p-incomplete'],
-  ['The owner follows the branch', 'A credential lives in the project that owns it. A placeholder from an incomplete Apply moves there when the real credential arrives. Every share stays.', 'c-placeholder'],
-  ['Broken on the source', 'A reference that already fails on the source is a warning. Promotion copies the source. It does not repair it.', 'p-broken'],
+  ['Strict by default', 'A gap stops the operation. An admin can turn on "allow incomplete" for each environment. The user then confirms the gaps. Promotion Apply never changes the publish state.', 'p-incomplete'],
+  ['The owner follows the branch', 'A credential lives in the project that owns it. A placeholder from an incomplete Apply moves there when the real credential arrives. A credential with values moves only when the user may move it. Every share stays.', 'c-placeholder'],
+  ['Broken on the source', 'A reference that already fails on the source is a warning, on Promote and on Apply. The branch records the reason. Promotion copies the source. It does not repair it.', 'p-broken'],
 ];
 const SCOPE = [
   ['Credential that another team project owns', 'support', 'Support. Before or with what uses it.', 'On the branch under its owner project, or included. Otherwise a gap: "Include it", or "Ask the owner".', 'Usable: no step. Not usable: grant that the user confirms. Missing: created one time in the owner project.', 'a-cred'],
-  ['Credential with another owner on the destination', 'support', 'Support. The owner follows the branch.', 'No effect.', 'Apply of the owner on the branch moves it there. Every share stays. Needs rights in that project only.', 'c-placeholder'],
-  ['Owner change of a credential on the source', 'support', 'Support. The owner follows the branch.', 'The new owner promotes it. The file moves to its folder.', 'Apply of the new owner moves it on the destination. Every share stays.', 'c-ownerchange'],
-  ['Credential that is not on the branch', 'gap', 'Gap', 'Not reached: Promote checks it first. Possible after an incomplete Promote or on an existing branch.', 'Strict: block. Allowed: empty placeholder in the consumer project.', 'c-placeholder'],
-  ['Personal credential that a team workflow uses', 'gap', 'Gap with a fix', 'Gap: "This credential belongs to a personal project. Move it to a team project, then promote it from there."', 'Existing branches only: a top-level credential gets the home selector.', 'p-personal'],
+  ['Credential with another owner on the destination', 'support', 'Support. The owner follows the branch.', 'No effect.', 'Apply of the owner on the branch moves it there. Every share stays. A placeholder: rights in that project. A credential with values: the right to move it.', 'c-rights'],
+  ['Owner change of a credential on the source', 'support', 'Support. The owner follows the branch.', 'The new owner promotes it. The file moves to its folder.', 'Apply of the new owner moves it on the destination, when the user may move it. Every share stays.', 'c-ownerchange'],
+  ['Credential that is not on the branch', 'gap', 'Gap, or a warning when it is broken on the source', 'The requirement row records the reason: confirmed gap, or broken on the source.', 'Confirmed gap, or no reason on an existing branch: strict block, allowed placeholder. Broken on the source: warning.', 'c-placeholder'],
+  ['Personal credential that a team workflow uses', 'gap', 'Gap with a fix', 'Gap: "This credential belongs to a personal project. Move it to a team project, then promote it from there."', 'Never on the branch. Strict: block. Allowed: empty placeholder in the consumer project.', 'p-personal'],
   ['Global credential', 'support', 'Support, as a credential of its owner team project', 'Same as a team credential. The global state does not travel.', 'Same as a team credential. The consumer projects get grants.', ''],
-  ['Credential with usage scope "instance"', 'exclude', 'Exclude. No change.', 'A workflow cannot use it at run time. The package holds a requirement row and no file.', 'Exists with that scope: incompatible-usage-scope block. Never moved.', ''],
+  ['Credential with usage scope "instance"', 'exclude', 'Exclude. A note, not a gap.', 'The package records that the workflow needs it. The branch holds no file for it. Note: "An instance credential is not promoted. It must exist on the destination."', 'Must exist on the destination. Missing: block in both modes, no placeholder. Never moved.', ''],
   ['Static sub-workflow or error workflow, same project', 'support', 'Support. Before or with what uses it.', 'Not selected and not on the branch: gap, "Include it".', 'Not on the destination and not in this Apply: gap, "Include it".', 'p-same'],
-  ['Static sub-workflow or error workflow, other team project', 'support', 'Support. Before or with what uses it.', 'Not on the branch: gap. "Include it", or "Ask the owner".', 'On the branch and not on the destination: gap. "Include it", or "Ask the owner". Allowed: the reference stays unresolved.', 'a-wfdep'],
+  ['Static sub-workflow or error workflow, other team project', 'support', 'Support. Before or with what uses it.', 'Not on the branch: gap. "Include it", or "Ask the owner".', 'On the branch and not on the destination: gap. "Include it", or "Ask the owner". Allowed: the reference stays unresolved. A target that the Apply writes must still allow the caller.', 'a-wfdep'],
   ['Static sub-workflow or error workflow, personal project', 'gap', 'Gap with a fix', 'Gap: "Personal projects are not promoted. Move it to a team project."', 'Not reached on a new branch. Existing branch: warning.', 'p-personal'],
   ['Dependency archived on the destination', 'gap', 'Gap with a fix', 'Not reached.', 'Gap: "Archived on the destination. Restore it."', 'a-archived'],
-  ['Reference to a workflow that does not exist on the source', 'warn', 'Warning. Already broken on the source.', 'Warning: "This reference is broken." Promote continues.', 'Not on the branch: warning. Apply continues.', 'p-broken'],
+  ['Reference to a workflow that does not exist on the source', 'warn', 'Warning. Already broken on the source.', 'Warning: "This reference is broken." Promote continues. The branch records the reason.', 'Reason on the branch: broken on the source. Warning. Apply continues.', 'p-broken'],
   ['Workflows that call each other across two projects', 'support', 'Support. One operation across projects.', 'Select both items in one Promote. Without the right in both projects: a gap, "Ask the owner".', 'Select both items in one Apply.', 'p-cycle'],
-  ['Operation with confirmed gaps', 'support', 'Opt-in for each environment', 'The review and the commit list the gaps.', 'Credential: placeholder. Workflow: unresolved reference. Nothing goes live.', 'p-incomplete'],
+  ['Operation with confirmed gaps', 'support', 'Opt-in for each environment', 'The review and the commit list the gaps.', 'Credential that the destination lacks: placeholder. Other gaps: unresolved. The publish state never changes.', 'p-incomplete'],
   ['Variable', 'nochange', 'Support. No change.', 'Project variable under the project folder. Global variable at the top level.', 'Must exist in the declared scope. The binding step creates it.', ''],
   ['Data table of the own project', 'nochange', 'Support. No change.', 'Content.', 'Created or matched in the project.', ''],
   ['Data table of another project', 'warn', 'Warning. Broken on the source, stays broken.', 'Warning. No gap.', 'Apply never copies the table. Warning.', 'a-table'],
   ['Tag', 'nochange', 'Support. No change.', 'Instance level.', 'Created or renamed as today.', ''],
   ['Workflow sharing', 'exclude', 'Exclude', 'Not in the package.', 'Destination shares stay.', ''],
-  ['Deletion of a workflow that other branch content calls', 'warn', 'Warning', 'Warning: "W1 in project P calls this workflow. After the Apply, W1 has a broken reference."', 'Apply lists the destination callers before any write. The user accepts or cancels.', 'p-delete'],
+  ['Deletion of a workflow that other branch content calls', 'warn', 'Warning', 'Warning: "Daily report in project Sales calls Notify on-call. The reference of Daily report is broken on the branch." A caller that the user cannot access is a count.', 'In the selection, and an item of the Apply still references it: gap. Instance Apply: kept while the package references it. Other callers on the destination: listed, the user accepts or cancels.', 'a-kept'],
   ['Move of a workflow or folder between team projects', 'support', 'Support', 'One moved change.', 'One transfer that keeps the id, when the operation holds both projects.', 'm-move'],
   ['Move out of a project that the source deleted', 'support', 'Support on instance Apply', 'Instance Promote writes the move (current behavior).', 'After the user confirms, instance Apply transfers the item, before the project deletions.', 'm-deleted'],
   ['Move into a personal project', 'block', 'Block', 'Current refusal.', 'Not reached.', 'm-personal'],
   ['Move out of a personal project', 'nochange', 'No rule needed', 'A new workflow. Its dependencies follow this table.', 'Created as a new workflow.', ''],
-  ['Permission boundary', 'support', 'Report, do not act, do not leak', 'A gap shows only what the workflow holds. No project, state or review that the user cannot access.', 'An action appears only when the user holds its permission. Moving a credential to its owner needs rights in that project only.', 'p-other'],
-  ['Existing branch', 'support', 'Support. No migration.', 'The check covers only the items of the Promote. A top-level credential is a gap.', 'Top-level credential: home selector. Reference not on the branch: warning.', 'e-home'],
-  ['Older destination version', 'support', 'Support with limits', 'The source cannot see the destination version.', 'No format change. An older destination has no Apply gate: a gap arrives as a broken reference, as today.', ''],
+  ['Permission boundary', 'support', 'Report, do not act, do not leak', 'A gap shows only what the workflow holds. No project, state or review that the user cannot access.', 'An action appears only when the user holds its permission. A confirmation never gives a permission. Lists of callers and consumers name only what the user can access.', 'p-other'],
+  ['Existing branch', 'support', 'Support. No migration.', 'The check covers only the items of the Promote. A top-level credential is a gap.', 'Top-level credential: home selector, in both modes. No reason on the branch: a workflow reference is a warning, a credential reference is a gap.', 'e-home'],
+  ['Older destination version', 'support', 'Support with limits', 'The source cannot see the destination version.', 'No version change. An older destination ignores the reason on a requirement row. It has no Apply gate: a gap arrives as a broken reference, as today.', ''],
+  ['Dependency in a project outside the environment scope', 'gap', 'Gap', 'No "Include it". Strict: block. Allowed: confirm and continue. An admin adds the project to the environment.', 'Same.', ''],
 ];
 const KINDS = { support: ['Support', 'pass'], gap: ['Gap', 'gap'], block: ['Block', 'block'], warn: ['Warning', 'warn'], exclude: ['Exclude', 'plain'], nochange: ['No change', 'info'] };
 const COMPARE = [
   ['A gap on Promote', 'An exit for each gap: "Include it" or "Ask the owner". Strict by default. Opt-in "allow incomplete".', 'Block: "Promote it from project X first."', 'Never a gap. Promote informs.'],
-  ['A gap on Apply', 'Same exits. Opt-in continue: placeholder for a credential, unresolved reference for a workflow. Nothing goes live.', 'Block. No "apply anyway".', 'Block with "apply anyway". The acceptance repeats on each Apply.'],
+  ['A gap on Apply', 'Same exits. Opt-in continue: placeholder for a credential, unresolved reference for a workflow. The publish state never changes.', 'Block. No "apply anyway".', 'Block with "apply anyway". The acceptance repeats on each Apply.'],
   ['Who sees what', 'Only what the user can access. A gap shows what the workflow already holds.', 'A generic block when the user cannot read the dependency.', 'Not specified.'],
   ['Home of a missing credential', 'The branch path. A placeholder moves there later.', 'The branch path.', 'A home that the user selects, or a new owner hint file.'],
-  ['Owner differs on the destination', 'Moved to the owner on the branch. Every share stays.', 'A note. No move.', 'Kept as it is.'],
+  ['Owner differs on the destination', 'Moved to the owner on the branch. A placeholder: with rights in that project. A credential with values: when the user may move it. Every share stays.', 'A note. No move.', 'Kept as it is.'],
   ['Cycle across projects', 'One operation across projects.', 'Instance Promote and instance Apply only.', 'Passes Promote. Apply decides.'],
   ['Personal dependency', 'Strict: block. Allowed: broken reference.', 'Block.', 'Passes Promote. Apply needs a home or an acceptance.'],
   ['Who waits', 'A user without access asks the owner. A user with access includes it.', 'A team waits for the owner team.', 'Nobody on Promote. Apply can repeat the acceptance.'],
-  ['Package format', 'No change.', 'No change.', 'One optional hint file.'],
+  ['Package format', 'No version change, no new file. One optional field on a requirement row.', 'No change.', 'One optional hint file.'],
 ];
 const DECISIONS = [
-  ['Who receives an "ask the owner" request, and what does it show to them?', ['The admins of the owner project, or every member who can promote it.', 'The request never shows the project of the requester.'], 'The admins of the owner project. The request shows the requested resource and the requesting user.', ['p-other']],
-  ['Does the editor refuse to publish a workflow whose credential is an empty placeholder?', ['The generic import has this check (stub-credential). The editor publish path is not checked yet.'], 'Yes. Verify the editor publish path, and add the check when it is missing.', ['c-placeholder']],
+  ['Who receives an "ask the owner" request, and what does it show to them?', ['The admins of the owner project, or every member who can promote it.', 'The request never shows the project of the requester.'], 'The admins of the owner project, or the instance admins when the owner project is not on the destination. The request shows the requested resource, the requesting user and the operation.', ['p-other']],
+  ['Does n8n refuse to publish a workflow whose credential is a placeholder?', ['The generic import has this check (stub-credential). The editor publish path is not checked yet.'], 'Yes, on every publish path. Verify the editor publish path, and add the check when it is missing.', ['c-placeholder']],
   ['Does a secret that a destination admin types into a placeholder survive the move and the update?', ['Promote carries no secret values. The update writes the name and the expression values.'], 'Yes.', ['c-placeholder']],
-  ['How do stacked promotions work?', ['A Promote waits on another Promote and lands after it. A request to the owner can turn into a stack.'], 'No recommendation yet. Not specified.', []],
+  ['How do stacked promotions work?', ['A Promote waits on another Promote and lands after it. A request to the owner can turn into a stack.', 'Until then, a cycle between two projects needs one user with the right in both.'], 'No recommendation yet. Not specified.', ['p-cycle']],
+  ['What authorizes the move of a credential to its owner on the branch?', ['Rights in the new owner project only: a user could take over a credential of a project that they cannot access.', 'The move takes edit, share and delete rights from the old owner.'], 'A placeholder moves with rights in the new owner project only. Any other credential moves only when the user may move it. Without the right, Apply leaves it as it is and says who must apply.', ['c-rights', 'c-placeholder']],
+  ['How does n8n recognise a placeholder?', ['Today a stub is a normal empty credential with no marker.', 'Without a marker, the next environment promotes a placeholder as a real credential and the gap disappears.'], 'A marker on the credential, cleared when a person saves values. The publish check reads it. Promote never writes a placeholder to a branch.', ['c-placeholder']],
+  ['Does the branch record why a reference is not on the branch?', ['Apply cannot tell a reference that is broken on the source from one that an incomplete Promote left out.', 'One optional field on the requirement row. Older readers ignore it.'], 'Yes: "confirmed gap" or "broken on the source". A strict Apply blocks on a confirmed gap and warns on a broken reference, for workflows and for credentials.', ['p-incomplete', 'a-notonbranch']],
+  ['Do the checks of an Apply also read the published version of a workflow?', ['A live version can use a dependency that the incoming version dropped.', 'Promotion Apply promises only the publish state.'], 'Yes, for the deletion check and for the grant check of a move.', ['a-callers', 'm-creds']],
 ];
 const REJECTED = [
   ['Hard block only (previous revision)', 'It stops users who cannot access the dependency, and it gives no exit for archived or personal dependencies.'],
@@ -916,15 +1057,18 @@ const REJECTED = [
   ['"Allow incomplete" on by default', 'The override is opt-in.'],
   ['No placeholder for a missing credential', 'The workflow cannot bind. The placeholder plus "the owner follows the branch" ends in the same state, with the credential in its owner project.'],
   ['A placeholder in the owner project', 'Apply does not know the owner of a credential that is not on the branch, and the owner project can be missing on the destination.'],
-  ['Move placeholders only, with a marker', 'Any owner mismatch moves. One rule also covers an owner change on the source.'],
-  ['Require access to the old owner project for the move', 'Every share stays, so the move removes no access.'],
-  ['A destination home that the user selects', 'The home always comes from the branch. The selector stays only for existing branches.'],
+  ['Move placeholders only, with a marker', 'One rule also covers an owner change on the source. The marker itself is kept, for the rights of the move and for the publish check.'],
+  ['Require access to the old owner project for the move', 'Rejected for a placeholder: it holds no secret of the old owner. Kept for any other credential, as the right to move it.'],
+  ['Any owner mismatch moves with rights in the new owner project only', 'A user with rights in one project could take over a credential of a project that they cannot access.'],
+  ['A destination home that the user selects', 'The home comes from the branch. The one exception is a top-level credential of an existing branch, which has no owner.'],
   ['Promote adds the dependencies of other projects automatically', 'The owner team loses control of what ships and when. "Include it" is an action of a user who has the right.'],
   ['Sharing lists in Git', 'A Promote of one project does not rewrite the credential file of another project. The list goes out of date.'],
   ['A gap for a reference that is broken on the source', 'The destination cannot become worse than the source. A gap forces a fix of the source for no gain in parity.'],
-  ['Format version 2, or a new owner hint file', 'The branch path names the owner.'],
-  ['A backend lookup that reads more than the user can read', 'It is an elevation.'],
+  ['Format version 2, or a new owner hint file', 'The branch path names the owner. The only addition is one optional field on a requirement row.'],
+  ['A response that carries more than the user can read', 'It is an elevation. The check resolves a hidden target internally, and the response shows only what the user may see.'],
 ];
+
+const EXTRA_CONFLICTS = [];
 
 /* ---------- helpers ---------- */
 const $ = (id) => document.getElementById(id);
@@ -1129,17 +1273,20 @@ function focusArrow() {
 /* ---------- trees ---------- */
 function treeHTML(def) {
   const node = (n) => `<div class="t-node k-${n.k}" data-n="${n.id}">${esc(n.text)}${n.note ? `<small>${esc(n.note)}</small>` : ''}</div>`;
+  const forks = (p) => (p.fork || []).map((f) => `<div class="t-frow"><div class="t-edge" data-a="${p.id}" data-b="${f.id}"><span>${esc(f.label)}</span></div><div class="t-col">${node(f)}${forks(f)}</div></div>`).join('');
   let h = '<div class="tree">';
   def.rows.forEach((r, i) => {
     if (i > 0) { const p = def.rows[i - 1]; h += `<div class="t-down" data-a="${p.id}" data-b="${r.id}"><span>${esc(p.down || '')}</span></div><div></div>`; }
     h += node(r);
-    if (r.side) {
-      const s = r.side; h += `<div class="t-side"><div class="t-edge" data-a="${r.id}" data-b="${s.id}"><span>${esc(s.label)}</span></div><div class="t-col">${node(s)}`;
-      if (s.fork) h += s.fork.map((f) => `<div class="t-frow"><div class="t-edge" data-a="${s.id}" data-b="${f.id}"><span>${esc(f.label)}</span></div>${node(f)}</div>`).join('');
-      h += '</div></div>';
-    } else h += '<div></div>';
+    if (r.side) { const s = r.side; h += `<div class="t-side"><div class="t-edge" data-a="${r.id}" data-b="${s.id}"><span>${esc(s.label)}</span></div><div class="t-col">${node(s)}${forks(s)}</div></div>`; }
+    else h += '<div></div>';
   });
   return h + '</div>';
+}
+function treeIds(def) {
+  const ids = [], walk = (n) => { ids.push(n.id); (n.fork || []).forEach(walk); };
+  def.rows.forEach((r) => { ids.push(r.id); if (r.side) walk(r.side); });
+  return ids;
 }
 function setPath(el, path) {
   const ids = path ? path.split(' ') : [], pairs = new Set(ids.slice(1).map((b, i) => ids[i] + '>' + b));
@@ -1149,15 +1296,17 @@ function setPath(el, path) {
 }
 
 /* ---------- panels ---------- */
+function conflictHTML([text, ...sources]) {
+  return `<div class="conf"><div class="conf-t">Sources disagree</div>${esc(text)}<ul>${sources.map((x) => `<li>${esc(x)}</li>`).join('')}</ul></div>`;
+}
 function renderHead() {
-  const sc = cur.sc;
-  let h = `<h3>${esc(sc.title)}</h3><p>${esc(sc.intro)}</p><div class="sc-meta"><span class="pill plain">solution.md §${esc(sc.flow)}</span>`;
+  const sc = cur.sc, conflicts = sc.conflicts || [];
+  let h = `<h3>${esc(sc.title)}</h3><p>${esc(sc.intro)}</p><div class="sc-meta"><span class="pill plain">${sc.flow === 'kept' ? 'kept from the previous revision' : 'solution.md §' + esc(sc.flow)}</span>`;
   (sc.decisions || []).forEach((n) => { h += `<button class="pill decpill" data-dec="${n}">open decision ${n}</button>`; });
-  h += '</div>';
-  h = h.replace(/<\/div>$/, '');
+  if (conflicts.length) h += '<span class="pill risk">sources disagree</span>';
   if (sc.spec.length) h += `<details class="specd"><summary>Specified by ${sc.spec.length} Gherkin scenario${sc.spec.length > 1 ? 's' : ''}</summary><div class="spec">` + sc.spec.map(([f, n]) => `<span><span class="mono">${esc(f)}</span> › <b>${esc(n)}</b></span>`).join('') + '</div></details>';
   else h += '<span class="pill risk">not specified in Gherkin: the outcome is not decided</span>';
-  h += '</div>';
+  h += '</div>' + conflicts.map(conflictHTML).join('');
   $('schead').innerHTML = h;
 }
 function renderSteps() {
@@ -1169,7 +1318,7 @@ function renderNarr() {
   const sc = cur.sc, step = sc.steps[cur.step];
   let h = `<span class="pill ${step.v || 'info'}">${VLABEL[step.v || 'info']}</span>${step.isNew ? ' <span class="pill newcap" title="Not possible today">New capability</span>' : ''}<h4>${cur.step + 1}. ${esc(step.t)}</h4><p>${esc(step.d)}</p>`;
   (step.msgs || []).forEach(([k, on, text, summary]) => {
-    h += `<div class="msg ${k}"><span class="ic">${k === 'block' ? '✕' : k === 'warn' ? '!' : k === 'action' ? '→' : 'i'}</span><div>${on ? `<span class="on">${esc(on)}</span>` : ''}${k === 'action' || summary ? esc(text) : `<q>${esc(text)}</q>`}</div></div>`;
+    h += `<div class="msg ${k}"><span class="ic">${k === 'block' ? '✕' : k === 'warn' ? '!' : k === 'action' ? '→' : k === 'ok' ? '✓' : 'i'}</span><div>${on ? `<span class="on">${esc(on)}</span>` : ''}${k === 'action' || summary ? esc(text) : `<q>${esc(text)}</q>`}</div></div>`;
   });
   const checks = step.checks || [];
   if (checks.length) {
@@ -1274,6 +1423,14 @@ function renderStatic() {
   $('decs').onclick = (e) => { const b = e.target.closest('[data-go]'); if (b) openScenario(b.dataset.go); };
   $('rejsum').textContent = `Rejected options (${REJECTED.length})`;
   $('rejtable').innerHTML = '<tr><th style="width:38%">Option</th><th>Reason</th></tr>' + REJECTED.map(([a, b]) => `<tr><td>${esc(a)}</td><td>${esc(b)}</td></tr>`).join('');
+  const confRows = [];
+  SCENARIOS.forEach((s) => (s.conflicts || []).forEach((c) => confRows.push([s.title, s.id, c])));
+  EXTRA_CONFLICTS.forEach(([where, c]) => confRows.push([where, '', c]));
+  $('confsum').textContent = `Where solution.md and the specification disagree (${confRows.length})`;
+  if (!confRows.length) $('conftable').innerHTML = '<tr><td style="font-weight:400">None. The specification review found seven. The amendments in solution.md (decision log, Part 9) answer them, and the specification follows.</td></tr>';
+  else $('conftable').innerHTML = '<tr><th style="width:22%">Where</th><th style="width:30%">What the page shows</th><th>What each source says</th><th></th></tr>' + confRows.map(([where, goId, [text, ...sources]]) =>
+    `<tr class="${goId ? 'go' : ''}" data-go="${goId}"><td>${esc(where)}</td><td>${esc(text)}</td><td>${sources.map((x) => `<div>${esc(x)}</div>`).join('')}</td><td>${goId ? '<span class="see">scenario ▸</span>' : ''}</td></tr>`).join('');
+  $('conftable').onclick = (e) => { const r = e.target.closest('tr[data-go]'); if (r && r.dataset.go) openScenario(r.dataset.go); };
 }
 
 /* ---------- events ---------- */
@@ -1316,11 +1473,12 @@ window.addEventListener('hashchange', () => {
         prepare(s);
         s.spec.forEach(([f, n]) => specs.push([s.id, f, n]));
         (s.decisions || []).forEach((d) => { if (!DECISIONS[d - 1]) problems.push(s.id + ': decision ' + d); });
+        (s.conflicts || []).forEach((c) => { if (c.length < 3 || c.some((x) => !x)) problems.push(s.id + ': a conflict needs a text and two sources'); });
         s.refs.forEach(([a, b]) => { if (!ITEMS[a] || !ITEMS[b]) problems.push(s.id + ': ref ' + a + '>' + b); });
         s.steps.forEach((st, i) => {
           (st.checks || []).forEach(([a, b, tree, path]) => {
             if (!s.refs.some((r) => r[0] === a && r[1] === b)) problems.push(s.id + '#' + i + ': check without ref ' + a + '>' + b);
-            const ids = []; TREES[tree].rows.forEach((r) => { ids.push(r.id); if (r.side) { ids.push(r.side.id); (r.side.fork || []).forEach((f) => ids.push(f.id)); } });
+            const ids = treeIds(TREES[tree]);
             path.split(' ').forEach((p) => { if (!ids.includes(p)) problems.push(s.id + '#' + i + ': tree node ' + p); });
           });
           Object.keys(st.marks || {}).concat(Object.keys(st.sub || {})).forEach((k) => { const [l, id] = k.split(':'); if (!s.states[i][l].some((e) => e.id === id)) problems.push(s.id + '#' + i + ': mark on absent ' + k); });

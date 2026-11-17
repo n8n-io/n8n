@@ -1,5 +1,5 @@
-# Source: behavior kept from the previous revision of solution.md (existing
-# branches), with the gaps and exits of solution.md sections 3.2 to 3.4.
+# Source: solution.md section 3.7 (existing branches), with the gaps and exits
+# of solution.md sections 3.2 to 3.4.
 Feature: Branches that an earlier version wrote
   There is no migration. A branch that an earlier version wrote can hold a
   credential at the top level, with no owner, and a reference to a workflow
@@ -39,14 +39,23 @@ Feature: Branches that an earlier version wrote
       Then the Promote writes "Sync orders" to the branch under project "Sales"
 
   Rule: On Apply, the user selects the home of a top-level credential
+    This is the one case where the user selects the home of a credential. A
+    top-level credential has no owner on the branch. The home selector appears
+    in both modes.
 
-    Scenario: The Apply dialog shows the home selector
+    Scenario Outline: The Apply dialog shows the home selector
       Given the destination does not hold "CRM key"
+      And <mode>
       When the user applies project "Sales"
       Then the Apply stops before any write
       And the dialog asks the user to select a team project as the home of "CRM key"
       And no project is selected in advance
       And project "Sales" is first in the list, because it uses "CRM key"
+
+      Examples:
+        | mode                                                        |
+        | the apply environment is strict                             |
+        | "Allow incomplete applies" is on for the apply environment  |
 
     Scenario: The home selector never offers a personal project
       Given the destination does not hold "CRM key"
@@ -71,13 +80,28 @@ Feature: Branches that an earlier version wrote
       Then the result is "blocked"
       And the result reports "CRM key" with the conflict "unknown-owner"
 
-  Rule: A reference to a workflow that is not on the branch is a warning on Apply
+  Rule: A reference that is not on the branch and has no reason: a workflow is a warning, a credential is a gap
+    An earlier version writes no reason on a requirement row. Without a reason,
+    a workflow reference that is not on the branch is a warning, and a
+    credential reference that is not on the branch is a gap.
 
     Scenario: The workflow arrives with a broken reference and the result says so
       Given "Sync orders" calls workflow "Notify on-call"
       And the branch does not hold "Notify on-call"
+      And the requirement row of "Notify on-call" has no reason
       And the destination does not hold "Notify on-call"
       And project "Sales" can use "CRM key" on the destination
       When the user applies project "Sales"
       Then the Apply imports "Sync orders"
       And the result shows a warning that names "Sync orders" and "Notify on-call"
+
+    Scenario: A reference to a credential that is not on the branch is a gap on Apply
+      Given "Sync orders" uses credential "Mail key"
+      And the branch does not hold "Mail key"
+      And the requirement row of "Mail key" has no reason
+      And the destination does not hold "Mail key"
+      And the apply environment is strict
+      And project "Sales" can use "CRM key" on the destination
+      When the user applies project "Sales"
+      Then the Apply stops before any write
+      And the report shows a gap for "Mail key"

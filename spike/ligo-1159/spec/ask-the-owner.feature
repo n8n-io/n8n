@@ -1,8 +1,8 @@
-# Source: solution.md sections 3.6 and 3.12.
+# Source: solution.md sections 3.6, 3.12 and 9 (decision 1).
 Feature: Ask the owner
   A gap in a project that the user cannot access offers "Ask the owner". The
   request goes to the owner project. The requester gets no information about
-  the owner project.
+  the owner project. The request stores the operation and the environment.
 
   Background:
     Given the source has the team projects "Sales", "Platform" and "Ops"
@@ -34,7 +34,13 @@ Feature: Ask the owner
       When an admin of project "Platform" opens the request
       Then the request shows credential "CRM key"
       And the request shows the requesting user
+      And the request shows the operation
       And the request does not name project "Sales"
+
+    Scenario: The request stores the operation and the environment
+      When the user selects "Ask the owner" on the gap of "CRM key" in the Promote of "Sync orders"
+      Then the request stores the operation "Promote"
+      And the request stores the promote environment
 
   Rule: The request leads to a normal Promote of the owner project
 
@@ -59,3 +65,21 @@ Feature: Ask the owner
       And the user cannot apply project "Ops"
       When the user previews the Apply of "Sync orders" of project "Sales"
       Then the gap of "Notify on-call" offers the action "Ask the owner"
+
+    Scenario: A request from an Apply offers the Apply on that destination
+      Given the branch holds workflow "Notify on-call" under project "Ops"
+      And the destination does not hold "Notify on-call"
+      And project "Ops" is on the destination
+      And the user asked the owner for "Notify on-call" from the Apply of "Sync orders"
+      When an admin of project "Ops" opens the request
+      Then the request offers the Apply of "Notify on-call" on that destination
+      And the request does not offer a Promote of "Notify on-call"
+
+    @open-decision-1
+    Scenario: The instance admins receive the request when the owner project is not on the destination
+      Given the branch holds workflow "Notify on-call" under project "Ops"
+      And the destination does not hold project "Ops"
+      And the user cannot apply project "Ops"
+      When the user selects "Ask the owner" on the gap of "Notify on-call" in the Apply of "Sync orders"
+      Then the instance admins of the destination see the request in their inbox
+      And the user sees "Request sent"

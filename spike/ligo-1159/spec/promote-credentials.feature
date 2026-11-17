@@ -1,4 +1,4 @@
-# Source: solution.md sections 1, 3.2, 3.7 and 3.13.
+# Source: solution.md sections 1, 3.2, 3.3, 3.7 and 3.13.
 Feature: Credentials in a project Promote
   The branch path is the owner of a credential. A credential is on the branch
   only when its file is under the folder of a team project.
@@ -60,8 +60,18 @@ Feature: Credentials in a project Promote
     Scenario: A workflow on the branch uses a credential that the branch does not hold
       Given the branch holds "Sync orders" under project "Sales"
       And the branch does not hold "CRM key" under a project
+      And the user can access project "Sales"
       When the user previews the Promote of project "Platform"
       Then the preview lists "CRM key" as a credential that project "Sales" uses on the branch
+
+    Scenario: The preview gives a count for a consumer project that the user cannot access
+      Given the branch holds "Sync orders" under project "Sales"
+      And the branch does not hold "CRM key" under a project
+      And the user cannot access project "Sales"
+      When the user previews the Promote of project "Platform"
+      Then the preview lists "CRM key" with the text "1 project that you cannot access uses it on the branch."
+      And the preview does not name project "Sales"
+      And the preview does not name workflow "Sync orders"
 
   Rule: A global credential travels as a credential of its owner team project
 
@@ -85,6 +95,8 @@ Feature: Credentials in a project Promote
       When the user promotes that workflow from project "Sales"
       Then the package records that the workflow needs "Instance SMTP"
       And the branch holds no file for "Instance SMTP"
+      And the report shows the note: "An instance credential is not promoted. It must exist on the destination."
+      And the report shows no gap for "Instance SMTP"
 
   Rule: The check finds a credential by id under any project folder
 
@@ -100,3 +112,28 @@ Feature: Credentials in a project Promote
       When the user promotes credential "CRM key" from project "Ops"
       Then the branch holds "CRM key" under project "Ops"
       And the branch does not hold "CRM key" under project "Platform"
+
+    Scenario: A credential id under two project folders stops the Promote
+      Given the branch holds credential "CRM key" under project "Platform"
+      And the branch holds credential "CRM key" under project "Ops"
+      And the user can access the projects "Platform" and "Ops"
+      When the user promotes "Sync orders" from project "Sales"
+      Then the Promote stops
+      And the message names the folders of project "Platform" and project "Ops"
+
+  Rule: A placeholder is never content
+
+    @open-decision-6
+    Scenario: The Promote does not write a placeholder to the branch
+      Given an incomplete Apply created the placeholder "CRM key" in project "Platform" on the source
+      And nobody saved values in "CRM key"
+      When the user promotes credential "CRM key" from project "Platform"
+      Then the branch holds no file for "CRM key"
+
+    @open-decision-6
+    Scenario: A reference to a placeholder is a gap
+      Given an incomplete Apply created the placeholder "CRM key" in project "Platform" on the source
+      And nobody saved values in "CRM key"
+      And the branch does not hold "CRM key"
+      When the user previews the Promote of "Sync orders" from project "Sales"
+      Then the report shows a gap for "CRM key"

@@ -1,4 +1,4 @@
-# Source: solution.md sections 3.1, 3.5, 3.7 and 3.12.
+# Source: solution.md sections 2, 3.1, 3.3, 3.5, 3.7 and 3.12.
 Feature: Permissions in promotion
   Promotion acts as the user. It reports, it does not act for the user, and a
   user never sees information about a resource that they cannot access.
@@ -34,6 +34,26 @@ Feature: Permissions in promotion
       Then the report does not name project "Platform"
       And the gap offers the action "Ask the owner"
 
+  Rule: A target that the user cannot read and that works on the source is a gap, not a warning
+    The check resolves a target that the user cannot read. It needs this to
+    tell a gap from a broken reference.
+
+    Scenario: The user cannot read a target that works on the source
+      Given the user cannot read "CRM key"
+      And project "Sales" can use "CRM key" on the source
+      And the branch does not hold "CRM key"
+      When the user previews the Promote of "Sync orders" from project "Sales"
+      Then the report shows a gap for "CRM key"
+      And the report does not show the warning "This reference is broken."
+      And the report shows "CRM key" only with the id, the name and the type that the node of "Sync orders" holds
+
+    Scenario: A target that the check cannot resolve counts as working
+      Given the check cannot tell whether project "Sales" can use "CRM key" on the source
+      And the branch does not hold "CRM key"
+      When the user previews the Promote of "Sync orders" from project "Sales"
+      Then the report shows a gap for "CRM key"
+      And the report does not show the warning "This reference is broken."
+
   Rule: Each write of an Apply has its own permission check
 
     Scenario Outline: An action appears only when the user holds its permission
@@ -52,6 +72,11 @@ Feature: Permissions in promotion
         | move a workflow to a new project | workflow:create in the new project                           | a block that names the missing permission    |
         | include an item of another project | the right to promote or apply that project                 | the gap offers "Ask the owner"               |
 
+      @open-decision-5
+      Examples: Move of a credential with values
+        | action                                                   | needs                             | without it                                                                          |
+        | move a credential with values to its owner on the branch | credential:move on the credential | "CRM key has another owner on the destination. A user who may move it must apply." |
+
     Scenario: A dependency never gives a permission
       Given the branch holds "CRM key" under project "Platform"
       And the destination does not hold "CRM key"
@@ -67,23 +92,50 @@ Feature: Permissions in promotion
       When the user confirms the gaps and promotes "Sync orders" from project "Sales"
       Then the Promote writes "Sync orders" to the branch under project "Sales"
 
-  Rule: Moving a credential to its owner on the branch needs rights in that project only
+  Rule: The move of a credential to its owner on the branch has its own permission check
+    A placeholder moves with rights in the project of the branch only. Any
+    other credential moves only when the user may move it.
 
+    @open-decision-5
     Scenario: The user cannot access the old owner project
       Given the branch holds "CRM key" under project "Platform"
-      And the destination holds "CRM key" in project "Ops"
+      And the destination holds the placeholder "CRM key" in project "Ops"
       And the user cannot access project "Ops"
       And the user may create and update credentials in project "Platform"
       When the user applies project "Platform"
       Then "CRM key" is in project "Platform" on the destination
 
+    @open-decision-5
     Scenario: The user may not create credentials in the project of the branch
       Given the branch holds "CRM key" under project "Platform"
-      And the destination holds "CRM key" in project "Ops"
+      And the destination holds the placeholder "CRM key" in project "Ops"
       And the user may not create credentials in project "Platform"
       When the user applies project "Platform"
       Then the Apply stops before any write
       And the Apply names the missing permission
+
+    @open-decision-5
+    Scenario: The user may not move a credential with values
+      Given the branch holds "CRM key" under project "Platform"
+      And the destination holds "CRM key" with secret values in project "Ops"
+      And the user may create and update credentials in project "Platform"
+      And the user may not move "CRM key"
+      When the user applies project "Platform"
+      Then "CRM key" stays in project "Ops" on the destination
+      And the Apply does not update "CRM key"
+      And the Apply continues with the other items
+      And the result says: "CRM key has another owner on the destination. A user who may move it must apply."
+
+  Rule: The confirmation of an incomplete operation never gives a permission
+
+    Scenario: Confirming the gaps does not give the right to create a placeholder
+      Given "Allow incomplete applies" is on for the apply environment
+      And the branch does not hold "CRM key"
+      And the destination does not hold "CRM key"
+      And the user may not create a credential in project "Sales" on the destination
+      When the user confirms the gaps and applies project "Sales"
+      Then the Apply creates no placeholder for "CRM key"
+      And the Apply stops on "CRM key"
 
   Rule: Selecting a credential in a Promote needs read access to it
 

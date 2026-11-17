@@ -1,5 +1,6 @@
-# Source: solution.md section 3.13, and the scope rules of the previous
-# revision that the current solution.md keeps.
+# Source: solution.md sections 3.11 and 3.13, open decision 7 of section 9,
+# and the scope rules of the previous revision that the current solution.md
+# keeps.
 Feature: What travels and what does not
   Two relations cross a project at run time: the use of a credential and a
   reference to a workflow. Variables and data tables cannot cross a project.
@@ -26,7 +27,9 @@ Feature: What travels and what does not
       And the destination does not hold the variable "region" in project "Sales"
       When the user applies project "Sales"
       Then the Apply stops before any write
-      And the binding step creates the variable "region" in project "Sales"
+      And the Apply shows the variable "region" as missing in project "Sales"
+      When the user creates the variable "region" in project "Sales" in the binding step
+      Then the user can continue the Apply
 
   Rule: A data table of the own project is content
 
@@ -76,6 +79,8 @@ Feature: What travels and what does not
       When the user promotes "Sync orders" from project "Sales"
       Then the branch does not record the share of "Sync orders"
 
+    # Exception: a move between projects removes the shares of the workflow,
+    # as the editor move does (moves.feature).
     Scenario: The shares on the destination stay
       Given the branch holds "Sync orders" under project "Sales"
       And "Sync orders" is shared with a user on the destination
@@ -101,9 +106,12 @@ Feature: What travels and what does not
       When the user previews an Apply
       Then the preview compares the new branch with the destination
 
-  Rule: The package format does not change
+  Rule: The package format keeps its version and its file types
 
+    @open-decision-7
     Scenario: A new Promote writes a package that an older reader can read
       When the user promotes "Sync orders" from project "Sales"
       Then the package has the format version "1"
       And the package holds no file type that the earlier format does not have
+      And a requirement row can hold one optional field with the reason that its target is not on the branch
+      And an older reader ignores that field

@@ -1,5 +1,6 @@
-# Source: solution.md sections 3.10 and 3.11, with the move rules of the previous
-# revision and of consolidated-solution.md (sections 4.5 and 5.9).
+# Source: solution.md sections 3.2, 3.9, 3.10, 3.11 and 3.12, and open
+# decision 8 of section 9, with the move rules of the previous revision and of
+# consolidated-solution.md (sections 4.5 and 5.9).
 Feature: Moves between projects
   A move of a workflow or a folder between two team projects is one change.
   Apply transfers the item and keeps its id, its history and its executions.
@@ -12,9 +13,17 @@ Feature: Moves between projects
   Rule: Promote writes a move between two team projects as one change
 
     Scenario: The preview shows one moved row
+      Given the user can access the projects "Sales" and "Ops"
       When the user previews the Promote of project "Ops"
       Then the preview shows one row for "Sync orders": "Moved from Sales to Ops"
       And the preview does not show a deletion and a creation for "Sync orders"
+
+    Scenario: The moved row does not name a project that the user cannot access
+      Given the user can access project "Ops"
+      And the user cannot access project "Sales"
+      When the user previews the Promote of project "Ops"
+      Then the preview shows one moved row for "Sync orders"
+      And the row does not name project "Sales"
 
     Scenario Outline: The moved row is on the page of each project
       When the user previews the Promote of project "<project>"
@@ -39,6 +48,7 @@ Feature: Moves between projects
     Background:
       Given the branch holds "Sync orders" under project "Ops" after the Promote of the move
       And the destination holds "Sync orders" in project "Sales"
+      And the user can access the projects "Sales" and "Ops"
 
     Scenario: An instance Apply transfers the workflow and keeps the id
       When the user starts an instance Apply
@@ -69,6 +79,8 @@ Feature: Moves between projects
         | Sales   |
         | Ops     |
 
+    # A workflow move follows the editor move. The loss of shares is the stated
+    # exception to "workflow shares stay" (scope.feature).
     Scenario: The moved workflow loses its shares
       Given "Sync orders" is shared with a user on the destination
       When the user previews the Apply of the moved row of "Sync orders"
@@ -93,6 +105,7 @@ Feature: Moves between projects
       And the branch holds "Sync orders" under project "Ops"
       And the branch does not hold project "Sales"
       And the destination holds "Sync orders" in project "Sales"
+      And the user can access project "Sales" on the destination
 
     Scenario: A project Apply refuses the move
       When the user applies "Sync orders" of project "Ops"
@@ -132,7 +145,7 @@ Feature: Moves between projects
       Then the Promote treats "Alice's helper" as a new workflow
       And the dependencies of "Alice's helper" follow the rules of the Promote check
 
-  Rule: Credentials do not move with a workflow
+  Rule: Credentials, data tables and project variables do not move with a workflow
 
     Scenario: The credentials of a moved workflow are dependencies in the new project
       Given "Sync orders" uses credential "Sales key" of project "Sales"
@@ -152,6 +165,25 @@ Feature: Moves between projects
       When the user starts an instance Apply
       Then the Apply does not delete project "Sales"
       And the Apply shows a warning that names project "Sales" and "Sales key"
+
+    Scenario: The data tables and project variables of a moved workflow are dependencies in the new project
+      Given "Sync orders" uses data table "Price list" of project "Sales"
+      And "Sync orders" uses the project variable "region" of project "Sales"
+      And the branch holds "Sync orders" under project "Ops" after the Promote of the move
+      When the user starts an instance Apply
+      Then "Price list" and "region" stay in project "Sales" on the destination
+      And the Apply creates no data table and no variable in project "Ops"
+      And the result shows a warning that names "Sync orders", "Price list" and "region"
+
+    @open-decision-8
+    Scenario: The grant check of a move reads the published version
+      Given the destination holds "Sync orders" in project "Sales"
+      And "Sync orders" is published on the destination
+      And the published version of "Sync orders" uses credential "Sales key" of project "Sales"
+      And the branch holds a version of "Sync orders" under project "Ops" that does not use "Sales key"
+      And project "Ops" cannot use "Sales key" on the destination
+      When the user starts an instance Apply
+      Then the Apply lists this access to grant: "Sales key" for project "Ops"
 
   Rule: A move needs the rights of the editor move
 

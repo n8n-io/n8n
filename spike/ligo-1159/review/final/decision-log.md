@@ -486,3 +486,50 @@ Reason for the change: team feedback on the Notion page and in Slack. The rule "
 - The branch path is the owner (R5). No format change.
 - No closure. Sharing in Git stays rejected (R8).
 - Per-project repositories stay with LIGO-1399 (R9).
+
+## Part 9: amendments after the specification review (2026-11-17)
+
+Two independent reviews of the specification found contradictions between `solution.md` and the `.feature` files, and rules that were missing. These amendments answer them. Each amendment that a person must confirm is an open decision in `solution.md` section 9.
+
+**A1. The owner follows the branch needs an authorization.** (open decision 5)
+- Before: any owner mismatch moves, with rights in the new owner project only (S5).
+- Problem: a user with rights in one project can take over a credential with secret values from a project that they cannot access. A client can create a credential with a chosen id.
+- Now: a placeholder moves with rights in the new owner project only. Any other credential moves only when the user may move it.
+- Replaces: the second and third bullet of S5.
+
+**A2. A placeholder has a marker.** (open decision 6)
+- The publish check and the move rule read it. Promote never writes a placeholder to a branch, so a gap stays visible through several environments.
+- Replaces: "No placeholder marker" in S5.
+
+**A3. The branch records why a reference is not on the branch.** (open decision 7)
+- One optional field on the requirement row: "confirmed gap" or "broken on the source".
+- A strict Apply blocks on a confirmed gap and warns on a broken reference, for workflows and for credentials. Journey 4.2 and section 3.4 now agree.
+- Replaces: S6, "A workflow reference that is not on the branch stays a warning". Changes R-level "no format change" to "no version change and no new file".
+
+**A4. The Apply check reads the state after the Apply.**
+- A target that the same Apply writes must still be usable by its consumer: a grant for a credential, the caller policy for a workflow, not archived.
+
+**A5. One order for deletions.**
+- A deletion in the selection that an item of the same Apply references: a gap.
+- An instance Apply keeps a workflow that the package still references.
+- A caller on the destination that the Apply does not write: the user accepts or cancels.
+
+**A6. Placeholder rules.**
+- A placeholder only when the destination does not hold the id. One placeholder for one id. It needs `credential:create`. A confirmation never gives a permission.
+
+**A7. Credentials on Apply.**
+- "Include it" for a missing credential adds the step where a person creates it in its owner project.
+- A match by id needs the same type.
+- An instance credential is a note on Promote and must exist on the destination.
+- The home selector stays for a top-level credential of an existing branch only, in both modes.
+
+**A8. The promise about live workflows is the publish state only.** (open decision 8)
+- The deletion check and the grant check of a move also read the published version.
+
+**A9. No leak in the other direction.**
+- Lists of callers, consumers, kept items and move projects name only what the user can access, and give a count for the rest.
+- The check resolves a hidden target internally. Unknown is never "broken".
+
+**A10. "Include it" needs the project in the environment scope and read access to the item.** A dependency outside the environment scope has its own group in the report.
+
+**A11. Known limits.** `solution.md` section 10 lists what the reviews found and this revision does not solve.
