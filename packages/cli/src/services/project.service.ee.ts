@@ -48,6 +48,8 @@ const INSTANCE_ACCESS_ROLE_ERROR =
 	"This user has access through their instance role. Project roles can't change their access in this project.";
 const INSTANCE_ACCESS_REMOVE_ERROR =
 	"This user has access through their instance role and can't be removed from the project.";
+const PERSONAL_PROJECT_MEMBERS_ERROR = "Personal projects can't have members.";
+const PERSONAL_PROJECT_UPDATE_ERROR = "Personal projects can't be updated.";
 
 export class TeamProjectOverQuotaError extends UserError {
 	constructor(limit: number) {
@@ -530,6 +532,10 @@ export class ProjectService {
 			{ name, icon, description, customTelemetryTags: tags },
 		);
 		if (!result.affected) {
+			const project = await this.projectRepository.findOneBy({ id: projectId });
+			if (project?.type === 'personal') {
+				throw new ForbiddenError(PERSONAL_PROJECT_UPDATE_ERROR);
+			}
 			throw new ProjectNotFoundError(projectId);
 		}
 
@@ -661,10 +667,6 @@ export class ProjectService {
 			'project',
 		);
 
-		if (project.type === 'personal') {
-			throw new ForbiddenError("Can't add users to personal projects.");
-		}
-
 		if (relations.some((r) => r.role === PROJECT_OWNER_ROLE_SLUG)) {
 			throw new ForbiddenError("Can't add a personalOwner to a team project.");
 		}
@@ -755,10 +757,13 @@ export class ProjectService {
 
 	private async getTeamProjectWithRelations(projectId: string) {
 		const project = await this.projectRepository.findOne({
-			where: { id: projectId, type: 'team' },
+			where: { id: projectId },
 			relations: { projectRelations: { role: true } },
 		});
 		ProjectNotFoundError.isDefinedAndNotNull(project, projectId);
+		if (project.type === 'personal') {
+			throw new ForbiddenError(PERSONAL_PROJECT_MEMBERS_ERROR);
+		}
 		return project;
 	}
 
