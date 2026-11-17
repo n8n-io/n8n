@@ -668,8 +668,15 @@ export interface HttpRequest {
 	/**
 	 * `true`: the runtime applies the allowed domains of the credential to this request, as
 	 * the HTTP Request node of n8n does. A request to another host fails, and nothing is sent.
+	 *
+	 * `{ own, target }`: the rule of a routed node of n8n (`routing-node.ts`). `own` is the host
+	 * of the base URL in the description of the node, and `target` is the URL of the request
+	 * before the hooks of the node. When `target` goes to `own`, the runtime adds `own` to the
+	 * allowed domains, and the mode `none` lets the request pass. `own` is a constant that the
+	 * node compiler writes into the module from the description of the node. The data of a
+	 * workflow cannot change it, so a workflow cannot add a host of its choice.
 	 */
-	allowedDomains?: boolean;
+	allowedDomains?: boolean | { own: string; target?: string };
 	/** Total time limit of the request in ms (spec 7.1). The runtime default is 300,000. */
 	timeoutMs?: number;
 }

@@ -18,6 +18,10 @@ const load = createRequire(join(base, 'package.json'));
 const NODES: Record<string, { file: string; className: string }> = {
 	'n8n-nodes-base.sendInBlue': { file: 'Brevo/Brevo.node', className: 'Brevo' },
 	'n8n-nodes-base.whatsApp': { file: 'WhatsApp/WhatsApp.node', className: 'WhatsApp' },
+	'n8n-nodes-base.microsoftEntra': {
+		file: 'Microsoft/Entra/MicrosoftEntra.node',
+		className: 'MicrosoftEntra',
+	},
 	'n8n-nodes-base.googleBusinessProfile': {
 		file: 'Google/BusinessProfile/GoogleBusinessProfile.node',
 		className: 'GoogleBusinessProfile',
@@ -84,7 +88,92 @@ const SEND_TEXT = {
 	textBody: 'The order is ready',
 };
 
+const contactPage = (first: number, count: number) => ({
+	body: { contacts: Array.from({ length: count }, (_, k) => ({ id: first + k })), count },
+});
+
+const ALL_CONTACTS = { resource: 'contact', operation: 'getAll', returnAll: true };
+
 const CASES: EquivalenceCase[] = [
+	brevo(
+		'contact get with a credential that allows other domains',
+		{ resource: 'contact', operation: 'get', identifier: 'ada@example.test' },
+		[{ body: { id: 7 } }],
+		{
+			credential: {
+				type: 'sendInBlueApi',
+				data: {
+					accessToken: 'brevo-key',
+					allowedHttpRequestDomains: 'domains',
+					allowedDomains: 'example.test',
+				},
+			},
+		},
+	),
+	brevo(
+		'contact get with a credential that allows no domain',
+		{ resource: 'contact', operation: 'get', identifier: 'ada@example.test' },
+		[{ body: { id: 7 } }],
+		{
+			credential: {
+				type: 'sendInBlueApi',
+				data: { accessToken: 'brevo-key', allowedHttpRequestDomains: 'none' },
+			},
+		},
+	),
+	brevo('contact get all pages of one item', ALL_CONTACTS, [
+		contactPage(0, 1000),
+		contactPage(1000, 2),
+	]),
+	brevo(
+		'contact get all, two items with two pages',
+		ALL_CONTACTS,
+		[contactPage(0, 1000), contactPage(5000, 1000), contactPage(1000, 3), contactPage(6000, 2)],
+		{ items: [{ n: 1 }, { n: 2 }] },
+	),
+	brevo(
+		'contact get all, three items with three pages',
+		ALL_CONTACTS,
+		[
+			contactPage(0, 1000),
+			contactPage(10000, 1000),
+			contactPage(20000, 1000),
+			contactPage(1000, 1000),
+			contactPage(11000, 1000),
+			contactPage(21000, 1000),
+			contactPage(2000, 1),
+			contactPage(12000, 2),
+			contactPage(22000, 0),
+		],
+		{ items: [{ n: 1 }, { n: 2 }, { n: 3 }] },
+	),
+	brevo(
+		'contact get all, three items with one, three and two pages',
+		ALL_CONTACTS,
+		[
+			contactPage(0, 4),
+			contactPage(10000, 1000),
+			contactPage(20000, 1000),
+			contactPage(11000, 1000),
+			contactPage(21000, 5),
+			contactPage(12000, 6),
+		],
+		{ items: [{ n: 1 }, { n: 2 }, { n: 3 }] },
+	),
+	brevo(
+		'contact get all, the second page of the first item fails',
+		ALL_CONTACTS,
+		[
+			contactPage(0, 1000),
+			contactPage(5000, 1000),
+			{ status: 404, body: { code: 'document_not_found', message: 'No page' } },
+			contactPage(6000, 2),
+		],
+		{
+			items: [{ n: 1 }, { n: 2 }],
+			expectedError: 'The resource you are requesting could not be found',
+		},
+	),
 	brevo('contact get', { resource: 'contact', operation: 'get', identifier: 'ada@example.test' }, [
 		{ body: { id: 7, email: 'ada@example.test' } },
 	]),
@@ -199,15 +288,40 @@ describe.skipIf(!built)('the entry of a declarative node', () => {
 		expect('errors' in compiled ? compiled.errors[0] : '').toContain('stays in the host');
 	});
 
-	it('keeps a node in the host when its credential limits the domains', () => {
+	it('names the host of the node in a request with a credential that limits its domains', () => {
 		const contact = { resource: 'contact', operation: 'get', identifier: 'a' };
 		const type = 'n8n-nodes-base.sendInBlue';
 		for (const limit of ['domains', 'none']) {
 			const compiled = compileOf(type, 1.1, contact, { allowedHttpRequestDomains: limit });
-			expect('errors' in compiled ? compiled.errors[0] : '').toContain('limits its domains');
+			expect('errors' in compiled ? compiled.errors : []).toEqual([]);
+			const source = 'source' in compiled ? compiled.source : '';
+			expect(source).toContain('own: "api.brevo.com", target: options.allowedDomains');
+			expect(source).toContain('routingDomainSetting(error)');
 		}
 		const open = compileOf(type, 1.1, contact, { allowedHttpRequestDomains: 'all' });
 		expect('errors' in open ? open.errors : []).toEqual([]);
+		expect('source' in open ? open.source : '').not.toContain('allowedDomains');
+	});
+
+	it('keeps a node in the host when its credential limits the domains and the base URL is not a constant', () => {
+		const routed = routedEntry({
+			description: descriptionOf('n8n-nodes-base.microsoftEntra'),
+			parameters: {
+				resource: 'group',
+				operation: 'getAll',
+				returnAll: false,
+				limit: 2,
+				filter: '',
+				output: 'simple',
+			},
+			version: 1,
+			entry: sources.entry('n8n-nodes-base.microsoftEntra', 1) ?? '',
+			readFile: sources.readFile,
+			credentialFields: () => ({ allowedHttpRequestDomains: 'domains' }),
+		});
+		expect('errors' in routed ? routed.errors[0] : '').toContain(
+			'the base URL of the node is not one constant of its description',
+		);
 	});
 
 	it('gives a hook without a name a name, and reads a hook in a namespace', () => {
@@ -228,13 +342,34 @@ describe.skipIf(!built)('the entry of a declarative node', () => {
 		expect(flat).toContain('export const first = over(3);');
 	});
 
-	it('keeps an operation that gets its results over several requests in the host', () => {
+	it('sends the pages of the items in turn, one page of each item in a round', () => {
 		const all = compileOf('n8n-nodes-base.sendInBlue', 1.1, {
 			resource: 'contact',
 			operation: 'getAll',
 			returnAll: true,
 		});
-		expect('errors' in all ? all.errors[0] : '').toContain('over several requests');
+		expect('errors' in all ? all.errors : []).toEqual([]);
+		const entry = sources.entry('n8n-nodes-base.microsoftEntra', 1) ?? '';
+		const routed = routedEntry({
+			description: descriptionOf('n8n-nodes-base.microsoftEntra'),
+			parameters: {
+				resource: 'group',
+				operation: 'getAll',
+				returnAll: true,
+				filter: '',
+				output: 'simple',
+			},
+			version: 1,
+			entry,
+			readFile: sources.readFile,
+			credentialFields: () => ({}),
+		});
+		const text = 'errors' in routed ? routed.errors.join() : (routed.readFile(routed.entry) ?? '');
+		expect(text).toContain('const previous: any = state.response;');
+		expect(text).toContain('return (previous.body?.["@odata.nextLink"] ?? requestOptions.url);');
+		expect(text).toContain('{ ...requestOptions, ...page, returnFullResponse: true }');
+		expect(text).toContain('return (!!response.body?.["@odata.nextLink"]);');
+		expect(text).toContain('if (!state.done) pending = true;');
 		const some = compileOf('n8n-nodes-base.sendInBlue', 1.1, {
 			resource: 'contact',
 			operation: 'getAll',

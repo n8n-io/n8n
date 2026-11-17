@@ -228,6 +228,39 @@ function comparable(value: unknown): unknown {
 	return out;
 }
 
+describe('HTTP Request pagination with the response format autodetect', () => {
+	const pages = { parameters: { parameters: [{ name: 'page', value: '={{ $pageCount + 1 }}' }] } };
+	const withMethod = (method: string | undefined, options: Record<string, unknown> = {}) => {
+		const flow = workflow({
+			name: 'pages',
+			pagination: pages,
+			options,
+			serve: () => CASES[0].serve('', new URLSearchParams(), ''),
+		});
+		if (method !== undefined) Object.assign(flow.nodes[1].parameters, { method });
+		return flow;
+	};
+
+	it('gives a GET node the fallback-host form for a page that is a file', () => {
+		const converted = convertWorkflow(withMethod(undefined), { trace: 'all' });
+		expect(converted.fallbackNodes).toEqual([]);
+		expect(converted.source).toContain('fileLimitInHost(error)');
+		expect(converted.source).toContain('replay:');
+	});
+
+	it('keeps a node with another method in the fallback host', () => {
+		const converted = convertWorkflow(withMethod('POST'), { trace: 'all' });
+		expect(converted.fallbackNodes).toEqual(['H']);
+	});
+
+	it('gives a node with a fixed response format no fallback-host form', () => {
+		const json = { response: { response: { responseFormat: 'json' } } };
+		const converted = convertWorkflow(withMethod('POST', json), { trace: 'all' });
+		expect(converted.fallbackNodes).toEqual([]);
+		expect(converted.source).not.toContain('fileLimitInHost(error)');
+	});
+});
+
 describe('HTTP Request pagination and v1', () => {
 	it.each(CASES.map((c) => ({ ...c, label: c.name })))('$label', async (c) => {
 		current = c;

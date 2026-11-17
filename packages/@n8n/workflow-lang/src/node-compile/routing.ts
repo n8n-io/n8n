@@ -21,6 +21,7 @@ export interface RoutedEntry {
 	entry: string;
 	readFile: ReadFile;
 	refusals: string[];
+	ownHost?: string;
 }
 
 export interface RoutedInput {
@@ -523,6 +524,8 @@ class RoutedWriter {
 
 	pagination: unknown;
 
+	setsBase = false;
+
 	readonly paginates: Array<boolean | 'expression'> = [];
 
 	private counter = 0;
@@ -677,6 +680,7 @@ class RoutedWriter {
 		for (const [key, raw] of Object.entries(recordOf(routing.request) ?? {})) {
 			checkRequestKey(key);
 			if (['qs', 'body', 'headers'].includes(key)) this.dirty = true;
+			if (key === 'baseURL') this.setsBase = true;
 			this.emit(`${own}[${JSON.stringify(key)}] = ${routingValue(raw, scope)};`);
 		}
 		const send = recordOf(routing.send);
@@ -853,6 +857,205 @@ function requestCode(credentialType: string | undefined, options: string): strin
 		: `await this.helpers.httpRequestWithAuthentication.call(this, ${JSON.stringify(credentialType)}, routingRequest(${options}))`;
 }
 
+const BUILD_FAILURE =
+	'const failure: any = error instanceof NodeApiError || error instanceof NodeOperationError ? error : new NodeOperationError(this.getNode(), error as Error, { itemIndex: i });';
+
+interface PageSteps {
+	start: string[];
+	page: string[];
+}
+
+function pageSteps(writer: RoutedWriter, credentialType: string | undefined): PageSteps {
+	const pagination = recordOf(writer.pagination);
+	if (!pagination) throw new RoutingRefusal('the pagination of the operation is a function');
+	const properties = recordOf(pagination.properties) ?? {};
+	const post = postCode(writer, 'response', 'responseItems', '');
+	const keep = 'for (const item of responseItems) state.items.push(item);';
+	if (pagination.type === 'generic') {
+		const scope = (response: string): RoutingScope => {
+			const { credentials: _, ...rest } = writer.scope({ request: 'requestOptions', response });
+			return rest;
+		};
+		return {
+			start: ['if (!requestOptions.qs) requestOptions.qs = {};'],
+			page: [
+				'const previous: any = state.response;',
+				`const page: any = ${routingValue(properties.request, scope('previous'))};`,
+				`const response: any = ${requestCode(credentialType, '{ ...requestOptions, ...page, returnFullResponse: true }')};`,
+				'state.response = response;',
+				...post,
+				keep,
+				`if (!${routingValue(properties.continue, scope('response'))}) state.done = true;`,
+			],
+		};
+	}
+	if (pagination.type !== 'offset')
+		throw new RoutingRefusal(`the pagination type '${String(pagination.type)}'`);
+	const size = properties.pageSize;
+	if (typeof size !== 'number' || !Number.isFinite(size))
+		throw new RoutingRefusal('the page size of the pagination is not a number');
+	const holder = `requestOptions[${JSON.stringify(properties.type === 'body' ? 'body' : 'qs')}]`;
+	const limit = `${holder}[${routingLiteral(properties.limitParameter)}]`;
+	const offset = `${holder}[${routingLiteral(properties.offsetParameter)}]`;
+	const root = properties.rootProperty;
+	return {
+		start: [
+			'if (!requestOptions.qs) requestOptions.qs = {};',
+			...(properties.type === 'body'
+				? ['if (!requestOptions.body) requestOptions.body = {};']
+				: []),
+			`${limit} = ${size};`,
+			`${offset} = 0;`,
+		],
+		page: [
+			'if (state.maxResults) {',
+			'\tconst missing = state.maxResults - state.items.length;',
+			'\tif (missing < 1) state.done = true;',
+			`\telse ${limit} = Math.min(${size}, missing);`,
+			'}',
+			'if (!state.done) {',
+			'\trequestOptions.returnFullResponse = true;',
+			`\tconst response: any = ${requestCode(credentialType, 'requestOptions')};`,
+			...post.map((line) => `\t${line}`),
+			`\t${offset} = ${offset} + ${size};`,
+			...(root
+				? [
+						`\tconst found: any = get(responseItems[0].json, ${routingLiteral(root)});`,
+						`\tif (found === undefined) throw new NodeOperationError(this.getNode(), ${JSON.stringify(`The rootProperty "${String(root)}" could not be found on item.`)}, { itemIndex: i });`,
+						'\tresponseItems = found.map((json: any) => ({ json }));',
+					]
+				: []),
+			`\t${keep}`,
+			`\tif (!(responseItems.length && responseItems.length === ${size})) state.done = true;`,
+			'}',
+		],
+	};
+}
+
+function pagedLines(
+	writer: RoutedWriter,
+	credentialType: string | undefined,
+	head: string[],
+	limited: boolean,
+): string[] {
+	const steps = pageSteps(writer, credentialType);
+	const names = writer.groups.flatMap((group) => [
+		group.value,
+		...group.actions.map((action) => action.enabled),
+	]);
+	const locals = [...new Set(names)].filter(
+		(name): name is string => name !== undefined && name !== 'undefined',
+	);
+	const tab = (lines: string[], indent: string) => lines.map((line) => `${indent}${line}`);
+	const post = postCode(writer, 'response', 'responseItems', '');
+	return [
+		'\t\tconst outcomes: any[] = [];',
+		'\t\tconst states: any[] = [];',
+		'\t\tlet fatal: any = undefined;',
+		'\t\tfor (let i = 0; i < items.length; i++) {',
+		'\t\t\tlet requestOptions: any = { qs: {}, body: {}, headers: {} };',
+		'\t\t\tlet paginate: any = undefined;',
+		'\t\t\tlet maxResults: any = undefined;',
+		'\t\t\ttry {',
+		...tab(head, '\t\t\t\t'),
+		...tab(writer.build, '\t\t\t\t'),
+		'\t\t\t\trequestOptions.timeout = 300000;',
+		`\t\t\t\tstates.push({ options: requestOptions, paged: !!paginate, maxResults, locals: { ${locals.join(', ')} }, items: [], response: {}, started: false, done: false });`,
+		'\t\t\t\toutcomes.push(null);',
+		'\t\t\t} catch (error) {',
+		`\t\t\t\t${BUILD_FAILURE}`,
+		'\t\t\t\tif (!this.continueOnFail()) {',
+		'\t\t\t\t\tfatal = failure;',
+		'\t\t\t\t\tbreak;',
+		'\t\t\t\t}',
+		'\t\t\t\tstates.push(null);',
+		'\t\t\t\toutcomes.push({ items: [{ json: {}, error: failure }] });',
+		'\t\t\t}',
+		'\t\t}',
+		'\t\tlet pending = true;',
+		'\t\twhile (pending) {',
+		'\t\t\tpending = false;',
+		'\t\t\tfor (let i = 0; i < items.length; i++) {',
+		'\t\t\t\tconst state: any = states[i];',
+		'\t\t\t\tif (state === undefined || state === null || state.done) continue;',
+		'\t\t\t\tlet requestOptions: any = state.options;',
+		...(locals.length > 0 ? [`\t\t\t\tconst { ${locals.join(', ')} } = state.locals;`] : []),
+		'\t\t\t\ttry {',
+		'\t\t\t\t\tif (!state.started) {',
+		'\t\t\t\t\t\tstate.started = true;',
+		...writer.preSend.map(
+			(hook) => `\t\t\t\t\t\trequestOptions = await ${hook}.call(this, i, requestOptions);`,
+		),
+		'\t\t\t\t\t\tstate.options = requestOptions;',
+		'\t\t\t\t\t\tif (state.paged) {',
+		...tab(steps.start, '\t\t\t\t\t\t\t'),
+		'\t\t\t\t\t\t}',
+		'\t\t\t\t\t}',
+		'\t\t\t\t\tif (state.paged) {',
+		...tab(steps.page, '\t\t\t\t\t\t'),
+		'\t\t\t\t\t} else {',
+		'\t\t\t\t\t\trequestOptions.returnFullResponse = true;',
+		`\t\t\t\t\t\tconst response: any = ${requestCode(credentialType, 'requestOptions')};`,
+		...tab(post, '\t\t\t\t\t\t'),
+		'\t\t\t\t\t\tstate.items = responseItems;',
+		'\t\t\t\t\t\tstate.done = true;',
+		'\t\t\t\t\t}',
+		'\t\t\t\t\tif (state.done) outcomes[i] = { items: state.items, maxResults: state.maxResults };',
+		'\t\t\t\t} catch (error) {',
+		'\t\t\t\t\tstate.done = true;',
+		...(limited
+			? [
+					'\t\t\t\t\tif (routingDomainSetting(error)) {',
+					'\t\t\t\t\t\tconst failure: any = new NodeOperationError(this.getNode(), (error as Error).message, { itemIndex: i });',
+					'\t\t\t\t\t\tif (this.continueOnFail()) {',
+					'\t\t\t\t\t\t\toutcomes[i] = { items: [{ json: {}, error: failure }] };',
+					'\t\t\t\t\t\t} else {',
+					'\t\t\t\t\t\t\tfatal = failure;',
+					'\t\t\t\t\t\t\tfor (let later = i; later < states.length; later++) states[later] = null;',
+					'\t\t\t\t\t\t}',
+					'\t\t\t\t\t\tcontinue;',
+					'\t\t\t\t\t}',
+				]
+			: []),
+		'\t\t\t\t\toutcomes[i] = { error };',
+		'\t\t\t\t}',
+		'\t\t\t\tif (!state.done) pending = true;',
+		'\t\t\t}',
+		'\t\t}',
+		'\t\tif (fatal !== undefined) throw fatal;',
+	];
+}
+
+function hostOf(url: string): string | undefined {
+	try {
+		return new URL(url).hostname.toLowerCase().replace(/\.$/, '') || undefined;
+	} catch {
+		return undefined;
+	}
+}
+
+function ownHostOf(
+	input: RoutedInput,
+	writer: RoutedWriter,
+	credentialType: string | undefined,
+): string | undefined {
+	if (credentialType === undefined) return undefined;
+	const limit = input.credentialFields(credentialType)?.allowedHttpRequestDomains;
+	if (limit === undefined || limit === 'all') return undefined;
+	const stays = (reason: string) =>
+		new RoutingRefusal(
+			`the credential '${credentialType}' limits its domains ('${String(limit)}'), and ${reason}`,
+		);
+	if (limit !== 'domains' && limit !== 'none') throw stays('the limit is not a mode of n8n');
+	const base = recordOf(Reflect.get(input.description, 'requestDefaults'))?.baseURL;
+	if (typeof base !== 'string' || base.startsWith('=') || writer.setsBase)
+		throw stays('the base URL of the node is not one constant of its description');
+	const host = hostOf(base);
+	if (host === undefined || !/^[a-z0-9]([a-z0-9.-]*[a-z0-9])?$/.test(host) || host.length > 96)
+		throw stays('the base URL of the node has no plain host name');
+	return host;
+}
+
 function credentialTypeOf(input: RoutedInput): string | undefined {
 	const credentials = listOf(Reflect.get(input.description, 'credentials')).filter(isRecord);
 	if (credentials.length === 0) return undefined;
@@ -870,11 +1073,6 @@ function credentialTypeOf(input: RoutedInput): string | undefined {
 	const fields = input.credentialFields(name);
 	if (fields === undefined)
 		throw new RoutingRefusal(`the public fields of the credential '${name}' are not known`);
-	const limit = fields.allowedHttpRequestDomains;
-	if (limit !== undefined && limit !== 'all')
-		throw new RoutingRefusal(
-			`the credential '${name}' limits its domains ('${String(limit)}'), and the check of the node has no compiled form`,
-		);
 	return name;
 }
 
@@ -926,7 +1124,13 @@ function routingMerge(target: any, source: any): any {
 }
 `;
 
-function generate(input: RoutedInput, path: string): string {
+const DOMAIN_SETTING_HELPER = `function routingDomainSetting(error: any): boolean {
+	if (error === null || error === undefined) return false;
+	return error.message === 'This credential is configured to prevent use within an HTTP Request node' || error.message === 'No allowed domains specified. Configure allowed domains or change restriction setting.';
+}
+`;
+
+function generate(input: RoutedInput, path: string): { source: string; ownHost?: string } {
 	const settings = input.parameters.requestOptions;
 	if (
 		hasExpression(settings) ||
@@ -947,34 +1151,20 @@ function generate(input: RoutedInput, path: string): string {
 	for (const property of input.description.properties) {
 		if (isRecord(property)) writer.property(property, [], 'requestOptions', {});
 	}
-	const first = writer.paginates[0];
-	if (writer.pagination !== undefined && first !== undefined && first !== false)
-		throw new RoutingRefusal(
-			'the operation gets its results over several requests, and the order of the requests of several items has no compiled form',
+	const ownHost = ownHostOf(input, writer, credentialType);
+	if (ownHost !== undefined)
+		writer.build.push(
+			'requestOptions.allowedDomains = routingUrl(requestOptions.baseURL, requestOptions.url);',
 		);
+	const first = writer.paginates[0];
+	const paged = writer.pagination !== undefined && first !== undefined && first !== false;
 	const post = postCode(writer, 'response', 'responseItems', '\t\t\t\t\t');
 	const imports = [...writer.hooks].map(([name, file]) => {
 		const specifier = relative(dirname(path), file).replace(/\.ts$/, '');
 		return `import { ${name} } from ${JSON.stringify(specifier.startsWith('.') ? specifier : `./${specifier}`)};`;
 	});
 	const tab = (lines: string[], indent: string) => lines.map((line) => `${indent}${line}`);
-	return [
-		"import get from 'lodash/get';",
-		"import set from 'lodash/set';",
-		"import { NodeApiError, NodeOperationError } from 'n8n-workflow';",
-		...imports,
-		'',
-		ROUTING_TEXT_HELPERS,
-		MERGE_HELPER,
-		'export class RoutedNode {',
-		'\tasync execute(this: any): Promise<any[][]> {',
-		'\t\tconst items = this.getInputData();',
-		'\t\tconst returnData: any[] = [];',
-		...(credentialType === undefined
-			? []
-			: [
-					`\t\tconst credentials: any = await this.getCredentials(${JSON.stringify(credentialType)});`,
-				]),
+	const singleLines = [
 		'\t\tconst outcomes: any[] = [];',
 		'\t\tfor (let i = 0; i < items.length; i++) {',
 		'\t\t\tlet requestOptions: any = { qs: {}, body: {}, headers: {} };',
@@ -1003,9 +1193,39 @@ function generate(input: RoutedInput, path: string): string {
 		'\t\t\t\t\toutcomes.push({ items: responseItems, maxResults });',
 		'\t\t\t\t}',
 		'\t\t\t} catch (error) {',
+		...(ownHost === undefined
+			? []
+			: [
+					'\t\t\t\tif (routingDomainSetting(error)) {',
+					'\t\t\t\t\tconst failure: any = new NodeOperationError(this.getNode(), (error as Error).message, { itemIndex: i });',
+					'\t\t\t\t\tif (!this.continueOnFail()) throw failure;',
+					'\t\t\t\t\toutcomes.push({ items: [{ json: {}, error: failure }] });',
+					'\t\t\t\t\tcontinue;',
+					'\t\t\t\t}',
+				]),
 		'\t\t\t\toutcomes.push({ error });',
 		'\t\t\t}',
 		'\t\t}',
+	];
+	const source = [
+		"import get from 'lodash/get';",
+		"import set from 'lodash/set';",
+		"import { NodeApiError, NodeOperationError } from 'n8n-workflow';",
+		...imports,
+		'',
+		ROUTING_TEXT_HELPERS,
+		MERGE_HELPER,
+		...(ownHost === undefined ? [] : [DOMAIN_SETTING_HELPER]),
+		'export class RoutedNode {',
+		'\tasync execute(this: any): Promise<any[][]> {',
+		'\t\tconst items = this.getInputData();',
+		'\t\tconst returnData: any[] = [];',
+		...(credentialType === undefined
+			? []
+			: [
+					`\t\tconst credentials: any = await this.getCredentials(${JSON.stringify(credentialType)});`,
+				]),
+		...(paged ? pagedLines(writer, credentialType, head, ownHost !== undefined) : singleLines),
 		'\t\tfor (let i = 0; i < items.length; i++) {',
 		'\t\t\tconst outcome: any = outcomes[i];',
 		'\t\t\tif (outcome.error !== undefined) {',
@@ -1027,6 +1247,7 @@ function generate(input: RoutedInput, path: string): string {
 		'}',
 		'',
 	].join('\n');
+	return { source, ownHost };
 }
 
 export function routedEntry(input: RoutedInput): RoutedEntry | { errors: string[] } {
@@ -1041,8 +1262,9 @@ export function routedEntry(input: RoutedInput): RoutedEntry | { errors: string[
 		return out;
 	};
 	let source: string;
+	let ownHost: string | undefined;
 	try {
-		source = generate({ ...input, readFile: plain }, path);
+		({ source, ownHost } = generate({ ...input, readFile: plain }, path));
 	} catch (error) {
 		if (!(error instanceof RoutingRefusal)) throw error;
 		return { errors: [`the routing of the node stays in the host: ${error.message}`] };
@@ -1059,5 +1281,5 @@ export function routedEntry(input: RoutedInput): RoutedEntry | { errors: string[
 		if (rewritten.size < MAX_FILES) rewritten.set(file, out);
 		return out;
 	};
-	return { entry: path, readFile, refusals };
+	return { entry: path, readFile, refusals, ownHost };
 }

@@ -127,6 +127,9 @@ function storesType(type: string): boolean {
 	);
 }
 
+/** The mark of an error after which the fallback host runs the node (`RUNS_IN_HOST`). */
+const PAGE_RUNS_IN_HOST = '(no request to repeat: the fallback host runs the node)';
+
 /** The most answers that the node keeps for the host. */
 const REPLAY_ENTRIES = 256;
 
@@ -661,18 +664,56 @@ export default defineNode<HttpRequestParameters>({
 			for (const key of Object.keys(query)) if (query[key] === null) delete query[key];
 			const headers = mergeValue(parameters.headers ?? {}, page.headers);
 			const body = parameters.sendBody ? mergeValue(parameters.body, page.body) : undefined;
-			const pageResponse = await ctx.http<unknown>({
-				method,
-				url,
-				headers: withAccept(textValues(headers), options, version),
-				qs: query,
-				qsFormat: parameters.qsFormat,
-				body,
-				credential,
-				tokenExpiredStatusCode,
-				allowedDomains: true,
-				timeoutMs: parameters.timeoutMs,
-			});
+			// `autodetect`: v1 makes a file from a page with a binary content type
+			// (`HttpRequestV3.node.ts`, the loop over the responses), from the text that its
+			// pagination helper read (`pagination.ts`). The library node has no such file. With
+			// `replay` the converted workflow has the fallback-host form of the node: the runtime
+			// stores the page, and the fallback host runs the v1 node with the answers of the pages.
+			const pageFormat = options.responseFormat;
+			const detectsPage =
+				parameters.replay !== undefined &&
+				method === 'GET' &&
+				(pageFormat === undefined ? version >= 3 : pageFormat === 'autodetect');
+			let pageResponse: HttpResponse<unknown>;
+			try {
+				pageResponse = await ctx.http<unknown>({
+					method,
+					url,
+					headers: withAccept(textValues(headers), options, version),
+					qs: query,
+					qsFormat: parameters.qsFormat,
+					body,
+					credential,
+					tokenExpiredStatusCode,
+					allowedDomains: true,
+					timeoutMs: parameters.timeoutMs,
+					responseBinary: !detectsPage
+						? undefined
+						: options.neverError === true
+							? { inlineTypes: 'application/json', storeTypes: BINARY_TYPES, anyStatus: true }
+							: { inlineTypes: 'application/json', storeTypes: BINARY_TYPES },
+				});
+			} catch (error) {
+				if (detectsPage) {
+					const limit = fileLimitError(error);
+					// oxlint-disable-next-line typescript/only-throw-error
+					if (limit !== undefined) throw limit;
+				}
+				throw error;
+			}
+			if (detectsPage && parameters.replay !== undefined) {
+				keepAnswer(parameters.replay, url, query, pageResponse);
+				const type = pageResponse.headers['content-type'];
+				const stored =
+					typeof type === 'string' && !type.includes('application/json') && storesType(type);
+				if (stored && (pageResponse.status < 300 || options.neverError === true)) {
+					// oxlint-disable-next-line typescript/only-throw-error
+					throw {
+						name: 'Error',
+						message: `A page of the response is a file ${PAGE_RUNS_IN_HOST}`,
+					};
+				}
+			}
 			const items = responseItems(
 				pageResponse.body,
 				pageResponse.headers,

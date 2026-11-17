@@ -1805,6 +1805,17 @@ function lowerHttpLibrary(c: NodeContext): void {
 			);
 		}
 		paging = readPaging(c, options);
+		// v1 makes a file from a page with a binary content type. The library node has no such
+		// file: the fallback host runs the v1 node then, which can send a GET again.
+		const detectsPage =
+			response.responseFormat === undefined || response.responseFormat === 'autodetect';
+		if (paging && detectsPage && !detectsFile) {
+			throw new NodeFailure(
+				'http-pagination',
+				'Pagination with the response format "autodetect" is supported only for a fixed GET request: v1 makes a file from a page with a binary content type.',
+				'options.pagination',
+			);
+		}
 		const fileType = p.contentType === 'binaryData' || p.contentType === 'multipart-form-data';
 		if (paging && p.sendBody === true && fileType) {
 			throw new NodeFailure(
@@ -1971,6 +1982,30 @@ function lowerHttpLibrary(c: NodeContext): void {
 	);
 	// v1 sends the pages of each item in a loop (n8n-core requestWithAuthenticationPaginated).
 	if (paging) {
+		if (detectsFile) {
+			const replay = c.local('Replay');
+			const answers = replayOf(replay);
+			const hostForm = hostFormOf(c, (to) =>
+				lowerHostNode(to, 1, [['host', raw("'fallback'")], answers.host]),
+			);
+			if (hostForm === null) {
+				throw new NodeFailure(
+					'http-pagination',
+					'Pagination with the response format "autodetect" has no fallback-host form here.',
+					'options.pagination',
+				);
+			}
+			entries.push(answers.compiled);
+			const pages = paging;
+			emitWithHostForm(
+				c,
+				false,
+				(to) => emitPaging(to, pages, parameters.code, call.fields),
+				hostForm,
+				replay,
+			);
+			return;
+		}
 		emitPaging(c, paging, parameters.code, call.fields);
 		return;
 	}

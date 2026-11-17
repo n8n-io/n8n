@@ -53,6 +53,8 @@ export interface SpecialiseInput {
 
 	credentialFields?: Record<string, Record<string, unknown>>;
 
+	ownHost?: string;
+
 	moduleType?: string;
 
 	evaluate?: (code: string) => unknown;
@@ -396,6 +398,13 @@ const REQUEST_HEAD_WITH_TOKEN_OPTIONS = `async function __request(options, wrapp
 	const oauth2 = extra === undefined || extra === null ? undefined : nested ? extra.oauth2 : extra;
 	const tokenOptions = oauth2 === undefined || oauth2 === null ? {} : oauth2;`;
 const REQUEST_CREDENTIAL = '\t\tinject: wrapped,\n\t\tcredential,\n';
+const REQUEST_INJECT = '\t\tinject: wrapped,\n';
+const REQUEST_STATUS = '\tif (response.status >= 400';
+export const OWNED_REQUEST =
+	/allowedDomains:\s*(wrapped\s*&&\s*)?options\.allowedDomains\s*!==\s*undefined\s*\?\s*\{\s*own:/g;
+const requestInjectOwned = (host: string) =>
+	`${REQUEST_INJECT}\t\tallowedDomains: wrapped && options.allowedDomains !== undefined ? { own: ${JSON.stringify(host)}, target: options.allowedDomains } : undefined,\n`;
+const REQUEST_STATUS_OWNED = `\tif (wrapped && options.allowedDomains !== undefined && response.status >= 300 && response.status < 400 && response.headers.location !== undefined) throw new Error('a redirect of a request with a credential that limits its domains has no compiled form');\n${REQUEST_STATUS}`;
 const REQUEST_CREDENTIAL_WITH_TOKEN_OPTIONS = `${REQUEST_CREDENTIAL}\t\tskipTokenRefresh: tokenOptions.skipTokenRefresh === true ? true : undefined,
 		tokenExpiredStatusCode: tokenOptions.tokenExpiredStatusCode,
 `;
@@ -7759,6 +7768,16 @@ class Specialiser {
 				)
 				.replace(REQUEST_SEND, marks ? REQUEST_SEND_GUARDED : REQUEST_SEND)
 				.replace(REQUEST_SENT, marks ? REQUEST_SENT_GUARDED : REQUEST_SENT)
+				.replace(
+					REQUEST_INJECT,
+					this.input.ownHost === undefined
+						? REQUEST_INJECT
+						: requestInjectOwned(this.input.ownHost),
+				)
+				.replace(
+					REQUEST_STATUS,
+					this.input.ownHost === undefined ? REQUEST_STATUS : REQUEST_STATUS_OWNED,
+				)
 				.replace(
 					REQUEST_HEAD,
 					this.requestTokenOptions ? REQUEST_HEAD_WITH_TOKEN_OPTIONS : REQUEST_HEAD,
