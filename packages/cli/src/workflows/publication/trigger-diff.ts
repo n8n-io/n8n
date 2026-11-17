@@ -26,8 +26,6 @@ const ALWAYS_REREGISTER_TRIGGER_TYPES: ReadonlySet<string> = new Set([
 export interface TriggerDiffOptions {
 	/** Whether the publish moves to a version other than the one currently running. */
 	versionChanged?: boolean;
-	/** Whether every unchanged trigger is re-registered, as a move to another project needs. */
-	reregisterUnchanged?: boolean;
 }
 
 /**
@@ -50,7 +48,7 @@ export interface TriggerDiff {
 export function computeTriggerDiff(
 	oldTriggerNodes: INode[],
 	newTriggerNodes: INode[],
-	{ versionChanged = false, reregisterUnchanged = false }: TriggerDiffOptions = {},
+	{ versionChanged = false }: TriggerDiffOptions = {},
 ): TriggerDiff {
 	const diff = compareWorkflowsNodes(oldTriggerNodes, newTriggerNodes, registrationEqual);
 
@@ -70,10 +68,7 @@ export function computeTriggerDiff(
 				toAdd.add(nodeId);
 				break;
 			case NodeDiffStatus.Eq:
-				if (
-					reregisterUnchanged ||
-					(versionChanged && ALWAYS_REREGISTER_TRIGGER_TYPES.has(node.type))
-				) {
+				if (versionChanged && ALWAYS_REREGISTER_TRIGGER_TYPES.has(node.type)) {
 					toRemove.add(nodeId);
 					toAdd.add(nodeId);
 				}

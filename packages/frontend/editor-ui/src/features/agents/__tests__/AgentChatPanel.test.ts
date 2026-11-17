@@ -201,6 +201,9 @@ vi.mock('../components/AgentSessionTimelinePanel.vue', () => ({
 }));
 
 vi.mock('@n8n/design-system', async (importOriginal) => ({
+	N8nAttachment: (await importOriginal<typeof import('@n8n/design-system')>()).N8nAttachment,
+	N8nAttachmentGroup: (await importOriginal<typeof import('@n8n/design-system')>())
+		.N8nAttachmentGroup,
 	N8nApprovalCard: (await importOriginal<typeof import('@n8n/design-system')>()).N8nApprovalCard,
 	N8nAiActivityStepGroup: (await importOriginal<typeof import('@n8n/design-system')>())
 		.N8nAiActivityStepGroup,
@@ -967,6 +970,24 @@ describe('AgentChatPanel', () => {
 			expect(isCentered(mountPanel({ centerEmptyState: true, newSession: true }))).toBe(false);
 		});
 
+		it('keeps the centered empty state while a new chat loads its history', () => {
+			// The history load counts as a recovering run.
+			isLoadingHistoryMock.value = true;
+			isStreamingMock.value = true;
+			const wrapper = mountPanel({ centerEmptyState: true, newSession: true });
+
+			expect(isCentered(wrapper)).toBe(true);
+			expect(wrapper.find('[data-testid="empty-state-stub"]').exists()).toBe(true);
+		});
+
+		it('hides the empty state while the history loads in other hosts', () => {
+			isLoadingHistoryMock.value = true;
+			isStreamingMock.value = true;
+			const wrapper = mountPanel({ newSession: true });
+
+			expect(wrapper.find('[data-testid="empty-state-stub"]').exists()).toBe(false);
+		});
+
 		describe('first message preview', () => {
 			const messageList = (wrapper: ReturnType<typeof mountPanel>) =>
 				wrapper.findComponent({ name: 'AgentChatMessageList' });
@@ -1628,6 +1649,29 @@ describe('AgentChatPanel', () => {
 			wrapper.unmount();
 		},
 	);
+
+	it('focuses draft attachments with Up and restores input focus with Escape', async () => {
+		const wrapper = mountPanel({}, document.body);
+		try {
+			const composer = wrapper.findComponent({ name: 'ChatInputBase' });
+			composer.vm.$emit('files-selected', [
+				new File(['notes'], 'notes.txt', { type: 'text/plain' }),
+			]);
+			await flushPromises();
+			const textbox = wrapper.get('textarea');
+			textbox.element.focus();
+			await textbox.trigger('keydown', { key: 'ArrowUp' });
+			expect(document.activeElement).toBe(wrapper.get('.n8n-attachment').element);
+			await wrapper.get('.n8n-attachment').trigger('keydown', { key: 'Escape' });
+			expect(document.activeElement).toBe(textbox.element);
+			composer.vm.$emit('update:modelValue', 'Draft');
+			await flushPromises();
+			await textbox.trigger('keydown', { key: 'ArrowUp' });
+			expect(document.activeElement).toBe(textbox.element);
+		} finally {
+			wrapper.unmount();
+		}
+	});
 
 	it('edits the last queued message with Alt+ArrowUp from the composer', async () => {
 		queuedMessagesMock.value = ['first', 'last'].map((message, index) => ({
@@ -4221,6 +4265,52 @@ describe('AgentChatPanel', () => {
 		};
 	}
 
+	describe('isAwaitingUserAnswer', () => {
+		type AwaitingVm = { isAwaitingUserAnswer: boolean };
+
+		it('is false while a waiting card is open, because the workflow resumes the run', () => {
+			messagesMock.value = [openWaitMessage()];
+
+			const wrapper = mountPanel();
+
+			expect((wrapper.vm as unknown as AwaitingVm).isAwaitingUserAnswer).toBe(false);
+			wrapper.unmount();
+		});
+
+		it('is true while a card waits for the user to answer', () => {
+			messagesMock.value = [
+				{
+					id: 'assistant-1',
+					role: 'assistant',
+					content: '',
+					status: 'awaitingUser',
+					interactive: {
+						toolName: N8N_CHAT_ACTION_TOOL_NAME,
+						toolCallId: 'tc-1',
+						runId: 'run-1',
+						input: {
+							card: { components: [{ type: 'button', label: 'Pick Slack', value: 'slack' }] },
+						},
+					},
+				},
+			];
+
+			const wrapper = mountPanel();
+
+			expect((wrapper.vm as unknown as AwaitingVm).isAwaitingUserAnswer).toBe(true);
+			wrapper.unmount();
+		});
+
+		it('is false when no card is open', () => {
+			messagesMock.value = [];
+
+			const wrapper = mountPanel();
+
+			expect((wrapper.vm as unknown as AwaitingVm).isAwaitingUserAnswer).toBe(false);
+			wrapper.unmount();
+		});
+	});
+
 	it('allows queue submissions while a waiting card is open', () => {
 		messagesMock.value = [openWaitMessage()];
 
@@ -4627,6 +4717,18 @@ describe('AgentChatPanel', () => {
 			expect(input.props('acceptedMimeTypes')).toBe(
 				`image/png,image/jpeg,image/gif,image/webp,application/pdf,${AGENT_CHAT_DATA_ATTACHMENT_ACCEPT}`,
 			);
+		});
+
+		it('shows the empty state only after the history loads', async () => {
+			isLoadingHistoryMock.value = true;
+			const wrapper = mountPanel();
+
+			expect(wrapper.find('[data-testid="empty-state-stub"]').exists()).toBe(false);
+
+			isLoadingHistoryMock.value = false;
+			await nextTick();
+
+			expect(wrapper.find('[data-testid="empty-state-stub"]').exists()).toBe(true);
 		});
 
 		describe('slots', () => {

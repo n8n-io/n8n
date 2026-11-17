@@ -93,6 +93,8 @@ const props = withDefaults(
 	defineProps<{
 		/** Runs before every send (e.g. flush a pending autosave). Rejecting cancels the send. */
 		beforeSend?: () => Promise<void>;
+		/** The host persists this local draft before the first send. */
+		newThread?: boolean;
 		placeholder?: string;
 		placeholderPreview?: Readonly<Ref<string | undefined>>;
 		autofocus?: boolean;
@@ -123,6 +125,8 @@ const emit = defineEmits<{
 defineSlots<{
 	'above-input'?: () => unknown;
 	'composer-start'?: () => unknown;
+	/** Controls to the right of the composer's add menu. */
+	'composer-controls'?: () => unknown;
 	'composer-footer'?: () => unknown;
 	'inline-offers'?: () => unknown;
 	/** A host's welcome state, rendered until the thread has its first message. */
@@ -647,6 +651,28 @@ async function syncThread() {
 	// Apply editor hand-off attachments before any await so a first submit
 	// cannot race past them, including when SSE is already connected.
 	restorePendingHandoffAttachments();
+	if (props.newThread) {
+		// A local draft has no server history to load.
+		thread.hydrationStatus = 'ready';
+		if (!settingsStore.isWorkflowBuilderAvailable) return;
+		const pending = consumePendingFirstMessage(requestedThreadId);
+		if (pending) {
+			pendingComposerContext.value = pending.context ?? pendingComposerContext.value;
+			// Opening prompts are real sends: provision the draft and include its agent.
+			void handleSubmit(
+				pending.message,
+				pending.attachments,
+				() => {
+					if (!isCurrentThreadRuntime()) return false;
+					stashPendingFirstMessage(requestedThreadId, pending);
+					return true;
+				},
+				pending.authorship,
+				pending.responseStartedAtEpochMs,
+			);
+		}
+		return;
+	}
 	// The history list is paginated, so an unknown id is resolved on its own
 	// rather than by loading the whole list.
 	if (!store.threads.some((t) => t.id === requestedThreadId)) {
@@ -1122,6 +1148,9 @@ defineExpose({
 											#footer-start
 										>
 											<slot name="composer-start" />
+										</template>
+										<template v-if="$slots['composer-controls']" #footer-after-menu>
+											<slot name="composer-controls" />
 										</template>
 									</InstanceAiInput>
 								</Transition>

@@ -114,7 +114,7 @@ describe('SelfHealingResultContent', () => {
 				.map((item) => item.textContent?.trim()),
 		).toEqual(['Apply and publish', 'Continue with Assistant', 'Continue with Editor']);
 		expect(menu).toHaveTextContent(
-			'Continuing saves the changes to the workflow draft. It does not publish them.',
+			'Continuing will close the review and save the changes to the workflow draft. It does not publish them.',
 		);
 		await userEvent.click(within(menu).getByRole('menuitem', { name: 'Apply and publish' }));
 		await userEvent.click(getByRole('button', { name: 'Discard and close' }));
@@ -435,8 +435,8 @@ describe('SelfHealingResultContent', () => {
 
 	it('links only an available original execution and preserves the report without it', async () => {
 		const { getByText, getByTestId, queryByTestId, rerender } = renderContent();
-		expect(getByText('View execution')).toBeInTheDocument();
-		expect(getByTestId('self-healing-execution-link')).toHaveTextContent('Execution execution-1');
+		expect(getByText('Execution')).toBeInTheDocument();
+		expect(getByTestId('self-healing-execution-link')).toHaveTextContent('#execution-1');
 		expect(getByTestId('self-healing-workflow-link')).toHaveAttribute(
 			'href',
 			'/workflow/workflow-1',
@@ -449,9 +449,7 @@ describe('SelfHealingResultContent', () => {
 		await rerender({ detail: result({ execution: { status: 'unavailable' } }) });
 
 		expect(queryByTestId('self-healing-execution-link')).not.toBeInTheDocument();
-		expect(getByTestId('self-healing-execution-unavailable')).toHaveTextContent(
-			'Execution unavailable',
-		);
+		expect(getByTestId('self-healing-execution-unavailable')).toHaveTextContent('Not available');
 		expect(getByTestId('self-healing-report')).toBeInTheDocument();
 	});
 

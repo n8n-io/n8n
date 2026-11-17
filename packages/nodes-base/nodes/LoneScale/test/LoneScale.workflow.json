@@ -73,6 +73,47 @@
 					"name": "LoneScale account"
 				}
 			}
+		},
+		{
+			"parameters": {
+				"resource": "list",
+				"operation": "create",
+				"name": "Q4 Leads",
+				"type": "PEOPLE"
+			},
+			"id": "5e3a0f7c-0000-4000-8000-000000000005",
+			"name": "LoneScale Create List",
+			"type": "n8n-nodes-base.loneScale",
+			"typeVersion": 1,
+			"position": [240, 400],
+			"credentials": {
+				"loneScaleApi": {
+					"id": "1",
+					"name": "LoneScale account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "item",
+				"operation": "add",
+				"type": "PEOPLE",
+				"list": "68f1c2a9d4e5",
+				"first_name": "Tim",
+				"last_name": "Cook",
+				"peopleAdditionalFields": {}
+			},
+			"id": "5e3a0f7c-0000-4000-8000-000000000006",
+			"name": "LoneScale Add Item",
+			"type": "n8n-nodes-base.loneScale",
+			"typeVersion": 1,
+			"position": [240, 600],
+			"credentials": {
+				"loneScaleApi": {
+					"id": "1",
+					"name": "LoneScale account"
+				}
+			}
 		}
 	],
 	"pinData": {
@@ -100,6 +141,23 @@
 					"domain": "stripe.com"
 				}
 			}
+		],
+		"LoneScale Create List": [
+			{
+				"json": {
+					"id": "68f1c2a9d4e5",
+					"name": "Q4 Leads",
+					"entity": "PEOPLE"
+				}
+			}
+		],
+		"LoneScale Add Item": [
+			{
+				"json": {
+					"id": "it_1001",
+					"status": "created"
+				}
+			}
 		]
 	},
 	"connections": {
@@ -118,6 +176,16 @@
 					},
 					{
 						"node": "LoneScale Search",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "LoneScale Create List",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "LoneScale Add Item",
 						"type": "main",
 						"index": 0
 					}

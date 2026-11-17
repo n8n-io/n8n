@@ -62,6 +62,11 @@ Keep the panel state when the Agent is saved or published. For published or
 read-only Agents, use the saved panel preference. Apply these defaults in the
 control layout. Keep the experiment layouts unchanged.
 
+Keep a new Assistant chat local until the user sends a message. Opening the
+panel must not add an empty chat to history. Resume an existing chat when one
+is available. Send an opening prompt from the Agents list after the local chat
+is saved. Keep manual Agent edits independent of Assistant chat persistence.
+
 ## Builder side panel widths
 
 Start the Assistant and Preview panels at 30% of the builder container width.
@@ -363,6 +368,9 @@ under category headings. Hide the category tabs until the search is cleared.
 Keep the outer modal body fixed on picker steps. Show a list scrollbar only
 when the list content overflows. Do not show a scrollbar for an empty state.
 
+In the Channels picker, show a short description under each channel name. It
+says what the channel does and what setup needs. Use small, muted text.
+
 Put an explicit action in every selectable row. The action must name the
 outcome. Use `Add node`, `Add MCP`, `Add workflow`, or the matching asset label.
 When the list has no items or no search matches, show a centered, asset-specific
@@ -379,7 +387,7 @@ a direct pill edit. Save, Cancel, and Close exit the complete flow.
 | ------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Skills                    | Use `fit` with a 52rem content width. Keep it narrower than `full`. Use the flush Agent body so the file workspace does not get double padding. Keep the file navigation and editor inside the scrolling body. |
 | Dangerous confirmation    | Keep its explicit Cancel and primary actions. Examples are Agent, file, and session deletion; unpublish; revert; eval regeneration; LangSmith export; and managed Slack app removal.                           |
-| Managed Slack app removal | Keep the stacked confirmation because it can delete an external resource.                                                                                                                                      |
+| Channel removal           | Use `AgentChannelRemoveConfirmation`. It stacks over the channel modal and matches the Agent confirmation. Slack adds its app deletion choice in the slot.                                                     |
 | Small utility dialog      | Keep an appropriate small size. Use Cancel and one bottom-right primary action. JSON import and Agent duplication use this rule.                                                                               |
 | Channel platform setup    | A platform-owned setup action can stay in the inline modal content. The Agent shell still owns navigation and dismissal.                                                                                       |
 | Memory                    | Do not migrate Memory into this pattern in this change.                                                                                                                                                        |
@@ -426,6 +434,10 @@ until the editor opens. Show Back for manual creation. Back discards the draft
 and returns to the upload screen.
 Existing skills open in the editor. Keep the body field order: When to use this
 skill, What the skill does, and Allowed tools. Use `Save skill` to confirm.
+
+Show the selected scope in the skill header. The Change scope menu lists only
+other scopes. After a new selection, keep the previous scope available so the
+user can undo the selection before they save.
 
 ### Review checklist
 

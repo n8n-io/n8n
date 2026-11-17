@@ -31,6 +31,7 @@ import {
 } from '@n8n/decorators';
 import type { StoredEvent } from '@n8n/instance-ai';
 import { hasGlobalScope } from '@n8n/permissions';
+import { TELEMETRY_EVENT } from '@n8n/telemetry';
 import { buildAgentTreeFromEvents } from '@n8n/instance-ai';
 import {
 	OversizedAttachmentError,
@@ -55,6 +56,7 @@ import { InstanceAiOnboardingService, startsOnboardingFirstTurn } from './onboar
 
 import { BadRequestError, ConflictError, ForbiddenError, NotFoundError } from '@n8n/errors';
 import { ProjectService } from '@/services/project.service.ee';
+import { TelemetryProxy } from '@n8n/backend-services';
 
 type FlushableResponse = Response & { flush?: () => void };
 
@@ -85,6 +87,7 @@ export class InstanceAiController {
 		private readonly preferenceCardService: InstanceAiPreferenceCardService,
 		globalConfig: GlobalConfig,
 		private readonly threadTabsService: InstanceAiThreadTabsService,
+		private readonly telemetry: TelemetryProxy,
 	) {
 		this.instanceAiConfig = globalConfig.instanceAi;
 	}
@@ -206,7 +209,6 @@ export class InstanceAiController {
 			payload.context,
 			payload.timeZone,
 			payload.pushRef,
-			payload.mode,
 			payload.promptVersion,
 			payload.browserUseAvailable,
 			payload.threadArtifacts,
@@ -591,6 +593,10 @@ export class InstanceAiController {
 		this.requireInstanceAiEnabled();
 		await this.assertThreadAccess(req.user.id, threadId);
 		await this.instanceAiService.routeCancelRun(threadId);
+		this.telemetry.track(TELEMETRY_EVENT.INSTANCE_AI.USER_STOPPED_RUN, {
+			user_id: req.user.id,
+			thread_id: threadId,
+		});
 		return { ok: true };
 	}
 

@@ -1,0 +1,131 @@
+{
+	"name": "HackerNews Requests",
+	"nodes": [
+		{
+			"parameters": {},
+			"id": "00000000-0000-4000-8000-000000000000",
+			"name": "When clicking ‘Execute workflow’",
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [0, 0]
+		},
+		{
+			"parameters": {
+				"resource": "article",
+				"operation": "get",
+				"articleId": "8863",
+				"additionalFields": {}
+			},
+			"id": "00000000-0000-4000-8000-000000000001",
+			"name": "Article Get",
+			"type": "n8n-nodes-base.hackerNews",
+			"typeVersion": 1,
+			"position": [220, 120]
+		},
+		{
+			"parameters": {
+				"resource": "user",
+				"operation": "get",
+				"username": "pg"
+			},
+			"id": "00000000-0000-4000-8000-000000000002",
+			"name": "User Get",
+			"type": "n8n-nodes-base.hackerNews",
+			"typeVersion": 1,
+			"position": [220, 240]
+		},
+		{
+			"parameters": {
+				"resource": "all",
+				"operation": "getAll",
+				"returnAll": false,
+				"limit": 5,
+				"additionalFields": {
+					"keyword": "n8n",
+					"tags": ["story"]
+				}
+			},
+			"id": "00000000-0000-4000-8000-000000000003",
+			"name": "All Get Many",
+			"type": "n8n-nodes-base.hackerNews",
+			"typeVersion": 1,
+			"position": [220, 360]
+		},
+		{
+			"parameters": {
+				"resource": "all",
+				"operation": "getAll",
+				"returnAll": true,
+				"additionalFields": {
+					"keyword": "n8n",
+					"tags": ["story"]
+				}
+			},
+			"id": "00000000-0000-4000-8000-000000000004",
+			"name": "All Get All",
+			"type": "n8n-nodes-base.hackerNews",
+			"typeVersion": 1,
+			"position": [220, 480]
+		}
+	],
+	"pinData": {
+		"Article Get": [
+			{
+				"json": {
+					"id": 8863,
+					"title": "My YC app"
+				}
+			}
+		],
+		"User Get": [
+			{
+				"json": {
+					"username": "pg",
+					"karma": 157236
+				}
+			}
+		],
+		"All Get Many": [
+			{
+				"json": {
+					"objectID": "1"
+				}
+			}
+		],
+		"All Get All": [
+			{
+				"json": {
+					"objectID": "2"
+				}
+			}
+		]
+	},
+	"connections": {
+		"When clicking ‘Execute workflow’": {
+			"main": [
+				[
+					{
+						"node": "Article Get",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "User Get",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "All Get Many",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "All Get All",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	}
+}

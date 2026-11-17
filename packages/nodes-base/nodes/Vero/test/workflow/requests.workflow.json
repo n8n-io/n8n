@@ -1,0 +1,281 @@
+{
+	"name": "Vero Requests",
+	"nodes": [
+		{
+			"parameters": {},
+			"id": "trigger",
+			"name": "When clicking \"Execute Workflow\"",
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [0, 0]
+		},
+		{
+			"parameters": {
+				"resource": "user",
+				"operation": "create",
+				"id": "1234",
+				"additionalFields": {}
+			},
+			"id": "vero-0",
+			"name": "User Create",
+			"type": "n8n-nodes-base.vero",
+			"typeVersion": 1,
+			"position": [300, 0],
+			"credentials": {
+				"veroApi": {
+					"id": "1",
+					"name": "Vero account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "user",
+				"operation": "alias",
+				"id": "1234",
+				"newId": "5678"
+			},
+			"id": "vero-1",
+			"name": "User Alias",
+			"type": "n8n-nodes-base.vero",
+			"typeVersion": 1,
+			"position": [300, 150],
+			"credentials": {
+				"veroApi": {
+					"id": "1",
+					"name": "Vero account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "user",
+				"operation": "unsubscribe",
+				"id": "1234"
+			},
+			"id": "vero-2",
+			"name": "User Unsubscribe",
+			"type": "n8n-nodes-base.vero",
+			"typeVersion": 1,
+			"position": [300, 300],
+			"credentials": {
+				"veroApi": {
+					"id": "1",
+					"name": "Vero account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "user",
+				"operation": "resubscribe",
+				"id": "1234"
+			},
+			"id": "vero-3",
+			"name": "User Resubscribe",
+			"type": "n8n-nodes-base.vero",
+			"typeVersion": 1,
+			"position": [300, 450],
+			"credentials": {
+				"veroApi": {
+					"id": "1",
+					"name": "Vero account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "user",
+				"operation": "delete",
+				"id": "1234"
+			},
+			"id": "vero-4",
+			"name": "User Delete",
+			"type": "n8n-nodes-base.vero",
+			"typeVersion": 1,
+			"position": [300, 600],
+			"credentials": {
+				"veroApi": {
+					"id": "1",
+					"name": "Vero account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "user",
+				"operation": "addTags",
+				"id": "1234",
+				"tags": "vip"
+			},
+			"id": "vero-5",
+			"name": "User Add Tags",
+			"type": "n8n-nodes-base.vero",
+			"typeVersion": 1,
+			"position": [300, 750],
+			"credentials": {
+				"veroApi": {
+					"id": "1",
+					"name": "Vero account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "user",
+				"operation": "removeTags",
+				"id": "1234",
+				"tags": "vip"
+			},
+			"id": "vero-6",
+			"name": "User Remove Tags",
+			"type": "n8n-nodes-base.vero",
+			"typeVersion": 1,
+			"position": [300, 900],
+			"credentials": {
+				"veroApi": {
+					"id": "1",
+					"name": "Vero account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "event",
+				"operation": "track",
+				"id": "1234",
+				"email": "nathan@example.com",
+				"eventName": "signup"
+			},
+			"id": "vero-7",
+			"name": "Event Track",
+			"type": "n8n-nodes-base.vero",
+			"typeVersion": 1,
+			"position": [300, 1050],
+			"credentials": {
+				"veroApi": {
+					"id": "1",
+					"name": "Vero account"
+				}
+			}
+		}
+	],
+	"pinData": {
+		"User Create": [
+			{
+				"json": {
+					"status": 200,
+					"message": "Success."
+				}
+			}
+		],
+		"User Alias": [
+			{
+				"json": {
+					"status": 200,
+					"message": "Success."
+				}
+			}
+		],
+		"User Unsubscribe": [
+			{
+				"json": {
+					"status": 200,
+					"message": "Success."
+				}
+			}
+		],
+		"User Resubscribe": [
+			{
+				"json": {
+					"status": 200,
+					"message": "Success."
+				}
+			}
+		],
+		"User Delete": [
+			{
+				"json": {
+					"status": 200,
+					"message": "Success."
+				}
+			}
+		],
+		"User Add Tags": [
+			{
+				"json": {
+					"status": 200,
+					"message": "Success."
+				}
+			}
+		],
+		"User Remove Tags": [
+			{
+				"json": {
+					"status": 200,
+					"message": "Success."
+				}
+			}
+		],
+		"Event Track": [
+			{
+				"json": {
+					"status": 200,
+					"message": "Success."
+				}
+			}
+		]
+	},
+	"connections": {
+		"When clicking \"Execute Workflow\"": {
+			"main": [
+				[
+					{
+						"node": "User Create",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "User Alias",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "User Unsubscribe",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "User Resubscribe",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "User Delete",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "User Add Tags",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "User Remove Tags",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Event Track",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"active": false,
+	"settings": {
+		"executionOrder": "v1"
+	}
+}

@@ -33,7 +33,7 @@ The scaffolder creates a built workspace package at `packages/modules/<name>/bac
 adds the runtime dependency to `packages/cli/package.json`, adds a lazy import to
 `packages/cli/src/modules/modules.manifest.ts`, and adds the module id to the validated list in
 `@n8n/backend-common`. The generated entrypoint is empty. Add only the lifecycle methods that the
-module needs. Read `scripts/backend-module/backend-module-guide.md` for backend patterns.
+module needs. Read `docs/backend/how-to/build-a-backend-module.md` for backend patterns.
 
 ## No build step
 

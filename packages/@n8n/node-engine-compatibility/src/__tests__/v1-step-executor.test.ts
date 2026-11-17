@@ -1,5 +1,5 @@
 import type { JsonValue, StepExecutionResult, StepSlots, WorkflowGraph } from '@n8n/engine';
-import { mintApprovalCallback } from '@n8n/engine';
+import { mintApprovalCallback, stepErrorDetails } from '@n8n/engine';
 import {
 	parseHitlCallbackReference,
 	prepareUrlForSigning,
@@ -15,6 +15,7 @@ import {
 	CHAT_NODE_TYPE,
 	Expression,
 	ExpressionError,
+	NodeOperationError,
 	WAIT_FOR_SUB_EXECUTION,
 	WAIT_INDEFINITELY,
 } from 'n8n-workflow';
@@ -32,6 +33,15 @@ import {
 import { EXECUTE_WORKFLOW_TYPE } from '../constants';
 import type { SubWorkflowResolver, V1StepExecutorDeps } from '../types';
 import { V1StepExecutor } from '../v1-step-executor';
+
+/** Items as a node sees and passes them on: each linked to its position in the input. */
+function linked(slots: StepSlots): StepSlots {
+	return slots.map((items) =>
+		Array.isArray(items)
+			? items.map((item, index) => ({ ...(item as object), pairedItem: { item: index } }))
+			: items,
+	);
+}
 import { V1WorkflowConverter } from '../v1-workflow-converter';
 import {
 	items,
@@ -239,6 +249,20 @@ describe('V1StepExecutor', () => {
 		});
 	});
 
+	it('hands the structured part of a node error to the engine', async () => {
+		const graph = graphWith('test.failsWithDescription');
+		const request = stepRequest(graph, 'n', []);
+
+		const error: unknown = await testStepExecutor(graph)
+			.execute(request)
+			.catch((e: unknown) => e);
+
+		expect(error).toBeInstanceOf(NodeOperationError);
+		expect(stepErrorDetails(error as Error)).toMatchObject({
+			description: 'The service rejected the request',
+		});
+	});
+
 	it("streams the node error's description but not its message", async () => {
 		const graph = graphWith('test.failsWithDescription');
 		const request = stepRequest(graph, 'n', []);
@@ -299,7 +323,7 @@ describe('V1StepExecutor', () => {
 		request.respond = respond;
 
 		const result = await testStepExecutor(graph).execute(request);
-		expect(result.outputs).toEqual([[{ json: { keep: 'me' } }]]);
+		expect(result.outputs).toEqual([[{ json: { keep: 'me' }, pairedItem: { item: 0 } }]]);
 		expect(chunks).toContainEqual(expect.objectContaining({ type: 'error' }));
 		expect(JSON.stringify(chunks)).not.toContain('boom from node');
 	});
@@ -359,7 +383,10 @@ describe('V1StepExecutor', () => {
 		);
 
 		const result = await testStepExecutor(graph).execute(stepRequest(graph, 'n', items({ a: 1 })));
-		expect(result.outputs).toEqual([[{ json: { a: 1 } }], [{ json: { a: 1, second: true } }]]);
+		expect(result.outputs).toEqual([
+			[{ json: { a: 1 }, pairedItem: { item: 0 } }],
+			[{ json: { a: 1, second: true } }],
+		]);
 	});
 
 	it('rejects batch steps until the engine iterates loops natively', async () => {
@@ -483,7 +510,7 @@ describe('V1StepExecutor', () => {
 				expect(result).toEqual({
 					wait: {
 						resumeAt: '2026-10-01T12:00:00.000Z',
-						outputsAtDeadline: input,
+						outputsAtDeadline: linked(input),
 						...binding,
 					},
 				});
@@ -735,7 +762,7 @@ describe('V1StepExecutor', () => {
 		const result = await testStepExecutor(graph).execute(
 			stepRequest(graph, 'n', items({ keep: 'me' })),
 		);
-		expect(result.outputs).toEqual([[{ json: { keep: 'me' } }]]);
+		expect(result.outputs).toEqual([[{ json: { keep: 'me' }, pairedItem: { item: 0 } }]]);
 	});
 });
 
@@ -803,7 +830,10 @@ describe('sub-workflows', () => {
 				node: { id: 'n', name: 'Subject', type: EXECUTE_WORKFLOW_TYPE, typeVersion: 1 },
 			},
 			context: { userId: undefined, projectId: undefined },
-			items: [{ json: { a: 1 } }, { json: { a: 2 } }],
+			items: [
+				{ json: { a: 1 }, pairedItem: { item: 0 } },
+				{ json: { a: 2 }, pairedItem: { item: 1 } },
+			],
 		});
 	});
 
@@ -923,7 +953,7 @@ describe('sub-workflows', () => {
 
 		// The node's own outcome stands: its input passes through, and no sub-execution is owed.
 		expect(result.subExecution).toBeUndefined();
-		expect(result.outputs).toEqual(input);
+		expect(result.outputs).toEqual(linked(input));
 		expect(resolveSubWorkflow).toHaveBeenCalledTimes(1);
 	});
 });
