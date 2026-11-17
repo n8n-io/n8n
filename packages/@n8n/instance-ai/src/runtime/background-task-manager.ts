@@ -30,6 +30,8 @@ export interface ManagedBackgroundTask {
 	createTraceContext?: () => Promise<InstanceAiTraceContext | undefined>;
 	/** Identity used for single-flight dedupe lookups; copied from the spawn options. */
 	dedupeKey?: BackgroundTaskDedupeKey;
+	/** The task keeps running after its turn has ended, and the turn does not stay live for it. */
+	detachedFromTurn?: boolean;
 }
 
 export interface BackgroundTaskDedupeKey {
@@ -55,6 +57,12 @@ export interface SpawnManagedBackgroundTaskOptions {
 	 * `{ status: 'duplicate', existing }` instead of launching a second task.
 	 */
 	dedupeKey?: BackgroundTaskDedupeKey;
+	/**
+	 * The task keeps running after its turn has ended, and the turn does not stay live for
+	 * it: a reload shows the turn from history, and the live connection sends no snapshot of
+	 * it. Leave this off for a task the chat waits for, like a builder.
+	 */
+	detachedFromTurn?: boolean;
 	run: (
 		signal: AbortSignal,
 		drainCorrections: () => string[],
@@ -175,10 +183,16 @@ export class BackgroundTaskManager {
 		return task;
 	}
 
-	cancelThread(threadId: string, abortReason?: unknown): ManagedBackgroundTask[] {
+	cancelThread(
+		threadId: string,
+		abortReason?: unknown,
+		options: { skipTasksDetachedFromTurn?: boolean } = {},
+	): ManagedBackgroundTask[] {
 		const cancelled: ManagedBackgroundTask[] = [];
 		for (const [taskId, task] of this.tasks) {
 			if (task.threadId !== threadId || task.status !== 'running') continue;
+			// Turn cancellation can leave detached tasks running because they have their own lifecycle.
+			if (options.skipTasksDetachedFromTurn && task.detachedFromTurn) continue;
 			task.abortController.abort(abortReason);
 			task.status = 'cancelled';
 			cancelled.push(task);
@@ -266,6 +280,7 @@ export class BackgroundTaskManager {
 			workItemId: options.workItemId,
 			traceContext: options.traceContext,
 			dedupeKey: options.dedupeKey,
+			detachedFromTurn: options.detachedFromTurn,
 		};
 
 		this.tasks.set(options.taskId, task);
