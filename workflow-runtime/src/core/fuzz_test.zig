@@ -1012,3 +1012,50 @@ test "fuzz tdswire replies and requests" {
         },
     });
 }
+
+/// The message builder takes any bytes in its fields. A message that it
+/// gives ends with a line break, and each address of the envelope has `@`.
+fn fuzzMail(_: void, smith: *Smith) !void {
+    const mail = @import("mail.zig");
+    const raw = input_buf[0..smith.slice(&input_buf)];
+    var parts: [11][]const u8 = @splat("");
+    var it = std.mem.splitScalar(u8, raw, 0xff);
+    for (&parts) |*p| p.* = it.next() orelse "";
+    const files = [_]mail.Attachment{
+        .{ .filename = parts[8], .cid = parts[9], .content = parts[10] },
+        .{ .filename = "a.png", .cid = "c", .content = parts[10] },
+    };
+    var rcpts: [8]mail.Rcpt = @splat(.{ .addr = "" });
+    var notes: [1024]u8 = @splat(0);
+    const fields: mail.Fields = .{
+        .from = parts[0],
+        .to = parts[1],
+        .cc = parts[2],
+        .bcc = parts[3],
+        .reply_to = parts[4],
+        .subject = parts[5],
+        .text = parts[6],
+        .html = parts[7],
+        .attachments = files[0..smith.valueRangeAtMost(u8, 0, 2)],
+    };
+    const out = scratch_buf[0 .. 1 << 20];
+    const work: mail.Work = .{ .out = out, .scratch = scratch_buf[1 << 20 ..][0..mail.scratch_min], .notes = &notes, .rcpts = &rcpts };
+    const built = mail.build(fields, .{ .boundary = @splat(7), .id = @splat(9), .now_ms = 86_400_000 }, work) catch |err| {
+        try std.testing.expect(err == error.HostOnly or err == error.NoSpace);
+        return;
+    };
+    try std.testing.expect(std.mem.endsWith(u8, built.message, "\n"));
+    try std.testing.expect(std.mem.startsWith(u8, built.message_id, "<") and std.mem.endsWith(u8, built.message_id, ">"));
+    try std.testing.expect(built.from.len == 0 or std.mem.indexOfScalar(u8, built.from, '@') != null);
+    try std.testing.expect(built.rcpts <= rcpts.len);
+    for (rcpts[0..built.rcpts]) |r| try std.testing.expect(std.mem.indexOfScalar(u8, r.addr, '@') != null);
+    // The headers end with a blank line.
+    try std.testing.expect(std.mem.indexOf(u8, built.message, "\r\n\r\n") != null);
+}
+
+test "fuzz mail builder" {
+    try std.testing.fuzz({}, fuzzMail, .{ .corpus = &.{
+        seed("a@example.com\xffBob <b@example.com>, \"C, D\" <c@example.com>\xff\xff\xff\xffHi \xc3\xa9\xffline one\nline two =\xff<p>xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx</p>\xffreport.pdf\xff\xffdata"),
+        seed("J\xc3\xb6 <a@b.example>\xffa@b.example\xff\xff\xff\xff\"q\"\xff\xff\xe6\xbc\xa2\xe5\xad\x97 =\t \r\n.\xffimg.png\xffcid\xff\x00\x01"),
+    } });
+}
