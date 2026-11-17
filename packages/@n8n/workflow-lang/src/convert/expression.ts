@@ -10,7 +10,7 @@
 import ts from 'typescript';
 
 import type { LegacyIssue } from '../legacy/index.ts';
-import { parsesAsExpression, rewriteLegacy } from '../legacy/index.ts';
+import { firstExpressionOf, rewriteLegacy } from '../legacy/index.ts';
 import type { Code } from './code.ts';
 import type { LuxonValue } from './code-native/luxon-expression.ts';
 import { rewriteLuxon } from './code-native/luxon-expression.ts';
@@ -465,9 +465,10 @@ export function translateBody(
 	luxonValue: LuxonValue = 'reject',
 	binaryValue = false,
 ): BodyResult {
-	const trimmed = body.trim();
-	if (trimmed === '') return { ok: true, code: 'undefined', usage: emptyUsage() };
-	if (!parsesAsExpression(trimmed)) {
+	if (body.trim() === '') return { ok: true, code: 'undefined', usage: emptyUsage() };
+	// v1 evaluates the first statement of the body.
+	const trimmed = firstExpressionOf(body.trim());
+	if (trimmed === undefined) {
 		return {
 			ok: false,
 			issues: [{ feature: 'syntax', message: 'The body is not one expression.', code: 'WL100' }],
