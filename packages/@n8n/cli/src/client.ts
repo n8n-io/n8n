@@ -165,7 +165,34 @@ export interface PromotionApplyCheck {
 	accessRequirements: Array<Record<string, unknown>>;
 	conflicts: Array<Record<string, unknown>>;
 	warnings: Array<Record<string, unknown>>;
+	/** The moves between two team projects that the Apply does. */
+	plannedMoves?: PromotionPlannedMove[];
+	/** Each project that a planned move changes. */
+	changedProjects?: PromotionMoveProject[];
 }
+
+/** A project of a move. `name` is left out when the user cannot access the project. */
+export type PromotionMoveProject = { id: string; name?: string };
+
+/** A workflow or folder that an Apply transfers between two team projects. */
+export type PromotionPlannedMove = {
+	kind: 'workflow' | 'folder';
+	id: string;
+	name: string;
+	fromProject: PromotionMoveProject;
+	toProject: PromotionMoveProject;
+	/** The branch does not hold `fromProject`, so the move waits for `--confirm-destructive-changes`. */
+	needsConfirmation: boolean;
+	losesShares?: boolean;
+};
+
+/** A move that an Apply did. `unpublished` is set when the move unpublished the workflow. */
+export type PromotionAppliedMove = Omit<
+	PromotionPlannedMove,
+	'needsConfirmation' | 'losesShares'
+> & {
+	unpublished?: { reason: string };
+};
 
 /** A team project that a full Apply deletes, because the package does not hold it. */
 export type PromotionProjectDeletion = {
@@ -185,6 +212,7 @@ export type ApplyPackageResult =
 			status: 'applied';
 			counts: ImportPackageCounts;
 			warnings: Array<Record<string, unknown>>;
+			moves?: PromotionAppliedMove[];
 	  })
 	| (ApplyPackageIdentity & { status: 'blocked'; check: PromotionApplyCheck })
 	| (ApplyPackageIdentity & { status: 'source-changed' })

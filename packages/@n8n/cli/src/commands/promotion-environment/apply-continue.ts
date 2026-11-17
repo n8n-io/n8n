@@ -19,7 +19,7 @@ export default class PromotionEnvironmentApplyContinue extends PromotionApplyCom
 		...expectedSourceFlags({ required: true }),
 		confirmDestructiveChanges: Flags.boolean({
 			description:
-				'Also apply data table changes that remove or retype columns, and delete the team projects that the package does not hold. The values in those columns and everything in those projects are removed.',
+				'Also apply data table changes that remove or retype columns, and delete the team projects that the package does not hold. The values in those columns and everything in those projects are removed. A workflow or folder that the package holds under another project moves there first.',
 			aliases: ['confirm-destructive-changes'],
 		}),
 	};
