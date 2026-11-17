@@ -1,0 +1,25 @@
+packages/@n8n/test/README.md
+  s_1a2087067112a6::t_9a440f65b9b4dc 38-41,81-83,87
+packages/@n8n/test/src/instance-state/credentials-helper.ts
+  s_1a2087067112a6::t_62f3d08652ed23 21-22,30-35,38-43,46-47,84-87,106,125-126,136-140,154,156,163,170,177,197,215,229,233,235,240,244,262
+packages/@n8n/test/src/execute-workflow.ts
+  s_1a2087067112a6::t_a5c4ecdef8badb 31-46,48-67,69-73,76-80,82-90
+packages/@n8n/test/src/engine/additional-data.ts
+  s_1a2087067112a6::t_8b6ddfb5afe007 1-4,7-16,19
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "4d08ea4fda2c0a7280d0eb07cf49cbb80e4747a2",
+  "prompts": {},
+  "sessions": {
+    "s_1a2087067112a6": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "6300bd3e-1cc9-4e36-ad69-be897cb35d93",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "James Gee <1285296+geemanjs@users.noreply.github.com>"
+    }
+  }
+}

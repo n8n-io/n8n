@@ -1,0 +1,31 @@
+packages/frontend/@n8n/rest-api-client/src/api/settings.test.ts
+  s_3fcd2798627395::t_5a0074d76416d7 59-64
+packages/cli/src/services/__tests__/frontend.service.test.ts
+  s_3fcd2798627395::t_37b1db2fac7ca5 719-736
+  s_3fcd2798627395::t_bbb3a28246d5a2 741,774
+packages/frontend/@n8n/rest-api-client/src/api/settings.ts
+  s_3fcd2798627395::t_7dd5ad8c982acc 39-45
+packages/cli/src/services/frontend.service.ts
+  s_3fcd2798627395::t_bbb3a28246d5a2 53-55,740,754
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "2795e3fc9bac110b51512774b8f4a283a2c0ecb0",
+  "prompts": {},
+  "humans": {
+    "h_c63dce324dfc7b": {
+      "author": "konstantintieber <konstantin.tieber@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_3fcd2798627395": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "385f8a79-ffe5-46ae-a396-9600aa41e650",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "konstantintieber <konstantin.tieber@n8n.io>"
+    }
+  }
+}

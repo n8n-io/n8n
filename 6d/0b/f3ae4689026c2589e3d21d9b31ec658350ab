@@ -1,0 +1,33 @@
+packages/cli/src/public-api/v1/controllers/workflows.public.controller.ts
+  s_3d42f5aac10616::t_14c2549d5ddd2e 91-94,103-105
+packages/cli/src/public-api/v1/handlers/source-control/spec/paths/pushSourceControl.generated.yml
+  ai_agent 145,314
+packages/cli/src/public-api/v1/handlers/workflows/spec/paths/activateWorkflow.generated.yml
+  ai_agent 49,62,65
+packages/cli/src/public-api/v1/handlers/workflows/spec/paths/updateWorkflow.generated.yml
+  ai_agent 1143,1156,1159
+packages/cli/src/public-api/v1/handlers/source-control/spec/paths/pullSourceControl.generated.yml
+  ai_agent 125,287
+packages/cli/src/public-api/v1/handlers/workflows/__tests__/workflow-publish-blocked.openapi.test.ts
+  s_3d42f5aac10616::t_14c2549d5ddd2e 21-25,27
+packages/cli/src/public-api/v1/handlers/workflows/spec/paths/publishWorkflow.generated.yml
+  ai_agent 48,61,64
+packages/cli/src/public-api/v1/handlers/source-control/spec/paths/getSourceControlStatus.generated.yml
+  ai_agent 113
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "6d0bf3ae4689026c2589e3d21d9b31ec658350ab",
+  "prompts": {},
+  "sessions": {
+    "s_3d42f5aac10616": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "14440739-a8bf-40e4-b7b8-ad261dcda974",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Jan K. <jan.kalkan@n8n.io>"
+    }
+  }
+}
