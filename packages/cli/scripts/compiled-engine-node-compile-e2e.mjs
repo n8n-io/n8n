@@ -173,7 +173,10 @@ function runDataOf(execution) {
 
 // ---------------------------------------------------------------- workflows
 
-/** `auth`: the authentication of the Webhook node and its credential. */
+/**
+ * `auth`: the authentication of the Webhook node and its credential. `auth.responseMode`
+ * and `auth.responseData` replace the response mode `responseNode`.
+ */
 const webhook = (path, auth = {}) => ({
 	id: 'w',
 	name: 'Webhook',
@@ -184,7 +187,8 @@ const webhook = (path, auth = {}) => ({
 	parameters: {
 		path,
 		httpMethod: 'POST',
-		responseMode: 'responseNode',
+		responseMode: auth.responseMode ?? 'responseNode',
+		...(auth.responseData ? { responseData: auth.responseData } : {}),
 		...(auth.authentication ? { authentication: auth.authentication } : {}),
 	},
 	...(auth.credentials ? { credentials: auth.credentials } : {}),
@@ -226,6 +230,30 @@ const setNode = {
 				{ id: 'b', name: 'double', value: '={{ $json.body.amount * 2 }}', type: 'number' },
 			],
 		},
+	},
+};
+
+/** Lets an item through when the `amount` of its body is above 100. */
+const amountFilter = {
+	id: 'f',
+	name: 'Filter',
+	type: 'n8n-nodes-base.filter',
+	typeVersion: 2.2,
+	position: [400, 0],
+	parameters: {
+		conditions: {
+			options: { caseSensitive: true, typeValidation: 'strict', version: 2 },
+			conditions: [
+				{
+					id: 'a',
+					leftValue: '={{ $json.body.amount }}',
+					rightValue: 100,
+					operator: { type: 'number', operation: 'gt' },
+				},
+			],
+			combinator: 'and',
+		},
+		options: {},
 	},
 };
 
@@ -458,7 +486,8 @@ function postgresCases(credential) {
 }
 
 function workflowBody(name, engine, path, nodes, auth) {
-	const all = [webhook(path, auth), ...nodes, respond];
+	// A Respond to Webhook node belongs only to the response mode `responseNode`.
+	const all = [webhook(path, auth), ...nodes, ...(auth?.responseMode ? [] : [respond])];
 	return {
 		name: `E2E ${name} ${engine} ${RUN}`,
 		settings: {
@@ -859,33 +888,41 @@ async function main() {
 	cases.push({
 		key: 'w',
 		title: 'no item reaches the Respond node',
-		nodes: [
-			{
-				id: 'f',
-				name: 'Filter',
-				type: 'n8n-nodes-base.filter',
-				typeVersion: 2.2,
-				position: [400, 0],
-				parameters: {
-					conditions: {
-						options: { caseSensitive: true, typeValidation: 'strict', version: 2 },
-						conditions: [
-							{
-								id: 'a',
-								leftValue: '={{ $json.body.amount }}',
-								rightValue: 100,
-								operator: { type: 'number', operation: 'gt' },
-							},
-						],
-						combinator: 'and',
-					},
-					options: {},
-				},
-			},
-		],
-		calls: [{ body: { amount: 2 } }],
-		open: 'v1 answers with an empty body; the compiled engine answers with the run data of the last node',
+		nodes: [amountFilter],
+		// v1 answers with an empty body. The second call has an item for the Respond node.
+		calls: [{ body: { amount: 2 } }, { body: { amount: 200 } }],
+		check: (run) => run.calls[0]?.status === 200 && run.calls[0]?.response === '',
 	});
+	// `wfrt` does not make the response of these response modes: n8n takes the request and
+	// makes the response, and the run is in `wfrt`.
+	const noItem = (calls) => ({ nodes: [amountFilter, setNode], calls });
+	cases.push(
+		{
+			key: 'x',
+			title: 'response mode lastNode, the first item: no item, and one item',
+			webhook: { responseMode: 'lastNode' },
+			...noItem([{ body: { amount: 2 } }, { body: { name: 'Ada', amount: 200 } }]),
+			// The error response of n8n has the stack of the process: the status and the message count.
+			response: (c) => [c.status, c.status >= 400 ? c.response?.message : c.response],
+			check: (run) =>
+				run.calls[0]?.status === 500 && run.calls[1]?.response?.greeting === 'Hello Ada',
+		},
+		{
+			key: 'y',
+			title: 'response mode lastNode, all items: no item, and one item',
+			webhook: { responseMode: 'lastNode', responseData: 'allEntries' },
+			...noItem([{ body: { amount: 2 } }, { body: { name: 'Ada', amount: 200 } }]),
+			check: (run) =>
+				JSON.stringify(run.calls[0]?.response) === '[]' && run.calls[1]?.response?.length === 1,
+		},
+		{
+			key: 'z',
+			title: 'response mode onReceived: the response does not wait for the run',
+			webhook: { responseMode: 'onReceived' },
+			...noItem([{ body: { amount: 2 } }, { body: { name: 'Ada', amount: 200 } }]),
+			check: (run) => run.calls[0]?.response?.message === 'Workflow was started',
+		},
+	);
 	if (process.env.E2E_FILL_MODULES === '1') {
 		// `wfrt` has a limit for its loaded modules. This case loads workflows until `wfrt`
 		// refuses one. The next workflow must then run on v1, with the result of v1. After this
