@@ -1509,6 +1509,264 @@ function errText(e: Json): string {
 	return String(e);
 }`,
 	},
+	errTextOf: {
+		uses: ['errText'],
+		source: `/** \`String(e)\` of a caught value in code that makes requests: the error of a request is a plain object in v1. */
+function errTextOf(e: Json): string {
+	if (e !== null && typeof e === 'object' && e.$request === true) return '[object Object]';
+	return errText(e);
+}`,
+	},
+	codeHttpHeaderKey: {
+		uses: [],
+		source: `/** The key of the header \`name\` (lower case) in \`headers\`, or undefined: n8n's \`searchForHeader\`. */
+function codeHttpHeaderKey(headers: Json, name: string): Json {
+	for (const key of Object.keys(headers)) {
+		if (key.toLowerCase() === name) return key;
+	}
+	return undefined;
+}`,
+	},
+	codeHttpFormText: {
+		uses: [],
+		source: `/** A name or a value of a form body as axios encodes it (\`AxiosURLSearchParams\`). */
+function codeHttpFormText(value: Json): string {
+	const text = encodeURIComponent(String(value));
+	let out = '';
+	for (let k = 0; k < text.length; k++) {
+		const c = text.charAt(k);
+		if (c === '!') out += '%21';
+		else if (c === "'") out += '%27';
+		else if (c === '(') out += '%28';
+		else if (c === ')') out += '%29';
+		else if (c === '~') out += '%7E';
+		else if (c === '%' && text.slice(k + 1, k + 3) === '20') {
+			out += '+';
+			k += 2;
+		} else if (c === '%' && text.slice(k + 1, k + 3) === '00') {
+			out += '\\u0000';
+			k += 2;
+		} else out += c;
+	}
+	return out;
+}`,
+	},
+	codeHttpFormPairs: {
+		uses: ['codeHttpFormText'],
+		source: `/**
+ * The pairs of a form body, as axios makes them from an object (\`toFormData\` with its default
+ * visitor): a list of plain values at the top is \`name[]\`, a nested value is \`a[b]\`, a name
+ * that ends with \`{}\` holds JSON text, and null and undefined give no pair.
+ */
+function codeHttpFormPairs(value: Json, path: Json, pairs: string[]): void {
+	const isList = Array.isArray(value);
+	const keys: Json[] = isList ? value.map((x: Json, k: number): Json => k) : Object.keys(value);
+	for (const rawKey of keys) {
+		let el: Json = value[rawKey];
+		if (el === undefined || el === null) continue;
+		let key: Json = typeof rawKey === 'string' ? rawKey.trim() : rawKey;
+		const visitable = typeof el === 'object';
+		if (visitable && path === null) {
+			const name = String(key);
+			if (name.endsWith('{}')) {
+				el = JSON.stringify(el);
+			} else if (Array.isArray(el) && !el.some((x: Json): boolean => x !== null && typeof x === 'object')) {
+				const base = name.endsWith('[]') ? name.slice(0, name.length - 2) : name;
+				for (const item of el) {
+					if (item === undefined || item === null) continue;
+					pairs.push(codeHttpFormText(base + '[]') + '=' + codeHttpFormText(item));
+				}
+				continue;
+			}
+		}
+		if (el !== null && typeof el === 'object') {
+			codeHttpFormPairs(el, path === null ? [key] : path.concat([key]), pairs);
+			continue;
+		}
+		let name = String(key);
+		if (path !== null) {
+			name = '';
+			const tokens: Json[] = path.concat([key]);
+			for (let k = 0; k < tokens.length; k++) {
+				let token = String(tokens[k]);
+				if (token.endsWith('[]')) token = token.slice(0, token.length - 2);
+				name += k === 0 ? token : '[' + token + ']';
+			}
+		}
+		pairs.push(codeHttpFormText(name) + '=' + codeHttpFormText(el));
+	}
+}`,
+	},
+	codeHttpArgs: {
+		uses: ['codeHttpHeaderKey', 'codeHttpFormPairs'],
+		source: `/**
+ * The \`http\` request of \`this.helpers.httpRequest(options)\`, as n8n and axios send it
+ * (\`convertN8nRequestToAxios\` of n8n, \`transformRequest\` of axios):
+ * - the default method is GET; a request whose method is GET has no body;
+ * - a header with the value null, undefined or false is not sent; other values are text;
+ * - without an \`accept\` header, \`json\` asks for JSON, else axios asks for its default;
+ * - an empty body (no text, no members) is not sent; an object goes as JSON text, or as a
+ *   form when the content type is \`application/x-www-form-urlencoded\`; a text with a JSON
+ *   content type goes trimmed when it is JSON, else as a JSON string;
+ * - a text body of POST, PUT and PATCH gets the form content type when the code sets none.
+ * The body is always text, so the bytes are those of \`JSON.stringify\`.
+ */
+function codeHttpArgs(o: Json): Json {
+	const given: Json = o.headers !== null && typeof o.headers === 'object' ? o.headers : {};
+	const method: string = o.method === undefined || o.method === null ? 'GET' : String(o.method).toUpperCase();
+	const headers: Json = {};
+	for (const key of Object.keys(given)) {
+		const v: Json = given[key];
+		if (v === undefined || v === null || v === false) continue;
+		headers[key] = Array.isArray(v) ? v.map((x: Json): string => String(x)).join(', ') : String(v);
+	}
+	if (codeHttpHeaderKey(given, 'accept') === undefined) {
+		headers.accept = o.json ? 'application/json' : 'application/json, text/plain, */*';
+	}
+	if (codeHttpHeaderKey(given, 'user-agent') === undefined) headers['user-agent'] = 'n8n';
+	const b: Json = o.body;
+	let data: Json = undefined;
+	if (b && !(o.method !== undefined && o.method !== null && method === 'GET')) {
+		if (typeof b === 'string') data = b;
+		else if (typeof b === 'object' && (Array.isArray(b) ? b.length > 0 : Object.keys(b).length > 0)) data = b;
+	}
+	const typeKey: Json = codeHttpHeaderKey(headers, 'content-type');
+	const type: string = typeKey === undefined ? '' : headers[typeKey];
+	let body: Json = undefined;
+	if (typeof data === 'string') {
+		body = data;
+		if (typeKey === undefined && (method === 'POST' || method === 'PUT' || method === 'PATCH')) {
+			headers['content-type'] = 'application/x-www-form-urlencoded';
+		}
+		if (type.indexOf('application/json') > -1) {
+			try {
+				JSON.parse(data);
+				body = data.trim();
+			} catch (e) {
+				body = JSON.stringify(data);
+			}
+		}
+	} else if (data !== undefined) {
+		if (type.indexOf('application/x-www-form-urlencoded') > -1) {
+			const pairs: string[] = [];
+			codeHttpFormPairs(data, null, pairs);
+			body = pairs.join('&');
+		} else {
+			body = JSON.stringify(data);
+			if (typeKey === undefined) headers['content-type'] = 'application/json';
+		}
+	}
+	const qs: Json = o.qs !== null && typeof o.qs === 'object' && Object.keys(o.qs).length > 0 ? o.qs : undefined;
+	const timeoutMs: Json = typeof o.timeout === 'number' && o.timeout > 0 ? o.timeout : undefined;
+	return { method, url: o.url, headers, qs, body, timeoutMs };
+}`,
+	},
+	codeHttpResult: {
+		uses: ['codeHttpHeaderKey'],
+		source: `/**
+ * The result of \`this.helpers.httpRequest(options)\` for the response of the \`http\` effect.
+ * As axios: a body that is text is parsed as JSON when it parses (the runtime did this
+ * already for a response with a JSON content type). A status outside 200-299 throws the error
+ * as v1's Code node gets it (\`AxiosError.toJSON\` through the task runner): a plain object with
+ * \`message\`, \`name\`, \`code\` and \`status\`. \`$request\` marks it for \`errTextOf\`.
+ */
+function codeHttpResult(o: Json, r: Json): Json {
+	let body: Json = r.body === undefined ? '' : r.body;
+	if (typeof body === 'string' && body !== '') {
+		const typeKey: Json = codeHttpHeaderKey(r.headers, 'content-type');
+		const json = typeKey !== undefined && String(r.headers[typeKey]).toLowerCase().indexOf('json') > -1;
+		if (!json) {
+			try {
+				body = JSON.parse(body.charAt(0) === '\\uFEFF' ? body.slice(1) : body);
+			} catch (e) {
+				body = r.body;
+			}
+		}
+	}
+	const status: number = r.status;
+	if (!o.ignoreHttpStatusErrors && (status < 200 || status >= 300)) {
+		const error: Json = { message: 'Request failed with status code ' + status, name: 'AxiosError', status, $request: true };
+		error.code = status >= 400 && status < 500 ? 'ERR_BAD_REQUEST' : 'ERR_BAD_RESPONSE';
+		throw error;
+	}
+	return body;
+}`,
+	},
+	codeFileSize: {
+		uses: [],
+		source: `/**
+ * n8n's text of a file size, as the fallback host writes it (\`fileSizeText\` of its
+ * \`binary.ts\`): the value with three significant digits (\`toPrecision(3)\`) without zeros
+ * at its end, and the unit.
+ */
+function codeFileSize(bytes: number): string {
+	const units = ['B', 'kB', 'MB', 'GB', 'TB'];
+	let value = bytes;
+	let unit = 0;
+	while (value >= 1000 && unit < 4) {
+		value /= 1000;
+		unit++;
+	}
+	if (unit === 0 || !Number.isFinite(value)) return String(value) + ' ' + units[unit];
+	let text = '';
+	if (value >= 1000) {
+		// Only the last unit: \`toPrecision\` writes an exponent.
+		const whole = Math.floor(value).toFixed(0);
+		if (whole.indexOf('e') >= 0) return String(value) + ' ' + units[unit];
+		let head = Number(whole.slice(0, 3)) + (whole.charAt(3) >= '5' ? 1 : 0);
+		let exponent = whole.length - 1;
+		if (head === 1000) {
+			head = 100;
+			exponent++;
+		}
+		const digits = String(head);
+		return digits.charAt(0) + '.' + digits.slice(1) + 'e+' + exponent + ' ' + units[unit];
+	}
+	const places = value < 10 ? 2 : value < 100 ? 1 : 0;
+	text = value.toFixed(places);
+	const rounded = Number(text);
+	if (places === 2 && rounded >= 10) text = '10.0';
+	else if (places === 1 && rounded >= 100) text = '100';
+	else if (places === 0 && rounded >= 1000) text = '1.00e+3';
+	if (text.indexOf('.') >= 0 && text.indexOf('e') < 0) {
+		while (text.endsWith('0')) text = text.slice(0, text.length - 1);
+		if (text.endsWith('.')) text = text.slice(0, text.length - 1);
+	}
+	return text + ' ' + units[unit];
+}`,
+	},
+	codeBinarySizes: {
+		uses: ['codeFileSize', 'base64Bytes'],
+		source: `/**
+ * The result items with both size members on each binary entry, as the fallback host gives
+ * them for the result of a code step (\`binaryWithSizes\`): \`bytes\`, from the base64 data when
+ * the entry has no number, and \`fileSize\`, n8n's text, when the entry has no text.
+ */
+function codeBinarySizes(list: Json[]): Json[] {
+	for (let k = 0; k < list.length; k++) {
+		const binary: Json = list[k].$binary;
+		if (binary === undefined) continue;
+		const out: Json = {};
+		for (const key of Object.keys(binary)) {
+			const entry: Json = binary[key];
+			if (
+				entry !== null &&
+				typeof entry === 'object' &&
+				!Array.isArray(entry) &&
+				typeof entry.data === 'string' &&
+				typeof entry.mimeType === 'string'
+			) {
+				const bytes: number = typeof entry.bytes === 'number' ? entry.bytes : base64Bytes(entry.data).length;
+				out[key] = { ...entry, bytes, fileSize: typeof entry.fileSize === 'string' ? entry.fileSize : codeFileSize(bytes) };
+			} else {
+				out[key] = entry;
+			}
+		}
+		list[k] = { ...list[k], $binary: out };
+	}
+	return list;
+}`,
+	},
 	mcheck: {
 		uses: ['isRegex', 'isColl'],
 		source: `/**
