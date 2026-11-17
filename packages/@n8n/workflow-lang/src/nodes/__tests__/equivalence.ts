@@ -43,6 +43,11 @@ export interface EquivalenceCase {
 	 */
 	expectedError?: string;
 	/**
+	 * The library node does not give the error of v1 for this case yet: the reason. The
+	 * case keeps the recording of v1, and the comparison with the library node does not run.
+	 */
+	pendingParity?: string;
+	/**
 	 * The settings of the node in the workflow. With settings, the recorder runs the node in
 	 * n8n's engine (`WorkflowExecute`) after a start node that gives the input items, and the
 	 * recording has `outputs`: the run data of the node.
@@ -97,6 +102,27 @@ export interface NormalRequest {
 	qsFormat?: string;
 }
 
+/**
+ * What a user sees of an error next to its message, and can branch on in an error workflow:
+ * the description, and the HTTP status as text. null when the error has none.
+ */
+export interface ErrorDetail {
+	description: unknown;
+	httpCode: string | null;
+}
+
+/** The detail of the error value of the compiled engine (`{ name, message, httpCode, description }`). */
+export function errorDetailOfResult(result: unknown): ErrorDetail {
+	const read = (key: string): unknown =>
+		typeof result === 'object' && result !== null ? Reflect.get(result, key) : undefined;
+	const description = read('description');
+	const httpCode = read('httpCode');
+	return {
+		description: description === undefined || description === null ? null : description,
+		httpCode: typeof httpCode === 'string' ? httpCode : null,
+	};
+}
+
 export interface Recording {
 	requests: NormalRequest[];
 	/**
@@ -133,6 +159,8 @@ export interface Recording {
 	nodeError?: string;
 	/** The error message when the v1 node failed. */
 	error?: string;
+	/** The description and the HTTP code of `error`, or of `nodeError`. */
+	errorDetail?: ErrorDetail;
 	/**
 	 * The runs of the sub-nodes of an AI cluster (cases with `subNodes`), as n8n's engine
 	 * records them: one entry for each run, with the error message of a run that failed.

@@ -8,7 +8,7 @@
  * The attribution link ends with the instance id, which the converter passes
  * in `instanceId` (`ConvertOptions.instance`).
  */
-import { defineNode, type Item } from '@n8n/workflow-lang';
+import { apiError, defineNode, type Item } from '@n8n/workflow-lang';
 
 interface TelegramAdditionalFields {
 	appendAttribution?: boolean;
@@ -92,9 +92,8 @@ export default defineNode<TelegramParameters>({
 			body,
 			credential,
 		});
-		if (response.status >= 400) {
-			throw new Error(`Telegram: HTTP status ${response.status}`);
-		}
+		// apiRequest of the v1 node: `helpers.request`, and a NodeApiError without options.
+		if (response.status >= 400) throw apiError(response, { helper: 'legacy' });
 		return [response.body];
 	},
 });

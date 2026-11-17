@@ -15,7 +15,7 @@
  * Limits: resource locators in mode `url` (the v1 node extracts the id with a
  * regular expression) and attachment download are not supported.
  */
-import { defineNode, type Item } from '@n8n/workflow-lang';
+import { apiError, defineNode, type Item } from '@n8n/workflow-lang';
 
 interface Locator {
 	__rl?: boolean;
@@ -292,7 +292,7 @@ export default defineNode<AirtableParameters>({
 					// v1's apiRequest: request helpers without `useQuerystring`.
 					qsFormat: 'brackets',
 				});
-				if (response.status >= 400) throw new Error(`Airtable: HTTP status ${response.status}`);
+				if (response.status >= 400) throw apiError(response, { helper: 'legacy' });
 				out.push(response.body);
 			}
 			return out;
@@ -364,7 +364,7 @@ export default defineNode<AirtableParameters>({
 							qsFormat: 'brackets',
 						});
 						if (created.status >= 400) {
-							throw new Error(`Airtable: HTTP status ${created.status}`);
+							throw apiError(created, { helper: 'legacy' });
 						}
 						found = created.body.records ?? [];
 					} else if (
@@ -395,7 +395,7 @@ export default defineNode<AirtableParameters>({
 								// v1's apiRequest: request helpers without `useQuerystring`.
 								qsFormat: 'brackets',
 							});
-							if (page.status >= 400) throw new Error(`Airtable: HTTP status ${page.status}`);
+							if (page.status >= 400) throw apiError(page, { helper: 'legacy' });
 							for (const record of page.body.records ?? []) matches.push(record);
 							if (page.body.offset === undefined) break;
 							query.offset = page.body.offset;
@@ -404,11 +404,11 @@ export default defineNode<AirtableParameters>({
 						const update = targets.map((m) => ({ id: m.id, fields }));
 						for (let k = 0; k < update.length; k += 10) {
 							const batch = await patch({ ...body, records: update.slice(k, k + 10) });
-							if (batch.status >= 400) throw new Error(`Airtable: HTTP status ${batch.status}`);
+							if (batch.status >= 400) throw apiError(batch, { helper: 'legacy' });
 							for (const record of batch.body.records ?? []) found.push(record);
 						}
 					} else if (response.status >= 400) {
-						throw new Error(text || `Airtable: HTTP status ${response.status}`);
+						throw apiError(response, { helper: 'legacy' });
 					} else {
 						found = response.body.records ?? [];
 					}
@@ -455,7 +455,7 @@ export default defineNode<AirtableParameters>({
 						// v1's apiRequest: request helpers without `useQuerystring`.
 						qsFormat: 'brackets',
 					});
-					if (response.status >= 400) throw new Error(`Airtable: HTTP status ${response.status}`);
+					if (response.status >= 400) throw apiError(response, { helper: 'legacy' });
 					for (const record of response.body.records ?? []) {
 						out.push(parameters.legacyFlattenOutput === true ? flatten(record) : record);
 					}

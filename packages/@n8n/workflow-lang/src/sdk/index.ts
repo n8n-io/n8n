@@ -662,3 +662,189 @@ export function defineNode<TParameters>(
 ): NodeDefinition<TParameters> {
 	return definition;
 }
+
+/** The answer of a failed request: the status and the body as `NodeCtx.http` gives them. */
+export interface FailedResponse {
+	status: number;
+	body: unknown;
+}
+
+export interface ApiErrorOptions {
+	/**
+	 * The request helper of the v1 node. `request` (the default): `helpers.httpRequest` and
+	 * `helpers.httpRequestWithAuthentication`; the error of v1 has the body as
+	 * `response.data`. `legacy`: `helpers.request`, `helpers.requestWithAuthentication` and
+	 * `helpers.requestOAuth2`; the error of v1 has the body as `error` and the message
+	 * `<status> - <body as JSON>`.
+	 */
+	helper?: 'request' | 'legacy';
+	/** The `message` option of the NodeApiError of the v1 node. It replaces the status message. */
+	message?: string;
+	/** The `description` option of the NodeApiError of the v1 node. */
+	description?: string;
+	/** The index of the item, for a v1 node that adds ` (item N)` to the message. */
+	itemSuffix?: number;
+	/**
+	 * `true`: the v1 node catches the NodeApiError and throws a NodeOperationError with its
+	 * message and description. That error has no `httpCode`.
+	 */
+	operationError?: boolean;
+}
+
+/** The error of a failed request: the NodeApiError of n8n-workflow as the engine carries it. */
+export interface ApiError extends Error {
+	/** The HTTP status as text. */
+	httpCode?: string;
+	description?: unknown;
+}
+
+/** The keys of a message in an error answer, in the order of n8n-workflow (POSSIBLE_ERROR_MESSAGE_KEYS). */
+const API_ERROR_MESSAGE_KEYS = [
+	'cause',
+	'error',
+	'message',
+	'Message',
+	'msg',
+	'messages',
+	'description',
+	'reason',
+	'detail',
+	'details',
+	'errors',
+	'errorMessage',
+	'errorMessages',
+	'ErrorMessage',
+	'error_message',
+	'_error_message',
+	'errorDescription',
+	'error_description',
+	'error_summary',
+	'error_info',
+	'title',
+	'text',
+	'field',
+	'err',
+	'type',
+];
+
+/** The message of the NodeApiError of n8n-workflow for an HTTP status (STATUS_CODE_MESSAGES). */
+export function apiStatusMessage(status: number): string {
+	if (status === 400) return 'Bad request - please check your parameters';
+	if (status === 401) return 'Authorization failed - please check your credentials';
+	if (status === 402) return 'Payment required - perhaps check your payment details?';
+	if (status === 403) return 'Forbidden - perhaps check your credentials?';
+	if (status === 404) return 'The resource you are requesting could not be found';
+	if (status === 405) {
+		return 'Method not allowed - please check you are using the right HTTP method';
+	}
+	if (status === 429) return 'The service is receiving too many requests from you';
+	if (status === 500) return 'The service was not able to process your request';
+	if (status === 502) return 'Bad gateway - the service failed to handle your request';
+	if (status === 503) {
+		return 'Service unavailable - try again later or consider setting this node to retry automatically (in the node settings)';
+	}
+	if (status === 504) return 'Gateway timed out - perhaps try again later?';
+	if (status >= 400 && status < 500) {
+		return 'Your request is invalid or could not be processed by the service';
+	}
+	if (status >= 500 && status < 600) return 'The service failed to process your request';
+	return '';
+}
+
+function apiErrorRecord(value: unknown): value is Record<string, unknown> {
+	return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
+
+/** The outcome of one key in `findProperty` of n8n-workflow: `done` when the search ends with `text`. */
+interface ApiErrorFound {
+	done: boolean;
+	text: string | null;
+}
+
+/**
+ * `findProperty` of the NodeError of n8n-workflow without traversal keys: the first text
+ * under a message key of `source`. null when there is none.
+ */
+function apiErrorProperty(source: Record<string, unknown>): string | null {
+	for (const key of API_ERROR_MESSAGE_KEYS) {
+		const found = apiErrorValue(source[key]);
+		if (found.done) return found.text;
+	}
+	return null;
+}
+
+function apiErrorValue(given: unknown): ApiErrorFound {
+	let value: unknown = given;
+	if (!value) return { done: false, text: null };
+	if (typeof value === 'string') {
+		const text: string = value;
+		try {
+			value = JSON.parse(text);
+		} catch (error) {
+			return { done: true, text };
+		}
+		if (typeof value === 'string') return { done: true, text: value };
+	}
+	if (typeof value === 'number') return { done: true, text: String(value) };
+	if (Array.isArray(value)) {
+		const texts: string[] = [];
+		for (const member of value) {
+			if (typeof member === 'string') texts.push(member);
+			else if (typeof member === 'number') texts.push(String(member));
+			else if (apiErrorRecord(member) && Object.keys(member).length > 0) {
+				const inner = apiErrorProperty(member);
+				if (inner !== null) texts.push(inner);
+			}
+		}
+		return { done: true, text: texts.length === 0 ? null : texts.join(' | ') };
+	}
+	if (apiErrorRecord(value) && Object.keys(value).length > 0) {
+		const inner = apiErrorProperty(value);
+		if (inner) return { done: true, text: inner };
+	}
+	return { done: false, text: null };
+}
+
+/**
+ * The error of a library node for a failed request. It is the NodeApiError that the v1
+ * node gives for the same answer: the message for the status (or `options.message`), the
+ * description from the body, and `httpCode`. A node that the node compiler compiled from
+ * the v1 source gives the same object (`__apiError`).
+ */
+export function apiError(response: FailedResponse, options?: ApiErrorOptions): ApiError {
+	const status = response.status;
+	const body = response.body;
+	const legacy = options !== undefined && options.helper === 'legacy';
+	const raw = legacy
+		? String(status) + ' - ' + JSON.stringify(body)
+		: 'Request failed with status code ' + String(status);
+	let description: unknown = options !== undefined ? options.description : undefined;
+	if (!legacy && apiErrorRecord(body)) {
+		const inner = body.error;
+		if (body.message) description = body.message;
+		else if (apiErrorRecord(inner) && inner.message) description = inner.message;
+	}
+	if (!description) {
+		// v1 searches the error of the HTTP client: its `error` (the body, legacy only), then its message.
+		const found: ApiErrorFound = legacy ? apiErrorValue(body) : { done: false, text: null };
+		description = found.done ? found.text : raw;
+	}
+	let message = apiStatusMessage(status);
+	if (options !== undefined && options.message !== undefined && options.message !== '') {
+		message = options.message;
+	}
+	if (message === '') message = raw;
+	const same = description === message;
+	if (options !== undefined && options.itemSuffix !== undefined) {
+		message = message + ' (item ' + String(options.itemSuffix) + ')';
+	}
+	const failure: ApiError = new Error(message);
+	if (options !== undefined && options.operationError === true) {
+		failure.name = 'NodeOperationError';
+	} else {
+		failure.name = 'NodeApiError';
+		failure.httpCode = String(status);
+	}
+	if (description && !same) failure.description = description;
+	return failure;
+}

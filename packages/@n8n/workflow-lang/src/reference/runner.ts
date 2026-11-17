@@ -432,7 +432,13 @@ export function useUtc(): void {
 }
 
 function plainError(e: unknown): unknown {
-	if (e instanceof Error) return { name: e.name, message: e.message };
+	// The members that code set on the error (`httpCode`, `description`) follow, as the
+	// runtime keeps them on the error object.
+	if (e instanceof Error) {
+		const members: Record<string, unknown> = { name: e.name, message: e.message };
+		for (const [key, value] of Object.entries(e)) members[key] = value;
+		return members;
+	}
 	return e;
 }
 

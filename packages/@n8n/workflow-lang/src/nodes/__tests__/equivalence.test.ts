@@ -25,7 +25,12 @@ import { VENDOR_NODES } from '../../convert/ai-cluster.ts';
 import { ENGINE_CASES } from './ai-cases.ts';
 import { EQUIVALENCE_CASES } from './equivalence-cases.ts';
 import type { EquivalenceCase, NormalRequest, Recording } from './equivalence.ts';
-import { applyCredential, normalizeRequest, withoutInstanceId } from './equivalence.ts';
+import {
+	applyCredential,
+	errorDetailOfResult,
+	normalizeRequest,
+	withoutInstanceId,
+} from './equivalence.ts';
 
 const here = dirname(fileURLToPath(import.meta.url));
 const recordings: Record<string, Recording> = JSON.parse(
@@ -38,6 +43,21 @@ const SHEETS_MINT = googleMint('sheetV2', [
 	'https://www.googleapis.com/auth/spreadsheets',
 	'https://www.googleapis.com/auth/drive.metadata',
 ]).name;
+/**
+ * Node types (and one case) whose library node gives the message of v1, and not yet its
+ * description and HTTP code: they do not build the error with `apiError` of the SDK. The
+ * list only shrinks.
+ */
+const DETAIL_PENDING = new Set([
+	'n8n-nodes-base.googleSheets',
+	'n8n-nodes-base.googleCalendar',
+	'n8n-nodes-base.microsoftOutlook',
+	'n8n-nodes-base.microsoftTeams',
+	'@n8n/n8n-nodes-langchain.openAi',
+	'@n8n/n8n-nodes-langchain.anthropic',
+	'@n8n/n8n-nodes-langchain.googleGemini',
+	'gmail draft.create with an address that has no at sign',
+]);
 const typesBuilt = existsSync(join(DEFAULT_NODE_PACKAGES[0], 'dist/known/credentials.json'));
 
 /** The parameters of the library call, as the converter writes them. */
@@ -190,66 +210,73 @@ describe.runIf(typesBuilt)('request equivalence with v1 nodes', () => {
 			expect(JSON.stringify(bytecode)).toBe(JSON.stringify(reference));
 		});
 
-		it('sends the same requests and gives the same output', async () => {
-			const out = await runReference(workflowSource(c), fixture);
-			expect(out.status).toBe(c.expectedError === undefined ? 'ok' : 'error');
-			if (c.expectedError !== undefined) {
-				expect(isRecord(out.result) ? out.result.message : out.result).toBe(c.expectedError);
-			}
-			// The data as the credentials file holds it (`buildCredentialsFile`).
-			const data = withDerivedValues(c.credential?.type ?? '', {
-				...(registry.get(c.credential?.type ?? '')?.defaults ?? {}),
-				...c.credential?.data,
-			});
-			if (minted) {
-				const token = answerOf(tokenRequest.indexOf(true)).body;
-				data.n8nMinted = { [SHEETS_MINT]: token };
-			}
-			const inject = c.credential
-				? deriveInject(registry, c.credential.type, data).inject
-				: undefined;
-			if (c.serviceResults) {
-				// A node of an n8n service: its calls are `service` effects (spec 9.9).
-				for (const effect of out.effects) expect(effect.kind).toBe('service');
-				expect(out.effects.map((e) => e.args)).toEqual(recording.services);
-				expect(out.result).toEqual(recording.output);
-				return;
-			}
-			const requests: NormalRequest[] = out.effects.map((effect) => {
-				expect(effect.kind).toBe('http');
-				const args = isRecord(effect.args) ? effect.args : {};
-				return normalizeRequest(
-					applyCredential(
-						{
-							method: String(args.method),
-							url: String(args.url),
-							headers: args.headers,
-							qs: args.qs,
-							body: args.body,
-							qsFormat: typeof args.qsFormat === 'string' ? args.qsFormat : 'repeat',
-							inject: args.inject,
-						},
-						inject,
-						data,
+		it.skipIf(c.pendingParity !== undefined)(
+			'sends the same requests and gives the same output',
+			async () => {
+				const out = await runReference(workflowSource(c), fixture);
+				expect(out.status).toBe(c.expectedError === undefined ? 'ok' : 'error');
+				if (c.expectedError !== undefined) {
+					expect(isRecord(out.result) ? out.result.message : out.result).toBe(c.expectedError);
+					// The description and the HTTP code are those of v1 too.
+					if (!DETAIL_PENDING.has(c.type) && !DETAIL_PENDING.has(c.name)) {
+						expect(errorDetailOfResult(out.result)).toEqual(recording.errorDetail);
+					}
+				}
+				// The data as the credentials file holds it (`buildCredentialsFile`).
+				const data = withDerivedValues(c.credential?.type ?? '', {
+					...(registry.get(c.credential?.type ?? '')?.defaults ?? {}),
+					...c.credential?.data,
+				});
+				if (minted) {
+					const token = answerOf(tokenRequest.indexOf(true)).body;
+					data.n8nMinted = { [SHEETS_MINT]: token };
+				}
+				const inject = c.credential
+					? deriveInject(registry, c.credential.type, data).inject
+					: undefined;
+				if (c.serviceResults) {
+					// A node of an n8n service: its calls are `service` effects (spec 9.9).
+					for (const effect of out.effects) expect(effect.kind).toBe('service');
+					expect(out.effects.map((e) => e.args)).toEqual(recording.services);
+					expect(out.result).toEqual(recording.output);
+					return;
+				}
+				const requests: NormalRequest[] = out.effects.map((effect) => {
+					expect(effect.kind).toBe('http');
+					const args = isRecord(effect.args) ? effect.args : {};
+					return normalizeRequest(
+						applyCredential(
+							{
+								method: String(args.method),
+								url: String(args.url),
+								headers: args.headers,
+								qs: args.qs,
+								body: args.body,
+								qsFormat: typeof args.qsFormat === 'string' ? args.qsFormat : 'repeat',
+								inject: args.inject,
+							},
+							inject,
+							data,
+						),
+					);
+				});
+				// The query format matters when a member of `qs` is an array or an object.
+				const nested = (r: NormalRequest) =>
+					Object.values(r.qs).some((v) => typeof v === 'object' && v !== null);
+				recording.requests.forEach((r, k) => {
+					if (r.qsFormat !== undefined && nested(r)) {
+						expect(requests[k]?.qsFormat, `qsFormat of request ${k}`).toBe(r.qsFormat);
+					}
+				});
+				const withoutFormat = (list: NormalRequest[]) => list.map(({ qsFormat: _, ...r }) => r);
+				expect(await withParsedMime(withoutFormat(requests))).toEqual(
+					await withParsedMime(
+						withoutFormat(recording.requests.filter((_request, k) => !tokenRequest[k])),
 					),
 				);
-			});
-			// The query format matters when a member of `qs` is an array or an object.
-			const nested = (r: NormalRequest) =>
-				Object.values(r.qs).some((v) => typeof v === 'object' && v !== null);
-			recording.requests.forEach((r, k) => {
-				if (r.qsFormat !== undefined && nested(r)) {
-					expect(requests[k]?.qsFormat, `qsFormat of request ${k}`).toBe(r.qsFormat);
-				}
-			});
-			const withoutFormat = (list: NormalRequest[]) => list.map(({ qsFormat: _, ...r }) => r);
-			expect(await withParsedMime(withoutFormat(requests))).toEqual(
-				await withParsedMime(
-					withoutFormat(recording.requests.filter((_request, k) => !tokenRequest[k])),
-				),
-			);
-			// The error is not the output of a run that failed.
-			if (c.expectedError === undefined) expect(out.result).toEqual(recording.output);
-		});
+				// The error is not the output of a run that failed.
+				if (c.expectedError === undefined) expect(out.result).toEqual(recording.output);
+			},
+		);
 	});
 });

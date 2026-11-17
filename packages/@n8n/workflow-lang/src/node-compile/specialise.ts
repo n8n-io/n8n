@@ -193,10 +193,7 @@ const REQUEST_SOURCE = `async function __request(options, wrapped, legacy) {
 		credential,
 	});
 	if (response.status >= 400) {
-		const failure = __assign(new Error('Request failed with status code ' + response.status), {
-			response: { status: response.status, data: response.body, headers: response.headers },
-			statusCode: response.status,
-		});
+		const failure = __httpFailure(response, legacy, options.json === true);
 		throw wrapped ? __apiError(failure, undefined) : failure;
 	}
 	if (bytes) {
@@ -459,7 +456,8 @@ const HELPERS: Record<string, string> = {
 	if (cause !== null && cause !== undefined && typeof cause === 'object' && cause.name === 'NodeApiError') return cause;
 	const text: string = cause !== null && cause !== undefined && typeof cause.message === 'string' ? cause.message : String(cause);
 	const prefix = 'Request failed with status code ';
-	const code: string = text.startsWith(prefix) ? text.slice(prefix.length) : '';
+	const answered: boolean = cause !== null && cause !== undefined && typeof cause === 'object' && cause.name === 'AxiosError' && cause.response !== null && cause.response !== undefined && typeof cause.response.status === 'number';
+	const code: string = answered ? String(cause.response.status) : text.startsWith(prefix) ? text.slice(prefix.length) : '';
 	const known: any = {
 		'400': 'Bad request - please check your parameters',
 		'401': 'Authorization failed - please check your credentials',
@@ -498,13 +496,73 @@ const HELPERS: Record<string, string> = {
 		if (data.message) description = data.message;
 		else if (data.error && data.error.message) description = data.error.message;
 	}
-	if (description || cause.description || cause.reason || cause.cause || cause.error || typeof cause.message !== 'string') return description;
+	if (description || cause.description || cause.reason || cause.cause || typeof cause.message !== 'string') return description;
+	if (cause.error) {
+		if (cause.name !== 'AxiosError') return description;
+		const found: any = __apiFound(cause.error);
+		if (found.done) return found.text === null ? undefined : found.text;
+	}
 	try {
 		const parsed: any = JSON.parse(text);
 		return typeof parsed === 'string' ? parsed : undefined;
 	} catch (error) {
 		return text;
 	}
+}`,
+	__apiFound: `function __apiFound(given: any): any {
+	let value: any = given;
+	if (!value) return { done: false, text: null };
+	if (typeof value === 'string') {
+		const text: string = value;
+		try {
+			value = JSON.parse(text);
+		} catch (error) {
+			return { done: true, text };
+		}
+		if (typeof value === 'string') return { done: true, text: value };
+	}
+	if (typeof value === 'number') return { done: true, text: String(value) };
+	if (Array.isArray(value)) {
+		const texts: any[] = [];
+		for (const member of value) {
+			if (typeof member === 'string') texts.push(member);
+			else if (typeof member === 'number') texts.push(String(member));
+			else if (member !== null && member !== undefined && typeof member === 'object' && !Array.isArray(member) && Object.keys(member).length > 0) {
+				const inner: any = __apiProperty(member);
+				if (inner !== null) texts.push(inner);
+			}
+		}
+		return { done: true, text: texts.length === 0 ? null : texts.join(' | ') };
+	}
+	if (value !== null && value !== undefined && typeof value === 'object' && Object.keys(value).length > 0) {
+		const inner: any = __apiProperty(value);
+		if (inner) return { done: true, text: inner };
+	}
+	return { done: false, text: null };
+}`,
+	__apiProperty: `function __apiProperty(source: any): any {
+	const keys: any[] = ['cause', 'error', 'message', 'Message', 'msg', 'messages', 'description', 'reason', 'detail', 'details', 'errors', 'errorMessage', 'errorMessages', 'ErrorMessage', 'error_message', '_error_message', 'errorDescription', 'error_description', 'error_summary', 'error_info', 'title', 'text', 'field', 'err', 'type'];
+	for (const key of keys) {
+		const found: any = __apiFound(source[key]);
+		if (found.done) return found.text;
+	}
+	return null;
+}`,
+	__httpFailure: `function __httpFailure(response: any, legacy: any, json: boolean): any {
+	const status: number = response.status;
+	const body: any = response.body;
+	const data: any = !legacy || json || typeof body === 'string' ? body : JSON.stringify(body);
+	const failure: any = new Error(legacy ? status + ' - ' + JSON.stringify(data) : 'Request failed with status code ' + status);
+	failure.name = 'AxiosError';
+	failure.isAxiosError = true;
+	failure.code = status >= 500 ? 'ERR_BAD_RESPONSE' : 'ERR_BAD_REQUEST';
+	failure.status = status;
+	if (legacy) {
+		failure.response = { status, headers: response.headers };
+		failure.statusCode = status;
+		failure.error = data;
+	} else failure.response = { status, headers: response.headers, data };
+	return failure;
 }`,
 	__form: `function __form(value: any): any {
 	const fields: any = {};
@@ -2878,6 +2936,7 @@ class Specialiser {
 					const options = args(node, optionsAt)[0];
 					for (const used of [
 						'__apiError',
+						'__httpFailure',
 						'__assign',
 						'__form',
 						'__formParts',
@@ -7362,7 +7421,9 @@ class Specialiser {
 		let body = unguarded.body;
 		this.randoms = randomShapes(this.output.map((o) => o.node));
 		for (const always of ['__wrap', '__plain']) this.helpers.add(always);
-		if (this.helpers.has('__apiError')) this.helpers.add('__apiDescription');
+		if (this.helpers.has('__apiError'))
+			for (const used of ['__apiDescription', '__apiFound', '__apiProperty'])
+				this.helpers.add(used);
 
 		const globals = new Set([
 			'ctx',

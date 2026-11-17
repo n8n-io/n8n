@@ -540,7 +540,9 @@ export const MICROSOFT_TEAMS_CASES: EquivalenceCase[] = [
 		name: 'microsoftTeams task.get status 404',
 		parameters: { resource: 'task', operation: 'get', taskId: 'task-1' },
 		responses: [{ status: 404, body: { error: { code: 'NotFound', message: 'No task' } } }],
-		expectedError: 'The resource you are requesting could not be found',
+		expectedError: 'No task',
+		pendingParity:
+			'With the error of the real HTTP client (the body in `error`), v1 gives the message of Microsoft Graph for a 404. The library node gives the status message.',
 	},
 	{
 		...base,

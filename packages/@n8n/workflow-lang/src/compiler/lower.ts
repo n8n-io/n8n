@@ -286,8 +286,11 @@ export class Linker {
 				if (ts.isFunctionDeclaration(st) && st.name) this.prelude.set(st.name.text, st);
 			}
 		}
+		// The SDK has functions that a library node calls (`apiError`): they link as static functions.
+		this.staticFiles.add(wp.sdkFile);
 		this.scope = new ScopeInfo(wp.checker, new Map([[wp.workflowFile, run]]), [
 			wp.workflowFile,
+			wp.sdkFile,
 			...wp.preludeFiles,
 			...wp.nodeFiles,
 		]);
@@ -826,7 +829,10 @@ class FnLowering {
 		const local = this.locals.get(symbol);
 		if (local !== undefined)
 			return { kind: 'reg', reg: local, cell: this.linker.scope.needsCell(symbol) };
-		const decl = symbol.valueDeclaration;
+		// A name that a library node imports from the SDK is an alias of the function there.
+		const target =
+			(symbol.flags & ts.SymbolFlags.Alias) !== 0 ? this.checker.getAliasedSymbol(symbol) : symbol;
+		const decl = target.valueDeclaration;
 		if (!decl) throw new LowerError(at, `\`${symbol.name}\` has no value.`);
 		if (isCtxSymbol(this.checker, symbol)) return { kind: 'ctx' };
 		const sf = decl.getSourceFile();

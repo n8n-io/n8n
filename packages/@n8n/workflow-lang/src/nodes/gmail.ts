@@ -27,7 +27,7 @@
  * The attribution link has no instance id: a compiled workflow does not know
  * the n8n instance.
  */
-import { defineNode, type Item } from '@n8n/workflow-lang';
+import { apiError, defineNode, type FailedResponse, type Item } from '@n8n/workflow-lang';
 
 interface GmailOptions {
 	appendAttribution?: boolean;
@@ -435,6 +435,15 @@ export default defineNode<GmailParameters>({
 		}
 		const headers = { Accept: 'application/json', 'Content-Type': 'application/json' };
 		const api = 'https://www.googleapis.com/gmail/v1/users/me';
+		// The item loop of the v1 node catches the NodeApiError of googleApiRequest
+		// (`helpers.requestWithAuthentication`) and throws a NodeOperationError with ` (item N)`.
+		let position = -1;
+		const requestFailure = (response: FailedResponse): Error =>
+			apiError(response, {
+				helper: 'legacy',
+				itemSuffix: parameters.itemIndex ?? (position < 0 ? 0 : position),
+				operationError: true,
+			});
 		const get = async <T>(url: string, qs: Record<string, unknown>): Promise<T> => {
 			const response = await ctx.http<T>({
 				acceptAs: 'legacy',
@@ -446,7 +455,7 @@ export default defineNode<GmailParameters>({
 				body: undefined,
 				credential,
 			});
-			if (response.status >= 400) throw new Error(`Gmail: HTTP status ${response.status}`);
+			if (response.status >= 400) throw requestFailure(response);
 			return response.body;
 		};
 		const metadata = {
@@ -460,6 +469,7 @@ export default defineNode<GmailParameters>({
 		if (modify.includes(operation) || operation === 'delete') {
 			const out: Item[] = [];
 			for (const _item of items ?? [{}]) {
+				position++;
 				const url = `${api}/messages/${String(parameters.messageId ?? '')}`;
 				if (operation === 'delete') {
 					const response = await ctx.http<unknown>({
@@ -472,7 +482,7 @@ export default defineNode<GmailParameters>({
 						body: undefined,
 						credential,
 					});
-					if (response.status >= 400) throw new Error(`Gmail: HTTP status ${response.status}`);
+					if (response.status >= 400) throw requestFailure(response);
 					out.push({ success: true });
 					continue;
 				}
@@ -491,7 +501,7 @@ export default defineNode<GmailParameters>({
 					body,
 					credential,
 				});
-				if (response.status >= 400) throw new Error(`Gmail: HTTP status ${response.status}`);
+				if (response.status >= 400) throw requestFailure(response);
 				out.push(response.body);
 			}
 			return out;
@@ -499,6 +509,7 @@ export default defineNode<GmailParameters>({
 		if (operation === 'get') {
 			const out: Item[] = [];
 			for (const _item of items ?? [{}]) {
+				position++;
 				const message = await get<GmailMessage>(
 					`${api}/messages/${String(parameters.messageId ?? '')}`,
 					metadata,
@@ -510,6 +521,7 @@ export default defineNode<GmailParameters>({
 		if (operation === 'getAll') {
 			const out: Item[] = [];
 			for (const _item of items ?? [{}]) {
+				position++;
 				const qs = listQuery(parameters.filters ?? {});
 				let list: Array<{ id: string }> = [];
 				if (parameters.returnAll === true) {
@@ -558,7 +570,7 @@ export default defineNode<GmailParameters>({
 				body,
 				credential,
 			});
-			if (response.status >= 400) throw new Error(`Gmail: HTTP status ${response.status}`);
+			if (response.status >= 400) throw requestFailure(response);
 			return response.body;
 		};
 		const index = parameters.itemIndex ?? 0;
@@ -566,6 +578,7 @@ export default defineNode<GmailParameters>({
 		const message = String(parameters.message ?? '').trim();
 		const out: Item[] = [];
 		for (const _item of items ?? [{}]) {
+			position++;
 			if (operation === 'reply') {
 				// replyToEmail of the v1 node.
 				if (options.replyToSenderOnly && options.replyToRecipientsOnly) {
