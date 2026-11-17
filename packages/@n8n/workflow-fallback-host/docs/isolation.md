@@ -97,22 +97,23 @@ practice, not by protocol. Else the step is lost twice and fails as before.
 `movedToSlow`, `guardStops`, `blockEvents`, `maxBlockMs`, `slowRejected`,
 `marks`. The host logs them on a change (`WF_FALLBACK_STATS_MS`) and on `SIGUSR2`.
 
-## Next card: fair admission in the runtime (not built)
+## Fair admission in the runtime
 
-The lanes bound the CPU delay, not the steps that one workflow holds in
-flight. Plan, in `workflow-runtime/src/shell/server.zig`:
+The lanes bound the CPU delay. The runtime bounds the steps that one workflow
+holds in flight (`workflow-runtime/src/shell/server.zig`, for each shard):
 
-1. `Runner.init`: `fb_wf_inflight: []u32` by module slot; `fb_cap_total`
-   (workers of the hello x `--fallback-steps-per-worker`) and `fb_cap_wf`
-   (max(1, total / 4), `--fallback-workflow-share`), set in `onControlFrame`.
-2. `sendFrame`: at either cap, call `waitFrame` and not `pickConn`.
-3. `sendWaiting`: turns between modules, with a fixed ring of the modules
-   that wait and one list for each module (`next: u32` in `FbEntry`); skip a
-   module at its share. `expireWaiting` checks the head of each list.
-4. One function `fbDone` for the decrement, called from `onFallbackFrame`,
-   `lostFallback`, `failAloneQueue` and `expireWaiting`.
-5. A full wait queue keeps `fb_full`. Admission gets its own wait
-   (`--fallback-admit-wait-ms`): 30 s is the wait for a host that is down.
-6. `--stats`: steps waiting, in flight, the largest count of one workflow.
-7. Tests: a module at its share waits while another module's step goes out;
-   turns between three modules; counts are 0 after a lost connection.
+- Total: host workers x `--fallback-steps-per-worker` (256). For each
+  workflow (module slot): `--fallback-workflow-steps`, default a quarter of
+  the total, at least 1 (`hostCapTotal`, `hostCapWorkflow`).
+- A step beyond a cap waits in `fb_waitq` (1,024 steps, at most 512 of one
+  workflow). Its frame is in the journal. All tables have their size from
+  startup; `fbAdmit`, `fbLeave` and `fbRemove` are the only code that counts.
+- `sendWaiting`: the workflows take turns. Each pass gives each workflow an
+  equal part of the free places, in arrival order. With fewer places than
+  workflows, those that sent a step longest ago go first (`waitTurn`). A
+  workflow at its share is passed over.
+- Defined results: a full queue fails the step with `fb_full`; a wait longer
+  than `--fallback-wait-ms` (30 s) fails it with `fb_busy`. Both are retryable.
+- `--stats`: `host_inflight`, `host_waiting`, `host_waited`, `host_refused`.
+
+Limits: a cap is for each shard, and each version of a workflow has its own share.

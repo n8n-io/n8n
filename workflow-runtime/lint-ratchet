@@ -19,7 +19,7 @@ unbounded-loop 24
 fn-length 41
 nesting 26
 fn-assert 144
-discard 127
+discard 121
 core-std 91
 shell-syscall 68
 core-print 62
