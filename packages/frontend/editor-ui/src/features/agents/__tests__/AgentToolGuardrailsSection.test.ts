@@ -55,16 +55,6 @@ const TOOL: AgentJsonToolRef = {
 	},
 } as AgentJsonToolRef;
 
-const OTHER_NODE: AgentJsonToolRef = {
-	type: 'node',
-	name: 'Gmail',
-	node: {
-		nodeType: 'n8n-nodes-base.gmail',
-		nodeTypeVersion: 2.1,
-		nodeParameters: {},
-	},
-} as AgentJsonToolRef;
-
 const WORKFLOW_TOOL: AgentJsonToolRef = {
 	type: 'workflow',
 	workflow: 'Sync customers',
@@ -127,6 +117,8 @@ function mountSection(
 	}> = {},
 ) {
 	const guardrails = overrides.guardrails ?? guardrailsFor();
+	// Narrow once so the optional prop's getter never returns undefined.
+	const issueList = overrides.validationIssues;
 	const onUpdateGuardrails = vi.fn((tools: Array<Record<string, unknown>>) => {
 		// Keep the list live, as the host's config write does.
 		guardrails.splice(0, guardrails.length, ...tools);
@@ -138,7 +130,7 @@ function mountSection(
 			getGuardrails: () => guardrails as never,
 			getTools: () => agentTools(),
 			onUpdateGuardrails: onUpdateGuardrails as never,
-			...(overrides.validationIssues ? { validationIssues: () => overrides.validationIssues } : {}),
+			...(issueList ? { validationIssues: () => issueList } : {}),
 		},
 	});
 	mountedSections.push(wrapper);

@@ -46,11 +46,11 @@ vi.mock('../components/modals/AgentModal.vue', () => ({
 }));
 
 vi.mock('@n8n/design-system', async (importOriginal) => {
-	const { h, inject, provide } = await import('vue');
+	const { defineComponent, h, inject, provide } = await import('vue');
 	const actual = await importOriginal<typeof import('@n8n/design-system')>();
 	return {
 		...actual,
-		N8nSelect: {
+		N8nSelect: defineComponent({
 			name: 'N8nSelect',
 			props: {
 				modelValue: { type: [String, Number, Array], default: undefined },
@@ -92,13 +92,13 @@ vi.mock('@n8n/design-system', async (importOriginal) => {
 					}
 				},
 			},
-		},
+		}),
 		N8nOption: {
 			name: 'N8nOption',
 			props: ['value', 'label'],
 			template: '<option :value="value">{{ label }}</option>',
 		},
-		N8nRadioGroup: {
+		N8nRadioGroup: defineComponent({
 			name: 'N8nRadioGroup',
 			props: ['modelValue'],
 			emits: ['update:modelValue'],
@@ -108,8 +108,8 @@ vi.mock('@n8n/design-system', async (importOriginal) => {
 				);
 				return () => h('div', slots.default?.());
 			},
-		},
-		N8nRadioGroupItem: {
+		}),
+		N8nRadioGroupItem: defineComponent({
 			name: 'N8nRadioGroupItem',
 			props: ['value', 'label'],
 			setup(props, { attrs }) {
@@ -125,8 +125,8 @@ vi.mock('@n8n/design-system', async (importOriginal) => {
 						props.label,
 					);
 			},
-		},
-		N8nInputNumber: {
+		}),
+		N8nInputNumber: defineComponent({
 			name: 'N8nInputNumber',
 			props: [
 				'modelValue',
@@ -147,7 +147,7 @@ vi.mock('@n8n/design-system', async (importOriginal) => {
 					this.$emit('update:modelValue', raw === '' ? null : Number(raw));
 				},
 			},
-		},
+		}),
 		N8nInput: {
 			name: 'N8nInput',
 			props: ['modelValue', 'type', 'rows', 'placeholder', 'disabled'],
@@ -366,7 +366,7 @@ describe('AgentGuardrailModal', () => {
 
 		await saveButton(wrapper).trigger('click');
 
-		const saved = savedConfig(wrapper);
+		const saved = savedConfig(wrapper) as Extract<AgentToolGuardrailConfig, { kind: 'urls' }>;
 		expect(saved).toMatchObject({ kind: 'urls', blockUserinfo: true, allowSubdomains: false });
 		expect('allowedUrls' in saved).toBe(false);
 		expect(saved.allowedSchemes).toEqual(['https']);

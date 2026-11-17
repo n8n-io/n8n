@@ -14,6 +14,7 @@ import { useAgentCapabilitiesActions } from '../composables/useAgentCapabilities
 import { createAgentSkill, getSkillDetail, getNewSkillName } from '../composables/useAgentApi';
 import {
 	SKILL_NAME_TAKEN_MESSAGE,
+	type AgentToolGuardrailConfig,
 	type SkillDetail,
 	type SkillListItem,
 	type SkillVersionDetail,
@@ -185,7 +186,7 @@ describe('useAgentCapabilitiesActions — tools modal host seam', () => {
 			stage: 'before',
 			keywords: ['secret'],
 			tools: [{ type: 'node', name: 'HTTP Request' }],
-		};
+		} satisfies AgentToolGuardrailConfig;
 		localConfig.value = makeConfig({
 			config: {
 				guardrails: {

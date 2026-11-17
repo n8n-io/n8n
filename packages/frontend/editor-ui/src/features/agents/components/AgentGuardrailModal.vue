@@ -1,6 +1,5 @@
 <script setup lang="ts">
 import type {
-	AgentJsonToolRef,
 	AgentToolGuardrailConfig,
 	AgentToolGuardrailKind,
 	AgentToolGuardrailToolRef,
@@ -21,7 +20,7 @@ import {
 import { useI18n, type BaseTextKey } from '@n8n/i18n';
 import { computed, ref, watch } from 'vue';
 
-import type { AgentJsonConfig } from '../types';
+import type { AgentJsonToolRef } from '../types';
 import {
 	guardrailKindLabelKey,
 	PII_ENTITY_LABELS,
@@ -140,7 +139,7 @@ type ToolOption = { key: string; ref: AgentToolGuardrailToolRef; label: string }
 
 /** Workflow tools without a stable id cannot be referenced, so the picker skips them. */
 const toolOptions = computed<ToolOption[]>(() =>
-	props.tools.flatMap((tool) => {
+	props.tools.flatMap<ToolOption>((tool) => {
 		if (tool.type === 'node') {
 			return [
 				{ key: `node:${tool.name}`, ref: { type: 'node', name: tool.name }, label: tool.name },
