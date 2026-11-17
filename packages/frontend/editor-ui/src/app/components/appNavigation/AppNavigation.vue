@@ -60,8 +60,6 @@ const { railItems, activeItemId, sectionsFor, railItemById } = useAppNavigation(
 
 const isExpanded = computed(() => !(uiStore.sidebarMenuCollapsed ?? false));
 
-const peek = useNavigationPeek({ enabled: () => !isExpanded.value, carryOver: true });
-
 // Pinning a floating panel keeps showing that item until the next navigation. A navigation
 // does not close the floating panel: it stays until the pointer leaves for the page, so a
 // click on the rail does not make it flash open and shut.
@@ -73,8 +71,16 @@ watch(
 	},
 );
 
+// A standalone page, such as Insights, docks no panel even when the panel is open. The rail
+// then works as if the panel were collapsed: hovering an item floats its panel.
+const dockedItemId = computed(() =>
+	isExpanded.value ? (pinnedItemId.value ?? activeItemId.value) : null,
+);
+const isDocked = computed(() => dockedItemId.value !== null);
+const peek = useNavigationPeek({ enabled: () => !isDocked.value, carryOver: true });
+
 const panelItemId = computed(() =>
-	isExpanded.value ? (pinnedItemId.value ?? activeItemId.value) : peek.peekItemId.value,
+	isDocked.value ? dockedItemId.value : peek.peekItemId.value,
 );
 const panelItem = computed(() => railItemById(panelItemId.value));
 const panelSections = computed(() => sectionsFor(panelItem.value?.id));
@@ -90,13 +96,15 @@ function railIcon(icon: IconOrEmoji, isActive: boolean): IconOrEmoji {
 }
 
 function toggle() {
-	if (isExpanded.value) {
+	if (isDocked.value) {
 		pinnedItemId.value = null;
-	} else {
-		pinnedItemId.value = peek.peekItemId.value;
-		peek.close();
+		uiStore.toggleSidebarMenuCollapse();
+		return;
 	}
-	uiStore.toggleSidebarMenuCollapse();
+	// Pin the floating panel. On a standalone page the panel setting is already open.
+	pinnedItemId.value = peek.peekItemId.value;
+	peek.close();
+	if (!isExpanded.value) uiStore.toggleSidebarMenuCollapse();
 }
 
 function onRailItemClick(itemId: string) {
@@ -212,7 +220,7 @@ onBeforeUnmount(() => {
 						:key="item.id"
 						:content="item.label"
 						placement="right"
-						:disabled="!isExpanded"
+						:disabled="!isDocked"
 						:show-after="300"
 					>
 						<RouterLink
@@ -221,7 +229,7 @@ onBeforeUnmount(() => {
 								$style.railItem,
 								{
 									[$style.railItemActive]: item.id === activeItemId,
-									[$style.railItemPeeked]: !isExpanded && item.id === peek.peekItemId.value,
+									[$style.railItemPeeked]: !isDocked && item.id === peek.peekItemId.value,
 								},
 							]"
 							:aria-label="item.label"
@@ -275,7 +283,7 @@ onBeforeUnmount(() => {
 			</div>
 		</div>
 
-		<div v-if="isExpanded && panelItem" :class="$style.docked" data-test-id="app-nav-docked">
+		<div v-if="isDocked && panelItem" :class="$style.docked" data-test-id="app-nav-docked">
 			<AppNavigationPanel
 				:title="panelItem.label"
 				:sections="panelSections"
@@ -293,7 +301,7 @@ onBeforeUnmount(() => {
 			:leave-active-class="$style.floatingAnimating"
 		>
 			<div
-				v-if="!isExpanded && panelItem"
+				v-if="!isDocked && panelItem"
 				:class="$style.floating"
 				data-test-id="app-nav-floating"
 				@mouseenter="peek.onPanelEnter"

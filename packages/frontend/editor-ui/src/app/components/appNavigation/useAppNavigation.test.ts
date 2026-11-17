@@ -162,6 +162,14 @@ describe('useAppNavigation', () => {
 			expect(setup().nav.activeItemId.value).toBe(ASSISTANT_ITEM_ID);
 		});
 
+		it('is none on Insights, which stands on its own', () => {
+			route.current.name = VIEWS.INSIGHTS;
+			const { nav } = setup();
+
+			expect(nav.activeItemId.value).toBeNull();
+			expect(nav.sectionsFor(nav.activeItemId.value)).toEqual([]);
+		});
+
 		it('is the Inbox on the inbox page', () => {
 			route.current.name = INBOX_VIEW;
 			expect(setup().nav.activeItemId.value).toBe(INBOX_ITEM_ID);

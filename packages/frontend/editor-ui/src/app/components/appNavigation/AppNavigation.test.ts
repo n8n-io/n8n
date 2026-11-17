@@ -12,7 +12,7 @@ import AppNavigation from './AppNavigation.vue';
 import type { AppNavRailItem, AppNavSection } from './useAppNavigation';
 import { PEEK_CLOSE_DELAY, PEEK_OPEN_DELAY } from './useNavigationPeek';
 
-const activeItemId = ref('overview');
+const activeItemId = ref<string | null>('overview');
 
 const railItems: AppNavRailItem[] = [
 	{
@@ -155,6 +155,27 @@ describe('AppNavigation', () => {
 	});
 
 	describe('expanded', () => {
+		it('shows no panel and no active rail item on a page that no item owns', () => {
+			activeItemId.value = null;
+			const { queryByTestId, getByTestId } = setup({ collapsed: false });
+
+			expect(queryByTestId('app-nav-docked')).not.toBeInTheDocument();
+			expect(getByTestId('app-nav-overview')).not.toHaveAttribute('aria-current');
+			expect(getByTestId('app-nav-project')).not.toHaveAttribute('aria-current');
+		});
+
+		it('floats a hovered panel on a page that no item owns', async () => {
+			vi.useFakeTimers();
+			activeItemId.value = null;
+			const { getByTestId, queryByTestId } = setup({ collapsed: false });
+
+			await fireEvent.mouseEnter(getByTestId('app-nav-project'));
+			vi.advanceTimersByTime(PEEK_OPEN_DELAY);
+
+			await waitFor(() => expect(queryByTestId('app-nav-floating')).toBeInTheDocument());
+			expect(queryByTestId('app-nav-docked')).not.toBeInTheDocument();
+		});
+
 		it('docks the panel of the active item in the layout', () => {
 			const { getByTestId, queryByTestId } = setup({ collapsed: false });
 

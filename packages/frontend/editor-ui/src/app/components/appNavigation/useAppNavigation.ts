@@ -77,6 +77,12 @@ const ASSISTANT_ROUTES = new Set<string>([
 	AGENT_N8N_CHAT_VIEW,
 ]);
 
+/**
+ * Pages that stand on their own, such as Insights. They have no pages to list, so no rail item
+ * is active and no panel shows on them.
+ */
+const STANDALONE_ROUTES = new Set<string>([VIEWS.INSIGHTS]);
+
 /** List pages without a project id belong to Overview, even if a project is still loaded. */
 const OVERVIEW_ROUTES = new Set<string>([
 	VIEWS.HOMEPAGE,
@@ -210,8 +216,10 @@ export function useAppNavigation() {
 		typeof route.params?.projectId === 'string' ? route.params.projectId : undefined,
 	);
 
-	const activeItemId = computed<string>(() => {
+	/** `null` on a standalone page, which no rail item owns */
+	const activeItemId = computed<string | null>(() => {
 		const name = routeName.value;
+		if (STANDALONE_ROUTES.has(name)) return null;
 		if (ASSISTANT_ROUTES.has(name)) return ASSISTANT_ITEM_ID;
 		if (isInboxRoute(route)) return INBOX_ITEM_ID;
 
