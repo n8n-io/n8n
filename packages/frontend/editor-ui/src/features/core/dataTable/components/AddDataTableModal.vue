@@ -50,7 +50,6 @@ interface CsvColumn {
 
 const props = defineProps<Props>();
 
-// DynamicModalLoader's modal-state props must not reach the dialog root.
 const dataTableStore = useDataTableStore();
 const uiStore = useUIStore();
 
