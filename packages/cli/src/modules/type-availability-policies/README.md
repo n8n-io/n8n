@@ -312,7 +312,9 @@ workflow uses has no entry. The counts come from the `activeCredentialId` rows o
 dependency index:
 
 - The indexer writes these rows only for the credentials that the node's current configuration
-  uses. A credential left on a node after an auth mode change does not count.
+  uses. A credential left on a node after an auth mode change does not count, unless n8n cannot
+  tell which credentials the node uses, for example when its node type is not loaded or a
+  credential type parameter is an expression. Then every selected credential counts.
 - Each workflow counts in one version: the published version if it is active, the draft if not.
   Archived workflows and deleted credentials do not count.
 - The project route counts only the workflows that the project owns.
