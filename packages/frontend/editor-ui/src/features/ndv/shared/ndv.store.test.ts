@@ -83,7 +83,7 @@ describe('ndv.store', () => {
 		it.each([
 			['a rollback removed the mode', 'map'],
 			['the mode was renamed', 'map-legacy'],
-		])('falls back to the pane default when %s, and keeps the stored id', (_, storedId) => {
+		])('falls back to the pane default when %s, and keeps the stored id', async (_, storedId) => {
 			localStorage.setItem(LOCAL_STORAGE_NDV_INPUT_PANEL_DISPLAY_MODE, storedId);
 			localStorage.setItem(LOCAL_STORAGE_NDV_OUTPUT_PANEL_DISPLAY_MODE, storedId);
 
@@ -91,6 +91,8 @@ describe('ndv.store', () => {
 
 			expect(store.inputPanelDisplayMode).toBe('schema');
 			expect(store.outputPanelDisplayMode).toBe('table');
+			// A write-back would land on the next tick
+			await nextTick();
 			expect(localStorage.getItem(LOCAL_STORAGE_NDV_INPUT_PANEL_DISPLAY_MODE)).toBe(storedId);
 			expect(localStorage.getItem(LOCAL_STORAGE_NDV_OUTPUT_PANEL_DISPLAY_MODE)).toBe(storedId);
 		});
@@ -105,6 +107,7 @@ describe('ndv.store', () => {
 
 			runDataDisplayModeRegistry.unregister('map');
 			expect(store.outputPanelDisplayMode).toBe('table');
+			await nextTick();
 			expect(localStorage.getItem(LOCAL_STORAGE_NDV_OUTPUT_PANEL_DISPLAY_MODE)).toBe('map');
 
 			runDataDisplayModeRegistry.register(map);

@@ -77,17 +77,25 @@ describe('useRunDataDisplayModes', () => {
 			expect(availableDisplayModes.value).toEqual([]);
 		});
 
-		it('updates when a mode is registered later or the data changes', () => {
+		it('updates when a mode is registered later', () => {
+			const { availableDisplayModes } = setup();
+			expect(availableDisplayModes.value).toEqual([]);
+
+			runDataDisplayModeRegistry.register(contribution({}));
+
+			expect(availableDisplayModes.value.map((mode) => mode.id)).toEqual(['map']);
+		});
+
+		it('updates when the data changes', () => {
+			runDataDisplayModeRegistry.register(
+				contribution({ canRender: ({ data: items }) => items.length > 0 }),
+			);
 			const data = ref<INodeExecutionData[]>([]);
 			const { availableDisplayModes } = useRunDataDisplayModes({ node, pane: 'output', data });
 			expect(availableDisplayModes.value).toEqual([]);
 
-			runDataDisplayModeRegistry.register(
-				contribution({ canRender: ({ data: items }) => items.length > 0 }),
-			);
-			expect(availableDisplayModes.value).toEqual([]);
-
 			data.value = [{ json: {} }];
+
 			expect(availableDisplayModes.value.map((mode) => mode.id)).toEqual(['map']);
 		});
 
