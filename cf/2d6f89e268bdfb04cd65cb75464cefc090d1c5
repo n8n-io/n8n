@@ -17,6 +17,7 @@ packages/frontend/editor-ui/src/features/agents/components/AgentChatPanel.vue
   s_fa60947423cda2::t_667d5489007283 2100-2102
   s_fa60947423cda2::t_ce7bc70f4db70a 2108-2110
   s_e98ecdc3e05adf::t_5a4561c39b674d 2065-2073
+  s_8e7a418266e5a0::t_b77ce3f9cd6a95 2074,2084-2098,2112,2114-2120,2145-2147
 packages/frontend/editor-ui/src/features/ai/instanceAi/components/InstanceAiConversation.vue
   s_fa60947423cda2::t_53e9dbd4fd8f9d 1103
   s_fa60947423cda2::t_c2f0a1a3157aaf 894,898-905,907-908,910-935,937,939,941-948,950-952,955-962,966,968,970,974-975,977-984,989,1060
@@ -24,6 +25,7 @@ packages/frontend/editor-ui/src/features/ai/instanceAi/components/InstanceAiConv
   s_fa60947423cda2::t_96fe62bf5b3343 1100,1124,1126
   s_fa60947423cda2::t_45942a374d12d7 1102
   s_fa60947423cda2::t_1aa25cfebb00c0 990-1045,1047-1048,1052-1054,1056,1059
+  s_8e7a418266e5a0::t_dffc9e4e7bc1ea 1049-1051
 ---
 {
   "schema_version": "authorship/3.0.0",
@@ -31,6 +33,14 @@ packages/frontend/editor-ui/src/features/ai/instanceAi/components/InstanceAiConv
   "base_commit_sha": "cf2d6f89e268bdfb04cd65cb75464cefc090d1c5",
   "prompts": {},
   "sessions": {
+    "s_8e7a418266e5a0": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "01a1e8b8-a713-7025-9272-a6d34a6159c1",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "heymynameisrob <robhough180@gmail.com>"
+    },
     "s_e98ecdc3e05adf": {
       "agent_id": {
         "tool": "pi",
