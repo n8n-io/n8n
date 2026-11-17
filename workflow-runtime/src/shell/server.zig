@@ -9,6 +9,7 @@ const Arena = core_lib.arena.Arena;
 const uring = @import("uring.zig");
 const reserve = core_lib.arena.reserve;
 const shard_mod = @import("shard.zig");
+const logoff = @import("logoff.zig");
 const sys = @import("sys.zig");
 const http = @import("http.zig");
 const egress = @import("egress.zig");
@@ -103,6 +104,10 @@ pub const Options = struct {
     insecure_tls: bool = false,
     credentials: ?*const creds.Store = null,
     batched_sync_ms: i64 = 5,
+    /// `--log-offload on`: a writer thread writes and syncs the log, and the
+    /// shard holds the outputs that wait for a sync (docs/log-offload.md).
+    /// Off: the shard thread writes and syncs the log itself.
+    log_offload: bool = false,
     slots: u32 = 16384,
     stats: bool = false,
     /// Print one line for each schedule fire (a write to stderr each).
@@ -355,6 +360,8 @@ const Kind = enum(u8) {
     /// A connection and a name lookup of the MySQL client (`my.zig`).
     mysql = 16,
     mysql_dns = 17,
+    /// The log writer synced or made room (`logoff.zig`).
+    log_wake = 18,
 };
 
 /// A connection to the admin port. Its buffers are reserved at startup. A
@@ -625,6 +632,10 @@ pub const Runner = struct {
     nlost: usize = 0,
     batch: Arena,
     flog: ?*FileLog = null,
+    /// The log offload, when `--log-offload on` and a log dir are set. The
+    /// shard uses it from the start of `loop` to its end.
+    off: ?*logoff.Offload = null,
+    off_thread: ?std.Thread = null,
     last_sync_ms: i64 = 0,
     stats: *Stats,
     egress_stats_ms: i64 = 0,
@@ -703,6 +714,8 @@ pub const Runner = struct {
         // `create` does not apply field defaults: set each one used before
         // it is assigned.
         r.flog = null;
+        r.off = null;
+        r.off_thread = null;
         r.ob = null;
         r.seq_mem = 0;
         r.acked_mem = 0;
@@ -724,6 +737,11 @@ pub const Runner = struct {
             r.flog = try gpa.create(FileLog);
             r.flog.?.* = .{ .fd = fd, .buf = try reserve(gpa, u8, 4 << 20) };
             log = .{ .ctx = r.flog.?, .appendFn = FileLog.append, .syncFn = FileLog.sync };
+            if (opts.log_offload) {
+                // Reserved at startup. The writer starts with the loop.
+                r.off = try gpa.create(logoff.Offload);
+                r.off.?.* = try logoff.Offload.init(gpa, log.?, .{});
+            }
             // Durable events are kept until n8n acks them. The outbox needs
             // the admin API, which is the only reader of the stream.
             if (opts.admin_port != null) {
@@ -985,9 +1003,101 @@ pub const Runner = struct {
         r.loop() catch |err| std.debug.print("shard {d} stopped: {s}\n", .{ r.id, @errorName(err) });
     }
 
+    /// Start the log writer and give the log to it. From here the shard
+    /// thread does not write or sync the log.
+    fn startOffload(r: *Runner) !void {
+        const o = r.off orelse return;
+        std.debug.assert(r.off_thread == null and r.sh.off == null);
+        o.to_writer = try sys.Wake.init();
+        o.to_exec = try sys.Wake.init();
+        try r.poller.addRead(o.to_exec.?.r, token(.log_wake, 0, 0));
+        o.threaded = true;
+        r.off_thread = try std.Thread.spawn(.{}, logoff.Offload.run, .{o});
+        r.sh.off = o;
+    }
+
+    /// Stop the log writer: it writes and syncs every queued record. Then
+    /// the held outputs leave, and the shard owns the log again.
+    fn stopOffload(r: *Runner) void {
+        const o = r.off orelse return;
+        if (r.off_thread) |t| {
+            o.requestStop();
+            t.join();
+        }
+        r.off_thread = null;
+        o.threaded = false;
+        if (o.to_exec) |k| {
+            r.poller.remove(k.r);
+            k.deinit();
+        }
+        if (o.to_writer) |k| k.deinit();
+        o.to_exec = null;
+        o.to_writer = null;
+        // The shard stops: an output that cannot leave now is lost with its
+        // connection, and `left` reports it.
+        r.releaseHeld() catch |e| std.debug.print("shard {d}: held outputs stay: {s}\n", .{ r.id, @errorName(e) });
+        const left = o.hold.len();
+        r.sh.off = null;
+        const k = o.counters;
+        std.debug.print("shard {d}: log offload: records={d} bytes={d} in_place={d} sync_requests={d} syncs={d} appends={d}\n", .{ r.id, k.records, k.bytes, k.in_place, k.sync_requests, o.syncs.load(.monotonic), o.appends.load(.monotonic) });
+        std.debug.print("shard {d}: log offload: held={d} released={d} left={d} longest_hold_us={d} ring_full_waits={d} hold_full_waits={d}\n", .{ r.id, k.held, k.released, left, o.longest_hold_ns / 1000, k.ring_full_waits, k.hold_full_waits });
+        std.debug.print("shard {d}: log offload: wakes={d} sleeps={d} writer_wakeups={d} dropped_wakes={d}\n", .{ r.id, k.wakes, k.sleeps, o.writer_wakeups.load(.monotonic), o.dropped_wakes.load(.monotonic) });
+    }
+
+    /// Perform the held outputs whose records are durable, oldest first.
+    fn releaseHeld(r: *Runner) !void {
+        const o = r.off orelse return;
+        if (o.hold.len() == 0) return;
+        try o.poll();
+        if (o.ready() == null) return;
+        const now_ns = sys.nowNs();
+        const was = r.in_perform;
+        r.in_perform = true;
+        defer r.in_perform = was;
+        // Each pass takes one entry off the queue.
+        for (0..o.hold.items.len) |_| {
+            const h = o.ready() orelse break;
+            try r.performOne(h.a);
+            o.pop(now_ns);
+        }
+        r.flushFallback();
+        r.flushConns();
+    }
+
+    /// The actions of a batch: each one is performed now or goes to the
+    /// hold queue until the log writer synced its record.
+    fn performBatch(r: *Runner, actions: []const core.Action) !void {
+        const o = r.sh.off orelse return r.perform(actions);
+        try o.poll();
+        if (!o.mayHold()) return r.perform(actions);
+        r.in_perform = true;
+        defer r.in_perform = false;
+        const now_ns = sys.nowNs();
+        for (actions) |a| try r.routeOne(o, a, now_ns);
+    }
+
+    fn routeOne(r: *Runner, o: *logoff.Offload, a: core.Action, now_ns: u64) !void {
+        // Each wait frees an entry of the hold queue or makes `a` pass.
+        for (0..o.hold.items.len + 2) |_| switch (o.route(a, now_ns)) {
+            .pass => return r.performOne(a),
+            .held => return,
+            .full => {
+                try o.waitRoom();
+                try r.releaseHeld();
+                try o.poll();
+            },
+        };
+        return error.LogStalled;
+    }
+
     fn loop(r: *Runner) !void {
         var ready: [1024]sys.Ready = undefined;
         try r.startRing();
+        const cpu_start_ns = sys.threadCpuNs();
+        // `--stats`: the CPU time of this thread, to compare it for each execution.
+        defer if (r.opts.stats) std.debug.print("shard {d}: thread_cpu_us={d} finished={d}\n", .{ r.id, (sys.threadCpuNs() - cpu_start_ns) / 1000, r.stats.finished.load(.monotonic) });
+        try r.startOffload();
+        defer r.stopOffload();
         var has_ready = r.start_out.has_ready;
         var next_timer: ?i64 = r.start_out.next_timer_ms;
         while (!r.stop.load(.monotonic)) {
@@ -1001,10 +1111,17 @@ pub const Runner = struct {
             };
             if (next_timer) |t| timeout = @min(timeout, @as(i32, @intCast(std.math.clamp(t - sys.nowMs(), 0, 50))));
             if (r.sh.unsynced) timeout = @min(timeout, @as(i32, @intCast(r.opts.batched_sync_ms)));
+            // Held outputs wait for the log writer: it wakes this thread
+            // when the thread is going to sleep.
+            if (r.sh.off) |o| {
+                if (timeout > 0 and o.hold.len() > 0 and o.armWake()) timeout = 0;
+            }
             // Outbound requests that wait for an origin's rate or Retry-After.
             if (r.egress.sleepMs(sys.nowMs())) |ms| timeout = @min(timeout, @as(i32, @intCast(@min(ms, 50))));
             const n = if (r.ring) |ring| r.ringWait(ring, &ready, timeout) else r.poller.wait(&ready, timeout);
             for (ready[0..n]) |ev| try r.onReady(ev);
+            // Outputs whose records the log writer synced leave first.
+            try r.releaseHeld();
             // Replies made while reading (400, 413, 503) go out now, not
             // only when a batch runs.
             if (r.dirty.items.len > 0) r.flushConns();
@@ -1032,7 +1149,7 @@ pub const Runner = struct {
                 const deferred = consumed < r.events.items.len;
                 has_ready = tk.out.has_ready;
                 next_timer = tk.out.next_timer_ms;
-                try r.perform(tk.actions);
+                try r.performBatch(tk.actions);
                 // The host frames of the batch go out in one write.
                 r.flushFallback();
                 r.flushConns();
@@ -1087,6 +1204,9 @@ pub const Runner = struct {
                 const c = &r.fb_conns[idx];
                 if (c.fd < 0 or (c.gen & 0xFFFFFF) != gen) return;
                 r.readFallback(@intCast(idx));
+            },
+            .log_wake => if (r.off) |o| {
+                if (o.to_exec) |k| o.counters.sleeps += @min(k.drain(), 1);
             },
             .admin_listener => r.acceptAdmin(),
             .admin => {
@@ -1589,29 +1709,32 @@ pub const Runner = struct {
     fn perform(r: *Runner, actions: []const core.Action) !void {
         r.in_perform = true;
         defer r.in_perform = false;
-        for (actions) |a| {
-            switch (a.kind) {
-                .reply => {
-                    const idx: u32 = @truncate(a.conn);
-                    const gen: u32 = @truncate((a.conn >> 32) & 0xFFFFFF);
-                    if (a.conn >> 56 == @backingInt(Kind.admin)) {
-                        r.adminReplyTo(idx, gen, a.aux, a.payload);
-                        continue;
-                    }
-                    if (a.conn == 0 or idx >= r.conns.len) continue;
-                    const cn = &r.conns[idx];
-                    if (cn.fd < 0 or (cn.gen & 0xFFFFFF) != gen) continue;
-                    r.replyFromCore(idx, a);
-                },
-                .dispatch => try r.dispatch(a),
-                .finished => {
-                    _ = r.stats.finished.fetchAdd(1, .monotonic);
-                    r.dropServiceCalls(a.exec_id);
-                },
-                else => {},
-            }
-            if (r.opts.admin_port != null) try r.publishAction(a);
+        for (actions) |a| try r.performOne(a);
+    }
+
+    fn performOne(r: *Runner, a: core.Action) !void {
+        std.debug.assert(r.in_perform);
+        switch (a.kind) {
+            .reply => {
+                const idx: u32 = @truncate(a.conn);
+                const gen: u32 = @truncate((a.conn >> 32) & 0xFFFFFF);
+                if (a.conn >> 56 == @backingInt(Kind.admin)) {
+                    r.adminReplyTo(idx, gen, a.aux, a.payload);
+                    return;
+                }
+                if (a.conn == 0 or idx >= r.conns.len) return;
+                const cn = &r.conns[idx];
+                if (cn.fd < 0 or (cn.gen & 0xFFFFFF) != gen) return;
+                r.replyFromCore(idx, a);
+            },
+            .dispatch => try r.dispatch(a),
+            .finished => {
+                _ = r.stats.finished.fetchAdd(1, .monotonic);
+                r.dropServiceCalls(a.exec_id);
+            },
+            else => {},
         }
+        if (r.opts.admin_port != null) try r.publishAction(a);
     }
 
     /// `msg` must be a static text: it can wait for room past the batch.

@@ -22,7 +22,7 @@ const usage =
     \\  run <module.wfm> <fixture.json>   run one fixture, print the result JSON
     \\  corpus <dir>                      run every corpus/<case> and compare with expected.json
     \\  sim [--seeds N] [--first S] [--execs E] [--crash PER_MILLE]
-    \\  serve --port P [--host IPv4] [--shards N] [--log-dir D] [--fallback SOCK] [--fallback-wait-ms MS] [--fallback-admit-wait-ms MS] [--fallback-steps-per-worker N] [--fallback-workflow-steps N] [--stats]
+    \\  serve --port P [--host IPv4] [--shards N] [--log-dir D] [--log-offload on|off] [--fallback SOCK] [--fallback-wait-ms MS] [--fallback-admit-wait-ms MS] [--fallback-steps-per-worker N] [--fallback-workflow-steps N] [--stats]
     \\        [--credentials FILE] [--egress-max-body-mb M] [--egress-big-slots K] [--insecure-tls]
     \\        [--binary-max-file-mb M] [--binary-buffer-mb M] [--binary-max-transfers N]
     \\        [--sql-max-requests N] [--sql-max-conns N] [--sql-pool-conns N] [--sql-max-result-kb K]
@@ -359,6 +359,7 @@ fn serve(process_gpa: std.mem.Allocator, io: std.Io, args: []const [:0]const u8)
         }
         if (std.mem.eql(u8, k, "--shards")) opts.shards = try std.fmt.parseInt(u32, v, 10);
         if (std.mem.eql(u8, k, "--log-dir")) opts.log_dir = v;
+        if (std.mem.eql(u8, k, "--log-offload")) opts.log_offload = std.mem.eql(u8, v, "on");
         if (std.mem.eql(u8, k, "--fallback")) opts.fallback = v;
         if (std.mem.eql(u8, k, "--fallback-wait-ms")) opts.fallback_wait_ms = @max(0, try std.fmt.parseInt(i64, v, 10));
         if (std.mem.eql(u8, k, "--fallback-admit-wait-ms")) opts.fallback_admit_wait_ms = @max(0, try std.fmt.parseInt(i64, v, 10));
@@ -688,6 +689,8 @@ test {
     _ = @import("shell/request.zig");
     _ = @import("shell/egress.zig");
     _ = @import("shell/retry_test.zig");
+    _ = @import("shell/logoff.zig");
+    _ = @import("shell/logoff_test.zig");
     _ = @import("shell/admin.zig");
     _ = @import("shell/gym.zig");
     _ = @import("shell/growth.zig");
