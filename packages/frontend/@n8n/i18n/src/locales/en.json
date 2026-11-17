@@ -4163,7 +4163,7 @@
 	"settings.context.skills.stopSyncing.confirm.message": "The skill stays in {scope} with its version history.",
 	"settings.context.skills.stopSyncing.confirm.keep": "Agents can still use the skill. Users with edit access can edit it in n8n. | Agents can still use the skills. Users with edit access can edit them in n8n.",
 	"settings.context.skills.stopSyncing.confirm.updates": "GitHub updates stop.",
-	"settings.context.skills.stopSyncing.success": "{name} stopped syncing. You can edit it now.",
+	"settings.context.skills.stopSyncing.success": "{name} stopped syncing",
 	"settings.context.skills.stopSyncing.error": "Could not stop syncing the skill",
 	"settings.context.skills.checkForUpdates.action": "Check for updates",
 	"settings.context.skills.sources.openInGitHub": "Open in GitHub",

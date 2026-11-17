@@ -1800,7 +1800,7 @@ describe('SettingsSkillsView', () => {
 				);
 				expect(skillsStore.stopSyncingSkill).toHaveBeenCalledWith('s1');
 				expect(showMessageMock).toHaveBeenCalledWith({
-					title: 'research-search stopped syncing. You can edit it now.',
+					title: 'research-search stopped syncing',
 					type: 'success',
 				});
 			});
@@ -1857,7 +1857,7 @@ describe('SettingsSkillsView', () => {
 				expect(skillsStore.stopSyncingSkill).toHaveBeenCalledWith('s1');
 				expect(uiStore.closeModal).toHaveBeenCalled();
 				expect(showMessageMock).toHaveBeenCalledWith({
-					title: 'research-search stopped syncing. You can edit it now.',
+					title: 'research-search stopped syncing',
 					type: 'success',
 				});
 				expect(skillsStore.fetchSkills).toHaveBeenCalled();
