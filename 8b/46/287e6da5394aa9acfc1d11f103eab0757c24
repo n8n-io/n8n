@@ -1,0 +1,72 @@
+packages/frontend/editor-ui/src/features/ai/instanceAi/components/InstanceAiPanelListItem.vue
+  s_4f962bbd370f36::t_b560d63086f11a 2-6,8,90-92,94-97,99-100
+  s_012364d36328f6::t_fc8824136e8184 9-14,17-46,53-55,59-78,88-89,101-118,125-130,132-153,156-163,165,170-185,193-201,204-219,222-234
+  s_4f962bbd370f36::t_9838e586e85743 122,169
+  s_012364d36328f6::t_3217741b695f2c 154,164,220-221
+  s_4f962bbd370f36::t_b36dc3a2971274 93,98,124,202-203
+  s_012364d36328f6::t_92663da9dde79d 1,56-58,119-121,123,235
+  s_012364d36328f6::t_d5656da2a35361 15-16,47-52,79-87,187-192
+  s_012364d36328f6::t_e6acf220b10629 186
+  s_4f962bbd370f36::t_fcf9bab52355f5 7,131,155,166-168
+packages/frontend/editor-ui/src/features/ai/instanceAi/components/InstanceAiPanelList.vue
+  s_012364d36328f6::t_3217741b695f2c 135
+  s_012364d36328f6::t_04cb0d4be8e1a9 50
+  s_012364d36328f6::t_d705fc29234b80 7-13,18,20-30,34,40,43,65-76,82-87,89-91,94,100,102-106,108-134
+  s_012364d36328f6::t_92663da9dde79d 1,31-33,77-79
+  s_012364d36328f6::t_efe91f3d05f0de 2,16-17
+  s_00e1f60e594ab3::t_ee851f573fb737 3-6,60-64
+  s_012364d36328f6::t_e058d681edcc84 14-15,19,35-39,41,45-49,88,96-99
+  s_012364d36328f6::t_e75cd1610a7e07 51-59,80-81,136-140
+  s_012364d36328f6::t_cfcd931f63a8fa 42
+  s_012364d36328f6::t_71fc58e0b9cc50 44
+  s_012364d36328f6::t_48307d4861c880 92-93
+  s_012364d36328f6::t_b4069d47ffc73b 95
+  s_012364d36328f6::t_6121c8658bb484 101
+  s_012364d36328f6::t_d8cbe167a58c0d 107
+packages/frontend/editor-ui/src/features/ai/instanceAi/components/InstanceAiArtifactsPanel.vue
+  s_012364d36328f6::t_018c7f43cdd848 225-228
+  s_012364d36328f6::t_f6819f019b34cb 3,10-11,232-235,237-238,240-253,259-277,279-282,287-290,292-293,295-296,298-299,301,310,342,347,351
+  s_012364d36328f6::t_71c837cb2f11dd 239,255-258,294
+  s_012364d36328f6::t_97860c30a27ff6 230-231,283,286,341
+  s_012364d36328f6::t_884686aafbea57 236,254,291,334-336
+  s_012364d36328f6::t_0e661507a5e7e0 107-112,297,300,302,306,308-309
+  s_012364d36328f6::t_664e4734e4951e 229
+  s_012364d36328f6::t_3217741b695f2c 329
+  s_012364d36328f6::t_ab434ca69faabe 337
+  s_012364d36328f6::t_693797237a732f 338
+  s_012364d36328f6::t_5fa67ba1ce679d 352-353
+packages/frontend/editor-ui/src/features/ai/instanceAi/__tests__/InstanceAiArtifactsPanel.test.ts
+  s_012364d36328f6::t_7a37dd0d2aed30 321,363,389,443
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "8b46287e6da5394aa9acfc1d11f103eab0757c24",
+  "prompts": {},
+  "sessions": {
+    "s_00e1f60e594ab3": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "01a1e41c-50b3-7609-b66c-25403e71dfea",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "heymynameisrob <robhough180@gmail.com>"
+    },
+    "s_012364d36328f6": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "01a1e3eb-e222-7000-830d-9a8f9e53bd64",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "heymynameisrob <robhough180@gmail.com>"
+    },
+    "s_4f962bbd370f36": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "01a1e411-ebb9-702e-8bf3-a4790d653590",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "heymynameisrob <robhough180@gmail.com>"
+    }
+  }
+}
