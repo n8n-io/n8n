@@ -102,7 +102,7 @@ const sourcesWith = (oneCall: string[]): NodeSources => ({
 });
 const nodeSources = sourcesWith(ONE_CALL);
 
-function workflowWith(settings: Record<string, unknown>, touch: boolean) {
+function workflowWith(settings: Record<string, unknown>, touch: boolean, reads = false) {
 	const errorOutput = settings.onError === 'continueErrorOutput';
 	const plain = (name: string, type: string, x: number, parameters: Record<string, unknown>) => ({
 		name,
@@ -118,7 +118,24 @@ function workflowWith(settings: Record<string, unknown>, touch: boolean) {
 			plain('Webhook', 'n8n-nodes-base.webhook', 0, { path: 'p', httpMethod: 'POST' }),
 			plain('Split', 'n8n-nodes-base.splitOut', 200, { fieldToSplitOut: 'body.list' }),
 			{ ...plain('Probe', TYPE, 400, { id: '={{ $json.id }}', touch }), ...settings },
-			plain('Good', 'n8n-nodes-base.noOp', 600, {}),
+			reads
+				? {
+						...plain('Good', 'n8n-nodes-base.set', 600, {
+							assignments: {
+								assignments: [
+									{
+										id: '1',
+										name: 'source',
+										value: "={{ $('Split').item.json.id }}",
+										type: 'string',
+									},
+								],
+							},
+							options: {},
+						}),
+						typeVersion: 3.4,
+					}
+				: plain('Good', 'n8n-nodes-base.noOp', 600, {}),
 			plain('Bad', 'n8n-nodes-base.noOp', 800, {}),
 		],
 		connections: {
@@ -147,10 +164,11 @@ const FROM_HOST = [
 async function run(
 	settings: Record<string, unknown>,
 	answers: unknown[],
-	options: { touch?: boolean; trace?: boolean } = {},
+	options: { touch?: boolean; trace?: boolean; reads?: boolean } = {},
 ) {
-	const result = convertWorkflow(workflowWith(settings, options.touch === true), {
-		nodeSources,
+	const flow = workflowWith(settings, options.touch === true, options.reads === true);
+	const result = convertWorkflow(flow, {
+		nodeSources: options.reads ? sourcesWith([...ONE_CALL, '@pairedItems']) : nodeSources,
 		instance: { baseUrl: 'https://n8n.example', id: 'a'.repeat(64) },
 		...(options.trace ? { trace: 'all' as const } : {}),
 	});
@@ -261,6 +279,23 @@ describe('a compiled node that reaches the largest size of a stored file', () =>
 		expect(out.kinds).toEqual(['http GET', 'http GET']);
 		expect(out.result).toMatchObject({ Good: [{ error: expect.any(String) }, { id: 'b' }] });
 	});
+
+	it('runs the node in the host in the same run when a later node reads the paired items', async () => {
+		const compiled = await run({}, [FILE], { reads: true });
+		expect(compiled.source).toContain('.paired');
+		expect(compiled.kinds).toEqual(['http GET', 'http GET']);
+		expect(compiled.result).toMatchObject({ Good: [{ source: 'a' }, { source: 'b' }] });
+		// The host gives no paired items: the later node pairs by position, as v1's engine.
+		const out = await run({}, [FILE, TOO_LARGE], { reads: true });
+		expect(out.status).toBe('ok');
+		expect(out.kinds).toEqual(['http GET', 'http GET', 'node']);
+		expect(out.result).toEqual({ Good: [{ source: 'a' }, { source: 'b' }] });
+		const traced = await run({}, [TOO_LARGE], { reads: true, trace: true });
+		expect(traced.status).toBe('ok');
+		const stopped = await run({}, [TOUCHED, TOO_LARGE], { reads: true, touch: true });
+		expect(stopped.kinds).toEqual(['http POST', 'http GET']);
+		expect(stopped.status).not.toBe('ok');
+	}, 30_000);
 
 	it('runs the node in the host when its compiled form is a call for each item', () => {
 		const convert = (settings: Record<string, unknown>) =>

@@ -272,6 +272,8 @@ export interface CompiledNode {
 
 	storesResponses: boolean;
 
+	marksFileLimit: boolean;
+
 	changed: string[];
 
 	zones: string[];
@@ -413,6 +415,7 @@ export function compileNodeInstance(
 		randoms: result.randoms ?? [],
 		binary: result.binary === true,
 		storesResponses: result.storesResponses === true,
+		marksFileLimit: result.marksFileLimit === true,
 
 		changed: [
 			...changed,

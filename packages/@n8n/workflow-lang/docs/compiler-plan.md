@@ -403,9 +403,14 @@ file name with an extension and a `Content-Type`, and a file name without an ext
   the failure was a GET, which v1 can send again, it marks the error (`RUNS_IN_HOST`), and the source
   runs the node in the host in the same run, under the step name `<node> (fallback host)`. When the
   node sent another request first, the error stays as it is: the run fails, or the node gives an
-  error item, and n8n does not send the requests again. Not in the same run: a node whose paired
-  items a later node reads (`emitPairedStep`), and the HTTP Request node of the library. A node
-  whose compiled form is a call for each item runs in the host.
+  error item, and n8n does not send the requests again. A node whose paired items a later node
+  reads (`emitPairedStep`) runs in the host in the same run too: the host gives no paired items, so
+  the later node pairs by position, as v1's engine does for a node that gives none. Only a module
+  that can ask for the bytes of a response has this code (`marksFileLimit`). A node whose compiled
+  form is a call for each item runs in the host: a call for one item does not know what the calls
+  before it sent, and one call for all items needs its own check against v1 (`@oneCall`). The HTTP
+  Request node of the library never stores a response: a file response runs in the host
+  (`http-binary`), so it does not reach the limit.
 
 **Not built.**
 

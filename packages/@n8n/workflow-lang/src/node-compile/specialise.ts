@@ -97,6 +97,8 @@ export interface SpecialiseResult {
 
 	storesResponses?: boolean;
 
+	marksFileLimit?: boolean;
+
 	retyped?: (moduleType: string) => string;
 
 	zones?: string[];
@@ -6676,6 +6678,7 @@ class Specialiser {
 				BINARY_HELPERS.some((h) => this.helpers.has(h)) ||
 				this.output.some((o) => mentionsBinary(o.node)),
 			storesResponses: this.storesResponses,
+			marksFileLimit: this.marksFileLimit,
 			retyped: this.retyped,
 			zones: [...this.zones].sort(),
 			itemParameters: [...this.itemParameters].sort(),
@@ -6688,6 +6691,7 @@ class Specialiser {
 	private readonly responseBuffers = new Set<ts.Node>();
 
 	private storesResponses = false;
+	private marksFileLimit = false;
 	private readsStoredMetadata = false;
 	private requestTokenOptions = false;
 
@@ -6852,94 +6856,97 @@ class Specialiser {
 	}
 
 	private print(): string {
-		const code: string[] = [];
-		let body = '';
 		for (const { node } of this.output) this.bytesUses(node);
 		for (const entry of this.output) entry.node = this.listSources(entry.node);
 		for (const { node } of this.output) buffersForBinaryData(node, this.responseBuffers);
 		const buffers = this.output.some((o) => mentionsBuffer(o.node));
 		if (buffers) this.helpers.add('__bufferText');
-		const mayStore =
-			this.helpers.has('__request') &&
-			(this.helpers.has('__prepareBinary') || this.responseBuffers.size > 0) &&
-			this.output.some((o) => mentionsEncoding(o.node));
-		const guarded =
-			mayStore ||
-			[...this.helpers].some((h) => (HELPERS[h] ?? CONTEXT_HELPERS[h])?.includes(LIMIT_TEXT));
-		if (guarded) this.helpers.add('__isLimit');
-		for (const { name, node, sf } of this.output) {
-			const unit = this.units.get(name);
-			const text = (n: ts.Node) =>
-				this.printer.printNode(
-					ts.EmitHint.Unspecified,
-					finish(guarded ? guardCatches(buffers ? this.bufferText(n) : n) : n),
-					sf,
-				);
-			if (!ts.isFunctionDeclaration(node)) {
-				if (unit?.withContext) this.error(name, 'a constant is called with the n8n context');
-				code.push(text(node));
-			} else if (name === 'execute') {
-				body = (node.body?.statements ?? []).map(text).join('\n');
-			} else {
-				const lead = unit?.withContext
-					? CONTEXT_PARAMS.map((p) => f.createParameterDeclaration(undefined, undefined, p))
-					: [];
-				code.push(
-					text(
-						f.updateFunctionDeclaration(
-							node,
-							node.modifiers?.filter((m) => m.kind === ts.SyntaxKind.AsyncKeyword),
-							node.asteriskToken,
-							node.name,
-							undefined,
-							[...lead, ...node.parameters],
-							undefined,
-							node.body,
+		const limitGuard = [...this.helpers].some((h) =>
+			(HELPERS[h] ?? CONTEXT_HELPERS[h])?.includes(LIMIT_TEXT),
+		);
+		if (limitGuard) this.helpers.add('__isLimit');
+		const unitsWith = (guarded: boolean) => {
+			const code: string[] = [];
+			let body = '';
+			for (const { name, node, sf } of this.output) {
+				const unit = this.units.get(name);
+				const text = (n: ts.Node) =>
+					this.printer.printNode(
+						ts.EmitHint.Unspecified,
+						finish(guarded ? guardCatches(buffers ? this.bufferText(n) : n) : n),
+						sf,
+					);
+				if (!ts.isFunctionDeclaration(node)) {
+					if (unit?.withContext) this.error(name, 'a constant is called with the n8n context');
+					code.push(text(node));
+				} else if (name === 'execute') {
+					body = (node.body?.statements ?? []).map(text).join('\n');
+				} else {
+					const lead = unit?.withContext
+						? CONTEXT_PARAMS.map((p) => f.createParameterDeclaration(undefined, undefined, p))
+						: [];
+					code.push(
+						text(
+							f.updateFunctionDeclaration(
+								node,
+								node.modifiers?.filter((m) => m.kind === ts.SyntaxKind.AsyncKeyword),
+								node.asteriskToken,
+								node.name,
+								undefined,
+								[...lead, ...node.parameters],
+								undefined,
+								node.body,
+							),
 						),
-					),
-				);
+					);
+				}
 			}
-		}
+			return { code, body };
+		};
+		const unguarded = unitsWith(limitGuard);
 		const holdsBytes = HOLDS_BYTES.some((h) => this.helpers.has(h));
 		if (holdsBytes) this.helpers.add('__noBytes');
 		this.storesResponses =
 			this.helpers.has('__request') &&
 			(this.helpers.has('__prepareBinary') || this.helpers.has('__bytesFrom')) &&
 			this.output.some((o) => mentionsEncoding(o.node));
-		if (this.helpers.has('__request'))
-			code.unshift(
-				(this.storesResponses ? REQUEST_SOURCE : REQUEST_SOURCE.replace(REQUEST_BYTES, 'false'))
-					.replace(
-						REQUEST_FAILS,
-						this.output.some((o) => setsOption(o.node, LENIENT_OPTIONS))
-							? REQUEST_FAILS_UNLESS_LENIENT
-							: REQUEST_FAILS,
-					)
-					.replace(
-						REQUEST_RESULT,
-						this.output.some((o) => setsOption(o.node, FULL_RESPONSE_OPTIONS, true))
-							? REQUEST_RESULT_OR_FULL
-							: REQUEST_RESULT,
-					)
-					.replace(REQUEST_SEND, this.storesResponses ? REQUEST_SEND_GUARDED : REQUEST_SEND)
-					.replace(REQUEST_SENT, this.storesResponses ? REQUEST_SENT_GUARDED : REQUEST_SENT)
-					.replace(
-						REQUEST_HEAD,
-						this.requestTokenOptions ? REQUEST_HEAD_WITH_TOKEN_OPTIONS : REQUEST_HEAD,
-					)
-					.replace(
-						REQUEST_CREDENTIAL,
-						this.requestTokenOptions ? REQUEST_CREDENTIAL_WITH_TOKEN_OPTIONS : REQUEST_CREDENTIAL,
-					),
-			);
-		if (this.storesResponses && this.helpers.has('__request')) {
-			code.unshift(`let ${REPEATS} = true;`);
-			this.helpers.add('__isFileLimit');
-		}
-		this.helpers.delete('__request');
+		const requestWith = (marks: boolean) =>
+			(this.storesResponses ? REQUEST_SOURCE : REQUEST_SOURCE.replace(REQUEST_BYTES, 'false'))
+				.replace(
+					REQUEST_FAILS,
+					this.output.some((o) => setsOption(o.node, LENIENT_OPTIONS))
+						? REQUEST_FAILS_UNLESS_LENIENT
+						: REQUEST_FAILS,
+				)
+				.replace(
+					REQUEST_RESULT,
+					this.output.some((o) => setsOption(o.node, FULL_RESPONSE_OPTIONS, true))
+						? REQUEST_RESULT_OR_FULL
+						: REQUEST_RESULT,
+				)
+				.replace(REQUEST_SEND, marks ? REQUEST_SEND_GUARDED : REQUEST_SEND)
+				.replace(REQUEST_SENT, marks ? REQUEST_SENT_GUARDED : REQUEST_SENT)
+				.replace(
+					REQUEST_HEAD,
+					this.requestTokenOptions ? REQUEST_HEAD_WITH_TOKEN_OPTIONS : REQUEST_HEAD,
+				)
+				.replace(
+					REQUEST_CREDENTIAL,
+					this.requestTokenOptions ? REQUEST_CREDENTIAL_WITH_TOKEN_OPTIONS : REQUEST_CREDENTIAL,
+				);
+		const sendsRequests = this.helpers.delete('__request');
+		const contextCode: string[] = [];
 		for (const [name, source] of Object.entries(CONTEXT_HELPERS)) {
-			if (this.helpers.delete(name)) code.unshift(source);
+			if (this.helpers.delete(name)) contextCode.unshift(source);
 		}
+		const codeWith = (units: string[], marks: boolean) => [
+			...contextCode,
+			...(marks ? [`let ${REPEATS} = true;`] : []),
+			...(sendsRequests ? [requestWith(marks)] : []),
+			...units,
+		];
+		let code = codeWith(unguarded.code, false);
+		let body = unguarded.body;
 		this.randoms = randomShapes(this.output.map((o) => o.node));
 		for (const always of ['__wrap', '__plain']) this.helpers.add(always);
 		if (this.helpers.has('__apiError')) this.helpers.add('__apiDescription');
@@ -6957,7 +6964,16 @@ class Specialiser {
 		]);
 		if ([...code, body].some((text) => text.includes(`${SESSION_MARKER}(`)))
 			this.error('code', SESSION_TYPE);
-		const joined = lowerConstants([...code, body].join('\n'), this.input.evaluate);
+		let joined = lowerConstants([...code, body].join('\n'), this.input.evaluate);
+		this.marksFileLimit =
+			this.storesResponses && sendsRequests && namesOutsideRequest(joined, 'encoding');
+		if (this.marksFileLimit) {
+			for (const helper of ['__isLimit', '__isFileLimit']) this.helpers.add(helper);
+			const guarded = unitsWith(true);
+			code = codeWith(guarded.code, true);
+			body = guarded.body;
+			joined = lowerConstants([...code, body].join('\n'), this.input.evaluate);
+		}
 		const reachesBytes = reachableHelpers([joined], HELPERS);
 		const makesBytes =
 			holdsBytes &&
@@ -7011,7 +7027,7 @@ class Specialiser {
 			...COST_HELPERS,
 			__plain: plain,
 			[PLAIN_LIST]: t.usesCollections ? PLAIN_LIST_COLLECTIONS : PLAIN_LIST_SAME,
-			...(this.storesResponses ? { __isLimit: HELPERS.__isLimitOrHost } : {}),
+			...(this.marksFileLimit ? { __isLimit: HELPERS.__isLimitOrHost } : {}),
 			...(makesBytes
 				? {
 						__sendBody: HELPERS.__sendBodyChecked,
