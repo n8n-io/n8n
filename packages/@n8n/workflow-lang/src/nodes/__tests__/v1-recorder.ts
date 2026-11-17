@@ -119,6 +119,8 @@ function installVirtualSleep(...requires: NodeJS.Require[]): void {
 		module.sleep = async (ms: unknown, abortSignal?: AbortSignal): Promise<void> => {
 			if (nodeWaits === undefined) return await real(ms, abortSignal);
 			if (abortSignal?.aborted) throw abortSignal.reason;
+			if (nodeWaits.length >= MAX_FAKE_REQUESTS)
+				throw new Error(`the node paused more than ${MAX_FAKE_REQUESTS} times`);
 			const wanted = Number(ms);
 			nodeWaits.push(wanted >= 1 && wanted <= MAX_TIMER_MS ? Math.trunc(wanted) : 1);
 			await new Promise<void>((resolve) => setImmediate(resolve));
