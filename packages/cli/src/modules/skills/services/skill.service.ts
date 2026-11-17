@@ -388,8 +388,12 @@ export class SkillService {
 			source,
 			createMethodOf(source, payload.method),
 		);
-		// No second access check: a custom role can create skills it cannot read later.
-		const [skill] = await this.skillRepository.findByIds([id]);
+		return await this.getAfterWrite(user, id);
+	}
+
+	/** No second access check: a custom role can create or move skills it cannot read later. */
+	async getAfterWrite(user: User, skillId: string): Promise<SkillDetail> {
+		const [skill] = await this.skillRepository.findByIds([skillId]);
 		if (!skill) throw new NotFoundError('Skill not found');
 		return await this.toDetail(user, skill);
 	}

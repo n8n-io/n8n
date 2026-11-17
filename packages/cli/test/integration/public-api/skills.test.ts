@@ -12,6 +12,7 @@ import {
 } from '@/modules/skills/testing';
 
 import { createMemberWithApiKey, createOwnerWithApiKey } from '../shared/db/users';
+import { createCustomRoleWithScopeSlugs } from '../shared/db/roles';
 import { setupTestServer } from '../shared/utils/';
 
 beforeAll(async () => await testModules.loadModules(['skills', 'agents']));
@@ -379,6 +380,24 @@ describe('PATCH /skills/:skillId', () => {
 			.expect(200);
 
 		expect(response.body).toMatchObject({ scope: 'instance', projectId: null });
+	});
+
+	test('returns a skill moved to a project where the caller can create but not read', async () => {
+		const createOnlyRole = await createCustomRoleWithScopeSlugs(['projectSkill:create'], {
+			roleType: 'project',
+			displayName: 'Skill creator',
+		});
+		const otherProject = await createTeamProject('Other', owner);
+		await linkUserToProject(editor, otherProject, createOnlyRole.slug);
+		const { id } = await createSkill({ projectId: teamProject.id });
+		const baseSkillHash = await readHash(id);
+
+		const response = await api(editor)
+			.patch(`/skills/${id}`)
+			.send({ baseSkillHash, scope: 'project', projectId: otherProject.id })
+			.expect(200);
+
+		expect(response.body).toMatchObject({ id, scope: 'project', projectId: otherProject.id });
 	});
 
 	test.each([

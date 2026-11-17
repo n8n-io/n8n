@@ -133,7 +133,7 @@ export class SkillsPublicController {
 		@Body body: UpdateSkillPublicDto,
 	): Promise<SkillPublicDto> {
 		await this.skillService.update(req.user, skillId, body, 'api');
-		return toSkillPublicDto(await this.skillService.get(req.user, skillId));
+		return toSkillPublicDto(await this.skillService.getAfterWrite(req.user, skillId));
 	}
 
 	@Delete('/:skillId')
