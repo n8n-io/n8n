@@ -9,6 +9,7 @@ export const RESOURCES = {
 		'manage',
 		'export',
 		'import',
+		'manageOwner',
 	] as const,
 	aiAssistant: ['manage'] as const,
 	// AI prompt preferences. `aiPreference`: instance-wide rows and other users' rows.
@@ -93,6 +94,7 @@ export const RESOURCES = {
 		'unpublish',
 		'enableRedaction',
 		'disableRedaction',
+		'manageOwner',
 		...DEFAULT_OPERATIONS,
 	] as const,
 	folder: [...DEFAULT_OPERATIONS, 'move'] as const,

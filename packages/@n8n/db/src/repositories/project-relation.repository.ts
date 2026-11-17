@@ -3,12 +3,13 @@ import {
 	PROJECT_ADMIN_ROLE_SLUG,
 	PROJECT_OWNER_ROLE_SLUG,
 	type ProjectRole,
+	type Scope,
 } from '@n8n/permissions';
-import { DataSource, In } from '@n8n/typeorm';
+import { DataSource, In, Not } from '@n8n/typeorm';
 
 import { BaseRepository } from './base-repository';
 import { ProjectRelation, Role } from '../entities';
-import { TransactionRunner } from '../services/transaction';
+import { type OperationContext, TransactionRunner } from '../services/transaction';
 import { chunkIds } from '../utils/chunk-ids';
 
 @Service()
@@ -99,6 +100,40 @@ export class ProjectRelationRepository extends BaseRepository<ProjectRelation> {
 	): Promise<boolean> {
 		if (roleSlugs.length === 0) return false;
 		return await this.existsBy({ userId, projectId, role: { slug: In(roleSlugs) } });
+	}
+
+	async findPersonMemberIds(projectId: string, userIds: string[], ctx: OperationContext) {
+		if (userIds.length === 0) return [];
+		const relations = await this.managerFor(ctx).find(ProjectRelation, {
+			select: { userId: true },
+			where: { projectId, userId: In(userIds), user: { kind: 'person' } },
+		});
+		return relations.map((relation) => relation.userId);
+	}
+
+	async findOldestPersonIdWithRole(
+		projectId: string,
+		roleSlug: string,
+		ctx: OperationContext,
+		exceptUserId?: string,
+	) {
+		const [relation] = await this.managerFor(ctx).find(ProjectRelation, {
+			where: {
+				projectId,
+				userId: exceptUserId && Not(exceptUserId),
+				role: { slug: roleSlug },
+				user: { kind: 'person' },
+			},
+			order: { createdAt: 'ASC', userId: 'ASC' },
+			take: 1,
+		});
+		return relation?.userId ?? null;
+	}
+
+	async hasScopeInProject(userId: string, projectId: string, scope: Scope, ctx: OperationContext) {
+		return await this.managerFor(ctx).exists(ProjectRelation, {
+			where: { userId, projectId, role: { scopes: { slug: scope } } },
+		});
 	}
 
 	/**

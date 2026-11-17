@@ -100,6 +100,8 @@ export class LogStreamingEventRelay extends EventRelay {
 			'workflow-unarchived': (event) => this.workflowUnarchived(event),
 			'agent-archived': (event) => this.agentArchived(event),
 			'agent-unarchived': (event) => this.agentUnarchived(event),
+			'workflow-owner-changed': (event) => this.workflowOwnerChanged(event),
+			'agent-owner-changed': (event) => this.agentOwnerChanged(event),
 			'workflow-activated': (event) => this.workflowActivated(event),
 			'workflow-deactivated': (event) => this.workflowDeactivated(event),
 			'workflow-deactivated-by-system': (event) => this.workflowDeactivatedBySystem(event),
@@ -349,6 +351,22 @@ export class LogStreamingEventRelay extends EventRelay {
 		void this.eventBus.sendAuditEvent({
 			eventName: 'n8n.audit.agent.unarchived',
 			payload: { ...user, agentId, projectId, ...(loginId !== undefined && { loginId }) },
+		});
+	}
+
+	@Redactable()
+	private workflowOwnerChanged({ user, ...change }: RelayEventMap['workflow-owner-changed']) {
+		void this.eventBus.sendAuditEvent({
+			eventName: 'n8n.audit.workflow.owner.changed',
+			payload: { ...(user ?? { userId: null }), ...change },
+		});
+	}
+
+	@Redactable()
+	private agentOwnerChanged({ user, ...change }: RelayEventMap['agent-owner-changed']) {
+		void this.eventBus.sendAuditEvent({
+			eventName: 'n8n.audit.agent.owner.changed',
+			payload: { ...(user ?? { userId: null }), ...change },
 		});
 	}
 

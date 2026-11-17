@@ -2355,6 +2355,41 @@ export class WorkflowRepository extends BaseRepository<WorkflowEntity> {
 		return await qb.getMany();
 	}
 
+	async findOwners(workflowIds: string[], ctx: OperationContext) {
+		const owners: Array<{ id: string; projectId: string; ownerUserId: string | null }> = [];
+		for (const ids of chunkIds(workflowIds)) {
+			owners.push(...(await this.findOwnership({ workflowId: In(ids) }, ctx)));
+		}
+		return owners;
+	}
+
+	async findOwnedBy(ownerUserId: string, ctx: OperationContext, projectId?: string) {
+		return await this.findOwnership({ workflow: { ownerUserId }, projectId }, ctx);
+	}
+
+	async setOwnerUserId(workflowIds: string[], ownerUserId: string | null, ctx: OperationContext) {
+		for (const ids of chunkIds(workflowIds)) {
+			await this.managerFor(ctx).update(
+				WorkflowEntity,
+				{ id: In(ids) },
+				{ ownerUserId, updatedAt: () => '"updatedAt"' },
+			);
+		}
+	}
+
+	private async findOwnership(where: FindOptionsWhere<SharedWorkflow>, ctx: OperationContext) {
+		const homeShares = await this.managerFor(ctx).find(SharedWorkflow, {
+			select: { workflowId: true, projectId: true, workflow: { id: true, ownerUserId: true } },
+			relations: { workflow: true },
+			where: { ...where, role: 'workflow:owner' },
+		});
+		return homeShares.map(({ workflowId, projectId, workflow }) => ({
+			id: workflowId,
+			projectId,
+			ownerUserId: workflow.ownerUserId,
+		}));
+	}
+
 	/**
 	 * Returns if the workflow is stored as `active`.
 	 *
