@@ -14,6 +14,7 @@ import {
 	domainGatingResumeSchema,
 } from '../domain-access';
 import type { FetchedPage, InstanceAiContext } from '../types';
+import { saveFetchedPage } from './web-research/save-fetched-page';
 import { sanitizeWebContent, wrapUntrustedData } from './web-research/sanitize-web-content';
 
 /** True when both URLs share an eTLD+1 (per Public Suffix List) and target is HTTPS. */
@@ -39,6 +40,7 @@ async function isSameRegistrableDomainOverHttps(
 // ── Action schemas ──────────────────────────────────────────────────────────
 
 const DEFAULT_MAX_CONTENT_LENGTH = 30_000;
+const SAVED_PAGE_PREVIEW_LENGTH = 500;
 
 const webSearchAction = z.object({
 	action: z.literal('web-search').describe('Search the web for information'),
@@ -77,6 +79,12 @@ const fetchUrlAction = z.object({
 		.optional()
 		.describe(
 			'Character offset to start reading from (default 0). Pass `nextOffset` from the previous result to read the next part of a long page.',
+		),
+	saveTo: z
+		.string()
+		.optional()
+		.describe(
+			'Workspace-relative file path, e.g. "research/stripe-pricing.md". Saves the full page to this file and returns only the path and a short preview. Use it for long pages, then read the file with grep, sed or cat.',
 		),
 });
 
@@ -251,15 +259,33 @@ async function handleFetchUrl(
 		authorizeUrl,
 		abortSignal: ctx.abortSignal,
 	});
-	return slicePage(page, input.offset ?? 0, input.maxContentLength ?? DEFAULT_MAX_CONTENT_LENGTH);
+	const content = sanitizeWebContent(page.content);
+	const saveResult = input.saveTo
+		? await saveFetchedPage(context, page, content, input.saveTo, ctx.abortSignal)
+		: undefined;
+	if (saveResult && 'savedTo' in saveResult) {
+		return {
+			...slicePage(page, content, 0, SAVED_PAGE_PREVIEW_LENGTH),
+			...saveResult,
+			nextOffset: undefined,
+		};
+	}
+	return {
+		...slicePage(
+			page,
+			content,
+			input.offset ?? 0,
+			input.maxContentLength ?? DEFAULT_MAX_CONTENT_LENGTH,
+		),
+		...saveResult,
+	};
 }
 
 /**
  * Return one part of the full page. Offsets count characters of the sanitized
  * content, so `nextOffset` always continues where this part ends.
  */
-function slicePage(page: FetchedPage, offset: number, maxContentLength: number) {
-	const content = sanitizeWebContent(page.content);
+function slicePage(page: FetchedPage, content: string, offset: number, maxContentLength: number) {
 	const end = sliceEnd(content, offset, maxContentLength);
 	const hasMore = end < content.length;
 	return {
