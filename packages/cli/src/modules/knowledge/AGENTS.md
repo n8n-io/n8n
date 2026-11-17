@@ -84,3 +84,13 @@ vector-stores/                           external vector-store connections, conn
 - Vector stores keep working. They are plain code, not an entity.
 
 Each guard has a test. A new consumer, or a new knowledge call in the agents module, asks `KnowledgeAvailabilityService` and gets a test.
+
+## Collections flag
+
+Collections ship dark behind the PostHog flag `KNOWLEDGE_COLLECTIONS_FLAG` (`146_knowledge_collections`, in `@n8n/api-types`).
+
+- The backend asks `KnowledgeAvailabilityService.isCollectionsEnabled()`. It is true only when the module is active and the flag is on for the instance, because retrieval runs without a user.
+- The editor asks `useIsCollectionsEnabled()` in `editor-ui/src/features/shared/knowledge`. `PostHogClient` lists the flag in `EDITOR_INSTANCE_FLAGS`, so the editor gets the instance result.
+- Nothing else reads the flag. Put every collection endpoint, page and retrieval path behind these helpers.
+- The flag deletes no data. An agent's own knowledge does not depend on it.
+- `N8N_KNOWLEDGE_COLLECTIONS_ENABLED=true` turns the flag on for the backend and the editor without PostHog. `false` falls back to PostHog.
