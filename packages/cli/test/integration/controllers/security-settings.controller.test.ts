@@ -1,8 +1,5 @@
-import { ModuleRegistry } from '@n8n/backend-common';
 import { mockInstance } from '@n8n/backend-test-utils';
 import { InstanceSettingsLoaderConfig } from '@n8n/config';
-import { Container } from '@n8n/di';
-import type { MockInstance } from 'vitest';
 
 import { SecuritySettingsService } from '@/services/security-settings.service';
 import { WorkflowReviewPolicyService } from '@/services/workflow-review-policy.service';
@@ -38,13 +35,12 @@ describe('SecuritySettingsController', () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
 		testServer.license.enable('feat:personalSpacePolicy');
-		testServer.license.disable('feat:workflowReviews');
 		instanceSettingsLoaderConfig.securityPolicyManagedByEnv = false;
 		securitySettingsService.getSecuritySettings.mockResolvedValue(readResult);
 	});
 
 	describe('GET /settings/security', () => {
-		it('should return 403 when neither license is active', async () => {
+		it('should return 403 when personalSpacePolicy license is not active', async () => {
 			testServer.license.disable('feat:personalSpacePolicy');
 			await ownerAgent.get('/settings/security').expect(403);
 		});
@@ -77,7 +73,7 @@ describe('SecuritySettingsController', () => {
 	});
 
 	describe('POST /settings/security', () => {
-		it('should return 403 when neither license is active', async () => {
+		it('should return 403 when personalSpacePolicy license is not active', async () => {
 			testServer.license.disable('feat:personalSpacePolicy');
 			await ownerAgent
 				.post('/settings/security')
@@ -138,19 +134,11 @@ describe('SecuritySettingsController', () => {
 	});
 
 	describe('workflowReviews', () => {
-		let isModuleActive: MockInstance<ModuleRegistry['isActive']>;
-
 		beforeEach(() => {
 			testServer.license.enable('feat:workflowReviews');
 			securitySettingsService.updateSecuritySettings.mockResolvedValue({});
 			workflowReviewPolicyService.get.mockResolvedValue({ enabled: false });
-			isModuleActive = vi
-				.spyOn(Container.get(ModuleRegistry), 'isActive')
-				.mockImplementation((name) => name === 'workflow-reviews');
-		});
-
-		afterEach(() => {
-			isModuleActive.mockRestore();
+			workflowReviewPolicyService.update.mockResolvedValue({ enabled: true });
 		});
 
 		it('GET should include workflowReviews when licensed', async () => {
@@ -161,34 +149,22 @@ describe('SecuritySettingsController', () => {
 			expect(response.body.data.workflowReviews).toEqual({ enabled: true });
 		});
 
-		it('POST should reject workflowReviews when license is off', async () => {
-			testServer.license.disable('feat:workflowReviews');
-
-			await ownerAgent
+		it('POST should update workflowReviews and emit its policy event', async () => {
+			const response = await ownerAgent
 				.post('/settings/security')
 				.send({ workflowReviews: { enabled: true } })
-				.expect(403);
+				.expect(200);
 
-			expect(workflowReviewPolicyService.update).not.toHaveBeenCalled();
+			expect(response.body.data).toEqual({ workflowReviews: { enabled: true } });
+			expect(workflowReviewPolicyService.update).toHaveBeenCalledWith({ enabled: true });
+			expect(securitySettingsService.emitInstancePolicyUpdated).toHaveBeenCalledWith(
+				expect.objectContaining({ id: expect.any(String) }),
+				{ settingName: 'workflow_reviews', value: true },
+			);
 		});
 
-		it('GET should omit workflowReviews when the workflow reviews module is not active', async () => {
-			isModuleActive.mockReturnValue(false);
-
-			const response = await ownerAgent.get('/settings/security').expect(200);
-
-			expect(response.body.data).not.toHaveProperty('workflowReviews');
-		});
-
-		it('GET should return 403 with only the workflow reviews license when the module is not active', async () => {
-			testServer.license.disable('feat:personalSpacePolicy');
-			isModuleActive.mockReturnValue(false);
-
-			await ownerAgent.get('/settings/security').expect(403);
-		});
-
-		it('POST should reject workflowReviews when the workflow reviews module is not active', async () => {
-			isModuleActive.mockReturnValue(false);
+		it('POST should reject workflowReviews when license is off', async () => {
+			testServer.license.disable('feat:workflowReviews');
 
 			await ownerAgent
 				.post('/settings/security')

@@ -1,15 +1,13 @@
 import { UpdateSecuritySettingsDto } from '@n8n/api-types';
-import { LicenseState, ModuleRegistry } from '@n8n/backend-common';
+import { LicenseState } from '@n8n/backend-common';
 import { InstanceSettingsLoaderConfig } from '@n8n/config';
 import { type AuthenticatedRequest } from '@n8n/db';
-import { Body, Get, GlobalScope, Post, RestController } from '@n8n/decorators';
+import { Body, Get, GlobalScope, Licensed, Post, RestController } from '@n8n/decorators';
 import type { Response } from 'express';
 
 import { ForbiddenError } from '@n8n/errors';
 import { SecuritySettingsService } from '@/services/security-settings.service';
 import { WorkflowReviewPolicyService } from '@/services/workflow-review-policy.service';
-
-const MISSING_LICENSE_MESSAGE = 'Plan lacks license for this feature';
 
 @RestController('/settings/security')
 export class SecuritySettingsController {
@@ -18,14 +16,12 @@ export class SecuritySettingsController {
 		private readonly workflowReviewPolicyService: WorkflowReviewPolicyService,
 		private readonly licenseState: LicenseState,
 		private readonly instanceSettingsLoaderConfig: InstanceSettingsLoaderConfig,
-		private readonly moduleRegistry: ModuleRegistry,
 	) {}
 
+	@Licensed('feat:personalSpacePolicy')
 	@GlobalScope('securitySettings:manage')
 	@Get('/')
 	async getSecuritySettings(_req: AuthenticatedRequest, _res: Response) {
-		this.assertAnySettingsLicensed();
-
 		const [settings, workflowReviews] = await Promise.all([
 			this.securitySettingsService.getSecuritySettings(),
 			this.getWorkflowReviewsIfAvailable(),
@@ -38,6 +34,7 @@ export class SecuritySettingsController {
 		};
 	}
 
+	@Licensed('feat:personalSpacePolicy')
 	@GlobalScope('securitySettings:manage')
 	@Post('/')
 	async updateSecuritySettings(
@@ -45,8 +42,6 @@ export class SecuritySettingsController {
 		_res: Response,
 		@Body dto: UpdateSecuritySettingsDto,
 	) {
-		this.assertAnySettingsLicensed();
-
 		if (this.instanceSettingsLoaderConfig.securityPolicyManagedByEnv) {
 			throw new ForbiddenError(
 				'Security settings are managed via environment variables and cannot be modified through the API',
@@ -54,12 +49,6 @@ export class SecuritySettingsController {
 		}
 
 		const { workflowReviews, ...otherFields } = dto;
-		if (
-			Object.values(otherFields).some((value) => value !== undefined) &&
-			!this.licenseState.isPersonalSpacePolicyLicensed()
-		) {
-			throw new ForbiddenError(MISSING_LICENSE_MESSAGE);
-		}
 
 		if (workflowReviews !== undefined) {
 			this.assertWorkflowReviewsAvailable();
@@ -93,16 +82,7 @@ export class SecuritySettingsController {
 	}
 
 	private isWorkflowReviewsAvailable(): boolean {
-		return (
-			this.licenseState.isWorkflowReviewsLicensed() &&
-			this.moduleRegistry.isActive('workflow-reviews')
-		);
-	}
-
-	private assertAnySettingsLicensed(): void {
-		if (!this.licenseState.isPersonalSpacePolicyLicensed() && !this.isWorkflowReviewsAvailable()) {
-			throw new ForbiddenError(MISSING_LICENSE_MESSAGE);
-		}
+		return this.licenseState.isWorkflowReviewsLicensed();
 	}
 
 	private async getWorkflowReviewsIfAvailable() {

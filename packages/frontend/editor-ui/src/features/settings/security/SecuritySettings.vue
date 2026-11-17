@@ -105,8 +105,8 @@ const { state, isReady, error } = useAsyncState(async () => {
 
 const isManagedByEnv = computed(() => state.value?.managedByEnv ?? false);
 
-// The security settings endpoint needs the personal space policy or the workflow reviews
-// license and 403s without either, leaving `state` undefined. The data redaction section
+// The security settings endpoint is gated by an enterprise license and 403s on
+// unlicensed instances, leaving `state` undefined. The data redaction section
 // still needs to render so the licensed-feature upgrade prompt is reachable, so
 // we render once the request settles (resolved or failed) rather than waiting
 // for a defined `state`.

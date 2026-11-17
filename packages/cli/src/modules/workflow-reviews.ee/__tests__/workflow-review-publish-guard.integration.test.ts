@@ -29,7 +29,7 @@ const workflowValidationService = mockInstance(WorkflowValidationService);
 
 const testServer = utils.setupTestServer({
 	endpointGroups: ['workflow-reviews', 'workflows', 'publicApi', 'security-settings'],
-	enabledFeatures: ['feat:workflowReviews'],
+	enabledFeatures: ['feat:workflowReviews', 'feat:personalSpacePolicy'],
 	modules: ['workflow-reviews'],
 });
 
@@ -518,41 +518,19 @@ describe('changing the review settings', () => {
 		expect(response.body.meta.reason).toBe('review_pending');
 	});
 
-	describe('with the workflow reviews license and not the personal space policy license', () => {
-		beforeEach(() => {
-			testServer.license.disable('feat:personalSpacePolicy');
+	test('reads the workflow review settings', async () => {
+		const response = await ownerAgent.get('/settings/security').expect(200);
+
+		expect(response.body.data.workflowReviews).toEqual({ enabled: true, alwaysRequired: false });
+	});
+
+	test('saves the workflow review settings and returns the full policy', async () => {
+		const response = await saveSettings(ownerAgent, {
+			workflowReviews: { alwaysRequired: true },
 		});
 
-		test('reads the workflow review settings', async () => {
-			const response = await ownerAgent.get('/settings/security').expect(200);
-
-			expect(response.body.data.workflowReviews).toEqual({ enabled: true, alwaysRequired: false });
-		});
-
-		test('saves the workflow review settings and returns the full policy', async () => {
-			const response = await saveSettings(ownerAgent, {
-				workflowReviews: { alwaysRequired: true },
-			});
-
-			expect(response.status).toBe(200);
-			expect(response.body.data.workflowReviews).toEqual({ enabled: true, alwaysRequired: true });
-		});
-
-		test.each([
-			['a personal space setting', { personalSpacePublishing: false }],
-			['the redaction floor', { redactionEnforcement: { floor: 'all' } }],
-			[
-				'a review setting together with a personal space setting',
-				{ workflowReviews: { alwaysRequired: true }, personalSpaceSharing: false },
-			],
-		])('rejects %s and writes nothing', async (_case, body) => {
-			const before = (await ownerAgent.get('/settings/security').expect(200)).body.data;
-
-			expect((await saveSettings(ownerAgent, body)).status).toBe(403);
-
-			const after = (await ownerAgent.get('/settings/security').expect(200)).body.data;
-			expect(after).toEqual(before);
-		});
+		expect(response.status).toBe(200);
+		expect(response.body.data.workflowReviews).toEqual({ enabled: true, alwaysRequired: true });
 	});
 });
 

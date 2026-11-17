@@ -1087,21 +1087,6 @@ describe('SecuritySettings', () => {
 			});
 		});
 
-		it('shows the workflow reviews card with only the workflow reviews license', async () => {
-			settingsStore.isEnterpriseFeatureEnabled[EnterpriseEditionFeature.PersonalSpacePolicy] =
-				false;
-
-			const { findByTestId, getByTestId } = renderView();
-
-			expect(await findByTestId('security-workflow-reviews-toggle')).toBeInTheDocument();
-			expect(getByTestId('security-personal-space-sharing-toggle')).toHaveAttribute(
-				'data-disabled',
-			);
-			expect(getByTestId('security-personal-space-publishing-toggle')).toHaveAttribute(
-				'data-disabled',
-			);
-		});
-
 		it('should disable workflow reviews toggle when managed by env', async () => {
 			getSecuritySettings.mockResolvedValue({
 				...defaultSettings,

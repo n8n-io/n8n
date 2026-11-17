@@ -1,5 +1,5 @@
 import type { UpdateSecuritySettingsDto } from '@n8n/api-types';
-import type { LicenseState, ModuleRegistry } from '@n8n/backend-common';
+import type { LicenseState } from '@n8n/backend-common';
 import type { InstanceSettingsLoaderConfig } from '@n8n/config';
 import type { AuthenticatedRequest } from '@n8n/db';
 import { mock } from 'vitest-mock-extended';
@@ -17,14 +17,12 @@ describe('SecuritySettingsController', () => {
 	const instanceSettingsLoaderConfig = mock<InstanceSettingsLoaderConfig>({
 		securityPolicyManagedByEnv: false,
 	});
-	const moduleRegistry = mock<ModuleRegistry>();
 
 	const controller = new SecuritySettingsController(
 		securitySettingsService,
 		workflowReviewPolicyService,
 		licenseState,
 		instanceSettingsLoaderConfig,
-		moduleRegistry,
 	);
 
 	const req = {
@@ -40,9 +38,7 @@ describe('SecuritySettingsController', () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
 		instanceSettingsLoaderConfig.securityPolicyManagedByEnv = false;
-		licenseState.isPersonalSpacePolicyLicensed.mockReturnValue(true);
 		licenseState.isWorkflowReviewsLicensed.mockReturnValue(false);
-		moduleRegistry.isActive.mockReturnValue(true);
 	});
 
 	describe('getSecuritySettings', () => {
