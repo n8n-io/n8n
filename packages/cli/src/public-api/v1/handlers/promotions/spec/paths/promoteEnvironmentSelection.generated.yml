@@ -1,0 +1,104 @@
+operationId: promoteEnvironmentSelection
+tags:
+  - Promotions
+summary: 'Beta: Promote a selection across the projects of an environment'
+description: |-
+  **Beta** — breaking changes may still occur without major version bump.
+
+  Promotes selected workflows, folders and credentials of one or more team projects to the branch of a Promote environment, in one commit. When the environment creates a branch for each Promote, the Promote opens one review, and that review covers every project of the selection. Send `projects`: one entry for each project, with its `workflowIds`, `folderIds` and `credentialIds`. The details of each listed project are always written. Credentials, data tables, variables and tags of a project come with the selected workflows of that project. `credentialIds` adds a credential of the project that no selected workflow of the project uses; the user must be able to read it. The environment must cover each project: an instance environment covers every team project, a projects environment covers its linked projects. The user needs the right to promote in each project; the global promotion scopes are not needed. Status 409 means an open review already holds the changes of a project of the selection. A workflow that moved between projects since the branch was written is refused with 400. Optionally send expectedPreviewRevision with the `revision` of the changes preview of the environment. Status `preview-changed` means a project or the branch changed since that preview, and nothing was pushed. Status `gaps-changed` means the dependency gaps differ from `confirmedGapIds`, and nothing was pushed. Status `promoted` includes counts and git. Inspect status before reading counts. The API key also needs variable:list when the workflows reference variables. Another operation on the same environment returns 423.
+
+  Requires the `promotions:promote` API key scope.
+x-required-scope: promotions:promote
+parameters:
+  - $ref: ../../../../shared/spec/parameters/idempotencyKey.yml
+  - schema:
+      type: string
+      format: uuid
+    required: true
+    description: The ID of the promotion environment.
+    name: promotionEnvironmentId
+    in: path
+requestBody:
+  required: true
+  content:
+    application/json:
+      schema:
+        type: object
+        properties:
+          projects:
+            type: array
+            items:
+              type: object
+              properties:
+                projectId:
+                  type: string
+                  minLength: 1
+                  maxLength: 36
+                workflowIds:
+                  type: array
+                  items:
+                    type: string
+                    minLength: 1
+                    maxLength: 36
+                folderIds:
+                  type: array
+                  items:
+                    type: string
+                    minLength: 1
+                    maxLength: 36
+                credentialIds:
+                  type: array
+                  items:
+                    type: string
+                    minLength: 1
+                    maxLength: 36
+              required:
+                - projectId
+              additionalProperties: false
+            minItems: 1
+            description: The selection of each project. Every project must be in the scope of the environment, and the user needs the right to run the operation in each of them.
+          commitMessage:
+            type: string
+            minLength: 1
+            maxLength: 1000
+            description: Message for the promotion commit. If you omit it, the commit uses a generated message.
+          expectedPreviewRevision:
+            type: string
+            pattern: ^[0-9a-f]{64}$
+            description: The `revision` of the reviewed preview. The operation builds the preview again. When it differs, the operation returns status `preview-changed` and changes nothing.
+          confirmedGapIds:
+            type: array
+            items:
+              type: string
+              minLength: 1
+            description: The `id` of each gap that the user accepts, from the dependency report of the preview. Needs an environment that allows incomplete operations. When the list differs from the current gaps, the operation returns status `gaps-changed` and changes nothing.
+        required:
+          - projects
+        additionalProperties: false
+responses:
+  '200':
+    description: Operation successful.
+    content:
+      application/json:
+        schema:
+          $ref: ../../../../shared/spec/schemas/promoteSelectionResultDto.generated.yml
+  '400':
+    $ref: ../../../../shared/spec/responses/badRequest.yml
+  '401':
+    $ref: ../../../../shared/spec/responses/unauthorized.yml
+  '403':
+    $ref: ../../../../shared/spec/responses/forbidden.yml
+  '404':
+    $ref: ../../../../shared/spec/responses/notFound.yml
+  '409':
+    $ref: ../../../../shared/spec/responses/conflict.yml
+  '415':
+    $ref: ../../../../shared/spec/responses/unsupportedMediaType.yml
+  '422':
+    $ref: ../../../../shared/spec/responses/unprocessableEntity.yml
+  '423':
+    $ref: ../../../../shared/spec/responses/locked.yml
+  '429':
+    $ref: ../../../../shared/spec/responses/tooManyRequests.yml
+  '503':
+    $ref: ../../../../shared/spec/responses/serviceUnavailable.yml

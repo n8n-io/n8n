@@ -92,7 +92,6 @@ properties:
                 required:
                   - project
                   - workflows
-              minItems: 1
             ownerProject:
               type: object
               properties:

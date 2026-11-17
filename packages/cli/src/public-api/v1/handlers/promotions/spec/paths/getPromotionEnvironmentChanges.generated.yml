@@ -1,0 +1,221 @@
+operationId: getPromotionEnvironmentChanges
+tags:
+  - Promotions
+summary: 'Beta: Preview the changes of an environment across its projects'
+description: |-
+  **Beta** — breaking changes may still occur without major version bump.
+
+  Compares the projects of a promotion environment on this instance with its branch, in one view. For `promote` the preview is what a Promote sends to the branch, and the key needs the promotions:promote scope. For `apply` the preview is what an Apply of the branch tip changes on this instance, and the key needs the promotions:apply scope. The global promotion scopes are not needed. `projects` lists the projects of the environment that the user can read: every team project for an instance environment, the linked projects for a projects environment. `canOperate` says whether the user can promote or apply in the project. A project that the user cannot read is left out, with everything in it. `resources` and `dependencies` have the same shape as the project change preview, and each resource has the `projectId` and `projectName` of its project, so a client groups by project. `selectable` is true only in a project where `canOperate` is true. For `promote`, `blockers` lists each project whose changes an open review already holds; such a project has no resources. For `apply`, `check` lists what blocks the Apply of the projects that the user can apply, from one plan across them. A project that the branch does not hold has no resources. `revision` identifies this preview: send it as expectedPreviewRevision with promote-selection or apply-selection. Requires the environment to be connected first.
+
+  Requires one of these API key scopes: `promotions:promote`, `promotions:apply`.
+x-required-scope: promotions:promote,promotions:apply
+parameters:
+  - schema:
+      type: string
+      format: uuid
+    required: true
+    description: The ID of the promotion environment.
+    name: promotionEnvironmentId
+    in: path
+  - schema:
+      type: string
+      enum:
+        - apply
+        - promote
+    required: true
+    description: 'The direction of the promotion: apply or promote.'
+    name: direction
+    in: path
+responses:
+  '200':
+    description: Operation successful.
+    content:
+      application/json:
+        schema:
+          type: object
+          properties:
+            direction:
+              type: string
+              enum:
+                - apply
+                - promote
+            commitSha:
+              type: string
+              nullable: true
+            source:
+              type: object
+              properties:
+                environmentId:
+                  type: string
+                  minLength: 1
+                  maxLength: 36
+                branchName:
+                  type: string
+              required:
+                - environmentId
+                - branchName
+            projects:
+              type: array
+              items:
+                type: object
+                properties:
+                  id:
+                    type: string
+                    minLength: 1
+                    maxLength: 36
+                  name:
+                    type: string
+                  canOperate:
+                    type: boolean
+                required:
+                  - id
+                  - name
+                  - canOperate
+            resources:
+              type: array
+              items:
+                $ref: ../../../../shared/spec/schemas/promotionResource.generated.yml
+            dependencies:
+              type: array
+              items:
+                type: object
+                properties:
+                  workflowKey:
+                    type: string
+                  resourceKey:
+                    type: string
+                  included:
+                    type: boolean
+                    description: Whether selecting the workflow also sends the resource. `false` for sub-workflows, which need their own selection.
+                required:
+                  - workflowKey
+                  - resourceKey
+                  - included
+            blockers:
+              type: array
+              items:
+                type: object
+                properties:
+                  code:
+                    type: string
+                    enum:
+                      - reviewOpen
+                  reviewId:
+                    type: string
+                  projectId:
+                    type: string
+                    minLength: 1
+                    maxLength: 36
+                required:
+                  - code
+                  - reviewId
+                  - projectId
+            check:
+              allOf:
+                - $ref: ../../../../shared/spec/schemas/promotionApplyCheck.generated.yml
+                - type: object
+                  properties:
+                    movedWorkflows:
+                      type: array
+                      items:
+                        type: object
+                        properties:
+                          id:
+                            type: string
+                          name:
+                            type: string
+                          project:
+                            type: object
+                            properties:
+                              id:
+                                type: string
+                                minLength: 1
+                              name:
+                                type: string
+                            required:
+                              - id
+                              - name
+                          projectExists:
+                            type: boolean
+                          instanceProject:
+                            type: object
+                            properties:
+                              id:
+                                type: string
+                                minLength: 1
+                              name:
+                                type: string
+                            required:
+                              - id
+                        required:
+                          - id
+                          - name
+                          - project
+                          - projectExists
+                          - instanceProject
+                    movedFolders:
+                      type: array
+                      items:
+                        type: object
+                        properties:
+                          id:
+                            type: string
+                          name:
+                            type: string
+                          project:
+                            type: object
+                            properties:
+                              id:
+                                type: string
+                                minLength: 1
+                              name:
+                                type: string
+                            required:
+                              - id
+                              - name
+                          projectExists:
+                            type: boolean
+                          instanceProject:
+                            type: object
+                            properties:
+                              id:
+                                type: string
+                                minLength: 1
+                              name:
+                                type: string
+                            required:
+                              - id
+                        required:
+                          - id
+                          - name
+                          - project
+                          - projectExists
+                          - instanceProject
+                  required:
+                    - movedWorkflows
+                    - movedFolders
+            dependencyReport:
+              $ref: ../../../../shared/spec/schemas/promotionDependencyReport.generated.yml
+            revision:
+              type: string
+              description: A hash of what this preview shows. Send it as `expectedPreviewRevision` with Promote or Apply to run only when the preview did not change.
+          required:
+            - direction
+            - commitSha
+            - source
+            - projects
+            - resources
+            - dependencies
+            - revision
+  '400':
+    $ref: ../../../../shared/spec/responses/badRequest.yml
+  '401':
+    $ref: ../../../../shared/spec/responses/unauthorized.yml
+  '403':
+    $ref: ../../../../shared/spec/responses/forbidden.yml
+  '404':
+    $ref: ../../../../shared/spec/responses/notFound.yml
+  '429':
+    $ref: ../../../../shared/spec/responses/tooManyRequests.yml
+  '503':
+    $ref: ../../../../shared/spec/responses/serviceUnavailable.yml

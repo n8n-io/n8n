@@ -329,6 +329,18 @@ paths:
   /promotions/environments/{promotionEnvironmentId}/changes/details:
     post:
       $ref: ./handlers/promotions/spec/paths/getInstanceApplyChangeDetails.generated.yml
+  /promotions/environments/{promotionEnvironmentId}/changes/{direction}:
+    get:
+      $ref: ./handlers/promotions/spec/paths/getPromotionEnvironmentChanges.generated.yml
+  /promotions/environments/{promotionEnvironmentId}/changes/{direction}/details:
+    post:
+      $ref: ./handlers/promotions/spec/paths/getPromotionEnvironmentChangeDetails.generated.yml
+  /promotions/environments/{promotionEnvironmentId}/promote-selection:
+    post:
+      $ref: ./handlers/promotions/spec/paths/promoteEnvironmentSelection.generated.yml
+  /promotions/environments/{promotionEnvironmentId}/apply-selection:
+    post:
+      $ref: ./handlers/promotions/spec/paths/applyEnvironmentSelection.generated.yml
   /promotions/projects/{projectId}/environments:
     get:
       $ref: ./handlers/promotions/spec/paths/getPromotionProjectEnvironments.generated.yml
