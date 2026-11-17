@@ -3,6 +3,7 @@ import { Logger } from '@n8n/backend-common';
 import { Service } from '@n8n/di';
 import { ConflictError } from '@n8n/errors';
 
+import type { AppActor, AppBuildOrigin } from '../app-events';
 import { AppBuildService } from '../build/app-build.service';
 import { createAppScaffold } from '../scaffold/app-scaffold';
 import type { AppVersion } from './app-version.entity';
@@ -24,6 +25,7 @@ export class AppChangeService {
 		files: AppFiles,
 		label: string | null = null,
 		bindings?: AppBinding[],
+		origin: AppBuildOrigin = {},
 	): Promise<AppBuildResponse> {
 		this.builds.assertNotStopping();
 		const version = await this.versions.saveSource(
@@ -35,7 +37,10 @@ export class AppChangeService {
 			bindings,
 		);
 		try {
-			return await this.builds.build(projectId, appId, version.id);
+			return await this.builds.build(projectId, appId, version.id, false, {
+				changeSource: expectedDraftVersionId === null ? 'initial' : 'chat',
+				...origin,
+			});
 		} catch (error) {
 			if (error instanceof ConflictError) {
 				const status = await this.builds.status(projectId, appId, version.id);
@@ -62,30 +67,43 @@ export class AppChangeService {
 		appId: string,
 		expectedDraftVersionId: string | null,
 		bindings: AppBinding[],
-	): Promise<AppVersion> {
+		actor?: AppActor,
+	): Promise<{ version: AppVersion; previousBindings: AppBinding[] }> {
 		this.builds.assertNotStopping();
+		const origin: AppBuildOrigin = { ...actor, changeSource: 'bindings' };
 		if (expectedDraftVersionId === null) {
-			return await this.saveAndStartBuild(
+			const version = await this.saveAndStartBuild(
 				projectId,
 				appId,
 				null,
 				createAppScaffold(),
 				null,
 				bindings,
+				origin,
 			);
+			return { version, previousBindings: [] };
 		}
 		const draft = await this.versions.getVersion(projectId, appId, expectedDraftVersionId);
+		const previousBindings = draft.bindings;
 		if (draft.buildStatus === 'succeeded' && draft.bundleArtifactId !== null) {
-			return await this.versions.copyDraft(projectId, appId, expectedDraftVersionId, bindings);
+			const version = await this.versions.copyDraft(
+				projectId,
+				appId,
+				expectedDraftVersionId,
+				bindings,
+			);
+			return { version, previousBindings };
 		}
-		return await this.saveAndStartBuild(
+		const version = await this.saveAndStartBuild(
 			projectId,
 			appId,
 			expectedDraftVersionId,
 			await this.versions.readSource(projectId, appId, expectedDraftVersionId),
 			draft.label,
 			bindings,
+			origin,
 		);
+		return { version, previousBindings };
 	}
 
 	/** Saves a version and starts its build without waiting for the build. */
@@ -96,6 +114,7 @@ export class AppChangeService {
 		files: AppFiles,
 		label: string | null,
 		bindings: AppBinding[],
+		origin: AppBuildOrigin,
 	): Promise<AppVersion> {
 		const version = await this.versions.saveSource(
 			projectId,
@@ -105,18 +124,27 @@ export class AppChangeService {
 			label,
 			bindings,
 		);
+		await this.startBuildInBackground(projectId, appId, version.id, origin);
+		return version;
+	}
+
+	private async startBuildInBackground(
+		projectId: string,
+		appId: string,
+		versionId: string,
+		origin: AppBuildOrigin = {},
+	) {
 		try {
-			await this.builds.startBuild(projectId, appId, version.id);
+			await this.builds.startBuild(projectId, appId, versionId, false, origin);
 		} catch (error) {
-			// The bindings are saved. The build status shows the problem, and the user can retry it.
+			// The version is saved. The build status shows the problem, and the user can retry it.
 			this.logger.warn('Could not start the build of an app version.', {
 				projectId,
 				appId,
-				versionId: version.id,
+				versionId,
 				error,
 			});
 		}
-		return version;
 	}
 
 	// TODO: might remove this later, as it's likely that the AI assistant
@@ -126,28 +154,28 @@ export class AppChangeService {
 		return await this.commit(projectId, appId, null, createAppScaffold());
 	}
 
-	async restore(
+	/**
+	 * Restores the source, label and bindings of a version into a new version and
+	 * starts its build without waiting for it. The caller checks the bindings.
+	 */
+	async startRestore(
 		projectId: string,
 		appId: string,
 		versionId: string,
 		expectedDraftVersionId: string | null,
-	): Promise<AppBuildResponse> {
+		actor?: AppActor,
+	): Promise<AppVersion> {
 		this.builds.assertNotStopping();
-		const version = await this.versions.getVersion(projectId, appId, versionId);
-		const files = await this.versions.readSource(projectId, appId, versionId);
-		this.logger.debug('Restoring app source into a new version.', {
+		const version = await this.versions.restoreSource(
 			projectId,
 			appId,
-			sourceVersionId: versionId,
+			versionId,
 			expectedDraftVersionId,
-		});
-		return await this.commit(
-			projectId,
-			appId,
-			expectedDraftVersionId,
-			files,
-			version.label,
-			version.bindings,
 		);
+		await this.startBuildInBackground(projectId, appId, version.id, {
+			...actor,
+			changeSource: 'restore',
+		});
+		return version;
 	}
 }

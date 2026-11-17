@@ -588,6 +588,33 @@ describe('N8nDialog', () => {
 
 				expect(getByRole('dialog')).toBeInTheDocument();
 			});
+
+			it('applies a code editor suggestion without closing the dialog', async () => {
+				const user = userEvent.setup();
+				const onPick = vi.fn();
+				const { getByTestId, getByRole } = renderDialog();
+
+				await user.click(getByTestId('dialog-trigger'));
+
+				const tooltip = document.createElement('div');
+				tooltip.className = 'cm-tooltip cm-tooltip-autocomplete';
+				tooltip.style.pointerEvents = 'auto';
+				const option = document.createElement('button');
+				option.type = 'button';
+				option.textContent = 'foo';
+				option.addEventListener('click', onPick);
+				tooltip.append(option);
+				document.body.append(tooltip);
+
+				try {
+					await user.click(option);
+
+					expect(onPick).toHaveBeenCalledOnce();
+					expect(getByRole('dialog')).toBeInTheDocument();
+				} finally {
+					tooltip.remove();
+				}
+			});
 		});
 
 		describe('closeOnEscape', () => {

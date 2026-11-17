@@ -6,7 +6,7 @@ import type {
 	INodeTypeDescription,
 	IWebhookResponseData,
 } from 'n8n-workflow';
-import { NodeConnectionTypes } from 'n8n-workflow';
+import { NodeConnectionTypes, requestPath } from 'n8n-workflow';
 
 import { flowApiRequest } from './GenericFunctions';
 
@@ -106,7 +106,7 @@ export class FlowTrigger implements INodeType {
 					return false;
 				}
 				qs.organization_id = credentials.organizationId as number;
-				const endpoint = '/integration_webhooks';
+				const endpoint = requestPath`/integration_webhooks`;
 				webhooks = await flowApiRequest.call(this, 'GET', endpoint, {}, qs);
 				webhooks = webhooks.integration_webhooks;
 				for (const webhook of webhooks) {
@@ -126,7 +126,7 @@ export class FlowTrigger implements INodeType {
 				const webhookUrl = this.getNodeWebhookUrl('default');
 				const webhookData = this.getWorkflowStaticData('node');
 				const resource = this.getNodeParameter('resource') as string;
-				const endpoint = '/integration_webhooks';
+				const endpoint = requestPath`/integration_webhooks`;
 				if (resource === 'list') {
 					resourceIds = (this.getNodeParameter('listIds') as string).split(',');
 				}
@@ -171,8 +171,8 @@ export class FlowTrigger implements INodeType {
 				if (webhookData.webhookIds.length > 0) {
 					// @ts-ignore
 					for (const webhookId of webhookData.webhookIds) {
-						const endpoint = `/integration_webhooks/${webhookId}`;
 						try {
+							const endpoint = requestPath`/integration_webhooks/${webhookId}`;
 							await flowApiRequest.call(this, 'DELETE', endpoint, {}, qs);
 						} catch (error) {
 							return false;

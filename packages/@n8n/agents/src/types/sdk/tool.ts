@@ -140,6 +140,9 @@ export interface ToolCancellationContext extends ToolContext {
 	resumeSchema?: ToolSuspendOptions['resumeSchema'];
 }
 
+/** Turns the stored input of a call under a former tool name into the current tool's input. */
+export type LegacyCallConverter = (formerName: string, input: JSONValue) => JSONValue;
+
 export interface BuiltTool {
 	readonly name: string;
 	/**
@@ -155,6 +158,12 @@ export interface BuiltTool {
 	 * tool that now owns its action. Never exposed to the model.
 	 */
 	readonly legacyActions?: Readonly<Record<string, readonly string[]>>;
+	/**
+	 * Former names and former actions resolve only for a suspended call that
+	 * resumes, and `convert` turns its stored input into this tool's input. A
+	 * new model call under a former name fails as an unknown tool.
+	 */
+	readonly legacyResumeOnly?: { readonly convert: LegacyCallConverter };
 	readonly description: string;
 	/**
 	 * Behavioural directive paired with the tool, injected into the agent's
@@ -238,6 +247,25 @@ export interface BuiltTool {
 	 * Defaults to `true` when absent.
 	 */
 	readonly editable?: boolean;
+	/**
+	 * Marks a tool that runs other tools, such as the tool catalog's `call_tool`.
+	 * The runtime asks it which tool owns each call, so approval, suspension,
+	 * output trust, and result transforms are the owning tool's own.
+	 */
+	readonly dispatch?: ToolDispatch;
+}
+
+export interface ToolDispatch {
+	/**
+	 * The tool that handles this call and the input to give it, or `undefined`
+	 * to run the dispatcher itself (for example, to report an unknown tool).
+	 */
+	resolve(input: unknown): { tool: BuiltTool; input: unknown } | undefined;
+	/**
+	 * The dispatcher input for a model call to `toolName` made directly, or
+	 * `undefined` when this dispatcher does not own that tool.
+	 */
+	wrap(toolName: string, input: unknown): Record<string, unknown> | undefined;
 }
 
 /**

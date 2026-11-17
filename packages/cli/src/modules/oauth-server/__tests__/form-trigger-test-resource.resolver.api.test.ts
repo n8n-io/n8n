@@ -8,6 +8,7 @@ import { GlobalConfig } from '@n8n/config';
 import type { User } from '@n8n/db';
 import { WebhookRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
+import { DataSource } from '@n8n/typeorm';
 import type { INode, IWebhookData, IWorkflowBase } from 'n8n-workflow';
 import { FORM_TRIGGER_NODE_TYPE } from 'n8n-workflow';
 import { randomUUID } from 'node:crypto';
@@ -15,15 +16,17 @@ import { randomUUID } from 'node:crypto';
 import { createMember, createOwner } from '@test-integration/db/users';
 import { setupTestServer } from '@test-integration/utils';
 
-import { OAuthClientRepository } from '../database/repositories/oauth-client.repository';
+import { OAuthClient } from '../database/entities/oauth-client.entity';
 import { OAuthTokenService } from '@/modules/oauth-server/oauth-token.service';
 import { CacheService, UrlService } from '@n8n/backend-services';
 import { ProtectedResourceRegistry } from '@n8n/backend-services/auth';
 import { TestWebhookRegistrationsService } from '@/webhooks/test-webhook-registrations.service';
 
+// The OAuth server owns form metadata. Loading instance MCP also loads its tool graph
+// in the setup hook and can exceed the hook timeout under CI load.
 const testServer = setupTestServer({
-	modules: ['oauth-server', 'mcp', 'inbound-auth-core'],
-	endpointGroups: ['mcp'],
+	modules: ['inbound-auth-core', 'oauth-server'],
+	endpointGroups: ['oauth-server'],
 });
 
 let owner: User;
@@ -338,7 +341,8 @@ describe('test vs production form resources', () => {
 
 		// A registered client is needed only to satisfy the token rows' FK.
 		const clientId = `client-${randomUUID()}`;
-		await Container.get(OAuthClientRepository).save({
+		const clients = Container.get(DataSource).getRepository(OAuthClient);
+		await clients.save({
 			id: clientId,
 			name: 'Form resolver tests',
 			redirectUris: ['https://example.com/callback'],

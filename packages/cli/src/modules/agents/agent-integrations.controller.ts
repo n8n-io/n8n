@@ -4,8 +4,10 @@ import {
 	type AgentDisconnectIntegrationResponse,
 	type AgentIntegrationConnectResponse,
 	type AgentIntegrationStatusResponse,
+	type AgentWebhookUrlResponse,
 	type AgentWhatsAppVerifyTokenResponse,
 } from '@n8n/api-types';
+import { UrlService } from '@n8n/backend-services';
 import type { AuthenticatedRequest } from '@n8n/db';
 import { Body, Get, Param, Post, ProjectScope, RestController } from '@n8n/decorators';
 import type { Request, Response } from 'express';
@@ -21,7 +23,7 @@ import { channelIntegrationRecorder } from './integrations/recording/channel-int
 import { AgentChannelStatusRepository } from './repositories/agent-channel-status.repository';
 import { AgentRepository } from './repositories/agent.repository';
 
-import { CollaborationService } from '@/collaboration/collaboration.service';
+import { AgentWriteLockService } from './agent-write-lock.service';
 import { NotFoundError } from '@n8n/errors';
 
 @RestController('/projects/:projectId/agents/v2')
@@ -34,7 +36,8 @@ export class AgentIntegrationsController {
 		private readonly channelStatusRepository: AgentChannelStatusRepository,
 		private readonly statusReporter: AgentChannelStatusReporter,
 		private readonly instanceSettings: InstanceSettings,
-		private readonly collaborationService: CollaborationService,
+		private readonly agentWriteLockService: AgentWriteLockService,
+		private readonly urlService: UrlService,
 	) {}
 
 	@Post('/:agentId/integrations/connect')
@@ -49,7 +52,7 @@ export class AgentIntegrationsController {
 		const agent = await this.agentRepository.findByIdAndProjectId(agentId, req.params.projectId);
 		if (!agent) throw new NotFoundError(`Agent "${agentId}" not found`);
 		const clientId = req.headers?.['push-ref'];
-		await this.collaborationService.validateAgentWriteLock(
+		await this.agentWriteLockService.validateAgentWriteLock(
 			req.user.id,
 			clientId,
 			req.params.projectId,
@@ -80,7 +83,7 @@ export class AgentIntegrationsController {
 		const agent = await this.agentRepository.findByIdAndProjectId(agentId, req.params.projectId);
 		if (!agent) throw new NotFoundError(`Agent "${agentId}" not found`);
 		const clientId = req.headers?.['push-ref'];
-		await this.collaborationService.validateAgentWriteLock(
+		await this.agentWriteLockService.validateAgentWriteLock(
 			req.user.id,
 			clientId,
 			req.params.projectId,
@@ -147,6 +150,18 @@ export class AgentIntegrationsController {
 		return {
 			verifyToken: deriveWhatsAppVerifyToken(this.instanceSettings.hmacSignatureSecret, agentId),
 		};
+	}
+
+	// The URL comes from server settings that the frontend does not receive. It
+	// depends on the agent ID alone, so an agent that is not saved yet has it too.
+	@Get('/:agentId/integrations/webhook/url')
+	@ProjectScope('agent:read')
+	async webhookUrl(
+		_req: AuthenticatedRequest<{ projectId: string }>,
+		_res: Response,
+		@Param('agentId') agentId: string,
+	): Promise<AgentWebhookUrlResponse> {
+		return { url: this.urlService.getAgentWebhookUrl(agentId) };
 	}
 
 	// WhatsApp's Meta app verifies a webhook URL with a GET handshake

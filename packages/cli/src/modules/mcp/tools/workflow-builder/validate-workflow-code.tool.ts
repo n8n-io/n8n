@@ -1,10 +1,9 @@
+import type { TelemetryProxy } from '@n8n/backend-services';
 import type { User } from '@n8n/db';
 import { toEngineConnections, toGroupValidationNodes } from '@n8n/workflow-sdk';
-import { validateWorkflowGroups } from 'n8n-workflow';
+import { validateWorkflowGroups, type INodeTypes } from 'n8n-workflow';
 import z from 'zod';
 
-import type { NodeTypes } from '@/node-types';
-import type { Telemetry } from '@/telemetry';
 import { makeGetNodeTypeForGrouping } from '@/workflow-helpers';
 
 import { USER_CALLED_MCP_TOOL_EVENT } from '../../mcp.constants';
@@ -12,6 +11,7 @@ import type { ToolDefinition, UserCalledMCPToolEventPayload } from '../../mcp.ty
 import { getSdkReferenceHint } from '../workflow-validation.utils';
 import { buildInvalidAiToolSourceErrorResponse } from './connection-structure-check';
 import { CODE_BUILDER_VALIDATE_TOOL, MAX_WORKFLOW_CODE_LENGTH } from './constants';
+import { validateScheduleTriggerIntervals } from './schedule-trigger-validation';
 
 const inputSchema = {
 	code: z
@@ -54,8 +54,8 @@ const outputSchema = {
  */
 export const createValidateWorkflowCodeTool = (
 	user: User,
-	telemetry: Telemetry,
-	nodeTypes: NodeTypes,
+	telemetry: TelemetryProxy,
+	nodeTypes: INodeTypes,
 ): ToolDefinition<typeof inputSchema> => ({
 	name: CODE_BUILDER_VALIDATE_TOOL.toolName,
 	config: {
@@ -88,6 +88,7 @@ export const createValidateWorkflowCodeTool = (
 			});
 			const strippedCode = stripImportStatements(code);
 			const result = await handler.parseAndValidate(strippedCode);
+			await validateScheduleTriggerIntervals(result.workflow.nodes);
 
 			const invalidToolSourceResponse = buildInvalidAiToolSourceErrorResponse(
 				result.workflow,

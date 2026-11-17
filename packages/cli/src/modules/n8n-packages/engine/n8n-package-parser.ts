@@ -20,12 +20,14 @@ import { jsonParse } from 'n8n-workflow';
 import { ZodError, type ZodType, type ZodTypeDef } from 'zod';
 
 import { BadRequestError, UserError } from '@n8n/errors';
+import { CredentialTypes } from '@/credential-types';
 import { NodeTypes } from '@/node-types';
 import * as WorkflowHelpers from '@/workflow-helpers';
 
 import { deriveParentFolderId, foldersInScope, workflowsInScope } from './package-layout';
 import { toImportBlockedError } from './import-blocked.error';
 import { agentBodyIssues } from '../entities/agent/agent-body-issues';
+import { dropUnconfirmedCredentialData } from '../entities/credential/credential-display-controllers';
 import type { PreparedAgent } from '../entities/agent/agent-import.types';
 import type { PreparedFolder } from '../entities/folder/folder-import.types';
 import type { PreparedProject } from '../entities/project/project-import.types';
@@ -60,6 +62,7 @@ export class N8nPackageParser {
 		private readonly logger: Logger,
 		private readonly nodeTypes: NodeTypes,
 		private readonly workflowSerializer: WorkflowSerializer,
+		private readonly credentialTypes: CredentialTypes,
 	) {}
 
 	async getManifest(reader: PackageReader): Promise<PackageManifest> {
@@ -87,10 +90,29 @@ export class N8nPackageParser {
 
 	async getAgents(reader: PackageReader, basePrefix = ''): Promise<PreparedAgent[]> {
 		const manifest = await this.getManifest(reader);
+		const folderTargetToId = new Map(
+			(manifest.folders ?? []).map((folder) => [folder.target, folder.id]),
+		);
+		let folders: PreparedFolder[] | undefined;
 		const agents: PreparedAgent[] = [];
 		for (const entry of manifest.agents ?? []) {
-			if (!entry.target.startsWith(`${basePrefix}agents/`)) continue;
-			agents.push(await this.readAgent(reader, entry));
+			if (
+				!entry.target.startsWith(`${basePrefix}agents/`) &&
+				!entry.target.startsWith(`${basePrefix}folders/`)
+			)
+				continue;
+			const parentFolderId = deriveParentFolderId(entry.target, folderTargetToId, 'agents');
+			if (parentFolderId) {
+				folders ??= await this.getFolders(reader, basePrefix);
+			}
+
+			const parent = folders?.find((folder) => folder.sourceFolderId === parentFolderId);
+
+			if (parentFolderId && parent?.resourceType !== 'agent') {
+				throw new UserError('An Agent must be in an Agent folder');
+			}
+
+			agents.push({ ...(await this.readAgent(reader, entry)), parentFolderId });
 		}
 		return agents;
 	}
@@ -211,6 +233,7 @@ export class N8nPackageParser {
 			name: agent.name,
 			config: agent.config,
 			availableInMCP: agent.availableInMCP,
+			isArchived: agent.isArchived ?? false,
 			metadata,
 			tools: agent.tools,
 			tasks: agent.tasks,
@@ -359,6 +382,7 @@ export class N8nPackageParser {
 
 		return {
 			sourceFolderId: folder.id,
+			resourceType: folder.resourceType,
 			name: folder.name,
 			parentFolderId: folder.parentFolderId,
 		};
@@ -498,7 +522,20 @@ export class N8nPackageParser {
 			);
 		}
 
-		return credential;
+		return this.dropUnconfirmedPlainValues(credential, path);
+	}
+
+	private dropUnconfirmedPlainValues(
+		credential: SerializedCredential,
+		path: string,
+	): SerializedCredential {
+		const result = dropUnconfirmedCredentialData(credential, this.credentialTypes);
+		if (result.dropped.length > 0) {
+			this.logger.warn(
+				`Package credential file at ${path}: dropped values of ${result.dropped.join(', ')}. Only expressions and values that control which fields show can travel in a package.`,
+			);
+		}
+		return result.credential;
 	}
 
 	private async readJson<T = unknown>(

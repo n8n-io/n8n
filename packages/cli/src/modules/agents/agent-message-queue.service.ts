@@ -249,7 +249,10 @@ export class AgentMessageQueueService {
 	}
 
 	/** Call after authorizing session access. Clear future turns before aborting the current turn. */
-	async prepareSessionStop(threadId: string): Promise<{
+	async prepareSessionStop(
+		threadId: string,
+		options: { preserveInput?: boolean } = {},
+	): Promise<{
 		executionIds: string[];
 		queueIds: string[];
 		attachmentIds: string[];
@@ -265,7 +268,7 @@ export class AgentMessageQueueService {
 				attachmentIds.push(
 					...readInboundUserMessage(item.message.content).attachments.map(({ id }) => id),
 				);
-				await this.messages.clearPendingInput(item.messageId, ctx);
+				if (!options.preserveInput) await this.messages.clearPendingInput(item.messageId, ctx);
 			}
 			return {
 				executionIds: running.map(({ id }) => id),

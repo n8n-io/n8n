@@ -316,6 +316,23 @@ export async function getModelCost(
 }
 
 /**
+ * Look up a model's context window size by its full ID.
+ * Returns undefined if catalog is unavailable or the model has no limit.
+ * @internal
+ */
+export async function getModelContextWindow(
+	modelId: string,
+	fetch?: typeof globalThis.fetch,
+): Promise<number | undefined> {
+	const catalog = await getCachedCatalog({ fetch });
+	if (!catalog) return undefined;
+
+	const { provider, model: modelName } = splitModelId(modelId);
+
+	return catalog[provider]?.models[modelName]?.limits?.context;
+}
+
+/**
  * models.dev's `cacheWrite` rate encodes Anthropic's 5-minute-TTL write premium
  * (1.25x base input). A 1h breakpoint costs ~1.6x more to write (2x vs 1.25x base
  * input), so scale the catalog rate when the caller reports a 1h TTL. Only

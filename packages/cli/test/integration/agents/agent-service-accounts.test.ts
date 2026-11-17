@@ -1,0 +1,560 @@
+import {
+	createTeamProject,
+	createWorkflow,
+	getPersonalProject,
+	linkUserToProject,
+	mockInstance,
+	testDb,
+	testModules,
+} from '@n8n/backend-test-utils';
+import { EventService } from '@n8n/backend-services';
+import { AgentsConfig } from '@n8n/config';
+import {
+	Project,
+	ProjectRepository,
+	ServiceAccountDetails,
+	ServiceAccountRepository,
+	SharedCredentials,
+	SharedWorkflow,
+	User,
+} from '@n8n/db';
+import { Container } from '@n8n/di';
+import type { SecurityContext } from '@n8n/permissions';
+import { BadRequestError, ConflictError } from '@n8n/errors';
+import { DataSource } from '@n8n/typeorm';
+import { nanoid } from 'nanoid';
+import { mock } from 'vitest-mock-extended';
+
+import { AgentServiceAccountService } from '@/modules/agents/agent-service-account.service';
+import { AgentUpdateBroadcaster } from '@/modules/agents/agent-update-broadcaster';
+import { AgentsService } from '@/modules/agents/agents.service';
+import { AgentsSettingsService } from '@/modules/agents/agents-settings.service';
+import { AgentKnowledgeService } from '@/modules/agents/agent-knowledge.service';
+import { registerServiceAccountUsage } from '@/modules/agents/register-service-account-usage';
+import { registerUserDeletionHandler } from '@/modules/agents/register-user-deletion-handler';
+import { NodeToolAiGatewayService } from '@/modules/agents/json-config/node-tool-ai-gateway.service';
+import { AgentRepository } from '@/modules/agents/repositories/agent.repository';
+import { SystemAgentRegistrationService } from '@/modules/agents/system-agents/system-agent-registration.service';
+import { ProjectService } from '@/services/project.service.ee';
+import { ServiceAccountProjects } from '@/services/service-account-projects';
+import { ServiceAccountService } from '@/services/service-account.service';
+import { UserService } from '@/services/user.service';
+import { Telemetry } from '@/telemetry';
+
+import { createCredentials, shareCredentialWithProjects } from '../shared/db/credentials';
+import { createMember, createOwner } from '../shared/db/users';
+
+const actor = { kind: 'user', user: { id: 'user-1' } } as const;
+
+describe('Agent service accounts', () => {
+	let agentsService: AgentsService;
+	let agentRepo: AgentRepository;
+	let agentsConfig: AgentsConfig;
+	mockInstance(Telemetry);
+	mockInstance(AgentUpdateBroadcaster);
+	mockInstance(NodeToolAiGatewayService);
+
+	const countServiceAccounts = async () =>
+		await Container.get(DataSource).manager.count(ServiceAccountDetails);
+
+	beforeAll(async () => {
+		await testModules.loadModules(['agents']);
+		await testDb.init();
+		await Container.get(AgentsSettingsService).setEnabled(true);
+		agentsService = Container.get(AgentsService);
+		agentRepo = Container.get(AgentRepository);
+		agentsConfig = Container.get(AgentsConfig);
+		registerUserDeletionHandler();
+		registerServiceAccountUsage();
+		// The module registers this in `init`, which tests do not run.
+		Container.get(ServiceAccountProjects).register(Container.get(AgentServiceAccountService));
+	});
+
+	beforeEach(() => {
+		agentsConfig.serviceAccountsEnabled = true;
+		// The fixtures have no knowledge files. Avoid an external sandbox on delete.
+		vi.spyOn(Container.get(AgentKnowledgeService), 'destroyKnowledgeSandbox').mockResolvedValue();
+	});
+
+	afterEach(() => {
+		vi.restoreAllMocks();
+	});
+
+	afterAll(async () => {
+		agentsConfig.serviceAccountsEnabled = false;
+		await testDb.terminate();
+	});
+
+	const expectServiceAccountWithPersonalProject = async (agentId: string, name: string) => {
+		const { identityId } = await agentRepo.findOneByOrFail({ id: agentId });
+		expect(identityId).toEqual(expect.any(String));
+		const serviceAccount = await Container.get(ServiceAccountRepository).findById(identityId!);
+		expect(serviceAccount?.details.name).toBe(name);
+		const personalProject = await Container.get(ProjectRepository).getPersonalProjectForUserOrFail(
+			identityId!,
+		);
+		expect(personalProject).toMatchObject({ type: 'personal', creatorId: identityId });
+	};
+
+	it('gives a new agent a service account with a personal project', async () => {
+		const project = await createTeamProject();
+
+		const agent = await agentsService.create(project.id, 'Support Agent', { actor });
+
+		await expectServiceAccountWithPersonalProject(agent.id, 'Support Agent');
+	});
+
+	it('gives an agent created from a complete definition a service account', async () => {
+		const project = await createTeamProject();
+		const owner = await createOwner();
+
+		const agent = await agentsService.create(project.id, 'Imported Agent', {
+			id: nanoid(),
+			definition: { name: 'Imported Agent', tools: {}, config: null, tasks: new Map() },
+			user: owner,
+			actor: { kind: 'user', user: owner },
+		});
+
+		await expectServiceAccountWithPersonalProject(agent.id, 'Imported Agent');
+	});
+
+	it('rejects an imported agent with a blank name', async () => {
+		const project = await createTeamProject();
+		const owner = await createOwner();
+		const id = nanoid();
+
+		await expect(
+			agentsService.create(project.id, '   ', {
+				id,
+				definition: { name: '   ', tools: {}, config: null, tasks: new Map() },
+				user: owner,
+				actor: { kind: 'user', user: owner },
+			}),
+		).rejects.toThrow(BadRequestError);
+
+		expect(await agentRepo.findOneBy({ id })).toBeNull();
+	});
+
+	it('does not save the agent when the service account cannot be created', async () => {
+		const project = await createTeamProject();
+		const id = nanoid();
+		vi.spyOn(Container.get(ServiceAccountService), 'create').mockRejectedValueOnce(
+			new Error('account creation failed'),
+		);
+
+		await expect(agentsService.create(project.id, 'Agent', { actor, id })).rejects.toThrow(
+			'account creation failed',
+		);
+
+		expect(await agentRepo.findOneBy({ id })).toBeNull();
+	});
+
+	it('keeps no service account when the agent insert fails', async () => {
+		const project = await createTeamProject();
+		const existing = await agentsService.create(project.id, 'First', { actor });
+		const before = await countServiceAccounts();
+
+		await expect(
+			agentsService.create(project.id, 'Second', { actor, id: existing.id }),
+		).rejects.toThrow(ConflictError);
+
+		expect(await countServiceAccounts()).toBe(before);
+	});
+
+	it('rejects a second agent with the same service account', async () => {
+		const project = await createTeamProject();
+		const first = await agentsService.create(project.id, 'First', { actor });
+		const second = await agentsService.create(project.id, 'Second', { actor });
+		const { identityId } = await agentRepo.findOneByOrFail({ id: first.id });
+
+		await expect(agentRepo.update({ id: second.id }, { identityId })).rejects.toThrow();
+	});
+
+	it('creates no service account when agent service accounts are off', async () => {
+		agentsConfig.serviceAccountsEnabled = false;
+		const project = await createTeamProject();
+		const before = await countServiceAccounts();
+
+		const agent = await agentsService.create(project.id, 'Agent', { actor });
+
+		expect((await agentRepo.findOneByOrFail({ id: agent.id })).identityId).toBeNull();
+		expect(await countServiceAccounts()).toBe(before);
+	});
+	describe('rename', () => {
+		const rename = async (agentId: string, name: string) => {
+			const agent = await agentRepo.findOneByOrFail({ id: agentId });
+			agent.name = name;
+			return await agentRepo.saveDraftFenced(agent);
+		};
+
+		it('renames the service account and its personal project with the agent', async () => {
+			const project = await createTeamProject();
+			const agent = await agentsService.create(project.id, 'Untitled', { actor });
+
+			expect(await rename(agent.id, 'Support Agent')).toBe(true);
+
+			await expectServiceAccountWithPersonalProject(agent.id, 'Support Agent');
+			const { identityId } = await agentRepo.findOneByOrFail({ id: agent.id });
+			const personalProject = await Container.get(
+				ProjectRepository,
+			).getPersonalProjectForUserOrFail(identityId!);
+			expect(personalProject.name).toBe('Support Agent');
+		});
+
+		it('keeps the last name when the new name is blank', async () => {
+			const project = await createTeamProject();
+			const agent = await agentsService.create(project.id, 'Support Agent', { actor });
+
+			expect(await rename(agent.id, '   ')).toBe(true);
+
+			await expectServiceAccountWithPersonalProject(agent.id, 'Support Agent');
+		});
+
+		it('does not save the agent name when the account rename fails', async () => {
+			const project = await createTeamProject();
+			const agent = await agentsService.create(project.id, 'Untitled', { actor });
+			vi.spyOn(Container.get(ServiceAccountRepository), 'rename').mockRejectedValueOnce(
+				new Error('rename failed'),
+			);
+			const draft = await agentRepo.findOneByOrFail({ id: agent.id });
+			const { revision } = draft;
+			draft.name = 'Support Agent';
+
+			await expect(agentRepo.saveDraftFenced(draft)).rejects.toThrow('rename failed');
+
+			expect((await agentRepo.findOneByOrFail({ id: agent.id })).name).toBe('Untitled');
+			// The caller's agent keeps the stored revision, so a retry still passes the fence.
+			expect(draft.revision).toBe(revision);
+			expect(await agentRepo.saveDraftFenced(draft)).toBe(true);
+			await expectServiceAccountWithPersonalProject(agent.id, 'Support Agent');
+		});
+
+		it('renames an agent without a service account', async () => {
+			agentsConfig.serviceAccountsEnabled = false;
+			const project = await createTeamProject();
+			const agent = await agentsService.create(project.id, 'Untitled', { actor });
+
+			expect(await rename(agent.id, 'Support Agent')).toBe(true);
+
+			expect((await agentRepo.findOneByOrFail({ id: agent.id })).name).toBe('Support Agent');
+		});
+	});
+	describe('instance agents', () => {
+		const serviceAccount = () => Container.get(AgentServiceAccountService);
+
+		it('gives a registered instance agent a service account with a personal project', async () => {
+			const agentId = nanoid();
+
+			await Container.get(SystemAgentRegistrationService).register({
+				agentId,
+				name: 'Assistant',
+				authorize: async () => true,
+				prepareTurn: vi.fn(),
+			});
+
+			await expectServiceAccountWithPersonalProject(agentId, 'Assistant');
+		});
+
+		it('gives an existing instance agent an identity on the next start', async () => {
+			const agentId = nanoid();
+			agentsConfig.serviceAccountsEnabled = false;
+			await agentRepo.ensureInstanceAgent(agentId, 'Assistant');
+			await serviceAccount().assignToInstanceAgent(agentId, 'Assistant');
+			expect(await agentRepo.findIdentityId(agentId)).toBeNull();
+
+			agentsConfig.serviceAccountsEnabled = true;
+			await serviceAccount().assignToInstanceAgent(agentId, 'Assistant');
+
+			await expectServiceAccountWithPersonalProject(agentId, 'Assistant');
+		});
+
+		it('creates one service account when two mains start together', async () => {
+			const agentId = nanoid();
+			await agentRepo.ensureInstanceAgent(agentId, 'Assistant');
+			const before = await countServiceAccounts();
+
+			await Promise.all([
+				serviceAccount().assignToInstanceAgent(agentId, 'Assistant'),
+				serviceAccount().assignToInstanceAgent(agentId, 'Assistant'),
+			]);
+
+			expect(await countServiceAccounts()).toBe(before + 1);
+			await expectServiceAccountWithPersonalProject(agentId, 'Assistant');
+		});
+
+		it('rolls back its own service account when another main linked one first', async () => {
+			const agentId = nanoid();
+			await agentRepo.ensureInstanceAgent(agentId, 'Assistant');
+			await serviceAccount().assignToInstanceAgent(agentId, 'Assistant');
+			const linked = await agentRepo.findIdentityId(agentId);
+			const before = await countServiceAccounts();
+			// The other main checked before this one linked its account.
+			vi.spyOn(agentRepo, 'findIdentityId').mockResolvedValueOnce(null);
+
+			await serviceAccount().assignToInstanceAgent(agentId, 'Assistant');
+
+			expect(await countServiceAccounts()).toBe(before);
+			expect(await agentRepo.findIdentityId(agentId)).toBe(linked);
+		});
+
+		it('renames the service account when the instance agent is renamed', async () => {
+			const agentId = nanoid();
+			await agentRepo.ensureInstanceAgent(agentId, 'Assistant');
+			await serviceAccount().assignToInstanceAgent(agentId, 'Assistant');
+
+			await agentRepo.ensureInstanceAgent(agentId, 'n8n Assistant');
+
+			await expectServiceAccountWithPersonalProject(agentId, 'n8n Assistant');
+		});
+	});
+
+	describe('removal', () => {
+		const dataSource = () => Container.get(DataSource).manager;
+
+		/** Creates an agent with a service account, and returns its account and personal project. */
+		const createAgentWithServiceAccount = async (projectId: string) => {
+			const agent = await agentsService.create(projectId, 'Support Agent', { actor });
+			const { identityId } = await agentRepo.findOneByOrFail({ id: agent.id });
+			const personalProject = await Container.get(
+				ProjectRepository,
+			).getPersonalProjectForUserOrFail(identityId!);
+			return { agent, identityId: identityId!, personalProject };
+		};
+
+		const expectRemoved = async (identityId: string, personalProjectId: string) => {
+			expect(await dataSource().existsBy(User, { id: identityId })).toBe(false);
+			expect(await dataSource().existsBy(ServiceAccountDetails, { userId: identityId })).toBe(
+				false,
+			);
+			expect(await dataSource().existsBy(Project, { id: personalProjectId })).toBe(false);
+		};
+
+		it('removes the service account, its personal project and its shares with the agent', async () => {
+			const owner = await createOwner();
+			const project = await createTeamProject(undefined, owner);
+			const { agent, identityId, personalProject } = await createAgentWithServiceAccount(
+				project.id,
+			);
+			const credential = await createCredentials(
+				{ name: 'Shared', type: 'githubApi', data: '' },
+				project,
+			);
+			await shareCredentialWithProjects(credential, [personalProject]);
+
+			await agentsService.delete(agent.id, owner, project.id);
+
+			await expectRemoved(identityId, personalProject.id);
+			expect(
+				await dataSource().existsBy(SharedCredentials, { projectId: personalProject.id }),
+			).toBe(false);
+			expect(
+				await dataSource().existsBy(SharedCredentials, {
+					credentialsId: credential.id,
+					projectId: project.id,
+				}),
+			).toBe(true);
+		});
+
+		it('removes the service account when agent service accounts are off', async () => {
+			const owner = await createOwner();
+			const project = await createTeamProject(undefined, owner);
+			const { agent, identityId, personalProject } = await createAgentWithServiceAccount(
+				project.id,
+			);
+			agentsConfig.serviceAccountsEnabled = false;
+
+			await agentsService.delete(agent.id, owner, project.id);
+
+			await expectRemoved(identityId, personalProject.id);
+		});
+
+		it('moves the work of the personal project to the agent project', async () => {
+			const owner = await createOwner();
+			const project = await createTeamProject(undefined, owner);
+			const { agent, identityId, personalProject } = await createAgentWithServiceAccount(
+				project.id,
+			);
+			const workflow = await createWorkflow({}, personalProject);
+
+			await agentsService.delete(agent.id, owner, project.id);
+
+			await expectRemoved(identityId, personalProject.id);
+			const sharing = await dataSource().findOneByOrFail(SharedWorkflow, {
+				workflowId: workflow.id,
+				role: 'workflow:owner',
+			});
+			expect(sharing.projectId).toBe(project.id);
+		});
+
+		it('names the user and the login that deleted the agent in the user-deleted event', async () => {
+			const owner = await createOwner();
+			const project = await createTeamProject(undefined, owner);
+			const { agent, identityId } = await createAgentWithServiceAccount(project.id);
+			const emit = vi.spyOn(Container.get(EventService), 'emit');
+			const ctx = { security: mock<SecurityContext>({ subIdentityId: 'login-1' }) };
+
+			await agentsService.delete(agent.id, owner, project.id, {}, ctx);
+
+			expect(emit).toHaveBeenCalledWith(
+				'user-deleted',
+				expect.objectContaining({ user: owner, targetUserId: identityId, loginId: 'login-1' }),
+			);
+		});
+
+		it('keeps the agent and its service account when the removal fails', async () => {
+			const owner = await createOwner();
+			const project = await createTeamProject(undefined, owner);
+			const { agent, identityId } = await createAgentWithServiceAccount(project.id);
+			vi.spyOn(Container.get(ServiceAccountService), 'remove').mockRejectedValueOnce(
+				new Error('transfer blocked'),
+			);
+
+			await expect(agentsService.delete(agent.id, owner, project.id)).rejects.toThrow(
+				'transfer blocked',
+			);
+
+			expect(await agentRepo.findOneBy({ id: agent.id })).not.toBeNull();
+			expect(await dataSource().existsBy(User, { id: identityId })).toBe(true);
+		});
+
+		it('removes the service accounts of the agents of a deleted project', async () => {
+			const owner = await createOwner();
+			const project = await createTeamProject(undefined, owner);
+			const { identityId, personalProject } = await createAgentWithServiceAccount(project.id);
+
+			await Container.get(ProjectService).deleteProject(owner, project.id);
+
+			await expectRemoved(identityId, personalProject.id);
+		});
+
+		it('moves the work of the service account to the target of a project deletion', async () => {
+			const owner = await createOwner();
+			const project = await createTeamProject(undefined, owner);
+			const target = await createTeamProject(undefined, owner);
+			const { identityId, personalProject } = await createAgentWithServiceAccount(project.id);
+			const workflow = await createWorkflow({}, personalProject);
+
+			await Container.get(ProjectService).deleteProject(owner, project.id, {
+				migrateToProject: target.id,
+			});
+
+			await expectRemoved(identityId, personalProject.id);
+			const sharing = await dataSource().findOneByOrFail(SharedWorkflow, {
+				workflowId: workflow.id,
+				role: 'workflow:owner',
+			});
+			expect(sharing.projectId).toBe(target.id);
+		});
+
+		it('removes the service accounts of the agents in the personal project of a deleted user', async () => {
+			const owner = await createOwner();
+			const member = await createMember();
+			const memberProject = await getPersonalProject(member);
+			const target = await createTeamProject(undefined, owner);
+			const { identityId, personalProject } = await createAgentWithServiceAccount(memberProject.id);
+			const workflow = await createWorkflow({}, personalProject);
+			const emit = vi.spyOn(Container.get(EventService), 'emit');
+			const ctx = { security: mock<SecurityContext>({ subIdentityId: 'login-1' }) };
+
+			await Container.get(UserService).deleteUser(owner, member.id, target.id, false, ctx);
+
+			await expectRemoved(identityId, personalProject.id);
+			const sharing = await dataSource().findOneByOrFail(SharedWorkflow, {
+				workflowId: workflow.id,
+				role: 'workflow:owner',
+			});
+			expect(sharing.projectId).toBe(target.id);
+			expect(emit).toHaveBeenCalledWith(
+				'user-deleted',
+				expect.objectContaining({ user: owner, targetUserId: identityId, loginId: 'login-1' }),
+			);
+		});
+
+		it('rejects a direct deletion of the service account of an agent', async () => {
+			const owner = await createOwner();
+			const project = await createTeamProject(undefined, owner);
+			const { agent, identityId } = await createAgentWithServiceAccount(project.id);
+
+			const result = Container.get(UserService).deleteUser(owner, identityId);
+
+			await expect(result).rejects.toThrow(BadRequestError);
+			await expect(result).rejects.toThrow('belongs to the agent "Support Agent"');
+			expect(await dataSource().existsBy(User, { id: identityId })).toBe(true);
+			expect((await agentRepo.findOneByOrFail({ id: agent.id })).identityId).toBe(identityId);
+		});
+
+		it('deletes a service account that no agent uses', async () => {
+			const owner = await createOwner();
+			const { serviceAccount, project } =
+				await Container.get(ServiceAccountService).create('Unused account');
+
+			await Container.get(UserService).deleteUser(owner, serviceAccount.id);
+
+			await expectRemoved(serviceAccount.id, project.id);
+		});
+	});
+
+	describe('as sharing targets', () => {
+		const createAgentIn = async (projectName: string, agentName: string) => {
+			const project = await createTeamProject(projectName);
+			const agent = await agentsService.create(project.id, agentName, { actor });
+			const { identityId } = await agentRepo.findOneByOrFail({ id: agent.id });
+			const personalProject = await Container.get(
+				ProjectRepository,
+			).getPersonalProjectForUserOrFail(identityId!);
+			return { project, personalProject };
+		};
+
+		const listCandidates = async (user: Awaited<ReturnType<typeof createMember>>) => {
+			const { projects } = await Container.get(ProjectService).getShareableProjectsAndCount(user, {
+				take: 50,
+				includeServiceAccounts: true,
+			});
+			return projects;
+		};
+
+		it('shows two agents with the same name with the project of each', async () => {
+			const owner = await createOwner();
+			const marketing = await createAgentIn('Marketing', 'Support bot');
+			const sales = await createAgentIn('Sales', 'Support bot');
+
+			const projects = await listCandidates(owner);
+
+			expect(projects.find((p) => p.id === marketing.personalProject.id)).toMatchObject({
+				name: 'Support bot',
+				accountKind: 'service',
+				accountProject: { id: marketing.project.id, name: 'Marketing' },
+			});
+			expect(projects.find((p) => p.id === sales.personalProject.id)).toMatchObject({
+				name: 'Support bot',
+				accountKind: 'service',
+				accountProject: { id: sales.project.id, name: 'Sales' },
+			});
+		});
+
+		it('shows a member only the agents of their own projects', async () => {
+			const member = await createMember();
+			const marketing = await createAgentIn('Marketing', 'Marketing bot');
+			const sales = await createAgentIn('Sales', 'Sales bot');
+			await linkUserToProject(member, marketing.project, 'project:viewer');
+
+			const projects = await listCandidates(member);
+
+			expect(projects.find((p) => p.id === marketing.personalProject.id)).toMatchObject({
+				accountKind: 'service',
+				accountProject: { id: marketing.project.id, name: 'Marketing' },
+			});
+			expect(projects.find((p) => p.id === sales.personalProject.id)).toBeUndefined();
+		});
+
+		it('shows no agent when the flag is off', async () => {
+			const owner = await createOwner();
+			const marketing = await createAgentIn('Marketing', 'Marketing bot');
+			agentsConfig.serviceAccountsEnabled = false;
+
+			const projects = await listCandidates(owner);
+
+			expect(projects.find((p) => p.id === marketing.personalProject.id)).toBeUndefined();
+		});
+	});
+});

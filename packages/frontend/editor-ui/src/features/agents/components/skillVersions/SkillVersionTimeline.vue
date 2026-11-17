@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { useCssModule } from 'vue';
+import { computed, useCssModule } from 'vue';
 import type { SkillVersionSummary } from '@n8n/api-types';
 import { N8nActionDropdown, N8nIconButton, N8nSwitch, N8nText } from '@n8n/design-system';
 import type { ActionDropdownItem } from '@n8n/design-system';
@@ -8,7 +8,8 @@ import { useI18n } from '@n8n/i18n';
 import { convertToDisplayDate } from '@/app/utils/formatters/dateFormatter';
 import { preferenceUserName } from '@/features/settings/context/context.utils';
 
-type VersionAction = 'open' | 'restore' | 'use';
+// A click on the row opens a version, so the menu has no open item.
+type VersionAction = 'restore' | 'use';
 
 const props = defineProps<{
 	/** Newest first, so the first one is the latest. */
@@ -52,7 +53,6 @@ function savedBy(version: SkillVersionSummary): string {
 
 function actionsFor(index: number, version: number): Array<ActionDropdownItem<VersionAction>> {
 	return [
-		{ id: 'open', label: i18n.baseText('agents.builder.skills.versions.open'), icon: 'eye' },
 		...(props.agent && version !== props.agent.draft
 			? [
 					{
@@ -77,10 +77,18 @@ function actionsFor(index: number, version: number): Array<ActionDropdownItem<Ve
 	];
 }
 
+/** The menu items of each row, computed once per render and not per template use. */
+const actionsByVersion = computed(
+	() => new Map(props.versions.map((v, index) => [v.version, actionsFor(index, v.version)])),
+);
+
 function onAction(version: number, action: VersionAction) {
-	if (action === 'open') emit('open', version);
-	else if (action === 'use') emit('use', version);
+	if (action === 'use') emit('use', version);
 	else emit('restore', version);
+}
+
+function isShown(version: SkillVersionSummary) {
+	return version.version === props.shownVersion;
 }
 
 /** The dot of a row: the draft and the published agent in the builder, the latest in Settings. */
@@ -111,7 +119,7 @@ function dotClass(version: number, index: number) {
 			<li
 				v-for="(version, index) in props.versions"
 				:key="version.id"
-				:class="[$style.row, version.version === props.shownVersion && $style.shown]"
+				:class="[$style.row, isShown(version) && $style.shown]"
 				:data-testid="`skill-version-row-${version.version}`"
 				@click="emit('open', version.version)"
 			>
@@ -140,8 +148,13 @@ function dotClass(version: number, index: number) {
 					<N8nText size="small" color="text-light">{{ savedBy(version) }}</N8nText>
 				</div>
 				<span :class="$style.actions" @click.stop>
+					<!-- The shown version cannot compare with itself. The button keeps its place, so the
+					     row does not change size when the user opens another version. -->
 					<N8nIconButton
-						v-if="version.version !== props.shownVersion"
+						:class="isShown(version) && $style.placeholder"
+						:disabled="isShown(version)"
+						:aria-hidden="isShown(version) || undefined"
+						:tabindex="isShown(version) ? -1 : undefined"
 						variant="ghost"
 						size="small"
 						icon="file-diff"
@@ -153,8 +166,21 @@ function dotClass(version: number, index: number) {
 						:data-testid="`skill-version-compare-${version.version}`"
 						@click="emit('compare', version.version)"
 					/>
+					<!-- A version with no actions keeps an empty slot, so the compare buttons stay in line. -->
+					<N8nIconButton
+						v-if="!actionsByVersion.get(version.version)?.length"
+						:class="$style.placeholder"
+						variant="ghost"
+						size="small"
+						icon="ellipsis"
+						disabled
+						aria-hidden="true"
+						tabindex="-1"
+						:data-testid="`skill-version-actions-${version.version}`"
+					/>
 					<N8nActionDropdown
-						:items="actionsFor(index, version.version)"
+						v-else
+						:items="actionsByVersion.get(version.version) ?? []"
 						activator-icon="ellipsis"
 						activator-size="small"
 						placement="bottom-end"
@@ -267,5 +293,9 @@ function dotClass(version: number, index: number) {
 	display: flex;
 	align-items: center;
 	gap: var(--spacing--5xs);
+}
+
+.placeholder {
+	visibility: hidden;
 }
 </style>

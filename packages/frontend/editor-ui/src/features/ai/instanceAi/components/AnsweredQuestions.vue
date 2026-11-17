@@ -8,10 +8,13 @@
  */
 import type { InstanceAiToolCallState } from '@n8n/api-types';
 import { N8nText } from '@n8n/design-system';
+import { useI18n } from '@n8n/i18n';
 
 const props = defineProps<{
 	toolCall: InstanceAiToolCallState;
 }>();
+
+const i18n = useI18n();
 
 interface DisplayAnswer {
 	question: string;
@@ -55,7 +58,9 @@ function getAnswers(): DisplayAnswer[] {
 				<N8nText :bold="true" size="large" :class="$style.question">
 					{{ item.question }}
 				</N8nText>
-				<N8nText v-if="item.skipped" :class="$style.skipped" size="large">Skipped</N8nText>
+				<N8nText v-if="item.skipped" :class="$style.skipped" size="large">{{
+					i18n.baseText('aiAssistant.builder.planMode.answers.skipped')
+				}}</N8nText>
 				<N8nText v-else size="large">{{ item.answer }}</N8nText>
 			</div>
 		</div>

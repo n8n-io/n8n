@@ -11,7 +11,13 @@ import type {
 	SubExecutionResumeCause,
 	WorkflowGraph,
 } from '@n8n/engine';
-import { ExecuteContext, UnrecognizedNodeTypeError } from 'n8n-core';
+import {
+	buildResumeUrlSuffix,
+	ExecuteContext,
+	prepareUrlForSigning,
+	UnrecognizedNodeTypeError,
+	WAITING_TOKEN_QUERY_PARAM,
+} from 'n8n-core';
 import type {
 	CallbackManager,
 	ExecuteWorkflowData,
@@ -27,12 +33,8 @@ import type {
 	ITaskDataConnections,
 	WorkflowExecuteMode,
 } from 'n8n-workflow';
-import {
-	createRunExecutionData,
-	UnexpectedError,
-	Workflow,
-	WorkflowExecuteModeList,
-} from 'n8n-workflow';
+import { createRunExecutionData, Workflow, WorkflowExecuteModeList } from 'n8n-workflow';
+import { UnexpectedError } from '@n8n/errors';
 
 import { supplySubExecutionResult } from './sub-execution-result';
 import type { SubWorkflowCalls } from './sub-workflow-calls';
@@ -42,11 +44,13 @@ import {
 	SPLIT_IN_BATCHES_TYPE,
 	SPLIT_IN_BATCHES_TYPE_VERSION,
 } from './constants';
+import { MissingResumeSecretError } from './errors';
 import { isTriggerStepConfig, isV1NodeStepConfig } from './guards';
 import { fromStepInputs } from './io';
 import type {
 	AdditionalDataContext,
 	CreateExecuteContextParams,
+	StepResumeMinters,
 	V1Execution,
 	V1NodeStepConfig,
 } from './types';
@@ -286,10 +290,23 @@ export class DurableWaitExecuteContext extends ExecuteContext {
 	/** Only an explicit `false` makes a wait deadline-only. This matches core. */
 	acceptsResumeRequest = true;
 
+	/**
+	 * Becomes `step` when the node builds a resume URL or an approval reference
+	 * for its step. Only a step-bound wait accepts that reply.
+	 */
+	resumeBinding: 'execution' | 'step' = 'execution';
+
 	/** Set right after construction: the sub-workflow calls of this run. */
 	subWorkflowCalls!: SubWorkflowCalls;
 	/** Set when this run follows the end of the step's sub-execution. */
 	subExecutionResume?: SubExecutionResumeCause;
+
+	constructor(
+		private readonly step: { id: string } & StepResumeMinters,
+		...args: ConstructorParameters<typeof ExecuteContext>
+	) {
+		super(...args);
+	}
 
 	/**
 	 * Records the sub-execution declaration on the first pass, or supplies the
@@ -313,6 +330,32 @@ export class DurableWaitExecuteContext extends ExecuteContext {
 		this.runExecutionData.waitTill = waitTill;
 		return await Promise.resolve();
 	}
+
+	/** The path names the step, not the execution. */
+	getSignedResumeUrl(parameters: Record<string, string> = {}): string {
+		const mint = this.step.stepBoundResumeToken;
+		if (!mint) throw new MissingResumeSecretError(this.node.name);
+
+		const url = new URL(
+			`${this.additionalData.webhookWaitingBaseUrl}${buildResumeUrlSuffix(this.step.id, this.node.id)}`,
+		);
+		for (const [key, value] of Object.entries(parameters)) {
+			url.searchParams.set(key, value);
+		}
+		const token = mint({ stepId: this.step.id, binding: prepareUrlForSigning(url) });
+		url.searchParams.set(WAITING_TOKEN_QUERY_PARAM, token);
+
+		this.resumeBinding = 'step';
+		return url.toString();
+	}
+
+	getApprovalCallbackReference(decision: 'approve' | 'decline'): string {
+		const mint = this.step.approvalCallback;
+		if (!mint) throw new MissingResumeSecretError(this.node.name);
+
+		this.resumeBinding = 'step';
+		return mint({ stepId: this.step.id, decision: decision === 'approve' ? 'a' : 'd' });
+	}
 }
 
 export function toV1ExecuteContext({
@@ -326,7 +369,9 @@ export function toV1ExecuteContext({
 	resumeToken,
 	subWorkflowCalls,
 	subExecutionResume,
+	resumeMinters,
 }: CreateExecuteContextParams): DurableWaitExecuteContext {
+	itemsByConnection = withPairedItemLineage(itemsByConnection);
 	const firstInput = itemsByConnection[0] ?? [];
 	const connectionInputData = firstInput.length > 0 ? firstInput : [{ json: {} }];
 	const inputData: ITaskDataConnections = {
@@ -354,6 +399,7 @@ export function toV1ExecuteContext({
 	const mode = toV1ExecuteMode(stepContext);
 
 	const context = new DurableWaitExecuteContext(
+		{ id: stepContext.stepId, ...resumeMinters },
 		workflow,
 		node,
 		additionalData,
@@ -368,4 +414,23 @@ export function toV1ExecuteContext({
 	context.subWorkflowCalls = subWorkflowCalls;
 	context.subExecutionResume = subExecutionResume;
 	return context;
+}
+
+/**
+ * Points every input item's `pairedItem` at its own position, as v1 does before it
+ * runs a node (`WorkflowExecute.addPairedItemLineage`). An item keeps the link its
+ * producer gave it, which points into the producer's input. A node that passes items
+ * through, like If, keeps a link that is already set, so without this the link
+ * would skip a node and name the wrong item.
+ *
+ * v1 also keeps a tool call's `sourceOverwrite`. Engine v2 runs no tool calls: the
+ * converter rejects every connection that is not `main`.
+ */
+function withPairedItemLineage(itemsByConnection: INodeExecutionData[][]): INodeExecutionData[][] {
+	return itemsByConnection.map((items, inputIndex) =>
+		items.map((item, itemIndex) => ({
+			...item,
+			pairedItem: inputIndex === 0 ? { item: itemIndex } : { item: itemIndex, input: inputIndex },
+		})),
+	);
 }

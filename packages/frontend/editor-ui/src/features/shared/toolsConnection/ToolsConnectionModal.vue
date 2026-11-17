@@ -226,9 +226,36 @@ function isRestrictedItem(item: ToolConnectionItem): boolean {
 	return item.kind === 'node' && item.restriction !== undefined;
 }
 
+/** Node types that also have a row in the Gateway credits tab. */
+const gatewayNodeTypeNames = computed(
+	() =>
+		new Set(
+			props.items.flatMap((item) =>
+				item.kind === 'node' && categoryOf(item) === 'n8n-connect' ? [item.nodeTypeName] : [],
+			),
+		),
+);
+
+/**
+ * A gateway-eligible node has a second, plain row for users who bring their own
+ * credential. Its own tab keeps that row, but "All" shows the node only once.
+ */
+function isGatewayDuplicate(item: ToolConnectionItem): boolean {
+	return (
+		item.kind === 'node' &&
+		categoryOf(item) !== 'n8n-connect' &&
+		!hasToolConnection(item.status) &&
+		gatewayNodeTypeNames.value.has(item.nodeTypeName)
+	);
+}
+
 function itemsForCategory(category: ToolCategoryKey): ToolConnectionItem[] {
 	// Stable sort keeps each bucket in its original order (Array.sort is stable).
-	if (category === 'all') return [...props.items].sort((a, b) => allSortRank(a) - allSortRank(b));
+	if (category === 'all') {
+		return props.items
+			.filter((item) => !isGatewayDuplicate(item) && categoryOf(item) !== 'recommended')
+			.sort((a, b) => allSortRank(a) - allSortRank(b));
+	}
 	if (category === 'connected') return props.items.filter((item) => hasToolConnection(item.status));
 	const categoryItems = props.items.filter(
 		(item) =>
@@ -319,6 +346,7 @@ const CATEGORY_I18N: Record<ToolCategoryKey, BaseTextKey> = {
 	project: 'tools.connection.categories.project',
 	global: 'tools.connection.categories.global',
 	data: 'tools.connection.categories.data',
+	recommended: 'tools.connection.categories.recommended',
 };
 
 function categoryLabel(category: ToolCategoryKey): string {

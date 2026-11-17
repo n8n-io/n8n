@@ -1,4 +1,4 @@
-import type { AgentMessage, StreamChunk } from '@n8n/agents';
+import { PromptCacheParamsError, type AgentMessage, type StreamChunk } from '@n8n/agents';
 import {
 	AGENT_CHAT_ERROR_CODES,
 	type AgentPersistedMessageContentPart,
@@ -350,6 +350,8 @@ function apiCallErrorMessage(error: unknown): string | undefined {
 
 function stringifyError(error: unknown): string {
 	try {
+		// Its provider body sits on `cause`. Show the readable message instead.
+		if (error instanceof PromptCacheParamsError) return error.message;
 		const gatewayMessage = apiCallErrorMessage(error);
 		if (gatewayMessage) return gatewayMessage;
 		if (error instanceof Error) {

@@ -1,5 +1,5 @@
 <script lang="ts" setup>
-import { computed, ref } from 'vue';
+import { computed, nextTick, ref } from 'vue';
 
 import { useI18n } from '../../composables/useI18n';
 import type { IUser, SelectSize } from '../../types';
@@ -44,11 +44,27 @@ const props = withDefaults(defineProps<UserSelectProps>(), {
 const emit = defineEmits<{
 	blur: [];
 	focus: [];
+	/** Emit the selected user ID. */
+	'update:modelValue': [value: string];
 }>();
 
 const { t } = useI18n();
 
 const filter = ref('');
+const select = ref<InstanceType<typeof N8nSelect>>();
+
+const onUpdateModelValue = async (value: string) => {
+	emit('update:modelValue', value);
+	await nextTick();
+	if (!value || props.modelValue || props.users.some((user) => user.id === value)) return;
+
+	// Keep add-user pickers ready after the parent removes the added user from the options.
+	select.value?.focusOnInput();
+	const innerSelect = select.value?.innerSelect;
+	if (innerSelect && !innerSelect.visible) {
+		innerSelect.toggleMenu();
+	}
+};
 
 const filteredUsers = computed(() => {
 	// In remote mode, don't do client-side filtering - use the users as-is
@@ -123,6 +139,7 @@ const getLabel = (user: IUser) => {
 
 <template>
 	<N8nSelect
+		ref="select"
 		data-test-id="user-select-trigger"
 		v-bind="$attrs"
 		:model-value="modelValue"
@@ -139,6 +156,7 @@ const getLabel = (user: IUser) => {
 		:class="{ [$style.withAvatar]: showSelectedAvatar, [$style.borderless]: borderless }"
 		@blur="onBlur"
 		@focus="onFocus"
+		@update:model-value="onUpdateModelValue"
 	>
 		<template v-if="showSelectedAvatar || $slots.prefix" #prefix>
 			<N8nAvatar

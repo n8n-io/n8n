@@ -38,6 +38,9 @@ export const createVitestConfig = (options: InlineConfig = {}) => {
 			// spies set up once don't leak across tests. Packages may override via `options`.
 			restoreMocks: true,
 			environment: 'jsdom',
+			// Tests near the 5 s vitest default fail on a busy CI runner, and master runs do
+			// not retry. Keep in sync with `node.ts`.
+			testTimeout: 10_000,
 			// CI shards the frontend suite across runners. A package with fewer
 			// test files than shards leaves a shard with nothing to run, and vitest
 			// treats that as an error — so a sparse package (a freshly scaffolded

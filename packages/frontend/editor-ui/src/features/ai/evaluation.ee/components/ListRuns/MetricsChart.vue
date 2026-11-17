@@ -3,6 +3,7 @@ import type { TestRunRecord } from '../../evaluation.api';
 import { computed, watchEffect } from 'vue';
 import { Line } from 'vue-chartjs';
 import { useMetricsChart } from '../../composables/useMetricsChart';
+import { useI18n } from '@n8n/i18n';
 
 import { N8nOption, N8nSelect } from '@n8n/design-system';
 const emit = defineEmits<{
@@ -15,6 +16,7 @@ const props = defineProps<{
 }>();
 
 const metricsChart = useMetricsChart();
+const locale = useI18n();
 
 const availableMetrics = computed(() => {
 	return props.runs.reduce((acc, run) => {
@@ -51,7 +53,7 @@ watchEffect(() => {
 			<N8nSelect
 				:model-value="selectedMetric"
 				:class="$style.metricSelect"
-				placeholder="Select metric"
+				:placeholder="locale.baseText('evaluation.listRuns.selectMetric')"
 				size="small"
 				@update:model-value="emit('update:selectedMetric', $event)"
 			>

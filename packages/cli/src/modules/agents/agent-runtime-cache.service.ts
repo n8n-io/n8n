@@ -2,13 +2,11 @@ import type { Agent as RuntimeAgent } from '@n8n/agents';
 import { Logger } from '@n8n/backend-common';
 import { Time } from '@n8n/constants';
 import type { User } from '@n8n/db';
-import { OnPubSubEvent } from '@n8n/decorators';
+import { OnPubSubEvent, type PubSubCommandMap } from '@n8n/decorators';
 import { Service } from '@n8n/di';
 import { UserError } from '@n8n/errors';
 
 import { CredentialsService } from '@/credentials/credentials.service';
-import type { IAgentConfigurationTelemetryProperties } from '@/interfaces';
-import type { PubSubCommandMap } from '@/scaling/pubsub/pubsub.event-map';
 import { TtlMap } from '@/utils/ttl-map';
 
 import {
@@ -24,6 +22,7 @@ import type {
 	ReconstructedAgentRuntime,
 	UserToolAccessSnapshot,
 } from './agent-runtime-reconstruction.service';
+import type { IAgentConfigurationTelemetryProperties } from './agent-telemetry.types';
 import { AgentRepository } from './repositories/agent.repository';
 import { getAgentOrThrow } from './utils/get-agent-or-throw';
 import { createAgentCredentialProvider } from './utils/agent-credential-provider';
@@ -359,6 +358,8 @@ export class AgentRuntimeCacheService {
 			mcpServerAttributions,
 			userToolAccessSnapshot,
 			budget,
+			toolGuardrails,
+			guardrailModel,
 		} = await reconstruction;
 
 		return {
@@ -367,6 +368,8 @@ export class AgentRuntimeCacheService {
 			toolRegistry,
 			mcpServerAttributions,
 			...(budget !== undefined ? { budget } : {}),
+			...(toolGuardrails !== undefined ? { toolGuardrails } : {}),
+			...(guardrailModel !== undefined ? { guardrailModel } : {}),
 			projectId,
 			telemetryConfiguration: buildAgentConfigurationTelemetry(runSource),
 			...(userToolAccessSnapshot !== undefined ? { userToolAccessSnapshot } : {}),

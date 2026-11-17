@@ -3,6 +3,8 @@ import { z } from 'zod';
 
 import type { BuiltTool } from '../../types';
 import { fixToolCall } from '../tools/fix-tool-call';
+import { buildToolMap, findDispatcherForCall } from '../tools/tool-adapter';
+import { CALL_TOOL_TOOL_NAME, ToolCatalog } from '../tools/tool-catalog';
 
 function makeTool(overrides: Partial<BuiltTool> = {}): BuiltTool {
 	return {
@@ -223,6 +225,66 @@ describe('fixToolCall — successful repair', () => {
 		});
 	});
 
+	it('repairs a direct call to a deferred tool into a call_tool call', async () => {
+		const catalog = new ToolCatalog([
+			makeTool({ name: 'list_workflows', inputSchema: z.object({}) }),
+		]);
+		const result = await fixToolCall(
+			{
+				toolCall: makeToolCall({ toolName: 'list_workflows', input: '{"limit":5}' }),
+				error: makeNoSuchToolError(),
+			},
+			buildToolMap(catalog.getControllerTools()),
+		);
+		expect(result).toEqual({
+			type: 'tool-call',
+			toolCallId: 'tc-1',
+			toolName: CALL_TOOL_TOOL_NAME,
+			input: JSON.stringify({ tool: 'list_workflows', arguments: { limit: 5 } }),
+			providerExecuted: false,
+			dynamic: false,
+		});
+	});
+
+	it('repairs a deferred tool called by a former name with an action into a call_tool call', async () => {
+		const catalog = new ToolCatalog([
+			makeTool({
+				name: 'list_workflows',
+				inputSchema: z.object({}),
+				legacyActions: { workflows: ['list'] },
+			}),
+		]);
+		const result = await fixToolCall(
+			{
+				toolCall: makeToolCall({
+					toolName: 'workflows',
+					input: '{"action":"list","limit":5}',
+				}),
+				error: makeNoSuchToolError(),
+			},
+			buildToolMap(catalog.getControllerTools()),
+		);
+		expect(result?.toolName).toBe(CALL_TOOL_TOOL_NAME);
+		expect(JSON.parse(result!.input)).toEqual({
+			tool: 'list_workflows',
+			arguments: { limit: 5 },
+		});
+	});
+
+	it('does not change the input of a former-name call when it drops the action', () => {
+		const catalog = new ToolCatalog([
+			makeTool({ name: 'list_workflows', legacyActions: { workflows: ['list'] } }),
+		]);
+		const input = { action: 'list', limit: 5 };
+		const routed = findDispatcherForCall(
+			buildToolMap(catalog.getControllerTools()),
+			'workflows',
+			input,
+		);
+		expect(routed?.input).toEqual({ tool: 'list_workflows', arguments: { limit: 5 } });
+		expect(input).toEqual({ action: 'list', limit: 5 });
+	});
+
 	it('preserves dynamic flag from the original tool call', async () => {
 		const toolMap = new Map([['get_environment', makeTool({ inputSchema: z.object({}) })]]);
 		const result = await fixToolCall(
@@ -233,5 +295,51 @@ describe('fixToolCall — successful repair', () => {
 			toolMap,
 		);
 		expect(result).toMatchObject({ dynamic: true });
+	});
+
+	describe('a tool whose former names are for resume only', () => {
+		const resumeOnly = makeTool({
+			name: 'change_items',
+			inputSchema: z.object({}),
+			legacyNames: ['create_item'],
+			legacyActions: { items: ['create'] },
+			legacyResumeOnly: { convert: (_formerName, input) => input },
+		});
+		const calls = [
+			{ name: 'a former name', toolName: 'create_item', input: '{"id":"1"}' },
+			{ name: 'a former split tool action', toolName: 'items', input: '{"action":"create"}' },
+		];
+
+		it.each(calls)('does not repair a model call by $name', async ({ toolName, input }) => {
+			const result = await fixToolCall(
+				{ toolCall: makeToolCall({ toolName, input }), error: makeNoSuchToolError() },
+				buildToolMap([resumeOnly]),
+			);
+			expect(result).toBeNull();
+		});
+
+		it.each(calls)(
+			'does not route a model call by $name to the tool catalog',
+			async ({ toolName, input }) => {
+				const catalog = new ToolCatalog([resumeOnly]);
+				const result = await fixToolCall(
+					{ toolCall: makeToolCall({ toolName, input }), error: makeNoSuchToolError() },
+					buildToolMap(catalog.getControllerTools()),
+				);
+				expect(result).toBeNull();
+			},
+		);
+
+		it('still repairs a model call by the former name of another tool', async () => {
+			const other = makeTool({ name: 'list_items', legacyNames: ['get_items'] });
+			const result = await fixToolCall(
+				{
+					toolCall: makeToolCall({ toolName: 'get_items', input: '{}' }),
+					error: makeNoSuchToolError(),
+				},
+				buildToolMap([resumeOnly, other]),
+			);
+			expect(result?.toolName).toBe('list_items');
+		});
 	});
 });

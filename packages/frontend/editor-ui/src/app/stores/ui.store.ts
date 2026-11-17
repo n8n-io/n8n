@@ -21,7 +21,6 @@ import type {
 	AppliedThemeOption,
 	TabOptions,
 	INodeUi,
-	NodeCreatorOpenSource,
 } from '@/Interface';
 import { defineStore } from 'pinia';
 import { useSettingsStore } from '@n8n/stores/settings.store';
@@ -142,9 +141,6 @@ export const useUIStore = defineStore(STORES.UI, () => {
 	const nodeViewOffsetPosition = ref<[number, number]>([0, 0]);
 	const nodeViewInitialized = ref<boolean>(false);
 	const addFirstStepOnLoad = ref<boolean>(false);
-	// Optional source for the auto-opened node creator (e.g. opened from Instance
-	// AI), so the 'User opened nodes panel' event is attributed to its origin.
-	const addFirstStepOnLoadSource = ref<NodeCreatorOpenSource>();
 	const processingExecutionResults = ref<boolean>(false);
 	const isBlankRedirect = ref<boolean>(false);
 
@@ -449,6 +445,7 @@ export const useUIStore = defineStore(STORES.UI, () => {
 	const openExistingCredential = (
 		id: string,
 		options: {
+			fixedCredentialsOnly?: boolean;
 			hideAskAssistant?: boolean;
 			appendToBody?: boolean;
 			instanceAiCredentialHelp?: NewCredentialsModal['instanceAiCredentialHelp'];
@@ -471,6 +468,7 @@ export const useUIStore = defineStore(STORES.UI, () => {
 			closeOnSave: false,
 			workflowId: options.workflowId,
 			onCredentialCreated: undefined,
+			fixedCredentialsOnly: options.fixedCredentialsOnly,
 			hideAskAssistant: options.hideAskAssistant,
 			appendToBody: options.appendToBody,
 			instanceAiCredentialHelp: options.instanceAiCredentialHelp,
@@ -488,6 +486,7 @@ export const useUIStore = defineStore(STORES.UI, () => {
 		nodeName?: string,
 		contextNode?: INodeUi,
 		options: {
+			fixedCredentialsOnly?: boolean;
 			hideAskAssistant?: boolean;
 			appendToBody?: boolean;
 			closeOnSave?: boolean;
@@ -515,6 +514,7 @@ export const useUIStore = defineStore(STORES.UI, () => {
 			workflowId: options.workflowId,
 			nodeName,
 			contextNode,
+			fixedCredentialsOnly: options.fixedCredentialsOnly,
 			hideAskAssistant: options.hideAskAssistant,
 			appendToBody: options.appendToBody,
 			instanceAiCredentialHelp: options.instanceAiCredentialHelp,
@@ -665,7 +665,6 @@ export const useUIStore = defineStore(STORES.UI, () => {
 		nodeViewOffsetPosition,
 		nodeViewInitialized,
 		addFirstStepOnLoad,
-		addFirstStepOnLoadSource,
 		sidebarMenuCollapsed,
 		sidebarWidth,
 		theme: computed(() => theme.value),

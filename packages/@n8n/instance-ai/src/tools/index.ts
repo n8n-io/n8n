@@ -1,15 +1,14 @@
 /* eslint-disable @typescript-eslint/no-require-imports, @typescript-eslint/consistent-type-imports */
 import type { BuiltTool } from '@n8n/agents';
 import {
-	DATA_TABLE_TOOL_ACTIONS,
+	DATA_TABLE_READ_TOOL_ACTIONS,
 	DATA_TABLE_TOOL_NAME_BY_ACTION,
 	EXECUTION_TOOL_ACTIONS,
 	EXECUTION_TOOL_NAME_BY_ACTION,
 	WORKFLOW_TOOL_NAME_BY_ACTION,
-	WORKSPACE_TOOL_NAME_BY_ACTION,
+	INSTANCE_TOOL_NAME_BY_ACTION,
 } from '@n8n/api-types';
 
-import { isParseableAttachment } from '../parsers/structured-file-parser';
 import { createToolRegistry } from '../tool-registry';
 import type { InstanceAiContext, InstanceAiToolRegistry, OrchestrationContext } from '../types';
 import { resolveAgentBuilderTarget } from './orchestration/agent-target-binding';
@@ -36,6 +35,10 @@ const loadAppsTool = lazyMod(
 );
 const loadDataTablesTool = lazyMod(
 	() => require('./data-tables.tool') as typeof import('./data-tables.tool'),
+);
+const loadChangeDataTablesTool = lazyMod(
+	() =>
+		require('./data-tables/change-data-tables.tool') as typeof import('./data-tables/change-data-tables.tool'),
 );
 const loadEvalConfigTool = lazyMod(
 	() => require('./evals/eval-config.tool') as typeof import('./evals/eval-config.tool'),
@@ -73,6 +76,10 @@ const loadAgentBuilderTools = lazyMod(
 const loadGetSessionTool = lazyMod(
 	() =>
 		require('./orchestration/get-session.tool') as typeof import('./orchestration/get-session.tool'),
+);
+const loadStartCloudBrowserTaskTool = lazyMod(
+	() =>
+		require('./orchestration/start-cloud-browser-task.tool') as typeof import('./orchestration/start-cloud-browser-task.tool'),
 );
 const loadReportVerificationVerdictTool = lazyMod(
 	() =>
@@ -144,12 +151,16 @@ function getOrchestratorDomainToolFactories(
 			DOMAIN_TOOL_IDS.DELETE_CREDENTIAL,
 			() => loadCredentialsTool().createDeleteCredentialTool(context),
 		],
-		...DATA_TABLE_TOOL_ACTIONS.map((action): [string, DomainToolFactory] => [
+		...DATA_TABLE_READ_TOOL_ACTIONS.map((action): [string, DomainToolFactory] => [
 			DATA_TABLE_TOOL_NAME_BY_ACTION[action],
 			() => loadDataTablesTool().createDataTableTool(context, action),
 		]),
+		[
+			DOMAIN_TOOL_IDS.CHANGE_DATA_TABLES,
+			() => loadChangeDataTablesTool().createChangeDataTablesTool(context),
+		],
 		...getSupportedWorkspaceActions(context).map((action): [string, DomainToolFactory] => [
-			WORKSPACE_TOOL_NAME_BY_ACTION[action],
+			INSTANCE_TOOL_NAME_BY_ACTION[action],
 			() => loadWorkspaceTool().createWorkspaceActionTool(context, action),
 		]),
 		[DOMAIN_TOOL_IDS.RESEARCH, () => loadResearchTool().createResearchTool(context)],
@@ -253,12 +264,15 @@ function getOrchestratorDomainToolFactories(
 		tools.push([DOMAIN_TOOL_IDS.APPS, () => loadAppsTool().createAppsTool(context)]);
 	}
 
-	if (context.currentUserAttachments?.some(isParseableAttachment)) {
-		tools.push([
-			DOMAIN_TOOL_IDS.PARSE_FILE,
-			() => loadParseFileTool().createParseFileTool(context),
-		]);
-	}
+	// Registered on every turn, with or without files, so the tool list, which
+	// leads the cached prompt prefix, stays the same for the whole thread.
+	const { storedFiles } = context;
+	tools.push([
+		DOMAIN_TOOL_IDS.PARSE_FILE,
+		storedFiles
+			? () => loadParseFileTool().createParseStoredFileTool(storedFiles)
+			: () => loadParseFileTool().createParseFileTool(context),
+	]);
 
 	return tools;
 }
@@ -315,6 +329,16 @@ export function createOrchestrationTools(context: OrchestrationContext): Instanc
 		for (const tool of loadAgentBuilderTools().createAgentBuilderTools(context, builderDelegate)) {
 			tools.push([tool.name, tool]);
 		}
+	}
+
+	// Presence is the gate: the host sets it only when this run can use the cloud browser.
+	if (context.startCloudBrowserTask) {
+		tools.push([
+			ORCHESTRATION_TOOL_IDS.START_CLOUD_BROWSER_TASK,
+			loadStartCloudBrowserTaskTool().createStartCloudBrowserTaskTool(
+				context.startCloudBrowserTask,
+			),
+		]);
 	}
 
 	if (context.domainContext?.agentPreviewSession && context.domainContext?.resolvePreviewSession) {

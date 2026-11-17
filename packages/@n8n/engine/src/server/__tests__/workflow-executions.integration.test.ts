@@ -24,7 +24,10 @@ import {
 } from '../../execution';
 import type { WorkflowGraph } from '../../graph';
 import type { OrchestrationMessage, StepMessage, WorkQueue } from '../../queue';
-import type { LifecycleEventPublisher } from '../../lifecycle-events';
+import {
+	LifecycleEventPublisherFactory,
+	type LifecycleEventPublisher,
+} from '../../lifecycle-events';
 import { noopExecutionResponseSender, type ExecutionResponseSender } from '../../response-channel';
 import { createEngineRuntime } from '../../runtime';
 import { startEngineServer } from '../../testing/start-engine-server';
@@ -146,6 +149,26 @@ describe('POST /api/workflow-executions/search (integration)', () => {
 			[detachedId, detached],
 			[awaitedId, awaited],
 		]);
+	});
+
+	it('filters sub-executions in or out by whether they have a parent', async () => {
+		const workflowId = generateId();
+		const topLevelId = await start(workflowId);
+		const subId = await startSubExecution({
+			executionId: topLevelId,
+			stepId: generateId(),
+			awaited: true,
+		});
+
+		const subs = await search({ workflowIds: 'all', hasParent: true }).expect(200);
+		const subIds = (subs.body as SearchExecutionsResponse).items.map((item) => item.id);
+		expect(subIds).toContain(subId);
+		expect(subIds).not.toContain(topLevelId);
+
+		const topLevel = await search({ workflowIds: 'all', hasParent: false }).expect(200);
+		const topLevelIds = (topLevel.body as SearchExecutionsResponse).items.map((item) => item.id);
+		expect(topLevelIds).toContain(topLevelId);
+		expect(topLevelIds).not.toContain(subId);
 	});
 
 	it('rejects a parent execution id that is not a uuid', async () => {
@@ -296,7 +319,7 @@ beforeEach(async () => {
 		cancelExecution: new CancelExecutionService(
 			executionStore,
 			stepStore,
-			lifecycleEventPublisher,
+			new LifecycleEventPublisherFactory(lifecycleEventPublisher),
 			responseSender,
 			stepQueue,
 		),
@@ -430,6 +453,61 @@ describe('POST /api/workflow-executions (integration)', () => {
 
 		const { executionStore } = createStores(dataSource);
 		expect((await executionStore.loadExecution(body.executionId)).parent).toBeNull();
+	});
+
+	it('stores the lifecycle event subscription with the row', async () => {
+		const body = startBody({ lifecycleEventSubscription: { kind: 'all' } });
+
+		const response = await request(url)
+			.post('/api/workflow-executions')
+			.set(authHeader())
+			.send(body);
+
+		expect(response.status).toBe(201);
+		const row = await dataSource
+			.getRepository(WorkflowExecution)
+			.findOneOrFail({ where: { id: body.executionId } });
+		expect(row.lifecycleEventSubscription).toEqual({ kind: 'all' });
+	});
+
+	it('stores no subscription when the body has no lifecycle event subscription', async () => {
+		const body = startBody();
+
+		const response = await request(url)
+			.post('/api/workflow-executions')
+			.set(authHeader())
+			.send(body);
+
+		expect(response.status).toBe(201);
+		const row = await dataSource
+			.getRepository(WorkflowExecution)
+			.findOneOrFail({ where: { id: body.executionId } });
+		expect(row.lifecycleEventSubscription).toBeNull();
+	});
+
+	it.each([{ kind: 'some' }, { kind: 'all', extra: true }, 'all'])(
+		'rejects the lifecycle event subscription %j with 400',
+		async (lifecycleEventSubscription) => {
+			const response = await request(url)
+				.post('/api/workflow-executions')
+				.set(authHeader())
+				.send(startBody({ lifecycleEventSubscription }));
+
+			expect(response.status).toBe(400);
+			expect((response.body as { error: string }).error).toBe('invalid_request');
+		},
+	);
+
+	it('cancels without an announcement when the caller did not subscribe', async () => {
+		const body = startBody();
+		await request(url).post('/api/workflow-executions').set(authHeader()).send(body).expect(201);
+
+		await request(url)
+			.post(`/api/workflow-executions/${body.executionId}/cancel`)
+			.set(authHeader())
+			.expect(200);
+
+		expect(lifecycleEventPublisher.publish).not.toHaveBeenCalled();
 	});
 
 	it('rejects a body without a caller context with 400', async () => {
@@ -893,9 +971,15 @@ describe('GET /api/workflow-executions/:id (integration)', () => {
 describe('POST /api/workflow-executions/:id/cancel (integration)', () => {
 	const cancel = (id: string) =>
 		request(url).post(`/api/workflow-executions/${id}/cancel`).set(authHeader());
-	/** Started expecting the run end, so a cancel owes the caller an `ended` response. */
+	/**
+	 * Started expecting the run end, so a cancel owes the caller an `ended`
+	 * response, and subscribed, so it announces the cancel.
+	 */
 	async function start() {
-		const body = startBody({ responseExpectation: { kind: 'runEnd' } });
+		const body = startBody({
+			responseExpectation: { kind: 'runEnd' },
+			lifecycleEventSubscription: { kind: 'all' },
+		});
 		await request(url).post('/api/workflow-executions').set(authHeader()).send(body).expect(201);
 		return body.executionId;
 	}

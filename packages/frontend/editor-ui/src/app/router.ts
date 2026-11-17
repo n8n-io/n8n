@@ -27,7 +27,7 @@ import { usePostHog, waitForFeatureFlagsWithTimeout } from '@/app/stores/posthog
 import { RESOURCE_CENTER_EXPERIMENT, TEMPLATE_SETUP_EXPERIENCE } from '@/app/constants/experiments';
 import { useDynamicCredentials } from '@/features/resolvers/composables/useDynamicCredentials';
 import { INSTANCE_AI_VIEW } from '@/features/ai/instanceAi/constants';
-import { PROMOTIONS_SETTINGS_VIEW } from '@/features/integrations/promotions.ee/promotions.constants';
+import { PROMOTIONS_SETTINGS_VIEW } from '@n8n/frontend-module-promotions';
 import { usePromotionsEnabled } from '@/features/shared/promotions/usePromotionsEnabled';
 import {
 	canManageInstanceAi,

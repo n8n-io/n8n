@@ -9,7 +9,6 @@ import {
 	findHiddenUnicode,
 	findNewUrls,
 	findPermissionChanges,
-	findSuspiciousPhrases,
 	listFidelityWarnings,
 	listSkippedFiles,
 	type SkillScanInput,
@@ -22,7 +21,6 @@ const RULES = [
 	findHiddenUnicode,
 	findNewUrls,
 	findPermissionChanges,
-	findSuspiciousPhrases,
 	listFidelityWarnings,
 ];
 
@@ -35,7 +33,7 @@ const RULES = [
 export class SkillSecurityScanner {
 	/** `previous` is the content of the latest version for an update, and null at import. */
 	scan(
-		fetched: Pick<FetchedSkill, 'content' | 'skippedFiles' | 'fidelity'>,
+		fetched: Pick<FetchedSkill, 'content' | 'skippedFiles' | 'unstorableFiles' | 'fidelity'>,
 		previous: SkillContent | null = null,
 	): SkillScanResult {
 		const input: SkillScanInput = { ...fetched, previous };
