@@ -36,8 +36,8 @@ describe('$item in host code steps', () => {
 	});
 });
 
-/** A binary entry of an item, with the sizes that the fallback host adds. */
-const BINARY = { data: 'aGk=', mimeType: 'text/plain', bytes: 2, fileSize: '2 B' };
+/** A binary entry of an item: as in v1, it stays as the code made it. */
+const BINARY = { data: 'aGk=', mimeType: 'text/plain' };
 
 describe('binary data in host code steps', () => {
 	const bin = "{ data: { data: 'aGk=', mimeType: 'text/plain' } }";

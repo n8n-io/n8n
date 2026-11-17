@@ -26,6 +26,7 @@ import { runModule } from '../../../testing/vm.ts';
 import { checkTranslation } from '../check.ts';
 import type { CodeMode } from '../translate.ts';
 import { translateCode } from '../translate.ts';
+import { nativeCode, runnerCode, taskRunnerAvailable } from './runner-oracle.ts';
 
 useUtc();
 
@@ -453,10 +454,8 @@ return [{ json: { results } }];`;
 	});
 
 	it.each([
-		['the response of the error', 'catch (e) { return [{ json: { s: e.response?.status } }]; }'],
 		['the config of the error', 'catch (e) { return [{ json: { s: e.config } }]; }'],
 		['the stack of the error', 'catch (e) { return [{ json: { s: e.stack } }]; }'],
-		['isAxiosError', 'catch (e) { return [{ json: { s: e.isAxiosError } }]; }'],
 		['the error as a value', 'catch (e) { return [{ json: { e } }]; }'],
 		['the error as JSON', 'catch (e) { return [{ json: { s: JSON.stringify(e) } }]; }'],
 	])('keeps code that reads %s in the host', (_, handler) => {
@@ -464,6 +463,49 @@ return [{ json: { results } }];`;
 		const t = translateCode({ code, mode: 'all', kind: 'code', hasNode: () => false });
 		expect(t.ok).toBe(false);
 	});
+
+	// v1's task runner gets the error as JSON (`AxiosError.toJSON`): it has no `response`.
+	it.skipIf(!taskRunnerAvailable())(
+		'reads the members of the error of a request as the task runner of v1 gives them',
+		async () => {
+			const code = `const out = [];
+for (const path of ['/status/404', '/status-text/500', '/json']) {
+	try {
+		out.push({ json: { ok: await this.helpers.httpRequest({ url: items[0].json.base + path }) } });
+	} catch (e) {
+		out.push({ json: { message: e.message, name: e.name, code: e.code, status: e.status, response: e.response === undefined, responseStatus: e.response?.status, data: e.response?.data ?? null, axios: e.isAxiosError === undefined, statusCode: e.statusCode ?? null, text: String(e) } });
+	}
+}
+return out;`;
+			seen.length = 0;
+			const items = [{ base }];
+			const runner = await runnerCode(code, 'all', items);
+			const requests = [...seen];
+			const n = native(code, 'all', items, requests);
+			expect(runner.ok && n.ok).toBe(true);
+			if (runner.ok && n.ok) expect(n.value).toEqual(runner.value);
+		},
+		120_000,
+	);
+
+	it.skipIf(!taskRunnerAvailable())(
+		'fails the node with the message of the task runner of v1',
+		async () => {
+			const code =
+				"const r = await this.helpers.httpRequest({ url: items[0].json.base + '/status/404' });\nreturn [{ json: { r } }];";
+			seen.length = 0;
+			const items = [{ base }];
+			const runner = await runnerCode(code, 'all', items);
+			const requests = [...seen];
+			expect(runner).toEqual({ ok: false, error: 'Request failed with status code 404' });
+			expect(
+				nativeCode(code, 'all', items, {
+					effects: { code: requests.map((r) => effectResult(r.answer)) },
+				}),
+			).toEqual(runner);
+		},
+		120_000,
+	);
 
 	it.each([
 		[

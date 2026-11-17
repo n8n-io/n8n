@@ -84,7 +84,8 @@ describe('native Code nodes in a workflow', () => {
 		};
 		const { out, items } = await traced(wf, { id: 1 });
 		expect(out.fallbackNodes).toEqual([]);
-		expect(items('Log')).toEqual([{ error: 'missing id' }]);
+		// As v1's task runner: the message has the line, and the item is the first input item with it.
+		expect(items('Log')).toEqual([{ params: {}, body: { id: 1 }, error: 'missing id [line 1]' }]);
 	});
 
 	it('keeps "each item" mode with an error setting that continues in the host', () => {

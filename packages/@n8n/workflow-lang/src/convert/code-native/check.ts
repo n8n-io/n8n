@@ -12,7 +12,12 @@ import type { Blocker, Translation } from './translate.ts';
 import { emitAsync, emitExpression, emitHelpers } from './emit.ts';
 
 /** The workflow source of a translated Code node. */
-export function harnessSource(t: Translation, mode: 'all' | 'each', plainInput = false): string {
+export function harnessSource(
+	t: Translation,
+	mode: 'all' | 'each',
+	plainInput = false,
+	traced?: Translation,
+): string {
 	const lists = t.nodes.map((_, k) => `trigger.body.nodes[${k}]`);
 	const all = t.allNodes.map((_, k) => `trigger.body.all[${k}]`);
 	// Code that makes requests is an async function; its \`http\` step has the name \`code\`.
@@ -25,10 +30,11 @@ export function harnessSource(t: Translation, mode: 'all' | 'each', plainInput =
 				lists,
 				all,
 				plainInput,
+				traced,
 			)
 		: {
 				declaration: '',
-				expression: emitExpression(t, mode, 'trigger.body.input', lists, all, plainInput),
+				expression: emitExpression(t, mode, 'trigger.body.input', lists, all, plainInput, traced),
 			};
 	const expr = parts.expression;
 	return `import { webhook, workflow } from '@n8n/workflow-lang';
@@ -46,7 +52,7 @@ export default workflow({
 	},
 });
 
-${helperSources(emitHelpers(t, mode, plainInput)).join('\n\n')}
+${helperSources(emitHelpers(t, mode, plainInput, traced)).join('\n\n')}
 `;
 }
 
@@ -62,8 +68,9 @@ export function checkTranslation(
 	t: Translation,
 	mode: 'all' | 'each',
 	plainInput = false,
+	traced?: Translation,
 ): CheckResult {
-	const source = harnessSource(t, mode, plainInput);
+	const source = harnessSource(t, mode, plainInput, traced);
 	const compiled = compile(source, { nodes: {} });
 	if (compiled.ok) return { ok: true, compiled, source };
 	const issues = withoutTypeNoise(compiled.diagnostics.map(issueOf));

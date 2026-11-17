@@ -29,7 +29,7 @@ import ts from 'typescript';
 import { isKnownTimezone } from '../../compiler/triggers.ts';
 import { DEFAULT_TIMEZONE } from '../triggers.ts';
 import { LOCALE_NAMES, LOCALE_TABLE } from './locale-data.generated.ts';
-import { planCatch } from './catch-check.ts';
+import { planBody, planCatch } from './catch-check.ts';
 import { checkRegex } from './regex-syntax.ts';
 
 export type CodeMode = 'all' | 'each';
@@ -65,6 +65,13 @@ export interface CodeNativeInput {
 	/** The name of the node, for static data of type `node`. */
 	nodeName?: string;
 	/**
+	 * The traced form of the code: the same code with the line of each place where an error
+	 * can come from, as V8 gives it in the stack of the error (`traceLines`). The node runs it
+	 * after the code failed, to make v1's message with ` [line N]`; code that cannot run twice
+	 * (requests, random numbers, static data) runs only in this form.
+	 */
+	traced?: boolean;
+	/**
 	 * For `$items()` without a node name, which gives the input items: true when the node
 	 * before this one has "execute once" (v1 then gives the first item only). Undefined when
 	 * the node before this one is not fixed: then `$items()` has no native form.
@@ -99,13 +106,18 @@ export interface Translation {
 	 * `emit` gives the code the function `__wf_http`, which runs the `http` effect.
 	 */
 	usesHttp: boolean;
-	/**
-	 * The code can make or change binary data of items (`writesBinary`): the result list gets
-	 * the size members of each binary entry, as the fallback host gives them.
-	 */
-	writesBinary: boolean;
 	/** The code reads the clock or the random generator. */
 	nondeterministic: boolean;
+	/**
+	 * The code can run a second time with the same result: no request, no random number and no
+	 * static data. Then the node runs the plain form, and the traced form only after a failure.
+	 */
+	repeatable: boolean;
+	/**
+	 * Why the text of an error of the code can differ from V8's text, or null when every
+	 * operation that can fail gives V8's text (the rules of `catch-check.ts` for the whole code).
+	 */
+	errorTextGap: string | null;
 	/** The code makes a Set or a Map (`collNew`). */
 	usesCollections: boolean;
 	/** IANA time zones that the code formats dates in (META `zones`). */
@@ -136,6 +148,10 @@ export const nodeVar = (k: number) => `${P}n${k}`;
 export const ALL_NODES = `${P}nodes`;
 export const MATCHES = `${P}matches`;
 export const HTTP = `${P}http`;
+/** The line of the current place in a function with a name, in the traced form. */
+export const LINE = `${P}l`;
+const MARK = `${P}m`;
+const SET = `${P}s`;
 
 /** Options of `this.helpers.httpRequest` that the native form sends as v1 does. */
 const HTTP_OPTIONS = new Set([
@@ -833,73 +849,29 @@ function provesReadOnly(root: ts.Node, checker: ts.TypeChecker, mode: CodeMode):
 	return true;
 }
 
-/**
- * True when the code can make or change the binary data of an item. Every use of the name
- * `binary` counts, but a read of a member of an entry (`item.binary.data.fileName`): the
- * map or an entry as a value can go into a result or get a change later.
- */
-function writesBinary(root: ts.Node): boolean {
-	const named = (x: ts.Node): boolean =>
-		(ts.isIdentifier(x) || ts.isStringLiteralLike(x)) && x.text === 'binary';
-	const isAccess = (x: ts.Node): x is ts.PropertyAccessExpression | ts.ElementAccessExpression =>
-		ts.isPropertyAccessExpression(x) || ts.isElementAccessExpression(x);
-	/** The access of which `x` is the object, through parentheses. */
-	const memberOf = (x: ts.Node): ts.Node | null => {
-		let child = x;
-		let parent = x.parent;
-		while (ts.isParenthesizedExpression(parent) || ts.isNonNullExpression(parent)) {
-			child = parent;
-			parent = parent.parent;
-		}
-		return isAccess(parent) && parent.expression === child ? parent : null;
-	};
-	const written = (x: ts.Node): boolean => {
-		const p = x.parent;
-		return (
-			(ts.isBinaryExpression(p) &&
-				p.left === x &&
-				p.operatorToken.kind >= ts.SyntaxKind.FirstAssignment &&
-				p.operatorToken.kind <= ts.SyntaxKind.LastAssignment) ||
-			ts.isDeleteExpression(p) ||
-			ts.isPrefixUnaryExpression(p) ||
-			ts.isPostfixUnaryExpression(p) ||
-			(ts.isCallExpression(p) && p.expression === x)
-		);
-	};
-	let found = false;
+/** True when the code names the input items both as \`items\` or \`item\` and through \`$input\`, \`$json\` or \`$items()\`. */
+function usesBothItemViews(root: ts.Node, checker: ts.TypeChecker): boolean {
+	let direct = false;
+	let proxy = false;
 	const visit = (x: ts.Node): void => {
-		if (found) return;
-		if (
-			(ts.isPropertyAssignment(x) ||
-				ts.isShorthandPropertyAssignment(x) ||
-				ts.isMethodDeclaration(x) ||
-				ts.isBindingElement(x)) &&
-			((x.name !== undefined && named(x.name)) ||
-				(ts.isBindingElement(x) && x.propertyName !== undefined && named(x.propertyName)))
-		) {
-			found = true;
-			return;
-		}
-		if (ts.isIdentifier(x) && x.text === '$binary') {
-			found = true;
-			return;
-		}
-		const isBinary =
-			(ts.isPropertyAccessExpression(x) && x.name.text === 'binary') ||
-			(ts.isElementAccessExpression(x) && named(x.argumentExpression));
-		if (isBinary) {
-			// \`X.binary.<entry>.<member>\`, read: the only use that changes nothing.
-			const entry = memberOf(x);
-			const member = entry === null ? null : memberOf(entry);
-			if (member === null || written(member)) {
-				found = true;
-				return;
+		if (ts.isIdentifier(x) && !isNameOf(x)) {
+			const sym = checker.getSymbolAtLocation(x);
+			const free = sym === undefined || (sym.declarations ?? []).length === 0;
+			if (free && (x.text === 'items' || x.text === 'item')) direct = true;
+			if (free && (x.text === '$input' || x.text === '$json' || x.text === '$binary')) proxy = true;
+			if (
+				free &&
+				x.text === '$items' &&
+				ts.isCallExpression(x.parent) &&
+				x.parent.arguments.length === 0
+			) {
+				proxy = true;
 			}
 		}
 		ts.forEachChild(x, visit);
 	};
 	visit(root);
-	return found;
+	return direct && proxy;
 }
 
 /** Translates the code. See the file comment. */
@@ -941,6 +913,8 @@ export function translateCode(input: CodeNativeInput): TranslateResult {
 	const nodes: string[] = [];
 	let usesFirstJson = false;
 	let nondeterministic = false;
+	/** The code draws random numbers: a second run draws other ones. */
+	let nondeterministicRandom = false;
 	let mutates = false;
 	/** Local variables that hold a Date (declared with `new Date(…)`, without a type). */
 	const dateVars = new Set<ts.Symbol>();
@@ -1712,6 +1686,31 @@ export function translateCode(input: CodeNativeInput): TranslateResult {
 			? LOCALE_TABLE[JSON.stringify([method, a.locale, a.options])]
 			: undefined;
 
+	/** The code makes a Date somewhere: \`new Date(…)\` or \`Date(…)\`. */
+	const makesDates = /\bnew\s+Date\b|\bDate\s*\(/.test(input.code);
+
+	/** True when the value of \`e\` is a number for certain. */
+	const isNumberValue = (e: ts.Expression): boolean => {
+		const x = stripParens(e);
+		if (ts.isNumericLiteral(x)) return true;
+		if (ts.isPrefixUnaryExpression(x)) {
+			return x.operator === ts.SyntaxKind.MinusToken || x.operator === ts.SyntaxKind.PlusToken;
+		}
+		if (ts.isBinaryExpression(x)) return ARITHMETIC.has(x.operatorToken.kind);
+		if (ts.isPropertyAccessExpression(x)) return x.name.text === 'length';
+		if (!ts.isCallExpression(x)) return false;
+		const callee = stripParens(x.expression);
+		if (ts.isIdentifier(callee)) {
+			return ['Number', 'parseInt', 'parseFloat'].includes(callee.text) && isFree(callee);
+		}
+		return (
+			ts.isPropertyAccessExpression(callee) &&
+			ts.isIdentifier(callee.expression) &&
+			callee.expression.text === 'Math' &&
+			isFree(callee.expression)
+		);
+	};
+
 	/** \`x.toLocaleString(locale, options)\` and the Date forms. True when it wrote the call. */
 	const localeMethod = (
 		n: ts.CallExpression,
@@ -1737,6 +1736,16 @@ export function translateCode(input: CodeNativeInput): TranslateResult {
 		const entry = tableEntry(name, a);
 		const typedDate = isDateValue(recv);
 		const isDate = name !== 'toLocaleString' || typedDate;
+		if (!isDate && !isNumberValue(recv) && (makesDates || usesLuxon)) {
+			// A Date that went through an untyped place is text in native code, and the text of
+			// \`toLocaleString\` of text is the text itself. So the value must be a number for
+			// certain, or the code must make no Date at all.
+			block(
+				'Date: toLocaleString of a value of unknown kind',
+				'`toLocaleString` needs a value whose kind is known in code that makes dates.',
+			);
+			return true;
+		}
 		if (!isDate && Object.keys(a.options).some((k) => DATE_FORMAT_OPTIONS.has(k))) {
 			// The options are those of a date, but the value has no known kind: a Date that went
 			// through an untyped place is text in native code, and text has no date format.
@@ -1988,6 +1997,13 @@ export function translateCode(input: CodeNativeInput): TranslateResult {
 				`, ${JSON.stringify(mc.method)}, ${JSON.stringify(mc.text)})`,
 				o,
 			);
+			seq++;
+		}
+		// The traced form wraps this node after the walk (\`traceWraps\`): its calls go between the
+		// rewrites of the nodes around it and the rewrites of the node itself.
+		if (input.traced && ts.isExpression(n)) {
+			lineSeq.set(n, seq);
+			seq += 2;
 		}
 		if (ts.isTryStatement(n) && n.catchClause && readsError(n.catchClause)) {
 			const plan = planCatch(n, checker, { dateVars, awaited, requests: usesHttp });
@@ -2544,6 +2560,7 @@ export function translateCode(input: CodeNativeInput): TranslateResult {
 					}
 					if (g === 'Math' && name === 'random' && n.arguments.length === 0) {
 						nondeterministic = true;
+						nondeterministicRandom = true;
 						replaceNode(n, 'ctx.random()');
 						return;
 					}
@@ -2970,7 +2987,301 @@ export function translateCode(input: CodeNativeInput): TranslateResult {
 		return true;
 	};
 
+	/**
+	 * Adds the lines of the traced form.
+	 *
+	 * v1's task runner adds ` [line N]` to the message of an error. N comes from the stack of
+	 * the error: the line of the innermost frame of a function with a name (a declaration, or
+	 * a function that is the value of a variable, an assignment or a member), else the line
+	 * in the code itself. A frame of a function without a name does not count: an error in a
+	 * callback has the line of the call that ran the callback.
+	 *
+	 * So the code itself and each function with a name keep their line in a variable, and
+	 * give it to an error that leaves them without a line (`codeAt`). A statement sets its
+	 * line. In a statement of more than one line, each read of a member and each call sets
+	 * its own line just before it runs: `__wf_m(line, value)` gives the value back. A new
+	 * Error gets the line of `new`, as V8 makes the stack there. A callback has no lines.
+	 */
+	const lineValues = new Map<ts.Node, number>();
+	const lineErrors = new Map<ts.Node, number>();
+	/** Method checks of the traced form, for the receivers that have none from a catch plan. */
+	const lineChecks = new Map<ts.Node, { method: string; text: string }>();
+	/** The value of \`seq\` when the walk came to a node that the traced form wraps. */
+	const lineSeq = new Map<ts.Node, number>();
+	const traceLines = (body: ts.Block): void => {
+		helpers.add('codeAt');
+		const lineOf = (pos: number): number => sf.getLineAndCharacterOfPosition(pos).line;
+		const through = (x: ts.Node): ts.Node => {
+			let p = x.parent;
+			while (ts.isParenthesizedExpression(p)) p = p.parent;
+			return p;
+		};
+		const hasName = (fn: ts.Node): boolean => {
+			if (ts.isFunctionDeclaration(fn)) return true;
+			if (!ts.isArrowFunction(fn) && !ts.isFunctionExpression(fn)) return false;
+			if (ts.isFunctionExpression(fn) && fn.name) return true;
+			const p = through(fn);
+			return (
+				(ts.isVariableDeclaration(p) && p.initializer !== undefined) ||
+				(ts.isPropertyAssignment(p) && p.initializer !== undefined) ||
+				(ts.isBinaryExpression(p) && p.operatorToken.kind === ts.SyntaxKind.EqualsToken)
+			);
+		};
+		const PRELUDE = (line: number): string =>
+			` let ${LINE}: number = ${line}; const ${MARK} = (${P}n: number, ${P}v: Json): Json => { ${LINE} = ${P}n; return ${P}v; }; const ${SET} = (${P}n: number): boolean => { ${LINE} = ${P}n; return true; }; try {`;
+		const HANDLER = ` } catch (${P}e) { throw codeAt(${P}e, ${LINE}); }`;
+		// The walk writes the calls around these values, so they nest with its other rewrites.
+		const wrap = (x: ts.Expression, line: number): void => {
+			// A global (\`JSON\`, \`Math\`) is not a value that the compiler takes in a call.
+			if (x.kind === ts.SyntaxKind.ThisKeyword || (ts.isIdentifier(x) && isFree(x))) return;
+			lineValues.set(x, line);
+		};
+		const ERRORS = new Set(['Error', 'TypeError', 'RangeError', 'SyntaxError', 'ReferenceError']);
+		/** The braces to close after a semicolon, by the place after it. */
+		const closers = new Map<number, number>();
+		/** The expressions of a statement of more than one line: the lines of its own places. */
+		const expression = (x: ts.Node, lines: boolean): void => {
+			if (isFunctionNode(x)) {
+				func(x);
+				return;
+			}
+			if (ts.isNewExpression(x) && ts.isIdentifier(x.expression) && ERRORS.has(x.expression.text)) {
+				// V8 makes the stack of an error where the code makes the error.
+				lineErrors.set(x, lineOf(x.getStart(sf)));
+			}
+			if (lines) {
+				if (ts.isCallExpression(x) || ts.isNewExpression(x)) {
+					const callee = stripParens(x.expression);
+					const member = ts.isPropertyAccessExpression(callee) ? callee : undefined;
+					// V8 gives a call the place of the name of the member, else the place after the callee.
+					const line = member
+						? lineOf(member.name.getStart(sf))
+						: ts.isNewExpression(x)
+							? lineOf(x.getStart(sf))
+							: lineOf(callee.getEnd());
+					const args = x.arguments ?? [];
+					const last = args[args.length - 1];
+					if (last !== undefined) wrap(ts.isSpreadElement(last) ? last.expression : last, line);
+					else if (!member && !ts.isIdentifier(callee)) wrap(callee, line);
+					if (member) wrap(member.expression, line);
+				} else if (ts.isPropertyAccessExpression(x)) {
+					const p = through(x);
+					const called =
+						(ts.isCallExpression(p) || ts.isNewExpression(p)) && stripParens(p.expression) === x;
+					if (!called) wrap(x.expression, lineOf(x.name.getStart(sf)));
+				} else if (ts.isElementAccessExpression(x)) {
+					wrap(x.expression, lineOf(x.argumentExpression.getStart(sf)));
+				}
+			}
+			ts.forEachChild(x, (c) => expression(c, lines));
+		};
+		const own = (e: ts.Expression | undefined, line: number): void => {
+			if (e === undefined) return;
+			const start = lineOf(e.getStart(sf));
+			expression(e, start !== line || start !== lineOf(e.getEnd()));
+		};
+		const statement = (st: ts.Statement): void => {
+			if (ts.isBlock(st)) {
+				st.statements.forEach(statement);
+				return;
+			}
+			if (ts.isFunctionDeclaration(st)) {
+				func(st);
+				return;
+			}
+			const line = lineOf(st.getStart(sf));
+			const list = ts.isBlock(st.parent) || ts.isCaseOrDefaultClause(st.parent);
+			if (list) insert(st.getStart(sf), `${LINE} = ${line}; `, -3_000_000);
+			else {
+				insert(st.getStart(sf), `{ ${LINE} = ${line}; `, -3_000_000);
+				// The next statement can start right after the semicolon: the brace takes its place.
+				if (text.charAt(st.getEnd() - 1) === ';') {
+					closers.set(st.getEnd(), (closers.get(st.getEnd()) ?? 0) + 1);
+				} else insert(st.getEnd(), ' }', 3_000_000);
+			}
+			/** The condition of a loop runs again after the body: it sets the line each time. */
+			const again = (cond: ts.Expression | undefined): void => {
+				if (cond === undefined) return;
+				insert(cond.getStart(sf), `${SET}(${lineOf(cond.getStart(sf))}) && (`, -2_500_000);
+				insert(cond.getEnd(), ')', 2_500_000);
+				own(cond, line);
+			};
+			if (ts.isExpressionStatement(st)) own(st.expression, line);
+			else if (ts.isVariableStatement(st)) {
+				for (const d of st.declarationList.declarations) own(d.initializer, line);
+			} else if (ts.isReturnStatement(st) || ts.isThrowStatement(st)) own(st.expression, line);
+			else if (ts.isIfStatement(st)) {
+				own(st.expression, line);
+				statement(st.thenStatement);
+				if (st.elseStatement) statement(st.elseStatement);
+			} else if (ts.isWhileStatement(st) || ts.isDoStatement(st)) {
+				again(st.expression);
+				statement(st.statement);
+			} else if (ts.isForStatement(st)) {
+				if (st.initializer && ts.isVariableDeclarationList(st.initializer)) {
+					for (const d of st.initializer.declarations) own(d.initializer, line);
+				} else if (st.initializer) own(st.initializer, line);
+				again(st.condition);
+				own(st.incrementor, line);
+				statement(st.statement);
+			} else if (ts.isForOfStatement(st) || ts.isForInStatement(st)) {
+				own(st.expression, line);
+				statement(st.statement);
+			} else if (ts.isSwitchStatement(st)) {
+				own(st.expression, line);
+				for (const clause of st.caseBlock.clauses) {
+					if (ts.isCaseClause(clause)) own(clause.expression, line);
+					clause.statements.forEach(statement);
+				}
+			} else if (ts.isTryStatement(st)) {
+				statement(st.tryBlock);
+				if (st.catchClause) {
+					const name = st.catchClause.variableDeclaration?.name;
+					// The error of this try block gets its line here: the code can throw it again later.
+					if (name && ts.isIdentifier(name)) {
+						insert(
+							st.catchClause.block.getStart(sf) + 1,
+							` codeAt(${name.text}, ${LINE});`,
+							-900_000,
+						);
+					}
+					statement(st.catchClause.block);
+				}
+				if (st.finallyBlock) statement(st.finallyBlock);
+			} else if (ts.isLabeledStatement(st)) statement(st.statement);
+		};
+		/** A function: one with a name keeps its own line; a callback has no lines. */
+		const func = (fn: ts.FunctionLikeDeclaration): void => {
+			const fnBody = fn.body;
+			if (fnBody === undefined) return;
+			if (!hasName(fn)) {
+				// Only the functions with a name inside it have lines.
+				const find = (x: ts.Node): void => {
+					if (isFunctionNode(x)) func(x);
+					else ts.forEachChild(x, find);
+				};
+				ts.forEachChild(fnBody, find);
+				return;
+			}
+			const line = lineOf(fnBody.getStart(sf));
+			if (ts.isBlock(fnBody)) {
+				insert(fnBody.getStart(sf) + 1, PRELUDE(line), -4_000_000);
+				insert(fnBody.getEnd() - 1, HANDLER, 3_500_000);
+				fnBody.statements.forEach(statement);
+			} else {
+				insert(fnBody.getStart(sf), `{${PRELUDE(line)} return `, -4_000_000);
+				insert(fnBody.getEnd(), `;${HANDLER} }`, 3_500_000);
+				own(fnBody, -1);
+			}
+		};
+		// The code itself is the frame of v1's wrapper function.
+		insert(WRAP_PREFIX.length, PRELUDE(1).trimStart() + ' ', -4_000_000);
+		insert(text.length - WRAP_SUFFIX.length, `\n${HANDLER.trimStart()}`, 3_500_000);
+		body.statements.forEach(statement);
+		// Statements that end at the same semicolon close their braces there, in one edit.
+		for (const [end, count] of closers) {
+			edits.push({ start: end - 1, end, text: `;${' }'.repeat(count)}`, order: 3_000_000 });
+		}
+	};
+
+	/**
+	 * Writes the calls of the traced form around values: the method check (\`mcheck\`), the line
+	 * of the read or call that follows the value (\`__wf_m\`), and the line of a new Error.
+	 *
+	 * A value can be inside text that the walk replaced as a whole (\`$input.first().json\`
+	 * becomes one native expression). Then a call around the value has no place. The line goes
+	 * before the smallest expression around it that the walk kept: \`(__wf_s(line) ? e :
+	 * undefined)\` sets the line and then gives \`e\`. The method check has no such form: without
+	 * it, the text of an error can differ, which \`errorTextGap\` records.
+	 */
+	const traceWraps = (): void => {
+		const replaced = edits.filter((e) => e.end > e.start);
+		const cut = (at: number): boolean => replaced.some((e) => e.start < at && at < e.end);
+		const free = (x: ts.Node): boolean => !cut(x.getStart(sf)) && !cut(x.getEnd());
+		const around = (x: ts.Node, seq0: number, level: number, before: string, after: string) => {
+			// The space keeps a keyword before the value apart (\`return(x)\`).
+			insert(x.getStart(sf), ` ${before}`, -2_000_000 + seq0 + level);
+			insert(x.getEnd(), after, 1_000_000 - seq0 - level);
+		};
+		/** True when the code uses \`x\` as a place (a callee, a target), not as a value. */
+		const isPlace = (x: ts.Node): boolean => {
+			const p = x.parent;
+			return (
+				((ts.isCallExpression(p) || ts.isNewExpression(p)) && p.expression === x) ||
+				(ts.isBinaryExpression(p) &&
+					p.left === x &&
+					p.operatorToken.kind >= ts.SyntaxKind.FirstAssignment &&
+					p.operatorToken.kind <= ts.SyntaxKind.LastAssignment) ||
+				ts.isDeleteExpression(p) ||
+				ts.isPrefixUnaryExpression(p) ||
+				ts.isPostfixUnaryExpression(p) ||
+				ts.isSpreadElement(x) ||
+				ts.isTaggedTemplateExpression(p)
+			);
+		};
+		const before = new Map<ts.Node, number>();
+		for (const [n, line] of lineValues) {
+			const seq0 = lineSeq.get(n);
+			// A typed Date keeps its type only without a call around it.
+			if (seq0 !== undefined && free(n)) {
+				if (!(ts.isExpression(n) && isDateValue(n))) around(n, seq0, 0.5, `${MARK}(${line}, `, ')');
+				continue;
+			}
+			// The walk replaced the text around this value: the line goes before a kept expression.
+			let a: ts.Node = n.parent;
+			while (
+				a !== root &&
+				!(ts.isExpression(a) && lineSeq.has(a) && free(a) && !isPlace(a) && !isDateValue(a))
+			) {
+				a = a.parent;
+			}
+			if (a === root || (before.has(a) && before.get(a) !== line)) {
+				block('line of an error', 'A value of the traced form has no place for its line.');
+				continue;
+			}
+			before.set(a, line);
+		}
+		for (const [a, line] of before) {
+			around(a, lineSeq.get(a) ?? 0, -0.5, `(${SET}(${line}) ? `, ' : undefined)');
+		}
+		for (const [n, line] of lineErrors) {
+			const seq0 = lineSeq.get(n);
+			if (seq0 !== undefined && free(n)) around(n, seq0, 0.75, 'codeAt(', `, ${line})`);
+		}
+		for (const [n, check] of lineChecks) {
+			if (methodChecks.has(n)) continue;
+			const seq0 = lineSeq.get(n);
+			if (seq0 === undefined || !free(n) || (ts.isExpression(n) && isDateValue(n))) {
+				errorTextGap ??= 'a method call that the traced form cannot check';
+				continue;
+			}
+			helpers.add('mcheck');
+			around(
+				n,
+				seq0,
+				0.25,
+				'mcheck(',
+				`, ${JSON.stringify(check.method)}, ${JSON.stringify(check.text)})`,
+			);
+		}
+	};
+
 	if (root.body) planRestOf(root.body);
+	// The traced form checks the receiver of each method call, so a call of a value without
+	// the method fails with V8's text. The plan also tells if every error has V8's text.
+	let errorTextGap: string | null = null;
+	if (!input.nodeCode && root.body) {
+		const { plan, reason } = planBody(root.body, checker, {
+			dateVars,
+			awaited,
+			requests: usesHttp,
+		});
+		errorTextGap = reason;
+		if (input.traced) {
+			for (const c of plan.checks) lineChecks.set(c.receiver, { method: c.method, text: c.text });
+		}
+	}
+	if (input.traced && root.body) traceLines(root.body);
 	if (root.body) for (const st of root.body.statements) visit(st);
 
 	// The rewrites call helpers by name, so the code must not declare a name of its own like them.
@@ -3024,6 +3335,8 @@ export function translateCode(input: CodeNativeInput): TranslateResult {
 		}
 	}
 
+	if (input.traced) traceWraps();
+
 	edits.sort((a, b) => a.start - b.start || a.order - b.order);
 	let out = '';
 	let at = 0;
@@ -3058,14 +3371,27 @@ export function translateCode(input: CodeNativeInput): TranslateResult {
 	if (Array.isArray(parseErrors) && parseErrors.length > 0) {
 		block('translation syntax', 'The native form does not parse.');
 	}
+	const readOnly = provesReadOnly(root, checker, input.mode);
+	// In v1, \`$input\`, \`$json\` and \`$items()\` give the input items through copies that
+	// take a change only for themselves, and \`items\` and \`item\` give the items themselves. So a
+	// change through the first is not seen through the second. Native code has one list:
+	// code that uses both and can change an item stays in the host.
+	if (!input.nodeCode && input.kind === 'code' && !readOnly && usesBothItemViews(root, checker)) {
+		blockers.push({
+			feature: 'items and $input in code that changes items',
+			message:
+				'The code uses `items` or `item` and also `$input`, `$json` or `$items()`, and it can change an item.',
+		});
+	}
 	const translation = {
 		body,
 		nodes,
 		helpers,
 		mutates,
 		usesHttp,
-		writesBinary: !input.nodeCode && writesBinary(root),
-		readOnly: provesReadOnly(root, checker, input.mode),
+		repeatable: !usesHttp && !nondeterministicRandom && !/getWorkflowStaticData/.test(input.code),
+		errorTextGap,
+		readOnly,
 		usesFirstJson,
 		nondeterministic,
 		usesCollections: usesCollections || usesLuxon,

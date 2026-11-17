@@ -10,6 +10,7 @@
  * The user code runs in an inner function, so its `return` gives the result,
  * which `codeItems` turns into the result list.
  */
+import { codeHelperNames, codeHelperSources } from './helpers.ts';
 import type { Translation } from './translate.ts';
 import {
 	ALL_NODES,
@@ -36,17 +37,47 @@ function sharesInput(t: Translation, plainInput: boolean): boolean {
 }
 
 /** The helpers that `emitExpression` calls, besides those of the translation. */
-export function emitHelpers(t: Translation, mode: 'all' | 'each', plainInput = false): string[] {
+export function emitHelpers(
+	t: Translation,
+	mode: 'all' | 'each',
+	plainInput = false,
+	traced?: Translation,
+): string[] {
 	const out = new Set(['codeWrap', mode === 'each' ? 'codeEachItems' : 'codeItems', ...t.helpers]);
-	if (!sharesInput(t, plainInput) || t.nodes.length > 0) out.add('codeClone');
-	if (t.nodes.length > 0) out.add('codeWrapJson');
+	// Code that cannot run twice runs in its traced form, with the helpers of that form.
+	if (traced !== undefined && !t.repeatable) {
+		out.add('codeAt');
+		for (const h of traced.helpers) out.add(h);
+	}
+	// The traced form of other code runs on new copies, after a failure.
+	if (!sharesInput(t, plainInput) || t.nodes.length > 0 || traced !== undefined)
+		out.add('codeClone');
 	if (t.usesCollections) out.add('collPlain');
-	if (t.writesBinary) out.add('codeBinarySizes');
 	if (t.usesHttp) {
 		out.add('codeHttpArgs');
 		out.add('codeHttpResult');
 	}
 	return [...out];
+}
+
+/**
+ * The helpers that only the error path of the code calls, as local function declarations:
+ * the message of the error, and the helpers of the traced form that the plain form does
+ * not have.
+ */
+function localHelpers(
+	t: Translation,
+	mode: 'all' | 'each',
+	plainInput: boolean,
+	traced: Translation | undefined,
+): string[] {
+	const main = codeHelperNames(emitHelpers(t, mode, plainInput, traced));
+	const wanted = codeHelperNames([
+		'codeFail',
+		...(traced !== undefined && t.repeatable ? ['codeAt', ...traced.helpers] : []),
+	]);
+	for (const name of main) wanted.delete(name);
+	return codeHelperSources(wanted);
 }
 
 /** Code that makes requests is an async function with a name: the workflow awaits its call. */
@@ -66,6 +97,7 @@ function emitParts(
 	allLists: string[],
 	plainInput: boolean,
 	step: string | null,
+	traced: Translation | undefined,
 ): { params: string; lines: string[]; args: string } {
 	const raw = (k: number) => `${P}r${k}`;
 	const params = [
@@ -73,17 +105,23 @@ function emitParts(
 		...t.nodes.map((_, k) => `${raw(k)}: Json[]`),
 		...(t.usesAllNodes ? [`${ALL_NODES}: Json`] : []),
 	].join(', ');
-	const head: string[] = [];
-	t.nodes.forEach((_, k) => {
-		head.push(
-			`const ${nodeVar(k)}: Json[] = codeClone(${raw(k)}).map((${P}j: Json, ${P}k: number) => codeWrapJson(${P}j, ${P}k));`,
+	/** The values that the code reads: the items of other nodes, and the input items. */
+	const values = (source: string): string[] => {
+		const out: string[] = [];
+		t.nodes.forEach((_, k) => {
+			out.push(
+				`const ${nodeVar(k)}: Json[] = codeClone(${raw(k)}).map((${P}j: Json, ${P}k: number) => codeWrap(${P}j, ${P}k));`,
+			);
+		});
+		out.push(
+			`let ${ITEMS}: Json[] = ${source}.map((${P}j: Json, ${P}k: number) => codeWrap(${P}j, ${P}k));`,
 		);
-	});
-	const source = sharesInput(t, plainInput) ? `${P}in` : `codeClone(${P}in)`;
-	head.push(
-		`let ${ITEMS}: Json[] = ${source}.map((${P}j: Json, ${P}k: number) => codeWrap(${P}j, ${P}k));`,
-	);
-	if (t.usesMatchProps) head.push(`const ${MATCHES}: Json[] = [];`);
+		if (t.usesMatchProps) out.push(`const ${MATCHES}: Json[] = [];`);
+		if (mode === 'all' && t.usesFirstJson)
+			out.push(`const ${FIRST_JSON}: Json = ${ITEMS}[0]?.json;`);
+		return out;
+	};
+	const head = values(sharesInput(t, plainInput) ? `${P}in` : `codeClone(${P}in)`);
 	if (step !== null) {
 		// \`this.helpers.httpRequest\` of v1: one \`http\` step with the name of the node. The
 		// helpers make the request from the options and the result from the response.
@@ -101,39 +139,85 @@ function emitParts(
 	const fn = step === null ? '' : 'async ';
 	const type = step === null ? 'Json' : 'Promise<Json>';
 	const call = step === null ? '' : 'await ';
-	// Binary data that the code makes or changes gets its size members, as in the host.
-	const sized = t.writesBinary ? 'codeBinarySizes(' : '';
-	const close = t.writesBinary ? ')' : '';
+	const wrap = t.usesCollections ? 'collPlain' : '';
 	// The user code keeps its text: indenting it would change multi-line template literals.
-	const body = t.body;
+	// Code that can run twice runs in its plain form; after a failure, the traced form runs on
+	// new copies and gives the error with its line. Other code runs in the traced form only.
+	const again = traced !== undefined && t.repeatable;
+	const body = traced !== undefined && !t.repeatable ? traced.body : t.body;
+	// The helpers of the error path are local functions of the catch block: a run without an
+	// error does not make them.
+	const local = localHelpers(t, mode, plainInput, traced);
+	const failure = (retrace: string[]): string[] => [
+		`\t} catch (${P}e) {`,
+		...local,
+		...retrace,
+		'\t}',
+	];
 	let main: string;
 	if (mode === 'all') {
-		if (t.usesFirstJson) head.push(`const ${FIRST_JSON}: Json = ${ITEMS}[0]?.json;`);
-		const wrap = t.usesCollections ? 'collPlain' : '';
+		const retrace = again
+			? [
+					`\t\tconst ${P}t = (): Json => {`,
+					...values(`codeClone(${P}in)`).map((v) => `\t\t\t${v}`),
+					'\t\t\ttry {',
+					'\t\t\t\t((): Json => {',
+					traced.body,
+					'\t\t\t\t})();',
+					`\t\t\t} catch (${P}x) {`,
+					`\t\t\t\treturn ${P}x;`,
+					'\t\t\t}',
+					'\t\t\treturn undefined;',
+					'\t\t};',
+					`\t\tthrow codeFail(${P}t(), ${P}e);`,
+				]
+			: [`\t\tthrow codeFail(undefined, ${P}e);`];
+		// The whole user code is in the try block, so its declarations keep their scope.
+		const user = [`${fn}(): ${type} => {`, '\ttry {', body, ...failure(retrace), '\t}'];
 		main =
 			step === null
-				? [`return ${sized}codeItems(${wrap}(((): Json => {`, body, `\t})()))${close};`].join('\n')
+				? [`return codeItems(${wrap}((${user[0]}`, ...user.slice(1, -1), '\t})()));'].join('\n')
 				: [
-						`const ${P}user = async (): Promise<Json> => {`,
-						body,
+						// The workflow awaits only a call of a local async function, so it has a name.
+						`const ${P}user = ${user[0]}`,
+						...user.slice(1, -1),
 						'\t};',
-						`\treturn ${sized}codeItems(${wrap}(await ${P}user()))${close};`,
+						`\treturn codeItems(${wrap}(await ${P}user()));`,
 					].join('\n');
 	} else {
+		// The traced form runs the items before the failed one again: they can change shared values.
+		const retrace = again
+			? [
+					`\t\tconst ${P}t = (): Json => {`,
+					...values(`codeClone(${P}in)`).map((v) => `\t\t\t${v}`),
+					`\t\t\tconst ${P}run = (${ITEM}: Json, ${INDEX}: number): Json => {`,
+					traced.body,
+					'\t\t\t};',
+					'\t\t\ttry {',
+					`\t\t\t\tfor (let ${P}j = 0; ${P}j <= ${P}k; ${P}j++) ${P}run(${ITEMS}[${P}j], ${P}j);`,
+					`\t\t\t} catch (${P}x) {`,
+					`\t\t\t\treturn ${P}x;`,
+					'\t\t\t}',
+					'\t\t\treturn undefined;',
+					'\t\t};',
+					`\t\tthrow codeFail(${P}t(), ${P}e);`,
+				]
+			: [`\t\tthrow codeFail(undefined, ${P}e);`];
 		main = [
 			`const ${P}run = ${fn}(${ITEM}: Json, ${INDEX}: number): ${type} => {`,
 			body,
 			'\t};',
 			`\tconst ${P}out: Json[] = [];`,
-			`\tfor (let ${P}k = 0; ${P}k < ${ITEMS}.length; ${P}k++) {`,
-			`\t\tconst ${P}r: Json = ${call}${P}run(${ITEMS}[${P}k], ${P}k);`,
+			`\tlet ${P}k = 0;`,
+			'\ttry {',
+			`\t\tfor (; ${P}k < ${ITEMS}.length; ${P}k++) {`,
+			`\t\t\tconst ${P}r: Json = ${call}${P}run(${ITEMS}[${P}k], ${P}k);`,
 			// As v1's runner: a result that is null or undefined gives no output, and so
 			// does any other value that is false (0, an empty string).
-			`\t\tif (${P}r) ${P}out.push(${P}r);`,
-			'\t}',
-			t.usesCollections
-				? `\treturn ${sized}codeEachItems(collPlain(${P}out))${close};`
-				: `\treturn ${sized}codeEachItems(${P}out)${close};`,
+			`\t\t\tif (${P}r) ${P}out[${P}k] = ${P}r;`,
+			'\t\t}',
+			...failure(retrace),
+			`\treturn codeEachItems(${wrap}(${P}out));`,
 		].join('\n');
 	}
 	// Every node that ran before, by name, for \`$(name)\` with a computed name.
@@ -154,8 +238,9 @@ export function emitAsync(
 	lists: string[],
 	allLists: string[] = [],
 	plainInput = false,
+	traced?: Translation,
 ): { declaration: string; expression: string } {
-	const parts = emitParts(t, mode, input, lists, allLists, plainInput, form.step);
+	const parts = emitParts(t, mode, input, lists, allLists, plainInput, form.step, traced);
 	return {
 		declaration: [
 			`const ${form.fn} = async (${parts.params}): Promise<Json[]> => {`,
@@ -177,7 +262,8 @@ export function emitExpression(
 	lists: string[],
 	allLists: string[] = [],
 	plainInput = false,
+	traced?: Translation,
 ): string {
-	const parts = emitParts(t, mode, input, lists, allLists, plainInput, null);
+	const parts = emitParts(t, mode, input, lists, allLists, plainInput, null, traced);
 	return [`((${parts.params}): Json[] => {`, ...parts.lines, `})(${parts.args})`].join('\n');
 }

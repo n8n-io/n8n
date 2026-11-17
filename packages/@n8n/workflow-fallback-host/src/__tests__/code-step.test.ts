@@ -4,9 +4,9 @@ import { StepInputError } from '../items';
 /** A binary entry of an item, in the in-memory form of `binary.ts`. */
 const BINARY = "{ data: 'aGk=', mimeType: 'text/plain' }";
 
-/** The binary data of the item as the code runner gives it: the `$binary` key, with its sizes. */
+/** The binary data of the item as the code runner gives it: the `$binary` key, as the code made it. */
 const BINARY_ITEM = {
-	$binary: { data: { data: 'aGk=', mimeType: 'text/plain', bytes: 2, fileSize: '2 B' } },
+	$binary: { data: { data: 'aGk=', mimeType: 'text/plain' } },
 };
 
 const run = (
@@ -196,9 +196,9 @@ return [await req({ method: 'POST', url: 'http://127.0.0.1:${port}/x', qs: { a: 
 		status: e.status,
 		httpCode: e.httpCode ?? null,
 		description: e.description ?? null,
-		responseStatus: e.response.status,
-		responseText: e.response.statusText,
-		responseData: e.response.data,
+		hasStack: typeof e.stack === 'string',
+		hasConfig: typeof e.config === 'object',
+		response: e.response === undefined,
 	} }];
 }`,
 				items: [],
@@ -212,9 +212,10 @@ return [await req({ method: 'POST', url: 'http://127.0.0.1:${port}/x', qs: { a: 
 					status: 404,
 					httpCode: null,
 					description: null,
-					responseStatus: 404,
-					responseText: 'Not Found',
-					responseData: { reason: 'gone' },
+					// As n8n's task runner gets the error (\`AxiosError.toJSON\`): no \`response\`.
+					hasStack: true,
+					hasConfig: true,
+					response: true,
 				},
 			]);
 		});
@@ -340,8 +341,9 @@ return [{ json: r }];`,
 		);
 	});
 
-	it('gives an empty list when the code returns nothing', () => {
-		expect(run('const x = 1;')).toEqual([]);
+	it('gives an empty list for null, and fails when the code returns nothing, as v1 does', () => {
+		expect(run('return null;')).toEqual([]);
+		expect(() => run('const x = 1;')).toThrow("Code doesn't return items properly");
 	});
 
 	it('defaults items to an empty array', () => {
@@ -383,7 +385,7 @@ return [{ json: r }];`,
 	});
 
 	it('does not share state between calls', () => {
-		run('globalThis.leak = 1;');
+		run('globalThis.leak = 1; return [];');
 		expect(run('return { leak: typeof globalThis.leak };')).toEqual([{ leak: 'undefined' }]);
 	});
 
@@ -400,7 +402,7 @@ return [{ json: r }];`,
 	});
 
 	it('rejects a result that is not a list of objects', () => {
-		expect(() => run('return [1, 2];')).toThrow(/must return an object/);
+		expect(() => run('return [1, 2];')).toThrow("Code doesn't return items properly");
 	});
 
 	it('takes the binary data of an item out of its JSON, as v1 does', () => {

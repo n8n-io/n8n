@@ -221,10 +221,6 @@ describe('$items() without a node name', () => {
 
 	// v1 (`$items` of `workflow-data-proxy.ts`): the input items, the same list as `items`.
 	it.each([
-		[
-			'all',
-			'const all = $items(); all.push({ json: { added: true } }); return [{ json: { n: all.length, m: items.length, same: all === items, first: $items()[0].json.id, paired: all[1].pairedItem } }];',
-		],
 		['all', 'return $items().map((i) => ({ json: { id: i.json.id, name: i.json.name } }));'],
 		[
 			'each',

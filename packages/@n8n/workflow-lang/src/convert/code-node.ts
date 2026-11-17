@@ -22,7 +22,7 @@
  * `language: 'python'`. The prologue gives the names of n8n's Python runner:
  * `_items` in "all items" mode, `_item` in "each item" mode.
  */
-import { lowerCodeNative, previousRunsOnce } from './code-native/index.ts';
+import { eachItemModeError, lowerCodeNative, previousRunsOnce } from './code-native/index.ts';
 import type { Code } from './code.ts';
 import { escapeControls, raw, str } from './code.ts';
 import type { NodeContext } from './context.ts';
@@ -122,13 +122,15 @@ const $execution = {
 	...(__context.$execution || {}),
 	customData: { set() {}, setAll() {}, get() { return undefined; }, getAll() { return {}; } },
 };
+const __lists = {};
 const $ = (name) => {
 	if (__nodes[name] === null) {
 		// A node that has not run before this one: n8n throws when the code reads its data.
 		const fail = () => { throw new Error("Node '" + name + "' hasn't been executed"); };
 		return { all: fail, first: fail, last: fail, itemMatching: fail, get item() { return fail(); }, isExecuted: false };
 	}
-	const list = (__nodes[name] || []).map((json, k) => ({ json, pairedItem: { item: k } }));
+	// As v1: each read of a node gives the same items.
+	const list = (__lists[name] ??= (__nodes[name] || []).map((json, k) => __wrap(json, k)));
 	// itemMatching pairs by position; every item pairs with the only item of a one-item list.
 	const itemMatching = (k) => (list.length === 1 ? list[0] : list[k]);
 	return { all: () => list, first: () => list[0], last: () => list[list.length - 1], item: list[0], itemMatching, isExecuted: list.length > 0 };
@@ -138,12 +140,12 @@ const $workflow = __context.$workflow;
 const $runIndex = __context.$runIndex ?? 0;
 const $executionId = __context.$executionId;
 const $prevNode = __context.$prevNode;
-const $node = new Proxy({}, { get: (_, name) => ({ json: (__nodes[name] || [])[0], pairedItem: { item: 0 } }) });
+const $node = new Proxy({}, { get: (_, name) => (typeof name !== 'string' ? undefined : ((__lists[name] ??= (__nodes[name] || []).map((json, k) => __wrap(json, k)))[0] ?? { json: undefined, pairedItem: { item: 0 } })) });
 // Legacy \`$items()\` of v1's data proxy: without a name, the input items (the first one only
 // when the node before has "execute once"); \`__inputItems\` gives the list of this mode.
 const $items = (name) => {
 	if (name === undefined) return __context.$itemsOnce ? __inputItems().slice(0, 1) : __inputItems();
-	return (__nodes[name] || []).map((json, k) => ({ json, pairedItem: { item: k } }));
+	return (__lists[name] ??= (__nodes[name] || []).map((json, k) => __wrap(json, k)));
 };
 // Legacy \`$item(k)\` of v1's data proxy: the data of item k, with v1's errors. One run of each node.
 const __input = items.slice();
@@ -195,9 +197,9 @@ const $json = items[0]?.json;
 const $binary = items[0]?.binary;
 // The data proxy of n8n's runner has $itemIndex 0 in "all items" mode.
 const $itemIndex = 0;
-return await (async () => {
+return await (async function VmCodeWrapper() {
 ${user}
-})();
+}).call(this);
 `;
 }
 
@@ -206,14 +208,21 @@ ${user}
  * `json` is the `json` of the result (for a result with `binary` and no `json`,
  * an empty object), and the item's binary data is the result's `binary`.
  */
-const EACH_ITEM = `const __itemOf = (r) => {
-	if (r === null || typeof r !== 'object') return r;
-	const json = 'json' in r ? r.json : 'binary' in r ? (r.json ?? {}) : r;
-	return r.binary ? { json, binary: r.binary } : { json };
+const EACH_ITEM = `const __itemOf = (r, k) => {
+	// A result that is not an object is the \`json\` of its item, which is then not valid.
+	if (typeof r !== 'object' || Array.isArray(r)) return { json: r };
+	const json = 'json' in r ? r.json : 'binary' in r ? {} : r;
+	// Without \`json\` on the wire of the task runner, v1 takes the item, which holds its paired item.
+	const item = json === undefined ? { json: { pairedItem: { item: k } } } : { json };
+	if (r.binary) item.binary = r.binary;
+	return item;
 };
 `;
 
 export function eachItemCode(user: string, nodes: boolean, functionItem: boolean): string {
+	const invalid = functionItem ? null : eachItemModeError(user);
+	// An object with a message and no stack: the host gives the message as it is.
+	if (invalid !== null) return `throw { message: ${JSON.stringify(invalid)} };\n`;
 	return `${nodes ? NODES_PROLOGUE : ''}${WRAP}${EACH_ITEM}const __all = items.map((j, k) => __wrap(j, k));
 const __inputItems = () => __all;
 const __out = [];
@@ -223,15 +232,15 @@ for (let $itemIndex = 0; $itemIndex < __all.length; $itemIndex++) {
 ${functionItem ? FUNCTION_ITEM_BINARY : ''}	const $json = __all[$itemIndex].json;
 	const $binary = __all[$itemIndex].binary;
 	const $input = { item: __all[$itemIndex], all: () => __all, first: () => __all[0], last: () => __all[__all.length - 1] };
-	const __result = await (async () => {
+	const __result = await (async function VmCodeWrapper() {
 ${user}
-	})();
+}).call(this);
 	${
 		functionItem
 			? // As n8n: the item keeps its binary data, also the data that `setBinaryData` set.
 				'if (__result !== undefined && __result !== null) __out.push(__item.binary ? { json: __result, binary: __item.binary } : __result);'
 			: // As n8n's runner: a result that is false gives no output.
-				'if (__result) __out.push(__itemOf(__result));'
+				'if (__result) __out.push(__itemOf(__result, $itemIndex));'
 	}
 }
 return __out;

@@ -56,26 +56,20 @@ function isN8nItem(entry: JsonObject): entry is JsonObject & { json: JsonObject 
 export function toCodeResultItems(value: unknown): JsonObject[] {
 	if (value === undefined || value === null) return [];
 	if (typeof value !== 'object') {
-		throw new StepInputError(
-			'Code must return an object or an array of objects. Result item 0 is not an object',
-		);
+		throw new StepInputError("Code doesn't return items properly");
 	}
 	const list: JsonObject[] = [];
 	if (Array.isArray(value)) {
-		value.forEach((entry, index) => {
+		value.forEach((entry) => {
 			if (!isJsonObject(entry)) {
-				throw new StepInputError(
-					`Code must return an object or an array of objects. Result item ${index} is not an object`,
-				);
+				throw new StepInputError("Code doesn't return items properly");
 			}
 			list.push(entry);
 		});
 		validateTopLevelKeys(list);
 	} else {
 		if (!isJsonObject(value)) {
-			throw new StepInputError(
-				'Code must return an object or an array of objects. Result item 0 is not an object',
-			);
+			throw new StepInputError("Code doesn't return items properly");
 		}
 		// As n8n: an object with a truthy `json` is one item, else the object goes under `json`.
 		if (value.json) list.push(value);
@@ -139,7 +133,8 @@ function codeResultItem(entry: JsonObject, index: number): JsonObject {
 	if (binary !== undefined && !isJsonObject(binary)) {
 		throw new StepInputError(`A 'binary' property isn't an object [item ${index}]`);
 	}
+	// As n8n's Code node: the binary data stays as the code made it.
 	return isJsonObject(binary) && Object.keys(binary).length > 0
-		? { ...json, $binary: binaryWithSizes(binary) }
+		? { ...json, $binary: binary }
 		: json;
 }
