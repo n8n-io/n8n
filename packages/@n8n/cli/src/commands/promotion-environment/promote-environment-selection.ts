@@ -1,7 +1,9 @@
 import { Args, Flags } from '@oclif/core';
 
 import { BaseCommand, EXIT_BLOCKED, EXIT_SOURCE_CHANGED } from '../../base-command';
+import { confirmGapFlag, formatDependencyReport } from './dependency-report';
 import { environmentSelectionFlags, toEnvironmentSelection } from './environment-selection';
+import { gapsChangedMessage } from './promote-selection';
 import { expectedPreviewRevisionFlag } from './expected-source';
 
 export default class PromotionEnvironmentPromoteEnvironmentSelection extends BaseCommand {
@@ -26,12 +28,7 @@ export default class PromotionEnvironmentPromoteEnvironmentSelection extends Bas
 			description: 'Commit message. If you omit it, the commit uses a generated message.',
 		}),
 		...expectedPreviewRevisionFlag,
-		confirmGap: Flags.string({
-			description:
-				'ID of a dependency gap that you accept, from the report of the preview (repeat for more than one). Needs an environment that allows incomplete promotions.',
-			aliases: ['confirm-gap'],
-			multiple: true,
-		}),
+		...confirmGapFlag('promotions'),
 	};
 
 	async run() {
@@ -45,6 +42,10 @@ export default class PromotionEnvironmentPromoteEnvironmentSelection extends Bas
 				confirmedGapIds: flags.confirmGap,
 			});
 			if (result.status === 'promoted') {
+				if (result.dependencyReport && !flags.quiet && !this.isJsonMode(flags)) {
+					const lines = formatDependencyReport(result.dependencyReport);
+					if (lines.length > 0) this.logToStderr(lines.join('\n'));
+				}
 				this.succeed(
 					`Promoted the selection of ${projects.length} project(s) to ${result.git.branchName} as commit ${result.git.commitSha}.`,
 					flags,
@@ -61,10 +62,7 @@ export default class PromotionEnvironmentPromoteEnvironmentSelection extends Bas
 								'The Promote preview changed since you reviewed it. Nothing was pushed.',
 								'Run list-environment-changes again. Review the changes. Then promote with the new revision.',
 							].join('\n')
-						: [
-								'The dependency gaps differ from the gaps that you confirmed. Nothing was pushed.',
-								'Run with --json for the report. Close the gaps, or pass each gap ID to --confirm-gap.',
-							].join('\n'),
+						: gapsChangedMessage(result.dependencyReport),
 				);
 			}
 			this.exit(result.status === 'preview-changed' ? EXIT_SOURCE_CHANGED : EXIT_BLOCKED);

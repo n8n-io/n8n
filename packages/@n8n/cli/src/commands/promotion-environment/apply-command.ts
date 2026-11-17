@@ -1,3 +1,4 @@
+import { formatDependencyReport, hasUnknownGap } from './dependency-report';
 import { BaseCommand, EXIT_BLOCKED, EXIT_SOURCE_CHANGED, EXIT_SUCCESS } from '../../base-command';
 import type {
 	ApplyPackageResult,
@@ -32,6 +33,18 @@ export abstract class PromotionApplyCommand extends BaseCommand {
 		if (result.status === 'applied') {
 			const warnings =
 				result.warnings.length > 0 ? ` with ${result.warnings.length} warning(s)` : '';
+			// What the Apply did for its dependencies: placeholders, moves, kept items, open gaps.
+			if (!flags.quiet) {
+				const notes = [
+					...(result.dependencyMessages ?? []),
+					...(result.dependencyReport?.gaps.length
+						? [
+								`Applied incomplete, with ${result.dependencyReport.gaps.length} gap(s). Run with --json for the report.`,
+							]
+						: []),
+				];
+				if (notes.length > 0) this.logToStderr(notes.join('\n'));
+			}
 			this.succeed(
 				`Applied ${result.git.branchName} at commit ${result.git.commitSha} to the instance${warnings}.`,
 				flags,
@@ -55,11 +68,25 @@ function exitCodeFor(result: ApplyPackageResult): number {
 }
 
 function stopMessage(result: ApplyPackageResult, continueCommand: ContinueCommand): string {
-	if (result.status === 'blocked') return blockedMessage(result, result.check, continueCommand);
-	if (result.status === 'gaps-changed') {
+	if (result.status === 'blocked') {
 		return [
-			'The dependency gaps differ from the gaps that you confirmed. Nothing was imported.',
-			'Run with --json for the report. Close the gaps, or confirm each gap, then apply again.',
+			blockedMessage(result, result.check, continueCommand),
+			...(result.grants?.length
+				? [`The Apply gave ${result.grants.length} grant(s) before it stopped. They stay.`]
+				: []),
+			...(result.dependencyReport ? formatDependencyReport(result.dependencyReport) : []),
+		].join('\n');
+	}
+	if (result.status === 'gaps-changed') {
+		const report = result.dependencyReport;
+		return [
+			'The Apply needs your decision on its dependencies. Nothing was imported.',
+			...formatDependencyReport(report),
+			hasUnknownGap(report)
+				? 'This version of the CLI does not know every gap. Update the CLI before you confirm a gap.'
+				: report.allowIncomplete
+					? 'Close the gaps, or pass each gap ID to --confirm-gap. Add --confirm-deletion-callers to accept the listed callers. Then apply again.'
+					: 'Close the gaps, then apply again. Add --confirm-deletion-callers to accept the listed callers.',
 		].join('\n');
 	}
 	if (result.status === 'preview-changed') {

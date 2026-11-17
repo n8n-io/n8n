@@ -6,6 +6,7 @@ import type {
 } from '@n8n/api-types/dist/dto/packages/import-package-request.dto';
 import type { ImportResultDto } from '@n8n/api-types/dist/dto/packages/import-result.dto';
 import type { PromotionMissingProject } from '@n8n/api-types/dist/dto/promotions/promotion-apply-check.dto';
+import type { PromotionDependencyReport } from '@n8n/api-types/dist/dto/promotions/promotion-dependency.dto';
 import type {
 	PromotionEnvironmentChanges,
 	PromotionPreview,
@@ -114,24 +115,34 @@ export type PromotePackageResult = {
 	environmentId: string;
 	counts: ExportPackageCounts;
 	git: PromotionGitResult;
+	/** The gaps that an incomplete Promote wrote, and its warnings and notes. */
+	dependencyReport?: PromotionDependencyReport;
 };
 
-/** Outcome of promoting a selection of a project. Only `promoted` pushed anything. */
+/** The dependency report of an operation. `--json` prints it in full. */
+export type { PromotionDependencyReport };
+
+/** Outcome of promoting a selection. Only `promoted` pushed anything. */
 export type PromoteSelectionResult =
 	| (PromotePackageResult & { status: 'promoted' })
-	| { status: 'preview-changed'; environmentId: string };
-
-/** The dependency report of an operation. `--json` prints it in full. */
-export type PromotionDependencyReport = Record<string, unknown>;
-
-/** Outcome of a Promote across projects. Only `promoted` pushed anything. */
-export type PromoteEnvironmentSelectionResult =
-	| PromoteSelectionResult
+	| { status: 'preview-changed'; environmentId: string }
 	| {
 			status: 'gaps-changed';
 			environmentId: string;
 			dependencyReport: PromotionDependencyReport;
 	  };
+
+/** Outcome of a Promote across projects. Only `promoted` pushed anything. */
+export type PromoteEnvironmentSelectionResult = PromoteSelectionResult;
+
+/** What the user accepts for an Apply. Each ID comes from the dependency report. */
+export interface PromotionApplyConfirmations {
+	confirmedGapIds?: string[];
+	confirmedGrantIds?: string[];
+	confirmDeletionCallers?: boolean;
+	/** The home of a credential that the branch holds without an owner, by credential ID. */
+	credentialHomes?: Record<string, string>;
+}
 
 /** The items of one project in a selection across projects. */
 export interface PromotionEnvironmentSelectionProject {
@@ -185,8 +196,22 @@ export type ApplyPackageResult =
 			status: 'applied';
 			counts: ImportPackageCounts;
 			warnings: Array<Record<string, unknown>>;
+			dependencyReport?: PromotionDependencyReport;
+			/** One sentence for each thing that the Apply did, or did not do, for a dependency. */
+			dependencyMessages?: string[];
+			placeholders?: Array<Record<string, unknown>>;
+			grants?: Array<Record<string, unknown>>;
+			credentialMoves?: Array<Record<string, unknown>>;
+			keptWorkflows?: Array<Record<string, unknown>>;
+			keptProjects?: Array<Record<string, unknown>>;
 	  })
-	| (ApplyPackageIdentity & { status: 'blocked'; check: PromotionApplyCheck })
+	| (ApplyPackageIdentity & {
+			status: 'blocked';
+			check: PromotionApplyCheck;
+			dependencyReport?: PromotionDependencyReport;
+			/** The grants that the Apply gave before it stopped. */
+			grants?: Array<Record<string, unknown>>;
+	  })
 	| (ApplyPackageIdentity & { status: 'source-changed' })
 	| (ApplyPackageIdentity & { status: 'preview-changed' })
 	| (ApplyPackageIdentity & {
@@ -486,25 +511,35 @@ export class N8nClient {
 		return await this.del<undefined>(`/promotions/environments/${id}/projects/${projectId}`);
 	}
 
-	async promotePackage(id: string, body: { commitMessage?: string; force?: boolean }) {
+	async promotePackage(
+		id: string,
+		body: { commitMessage?: string; force?: boolean; confirmedGapIds?: string[] },
+	) {
 		return await this.post<PromotePackageResult>(`/promotions/environments/${id}/promote`, body);
 	}
 
-	async applyPackage(id: string, expectedSource?: PromotionExpectedSource) {
-		return await this.post<ApplyPackageResult>(
-			`/promotions/environments/${id}/apply`,
-			expectedSource ? { expectedSource } : undefined,
-		);
+	async applyPackage(
+		id: string,
+		expectedSource?: PromotionExpectedSource,
+		confirmations: PromotionApplyConfirmations = {},
+	) {
+		// Fields that are undefined are dropped by JSON serialization.
+		return await this.post<ApplyPackageResult>(`/promotions/environments/${id}/apply`, {
+			expectedSource,
+			...confirmations,
+		});
 	}
 
 	async continueApplyPackage(
 		id: string,
 		expectedSource: PromotionExpectedSource,
 		confirmDestructiveChanges?: boolean,
+		confirmations: PromotionApplyConfirmations = {},
 	) {
 		return await this.post<ApplyPackageResult>(`/promotions/environments/${id}/apply/continue`, {
 			expectedSource,
 			confirmDestructiveChanges,
+			...confirmations,
 		});
 	}
 
@@ -519,12 +554,14 @@ export class N8nClient {
 		selection: PromotionSelection,
 		commitMessage?: string,
 		expectedPreviewRevision?: string,
+		confirmedGapIds?: string[],
 	) {
 		return await this.post<PromoteSelectionResult>(`/promotions/projects/${projectId}/promote`, {
 			...selection,
 			// Dropped by JSON serialization when undefined, so the server defaults apply.
 			commitMessage,
 			expectedPreviewRevision,
+			confirmedGapIds,
 		});
 	}
 
@@ -533,12 +570,14 @@ export class N8nClient {
 		selection: PromotionSelection,
 		expectedSource?: PromotionExpectedSource,
 		expectedPreviewRevision?: string,
+		confirmations: PromotionApplyConfirmations = {},
 	) {
 		return await this.post<ApplyPackageResult>(`/promotions/projects/${projectId}/apply`, {
 			...selection,
 			// Dropped by JSON serialization when undefined, so the branch tip is applied.
 			expectedSource,
 			expectedPreviewRevision,
+			...confirmations,
 		});
 	}
 
@@ -548,12 +587,14 @@ export class N8nClient {
 		expectedSource: PromotionExpectedSource,
 		confirmDestructiveChanges?: boolean,
 		expectedPreviewRevision?: string,
+		confirmations: PromotionApplyConfirmations = {},
 	) {
 		return await this.post<ApplyPackageResult>(`/promotions/projects/${projectId}/apply/continue`, {
 			...selection,
 			expectedSource,
 			confirmDestructiveChanges,
 			expectedPreviewRevision,
+			...confirmations,
 		});
 	}
 
@@ -586,11 +627,25 @@ export class N8nClient {
 			expectedSource?: PromotionExpectedSource;
 			expectedPreviewRevision?: string;
 			confirmDestructiveChanges?: boolean;
-			confirmedGapIds?: string[];
-		},
+		} & PromotionApplyConfirmations,
 	) {
 		return await this.post<ApplyPackageResult>(
 			`/promotions/environments/${id}/apply-selection`,
+			body,
+		);
+	}
+
+	/** The dependency report of a selection across projects. It writes nothing. */
+	async getPromotionDependencyReport(
+		id: string,
+		direction: PromotionDirection,
+		body: {
+			projects: PromotionEnvironmentSelectionProject[];
+			credentialHomes?: Record<string, string>;
+		},
+	) {
+		return await this.post<PromotionDependencyReport>(
+			`/promotions/environments/${id}/changes/${direction}/dependency-report`,
 			body,
 		);
 	}

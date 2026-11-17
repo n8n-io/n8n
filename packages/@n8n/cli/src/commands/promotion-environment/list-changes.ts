@@ -1,6 +1,7 @@
 import { Args } from '@oclif/core';
 
 import { directionArg, toDirection } from './direction';
+import { formatDependencyReport } from './dependency-report';
 import { BaseCommand } from '../../base-command';
 import type { PromotionPreview } from '../../client';
 
@@ -40,6 +41,12 @@ export default class PromotionEnvironmentListChanges extends BaseCommand {
 				this.logToStderr(
 					`The changes of this project are in an open review (${preview.blocker.reviewId}), so none are listed. You can promote again when the review is merged or closed.`,
 				);
+			}
+			if (preview.dependencyReport && !flags.quiet) {
+				const lines = formatDependencyReport(preview.dependencyReport);
+				if (lines.length > 0) {
+					this.logToStderr(['Dependencies of every listed change:', ...lines].join('\n'));
+				}
 			}
 			this.output(changedRows(preview), flags, {
 				columns: ['type', 'id', 'name', 'change', 'folder', 'usedBy', 'selectable'],

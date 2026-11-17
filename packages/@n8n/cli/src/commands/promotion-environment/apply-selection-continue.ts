@@ -1,6 +1,7 @@
 import { Args, Flags } from '@oclif/core';
 
 import { PromotionApplyCommand, selectionContinueCommand } from './apply-command';
+import { applyConfirmationFlags, toApplyConfirmations } from './dependency-report';
 import {
 	expectedPreviewRevisionFlag,
 	expectedSourceFlags,
@@ -36,6 +37,7 @@ export default class PromotionEnvironmentApplySelectionContinue extends Promotio
 				'Also apply data table changes that remove or retype columns. The values in those columns are removed.',
 			aliases: ['confirm-destructive-changes'],
 		}),
+		...applyConfirmationFlags,
 	};
 
 	async run() {
@@ -51,6 +53,7 @@ export default class PromotionEnvironmentApplySelectionContinue extends Promotio
 				expectedSource,
 				flags.confirmDestructiveChanges,
 				flags.expectedPreviewRevision,
+				toApplyConfirmations(flags),
 			);
 			this.reportApplyResult(result, flags, selectionContinueCommand(args.projectId, selection));
 		});

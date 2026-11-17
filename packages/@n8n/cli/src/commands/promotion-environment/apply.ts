@@ -1,6 +1,7 @@
 import { Args } from '@oclif/core';
 
 import { PromotionApplyCommand, environmentContinueCommand } from './apply-command';
+import { applyConfirmationFlags, toApplyConfirmations } from './dependency-report';
 import { expectedSourceFlags, toExpectedSource } from './expected-source';
 import { BaseCommand } from '../../base-command';
 
@@ -18,12 +19,17 @@ export default class PromotionEnvironmentApply extends PromotionApplyCommand {
 	static override flags = {
 		...BaseCommand.baseFlags,
 		...expectedSourceFlags({ required: false }),
+		...applyConfirmationFlags,
 	};
 
 	async run() {
 		const { args, flags } = await this.parse(PromotionEnvironmentApply);
 		await this.execute(async () => {
-			const result = await this.getClient(flags).applyPackage(args.id, toExpectedSource(flags));
+			const result = await this.getClient(flags).applyPackage(
+				args.id,
+				toExpectedSource(flags),
+				toApplyConfirmations(flags),
+			);
 			this.reportApplyResult(result, flags, environmentContinueCommand(args.id));
 		});
 	}

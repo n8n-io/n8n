@@ -648,6 +648,40 @@ There is no separate Continue command. When the command exits `4`, resolve the
 blockers. Then run the command that it printed: the same selection with the
 `--expected-*` flags.
 
+## Dependency report and confirmations
+
+Each Promote and each Apply command checks the references of its workflows to
+credentials, sub-workflows and error workflows. A reference that does not
+resolve after the operation is a gap. The commands print the dependency report
+when it holds something, and `--json` gives the full report in
+`dependencyReport`. `list-changes` and `list-environment-changes` print the
+report of "every listed change".
+
+- A strict environment stops on a gap. Close the gap, then run the command
+  again.
+- An environment that allows incomplete operations continues when you pass the
+  ID of each gap to `--confirm-gap`. Quote the ID: it holds the `|` character.
+- The command exits `4` and changes nothing when the gaps differ from the IDs
+  that you passed. `promote` (the whole instance) fails with status 409 instead.
+- The CLI treats a gap that it does not know as a blocker. Update the CLI
+  before you confirm such a gap.
+
+The Apply commands (`apply`, `apply-continue`, `apply-selection`,
+`apply-selection-continue`, `apply-environment-selection`) also have these
+flags:
+
+| Flag | Description |
+|------|-------------|
+| `--confirm-gap` | ID of a dependency gap that you accept. Repeat the flag for more than one. |
+| `--confirm-grant` | ID of a credential grant that you accept. The Apply shares the credential with the project that uses it. The API key needs `credential:update`. |
+| `--confirm-deletion-callers` | Accept that the Apply deletes workflows that other workflows on this instance call. |
+| `--credential-home` | Project that gets a credential that the branch holds without an owner, as `<credentialId>:<projectId>`. |
+
+An incomplete Apply creates an empty placeholder credential for a credential
+that this instance does not hold. A workflow that uses a placeholder cannot be
+published until a person saves values in the credential. Apply never publishes
+and never unpublishes a workflow.
+
 ## `promotion-environment list-missing-projects` / `create-missing-projects`
 
 Create the team projects of the Apply package that do not exist on this
