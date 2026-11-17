@@ -142,6 +142,14 @@ export class SecurityConfig {
 	disableFormHtmlSandboxing: boolean = false;
 
 	/**
+	 * Whether to turn off object prototype hardening in n8n. Set to true only to fix a
+	 * compatibility error from a module or community node. Task runners use
+	 * `N8N_RUNNERS_INSECURE_MODE` instead.
+	 */
+	@Env('N8N_INSECURE_DISABLE_PROTOTYPE_HARDENING')
+	disablePrototypeHardening: boolean = false;
+
+	/**
 	 * Whether to disable bare repositories support in the Git node.
 	 */
 	@Env('N8N_GIT_NODE_DISABLE_BARE_REPOS')

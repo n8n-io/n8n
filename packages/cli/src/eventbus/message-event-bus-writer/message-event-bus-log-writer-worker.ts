@@ -1,8 +1,14 @@
+import { isRecord } from '@n8n/utils/is-record';
 import { appendFileSync, existsSync, rmSync, renameSync, openSync, closeSync } from 'fs';
 import { stat } from 'fs/promises';
-import { isMainThread, parentPort } from 'worker_threads';
+import { isMainThread, parentPort, workerData } from 'worker_threads';
 
 import type { MessageEventBusLogWriterOptions } from './message-event-bus-log-writer';
+
+// A worker thread has its own Object.prototype, which the main thread's lock does not reach.
+if (isRecord(workerData) && workerData.lockObjectPrototype === true) {
+	Object.preventExtensions(Object.prototype);
+}
 
 let logFileBasePath = '';
 let loggingPaused = true;

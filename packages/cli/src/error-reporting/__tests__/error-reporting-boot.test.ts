@@ -1,11 +1,9 @@
 import { Logger } from '@n8n/backend-common';
 import { mockInstance } from '@n8n/backend-test-utils';
 import { GlobalConfig } from '@n8n/config';
-import { spawnSync } from 'node:child_process';
-import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
-import { tmpdir } from 'node:os';
-import path from 'node:path';
 import { ErrorReporter } from 'n8n-core';
+
+import { createBinTestDir } from '@test/bin-harness';
 
 import { initErrorReporting } from '../error-reporting-boot';
 
@@ -106,10 +104,9 @@ describe('initErrorReporting', () => {
 
 describe('bin/n8n', () => {
 	it('starts Sentry, then OpenTelemetry, then loads the command, and exits with 1 when the command fails', () => {
-		const workDir = mkdtempSync(path.join(tmpdir(), 'n8n-bin-'));
-		const preload = path.join(workDir, 'break-command-registry.cjs');
-		writeFileSync(
-			preload,
+		const testDir = createBinTestDir('n8n-bin-');
+		const preload = testDir.writeFile(
+			'break-command-registry.cjs',
 			`const Module = require('module');
 const load = Module._load;
 const tracked = ['error-reporting-boot', 'observability-boot', 'command-registry'];
@@ -126,20 +123,10 @@ Module._load = function (request, ...rest) {
 		);
 
 		try {
-			const result = spawnSync(
-				process.execPath,
-				['--require', preload, path.resolve(__dirname, '../../../bin/n8n'), 'start'],
-				{
-					cwd: workDir,
-					env: {
-						PATH: process.env.PATH,
-						N8N_USER_FOLDER: workDir,
-						N8N_SENTRY_DSN: 'http://public@127.0.0.1:9/1',
-					},
-					encoding: 'utf8',
-					timeout: 30_000,
-				},
-			);
+			const result = testDir.run(['start'], {
+				preload,
+				env: { N8N_SENTRY_DSN: 'http://public@127.0.0.1:9/1' },
+			});
 
 			const loadOrder = result.stderr
 				.split('\n')
@@ -150,7 +137,7 @@ Module._load = function (request, ...rest) {
 			expect(result.stderr).toContain('command registry failed to load');
 			expect(result.status).toBe(1);
 		} finally {
-			rmSync(workDir, { recursive: true, force: true });
+			testDir.remove();
 		}
 	});
 });
