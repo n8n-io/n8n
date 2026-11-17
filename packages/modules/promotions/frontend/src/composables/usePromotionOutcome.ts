@@ -1,7 +1,7 @@
 import type { PromotePackageResultDto } from '@n8n/api-types';
 import { useToast } from '@n8n/composables/useToast';
 import { capabilities, capabilityRegistry } from '@n8n/frontend-module-sdk';
-import { useI18n, type BaseTextKey } from '@n8n/i18n';
+import { useI18n } from '@n8n/i18n';
 import { getResourcePermissions } from '@n8n/permissions';
 import { getProject, ResponseError } from '@n8n/rest-api-client';
 import { useRootStore } from '@n8n/stores/useRootStore';
@@ -11,6 +11,12 @@ import { promoteSuccessToast, withFolderNotes } from '../promotionResult';
 import { promotionEventBus } from '../promotions.eventBus';
 import type { AppliedResult } from '../promotions.types';
 
+/**
+ * What an Apply wrote, in one message. The toast shows it. When the Apply also did something
+ * for its dependencies, the result dialog shows it instead, so the user reads it once.
+ */
+type AppliedSummary = { title: string; message: string; type: 'success' | 'warning' };
+
 /** The toasts and events after a promote or an apply. */
 export function usePromotionOutcome() {
 	const i18n = useI18n();
@@ -18,33 +24,6 @@ export function usePromotionOutcome() {
 	const rootStore = useRootStore();
 	const projectContext = capabilityRegistry.use(capabilities.projectContext);
 	const usersStore = useUsersStore();
-
-	/** What the Apply did for its dependencies, so the user knows what to finish by hand. */
-	function dependencyNotes(result: AppliedResult): string[] {
-		const count = (key: BaseTextKey, items: unknown[] | undefined) =>
-			items?.length
-				? [
-						i18n.baseText(key, {
-							adjustToNumber: items.length,
-							interpolate: { count: String(items.length) },
-						}),
-					]
-				: [];
-		return [
-			...count('promotions.dependencies.result.placeholders', result.placeholders),
-			...count('promotions.dependencies.result.grants', result.grants),
-			...count(
-				'promotions.dependencies.result.moves',
-				result.credentialMoves?.filter(({ allowed }) => allowed),
-			),
-			...count(
-				'promotions.dependencies.result.movesRefused',
-				result.credentialMoves?.filter(({ allowed }) => !allowed),
-			),
-			...count('promotions.dependencies.result.kept', result.keptWorkflows),
-			...count('promotions.dependencies.result.gaps', result.dependencyReport?.gaps),
-		];
-	}
 
 	// A Promote across projects is one push. Each project hears about it.
 	function showPromoted(projectIds: string[], result: PromotePackageResultDto, gapCount = 0) {
@@ -69,7 +48,7 @@ export function usePromotionOutcome() {
 		});
 	}
 
-	function showApplied(result: AppliedResult) {
+	function appliedSummary(result: AppliedResult): AppliedSummary {
 		const { workflows, projects } = result.counts;
 		const notPublished = workflows.publishing.failed + workflows.publishing.blocked;
 		const interpolate = {
@@ -96,18 +75,17 @@ export function usePromotionOutcome() {
 		const notes = [
 			withFolderNotes(i18n, workflowsChanged ? workflowSummary : '', result.counts),
 			projects.updated > 0 ? i18n.baseText('promotions.applied.projectUpdated') : '',
-			...dependencyNotes(result),
 		].filter(Boolean);
 		const incomplete = (result.dependencyReport?.gaps.length ?? 0) > 0;
 		// A workflow can be imported and still fail to publish, so success alone would mislead.
-		toast.showMessage({
+		return {
 			title: i18n.baseText('promotions.operation.incoming.applied.title'),
 			message: notes.length > 0 ? notes.join(' ') : workflowSummary,
 			type: notPublished || incomplete ? 'warning' : 'success',
-		});
+		};
 	}
 
-	function showInstanceApplied(result: AppliedResult) {
+	function instanceAppliedSummary(result: AppliedResult): AppliedSummary {
 		const { projects, workflows } = result.counts;
 		const notPublished = workflows.publishing.failed + workflows.publishing.blocked;
 		const interpolate = {
@@ -131,12 +109,14 @@ export function usePromotionOutcome() {
 			result.counts,
 		);
 		const incomplete = (result.dependencyReport?.gaps.length ?? 0) > 0;
-		toast.showMessage({
+		return {
 			title: i18n.baseText('settings.promotions.apply.toast.success.title'),
-			message: [summary, ...dependencyNotes(result)].join(' '),
+			message: summary,
 			type: notPublished || incomplete ? 'warning' : 'success',
-		});
+		};
 	}
+
+	const showApplied = (summary: AppliedSummary) => toast.showMessage(summary);
 
 	// An instance apply can create and delete projects. Reload the stores that the project
 	// sidebar reads. Users who can list every project also read the full list.
@@ -174,5 +154,12 @@ export function usePromotionOutcome() {
 		}
 	}
 
-	return { showPromoted, showApplied, showInstanceApplied, refreshProjects, announceApplied };
+	return {
+		showPromoted,
+		appliedSummary,
+		instanceAppliedSummary,
+		showApplied,
+		refreshProjects,
+		announceApplied,
+	};
 }

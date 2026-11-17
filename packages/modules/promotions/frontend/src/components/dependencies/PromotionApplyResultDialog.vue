@@ -29,6 +29,8 @@ import PromotionDependencySection from './PromotionDependencySection.vue';
 const props = defineProps<{
 	open: boolean;
 	result: AppliedResult;
+	/** What the Apply wrote, in one sentence. The dialog replaces the toast, so it says it. */
+	summary?: string;
 	/** The names of the projects that the user can access, by id. */
 	projectNames: ReadonlyMap<string, string>;
 }>();
@@ -38,7 +40,7 @@ const emit = defineEmits<{ 'update:open': [value: boolean] }>();
 const i18n = useI18n();
 const router = useRouter();
 const { credentialTypeName } = useCredentialTypeNames();
-const { credentialNotMovedText } = usePromotionDependencyLabels();
+const { credentialNotMovedText, warningSentence } = usePromotionDependencyLabels();
 
 const outcome = computed(() => applyOutcome(props.result));
 const unpublished = computed(() => outcome.value.moves.filter((move) => !!move.unpublished));
@@ -68,6 +70,15 @@ const credentialHref = (projectId: string, credentialId: string) =>
 		</N8nDialogHeader>
 		<N8nDialogBody>
 			<div :class="$style.body">
+				<N8nText
+					v-if="summary"
+					tag="p"
+					color="text-dark"
+					:class="$style.paragraph"
+					data-test-id="promotion-apply-result-summary"
+				>
+					{{ summary }}
+				</N8nText>
 				<N8nText tag="p" color="text-base" :class="$style.paragraph">{{ intro }}</N8nText>
 
 				<N8nCallout
@@ -254,6 +265,24 @@ const credentialHref = (projectId: string, credentialId: string) =>
 								})
 							}}
 						</N8nText>
+					</li>
+				</PromotionDependencySection>
+
+				<PromotionDependencySection
+					v-if="outcome.warnings.length > 0"
+					:title="
+						i18n.baseText('promotions.dependencies.warnings.title', {
+							adjustToNumber: outcome.warnings.length,
+							interpolate: { count: String(outcome.warnings.length) },
+						})
+					"
+					:description="i18n.baseText('promotions.applyResult.warnings.description')"
+					icon="triangle-alert"
+					compact
+					data-test-id="promotion-apply-result-warnings"
+				>
+					<li v-for="warning in outcome.warnings" :key="warning.id" :class="$style.row">
+						<N8nText step="xs" color="text-dark">{{ warningSentence(warning) }}</N8nText>
 					</li>
 				</PromotionDependencySection>
 

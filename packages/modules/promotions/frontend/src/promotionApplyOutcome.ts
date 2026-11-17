@@ -2,6 +2,7 @@ import type {
 	PromotionAppliedMove,
 	PromotionCredentialGrant,
 	PromotionCredentialMove,
+	PromotionDependencyWarning,
 	PromotionKeptProject,
 	PromotionKeptWorkflow,
 	PromotionPlaceholderResult,
@@ -24,7 +25,12 @@ export type ApplyOutcome = {
 	moves: PromotionAppliedMove[];
 	/** The references that stay unresolved after an incomplete Apply. */
 	unresolvedCount: number;
+	/** What did not stop the Apply, such as a reference that is broken on the source. */
+	warnings: PromotionDependencyWarning[];
 };
+
+/** A warning that a person must act on: a live workflow now uses an empty placeholder. */
+const needsUser = ({ code }: { code: string }) => /placeholder/i.test(code);
 
 export function applyOutcome(result: AppliedResult): ApplyOutcome {
 	const credentialMoves = result.credentialMoves ?? [];
@@ -39,10 +45,10 @@ export function applyOutcome(result: AppliedResult): ApplyOutcome {
 		// A reference to a credential that got a placeholder binds to the placeholder.
 		unresolvedCount: (result.dependencyReport?.gaps ?? []).filter(({ placeholder }) => !placeholder)
 			.length,
+		warnings: result.dependencyReport?.warnings ?? [],
 	};
 }
 
-/** True when the result holds something that the toast of the Apply cannot say. */
 /** True when a person must still do something: enter values, or apply again with more rights. */
 export function needsFollowUp(outcome: ApplyOutcome): boolean {
 	return (
@@ -50,10 +56,12 @@ export function needsFollowUp(outcome: ApplyOutcome): boolean {
 		outcome.credentialsMoved.some(({ placeholder }) => placeholder) ||
 		outcome.credentialsNotMoved.length > 0 ||
 		outcome.unresolvedCount > 0 ||
+		outcome.warnings.some(needsUser) ||
 		outcome.moves.some((move) => !!move.unpublished)
 	);
 }
 
+/** True when the result holds something that the toast of the Apply cannot say. */
 export function hasApplyOutcome(result: AppliedResult): boolean {
 	const outcome = applyOutcome(result);
 	return (
@@ -64,6 +72,7 @@ export function hasApplyOutcome(result: AppliedResult): boolean {
 		outcome.keptWorkflows.length > 0 ||
 		outcome.keptProjects.length > 0 ||
 		outcome.moves.length > 0 ||
-		outcome.unresolvedCount > 0
+		outcome.unresolvedCount > 0 ||
+		outcome.warnings.length > 0
 	);
 }
