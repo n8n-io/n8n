@@ -236,6 +236,7 @@ type EntityName =
 	| 'TrustedSourceEntity'
 	| 'TrustedSourceIdentityEntity'
 	| 'WorkflowStatisticsDelta'
+	| 'AgentExecutionStatisticsDelta'
 	| 'ExecutionLedgerEntity';
 
 /**
@@ -274,12 +275,15 @@ export async function truncate(entities: EntityName[]) {
 	}
 
 	for (const name of entities) {
-		// `workflow_statistics_delta` is a raw-SQL, Postgres-only table with no TypeORM entity, so it
-		// can't go through the repository, so we clear it directly.
-		if (name === 'WorkflowStatisticsDelta') {
+		// PostgreSQL statistics buffers have no TypeORM entity.
+		if (name === 'WorkflowStatisticsDelta' || name === 'AgentExecutionStatisticsDelta') {
 			const { type, tablePrefix } = Container.get(GlobalConfig).database;
 			if (type === 'postgresdb') {
-				const table = connection.driver.escape(`${tablePrefix}workflow_statistics_delta`);
+				const tableName =
+					name === 'WorkflowStatisticsDelta'
+						? 'workflow_statistics_delta'
+						: 'agent_execution_statistics_delta';
+				const table = connection.driver.escape(`${tablePrefix}${tableName}`);
 				await connection.query(`DELETE FROM ${table}`);
 			}
 			continue;
