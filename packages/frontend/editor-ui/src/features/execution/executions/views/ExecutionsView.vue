@@ -5,10 +5,8 @@ import GlobalExecutionsList from '../components/global/GlobalExecutionsList.vue'
 import { useDocumentTitle } from '@/app/composables/useDocumentTitle';
 import { useExternalHooks } from '@/app/composables/useExternalHooks';
 import { useI18n } from '@n8n/i18n';
-import { useProjectPages } from '@/features/collaboration/projects/composables/useProjectPages';
 import { useTelemetry } from '@n8n/composables/useTelemetry';
 import { useToast } from '@n8n/composables/useToast';
-import { InsightsSummary, useInsightsStore } from '@n8n/frontend-module-insights';
 import { useExecutionsStore } from '../executions.store';
 import { useWorkflowsListStore } from '@/app/stores/workflowsList.store';
 import { storeToRefs } from 'pinia';
@@ -28,12 +26,10 @@ const telemetry = useTelemetry();
 const externalHooks = useExternalHooks();
 const workflowsListStore = useWorkflowsListStore();
 const executionsStore = useExecutionsStore();
-const insightsStore = useInsightsStore();
 const documentTitle = useDocumentTitle();
 const toast = useToast();
 const workflowDocumentStore = injectWorkflowDocumentStore();
 
-const overview = useProjectPages();
 const { readOnlyEnv, projectPermissions } = useWorkflowsEmptyState();
 
 const { executionsCount, concurrentExecutionsCount, filters, allExecutions } =
@@ -148,14 +144,7 @@ async function onExecutionStop() {
 	/>
 	<PageViewLayout v-else-if="hasNoWorkflows">
 		<template #header>
-			<ProjectHeader>
-				<InsightsSummary
-					v-if="overview.isOverviewSubPage && insightsStore.isSummaryEnabled"
-					:loading="insightsStore.weeklySummary.isLoading"
-					:summary="insightsStore.weeklySummary.state"
-					time-range="week"
-				/>
-			</ProjectHeader>
+			<ProjectHeader />
 		</template>
 		<div>
 			<ResourcesListEmptyState
@@ -178,13 +167,6 @@ async function onExecutionStop() {
 		@execution:stop="onExecutionStop"
 		@update:filters="onUpdateFilters"
 	>
-		<ProjectHeader>
-			<InsightsSummary
-				v-if="overview.isOverviewSubPage && insightsStore.isSummaryEnabled"
-				:loading="insightsStore.weeklySummary.isLoading"
-				:summary="insightsStore.weeklySummary.state"
-				time-range="week"
-			/>
-		</ProjectHeader>
+		<ProjectHeader />
 	</GlobalExecutionsList>
 </template>

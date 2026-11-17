@@ -34,13 +34,11 @@ import {
 import { useAsyncState } from '@vueuse/core';
 import pickBy from 'lodash/pickBy';
 import type { ComponentExposed } from 'vue-component-type-helpers';
-import { InsightsSummary, useInsightsStore } from '@n8n/frontend-module-insights';
 import { useEnvironmentsStore } from '@/features/settings/environments.ee/environments.store';
 import type { EnvironmentVariable } from '@/features/settings/environments.ee/environments.types';
 import VariablesUsageBadge from '@/features/settings/environments.ee/components/VariablesUsageBadge.vue';
 import { useSourceControlStore } from '@/features/integrations/sourceControl.ee/sourceControl.store';
 import { getProtectedInstanceTooltip } from '@/features/integrations/sourceControl.ee/sourceControl.utils';
-import { useProjectPages } from '@/features/collaboration/projects/composables/useProjectPages';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 import ProjectHeader from '@/features/collaboration/projects/components/ProjectHeader.vue';
 import { isVariableResource } from '@/app/utils/typeGuards';
@@ -56,8 +54,6 @@ const message = useMessage();
 const sourceControlStore = useSourceControlStore();
 const route = useRoute();
 const router = useRouter();
-const insightsStore = useInsightsStore();
-const overview = useProjectPages();
 const projectsStore = useProjectsStore();
 
 const layoutRef = useTemplateRef<ComponentExposed<typeof ResourcesListLayout>>('layoutRef');
@@ -329,14 +325,7 @@ onMounted(() => {
 		@click:add="openCreateVariableModal"
 	>
 		<template #header>
-			<ProjectHeader main-button="variable">
-				<InsightsSummary
-					v-if="overview.isOverviewSubPage && insightsStore.isSummaryEnabled"
-					:loading="insightsStore.weeklySummary.isLoading"
-					:summary="insightsStore.weeklySummary.state"
-					time-range="week"
-				/>
-			</ProjectHeader>
+			<ProjectHeader main-button="variable" />
 		</template>
 		<template #filters="{ setKeyValue }">
 			<div class="mb-s">

@@ -134,15 +134,11 @@ describe('AppsListView', () => {
 		);
 	});
 
-	it('shows the insights summary on the overview page only', async () => {
-		const overview = renderComponent();
-		expect(await overview.findByTestId('insights-summary')).toBeInTheDocument();
-		overview.unmount();
+	it('does not show the insights summary, which only the automations list shows', async () => {
+		const { findAllByTestId, queryByTestId } = renderComponent();
+		await findAllByTestId('app-card');
 
-		route.params = { projectId: 'project-1' };
-		const project = renderComponent();
-		await project.findAllByTestId('app-card');
-		expect(project.queryByTestId('insights-summary')).not.toBeInTheDocument();
+		expect(queryByTestId('insights-summary')).not.toBeInTheDocument();
 	});
 
 	it('shows the empty state when there are no apps', async () => {

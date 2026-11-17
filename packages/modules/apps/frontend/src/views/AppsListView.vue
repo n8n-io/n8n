@@ -28,7 +28,6 @@ const projectPermissions = capabilityRegistry.use(capabilities.projectPermission
 
 const ResourcesListLayout = computed(() => componentRegistry.get('resources-list-layout'));
 const ProjectHeader = computed(() => componentRegistry.get('project-header'));
-const InsightsSummary = computed(() => componentRegistry.get('insights-summary'));
 
 const projectId = computed(() =>
 	typeof route.params.projectId === 'string' ? route.params.projectId : undefined,
@@ -192,9 +191,7 @@ async function onAppDeleted(appId: string) {
 		@load-more="loadMoreApps"
 	>
 		<template #header>
-			<component :is="ProjectHeader" v-if="ProjectHeader" main-button="app">
-				<component :is="InsightsSummary" v-if="InsightsSummary && !projectId" />
-			</component>
+			<component :is="ProjectHeader" v-if="ProjectHeader" main-button="app" />
 		</template>
 		<template #empty>
 			<N8nEmptyState

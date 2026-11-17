@@ -16,7 +16,6 @@ import { useProjectPages } from '@/features/collaboration/projects/composables/u
 import { useTelemetry } from '@n8n/composables/useTelemetry';
 import { CREDENTIAL_EDIT_MODAL_KEY, CREDENTIAL_SELECT_MODAL_KEY } from '../credentials.constants';
 import { EnterpriseEditionFeature, VIEWS } from '@/app/constants';
-import { InsightsSummary, useInsightsStore } from '@n8n/frontend-module-insights';
 import { useExternalSecretsStore } from '@/features/integrations/externalSecrets.ee/externalSecrets.ee.store';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
@@ -53,7 +52,6 @@ const projectsStore = useProjectsStore();
 // Credentials-list credential help (shared with the new-credential dialog): opens
 // Instance AI in a new tab asking about the credential alone.
 const instanceAiCredentialHelp = useInstanceAiCredentialHelp();
-const insightsStore = useInsightsStore();
 const { fetchDependencyCounts } = useDependencies();
 
 const documentTitle = useDocumentTitle();
@@ -345,14 +343,7 @@ onMounted(() => {
 		@update:search="onSearchUpdated"
 	>
 		<template #header>
-			<ProjectHeader main-button="credential">
-				<InsightsSummary
-					v-if="overview.isOverviewSubPage && insightsStore.isSummaryEnabled"
-					:loading="insightsStore.weeklySummary.isLoading"
-					:summary="insightsStore.weeklySummary.state"
-					time-range="week"
-				/>
-			</ProjectHeader>
+			<ProjectHeader main-button="credential" />
 		</template>
 		<template #default="{ data }">
 			<CredentialCard
