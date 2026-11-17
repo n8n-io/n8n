@@ -732,8 +732,9 @@ async function recordInEngine(
 		accepts: recorded.map((request) => request.acceptDefault ?? null),
 		...(testCase.serviceResults ? { services } : {}),
 		...(subNodes.length > 0 && !result.error
-			? { output: workflow.deepCopy(outputs[0] ?? []), subRuns }
+			? { output: workflow.deepCopy(outputs[0] ?? []) }
 			: {}),
+		...(subNodes.length > 0 ? { subRuns } : {}),
 		outputs: workflow.deepCopy(Array.from(outputs, (list) => list ?? [])),
 		paired: workflow.deepCopy(Array.from(paired, (list) => list ?? [])),
 		...(nodePaired ? { nodePaired } : {}),

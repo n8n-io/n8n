@@ -4,13 +4,15 @@
  * A root AI node gets its sub-nodes through `ai_*` connections. A library node
  * has no connections, so the converter writes the sub-nodes into the parameters
  * of the root: `aiModel` is the chat model. The credential of the call is the
- * credential of the model.
+ * credential of the model. The library node runs once for all input items and gets the
+ * parameters of each item in `batch`.
  *
  * `nativeCluster` accepts only the shapes that the library node is proven to run
  * as v1 does. For every other shape it gives the reason, and the cluster runs in
  * the fallback host. The equivalence test uses the same function, so the test
  * proves the parameters that the converter writes.
  */
+import { credentialFlagKey } from '../credentials/flags.ts';
 import { isRecord } from './types.ts';
 
 const LC = '@n8n/n8n-nodes-langchain.';
@@ -27,17 +29,89 @@ export interface ClusterSubNode {
 	targetIndex?: number;
 }
 
-export interface NativeCluster {
-	/** The parameters of the library node. Expressions stay as n8n writes them. */
-	parameters: Record<string, unknown>;
-	/** The name of the sub-node whose credential the library node uses. */
-	credentialOf: string;
-	/** Sub-nodes that v1 gives one run for each item that the root handles. */
-	runsPerItem: string[];
+/** A value that n8n computes from the fields of a credential (`CredentialDerivation`). */
+export interface ClusterDerivation {
+	name: string;
+	code: string;
+	kind?: 'flag' | 'guard';
+	flags?: string[];
+	allowed?: string[];
+	node?: string;
 }
 
-const isExpression = (value: unknown): boolean =>
-	typeof value === 'string' && value.startsWith('=');
+export interface NativeCluster {
+	/** Parameters of the library node that are the same for all items. All are literals. */
+	shared: Record<string, unknown>;
+	/**
+	 * The parameters of one input item. Expressions stay as n8n writes them. The converter
+	 * gives the list of them for all items as the parameter `batch`.
+	 */
+	perItem: Record<string, unknown>;
+	/**
+	 * The sub-nodes as parameters (`aiModel`). v1 reads the parameters of a sub-node of the
+	 * chain for the first input item only, so their expressions get the first item.
+	 */
+	forFirstItem: Record<string, unknown>;
+	/** The name of the sub-node whose credential the library node uses. */
+	credentialOf: string;
+	/** The name of the model sub-node. The library node gives its runs. */
+	model: string;
+	/** The credential flags that the library node reads, and the guard of their proven values. */
+	derivations: ClusterDerivation[];
+}
+
+/** Eight hex digits of an FNV-1a hash: the name of a guard is unique for each node. */
+function hash(text: string): string {
+	let h = 0x811c9dc5;
+	for (let i = 0; i < text.length; i++) {
+		h ^= text.charCodeAt(i);
+		h = Math.imul(h, 0x01000193) >>> 0;
+	}
+	return h.toString(16).padStart(8, '0');
+}
+
+/** True when the OpenAI credential has an organization (`HAS_ORGANIZATION` of the library node). */
+const OPENAI_ORGANIZATION: ClusterDerivation = {
+	name: 'f0a11c001',
+	kind: 'flag',
+	code: '(d) => d.organizationId !== undefined && d.organizationId !== null',
+};
+
+/** True when the OpenAI credential adds a custom header (`getCustomCredentialHeader` of v1). */
+const OPENAI_CUSTOM_HEADER: ClusterDerivation = {
+	name: 'f0a11c002',
+	kind: 'flag',
+	code: "(d) => !!d.header && typeof d.headerName === 'string' && !!d.headerName && typeof d.headerValue === 'string'",
+};
+
+/**
+ * The flags of the OpenAI credential and their proven values. The LangChain client sends the
+ * key and the custom header, and no organization. Without an organization the injection of the
+ * credential type gives that. With an organization the library node names the key itself, and
+ * then it cannot send a custom header: that pair of values is not proven, so the caller runs
+ * the cluster in the host (`unprovenFlagNodes`).
+ */
+function openAiDerivations(node: string): ClusterDerivation[] {
+	const flags = [OPENAI_ORGANIZATION.name, OPENAI_CUSTOM_HEADER.name];
+	const key = (organization: boolean, header: boolean) =>
+		credentialFlagKey(flags, {
+			[OPENAI_ORGANIZATION.name]: organization,
+			[OPENAI_CUSTOM_HEADER.name]: header,
+		});
+	const allowed = [key(false, false), key(false, true), key(true, false)].sort();
+	return [
+		OPENAI_ORGANIZATION,
+		OPENAI_CUSTOM_HEADER,
+		{
+			name: `g${hash(`${node}|${allowed.join(',')}`)}`,
+			code: '',
+			kind: 'guard',
+			flags,
+			allowed,
+			node,
+		},
+	];
+}
 
 /** Options of `lmChatOpenAi` that map to the request, or that only change a failure. */
 const OPENAI_OPTIONS = new Set([
@@ -90,6 +164,7 @@ function openAiModel(sub: ClusterSubNode): Record<string, unknown> | string {
 }
 
 function chainLlm(
+	root: string,
 	version: number,
 	p: Record<string, unknown>,
 	subs: ClusterSubNode[],
@@ -126,17 +201,23 @@ function chainLlm(
 		if (typeof message !== 'string') return 'message text';
 		messageValues.push({ type, message });
 	}
+	const shared: Record<string, unknown> = { nodeVersion: version };
 	if (version >= 1.7) {
 		const batching = p.batching ?? {};
 		if (!isRecord(batching)) return 'batching';
-		// v1 waits between batches of items; the library node runs once for each item.
-		if ((batching.delayBetweenBatches ?? 0) !== 0) return 'delay between batches';
-		if (isExpression(batching.batchSize)) return 'batch size';
+		const size = batching.batchSize ?? 5;
+		const delay = batching.delayBetweenBatches ?? 0;
+		if (typeof size !== 'number' || typeof delay !== 'number') return 'batching';
+		shared.batchSize = size;
+		shared.delayBetweenBatches = delay;
 	}
 	return {
-		parameters: { text, messages: { messageValues }, aiModel },
+		shared,
+		perItem: { text, messages: { messageValues } },
+		forFirstItem: { aiModel },
 		credentialOf: sub.name,
-		runsPerItem: [sub.name],
+		model: sub.name,
+		derivations: openAiDerivations(root),
 	};
 }
 
@@ -145,12 +226,11 @@ function chainLlm(
  * fallback host. `parameters` are the parameters of the root as the workflow has them.
  */
 export function nativeCluster(
-	type: string,
-	version: number,
+	root: { name: string; type: string; typeVersion: number },
 	parameters: Record<string, unknown>,
 	subs: ClusterSubNode[],
 ): NativeCluster | string {
-	if (type === `${LC}chainLlm`) return chainLlm(version, parameters, subs);
+	if (root.type === `${LC}chainLlm`) return chainLlm(root.name, root.typeVersion, parameters, subs);
 	return 'root type';
 }
 
@@ -161,12 +241,19 @@ export function nativeCluster(
  * - An operation of the other version family gets the marker `openAiHost`, which is not in
  *   the `supports` list, so the call runs in the host (v1 fails there).
  * - An empty `builtInTools` is the default of the parameter; the adapter drops it.
+ * - Several choices (`options.n`) under "continue (using error output)" get the marker too.
  */
 export function openAiVendorParameters(
 	p: Record<string, unknown>,
 	version: number,
+	onError?: string,
 ): Record<string, unknown> {
 	const out: Record<string, unknown> = { ...p };
+	// With several choices an item gives several output items. The error output pairs the
+	// items by position, so that shape runs in the host.
+	if (isRecord(p.options) && p.options.n !== undefined && onError === 'continueErrorOutput') {
+		out.openAiHost = true;
+	}
 	if (isRecord(p.builtInTools) && Object.keys(p.builtInTools).length === 0) delete out.builtInTools;
 	if ((p.resource ?? 'text') !== 'text') return out;
 	if (version < 2) {

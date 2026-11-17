@@ -32,7 +32,14 @@ import {
 import { hideParameters } from './node-parameters.ts';
 import type { Paging } from './http-pagination.ts';
 import { emitPaging, readPaging } from './http-pagination.ts';
-import { emitStep, emitWithHostForm, hostFormOf, nodeCall, tryCompiledNode } from './steps.ts';
+import {
+	emitStep,
+	emitWithHostForm,
+	errorRetry,
+	hostFormOf,
+	nodeCall,
+	tryCompiledNode,
+} from './steps.ts';
 import { isRecord, text } from './types.ts';
 
 let libraryTypes: Set<string> | undefined;
@@ -68,9 +75,14 @@ function driveQuery(p: Record<string, unknown>): Record<string, unknown> {
  */
 const ADAPTERS: Record<
 	string,
-	(p: Record<string, unknown>, version: number) => Record<string, unknown>
+	(
+		p: Record<string, unknown>,
+		version: number,
+		node?: { onError?: string },
+	) => Record<string, unknown>
 > = {
-	'@n8n/n8n-nodes-langchain.openAi': openAiVendorParameters,
+	'@n8n/n8n-nodes-langchain.openAi': (p, version, node) =>
+		openAiVendorParameters(p, version, node?.onError),
 	// v1 reads `queryString` with `String(value)`: an expression that gives no value searches
 	// for "undefined". The library node cannot tell that from a missing parameter, so the
 	// converter writes the default of a missing one.
@@ -310,6 +322,9 @@ export const MIN_VERSIONS: Record<string, number> = {
  */
 const BATCH_OPERATIONS: Record<string, (key: string, p: Record<string, unknown>) => boolean> = {
 	'n8n-nodes-base.supabase': (key) => key === 'row.create',
+	// The router of the v1 node handles each item and "continue on fail" itself, and n8n
+	// runs the whole node again for "retry on fail".
+	'@n8n/n8n-nodes-langchain.openAi': () => true,
 	// Versions 2 to 2.2 read the database once, then create each page.
 	'n8n-nodes-base.notion': (key, p) => key === 'databasePage.create' && p.apiV2 === true,
 	'n8n-nodes-base.dataTable': (key, p) => key === 'row.insert' && dataTableBulk(p),
@@ -395,34 +410,26 @@ const NATIVE_ROOTS = new Set([`${LANGCHAIN_PREFIX}chainLlm`]);
 /**
  * Lowers a root AI node with its sub-nodes to its library node, when `nativeCluster` accepts
  * the cluster. Every other cluster runs in the fallback host, as before.
+ *
+ * The library node runs once for all items and gives one object: `items`, `runs` (the runs
+ * of the model sub-node) and `error`. The source traces the runs, then throws the error, so
+ * the run data has the failed run of the model as v1 records it.
  */
 function lowerNativeCluster(c: NodeContext): void {
 	const members = clusterMembers(c.workflow, c.node.name);
-	const onError =
-		c.node.onError ?? (c.node.continueOnFail ? 'continueRegularOutput' : 'stopWorkflow');
-	// Under a "continue" setting v1 records the error of each failed run of the model; the
-	// trace below knows only runs without an error.
-	const native =
-		onError === 'stopWorkflow'
-			? nativeCluster(
-					c.node.type,
-					c.version,
-					c.parameters,
-					members.map((m) => ({
-						name: m.node.name,
-						type: m.node.type,
-						typeVersion: m.node.typeVersion,
-						parameters: hideParameters(
-							m.node.type,
-							m.node.typeVersion ?? 1,
-							m.node.parameters ?? {},
-						),
-						connection: m.connection,
-						target: m.target === c.node.name ? undefined : m.target,
-						targetIndex: m.targetIndex,
-					})),
-				)
-			: 'error setting';
+	const native = nativeCluster(
+		{ name: c.node.name, type: c.node.type, typeVersion: c.version },
+		c.parameters,
+		members.map((m) => ({
+			name: m.node.name,
+			type: m.node.type,
+			typeVersion: m.node.typeVersion,
+			parameters: hideParameters(m.node.type, m.node.typeVersion ?? 1, m.node.parameters ?? {}),
+			connection: m.connection,
+			target: m.target === c.node.name ? undefined : m.target,
+			targetIndex: m.targetIndex,
+		})),
+	);
 	const model =
 		typeof native === 'string'
 			? undefined
@@ -433,30 +440,98 @@ function lowerNativeCluster(c: NodeContext): void {
 		typeof native === 'string' ||
 		credential === undefined ||
 		credentialType === undefined ||
-		NOT_INJECTABLE.has(credentialType)
+		NOT_INJECTABLE.has(credentialType) ||
+		!c.addCredentialDerivations
 	) {
 		lowerAiNode(c);
 		return;
 	}
-	let parameters: TranslatedValue;
+	// n8n resolves an expression that throws a TypeError to no value (undefined).
+	const code = (value: unknown): string => {
+		const translated = c.compiled(value, '', { flattenResourceLocators: false, guardCalls: true });
+		const text = c.print(translated.code);
+		if (!text.includes('orNull(')) return text;
+		c.helper('orUndefined');
+		return text.replaceAll('orNull(', 'orUndefined(');
+	};
+	let item: string;
+	let first: string;
 	try {
-		parameters = c.compiled(native.parameters, '', { flattenResourceLocators: false });
+		item = code(native.perItem);
+		first = code(native.forFirstItem);
 	} catch (error) {
 		if (!(error instanceof NodeFailure)) throw error;
 		lowerAiNode(c);
 		return;
 	}
-	// v1 runs the chain once for each item, so the library node runs once for each item too.
-	emitStep(c, nodeCall(c, c.node.type, parameters, credential, true));
-	if (c.traceAll) {
-		// v1 gives the model one run for each item, at the time of its request.
-		const out = c.output(0);
-		for (const sub of native.runsPerItem) {
-			c.w.line(
-				`if (${out}.length > 0) ctx.trace(${str(sub)}, { $subRuns: ${out}.map(() => ({ error: null })) });`,
+	c.addCredentialDerivations(credential, native.derivations);
+	const { w } = c;
+	const onError =
+		c.node.onError ?? (c.node.continueOnFail ? 'continueRegularOutput' : 'stopWorkflow');
+	const out = c.output(0);
+	w.line(`const ${out}: Json[] = [];`);
+	// The node gives the items that failed as `{ error }`; `splitErrorItems` moves them.
+	if (onError === 'continueErrorOutput') w.line(`const ${c.output(1, 'Errors')}: Json[] = [];`);
+	const entries: Array<[string, Code]> = Object.entries(native.shared).map(([k, v]) => [
+		k,
+		literal(v),
+	]);
+	// The parameters of the sub-nodes, with the first input item for their expressions.
+	const subs = c.local('SubNodes');
+	w.line(
+		`const ${subs}: Json[] = ${c.input}.slice(0, 1).map((${ITEM}: Json, ${INDEX}: number) => (${first}));`,
+	);
+	for (const name of Object.keys(native.forFirstItem)) {
+		entries.push([name, raw(`${subs}[0]?.${name}`)]);
+	}
+	if (onError !== 'stopWorkflow') entries.push(['continueOnFail', raw('true')]);
+	entries.push(['batch', raw(`${c.input}.map((${ITEM}: Json, ${INDEX}: number) => (${item}))`)]);
+	const call: Code = {
+		kind: 'object',
+		entries: [
+			['name', raw(str(c.node.name))],
+			['type', raw(str(c.node.type))],
+			['typeVersion', literal(c.version)],
+			['parameters', { kind: 'object', entries }],
+			['credential', raw(str(credential))],
+			['items', raw(c.input)],
+		],
+	};
+	const retry = errorRetry(c);
+	w.open(`if (${c.input}.length > 0) {`);
+	w.line('let run: Json = {};');
+	if (retry) {
+		// v1's retry loop: the node runs again while it fails, or while its first item has an error.
+		c.helper('retryError');
+		w.open(`for (let tryIndex = 0; tryIndex < ${retry.tries}; tryIndex++) {`);
+		if (retry.delay > 0) {
+			w.line(
+				`if (tryIndex > 0) await ctx.wait({ name: ${str(`${c.node.name} (retry)`)}, duration: ${retry.delay} });`,
 			);
 		}
 	}
+	w.block(
+		`const result: Json[] = await ctx.node(${c.print(call, 'const result: Json[] = await ctx.node(')});`,
+	);
+	w.line('run = result[0] ?? {};');
+	if (c.traceAll) {
+		// v1 records a run of the model for each request, also for a try that failed.
+		w.line(
+			`if ((run.runs ?? []).length > 0) ctx.trace(${str(native.model)}, { $subRuns: run.runs });`,
+		);
+	}
+	if (retry) {
+		w.line("if (typeof run.error !== 'string' && !retryError(run.items?.[0])) break;");
+		w.close();
+	}
+	w.open("if (typeof run.error === 'string') {");
+	if (c.traceAll) {
+		w.line(`ctx.trace(${str(c.node.name)}, { $error: { message: run.error, description: '' } });`);
+	}
+	w.line('throw new Error(run.error);');
+	w.close();
+	w.line(`for (const r of run.items ?? []) ${out}.push(r);`);
+	w.close();
 }
 
 export function lowerLibrary(c: NodeContext): void {
@@ -473,7 +548,7 @@ export function lowerLibrary(c: NodeContext): void {
 		return;
 	}
 	const adapt = ADAPTERS[type];
-	const adapted = adapt ? adapt(c.parameters, c.version) : c.parameters;
+	const adapted = adapt ? adapt(c.parameters, c.version, c.node) : c.parameters;
 	// The link to the workflow of a Slack message: the instance URL, the workflow id and the
 	// instance id, as v1 builds it (getMessageContent).
 	if (adapted.needsWorkflowLink === true && c.instance) {
@@ -546,6 +621,13 @@ export function lowerLibrary(c: NodeContext): void {
 			usage: emptyUsage(),
 			failures: [],
 		};
+		// The OpenAI node makes the error item of each item that fails itself, as the v1 router.
+		const continues =
+			(c.node.onError ?? (c.node.continueOnFail ? 'continueRegularOutput' : 'stopWorkflow')) !==
+			'stopWorkflow';
+		if (type === `${LANGCHAIN_PREFIX}openAi` && continues && batch.code.kind === 'object') {
+			batch.code.entries.push(['continueOnFail', raw('true')]);
+		}
 		// A Postgres call that has no exact form with bind values, or that reaches a limit of
 		// the runtime before a statement is committed, runs in the host in the same run.
 		if (type === 'n8n-nodes-base.postgres') {

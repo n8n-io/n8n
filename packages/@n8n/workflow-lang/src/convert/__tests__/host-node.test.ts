@@ -165,9 +165,29 @@ describe('AI clusters', () => {
 			expect(source).toMatch(/provider: 'openAi',\s*responses: true,/);
 		});
 
-		it('traces one run of the model for each item when the source traces all nodes', () => {
+		it('traces the runs of the model that the library node gives', () => {
 			const r = convertWorkflow(chain(prompt, model), { trace: 'all' });
-			expect(r.source).toMatch(/ctx\.trace\('Model', \{ \$subRuns: \w+\.map\(/);
+			expect(r.source).toContain("ctx.trace('Model', { $subRuns: run.runs });");
+			expect(r.source).toContain(
+				"ctx.trace('Chain', { $error: { message: run.error, description: '' } });",
+			);
+		});
+
+		it('gives the parameters of each item, and the model for the first item', () => {
+			const { source } = converted(chain(prompt, model));
+			expect(source).toMatch(/batch: \w+\.map\(\(\$json: Json, \w+: number\) => \(/);
+			expect(source).toMatch(/\w+\.slice\(0, 1\)\.map\(/);
+		});
+
+		it.each([
+			['a delay between batches', { ...prompt, batching: { delayBetweenBatches: 100 } }, {}],
+			['"continue"', prompt, { onError: 'continueRegularOutput' }],
+			['"continue (using error output)"', prompt, { onError: 'continueErrorOutput' }],
+			['"retry on fail"', prompt, { retryOnFail: true, maxTries: 3 }],
+		])('links the library node with %s', (_name, chainParameters, extra) => {
+			const { source, fallbackNodes } = converted(chain(chainParameters, model, extra));
+			expect(fallbackNodes).not.toContain('Chain');
+			expect(compile(source).diagnostics).toEqual([]);
 		});
 
 		it.each([
@@ -185,14 +205,12 @@ describe('AI clusters', () => {
 				model,
 				{},
 			],
-			['a delay between batches', { ...prompt, batching: { delayBetweenBatches: 100 } }, model, {}],
 			[
 				'the JSON response format',
 				prompt,
 				{ ...model, options: { responseFormat: 'json_object' } },
 				{},
 			],
-			['a "continue" setting', prompt, model, { onError: 'continueRegularOutput' }],
 		])(
 			'keeps the cluster in the host with %s',
 			(_name, chainParameters, modelParameters, extra) => {

@@ -1,8 +1,13 @@
 /**
- * Equivalence cases of the AI nodes (`@n8n/n8n-nodes-langchain`): the vendor nodes, and the
- * root nodes with their sub-nodes (`subNodes`). All data is made up.
+ * Equivalence cases of the AI nodes (`@n8n/n8n-nodes-langchain`). All data is made up.
+ *
+ * `AI_CASES` run as the other cases do (`equivalence.test.ts`): one node, no settings.
+ * `AI_ENGINE_CASES` have sub-nodes (`subNodes`) or node settings. The recorder runs them in
+ * n8n's engine. `ai-cluster.test.ts` converts a workflow with the node and compares the run
+ * of the converted source with the recording: requests, outputs, errors, and the runs of
+ * the sub-nodes.
  */
-import type { EquivalenceCase, SubNodeCase } from './equivalence.ts';
+import type { EquivalenceCase, NodeSettings, SubNodeCase } from './equivalence.ts';
 
 const LC = '@n8n/n8n-nodes-langchain.';
 const openAi = { type: 'openAiApi', data: { apiKey: 'sk-fake' } };
@@ -101,6 +106,54 @@ function chain(
 	};
 }
 
+const gpt = openAiModel(1.2, 'gpt-4o', {});
+const two = { items: [{ a: 1 }, { a: 2 }] };
+const retry: NodeSettings = { retryOnFail: true, maxTries: 2, waitBetweenTries: 10 };
+
+/** The OpenAI vendor node of versions 1 to 1.8 with node settings. */
+function message(
+	name: string,
+	responses: EquivalenceCase['responses'],
+	settings: NodeSettings,
+	extra: Partial<EquivalenceCase> = {},
+): EquivalenceCase {
+	return {
+		name: `openAi text.message ${name}`,
+		type: `${LC}openAi`,
+		typeVersion: 1.8,
+		parameters: {
+			modelId: { __rl: true, mode: 'list', value: 'gpt-4o' },
+			messages: { values: [{ content: '={{ $json.q }}' }] },
+		},
+		items: [{ q: 'one' }, { q: 'two' }],
+		credential: openAi,
+		responses,
+		settings,
+		...extra,
+	};
+}
+
+/** The OpenAI vendor node of versions 2 to 2.3 with node settings. */
+function responsesNode(
+	name: string,
+	responses: EquivalenceCase['responses'],
+	settings: NodeSettings,
+): EquivalenceCase {
+	return {
+		name: `openAi text.response ${name}`,
+		type: `${LC}openAi`,
+		typeVersion: 2.3,
+		parameters: {
+			modelId: { __rl: true, mode: 'list', value: 'gpt-4o' },
+			responses: { values: [{ content: '={{ $json.q }}' }] },
+		},
+		items: [{ q: 'one' }, { q: 'two' }],
+		credential: openAi,
+		responses,
+		settings,
+	};
+}
+
 export const AI_CASES: EquivalenceCase[] = [
 	// OpenAI versions 1 to 1.8: message a model (Chat Completions API)
 	{
@@ -186,6 +239,20 @@ export const AI_CASES: EquivalenceCase[] = [
 		responses: [completion('never')],
 		expectedError: 'A non-empty prompt is required.',
 	},
+	{
+		name: 'openAi text.message custom header',
+		type: `${LC}openAi`,
+		typeVersion: 1.8,
+		parameters: {
+			modelId: { __rl: true, mode: 'list', value: 'gpt-4o' },
+			messages: { values: [{ content: 'Hello' }] },
+		},
+		credential: {
+			type: 'openAiApi',
+			data: { apiKey: 'sk-fake', header: true, headerName: 'X-Custom', headerValue: 'v1' },
+		},
+		responses: [completion('Hi')],
+	},
 	// OpenAI versions 2 to 2.3: the Responses operation with the parameters that the editor adds
 	{
 		name: 'openAi text.response 2.1 no built-in tools',
@@ -242,6 +309,40 @@ export const AI_CASES: EquivalenceCase[] = [
 			expectedError: STATUS_ERRORS[status],
 		},
 	]),
+];
+
+export const AI_ENGINE_CASES: EquivalenceCase[] = [
+	// OpenAI vendor node under the error settings of n8n's engine
+	message('stop', [completion('a'), failed(400)], {}, { expectedError: STATUS_ERRORS[400] }),
+	message('continue', [failed(400), completion('b')], { onError: 'continueRegularOutput' }),
+	message('continue (old setting)', [completion('a'), failed(429)], { continueOnFail: true }),
+	message('error output', [failed(503), completion('b')], { onError: 'continueErrorOutput' }),
+	message('error output all fail', [failed(400)], { onError: 'continueErrorOutput' }),
+	message('retry then answer', [failed(500), completion('a'), completion('b')], retry),
+	message('retry continue', [failed(500), completion('a'), completion('b'), completion('c')], {
+		...retry,
+		onError: 'continueRegularOutput',
+	}),
+	message('retry error output', [failed(500), completion('a'), completion('b'), completion('c')], {
+		...retry,
+		onError: 'continueErrorOutput',
+	}),
+	message('always output data', [{ body: { id: 'x', choices: [] } }], { alwaysOutputData: true }),
+	message('execute once', [completion('a'), completion('b')], { executeOnce: true }),
+	responsesNode('continue', [failed(400), response(outputText('b'))], {
+		onError: 'continueRegularOutput',
+	}),
+	responsesNode('error output', [response(outputText('a')), failed(404)], {
+		onError: 'continueErrorOutput',
+	}),
+	responsesNode(
+		'retry error output',
+		[failed(500), response(outputText('a')), response(outputText('b')), response(outputText('c'))],
+		{
+			...retry,
+			onError: 'continueErrorOutput',
+		},
+	),
 	// Basic LLM Chain with the OpenAI chat model: Chat Completions API
 	chain(
 		'openAi completions',
@@ -271,8 +372,8 @@ export const AI_CASES: EquivalenceCase[] = [
 		'openAi version 1 prompt, items',
 		openAiModel(1, 'gpt-4', {}),
 		[completion('one'), completion('two')],
-		{ prompt: 'Old prompt', promptType: undefined, text: undefined },
-		{ typeVersion: 1.3, items: [{ a: 1 }, { a: 2 }] },
+		{ prompt: '=Old prompt {{ $json.a }}', promptType: undefined, text: undefined },
+		{ typeVersion: 1.3, ...two },
 	),
 	chain(
 		'openAi custom url, responses off',
@@ -287,15 +388,65 @@ export const AI_CASES: EquivalenceCase[] = [
 			},
 		},
 	),
+	// v1 reads the parameters of the model for the first item only.
+	chain(
+		'openAi model from the item',
+		openAiModel(1.2, '={{ $json.model }}', {
+			temperature: '={{ $json.t }}',
+		}),
+		[completion('a'), completion('b')],
+		{ text: '={{ $json.q }}' },
+		{
+			items: [
+				{ model: 'gpt-4o', t: 0.1, q: 'one' },
+				{ model: 'gpt-5.2-pro', t: 0.2, q: 'two' },
+			],
+		},
+	),
 	chain(
 		'openAi completions no choices',
-		openAiModel(1.2, 'gpt-4o', {}),
+		gpt,
 		[{ body: { id: 'x', choices: [], usage: {} } }],
 		{},
 		{
 			expectedError:
 				'Received empty response from chat model call (no choices). Response body: {"id":"x","choices":[],"usage":{}}',
 		},
+	),
+	// The prompt: a value, no value, null
+	chain(
+		'prompt without a value',
+		gpt,
+		[completion('a')],
+		{ text: '={{ $json.q }}' },
+		{
+			expectedError: 'No prompt specified',
+		},
+	),
+	chain(
+		'prompt from a path without a value',
+		gpt,
+		[completion('a')],
+		{ text: '={{ $json.q.r }}' },
+		{
+			expectedError: 'No prompt specified',
+		},
+	),
+	chain(
+		'prompt null',
+		gpt,
+		[completion('a')],
+		{ text: '={{ $json.n }}' },
+		{ items: [{ n: null }] },
+	),
+	chain(
+		'prompt number and object',
+		gpt,
+		[completion('a'), completion('b')],
+		{
+			text: '={{ $json.v }}',
+		},
+		{ items: [{ v: 5 }, { v: { a: [1] } }] },
 	),
 	// Basic LLM Chain with the OpenAI chat model: Responses API
 	chain(
@@ -320,53 +471,67 @@ export const AI_CASES: EquivalenceCase[] = [
 		{},
 		{ expectedError: 'boom' },
 	),
-	// Failed requests
 	chain(
-		'openAi status 409',
-		openAiModel(1.2, 'gpt-4o', {}),
-		[failed(409), completion('late')],
-		{},
-		{ expectedError: 'Your request is invalid or could not be processed by the service' },
-	),
-	chain(
-		'openAi status 400',
+		'openAi responses part without annotations',
 		openAiModel(1.3, 'gpt-4o', {}),
-		[failed(400), completion('late')],
+		[
+			{
+				body: {
+					id: 'r',
+					output: [{ type: 'message', content: [{ type: 'output_text', text: 'x' }] }],
+				},
+			},
+		],
+		{},
+		{ expectedError: "Cannot read properties of undefined (reading 'map')" },
+	),
+	// The credential: organization, custom header
+	chain(
+		'credential with a custom header',
+		gpt,
+		[completion('a')],
 		{},
 		{
-			expectedError: 'Bad request - please check your parameters',
+			credential: {
+				type: 'openAiApi',
+				data: { apiKey: 'sk-fake', header: true, headerName: 'X-Custom', headerValue: 'v1' },
+			},
 		},
 	),
 	chain(
-		'openAi status 401',
-		openAiModel(1.2, 'gpt-4o', {}),
-		[failed(401), completion('late')],
+		'credential with a custom header that is off',
+		openAiModel(1.3, 'gpt-4o', {}),
+		[response(outputText('a'))],
 		{},
 		{
-			expectedError: 'Authorization failed - please check your credentials',
+			credential: {
+				type: 'openAiApi',
+				data: { apiKey: 'sk-fake', header: false, headerName: 'X-Custom', headerValue: 'v1' },
+			},
 		},
 	),
-	chain(
-		'openAi status 403',
-		openAiModel(1.2, 'gpt-4o', {}),
-		[failed(403), completion('late')],
-		{},
-		{
-			expectedError: 'Forbidden - perhaps check your credentials?',
-		},
-	),
-	chain(
-		'openAi status 404',
-		openAiModel(1.2, 'gpt-4o', {}),
-		[failed(404), completion('late')],
-		{},
-		{
-			expectedError: 'The resource you are requesting could not be found',
-		},
+	// Failed requests
+	...[400, 401, 403, 404, 409].map((status) =>
+		chain(
+			`openAi status ${status}`,
+			status === 400 ? openAiModel(1.3, 'gpt-4o', {}) : gpt,
+			[failed(status), completion('late')],
+			{},
+			{
+				expectedError:
+					{
+						400: STATUS_ERRORS[400],
+						401: STATUS_ERRORS[401],
+						403: 'Forbidden - perhaps check your credentials?',
+						404: STATUS_ERRORS[404],
+						409: STATUS_ERRORS[418],
+					}[status] ?? '',
+			},
+		),
 	),
 	chain(
 		'openAi status 429',
-		openAiModel(1.2, 'gpt-4o', {}),
+		gpt,
 		[failed(429), completion('late')],
 		{},
 		{
@@ -375,7 +540,7 @@ export const AI_CASES: EquivalenceCase[] = [
 	),
 	chain(
 		'openAi status 429 quota',
-		openAiModel(1.2, 'gpt-4o', {}),
+		gpt,
 		[failed(429, 'insufficient_quota'), completion('late')],
 		{},
 		{
@@ -400,5 +565,156 @@ export const AI_CASES: EquivalenceCase[] = [
 		[{ status: 503, body: { error: { message: { detail: 'down' } } } }],
 		{},
 		{ expectedError: '503 {"detail":"down"}' },
+	),
+	// Items in batches, and the error settings
+	chain(
+		'batch of two, first fails',
+		gpt,
+		[failed(400), completion('late')],
+		{},
+		{
+			...two,
+			expectedError: STATUS_ERRORS[400],
+		},
+	),
+	chain(
+		'batch of two, second fails',
+		gpt,
+		[completion('first'), failed(400)],
+		{},
+		{
+			...two,
+			expectedError: STATUS_ERRORS[400],
+		},
+	),
+	chain(
+		'batch size 1, first fails',
+		gpt,
+		[failed(400), completion('late')],
+		{
+			batching: { batchSize: 1 },
+		},
+		{ ...two, expectedError: STATUS_ERRORS[400] },
+	),
+	chain(
+		'version 1.5, first fails',
+		gpt,
+		[failed(400), completion('late')],
+		{},
+		{
+			...two,
+			typeVersion: 1.5,
+			expectedError: STATUS_ERRORS[400],
+		},
+	),
+	chain(
+		'delay between batches',
+		gpt,
+		[completion('a'), completion('b'), completion('c')],
+		{
+			batching: { batchSize: 2, delayBetweenBatches: 30 },
+		},
+		{ items: [{ a: 1 }, { a: 2 }, { a: 3 }] },
+	),
+	chain(
+		'continue',
+		gpt,
+		[failed(400), completion('late')],
+		{},
+		{
+			...two,
+			settings: { onError: 'continueRegularOutput' },
+		},
+	),
+	chain(
+		'continue, prompt without a value',
+		gpt,
+		[completion('late')],
+		{ text: '={{ $json.q }}' },
+		{
+			items: [{ a: 1 }, { q: 'x' }],
+			settings: { onError: 'continueRegularOutput' },
+		},
+	),
+	chain(
+		'error output',
+		gpt,
+		[failed(400), completion('ok')],
+		{},
+		{
+			...two,
+			settings: { onError: 'continueErrorOutput' },
+		},
+	),
+	chain('retry, then answer', gpt, [failed(400), completion('late')], {}, { settings: retry }),
+	chain(
+		'retry, all fail',
+		gpt,
+		[failed(400)],
+		{},
+		{
+			settings: retry,
+			expectedError: STATUS_ERRORS[400],
+		},
+	),
+	chain(
+		'retry continue, first item fails',
+		gpt,
+		[failed(400), completion('ok'), completion('ok2'), completion('ok3')],
+		{},
+		{ ...two, settings: { ...retry, onError: 'continueRegularOutput' } },
+	),
+	chain(
+		'retry continue, second item fails',
+		gpt,
+		[completion('ok'), failed(400)],
+		{},
+		{
+			...two,
+			settings: { ...retry, onError: 'continueRegularOutput' },
+		},
+	),
+	chain(
+		'retry error output',
+		gpt,
+		[failed(400), completion('ok'), completion('ok2'), completion('ok3')],
+		{},
+		{
+			...two,
+			settings: { ...retry, onError: 'continueErrorOutput' },
+		},
+	),
+	chain(
+		'execute once',
+		gpt,
+		[completion('a'), completion('b')],
+		{},
+		{
+			...two,
+			settings: { executeOnce: true },
+		},
+	),
+	chain('always output data', gpt, [completion('a')], {}, { settings: { alwaysOutputData: true } }),
+];
+
+/** Clusters that stay in the fallback host: the proof of the native form does not cover them. */
+export const AI_HOST_CASES: EquivalenceCase[] = [
+	chain(
+		'credential with an organization and a custom header',
+		gpt,
+		[completion('a')],
+		{},
+		{
+			credential: {
+				type: 'openAiApi',
+				data: {
+					apiKey: 'sk-fake',
+					organizationId: 'org-fake',
+					header: true,
+					headerName: 'X-Custom',
+					headerValue: 'v1',
+				},
+			},
+		},
 	),
 ];

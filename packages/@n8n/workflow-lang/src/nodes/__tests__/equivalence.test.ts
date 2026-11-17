@@ -20,7 +20,8 @@ import { DEFAULT_NODE_PACKAGES, loadCredentialTypes, registryOf } from '../../cr
 import { decodeModule } from '../../compiler/decode.ts';
 import { runReference } from '../../reference/runner.ts';
 import { runModule } from '../../testing/vm.ts';
-import { nativeCluster, openAiVendorParameters } from '../../convert/ai-cluster.ts';
+import { openAiVendorParameters } from '../../convert/ai-cluster.ts';
+import { AI_ENGINE_CASES } from './ai-cases.ts';
 import { EQUIVALENCE_CASES } from './equivalence-cases.ts';
 import type { EquivalenceCase, NormalRequest, Recording } from './equivalence.ts';
 import { applyCredential, normalizeRequest, withoutInstanceId } from './equivalence.ts';
@@ -31,14 +32,18 @@ const recordings: Record<string, Recording> = JSON.parse(
 );
 const typesBuilt = existsSync(join(DEFAULT_NODE_PACKAGES[0], 'dist/known/credentials.json'));
 
-/** The parameters of the library call: a cluster case gets its sub-nodes as the converter writes them. */
+/** The parameters of the library call, as the converter writes them. */
 function libraryParameters(c: EquivalenceCase): Record<string, unknown> {
-	if (c.type === '@n8n/n8n-nodes-langchain.openAi')
-		return openAiVendorParameters(c.parameters, c.typeVersion);
-	if (!c.subNodes) return c.parameters;
-	const native = nativeCluster(c.type, c.typeVersion, c.parameters, c.subNodes);
-	if (typeof native === 'string') throw new Error(`the cluster has no native form: ${native}`);
-	return native.parameters;
+	if (c.type === '@n8n/n8n-nodes-langchain.openAi') {
+		// As `lowerLibrary` writes them: the node runs once and gets the parameters of each item.
+		const adapted = openAiVendorParameters(c.parameters, c.typeVersion);
+		return {
+			resource: adapted.resource ?? 'text',
+			operation: adapted.operation ?? 'response',
+			batch: (c.items ?? [{}]).map(() => adapted),
+		};
+	}
+	return c.parameters;
 }
 
 function workflowSource(c: EquivalenceCase): string {
@@ -124,7 +129,10 @@ async function withParsedMime(requests: NormalRequest[]): Promise<NormalRequest[
 describe.runIf(typesBuilt)('request equivalence with v1 nodes', () => {
 	const registry = registryOf(loadCredentialTypes().types);
 
-	describe.each(EQUIVALENCE_CASES.map((c) => ({ ...c, label: c.name })))('$label', (c) => {
+	// The cases with sub-nodes or node settings of the AI nodes run through the converter
+	// (`ai-cluster.test.ts`).
+	const cases = EQUIVALENCE_CASES.filter((c) => !AI_ENGINE_CASES.includes(c));
+	describe.each(cases.map((c) => ({ ...c, label: c.name })))('$label', (c) => {
 		const recording = recordings[c.name];
 
 		it('has a v1 recording of the result that the case names', () => {
