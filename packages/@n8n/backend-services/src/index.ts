@@ -46,6 +46,7 @@ export {
 } from './services/role-deletion-check-proxy.service';
 export { RoleService } from './services/role.service';
 export { ProjectScopeService } from './services/project-scope.service';
+export { UserDeactivationHooks } from './services/user-deactivation-hooks.service';
 export {
 	FavoriteResourceResolverRegistry,
 	type FavoriteResourceMeta,
