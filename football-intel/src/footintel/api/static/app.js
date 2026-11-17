@@ -1275,12 +1275,12 @@ function ticketCard(tk) {
     <p class="meta">À droite, la cote juste : ne prenez une sélection que si betPawa paie plus.</p></div>`;
 }
 
-/* "Hier" on the Today page (D86): the tickets and the matches of the owner's teams on the
-   last day with results, from the same data as the Bilan page. */
+/* "Hier" on the Today page (D86, D87): the tickets of the last day played, then every result
+   of that day in every competition, the owner's teams first. Same /bilan data as the Bilan page. */
 function yesterdayBlock(b, now) {
   if (!b) return "";
-  const days = [...new Set([...(b.tickets || []).map((d) => d.date), ...(b.matches || []).map((m) => m.date)])]
-    .filter((x) => x < now).sort();
+  const res = b.yesterday && b.yesterday.date && b.yesterday.date < now ? b.yesterday : null;
+  const days = [...new Set([...(b.tickets || []).map((d) => d.date), ...(res ? [res.date] : [])])].filter((x) => x < now).sort();
   const day = days[days.length - 1];
   if (!day) return "";
   const y = new Date(`${now}T12:00:00`); y.setDate(y.getDate() - 1);
@@ -1297,18 +1297,33 @@ function yesterdayBlock(b, now) {
       <br><span class="muted small">${t.right} sélection${t.right > 1 ? "s" : ""} juste${t.right > 1 ? "s" : ""} sur ${t.legs.length}</span>${why}</span>
       <span class="state ${cls}">${esc(word)}</span></li>`;
   });
-  const fav = (m) => { const i = m.model.indexOf(Math.max(...m.model));
-    return i === 1 ? `le nul (${pct(m.model[1], 0)})` : `${esc(i === 0 ? m.home : m.away)} (${pct(m.model[i], 0)})`; };
-  const games = (b.matches || []).filter((m) => m.date === day && isMine(m)).map((m) =>
-    `<li><span class="t">${esc(m.score)}</span><span>${esc(m.home)} – ${esc(m.away)}
-      <br><span class="muted small">Le site voyait ${fav(m)}</span></span>
-      <span class="state ${m.model_right ? "won" : "lost"}">${m.model_right ? "juste" : "raté"}</span></li>`);
+  const games = res && res.date === day ? res.matches : [];
+  const row = (m) => {
+    let sub = `<span class="muted small">pas de pronostic</span>`, pill = "";
+    if (m.model) {
+      const i = m.model.indexOf(Math.max(...m.model));
+      sub = `<span class="muted small">Le site voyait ${i === 1 ? "le nul" : esc(i === 0 ? m.home : m.away)} (${pct(m.model[i], 0)})</span>`;
+      pill = `<span class="state ${m.model_right ? "won" : "lost"}">${m.model_right ? "juste" : "raté"}</span>`;
+    }
+    return `<li><span class="t">${esc(m.score)}</span><span>${esc(m.home)} – ${esc(m.away)}<br>${sub}</span>${pill}</li>`;
+  };
+  const tally = (xs) => { const p = xs.filter((m) => m.model); return p.length ? ` · site juste ${p.filter((m) => m.model_right).length} sur ${p.length}` : ""; };
+  const mine = games.filter((m) => isMine(m));
+  const byComp = {};
+  for (const m of games) (byComp[m.competition] ||= []).push(m);
+  const rank = (c) => { const i = COMP_ORDER.indexOf(c); return i < 0 ? 999 : i; };
+  const comps = Object.keys(byComp).sort((x, z) => rank(x) - rank(z) || compName(x, byComp[x][0].competition_name).localeCompare(compName(z, byComp[z][0].competition_name)));
+  const openAll = games.length <= 12;
+  const groups = comps.map((c) => `<details class="res-group"${openAll ? " open" : ""}><summary><b>${esc(compName(c, byComp[c][0].competition_name))}</b>
+      <span class="muted small">${byComp[c].length} match${byComp[c].length > 1 ? "s" : ""}${tally(byComp[c])}</span></summary>
+      <ul class="legs-plain results">${byComp[c].map(row).join("")}</ul></details>`).join("");
   if (!tks.length && !games.length) return "";
-  const right = (b.matches || []).filter((m) => m.date === day && isMine(m) && m.model_right).length;
+  const nComp = comps.length;
   return `<section class="today-block"><h2>${esc(title)}</h2>
+    ${games.length ? `<p class="lead">${games.length} match${games.length > 1 ? "s" : ""} joué${games.length > 1 ? "s" : ""} dans ${nComp} compétition${nComp > 1 ? "s" : ""}${tally(games)}.</p>` : ""}
     ${tks.length ? `<div class="card"><h3>Vos tickets</h3><ul class="legs-plain">${tks.join("")}</ul></div>` : ""}
-    ${games.length ? `<div class="card"><h3>Vos équipes · le site a vu juste ${right} fois sur ${games.length}</h3>
-      <ul class="legs-plain results">${games.join("")}</ul></div>` : ""}
+    ${mine.length ? `<div class="card"><h3>Vos équipes${tally(mine)}</h3><ul class="legs-plain results">${mine.map(row).join("")}</ul></div>` : ""}
+    ${groups ? `<div class="card"><h3>Tous les résultats</h3>${groups}</div>` : ""}
     <p class="more"><a href="#/bilan">Tout le bilan de la semaine</a></p></section>`;
 }
 

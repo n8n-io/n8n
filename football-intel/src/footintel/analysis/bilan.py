@@ -195,3 +195,38 @@ def forecast_results(engine: Engine, days: int = 7, today: date | None = None,
                         "market": [round(x, 3) for x in mk] if mk else None,
                         "market_right": (pick(mk) == res) if mk else None})
     return sorted(out, key=lambda x: (x["date"], x["home"]), reverse=True)
+
+
+def day_results(engine: Engine, today: date, back: int = 3) -> dict:
+    """All finished matches of the last day played before `today` (D87), in every competition
+    in the database, with the latest forecast made before kick-off when there is one.
+    Looks back `back` days at most; returns {"date": None, "matches": []} when nothing was played."""
+    with engine.connect() as conn:
+        day = conn.execute(text("""
+            SELECT max(m.kickoff_date) FROM matches m JOIN match_outcomes o ON o.match_id = m.id
+            WHERE o.home_goals IS NOT NULL AND m.kickoff_date BETWEEN :a AND :b"""),
+            {"a": today - timedelta(days=back), "b": today - timedelta(days=1)}).scalar()
+        if day is None:
+            return {"date": None, "matches": []}
+        rows = conn.execute(text("""
+            SELECT m.id, m.kickoff_utc, c.code AS competition, c.name AS competition_name,
+                   th.name AS home, ta.name AS away, o.home_goals, o.away_goals,
+                   p.p_home, p.p_draw, p.p_away
+            FROM matches m JOIN match_outcomes o ON o.match_id = m.id
+            JOIN competitions c ON c.id = m.competition_id
+            JOIN teams th ON th.id = m.home_team_id JOIN teams ta ON ta.id = m.away_team_id
+            LEFT JOIN LATERAL (
+                SELECT p.p_home, p.p_draw, p.p_away FROM predictions p
+                WHERE p.match_id = m.id AND (m.kickoff_utc IS NULL OR p.predicted_at <= m.kickoff_utc)
+                ORDER BY p.predicted_at DESC LIMIT 1) p ON TRUE
+            WHERE m.kickoff_date = :d AND o.home_goals IS NOT NULL
+            ORDER BY c.code, m.kickoff_utc NULLS LAST, th.name"""), {"d": day}).all()
+    out = []
+    for r in rows:
+        res = 0 if r.home_goals > r.away_goals else 1 if r.home_goals == r.away_goals else 2
+        model = [round(x, 3) for x in (r.p_home, r.p_draw, r.p_away)] if r.p_home is not None else None
+        out.append({"competition": r.competition, "competition_name": r.competition_name,
+                    "kickoff_utc": r.kickoff_utc.isoformat() if r.kickoff_utc else None,
+                    "home": r.home, "away": r.away, "score": f"{r.home_goals}-{r.away_goals}", "result": res,
+                    "model": model, "model_right": (max(range(3), key=lambda i: model[i]) == res) if model else None})
+    return {"date": day.isoformat(), "matches": out}
