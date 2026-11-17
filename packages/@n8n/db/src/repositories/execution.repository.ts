@@ -648,6 +648,7 @@ export class ExecutionRepository extends BaseRepository<ExecutionEntity> {
 	 * @param executionId - The ID of the execution to update
 	 * @param execution - Partial execution data to update
 	 * @param conditions - Optional conditions that must be met for the update to proceed.
+	 *   `requireWaitTill`: only update if the wait timestamp matches.
 	 *   `requireStatus`: only update if execution has this exact status.
 	 *   `requireStatuses`: only update if execution has one of these statuses.
 	 *   `requireNotFinished`: only update if `finished = false`.
@@ -691,6 +692,7 @@ export class ExecutionRepository extends BaseRepository<ExecutionEntity> {
 		return await this.manager.transaction(async (tx) => {
 			if (Object.keys(executionInformation).length > 0) {
 				const whereCondition: FindOptionsWhere<ExecutionEntity> = { id: executionId };
+				if (conditions?.requireWaitTill) whereCondition.waitTill = conditions.requireWaitTill;
 				if (conditions?.requireStatus) whereCondition.status = conditions.requireStatus;
 				if (conditions?.requireStatuses)
 					whereCondition.status = In([...conditions.requireStatuses]);
