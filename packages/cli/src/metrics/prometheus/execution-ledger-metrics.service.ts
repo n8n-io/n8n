@@ -42,7 +42,7 @@ export class PrometheusExecutionLedgerMetricsService implements PrometheusMetric
 
 		new promClient.Gauge({
 			name: `${prefix}execution_ledger_backlog_rows`,
-			help: 'Approximate number of execution ledger rows that no fold has claimed yet. Never lower than the real count.',
+			help: 'Upper-bound estimate, at the last refresh, of execution ledger rows that no fold has claimed yet.',
 			async collect() {
 				this.set(toGaugeValue(await query.get(), (backlog) => backlog.rows));
 			},

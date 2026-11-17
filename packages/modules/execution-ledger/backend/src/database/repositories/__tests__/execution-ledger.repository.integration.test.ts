@@ -137,12 +137,12 @@ describe('ExecutionLedgerRepository', () => {
 
 		it('never undercounts when a rolled-back append leaves an id gap', async () => {
 			await appendMany(2);
-			await txRunner
-				.run({}, async (ctx) => {
+			await expect(
+				txRunner.run({}, async (ctx) => {
 					await repository.append(ledgerRow(), ctx);
 					throw new Error('rollback');
-				})
-				.catch(() => {});
+				}),
+			).rejects.toThrow('rollback');
 			await appendMany(1);
 
 			// Postgres burns the rolled-back id, SQLite reuses it.

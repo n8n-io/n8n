@@ -82,13 +82,16 @@ export class ExecutionLedgerRepository {
 		return rows.map(toLedgerRow);
 	}
 
-	/** Reads only the primary key, so the cost stays flat however large the backlog grows. */
+	/**
+	 * Separate subqueries, because SQLite scans the whole table when MIN and MAX share
+	 * one aggregate. Each one is a primary-key lookup on both dialects.
+	 */
 	async getBacklogStats(): Promise<ExecutionLedgerBacklogStats> {
 		const manager = this.table.managerFor({});
 		const table = manager.connection.driver.escape(this.table.metadata.tableName);
 		const [stats] = await this.query<{ minId: unknown; maxId: unknown; oldest: unknown }>(
 			manager,
-			`SELECT MIN("id") AS "minId", MAX("id") AS "maxId", (SELECT "occurredAt" FROM ${table} ORDER BY "id" LIMIT 1) AS "oldest" FROM ${table}`,
+			`SELECT (SELECT MIN("id") FROM ${table}) AS "minId", (SELECT MAX("id") FROM ${table}) AS "maxId", (SELECT "occurredAt" FROM ${table} WHERE "id" = (SELECT MIN("id") FROM ${table})) AS "oldest"`,
 			[],
 		);
 		const oldest = stats?.oldest;

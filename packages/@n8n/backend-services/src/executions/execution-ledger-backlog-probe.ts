@@ -2,7 +2,7 @@ import { Service } from '@n8n/di';
 import { UnexpectedError } from '@n8n/errors';
 
 export type ExecutionLedgerBacklogStats = {
-	/** Upper bound from the id range: rolled-back appends leave gaps that count too. */
+	/** Upper bound from the id range: each rolled-back append leaves a gap that counts. */
 	rows: number;
 	oldestOccurredAt: Date | null;
 };
