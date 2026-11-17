@@ -63,8 +63,8 @@ pub const Config = struct {
     /// and runs, and the bytes of the trigger or result of each. A start, a
     /// result or a run that finds no region waits here and goes on when one
     /// is free. A full queue is a limit.
-    held_entries: u32 = 1024,
-    held_bytes: u32 = 8 << 20,
+    held_entries: u32 = 256,
+    held_bytes: u32 = 1 << 20,
     max_pending: u32 = 1 << 16,
     max_actions: u32 = 1 << 16,
     max_batch_events: u32 = 1 << 14,
@@ -818,7 +818,8 @@ pub const State = struct {
     /// is a lower bound from the length of the text: a start that needs more
     /// waits in the core (`holdStart`), and no new start is read until it runs.
     pub fn startRoom(s: *const State, text_len: usize, queued: u32) bool {
-        if (s.held_starts > 0) return false;
+        // Work in flight that waits for memory goes first.
+        if (s.held.n > 0) return false;
         if (s.nfree_slots <= queued) return false;
         var free: u64 = 0;
         var c: usize = classFor(s, @intCast(@min(text_len, std.math.maxInt(u32))));
@@ -1665,7 +1666,9 @@ fn fireSchedule(s: *State, ev: Event, scratch: *Arena) StepError!void {
         return;
     };
     // With no free slot the event is not logged; the shell offers it again.
-    if (!reserve and s.nfree_slots == 0) {
+    // The same when the queue of work that waits for memory is full: the
+    // fire would find no place there, and it has no caller to tell.
+    if (!reserve and (s.nfree_slots == 0 or s.held.n == s.held.entries.len)) {
         s.log_modes[s.cur_event] = .skip;
         return;
     }
@@ -2218,23 +2221,25 @@ const StartRegion = union(enum) {
     /// The slot has a region with the decoded trigger.
     ok,
     not_json,
-    /// No region held the trigger. The value is the largest class whose
-    /// region was too small, plus one: 4 when the largest region was.
+    /// No region held the trigger. The value is the smallest class that
+    /// can: the start class of the module, or the class after the largest
+    /// one whose region was too small (4 when the largest region was).
     none: u8,
 };
 
 /// Give `slot` a region that holds the trigger of execution `exec_id`:
-/// from the module's start class up, then the smaller classes.
+/// from the module's start class up. The start class is the class that
+/// the last execution of the module ended in. A smaller region is not
+/// tried: an execution that starts in one needs the larger region later,
+/// for the result of a step, and then it waits with its region and its
+/// outbound work. A start that waits holds nothing.
 fn startRegion(s: *State, slot: SlotId, mod: u16, exec_id: u64, trigger: []const u8, scratch: *Arena) StartRegion {
     std.debug.assert(exec_id != 0 and s.modules[mod].state != .empty);
-    var need: u8 = 0;
     const first = s.modules[mod].start_class;
-    var tries: u8 = 0;
+    std.debug.assert(first < 4);
+    var need: u8 = first;
     var class: u8 = first;
-    while (tries < 4) : ({
-        tries += 1;
-        class = (first + tries) % 4;
-    }) {
+    while (class < 4) : (class += 1) {
         const got = takeRegion(s, class) orelse continue;
         s.regions[slot] = got.region;
         s.slot_class[slot] = class;
@@ -2374,13 +2379,16 @@ const Grow = enum {
 /// counts the calls for the same value: the first one compacts, the later
 /// ones move the execution up a class.
 fn growFor(s: *State, slot: SlotId, tries: u32) Grow {
-    const class = s.slot_class[slot];
+    const before = s.slot_class[slot];
     const free = s.regions[slot].free();
-    const grown = if (tries == 0) growRegion(s, slot) else promote(s, slot, class);
-    if (grown and (s.slot_class[slot] != class or s.regions[slot].free() > free)) return .grown;
+    if (tries == 0 and growRegion(s, slot) and (s.slot_class[slot] != before or s.regions[slot].free() > free)) return .grown;
+    // The compaction freed nothing, or it ran in an earlier try: only a
+    // larger region helps.
+    const class = s.slot_class[slot];
+    if (promote(s, slot, class) and s.slot_class[slot] != class) return .grown;
     // The largest class waits for a region to compact into. A value that
     // does not fit after that does not fit at all.
-    return if (regionAbove(s, s.slot_class[slot])) .limit else .wait;
+    return if (regionAbove(s, class)) .limit else .wait;
 }
 
 /// True when a region is free that an execution with a region of `class`

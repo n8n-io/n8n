@@ -225,9 +225,11 @@ pub const Options = struct {
         return .{ o.slots, @max(256, f), @max(16, f / 8), std.math.clamp(f / 128, 2, 32) };
     }
 
-    /// The bytes of the triggers and results that wait for a region.
+    /// The bytes of the triggers and results that wait for a region: 64 KB
+    /// for each execution in flight. Reserved memory: a page is used only
+    /// while work waits there.
     fn heldBytes(o: *const Options) u32 {
-        return std.math.clamp(o.inFlight(), 512, 16 << 10) * (16 << 10);
+        return std.math.clamp(o.inFlight(), 512, 16 << 10) * (64 << 10);
     }
 
     /// `--target-in-flight N`: every table and pool on the path of an
@@ -1398,6 +1400,9 @@ pub const Runner = struct {
             .conn => {
                 const cn = &r.conns[idx];
                 if (cn.fd < 0 or (cn.gen & 0xFFFFFF) != gen) return;
+                // The client of a request that waits went away: with a full
+                // buffer no read would see it.
+                if (ev.eof and cn.paused != .no) return r.closeConn(idx);
                 if (ev.writable) r.flushConn(idx);
                 if (ev.readable) try r.readConn(idx);
             },

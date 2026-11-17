@@ -222,6 +222,31 @@ test "held: a result that finds no larger region waits, and the execution goes o
     try testing.expectEqual(@as(u64, 0), b.st.counters.limit_finished);
 }
 
+test "held: a start of a module that needs a larger region waits for one, and does not start in a smaller region" {
+    var arena = std.heap.ArenaAllocator.init(testing.allocator);
+    defer arena.deinit();
+    var b = try Bed.init(arena.allocator(), 8, 1 << 20);
+    // The first execution ends with a result of 20 KB: the module needs the second class.
+    const first = (try b.start(1, 100)).?;
+    var acts = try b.tick(&.{ok(first, try b.trigger(20_000))});
+    if (replyTo(acts, 1) == null) acts = try b.tick(&.{});
+    try testing.expectEqual(@as(u32, 200), replyTo(acts, 1).?.aux);
+    // The next three starts take the three larger regions, also with a small trigger.
+    var ids: [3]u64 = undefined;
+    for (&ids, 2..) |*id, conn| id.* = (try b.start(conn, 100)).?;
+    try testing.expectEqual([4]u32{ 0, 1, 1, 1 }, b.st.limits().regions_used);
+    // The fourth waits, with free regions of the first class: its result
+    // would find no region, and it would wait then with its work in flight.
+    try testing.expect((try b.start(5, 100)) == null);
+    try testing.expectEqual(@as(u32, 1), b.st.limits().held_starts);
+    try testing.expectEqual(@as(u64, 0), b.st.counters.result_waits);
+    // An execution ends: the start that waits runs.
+    acts = try b.tick(&.{ok(ids[0], "1")});
+    try testing.expectEqual(@as(u32, 0), b.st.limits().held_starts);
+    try testing.expect(dispatched(try b.tick(&.{})) != null);
+    try testing.expectEqual(@as(u64, 0), b.st.counters.limit_finished);
+}
+
 test "held: an execution that ends takes its waiting result out of the queue (release)" {
     var arena = std.heap.ArenaAllocator.init(testing.allocator);
     defer arena.deinit();
