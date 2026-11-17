@@ -1,0 +1,90 @@
+packages/@n8n/test/test/cli-entry.test.ts
+  s_00e1c6fab015d9::t_ceeb46006d59e6 1-30
+packages/@n8n/test/test/load-package-manifest.test.ts
+  s_00e1c6fab015d9::t_f5903661f0a60a 4-5,8,13,22,31,41,50,55-56
+packages/@n8n/test/src/package/load-package.ts
+  s_00e1c6fab015d9::t_8de4965c9fac18 2-9,11,28,30,33-47,53-56,70-75,77-80,83,119,124
+packages/@n8n/test/src/runtime/code-runner.ts
+  s_00e1c6fab015d9::t_2966ece921ef20 20-24,186-189
+  s_00e1c6fab015d9::t_9919ce7fd18a45 235
+packages/@n8n/test/src/instance-state/credentials-helper.ts
+  ai_agent 3-8,21,58,62-69,71,87-93,100,103-110,118
+packages/@n8n/test/README.md
+  s_00e1c6fab015d9::t_9039bd078737e7 13,17-18,232
+  s_00e1c6fab015d9::t_008fc5231bdb41 14-16,218
+  s_00e1c6fab015d9::t_adef8b1b79be2a 105,111-113,117,158
+packages/cli/test/integration/workflow-test-adapter.spec.ts
+  s_00e1c6fab015d9::t_98086a88c2ccd1 1,25-30,38,40-70,87-97,104-107,119-125,151,153-154,164-169
+  s_00e1c6fab015d9::t_282511b307aa88 161-163
+  s_00e1c6fab015d9::t_c6635e7aca759d 127-128,139,146
+  s_00e1c6fab015d9::t_fff2dcf689575a 2-6,9-12,14-16,18-20,22-24,31-33,35-37,39,71-86,98-103,108-118,126,129-138,140-141,144-145,147-150,155-160,170-171
+packages/@n8n/test/src/sub-workflows/execution.ts
+  s_00e1c6fab015d9::t_4dc4abef0d407e 15,31,136,144,219,223,226,257,268-274
+  s_00e1c6fab015d9::t_b5b95eb42c792e 187-193
+  s_00e1c6fab015d9::t_22e7f515256177 2-6,234-240,260-263
+packages/@n8n/test/src/execute-workflow.ts
+  s_00e1c6fab015d9::t_6fa6ef11e70964 1,76-84,120-126
+  s_00e1c6fab015d9::t_8f00f5752906ec 113
+packages/@n8n/test/src/runtime/webhook-response.ts
+  s_00e1c6fab015d9::t_83ff300fb387f3 54-60
+  s_00e1c6fab015d9::t_abc1de4fc0460d 2,81,89-90
+  s_00e1c6fab015d9::t_0ae5190fb69f4d 1,4-12,25-27,32-50,63-64,66-75,77-78,80,91-94,96-97,101,104,106,108-113,116-120,122,129-136,139,142-146
+  s_00e1c6fab015d9::t_820ae83cadba0d 16,51-53,61-62,82-88
+  s_00e1c6fab015d9::t_4dc4abef0d407e 13,76,95,107
+packages/@n8n/test/test/code-node.test.ts
+  s_00e1c6fab015d9::t_d3f79bcd2f85fa 101-120
+packages/@n8n/test/test/support/packed-consumer.mjs
+  ai_agent 91-93
+  s_00e1c6fab015d9::t_eb378ac1fc897c 1-5,7-8,10-19,23-26,29-30,50,53,73-77,86,95-98
+  s_00e1c6fab015d9::t_013399443d21ad 6,9,31-49
+  s_00e1c6fab015d9::t_261a24301d80e8 20-22,27-28,51-52,54-72,78-85,87-90,94
+packages/@n8n/test/test/support/package-fixture.ts
+  s_00e1c6fab015d9::t_bcba16320bf3de 2,9-15,17-19,29-31
+packages/@n8n/test/src/sub-workflows/requirements.ts
+  s_00e1c6fab015d9::t_cf69eecd9579ff 1,4,48,50-51,61-72
+packages/@n8n/test/test/contract.test.ts
+  s_00e1c6fab015d9::t_22e7f515256177 71-72
+  s_00e1c6fab015d9::t_e3e107a2879c19 129-149
+  s_00e1c6fab015d9::t_137178be2003a2 63,68,70,74-76
+packages/@n8n/test/src/engine/node-types.ts
+  s_00e1c6fab015d9::t_0b0725b289bc4d 4,106
+pnpm-lock.yaml
+  ai_agent 1443,4614-4616,4654-4656,31390
+packages/@n8n/test/src/engine/additional-data.ts
+  s_00e1c6fab015d9::t_261ad64aed3e3a 21-22
+packages/@n8n/test/test/refusals.test.ts
+  s_00e1c6fab015d9::t_008fc5231bdb41 5-12
+packages/@n8n/test/package.json
+  s_00e1c6fab015d9::t_9039bd078737e7 3
+packages/@n8n/test/vitest.application.config.ts
+  s_00e1c6fab015d9::t_fff2dcf689575a 5,7,10-12,14-15
+  s_00e1c6fab015d9::t_bbbf8a2c2fc848 3,6,8
+  s_00e1c6fab015d9::t_98086a88c2ccd1 9
+packages/@n8n/test/test/webhook-response.test.ts
+  s_00e1c6fab015d9::t_2bf7814e319d26 1,11,23,42,50-52,66-97,102-111
+  s_00e1c6fab015d9::t_17e5cad32aa791 53-65
+  s_00e1c6fab015d9::t_1861079e33f5d8 98-101
+packages/@n8n/test/test/load-package.test.ts
+  s_00e1c6fab015d9::t_f5903661f0a60a 38-39,47-48,53-54,60,73,88,90,98,103,106,111-112,120,124,127
+  s_00e1c6fab015d9::t_522cd2329d1745 2-3,33,35-36
+  s_00e1c6fab015d9::t_613ad5a9673558 1,27-30,32,34
+  s_00e1c6fab015d9::t_c64d3252362318 12-26,31
+packages/@n8n/test/test/instance-state-credentials.test.ts
+  ai_agent 220-275
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "79c7c3832943788c1c2fb3afe9cf0ab4e49fb45f",
+  "prompts": {},
+  "sessions": {
+    "s_00e1c6fab015d9": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a1ea15-64c5-7b73-bc9a-9995d7b91a6c",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "James Gee <1285296+geemanjs@users.noreply.github.com>"
+    }
+  }
+}
