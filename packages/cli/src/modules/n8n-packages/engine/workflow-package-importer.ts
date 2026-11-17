@@ -75,6 +75,7 @@ export class WorkflowPackageImporter {
 		const context: ImportContext = {
 			...importLocation,
 			publicApi: request.publicApi,
+			ctx: request.ctx,
 		};
 
 		const workflows = await this.packageParser.getWorkflows(reader);
@@ -175,6 +176,7 @@ export class WorkflowPackageImporter {
 		const { workflows: published, agentOutcomes } = await this.importOrchestrator.publishPackage({
 			user: request.user,
 			publicApi: request.publicApi,
+			ctx: request.ctx,
 			content: [content],
 			policy: request.publishingPolicy,
 			subWorkflowRequirements: plan.input.subWorkflowRequirements,
@@ -275,7 +277,7 @@ export class WorkflowPackageImporter {
 		}
 
 		try {
-			await this.folderService.findFolderInProjectOrFail(folderId, projectId);
+			await this.folderService.findFolderInProjectOrFail(folderId, projectId, 'workflow');
 		} catch (cause) {
 			throw new UserError(`Folder not found in target project: ${folderId}`, { cause });
 		}

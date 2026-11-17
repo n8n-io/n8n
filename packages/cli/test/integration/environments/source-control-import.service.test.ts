@@ -7,6 +7,7 @@ import {
 	randomCredentialPayload,
 	setActiveVersion,
 	testDb,
+	testModules,
 	mockInstance,
 } from '@n8n/backend-test-utils';
 import {
@@ -53,6 +54,7 @@ import type { IWorkflowToImport } from '@/interfaces';
 import { SourceControlContextFactory } from '@/modules/source-control.ee/source-control-context.factory';
 import { SourceControlImportService } from '@/modules/source-control.ee/source-control-import.service.ee';
 import { SourceControlScopedService } from '@/modules/source-control.ee/source-control-scoped.service';
+import { AgentRepository } from '@/modules/agents/repositories/agent.repository';
 import type { ExportableCredential } from '@/modules/source-control.ee/types/exportable-credential';
 import { WorkflowIndexService } from '@/modules/workflow-index/workflow-index.service';
 import type { NodeTypes } from '@/node-types';
@@ -106,6 +108,7 @@ describe('SourceControlImportService', () => {
 	const mockFileData = new Map<string, string>();
 
 	beforeAll(async () => {
+		await testModules.loadModules(['agents']);
 		await testDb.init();
 
 		credentialsRepository = Container.get(CredentialsRepository);
@@ -948,9 +951,12 @@ describe('SourceControlImportService', () => {
 					name: 'folder3',
 				}),
 			];
+
+			await createFolder(teamProjectA, { resourceType: 'agent' });
+			await createFolder(teamProjectB, { resourceType: 'agent' });
 		});
 
-		it('should get all available folders on the instance, for an instance owner', async () => {
+		it('gets only workflow folders on the instance for an instance owner', async () => {
 			const folders = await service.getLocalFoldersAndMappingsFromDb(
 				await sourceControlContextFactory.createContext(instanceOwner),
 			);
@@ -960,7 +966,7 @@ describe('SourceControlImportService', () => {
 			);
 		});
 
-		it('should only get all available folders from the team project, for a project admin', async () => {
+		it('gets only workflow folders from an authorized team project for a project admin', async () => {
 			const versions = await service.getLocalFoldersAndMappingsFromDb(
 				await sourceControlContextFactory.createContext(projectAdmin),
 			);
@@ -2078,6 +2084,130 @@ describe('SourceControlImportService', () => {
 				);
 			});
 
+			it('should store the engine of a new workflow on import', async () => {
+				const importingUser = await getGlobalOwner();
+
+				const workflow = makeWorkflowImport({
+					settings: { engineType: 'v2', availableInMCP: true },
+				});
+				const file = putWorkflowFile(workflow.id, workflow);
+
+				await service.importWorkflowFromWorkFolder(
+					[mock<SourceControlledFile>({ id: workflow.id, file })],
+					importingUser.id,
+				);
+
+				const historyRecord = await workflowHistoryRepository.findOneOrFail({
+					where: { versionId: workflow.versionId, workflowId: workflow.id },
+				});
+				expect(historyRecord.settings).toEqual({ engineType: 'v2' });
+			});
+
+			it('should update workflow history when versionId exists and only the engine changed', async () => {
+				const importingUser = await getGlobalOwner();
+				const workflowId = nanoid();
+				const versionId = nanoid();
+				const nodes = [
+					{
+						id: 'node-1',
+						name: 'Start',
+						type: 'n8n-nodes-base.manualTrigger',
+						typeVersion: 1,
+						position: [250, 300] as [number, number],
+						parameters: {},
+					},
+				];
+
+				await createWorkflowWithHistory(
+					{ id: workflowId, name: 'Test Workflow', versionId, nodes, connections: {} },
+					importingUser,
+				);
+				const { authors } = await workflowHistoryRepository.findOneByOrFail({
+					versionId,
+					workflowId,
+				});
+
+				const workflow = makeWorkflowImport({
+					id: workflowId,
+					versionId,
+					nodes,
+					connections: {},
+					settings: { engineType: 'v2', availableInMCP: true },
+				});
+				const file = putWorkflowFile(workflowId, workflow);
+
+				await service.importWorkflowFromWorkFolder(
+					[mock<SourceControlledFile>({ id: workflowId, file })],
+					importingUser.id,
+				);
+
+				const historyRecord = await workflowHistoryRepository.findOneOrFail({
+					where: { versionId, workflowId },
+				});
+				expect(historyRecord).toMatchObject({ settings: { engineType: 'v2' }, authors });
+			});
+
+			it('should store v1 for a new workflow without an engine on import', async () => {
+				const importingUser = await getGlobalOwner();
+
+				const workflow = makeWorkflowImport({ settings: { availableInMCP: true } });
+				const file = putWorkflowFile(workflow.id, workflow);
+
+				await service.importWorkflowFromWorkFolder(
+					[mock<SourceControlledFile>({ id: workflow.id, file })],
+					importingUser.id,
+				);
+
+				const historyRecord = await workflowHistoryRepository.findOneOrFail({
+					where: { versionId: workflow.versionId, workflowId: workflow.id },
+				});
+				expect(historyRecord.settings).toEqual({ engineType: 'v1' });
+			});
+
+			it('should set v1 when versionId exists and the file has no engine', async () => {
+				const importingUser = await getGlobalOwner();
+				const workflowId = nanoid();
+				const versionId = nanoid();
+				const nodes = [
+					{
+						id: 'node-1',
+						name: 'Start',
+						type: 'n8n-nodes-base.manualTrigger',
+						typeVersion: 1,
+						position: [250, 300] as [number, number],
+						parameters: {},
+					},
+				];
+
+				await createWorkflowWithHistory(
+					{ id: workflowId, name: 'Test Workflow', versionId, nodes, connections: {} },
+					importingUser,
+				);
+				await workflowHistoryRepository.update(
+					{ versionId, workflowId },
+					{ settings: { engineType: 'v2' } },
+				);
+
+				const workflow = makeWorkflowImport({
+					id: workflowId,
+					versionId,
+					nodes,
+					connections: {},
+					settings: { availableInMCP: true },
+				});
+				const file = putWorkflowFile(workflowId, workflow);
+
+				await service.importWorkflowFromWorkFolder(
+					[mock<SourceControlledFile>({ id: workflowId, file })],
+					importingUser.id,
+				);
+
+				const historyRecord = await workflowHistoryRepository.findOneOrFail({
+					where: { versionId, workflowId },
+				});
+				expect(historyRecord.settings).toEqual({ engineType: 'v1' });
+			});
+
 			it('should update workflow history when versionId exists but nodes changed', async () => {
 				const importingPerson = (await getGlobalOwner()) as Person;
 				const workflowId = nanoid();
@@ -2503,6 +2633,48 @@ describe('SourceControlImportService', () => {
 				).resolves.toBeNull();
 			});
 		});
+	});
+
+	describe('folder deletion on pull', () => {
+		it.each([false, true])(
+			'keeps Agent folders when they contain an Agent: %s',
+			async (hasAgent) => {
+				const project = await createTeamProject();
+				const workflowFolder = await createFolder(project);
+				const agentFolder = await createFolder(project, { resourceType: 'agent' });
+				const agents = Container.get(AgentRepository);
+				const agent = hasAgent
+					? await agents.save({
+							id: nanoid(),
+							name: 'Support',
+							projectId: project.id,
+							parentFolderId: agentFolder.id,
+						})
+					: null;
+
+				try {
+					await service.deleteFoldersNotInWorkfolder([
+						mock<SourceControlledFile>({ id: workflowFolder.id }),
+						mock<SourceControlledFile>({ id: agentFolder.id }),
+					]);
+
+					expect(await folderRepository.existsBy({ id: workflowFolder.id })).toBe(false);
+					expect(await folderRepository.existsBy({ id: agentFolder.id })).toBe(true);
+
+					if (agent) {
+						expect(await agents.findOneByOrFail({ id: agent.id })).toMatchObject({
+							parentFolderId: agentFolder.id,
+						});
+					}
+				} finally {
+					if (agent) {
+						await agents.delete(agent.id);
+					}
+
+					await folderRepository.delete([workflowFolder.id, agentFolder.id]);
+				}
+			},
+		);
 	});
 
 	describe('credential deletion on pull', () => {

@@ -134,6 +134,8 @@ export class EmbeddingsGoogleVertex implements INodeType {
 			location,
 			...(endpoint ? { endpoint } : {}),
 			model: modelName,
+			// LangChain defaults to 6 retries, so a failing connection surfaced only after minutes
+			maxRetries: 2,
 		});
 
 		return {

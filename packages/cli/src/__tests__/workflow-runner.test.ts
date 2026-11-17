@@ -274,7 +274,7 @@ describe('processError', () => {
 		);
 		const deleteInFlightSpy = vi
 			.spyOn(Container.get(ExecutionPersistence), 'deleteInFlightExecution')
-			.mockResolvedValue();
+			.mockResolvedValue({ ended: false });
 
 		globalConfig.executions.mode = 'queue';
 		await runner.processError(
@@ -386,7 +386,7 @@ describe('processError', () => {
 		);
 		const deleteInFlightSpy = vi
 			.spyOn(Container.get(ExecutionPersistence), 'deleteInFlightExecution')
-			.mockResolvedValue();
+			.mockResolvedValue({ ended: false });
 
 		globalConfig.executions.mode = 'queue';
 		await runner.processError(

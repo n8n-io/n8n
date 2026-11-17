@@ -14,9 +14,11 @@ const isoDate = z
 	.datetime()
 	.transform((value) => new Date(value));
 
+const tokenHashSchema = z.string().regex(/^[0-9a-f]{64}$/);
+
 const storedTokenSchema = z.object({
 	/** Hex SHA-256 hash of the token. See `hashScimToken`. */
-	tokenHash: z.string().regex(/^[0-9a-f]{64}$/),
+	tokenHash: tokenHashSchema,
 	/** Last four characters of the token, so that admins can identify it. */
 	tokenHint: z.string(),
 	/** The ID stays when the user is deleted. Resolve the user when you read it. */
@@ -24,14 +26,25 @@ const storedTokenSchema = z.object({
 	createdAt: isoDate,
 });
 
-const tokenStateSchema = z.object({ current: storedTokenSchema.nullable() });
+const tokenStateSchema = z.object({
+	current: storedTokenSchema.nullable(),
+	/**
+	 * Hashes of the tokens that a rotation replaced, newest first. They tell
+	 * an identity provider that still sends a replaced token from one that
+	 * sends a wrong token. They never authenticate a request.
+	 */
+	replaced: z.array(tokenHashSchema).default([]),
+});
+
+/** How many replaced token hashes the row keeps. */
+const MAX_REPLACED_TOKENS = 10;
 
 export type StoredScimToken = z.infer<typeof storedTokenSchema>;
 export type NewScimToken = StoredScimToken;
 
 type ScimTokenState = z.infer<typeof tokenStateSchema>;
 
-const NO_TOKEN: ScimTokenState = { current: null };
+const NO_TOKEN: ScimTokenState = { current: null, replaced: [] };
 
 /**
  * A row that does not parse holds no usable hash, so it counts as no token.
@@ -62,11 +75,12 @@ export class ScimTokenRepository {
 	}
 
 	async findInstanceToken(ctx: OperationContext): Promise<StoredScimToken | null> {
-		const row = await this.table
-			.managerFor(ctx)
-			.findOneBy(Settings, { key: SCIM_TOKEN_SETTINGS_KEY });
+		return (await this.readState(ctx)).current;
+	}
 
-		return row ? parseState(row.value).current : null;
+	/** Tells if a rotation replaced the token with this hash. */
+	async isReplacedToken(tokenHash: string, ctx: OperationContext): Promise<boolean> {
+		return (await this.readState(ctx)).replaced.includes(tokenHash);
 	}
 
 	/**
@@ -89,17 +103,21 @@ export class ScimTokenRepository {
 				throw new ScimTokenConflictError();
 			}
 
-			await this.write(tx, { ...state, current: token });
+			const replaced = state.current
+				? [state.current.tokenHash, ...state.replaced].slice(0, MAX_REPLACED_TOKENS)
+				: state.replaced;
+			await this.write(tx, { ...state, current: token, replaced });
 		});
 	}
 
-	/** Removes the token, whoever created it. */
-	async revokeInstanceToken(ctx: OperationContext): Promise<void> {
-		await this.table.runInTransaction(ctx, async (tx) => {
+	/** Removes the token, whoever created it. Tells if a token was there to remove. */
+	async revokeInstanceToken(ctx: OperationContext): Promise<boolean> {
+		return await this.table.runInTransaction(ctx, async (tx) => {
 			const state = await this.lockState(tx);
-			if (!state.current) return;
+			if (!state.current) return false;
 
 			await this.write(tx, { ...state, current: null });
+			return true;
 		});
 	}
 
@@ -127,6 +145,14 @@ export class ScimTokenRepository {
 		});
 
 		return parseState(row.value);
+	}
+
+	private async readState(ctx: OperationContext): Promise<ScimTokenState> {
+		const row = await this.table
+			.managerFor(ctx)
+			.findOneBy(Settings, { key: SCIM_TOKEN_SETTINGS_KEY });
+
+		return row ? parseState(row.value) : NO_TOKEN;
 	}
 
 	private async write(tx: EntityManager, state: ScimTokenState) {

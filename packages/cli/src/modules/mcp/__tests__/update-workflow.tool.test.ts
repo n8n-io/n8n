@@ -1,7 +1,14 @@
 import { Logger } from '@n8n/backend-common';
 import { mockInstance } from '@n8n/backend-test-utils';
 import { GlobalConfig } from '@n8n/config';
-import { SharedWorkflowRepository, User, WorkflowEntity, type Project } from '@n8n/db';
+import {
+	type OperationContext,
+	SharedWorkflowRepository,
+	User,
+	WorkflowEntity,
+	type Project,
+} from '@n8n/db';
+import type { SecurityContext } from '@n8n/permissions';
 import {
 	ERROR_TRIGGER_NODE_TYPE,
 	NodeConnectionTypes,
@@ -219,7 +226,7 @@ describe('update-workflow MCP tool', () => {
 			subworkflowPolicyChecker,
 		);
 
-	const createTool = () =>
+	const createTool = (ctx?: OperationContext) =>
 		createUpdateWorkflowTool(
 			user,
 			workflowFinderService,
@@ -238,6 +245,7 @@ describe('update-workflow MCP tool', () => {
 			{},
 			logger,
 			postSaveMetrics,
+			ctx,
 		);
 
 	const callHandler = async (
@@ -2729,11 +2737,25 @@ describe('update-workflow MCP tool', () => {
 				expect.any(WorkflowEntity),
 				'wf-1',
 				expect.objectContaining({ aiBuilderAssisted: true, source: 'n8n-mcp' }),
+				{},
 			);
 			expect(updateMock.mock.calls[0][1].name).toBe('Renamed');
 			expect(updateMock.mock.calls[0][1].meta).toEqual(
 				expect.objectContaining({ aiBuilderAssisted: true, builderVariant: 'mcp' }),
 			);
+		});
+
+		test('passes the operation context to workflowService.update', async () => {
+			const ctx: OperationContext = {
+				security: mock<SecurityContext>({ subIdentityId: 'login-1' }),
+			};
+
+			await callHandler(
+				{ workflowId: 'wf-1', operations: [{ type: 'setWorkflowMetadata', name: 'Renamed' }] },
+				createTool(ctx),
+			);
+
+			expect(updateMock.mock.calls[0][4]).toBe(ctx);
 		});
 
 		test('broadcasts workflow update on success', async () => {

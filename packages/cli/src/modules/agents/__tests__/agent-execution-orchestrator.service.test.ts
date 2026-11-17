@@ -20,6 +20,7 @@ import {
 	N8N_CHAT_INTEGRATION_TYPE,
 	type AgentBackgroundJobSignal,
 	type AgentJsonConfig,
+	type AgentToolGuardrailConfig,
 	type BudgetGuardrailConfig,
 } from '@n8n/api-types';
 import { mockLogger } from '@n8n/backend-test-utils';
@@ -2560,6 +2561,51 @@ describe('AgentExecutionOrchestratorService', () => {
 		const hooks = options.guardrails?.hooks ?? [];
 
 		expect(hooks.filter((hook) => hook.after)).toHaveLength(1);
+	});
+
+	it('attaches the tool guardrails saved on the published runtime to the turn', async () => {
+		const { service, agentRepository, runtimeCacheService, executionService } = makeService();
+		agentRepository.isN8nChatPublished.mockResolvedValue(true);
+		executionService.canUseProductionChatThread.mockResolvedValue(true);
+		const runtime = {
+			...makeRuntime(),
+			toolRegistry: new Map([
+				['read_file', { kind: 'node', nodeType: 'n8n-nodes-base.readBinaryFile' }],
+			]) as ToolRegistry,
+			toolGuardrails: [
+				{
+					kind: 'keywords',
+					id: 'g1',
+					stage: 'before',
+					keywords: ['secret'],
+					tools: [{ type: 'node', name: 'read_file' }],
+				},
+			] as AgentToolGuardrailConfig[],
+		};
+		runtimeCacheService.getRuntime.mockResolvedValue(runtime);
+
+		await collect(
+			service.executeForN8nChatPublished({
+				agentId,
+				projectId,
+				user,
+				message: 'Hello',
+				memory: { threadId: 'thread-1', resourceId: 'n8n-chat-production:user-1' },
+			}),
+		);
+
+		const options = runtime.agent.stream.mock.calls[0][1] as ExecutionOptions;
+		const hooks = options.guardrails?.hooks ?? [];
+		expect(hooks).toHaveLength(1);
+
+		// The hook is the configured guardrail, wired through to the run.
+		const stop = await hooks[0].beforeTool?.({
+			toolCallId: 'tc-1',
+			toolName: 'read_file',
+			input: { note: 'a secret' },
+			runId: 'run-1',
+		});
+		expect(stop).toEqual({ action: 'stop', code: 'guardrail.keywords.g1' });
 	});
 
 	it('rejects a production turn with a foreign thread or memory scope', async () => {

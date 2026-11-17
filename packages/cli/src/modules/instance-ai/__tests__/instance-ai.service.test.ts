@@ -17,6 +17,7 @@ vi.mock('@n8n/instance-ai', async () => {
 		resolvePromptProfile: profiles.resolvePromptProfile,
 		MAX_STEPS: profiles.MAX_STEPS,
 		createThreadApprovalContext: profiles.createThreadApprovalContext,
+		threadTargetsAgent: profiles.threadTargetsAgent,
 		assertInstanceAiPromptVersion: profiles.assertInstanceAiPromptVersion,
 		CONCISE_PROMPT_VERSION: profiles.CONCISE_PROMPT_VERSION,
 		SELF_HEALING_PROFILE_VERSION: profiles.SELF_HEALING_PROFILE_VERSION,
@@ -473,6 +474,11 @@ function attachTurnEnvironment(service: object): void {
 	for (const field of TURN_ENVIRONMENT_FIELDS) {
 		if (field in fields) Object.assign(turnEnvironment, { [field]: fields[field] });
 	}
+	// These tests run in Manual mode: no approval reviewer.
+	Object.assign(turnEnvironment, {
+		approvalModeService: { resolveMode: () => 'manual' },
+		approvalReviewerFactory: { create: vi.fn() },
+	});
 	Object.assign(service, { turnEnvironment });
 }
 
@@ -904,7 +910,7 @@ describe('InstanceAiService — runtime workspace setup', () => {
 			modelService: {
 				resolveAgentModelConfig: Mock;
 				resolveProxyModel: Mock;
-				resolveMemoryModelConfig: Mock;
+				resolveUtilityModelConfig: Mock;
 				getCredits: Mock;
 				getModelFetch: Mock;
 				getLabeledModelFetch: Mock;
@@ -942,7 +948,7 @@ describe('InstanceAiService — runtime workspace setup', () => {
 			threadGrantRepo: { findKeys: Mock };
 			evalCredentialAllowlists: EvalThreadCredentialAllowlistService;
 			instanceAiErrorReporter: ReturnType<typeof createInstanceAiErrorReporterMock>;
-			creditService: { claimRunUsage: Mock };
+			creditService: { claimRunUsage: Mock; helperUsageClaimer: Mock };
 			aiUsageService: { isParameterValueSharingAllowed: Mock };
 			areMcpConnectionsAvailable: Mock;
 			skillsService: InstanceAiSkillsService;
@@ -978,7 +984,7 @@ describe('InstanceAiService — runtime workspace setup', () => {
 		service.modelService = {
 			resolveAgentModelConfig: vi.fn(async () => 'model-1'),
 			resolveProxyModel: vi.fn(async () => 'model-1'),
-			resolveMemoryModelConfig: vi.fn(async () => undefined),
+			resolveUtilityModelConfig: vi.fn(async () => undefined),
 			getModelFetch: vi.fn(),
 			getLabeledModelFetch: vi.fn(),
 			getCredits: vi.fn(async () => ({
@@ -1042,7 +1048,7 @@ describe('InstanceAiService — runtime workspace setup', () => {
 		service.evalCredentialAllowlists = new EvalThreadCredentialAllowlistService();
 		service.instanceAiErrorReporter = createInstanceAiErrorReporterMock();
 		service.aiUsageService = { isParameterValueSharingAllowed: vi.fn(async () => true) };
-		service.creditService = { claimRunUsage: vi.fn() };
+		service.creditService = { claimRunUsage: vi.fn(), helperUsageClaimer: vi.fn(() => vi.fn()) };
 		const sandbox = { id: 'sandbox-1' };
 		const workspace = {
 			init: vi.fn(async () => {}),
@@ -1258,7 +1264,7 @@ describe('InstanceAiService — runtime workspace setup', () => {
 			modelService: {
 				resolveAgentModelConfig: Mock;
 				resolveProxyModel: Mock;
-				resolveMemoryModelConfig: Mock;
+				resolveUtilityModelConfig: Mock;
 				getCredits: Mock;
 				getModelFetch: Mock;
 				getLabeledModelFetch: Mock;
@@ -1296,7 +1302,7 @@ describe('InstanceAiService — runtime workspace setup', () => {
 			threadGrantRepo: { findKeys: Mock };
 			evalCredentialAllowlists: EvalThreadCredentialAllowlistService;
 			instanceAiErrorReporter: ReturnType<typeof createInstanceAiErrorReporterMock>;
-			creditService: { claimRunUsage: Mock };
+			creditService: { claimRunUsage: Mock; helperUsageClaimer: Mock };
 			aiUsageService: { isParameterValueSharingAllowed: Mock };
 			areMcpConnectionsAvailable: Mock;
 			skillsService: InstanceAiSkillsService;
@@ -1331,7 +1337,7 @@ describe('InstanceAiService — runtime workspace setup', () => {
 		service.modelService = {
 			resolveAgentModelConfig: vi.fn(async () => 'model-1'),
 			resolveProxyModel: vi.fn(async () => 'model-1'),
-			resolveMemoryModelConfig: vi.fn(async () => undefined),
+			resolveUtilityModelConfig: vi.fn(async () => undefined),
 			getModelFetch: vi.fn(),
 			getLabeledModelFetch: vi.fn(),
 			getCredits: vi.fn(async () => ({
@@ -1395,7 +1401,7 @@ describe('InstanceAiService — runtime workspace setup', () => {
 		service.aiUsageService = {
 			isParameterValueSharingAllowed: vi.fn(async () => allowSendingParameterValues),
 		};
-		service.creditService = { claimRunUsage: vi.fn() };
+		service.creditService = { claimRunUsage: vi.fn(), helperUsageClaimer: vi.fn(() => vi.fn()) };
 		(createSandbox as Mock).mockResolvedValue({ id: 'sandbox-1' });
 		(createWorkspace as Mock).mockReturnValue({
 			init: vi.fn(async () => {}),
