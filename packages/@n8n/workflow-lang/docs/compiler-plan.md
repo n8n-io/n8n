@@ -429,20 +429,46 @@ file name with an extension and a `Content-Type`, and a file name without an ext
   encoding that `chardet` can give for such bytes keeps ASCII. All other files go to `read`: n8n finds
   the encoding with `chardet` when the node names none, and decodes UTF-8 and Latin-1. Each other
   encoding of bytes above 0x7F goes to the host (n8n's `cli` package has no `iconv-lite`).
-- *Native operations.* Extract From File: `text`, `xml`, `fromJson`, `binaryToPropery`. Convert To
-  File: `toText`, `toBinary`, `toJson` with one file for each item. To the host at run time: a field
-  name or a key that lodash reads as a path, an encoding other than UTF-8 for a write, a data URI,
-  bytes as an array, and the workflow setting `binaryMode: combined` (at conversion).
+- *Native operations.* Extract From File: `text`, `xml`, `fromJson`, `binaryToPropery`, and `csv`
+  from version 1.1. Convert To File: `toText`, `toBinary`, `toJson` with one file for each item. To the
+  host at run time: a field name or a key that lodash reads as a path, an encoding other than UTF-8
+  for a write, a data URI, bytes as an array, and the workflow setting `binaryMode: combined` (at
+  conversion).
+- *Options that n8n does not show.* n8n gives a node no value of a collection option that the node
+  description hides. `addBOM` and `stripBOM` show only with an `encoding` of `utf8`, `cesu8` or `ucs2`
+  in the same collection, so without it they have no effect. The v1 test found this.
+- *CSV read.* v1 reads CSV with `csv-parse` 7.0.2 (`SpreadsheetFile/v2/fromFile.operation.ts`):
+  `delimiter`, `from_line`, `to`, `bom`, `encoding`, `columns` (the header row), `relax_quotes`,
+  `skip_records_with_error`, and always `skip_empty_lines`. Fields stay texts: there is no type
+  inference. The library node ports `parse` of `lib/api/index.js` for one ASCII delimiter, UTF-8, and
+  the record delimiter that the text shows first. The node then removes empty cells unless
+  `includeEmptyCells` is set (without a header row that makes an object with index keys, as in v1).
+  Each error of csv-parse goes to the host: a quote inside a field, a quote that does not close, a
+  record with another number of fields. So do a column name that is an array index (JavaScript puts
+  such a key first), `relaxQuotes`, `skipRecordsWithErrors`, another encoding, a text with U+FFFD, a
+  missing file on an item after the first (the v1 error text depends on the item before), and
+  version 1 (its reader does not wait for the parser).
+- *Proof.* `nodes/__tests__/file-nodes-v1.test.ts` runs each case in n8n's engine with the real nodes
+  and on the reference runner, with the service over the real `prepareBinaryData` and `chardet`:
+  output items, `$binary` with its metadata (an empty `binary` object too), error message and
+  description. It has 160 generated CSV texts.
+- *The place of a new file.* v1 writes `workflows/<workflow id>/executions/<execution id>/binary_data/
+  <uuid>` (`binary-helper-functions.ts` `getBinaryHelperFunctions`, with `additionalData.executionId`
+  and `workflow.id` from `execute-context.ts`). The `store` call uses the workflow id without
+  `~manual`, and the execution id of the event when n8n gave it; for a runtime id (`wfrt-<n>`) it
+  writes under `wfrt-wfrt-<n>`, as the runtime (`server.zig` `egressStored`) and the host
+  (`binary-store.ts` `storedExecutionId`) do, and the dispatcher moves the file to n8n's id when it
+  saves the run (`compiled-binary-data.ts`).
 
 **Not built: the other file operations.**
 
-- *CSV (the default operation of both nodes).* Extract needs an exact port of `csv-parse` 5 as the v1
-  node sets it (`delimiter`, `from_line`, `to`, `bom`, `columns`, `relax_quotes`, `skip_empty_lines`,
-  `skip_records_with_error`, the `encoding` of the parser, and the two ways v1 feeds it: a stored file
-  as a stream with errors, inline data with errors only from version 1.1). It can be bytecode over the
-  text of `read`. Convert writes CSV with SheetJS (`json_to_sheet`, then `write` with `bookType: 'csv'`):
-  the header order of the union of keys, the cell text of numbers, dates and booleans, and the quoting
-  of SheetJS need a port of that path only.
+- *CSV write (the default operation of Convert To File).* v1 writes with SheetJS (`@e965/xlsx`,
+  `utils/binary.ts` `convertJsonToSpreadsheetBinary`): `flattenObject` of each item, `json_to_sheet`
+  (option `skipHeader` for `headerRow: false`), then `write` with `bookType: 'csv'`, `bookSST: false`
+  and `FS` for the delimiter; the file name is `File.csv` or `options.fileName`, through
+  `prepareBinaryData`. A port needs: the column order of the union of keys, the cell type of each
+  value (number, boolean, text, Date, null and undefined), the general number format of SheetJS for
+  numbers, and its CSV quoting. It is one call for all items.
 - *`html`, `rtf`, `xlsx`, `xls`, `ods`.* SheetJS reads and writes them. An exact native form is a
   runtime primitive: a ZIP reader and writer (deflate), the XML of SpreadsheetML and ODS (shared
   strings, styles, number formats, dates with the 1900 and 1904 systems), BIFF8 for `xls`, and

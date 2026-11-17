@@ -77,7 +77,7 @@ describe('file nodes', () => {
 	});
 
 	it.each([
-		['Extract', extract({})],
+		['Extract', extract({ operation: 'html' })],
 		['Extract', extract({ operation: 'pdf' })],
 		['Extract', extract({ operation: 'xlsx' })],
 		['Convert', convert({})],

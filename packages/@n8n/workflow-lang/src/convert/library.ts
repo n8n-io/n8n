@@ -108,9 +108,20 @@ export const ADAPTERS: Record<string, Adapter> = {
 	// The defaults of the v1 node description, and the item index for the error texts of
 	// `assertBinaryData`. An operation without a library form keeps its parameters: the
 	// `supports` list refuses it.
-	'n8n-nodes-base.extractFromFile': (p) => {
+	'n8n-nodes-base.extractFromFile': (p, version) => {
 		const operation = p.operation ?? 'csv';
 		if (typeof operation !== 'string') return { ...p, operation };
+		// The reader of version 1 does not wait for the parser: its errors are lost. The
+		// marker is not in the `supports` list, so that version runs in the host.
+		if (operation === 'csv' && version < 1.1) return { ...p, operation, readerOfVersion1: true };
+		if (operation === 'csv') {
+			return {
+				operation,
+				binaryPropertyName: p.binaryPropertyName ?? 'data',
+				...pick(p, ['options']),
+				itemIndex: '={{ $itemIndex }}',
+			};
+		}
 		if (!['text', 'xml', 'fromJson', 'binaryToPropery'].includes(operation)) {
 			return { ...p, operation };
 		}

@@ -45,7 +45,7 @@ interface Case {
 	items: InputItem[];
 	onError?: string;
 	/** The node must run in the fallback host: at conversion (`static`) or at run time. */
-	host?: 'static' | 'run';
+	host?: 'static' | 'run' | 'either';
 }
 
 const bytes = (list: number[]) => Buffer.from(list).toString('base64');
@@ -77,6 +77,64 @@ const convert = (
 
 const CONTINUE = { onError: 'continueRegularOutput' };
 
+/**
+ * CSV texts from a fixed random sequence: quotes, delimiters, line breaks of three kinds,
+ * empty lines, ragged rows and a byte order mark, with the options of the node. A text that
+ * csv-parse refuses must run in the host; each other text must give the items of v1.
+ */
+function generatedCsv(): Case[] {
+	let seed = 20261117;
+	const next = (n: number) => {
+		seed = (seed * 1103515245 + 12345) % 2147483648;
+		return Math.floor((seed / 2147483648) * n);
+	};
+	const pieces = ['a', 'b', 'x y', '1', '2.50', '', '', 'é', ' ', 'true', '-3', 'null'];
+	const bad = ['"', 'q"q', '"x" y'];
+	const cases: Case[] = [];
+	for (let k = 0; k < 160; k++) {
+		const delimiter = [',', ',', ';', '|', '\t'][next(5)];
+		const breaks = ['\n', '\r\n', '\r'];
+		const lineBreak = breaks[next(3)];
+		const columns = 1 + next(4);
+		const rowCount = next(6);
+		let text = next(8) === 0 ? '\uFEFF' : '';
+		for (let r = 0; r <= rowCount; r++) {
+			const width = next(40) === 0 ? columns + 1 - next(3) : columns;
+			const cells: string[] = [];
+			for (let c = 0; c < width; c++) {
+				let cell =
+					r === 0 ? ['h', 'h', 'h', 'name', '', 'x y'][next(6)] : pieces[next(pieces.length)];
+				if (r === 0 && cell === 'h') cell = `h${c}`;
+				if (next(60) === 0) cell = bad[next(bad.length)];
+				const quoted = cell.includes('"') ? false : next(4) === 0;
+				if (quoted) {
+					const inner = [cell, delimiter, lineBreak, '""', breaks[next(3)]][next(5)];
+					cell = `"${cell.replaceAll('"', '""')}${inner === cell ? '' : inner}"`;
+				}
+				cells.push(cell);
+			}
+			text += cells.join(delimiter);
+			text += next(40) === 0 ? breaks[next(3)] : lineBreak;
+			if (next(8) === 0) text += lineBreak;
+		}
+		if (next(3) === 0) text = text.slice(0, text.length - lineBreak.length);
+		const options: Record<string, unknown> = {};
+		if (delimiter !== ',' || next(4) === 0) options.delimiter = delimiter;
+		if (next(3) === 0) options.headerRow = next(2) === 0;
+		if (next(3) === 0) options.includeEmptyCells = next(2) === 0;
+		if (next(5) === 0) options.fromLine = 1 + next(3);
+		if (next(5) === 0) options.maxRowCount = [-1, 1, 2, 3][next(4)];
+		if (next(4) === 0) options.enableBOM = next(2) === 0;
+		cases.push(
+			extract(`csv, generated ${k}`, { options }, one(utf8(text)), {
+				host: 'either',
+				...(next(2) === 0 ? CONTINUE : {}),
+			}),
+		);
+	}
+	return cases;
+}
+
 const CASES: Case[] = [
 	// ---- Extract From File: text ----
 	extract('text, defaults', { operation: 'text' }, one(utf8('line 1\nline 2\r\n'))),
@@ -86,13 +144,21 @@ const CASES: Case[] = [
 	}),
 	extract('text, an empty file', { operation: 'text' }, one('')),
 	extract('text, control characters', { operation: 'text' }, one(utf8('a\tb\u0001c\u007f'))),
-	extract('text, the JSON is kept', { operation: 'text', options: { keepSource: 'json' } }, one(utf8('x'))),
+	extract(
+		'text, the JSON is kept',
+		{ operation: 'text', options: { keepSource: 'json' } },
+		one(utf8('x')),
+	),
 	extract(
 		'text, the binary data is kept',
 		{ operation: 'text', options: { keepSource: 'binary' } },
 		one(utf8('x')),
 	),
-	extract('text, both are kept', { operation: 'text', options: { keepSource: 'both' } }, one(utf8('x'))),
+	extract(
+		'text, both are kept',
+		{ operation: 'text', options: { keepSource: 'both' } },
+		one(utf8('x')),
+	),
 	extract(
 		'text, the destination key is a key of the kept JSON',
 		{ operation: 'text', destinationKey: 'a', options: { keepSource: 'json' } },
@@ -115,15 +181,31 @@ const CASES: Case[] = [
 			{ json: { field: 'two', key: 'k2' }, binary: { two: file(utf8('2')) } },
 		],
 	),
-	extract('text, UTF-8 that chardet finds', { operation: 'text' }, one(utf8('héllo wörld, ça va très bien'))),
-	extract('text, Latin-1 that chardet finds', { operation: 'text' }, one(latin1('héllo wörld, ça va très bien'))),
-	extract('text, UTF-8 by option', { operation: 'text', options: { encoding: 'utf8' } }, one(utf8('é€😀'))),
+	extract(
+		'text, UTF-8 that chardet finds',
+		{ operation: 'text' },
+		one(utf8('héllo wörld, ça va très bien')),
+	),
+	extract(
+		'text, Latin-1 that chardet finds',
+		{ operation: 'text' },
+		one(latin1('héllo wörld, ça va très bien')),
+	),
+	extract(
+		'text, UTF-8 by option',
+		{ operation: 'text', options: { encoding: 'utf8' } },
+		one(utf8('é€😀')),
+	),
 	extract(
 		'text, bytes that are not UTF-8, by option',
 		{ operation: 'text', options: { encoding: 'utf8' } },
 		one(bytes([0x61, 0xff, 0x62, 0xc3])),
 	),
-	extract('text, a byte order mark', { operation: 'text', options: { encoding: 'utf8' } }, one(BOM)),
+	extract(
+		'text, a byte order mark',
+		{ operation: 'text', options: { encoding: 'utf8' } },
+		one(BOM),
+	),
 	extract(
 		'text, a byte order mark that stays',
 		{ operation: 'text', options: { encoding: 'utf8', stripBOM: false } },
@@ -162,9 +244,14 @@ const CASES: Case[] = [
 		one(bytes([0x61, 0x00])),
 		{ host: 'run' },
 	),
-	extract('text, a key that is a path', { operation: 'text', destinationKey: 'a.b' }, one(utf8('x')), {
-		host: 'run',
-	}),
+	extract(
+		'text, a key that is a path',
+		{ operation: 'text', destinationKey: 'a.b' },
+		one(utf8('x')),
+		{
+			host: 'run',
+		},
+	),
 	// ---- Extract From File: errors of the binary field ----
 	extract('no binary data', { operation: 'text' }, [{ json: { a: 1 } }]),
 	extract('no binary data, continue', { operation: 'text' }, [{ json: { a: 1 } }], CONTINUE),
@@ -183,7 +270,12 @@ const CASES: Case[] = [
 	extract('fromJson, not JSON', { operation: 'fromJson' }, one(utf8('hello'))),
 	extract('fromJson, not JSON, continue', { operation: 'fromJson' }, one(utf8('hello')), CONTINUE),
 	extract('fromJson, JSON that ends early', { operation: 'fromJson' }, one(utf8('{"a":'))),
-	extract('fromJson, JSON that ends early, continue', { operation: 'fromJson' }, one(utf8('{"a":')), CONTINUE),
+	extract(
+		'fromJson, JSON that ends early, continue',
+		{ operation: 'fromJson' },
+		one(utf8('{"a":')),
+		CONTINUE,
+	),
 	extract('fromJson, text after the JSON', { operation: 'fromJson' }, one(utf8('{"a":1} x'))),
 	extract('fromJson, a bad property name', { operation: 'fromJson' }, one(utf8('{a:1}'))),
 	extract('fromJson, white space only', { operation: 'fromJson' }, one(utf8('  '))),
@@ -197,16 +289,122 @@ const CASES: Case[] = [
 	),
 	extract('xml', { operation: 'xml' }, one(utf8('<?xml version="1.0"?><a b="1"><c>t</c></a>'))),
 	extract('xml that is not well-formed', { operation: 'xml' }, one(utf8('<a><b></a>'))),
-	// ---- Extract From File: operations in the host ----
-	extract('csv is in the host', {}, one(utf8('a,b\n1,2\n')), { host: 'static' }),
-	// ---- Convert To File: toText ----
-	convert('toText', { operation: 'toText', sourceProperty: 'text' }, [{ json: { text: 'héllo\n' } }]),
-	convert('toText, version 1', { operation: 'toText', sourceProperty: 'text' }, [{ json: { text: 'x' } }], {
+	// ---- Extract From File: csv ----
+	extract('csv, defaults', {}, one(utf8('name,age\nAda,36\nBob,\n'))),
+	extract('csv, version 1.2', {}, one(utf8('a,b\n1,2')), { version: 1.2 }),
+	extract('csv, version 1 is in the host', {}, one(utf8('a,b\n1,2')), {
 		version: 1,
+		host: 'static',
 	}),
-	convert('toText, version 1.2', { operation: 'toText', sourceProperty: 'text' }, [{ json: { text: 'x' } }], {
-		version: 1.2,
+	extract(
+		'csv, quotes, escapes and line breaks in a field',
+		{},
+		one(utf8('a,b\r\n"x, ""y""","l1\r\nl2"\r\n"",z\r\n')),
+	),
+	extract('csv, the first line break decides', {}, one(utf8('a,b\n1,2\r\n3,4\r\n'))),
+	extract(
+		'csv, a second kind of line break makes a ragged row',
+		{},
+		one(utf8('a,b\n1,2\r\n3,4\r5,6\n')),
+		{
+			host: 'run',
+		},
+	),
+	extract('csv, old Mac line breaks', {}, one(utf8('a,b\r1,2\r\r3,4'))),
+	extract('csv, empty lines and empty cells', {}, one(utf8('\n\na,b,c\n\n1,,3\n,,\n\n'))),
+	extract(
+		'csv, empty cells are kept',
+		{ options: { includeEmptyCells: true } },
+		one(utf8('a,b,c\n1,,3\n,,\n')),
+	),
+	extract('csv, no header row', { options: { headerRow: false } }, one(utf8('a,,c\n1,2,\n'))),
+	extract(
+		'csv, no header row, empty cells are kept',
+		{ options: { headerRow: false, includeEmptyCells: true } },
+		one(utf8('a,,c\n1,2,\n')),
+	),
+	extract('csv, a header row only', {}, one(utf8('a,b\n'))),
+	extract('csv, an empty file', {}, one('')),
+	extract('csv, a repeated and an empty column name', {}, one(utf8('a,,a,b\n1,2,3,4\n'))),
+	extract('csv, a delimiter', { options: { delimiter: ';' } }, one(utf8('a;b\n"1;x";2,5\n'))),
+	extract('csv, a tab', { options: { delimiter: '\t' } }, one(utf8('a\tb\n1\t2\n'))),
+	extract(
+		'csv, the first line',
+		{ options: { fromLine: 3 } },
+		one(utf8('junk\nmore junk\na,b\n1,2\n3,4\n')),
+	),
+	extract(
+		'csv, the largest number of rows',
+		{ options: { maxRowCount: 2 } },
+		one(utf8('a\n1\n2\n3\n4\n')),
+	),
+	extract('csv, no limit by -1', { options: { maxRowCount: -1 } }, one(utf8('a\n1\n2\n'))),
+	extract('csv, UTF-8 text', { options: { encoding: 'utf-8' } }, one(utf8('näme,€\nÅsa,5\n'))),
+	extract(
+		'csv, a byte order mark stays in the first name',
+		{},
+		one(bytes([0xef, 0xbb, 0xbf, 0x61, 0x2c, 0x62, 0x0a, 0x31, 0x2c, 0x32])),
+	),
+	extract(
+		'csv, a byte order mark is read',
+		{ options: { enableBOM: true } },
+		one(bytes([0xef, 0xbb, 0xbf, 0x61, 0x2c, 0x62, 0x0a, 0x31, 0x2c, 0x32])),
+	),
+	extract('csv, two files give the rows of both', {}, [
+		...one(utf8('a\n1\n2\n')),
+		...one(utf8('b\n3\n')),
+	]),
+	extract('csv, no file', {}, [{ json: {} }]),
+	extract('csv, no file, continue', {}, [{ json: {} }], CONTINUE),
+	extract('csv, a ragged row', {}, one(utf8('a,b\n1\n')), { host: 'run' }),
+	extract('csv, a quote inside a field', {}, one(utf8('a,b\n1,x"y\n')), { host: 'run' }),
+	extract('csv, a quote that does not close', {}, one(utf8('a,b\n1,"x\n')), { host: 'run' }),
+	extract('csv, a column name that is a number', {}, one(utf8('2024,a\n1,2\n')), { host: 'run' }),
+	extract('csv, Latin-1 bytes', {}, one(latin1('a,b\né,2\n')), { host: 'run' }),
+	extract('csv, the first line 0', { options: { fromLine: 0 } }, one(utf8('a\n1\n')), {
+		host: 'run',
 	}),
+	extract(
+		'csv, relaxed quotes are in the host',
+		{ options: { relaxQuotes: true } },
+		one(utf8('a\n1\n')),
+		{
+			host: 'static',
+		},
+	),
+	extract(
+		'csv, another encoding is in the host',
+		{ options: { encoding: 'latin1' } },
+		one(utf8('a\n1\n')),
+		{
+			host: 'static',
+		},
+	),
+	...generatedCsv(),
+	// ---- Extract From File: operations in the host ----
+	extract('xlsx is in the host', { operation: 'xlsx' }, one(utf8('a,b\n1,2\n')), {
+		host: 'static',
+	}),
+	// ---- Convert To File: toText ----
+	convert('toText', { operation: 'toText', sourceProperty: 'text' }, [
+		{ json: { text: 'héllo\n' } },
+	]),
+	convert(
+		'toText, version 1',
+		{ operation: 'toText', sourceProperty: 'text' },
+		[{ json: { text: 'x' } }],
+		{
+			version: 1,
+		},
+	),
+	convert(
+		'toText, version 1.2',
+		{ operation: 'toText', sourceProperty: 'text' },
+		[{ json: { text: 'x' } }],
+		{
+			version: 1.2,
+		},
+	),
 	convert(
 		'toText, a file name, a byte order mark and a field',
 		{
@@ -217,28 +415,44 @@ const CASES: Case[] = [
 		},
 		[{ json: { text: 'a,b' } }],
 	),
-	convert('toText, an empty text with a byte order mark', {
-		operation: 'toText',
-		sourceProperty: 'text',
-		options: { addBOM: true },
-	}, [{ json: { text: '' } }]),
-	convert('toText, an empty text with a byte order mark and an encoding', {
-		operation: 'toText',
-		sourceProperty: 'text',
-		options: { addBOM: true, encoding: 'utf8' },
-	}, [{ json: { text: '' } }, { json: { text: 'x' } }]),
-	convert('toText, no mark by option', {
-		operation: 'toText',
-		sourceProperty: 'text',
-		options: { addBOM: false, encoding: 'utf8' },
-	}, [{ json: { text: 'x' } }]),
-	convert('toText, a number, zero, booleans and null', { operation: 'toText', sourceProperty: 'v' }, [
-		{ json: { v: 12.5 } },
-		{ json: { v: 0 } },
-		{ json: { v: true } },
-		{ json: { v: false } },
-		{ json: { v: null } },
-	]),
+	convert(
+		'toText, an empty text with a byte order mark',
+		{
+			operation: 'toText',
+			sourceProperty: 'text',
+			options: { addBOM: true },
+		},
+		[{ json: { text: '' } }],
+	),
+	convert(
+		'toText, an empty text with a byte order mark and an encoding',
+		{
+			operation: 'toText',
+			sourceProperty: 'text',
+			options: { addBOM: true, encoding: 'utf8' },
+		},
+		[{ json: { text: '' } }, { json: { text: 'x' } }],
+	),
+	convert(
+		'toText, no mark by option',
+		{
+			operation: 'toText',
+			sourceProperty: 'text',
+			options: { addBOM: false, encoding: 'utf8' },
+		},
+		[{ json: { text: 'x' } }],
+	),
+	convert(
+		'toText, a number, zero, booleans and null',
+		{ operation: 'toText', sourceProperty: 'v' },
+		[
+			{ json: { v: 12.5 } },
+			{ json: { v: 0 } },
+			{ json: { v: true } },
+			{ json: { v: false } },
+			{ json: { v: null } },
+		],
+	),
 	convert('toText, an object and an array', { operation: 'toText', sourceProperty: 'v' }, [
 		{ json: { v: { a: 1, b: ['x'] } } },
 		{ json: { v: [1, 2] } },
@@ -258,9 +472,12 @@ const CASES: Case[] = [
 		[{ json: { text: 'é' } }],
 		{ host: 'run' },
 	),
-	convert('toText, a source property that is a path', { operation: 'toText', sourceProperty: 'a.b' }, [
-		{ json: { a: { b: 'x' } } },
-	], { host: 'run' }),
+	convert(
+		'toText, a source property that is a path',
+		{ operation: 'toText', sourceProperty: 'a.b' },
+		[{ json: { a: { b: 'x' } } }],
+		{ host: 'run' },
+	),
 	// ---- Convert To File: toJson ----
 	convert('toJson, each item', { operation: 'toJson', mode: 'each' }, [
 		{ json: { a: 1, t: 'é' } },
@@ -291,16 +508,23 @@ const CASES: Case[] = [
 		[{ json: { b: 'a,b' } }],
 		{ version: 1, host: 'run' },
 	),
-	convert('toJson, all items in one file is in the host', { operation: 'toJson' }, [{ json: { a: 1 } }], {
-		host: 'static',
-	}),
+	convert(
+		'toJson, all items in one file is in the host',
+		{ operation: 'toJson' },
+		[{ json: { a: 1 } }],
+		{
+			host: 'static',
+		},
+	),
 	// ---- Convert To File: toBinary ----
 	convert('toBinary, text bytes', { operation: 'toBinary', sourceProperty: 'b' }, [
 		{ json: { b: utf8('hello') } },
 	]),
-	convert('toBinary, PNG bytes: the type comes from the bytes', { operation: 'toBinary', sourceProperty: 'b' }, [
-		{ json: { b: PNG } },
-	]),
+	convert(
+		'toBinary, PNG bytes: the type comes from the bytes',
+		{ operation: 'toBinary', sourceProperty: 'b' },
+		[{ json: { b: PNG } }],
+	),
 	convert(
 		'toBinary, a MIME type and a file name',
 		{
@@ -321,25 +545,37 @@ const CASES: Case[] = [
 		{ operation: 'toBinary', sourceProperty: 'b', options: { mimeType: 'application/pdf' } },
 		[{ json: { b: utf8('x') } }],
 	),
-	convert('toBinary, white space, no padding, URL alphabet', { operation: 'toBinary', sourceProperty: 'b' }, [
-		{ json: { b: ' aGVs\nbG8= ' } },
-		{ json: { b: 'aGVsbG8' } },
-		{ json: { b: '-_-_' } },
-		{ json: { b: '' } },
-	]),
+	convert(
+		'toBinary, white space, no padding, URL alphabet',
+		{ operation: 'toBinary', sourceProperty: 'b' },
+		[
+			{ json: { b: ' aGVs\nbG8= ' } },
+			{ json: { b: 'aGVsbG8' } },
+			{ json: { b: '-_-_' } },
+			{ json: { b: '' } },
+		],
+	),
 	convert(
 		'toBinary, version 1.2 takes the same forms',
 		{ operation: 'toBinary', sourceProperty: 'b' },
-		[{ json: { b: ' aGVs\nbG8= ' } }, { json: { b: 'aGVsbG8' } }, { json: { b: '-_-_' } }, { json: { b: '' } }],
+		[
+			{ json: { b: ' aGVs\nbG8= ' } },
+			{ json: { b: 'aGVsbG8' } },
+			{ json: { b: '-_-_' } },
+			{ json: { b: '' } },
+		],
 		{ version: 1.2 },
 	),
 	convert('toBinary, text that is not base64', { operation: 'toBinary', sourceProperty: 'b' }, [
 		{ json: { b: 'not base64!' } },
 	]),
 	...['not base64!', 'a', 'aGk=aGk=', 'aG=k', 'aGk===', 'aGk'].map((b) =>
-		convert(`toBinary, version 1.2, ${JSON.stringify(b)}`, { operation: 'toBinary', sourceProperty: 'b' }, [
-			{ json: { b } },
-		], { version: 1.2 }),
+		convert(
+			`toBinary, version 1.2, ${JSON.stringify(b)}`,
+			{ operation: 'toBinary', sourceProperty: 'b' },
+			[{ json: { b } }],
+			{ version: 1.2 },
+		),
 	),
 	convert(
 		'toBinary, version 1.2, bad base64, continue',
@@ -347,26 +583,45 @@ const CASES: Case[] = [
 		[{ json: { b: 'a' } }, { json: { b: 'aGk=' } }],
 		{ version: 1.2, ...CONTINUE },
 	),
-	convert('toBinary, a number', { operation: 'toBinary', sourceProperty: 'b' }, [{ json: { b: 5 } }]),
-	convert('toBinary, null', { operation: 'toBinary', sourceProperty: 'b' }, [{ json: { b: null } }]),
+	convert('toBinary, a number', { operation: 'toBinary', sourceProperty: 'b' }, [
+		{ json: { b: 5 } },
+	]),
+	convert('toBinary, null', { operation: 'toBinary', sourceProperty: 'b' }, [
+		{ json: { b: null } },
+	]),
 	convert('toBinary, a value that is not set', { operation: 'toBinary', sourceProperty: 'b' }, [
 		{ json: {} },
 	]),
 	convert(
 		'toBinary, version 1, text',
-		{ operation: 'toBinary', sourceProperty: 'b', options: { dataIsBase64: false, mimeType: 'text/csv' } },
+		{
+			operation: 'toBinary',
+			sourceProperty: 'b',
+			options: { dataIsBase64: false, mimeType: 'text/csv' },
+		},
 		[{ json: { b: 'a,b' } }],
 		{ version: 1 },
 	),
-	convert('toBinary, version 1, base64', { operation: 'toBinary', sourceProperty: 'b' }, [{ json: { b: PNG } }], {
-		version: 1,
-	}),
-	convert('toBinary, a data URI', { operation: 'toBinary', sourceProperty: 'b' }, [
-		{ json: { b: `data:image/png;base64,${PNG}` } },
-	], { host: 'run' }),
-	convert('toBinary, bytes as an array', { operation: 'toBinary', sourceProperty: 'b' }, [
-		{ json: { b: [104, 105] } },
-	], { host: 'run' }),
+	convert(
+		'toBinary, version 1, base64',
+		{ operation: 'toBinary', sourceProperty: 'b' },
+		[{ json: { b: PNG } }],
+		{
+			version: 1,
+		},
+	),
+	convert(
+		'toBinary, a data URI',
+		{ operation: 'toBinary', sourceProperty: 'b' },
+		[{ json: { b: `data:image/png;base64,${PNG}` } }],
+		{ host: 'run' },
+	),
+	convert(
+		'toBinary, bytes as an array',
+		{ operation: 'toBinary', sourceProperty: 'b' },
+		[{ json: { b: [104, 105] } }],
+		{ host: 'run' },
+	),
 	convert('csv is in the host', {}, [{ json: { a: 1 } }], { host: 'static' }),
 ];
 
@@ -375,7 +630,13 @@ function workflow(c: Case) {
 	return {
 		name: 'File nodes',
 		nodes: [
-			{ name: 'T', type: 'n8n-nodes-base.manualTrigger', typeVersion: 1, position: [0, 0], parameters: {} },
+			{
+				name: 'T',
+				type: 'n8n-nodes-base.manualTrigger',
+				typeVersion: 1,
+				position: [0, 0],
+				parameters: {},
+			},
 			{
 				name: 'Items',
 				type: 'n8n-nodes-base.code',
@@ -451,7 +712,15 @@ async function runCompiled(source: string, c: Case) {
 	throw new Error('The service calls did not settle');
 }
 
+const tally = { host: 0, native: 0, strict: 0 };
+
 describe('file library nodes and v1', () => {
+	afterAll(() => {
+		// Most generated texts are good CSV: they must not all go to the host.
+		expect(tally.native).toBeGreaterThan(tally.host * 2);
+		expect(tally.strict).toBeLessThanOrEqual(4);
+	});
+
 	it.each(CASES.map((c) => ({ ...c, label: c.name })))('$label', async (c) => {
 		const v1 = await runOracle(workflow(c), {
 			start: 'T',
@@ -469,7 +738,18 @@ describe('file library nodes and v1', () => {
 		}
 		expect(converted.fallbackNodes).not.toContain('F');
 		const { out, host } = await runCompiled(converted.source, c);
-		expect(host, 'the node runs in the fallback host').toBe(c.host === 'run');
+		if (c.host === 'either') {
+			tally[host ? 'host' : 'native']++;
+			// v1 gives an error for each text that goes to the host, and for no other text.
+			const items = v1.nodes.F?.[0] ?? [];
+			const failed =
+				v1.error !== null || items.some((i) => typeof i === 'object' && i !== null && 'error' in i);
+			if (failed) expect(host, `v1 fails: ${JSON.stringify(v1.error ?? items)}`).toBe(true);
+			// A text that v1 reads and that goes to the host: a rule here is stricter than v1.
+			if (host && !failed) tally.strict++;
+		} else {
+			expect(host, 'the node runs in the fallback host').toBe(c.host === 'run');
+		}
 		if (host) return;
 		if (v1.error !== null) {
 			expect(out.status).toBe('error');

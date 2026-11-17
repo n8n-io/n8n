@@ -99,6 +99,27 @@ describe('Extract From File library node', () => {
 		});
 	});
 
+	it('reads CSV in the bytecode VM as on the reference runner', async () => {
+		const text = 'name,note,n\r\n"Ada, L.","say ""hi""\r\nthen go",1\r\n\r\nBob,,2\r\n';
+		const csv = (options: Record<string, unknown>) => ({
+			operation: 'csv',
+			binaryPropertyName: 'data',
+			itemIndex: 0,
+			options,
+		});
+		const result = await run(type, csv({}), { $binary: { data: file(text) } });
+		expect(result.result).toEqual([
+			{ name: 'Ada, L.', note: 'say "hi"\r\nthen go', n: '1' },
+			{ name: 'Bob', n: '2' },
+		]);
+		const rows = await run(type, csv({ headerRow: false, fromLine: 2, maxRowCount: 1 }), {
+			$binary: { data: file('skip\na;b\nc;d\n') },
+		});
+		expect(rows.result).toEqual([{ row: { 0: 'a;b' } }]);
+		const ragged = await run(type, csv({}), { $binary: { data: file('a,b\n1\n') } });
+		expect(String((ragged.result as { message: string }).message)).toContain(RUNS_IN_HOST);
+	});
+
 	it('gives the base64 text of the file', async () => {
 		const result = await run(type, parameters('binaryToPropery'), {
 			$binary: { data: file('abc') },
