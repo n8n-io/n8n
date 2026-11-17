@@ -191,9 +191,7 @@ const selectedResolverId = computed({
 
 const helpTexts = computed(() => ({
 	errorWorkflow: i18n.baseText('workflowSettings.helpTexts.errorWorkflow'),
-	errorWorkflowIncludeTriggerData: i18n.baseText(
-		'workflowSettings.helpTexts.errorWorkflowIncludeTriggerData',
-	),
+	shareTriggerData: i18n.baseText('workflowSettings.helpTexts.shareTriggerData'),
 	timezone: i18n.baseText('workflowSettings.helpTexts.timezone'),
 	credentialResolver: i18n.baseText('workflowSettings.helpTexts.credentialResolver'),
 	saveDataErrorExecution: i18n.baseText('workflowSettings.helpTexts.saveDataErrorExecution'),
@@ -219,7 +217,7 @@ const defaultValues = ref({
 	workflowCallerPolicy: 'workflowsFromSameOwner',
 	availableInMCP: false,
 	redactCallerExecutions: true,
-	errorWorkflowIncludeTriggerData: false,
+	shareTriggerData: false,
 });
 
 const executionLogic = computed(() => {
@@ -857,9 +855,8 @@ const toggleTimeout = () => {
 	workflowSettings.value.executionTimeout = workflowSettings.value.executionTimeout === -1 ? 0 : -1;
 };
 
-const toggleErrorWorkflowIncludeTriggerData = () => {
-	workflowSettings.value.errorWorkflowIncludeTriggerData =
-		!workflowSettings.value.errorWorkflowIncludeTriggerData;
+const toggleShareTriggerData = () => {
+	workflowSettings.value.shareTriggerData = !workflowSettings.value.shareTriggerData;
 };
 
 const toggleAvailableInMCP = () => {
@@ -994,9 +991,8 @@ onMounted(async () => {
 	if (workflowSettingsData.redactCallerExecutions === undefined) {
 		workflowSettingsData.redactCallerExecutions = defaultValues.value.redactCallerExecutions;
 	}
-	if (workflowSettingsData.errorWorkflowIncludeTriggerData === undefined) {
-		workflowSettingsData.errorWorkflowIncludeTriggerData =
-			defaultValues.value.errorWorkflowIncludeTriggerData;
+	if (workflowSettingsData.shareTriggerData === undefined) {
+		workflowSettingsData.shareTriggerData = defaultValues.value.shareTriggerData;
 	}
 
 	originalBinaryMode.value = workflowSettingsData.binaryMode;
@@ -1194,13 +1190,13 @@ onBeforeUnmount(() => {
 						</N8nSelect>
 					</ElCol>
 				</ElRow>
-				<ElRow data-test-id="error-workflow-include-trigger-data">
+				<ElRow data-test-id="share-trigger-data">
 					<ElCol :span="10" :class="$style['setting-name']">
-						<label for="errorWorkflowIncludeTriggerData">
-							{{ i18n.baseText('workflowSettings.errorWorkflowIncludeTriggerData') }}
+						<label for="shareTriggerData">
+							{{ i18n.baseText('workflowSettings.shareTriggerData') }}
 							<N8nTooltip placement="top">
 								<template #content>
-									{{ helpTexts.errorWorkflowIncludeTriggerData }}
+									{{ helpTexts.shareTriggerData }}
 								</template>
 								<N8nIcon icon="circle-help" />
 							</N8nTooltip>
@@ -1208,14 +1204,14 @@ onBeforeUnmount(() => {
 					</ElCol>
 					<ElCol :span="14">
 						<N8nSwitch
-							id="errorWorkflowIncludeTriggerData"
+							id="shareTriggerData"
 							:class="$style['setting-switch']"
 							size="large"
 							:disabled="readOnlyEnv || !workflowPermissions.update"
-							:model-value="workflowSettings.errorWorkflowIncludeTriggerData ?? false"
-							data-test-id="workflow-settings-error-workflow-include-trigger-data"
-							data-attr="workflow-settings-error-workflow-include-trigger-data"
-							@update:model-value="toggleErrorWorkflowIncludeTriggerData"
+							:model-value="workflowSettings.shareTriggerData ?? false"
+							data-test-id="workflow-settings-share-trigger-data"
+							data-attr="workflow-settings-share-trigger-data"
+							@update:model-value="toggleShareTriggerData"
 						/>
 					</ElCol>
 				</ElRow>

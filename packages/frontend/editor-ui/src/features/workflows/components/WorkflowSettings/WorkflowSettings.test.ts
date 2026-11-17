@@ -510,25 +510,25 @@ describe('WorkflowSettingsVue', () => {
 			const { getByTestId } = createComponent({ pinia });
 			await flushPromises();
 
-			expect(getByTestId('workflow-settings-error-workflow-include-trigger-data')).toHaveAttribute(
+			expect(getByTestId('workflow-settings-share-trigger-data')).toHaveAttribute(
 				'aria-checked',
 				'false',
 			);
 		});
 
-		it('should save errorWorkflowIncludeTriggerData as true when the user turns it on', async () => {
+		it('should save shareTriggerData as true when the user turns it on', async () => {
 			workflowDocumentStore.setSettings({ executionOrder: 'v1' });
 
 			const { getByTestId, getByRole } = createComponent({ pinia });
 			await flushPromises();
 
-			await userEvent.click(getByTestId('workflow-settings-error-workflow-include-trigger-data'));
+			await userEvent.click(getByTestId('workflow-settings-share-trigger-data'));
 			await userEvent.click(getByRole('button', { name: 'Save' }));
 
 			expect(workflowsStore.updateWorkflow).toHaveBeenCalledWith(
 				expect.any(String),
 				expect.objectContaining({
-					settings: expect.objectContaining({ errorWorkflowIncludeTriggerData: true }),
+					settings: expect.objectContaining({ shareTriggerData: true }),
 				}),
 			);
 		});

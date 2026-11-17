@@ -889,6 +889,11 @@ export const executionOptions = () => {
 			description: i18n.baseText('codeNodeEditor.completer.$execution.resumeFormUrl'),
 		},
 		{
+			name: 'triggerData',
+			returnType: 'Object',
+			description: i18n.baseText('codeNodeEditor.completer.$execution.triggerData'),
+		},
+		{
 			name: 'customData',
 			returnType: 'CustomData',
 			docURL: 'https://docs.n8n.io/workflows/executions/custom-executions-data/',

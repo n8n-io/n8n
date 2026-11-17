@@ -8,7 +8,7 @@ export function useExecutionCompletions() {
 	const i18n = useI18n();
 
 	/**
-	 * Complete `$execution.` to `.id .mode .resumeUrl .resumeFormUrl`
+	 * Complete `$execution.` to `.id .mode .resumeUrl .resumeFormUrl .triggerData`
 	 */
 	const executionCompletions = (
 		context: CompletionContext,
@@ -35,6 +35,10 @@ export function useExecutionCompletions() {
 			{
 				label: `${matcher}.resumeFormUrl`,
 				info: i18n.baseText('codeNodeEditor.completer.$execution.resumeFormUrl'),
+			},
+			{
+				label: `${matcher}.triggerData`,
+				info: i18n.baseText('codeNodeEditor.completer.$execution.triggerData'),
 			},
 			{
 				label: `${matcher}.customData.set("key", "value")`,

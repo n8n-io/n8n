@@ -72,6 +72,7 @@ declare global {
 		mode: N8nExecutionMode;
 		resumeUrl?: string;
 		resumeFormUrl?: string;
+		triggerData?: Record<string, unknown>;
 		customData: N8nCustomData;
 	}
 
