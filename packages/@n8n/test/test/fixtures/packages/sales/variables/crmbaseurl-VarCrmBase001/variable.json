@@ -1,0 +1,5 @@
+{
+	"name": "crmBaseUrl",
+	"type": "string",
+	"value": "https://crm.package.example.com"
+}

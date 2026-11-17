@@ -4,6 +4,7 @@ export type { HttpRequest } from './http/http-request';
 export { configureNode, type NodeConfiguration } from './instance-state/configure-node';
 export { createCredential, type TestCredential } from './instance-state/credentials';
 export type { ExecuteWorkflowOptions } from './execution-context';
+export { loadPackage } from './package/load-package';
 export {
 	mockNode,
 	type MockItems,

@@ -3,7 +3,11 @@ import { deepCopy } from 'n8n-workflow';
 
 import { WorkflowTestError } from './errors';
 import type { MockOutput } from './mock-node';
-import { subWorkflowIssues, type WorkflowSetIssue } from './sub-workflows/issues';
+import {
+	subWorkflowIssues,
+	type IssueProducer,
+	type WorkflowSetIssue,
+} from './sub-workflows/issues';
 import { deriveRequirements, type WorkflowSetRequirements } from './sub-workflows/requirements';
 
 export type NodeDefinition = Omit<INode, 'position' | 'onError' | 'credentials'> & {
@@ -60,31 +64,41 @@ export class WorkflowHandle {
 	}
 }
 
+export interface WorkflowSetSource {
+	issueProducers: IssueProducer[];
+	requirements?: WorkflowSetRequirements;
+	idsByTarget?: Map<string, string>;
+}
+
 export class WorkflowSet {
 	readonly workflows: WorkflowHandle[];
 
-	constructor(definitions: WorkflowDefinition[]) {
+	constructor(
+		definitions: WorkflowDefinition[],
+		private readonly source: WorkflowSetSource = { issueProducers: [subWorkflowIssues] },
+	) {
 		this.workflows = definitions.map(
 			(definition) => new WorkflowHandle(deepCopy(definition), this),
 		);
 	}
 
 	get requirements(): WorkflowSetRequirements {
-		return deriveRequirements(this);
+		return this.source.requirements ?? deriveRequirements(this);
 	}
 
 	issues(): WorkflowSetIssue[] {
-		return subWorkflowIssues(this);
+		return this.source.issueProducers.flatMap((produce) => produce(this));
 	}
 
 	get(selector: string): WorkflowHandle {
-		const byId = this.workflows.find((workflow) => workflow.id === selector);
+		const id = this.source.idsByTarget?.get(selector) ?? selector;
+		const byId = this.workflows.find((workflow) => workflow.id === id);
 		if (byId) return byId;
 
 		const byName = this.workflows.filter((workflow) => workflow.name === selector);
 		if (byName.length === 1) return byName[0];
 		if (byName.length > 1) {
-			const ids = byName.map((workflow) => workflow.id).join(', ');
+			const ids = byName.map((workflow) => this.describeId(workflow)).join(', ');
 			throw new WorkflowTestError(
 				'WORKFLOW_AMBIGUOUS',
 				`More than one workflow is named "${selector}". Select one by ID: ${ids}`,
@@ -96,6 +110,11 @@ export class WorkflowSet {
 			'WORKFLOW_NOT_FOUND',
 			`No workflow has the name or ID "${selector}". Workflows: ${names}`,
 		);
+	}
+
+	private describeId({ id }: WorkflowHandle) {
+		const target = [...(this.source.idsByTarget ?? [])].find(([, targetId]) => targetId === id);
+		return target ? `${id} (${target[0]})` : id;
 	}
 }
 

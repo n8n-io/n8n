@@ -26,7 +26,8 @@ export type WorkflowTestErrorCode =
 	| 'DATA_TABLE_NOT_MOCKED'
 	| 'BINARY_NOT_SUPPORTED'
 	| 'HTTP_NOT_MOCKED'
-	| 'NODE_TYPE_NOT_INSTALLED';
+	| 'NODE_TYPE_NOT_INSTALLED'
+	| 'INVALID_PACKAGE';
 
 interface WorkflowTestErrorDetails {
 	workflow?: string;

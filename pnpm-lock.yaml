@@ -4593,6 +4593,9 @@ importers:
 
   packages/@n8n/test:
     dependencies:
+      '@n8n/api-types':
+        specifier: workspace:*
+        version: link:../api-types
       '@n8n/errors':
         specifier: workspace:*
         version: link:../errors
@@ -4617,6 +4620,9 @@ importers:
       n8n-workflow:
         specifier: workspace:*
         version: link:../../workflow
+      tar:
+        specifier: 7.5.21
+        version: 7.5.21
     devDependencies:
       '@n8n/eslint-config':
         specifier: workspace:*

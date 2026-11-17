@@ -23,13 +23,15 @@
     "dist/**/*"
   ],
   "dependencies": {
+    "@n8n/api-types": "workspace:*",
     "@n8n/errors": "workspace:*",
     "@n8n/task-runner": "workspace:*",
     "@n8n/utils": "workspace:*",
     "lodash": "catalog:",
     "n8n-core": "workspace:*",
     "n8n-nodes-base": "workspace:*",
-    "n8n-workflow": "workspace:*"
+    "n8n-workflow": "workspace:*",
+    "tar": "catalog:"
   },
   "peerDependencies": {
     "@n8n/n8n-nodes-langchain": "workspace:*",

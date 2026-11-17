@@ -16,7 +16,7 @@ Install the version of `@n8n/test` that is equal to the n8n version that you use
 load ─► mockNode / configureNode / nock ─► executeWorkflow ─► assert on the result
 ```
 
-1. Load the workflows with `loadWorkflows` or `loadWorkflow`.
+1. Load the workflows with `loadPackage`, `loadWorkflows`, or `loadWorkflow`.
 2. Replace the parts that must not run. Use `mockNode`, `configureNode`, or nock.
 3. Execute one workflow with `executeWorkflow`.
 4. Assert on the result. The result holds the data of each node.
@@ -94,22 +94,20 @@ test('requests the customer from the CRM', async () => {
 
 A request that no nock mock matches fails the execution. Clear the nock state after each test.
 
-## Sub-workflow test
+## Package test
 
-Load the parent and its children in one set with `loadWorkflows`.
+`loadPackage` reads a package from n8n package export. The package can be a directory or a `.n8np` file.
 
 ```typescript
 import { expect, test } from 'vitest';
-import { executeWorkflow, loadWorkflows, mockNode } from '@n8n/test';
-import newSignup from './new-signup.json';
-import notifySales from './notify-sales.json';
+import { executeWorkflow, loadPackage, mockNode } from '@n8n/test';
 
-test('the parent sends the fields that the child declares', () => {
-  expect(loadWorkflows([newSignup, notifySales]).issues()).toEqual([]);
+test('the package is complete', () => {
+  expect(loadPackage('./packages/sales').issues()).toEqual([]);
 });
 
 test('runs the sales workflow as a real child', async () => {
-  const workflows = loadWorkflows([newSignup, notifySales]);
+  const workflows = loadPackage('./packages/sales');
   const parent = workflows.get('New signup');
   mockNode(parent.node('Get customer'), [{ id: 42, name: 'Ada', plan: 'enterprise' }]);
   mockNode(workflows.get('Notify sales').node('Post to Slack'), [{ ok: true }]);
@@ -124,10 +122,11 @@ test('runs the sales workflow as a real child', async () => {
 });
 ```
 
-- `workflows.get` accepts a name or an ID.
+- `workflows.get` accepts a name, an ID, or the `target` path from the manifest.
 - A sub-workflow call runs the child from the set. Mock the calling node to stop at the boundary.
 - `workflows.requirements` lists the credentials, variables, data tables, child workflows, and node types that the workflows need.
-- `workflows.issues()` reports a contract mismatch between a parent and its child, and a contract that the library cannot check.
+- `workflows.issues()` reports a child that the package does not hold, a node type that is not installed, and a contract mismatch between a parent and its child. For a set from `loadWorkflows`, `issues()` reports only the contract checks.
+- The library does not read values from the package. The test supplies each credential, variable, and secret.
 
 ## `executeWorkflow` options
 
@@ -188,9 +187,10 @@ A failed execution rejects with a `WorkflowTestError`. The error has `code`, `wo
 | `NODE_NOT_FOUND` | `workflow.node(name)` received an unknown name, or `result.node(node)` received a reference from another workflow. |
 | `NODE_RUN_COUNT` | A shortcut on `result.node(node)` read a node that ran more than one time or did not run. |
 | `MULTIPLE_END_NODES` | `result.output` read a workflow that ended on more than one node. |
-| `WORKFLOW_NOT_FOUND` | `workflows.get` received an unknown name or ID. |
+| `WORKFLOW_NOT_FOUND` | `workflows.get` received an unknown name, ID, or target. |
 | `WORKFLOW_AMBIGUOUS` | More than one workflow has the name. |
 | `INVALID_WORKFLOW` | The workflow JSON has an unknown value, or a child has no Execute Workflow Trigger. |
+| `INVALID_PACKAGE` | The package path does not exist, or the package has no manifest, an invalid manifest, or an invalid workflow file. |
 | `INVALID_OPTION` | An option of `executeWorkflow` has an invalid value. |
 | `EXECUTION_IN_PROGRESS` | A second execution started before the first one finished. |
 
@@ -225,3 +225,4 @@ These differences from production remain:
 - **Not used.** Pinned data in the workflow JSON. The error workflow.
 - **Redaction** replaces only the credential values that the test supplied. It cannot find a value that a node derived from a secret.
 - **Only HTTP.** The library cannot intercept a database connection, SMTP, SSH, a file write, or a shell command. Use `mockNode` for these nodes.
+- **Packages.** The library reads archived workflows in a package as normal workflows.
