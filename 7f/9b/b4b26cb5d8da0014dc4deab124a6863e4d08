@@ -1,0 +1,45 @@
+packages/quality/testing/playwright/tests/e2e/ui-extensions/pages.spec.ts
+  s_6956ec5be81713::t_98f27f1e6c12b3 1-20,26-34,36-52,54-68,70-72,74-75,79-109,111-123,130-144,149-154,156-159,166-227,231,237,243,246,248-251
+  s_6956ec5be81713::t_8e4a68326a5d7c 244
+  s_6956ec5be81713::t_c5b909721fc456 76-78,124-129,145-148
+  s_6956ec5be81713::t_383f9996ec032a 53,110,155
+  s_6956ec5be81713::t_3e99749859af06 35,232-234,240-242,247
+  s_6956ec5be81713::t_c6852bf73c5a38 228,236,239
+  s_6956ec5be81713::t_863d4cd36bb898 160-165
+  s_6956ec5be81713::t_86320f04ccb34e 21-25,69,229-230,235,238
+  s_6956ec5be81713::t_9e5b1d3aa18525 73,245
+packages/quality/testing/playwright/tests/e2e/ui-extensions/side-panel.spec.ts
+  s_6956ec5be81713::t_ca6d8a17766740 5,172,322-331,333,335-341,343-344,346,350-351
+  s_6956ec5be81713::t_86320f04ccb34e 332,334
+  s_6956ec5be81713::t_fb70dae83b5fcc 342,345,347-349,352-354
+packages/quality/testing/playwright/pages/components/ui-extensions-side-panel.ts
+  s_6956ec5be81713::t_e79524dfa44dd6 3-4,21-25,36-44,80-92,94,96-97,102-104,130-151
+  s_6956ec5be81713::t_383f9996ec032a 93,95,98-101
+  s_6956ec5be81713::t_3e99749859af06 123-127
+  s_6956ec5be81713::t_86320f04ccb34e 26-35,105-122,128-129
+  s_6956ec5be81713::t_d6686369f29307 152
+packages/quality/testing/playwright/pages/n8nPage.ts
+  s_6956ec5be81713::t_e79524dfa44dd6 24,134,233
+packages/quality/testing/playwright/tests/e2e/ui-extensions/ui-extensions-helpers.ts
+  s_6956ec5be81713::t_ca6d8a17766740 1-59
+packages/quality/testing/playwright/services/mcp-api-helper.ts
+  s_6956ec5be81713::t_e79524dfa44dd6 1006-1034
+packages/modules/ui-extensions/frontend/src/examples/servicesOverview.view.js
+  s_6956ec5be81713::t_e18120b6c64256 156
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "7f9bb4b26cb5d8da0014dc4deab124a6863e4d08",
+  "prompts": {},
+  "sessions": {
+    "s_6956ec5be81713": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "91664345-a691-443f-b08d-05a7967643b2",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "alex <alex@n8n.io>"
+    }
+  }
+}

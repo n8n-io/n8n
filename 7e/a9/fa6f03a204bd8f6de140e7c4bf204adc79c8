@@ -1,0 +1,23 @@
+packages/cli/src/services/resource-owner.service.ts
+  s_c2acdaa2547ceb::t_ca9e9243e6a376 1-255
+packages/@n8n/permissions/src/roles/__tests__/manage-owner-scope.test.ts
+  s_c2acdaa2547ceb::t_9a33b7fadbc78a 1-48
+packages/cli/test/integration/resource-owner.service.test.ts
+  s_c2acdaa2547ceb::t_1698e002125114 1-296
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "7ea9fa6f03a204bd8f6de140e7c4bf204adc79c8",
+  "prompts": {},
+  "sessions": {
+    "s_c2acdaa2547ceb": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3853d88a-98c9-45e1-afe3-c53837fbb2dd",
+        "model": "claude-fable-5-2"
+      },
+      "human_author": "James Gee <1285296+geemanjs@users.noreply.github.com>"
+    }
+  }
+}

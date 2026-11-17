@@ -1,0 +1,88 @@
+packages/cli/src/modules/mcp/mcp.service.ts
+  s_6956ec5be81713::t_fbe5cd07910a2d 81,905-906,909,911-928
+packages/modules/ui-extensions/backend/src/index.ts
+  s_6956ec5be81713::t_308886b0e23e61 8
+packages/modules/ui-extensions/backend/src/__tests__/ui-extension-views.controller.test.ts
+  s_6956ec5be81713::t_08f46f0b5f2452 4,8-11,24-56,61-62,69
+  s_6956ec5be81713::t_7cbcfc96aa1a62 57-60
+packages/cli/src/modules/mcp/tools/create-side-panel-view.tool.ts
+  s_6956ec5be81713::t_fbe5cd07910a2d 103
+packages/cli/src/events/relays/ui-extensions-push.event-relay.ts
+  s_6956ec5be81713::t_1236ce2e7079a4 1-28
+packages/cli/src/modules/mcp/mcp-protected-resource.ts
+  s_6956ec5be81713::t_fbe5cd07910a2d 94
+packages/cli/src/modules/mcp/tools/delete-ui-extension.tool.ts
+  s_6956ec5be81713::t_d7e36641572b86 1-68
+packages/modules/ui-extensions/backend/src/ui-extension-views.service.ts
+  s_6956ec5be81713::t_01069992b3473e 2,5,9,15-16,18,20-21,27-36,38-39,41,47-49,54-55,63,66,73-75,81,84,88,90-92,94,96-97,102,109,120-155,163-164
+packages/cli/src/modules/mcp/__tests__/delete-ui-extension.tool.test.ts
+  s_6956ec5be81713::t_c8d004bc6e55d7 1-80
+packages/cli/src/modules/mcp/mcp-tool-availability.ts
+  s_6956ec5be81713::t_fbe5cd07910a2d 84-86,93,98,101
+packages/cli/src/modules/mcp/mcp-scopes.ts
+  s_6956ec5be81713::t_a64ad1eff9fda0 11
+  s_6956ec5be81713::t_fbe5cd07910a2d 5,7,156-162
+packages/cli/src/modules/mcp/mcp.constants.ts
+  s_6956ec5be81713::t_fbe5cd07910a2d 67-69
+packages/modules/ui-extensions/backend/src/ui-extensions.events.ts
+  s_6956ec5be81713::t_308886b0e23e61 1-16
+packages/modules/ui-extensions/backend/package.json
+  s_6956ec5be81713::t_308886b0e23e61 40
+packages/cli/src/modules/mcp/tools/list-ui-extensions.tool.ts
+  s_6956ec5be81713::t_d7e36641572b86 1-77
+packages/cli/src/events/__tests__/ui-extensions-push-event-relay.test.ts
+  s_6956ec5be81713::t_0339e7696c2a4e 1-39
+packages/cli/src/modules/mcp/__tests__/mcp-protected-resource.test.ts
+  s_6956ec5be81713::t_62b00563f7ac26 264-267,269-271,275,278-279
+packages/cli/src/modules/mcp/tools/create-custom-page.tool.ts
+  s_6956ec5be81713::t_eea1af1b841d49 1-119
+packages/modules/mcp/frontend/src/mcp.constants.ts
+  s_6956ec5be81713::t_38f3118fdbf7bb 19,35
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_6956ec5be81713::t_38f3118fdbf7bb 3267,4486
+packages/@n8n/api-types/src/__tests__/ui-extensions.test.ts
+  s_6956ec5be81713::t_9e5b16e638f0bb 5,34-98,225-226
+  s_6956ec5be81713::t_809f1e4f4e76be 99-102
+packages/cli/src/modules/mcp/__tests__/create-side-panel-view.tool.test.ts
+  s_6956ec5be81713::t_c8d004bc6e55d7 16
+  s_6956ec5be81713::t_21630c41c03dff 9,27-28,55-57,66,97-98,113-114,127,130-132,136
+packages/modules/ui-extensions/backend/src/ui-extension-views.controller.ts
+  s_6956ec5be81713::t_7cbcfc96aa1a62 5-8
+  s_6956ec5be81713::t_8e1869e1f49566 2-3,15-16,23-36
+  s_6956ec5be81713::t_23677ee76816a2 37
+packages/cli/src/events/maps/relay.event-map.ts
+  s_6956ec5be81713::t_1236ce2e7079a4 3,102
+packages/cli/src/server.ts
+  s_6956ec5be81713::t_1236ce2e7079a4 25,315
+packages/@n8n/api-types/src/ui-extensions.ts
+  s_6956ec5be81713::t_b331df81298c69 19,21-22,94-101,104-105,133-138,208-261,283-284,331,337
+packages/modules/ui-extensions/backend/src/__tests__/ui-extension-views.service.test.ts
+  s_6956ec5be81713::t_7cbcfc96aa1a62 269-271,316
+  s_6956ec5be81713::t_08f46f0b5f2452 1-5,7,22,27,29,47-53,88-96,223-268,272-315,317-385
+packages/cli/src/modules/mcp/__tests__/create-custom-page.tool.test.ts
+  s_6956ec5be81713::t_c8d004bc6e55d7 1-131
+packages/cli/src/modules/mcp/__tests__/mcp-scopes.test.ts
+  s_6956ec5be81713::t_62b00563f7ac26 368-369,371-372,756-761,767,769,774,777,782
+packages/@n8n/api-types/src/schemas/mcp.schema.ts
+  s_6956ec5be81713::t_4373987a5047e1 42
+packages/cli/src/modules/mcp/__tests__/list-ui-extensions.tool.test.ts
+  s_6956ec5be81713::t_c8d004bc6e55d7 1-84
+pnpm-lock.yaml
+  s_6956ec5be81713::t_f4ea53ebf2ab04 8944-8946
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "5741169160c37233b86f5684f7d9232924d5b8ff",
+  "prompts": {},
+  "sessions": {
+    "s_6956ec5be81713": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "91664345-a691-443f-b08d-05a7967643b2",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "alex <alex@n8n.io>"
+    }
+  }
+}
