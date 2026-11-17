@@ -62,7 +62,7 @@ function formatArg(arg: unknown, maxLength: number): string {
 	// Slice first, so a large string is not copied in full
 	if (typeof arg === 'string') return detach(`'${arg.slice(0, maxLength)}'`);
 
-	// A value with no JSON text, such as `undefined` or a function, shows as `null` in the UI today
+	// A value with no JSON text, e.g. `undefined` or a function, shows as `null` in the UI today
 	const json: string | undefined = jsonStringify(arg, { replaceCircularRefs: true });
 	return json ?? 'null';
 }
