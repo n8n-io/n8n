@@ -3795,6 +3795,25 @@ describe('LogStreamingEventRelay', () => {
 				},
 			});
 		});
+
+		it.each([
+			[true, 'n8n.audit.workflow-reviews.project-approval-required.enabled'],
+			[false, 'n8n.audit.workflow-reviews.project-approval-required.disabled'],
+		])(
+			'should log the project approval requirement set to %s as `%s`',
+			(projectApprovalRequired, eventName) => {
+				eventService.emit('project-workflow-review-policy-updated', {
+					user: reviewer,
+					projectId: 'project-1',
+					projectApprovalRequired,
+				});
+
+				expect(eventBus.sendAuditEvent).toHaveBeenCalledWith({
+					eventName,
+					payload: { ...redactedReviewer, projectId: 'project-1' },
+				});
+			},
+		);
 	});
 
 	describe('redaction enforcement events', () => {

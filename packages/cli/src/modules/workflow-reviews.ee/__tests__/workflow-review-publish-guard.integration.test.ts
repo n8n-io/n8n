@@ -1,4 +1,10 @@
-import { createTeamProject, createWorkflow, mockInstance, testDb } from '@n8n/backend-test-utils';
+import {
+	createTeamProject,
+	createWorkflow,
+	linkUserToProject,
+	mockInstance,
+	testDb,
+} from '@n8n/backend-test-utils';
 import { EventService } from '@n8n/backend-services';
 import { WorkflowsConfig } from '@n8n/config';
 import type { Project, User, WorkflowEntity } from '@n8n/db';
@@ -531,6 +537,73 @@ describe('changing the review settings', () => {
 
 		expect(response.status).toBe(200);
 		expect(response.body.data.workflowReviews).toEqual({ enabled: true, alwaysRequired: true });
+	});
+});
+
+describe('changing the project review settings', () => {
+	const settingsUrl = (projectId: string) => `/projects/${projectId}/workflow-review-settings`;
+
+	test('turns Require approval on and off for a team project', async () => {
+		const projectAdmin = await createMember();
+		await linkUserToProject(projectAdmin, teamProject, 'project:admin');
+		const projectAdminAgent = testServer.authAgentFor(projectAdmin);
+
+		const initial = await projectAdminAgent.get(settingsUrl(teamProject.id)).expect(200);
+		expect(initial.body.data).toEqual({ projectApprovalRequired: false });
+
+		for (const projectApprovalRequired of [true, false]) {
+			const response = await projectAdminAgent
+				.patch(settingsUrl(teamProject.id))
+				.send({ projectApprovalRequired })
+				.expect(200);
+			expect(response.body.data).toEqual({ projectApprovalRequired });
+
+			const stored = await projectAdminAgent.get(settingsUrl(teamProject.id)).expect(200);
+			expect(stored.body.data).toEqual({ projectApprovalRequired });
+		}
+	});
+
+	test('rejects a project editor who changes Require approval', async () => {
+		await memberAgent
+			.patch(settingsUrl(teamProject.id))
+			.send({ projectApprovalRequired: true })
+			.expect(403);
+
+		const stored = await ownerAgent.get(settingsUrl(teamProject.id)).expect(200);
+		expect(stored.body.data).toEqual({ projectApprovalRequired: false });
+	});
+
+	test('never requires a review in a personal space', async () => {
+		await ownerAgent
+			.patch(settingsUrl(ownerProject.id))
+			.send({ projectApprovalRequired: true })
+			.expect(404);
+	});
+
+	test('records one audit event when Require approval changes for a project', async () => {
+		const eventService = Container.get(EventService);
+		const events: unknown[] = [];
+		const listener = (event: unknown) => events.push(event);
+		eventService.on('project-workflow-review-policy-updated', listener);
+
+		try {
+			for (const projectApprovalRequired of [false, true, true]) {
+				await ownerAgent
+					.patch(settingsUrl(teamProject.id))
+					.send({ projectApprovalRequired })
+					.expect(200);
+			}
+		} finally {
+			eventService.off('project-workflow-review-policy-updated', listener);
+		}
+
+		expect(events).toEqual([
+			{
+				user: expect.objectContaining({ id: owner.id }),
+				projectId: teamProject.id,
+				projectApprovalRequired: true,
+			},
+		]);
 	});
 });
 
