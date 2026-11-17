@@ -1,6 +1,6 @@
 import { AsyncLocalStorage } from 'node:async_hooks';
 import { readFileSync } from 'node:fs';
-import { createRequire } from 'node:module';
+import { createRequire, isBuiltin } from 'node:module';
 import type { Context } from 'node:vm';
 import { Script, createContext } from 'node:vm';
 
@@ -324,20 +324,39 @@ function size(bytes: number): string {
 	return `${value} ${units[exponent]}`;
 }
 
+/** A list of modules as n8n's task runner reads it: `*` alone is every module. */
+function moduleList(text: string | undefined): Set<string> | '*' | undefined {
+	if (text === undefined) return undefined;
+	if (text === '*') return '*';
+	return new Set(
+		text
+			.split(',')
+			.map((s) => s.trim())
+			.filter((s) => s !== ''),
+	);
+}
+
 /**
  * `require` of the Code node. n8n allows only the modules of
- * `NODE_FUNCTION_ALLOW_BUILTIN` and `NODE_FUNCTION_ALLOW_EXTERNAL`; the host
- * reads one list, `WF_FALLBACK_CODE_ALLOW_MODULES` (comma-separated, `*` for
- * all). Allowed modules load from the n8n node package.
+ * `NODE_FUNCTION_ALLOW_BUILTIN` (modules of Node.js) and
+ * `NODE_FUNCTION_ALLOW_EXTERNAL` (other modules). The host reads the same two
+ * lists as `WF_FALLBACK_CODE_ALLOW_BUILTIN` and `WF_FALLBACK_CODE_ALLOW_EXTERNAL`
+ * (comma-separated, `*` for all). `WF_FALLBACK_CODE_ALLOW_MODULES` is one list
+ * for both kinds, for a kind that has no list of its own; there, `*` can also
+ * be one entry of the list. Allowed modules load from the n8n node package.
  */
 function codeRequire(): (name: string) => unknown {
-	const allowed = (process.env.WF_FALLBACK_CODE_ALLOW_MODULES ?? '')
+	const both = (process.env.WF_FALLBACK_CODE_ALLOW_MODULES ?? '')
 		.split(',')
 		.map((s) => s.trim())
 		.filter((s) => s !== '');
+	const shared: Set<string> | '*' = both.includes('*') ? '*' : new Set(both);
+	const builtin = moduleList(process.env.WF_FALLBACK_CODE_ALLOW_BUILTIN) ?? shared;
+	const external = moduleList(process.env.WF_FALLBACK_CODE_ALLOW_EXTERNAL) ?? shared;
 	const load = createRequire(hostRequire.resolve('n8n-nodes-base/package.json'));
 	return (name: string) => {
-		if (!allowed.includes('*') && !allowed.includes(name)) {
+		const list = isBuiltin(name) ? builtin : external;
+		if (list !== '*' && !list.has(name)) {
 			throw new CodeStepError(`Module '${name}' is disallowed`);
 		}
 		return load(name);

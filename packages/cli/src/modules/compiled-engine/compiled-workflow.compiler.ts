@@ -15,6 +15,7 @@ import { join } from 'node:path';
 import { CredentialTypes } from '@/credential-types';
 import { NodeTypes } from '@/node-types';
 
+import { codeNodeModules } from './compiled-code-modules';
 import { ArtifactCache } from './compiled-engine-disk.service';
 import { CompiledEngineConfig } from './compiled-engine.config';
 import { CompiledEngineCredentials } from './compiled-engine-credentials';
@@ -329,6 +330,8 @@ export class CompiledWorkflowCompiler {
 			.update(this.processes.storesResponses ? 'stores-responses' : '')
 			// A MySQL node is a call of the `sql` effect only when `wfrt` has the MySQL client.
 			.update(this.sqlMysql ? 'sql-mysql' : '')
+			// A Code node that loads a module runs natively only when n8n allows the module.
+			.update(JSON.stringify(codeNodeModules().builtin))
 			.update(String(ARTIFACT_FORM))
 			.digest('hex');
 		const context = { lang, input, workflowJson, subWorkflows, publicCredentials };
@@ -412,6 +415,8 @@ export class CompiledWorkflowCompiler {
 				baseUrl: `${this.urlService.getInstanceBaseUrl()}/`,
 				id: this.instanceSettings.instanceId,
 			},
+			// Native Code nodes load only the built-in modules that n8n allows (NODE_FUNCTION_ALLOW_BUILTIN).
+			codeModules: codeNodeModules().builtin,
 			// `wfrt` runs the `sql` effect: a Postgres node that the library node has runs there.
 			sql: true,
 			// `wfrt` runs the dialect `mysql` only with `--sql-mysql` (N8N_COMPILED_ENGINE_SQL_MYSQL).

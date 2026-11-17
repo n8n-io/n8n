@@ -15,7 +15,9 @@
  *   WF_FALLBACK_CREDENTIALS     JSON file `{ "<slot>": { ...credential data } }`. A step
  *                               frame with `credential` (or `credentials` by slot) comes first.
  *   WF_FALLBACK_MAX_BINARY_BYTES  largest base64 binary data in one step result (default 32 MiB)
- *   WF_FALLBACK_CODE_ALLOW_MODULES  modules that `require` in JavaScript code steps may load
+ *   WF_FALLBACK_CODE_ALLOW_BUILTIN / WF_FALLBACK_CODE_ALLOW_EXTERNAL  modules that `require` in
+ *                               JavaScript code steps may load, as n8n's NODE_FUNCTION_ALLOW_*
+ *   WF_FALLBACK_CODE_ALLOW_MODULES  one list for both kinds, for a kind without its own list
  *   WF_FALLBACK_PYTHON          Python executable for Python code steps (default python3)
  *   WF_FALLBACK_PYTHON_STDLIB_ALLOW / WF_FALLBACK_PYTHON_EXTERNAL_ALLOW  Python import allowlists
  *   WF_FALLBACK_CODE_TIMEOUT_MS longest run of one code step (default: the step time limit with

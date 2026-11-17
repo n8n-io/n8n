@@ -113,6 +113,7 @@ export function attemptNative(
 		timezone?: string;
 		nodeName?: string;
 		itemsOfFirstOnly?: boolean;
+		allowedModules?: string[];
 	} = {},
 ): NativeAttempt & { nodes?: string[]; zones?: string[]; allNodes?: string[] } {
 	const src = codeOf(type, parameters);
@@ -303,6 +304,7 @@ export function lowerCodeNative(c: NodeContext): boolean {
 			timezone: c.scope.timezone,
 			nodeName: c.node.name,
 			itemsOfFirstOnly: previousRunsOnce(c),
+			allowedModules: c.codeModules,
 			check: false,
 			allNodes: c.workflow.nodes
 				.map((n) => n.name)

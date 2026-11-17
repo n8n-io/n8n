@@ -85,6 +85,11 @@ export interface CodeNativeInput {
 	 * the node before this one is not fixed: then `$items()` has no native form.
 	 */
 	itemsOfFirstOnly?: boolean;
+	/**
+	 * The built-in modules that the deployment lets code load with \`require\`
+	 * (\`ConvertOptions.codeModules\`); \`*\` is every module. The default is none, as in n8n.
+	 */
+	allowedModules?: string[];
 }
 
 export interface Blocker {
@@ -2445,8 +2450,8 @@ export function translateCode(input: CodeNativeInput): TranslateResult {
 	/**
 	 * Names of the crypto module of Node.js: \`const crypto = require('crypto')\` and
 	 * \`const { createHash, createHmac } = require('crypto')\`. The native form has the hashes
-	 * MD5, SHA-1 and SHA-256 of text, with a digest as hex or base64 text. A deployment of v1
-	 * must allow the module for such code to run at all.
+	 * MD5, SHA-1 and SHA-256 of text, with a digest as hex or base64 text, when the deployment
+	 * allows the module (\`allowedModules\`).
 	 */
 	const cryptoNames = new Map<ts.Symbol, 'module' | 'createHash' | 'createHmac'>();
 	const cryptoDeclarations = new Set<ts.Node>();
@@ -2481,7 +2486,13 @@ export function translateCode(input: CodeNativeInput): TranslateResult {
 	};
 	/** True when the code uses a name of the crypto module for something without a native form. */
 	let cryptoMisuse = false;
-	const usesCrypto = !input.nodeCode && /\brequire\s*\(\s*['"`]crypto['"`]\s*\)/.test(input.code);
+	// v1 gives an error for a module that the deployment does not allow: such code has no
+	// native form, and the fallback host gives that error.
+	const cryptoAllowed =
+		input.allowedModules !== undefined &&
+		(input.allowedModules.includes('*') || input.allowedModules.includes('crypto'));
+	const usesCrypto =
+		!input.nodeCode && cryptoAllowed && /\brequire\s*\(\s*['"`]crypto['"`]\s*\)/.test(input.code);
 	if (usesCrypto && root.body) {
 		const declare = (x: ts.Node): void => {
 			if (ts.isVariableStatement(x) && x.declarationList.declarations.length === 1) {

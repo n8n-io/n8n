@@ -214,4 +214,32 @@ describe('native Code nodes in a workflow', () => {
 			expect(JSON.stringify(r.ran.result)).toContain("Code doesn't return items properly");
 		});
 	});
+
+	describe('modules of require', () => {
+		const wf = {
+			name: 'Hash',
+			nodes: [
+				hook,
+				code(
+					'Hash',
+					"const crypto = require('crypto'); return [{ json: { a: crypto.createHash('md5').update('a').digest('hex') } }];",
+				),
+			],
+			connections: chain(['Hook', 'Hash']),
+		};
+
+		it.each([
+			['no option', undefined, ['Hash']],
+			['a list without the module', ['os'], ['Hash']],
+			['a list with the module', ['crypto'], []],
+			['every module', ['*'], []],
+		])(
+			'runs the code natively only when the list allows the module: %s',
+			(_, codeModules, host) => {
+				const out = convertWorkflow(wf, codeModules === undefined ? {} : { codeModules });
+				expect(out.ok).toBe(true);
+				expect(out.fallbackNodes).toEqual(host);
+			},
+		);
+	});
 });

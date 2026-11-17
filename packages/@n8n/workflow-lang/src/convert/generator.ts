@@ -110,6 +110,13 @@ export interface ConvertOptions {
 	 */
 	codeNodes?: 'native' | 'host';
 	/**
+	 * The built-in modules of Node.js that the code of a Code node can load with `require`,
+	 * as `NODE_FUNCTION_ALLOW_BUILTIN` of n8n lists them; `*` is every module. The default is
+	 * none, as in n8n. Native code has `crypto` only when this list allows it. Without it,
+	 * the node runs in the fallback host, which gives the error of v1 for the module.
+	 */
+	codeModules?: string[];
+	/**
 	 * The sources of nodes. With it, a node that has no native form and no library node is
 	 * compiled from its n8n source (`src/node-compile/`), and runs in the fallback host only
 	 * when the source does not compile. The modules are in `ConvertResult.nodes`.
@@ -864,6 +871,7 @@ export class ModuleGenerator {
 				this.options.codeNodes === 'host' || this.options.hostCodeNodes?.includes(node.name)
 					? 'host'
 					: 'native',
+			codeModules: this.options.codeModules,
 			useZone: (zone) => {
 				this.zones.add(zone);
 			},

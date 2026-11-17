@@ -14,6 +14,7 @@ import { dirname, join, resolve } from 'node:path';
 
 import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
 
+import { hostCodeModules } from './compiled-code-modules';
 import { CompiledEngineConfig } from './compiled-engine.config';
 
 const WFRT_RELATIVE_PATH = join('workflow-runtime', 'zig-out', 'bin', 'wfrt');
@@ -244,6 +245,7 @@ export class CompiledEngineProcesses {
 			{
 				N8N_USER_FOLDER: folder,
 				...this.hostEnvAccess(),
+				...hostCodeModules(),
 				...this.hostUserAgent(),
 				...this.hostUrls(),
 				...this.hostExtensions(),

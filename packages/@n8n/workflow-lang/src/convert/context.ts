@@ -85,6 +85,8 @@ export interface NodeContext {
 	plainLists?: Set<string>;
 	/** `host` keeps JavaScript Code nodes in the fallback host (`ConvertOptions.codeNodes`). */
 	codeNodes?: 'native' | 'host';
+	/** Built-in modules that code can load with `require` (`ConvertOptions.codeModules`). */
+	codeModules?: string[];
 	/** The n8n instance (`ConvertOptions.instance`), when the caller gives it. */
 	instance?: { baseUrl: string; id: string };
 	/** Sources of nodes for the node compiler (`ConvertOptions.nodeSources`). */

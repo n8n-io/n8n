@@ -2,7 +2,7 @@
  * Forms of Code node JavaScript that real workflows use often: each runs natively and in
  * the fallback host on the same items, and the results must be the same.
  */
-import { describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 
 import { hostRunners } from '../../__tests__/behaviour/compare.ts';
 import { allItemsCode, eachItemCode } from '../../code-node.ts';
@@ -19,6 +19,9 @@ type Outcome = { ok: true; value: unknown } | { ok: false };
 // The fallback host allows `require('crypto')`, as a deployment of v1 that runs such code.
 process.env.WF_FALLBACK_CODE_ALLOW_MODULES = 'crypto';
 
+/** The modules that the deployment allows (`allowedModules`), for the cases of `require`. */
+let allowedModules: string[] | undefined;
+
 function native(
 	code: string,
 	mode: CodeMode,
@@ -32,6 +35,7 @@ function native(
 		hasNode: () => false,
 		timezone: 'system',
 		itemsOfFirstOnly,
+		allowedModules,
 	});
 	if (!t.ok) throw new Error(`blocked: ${t.blockers.map((b) => b.feature).join(', ')}`);
 	const c = checkTranslation(t.translation, mode);
@@ -56,7 +60,7 @@ function host(code: string, mode: CodeMode, input: unknown[]): Outcome {
 }
 
 function blockersOf(code: string, mode: CodeMode = 'all'): string[] {
-	const t = translateCode({ code, mode, kind: 'code', hasNode: () => false });
+	const t = translateCode({ code, mode, kind: 'code', hasNode: () => false, allowedModules });
 	return t.ok ? [] : t.blockers.map((b) => b.feature);
 }
 
@@ -351,6 +355,34 @@ describe('hashes of the crypto module', () => {
 		{ s: 'c'.repeat(56), k: 'k'.repeat(65) },
 	];
 	const withCrypto = <T>(run: () => T): T => run();
+	beforeEach(() => {
+		allowedModules = ['crypto'];
+	});
+	afterEach(() => {
+		allowedModules = undefined;
+	});
+
+	const hashCode =
+		"const crypto = require('crypto'); return [{ json: { a: crypto.createHash('md5').update('a').digest('hex') } }];";
+
+	it.each([
+		['no list', undefined],
+		['an empty list', []],
+		['a list without the module', ['os', 'node:crypto']],
+	])('keeps the code in the host with %s, where v1 gives its error', (_, list) => {
+		allowedModules = list;
+		expect(blockersOf(hashCode)).toContain('require');
+		expect(blockersOf("const c = require('crypto'); return [];")).toContain('require');
+	});
+
+	it.each([
+		['the module', ['fs', 'crypto']],
+		['every module', ['*']],
+	])('translates the code with a list that allows %s', (_, list) => {
+		allowedModules = list;
+		expect(blockersOf(hashCode)).toEqual([]);
+		expect(blockersOf("const c = require('crypto'); return [];")).toEqual([]);
+	});
 
 	it('gives the digests of Node.js for MD5, SHA-1 and SHA-256, with and without a key', () => {
 		const code = `const crypto = require('crypto');
