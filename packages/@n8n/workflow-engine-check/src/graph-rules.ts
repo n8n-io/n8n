@@ -313,8 +313,7 @@ function toTriggerGraph(
 	const names = new Set(rooted.map((node) => node.name));
 
 	let edges: Edge[] = [];
-	for (const [from, byType] of Object.entries(connections)) {
-		if (!names.has(from)) continue;
+	for (const [from, byType] of Object.entries(connections).filter(([from]) => names.has(from))) {
 		(byType.main ?? []).forEach((slot, outputIndex) => {
 			for (const connection of slot ?? []) {
 				if (names.has(connection.node) && connection.type === NodeConnectionTypes.Main) {
