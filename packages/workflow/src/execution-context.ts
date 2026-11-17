@@ -43,6 +43,11 @@ const SecureArtifactsSchemaV1 = z.object({
 
 export type ISecureArtifactsV1 = z.output<typeof SecureArtifactsSchemaV1>;
 
+/** JSON of the first trigger item of a root execution. */
+export const TriggerDataSchema = z.record(z.string(), JsonValueSchema);
+
+export type ITriggerData = z.output<typeof TriggerDataSchema>;
+
 export const SecureArtifactsSchema = z
 	.discriminatedUnion('version', [SecureArtifactsSchemaV1])
 	.meta({
@@ -265,6 +270,14 @@ const ExecutionContextSchemaV1 = z.object({
 	 * cannot cover the failed/partial path on its own.
 	 */
 	usesDynamicCredentials: z.boolean().optional(),
+
+	/**
+	 * JSON of the first item of the trigger of the root execution. Only a root
+	 * execution of a workflow with `shareTriggerData` on stores it. Sub-executions
+	 * inherit it. Not on the error workflow allow-list: an error workflow receives
+	 * it as a separate property of its payload.
+	 */
+	triggerData: TriggerDataSchema.optional(),
 });
 
 export type IExecutionContextV1 = z.output<typeof ExecutionContextSchemaV1>;

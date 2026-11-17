@@ -1,6 +1,7 @@
 import type { DataRequestResponse, PartialAdditionalData, TaskData } from '@n8n/task-runner';
 import {
 	createRunExecutionData,
+	type IExecutionContext,
 	type IRunExecutionData,
 	type IWorkflowExecuteAdditionalData,
 	type Workflow,
@@ -67,6 +68,26 @@ export class DataRequestResponseBuilder {
 		};
 	}
 
+	/**
+	 * Passes only the shared trigger data, for `$execution.triggerData`. The rest of
+	 * the context holds encrypted carriers that must not reach a runner.
+	 */
+	private buildRuntimeData(
+		runtimeData?: IExecutionContext,
+	): { runtimeData: IExecutionContext } | undefined {
+		const triggerData = runtimeData?.triggerData;
+		if (!runtimeData || typeof triggerData !== 'object') return undefined;
+
+		return {
+			runtimeData: {
+				version: runtimeData.version,
+				establishedAt: runtimeData.establishedAt,
+				source: runtimeData.source,
+				triggerData,
+			},
+		};
+	}
+
 	private buildRunExecutionData(runExecutionData: IRunExecutionData): IRunExecutionData {
 		return createRunExecutionData({
 			startData: runExecutionData.startData,
@@ -75,6 +96,7 @@ export class DataRequestResponseBuilder {
 				? {
 						contextData: runExecutionData.executionData.contextData,
 						metadata: runExecutionData.executionData.metadata,
+						...this.buildRuntimeData(runExecutionData.executionData.runtimeData),
 
 						// These are related to workflow execution and are not something
 						// that are accessible by nodes, so we always omit them

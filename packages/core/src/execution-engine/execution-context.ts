@@ -11,6 +11,7 @@ import {
 import { assertExecutionDataExists, type PreExecutionAdditionalData } from '@/utils/assertions';
 
 import { ExecutionContextService } from './execution-context.service';
+import { captureTriggerData } from './trigger-data';
 
 /**
  * Establishes the execution context for a workflow run.
@@ -294,6 +295,12 @@ export const establishExecutionContext = async (
 		// If the trigger items were modified by hooks, update the start item accordingly
 		if (triggerItems) {
 			startItem.data['main'][0] = triggerItems;
+		}
+
+		// Only a root run reaches this point. Sub-executions inherit the value above.
+		const triggerData = captureTriggerData(workflow, startItem, runExecutionData, mode);
+		if (triggerData) {
+			executionData.runtimeData = { ...executionData.runtimeData, triggerData };
 		}
 	} catch (error) {
 		// Log the error

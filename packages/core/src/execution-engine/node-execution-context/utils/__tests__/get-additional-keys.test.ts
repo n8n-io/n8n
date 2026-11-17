@@ -1,4 +1,5 @@
 import type { IDataObject, IRunExecutionData, IWorkflowExecuteAdditionalData } from 'n8n-workflow';
+import { createRunExecutionData } from 'n8n-workflow';
 import { mock } from 'vitest-mock-extended';
 
 import { PLACEHOLDER_EMPTY_EXECUTION_ID } from '@/constants';
@@ -45,6 +46,28 @@ describe('getAdditionalKeys', () => {
 		const result = getAdditionalKeys(additionalData, 'internal', null);
 
 		expect(result.$execution?.mode).toBe('production');
+	});
+
+	it('should expose the shared trigger data of the execution context', () => {
+		const triggerData = { headers: { 'x-correlation-id': 'corr-1' } };
+		const result = getAdditionalKeys(
+			additionalData,
+			'webhook',
+			createRunExecutionData({
+				executionData: {
+					nodeExecutionStack: [],
+					runtimeData: { version: 1, establishedAt: 1, source: 'webhook', triggerData },
+				},
+			}),
+		);
+
+		expect(result.$execution?.triggerData).toEqual(triggerData);
+	});
+
+	it('should leave the trigger data undefined when the context has none', () => {
+		const result = getAdditionalKeys(additionalData, 'webhook', null);
+
+		expect(result.$execution?.triggerData).toBeUndefined();
 	});
 
 	it('should include customData methods when runExecutionData is provided', () => {

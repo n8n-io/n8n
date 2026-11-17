@@ -2,8 +2,8 @@ import { Logger } from '@n8n/backend-common';
 import { GlobalConfig } from '@n8n/config';
 import { Container } from '@n8n/di';
 import { ErrorReporter } from 'n8n-core';
-import type { IDataObject, IRun, IWorkflowBase, WorkflowExecuteMode } from 'n8n-workflow';
-import { isExecutionOutputRedacted, toErrorWorkflowContext } from 'n8n-workflow';
+import type { IRun, IWorkflowBase, WorkflowExecuteMode } from 'n8n-workflow';
+import { toErrorWorkflowContext } from 'n8n-workflow';
 
 import type { IWorkflowErrorData } from '@/interfaces';
 import { isPolicyRefusal } from '@/policy/policy-violation.error';
@@ -30,24 +30,6 @@ const getWorkflowExecutionService = async () => {
 	const { WorkflowExecutionService } = await import('@/workflows/workflow-execution.service.js');
 	return Container.get(WorkflowExecutionService);
 };
-
-/**
- * Returns the JSON of the first item that the trigger node of the run produced.
- * Returns nothing when the run is redacted, because the error execution does not
- * inherit that redaction.
- */
-function getTriggerItemJson(
-	workflowData: IWorkflowBase,
-	fullRunData: IRun,
-	mode: WorkflowExecuteMode,
-): IDataObject | undefined {
-	if (isExecutionOutputRedacted(fullRunData.data, workflowData.settings, mode)) return undefined;
-
-	const triggerNodeName = fullRunData.data.executionData?.runtimeData?.triggerNode?.name;
-	if (!triggerNodeName) return undefined;
-
-	return fullRunData.data.resultData.runData[triggerNodeName]?.[0]?.data?.main?.[0]?.[0]?.json;
-}
 
 /**
  * Checks if there was an error and if errorWorkflow or a trigger is defined. If so it collects
@@ -95,9 +77,8 @@ export function executeErrorWorkflow(
 					mode,
 					retryOf,
 					executionContext: toErrorWorkflowContext(fullRunData.data.executionData?.runtimeData),
-					triggerData: workflowData.settings?.errorWorkflowIncludeTriggerData
-						? getTriggerItemJson(workflowData, fullRunData, mode)
-						: undefined,
+					// Not on the context allow-list, so it crosses only as this property.
+					triggerData: fullRunData.data.executionData?.runtimeData?.triggerData,
 				},
 				workflow: {
 					id: workflowId,

@@ -3,10 +3,14 @@ import { Container } from '@n8n/di';
 import {
 	createEmptyRunExecutionData,
 	createRunExecutionData,
+	type IDataObject,
 	type IExecutionContext,
 	type IN8NOAuthMetadata,
 	type INode,
+	type INodeType,
+	type INodeTypes,
 	type IWorkflowExecuteAdditionalData,
+	type IWorkflowSettings,
 	type RelatedExecution,
 	type Workflow,
 	type WorkflowExecuteMode,
@@ -1713,6 +1717,125 @@ describe('establishExecutionContext', () => {
 
 			// No subject → not sealed → executionPath stays as minted (empty), never gated.
 			expect(await pathOf(runExecutionData.executionData!.runtimeData)).toEqual([]);
+		});
+	});
+
+	describe('shared trigger data', () => {
+		const triggerItem = { headers: { 'x-correlation-id': 'corr-1' }, body: { hello: 'world' } };
+
+		const createWorkflow = (settings: IWorkflowSettings) => {
+			const nodeTypes = mock<INodeTypes>();
+			nodeTypes.getByNameAndVersion.mockReturnValue(
+				mock<INodeType>({ description: { group: ['trigger'] } }),
+			);
+			// A plain object: a mock answers every missing setting with a truthy function.
+			return { id: 'workflow-1', settings, nodeTypes } as unknown as Workflow;
+		};
+
+		const createRunData = (json: IDataObject, parentExecution?: RelatedExecution) =>
+			createRunExecutionData({
+				executionData: {
+					nodeExecutionStack: [
+						{
+							node: mock<INode>({ name: 'Webhook', type: 'n8n-nodes-base.webhook' }),
+							data: { main: [[{ json }]] },
+							source: null,
+						},
+					],
+				},
+				parentExecution,
+			});
+
+		beforeEach(() => {
+			const service = mock<ExecutionContextService>();
+			service.augmentExecutionContextWithHooks.mockImplementation(
+				async (_workflow, _startItem, context) => ({ context, triggerItems: null }),
+			);
+			service.augmentSubExecutionContext.mockImplementation(
+				async (_workflow, _startItem, context) => context,
+			);
+			service.maybeBindExecutionId.mockImplementation(async (context) => context);
+			Container.set(ExecutionContextService, service);
+		});
+
+		afterEach(() => {
+			Container.reset();
+		});
+
+		it('stores the first trigger item of a root run when the setting is on', async () => {
+			const runExecutionData = createRunData(triggerItem);
+
+			await establishExecutionContext(
+				createWorkflow({ shareTriggerData: true }),
+				runExecutionData,
+				mockAdditionalData,
+				'webhook',
+			);
+
+			expect(runExecutionData.executionData!.runtimeData!.triggerData).toEqual(triggerItem);
+		});
+
+		it('stores no trigger data when the setting is off', async () => {
+			const runExecutionData = createRunData(triggerItem);
+
+			await establishExecutionContext(
+				createWorkflow({}),
+				runExecutionData,
+				mockAdditionalData,
+				'webhook',
+			);
+
+			expect(runExecutionData.executionData!.runtimeData!.triggerData).toBeUndefined();
+		});
+
+		it('keeps the inherited trigger data in a sub-execution that shares its own', async () => {
+			const runExecutionData = createRunData(
+				{ fromSubWorkflowTrigger: true },
+				{
+					executionId: 'root-execution',
+					workflowId: 'root-workflow',
+					executionContext: {
+						version: 1,
+						establishedAt: 0,
+						source: 'webhook',
+						triggerData: triggerItem,
+					},
+				},
+			);
+
+			await establishExecutionContext(
+				createWorkflow({ shareTriggerData: true }),
+				runExecutionData,
+				mockAdditionalData,
+				'integrated',
+			);
+
+			expect(runExecutionData.executionData!.runtimeData!.triggerData).toEqual(triggerItem);
+		});
+
+		it('does not pass trigger data to the context of an error run', async () => {
+			const runExecutionData = createRunData(
+				{},
+				{
+					executionId: 'failed-execution',
+					workflowId: 'failed-workflow',
+					executionContext: {
+						version: 1,
+						establishedAt: 0,
+						source: 'webhook',
+						triggerData: triggerItem,
+					},
+				},
+			);
+
+			await establishExecutionContext(
+				createWorkflow({ shareTriggerData: true }),
+				runExecutionData,
+				mockAdditionalData,
+				'error',
+			);
+
+			expect(runExecutionData.executionData!.runtimeData).not.toHaveProperty('triggerData');
 		});
 	});
 });

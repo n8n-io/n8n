@@ -40,6 +40,7 @@ export function getAdditionalKeys(
 			customData: runExecutionData
 				? createExecutionCustomData({ runExecutionData, mode })
 				: undefined,
+			triggerData: runExecutionData?.executionData?.runtimeData?.triggerData,
 		},
 		// Gated on the value's presence, not on `mode`: sub-workflows of an eval run
 		// execute as 'integrated' but inherit evaluationRunId, so they must expose it too.

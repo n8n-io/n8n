@@ -3,7 +3,13 @@ import { mockInstance } from '@n8n/backend-test-utils';
 import { GlobalConfig } from '@n8n/config';
 import { Container } from '@n8n/di';
 import { ErrorReporter } from 'n8n-core';
-import type { INode, IRun, IWorkflowBase, WorkflowExecuteMode } from 'n8n-workflow';
+import type {
+	IExecutionContext,
+	INode,
+	IRun,
+	IWorkflowBase,
+	WorkflowExecuteMode,
+} from 'n8n-workflow';
 import { createRunExecutionData, NodeOperationError } from 'n8n-workflow';
 import { mock } from 'vitest-mock-extended';
 
@@ -339,29 +345,20 @@ describe('executeErrorWorkflow', () => {
 		});
 	});
 
-	describe('errorWorkflowIncludeTriggerData setting', () => {
-		const triggerItem = {
+	describe('shared trigger data', () => {
+		const triggerData = {
 			headers: { 'x-correlation-id': 'corr-1' },
 			query: {},
 			body: { hello: 'world' },
 		};
 
-		const runFailedWorkflow = async ({
-			settings,
-			redactProduction = false,
-			triggerNodeName = 'Webhook',
-		}: {
-			settings: IWorkflowBase['settings'];
-			redactProduction?: boolean;
-			triggerNodeName?: string;
-		}) => {
-			// A plain object: a mock answers every missing setting with a truthy function.
-			const workflowData = {
+		const runFailedWorkflow = async (runtimeData: Partial<IExecutionContext>) => {
+			const workflowData = mock<IWorkflowBase>({
 				id: 'workflow-123',
 				name: 'Failing workflow',
-				settings: { errorWorkflow: 'error-workflow-456', ...settings },
+				settings: { errorWorkflow: 'error-workflow-456' },
 				nodes: [],
-			} as unknown as IWorkflowBase;
+			});
 			const data = createRunExecutionData({
 				resultData: {
 					error: new NodeOperationError(
@@ -369,17 +366,7 @@ describe('executeErrorWorkflow', () => {
 						'Test error',
 					) as IRun['data']['resultData']['error'],
 					lastNodeExecuted: 'TestNode',
-					runData: {
-						Webhook: [
-							{
-								startTime: 0,
-								executionIndex: 0,
-								executionTime: 0,
-								source: [],
-								data: { main: [[{ json: triggerItem }]] },
-							},
-						],
-					},
+					runData: {},
 				},
 				executionData: { nodeExecutionStack: [] },
 			});
@@ -387,8 +374,8 @@ describe('executeErrorWorkflow', () => {
 				version: 1,
 				establishedAt: 2000000000,
 				source: 'webhook',
-				triggerNode: { name: triggerNodeName, type: 'n8n-nodes-base.webhook' },
-				redaction: { version: 2, production: redactProduction, manual: false },
+				triggerNode: { name: 'Webhook', type: 'n8n-nodes-base.webhook' },
+				...runtimeData,
 			};
 
 			ownershipService.getWorkflowProjectCached.mockResolvedValue({ id: 'project-1' } as never);
@@ -406,34 +393,30 @@ describe('executeErrorWorkflow', () => {
 			return workflowErrorData!.execution!;
 		};
 
-		it('passes the first trigger item when the setting is on', async () => {
-			const execution = await runFailedWorkflow({
-				settings: { errorWorkflowIncludeTriggerData: true },
-			});
+		it('passes the trigger data of the context as a separate property', async () => {
+			const execution = await runFailedWorkflow({ triggerData });
 
-			expect(execution.triggerData).toEqual(triggerItem);
+			expect(execution.triggerData).toEqual(triggerData);
 		});
 
-		it('passes no trigger data when the setting is not set', async () => {
-			const execution = await runFailedWorkflow({ settings: {} });
+		it('keeps the trigger data out of the execution context of the payload', async () => {
+			const execution = await runFailedWorkflow({ triggerData });
 
-			expect(execution.triggerData).toBeUndefined();
+			expect(execution.executionContext).not.toHaveProperty('triggerData');
 		});
 
-		it('passes no trigger data when the run redacts production data', async () => {
+		it('passes the inherited trigger data when a sub-execution fails', async () => {
 			const execution = await runFailedWorkflow({
-				settings: { errorWorkflowIncludeTriggerData: true },
-				redactProduction: true,
+				source: 'integrated',
+				parentExecutionId: 'root-execution',
+				triggerData,
 			});
 
-			expect(execution.triggerData).toBeUndefined();
+			expect(execution.triggerData).toEqual(triggerData);
 		});
 
-		it('passes no trigger data when the trigger node has no run data', async () => {
-			const execution = await runFailedWorkflow({
-				settings: { errorWorkflowIncludeTriggerData: true },
-				triggerNodeName: 'Other trigger',
-			});
+		it('passes no trigger data when the context has none', async () => {
+			const execution = await runFailedWorkflow({});
 
 			expect(execution.triggerData).toBeUndefined();
 		});

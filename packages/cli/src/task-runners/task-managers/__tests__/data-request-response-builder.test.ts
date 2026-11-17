@@ -2,6 +2,7 @@ import type { PartialAdditionalData, TaskData } from '@n8n/task-runner';
 import {
 	createRunExecutionData,
 	type IExecuteContextData,
+	type IExecutionContext,
 	type INode,
 	type INodeExecutionData,
 	type IRunExecutionData,
@@ -144,6 +145,52 @@ describe('DataRequestResponseBuilder', () => {
 				},
 			}),
 			resumeToken: 'test-resume-token-preserved',
+		});
+	});
+
+	describe('runtime data', () => {
+		const createTaskData = (runtimeData: IExecutionContext) =>
+			mock<TaskData>({
+				additionalData,
+				workflow,
+				runExecutionData: createRunExecutionData({
+					executionData: { nodeExecutionStack: [], runtimeData },
+				}),
+			});
+
+		it('passes only the shared trigger data from the execution context', () => {
+			const triggerData = { headers: { 'x-correlation-id': 'corr-1' } };
+
+			const result = builder.buildFromTaskData(
+				createTaskData({
+					version: 1,
+					establishedAt: 1,
+					source: 'webhook',
+					credentials: 'encrypted-identity-carrier',
+					secureArtifacts: 'encrypted-secure-artifacts',
+					triggerData,
+				}),
+			);
+
+			expect(result.runExecutionData.executionData?.runtimeData).toStrictEqual({
+				version: 1,
+				establishedAt: 1,
+				source: 'webhook',
+				triggerData,
+			});
+		});
+
+		it('passes no execution context when there is no shared trigger data', () => {
+			const result = builder.buildFromTaskData(
+				createTaskData({
+					version: 1,
+					establishedAt: 1,
+					source: 'webhook',
+					credentials: 'encrypted-identity-carrier',
+				}),
+			);
+
+			expect(result.runExecutionData.executionData?.runtimeData).toBeUndefined();
 		});
 	});
 });

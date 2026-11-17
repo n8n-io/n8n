@@ -98,7 +98,13 @@ describe('toErrorWorkflowContext', () => {
 		subWorkflowRedaction: { production: true, manual: true },
 		executedByUserId: 'user-1',
 		usesDynamicCredentials: true,
+		triggerData: { headers: { 'x-correlation-id': 'corr-1' } },
 	};
+
+	// The error workflow payload carries it as a separate property instead.
+	it('drops the shared trigger data', () => {
+		expect(toErrorWorkflowContext(fullContext)).not.toHaveProperty('triggerData');
+	});
 
 	it('drops the identity carrier and the secure artifacts', () => {
 		const result = toErrorWorkflowContext(fullContext);

@@ -238,10 +238,10 @@ responses:
                         type: string
                         example: VzqKEW0ShTXA5vPj
                         description: The ID of the workflow that contains the error trigger node.
-                      errorWorkflowIncludeTriggerData:
+                      shareTriggerData:
                         type: boolean
                         example: false
-                        description: Controls whether the error workflow receives the JSON of the first item that the trigger node of the failed execution produced, as `execution.triggerData`. Defaults to false. The data is not sent when the failed execution is redacted.
+                        description: Controls whether an execution that this workflow starts shares the JSON of the first item of its trigger. Nodes in the workflow and in each sub-workflow that it calls read the item as `$execution.triggerData`. Error workflows receive it as `execution.triggerData`. Defaults to false. The item is not shared when the execution is redacted or when the item is larger than 64 KB.
                       timezone:
                         type: string
                         example: America/New_York
