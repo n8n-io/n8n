@@ -507,6 +507,11 @@ export interface SmtpAttachment {
 	filename: string;
 	/** The content id of an inline file. */
 	cid?: string;
+	/**
+	 * The content type of the file (`type/subtype`), as the Gmail node of n8n gives it.
+	 * Absent: the runtime takes the content type from the file name.
+	 */
+	contentType?: string;
 	data: string;
 	id?: string;
 }
@@ -536,6 +541,19 @@ export interface SmtpRequest {
 	attachments?: SmtpAttachment[];
 	/** True: a certificate that cannot be checked is taken (the option of the node). */
 	allowUnauthorizedCerts?: boolean;
+	/** The mail options `inReplyTo` and `references` of nodemailer (the Gmail node). */
+	inReplyTo?: string;
+	references?: string;
+	/** True: the message has the Bcc header (`keepBcc` of nodemailer, the Gmail node). */
+	keepBcc?: boolean;
+	/**
+	 * True: the runtime builds the message and sends nothing. The result is `SmtpBuilt` (write
+	 * the literal `true`, so the call has that result type). The
+	 * runtime does not read the credential of the slot, and makes no connection. The Gmail
+	 * library node gets the body of its request this way, so the message has the bytes that
+	 * nodemailer gives the v1 node.
+	 */
+	build?: boolean;
 }
 
 export interface SmtpCall extends StepOptions, SmtpRequest {}
@@ -581,6 +599,13 @@ export interface SmtpFailure {
 	};
 }
 
+/** The result of an `smtp` effect with `build`. */
+export interface SmtpBuilt {
+	/** The message in base64 with `-` and `_`, without padding: `raw` of the Gmail API. */
+	raw: string;
+	messageId: string;
+}
+
 export type SmtpResult = SmtpSent | SmtpFailure;
 
 /** The execution context. Each call except `now`, `random` and `trace` is a durable step. */
@@ -593,6 +618,7 @@ export interface Ctx {
 	respond(call: RespondCall): Promise<void>;
 	service<T = unknown>(call: ServiceCall): Promise<T>;
 	sql(call: SqlCall): Promise<SqlResult>;
+	smtp(call: SmtpCall & { build: true }): Promise<SmtpBuilt>;
 	smtp(call: SmtpCall): Promise<SmtpResult>;
 	now(): number;
 	random(): number;
@@ -721,6 +747,7 @@ export interface NodeCtx {
 	/** SQL statements on the database of a credential slot (spec 9.10). Values are bind values. */
 	sql(request: SqlRequest): Promise<SqlResult>;
 	/** One message over SMTP, with the server and the login of a credential slot. */
+	smtp(request: SmtpRequest & { build: true }): Promise<SmtpBuilt>;
 	smtp(request: SmtpRequest): Promise<SmtpResult>;
 	/** The workflow static data, as `Ctx.staticData` (spec 9.7). Library polls keep their cursor there. */
 	staticData(type: 'global' | 'node', node?: string): Record<string, unknown>;

@@ -306,7 +306,12 @@ export function emitStep(c: NodeContext, call: StepCall): void {
 		// The call for the item, and the host call for the same item after the mark.
 		if (onError !== 'stopWorkflow' || c.traceAll) w.open('try {');
 		emitItemWithHost(c, fn, opts, call.hostItem);
-		w.line(`for (const r of result) ${push('r')}`);
+		// The v1 node in the host gives the error item of the item itself. n8n's engine moves
+		// an item that has only `error` to the error output, with the JSON of the input item.
+		const moved = errors
+			? `if (itemInHost && r != null && typeof r.error === 'string' && r.error !== '' && Object.keys(r).length === 1) ${errorOutputPush(c, errors, ITEM, push('{}')).replace('error.message', 'r.error')} else ${push('r')}`
+			: push('r');
+		w.line(`for (const r of result) ${moved}`);
 		if (onError === 'stopWorkflow' && c.traceAll) failTrace(c);
 		if (onError !== 'stopWorkflow') {
 			w.close('} catch (error) {');
@@ -455,13 +460,24 @@ const WHOLE_NODE_ERRORS = new Set(['n8n-nodes-base.supabase']);
 const FIRST_PAIRED_ERROR_ITEMS = new Set(['n8n-nodes-base.supabase']);
 
 /**
+ * Nodes whose input items can have binary data and whose error item is proven against v1
+ * with such an item: the item of the error output has the JSON of the input item only.
+ */
+const NO_BINARY_ERROR_ITEMS = new Set(['n8n-nodes-base.emailSend']);
+
+/**
  * The statement that moves the error item of `item` to the error output, as v1 merges it
  * into the input item. An item without a text stays on output 0 (`toMain`).
  */
 function errorOutputPush(c: NodeContext, errors: string, item: string, toMain: string): string {
 	const text = errorText(c);
 	if (UNPAIRED_ERROR_ITEMS.has(c.node.type)) return `${errors}.push({ error: ${text.code} });`;
-	const moved = `${errors}.push({ ...${item}, error: ${text.code} });`;
+	// The error item of v1 has no binary data: the engine copies only the JSON of the input item.
+	const plain = NO_BINARY_ERROR_ITEMS.has(c.node.type);
+	if (plain) c.helper('errorItemOf');
+	const moved = plain
+		? `${errors}.push(errorItemOf(${item}, ${text.code}));`
+		: `${errors}.push({ ...${item}, error: ${text.code} });`;
 	return text.optional ? `if (${text.code}) ${moved} else ${toMain}` : moved;
 }
 

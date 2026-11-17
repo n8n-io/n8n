@@ -18,9 +18,8 @@
  * results and checks its `smtp` calls and its output against the recording, in the
  * reference runner and in the bytecode VM.
  */
-import { spawn, type ChildProcess } from 'node:child_process';
+import type { ChildProcess } from 'node:child_process';
 import { existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
-import net from 'node:net';
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -36,12 +35,18 @@ import { EMAIL_SEND_CASES, EMAIL_SEND_HOST_SETTINGS } from './email-send-cases.t
 import type { ErrorDetail } from './equivalence.ts';
 import { errorDetailOfResult } from './equivalence.ts';
 import type { SmtpServer, SmtpSession } from './smtp-server.ts';
+import {
+	postToRuntime,
+	runSmtpEffect,
+	runtimeBuilt,
+	startMailRuntime,
+	withInstanceId,
+} from './smtp-runtime.ts';
 import { maskInfo, maskMessage, startSmtpServer } from './smtp-server.ts';
 import { recordV1, recorderAvailable } from './v1-recorder.ts';
 
 const here = dirname(fileURLToPath(import.meta.url));
 const recordingFile = join(here, 'email-send-recordings.json');
-const WFRT = join(here, '../../../../../../workflow-runtime/zig-out/bin/wfrt');
 const NODE = 'Node';
 const HOST_NODE = 'Node (fallback host)';
 const TYPE = 'n8n-nodes-base.emailSend';
@@ -72,8 +77,7 @@ interface EmailSendRecording {
 	host?: boolean;
 }
 
-const hasRuntime = existsSync(WFRT);
-const live = recorderAvailable() && hasRuntime;
+const live = recorderAvailable() && runtimeBuilt();
 const record = live && process.env.EMAIL_SEND_RECORD === '1';
 const stored: Record<string, EmailSendRecording> = existsSync(recordingFile)
 	? JSON.parse(readFileSync(recordingFile, 'utf8'))
@@ -173,19 +177,16 @@ function runOf(run: Awaited<ReturnType<typeof runReference>>): Run {
 	return { outcome: { output: Array.isArray(traced?.items) ? traced.items : [] }, host, smtp };
 }
 
-/** The answer of the fallback host for the node of a case, from what v1 gave. */
-function hostAnswer(v1: Outcome): unknown {
-	return v1.error !== undefined ? { $error: v1.error } : v1.output;
-}
-
-/** The instance id of the recorder in `text`, also across the soft line breaks of a part. */
-function withInstanceId(text: string, id: string): string {
-	if (id === '') return text;
-	const pattern = new RegExp(id.split('').join('(?:=\\r\\n)?'), 'g');
-	return text.replace(pattern, (found) => {
-		let k = 0;
-		return found.replace(/[0-9a-f]/g, () => INSTANCE_ID[k++]);
-	});
+/**
+ * The answer of the fallback host for the item of a case that the runtime does not send,
+ * from what v1 gave. Under a continue setting the v1 node in the host gives the error item
+ * itself; n8n's engine made the item of the error output from it.
+ */
+function hostAnswer(c: EmailSendCase, v1: Outcome): unknown {
+	if (v1.error !== undefined) return { $error: v1.error };
+	if (c.onError !== 'continueErrorOutput') return v1.output;
+	const errors = Array.isArray(v1.output) && Array.isArray(v1.output[1]) ? v1.output[1] : [];
+	return errors.map((item: unknown) => ({ error: isRecord(item) ? item.error : undefined }));
 }
 
 function masked(sessions: SmtpSession[], id = ''): SmtpSession[] {
@@ -193,7 +194,7 @@ function masked(sessions: SmtpSession[], id = ''): SmtpSession[] {
 		...session,
 		...(session.message === undefined
 			? {}
-			: { message: withInstanceId(maskMessage(session.message), id) }),
+			: { message: withInstanceId(maskMessage(session.message), id, INSTANCE_ID) }),
 	}));
 }
 
@@ -207,18 +208,6 @@ interface Bed {
 }
 let bed: Bed | undefined;
 
-async function freePort(): Promise<number> {
-	return await new Promise((resolve, reject) => {
-		const probe = net.createServer();
-		probe.on('error', reject);
-		probe.listen(0, '127.0.0.1', () => {
-			const address = probe.address();
-			const port = typeof address === 'object' && address !== null ? address.port : 0;
-			probe.close(() => resolve(port));
-		});
-	});
-}
-
 function credentialData(server: SmtpServer, slot: EmailSendCredential): Record<string, unknown> {
 	const login = { user: 'user', password: 'secret' };
 	const base = { host: '127.0.0.1', port: server.port, secure: false, hostName: 'client.test' };
@@ -227,37 +216,6 @@ function credentialData(server: SmtpServer, slot: EmailSendCredential): Record<s
 	if (slot === 'direct') return { ...base, ...login, port: server.securePort, secure: true };
 	if (slot === 'closed') return { ...base, ...login, port: 1, disableStartTls: false };
 	return { ...base, ...login, disableStartTls: false };
-}
-
-/** A workflow that gives the body of its webhook to the `smtp` effect, for each credential. */
-function effectSource(): string {
-	const fields = ['from', 'to', 'cc', 'bcc', 'replyTo', 'subject', 'text', 'html'];
-	const branch = (slot: string) => `if (slot === '${slot}') {
-				return { result: await ctx.smtp({
-					name: 'Send ${slot}',
-					credential: '${slot}',
-					${fields.map((f) => `${f}: a.${f},`).join('\n\t\t\t\t\t')}
-					attachments: a.attachments,
-					allowUnauthorizedCerts: a.allowUnauthorizedCerts,
-				}) };
-			}`;
-	return `import { webhook, workflow, type SmtpRequest } from '@n8n/workflow-lang';
-
-export default workflow({
-	triggers: [webhook<{ slot: string; args: SmtpRequest }>({ path: 'smtp-effect', method: 'POST' })],
-	credentials: { ${SLOTS.map((slot) => `${slot}: { type: 'smtp' }`).join(', ')} },
-	async run(ctx, trigger) {
-		const slot = trigger.body.slot;
-		const a = trigger.body.args;
-		try {
-			${SLOTS.map(branch).join('\n\t\t\t')}
-		} catch (e) {
-			return { failed: String((e as { message?: string }).message) };
-		}
-		return { failed: 'no such slot' };
-	},
-});
-`;
 }
 
 /** The module of the whole converted workflow of a case, for the run in `wfrt`. */
@@ -273,43 +231,14 @@ async function startBed(): Promise<Bed> {
 	const server = await startSmtpServer();
 	const work = mkdtempSync(join(tmpdir(), 'email-send-'));
 	const credentials: Record<string, unknown> = {};
-	for (const slot of SLOTS)
+	for (const slot of SLOTS) {
 		credentials[slot] = { type: 'smtp', data: credentialData(server, slot) };
-	writeFileSync(join(work, 'credentials.json'), JSON.stringify(credentials), { mode: 0o600 });
-	const effect = compile(effectSource(), { fileName: '/workflow.ts' });
-	expect(effect.diagnostics).toEqual([]);
-	writeFileSync(join(work, 'effect.wfm'), effect.module ?? new Uint8Array());
-	const modules = ['--module', join(work, 'effect.wfm')];
-	EMAIL_SEND_CASES.forEach((c, k) => {
-		if (c.host === true) return;
-		writeFileSync(join(work, `case-${k}.wfm`), moduleOf(c, k));
-		modules.push('--module', join(work, `case-${k}.wfm`));
-	});
-	const port = await freePort();
-	const runtime = spawn(
-		WFRT,
-		[
-			'serve',
-			'--profile',
-			'embedded',
-			'--port',
-			String(port),
-			'--smtp-native',
-			'--credentials',
-			join(work, 'credentials.json'),
-			...modules,
-		],
-		{ stdio: 'ignore', env: { ...process.env, TZ: 'UTC' } },
-	);
-	// The runtime answers when it listens. A module without the path gives 404.
-	for (let tries = 0; tries < 200; tries++) {
-		try {
-			await fetch(`http://127.0.0.1:${port}/ready-probe`);
-			break;
-		} catch {
-			await new Promise((resolve) => setTimeout(resolve, 50));
-		}
 	}
+	const modules: Record<string, Uint8Array> = {};
+	EMAIL_SEND_CASES.forEach((c, k) => {
+		if (c.host !== true) modules[`case-${k}.wfm`] = moduleOf(c, k);
+	});
+	const runtime = await startMailRuntime(work, SLOTS, credentials, modules);
 	// The instance id of the recorder is in the attribution link of an HTML message.
 	server.script({ auth: 'PLAIN LOGIN' });
 	await recordV1({
@@ -322,34 +251,7 @@ async function startBed(): Promise<Bed> {
 	});
 	const sent = (server.sessions()[0]?.message ?? '').replace(/=\r\n/g, '');
 	const v1InstanceId = /emailSend_([0-9a-f]{64})/.exec(sent)?.[1] ?? '';
-	return { server, work, runtime, port, v1InstanceId };
-}
-
-async function post(
-	port: number,
-	path: string,
-	body: unknown,
-): Promise<{ status: number; body: unknown }> {
-	const response = await fetch(`http://127.0.0.1:${port}/${path}`, {
-		method: 'POST',
-		headers: { 'content-type': 'application/json' },
-		body: JSON.stringify(body),
-	});
-	const text = await response.text();
-	let parsed: unknown = text;
-	try {
-		parsed = JSON.parse(text);
-	} catch {}
-	return { status: response.status, body: parsed };
-}
-
-/** The `smtp` effect on the real runtime: its result, or `{ $error }`. */
-async function runEffect(port: number, args: unknown): Promise<unknown> {
-	const slot = isRecord(args) ? args.credential : undefined;
-	const answer = await post(port, 'smtp-effect', { slot, args });
-	const body = isRecord(answer.body) ? answer.body : {};
-	if ('result' in body) return body.result;
-	return { $error: typeof body.failed === 'string' ? body.failed : JSON.stringify(answer) };
+	return { server, work, runtime: runtime.process, port: runtime.port, v1InstanceId };
 }
 
 /** Runs the v1 node and the library node against the server, and compares them. */
@@ -368,9 +270,13 @@ async function runLive(c: EmailSendCase, b: Bed): Promise<EmailSendRecording> {
 		settings: c.onError ? { onError: c.onError } : {},
 	});
 	const v1Sessions = masked(jsonCopy(b.server.sessions()), b.v1InstanceId);
+	// With the error output: both outputs.
+	const lists = recorded.outputs ?? [];
+	const engineOutput =
+		c.onError === 'continueErrorOutput' ? [lists[0] ?? [], lists[1] ?? []] : (lists[0] ?? []);
 	const v1: Outcome = jsonCopy(
 		recorded.error === undefined
-			? { output: maskInfo((recorded.outputs ?? [])[0] ?? []) }
+			? { output: maskInfo(engineOutput) }
 			: { error: recorded.error, errorDetail: recorded.errorDetail },
 	);
 
@@ -379,11 +285,14 @@ async function runLive(c: EmailSendCase, b: Bed): Promise<EmailSendRecording> {
 	const run = await runReference(sourceOf(c), fixtureOf(c, {}), {
 		answer: async (effect) => {
 			if (effect.kind === 'smtp') {
-				const call = { args: effect.args, result: jsonCopy(await runEffect(b.port, effect.args)) };
+				const call = {
+					args: effect.args,
+					result: jsonCopy(await runSmtpEffect(b.port, effect.args)),
+				};
 				calls.push(jsonCopy({ args: call.args, result: maskInfo(call.result) }));
 				return call.result;
 			}
-			if (effect.kind === 'node' && effect.step === HOST_NODE) return hostAnswer(v1);
+			if (effect.kind === 'node' && effect.step === HOST_NODE) return hostAnswer(c, v1);
 			return undefined;
 		},
 	});
@@ -395,6 +304,8 @@ async function runLive(c: EmailSendCase, b: Bed): Promise<EmailSendRecording> {
 		expect(nativeSessions.flatMap((s) => s.commands).filter((l) => l.startsWith('MAIL'))).toEqual(
 			[],
 		);
+		// The output is what the host gave for the item.
+		if (v1.error === undefined) expect(native.outcome.output).toEqual(v1.output);
 	} else {
 		expect(native.host).toBe(false);
 		expect({ ...native.outcome, output: maskInfo(native.outcome.output) }).toEqual({
@@ -447,12 +358,14 @@ describe('Send Email library node and the v1 node', () => {
 				const recording = written[c.name] ?? stored[c.name];
 				expect(recording).toBeDefined();
 				bed.server.script(c.server ?? { auth: 'PLAIN LOGIN' });
-				const answer = await post(bed.port, `case-${c.k}`, { rows: c.items ?? [{}] });
+				const answer = await postToRuntime(bed.port, `case-${c.k}`, { rows: c.items ?? [{}] });
 				expect(masked(jsonCopy(bed.server.sessions()))).toEqual(recording.sessions);
 				if (recording.v1.error === undefined) {
 					// The run answers the webhook with the items of its last node.
 					expect(answer.status).toBe(200);
-					expect(maskInfo(answer.body)).toEqual({ [NODE]: recording.v1.output });
+					if (c.onError !== 'continueErrorOutput') {
+						expect(maskInfo(answer.body)).toEqual({ [NODE]: recording.v1.output });
+					}
 				} else {
 					expect(answer.status).toBe(500);
 				}
@@ -470,13 +383,13 @@ describe('Send Email library node and the v1 node', () => {
 				expect(compiled.diagnostics).toEqual([]);
 				const fixture = fixtureOf(c, {
 					[NODE]: recording.calls.map((call) => call.result),
-					[HOST_NODE]: [hostAnswer(recording.v1)],
+					[HOST_NODE]: [hostAnswer(c, recording.v1)],
 				});
 				const run = await runReference(source, fixture);
 				const native = runOf(run);
 				expect(native.smtp.map((e) => e.args)).toEqual(recording.calls.map((call) => call.args));
 				expect(native.host).toBe(recording.host === true);
-				if (recording.host !== true) {
+				if (recording.host !== true || recording.v1.error === undefined) {
 					expect(native.outcome).toEqual(recording.v1);
 				}
 				const bytecode = runModule(decodeModule(compiled.module ?? new Uint8Array()), fixture);

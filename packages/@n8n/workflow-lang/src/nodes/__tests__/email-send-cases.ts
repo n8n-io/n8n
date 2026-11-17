@@ -25,7 +25,7 @@ export interface EmailSendCase {
 	server?: SmtpBehaviour;
 	/** The input items. The default is one empty item. */
 	items?: Array<Record<string, unknown>>;
-	onError?: 'continueRegularOutput';
+	onError?: 'continueRegularOutput' | 'continueErrorOutput';
 	/**
 	 * True when the runtime cannot send the message as nodemailer does: the effect ends
 	 * with the marker before the MAIL command, and the fallback host runs the v1 node.
@@ -274,6 +274,39 @@ export const EMAIL_SEND_CASES: EmailSendCase[] = [
 		onError: 'continueRegularOutput',
 	},
 	{
+		name: 'the login refused, with the error output',
+		parameters: mail({ toEmail: '={{ $json.to }}' }),
+		items: [{ to: 'b@x.test', n: 1 }],
+		server: { ...AUTH, loginReply: '535 5.7.8 Authentication credentials invalid' },
+		onError: 'continueErrorOutput',
+	},
+	{
+		name: 'a refused recipient of the second item, with the error output',
+		parameters: mail({ toEmail: '={{ $json.to }}', options: { fileAttachments: 'data' } }),
+		items: [
+			{ to: 'b@x.test', n: 1, $binary: { data: png } },
+			{ to: 'c@x.test', n: 2, $binary: { data: png } },
+			{ to: 'd@x.test', n: 3 },
+		],
+		server: { ...AUTH, refused: { 'c@x.test': '550 5.1.1 no such user' } },
+		onError: 'continueErrorOutput',
+	},
+	{
+		name: 'a certificate that is not trusted, with the error output',
+		parameters: mail(),
+		items: [{ n: 1 }],
+		server: { ...AUTH, starttls: true },
+		onError: 'continueErrorOutput',
+		host: true,
+	},
+	{
+		name: 'a certificate that is not trusted, with continue',
+		parameters: mail(),
+		server: { ...AUTH, starttls: true },
+		onError: 'continueRegularOutput',
+		host: true,
+	},
+	{
 		name: 'an address group',
 		parameters: mail({ toEmail: 'Team: b@x.test, c@x.test;' }),
 		host: true,
@@ -281,7 +314,4 @@ export const EMAIL_SEND_CASES: EmailSendCase[] = [
 ];
 
 /** Node settings that keep the node in the fallback host. */
-export const EMAIL_SEND_HOST_SETTINGS: Array<Record<string, unknown>> = [
-	{ retryOnFail: true },
-	{ onError: 'continueErrorOutput' },
-];
+export const EMAIL_SEND_HOST_SETTINGS: Array<Record<string, unknown>> = [{ retryOnFail: true }];

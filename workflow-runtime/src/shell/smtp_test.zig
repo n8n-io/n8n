@@ -190,6 +190,41 @@ test "smtp fake: a hand-over to the host comes before any mail command" {
     try std.testing.expectEqual(before, h.server.connections);
 }
 
+test "smtp: a call that builds only gives the message in base64, without a credential and without a connection" {
+    const h = try Harness.create(.{ .entropy = fake.entropy });
+    defer h.destroy();
+    const before = h.server.connections;
+    const args = "{\"build\":true,\"keepBcc\":true,\"from\":\"a@x.test\",\"to\":\"<b@x.test>, \",\"bcc\":\"<c@x.test>, \"," ++
+        "\"inReplyTo\":\"id-1@x.test\",\"references\":\"<id-0@x.test>  id-1@x.test\",\"subject\":\"hi\",\"text\":\"x\"," ++
+        "\"attachments\":[{\"filename\":\"notes\",\"contentType\":\"text/csv\",\"data\":\"YSxi\"}]}";
+    const built = try h.call(args);
+    try std.testing.expect(built.ok);
+    const head = "{\"raw\":\"";
+    const tail = "\",\"messageId\":\"<02020202-0202-0202-0202-020202020202@x.test>\"}";
+    try std.testing.expect(std.mem.startsWith(u8, built.text, head) and std.mem.endsWith(u8, built.text, tail));
+    const raw = built.text[head.len .. built.text.len - tail.len];
+    // No padding, as in the body of the Gmail node of n8n.
+    try std.testing.expect(std.mem.indexOfScalar(u8, raw, '=') == null);
+    var buf: [2048]u8 = @splat(0);
+    const dec = std.base64.url_safe_no_pad.Decoder;
+    const n = try dec.calcSizeForSlice(raw);
+    try dec.decode(buf[0..n], raw);
+    const boundary = "--_NmP-0101010101010101-Part_1";
+    try std.testing.expectEqualStrings("From: a@x.test\r\nTo: b@x.test\r\nBcc: c@x.test\r\nIn-Reply-To: <id-1@x.test>\r\n" ++
+        "References: <id-0@x.test> <id-1@x.test>\r\nSubject: hi\r\n" ++
+        "Message-ID: <02020202-0202-0202-0202-020202020202@x.test>\r\nDate: Thu, 01 Jan 1970 00:00:00 +0000\r\n" ++
+        "MIME-Version: 1.0\r\nContent-Type: multipart/mixed; boundary=\"" ++ boundary ++ "\"\r\n\r\n" ++
+        "--" ++ boundary ++ "\r\nContent-Type: text/plain; charset=utf-8\r\nContent-Transfer-Encoding: 7bit\r\n\r\nx\r\n" ++
+        "--" ++ boundary ++ "\r\nContent-Type: text/csv; name=notes\r\nContent-Transfer-Encoding: base64\r\n" ++
+        "Content-Disposition: attachment; filename=notes\r\n\r\nYSxi\r\n--" ++ boundary ++ "--\r\n", buf[0..n]);
+    // A message that the builder does not take goes to the host.
+    const group = try h.call("{\"build\":true,\"from\":\"a@x.test\",\"to\":\"friends: b@x.test;\",\"text\":\"x\"}");
+    try std.testing.expect(!group.ok);
+    try std.testing.expectEqualStrings("smtp: the native client does not build this message (limit: smtp-host)", group.text);
+    try std.testing.expectEqual(before, h.server.connections);
+    try std.testing.expectEqual(@as(u64, 0), h.client.counters.connects);
+}
+
 test "smtp fake: the time limit of the greeting, and the limit of the call slots" {
     const h = try Harness.create(.{ .max_reqs = 1, .greeting_ms = 150, .entropy = fake.entropy });
     defer h.destroy();

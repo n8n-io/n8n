@@ -290,18 +290,40 @@ export const ADAPTERS: Record<string, Adapter> = {
 	// version 2.2 a reply goes to the `Reply-To` address of the message when it has one.
 	'n8n-nodes-base.gmail': (p, version) => {
 		const resource = p.resource ?? 'message';
-		const operation = p.operation ?? 'send';
+		// The default operation of each resource of the v1 node.
+		const operation =
+			p.operation ?? (resource === 'draft' ? 'create' : resource === 'thread' ? 'getAll' : 'send');
+		// With "simplify" (the default), v1 does not read the two options of the attachments.
+		const read = resource === 'message' && (operation === 'get' || operation === 'getAll');
+		if (read && version >= 2 && (p.simple ?? true) === true && isRecord(p.options)) {
+			const {
+				downloadAttachments: _download,
+				dataPropertyAttachmentsPrefixName: _prefix,
+				...options
+			} = p.options;
+			return { ...p, options };
+		}
 		const written =
 			(resource === 'message' && (operation === 'send' || operation === 'reply')) ||
 			(resource === 'thread' && operation === 'reply') ||
 			(resource === 'draft' && operation === 'create');
 		if (!written || version < 2) return p;
-		if (operation !== 'reply') return { ...p, itemIndex: '={{ $itemIndex }}' };
-		return {
-			...p,
-			itemIndex: '={{ $itemIndex }}',
-			...(version >= 2.2 ? { replyToHeader: true } : {}),
-		};
+		if (operation === 'reply') {
+			return {
+				...p,
+				itemIndex: '={{ $itemIndex }}',
+				...(version >= 2.2 ? { replyToHeader: true } : {}),
+			};
+		}
+		const out: Record<string, unknown> = { ...p, itemIndex: '={{ $itemIndex }}' };
+		// Before version 2.1, a message has the attribution only with the option.
+		const options = isRecord(p.options) ? p.options : undefined;
+		if (operation === 'send' && version < 2.1 && options?.appendAttribution === undefined) {
+			if (p.options === undefined || options !== undefined) {
+				out.options = { ...options, appendAttribution: false };
+			}
+		}
+		return out;
 	},
 	// v1 reads the id of a folder URL with a regular expression: such a call runs in the host
 	// (the marker `folderUrl` is not in the `supports` list).
@@ -1238,6 +1260,16 @@ export function lowerLibrary(c: NodeContext): void {
 		(adapted.resource ?? 'message') === 'message' &&
 		(adapted.operation ?? 'send') === 'send';
 	if (gmailSend && c.instance) adapted.instanceId = c.instance.id;
+	// A message that the Gmail node writes comes from the mail builder of the runtime when
+	// the runtime has it (`ConvertOptions.smtp`). Files need the builder. With "retry on
+	// fail" the step has no host call for one item, so the node writes the message itself.
+	const gmailWritten = type === 'n8n-nodes-base.gmail' && adapted.itemIndex !== undefined;
+	const gmailOptions = isRecord(adapted.options) ? adapted.options : {};
+	if (gmailWritten && c.smtp === true && c.node.retryOnFail !== true) adapted.mailBuilder = true;
+	if (gmailWritten && adapted.mailBuilder !== true && gmailOptions.attachmentsUi !== undefined) {
+		// The marker is not in the `supports` list: the node runs in the host.
+		adapted.gmailFilesHost = true;
+	}
 	// A Data Table node calls n8n's data-table service (`ctx.service`, spec 9.9). With
 	// `ConvertOptions.services: false` (a runtime without the admin client) it runs in the host.
 	const service =
@@ -1407,11 +1439,11 @@ export function lowerLibrary(c: NodeContext): void {
 		);
 		return;
 	}
-	// The library node sends one message for each item. When the runtime cannot send the
-	// message of an item as nodemailer does, the host sends the message of that item.
-	if (type === EMAIL_SEND) {
+	// The library node sends one message for each item. When the runtime cannot send or
+	// build the message of an item as nodemailer does, the host sends the message of that item.
+	if (type === EMAIL_SEND || adapted.mailBuilder === true) {
 		const call = nodeCall(c, type, parameters, c.credential(), true);
-		const hostItem = emailSendHostItem(c);
+		const hostItem = hostItemOf(c);
 		if (hostItem === null) return lowerHostNode(c, 1, [['host', raw("'fallback'")]]);
 		emitStep(c, {
 			...call,
@@ -1431,23 +1463,21 @@ const EMAIL_SEND = 'n8n-nodes-base.emailSend';
 
 /**
  * True when the Send Email node runs in the fallback host: the runtime has no native SMTP
- * client (`ConvertOptions.smtp`), or the node has a setting whose v1 behaviour the library
- * call does not have. With "retry on fail", v1 runs the node again for all items, so it
- * sends the messages of the items before the failure again. With the error output, the
- * error item of an item that the host sends has no form here.
+ * client (`ConvertOptions.smtp`), or the node has "retry on fail". v1 then runs the node
+ * again for all items, so it sends the messages of the items before the failure again. The
+ * library call runs once for each item and has no such form.
  */
 function emailSendInHost(c: NodeContext): boolean {
 	if (c.node.type !== EMAIL_SEND) return false;
 	if (c.smtp !== true) return true;
-	return c.node.retryOnFail === true || c.node.onError === 'continueErrorOutput';
+	return c.node.retryOnFail === true;
 }
 
 /**
- * The options of the fallback-host call of a Send Email node for one item
- * (`StepCall.hostItem`), with the parameters of the v1 node. Null when the host form has
- * no code here.
+ * The options of the fallback-host call of a node for one item (`StepCall.hostItem`), with
+ * the parameters of the v1 node. Null when the host form has no code here.
  */
-function emailSendHostItem(c: NodeContext): { code: Code; usesIndex: boolean } | null {
+function hostItemOf(c: NodeContext): { code: Code; usesIndex: boolean } | null {
 	let parameters: TranslatedValue;
 	try {
 		parameters = hostParameters(c, hostOwnParameters(c), '');
@@ -1466,10 +1496,10 @@ function emailSendHostItem(c: NodeContext): { code: Code; usesIndex: boolean } |
 	const credential = c.credential();
 	if (credential !== undefined) entries.push(['credential', raw(str(credential))]);
 	entries.push(...settingsField(c), ['host', raw("'fallback'")]);
-	// The v1 node handles `continueRegularOutput` itself, for the item.
-	if (c.node.onError === 'continueRegularOutput' || (!c.node.onError && c.node.continueOnFail)) {
-		entries.push(['onError', raw(str('continueRegularOutput'))]);
-	}
+	// Under a continue setting the v1 node gives the error item of the item itself.
+	const onError =
+		c.node.onError ?? (c.node.continueOnFail ? 'continueRegularOutput' : 'stopWorkflow');
+	if (onError !== 'stopWorkflow') entries.push(['onError', raw(str('continueRegularOutput'))]);
 	entries.push(['items', raw(`[${ITEM}]`)]);
 	return { code: { kind: 'object', entries }, usesIndex: parameters.usage.index };
 }
