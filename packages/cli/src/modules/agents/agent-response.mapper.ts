@@ -1,4 +1,10 @@
-import type { AgentDto, AgentListItemDto, AgentSkillVersionInfo } from '@n8n/api-types';
+import type {
+	AgentDto,
+	AgentListItemDto,
+	AgentListPublicItemDto,
+	AgentPublicDto,
+	AgentSkillVersionInfo,
+} from '@n8n/api-types';
 import type { User } from '@n8n/db';
 import { Service } from '@n8n/di';
 
@@ -54,6 +60,47 @@ export function mapAgentDto(agent: Agent, state: AgentRunnableState): AgentDto {
 		skillHashes: state.skillHashes,
 		outdatedSkillIds: state.outdatedSkillIds,
 		skillVersions: state.skillVersions,
+	};
+}
+
+/**
+ * Public API single-agent shape: `AgentDto` minus builder-only state.
+ * Create, GET, and PUT responses share this one shape.
+ */
+export function toAgentPublicDto(agent: AgentDto): AgentPublicDto {
+	return {
+		id: agent.id,
+		name: agent.name,
+		projectId: agent.projectId,
+		project: agent.project,
+		availableInMCP: agent.availableInMCP,
+		isArchived: agent.isArchived,
+		versionId: agent.versionId,
+		activeVersionId: agent.activeVersionId,
+		createdAt: agent.createdAt,
+		updatedAt: agent.updatedAt,
+		config: agent.config,
+		configHash: agent.configHash,
+		tools: agent.tools,
+		activeVersion: agent.activeVersion,
+	};
+}
+
+/**
+ * List row of the Public API list. `config` is absent for the same reason as
+ * {@link mapAgentListItem}: a list row must not be a full-replace body.
+ */
+export function mapAgentListPublicItem(agent: Agent): AgentListPublicItemDto {
+	return {
+		id: agent.id,
+		name: agent.name ?? '',
+		projectId: agent.projectId ?? '',
+		availableInMCP: agent.availableInMCP ?? false,
+		isArchived: agent.isArchived,
+		versionId: agent.versionId ?? null,
+		activeVersionId: agent.activeVersionId ?? null,
+		createdAt: toIsoTimestamp(agent.createdAt),
+		updatedAt: toIsoTimestamp(agent.updatedAt),
 	};
 }
 

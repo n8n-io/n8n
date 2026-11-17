@@ -3,7 +3,7 @@ import { clusterTarget, intervalFromSeconds, SystemTask } from '@n8n/decorators'
 import type { SystemTaskSchedule } from '@n8n/decorators';
 import { TELEMETRY_EVENT } from '@n8n/telemetry';
 
-import { Telemetry } from '@/telemetry';
+import { TelemetryProxy } from '@n8n/backend-services';
 
 import { SelfHealingConfigurationRepository } from './database/self-healing-configuration.repository';
 
@@ -32,7 +32,7 @@ export class SelfHealingConfigurationSnapshotTask implements SystemTask {
 
 	constructor(
 		private readonly configurations: SelfHealingConfigurationRepository,
-		private readonly telemetry: Telemetry,
+		private readonly telemetry: TelemetryProxy,
 	) {}
 
 	async run(signal: AbortSignal): Promise<void> {

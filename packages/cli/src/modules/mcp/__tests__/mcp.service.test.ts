@@ -26,6 +26,7 @@ import {
 	CredentialsFinderService,
 	NodeTypesProxy,
 	PostHogClient,
+	TelemetryProxy,
 } from '@n8n/backend-services';
 import { mockInstance, mockLogger } from '@n8n/backend-test-utils';
 import { EndpointsConfig, ExecutionsConfig, GlobalConfig, WorkflowsConfig } from '@n8n/config';
@@ -65,7 +66,6 @@ import { NodeResourceExplorerService } from '@/services/node-resource-explorer.s
 import { ProjectService } from '@/services/project.service.ee';
 
 import { TagService } from '@/services/tag.service';
-import { Telemetry } from '@/telemetry';
 import { WorkflowRunner } from '@/workflow-runner';
 import { WorkflowCreationService } from '@/workflows/workflow-creation.service';
 import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
@@ -149,7 +149,7 @@ describe('McpService', () => {
 			mockInstance(GlobalConfig, {
 				endpoints: { webhook: '/webhook', webhookTest: '/webhook-test' },
 			}),
-			mockInstance(Telemetry),
+			mockInstance(TelemetryProxy),
 			mockInstance(WorkflowRunner),
 			mockInstance(RoleService),
 			mockInstance(ProjectService),
@@ -209,7 +209,7 @@ describe('McpService', () => {
 				mockInstance(GlobalConfig, {
 					endpoints: { webhook: '/webhook', webhookTest: '/webhook-test' },
 				}),
-				mockInstance(Telemetry),
+				mockInstance(TelemetryProxy),
 				mockInstance(WorkflowRunner),
 				mockInstance(RoleService),
 				mockInstance(ProjectService),
@@ -423,7 +423,7 @@ describe('McpService', () => {
 						mcpAppsEnabled: opts.mcpAppsEnabled ?? false,
 					},
 				}),
-				mockInstance(Telemetry),
+				mockInstance(TelemetryProxy),
 				mockInstance(WorkflowRunner),
 				mockInstance(RoleService),
 				mockInstance(ProjectService),
@@ -1125,7 +1125,7 @@ describe('McpService', () => {
 					mock<UserRepository>(),
 				).init();
 				vi.mocked(eventService.emit).mockImplementation(relayEvents.emit.bind(relayEvents));
-				const telemetry = mock<Telemetry>();
+				const telemetry = mock<TelemetryProxy>();
 				const tags = mock<TagService>();
 				if (status === 'error') tags.listWithUsageCount.mockRejectedValue(new Error('Unavailable'));
 				else tags.listWithUsageCount.mockResolvedValue({ data: [], totalCount: 0 });
@@ -1540,7 +1540,7 @@ describe('McpService', () => {
 						mcpBuilderEnabled: false,
 					},
 				}),
-				mockInstance(Telemetry),
+				mockInstance(TelemetryProxy),
 				mockInstance(WorkflowRunner),
 				mockInstance(RoleService),
 				mockInstance(ProjectService),
@@ -1602,7 +1602,7 @@ describe('McpService', () => {
 						mcpBuilderEnabled: true,
 					},
 				}),
-				mockInstance(Telemetry),
+				mockInstance(TelemetryProxy),
 				mockInstance(WorkflowRunner),
 				mockInstance(RoleService),
 				mockInstance(ProjectService),
@@ -1654,7 +1654,7 @@ describe('McpService', () => {
 				diagnosticsEnabled?: boolean;
 				instanceBaseUrl?: string;
 				postHogClient?: Mocked<PostHogClient>;
-				telemetry?: Mocked<Telemetry>;
+				telemetry?: Mocked<TelemetryProxy>;
 			};
 
 			const buildService = ({
@@ -1662,7 +1662,7 @@ describe('McpService', () => {
 				diagnosticsEnabled = true,
 				instanceBaseUrl = 'https://n8n.test',
 				postHogClient = mockInstance(PostHogClient),
-				telemetry = mockInstance(Telemetry),
+				telemetry = mockInstance(TelemetryProxy),
 			}: BuildServiceOpts = {}) => {
 				const urlService = mockInstance(UrlService);
 				(urlService.getInstanceBaseUrl as Mock).mockReturnValue(instanceBaseUrl);
@@ -1815,7 +1815,7 @@ describe('McpService', () => {
 
 			it('tracks render requested when the preview resource is read', async () => {
 				const user = Object.assign(new User(), { id: 'user-1', role: GLOBAL_MEMBER_ROLE });
-				const telemetry = mockInstance(Telemetry);
+				const telemetry = mockInstance(TelemetryProxy);
 
 				const service = buildService({ telemetry });
 				await service.getServer(user, appsEnabled, { name: 'Claude Desktop', version: '1.2.3' });

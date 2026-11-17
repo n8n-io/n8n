@@ -31,6 +31,7 @@ describe('trigger identity rule', () => {
 			reasons: [
 				{
 					code: 'TRIGGER_EXTERNAL_IDENTITY',
+					kind: 'temporary',
 					severity: 'blocking',
 					nodeId: 'webhook-id',
 					nodeName: 'Webhook',

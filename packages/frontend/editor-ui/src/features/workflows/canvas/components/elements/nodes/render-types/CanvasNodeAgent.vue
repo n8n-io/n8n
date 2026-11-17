@@ -225,6 +225,7 @@ watch(
 		@dblclick.stop="onActivate"
 		@contextmenu="onOpenContextMenu"
 	>
+		<span v-if="classes[$style.running] || classes[$style.waiting]" :class="$style.statusRing" />
 		<div :class="$style.surface">
 			<header :class="$style.header">
 				<div :class="$style.headerLabel">
@@ -498,23 +499,24 @@ watch(
 	border-color: var(--canvas-node--border-color--error, var(--color--danger));
 }
 
-/* stylelint-disable */
+// success/error can apply at the same time (e.g. a succeeded node waiting
+// for its next run) — drop their 2px ring border while the glow shows.
 .running::after,
 .waiting::after {
-	@include styles.status-animated-after;
-	// success/error can apply at the same time (e.g. a succeeded node waiting
-	// for its next run) — drop their 2px ring border while the glow shows.
 	border: none;
+}
+
+.statusRing {
+	@include styles.status-animated-ring;
 	border-radius: calc(var(--agent-card--radius) + 3px);
 }
 
-.running::after {
+.running > .statusRing {
 	@include styles.status-running-animation;
 }
-.waiting::after {
+.waiting > .statusRing {
 	@include styles.status-waiting-animation;
 }
 
 @include styles.status-animation-definitions;
-/* stylelint-enable */
 </style>

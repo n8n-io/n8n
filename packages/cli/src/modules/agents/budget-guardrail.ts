@@ -261,7 +261,7 @@ function toGuardrailNoticeSink(input: BudgetAttachInput): GuardrailsOptions['onN
  * Appends hooks and the notice sink to the run's guardrail options, preserving
  * the existing agent and thread scope. An input sink wins over a stored one.
  */
-function attachGuardrails<T extends RunOptions & ExecutionOptions>(
+export function attachGuardrails<T extends RunOptions & ExecutionOptions>(
 	options: T,
 	hooks: GuardrailsOptions['hooks'],
 	onNotice: GuardrailsOptions['onNotice'],

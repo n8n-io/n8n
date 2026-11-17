@@ -12,7 +12,7 @@ import {
 	NodeConnectionTypes,
 } from 'n8n-workflow';
 
-import { flatten, generatePairedItemData, getResolvables } from '@utils/utilities';
+import { flatten, generatePairedItemData } from '@utils/utilities';
 import { resolveSqlQueryParameters } from '@utils/sql-query-parameters';
 
 import {
@@ -22,6 +22,7 @@ import {
 	deleteOperation,
 	executeSqlQueryAndPrepareResults,
 	insertOperation,
+	resolveQuery,
 	updateOperation,
 } from './GenericFunctions';
 import type { ITables } from './interfaces';
@@ -32,7 +33,7 @@ export class MicrosoftSql implements INodeType {
 		name: 'microsoftSql',
 		icon: 'file:mssql.svg',
 		group: ['input'],
-		version: [1, 1.1, 1.2],
+		version: [1, 1.1, 1.2, 1.3],
 		description: 'Get, add and update data in Microsoft SQL',
 		defaults: {
 			name: 'Microsoft SQL',
@@ -298,14 +299,7 @@ export class MicrosoftSql implements INodeType {
 		if (operation === 'executeQuery' && nodeVersion >= 1.1) {
 			for (let i = 0; i < items.length; i++) {
 				try {
-					let rawQuery = this.getNodeParameter('query', i) as string;
-
-					for (const resolvable of getResolvables(rawQuery)) {
-						rawQuery = rawQuery.replace(
-							resolvable,
-							() => this.evaluateExpression(resolvable, i) as string,
-						);
-					}
+					const rawQuery = resolveQuery.call(this, i);
 
 					const queryValues = resolveSqlQueryParameters.call(this, i);
 
@@ -336,14 +330,7 @@ export class MicrosoftSql implements INodeType {
 		}
 		try {
 			if (operation === 'executeQuery') {
-				let rawQuery = this.getNodeParameter('query', 0) as string;
-
-				for (const resolvable of getResolvables(rawQuery)) {
-					rawQuery = rawQuery.replace(
-						resolvable,
-						() => this.evaluateExpression(resolvable, 0) as string,
-					);
-				}
+				const rawQuery = resolveQuery.call(this, 0);
 
 				const queryValues = resolveSqlQueryParameters.call(this, 0);
 

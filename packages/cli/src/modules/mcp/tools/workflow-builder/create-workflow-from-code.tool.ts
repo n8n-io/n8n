@@ -13,7 +13,7 @@ import type { CredentialsService } from '@/credentials/credentials.service';
 import type { DataTableUserOperations } from '@n8n/backend-module-data-table';
 import type { INodeTypes } from 'n8n-workflow';
 import type { AiGatewayService } from '@/services/ai-gateway.service';
-import type { UrlService } from '@n8n/backend-services';
+import type { UrlService, TelemetryProxy } from '@n8n/backend-services';
 import type { WorkflowCreationService } from '@/workflows/workflow-creation.service';
 import type { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 
@@ -50,7 +50,6 @@ import type { ToolDefinition, UserCalledMCPToolEventPayload } from '../../mcp.ty
 import { getSdkReferenceHint } from '../workflow-validation.utils';
 
 import { NotFoundError } from '@n8n/errors';
-import type { Telemetry } from '@/telemetry';
 import {
 	dropInvalidWorkflowGroups,
 	makeGetNodeTypeForGrouping,
@@ -222,7 +221,7 @@ type RecoverPersistedCreateArgs = {
 	user: User;
 	workflowFinderService: WorkflowFinderService;
 	urlService: UrlService;
-	telemetry: Telemetry;
+	telemetry: TelemetryProxy;
 	telemetryPayload: UserCalledMCPToolEventPayload;
 	error: unknown;
 	logger: Logger;
@@ -323,7 +322,7 @@ export const createCreateWorkflowFromCodeTool = (
 	workflowCreationService: WorkflowCreationService,
 	workflowFinderService: WorkflowFinderService,
 	urlService: UrlService,
-	telemetry: Telemetry,
+	telemetry: TelemetryProxy,
 	nodeTypes: INodeTypes,
 	credentialsService: CredentialsService,
 	projectRepository: ProjectRepository,
