@@ -606,12 +606,18 @@ export class CompiledEngineDispatcher {
 
 	/**
 	 * `wfrt` sends no step event for a response, so a test webhook gets the items
-	 * of the Respond to Webhook node as the body.
+	 * of the Respond to Webhook node as the body. A Respond to Webhook node that got no
+	 * item did not run in v1: it gives no response, and n8n answers as for a v1 run in
+	 * which no such node ran.
 	 */
 	private responseFromRunData(state: ExecutionState): IExecuteResponsePromiseData | undefined {
-		const node = state.data.workflowData.nodes.find((n) => n.type === RESPOND_TO_WEBHOOK);
-		const items = node ? state.recorder.getRunData()[node.name]?.[0]?.data?.main[0] : undefined;
-		if (!node || !items) return undefined;
+		const runData = state.recorder.getRunData();
+		const itemsOf = (node: INode) => runData[node.name]?.[0]?.data?.main[0] ?? [];
+		const node = state.data.workflowData.nodes.find(
+			(n) => n.type === RESPOND_TO_WEBHOOK && itemsOf(n).length > 0,
+		);
+		if (!node) return undefined;
+		const items = itemsOf(node);
 		const all = node.parameters?.respondWith === 'allIncomingItems';
 		return {
 			body: all ? items.map((i) => i.json) : (items[0]?.json ?? {}),

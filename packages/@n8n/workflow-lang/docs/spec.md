@@ -1732,6 +1732,7 @@ await ctx.sql({
 	dialect: 'postgres',
 	mode,                    // 'single' (default) | 'transaction' | 'independently'
 	statements: [{ text: 'SELECT id FROM t WHERE a = $1', values: ['x'] }],
+	                         // or { text, simple: true }: the text as it is, no values
 	largeNumbers,            // 'text' (default) | 'numbers'
 	dates,                   // 'text' (default) | 'legacy'
 	connectTimeoutMs,
@@ -1750,6 +1751,24 @@ await ctx.sql({
   other number is `numeric`. An array or an object is an error: node code
   gives an object as JSON text. A statement is one SQL command, with 1 to
   256 statements in a call (`--sql-max-statements`).
+* **Simple statements.** `{ text, simple: true }` is a statement that the
+  runtime sends as it is, with the simple query protocol, as the v1 node
+  sends its queries. It has no `values`. Its text can hold more than one
+  command, and the server runs these commands as one implicit transaction
+  when the text has no transaction command of its own. The entry of the
+  statement in `results` is `{ sets }`: one `SqlRows` for each command
+  that completed, in order, and `sets: []` for a text without a command.
+  When a command fails, the server ends the text there, and the entry is
+  `{ error }`. The modes do not change: a simple statement that is the
+  only statement of a call in the mode `single` runs alone, with the
+  effect of the text sent alone (`wfrt` can put `BEGIN` and `COMMIT`
+  around it for the rule of the marker, see below). The column values have
+  the JSON of the table below. The runtime does not change the text, so a simple
+  statement is only as safe as the code that makes its text. The library
+  node of Postgres makes the text with one formatter that gives the text of
+  pg-promise (`src/nodes/shared/pg-format.ts`), only for a query that has
+  no exact form with bind values. This gives the statement of v1 and the
+  safety of v1, and no more.
 * **Modes.** `single`: one statement runs alone. More than one statement
   runs between `BEGIN` and `COMMIT`; the first failure does `ROLLBACK` and
   ends the call. `transaction`: `BEGIN` also for one statement; else as
@@ -1759,10 +1778,11 @@ await ctx.sql({
 
   ```ts
   interface SqlResult {
-    results: Array<SqlRows | SqlFailure>; // in statement order
-    connect?: SqlError;                   // the connection failed: results is []
+    results: Array<SqlRows | SqlSets | SqlFailure>; // in statement order
+    connect?: SqlError;                             // the connection failed: results is []
   }
   interface SqlRows { command: string; rowCount: number | null; rows: Item[] }
+  interface SqlSets { sets: SqlRows[] }             // a statement with `simple: true`
   interface SqlFailure { error: SqlError }
   ```
 
@@ -1800,12 +1820,12 @@ await ctx.sql({
   | `json`, `jsonb` | the JSON value |
   | `bytea` | `{ "type": "Buffer", "data": [byte, ...] }` |
   | `date` | the text of the server |
-  | `timestamptz` | `new Date(text).toISOString()`; a text that is not a date (`infinity`) stays |
+  | `timestamptz` | `new Date(text).toISOString()`; a text that is not a date for JavaScript stays: `infinity`, a value before Christ (`... BC`), a zone offset with seconds (`+00:53:28`) |
   | `timestamp` | as `timestamptz`, only with `--sql-timestamp-zone utc`: v1 reads the text in the zone of its process |
   | `interval` | the object of postgres-interval: `{ years, months, days, hours, minutes, seconds, milliseconds }` without the parts that are 0 (`{}` for an empty interval) |
   | `point` | `{ "x": number, "y": number }`; NaN and the infinities are null |
   | `circle` | `{ "x": number, "y": number, "radius": number }` |
-  | `bool[]`, `int2[]`, `int4[]`, `oid[]`, `float4[]`, `float8[]`, `json[]`, `jsonb[]`, `date[]`, `timestamptz[]`, `timestamp[]`, `interval[]`, `point[]` | an array with the JSON of the element type for each element; an inner array is an inner array; `timestamp[]` only with `--sql-timestamp-zone utc` |
+  | `bool[]`, `int2[]`, `int4[]`, `oid[]`, `float4[]`, `float8[]`, `json[]`, `jsonb[]`, `bytea[]`, `date[]`, `timestamptz[]`, `timestamp[]`, `interval[]`, `point[]` | an array with the JSON of the element type for each element; an inner array is an inner array; `timestamp[]` only with `--sql-timestamp-zone utc` |
   | `int8[]` | an array of texts, with each `largeNumbers` value: v1 changes only a column of type `int8` |
   | `numeric[]` | an array of numbers (`parseFloat`, NaN is null), with each `largeNumbers` value |
   | `text[]`, `varchar[]`, `char[]`, `uuid[]`, `cidr[]`, `inet[]`, `macaddr[]`, `money[]`, `time[]`, `timetz[]`, `numrange[]` | an array of texts |
@@ -1822,7 +1842,7 @@ await ctx.sql({
   | Marker | Cause |
   |---|---|
   | `(limit: sql-max-result)` | the result is larger than `--sql-max-result-kb` |
-  | `(limit: sql-type)` | a column type without an exact native form: `bytea[]`; `date`, `date[]`, `timestamp[]` and `timestamptz[]` with `dates: 'legacy'`; `timestamp` and `timestamp[]` without `--sql-timestamp-zone utc`; or a value without one (a timestamp before the year 1000) |
+  | `(limit: sql-type)` | a column type without an exact native form: `timestamp` and `timestamp[]` without `--sql-timestamp-zone utc`, and the same for `date` and `date[]` with `dates: 'legacy'` (v1 reads them in the zone of its process); or a value without one (a timestamp in a year below 100 or above 9999, a `bytea[]` in the escape format). With `dates: 'legacy'` and a native form, `date`, `date[]`, `timestamp[]` and `timestamptz[]` have the JSON of the `Date` of postgres-date |
   | `(limit: sql-statement)` | the text is not one command with bind values: more than one command, a parameter whose type the server cannot find where a literal has one (`42P18`), a parameter where the command takes none (`42P02`), a syntax error at a `$n` |
   | `(limit: sql-credential)` | the credential uses the SSH tunnel, or a CA or client certificate |
   | `(limit: sql-host)` | thrown by a library node, before it sends a statement, for an input that it cannot send with bind values |
@@ -1836,7 +1856,7 @@ await ctx.sql({
   than `--sql-max-request-kb`.
 
   A result over the limit, and a value without a native form (a timestamp
-  before the year 1000), show only after the statement ran. `wfrt`
+  in a year below 100), show only after the statement ran. `wfrt`
   therefore runs a statement that gives rows and does not start with
   `SELECT` between `BEGIN` and `COMMIT`, and does `ROLLBACK` before it
   gives the marker. A `SELECT` runs again in the host. One case has no
@@ -1845,6 +1865,17 @@ await ctx.sql({
   that gives rows), such a failure of a later statement is a plain limit
   error, and the statements after it do not run. A call whose statements
   before the failure only read, or failed, still ends with the marker.
+
+  `wfrt` cannot describe a simple statement before it runs. A simple
+  statement that runs alone goes between `BEGIN` and `COMMIT` of `wfrt`,
+  and `wfrt` does `ROLLBACK` before it gives the marker. A text runs as it
+  is, without that transaction, when each command starts with `SELECT`,
+  when a command starts with a transaction word (`BEGIN`, `COMMIT`,
+  `SAVEPOINT`, `LOCK` and others), or when a command cannot run in a
+  transaction block (`VACUUM`). For such a text that is not only `SELECT`
+  commands that gave rows, the failure is a plain limit error. In a
+  transaction of the mode, a simple text with a transaction word gives
+  `(limit: sql-statement)` before a statement is sent.
 
   Other effect errors have no marker: arguments that are not valid, a slot
   that is not there, no free call slot (`(limit)`), the total timeout (the
@@ -1859,19 +1890,63 @@ await ctx.sql({
 * **Validation.** `WL032`: a `ctx.sql` call without `credential`, with a
   `dialect` that is not the literal `'postgres'`, without `statements`, with
   a literal statement without `text`, with a `text` that is a template with
-  a value in it, or with a literal array or object as a bind value.
+  a value in it, with a literal array or object as a bind value, or with a
+  literal statement that has `simple` and `values`, or a `simple` that is
+  not the literal `true`.
 * **Fixtures.** The reference runner and the test VM answer a `sql` effect
   from the fixture by step name, as for the other effects. `{ "$error":
   "<text>" }` is an effect error.
 * **Converter.** `ConvertOptions.sql: true` says that the runtime runs
   `sql` effects. The Postgres node (versions 2.1 and later, operations
   `executeQuery`, `select` and `deleteTable`, and from version 2.2 `insert`,
-  `update` and `upsert`, a node that stops the workflow on an error) is then
+  `update` and `upsert`) is then
   the library node `src/nodes/postgres.ts`, with the fallback-host form of
   the node after it for a call that ends with a marker. Each other Postgres
-  node runs in the fallback host: a node with a continue setting (its error
-  items hold a copy of the node and a time), and a node with
-  `replaceEmptyStrings` and an expression.
+  node runs in the fallback host: a node of version 2.0 or 1, and a node
+  with `replaceEmptyStrings` and an expression.
+
+  A node with a continue setting (`continueRegularOutput`,
+  `continueErrorOutput`, `continueOnFail`) is the library node too. An
+  error of a query is data of the `sql` effect, so the node makes the error
+  items of v1 from the one run of its statements. No statement runs a
+  second time to get an error item. The converter gives the node its error
+  setting (`errorMode`) and the node as n8n holds it in a run (`node`: the
+  stored node, with the parameters that the `Workflow` constructor of n8n
+  makes). The node gives one item `{ items, errors, nodeError?, retry? }`.
+  `retry` is true when the first item of the node has an error, or the node
+  fails as a whole: with "retry on fail", the workflow then runs the node
+  again after the wait, as n8n does, up to the number of tries. Each of
+  these runs is a run of v1 too:
+
+  | v1 | Result |
+  |---|---|
+  | The connection fails | One item `{ error }` for each input item, paired with it. `error` is the spread of the `NodeOperationError` of v1 and its `message` |
+  | A query fails, mode `single` | One item `{ message, error }` |
+  | A query fails, mode `transaction` | The items of the queries before it, then `{ error }`, paired with the input item of the query. Nothing is committed |
+  | A query fails, mode `independently` | `{ error }` in the place of the items of the query. The other queries run |
+  | A name of a query is not valid (pg-promise fails when it writes the text) | As a failed query. In the mode `transaction`, the queries before it are committed |
+  | The node fails as a whole (a parameter that is not valid, a failure of the commit) | `items` is the input items, and `nodeError` has the message: n8n gives the input on and keeps the error on the run |
+  | `insert`, `update`, `upsert`: an item fails before its query | The fallback host. v1 keeps the error object in the item, and its JSON has no message while a later node can read one |
+
+  `error` has `name`, `level`, `shouldReport`, `description`, `tags`,
+  `timestamp`, `context` (`itemIndex` in the modes `transaction` and
+  `independently`), `functionality`, `node` and `messages`. `description`
+  is the detail or the hint of the server, else `Failed query: ` and the
+  query text of v1 with its pg-promise places. `timestamp` is the time of
+  the node (`Date.now()`); the equivalence test compares its form only.
+  With the error output, the node pairs the items as n8n does
+  (`assignPairedItems`) and moves each item that is only an error (a
+  truthy `error`, and no key other than `error`, `message` and `details`)
+  to `errors`, on top of the JSON of its input item
+  (`handleNodeErrorOutput`). This also moves a row of a query whose only
+  column is `error`.
+
+  n8n removes the `=` of the `query` parameter when it loads the workflow
+  (`noDataExpression`), and the v1 node evaluates each `{{ }}` part of the
+  text. The converter does the same: it gives the value of each part in
+  `queryParts`. A query with `$fromAI`, or with two `=` at its start, runs
+  in the fallback host. The equivalence test runs each case of the v1 node
+  in n8n's engine (`WorkflowExecute`), which loads the node as n8n does.
 
 ## 10. Fallback host steps (AI clusters, binary data, Python)
 

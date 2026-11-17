@@ -230,7 +230,8 @@ describe('CompiledEngineCredentials', () => {
 			helper.getDecrypted.mockResolvedValue({
 				grantType: 'clientCredentials',
 				accessTokenUrl: tokenUrl,
-				tokenExpiredStatusCode: [403, '419'],
+				// A stored credential can have numbers and texts in one list. The type has no such list.
+				tokenExpiredStatusCode: [403, '419'] as unknown as string[],
 				oauthTokenData: { access_token: 'old' },
 			});
 			const document = await credentials().buildDocument('wf1', [binding]);

@@ -57,7 +57,7 @@ import { calleeTriggerItems, findSubworkflowStart, resolveCallee } from './subwo
 import { DEFAULT_TIMEZONE, isTriggerType, planTrigger, pollSchedules } from './triggers.ts';
 import type { WebhookUrls } from './triggers.ts';
 import type { ConvertDiagnostic, N8nNode, N8nWorkflow } from './types.ts';
-import { isRecord, text } from './types.ts';
+import { isRecord, keepSourceNode, text } from './types.ts';
 
 export interface ConvertOptions {
 	/** Name for the header comment when the workflow has none. */
@@ -153,6 +153,13 @@ export interface ConvertOptions {
 	 * library node has the call.
 	 */
 	sql?: boolean;
+	/**
+	 * The `sql` effect of the runtime has a MySQL client (spec 9.11). The default is false: the
+	 * MySQL node runs in the fallback host. With true, it runs as a library node when the
+	 * library node has the call. It is a flag of its own because a runtime can have the
+	 * Postgres client and no MySQL client.
+	 */
+	mysql?: boolean;
 }
 
 export interface InstanceInfo {
@@ -284,7 +291,7 @@ export function readWorkflow(input: unknown): N8nWorkflow | string {
 		if (!isRecord(n) || typeof n.name !== 'string' || typeof n.type !== 'string') {
 			return 'A node has no name or no type.';
 		}
-		nodes.push({
+		const node: N8nNode = {
 			...n,
 			name: n.name,
 			type: n.type,
@@ -322,7 +329,8 @@ export function readWorkflow(input: unknown): N8nWorkflow | string {
 			continueOnFail: n.continueOnFail === true,
 			notes: typeof n.notes === 'string' ? n.notes : undefined,
 			webhookId: typeof n.webhookId === 'string' ? n.webhookId : undefined,
-		});
+		};
+		nodes.push(keepSourceNode(node, n));
 	}
 	const connections = isRecord(input.connections) ? input.connections : {};
 	return {
@@ -369,6 +377,9 @@ const NOT_IN_HOST = new Set(
 
 /** The step name of the readiness check (`ConvertOptions.checkReady`). */
 const CHECK_STEP = 'n8n readiness check';
+
+/** The variable that is true after a Respond to Webhook node sent the response. */
+const RESPONDED = '$responded';
 
 /** The variable with the name of the node that runs now (`trace: 'all'`). */
 const CURRENT_NODE = '$currentNode';
@@ -439,6 +450,9 @@ export class ModuleGenerator {
 	private readonly callees = new Map<string, Body>();
 
 	private usesNoItems = false;
+
+	/** True when the webhook request of the run waits for a Respond to Webhook node. */
+	private waitsForRespondNode = false;
 
 	/** Nodes whose output is the result of `ctx.node` calls of the node library. */
 	private readonly directSteps = new Set<string>();
@@ -837,6 +851,7 @@ export class ModuleGenerator {
 			},
 			services: this.options.services,
 			sql: this.options.sql,
+			mysql: this.options.mysql,
 			codeNodes:
 				this.options.codeNodes === 'host' || this.options.hostCodeNodes?.includes(node.name)
 					? 'host'
@@ -858,6 +873,7 @@ export class ModuleGenerator {
 					: null,
 			engine: b.engine,
 			traceAll: this.traceMode === 'all',
+			responded: this.waitsForRespondNode ? RESPONDED : undefined,
 			runIndex: b.engine ? 'runIndex' : '0',
 			state: () => this.stateVar(b, node.name),
 			local: (suffix) => this.names.unique(`${base}${suffix}`),
@@ -1843,6 +1859,15 @@ export class ModuleGenerator {
 			// A poll that finds nothing: the manual run of n8n 2.x goes on with one empty item.
 			plan.items = `((polled: Json[]): Json[] => (polled.length === 0 ? [{}] : polled))(await ctx.node({ ${fields.join(', ')} }))`;
 		}
+		// A Respond to Webhook node of a sub-workflow answers the same request. Without such a
+		// node v1 refuses the request before the run, so n8n does not give that request to the runtime.
+		const respondType = `${BASE}respondToWebhook`;
+		this.waitsForRespondNode =
+			main.trigger?.type === `${BASE}webhook` &&
+			main.trigger.parameters?.responseMode === 'responseNode' &&
+			[main, ...this.callees.values()].some((b) =>
+				b.wf.nodes.some((n) => n.type === respondType && b.order.includes(n.name)),
+			);
 		const w = this.w;
 		w.depth = 2;
 
@@ -1863,6 +1888,13 @@ export class ModuleGenerator {
 		}
 
 		this.emitBody(main, plan.items);
+
+		if (this.waitsForRespondNode) {
+			// v1 answers with an empty body when the run ends and no Respond to Webhook node ran.
+			// The runtime answers with the result of the run: a run without a result has an empty body.
+			w.line();
+			w.line(`if (!${RESPONDED}) return undefined;`);
+		}
 
 		// The run returns the items of each node that has no child.
 		const leaves = main.order.filter(
@@ -2008,6 +2040,7 @@ export class ModuleGenerator {
 			header.push(`\t\tawait ctx.node(${print(check, '\t\t', 32)});`, '');
 		}
 		if (this.usesNoItems) header.push('\t\tconst noItems: Json[] = [];', '');
+		if (this.waitsForRespondNode) header.push(`\t\tlet ${RESPONDED} = false;`, '');
 		const footer = ['\t},', '});', ''];
 		const traced = this.traceMode === 'all';
 		if (traced) {

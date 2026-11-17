@@ -706,9 +706,9 @@ fn fuzzPgwireValue(_: void, smith: *Smith) !void {
     for (obuf[128..]) |b| if (b != 0xEE) return error.PgwireValueOverrun;
     // An array is one JSON array; an interval, a point and a circle are one object.
     const ends: [2]u8 = switch (class) {
-        .array_bool, .array_int, .array_float, .array_text, .array_json, .array_timestamp, .array_interval, .array_point => "[]".*,
+        .array_bool, .array_int, .array_float, .array_text, .array_json, .array_timestamp, .array_interval, .array_point, .array_legacy_date, .array_bytea => "[]".*,
         .interval, .point, .circle => "{}".*,
-        .boolean, .int, .int8, .float, .numeric, .json, .bytea, .timestamp, .text, .unsupported => .{ obuf[0], obuf[o.len - 1] },
+        .boolean, .int, .int8, .float, .numeric, .json, .bytea, .timestamp, .text, .legacy_date, .unsupported => .{ obuf[0], obuf[o.len - 1] },
     };
     if (obuf[0] != ends[0] or obuf[o.len - 1] != ends[1]) return error.PgwireValueShape;
     // A text column is one JSON string: no raw quote or control byte inside.
@@ -735,6 +735,31 @@ test "fuzz pgwire column values" {
     });
 }
 
+/// The scan of a simple text ends for any bytes. A text of SELECT
+/// commands has no transaction word, and a transaction word at the start
+/// of the text is always seen.
+fn fuzzPgwireScan(_: void, smith: *Smith) !void {
+    var tbuf: [136]u8 = @splat(0);
+    const head = "commit;";
+    @memcpy(tbuf[0..head.len], head);
+    const len = smith.slice(tbuf[head.len..]);
+    const backslash = smith.value(bool);
+    const scan = pgwire.scanText(tbuf[head.len..][0..len], backslash);
+    if (scan.all_select and scan.transaction) return error.PgwireScanBoth;
+    const with_head = pgwire.scanText(tbuf[0 .. head.len + len], backslash);
+    if (!with_head.transaction or with_head.all_select) return error.PgwireScanMissed;
+}
+
+test "fuzz pgwire simple text scan" {
+    try std.testing.fuzz({}, fuzzPgwireScan, .{
+        .corpus = &.{
+            seed("insert into t values ('a;b'); select $q$ ; $q$; end"),
+            seed("select E'a\\'' /* x /* y */ */ -- c\n; \"n;\"\"m\" ; lock table t"),
+            seed("$a$ $ $1 'x"),
+        },
+    });
+}
+
 /// A server-first message of any bytes ends the SCRAM exchange with a
 /// message or an error.
 fn fuzzPgwireScram(_: void, smith: *Smith) !void {
@@ -751,5 +776,140 @@ fn fuzzPgwireScram(_: void, smith: *Smith) !void {
 test "fuzz pgwire scram server-first" {
     try std.testing.fuzz({}, fuzzPgwireScram, .{
         .corpus = &.{ seed("r=CQkJCQkJCQkJCQkJCQkJCQkJx,s=W22ZaJ0SNY7soEsUEjb6gQ==,i=2"), seed("r=,s=,i=0"), seed("i=99999999999,r=CQkJ") },
+    });
+}
+
+// ---- MySQL protocol (mywire.zig) --------------------------------------------------
+
+const mywire = @import("mywire.zig");
+
+/// Read the body of one packet with each reader of the codec. A slice
+/// that a reader gives lies inside the body.
+fn mywireBody(body: []const u8, track: bool) !void {
+    if (mywire.handshake(body)) |h| {
+        try within(body, h.version);
+        try within(body, h.plugin);
+    } else |_| {}
+    if (mywire.loginReply(body, track)) |reply| switch (reply) {
+        .ok => |ok| try within(body, ok.info),
+        .err => |e| try within(body, e.message),
+        .switch_plugin => |s| try within(body, s.plugin),
+        .more => |data| try within(body, data),
+    } else |_| {}
+    if (mywire.resultHead(body, track)) |head| switch (head) {
+        .ok => |ok| try within(body, ok.info),
+        .err => |e| {
+            if (e.state.len != 0 and e.state.len != 5) return error.MywireState;
+            try within(body, e.message);
+        },
+        .columns => |n| if (n == 0) return error.MywireNoColumns,
+        .infile => |name| try within(body, name),
+    } else |_| {}
+    if (mywire.column(body)) |col| try within(body, col.name) else |_| {}
+    if (mywire.eofStatus(body)) |st| {
+        if (body.len < 5 or st != std.mem.readInt(u16, body[3..5], .little)) return error.MywireEof;
+    } else |_| {}
+    var vals = mywire.Values.init(body);
+    for (0..body.len + 1) |_| {
+        const v = (vals.next() catch return) orelse return;
+        if (v.text) |t| try within(body, t);
+    }
+    return error.MywireValuesLoop;
+}
+
+/// Packets of any bytes are framed inside the buffer, and each body is
+/// read without a crash.
+fn fuzzMywire(_: void, smith: *Smith) !void {
+    var buf: [512]u8 = @splat(0);
+    const bytes = buf[0..smith.slice(&buf)];
+    const track = smith.value(bool);
+    var off: usize = 0;
+    for (0..bytes.len / 4 + 1) |_| {
+        const p = (mywire.next(bytes[off..], 1 << 8) catch return) orelse return;
+        if (p.size != p.body.len + 4 or p.size > bytes.len - off) return error.MywireSize;
+        try within(bytes, p.body);
+        try mywireBody(p.body, track);
+        off += p.size;
+    }
+    return error.MywireFramesLoop;
+}
+
+test "fuzz mywire server packets" {
+    try std.testing.fuzz({}, fuzzMywire, .{
+        .corpus = &.{
+            seed("\x07\x00\x00\x01\x00\x01\x02\x02\x00\x00\x00"),
+            seed("\x0a\x00\x00\x01\xff\x28\x04#42000bad"),
+            seed("\x01\x00\x00\x01\x02\x05\x00\x00\x04\xfe\x00\x00\x02\x00"),
+            seed("\x19\x00\x00\x02\x03def\x01a\x01t\x01t\x02id\x02id\x0c\x3f\x00\x0b\x00\x00\x00\x03\x03\x42\x00\x00\x00"),
+            seed("\x04\x00\x00\x03\x0242\xfb"),
+            seed("\x18\x00\x00\x02\xfemysql_native_password\x00ABCDEFGHIJKLMNOPQRST\x00"),
+        },
+    });
+}
+
+/// A column value of any class and any bytes gives JSON that fits the
+/// buffer, or an error: never a crash, and never bytes after the limit.
+fn fuzzMywireValue(_: void, smith: *Smith) !void {
+    var tbuf: [96]u8 = @splat(0);
+    const text = tbuf[0..smith.slice(&tbuf)];
+    const class: mywire.Class = smith.value(mywire.Class);
+    const opt: mywire.Options = .{ .big_strings = smith.value(bool), .decimal_numbers = smith.value(bool) };
+    var obuf: [640]u8 = @splat(0xEE);
+    var o: mywire.Out = .{ .buf = obuf[0..600] };
+    mywire.writeValue(&o, class, text, opt) catch return;
+    if (o.len == 0 or o.len > 600) return error.MywireValueLength;
+    for (obuf[600..]) |b| if (b != 0xEE) return error.MywireValueOverrun;
+    const out = obuf[0..o.len];
+    switch (class) {
+        // One JSON string: no raw quote or control byte inside.
+        .ascii, .text => {
+            if (out[0] != '"' or out[out.len - 1] != '"') return error.MywireValueShape;
+            for (out[1 .. out.len - 1], 1..) |b, i| {
+                if (b < 0x20 or (b == '"' and out[i - 1] != '\\')) return error.MywireBadString;
+            }
+        },
+        .buffer => if (out[0] != '{' or out[out.len - 1] != '}') return error.MywireValueShape,
+        // A number, or the text of a large number: no byte that ends the document around it.
+        .int, .big, .float => for (out) |b| {
+            if (std.mem.indexOfScalar(u8, "0123456789-+.e\"nul", b) == null) return error.MywireNumber;
+        },
+        .json => for (out) |b| if (b < 0x20) return error.MywireJsonControl,
+        .null_only, .unsupported => return error.MywireNoValue,
+    }
+}
+
+test "fuzz mywire column values" {
+    try std.testing.fuzz({}, fuzzMywireValue, .{
+        .corpus = &.{
+            seed("-9223372036854775808"),
+            seed("0.30000000000000004"),
+            seed("{\"a\": [1, 2.50, 12345678901234567890], \"b\": \"x\\\"y\"}"),
+            seed("a\"b\\c\n\xff"),
+            seed("2024-02-29 13:14:15.123456"),
+            seed("1e400"),
+        },
+    });
+}
+
+/// The scan of a text ends for any bytes. A text that starts with a
+/// command that writes is never a text of reads.
+fn fuzzMywireScan(_: void, smith: *Smith) !void {
+    var tbuf: [136]u8 = @splat(0);
+    const head = "insert;";
+    @memcpy(tbuf[0..head.len], head);
+    const len = smith.slice(tbuf[head.len..]);
+    const backslash = smith.value(bool);
+    if (mywire.onlyReads(tbuf[0 .. head.len + len], backslash)) return error.MywireScanMissed;
+    const alone = mywire.onlyReads(tbuf[head.len..][0..len], backslash);
+    if (alone and len == 0) return error.MywireScanEmpty;
+}
+
+test "fuzz mywire text scan" {
+    try std.testing.fuzz({}, fuzzMywireScan, .{
+        .corpus = &.{
+            seed("select 'a;b'; show tables; -- x\n desc `t;`"),
+            seed("select \"a\\\"\" /* x */ # c\n; update t set a = 1"),
+            seed("/*! select 1 */ 'x"),
+        },
     });
 }

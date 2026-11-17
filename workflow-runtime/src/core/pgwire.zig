@@ -193,7 +193,8 @@ pub const Writer = struct {
         try w.close(o);
     }
 
-    /// A simple query: only for texts of the client itself (`BEGIN`).
+    /// A simple query: a text of the client itself (`BEGIN`), or the text
+    /// of a `simple` statement, which the library node made.
     pub fn query(w: *Writer, text: []const u8) Error!void {
         const o = try w.open('Q');
         w.cstr(text) catch |e| return w.undo(o, e);
@@ -295,6 +296,13 @@ pub const Writer = struct {
 
     pub fn sync(w: *Writer) Error!void {
         const o = try w.open('S');
+        try w.close(o);
+    }
+
+    /// CopyFail: the answer to `COPY ... FROM STDIN`. The client has no data for it.
+    pub fn copyFail(w: *Writer, message: []const u8) Error!void {
+        const o = try w.open('f');
+        w.cstr(message) catch |e| return w.undo(o, e);
         try w.close(o);
     }
 
@@ -771,6 +779,10 @@ pub const Class = enum(u8) {
     array_timestamp,
     array_interval,
     array_point,
+    /// A date or a timestamp as node-postgres reads it by default (`dates: legacy`).
+    legacy_date,
+    array_legacy_date,
+    array_bytea,
     unsupported,
 };
 
@@ -786,7 +798,7 @@ pub fn classOf(oid: u32, opt: Options) Class {
         1700 => .numeric,
         114, 3802 => .json,
         17 => .bytea,
-        1082 => if (opt.legacy_dates) .unsupported else .text,
+        1082 => if (!opt.legacy_dates) .text else if (opt.utc) .legacy_date else .unsupported,
         1184 => .timestamp,
         1114 => if (opt.utc) .timestamp else .unsupported,
         1186 => .interval,
@@ -808,21 +820,27 @@ fn arrayClassOf(oid: u32, opt: Options) Class {
         // `int8[]` stays text, with every `largeNumbers` value.
         1016, 651, 1014, 1015, 1008, 1009, 1040, 1041, 3907, 2951, 791, 1183, 1270 => .array_text,
         199, 3807 => .array_json,
-        1182 => if (opt.legacy_dates) .unsupported else .array_text,
-        1185 => if (opt.legacy_dates) .unsupported else .array_timestamp,
-        1115 => if (opt.utc and !opt.legacy_dates) .array_timestamp else .unsupported,
+        // A date and a timestamp without a zone are in the zone of the process of v1.
+        1182 => if (!opt.legacy_dates) .array_text else if (opt.utc) .array_legacy_date else .unsupported,
+        1185 => if (opt.legacy_dates) .array_legacy_date else .array_timestamp,
+        1115 => if (!opt.utc) .unsupported else if (opt.legacy_dates) .array_legacy_date else .array_timestamp,
         1187 => .array_interval,
         1017 => .array_point,
-        // `bytea[]`: node-postgres reads the bytes of the hex text, not the value.
-        1001 => .unsupported,
+        1001 => .array_bytea,
         // Not an array type that node-postgres knows.
         else => .text,
     };
 }
 
 /// True for a type whose form is another one with `dates: legacy`.
-pub fn isDateType(oid: u32) bool {
+fn isDateType(oid: u32) bool {
     return oid == 1082 or oid == 1182 or oid == 1115 or oid == 1185;
+}
+
+/// True for a type that has no native form with `dates: legacy`: a date
+/// or a timestamp without a zone is in the zone of the process of v1.
+pub fn noLegacyForm(oid: u32, utc: bool) bool {
+    return isDateType(oid) and classOf(oid, .{ .legacy_dates = true, .utc = utc }) == .unsupported;
 }
 
 /// True for a type whose text depends on the DateStyle of the session.
@@ -865,6 +883,9 @@ pub fn writeValue(o: *Out, class: Class, text: []const u8, opt: Options) ValueEr
         .array_timestamp => try writeArray(o, .timestamp, text),
         .array_interval => try writeArray(o, .interval, text),
         .array_point => try writeArray(o, .point, text),
+        .legacy_date => try writeLegacyDate(o, text),
+        .array_legacy_date => try writeArray(o, .legacy_date, text),
+        .array_bytea => try writeArray(o, .bytea, text),
         .unsupported => return error.Unsupported,
     }
 }
@@ -992,20 +1013,53 @@ fn escapedByte(s: []const u8) ValueError!EscapedByte {
 
 /// `new Date(text).toISOString()` for the ISO output of the server
 /// (`2024-01-02 03:04:05.123456+05:30`), or the text when JavaScript
-/// cannot read it (`infinity`). The proven range is the years 1000 to
-/// 9999 with an offset of hours and minutes; a value outside it has no
-/// native form.
+/// cannot read it: `infinity`, a year before Christ, a zone offset with
+/// seconds. The proven range is the years 0100 to 9999 (checked with
+/// Node.js on 300,000 texts). JavaScript reads a year below 100 by rules
+/// for two-digit years, and a year above 9999 by other rules: such a
+/// value has no native form.
 fn writeTimestamp(o: *Out, text: []const u8) ValueError!void {
     if (std.mem.eql(u8, text, "infinity") or std.mem.eql(u8, text, "-infinity")) return o.string(text);
+    if (notADate(text)) return o.string(text);
     const ms = timestampMs(text) orelse return error.Unsupported;
-    // 1000-01-01T00:00:00Z and 9999-12-31T23:59:59.999Z.
-    if (ms < -30610224000000 or ms > 253402300799999) return error.Unsupported;
+    // 9999-12-31T23:59:59.999Z.
+    if (ms > 253402300799999) return error.Unsupported;
+    try writeIso(o, ms);
+}
+
+/// The end of `YYYY-MM-DD HH:MM:SS` and the fraction after it.
+fn fractionEnd(text: []const u8) usize {
+    std.debug.assert(text.len >= 19);
+    var i: usize = 19;
+    if (i == text.len or text[i] != '.') return i;
+    i += 1;
+    while (i < text.len and std.ascii.isDigit(text[i])) i += 1;
+    return i;
+}
+
+/// True for a timestamp text of the server that `new Date` of JavaScript
+/// gives no date for: ` BC` at the end, or a zone offset with seconds
+/// (`+00:53:28`, the local mean time of a zone) in the years from 0100.
+fn notADate(text: []const u8) bool {
+    const f = fixedFields(text) orelse return false;
+    if (std.mem.endsWith(u8, text, " BC")) return true;
+    if (f[0] < 100) return false;
+    const zone = text[fractionEnd(text)..];
+    if (zone.len != 9 or (zone[0] != '+' and zone[0] != '-') or zone[3] != ':' or zone[6] != ':') return false;
+    return digitsOf(zone[1..3]) != null and digitsOf(zone[4..6]) != null and digitsOf(zone[7..9]) != null;
+}
+
+/// `toISOString()` of the time `ms`: a year outside 0 to 9999 has a sign and six digits.
+fn writeIso(o: *Out, ms: i64) error{NoSpace}!void {
     const days = @divFloor(ms, 86_400_000);
     const rem: u64 = @abs(@mod(ms, 86_400_000));
     std.debug.assert(rem < 86_400_000);
     const d = civil(days);
+    const wide = d.year < 0 or d.year > 9999;
+    try o.byte('"');
+    if (wide) try o.byte(if (d.year < 0) '-' else '+');
     const parts = [_]struct { v: u64, width: usize, after: u8 }{
-        .{ .v = @abs(d.year), .width = 4, .after = '-' },
+        .{ .v = @abs(d.year), .width = if (wide) 6 else 4, .after = '-' },
         .{ .v = @abs(d.month), .width = 2, .after = '-' },
         .{ .v = @abs(d.day), .width = 2, .after = 'T' },
         .{ .v = rem / 3_600_000, .width = 2, .after = ':' },
@@ -1013,7 +1067,6 @@ fn writeTimestamp(o: *Out, text: []const u8) ValueError!void {
         .{ .v = rem / 1000 % 60, .width = 2, .after = '.' },
         .{ .v = rem % 1000, .width = 3, .after = 'Z' },
     };
-    try o.byte('"');
     for (parts) |p| {
         try putDecimal(o, p.v, p.width);
         try o.byte(p.after);
@@ -1048,7 +1101,7 @@ fn digitsOf(s: []const u8) ?u32 {
 /// not in the proven form.
 fn timestampMs(text: []const u8) ?i64 {
     const f = fixedFields(text) orelse return null;
-    if (f[0] < 1000 or f[1] < 1 or f[1] > 12 or f[2] < 1 or f[2] > 31 or f[3] > 23 or f[4] > 59 or f[5] > 59) return null;
+    if (f[0] < 100 or f[1] < 1 or f[1] > 12 or f[2] < 1 or f[2] > 31 or f[3] > 23 or f[4] > 59 or f[5] > 59) return null;
     var i: usize = 19;
     var milli: i64 = 0;
     if (i < text.len and text[i] == '.') {
@@ -1087,9 +1140,9 @@ fn offsetMinutes(s: []const u8) ?i64 {
 }
 
 /// Days since 1970-01-01 of a date in the proleptic Gregorian calendar.
-fn daysFromCivil(y_in: u32, m: u32, d: u32) i64 {
+fn daysFromCivil(y_in: i64, m: u32, d: u32) i64 {
     std.debug.assert(m >= 1 and m <= 12 and d >= 1 and d <= 31);
-    const y: i64 = if (m <= 2) @as(i64, y_in) - 1 else y_in;
+    const y: i64 = if (m <= 2) y_in - 1 else y_in;
     const era = @divFloor(y, 400);
     const yoe = y - era * 400;
     const mp: i64 = if (m > 2) @as(i64, m) - 3 else @as(i64, m) + 9;
@@ -1110,6 +1163,95 @@ fn civil(days: i64) Date {
     const month = if (mp < 10) mp + 3 else mp - 9;
     std.debug.assert(month >= 1 and month <= 12);
     return .{ .year = yoe + era * 400 + @intFromBool(month <= 2), .month = month, .day = doy - @divFloor(153 * mp + 2, 5) + 1 };
+}
+
+// ---- dates of `dates: legacy` ----------------------------------------------------
+
+/// The JSON of the `Date` that postgres-date 1.0.7 makes of a date or a
+/// timestamp text of the server, in a process whose zone is UTC:
+/// `toISOString()`, or null for `infinity` and for a time outside the
+/// range of a JavaScript date. With `dates: legacy`, node-postgres reads
+/// a `date` column and the arrays of dates and timestamps this way.
+fn writeLegacyDate(o: *Out, text: []const u8) ValueError!void {
+    if (std.mem.eql(u8, text, "infinity") or std.mem.eql(u8, text, "-infinity")) return o.put("null");
+    const ms = legacyMs(text) orelse return error.Unsupported;
+    if (@abs(ms) > 8_640_000_000_000_000) return o.put("null");
+    try writeIso(o, ms);
+}
+
+/// Milliseconds since the epoch as postgres-date computes them, or null
+/// for a text that is not in the form of the server.
+fn legacyMs(text_in: []const u8) ?i64 {
+    const bc = std.mem.endsWith(u8, text_in, " BC");
+    var p: Scan = .{ .s = if (bc) text_in[0 .. text_in.len - 3] else text_in };
+    const year_text = p.digits(1, 7) orelse return null;
+    if (!p.eat('-')) return null;
+    const month = digitsOf(p.digits(2, 2) orelse return null) orelse return null;
+    if (!p.eat('-')) return null;
+    const day = digitsOf(p.digits(2, 2) orelse return null) orelse return null;
+    if (month < 1 or month > 12 or day < 1 or day > 31) return null;
+    const written = parseI64(year_text) orelse return null;
+    // The year 1 BC is the year 0.
+    const year = if (bc) 1 - written else written;
+    const in_day = if (p.i == p.s.len) 0 else legacyTime(&p) orelse return null;
+    return legacyDays(year, month, day) * 86_400_000 + in_day;
+}
+
+/// ` HH:MM:SS`, a fraction and a zone offset: the milliseconds to add to
+/// the day. Without an offset the time is in the zone of the process (UTC).
+fn legacyTime(p: *Scan) ?i64 {
+    if (!p.eat(' ')) return null;
+    var hms: [3]i64 = @splat(0);
+    for (&hms, 0..) |*v, i| {
+        if (i > 0 and !p.eat(':')) return null;
+        v.* = digitsOf(p.digits(2, 2) orelse return null) orelse return null;
+    }
+    if (hms[0] > 23 or hms[1] > 59 or hms[2] > 59) return null;
+    var milli: i64 = 0;
+    const dot = p.i;
+    if (p.eat('.')) {
+        if (p.digits(1, 9) == null) return null;
+        // `1000 * parseFloat(".57")`; the Date constructor drops the fraction of it.
+        milli = @intFromFloat(@trunc(1000 * numfmt.parseFloatPrefix(p.s[dot..p.i])));
+    }
+    const offset = legacyOffset(p.s[p.i..]) orelse return null;
+    return hms[0] * 3_600_000 + hms[1] * 60_000 + hms[2] * 1000 + milli - offset * 1000;
+}
+
+/// The zone offset in seconds: nothing, `+HH`, `+HH:MM` or `+HH:MM:SS`.
+fn legacyOffset(s: []const u8) ?i64 {
+    if (s.len == 0) return 0;
+    if (s[0] != '+' and s[0] != '-') return null;
+    if (s.len != 3 and s.len != 6 and s.len != 9) return null;
+    var total: i64 = 0;
+    var at: usize = 1;
+    var unit: i64 = 3600;
+    while (at < s.len) : (at += 3) {
+        if (at > 1 and s[at - 1] != ':') return null;
+        total += unit * (digitsOf(s[at .. at + 2]) orelse return null);
+        unit = @divTrunc(unit, 60);
+    }
+    return if (s[0] == '-') -total else total;
+}
+
+/// The day of `Date.UTC(year, month, day)`. postgres-date then calls
+/// `setUTCFullYear(year)` for the years 0 to 99, because JavaScript reads
+/// them as 1900 to 1999 first: February 29 of the year 0 becomes March 1.
+fn legacyDays(year: i64, month: u32, day: u32) i64 {
+    if (year < 0 or year > 99) return daysFromCivil(year, month, day);
+    const d = civil(daysFromCivil(1900 + year, month, day));
+    // `civil` gives a month from 1 to 12 and a day from 1 to 31.
+    const m = std.math.cast(u32, d.month) orelse 1;
+    return daysFromCivil(year, m, std.math.cast(u32, d.day) orelse 1);
+}
+
+/// A `bytea` element of an array, in the hex format: it is in quotes, and
+/// its backslash is written two times. An element in the escape format
+/// has no native form.
+fn writeByteaElement(o: *Out, raw: []const u8, escapes: bool) ValueError!void {
+    if (!escapes or !std.mem.startsWith(u8, raw, "\\\\x")) return error.Unsupported;
+    if (std.mem.indexOfScalar(u8, raw[2..], '\\') != null) return error.Unsupported;
+    try writeBytea(o, raw[1..]);
 }
 
 // ---- interval, point and circle -------------------------------------------------
@@ -1365,7 +1507,7 @@ const ArrayScan = struct {
 /// the byte that it stands for.
 fn writeElement(o: *Out, elem: Class, raw: []const u8, escapes: bool) ValueError!void {
     // The server writes a backslash only in a text or a json element.
-    if (escapes and elem != .text and elem != .json) return error.Unsupported;
+    if (escapes and elem != .text and elem != .json and elem != .bytea) return error.Unsupported;
     switch (elem) {
         .text => if (escapes) try elementString(o, raw) else try o.string(raw),
         .json => try elementJson(o, raw),
@@ -1375,9 +1517,12 @@ fn writeElement(o: *Out, elem: Class, raw: []const u8, escapes: bool) ValueError
         .timestamp => try writeTimestamp(o, raw),
         .interval => try writeInterval(o, raw),
         .point => try writePoint(o, raw),
+        .legacy_date => try writeLegacyDate(o, raw),
+        .bytea => try writeByteaElement(o, raw, escapes),
         // No array type has elements of these classes.
-        .int8, .numeric, .bytea, .circle, .unsupported => return error.Unsupported,
+        .int8, .numeric, .circle, .unsupported => return error.Unsupported,
         .array_bool, .array_int, .array_float, .array_text, .array_json, .array_timestamp, .array_interval, .array_point => return error.Unsupported,
+        .array_legacy_date, .array_bytea => return error.Unsupported,
     }
 }
 
@@ -1409,6 +1554,134 @@ pub fn startsWithSelect(text: []const u8) bool {
     const t = std.mem.trimStart(u8, text, " \t\r\n");
     if (t.len < 6 or !std.ascii.eqlIgnoreCase(t[0..6], "select")) return false;
     return t.len == 6 or !(std.ascii.isAlphanumeric(t[6]) or t[6] == '_');
+}
+
+/// What the commands of a statement text are. The client reads this
+/// before it sends the text with the simple query protocol.
+pub const TextScan = struct {
+    /// A command starts with a word that starts or ends a transaction, or
+    /// that needs a transaction block: the text must run as it is.
+    transaction: bool = false,
+    /// The text has a command, and each command starts with `select`.
+    all_select: bool = false,
+};
+
+const block_words = [_][]const u8{ "begin", "start", "commit", "end", "rollback", "abort", "savepoint", "release", "prepare", "lock", "declare" };
+
+const TokenKind = enum { space, separator, word, other };
+const Token = struct { kind: TokenKind, len: usize };
+
+/// Look at the first word of each command of `text`. Strings, quoted
+/// names, dollar quotes and comments are passed over, as the server reads
+/// them. `backslash`: a plain string has backslash escapes (the session
+/// has `standard_conforming_strings` off). The client also looks at the
+/// command tags of the text that ran, so a word that this scan does not
+/// see cannot give a wrong marker.
+pub fn scanText(text: []const u8, backslash: bool) TextScan {
+    var scan: TextScan = .{};
+    var commands: u32 = 0;
+    var selects: u32 = 0;
+    var at_start = true;
+    var i: usize = 0;
+    // Each token has one byte or more.
+    for (0..text.len) |_| {
+        if (i >= text.len) break;
+        const t = tokenAt(text[i..], backslash);
+        std.debug.assert(t.len > 0 and t.len <= text.len - i);
+        const first = at_start and (t.kind == .word or t.kind == .other);
+        if (t.kind == .separator) at_start = true;
+        if (first) {
+            at_start = false;
+            commands += 1;
+            const word = if (t.kind == .word) text[i..][0..t.len] else "";
+            if (std.ascii.eqlIgnoreCase(word, "select")) selects += 1;
+            scan.transaction = scan.transaction or isBlockWord(word);
+        }
+        i += t.len;
+    }
+    scan.all_select = commands > 0 and selects == commands;
+    return scan;
+}
+
+fn isBlockWord(word: []const u8) bool {
+    for (block_words) |w| {
+        if (std.ascii.eqlIgnoreCase(word, w)) return true;
+    }
+    return false;
+}
+
+fn isWordByte(c: u8) bool {
+    return std.ascii.isAlphanumeric(c) or c == '_' or c >= 0x80;
+}
+
+/// The token at the start of `s`, which is not empty.
+fn tokenAt(s: []const u8, backslash: bool) Token {
+    std.debug.assert(s.len > 0);
+    const c = s[0];
+    const two = if (s.len > 1) s[1] else 0;
+    if (c == ' ' or (c >= 9 and c <= 13)) return .{ .kind = .space, .len = 1 };
+    if (c == '-' and two == '-') return .{ .kind = .space, .len = lineCommentLen(s) };
+    if (c == '/' and two == '*') return .{ .kind = .space, .len = blockCommentLen(s) };
+    if (c == ';') return .{ .kind = .separator, .len = 1 };
+    if (c == '\'') return .{ .kind = .other, .len = quotedLen(s, backslash) };
+    if (c == '"') return .{ .kind = .other, .len = quotedLen(s, false) };
+    if (c == '$') return .{ .kind = .other, .len = dollarQuoteLen(s) orelse 1 };
+    if (!isWordByte(c) or std.ascii.isDigit(c)) return .{ .kind = .other, .len = 1 };
+    var n: usize = 1;
+    while (n < s.len and (isWordByte(s[n]) or s[n] == '$')) n += 1;
+    // `E'...'`: a string with backslash escapes.
+    const escape_string = n == 1 and (c == 'e' or c == 'E') and two == '\'';
+    if (escape_string) return .{ .kind = .other, .len = 1 + quotedLen(s[1..], true) };
+    return .{ .kind = .word, .len = n };
+}
+
+fn lineCommentLen(s: []const u8) usize {
+    const end = std.mem.indexOfScalar(u8, s, '\n') orelse return s.len;
+    return end + 1;
+}
+
+/// A block comment, with the comments inside it. One without an end takes the rest.
+fn blockCommentLen(s: []const u8) usize {
+    std.debug.assert(s.len >= 2);
+    var depth: usize = 0;
+    var i: usize = 0;
+    while (i + 1 < s.len) {
+        const open_at = s[i] == '/' and s[i + 1] == '*';
+        const close_at = s[i] == '*' and s[i + 1] == '/';
+        if (open_at) depth += 1;
+        if (close_at) depth -= 1;
+        i += if (open_at or close_at) 2 else 1;
+        if (depth == 0) return i;
+    }
+    return s.len;
+}
+
+/// A string or a quoted name: the quote of `s[0]` twice is one quote
+/// inside it. One without an end takes the rest.
+fn quotedLen(s: []const u8, backslash: bool) usize {
+    std.debug.assert(s.len > 0);
+    const q = s[0];
+    var i: usize = 1;
+    while (i < s.len) {
+        const c = s[i];
+        const pair = (c == '\\' and backslash) or (c == q and i + 1 < s.len and s[i + 1] == q);
+        if (c == q and !pair) return i + 1;
+        i += if (pair) 2 else 1;
+    }
+    return s.len;
+}
+
+/// `$tag$ ... $tag$`, or null when `s` does not start a dollar quote
+/// (`$1`). One without an end takes the rest.
+fn dollarQuoteLen(s: []const u8) ?usize {
+    std.debug.assert(s.len > 0 and s[0] == '$');
+    var n: usize = 1;
+    while (n < s.len and isWordByte(s[n])) n += 1;
+    if (n >= s.len or s[n] != '$') return null;
+    if (n > 1 and std.ascii.isDigit(s[1])) return null;
+    const tag = s[0 .. n + 1];
+    const end = std.mem.indexOfPos(u8, s, tag.len, tag) orelse return s.len;
+    return end + tag.len;
 }
 
 // ---- tests --------------------------------------------------------------------
@@ -1575,10 +1848,10 @@ test "pgwire: column values become the JSON of node-postgres" {
     const bad_bytes = [_][]const u8{ "\\", "\\1", "\\12", "\\128", "\\400", "\\a", "a\x80", "a\nb" };
     for (bad_bytes) |text| try std.testing.expectError(error.Unsupported, jsonOf(&jb, .bytea, text, .{}));
     try std.testing.expectEqualStrings("\"a\\\"b\\\\c\\u000a\"", try jsonOf(&jb, .text, "a\"b\\c\n", .{}));
-    try std.testing.expectEqual(Class.unsupported, classOf(1001, .{}));
     try std.testing.expectEqual(Class.unsupported, classOf(1114, .{}));
     try std.testing.expectEqual(Class.timestamp, classOf(1114, .{ .utc = true }));
     try std.testing.expectEqual(Class.unsupported, classOf(1082, .{ .legacy_dates = true }));
+    try std.testing.expectEqual(Class.legacy_date, classOf(1082, .{ .legacy_dates = true, .utc = true }));
     try std.testing.expectEqual(Class.text, classOf(2950, .{}));
 }
 
@@ -1592,10 +1865,64 @@ test "pgwire: timestamps as new Date(text).toISOString()" {
     try std.testing.expectEqualStrings("\"1969-12-31T23:59:59.000Z\"", try jsonOf(&jb, .timestamp, "1969-12-31 23:59:59", .{}));
     try std.testing.expectEqualStrings("\"2024-02-29T00:00:00.000Z\"", try jsonOf(&jb, .timestamp, "2024-02-29 00:00:00+00", .{}));
     try std.testing.expectEqualStrings("\"infinity\"", try jsonOf(&jb, .timestamp, "infinity", .{}));
+    // The years 0100 to 0999 (Node.js 26: these pairs, and 300,000 random texts against the same arithmetic).
+    try std.testing.expectEqualStrings("\"0999-12-31T23:59:59.999Z\"", try jsonOf(&jb, .timestamp, "0999-12-31 23:59:59.999+00", .{}));
+    try std.testing.expectEqualStrings("\"0500-05-31T22:00:00.123Z\"", try jsonOf(&jb, .timestamp, "0500-06-01 00:00:00.123456+02", .{}));
+    try std.testing.expectEqualStrings("\"0500-06-01T03:30:00.500Z\"", try jsonOf(&jb, .timestamp, "0500-06-01 00:00:00.5-03:30", .{}));
+    try std.testing.expectEqualStrings("\"0100-01-01T00:00:00.000Z\"", try jsonOf(&jb, .timestamp, "0100-01-01 00:00:00", .{}));
+    // JavaScript gives no date for a year before Christ or an offset with seconds: the v1 node keeps the text.
+    const kept = [_][]const u8{ "0044-03-15 12:00:00+00 BC", "0044-03-15 12:00:00 BC", "4713-01-01 00:00:00+00 BC", "1800-01-01 00:53:28+00:53:28", "1883-11-18 12:03:58-07:52:58", "0500-06-01 00:00:00.25-07:52:58" };
+    for (kept) |text| {
+        var want: [40]u8 = @splat('"');
+        @memcpy(want[1..][0..text.len], text);
+        try std.testing.expectEqualStrings(want[0 .. text.len + 2], try jsonOf(&jb, .timestamp, text, .{}));
+    }
+    // JavaScript reads a year below 100 as a year of two digits ("0099" is 1999, "0031" is no date): no native form.
     try std.testing.expectError(error.Unsupported, jsonOf(&jb, .timestamp, "0099-01-02 03:04:05+00", .{}));
-    try std.testing.expectError(error.Unsupported, jsonOf(&jb, .timestamp, "0044-03-15 12:00:00+00 BC", .{}));
-    try std.testing.expectError(error.Unsupported, jsonOf(&jb, .timestamp, "1883-11-18 12:03:58-07:52:58", .{}));
+    try std.testing.expectError(error.Unsupported, jsonOf(&jb, .timestamp, "0099-01-02 03:04:05+00:53:28", .{}));
     try std.testing.expectError(error.Unsupported, jsonOf(&jb, .timestamp, "12024-01-02 03:04:05+00", .{}));
+}
+
+test "pgwire: dates of dates legacy as postgres-date and JSON give them" {
+    var jb: [256]u8 = @splat(0);
+    const legacy: Options = .{ .legacy_dates = true, .utc = true };
+    // Each pair was checked with pg-promise 11.9.1 (postgres-date 1.0.7) in a process in UTC.
+    try std.testing.expectEqualStrings(
+        \\["2024-01-02T00:00:00.000Z",null,null,"-000043-03-15T00:00:00.000Z","0099-12-31T00:00:00.000Z",null]
+    , try jsonOf(&jb, classOf(1182, legacy), "{2024-01-02,NULL,infinity,\"0044-03-15 BC\",0099-12-31,-infinity}", legacy));
+    // February 29 of the year 0 becomes March 1; a date outside the range of JavaScript is null.
+    try std.testing.expectEqualStrings(
+        \\["0000-03-01T00:00:00.000Z","0000-03-01T00:00:00.000Z",null,"0004-02-29T00:00:00.000Z","+275760-09-13T00:00:00.000Z",null]
+    , try jsonOf(&jb, classOf(1182, legacy), "{\"0001-02-29 BC\",\"0001-03-01 BC\",5874897-12-31,0004-02-29,275760-09-13,275760-09-14}", legacy));
+    try std.testing.expectEqualStrings(
+        \\["2024-01-02T03:04:05.570Z","2024-01-02T03:04:05.000Z",null,"0000-03-01T10:00:00.000Z","2024-01-02T03:04:05.999Z"]
+    , try jsonOf(&jb, classOf(1115, legacy), "{\"2024-01-02 03:04:05.57\",\"2024-01-02 03:04:05.000001\",\"294276-12-31 23:59:59\",\"0001-02-29 10:00:00 BC\",\"2024-01-02 03:04:05.999999\"}", legacy));
+    // An array of timestamps with a zone does not depend on the zone of the process.
+    const tz = classOf(1185, .{ .legacy_dates = true });
+    try std.testing.expectEqualStrings(
+        \\["2024-01-02T03:04:05.570Z","0000-02-29T23:00:00.000Z","1800-01-01T00:00:00.000Z",null]
+    , try jsonOf(&jb, tz, "{\"2024-01-02 08:34:05.57+05:30\",\"0001-02-29 04:53:28+05:53:28 BC\",\"1799-12-31 20:29:08-03:30:52\",NULL}", .{ .legacy_dates = true }));
+    try std.testing.expectEqualStrings("\"+012345-01-01T00:00:00.000Z\"", try jsonOf(&jb, .legacy_date, "12345-01-01", legacy));
+    try std.testing.expectEqualStrings("\"1990-02-03T00:00:00.000Z\"", try jsonOf(&jb, classOf(1082, legacy), "1990-02-03", legacy));
+    try std.testing.expectEqualStrings("null", try jsonOf(&jb, .legacy_date, "infinity", legacy));
+    const bad = [_][]const u8{ "", "2024-01-02T03:04:05", "2024-1-02", "2024-01-02 03:04", "2024-01-02 03:04:05+1", "02.01.2024", "2024-01-02 03:04:05 PST" };
+    for (bad) |text| try std.testing.expectError(error.Unsupported, jsonOf(&jb, .legacy_date, text, legacy));
+    // A date and a timestamp without a zone are in the zone of the process of v1.
+    try std.testing.expectEqual(Class.unsupported, classOf(1182, .{ .legacy_dates = true }));
+    try std.testing.expectEqual(Class.unsupported, classOf(1115, .{ .legacy_dates = true }));
+    try std.testing.expect(noLegacyForm(1082, false) and !noLegacyForm(1082, true) and !noLegacyForm(1185, false) and !noLegacyForm(23, false));
+}
+
+test "pgwire: a bytea array as node-postgres gives it" {
+    var jb: [256]u8 = @splat(0);
+    // Checked with pg-promise 11.9.1.
+    try std.testing.expectEqualStrings(
+        \\[{"type":"Buffer","data":[0,255]},null,{"type":"Buffer","data":[]},{"type":"Buffer","data":[97,98,99]}]
+    , try jsonOf(&jb, classOf(1001, .{}), "{\"\\\\x00ff\",NULL,\"\\\\x\",\"\\\\x616263\"}", .{}));
+    try std.testing.expectEqualStrings("[[{\"type\":\"Buffer\",\"data\":[1]}]]", try jsonOf(&jb, .array_bytea, "{{\"\\\\x01\"}}", .{}));
+    // The escape format of `bytea_output` has no native form in an array.
+    const bad = [_][]const u8{ "{abc}", "{\"a b\"}", "{\"\\\\000\\\\377\"}", "{\"\\\\x0\"}", "{\"\\\\x0g\"}", "{\"\\\\x00\\\\\\\\\"}" };
+    for (bad) |text| try std.testing.expectError(error.Unsupported, jsonOf(&jb, .array_bytea, text, .{}));
 }
 
 test "pgwire: arrays become the JSON of postgres-array" {
@@ -1629,8 +1956,6 @@ test "pgwire: arrays become the JSON of postgres-array" {
     try std.testing.expectEqualStrings("[{\"x\":1,\"y\":2},null]", try jsonOf(&jb, classOf(1017, .{}), "{\"(1,2)\",NULL}", .{}));
     // The types without a native form, and the types that node-postgres leaves as text.
     try std.testing.expectEqual(Class.unsupported, classOf(1115, .{}));
-    try std.testing.expectEqual(Class.unsupported, classOf(1182, .{ .legacy_dates = true }));
-    try std.testing.expectEqual(Class.unsupported, classOf(1185, .{ .legacy_dates = true }));
     try std.testing.expectEqual(Class.text, classOf(719, .{}));
     try std.testing.expectEqual(Class.text, classOf(1003, .{}));
     // A text that the server does not write has no native form.
@@ -1688,4 +2013,45 @@ test "pgwire: the first word of a statement" {
     try std.testing.expect(startsWithSelect("select"));
     try std.testing.expect(!startsWithSelect("selection"));
     try std.testing.expect(!startsWithSelect("with x as (select 1) insert into t select * from x"));
+}
+
+test "pgwire: the first word of each command of a simple text" {
+    const plain = scanText("insert into t values (1); update t set a = 2", false);
+    try std.testing.expect(!plain.transaction and !plain.all_select);
+    const selects = scanText(" select 1;\n-- c\nSELECT 'a;b' /* x /* y */ ; */ ;", false);
+    try std.testing.expect(!selects.transaction and selects.all_select);
+    try std.testing.expect(!scanText("", false).all_select and !scanText(" ; ", false).all_select);
+    try std.testing.expect(!scanText("(select 1)", false).all_select);
+    const with_tx = [_][]const u8{
+        "insert into t values (1); COMMIT; insert into t values (2)",
+        "Begin; select 1",
+        "select 1;\tend",
+        "lock table t",
+        "select $1; rollback",
+        "select $a$ ; $a$; savepoint s",
+        "select 'it''s' ; \"a;\"\"b\" ; start transaction",
+        "select E'a\\'; x' ; abort",
+        "select 1 /* c */ ; -- d\n declare c cursor for select 1",
+    };
+    for (with_tx) |text| try std.testing.expect(scanText(text, false).transaction);
+    // The word is inside a string, a name, a dollar quote, a comment or a command.
+    const without = [_][]const u8{
+        "select 'a; commit'",
+        "select \"x; commit\" from t",
+        "do $body$ begin perform 1; end $body$",
+        "select $$ ; commit $$",
+        "select 1 -- ; commit",
+        "select 1 /* ; commit */",
+        "select case when a then 1 else 2 end from t",
+        "select e'a\\'; commit '",
+        "select 1; committed",
+    };
+    for (without) |text| try std.testing.expect(!scanText(text, false).transaction);
+    // With backslash escapes in plain strings, the string goes on after the escaped quote.
+    try std.testing.expect(scanText("select 'a\\'; commit", false).transaction);
+    try std.testing.expect(!scanText("select 'a\\'; commit'", true).transaction);
+    var buf: [32]u8 = @splat(0);
+    var w: Writer = .{ .buf = &buf };
+    try w.copyFail("no");
+    try std.testing.expectEqualSlices(u8, "f\x00\x00\x00\x07no\x00", buf[0..w.len]);
 }

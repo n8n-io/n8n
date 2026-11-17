@@ -213,11 +213,12 @@ export function validateFile(
 			);
 		}
 		const dialect = propertyOf(options, 'dialect');
-		if (!dialect || stringLiteralValue(dialect.initializer) !== 'postgres') {
+		const dialectName = dialect ? stringLiteralValue(dialect.initializer) : undefined;
+		if (dialectName !== 'postgres' && dialectName !== 'mysql') {
 			report(
 				dialect ?? options,
 				'WL032',
-				"The `dialect` of ctx.sql must be the literal 'postgres'.",
+				"The `dialect` of ctx.sql must be the literal 'postgres' or 'mysql'.",
 				"dialect: 'postgres'",
 			);
 		}
@@ -249,6 +250,38 @@ export function validateFile(
 				);
 			}
 			const values = propertyOf(statement, 'values');
+			const simple = propertyOf(statement, 'simple');
+			if (simple && skipOuter(simple.initializer).kind !== ts.SyntaxKind.TrueKeyword) {
+				report(
+					simple,
+					'WL032',
+					'The `simple` of a SQL statement must be the literal true.',
+					'simple: true',
+				);
+			}
+			const shorthandValues = statement.properties.some(
+				(p) => ts.isShorthandPropertyAssignment(p) && p.name.text === 'values',
+			);
+			// The v1 MySQL node sends only text that its driver formatted (spec 9.11).
+			const unknownMembers = statement.properties.some(
+				(p) => ts.isShorthandPropertyAssignment(p) || ts.isSpreadAssignment(p),
+			);
+			if (dialectName === 'mysql' && !simple && !unknownMembers) {
+				report(
+					statement,
+					'WL032',
+					'A MySQL statement needs `simple: true` and no `values`: the runtime sends its text as it is.',
+					"{ text: 'SELECT 1', simple: true }",
+				);
+			}
+			if (simple && (values || shorthandValues)) {
+				report(
+					simple,
+					'WL032',
+					'A SQL statement with `simple: true` has no `values`: the runtime sends its text as it is.',
+					"{ text: 'SELECT 1; SELECT 2', simple: true }",
+				);
+			}
 			const members = values ? skipOuter(values.initializer) : undefined;
 			if (!members || !ts.isArrayLiteralExpression(members)) continue;
 			for (const member of members.elements) {

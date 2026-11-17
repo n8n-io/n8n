@@ -5,6 +5,11 @@
  * checks every statement (Parse and Describe) before it runs one. So a limit
  * marker means that nothing ran, as in the runtime.
  *
+ * A statement with `simple: true` goes to the server as it is, with the simple
+ * query protocol and no values, as the v1 node sends its text. The server cannot
+ * describe it before it runs. A column without a native form shows after the text
+ * ran, so the reference gives a plain error then, never a marker.
+ *
  * node-postgres gives the `types` of a query to the Parse message as the
  * parameter types, and asks the same object for the column parsers. The
  * reference passes an array of type ids with a `getTypeParser` that keeps the
@@ -14,7 +19,7 @@ import { createRequire } from 'node:module';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-import type { SqlError, SqlFailure, SqlResult, SqlRows } from '../../sdk/index.ts';
+import type { SqlError, SqlFailure, SqlResult, SqlRows, SqlSets } from '../../sdk/index.ts';
 
 const here = dirname(fileURLToPath(import.meta.url));
 const nodesBase = join(here, '../../../../../nodes-base');
@@ -210,7 +215,7 @@ function limitOf(
 
 function checkRequest(
 	request: Record<string, unknown>,
-): Array<{ text: string; values: unknown[] }> {
+): Array<{ text: string; values: unknown[]; simple: boolean }> {
 	if (request.dialect !== 'postgres') throw new Error('sql: the dialect must be postgres');
 	if (typeof request.credential !== 'string') throw new Error('sql: the call has no credential');
 	const list = request.statements;
@@ -221,6 +226,12 @@ function checkRequest(
 		if (!isRecord(statement) || typeof statement.text !== 'string') {
 			throw new Error('sql: a statement has no text');
 		}
+		if (statement.simple !== undefined && statement.simple !== true) {
+			throw new Error('sql: the `simple` of a statement must be true');
+		}
+		if (statement.simple === true && statement.values !== undefined) {
+			throw new Error('sql: a simple statement has no values');
+		}
 		const values = statement.values ?? [];
 		if (!Array.isArray(values)) throw new Error('sql: the values of a statement are not a list');
 		for (const value of values) {
@@ -228,7 +239,7 @@ function checkRequest(
 				throw new Error('sql: a bind value is a string, a number, a boolean or null');
 			}
 		}
-		return { text: statement.text, values };
+		return { text: statement.text, values, simple: statement.simple === true };
 	});
 }
 
@@ -317,6 +328,7 @@ export async function runSqlEffect(
 	try {
 		const typed = statements.map((s) => s.values.map(parameterType));
 		for (let i = 0; i < statements.length; i++) {
+			if (statements[i].simple) continue;
 			const found = limitOf(
 				statements[i].text,
 				await describe(client, statements[i].text, typed[i]),
@@ -325,29 +337,48 @@ export async function runSqlEffect(
 			);
 			if (found) throw found;
 		}
-		const results: Array<SqlRows | SqlFailure> = [];
+		const results: Array<SqlRows | SqlSets | SqlFailure> = [];
+		const rowsOf = (result: any): SqlRows => {
+			const rows = result.rows.map((row: Record<string, string | null>) => {
+				const out: Record<string, unknown> = {};
+				for (const field of result.fields) {
+					out[field.name] = columnValue(row[field.name], field.dataTypeID, request);
+				}
+				return out;
+			});
+			return { command: result.command, rowCount: result.rowCount, rows };
+		};
 		const begin = mode === 'transaction' || (mode === 'single' && statements.length > 1);
 		if (begin) await client.query('BEGIN');
 		let failed = false;
+		let late: Error | undefined;
 		for (let i = 0; i < statements.length; i++) {
 			const types = Object.assign([...typed[i]], {
 				getTypeParser: () => (text: string) => text,
 			});
 			try {
+				if (statements[i].simple) {
+					const result = await client.query({ text: statements[i].text, types });
+					const list: any[] = Array.isArray(result) ? result : [result];
+					const done = list.filter((set) => set.command !== null && set.command !== undefined);
+					for (const set of done) {
+						const found = limitOf('', { fields: set.fields }, request, options);
+						if (found && !late) {
+							const reason = found.message.slice(0, found.message.lastIndexOf(' (limit: '));
+							late = new Error(`${reason}, and the simple statement ran before that showed`);
+						}
+					}
+					if (late) break;
+					results.push({ sets: done.map(rowsOf) });
+					continue;
+				}
 				const result = await client.query({
 					text: statements[i].text,
 					values: statements[i].values.map(parameterText),
 					types,
 					queryMode: 'extended',
 				});
-				const rows = result.rows.map((row: Record<string, string | null>) => {
-					const out: Record<string, unknown> = {};
-					for (const field of result.fields) {
-						out[field.name] = columnValue(row[field.name], field.dataTypeID, request);
-					}
-					return out;
-				});
-				results.push({ command: result.command, rowCount: result.rowCount, rows });
+				results.push(rowsOf(result));
 			} catch (error) {
 				results.push({ error: sqlError(error) });
 				if (mode !== 'independently') {
@@ -356,7 +387,8 @@ export async function runSqlEffect(
 				}
 			}
 		}
-		if (begin) await client.query(failed ? 'ROLLBACK' : 'COMMIT');
+		if (begin) await client.query(failed || late ? 'ROLLBACK' : 'COMMIT');
+		if (late) throw late;
 		return { results };
 	} finally {
 		await client.end();

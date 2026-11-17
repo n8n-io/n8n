@@ -111,6 +111,14 @@ before it stopped. `packages/@n8n/workflow-lang/docs/parity.md` has the reasons.
 A Webhook node with authentication, an address list or allowed origins is served by the
 Webhook node of n8n; its item starts the run in `wfrt`.
 
+`wfrt` answers a webhook request at a Respond to Webhook step, or at the end of the run. It
+does not read the response mode. So `wfrt` serves a Webhook node only when its response mode
+is `responseNode` and a Respond to Webhook node comes after it. For each other response mode
+(`onReceived`, `lastNode`, `streaming`), and for a workflow without such a node, the Webhook
+node of n8n takes the request and n8n makes the response, as for a v1 run
+(`runtimeServesWebhookNode`). When no item reaches the Respond to Webhook node, the run has
+no result, and the answer has an empty body, as in v1.
+
 ## Run the demo locally
 
 1. Build the runtime: `cd workflow-runtime && zig build -Drelease=true`.

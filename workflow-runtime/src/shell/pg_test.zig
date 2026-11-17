@@ -184,10 +184,22 @@ test "pg live: arrays, interval, point and circle have the JSON of node-postgres
     ,
         \\{"results":[{"rows":[{"p":{"x":1.5,"y":-2},"pn":{"x":null,"y":null},"pe":{"x":100000000000000000000,"y":1e-7},"c":{"x":1,"y":2,"radius":3},"ci":{"x":100000000000000000000,"y":-1e-7,"radius":null},"pa":[{"x":1,"y":2},null],"np":null,"ca":"{\"<(1,2),3>\"}","fz":[0,1e+300],"o":[26]}],"command":"SELECT","rowCount":1}]}
     );
-    // The types that stay without a native form.
-    try h.expectError("db", "\"statements\":[{\"text\":\"select array['\\\\\\\\x00ff'::bytea] as b\"}]", "(limit: sql-type)");
+    // bytea[], and timestamps that JavaScript reads in another way or not at all (checked with pg-promise 11.9.1).
+    try h.expectPart("db", "\"statements\":[{\"text\":\"select array[decode('00ff', 'hex'), null, ''::bytea] as b, array[array[decode('01', 'hex')]] as n\"}]", "{\"b\":[{\"type\":\"Buffer\",\"data\":[0,255]},null,{\"type\":\"Buffer\",\"data\":[]}],\"n\":[[{\"type\":\"Buffer\",\"data\":[1]}]]}");
+    try h.expectPart("db", "\"statements\":[{\"text\":\"select '0500-06-01 00:00:00.5+00'::timestamptz as a, '0044-03-15 12:00:00+00 BC'::timestamptz as b, array['0999-12-31 23:59:59+00'::timestamptz] as c\"}]", "{\"a\":\"0500-06-01T00:00:00.500Z\",\"b\":\"0044-03-15 12:00:00+00 BC\",\"c\":[\"0999-12-31T23:59:59.000Z\"]}");
+    // `dates: legacy`: an array of timestamps with a zone has the dates of postgres-date.
+    try h.expectPart("db", "\"dates\":\"legacy\",\"statements\":[{\"text\":\"select array['2024-01-02 03:04:05.57+00'::timestamptz, '0001-02-28 23:00:00+00 BC', null, 'infinity'] as t\"}]", "{\"t\":[\"2024-01-02T03:04:05.570Z\",\"0000-02-28T23:00:00.000Z\",null,null]}");
+    // The types that stay without a native form: the zone of the process of v1 is not known.
     try h.expectError("db", "\"statements\":[{\"text\":\"select array[now()::timestamp] as t\"}]", "(limit: sql-type)");
-    try h.expectError("db", "\"dates\":\"legacy\",\"statements\":[{\"text\":\"select array[now()] as t\"}]", "(limit: sql-type)");
+    try h.expectError("db", "\"dates\":\"legacy\",\"statements\":[{\"text\":\"select array[current_date] as t\"}]", "(limit: sql-type)");
+    // With `--sql-timestamp-zone utc`, a date and the arrays of dates and timestamps have a form with `dates: legacy`.
+    const utc = try Harness.create(t, .{ .utc = true });
+    defer utc.destroy();
+    try utc.expectPart("db",
+        \\"dates":"legacy","statements":[{"text":"select '1990-02-03'::date as d, array['2024-01-02'::date, 'infinity', '0044-03-15 BC', null] as ds, array['2024-01-02 03:04:05.57'::timestamp, '0001-02-29 10:00:00 BC'] as ts"}]
+    ,
+        \\{"d":"1990-02-03T00:00:00.000Z","ds":["2024-01-02T00:00:00.000Z",null,"-000043-03-15T00:00:00.000Z",null],"ts":["2024-01-02T03:04:05.570Z","0000-03-01T10:00:00.000Z"]}
+    );
     // An interval in another style of the session has no native form; the marker comes before the statement runs.
     try h.expectPart("db", "\"statements\":[{\"text\":\"set intervalstyle = 'iso_8601'\"}]", "\"command\":\"SET\"");
     try h.expectError("db", "\"statements\":[{\"text\":\"select '1 day'::interval as i\"}]", "(limit: sql-type)");
@@ -264,7 +276,7 @@ test "pg live: a call without an exact native form ends with a marker and commit
     defer h.destroy();
     try h.expectPart("db", reset, "\"command\":\"TRUNCATE\"");
     try h.expectError("db", "\"statements\":[{\"text\":\"insert into wfrt_pg_t values (1, 'a'); select 1\"}]", "(limit: sql-statement)");
-    try h.expectError("db", "\"statements\":[{\"text\":\"insert into wfrt_pg_t values (1, 'a') returning array[v::bytea]\"}]", "(limit: sql-type)");
+    try h.expectError("db", "\"statements\":[{\"text\":\"insert into wfrt_pg_t values (1, 'a') returning array[now()::timestamp]\"}]", "(limit: sql-type)");
     // The v1 node writes the value into the text; as a bind these have no form.
     try h.expectError("db", "\"statements\":[{\"text\":\"select $1 is null as a\",\"values\":[null]},{\"text\":\"insert into wfrt_pg_t values (1, 'a')\"}]", "(limit: sql-statement)");
     try h.expectError("db", "\"statements\":[{\"text\":\"select * from wfrt_pg_t order by id limit 1 offset $2\",\"values\":[1]}]", "(limit: sql-statement)");
@@ -343,6 +355,71 @@ test "pg live: a pool has a fixed size, calls wait in order, and a slow statemen
     try std.testing.expectEqual(@as(u64, 2), h.client.counters.connects);
 }
 
+test "pg live: a simple statement gives what the same text gives as one simple query" {
+    const t = target() orelse return error.SkipZigTest;
+    const h = try Harness.create(t, .{ .max_result = 2048 });
+    defer h.destroy();
+    const n0 = "{\"results\":[{\"rows\":[{\"n\":0}],\"command\":\"SELECT\",\"rowCount\":1}]}";
+    const n1 = "{\"results\":[{\"rows\":[{\"n\":1}],\"command\":\"SELECT\",\"rowCount\":1}]}";
+    try h.expectPart("db", reset, "\"command\":\"TRUNCATE\"");
+    // One set for each command, with the column forms of a bind statement.
+    try h.expectResult(
+        \\"statements":[{"text":"insert into wfrt_pg_t values (1, 'a;b'); select id, v, array[id] as a, '1 day'::interval as i, 9007199254740993::int8 as big from wfrt_pg_t; update wfrt_pg_t set v = 'z' returning v","simple":true}]
+    ,
+        \\{"results":[{"sets":[{"rows":[],"command":"INSERT","rowCount":1},{"rows":[{"id":1,"v":"a;b","a":[1],"i":{"days":1},"big":"9007199254740993"}],"command":"SELECT","rowCount":1},{"rows":[{"v":"z"}],"command":"UPDATE","rowCount":1}]}]}
+    );
+    try h.expectResult("\"statements\":[{\"text\":\"\",\"simple\":true}]", "{\"results\":[{\"sets\":[]}]}");
+    try h.expectResult("\"statements\":[{\"text\":\" ; \",\"simple\":true}]", "{\"results\":[{\"sets\":[]}]}");
+    // A command that fails: the server rolls back the commands before it, and the entry is the error.
+    try h.expectPart("db", "\"statements\":[{\"text\":\"truncate wfrt_pg_t; insert into wfrt_pg_t values (1, 'a'); insert into wfrt_pg_t values (1, 'b'); select 1\",\"simple\":true}]", "{\"results\":[{\"error\":{\"length\":");
+    try h.expectResult(count, n1);
+    // The text commits by itself: the insert before COMMIT stays, as when the v1 node sends the text.
+    try h.expectPart("db", "\"statements\":[{\"text\":\"truncate wfrt_pg_t; insert into wfrt_pg_t values (4, 'a'); commit; insert into wfrt_pg_t values (4, 'b')\",\"simple\":true}]", "\"code\":\"23505\"");
+    try h.expectResult(count, n1);
+    // A text that leaves a transaction open: the client rolls it back.
+    try h.expectPart("db", "\"statements\":[{\"text\":\"begin; truncate wfrt_pg_t\",\"simple\":true}]", "\"command\":\"TRUNCATE\"");
+    try h.expectResult(count, n1);
+    // Commands that cannot run in a transaction block, or that end one, run as the v1 node runs them.
+    try h.expectResult("\"statements\":[{\"text\":\"vacuum wfrt_pg_t\",\"simple\":true}]", "{\"results\":[{\"sets\":[{\"rows\":[],\"command\":\"VACUUM\",\"rowCount\":null}]}]}");
+    try h.expectResult("\"statements\":[{\"text\":\"do $$ begin delete from wfrt_pg_t; commit; end $$\",\"simple\":true}]", "{\"results\":[{\"sets\":[{\"rows\":[],\"command\":\"DO\",\"rowCount\":null}]}]}");
+    try h.expectResult(count, n0);
+    try h.expectPart("db", "\"statements\":[{\"text\":\"insert into wfrt_pg_t values (1, 'a'); vacuum wfrt_pg_t\",\"simple\":true}]", "\"code\":\"25001\",\"message\":\"VACUUM cannot run inside a transaction block\"");
+    try h.expectPart("db", "\"statements\":[{\"text\":\"lock table wfrt_pg_t\",\"simple\":true}]", "\"code\":\"25P01\",\"message\":\"LOCK TABLE can only be used in transaction blocks\"");
+    try h.expectPart("db", "\"statements\":[{\"text\":\"insert into wfrt_pg_t values (1, 'a'); savepoint s\",\"simple\":true}]", "\"code\":\"25P01\",\"message\":\"SAVEPOINT can only be used in transaction blocks\"");
+    try h.expectResult(count, n0);
+    // COPY: the data of TO STDOUT is dropped, and FROM STDIN fails, as in node-postgres.
+    try h.expectResult("\"statements\":[{\"text\":\"insert into wfrt_pg_t values (1, 'a'); copy wfrt_pg_t to stdout\",\"simple\":true}]", "{\"results\":[{\"sets\":[{\"rows\":[],\"command\":\"INSERT\",\"rowCount\":1},{\"rows\":[],\"command\":\"COPY\",\"rowCount\":1}]}]}");
+    try h.expectPart("db", "\"statements\":[{\"text\":\"copy wfrt_pg_t from stdin\",\"simple\":true}]", "\"code\":\"57014\",\"message\":\"COPY from stdin failed: No source stream defined\"");
+    // A limit or a type without a native form shows after commands ran: the text is rolled back.
+    try h.expectError("db", "\"statements\":[{\"text\":\"delete from wfrt_pg_t; select repeat('x', 5000) as big\",\"simple\":true}]", "(limit: sql-max-result)");
+    try h.expectError("db", "\"statements\":[{\"text\":\"delete from wfrt_pg_t returning array[now()::timestamp] as b\",\"simple\":true}]", "(limit: sql-type)");
+    try h.expectError("db", "\"statements\":[{\"text\":\"delete from wfrt_pg_t returning id as a, id as a\",\"simple\":true}]", "(limit: sql-type)");
+    try h.expectError("db", "\"statements\":[{\"text\":\"select 1 as a; select repeat('x', 5000) as big\",\"simple\":true}]", "(limit: sql-max-result)");
+    try h.expectResult(count, n1);
+    // The text committed by itself before the limit: a plain error.
+    const a = try h.call("db", "\"statements\":[{\"text\":\"delete from wfrt_pg_t; commit; select repeat('x', 5000) as big\",\"simple\":true}]");
+    try std.testing.expect(!a.ok);
+    try std.testing.expectEqualStrings("sql: the result is larger than 2 KB (--sql-max-result-kb) (limit)", a.text);
+    try h.expectResult(count, n0);
+    // With bind statements in each mode.
+    try h.expectResult(
+        \\"mode":"transaction","statements":[{"text":"insert into wfrt_pg_t values ($1, $2)","values":[1,"a"]},{"text":"update wfrt_pg_t set v = 'b'; select v from wfrt_pg_t","simple":true},{"text":"select count(*)::int4 as n from wfrt_pg_t where v = $1","values":["b"]}]
+    ,
+        \\{"results":[{"rows":[],"command":"INSERT","rowCount":1},{"sets":[{"rows":[],"command":"UPDATE","rowCount":1},{"rows":[{"v":"b"}],"command":"SELECT","rowCount":1}]},{"rows":[{"n":1}],"command":"SELECT","rowCount":1}]}
+    );
+    try h.expectPart("db",
+        \\"statements":[{"text":"delete from wfrt_pg_t","simple":true},{"text":"select 1/0","simple":true},{"text":"select $1::int4 as x","values":[1]}]
+    , "{\"results\":[{\"sets\":[{\"rows\":[],\"command\":\"DELETE\",\"rowCount\":1}]},{\"error\":{\"length\":");
+    try h.expectResult(count, n1);
+    const mixed = try h.call("db",
+        \\"mode":"independently","statements":[{"text":"select 1/0; delete from wfrt_pg_t","simple":true},{"text":"select $1::int4 as x","values":[1]},{"text":"select 2 as y; select 3 as z","simple":true}]
+    );
+    try std.testing.expect(mixed.ok and std.mem.startsWith(u8, mixed.text, "{\"results\":[{\"error\":{\"length\":"));
+    try std.testing.expect(std.mem.endsWith(u8, mixed.text, "}},{\"rows\":[{\"x\":1}],\"command\":\"SELECT\",\"rowCount\":1},{\"sets\":[{\"rows\":[{\"y\":2}],\"command\":\"SELECT\",\"rowCount\":1},{\"rows\":[{\"z\":3}],\"command\":\"SELECT\",\"rowCount\":1}]}]}"));
+    try h.expectResult(count, n1);
+    try std.testing.expectEqual(@as(u64, 1), h.client.counters.connects);
+}
+
 // ---- tests against the scripted server (no database) ----------------------------
 
 const kind_fake: u8 = 15;
@@ -364,7 +441,7 @@ const script = [_]fake.Rule{
     .{ .text = "insert into t values ($1)", .tag = "INSERT 0 1" },
     .{ .text = "insert into t values ($1) -- twice", .run_fail = .{ .code = "23505", .message = "duplicate key value" } },
     .{ .text = "insert into t values (1); select 1", .parse_fail = .{ .code = "42601", .message = "cannot insert multiple commands into a prepared statement" } },
-    .{ .text = "insert into t values (1) returning b", .cols = &.{.{ .name = "b", .oid = 1001 }}, .rows = &.{&.{"{}"}}, .tag = "INSERT 0 1" },
+    .{ .text = "insert into t values (1) returning b", .cols = &.{.{ .name = "b", .oid = 1114 }}, .rows = &.{&.{"{}"}}, .tag = "INSERT 0 1" },
     .{ .text = "insert into t values (1) returning big", .cols = &.{.{ .name = "big", .oid = text_oid }}, .rows = &.{&.{&hundred}}, .repeat = 50, .tag = "INSERT 0 50" },
     .{ .text = "select big", .cols = &.{.{ .name = "big", .oid = text_oid }}, .rows = &.{&.{&hundred}}, .repeat = 50, .tag = "SELECT 50" },
     .{ .text = "select one_big_row", .cols = &.{.{ .name = "big", .oid = text_oid }}, .rows = &.{&.{&nine_k}}, .tag = "SELECT 1" },
@@ -693,8 +770,8 @@ test "pg fake: arrays, interval, point and circle columns, and the styles of the
         \\{"results":[{"rows":[{"a":[1,null,[2]],"t":["a","b c",null],"i":{"days":1,"hours":2},"p":{"x":1.5,"y":-2},"c":{"x":1,"y":2,"radius":3},"n":[1.5,null]},{"a":null,"t":null,"i":null,"p":null,"c":null,"n":null}],"command":"SELECT","rowCount":2}]}
     );
     try h.expectResult("\"statements\":[{\"text\":\"select stamps\"}]", "{\"results\":[{\"rows\":[{\"s\":[\"2024-01-02T03:04:05.000Z\"]}],\"command\":\"SELECT\",\"rowCount\":1}]}");
-    // With `dates: legacy` the v1 node gives Date objects for the elements: no native form.
-    try h.expectError("\"dates\":\"legacy\",\"statements\":[{\"text\":\"select stamps\"}]", "(limit: sql-type)");
+    // With `dates: legacy` the v1 node gives Date objects for the elements: the same JSON here.
+    try h.expectResult("\"dates\":\"legacy\",\"statements\":[{\"text\":\"select stamps\"}]", "{\"results\":[{\"rows\":[{\"s\":[\"2024-01-02T03:04:05.000Z\"]}],\"command\":\"SELECT\",\"rowCount\":1}]}");
     _ = try h.takeLog();
     // An interval text in another style shows only in the row: the insert is rolled back.
     try h.expectError("\"statements\":[{\"text\":\"insert into t values (1) returning i\"}]", "(limit: sql-type)");
@@ -801,4 +878,106 @@ test "pg fake: a commit that fails is the failure of a statement that runs alone
     try h.expectResult("\"mode\":\"transaction\",\"statements\":[" ++ plain ++ "]", "{\"results\":[" ++ insert ++ "," ++ failure ++ "]}");
     try h.expectResult("\"statements\":[" ++ plain ++ "," ++ plain ++ "]", "{\"results\":[" ++ insert ++ "," ++ insert ++ "," ++ failure ++ "]}");
     try std.testing.expect(!h.server.failed);
+}
+
+const simple_rules = [_]fake.Rule{
+    .{ .text = "select 42 as x", .cols = &.{.{ .name = "x", .oid = int4 }}, .rows = &.{&.{"42"}}, .tag = "SELECT 1" },
+    .{ .text = "select big", .cols = &big_col, .rows = &.{&.{&hundred}}, .repeat = 50, .tag = "SELECT 50" },
+    .{ .text = "insert into t values (1)", .tag = "INSERT 0 1" },
+    .{ .text = "insert into t values ($1)", .tag = "INSERT 0 1" },
+    .{ .text = "insert into t values (2)", .run_fail = .{ .code = "23505", .message = "duplicate key value" } },
+    .{ .text = "insert into t values (1) returning b", .cols = &.{.{ .name = "b", .oid = 1114 }}, .rows = &.{&.{"{}"}}, .tag = "INSERT 0 1" },
+    .{ .text = "insert into d values (1)", .tag = "INSERT 0 1", .commit_fail = deferred_fail },
+    .{ .text = "select x into t2 from t", .tag = "SELECT 3" },
+    .{ .text = "vacuum t", .tag = "VACUUM", .no_block = true },
+};
+
+const simple_failure = "{\"error\":{\"length\":47,\"severity\":\"ERROR\",\"code\":\"23505\",\"message\":\"duplicate key value\"}}";
+const set_insert = "{\"rows\":[],\"command\":\"INSERT\",\"rowCount\":1}";
+const set_x = "{\"rows\":[{\"x\":42}],\"command\":\"SELECT\",\"rowCount\":1}";
+
+inline fn simpleOf(comptime text: []const u8) []const u8 {
+    return "{\"text\":\"" ++ text ++ "\",\"simple\":true}";
+}
+
+test "pg fake: a simple statement goes as one text and gives one set for each command" {
+    const h = try FakeHarness.create(.{}, .trust);
+    defer h.destroy();
+    h.server.rules = &simple_rules;
+    const two = "insert into t values (1); select 42 as x";
+    // The text is not prepared. Alone, it runs in a transaction of the client.
+    try h.expectResult("\"statements\":[" ++ simpleOf(two) ++ "]", "{\"results\":[{\"sets\":[" ++ set_insert ++ "," ++ set_x ++ "]}]}");
+    try std.testing.expectEqualStrings("login alice\nBEGIN\n" ++ two ++ "\nCOMMIT\n", try h.takeLog());
+    // A text of SELECT commands needs no transaction; a text without a command gives no set.
+    try h.expectResult("\"statements\":[" ++ simpleOf("select 42 as x; select 42 as x;") ++ "]", "{\"results\":[{\"sets\":[" ++ set_x ++ "," ++ set_x ++ "]}]}");
+    try std.testing.expectEqualStrings("select 42 as x; select 42 as x;\n", try h.takeLog());
+    try h.expectResult("\"statements\":[" ++ simpleOf("") ++ "]", "{\"results\":[{\"sets\":[]}]}");
+    // A command that fails ends the text: the entry is the error, and the commands before it are rolled back.
+    const bad = "insert into t values (1); insert into t values (2); select 42 as x";
+    _ = try h.takeLog();
+    try h.expectResult("\"statements\":[" ++ simpleOf(bad) ++ "]", "{\"results\":[" ++ simple_failure ++ "]}");
+    try std.testing.expectEqualStrings("BEGIN\n" ++ bad ++ "\nROLLBACK\n", try h.takeLog());
+    // With bind statements in one transaction: one entry for each statement, in order.
+    const bind = "{\"text\":\"insert into t values ($1)\",\"values\":[7]}";
+    try h.expectResult("\"mode\":\"transaction\",\"statements\":[" ++ bind ++ "," ++ simpleOf(two) ++ "," ++ bind ++ "]", "{\"results\":[" ++ set_insert ++ ",{\"sets\":[" ++ set_insert ++ "," ++ set_x ++ "]}," ++ set_insert ++ "]}");
+    try std.testing.expectEqualStrings("parse insert into t values ($1)\nBEGIN\nbind 7\nrun insert into t values ($1)\n" ++ two ++ "\nbind 7\nrun insert into t values ($1)\nCOMMIT\n", try h.takeLog());
+    // A failure of the text fails the transaction: the statements after it do not count.
+    try h.expectResult("\"statements\":[" ++ bind ++ "," ++ simpleOf(bad) ++ "," ++ bind ++ "]", "{\"results\":[" ++ set_insert ++ "," ++ simple_failure ++ "]}");
+    try std.testing.expectEqual(@as(u32, 1), h.server.count("ROLLBACK"));
+    // independently: each statement alone, and the one after a failure runs.
+    try h.expectResult("\"mode\":\"independently\",\"statements\":[" ++ simpleOf(bad) ++ "," ++ bind ++ "," ++ simpleOf(two) ++ "]", "{\"results\":[" ++ simple_failure ++ "," ++ set_insert ++ ",{\"sets\":[" ++ set_insert ++ "," ++ set_x ++ "]}]}");
+    // The commit of the text fails (a deferred constraint): the statement failed.
+    try h.expectResult("\"statements\":[" ++ simpleOf("insert into d values (1); select 42 as x") ++ "]", "{\"results\":[" ++ simple_failure ++ "]}");
+    try h.expectError("\"statements\":[{\"text\":\"select 42 as x\",\"simple\":true,\"values\":[1]}]", "a simple statement takes no bind values");
+    try std.testing.expectEqual(@as(u64, 1), h.client.counters.prepared);
+    try std.testing.expectEqual(@as(u64, 1), h.client.counters.connects);
+}
+
+test "pg fake: a simple statement keeps the rule of the marker" {
+    const h = try FakeHarness.create(.{ .max_result = 2048 }, .trust);
+    defer h.destroy();
+    h.server.rules = &simple_rules;
+    const head = "\"mode\":\"independently\",\"statements\":[";
+    const big = "insert into t values (1); select big";
+    // The limit shows after the insert ran: the client rolls the text back, and the host can run the call.
+    try h.expectError("\"statements\":[" ++ simpleOf(big) ++ "]", "(limit: sql-max-result)");
+    try std.testing.expectEqualStrings("login alice\nBEGIN\n" ++ big ++ "\nROLLBACK\n", try h.takeLog());
+    // The same for a column type without a native form, which shows only when the text runs.
+    try h.expectError("\"statements\":[" ++ simpleOf("insert into t values (1) returning b") ++ "]", "(limit: sql-type)");
+    try std.testing.expectEqual(@as(u32, 1), h.server.count("ROLLBACK"));
+    // A text of SELECT commands that gave rows has no effect.
+    _ = try h.takeLog();
+    try h.expectError(head ++ simpleOf("select 42 as x; select big") ++ "," ++ simpleOf(big) ++ "]", "(limit: sql-max-result)");
+    try std.testing.expectEqualStrings("select 42 as x; select big\n", try h.takeLog());
+    try std.testing.expectEqual(@as(u64, 3), h.client.counters.to_host);
+    // A text with a transaction command of its own runs as it is, as the v1 node sends it.
+    // The client cannot roll it back: a limit after it is a plain error.
+    const own = "insert into t values (1); COMMIT; select big";
+    const plain = [_][]const u8{
+        "\"statements\":[" ++ simpleOf(own) ++ "]",
+        // `SELECT ... INTO` starts with SELECT, gives no rows, and has an effect.
+        "\"statements\":[" ++ simpleOf("select x into t2 from t; select big") ++ "]",
+        // A statement that is committed, then a statement at the limit.
+        head ++ simpleOf("insert into t values (1)") ++ "," ++ simpleOf("select big") ++ "]",
+    };
+    inline for (plain) |rest| {
+        const a = try h.call("db", rest);
+        try std.testing.expect(!a.ok);
+        try std.testing.expectEqualStrings("sql: the result is larger than 2 KB (--sql-max-result-kb) (limit)", a.text);
+    }
+    try std.testing.expectEqual(@as(u32, 1), h.server.count(own));
+    try std.testing.expectEqual(@as(u32, 1), h.server.count("BEGIN"));
+    try std.testing.expectEqual(@as(u64, 3), h.client.counters.to_host);
+    // A text that leaves a transaction open: the client ends it.
+    _ = try h.takeLog();
+    try h.expectResult("\"statements\":[" ++ simpleOf("BEGIN; insert into t values (1)") ++ "]", "{\"results\":[{\"sets\":[{\"rows\":[],\"command\":\"BEGIN\",\"rowCount\":null}," ++ set_insert ++ "]}]}");
+    try std.testing.expectEqualStrings("BEGIN; insert into t values (1)\nROLLBACK\n", try h.takeLog());
+    // A command that cannot run in a transaction block: the client rolls back and sends the text as it is.
+    try h.expectResult("\"statements\":[" ++ simpleOf("vacuum t") ++ "]", "{\"results\":[{\"sets\":[{\"rows\":[],\"command\":\"VACUUM\",\"rowCount\":null}]}]}");
+    try std.testing.expectEqualStrings("BEGIN\nvacuum t\nROLLBACK\nvacuum t\n", try h.takeLog());
+    // In a transaction of the mode, a text that ends the transaction has no native form: nothing is sent.
+    try h.expectError("\"mode\":\"transaction\",\"statements\":[" ++ simpleOf(own) ++ "]", "(limit: sql-statement)");
+    try std.testing.expectEqualStrings("", try h.takeLog());
+    try std.testing.expectEqual(@as(u64, 1), h.client.counters.connects);
+    try std.testing.expectEqual(@as(u64, 0), h.client.counters.prepared);
 }

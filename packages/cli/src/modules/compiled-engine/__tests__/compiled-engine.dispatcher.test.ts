@@ -262,6 +262,45 @@ describe('CompiledEngineDispatcher', () => {
 		});
 	});
 
+	it('gives no response when no item reached the Respond to Webhook node', async () => {
+		const { dispatcher, activeExecutions } = setup();
+		const executionId = await dispatcher.runManual({ executionMode: 'manual', workflowData });
+
+		// The trace of a node that did not run has an empty list, and so has the result.
+		void dispatcher.handleEvent({ type: 'trace', executionId, step: 'Respond', items: [], at: 1 });
+		void dispatcher.handleEvent({
+			type: 'finished',
+			executionId,
+			status: 'ok',
+			result: { Respond: [] },
+			at: 2,
+		});
+		await dispatcher.drain();
+
+		expect(activeExecutions.resolveResponsePromise).not.toHaveBeenCalled();
+		expect(activeExecutions.resolveExecutionResponsePromise).toHaveBeenCalledWith(executionId);
+	});
+
+	it('answers a webhook with the items of the Respond to Webhook node when no step event came', async () => {
+		const { dispatcher, activeExecutions } = setup();
+		const executionId = await dispatcher.runManual({ executionMode: 'manual', workflowData });
+
+		void dispatcher.handleEvent({
+			type: 'finished',
+			executionId,
+			status: 'ok',
+			result: { Respond: [{ done: true }] },
+			at: 2,
+		});
+		await dispatcher.drain();
+
+		expect(activeExecutions.resolveResponsePromise).toHaveBeenCalledWith(executionId, {
+			body: { done: true },
+			headers: {},
+			statusCode: 200,
+		});
+	});
+
 	it('passes the request of a test webhook as the trigger value', async () => {
 		const { dispatcher, client } = setup();
 		const webhookNode = workflowData.nodes[0];

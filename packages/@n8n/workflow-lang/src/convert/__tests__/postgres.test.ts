@@ -57,8 +57,6 @@ describe('Postgres node', () => {
 	});
 
 	it.each([
-		['continues on fail', read, { onError: 'continueRegularOutput' }, 2.6],
-		['uses the error output', read, { onError: 'continueErrorOutput' }, 2.6],
 		['has a version below 2.1', read, {}, 2],
 		['has a write without a mapping of the columns', { operation: 'insert' }, {}, 2.6],
 		[
@@ -73,16 +71,33 @@ describe('Postgres node', () => {
 			{},
 			2.6,
 		],
-		[
-			'has an option that the library node does not have',
-			{ ...read, options: { outputLargeFormatNumbersAs: 'text' } },
-			{},
-			2.6,
-		],
 	])('runs in the host when the node %s', (_name, parameters, settings, version) => {
 		const out = convertWorkflow(workflow(parameters, settings, version), { sql: true });
 		expect(out.ok).toBe(true);
 		expect(hostOnly(out.source)).toBe(true);
+	});
+
+	it.each([
+		['continueRegularOutput', 'regular'],
+		['continueErrorOutput', 'errorOutput'],
+	])('gives the library node the error setting %s and a copy of the node', (onError, mode) => {
+		const out = convertWorkflow(workflow(read, { onError }), { sql: true });
+		expect(out.ok).toBe(true);
+		expect(hostOnly(out.source)).toBe(false);
+		expect(out.source).toContain(`errorMode: '${mode}'`);
+		expect(out.source).toContain("credentials: { postgres: { id: '1', name: 'db' } }");
+		expect(compile(out.source).diagnostics).toEqual([]);
+	});
+
+	it('drops an option that the node type does not have, as n8n does', () => {
+		const parameters = {
+			...read,
+			options: { ...read.options, outputLargeFormatNumbersAs: 'text' },
+		};
+		const out = convertWorkflow(workflow(parameters), { sql: true });
+		expect(out.ok).toBe(true);
+		expect(hostOnly(out.source)).toBe(false);
+		expect(out.source).not.toContain('outputLargeFormatNumbersAs');
 	});
 
 	it('sends the values of the query parameters as bind values', async () => {

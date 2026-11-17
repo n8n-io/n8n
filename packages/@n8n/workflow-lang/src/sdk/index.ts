@@ -348,10 +348,24 @@ export interface ServiceRequest {
 /** A bind value of a SQL statement. Node code turns an object into JSON text itself. */
 export type SqlValue = string | number | boolean | null;
 
-/** One SQL command. `text` holds `$1..$n`; the runtime sends `values` as bind values. */
+/**
+ * One SQL command. `text` holds `$1..$n`; the runtime sends `values` as bind values.
+ * With `simple: true`, the runtime sends `text` as it is with the simple query protocol,
+ * as the v1 node does. The text can then hold more than one command, and `values` must be
+ * absent. The database runs the text as it is, so only a formatter that equals pg-promise
+ * writes a value into it.
+ */
 export interface SqlStatement {
 	text: string;
 	values?: SqlValue[];
+	simple?: true;
+	/**
+	 * In the mode `independently`: when a statement fails, the later statements with the same
+	 * `group` do not run, and each has the entry `{ skipped: true }`. Without `group`, a
+	 * statement is a group of its own. The MySQL node uses it: v1 drops the other statements
+	 * of an item after a failure.
+	 */
+	group?: number;
 }
 
 /**
@@ -361,7 +375,11 @@ export interface SqlStatement {
 export interface SqlRequest {
 	/** Name of a credential slot of the workflow. */
 	credential: string;
-	dialect: 'postgres';
+	/**
+	 * `mysql` (spec 9.11): each statement has `simple: true` and no `values`, because the v1
+	 * MySQL node sends only text that its driver formatted on the client.
+	 */
+	dialect: 'postgres' | 'mysql';
 	/**
 	 * `single` (the default): one statement runs alone; more than one run in one transaction.
 	 * `transaction`: always one transaction. `independently`: each statement alone, and a
@@ -369,8 +387,14 @@ export interface SqlRequest {
 	 */
 	mode?: 'single' | 'independently' | 'transaction';
 	statements: SqlStatement[];
-	/** `int8` and `numeric` columns as text (the default) or as numbers. */
+	/**
+	 * Postgres: `int8` and `numeric` columns as text (the default) or as numbers. MySQL:
+	 * `numbers` (the default) gives a BIGINT as a number when it is a safe integer and as
+	 * text when it is not; `text` gives it as text always.
+	 */
 	largeNumbers?: 'text' | 'numbers';
+	/** MySQL only: a DECIMAL column as text (the default) or as a number. */
+	decimals?: 'text' | 'numbers';
 	/** `text` (the default): a `date` column is its wire text. `legacy`: a `date` column sends the call to the host. */
 	dates?: 'text' | 'legacy';
 	connectTimeoutMs?: number;
@@ -380,9 +404,16 @@ export interface SqlRequest {
 
 export interface SqlCall extends StepOptions, SqlRequest {}
 
-/** A database error, with the fields of the server's error response as node-postgres names them. */
+/**
+ * A database error. Postgres: the fields of the error response of the server as
+ * node-postgres names them. MySQL: `code` (the name that mysql2 has for `errno`), `errno`,
+ * `sqlState` and `sqlMessage`, as mysql2 names them.
+ */
 export interface SqlError {
 	message: string;
+	errno?: number;
+	sqlState?: string;
+	sqlMessage?: string;
 	length?: number;
 	severity?: string;
 	code?: string;
@@ -402,15 +433,41 @@ export interface SqlError {
 	routine?: string;
 }
 
-/** The rows of one statement, keyed by column name. */
+/** The OK packet of a MySQL command that gives no rows. mysql2 reads `changedRows` from `info`. */
+export interface SqlOk {
+	affectedRows: number | string;
+	insertId: number | string;
+	info: string;
+	serverStatus: number;
+	warningStatus: number;
+}
+
+/**
+ * The rows of one statement, keyed by column name. MySQL: `command` is `SELECT` for a
+ * result set and `OK` for an OK packet, which has `ok` and no rows.
+ */
 export interface SqlRows {
 	command: string;
 	rowCount: number | null;
 	rows: Item[];
+	ok?: SqlOk;
+}
+
+/** The result of a statement with `simple: true`: the rows of each command that completed, in order. */
+export interface SqlSets {
+	sets: SqlRows[];
 }
 
 export interface SqlFailure {
 	error: SqlError;
+}
+
+/**
+ * MySQL, mode `independently`: the entry of a statement that did not run after a failure in
+ * its `group`. It is in the place of an entry of `SqlResult.results`.
+ */
+export interface SqlSkipped {
+	skipped: true;
 }
 
 /**
@@ -419,7 +476,7 @@ export interface SqlFailure {
  * `connect`: the connection failed, and `results` is empty.
  */
 export interface SqlResult {
-	results: Array<SqlRows | SqlFailure>;
+	results: Array<SqlRows | SqlSets | SqlFailure>;
 	connect?: SqlError;
 }
 

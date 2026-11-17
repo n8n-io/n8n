@@ -607,6 +607,10 @@ test {
     _ = @import("shell/pg_call.zig");
     _ = @import("shell/pg.zig");
     _ = @import("shell/pg_test.zig");
+    _ = @import("shell/sql_net.zig");
+    _ = @import("shell/my_call.zig");
+    _ = @import("shell/my.zig");
+    _ = @import("shell/my_test.zig");
     _ = @import("shell/server.zig");
     _ = @import("shell/uring.zig");
     _ = @import("shell/fuzz_test.zig");

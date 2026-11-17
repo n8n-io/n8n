@@ -13,6 +13,8 @@ const sys = @import("sys.zig");
 const http = @import("http.zig");
 const egress = @import("egress.zig");
 const pg = @import("pg.zig");
+const my = @import("my.zig");
+const my_call = @import("my_call.zig");
 const creds = @import("creds.zig");
 const admin = @import("admin.zig");
 const renew = @import("renew.zig");
@@ -72,6 +74,9 @@ pub const Options = struct {
     /// The PostgreSQL client of the `sql` effect (`--sql-*` flags): calls,
     /// connections, and the sizes of a call and of a result (`pg.Config`).
     sql: pg.Config = .{},
+    /// Calls with the dialect `mysql` go to the native MySQL client (`my.zig`). Off until the
+    /// client is verified against a real server: such a call then runs in the fallback host.
+    sql_mysql: bool = false,
     /// Largest outbound response or request body.
     egress_max_body: u32 = 16 << 20,
     /// Large buffers for bodies over 16 KB, reserved at start.
@@ -319,6 +324,9 @@ const Kind = enum(u8) {
     /// A connection and a name lookup of the PostgreSQL client (`pg.zig`).
     sql = 13,
     sql_dns = 14,
+    /// A connection and a name lookup of the MySQL client (`my.zig`).
+    mysql = 16,
+    mysql_dns = 17,
 };
 
 /// A connection to the admin port. Its buffers are reserved at startup. A
@@ -484,6 +492,8 @@ pub const Runner = struct {
     dirty: std.ArrayList(u32),
     egress: *egress.Client,
     sql: *pg.Client,
+    /// The MySQL client of the `sql` effect (`dialect: mysql`). It has the limits of `opts.sql`.
+    mysql: *my.Client,
     /// Effect errors raised while actions run outlive the batch arena:
     /// they go to the next batch. Two arenas take turns.
     carry: [2]Arena,
@@ -695,6 +705,7 @@ pub const Runner = struct {
         scfg.ca_file = opts.ca_file;
         scfg.dns_servers = opts.gym_dns;
         try r.sql.init(gpa, scfg, &r.poller, @backingInt(Kind.sql), @backingInt(Kind.sql_dns));
+        try r.startMysql(gpa, scfg);
         // Virtual memory: pages are used only as large frames come and go.
         // Without --fallback the shard keeps no host buffers.
         r.fb_conns = try gpa.alloc(FbConn, if (opts.fallback != null) fbf.max_conns else 0);
@@ -838,6 +849,7 @@ pub const Runner = struct {
         if (r.renewals) |*t| t.deinit();
         r.egress.deinit();
         r.sql.deinit();
+        r.mysql.deinit();
         if (r.blobs) |b| b.deinit();
         if (r.ring) |ring| ring.deinit(r.ring_fba.allocator());
         r.poller.deinit();
@@ -854,7 +866,7 @@ pub const Runner = struct {
         var next_timer: ?i64 = r.start_out.next_timer_ms;
         while (!r.stop.load(.monotonic)) {
             var timeout: i32 = 50;
-            if (has_ready or r.events.items.len > 0 or r.sh.wakes.items.len > 0 or r.nlost > 0 or r.egress.hasWork() or r.sql.hasWork()) timeout = 0;
+            if (has_ready or r.events.items.len > 0 or r.sh.wakes.items.len > 0 or r.nlost > 0 or r.egress.hasWork() or r.sql.hasWork() or r.mysql.hasWork()) timeout = 0;
             // The stream has durable lines that one pass did not send.
             if (r.stream_more or r.renewalsPending()) timeout = 0;
             // A stored response has a result that found no room.
@@ -874,6 +886,7 @@ pub const Runner = struct {
             const now = sys.nowMs();
             r.egress.afterEvents(now);
             r.sql.afterEvents(now);
+            r.mysql.afterEvents(now);
             r.drainSql();
             r.drainEgressLost();
             r.drainStored(now);
@@ -940,6 +953,8 @@ pub const Runner = struct {
             .dns => r.egress.onDns(@intCast(idx), ev),
             .sql => r.sql.onConn(idx, gen, ev, sys.nowMs()),
             .sql_dns => r.sql.onDns(@intCast(idx), ev),
+            .mysql => r.mysql.onConn(idx, gen, ev, sys.nowMs()),
+            .mysql_dns => r.mysql.onDns(@intCast(idx), ev),
             .fallback => {
                 if (idx >= r.fb_conns.len) return;
                 const c = &r.fb_conns[idx];
@@ -1508,20 +1523,51 @@ pub const Runner = struct {
         }
     }
 
-    // ---- PostgreSQL (pg.zig, spec 9.10) ----------------------------------------
+    // ---- PostgreSQL and MySQL (pg.zig, my.zig, spec 9.10) ---------------------------
 
+    /// The MySQL client has the limits of the PostgreSQL client (the `--sql-*` flags).
+    fn startMysql(r: *Runner, gpa: std.mem.Allocator, scfg: pg.Config) !void {
+        r.mysql = try gpa.create(my.Client);
+        const mcfg: my.Config = .{
+            .max_reqs = scfg.max_reqs,
+            .max_conns = scfg.max_conns,
+            .pool_conns = scfg.pool_conns,
+            .max_pools = scfg.max_pools,
+            .max_result = scfg.max_result,
+            .max_request = scfg.max_request,
+            .max_statements = scfg.max_statements,
+            .idle_ms = scfg.idle_ms,
+            .total_ms = scfg.total_ms,
+            .insecure_tls = scfg.insecure_tls,
+            .ca_file = scfg.ca_file,
+            .dns_servers = scfg.dns_servers,
+            .credentials = scfg.credentials,
+        };
+        try r.mysql.init(gpa, mcfg, &r.poller, @backingInt(Kind.mysql), @backingInt(Kind.mysql_dns));
+    }
+
+    /// The `dialect` of the call selects the client.
     fn startSql(r: *Runner, a: core.Action) void {
-        const msg = r.sql.start(a.exec_id, a.seq, a.payload, r.credsFor(a.module), sys.nowMs()) orelse return;
-        r.effectError(a.exec_id, a.seq, msg);
+        const store = r.credsFor(a.module);
+        const now = sys.nowMs();
+        const mysql = my_call.isMysql(a.payload);
+        if (mysql and !r.opts.sql_mysql) return r.effectError(a.exec_id, a.seq, "sql: the native MySQL client is not on in this build (limit: sql-host)");
+        const answer = if (mysql) r.mysql.start(a.exec_id, a.seq, a.payload, store, now) else r.sql.start(a.exec_id, a.seq, a.payload, store, now);
+        r.effectError(a.exec_id, a.seq, answer orelse return);
+    }
+
+    fn drainSql(r: *Runner) void {
+        r.drainSqlOf(r.sql);
+        r.drainSqlOf(r.mysql);
     }
 
     /// Hand the results of finished `sql` calls to the core, oldest first,
     /// as the events of the batch have room. A call keeps its slot and its
     /// result until then, so results that wait hold back new calls.
-    fn drainSql(r: *Runner) void {
+    fn drainSqlOf(r: *Runner, client: anytype) void {
         // Each pass frees one call slot.
         for (0..r.opts.sql.max_reqs) |_| {
-            const d = r.sql.nextDone() orelse return;
+            const d = client.nextDone() orelse return;
             if (r.events.items.len + r.resultReserve() >= r.events.capacity) return;
             const kind: core.EventKind = if (d.ok) .effect_ok else .effect_err;
             if (r.batch.dupe(d.payload)) |p| {
@@ -1531,7 +1577,7 @@ pub const Runner = struct {
                 if (r.events.items.len > 0) return;
                 r.events.appendAssumeCapacity(.{ .kind = .effect_err, .exec_id = d.exec_id, .seq = d.seq, .payload = "sql: the result does not fit in the batch memory (limit)" });
             }
-            r.sql.release(d.req);
+            client.release(d.req);
         }
     }
 
@@ -4728,4 +4774,74 @@ test "sql results wait in the client while the event list has no room, and a cal
     try std.testing.expectEqual(@as(?pg.Done, null), r.sql.nextDone());
     r.startSql(.{ .kind = .dispatch, .effect_kind = .sql, .exec_id = 11, .seq = 1, .module = 0, .step = 0, .attempt = 0, .payload = "{}" });
     try std.testing.expectEqual(@as(u64, 1), r.sql.counters.refused);
+}
+
+const my_fake = @import("my_fake.zig");
+
+/// Run the loop of the shard for the MySQL client and the scripted server
+/// until the shard has `want` events for the core.
+fn pumpMysql(r: *Runner, server: *my_fake.Server, want: usize) !void {
+    var ready: [64]sys.Ready = @splat(.{ .token = 0, .readable = false, .writable = false, .eof = false });
+    for (0..2000) |_| {
+        if (r.events.items.len >= want) return;
+        const n = r.poller.wait(&ready, 5);
+        for (ready[0..n]) |ev| {
+            if (ev.token >> 56 == kind_pg_fake) server.onReady(ev) else try r.onReady(ev);
+        }
+        r.mysql.afterEvents(sys.nowMs());
+        r.drainSql();
+    }
+    return error.NoResult;
+}
+
+test "a sql step with the dialect mysql goes to the MySQL client, and its result resumes the run" {
+    var mod_arena = std.heap.ArenaAllocator.init(std.testing.allocator);
+    defer mod_arena.deinit();
+    const gpa = mod_arena.allocator();
+    const mods = [_][]const u8{try sqlModule(gpa)};
+    var t: TestRunner = .{ .arena = std.heap.ArenaAllocator.init(std.testing.allocator), .modules = &mods };
+    try t.start();
+    defer t.deinit();
+    const r = t.r;
+    const server = try gpa.create(my_fake.Server);
+    try server.init(gpa, &r.poller, kind_pg_fake);
+    defer server.deinit();
+    const rules = [_]my_fake.Rule{
+        .{ .text = "select 42 as x", .cols = &.{.{ .name = "x", .type = 3 }}, .rows = &.{&.{"42"}} },
+        .{ .text = "select boom", .fail = .{ .code = 1146, .state = "42S02", .message = "Table 'app.boom' doesn't exist" } },
+    };
+    server.rules = &rules;
+    server.password = "p";
+    r.opts.sql_mysql = true;
+    const doc = try std.fmt.allocPrint(gpa, "{{\"db\":{{\"data\":{{\"host\":\"127.0.0.1\",\"port\":{d},\"user\":\"alice\",\"password\":\"p\",\"database\":\"app\"}}}}}}", .{server.port});
+    const store = try gpa.create(creds.Store);
+    store.* = try creds.Store.parse(gpa, doc);
+    r.egress.cfg.credentials = store;
+
+    // The result of the call is the value of the step.
+    const one = try startSqlRun(r, "{\"credential\":\"db\",\"dialect\":\"mysql\",\"statements\":[{\"text\":\"select 42 as x\",\"simple\":true}]}");
+    try std.testing.expectEqual(@as(usize, 0), r.events.items.len);
+    try pumpMysql(r, server, 1);
+    try std.testing.expectEqual(core.EventKind.effect_ok, r.events.items[0].kind);
+    try std.testing.expectEqual(one, r.events.items[0].exec_id);
+    try std.testing.expectEqualStrings("{\"results\":[{\"sets\":[{\"rows\":[{\"x\":42}],\"command\":\"SELECT\",\"rowCount\":1}]}]}", r.events.items[0].payload);
+    const done = try finishSqlRun(r, gpa, one);
+    try std.testing.expect(std.mem.indexOf(u8, done, "{\"x\":42}") != null);
+    try std.testing.expectEqual(@as(u32, 1), server.count("query select 42 as x"));
+    // An error of the database is data of the result, not a failed step.
+    const two = try startSqlRun(r, "{\"credential\":\"db\",\"dialect\":\"mysql\",\"statements\":[{\"text\":\"select boom\",\"simple\":true}]}");
+    try pumpMysql(r, server, 1);
+    try std.testing.expectEqual(core.EventKind.effect_ok, r.events.items[0].kind);
+    try std.testing.expect(std.mem.indexOf(u8, r.events.items[0].payload, "\"code\":\"ER_NO_SUCH_TABLE\",\"errno\":1146") != null);
+    _ = try finishSqlRun(r, gpa, two);
+    // A call that the client refuses when it starts is an effect error with its text.
+    const three = try startSqlRun(r, "{\"credential\":\"db\",\"dialect\":\"mysql\",\"statements\":[{\"text\":\"select 42 as x\"}]}");
+    try pumpMysql(r, server, 1);
+    try std.testing.expectEqual(core.EventKind.effect_err, r.events.items[0].kind);
+    try std.testing.expectEqual(three, r.events.items[0].exec_id);
+    try std.testing.expectEqualStrings("sql: a statement for mysql must have simple: true", r.events.items[0].payload);
+    try std.testing.expect(!server.failed);
+    try std.testing.expectEqual(@as(u64, 1), r.mysql.counters.connects);
+    // The PostgreSQL client took none of these calls.
+    try std.testing.expectEqual(@as(u64, 0), r.sql.counters.started);
 }
