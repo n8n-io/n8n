@@ -6,6 +6,7 @@ import type { INode, INodeTypeDescription } from 'n8n-workflow';
 import { effectScope, ref } from 'vue';
 
 import { createTestNode, mockNodeTypeDescription } from '@/__tests__/mocks';
+import { mockedStore } from '@/__tests__/utils';
 import { getWorkflows } from '@/app/api/workflows';
 import { CORE_NODES_CATEGORY } from '@/app/constants';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
@@ -226,7 +227,7 @@ describe(buildOverview, () => {
 describe(useUiExtensionOverviewData, () => {
 	beforeEach(() => {
 		createTestingPinia();
-		const nodeTypesStore = useNodeTypesStore();
+		const nodeTypesStore = mockedStore(useNodeTypesStore);
 		nodeTypesStore.getNodeType = vi.fn(getNodeType);
 		vi.mocked(getWorkflows).mockReset();
 		vi.mocked(makeRestApiRequest).mockReset();
