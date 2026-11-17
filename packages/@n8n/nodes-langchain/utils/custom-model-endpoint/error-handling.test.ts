@@ -2,7 +2,7 @@ import type { INode, NodeEgressFilter } from 'n8n-workflow';
 
 import { createCustomModelEndpointAuthFetch } from './auth-fetch';
 import type { CustomModelEndpointFetchContext } from './auth-fetch';
-import { wrapCustomModelEndpointErrorFetch } from './error-handling';
+import { clientErrorMessage, wrapCustomModelEndpointErrorFetch } from './error-handling';
 import type { EndpointCredential } from './types';
 
 const BASE_URL = 'https://gateway.example.com/v1';
@@ -104,6 +104,17 @@ describe('wrapCustomModelEndpointErrorFetch', () => {
 
 		expect(message.length).toBeLessThan(900);
 		expect(message.endsWith('…')).toBe(true);
+	});
+});
+
+describe('clientErrorMessage', () => {
+	it.each<[string, string, string | undefined]>([
+		['the message the wrapper wrote', '{"error":{"message":"Quota exhausted"}}', 'Quota exhausted'],
+		['nothing for a body that is not client-shaped', '{"detail":"Not authenticated"}', undefined],
+		['nothing for a message that is empty', '{"error":{"message":""}}', undefined],
+		['nothing for a message that is only whitespace', '{"error":{"message":"  "}}', undefined],
+	])('reads back %s', (_name, body, expected) => {
+		expect(clientErrorMessage(body)).toBe(expected);
 	});
 });
 
