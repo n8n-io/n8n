@@ -57,9 +57,9 @@ export const NODE_Y_SPACING = GRID_SIZE * 6;
 // Gaps the auto-layout leaves between an AI node and its sub-nodes
 export const AI_X_SPACING = GRID_SIZE * 3;
 export const AI_Y_SPACING = GRID_SIZE * 8;
-// Center-to-center horizontal step when placing a node directly after another
-// (plus button, connection drop, mid-flow insert). Must equal a node width plus
-// NODE_X_SPACING so a freshly placed node lands exactly where cleanup would put it.
+// Horizontal step past a default-width node: its width plus NODE_X_SPACING. A
+// mid-flow insert uses it to shift the downstream nodes. To place a node after
+// another node, use getNextNodeSlot, which uses the rendered width of the source.
 export const HORIZONTAL_NODE_STEP = DEFAULT_NODE_SIZE[0] + NODE_X_SPACING;
 export const DEFAULT_VIEWPORT_BOUNDARIES: ViewportBoundaries = {
 	xMin: -Infinity,

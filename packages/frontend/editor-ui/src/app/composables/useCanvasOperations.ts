@@ -2387,8 +2387,8 @@ export function useCanvasOperations() {
 		if (!sourceNode) return;
 
 		// Calculate insertion position (to the right of source node)
-		// Use HORIZONTAL_NODE_STEP to match the actual position where nodes are placed,
-		// including the wider agent card offset applied in resolveNodePosition
+		// HORIZONTAL_NODE_STEP matches the next-node slot only after a default-width
+		// node, so widen it for the agent card
 		let insertOffset = HORIZONTAL_NODE_STEP;
 		if (isAgentNodeV2(sourceNode)) {
 			insertOffset += DEFAULT_AGENT_WIDTH - DEFAULT_NODE_SIZE[0];
