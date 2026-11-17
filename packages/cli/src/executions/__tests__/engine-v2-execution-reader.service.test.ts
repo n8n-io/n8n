@@ -64,14 +64,28 @@ describe('EngineV2ExecutionReader', () => {
 	describe('findMany', () => {
 		const query: EngineV2SearchQuery = { limit: 2 };
 		it.each(['manual', 'webhook', 'trigger'] as const)(
-			'forwards the mode %s without conversion',
+			'forwards the mode %s as the host mode of a top-level execution',
 			async (mode) => {
 				await reader.findMany({ ...query, mode }, ['wf-1']);
 				expect(dataPlane.searchExecutions).toHaveBeenCalledWith(
-					expect.objectContaining({ hostMode: mode }),
+					expect.objectContaining({ hostMode: mode, hasParent: false }),
 				);
 			},
 		);
+
+		it('asks for sub-executions, whatever their host mode, for the integrated mode', async () => {
+			await reader.findMany({ ...query, mode: 'integrated' }, ['wf-1']);
+			const [request] = dataPlane.searchExecutions.mock.calls[0];
+			expect(request.hasParent).toBe(true);
+			expect(request.hostMode).toBeUndefined();
+		});
+
+		it('sends no mode filter when the caller asked for none', async () => {
+			await reader.findMany(query, ['wf-1']);
+			const [request] = dataPlane.searchExecutions.mock.calls[0];
+			expect(request.hasParent).toBeUndefined();
+			expect(request.hostMode).toBeUndefined();
+		});
 
 		it('maps supported statuses and drops statuses that the DP cannot match', async () => {
 			await reader.findMany({ ...query, status: ['success', 'crashed', 'waiting'] }, 'all');

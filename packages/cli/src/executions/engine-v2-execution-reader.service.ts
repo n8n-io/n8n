@@ -18,7 +18,7 @@ import { UnexpectedError, UserError } from '@n8n/errors';
 
 import { EngineDataPlaneProxyService } from '@/services/engine-data-plane-proxy.service';
 
-import { resolveV2Statuses, toV1Mode, toV1Status } from './engine-v2-mapping';
+import { resolveV2Statuses, toModeFilter, toV1Mode, toV1Status } from './engine-v2-mapping';
 import type { ExecutionPosition } from './execution-cursor';
 import { toWorkflowSnapshot, type WorkflowRunDocument } from './execution-data/types';
 import type { ExecutionIdV2 } from './execution-id';
@@ -156,7 +156,7 @@ export class EngineV2ExecutionReader {
 		return {
 			workflowIds: scope,
 			status,
-			hostMode: query.mode,
+			...toModeFilter(query.mode),
 			createdAfter: query.startedAfter ? new Date(query.startedAfter).toISOString() : undefined,
 			createdBefore: query.startedBefore ? new Date(query.startedBefore).toISOString() : undefined,
 		};
