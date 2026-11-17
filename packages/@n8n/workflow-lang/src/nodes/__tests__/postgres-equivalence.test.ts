@@ -383,6 +383,20 @@ describe('Postgres library node and the v1 node', () => {
 		);
 	});
 
+	it('holds the text of the formatter that is proven against pg-promise', () => {
+		const block = (text: string, end: string) =>
+			text.slice(text.indexOf('// pg-format:begin'), text.indexOf(end));
+		const shared = readFileSync(join(here, '../shared/pg-format.ts'), 'utf8');
+		const node = readFileSync(join(here, '../postgres.ts'), 'utf8');
+		// The node has the formatter up to the functions for one value, without `export`.
+		const expected = block(shared, '/** `pgp.as.name(name)`').replaceAll(
+			'\nexport function ',
+			'\nfunction ',
+		);
+		expect(expected.length).toBeGreaterThan(5000);
+		expect(block(node, '// pg-format:end')).toBe(expected);
+	});
+
 	it('has a recording for each case, and no other', () => {
 		if (record) return;
 		const names = POSTGRES_CASES.filter((c) => c.convertHost !== true).map((c) => c.name);

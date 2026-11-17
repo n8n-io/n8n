@@ -8,20 +8,28 @@
  * time. The result is then one item `{ items, errors, nodeError?, retry? }` (spec 9.10).
  *
  * The v1 node writes values into the query text with pg-promise and sends
- * simple queries. This node never writes a value into the text: each value
- * is a bind value of the `sql` effect (spec 9.10). Identifiers are quoted
- * here, as pg-promise's `:name` filter quotes them.
+ * simple queries. This node sends each value as a bind value of the `sql`
+ * effect (spec 9.10) wherever that is the same statement. Identifiers are
+ * quoted here, as pg-promise's `:name` filter quotes them.
  *
  * A bind value and a written literal are equal only in some places of a
- * query. When this node cannot prove that an input gives the result of v1, it
- * throws an error that ends with `(limit: sql-host)` before it sends a
- * statement, and n8n runs the v1 node in the fallback host. The cases:
- * a pg-promise filter in the query text (`$1:raw`, `$1^`, `$1~`, `$1#`, ...),
- * a `$n` inside a string, an identifier, a comment or a dollar quote, a `$n`
- * without a value, a `$n` after a word that can start a typed literal
- * (`interval $1`), more than one command in a query, an array as a value, and
- * a query parameter that is null in a version below 2.8 (v1 treats undefined
- * and null differently, and the converter gives both as null).
+ * query. For a query of `executeQuery` where this node cannot prove that bind
+ * values give the statement of v1, it makes the text that pg-promise makes in
+ * v1, with the formatter below, and sends it as a simple statement of the
+ * `sql` effect. The cases: a pg-promise filter in the query text (`$1:raw`,
+ * `$1^`, `$1~`, `$1#`, ...), a `$n` inside a string, an identifier, a comment
+ * or a dollar quote, a `$n` without a value, a `$n` after a word that can
+ * start a typed literal (`interval $1`), more than one command in a query, and
+ * an array as a value. In the mode `single`, v1 sends the queries of all items
+ * as one text, and so does this node. This text has the safety of v1 and no
+ * more. A query that has an exact form with bind values keeps it.
+ *
+ * When the node cannot make the result of v1, it throws an error that ends
+ * with `(limit: sql-host)` before it sends a statement, and n8n runs the v1
+ * node in the fallback host: a query parameter that is null in a version
+ * below 2.8 (v1 treats undefined and null differently, and the converter
+ * gives both as null), and a query without a bind form in the modes
+ * `transaction` and `independently` before version 2.3.
  *
  * `insert`, `update` and `upsert` read the columns of the table first, as v1
  * does, with `sql` calls that only read. They go to the fallback host for an
@@ -1386,6 +1394,385 @@ function parseError(error: SqlError, queries: Query[], index: number | undefined
 	return parsed;
 }
 
+/*
+ * The formatter of `shared/pg-format.ts`: the text between its two marker lines up to the
+ * functions for one value, which this node does not use, without `export`. A library node
+ * cannot import a file, and a test proves that the two texts are equal. This is the only
+ * place where a value becomes SQL text.
+ */
+// pg-format:begin
+const PGF_HOST_MARKER = '(limit: sql-host)';
+const PGF_MODIFIERS = [
+	'^',
+	'~',
+	'#',
+	':raw',
+	':alias',
+	':name',
+	':json',
+	':csv',
+	':list',
+	':value',
+];
+const PGF_MODES = ['raw', 'name', 'value', 'raw', 'alias', 'name', 'json', 'csv', 'csv', 'value'];
+const PGF_MAX_VARIABLE = 100000;
+const PGF_MAX_DEPTH = 64;
+const PGF_BIGINT_MARK = '#bigint"';
+
+function pgfHostError(reason: string): Error {
+	return new Error(`${reason} ${PGF_HOST_MARKER}`);
+}
+
+function pgfIsRecord(value: unknown): value is Record<string, unknown> {
+	return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
+
+function pgfIsDigit(code: number): boolean {
+	return code >= 48 && code <= 57;
+}
+
+/** The characters of `\s` in a regular expression of JavaScript. */
+function pgfIsSpace(code: number): boolean {
+	if (code === 32 || (code >= 9 && code <= 13)) return true;
+	if (code < 160) return false;
+	return (
+		code === 160 ||
+		code === 5760 ||
+		(code >= 8192 && code <= 8202) ||
+		code === 8232 ||
+		code === 8233 ||
+		code === 8239 ||
+		code === 8287 ||
+		code === 12288 ||
+		code === 65279
+	);
+}
+
+function pgfQuote(text: string): string {
+	return `'${text.replaceAll("'", "''")}'`;
+}
+
+function pgfQuoteName(name: string): string {
+	return `"${name.replaceAll('"', '""')}"`;
+}
+
+/**
+ * `utils.toJson`: `JSON.stringify`, then each `"<integer>#bigint"` of the text
+ * loses its quotes and its mark. pg-promise does this to every text with that
+ * form, also to a string of the data, so this code does the same.
+ */
+function pgfToJson(data: unknown): string {
+	const text: unknown = JSON.stringify(data);
+	if (typeof text !== 'string') throw pgfHostError('A value has no JSON form');
+	let at = text.indexOf(PGF_BIGINT_MARK, 0);
+	if (at < 0) return text;
+	const parts: string[] = [];
+	let from = 0;
+	while (at >= 0) {
+		let start = at;
+		while (start > from && pgfIsDigit(text.charCodeAt(start - 1))) start--;
+		const digits = start;
+		if (digits < at && start > from && text.charAt(start - 1) === '-') start--;
+		if (digits < at && start > from && text.charAt(start - 1) === '"') {
+			parts.push(text.slice(from, start - 1));
+			parts.push(text.slice(start, at));
+			from = at + PGF_BIGINT_MARK.length;
+			at = text.indexOf(PGF_BIGINT_MARK, from);
+		} else {
+			at = text.indexOf(PGF_BIGINT_MARK, at + 1);
+		}
+	}
+	parts.push(text.slice(from));
+	return parts.join('');
+}
+
+/** The text of a value in an error message of pg-promise. */
+function pgfJsonText(value: unknown): string {
+	return value === undefined ? 'undefined' : pgfToJson(value);
+}
+
+function pgfNumber(value: number): string {
+	if (Number.isFinite(value)) {
+		const text = String(value);
+		return value < 0 ? `(${text})` : text;
+	}
+	if (value > 0) return "'+Infinity'";
+	if (value < 0) return "'-Infinity'";
+	return "'NaN'";
+}
+
+function pgfArrayItems(list: unknown[], depth: number): string {
+	if (depth > PGF_MAX_DEPTH) throw pgfHostError('An array has too many levels');
+	const parts: string[] = [];
+	for (const value of list) {
+		parts.push(Array.isArray(value) ? pgfArrayItems(value, depth + 1) : pgfPlain(value, false));
+	}
+	return `[${parts.join(',')}]`;
+}
+
+function pgfArrayText(list: unknown[]): string {
+	return list.length === 0 ? "'{}'" : `array${pgfArrayItems(list, 1)}`;
+}
+
+/** `formatValue` without a filter, or with the raw filter. */
+function pgfPlain(value: unknown, raw: boolean): string {
+	if (value === undefined || value === null) {
+		if (raw) throw new Error('Values null/undefined cannot be used as raw text.');
+		return 'null';
+	}
+	if (typeof value === 'string') return raw ? value : pgfQuote(value);
+	if (typeof value === 'boolean') return value ? 'true' : 'false';
+	if (typeof value === 'number') return pgfNumber(value);
+	if (Array.isArray(value)) return pgfArrayText(value);
+	if (pgfIsRecord(value)) {
+		const text = pgfToJson(value);
+		// A plain object gives `{...}`. Another text means the value is not JSON data.
+		if (text.charAt(0) !== '{') throw pgfHostError('A value is not JSON data');
+		return raw ? text : pgfQuote(text);
+	}
+	throw pgfHostError('A value is not JSON data');
+}
+
+function pgfJson(data: unknown, raw: boolean): string {
+	if (data === undefined || data === null) {
+		if (raw) throw new Error('Values null/undefined cannot be used as raw text.');
+		return 'null';
+	}
+	if (typeof data === 'object' && !Array.isArray(data)) {
+		const text = pgfToJson(data);
+		if (text.charAt(0) !== '{') throw pgfHostError('A value is not JSON data');
+		return raw ? text : pgfQuote(text);
+	}
+	if (
+		typeof data !== 'string' &&
+		typeof data !== 'number' &&
+		typeof data !== 'boolean' &&
+		!Array.isArray(data)
+	) {
+		throw pgfHostError('A value is not JSON data');
+	}
+	const text = pgfToJson(data);
+	return raw ? text : pgfQuote(text);
+}
+
+function pgfCsv(values: unknown): string {
+	if (Array.isArray(values)) {
+		const parts: string[] = [];
+		for (const value of values) parts.push(pgfPlain(value, false));
+		return parts.join(',');
+	}
+	if (pgfIsRecord(values)) {
+		const parts: string[] = [];
+		for (const key of Object.keys(values)) parts.push(pgfPlain(values[key], false));
+		return parts.join(',');
+	}
+	return values === undefined ? '' : pgfPlain(values, false);
+}
+
+/** `/^\s*\*(\s*)$/`: one `*` with nothing but spaces round it. */
+function pgfIsStar(name: string): boolean {
+	let stars = 0;
+	for (let i = 0; i < name.length; i++) {
+		const code = name.charCodeAt(i);
+		if (code === 42) stars++;
+		else if (!pgfIsSpace(code)) return false;
+	}
+	return stars === 1;
+}
+
+function pgfName(name: unknown): string {
+	if (typeof name === 'string' && name !== '') {
+		return pgfIsStar(name) ? name : pgfQuoteName(name);
+	}
+	if (typeof name === 'object' && name !== null) {
+		const keys: unknown[] = Array.isArray(name) ? name : Object.keys(name);
+		if (keys.length === 0) {
+			throw new Error('Cannot retrieve sql names from an empty array/object.');
+		}
+		const parts: string[] = [];
+		for (const key of keys) {
+			if (typeof key !== 'string' || key === '') {
+				throw new Error(`Invalid sql name: ${pgfJsonText(key)}`);
+			}
+			parts.push(pgfQuoteName(key));
+		}
+		return parts.join(',');
+	}
+	throw new Error(`Invalid sql name: ${pgfJsonText(name)}`);
+}
+
+/** `/^([a-z_][a-z0-9_$]*|[A-Z_][A-Z0-9_$]*)$/` for letters from `first`. */
+function pgfIsSimpleAlias(part: string, first: number): boolean {
+	for (let i = 0; i < part.length; i++) {
+		const code = part.charCodeAt(i);
+		const letter = (code >= first && code <= first + 25) || code === 95;
+		if (!letter && (i === 0 || !(pgfIsDigit(code) || code === 36))) return false;
+	}
+	return part.length > 0;
+}
+
+function pgfAlias(name: unknown): string {
+	if (typeof name !== 'string' || name === '') {
+		throw new Error(`Invalid sql alias: ${pgfJsonText(name)}`);
+	}
+	const parts: string[] = [];
+	for (const part of name.split('.')) {
+		if (part === '') continue;
+		parts.push(
+			pgfIsSimpleAlias(part, 97) || pgfIsSimpleAlias(part, 65) ? part : pgfQuoteName(part),
+		);
+	}
+	return parts.join('.');
+}
+
+function pgfOpenValue(value: unknown): string {
+	if (value === undefined || value === null) {
+		throw new Error('Open values cannot be null or undefined.');
+	}
+	return pgfPlain(value, true).replaceAll("'", "''");
+}
+
+function pgfFiltered(value: unknown, mode: string): string {
+	if (mode === '') return pgfPlain(value, false);
+	if (mode === 'raw') return pgfPlain(value, true);
+	if (mode === 'name') return pgfName(value);
+	if (mode === 'alias') return pgfAlias(value);
+	if (mode === 'json') return pgfJson(value, false);
+	if (mode === 'csv') return pgfCsv(value);
+	if (mode === 'value') return pgfOpenValue(value);
+	throw pgfHostError('A filter is not known');
+}
+
+/** The index in `PGF_MODIFIERS` of the filter at `at`, or -1. The order is the order of pg-promise. */
+function pgfModifierAt(query: string, at: number): number {
+	const next = query.charAt(at);
+	if (next !== '^' && next !== '~' && next !== '#' && next !== ':') return -1;
+	for (let i = 0; i < PGF_MODIFIERS.length; i++) {
+		const modifier = PGF_MODIFIERS[i];
+		if (query.slice(at, at + modifier.length) === modifier) return i;
+	}
+	return -1;
+}
+
+/**
+ * `formatAs.array` and `formatAs.value`: replaces each `$n` and its filter.
+ * pg-promise does not read SQL: it also replaces inside a string, an
+ * identifier, a dollar quote and a comment. The text of a value is not read
+ * again. With `single`, only `$1` is a variable.
+ */
+function pgfReplace(query: string, values: unknown[], single: boolean, partial: boolean): string {
+	const parts: string[] = [];
+	let from = 0;
+	let at = query.indexOf('$', 0);
+	while (at >= 0) {
+		let end = at + 1;
+		let next = at + 1;
+		const first = end < query.length ? query.charCodeAt(end) : 0;
+		if (first >= 49 && first <= 57) {
+			end++;
+			while (end < query.length && end - at <= 17 && pgfIsDigit(query.charCodeAt(end))) end++;
+			const digits = query.slice(at + 1, end);
+			const more = end < query.length && pgfIsDigit(query.charCodeAt(end));
+			if (!more && (!single || digits === '1')) {
+				const modifier = pgfModifierAt(query, end);
+				const mode = modifier < 0 ? '' : PGF_MODES[modifier];
+				if (modifier >= 0) end += PGF_MODIFIERS[modifier].length;
+				const index = Number(digits) - 1;
+				if (index >= PGF_MAX_VARIABLE) {
+					throw new Error(
+						`Variable $${digits} exceeds supported maximum of $${String(PGF_MAX_VARIABLE)}`,
+					);
+				}
+				if (index < values.length) {
+					parts.push(query.slice(from, at));
+					parts.push(pgfFiltered(values[index], mode));
+					from = end;
+				} else if (!partial) {
+					throw new Error(
+						`Variable $${digits} out of range. Parameters array length: ${String(values.length)}`,
+					);
+				}
+				next = end;
+			}
+		}
+		at = query.indexOf('$', next);
+	}
+	if (from === 0) return query;
+	parts.push(query.slice(from));
+	return parts.join('');
+}
+
+/** `/^[\s;]*|[\s;]*$/g` replaced by nothing. */
+function pgfClean(query: string): string {
+	let start = 0;
+	let end = query.length;
+	while (start < end) {
+		const code = query.charCodeAt(start);
+		if (code !== 59 && !pgfIsSpace(code)) break;
+		start++;
+	}
+	while (end > start) {
+		const code = query.charCodeAt(end - 1);
+		if (code !== 59 && !pgfIsSpace(code)) break;
+		end--;
+	}
+	return query.slice(start, end);
+}
+
+/**
+ * `pgp.as.format(query, values, { partial })`. `values` is an array (`$1`,
+ * `$2`, ...), or one value that is not an object (`$1` only), or undefined
+ * (the query stays as it is). With `partial`, a variable without a value
+ * stays in the text. Without it, that variable is an error.
+ * `db.any(query, values)` and `db.multi(query, values)` format as
+ * `pgFormat(query, values, false)`.
+ */
+function pgFormat(query: unknown, values: unknown, partial: boolean): string {
+	if (typeof query !== 'string') throw new Error("Parameter 'query' must be a text string.");
+	if (values === undefined) return query;
+	if (Array.isArray(values)) return pgfReplace(query, values, false, partial);
+	if (typeof values === 'object' && values !== null) {
+		throw pgfHostError('The values of a query are an object');
+	}
+	return pgfReplace(query, [values], true, partial);
+}
+
+/**
+ * `pgp.helpers.concat(queries)`. An entry is a query text, or
+ * `{ query, values?, options?: { partial?: boolean } }`. Each text loses the
+ * spaces and `;` at its two ends, an empty text goes, and `;` joins the rest.
+ */
+function pgConcat(queries: unknown): string {
+	if (!Array.isArray(queries)) throw new Error("Parameter 'queries' must be an array.");
+	const all: string[] = [];
+	for (let i = 0; i < queries.length; i++) {
+		const entry: unknown = queries[i];
+		let text = '';
+		if (typeof entry === 'string') {
+			text = pgfClean(entry);
+		} else if (pgfIsRecord(entry) && 'query' in entry) {
+			const options = entry.options;
+			let partial = false;
+			if (options !== undefined && options !== null) {
+				if (!pgfIsRecord(options)) throw pgfHostError('The options of a query are not an object');
+				for (const key of Object.keys(options)) {
+					if (key !== 'partial' || typeof options[key] !== 'boolean') {
+						throw pgfHostError('A query has an option other than partial');
+					}
+				}
+				partial = options.partial === true;
+			}
+			text = pgfClean(pgFormat(entry.query, entry.values, partial));
+		} else {
+			throw new Error(`Invalid query element at index ${String(i)}.`);
+		}
+		if (text !== '') all.push(text);
+	}
+	return all.join(';');
+}
+
+// pg-format:end
+
 /** The rows of one statement: of all its commands when the statement is a simple one. */
 function rowsOf(entry: SqlRows | SqlSets): Item[] {
 	if (!('sets' in entry)) return entry.rows;
@@ -1797,10 +2184,88 @@ export default defineNode<PostgresParameters>({
 					else throw hostError('The operation is not in the compiled library');
 				}
 			}
-			const statements: SqlStatement[] = [];
+			let statements: SqlStatement[] = [];
 			const joined = mode === 'single' && queries.length > 1;
-			// pg-promise raises the error of a name when it writes the query: before all queries in
-			// the mode `single`, and after the queries before it in the other modes.
+			if (mode !== 'independently' && queries.length > MAX_STATEMENTS) {
+				throw hostError('The node has more statements than one call takes');
+			}
+			// The text of the query before, with its number of values: the check gives the same.
+			let checked = '';
+			let checkedValues = -1;
+			let checkedExact = true;
+			// The queries that have no exact form with bind values. For them, the node sends the
+			// text that pg-promise makes in v1, as a simple statement.
+			const written: number[] = [];
+			for (let i = 0; i < queries.length; i++) {
+				const q = queries[i];
+				const text = q.made !== undefined ? q.query : clean(q.query);
+				let exact = true;
+				if (q.made === undefined) {
+					if (text !== checked || q.values.length !== checkedValues) {
+						checkedExact = true;
+						try {
+							checkQuery(text, q.values.length, joined);
+						} catch (error) {
+							if (!messageOf(error).includes(HOST_MARKER)) throw error;
+							checkedExact = false;
+						}
+						checked = text;
+						checkedValues = q.values.length;
+					}
+					exact = checkedExact;
+				}
+				const values: SqlValue[] = [];
+				if (exact) {
+					try {
+						for (const value of q.values) values.push(bindValue(value));
+					} catch (error) {
+						if (q.made !== undefined || !messageOf(error).includes(HOST_MARKER)) throw error;
+						exact = false;
+					}
+				}
+				if (!exact) written.push(i);
+				statements.push({ text, values });
+			}
+			if (written.length > 0 && mode === 'single') {
+				// v1 sends the queries of all items as one text (`pgp.helpers.concat`). There, a // variable without a value stays in the text (`partial`), and the server refuses it.
+				const entries: Array<{ query: string; values: unknown[]; options: { partial: boolean } }> =
+					[];
+				for (const q of queries) {
+					entries.push({ query: q.query, values: q.values, options: { partial: true } });
+				}
+				let text = '';
+				try {
+					text = pgConcat(entries);
+				} catch (error) {
+					if (messageOf(error).includes(HOST_MARKER)) throw error;
+					if (queries[0].nameError === undefined) queries[0].nameError = messageOf(error);
+				}
+				// pg-promise refuses a text without a query, with an error of its own.
+				if (text === '' && queries[0].nameError === undefined) {
+					throw hostError('The text of the queries is empty');
+				}
+				statements = [{ text, simple: true }];
+			}
+			if (written.length > 0 && mode !== 'single') {
+				// Before version 2.3, v1 reads one result of the text (`any`), not each of them.
+				if (version < 2.3)
+					throw hostError('A query has no form with bind values before version 2.3');
+				for (const i of written) {
+					let text = '';
+					try {
+						text = pgFormat(queries[i].query, queries[i].values, false);
+					} catch (error) {
+						if (messageOf(error).includes(HOST_MARKER)) throw error;
+						if (queries[i].nameError === undefined) queries[i].nameError = messageOf(error);
+					}
+					if (text.trim() === '' && queries[i].nameError === undefined) {
+						throw hostError('The text of a query is empty');
+					}
+					statements[i] = { text, simple: true };
+				}
+			}
+			// pg-promise raises the error of a name, or of a value, when it writes the query: before
+			// all queries in the mode `single`, and after the queries before it in the other modes.
 			const badName = queries.findIndex((q) => q.nameError !== undefined);
 			const nameFailure = (index: number, at: number | undefined): Parsed =>
 				parseError({ message: queries[index].nameError ?? '' }, queries, at);
@@ -1809,23 +2274,6 @@ export default defineNode<PostgresParameters>({
 					throw hostError('A name is not valid after queries that run');
 				}
 				if (badName !== -1) throw new Error(nameFailure(badName, undefined).message);
-			}
-			if (mode !== 'independently' && queries.length > MAX_STATEMENTS) {
-				throw hostError('The node has more statements than one call takes');
-			}
-			// The text of the query before, with its number of values: the check gives the same.
-			let checked = '';
-			let checkedValues = -1;
-			for (const q of queries) {
-				const text = q.made !== undefined ? q.query : clean(q.query);
-				if (q.made === undefined && (text !== checked || q.values.length !== checkedValues)) {
-					checkQuery(text, q.values.length, joined);
-					checked = text;
-					checkedValues = q.values.length;
-				}
-				const values: SqlValue[] = [];
-				for (const value of q.values) values.push(bindValue(value));
-				statements.push({ text, values });
 			}
 
 			const out: Item[] = [];
@@ -1879,7 +2327,14 @@ export default defineNode<PostgresParameters>({
 					for (let i = 0; i < result.results.length; i++) {
 						const entry = result.results[i];
 						if ('error' in entry) continue;
-						for (const row of rowsOf(entry)) outs.push({ json: row, paired: i });
+						if ('sets' in entry) {
+							// v1 pairs a row with the index of its result in the one text.
+							for (let k = 0; k < entry.sets.length; k++) {
+								for (const row of entry.sets[k].rows) outs.push({ json: row, paired: k });
+							}
+						} else {
+							for (const row of entry.rows) outs.push({ json: row, paired: i });
+						}
 					}
 				}
 				if (failure !== undefined) {

@@ -1,4 +1,258 @@
 {
+	"continue, update, rows to update": {
+		"v1": {
+			"output": [
+				{
+					"id": 1,
+					"label": "uno"
+				},
+				{
+					"id": 2,
+					"label": "dos"
+				}
+			]
+		},
+		"state": [
+			"[{\"id\": 1, \"age\": 34, \"big\": 9007199254740993, \"bin\": \"\\\\x0102ff\", \"born\": \"1990-02-03\", \"made\": \"2024-01-02T03:04:05\", \"meta\": {\"a\": [1, 2]}, \"name\": \"Ann\", \"seen\": \"2024-01-02T03:04:05.678+00:00\", \"tags\": [1, 2], \"ratio\": 0.1, \"score\": 12.50, \"active\": true}, {\"id\": 2, \"age\": 27, \"big\": 5, \"bin\": null, \"born\": null, \"made\": null, \"meta\": null, \"name\": \"Bob\", \"seen\": null, \"tags\": null, \"ratio\": \"NaN\", \"score\": null, \"active\": false}, {\"id\": 3, \"age\": 61, \"big\": -1, \"bin\": \"\\\\x\", \"born\": \"2001-12-31\", \"made\": \"1999-12-31T23:59:59.5\", \"meta\": \"text\", \"name\": \"Cy \\\"The\\\" O'Neil\", \"seen\": \"1999-12-31T21:59:59+00:00\", \"tags\": [], \"ratio\": 1000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000, \"score\": 0.00, \"active\": null}]",
+			"[{\"id\": 1, \"body\": \"first\", \"person\": 1}]",
+			"3true",
+			"[{\"at\": null, \"id\": 1, \"ok\": null, \"day\": null, \"doc\": null, \"qty\": 1, \"raw\": null, \"feel\": null, \"note\": \"none\", \"nums\": null, \"tags\": null, \"label\": \"uno\", \"lunch\": null, \"plain\": null, \"price\": null}, {\"at\": null, \"id\": 2, \"ok\": null, \"day\": null, \"doc\": null, \"qty\": 2, \"raw\": null, \"feel\": null, \"note\": \"none\", \"nums\": null, \"tags\": null, \"label\": \"dos\", \"lunch\": null, \"plain\": null, \"price\": null}]",
+			"[{\"at\": null, \"id\": 1, \"ok\": null, \"doc\": null, \"qty\": 1, \"label\": \"first\", \"price\": null, \"Odd \\\"Name\": \"none\"}]",
+			"1true",
+			"[]"
+		],
+		"calls": [
+			{
+				"args": {
+					"credential": "case",
+					"dialect": "postgres",
+					"mode": "single",
+					"statements": [
+						{
+							"text": "SELECT column_name, data_type, is_nullable, udt_name, column_default FROM information_schema.columns WHERE table_schema = $1 AND table_name = $2",
+							"values": ["pgcase", "things"]
+						}
+					],
+					"largeNumbers": "text",
+					"dates": "legacy"
+				},
+				"result": {
+					"results": [
+						{
+							"command": "SELECT",
+							"rowCount": 15,
+							"rows": [
+								{
+									"column_name": "id",
+									"data_type": "integer",
+									"is_nullable": "NO",
+									"udt_name": "int4",
+									"column_default": null
+								},
+								{
+									"column_name": "label",
+									"data_type": "text",
+									"is_nullable": "NO",
+									"udt_name": "text",
+									"column_default": null
+								},
+								{
+									"column_name": "qty",
+									"data_type": "integer",
+									"is_nullable": "YES",
+									"udt_name": "int4",
+									"column_default": null
+								},
+								{
+									"column_name": "price",
+									"data_type": "numeric",
+									"is_nullable": "YES",
+									"udt_name": "numeric",
+									"column_default": null
+								},
+								{
+									"column_name": "ok",
+									"data_type": "boolean",
+									"is_nullable": "YES",
+									"udt_name": "bool",
+									"column_default": null
+								},
+								{
+									"column_name": "doc",
+									"data_type": "jsonb",
+									"is_nullable": "YES",
+									"udt_name": "jsonb",
+									"column_default": null
+								},
+								{
+									"column_name": "raw",
+									"data_type": "json",
+									"is_nullable": "YES",
+									"udt_name": "json",
+									"column_default": null
+								},
+								{
+									"column_name": "tags",
+									"data_type": "ARRAY",
+									"is_nullable": "YES",
+									"udt_name": "_text",
+									"column_default": null
+								},
+								{
+									"column_name": "nums",
+									"data_type": "ARRAY",
+									"is_nullable": "YES",
+									"udt_name": "_int4",
+									"column_default": null
+								},
+								{
+									"column_name": "day",
+									"data_type": "date",
+									"is_nullable": "YES",
+									"udt_name": "date",
+									"column_default": null
+								},
+								{
+									"column_name": "at",
+									"data_type": "timestamp with time zone",
+									"is_nullable": "YES",
+									"udt_name": "timestamptz",
+									"column_default": null
+								},
+								{
+									"column_name": "plain",
+									"data_type": "timestamp without time zone",
+									"is_nullable": "YES",
+									"udt_name": "timestamp",
+									"column_default": null
+								},
+								{
+									"column_name": "lunch",
+									"data_type": "time without time zone",
+									"is_nullable": "YES",
+									"udt_name": "time",
+									"column_default": null
+								},
+								{
+									"column_name": "feel",
+									"data_type": "USER-DEFINED",
+									"is_nullable": "YES",
+									"udt_name": "mood",
+									"column_default": null
+								},
+								{
+									"column_name": "note",
+									"data_type": "text",
+									"is_nullable": "YES",
+									"udt_name": "text",
+									"column_default": "'none'::text"
+								}
+							]
+						}
+					]
+				}
+			},
+			{
+				"args": {
+					"credential": "case",
+					"dialect": "postgres",
+					"mode": "single",
+					"statements": [
+						{
+							"text": "SELECT EXISTS(SELECT 1 FROM \"pgcase\".\"things\" WHERE \"id\"=$1)",
+							"values": [1]
+						}
+					],
+					"largeNumbers": "text",
+					"dates": "legacy"
+				},
+				"result": {
+					"results": [
+						{
+							"command": "SELECT",
+							"rowCount": 1,
+							"rows": [
+								{
+									"exists": true
+								}
+							]
+						}
+					]
+				}
+			},
+			{
+				"args": {
+					"credential": "case",
+					"dialect": "postgres",
+					"mode": "single",
+					"statements": [
+						{
+							"text": "SELECT EXISTS(SELECT 1 FROM \"pgcase\".\"things\" WHERE \"id\"=$1)",
+							"values": [2]
+						}
+					],
+					"largeNumbers": "text",
+					"dates": "legacy"
+				},
+				"result": {
+					"results": [
+						{
+							"command": "SELECT",
+							"rowCount": 1,
+							"rows": [
+								{
+									"exists": true
+								}
+							]
+						}
+					]
+				}
+			},
+			{
+				"args": {
+					"credential": "case",
+					"dialect": "postgres",
+					"mode": "single",
+					"statements": [
+						{
+							"text": "UPDATE \"pgcase\".\"things\" SET \"label\" = $1 WHERE \"id\" = $2 RETURNING \"id\",\"label\"",
+							"values": ["uno", 1]
+						},
+						{
+							"text": "UPDATE \"pgcase\".\"things\" SET \"label\" = $1 WHERE \"id\" = $2 RETURNING \"id\",\"label\"",
+							"values": ["dos", 2]
+						}
+					],
+					"largeNumbers": "text",
+					"dates": "legacy"
+				},
+				"result": {
+					"results": [
+						{
+							"command": "UPDATE",
+							"rowCount": 1,
+							"rows": [
+								{
+									"id": 1,
+									"label": "uno"
+								}
+							]
+						},
+						{
+							"command": "UPDATE",
+							"rowCount": 1,
+							"rows": [
+								{
+									"id": 2,
+									"label": "dos"
+								}
+							]
+						}
+					]
+				}
+			}
+		]
+	},
 	"continue, upsert, rows to insert or update": {
 		"v1": {
 			"output": [
@@ -6239,6 +6493,3158 @@
 							"rows": [
 								{
 									"a": 1
+								}
+							]
+						}
+					]
+				}
+			}
+		]
+	},
+	"executeQuery as text, two commands": {
+		"v1": {
+			"output": [
+				{
+					"a": 1
+				},
+				{
+					"b": 2
+				}
+			]
+		},
+		"state": [
+			"[{\"id\": 1, \"age\": 34, \"big\": 9007199254740993, \"bin\": \"\\\\x0102ff\", \"born\": \"1990-02-03\", \"made\": \"2024-01-02T03:04:05\", \"meta\": {\"a\": [1, 2]}, \"name\": \"Ann\", \"seen\": \"2024-01-02T03:04:05.678+00:00\", \"tags\": [1, 2], \"ratio\": 0.1, \"score\": 12.50, \"active\": true}, {\"id\": 2, \"age\": 27, \"big\": 5, \"bin\": null, \"born\": null, \"made\": null, \"meta\": null, \"name\": \"Bob\", \"seen\": null, \"tags\": null, \"ratio\": \"NaN\", \"score\": null, \"active\": false}, {\"id\": 3, \"age\": 61, \"big\": -1, \"bin\": \"\\\\x\", \"born\": \"2001-12-31\", \"made\": \"1999-12-31T23:59:59.5\", \"meta\": \"text\", \"name\": \"Cy \\\"The\\\" O'Neil\", \"seen\": \"1999-12-31T21:59:59+00:00\", \"tags\": [], \"ratio\": 1000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000, \"score\": 0.00, \"active\": null}]",
+			"[{\"id\": 1, \"body\": \"first\", \"person\": 1}]",
+			"3true",
+			"[{\"at\": null, \"id\": 1, \"ok\": null, \"day\": null, \"doc\": null, \"qty\": 1, \"raw\": null, \"feel\": null, \"note\": \"none\", \"nums\": null, \"tags\": null, \"label\": \"one\", \"lunch\": null, \"plain\": null, \"price\": null}, {\"at\": null, \"id\": 2, \"ok\": null, \"day\": null, \"doc\": null, \"qty\": 2, \"raw\": null, \"feel\": null, \"note\": \"none\", \"nums\": null, \"tags\": null, \"label\": \"two\", \"lunch\": null, \"plain\": null, \"price\": null}]",
+			"[{\"at\": null, \"id\": 1, \"ok\": null, \"doc\": null, \"qty\": 1, \"label\": \"first\", \"price\": null, \"Odd \\\"Name\": \"none\"}]",
+			"1true",
+			"[]"
+		],
+		"calls": [
+			{
+				"args": {
+					"credential": "pg",
+					"dialect": "postgres",
+					"mode": "single",
+					"statements": [
+						{
+							"text": "SELECT 1 AS a; SELECT 2 AS b",
+							"simple": true
+						}
+					],
+					"largeNumbers": "text",
+					"dates": "legacy"
+				},
+				"result": {
+					"results": [
+						{
+							"sets": [
+								{
+									"command": "SELECT",
+									"rowCount": 1,
+									"rows": [
+										{
+											"a": 1
+										}
+									]
+								},
+								{
+									"command": "SELECT",
+									"rowCount": 1,
+									"rows": [
+										{
+											"b": 2
+										}
+									]
+								}
+							]
+						}
+					]
+				}
+			}
+		]
+	},
+	"executeQuery as text, two commands without rows": {
+		"v1": {
+			"output": [
+				{
+					"success": true
+				}
+			]
+		},
+		"state": [
+			"[{\"id\": 1, \"age\": 34, \"big\": 9007199254740993, \"bin\": \"\\\\x0102ff\", \"born\": \"1990-02-03\", \"made\": \"2024-01-02T03:04:05\", \"meta\": {\"a\": [1, 2]}, \"name\": \"Ann\", \"seen\": \"2024-01-02T03:04:05.678+00:00\", \"tags\": [1, 2], \"ratio\": 0.1, \"score\": 12.50, \"active\": true}, {\"id\": 2, \"age\": 27, \"big\": 5, \"bin\": null, \"born\": null, \"made\": null, \"meta\": null, \"name\": \"Bob\", \"seen\": null, \"tags\": null, \"ratio\": \"NaN\", \"score\": null, \"active\": false}, {\"id\": 3, \"age\": 61, \"big\": -1, \"bin\": \"\\\\x\", \"born\": \"2001-12-31\", \"made\": \"1999-12-31T23:59:59.5\", \"meta\": \"text\", \"name\": \"Cy \\\"The\\\" O'Neil\", \"seen\": \"1999-12-31T21:59:59+00:00\", \"tags\": [], \"ratio\": 1000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000, \"score\": 0.00, \"active\": null}]",
+			"[{\"id\": 1, \"body\": \"first\", \"person\": 1}]",
+			"3true",
+			"[{\"at\": null, \"id\": 1, \"ok\": null, \"day\": null, \"doc\": null, \"qty\": 1, \"raw\": null, \"feel\": null, \"note\": \"none\", \"nums\": null, \"tags\": null, \"label\": \"one\", \"lunch\": null, \"plain\": null, \"price\": null}, {\"at\": null, \"id\": 2, \"ok\": null, \"day\": null, \"doc\": null, \"qty\": 2, \"raw\": null, \"feel\": null, \"note\": \"none\", \"nums\": null, \"tags\": null, \"label\": \"two\", \"lunch\": null, \"plain\": null, \"price\": null}]",
+			"[{\"at\": null, \"id\": 1, \"ok\": null, \"doc\": null, \"qty\": 1, \"label\": \"first\", \"price\": null, \"Odd \\\"Name\": \"none\"}]",
+			"1true",
+			"[]"
+		],
+		"calls": [
+			{
+				"args": {
+					"credential": "pg",
+					"dialect": "postgres",
+					"mode": "single",
+					"statements": [
+						{
+							"text": "UPDATE pgcase.people SET age = 1 WHERE id = -1; DELETE FROM pgcase.notes WHERE id = -1",
+							"simple": true
+						}
+					],
+					"largeNumbers": "text",
+					"dates": "legacy"
+				},
+				"result": {
+					"results": [
+						{
+							"sets": [
+								{
+									"command": "UPDATE",
+									"rowCount": 0,
+									"rows": []
+								},
+								{
+									"command": "DELETE",
+									"rowCount": 0,
+									"rows": []
+								}
+							]
+						}
+					]
+				}
+			}
+		]
+	},
+	"executeQuery as text, two commands that only read, without rows": {
+		"v1": {
+			"output": []
+		},
+		"state": [
+			"[{\"id\": 1, \"age\": 34, \"big\": 9007199254740993, \"bin\": \"\\\\x0102ff\", \"born\": \"1990-02-03\", \"made\": \"2024-01-02T03:04:05\", \"meta\": {\"a\": [1, 2]}, \"name\": \"Ann\", \"seen\": \"2024-01-02T03:04:05.678+00:00\", \"tags\": [1, 2], \"ratio\": 0.1, \"score\": 12.50, \"active\": true}, {\"id\": 2, \"age\": 27, \"big\": 5, \"bin\": null, \"born\": null, \"made\": null, \"meta\": null, \"name\": \"Bob\", \"seen\": null, \"tags\": null, \"ratio\": \"NaN\", \"score\": null, \"active\": false}, {\"id\": 3, \"age\": 61, \"big\": -1, \"bin\": \"\\\\x\", \"born\": \"2001-12-31\", \"made\": \"1999-12-31T23:59:59.5\", \"meta\": \"text\", \"name\": \"Cy \\\"The\\\" O'Neil\", \"seen\": \"1999-12-31T21:59:59+00:00\", \"tags\": [], \"ratio\": 1000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000, \"score\": 0.00, \"active\": null}]",
+			"[{\"id\": 1, \"body\": \"first\", \"person\": 1}]",
+			"3true",
+			"[{\"at\": null, \"id\": 1, \"ok\": null, \"day\": null, \"doc\": null, \"qty\": 1, \"raw\": null, \"feel\": null, \"note\": \"none\", \"nums\": null, \"tags\": null, \"label\": \"one\", \"lunch\": null, \"plain\": null, \"price\": null}, {\"at\": null, \"id\": 2, \"ok\": null, \"day\": null, \"doc\": null, \"qty\": 2, \"raw\": null, \"feel\": null, \"note\": \"none\", \"nums\": null, \"tags\": null, \"label\": \"two\", \"lunch\": null, \"plain\": null, \"price\": null}]",
+			"[{\"at\": null, \"id\": 1, \"ok\": null, \"doc\": null, \"qty\": 1, \"label\": \"first\", \"price\": null, \"Odd \\\"Name\": \"none\"}]",
+			"1true",
+			"[]"
+		],
+		"calls": [
+			{
+				"args": {
+					"credential": "pg",
+					"dialect": "postgres",
+					"mode": "single",
+					"statements": [
+						{
+							"text": "SELECT 1 WHERE false; SELECT 2 WHERE false",
+							"simple": true
+						}
+					],
+					"largeNumbers": "text",
+					"dates": "legacy"
+				},
+				"result": {
+					"results": [
+						{
+							"sets": [
+								{
+									"command": "SELECT",
+									"rowCount": 0,
+									"rows": []
+								},
+								{
+									"command": "SELECT",
+									"rowCount": 0,
+									"rows": []
+								}
+							]
+						}
+					]
+				}
+			}
+		]
+	},
+	"executeQuery as text, a variable in a comment": {
+		"v1": {
+			"output": [
+				{
+					"a": 5
+				}
+			]
+		},
+		"state": [
+			"[{\"id\": 1, \"age\": 34, \"big\": 9007199254740993, \"bin\": \"\\\\x0102ff\", \"born\": \"1990-02-03\", \"made\": \"2024-01-02T03:04:05\", \"meta\": {\"a\": [1, 2]}, \"name\": \"Ann\", \"seen\": \"2024-01-02T03:04:05.678+00:00\", \"tags\": [1, 2], \"ratio\": 0.1, \"score\": 12.50, \"active\": true}, {\"id\": 2, \"age\": 27, \"big\": 5, \"bin\": null, \"born\": null, \"made\": null, \"meta\": null, \"name\": \"Bob\", \"seen\": null, \"tags\": null, \"ratio\": \"NaN\", \"score\": null, \"active\": false}, {\"id\": 3, \"age\": 61, \"big\": -1, \"bin\": \"\\\\x\", \"born\": \"2001-12-31\", \"made\": \"1999-12-31T23:59:59.5\", \"meta\": \"text\", \"name\": \"Cy \\\"The\\\" O'Neil\", \"seen\": \"1999-12-31T21:59:59+00:00\", \"tags\": [], \"ratio\": 1000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000, \"score\": 0.00, \"active\": null}]",
+			"[{\"id\": 1, \"body\": \"first\", \"person\": 1}]",
+			"3true",
+			"[{\"at\": null, \"id\": 1, \"ok\": null, \"day\": null, \"doc\": null, \"qty\": 1, \"raw\": null, \"feel\": null, \"note\": \"none\", \"nums\": null, \"tags\": null, \"label\": \"one\", \"lunch\": null, \"plain\": null, \"price\": null}, {\"at\": null, \"id\": 2, \"ok\": null, \"day\": null, \"doc\": null, \"qty\": 2, \"raw\": null, \"feel\": null, \"note\": \"none\", \"nums\": null, \"tags\": null, \"label\": \"two\", \"lunch\": null, \"plain\": null, \"price\": null}]",
+			"[{\"at\": null, \"id\": 1, \"ok\": null, \"doc\": null, \"qty\": 1, \"label\": \"first\", \"price\": null, \"Odd \\\"Name\": \"none\"}]",
+			"1true",
+			"[]"
+		],
+		"calls": [
+			{
+				"args": {
+					"credential": "pg",
+					"dialect": "postgres",
+					"mode": "single",
+					"statements": [
+						{
+							"text": "SELECT '5'::int AS a -- the value '5'",
+							"simple": true
+						}
+					],
+					"largeNumbers": "text",
+					"dates": "legacy"
+				},
+				"result": {
+					"results": [
+						{
+							"sets": [
+								{
+									"command": "SELECT",
+									"rowCount": 1,
+									"rows": [
+										{
+											"a": 5
+										}
+									]
+								}
+							]
+						}
+					]
+				}
+			}
+		]
+	},
+	"executeQuery as text, a variable in a dollar quote": {
+		"v1": {
+			"output": [
+				{
+					"t": "a 'it''s' b",
+					"v": "it's"
+				}
+			]
+		},
+		"state": [
+			"[{\"id\": 1, \"age\": 34, \"big\": 9007199254740993, \"bin\": \"\\\\x0102ff\", \"born\": \"1990-02-03\", \"made\": \"2024-01-02T03:04:05\", \"meta\": {\"a\": [1, 2]}, \"name\": \"Ann\", \"seen\": \"2024-01-02T03:04:05.678+00:00\", \"tags\": [1, 2], \"ratio\": 0.1, \"score\": 12.50, \"active\": true}, {\"id\": 2, \"age\": 27, \"big\": 5, \"bin\": null, \"born\": null, \"made\": null, \"meta\": null, \"name\": \"Bob\", \"seen\": null, \"tags\": null, \"ratio\": \"NaN\", \"score\": null, \"active\": false}, {\"id\": 3, \"age\": 61, \"big\": -1, \"bin\": \"\\\\x\", \"born\": \"2001-12-31\", \"made\": \"1999-12-31T23:59:59.5\", \"meta\": \"text\", \"name\": \"Cy \\\"The\\\" O'Neil\", \"seen\": \"1999-12-31T21:59:59+00:00\", \"tags\": [], \"ratio\": 1000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000, \"score\": 0.00, \"active\": null}]",
+			"[{\"id\": 1, \"body\": \"first\", \"person\": 1}]",
+			"3true",
+			"[{\"at\": null, \"id\": 1, \"ok\": null, \"day\": null, \"doc\": null, \"qty\": 1, \"raw\": null, \"feel\": null, \"note\": \"none\", \"nums\": null, \"tags\": null, \"label\": \"one\", \"lunch\": null, \"plain\": null, \"price\": null}, {\"at\": null, \"id\": 2, \"ok\": null, \"day\": null, \"doc\": null, \"qty\": 2, \"raw\": null, \"feel\": null, \"note\": \"none\", \"nums\": null, \"tags\": null, \"label\": \"two\", \"lunch\": null, \"plain\": null, \"price\": null}]",
+			"[{\"at\": null, \"id\": 1, \"ok\": null, \"doc\": null, \"qty\": 1, \"label\": \"first\", \"price\": null, \"Odd \\\"Name\": \"none\"}]",
+			"1true",
+			"[]"
+		],
+		"calls": [
+			{
+				"args": {
+					"credential": "pg",
+					"dialect": "postgres",
+					"mode": "single",
+					"statements": [
+						{
+							"text": "SELECT $$a 'it''s' b$$ AS t, 'it''s' AS v",
+							"simple": true
+						}
+					],
+					"largeNumbers": "text",
+					"dates": "legacy"
+				},
+				"result": {
+					"results": [
+						{
+							"sets": [
+								{
+									"command": "SELECT",
+									"rowCount": 1,
+									"rows": [
+										{
+											"t": "a 'it''s' b",
+											"v": "it's"
+										}
+									]
+								}
+							]
+						}
+					]
+				}
+			}
+		]
+	},
+	"executeQuery as text, a variable in a string": {
+		"v1": {
+			"error": "syntax error at or near \"x' b'\""
+		},
+		"state": [
+			"[{\"id\": 1, \"age\": 34, \"big\": 9007199254740993, \"bin\": \"\\\\x0102ff\", \"born\": \"1990-02-03\", \"made\": \"2024-01-02T03:04:05\", \"meta\": {\"a\": [1, 2]}, \"name\": \"Ann\", \"seen\": \"2024-01-02T03:04:05.678+00:00\", \"tags\": [1, 2], \"ratio\": 0.1, \"score\": 12.50, \"active\": true}, {\"id\": 2, \"age\": 27, \"big\": 5, \"bin\": null, \"born\": null, \"made\": null, \"meta\": null, \"name\": \"Bob\", \"seen\": null, \"tags\": null, \"ratio\": \"NaN\", \"score\": null, \"active\": false}, {\"id\": 3, \"age\": 61, \"big\": -1, \"bin\": \"\\\\x\", \"born\": \"2001-12-31\", \"made\": \"1999-12-31T23:59:59.5\", \"meta\": \"text\", \"name\": \"Cy \\\"The\\\" O'Neil\", \"seen\": \"1999-12-31T21:59:59+00:00\", \"tags\": [], \"ratio\": 1000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000, \"score\": 0.00, \"active\": null}]",
+			"[{\"id\": 1, \"body\": \"first\", \"person\": 1}]",
+			"3true",
+			"[{\"at\": null, \"id\": 1, \"ok\": null, \"day\": null, \"doc\": null, \"qty\": 1, \"raw\": null, \"feel\": null, \"note\": \"none\", \"nums\": null, \"tags\": null, \"label\": \"one\", \"lunch\": null, \"plain\": null, \"price\": null}, {\"at\": null, \"id\": 2, \"ok\": null, \"day\": null, \"doc\": null, \"qty\": 2, \"raw\": null, \"feel\": null, \"note\": \"none\", \"nums\": null, \"tags\": null, \"label\": \"two\", \"lunch\": null, \"plain\": null, \"price\": null}]",
+			"[{\"at\": null, \"id\": 1, \"ok\": null, \"doc\": null, \"qty\": 1, \"label\": \"first\", \"price\": null, \"Odd \\\"Name\": \"none\"}]",
+			"1true",
+			"[]"
+		],
+		"calls": [
+			{
+				"args": {
+					"credential": "pg",
+					"dialect": "postgres",
+					"mode": "single",
+					"statements": [
+						{
+							"text": "SELECT 'a 'x' b' AS t",
+							"simple": true
+						}
+					],
+					"largeNumbers": "text",
+					"dates": "legacy"
+				},
+				"result": {
+					"results": [
+						{
+							"error": {
+								"message": "syntax error at or near \"x' b'\"",
+								"length": 94,
+								"severity": "ERROR",
+								"code": "42601",
+								"position": "12"
+							}
+						}
+					]
+				}
+			}
+		]
+	},
+	"executeQuery as text, a variable after a type name": {
+		"v1": {
+			"output": [
+				{
+					"d": "2024-02-29"
+				}
+			]
+		},
+		"state": [
+			"[{\"id\": 1, \"age\": 34, \"big\": 9007199254740993, \"bin\": \"\\\\x0102ff\", \"born\": \"1990-02-03\", \"made\": \"2024-01-02T03:04:05\", \"meta\": {\"a\": [1, 2]}, \"name\": \"Ann\", \"seen\": \"2024-01-02T03:04:05.678+00:00\", \"tags\": [1, 2], \"ratio\": 0.1, \"score\": 12.50, \"active\": true}, {\"id\": 2, \"age\": 27, \"big\": 5, \"bin\": null, \"born\": null, \"made\": null, \"meta\": null, \"name\": \"Bob\", \"seen\": null, \"tags\": null, \"ratio\": \"NaN\", \"score\": null, \"active\": false}, {\"id\": 3, \"age\": 61, \"big\": -1, \"bin\": \"\\\\x\", \"born\": \"2001-12-31\", \"made\": \"1999-12-31T23:59:59.5\", \"meta\": \"text\", \"name\": \"Cy \\\"The\\\" O'Neil\", \"seen\": \"1999-12-31T21:59:59+00:00\", \"tags\": [], \"ratio\": 1000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000, \"score\": 0.00, \"active\": null}]",
+			"[{\"id\": 1, \"body\": \"first\", \"person\": 1}]",
+			"3true",
+			"[{\"at\": null, \"id\": 1, \"ok\": null, \"day\": null, \"doc\": null, \"qty\": 1, \"raw\": null, \"feel\": null, \"note\": \"none\", \"nums\": null, \"tags\": null, \"label\": \"one\", \"lunch\": null, \"plain\": null, \"price\": null}, {\"at\": null, \"id\": 2, \"ok\": null, \"day\": null, \"doc\": null, \"qty\": 2, \"raw\": null, \"feel\": null, \"note\": \"none\", \"nums\": null, \"tags\": null, \"label\": \"two\", \"lunch\": null, \"plain\": null, \"price\": null}]",
+			"[{\"at\": null, \"id\": 1, \"ok\": null, \"doc\": null, \"qty\": 1, \"label\": \"first\", \"price\": null, \"Odd \\\"Name\": \"none\"}]",
+			"1true",
+			"[]"
+		],
+		"calls": [
+			{
+				"args": {
+					"credential": "pg",
+					"dialect": "postgres",
+					"mode": "single",
+					"statements": [
+						{
+							"text": "SELECT (date '2024-02-29')::text AS d",
+							"simple": true
+						}
+					],
+					"largeNumbers": "text",
+					"dates": "legacy"
+				},
+				"result": {
+					"results": [
+						{
+							"sets": [
+								{
+									"command": "SELECT",
+									"rowCount": 1,
+									"rows": [
+										{
+											"d": "2024-02-29"
+										}
+									]
+								}
+							]
+						}
+					]
+				}
+			}
+		]
+	},
+	"executeQuery as text, the filters of pg-promise": {
+		"v1": {
+			"output": [
+				{
+					"name": "Ann",
+					"two": 2,
+					"doc": "{\"a\":\"it's\"}",
+					"four": 4
+				},
+				{
+					"name": "Bob",
+					"two": 2,
+					"doc": "{\"a\":\"it's\"}",
+					"four": 4
+				}
+			]
+		},
+		"state": [
+			"[{\"id\": 1, \"age\": 34, \"big\": 9007199254740993, \"bin\": \"\\\\x0102ff\", \"born\": \"1990-02-03\", \"made\": \"2024-01-02T03:04:05\", \"meta\": {\"a\": [1, 2]}, \"name\": \"Ann\", \"seen\": \"2024-01-02T03:04:05.678+00:00\", \"tags\": [1, 2], \"ratio\": 0.1, \"score\": 12.50, \"active\": true}, {\"id\": 2, \"age\": 27, \"big\": 5, \"bin\": null, \"born\": null, \"made\": null, \"meta\": null, \"name\": \"Bob\", \"seen\": null, \"tags\": null, \"ratio\": \"NaN\", \"score\": null, \"active\": false}, {\"id\": 3, \"age\": 61, \"big\": -1, \"bin\": \"\\\\x\", \"born\": \"2001-12-31\", \"made\": \"1999-12-31T23:59:59.5\", \"meta\": \"text\", \"name\": \"Cy \\\"The\\\" O'Neil\", \"seen\": \"1999-12-31T21:59:59+00:00\", \"tags\": [], \"ratio\": 1000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000, \"score\": 0.00, \"active\": null}]",
+			"[{\"id\": 1, \"body\": \"first\", \"person\": 1}]",
+			"3true",
+			"[{\"at\": null, \"id\": 1, \"ok\": null, \"day\": null, \"doc\": null, \"qty\": 1, \"raw\": null, \"feel\": null, \"note\": \"none\", \"nums\": null, \"tags\": null, \"label\": \"one\", \"lunch\": null, \"plain\": null, \"price\": null}, {\"at\": null, \"id\": 2, \"ok\": null, \"day\": null, \"doc\": null, \"qty\": 2, \"raw\": null, \"feel\": null, \"note\": \"none\", \"nums\": null, \"tags\": null, \"label\": \"two\", \"lunch\": null, \"plain\": null, \"price\": null}]",
+			"[{\"at\": null, \"id\": 1, \"ok\": null, \"doc\": null, \"qty\": 1, \"label\": \"first\", \"price\": null, \"Odd \\\"Name\": \"none\"}]",
+			"1true",
+			"[]"
+		],
+		"calls": [
+			{
+				"args": {
+					"credential": "pg",
+					"dialect": "postgres",
+					"mode": "single",
+					"statements": [
+						{
+							"text": "SELECT \"name\", 1 + 1 AS two, '{\"a\":\"it''s\"}' AS doc, 4 AS four FROM pgcase.people WHERE age IN (34,27) ORDER BY id",
+							"simple": true
+						}
+					],
+					"largeNumbers": "text",
+					"dates": "legacy"
+				},
+				"result": {
+					"results": [
+						{
+							"sets": [
+								{
+									"command": "SELECT",
+									"rowCount": 2,
+									"rows": [
+										{
+											"name": "Ann",
+											"two": 2,
+											"doc": "{\"a\":\"it's\"}",
+											"four": 4
+										},
+										{
+											"name": "Bob",
+											"two": 2,
+											"doc": "{\"a\":\"it's\"}",
+											"four": 4
+										}
+									]
+								}
+							]
+						}
+					]
+				}
+			}
+		]
+	},
+	"executeQuery as text, a list as a value": {
+		"v1": {
+			"output": [
+				{
+					"name": "Ann"
+				},
+				{
+					"name": "Bob"
+				}
+			]
+		},
+		"state": [
+			"[{\"id\": 1, \"age\": 34, \"big\": 9007199254740993, \"bin\": \"\\\\x0102ff\", \"born\": \"1990-02-03\", \"made\": \"2024-01-02T03:04:05\", \"meta\": {\"a\": [1, 2]}, \"name\": \"Ann\", \"seen\": \"2024-01-02T03:04:05.678+00:00\", \"tags\": [1, 2], \"ratio\": 0.1, \"score\": 12.50, \"active\": true}, {\"id\": 2, \"age\": 27, \"big\": 5, \"bin\": null, \"born\": null, \"made\": null, \"meta\": null, \"name\": \"Bob\", \"seen\": null, \"tags\": null, \"ratio\": \"NaN\", \"score\": null, \"active\": false}, {\"id\": 3, \"age\": 61, \"big\": -1, \"bin\": \"\\\\x\", \"born\": \"2001-12-31\", \"made\": \"1999-12-31T23:59:59.5\", \"meta\": \"text\", \"name\": \"Cy \\\"The\\\" O'Neil\", \"seen\": \"1999-12-31T21:59:59+00:00\", \"tags\": [], \"ratio\": 1000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000, \"score\": 0.00, \"active\": null}]",
+			"[{\"id\": 1, \"body\": \"first\", \"person\": 1}]",
+			"3true",
+			"[{\"at\": null, \"id\": 1, \"ok\": null, \"day\": null, \"doc\": null, \"qty\": 1, \"raw\": null, \"feel\": null, \"note\": \"none\", \"nums\": null, \"tags\": null, \"label\": \"one\", \"lunch\": null, \"plain\": null, \"price\": null}, {\"at\": null, \"id\": 2, \"ok\": null, \"day\": null, \"doc\": null, \"qty\": 2, \"raw\": null, \"feel\": null, \"note\": \"none\", \"nums\": null, \"tags\": null, \"label\": \"two\", \"lunch\": null, \"plain\": null, \"price\": null}]",
+			"[{\"at\": null, \"id\": 1, \"ok\": null, \"doc\": null, \"qty\": 1, \"label\": \"first\", \"price\": null, \"Odd \\\"Name\": \"none\"}]",
+			"1true",
+			"[]"
+		],
+		"calls": [
+			{
+				"args": {
+					"credential": "pg",
+					"dialect": "postgres",
+					"mode": "single",
+					"statements": [
+						{
+							"text": "SELECT name FROM pgcase.people WHERE age = ANY(array[34,27]) ORDER BY id",
+							"simple": true
+						}
+					],
+					"largeNumbers": "text",
+					"dates": "legacy"
+				},
+				"result": {
+					"results": [
+						{
+							"sets": [
+								{
+									"command": "SELECT",
+									"rowCount": 2,
+									"rows": [
+										{
+											"name": "Ann"
+										},
+										{
+											"name": "Bob"
+										}
+									]
+								}
+							]
+						}
+					]
+				}
+			}
+		]
+	},
+	"executeQuery as text, values of each kind": {
+		"v1": {
+			"output": [
+				{
+					"a": "a'b",
+					"b": "1.5",
+					"c": true,
+					"d": null,
+					"e": {
+						"k": [1, "x"]
+					}
+				},
+				{
+					"f": 1
+				}
+			]
+		},
+		"state": [
+			"[{\"id\": 1, \"age\": 34, \"big\": 9007199254740993, \"bin\": \"\\\\x0102ff\", \"born\": \"1990-02-03\", \"made\": \"2024-01-02T03:04:05\", \"meta\": {\"a\": [1, 2]}, \"name\": \"Ann\", \"seen\": \"2024-01-02T03:04:05.678+00:00\", \"tags\": [1, 2], \"ratio\": 0.1, \"score\": 12.50, \"active\": true}, {\"id\": 2, \"age\": 27, \"big\": 5, \"bin\": null, \"born\": null, \"made\": null, \"meta\": null, \"name\": \"Bob\", \"seen\": null, \"tags\": null, \"ratio\": \"NaN\", \"score\": null, \"active\": false}, {\"id\": 3, \"age\": 61, \"big\": -1, \"bin\": \"\\\\x\", \"born\": \"2001-12-31\", \"made\": \"1999-12-31T23:59:59.5\", \"meta\": \"text\", \"name\": \"Cy \\\"The\\\" O'Neil\", \"seen\": \"1999-12-31T21:59:59+00:00\", \"tags\": [], \"ratio\": 1000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000, \"score\": 0.00, \"active\": null}]",
+			"[{\"id\": 1, \"body\": \"first\", \"person\": 1}]",
+			"3true",
+			"[{\"at\": null, \"id\": 1, \"ok\": null, \"day\": null, \"doc\": null, \"qty\": 1, \"raw\": null, \"feel\": null, \"note\": \"none\", \"nums\": null, \"tags\": null, \"label\": \"one\", \"lunch\": null, \"plain\": null, \"price\": null}, {\"at\": null, \"id\": 2, \"ok\": null, \"day\": null, \"doc\": null, \"qty\": 2, \"raw\": null, \"feel\": null, \"note\": \"none\", \"nums\": null, \"tags\": null, \"label\": \"two\", \"lunch\": null, \"plain\": null, \"price\": null}]",
+			"[{\"at\": null, \"id\": 1, \"ok\": null, \"doc\": null, \"qty\": 1, \"label\": \"first\", \"price\": null, \"Odd \\\"Name\": \"none\"}]",
+			"1true",
+			"[]"
+		],
+		"calls": [
+			{
+				"args": {
+					"credential": "pg",
+					"dialect": "postgres",
+					"mode": "single",
+					"statements": [
+						{
+							"text": "SELECT 'a''b' AS a, 1.5 AS b, true AS c, null AS d, '{\"k\":[1,\"x\"]}'::jsonb AS e; SELECT 1 AS f",
+							"simple": true
+						}
+					],
+					"largeNumbers": "text",
+					"dates": "legacy"
+				},
+				"result": {
+					"results": [
+						{
+							"sets": [
+								{
+									"command": "SELECT",
+									"rowCount": 1,
+									"rows": [
+										{
+											"a": "a'b",
+											"b": "1.5",
+											"c": true,
+											"d": null,
+											"e": {
+												"k": [1, "x"]
+											}
+										}
+									]
+								},
+								{
+									"command": "SELECT",
+									"rowCount": 1,
+									"rows": [
+										{
+											"f": 1
+										}
+									]
+								}
+							]
+						}
+					]
+				}
+			}
+		]
+	},
+	"executeQuery as text, a variable without a value in two commands": {
+		"v1": {
+			"error": "there is no parameter $2"
+		},
+		"state": [
+			"[{\"id\": 1, \"age\": 34, \"big\": 9007199254740993, \"bin\": \"\\\\x0102ff\", \"born\": \"1990-02-03\", \"made\": \"2024-01-02T03:04:05\", \"meta\": {\"a\": [1, 2]}, \"name\": \"Ann\", \"seen\": \"2024-01-02T03:04:05.678+00:00\", \"tags\": [1, 2], \"ratio\": 0.1, \"score\": 12.50, \"active\": true}, {\"id\": 2, \"age\": 27, \"big\": 5, \"bin\": null, \"born\": null, \"made\": null, \"meta\": null, \"name\": \"Bob\", \"seen\": null, \"tags\": null, \"ratio\": \"NaN\", \"score\": null, \"active\": false}, {\"id\": 3, \"age\": 61, \"big\": -1, \"bin\": \"\\\\x\", \"born\": \"2001-12-31\", \"made\": \"1999-12-31T23:59:59.5\", \"meta\": \"text\", \"name\": \"Cy \\\"The\\\" O'Neil\", \"seen\": \"1999-12-31T21:59:59+00:00\", \"tags\": [], \"ratio\": 1000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000, \"score\": 0.00, \"active\": null}]",
+			"[{\"id\": 1, \"body\": \"first\", \"person\": 1}]",
+			"3true",
+			"[{\"at\": null, \"id\": 1, \"ok\": null, \"day\": null, \"doc\": null, \"qty\": 1, \"raw\": null, \"feel\": null, \"note\": \"none\", \"nums\": null, \"tags\": null, \"label\": \"one\", \"lunch\": null, \"plain\": null, \"price\": null}, {\"at\": null, \"id\": 2, \"ok\": null, \"day\": null, \"doc\": null, \"qty\": 2, \"raw\": null, \"feel\": null, \"note\": \"none\", \"nums\": null, \"tags\": null, \"label\": \"two\", \"lunch\": null, \"plain\": null, \"price\": null}]",
+			"[{\"at\": null, \"id\": 1, \"ok\": null, \"doc\": null, \"qty\": 1, \"label\": \"first\", \"price\": null, \"Odd \\\"Name\": \"none\"}]",
+			"1true",
+			"[]"
+		],
+		"calls": [
+			{
+				"args": {
+					"credential": "pg",
+					"dialect": "postgres",
+					"mode": "single",
+					"statements": [
+						{
+							"text": "SELECT 'a' AS a; SELECT $2 AS b",
+							"simple": true
+						}
+					],
+					"largeNumbers": "text",
+					"dates": "legacy"
+				},
+				"result": {
+					"results": [
+						{
+							"error": {
+								"message": "there is no parameter $2",
+								"length": 94,
+								"severity": "ERROR",
+								"code": "42P02",
+								"position": "25"
+							}
+						}
+					]
+				}
+			}
+		]
+	},
+	"executeQuery as text, a date in version 2.6": {
+		"v1": {
+			"output": [
+				{
+					"born": "1990-02-03T00:00:00.000Z"
+				},
+				{
+					"born": null
+				},
+				{
+					"born": "2001-12-31T00:00:00.000Z"
+				},
+				{
+					"a": 1
+				}
+			]
+		},
+		"state": [
+			"[{\"id\": 1, \"age\": 34, \"big\": 9007199254740993, \"bin\": \"\\\\x0102ff\", \"born\": \"1990-02-03\", \"made\": \"2024-01-02T03:04:05\", \"meta\": {\"a\": [1, 2]}, \"name\": \"Ann\", \"seen\": \"2024-01-02T03:04:05.678+00:00\", \"tags\": [1, 2], \"ratio\": 0.1, \"score\": 12.50, \"active\": true}, {\"id\": 2, \"age\": 27, \"big\": 5, \"bin\": null, \"born\": null, \"made\": null, \"meta\": null, \"name\": \"Bob\", \"seen\": null, \"tags\": null, \"ratio\": \"NaN\", \"score\": null, \"active\": false}, {\"id\": 3, \"age\": 61, \"big\": -1, \"bin\": \"\\\\x\", \"born\": \"2001-12-31\", \"made\": \"1999-12-31T23:59:59.5\", \"meta\": \"text\", \"name\": \"Cy \\\"The\\\" O'Neil\", \"seen\": \"1999-12-31T21:59:59+00:00\", \"tags\": [], \"ratio\": 1000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000, \"score\": 0.00, \"active\": null}]",
+			"[{\"id\": 1, \"body\": \"first\", \"person\": 1}]",
+			"3true",
+			"[{\"at\": null, \"id\": 1, \"ok\": null, \"day\": null, \"doc\": null, \"qty\": 1, \"raw\": null, \"feel\": null, \"note\": \"none\", \"nums\": null, \"tags\": null, \"label\": \"one\", \"lunch\": null, \"plain\": null, \"price\": null}, {\"at\": null, \"id\": 2, \"ok\": null, \"day\": null, \"doc\": null, \"qty\": 2, \"raw\": null, \"feel\": null, \"note\": \"none\", \"nums\": null, \"tags\": null, \"label\": \"two\", \"lunch\": null, \"plain\": null, \"price\": null}]",
+			"[{\"at\": null, \"id\": 1, \"ok\": null, \"doc\": null, \"qty\": 1, \"label\": \"first\", \"price\": null, \"Odd \\\"Name\": \"none\"}]",
+			"1true",
+			"[]"
+		],
+		"calls": [
+			{
+				"args": {
+					"credential": "pg",
+					"dialect": "postgres",
+					"mode": "single",
+					"statements": [
+						{
+							"text": "SELECT born FROM pgcase.people ORDER BY id; SELECT 1 AS a",
+							"simple": true
+						}
+					],
+					"largeNumbers": "text",
+					"dates": "legacy"
+				},
+				"result": {
+					"results": [
+						{
+							"sets": [
+								{
+									"command": "SELECT",
+									"rowCount": 3,
+									"rows": [
+										{
+											"born": "1990-02-03T00:00:00.000Z"
+										},
+										{
+											"born": null
+										},
+										{
+											"born": "2001-12-31T00:00:00.000Z"
+										}
+									]
+								},
+								{
+									"command": "SELECT",
+									"rowCount": 1,
+									"rows": [
+										{
+											"a": 1
+										}
+									]
+								}
+							]
+						}
+					]
+				}
+			}
+		]
+	},
+	"executeQuery as text, arrays and an interval": {
+		"v1": {
+			"output": [
+				{
+					"tags": [1, 2]
+				},
+				{
+					"tags": null
+				},
+				{
+					"tags": []
+				},
+				{
+					"i": {
+						"days": 1,
+						"hours": 2
+					}
+				}
+			]
+		},
+		"state": [
+			"[{\"id\": 1, \"age\": 34, \"big\": 9007199254740993, \"bin\": \"\\\\x0102ff\", \"born\": \"1990-02-03\", \"made\": \"2024-01-02T03:04:05\", \"meta\": {\"a\": [1, 2]}, \"name\": \"Ann\", \"seen\": \"2024-01-02T03:04:05.678+00:00\", \"tags\": [1, 2], \"ratio\": 0.1, \"score\": 12.50, \"active\": true}, {\"id\": 2, \"age\": 27, \"big\": 5, \"bin\": null, \"born\": null, \"made\": null, \"meta\": null, \"name\": \"Bob\", \"seen\": null, \"tags\": null, \"ratio\": \"NaN\", \"score\": null, \"active\": false}, {\"id\": 3, \"age\": 61, \"big\": -1, \"bin\": \"\\\\x\", \"born\": \"2001-12-31\", \"made\": \"1999-12-31T23:59:59.5\", \"meta\": \"text\", \"name\": \"Cy \\\"The\\\" O'Neil\", \"seen\": \"1999-12-31T21:59:59+00:00\", \"tags\": [], \"ratio\": 1000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000, \"score\": 0.00, \"active\": null}]",
+			"[{\"id\": 1, \"body\": \"first\", \"person\": 1}]",
+			"3true",
+			"[{\"at\": null, \"id\": 1, \"ok\": null, \"day\": null, \"doc\": null, \"qty\": 1, \"raw\": null, \"feel\": null, \"note\": \"none\", \"nums\": null, \"tags\": null, \"label\": \"one\", \"lunch\": null, \"plain\": null, \"price\": null}, {\"at\": null, \"id\": 2, \"ok\": null, \"day\": null, \"doc\": null, \"qty\": 2, \"raw\": null, \"feel\": null, \"note\": \"none\", \"nums\": null, \"tags\": null, \"label\": \"two\", \"lunch\": null, \"plain\": null, \"price\": null}]",
+			"[{\"at\": null, \"id\": 1, \"ok\": null, \"doc\": null, \"qty\": 1, \"label\": \"first\", \"price\": null, \"Odd \\\"Name\": \"none\"}]",
+			"1true",
+			"[]"
+		],
+		"calls": [
+			{
+				"args": {
+					"credential": "pg",
+					"dialect": "postgres",
+					"mode": "single",
+					"statements": [
+						{
+							"text": "SELECT tags FROM pgcase.people ORDER BY id; SELECT interval '1 day 2 hours' AS i",
+							"simple": true
+						}
+					],
+					"largeNumbers": "text",
+					"dates": "legacy"
+				},
+				"result": {
+					"results": [
+						{
+							"sets": [
+								{
+									"command": "SELECT",
+									"rowCount": 3,
+									"rows": [
+										{
+											"tags": [1, 2]
+										},
+										{
+											"tags": null
+										},
+										{
+											"tags": []
+										}
+									]
+								},
+								{
+									"command": "SELECT",
+									"rowCount": 1,
+									"rows": [
+										{
+											"i": {
+												"days": 1,
+												"hours": 2
+											}
+										}
+									]
+								}
+							]
+						}
+					]
+				}
+			}
+		]
+	},
+	"executeQuery as text, commands with a transaction of their own": {
+		"v1": {
+			"output": [
+				{
+					"age": 1
+				}
+			]
+		},
+		"state": [
+			"[{\"id\": 1, \"age\": 1, \"big\": 9007199254740993, \"bin\": \"\\\\x0102ff\", \"born\": \"1990-02-03\", \"made\": \"2024-01-02T03:04:05\", \"meta\": {\"a\": [1, 2]}, \"name\": \"Ann\", \"seen\": \"2024-01-02T03:04:05.678+00:00\", \"tags\": [1, 2], \"ratio\": 0.1, \"score\": 12.50, \"active\": true}, {\"id\": 2, \"age\": 27, \"big\": 5, \"bin\": null, \"born\": null, \"made\": null, \"meta\": null, \"name\": \"Bob\", \"seen\": null, \"tags\": null, \"ratio\": \"NaN\", \"score\": null, \"active\": false}, {\"id\": 3, \"age\": 61, \"big\": -1, \"bin\": \"\\\\x\", \"born\": \"2001-12-31\", \"made\": \"1999-12-31T23:59:59.5\", \"meta\": \"text\", \"name\": \"Cy \\\"The\\\" O'Neil\", \"seen\": \"1999-12-31T21:59:59+00:00\", \"tags\": [], \"ratio\": 1000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000, \"score\": 0.00, \"active\": null}]",
+			"[{\"id\": 1, \"body\": \"first\", \"person\": 1}]",
+			"3true",
+			"[{\"at\": null, \"id\": 1, \"ok\": null, \"day\": null, \"doc\": null, \"qty\": 1, \"raw\": null, \"feel\": null, \"note\": \"none\", \"nums\": null, \"tags\": null, \"label\": \"one\", \"lunch\": null, \"plain\": null, \"price\": null}, {\"at\": null, \"id\": 2, \"ok\": null, \"day\": null, \"doc\": null, \"qty\": 2, \"raw\": null, \"feel\": null, \"note\": \"none\", \"nums\": null, \"tags\": null, \"label\": \"two\", \"lunch\": null, \"plain\": null, \"price\": null}]",
+			"[{\"at\": null, \"id\": 1, \"ok\": null, \"doc\": null, \"qty\": 1, \"label\": \"first\", \"price\": null, \"Odd \\\"Name\": \"none\"}]",
+			"1true",
+			"[]"
+		],
+		"calls": [
+			{
+				"args": {
+					"credential": "pg",
+					"dialect": "postgres",
+					"mode": "single",
+					"statements": [
+						{
+							"text": "BEGIN; UPDATE pgcase.people SET age = 1 WHERE id = 1; COMMIT; SELECT age FROM pgcase.people WHERE id = 1",
+							"simple": true
+						}
+					],
+					"largeNumbers": "text",
+					"dates": "legacy"
+				},
+				"result": {
+					"results": [
+						{
+							"sets": [
+								{
+									"command": "BEGIN",
+									"rowCount": null,
+									"rows": []
+								},
+								{
+									"command": "UPDATE",
+									"rowCount": 1,
+									"rows": []
+								},
+								{
+									"command": "COMMIT",
+									"rowCount": null,
+									"rows": []
+								},
+								{
+									"command": "SELECT",
+									"rowCount": 1,
+									"rows": [
+										{
+											"age": 1
+										}
+									]
+								}
+							]
+						}
+					]
+				}
+			}
+		]
+	},
+	"executeQuery as text, rows that are only an error, from two commands and one item": {
+		"v1": {
+			"output": [
+				[],
+				[
+					{
+						"a": 1,
+						"error": "x"
+					},
+					{
+						"error": "y"
+					}
+				]
+			]
+		},
+		"state": [
+			"[{\"id\": 1, \"age\": 34, \"big\": 9007199254740993, \"bin\": \"\\\\x0102ff\", \"born\": \"1990-02-03\", \"made\": \"2024-01-02T03:04:05\", \"meta\": {\"a\": [1, 2]}, \"name\": \"Ann\", \"seen\": \"2024-01-02T03:04:05.678+00:00\", \"tags\": [1, 2], \"ratio\": 0.1, \"score\": 12.50, \"active\": true}, {\"id\": 2, \"age\": 27, \"big\": 5, \"bin\": null, \"born\": null, \"made\": null, \"meta\": null, \"name\": \"Bob\", \"seen\": null, \"tags\": null, \"ratio\": \"NaN\", \"score\": null, \"active\": false}, {\"id\": 3, \"age\": 61, \"big\": -1, \"bin\": \"\\\\x\", \"born\": \"2001-12-31\", \"made\": \"1999-12-31T23:59:59.5\", \"meta\": \"text\", \"name\": \"Cy \\\"The\\\" O'Neil\", \"seen\": \"1999-12-31T21:59:59+00:00\", \"tags\": [], \"ratio\": 1000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000, \"score\": 0.00, \"active\": null}]",
+			"[{\"id\": 1, \"body\": \"first\", \"person\": 1}]",
+			"3true",
+			"[{\"at\": null, \"id\": 1, \"ok\": null, \"day\": null, \"doc\": null, \"qty\": 1, \"raw\": null, \"feel\": null, \"note\": \"none\", \"nums\": null, \"tags\": null, \"label\": \"one\", \"lunch\": null, \"plain\": null, \"price\": null}, {\"at\": null, \"id\": 2, \"ok\": null, \"day\": null, \"doc\": null, \"qty\": 2, \"raw\": null, \"feel\": null, \"note\": \"none\", \"nums\": null, \"tags\": null, \"label\": \"two\", \"lunch\": null, \"plain\": null, \"price\": null}]",
+			"[{\"at\": null, \"id\": 1, \"ok\": null, \"doc\": null, \"qty\": 1, \"label\": \"first\", \"price\": null, \"Odd \\\"Name\": \"none\"}]",
+			"1true",
+			"[]"
+		],
+		"calls": [
+			{
+				"args": {
+					"credential": "case",
+					"dialect": "postgres",
+					"mode": "single",
+					"statements": [
+						{
+							"text": "SELECT 'x' AS error; SELECT 'y' AS error",
+							"simple": true
+						}
+					],
+					"largeNumbers": "text",
+					"dates": "legacy"
+				},
+				"result": {
+					"results": [
+						{
+							"sets": [
+								{
+									"command": "SELECT",
+									"rowCount": 1,
+									"rows": [
+										{
+											"error": "x"
+										}
+									]
+								},
+								{
+									"command": "SELECT",
+									"rowCount": 1,
+									"rows": [
+										{
+											"error": "y"
+										}
+									]
+								}
+							]
+						}
+					]
+				}
+			}
+		]
+	},
+	"executeQuery as text, two commands before version 2.3": {
+		"v1": {
+			"output": [
+				{
+					"b": 2
+				}
+			]
+		},
+		"state": [
+			"[{\"id\": 1, \"age\": 34, \"big\": 9007199254740993, \"bin\": \"\\\\x0102ff\", \"born\": \"1990-02-03\", \"made\": \"2024-01-02T03:04:05\", \"meta\": {\"a\": [1, 2]}, \"name\": \"Ann\", \"seen\": \"2024-01-02T03:04:05.678+00:00\", \"tags\": [1, 2], \"ratio\": 0.1, \"score\": 12.50, \"active\": true}, {\"id\": 2, \"age\": 27, \"big\": 5, \"bin\": null, \"born\": null, \"made\": null, \"meta\": null, \"name\": \"Bob\", \"seen\": null, \"tags\": null, \"ratio\": \"NaN\", \"score\": null, \"active\": false}, {\"id\": 3, \"age\": 61, \"big\": -1, \"bin\": \"\\\\x\", \"born\": \"2001-12-31\", \"made\": \"1999-12-31T23:59:59.5\", \"meta\": \"text\", \"name\": \"Cy \\\"The\\\" O'Neil\", \"seen\": \"1999-12-31T21:59:59+00:00\", \"tags\": [], \"ratio\": 1000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000, \"score\": 0.00, \"active\": null}]",
+			"[{\"id\": 1, \"body\": \"first\", \"person\": 1}]",
+			"3true",
+			"[{\"at\": null, \"id\": 1, \"ok\": null, \"day\": null, \"doc\": null, \"qty\": 1, \"raw\": null, \"feel\": null, \"note\": \"none\", \"nums\": null, \"tags\": null, \"label\": \"one\", \"lunch\": null, \"plain\": null, \"price\": null}, {\"at\": null, \"id\": 2, \"ok\": null, \"day\": null, \"doc\": null, \"qty\": 2, \"raw\": null, \"feel\": null, \"note\": \"none\", \"nums\": null, \"tags\": null, \"label\": \"two\", \"lunch\": null, \"plain\": null, \"price\": null}]",
+			"[{\"at\": null, \"id\": 1, \"ok\": null, \"doc\": null, \"qty\": 1, \"label\": \"first\", \"price\": null, \"Odd \\\"Name\": \"none\"}]",
+			"1true",
+			"[]"
+		],
+		"calls": [],
+		"host": true
+	},
+	"executeQuery as text, two commands in version 2.2, single": {
+		"v1": {
+			"output": [
+				{
+					"a": 1
+				},
+				{
+					"b": 2
+				}
+			]
+		},
+		"state": [
+			"[{\"id\": 1, \"age\": 34, \"big\": 9007199254740993, \"bin\": \"\\\\x0102ff\", \"born\": \"1990-02-03\", \"made\": \"2024-01-02T03:04:05\", \"meta\": {\"a\": [1, 2]}, \"name\": \"Ann\", \"seen\": \"2024-01-02T03:04:05.678+00:00\", \"tags\": [1, 2], \"ratio\": 0.1, \"score\": 12.50, \"active\": true}, {\"id\": 2, \"age\": 27, \"big\": 5, \"bin\": null, \"born\": null, \"made\": null, \"meta\": null, \"name\": \"Bob\", \"seen\": null, \"tags\": null, \"ratio\": \"NaN\", \"score\": null, \"active\": false}, {\"id\": 3, \"age\": 61, \"big\": -1, \"bin\": \"\\\\x\", \"born\": \"2001-12-31\", \"made\": \"1999-12-31T23:59:59.5\", \"meta\": \"text\", \"name\": \"Cy \\\"The\\\" O'Neil\", \"seen\": \"1999-12-31T21:59:59+00:00\", \"tags\": [], \"ratio\": 1000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000, \"score\": 0.00, \"active\": null}]",
+			"[{\"id\": 1, \"body\": \"first\", \"person\": 1}]",
+			"3true",
+			"[{\"at\": null, \"id\": 1, \"ok\": null, \"day\": null, \"doc\": null, \"qty\": 1, \"raw\": null, \"feel\": null, \"note\": \"none\", \"nums\": null, \"tags\": null, \"label\": \"one\", \"lunch\": null, \"plain\": null, \"price\": null}, {\"at\": null, \"id\": 2, \"ok\": null, \"day\": null, \"doc\": null, \"qty\": 2, \"raw\": null, \"feel\": null, \"note\": \"none\", \"nums\": null, \"tags\": null, \"label\": \"two\", \"lunch\": null, \"plain\": null, \"price\": null}]",
+			"[{\"at\": null, \"id\": 1, \"ok\": null, \"doc\": null, \"qty\": 1, \"label\": \"first\", \"price\": null, \"Odd \\\"Name\": \"none\"}]",
+			"1true",
+			"[]"
+		],
+		"calls": [
+			{
+				"args": {
+					"credential": "pg",
+					"dialect": "postgres",
+					"mode": "single",
+					"statements": [
+						{
+							"text": "SELECT 1 AS a; SELECT 2 AS b",
+							"simple": true
+						}
+					],
+					"largeNumbers": "text",
+					"dates": "legacy"
+				},
+				"result": {
+					"results": [
+						{
+							"sets": [
+								{
+									"command": "SELECT",
+									"rowCount": 1,
+									"rows": [
+										{
+											"a": 1
+										}
+									]
+								},
+								{
+									"command": "SELECT",
+									"rowCount": 1,
+									"rows": [
+										{
+											"b": 2
+										}
+									]
+								}
+							]
+						}
+					]
+				}
+			}
+		]
+	},
+	"executeQuery as text, two commands with values for each item, single, stop": {
+		"v1": {
+			"output": [
+				{
+					"n": 2
+				},
+				{
+					"n": 3
+				}
+			]
+		},
+		"state": [
+			"[{\"id\": 1, \"age\": 34, \"big\": 9007199254740993, \"bin\": \"\\\\x0102ff\", \"born\": \"1990-02-03\", \"made\": \"2024-01-02T03:04:05\", \"meta\": {\"a\": [1, 2]}, \"name\": \"Ann\", \"seen\": \"2024-01-02T03:04:05.678+00:00\", \"tags\": [1, 2], \"ratio\": 0.1, \"score\": 12.50, \"active\": true}, {\"id\": 2, \"age\": 27, \"big\": 5, \"bin\": null, \"born\": null, \"made\": null, \"meta\": null, \"name\": \"Bob\", \"seen\": null, \"tags\": null, \"ratio\": \"NaN\", \"score\": null, \"active\": false}, {\"id\": 3, \"age\": 61, \"big\": -1, \"bin\": \"\\\\x\", \"born\": \"2001-12-31\", \"made\": \"1999-12-31T23:59:59.5\", \"meta\": \"text\", \"name\": \"Cy \\\"The\\\" O'Neil\", \"seen\": \"1999-12-31T21:59:59+00:00\", \"tags\": [], \"ratio\": 1000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000, \"score\": 0.00, \"active\": null}]",
+			"[{\"id\": 1, \"body\": \"first\", \"person\": 1}, {\"id\": 7, \"body\": \"O'Hara \\\\ said; -- $1\", \"person\": 1}, {\"id\": 8, \"body\": null, \"person\": 1}]",
+			"3true",
+			"[{\"at\": null, \"id\": 1, \"ok\": null, \"day\": null, \"doc\": null, \"qty\": 1, \"raw\": null, \"feel\": null, \"note\": \"none\", \"nums\": null, \"tags\": null, \"label\": \"one\", \"lunch\": null, \"plain\": null, \"price\": null}, {\"at\": null, \"id\": 2, \"ok\": null, \"day\": null, \"doc\": null, \"qty\": 2, \"raw\": null, \"feel\": null, \"note\": \"none\", \"nums\": null, \"tags\": null, \"label\": \"two\", \"lunch\": null, \"plain\": null, \"price\": null}]",
+			"[{\"at\": null, \"id\": 1, \"ok\": null, \"doc\": null, \"qty\": 1, \"label\": \"first\", \"price\": null, \"Odd \\\"Name\": \"none\"}]",
+			"1true",
+			"[]"
+		],
+		"calls": [
+			{
+				"args": {
+					"credential": "pg",
+					"dialect": "postgres",
+					"mode": "single",
+					"statements": [
+						{
+							"text": "INSERT INTO pgcase.notes VALUES (7, 1, 'O''Hara \\ said; -- $1'); SELECT count(*)::int AS n FROM pgcase.notes;INSERT INTO pgcase.notes VALUES (8, 1, null); SELECT count(*)::int AS n FROM pgcase.notes",
+							"simple": true
+						}
+					],
+					"largeNumbers": "text",
+					"dates": "legacy"
+				},
+				"result": {
+					"results": [
+						{
+							"sets": [
+								{
+									"command": "INSERT",
+									"rowCount": 1,
+									"rows": []
+								},
+								{
+									"command": "SELECT",
+									"rowCount": 1,
+									"rows": [
+										{
+											"n": 2
+										}
+									]
+								},
+								{
+									"command": "INSERT",
+									"rowCount": 1,
+									"rows": []
+								},
+								{
+									"command": "SELECT",
+									"rowCount": 1,
+									"rows": [
+										{
+											"n": 3
+										}
+									]
+								}
+							]
+						}
+					]
+				}
+			}
+		]
+	},
+	"executeQuery as text, a failure in the second command of the second item, single, stop": {
+		"v1": {
+			"error": "column \"nope\" does not exist"
+		},
+		"state": [
+			"[{\"id\": 1, \"age\": 34, \"big\": 9007199254740993, \"bin\": \"\\\\x0102ff\", \"born\": \"1990-02-03\", \"made\": \"2024-01-02T03:04:05\", \"meta\": {\"a\": [1, 2]}, \"name\": \"Ann\", \"seen\": \"2024-01-02T03:04:05.678+00:00\", \"tags\": [1, 2], \"ratio\": 0.1, \"score\": 12.50, \"active\": true}, {\"id\": 2, \"age\": 27, \"big\": 5, \"bin\": null, \"born\": null, \"made\": null, \"meta\": null, \"name\": \"Bob\", \"seen\": null, \"tags\": null, \"ratio\": \"NaN\", \"score\": null, \"active\": false}, {\"id\": 3, \"age\": 61, \"big\": -1, \"bin\": \"\\\\x\", \"born\": \"2001-12-31\", \"made\": \"1999-12-31T23:59:59.5\", \"meta\": \"text\", \"name\": \"Cy \\\"The\\\" O'Neil\", \"seen\": \"1999-12-31T21:59:59+00:00\", \"tags\": [], \"ratio\": 1000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000, \"score\": 0.00, \"active\": null}]",
+			"[{\"id\": 1, \"body\": \"first\", \"person\": 1}]",
+			"3true",
+			"[{\"at\": null, \"id\": 1, \"ok\": null, \"day\": null, \"doc\": null, \"qty\": 1, \"raw\": null, \"feel\": null, \"note\": \"none\", \"nums\": null, \"tags\": null, \"label\": \"one\", \"lunch\": null, \"plain\": null, \"price\": null}, {\"at\": null, \"id\": 2, \"ok\": null, \"day\": null, \"doc\": null, \"qty\": 2, \"raw\": null, \"feel\": null, \"note\": \"none\", \"nums\": null, \"tags\": null, \"label\": \"two\", \"lunch\": null, \"plain\": null, \"price\": null}]",
+			"[{\"at\": null, \"id\": 1, \"ok\": null, \"doc\": null, \"qty\": 1, \"label\": \"first\", \"price\": null, \"Odd \\\"Name\": \"none\"}]",
+			"1true",
+			"[]"
+		],
+		"calls": [
+			{
+				"args": {
+					"credential": "pg",
+					"dialect": "postgres",
+					"mode": "single",
+					"statements": [
+						{
+							"text": "SELECT 1 AS n;UPDATE pgcase.people SET age = 99 WHERE id = 1; SELECT nope",
+							"simple": true
+						}
+					],
+					"largeNumbers": "text",
+					"dates": "legacy"
+				},
+				"result": {
+					"results": [
+						{
+							"error": {
+								"message": "column \"nope\" does not exist",
+								"length": 104,
+								"severity": "ERROR",
+								"code": "42703",
+								"position": "70"
+							}
+						}
+					]
+				}
+			}
+		]
+	},
+	"executeQuery as text, a value that pg-promise refuses in the second item, single, stop": {
+		"v1": {
+			"error": "there is no parameter $2"
+		},
+		"state": [
+			"[{\"id\": 1, \"age\": 34, \"big\": 9007199254740993, \"bin\": \"\\\\x0102ff\", \"born\": \"1990-02-03\", \"made\": \"2024-01-02T03:04:05\", \"meta\": {\"a\": [1, 2]}, \"name\": \"Ann\", \"seen\": \"2024-01-02T03:04:05.678+00:00\", \"tags\": [1, 2], \"ratio\": 0.1, \"score\": 12.50, \"active\": true}, {\"id\": 2, \"age\": 27, \"big\": 5, \"bin\": null, \"born\": null, \"made\": null, \"meta\": null, \"name\": \"Bob\", \"seen\": null, \"tags\": null, \"ratio\": \"NaN\", \"score\": null, \"active\": false}, {\"id\": 3, \"age\": 61, \"big\": -1, \"bin\": \"\\\\x\", \"born\": \"2001-12-31\", \"made\": \"1999-12-31T23:59:59.5\", \"meta\": \"text\", \"name\": \"Cy \\\"The\\\" O'Neil\", \"seen\": \"1999-12-31T21:59:59+00:00\", \"tags\": [], \"ratio\": 1000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000, \"score\": 0.00, \"active\": null}]",
+			"[{\"id\": 1, \"body\": \"first\", \"person\": 1}]",
+			"3true",
+			"[{\"at\": null, \"id\": 1, \"ok\": null, \"day\": null, \"doc\": null, \"qty\": 1, \"raw\": null, \"feel\": null, \"note\": \"none\", \"nums\": null, \"tags\": null, \"label\": \"one\", \"lunch\": null, \"plain\": null, \"price\": null}, {\"at\": null, \"id\": 2, \"ok\": null, \"day\": null, \"doc\": null, \"qty\": 2, \"raw\": null, \"feel\": null, \"note\": \"none\", \"nums\": null, \"tags\": null, \"label\": \"two\", \"lunch\": null, \"plain\": null, \"price\": null}]",
+			"[{\"at\": null, \"id\": 1, \"ok\": null, \"doc\": null, \"qty\": 1, \"label\": \"first\", \"price\": null, \"Odd \\\"Name\": \"none\"}]",
+			"1true",
+			"[]"
+		],
+		"calls": [
+			{
+				"args": {
+					"credential": "pg",
+					"dialect": "postgres",
+					"mode": "single",
+					"statements": [
+						{
+							"text": "SELECT 1 AS a; SELECT 2 AS b;SELECT 1 AS a; SELECT $2 AS b",
+							"simple": true
+						}
+					],
+					"largeNumbers": "text",
+					"dates": "legacy"
+				},
+				"result": {
+					"results": [
+						{
+							"error": {
+								"message": "there is no parameter $2",
+								"length": 94,
+								"severity": "ERROR",
+								"code": "42P02",
+								"position": "52"
+							}
+						}
+					]
+				}
+			}
+		]
+	},
+	"executeQuery as text, two commands with values for each item, transaction, stop": {
+		"v1": {
+			"output": [
+				{
+					"n": 2
+				},
+				{
+					"n": 3
+				}
+			]
+		},
+		"state": [
+			"[{\"id\": 1, \"age\": 34, \"big\": 9007199254740993, \"bin\": \"\\\\x0102ff\", \"born\": \"1990-02-03\", \"made\": \"2024-01-02T03:04:05\", \"meta\": {\"a\": [1, 2]}, \"name\": \"Ann\", \"seen\": \"2024-01-02T03:04:05.678+00:00\", \"tags\": [1, 2], \"ratio\": 0.1, \"score\": 12.50, \"active\": true}, {\"id\": 2, \"age\": 27, \"big\": 5, \"bin\": null, \"born\": null, \"made\": null, \"meta\": null, \"name\": \"Bob\", \"seen\": null, \"tags\": null, \"ratio\": \"NaN\", \"score\": null, \"active\": false}, {\"id\": 3, \"age\": 61, \"big\": -1, \"bin\": \"\\\\x\", \"born\": \"2001-12-31\", \"made\": \"1999-12-31T23:59:59.5\", \"meta\": \"text\", \"name\": \"Cy \\\"The\\\" O'Neil\", \"seen\": \"1999-12-31T21:59:59+00:00\", \"tags\": [], \"ratio\": 1000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000, \"score\": 0.00, \"active\": null}]",
+			"[{\"id\": 1, \"body\": \"first\", \"person\": 1}, {\"id\": 7, \"body\": \"O'Hara \\\\ said; -- $1\", \"person\": 1}, {\"id\": 8, \"body\": null, \"person\": 1}]",
+			"3true",
+			"[{\"at\": null, \"id\": 1, \"ok\": null, \"day\": null, \"doc\": null, \"qty\": 1, \"raw\": null, \"feel\": null, \"note\": \"none\", \"nums\": null, \"tags\": null, \"label\": \"one\", \"lunch\": null, \"plain\": null, \"price\": null}, {\"at\": null, \"id\": 2, \"ok\": null, \"day\": null, \"doc\": null, \"qty\": 2, \"raw\": null, \"feel\": null, \"note\": \"none\", \"nums\": null, \"tags\": null, \"label\": \"two\", \"lunch\": null, \"plain\": null, \"price\": null}]",
+			"[{\"at\": null, \"id\": 1, \"ok\": null, \"doc\": null, \"qty\": 1, \"label\": \"first\", \"price\": null, \"Odd \\\"Name\": \"none\"}]",
+			"1true",
+			"[]"
+		],
+		"calls": [
+			{
+				"args": {
+					"credential": "pg",
+					"dialect": "postgres",
+					"mode": "transaction",
+					"statements": [
+						{
+							"text": "INSERT INTO pgcase.notes VALUES (7, 1, 'O''Hara \\ said; -- $1'); SELECT count(*)::int AS n FROM pgcase.notes",
+							"simple": true
+						},
+						{
+							"text": "INSERT INTO pgcase.notes VALUES (8, 1, null); SELECT count(*)::int AS n FROM pgcase.notes",
+							"simple": true
+						}
+					],
+					"largeNumbers": "text",
+					"dates": "legacy"
+				},
+				"result": {
+					"results": [
+						{
+							"sets": [
+								{
+									"command": "INSERT",
+									"rowCount": 1,
+									"rows": []
+								},
+								{
+									"command": "SELECT",
+									"rowCount": 1,
+									"rows": [
+										{
+											"n": 2
+										}
+									]
+								}
+							]
+						},
+						{
+							"sets": [
+								{
+									"command": "INSERT",
+									"rowCount": 1,
+									"rows": []
+								},
+								{
+									"command": "SELECT",
+									"rowCount": 1,
+									"rows": [
+										{
+											"n": 3
+										}
+									]
+								}
+							]
+						}
+					]
+				}
+			}
+		]
+	},
+	"executeQuery as text, a failure in the second command of the second item, transaction, stop": {
+		"v1": {
+			"error": "column \"nope\" does not exist"
+		},
+		"state": [
+			"[{\"id\": 1, \"age\": 34, \"big\": 9007199254740993, \"bin\": \"\\\\x0102ff\", \"born\": \"1990-02-03\", \"made\": \"2024-01-02T03:04:05\", \"meta\": {\"a\": [1, 2]}, \"name\": \"Ann\", \"seen\": \"2024-01-02T03:04:05.678+00:00\", \"tags\": [1, 2], \"ratio\": 0.1, \"score\": 12.50, \"active\": true}, {\"id\": 2, \"age\": 27, \"big\": 5, \"bin\": null, \"born\": null, \"made\": null, \"meta\": null, \"name\": \"Bob\", \"seen\": null, \"tags\": null, \"ratio\": \"NaN\", \"score\": null, \"active\": false}, {\"id\": 3, \"age\": 61, \"big\": -1, \"bin\": \"\\\\x\", \"born\": \"2001-12-31\", \"made\": \"1999-12-31T23:59:59.5\", \"meta\": \"text\", \"name\": \"Cy \\\"The\\\" O'Neil\", \"seen\": \"1999-12-31T21:59:59+00:00\", \"tags\": [], \"ratio\": 1000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000, \"score\": 0.00, \"active\": null}]",
+			"[{\"id\": 1, \"body\": \"first\", \"person\": 1}]",
+			"3true",
+			"[{\"at\": null, \"id\": 1, \"ok\": null, \"day\": null, \"doc\": null, \"qty\": 1, \"raw\": null, \"feel\": null, \"note\": \"none\", \"nums\": null, \"tags\": null, \"label\": \"one\", \"lunch\": null, \"plain\": null, \"price\": null}, {\"at\": null, \"id\": 2, \"ok\": null, \"day\": null, \"doc\": null, \"qty\": 2, \"raw\": null, \"feel\": null, \"note\": \"none\", \"nums\": null, \"tags\": null, \"label\": \"two\", \"lunch\": null, \"plain\": null, \"price\": null}]",
+			"[{\"at\": null, \"id\": 1, \"ok\": null, \"doc\": null, \"qty\": 1, \"label\": \"first\", \"price\": null, \"Odd \\\"Name\": \"none\"}]",
+			"1true",
+			"[]"
+		],
+		"calls": [
+			{
+				"args": {
+					"credential": "pg",
+					"dialect": "postgres",
+					"mode": "transaction",
+					"statements": [
+						{
+							"text": "SELECT 1 AS n",
+							"values": []
+						},
+						{
+							"text": "UPDATE pgcase.people SET age = 99 WHERE id = 1; SELECT nope",
+							"simple": true
+						}
+					],
+					"largeNumbers": "text",
+					"dates": "legacy"
+				},
+				"result": {
+					"results": [
+						{
+							"command": "SELECT",
+							"rowCount": 1,
+							"rows": [
+								{
+									"n": 1
+								}
+							]
+						},
+						{
+							"error": {
+								"message": "column \"nope\" does not exist",
+								"length": 104,
+								"severity": "ERROR",
+								"code": "42703",
+								"position": "56"
+							}
+						}
+					]
+				}
+			}
+		]
+	},
+	"executeQuery as text, a value that pg-promise refuses in the second item, transaction, stop": {
+		"v1": {
+			"error": "Variable $2 out of range. Parameters array length: 1"
+		},
+		"state": [
+			"[{\"id\": 1, \"age\": 34, \"big\": 9007199254740993, \"bin\": \"\\\\x0102ff\", \"born\": \"1990-02-03\", \"made\": \"2024-01-02T03:04:05\", \"meta\": {\"a\": [1, 2]}, \"name\": \"Ann\", \"seen\": \"2024-01-02T03:04:05.678+00:00\", \"tags\": [1, 2], \"ratio\": 0.1, \"score\": 12.50, \"active\": true}, {\"id\": 2, \"age\": 27, \"big\": 5, \"bin\": null, \"born\": null, \"made\": null, \"meta\": null, \"name\": \"Bob\", \"seen\": null, \"tags\": null, \"ratio\": \"NaN\", \"score\": null, \"active\": false}, {\"id\": 3, \"age\": 61, \"big\": -1, \"bin\": \"\\\\x\", \"born\": \"2001-12-31\", \"made\": \"1999-12-31T23:59:59.5\", \"meta\": \"text\", \"name\": \"Cy \\\"The\\\" O'Neil\", \"seen\": \"1999-12-31T21:59:59+00:00\", \"tags\": [], \"ratio\": 1000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000, \"score\": 0.00, \"active\": null}]",
+			"[{\"id\": 1, \"body\": \"first\", \"person\": 1}]",
+			"3true",
+			"[{\"at\": null, \"id\": 1, \"ok\": null, \"day\": null, \"doc\": null, \"qty\": 1, \"raw\": null, \"feel\": null, \"note\": \"none\", \"nums\": null, \"tags\": null, \"label\": \"one\", \"lunch\": null, \"plain\": null, \"price\": null}, {\"at\": null, \"id\": 2, \"ok\": null, \"day\": null, \"doc\": null, \"qty\": 2, \"raw\": null, \"feel\": null, \"note\": \"none\", \"nums\": null, \"tags\": null, \"label\": \"two\", \"lunch\": null, \"plain\": null, \"price\": null}]",
+			"[{\"at\": null, \"id\": 1, \"ok\": null, \"doc\": null, \"qty\": 1, \"label\": \"first\", \"price\": null, \"Odd \\\"Name\": \"none\"}]",
+			"1true",
+			"[]"
+		],
+		"calls": [],
+		"host": true
+	},
+	"executeQuery as text, two commands with values for each item, independently, stop": {
+		"v1": {
+			"output": [
+				{
+					"n": 2
+				},
+				{
+					"n": 3
+				}
+			]
+		},
+		"state": [
+			"[{\"id\": 1, \"age\": 34, \"big\": 9007199254740993, \"bin\": \"\\\\x0102ff\", \"born\": \"1990-02-03\", \"made\": \"2024-01-02T03:04:05\", \"meta\": {\"a\": [1, 2]}, \"name\": \"Ann\", \"seen\": \"2024-01-02T03:04:05.678+00:00\", \"tags\": [1, 2], \"ratio\": 0.1, \"score\": 12.50, \"active\": true}, {\"id\": 2, \"age\": 27, \"big\": 5, \"bin\": null, \"born\": null, \"made\": null, \"meta\": null, \"name\": \"Bob\", \"seen\": null, \"tags\": null, \"ratio\": \"NaN\", \"score\": null, \"active\": false}, {\"id\": 3, \"age\": 61, \"big\": -1, \"bin\": \"\\\\x\", \"born\": \"2001-12-31\", \"made\": \"1999-12-31T23:59:59.5\", \"meta\": \"text\", \"name\": \"Cy \\\"The\\\" O'Neil\", \"seen\": \"1999-12-31T21:59:59+00:00\", \"tags\": [], \"ratio\": 1000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000, \"score\": 0.00, \"active\": null}]",
+			"[{\"id\": 1, \"body\": \"first\", \"person\": 1}, {\"id\": 7, \"body\": \"O'Hara \\\\ said; -- $1\", \"person\": 1}, {\"id\": 8, \"body\": null, \"person\": 1}]",
+			"3true",
+			"[{\"at\": null, \"id\": 1, \"ok\": null, \"day\": null, \"doc\": null, \"qty\": 1, \"raw\": null, \"feel\": null, \"note\": \"none\", \"nums\": null, \"tags\": null, \"label\": \"one\", \"lunch\": null, \"plain\": null, \"price\": null}, {\"at\": null, \"id\": 2, \"ok\": null, \"day\": null, \"doc\": null, \"qty\": 2, \"raw\": null, \"feel\": null, \"note\": \"none\", \"nums\": null, \"tags\": null, \"label\": \"two\", \"lunch\": null, \"plain\": null, \"price\": null}]",
+			"[{\"at\": null, \"id\": 1, \"ok\": null, \"doc\": null, \"qty\": 1, \"label\": \"first\", \"price\": null, \"Odd \\\"Name\": \"none\"}]",
+			"1true",
+			"[]"
+		],
+		"calls": [
+			{
+				"args": {
+					"credential": "pg",
+					"dialect": "postgres",
+					"mode": "single",
+					"statements": [
+						{
+							"text": "INSERT INTO pgcase.notes VALUES (7, 1, 'O''Hara \\ said; -- $1'); SELECT count(*)::int AS n FROM pgcase.notes",
+							"simple": true
+						}
+					],
+					"largeNumbers": "text",
+					"dates": "legacy"
+				},
+				"result": {
+					"results": [
+						{
+							"sets": [
+								{
+									"command": "INSERT",
+									"rowCount": 1,
+									"rows": []
+								},
+								{
+									"command": "SELECT",
+									"rowCount": 1,
+									"rows": [
+										{
+											"n": 2
+										}
+									]
+								}
+							]
+						}
+					]
+				}
+			},
+			{
+				"args": {
+					"credential": "pg",
+					"dialect": "postgres",
+					"mode": "single",
+					"statements": [
+						{
+							"text": "INSERT INTO pgcase.notes VALUES (8, 1, null); SELECT count(*)::int AS n FROM pgcase.notes",
+							"simple": true
+						}
+					],
+					"largeNumbers": "text",
+					"dates": "legacy"
+				},
+				"result": {
+					"results": [
+						{
+							"sets": [
+								{
+									"command": "INSERT",
+									"rowCount": 1,
+									"rows": []
+								},
+								{
+									"command": "SELECT",
+									"rowCount": 1,
+									"rows": [
+										{
+											"n": 3
+										}
+									]
+								}
+							]
+						}
+					]
+				}
+			}
+		]
+	},
+	"executeQuery as text, a failure in the second command of the second item, independently, stop": {
+		"v1": {
+			"error": "column \"nope\" does not exist"
+		},
+		"state": [
+			"[{\"id\": 1, \"age\": 34, \"big\": 9007199254740993, \"bin\": \"\\\\x0102ff\", \"born\": \"1990-02-03\", \"made\": \"2024-01-02T03:04:05\", \"meta\": {\"a\": [1, 2]}, \"name\": \"Ann\", \"seen\": \"2024-01-02T03:04:05.678+00:00\", \"tags\": [1, 2], \"ratio\": 0.1, \"score\": 12.50, \"active\": true}, {\"id\": 2, \"age\": 27, \"big\": 5, \"bin\": null, \"born\": null, \"made\": null, \"meta\": null, \"name\": \"Bob\", \"seen\": null, \"tags\": null, \"ratio\": \"NaN\", \"score\": null, \"active\": false}, {\"id\": 3, \"age\": 61, \"big\": -1, \"bin\": \"\\\\x\", \"born\": \"2001-12-31\", \"made\": \"1999-12-31T23:59:59.5\", \"meta\": \"text\", \"name\": \"Cy \\\"The\\\" O'Neil\", \"seen\": \"1999-12-31T21:59:59+00:00\", \"tags\": [], \"ratio\": 1000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000, \"score\": 0.00, \"active\": null}]",
+			"[{\"id\": 1, \"body\": \"first\", \"person\": 1}]",
+			"3true",
+			"[{\"at\": null, \"id\": 1, \"ok\": null, \"day\": null, \"doc\": null, \"qty\": 1, \"raw\": null, \"feel\": null, \"note\": \"none\", \"nums\": null, \"tags\": null, \"label\": \"one\", \"lunch\": null, \"plain\": null, \"price\": null}, {\"at\": null, \"id\": 2, \"ok\": null, \"day\": null, \"doc\": null, \"qty\": 2, \"raw\": null, \"feel\": null, \"note\": \"none\", \"nums\": null, \"tags\": null, \"label\": \"two\", \"lunch\": null, \"plain\": null, \"price\": null}]",
+			"[{\"at\": null, \"id\": 1, \"ok\": null, \"doc\": null, \"qty\": 1, \"label\": \"first\", \"price\": null, \"Odd \\\"Name\": \"none\"}]",
+			"1true",
+			"[]"
+		],
+		"calls": [
+			{
+				"args": {
+					"credential": "pg",
+					"dialect": "postgres",
+					"mode": "single",
+					"statements": [
+						{
+							"text": "SELECT 1 AS n",
+							"values": []
+						}
+					],
+					"largeNumbers": "text",
+					"dates": "legacy"
+				},
+				"result": {
+					"results": [
+						{
+							"command": "SELECT",
+							"rowCount": 1,
+							"rows": [
+								{
+									"n": 1
+								}
+							]
+						}
+					]
+				}
+			},
+			{
+				"args": {
+					"credential": "pg",
+					"dialect": "postgres",
+					"mode": "single",
+					"statements": [
+						{
+							"text": "UPDATE pgcase.people SET age = 99 WHERE id = 1; SELECT nope",
+							"simple": true
+						}
+					],
+					"largeNumbers": "text",
+					"dates": "legacy"
+				},
+				"result": {
+					"results": [
+						{
+							"error": {
+								"message": "column \"nope\" does not exist",
+								"length": 104,
+								"severity": "ERROR",
+								"code": "42703",
+								"position": "56"
+							}
+						}
+					]
+				}
+			}
+		]
+	},
+	"executeQuery as text, a value that pg-promise refuses in the second item, independently, stop": {
+		"v1": {
+			"error": "Variable $2 out of range. Parameters array length: 1"
+		},
+		"state": [
+			"[{\"id\": 1, \"age\": 34, \"big\": 9007199254740993, \"bin\": \"\\\\x0102ff\", \"born\": \"1990-02-03\", \"made\": \"2024-01-02T03:04:05\", \"meta\": {\"a\": [1, 2]}, \"name\": \"Ann\", \"seen\": \"2024-01-02T03:04:05.678+00:00\", \"tags\": [1, 2], \"ratio\": 0.1, \"score\": 12.50, \"active\": true}, {\"id\": 2, \"age\": 27, \"big\": 5, \"bin\": null, \"born\": null, \"made\": null, \"meta\": null, \"name\": \"Bob\", \"seen\": null, \"tags\": null, \"ratio\": \"NaN\", \"score\": null, \"active\": false}, {\"id\": 3, \"age\": 61, \"big\": -1, \"bin\": \"\\\\x\", \"born\": \"2001-12-31\", \"made\": \"1999-12-31T23:59:59.5\", \"meta\": \"text\", \"name\": \"Cy \\\"The\\\" O'Neil\", \"seen\": \"1999-12-31T21:59:59+00:00\", \"tags\": [], \"ratio\": 1000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000, \"score\": 0.00, \"active\": null}]",
+			"[{\"id\": 1, \"body\": \"first\", \"person\": 1}]",
+			"3true",
+			"[{\"at\": null, \"id\": 1, \"ok\": null, \"day\": null, \"doc\": null, \"qty\": 1, \"raw\": null, \"feel\": null, \"note\": \"none\", \"nums\": null, \"tags\": null, \"label\": \"one\", \"lunch\": null, \"plain\": null, \"price\": null}, {\"at\": null, \"id\": 2, \"ok\": null, \"day\": null, \"doc\": null, \"qty\": 2, \"raw\": null, \"feel\": null, \"note\": \"none\", \"nums\": null, \"tags\": null, \"label\": \"two\", \"lunch\": null, \"plain\": null, \"price\": null}]",
+			"[{\"at\": null, \"id\": 1, \"ok\": null, \"doc\": null, \"qty\": 1, \"label\": \"first\", \"price\": null, \"Odd \\\"Name\": \"none\"}]",
+			"1true",
+			"[]"
+		],
+		"calls": [],
+		"host": true
+	},
+	"executeQuery as text, two commands with values for each item, single, continue": {
+		"v1": {
+			"output": [
+				{
+					"n": 2
+				},
+				{
+					"n": 3
+				}
+			]
+		},
+		"state": [
+			"[{\"id\": 1, \"age\": 34, \"big\": 9007199254740993, \"bin\": \"\\\\x0102ff\", \"born\": \"1990-02-03\", \"made\": \"2024-01-02T03:04:05\", \"meta\": {\"a\": [1, 2]}, \"name\": \"Ann\", \"seen\": \"2024-01-02T03:04:05.678+00:00\", \"tags\": [1, 2], \"ratio\": 0.1, \"score\": 12.50, \"active\": true}, {\"id\": 2, \"age\": 27, \"big\": 5, \"bin\": null, \"born\": null, \"made\": null, \"meta\": null, \"name\": \"Bob\", \"seen\": null, \"tags\": null, \"ratio\": \"NaN\", \"score\": null, \"active\": false}, {\"id\": 3, \"age\": 61, \"big\": -1, \"bin\": \"\\\\x\", \"born\": \"2001-12-31\", \"made\": \"1999-12-31T23:59:59.5\", \"meta\": \"text\", \"name\": \"Cy \\\"The\\\" O'Neil\", \"seen\": \"1999-12-31T21:59:59+00:00\", \"tags\": [], \"ratio\": 1000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000, \"score\": 0.00, \"active\": null}]",
+			"[{\"id\": 1, \"body\": \"first\", \"person\": 1}, {\"id\": 7, \"body\": \"O'Hara \\\\ said; -- $1\", \"person\": 1}, {\"id\": 8, \"body\": null, \"person\": 1}]",
+			"3true",
+			"[{\"at\": null, \"id\": 1, \"ok\": null, \"day\": null, \"doc\": null, \"qty\": 1, \"raw\": null, \"feel\": null, \"note\": \"none\", \"nums\": null, \"tags\": null, \"label\": \"one\", \"lunch\": null, \"plain\": null, \"price\": null}, {\"at\": null, \"id\": 2, \"ok\": null, \"day\": null, \"doc\": null, \"qty\": 2, \"raw\": null, \"feel\": null, \"note\": \"none\", \"nums\": null, \"tags\": null, \"label\": \"two\", \"lunch\": null, \"plain\": null, \"price\": null}]",
+			"[{\"at\": null, \"id\": 1, \"ok\": null, \"doc\": null, \"qty\": 1, \"label\": \"first\", \"price\": null, \"Odd \\\"Name\": \"none\"}]",
+			"1true",
+			"[]"
+		],
+		"calls": [
+			{
+				"args": {
+					"credential": "case",
+					"dialect": "postgres",
+					"mode": "single",
+					"statements": [
+						{
+							"text": "INSERT INTO pgcase.notes VALUES (7, 1, 'O''Hara \\ said; -- $1'); SELECT count(*)::int AS n FROM pgcase.notes;INSERT INTO pgcase.notes VALUES (8, 1, null); SELECT count(*)::int AS n FROM pgcase.notes",
+							"simple": true
+						}
+					],
+					"largeNumbers": "text",
+					"dates": "legacy"
+				},
+				"result": {
+					"results": [
+						{
+							"sets": [
+								{
+									"command": "INSERT",
+									"rowCount": 1,
+									"rows": []
+								},
+								{
+									"command": "SELECT",
+									"rowCount": 1,
+									"rows": [
+										{
+											"n": 2
+										}
+									]
+								},
+								{
+									"command": "INSERT",
+									"rowCount": 1,
+									"rows": []
+								},
+								{
+									"command": "SELECT",
+									"rowCount": 1,
+									"rows": [
+										{
+											"n": 3
+										}
+									]
+								}
+							]
+						}
+					]
+				}
+			}
+		]
+	},
+	"executeQuery as text, a failure in the second command of the second item, single, continue": {
+		"v1": {
+			"output": [
+				{
+					"message": "column \"nope\" does not exist",
+					"error": {
+						"name": "NodeOperationError",
+						"level": "warning",
+						"shouldReport": true,
+						"description": "Failed query: SELECT 1 AS n",
+						"tags": {
+							"packageName": "workflow"
+						},
+						"timestamp": 0,
+						"context": {},
+						"functionality": "regular",
+						"node": {
+							"id": "step",
+							"name": "Node",
+							"type": "n8n-nodes-base.postgres",
+							"typeVersion": 2.6,
+							"position": [200, 0],
+							"parameters": {
+								"resource": "database",
+								"operation": "executeQuery",
+								"query": "{{ $json.a === 1 ? 'SELECT 1 AS n' : 'UPDATE pgcase.people SET age = 99 WHERE id = 1; SELECT nope' }}",
+								"options": {}
+							},
+							"credentials": {
+								"postgres": {
+									"id": "case",
+									"name": "case"
+								}
+							},
+							"onError": "continueRegularOutput"
+						},
+						"messages": []
+					}
+				}
+			]
+		},
+		"state": [
+			"[{\"id\": 1, \"age\": 34, \"big\": 9007199254740993, \"bin\": \"\\\\x0102ff\", \"born\": \"1990-02-03\", \"made\": \"2024-01-02T03:04:05\", \"meta\": {\"a\": [1, 2]}, \"name\": \"Ann\", \"seen\": \"2024-01-02T03:04:05.678+00:00\", \"tags\": [1, 2], \"ratio\": 0.1, \"score\": 12.50, \"active\": true}, {\"id\": 2, \"age\": 27, \"big\": 5, \"bin\": null, \"born\": null, \"made\": null, \"meta\": null, \"name\": \"Bob\", \"seen\": null, \"tags\": null, \"ratio\": \"NaN\", \"score\": null, \"active\": false}, {\"id\": 3, \"age\": 61, \"big\": -1, \"bin\": \"\\\\x\", \"born\": \"2001-12-31\", \"made\": \"1999-12-31T23:59:59.5\", \"meta\": \"text\", \"name\": \"Cy \\\"The\\\" O'Neil\", \"seen\": \"1999-12-31T21:59:59+00:00\", \"tags\": [], \"ratio\": 1000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000, \"score\": 0.00, \"active\": null}]",
+			"[{\"id\": 1, \"body\": \"first\", \"person\": 1}]",
+			"3true",
+			"[{\"at\": null, \"id\": 1, \"ok\": null, \"day\": null, \"doc\": null, \"qty\": 1, \"raw\": null, \"feel\": null, \"note\": \"none\", \"nums\": null, \"tags\": null, \"label\": \"one\", \"lunch\": null, \"plain\": null, \"price\": null}, {\"at\": null, \"id\": 2, \"ok\": null, \"day\": null, \"doc\": null, \"qty\": 2, \"raw\": null, \"feel\": null, \"note\": \"none\", \"nums\": null, \"tags\": null, \"label\": \"two\", \"lunch\": null, \"plain\": null, \"price\": null}]",
+			"[{\"at\": null, \"id\": 1, \"ok\": null, \"doc\": null, \"qty\": 1, \"label\": \"first\", \"price\": null, \"Odd \\\"Name\": \"none\"}]",
+			"1true",
+			"[]"
+		],
+		"calls": [
+			{
+				"args": {
+					"credential": "case",
+					"dialect": "postgres",
+					"mode": "single",
+					"statements": [
+						{
+							"text": "SELECT 1 AS n;UPDATE pgcase.people SET age = 99 WHERE id = 1; SELECT nope",
+							"simple": true
+						}
+					],
+					"largeNumbers": "text",
+					"dates": "legacy"
+				},
+				"result": {
+					"results": [
+						{
+							"error": {
+								"message": "column \"nope\" does not exist",
+								"length": 104,
+								"severity": "ERROR",
+								"code": "42703",
+								"position": "70"
+							}
+						}
+					]
+				}
+			}
+		]
+	},
+	"executeQuery as text, a value that pg-promise refuses in the second item, single, continue": {
+		"v1": {
+			"output": [
+				{
+					"message": "there is no parameter $2",
+					"error": {
+						"name": "NodeOperationError",
+						"level": "warning",
+						"shouldReport": true,
+						"description": "Failed query: SELECT $1 AS a; SELECT $2 AS b",
+						"tags": {
+							"packageName": "workflow"
+						},
+						"timestamp": 0,
+						"context": {},
+						"functionality": "regular",
+						"node": {
+							"id": "step",
+							"name": "Node",
+							"type": "n8n-nodes-base.postgres",
+							"typeVersion": 2.6,
+							"position": [200, 0],
+							"parameters": {
+								"resource": "database",
+								"operation": "executeQuery",
+								"query": "SELECT $1 AS a; SELECT $2 AS b",
+								"options": {
+									"queryReplacement": "={{ $json.a === 1 ? [1, 2] : [1] }}"
+								}
+							},
+							"credentials": {
+								"postgres": {
+									"id": "case",
+									"name": "case"
+								}
+							},
+							"onError": "continueRegularOutput"
+						},
+						"messages": []
+					}
+				}
+			]
+		},
+		"state": [
+			"[{\"id\": 1, \"age\": 34, \"big\": 9007199254740993, \"bin\": \"\\\\x0102ff\", \"born\": \"1990-02-03\", \"made\": \"2024-01-02T03:04:05\", \"meta\": {\"a\": [1, 2]}, \"name\": \"Ann\", \"seen\": \"2024-01-02T03:04:05.678+00:00\", \"tags\": [1, 2], \"ratio\": 0.1, \"score\": 12.50, \"active\": true}, {\"id\": 2, \"age\": 27, \"big\": 5, \"bin\": null, \"born\": null, \"made\": null, \"meta\": null, \"name\": \"Bob\", \"seen\": null, \"tags\": null, \"ratio\": \"NaN\", \"score\": null, \"active\": false}, {\"id\": 3, \"age\": 61, \"big\": -1, \"bin\": \"\\\\x\", \"born\": \"2001-12-31\", \"made\": \"1999-12-31T23:59:59.5\", \"meta\": \"text\", \"name\": \"Cy \\\"The\\\" O'Neil\", \"seen\": \"1999-12-31T21:59:59+00:00\", \"tags\": [], \"ratio\": 1000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000, \"score\": 0.00, \"active\": null}]",
+			"[{\"id\": 1, \"body\": \"first\", \"person\": 1}]",
+			"3true",
+			"[{\"at\": null, \"id\": 1, \"ok\": null, \"day\": null, \"doc\": null, \"qty\": 1, \"raw\": null, \"feel\": null, \"note\": \"none\", \"nums\": null, \"tags\": null, \"label\": \"one\", \"lunch\": null, \"plain\": null, \"price\": null}, {\"at\": null, \"id\": 2, \"ok\": null, \"day\": null, \"doc\": null, \"qty\": 2, \"raw\": null, \"feel\": null, \"note\": \"none\", \"nums\": null, \"tags\": null, \"label\": \"two\", \"lunch\": null, \"plain\": null, \"price\": null}]",
+			"[{\"at\": null, \"id\": 1, \"ok\": null, \"doc\": null, \"qty\": 1, \"label\": \"first\", \"price\": null, \"Odd \\\"Name\": \"none\"}]",
+			"1true",
+			"[]"
+		],
+		"calls": [
+			{
+				"args": {
+					"credential": "case",
+					"dialect": "postgres",
+					"mode": "single",
+					"statements": [
+						{
+							"text": "SELECT 1 AS a; SELECT 2 AS b;SELECT 1 AS a; SELECT $2 AS b",
+							"simple": true
+						}
+					],
+					"largeNumbers": "text",
+					"dates": "legacy"
+				},
+				"result": {
+					"results": [
+						{
+							"error": {
+								"message": "there is no parameter $2",
+								"length": 94,
+								"severity": "ERROR",
+								"code": "42P02",
+								"position": "52"
+							}
+						}
+					]
+				}
+			}
+		]
+	},
+	"executeQuery as text, two commands with values for each item, transaction, continue": {
+		"v1": {
+			"output": [
+				{
+					"n": 2
+				},
+				{
+					"n": 3
+				}
+			]
+		},
+		"state": [
+			"[{\"id\": 1, \"age\": 34, \"big\": 9007199254740993, \"bin\": \"\\\\x0102ff\", \"born\": \"1990-02-03\", \"made\": \"2024-01-02T03:04:05\", \"meta\": {\"a\": [1, 2]}, \"name\": \"Ann\", \"seen\": \"2024-01-02T03:04:05.678+00:00\", \"tags\": [1, 2], \"ratio\": 0.1, \"score\": 12.50, \"active\": true}, {\"id\": 2, \"age\": 27, \"big\": 5, \"bin\": null, \"born\": null, \"made\": null, \"meta\": null, \"name\": \"Bob\", \"seen\": null, \"tags\": null, \"ratio\": \"NaN\", \"score\": null, \"active\": false}, {\"id\": 3, \"age\": 61, \"big\": -1, \"bin\": \"\\\\x\", \"born\": \"2001-12-31\", \"made\": \"1999-12-31T23:59:59.5\", \"meta\": \"text\", \"name\": \"Cy \\\"The\\\" O'Neil\", \"seen\": \"1999-12-31T21:59:59+00:00\", \"tags\": [], \"ratio\": 1000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000, \"score\": 0.00, \"active\": null}]",
+			"[{\"id\": 1, \"body\": \"first\", \"person\": 1}, {\"id\": 7, \"body\": \"O'Hara \\\\ said; -- $1\", \"person\": 1}, {\"id\": 8, \"body\": null, \"person\": 1}]",
+			"3true",
+			"[{\"at\": null, \"id\": 1, \"ok\": null, \"day\": null, \"doc\": null, \"qty\": 1, \"raw\": null, \"feel\": null, \"note\": \"none\", \"nums\": null, \"tags\": null, \"label\": \"one\", \"lunch\": null, \"plain\": null, \"price\": null}, {\"at\": null, \"id\": 2, \"ok\": null, \"day\": null, \"doc\": null, \"qty\": 2, \"raw\": null, \"feel\": null, \"note\": \"none\", \"nums\": null, \"tags\": null, \"label\": \"two\", \"lunch\": null, \"plain\": null, \"price\": null}]",
+			"[{\"at\": null, \"id\": 1, \"ok\": null, \"doc\": null, \"qty\": 1, \"label\": \"first\", \"price\": null, \"Odd \\\"Name\": \"none\"}]",
+			"1true",
+			"[]"
+		],
+		"calls": [
+			{
+				"args": {
+					"credential": "case",
+					"dialect": "postgres",
+					"mode": "transaction",
+					"statements": [
+						{
+							"text": "INSERT INTO pgcase.notes VALUES (7, 1, 'O''Hara \\ said; -- $1'); SELECT count(*)::int AS n FROM pgcase.notes",
+							"simple": true
+						},
+						{
+							"text": "INSERT INTO pgcase.notes VALUES (8, 1, null); SELECT count(*)::int AS n FROM pgcase.notes",
+							"simple": true
+						}
+					],
+					"largeNumbers": "text",
+					"dates": "legacy"
+				},
+				"result": {
+					"results": [
+						{
+							"sets": [
+								{
+									"command": "INSERT",
+									"rowCount": 1,
+									"rows": []
+								},
+								{
+									"command": "SELECT",
+									"rowCount": 1,
+									"rows": [
+										{
+											"n": 2
+										}
+									]
+								}
+							]
+						},
+						{
+							"sets": [
+								{
+									"command": "INSERT",
+									"rowCount": 1,
+									"rows": []
+								},
+								{
+									"command": "SELECT",
+									"rowCount": 1,
+									"rows": [
+										{
+											"n": 3
+										}
+									]
+								}
+							]
+						}
+					]
+				}
+			}
+		]
+	},
+	"executeQuery as text, a failure in the second command of the second item, transaction, continue": {
+		"v1": {
+			"output": [
+				{
+					"n": 1
+				},
+				{
+					"error": {
+						"name": "NodeOperationError",
+						"level": "warning",
+						"shouldReport": true,
+						"description": "Failed query: UPDATE pgcase.people SET age = 99 WHERE id = 1; SELECT nope",
+						"tags": {
+							"packageName": "workflow"
+						},
+						"timestamp": 0,
+						"context": {
+							"itemIndex": 1
+						},
+						"functionality": "regular",
+						"node": {
+							"id": "step",
+							"name": "Node",
+							"type": "n8n-nodes-base.postgres",
+							"typeVersion": 2.6,
+							"position": [200, 0],
+							"parameters": {
+								"resource": "database",
+								"operation": "executeQuery",
+								"query": "{{ $json.a === 1 ? 'SELECT 1 AS n' : 'UPDATE pgcase.people SET age = 99 WHERE id = 1; SELECT nope' }}",
+								"options": {
+									"queryBatching": "transaction"
+								}
+							},
+							"credentials": {
+								"postgres": {
+									"id": "case",
+									"name": "case"
+								}
+							},
+							"onError": "continueRegularOutput"
+						},
+						"messages": []
+					}
+				}
+			]
+		},
+		"state": [
+			"[{\"id\": 1, \"age\": 34, \"big\": 9007199254740993, \"bin\": \"\\\\x0102ff\", \"born\": \"1990-02-03\", \"made\": \"2024-01-02T03:04:05\", \"meta\": {\"a\": [1, 2]}, \"name\": \"Ann\", \"seen\": \"2024-01-02T03:04:05.678+00:00\", \"tags\": [1, 2], \"ratio\": 0.1, \"score\": 12.50, \"active\": true}, {\"id\": 2, \"age\": 27, \"big\": 5, \"bin\": null, \"born\": null, \"made\": null, \"meta\": null, \"name\": \"Bob\", \"seen\": null, \"tags\": null, \"ratio\": \"NaN\", \"score\": null, \"active\": false}, {\"id\": 3, \"age\": 61, \"big\": -1, \"bin\": \"\\\\x\", \"born\": \"2001-12-31\", \"made\": \"1999-12-31T23:59:59.5\", \"meta\": \"text\", \"name\": \"Cy \\\"The\\\" O'Neil\", \"seen\": \"1999-12-31T21:59:59+00:00\", \"tags\": [], \"ratio\": 1000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000, \"score\": 0.00, \"active\": null}]",
+			"[{\"id\": 1, \"body\": \"first\", \"person\": 1}]",
+			"3true",
+			"[{\"at\": null, \"id\": 1, \"ok\": null, \"day\": null, \"doc\": null, \"qty\": 1, \"raw\": null, \"feel\": null, \"note\": \"none\", \"nums\": null, \"tags\": null, \"label\": \"one\", \"lunch\": null, \"plain\": null, \"price\": null}, {\"at\": null, \"id\": 2, \"ok\": null, \"day\": null, \"doc\": null, \"qty\": 2, \"raw\": null, \"feel\": null, \"note\": \"none\", \"nums\": null, \"tags\": null, \"label\": \"two\", \"lunch\": null, \"plain\": null, \"price\": null}]",
+			"[{\"at\": null, \"id\": 1, \"ok\": null, \"doc\": null, \"qty\": 1, \"label\": \"first\", \"price\": null, \"Odd \\\"Name\": \"none\"}]",
+			"1true",
+			"[]"
+		],
+		"calls": [
+			{
+				"args": {
+					"credential": "case",
+					"dialect": "postgres",
+					"mode": "transaction",
+					"statements": [
+						{
+							"text": "SELECT 1 AS n",
+							"values": []
+						},
+						{
+							"text": "UPDATE pgcase.people SET age = 99 WHERE id = 1; SELECT nope",
+							"simple": true
+						}
+					],
+					"largeNumbers": "text",
+					"dates": "legacy"
+				},
+				"result": {
+					"results": [
+						{
+							"command": "SELECT",
+							"rowCount": 1,
+							"rows": [
+								{
+									"n": 1
+								}
+							]
+						},
+						{
+							"error": {
+								"message": "column \"nope\" does not exist",
+								"length": 104,
+								"severity": "ERROR",
+								"code": "42703",
+								"position": "56"
+							}
+						}
+					]
+				}
+			}
+		]
+	},
+	"executeQuery as text, a value that pg-promise refuses in the second item, transaction, continue": {
+		"v1": {
+			"output": [
+				{
+					"a": 1
+				},
+				{
+					"b": 2
+				},
+				{
+					"error": {
+						"name": "NodeOperationError",
+						"level": "warning",
+						"shouldReport": true,
+						"description": "Failed query: SELECT $1 AS a; SELECT $2 AS b",
+						"tags": {
+							"packageName": "workflow"
+						},
+						"timestamp": 0,
+						"context": {
+							"itemIndex": 1
+						},
+						"functionality": "regular",
+						"node": {
+							"id": "step",
+							"name": "Node",
+							"type": "n8n-nodes-base.postgres",
+							"typeVersion": 2.6,
+							"position": [200, 0],
+							"parameters": {
+								"resource": "database",
+								"operation": "executeQuery",
+								"query": "SELECT $1 AS a; SELECT $2 AS b",
+								"options": {
+									"queryBatching": "transaction",
+									"queryReplacement": "={{ $json.a === 1 ? [1, 2] : [1] }}"
+								}
+							},
+							"credentials": {
+								"postgres": {
+									"id": "case",
+									"name": "case"
+								}
+							},
+							"onError": "continueRegularOutput"
+						},
+						"messages": []
+					}
+				}
+			]
+		},
+		"state": [
+			"[{\"id\": 1, \"age\": 34, \"big\": 9007199254740993, \"bin\": \"\\\\x0102ff\", \"born\": \"1990-02-03\", \"made\": \"2024-01-02T03:04:05\", \"meta\": {\"a\": [1, 2]}, \"name\": \"Ann\", \"seen\": \"2024-01-02T03:04:05.678+00:00\", \"tags\": [1, 2], \"ratio\": 0.1, \"score\": 12.50, \"active\": true}, {\"id\": 2, \"age\": 27, \"big\": 5, \"bin\": null, \"born\": null, \"made\": null, \"meta\": null, \"name\": \"Bob\", \"seen\": null, \"tags\": null, \"ratio\": \"NaN\", \"score\": null, \"active\": false}, {\"id\": 3, \"age\": 61, \"big\": -1, \"bin\": \"\\\\x\", \"born\": \"2001-12-31\", \"made\": \"1999-12-31T23:59:59.5\", \"meta\": \"text\", \"name\": \"Cy \\\"The\\\" O'Neil\", \"seen\": \"1999-12-31T21:59:59+00:00\", \"tags\": [], \"ratio\": 1000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000, \"score\": 0.00, \"active\": null}]",
+			"[{\"id\": 1, \"body\": \"first\", \"person\": 1}]",
+			"3true",
+			"[{\"at\": null, \"id\": 1, \"ok\": null, \"day\": null, \"doc\": null, \"qty\": 1, \"raw\": null, \"feel\": null, \"note\": \"none\", \"nums\": null, \"tags\": null, \"label\": \"one\", \"lunch\": null, \"plain\": null, \"price\": null}, {\"at\": null, \"id\": 2, \"ok\": null, \"day\": null, \"doc\": null, \"qty\": 2, \"raw\": null, \"feel\": null, \"note\": \"none\", \"nums\": null, \"tags\": null, \"label\": \"two\", \"lunch\": null, \"plain\": null, \"price\": null}]",
+			"[{\"at\": null, \"id\": 1, \"ok\": null, \"doc\": null, \"qty\": 1, \"label\": \"first\", \"price\": null, \"Odd \\\"Name\": \"none\"}]",
+			"1true",
+			"[]"
+		],
+		"calls": [
+			{
+				"args": {
+					"credential": "case",
+					"dialect": "postgres",
+					"mode": "transaction",
+					"statements": [
+						{
+							"text": "SELECT 1 AS a; SELECT 2 AS b",
+							"simple": true
+						}
+					],
+					"largeNumbers": "text",
+					"dates": "legacy"
+				},
+				"result": {
+					"results": [
+						{
+							"sets": [
+								{
+									"command": "SELECT",
+									"rowCount": 1,
+									"rows": [
+										{
+											"a": 1
+										}
+									]
+								},
+								{
+									"command": "SELECT",
+									"rowCount": 1,
+									"rows": [
+										{
+											"b": 2
+										}
+									]
+								}
+							]
+						}
+					]
+				}
+			}
+		]
+	},
+	"executeQuery as text, two commands with values for each item, independently, continue": {
+		"v1": {
+			"output": [
+				{
+					"n": 2
+				},
+				{
+					"n": 3
+				}
+			]
+		},
+		"state": [
+			"[{\"id\": 1, \"age\": 34, \"big\": 9007199254740993, \"bin\": \"\\\\x0102ff\", \"born\": \"1990-02-03\", \"made\": \"2024-01-02T03:04:05\", \"meta\": {\"a\": [1, 2]}, \"name\": \"Ann\", \"seen\": \"2024-01-02T03:04:05.678+00:00\", \"tags\": [1, 2], \"ratio\": 0.1, \"score\": 12.50, \"active\": true}, {\"id\": 2, \"age\": 27, \"big\": 5, \"bin\": null, \"born\": null, \"made\": null, \"meta\": null, \"name\": \"Bob\", \"seen\": null, \"tags\": null, \"ratio\": \"NaN\", \"score\": null, \"active\": false}, {\"id\": 3, \"age\": 61, \"big\": -1, \"bin\": \"\\\\x\", \"born\": \"2001-12-31\", \"made\": \"1999-12-31T23:59:59.5\", \"meta\": \"text\", \"name\": \"Cy \\\"The\\\" O'Neil\", \"seen\": \"1999-12-31T21:59:59+00:00\", \"tags\": [], \"ratio\": 1000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000, \"score\": 0.00, \"active\": null}]",
+			"[{\"id\": 1, \"body\": \"first\", \"person\": 1}, {\"id\": 7, \"body\": \"O'Hara \\\\ said; -- $1\", \"person\": 1}, {\"id\": 8, \"body\": null, \"person\": 1}]",
+			"3true",
+			"[{\"at\": null, \"id\": 1, \"ok\": null, \"day\": null, \"doc\": null, \"qty\": 1, \"raw\": null, \"feel\": null, \"note\": \"none\", \"nums\": null, \"tags\": null, \"label\": \"one\", \"lunch\": null, \"plain\": null, \"price\": null}, {\"at\": null, \"id\": 2, \"ok\": null, \"day\": null, \"doc\": null, \"qty\": 2, \"raw\": null, \"feel\": null, \"note\": \"none\", \"nums\": null, \"tags\": null, \"label\": \"two\", \"lunch\": null, \"plain\": null, \"price\": null}]",
+			"[{\"at\": null, \"id\": 1, \"ok\": null, \"doc\": null, \"qty\": 1, \"label\": \"first\", \"price\": null, \"Odd \\\"Name\": \"none\"}]",
+			"1true",
+			"[]"
+		],
+		"calls": [
+			{
+				"args": {
+					"credential": "case",
+					"dialect": "postgres",
+					"mode": "independently",
+					"statements": [
+						{
+							"text": "INSERT INTO pgcase.notes VALUES (7, 1, 'O''Hara \\ said; -- $1'); SELECT count(*)::int AS n FROM pgcase.notes",
+							"simple": true
+						},
+						{
+							"text": "INSERT INTO pgcase.notes VALUES (8, 1, null); SELECT count(*)::int AS n FROM pgcase.notes",
+							"simple": true
+						}
+					],
+					"largeNumbers": "text",
+					"dates": "legacy"
+				},
+				"result": {
+					"results": [
+						{
+							"sets": [
+								{
+									"command": "INSERT",
+									"rowCount": 1,
+									"rows": []
+								},
+								{
+									"command": "SELECT",
+									"rowCount": 1,
+									"rows": [
+										{
+											"n": 2
+										}
+									]
+								}
+							]
+						},
+						{
+							"sets": [
+								{
+									"command": "INSERT",
+									"rowCount": 1,
+									"rows": []
+								},
+								{
+									"command": "SELECT",
+									"rowCount": 1,
+									"rows": [
+										{
+											"n": 3
+										}
+									]
+								}
+							]
+						}
+					]
+				}
+			}
+		]
+	},
+	"executeQuery as text, a failure in the second command of the second item, independently, continue": {
+		"v1": {
+			"output": [
+				{
+					"n": 1
+				},
+				{
+					"error": {
+						"name": "NodeOperationError",
+						"level": "warning",
+						"shouldReport": true,
+						"description": "Failed query: UPDATE pgcase.people SET age = 99 WHERE id = 1; SELECT nope",
+						"tags": {
+							"packageName": "workflow"
+						},
+						"timestamp": 0,
+						"context": {
+							"itemIndex": 1
+						},
+						"functionality": "regular",
+						"node": {
+							"id": "step",
+							"name": "Node",
+							"type": "n8n-nodes-base.postgres",
+							"typeVersion": 2.6,
+							"position": [200, 0],
+							"parameters": {
+								"resource": "database",
+								"operation": "executeQuery",
+								"query": "{{ $json.a === 1 ? 'SELECT 1 AS n' : 'UPDATE pgcase.people SET age = 99 WHERE id = 1; SELECT nope' }}",
+								"options": {
+									"queryBatching": "independently"
+								}
+							},
+							"credentials": {
+								"postgres": {
+									"id": "case",
+									"name": "case"
+								}
+							},
+							"onError": "continueRegularOutput"
+						},
+						"messages": []
+					}
+				}
+			]
+		},
+		"state": [
+			"[{\"id\": 1, \"age\": 34, \"big\": 9007199254740993, \"bin\": \"\\\\x0102ff\", \"born\": \"1990-02-03\", \"made\": \"2024-01-02T03:04:05\", \"meta\": {\"a\": [1, 2]}, \"name\": \"Ann\", \"seen\": \"2024-01-02T03:04:05.678+00:00\", \"tags\": [1, 2], \"ratio\": 0.1, \"score\": 12.50, \"active\": true}, {\"id\": 2, \"age\": 27, \"big\": 5, \"bin\": null, \"born\": null, \"made\": null, \"meta\": null, \"name\": \"Bob\", \"seen\": null, \"tags\": null, \"ratio\": \"NaN\", \"score\": null, \"active\": false}, {\"id\": 3, \"age\": 61, \"big\": -1, \"bin\": \"\\\\x\", \"born\": \"2001-12-31\", \"made\": \"1999-12-31T23:59:59.5\", \"meta\": \"text\", \"name\": \"Cy \\\"The\\\" O'Neil\", \"seen\": \"1999-12-31T21:59:59+00:00\", \"tags\": [], \"ratio\": 1000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000, \"score\": 0.00, \"active\": null}]",
+			"[{\"id\": 1, \"body\": \"first\", \"person\": 1}]",
+			"3true",
+			"[{\"at\": null, \"id\": 1, \"ok\": null, \"day\": null, \"doc\": null, \"qty\": 1, \"raw\": null, \"feel\": null, \"note\": \"none\", \"nums\": null, \"tags\": null, \"label\": \"one\", \"lunch\": null, \"plain\": null, \"price\": null}, {\"at\": null, \"id\": 2, \"ok\": null, \"day\": null, \"doc\": null, \"qty\": 2, \"raw\": null, \"feel\": null, \"note\": \"none\", \"nums\": null, \"tags\": null, \"label\": \"two\", \"lunch\": null, \"plain\": null, \"price\": null}]",
+			"[{\"at\": null, \"id\": 1, \"ok\": null, \"doc\": null, \"qty\": 1, \"label\": \"first\", \"price\": null, \"Odd \\\"Name\": \"none\"}]",
+			"1true",
+			"[]"
+		],
+		"calls": [
+			{
+				"args": {
+					"credential": "case",
+					"dialect": "postgres",
+					"mode": "independently",
+					"statements": [
+						{
+							"text": "SELECT 1 AS n",
+							"values": []
+						},
+						{
+							"text": "UPDATE pgcase.people SET age = 99 WHERE id = 1; SELECT nope",
+							"simple": true
+						}
+					],
+					"largeNumbers": "text",
+					"dates": "legacy"
+				},
+				"result": {
+					"results": [
+						{
+							"command": "SELECT",
+							"rowCount": 1,
+							"rows": [
+								{
+									"n": 1
+								}
+							]
+						},
+						{
+							"error": {
+								"message": "column \"nope\" does not exist",
+								"length": 104,
+								"severity": "ERROR",
+								"code": "42703",
+								"position": "56"
+							}
+						}
+					]
+				}
+			}
+		]
+	},
+	"executeQuery as text, a value that pg-promise refuses in the second item, independently, continue": {
+		"v1": {
+			"output": [
+				{
+					"a": 1
+				},
+				{
+					"b": 2
+				},
+				{
+					"error": {
+						"name": "NodeOperationError",
+						"level": "warning",
+						"shouldReport": true,
+						"description": "Failed query: SELECT $1 AS a; SELECT $2 AS b",
+						"tags": {
+							"packageName": "workflow"
+						},
+						"timestamp": 0,
+						"context": {
+							"itemIndex": 1
+						},
+						"functionality": "regular",
+						"node": {
+							"id": "step",
+							"name": "Node",
+							"type": "n8n-nodes-base.postgres",
+							"typeVersion": 2.6,
+							"position": [200, 0],
+							"parameters": {
+								"resource": "database",
+								"operation": "executeQuery",
+								"query": "SELECT $1 AS a; SELECT $2 AS b",
+								"options": {
+									"queryBatching": "independently",
+									"queryReplacement": "={{ $json.a === 1 ? [1, 2] : [1] }}"
+								}
+							},
+							"credentials": {
+								"postgres": {
+									"id": "case",
+									"name": "case"
+								}
+							},
+							"onError": "continueRegularOutput"
+						},
+						"messages": []
+					}
+				}
+			]
+		},
+		"state": [
+			"[{\"id\": 1, \"age\": 34, \"big\": 9007199254740993, \"bin\": \"\\\\x0102ff\", \"born\": \"1990-02-03\", \"made\": \"2024-01-02T03:04:05\", \"meta\": {\"a\": [1, 2]}, \"name\": \"Ann\", \"seen\": \"2024-01-02T03:04:05.678+00:00\", \"tags\": [1, 2], \"ratio\": 0.1, \"score\": 12.50, \"active\": true}, {\"id\": 2, \"age\": 27, \"big\": 5, \"bin\": null, \"born\": null, \"made\": null, \"meta\": null, \"name\": \"Bob\", \"seen\": null, \"tags\": null, \"ratio\": \"NaN\", \"score\": null, \"active\": false}, {\"id\": 3, \"age\": 61, \"big\": -1, \"bin\": \"\\\\x\", \"born\": \"2001-12-31\", \"made\": \"1999-12-31T23:59:59.5\", \"meta\": \"text\", \"name\": \"Cy \\\"The\\\" O'Neil\", \"seen\": \"1999-12-31T21:59:59+00:00\", \"tags\": [], \"ratio\": 1000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000, \"score\": 0.00, \"active\": null}]",
+			"[{\"id\": 1, \"body\": \"first\", \"person\": 1}]",
+			"3true",
+			"[{\"at\": null, \"id\": 1, \"ok\": null, \"day\": null, \"doc\": null, \"qty\": 1, \"raw\": null, \"feel\": null, \"note\": \"none\", \"nums\": null, \"tags\": null, \"label\": \"one\", \"lunch\": null, \"plain\": null, \"price\": null}, {\"at\": null, \"id\": 2, \"ok\": null, \"day\": null, \"doc\": null, \"qty\": 2, \"raw\": null, \"feel\": null, \"note\": \"none\", \"nums\": null, \"tags\": null, \"label\": \"two\", \"lunch\": null, \"plain\": null, \"price\": null}]",
+			"[{\"at\": null, \"id\": 1, \"ok\": null, \"doc\": null, \"qty\": 1, \"label\": \"first\", \"price\": null, \"Odd \\\"Name\": \"none\"}]",
+			"1true",
+			"[]"
+		],
+		"calls": [
+			{
+				"args": {
+					"credential": "case",
+					"dialect": "postgres",
+					"mode": "independently",
+					"statements": [
+						{
+							"text": "SELECT 1 AS a; SELECT 2 AS b",
+							"simple": true
+						}
+					],
+					"largeNumbers": "text",
+					"dates": "legacy"
+				},
+				"result": {
+					"results": [
+						{
+							"sets": [
+								{
+									"command": "SELECT",
+									"rowCount": 1,
+									"rows": [
+										{
+											"a": 1
+										}
+									]
+								},
+								{
+									"command": "SELECT",
+									"rowCount": 1,
+									"rows": [
+										{
+											"b": 2
+										}
+									]
+								}
+							]
+						}
+					]
+				}
+			}
+		]
+	},
+	"executeQuery as text, two commands with values for each item, single, error output": {
+		"v1": {
+			"output": [
+				[
+					{
+						"n": 2
+					},
+					{
+						"n": 3
+					}
+				],
+				[]
+			]
+		},
+		"state": [
+			"[{\"id\": 1, \"age\": 34, \"big\": 9007199254740993, \"bin\": \"\\\\x0102ff\", \"born\": \"1990-02-03\", \"made\": \"2024-01-02T03:04:05\", \"meta\": {\"a\": [1, 2]}, \"name\": \"Ann\", \"seen\": \"2024-01-02T03:04:05.678+00:00\", \"tags\": [1, 2], \"ratio\": 0.1, \"score\": 12.50, \"active\": true}, {\"id\": 2, \"age\": 27, \"big\": 5, \"bin\": null, \"born\": null, \"made\": null, \"meta\": null, \"name\": \"Bob\", \"seen\": null, \"tags\": null, \"ratio\": \"NaN\", \"score\": null, \"active\": false}, {\"id\": 3, \"age\": 61, \"big\": -1, \"bin\": \"\\\\x\", \"born\": \"2001-12-31\", \"made\": \"1999-12-31T23:59:59.5\", \"meta\": \"text\", \"name\": \"Cy \\\"The\\\" O'Neil\", \"seen\": \"1999-12-31T21:59:59+00:00\", \"tags\": [], \"ratio\": 1000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000, \"score\": 0.00, \"active\": null}]",
+			"[{\"id\": 1, \"body\": \"first\", \"person\": 1}, {\"id\": 7, \"body\": \"O'Hara \\\\ said; -- $1\", \"person\": 1}, {\"id\": 8, \"body\": null, \"person\": 1}]",
+			"3true",
+			"[{\"at\": null, \"id\": 1, \"ok\": null, \"day\": null, \"doc\": null, \"qty\": 1, \"raw\": null, \"feel\": null, \"note\": \"none\", \"nums\": null, \"tags\": null, \"label\": \"one\", \"lunch\": null, \"plain\": null, \"price\": null}, {\"at\": null, \"id\": 2, \"ok\": null, \"day\": null, \"doc\": null, \"qty\": 2, \"raw\": null, \"feel\": null, \"note\": \"none\", \"nums\": null, \"tags\": null, \"label\": \"two\", \"lunch\": null, \"plain\": null, \"price\": null}]",
+			"[{\"at\": null, \"id\": 1, \"ok\": null, \"doc\": null, \"qty\": 1, \"label\": \"first\", \"price\": null, \"Odd \\\"Name\": \"none\"}]",
+			"1true",
+			"[]"
+		],
+		"calls": [
+			{
+				"args": {
+					"credential": "case",
+					"dialect": "postgres",
+					"mode": "single",
+					"statements": [
+						{
+							"text": "INSERT INTO pgcase.notes VALUES (7, 1, 'O''Hara \\ said; -- $1'); SELECT count(*)::int AS n FROM pgcase.notes;INSERT INTO pgcase.notes VALUES (8, 1, null); SELECT count(*)::int AS n FROM pgcase.notes",
+							"simple": true
+						}
+					],
+					"largeNumbers": "text",
+					"dates": "legacy"
+				},
+				"result": {
+					"results": [
+						{
+							"sets": [
+								{
+									"command": "INSERT",
+									"rowCount": 1,
+									"rows": []
+								},
+								{
+									"command": "SELECT",
+									"rowCount": 1,
+									"rows": [
+										{
+											"n": 2
+										}
+									]
+								},
+								{
+									"command": "INSERT",
+									"rowCount": 1,
+									"rows": []
+								},
+								{
+									"command": "SELECT",
+									"rowCount": 1,
+									"rows": [
+										{
+											"n": 3
+										}
+									]
+								}
+							]
+						}
+					]
+				}
+			}
+		]
+	},
+	"executeQuery as text, a failure in the second command of the second item, single, error output": {
+		"v1": {
+			"output": [
+				[],
+				[
+					{
+						"a": 1,
+						"message": "column \"nope\" does not exist",
+						"error": {
+							"name": "NodeOperationError",
+							"level": "warning",
+							"shouldReport": true,
+							"description": "Failed query: SELECT 1 AS n",
+							"tags": {
+								"packageName": "workflow"
+							},
+							"timestamp": 0,
+							"context": {},
+							"functionality": "regular",
+							"node": {
+								"id": "step",
+								"name": "Node",
+								"type": "n8n-nodes-base.postgres",
+								"typeVersion": 2.6,
+								"position": [200, 0],
+								"parameters": {
+									"resource": "database",
+									"operation": "executeQuery",
+									"query": "{{ $json.a === 1 ? 'SELECT 1 AS n' : 'UPDATE pgcase.people SET age = 99 WHERE id = 1; SELECT nope' }}",
+									"options": {}
+								},
+								"credentials": {
+									"postgres": {
+										"id": "case",
+										"name": "case"
+									}
+								},
+								"onError": "continueErrorOutput"
+							},
+							"messages": []
+						}
+					}
+				]
+			]
+		},
+		"state": [
+			"[{\"id\": 1, \"age\": 34, \"big\": 9007199254740993, \"bin\": \"\\\\x0102ff\", \"born\": \"1990-02-03\", \"made\": \"2024-01-02T03:04:05\", \"meta\": {\"a\": [1, 2]}, \"name\": \"Ann\", \"seen\": \"2024-01-02T03:04:05.678+00:00\", \"tags\": [1, 2], \"ratio\": 0.1, \"score\": 12.50, \"active\": true}, {\"id\": 2, \"age\": 27, \"big\": 5, \"bin\": null, \"born\": null, \"made\": null, \"meta\": null, \"name\": \"Bob\", \"seen\": null, \"tags\": null, \"ratio\": \"NaN\", \"score\": null, \"active\": false}, {\"id\": 3, \"age\": 61, \"big\": -1, \"bin\": \"\\\\x\", \"born\": \"2001-12-31\", \"made\": \"1999-12-31T23:59:59.5\", \"meta\": \"text\", \"name\": \"Cy \\\"The\\\" O'Neil\", \"seen\": \"1999-12-31T21:59:59+00:00\", \"tags\": [], \"ratio\": 1000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000, \"score\": 0.00, \"active\": null}]",
+			"[{\"id\": 1, \"body\": \"first\", \"person\": 1}]",
+			"3true",
+			"[{\"at\": null, \"id\": 1, \"ok\": null, \"day\": null, \"doc\": null, \"qty\": 1, \"raw\": null, \"feel\": null, \"note\": \"none\", \"nums\": null, \"tags\": null, \"label\": \"one\", \"lunch\": null, \"plain\": null, \"price\": null}, {\"at\": null, \"id\": 2, \"ok\": null, \"day\": null, \"doc\": null, \"qty\": 2, \"raw\": null, \"feel\": null, \"note\": \"none\", \"nums\": null, \"tags\": null, \"label\": \"two\", \"lunch\": null, \"plain\": null, \"price\": null}]",
+			"[{\"at\": null, \"id\": 1, \"ok\": null, \"doc\": null, \"qty\": 1, \"label\": \"first\", \"price\": null, \"Odd \\\"Name\": \"none\"}]",
+			"1true",
+			"[]"
+		],
+		"calls": [
+			{
+				"args": {
+					"credential": "case",
+					"dialect": "postgres",
+					"mode": "single",
+					"statements": [
+						{
+							"text": "SELECT 1 AS n;UPDATE pgcase.people SET age = 99 WHERE id = 1; SELECT nope",
+							"simple": true
+						}
+					],
+					"largeNumbers": "text",
+					"dates": "legacy"
+				},
+				"result": {
+					"results": [
+						{
+							"error": {
+								"message": "column \"nope\" does not exist",
+								"length": 104,
+								"severity": "ERROR",
+								"code": "42703",
+								"position": "70"
+							}
+						}
+					]
+				}
+			}
+		]
+	},
+	"executeQuery as text, a value that pg-promise refuses in the second item, single, error output": {
+		"v1": {
+			"output": [
+				[],
+				[
+					{
+						"a": 1,
+						"message": "there is no parameter $2",
+						"error": {
+							"name": "NodeOperationError",
+							"level": "warning",
+							"shouldReport": true,
+							"description": "Failed query: SELECT $1 AS a; SELECT $2 AS b",
+							"tags": {
+								"packageName": "workflow"
+							},
+							"timestamp": 0,
+							"context": {},
+							"functionality": "regular",
+							"node": {
+								"id": "step",
+								"name": "Node",
+								"type": "n8n-nodes-base.postgres",
+								"typeVersion": 2.6,
+								"position": [200, 0],
+								"parameters": {
+									"resource": "database",
+									"operation": "executeQuery",
+									"query": "SELECT $1 AS a; SELECT $2 AS b",
+									"options": {
+										"queryReplacement": "={{ $json.a === 1 ? [1, 2] : [1] }}"
+									}
+								},
+								"credentials": {
+									"postgres": {
+										"id": "case",
+										"name": "case"
+									}
+								},
+								"onError": "continueErrorOutput"
+							},
+							"messages": []
+						}
+					}
+				]
+			]
+		},
+		"state": [
+			"[{\"id\": 1, \"age\": 34, \"big\": 9007199254740993, \"bin\": \"\\\\x0102ff\", \"born\": \"1990-02-03\", \"made\": \"2024-01-02T03:04:05\", \"meta\": {\"a\": [1, 2]}, \"name\": \"Ann\", \"seen\": \"2024-01-02T03:04:05.678+00:00\", \"tags\": [1, 2], \"ratio\": 0.1, \"score\": 12.50, \"active\": true}, {\"id\": 2, \"age\": 27, \"big\": 5, \"bin\": null, \"born\": null, \"made\": null, \"meta\": null, \"name\": \"Bob\", \"seen\": null, \"tags\": null, \"ratio\": \"NaN\", \"score\": null, \"active\": false}, {\"id\": 3, \"age\": 61, \"big\": -1, \"bin\": \"\\\\x\", \"born\": \"2001-12-31\", \"made\": \"1999-12-31T23:59:59.5\", \"meta\": \"text\", \"name\": \"Cy \\\"The\\\" O'Neil\", \"seen\": \"1999-12-31T21:59:59+00:00\", \"tags\": [], \"ratio\": 1000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000, \"score\": 0.00, \"active\": null}]",
+			"[{\"id\": 1, \"body\": \"first\", \"person\": 1}]",
+			"3true",
+			"[{\"at\": null, \"id\": 1, \"ok\": null, \"day\": null, \"doc\": null, \"qty\": 1, \"raw\": null, \"feel\": null, \"note\": \"none\", \"nums\": null, \"tags\": null, \"label\": \"one\", \"lunch\": null, \"plain\": null, \"price\": null}, {\"at\": null, \"id\": 2, \"ok\": null, \"day\": null, \"doc\": null, \"qty\": 2, \"raw\": null, \"feel\": null, \"note\": \"none\", \"nums\": null, \"tags\": null, \"label\": \"two\", \"lunch\": null, \"plain\": null, \"price\": null}]",
+			"[{\"at\": null, \"id\": 1, \"ok\": null, \"doc\": null, \"qty\": 1, \"label\": \"first\", \"price\": null, \"Odd \\\"Name\": \"none\"}]",
+			"1true",
+			"[]"
+		],
+		"calls": [
+			{
+				"args": {
+					"credential": "case",
+					"dialect": "postgres",
+					"mode": "single",
+					"statements": [
+						{
+							"text": "SELECT 1 AS a; SELECT 2 AS b;SELECT 1 AS a; SELECT $2 AS b",
+							"simple": true
+						}
+					],
+					"largeNumbers": "text",
+					"dates": "legacy"
+				},
+				"result": {
+					"results": [
+						{
+							"error": {
+								"message": "there is no parameter $2",
+								"length": 94,
+								"severity": "ERROR",
+								"code": "42P02",
+								"position": "52"
+							}
+						}
+					]
+				}
+			}
+		]
+	},
+	"executeQuery as text, two commands with values for each item, transaction, error output": {
+		"v1": {
+			"output": [
+				[
+					{
+						"n": 2
+					},
+					{
+						"n": 3
+					}
+				],
+				[]
+			]
+		},
+		"state": [
+			"[{\"id\": 1, \"age\": 34, \"big\": 9007199254740993, \"bin\": \"\\\\x0102ff\", \"born\": \"1990-02-03\", \"made\": \"2024-01-02T03:04:05\", \"meta\": {\"a\": [1, 2]}, \"name\": \"Ann\", \"seen\": \"2024-01-02T03:04:05.678+00:00\", \"tags\": [1, 2], \"ratio\": 0.1, \"score\": 12.50, \"active\": true}, {\"id\": 2, \"age\": 27, \"big\": 5, \"bin\": null, \"born\": null, \"made\": null, \"meta\": null, \"name\": \"Bob\", \"seen\": null, \"tags\": null, \"ratio\": \"NaN\", \"score\": null, \"active\": false}, {\"id\": 3, \"age\": 61, \"big\": -1, \"bin\": \"\\\\x\", \"born\": \"2001-12-31\", \"made\": \"1999-12-31T23:59:59.5\", \"meta\": \"text\", \"name\": \"Cy \\\"The\\\" O'Neil\", \"seen\": \"1999-12-31T21:59:59+00:00\", \"tags\": [], \"ratio\": 1000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000, \"score\": 0.00, \"active\": null}]",
+			"[{\"id\": 1, \"body\": \"first\", \"person\": 1}, {\"id\": 7, \"body\": \"O'Hara \\\\ said; -- $1\", \"person\": 1}, {\"id\": 8, \"body\": null, \"person\": 1}]",
+			"3true",
+			"[{\"at\": null, \"id\": 1, \"ok\": null, \"day\": null, \"doc\": null, \"qty\": 1, \"raw\": null, \"feel\": null, \"note\": \"none\", \"nums\": null, \"tags\": null, \"label\": \"one\", \"lunch\": null, \"plain\": null, \"price\": null}, {\"at\": null, \"id\": 2, \"ok\": null, \"day\": null, \"doc\": null, \"qty\": 2, \"raw\": null, \"feel\": null, \"note\": \"none\", \"nums\": null, \"tags\": null, \"label\": \"two\", \"lunch\": null, \"plain\": null, \"price\": null}]",
+			"[{\"at\": null, \"id\": 1, \"ok\": null, \"doc\": null, \"qty\": 1, \"label\": \"first\", \"price\": null, \"Odd \\\"Name\": \"none\"}]",
+			"1true",
+			"[]"
+		],
+		"calls": [
+			{
+				"args": {
+					"credential": "case",
+					"dialect": "postgres",
+					"mode": "transaction",
+					"statements": [
+						{
+							"text": "INSERT INTO pgcase.notes VALUES (7, 1, 'O''Hara \\ said; -- $1'); SELECT count(*)::int AS n FROM pgcase.notes",
+							"simple": true
+						},
+						{
+							"text": "INSERT INTO pgcase.notes VALUES (8, 1, null); SELECT count(*)::int AS n FROM pgcase.notes",
+							"simple": true
+						}
+					],
+					"largeNumbers": "text",
+					"dates": "legacy"
+				},
+				"result": {
+					"results": [
+						{
+							"sets": [
+								{
+									"command": "INSERT",
+									"rowCount": 1,
+									"rows": []
+								},
+								{
+									"command": "SELECT",
+									"rowCount": 1,
+									"rows": [
+										{
+											"n": 2
+										}
+									]
+								}
+							]
+						},
+						{
+							"sets": [
+								{
+									"command": "INSERT",
+									"rowCount": 1,
+									"rows": []
+								},
+								{
+									"command": "SELECT",
+									"rowCount": 1,
+									"rows": [
+										{
+											"n": 3
+										}
+									]
+								}
+							]
+						}
+					]
+				}
+			}
+		]
+	},
+	"executeQuery as text, a failure in the second command of the second item, transaction, error output": {
+		"v1": {
+			"output": [
+				[
+					{
+						"n": 1
+					}
+				],
+				[
+					{
+						"a": 2,
+						"error": {
+							"name": "NodeOperationError",
+							"level": "warning",
+							"shouldReport": true,
+							"description": "Failed query: UPDATE pgcase.people SET age = 99 WHERE id = 1; SELECT nope",
+							"tags": {
+								"packageName": "workflow"
+							},
+							"timestamp": 0,
+							"context": {
+								"itemIndex": 1
+							},
+							"functionality": "regular",
+							"node": {
+								"id": "step",
+								"name": "Node",
+								"type": "n8n-nodes-base.postgres",
+								"typeVersion": 2.6,
+								"position": [200, 0],
+								"parameters": {
+									"resource": "database",
+									"operation": "executeQuery",
+									"query": "{{ $json.a === 1 ? 'SELECT 1 AS n' : 'UPDATE pgcase.people SET age = 99 WHERE id = 1; SELECT nope' }}",
+									"options": {
+										"queryBatching": "transaction"
+									}
+								},
+								"credentials": {
+									"postgres": {
+										"id": "case",
+										"name": "case"
+									}
+								},
+								"onError": "continueErrorOutput"
+							},
+							"messages": []
+						}
+					}
+				]
+			]
+		},
+		"state": [
+			"[{\"id\": 1, \"age\": 34, \"big\": 9007199254740993, \"bin\": \"\\\\x0102ff\", \"born\": \"1990-02-03\", \"made\": \"2024-01-02T03:04:05\", \"meta\": {\"a\": [1, 2]}, \"name\": \"Ann\", \"seen\": \"2024-01-02T03:04:05.678+00:00\", \"tags\": [1, 2], \"ratio\": 0.1, \"score\": 12.50, \"active\": true}, {\"id\": 2, \"age\": 27, \"big\": 5, \"bin\": null, \"born\": null, \"made\": null, \"meta\": null, \"name\": \"Bob\", \"seen\": null, \"tags\": null, \"ratio\": \"NaN\", \"score\": null, \"active\": false}, {\"id\": 3, \"age\": 61, \"big\": -1, \"bin\": \"\\\\x\", \"born\": \"2001-12-31\", \"made\": \"1999-12-31T23:59:59.5\", \"meta\": \"text\", \"name\": \"Cy \\\"The\\\" O'Neil\", \"seen\": \"1999-12-31T21:59:59+00:00\", \"tags\": [], \"ratio\": 1000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000, \"score\": 0.00, \"active\": null}]",
+			"[{\"id\": 1, \"body\": \"first\", \"person\": 1}]",
+			"3true",
+			"[{\"at\": null, \"id\": 1, \"ok\": null, \"day\": null, \"doc\": null, \"qty\": 1, \"raw\": null, \"feel\": null, \"note\": \"none\", \"nums\": null, \"tags\": null, \"label\": \"one\", \"lunch\": null, \"plain\": null, \"price\": null}, {\"at\": null, \"id\": 2, \"ok\": null, \"day\": null, \"doc\": null, \"qty\": 2, \"raw\": null, \"feel\": null, \"note\": \"none\", \"nums\": null, \"tags\": null, \"label\": \"two\", \"lunch\": null, \"plain\": null, \"price\": null}]",
+			"[{\"at\": null, \"id\": 1, \"ok\": null, \"doc\": null, \"qty\": 1, \"label\": \"first\", \"price\": null, \"Odd \\\"Name\": \"none\"}]",
+			"1true",
+			"[]"
+		],
+		"calls": [
+			{
+				"args": {
+					"credential": "case",
+					"dialect": "postgres",
+					"mode": "transaction",
+					"statements": [
+						{
+							"text": "SELECT 1 AS n",
+							"values": []
+						},
+						{
+							"text": "UPDATE pgcase.people SET age = 99 WHERE id = 1; SELECT nope",
+							"simple": true
+						}
+					],
+					"largeNumbers": "text",
+					"dates": "legacy"
+				},
+				"result": {
+					"results": [
+						{
+							"command": "SELECT",
+							"rowCount": 1,
+							"rows": [
+								{
+									"n": 1
+								}
+							]
+						},
+						{
+							"error": {
+								"message": "column \"nope\" does not exist",
+								"length": 104,
+								"severity": "ERROR",
+								"code": "42703",
+								"position": "56"
+							}
+						}
+					]
+				}
+			}
+		]
+	},
+	"executeQuery as text, a value that pg-promise refuses in the second item, transaction, error output": {
+		"v1": {
+			"output": [
+				[
+					{
+						"a": 1
+					},
+					{
+						"b": 2
+					}
+				],
+				[
+					{
+						"a": 2,
+						"error": {
+							"name": "NodeOperationError",
+							"level": "warning",
+							"shouldReport": true,
+							"description": "Failed query: SELECT $1 AS a; SELECT $2 AS b",
+							"tags": {
+								"packageName": "workflow"
+							},
+							"timestamp": 0,
+							"context": {
+								"itemIndex": 1
+							},
+							"functionality": "regular",
+							"node": {
+								"id": "step",
+								"name": "Node",
+								"type": "n8n-nodes-base.postgres",
+								"typeVersion": 2.6,
+								"position": [200, 0],
+								"parameters": {
+									"resource": "database",
+									"operation": "executeQuery",
+									"query": "SELECT $1 AS a; SELECT $2 AS b",
+									"options": {
+										"queryBatching": "transaction",
+										"queryReplacement": "={{ $json.a === 1 ? [1, 2] : [1] }}"
+									}
+								},
+								"credentials": {
+									"postgres": {
+										"id": "case",
+										"name": "case"
+									}
+								},
+								"onError": "continueErrorOutput"
+							},
+							"messages": []
+						}
+					}
+				]
+			]
+		},
+		"state": [
+			"[{\"id\": 1, \"age\": 34, \"big\": 9007199254740993, \"bin\": \"\\\\x0102ff\", \"born\": \"1990-02-03\", \"made\": \"2024-01-02T03:04:05\", \"meta\": {\"a\": [1, 2]}, \"name\": \"Ann\", \"seen\": \"2024-01-02T03:04:05.678+00:00\", \"tags\": [1, 2], \"ratio\": 0.1, \"score\": 12.50, \"active\": true}, {\"id\": 2, \"age\": 27, \"big\": 5, \"bin\": null, \"born\": null, \"made\": null, \"meta\": null, \"name\": \"Bob\", \"seen\": null, \"tags\": null, \"ratio\": \"NaN\", \"score\": null, \"active\": false}, {\"id\": 3, \"age\": 61, \"big\": -1, \"bin\": \"\\\\x\", \"born\": \"2001-12-31\", \"made\": \"1999-12-31T23:59:59.5\", \"meta\": \"text\", \"name\": \"Cy \\\"The\\\" O'Neil\", \"seen\": \"1999-12-31T21:59:59+00:00\", \"tags\": [], \"ratio\": 1000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000, \"score\": 0.00, \"active\": null}]",
+			"[{\"id\": 1, \"body\": \"first\", \"person\": 1}]",
+			"3true",
+			"[{\"at\": null, \"id\": 1, \"ok\": null, \"day\": null, \"doc\": null, \"qty\": 1, \"raw\": null, \"feel\": null, \"note\": \"none\", \"nums\": null, \"tags\": null, \"label\": \"one\", \"lunch\": null, \"plain\": null, \"price\": null}, {\"at\": null, \"id\": 2, \"ok\": null, \"day\": null, \"doc\": null, \"qty\": 2, \"raw\": null, \"feel\": null, \"note\": \"none\", \"nums\": null, \"tags\": null, \"label\": \"two\", \"lunch\": null, \"plain\": null, \"price\": null}]",
+			"[{\"at\": null, \"id\": 1, \"ok\": null, \"doc\": null, \"qty\": 1, \"label\": \"first\", \"price\": null, \"Odd \\\"Name\": \"none\"}]",
+			"1true",
+			"[]"
+		],
+		"calls": [
+			{
+				"args": {
+					"credential": "case",
+					"dialect": "postgres",
+					"mode": "transaction",
+					"statements": [
+						{
+							"text": "SELECT 1 AS a; SELECT 2 AS b",
+							"simple": true
+						}
+					],
+					"largeNumbers": "text",
+					"dates": "legacy"
+				},
+				"result": {
+					"results": [
+						{
+							"sets": [
+								{
+									"command": "SELECT",
+									"rowCount": 1,
+									"rows": [
+										{
+											"a": 1
+										}
+									]
+								},
+								{
+									"command": "SELECT",
+									"rowCount": 1,
+									"rows": [
+										{
+											"b": 2
+										}
+									]
+								}
+							]
+						}
+					]
+				}
+			}
+		]
+	},
+	"executeQuery as text, two commands with values for each item, independently, error output": {
+		"v1": {
+			"output": [
+				[
+					{
+						"n": 2
+					},
+					{
+						"n": 3
+					}
+				],
+				[]
+			]
+		},
+		"state": [
+			"[{\"id\": 1, \"age\": 34, \"big\": 9007199254740993, \"bin\": \"\\\\x0102ff\", \"born\": \"1990-02-03\", \"made\": \"2024-01-02T03:04:05\", \"meta\": {\"a\": [1, 2]}, \"name\": \"Ann\", \"seen\": \"2024-01-02T03:04:05.678+00:00\", \"tags\": [1, 2], \"ratio\": 0.1, \"score\": 12.50, \"active\": true}, {\"id\": 2, \"age\": 27, \"big\": 5, \"bin\": null, \"born\": null, \"made\": null, \"meta\": null, \"name\": \"Bob\", \"seen\": null, \"tags\": null, \"ratio\": \"NaN\", \"score\": null, \"active\": false}, {\"id\": 3, \"age\": 61, \"big\": -1, \"bin\": \"\\\\x\", \"born\": \"2001-12-31\", \"made\": \"1999-12-31T23:59:59.5\", \"meta\": \"text\", \"name\": \"Cy \\\"The\\\" O'Neil\", \"seen\": \"1999-12-31T21:59:59+00:00\", \"tags\": [], \"ratio\": 1000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000, \"score\": 0.00, \"active\": null}]",
+			"[{\"id\": 1, \"body\": \"first\", \"person\": 1}, {\"id\": 7, \"body\": \"O'Hara \\\\ said; -- $1\", \"person\": 1}, {\"id\": 8, \"body\": null, \"person\": 1}]",
+			"3true",
+			"[{\"at\": null, \"id\": 1, \"ok\": null, \"day\": null, \"doc\": null, \"qty\": 1, \"raw\": null, \"feel\": null, \"note\": \"none\", \"nums\": null, \"tags\": null, \"label\": \"one\", \"lunch\": null, \"plain\": null, \"price\": null}, {\"at\": null, \"id\": 2, \"ok\": null, \"day\": null, \"doc\": null, \"qty\": 2, \"raw\": null, \"feel\": null, \"note\": \"none\", \"nums\": null, \"tags\": null, \"label\": \"two\", \"lunch\": null, \"plain\": null, \"price\": null}]",
+			"[{\"at\": null, \"id\": 1, \"ok\": null, \"doc\": null, \"qty\": 1, \"label\": \"first\", \"price\": null, \"Odd \\\"Name\": \"none\"}]",
+			"1true",
+			"[]"
+		],
+		"calls": [
+			{
+				"args": {
+					"credential": "case",
+					"dialect": "postgres",
+					"mode": "independently",
+					"statements": [
+						{
+							"text": "INSERT INTO pgcase.notes VALUES (7, 1, 'O''Hara \\ said; -- $1'); SELECT count(*)::int AS n FROM pgcase.notes",
+							"simple": true
+						},
+						{
+							"text": "INSERT INTO pgcase.notes VALUES (8, 1, null); SELECT count(*)::int AS n FROM pgcase.notes",
+							"simple": true
+						}
+					],
+					"largeNumbers": "text",
+					"dates": "legacy"
+				},
+				"result": {
+					"results": [
+						{
+							"sets": [
+								{
+									"command": "INSERT",
+									"rowCount": 1,
+									"rows": []
+								},
+								{
+									"command": "SELECT",
+									"rowCount": 1,
+									"rows": [
+										{
+											"n": 2
+										}
+									]
+								}
+							]
+						},
+						{
+							"sets": [
+								{
+									"command": "INSERT",
+									"rowCount": 1,
+									"rows": []
+								},
+								{
+									"command": "SELECT",
+									"rowCount": 1,
+									"rows": [
+										{
+											"n": 3
+										}
+									]
+								}
+							]
+						}
+					]
+				}
+			}
+		]
+	},
+	"executeQuery as text, a failure in the second command of the second item, independently, error output": {
+		"v1": {
+			"output": [
+				[
+					{
+						"n": 1
+					}
+				],
+				[
+					{
+						"a": 2,
+						"error": {
+							"name": "NodeOperationError",
+							"level": "warning",
+							"shouldReport": true,
+							"description": "Failed query: UPDATE pgcase.people SET age = 99 WHERE id = 1; SELECT nope",
+							"tags": {
+								"packageName": "workflow"
+							},
+							"timestamp": 0,
+							"context": {
+								"itemIndex": 1
+							},
+							"functionality": "regular",
+							"node": {
+								"id": "step",
+								"name": "Node",
+								"type": "n8n-nodes-base.postgres",
+								"typeVersion": 2.6,
+								"position": [200, 0],
+								"parameters": {
+									"resource": "database",
+									"operation": "executeQuery",
+									"query": "{{ $json.a === 1 ? 'SELECT 1 AS n' : 'UPDATE pgcase.people SET age = 99 WHERE id = 1; SELECT nope' }}",
+									"options": {
+										"queryBatching": "independently"
+									}
+								},
+								"credentials": {
+									"postgres": {
+										"id": "case",
+										"name": "case"
+									}
+								},
+								"onError": "continueErrorOutput"
+							},
+							"messages": []
+						}
+					}
+				]
+			]
+		},
+		"state": [
+			"[{\"id\": 1, \"age\": 34, \"big\": 9007199254740993, \"bin\": \"\\\\x0102ff\", \"born\": \"1990-02-03\", \"made\": \"2024-01-02T03:04:05\", \"meta\": {\"a\": [1, 2]}, \"name\": \"Ann\", \"seen\": \"2024-01-02T03:04:05.678+00:00\", \"tags\": [1, 2], \"ratio\": 0.1, \"score\": 12.50, \"active\": true}, {\"id\": 2, \"age\": 27, \"big\": 5, \"bin\": null, \"born\": null, \"made\": null, \"meta\": null, \"name\": \"Bob\", \"seen\": null, \"tags\": null, \"ratio\": \"NaN\", \"score\": null, \"active\": false}, {\"id\": 3, \"age\": 61, \"big\": -1, \"bin\": \"\\\\x\", \"born\": \"2001-12-31\", \"made\": \"1999-12-31T23:59:59.5\", \"meta\": \"text\", \"name\": \"Cy \\\"The\\\" O'Neil\", \"seen\": \"1999-12-31T21:59:59+00:00\", \"tags\": [], \"ratio\": 1000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000, \"score\": 0.00, \"active\": null}]",
+			"[{\"id\": 1, \"body\": \"first\", \"person\": 1}]",
+			"3true",
+			"[{\"at\": null, \"id\": 1, \"ok\": null, \"day\": null, \"doc\": null, \"qty\": 1, \"raw\": null, \"feel\": null, \"note\": \"none\", \"nums\": null, \"tags\": null, \"label\": \"one\", \"lunch\": null, \"plain\": null, \"price\": null}, {\"at\": null, \"id\": 2, \"ok\": null, \"day\": null, \"doc\": null, \"qty\": 2, \"raw\": null, \"feel\": null, \"note\": \"none\", \"nums\": null, \"tags\": null, \"label\": \"two\", \"lunch\": null, \"plain\": null, \"price\": null}]",
+			"[{\"at\": null, \"id\": 1, \"ok\": null, \"doc\": null, \"qty\": 1, \"label\": \"first\", \"price\": null, \"Odd \\\"Name\": \"none\"}]",
+			"1true",
+			"[]"
+		],
+		"calls": [
+			{
+				"args": {
+					"credential": "case",
+					"dialect": "postgres",
+					"mode": "independently",
+					"statements": [
+						{
+							"text": "SELECT 1 AS n",
+							"values": []
+						},
+						{
+							"text": "UPDATE pgcase.people SET age = 99 WHERE id = 1; SELECT nope",
+							"simple": true
+						}
+					],
+					"largeNumbers": "text",
+					"dates": "legacy"
+				},
+				"result": {
+					"results": [
+						{
+							"command": "SELECT",
+							"rowCount": 1,
+							"rows": [
+								{
+									"n": 1
+								}
+							]
+						},
+						{
+							"error": {
+								"message": "column \"nope\" does not exist",
+								"length": 104,
+								"severity": "ERROR",
+								"code": "42703",
+								"position": "56"
+							}
+						}
+					]
+				}
+			}
+		]
+	},
+	"executeQuery as text, a value that pg-promise refuses in the second item, independently, error output": {
+		"v1": {
+			"output": [
+				[
+					{
+						"a": 1
+					},
+					{
+						"b": 2
+					}
+				],
+				[
+					{
+						"a": 2,
+						"error": {
+							"name": "NodeOperationError",
+							"level": "warning",
+							"shouldReport": true,
+							"description": "Failed query: SELECT $1 AS a; SELECT $2 AS b",
+							"tags": {
+								"packageName": "workflow"
+							},
+							"timestamp": 0,
+							"context": {
+								"itemIndex": 1
+							},
+							"functionality": "regular",
+							"node": {
+								"id": "step",
+								"name": "Node",
+								"type": "n8n-nodes-base.postgres",
+								"typeVersion": 2.6,
+								"position": [200, 0],
+								"parameters": {
+									"resource": "database",
+									"operation": "executeQuery",
+									"query": "SELECT $1 AS a; SELECT $2 AS b",
+									"options": {
+										"queryBatching": "independently",
+										"queryReplacement": "={{ $json.a === 1 ? [1, 2] : [1] }}"
+									}
+								},
+								"credentials": {
+									"postgres": {
+										"id": "case",
+										"name": "case"
+									}
+								},
+								"onError": "continueErrorOutput"
+							},
+							"messages": []
+						}
+					}
+				]
+			]
+		},
+		"state": [
+			"[{\"id\": 1, \"age\": 34, \"big\": 9007199254740993, \"bin\": \"\\\\x0102ff\", \"born\": \"1990-02-03\", \"made\": \"2024-01-02T03:04:05\", \"meta\": {\"a\": [1, 2]}, \"name\": \"Ann\", \"seen\": \"2024-01-02T03:04:05.678+00:00\", \"tags\": [1, 2], \"ratio\": 0.1, \"score\": 12.50, \"active\": true}, {\"id\": 2, \"age\": 27, \"big\": 5, \"bin\": null, \"born\": null, \"made\": null, \"meta\": null, \"name\": \"Bob\", \"seen\": null, \"tags\": null, \"ratio\": \"NaN\", \"score\": null, \"active\": false}, {\"id\": 3, \"age\": 61, \"big\": -1, \"bin\": \"\\\\x\", \"born\": \"2001-12-31\", \"made\": \"1999-12-31T23:59:59.5\", \"meta\": \"text\", \"name\": \"Cy \\\"The\\\" O'Neil\", \"seen\": \"1999-12-31T21:59:59+00:00\", \"tags\": [], \"ratio\": 1000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000, \"score\": 0.00, \"active\": null}]",
+			"[{\"id\": 1, \"body\": \"first\", \"person\": 1}]",
+			"3true",
+			"[{\"at\": null, \"id\": 1, \"ok\": null, \"day\": null, \"doc\": null, \"qty\": 1, \"raw\": null, \"feel\": null, \"note\": \"none\", \"nums\": null, \"tags\": null, \"label\": \"one\", \"lunch\": null, \"plain\": null, \"price\": null}, {\"at\": null, \"id\": 2, \"ok\": null, \"day\": null, \"doc\": null, \"qty\": 2, \"raw\": null, \"feel\": null, \"note\": \"none\", \"nums\": null, \"tags\": null, \"label\": \"two\", \"lunch\": null, \"plain\": null, \"price\": null}]",
+			"[{\"at\": null, \"id\": 1, \"ok\": null, \"doc\": null, \"qty\": 1, \"label\": \"first\", \"price\": null, \"Odd \\\"Name\": \"none\"}]",
+			"1true",
+			"[]"
+		],
+		"calls": [
+			{
+				"args": {
+					"credential": "case",
+					"dialect": "postgres",
+					"mode": "independently",
+					"statements": [
+						{
+							"text": "SELECT 1 AS a; SELECT 2 AS b",
+							"simple": true
+						}
+					],
+					"largeNumbers": "text",
+					"dates": "legacy"
+				},
+				"result": {
+					"results": [
+						{
+							"sets": [
+								{
+									"command": "SELECT",
+									"rowCount": 1,
+									"rows": [
+										{
+											"a": 1
+										}
+									]
+								},
+								{
+									"command": "SELECT",
+									"rowCount": 1,
+									"rows": [
+										{
+											"b": 2
+										}
+									]
 								}
 							]
 						}

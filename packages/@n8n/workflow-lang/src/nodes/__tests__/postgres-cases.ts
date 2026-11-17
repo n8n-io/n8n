@@ -4,6 +4,7 @@
  * the output or the error, and the tables afterwards.
  */
 import { POSTGRES_CONTINUE_CASES } from './postgres-continue-cases.ts';
+import { POSTGRES_SIMPLE_CASES } from './postgres-simple-cases.ts';
 import {
 	POSTGRES_QUERY_TEXT_CASES,
 	POSTGRES_VERSION_CASES,
@@ -139,19 +140,14 @@ export const POSTGRES_CASES: PostgresCase[] = [
 		{},
 		{ typeVersion: 2.7 },
 	),
-	query(
-		'a date in version 2.6',
-		'SELECT id, born FROM pgcase.people ORDER BY id',
-		{},
-		{ host: true },
-	),
-	query('an array column', 'SELECT id, tags FROM pgcase.people ORDER BY id', {}, { host: true }),
-	query('an interval column', 'SELECT now() - now() AS gap', {}, { host: true }),
+	query('a date in version 2.6', 'SELECT id, born FROM pgcase.people ORDER BY id', {}, {}),
+	query('an array column', 'SELECT id, tags FROM pgcase.people ORDER BY id', {}, {}),
+	query('an interval column', 'SELECT now() - now() AS gap', {}, {}),
 	query(
 		'other types as text',
 		"SELECT 'a'::varchar AS v, '00000000-0000-0000-0000-000000000001'::uuid AS u, '10:11:12'::time AS t, 'x'::char(3) AS c, 5::int2 AS s, 1.5::float4 AS f",
 	),
-	query('two columns with one name', 'SELECT 1 AS a, 2::int8 AS a'),
+	query('two columns with one name', 'SELECT 1 AS a, 2::int8 AS a', {}, { host: true }),
 	query('no rows of a select', 'SELECT id FROM pgcase.people WHERE age > 100'),
 	query('a text that ends with a semicolon', 'SELECT count(*) AS n FROM pgcase.people;\n'),
 	query(
@@ -309,48 +305,38 @@ export const POSTGRES_CASES: PostgresCase[] = [
 		{ typeVersion: 2.8, items: [{ none: null, b: 'x' }] },
 	),
 	query('ddl in one text', 'CREATE TABLE pgcase.made (id int)'),
-	query('more than one command', 'SELECT 1 AS a; SELECT 2 AS b', {}, { host: true }),
+	query('more than one command', 'SELECT 1 AS a; SELECT 2 AS b', {}, {}),
 	query(
 		'a name filter of pg-promise',
 		'SELECT $1:name FROM pgcase.people ORDER BY id',
 		{ queryReplacement: 'name' },
-		{ host: true },
+		{},
 	),
 	query(
 		'a variable in a comment',
 		'SELECT name FROM pgcase.people WHERE age > $1 -- more than $1\nORDER BY id',
 		{ queryReplacement: '30' },
-		{ host: true },
+		{},
 	),
 	query(
 		'a variable in a quoted text with query parameters',
 		"SELECT 'costs $1' AS a",
 		{ queryReplacement: '5' },
-		{ host: true },
+		{},
 	),
-	query(
-		'a typed literal',
-		'SELECT (date $1)::text AS d',
-		{ queryReplacement: '2024-01-02' },
-		{ host: true },
-	),
+	query('a typed literal', 'SELECT (date $1)::text AS d', { queryReplacement: '2024-01-02' }, {}),
 	query(
 		'a function that takes any type',
 		"SELECT concat($1, 'x') AS c",
 		{ queryReplacement: 'a' },
 		{ host: true },
 	),
-	query(
-		'a variable without a value',
-		'SELECT $1 AS a, $2 AS b',
-		{ queryReplacement: 'a' },
-		{ host: true },
-	),
+	query('a variable without a value', 'SELECT $1 AS a, $2 AS b', { queryReplacement: 'a' }, {}),
 	query(
 		'a list in a list of query parameters',
 		'SELECT name FROM pgcase.people WHERE age = ANY($1)',
 		{ queryReplacement: '={{ $json.ages }}' },
-		{ items: [{ ages: [[34, 27]] }], host: true },
+		{ items: [{ ages: [[34, 27]] }] },
 	),
 	query('a version below 2.1', 'SELECT 1 AS a', {}, { typeVersion: 2, convertHost: true }),
 
@@ -360,12 +346,8 @@ export const POSTGRES_CASES: PostgresCase[] = [
 	}),
 	select('the default limit', { options: { outputColumns: ['id'] } }),
 	select('a limit', { limit: 2, options: { outputColumns: ['id', 'age'] } }),
-	select(
-		'all columns with a date in version 2.7',
-		{ returnAll: true },
-		{ typeVersion: 2.7, host: true },
-	),
-	select('all columns with a date in version 2.6', { returnAll: true }, { host: true }),
+	select('all columns with a date in version 2.7', { returnAll: true }, { typeVersion: 2.7 }),
+	select('all columns with a date in version 2.6', { returnAll: true }),
 	select('a condition with a text value', {
 		returnAll: true,
 		options: { outputColumns: ['id', 'name'] },
@@ -481,4 +463,5 @@ export const POSTGRES_CASES: PostgresCase[] = [
 	...POSTGRES_WRITE_CASES,
 	...POSTGRES_VERSION_CASES,
 	...POSTGRES_CONTINUE_CASES,
+	...POSTGRES_SIMPLE_CASES,
 ];

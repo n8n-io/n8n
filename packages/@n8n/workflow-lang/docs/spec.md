@@ -1903,7 +1903,16 @@ await ctx.sql({
   the library node `src/nodes/postgres.ts`, with the fallback-host form of
   the node after it for a call that ends with a marker. Each other Postgres
   node runs in the fallback host: a node of version 2.0 or 1, and a node
-  with `replaceEmptyStrings` and an expression.
+  with `replaceEmptyStrings` and an expression. Version 2.0 reads a
+  timestamp with the readers of node-postgres (`infinity` is null there, and
+  the text `infinity` from version 2.1), and the result of the effect does
+  not say which column is a timestamp. Version 1 is another node source
+  (`v1/PostgresV1.node.ts`) that has no library form. At run time, a
+  mapped date and time of `insert`, `update` or `upsert` that is not ISO
+  8601 text with an offset also goes to the fallback host: v1 reads it
+  with Luxon in the time zone of the workflow and sends the JSON of the
+  ISO text with the offset of that zone, and the library node has no time
+  zone data.
 
   A node with a continue setting (`continueRegularOutput`,
   `continueErrorOutput`, `continueOnFail`) is the library node too. An
@@ -1940,6 +1949,25 @@ await ctx.sql({
   to `errors`, on top of the JSON of its input item
   (`handleNodeErrorOutput`). This also moves a row of a query whose only
   column is `error`.
+
+  A query of `executeQuery` keeps its bind values where the library node
+  proves that they give the statement of v1. For each other query (more
+  than one command, a `$n` in a string, a comment or a dollar quote, a `$n`
+  after a type name, a filter of pg-promise such as `$1:name`, a list as a
+  value, a `$n` without a value), the node makes the text that pg-promise
+  makes in v1 and sends it as a simple statement. In the mode `single`, v1
+  sends the queries of all items as one text
+  (`pgp.helpers.concat`), so the node sends that one text as one simple
+  statement when one query of the call has no bind form. In the other
+  modes, each such query is one simple statement. An error of pg-promise
+  for a value (`Variable $2 out of range. ...`) is the error of v1, at the
+  place where v1 raises it. The formatter (`src/nodes/shared/pg-format.ts`,
+  proven against pg-promise) is the only code that writes a value into SQL
+  text, and the node holds a copy of it that a test compares. This path
+  has the safety of v1 and no more: a query text with `{{ }}` parts or
+  `:raw` values is open to SQL injection in v1 too. Before version 2.3, in
+  the modes `transaction` and `independently`, such a query runs in the
+  fallback host.
 
   n8n removes the `=` of the `query` parameter when it loads the workflow
   (`noDataExpression`), and the v1 node evaluates each `{{ }}` part of the
