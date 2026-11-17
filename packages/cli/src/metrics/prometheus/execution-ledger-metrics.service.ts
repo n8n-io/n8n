@@ -9,8 +9,8 @@ import type { PrometheusMetricsCollector } from './base';
 import { toGaugeValue } from './cached-metric-query';
 import { DatabaseMetricQueryService } from './database-metric-query.service';
 
-/** Long enough to keep the backlog COUNT(*) rare. */
-const BACKLOG_CACHE_TTL_MS = 30 * Time.seconds.toMilliseconds;
+/** Matches the publication outbox gauges. */
+const BACKLOG_CACHE_TTL_MS = 60 * Time.seconds.toMilliseconds;
 
 /** Metrics for the execution ledger fold. Main only, because only mains fold. */
 @Service()
@@ -42,7 +42,7 @@ export class PrometheusExecutionLedgerMetricsService implements PrometheusMetric
 
 		new promClient.Gauge({
 			name: `${prefix}execution_ledger_backlog_rows`,
-			help: 'Number of execution ledger rows that no fold has claimed yet.',
+			help: 'Approximate number of execution ledger rows that no fold has claimed yet. Never lower than the real count.',
 			async collect() {
 				this.set(toGaugeValue(await query.get(), (backlog) => backlog.rows));
 			},

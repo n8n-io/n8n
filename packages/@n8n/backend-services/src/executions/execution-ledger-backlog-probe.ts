@@ -1,7 +1,11 @@
 import { Service } from '@n8n/di';
 import { UnexpectedError } from '@n8n/errors';
 
-export type ExecutionLedgerBacklogStats = { rows: number; oldestOccurredAt: Date | null };
+export type ExecutionLedgerBacklogStats = {
+	/** Upper bound from the id range: rolled-back appends leave gaps that count too. */
+	rows: number;
+	oldestOccurredAt: Date | null;
+};
 
 /** Lets metrics read the ledger backlog without importing the opt-in `execution-ledger` module. */
 @Service()

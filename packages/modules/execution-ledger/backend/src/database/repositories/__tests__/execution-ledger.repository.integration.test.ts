@@ -112,7 +112,7 @@ describe('ExecutionLedgerRepository', () => {
 			expect(await repository.getBacklogStats()).toEqual({ rows: 0, oldestOccurredAt: null });
 		});
 
-		it('counts the rows and returns the earliest occurredAt', async () => {
+		it('counts the rows and returns the occurredAt of the lowest id', async () => {
 			const times = [
 				'2026-10-28T10:00:00.000Z',
 				'2026-10-27T08:30:00.000Z',
@@ -125,7 +125,7 @@ describe('ExecutionLedgerRepository', () => {
 			const stats = await repository.getBacklogStats();
 
 			expect(stats.rows).toBe(3);
-			expect(stats.oldestOccurredAt?.getTime()).toBe(new Date(times[1]).getTime());
+			expect(stats.oldestOccurredAt?.getTime()).toBe(new Date(times[0]).getTime());
 		});
 
 		it('drops the count after rows are claimed', async () => {
@@ -133,6 +133,22 @@ describe('ExecutionLedgerRepository', () => {
 			await claim(2);
 
 			expect((await repository.getBacklogStats()).rows).toBe(3);
+		});
+
+		it('never undercounts when a rolled-back append leaves an id gap', async () => {
+			await appendMany(2);
+			await txRunner
+				.run({}, async (ctx) => {
+					await repository.append(ledgerRow(), ctx);
+					throw new Error('rollback');
+				})
+				.catch(() => {});
+			await appendMany(1);
+
+			// Postgres burns the rolled-back id, SQLite reuses it.
+			const { rows } = await repository.getBacklogStats();
+			expect(rows).toBeGreaterThanOrEqual(3);
+			expect(rows).toBeLessThanOrEqual(4);
 		});
 	});
 });

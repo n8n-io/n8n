@@ -82,18 +82,20 @@ export class ExecutionLedgerRepository {
 		return rows.map(toLedgerRow);
 	}
 
+	/** Reads only the primary key, so the cost stays flat however large the backlog grows. */
 	async getBacklogStats(): Promise<ExecutionLedgerBacklogStats> {
 		const manager = this.table.managerFor({});
 		const table = manager.connection.driver.escape(this.table.metadata.tableName);
-		const [stats] = await this.query<{ rows: unknown; oldest: unknown }>(
+		const [stats] = await this.query<{ minId: unknown; maxId: unknown; oldest: unknown }>(
 			manager,
-			`SELECT COUNT(*) AS "rows", MIN("occurredAt") AS "oldest" FROM ${table}`,
+			`SELECT MIN("id") AS "minId", MAX("id") AS "maxId", (SELECT "occurredAt" FROM ${table} ORDER BY "id" LIMIT 1) AS "oldest" FROM ${table}`,
 			[],
 		);
 		const oldest = stats?.oldest;
+		const isEmpty = stats?.minId === null || stats?.minId === undefined;
 
 		return {
-			rows: Number(stats?.rows ?? 0),
+			rows: isEmpty ? 0 : Number(stats.maxId) - Number(stats.minId) + 1,
 			oldestOccurredAt:
 				oldest instanceof Date || typeof oldest === 'string' ? parseDbTime(oldest) : null,
 		};

@@ -36,13 +36,14 @@ instances report these metrics, and only when the module is on. The default pref
 
 | Metric | Type | What it shows |
 |---|---|---|
-| `execution_ledger_backlog_rows` | gauge | Rows that no fold has claimed yet. |
+| `execution_ledger_backlog_rows` | gauge | Rows that no fold has claimed yet. Approximate, never lower than the real count. |
 | `execution_ledger_backlog_oldest_row_age_seconds` | gauge | Age of the oldest unclaimed row. 0 when the ledger is empty. |
 | `execution_ledger_fold_last_success_timestamp_seconds` | gauge | Last fold that held the lock and committed. |
 | `execution_ledger_fold_step_failures_total{step}` | counter | Failed fold attempts for each step. |
 
-The backlog gauges come from a database query. The result is cached for 30 seconds and
-shared by all mains. Any main can run the fold, so a main that stopped folding keeps its
+The backlog gauges read only the primary key, so the query stays cheap at any backlog size.
+The count comes from the id range: rolled-back runs leave id gaps that make it a little high.
+The result is cached for 60 seconds and shared by all mains. Any main can run the fold, so a main that stopped folding keeps its
 old fold metrics. Aggregate across mains: `max()` for the timestamp, `sum()` for counters.
 
 After 3 failures in a row on the same batch, the fold logs one error in the
