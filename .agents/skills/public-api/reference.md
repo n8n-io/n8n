@@ -181,7 +181,9 @@ survived. These checks can:
 
 - Diff live responses against master. Run the route on an instance per branch and
   compare status, body, and error message for the same requests. Reading the old
-  YAML beside the new Zod schema doesn't find the differences.
+  YAML beside the new Zod schema doesn't find the differences. The
+  [public-api-live-testing](../public-api-live-testing/SKILL.md) skill has the
+  setup and a parity harness that does the diff.
 - Check whether a field is absent or `null`. `activeVersion` omitted is not the
   same response as `activeVersion: null`; use a conditional spread to omit it.
 - Check query-param coercion at the edges (`""`, `"0"`, `"false"`, absent). A Zod
