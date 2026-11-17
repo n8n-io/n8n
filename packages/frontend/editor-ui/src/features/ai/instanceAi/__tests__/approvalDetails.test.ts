@@ -1,6 +1,10 @@
 import { afterEach, describe, expect, it } from 'vitest';
 import { i18nInstance, i18nVersion } from '@n8n/i18n';
-import { CHANGE_DATA_TABLES_TOOL_NAME, type InstanceAiApprovalDetails } from '@n8n/api-types';
+import {
+	CHANGE_DATA_TABLES_TOOL_NAME,
+	DATA_TABLE_TOOL_NAME_BY_ACTION,
+	type InstanceAiApprovalDetails,
+} from '@n8n/api-types';
 import { formatApprovalDetails, formatApprovalTitle } from '../approvalDetails';
 
 const originalLocale = i18nInstance.global.locale.value;
@@ -144,6 +148,47 @@ describe('approval details', () => {
 			expect(title).toContain('Leads');
 			expect(title).not.toContain('instanceAi.');
 		});
+
+		it.each([
+			['create-table', 'create', { action: 'create-table', columns: [] }],
+			['delete-table', 'delete', { action: 'delete-table' }],
+			['add-column', 'add-column', { action: 'add-column', column: 'x', columnType: 'string' }],
+			['delete-column', 'delete-column', { action: 'delete-column', column: 'x' }],
+			['rename-column', 'rename-column', { action: 'rename-column', column: 'x', newName: 'y' }],
+			['insert-rows', 'insert-rows', { action: 'insert-rows', count: 1, rows: [] }],
+			[
+				'update-rows',
+				'update-rows',
+				{
+					action: 'update-rows',
+					changes: { values: [], remainingColumns: 0 },
+					filter: { type: 'and', filters: [] },
+				},
+			],
+			[
+				'delete-rows',
+				'delete-rows',
+				{ action: 'delete-rows', filter: { type: 'and', filters: [] } },
+			],
+		] as const)(
+			'titles a single %s change like the former single-action tool',
+			(_, toolAction, details) => {
+				const title = formatApprovalTitle({
+					toolName: CHANGE_DATA_TABLES_TOOL_NAME,
+					resourceName: 'Suppliers',
+					approvalDetails: {
+						action: 'data-table-changes',
+						changes: [{ tableName: 'Suppliers', tableKey: 'existing:dt-1', details }],
+					},
+				});
+				const formerTitle = formatApprovalTitle({
+					toolName: DATA_TABLE_TOOL_NAME_BY_ACTION[toolAction],
+					resourceName: 'Suppliers',
+				});
+				expect(title).toBe(formerTitle);
+				expect(title).not.toContain('instanceAi.');
+			},
+		);
 
 		it('counts two tables with the same name as several tables', () => {
 			const title = formatApprovalTitle({

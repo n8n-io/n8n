@@ -1,8 +1,10 @@
 import {
+	DATA_TABLE_TOOL_NAME_BY_ACTION,
 	getDataTableCallAction,
 	getExecutionCallAction,
 	getWorkspaceCallAction,
 	resolveBuilderToolName,
+	type DataTableWriteToolAction,
 	type InstanceAiApprovalDetails,
 	type InstanceAiDataTableChangeDetails,
 } from '@n8n/api-types';
@@ -332,9 +334,35 @@ function formatDataTableChanges(
 		.join('\n\n');
 }
 
-/** Title of a batch card: the table name for one table, otherwise the number of tables. */
+/** The former single-action tool of each change on a batch card, which owns its title phrase. */
+const TOOL_ACTION_BY_CHANGE = {
+	'create-table': 'create',
+	'delete-table': 'delete',
+	'add-column': 'add-column',
+	'delete-column': 'delete-column',
+	'rename-column': 'rename-column',
+	'insert-rows': 'insert-rows',
+	'update-rows': 'update-rows',
+	'delete-rows': 'delete-rows',
+} as const satisfies Record<
+	DataTableChanges[number]['details']['action'],
+	DataTableWriteToolAction
+>;
+
+/**
+ * Title of a batch card. One change keeps the verb of that change, so a delete
+ * does not read as a "change". Otherwise the title names the table, or counts
+ * the tables.
+ */
 function formatDataTableChangesTitle(changes: DataTableChanges): string {
 	const i18n = useI18n();
+	if (changes.length === 1) {
+		const [{ tableName, details }] = changes;
+		return formatApprovalTitle({
+			toolName: DATA_TABLE_TOOL_NAME_BY_ACTION[TOOL_ACTION_BY_CHANGE[details.action]],
+			resourceName: tableName,
+		});
+	}
 	const tables = groupByTable(changes);
 	if (tables.length === 1) {
 		return i18n.baseText('instanceAi.confirmation.resourcePrompt', {
