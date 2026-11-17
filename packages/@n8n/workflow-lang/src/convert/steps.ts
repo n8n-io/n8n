@@ -80,7 +80,8 @@ export interface StepCall {
 	 * converter calls once for each item and that sends what v1 sends once (a message). When
 	 * the call for an item ends with the mark of `RUNS_IN_HOST`, nothing went out for that
 	 * item, and the host runs the v1 node for that item only. The items before it are not
-	 * sent again. The step has no "retry on fail".
+	 * sent again. With "retry on fail", the step runs again for all items, as v1 runs the
+	 * node again: the items before the failure go out again.
 	 */
 	hostItem?: Code;
 }
@@ -295,6 +296,20 @@ export function emitStep(c: NodeContext, call: StepCall): void {
 	}
 	const push = (value: string) =>
 		pairs ? `{ ${out}.push(${value}); ${pairs}.paired.push(${INDEX}); }` : `${out}.push(${value});`;
+	// "Retry on fail" of v1 for a node that sends what v1 sends once: all items run again.
+	const again = call.hostItem !== undefined ? errorRetry(c) : null;
+	if (again) {
+		c.helper('retryError');
+		w.open(`for (let tryIndex = 0; tryIndex < ${again.tries}; tryIndex++) {`);
+		if (again.delay > 0) {
+			w.line(
+				`if (tryIndex > 0) await ctx.wait({ name: ${str(`${c.node.name} (retry)`)}, duration: ${again.delay} });`,
+			);
+		}
+		w.line(`while (${out}.length > 0) ${out}.pop();`);
+		w.line('let failed = false;');
+		w.open('try {');
+	}
 	if (call.usesIndex || pairs) {
 		w.open(`for (let ${INDEX} = 0; ${INDEX} < ${input}.length; ${INDEX}++) {`);
 		w.line(`const ${ITEM} = ${input}[${INDEX}];`);
@@ -303,21 +318,45 @@ export function emitStep(c: NodeContext, call: StepCall): void {
 	}
 	const opts = options(c, call, `[${ITEM}]`);
 	if (call.hostItem !== undefined) {
-		// The call for the item, and the host call for the same item after the mark.
-		if (onError !== 'stopWorkflow' || c.traceAll) w.open('try {');
-		emitItemWithHost(c, fn, opts, call.hostItem);
+		// The call for the item, and the host call for the same item after the mark. With a
+		// retry, the error of the last try is traced after the loop of the tries.
+		const traced = onError === 'stopWorkflow' && c.traceAll === true && again === null;
+		if (onError !== 'stopWorkflow' || traced) w.open('try {');
+		// The loop of the tries is the retry of v1: the call has no retry policy of its own.
+		const once: Code =
+			opts.kind === 'object'
+				? { kind: 'object', entries: opts.entries.filter(([k]) => k !== 'retry') }
+				: opts;
+		emitItemWithHost(c, fn, once, call.hostItem);
 		// The v1 node in the host gives the error item of the item itself. n8n's engine moves
 		// an item that has only `error` to the error output, with the JSON of the input item.
 		const moved = errors
 			? `if (itemInHost && r != null && typeof r.error === 'string' && r.error !== '' && Object.keys(r).length === 1) ${errorOutputPush(c, errors, ITEM, push('{}')).replace('error.message', 'r.error')} else ${push('r')}`
 			: push('r');
 		w.line(`for (const r of result) ${moved}`);
-		if (onError === 'stopWorkflow' && c.traceAll) failTrace(c);
+		if (traced) failTrace(c);
 		if (onError !== 'stopWorkflow') {
 			w.close('} catch (error) {');
 			w.depth++;
 			w.line(errors ? errorOutputPush(c, errors, ITEM, push('{}')) : push(errorItem(c)));
 			w.close();
+		}
+		if (again) {
+			// The end of the loop of the items, then the end of the try.
+			w.close();
+			w.close('} catch (error) {');
+			w.depth++;
+			w.open(`if (tryIndex + 1 >= ${again.tries}) {`);
+			if (c.traceAll && onError === 'stopWorkflow') {
+				w.line(
+					`ctx.trace(${str(c.node.name)}, { $error: { message: error.message, description: error.description ?? '' } });`,
+				);
+			}
+			w.line('throw error;');
+			w.close();
+			w.line('failed = true;');
+			w.close();
+			w.line(`if (!failed && !retryError(${out}[0])) break;`);
 		}
 	} else if (onError === 'stopWorkflow' && c.traceAll) {
 		w.open('try {');

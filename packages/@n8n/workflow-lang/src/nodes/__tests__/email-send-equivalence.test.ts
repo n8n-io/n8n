@@ -103,6 +103,7 @@ function nodeOf(c: EmailSendCase, settings: Record<string, unknown> = {}) {
 		// The name of the credential is the name of its slot in the converted workflow.
 		credentials: { smtp: { id: c.credential ?? 'login', name: c.credential ?? 'login' } },
 		...(c.onError ? { onError: c.onError } : {}),
+		...c.settings,
 		...settings,
 	};
 }
@@ -267,7 +268,7 @@ async function runLive(c: EmailSendCase, b: Bed): Promise<EmailSendRecording> {
 		credential: { type: 'smtp', data: credentialData(b.server, c.credential ?? 'login') },
 		responses: [],
 		// With settings, also empty ones, the recorder runs the node in n8n's engine.
-		settings: c.onError ? { onError: c.onError } : {},
+		settings: { ...(c.onError ? { onError: c.onError } : {}), ...c.settings },
 	});
 	const v1Sessions = masked(jsonCopy(b.server.sessions()), b.v1InstanceId);
 	// With the error output: both outputs.

@@ -2665,6 +2665,632 @@
 		],
 		"host": true
 	},
+	"a refused login with two tries: v1 connects two times": {
+		"v1": {
+			"error": "Invalid login: 535 5.7.8 Authentication credentials invalid",
+			"errorDetail": {
+				"description": null,
+				"httpCode": "EAUTH"
+			}
+		},
+		"sessions": [
+			{
+				"tls": false,
+				"commands": ["EHLO client.test", "AUTH PLAIN AHVzZXIAc2VjcmV0"]
+			},
+			{
+				"tls": false,
+				"commands": ["EHLO client.test", "AUTH PLAIN AHVzZXIAc2VjcmV0"]
+			}
+		],
+		"calls": [
+			{
+				"args": {
+					"credential": "login",
+					"from": "a@x.test",
+					"to": "b@x.test",
+					"subject": "Hi",
+					"text": "body\n\n---\nThis email was sent automatically with n8n\nhttps://n8n.io"
+				},
+				"result": {
+					"error": {
+						"message": "Invalid login: 535 5.7.8 Authentication credentials invalid",
+						"code": "EAUTH",
+						"response": "535 5.7.8 Authentication credentials invalid",
+						"responseCode": 535,
+						"command": "AUTH PLAIN"
+					}
+				}
+			},
+			{
+				"args": {
+					"credential": "login",
+					"from": "a@x.test",
+					"to": "b@x.test",
+					"subject": "Hi",
+					"text": "body\n\n---\nThis email was sent automatically with n8n\nhttps://n8n.io"
+				},
+				"result": {
+					"error": {
+						"message": "Invalid login: 535 5.7.8 Authentication credentials invalid",
+						"code": "EAUTH",
+						"response": "535 5.7.8 Authentication credentials invalid",
+						"responseCode": 535,
+						"command": "AUTH PLAIN"
+					}
+				}
+			}
+		]
+	},
+	"the second item fails with three tries: v1 sends the first message three times": {
+		"v1": {
+			"error": "Can't send mail - all recipients were rejected: 550 5.1.1 no such user",
+			"errorDetail": {
+				"description": null,
+				"httpCode": "EENVELOPE"
+			}
+		},
+		"sessions": [
+			{
+				"tls": false,
+				"commands": [
+					"EHLO client.test",
+					"AUTH PLAIN AHVzZXIAc2VjcmV0",
+					"MAIL FROM:<a@x.test>",
+					"RCPT TO:<b@x.test>",
+					"DATA"
+				],
+				"message": "From: a@x.test\r\nTo: b@x.test\r\nSubject: Hi\r\nMessage-ID: <00000000-0000-0000-0000-000000000000@x.test>\r\nContent-Transfer-Encoding: 7bit\r\nDate: xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\r\nMIME-Version: 1.0\r\nContent-Type: text/plain; charset=utf-8\r\n\r\nbody\r\n\r\n---\r\nThis email was sent automatically with n8n\r\nhttps://n8n.io\r\n"
+			},
+			{
+				"tls": false,
+				"commands": [
+					"EHLO client.test",
+					"AUTH PLAIN AHVzZXIAc2VjcmV0",
+					"MAIL FROM:<a@x.test>",
+					"RCPT TO:<c@x.test>",
+					"DATA"
+				],
+				"message": ""
+			},
+			{
+				"tls": false,
+				"commands": [
+					"EHLO client.test",
+					"AUTH PLAIN AHVzZXIAc2VjcmV0",
+					"MAIL FROM:<a@x.test>",
+					"RCPT TO:<b@x.test>",
+					"DATA"
+				],
+				"message": "From: a@x.test\r\nTo: b@x.test\r\nSubject: Hi\r\nMessage-ID: <00000000-0000-0000-0000-000000000000@x.test>\r\nContent-Transfer-Encoding: 7bit\r\nDate: xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\r\nMIME-Version: 1.0\r\nContent-Type: text/plain; charset=utf-8\r\n\r\nbody\r\n\r\n---\r\nThis email was sent automatically with n8n\r\nhttps://n8n.io\r\n"
+			},
+			{
+				"tls": false,
+				"commands": [
+					"EHLO client.test",
+					"AUTH PLAIN AHVzZXIAc2VjcmV0",
+					"MAIL FROM:<a@x.test>",
+					"RCPT TO:<c@x.test>",
+					"DATA"
+				],
+				"message": ""
+			},
+			{
+				"tls": false,
+				"commands": [
+					"EHLO client.test",
+					"AUTH PLAIN AHVzZXIAc2VjcmV0",
+					"MAIL FROM:<a@x.test>",
+					"RCPT TO:<b@x.test>",
+					"DATA"
+				],
+				"message": "From: a@x.test\r\nTo: b@x.test\r\nSubject: Hi\r\nMessage-ID: <00000000-0000-0000-0000-000000000000@x.test>\r\nContent-Transfer-Encoding: 7bit\r\nDate: xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\r\nMIME-Version: 1.0\r\nContent-Type: text/plain; charset=utf-8\r\n\r\nbody\r\n\r\n---\r\nThis email was sent automatically with n8n\r\nhttps://n8n.io\r\n"
+			},
+			{
+				"tls": false,
+				"commands": [
+					"EHLO client.test",
+					"AUTH PLAIN AHVzZXIAc2VjcmV0",
+					"MAIL FROM:<a@x.test>",
+					"RCPT TO:<c@x.test>",
+					"DATA"
+				],
+				"message": ""
+			}
+		],
+		"calls": [
+			{
+				"args": {
+					"credential": "login",
+					"from": "a@x.test",
+					"to": "b@x.test",
+					"subject": "Hi",
+					"text": "body\n\n---\nThis email was sent automatically with n8n\nhttps://n8n.io"
+				},
+				"result": {
+					"accepted": ["b@x.test"],
+					"rejected": [],
+					"ehlo": ["PIPELINING", "AUTH PLAIN LOGIN", "SIZE 10485760"],
+					"envelopeTime": 0,
+					"messageTime": 0,
+					"messageSize": 312,
+					"response": "250 2.0.0 queued",
+					"envelope": {
+						"from": "a@x.test",
+						"to": ["b@x.test"]
+					},
+					"messageId": "<00000000-0000-0000-0000-000000000000@x.test>"
+				}
+			},
+			{
+				"args": {
+					"credential": "login",
+					"from": "a@x.test",
+					"to": "c@x.test",
+					"subject": "Hi",
+					"text": "body\n\n---\nThis email was sent automatically with n8n\nhttps://n8n.io"
+				},
+				"result": {
+					"error": {
+						"message": "Can't send mail - all recipients were rejected: 550 5.1.1 no such user",
+						"code": "EENVELOPE",
+						"response": "550 5.1.1 no such user",
+						"responseCode": 550,
+						"command": "RCPT TO",
+						"rejected": ["c@x.test"],
+						"rejectedErrors": [
+							{
+								"message": "Recipient command failed: 550 5.1.1 no such user",
+								"code": "EENVELOPE",
+								"response": "550 5.1.1 no such user",
+								"responseCode": 550,
+								"command": "RCPT TO",
+								"recipient": "c@x.test"
+							}
+						]
+					}
+				}
+			},
+			{
+				"args": {
+					"credential": "login",
+					"from": "a@x.test",
+					"to": "b@x.test",
+					"subject": "Hi",
+					"text": "body\n\n---\nThis email was sent automatically with n8n\nhttps://n8n.io"
+				},
+				"result": {
+					"accepted": ["b@x.test"],
+					"rejected": [],
+					"ehlo": ["PIPELINING", "AUTH PLAIN LOGIN", "SIZE 10485760"],
+					"envelopeTime": 0,
+					"messageTime": 0,
+					"messageSize": 312,
+					"response": "250 2.0.0 queued",
+					"envelope": {
+						"from": "a@x.test",
+						"to": ["b@x.test"]
+					},
+					"messageId": "<00000000-0000-0000-0000-000000000000@x.test>"
+				}
+			},
+			{
+				"args": {
+					"credential": "login",
+					"from": "a@x.test",
+					"to": "c@x.test",
+					"subject": "Hi",
+					"text": "body\n\n---\nThis email was sent automatically with n8n\nhttps://n8n.io"
+				},
+				"result": {
+					"error": {
+						"message": "Can't send mail - all recipients were rejected: 550 5.1.1 no such user",
+						"code": "EENVELOPE",
+						"response": "550 5.1.1 no such user",
+						"responseCode": 550,
+						"command": "RCPT TO",
+						"rejected": ["c@x.test"],
+						"rejectedErrors": [
+							{
+								"message": "Recipient command failed: 550 5.1.1 no such user",
+								"code": "EENVELOPE",
+								"response": "550 5.1.1 no such user",
+								"responseCode": 550,
+								"command": "RCPT TO",
+								"recipient": "c@x.test"
+							}
+						]
+					}
+				}
+			},
+			{
+				"args": {
+					"credential": "login",
+					"from": "a@x.test",
+					"to": "b@x.test",
+					"subject": "Hi",
+					"text": "body\n\n---\nThis email was sent automatically with n8n\nhttps://n8n.io"
+				},
+				"result": {
+					"accepted": ["b@x.test"],
+					"rejected": [],
+					"ehlo": ["PIPELINING", "AUTH PLAIN LOGIN", "SIZE 10485760"],
+					"envelopeTime": 0,
+					"messageTime": 0,
+					"messageSize": 312,
+					"response": "250 2.0.0 queued",
+					"envelope": {
+						"from": "a@x.test",
+						"to": ["b@x.test"]
+					},
+					"messageId": "<00000000-0000-0000-0000-000000000000@x.test>"
+				}
+			},
+			{
+				"args": {
+					"credential": "login",
+					"from": "a@x.test",
+					"to": "c@x.test",
+					"subject": "Hi",
+					"text": "body\n\n---\nThis email was sent automatically with n8n\nhttps://n8n.io"
+				},
+				"result": {
+					"error": {
+						"message": "Can't send mail - all recipients were rejected: 550 5.1.1 no such user",
+						"code": "EENVELOPE",
+						"response": "550 5.1.1 no such user",
+						"responseCode": 550,
+						"command": "RCPT TO",
+						"rejected": ["c@x.test"],
+						"rejectedErrors": [
+							{
+								"message": "Recipient command failed: 550 5.1.1 no such user",
+								"code": "EENVELOPE",
+								"response": "550 5.1.1 no such user",
+								"responseCode": 550,
+								"command": "RCPT TO",
+								"recipient": "c@x.test"
+							}
+						]
+					}
+				}
+			}
+		]
+	},
+	"the first item fails with a retry and continue: v1 runs all items again": {
+		"v1": {
+			"output": [
+				{
+					"error": "Can't send mail - all recipients were rejected: 550 5.1.1 no such user"
+				},
+				{
+					"accepted": ["b@x.test"],
+					"rejected": [],
+					"ehlo": ["PIPELINING", "AUTH PLAIN LOGIN", "SIZE 10485760"],
+					"envelopeTime": 0,
+					"messageTime": 0,
+					"messageSize": 312,
+					"response": "250 2.0.0 queued",
+					"envelope": {
+						"from": "a@x.test",
+						"to": ["b@x.test"]
+					},
+					"messageId": "<00000000-0000-0000-0000-000000000000@x.test>"
+				}
+			]
+		},
+		"sessions": [
+			{
+				"tls": false,
+				"commands": [
+					"EHLO client.test",
+					"AUTH PLAIN AHVzZXIAc2VjcmV0",
+					"MAIL FROM:<a@x.test>",
+					"RCPT TO:<c@x.test>",
+					"DATA"
+				],
+				"message": ""
+			},
+			{
+				"tls": false,
+				"commands": [
+					"EHLO client.test",
+					"AUTH PLAIN AHVzZXIAc2VjcmV0",
+					"MAIL FROM:<a@x.test>",
+					"RCPT TO:<b@x.test>",
+					"DATA"
+				],
+				"message": "From: a@x.test\r\nTo: b@x.test\r\nSubject: Hi\r\nMessage-ID: <00000000-0000-0000-0000-000000000000@x.test>\r\nContent-Transfer-Encoding: 7bit\r\nDate: xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\r\nMIME-Version: 1.0\r\nContent-Type: text/plain; charset=utf-8\r\n\r\nbody\r\n\r\n---\r\nThis email was sent automatically with n8n\r\nhttps://n8n.io\r\n"
+			},
+			{
+				"tls": false,
+				"commands": [
+					"EHLO client.test",
+					"AUTH PLAIN AHVzZXIAc2VjcmV0",
+					"MAIL FROM:<a@x.test>",
+					"RCPT TO:<c@x.test>",
+					"DATA"
+				],
+				"message": ""
+			},
+			{
+				"tls": false,
+				"commands": [
+					"EHLO client.test",
+					"AUTH PLAIN AHVzZXIAc2VjcmV0",
+					"MAIL FROM:<a@x.test>",
+					"RCPT TO:<b@x.test>",
+					"DATA"
+				],
+				"message": "From: a@x.test\r\nTo: b@x.test\r\nSubject: Hi\r\nMessage-ID: <00000000-0000-0000-0000-000000000000@x.test>\r\nContent-Transfer-Encoding: 7bit\r\nDate: xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\r\nMIME-Version: 1.0\r\nContent-Type: text/plain; charset=utf-8\r\n\r\nbody\r\n\r\n---\r\nThis email was sent automatically with n8n\r\nhttps://n8n.io\r\n"
+			}
+		],
+		"calls": [
+			{
+				"args": {
+					"credential": "login",
+					"from": "a@x.test",
+					"to": "c@x.test",
+					"subject": "Hi",
+					"text": "body\n\n---\nThis email was sent automatically with n8n\nhttps://n8n.io"
+				},
+				"result": {
+					"error": {
+						"message": "Can't send mail - all recipients were rejected: 550 5.1.1 no such user",
+						"code": "EENVELOPE",
+						"response": "550 5.1.1 no such user",
+						"responseCode": 550,
+						"command": "RCPT TO",
+						"rejected": ["c@x.test"],
+						"rejectedErrors": [
+							{
+								"message": "Recipient command failed: 550 5.1.1 no such user",
+								"code": "EENVELOPE",
+								"response": "550 5.1.1 no such user",
+								"responseCode": 550,
+								"command": "RCPT TO",
+								"recipient": "c@x.test"
+							}
+						]
+					}
+				}
+			},
+			{
+				"args": {
+					"credential": "login",
+					"from": "a@x.test",
+					"to": "b@x.test",
+					"subject": "Hi",
+					"text": "body\n\n---\nThis email was sent automatically with n8n\nhttps://n8n.io"
+				},
+				"result": {
+					"accepted": ["b@x.test"],
+					"rejected": [],
+					"ehlo": ["PIPELINING", "AUTH PLAIN LOGIN", "SIZE 10485760"],
+					"envelopeTime": 0,
+					"messageTime": 0,
+					"messageSize": 312,
+					"response": "250 2.0.0 queued",
+					"envelope": {
+						"from": "a@x.test",
+						"to": ["b@x.test"]
+					},
+					"messageId": "<00000000-0000-0000-0000-000000000000@x.test>"
+				}
+			},
+			{
+				"args": {
+					"credential": "login",
+					"from": "a@x.test",
+					"to": "c@x.test",
+					"subject": "Hi",
+					"text": "body\n\n---\nThis email was sent automatically with n8n\nhttps://n8n.io"
+				},
+				"result": {
+					"error": {
+						"message": "Can't send mail - all recipients were rejected: 550 5.1.1 no such user",
+						"code": "EENVELOPE",
+						"response": "550 5.1.1 no such user",
+						"responseCode": 550,
+						"command": "RCPT TO",
+						"rejected": ["c@x.test"],
+						"rejectedErrors": [
+							{
+								"message": "Recipient command failed: 550 5.1.1 no such user",
+								"code": "EENVELOPE",
+								"response": "550 5.1.1 no such user",
+								"responseCode": 550,
+								"command": "RCPT TO",
+								"recipient": "c@x.test"
+							}
+						]
+					}
+				}
+			},
+			{
+				"args": {
+					"credential": "login",
+					"from": "a@x.test",
+					"to": "b@x.test",
+					"subject": "Hi",
+					"text": "body\n\n---\nThis email was sent automatically with n8n\nhttps://n8n.io"
+				},
+				"result": {
+					"accepted": ["b@x.test"],
+					"rejected": [],
+					"ehlo": ["PIPELINING", "AUTH PLAIN LOGIN", "SIZE 10485760"],
+					"envelopeTime": 0,
+					"messageTime": 0,
+					"messageSize": 312,
+					"response": "250 2.0.0 queued",
+					"envelope": {
+						"from": "a@x.test",
+						"to": ["b@x.test"]
+					},
+					"messageId": "<00000000-0000-0000-0000-000000000000@x.test>"
+				}
+			}
+		]
+	},
+	"the second item fails with a retry and continue: v1 does not run the node again": {
+		"v1": {
+			"output": [
+				{
+					"accepted": ["b@x.test"],
+					"rejected": [],
+					"ehlo": ["PIPELINING", "AUTH PLAIN LOGIN", "SIZE 10485760"],
+					"envelopeTime": 0,
+					"messageTime": 0,
+					"messageSize": 312,
+					"response": "250 2.0.0 queued",
+					"envelope": {
+						"from": "a@x.test",
+						"to": ["b@x.test"]
+					},
+					"messageId": "<00000000-0000-0000-0000-000000000000@x.test>"
+				},
+				{
+					"error": "Can't send mail - all recipients were rejected: 550 5.1.1 no such user"
+				}
+			]
+		},
+		"sessions": [
+			{
+				"tls": false,
+				"commands": [
+					"EHLO client.test",
+					"AUTH PLAIN AHVzZXIAc2VjcmV0",
+					"MAIL FROM:<a@x.test>",
+					"RCPT TO:<b@x.test>",
+					"DATA"
+				],
+				"message": "From: a@x.test\r\nTo: b@x.test\r\nSubject: Hi\r\nMessage-ID: <00000000-0000-0000-0000-000000000000@x.test>\r\nContent-Transfer-Encoding: 7bit\r\nDate: xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\r\nMIME-Version: 1.0\r\nContent-Type: text/plain; charset=utf-8\r\n\r\nbody\r\n\r\n---\r\nThis email was sent automatically with n8n\r\nhttps://n8n.io\r\n"
+			},
+			{
+				"tls": false,
+				"commands": [
+					"EHLO client.test",
+					"AUTH PLAIN AHVzZXIAc2VjcmV0",
+					"MAIL FROM:<a@x.test>",
+					"RCPT TO:<c@x.test>",
+					"DATA"
+				],
+				"message": ""
+			}
+		],
+		"calls": [
+			{
+				"args": {
+					"credential": "login",
+					"from": "a@x.test",
+					"to": "b@x.test",
+					"subject": "Hi",
+					"text": "body\n\n---\nThis email was sent automatically with n8n\nhttps://n8n.io"
+				},
+				"result": {
+					"accepted": ["b@x.test"],
+					"rejected": [],
+					"ehlo": ["PIPELINING", "AUTH PLAIN LOGIN", "SIZE 10485760"],
+					"envelopeTime": 0,
+					"messageTime": 0,
+					"messageSize": 312,
+					"response": "250 2.0.0 queued",
+					"envelope": {
+						"from": "a@x.test",
+						"to": ["b@x.test"]
+					},
+					"messageId": "<00000000-0000-0000-0000-000000000000@x.test>"
+				}
+			},
+			{
+				"args": {
+					"credential": "login",
+					"from": "a@x.test",
+					"to": "c@x.test",
+					"subject": "Hi",
+					"text": "body\n\n---\nThis email was sent automatically with n8n\nhttps://n8n.io"
+				},
+				"result": {
+					"error": {
+						"message": "Can't send mail - all recipients were rejected: 550 5.1.1 no such user",
+						"code": "EENVELOPE",
+						"response": "550 5.1.1 no such user",
+						"responseCode": 550,
+						"command": "RCPT TO",
+						"rejected": ["c@x.test"],
+						"rejectedErrors": [
+							{
+								"message": "Recipient command failed: 550 5.1.1 no such user",
+								"code": "EENVELOPE",
+								"response": "550 5.1.1 no such user",
+								"responseCode": 550,
+								"command": "RCPT TO",
+								"recipient": "c@x.test"
+							}
+						]
+					}
+				}
+			}
+		]
+	},
+	"a message that goes out with a retry setting": {
+		"v1": {
+			"output": [
+				{
+					"accepted": ["b@x.test"],
+					"rejected": [],
+					"ehlo": ["PIPELINING", "AUTH PLAIN LOGIN", "SIZE 10485760"],
+					"envelopeTime": 0,
+					"messageTime": 0,
+					"messageSize": 312,
+					"response": "250 2.0.0 queued",
+					"envelope": {
+						"from": "a@x.test",
+						"to": ["b@x.test"]
+					},
+					"messageId": "<00000000-0000-0000-0000-000000000000@x.test>"
+				}
+			]
+		},
+		"sessions": [
+			{
+				"tls": false,
+				"commands": [
+					"EHLO client.test",
+					"AUTH PLAIN AHVzZXIAc2VjcmV0",
+					"MAIL FROM:<a@x.test>",
+					"RCPT TO:<b@x.test>",
+					"DATA"
+				],
+				"message": "From: a@x.test\r\nTo: b@x.test\r\nSubject: Hi\r\nMessage-ID: <00000000-0000-0000-0000-000000000000@x.test>\r\nContent-Transfer-Encoding: 7bit\r\nDate: xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\r\nMIME-Version: 1.0\r\nContent-Type: text/plain; charset=utf-8\r\n\r\nbody\r\n\r\n---\r\nThis email was sent automatically with n8n\r\nhttps://n8n.io\r\n"
+			}
+		],
+		"calls": [
+			{
+				"args": {
+					"credential": "login",
+					"from": "a@x.test",
+					"to": "b@x.test",
+					"subject": "Hi",
+					"text": "body\n\n---\nThis email was sent automatically with n8n\nhttps://n8n.io"
+				},
+				"result": {
+					"accepted": ["b@x.test"],
+					"rejected": [],
+					"ehlo": ["PIPELINING", "AUTH PLAIN LOGIN", "SIZE 10485760"],
+					"envelopeTime": 0,
+					"messageTime": 0,
+					"messageSize": 312,
+					"response": "250 2.0.0 queued",
+					"envelope": {
+						"from": "a@x.test",
+						"to": ["b@x.test"]
+					},
+					"messageId": "<00000000-0000-0000-0000-000000000000@x.test>"
+				}
+			}
+		]
+	},
 	"an address group": {
 		"v1": {
 			"output": [

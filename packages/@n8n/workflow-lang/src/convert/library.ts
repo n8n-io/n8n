@@ -1262,10 +1262,12 @@ export function lowerLibrary(c: NodeContext): void {
 	if (gmailSend && c.instance) adapted.instanceId = c.instance.id;
 	// A message that the Gmail node writes comes from the mail builder of the runtime when
 	// the runtime has it (`ConvertOptions.smtp`). Files need the builder. With "retry on
-	// fail" the step has no host call for one item, so the node writes the message itself.
+	// fail" and the error output, the step has no form (see `emailSendInHost`), so the node
+	// writes the message itself.
 	const gmailWritten = type === 'n8n-nodes-base.gmail' && adapted.itemIndex !== undefined;
 	const gmailOptions = isRecord(adapted.options) ? adapted.options : {};
-	if (gmailWritten && c.smtp === true && c.node.retryOnFail !== true) adapted.mailBuilder = true;
+	const retryErrors = c.node.retryOnFail === true && c.node.onError === 'continueErrorOutput';
+	if (gmailWritten && c.smtp === true && !retryErrors) adapted.mailBuilder = true;
 	if (gmailWritten && adapted.mailBuilder !== true && gmailOptions.attachmentsUi !== undefined) {
 		// The marker is not in the `supports` list: the node runs in the host.
 		adapted.gmailFilesHost = true;
@@ -1463,14 +1465,14 @@ const EMAIL_SEND = 'n8n-nodes-base.emailSend';
 
 /**
  * True when the Send Email node runs in the fallback host: the runtime has no native SMTP
- * client (`ConvertOptions.smtp`), or the node has "retry on fail". v1 then runs the node
- * again for all items, so it sends the messages of the items before the failure again. The
- * library call runs once for each item and has no such form.
+ * client (`ConvertOptions.smtp`), or the node has "retry on fail" with the error output:
+ * v1 then looks at the first item of the node before it moves the error items, and the
+ * step has no form for that.
  */
 function emailSendInHost(c: NodeContext): boolean {
 	if (c.node.type !== EMAIL_SEND) return false;
 	if (c.smtp !== true) return true;
-	return c.node.retryOnFail === true;
+	return c.node.retryOnFail === true && c.node.onError === 'continueErrorOutput';
 }
 
 /**

@@ -374,11 +374,9 @@ describe('Gmail library node with the mail builder of the runtime, and the v1 no
 		expect(before.source).not.toContain('mailBuilder');
 	});
 
-	it('with "retry on fail", the node writes the message itself', () => {
-		const out = convertWorkflow(workflowOf(CASES[0], { retryOnFail: true }), {
-			smtp: true,
-			instance,
-		});
+	it('with "retry on fail" and the error output, the node writes the message itself', () => {
+		const settings = { retryOnFail: true, onError: 'continueErrorOutput' };
+		const out = convertWorkflow(workflowOf(CASES[0], settings), { smtp: true, instance });
 		expect(out.ok).toBe(true);
 		expect(out.source).not.toContain('mailBuilder');
 	});

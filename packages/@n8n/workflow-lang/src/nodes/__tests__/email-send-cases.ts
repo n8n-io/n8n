@@ -26,6 +26,8 @@ export interface EmailSendCase {
 	/** The input items. The default is one empty item. */
 	items?: Array<Record<string, unknown>>;
 	onError?: 'continueRegularOutput' | 'continueErrorOutput';
+	/** Other settings of the node: "retry on fail". */
+	settings?: { retryOnFail?: boolean; maxTries?: number; waitBetweenTries?: number };
 	/**
 	 * True when the runtime cannot send the message as nodemailer does: the effect ends
 	 * with the marker before the MAIL command, and the fallback host runs the v1 node.
@@ -307,6 +309,40 @@ export const EMAIL_SEND_CASES: EmailSendCase[] = [
 		host: true,
 	},
 	{
+		name: 'a refused login with two tries: v1 connects two times',
+		parameters: mail(),
+		server: { ...AUTH, loginReply: '535 5.7.8 Authentication credentials invalid' },
+		settings: { retryOnFail: true, maxTries: 2, waitBetweenTries: 100 },
+	},
+	{
+		name: 'the second item fails with three tries: v1 sends the first message three times',
+		parameters: mail({ toEmail: '={{ $json.to }}' }),
+		items: [{ to: 'b@x.test' }, { to: 'c@x.test' }],
+		server: { ...AUTH, refused: { 'c@x.test': '550 5.1.1 no such user' } },
+		settings: { retryOnFail: true, maxTries: 3, waitBetweenTries: 100 },
+	},
+	{
+		name: 'the first item fails with a retry and continue: v1 runs all items again',
+		parameters: mail({ toEmail: '={{ $json.to }}' }),
+		items: [{ to: 'c@x.test' }, { to: 'b@x.test' }],
+		server: { ...AUTH, refused: { 'c@x.test': '550 5.1.1 no such user' } },
+		settings: { retryOnFail: true, maxTries: 2, waitBetweenTries: 100 },
+		onError: 'continueRegularOutput',
+	},
+	{
+		name: 'the second item fails with a retry and continue: v1 does not run the node again',
+		parameters: mail({ toEmail: '={{ $json.to }}' }),
+		items: [{ to: 'b@x.test' }, { to: 'c@x.test' }],
+		server: { ...AUTH, refused: { 'c@x.test': '550 5.1.1 no such user' } },
+		settings: { retryOnFail: true, maxTries: 2, waitBetweenTries: 100 },
+		onError: 'continueRegularOutput',
+	},
+	{
+		name: 'a message that goes out with a retry setting',
+		parameters: mail(),
+		settings: { retryOnFail: true },
+	},
+	{
 		name: 'an address group',
 		parameters: mail({ toEmail: 'Team: b@x.test, c@x.test;' }),
 		host: true,
@@ -314,4 +350,6 @@ export const EMAIL_SEND_CASES: EmailSendCase[] = [
 ];
 
 /** Node settings that keep the node in the fallback host. */
-export const EMAIL_SEND_HOST_SETTINGS: Array<Record<string, unknown>> = [{ retryOnFail: true }];
+export const EMAIL_SEND_HOST_SETTINGS: Array<Record<string, unknown>> = [
+	{ retryOnFail: true, onError: 'continueErrorOutput' },
+];
