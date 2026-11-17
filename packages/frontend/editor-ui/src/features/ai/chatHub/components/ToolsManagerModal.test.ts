@@ -666,9 +666,9 @@ describe('ToolsManagerModal', () => {
 			mockRestrictedNodeTypes({ 'n8n-nodes-base.toolA': 'instance' });
 			chatStore.configuredTools = [createMockToolDto({ id: 'tool-on' }, true)];
 
-			const { container } = renderComponent({ props: defaultProps() });
+			renderComponent({ props: defaultProps() });
 
-			const toggle = getToggle(getConfiguredItems(container)[0]);
+			const toggle = getToggle(getConfiguredItems()[0]);
 			expect(toggle).toBeEnabled();
 			expect(toggle.getAttribute('aria-label')).toContain('Configured Tool A');
 			expect(toggle.getAttribute('aria-label')).toContain(
@@ -685,9 +685,9 @@ describe('ToolsManagerModal', () => {
 			mockRestrictedNodeTypes({ 'n8n-nodes-base.toolA': 'instance' });
 			chatStore.configuredTools = [createMockToolDto({ id: 'tool-off' }, false)];
 
-			const { container } = renderComponent({ props: defaultProps() });
+			renderComponent({ props: defaultProps() });
 
-			const toggle = getToggle(getConfiguredItems(container)[0]);
+			const toggle = getToggle(getConfiguredItems()[0]);
 			expect(toggle).toBeDisabled();
 			await fireEvent.click(toggle);
 
@@ -700,7 +700,7 @@ describe('ToolsManagerModal', () => {
 
 			const { container, getByTestId } = renderComponent({ props: defaultProps() });
 
-			const [configureBtn] = getActionButtons(getConfiguredItems(container)[0]);
+			const [configureBtn] = getActionButtons(getConfiguredItems()[0]);
 			await userEvent.click(configureBtn);
 
 			await waitFor(() => {
@@ -722,9 +722,9 @@ describe('ToolsManagerModal', () => {
 			mockConfirm.mockResolvedValue(MODAL_CONFIRM);
 			chatStore.configuredTools = [createMockToolDto()];
 
-			const { container } = renderComponent({ props: defaultProps() });
+			renderComponent({ props: defaultProps() });
 
-			const [, removeBtn] = getActionButtons(getConfiguredItems(container)[0]);
+			const [, removeBtn] = getActionButtons(getConfiguredItems()[0]);
 			await userEvent.click(removeBtn);
 
 			await waitFor(() => {
@@ -740,7 +740,7 @@ describe('ToolsManagerModal', () => {
 				props: defaultProps(),
 			});
 
-			const [configured] = getConfiguredItems(container);
+			const [configured] = getConfiguredItems();
 			expect(getToggle(configured)).not.toBeDisabled();
 			expect(getToggle(configured).getAttribute('aria-label')).toContain(
 				'chatHub.toolsManager.disableTool',
