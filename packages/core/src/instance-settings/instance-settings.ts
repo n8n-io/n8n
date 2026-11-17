@@ -82,6 +82,13 @@ export class InstanceSettings {
 	 */
 	readonly derivedInstanceId: string;
 
+	/**
+	 * Fingerprint the license is bound to. Stored once from `instanceId` and
+	 * never changed afterwards, so a later change of `instanceId` cannot
+	 * invalidate the license.
+	 */
+	licenseFingerprint: string;
+
 	hmacSignatureSecret: string;
 
 	/**
@@ -106,11 +113,13 @@ export class InstanceSettings {
 		this.settings = this.loadOrCreate();
 		this.derivedInstanceId = this.generateInstanceId();
 		this.instanceId = this.derivedInstanceId;
+		this.licenseFingerprint = this.derivedInstanceId;
 		this.hmacSignatureSecret = this.getOrGenerateHmacSignatureSecret();
 	}
 
 	/**
-	 * Two-phase init: reads or creates deployment-key rows for instance.id and signing.hmac.
+	 * Two-phase init: reads or creates deployment-key rows for instance.id,
+	 * license.fingerprint and signing.hmac.
 	 * Must be called after DB migrations complete, before license init.
 	 *
 	 * Precedence for each key: env var → DB active row → new value (and persist).
@@ -140,6 +149,19 @@ export class InstanceSettings {
 			() => (keepDerivedInstanceId ? this.instanceId : randomBytes(32).toString('hex')),
 			(v) => {
 				this.instanceId = v;
+			},
+		);
+		// Seeded from the resolved instance ID, which is what existing licenses are bound to.
+		// N8N_INSTANCE_ID still wins, because operators set it to match a certificate issued for another ID.
+		this.licenseFingerprint = this.instanceId;
+		await this.initIdentifier(
+			repo,
+			'license.fingerprint',
+			process.env.N8N_INSTANCE_ID,
+			canSeed,
+			() => this.instanceId,
+			(v) => {
+				this.licenseFingerprint = v;
 			},
 		);
 		await this.initSecret(

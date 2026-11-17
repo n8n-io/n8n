@@ -387,6 +387,69 @@ describe('InstanceSettings', () => {
 			});
 		});
 
+		describe('license.fingerprint', () => {
+			const seededFingerprint = () =>
+				mockRepo.seedActiveIdentifier.mock.calls.find(
+					([type]) => type === 'license.fingerprint',
+				)?.[1];
+
+			it('should seed the license fingerprint from the stored instance ID', async () => {
+				mockRepo.findActiveIdentifier.mockImplementation(async (type: string) =>
+					type === 'instance.id' ? { value: 'db-stored-id' } : null,
+				);
+
+				await settings.initialize(mockRepo);
+
+				expect(seededFingerprint()).toEqual('db-stored-id');
+				expect(settings.licenseFingerprint).toEqual('db-stored-id');
+			});
+
+			it('should seed the license fingerprint after the instance ID is resolved', async () => {
+				await settings.initialize(mockRepo, { keepDerivedInstanceId: false });
+
+				const types = mockRepo.seedActiveIdentifier.mock.calls.map(([type]) => type);
+				expect(types.indexOf('instance.id')).toBeLessThan(types.indexOf('license.fingerprint'));
+				expect(seededFingerprint()).toEqual(settings.instanceId);
+			});
+
+			it('should keep a stored license fingerprint when the instance ID differs', async () => {
+				mockRepo.findActiveIdentifier.mockImplementation(async (type: string) => {
+					if (type === 'instance.id') return { value: 'new-instance-id' };
+					if (type === 'license.fingerprint') return { value: 'original-fingerprint' };
+					return null;
+				});
+
+				await settings.initialize(mockRepo);
+
+				expect(settings.instanceId).toEqual('new-instance-id');
+				expect(settings.licenseFingerprint).toEqual('original-fingerprint');
+				expect(seededFingerprint()).toBeUndefined();
+			});
+
+			it('should use N8N_INSTANCE_ID over a stored license fingerprint, without storing it', async () => {
+				mockRepo.findActiveIdentifier.mockImplementation(async (type: string) =>
+					type === 'license.fingerprint' ? { value: 'original-fingerprint' } : null,
+				);
+				process.env.N8N_INSTANCE_ID = 'env-pinned-id';
+
+				await settings.initialize(mockRepo);
+
+				expect(settings.licenseFingerprint).toEqual('env-pinned-id');
+				expect(seededFingerprint()).toBeUndefined();
+			});
+
+			it('should not seed the license fingerprint when canSeed is false', async () => {
+				mockRepo.findActiveIdentifier.mockImplementation(async (type: string) =>
+					type === 'instance.id' ? { value: 'db-stored-id' } : null,
+				);
+
+				await settings.initialize(mockRepo, { canSeed: false });
+
+				expect(seededFingerprint()).toBeUndefined();
+				expect(settings.licenseFingerprint).toEqual('db-stored-id');
+			});
+		});
+
 		describe('signing.hmac', () => {
 			it('should use N8N_HMAC_SIGNATURE_SECRET env var and skip DB entirely', async () => {
 				process.env.N8N_HMAC_SIGNATURE_SECRET = 'env-pinned-hmac';

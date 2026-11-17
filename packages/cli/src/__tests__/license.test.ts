@@ -613,10 +613,11 @@ describe('License', () => {
 			multiMainSetup: { enabled: false },
 		});
 
-		it('should use instanceId when it is at least 32 characters long', async () => {
-			const longInstanceId = 'a'.repeat(64);
+		it('should use the license fingerprint when it is at least 32 characters long', async () => {
+			const longFingerprint = 'a'.repeat(64);
 			const instanceSettings = mock<InstanceSettings>({
-				instanceId: longInstanceId,
+				instanceId: 'c'.repeat(64),
+				licenseFingerprint: longFingerprint,
 				derivedInstanceId: 'b'.repeat(64),
 				instanceType: 'main',
 				isLeader: true,
@@ -624,13 +625,14 @@ describe('License', () => {
 			license = new License(mockLogger(), instanceSettings, mock(), mock(), globalConfig);
 			await license.init();
 
-			expect(getDeviceFingerprint()()).toEqual(longInstanceId);
+			expect(getDeviceFingerprint()()).toEqual(longFingerprint);
 		});
 
-		it('should fall back to derivedInstanceId and warn once when instanceId is too short', async () => {
+		it('should fall back to derivedInstanceId and warn once when the license fingerprint is too short', async () => {
 			const derivedInstanceId = 'b'.repeat(64);
 			const instanceSettings = mock<InstanceSettings>({
 				instanceId: 'short-id',
+				licenseFingerprint: 'short-id',
 				derivedInstanceId,
 				instanceType: 'main',
 				isLeader: true,
