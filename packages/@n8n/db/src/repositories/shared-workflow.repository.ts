@@ -22,7 +22,7 @@ import type { User } from '../entities';
 import { Project, ProjectRelation, SharedWorkflow } from '../entities';
 import { type OperationContext, TransactionRunner } from '../services/transaction';
 import { chunkIds } from '../utils/chunk-ids';
-import { getWithWorkflowCollections } from '../utils/workflow-collections';
+import { getWithWorkflowRelationAggregates } from '../utils/workflow-relation-aggregates';
 
 @Service()
 export class SharedWorkflowRepository extends BaseRepository<SharedWorkflow> {
@@ -394,7 +394,7 @@ export class SharedWorkflowRepository extends BaseRepository<SharedWorkflow> {
 		if (includeParentFolder) qb.leftJoinAndSelect('workflow.parentFolder', 'parentFolder');
 		if (includeActiveVersion) qb.leftJoinAndSelect('workflow.activeVersion', 'activeVersion');
 
-		const [sharedWorkflow] = await getWithWorkflowCollections(
+		const [sharedWorkflow] = await getWithWorkflowRelationAggregates(
 			qb,
 			{ shared: { project: true }, tags: includeTags },
 			({ workflow }) => workflow,

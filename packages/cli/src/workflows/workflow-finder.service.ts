@@ -477,7 +477,7 @@ export class WorkflowFinderService {
 			meta: true,
 			versionId: true,
 			triggerCount: true,
-			// Shares and tags are passed as collections below, not selected here.
+			// Shares and tags are aggregated below, not selected here.
 			...(includeActiveVersion && { activeVersion: true }),
 			...(includePinnedData && { pinData: true }),
 			...(includeParentFolder && { parentFolder: true }),
