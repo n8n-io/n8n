@@ -91,47 +91,40 @@ interface Replay {
  * The response format `autodetect` of the v1 node (`HttpRequestV3.node.ts`, `execute`): a
  * content type with `application/json` is JSON, else a content type with one text of
  * `binaryContentTypes` (`GenericFunctions.ts`) is a file, else the body is text. The runtime
- * decides with this rule after the head of the response (`responseBinary`, spec 7.1).
+ * decides with this rule after the head of the response (`responseBinary`, spec 7.1). The
+ * texts are one constant with commas between them: the request then costs no list.
  */
-const AUTODETECT: ResponseBinary = {
-	inlineTypes: ['application/json'],
-	storeTypes: [
-		'image/',
-		'audio/',
-		'video/',
-		'application/octet-stream',
-		'application/gzip',
-		'application/zip',
-		'application/vnd.rar',
-		'application/epub+zip',
-		'application/x-bzip',
-		'application/x-bzip2',
-		'application/x-cdf',
-		'application/vnd.amazon.ebook',
-		'application/msword',
-		'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-		'application/vnd.ms-fontobject',
-		'application/vnd.oasis.opendocument.presentation',
-		'application/pdf',
-		'application/x-tar',
-		'application/vnd.visio',
-		'application/vnd.ms-excel',
-		'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-		'application/x-7z-compressed',
-	],
-};
+const BINARY_TYPES =
+	'image/,audio/,video/,application/octet-stream,application/gzip,application/zip,application/vnd.rar,application/epub+zip,application/x-bzip,application/x-bzip2,application/x-cdf,application/vnd.amazon.ebook,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/vnd.ms-fontobject,application/vnd.oasis.opendocument.presentation,application/pdf,application/x-tar,application/vnd.visio,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/x-7z-compressed';
 
-/** With "never error" the v1 node makes the file from a response of each status. */
-const AUTODETECT_ANY_STATUS: ResponseBinary = { ...AUTODETECT, anyStatus: true };
-
-/** True when the runtime stored the body of a response with this content type (`AUTODETECT`). */
-function storesType(header: unknown): boolean {
-	const contentType = typeof header === 'string' ? header : '';
-	if (contentType.includes('application/json')) return false;
-	for (const text of AUTODETECT.storeTypes ?? []) {
-		if (contentType.includes(text)) return true;
-	}
-	return false;
+/**
+ * True when the runtime stored the body of a response with this content type, which has no
+ * `application/json`: the rule of `BINARY_TYPES`, text for text. Each text has `image/`,
+ * `audio/`, `video/` or `application/`.
+ */
+function storesType(type: string): boolean {
+	if (type.includes('image/') || type.includes('audio/') || type.includes('video/')) return true;
+	if (!type.includes('application/')) return false;
+	return (
+		type.includes('application/octet-stream') ||
+		type.includes('application/gzip') ||
+		type.includes('application/zip') ||
+		type.includes('application/vnd.rar') ||
+		type.includes('application/epub+zip') ||
+		type.includes('application/x-bzip') ||
+		type.includes('application/x-cdf') ||
+		type.includes('application/vnd.amazon.ebook') ||
+		type.includes('application/msword') ||
+		type.includes('application/vnd.openxmlformats-officedocument.wordprocessingml.document') ||
+		type.includes('application/vnd.ms-fontobject') ||
+		type.includes('application/vnd.oasis.opendocument.presentation') ||
+		type.includes('application/pdf') ||
+		type.includes('application/x-tar') ||
+		type.includes('application/vnd.visio') ||
+		type.includes('application/vnd.ms-excel') ||
+		type.includes('application/vnd.openxmlformats-officedocument.spreadsheetml.sheet') ||
+		type.includes('application/x-7z-compressed')
+	);
 }
 
 /** The most answers that the node keeps for the host. */
@@ -708,16 +701,16 @@ export default defineNode<HttpRequestParameters>({
 		}
 		// `responseFormat: file`: the runtime stores the body of a 2xx response (spec 7.1).
 		// `autodetect`: the runtime stores it when the content type is one of v1's binary types.
-		const stores = options.responseFormat === 'file';
-		const detects =
-			(options.responseFormat ?? (version >= 3 ? 'autodetect' : 'json')) === 'autodetect';
-		const anyStatus = options.neverError === true;
-		const responseBinary = stores
-			? {}
-			: detects
-				? anyStatus
-					? AUTODETECT_ANY_STATUS
-					: AUTODETECT
+		const format = options.responseFormat;
+		const stores = format === 'file';
+		const detects = format === undefined ? version >= 3 : format === 'autodetect';
+		// With "never error" the v1 node makes the file from a response of each status.
+		const responseBinary: ResponseBinary | undefined = detects
+			? options.neverError === true
+				? { inlineTypes: 'application/json', storeTypes: BINARY_TYPES, anyStatus: true }
+				: { inlineTypes: 'application/json', storeTypes: BINARY_TYPES }
+			: stores
+				? {}
 				: undefined;
 		const parts = requestParts(parameters);
 		const sent = { ...parts, headers: withAccept(parts.headers, options, version) };
@@ -740,7 +733,8 @@ export default defineNode<HttpRequestParameters>({
 				responseBinary,
 			});
 		} catch (error) {
-			if (stores) {
+			// The converted workflow has the fallback-host form of the node when it gives `replay`.
+			if (stores || (detects && parameters.replay !== undefined)) {
 				const limit = fileLimitError(error);
 				// oxlint-disable-next-line typescript/only-throw-error
 				if (limit !== undefined) throw limit;
@@ -761,7 +755,7 @@ export default defineNode<HttpRequestParameters>({
 			if (![301, 302, 303, 307, 308].includes(status) || typeof location !== 'string') break;
 			// The answers for the host are kept only on the paths of a redirect and of a stored
 			// file, so a request without them costs nothing more.
-			if (stores && current === 'GET' && parameters.replay !== undefined) {
+			if (parameters.replay !== undefined && current === 'GET' && (stores || detects)) {
 				keepAnswer(parameters.replay, url, hop === 0 ? (parameters.qs ?? {}) : {}, response);
 			}
 			url = resolveUrl(url, location);
@@ -792,7 +786,7 @@ export default defineNode<HttpRequestParameters>({
 					responseBinary,
 				});
 			} catch (error) {
-				if (stores) {
+				if (stores || (detects && parameters.replay !== undefined)) {
 					const tooLarge = fileLimitError(error);
 					// oxlint-disable-next-line typescript/only-throw-error
 					if (tooLarge !== undefined) throw tooLarge;
@@ -890,8 +884,15 @@ export default defineNode<HttpRequestParameters>({
 		}
 		// The node reads the content type as the runtime does: a JSON body with the key
 		// `$binary` is never taken for a stored file.
-		if (detects && (status < 300 || anyStatus) && storesType(response.headers['content-type'])) {
-			return [fileItem(response, items?.[0], options, url)];
+		if (detects && (status < 300 || options.neverError === true)) {
+			const type = response.headers['content-type'];
+			if (typeof type === 'string' && !type.includes('application/json') && storesType(type)) {
+				if (parameters.replay !== undefined && current === 'GET') {
+					const first = url === parameters.url;
+					keepAnswer(parameters.replay, url, first ? (parameters.qs ?? {}) : {}, response);
+				}
+				return [fileItem(response, items?.[0], options, url)];
+			}
 		}
 		if (stores && status < 300) {
 			// The query is in the first request only. A redirect to the first URL itself gives an
@@ -943,16 +944,31 @@ function refusedDomainItem(message: string, redirected: boolean): Item | undefin
 const FILE_LIMIT = '(limit: binary-max-file)';
 
 /**
- * The error of the largest size of a stored file with the mark for the converted workflow:
- * the node sent only GET requests, so the fallback host can run the v1 node (which has no such
- * limit). Undefined for another error.
+ * True for an error of the runtime about a response that v1 takes: a file over the largest
+ * size of a stored file, a body over the largest size of a response, a file for a shard
+ * without a store, and a file when each row of the store is in use (spec 7.1).
+ */
+function responseLimit(message: string): boolean {
+	if (message.endsWith(FILE_LIMIT)) return true;
+	if (message.includes('responseBinary needs the binary data store')) return true;
+	if (message.includes('goes to the binary data store, and too many stored responses')) return true;
+	return (
+		message.includes('the response body from') &&
+		(message.includes('the limit is') || message.includes('is larger than'))
+	);
+}
+
+/**
+ * The error of a limit of the runtime for a response (`responseLimit`) with the mark for the
+ * converted workflow: the node sent only GET requests, so the fallback host can run the v1
+ * node (which has no such limit). Undefined for another error.
  */
 function fileLimitError(error: unknown): unknown {
 	const message =
 		typeof error === 'object' && error !== null && 'message' in error
 			? String(error.message)
 			: String(error);
-	if (!message.endsWith(FILE_LIMIT)) return undefined;
+	if (!responseLimit(message)) return undefined;
 	return {
 		name: 'Error',
 		message: `${message} (no request to repeat: the fallback host runs the node)`,

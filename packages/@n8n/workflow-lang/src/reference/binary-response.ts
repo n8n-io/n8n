@@ -190,7 +190,9 @@ export function handleNames(
 	};
 }
 
+/** The texts of a list of a rule: an array of strings, or one string with commas between them. */
 function texts(value: unknown): string[] {
+	if (typeof value === 'string') return value.split(',');
 	return Array.isArray(value) ? value.filter((text) => typeof text === 'string') : [];
 }
 

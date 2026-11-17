@@ -830,7 +830,10 @@ file at start (`wfrt serve --credentials <file>`,
   head of the response: the body of a 2xx response is stored only when its `Content-Type` has
   one text of `storeTypes` and no text of `inlineTypes` (the `includes` of JavaScript: the case
   of the letters counts; a response without the header has the content type `''`). Another
-  response has its usual body. `fileName` and `mimeType` are not read with a rule. The rule is
+  response has its usual body. A list is an array of strings, or one string with a comma
+  between two texts (a program then builds no list for each request). `fileName` and
+  `mimeType` are not read with a rule. Over a limit of the runtime for the response, a GET of
+  the HTTP Request node runs as the v1 node in the fallback host (`emitWithHostForm`). The rule is
   data of the caller: the HTTP Request node gives the list of v1 for its response format
   `autodetect` (`src/nodes/http-request.ts`). The runtime keeps each different rule once (at
   most 8 for a shard, `store_rule.zig`) and takes a row of the store only for a body that is

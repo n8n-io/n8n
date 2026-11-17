@@ -244,4 +244,70 @@ describe('HTTP Request response format "autodetect" and v1', () => {
 		},
 		40_000,
 	);
+
+	it.each([
+		{
+			label: 'a file over the largest size of a stored file',
+			error:
+				'http: the response body is 9 bytes; a stored file can have 8 (--binary-max-file-mb); the fallback host can run the node (limit: binary-max-file)',
+		},
+		{
+			label: 'a body over the largest size of a response',
+			error: 'http: the response body from 127.0.0.1:80 is 9 bytes; the limit is 8',
+		},
+		{
+			label: 'a file for a shard without a store',
+			error:
+				'http: responseBinary needs the binary data store of n8n in filesystem mode (WFRT_BINARY_DATA_STORAGE_PATH is not set)',
+		},
+		{
+			label: 'a file when each row of the store is in use',
+			error:
+				'http: the response from 127.0.0.1:80 goes to the binary data store, and too many stored responses are in flight (64, --binary-max-transfers) (limit)',
+		},
+	])('runs the v1 node in the fallback host for $label', async (c) => {
+		const converted = convertWorkflow(workflow({ name: c.label, path: '/files/dot.png' }), {
+			trace: 'all',
+		});
+		expect(converted.fallbackNodes).toEqual([]);
+		const hosted: string[] = [];
+		const out = await runReference(
+			converted.source,
+			{
+				trigger: { body: {} },
+				now: 0,
+				seed: 1,
+				effects: { H: [{ $error: c.error }] },
+				trace: true,
+			},
+			{
+				answer: async (effect) => {
+					if (effect.kind !== 'node' || !effect.step.startsWith('H')) return undefined;
+					hosted.push(effect.step);
+					return [{ id: 7, label: 'x', fromHost: true }];
+				},
+			},
+		);
+		expect(out.status).toBe('ok');
+		expect(hosted).toHaveLength(1);
+		expect((out.trace ?? []).find((t) => t.step === 'H')?.items).toEqual([
+			{ id: 7, label: 'x', fromHost: true },
+		]);
+	});
+
+	it('fails a request that is not a GET at a limit of the runtime: the host cannot send it again', async () => {
+		const converted = convertWorkflow(
+			workflow({ name: 'post', path: '/files/dot.png', method: 'POST' }),
+			{ trace: 'all' },
+		);
+		const out = await runReference(converted.source, {
+			trigger: { body: {} },
+			now: 0,
+			seed: 1,
+			effects: {
+				H: [{ $error: 'http: the body is larger than 64 MB (limit: binary-max-file)' }],
+			},
+		});
+		expect(out.status).toBe('error');
+	});
 });
