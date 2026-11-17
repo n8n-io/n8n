@@ -170,14 +170,6 @@ describe('SettingsSkillsView', () => {
 		]);
 	});
 
-	async function sourceFilterItems(select: HTMLElement) {
-		const input = select.querySelector<HTMLInputElement>('input:not([readonly])')!;
-		await userEvent.click(input);
-		const dropdown = document.getElementById(input.getAttribute('aria-controls')!)!;
-		await waitFor(() => expect(dropdown).toBeVisible());
-		return within(dropdown).getAllByRole('option');
-	}
-
 	/** Opens the filters popover and picks an option of one filter. */
 	async function pickFilter(
 		view: ReturnType<typeof renderView>,
@@ -188,13 +180,8 @@ describe('SettingsSkillsView', () => {
 			await userEvent.click(view.getByTestId('resources-list-filters-trigger'));
 		}
 		const select = await view.findByTestId(testId);
-		const items =
-			testId === 'skills-filter-source'
-				? await sourceFilterItems(select)
-				: await getDropdownItems(select);
-		const option = [...items].find((item) => item.textContent?.trim() === optionText);
-		if (!option) throw new Error(`No option ${optionText}`);
-		await userEvent.click(option);
+		await userEvent.click(within(select).getAllByRole('combobox')[0]);
+		await userEvent.click(await screen.findByRole('option', { name: optionText, exact: true }));
 	}
 
 	it('loads the first page of 10 skills on mount', async () => {
@@ -1459,7 +1446,9 @@ describe('SettingsSkillsView', () => {
 				);
 				await userEvent.click(view.getByTestId('resources-list-filters-trigger'));
 				const select = await view.findByTestId('skills-filter-source');
-				const items = await sourceFilterItems(select);
+				const input = within(select).getAllByRole('combobox')[0];
+				await userEvent.click(input);
+				const items = screen.getAllByRole('option');
 				expect(items.map((item) => item.textContent?.trim())).toEqual([
 					'acme/skills · main · Global',
 					'acme/skills · main · Marketing',
@@ -1472,7 +1461,7 @@ describe('SettingsSkillsView', () => {
 					),
 				);
 				expect(view.getByTestId('resources-list-filters-count')).toHaveTextContent('1');
-				await userEvent.click(select.querySelector('input:not([readonly])')!);
+				await userEvent.click(input);
 				await pickFilter(view, 'skills-filter-scope', 'Projects');
 				await pickFilter(view, 'skills-filter-agent', 'Support bot');
 				await pickFilter(view, 'skills-filter-created-by', 'Ada Lovelace');
@@ -1511,12 +1500,8 @@ describe('SettingsSkillsView', () => {
 
 			it('shows a selected empty source instead of the no-results state', async () => {
 				const view = await renderWithSource();
-				skillsStore.fetchSkills.mockImplementation(async () => {
-					skillsStore.skills = [];
-					skillsStore.count = 1;
-					skillsStore.collapsedSources = [{ sourceId: source.id, index: 0, skillCount: 0 }];
-					return { data: [], count: 1, collapsedSources: skillsStore.collapsedSources };
-				});
+				skillsStore.skills = [];
+				skillsStore.collapsedSources = [{ sourceId: source.id, index: 0, skillCount: 0 }];
 
 				await pickFilter(view, 'skills-filter-source', 'acme/skills · main · Global');
 
@@ -1526,11 +1511,8 @@ describe('SettingsSkillsView', () => {
 
 			it('shows no results when a source selection matches nothing', async () => {
 				const view = await renderWithSource();
-				skillsStore.fetchSkills.mockImplementation(async () => {
-					skillsStore.skills = [];
-					skillsStore.count = 0;
-					return { data: [], count: 0 };
-				});
+				skillsStore.skills = [];
+				skillsStore.count = 0;
 
 				await pickFilter(view, 'skills-filter-source', 'acme/skills · main · Global');
 

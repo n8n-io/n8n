@@ -78,6 +78,7 @@ import {
 } from '../context.utils';
 import type { SkillListQuery } from '../skills.api';
 import { useSkillsStore } from '../skills.store';
+import { sourceLineOf } from '../skillSourceReview.utils';
 import {
 	PROJECT_SCOPE_PREFIX,
 	parseScope,
@@ -176,7 +177,7 @@ const sourceFilterOptions = computed(() =>
 			});
 			return {
 				value: source.id,
-				label: [source.label, source.ref, scope].filter(Boolean).join(' · '),
+				label: `${sourceLineOf(source)} · ${scope}`,
 			};
 		})
 		.sort((a, b) => a.label.localeCompare(b.label)),
@@ -313,16 +314,6 @@ const onSearch = useDebounceFn(resetPage, getDebounceTime(DEBOUNCE_TIME.INPUT.SE
 async function setFilter(key: Exclude<keyof SkillFilters, 'sourceIds'>, value: unknown) {
 	// A cleared select reports an empty value, not an empty string.
 	filters.value = { ...filters.value, [key]: typeof value === 'string' ? value : '' };
-	await resetPage();
-}
-
-async function onSourceFilter(value: unknown) {
-	filters.value = {
-		...filters.value,
-		sourceIds: Array.isArray(value)
-			? value.filter((id): id is string => typeof id === 'string')
-			: [],
-	};
 	await resetPage();
 }
 
@@ -1092,7 +1083,7 @@ onMounted(async () => {
 						color="text-base"
 					/>
 					<N8nSelect
-						:model-value="filters.sourceIds"
+						v-model="filters.sourceIds"
 						size="medium"
 						multiple
 						filterable
@@ -1100,7 +1091,7 @@ onMounted(async () => {
 						collapse-tags
 						:placeholder="i18n.baseText('settings.context.skills.filter.allSources')"
 						data-test-id="skills-filter-source"
-						@update:model-value="onSourceFilter"
+						@update:model-value="resetPage"
 					>
 						<N8nOption
 							v-for="source in sourceFilterOptions"

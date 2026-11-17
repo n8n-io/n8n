@@ -109,7 +109,7 @@ describe('Sources in the skills table', () => {
 		return sourceId;
 	};
 
-	const list = async (agent: SuperAgentTest, query: Record<string, string | number>) =>
+	const list = async (agent: SuperAgentTest, query: Record<string, string | number | undefined>) =>
 		(await agent.get('/skills').query(query).expect(200)).body.data as SkillListResponse;
 
 	const namesOf = (page: SkillListResponse) => page.data.map(({ name }) => name);
@@ -230,6 +230,7 @@ describe('Sources in the skills table', () => {
 		it('answers 404 for grouped lists with Skill Sync off and keeps the plain list available', async () => {
 			postHog.getFeatureFlags.mockResolvedValue({});
 			await editor.get('/skills').query({ groupBy: 'source' }).expect(404);
+			await editor.get('/skills').query({ sourceIds: randomUUID() }).expect(404);
 			await outsider.get('/skills').query({ groupBy: 'source', projectId: team.id }).expect(404);
 			await editor.get('/skills').expect(200);
 		});
@@ -301,25 +302,19 @@ describe('Sources in the skills table', () => {
 			expect(page.count).toBe(3);
 		});
 
-		it('keeps only the groups with a match when searching', async () => {
-			await connect('acme/zeta');
-			const alpha = await connect('acme/alpha');
-
-			const page = await list(editor, { groupBy: 'source', search: 'a2' });
-
-			expect(namesOf(page)).toEqual(['a2']);
-			expect(page.data[0].sourceId).toBe(alpha);
-		});
-
-		it.each(['ALPHA', 'AcMe/AlPhA'])('finds all skills of a source by %s', async (search) => {
+		it.each([
+			{ search: 'a2', names: ['a2'] },
+			{ search: 'ALPHA', names: ['a1', 'a2'] },
+			{ search: 'AcMe/AlPhA', names: ['a1', 'a2'] },
+		])('finds matching skills and sources by $search', async ({ search, names }) => {
 			await connect('acme/zeta');
 			const alpha = await connect('acme/alpha');
 
 			const page = await list(viewer, { groupBy: 'source', search, sortBy: 'name:asc' });
 
-			expect(namesOf(page)).toEqual(['a1', 'a2']);
+			expect(namesOf(page)).toEqual(names);
 			expect(page.data.every(({ sourceId }) => sourceId === alpha)).toBe(true);
-			expect(page.count).toBe(2);
+			expect(page.count).toBe(names.length);
 		});
 
 		it('combines repository matches with skill name and description matches', async () => {
@@ -458,11 +453,6 @@ describe('Sources in the skills table', () => {
 				});
 			},
 		);
-
-		it('requires Skill Sync for source filtering', async () => {
-			postHog.getFeatureFlags.mockResolvedValue({});
-			await editor.get('/skills').query({ sourceIds: randomUUID() }).expect(404);
-		});
 
 		it('refuses an id that is not a source id', async () => {
 			await editor
