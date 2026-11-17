@@ -37,7 +37,9 @@ const BULLET_PATTERN =
  */
 const NON_DETAIL_PATTERN =
 	/^(?:```|NO_OBSERVATIONS$|(?:[*-]\s+)?(?:[A-Z_]+\s+\(\d{2}:\d{2}\)|(?:COMPLET|CRITIC|IMPORTAN|INFO)[A-Z]*\b))/u;
-const WORKING_SET_PATTERN = /<working-set>([\s\S]*?)(?:<\/working-set>|$)/u;
+// Each tag is alone on its line, so a tag that an observation only mentions is not a block.
+const WORKING_SET_PATTERN =
+	/^[ \t]*<working-set>[ \t]*(?:\r?\n|(?![\s\S]))([\s\S]*?)(?:^[ \t]*<\/working-set>[ \t]*$|(?![\s\S]))/mu;
 const DEFAULT_MAX_SERIALIZED_CHARS = 2_000;
 const DEFAULT_MAX_STRING_CHARS = 500;
 const DEFAULT_MAX_ARRAY_ITEMS = 20;
@@ -186,6 +188,7 @@ export function parseObservationLogMarkdown(markdown: string): ParseObservationL
 /**
  * Splits the `<working-set>` block from the Observer output. The rest holds
  * the observation bullets. An unclosed block runs to the end of the output.
+ * A tag inside a line stays in the observations.
  */
 export function extractWorkingSet(markdown: string): {
 	observations: string;

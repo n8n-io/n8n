@@ -161,7 +161,8 @@ describe('InstanceAiObservationRepository', () => {
 			const cursor = await memory.getCursor(THREAD);
 			expect(cursor?.workingSet).toBe('Plan\n- [ ] Ship it');
 
-			const next = batch(cursor);
+			// A different working set in the expected cursor must still match.
+			const next = batch({ ...cursor!, workingSet: 'stale working set' });
 			next.nextCursor.lastObservedMessageId = 'm3';
 			next.nextCursor.lastObservedAt = new Date(3);
 			next.nextCursor.workingSet = 'Plan\n- [x] Ship it';

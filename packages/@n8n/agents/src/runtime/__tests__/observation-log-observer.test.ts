@@ -893,6 +893,42 @@ describe('runObservationLogObserver', () => {
 			expect((await store.getCursor('thread-1'))?.workingSet).toBe('Plan\n- [ ] Ship it');
 		});
 
+		it('keeps an observation that mentions the tag inside a line', async () => {
+			const store = await storeWithMessage('m1', 1);
+
+			await observe(
+				store,
+				'* INFO (14:31) The Observer writes a <working-set> block.\n* INFO (14:32) A later fact.\n<working-set>\nPlan A\n</working-set>',
+			);
+
+			expect(await store.getActiveObservationLog({ observationScopeId: 'thread-1' })).toMatchObject(
+				[{ text: 'The Observer writes a <working-set> block.' }, { text: 'A later fact.' }],
+			);
+			expect((await store.getCursor('thread-1'))?.workingSet).toBe('Plan A');
+		});
+
+		it('stores no working set when the tag is only inside a line', async () => {
+			const store = await storeWithMessage('m1', 1);
+
+			await observe(
+				store,
+				'* INFO (14:31) Run `echo "<working-set>"` to print the tag.\n* INFO (14:32) A later fact.',
+			);
+
+			expect(await store.getActiveObservationLog({ observationScopeId: 'thread-1' })).toHaveLength(
+				2,
+			);
+			expect((await store.getCursor('thread-1'))?.workingSet).toBeNull();
+		});
+
+		it('reads an unclosed block to the end of the output', async () => {
+			const store = await storeWithMessage('m1', 1);
+
+			await observe(store, '* INFO (14:31) A fact.\n<working-set>\nPlan A\n- [ ] Ship it');
+
+			expect((await store.getCursor('thread-1'))?.workingSet).toBe('Plan A\n- [ ] Ship it');
+		});
+
 		it('keeps the previous working set when the Observer writes none', async () => {
 			const store = await storeWithMessage('m1', 1);
 			await observe(store, '* INFO (14:31) First.\n<working-set>\nPlan A\n</working-set>');
