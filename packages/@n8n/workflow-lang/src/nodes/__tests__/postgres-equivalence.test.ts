@@ -251,37 +251,45 @@ describe('Postgres library node and the v1 node', () => {
 			return;
 		}
 
-		it.runIf(live)('gives the result of v1 on a database', async () => {
-			const recording = await runLive(c);
-			written[c.name] = recording;
-			if (!record) expect(recording).toEqual(stored[c.name]);
-		});
+		it.runIf(live)(
+			'gives the result of v1 on a database',
+			async () => {
+				const recording = await runLive(c);
+				written[c.name] = recording;
+				if (!record) expect(recording).toEqual(stored[c.name]);
+			},
+			60_000,
+		);
 
-		it.skipIf(record)('makes the recorded calls and gives the recorded result', async () => {
-			const recording = stored[c.name];
-			expect(recording).toBeDefined();
-			const source = sourceOf(c);
-			const compiled = compile(source);
-			expect(compiled.diagnostics).toEqual([]);
-			const fixture = fixtureOf(c, {
-				[NODE]: recording.calls.map((call) => call.result),
-				[HOST_NODE]: [
-					recording.v1.error === undefined ? recording.v1.output : { $error: recording.v1.error },
-				],
-			});
-			const run = await runReference(source, fixture);
-			const outcome = outcomeOf(run);
-			expect(outcome.sql.map((e) => e.args)).toEqual(recording.calls.map((call) => call.args));
-			expect(outcome.host).toBe(recording.host === true);
-			if (recording.host !== true) {
-				expect({ output: outcome.output, error: outcome.error }).toEqual({
-					output: recording.v1.output,
-					error: recording.v1.error,
+		it.skipIf(record)(
+			'makes the recorded calls and gives the recorded result',
+			async () => {
+				const recording = stored[c.name];
+				expect(recording).toBeDefined();
+				const source = sourceOf(c);
+				const compiled = compile(source);
+				expect(compiled.diagnostics).toEqual([]);
+				const fixture = fixtureOf(c, {
+					[NODE]: recording.calls.map((call) => call.result),
+					[HOST_NODE]: [
+						recording.v1.error === undefined ? recording.v1.output : { $error: recording.v1.error },
+					],
 				});
-			}
-			const bytecode = runModule(decodeModule(compiled.module ?? new Uint8Array()), fixture);
-			expect(JSON.stringify(bytecode)).toBe(JSON.stringify(run));
-		});
+				const run = await runReference(source, fixture);
+				const outcome = outcomeOf(run);
+				expect(outcome.sql.map((e) => e.args)).toEqual(recording.calls.map((call) => call.args));
+				expect(outcome.host).toBe(recording.host === true);
+				if (recording.host !== true) {
+					expect({ output: outcome.output, error: outcome.error }).toEqual({
+						output: recording.v1.output,
+						error: recording.v1.error,
+					});
+				}
+				const bytecode = runModule(decodeModule(compiled.module ?? new Uint8Array()), fixture);
+				expect(JSON.stringify(bytecode)).toBe(JSON.stringify(run));
+			},
+			60_000,
+		);
 	});
 
 	it('has a recording for each case, and no other', () => {

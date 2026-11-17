@@ -1864,11 +1864,14 @@ await ctx.sql({
   from the fixture by step name, as for the other effects. `{ "$error":
   "<text>" }` is an effect error.
 * **Converter.** `ConvertOptions.sql: true` says that the runtime runs
-  `sql` effects. The Postgres node (versions 2.5 and later, operations
-  `executeQuery`, `select` and `deleteTable`, a node that stops the workflow
-  on an error) is then the library node `src/nodes/postgres.ts`, with the
-  fallback-host form of the node after it for a call that ends with a
-  marker. Each other Postgres node runs in the fallback host.
+  `sql` effects. The Postgres node (versions 2.1 and later, operations
+  `executeQuery`, `select` and `deleteTable`, and from version 2.2 `insert`,
+  `update` and `upsert`, a node that stops the workflow on an error) is then
+  the library node `src/nodes/postgres.ts`, with the fallback-host form of
+  the node after it for a call that ends with a marker. Each other Postgres
+  node runs in the fallback host: a node with a continue setting (its error
+  items hold a copy of the node and a time), and a node with
+  `replaceEmptyStrings` and an expression.
 
 ## 10. Fallback host steps (AI clusters, binary data, Python)
 

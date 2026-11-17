@@ -259,6 +259,23 @@ const ADAPTERS: Record<
 		const rawValues = given.replace(/^=+/, '');
 		const resolvables = rawValues.match(/({{[\s\S]*?}})/g) ?? [];
 		replacement.raw = true;
+		if (version < 2.5) {
+			// Before version 2.5, v1 splits the raw text at each comma first. An entry is text,
+			// or v1 evaluates each `{{ }}` of it.
+			const entries = rawValues
+				.split(',')
+				.filter((entry) => entry)
+				.map((entry) => entry.trim());
+			const legacy = entries.map((entry) => {
+				const found = entry.match(/({{[\s\S]*?}})/g) ?? [];
+				return found.length > 0 ? { parts: found.map((r) => `=${r}`) } : { text: entry };
+			});
+			if (legacy.some((entry) => entry.text?.startsWith('='))) {
+				return { ...out, postgresHost: true };
+			}
+			replacement.legacy = legacy;
+			return out;
+		}
 		if (resolvables.length > 0) {
 			replacement.parts = resolvables.map((r) => `=${r}`);
 			return out;
@@ -354,8 +371,8 @@ export const MIN_VERSIONS: Record<string, number> = {
 	// Version 2 is the node on the shared Microsoft Graph transport; the node compiler takes
 	// versions 1 and 1.1.
 	'n8n-nodes-base.microsoftTeams': 2,
-	// Version 2.5 changed how `executeQuery` reads its query parameters.
-	'n8n-nodes-base.postgres': 2.5,
+	// Version 2.1 gave the node its own readers for time columns.
+	'n8n-nodes-base.postgres': 2.1,
 	// 1.2 has the relaxed Accept header; version 1 reads the feed once for all items.
 	'n8n-nodes-base.rssFeedRead': 1.2,
 };

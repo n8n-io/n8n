@@ -1,6 +1,6 @@
 /**
  * Compiled library node: a hand port of `n8n-nodes-base.postgres` versions
- * 2.5 to 2.8, operations `executeQuery`, `select`, `deleteTable`, `insert`,
+ * 2.1 to 2.8 (`insert`, `update` and `upsert` from version 2.2), operations `executeQuery`, `select`, `deleteTable`, `insert`,
  * `update` and `upsert`, for a node that stops the workflow on an error.
  *
  * The v1 node writes values into the query text with pg-promise and sends
@@ -52,6 +52,14 @@ interface Replacement {
 	parts?: unknown[];
 	/** The raw text has no `{{ }}`: its comma-separated entries. */
 	texts?: string[];
+	/** Before version 2.5: the comma-separated entries of the raw text. */
+	legacy?: LegacyEntry[];
+}
+
+/** An entry of the raw query parameters before version 2.5: its text, or the value of each `{{ }}` in it. */
+interface LegacyEntry {
+	text?: string;
+	parts?: unknown[];
 }
 
 interface Clause {
@@ -125,8 +133,11 @@ interface Query {
 	values: unknown[];
 	/** The error of pg-promise for a name of this query. v1 raises it when it sends the query. */
 	nameError?: string;
-	/** This node made the text of an insert or an update: it is one command and not a select. */
-	write?: boolean;
+	/**
+	 * This node made the text from names and bind values: it is one command, a select or
+	 * not, and it needs no check of its text.
+	 */
+	made?: 'select' | 'write';
 }
 
 const HOST_MARKER = '(limit: sql-host)';
@@ -513,11 +524,17 @@ function checkQuery(text: string, count: number, joined: boolean): void {
 			continue;
 		}
 		if (c === "'" || c === '"') {
-			if (c === "'" && isEString(text, i)) throw hostError('A query has an escape string');
+			// In an escape string (`E'...'`), a backslash and the character after it are one character.
+			const escapes = c === "'" && isEString(text, i);
+			// The server reads a letter that is not ASCII before the `E` as a part of a name.
+			if (escapes && i >= 2 && text.charCodeAt(i - 2) > 127) {
+				throw hostError('A query has an escape string after a letter that is not ASCII');
+			}
 			let j = i + 1;
 			let closed = false;
 			while (j < len && !closed) {
-				if (text[j] === c && text[j + 1] === c) j += 2;
+				if (escapes && text[j] === '\\' && j + 1 < len) j += 2;
+				else if (text[j] === c && text[j + 1] === c) j += 2;
 				else if (text[j] === c) closed = true;
 				else j++;
 			}
@@ -667,7 +684,13 @@ function executeQueryOf(p: PostgresParameters, version: number): Query {
 	let given: unknown = replacement.present === true ? (options.queryReplacement ?? null) : '';
 	if (typeof given === 'number') given = String(given);
 	if (typeof given === 'string') {
-		if (replacement.raw === true && replacement.parts !== undefined) {
+		if (replacement.raw === true && version < 2.5) {
+			// Before version 2.5: an entry of the raw text is text, or the values of its `{{ }}`.
+			for (const entry of replacement.legacy ?? []) {
+				if (entry.parts === undefined) values.push(entry.text ?? '');
+				else for (const part of entry.parts) values.push(part);
+			}
+		} else if (replacement.raw === true && replacement.parts !== undefined) {
 			for (const part of replacement.parts) {
 				if (Array.isArray(part)) {
 					for (const member of part) {
@@ -762,7 +785,7 @@ function selectOf(p: PostgresParameters): Query {
 	if (Array.isArray(columns)) all = columns.includes('*');
 	else if (typeof columns === 'string') all = columns.includes('*');
 	else throw hostError('The output columns are not a list');
-	const query: Query = { query: '', values: [] };
+	const query: Query = { query: '', values: [], made: 'select' };
 	const from = `${nameIn(query, p.schema)}.${nameIn(query, p.table)}`;
 	query.query = all ? `SELECT * FROM ${from}` : `SELECT ${nameIn(query, columns)} FROM ${from}`;
 	addWhere(query, whereClauses(p), p.combineConditions ?? 'AND');
@@ -789,7 +812,7 @@ function selectOf(p: PostgresParameters): Query {
 
 /** The query of one item of `deleteTable`. */
 function deleteOf(p: PostgresParameters): Query {
-	const query: Query = { query: '', values: [] };
+	const query: Query = { query: '', values: [], made: 'write' };
 	const from = `${nameIn(query, p.schema)}.${nameIn(query, p.table)}`;
 	const cascade = p.options?.cascade ? ' CASCADE' : '';
 	if (p.deleteCommand === 'drop') query.query = `DROP TABLE IF EXISTS ${from}${cascade}`;
@@ -1112,7 +1135,7 @@ function columnNames(query: Query, names: string[]): string {
 
 /** The query of one item of `insert`, from the checked values. */
 function insertOf(p: PostgresParameters, item: Record<string, unknown>, version: number): Query {
-	const query: Query = { query: '', values: [], write: true };
+	const query: Query = { query: '', values: [], made: 'write' };
 	const into = `INSERT INTO ${nameIn(query, p.schema)}.${nameIn(query, p.table)}`;
 	const names = Object.keys(item);
 	if (version >= 2.6 && names.length === 0) {
@@ -1133,7 +1156,7 @@ function insertOf(p: PostgresParameters, item: Record<string, unknown>, version:
 
 /** The query of one item of `update`, from the checked values. */
 function updateOf(p: PostgresParameters, item: Record<string, unknown>, matching: string[]): Query {
-	const query: Query = { query: '', values: [], write: true };
+	const query: Query = { query: '', values: [], made: 'write' };
 	const table = `${nameIn(query, p.schema)}.${nameIn(query, p.table)}`;
 	const updates: string[] = [];
 	for (const name of Object.keys(item)) {
@@ -1156,7 +1179,7 @@ function updateOf(p: PostgresParameters, item: Record<string, unknown>, matching
 
 /** The query of one item of `upsert`, from the checked values. */
 function upsertOf(p: PostgresParameters, item: Record<string, unknown>, matching: string[]): Query {
-	const query: Query = { query: '', values: [], write: true };
+	const query: Query = { query: '', values: [], made: 'write' };
 	const into = `INSERT INTO ${nameIn(query, p.schema)}.${nameIn(query, p.table)}`;
 	const names = Object.keys(item);
 	const columns = columnNames(query, names);
@@ -1208,9 +1231,11 @@ function errorMessage(error: SqlError, queries: Query[]): string {
 }
 
 /** The items of one result of v1: the rows, or `success` for a query that is not a select. */
-function rowsOrSuccess(rows: Item[], query: Query): Item[] {
+function rowsOrSuccess(rows: Item[], query: Query, legacyEmpty: Item[] | null): Item[] {
 	if (rows.length > 0) return rows;
-	return query.write !== true && isSelectQuery(query.query) ? [] : [{ success: true }];
+	if (legacyEmpty !== null) return legacyEmpty;
+	if (query.made !== undefined) return query.made === 'select' ? [] : [{ success: true }];
+	return isSelectQuery(query.query) ? [] : [{ success: true }];
 }
 
 export default defineNode<PostgresParameters>({
@@ -1337,7 +1362,13 @@ export default defineNode<PostgresParameters>({
 		if (credential === undefined) throw hostError('The node has no credential');
 		const operation = parameters.operation ?? first.operation;
 		const version = parameters.nodeVersion ?? first.nodeVersion ?? 0;
-		if (version < 2.5) throw hostError('The node version is below 2.5');
+		if (version < 2.1) throw hostError('The node version is below 2.1');
+		// Before version 2.3, the result of a query without rows depends on the operation only.
+		// In the modes `transaction` and `independently`, v1 then wraps its item two times.
+		const select = operation === 'select';
+		const legacySingle: Item[] | null = version >= 2.3 ? null : select ? [] : [{ success: true }];
+		const legacyEach: Item[] | null =
+			version >= 2.3 ? null : select ? [] : [{ json: { success: true } }];
 		// The v1 router reads the options of the first item for the connection and the mode.
 		const options = first.options ?? {};
 		const mode = options.queryBatching || 'single';
@@ -1403,6 +1434,7 @@ export default defineNode<PostgresParameters>({
 
 		const queries: Query[] = [];
 		if (typeof operation === 'string' && WRITES.includes(operation)) {
+			if (version < 2.2) throw hostError('The node version is below 2.2');
 			const replace = options.replaceEmptyStrings ? true : false;
 			let schema = first.schema;
 			let table = first.table;
@@ -1477,7 +1509,7 @@ export default defineNode<PostgresParameters>({
 					table = p.table;
 					columnsInfo = await read(TABLE_SCHEMA, [schema, table]);
 				}
-				item = withArrayText(item, columnsInfo);
+				if (version >= 2.4) item = withArrayText(item, columnsInfo);
 				checkItem(item, columnsInfo, unsure, passed);
 				if (operation === 'insert') queries.push(insertOf(p, item, version));
 				else if (operation === 'update') queries.push(updateOf(p, item, matching));
@@ -1502,9 +1534,16 @@ export default defineNode<PostgresParameters>({
 		if (mode !== 'independently' && queries.length > MAX_STATEMENTS) {
 			throw hostError('The node has more statements than one call takes');
 		}
+		// The text of the query before, with its number of values: the check gives the same.
+		let checked = '';
+		let checkedValues = -1;
 		for (const q of queries) {
-			const text = q.write === true ? q.query : clean(q.query);
-			if (q.write !== true) checkQuery(text, q.values.length, joined);
+			const text = q.made !== undefined ? q.query : clean(q.query);
+			if (q.made === undefined && (text !== checked || q.values.length !== checkedValues)) {
+				checkQuery(text, q.values.length, joined);
+				checked = text;
+				checkedValues = q.values.length;
+			}
 			const values: SqlValue[] = [];
 			for (const value of q.values) values.push(bindValue(value));
 			statements.push({ text, values });
@@ -1518,7 +1557,7 @@ export default defineNode<PostgresParameters>({
 				const entry = result.results[0];
 				if (entry === undefined) throw new Error('Postgres: the runtime gave no result');
 				if ('error' in entry) throw new Error(errorMessage(entry.error, queries));
-				for (const row of rowsOrSuccess(entry.rows, queries[i])) out.push(row);
+				for (const row of rowsOrSuccess(entry.rows, queries[i], legacyEach)) out.push(row);
 			}
 			return out;
 		}
@@ -1533,7 +1572,7 @@ export default defineNode<PostgresParameters>({
 			for (let i = 0; i < result.results.length; i++) {
 				const entry = result.results[i];
 				if ('error' in entry) continue;
-				for (const row of rowsOrSuccess(entry.rows, queries[i])) out.push(row);
+				for (const row of rowsOrSuccess(entry.rows, queries[i], legacyEach)) out.push(row);
 			}
 			return out;
 		}
@@ -1542,8 +1581,10 @@ export default defineNode<PostgresParameters>({
 			for (const row of entry.rows) out.push(row);
 		}
 		if (out.length > 0) return out;
+		if (legacySingle !== null) return legacySingle;
 		for (const q of queries) {
-			if (q.write === true || !isSelectQuery(q.query)) return [{ success: true }];
+			if (q.made === 'write') return [{ success: true }];
+			if (q.made === undefined && !isSelectQuery(q.query)) return [{ success: true }];
 		}
 		return [];
 	},

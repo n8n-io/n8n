@@ -59,8 +59,14 @@ describe('Postgres node', () => {
 	it.each([
 		['continues on fail', read, { onError: 'continueRegularOutput' }, 2.6],
 		['uses the error output', read, { onError: 'continueErrorOutput' }, 2.6],
-		['has a version below 2.5', read, {}, 2.4],
-		['has an operation that the library node does not have', { operation: 'insert' }, {}, 2.6],
+		['has a version below 2.1', read, {}, 2],
+		['has a write without a mapping of the columns', { operation: 'insert' }, {}, 2.6],
+		[
+			'has the option for empty strings and an expression',
+			{ ...read, options: { ...read.options, replaceEmptyStrings: true } },
+			{},
+			2.6,
+		],
 		[
 			'has query parameters that are not text',
 			{ ...read, options: { queryReplacement: ['a'] } },

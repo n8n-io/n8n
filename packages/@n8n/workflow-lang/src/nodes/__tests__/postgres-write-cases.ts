@@ -213,6 +213,20 @@ export const POSTGRES_QUERY_TEXT_CASES: PostgresCase[] = [
 		{ replaceEmptyStrings: true, queryReplacement: '={{ $json.name }}' },
 		{ convertHost: true },
 	),
+	text(
+		'escape strings',
+		"SELECT E'it\\'s' AS a, e'tab\\there\\\\' AS b, id FROM pgcase.people WHERE name = $1",
+		[{ name: 'Bob' }],
+		{ queryReplacement: '={{ $json.name }}' },
+	),
+	text(
+		'a variable in an escape string',
+		"SELECT E'a\\' $1 b' AS a",
+		[{}],
+		{ queryReplacement: 'x' },
+		{ host: true },
+	),
+	text('an escape string without an end', "SELECT E'abc\\' AS a", [{}], {}, { host: true }),
 	text('empty strings as null without an expression', "SELECT '' AS name", [{ name: '' }], {
 		replaceEmptyStrings: true,
 	}),
@@ -712,5 +726,208 @@ export const POSTGRES_WRITE_CASES: PostgresCase[] = [
 		'things',
 		{ ...auto(['id']), options: { outputColumns: ['id', 'label'] } },
 		{ items: [{ id: 1, label: 'uno', tags: ['a'], nums: [1] }] },
+	),
+];
+
+const older = (typeVersion: number, extra: Partial<PostgresCase> = {}) => ({
+	typeVersion,
+	...extra,
+});
+const people = { ...listed('people'), options: {} };
+
+/** Versions 2.1 to 2.4 of the node. */
+export const POSTGRES_VERSION_CASES: PostgresCase[] = [
+	text(
+		'query parameters from expressions in version 2.4',
+		'SELECT name FROM pgcase.people WHERE name = $1 OR age > $2 ORDER BY id',
+		[{ name: 'Bob', age: 50 }],
+		{ queryReplacement: '={{ $json.name }}, {{ $json.age }}' },
+		older(2.4),
+	),
+	text(
+		'query parameters as text in version 2.4',
+		'SELECT name FROM pgcase.people WHERE name = $1 OR age > $2 ORDER BY id',
+		[{}],
+		{ queryReplacement: 'Bob, 50' },
+		older(2.4),
+	),
+	text(
+		'a value with a comma in version 2.4',
+		'SELECT id FROM pgcase.people WHERE name <> $1 ORDER BY id',
+		[{ name: 'Ann, Bob' }],
+		{ queryReplacement: '={{ $json.name }}' },
+		older(2.4),
+	),
+	text(
+		'an expression with a comma in version 2.4',
+		'SELECT id FROM pgcase.people WHERE name <> $1 AND name <> $2 ORDER BY id',
+		[{ name: 'Bob' }],
+		{ queryReplacement: "={{ $json.name.replace('B', 'X') }}" },
+		older(2.4),
+	),
+	text(
+		'a number, a null and an object as values in version 2.3',
+		'SELECT id FROM pgcase.people WHERE age = $1 AND ($2::text IS NULL) AND meta @> $3::jsonb',
+		[{ age: 34, none: null, meta: { a: [1] } }],
+		{ queryReplacement: '={{ $json.age }}, {{ $json.none }}, {{ $json.meta }}' },
+		older(2.3),
+	),
+	text(
+		'two expressions in one entry in version 2.4',
+		'SELECT id FROM pgcase.people WHERE age > $1 AND age < $2 ORDER BY id',
+		[{ low: 20, high: 40 }],
+		{ queryReplacement: '={{ $json.low }} {{ $json.high }}' },
+		older(2.4),
+	),
+	text(
+		'a list as a value in version 2.4',
+		'SELECT id FROM pgcase.people WHERE age IN ($1) ORDER BY id',
+		[{ ages: [34, 27] }],
+		{ queryReplacement: '={{ $json.ages }}, 1' },
+		older(2.4, { host: true }),
+	),
+	text(
+		'a part of the query text in version 2.2',
+		'SELECT name FROM pgcase.people WHERE age > {{ $json.age }} ORDER BY id',
+		[{ age: 30 }],
+		{},
+		older(2.2),
+	),
+	text(
+		'rows in version 2.1',
+		'SELECT id, name, seen, made FROM pgcase.people ORDER BY id',
+		[{}],
+		{},
+		older(2.1),
+	),
+	text(
+		'no rows of a select in version 2.2',
+		'SELECT id FROM pgcase.people WHERE age > 100',
+		[{}],
+		{},
+		older(2.2),
+	),
+	text(
+		'no rows of a select in a transaction in version 2.2',
+		'SELECT id FROM pgcase.people WHERE age > {{ $json.age }}',
+		[{ age: 100 }, { age: 60 }, { age: 200 }],
+		{ queryBatching: 'transaction' },
+		older(2.2),
+	),
+	text(
+		'no rows of each item on its own in version 2.2',
+		"UPDATE pgcase.people SET age = 1 WHERE name = '{{ $json.name }}'",
+		[{ name: 'Nobody' }, { name: 'Ann' }],
+		{ queryBatching: 'independently' },
+		older(2.2),
+	),
+	text(
+		'no rows of a select in version 2.3',
+		'SELECT id FROM pgcase.people WHERE age > 100',
+		[{}],
+		{},
+		older(2.3),
+	),
+	{
+		name: 'select, no rows in version 2.2',
+		typeVersion: 2.2,
+		parameters: {
+			operation: 'select',
+			...people,
+			returnAll: true,
+			options: { outputColumns: ['id'] },
+			where: { values: [{ column: 'age', condition: '>', value: 100 }] },
+		},
+	},
+	{
+		name: 'select, rows in version 2.4',
+		typeVersion: 2.4,
+		parameters: {
+			operation: 'select',
+			...people,
+			limit: 2,
+			options: { outputColumns: ['id', 'name'] },
+			sort: { values: [{ column: 'id', direction: 'DESC' }] },
+		},
+	},
+	{
+		name: 'deleteTable, delete without rows in version 2.2',
+		typeVersion: 2.2,
+		parameters: {
+			operation: 'deleteTable',
+			...listed('notes'),
+			options: {},
+			deleteCommand: 'delete',
+			where: { values: [{ column: 'id', condition: 'equal', value: 5 }] },
+		},
+	},
+	insert(
+		'the input items in version 2.2',
+		'plain',
+		auto(),
+		older(2.2, { items: [{ label: 'a', qty: 5 }] }),
+	),
+	insert(
+		'a conflict that the node skips in version 2.2',
+		'things',
+		{ ...auto(), options: { skipOnConflict: true, outputColumns: ['id'] } },
+		older(2.2, { items: [{ id: 1, label: 'again' }] }),
+	),
+	insert(
+		'a conflict that the node skips in a transaction in version 2.2',
+		'things',
+		{
+			...auto(),
+			options: { skipOnConflict: true, outputColumns: ['id'], queryBatching: 'transaction' },
+		},
+		older(2.2, { items: [{ id: 1, label: 'again' }] }),
+	),
+	insert(
+		'defined values in version 2.3',
+		'plain',
+		plainValues({ label: '={{ $json.label }}', qty: '={{ $json.qty }}', ok: 'true' }),
+		older(2.3, { items: [{ label: 'a', qty: '5' }] }),
+	),
+	insert(
+		'lists for array columns in version 2.3',
+		'things',
+		{ ...auto(), ...some },
+		older(2.3, { items: [{ id: 3, label: 'a', tags: ['x'] }], host: true }),
+	),
+	insert(
+		'lists for array columns in version 2.4',
+		'things',
+		{ ...auto(), ...some },
+		older(2.4, { items: [{ id: 3, label: 'a', tags: ['x', 'y z'], nums: [1, 2] }] }),
+	),
+	insert('an item without values in version 2.4', 'plain', auto(), older(2.4, { items: [{}] })),
+	update(
+		'the input items in version 2.2',
+		'plain',
+		{ ...auto(['id']), ...some },
+		older(2.2, { items: [{ id: 1, label: 'new', qty: 9 }] }),
+	),
+	update(
+		'a row that is not there in version 2.3',
+		'plain',
+		auto(['id']),
+		older(2.3, { items: [{ id: 99, qty: 3 }] }),
+	),
+	upsert(
+		'a new row and a row that is there in version 2.4',
+		'things',
+		{ ...auto(['id']), ...some },
+		older(2.4, {
+			items: [
+				{ id: 1, label: 'uno', qty: 10 },
+				{ id: 7, label: 'seven', qty: 70 },
+			],
+		}),
+	),
+	insert(
+		'the input items in version 2.1',
+		'plain',
+		auto(),
+		older(2.1, { items: [{ label: 'a' }], host: true }),
 	),
 ];

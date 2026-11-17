@@ -3,7 +3,11 @@
  * library node on a real database with the same tables, and the test compares
  * the output or the error, and the tables afterwards.
  */
-import { POSTGRES_QUERY_TEXT_CASES, POSTGRES_WRITE_CASES } from './postgres-write-cases.ts';
+import {
+	POSTGRES_QUERY_TEXT_CASES,
+	POSTGRES_VERSION_CASES,
+	POSTGRES_WRITE_CASES,
+} from './postgres-write-cases.ts';
 
 export interface PostgresCase {
 	/** Unique name. The recording file uses it as the key. */
@@ -349,7 +353,7 @@ export const POSTGRES_CASES: PostgresCase[] = [
 		{},
 		{ convertHost: true, onError: 'continueRegularOutput' },
 	),
-	query('a version below 2.5', 'SELECT 1 AS a', {}, { typeVersion: 2.4, convertHost: true }),
+	query('a version below 2.1', 'SELECT 1 AS a', {}, { typeVersion: 2, convertHost: true }),
 
 	select('all rows of two columns', {
 		returnAll: true,
@@ -476,4 +480,5 @@ export const POSTGRES_CASES: PostgresCase[] = [
 	),
 	...POSTGRES_QUERY_TEXT_CASES,
 	...POSTGRES_WRITE_CASES,
+	...POSTGRES_VERSION_CASES,
 ];
