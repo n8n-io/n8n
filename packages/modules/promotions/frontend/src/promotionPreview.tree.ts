@@ -52,6 +52,13 @@ export function resourceIcon(type: PromotionResourceType): IconName {
 	return RESOURCE_ICONS[type];
 }
 
+/**
+ * A workflow that the user cannot access has no name: the server sends its id as the name. The
+ * page then shows the kind and the id, as the dependency report does.
+ */
+export const isUnnamed = (resource: Pick<PromotionResource, 'id' | 'name'>) =>
+	resource.name === '' || resource.name === resource.id;
+
 /** Projects and folders hold other resources. */
 export const isContainer = (resource: PromotionResource) =>
 	resource.type === 'project' || resource.type === 'folder';

@@ -11,7 +11,7 @@ import { RouterLink, useRouter } from 'vue-router';
 import { usePromotionProjectEnvironments } from '../composables/usePromotionProjectEnvironments';
 import { usePromotionChangeCount } from '../composables/usePromotionChangeCount';
 import { promotionEventBus, type PromotionEventBusEvents } from '../promotions.eventBus';
-import { PROMOTION_PREVIEW_VIEWS } from '../promotions.constants';
+import { PROMOTION_ENVIRONMENT_VIEWS, PROMOTION_PREVIEW_VIEWS } from '../promotions.constants';
 
 const i18n = useI18n();
 const router = useRouter();
@@ -46,6 +46,32 @@ watch(
 	},
 	{ immediate: true },
 );
+
+/**
+ * A reader of the project cannot run the operation and can still view the changes. The badge
+ * then has no count, because only a user who can operate may ask for it, and it opens the
+ * read-only changes view of the environment.
+ */
+const readOnlyBadges = computed(() => {
+	const projectId = currentProjectId.value;
+	if (!projectId || !canPreviewChanges.value) return [];
+	return (['apply', 'promote'] as const).flatMap((direction) => {
+		const environment = environments.value[direction];
+		if (!environment || environment.canOperate) return [];
+		return [
+			{
+				direction,
+				label: i18n.baseText(`promotions.preview.badge.readOnly.${direction}`, {
+					interpolate: { environment: environment.name },
+				}),
+				to: {
+					name: PROMOTION_ENVIRONMENT_VIEWS[direction],
+					query: { from: projectId, view: 'read' },
+				},
+			},
+		];
+	});
+});
 
 const promote = usePromotionChangeCount(currentProjectId, 'promote', showPromote);
 const apply = usePromotionChangeCount(currentProjectId, 'apply', showApply);
@@ -141,7 +167,28 @@ const badges = computed(() => {
 </script>
 
 <template>
-	<div v-if="badges.length > 0" :class="$style.badges" data-test-id="promotion-preview-badges">
+	<div
+		v-if="badges.length > 0 || readOnlyBadges.length > 0"
+		:class="$style.badges"
+		data-test-id="promotion-preview-badges"
+	>
+		<N8nTooltip
+			v-for="badge in readOnlyBadges"
+			:key="`${badge.direction}-read-only`"
+			:content="badge.label"
+			as-child
+		>
+			<RouterLink
+				:to="badge.to"
+				:aria-label="badge.label"
+				:class="$style.link"
+				:data-test-id="`promotion-preview-badge-view-${badge.direction}`"
+			>
+				<N8nBadge variant="subtle" size="xsmall" :leading-icon="ICONS[badge.direction]">
+					<span :class="$style.count"><N8nIcon icon="eye" size="small" /></span>
+				</N8nBadge>
+			</RouterLink>
+		</N8nTooltip>
 		<N8nTooltip
 			v-for="badge in badges"
 			:key="`${badge.direction}-${badge.anchor}`"

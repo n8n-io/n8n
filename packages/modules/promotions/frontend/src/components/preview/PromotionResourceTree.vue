@@ -17,7 +17,12 @@ import {
 	type ResourceKey,
 	type SelectionGraph,
 } from '../../promotionPreview.selection';
-import { flattenPreviewTree, isContainer, type PreviewTreeItem } from '../../promotionPreview.tree';
+import {
+	flattenPreviewTree,
+	isContainer,
+	isUnnamed,
+	type PreviewTreeItem,
+} from '../../promotionPreview.tree';
 
 const props = withDefaults(
 	defineProps<{
@@ -136,6 +141,8 @@ const rows = computed(() =>
 					})
 				: undefined,
 			marker: resource ? markers(resource) : undefined,
+			// Without access to a workflow, the row holds only its id. It then names the kind.
+			unnamed: !!resource && resource.type === 'workflow' && isUnnamed(resource),
 		};
 	}),
 );
@@ -179,7 +186,7 @@ function onToggle(resource: PromotionResource) {
 
 		<ul :class="$style.list" role="list">
 			<template
-				v-for="{ item, indent, resource, check, marker, header, hasCard } in rows"
+				v-for="{ item, indent, resource, check, marker, header, hasCard, unnamed } in rows"
 				:key="item.id"
 			>
 				<li
@@ -291,7 +298,27 @@ function onToggle(resource: PromotionResource) {
 					>
 						<N8nIcon v-if="item.icon" :icon="item.icon" size="small" :class="$style.icon" />
 						<span :class="$style.text">
-							<N8nText step="xs" color="text-dark" :class="$style.label">{{ item.label }}</N8nText>
+							<N8nText step="xs" color="text-dark" :class="$style.label">
+								{{
+									unnamed
+										? i18n.baseText('promotions.dependencies.target.unnamed.workflow')
+										: item.label
+								}}
+							</N8nText>
+							<N8nText
+								v-if="unnamed"
+								step="2xs"
+								color="text-light"
+								:class="[$style.label, $style.id]"
+								:title="resource.id"
+								data-test-id="promotion-preview-tree-id"
+							>
+								{{
+									i18n.baseText('promotions.dependencies.target.id', {
+										interpolate: { id: resource.id },
+									})
+								}}
+							</N8nText>
 							<N8nText
 								v-if="marker.meta"
 								step="2xs"
@@ -435,6 +462,10 @@ function onToggle(resource: PromotionResource) {
 	overflow: hidden;
 	text-overflow: ellipsis;
 	white-space: nowrap;
+}
+
+.id {
+	font-family: var(--font-family--monospace);
 }
 
 .blockerMarker {

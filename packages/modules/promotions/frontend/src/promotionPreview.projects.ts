@@ -155,6 +155,35 @@ export function toEnvironmentSelection(
 		}));
 }
 
+/**
+ * How many changes a set of rows holds, as the view lists them. In the changes view the header
+ * of a group stands for its project, so a change of the project itself, such as a new project,
+ * is not counted next to the items inside it. A project that is the only change of its group
+ * still counts. A project page lists the project as a row, so it passes no projects.
+ */
+export function countListedChanges(
+	graph: SelectionGraph,
+	projects: readonly ChangesProject[],
+	keys: Iterable<ResourceKey>,
+): number {
+	const changed = new Set(
+		[...keys].filter((key) => graph.resources.get(key)?.change !== 'unchanged'),
+	);
+	if (projects.length === 0) return changed.size;
+	// The projects that hold another change of the set.
+	const withItems = new Set<string>();
+	for (const key of changed) {
+		const resource = graph.resources.get(key);
+		if (!resource || resource.type === 'project') continue;
+		const projectId = projectIdOf(graph.resources, resource);
+		if (projectId !== undefined) withItems.add(projectId);
+	}
+	const headers = projects.filter(
+		({ id }) => changed.has(`project:${id}`) && withItems.has(id),
+	).length;
+	return changed.size - headers;
+}
+
 /** How many projects hold a change of the operation. */
 export function changedProjectCount(graph: SelectionGraph, included: ReadonlySet<ResourceKey>) {
 	const projectIds = new Set<string>();
