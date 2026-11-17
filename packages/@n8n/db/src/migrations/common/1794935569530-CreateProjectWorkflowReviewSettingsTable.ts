@@ -1,10 +1,10 @@
 import type { MigrationContext, ReversibleMigration } from '../migration-types';
 
-const TABLE = 'project_workflow_review_settings';
+const tableName = 'project_workflow_review_settings';
 
 export class CreateProjectWorkflowReviewSettingsTable1794935569530 implements ReversibleMigration {
 	async up({ schemaBuilder: { createTable, column }, tablePrefix }: MigrationContext) {
-		await createTable(TABLE)
+		await createTable(tableName)
 			.withColumns(
 				column('projectId').varchar(36).primary,
 				column('projectApprovalRequired')
@@ -17,11 +17,11 @@ export class CreateProjectWorkflowReviewSettingsTable1794935569530 implements Re
 				tableName: 'project',
 				columnName: 'id',
 				onDelete: 'CASCADE',
-				name: `FK_${tablePrefix}${TABLE}_projectId`,
+				name: `FK_${tablePrefix}${tableName}_projectId`,
 			}).withTimestamps;
 	}
 
 	async down({ schemaBuilder: { dropTable } }: MigrationContext) {
-		await dropTable(TABLE);
+		await dropTable(tableName);
 	}
 }

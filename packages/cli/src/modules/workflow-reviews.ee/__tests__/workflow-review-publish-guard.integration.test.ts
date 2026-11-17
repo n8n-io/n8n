@@ -9,11 +9,12 @@ import { EventService } from '@n8n/backend-services';
 import { WorkflowsConfig } from '@n8n/config';
 import type { Project, User, WorkflowEntity } from '@n8n/db';
 import {
-	ProjectWorkflowReviewSettingsRepository,
+	ProjectWorkflowReviewSettings,
 	WorkflowRepository,
 	WorkflowReviewRequestRepository,
 } from '@n8n/db';
 import { Container } from '@n8n/di';
+import { DataSource } from '@n8n/typeorm';
 import { v4 as uuid } from 'uuid';
 
 import { ActiveWorkflowManager } from '@/active-workflow-manager';
@@ -618,16 +619,21 @@ describe('changing the project review settings', () => {
 		expect(stored.body.data).toEqual({ projectApprovalRequired: false });
 	});
 
+	test('rejects a user outside the project who reads Require approval', async () => {
+		const outsider = await createMember();
+
+		await testServer.authAgentFor(outsider).get(projectSettingsUrl(teamProject.id)).expect(403);
+	});
+
 	test('never requires a review in a personal space', async () => {
+		await ownerAgent.get(projectSettingsUrl(ownerProject.id)).expect(404);
 		await ownerAgent
 			.patch(projectSettingsUrl(ownerProject.id))
 			.send({ projectApprovalRequired: true })
 			.expect(404);
-		await Container.get(ProjectWorkflowReviewSettingsRepository).setProjectApprovalRequired(
-			ownerProject.id,
-			true,
-			{},
-		);
+		await Container.get(DataSource)
+			.getRepository(ProjectWorkflowReviewSettings)
+			.insert({ projectId: ownerProject.id, projectApprovalRequired: true });
 		const { workflow, versionId } = await createReviewableWorkflow(owner);
 
 		await ownerAgent.post(`/workflows/${workflow.id}/activate`).send({ versionId }).expect(200);
@@ -679,7 +685,7 @@ describe('changing the project review settings', () => {
 		const eventService = Container.get(EventService);
 		const events: unknown[] = [];
 		const listener = (event: unknown) => events.push(event);
-		eventService.on('project-workflow-review-policy-updated', listener);
+		eventService.on('project-workflow-review-settings-updated', listener);
 
 		try {
 			for (const projectApprovalRequired of [false, true, true]) {
@@ -689,7 +695,7 @@ describe('changing the project review settings', () => {
 					.expect(200);
 			}
 		} finally {
-			eventService.off('project-workflow-review-policy-updated', listener);
+			eventService.off('project-workflow-review-settings-updated', listener);
 		}
 
 		expect(events).toEqual([

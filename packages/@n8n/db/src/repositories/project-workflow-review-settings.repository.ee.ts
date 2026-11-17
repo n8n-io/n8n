@@ -2,6 +2,7 @@ import { Service } from '@n8n/di';
 import { DataSource } from '@n8n/typeorm';
 
 import { BaseRepository } from './base-repository';
+import { Project } from '../entities/project';
 import { ProjectWorkflowReviewSettings } from '../entities/project-workflow-review-settings.ee';
 import { type OperationContext, TransactionRunner } from '../services/transaction';
 
@@ -27,13 +28,25 @@ export class ProjectWorkflowReviewSettingsRepository {
 		return row?.projectApprovalRequired ?? false;
 	}
 
-	/** Returns `true` only when the stored value changed, so concurrent writers report one change. */
-	async setProjectApprovalRequired(
+	/**
+	 * Returns `true` only when the stored value changed, so concurrent writers report one change.
+	 * Returns `null` when no team project has this id. The project row stays locked until the
+	 * write commits, so a concurrent project delete cannot break the insert.
+	 */
+	async setTeamProjectApprovalRequired(
 		projectId: string,
 		required: boolean,
 		ctx: OperationContext,
-	): Promise<boolean> {
+	): Promise<boolean | null> {
 		return await this.table.runInTransaction(ctx, async (manager) => {
+			const isPostgres = manager.connection.options.type === 'postgres';
+			const project = await manager.findOne(Project, {
+				where: { id: projectId, type: 'team' },
+				select: ['id'],
+				lock: isPostgres ? { mode: 'pessimistic_read' } : undefined,
+			});
+			if (!project) return null;
+
 			await manager
 				.createQueryBuilder()
 				.insert()
@@ -43,10 +56,7 @@ export class ProjectWorkflowReviewSettingsRepository {
 				.execute();
 			const row = await manager.findOneOrFail(ProjectWorkflowReviewSettings, {
 				where: { projectId },
-				lock:
-					manager.connection.options.type === 'postgres'
-						? { mode: 'pessimistic_write' }
-						: undefined,
+				lock: isPostgres ? { mode: 'pessimistic_write' } : undefined,
 			});
 			if (row.projectApprovalRequired === required) return false;
 

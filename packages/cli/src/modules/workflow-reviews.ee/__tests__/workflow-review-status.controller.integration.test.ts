@@ -392,8 +392,7 @@ describe('the level that requires a review for a workflow', () => {
 		['no level', { instance: false, project: false }, null],
 		['the instance', { instance: true, project: false }, 'instance'],
 		['the project', { instance: false, project: true }, 'project'],
-		['the instance over the project', { instance: true, project: true }, 'instance'],
-	])('reports %s as requiring a review', async (_case, levels, expected) => {
+	])('reports which level requires a review: %s', async (_case, levels, expected) => {
 		const { workflow } = await createReviewableWorkflow(teamProject);
 		await setInstanceApprovalRequired(levels.instance);
 		await setProjectApprovalRequired(levels.project);

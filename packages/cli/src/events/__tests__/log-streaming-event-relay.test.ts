@@ -3802,7 +3802,7 @@ describe('LogStreamingEventRelay', () => {
 		])(
 			'should log the project approval requirement set to %s as `%s`',
 			(projectApprovalRequired, eventName) => {
-				eventService.emit('project-workflow-review-policy-updated', {
+				eventService.emit('project-workflow-review-settings-updated', {
 					user: reviewer,
 					projectId: 'project-1',
 					projectApprovalRequired,

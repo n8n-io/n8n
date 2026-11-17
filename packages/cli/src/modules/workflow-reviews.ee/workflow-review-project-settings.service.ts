@@ -16,6 +16,9 @@ export class WorkflowReviewProjectSettingsService {
 	) {}
 
 	async get(projectId: string): Promise<ProjectWorkflowReviewSettingsResponse> {
+		const [project] = await this.projectRepository.findTypesByIds([projectId]);
+		if (project?.type !== 'team') throw new NotFoundError('Could not find team project');
+
 		return {
 			projectApprovalRequired: await this.settingsRepository.isProjectApprovalRequired(
 				projectId,
@@ -29,18 +32,14 @@ export class WorkflowReviewProjectSettingsService {
 		projectId: string,
 		{ projectApprovalRequired }: UpdateProjectWorkflowReviewSettingsDto,
 	): Promise<ProjectWorkflowReviewSettingsResponse> {
-		const [project] = await this.projectRepository.findTypesByIds([projectId]);
-		if (project?.type !== 'team') {
-			throw new NotFoundError('Could not find team project');
-		}
-
-		const changed = await this.settingsRepository.setProjectApprovalRequired(
+		const changed = await this.settingsRepository.setTeamProjectApprovalRequired(
 			projectId,
 			projectApprovalRequired,
 			{},
 		);
+		if (changed === null) throw new NotFoundError('Could not find team project');
 		if (changed) {
-			this.eventService.emit('project-workflow-review-policy-updated', {
+			this.eventService.emit('project-workflow-review-settings-updated', {
 				user,
 				projectId,
 				projectApprovalRequired,

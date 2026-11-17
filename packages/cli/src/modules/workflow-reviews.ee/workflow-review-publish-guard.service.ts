@@ -38,7 +38,7 @@ export class WorkflowReviewPublishGuard implements WorkflowPublishGuard {
 		}
 
 		if (target.fromSourceControlPull) return;
-		if (!(await this.requirementService.getReviewRequirement(workflowId))) return;
+		if ((await this.requirementService.getReviewRequirement(workflowId)) === null) return;
 		if (
 			await this.workflowReviewRequestRepository.hasApprovedReviewForVersion(
 				workflowId,
