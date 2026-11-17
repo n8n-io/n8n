@@ -287,6 +287,17 @@ describe('SourceControlImportService', () => {
 			expect(result).toHaveLength(fileCount);
 			expect(result.map((workflow) => workflow.id)).toEqual(files.map((_, i) => `workflow${i}`));
 		});
+
+		it('should read the version-scoped settings from the workflow settings', async () => {
+			globMock.mockResolvedValue([mockWorkflowFile]);
+			fsReadFile.mockResolvedValue(
+				JSON.stringify({ id: 'workflow1', versionId: 'v1', settings: { engineType: 'v2' } }),
+			);
+
+			const result = await service.getRemoteVersionIdsFromFiles(globalAdminContext);
+
+			expect(result[0].versionedSettings).toEqual({ engineType: 'v2' });
+		});
 	});
 
 	describe('importWorkflowFromWorkFolder', () => {
@@ -1928,6 +1939,24 @@ describe('SourceControlImportService', () => {
 			);
 		});
 
+		it('should skip credential files with invalid JSON', async () => {
+			// ARRANGE
+			globMock.mockResolvedValue(['/mock/credential_good.json', '/mock/credential_bad.json']);
+			fsReadFile.mockImplementation(async (file: string) =>
+				file.includes('bad') ? 'not json' : JSON.stringify({ id: 'cred1', name: 'Good', type: 'oauth2' }),
+			);
+
+			// ACT
+			const result = await service.getRemoteCredentialsFromFiles(globalAdminContext);
+
+			// ASSERT
+			expect(result).toHaveLength(1);
+			expect(result[0]).toEqual(expect.objectContaining({ id: 'cred1' }));
+			expect(mockLogger.warn).toHaveBeenCalledWith(
+				expect.stringContaining('credential_bad.json'),
+			);
+		});
+
 		it('should skip credentials that are instance credentials locally, for any caller', async () => {
 			globMock.mockResolvedValue(['/mock/credential1.json']);
 			fsReadFile.mockResolvedValue(
@@ -3317,6 +3346,23 @@ describe('SourceControlImportService', () => {
 
 			expect(result[0].updatedAt).toBe(now.toISOString());
 		});
+
+		it('should read the version-scoped settings from the workflow settings', async () => {
+			const mockWorkflows = [
+				{
+					id: 'workflow1',
+					name: 'Test Workflow',
+					updatedAt: now,
+					settings: { engineType: 'v2' },
+				},
+			] as unknown as WorkflowEntity[];
+
+			workflowRepository.find.mockResolvedValue(mockWorkflows);
+
+			const result = await service.getLocalVersionIdsFromDb(globalAdminContext);
+
+			expect(result[0].versionedSettings).toEqual({ engineType: 'v2' });
+		});
 	});
 
 	describe('folders', () => {
@@ -3572,7 +3618,7 @@ describe('SourceControlImportService', () => {
 		});
 
 		describe('deleteFoldersNotInWorkfolder', () => {
-			it('should call folderRepository.delete with correct ids', async () => {
+			it('deletes only workflow folders with the candidate ids', async () => {
 				const candidates = [
 					mock<SourceControlledFile>({ id: 'folder1' }),
 					mock<SourceControlledFile>({ id: 'folder2' }),
@@ -3585,6 +3631,7 @@ describe('SourceControlImportService', () => {
 
 				expect(folderRepository.delete).toHaveBeenCalledWith({
 					id: In(['folder1', 'folder2', 'folder3']),
+					resourceType: 'workflow',
 				});
 			});
 
@@ -3611,7 +3658,10 @@ describe('SourceControlImportService', () => {
 				});
 				expect(workflowService.deactivateWorkflowAsSystem).not.toHaveBeenCalled();
 				expect(executionPersistence.hardDeleteByWorkflowId).toHaveBeenCalledWith('wf-1');
-				expect(folderRepository.delete).toHaveBeenCalledWith({ id: In(['folder1']) });
+				expect(folderRepository.delete).toHaveBeenCalledWith({
+					id: In(['folder1']),
+					resourceType: 'workflow',
+				});
 			});
 
 			it('should unpublish a published straggler and wait for the teardown before deleting the folder', async () => {
@@ -4079,6 +4129,22 @@ describe('SourceControlImportService', () => {
 				},
 				variableStubs: [{ id: 'var1', key: 'VAR1', value: 'value1', type: 'string' }],
 			};
+
+			it('should skip project files with invalid JSON', async () => {
+				// ARRANGE
+				globMock.mockResolvedValue(['project_good.json', 'project_bad.json']);
+				fsReadFile
+					.mockResolvedValueOnce(JSON.stringify(mockProjectData1))
+					.mockResolvedValueOnce('not json');
+
+				// ACT
+				const result = await service.getRemoteProjectsFromFiles(globalAdminContext);
+
+				// ASSERT
+				expect(result).toHaveLength(1);
+				expect(result[0].id).toBe(mockProjectData1.id);
+				expect(mockLogger.warn).toHaveBeenCalledWith(expect.stringContaining('project_bad.json'));
+			});
 
 			it('should return all projects if the user has access to all projects', async () => {
 				// ARRANGE
