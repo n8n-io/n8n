@@ -27,7 +27,13 @@
  * The attribution link has no instance id: a compiled workflow does not know
  * the n8n instance.
  */
-import { apiError, defineNode, type FailedResponse, type Item } from '@n8n/workflow-lang';
+import {
+	apiError,
+	defineNode,
+	operationError,
+	type FailedResponse,
+	type Item,
+} from '@n8n/workflow-lang';
 
 interface GmailOptions {
 	appendAttribution?: boolean;
@@ -202,13 +208,16 @@ function headerAddresses(list: Address[]): string {
 }
 
 /** prepareEmailsInput of the v1 node, as a header value. */
-function addresses(input: string, index: number): string {
+function addresses(input: string, field: string, index: number): string {
 	const out: string[] = [];
 	for (const entry of String(input).split(',')) {
 		const email = entry.trim();
 		if (!email.includes('@')) {
 			// The loop of the v1 node adds the index of the item to each message.
-			throw new Error(`Invalid email address (item ${index})`);
+			throw operationError(
+				`Invalid email address (item ${index})`,
+				`The email address '${email}' in the '${field}' field isn't valid`,
+			);
 		}
 		out.push(email.includes('<') && email.includes('>') ? email : `<${email}>`);
 	}
@@ -586,8 +595,8 @@ export default defineNode<GmailParameters>({
 						`Both "Reply to Sender Only" and "Reply to Recipient Only" cannot be enabled at the same time. Please select only one option. (item ${index})`,
 					);
 				}
-				const cc = options.ccList ? addresses(options.ccList, index) : '';
-				const bcc = options.bccList ? addresses(options.bccList, index) : '';
+				const cc = options.ccList ? addresses(options.ccList, 'CC', index) : '';
+				const bcc = options.bccList ? addresses(options.bccList, 'BCC', index) : '';
 				const original = await get<{
 					payload?: { headers?: MessageHeader[] };
 					threadId?: unknown;
@@ -653,10 +662,10 @@ export default defineNode<GmailParameters>({
 					options.threadId && typeof options.threadId === 'string' ? options.threadId : '';
 				const email: Email = {
 					from: options.fromAlias ? headerAddresses(parseAddresses(options.fromAlias)) : '',
-					to: options.sendTo ? addresses(options.sendTo, index) : '',
-					cc: options.ccList ? addresses(options.ccList, index) : '',
-					bcc: options.bccList ? addresses(options.bccList, index) : '',
-					replyTo: options.replyTo ? addresses(options.replyTo, index) : '',
+					to: options.sendTo ? addresses(options.sendTo, 'To', index) : '',
+					cc: options.ccList ? addresses(options.ccList, 'CC', index) : '',
+					bcc: options.bccList ? addresses(options.bccList, 'BCC', index) : '',
+					replyTo: options.replyTo ? addresses(options.replyTo, 'ReplyTo', index) : '',
 					inReplyTo: '',
 					subject: parameters.subject ?? '',
 					type,
@@ -693,10 +702,10 @@ export default defineNode<GmailParameters>({
 			}
 			const raw = encodeEmail({
 				from,
-				to: addresses(parameters.sendTo ?? '', index),
-				cc: options.ccList ? addresses(options.ccList, index) : '',
-				bcc: options.bccList ? addresses(options.bccList, index) : '',
-				replyTo: options.replyTo ? addresses(options.replyTo, index) : '',
+				to: addresses(parameters.sendTo ?? '', 'To', index),
+				cc: options.ccList ? addresses(options.ccList, 'CC', index) : '',
+				bcc: options.bccList ? addresses(options.bccList, 'BCC', index) : '',
+				replyTo: options.replyTo ? addresses(options.replyTo, 'ReplyTo', index) : '',
 				inReplyTo: '',
 				subject: parameters.subject ?? '',
 				type,

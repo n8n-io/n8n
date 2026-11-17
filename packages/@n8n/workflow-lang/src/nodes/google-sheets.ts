@@ -15,7 +15,13 @@
  * `readVersion` for each read, and a read of a version before 4.2 runs in
  * the fallback host.
  */
-import { defineNode, type Item } from '@n8n/workflow-lang';
+import {
+	apiError,
+	defineNode,
+	operationError,
+	type FailedResponse,
+	type Item,
+} from '@n8n/workflow-lang';
 
 interface Locator {
 	__rl?: boolean;
@@ -386,29 +392,18 @@ function withoutRowNumber(item: Item): Item {
  */
 const SHEETS_TOKEN = '{{$credentials.n8nMinted.m116a0d8b.access_token}}';
 
-/**
- * The message of the NodeApiError of n8n-workflow for an HTTP status (STATUS_CODE_MESSAGES):
- * the message of v1 for a failed request.
- */
-function statusMessage(status: number): string {
-	if (status === 400) return 'Bad request - please check your parameters';
-	if (status === 401) return 'Authorization failed - please check your credentials';
-	if (status === 402) return 'Payment required - perhaps check your payment details?';
-	if (status === 403) return 'Forbidden - perhaps check your credentials?';
-	if (status === 404) return 'The resource you are requesting could not be found';
-	if (status === 405) {
-		return 'Method not allowed - please check you are using the right HTTP method';
-	}
-	if (status === 429) return 'The service is receiving too many requests from you';
-	if (status === 500) return 'The service was not able to process your request';
-	if (status === 502) return 'Bad gateway - the service failed to handle your request';
-	if (status === 503) {
-		return 'Service unavailable - try again later or consider setting this node to retry automatically (in the node settings)';
-	}
-	if (status === 504) return 'Gateway timed out - perhaps try again later?';
-	return status < 500
-		? 'Your request is invalid or could not be processed by the service'
-		: 'The service failed to process your request';
+function schemaChanged(missing: string[]): Error {
+	return operationError(
+		"Column names were updated after the node's setup",
+		`Refresh the columns list in the 'Column to Match On' parameter. Missing columns: ${missing.join(', ')}`,
+	);
+}
+
+function unexpectedField(key: string): Error {
+	return operationError(
+		'Unexpected fields in node input',
+		`The input field '${key}' doesn't match any column in the Sheet. You can ignore this by changing the 'Handling extra data' field, which you can find under 'Options'.`,
+	);
 }
 
 export default defineNode<SheetsParameters>({
@@ -539,7 +534,8 @@ export default defineNode<SheetsParameters>({
 		const headers: Record<string, string> = oauth
 			? { 'Content-Type': 'application/json' }
 			: { 'Content-Type': 'application/json', Authorization: `Bearer ${SHEETS_TOKEN}` };
-		const fail = (status: number) => new Error(statusMessage(status));
+		// apiRequest of the v1 node: `helpers.request` and `helpers.requestOAuth2`.
+		const fail = (response: FailedResponse) => apiError(response, { helper: 'legacy' });
 
 		// spreadsheetGetSheet of the v1 node.
 		const sheetParam = parameters.sheetName;
@@ -561,7 +557,7 @@ export default defineNode<SheetsParameters>({
 			credential,
 			inject: oauth,
 		});
-		if (meta.status >= 400) throw fail(meta.status);
+		if (meta.status >= 400) throw fail(meta);
 		const wantedId = sheetValue === 'gid=0' ? 0 : parseInt(sheetValue, 10);
 		const found = (meta.body.sheets ?? []).find((s) =>
 			sheetMode === 'name'
@@ -596,7 +592,7 @@ export default defineNode<SheetsParameters>({
 					credential,
 					inject: oauth,
 				});
-				if (response.status >= 400) throw fail(response.status);
+				if (response.status >= 400) throw fail(response);
 				return response.body;
 			};
 			for (const p of parameters.batch ?? inputs.map(() => parameters)) {
@@ -698,7 +694,7 @@ export default defineNode<SheetsParameters>({
 					credential,
 					inject: oauth,
 				});
-				if (response.status >= 400) throw fail(response.status);
+				if (response.status >= 400) throw fail(response);
 				const values = response.body.values;
 				if (values === undefined || values.length === 0) continue;
 				const prepared = prepareSheetData(
@@ -745,7 +741,7 @@ export default defineNode<SheetsParameters>({
 				credential,
 				inject: oauth,
 			});
-			if (current.status >= 400) throw fail(current.status);
+			if (current.status >= 400) throw fail(current);
 			const sheetData = current.body.values;
 			if (!sheetData?.length) dataMode = 'autoMapInputData';
 			const headerRow = sheetData?.[headerRowNumber - 1];
@@ -760,18 +756,17 @@ export default defineNode<SheetsParameters>({
 						throw new Error(`Could not retrieve the column names from row ${headerRowNumber}`);
 					}
 					if (schema.length === 0) {
-						throw new Error(
+						throw operationError(
 							'`columns.schema` is required when `columns.mappingMode` is `defineBelow`',
+							'Provide a `columns.schema` array describing each sheet column (`{ id, displayName, required, defaultMatch, display, type, canBeUsedToMatch }` per entry) alongside `columns.value`. Switch to `mappingMode: "autoMapInputData"` and `value: {}` if you want n8n to map input fields to columns by name instead.',
 						);
 					}
 					const live = headerRow.filter((c) => c !== '').map((c) => String(c));
 					const ids = schema
 						.map((s) => String(s.id))
 						.filter((id) => live.includes(ROW_NUMBER) || id !== ROW_NUMBER);
-					// v1's message; its description names the missing columns.
-					if (ids.some((id) => !live.includes(id))) {
-						throw new Error("Column names were updated after the node's setup");
-					}
+					const missing = ids.filter((id) => !live.includes(id));
+					if (missing.length > 0) throw schemaChanged(missing);
 				}
 				// A batched call has the values of each item in `batch`.
 				const each = parameters.batch ?? inputs.map(() => parameters);
@@ -803,7 +798,7 @@ export default defineNode<SheetsParameters>({
 						credential,
 						inject: oauth,
 					});
-					if (response.status >= 400) throw fail(response.status);
+					if (response.status >= 400) throw fail(response);
 					names = response.body.values ? response.body.values[0] : [];
 				}
 				if (handling === 'insertInNewColumn') {
@@ -821,7 +816,7 @@ export default defineNode<SheetsParameters>({
 							credential,
 							inject: oauth,
 						});
-						if (write.status >= 400) throw fail(write.status);
+						if (write.status >= 400) throw fail(write);
 						names = Object.keys(inputs[0]);
 					}
 					const added: string[] = [];
@@ -846,7 +841,7 @@ export default defineNode<SheetsParameters>({
 							credential,
 							inject: oauth,
 						});
-						if (write.status >= 400) throw fail(write.status);
+						if (write.status >= 400) throw fail(write);
 					}
 				} else if (handling === 'ignoreIt') {
 					input = [...inputs];
@@ -854,9 +849,7 @@ export default defineNode<SheetsParameters>({
 					for (const item of inputs) {
 						for (const key of Object.keys(item)) {
 							if (!names.includes(key)) {
-								throw new Error(
-									`Unexpected fields in node input: the input field '${key}' doesn't match any column in the Sheet`,
-								);
+								throw unexpectedField(key);
 							}
 						}
 						input.push(item);
@@ -878,7 +871,7 @@ export default defineNode<SheetsParameters>({
 					credential,
 					inject: oauth,
 				});
-				if (response.status >= 400) throw fail(response.status);
+				if (response.status >= 400) throw fail(response);
 				if (response.body.values === undefined)
 					throw new Error('Could not retrieve the column data');
 				columnNames = response.body.values[0];
@@ -897,7 +890,7 @@ export default defineNode<SheetsParameters>({
 					credential,
 					inject: oauth,
 				});
-				if (again.status >= 400) throw fail(again.status);
+				if (again.status >= 400) throw fail(again);
 				lastRow = (again.body.values ?? []).length + 1;
 			} else {
 				// A trailing empty row must exist, or the update fails.
@@ -912,7 +905,7 @@ export default defineNode<SheetsParameters>({
 					credential,
 					inject: oauth,
 				});
-				if (grow.status >= 400) throw fail(grow.status);
+				if (grow.status >= 400) throw fail(grow);
 				lastRow = (sheetData ?? [{}]).length + 1;
 			}
 			const rows = toRows(input, columnNames, options.useAppend ? null : '');
@@ -928,7 +921,7 @@ export default defineNode<SheetsParameters>({
 				credential,
 				inject: oauth,
 			});
-			if (write.status >= 400) throw fail(write.status);
+			if (write.status >= 400) throw fail(write);
 			return dataMode === 'autoMapInputData' ? [...inputs] : input;
 		}
 
@@ -957,7 +950,7 @@ export default defineNode<SheetsParameters>({
 				credential,
 				inject: oauth,
 			});
-			if (read.status >= 400) throw fail(read.status);
+			if (read.status >= 400) throw fail(read);
 			const sheetData: Row[] = read.body.values ?? [];
 			if (sheetData[keyRowIndex] === undefined && dataMode !== 'autoMapInputData') {
 				if (sheetData.length === 0) {
@@ -973,15 +966,14 @@ export default defineNode<SheetsParameters>({
 				const ids = (firstColumns.schema ?? [])
 					.map((f) => String(f.id))
 					.filter((id) => live.includes(ROW_NUMBER) || id !== ROW_NUMBER);
-				// v1's message; its description names the missing columns.
-				if (ids.some((id) => !live.includes(id))) {
-					throw new Error("Column names were updated after the node's setup");
-				}
+				const missing = ids.filter((id) => !live.includes(id));
+				if (missing.length > 0) throw schemaChanged(missing);
 			}
 			const matching = firstColumns.matchingColumns ?? [];
 			if (!Array.isArray(matching) || matching.length === 0) {
-				throw new Error(
+				throw operationError(
 					'`columns.matchingColumns` is required for the Append or Update Row operation',
+					'Set `columns.matchingColumns` to a non-empty `string[]` of header names that uniquely identify the row to update (e.g. `["id"]` or `["email"]`). If there is no key column to match on, use the `append` operation instead.',
 				);
 			}
 			const indexKey = matching[0];
@@ -1003,7 +995,7 @@ export default defineNode<SheetsParameters>({
 				if (dataMode === 'autoMapInputData') {
 					for (const key of Object.keys(item)) {
 						if (handling === 'error' && !names.includes(key)) {
-							throw new Error('Unexpected fields in node input');
+							throw unexpectedField(key);
 						}
 						if (
 							handling === 'insertInNewColumn' &&
@@ -1045,7 +1037,7 @@ export default defineNode<SheetsParameters>({
 						credential,
 						inject: oauth,
 					});
-					if (write.status >= 400) throw fail(write.status);
+					if (write.status >= 400) throw fail(write);
 					sheetData[keyRowIndex] = names;
 				}
 				// prepareDataForUpdateOrUpsert with upsert: an item without a matching row is appended.
@@ -1087,7 +1079,7 @@ export default defineNode<SheetsParameters>({
 					credential,
 					inject: oauth,
 				});
-				if (write.status >= 400) throw fail(write.status);
+				if (write.status >= 400) throw fail(write);
 			}
 			if (appends.length > 0) {
 				const lastRow = sheetData.length + 1;
@@ -1103,7 +1095,7 @@ export default defineNode<SheetsParameters>({
 						credential,
 						inject: oauth,
 					});
-					if (grow.status >= 400) throw fail(grow.status);
+					if (grow.status >= 400) throw fail(grow);
 				}
 				const rows = toRows(appends, names, firstOptions.useAppend ? null : '');
 				const range = `${title}!${lastRow}:${lastRow + rows.length - 1}`;
@@ -1118,7 +1110,7 @@ export default defineNode<SheetsParameters>({
 					credential,
 					inject: oauth,
 				});
-				if (write.status >= 400) throw fail(write.status);
+				if (write.status >= 400) throw fail(write);
 			}
 			return dataMode === 'autoMapInputData' ? [...inputs] : mapped;
 		}
@@ -1140,7 +1132,7 @@ export default defineNode<SheetsParameters>({
 			credential,
 			inject: oauth,
 		});
-		if (current.status >= 400) throw fail(current.status);
+		if (current.status >= 400) throw fail(current);
 		const sheetData = current.body.values;
 		if (sheetData?.[keyRowIndex] === undefined) {
 			throw new Error(`Could not retrieve the column names from row ${keyRowIndex + 1}`);
@@ -1148,7 +1140,10 @@ export default defineNode<SheetsParameters>({
 		const columnNames = sheetData[keyRowIndex].map((c) => String(c));
 		const matching = columns.matchingColumns ?? [];
 		if (matching.length === 0) {
-			throw new Error('`columns.matchingColumns` is required for the Update Row operation');
+			throw operationError(
+				'`columns.matchingColumns` is required for the Update Row operation',
+				'Set `columns.matchingColumns` to a non-empty `string[]` of header names that uniquely identify the row to update (e.g. `["id"]` or `["email"]`).',
+			);
 		}
 		const indexKey = matching[0];
 		if ((columns.mappingMode ?? 'defineBelow') !== 'defineBelow') {
@@ -1164,7 +1159,10 @@ export default defineNode<SheetsParameters>({
 			for (const _item of inputs) {
 				const value: Item = { ...(columns.value ?? {}) };
 				if (value[ROW_NUMBER] === undefined || value[ROW_NUMBER] === null) {
-					throw new Error('row_number is null or undefined');
+					throw operationError(
+						'row_number is null or undefined',
+						"Since it's being used to determine the row to update, it cannot be null or undefined",
+					);
 				}
 				if (value[ROW_NUMBER] === '')
 					throw new Error("The 'Column to Match On' parameter is required");
@@ -1195,7 +1193,7 @@ export default defineNode<SheetsParameters>({
 				credential,
 				inject: oauth,
 			});
-			if (written.status >= 400) throw fail(written.status);
+			if (written.status >= 400) throw fail(written);
 			return rowMapped;
 		}
 		const keyIndex = columnNames.indexOf(indexKey);
@@ -1257,7 +1255,7 @@ export default defineNode<SheetsParameters>({
 			credential,
 			inject: oauth,
 		});
-		if (write.status >= 400) throw fail(write.status);
+		if (write.status >= 400) throw fail(write);
 		return mapped;
 	},
 });

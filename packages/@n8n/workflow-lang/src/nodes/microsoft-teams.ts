@@ -40,7 +40,7 @@
  * compiler folds them for one instance, so a compiled operation of version
  * 1.1 (which does not check the ids) still costs less.
  */
-import { defineNode, type Item } from '@n8n/workflow-lang';
+import { apiError, defineNode, operationError, type Item } from '@n8n/workflow-lang';
 
 interface WorkflowLink {
 	baseUrl?: string;
@@ -134,7 +134,9 @@ function locatorValue(value: unknown, guid: boolean, displayName: string): unkno
 }
 
 const ID_PLAIN = '^(?!\\.+$)[\\x20-\\x22\\x24\\x26-\\x2e\\x30-\\x3e\\x40-\\x5b\\x5d-\\x7e]+$';
-const ID_REJECT = '[\\x00-\\x1f/\\\\?#%]|^\\.+$';
+const ID_REJECT = '[\\x00-\\x1f/\\\\?#%]';
+const ID_DOTS = '^\\.+$';
+const ID_BAD_TEXT = 'The ID contains an invalid character. Copy it again and try again.';
 
 /** validateMicrosoftGraphId of the v1 node: the id as it goes into a Graph path. */
 function graphId(id: unknown): string {
@@ -142,56 +144,74 @@ function graphId(id: unknown): string {
 		typeof id === 'string' ? id.trim() : (id === null || id === undefined ? '' : asText(id)).trim();
 	// The usual id: printable ASCII with no character that v1 decodes or refuses.
 	if (RegExp.exec(ID_PLAIN, '', trimmed, 0) !== null) return trimmed;
-	if (trimmed === '') throw new Error('A required ID is empty');
+	if (trimmed === '') {
+		throw operationError(
+			'A required ID is empty',
+			'Set the chat, team, channel, plan, bucket, task, meeting, user or member ID and try again.',
+		);
+	}
 	let value = '';
 	try {
 		value = decodeURIComponent(trimmed);
 	} catch {
-		throw new Error('The ID is not valid');
+		throw operationError(
+			'The ID is not valid',
+			'The ID contains a malformed percent-encoding. Copy it again and try again.',
+		);
 	}
-	// Control characters, `/`, `\\`, `?`, `#` and `%`, or only dots.
-	if (RegExp.exec(ID_REJECT, '', value, 0) !== null) throw new Error('The ID is not valid');
 	// A surrogate without its pair is not valid text. ASCII text has none.
 	if (!Ascii.is(value)) {
 		for (let k = 0; k < value.length; k++) {
 			const code = value.charCodeAt(k);
 			if (code >= 0xd800 && code <= 0xdbff) {
 				const next = k + 1 < value.length ? value.charCodeAt(k + 1) : 0;
-				if (next < 0xdc00 || next > 0xdfff) throw new Error('The ID is not valid');
+				if (next < 0xdc00 || next > 0xdfff)
+					throw operationError('The ID is not valid', ID_BAD_TEXT);
 				k++;
 			} else if (code >= 0xdc00 && code <= 0xdfff) {
-				throw new Error('The ID is not valid');
+				throw operationError('The ID is not valid', ID_BAD_TEXT);
 			}
 		}
+	}
+	if (RegExp.exec(ID_DOTS, '', value, 0) !== null) {
+		throw operationError('The ID is not valid', 'An ID cannot consist only of dots.');
+	}
+	// Control characters, `/`, `\\`, `?`, `#` and `%`.
+	if (RegExp.exec(ID_REJECT, '', value, 0) !== null) {
+		throw operationError(
+			'The ID is not valid',
+			'Remove any slashes, backslashes, question marks or hashes, and make sure the ID is not double-encoded.',
+		);
 	}
 	return value;
 }
 
-/** The message of a NodeApiError of n8n-workflow for an HTTP status (STATUS_CODE_MESSAGES). */
-function statusMessage(status: number): string {
-	if (status === 400) return 'Bad request - please check your parameters';
-	if (status === 401) return 'Authorization failed - please check your credentials';
-	if (status === 402) return 'Payment required - perhaps check your payment details?';
-	if (status === 403) return 'Forbidden - perhaps check your credentials?';
-	if (status === 404) return 'The resource you are requesting could not be found';
-	if (status === 405) {
-		return 'Method not allowed - please check you are using the right HTTP method';
+/**
+ * The error of microsoftApiRequest of the v1 node (OAuth2) for a failed request. With an
+ * `error` member in the answer, the node gives its message to the NodeApiError.
+ */
+function graphFailure(answer: GraphAnswer, resource: string): Error {
+	const inner = isObject(answer.body) ? answer.body.error : undefined;
+	if (!inner) return apiError(answer, { helper: 'legacy' });
+	if (typeof inner !== 'object') {
+		// v1 sets a member on the value, which is an error for text, a number and `true`.
+		return new Error(`Cannot create property 'statusCode' on ${typeof inner} '${asText(inner)}'`);
 	}
-	if (status === 429) return 'The service is receiving too many requests from you';
-	if (status === 500) return 'The service was not able to process your request';
-	if (status === 502) return 'Bad gateway - the service failed to handle your request';
-	if (status === 503) {
-		return 'Service unavailable - try again later or consider setting this node to retry automatically (in the node settings)';
+	const given = isObject(inner) ? inner.message : undefined;
+	if (given !== undefined && given !== null && typeof given !== 'string' && given !== false) {
+		return apiError(answer, { helper: 'legacy' });
 	}
-	if (status === 504) return 'Gateway timed out - perhaps try again later?';
-	return status < 500
-		? 'Your request is invalid or could not be processed by the service'
-		: 'The service failed to process your request';
+	let message = typeof given === 'string' ? given : '';
+	if (isObject(inner) && inner.code === 'NotFound' && message === 'Resource not found') {
+		message = `${resource.slice(0, 1).toUpperCase()}${resource.slice(1)} not found`;
+	}
+	const detail = isObject(inner) ? { ...inner, statusCode: answer.status } : {};
+	return apiError({ status: answer.status, body: detail }, { helper: 'object', message });
 }
 
 /** The body of an answer, or the error that v1 raises for a failed request. */
-function sent(answer: GraphAnswer): unknown {
-	if (answer.status >= 400) throw new Error(statusMessage(answer.status));
+function sentFor(answer: GraphAnswer, resource: string): unknown {
+	if (answer.status >= 400) throw graphFailure(answer, resource);
 	return answer.body;
 }
 
@@ -455,6 +475,7 @@ export default defineNode<TeamsParameters>({
 		if (authentication !== 'microsoftTeamsOAuth2Api' && authentication !== 'microsoftOAuth2Api') {
 			throw new Error('Microsoft Teams: only the OAuth2 credentials are in the compiled library');
 		}
+		const sent = (answer: GraphAnswer): unknown => sentFor(answer, resource);
 		// microsoftApiRequest of the v1 node.
 		const graph = async (
 			method: string,
@@ -515,7 +536,10 @@ export default defineNode<TeamsParameters>({
 					const path = `/v1.0/chats/${graphId(chatId)}/messages/${graphId(parameters.messageId)}`;
 					const answer = await graph('GET', path, {}, {});
 					if (answer.status >= 400) {
-						throw new Error("The message you are trying to get doesn't exist");
+						throw operationError(
+							"The message you are trying to get doesn't exist",
+							"Check that the 'Message ID' parameter is correctly set",
+						);
 					}
 					return answer.body;
 				}
@@ -541,8 +565,9 @@ export default defineNode<TeamsParameters>({
 					const remove = operation === 'deleteChannel';
 					const answer = await graph(remove ? 'DELETE' : 'GET', path, {}, {});
 					if (answer.status >= 400) {
-						throw new Error(
+						throw operationError(
 							`The channel you are trying to ${remove ? 'delete' : 'get'} doesn't exist`,
+							"Check that the 'Channel' parameter is correctly set",
 						);
 					}
 					return remove ? { success: true } : answer.body;
@@ -611,8 +636,12 @@ export default defineNode<TeamsParameters>({
 				if (operation === 'get') {
 					const path = `/v1.0/chats/${graphId(plain(parameters.chatId))}`;
 					const answer = await graph('GET', path, {}, {});
-					if (answer.status === 404)
-						throw new Error("The chat you are trying to get doesn't exist");
+					if (answer.status === 404) {
+						throw operationError(
+							"The chat you are trying to get doesn't exist",
+							'Select the chat from the list, or check that the chat ID is correct and that you are a member of the chat',
+						);
+					}
 					return sent(answer);
 				}
 				if (operation === 'getAll') {
@@ -632,7 +661,14 @@ export default defineNode<TeamsParameters>({
 					const chatId = plain(parameters.chatId);
 					const membershipId = plain(parameters.membershipId);
 					const path = `/v1.0/chats/${graphId(chatId)}/members/${graphId(membershipId)}`;
-					sent(await graph('DELETE', path, {}, {}));
+					const answer = await graph('DELETE', path, {}, {});
+					if (answer.status === 403) {
+						throw operationError(
+							graphFailure(answer, resource).message,
+							'Microsoft refuses this call on a one-on-one chat and when removing the last owner.',
+						);
+					}
+					sent(answer);
 					return { success: true };
 				}
 				throw new Error(`Microsoft Teams: ${resource}.${operation} is not in the compiled library`);

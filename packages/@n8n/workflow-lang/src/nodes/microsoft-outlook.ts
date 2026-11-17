@@ -10,7 +10,7 @@
  * Not supported: attachments (binary data), the Microsoft OAuth2 and service
  * principal credentials, and the other operations.
  */
-import { defineNode, type Item } from '@n8n/workflow-lang';
+import { apiError, defineNode, type FailedResponse, type Item } from '@n8n/workflow-lang';
 
 interface OutlookParameters {
 	resource?: string;
@@ -75,39 +75,19 @@ function createMessage(fields: Record<string, unknown>): Item {
 }
 
 /**
- * The message of the NodeApiError of n8n-workflow for an HTTP status (STATUS_CODE_MESSAGES):
- * the message of v1 for a failed request.
+ * The error of v1 for a failed request of the Outlook node (microsoftApiRequest): the
+ * NodeApiError of `helpers.requestWithAuthentication`. For a "bad request" with a
+ * description, the node moves the description to the message and empties the description.
  */
-function statusMessage(status: number): string {
-	if (status === 400) return 'Bad request - please check your parameters';
-	if (status === 401) return 'Authorization failed - please check your credentials';
-	if (status === 402) return 'Payment required - perhaps check your payment details?';
-	if (status === 403) return 'Forbidden - perhaps check your credentials?';
-	if (status === 404) return 'The resource you are requesting could not be found';
-	if (status === 405) {
-		return 'Method not allowed - please check you are using the right HTTP method';
+function outlookError(response: FailedResponse): Error {
+	const failure = apiError(response, { helper: 'legacy' });
+	const text = failure.description;
+	if (response.status === 400 && typeof text === 'string' && text !== '') {
+		const moved = apiError(response, { helper: 'legacy', message: text });
+		moved.description = '';
+		return moved;
 	}
-	if (status === 429) return 'The service is receiving too many requests from you';
-	if (status === 500) return 'The service was not able to process your request';
-	if (status === 502) return 'Bad gateway - the service failed to handle your request';
-	if (status === 503) {
-		return 'Service unavailable - try again later or consider setting this node to retry automatically (in the node settings)';
-	}
-	if (status === 504) return 'Gateway timed out - perhaps try again later?';
-	return status < 500
-		? 'Your request is invalid or could not be processed by the service'
-		: 'The service failed to process your request';
-}
-
-/**
- * The message of v1 for a failed request of the Outlook node: for status 400 the node gives
- * the message of the answer of Microsoft Graph when there is one.
- */
-function outlookError(status: number, body: unknown): string {
-	if (status !== 400) return statusMessage(status);
-	const error = isRecord(body) ? body.error : undefined;
-	const text = isRecord(body) && body.message ? body.message : isRecord(error) ? error.message : '';
-	return typeof text === 'string' && text !== '' ? text : 'Request failed with status code 400';
+	return failure;
 }
 
 export default defineNode<OutlookParameters>({
@@ -171,7 +151,7 @@ export default defineNode<OutlookParameters>({
 								credential,
 							});
 				if (response.status >= 400) {
-					throw new Error(outlookError(response.status, response.body));
+					throw outlookError(response);
 				}
 				done.push({ success: true });
 			}
@@ -210,7 +190,7 @@ export default defineNode<OutlookParameters>({
 				credential,
 			});
 			if (response.status >= 400) {
-				throw new Error(outlookError(response.status, response.body));
+				throw outlookError(response);
 			}
 			out.push({ success: true });
 		}
