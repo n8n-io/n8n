@@ -108,7 +108,7 @@ BAD:
 * IMPORTANT (14:31) TEST-1 is older than 48 hours and the reminder workflow will pick it up. Agent asked again whether to delete the test data.
 
 GOOD:
-* IMPORTANT (14:30) Test execution exec-35 found no pending order older than 48 hours, so the reminder workflow does not pick up TEST-1 now.
+* IMPORTANT (14:30) Test execution exec-35 found no pending order older than 48 hours.
 
 Details go on marked lines
 
