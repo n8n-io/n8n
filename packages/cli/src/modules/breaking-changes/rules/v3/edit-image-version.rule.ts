@@ -39,7 +39,7 @@ export class EditImageVersionRule implements IBreakingChangeWorkflowRule {
 			{
 				action: 'Upgrade Edit Image nodes to version 2',
 				description:
-					'Use the automatic migration, or replace each Edit Image node with a new Edit Image node, keep its name and connections, and copy its settings. For a Blur operation, set Blur Radius to the old Blur value. Version 2 has no Sigma setting. Then check the output of nodes that blur, set image quality, get image information, add text or resize, because version 2 can change it.',
+					'Replace each Edit Image node with a new Edit Image node that has the same name, connections and settings. For a Blur operation, set Blur Radius to the old Blur value. Version 2 has no Sigma setting. Then check the output of nodes that blur, set image quality, get image information, add text or resize, because version 2 can change it.',
 			},
 		];
 	}
