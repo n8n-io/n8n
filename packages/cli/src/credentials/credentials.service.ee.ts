@@ -19,11 +19,61 @@ import { SecretsProviderAccessCheckService } from '@/modules/external-secrets.ee
 import { hasCheckErrors, PolicyEnforcementService } from '@/policy/policy-enforcement.service';
 import { OwnershipService } from '@/services/ownership.service';
 import { ProjectService } from '@/services/project.service.ee';
-import { RoleService, CredentialsFinderService } from '@n8n/backend-services';
+import { userHasScopes } from '@/permissions.ee/check-access';
+import { RoleService, CredentialsFinderService, EventService } from '@n8n/backend-services';
 
 import { CredentialConnectionStatusProxy } from './credential-connection-status-proxy';
 import { CredentialsService } from './credentials.service';
 import { validateAccessToReferencedSecretProviders } from './validation';
+
+/** Why a credential never follows the owner that a package names. */
+export type CredentialOwnerTransferExclusion = 'managed' | 'resolvable' | 'instance';
+
+/**
+ * Whether the owner of a credential can move to another project and keep every share.
+ * - `allowed`: the move can run.
+ * - `not-allowed`: the user lacks a right. The credential stays as it is.
+ * - `excluded`: this kind of credential never moves.
+ * - `not-needed`: the project already owns the credential.
+ * - `not-found`: no credential has the id, or it has no owner.
+ */
+export type CredentialOwnerTransferCheck =
+	| {
+			status: 'allowed' | 'not-allowed';
+			fromProjectId: string;
+			isPlaceholder: boolean;
+			type: string;
+			name: string;
+	  }
+	| {
+			status: 'excluded';
+			reason: CredentialOwnerTransferExclusion;
+			fromProjectId?: string;
+			type: string;
+			name: string;
+	  }
+	| { status: 'not-needed'; type: string; name: string }
+	| { status: 'not-found' };
+
+export type CredentialOwnerTransferResult =
+	| { status: 'moved'; fromProjectId: string; isPlaceholder: boolean }
+	| { status: 'not-allowed' | 'excluded' | 'not-needed' | 'not-found' };
+
+/**
+ * - `granted`: the project got access now.
+ * - `already-usable`: the project already had access. Nothing was written.
+ * - `forbidden`: the user may not share the credential.
+ * - `unlicensed`: the instance has no sharing licence.
+ * - `not-shareable`: no project credential has the id, or the project is not a team project.
+ */
+export type CredentialGrantStatus =
+	| 'granted'
+	| 'already-usable'
+	| 'forbidden'
+	| 'unlicensed'
+	| 'not-shareable';
+
+export type CredentialGrantCheck = Exclude<CredentialGrantStatus, 'granted'> | 'grantable';
 
 @Service()
 export class EnterpriseCredentialsService {
@@ -39,6 +89,7 @@ export class EnterpriseCredentialsService {
 		private readonly licenseState: LicenseState,
 		private readonly connectionStatusProxy: CredentialConnectionStatusProxy,
 		private readonly policyEnforcementService: PolicyEnforcementService,
+		private readonly eventService: EventService,
 	) {}
 
 	async shareWithProjects(
@@ -284,6 +335,242 @@ export class EnterpriseCredentialsService {
 		});
 	}
 
+	/**
+	 * Creates the empty, marked credential that stands in for a credential that an incomplete
+	 * promotion Apply could not bring. Needs `credential:create` in `projectId`. Sharing the new
+	 * placeholder with the other projects of the same Apply is part of its creation and needs no
+	 * other right: the placeholder holds no values.
+	 */
+	async createPlaceholderCredential(
+		opts: {
+			id: string;
+			name: string;
+			type: string;
+			projectId: string;
+			shareWithProjectIds?: string[];
+		},
+		user: User,
+	): Promise<CredentialsEntity> {
+		const placeholder = await this.credentialsService.createStubCredential(
+			{
+				id: opts.id,
+				name: opts.name,
+				type: opts.type,
+				projectId: opts.projectId,
+				placeholder: true,
+			},
+			user,
+		);
+
+		const shareWithIds = [...new Set(opts.shareWithProjectIds ?? [])].filter(
+			(projectId) => projectId !== opts.projectId,
+		);
+		if (shareWithIds.length > 0) {
+			const projects = await this.sharedCredentialsRepository.manager.find(Project, {
+				where: { id: In(shareWithIds), type: 'team' },
+				select: ['id'],
+			});
+			await this.sharedCredentialsRepository.save(
+				projects.map((project) =>
+					this.sharedCredentialsRepository.create({
+						credentialsId: placeholder.id,
+						projectId: project.id,
+						role: 'credential:user',
+					}),
+				),
+			);
+		}
+
+		return placeholder;
+	}
+
+	/**
+	 * Whether {@link transferKeepingShares} would move the credential. Writes nothing.
+	 *
+	 * A placeholder holds no secret of its owner, so it moves with `credential:create` in the
+	 * destination only. Any other credential also needs `credential:move` on the credential:
+	 * the move takes the edit, share and delete rights from the old owner.
+	 *
+	 * @param options.destinationPendingCreation The caller creates the destination project and
+	 * becomes its admin, so the project has no scopes to look up yet.
+	 */
+	async checkTransferKeepingShares(
+		user: User,
+		credentialId: string,
+		destinationProjectId: string,
+		options: { destinationPendingCreation?: boolean } = {},
+	): Promise<CredentialOwnerTransferCheck> {
+		const credential = await this.credentialsFinderService.findById(credentialId, {
+			includeSharedProject: true,
+		});
+		if (!credential) return { status: 'not-found' };
+
+		const { type, name, isPlaceholder } = credential;
+		const fromProjectId = credential.shared?.find(
+			(sharing) => sharing.role === 'credential:owner',
+		)?.projectId;
+		if (fromProjectId === destinationProjectId) return { status: 'not-needed', type, name };
+
+		const exclusion = ownerTransferExclusion(credential);
+		if (exclusion) return { status: 'excluded', reason: exclusion, fromProjectId, type, name };
+		if (fromProjectId === undefined) return { status: 'not-found' };
+
+		const outcome = (status: 'allowed' | 'not-allowed'): CredentialOwnerTransferCheck => ({
+			status,
+			fromProjectId,
+			isPlaceholder,
+			type,
+			name,
+		});
+
+		if (!options.destinationPendingCreation) {
+			const destination = await this.projectService.getProjectWithScope(
+				user,
+				destinationProjectId,
+				['credential:create'],
+			);
+			if (!destination || destination.type !== 'team') return outcome('not-allowed');
+		}
+
+		if (!isPlaceholder) {
+			const movable = await this.credentialsFinderService.findCredentialForUser(
+				credentialId,
+				user,
+				['credential:move'],
+			);
+			if (!movable) return outcome('not-allowed');
+		}
+
+		// The destination project needs access to every external secret provider it references.
+		if (
+			this.licenseState.isExternalSecretsLicensed() &&
+			this.externalSecretsConfig.externalSecretsForProjects
+		) {
+			try {
+				const decryptedData = await this.credentialsService.decrypt(credential, true);
+				await validateAccessToReferencedSecretProviders(
+					destinationProjectId,
+					decryptedData,
+					this.externalSecretsProviderAccessCheckService,
+					'transfer',
+				);
+			} catch {
+				return outcome('not-allowed');
+			}
+		}
+
+		return outcome('allowed');
+	}
+
+	/**
+	 * Moves the owner of a credential to `destinationProjectId` and keeps every share. The old
+	 * owner project becomes a user of the credential, so nobody loses access. Unlike
+	 * {@link transferOne}, which removes every share.
+	 *
+	 * The rights are those of {@link checkTransferKeepingShares}. A managed credential, an
+	 * end-user credential and an instance credential never move. Without the rights the
+	 * credential stays as it is and the result says so: this method does not throw for them.
+	 */
+	async transferKeepingShares(
+		user: User,
+		credentialId: string,
+		destinationProjectId: string,
+	): Promise<CredentialOwnerTransferResult> {
+		const check = await this.checkTransferKeepingShares(user, credentialId, destinationProjectId);
+		if (check.status !== 'allowed') return { status: check.status };
+
+		const { fromProjectId, isPlaceholder } = check;
+		await this.sharedCredentialsRepository.manager.transaction(async (trx) => {
+			// The key of a sharing is the credential and the project, so each save replaces the
+			// role of one project and touches no other share.
+			await trx.save(
+				trx.create(SharedCredentials, {
+					credentialsId: credentialId,
+					projectId: fromProjectId,
+					role: 'credential:user',
+				}),
+			);
+			await trx.save(
+				trx.create(SharedCredentials, {
+					credentialsId: credentialId,
+					projectId: destinationProjectId,
+					role: 'credential:owner',
+				}),
+			);
+		});
+
+		return { status: 'moved', fromProjectId, isPlaceholder };
+	}
+
+	/** Whether the user may update the credentials that a project owns. */
+	async canUpdateCredentialsInProject(user: User, projectId: string): Promise<boolean> {
+		const project = await this.projectService.getProjectWithScope(user, projectId, [
+			'credential:update',
+		]);
+		return project !== null;
+	}
+
+	/** Whether {@link grantProjectAccess} would give the project access. Writes nothing. */
+	async checkProjectAccessGrant(
+		user: User,
+		credentialId: string,
+		projectId: string,
+	): Promise<CredentialGrantCheck> {
+		const credential = await this.credentialsFinderService.findById(credentialId, {
+			includeSharedProject: true,
+		});
+		if (!credential || credential.usageScope !== 'project') return 'not-shareable';
+		if (credential.isGlobal || credential.shared?.some((s) => s.projectId === projectId)) {
+			return 'already-usable';
+		}
+
+		const isTeamProject = await this.sharedCredentialsRepository.manager.exists(Project, {
+			where: { id: projectId, type: 'team' },
+		});
+		if (!isTeamProject) return 'not-shareable';
+		if (!this.licenseState.isSharingLicensed()) return 'unlicensed';
+
+		const canShare = await userHasScopes(user, ['credential:share'], false, { credentialId });
+		return canShare ? 'grantable' : 'forbidden';
+	}
+
+	/**
+	 * Gives a team project use access to a credential, like a share in the editor. Needs the
+	 * sharing licence and `credential:share` on the credential. A second call writes nothing,
+	 * and no call ever removes a share.
+	 */
+	async grantProjectAccess(
+		user: User,
+		credentialId: string,
+		projectId: string,
+	): Promise<{ status: CredentialGrantStatus }> {
+		const check = await this.checkProjectAccessGrant(user, credentialId, projectId);
+		if (check !== 'grantable') return { status: check };
+
+		const credential = await this.credentialsFinderService.findById(credentialId);
+		if (!credential) return { status: 'not-shareable' };
+
+		await this.sharedCredentialsRepository.save(
+			this.sharedCredentialsRepository.create({
+				credentialsId: credentialId,
+				projectId,
+				role: 'credential:user',
+			}),
+		);
+
+		// The same event as a share in the editor, so the audit log holds the grant.
+		this.eventService.emit('credentials-shared', {
+			user,
+			credentialType: credential.type,
+			credentialId,
+			userIdSharer: user.id,
+			userIdsShareesAdded: [projectId],
+			shareesRemoved: null,
+		});
+
+		return { status: 'granted' };
+	}
+
 	/** The move's refusals that are not policies. The preview runs them too. */
 	private async assertCanTransfer(
 		user: User,
@@ -323,4 +610,13 @@ export class EnterpriseCredentialsService {
 			);
 		}
 	}
+}
+
+function ownerTransferExclusion(
+	credential: Pick<CredentialsEntity, 'isManaged' | 'isResolvable' | 'usageScope'>,
+): CredentialOwnerTransferExclusion | undefined {
+	if (credential.isManaged) return 'managed';
+	if (credential.isResolvable) return 'resolvable';
+	if (credential.usageScope === 'instance') return 'instance';
+	return undefined;
 }
