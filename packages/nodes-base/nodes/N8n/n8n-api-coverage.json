@@ -17,6 +17,9 @@
 		"POST /agents": {
 			"status": "gap"
 		},
+		"PUT /agents/{agentId}": {
+			"status": "gap"
+		},
 		"GET /skills": {
 			"status": "gap"
 		},

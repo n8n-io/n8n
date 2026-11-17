@@ -1,12 +1,17 @@
 import type { UsersListFilterDto } from '@n8n/api-types';
 import { Service } from '@n8n/di';
 import { PROJECT_OWNER_ROLE_SLUG, PROJECT_VIEWER_ROLE_SLUG } from '@n8n/permissions';
+import { splitSearchTerms } from '@n8n/utils/search/matches-all-terms';
 import type { EntityManager, FindOptionsWhere, Repository, SelectQueryBuilder } from '@n8n/typeorm';
 import { Brackets, DataSource, In, IsNull, Not } from '@n8n/typeorm';
 
 import { BaseRepository } from './base-repository';
 import { ApiKey, AuthIdentity, Project, User, type UserKind } from '../entities';
 import { type OperationContext, TransactionRunner } from '../services/transaction';
+import { escapeLike, LIKE_ESCAPE_CLAUSE } from '../utils/escape-like';
+
+// Caps the number of LIKE conditions that one search query can add.
+const MAX_FULL_TEXT_TERMS = 10;
 
 export type EligibleAccountsQuery = {
 	projectId: string;
@@ -391,20 +396,19 @@ export class UserRepository extends BaseRepository<User> {
 		}
 
 		if (filter?.fullText !== undefined) {
-			const fullTextFilter = `%${filter.fullText}%`;
-			queryBuilder.andWhere(
-				new Brackets((qb) => {
-					qb.where('LOWER(user.firstName) like LOWER(:firstNameFullText)', {
-						firstNameFullText: fullTextFilter,
-					})
-						.orWhere('LOWER(user.lastName) like LOWER(:lastNameFullText)', {
-							lastNameFullText: fullTextFilter,
-						})
-						.orWhere('LOWER(user.email) like LOWER(:email)', {
-							email: fullTextFilter,
-						});
-				}),
-			);
+			// Each term must match a field, so "John Doe" finds first name John + last name Doe.
+			const terms = splitSearchTerms(filter.fullText).slice(0, MAX_FULL_TEXT_TERMS);
+			terms.forEach((term, index) => {
+				const param = `fullText${index}`;
+				queryBuilder.andWhere(
+					new Brackets((qb) => {
+						qb.where(`LOWER(user.firstName) LIKE LOWER(:${param}) ${LIKE_ESCAPE_CLAUSE}`)
+							.orWhere(`LOWER(user.lastName) LIKE LOWER(:${param}) ${LIKE_ESCAPE_CLAUSE}`)
+							.orWhere(`LOWER(user.email) LIKE LOWER(:${param}) ${LIKE_ESCAPE_CLAUSE}`);
+					}),
+					{ [param]: `%${escapeLike(term)}%` },
+				);
+			});
 		}
 
 		if (filter?.projectId !== undefined) {

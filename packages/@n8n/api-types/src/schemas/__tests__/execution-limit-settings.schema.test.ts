@@ -1,7 +1,25 @@
 import {
+	DEFAULT_EXECUTION_LIMIT_SETTINGS,
 	EXECUTION_LIMIT_MAX_EXECUTIONS_CEILING,
+	executionLimitMaxExecutionsSchema,
 	executionLimitSettingsSchema,
 } from '../execution-limit-settings.schema';
+
+describe('executionLimitMaxExecutionsSchema', () => {
+	test('rejects null, because a project limit always has a value', () => {
+		expect(executionLimitMaxExecutionsSchema.safeParse(null).success).toBe(false);
+	});
+});
+
+describe('DEFAULT_EXECUTION_LIMIT_SETTINGS', () => {
+	test('is a valid settings row with a monthly period and no caps', () => {
+		expect(executionLimitSettingsSchema.parse(DEFAULT_EXECUTION_LIMIT_SETTINGS)).toEqual({
+			periodUnit: 'month',
+			instanceMaxExecutions: null,
+			defaultProjectMaxExecutions: null,
+		});
+	});
+});
 
 describe('executionLimitSettingsSchema', () => {
 	const valid = {

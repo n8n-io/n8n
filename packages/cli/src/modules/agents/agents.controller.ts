@@ -1,7 +1,9 @@
 import {
 	type AgentCapabilitySummary,
+	AgentJsonConfigSchema,
 	CreateAgentDto,
 	ListAgentsQueryDto,
+	MoveAgentDto,
 	UpdateAgentDto,
 } from '@n8n/api-types';
 import type { AuthenticatedRequest } from '@n8n/db';
@@ -11,6 +13,8 @@ import {
 	Get,
 	Param,
 	Post,
+	Patch,
+	Licensed,
 	ProjectScope,
 	Put,
 	Query,
@@ -60,6 +64,7 @@ export class AgentsController {
 				createdBy: 'user',
 				pushRef: req.headers?.['push-ref'],
 				id: payload.id,
+				parentFolderId: payload.parentFolderId,
 				config: payload.config,
 				tagIds: payload.tags,
 				...(defaultModel ? { defaultModel } : {}),
@@ -69,13 +74,14 @@ export class AgentsController {
 				// required fields (model, instructions) stay required for the service.
 				...(isDuplicate && payload.schema
 					? {
-							schema: { ...payload.schema, name: payload.name },
+							schema: { ...AgentJsonConfigSchema.parse(payload.schema), name: payload.name },
 							skills: payload.skills,
 							tools: payload.tools,
 						}
 					: {}),
 			},
 		);
+
 		return {
 			...(await this.agentResponseMapper.toAgentDto(agent, projectId, req.user)),
 			adopted: creationState.adopted,
@@ -173,6 +179,27 @@ export class AgentsController {
 
 		if (!deleted) {
 			throw new NotFoundError(`Agent "${agentId}" not found`);
+		}
+
+		return { success: true };
+	}
+
+	@Patch('/:agentId/move')
+	@Licensed('feat:folders')
+	@ProjectScope('agent:update')
+	async move(
+		req: AuthenticatedRequest<{ projectId: string; agentId: string }>,
+		_res: Response,
+		@Body payload: MoveAgentDto,
+	) {
+		const moved = await this.agentsService.move(
+			req.params.agentId,
+			req.params.projectId,
+			payload.parentFolderId,
+		);
+
+		if (!moved) {
+			throw new NotFoundError('Agent not found');
 		}
 
 		return { success: true };

@@ -197,6 +197,8 @@ export class ListSkillsQueryDto extends Z.class({
 	agentId: z.string().max(36).optional(),
 	/** The id of the user who created the skill. User ids are UUIDs. */
 	createdById: z.string().uuid().optional(),
+	/** Comma-separated ids of connected sources. Match any selected source. */
+	sourceIds: sourceIdList,
 	/**
 	 * The id of an agent: the skills it may attach, which are its project's skills and
 	 * instance skills. Not combined with `scope`, `projectId` or `agentId`.

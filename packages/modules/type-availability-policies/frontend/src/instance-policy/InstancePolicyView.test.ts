@@ -4,16 +4,22 @@ import { createComponentRenderer } from '@n8n/frontend-test-utils';
 import { useRBACStore } from '@n8n/stores/rbac.store';
 import { useSettingsStore } from '@n8n/stores/settings.store';
 import { createTestingPinia } from '@pinia/testing';
-import { fireEvent } from '@testing-library/vue';
+import { fireEvent, waitFor } from '@testing-library/vue';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 
 import InstancePolicyView from './InstancePolicyView.vue';
 import { POLICIES_LANDING_VIEW } from '../type-availability-policies.constants';
 
-const { route, push, replace } = vi.hoisted(() => ({
+const { route, push, replace, fetchInstancePolicy } = vi.hoisted(() => ({
 	route: { query: {} as Record<string, string> },
 	push: vi.fn(),
 	replace: vi.fn(),
+	fetchInstancePolicy: vi.fn(),
+}));
+
+vi.mock('../type-availability-policies.api', () => ({
+	fetchInstancePolicy,
+	saveInstancePolicy: vi.fn(),
 }));
 
 vi.mock('vue-router', () => ({
@@ -36,6 +42,28 @@ const setup = (scopes: Scope[] = BOTH_SCOPES, query: Record<string, string> = {}
 describe('InstancePolicyView', () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
+		fetchInstancePolicy.mockResolvedValue({
+			scopeId: null,
+			rules: [],
+			defaultAction: 'allow',
+			version: 0,
+		});
+	});
+
+	it('loads the node and credential policies when it opens', async () => {
+		setup();
+
+		await waitFor(() => expect(fetchInstancePolicy).toHaveBeenCalledTimes(2));
+		expect(fetchInstancePolicy).toHaveBeenCalledWith(expect.anything(), 'node');
+		expect(fetchInstancePolicy).toHaveBeenCalledWith(expect.anything(), 'credential');
+	});
+
+	it('loads only the node policy for a user with only the node scope', async () => {
+		setup(['nodeTypePolicy:manage']);
+
+		await waitFor(() => expect(fetchInstancePolicy).toHaveBeenCalled());
+		expect(fetchInstancePolicy).toHaveBeenCalledTimes(1);
+		expect(fetchInstancePolicy).toHaveBeenCalledWith(expect.anything(), 'node');
 	});
 
 	it('renders the page frame with the Nodes tab selected', () => {
