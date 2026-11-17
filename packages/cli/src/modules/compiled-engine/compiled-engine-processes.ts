@@ -1,4 +1,5 @@
 import { Logger } from '@n8n/backend-common';
+import { getDefaultN8nOutboundUserAgent } from '@n8n/backend-network';
 import { UrlService } from '@n8n/backend-services';
 import { GlobalConfig } from '@n8n/config';
 import { Service } from '@n8n/di';
@@ -48,6 +49,14 @@ function pickEnv(extra: Record<string, string>): NodeJS.ProcessEnv {
 		if (value !== undefined) env[key] = value;
 	}
 	return { ...env, ...extra };
+}
+
+/** `wfrt` takes 1 to 256 printable bytes (`request.zig`). Another value keeps the default of `wfrt`. */
+export function wfrtUserAgent(value: string): string | undefined {
+	const bytes = Buffer.from(value, 'utf8');
+	if (bytes.length < 1 || bytes.length > 256) return undefined;
+	// A control character cannot be in a header value.
+	return bytes.every((byte) => byte >= 0x20 && byte !== 0x7f) ? value : undefined;
 }
 
 interface ManagedProcess {
@@ -175,6 +184,10 @@ export class CompiledEngineProcesses {
 		for (const rule of this.config.originLimits.split(';')) {
 			if (rule.trim().length > 0) args.push('--egress-origin', rule.trim());
 		}
+		// The default user agent of n8n's own requests (`N8N_ENFORCE_GLOBAL_USER_AGENT`,
+		// `N8N_GLOBAL_USER_AGENT_VALUE`), for a request that sets none.
+		const userAgent = wfrtUserAgent(getDefaultN8nOutboundUserAgent());
+		if (userAgent !== undefined) args.push('--egress-user-agent', userAgent);
 		if (this.socketPath) args.push('--fallback', this.socketPath);
 		return args;
 	}
@@ -200,6 +213,7 @@ export class CompiledEngineProcesses {
 			{
 				N8N_USER_FOLDER: folder,
 				...this.hostEnvAccess(),
+				...this.hostUserAgent(),
 				...this.hostUrls(),
 				...this.hostExtensions(),
 				...this.binaryData('N8N_BINARY_DATA_STORAGE_PATH'),
@@ -217,6 +231,18 @@ export class CompiledEngineProcesses {
 		return {
 			WF_FALLBACK_BLOCK_ENV_ACCESS:
 				process.env.N8N_BLOCK_ENV_ACCESS_IN_NODE === 'false' ? 'false' : 'true',
+		};
+	}
+
+	/**
+	 * The user agent settings of this instance, so a node in the host sends the user agent
+	 * that it sends in n8n.
+	 */
+	private hostUserAgent(): Record<string, string> {
+		const { enforceGlobalUserAgent, globalUserAgentValue } = this.globalConfig.httpRequest;
+		return {
+			N8N_ENFORCE_GLOBAL_USER_AGENT: String(enforceGlobalUserAgent),
+			...(globalUserAgentValue ? { N8N_GLOBAL_USER_AGENT_VALUE: globalUserAgentValue } : {}),
 		};
 	}
 

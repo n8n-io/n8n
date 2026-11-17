@@ -38,6 +38,12 @@ export interface CompiledEngineProvider {
 	/** Loads the active version of a workflow into `wfrt` and starts its triggers. */
 	activate(workflow: WorkflowEntity): Promise<void>;
 
+	/**
+	 * True when `wfrt` is connected and has the published module of the workflow. When it is
+	 * false, a production webhook request of the workflow runs on v1.
+	 */
+	isServing(workflowId: string): boolean;
+
 	/** Stops the triggers of a workflow in `wfrt`. */
 	deactivate(workflowId: string): Promise<void>;
 
@@ -81,14 +87,34 @@ export interface CompiledEngineProvider {
 }
 
 /**
+ * The compiled engine cannot take a run now: the workflow does not compile, or `wfrt` is
+ * not connected. The provider throws it before it makes an execution, so the caller can
+ * start the run on v1.
+ */
+export class CompiledEngineUnavailableError extends UserError {}
+
+/** The most workflows whose reason for v1 is kept. An older entry goes; its workflow is checked again at its next activation. */
+const MAX_WORKFLOWS_ON_V1 = 10_000;
+
+type EngineChoice = { id?: string; settings?: IWorkflowSettings | null } | undefined | null;
+
+/**
  * The seam between core code and the `compiled-engine` module. Core code
- * asks `handles()` and then calls the provider. When the module is not
- * enabled, a workflow that selects the compiled engine fails with a reason.
- * It does not fall back to v1, because the user selected the engine.
+ * asks `handles()` and then calls the provider.
+ *
+ * Anything that runs on v1 must run: a workflow that selects the compiled engine runs on
+ * v1 when the module is not enabled, and when its published version cannot run on the
+ * compiled engine (it does not compile, or `wfrt` refuses the module). n8n then registers
+ * its triggers and serves its webhooks as for a v1 workflow, and logs the reason. The
+ * check runs again at each activation, so the workflow moves to the compiled engine when
+ * a later version or a later build compiles.
  */
 @Service()
 export class CompiledEngineBridge {
 	private provider: CompiledEngineProvider | undefined;
+
+	/** The reason, by workflow id, for each workflow whose published version runs on v1. */
+	private readonly onV1 = new Map<string, string>();
 
 	registerProvider(provider: CompiledEngineProvider) {
 		this.provider = provider;
@@ -98,8 +124,35 @@ export class CompiledEngineBridge {
 		return this.provider !== undefined;
 	}
 
-	handles(workflow: { settings?: IWorkflowSettings | null } | undefined | null): boolean {
-		return workflow?.settings?.engineType === COMPILED_ENGINE_TYPE;
+	/** True when the workflow selects the compiled engine and the module is enabled. */
+	selects(workflow: EngineChoice): boolean {
+		return this.provider !== undefined && workflow?.settings?.engineType === COMPILED_ENGINE_TYPE;
+	}
+
+	/** True when the published version of the workflow runs on the compiled engine. */
+	handles(workflow: EngineChoice): boolean {
+		if (!this.selects(workflow)) return false;
+		return workflow?.id === undefined || !this.onV1.has(workflow.id);
+	}
+
+	/** The published version of the workflow runs on v1 from now on, for this reason. */
+	runOnV1(workflowId: string, reason: string) {
+		this.onV1.delete(workflowId);
+		if (this.onV1.size >= MAX_WORKFLOWS_ON_V1) {
+			const oldest = this.onV1.keys().next();
+			if (!oldest.done) this.onV1.delete(oldest.value);
+		}
+		this.onV1.set(workflowId, reason);
+	}
+
+	/** The published version of the workflow runs on the compiled engine again. */
+	runOnCompiledEngine(workflowId: string) {
+		this.onV1.delete(workflowId);
+	}
+
+	/** Why the published version of the workflow runs on v1, when it does. */
+	reasonForV1(workflowId: string): string | undefined {
+		return this.onV1.get(workflowId);
 	}
 
 	/** True for an execution id that `wfrt` made for a trigger run. */

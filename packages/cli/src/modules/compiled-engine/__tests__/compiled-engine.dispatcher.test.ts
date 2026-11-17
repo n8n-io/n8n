@@ -200,6 +200,8 @@ describe('CompiledEngineDispatcher', () => {
 				params: {},
 				query: {},
 				body: null,
+				// No trigger item: the module gives the item of a test webhook.
+				executionMode: 'test',
 			},
 			trace: true,
 		});
@@ -235,6 +237,29 @@ describe('CompiledEngineDispatcher', () => {
 			statusCode: 201,
 		});
 		expect(activeExecutions.finalizeExecution).toHaveBeenCalledWith('100', run);
+	});
+
+	it('answers a webhook with the list of items that the Respond to Webhook node sends', async () => {
+		const { dispatcher, activeExecutions } = setup();
+		const executionId = await dispatcher.runManual({ executionMode: 'manual', workflowData });
+		const body = [{ greeting: 'Hello Ada' }, { greeting: 'Hello Bo' }];
+
+		void dispatcher.handleEvent({
+			type: 'step',
+			executionId,
+			step: 'Respond',
+			status: 'started',
+			args: { body, status: 200 },
+			at: 1,
+		});
+		void dispatcher.handleEvent({ type: 'finished', executionId, status: 'ok', at: 2 });
+		await dispatcher.drain();
+
+		expect(activeExecutions.resolveResponsePromise).toHaveBeenCalledWith(executionId, {
+			body,
+			headers: {},
+			statusCode: 200,
+		});
 	});
 
 	it('passes the request of a test webhook as the trigger value', async () => {

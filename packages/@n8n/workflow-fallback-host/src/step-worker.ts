@@ -36,7 +36,12 @@ import {
 } from './protocol';
 import type { StepRequest, StepResponse } from './protocol';
 import { StepHandler } from './server';
-import { ConnectionServices, type ServiceChannel, withServiceChannel } from './service-calls';
+import {
+	ConnectionServices,
+	failsStep,
+	type ServiceChannel,
+	withServiceChannel,
+} from './service-calls';
 import { createStepProfiler, STEP_PROFILE_ENV, type StepMark } from './step-profile';
 
 export interface StepWorkerData {
@@ -105,6 +110,8 @@ export class ProcessCallError extends Error {
 interface StepScope {
 	id: string;
 	done: boolean;
+	/** Ends the step with an error. It does nothing after the step has ended. */
+	fail: (error: unknown) => void;
 }
 
 /** The pool passes the worker data in this environment variable, as JSON. */
@@ -165,6 +172,9 @@ function main(): void {
 		const step = scope.getStore();
 		const owner = step ? ` (from step ${step.id}${step.done ? ', which has ended' : ''})` : '';
 		log(`${kind}${owner}: ${messageOf(error)}`);
+		// A service of n8n refused a call of this step, and the node did not wait for the
+		// answer: the step fails with the error of the service. The worker goes on.
+		if (failsStep(error, step)) step?.fail(error);
 	};
 	// The steps of this worker share keep-alive connections (`http-pool.ts`).
 	installSharedAgents();
@@ -229,9 +239,11 @@ function main(): void {
 		inflight++;
 		let settle: (response: StepResponse) => void = () => {};
 		const settled = new Promise<StepResponse>((resolve) => (settle = resolve));
+		const fail = (error: unknown) => settle({ id: request.id, ok: false, error: messageOf(error) });
 		const step: StepScope = {
 			id: request.id,
 			done: false,
+			fail,
 		};
 		const timer =
 			timeoutMs === undefined
@@ -246,19 +258,30 @@ function main(): void {
 						timeoutMs,
 					);
 		scope.run(step, () => {
-			const handle = async () => await handler.handle(request);
-			// The step reads its own run clock (`CLOCK-OFFSET`, spec 9) through this context.
-			const clockOffsetMs = request.clockOffsetMs ?? readClockOffset(request.execution);
-			void runWithClockOffset(clockOffsetMs, async () =>
-				channel ? await withServiceChannel(channel, handle) : await handle(),
-			).then(settle);
+			// An error on the way to the handler, or a rejection of its promise, ends this step
+			// only. Without it the step has no answer, and the runtime waits for its timeout.
+			try {
+				const handle = async () => await handler.handle(request);
+				// The step reads its own run clock (`CLOCK-OFFSET`, spec 9) through this context.
+				const clockOffsetMs = request.clockOffsetMs ?? readClockOffset(request.execution);
+				void runWithClockOffset(clockOffsetMs, async () =>
+					channel ? await withServiceChannel(channel, handle) : await handle(),
+				).then(settle, fail);
+			} catch (error) {
+				fail(error);
+			}
 		});
 		void settled.then((response) => {
 			if (step.done) return;
 			step.done = true;
 			clearTimeout(timer);
 			inflight--;
-			deliver(response);
+			try {
+				deliver(response);
+			} catch (error) {
+				// The answer could not be written. The worker still counts the step as ended.
+				log(`Could not write the result of step ${request.id}: ${messageOf(error)}`);
+			}
 			if (mark) profiler?.end(mark, request);
 			checkIdle();
 		});

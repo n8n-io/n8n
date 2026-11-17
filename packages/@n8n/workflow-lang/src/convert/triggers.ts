@@ -307,6 +307,46 @@ export function pollSchedules(node: N8nNode, timezone: string | undefined): stri
 	return triggers.length > 0 ? triggers : null;
 }
 
+/** The URLs of n8n for webhooks, without a slash at the end (`<base>/webhook`, `<base>/webhook-test`). */
+export interface WebhookUrls {
+	production: string;
+	test: string;
+}
+
+/** The path of the webhook of a node below the webhook URL of n8n (`getNodeWebhookUrl` of n8n). */
+function webhookPathOf(node: N8nNode, path: unknown, workflowId: string | undefined): string {
+	let text = typeof path === 'string' ? path : '';
+	const hasId = typeof node.webhookId === 'string' && node.webhookId !== '';
+	const prefixed = hasId && (text.startsWith(':') || text.includes('/:'));
+	if (text.startsWith('/')) text = text.slice(1);
+	if (!hasId)
+		return `${workflowId ?? ''}/${encodeURIComponent((node.name ?? '').toLowerCase())}/${text}`;
+	if (prefixed) return `${node.webhookId}/${text}`;
+	return text === '' ? String(node.webhookId) : text;
+}
+
+/**
+ * The fields `webhookUrl` and `executionMode` that the v1 Webhook node adds to its item. A
+ * manual run of n8n gives the two values, or an empty text for an item that has none. Without
+ * the URLs of n8n the item has no such fields.
+ */
+function webhookItemFields(
+	node: N8nNode,
+	path: unknown,
+	workflowId: string | undefined,
+	urls: WebhookUrls | undefined,
+): string {
+	if (urls === undefined) return '';
+	const tail = webhookPathOf(node, path, workflowId);
+	const production = str(`${urls.production}/${tail}`);
+	const test = str(`${urls.test}/${tail}`);
+	return (
+		`...(trigger.webhookUrl === '' ? {} : { webhookUrl: trigger.webhookUrl ?? (trigger.executionMode === 'test' ? ${test} : ${production}) }), ` +
+		"...(trigger.executionMode === '' ? {} : { executionMode: trigger.executionMode ?? 'production' }), " +
+		'...(trigger.jwtPayload === undefined ? {} : { jwtPayload: trigger.jwtPayload }), '
+	);
+}
+
 export function planTrigger(
 	node: N8nNode,
 	workflowName: string,
@@ -315,6 +355,7 @@ export function planTrigger(
 	scheduleItem: 'native' | 'v1' = 'v1',
 	workflowId?: string,
 	hostTriggers = false,
+	webhookUrls?: WebhookUrls,
 ): TriggerPlan {
 	const p = node.parameters ?? {};
 	const tz = timezone ? raw(str(timezone)) : null;
@@ -376,8 +417,7 @@ export function planTrigger(
 			return {
 				imports: ['webhook'],
 				triggers: [call('webhook<Json>', { kind: 'object', entries })],
-				items:
-					'[{ headers: trigger.headers, params: trigger.params ?? {}, query: trigger.query, body: trigger.body, ...(trigger.$binary === undefined ? {} : { $binary: trigger.$binary }) }]',
+				items: `[{ headers: trigger.headers, params: trigger.params ?? {}, query: trigger.query, body: trigger.body, ${webhookItemFields(node, p.path, workflowId, webhookUrls)}...(trigger.$binary === undefined ? {} : { $binary: trigger.$binary }) }]`,
 				native: true,
 			};
 		}

@@ -128,6 +128,44 @@ describe('CompiledEngineCredentials', () => {
 		});
 	});
 
+	describe('allowed domains', () => {
+		const plain = { ...binding, slot: 'plain', type: 'httpHeaderAuth' };
+
+		it('gives wfrt the list of a credential with specific domains', async () => {
+			helper.getDecrypted.mockResolvedValue({
+				name: 'X-Key',
+				value: 'k',
+				allowedHttpRequestDomains: 'domains',
+				allowedDomains: ' api.example.com, *.example.org ',
+			});
+			const document = await credentials().buildDocument('wf1', [plain]);
+			expect(document.plain).toMatchObject({
+				allowedDomains: { mode: 'domains', domains: 'api.example.com, *.example.org' },
+			});
+		});
+
+		it('gives wfrt the mode of a credential that allows no domain', async () => {
+			helper.getDecrypted.mockResolvedValue({
+				name: 'X-Key',
+				value: 'k',
+				allowedHttpRequestDomains: 'none',
+			});
+			const document = await credentials().buildDocument('wf1', [plain]);
+			expect(document.plain).toMatchObject({ allowedDomains: { mode: 'none' } });
+		});
+
+		it('adds nothing for a credential that allows all domains', async () => {
+			helper.getDecrypted.mockResolvedValue({
+				name: 'X-Key',
+				value: 'k',
+				allowedHttpRequestDomains: 'all',
+			});
+			const document = await credentials().buildDocument('wf1', [plain]);
+			expect(document.plain).toBeDefined();
+			expect(document.plain).not.toHaveProperty('allowedDomains');
+		});
+	});
+
 	describe('renewal', () => {
 		it('tells wfrt that an OAuth2 slot is renewed on 401', async () => {
 			const document = await credentials().buildDocument('wf1', [binding]);

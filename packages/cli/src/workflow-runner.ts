@@ -70,7 +70,10 @@ import { NodeTypes } from '@/node-types';
 import type { PoolConfigService } from '@/scaling/pool-config.service.ee';
 import type { ScalingService } from '@/scaling/scaling.service';
 import type { Job, JobData } from '@/scaling/scaling.types';
-import { CompiledEngineBridge } from '@/services/compiled-engine-bridge.service';
+import {
+	CompiledEngineBridge,
+	CompiledEngineUnavailableError,
+} from '@/services/compiled-engine-bridge.service';
 import { EngineV2Dispatcher } from '@/services/engine-v2-dispatcher.service';
 import { StreamingWebhookResponseHeartbeat } from '@/webhooks/streaming-webhook-response-heartbeat';
 import * as WorkflowExecuteAdditionalData from '@/workflow-execute-additional-data';
@@ -477,15 +480,31 @@ export class WorkflowRunner {
 		// The compiled engine (`wfrt`) owns the whole run. Its module makes the
 		// execution row and writes the run data from the runtime events.
 		const compiledEngine = Container.get(CompiledEngineBridge);
-		if (compiledEngine.handles(data.workflowData)) {
-			if (existingExecution === undefined) {
-				return await compiledEngine.get().run(data, responsePromise);
-			}
+		// A manual run has the draft of the workflow: it can compile when the published
+		// version runs on v1.
+		const compiledRun =
+			data.executionMode === 'manual'
+				? compiledEngine.selects(data.workflowData)
+				: compiledEngine.handles(data.workflowData);
+		if (compiledRun && existingExecution !== undefined) {
 			// `wfrt` holds the waiting execution; the module resumes it there.
 			await compiledEngine
 				.get()
 				.resumeFromN8n(existingExecution.executionId, data, responsePromise);
 			return existingExecution.executionId;
+		}
+		if (compiledRun) {
+			try {
+				return await compiledEngine.get().run(data, responsePromise);
+			} catch (error) {
+				// The workflow does not compile, or `wfrt` is not connected. No execution exists
+				// yet, so the run starts on v1 below.
+				if (!(error instanceof CompiledEngineUnavailableError)) throw error;
+				this.logger.warn(
+					`Workflow ${data.workflowData.id} selects the compiled engine and runs on v1 for this run: ${error.message}`,
+					{ workflowId: data.workflowData.id },
+				);
+			}
 		}
 
 		// The engine v2 path owns the whole run: it keeps no control-plane

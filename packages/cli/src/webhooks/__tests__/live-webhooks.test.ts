@@ -23,7 +23,13 @@ import {
 	WorkflowExpression,
 } from 'n8n-workflow';
 import type { Mock, MockInstance } from 'vitest';
+import { Container } from '@n8n/di';
 import { mock } from 'vitest-mock-extended';
+
+import {
+	CompiledEngineBridge,
+	type CompiledEngineProvider,
+} from '@/services/compiled-engine-bridge.service';
 
 import { WebhookNotFoundError } from '@/errors/response-errors/webhook-not-found.error';
 import type { NodeTypes } from '@/node-types';
@@ -233,6 +239,54 @@ describe('LiveWebhooks', () => {
 				shared: [{ role: 'workflow:owner', project: { id: 'project-1', projectRelations: [] } }],
 			});
 		}
+
+		describe('a workflow that selects the compiled engine', () => {
+			const provider = mock<CompiledEngineProvider>();
+			const compiledEntity = () => {
+				const entity = publishedWorkflowEntity();
+				entity.settings = { engineType: 'compiled' };
+				return entity;
+			};
+
+			beforeEach(() => {
+				Container.get(CompiledEngineBridge).registerProvider(provider);
+				Container.get(CompiledEngineBridge).runOnCompiledEngine(WORKFLOW_ID);
+				provider.servesWebhook.mockReturnValue(true);
+				provider.forwardWebhook.mockResolvedValue(undefined);
+			});
+
+			afterEach(() => Container.get(CompiledEngineBridge).runOnCompiledEngine(WORKFLOW_ID));
+
+			it('sends the request to wfrt when wfrt has the module', async () => {
+				provider.isServing.mockReturnValue(true);
+				const request = setupExecuteWebhookMocks(compiledEntity(), { httpMethod: 'GET' });
+
+				await liveWebhooks.executeWebhook(request, mock<Response>());
+
+				expect(provider.forwardWebhook).toHaveBeenCalledTimes(1);
+				expect(WebhookHelpers.executeWebhook).not.toHaveBeenCalled();
+			});
+
+			it('runs the request on v1 when wfrt is not connected or does not have the module', async () => {
+				provider.isServing.mockReturnValue(false);
+				const request = setupExecuteWebhookMocks(compiledEntity(), { httpMethod: 'GET' });
+
+				await liveWebhooks.executeWebhook(request, mock<Response>());
+
+				expect(provider.forwardWebhook).not.toHaveBeenCalled();
+				expect(WebhookHelpers.executeWebhook).toHaveBeenCalledTimes(1);
+			});
+
+			it('runs the request on v1 when the published version runs on v1', async () => {
+				Container.get(CompiledEngineBridge).runOnV1(WORKFLOW_ID, 'The loop has no exit.');
+				const request = setupExecuteWebhookMocks(compiledEntity(), { httpMethod: 'GET' });
+
+				await liveWebhooks.executeWebhook(request, mock<Response>());
+
+				expect(provider.forwardWebhook).not.toHaveBeenCalled();
+				expect(WebhookHelpers.executeWebhook).toHaveBeenCalledTimes(1);
+			});
+		});
 
 		// A production webhook is fired by a third party, so the run is attributed
 		// to whoever published the workflow.

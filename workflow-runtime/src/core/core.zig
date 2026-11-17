@@ -1705,6 +1705,13 @@ fn replyDur(s: *State, conn: u64, status: u32, body: []const u8, dur: Durability
     try emit(s, .{ .kind = .reply, .conn = conn, .aux = status, .payload = body, .durability = dur });
 }
 
+/// The reply of a run that failed. The payload has the reason for a client
+/// of the runtime; `reply_failed` lets the shell answer a webhook as n8n does.
+fn replyFailed(s: *State, conn: u64, body: []const u8, dur: Durability) StepError!void {
+    if (conn == 0) return;
+    try emit(s, .{ .kind = .reply, .conn = conn, .aux = 500, .payload = body, .durability = dur, .seq = reply_failed });
+}
+
 fn durOf(s: *const State, slot: SlotId) Durability {
     return s.modules[s.slot_module[slot]].durability;
 }
@@ -2210,6 +2217,8 @@ fn respondNow(s: *State, slot: SlotId, vm: *ops.Vm, args: Value, scratch: *Arena
 /// bytes. `reply_headers`: the payload is `{ headers, body }`.
 pub const reply_binary: u32 = 1;
 pub const reply_headers: u32 = 2;
+/// `reply_failed`: the run failed, and the payload is the reason.
+pub const reply_failed: u32 = 4;
 
 fn encodeJson(vm: *ops.Vm, v: Value, scratch: *Arena) StepError![]const u8 {
     var b = scratch.builder();
@@ -2322,7 +2331,11 @@ fn finish(s: *State, slot: SlotId, status_in: heap.ExecStatus, scratch: *Arena) 
     if (status == .done or status == .skipped) s.counters.finished_ok += 1 else s.counters.finished_failed += 1;
     if (!s.slot_responded[slot]) {
         s.slot_responded[slot] = true;
-        try replyDur(s, s.slot_conn[slot], if (status == .done or status == .skipped) 200 else 500, payload, durOf(s, slot));
+        if (status == .done or status == .skipped) {
+            try replyDur(s, s.slot_conn[slot], 200, payload, durOf(s, slot));
+        } else {
+            try replyFailed(s, s.slot_conn[slot], payload, durOf(s, slot));
+        }
     }
     try emit(s, .{ .kind = .finished, .exec_id = s.slot_exec[slot], .aux = @backingInt(status), .module = s.slot_module[slot], .payload = payload, .durability = durOf(s, slot) });
     dropPending(s, s.slot_exec[slot], s.regions[slot].exec().next_effect);
@@ -2339,7 +2352,7 @@ fn finishLimit(s: *State, slot: SlotId, scratch: *Arena) StepError!void {
     s.counters.finished_failed += 1;
     if (!s.slot_responded[slot]) {
         s.slot_responded[slot] = true;
-        try replyDur(s, s.slot_conn[slot], 500, "{\"error\":\"limit\"}", durOf(s, slot));
+        try replyFailed(s, s.slot_conn[slot], "{\"error\":\"limit\"}", durOf(s, slot));
     }
     try emit(s, .{ .kind = .finished, .exec_id = s.slot_exec[slot], .aux = @backingInt(heap.ExecStatus.limit), .module = s.slot_module[slot], .payload = "{\"error\":\"limit\"}", .durability = durOf(s, slot) });
     dropPending(s, s.slot_exec[slot], s.regions[slot].exec().next_effect);
@@ -2566,7 +2579,7 @@ fn needsAttention(s: *State, slot: SlotId, fi: u32, step_idx: u32, scratch: *Are
     try emit(s, a);
     if (!s.slot_responded[slot]) {
         s.slot_responded[slot] = true;
-        try reply(s, s.slot_conn[slot], 500, "{\"status\":\"needs_attention\"}");
+        try replyFailed(s, s.slot_conn[slot], "{\"status\":\"needs_attention\"}", .batched);
     }
     try evict(s, slot, true, scratch);
 }

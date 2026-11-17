@@ -90,6 +90,27 @@ flowchart LR
 - **Sub-workflows.** n8n loads the workflows that Execute Workflow nodes call
   and gives the converter `resolveWorkflow(id)`.
 
+## Fallback to the v1 engine
+
+A workflow that ran on v1 must run. A workflow that selects the compiled engine runs on v1 when:
+
+- the module is not enabled;
+- its published version does not compile, or `wfrt` refuses the module (a limit of the
+  runtime, for example the module count). n8n then registers all triggers and serves the
+  webhooks of the workflow, logs a warning with the reason, and gives the reason in the
+  compile response (`runsOnV1`). n8n checks again at each publication and at each start;
+- a manual run, or a run that a trigger of n8n starts, cannot start in `wfrt` (the draft
+  does not compile, or `wfrt` is not connected): that run starts on v1;
+- a production webhook request comes while `wfrt` is not connected or does not have the
+  module: the Webhook node of n8n takes the request.
+
+No fallback is possible for a schedule that `wfrt` runs while `wfrt` is not connected, for
+the resume of an execution that waits in `wfrt`, and for a webhook request that `wfrt` took
+before it stopped. `packages/@n8n/workflow-lang/docs/parity.md` has the reasons.
+
+A Webhook node with authentication, an address list or allowed origins is served by the
+Webhook node of n8n; its item starts the run in `wfrt`.
+
 ## Run the demo locally
 
 1. Build the runtime: `cd workflow-runtime && zig build -Drelease=true`.

@@ -1267,8 +1267,14 @@ pub const Runner = struct {
     /// A reply action: JSON or binary body, with the headers of ctx.respond.
     /// The header lines and a decoded binary body are built in the free
     /// part of the batch arena and copied to the connection buffer.
+    /// The body that n8n sends when a run that a webhook started fails.
+    const webhook_failed_body = "{\"message\":\"Error in workflow\"}";
+
     fn replyFromCore(r: *Runner, idx: u32, a: core.Action) void {
         std.debug.assert(r.in_perform);
+        // A run that failed: the caller of a webhook gets the answer of n8n. The reason
+        // goes to n8n with the `finished` event, not to the caller.
+        if (a.seq & core.reply_failed != 0) return r.replyRaw(idx, 500, webhook_failed_body);
         var fba = r.batchFba();
         const scratch = fba.allocator();
         var body = a.payload;
@@ -3851,6 +3857,34 @@ test "a reply larger than the connection buffer uses a large buffer, else a 500"
     try std.testing.expect(std.mem.startsWith(u8, t.response(c2.fd, &buf), "HTTP/1.1 500"));
     const got = t.response(c.fd, &buf);
     try std.testing.expect(std.mem.startsWith(u8, got, "HTTP/1.1 200"));
+}
+
+test "a run that failed answers its webhook with the body of n8n, without the reason" {
+    var t: TestRunner = .{ .arena = undefined };
+    try t.start();
+    defer t.deinit();
+    const r = t.r;
+    r.in_perform = true;
+    defer r.in_perform = false;
+    var buf: [4096]u8 = undefined;
+
+    // The core gives the reason as the payload; the caller of the webhook does not get it.
+    const c = try t.client("");
+    defer sys.close(c.fd);
+    const reason = "{\"name\":\"NodeApiError\",\"message\":\"the reason of the node\",\"httpCode\":\"400\"}";
+    r.replyFromCore(c.idx, .{ .kind = .reply, .aux = 500, .payload = reason, .seq = core.reply_failed });
+    const failed = t.response(c.fd, &buf);
+    try std.testing.expect(std.mem.startsWith(u8, failed, "HTTP/1.1 500"));
+    try std.testing.expect(std.mem.endsWith(u8, failed, "{\"message\":\"Error in workflow\"}"));
+    try std.testing.expect(std.mem.indexOf(u8, failed, "the reason of the node") == null);
+
+    // A response with status 500 that the workflow made keeps its body.
+    const c2 = try t.client("");
+    defer sys.close(c2.fd);
+    r.replyFromCore(c2.idx, .{ .kind = .reply, .aux = 500, .payload = "{\"mine\":true}" });
+    const own = t.response(c2.fd, &buf);
+    try std.testing.expect(std.mem.startsWith(u8, own, "HTTP/1.1 500"));
+    try std.testing.expect(std.mem.endsWith(u8, own, "{\"mine\":true}"));
 }
 
 // ---- fallback host connections ------------------------------------------------------

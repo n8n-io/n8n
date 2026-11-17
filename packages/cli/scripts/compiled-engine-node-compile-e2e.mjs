@@ -24,6 +24,7 @@
  * details. `ONLY=b,c` runs only the named cases.
  */
 import { writeFileSync } from 'node:fs';
+import { createHmac } from 'node:crypto';
 import { createServer } from 'node:http';
 import { parse } from 'flatted';
 
@@ -41,7 +42,7 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 const stub = { requests: [], failWith: 0, unauthorizedOnce: false, tokens: 0 };
 
 function startStub() {
-	const server = createServer((req, res) => {
+	const handler = (req, res) => {
 		const chunks = [];
 		req.on('data', (c) => chunks.push(c));
 		req.on('end', () => {
@@ -71,16 +72,30 @@ function startStub() {
 				return send(401, { error: 'expired' });
 			}
 			if (stub.failWith) return send(stub.failWith, { errors: ['stub failure'] });
+			if (url.pathname.startsWith('/redirect/')) {
+				// To another host name of this stub: `localhost` in place of `127.0.0.1`.
+				const location = `http://localhost:${STUB_PORT}/landed/${url.pathname.slice(10)}`;
+				res.writeHead(302, { location });
+				return res.end();
+			}
 			send(200, { id: url.pathname.split('/').pop(), path: url.pathname, ok: true });
 		});
-	});
-	return new Promise((r) => server.listen(STUB_PORT, '127.0.0.1', () => r(server)));
+	};
+	// `localhost` can be the IPv6 loopback address, so the stub listens on the two addresses.
+	const listen = (host) =>
+		new Promise((resolve) => {
+			const server = createServer(handler);
+			server.once('error', () => resolve(undefined));
+			server.listen(STUB_PORT, host, () => resolve(server));
+		});
+	return Promise.all([listen('127.0.0.1'), listen('::1')]);
 }
 
 /** The parts of the recorded requests that the two engines must agree on. */
 function comparable(requests) {
 	return requests.map((r) => ({
 		method: r.method,
+		host: r.headers.host,
 		path: r.path,
 		query: r.query,
 		body: r.body,
@@ -88,6 +103,8 @@ function comparable(requests) {
 		apiUsername: r.headers['api-username'],
 		authorization: r.headers.authorization?.replace(/token-\d+/, 'token-N'),
 		stubKey: r.headers['x-stub-key'],
+		userAgent: r.headers['user-agent'],
+		accept: r.headers.accept,
 		contentType: r.headers['content-type'],
 	}));
 }
@@ -151,15 +168,29 @@ function runDataOf(execution) {
 
 // ---------------------------------------------------------------- workflows
 
-const webhook = (path) => ({
+/** `auth`: the authentication of the Webhook node and its credential. */
+const webhook = (path, auth = {}) => ({
 	id: 'w',
 	name: 'Webhook',
 	type: 'n8n-nodes-base.webhook',
 	typeVersion: 2,
 	position: [0, 0],
 	webhookId: path,
-	parameters: { path, httpMethod: 'POST', responseMode: 'responseNode' },
+	parameters: {
+		path,
+		httpMethod: 'POST',
+		responseMode: 'responseNode',
+		...(auth.authentication ? { authentication: auth.authentication } : {}),
+	},
+	...(auth.credentials ? { credentials: auth.credentials } : {}),
 });
+
+/** A token with the HS256 signature of `secret`, as the JWT authentication of the Webhook node reads it. */
+function signedToken(payload, secret) {
+	const part = (value) => Buffer.from(JSON.stringify(value)).toString('base64url');
+	const text = `${part({ alg: 'HS256', typ: 'JWT' })}.${part(payload)}`;
+	return `${text}.${createHmac('sha256', secret).update(text).digest('base64url')}`;
+}
 
 const respond = {
 	id: 'r',
@@ -241,15 +272,19 @@ const keepHash = {
 	},
 };
 
-/** An HTTP Request with a credential that allows no domain: v1 refuses the request. */
-const restrictedRequest = (credential) => ({
+/**
+ * An HTTP Request with a header credential. The node continues on an error, so the response
+ * of the webhook has the message of the error.
+ */
+const headerRequest = (credential, path, typeVersion = 4.2) => ({
 	id: 'q',
 	name: 'HTTP Request',
 	type: 'n8n-nodes-base.httpRequest',
-	typeVersion: 4.2,
+	typeVersion,
 	position: [400, 0],
+	onError: 'continueRegularOutput',
 	parameters: {
-		url: `${STUB}/restricted/resource`,
+		url: `${STUB}/${path}`,
 		authentication: 'genericCredentialType',
 		genericAuthType: 'httpHeaderAuth',
 	},
@@ -270,8 +305,8 @@ const oauthRequest = (credential) => ({
 	credentials: { oAuth2Api: credential },
 });
 
-function workflowBody(name, engine, path, nodes) {
-	const all = [webhook(path), ...nodes, respond];
+function workflowBody(name, engine, path, nodes, auth) {
+	const all = [webhook(path, auth), ...nodes, respond];
 	return {
 		name: `E2E ${name} ${engine} ${RUN}`,
 		settings: {
@@ -298,7 +333,7 @@ async function runOn(engine, spec) {
 		const workflow = await rest(
 			'POST',
 			'/workflows',
-			workflowBody(spec.key, engine, path, spec.nodes),
+			workflowBody(spec.key, engine, path, spec.nodes, spec.webhook),
 		);
 		out.workflowId = workflow.id;
 		if (engine === 'compiled') {
@@ -346,16 +381,22 @@ async function runOn(engine, spec) {
 		await rest('POST', `/workflows/${workflow.id}/activate`, { versionId: workflow.versionId });
 		out.published = true;
 		await sleep(700);
+		if (engine === 'compiled') {
+			// The reason, when the published version runs on the v1 engine.
+			const state = await rest('GET', `/compiled-engine/workflows/${workflow.id}/compile`);
+			out.runsOnV1 = state.runsOnV1;
+		}
 		for (const call of spec.calls) {
 			stub.requests = [];
 			stub.failWith = call.failWith ?? 0;
 			stub.unauthorizedOnce = call.unauthorizedOnce ?? false;
 			const response = await fetch(`${BASE}/webhook/${path}`, {
 				method: 'POST',
-				headers: { 'content-type': 'application/json' },
+				headers: { 'content-type': 'application/json', ...(call.headers ?? {}) },
 				body: JSON.stringify(call.body),
 			});
-			const text = await response.text();
+			// The path has the name of the engine: the two responses must not differ by it.
+			const text = (await response.text()).replaceAll(path, 'e2e-path');
 			let json;
 			try {
 				json = JSON.parse(text);
@@ -386,6 +427,7 @@ async function runOn(engine, spec) {
 }
 
 async function runCase(spec) {
+	if (spec.prepare) await spec.prepare();
 	const compiled = await runOn('compiled', spec);
 	const v1 = await runOn('v1', spec);
 	const same = (pick) =>
@@ -397,7 +439,9 @@ async function runCase(spec) {
 			([node, tier]) => compiled.tiers?.[node] === tier,
 		),
 		ranCompiled: (spec.compiledNodes ?? []).every((node) => compiled.compiledNodes?.includes(node)),
-		sameResponse: same((c) => [c.status, c.response]),
+		// The published version is on the compiled engine, or on v1 for the case that expects it.
+		engine: spec.onV1 ? compiled.runsOnV1 !== undefined : compiled.runsOnV1 === undefined,
+		sameResponse: same(spec.response ?? ((c) => [c.status, c.response])),
 		sameRequests: same((c) => c.requests),
 		sameExecutions: JSON.stringify(compiled.executions) === JSON.stringify(v1.executions),
 		...(spec.check ? { expected: spec.check(compiled) } : {}),
@@ -419,7 +463,7 @@ async function runCase(spec) {
 // ---------------------------------------------------------------- main
 
 async function main() {
-	const server = await startStub();
+	const servers = await startStub();
 	await login();
 	const discourseCredential = await createCredential('Discourse', 'discourseApi', {
 		url: STUB,
@@ -434,11 +478,34 @@ async function main() {
 		scope: '',
 		authentication: 'body',
 	});
-	const restrictedCredential = await createCredential('Header', 'httpHeaderAuth', {
-		name: 'X-Stub-Key',
-		value: 'stub-header-value',
-		allowedHttpRequestDomains: 'none',
+	const jwtCredential = await createCredential('Webhook token', 'jwtAuth', {
+		keyType: 'passphrase',
+		secret: 'e2e-secret',
+		algorithm: 'HS256',
 	});
+	const hookCredential = await createCredential('Webhook header', 'httpHeaderAuth', {
+		name: 'X-Hook-Key',
+		value: 'hook-secret',
+	});
+	const discourseData = { url: STUB, apiKey: 'stub-api-key', username: 'stub-user' };
+	const discourseListed = await createCredential('Discourse listed', 'discourseApi', {
+		...discourseData,
+		allowedHttpRequestDomains: 'domains',
+		allowedDomains: '127.0.0.1',
+	});
+	const discourseOther = await createCredential('Discourse other', 'discourseApi', {
+		...discourseData,
+		allowedHttpRequestDomains: 'domains',
+		allowedDomains: 'example.com',
+	});
+	const headerCredentials = [];
+	/** A header credential; the data is made when the cases run. */
+	const header = (limit, name = 'X-Stub-Key') => {
+		const reference = {};
+		headerCredentials.push({ reference, data: { name, value: 'stub-header-value', ...limit } });
+		return reference;
+	};
+	const domains = (allowedDomains) => ({ allowedHttpRequestDomains: 'domains', allowedDomains });
 	const only = process.env.ONLY?.split(',');
 	const cases = [
 		{
@@ -486,7 +553,6 @@ async function main() {
 			calls: [{ body: {} }],
 			compiledNodes: ['Discourse'],
 			check: (run) => run.calls[0]?.status === 'success' && run.calls[0]?.mode === 'manual',
-			open: 'the finished event can come before the trace events: the run data of a node can be missing',
 		},
 		{
 			key: 'g',
@@ -504,24 +570,163 @@ async function main() {
 			nodes: [discourse(discourseCredential, '7')],
 			calls: [{ body: {}, failWith: 400 }],
 			compiledNodes: ['Discourse'],
-			open: 'the body of the 500 response of the webhook is not the body of v1',
 		},
 		{
 			key: 'i',
 			title: 'the item of the Webhook trigger',
 			nodes: [],
 			calls: [{ body: { name: 'Ada' } }],
-			open: 'the item has the host of wfrt, and no webhookUrl and no executionMode',
+		},
+		{
+			key: 'p',
+			title: 'HTTP Request without a credential: the default headers',
+			nodes: [
+				{
+					id: 'q',
+					name: 'HTTP Request',
+					type: 'n8n-nodes-base.httpRequest',
+					typeVersion: 4.2,
+					position: [400, 0],
+					parameters: { url: `${STUB}/plain/headers` },
+				},
+			],
+			calls: [{ body: {} }],
 		},
 		{
 			key: 'h',
 			title: 'HTTP Request, credential that allows no domain',
-			nodes: [restrictedRequest(restrictedCredential)],
+			nodes: [headerRequest(header({ allowedHttpRequestDomains: 'none' }), 'limited/none')],
 			calls: [{ body: {} }],
 			check: (run) => run.calls[0]?.requests.length === 0,
-			open: 'the compiled HTTP Request does not read the allowed domains of the credential',
+		},
+		{
+			key: 'k',
+			title: 'HTTP Request, allowed domains with the host of the request',
+			nodes: [headerRequest(header(domains('example.com, 127.0.0.1')), 'limited/listed')],
+			calls: [{ body: {} }],
+			check: (run) => run.calls[0]?.requests.length === 1,
+		},
+		{
+			key: 'l',
+			title: 'HTTP Request, allowed domains without the host of the request',
+			nodes: [headerRequest(header(domains('*.example.com, api.example.org')), 'limited/other')],
+			calls: [{ body: {} }],
+			check: (run) => run.calls[0]?.requests.length === 0,
+		},
+		{
+			key: 'm',
+			title: 'HTTP Request, redirect to a host that the allowed domains do not have',
+			nodes: [headerRequest(header(domains('127.0.0.1')), 'redirect/limited')],
+			calls: [{ body: {} }],
+			// The error of v1 has a stack with file paths: the name and the message are compared.
+			response: (c) => [c.status, c.response?.[0]?.error?.name, c.response?.[0]?.error?.message],
+			check: (run) => run.calls[0]?.requests.length === 1,
+		},
+		{
+			key: 'n',
+			title: 'HTTP Request 4.4, redirect to another host, Authorization header',
+			nodes: [headerRequest(header({}, 'Authorization'), 'redirect/open', 4.4)],
+			calls: [{ body: {} }],
+			check: (run) => run.calls[0]?.requests.at(-1)?.authorization === undefined,
+		},
+		{
+			key: 'o',
+			title: 'HTTP Request 4.2, redirect to another host, Authorization header',
+			nodes: [headerRequest(header({}, 'Authorization'), 'redirect/open')],
+			calls: [{ body: {} }],
+			// Before version 4.4 the v1 node sends the header to the other host.
+			check: (run) => run.calls[0]?.requests.at(-1)?.authorization === 'stub-header-value',
+		},
+		{
+			key: 'r',
+			title: 'HTTP Request 4.4, redirect to another host, credential header with another name',
+			nodes: [headerRequest(header({}), 'redirect/named', 4.4)],
+			calls: [{ body: {} }],
+			// The v1 node removes only the headers that authenticate: this header stays.
+			check: (run) => run.calls[0]?.requests.at(-1)?.stubKey === 'stub-header-value',
+		},
+		{
+			key: 's',
+			title:
+				'Webhook with JWT authentication: the payload in the item, and a request without a token',
+			webhook: { authentication: 'jwtAuth', credentials: { jwtAuth: jwtCredential } },
+			nodes: [],
+			calls: [
+				{
+					body: { name: 'Ada' },
+					headers: {
+						authorization: `Bearer ${signedToken({ sub: 'ada', role: 'admin' }, 'e2e-secret')}`,
+					},
+				},
+				{ body: { name: 'Ada' } },
+				{
+					body: { name: 'Ada' },
+					headers: { authorization: `Bearer ${signedToken({ sub: 'ada' }, 'other')}` },
+				},
+			],
+			check: (run) =>
+				run.calls[0]?.response?.[0]?.jwtPayload?.sub === 'ada' && run.calls[1]?.status >= 400,
+		},
+		{
+			key: 't',
+			title: 'Webhook with header authentication: the right header and a wrong header',
+			webhook: { authentication: 'headerAuth', credentials: { httpHeaderAuth: hookCredential } },
+			nodes: [setNode],
+			calls: [
+				{ body: { name: 'Ada', amount: 2 }, headers: { 'x-hook-key': 'hook-secret' } },
+				{ body: { name: 'Ada', amount: 2 }, headers: { 'x-hook-key': 'wrong' } },
+				{ body: { name: 'Ada', amount: 2 } },
+			],
+			check: (run) => run.calls[0]?.status === 200 && run.calls[1]?.status === 403,
+		},
+		{
+			key: 'u',
+			title: 'app node, credential with allowed domains that have the host',
+			nodes: [discourse(discourseListed, '7')],
+			calls: [{ body: {} }],
+			// A value other than `all` is not checked against v1: the node runs in the fallback host.
+			tiers: { Discourse: 'host' },
+			check: (run) => run.calls[0]?.requests.length === 1,
+		},
+		{
+			key: 'v',
+			title: 'app node, credential with allowed domains that do not have the host',
+			nodes: [discourse(discourseOther, '7')],
+			calls: [{ body: {} }],
+			tiers: { Discourse: 'host' },
+			// The v1 node does not read the allowed domains of an app node: the request goes out.
+			check: (run) => run.calls[0]?.requests.length === 1,
 		},
 	];
+	if (process.env.E2E_FILL_MODULES === '1') {
+		// `wfrt` has a limit for its loaded modules. This case loads workflows until `wfrt`
+		// refuses one. The next workflow must then run on v1, with the result of v1. After this
+		// case the instance has no room for another compiled workflow: use a test instance.
+		cases.push({
+			key: 'q',
+			title: 'a workflow that wfrt refuses (module limit) runs on v1',
+			onV1: true,
+			nodes: [setNode],
+			calls: [{ body: { name: 'Ada', amount: 21 } }],
+			check: (run) => /module/.test(run.runsOnV1 ?? ''),
+			prepare: async () => {
+				for (let k = 0; k < 400; k++) {
+					const body = workflowBody(`fill-${k}`, 'compiled', `e2e-fill-${k}-${RUN}`, [setNode]);
+					const workflow = await rest('POST', '/workflows', body);
+					await rest('POST', `/workflows/${workflow.id}/activate`, {
+						versionId: workflow.versionId,
+					});
+					await sleep(120);
+					const state = await rest('GET', `/compiled-engine/workflows/${workflow.id}/compile`);
+					if (state.runsOnV1 !== undefined) return;
+				}
+				throw new Error('wfrt refused no workflow');
+			},
+		});
+	}
+	for (const [index, { reference, data }] of headerCredentials.entries()) {
+		Object.assign(reference, await createCredential(`Header ${index}`, 'httpHeaderAuth', data));
+	}
 	for (const spec of cases) {
 		if (only && !only.includes(spec.key)) continue;
 		await runCase(spec);
@@ -529,7 +734,7 @@ async function main() {
 	if (process.env.RESULTS_FILE) {
 		writeFileSync(process.env.RESULTS_FILE, JSON.stringify(results, null, 2));
 	}
-	server.close();
+	for (const server of servers) server?.close();
 	const failures = results.filter((r) => !r.pass && !r.open).length;
 	const open = results.filter((r) => !r.pass && r.open).length;
 	console.log(

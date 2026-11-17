@@ -67,6 +67,11 @@ export const compiledEngineCompileResponseSchema = z.object({
 	versionId: z.string().optional(),
 	/** ISO 8601 time of the compile. A cached result keeps its first time. */
 	compiledAt: z.string().optional(),
+	/**
+	 * Set when the published version of the workflow runs on the v1 engine: the reason why
+	 * the compiled engine could not take it (it did not compile, or the runtime refused it).
+	 */
+	runsOnV1: z.string().optional(),
 });
 
 export type CompiledEngineCompileResponse = z.infer<typeof compiledEngineCompileResponseSchema>;

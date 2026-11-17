@@ -127,6 +127,10 @@ function isDataObject(value: unknown): value is IDataObject {
 	return isRecord(value);
 }
 
+function isItemList(value: unknown): value is IDataObject[] {
+	return Array.isArray(value) && value.every(isRecord);
+}
+
 /** The trigger node that the converter keeps: a webhook first, then a schedule, then others. */
 export function findTriggerNode(workflow: Pick<IWorkflowBase, 'nodes' | 'connections'>) {
 	const targets = new Set<string>();
@@ -310,15 +314,22 @@ export class CompiledEngineDispatcher {
 			path: typeof path === 'string' ? `/webhook/${path}` : '',
 		};
 		if (isRecord(json)) {
+			// The item that the editor or a test webhook gave: the module adds no field to it.
+			// An empty text says that the item has no such field.
 			return {
 				...request,
 				headers: json.headers ?? {},
 				params: json.params ?? {},
 				query: json.query ?? {},
 				body: json.body ?? null,
+				webhookUrl: typeof json.webhookUrl === 'string' ? json.webhookUrl : '',
+				executionMode: typeof json.executionMode === 'string' ? json.executionMode : '',
+				// The Webhook node of n8n checked the token of the request and gave its payload.
+				...(isRecord(json.jwtPayload) ? { jwtPayload: json.jwtPayload } : {}),
 			};
 		}
-		return { ...request, headers: {}, params: {}, query: {}, body: null };
+		// No item: the module gives the test URL of the webhook, as the v1 node in a manual run.
+		return { ...request, headers: {}, params: {}, query: {}, body: null, executionMode: 'test' };
 	}
 
 	// ----- events -----
@@ -583,7 +594,11 @@ export class CompiledEngineDispatcher {
 		const { body, headers, status, statusCode } = event.args;
 		const code = typeof statusCode === 'number' ? statusCode : status;
 		state.response = {
-			body: isDataObject(body) || typeof body === 'string' ? body : { value: body ?? null },
+			// A list of items is the body as it is, as the Respond to Webhook node of v1 sends it.
+			body:
+				isDataObject(body) || typeof body === 'string' || isItemList(body)
+					? body
+					: { value: body ?? null },
 			headers: isDataObject(headers) ? headers : {},
 			statusCode: typeof code === 'number' ? code : 200,
 		};

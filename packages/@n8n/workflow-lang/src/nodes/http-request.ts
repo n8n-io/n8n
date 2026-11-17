@@ -40,6 +40,11 @@ interface HttpRequestParameters {
 	multipart?: FormRow[];
 	/** Before version 4.2, a repeated name replaces the earlier value (one object). */
 	multipartAssign?: boolean;
+	/**
+	 * `options.sendCredentialsOnCrossOriginRedirect` of the node. Without it, versions 3 to
+	 * 4.3 send the credential to another origin after a redirect, and the other versions do not.
+	 */
+	sendCredentialsOnCrossOriginRedirect?: boolean;
 	/** The n8n credential behind `credential`. */
 	credentialId?: string;
 	/** The n8n credential type behind `credential`. */
@@ -315,6 +320,73 @@ function resolveUrl(base: string, location: string): string {
 	return parts.join('/');
 }
 
+/**
+ * The headers with the `accept` header that the v1 node (version 3 and later) adds for the
+ * response format, when the request has none.
+ */
+function withAccept(
+	headers: Record<string, string>,
+	options: ResponseOptions,
+	version: number,
+): Record<string, string> {
+	if (version < 3) return headers;
+	if (Object.keys(headers).some((name) => name.toLowerCase() === 'accept')) return headers;
+	const format = options.responseFormat;
+	const accept =
+		format === 'json'
+			? 'application/json,text/*;q=0.99'
+			: format === 'text'
+				? 'application/json,text/html,application/xhtml+xml,application/xml,text/*;q=0.9, */*;q=0.1'
+				: 'application/json,text/html,application/xhtml+xml,application/xml,text/*;q=0.9, image/*;q=0.8, */*;q=0.7';
+	return { ...headers, accept };
+}
+
+/** The scheme, the host and the port of a URL, in lower case. */
+function originOf(url: string): string {
+	const scheme = url.indexOf('://');
+	if (scheme < 0) return '';
+	const rest = url.slice(scheme + 3);
+	let end = rest.length;
+	for (const mark of ['/', '?', '#']) {
+		const at = rest.indexOf(mark);
+		if (at >= 0 && at < end) end = at;
+	}
+	return url.slice(0, scheme + 3 + end).toLowerCase();
+}
+
+/**
+ * As n8n-core for a redirect: the same origin, or the same host that goes from http to
+ * https with no port in the two URLs.
+ */
+function sameOrigin(first: string, next: string): boolean {
+	const from = originOf(first);
+	const to = originOf(next);
+	if (from === to) return true;
+	const host = from.slice('http://'.length);
+	return from.startsWith('http://') && !host.includes(':') && to === `https://${host}`;
+}
+
+/** The headers without those of the body, as n8n-core drops them when the method becomes GET. */
+function withoutContent(headers: Record<string, string>): Record<string, string> {
+	const kept: Record<string, string> = {};
+	for (const name of Object.keys(headers)) {
+		if (!name.toLowerCase().startsWith('content-')) kept[name] = headers[name];
+	}
+	return kept;
+}
+
+/** The headers without those that authenticate a request, as n8n-core drops them. */
+function withoutAuthentication(headers: Record<string, string>): Record<string, string> {
+	const kept: Record<string, string> = {};
+	for (const name of Object.keys(headers)) {
+		const lower = name.toLowerCase();
+		if (lower === 'authorization' || lower === 'proxy-authorization' || lower === 'cookie')
+			continue;
+		kept[name] = headers[name];
+	}
+	return kept;
+}
+
 /** The body as the text that the server sent. */
 function bodyText(body: unknown): string {
 	if (body === undefined || body === null) return '';
@@ -498,11 +570,12 @@ export default defineNode<HttpRequestParameters>({
 			const pageResponse = await ctx.http<unknown>({
 				method,
 				url,
-				headers: textValues(headers),
+				headers: withAccept(textValues(headers), options, version),
 				qs: query,
 				body,
 				credential,
 				tokenExpiredStatusCode,
+				allowedDomains: true,
 			});
 			const items = responseItems(
 				pageResponse.body,
@@ -530,7 +603,8 @@ export default defineNode<HttpRequestParameters>({
 			}
 			return [pageItem];
 		}
-		const sent = requestParts(parameters);
+		const parts = requestParts(parameters);
+		const sent = { ...parts, headers: withAccept(parts.headers, options, version) };
 		let response: HttpResponse<unknown>;
 		try {
 			response = await ctx.http<unknown>({
@@ -542,11 +616,16 @@ export default defineNode<HttpRequestParameters>({
 				multipart: sent.multipart,
 				credential,
 				tokenExpiredStatusCode,
+				allowedDomains: true,
+				// The node sends the request of each redirect itself, with the rules of the v1 node.
+				followRedirects: false,
 			});
 		} catch (error) {
 			if (!continues) throw error;
 			return [failedRequestItem(error, version)];
 		}
+		const sendsCredentials =
+			parameters.sendCredentialsOnCrossOriginRedirect ?? (version >= 3 && version < 4.4);
 		// The v1 node follows redirects (axios, at most 21). 303 changes the method to GET;
 		// 307 and 308 keep the method and the body.
 		let url = parameters.url;
@@ -557,21 +636,32 @@ export default defineNode<HttpRequestParameters>({
 			if (![301, 302, 303, 307, 308].includes(status) || typeof location !== 'string') break;
 			url = resolveUrl(url, location);
 			const keep = status === 307 || status === 308;
+			const before = current;
 			current = keep ? current : status === 303 || current !== 'HEAD' ? 'GET' : current;
+			// The v1 node sends what authenticates the request to another origin only when
+			// `sendCredentialsOnCrossOriginRedirect` is set; versions 3 to 4.3 set it by default.
+			// The credential stays in the request for its allowed domains.
+			const authenticates = sendsCredentials || sameOrigin(parameters.url, url);
+			const downgraded = current === 'GET' && before !== 'GET';
+			let headers = authenticates ? sent.headers : withoutAuthentication(sent.headers);
+			if (downgraded) headers = withoutContent(headers);
 			try {
 				response = await ctx.http<unknown>({
 					method: current,
 					url,
-					headers: sent.headers,
+					headers,
 					qs: {},
 					body: keep ? sent.body : undefined,
 					multipart: keep ? sent.multipart : undefined,
 					credential,
+					inject: authenticates ? 'redirect' : 'redirectOtherOrigin',
 					tokenExpiredStatusCode,
+					allowedDomains: true,
+					followRedirects: false,
 				});
 			} catch (error) {
 				if (!continues) throw error;
-				return [failedRequestItem(error, version)];
+				return [failedRequestItem(error, version, true)];
 			}
 		}
 		const status = response.status;
@@ -599,12 +689,47 @@ export default defineNode<HttpRequestParameters>({
 	},
 });
 
+/** The errors of n8n for a credential whose allowed domains refuse each request of the node. */
+const DOMAIN_SETTING_ERRORS = [
+	'This credential is configured to prevent use within an HTTP Request or GraphQL node',
+	'No allowed domains specified. Configure allowed domains or change restriction setting.',
+];
+
+/**
+ * The item of the v1 node for a request that the allowed domains of the credential refuse.
+ * The v1 node gives the message for an error of the setting, the fields of the error that
+ * its request helper throws for the first URL, and the error of the redirect for a later URL
+ * (its stack is not given).
+ */
+function refusedDomainItem(message: string, redirected: boolean): Item | undefined {
+	if (DOMAIN_SETTING_ERRORS.includes(message)) return { error: message };
+	if (!message.startsWith('Domain not allowed: ')) return undefined;
+	if (redirected) {
+		return {
+			error: {
+				message: `Redirected request failed: ${message}`,
+				name: 'Error [ERR_FR_REDIRECTION_FAILURE]',
+			},
+		};
+	}
+	return {
+		error: {
+			name: 'UserError',
+			level: 'info',
+			shouldReport: false,
+			tags: { packageName: 'workflow' },
+		},
+	};
+}
+
 /** The item of a request that the runtime reports as a failure (`ctx.http` throws). */
-function failedRequestItem(error: unknown, version: number): Item {
+function failedRequestItem(error: unknown, version: number, redirected = false): Item {
 	const message =
 		typeof error === 'object' && error !== null && 'message' in error
 			? String(error.message)
 			: String(error);
+	const refused = refusedDomainItem(message, redirected);
+	if (refused !== undefined) return refused;
 	const status = failureStatus(message);
 	return requestFailureItem(requestReason(status, message), status, undefined, version);
 }

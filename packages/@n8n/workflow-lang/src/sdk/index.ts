@@ -47,6 +47,12 @@ export interface WebhookEvent<TBody> {
 	path?: string;
 	/** Files of the request, by binary property name. */
 	$binary?: Record<string, BinaryProperty>;
+	/** A manual run of n8n: the `webhookUrl` of the trigger item, or an empty text for none. */
+	webhookUrl?: string;
+	/** A manual run of n8n: `test`, or the `executionMode` of the trigger item, or an empty text. */
+	executionMode?: string;
+	/** The payload of the token that the Webhook node of n8n checked (JWT authentication). */
+	jwtPayload?: Item;
 }
 
 export type ScheduleUnit = 'seconds' | 'minutes' | 'hours' | 'days' | 'weeks' | 'months';
@@ -413,8 +419,23 @@ export interface HttpRequest {
 	qsFormat?: 'repeat' | 'brackets';
 	/** Basic auth of this call (spec 7.1). The values can hold credential templates. */
 	basicAuth?: { user: string; password: string };
-	/** `false`: the credential fills templates only; what it injects is not added (spec 7.1). */
-	inject?: boolean;
+	/**
+	 * `false`: the credential fills templates only; what it injects is not added (spec 7.1).
+	 * `'redirect'`: the request after a redirect: the query parameters of the credential are
+	 * not added again. `'redirectOtherOrigin'`: such a request to another origin without
+	 * authentication: also no basic auth and no `Authorization`, `Proxy-Authorization` or
+	 * `Cookie` header of the credential.
+	 */
+	inject?: boolean | 'redirect' | 'redirectOtherOrigin';
+	/** `false`: the runtime gives a redirect response to the caller and does not follow it. */
+	followRedirects?: boolean;
+	/**
+	 * The request helper of n8n whose default `accept` header a request without one gets:
+	 * `'legacy'` (`helpers.request`) or `'request'` (`helpers.httpRequest`). `json` is the
+	 * `json` option of that request. Without `acceptAs` the runtime uses its own default.
+	 */
+	acceptAs?: 'legacy' | 'request';
+	json?: unknown;
 	/** Stores the body of a 2xx response as binary data; the body is `{ $binary: BinaryHandle }`. */
 	responseBinary?: ResponseBinary;
 	/**
@@ -428,6 +449,11 @@ export interface HttpRequest {
 	 * default is 401.
 	 */
 	tokenExpiredStatusCode?: number | number[];
+	/**
+	 * `true`: the runtime applies the allowed domains of the credential to this request, as
+	 * the HTTP Request node of n8n does. A request to another host fails, and nothing is sent.
+	 */
+	allowedDomains?: boolean;
 }
 
 /** A part of a multipart body: a text field, or a file (`binary`, n8n's binary form). */

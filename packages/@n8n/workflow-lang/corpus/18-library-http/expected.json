@@ -12,11 +12,15 @@
 			"args": {
 				"method": "GET",
 				"url": "https://api.github.com/repos/n8n-io/n8n/issues",
-				"headers": {},
+				"headers": {
+					"accept": "application/json,text/html,application/xhtml+xml,application/xml,text/*;q=0.9, image/*;q=0.8, */*;q=0.7"
+				},
 				"qs": {
 					"state": "open"
 				},
-				"credential": "github"
+				"credential": "github",
+				"allowedDomains": true,
+				"followRedirects": false
 			}
 		},
 		{
@@ -32,7 +36,9 @@
 				"body": {
 					"body": "Seen 2 issues"
 				},
-				"credential": "github"
+				"credential": "github",
+				"allowedDomains": true,
+				"followRedirects": false
 			}
 		},
 		{
@@ -48,7 +54,9 @@
 				"body": {
 					"body": "Seen 2 issues"
 				},
-				"credential": "github"
+				"credential": "github",
+				"allowedDomains": true,
+				"followRedirects": false
 			}
 		},
 		{
@@ -57,8 +65,12 @@
 			"args": {
 				"method": "GET",
 				"url": "https://status.example.com",
-				"headers": {},
-				"qs": {}
+				"headers": {
+					"accept": "application/json,text/html,application/xhtml+xml,application/xml,text/*;q=0.9, image/*;q=0.8, */*;q=0.7"
+				},
+				"qs": {},
+				"allowedDomains": true,
+				"followRedirects": false
 			}
 		}
 	]

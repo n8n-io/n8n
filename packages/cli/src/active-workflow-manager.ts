@@ -589,8 +589,8 @@ export class ActiveWorkflowManager {
 		// The compiled engine runs schedules itself. n8n keeps only the webhook
 		// rows, so that it can route production requests to `wfrt`.
 		const compiledEngine = Container.get(CompiledEngineBridge);
-		const runsOnCompiledEngine = compiledEngine.handles(dbWorkflow);
-		const shouldAddNonWebhookTriggers = this.shouldAddNonWebhookTriggers() && !runsOnCompiledEngine;
+		let runsOnCompiledEngine = compiledEngine.selects(dbWorkflow);
+		let shouldAddNonWebhookTriggers = this.shouldAddNonWebhookTriggers() && !runsOnCompiledEngine;
 
 		try {
 			if (['init', 'leadershipChange'].includes(activationMode) && !dbWorkflow.activeVersion) {
@@ -662,6 +662,26 @@ export class ActiveWorkflowManager {
 				);
 			}
 
+			if (runsOnCompiledEngine) {
+				// The load goes first. A version that cannot run on the compiled engine (it does
+				// not compile, or `wfrt` refuses the module) runs on v1: n8n registers all its
+				// triggers below, as for a workflow that does not select the compiled engine.
+				try {
+					await compiledEngine.get().activate(dbWorkflow);
+					compiledEngine.runOnCompiledEngine(dbWorkflow.id);
+				} catch (e) {
+					const reason = e instanceof Error ? e.message : String(e);
+					compiledEngine.runOnV1(dbWorkflow.id, reason);
+					this.logger.warn(
+						`Workflow ${formatWorkflow(dbWorkflow)} selects the compiled engine and runs on the v1 engine: ${reason}`,
+						{ workflowId: dbWorkflow.id },
+					);
+					await this.removeFromCompiledEngine(dbWorkflow.id);
+					runsOnCompiledEngine = false;
+					shouldAddNonWebhookTriggers = this.shouldAddNonWebhookTriggers();
+				}
+			}
+
 			// Carries no user: a registration outlives any number of republishes, so
 			// the publishing user is resolved at emit instead, next to the fresh
 			// workflow data the run actually uses.
@@ -730,10 +750,7 @@ export class ActiveWorkflowManager {
 
 			await this.workflowRepository.updateWorkflowTriggerCount(workflow.id, triggerCount);
 
-			if (runsOnCompiledEngine) {
-				await compiledEngine.get().activate(dbWorkflow);
-				added.triggersAndPollers = true;
-			}
+			if (runsOnCompiledEngine) added.triggersAndPollers = true;
 		} catch (e) {
 			const error = e instanceof Error ? e : new Error(`${e}`);
 			await this.activationErrorsService.register(workflowId, error.message);
