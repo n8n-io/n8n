@@ -90,6 +90,12 @@ export interface CodeNativeInput {
 	 * (\`ConvertOptions.codeModules\`); \`*\` is every module. The default is none, as in n8n.
 	 */
 	allowedModules?: string[];
+	/**
+	 * True when each item holds the bytes of its binary data as base64 text (`data`), and no
+	 * item names a stored file (`id`). Only then `this.helpers.getBinaryDataBuffer` has a
+	 * native form: the bytes of a stored file need a call of the runtime that reads them.
+	 */
+	inlineBinary?: boolean;
 }
 
 export interface Blocker {
@@ -632,6 +638,13 @@ function isAssignmentTarget(n: ts.Node): boolean {
 		(ts.isPrefixUnaryExpression(p) || ts.isPostfixUnaryExpression(p)) &&
 		(p.operator === ts.SyntaxKind.PlusPlusToken || p.operator === ts.SyntaxKind.MinusMinusToken)
 	);
+}
+
+/** The functions of the crypto module with a native form. */
+type CryptoFunction = 'createHash' | 'createHmac' | 'timingSafeEqual';
+
+function isCryptoFunction(name: string): name is CryptoFunction {
+	return name === 'createHash' || name === 'createHmac' || name === 'timingSafeEqual';
 }
 
 /** True for \`Buffer.from(...)\` with the global Buffer. */
@@ -2453,7 +2466,7 @@ export function translateCode(input: CodeNativeInput): TranslateResult {
 	 * MD5, SHA-1 and SHA-256 of text, with a digest as hex or base64 text, when the deployment
 	 * allows the module (\`allowedModules\`).
 	 */
-	const cryptoNames = new Map<ts.Symbol, 'module' | 'createHash' | 'createHmac'>();
+	const cryptoNames = new Map<ts.Symbol, 'module' | CryptoFunction>();
 	const cryptoDeclarations = new Set<ts.Node>();
 	const isCryptoRequire = (e: ts.Expression | undefined): boolean => {
 		if (e === undefined) return false;
@@ -2469,16 +2482,16 @@ export function translateCode(input: CodeNativeInput): TranslateResult {
 		);
 	};
 	/** The hash function that a callee names, or null. */
-	const cryptoCallee = (e: ts.Expression): 'createHash' | 'createHmac' | null => {
+	const cryptoCallee = (e: ts.Expression): CryptoFunction | null => {
 		const x = stripParens(e);
 		if (ts.isIdentifier(x)) {
 			const sym = checker.getSymbolAtLocation(x);
 			const kind = sym === undefined ? undefined : cryptoNames.get(sym);
-			return kind === 'createHash' || kind === 'createHmac' ? kind : null;
+			return kind === undefined || kind === 'module' ? null : kind;
 		}
 		if (!ts.isPropertyAccessExpression(x) || x.questionDotToken) return null;
 		const name = x.name.text;
-		if (name !== 'createHash' && name !== 'createHmac') return null;
+		if (!isCryptoFunction(name)) return null;
 		const from = stripParens(x.expression);
 		if (isCryptoRequire(from)) return name;
 		const sym = ts.isIdentifier(from) ? checker.getSymbolAtLocation(from) : undefined;
@@ -2517,7 +2530,7 @@ export function translateCode(input: CodeNativeInput): TranslateResult {
 								el.initializer ||
 								!ts.isIdentifier(key) ||
 								sym === undefined ||
-								(key.text !== 'createHash' && key.text !== 'createHmac')
+								!isCryptoFunction(key.text)
 							) {
 								known = false;
 							} else cryptoNames.set(sym, key.text);
@@ -2547,15 +2560,314 @@ export function translateCode(input: CodeNativeInput): TranslateResult {
 		};
 		uses(root.body);
 	}
-	const HASHES = new Set(['md5', 'sha1', 'sha256']);
+	const HASHES = new Set(['md5', 'sha1', 'sha256', 'sha384', 'sha512']);
 	const literalText = (e: ts.Expression | undefined): string | null => {
 		const x = e === undefined ? undefined : stripParens(e);
 		return x !== undefined && ts.isStringLiteralLike(x) ? x.text : null;
+	};
+	// ---- Buffer values -------------------------------------------------------
+
+	/**
+	 * A Buffer of the code is a list of its bytes in native code (`buffer-helpers.ts`). The
+	 * code must not see that: a Buffer has a native form only in a constant that holds it and
+	 * in the places below, where a helper or a read of the list gives the result of Node.js.
+	 *
+	 * Makers: `Buffer.from(value, encoding)`, `Buffer.concat([...])`, `slice` and `subarray`
+	 * of a Buffer, `digest()` of a hash, and the awaited `this.helpers.getBinaryDataBuffer`.
+	 * Places: `toString(encoding)`, `equals`, `toJSON()`, `length`, a read of one byte,
+	 * `Buffer.isBuffer`, `Buffer.byteLength`, `update` of a hash, the key of `createHmac`,
+	 * and `timingSafeEqual`. Each other use of a Buffer keeps the node in the host.
+	 */
+	const bufVars = new Set<ts.Symbol>();
+	/** Buffer expressions in a place that takes a Buffer. */
+	const bufOk = new Set<ts.Node>();
+	let usesBuffers = false;
+	const isBufferGlobal = (e: ts.Expression): boolean => {
+		const x = stripParens(e);
+		return ts.isIdentifier(x) && x.text === 'Buffer' && isFree(x);
+	};
+	/** `this.helpers.getBinaryDataBuffer(index, name)` or the same call of the global `helpers`. */
+	const isBinaryBufferCall = (e: ts.Expression): boolean =>
+		ts.isCallExpression(e) &&
+		!e.questionDotToken &&
+		ts.isPropertyAccessExpression(e.expression) &&
+		!e.expression.questionDotToken &&
+		e.expression.name.text === 'getBinaryDataBuffer' &&
+		requestKind(e.expression.expression) === 'helpers';
+	const isBuf = (e: ts.Expression): boolean => {
+		const x = stripParens(e);
+		if (ts.isIdentifier(x)) {
+			const sym = checker.getSymbolAtLocation(x);
+			return sym !== undefined && bufVars.has(sym);
+		}
+		if (ts.isAwaitExpression(x)) return isBinaryBufferCall(stripParens(x.expression));
+		if (!ts.isCallExpression(x) || x.questionDotToken) return false;
+		if (x.arguments.some((a) => ts.isSpreadElement(a))) return false;
+		const callee = x.expression;
+		if (!ts.isPropertyAccessExpression(callee) || callee.questionDotToken) return false;
+		const name = callee.name.text;
+		if (isBufferGlobal(callee.expression)) {
+			if (name === 'from') return x.arguments.length >= 1 && x.arguments.length <= 2;
+			if (name !== 'concat' || x.arguments.length !== 1) return false;
+			const list = stripParens(x.arguments[0]);
+			return (
+				ts.isArrayLiteralExpression(list) &&
+				list.elements.every(
+					(el) => !ts.isSpreadElement(el) && !ts.isOmittedExpression(el) && isBuf(el),
+				)
+			);
+		}
+		if (name === 'slice' || name === 'subarray') {
+			return x.arguments.length <= 2 && isBuf(callee.expression);
+		}
+		return name === 'digest' && usesCrypto && x.arguments.length === 0;
+	};
+	if (!input.nodeCode && !input.expression && root.body) {
+		// Constants that hold a Buffer, in the order of the source.
+		const declare = (x: ts.Node): void => {
+			if (
+				ts.isVariableDeclaration(x) &&
+				ts.isIdentifier(x.name) &&
+				x.initializer !== undefined &&
+				ts.isVariableDeclarationList(x.parent) &&
+				(x.parent.flags & ts.NodeFlags.Const) !== 0 &&
+				isBuf(x.initializer)
+			) {
+				const sym = checker.getSymbolAtLocation(x.name);
+				if (sym !== undefined) bufVars.add(sym);
+			}
+			ts.forEachChild(x, declare);
+		};
+		declare(root.body);
+	}
+	/** The Buffer expression `n` without the parentheses and the `await` around it. */
+	const bufOuter = (n: ts.Node): ts.Node => {
+		let x = n;
+		while (ts.isParenthesizedExpression(x.parent) || ts.isAwaitExpression(x.parent)) x = x.parent;
+		return x;
+	};
+	/** True when the Buffer expression `n` is in a place that has a native form. */
+	const bufPlace = (n: ts.Node): boolean => {
+		for (let x = n; ; x = x.parent) {
+			if (bufOk.has(x)) return true;
+			if (!ts.isParenthesizedExpression(x.parent) && !ts.isAwaitExpression(x.parent)) break;
+		}
+		const x = bufOuter(n);
+		const p = x.parent;
+		if (ts.isPropertyAccessExpression(p) && p.expression === x) {
+			return p.name.text === 'length' && !p.questionDotToken && !isAssignmentTarget(p);
+		}
+		if (ts.isElementAccessExpression(p) && p.expression === x) {
+			const index = checker.getTypeAtLocation(p.argumentExpression);
+			return (
+				(index.flags & ts.TypeFlags.NumberLike) !== 0 &&
+				!p.questionDotToken &&
+				!isAssignmentTarget(p)
+			);
+		}
+		if (ts.isVariableDeclaration(p) && p.initializer === x && ts.isIdentifier(p.name)) {
+			const sym = checker.getSymbolAtLocation(p.name);
+			return sym !== undefined && bufVars.has(sym);
+		}
+		return false;
+	};
+	const blockBuffer = (): void => {
+		block(
+			'Buffer',
+			'A Buffer has a native form only in a constant, and as the value of `toString`, `length`, `equals`, `slice`, `subarray`, `toJSON`, `Buffer.concat`, a hash and `timingSafeEqual`.',
+		);
+	};
+	/** Walks a Buffer expression in a place that takes a Buffer. */
+	const emitBuf = (e: ts.Expression): void => {
+		bufOk.add(e);
+		bufOk.add(stripParens(e));
+		visit(e);
+	};
+	/** Writes `fn(parts...tail)` in place of the call `n`; `parts` are parts of `n` in the order of the source. */
+	const writeCall = (n: ts.CallExpression, fn: string, parts: ts.Expression[], tail = ''): void => {
+		const o = seq;
+		if (parts[0].getStart(sf) === n.getStart(sf)) open(n.getStart(sf), `${fn}(`);
+		else replace(n.getStart(sf), parts[0].getStart(sf), `${fn}(`);
+		for (let k = 0; k + 1 < parts.length; k++) {
+			closing(parts[k].getEnd(), parts[k + 1].getStart(sf), ', ', o);
+		}
+		closing(parts[parts.length - 1].getEnd(), n.getEnd(), `${tail})`, o);
+	};
+	/** True when an argument of the call is a Buffer. */
+	const usesBufferValue = (e: ts.Expression): boolean =>
+		ts.isCallExpression(e) && e.arguments.some((a) => isBuf(a));
+	/** A call that makes or reads a Buffer. True when it wrote the call or blocked it. */
+	const bufferCall = (n: ts.CallExpression, callee: ts.PropertyAccessExpression): boolean => {
+		if (input.nodeCode || input.expression) return false;
+		const name = callee.name.text;
+		const args = n.arguments;
+		const receiver = callee.expression;
+		const statics = isBufferGlobal(receiver);
+		const binary = isBinaryBufferCall(n);
+		const maker = isBuf(n);
+		const reads =
+			isBuf(receiver) && (name === 'toString' || name === 'equals' || name === 'toJSON');
+		const hashes =
+			usesCrypto && name === 'update' && args.length === 1 && isBuf(args[0]) && !statics;
+		if (!statics && !binary && !maker && !reads && !hashes) return false;
+		// The form `Buffer.from(v, a).toString(b)` has its own helper (below).
+		if (
+			name === 'toString' &&
+			isBufferFrom(stripParens(receiver)) &&
+			args.length <= 1 &&
+			n.expression === callee &&
+			!usesBufferValue(stripParens(receiver))
+		) {
+			return false;
+		}
+		usesBuffers = true;
+		if (
+			usesHttp ||
+			n.questionDotToken ||
+			callee.questionDotToken ||
+			n.expression !== callee ||
+			args.some((a) => ts.isSpreadElement(a)) ||
+			((maker || binary) && !bufPlace(n))
+		) {
+			blockBuffer();
+			return true;
+		}
+		const pad = (count: number): string => ', undefined'.repeat(Math.max(0, count - args.length));
+		const walk = (list: readonly ts.Expression[]): void => {
+			for (const a of list) {
+				if (isBuf(a)) emitBuf(a);
+				else visit(a);
+			}
+		};
+		if (binary) {
+			let call: ts.Node = n;
+			while (ts.isParenthesizedExpression(call.parent)) call = call.parent;
+			if (input.kind !== 'code' || args.length !== 2 || !ts.isAwaitExpression(call.parent)) {
+				block(
+					'this (this.helpers)',
+					'`getBinaryDataBuffer` has a native form only as an awaited call with an item index and a name.',
+				);
+				return true;
+			}
+			if (hasThis(receiver) && !thisIsContext(n)) {
+				block(
+					'this (this.helpers)',
+					'`this.helpers` in a function whose `this` can be another value has no native form.',
+				);
+				return true;
+			}
+			if (input.inlineBinary !== true) {
+				block(
+					'binary data of a stored file',
+					'`getBinaryDataBuffer` needs the bytes of a file that the binary data store can hold. The runtime has no call that reads them.',
+				);
+				return true;
+			}
+			helpers.add('codeBinaryBytes');
+			const o = seq;
+			replace(n.getStart(sf), args[0].getStart(sf), `codeBinaryBytes(${P}in, `);
+			closing(args[0].getEnd(), args[1].getStart(sf), ', ', o);
+			closing(args[1].getEnd(), n.getEnd(), ')', o);
+			visit(args[0]);
+			visit(args[1]);
+			return true;
+		}
+		if (statics) {
+			if (name === 'from' && maker) {
+				helpers.add('bufFrom');
+				writeCall(n, 'bufFrom', [...args], pad(2));
+				walk(args);
+				return true;
+			}
+			if (name === 'concat' && maker) {
+				const list = stripParens(args[0]);
+				if (ts.isArrayLiteralExpression(list)) {
+					helpers.add('bufConcat');
+					writeCall(n, 'bufConcat', [args[0]]);
+					walk(list.elements);
+					return true;
+				}
+			}
+			if (name === 'byteLength' && args.length >= 1 && args.length <= 2 && !isBuf(args[0])) {
+				helpers.add('bufByteLength');
+				writeCall(n, 'bufByteLength', [...args], pad(2));
+				walk(args);
+				return true;
+			}
+			if (
+				name === 'isBuffer' &&
+				args.length === 1 &&
+				ts.isIdentifier(stripParens(args[0])) &&
+				isBuf(args[0])
+			) {
+				replaceNode(n, 'true');
+				return true;
+			}
+			blockBuffer();
+			return true;
+		}
+		if (hashes) {
+			helpers.add('hashUpdateBytes');
+			writeCall(n, 'hashUpdateBytes', [receiver, args[0]]);
+			visit(receiver);
+			emitBuf(args[0]);
+			return true;
+		}
+		if (name === 'digest') {
+			helpers.add('hashDigestBytes');
+			const o = seq;
+			open(receiver.getStart(sf), 'hashDigestBytes(');
+			closing(receiver.getEnd(), n.getEnd(), ')', o);
+			visit(receiver);
+			return true;
+		}
+		if (name === 'slice' || name === 'subarray') {
+			helpers.add('bufSlice');
+			writeCall(n, 'bufSlice', [receiver, ...args], pad(2));
+			emitBuf(receiver);
+			for (const a of args) visit(a);
+			return true;
+		}
+		if (name === 'toString' && args.length <= 1) {
+			helpers.add('bufText');
+			writeCall(n, 'bufText', [receiver, ...args], pad(1));
+			emitBuf(receiver);
+			for (const a of args) visit(a);
+			return true;
+		}
+		if (name === 'equals' && args.length === 1 && isBuf(args[0])) {
+			helpers.add('bufEquals');
+			writeCall(n, 'bufEquals', [receiver, args[0]]);
+			emitBuf(receiver);
+			emitBuf(args[0]);
+			return true;
+		}
+		if (name === 'toJSON' && args.length === 0) {
+			helpers.add('bufJson');
+			writeCall(n, 'bufJson', [receiver]);
+			emitBuf(receiver);
+			return true;
+		}
+		blockBuffer();
+		return true;
 	};
 	/** \`crypto.createHash('sha256')\` and \`crypto.createHmac('sha256', key)\`. True when it wrote the call. */
 	const cryptoCall = (n: ts.CallExpression): boolean => {
 		const kind = usesCrypto ? cryptoCallee(n.expression) : null;
 		if (kind === null) return false;
+		if (kind === 'timingSafeEqual') {
+			const [a, b] = n.arguments;
+			if (cryptoMisuse || usesHttp || n.arguments.length !== 2 || !isBuf(a) || !isBuf(b)) {
+				block('require', '`timingSafeEqual` has a native form only for two Buffers.');
+				return true;
+			}
+			usesBuffers = true;
+			helpers.add('bufTimingEqual');
+			writeCall(n, 'bufTimingEqual', [a, b]);
+			emitBuf(a);
+			emitBuf(b);
+			return true;
+		}
 		const alg = literalText(n.arguments[0])?.toLowerCase() ?? null;
 		if (
 			cryptoMisuse ||
@@ -2566,11 +2878,19 @@ export function translateCode(input: CodeNativeInput): TranslateResult {
 			block('require', 'This use of the crypto module has no native form.');
 			return true;
 		}
-		helpers.add(kind === 'createHash' ? 'hashNew' : 'hmacNew');
 		if (kind === 'createHash') {
+			helpers.add('hashNew');
 			replaceNode(n, `hashNew(${JSON.stringify(alg)})`);
 			return true;
 		}
+		if (isBuf(n.arguments[1]) && !usesHttp) {
+			usesBuffers = true;
+			helpers.add('hmacNewBytes');
+			replace(n.getStart(sf), n.arguments[1].getStart(sf), `hmacNewBytes(${JSON.stringify(alg)}, `);
+			emitBuf(n.arguments[1]);
+			return true;
+		}
+		helpers.add('hmacNew');
 		replace(n.getStart(sf), n.arguments[1].getStart(sf), `hmacNew(${JSON.stringify(alg)}, `);
 		visit(n.arguments[1]);
 		return true;
@@ -2750,6 +3070,18 @@ export function translateCode(input: CodeNativeInput): TranslateResult {
 		if (requestDeclarations.has(n) && !requestNameMisuse) {
 			replaceNode(n, '');
 			return;
+		}
+		if (ts.isShorthandPropertyAssignment(n) && bufVars.size > 0) {
+			const sym = checker.getShorthandAssignmentValueSymbol(n);
+			if (sym !== undefined && bufVars.has(sym)) blockBuffer();
+		}
+		if (ts.isIdentifier(n) && bufVars.size > 0 && !isNameOf(n)) {
+			const sym = checker.getSymbolAtLocation(n);
+			const declares = ts.isVariableDeclaration(n.parent) && n.parent.name === n;
+			if (sym !== undefined && bufVars.has(sym) && !declares) {
+				usesBuffers = true;
+				if (usesHttp || !bufPlace(n)) blockBuffer();
+			}
 		}
 		const errName = errTextNodes.get(n);
 		if (errName !== undefined) {
@@ -3182,6 +3514,7 @@ export function translateCode(input: CodeNativeInput): TranslateResult {
 			if (ts.isPropertyAccessExpression(callee)) {
 				const name = callee.name.text;
 				const plainArgs = !n.arguments.some((x) => ts.isSpreadElement(x));
+				if (bufferCall(n, callee)) return;
 				if (
 					name === 'call' &&
 					n.arguments.length === 2 &&
@@ -4085,7 +4418,7 @@ export function translateCode(input: CodeNativeInput): TranslateResult {
 			if (seq0 !== undefined && free(n)) around(n, seq0, 0.75, 'codeAt(', `, ${line})`);
 		}
 		for (const [n, check] of lineChecks) {
-			if (methodChecks.has(n)) continue;
+			if (methodChecks.has(n) || bufOk.has(n)) continue;
 			const seq0 = lineSeq.get(n);
 			if (seq0 === undefined || !free(n) || (ts.isExpression(n) && isDateValue(n))) {
 				errorTextGap ??= 'a method call that the traced form cannot check';
@@ -4119,6 +4452,13 @@ export function translateCode(input: CodeNativeInput): TranslateResult {
 	}
 	if (input.traced && root.body) traceLines(root.body);
 	if (root.body) for (const st of root.body.statements) visit(st);
+	// V8's text of an error is certain only for the operations that \`catch-check.ts\` knows.
+	if (usesBuffers && plannedCatches.size > 0) {
+		block(
+			'catch reads the error',
+			'The catch block reads the error, and the code has Buffer values.',
+		);
+	}
 
 	// The rewrites call helpers by name, so the code must not declare a name of its own like them.
 	const declared = new Set<string>();

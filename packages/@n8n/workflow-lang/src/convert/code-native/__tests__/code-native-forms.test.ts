@@ -430,11 +430,11 @@ return items.map((i) => {
 		],
 		[
 			'another algorithm',
-			"const crypto = require('crypto'); return [{ json: { a: crypto.createHash('sha512').update('a').digest('hex') } }];",
+			"const crypto = require('crypto'); return [{ json: { a: crypto.createHash('sha3-256').update('a').digest('hex') } }];",
 		],
 		[
-			'a digest as bytes',
-			"const crypto = require('crypto'); return [{ json: { a: crypto.createHash('md5').update('a').digest().length } }];",
+			'a digest as text of bytes',
+			"const crypto = require('crypto'); return [{ json: { a: crypto.createHash('md5').update('a').digest('latin1').length } }];",
 		],
 		[
 			'the module as a value',
