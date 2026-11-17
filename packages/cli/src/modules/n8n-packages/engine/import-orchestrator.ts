@@ -503,7 +503,10 @@ export class ImportOrchestrator {
 			deletionPolicy: options.overwriteDeletionPolicy,
 			workflowItems: workflowPlan.items,
 			packageFolderIds,
-			subWorkflowRequirementIds: input.subWorkflowRequirements?.map(({ id }) => id),
+			subWorkflowRequirementIds: [
+				...(input.subWorkflowRequirements?.map(({ id }) => id) ?? []),
+				...(options.retainedWorkflowIds ?? []),
+			],
 			projectPendingCreation: input.projectPendingCreation,
 			importSource: input.importSource,
 			explicitDeleteIds: input.explicitDeleteWorkflowIds,

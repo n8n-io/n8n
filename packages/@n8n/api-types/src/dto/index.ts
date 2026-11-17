@@ -849,6 +849,7 @@ export {
 	PromotePackageDto,
 	PromotePackageResultDto,
 	PromoteSelectionResultDto,
+	PromotionDependencyReportRequestDto,
 	applyPackageCountsSchema,
 	applyPackageResultSchema,
 	promotePackageCountsSchema,

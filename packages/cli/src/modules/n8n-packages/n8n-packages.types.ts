@@ -435,6 +435,11 @@ export type PromotionLayoutProperties = {
 	confirmedMovesOutOfOperation?: boolean;
 	/** Omitted means that the import treats each credential reference as before. */
 	credentialDependencies?: ImportCredentialDependencies;
+	/**
+	 * Destination workflows that reconciliation must not remove, in any project of the import.
+	 * A workflow of another project of the package still references them.
+	 */
+	retainedWorkflowIds?: string[];
 };
 
 /* eslint-disable @typescript-eslint/naming-convention */

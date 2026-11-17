@@ -302,6 +302,18 @@ const environmentSelectionProjectsSchema = z
 			'The selection of each project. Every project must be in the scope of the environment, and the user needs the right to run the operation in each of them.',
 	});
 
+/**
+ * A selection whose dependency report the client wants before the operation. It is the
+ * selection of a Promote or an Apply across projects, and it writes nothing.
+ */
+export class PromotionDependencyReportRequestDto extends Z.class(
+	{
+		projects: environmentSelectionProjectsSchema,
+		credentialHomes: promotionApplyConfirmationShape.credentialHomes,
+	},
+	{ strict: true },
+) {}
+
 /** A Promote across projects. It writes one commit and opens at most one review. */
 export class PromoteEnvironmentSelectionRequestDto extends Z.class(
 	{
