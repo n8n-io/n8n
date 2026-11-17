@@ -1,5 +1,5 @@
 import { AGENT_SKILL_REFERENCE_CONTENT_MAX_LENGTH } from '@n8n/api-types';
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { defineComponent, ref, type PropType } from 'vue';
 import { createComponentRenderer } from '@/__tests__/render';
 import { createTestingPinia } from '@pinia/testing';
@@ -10,12 +10,15 @@ import { useProjectsStore } from '@/features/collaboration/projects/projects.sto
 import type { ProjectListItem } from '@/features/collaboration/projects/projects.types';
 import { configure, fireEvent, screen, waitFor, within } from '@testing-library/vue';
 import userEvent from '@testing-library/user-event';
+import { flushPromises } from '@vue/test-utils';
 import {
 	AGENT_SKILL_INSTRUCTIONS_MAX_LENGTH,
 	AGENT_SKILL_REFERENCE_MAX_COUNT,
 	type SkillDetail,
 	type SkillListItem,
 } from '@n8n/api-types';
+
+import { RECOMMENDED_SKILLS } from '@/experiments/recommendedSkills/recommendedSkills';
 
 import AgentSkillModal, { type AgentSkillModalData } from '../components/AgentSkillModal.vue';
 import type { AgentSkill } from '../types';
@@ -112,6 +115,21 @@ vi.mock('vue-router', async (importOriginal) => ({
 
 vi.mock('../composables/useAgentTelemetry', () => ({
 	useAgentTelemetry: () => ({ trackImportedSkill }),
+}));
+
+const recommendedSkills = vi.hoisted(() => ({
+	show: { value: false },
+	trackExposure: vi.fn(),
+	trackCardsShown: vi.fn(),
+	trackSkillAdded: vi.fn(),
+}));
+vi.mock('@/experiments/recommendedSkills/useRecommendedSkillsExperiment', () => ({
+	useRecommendedSkillsExperiment: () => ({
+		showRecommendedSkills: recommendedSkills.show,
+		trackExposure: recommendedSkills.trackExposure,
+		trackCardsShown: recommendedSkills.trackCardsShown,
+		trackSkillAdded: recommendedSkills.trackSkillAdded,
+	}),
 }));
 
 const MODAL_NAME = 'AgentSkillModal';
@@ -864,6 +882,213 @@ describe('AgentSkillModal', () => {
 			expect(getByTestId('agent-skill-picker-tabs')).toHaveAttribute('data-hide-empty', 'true');
 		});
 
+		describe('recommended skills', () => {
+			beforeEach(() => {
+				recommendedSkills.show.value = true;
+			});
+
+			afterEach(() => {
+				recommendedSkills.show.value = false;
+			});
+
+			it('lists the recommended skills in their own tab and tracks the exposure', async () => {
+				listAttachableSkills.mockResolvedValue([projectSkill]);
+				const { getAllByTestId, getByTestId } = renderModal({
+					skillRefsEnabled: true,
+					onAttach: vi.fn(),
+				});
+
+				await waitFor(() => expect(getAllByTestId('agent-skill-picker-row')).toHaveLength(4));
+				expect(getByTestId('agent-skill-picker-tabs')).toHaveTextContent(
+					'all,project,global,recommended',
+				);
+				expect(
+					getAllByTestId('agent-skill-picker-category').map((node) => node.textContent),
+				).toEqual(['project', 'recommended', 'recommended', 'recommended']);
+				const addButtons = getAllByTestId('agent-skill-picker-add');
+				expect(addButtons[0]).toHaveTextContent('agents.builder.skills.picker.add');
+				expect(addButtons[1]).toHaveTextContent('experiments.recommendedSkills.use');
+				expect(addButtons[1]).toHaveAttribute(
+					'aria-label',
+					'experiments.recommendedSkills.useAriaLabel humanizer',
+				);
+				expect(recommendedSkills.trackExposure).not.toHaveBeenCalled();
+				expect(recommendedSkills.trackCardsShown).toHaveBeenCalledExactlyOnceWith(
+					'agent_skill_modal',
+				);
+			});
+
+			it('refuses a recommended skill with the name of an attached skill', async () => {
+				listAttachableSkills.mockResolvedValue([]);
+				const humanizer = RECOMMENDED_SKILLS.find(({ id }) => id === 'humanizer')!;
+				const humanizerLoad = vi.spyOn(humanizer, 'load');
+				const { findAllByTestId, getByTestId } = renderModal({
+					skillRefsEnabled: true,
+					getAttachedSkills: () => [{ id: 'mine', name: 'Humanizer' }],
+					onAttach: vi.fn(),
+				});
+
+				await fireEvent.click((await findAllByTestId('agent-skill-picker-row-open'))[0]);
+
+				expect(getByTestId('agent-skill-picker-disabled')).toHaveTextContent(
+					'agents.builder.skills.picker.similarName',
+				);
+				expect(humanizerLoad).not.toHaveBeenCalled();
+				expect(getByTestId('agent-skill-picker')).toBeVisible();
+			});
+
+			it('shows no recommended tab in the control group', async () => {
+				recommendedSkills.show.value = false;
+				listAttachableSkills.mockResolvedValue([projectSkill]);
+				const { findAllByTestId, getByTestId } = renderModal({
+					skillRefsEnabled: true,
+					onAttach: vi.fn(),
+				});
+
+				expect(await findAllByTestId('agent-skill-picker-row')).toHaveLength(1);
+				expect(getByTestId('agent-skill-picker-tabs')).toHaveTextContent('all,project,global');
+				expect(recommendedSkills.trackExposure).not.toHaveBeenCalled();
+				expect(recommendedSkills.trackCardsShown).not.toHaveBeenCalled();
+			});
+
+			it.each(['agent-skill-picker-row-open', 'agent-skill-picker-add'])(
+				'fills the create form from a recommended skill with %s and reports the save',
+				async (testId) => {
+					listAttachableSkills.mockResolvedValue([]);
+					const onConfirm = vi.fn();
+					const { findAllByTestId, getByTestId } = renderModal({
+						skillRefsEnabled: true,
+						onAttach: vi.fn(),
+						onConfirm,
+					});
+
+					await fireEvent.click((await findAllByTestId(testId))[1]);
+
+					await waitFor(() =>
+						expect(getByTestId('agent-skill-name-input').querySelector('input')!).toHaveValue(
+							'cold-email',
+						),
+					);
+					expect(getSkillDetail).not.toHaveBeenCalled();
+					await fireEvent.click(getByTestId('agent-skill-create-save'));
+
+					await waitFor(() =>
+						expect(onConfirm).toHaveBeenCalledWith(
+							expect.objectContaining({
+								id: undefined,
+								method: 'manual',
+								skill: expect.objectContaining({
+									name: 'cold-email',
+									references: expect.arrayContaining([
+										expect.objectContaining({ path: 'references/frameworks.md' }),
+									]),
+								}),
+							}),
+						),
+					);
+					expect(recommendedSkills.trackSkillAdded).toHaveBeenCalledWith(
+						'cold-email',
+						undefined,
+						'agent_skill_modal',
+					);
+				},
+			);
+
+			it('loads one recommended skill at a time', async () => {
+				listAttachableSkills.mockResolvedValue([]);
+				const humanizer = RECOMMENDED_SKILLS.find(({ id }) => id === 'humanizer')!;
+				const research = RECOMMENDED_SKILLS.find(({ id }) => id === 'research')!;
+				const loaded = await humanizer.load();
+				const pending = Promise.withResolvers<AgentSkill>();
+				vi.spyOn(humanizer, 'load').mockReturnValueOnce(pending.promise);
+				const researchLoad = vi.spyOn(research, 'load');
+				const { findAllByTestId, getAllByTestId, getByTestId } = renderModal({
+					skillRefsEnabled: true,
+					onAttach: vi.fn(),
+				});
+
+				await fireEvent.click((await findAllByTestId('agent-skill-picker-row-open'))[0]);
+				await fireEvent.click(getAllByTestId('agent-skill-picker-row-open')[2]);
+				pending.resolve(loaded);
+
+				await waitFor(() =>
+					expect(getByTestId('agent-skill-name-input').querySelector('input')!).toHaveValue(
+						'humanizer',
+					),
+				);
+				expect(researchLoad).not.toHaveBeenCalled();
+			});
+
+			it('keeps a manual draft when a recommended skill loads after the user leaves the picker', async () => {
+				listAttachableSkills.mockResolvedValue([]);
+				const humanizer = RECOMMENDED_SKILLS.find(({ id }) => id === 'humanizer')!;
+				const loaded = await humanizer.load();
+				const pending = Promise.withResolvers<AgentSkill>();
+				vi.spyOn(humanizer, 'load').mockReturnValueOnce(pending.promise);
+				const { findAllByTestId, getByTestId } = renderModal({
+					skillRefsEnabled: true,
+					onAttach: vi.fn(),
+				});
+
+				await fireEvent.click((await findAllByTestId('agent-skill-picker-row-open'))[0]);
+				await fireEvent.click(getByTestId('agent-skill-picker-create'));
+				await fireEvent.click(getByTestId('agent-skill-add-manually'));
+				const nameInput = getByTestId('agent-skill-name-input').querySelector('input')!;
+				await fireEvent.update(nameInput, 'my-draft');
+				pending.resolve(loaded);
+				await pending.promise;
+				await flushPromises();
+
+				expect(nameInput).toHaveValue('my-draft');
+			});
+
+			it('shows an error and stays on the picker when a recommended skill does not load', async () => {
+				listAttachableSkills.mockResolvedValue([]);
+				const error = new Error('Failed to fetch dynamically imported module');
+				const research = RECOMMENDED_SKILLS.find(({ id }) => id === 'research')!;
+				vi.spyOn(research, 'load').mockRejectedValueOnce(error);
+				const { findAllByTestId, getByTestId, queryByTestId } = renderModal({
+					skillRefsEnabled: true,
+					onAttach: vi.fn(),
+				});
+
+				await fireEvent.click((await findAllByTestId('agent-skill-picker-row-open'))[2]);
+
+				await waitFor(() =>
+					expect(showError).toHaveBeenCalledWith(error, 'experiments.recommendedSkills.loadError'),
+				);
+				expect(getByTestId('agent-skill-picker')).toBeVisible();
+				expect(queryByTestId('agent-skill-create-save')).not.toBeInTheDocument();
+			});
+
+			it('reports no added skill when the save is refused', async () => {
+				listAttachableSkills.mockResolvedValue([]);
+				const onConfirm = vi.fn().mockResolvedValue({ saved: false });
+				const { findAllByTestId, getByTestId } = renderModal({
+					skillRefsEnabled: true,
+					onAttach: vi.fn(),
+					onConfirm,
+				});
+
+				await fireEvent.click((await findAllByTestId('agent-skill-picker-row-open'))[0]);
+				await waitFor(() =>
+					expect(getByTestId('agent-skill-name-input').querySelector('input')!).toHaveValue(
+						'humanizer',
+					),
+				);
+				await fireEvent.click(getByTestId('agent-skill-create-save'));
+
+				await waitFor(() => expect(onConfirm).toHaveBeenCalled());
+				expect(recommendedSkills.trackSkillAdded).not.toHaveBeenCalled();
+			});
+
+			it('reports no recommended skills without the picker', () => {
+				renderModal({ settings: { scopeOptions: [] } });
+
+				expect(recommendedSkills.trackCardsShown).not.toHaveBeenCalled();
+			});
+		});
+
 		it('names the project tab after the project of the agent', async () => {
 			listAttachableSkills.mockResolvedValue([]);
 			const { getByTestId } = renderModal({
@@ -1571,6 +1796,42 @@ describe('AgentSkillModal from Settings', () => {
 		await waitFor(() =>
 			expect(onConfirm).toHaveBeenCalledWith(
 				expect.objectContaining({ id: undefined, method: 'upload', scope: 'instance' }),
+			),
+		);
+	});
+
+	it('saves a preset skill with its reference files as a new manual skill', async () => {
+		const onConfirm = vi.fn();
+		const references = [{ path: 'references/frameworks.md', content: 'Use PAS by default.' }];
+		const { getByTestId } = renderModal({
+			onConfirm,
+			skill: {
+				name: 'cold-email',
+				description: 'Write cold emails',
+				instructions: 'Main',
+				references,
+			},
+			settings: {
+				scopeOptions: [{ value: 'instance', label: 'Global', icon: 'globe' }],
+				initialScope: 'instance',
+			},
+		});
+
+		expect(getByTestId('agent-skill-name-input').querySelector('input')!).toHaveValue('cold-email');
+		expect(
+			getByTestId('agent-skill-reference-nav-item-references-frameworks-md'),
+		).toHaveTextContent('references/frameworks.md');
+		await waitFor(() => expect(getByTestId('agent-skill-viewer')).toBeInTheDocument());
+		await fireEvent.click(getByTestId('agent-skill-create-save'));
+
+		await waitFor(() =>
+			expect(onConfirm).toHaveBeenCalledWith(
+				expect.objectContaining({
+					id: undefined,
+					method: 'manual',
+					scope: 'instance',
+					skill: expect.objectContaining({ name: 'cold-email', references }),
+				}),
 			),
 		);
 	});

@@ -23,6 +23,9 @@
   "files": [
     "dist/**/*"
   ],
+  "dependencies": {
+    "n8n-workflow": "workspace:*"
+  },
   "devDependencies": {
     "@n8n/oxlint-config": "workspace:*",
     "@n8n/typescript-config": "workspace:*",

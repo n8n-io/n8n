@@ -8,75 +8,34 @@ interface ConsoleError {
 }
 
 /**
- * Monitors browser context for console errors.
- * Attaches diagnostic info to test results when errors occur.
- * No-op when no errors are detected.
+ * Records console errors from a browser context. `report()` stops recording and
+ * attaches the errors to the test result, if there are any.
  */
-class ConsoleErrorMonitor {
-	private errors: ConsoleError[] = [];
-
-	private readonly listener = (message: ConsoleMessage) => {
-		if (message.type() === 'error') {
-			this.errors.push({
-				type: message.type(),
-				text: message.text(),
-				location: message.location().url,
-				timestamp: Date.now(),
-			});
-		}
+export function watchConsoleErrors(context: BrowserContext) {
+	const errors: ConsoleError[] = [];
+	const listener = (message: ConsoleMessage) => {
+		if (message.type() !== 'error') return;
+		errors.push({
+			type: message.type(),
+			text: message.text(),
+			location: message.location().url,
+			timestamp: Date.now(),
+		});
 	};
+	context.on('console', listener);
 
-	attach(context: BrowserContext): void {
-		context.on('console', this.listener);
-	}
-
-	detach(context: BrowserContext): void {
-		context.off('console', this.listener);
-	}
-
-	hasErrors(): boolean {
-		return this.errors.length > 0;
-	}
-
-	getErrors(): ConsoleError[] {
-		return this.errors;
-	}
-}
-
-/**
- * Console error monitor fixtures for capturing browser errors.
- * Spread into test.extend() to enable monitoring.
- */
-export const consoleErrorFixtures = {
-	_consoleErrorMonitor: [
-		async (
-			{ context }: { context: BrowserContext },
-			use: (monitor: ConsoleErrorMonitor) => Promise<void>,
-			testInfo: TestInfo,
-		) => {
-			const monitor = new ConsoleErrorMonitor();
-			monitor.attach(context);
-
-			await use(monitor);
-
-			monitor.detach(context);
-
-			// Attach diagnostics if errors occurred
-			if (monitor.hasErrors()) {
-				await testInfo.attach('console-errors', {
-					body: JSON.stringify(
-						{
-							errors: monitor.getErrors(),
-							testTitle: testInfo.title,
-							project: testInfo.project.name,
-						},
-						null,
-						2,
-					),
-					contentType: 'application/json',
-				});
-			}
+	return {
+		async report(testInfo: TestInfo) {
+			context.off('console', listener);
+			if (errors.length === 0) return;
+			await testInfo.attach('console-errors', {
+				body: JSON.stringify(
+					{ errors, testTitle: testInfo.title, project: testInfo.project.name },
+					null,
+					2,
+				),
+				contentType: 'application/json',
+			});
 		},
-		{ auto: true },
-	],
-};
+	};
+}

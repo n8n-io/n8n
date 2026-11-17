@@ -128,12 +128,12 @@ export const promotionPreviewSchema = z.object({
 	/** Apply only: what stops the Apply of each workflow, from the same plan as the resources. */
 	check: promotionPreviewCheckSchema.optional(),
 	/**
-	 * Apply only: a hash of the resources and the check. Apply compares it with a fresh preview
-	 * and stops when the instance changed after the preview was loaded.
+	 * A hash of what this preview shows. Promote and Apply compare it with a fresh preview and
+	 * stop when the project or its branch changed after the preview was loaded.
 	 */
-	revision: z.string().optional().openapi({
+	revision: z.string().openapi({
 		description:
-			'Apply only. Send it as `expectedPreviewRevision` to apply only when this instance still matches the preview.',
+			'A hash of what this preview shows. Send it as `expectedPreviewRevision` with Promote or Apply to run only when the preview did not change.',
 	}),
 });
 

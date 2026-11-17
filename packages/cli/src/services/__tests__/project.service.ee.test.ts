@@ -36,6 +36,7 @@ import type { ICredentialConnectionStatusProvider } from '@/credentials/credenti
 import { BadRequestError, ForbiddenError } from '@n8n/errors';
 import type { AgentChatAttachmentService } from '@/modules/agents/agent-chat-attachment.service';
 import { AgentProjectCleanupService } from '@/modules/agents/agent-project-cleanup.service';
+import type { AgentServiceAccountService } from '@/modules/agents/agent-service-account.service';
 import type { AgentExecutionService } from '@/modules/agents/agent-execution.service';
 import type { AgentTestChatService } from '@/modules/agents/agent-test-chat.service';
 import type { AgentKnowledgeService } from '@/modules/agents/agent-knowledge.service';
@@ -82,6 +83,8 @@ describe('ProjectService', () => {
 		userRepository,
 		roleRepository,
 		transactions,
+		mock(), // agentsConfig
+		mock(), // serviceAccountProjects
 	);
 
 	beforeEach(() => {
@@ -1065,6 +1068,7 @@ describe('ProjectService', () => {
 
 		it('cleans agent knowledge files before project deletion cascades agent files', async () => {
 			const project = mock<Project>({ id: 'project-1', type: 'team' });
+			const agentServiceAccount = mock<AgentServiceAccountService>();
 			Object.defineProperty(projectService, 'agentProjectCleanupService', {
 				configurable: true,
 				get: async () =>
@@ -1078,6 +1082,7 @@ describe('ProjectService', () => {
 						mock<AgentProjectDeletionRepository>(),
 						mock<AgentSessionStopService>(),
 						mock<AgentExecutionRepository>(),
+						agentServiceAccount,
 					),
 			});
 			projectRepository.findOneWithUserRoles.mockResolvedValueOnce(project);
@@ -1094,6 +1099,12 @@ describe('ProjectService', () => {
 			await projectService.deleteProject(user, project.id);
 
 			expect(agentRepository.findByProjectId).toHaveBeenCalledWith(project.id);
+			expect(agentServiceAccount.deleteForAgent).toHaveBeenCalledWith(
+				{ id: 'agent-1' },
+				user,
+				undefined,
+				{},
+			);
 			expect(agentChatAttachmentService.deleteByProject).toHaveBeenCalledWith(project.id);
 			expect(agentChatAttachmentService.deleteByProject.mock.invocationCallOrder[0]).toBeLessThan(
 				projectRepository.removeProjectForDeletion.mock.invocationCallOrder[0],
@@ -1376,6 +1387,7 @@ describe('ProjectService', () => {
 						mock<AgentProjectDeletionRepository>(),
 						mock<AgentSessionStopService>(),
 						mock<AgentExecutionRepository>(),
+						mock<AgentServiceAccountService>(),
 					),
 			});
 			projectRepository.findOneWithUserRoles.mockResolvedValueOnce(project);

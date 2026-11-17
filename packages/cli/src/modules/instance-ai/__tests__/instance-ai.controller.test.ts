@@ -57,7 +57,7 @@ import { mock } from 'vitest-mock-extended';
 
 import { BadRequestError, ConflictError, ForbiddenError, NotFoundError } from '@n8n/errors';
 import type { ProjectService } from '@/services/project.service.ee';
-import type { Telemetry } from '@/telemetry';
+import type { TelemetryProxy } from '@n8n/backend-services';
 
 import type { InstanceAiBrowserSessionService } from '../browser/instance-ai-browser-session.service';
 import type { DurableEventLog } from '../event-bus/durable-event-log';
@@ -104,7 +104,7 @@ describe('InstanceAiController', () => {
 	const onboarding = mock<InstanceAiOnboardingService>();
 	const threadTabsService = mock<InstanceAiThreadTabsService>();
 	const globalConfig = mock<GlobalConfig>({ instanceAi: { evalInstance: false } });
-	const telemetry = mock<Telemetry>();
+	const telemetry = mock<TelemetryProxy>();
 
 	const controller = new InstanceAiController(
 		instanceAiService,
@@ -1815,7 +1815,7 @@ describe('InstanceAiController — durable-log SSE replay', () => {
 		mock<InstanceAiPreferenceCardService>(),
 		mock<GlobalConfig>(),
 		mock<InstanceAiThreadTabsService>(),
-		mock<Telemetry>(),
+		mock<TelemetryProxy>(),
 	);
 
 	beforeEach(() => {
