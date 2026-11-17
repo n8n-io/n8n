@@ -140,6 +140,7 @@ Webhook node of n8n; its item starts the run in `wfrt`.
 | `N8N_COMPILED_ENGINE_WFRT_PATH` | `workflow-runtime/zig-out/bin/wfrt` in the checkout | The runtime binary |
 | `N8N_COMPILED_ENGINE_FALLBACK_HOST_PATH` | the built fallback host in the checkout | The host start script |
 | `N8N_COMPILED_ENGINE_PORT` | `5690` | Webhook port of `wfrt` |
+| `N8N_COMPILED_ENGINE_LISTEN_ADDRESS` | `127.0.0.1` | IPv4 address of the webhook port of `wfrt` |
 | `N8N_COMPILED_ENGINE_ADMIN_PORT` | `5691` | Admin port of `wfrt` (loopback) |
 | `N8N_COMPILED_ENGINE_ADMIN_SECRET` | random at each start | Admin secret |
 | `N8N_COMPILED_ENGINE_MANAGE_PROCESSES` | `true` | `false` to use a `wfrt` that you start |

@@ -31,6 +31,15 @@ export class CompiledEngineConfig {
 	@Env('N8N_COMPILED_ENGINE_PORT', portSchema)
 	port: number = 5690;
 
+	/**
+	 * IPv4 address on which `wfrt` listens for webhooks, for example `127.0.0.1` or
+	 * `0.0.0.0`. n8n forwards webhook requests to `wfrt` on this machine, so change it only
+	 * when another machine must reach `wfrt` directly. Requests that reach `wfrt` directly
+	 * don't pass through n8n.
+	 */
+	@Env('N8N_COMPILED_ENGINE_LISTEN_ADDRESS', z.string().ip({ version: 'v4' }))
+	listenAddress: string = '127.0.0.1';
+
 	/** Port of the admin API of `wfrt`. It listens on `127.0.0.1` only. */
 	@Env('N8N_COMPILED_ENGINE_ADMIN_PORT', portSchema)
 	adminPort: number = 5691;

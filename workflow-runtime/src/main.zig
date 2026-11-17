@@ -21,7 +21,7 @@ const usage =
     \\  run <module.wfm> <fixture.json>   run one fixture, print the result JSON
     \\  corpus <dir>                      run every corpus/<case> and compare with expected.json
     \\  sim [--seeds N] [--first S] [--execs E] [--crash PER_MILLE]
-    \\  serve --port P [--shards N] [--log-dir D] [--fallback SOCK] [--fallback-wait-ms MS] [--stats]
+    \\  serve --port P [--host IPv4] [--shards N] [--log-dir D] [--fallback SOCK] [--fallback-wait-ms MS] [--stats]
     \\        [--credentials FILE] [--egress-max-body-mb M] [--egress-big-slots K] [--insecure-tls]
     \\        [--binary-max-file-mb M] [--binary-buffer-mb M] [--binary-max-transfers N]
     \\        [--sql-max-requests N] [--sql-max-conns N] [--sql-pool-conns N] [--sql-max-result-kb K]
@@ -284,6 +284,12 @@ fn serve(process_gpa: std.mem.Allocator, io: std.Io, args: []const [:0]const u8)
         const v = args[i + 1];
         i += 1;
         if (std.mem.eql(u8, k, "--port")) opts.port = try std.fmt.parseInt(u16, v, 10);
+        if (std.mem.eql(u8, k, "--host")) {
+            opts.host = sys.parseIp4(v) orelse {
+                std.debug.print("--host takes an IPv4 address\n", .{});
+                std.process.exit(2);
+            };
+        }
         if (std.mem.eql(u8, k, "--shards")) opts.shards = try std.fmt.parseInt(u32, v, 10);
         if (std.mem.eql(u8, k, "--log-dir")) opts.log_dir = v;
         if (std.mem.eql(u8, k, "--fallback")) opts.fallback = v;

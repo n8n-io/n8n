@@ -30,8 +30,19 @@ describe('CompiledEngineSync: minted tokens', () => {
 	});
 
 	const slots = [{ slot: 'sa', type: 'googleApi', credentialId: 'c1', credentialName: 'SA' }];
+	// A plain object. A mock of the artifact wraps the shared `slots` again at each call, and
+	// each test then takes two times as long as the test before it.
+	const plainArtifact = (fields: Partial<CompiledArtifact>) =>
+		({
+			workflowId: 'wf1',
+			versionId: 'v1',
+			nodes: {},
+			triggers: [],
+			compiledAt: '2026-11-17T00:00:00.000Z',
+			...fields,
+		}) as CompiledArtifact;
 	const artifact = (mints: CompiledArtifact['mints']) =>
-		mock<CompiledArtifact>({
+		plainArtifact({
 			ok: true,
 			key: 'k1',
 			module: Buffer.from('module'),
@@ -46,7 +57,19 @@ describe('CompiledEngineSync: minted tokens', () => {
 	const documentThatExpiresIn = (ms: number) => ({
 		sa: { data: { n8nMinted: { m1: { access_token: 't', expires_at: Date.now() + ms } } } },
 	});
-	const workflow = mock<WorkflowEntity>({ id: 'wf1', activeVersion: null, settings: {} });
+	// Plain objects: a deep mock makes a new mock function for each property that the service
+	// reads, and `vi.resetAllMocks()` then takes longer after each test.
+	const entity = (id: string) =>
+		({
+			id,
+			name: id,
+			activeVersion: null,
+			settings: {},
+			nodes: [],
+			connections: {},
+			versionId: 'v1',
+		}) as unknown as WorkflowEntity;
+	const workflow = entity('wf1');
 
 	let sync: CompiledEngineSync;
 
@@ -149,7 +172,7 @@ describe('CompiledEngineSync: minted tokens', () => {
 	describe('a credential that changes', () => {
 		const guard = { name: 'g1', code: '', kind: 'guard' as const, flags: ['f00000001'], node: 'A' };
 		const withKey = (key: string, derivations: CompiledArtifact['derivations']) =>
-			mock<CompiledArtifact>({
+			plainArtifact({
 				ok: true,
 				key,
 				module: Buffer.from(key),
@@ -184,7 +207,7 @@ describe('CompiledEngineSync: minted tokens', () => {
 		it('keeps the loaded module when the new compile has errors', async () => {
 			compiler.compile.mockResolvedValue(withKey('compiled', undefined));
 			await sync.activate(workflow);
-			compiler.compile.mockResolvedValue(mock<CompiledArtifact>({ ok: false, key: 'broken' }));
+			compiler.compile.mockResolvedValue(plainArtifact({ ok: false, key: 'broken' }));
 			await sync.onCredentialChanged('c1');
 			expect(client.putWorkflow.mock.lastCall?.[1]).toMatchObject({ versionId: 'compiled' });
 		});
@@ -204,7 +227,7 @@ describe('CompiledEngineSync: minted tokens', () => {
 
 	describe('a node that reaches a limit of wfrt that v1 does not have', () => {
 		const withKey = (key: string) =>
-			mock<CompiledArtifact>({
+			plainArtifact({
 				ok: true,
 				key,
 				module: Buffer.from(key),
@@ -310,7 +333,7 @@ describe('CompiledEngineSync: minted tokens', () => {
 	});
 
 	describe('renewCredential', () => {
-		const other = mock<WorkflowEntity>({ id: 'wf2', activeVersion: null, settings: {} });
+		const other = entity('wf2');
 
 		beforeEach(async () => {
 			compiler.compile.mockResolvedValue(artifact(mints));
