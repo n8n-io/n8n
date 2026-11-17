@@ -14,6 +14,8 @@ import type { WorkflowArchiveTransition } from '../workflow/workflow-archive-tra
 
 export type AgentPlanItem = PreparedAgent & {
 	publishingAction: PublishingAction;
+	/** Set when an update follows the package layout. Null means the project root. */
+	moveToFolderId?: string | null;
 	/** The archive step that makes the destination match the package. */
 	archiveTransition: WorkflowArchiveTransition | null;
 	channels: ImportedChannel[];

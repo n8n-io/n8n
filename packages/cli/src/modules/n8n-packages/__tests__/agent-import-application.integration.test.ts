@@ -1458,7 +1458,7 @@ it.each(['body', 'task', 'credential', 'policy'] as const)(
 	},
 );
 
-it('imports Agent placement and empty folders and preserves additional Agent resources on overwrite', async () => {
+function folderPlacementFixture(atRoot = false) {
 	const input = fixture(true);
 	const prefix = 'projects/operations';
 	const sourceProject = input.manifest.projects![0];
@@ -1479,6 +1479,10 @@ it('imports Agent placement and empty folders and preserves additional Agent res
 		};
 	}
 
+	if (atRoot) {
+		return input;
+	}
+
 	const entry = input.manifest.agents[0];
 	const previousTarget = entry.target;
 	entry.target = `${prefix}/folders/team/support/agents/support`;
@@ -1487,6 +1491,13 @@ it('imports Agent placement and empty folders and preserves additional Agent res
 		input.files[`${entry.target}/${file}`] = input.files[`${previousTarget}/${file}`];
 		delete input.files[`${previousTarget}/${file}`];
 	}
+
+	return input;
+}
+
+it('imports Agent placement and empty folders and preserves additional Agent resources on overwrite', async () => {
+	const input = folderPlacementFixture();
+	const entry = input.manifest.agents[0];
 
 	const importer = Container.get(ProjectPackageImporter);
 	const options = request({
@@ -1521,6 +1532,97 @@ it('imports Agent placement and empty folders and preserves additional Agent res
 	});
 	expect(await folders.existsBy({ id: 'additional-agent-folder' })).toBe(true);
 	expect(await agents.findById(entry.id)).toMatchObject({ parentFolderId: 'agent-child' });
+});
+
+describe.each([false, true])('Agent placement import (project root: %s)', (atRoot) => {
+	it.each([undefined, 'fail', 'follow-package'] as const)(
+		'honors the %s layout policy when updating an Agent',
+		async (layoutConflictPolicy) => {
+			const input = folderPlacementFixture(atRoot);
+			const importer = Container.get(ProjectPackageImporter);
+			const options = request({ projectId: undefined });
+			await importer.import(options, await readerFor(input), input.manifest, 'package-import');
+
+			const agent = source(input);
+			const originalName = agent.name;
+			const localFolder = await createFolder(project, { resourceType: 'agent' });
+			await agents.update(agent.id, { parentFolderId: localFolder.id });
+			agent.name = 'Updated Agent';
+			agent.config!.name = 'Updated Agent';
+
+			const result = importer.import(
+				{ ...options, layoutConflictPolicy },
+				await readerFor(input),
+				input.manifest,
+				'package-import',
+			);
+
+			if (layoutConflictPolicy === 'follow-package') {
+				await result;
+
+				expect(await agents.findById(agent.id)).toMatchObject({
+					name: 'Updated Agent',
+					parentFolderId: atRoot ? null : 'agent-child',
+				});
+			} else {
+				await expect(result).rejects.toMatchObject({
+					meta: {
+						issues: expect.arrayContaining([
+							expect.objectContaining({
+								type: 'agent-invalid',
+								sourceAgentId: agent.id,
+								path: 'parentFolderId',
+							}),
+						]),
+					},
+				});
+
+				expect(await agents.findById(agent.id)).toMatchObject({
+					name: originalName,
+					parentFolderId: localFolder.id,
+				});
+			}
+		},
+	);
+});
+
+it.each([undefined, 'follow-package'] as const)(
+	'keeps local Agent placement when a loose import has no layout (%s)',
+	async (layoutConflictPolicy) => {
+		const input = fixture();
+		await importSelected(input);
+
+		const agent = source(input);
+		const localFolder = await createFolder(project, { resourceType: 'agent' });
+		await agents.update(agent.id, { parentFolderId: localFolder.id });
+		agent.name = 'Updated Agent';
+		agent.config!.name = 'Updated Agent';
+		await importSelected(input, { layoutConflictPolicy });
+
+		expect(await agents.findById(agent.id)).toMatchObject({
+			name: 'Updated Agent',
+			parentFolderId: localFolder.id,
+		});
+	},
+);
+
+it('keeps local Agent placement when the existing Agent is skipped', async () => {
+	const input = folderPlacementFixture();
+	const importer = Container.get(ProjectPackageImporter);
+	const options = request({ projectId: undefined });
+	await importer.import(options, await readerFor(input), input.manifest, 'package-import');
+
+	const agent = source(input);
+	const localFolder = await createFolder(project, { resourceType: 'agent' });
+	await agents.update(agent.id, { parentFolderId: localFolder.id });
+	await importer.import(
+		{ ...options, conflictPolicy: 'skip' },
+		await readerFor(input),
+		input.manifest,
+		'package-import',
+	);
+
+	expect(await agents.findById(agent.id)).toMatchObject({ parentFolderId: localFolder.id });
 });
 
 it('round-trips nested Agent placement and empty folders through the archive API', async () => {
