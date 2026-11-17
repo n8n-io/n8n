@@ -2,10 +2,12 @@ import type {
 	ApplyPackageResultDto,
 	ApplySelectionDto,
 	ContinueApplySelectionDto,
+	CreatePromotionOwnerRequestDto,
 	PromoteSelectionRequestDto,
 	PromoteSelectionResultDto,
 	PromotionDirection,
 	PromotionInstanceApplyPreview,
+	PromotionOwnerRequestResult,
 	PromotionPreview,
 	PromotionProjectEnvironments,
 	PromotionResourceDetails,
@@ -137,5 +139,22 @@ export async function continueApplyProjectSelection(
 		'POST',
 		`/promotions/projects/${projectId}/apply/continue`,
 		payload,
+	);
+}
+
+/**
+ * "Ask the owner": asks the owner of a dependency to promote or apply it. The environment gives
+ * the operation. The answer never says anything about the owner.
+ */
+export async function createPromotionOwnerRequest(
+	context: PublicApiContext,
+	environmentId: string,
+	body: CreatePromotionOwnerRequestDto,
+): Promise<PromotionOwnerRequestResult> {
+	return await makePublicApiRequest(
+		context,
+		'POST',
+		`/promotions/environments/${environmentId}/owner-requests`,
+		body,
 	);
 }
