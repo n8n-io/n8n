@@ -42,12 +42,15 @@ const props = withDefaults(
 		gapKeys?: ReadonlySet<ResourceKey>;
 		/** Apply: the credentials whose owner changes on this instance, with the sentence that says so. */
 		ownerMoves?: ReadonlyMap<ResourceKey, OwnerMoveNote>;
+		/** The workflows that the Apply of the whole instance keeps, although the branch lacks them. */
+		keptKeys?: ReadonlySet<ResourceKey>;
 	}>(),
 	{
 		selectable: true,
 		projects: () => [],
 		gapKeys: () => new Set<ResourceKey>(),
 		ownerMoves: () => new Map<ResourceKey, OwnerMoveNote>(),
+		keptKeys: () => new Set<ResourceKey>(),
 	},
 );
 
@@ -79,10 +82,13 @@ function markers(resource: PromotionResource) {
 	const moves = props.ownerMoves.get(resource.key)?.allowed
 		? i18n.baseText('promotions.preview.marker.ownerMove')
 		: undefined;
+	const kept = props.keptKeys.has(resource.key)
+		? i18n.baseText('promotions.preview.marker.kept')
+		: undefined;
 	const needed = resource.neededByBranch
 		? i18n.baseText('promotions.preview.marker.neededByBranch')
 		: undefined;
-	return { blocked, meta: blocked ? undefined : (gap ?? moves ?? needed ?? meta), gap: !blocked && !!gap };
+	return { blocked, meta: blocked ? undefined : (gap ?? kept ?? moves ?? needed ?? meta), gap: !blocked && !!gap };
 }
 
 /** The header of a project group: its select-all checkbox, and why users cannot select in it. */

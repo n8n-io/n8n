@@ -68,6 +68,7 @@ import {
 import {
 	indexBlockers,
 	isBlocking,
+	withCredentialHomes,
 	listBlockers,
 	toOperationRequest,
 	scopeCheck,
@@ -150,9 +151,14 @@ const promoteEnvironment = computed(() =>
 const scopedCheck = computed(() => {
 	if (!check.value || !graph.value) return null;
 	const scoped = isEnvironment.value ? check.value : scopeCheck(check.value, graph.value);
+	if (!dependencyReport.value) return scoped;
 	// With a dependency report, its grants are the grant step. The check only mirrors them for
 	// older clients.
-	return dependencyReport.value ? { ...scoped, accessRequirements: [] } : scoped;
+	return withCredentialHomes(
+		{ ...scoped, accessRequirements: [] },
+		dependencyReport.value.credentialHomeChoices,
+		dependencies.confirmations.value.credentialHomes,
+	);
 });
 // A project-wide conflict blocks all of them, so it also stops a selection without workflows.
 const selectableResourceKeys = computed(() => (graph.value ? selectableKeys(graph.value) : []));
@@ -291,6 +297,25 @@ const ownerMoves = computed((): ReadonlyMap<ResourceKey, OwnerMoveNote> => {
 	}
 	return notes;
 });
+/**
+ * The Apply of the whole instance keeps a workflow that the branch lacks while a workflow of the
+ * branch still calls it. A selection that holds the same row deletes it, after a confirmation.
+ */
+const keptKeys = computed(
+	(): ReadonlySet<ResourceKey> =>
+		new Set(
+			wholeInstance.value
+				? (dependencies.report.value?.keptWorkflows ?? []).map(({ id }) => `workflow:${id}`)
+				: [],
+		),
+);
+/**
+ * Strict or not. The report of the last check wins over the settings that the page loaded, so
+ * the badge is right after an admin changed the environment.
+ */
+const allowsIncomplete = computed(
+	() => dependencies.report.value?.allowIncomplete ?? environment.value?.allowIncomplete ?? false,
+);
 /** The confirmation that an Apply without gaps still waits for. */
 const pendingText = computed(() => {
 	const stop = dependencies.stop.value;
@@ -484,8 +509,9 @@ const totalChanges = computed(() => {
 });
 const includedChanges = computed(() => {
 	if (!graph.value) return 0;
+	// A kept workflow is a row of the view and not a change of the whole-instance Apply.
 	return wholeInstance.value
-		? changedCount.value
+		? changedCount.value - keptKeys.value.size
 		: includedChangeCount(graph.value, selection.inclusion.value) + unlistedIncluded.value.length;
 });
 /** The projects that only the Apply of the whole instance deletes. */
@@ -600,7 +626,7 @@ const hasSelectedBlocked = computed(() =>
 );
 const actionableChanges = computed(() => {
 	if (!graph.value || scopedCheck.value?.movedFolders.length) return 0;
-	if (wholeInstance.value) return changedCount.value;
+	if (wholeInstance.value) return changedCount.value - keptKeys.value.size;
 	const actionable = new Set(
 		[...selection.selected.value].filter((key) => !blockers.value.blocked.has(key)),
 	);
@@ -883,19 +909,19 @@ const treeResizer = useResizablePanel({
 					v-if="environment && state === 'ready'"
 					:content="
 						i18n.baseText(
-							environment.allowIncomplete
+							allowsIncomplete
 								? `promotions.preview.mode.incomplete.tooltip.${direction}`
 								: `promotions.preview.mode.strict.tooltip.${direction}`,
 						)
 					"
 				>
 					<N8nBadge
-						:variant="environment.allowIncomplete ? 'info' : 'subtle'"
+						:variant="allowsIncomplete ? 'warning' : 'subtle'"
 						data-test-id="promotion-preview-mode"
 					>
 						{{
 							i18n.baseText(
-								environment.allowIncomplete
+								allowsIncomplete
 									? 'promotions.preview.mode.incomplete'
 									: 'promotions.preview.mode.strict',
 							)
@@ -1033,6 +1059,7 @@ const treeResizer = useResizablePanel({
 						:projects="projects"
 						:gap-keys="gapKeys"
 						:owner-moves="ownerMoves"
+						:kept-keys="keptKeys"
 						@show-blockers="showBlockers"
 						@toggle="selection.toggle"
 						@toggle-container="selection.toggleAllInside"
@@ -1175,6 +1202,7 @@ const treeResizer = useResizablePanel({
 						:heading-of="cardHeading"
 						:gap-keys="gapKeys"
 						:owner-moves="ownerMoves"
+						:kept-keys="keptKeys"
 						@view-dependencies="activeTab = 'dependencies'"
 						@retry="details.retry"
 						@refresh="refresh"

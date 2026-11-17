@@ -9,6 +9,7 @@ import type {
 	PromotionReferenceTarget,
 	PromotionReferenceUsage,
 } from '@n8n/api-types';
+import { useCredentialTypeNames } from './useCredentialTypeNames';
 import { useI18n, type BaseTextKey } from '@n8n/i18n';
 
 import type { GapGroupId, GapTargetRow } from '../promotionDependencies';
@@ -33,6 +34,7 @@ const HARD_BLOCK_KEYS: Record<PromotionHardBlock['code'], BaseTextKey> = {
 /** The texts of the dependency report. */
 export function usePromotionDependencyLabels() {
 	const i18n = useI18n();
+	const { credentialTypeName } = useCredentialTypeNames();
 
 	/** The name of the target. Without access the name can be missing, so the kind stands in. */
 	function targetName(target: Pick<PromotionReferenceTarget, 'kind' | 'name'>): string {
@@ -120,7 +122,10 @@ export function usePromotionDependencyLabels() {
 		const { sourceType, destinationType } = block.detail ?? {};
 		if (!sourceType || !destinationType) return undefined;
 		return i18n.baseText('promotions.dependencies.hardBlock.types', {
-			interpolate: { sourceType, destinationType },
+			interpolate: {
+				sourceType: credentialTypeName(sourceType),
+				destinationType: credentialTypeName(destinationType),
+			},
 		});
 	}
 

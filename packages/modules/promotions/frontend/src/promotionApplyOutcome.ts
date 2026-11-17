@@ -47,6 +47,7 @@ export function applyOutcome(result: AppliedResult): ApplyOutcome {
 export function needsFollowUp(outcome: ApplyOutcome): boolean {
 	return (
 		outcome.placeholders.length > 0 ||
+		outcome.credentialsMoved.some(({ placeholder }) => placeholder) ||
 		outcome.credentialsNotMoved.length > 0 ||
 		outcome.unresolvedCount > 0 ||
 		outcome.moves.some((move) => !!move.unpublished)

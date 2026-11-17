@@ -40,12 +40,15 @@ const props = withDefaults(
 		gapKeys?: ReadonlySet<ResourceKey>;
 		/** Apply: the credentials whose owner changes on this instance. */
 		ownerMoves?: ReadonlyMap<ResourceKey, OwnerMoveNote>;
+		/** The workflows that the Apply of the whole instance keeps. */
+		keptKeys?: ReadonlySet<ResourceKey>;
 	}>(),
 	{
 		selectable: true,
 		headingOf: undefined,
 		gapKeys: () => new Set<ResourceKey>(),
 		ownerMoves: () => new Map<ResourceKey, OwnerMoveNote>(),
+		keptKeys: () => new Set<ResourceKey>(),
 	},
 );
 
@@ -133,6 +136,7 @@ defineExpose({ scrollToCard });
 				:selectable="selectable"
 				:gap="gapKeys.has(resource.key)"
 				:owner-move="ownerMoves.get(resource.key)"
+				:kept="keptKeys.has(resource.key)"
 				@view-dependencies="emit('viewDependencies')"
 				@activate-diff="activeWorkflow = resource.key"
 				@deactivate-diff="activeWorkflow = undefined"

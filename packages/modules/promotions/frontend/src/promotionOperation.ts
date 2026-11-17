@@ -1,4 +1,5 @@
 import type {
+	PromotionCredentialHomeChoice,
 	PromotionBindingConflict,
 	PromotionBindingConsumer,
 	PromotionResource,
@@ -244,4 +245,41 @@ export function touchesDestructiveChange(index: BlockerIndex, keys: Iterable<Res
 		if (index.byWorkflow.get(key)?.some(({ kind }) => kind === 'destructive')) return true;
 	}
 	return false;
+}
+
+/**
+ * A top-level credential of an existing branch has no owner, and the check calls that a
+ * conflict. The Dependencies tab asks for its home instead, so the conflict does not block the
+ * workflows. With a home, the credential is a missing credential of that project: a person
+ * creates it there. The server does the same when it gets the homes with the Apply.
+ */
+export function withCredentialHomes(
+	check: ApplyCheckResult,
+	choices: readonly PromotionCredentialHomeChoice[],
+	homes: Readonly<Record<string, string>>,
+): ApplyCheckResult {
+	const candidates = new Map(
+		choices.map(({ credential, candidateProjects }) => [credential.id, candidateProjects]),
+	);
+	if (candidates.size === 0) return check;
+	const created: ApplyCheckResult['missingBindings'] = [];
+	const conflicts = check.conflicts.filter((conflict) => {
+		if (conflict.kind !== 'credential' || conflict.code !== 'unknown-owner') return true;
+		if (conflict.sourceId === null) return true;
+		const projects = candidates.get(conflict.sourceId);
+		if (!projects) return true;
+		const home = projects.find(({ id }) => id === homes[conflict.sourceId ?? '']);
+		if (home) {
+			created.push({
+				kind: 'credential',
+				sourceId: conflict.sourceId,
+				name: conflict.name,
+				credentialType: conflict.expectedTypes[0],
+				consumers: conflict.consumers,
+				ownerProject: { id: home.id, name: home.name ?? home.id },
+			});
+		}
+		return false;
+	});
+	return { ...check, conflicts, missingBindings: [...check.missingBindings, ...created] };
 }

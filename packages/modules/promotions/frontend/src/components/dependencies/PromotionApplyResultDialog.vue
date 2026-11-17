@@ -175,15 +175,30 @@ const credentialHref = (projectId: string, credentialId: string) =>
 					<li
 						v-for="move in outcome.credentialsMoved"
 						:key="move.credential.id"
-						:class="$style.row"
+						:class="[$style.row, { [$style.withAction]: move.placeholder }]"
 					>
-						<N8nText step="xs" color="text-dark">
-							{{
-								i18n.baseText('promotions.applyResult.credentials.moved', {
-									interpolate: { credential: move.credential.name, project: move.toProject.name },
-								})
-							}}
-						</N8nText>
+						<div :class="$style.main">
+							<N8nText step="xs" color="text-dark">
+								{{
+									i18n.baseText('promotions.applyResult.credentials.moved', {
+										interpolate: { credential: move.credential.name, project: move.toProject.name },
+									})
+								}}
+							</N8nText>
+							<!-- The move keeps the marker: the credential still has no values. -->
+							<N8nText v-if="move.placeholder" step="2xs" color="text-light">
+								{{ i18n.baseText('promotions.applyResult.credentials.stillPlaceholder') }}
+							</N8nText>
+						</div>
+						<N8nLink
+							v-if="move.placeholder"
+							:to="credentialHref(move.toProject.id, move.credential.id)"
+							new-window
+							size="small"
+							data-test-id="promotion-apply-result-open-moved-credential"
+						>
+							{{ i18n.baseText('promotions.applyResult.placeholders.open') }}
+						</N8nLink>
 					</li>
 					<li v-for="move in outcome.moves" :key="`${move.kind}:${move.id}`" :class="$style.row">
 						<N8nText step="xs" color="text-dark">

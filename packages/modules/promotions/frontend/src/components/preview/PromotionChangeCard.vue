@@ -52,8 +52,10 @@ const props = withDefaults(
 		gap?: boolean;
 		/** Apply: this instance holds the credential in another project, and the Apply moves it. */
 		ownerMove?: OwnerMoveNote;
+		/** The Apply of the whole instance keeps this workflow, although the branch lacks it. */
+		kept?: boolean;
 	}>(),
-	{ selectable: true, gap: false, ownerMove: undefined },
+	{ selectable: true, gap: false, ownerMove: undefined, kept: false },
 );
 
 const emit = defineEmits<{
@@ -68,7 +70,16 @@ const emit = defineEmits<{
 
 const i18n = useI18n();
 const { credentialTypeName } = useCredentialTypeNames();
-const nameOf = (key: string) => props.graph.resources.get(key)?.name ?? key;
+/** The name of a resource of the page. The other project of a move has no row, so the move names it. */
+function nameOf(key: string): string {
+	const listed = props.graph.resources.get(key)?.name;
+	if (listed !== undefined) return listed;
+	const other = props.resource.movedFromProject ?? props.resource.movedToProject;
+	if (other && key === `project:${other.id}`) {
+		return other.name ?? i18n.baseText('promotions.preview.anotherProject');
+	}
+	return key;
+}
 const { changeLabel, moveNote, blockerMessage, selectLabel } = usePromotionPreviewLabels();
 const blocker = computed(() => blockerMessage(props.resource, props.blockers));
 const moved = computed(() => moveNote(props.resource, props.direction));
@@ -189,7 +200,10 @@ const tagNote = computed(() => {
 						>
 							{{ resource.name }}
 						</N8nText>
-						<N8nText v-if="ownerMove?.allowed" step="xs" color="text-light">
+						<N8nText v-if="kept" step="xs" color="text-light">
+							{{ i18n.baseText('promotions.preview.marker.kept') }}
+						</N8nText>
+						<N8nText v-else-if="ownerMove?.allowed" step="xs" color="text-light">
 							{{ i18n.baseText('promotions.preview.marker.ownerMove') }}
 						</N8nText>
 						<N8nText v-else-if="changeLabel(resource, direction)" step="xs" color="text-light">
@@ -230,6 +244,9 @@ const tagNote = computed(() => {
 								{{ i18n.baseText('promotions.dependencies.summary.view') }}
 							</N8nButton>
 						</template>
+					</N8nCallout>
+					<N8nCallout v-if="kept" theme="info" slim data-test-id="promotion-preview-card-kept">
+						{{ i18n.baseText('promotions.preview.card.kept') }}
 					</N8nCallout>
 					<N8nCallout
 						v-if="ownerMove"
