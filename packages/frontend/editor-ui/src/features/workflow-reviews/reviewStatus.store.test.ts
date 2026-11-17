@@ -32,6 +32,7 @@ const openReview = review();
 const listOf = (...data: WorkflowReviewRequestForWorkflow[]): WorkflowReviewRequestList => ({
 	count: data.length,
 	data,
+	reviewRequiredBy: null,
 });
 
 describe('reviewStatus.store', () => {

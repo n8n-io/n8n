@@ -140,6 +140,7 @@ describe('WorkflowReviewRequiredToggle', () => {
 			} as const;
 			vi.mocked(fetchWorkflowReviewRequests).mockResolvedValueOnce({
 				count: 1,
+				reviewRequiredBy: null,
 				data: [openReview],
 			});
 			await useWorkflowReviewStatusStore(pinia).fetchStatus('workflow-1');
