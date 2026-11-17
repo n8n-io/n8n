@@ -1,4 +1,5 @@
 import { GlobalConfig } from '@n8n/config';
+import { Time } from '@n8n/constants';
 import { Service } from '@n8n/di';
 import { DataSource } from '@n8n/typeorm';
 
@@ -7,11 +8,14 @@ import { WorkflowPublicationRetryState } from '../entities';
 import type { OperationContext } from '../services/transaction';
 import { TransactionRunner } from '../services/transaction';
 
-const FIRST_RETRY_DELAY_SECONDS = 60;
+/** Not zero, because a retry at once would hit the same outage that just failed the activation. */
+const FIRST_RETRY_DELAY_SECONDS = 1 * Time.minutes.toSeconds;
 
-const MAX_RETRY_DELAY_SECONDS = 4 * 60 * 60;
+/** The doubling stops here, so a trigger comes back within four hours of its server and a dead one costs at most six attempts a day. */
+const MAX_RETRY_DELAY_SECONDS = 4 * Time.hours.toSeconds;
 
-const RETRY_PERIOD_SECONDS = 3 * 24 * 60 * 60;
+/** Three days, because that covers an outage from Friday evening to Monday morning. */
+const RETRY_PERIOD_SECONDS = 3 * Time.days.toSeconds;
 
 type DatabaseType = GlobalConfig['database']['type'];
 

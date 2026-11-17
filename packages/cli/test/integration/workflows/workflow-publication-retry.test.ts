@@ -448,9 +448,11 @@ describe('Workflow publication retry (integration)', () => {
 		fixture.failure = UNREACHABLE;
 		await setRetryNote(workflow.id, LONG_AGO, MAX_RETRY_DELAY_SECONDS);
 		await makeRetryDueAfterFailingSince(workflow.id, failingFor(RETRY_PERIOD_MS - ONE_HOUR_MS));
+		const recordsBefore = await countRecords(workflow.id);
 
 		await reconciler.reconcile('reconcile');
 
+		expect(await newRecordsSince(workflow.id, recordsBefore)).toBe(ONE_ATTEMPT);
 		expect(await retryDelay(workflow.id)).toBe(MAX_RETRY_DELAY_SECONDS);
 	});
 
