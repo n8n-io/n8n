@@ -50,13 +50,28 @@ export function isVerified(
 	compiled: CompiledNode,
 ): boolean {
 	const names = (sources.verified ?? VERIFIED)[verifiedKey(type, version, compiled.resolved)];
-	if (names === undefined || !compiled.changed.every((name) => names.includes(name))) return false;
-	if (
-		!itemParameterNames(compiled).every((name) =>
-			names.includes(itemParameterCondition(name, compiled.errorMode)),
-		)
-	)
-		return false;
+	if (names === undefined) return false;
+	const membersOf = (name: string, only: (member: unknown) => boolean) => {
+		const value = compiled.resolved[name];
+		return isRecord(value) ? Object.keys(value).filter((key) => only(value[key])) : [];
+	};
+	const agrees = (name: string) => {
+		if (names.includes(name)) return true;
+		const members = membersOf(name, () => true);
+		return members.length > 0 && members.every((key) => names.includes(`${name}.${key}`));
+	};
+	const agreesForItems = (name: string) => {
+		if (names.includes(itemParameterCondition(name, compiled.errorMode))) return true;
+		const members = membersOf(name, hasExpression);
+		return (
+			members.length > 0 &&
+			members.every((key) =>
+				names.includes(itemParameterCondition(`${name}.${key}`, compiled.errorMode)),
+			)
+		);
+	};
+	if (!compiled.changed.every(agrees)) return false;
+	if (!itemParameterNames(compiled).every(agreesForItems)) return false;
 	return (
 		compiled.flags.length === 0 || verifiedFlagKeys(sources, type, version, compiled).length > 0
 	);

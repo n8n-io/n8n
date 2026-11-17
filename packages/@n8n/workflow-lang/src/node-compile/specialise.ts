@@ -765,8 +765,40 @@ const HELPERS: Record<string, string> = {
 	__getPath: `function __getPath(value: any, path: any, fallback: any): any {
 	if (Array.isArray(path)) return __get(value, path, '', fallback);
 	const text: string = String(path);
-	if (text.includes('[') || text.includes(']') || text.includes('"')) throw new Error('a path with brackets has no compiled form');
-	return __get(value, text.split('.'), text, fallback);
+	if (!text.includes('[') && !text.includes(']')) return __get(value, text.split('.'), text, fallback);
+	const keys: string[] = [];
+	let key: string = '';
+	let inside: boolean = false;
+	let closed: boolean = false;
+	for (let k = 0; k < text.length; k++) {
+		const c: string = text.charAt(k);
+		if (inside) {
+			if (c === ']' && key !== '') {
+				keys.push(key);
+				key = '';
+				inside = false;
+				closed = true;
+			} else if ('0123456789'.includes(c)) key += c;
+			else throw new Error('a path with a bracket that has no index has no compiled form');
+		} else if (c === '[') {
+			if (key !== '') keys.push(key);
+			else if (!closed && k > 0) throw new Error('a path with a bracket that has no index has no compiled form');
+			key = '';
+			inside = true;
+			closed = false;
+		} else if (c === ']') throw new Error('a path with a bracket that has no index has no compiled form');
+		else if (c === '.') {
+			if (!closed) keys.push(key);
+			key = '';
+			closed = false;
+		} else {
+			key += c;
+			closed = false;
+		}
+	}
+	if (inside) throw new Error('a path with a bracket that has no index has no compiled form');
+	if (!closed) keys.push(key);
+	return __get(value, keys, text, fallback);
 }`,
 	__set: `function __set(target: any, keys: any, value: any): any {
 	let current: any = target;

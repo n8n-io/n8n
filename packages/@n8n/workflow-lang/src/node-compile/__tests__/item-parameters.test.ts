@@ -427,6 +427,26 @@ describe('the check of a parameter with an expression against v1', () => {
 		expect(isVerified(sources(['id']), TYPE, 1, compiledWith({ id: 'fixed' }))).toBe(true);
 	});
 
+	it('takes the members of a collection that agree with v1 one by one', () => {
+		const withMembers = {
+			...compiledWith({ id: 'fixed' }),
+			changed: ['options'],
+			resolved: { options: { first: 'a', second: '={{ $json.b }}' } },
+		};
+		const members = ['options.first', 'options.second'];
+		expect(isVerified(sources(['options']), TYPE, 1, withMembers)).toBe(true);
+		expect(isVerified(sources(['options.first']), TYPE, 1, withMembers)).toBe(false);
+		expect(isVerified(sources(members), TYPE, 1, withMembers)).toBe(true);
+		expect(isVerified(sources([]), TYPE, 1, { ...withMembers, resolved: { options: {} } })).toBe(
+			false,
+		);
+		const byItem = { ...withMembers, itemParameters: ['options.second'] };
+		expect(isVerified(sources(members), TYPE, 1, byItem)).toBe(false);
+		expect(isVerified(sources([...members, '@each=options.first']), TYPE, 1, byItem)).toBe(false);
+		expect(isVerified(sources([...members, '@each=options.second']), TYPE, 1, byItem)).toBe(true);
+		expect(isVerified(sources(['options', '@each=options']), TYPE, 1, byItem)).toBe(true);
+	});
+
 	it('needs the condition of the parameter for the error setting of the instance', () => {
 		const regular = compileNodeInstance(
 			sources([]),
