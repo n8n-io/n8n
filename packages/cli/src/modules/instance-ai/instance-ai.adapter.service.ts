@@ -3728,11 +3728,13 @@ export class InstanceAiAdapterService {
 				accessFilter: async (id) => await userHasScopes(user, scopes, false, { dataTableId: id }),
 			});
 			if (result.kind === 'miss') {
-				throw new Error(`Data table "${dataTableId}" not found`);
+				throw new UserError(
+					`Data table "${dataTableId}" not found. Check the name or ID, or run list_data_tables to find the table.`,
+				);
 			}
 			if (result.kind === 'ambiguous') {
 				const projectIds = result.candidates.map((c) => c.projectId).join(', ');
-				throw new Error(
+				throw new UserError(
 					`Data table name "${dataTableId}" is ambiguous across accessible projects ` +
 						`(${projectIds}); pass the UUID or include a \`projectId\` to disambiguate.`,
 				);
@@ -3741,8 +3743,9 @@ export class InstanceAiAdapterService {
 			// disambiguator points at a different project. Never silently drop
 			// the projectId — return mismatch so the caller fixes the call.
 			if (projectIdFilter && result.table.projectId !== projectIdFilter) {
-				throw new Error(
-					`Data table "${dataTableId}" does not belong to project "${projectIdFilter}".`,
+				throw new UserError(
+					`Data table "${dataTableId}" does not belong to project "${projectIdFilter}". ` +
+						'Pass the table ID without a `projectId`, or pass the project that owns the table.',
 				);
 			}
 			return result.table;
