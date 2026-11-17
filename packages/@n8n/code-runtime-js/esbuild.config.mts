@@ -1,4 +1,5 @@
-// Bundles the snapshot entry into one file, because a snapshot entry can only require built-in modules
+// `node --build-snapshot` takes one file that can require only Node.js built-ins,
+// so put the snapshot entry and all its dependencies into one file
 // eslint-disable-next-line import-x-alias/no-extraneous-dependencies -- runs at build time only
 import * as esbuild from 'esbuild';
 import type { Plugin } from 'esbuild';
