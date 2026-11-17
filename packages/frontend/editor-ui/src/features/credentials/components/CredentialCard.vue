@@ -243,7 +243,8 @@ function moveResource() {
 				<N8nBadge v-if="readOnly" class="ml-3xs" variant="outline">
 					{{ locale.baseText('credentials.item.readonly') }}
 				</N8nBadge>
-				<N8nBadge v-if="needsSetup" class="ml-3xs" variant="warning">
+				<!-- A placeholder has its own marker, which says the same and more. -->
+				<N8nBadge v-if="needsSetup && !data.isPlaceholder" class="ml-3xs" variant="warning">
 					{{ locale.baseText('credentials.item.needsSetup') }}
 				</N8nBadge>
 				<N8nTooltip v-if="data.isPlaceholder" placement="top">
