@@ -203,4 +203,11 @@ describe('file bytes of an item through the binaryData service', () => {
 			returnData.push({ json: { text: buffer.toString('hex') } });`);
 		expect(result.errors.join('\n')).toContain('file bytes have a compiled form only');
 	});
+
+	it('keeps the base64 text of the bytes of a response as a compile error', () => {
+		const result = probe(`const response = await this.helpers.request({ method: 'GET', uri: 'https://api.example.com/file', encoding: null, resolveWithFullResponse: true });
+			const buffer = await this.helpers.binaryToBuffer(response.body);
+			returnData.push({ json: { text: buffer.toString('base64') } });`);
+		expect(result.errors.join('\n')).toContain('file bytes have a compiled form only');
+	});
 });

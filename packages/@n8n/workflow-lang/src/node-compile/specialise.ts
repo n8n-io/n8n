@@ -7540,8 +7540,20 @@ class Specialiser {
 	private requestTokenOptions = false;
 
 	private serviceBytes(root: ts.Node): ts.Node {
-		const names = new Set<string>();
 		const inputs = new Set<string>();
+		const fromInput = (e: ts.Expression): boolean => {
+			if (givesInputBytes(e)) return true;
+			const made = uncast(e);
+			if (
+				!ts.isCallExpression(made) ||
+				!ts.isIdentifier(made.expression) ||
+				made.expression.text !== '__bytesFrom' ||
+				made.arguments.length !== 1
+			)
+				return false;
+			const source = uncast(made.arguments[0]);
+			return ts.isIdentifier(source) ? inputs.has(source.text) : givesInputBytes(source);
+		};
 		const collect = (n: ts.Node) => {
 			const made =
 				ts.isVariableDeclaration(n) && ts.isIdentifier(n.name) && n.initializer
@@ -7551,10 +7563,10 @@ class Specialiser {
 							ts.isIdentifier(n.left)
 						? { name: n.left.text, value: n.right }
 						: undefined;
-			if (made && givesBytes(made.value)) names.add(made.name);
-			if (made && givesInputBytes(made.value)) inputs.add(made.name);
+			if (made && fromInput(made.value)) inputs.add(made.name);
 			ts.forEachChild(n, collect);
 		};
+		collect(root);
 		collect(root);
 		const asyncs: boolean[] = [];
 		let found = false;
@@ -7584,8 +7596,8 @@ class Specialiser {
 			) {
 				const held = uncast(n.expression.expression);
 				if (
-					(ts.isIdentifier(held) && names.has(held.text)) ||
-					(givesBytes(held) && !isBase64Buffer(held))
+					(ts.isIdentifier(held) && inputs.has(held.text)) ||
+					(fromInput(held) && !isBase64Buffer(held))
 				)
 					return awaited('__bytesBase64', [
 						ts.visitNode(n.expression.expression, visit) as ts.Expression,
