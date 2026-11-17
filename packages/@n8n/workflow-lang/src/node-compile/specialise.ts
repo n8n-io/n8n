@@ -226,6 +226,7 @@ const FILE_LIMIT = '(limit: binary-max-file)';
 const REPEATS = '__repeats';
 const SERVICE_MAX_BYTES = 262144;
 const SERVICE_MAX_BASE64 = 400000;
+const SERVICE_MAX_INLINE = 349528;
 const SERVICE_BYTES_HELPERS = ['__bytesBase64', '__storeBase64', '__storeBinary'];
 const REQUEST_SEND = '\tconst response = await ctx.http({';
 const REQUEST_SEND_GUARDED = `\tif ((options.method ?? 'GET') !== 'GET') ${REPEATS} = false;
@@ -1369,6 +1370,19 @@ const HELPERS: Record<string, string> = {
 }`,
 	__isLimitOrHost: `function __isLimit(error: any): boolean {
 	return error !== null && error !== undefined && typeof error === 'object' && typeof error.message === 'string' && (error.message.endsWith('has no compiled form') || error.message.endsWith('${RUNS_IN_HOST}'));
+}`,
+	__filesInLimit: `function __filesInLimit(items: any): void {
+	for (const item of items) {
+		const files: any = item.binary;
+		if (files === null || files === undefined || typeof files !== 'object' || Array.isArray(files)) continue;
+		const list: any[] = Object.values(files);
+		for (const file of list) {
+			if (file === null || file === undefined || typeof file !== 'object') continue;
+			if (file.id === undefined || file.id === null || file.id === '') {
+				if (typeof file.data === 'string' && file.data.length > ${SERVICE_MAX_INLINE}) throw new Error('an input file of more than ${SERVICE_MAX_BYTES} bytes in a node that reads file bytes has no compiled form');
+			} else if (typeof file.id !== 'string' || typeof file.bytes !== 'number' || file.bytes > ${SERVICE_MAX_BYTES} || !(file.id.startsWith('filesystem-v2:') || file.id.startsWith('filesystem:'))) throw new Error('an input file of more than ${SERVICE_MAX_BYTES} bytes, or in a file store without a size, in a node that reads file bytes has no compiled form');
+		}
+	}
 }`,
 	__isFileLimit: `function __isFileLimit(error: any): boolean {
 	return error !== null && error !== undefined && typeof error === 'object' && typeof error.message === 'string' && error.message.includes('${FILE_LIMIT}');
@@ -7604,6 +7618,7 @@ class Specialiser {
 		for (const helper of ['__binaryService', '__hostForLimit']) this.helpers.add(helper);
 		if (this.helpers.has('__storeBinary'))
 			for (const helper of ['__storeBase64', '__bytesBase64']) this.helpers.add(helper);
+		if (this.helpers.has('__bytesBase64')) this.helpers.add('__filesInLimit');
 		return out;
 	}
 
@@ -7860,7 +7875,7 @@ class Specialiser {
 				} else if (name === 'execute') {
 					const statements = (node.body?.statements ?? []).map(text).join('\n');
 					body = hosted
-						? `try {\n${statements}\n} catch (__stopped) {\n\tthrow __hostForLimit(__stopped);\n}`
+						? `try {\n${this.helpers.has('__filesInLimit') ? '__filesInLimit(__items);\n' : ''}${statements}\n} catch (__stopped) {\n\tthrow __hostForLimit(__stopped);\n}`
 						: statements;
 				} else {
 					const lead = unit?.withContext

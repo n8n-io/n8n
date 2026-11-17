@@ -145,6 +145,18 @@ describe('file bytes of an item through the binaryData service', () => {
 		expect(JSON.stringify(out.result)).toContain(RUNS_IN_HOST);
 	});
 
+	it('sends no request for an earlier item when a later item has a file above the limit', async () => {
+		const large = { ...FILE, data: 'A'.repeat(349532) };
+		const out = await run(
+			ATTACH,
+			[{ $binary: { data: FILE } }, { $binary: { data: STORED, other: large } }],
+			[{ data: HELLO }, OK],
+		);
+		expect(out.status).toBe('error');
+		expect(out.effects).toEqual([]);
+		expect(JSON.stringify(out.result)).toContain(RUNS_IN_HOST);
+	});
+
 	it('hands the node over to the host when the service names a reason', async () => {
 		const out = await run(
 			ATTACH,
