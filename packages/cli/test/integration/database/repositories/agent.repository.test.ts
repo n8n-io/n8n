@@ -1,7 +1,12 @@
 import { N8N_CHAT_INTEGRATION_TYPE } from '@n8n/api-types';
 import type { AgentIntegrationConfig, AgentJsonConfig } from '@n8n/api-types';
 import { createTeamProject, mockLogger, testDb, testModules } from '@n8n/backend-test-utils';
-import { Person, TransactionRunner, type WorkflowRepository } from '@n8n/db';
+import {
+	Person,
+	TransactionRunner,
+	type ProjectRepository,
+	type WorkflowRepository,
+} from '@n8n/db';
 import { Container } from '@n8n/di';
 import { ConflictError } from '@n8n/errors';
 import { DataSource } from '@n8n/typeorm';

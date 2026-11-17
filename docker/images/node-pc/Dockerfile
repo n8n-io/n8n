@@ -115,9 +115,10 @@ ENV npm_config_nodedir=/usr/local
 
 # ---------------------------------------------------------------------------
 
-# RUNTIME_IMAGE (`n8nio/base`), with the pointer-compressed Node in place of
-# the stock node, npm and npx.
+# RUNTIME_IMAGE (an `n8nio/base`), with our compiled Node in place of the
+# stock node, npm and npx.
 FROM ${RUNTIME_IMAGE} AS runtime
+ARG ENABLE_POINTER_COMPRESSION
 
 RUN rm -f /usr/bin/node /usr/bin/nodejs /usr/bin/npm /usr/bin/npx /usr/local/bin/node
 COPY --from=builder /node-install/usr/local /usr/local
