@@ -743,8 +743,10 @@ file at start (`wfrt serve --credentials <file>`,
   and a library node reads it with `{{$credentials.n8nDerived.<name>}}`. For
   example, `n8nDerived.outlookApiUrl` of `microsoftOutlookOAuth2Api` is the
   Microsoft Graph URL of the mailbox (`graphApiBaseUrl`, `useShared`,
-  `userPrincipalName`). Derived values come only from fields that are not
-  secret.
+  `userPrincipalName`), and `n8nDerived.graphApiUrl` of
+  `microsoftTeamsOAuth2Api` and `microsoftOAuth2Api` is the Microsoft Graph
+  host (`graphApiBaseUrl`, or the default host). Derived values come only
+  from fields that are not secret.
 * An effect that names a slot that is not in the file fails with
   `credential "<slot>" is not configured`.
 * Limits of the PoC: the file is plain text on disk. A library request that
