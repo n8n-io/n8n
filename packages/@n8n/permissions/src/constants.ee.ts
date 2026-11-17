@@ -134,6 +134,7 @@ export const API_KEY_RESOURCES = {
 		'export',
 		'import',
 		'read',
+		'list',
 		'create',
 		'update',
 		'publish',

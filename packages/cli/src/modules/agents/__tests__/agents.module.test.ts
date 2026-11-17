@@ -7,7 +7,7 @@ import { mock } from 'vitest-mock-extended';
 
 import { AiService } from '@/services/ai.service';
 import { ExecutionDataJsonStore } from '@/executions/execution-data/execution-data-json-store';
-import { FavoriteResourceResolverRegistry } from '@n8n/backend-services';
+import { AgentProjectLookupProxy, FavoriteResourceResolverRegistry } from '@n8n/backend-services';
 import { SandboxSettingsService } from '@/services/sandbox-settings.service';
 import { AgentUsageProviderProxy } from '@/modules/workflow-index/agent-usage-provider-proxy.service';
 import { KnowledgeSandboxProviderRegistry } from '@/modules/knowledge/knowledge-sandbox-provider-registry';
@@ -209,6 +209,19 @@ describe('AgentsModule', () => {
 			expect(registry.get('linear')).toBe(linearIntegration);
 			expect(registry.get('discord')).toBe(discordIntegration);
 			expect(registry.get(N8N_CHAT_INTEGRATION_TYPE)).toBe(n8nChatIntegration);
+		});
+
+		it('registers the agent repository as the agent project lookup for collaboration', async () => {
+			setUpContainerForInit();
+			const agentRepository = Container.get(AgentRepository);
+			vi.mocked(agentRepository.getProjectIdById).mockResolvedValue('project-1');
+
+			await module.init();
+
+			await expect(
+				Container.get(AgentProjectLookupProxy).getProjectIdById('agent-1'),
+			).resolves.toBe('project-1');
+			expect(agentRepository.getProjectIdById).toHaveBeenCalledWith('agent-1');
 		});
 
 		it('registers the knowledge sandbox provider with the knowledge module', async () => {

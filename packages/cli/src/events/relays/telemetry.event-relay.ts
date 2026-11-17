@@ -73,6 +73,9 @@ import { toTrustedSourceTelemetryFacets } from '@n8n/inbound-auth';
 // Max size for node_graph_string to avoid exceeding telemetry payload limits (32 KB), leaving room for other fields
 const MAX_NODE_GRAPH_STRING_SIZE = 24 * 1024;
 
+/** Each main reports a SCIM rejection reason and operation at most once in this window. */
+const SCIM_REJECTION_REPORT_INTERVAL_MS = 60 * 60 * 1000;
+
 function countWorkflowCustomTelemetryTags(workflow: IWorkflowDb | IWorkflowBase): number {
 	return workflow.settings?.customTelemetryTags?.length ?? 0;
 }
@@ -224,6 +227,9 @@ function toPublicApiProperties(publicApi: PublicApiCaller) {
 
 @Service()
 export class TelemetryEventRelay extends EventRelay {
+	/** Rejections since the last report, and when that report went out, by reason and operation. */
+	private readonly scimRejections = new Map<string, { reportedAt: number; count: number }>();
+
 	constructor(
 		readonly eventService: EventService,
 		private readonly telemetry: Telemetry,
@@ -322,6 +328,8 @@ export class TelemetryEventRelay extends EventRelay {
 			'login-failed-due-to-ldap-disabled': (event) => this.loginFailedDueToLdapDisabled(event),
 			'sso-user-project-access-updated': (event) => this.ssoUserProjectAccessUpdated(event),
 			'sso-user-instance-role-updated': (event) => this.ssoUserInstanceRoleUpdated(event),
+			'scim-settings-updated': (event) => this.scimSettingsUpdated(event),
+			'scim-request-rejected': (event) => this.scimRequestRejected(event),
 			'workflow-created': (event) => this.workflowCreated(event),
 			'workflow-archived': (event) => this.workflowArchived(event),
 			'workflow-unarchived': (event) => this.workflowUnarchived(event),
@@ -1515,6 +1523,45 @@ export class TelemetryEventRelay extends EventRelay {
 		this.telemetry.track('Sso user instance role update', { user_id: userId, role });
 	}
 
+	private scimSettingsUpdated({ user, isActive, change }: RelayEventMap['scim-settings-updated']) {
+		this.telemetry.track(TELEMETRY_EVENT.SCIM.USER_UPDATED_SCIM_SETTINGS, {
+			// n8n turns SCIM off by itself when single sign-on is off, so then no
+			// user acts and RudderStack gets the event under the instance id.
+			user_id: user?.id,
+			is_active: isActive,
+			change,
+		});
+	}
+
+	/**
+	 * An identity provider that is set up wrongly retries on each sync, so
+	 * report each reason and operation at most once an hour, with the count
+	 * since the last report. The audit log gets each rejection.
+	 */
+	private scimRequestRejected({
+		operation,
+		status,
+		reason,
+	}: RelayEventMap['scim-request-rejected']) {
+		const key = `${reason}:${operation}`;
+		const now = Date.now();
+		const entry = this.scimRejections.get(key);
+		const count = (entry?.count ?? 0) + 1;
+
+		if (entry && now - entry.reportedAt < SCIM_REJECTION_REPORT_INTERVAL_MS) {
+			entry.count = count;
+			return;
+		}
+
+		this.scimRejections.set(key, { reportedAt: now, count: 0 });
+		this.telemetry.track(TELEMETRY_EVENT.SCIM.SCIM_REQUEST_REJECTED, {
+			operation,
+			status,
+			reason,
+			count,
+		});
+	}
+
 	// #endregion
 
 	// #region Workflow
@@ -2569,7 +2616,7 @@ export class TelemetryEventRelay extends EventRelay {
 		});
 	}
 
-	private userUpdated({ user, fieldsChanged }: RelayEventMap['user-updated']) {
+	private userUpdated({ user, fieldsChanged, source }: RelayEventMap['user-updated']) {
 		this.telemetry.identify(
 			{
 				user_role: user?.role?.slug,
@@ -2581,6 +2628,8 @@ export class TelemetryEventRelay extends EventRelay {
 		this.telemetry.track('User changed personal settings', {
 			user_id: user.id,
 			fields_changed: fieldsChanged,
+			// A system change, for example by SCIM, names the system.
+			...(source && { source }),
 		});
 	}
 
@@ -2630,7 +2679,12 @@ export class TelemetryEventRelay extends EventRelay {
 		});
 	}
 
-	private userSignedUp({ user, userType, wasDisabledLdapUser }: RelayEventMap['user-signed-up']) {
+	private userSignedUp({
+		user,
+		userType,
+		wasDisabledLdapUser,
+		source,
+	}: RelayEventMap['user-signed-up']) {
 		const payload = {
 			user_id: user.id,
 			user_type: userType,
@@ -2648,7 +2702,8 @@ export class TelemetryEventRelay extends EventRelay {
 			userId: user.id,
 		});
 
-		this.telemetry.track('User signed up', payload);
+		// The source is not a user trait, so only the event carries it.
+		this.telemetry.track('User signed up', { ...payload, ...(source && { source }) });
 	}
 
 	private userMfaEnabled({ user }: RelayEventMap['user-mfa-enabled']) {

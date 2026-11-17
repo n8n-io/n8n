@@ -742,7 +742,6 @@ describe('useNodeHelpers()', () => {
 				'typeUnknown',
 				'parameters',
 				'credentials',
-				'execution',
 			]);
 
 			expect(result?.input?.[NodeConnectionTypes.AiLanguageModel]).toBeDefined();
@@ -771,7 +770,6 @@ describe('useNodeHelpers()', () => {
 				'typeUnknown',
 				'parameters',
 				'credentials',
-				'execution',
 			]);
 
 			expect(result?.input?.[NodeConnectionTypes.AiLanguageModel]).toHaveLength(2);
@@ -854,7 +852,6 @@ describe('useNodeHelpers()', () => {
 				'typeUnknown',
 				'parameters',
 				'credentials',
-				'execution',
 				'input',
 			]);
 

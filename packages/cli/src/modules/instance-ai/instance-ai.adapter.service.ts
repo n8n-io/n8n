@@ -20,6 +20,7 @@ import {
 	INSTANCE_AI_CONVERSATION_HISTORY_ENABLED_VARIANT,
 	INSTANCE_AI_SETUP_PANEL_FLAG,
 	INSTANCE_AI_SETUP_PANEL_ENABLED_VARIANT,
+	INSTANCE_AI_APPROVAL_MODES_FLAG,
 	INSTANCE_AI_CONCISE_STYLE_FLAG,
 	INSTANCE_AI_CONCISE_STYLE_ENABLED_VARIANT,
 	ASSISTANT_SKILLS_FLAG,
@@ -436,6 +437,8 @@ export interface InstanceAiFeatureFlags {
 	 *  returns `{}` on a PostHog outage. */
 	folderExplorationEnabled: boolean;
 	credentialDescriptionsEnabled: boolean;
+	/** Approval modes: the Manual and Auto selector, and Auto for users without a saved choice. */
+	approvalModesEnabled: boolean;
 	/** Shared activity recording and retrieval use the same instance gate. */
 	instanceContextEnabled: boolean;
 	assistantSkillsEnabled: boolean;
@@ -594,6 +597,8 @@ export class InstanceAiAdapterService {
 			modelId?: ModelConfig;
 			/** Host-resolved utility model. Absent → utility calls use `modelId`. */
 			utilityModelId?: ModelConfig;
+			/** Bills the token usage of helper LLM calls. */
+			onHelperUsage?: InstanceAiContext['onHelperUsage'];
 			/** Transport for those utility LLM calls. */
 			modelFetch?: FetchFn;
 			/** Effective data-sharing setting for this run. Absent → the env value. */
@@ -621,6 +626,7 @@ export class InstanceAiAdapterService {
 			assistantSkillsEnabled,
 			modelId,
 			utilityModelId,
+			onHelperUsage,
 			modelFetch,
 			allowSendingParameterValues = this.allowSendingParameterValues,
 		} = options ?? {};
@@ -660,6 +666,7 @@ export class InstanceAiAdapterService {
 			...(credentialDescriptionsEnabled ? { credentialDescriptionsEnabled: true } : {}),
 			modelId,
 			...(utilityModelId ? { utilityModelId } : {}),
+			...(onHelperUsage ? { onHelperUsage } : {}),
 			modelFetch,
 			workflowService: this.createWorkflowAdapter(user, threadId, projectId, {
 				nodeUsageGateOpen: nodeUsageEnabled === true,
@@ -855,6 +862,7 @@ export class InstanceAiAdapterService {
 			folderExplorationEnabled:
 				flags[INSTANCE_AI_FOLDER_EXPLORATION_FLAG] ===
 				INSTANCE_AI_FOLDER_EXPLORATION_ENABLED_VARIANT,
+			approvalModesEnabled: flags[INSTANCE_AI_APPROVAL_MODES_FLAG] === true,
 			instanceContextEnabled,
 			assistantSkillsEnabled,
 		};
@@ -1323,7 +1331,11 @@ export class InstanceAiAdapterService {
 				if (requested.folderId !== undefined && requested.folderId !== '') {
 					try {
 						add(
-							await folderRepository.findOneOrFailFolderInProject(requested.folderId, projectId),
+							await folderRepository.findOneOrFailFolderInProject(
+								requested.folderId,
+								projectId,
+								'workflow',
+							),
 							projectId,
 						);
 					} catch {

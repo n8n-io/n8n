@@ -1,7 +1,17 @@
 import { N8N_CHAT_INTEGRATION_TYPE } from '@n8n/api-types';
 import type { AgentIntegrationConfig, AgentJsonConfig } from '@n8n/api-types';
 import { createTeamProject, mockLogger, testDb, testModules } from '@n8n/backend-test-utils';
+<<<<<<< HEAD
 import { Person, TransactionRunner, type WorkflowRepository } from '@n8n/db';
+=======
+import type { GlobalConfig } from '@n8n/config';
+import {
+	Person,
+	TransactionRunner,
+	type ProjectRepository,
+	type WorkflowRepository,
+} from '@n8n/db';
+>>>>>>> fec3317ec25fa68c69b7347813f60c8357048cf3
 import { Container } from '@n8n/di';
 import { ConflictError } from '@n8n/errors';
 import { DataSource } from '@n8n/typeorm';
@@ -184,6 +194,7 @@ describe('AgentRepository', () => {
 				mockLogger(),
 				agentRepo,
 				mock(),
+				mock<ProjectRepository>(),
 				mock(),
 				mock(),
 				mock(),

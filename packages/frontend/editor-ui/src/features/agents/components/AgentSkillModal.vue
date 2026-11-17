@@ -519,8 +519,10 @@ const showScopeBadge = computed(
 		(showScope.value ||
 			(!!props.data.skillRefsEnabled && (!isEditing.value || !!savedTarget.value))),
 );
-const scopeEditable = computed(() =>
-	showScope.value ? canChangeScope.value && !isSaving.value : showAvailabilitySelect.value,
+const scopeEditable = computed(
+	() =>
+		scopeChoices.value.length > 1 &&
+		(showScope.value ? canChangeScope.value && !isSaving.value : showAvailabilitySelect.value),
 );
 
 function onScopeChoice(value: string) {
@@ -543,13 +545,15 @@ function scopeItemIcon(choice: ScopeChoice): IconOrEmoji {
 }
 
 function scopeItems(testIdPrefix: string): Array<DropdownMenuItemProps<string>> {
-	return scopeChoices.value.map((choice) => ({
-		id: `scope:${choice.value}`,
-		label: choice.label,
-		icon: scopeItemIcon(choice),
-		checked: choice.value === selectedScopeValue.value,
-		testId: `${testIdPrefix}${choice.value}`,
-	}));
+	return scopeChoices.value
+		.filter((choice) => !isEditing.value || choice.value !== selectedScopeValue.value)
+		.map((choice) => ({
+			id: `scope:${choice.value}`,
+			label: choice.label,
+			icon: scopeItemIcon(choice),
+			checked: choice.value === selectedScopeValue.value,
+			testId: `${testIdPrefix}${choice.value}`,
+		}));
 }
 
 /** "Add to <agent>" toggles the attachment of a hub skill to the agent it was opened from. */
