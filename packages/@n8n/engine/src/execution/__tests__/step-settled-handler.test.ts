@@ -8,10 +8,20 @@ import {
 import type { OrchestrationMessage, StepMessage, WorkQueue } from '../../queue';
 import type { ExecutionResponseSender } from '../../response-channel';
 import type { CancelExecutionService } from '../cancel-execution.service';
-import type { ExecutionRecord, ExecutionStore } from '../execution-store';
+import {
+	ExecutionNotFoundError,
+	type ExecutionRecord,
+	type ExecutionStore,
+} from '../execution-store';
 import { stepKeyId, type StepKey, type StepSlots, type StepStatus } from '../execution.types';
 import { StepSettledHandler } from '../step-settled-handler';
-import type { NewStepRecord, StepRecord, StepStore, StepSummary } from '../step-store';
+import {
+	StepNotFoundError,
+	type NewStepRecord,
+	type StepRecord,
+	type StepStore,
+	type StepSummary,
+} from '../step-store';
 
 /**
  * trigger -> a -> {b (out 0), c (out 1)} -> m. So `a` fans out across two output
@@ -487,6 +497,64 @@ describe('StepSettledHandler', () => {
 		expect(stepStore.createSteps).not.toHaveBeenCalled();
 		expect(stepQueue.publish).not.toHaveBeenCalled();
 		expect(executionStore.finishExecution).not.toHaveBeenCalled();
+	});
+
+	it('does nothing and does not reject when the execution of the event has no row', async () => {
+		// The retention sweep deletes the step rows with the execution row.
+		const stepStore = makeStepStore(
+			{},
+			{ loadStep: vi.fn().mockRejectedValue(new StepNotFoundError('step-a')) },
+		);
+		const executionStore = makeExecutionStore(
+			{},
+			{ loadExecution: vi.fn().mockRejectedValue(new ExecutionNotFoundError('exec-1')) },
+		);
+		const { handler, stepQueue, orchestrationQueue, lifecycleEventPublisher, responseSender } =
+			makeHandler(stepStore, { executionStore });
+
+		await expect(handler.handle(event)).resolves.toBeUndefined();
+
+		expect(stepStore.createSteps).not.toHaveBeenCalled();
+		expect(stepQueue.publish).not.toHaveBeenCalled();
+		expect(orchestrationQueue.publish).not.toHaveBeenCalled();
+		expect(lifecycleEventPublisher.publish).not.toHaveBeenCalled();
+		expect(responseSender.send).not.toHaveBeenCalled();
+		expect(executionStore.finishExecution).not.toHaveBeenCalled();
+		expect(executionStore.refreshLiveStatus).not.toHaveBeenCalled();
+	});
+
+	it.each([
+		{
+			reason: 'the missing execution is another one',
+			step: {},
+			stepOverrides: {},
+			executionOverrides: {
+				loadExecution: vi.fn().mockRejectedValue(new ExecutionNotFoundError('exec-2')),
+			},
+			error: ExecutionNotFoundError,
+		},
+		{
+			reason: 'the step belongs to another execution',
+			step: { executionId: 'exec-other' },
+			stepOverrides: {},
+			executionOverrides: {
+				loadExecution: vi.fn().mockRejectedValue(new ExecutionNotFoundError('exec-1')),
+			},
+			error: ExecutionNotFoundError,
+		},
+		{
+			reason: 'only the step has no row',
+			step: {},
+			stepOverrides: { loadStep: vi.fn().mockRejectedValue(new StepNotFoundError('step-a')) },
+			executionOverrides: {},
+			error: StepNotFoundError,
+		},
+	])('rejects when $reason', async ({ step, stepOverrides, executionOverrides, error }) => {
+		const stepStore = makeStepStore(step, stepOverrides);
+		const executionStore = makeExecutionStore({}, executionOverrides);
+		const { handler } = makeHandler(stepStore, { executionStore });
+
+		await expect(handler.handle(event)).rejects.toBeInstanceOf(error);
 	});
 
 	it('rejects an event whose step references a node absent from the graph', async () => {
