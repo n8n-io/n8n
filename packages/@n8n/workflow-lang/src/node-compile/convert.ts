@@ -350,6 +350,19 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 function kindOf(property: unknown): ParameterKind | undefined {
 	if (!isRecord(property) || typeof property.type !== 'string') return undefined;
 	const kind: ParameterKind = { type: property.type, extract: Boolean(property.extractValue) };
+	if (property.type === 'resourceMapper') {
+		const options = isRecord(property.typeOptions)
+			? property.typeOptions.resourceMapper
+			: undefined;
+		const mapper = isRecord(options) ? options : {};
+		return {
+			...kind,
+			mapper: {
+				adds: mapper.mode === 'add',
+				conversions: Boolean(mapper.showTypeConversionOptions),
+			},
+		};
+	}
 	if (property.type !== 'resourceLocator') return kind;
 	if (!Array.isArray(property.modes)) return undefined;
 	const modes: NonNullable<ParameterKind['modes']> = {};
@@ -377,9 +390,18 @@ export function parameterKindOf(
 	const first = kinds[0];
 	if (first === undefined) return undefined;
 	const text = JSON.stringify(first);
-	return kinds.every((kind) => kind !== undefined && JSON.stringify(kind) === text)
-		? first
-		: undefined;
+	if (kinds.every((kind) => kind !== undefined && JSON.stringify(kind) === text)) return first;
+	const mappers = kinds.flatMap((kind) => (kind?.mapper ? [kind.mapper] : []));
+	if (mappers.length !== kinds.length || kinds.some((kind) => kind?.extract !== first.extract))
+		return undefined;
+	return {
+		type: first.type,
+		extract: first.extract,
+		mapper: {
+			adds: mappers.some((mapper) => mapper.adds),
+			conversions: mappers.some((mapper) => mapper.conversions),
+		},
+	};
 }
 
 export function compileNodeInstance(

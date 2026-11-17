@@ -401,6 +401,84 @@ describe('a compiled node that runs once with a value for each item', () => {
 	});
 });
 
+describe('a loop over the items that the caller of a function gives', () => {
+	const source = (limit: string) => `
+async function readAll(this: any, items: any[]) {
+	const out: any[] = [];
+	for (let i = 0; i < ${limit}; i++) out.push({ json: { id: this.getNodeParameter('id', i) } });
+	return out;
+}
+export class Acme {
+	async execute(this: any) {
+		const items = this.getInputData();
+		return [await readAll.call(this, items)];
+	}
+}`;
+	const compileSource = (text: string, parameters: Record<string, unknown>) =>
+		specialiseNode({
+			type: TYPE,
+			version: 1,
+			entry: ENTRY,
+			readFile: (path) => (path === ENTRY ? text : undefined),
+			parameters,
+			instanceId: null,
+		});
+
+	it('proves the index of a loop to the length of the items of the caller', () => {
+		const result = compileSource(source('items.length'), BY_ITEM);
+		expect(result.errors).toEqual([]);
+		expect(result.itemParameters).toEqual(['id']);
+	});
+
+	it('does not prove the index of a loop to another limit', () => {
+		const result = compileSource(source('items.length + 1'), BY_ITEM);
+		expect(result.errors.join(' ')).toContain(NO_PROOF);
+	});
+});
+
+describe('a regular expression from a parameter of the node', () => {
+	const body =
+		"returnData.push({ json: { r: safeRegex.exec(this.getNodeParameter('entry', i).__regex, items[i].json.text) } });";
+	const helpers = "import { safeRegex } from 'n8n-workflow';";
+
+	it('uses the matcher of the runtime for a pattern that the runtime takes', () => {
+		const result = compileWith(body, { entry: { __regex: '^a(b)' } }, { helpers });
+		expect(result.errors).toEqual([]);
+		expect(result.source).toContain('__regexExec(');
+	});
+
+	it('does not compile for a pattern that the runtime does not take', () => {
+		const result = compileWith(body, { entry: { __regex: '(?<=a)b' } }, { helpers });
+		expect(result.errors.join(' ')).toContain('safeRegex');
+	});
+});
+
+describe('the value of a resource mapper', () => {
+	const read = (options: string) =>
+		`returnData.push({ json: this.getNodeParameter('columns.value', i, {}${options}) });`;
+	const columns = (schema: unknown[]) => ({
+		columns: { mappingMode: 'defineBelow', value: { count: '5' }, schema },
+	});
+	const typed = columns([{ id: 'count', type: 'number' }]);
+
+	it('compiles when the schema has no type for the fields of the value', () => {
+		expect(compileWith(read(''), columns([])).errors).toEqual([]);
+		expect(compileWith(read(''), columns([{ id: 'other', type: 'number' }])).errors).toEqual([]);
+	});
+
+	it('does not compile when v1 changes the type of a field', () => {
+		expect(compileWith(read(''), typed).errors.join(' ')).toContain('resource mapper');
+	});
+
+	it('compiles when the node code turns the validation off', () => {
+		expect(compileWith(read(', { skipValidation: true }'), typed).errors).toEqual([]);
+		const fromConstant = `const checks = this.getNodeParameter('options', i, {}).typecast ? { skipValidation: true } : undefined;
+			returnData.push({ json: this.getNodeParameter('columns.value', i, {}, checks) });`;
+		expect(compileWith(fromConstant, { ...typed, options: { typecast: true } }).errors).toEqual([]);
+		expect(compileWith(fromConstant, typed).errors.join(' ')).toContain('resource mapper');
+	});
+});
+
 describe('the check of a parameter with an expression against v1', () => {
 	const description = {
 		name: 'acme',

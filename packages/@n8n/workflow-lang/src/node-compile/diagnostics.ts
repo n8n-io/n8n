@@ -582,6 +582,11 @@ export const RULES: Rule[] = [
 					/^'this\.getNodeParameter' has no compiled form: the parameter name is not a constant for this node$/,
 				locate: parameterName,
 			},
+			{
+				pattern:
+					/^the parameter '[^']+' is the value of a resource mapper, and v1 changes or checks the type of its fields: this has no compiled form$/,
+				locate: parameterName,
+			},
 			{ pattern: /^the list of the parameters for each item is used as a value$/ },
 		],
 	},
