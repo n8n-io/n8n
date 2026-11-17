@@ -65,6 +65,7 @@ erDiagram
   varchar_36_ id PK
   boolean isGlobal
   boolean isManaged
+  boolean isPlaceholder
   boolean isResolvable
   varchar_128_ name
   DATETIME pendingAuthorizationExpiresAt
