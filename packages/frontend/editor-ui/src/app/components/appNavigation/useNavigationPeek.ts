@@ -1,7 +1,7 @@
 import { onScopeDispose, ref, toValue, type MaybeRefOrGetter } from 'vue';
 
-export const PEEK_OPEN_DELAY = 300;
-export const PEEK_CLOSE_DELAY = 200;
+export const PEEK_OPEN_DELAY = 200;
+export const PEEK_CLOSE_DELAY = 150;
 
 /**
  * The floating panel of the collapsed navigation. Hovering a rail item opens its panel
