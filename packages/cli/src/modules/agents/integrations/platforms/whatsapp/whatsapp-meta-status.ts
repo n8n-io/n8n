@@ -43,10 +43,9 @@ const NOT_VERIFIED_VERIFICATION = new Set([
 const UNAVAILABLE_NUMBER_STATUSES = new Set(['BANNED', 'DISCONNECTED']);
 
 /**
- * Whether a refused phone number read means Meta does not find the number for
- * this token. Meta gives this error for an ID that does not exist and for an
- * ID the token cannot see, so it also covers a deleted or moved number. Other
- * refusals, such as a bad field, use code 100 with another subcode.
+ * Whether Meta cannot find the object for this token. Meta returns this error
+ * for a deleted, moved or wrong ID, and for an ID the token cannot see. It
+ * applies to phone numbers and business accounts.
  */
 export function isNumberNotFoundError(body: unknown): boolean {
 	const error = isRecord(body) ? body.error : undefined;

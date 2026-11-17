@@ -437,7 +437,7 @@ export class WhatsAppCredentialCheckService {
 			if (code !== undefined && (code === 10 || (code >= 200 && code <= 299))) return 'denied';
 			// Meta cannot load the object for this token. An Employee system user
 			// and a wrong ID both get this, so the caller decides which it is.
-			if (code === 100 && numberProperty(error, 'error_subcode') === 33) return 'notLoadable';
+			if (isNumberNotFoundError(response.body)) return 'notLoadable';
 			return 'allowed';
 		} catch {
 			return 'allowed';
