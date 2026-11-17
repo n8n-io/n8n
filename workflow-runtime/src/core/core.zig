@@ -1646,12 +1646,12 @@ pub fn findRoute(s: *const State, method: []const u8, path: []const u8) ?usize {
         if (r.removed or r.dynamic) continue;
         if (std.mem.eql(u8, r.method[0..r.method_len], method) and std.mem.eql(u8, r.path[0..r.path_len], path)) return i;
     }
-    var segs: [64][]const u8 = undefined;
+    // The segments stay in the path: a table of them on the stack is
+    // filled on each call in a safe build.
     var nsegs: usize = 0;
     var it = std.mem.tokenizeScalar(u8, path, '/');
-    while (it.next()) |seg| {
-        if (nsegs == segs.len) return null;
-        segs[nsegs] = seg;
+    while (it.next()) |_| {
+        if (nsegs == max_route_segs) return null;
         nsegs += 1;
     }
     var best: ?usize = null;
@@ -1659,7 +1659,7 @@ pub fn findRoute(s: *const State, method: []const u8, path: []const u8) ?usize {
     for (s.routes[0..s.nroutes], 0..) |*r, i| {
         if (r.removed or !r.dynamic or r.nsegs != nsegs) continue;
         if (!std.mem.eql(u8, r.method[0..r.method_len], method)) continue;
-        const score = dynamicScore(r, segs[0..nsegs]) orelse continue;
+        const score = dynamicScore(r, path) orelse continue;
         if (score > best_score or (best == null and score == 0)) {
             best = i;
             best_score = score;
@@ -1668,20 +1668,31 @@ pub fn findRoute(s: *const State, method: []const u8, path: []const u8) ?usize {
     return best;
 }
 
-/// The count of static segments of a dynamic route that the request has,
-/// or null when the route does not match.
-fn dynamicScore(r: *const Route, segs: []const []const u8) ?usize {
+/// The most segments of a request path that a dynamic route can match.
+const max_route_segs: usize = 64;
+
+/// The count of static segments of a dynamic route that the request path
+/// `path` has, or null when the route does not match. The route and the
+/// path have the same number of segments.
+fn dynamicScore(r: *const Route, path: []const u8) ?usize {
     var tpl = std.mem.tokenizeScalar(u8, r.path[0..r.path_len], '/');
+    var got = std.mem.tokenizeScalar(u8, path, '/');
     var pos: usize = 0;
     var score: usize = 0;
+    // The segments of the path after the fixed ones start here.
+    var rest = got;
     while (tpl.next()) |seg| : (pos += 1) {
+        std.debug.assert(pos < max_route_segs);
         if (pos < r.fixed) {
-            if (!std.mem.eql(u8, seg, segs[pos])) return null;
+            const x = got.next() orelse return null;
+            if (!std.mem.eql(u8, seg, x)) return null;
+            rest = got;
             continue;
         }
         if (seg[0] == ':') continue;
         // n8n compares the other static segments as a set.
-        const found = for (segs[r.fixed..]) |x| {
+        var others = rest;
+        const found = while (others.next()) |x| {
             if (std.mem.eql(u8, x, seg)) break true;
         } else false;
         if (!found) return null;
