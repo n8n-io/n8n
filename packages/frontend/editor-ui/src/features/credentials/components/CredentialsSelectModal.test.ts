@@ -51,7 +51,10 @@ vi.mock('@n8n/design-system', async () => {
 	return {
 		N8nSelect: defineComponent({
 			name: 'N8nSelect',
-			props: { modelValue: { type: String, default: '' } },
+			props: {
+				modelValue: { type: String, default: '' },
+				filterMethod: { type: Function, required: true },
+			},
 			emits: ['update:modelValue', 'visible-change'],
 			setup(_, { expose }) {
 				expose({ blur: selectBlur, focus: selectFocus });
@@ -68,6 +71,7 @@ vi.mock('@n8n/design-system', async () => {
 				<div
 					class="el-select-dropdown__item"
 					:data-name="value"
+					:data-label="label"
 					:data-disabled="disabled"
 				><slot /></div>
 			`,
@@ -161,6 +165,47 @@ describe('CredentialsSelectModal — restricted credential types', () => {
 
 	afterEach(() => {
 		vi.useRealTimers();
+	});
+
+	it('finds a renamed credential by its brand and opens it with its stable identifier', async () => {
+		const wrapper = await mountLoaded();
+		useCredentialsStore().setCredentialTypes([
+			...types,
+			{
+				name: 'ciscoWebexOAuth2Api',
+				displayName: 'Webex by Cisco OAuth2 API',
+				properties: [],
+			},
+		]);
+		await nextTick();
+
+		expect(names(wrapper)).toEqual([
+			'airtableApi',
+			'mailjetEmailApi',
+			'slackApi',
+			'ciscoWebexOAuth2Api',
+			'zoomApi',
+		]);
+		expect(option(wrapper, 'ciscoWebexOAuth2Api').attributes('data-label')).toBe(
+			'Webex by Cisco OAuth2 API',
+		);
+
+		wrapper.findComponent({ name: 'N8nSelect' }).props('filterMethod')('Webex by Cisco');
+		await nextTick();
+		expect(names(wrapper)).toEqual(['ciscoWebexOAuth2Api']);
+
+		await select(wrapper, 'ciscoWebexOAuth2Api');
+		continueButton(wrapper).vm.$emit('click');
+		expect(useUIStore().openNewCredential).toHaveBeenCalledWith(
+			'ciscoWebexOAuth2Api',
+			false,
+			false,
+			undefined,
+			undefined,
+			undefined,
+			undefined,
+			expect.any(Object),
+		);
 	});
 
 	it('keeps the list hidden while the project policy loads', async () => {
