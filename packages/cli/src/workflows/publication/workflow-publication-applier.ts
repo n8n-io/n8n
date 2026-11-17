@@ -414,6 +414,7 @@ export class WorkflowPublicationApplier {
 			{
 				type: 'failed',
 				error,
+				nodeId: triggerStatuses.length === 1 ? triggerStatuses[0].nodeId : undefined,
 				triggerState: { versionId: newVersion.versionId, triggerStatuses },
 			},
 			teardownFailures,

@@ -1399,6 +1399,7 @@ describe('WorkflowPublicationApplier', () => {
 					],
 				},
 			});
+			expect(result).not.toHaveProperty('nodeId', expect.anything());
 			expect(workflowTriggerActivator.activate).not.toHaveBeenCalled();
 		});
 
@@ -1452,6 +1453,7 @@ describe('WorkflowPublicationApplier', () => {
 
 			expect(result).toMatchObject({
 				type: 'failed',
+				nodeId: 'x',
 				triggerState: {
 					versionId: 'v-2',
 					triggerStatuses: [{ nodeId: 'x', status: 'failed', triggerKind: 'persisted' }],
