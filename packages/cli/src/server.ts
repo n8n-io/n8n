@@ -31,6 +31,7 @@ import { Push } from '@/push';
 import * as ResponseHelper from '@/response-helper';
 import { resolveContentSecurityPolicies } from '@/security/content-security-policy';
 import type { FrontendService } from '@/services/frontend.service';
+import { LOCAL_CATALOGS_PATH } from '@/services/locale.service';
 import { Telemetry } from '@/telemetry';
 import * as requestPath from '@/utils/request-path';
 
@@ -379,6 +380,7 @@ export class Server extends AbstractServer {
 		const { staticCacheDir } = Container.get(InstanceSettings);
 
 		this.protectTypeFiles(staticCacheDir);
+		this.serveLocalCatalogs(staticCacheDir);
 
 		if (frontendService) {
 			const assetAuthMiddleware = Container.get(AuthService).createAssetAuthMiddleware();
@@ -562,6 +564,24 @@ export class Server extends AbstractServer {
 		} else {
 			this.app.use('/', express.static(staticCacheDir, cacheOptions));
 		}
+	}
+
+	/**
+	 * Serves the local translation catalogs without authentication, because the sign-in page needs
+	 * them. Each file name has a hash of its content, so a browser can keep a file for good.
+	 */
+	private serveLocalCatalogs(staticCacheDir: string) {
+		this.app.use(
+			`/${LOCAL_CATALOGS_PATH}`,
+			express.static(resolve(staticCacheDir, LOCAL_CATALOGS_PATH), {
+				immutable: true,
+				maxAge: Time.days.toMilliseconds * 365,
+				// Answer a missing catalog with 404 instead of falling through to the editor page.
+				fallthrough: false,
+				index: false,
+				redirect: false,
+			}),
+		);
 	}
 
 	/** Authenticates every request that can reach a type file, whether or not the editor is served. */

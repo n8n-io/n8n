@@ -46,6 +46,8 @@ type Mount = (typeof MOUNTS)[number];
 const ICON_MARKER = 'node-icon-marker';
 const SCHEMA_MARKER = 'node-schema-marker';
 const BROWSER_ID = 'test-browser-id';
+const CATALOG_FILE = 'de.0a74b604c023226e.json';
+const CATALOG_CONTENT = '{"generic.save":"Speichern"}';
 
 const PUBLIC_SETTINGS = {
 	settingsMode: 'public',
@@ -123,6 +125,8 @@ describe('Server static assets', () => {
 		);
 		writeFileSync(path.join(staticCacheDir, 'public-asset.txt'), 'public');
 		writeFileSync(path.join(staticCacheDir, 'types-extra.txt'), 'extra');
+		mkdirSync(path.join(staticCacheDir, 'locales'));
+		writeFileSync(path.join(staticCacheDir, 'locales', CATALOG_FILE), CATALOG_CONTENT);
 
 		const resolvedDir = path.join(staticCacheDir, 'resolved');
 		mkdirSync(resolvedDir);
@@ -276,6 +280,31 @@ describe('Server static assets', () => {
 				expect(statusCode).toBe(401);
 				expect(headers['set-cookie']).toBeUndefined();
 			});
+		});
+
+		describe('local translation catalogs', () => {
+			test('serves a catalog without authentication and lets the browser keep it', async () => {
+				const { statusCode, headers, body } = await get(`/locales/${CATALOG_FILE}`, ports[mount], {
+					accept: 'application/json, text/plain, */*',
+				});
+
+				expect(statusCode).toBe(200);
+				expect(body).toBe(CATALOG_CONTENT);
+				expect(headers['content-type']).toContain('application/json');
+				expect(headers['cache-control']).toBe('public, max-age=31536000, immutable');
+			});
+
+			test.each(['/locales/de.ffffffffffffffff.json', '/locales/', '/locales'])(
+				'answers %s with 404, not with the editor page',
+				async (requestPath) => {
+					const { statusCode, body } = await get(requestPath, ports[mount], {
+						accept: 'application/json, text/plain, */*',
+					});
+
+					expect(statusCode).toBe(404);
+					expect(body).not.toContain('<html>');
+				},
+			);
 		});
 
 		describe('node icons', () => {

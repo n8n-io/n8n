@@ -26,7 +26,7 @@ import { locale } from '@n8n/design-system';
 import { registerTimeAgoLocale } from '@/app/utils/timeAgoLocale';
 import { loadLanguage, setLanguage } from '@n8n/i18n';
 // Note: no need to import en.json here; default 'en' is handled via setLanguage
-import { getLocaleCatalog, loadLocaleCatalog } from '@n8n/rest-api-client/api/settings';
+import { fetchLocaleCatalog } from '@n8n/rest-api-client/api/settings';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import axios from 'axios';
 import { computed, onMounted, provide, ref, shallowRef, watch } from 'vue';
@@ -117,21 +117,18 @@ watch(route, (r) => {
 watch(
 	effectiveLocale,
 	async (newLocale) => {
-		if (newLocale !== 'en') {
+		// A locale without a catalog URL (English, or one the instance doesn't offer) still applies:
+		// missing keys show in English, and node translations keyed by this locale still work.
+		const catalogUrl = settingsStore.settings.availableLocales?.find(
+			({ code }) => code === newLocale,
+		)?.url;
+		if (catalogUrl) {
 			try {
-				const configured = settingsStore.settings.availableLocales?.find(
-					({ code }) => code === newLocale,
-				);
-				// A locale that the settings don't list has no catalog. The request returns 404.
-				const messages = configured
-					? await loadLocaleCatalog(rootStore.restApiContext, configured)
-					: await getLocaleCatalog(rootStore.restApiContext, newLocale);
+				const messages = await fetchLocaleCatalog(catalogUrl, rootStore.baseUrl);
 				// A newer locale change started while this catalog was loading.
 				if (newLocale !== effectiveLocale.value) return;
 				loadLanguage(newLocale, messages);
 			} catch (error) {
-				// No admin-configured catalog for this locale. Apply it anyway: missing keys show
-				// in English, and node translations keyed by this locale still work.
 				if (newLocale !== effectiveLocale.value) return;
 				console.warn(`Failed to load the catalog for locale "${newLocale}"`, error);
 			}

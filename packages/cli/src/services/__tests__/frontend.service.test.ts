@@ -724,7 +724,7 @@ describe('FrontendService', () => {
 			const locales = [
 				{ code: 'en', name: 'English' },
 				{ code: 'de', name: 'Deutsch', url: 'https://translations.example.com/n8n/de/de_2.4.json' },
-				{ code: 'fr', name: 'Français', hash: 'abc123' },
+				{ code: 'fr', name: 'Français', url: 'locales/fr.abc123.json' },
 			];
 			localeService.getAvailableLocales.mockReturnValue(locales);
 

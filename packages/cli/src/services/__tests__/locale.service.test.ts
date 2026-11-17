@@ -1,11 +1,20 @@
 import type { Logger } from '@n8n/backend-common';
 import type { GlobalConfig } from '@n8n/config';
-import { mkdtempSync, rmSync, writeFileSync } from 'fs';
+import {
+	existsSync,
+	mkdirSync,
+	mkdtempSync,
+	readdirSync,
+	readFileSync,
+	rmSync,
+	writeFileSync,
+} from 'fs';
+import type { InstanceSettings } from 'n8n-core';
 import { tmpdir } from 'os';
 import { join } from 'path';
 import { mock } from 'vitest-mock-extended';
 
-import { LocaleService } from '../locale.service';
+import { LOCAL_CATALOGS_PATH, LocaleService } from '../locale.service';
 
 const versionState = vi.hoisted(() => ({ version: '2.4.1' }));
 
@@ -18,8 +27,10 @@ vi.mock('@/constants', async (importOriginal) => ({
 
 describe('LocaleService', () => {
 	let dir: string;
+	let staticCacheDir: string;
 	const logger = mock<Logger>();
 	const baseUrl = 'https://translations.example.com/n8n';
+	const localUrl = expect.stringMatching(/^locales\/de\.[0-9a-f]{16}\.json$/);
 
 	const createService = (
 		available: GlobalConfig['locales']['available'],
@@ -32,6 +43,7 @@ describe('LocaleService', () => {
 				locales: { available, userOverride: true, versionedBaseUrl },
 			} as GlobalConfig,
 			logger,
+			{ staticCacheDir } as InstanceSettings,
 		);
 
 	const writeCatalog = (name: string, content: string) => {
@@ -40,8 +52,14 @@ describe('LocaleService', () => {
 		return file;
 	};
 
+	const urlOf = (file: string) =>
+		createService({ de: { name: 'Deutsch', file } }).getAvailableLocales()[1]?.url;
+
+	const catalogsDir = () => join(staticCacheDir, LOCAL_CATALOGS_PATH);
+
 	beforeEach(() => {
 		dir = mkdtempSync(join(tmpdir(), 'n8n-locales-'));
+		staticCacheDir = join(dir, 'static');
 		versionState.version = '2.4.1';
 		vi.clearAllMocks();
 	});
@@ -60,7 +78,7 @@ describe('LocaleService', () => {
 
 			expect(service.getAvailableLocales()).toEqual([
 				{ code: 'en', name: 'English' },
-				{ code: 'de', name: 'Deutsch', hash: expect.stringMatching(/^[0-9a-f]{16}$/) },
+				{ code: 'de', name: 'Deutsch', url: localUrl },
 			]);
 			expect(logger.warn).toHaveBeenCalledWith(
 				expect.stringContaining('Skipping locale "fr"'),
@@ -90,31 +108,80 @@ describe('LocaleService', () => {
 
 			expect(logger.warn).toHaveBeenCalledWith(expect.stringContaining('N8N_DEFAULT_LOCALE'));
 		});
+
+		it.each([
+			['invalid JSON', '{not json'],
+			['a JSON value that is not an object', '["Speichern"]'],
+		])('should skip a file with %s', (_, content) => {
+			const service = createService({
+				de: { name: 'Deutsch', file: writeCatalog('de.json', content) },
+			});
+
+			expect(service.getAvailableLocales()).toEqual([{ code: 'en', name: 'English' }]);
+			expect(logger.warn).toHaveBeenCalledWith(
+				expect.stringContaining('Skipping locale "de"'),
+				expect.anything(),
+			);
+		});
 	});
 
-	describe('local catalog hash', () => {
-		const hashOf = (file: string) => {
-			const service = createService({ de: { name: 'Deutsch', file } });
-			return service.getAvailableLocales()[1].hash;
-		};
-
+	describe('local catalog URL', () => {
 		it('should be the same for the same content', () => {
-			expect(hashOf(writeCatalog('a.json', '{"a":"1"}'))).toBe(
-				hashOf(writeCatalog('b.json', '{"a":"1"}')),
+			expect(urlOf(writeCatalog('a.json', '{"a":"1"}'))).toBe(
+				urlOf(writeCatalog('b.json', '{"a":"1"}')),
 			);
 		});
 
 		it('should change when the content changes', () => {
-			expect(hashOf(writeCatalog('a.json', '{"a":"1"}'))).not.toBe(
-				hashOf(writeCatalog('b.json', '{"a":"2"}')),
+			expect(urlOf(writeCatalog('a.json', '{"a":"1"}'))).not.toBe(
+				urlOf(writeCatalog('b.json', '{"a":"2"}')),
 			);
 		});
 
-		it('should match the hash that getUiCatalog returns for the same content', async () => {
-			const file = writeCatalog('de.json', '{"generic.save":"Speichern"}');
+		it('should not change when only backend keys change', () => {
+			expect(urlOf(writeCatalog('a.json', '{"a":"1","backend.x":"1"}'))).toBe(
+				urlOf(writeCatalog('b.json', '{"a":"1","backend.x":"2"}')),
+			);
+		});
+	});
+
+	describe('publishLocalCatalogs', () => {
+		it('should write each local catalog under its URL, without backend keys', async () => {
+			const file = writeCatalog(
+				'de.json',
+				JSON.stringify({ 'generic.save': 'Speichern', 'backend.error.notFound': 'Nicht gefunden' }),
+			);
 			const service = createService({ de: { name: 'Deutsch', file } });
 
-			expect((await service.getUiCatalog('de'))?.hash).toBe(service.getAvailableLocales()[1].hash);
+			await service.publishLocalCatalogs();
+
+			const url = service.getAvailableLocales()[1].url!;
+			expect(JSON.parse(readFileSync(join(staticCacheDir, url), 'utf8'))).toEqual({
+				'generic.save': 'Speichern',
+			});
+		});
+
+		it('should remove the catalogs of an earlier start', async () => {
+			mkdirSync(catalogsDir(), { recursive: true });
+			writeFileSync(join(catalogsDir(), 'de.0000000000000000.json'), '{}');
+			const service = createService({
+				de: { name: 'Deutsch', file: writeCatalog('de.json', '{}') },
+			});
+
+			await service.publishLocalCatalogs();
+
+			expect(readdirSync(catalogsDir())).toEqual([
+				service.getAvailableLocales()[1].url!.split('/')[1],
+			]);
+		});
+
+		it('should leave no folder when there is no local catalog', async () => {
+			mkdirSync(catalogsDir(), { recursive: true });
+			const service = createService({ de: { name: 'Deutsch' } }, { versionedBaseUrl: baseUrl });
+
+			await service.publishLocalCatalogs();
+
+			expect(existsSync(catalogsDir())).toBe(false);
 		});
 	});
 
@@ -129,15 +196,13 @@ describe('LocaleService', () => {
 		});
 
 		it('should prefer a local file over the base URL', () => {
-			const file = writeCatalog('fr.json', '{}');
+			const file = writeCatalog('de.json', '{}');
 			const service = createService(
-				{ fr: { name: 'Français', file } },
+				{ de: { name: 'Deutsch', file } },
 				{ versionedBaseUrl: baseUrl },
 			);
 
-			const [, fr] = service.getAvailableLocales();
-			expect(fr.url).toBeUndefined();
-			expect(fr.hash).toBeDefined();
+			expect(service.getAvailableLocales()[1].url).toEqual(localUrl);
 		});
 
 		it('should skip an entry without a file when no base URL is set', () => {
@@ -163,57 +228,6 @@ describe('LocaleService', () => {
 			);
 
 			expect(service.getAvailableLocales()[1].url).toBe(`${baseUrl}/de/de_2.4.json`);
-		});
-
-		it('should not serve a remote catalog through the backend', async () => {
-			const service = createService({ de: { name: 'Deutsch' } }, { versionedBaseUrl: baseUrl });
-
-			expect(await service.getUiCatalog('de')).toBeNull();
-		});
-	});
-
-	describe('getUiCatalog', () => {
-		it('should return null for English and for an unknown locale', async () => {
-			const service = createService({});
-
-			expect(await service.getUiCatalog('en')).toBeNull();
-			expect(await service.getUiCatalog('xx')).toBeNull();
-		});
-
-		it('should return the catalog without backend keys', async () => {
-			const file = writeCatalog(
-				'de.json',
-				JSON.stringify({ 'generic.save': 'Speichern', 'backend.error.notFound': 'Nicht gefunden' }),
-			);
-			const service = createService({ de: { name: 'Deutsch', file } });
-
-			expect((await service.getUiCatalog('de'))?.catalog).toEqual({ 'generic.save': 'Speichern' });
-		});
-
-		it('should read the file again on every call', async () => {
-			const file = writeCatalog('de.json', JSON.stringify({ 'generic.save': 'Speichern' }));
-			const service = createService({ de: { name: 'Deutsch', file } });
-			const before = await service.getUiCatalog('de');
-
-			writeFileSync(file, JSON.stringify({ 'generic.save': 'Sichern' }));
-
-			const after = await service.getUiCatalog('de');
-			expect(after?.catalog).toEqual({ 'generic.save': 'Sichern' });
-			expect(after?.hash).not.toBe(before?.hash);
-		});
-
-		it('should return null for invalid JSON', async () => {
-			const file = writeCatalog('de.json', '{not json');
-			const service = createService({ de: { name: 'Deutsch', file } });
-
-			expect(await service.getUiCatalog('de')).toBeNull();
-		});
-
-		it('should return null when the file is not a JSON object', async () => {
-			const file = writeCatalog('de.json', '["Speichern"]');
-			const service = createService({ de: { name: 'Deutsch', file } });
-
-			expect(await service.getUiCatalog('de')).toBeNull();
 		});
 	});
 });
