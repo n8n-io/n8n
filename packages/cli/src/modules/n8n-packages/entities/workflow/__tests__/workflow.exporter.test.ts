@@ -1,4 +1,5 @@
 import type { User, WorkflowEntity } from '@n8n/db';
+import { UnprocessableRequestError } from '@n8n/errors';
 import { jsonParse } from 'n8n-workflow';
 import type { INode } from 'n8n-workflow';
 import { mock } from 'vitest-mock-extended';
@@ -236,6 +237,28 @@ describe('WorkflowExporter', () => {
 			id: null,
 			__aiGatewayManaged: true,
 		});
+	});
+
+	it('throws a 422 that names the workflow and invalid fields when stored data fails the schema', async () => {
+		const workflow = makeWorkflow({
+			nodes: [{ id: 'n1', name: 'Node', type: 'x', typeVersion: 1, parameters: {} }] as never,
+		});
+		const { exporter } = makeExporter([workflow]);
+
+		const error = await exporter
+			.export({
+				user,
+				workflowIds: [workflow.id],
+				writer: new CapturingWriter(),
+				includeTags: true,
+				versionPolicy: 'latest',
+			})
+			.catch((e: unknown) => e);
+
+		expect(error).toBeInstanceOf(UnprocessableRequestError);
+		expect((error as UnprocessableRequestError).httpStatusCode).toBe(422);
+		expect((error as UnprocessableRequestError).message).toContain(workflow.id);
+		expect((error as UnprocessableRequestError).message).toContain('nodes.0.position');
 	});
 
 	it('writes node groups into workflow.json', async () => {
