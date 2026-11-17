@@ -89,13 +89,16 @@ function onAddTriggerSelect(action: AddTriggerAction) {
 	else openTaskModal(null);
 }
 
-/** The credential name says which account the channel uses, so it leads when known. */
+/**
+ * How users reach the agent leads when the channel has a mention model. Else the
+ * credential name says which account the channel uses.
+ */
 function channelTitle(channel: AgentTriggerChannelItem) {
-	return channel.credentialName ?? channel.label;
+	return channel.mentionLabel ?? channel.credentialName ?? channel.label;
 }
 
 function channelSource(channel: AgentTriggerChannelItem) {
-	if (!channel.credentialName) return undefined;
+	if (!channel.mentionLabel && !channel.credentialName) return undefined;
 	return i18n.baseText('agents.builder.triggers.channel.source', {
 		interpolate: { channel: channel.label },
 	});
@@ -120,7 +123,7 @@ function scheduleTitle(task: AgentTaskRow) {
 	<div :class="$style.container">
 		<ul :class="$style.list" data-testid="agent-triggers-list">
 			<li :class="$style.item" data-testid="agent-triggers-preview">
-				<N8nIcon icon="message-circle" :size="16" :class="$style.icon" />
+				<N8nIcon icon="flask-conical" :size="16" :class="$style.icon" />
 				<span :class="$style.text">
 					<N8nText :class="$style.title" size="medium" bold color="text-dark">
 						{{ i18n.baseText('agents.builder.triggers.preview.label') }}

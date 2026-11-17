@@ -39,6 +39,7 @@ import {
 import { DiscordGateway, type DiscordConnection } from './discord-gateway';
 import {
 	executeDiscordContextQuery,
+	fetchDiscordAccount,
 	fetchDiscordApplicationMetadata,
 	settleDiscordActionMessage,
 } from './discord-operations';
@@ -229,6 +230,14 @@ export class DiscordIntegration extends AgentChatIntegration {
 
 	async fetchOriginNames(input: OriginInput, origin: AgentMessageIntegrationOrigin) {
 		return await fetchDiscordOriginNames(input, origin);
+	}
+
+	async describeAccount(credential: Record<string, unknown>) {
+		return await fetchDiscordAccount({
+			httpClient: this.httpClient,
+			apiUrl: DISCORD_API_URL,
+			botToken: this.extractBotToken(credential),
+		});
 	}
 
 	/** Episodic memory stays off until this channel defines its ownership policy. */

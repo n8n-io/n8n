@@ -2,6 +2,7 @@ import type { HttpRequestClient } from '@n8n/backend-network';
 
 import {
 	downloadDiscordAttachment,
+	fetchDiscordAccount,
 	fetchDiscordApplicationMetadata,
 	searchDiscordChannels,
 	settleDiscordActionMessage,
@@ -323,4 +324,50 @@ it('does not send credentials on cross-origin redirects for authenticated Discor
 					.sendCredentialsOnCrossOriginRedirect === false,
 		),
 	).toBe(true);
+});
+
+describe('fetchDiscordAccount', () => {
+	it('returns the bot username and the names of its servers', async () => {
+		const stub = createHttpClientStub(({ url }) => {
+			const path = url.pathname.replace(/^\/api\/v\d+/, '');
+			const apiCall = { method: `GET ${path}`, body: {} };
+			if (path === '/users/@me') return { apiCall, responseBody: { username: 'n8n-bot' } };
+			return { apiCall, responseBody: [GUILD_A, GUILD_B, { id: '3' }] };
+		});
+
+		const account = await fetchDiscordAccount({
+			httpClient: stub.httpClient,
+			apiUrl: API_URL,
+			botToken: BOT_TOKEN,
+		});
+
+		expect(account).toEqual({ botName: 'n8n-bot', workspaceNames: [GUILD_A.name, GUILD_B.name] });
+		const requestOptions = vi
+			.mocked(stub.httpClient.request)
+			.mock.calls.map(([options]) => options);
+		expect(
+			requestOptions.every(
+				(options) =>
+					(options as { headers?: Record<string, string> }).headers?.Authorization ===
+					`Bot ${BOT_TOKEN}`,
+			),
+		).toBe(true);
+	});
+
+	it('leaves out each part whose request fails', async () => {
+		const stub = createHttpClientStub(({ url }) => {
+			const path = url.pathname.replace(/^\/api\/v\d+/, '');
+			const apiCall = { method: `GET ${path}`, body: {} };
+			if (path === '/users/@me') return { apiCall, responseBody: { message: 'no' }, status: 401 };
+			return { apiCall, responseBody: [GUILD_A] };
+		});
+
+		const account = await fetchDiscordAccount({
+			httpClient: stub.httpClient,
+			apiUrl: API_URL,
+			botToken: BOT_TOKEN,
+		});
+
+		expect(account).toEqual({ botName: undefined, workspaceNames: [GUILD_A.name] });
+	});
 });

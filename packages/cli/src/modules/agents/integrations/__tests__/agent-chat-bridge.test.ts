@@ -408,7 +408,7 @@ describe('AgentChatBridge — consumeStream', () => {
 		registry.register(new StreamingTestIntegration());
 		registry.register(new FormattedBufferedTestIntegration());
 		registry.register(new RestrictedTestIntegration());
-		registry.register(new SlackIntegration(mock<AgentRepository>()));
+		registry.register(new SlackIntegration(mock<AgentRepository>(), mock()));
 		Container.set(ChatIntegrationRegistry, registry);
 		mockSessionGenerations();
 	});
@@ -4038,7 +4038,7 @@ describe('AgentChatBridge — Slack thread history', () => {
 
 	beforeEach(() => {
 		const registry = new ChatIntegrationRegistry();
-		registry.register(new SlackIntegration(mock<AgentRepository>()));
+		registry.register(new SlackIntegration(mock<AgentRepository>(), mock()));
 		Container.set(ChatIntegrationRegistry, registry);
 		mockSessionGenerations();
 	});

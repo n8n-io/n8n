@@ -1,5 +1,6 @@
 import type { HttpRequestClient } from '@n8n/backend-network';
 import { z } from 'zod';
+import { isRecord } from '@n8n/utils/is-record';
 
 import { connectionUnavailable, unsupportedQuery } from '../../integration-helpers';
 
@@ -295,4 +296,56 @@ export async function fetchDiscordApplicationMetadata(params: {
 		return { ok: false, kind: 'incomplete' };
 	}
 	return { ok: true, application: { id: body.id, verify_key: body.verify_key } };
+}
+
+/** Discord returns at most 200 guilds per page; more than that only changes a count. */
+const DISCORD_GUILD_PAGE_LIMIT = 200;
+
+/**
+ * The bot username and the servers it is in, for display labels. A failed
+ * request leaves that part out, so the label falls back to less detail.
+ */
+export async function fetchDiscordAccount(params: {
+	httpClient: HttpRequestClient;
+	apiUrl: string;
+	botToken: string;
+}): Promise<{ botName?: string; workspaceNames?: string[] }> {
+	const headers = { Authorization: `Bot ${params.botToken}` };
+	const [user, guilds] = await Promise.all([
+		params.httpClient.request<unknown>({
+			method: 'GET',
+			url: `${params.apiUrl}/users/@me`,
+			headers,
+			json: true,
+			returnFullResponse: true,
+			ignoreHttpStatusErrors: true,
+			sendCredentialsOnCrossOriginRedirect: false,
+		}),
+		params.httpClient.request<unknown>({
+			method: 'GET',
+			url: `${params.apiUrl}/users/@me/guilds?limit=${DISCORD_GUILD_PAGE_LIMIT}`,
+			headers,
+			json: true,
+			returnFullResponse: true,
+			ignoreHttpStatusErrors: true,
+			sendCredentialsOnCrossOriginRedirect: false,
+		}),
+	]);
+
+	const botName =
+		isSuccess(user.statusCode) && isRecord(user.body) && typeof user.body.username === 'string'
+			? user.body.username
+			: undefined;
+	const workspaceNames =
+		isSuccess(guilds.statusCode) && Array.isArray(guilds.body)
+			? guilds.body.flatMap((guild: unknown) =>
+					isRecord(guild) && typeof guild.name === 'string' ? [guild.name] : [],
+				)
+			: undefined;
+
+	return { botName, workspaceNames };
+}
+
+function isSuccess(statusCode: number) {
+	return statusCode >= 200 && statusCode < 300;
 }

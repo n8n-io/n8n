@@ -6,6 +6,8 @@ export interface AgentTriggerChannelItem {
 	label: string;
 	icon: IconName;
 	credentialName?: string;
+	/** How users reach the agent, such as "Mention @AgentBot in Acme". */
+	mentionLabel?: string;
 	invalidReasons: string[];
 	invalidIcon?: IconName;
 	warningReasons: string[];
