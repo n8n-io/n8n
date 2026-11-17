@@ -14,7 +14,6 @@ import { getAgentWebhookUrl } from '../../composables/useAgentApi';
 import type { AgentChannelViewProps } from '../types';
 import AgentChannelWebhookAuth from './AgentChannelWebhookAuth.vue';
 import AgentChannelWebhookInstructions from './AgentChannelWebhookInstructions.vue';
-import AgentChannelWebhookShare from './AgentChannelWebhookShare.vue';
 
 const credentialId = defineModel<string>({ default: '' });
 const props = defineProps<AgentChannelViewProps>();
@@ -60,7 +59,6 @@ watch(authentication, () => {
 });
 
 const endpointUrl = ref('');
-const baseUrl = ref('');
 async function loadEndpointUrl() {
 	try {
 		const { url } = await getAgentWebhookUrl(
@@ -69,7 +67,6 @@ async function loadEndpointUrl() {
 			props.agentId,
 		);
 		endpointUrl.value = `${url}/responses`;
-		baseUrl.value = url;
 	} catch {
 		// The view stays usable without the URL. The edit view shows it after a retry.
 	}
@@ -152,7 +149,6 @@ defineExpose({ credentialId, currentSettings, credentialRequired });
 							/>
 						</div>
 						<AgentChannelWebhookInstructions :authentication="authentication" />
-			<AgentChannelWebhookShare v-if="baseUrl" :base-url="baseUrl" :enabled="authentication === 'none'" />
 						<N8nButton
 							v-if="!connected"
 							variant="outline"
@@ -212,7 +208,6 @@ defineExpose({ credentialId, currentSettings, credentialRequired });
 				</N8nText>
 			</div>
 			<AgentChannelWebhookInstructions :authentication="authentication" />
-			<AgentChannelWebhookShare v-if="baseUrl" :base-url="baseUrl" :enabled="authentication === 'none'" />
 		</template>
 	</div>
 </template>

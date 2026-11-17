@@ -1,12 +1,25 @@
+import { UrlService } from '@n8n/backend-services';
 import { AgentsConfig, GlobalConfig } from '@n8n/config';
 import { createIpRateLimit, Get, Options, Post, RootLevelController } from '@n8n/decorators';
 import { Container } from '@n8n/di';
 import type { Request, Response } from 'express';
+import { randomBytes } from 'node:crypto';
 import path from 'node:path';
 
-import { WebhookChannelService } from './webhook-channel.service';
+import { AuthService } from '@/auth/auth.service';
+import { AUTH_COOKIE_NAME } from '@/constants';
+
+import { WebhookChannelService, type ChatPageUser } from './webhook-channel.service';
 
 const agentsConfig = Container.get(AgentsConfig);
+
+// SPIKE (agent-chat-embed): any origin; the widget sends its chat token as a bearer header.
+const CHAT_CORS = { allowedHeaders: ['Origin', 'Content-Type', 'Accept', 'Authorization'] };
+const REQUEST_ID = /^[A-Za-z0-9_-]{20,100}$/;
+const TOKEN_TTL = 60 * 60 * 1000;
+const REQUEST_TTL = 3 * 60 * 1000;
+const chatTokens = new Map<string, { user: ChatPageUser; agentId: string; expires: number }>();
+const loginRequests = new Map<string, { token: string; user: ChatPageUser; expires: number }>();
 
 /**
  * The public endpoint of the webhook channel. It is a root-level controller, so
@@ -14,7 +27,11 @@ const agentsConfig = Container.get(AgentsConfig);
  */
 @RootLevelController(`/${Container.get(GlobalConfig).endpoints.agentWebhook}`)
 export class WebhookChannelController {
-	constructor(private readonly webhookChannel: WebhookChannelService) {}
+	constructor(
+		private readonly webhookChannel: WebhookChannelService,
+		private readonly authService: AuthService,
+		private readonly urlService: UrlService,
+	) {}
 
 	// Public routes: do not add a scope decorator. The caller is not an n8n user,
 	// and the channel's own authentication runs in the service.
@@ -49,28 +66,57 @@ export class WebhookChannelController {
 
 	@Get('/:agentId/chat', { skipAuth: true, allowBots: true, usesTemplates: true })
 	async chatPage(req: Request<{ agentId: string }>, res: Response) {
-		const info = await this.webhookChannel.chatPageInfo(req.params.agentId);
-		if (!info) {
-			res.status(404).send('This agent has no public chat page.');
+		const page = await this.webhookChannel.chatPage(req.params.agentId);
+		if (!page) {
+			res.status(404).send('This agent has no chat page.');
 			return;
 		}
 		res.setHeader('Content-Type', 'text/html; charset=utf-8');
-		res.send(chatPageHtml(info.name));
+		res.send(chatPageHtml(page.agent.name));
 	}
 
-	@Options('/:agentId/chat/config', { skipAuth: true, allowBots: true, usesTemplates: true, cors: true })
+	@Options('/:agentId/chat/config', {
+		skipAuth: true,
+		allowBots: true,
+		usesTemplates: true,
+		cors: CHAT_CORS,
+	})
 	chatConfigPreflight(_req: Request, res: Response) {
 		res.status(204).end();
 	}
 
-	@Get('/:agentId/chat/config', { skipAuth: true, allowBots: true, usesTemplates: true, cors: true })
+	@Get('/:agentId/chat/config', {
+		skipAuth: true,
+		allowBots: true,
+		usesTemplates: true,
+		cors: CHAT_CORS,
+	})
 	async chatConfig(req: Request<{ agentId: string }>, res: Response) {
-		const info = await this.webhookChannel.chatPageInfo(req.params.agentId);
-		if (!info) res.status(404).json({ message: 'This agent has no public chat' });
-		else res.json({ name: info.name });
+		const { agentId } = req.params;
+		const page = await this.webhookChannel.chatPage(agentId);
+		if (!page) {
+			res.status(404).json({ message: 'This agent has no chat page' });
+			return;
+		}
+		const chatUrl = `${this.urlService.getAgentWebhookUrl(agentId)}/chat`;
+		const user = await this.chatUser(req);
+		res.json({
+			name: page.agent.name,
+			access: page.access,
+			user: user ? { name: user.name } : null,
+			// Hosted page: same origin, so the n8n cookie works after a normal sign-in.
+			signInUrl: this.signInUrl(chatUrl),
+			// Embed: a popup signs in on the instance, the widget polls for a token.
+			loginUrl: `${chatUrl}/login`,
+		});
 	}
 
-	@Options('/:agentId/chat/messages', { skipAuth: true, allowBots: true, usesTemplates: true, cors: true })
+	@Options('/:agentId/chat/messages', {
+		skipAuth: true,
+		allowBots: true,
+		usesTemplates: true,
+		cors: CHAT_CORS,
+	})
 	chatPreflight(_req: Request, res: Response) {
 		res.status(204).end();
 	}
@@ -80,9 +126,10 @@ export class WebhookChannelController {
 		skipAuth: true,
 		allowBots: true,
 		usesTemplates: true,
-		cors: true,
+		cors: CHAT_CORS,
 	})
 	async chatMessage(req: Request<{ agentId: string }>, res: Response) {
+		const user = await this.chatUser(req);
 		res.status(200);
 		res.setHeader('Content-Type', 'application/x-ndjson; charset=utf-8');
 		res.setHeader('Cache-Control', 'no-cache');
@@ -91,12 +138,99 @@ export class WebhookChannelController {
 		for await (const event of this.webhookChannel.chat({
 			agentId: req.params.agentId,
 			body: req.body,
+			user,
 			abortSignal: abortOnClose(res),
 		})) {
 			res.write(JSON.stringify(event) + '\n');
 			(res as Response & { flush?: () => void }).flush?.();
 		}
 		res.end();
+	}
+
+	/**
+	 * SPIKE: the popup of the embed sign-in. It runs first-party on the instance,
+	 * so the n8n cookie works whatever the browser does with third-party cookies.
+	 * Signed in: it parks a short-lived chat token under the widget's request id.
+	 * Not signed in: it goes through the normal sign-in page and comes back.
+	 */
+	@Get('/:agentId/chat/login', { skipAuth: true, allowBots: true, usesTemplates: true })
+	async chatLogin(
+		req: Request<{ agentId: string }, unknown, unknown, { request?: string }>,
+		res: Response,
+	) {
+		const { agentId } = req.params;
+		const requestId = req.query.request ?? '';
+		if (!REQUEST_ID.test(requestId) || !(await this.webhookChannel.chatPage(agentId))) {
+			res.status(400).send('Invalid sign-in request.');
+			return;
+		}
+		const user = await this.cookieUser(req);
+		if (!user) {
+			const back = `${this.urlService.getAgentWebhookUrl(agentId)}/chat/login?request=${requestId}`;
+			res.redirect(this.signInUrl(back));
+			return;
+		}
+		// ponytail: in-memory, single main only; the product stores tokens in the DB (or signs them).
+		const token = randomBytes(32).toString('base64url');
+		chatTokens.set(token, { user, agentId, expires: Date.now() + TOKEN_TTL });
+		loginRequests.set(requestId, { token, user, expires: Date.now() + REQUEST_TTL });
+		res.setHeader('Content-Type', 'text/html; charset=utf-8');
+		res.send(loginDoneHtml(user.name));
+	}
+
+	@Options('/:agentId/chat/login/:requestId', {
+		skipAuth: true,
+		allowBots: true,
+		usesTemplates: true,
+		cors: CHAT_CORS,
+	})
+	chatLoginPreflight(_req: Request, res: Response) {
+		res.status(204).end();
+	}
+
+	/** SPIKE: the widget polls here until the popup has signed in. Hands the token out once. */
+	@Post('/:agentId/chat/login/:requestId', {
+		skipAuth: true,
+		allowBots: true,
+		usesTemplates: true,
+		cors: CHAT_CORS,
+	})
+	chatLoginPoll(req: Request<{ agentId: string; requestId: string }>, res: Response) {
+		const entry = loginRequests.get(req.params.requestId);
+		if (!entry || entry.expires < Date.now()) {
+			res.status(202).json({ status: 'pending' });
+			return;
+		}
+		loginRequests.delete(req.params.requestId);
+		res.json({ token: entry.token, user: { name: entry.user.name } });
+	}
+
+	/** The chat user: a widget token first, then the n8n cookie (hosted page, same origin). */
+	private async chatUser(req: Request<{ agentId: string }>): Promise<ChatPageUser | undefined> {
+		const bearer = /^Bearer (.+)$/.exec(req.headers.authorization ?? '')?.[1];
+		if (bearer) {
+			const entry = chatTokens.get(bearer);
+			if (entry && entry.agentId === req.params.agentId && entry.expires > Date.now())
+				return entry.user;
+			return undefined;
+		}
+		return await this.cookieUser(req);
+	}
+
+	private async cookieUser(req: Request): Promise<ChatPageUser | undefined> {
+		const cookie = (req.cookies as Record<string, string> | undefined)?.[AUTH_COOKIE_NAME];
+		if (!cookie) return undefined;
+		try {
+			const person = await this.authService.authenticateUserByCookie(cookie);
+			const name = `${person.firstName ?? ''} ${person.lastName ?? ''}`.trim() || person.email;
+			return { id: person.id, name };
+		} catch {
+			return undefined;
+		}
+	}
+
+	private signInUrl(returnTo: string) {
+		return `${this.urlService.getInstanceBaseUrl()}/signin?redirect=${encodeURIComponent(returnTo)}`;
 	}
 
 	@Post('/:agentId/approvals/:conversationId/:runId/:toolCallId', {
@@ -135,6 +269,19 @@ const CHAT_ASSETS: Record<string, { path: string; type: string }> = {
 	'agent-chat.css': { path: path.join(chatDist, 'agent-chat.css'), type: 'text/css' },
 };
 
+/** SPIKE: what the sign-in popup shows once it has handed the token over. */
+function loginDoneHtml(userName: string) {
+	const escape = (value: string) => value.replace(/[&<>"]/g, (c) => `&#${c.charCodeAt(0)};`);
+	return `<!doctype html>
+<html lang="en">
+<head><meta charset="utf-8" /><title>Signed in</title></head>
+<body style="font-family: system-ui, sans-serif; padding: 24px">
+	<p data-testid="chat-login-done">Signed in as <strong>${escape(userName)}</strong>. You can close this window and go back to the chat.</p>
+	<script>window.close()</script>
+</body>
+</html>`;
+}
+
 /** SPIKE: the hosted chat page. It mounts @n8n/agent-chat in full-screen mode. */
 function chatPageHtml(agentName: string) {
 	const escape = (value: string) => value.replace(/[&<>"]/g, (c) => `&#${c.charCodeAt(0)};`);
@@ -146,7 +293,7 @@ function chatPageHtml(agentName: string) {
 	<title>${escape(agentName)}</title>
 </head>
 <body>
-	<script src="../assets/agent-chat.js" data-agent-url="${escape('./chat')}" data-mode="fullscreen"></script>
+	<script src="../assets/agent-chat.js" data-agent-url="${escape('./chat')}" data-mode="fullscreen" data-theme="n8n"></script>
 </body>
 </html>`;
 }

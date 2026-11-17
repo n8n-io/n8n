@@ -1,10 +1,16 @@
 <script setup lang="ts">
 import { computed, nextTick, onMounted, ref } from 'vue';
 
-import { fetchConfig, sendMessage, type ChatConfig } from './api';
+import { fetchConfig, loginWithPopup, sendMessage, type ChatConfig } from './api';
 import { renderMarkdown } from './markdown';
 
-const props = defineProps<{ base: string; mode: 'fullscreen' | 'bubble'; title?: string; welcomeMessage?: string }>();
+const props = defineProps<{
+	base: string;
+	mode: 'fullscreen' | 'bubble';
+	title?: string;
+	welcomeMessage?: string;
+	theme: 'n8n' | 'default';
+}>();
 
 interface Tool {
 	id: string;
@@ -31,13 +37,72 @@ let abort: AbortController | undefined;
 const title = computed(() => props.title ?? config.value?.name ?? 'Agent');
 const welcome = computed(() => props.welcomeMessage ?? config.value?.welcomeMessage);
 
-onMounted(async () => {
+// Embed sign-in: the token lives in this tab's storage of the host page (first-party).
+const storageKey = `n8n-agent-chat:${props.base}`;
+const stored = readSession();
+const token = ref<string | undefined>(stored?.token);
+const userName = ref<string | undefined>(stored?.user);
+const signingIn = ref(false);
+const sameOrigin = new URL(props.base, location.href).origin === location.origin;
+const needsLogin = computed(
+	() => config.value?.access === 'users' && !config.value.user && !token.value,
+);
+const signedInAs = computed(() => config.value?.user?.name ?? userName.value);
+
+function readSession(): { token: string; user: string } | undefined {
 	try {
-		config.value = await fetchConfig(props.base);
+		return JSON.parse(sessionStorage.getItem(storageKey) ?? 'null') ?? undefined;
+	} catch {
+		return undefined;
+	}
+}
+function writeSession(value?: { token: string; user: string }) {
+	try {
+		if (value) sessionStorage.setItem(storageKey, JSON.stringify(value));
+		else sessionStorage.removeItem(storageKey);
+	} catch {}
+}
+
+async function loadConfig() {
+	try {
+		config.value = await fetchConfig(props.base, token.value);
+		// A token the server no longer knows (expired, restart): sign in again.
+		if (token.value && config.value.access === 'users' && !config.value.user) signOut();
 	} catch (error) {
 		loadError.value = (error as Error).message;
 	}
-});
+}
+onMounted(loadConfig);
+
+async function signIn() {
+	if (!config.value) return;
+	// Hosted page: same origin, the normal n8n sign-in sets the cookie and comes back.
+	if (sameOrigin) {
+		location.href = config.value.signInUrl;
+		return;
+	}
+	signingIn.value = true;
+	loadError.value = '';
+	try {
+		const result = await loginWithPopup(config.value.loginUrl);
+		token.value = result.token;
+		userName.value = result.user.name;
+		writeSession({ token: result.token, user: result.user.name });
+		newChat();
+		await loadConfig();
+	} catch (error) {
+		loadError.value = (error as Error).message;
+	} finally {
+		signingIn.value = false;
+	}
+}
+
+function signOut() {
+	token.value = undefined;
+	userName.value = undefined;
+	writeSession();
+	newChat();
+}
 
 const scrollDown = () => nextTick(() => list.value?.scrollTo({ top: list.value.scrollHeight }));
 
@@ -56,10 +121,12 @@ async function send() {
 			props.base,
 			{ message: text, conversationId: conversationId.value },
 			abort.signal,
+			token.value,
 		)) {
 			if (event.type === 'conversation') conversationId.value = event.id;
 			else if (event.type === 'text') reply.text += event.delta;
-			else if (event.type === 'tool-start') reply.tools.push({ id: event.id, name: event.name, done: false });
+			else if (event.type === 'tool-start')
+				reply.tools.push({ id: event.id, name: event.name, done: false });
 			else if (event.type === 'tool-end') {
 				const tool = reply.tools.find((t) => t.id === event.id);
 				if (tool) tool.done = true;
@@ -69,6 +136,7 @@ async function send() {
 				reply.error = true;
 				// The server forgot the conversation: start a new one on the next message.
 				if (event.code === 'conversation_not_found') conversationId.value = undefined;
+				if (event.code === 'login_required') signOut();
 			}
 			scrollDown();
 		}
@@ -98,11 +166,23 @@ function onKeydown(event: KeyboardEvent) {
 </script>
 
 <template>
-	<div :class="['agent-chat', `agent-chat--${mode}`]">
+	<div :class="['agent-chat', `agent-chat--${mode}`, `agent-chat--theme-${theme}`]">
 		<section v-if="open" class="agent-chat__window" role="dialog" :aria-label="title">
 			<header class="agent-chat__header">
+				<svg v-if="theme === 'n8n'" class="agent-chat__logo" viewBox="0 0 240 96" aria-label="n8n">
+					<path
+						d="M48 96C52.5 96 54 94.5 54 90V78C54 60 60 54 78 54H90C108 54 114 60 114 78V90C114 94.5 115.5 96 120 96C124.5 96 126 94.5 126 90V78C126 60 132 54 150 54H162C180 54 186 60 186 78V90C186 94.5 187.5 96 192 96C196.5 96 198 94.5 198 90V78C198 60 204 54 222 54H234C238.5 54 240 52.5 240 48C240 43.5 238.5 42 234 42H222C204 42 198 36 198 18V6C198 1.5 196.5 0 192 0C187.5 0 186 1.5 186 6V18C186 36 180 42 162 42H150C132 42 126 36 126 18V6C126 1.5 124.5 0 120 0C115.5 0 114 1.5 114 6V18C114 36 108 42 90 42H78C60 42 54 36 54 18V6C54 1.5 52.5 0 48 0C43.5 0 42 1.5 42 6V18C42 36 36 42 18 42H6C1.5 42 0 43.5 0 48C0 52.5 1.5 54 6 54H18C36 54 42 60 42 78V90C42 94.5 43.5 96 48 96Z"
+					/>
+				</svg>
 				<span class="agent-chat__title">{{ title }}</span>
-				<button class="agent-chat__icon-button" type="button" title="New conversation" @click="newChat">↻</button>
+				<button
+					class="agent-chat__icon-button"
+					type="button"
+					title="New conversation"
+					@click="newChat"
+				>
+					↻
+				</button>
 				<button
 					v-if="mode === 'bubble'"
 					class="agent-chat__icon-button"
@@ -114,7 +194,10 @@ function onKeydown(event: KeyboardEvent) {
 				</button>
 			</header>
 			<div ref="list" class="agent-chat__messages" aria-live="polite">
-				<p v-if="loadError" class="agent-chat__message agent-chat__message--agent agent-chat__message--error">
+				<p
+					v-if="loadError"
+					class="agent-chat__message agent-chat__message--agent agent-chat__message--error"
+				>
 					{{ loadError }}
 				</p>
 				<div
@@ -122,6 +205,12 @@ function onKeydown(event: KeyboardEvent) {
 					class="agent-chat__message agent-chat__message--agent"
 					v-html="renderMarkdown(welcome)"
 				/>
+				<div v-if="needsLogin" class="agent-chat__signin" data-testid="agent-chat-signin">
+					<p>Sign in with your n8n account to chat with {{ title }}.</p>
+					<button class="agent-chat__send" type="button" :disabled="signingIn" @click="signIn">
+						{{ signingIn ? 'Waiting for sign-in…' : 'Sign in with n8n' }}
+					</button>
+				</div>
 				<div
 					v-for="(message, index) in messages"
 					:key="index"
@@ -135,12 +224,25 @@ function onKeydown(event: KeyboardEvent) {
 						<span :class="['agent-chat__dot', { 'agent-chat__dot--done': tool.done }]" />
 						{{ tool.done ? 'Used' : 'Using' }} {{ tool.name }}
 					</div>
-					<div v-if="message.role === 'agent' && message.text" v-html="renderMarkdown(message.text)" />
+					<div
+						v-if="message.role === 'agent' && message.text"
+						v-html="renderMarkdown(message.text)"
+					/>
 					<template v-else-if="message.role === 'user'">{{ message.text }}</template>
 					<span v-else-if="busy && !message.tools.length" class="agent-chat__typing">…</span>
 				</div>
 			</div>
-			<form class="agent-chat__composer" @submit.prevent="send">
+			<div
+				v-if="signedInAs && !needsLogin"
+				class="agent-chat__identity"
+				data-testid="agent-chat-identity"
+			>
+				Signed in as {{ signedInAs }}
+				<button v-if="token" class="agent-chat__link" type="button" @click="signOut">
+					Sign out
+				</button>
+			</div>
+			<form v-if="!needsLogin" class="agent-chat__composer" @submit.prevent="send">
 				<textarea
 					v-model="input"
 					class="agent-chat__input"
@@ -149,9 +251,13 @@ function onKeydown(event: KeyboardEvent) {
 					:disabled="!!loadError"
 					@keydown="onKeydown"
 				/>
-				<button class="agent-chat__send" type="submit" :disabled="busy || !input.trim()">Send</button>
+				<button class="agent-chat__send" type="submit" :disabled="busy || !input.trim()">
+					Send
+				</button>
 			</form>
-			<footer class="agent-chat__footer">Powered by n8n · Conversations are visible to the agent's owner</footer>
+			<footer class="agent-chat__footer">
+				Powered by n8n · Conversations are visible to the agent's owner
+			</footer>
 		</section>
 		<button
 			v-if="mode === 'bubble'"
@@ -228,6 +334,27 @@ function onKeydown(event: KeyboardEvent) {
 	padding: 14px 16px;
 	border-bottom: 1px solid var(--agent-chat--color-border);
 }
+.agent-chat__logo {
+	width: 28px;
+	height: 12px;
+	fill: var(--agent-chat--color-primary);
+}
+/* Hosted page: n8n's brand. The embed keeps the neutral tokens above for the embedder's brand. */
+.agent-chat--theme-n8n {
+	--agent-chat--color-primary: #ea4b71;
+	--agent-chat--color-surface: #f2f2f5;
+	--agent-chat--color-text: #2d2e3a;
+	--agent-chat--color-border: #dcdce4;
+	--agent-chat--radius: 8px;
+}
+.agent-chat--theme-n8n.agent-chat--fullscreen {
+	--agent-chat--color-background: #f7f7fa;
+	--agent-chat--color-surface: #fff;
+}
+.agent-chat--theme-n8n.agent-chat--fullscreen .agent-chat__header {
+	background: #fff;
+	border-bottom-color: var(--agent-chat--color-border);
+}
 .agent-chat__title {
 	flex: 1;
 	font-weight: 600;
@@ -254,6 +381,7 @@ function onKeydown(event: KeyboardEvent) {
 	gap: 10px;
 }
 .agent-chat--fullscreen .agent-chat__messages,
+.agent-chat--fullscreen .agent-chat__identity,
 .agent-chat--fullscreen .agent-chat__composer {
 	width: 100%;
 	max-width: 760px;
@@ -323,6 +451,24 @@ function onKeydown(event: KeyboardEvent) {
 	to {
 		opacity: 1;
 	}
+}
+.agent-chat__signin {
+	display: flex;
+	flex-direction: column;
+	align-items: flex-start;
+	gap: 8px;
+	padding: 16px;
+}
+.agent-chat__identity {
+	padding: 0 16px;
+	font-size: 12px;
+	color: var(--agent-chat--color-text-light);
+}
+.agent-chat__link {
+	all: unset;
+	cursor: pointer;
+	text-decoration: underline;
+	margin-left: 6px;
 }
 .agent-chat__composer {
 	display: flex;

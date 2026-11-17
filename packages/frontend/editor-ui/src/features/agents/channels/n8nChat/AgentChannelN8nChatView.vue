@@ -7,6 +7,7 @@ import { I18nT } from 'vue-i18n';
 
 import { useAgentProjectBreadcrumb } from '../../composables/useAgentProjectBreadcrumb';
 import type { AgentChannelViewProps } from '../types';
+import AgentChannelN8nChatShare from './AgentChannelN8nChatShare.vue';
 
 const props = defineProps<AgentChannelViewProps & { savedDescription?: string }>();
 
@@ -48,6 +49,11 @@ defineExpose({ description });
 				data-testid="agent-channel-n8n-chat-description"
 			/>
 		</div>
+		<AgentChannelN8nChatShare
+			:project-id="projectId"
+			:agent-id="agentId"
+			:is-published="isPublished"
+		/>
 	</div>
 </template>
 

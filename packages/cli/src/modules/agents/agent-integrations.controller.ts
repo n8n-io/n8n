@@ -9,7 +9,7 @@ import {
 } from '@n8n/api-types';
 import { UrlService } from '@n8n/backend-services';
 import type { AuthenticatedRequest } from '@n8n/db';
-import { Body, Get, Param, Post, ProjectScope, RestController } from '@n8n/decorators';
+import { Body, Get, Param, Post, ProjectScope, Put, RestController } from '@n8n/decorators';
 import type { Request, Response } from 'express';
 import { InstanceSettings } from 'n8n-core';
 
@@ -19,6 +19,7 @@ import { ChatIntegrationRegistry } from './integrations/agent-chat-integration';
 import { buildChannelStatusReport } from './integrations/channel-status-report';
 import { ChatIntegrationService } from './integrations/chat-integration.service';
 import { deriveWhatsAppVerifyToken } from './integrations/integration-helpers';
+import { WebhookChannelService } from './integrations/platforms/webhook/webhook-channel.service';
 import { channelIntegrationRecorder } from './integrations/recording/channel-integration-recorder';
 import { AgentChannelStatusRepository } from './repositories/agent-channel-status.repository';
 import { AgentRepository } from './repositories/agent.repository';
@@ -38,7 +39,30 @@ export class AgentIntegrationsController {
 		private readonly instanceSettings: InstanceSettings,
 		private readonly collaborationService: CollaborationService,
 		private readonly urlService: UrlService,
+		private readonly webhookChannel: WebhookChannelService,
 	) {}
+
+	// SPIKE (agent-chat-embed): chat page of the n8n Chat channel and who may use it.
+	@Get('/:agentId/chat-page')
+	@ProjectScope('agent:read')
+	async chatPage(_req: AuthenticatedRequest, _res: Response, @Param('agentId') agentId: string) {
+		return {
+			url: `${this.urlService.getAgentWebhookUrl(agentId)}/chat`,
+			access: await this.webhookChannel.chatPageAccess(agentId),
+		};
+	}
+
+	@Put('/:agentId/chat-page')
+	@ProjectScope('agent:update')
+	async setChatPage(
+		req: AuthenticatedRequest<{ projectId: string }, unknown, { access?: string }>,
+		_res: Response,
+		@Param('agentId') agentId: string,
+	) {
+		const access = req.body?.access === 'public' ? 'public' : 'users';
+		await this.webhookChannel.setChatPageAccess(agentId, access);
+		return { access };
+	}
 
 	@Post('/:agentId/integrations/connect')
 	@ProjectScope('agent:update')

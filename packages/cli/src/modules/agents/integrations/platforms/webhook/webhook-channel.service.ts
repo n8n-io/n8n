@@ -1,6 +1,7 @@
 import type { SerializableAgentState } from '@n8n/agents';
 import {
 	isDraftIntegration,
+	N8N_CHAT_INTEGRATION_TYPE,
 	WEBHOOK_INTEGRATION_TYPE,
 	webhookAuthentication,
 	webhookCredentialType,
@@ -9,6 +10,7 @@ import {
 } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import { UrlService } from '@n8n/backend-services';
+import { SettingsRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { UserError } from '@n8n/errors';
 import { ensureError } from '@n8n/utils/errors/ensure-error';
@@ -50,6 +52,12 @@ export interface WebhookChannelReply {
 	body: unknown;
 }
 
+export type ChatPageAccess = 'users' | 'public';
+export interface ChatPageUser {
+	id: string;
+	name: string;
+}
+
 type WebhookHeaders = Readonly<Record<string, string | string[] | undefined>>;
 
 interface WebhookConversation {
@@ -88,6 +96,7 @@ export class WebhookChannelService {
 		private readonly checkpointStorage: N8NCheckpointStorage,
 		private readonly urlService: UrlService,
 		private readonly logger: Logger,
+		private readonly settingsRepository: SettingsRepository,
 	) {}
 
 	async respond(request: {
@@ -143,33 +152,43 @@ export class WebhookChannelService {
 
 	/**
 	 * SPIKE (agent-chat-embed): the agent chat protocol of @n8n/agent-chat (see
-	 * its src/api.ts). The server picks the conversation id. No access control
-	 * beyond "the API channel is published with authentication none".
+	 * its src/api.ts). The chat page belongs to the n8n Chat channel. The caller's
+	 * identity (an n8n user, or nobody on a public page) is part of the thread id,
+	 * so a conversation id only works for the identity that started it.
 	 */
 	async *chat(request: {
 		agentId: string;
 		body: unknown;
+		user: ChatPageUser | undefined;
 		abortSignal: AbortSignal;
 	}): AsyncGenerator<Record<string, unknown>> {
 		try {
-			const { agent, channel } = await this.findChannel(request.agentId);
-			if (webhookAuthentication(channel) !== 'none') {
+			const page = await this.chatPage(request.agentId);
+			if (!page)
+				throw new WebhookChannelError(404, 'agent_not_found', 'This agent has no chat page');
+			const { agent, access } = page;
+			const user = request.user;
+			if (access === 'users' && !user) {
 				throw new WebhookChannelError(
-					403,
-					'chat_not_public',
-					'Chat page needs the API channel with authentication none (spike)',
+					401,
+					'login_required',
+					'Sign in with your n8n account to chat.',
 				);
 			}
 			const body = (request.body ?? {}) as Record<string, unknown>;
 			const message = typeof body.message === 'string' ? body.message.trim() : '';
 			if (!message) throw new WebhookChannelError(400, 'invalid_request', 'message is required');
 			const requested = typeof body.conversationId === 'string' ? body.conversationId : undefined;
-			// ponytail: the random id is the only key to the conversation; the gate's session token replaces this.
 			const conversationId = requested ?? randomUUID();
-			const threadId = `${agent.id}:${WEBHOOK_INTEGRATION_TYPE}:chat:${conversationId}`;
+			const identity = user ? `user-${user.id}` : 'anonymous';
+			const threadId = `${agent.id}:${WEBHOOK_INTEGRATION_TYPE}:chat:${identity}:${conversationId}`;
 			const exists = !!requested && !!(await this.executionService.findThreadById(threadId));
 			if (requested && !exists) {
-				throw new WebhookChannelError(404, 'conversation_not_found', 'This conversation has ended. Send your message again to start a new one.');
+				throw new WebhookChannelError(
+					404,
+					'conversation_not_found',
+					'This conversation has ended. Send your message again to start a new one.',
+				);
 			}
 			if (exists) await this.cancelSuspension(agent.id, threadId);
 			yield { type: 'conversation', id: conversationId };
@@ -179,7 +198,11 @@ export class WebhookChannelService {
 				message,
 				memory: {
 					threadId,
-					resourceId: integrationMemoryResourceId(WEBHOOK_INTEGRATION_TYPE, `chat:${conversationId}`),
+					// A user keeps one memory across conversations; a visitor only per conversation.
+					resourceId: integrationMemoryResourceId(
+						WEBHOOK_INTEGRATION_TYPE,
+						user ? `chat:user:${user.id}` : `chat:${conversationId}`,
+					),
 				},
 				integrationType: WEBHOOK_INTEGRATION_TYPE,
 				sessionMode: exists ? 'existing' : 'new',
@@ -218,15 +241,27 @@ export class WebhookChannelService {
 		}
 	}
 
-	/** SPIKE: name for the hosted page title, or undefined when the chat is not available. */
-	async chatPageInfo(agentId: string) {
-		try {
-			const { agent, channel } = await this.findChannel(agentId);
-			if (webhookAuthentication(channel) !== 'none') return undefined;
-			return { name: agent.name };
-		} catch {
-			return undefined;
-		}
+	/**
+	 * SPIKE: the chat page of an agent, or undefined when there is none. It needs
+	 * the n8n Chat channel in the published version. Access defaults to n8n users.
+	 */
+	async chatPage(agentId: string) {
+		const agent = await this.agentRepository.findById(agentId);
+		const published = agent?.activeVersion?.schema?.integrations ?? [];
+		if (!agent || !published.some((entry) => entry.type === N8N_CHAT_INTEGRATION_TYPE)) return;
+		if (!(await this.settings.getEnabled())) return;
+		return { agent, access: await this.chatPageAccess(agentId) };
+	}
+
+	// ponytail: stored in the settings table to keep the agent config schema untouched;
+	// the product keeps it in the n8n Chat channel config.
+	async chatPageAccess(agentId: string): Promise<ChatPageAccess> {
+		const row = await this.settingsRepository.findByKey(`agentChatPage.${agentId}`);
+		return row?.value === 'public' ? 'public' : 'users';
+	}
+
+	async setChatPageAccess(agentId: string, access: ChatPageAccess) {
+		await this.settingsRepository.upsertByKey(`agentChatPage.${agentId}`, access, false, {});
 	}
 
 	/** Resumes the run with the caller's decision on one approval request. */

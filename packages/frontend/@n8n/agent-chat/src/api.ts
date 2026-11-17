@@ -8,7 +8,11 @@
  *   { type: 'notice', text }            e.g. an action that needs approval
  *   { type: 'error', message, code? }
  *   { type: 'done' }
- * GET {base}/config  →  { name, welcomeMessage }
+ * GET {base}/config  →  { name, access, user, signInUrl, loginUrl }
+ * Auth (spike): access "users" needs an n8n user. Same origin (hosted page)
+ * uses the n8n cookie. Another origin (embed) signs in in a popup on the
+ * instance and polls POST {loginUrl}/{requestId} for a short-lived token, which
+ * it sends as `Authorization: Bearer`. No third-party cookie is involved.
  */
 export type ChatEvent =
 	| { type: 'conversation'; id: string }
@@ -22,10 +26,17 @@ export type ChatEvent =
 export interface ChatConfig {
 	name: string;
 	welcomeMessage?: string;
+	access: 'users' | 'public';
+	user: { name: string } | null;
+	signInUrl: string;
+	loginUrl: string;
 }
 
-export async function fetchConfig(base: string): Promise<ChatConfig> {
-	const res = await fetch(`${base}/config`);
+const auth = (token?: string): Record<string, string> =>
+	token ? { Authorization: `Bearer ${token}` } : {};
+
+export async function fetchConfig(base: string, token?: string): Promise<ChatConfig> {
+	const res = await fetch(`${base}/config`, { headers: auth(token) });
 	if (!res.ok) throw new Error(`This chat is not available (${res.status})`);
 	return (await res.json()) as ChatConfig;
 }
@@ -34,10 +45,11 @@ export async function* sendMessage(
 	base: string,
 	body: { message: string; conversationId?: string },
 	signal?: AbortSignal,
+	token?: string,
 ): AsyncGenerator<ChatEvent> {
 	const res = await fetch(`${base}/messages`, {
 		method: 'POST',
-		headers: { 'Content-Type': 'application/json', Accept: 'application/x-ndjson' },
+		headers: { 'Content-Type': 'application/json', Accept: 'application/x-ndjson', ...auth(token) },
 		body: JSON.stringify(body),
 		signal,
 	});
@@ -56,4 +68,37 @@ export async function* sendMessage(
 		for (const line of lines) if (line.trim()) yield JSON.parse(line) as ChatEvent;
 	}
 	if (buffer.trim()) yield JSON.parse(buffer) as ChatEvent;
+}
+
+/**
+ * Embed sign-in. Opens the instance's sign-in in a popup (call it from a click,
+ * or the browser blocks the popup) and polls until the popup hands over a token.
+ */
+export async function loginWithPopup(
+	loginUrl: string,
+): Promise<{ token: string; user: { name: string } }> {
+	const bytes = crypto.getRandomValues(new Uint8Array(24));
+	const requestId = btoa(String.fromCharCode(...bytes))
+		.replace(/\+/g, '-')
+		.replace(/\//g, '_')
+		.replace(/=+$/, '');
+	const popup = window.open(
+		`${loginUrl}?request=${requestId}`,
+		'n8n-agent-chat-login',
+		'popup,width=480,height=640',
+	);
+	if (!popup)
+		throw new Error('The browser blocked the sign-in window. Allow popups for this site.');
+	// The popup can lose its link to this page (the sign-in page sets COOP), so poll the server instead.
+	for (let i = 0; i < 180; i++) {
+		await new Promise((resolve) => setTimeout(resolve, 1000));
+		const res = await fetch(`${loginUrl}/${requestId}`, { method: 'POST' });
+		if (res.status === 200) {
+			try {
+				popup.close();
+			} catch {}
+			return (await res.json()) as { token: string; user: { name: string } };
+		}
+	}
+	throw new Error('Sign-in timed out. Try again.');
 }
