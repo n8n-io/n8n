@@ -221,6 +221,8 @@ export class CompiledEngineProcesses {
 		if (timestampZone !== undefined) args.push('--sql-timestamp-zone', timestampZone);
 		// `N8N_COMPILED_ENGINE_SQL_MYSQL`: without the flag, `wfrt` gives a MySQL call to the host.
 		if (this.config.sqlMysql) args.push('--sql-mysql');
+		// `N8N_COMPILED_ENGINE_SQL_MSSQL`: without the flag, `wfrt` gives a SQL Server call to the host.
+		if (this.config.sqlMssql) args.push('--sql-mssql');
 		args.push(
 			...workloadClassArgs(parseWorkloadClasses(this.config.workloadClasses), {
 				slots: this.config.workloadClassSlots,

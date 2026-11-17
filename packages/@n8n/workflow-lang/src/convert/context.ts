@@ -113,6 +113,8 @@ export interface NodeContext {
 	mysql?: boolean;
 	/** The recording harness converts the unproven calls (`ConvertOptions.mysqlRecordFirst`). */
 	mysqlRecordFirst?: boolean;
+	/** True when the `sql` effect of the runtime has a SQL Server client (`ConvertOptions.mssql`). */
+	mssql?: boolean;
 	/** Records a time zone that the node's native code formats dates in (META \`zones\`). */
 	useZone?(zone: string): void;
 	/**

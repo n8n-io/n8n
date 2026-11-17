@@ -181,6 +181,13 @@ export interface ConvertOptions {
 	 * false: they run in the fallback host.
 	 */
 	mysqlRecordFirst?: boolean;
+	/**
+	 * The `sql` effect of the runtime has a Microsoft SQL Server client (`wfrt serve
+	 * --sql-mssql`). The default is false. No library node reads it yet: the Microsoft SQL
+	 * node runs in the fallback host with each value. The statements of the node are in
+	 * `src/nodes/shared/mssql-format.ts`.
+	 */
+	mssql?: boolean;
 }
 
 export interface InstanceInfo {
@@ -875,6 +882,7 @@ export class ModuleGenerator {
 			sql: this.options.sql,
 			mysql: this.options.mysql,
 			mysqlRecordFirst: this.options.mysqlRecordFirst,
+			mssql: this.options.mssql,
 			codeNodes:
 				this.options.codeNodes === 'host' || this.options.hostCodeNodes?.includes(node.name)
 					? 'host'

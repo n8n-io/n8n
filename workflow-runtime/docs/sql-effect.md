@@ -343,10 +343,18 @@ marker and another message. 7 calls differ. In 6 of them the reference client gi
 result has two columns of one name: the reference client gives the row of JavaScript, and `wfrt` gives the
 marker `sql-type`.
 
-## Microsoft SQL Server: the codec only
+## Microsoft SQL Server (`dialect: mssql`)
 
-Status: `src/core/tdswire.zig` is the pure codec. No shell client, no fake server and no library node exist yet,
-so no call reaches it. A call with the dialect `mssql` must stay in the fallback host until they exist.
+Status: the client is built and tested against a scripted server. It is not yet run against a real server, so the
+shard does not send calls to it: `Options.sql_mssql` is off, and a call with the dialect `mssql` ends with
+`(limit: sql-host)` and runs in the fallback host. The flag `--sql-mssql` of `wfrt serve` turns the option on.
+n8n gives the flag, and tells the converter (`ConvertOptions.mssql`), only with
+`N8N_COMPILED_ENGINE_SQL_MSSQL=true`. No library node exists yet, so the Microsoft SQL node runs in the fallback
+host with each value. Keep both off until the `mssql live` tests pass.
+
+The files are `src/core/tdswire.zig` (the pure codec), `src/shell/ms_call.zig` (the arguments, the bind values
+and the scan of a statement text), `src/shell/ms.zig` (the client) and `src/shell/ms_fake.zig` (the scripted
+server). The statements of the v1 node are in `packages/@n8n/workflow-lang/src/nodes/shared/mssql-format.ts`.
 
 ### What the v1 node does
 
@@ -394,13 +402,103 @@ server that sends the client to another server; `xml`, `sql_variant` and CLR typ
 above 22; a `char` value with a byte above 127 in a code page other than 1252 or UTF-8; two columns with one
 name; a column `__proto__`; the single column that `FOR JSON` and `FOR XML` give; output parameters.
 
-### What remains
+### The call
 
-- The shell client: connections and a pool, the TLS handshake inside PRELOGIN packets (tedious sends the TLS
-  records as the payload of PRELOGIN messages until the handshake ends, then the whole stream is TLS), the
-  timeouts, the ATTENTION message for a request that timed out, and the gate `--sql-mssql`.
-- A fake server for the shell tests, and the live test against a real server.
-- The library node, with a test of its statement text and its values against `mssql`.
+```json
+{"credential":"db","dialect":"mssql","mode":"single",
+ "statements":[{"text":"select @p2, @p1","params":[{"name":"p2","value":"a"},{"name":"p1","value":7}]}]}
+```
+
+- Each statement is one RPC `sp_executesql`. The parameters go in the order of `params`, which is the order of
+  the `request.input` calls of the v1 node. A value is a string, a number, a boolean or null.
+- The statements run on one connection, one after the other, each alone. `single`: the result ends with the first
+  statement that has an error or a time-out. `independently`: every statement runs. There is no transaction mode:
+  the v1 node has none.
+- The result is `{"results":[entry, ...]}`. An entry is `{"sets", "rowsAffected", "errors"}` of the codec, or
+  `{"timeout": ms}` for a statement that the client cancelled. A connection that fails gives
+  `{"results":[],"connect":{"message","code"}}` with the text and the code of tedious (`ESOCKET`, `ETIMEOUT`,
+  `ELOGIN`, `EENCRYPT`).
+
+### The connection
+
+- **PRELOGIN**, then the answer of the server. When the server wants encryption (`ON` or `REQ`): with `tls` of
+  the credential off, the error of tedious (`EENCRYPT`); else the TLS handshake, with each flight of the client
+  as one PRELOGIN message and the records of the server inside packets, and after it TLS for the whole stream.
+  When the server does not want encryption, the login goes in clear, as with tedious. `allowUnauthorizedCerts`
+  is `trustServerCertificate`. The handshake is limited to TLS 1.2 (SQL Server has TLS 1.3 only with TDS 8).
+- **LOGIN7** with SQL authentication, then the SQL batch of `set` statements of tedious.
+- **Time limits** are those of the credential: `connectTimeout` until the login ends, `requestTimeout` for each
+  statement (15 s each when absent). At the limit of a statement the client sends ATTENTION, waits for the DONE
+  token that confirms it (5 s, `cancelTimeout` of tedious), and uses the connection again.
+- **Reuse.** The v1 node makes a pool for each run. The runtime keeps connections (4 for each credential, idle
+  30 s). Before a call on a used connection, the client sends the batch of tedious with the RESETCONNECTION flag
+  (`connection.reset()` of tedious): no temporary table, variable or open transaction stays. A server that
+  refuses it: the call takes a new connection.
+- **The credential** is read by the runtime when the call starts: `server`, `port`, `database`, `user`,
+  `password`, `tls`, `allowUnauthorizedCerts`, `connectTimeout`, `requestTimeout`, `tdsVersion`. An absent value
+  has the default of the credential type. The password stays in the call slot until the call ends.
+
+### Where a form without a native client is decided
+
+Every case ends with a marker, so the node runs in the fallback host. The order is fixed: a statement that
+writes is sent only after every check before it passed.
+
+| Case | Decided | Marker |
+|---|---|---|
+| The gate is off | The shard, before the client | `sql-host` |
+| `domain` (NTLM), TDS 7.1, a named instance (`server\name`), a time limit that is not a whole number | When the call starts, from the credential. No connection opens | `sql-credential` |
+| A statement that is not only `SELECT`, and not `INSERT`, `UPDATE` or `DELETE` without rows (`EXEC`, `OUTPUT`, `SELECT ... INTO`, `MERGE`, a text with a statement of another kind) | When the call starts, by the word scan of `ms_call.classOf` | `sql-statement` |
+| A statement that gives rows after a statement that writes, in one call | When the call starts | `sql-statement` |
+| A bind value that `mssql` refuses or changes (a whole number outside 64 bits), a text that is not valid UTF-8, more than 2,100 values | When the call starts: each request is built once without a connection | `sql-statement` |
+| A value that is not a string, a number, a boolean or null (a Date, a Buffer, an object), NaN | In the library code (`msfValue`), before the call | `sql-host` |
+| A server that sends the client to another server, Azure and federated logins, a TLS failure | At the login, before a statement | `sql-credential` |
+| `xml`, `sql_variant`, CLR types, a `decimal` scale above 22, a `char` in another code page, two columns of one name, `__proto__`, `FOR JSON`, a result over `--sql-max-result-kb` | In the reply to a statement that only reads. No statement that writes ran before it (rows 3 and 4) | `sql-type`, `sql-max-result` |
+
+One case stays a plain error (`(limit)`, no marker): rows in the reply to an `INSERT`, `UPDATE` or `DELETE`,
+which only a trigger can give, with a type without a native form. The statement ran, so the host cannot run it
+again.
+
+### Known differences and what is not built
+
+- Not verified against a real server: everything in `ms.zig`. In particular the TLS handshake against SQL Server,
+  the reset, ATTENTION, and the text of each connect error.
+- The library node is not built. Its statements are: `mssql-format.ts` gives the text and the bind values of
+  `executeQuery`, `insert` (a new statement at 2,100 values), `update` and `delete` (1,000 values for each
+  statement), and `src/nodes/__tests__/mssql-format.test.ts` compares them with the built v1 node and a real
+  `mssql` request on generated cases.
+- The v1 node sends the statements of `insert`, `update` and `delete` at one time on a pool of 10 connections.
+  The runtime sends them in order on one connection. With two statements that fail, v1 throws the one that
+  failed first in time.
+- LOGIN7 has the time zone 0, not the zone of the process. The pool of `mssql` checks a connection with
+  `SELECT 1;` before it uses it again; the runtime sends the reset.
+- A server that does not confirm ATTENTION in 5 s: the connection closes and the step fails.
+- When the connection closes while a statement runs, the step fails. `mssql` gives an error of the request.
+- Not built: NTLM, Azure logins, routing, named instances, TDS 7.1 and 8, a CA certificate.
+
+### Tests
+
+- `src/shell/ms_call.zig`: the class of a text, the checks of a call, the bind values.
+- `src/shell/ms_test.zig`, the `mssql fake` tests: the login and its errors, credentials that stay in the host,
+  bind values (the server takes only the bytes that the codec builds for the rule), the two modes, each marker
+  and its place, the reset before reuse, the queue and the call-slot limit, ATTENTION at `requestTimeout`, and
+  the TLS handshake inside PRELOGIN packets. The replies are the vectors of `tdscase_tables.zig`.
+- `src/shell/server.zig`: a `sql` step through the shard, with the gate off and on.
+- `src/shell/ms_test.zig`, the `mssql live` test: against a real server. It is skipped without `WFRT_TEST_MS`:
+
+```bash
+docker run -d --name wfrt-ms -e ACCEPT_EULA=Y -e MSSQL_SA_PASSWORD='Wfrt-test-1' -p 127.0.0.1:5546:1433 \
+  mcr.microsoft.com/mssql/server:2022-latest
+zig build install-tests
+WFRT_TEST_MS=127.0.0.1:5546 WFRT_TEST_MS_PASSWORD='Wfrt-test-1' ./zig-out/bin/shell-test
+```
+
+Not written yet, for the bed: the comparison with the v1 node for each data type and each error. The form is
+`bench/pg-replay`: for each case, run `pool.request().input(...).query(text)` of `mssql` 12.7.0 with the
+options of `configurePool`, and the same statement through `wfrt serve --sql-mssql`; the entry of `wfrt` must
+equal `{sets: recordsets, rowsAffected, errors}` of `mssql` after `JSON.stringify`. The cases: one column of each
+type of the codec's list (with NULL, the least and the largest value), each `error.Unsupported` type (the marker
+`sql-type`), a constraint error, a syntax error, a wrong password, a closed port, `requestTimeout`, and
+`encrypt` on and off.
 
 ## Snowflake: not built
 

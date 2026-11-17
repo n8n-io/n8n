@@ -88,10 +88,16 @@ describe('wfrtUserAgent', () => {
 });
 
 describe('the listen address of wfrt', () => {
-	const argsWith = (listenAddress: string, sqlMysql = false, workloadClasses = '') => {
+	const argsWith = (
+		listenAddress: string,
+		sqlMysql = false,
+		workloadClasses = '',
+		sqlMssql = false,
+	) => {
 		const config = mock<CompiledEngineConfig>({
 			listenAddress,
 			sqlMysql,
+			sqlMssql,
 			workloadClasses,
 			workloadClassSlots: 'background=64',
 			workloadClassHostSteps: '',
@@ -132,6 +138,13 @@ describe('the listen address of wfrt', () => {
 		expect(new CompiledEngineConfig().sqlMysql).toBe(false);
 		expect(argsWith('127.0.0.1')).not.toContain('--sql-mysql');
 		expect(argsWith('127.0.0.1', true)).toContain('--sql-mysql');
+	});
+
+	it('starts wfrt with the SQL Server client only with the setting', () => {
+		expect(new CompiledEngineConfig().sqlMssql).toBe(false);
+		expect(argsWith('127.0.0.1')).not.toContain('--sql-mssql');
+		expect(argsWith('127.0.0.1', true)).not.toContain('--sql-mssql');
+		expect(argsWith('127.0.0.1', false, '', true)).toContain('--sql-mssql');
 	});
 
 	it('starts wfrt with workload classes only with the setting', () => {
