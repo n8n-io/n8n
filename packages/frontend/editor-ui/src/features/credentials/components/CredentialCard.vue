@@ -23,7 +23,6 @@ import PrivateCredentialIcon from '@/features/resolvers/components/PrivateCreden
 import { useCredentialOAuth } from '../composables/useCredentialOAuth';
 import { useCredentialTypeUsability } from '../composables/useCredentialTypeUsability';
 import { RestrictedNodePopover } from '@n8n/frontend-module-type-availability-policies';
-import type { ProjectType } from '@n8n/rest-api-client';
 
 import {
 	N8nActionToggle,
@@ -52,12 +51,10 @@ const props = withDefaults(
 		data: CredentialsResource;
 		readOnly?: boolean;
 		needsSetup?: boolean;
-		restrictionProjectType?: ProjectType;
 	}>(),
 	{
 		readOnly: false,
 		needsSetup: false,
-		restrictionProjectType: undefined,
 	},
 );
 
@@ -282,7 +279,7 @@ function moveResource() {
 							:restriction="restriction.restriction"
 							:scope-label="restriction.popoverScopeLabel"
 							:description="restriction.description"
-							:project-type="restrictionProjectType"
+							:project-type="data.restrictionProjectType"
 							:anchor="restrictedBadgeRef"
 						/>
 						{{ locale.baseText('credentials.item.restricted') }}

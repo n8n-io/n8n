@@ -31,7 +31,7 @@ function unavailableByName<T extends { name: string; available: boolean }>(
 	return new Map(entries.filter((entry) => !entry.available).map((entry) => [entry.name, entry]));
 }
 
-type ProjectVerdicts = {
+export type ProjectVerdicts = {
 	nodeTypes: ReadonlyMap<string, NodeTypeAvailability>;
 	credentialTypes: ReadonlyMap<string, CredentialTypeAvailability>;
 };
@@ -63,7 +63,7 @@ export const useTypeAvailabilityPoliciesStore = defineStore(
 		const subWorkflowRequests = new Map<string, Promise<void>>();
 		let subWorkflowGeneration = 0;
 		const verdictsByProject = shallowRef<ReadonlyMap<string, ProjectVerdicts | null>>(new Map());
-		const projectVerdictRequests = new Map<string, Promise<void>>();
+		const projectVerdictRequests = new Map<string, Promise<ProjectVerdicts | null | undefined>>();
 		let projectVerdictsGeneration = 0;
 
 		const isEnabled = computed(
@@ -90,51 +90,73 @@ export const useTypeAvailabilityPoliciesStore = defineStore(
 		async function reload(): Promise<void> {
 			if (!isEnabled.value) return;
 
-			const cachedProjectIds = [...verdictsByProject.value.keys()];
+			const knownProjectIds = [...verdictsByProject.value.keys(), ...projectVerdictRequests.keys()];
 			clearProjectVerdicts();
 			await Promise.all([
 				requestedProjectId.value === null ? undefined : load(requestedProjectId.value),
-				fetchForProjects(cachedProjectIds),
+				fetchForProjects(knownProjectIds),
 			]);
 		}
 
+		/** Loads the verdicts of each project once. It does not change the open project. */
 		async function fetchForProjects(projectIds: string[]): Promise<void> {
 			if (!isEnabled.value) return;
 
-			await Promise.all([...new Set(projectIds)].map(fetchProjectVerdicts));
+			const missing = [...new Set(projectIds)].filter((id) => !verdictsByProject.value.has(id));
+			if (missing.length === 0) return;
+
+			const generation = projectVerdictsGeneration;
+			const results = await Promise.all(missing.map(requestProjectVerdicts));
+			if (generation !== projectVerdictsGeneration) return;
+
+			// One write for the batch, so the pages that read the cache recompute once.
+			const next = new Map(verdictsByProject.value);
+			missing.forEach((projectId, index) => {
+				const verdicts = results[index];
+				if (verdicts !== undefined) next.set(projectId, verdicts);
+			});
+			verdictsByProject.value = next;
 		}
 
-		async function fetchProjectVerdicts(projectId: string): Promise<void> {
-			if (verdictsByProject.value.has(projectId)) return;
+		/**
+		 * Callers that ask for the same project share one request. `null` means the user may not
+		 * read the policy, which does not change until the page reloads. `undefined` means another
+		 * error, so the next fetch retries.
+		 */
+		async function requestProjectVerdicts(
+			projectId: string,
+		): Promise<ProjectVerdicts | null | undefined> {
 			const pending = projectVerdictRequests.get(projectId);
 			if (pending) return await pending;
 
-			const generation = projectVerdictsGeneration;
-			const request = Promise.all([
-				fetchAvailableTypes(rootStore.restApiContext, projectId),
-				fetchAvailableCredentialTypes(rootStore.restApiContext, projectId),
-			])
-				.then(
-					([nodeTypes, credentialTypes]): ProjectVerdicts | null | undefined => ({
-						nodeTypes: unavailableByName(nodeTypes),
-						credentialTypes: unavailableByName(credentialTypes),
-					}),
-					(error: unknown) => {
-						if (isRefusal(error)) return null;
-						console.error('Failed to fetch available types for project', projectId, error);
-						return undefined;
-					},
-				)
-				.then((verdicts) => {
-					if (generation !== projectVerdictsGeneration) return;
-
-					projectVerdictRequests.delete(projectId);
-					if (verdicts === undefined) return;
-					verdictsByProject.value = new Map(verdictsByProject.value).set(projectId, verdicts);
+			const request = fetchVerdicts(projectId)
+				.catch((error: unknown) => {
+					if (isRefusal(error)) return null;
+					console.error('Failed to fetch available types for project', projectId, error);
+					return undefined;
+				})
+				.finally(() => {
+					if (projectVerdictRequests.get(projectId) === request) {
+						projectVerdictRequests.delete(projectId);
+					}
 				});
 			projectVerdictRequests.set(projectId, request);
+			return await request;
+		}
 
-			await request;
+		/**
+		 * Loads both kinds together. A credential-only node's answer composes the two, so they
+		 * must describe the same project at the same time.
+		 */
+		async function fetchVerdicts(projectId: string): Promise<ProjectVerdicts> {
+			const [nodeTypes, credentialTypes] = await Promise.all([
+				fetchAvailableTypes(rootStore.restApiContext, projectId),
+				fetchAvailableCredentialTypes(rootStore.restApiContext, projectId),
+			]);
+			return {
+				nodeTypes: unavailableByName(nodeTypes),
+				credentialTypes: unavailableByName(credentialTypes),
+			};
 		}
 
 		function clearProjectVerdicts(): void {
@@ -143,11 +165,7 @@ export const useTypeAvailabilityPoliciesStore = defineStore(
 			verdictsByProject.value = new Map();
 		}
 
-		/**
-		 * Loads both kinds together. A credential-only node's answer composes the two, so they
-		 * must describe the same project at the same time: either both maps are the project's or
-		 * neither is.
-		 */
+		/** Either both maps are the project's or neither is. See `fetchVerdicts`. */
 		async function load(projectId: string): Promise<void> {
 			const promise = runLoad(projectId).finally(() => {
 				if (pendingLoad === promise) pendingLoad = null;
@@ -160,15 +178,14 @@ export const useTypeAvailabilityPoliciesStore = defineStore(
 			const request = ++latestRequest;
 			isLoading.value = true;
 			try {
-				const [nodeTypes, credentialTypes, project] = await Promise.all([
-					fetchAvailableTypes(rootStore.restApiContext, projectId),
-					fetchAvailableCredentialTypes(rootStore.restApiContext, projectId),
+				const [verdicts, project] = await Promise.all([
+					fetchVerdicts(projectId),
 					getProject(rootStore.restApiContext, projectId).catch(() => null),
 				]);
 				if (request !== latestRequest) return;
 
-				restrictedNodeTypes.value = unavailableByName(nodeTypes);
-				restrictedCredentialTypes.value = unavailableByName(credentialTypes);
+				restrictedNodeTypes.value = verdicts.nodeTypes;
+				restrictedCredentialTypes.value = verdicts.credentialTypes;
 				policyProject.value = project;
 				loadedProjectId.value = projectId;
 			} catch (error) {
@@ -200,26 +217,9 @@ export const useTypeAvailabilityPoliciesStore = defineStore(
 			return restrictedCredentialTypes.value.get(name) ?? { name, available: true };
 		}
 
-		function hasProjectVerdicts(projectId: string): boolean {
-			return Boolean(verdictsByProject.value.get(projectId));
-		}
-
-		function getNodeTypeAvailabilityIn(projectId: string, name: string): NodeTypeAvailability {
-			return (
-				verdictsByProject.value.get(projectId)?.nodeTypes.get(name) ?? { name, available: true }
-			);
-		}
-
-		function getCredentialTypeAvailabilityIn(
-			projectId: string,
-			name: string,
-		): CredentialTypeAvailability {
-			return (
-				verdictsByProject.value.get(projectId)?.credentialTypes.get(name) ?? {
-					name,
-					available: true,
-				}
-			);
+		/** The verdicts that `fetchForProjects` loaded, or `null` until they load or when refused. */
+		function getProjectVerdicts(projectId: string): ProjectVerdicts | null {
+			return verdictsByProject.value.get(projectId) ?? null;
 		}
 
 		/**
@@ -307,9 +307,7 @@ export const useTypeAvailabilityPoliciesStore = defineStore(
 			isNodeTypeAvailable,
 			getCredentialTypeAvailability,
 			fetchForProjects,
-			hasProjectVerdicts,
-			getNodeTypeAvailabilityIn,
-			getCredentialTypeAvailabilityIn,
+			getProjectVerdicts,
 			fetchSubWorkflowCheck,
 			getSubWorkflowCheck,
 			hasSubWorkflowCheckFailed,

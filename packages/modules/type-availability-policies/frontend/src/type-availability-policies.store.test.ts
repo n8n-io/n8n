@@ -576,12 +576,12 @@ describe('useTypeAvailabilityPoliciesStore', () => {
 
 			await store.fetchForProjects(['project-a', 'project-b']);
 
-			expect(store.hasProjectVerdicts('project-a')).toBe(true);
-			expect(store.getNodeTypeAvailabilityIn('project-a', RESTRICTED).available).toBe(false);
-			expect(store.getNodeTypeAvailabilityIn('project-b', RESTRICTED).available).toBe(true);
-			expect(store.getNodeTypeAvailabilityIn('project-b', ALLOWED).available).toBe(false);
+			expect(store.getProjectVerdicts('project-a')).not.toBeNull();
+			expect(store.getProjectVerdicts('project-a')?.nodeTypes.has(RESTRICTED)).toBe(true);
+			expect(store.getProjectVerdicts('project-b')?.nodeTypes.has(RESTRICTED)).toBe(false);
+			expect(store.getProjectVerdicts('project-b')?.nodeTypes.has(ALLOWED)).toBe(true);
 			expect(
-				store.getCredentialTypeAvailabilityIn('project-a', RESTRICTED_CREDENTIAL),
+				store.getProjectVerdicts('project-a')?.credentialTypes.get(RESTRICTED_CREDENTIAL),
 			).toMatchObject({ available: false, scope: 'instance' });
 		});
 
@@ -616,7 +616,7 @@ describe('useTypeAvailabilityPoliciesStore', () => {
 			await store.fetchForProjects(['project-a']);
 			await store.fetchForProjects(['project-a']);
 
-			expect(store.hasProjectVerdicts('project-a')).toBe(false);
+			expect(store.getProjectVerdicts('project-a')).toBeNull();
 			expect(mocks.fetchAvailableTypes).toHaveBeenCalledTimes(1);
 			expect(errorSpy).not.toHaveBeenCalled();
 		});
@@ -626,10 +626,10 @@ describe('useTypeAvailabilityPoliciesStore', () => {
 			const store = useTypeAvailabilityPoliciesStore();
 
 			await store.fetchForProjects(['project-a']);
-			expect(store.hasProjectVerdicts('project-a')).toBe(false);
+			expect(store.getProjectVerdicts('project-a')).toBeNull();
 
 			await store.fetchForProjects(['project-a']);
-			expect(store.hasProjectVerdicts('project-a')).toBe(true);
+			expect(store.getProjectVerdicts('project-a')).not.toBeNull();
 		});
 
 		it('makes no request when the module is not active', async () => {
@@ -647,7 +647,22 @@ describe('useTypeAvailabilityPoliciesStore', () => {
 
 			store.reset();
 
-			expect(store.hasProjectVerdicts('project-a')).toBe(false);
+			expect(store.getProjectVerdicts('project-a')).toBeNull();
+		});
+
+		it('refetches a project that was still loading when the reload started', async () => {
+			const firstResponse = createDeferredPromise<AvailableTypesResponse>();
+			mocks.fetchAvailableTypes.mockReturnValueOnce(firstResponse.promise);
+			const store = useTypeAvailabilityPoliciesStore();
+			const firstFetch = store.fetchForProjects(['project-a']);
+
+			await store.reload();
+			firstResponse.resolve(PROJECT_B_RESPONSE);
+			await firstFetch;
+
+			expect(mocks.fetchAvailableTypes).toHaveBeenCalledTimes(2);
+			expect(store.getProjectVerdicts('project-a')).not.toBeNull();
+			expect(store.getProjectVerdicts('project-a')?.nodeTypes.has(RESTRICTED)).toBe(true);
 		});
 
 		it('refetches them on reload', async () => {
@@ -657,7 +672,7 @@ describe('useTypeAvailabilityPoliciesStore', () => {
 			await store.reload();
 
 			expect(mocks.fetchAvailableTypes).toHaveBeenCalledTimes(2);
-			expect(store.hasProjectVerdicts('project-a')).toBe(true);
+			expect(store.getProjectVerdicts('project-a')).not.toBeNull();
 		});
 	});
 });

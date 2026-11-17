@@ -604,14 +604,18 @@ describe('CredentialsView', () => {
 					? { name, available: false, scope: current[name] }
 					: { name, available: true },
 			);
-			policies.hasProjectVerdicts.mockImplementation((id) => Boolean(byProject?.[id]));
-			policies.getNodeTypeAvailabilityIn.mockImplementation((_id, name) => ({
-				name,
-				available: true,
-			}));
-			policies.getCredentialTypeAvailabilityIn.mockImplementation((id, name) => {
-				const scope = byProject?.[id]?.[name];
-				return scope ? { name, available: false, scope } : { name, available: true };
+			policies.getProjectVerdicts.mockImplementation((id) => {
+				const scopes = byProject?.[id];
+				if (!scopes) return null;
+				return {
+					nodeTypes: new Map(),
+					credentialTypes: new Map(
+						Object.entries(scopes).map(([name, scope]) => [
+							name,
+							{ name, available: false, scope },
+						]),
+					),
+				};
 			});
 			return policies;
 		};
@@ -683,6 +687,23 @@ describe('CredentialsView', () => {
 			expect(queryAllByTestId('resources-list-item')).toHaveLength(0);
 		});
 
+		it('ignores a filter kept in the URL when the policies module is off', async () => {
+			await router.push({
+				path: '/team-1/credentials',
+				query: { cannotBeUsed: 'typeRestricted' },
+			});
+			setup({ enabled: false });
+			mockedStore(useCredentialsStore).allCredentials = [
+				credential('1', 'slackApi'),
+				credential('2', 'gmailOAuth2'),
+			];
+
+			const { getAllByTestId } = renderComponent();
+			await flushPromises();
+
+			expect(getAllByTestId('resources-list-item')).toHaveLength(2);
+		});
+
 		describe('on Overview', () => {
 			it('loads the policy of each home project', async () => {
 				const policies = setup({});
@@ -694,7 +715,9 @@ describe('CredentialsView', () => {
 
 				renderComponent();
 
-				expect(policies.fetchForProjects).toHaveBeenCalledWith(['team-1', 'team-2']);
+				// The store skips duplicates and projects it already has.
+				const [projectIds] = policies.fetchForProjects.mock.calls[0];
+				expect(new Set(projectIds)).toEqual(new Set(['team-1', 'team-2']));
 			});
 
 			it("judges each credential by its home project's policy", async () => {

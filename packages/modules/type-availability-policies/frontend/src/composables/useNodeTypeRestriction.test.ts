@@ -383,16 +383,23 @@ describe('restriction lookups', () => {
 
 		it('reads the verdicts of that project, credential-only nodes included', () => {
 			const store = useTypeAvailabilityPoliciesStore();
-			vi.spyOn(store, 'hasProjectVerdicts').mockReturnValue(true);
-			vi.spyOn(store, 'getNodeTypeAvailabilityIn').mockImplementation((projectId, name) =>
-				projectId === 'project-a' && name === 'n8n-nodes-base.slack'
-					? { name, available: false, scope: 'project' }
-					: { name, available: true },
-			);
-			vi.spyOn(store, 'getCredentialTypeAvailabilityIn').mockImplementation((projectId, name) =>
-				projectId === 'project-a' && name === 'virusTotalApi'
-					? { name, available: false, scope: 'instance' }
-					: { name, available: true },
+			vi.spyOn(store, 'getProjectVerdicts').mockImplementation((projectId) =>
+				projectId === 'project-a'
+					? {
+							nodeTypes: new Map([
+								[
+									'n8n-nodes-base.slack',
+									{ name: 'n8n-nodes-base.slack', available: false, scope: 'project' as const },
+								],
+							]),
+							credentialTypes: new Map([
+								[
+									'virusTotalApi',
+									{ name: 'virusTotalApi', available: false, scope: 'instance' as const },
+								],
+							]),
+						}
+					: null,
 			);
 
 			const lookup = getProjectRestrictionLookup('project-a');
