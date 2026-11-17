@@ -1,5 +1,9 @@
 export const featureMaturity = {
-	endUserCredentials: { preview: true, limitedEnterpriseSupport: false },
+	endUserCredentials: {
+		preview: true,
+		limitedEnterpriseSupport: false,
+		docsUrl: 'https://docs.n8n.io/administer/manage-credentials/end-user-credentials',
+	},
 	assistant: {
 		preview: false,
 		limitedEnterpriseSupport: true,
@@ -15,15 +19,27 @@ export const featureMaturity = {
 		limitedEnterpriseSupport: true,
 		docsUrl: 'https://docs.n8n.io/administer/environments/plan-your-environments',
 	},
-	workflowReviews: { preview: true, limitedEnterpriseSupport: false },
+	workflowReviews: {
+		preview: true,
+		limitedEnterpriseSupport: false,
+		docsUrl: 'https://docs.n8n.io/build/manage-workflows/workflow-reviews',
+	},
 	openTelemetry: {
 		preview: true,
 		limitedEnterpriseSupport: false,
 		docsUrl: 'https://docs.n8n.io/hosting/logging-monitoring/opentelemetry/',
 	},
-	context: { preview: true, limitedEnterpriseSupport: true },
+	context: {
+		preview: true,
+		limitedEnterpriseSupport: true,
+		docsUrl: 'https://docs.n8n.io/build/agentic-context-management',
+	},
 	selfHealing: { preview: true, limitedEnterpriseSupport: true },
-	chat: { preview: true, limitedEnterpriseSupport: true },
+	chat: {
+		preview: true,
+		limitedEnterpriseSupport: true,
+		docsUrl: 'https://docs.n8n.io/build/ways-of-building-workflows/chat-hub',
+	},
 	authentication: {
 		preview: false,
 		limitedEnterpriseSupport: false,
@@ -34,7 +50,11 @@ export const featureMaturity = {
 		limitedEnterpriseSupport: false,
 		docsUrl: 'https://docs.n8n.io/user-management/saml/',
 	},
-	scim: { preview: true, limitedEnterpriseSupport: false },
+	scim: {
+		preview: true,
+		limitedEnterpriseSupport: false,
+		docsUrl: 'https://docs.n8n.io/user-management/scim/',
+	},
 	security: {
 		preview: false,
 		limitedEnterpriseSupport: false,
