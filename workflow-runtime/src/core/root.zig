@@ -34,6 +34,7 @@ pub const mime_tables = @import("mime_tables.zig");
 pub const cred_flags = @import("cred_flags.zig");
 pub const pgwire = @import("pgwire.zig");
 pub const mywire = @import("mywire.zig");
+pub const tdswire = @import("tdswire.zig");
 
 test {
     @import("std").testing.refAllDecls(@This());

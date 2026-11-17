@@ -342,3 +342,71 @@ marker and another message. 7 calls differ. In 6 of them the reference client gi
 `wfrt` reads: an `int4[]` or `text[]` column, an `interval` column, a `date` column with `dates: legacy`. In 1 the
 result has two columns of one name: the reference client gives the row of JavaScript, and `wfrt` gives the
 marker `sql-type`.
+
+## Microsoft SQL Server: the codec only
+
+Status: `src/core/tdswire.zig` is the pure codec. No shell client, no fake server and no library node exist yet,
+so no call reaches it. A call with the dialect `mssql` must stay in the fallback host until they exist.
+
+### What the v1 node does
+
+Paths are in `packages/nodes-base/nodes/Microsoft/Sql/`. The node uses `mssql` 12.7.0 on tedious 20.0.5.
+
+- **Connection** (`GenericFunctions.ts:102`, `configurePool`). One pool for each run of the node, closed at the
+  end. `connectTimeout` and `requestTimeout` come from the credential (15 s each by default). `tls` is `encrypt`,
+  `allowUnauthorizedCerts` is `trustServerCertificate`, `tdsVersion` is `7_4` by default, and `enableArithAbort`
+  is false. A credential with a `domain` uses NTLM, which the codec does not have.
+- **Session.** After the login tedious sends one SQL batch of `set` statements (`initial_sql` in the codec).
+- **`executeQuery`** (`MicrosoftSql.node.ts:298` from version 1.1, `:338` before). The node puts each `{{ }}` of
+  the query into the text, changes `$N` to `@pN` from the highest number down, and binds the values
+  (`GenericFunctions.ts:325`). It fails before the request when a `$N` outside quotes has no value. Version 1
+  runs the query of item 0 only.
+- **Every statement is the RPC `sp_executesql`**, also without a value: `request.query` of `mssql` calls
+  `execSql` of tedious. The values are bound, never written into the text. `mssql` takes the type from the
+  JavaScript value: a string and `null` are `nvarchar`, an integer is `int` or `bigint`, another number is
+  `float`, a boolean is `bit`. The declared length of a string is its count of UTF-16 units, and `nvarchar(max)`
+  above 4,000.
+- **`insert`** (`:171`): one `INSERT ... VALUES` for each group of rows, with a new group when the count of
+  values reaches 2,100 (`mssqlChunk`, `:150`). **`update`** (`:198`): one `UPDATE` for each item. **`delete`**
+  (`:226`): `DELETE ... WHERE key IN (...)` with 1,000 values for each statement.
+- **Result** (`:280`). With record sets: the rows of all sets in one list. Without: one item for each count,
+  `{message: "Query N executed successfully", rowsAffected}`. With neither: one item with a message. From
+  version 1.2 a binary column goes to the binary data of the item.
+- **Errors.** `mssql` collects each ERROR token and throws the last one: the message of the server. A failed
+  connection throws the error of tedious, or gives one item `{error}` with "continue on fail".
+
+### What the codec does
+
+- Packets: the 8-byte header, and a message in packets of the negotiated size.
+- PRELOGIN, LOGIN7 with SQL authentication (the password with its halves swapped and XOR `0xA5`), a SQL batch,
+  and the `sp_executesql` request with the types of `mssql`. The tests compare each with the bytes that tedious
+  builds (`gen_tds_cases.mjs` writes them to `tdscase_tables.zig`).
+- The reply: COLMETADATA, ROW, NBCROW, DONE, DONEPROC, DONEINPROC, ERROR, INFO, ENVCHANGE, LOGINACK, ORDER,
+  RETURNSTATUS and FEATUREEXTACK. `writeReply` gives `{"sets", "rowsAffected", "errors"}` as `mssql` builds them.
+- Values as tedious converts them: `bigint` is a string; `decimal`, `numeric` and `money` are doubles with the
+  arithmetic of tedious; each date and time type is the ISO text of the JavaScript `Date` (UTC); a
+  `uniqueidentifier` is upper case; a binary value is `{"type":"Buffer","data":[...]}`.
+- The tests read 863 token streams written from MS-TDS, and compare with the result of the token parser of
+  tedious and the row code of `mssql`.
+
+No exact native form (`error.Unsupported`, so the call must run in the host): TDS 7.1; NTLM and Azure logins; a
+server that sends the client to another server; `xml`, `sql_variant` and CLR types; a `decimal` with a scale
+above 22; a `char` value with a byte above 127 in a code page other than 1252 or UTF-8; two columns with one
+name; a column `__proto__`; the single column that `FOR JSON` and `FOR XML` give; output parameters.
+
+### What remains
+
+- The shell client: connections and a pool, the TLS handshake inside PRELOGIN packets (tedious sends the TLS
+  records as the payload of PRELOGIN messages until the handshake ends, then the whole stream is TLS), the
+  timeouts, the ATTENTION message for a request that timed out, and the gate `--sql-mssql`.
+- A fake server for the shell tests, and the live test against a real server.
+- The library node, with a test of its statement text and its values against `mssql`.
+
+## Snowflake: not built
+
+The v1 node (`packages/nodes-base/nodes/Snowflake/`) uses `snowflake-sdk` 3.3.0: `connect`
+(`GenericFunctions.ts:118`), `ALTER SESSION SET STRICT_JSON_OUTPUT = TRUE` (`Snowflake.node.ts:274`), then
+`conn.execute({sqlText, binds})` for each item (`GenericFunctions.ts:169`), then `destroy`. The login is a
+password, a key pair (a JWT that the SDK signs) or OAuth. This card did not read the request sequence of the SDK
+(login request, session token, query request, result chunks, row conversion), so nothing here states that
+`ctx.http` can reproduce it. That reading is the first step of a Snowflake card.
