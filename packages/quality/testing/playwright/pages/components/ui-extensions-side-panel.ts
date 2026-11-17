@@ -110,9 +110,9 @@ export class UiExtensionsPages {
 		return (await inbox.isVisible()) ? inbox : this.page.getByTestId('project-home-menu-item');
 	}
 
-	/** A service card of the Services overview page, by a name that it shows. */
+	/** A service card of the Automation dashboard page, by a name that it shows. */
 	getOverviewCard(text: string): Locator {
-		return this.getElement('services-overview-card').filter({ hasText: text });
+		return this.getElement('automation-dashboard-card').filter({ hasText: text });
 	}
 
 	/** A part of a service card, such as its usage line or its health badge. */
@@ -122,11 +122,21 @@ export class UiExtensionsPages {
 
 	/** The button that opens one workflow from a service card. */
 	getOverviewCardWorkflow(card: Locator, workflowName: string): Locator {
-		return card.getByTestId('services-overview-workflow').filter({ hasText: workflowName });
+		return card.getByTestId('automation-dashboard-workflow').filter({ hasText: workflowName });
+	}
+
+	/** A row of "Needs attention" on the Automation dashboard, by its workflow name. */
+	getAttentionItem(workflowName: string): Locator {
+		return this.getElement('automation-dashboard-attention-item').filter({ hasText: workflowName });
+	}
+
+	/** A document in the list of the Notion docs page, by its title. */
+	getNotionDocument(title: string): Locator {
+		return this.getElement('notion-docs-document').filter({ hasText: title });
 	}
 
 	getOverviewFailure(workflowName: string): Locator {
-		return this.getElement('services-overview-failure').filter({ hasText: workflowName });
+		return this.getElement('automation-dashboard-failure').filter({ hasText: workflowName });
 	}
 
 	getPageContainer(): Locator {

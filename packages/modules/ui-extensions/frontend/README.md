@@ -6,9 +6,15 @@ The side panel of the editor, and the pages of the main sidebar.
   Service data, Arcade), or a view that an MCP client made with the
   `create_side_panel_view` tool.
 - Each page shows in its own group of the main sidebar, under Inbox, and opens
-  at `/extensions/pages/<id>` (`UiExtensionPageView.vue`). It is the built-in
-  Services overview page, or a page that an MCP client made with the
+  at `/extensions/pages/<id>` (`UiExtensionPageView.vue`). It is one of the
+  built-in pages, or a page that an MCP client made with the
   `create_custom_page` tool.
+  - The Automation dashboard shows the success rate and the run times of the
+    newest runs, the workflows that fail, and the services that the workflows
+    connect to.
+  - Notion docs shows how a page can bring a service into n8n. It renders
+    documents from a Notion workspace. The documents are sample data in the
+    page, so it needs no account and makes no network call.
 
 Views and pages are one record type with a `kind`. Each one runs in a sandboxed
 iframe on the view runtime (`@n8n/ui-extension-runtime`) and gets the page

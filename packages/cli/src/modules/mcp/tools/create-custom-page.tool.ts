@@ -27,7 +27,9 @@ export default {
   template: '<div style="padding: var(--spacing--lg)"><N8nHeading tag="h1" size="xlarge">Team notes</N8nHeading><N8nText color="text-light">{{ today }}</N8nText></div>',
 };
 
-The page runs in a sandboxed iframe with no network access to n8n. It has two globals:
+The page runs in a sandboxed iframe with no network access. So put the content that the page shows in the module itself: for example the text and the tasks of a team document, a table of figures, or the steps of a runbook. Make the page useful to a person who builds automations, such as a dashboard or a view of a document from a service that the user works with.
+
+The page has two globals:
 - Vue: the Vue 3 API (ref, computed, watch, h, ...).
 - n8n.useContext(): a read-only ref to the page context. On a page it is always { page: 'other', routeName }. A page sees no workflow.
 - n8n.t(key, params): returns the translated string for key with each {name} placeholder filled from params, or the key itself.

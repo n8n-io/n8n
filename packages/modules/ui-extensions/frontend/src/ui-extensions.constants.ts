@@ -1,5 +1,6 @@
 export const BUILTIN_RECENT_RUNS_VIEW_ID = 'builtin:recent-runs';
-export const BUILTIN_SERVICES_OVERVIEW_PAGE_ID = 'builtin:services-overview';
+export const BUILTIN_AUTOMATION_DASHBOARD_PAGE_ID = 'builtin:automation-dashboard';
+export const BUILTIN_NOTION_DOCS_PAGE_ID = 'builtin:notion-docs';
 
 /** The route of a page from the main sidebar. */
 export const UI_EXTENSION_PAGE_VIEW = 'UiExtensionPage';

@@ -42,7 +42,7 @@ describe('ui-extensions schemas', () => {
 	describe('overview data', () => {
 		const overview = () => ({
 			workflows: { total: 3, active: 1, scanned: 3 },
-			runs: { scanned: 2, succeeded: 1, failed: 1 },
+			runs: { scanned: 0, succeeded: 0, failed: 0, items: [] },
 			services: [
 				{
 					nodeType: 'n8n-nodes-base.slack',

@@ -55,18 +55,19 @@ describe('built-in views', () => {
 	);
 
 	it('finds a built-in page by its id, so the frame gets its strings', () => {
-		expect(getBuiltinView('builtin:services-overview')).toBe(BUILTIN_PAGES[0]);
+		expect(getBuiltinView('builtin:automation-dashboard')).toBe(BUILTIN_PAGES[0]);
 		expect(getBuiltinView('builtin:recent-runs')).toBe(BUILTIN_VIEWS[0]);
 		expect(getBuiltinView('missing')).toBeUndefined();
 	});
 
-	it('ships the Services overview page, which asks for data', () => {
+	it('ships the Automation dashboard, which asks for data, and the Notion docs page, which does not', () => {
 		expect(BUILTIN_PAGES.map((p) => [p.id, p.usesData])).toEqual([
-			['builtin:services-overview', true],
+			['builtin:automation-dashboard', true],
+			['builtin:notion-docs', false],
 		]);
 	});
 
-	it('Services overview only translates keys that the host sends it', () => {
+	it('Automation dashboard only translates keys that the host sends it', () => {
 		const statuses = ['success', 'error', 'crashed', 'canceled', 'running', 'waiting'] as const;
 		const cases = [
 			panelData({
@@ -91,7 +92,9 @@ describe('built-in views', () => {
 				}),
 			}),
 			panelData({ overview: overview({ services: [], failures: [] }) }),
-			panelData({ overview: overview({ runs: { scanned: 0, succeeded: 0, failed: 0 } }) }),
+			panelData({
+				overview: overview({ runs: { scanned: 0, succeeded: 0, failed: 0, items: [] } }),
+			}),
 			panelData({ state: 'loading' }),
 			panelData({ state: 'error' }),
 			panelData(),
@@ -99,7 +102,7 @@ describe('built-in views', () => {
 		];
 		for (const data of cases) {
 			const { usedKeys, strings, unmount } = renderBuiltinView(
-				'builtin:services-overview',
+				'builtin:automation-dashboard',
 				otherPage,
 				data,
 			);

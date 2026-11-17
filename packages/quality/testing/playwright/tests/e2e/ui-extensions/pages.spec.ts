@@ -51,7 +51,7 @@ test.describe(
 
 			await n8n.navigate.toWorkflows();
 			await n8n.sideBar.expand();
-			await expect(n8n.uiExtensionPages.getMenuItem('Services overview')).toBeVisible();
+			await expect(n8n.uiExtensionPages.getMenuItem('Automation dashboard')).toBeVisible();
 
 			const title = `Probe ${nanoid(6)}`;
 			const { pageId, created } = await api.mcp.internalMcpCreateCustomPage(apiKey, {
@@ -129,7 +129,7 @@ test.describe(
 			);
 
 			await n8n.page.reload();
-			await expect(n8n.uiExtensionPages.getMenuItem('Services overview')).toBeVisible();
+			await expect(n8n.uiExtensionPages.getMenuItem('Automation dashboard')).toBeVisible();
 			await expect(n8n.uiExtensionPages.getMenuItem(title)).toHaveCount(0);
 
 			const { items } = await api.mcp.internalMcpListUiExtensions(apiKey);
@@ -162,7 +162,9 @@ test.describe(
 				await expect(n8n.sidePanel.getTabCloseButton(builtin)).toHaveCount(0);
 			}
 			await expect(await n8n.uiExtensionPages.getRemoveButton(pageTitle)).toBeVisible();
-			await expect(await n8n.uiExtensionPages.getRemoveButton('Services overview')).toHaveCount(0);
+			await expect(await n8n.uiExtensionPages.getRemoveButton('Automation dashboard')).toHaveCount(
+				0,
+			);
 
 			await n8n.sidePanel.getTabCloseButton(viewTitle).click();
 			await n8n.uiExtensionPages.messageBox.confirmButton.click();
@@ -180,7 +182,7 @@ test.describe(
 			await expect(api.mcp.internalMcpDeleteUiExtension(apiKey, pageId)).rejects.toThrow(pageId);
 		});
 
-		test("shows the services that the user's workflows connect to on the Services overview page", async ({
+		test("shows the services that the user's workflows connect to on the Automation dashboard page", async ({
 			n8n,
 			api,
 		}) => {
@@ -224,28 +226,48 @@ test.describe(
 			await expect(n8n.canvas.nodeByName('Stop here')).toBeVisible();
 			await expect(n8n.notifications.getNotificationByTitle(/Problem in node/)).toBeVisible();
 
-			await n8n.uiExtensionPages.open('Services overview');
+			await n8n.uiExtensionPages.open('Automation dashboard');
 			// Other specs can share the instance, so find the card and rows by name, not by count.
 			const pages = n8n.uiExtensionPages;
 			const card = pages.getOverviewCard(slack.name);
 			await expect(card).toHaveCount(1);
-			await expect(pages.getOverviewCardPart(card, 'services-overview-service')).toHaveText(
+			await expect(pages.getOverviewCardPart(card, 'automation-dashboard-service')).toHaveText(
 				'Slack',
 			);
-			await expect(pages.getOverviewCardPart(card, 'services-overview-usage')).toHaveText(
+			await expect(pages.getOverviewCardPart(card, 'automation-dashboard-usage')).toHaveText(
 				/^Used in (1 workflow|\d+ workflows) \(\d+ active\)$/,
 			);
-			await expect(pages.getOverviewCardPart(card, 'services-overview-accounts')).toContainText(
+			await expect(pages.getOverviewCardPart(card, 'automation-dashboard-accounts')).toContainText(
 				slack.credential.name,
 			);
-			await expect(pages.getOverviewCardPart(card, 'services-overview-health')).toHaveText(
+			await expect(pages.getOverviewCardPart(card, 'automation-dashboard-health')).toHaveText(
 				'Healthy',
 			);
 			await expect(pages.getOverviewFailure(failingName)).toHaveCount(1);
-			await n8n.page.screenshot({ path: test.info().outputPath('services-overview.png') });
+			await expect(pages.getAttentionItem(failingName)).toContainText('Failures: 1 of 1');
+			await expect(pages.getElement('automation-dashboard-chart')).toBeVisible();
+			await n8n.page.screenshot({ path: test.info().outputPath('automation-dashboard.png') });
 
 			await pages.getOverviewCardWorkflow(card, slack.name).click();
 			await expect(n8n.page).toHaveURL((url) => url.pathname.endsWith(`/workflow/${slack.id}`));
+		});
+
+		test('renders a document from the sample Notion workspace and switches documents', async ({
+			n8n,
+		}) => {
+			const pages = n8n.uiExtensionPages;
+
+			await n8n.navigate.toWorkflows();
+			await n8n.sideBar.expand();
+			await pages.open('Notion docs');
+			await expect(pages.getElement('notion-docs-title')).toHaveText('On-call runbook');
+			await expect(pages.getElement('notion-docs-code')).toContainText('FROM execution_entity');
+			await expect(pages.getElement('notion-docs-sample')).toHaveText('Sample data');
+			await n8n.page.screenshot({ path: test.info().outputPath('notion-docs.png') });
+
+			await pages.getNotionDocument('Credential rotation').click();
+			await expect(pages.getElement('notion-docs-title')).toHaveText('Credential rotation');
+			await expect(pages.getElement('notion-docs-tasks')).toHaveText('2 of 4 done');
 		});
 	},
 );

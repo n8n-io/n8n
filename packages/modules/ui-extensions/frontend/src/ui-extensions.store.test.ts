@@ -222,7 +222,7 @@ describe('useSidePanelStore', () => {
 	});
 
 	describe('pages', () => {
-		it('splits the records by kind, with the built-in page first', async () => {
+		it('splits the records by kind, with the built-in pages first', async () => {
 			const store = useSidePanelStore();
 			respond([page('p2', '2026-01-03T00:00:00.000Z'), view('v'), page('p1')]);
 
@@ -233,13 +233,17 @@ describe('useSidePanelStore', () => {
 			expect(store.pages[0]).toMatchObject({
 				kind: 'page',
 				builtin: true,
-				title: 'Services overview',
+				title: 'Automation dashboard',
 			});
-			expect(store.pages.slice(1).every((p) => !p.builtin)).toBe(true);
+			expect(store.pages[1]).toMatchObject({ kind: 'page', builtin: true, title: 'Notion docs' });
+			expect(store.pages.slice(BUILTIN_PAGES.length).every((p) => !p.builtin)).toBe(true);
 		});
 
-		it('shows the built-in page before any fetch', () => {
-			expect(useSidePanelStore().pages.map((p) => p.id)).toEqual(['builtin:services-overview']);
+		it('shows the built-in pages before any fetch', () => {
+			expect(useSidePanelStore().pages.map((p) => p.id)).toEqual([
+				'builtin:automation-dashboard',
+				'builtin:notion-docs',
+			]);
 		});
 
 		it('does not open the panel for a new page', async () => {

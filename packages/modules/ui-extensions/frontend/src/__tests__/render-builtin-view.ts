@@ -214,7 +214,24 @@ export const overview = (
 	extra: Partial<UiExtensionOverviewData> = {},
 ): UiExtensionOverviewData => ({
 	workflows: { total: 3, active: 1, scanned: 3 },
-	runs: { scanned: 4, succeeded: 3, failed: 1 },
+	runs: {
+		scanned: 4,
+		succeeded: 3,
+		failed: 1,
+		// Newest first. The failed run took 3 s, the others 1.5 s.
+		items: [
+			run('9', {
+				status: 'error',
+				workflowId: 'wf-2',
+				workflowName: 'Digest',
+				startedAt: '2026-11-16T11:58:00.000Z',
+				stoppedAt: '2026-11-16T11:58:03.000Z',
+			}),
+			run('3'),
+			run('2'),
+			run('1'),
+		],
+	},
 	services: [overviewService()],
 	failures: [run('9', { status: 'error', workflowId: 'wf-2', workflowName: 'Digest' })],
 	...extra,

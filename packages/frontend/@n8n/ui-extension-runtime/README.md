@@ -15,7 +15,7 @@ Built-in views and pages also use `n8n.useData()`, `n8n.refresh()`,
 `n8n.openExecution()`, `n8n.openWorkflow()` and `n8n.openUrl()`. The editor
 sends data to built-in views and pages only, and it ignores their requests from
 any other view or page. `useData()` carries the run and service data, and on
-the built-in Services overview page also the `overview` data.
+the built-in Automation dashboard page also the `overview` data.
 
 A page from the main sidebar uses the same runtime and frame as a side panel
 view.

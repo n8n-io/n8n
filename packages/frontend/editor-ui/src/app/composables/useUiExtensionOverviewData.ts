@@ -121,6 +121,7 @@ export function buildOverview(
 			scanned: runs.length,
 			succeeded: runs.filter((run) => run.status === 'success').length,
 			failed: runs.filter((run) => FAILED_STATUSES.has(run.status)).length,
+			items: newestFirst.slice(0, UI_EXTENSION_DATA_LIMITS.overviewRuns),
 		},
 		services,
 		failures: newestFirst
@@ -132,7 +133,7 @@ export function buildOverview(
 const LOADING: UiExtensionPanelData = { state: 'loading', runs: null, services: null };
 
 /**
- * Overview data for the built-in Services overview page. It comes from the
+ * Overview data for the built-in Automation dashboard page. It comes from the
  * workflows and executions REST endpoints, so it holds only what the user can
  * already see in those lists. It fetches only while `enabled` is true: when it
  * turns true, and on `refresh()`.

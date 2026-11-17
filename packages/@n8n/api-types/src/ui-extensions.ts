@@ -208,8 +208,9 @@ export type UiExtensionServiceNodeData = z.infer<typeof uiExtensionServiceNodeDa
 const countSchema = z.number().int().nonnegative();
 
 /**
- * The services that the workflows of the user connect to, for the built-in
- * Services overview page. It comes from the newest workflows and runs only.
+ * How the workflows of the user run, and the services that they connect to,
+ * for the built-in Automation dashboard page. It comes from the newest
+ * workflows and runs only.
  */
 export const uiExtensionOverviewDataSchema = z.object({
 	workflows: z.object({
@@ -223,6 +224,8 @@ export const uiExtensionOverviewDataSchema = z.object({
 		scanned: countSchema,
 		succeeded: countSchema,
 		failed: countSchema,
+		/** The runs that the overview looked at, the newest first. */
+		items: z.array(uiExtensionRunSchema).max(UI_EXTENSION_DATA_LIMITS.overviewRuns),
 	}),
 	services: z
 		.array(
@@ -280,7 +283,7 @@ export const uiExtensionPanelDataSchema = z.object({
 		.array(uiExtensionServiceNodeDataSchema)
 		.max(UI_EXTENSION_DATA_LIMITS.serviceNodes)
 		.nullable(),
-	/** Only the built-in Services overview page gets it. */
+	/** Only the built-in Automation dashboard page gets it. */
 	overview: uiExtensionOverviewDataSchema.optional(),
 });
 

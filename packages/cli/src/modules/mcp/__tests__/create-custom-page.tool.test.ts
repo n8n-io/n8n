@@ -46,6 +46,7 @@ describe('create_custom_page MCP tool', () => {
 		expect(tool.config.description).toContain('A page sees no workflow');
 		expect(tool.config.description).toContain('under Inbox');
 		expect(tool.config.description).toContain('at most 20 pages');
+		expect(tool.config.description).toContain('put the content that the page shows in the module');
 	});
 
 	// Run data and the open actions work only in what ships with n8n.

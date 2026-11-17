@@ -130,7 +130,8 @@ describe(buildOverview, () => {
 			active: false,
 			lastRun: null,
 		});
-		expect(result.runs).toEqual({ scanned: 4, succeeded: 2, failed: 2 });
+		expect(result.runs).toMatchObject({ scanned: 4, succeeded: 2, failed: 2 });
+		expect(result.runs.items.map((r) => r.id)).toEqual(['5', '4', '3', '2']);
 		expect(result.failures.map((r) => r.id)).toEqual(['4', '2']);
 	});
 
@@ -179,6 +180,18 @@ describe(buildOverview, () => {
 
 		expect(result.services[0].health).toBe('unknown');
 		expect(result.services[0].workflows[0].lastRun?.status).toBe('running');
+	});
+
+	it('keeps the newest runs only, up to the cap', () => {
+		const runs = Array.from({ length: UI_EXTENSION_DATA_LIMITS.overviewRuns + 10 }, (_, i) => ({
+			...run(String(i), '1', 'success'),
+			startedAt: new Date(Date.UTC(2026, 10, 16, 0, i)).toISOString(),
+		}));
+
+		const result = buildOverview([], { total: 0, active: 0 }, runs, getNodeType);
+
+		expect(result.runs.items).toHaveLength(UI_EXTENSION_DATA_LIMITS.overviewRuns);
+		expect(result.runs.items[0].id).toBe(String(runs.length - 1));
 	});
 
 	it('is unknown when no workflow of the service ran', () => {

@@ -143,7 +143,7 @@ describe('ViewFrame', () => {
 	it('sends its strings and its data to the built-in page', async () => {
 		const builtinPage: SidePanelView = {
 			...mcpView,
-			id: 'builtin:services-overview',
+			id: 'builtin:automation-dashboard',
 			kind: 'page',
 			builtin: true,
 		};
@@ -157,7 +157,7 @@ describe('ViewFrame', () => {
 
 		expect(received[0]).toMatchObject({
 			context: { page: 'other', routeName: 'UiExtensionPage' },
-			strings: { 'uiExtensions.servicesOverview.title': 'Services overview' },
+			strings: { 'uiExtensions.automationDashboard.title': 'Automation dashboard' },
 			data: panelData,
 		});
 	});

@@ -108,13 +108,13 @@ describe('UiExtensionPageView', () => {
 	});
 
 	it('turns the overview data on for the built-in page only', async () => {
-		const { findByTestId, host } = await renderPage('builtin:services-overview');
+		const { findByTestId, host } = await renderPage('builtin:automation-dashboard');
 
 		await findByTestId('frame-stub');
 		const enabled = vi.mocked(host!.useOverviewData).mock.calls[0][0];
 		expect(enabled.value).toBe(true);
 		expect(frameProps.last).toMatchObject({
-			view: { id: 'builtin:services-overview', builtin: true },
+			view: { id: 'builtin:automation-dashboard', builtin: true },
 		});
 	});
 

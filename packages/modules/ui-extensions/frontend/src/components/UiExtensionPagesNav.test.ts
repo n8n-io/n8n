@@ -67,11 +67,12 @@ beforeEach(() => {
 });
 
 describe('UiExtensionPagesNav', () => {
-	it('lists the built-in page first, then the pages of the user from the oldest change', async () => {
+	it('lists the built-in pages first, then the pages of the user from the oldest change', async () => {
 		const { getAllByTestId } = await renderNav();
 
 		expect(getAllByTestId('ui-extensions-page-menu-item').map((el) => el.textContent)).toEqual([
-			expect.stringContaining('Services overview'),
+			expect.stringContaining('Automation dashboard'),
+			expect.stringContaining('Notion docs'),
 			expect.stringContaining('Page a'),
 			expect.stringContaining('Page b'),
 		]);
@@ -80,7 +81,7 @@ describe('UiExtensionPagesNav', () => {
 	it('links each item to its page route', async () => {
 		const { getAllByTestId } = await renderNav();
 
-		const link = getAllByTestId('ui-extensions-page-menu-item')[1].querySelector('a');
+		const link = getAllByTestId('ui-extensions-page-menu-item')[2].querySelector('a');
 		expect(link?.getAttribute('href')).toBe('/extensions/pages/a');
 	});
 
