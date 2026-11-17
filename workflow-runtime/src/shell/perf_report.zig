@@ -14,6 +14,8 @@ const Counts = perf.Counts;
 pub const Options = struct {
     n: u32 = 100,
     json: bool = false,
+    /// Print only the line of the regression gate, with this case name.
+    gate: ?[]const u8 = null,
     /// The CPU that the model stands for. Never the CPU of this machine.
     profile: perf.Profile = perf.zen2_epyc_7b12,
     /// Entries of the sets of lines and pages of one execution.
@@ -68,7 +70,7 @@ pub fn run(gpa: std.mem.Allocator, out: *Writer, mod: []const u8, fx: []const u8
         .ws_lines = try gpa.alloc(u64, o.ws_lines),
         .ws_pages = try gpa.alloc(u64, o.ws_pages),
     });
-    const ok = try fixture.benchIn(gpa, mod, fx, o.n, .{ .probe = if (mem.enabled) rec else {} });
+    const ok = try fixture.benchShard(gpa, mod, fx, o.n, .{ .probe = if (mem.enabled) rec else {} });
     if (ok != o.n) std.debug.print("perf-model: {d} of {d} executions ended ok\n", .{ ok, o.n });
     const natives = try gpa.alloc(u16, 1 << 16);
     const steady = o.n > 1;
@@ -84,6 +86,7 @@ pub fn run(gpa: std.mem.Allocator, out: *Writer, mod: []const u8, fx: []const u8
         .pages_max = rec.ws_pages_max,
     };
     std.debug.assert(rec.execs == o.n);
+    if (o.gate) |case| return writeGate(out, &v, case);
     if (o.json) try writeJson(out, &v) else try writeText(out, &v);
 }
 
@@ -121,7 +124,7 @@ fn nativeName(v: *const View, i: u32) []const u8 {
 // ---- candidates ----------------------------------------------------------------
 
 const Candidate = struct { saving: u64, layer: []const u8, text: []const u8 };
-const max_candidates = 16;
+const max_candidates = 18;
 
 fn misc(c: *const Counts, m: perf.Misc) u64 {
     return c.get(.misc, @backingInt(m));
@@ -165,6 +168,8 @@ fn candidates(buf: *[max_candidates]Candidate, v: *const View) []Candidate {
         .{ .saving = ops(c, .instr, &.{ .calln, .callm }) * 100 * k.instr, .layer = "bytecode compiler", .text = "native calls: one direct opcode for each hot native (no argument window, no id table)" },
         .{ .saving = ops(c, .op_cycles, &.{.call}) * 2, .layer = "bytecode compiler", .text = "calls of bytecode functions (call and its return): inline small functions" },
         .{ .saving = c.get(.site_lines, @as(usize, @backingInt(perf.Site.exec_at)) * 4) * (k.load_l1 + 3 * k.instr), .layer = "interpreter", .text = "the execution root is read many times for each instruction: keep fuel, fibre count and flags in locals" },
+        .{ .saving = perf.loopCycles(.byte_fill, loopElems(c, .byte_fill)) + c.get(.site_cycles, @backingInt(perf.Site.core_copy)) + c.get(.site_cycles, @backingInt(perf.Site.shell_buf)), .layer = "runtime", .text = "copies and fills of the core and the shell: the fill of released regions and scratch in a safe build, the log record" },
+        .{ .saving = cause(c, &.{.syscall}), .layer = "shell", .text = "system calls: share the log write and the sends of a batch among its executions" },
         .{ .saving = c.get(.site_cycles, @backingInt(perf.Site.interp_frame)), .layer = "interpreter", .text = "the slow path reads the fibre and the frame again for each instruction: keep them in locals" },
         .{ .saving = ops(c, .op_cycles, &.{ .loadk, .loads, .loadi, .loadundef, .loadnull, .loadbool }), .layer = "bytecode compiler", .text = "constant loads: operands that name a constant directly" },
         .{ .saving = c.get(.site_cycles, @backingInt(perf.Site.const_str)) + c.get(.site_cycles, @backingInt(perf.Site.str_bytes)), .layer = "data layout", .text = "string bytes read for compares and copies: interned strings compare by handle" },
@@ -209,6 +214,7 @@ fn writeText(out: *Writer, v: *const View) !void {
     try textSummary(out, v);
     try textTlb(out, v);
     try textCauses(out, v);
+    try textPhases(out, v);
     try textOps(out, v);
     try textNatives(out, v);
     try textStructures(out, v);
@@ -295,12 +301,13 @@ fn textCauses(out: *Writer, v: *const View) !void {
 
 fn textOps(out: *Writer, v: *const View) !void {
     var rows: [max_rows]Row = @splat(.{ .key = 0, .weight = 0 });
-    try out.writeAll("INSTRUCTIONS BY OPCODE            count        bails       cycles    share\n");
+    try header(out, "INSTRUCTIONS BY OPCODE", 26, &.{ "count", "bails", "cycles", "share" }, 13);
     for (ranked(&rows, &v.c, .instr, .op_cycles)) |r| {
         try out.print("{s:<26}", .{opName(@intCast(r.key))});
         try dec(out, v.per(v.c.get(.instr, r.key)), 13);
         try dec(out, v.per(v.c.get(.bails, r.key)), 13);
         try dec(out, v.cyc(r.weight), 13);
+        try out.splatByteAll(' ', 5);
         try percent(out, r.weight, v.totalCycles());
         try out.writeAll("\n");
     }
@@ -321,31 +328,76 @@ fn textNatives(out: *Writer, v: *const View) !void {
     try out.writeAll("\n");
 }
 
+/// A header line: the first column, then each name right-aligned in `width`.
+fn header(out: *Writer, first: []const u8, first_width: usize, names: []const []const u8, width: usize) !void {
+    try out.writeAll(first);
+    try out.splatByteAll(' ', first_width -| first.len);
+    for (names) |name| {
+        try out.splatByteAll(' ', width -| name.len);
+        try out.writeAll(name);
+    }
+    try out.writeAll("\n");
+}
+
+const structure_cols = [_][]const u8{ "reads", "writes", "rd bytes", "wr bytes", "L1", "L2", "L3", "mem", "lines", "allocs", "al bytes", "cycles" };
+const col_width = 12;
+
 fn textStructures(out: *Writer, v: *const View) !void {
-    try out.writeAll("MEMORY BY STRUCTURE        reads   writes  rd bytes  wr bytes       L1       L2       L3      mem    lines   allocs  al bytes   cycles\n");
+    try header(out, "MEMORY BY STRUCTURE", 20, &structure_cols, col_width);
     for (std.enums.values(perf.Structure)) |st| {
         const i: usize = @backingInt(st);
         if (v.c.get(.reads, i) + v.c.get(.writes, i) + v.c.get(.allocs, i) == 0) continue;
         try out.print("{s:<20}", .{@tagName(st)});
         const cols = [_]u64{ v.c.get(.reads, i), v.c.get(.writes, i), v.c.get(.read_bytes, i), v.c.get(.write_bytes, i), v.c.get(.lines, i * 4), v.c.get(.lines, i * 4 + 1), v.c.get(.lines, i * 4 + 2), v.c.get(.lines, i * 4 + 3), v.c.get(.ws_st, i), v.c.get(.allocs, i), v.c.get(.alloc_bytes, i) };
-        for (cols) |x| try dec(out, v.per(x), 9);
-        try dec(out, v.cyc(v.c.get(.st_cycles, i)), 9);
+        for (cols) |x| try dec(out, v.per(x), col_width);
+        try dec(out, v.cyc(v.c.get(.st_cycles, i)), col_width);
         try out.writeAll("\n");
     }
     try out.writeAll("\n");
 }
 
 fn textSites(out: *Writer, v: *const View) !void {
-    try out.writeAll("MEMORY BY SITE               L1       L2       L3      mem   cycles  kind\n");
+    try header(out, "MEMORY BY SITE", 20, &.{ "L1", "L2", "L3", "mem", "cycles" }, col_width);
     for (std.enums.values(perf.Site)) |site| {
         const i: usize = @backingInt(site);
         const cols = [_]u64{ v.c.get(.site_lines, i * 4), v.c.get(.site_lines, i * 4 + 1), v.c.get(.site_lines, i * 4 + 2), v.c.get(.site_lines, i * 4 + 3) };
         if (cols[0] + cols[1] + cols[2] + cols[3] == 0) continue;
         try out.print("{s:<20}", .{@tagName(site)});
-        for (cols) |x| try dec(out, v.per(x), 9);
-        try dec(out, v.cyc(v.c.get(.site_cycles, i)), 9);
+        for (cols) |x| try dec(out, v.per(x), col_width);
+        try dec(out, v.cyc(v.c.get(.site_cycles, i)), col_width);
         try out.print("  {s}{s}\n", .{ if (perf.dependent(site)) "dependent" else "direct", if (perf.ranged(site)) ", range" else "" });
     }
+    try out.writeAll("\n");
+}
+
+/// The work of the core and the shell outside the interpreter, and the system calls.
+fn textPhases(out: *Writer, v: *const View) !void {
+    try header(out, "PHASES OUTSIDE THE INTERPRETER", 32, &.{ "count", "cycles", "share" }, col_width);
+    for (std.enums.values(perf.Phase)) |ph| {
+        const i: usize = @backingInt(ph);
+        if (v.c.get(.phase_count, i) == 0) continue;
+        try out.print("{s:<32}", .{@tagName(ph)});
+        try dec(out, v.per(v.c.get(.phase_count, i)), col_width);
+        try dec(out, v.cyc(v.c.get(.phase_cycles, i)), col_width);
+        try out.splatByteAll(' ', col_width - 8);
+        try percent(out, v.c.get(.phase_cycles, i), v.totalCycles());
+        try out.writeAll("\n");
+    }
+    try out.writeAll("\n");
+    try header(out, "SYSTEM CALLS (model, a batch of one)", 36, &.{"count"}, col_width);
+    for (std.enums.values(perf.Syscall)) |sc| {
+        try out.print("{s:<36}", .{@tagName(sc)});
+        try dec(out, v.per(v.c.get(.syscalls, @backingInt(sc))), col_width);
+        try out.writeAll("\n");
+    }
+    try out.writeAll("\n");
+}
+
+/// One line for the regression gate: counts that do not depend on the cost table.
+fn writeGate(out: *Writer, v: *const View, name: []const u8) !void {
+    const t = totalsOf(&v.c);
+    try out.print("{s}", .{name});
+    for ([_]u64{ t.instr, t.reads, t.writes, t.dep, t.lines }) |x| try dec(out, v.per(x), 12);
     try out.writeAll("\n");
 }
 
@@ -412,7 +464,11 @@ fn writeJson(out: *Writer, v: *const View) !void {
     try out.print("\"cache\":{{\"line\":{d},\"l1\":[{d},{d}],\"l2\":[{d},{d}],\"l3\":[{d},{d}],\"prefetch\":{}}},", .{ c.line_bytes, c.l1.bytes, c.l1.ways, c.l2.bytes, c.l2.ways, c.l3.bytes, c.l3.ways, c.next_line_prefetch });
     try jsonTotals(out, "steady", totalsOf(&v.c), v, false);
     try jsonTotals(out, "first", totalsOf(&v.first), v, true);
-    try out.writeAll("\"causes\":{");
+    try out.writeAll("\"phases\":{");
+    for (std.enums.values(perf.Phase), 0..) |ph, i| try jdec(out, @tagName(ph), v.cyc(v.c.get(.phase_cycles, @backingInt(ph))), i + 1 == std.enums.values(perf.Phase).len);
+    try out.writeAll("},\"syscalls\":{");
+    for (std.enums.values(perf.Syscall), 0..) |sc, i| try jdec(out, @tagName(sc), v.per(v.c.get(.syscalls, @backingInt(sc))), i + 1 == std.enums.values(perf.Syscall).len);
+    try out.writeAll("},\"causes\":{");
     for (std.enums.values(perf.Cause), 0..) |x, i| try jdec(out, @tagName(x), v.cyc(v.c.get(.cause, @backingInt(x))), i + 1 == perf.n_causes);
     try out.writeAll("},\"ops\":[");
     var rows: [max_rows]Row = @splat(.{ .key = 0, .weight = 0 });

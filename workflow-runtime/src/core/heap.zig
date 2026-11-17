@@ -332,10 +332,10 @@ pub const Region = struct {
         if (s.hdr._pad[0] & str_flag_ref != 0) {
             const ref = r.at(StrRef, off);
             std.debug.assert(s.len <= r.at(StrBuf, ref.data).fill);
-            if (mem.enabled) mem.rd(r.probe, .str_bytes, .str_bytes, r.buf.ptr + ref.data + @sizeOf(StrBuf), s.len);
+            if (mem.enabled) mem.rd(r.probe, .str_bytes, .str_bytes, r.buf.ptr + ref.data + @sizeOf(StrBuf), @min(s.len, mem.bytes_seen));
             return r.buf[ref.data + @sizeOf(StrBuf) ..][0..s.len];
         }
-        if (mem.enabled) mem.rd(r.probe, .str_bytes, .str_bytes, r.buf.ptr + off + @sizeOf(Str), s.len);
+        if (mem.enabled) mem.rd(r.probe, .str_bytes, .str_bytes, r.buf.ptr + off + @sizeOf(Str), @min(s.len, mem.bytes_seen));
         return r.buf[off + @sizeOf(Str) ..][0..s.len];
     }
 

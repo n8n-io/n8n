@@ -45,7 +45,7 @@ const usage =
     \\  asm <glue|w2|w3|w4> <out.wfm> [durability]   write a hand-assembled benchmark module
     \\  cron-next <cases.json>           next slots of cron expressions (differential test)
     \\  aot-gen <out.zig> <module.wfm>... write the compiled functions of the library code in the modules
-    \\  perf-model <module.wfm> <fixture.json> [N] [--json] [--profile NAME] [--no-prefetch] [--l1-kb K] [--l2-kb K] [--l3-kb K]
+    \\  perf-model <module.wfm> <fixture.json> [N] [--json] [--gate CASE] [--profile NAME] [--no-prefetch] [--l1-kb K] [--l2-kb K] [--l3-kb K]
     \\                                    run the fixture N times (default 100) with the recorder of the performance
     \\                                    model and print where instructions, memory accesses and modelled cycles go
     \\                                    (docs/perf-model.md; needs a build with -Dperf-model=true)
@@ -238,6 +238,10 @@ fn perfOptions(args: []const [:0]const u8) !perf_report.Options {
         } else {
             if (i + 1 >= args.len) return error.MissingValue;
             i += 1;
+            if (std.mem.eql(u8, a, "--gate")) {
+                o.gate = args[i];
+                continue;
+            }
             if (std.mem.eql(u8, a, "--profile")) {
                 o.profile = core_lib.perf.profileNamed(args[i]) orelse return error.UnknownProfile;
                 continue;

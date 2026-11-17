@@ -3,6 +3,7 @@
 //! layer. The simulation and the server both drive a shard through this.
 const std = @import("std");
 const core_lib = @import("core");
+const mem = core_lib.mem;
 const core = core_lib.core;
 const logfmt = core_lib.logfmt;
 const Arena = core_lib.arena.Arena;
@@ -252,6 +253,10 @@ pub const Shard = struct {
         }
         for (events[0..n]) |ev| sh.batch_events.appendAssumeCapacity(ev);
         std.debug.assert(sh.batch_events.items.len <= cap);
+        if (mem.enabled) {
+            mem.phase(sh.st.cfg.probe, .shell_batch);
+            mem.wrSlice(sh.st.cfg.probe, .event_buf, .shell_buf, sh.batch_events.items);
+        }
         // Due schedule slots become input events of this batch, so the log
         // records each fire and a replay repeats it.
         const free = cap - sh.batch_events.items.len;
@@ -377,6 +382,12 @@ pub const Shard = struct {
         if (size > sh.log_buf.len) return error.BatchTooLarge;
         const rec = logfmt.encode(sh.log_buf, sh.batch_seq, now_ms, sh.log_events[0..n]);
         std.debug.assert(rec.len == size);
+        if (mem.enabled) {
+            mem.wrSlice(sh.st.cfg.probe, .event_buf, .shell_buf, sh.log_events[0..n]);
+            mem.wrSlice(sh.st.cfg.probe, .log_buf, .shell_buf, rec);
+            mem.scan(sh.st.cfg.probe, .byte_copy, rec.len);
+            mem.syscall(sh.st.cfg.probe, .log_write);
+        }
         try sh.log.?.append(rec);
         sh.counters.log_bytes += rec.len;
         sh.counters.log_appends += 1;
@@ -386,15 +397,25 @@ pub const Shard = struct {
     pub fn syncLog(sh: *Shard) !void {
         if (!sh.unsynced) return;
         try sh.log.?.sync();
+        if (mem.enabled) mem.syscall(sh.st.cfg.probe, .log_sync);
         sh.counters.syncs += 1;
         sh.unsynced = false;
     }
 
     pub fn endBatch(sh: *Shard) void {
+        // A safe build fills the released scratch bytes.
+        if (mem.enabled and std.debug.runtime_safety) {
+            mem.wrSlice(sh.st.cfg.probe, .scratch, .shell_buf, sh.scratch.buf[0..sh.scratch.used]);
+            mem.scan(sh.st.cfg.probe, .byte_fill, sh.scratch.used);
+        }
         sh.scratch.reset();
     }
 
     fn putSnap(sh: *Shard, id: u64, bytes: []const u8) void {
+        if (mem.enabled) {
+            mem.wrSlice(sh.st.cfg.probe, .snapshot, .shell_buf, bytes);
+            mem.scan(sh.st.cfg.probe, .byte_copy, bytes.len);
+        }
         sh.snaps.put(id, bytes);
     }
 

@@ -80,16 +80,16 @@ pub fn runW1(gpa: std.mem.Allocator, out: *std.Io.Writer, opts: W1Options) !void
     });
 }
 
-const CountingLog = struct {
+pub const CountingLog = struct {
     appends: u64 = 0,
     syncs: u64 = 0,
     bytes: u64 = 0,
-    fn append(ctx: *anyopaque, b: []const u8) anyerror!void {
+    pub fn append(ctx: *anyopaque, b: []const u8) anyerror!void {
         const l: *CountingLog = @ptrCast(@alignCast(ctx));
         l.appends += 1;
         l.bytes += b.len;
     }
-    fn sync(ctx: *anyopaque) anyerror!void {
+    pub fn sync(ctx: *anyopaque) anyerror!void {
         const l: *CountingLog = @ptrCast(@alignCast(ctx));
         l.syncs += 1;
     }

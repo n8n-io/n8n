@@ -7,6 +7,8 @@ const module = core_lib.module;
 const json_enc = core_lib.json;
 const Arena = core_lib.arena.Arena;
 const triggers = @import("triggers.zig");
+const shard_mod = @import("shard.zig");
+const CountingLog = @import("bench.zig").CountingLog;
 
 pub const Result = struct { output: []u8, batches: u32 };
 
@@ -402,4 +404,109 @@ pub fn benchIn(a: std.mem.Allocator, module_bytes: []const u8, fixture_text: []c
         if (core_lib.mem.enabled) if (sizes.probe) |rec| rec.endExec();
     }
     return ok;
+}
+
+const Answer = struct { ok: bool, bytes: []const u8 };
+
+/// The answers of each step of a fixture, in order, built once.
+fn answerTable(a: std.mem.Allocator, fx: Fixture) !std.StringHashMap([]const Answer) {
+    var answers = std.StringHashMap([]const Answer).init(a);
+    const effects = fx.effects orelse return answers;
+    var it = effects.iterator();
+    while (it.next()) |kv| {
+        const len = if (kv.value_ptr.* == .array) kv.value_ptr.array.items.len else 0;
+        const list = try a.alloc(Answer, len);
+        for (list, 0..) |*ans, k| {
+            const r = try fixtureResult(a, fx, kv.key_ptr.*, @intCast(k));
+            ans.* = .{ .ok = r.ok, .bytes = r.bytes };
+        }
+        try answers.put(kv.key_ptr.*, list);
+    }
+    return answers;
+}
+
+/// `wfrt perf-model`: run the fixture's execution `n` times through a shard,
+/// as the server does: the shard writes the log record of each batch and
+/// keeps snapshots. The trigger has a connection, so the core makes its
+/// reply. `sizes.probe` gets one execution at a time. Returns the executions
+/// that ended "ok".
+pub fn benchShard(a: std.mem.Allocator, module_bytes: []const u8, fixture_text: []const u8, n: u32, sizes: BenchSizes) !u32 {
+    std.debug.assert(sizes.scratch_bytes >= 1 << 20);
+    const parsed = try std.json.parseFromSliceLeaky(std.json.Value, a, fixture_text, .{});
+    const fx = try parseFixture(a, parsed);
+    const log = try a.create(CountingLog);
+    log.* = .{};
+    var sh = try shard_mod.Shard.init(a, .{
+        .max_static_data = sizes.max_static_data,
+        .slots = 8,
+        .region_counts = .{ 8, 8, 4, 2 },
+        .max_parked = 64,
+        .max_timers = 256,
+        .max_pending = 256,
+        .max_actions = 1024,
+        .max_routes = 4,
+        .max_batch_events = 64,
+        .module_bytes = 4 << 20,
+        .natives_total = 1 << 16,
+        .max_modules = 4,
+        .immediate_retries = true,
+        .exact_seed = fx.seed,
+        .schedules = false,
+        .probe = sizes.probe,
+        .limits = .{ .aot = !core_lib.mem.enabled },
+    }, .{ .ctx = log, .appendFn = CountingLog.append, .syncFn = CountingLog.sync }, sizes.scratch_bytes, 1 << 20);
+    var answers = try answerTable(a, fx);
+    var events: std.ArrayList(core.Event) = .empty;
+    try triggers.zoneEvents(a, &events, module_bytes);
+    try events.append(a, .{ .kind = .load_module, .payload = module_bytes });
+    const loaded = try sh.tick(fx.now, events.items);
+    std.debug.assert(loaded.consumed == events.items.len);
+    sh.endBatch();
+    var occ = std.StringHashMap(u32).init(a);
+    var ok: u32 = 0;
+    for (0..n) |_| {
+        occ.clearRetainingCapacity();
+        events.clearRetainingCapacity();
+        try events.append(a, .{ .kind = .start, .aux = 0, .seq = 0, .conn = 1, .payload = fx.trigger });
+        if (try runOnShard(a, &sh, fx.now, &events, &answers, &occ, sizes)) ok += 1;
+        if (core_lib.mem.enabled) if (sizes.probe) |rec| rec.endExec();
+    }
+    return ok;
+}
+
+/// Run one execution to its end. True when it ended "ok".
+fn runOnShard(a: std.mem.Allocator, sh: *shard_mod.Shard, start_ms: i64, events: *std.ArrayList(core.Event), answers: *std.StringHashMap([]const Answer), occ: *std.StringHashMap(u32), sizes: BenchSizes) !bool {
+    var now = start_ms;
+    var done = false;
+    var ended_ok = false;
+    for (0..100_000) |_| {
+        const tk = try sh.tick(now, events.items);
+        events.clearRetainingCapacity();
+        for (tk.actions) |act| switch (act.kind) {
+            .dispatch => {
+                const m = sh.st.moduleAt(act.module);
+                const name = m.str(m.steps[act.step].name);
+                const gop = try occ.getOrPut(name);
+                if (!gop.found_existing) gop.value_ptr.* = 0;
+                const list = answers.get(name) orelse &.{};
+                const ans: Answer = if (list.len == 0) .{ .ok = true, .bytes = "null" } else list[gop.value_ptr.* % list.len];
+                gop.value_ptr.* += 1;
+                try events.append(a, .{ .kind = if (ans.ok) .effect_ok else .effect_err, .exec_id = act.exec_id, .seq = act.seq, .payload = ans.bytes });
+                // The egress of the shell: one request out, one answer in.
+                core_lib.mem.syscall(sizes.probe, .effect_send);
+                core_lib.mem.syscall(sizes.probe, .effect_recv);
+            },
+            .reply => core_lib.mem.syscall(sizes.probe, .reply_send),
+            .finished => {
+                ended_ok = @as(core_lib.heap.ExecStatus, @fromBackingInt(@intCast(act.aux))) == .done;
+                done = true;
+            },
+            .attention => done = true,
+            .snapshot, .drop_snapshot, .wake, .status, .trace, .started, .trace_items, .reserve_none, .static_data => {},
+        };
+        sh.endBatch();
+        if (done) break;
+        if (events.items.len == 0 and !tk.out.has_ready) now = @max(now, tk.out.next_timer_ms orelse break);
+    }
+    return ended_ok;
 }
