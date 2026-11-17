@@ -1456,10 +1456,10 @@ export interface InstanceAiWebResearchService {
 		},
 	): Promise<WebSearchResponse>;
 
+	/** Fetch the full extracted page. The research tool slices it for the model. */
 	fetchUrl(
 		url: string,
 		options?: {
-			maxContentLength?: number;
 			maxResponseBytes?: number;
 			timeoutMs?: number;
 			/** When aborted, in-flight page fetches should stop promptly. */

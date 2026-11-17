@@ -286,7 +286,7 @@ import { InstanceContextService } from './instance-context.service';
 import type { InstanceContextScope } from './instance-context.service';
 import { InstanceAiMcpRegistryService } from './mcp';
 import { listNodeDiscriminators } from './node-definition-resolver';
-import { fetchAndExtract, maybeSummarize, LRUCache } from './web-research';
+import { fetchAndExtract, fetchCachedPage, LRUCache } from './web-research';
 import { toWorkflowJSON } from './workflow-json';
 import { WorkflowTemplatesService } from './workflow-templates.service';
 import { toUserLike } from '@/utils/to-user-like';
@@ -4007,55 +4007,28 @@ export class InstanceAiAdapterService {
 			async fetchUrl(
 				url: string,
 				options?: {
-					maxContentLength?: number;
 					maxResponseBytes?: number;
 					timeoutMs?: number;
 					abortSignal?: AbortSignal;
-					authorizeUrl?: (targetUrl: string) => Promise<void>;
+					authorizeUrl?: (url: string) => Promise<void>;
 				},
 			) {
-				const cacheKey = `${userId}:${url}`;
-
-				// Check cache first
-				const cached = fetchCache.get(cacheKey);
-				if (cached) {
-					// If cached result redirected to a different host, authorize it
-					if (options?.authorizeUrl && cached.finalUrl) {
-						const origHost = new URL(url).hostname;
-						const finalHost = new URL(cached.finalUrl).hostname;
-						if (origHost !== finalHost) {
-							// Throws when the caller's domain tracker hasn't approved the
-							// redirect target — let it propagate so the tool suspends for
-							// HITL approval instead of leaking cached cross-host content.
-							await options.authorizeUrl(cached.finalUrl);
-						}
-					}
-					return cached;
-				}
-
 				const authorizeUrl = options?.authorizeUrl;
-				const transport = authorizeUrl
-					? outboundHttp.transport({
-							useDefaultSsrfPolicy: 'enforced',
-							authorize: async (target: URL) => await authorizeUrl(target.href),
-						})
-					: sharedTransport;
-
-				const page = await fetchAndExtract(url, {
-					maxContentLength: options?.maxContentLength,
-					maxResponseBytes: options?.maxResponseBytes,
-					timeoutMs: options?.timeoutMs,
-					abortSignal: options?.abortSignal,
-					transport,
-				});
-
-				// Attempt summarization (truncation fallback — no model injection yet)
-				const result = await maybeSummarize(page);
-
-				// Cache the result
-				fetchCache.set(cacheKey, result);
-
-				return result;
+				const load = async () => {
+					const transport = authorizeUrl
+						? outboundHttp.transport({
+								useDefaultSsrfPolicy: 'enforced',
+								authorize: async (target: URL) => await authorizeUrl(target.href),
+							})
+						: sharedTransport;
+					return await fetchAndExtract(url, {
+						maxResponseBytes: options?.maxResponseBytes,
+						timeoutMs: options?.timeoutMs,
+						abortSignal: options?.abortSignal,
+						transport,
+					});
+				};
+				return await fetchCachedPage({ cache: fetchCache, userId, url, load, authorizeUrl });
 			},
 		};
 	}
