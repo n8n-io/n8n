@@ -812,11 +812,9 @@ export class ExecutionService {
 	}
 
 	/**
-	 * Load one execution as a domain entity from whichever engine stored it. A v2
-	 * execution has no control-plane row, so the id shape picks the store.
-	 *
-	 * Annotations, retries and `waitTill` are control-plane only, so a v2
-	 * execution reports none of them.
+	 * Load an execution from engine v1 or v2, based on the shape of the id.
+	 * Returns `undefined` if the execution does not belong to one of `workflowIds`.
+	 * A v2 execution has no annotations, retries or `waitTill`.
 	 */
 	async findOneAcrossEngines(
 		executionId: string,
