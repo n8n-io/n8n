@@ -519,6 +519,18 @@ function compiledNode(c: NodeContext): boolean {
 			luxonValue: 'below',
 		}),
 	}));
+	// The node evaluates these expressions itself (`this.evaluateExpression`). v1 gives the
+	// DateTime as it is. The node code puts some values in a text (`text.replace`): there the
+	// DateTime is its text.
+	for (const { path, expression, text } of compiled.evaluated) {
+		values.push({
+			path,
+			value: c.compiled(expression, path, {
+				flattenResourceLocators: false,
+				luxonValue: text ? 'text' : 'below',
+			}),
+		});
+	}
 	// v1 evaluates an expression when the node reads the parameter. The code here evaluates
 	// it for all items before the call. So an expression that can throw keeps its error in the
 	// entry, and the module throws it at the read (`deferredParameters`).
