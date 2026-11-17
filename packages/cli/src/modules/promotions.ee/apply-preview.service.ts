@@ -24,7 +24,9 @@ import type { PublicApiCaller } from '@/public-api/public-api-client';
 import { FolderService } from '@/services/folder.service';
 import {
 	CredentialConflictPolicy,
+	CredentialOwnerPolicy,
 	CredentialPersonalRoute,
+	CrossProjectMovePolicy,
 	DataTableMissingMode,
 	DataTableSchemaConflictPolicy,
 	FolderConflictPolicy,
@@ -61,7 +63,10 @@ import {
 	collectVariableReferences,
 	compare,
 } from './package-references';
+import { markMovedResources, type MovedItem } from './project-moves';
+import { moveCheckFields, PromotionMovesService } from './promotion-moves.service';
 import { buildPreview, previewRevision, resourceKey, type PreviewSide } from './promotion-preview';
+import type { PromotionOperationInput } from './promotions.types';
 
 export type ApplyPreview = {
 	resources: PromotionResource[];
@@ -73,11 +78,14 @@ export type ApplyPreview = {
 /**
  * The request of a selective Apply. The package is the source of truth, also for the project
  * details, and a destructive data table change waits for a confirmation.
+ * `confirmMoves`: the user confirmed the moves out of projects that the branch does not hold.
+ * A project Apply never sets it.
  */
 export function applySelectionRequest(
 	user: User,
 	publicApi: PublicApiCaller,
 	confirmDestructiveChanges = false,
+	confirmMoves = false,
 ): ImportSelectionRequest {
 	return {
 		user,
@@ -96,6 +104,12 @@ export function applySelectionRequest(
 		layoutConflictPolicy: LayoutConflictPolicy.FollowPackage,
 		// A credential must be usable by the project, not only by the user who applies.
 		credentialPersonalRoute: CredentialPersonalRoute.Exclude,
+		// The owner on the destination follows the branch. The Apply operation adds what the
+		// dependency check decided for the other credentials.
+		credentialDependencies: { credentialOwnerPolicy: CredentialOwnerPolicy.FollowPackage },
+		// A workflow or folder that another team project holds here is one transfer.
+		crossProjectMovePolicy: CrossProjectMovePolicy.Transfer,
+		confirmedMovesOutOfOperation: confirmMoves,
 	};
 }
 
@@ -128,10 +142,11 @@ export function instanceApplyRequest(
 	publicApi: PublicApiCaller,
 	confirmDestructiveChanges = false,
 ): Parameters<N8nPackagesService['planPackage']>[0] {
-	// Both Apply flows share the policies of a selection.
+	// Both Apply flows share the policies of a selection. The confirmation of the destructive
+	// changes also confirms the moves out of the projects that the Apply deletes.
 	return {
 		...INSTANCE_IMPORT_POLICY,
-		...applySelectionRequest(user, publicApi, confirmDestructiveChanges),
+		...applySelectionRequest(user, publicApi, confirmDestructiveChanges, confirmDestructiveChanges),
 	};
 }
 
@@ -150,6 +165,7 @@ export class ApplyPreviewService {
 		private readonly folderService: FolderService,
 		private readonly localEntities: LocalPackageEntities,
 		private readonly globalConfig: GlobalConfig,
+		private readonly movesService: PromotionMovesService,
 	) {}
 
 	/**
@@ -159,17 +175,20 @@ export class ApplyPreviewService {
 	async build({
 		user,
 		projectId,
+		input,
 		files,
 		instance,
 	}: {
 		user: User;
 		projectId: string;
+		/** The environment of the Apply. A move also needs it to cover the other project. */
+		input: PromotionOperationInput;
 		files: ReadonlyMap<string, Buffer>;
 		instance: InstancePackage;
-	}): Promise<ApplyPreview> {
+	}): Promise<ApplyPreview & { selection: ImportSelection }> {
 		const { reader, inventory } = await this.readPackage(files);
 		const moves = await this.findCrossProjectMoves(inventory, projectId);
-		const selection = classifyProjectWorkflows(
+		const projectSelection = classifyProjectWorkflows(
 			inventory,
 			projectId,
 			await this.sharedWorkflowRepository.findOwnedWorkflowIdsByProjects([projectId]),
@@ -178,18 +197,41 @@ export class ApplyPreviewService {
 		// The import needs the project on the branch. Without it, the preview still shows what the
 		// branch lacks, and the check stops Apply.
 		const onBranch = inventory.projects.some(({ id }) => id === projectId);
-		const plan = onBranch
-			? await this.packagesService.planPackageSelection(
-					applySelectionRequest(user, false),
-					reader,
-					selection,
-					'check',
-				)
+		// A move changes two projects, so the plan also holds the other project of each move: a
+		// workflow that left this project is planned under its new project.
+		const movePlan = onBranch
+			? await this.movesService.planApply({
+					user,
+					input,
+					branchProjects: inventory.projects,
+					selections: [projectSelection],
+					movedOutWorkflowIds: new Set(
+						moves.workflows
+							.filter(({ instanceProject }) => instanceProject.id === projectId)
+							.map(({ id }) => id),
+					),
+					known: moves,
+					relevant: moves,
+					confirmable: false,
+					plan: async (planned) =>
+						await this.packagesService.planPackageSelection(
+							applySelectionRequest(user, false),
+							reader,
+							planned,
+							'check',
+						),
+				})
 			: null;
+		const plan = movePlan?.plan ?? null;
+		const selection = movePlan?.selection ?? projectSelection;
 
-		const check = plan
-			? this.check(plan, inventory, selection, moves)
-			: projectNotOnBranch(projectId, instance);
+		const check =
+			plan && movePlan
+				? {
+						...this.check(plan, inventory, selection, movePlan.refused),
+						...moveCheckFields(movePlan),
+					}
+				: projectNotOnBranch(projectId, instance);
 		const { resources, dependencies } = compareWithBranch({
 			operation: { direction: 'apply', planned: plan && plannedChanges(plan) },
 			projectIds: [projectId],
@@ -197,8 +239,10 @@ export class ApplyPreviewService {
 			files,
 			manifest: plan?.manifest ?? (await reader.readManifest()),
 			tagsDisabled: this.globalConfig.tags.disabled,
+			moves: movePlan?.movedItems,
 		});
-		return await this.finish(resources, dependencies, check);
+		// The dependency report reads the same selection, with the projects that the moves added.
+		return { ...(await this.finish(resources, dependencies, check)), selection };
 	}
 
 	/**
@@ -210,10 +254,12 @@ export class ApplyPreviewService {
 	 */
 	async buildForProjects({
 		user,
+		input,
 		files,
 		resolveProjects,
 	}: {
 		user: User;
+		input: PromotionOperationInput;
 		files: ReadonlyMap<string, Buffer>;
 		resolveProjects: (branchProjects: ReadonlyArray<{ id: string; name: string }>) => Promise<{
 			projects: PromotionEnvironmentChangesProject[];
@@ -246,6 +292,9 @@ export class ApplyPreviewService {
 		]);
 		const moves = visibleMoves(allMoves, new Set(projects.map(({ id }) => id)));
 		const movedWorkflowIds = new Set(allMoves.workflows.map(({ id }) => id));
+		const plannedProjectIds = new Set(
+			onBranch.filter(({ canOperate }) => canOperate).map(({ id }) => id),
+		);
 
 		const planned: ImportProjectSelection[] = [];
 		for (const { id, canOperate } of onBranch) {
@@ -259,16 +308,45 @@ export class ApplyPreviewService {
 				),
 			);
 		}
-		const selection = toImportSelection(planned);
-		const plan = selection
-			? await this.packagesService.planPackageSelection(
-					applySelectionRequest(user, false),
-					reader,
-					selection,
-					'check',
-				)
+		const [firstPlanned, ...otherPlanned] = planned;
+		// The Apply of the environment can move an item out of a project that the branch does not
+		// hold, after a confirmation. The preview plans without it.
+		const movePlan = firstPlanned
+			? await this.movesService.planApply({
+					user,
+					input,
+					branchProjects: inventory.projects,
+					selections: [firstPlanned, ...otherPlanned],
+					// A workflow of a planned project whose branch project is not planned.
+					movedOutWorkflowIds: new Set(
+						allMoves.workflows
+							.filter(
+								({ project, instanceProject }) =>
+									plannedProjectIds.has(instanceProject.id) && !plannedProjectIds.has(project.id),
+							)
+							.map(({ id }) => id),
+					),
+					known: allMoves,
+					relevant: moves,
+					confirmable: true,
+					plan: async (planSelection) =>
+						await this.packagesService.planPackageSelection(
+							applySelectionRequest(user, false),
+							reader,
+							planSelection,
+							'check',
+						),
+				})
 			: null;
-		const check = plan && selection ? this.check(plan, inventory, selection, moves) : emptyCheck();
+		const plan = movePlan?.plan ?? null;
+		const selection = movePlan?.selection ?? null;
+		const check =
+			plan && selection && movePlan
+				? {
+						...this.check(plan, inventory, selection, movePlan.refused),
+						...moveCheckFields(movePlan),
+					}
+				: emptyCheck();
 		const { resources, dependencies } = compareWithBranch({
 			operation: { direction: 'apply', planned: plan && plannedChanges(plan) },
 			projectIds: comparedIds,
@@ -276,6 +354,7 @@ export class ApplyPreviewService {
 			files,
 			manifest: plan?.manifest ?? (await reader.readManifest()),
 			tagsDisabled: this.globalConfig.tags.disabled,
+			moves: movePlan?.movedItems,
 		});
 		const operable = new Set(projects.filter(({ canOperate }) => canOperate).map(({ id }) => id));
 		for (const resource of resources) {
@@ -302,9 +381,11 @@ export class ApplyPreviewService {
 	 */
 	async buildInstance({
 		user,
+		input,
 		files,
 	}: {
 		user: User;
+		input: PromotionOperationInput;
 		files: ReadonlyMap<string, Buffer>;
 	}): Promise<ApplyPreview> {
 		const { reader, inventory } = await this.readPackage(files);
@@ -319,8 +400,24 @@ export class ApplyPreviewService {
 			reader,
 			'check',
 		);
-		const planCheck = this.check(plan, inventory, undefined, moves);
-		const check = { ...planCheck, conflicts: [...planCheck.conflicts, ...deletedProjects] };
+		const movePlan = await this.movesService.describeApplyPlan({
+			user,
+			input,
+			branchProjects: inventory.projects,
+			plan,
+			known: moves,
+			relevant: moves,
+			confirmable: true,
+		});
+		const planCheck = this.check(plan, inventory, undefined, movePlan.refused);
+		const check = {
+			...planCheck,
+			conflicts: [...planCheck.conflicts, ...deletedProjects],
+			...moveCheckFields(movePlan),
+		};
+		// The transfer runs before the project deletion, so a moved item is not content of a
+		// deleted project.
+		const movedKeys = new Set(movePlan.plannedMoves.map(({ kind, id }) => resourceKey(kind, id)));
 
 		const deletedProjectIds = deletedProjects.flatMap((conflict) =>
 			conflict.code === 'project-deletion' ? conflict.project.id : [],
@@ -330,17 +427,20 @@ export class ApplyPreviewService {
 			operation: {
 				direction: 'apply',
 				planned: plannedChanges(plan),
-				removals: new Set([
-					...plannedRemovals(plan),
-					...contentOfProjects(instance, deletedProjectIds),
-					...owned.map(({ key }) => key),
-				]),
+				removals: new Set(
+					[
+						...plannedRemovals(plan),
+						...contentOfProjects(instance, deletedProjectIds),
+						...owned.map(({ key }) => key),
+					].filter((key) => !movedKeys.has(key)),
+				),
 			},
 			projectIds: [...new Set([...teamProjectIds, ...inventory.projects.map(({ id }) => id)])],
 			instance,
 			files,
 			manifest: plan.manifest,
 			tagsDisabled: this.globalConfig.tags.disabled,
+			moves: movePlan.movedItems,
 		});
 		// What a deleted project owns but no listed workflow uses is not in the comparison.
 		const listed = new Set(resources.map(({ key }) => key));
@@ -495,9 +595,43 @@ export class ApplyPreviewService {
 	}
 }
 
-/** The workflows and folders that the plan removes from the projects that Apply keeps. */
-/** Compares this instance with the package files at the branch commit, by the rules of the operation. */
+/**
+ * Compares this instance with the package files at the branch commit, by the rules of the
+ * operation. Each move between projects is one moved row.
+ */
 function compareWithBranch({
+	operation,
+	projectIds,
+	instance,
+	files,
+	manifest,
+	tagsDisabled,
+	moves = [],
+}: Pick<Parameters<typeof buildPreview>[0], 'operation' | 'projectIds'> & {
+	instance: InstancePackage;
+	files: ReadonlyMap<string, Buffer>;
+	manifest: PreviewSide['manifest'];
+	tagsDisabled: boolean;
+	moves?: readonly MovedItem[];
+}) {
+	// The plan can say that a moved folder does not change, because only its project changes.
+	// The comparison of the two sides sees the move, so it decides for a moved item.
+	const planned = operation?.planned ? new Map(operation.planned) : null;
+	for (const { kind, id } of moves) planned?.delete(resourceKey(kind, id));
+	const compared = compareSides({
+		operation: operation && { ...operation, planned },
+		projectIds,
+		instance,
+		files,
+		manifest,
+		tagsDisabled,
+	});
+	return moves.length > 0
+		? { ...compared, resources: markMovedResources(compared.resources, moves) }
+		: compared;
+}
+
+function compareSides({
 	operation,
 	projectIds,
 	instance,
@@ -542,21 +676,15 @@ export function toImportSelection(projects: ImportProjectSelection[]): ImportSel
 }
 
 /**
- * The moves whose branch project the user can see. The project on this instance is named only
- * when the user can see it too.
+ * The moves whose branch project the user can see. `PromotionMovesService` names the project on
+ * this instance only when the user can read it.
  */
 function visibleMoves(
 	moves: CrossProjectMoves,
 	visibleProjectIds: ReadonlySet<string>,
 ): CrossProjectMoves {
 	const visible = (list: CrossProjectMoves['workflows']) =>
-		list
-			.filter(({ project }) => visibleProjectIds.has(project.id))
-			.map((move) =>
-				visibleProjectIds.has(move.instanceProject.id)
-					? move
-					: { ...move, instanceProject: { id: move.instanceProject.id } },
-			);
+		list.filter(({ project }) => visibleProjectIds.has(project.id));
 	return { workflows: visible(moves.workflows), folders: visible(moves.folders) };
 }
 

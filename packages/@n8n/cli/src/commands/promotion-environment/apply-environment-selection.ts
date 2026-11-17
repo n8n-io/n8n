@@ -1,6 +1,7 @@
 import { Args, Flags } from '@oclif/core';
 
 import { PromotionApplyCommand, environmentSelectionContinueCommand } from './apply-command';
+import { applyConfirmationFlags, toApplyConfirmations } from './dependency-report';
 import { environmentSelectionFlags, toEnvironmentSelection } from './environment-selection';
 import {
 	expectedPreviewRevisionFlag,
@@ -30,15 +31,10 @@ export default class PromotionEnvironmentApplyEnvironmentSelection extends Promo
 		...expectedPreviewRevisionFlag,
 		confirmDestructiveChanges: Flags.boolean({
 			description:
-				'Also apply data table changes that remove or retype columns. The values in those columns are removed.',
+				'Also apply data table changes that remove or retype columns, and move the selected workflows and folders out of a project that the branch does not hold. The values in those columns are removed.',
 			aliases: ['confirm-destructive-changes'],
 		}),
-		confirmGap: Flags.string({
-			description:
-				'ID of a dependency gap that you accept, from the report of the preview (repeat for more than one). Needs an environment that allows incomplete applies.',
-			aliases: ['confirm-gap'],
-			multiple: true,
-		}),
+		...applyConfirmationFlags,
 	};
 
 	async run() {
@@ -51,7 +47,7 @@ export default class PromotionEnvironmentApplyEnvironmentSelection extends Promo
 				expectedPreviewRevision: flags.expectedPreviewRevision,
 				// Dropped by JSON serialization when not set.
 				confirmDestructiveChanges: flags.confirmDestructiveChanges || undefined,
-				confirmedGapIds: flags.confirmGap,
+				...toApplyConfirmations(flags),
 			});
 			this.reportApplyResult(
 				result,

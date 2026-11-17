@@ -2,6 +2,7 @@ import { Args } from '@oclif/core';
 
 import { directionArg, toDirection } from './direction';
 import { changedRows } from './list-changes';
+import { formatDependencyReport } from './dependency-report';
 import { BaseCommand } from '../../base-command';
 
 export default class PromotionEnvironmentListEnvironmentChanges extends BaseCommand {
@@ -44,6 +45,12 @@ export default class PromotionEnvironmentListEnvironmentChanges extends BaseComm
 						),
 					].join('\n'),
 				);
+			}
+			if (preview.dependencyReport && !flags.quiet) {
+				const lines = formatDependencyReport(preview.dependencyReport);
+				if (lines.length > 0) {
+					this.logToStderr(['Dependencies of every listed change:', ...lines].join('\n'));
+				}
 			}
 			const projectIds = new Map(
 				preview.resources.map(({ key, projectId }) => [key, projectId] as const),

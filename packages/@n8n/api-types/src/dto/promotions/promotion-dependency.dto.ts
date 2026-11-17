@@ -222,6 +222,16 @@ export const promotionCredentialHomeChoiceSchema = z.object({
 });
 export type PromotionCredentialHomeChoice = z.infer<typeof promotionCredentialHomeChoiceSchema>;
 
+/**
+ * Apply: a project that an instance Apply does not delete, because a workflow of the package
+ * uses a credential that the project owns. Only what the user can access.
+ */
+export const promotionKeptProjectSchema = z.object({
+	project: promotionDependencyProjectSchema,
+	credentials: z.array(namedRefSchema),
+});
+export type PromotionKeptProject = z.infer<typeof promotionKeptProjectSchema>;
+
 export const promotionHardBlockCodeSchema = z.enum([
 	'credential-type-mismatch',
 	'ambiguous-credential-owner',
@@ -263,11 +273,17 @@ export const promotionDependencyReportSchema = z
 		keptWorkflows: z.array(promotionKeptWorkflowSchema),
 		/** How many kept workflows the user cannot access. */
 		hiddenKeptWorkflowCount: z.number().int().nonnegative().optional(),
+		/** Apply: the projects that an instance Apply keeps for their credentials. */
+		keptProjects: z.array(promotionKeptProjectSchema).optional(),
+		/** How many kept projects the user cannot access. */
+		hiddenKeptProjectCount: z.number().int().nonnegative().optional(),
 		credentialHomeChoices: z.array(promotionCredentialHomeChoiceSchema),
 		hardBlocks: z.array(promotionHardBlockSchema),
 	})
 	.openapi('PromotionDependencyReport');
 export type PromotionDependencyReport = z.infer<typeof promotionDependencyReportSchema>;
+
+export class PromotionDependencyReportDto extends Z.class(promotionDependencyReportSchema.shape) {}
 
 /** A report with nothing in it, for the code paths that do not compute one yet. */
 export function emptyPromotionDependencyReport(
@@ -333,6 +349,9 @@ export const promotionApplyDependencyResultShape = {
 	grants: z.array(promotionCredentialGrantSchema).optional(),
 	credentialMoves: z.array(promotionCredentialMoveSchema).optional(),
 	keptWorkflows: z.array(promotionKeptWorkflowSchema).optional(),
+	keptProjects: z.array(promotionKeptProjectSchema).optional(),
+	/** Sentences for a client without its own texts, such as the CLI. One for each fact. */
+	dependencyMessages: z.array(z.string()).optional(),
 };
 
 const ownerRequestTargetSchema = z.object({

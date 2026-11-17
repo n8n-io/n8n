@@ -301,9 +301,9 @@ n8n-cli promotion-environment promote env-1 -m "Promote team projects" --force
 
 Personal projects are not included. A workflow on the branch that moved to a
 personal project is refused, because Apply would delete it on the destination.
-Move it back to its team project first. A workflow or folder on the branch that
-moved to another team project is also refused while its old project still
-exists, because Apply can't move it between projects. Connect the environment first. This command
+Move it to a team project first. A workflow or folder on the branch that
+moved to another team project is written under its new project, and Apply
+transfers it on the destination. Connect the environment first. This command
 works on an `instance` Promote environment only. The API key also needs
 `variable:list` when the workflows reference variables.
 
@@ -393,9 +393,12 @@ branch, without changing their content. When the branch already matches the
 selection, the command fails with "Nothing to promote".
 
 Archived workflows stay on the branch as archived. A selected workflow that was
-deleted leaves this project's branch. A selected workflow that moved into or out
-of the project since the branch was written is refused: move it back
-first. The request fails before any write if the branch does not hold a
+deleted leaves this project's branch. A selected workflow or folder that moved
+between two team projects since the branch was written is one change: one
+commit removes it under the old project and adds it under the new project. You
+can select it from either project. You need the right to promote in both
+projects, and the environment must cover both. A move into a personal project
+is refused. The request fails before any write if the branch does not hold a
 deleted workflow under this project. Connect that environment first. The API key also needs
 `variable:list` when the workflows reference variables.
 
@@ -469,6 +472,10 @@ changes and delete projects:
   other columns are kept.
 - Team projects that the package does not hold. Each project is deleted with
   everything in it. You can't undo this.
+- Moves out of a project that the package does not hold. A workflow or folder
+  that the package holds under another team project moves there before the
+  project is deleted. The check lists these moves in `plannedMoves` with
+  `needsConfirmation: true`.
 
 The flag applies all such changes when the command runs. This includes changes
 and projects that the blocked Apply did not report. Without the flag, a
@@ -524,9 +531,18 @@ Selected IDs on the branch are imported. A selected workflow that this project
 owns but the branch does not hold is removed. Unselected content stays unchanged. A selected
 workflow or folder is created, or moves within the project to match the branch,
 together with the folders above it, and those folders take the name on the
-branch. Other folders stay as they are. A selected workflow, or a folder that the
-branch holds in this project, that the branch and this instance hold in different
-projects is refused before any write. Without the `--expected-*` flags, the command applies the branch tip;
+branch. Other folders stay as they are. A selected workflow or folder that the
+branch and this instance hold in two different team projects is one transfer: it
+keeps its ID, its history and its executions, and a workflow loses its shares.
+You can select it from either project. The check lists it in `plannedMoves` and
+names both projects in `changedProjects`. You need the right to apply in both
+projects. The move is refused before any write (conflict `moved`, with
+`blockedBy`) when this instance holds the item in a personal project, when you
+have no right in the other project, or when the branch does not hold the project
+that the item leaves. Only `apply` and `apply-environment-selection` can do that
+last move, with `--confirm-destructive-changes`. The `applied` result lists the
+moves in `moves`. A move unpublishes a workflow only when the new project
+refuses its published version, and `moves[].unpublished` gives the reason. Without the `--expected-*` flags, the command applies the branch tip;
 with them, it applies only the source that you reviewed. Pass all three flags or
 none. With `--expected-preview-revision`, the command applies only when this
 instance still matches the preview that you reviewed.
@@ -647,6 +663,40 @@ when this instance holds it, and reports it as a missing binding when not.
 There is no separate Continue command. When the command exits `4`, resolve the
 blockers. Then run the command that it printed: the same selection with the
 `--expected-*` flags.
+
+## Dependency report and confirmations
+
+Each Promote and each Apply command checks the references of its workflows to
+credentials, sub-workflows and error workflows. A reference that does not
+resolve after the operation is a gap. The commands print the dependency report
+when it holds something, and `--json` gives the full report in
+`dependencyReport`. `list-changes` and `list-environment-changes` print the
+report of "every listed change".
+
+- A strict environment stops on a gap. Close the gap, then run the command
+  again.
+- An environment that allows incomplete operations continues when you pass the
+  ID of each gap to `--confirm-gap`. Quote the ID: it holds the `|` character.
+- The command exits `4` and changes nothing when the gaps differ from the IDs
+  that you passed. `promote` (the whole instance) fails with status 409 instead.
+- The CLI treats a gap that it does not know as a blocker. Update the CLI
+  before you confirm such a gap.
+
+The Apply commands (`apply`, `apply-continue`, `apply-selection`,
+`apply-selection-continue`, `apply-environment-selection`) also have these
+flags:
+
+| Flag | Description |
+|------|-------------|
+| `--confirm-gap` | ID of a dependency gap that you accept. Repeat the flag for more than one. |
+| `--confirm-grant` | ID of a credential grant that you accept. The Apply shares the credential with the project that uses it. The API key needs `credential:update`. |
+| `--confirm-deletion-callers` | Accept that the Apply deletes workflows that other workflows on this instance call. |
+| `--credential-home` | Project that gets a credential that the branch holds without an owner, as `<credentialId>:<projectId>`. |
+
+An incomplete Apply creates an empty placeholder credential for a credential
+that this instance does not hold. A workflow that uses a placeholder cannot be
+published until a person saves values in the credential. Apply never publishes
+and never unpublishes a workflow.
 
 ## `promotion-environment list-missing-projects` / `create-missing-projects`
 

@@ -120,7 +120,8 @@ export class CredentialsRepository extends BaseRepository<CredentialsEntity> {
 	async findNonProjectCredentialsByIds(ids: string[]): Promise<CredentialsEntity[]> {
 		return await this.find({
 			where: { id: In(ids), usageScope: Not('project') },
-			select: ['id'],
+			// The promotion dependency check reads the name and the type of an instance credential.
+			select: ['id', 'name', 'type', 'isManaged', 'isResolvable'],
 		});
 	}
 

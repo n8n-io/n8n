@@ -1,8 +1,10 @@
+import { formatDependencyReport, hasUnknownGap } from './dependency-report';
 import { BaseCommand, EXIT_BLOCKED, EXIT_SOURCE_CHANGED, EXIT_SUCCESS } from '../../base-command';
 import type {
 	ApplyPackageResult,
 	PromotionApplyCheck,
 	PromotionEnvironmentSelectionProject,
+	PromotionMoveProject,
 	PromotionProjectDeletion,
 	PromotionSelection,
 } from '../../client';
@@ -30,13 +32,36 @@ export abstract class PromotionApplyCommand extends BaseCommand {
 		}
 
 		if (result.status === 'applied') {
-			const warnings =
-				result.warnings.length > 0 ? ` with ${result.warnings.length} warning(s)` : '';
+			const moves = result.moves ?? [];
+			const unpublished = moves.filter((move) => move.unpublished);
+			const warningCount = result.warnings.length + unpublished.length;
+			const warnings = warningCount > 0 ? ` with ${warningCount} warning(s)` : '';
+			const moved = moves.length > 0 ? ` Moved ${moves.length} item(s) between projects.` : '';
+			// What the Apply did for its dependencies: placeholders, moves, kept items, open gaps.
+			if (!flags.quiet) {
+				const notes = [
+					...(result.dependencyMessages ?? []),
+					...(result.dependencyReport?.gaps.length
+						? [
+								`Applied incomplete, with ${result.dependencyReport.gaps.length} gap(s). Run with --json for the report.`,
+							]
+						: []),
+				];
+				if (notes.length > 0) this.logToStderr(notes.join('\n'));
+			}
 			this.succeed(
-				`Applied ${result.git.branchName} at commit ${result.git.commitSha} to the instance${warnings}.`,
+				`Applied ${result.git.branchName} at commit ${result.git.commitSha} to the instance${warnings}.${moved}`,
 				flags,
 				result,
 			);
+			// The only case where an Apply unpublishes: the new project refused the published version.
+			if (!flags.quiet) {
+				for (const { name, id, unpublished: reason } of unpublished) {
+					this.logToStderr(
+						`Warning: the move unpublished workflow ${name} (${id}): ${reason?.reason ?? ''}`,
+					);
+				}
+			}
 			return;
 		}
 
@@ -55,11 +80,25 @@ function exitCodeFor(result: ApplyPackageResult): number {
 }
 
 function stopMessage(result: ApplyPackageResult, continueCommand: ContinueCommand): string {
-	if (result.status === 'blocked') return blockedMessage(result, result.check, continueCommand);
-	if (result.status === 'gaps-changed') {
+	if (result.status === 'blocked') {
 		return [
-			'The dependency gaps differ from the gaps that you confirmed. Nothing was imported.',
-			'Run with --json for the report. Close the gaps, or confirm each gap, then apply again.',
+			blockedMessage(result, result.check, continueCommand),
+			...(result.grants?.length
+				? [`The Apply gave ${result.grants.length} grant(s) before it stopped. They stay.`]
+				: []),
+			...(result.dependencyReport ? formatDependencyReport(result.dependencyReport) : []),
+		].join('\n');
+	}
+	if (result.status === 'gaps-changed') {
+		const report = result.dependencyReport;
+		return [
+			'The Apply needs your decision on its dependencies. Nothing was imported.',
+			...formatDependencyReport(report),
+			hasUnknownGap(report)
+				? 'This version of the CLI does not know every gap. Update the CLI before you confirm a gap.'
+				: report.allowIncomplete
+					? 'Close the gaps, or pass each gap ID to --confirm-gap. Add --confirm-deletion-callers to accept the listed callers. Then apply again.'
+					: 'Close the gaps, then apply again. Add --confirm-deletion-callers to accept the listed callers.',
 		].join('\n');
 	}
 	if (result.status === 'preview-changed') {
@@ -87,6 +126,9 @@ function blockedMessage(
 	const bindings = (kind: 'credential' | 'variable') =>
 		check.missingBindings.filter((binding) => binding.kind === kind).length;
 	const projectDeletions = check.conflicts.filter(isProjectDeletion);
+	const plannedMoves = check.plannedMoves ?? [];
+	const unconfirmedMoves = plannedMoves.filter(({ needsConfirmation }) => needsConfirmation);
+	const project = ({ id, name }: PromotionMoveProject) => (name ? `${name} (${id})` : id);
 
 	return [
 		'Apply is blocked. Nothing was imported.',
@@ -101,6 +143,15 @@ function blockedMessage(
 					...projectDeletions.map(({ project }) => `  ${project.name} (${project.id})`),
 				]
 			: []),
+		...(plannedMoves.length > 0
+			? [
+					'Apply moves these items between projects. A moved workflow loses its shares:',
+					...plannedMoves.map(
+						({ kind, name, id, fromProject, toProject }) =>
+							`  ${kind} ${name} (${id}): ${project(fromProject)} -> ${project(toProject)}`,
+					),
+				]
+			: []),
 		'Run with --json for the details. After you resolve them, run:',
 		`  ${continueCommand(result)}`,
 		...(check.conflicts.some(({ code }) => code === 'destructive-change')
@@ -111,6 +162,11 @@ function blockedMessage(
 		...(projectDeletions.length > 0
 			? [
 					"To also delete the projects listed above, add --confirm-destructive-changes. You can't undo this.",
+				]
+			: []),
+		...(unconfirmedMoves.length > 0
+			? [
+					`To also move ${unconfirmedMoves.length} item(s) out of a project that the branch does not hold, add --confirm-destructive-changes.`,
 				]
 			: []),
 	].join('\n');

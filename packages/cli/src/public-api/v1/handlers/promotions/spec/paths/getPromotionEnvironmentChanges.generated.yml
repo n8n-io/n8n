@@ -147,6 +147,13 @@ responses:
                                 type: string
                             required:
                               - id
+                          blockedBy:
+                            type: string
+                            enum:
+                              - personal-project
+                              - other-project-forbidden
+                              - other-project-not-covered
+                              - project-not-on-branch
                         required:
                           - id
                           - name
@@ -185,6 +192,13 @@ responses:
                                 type: string
                             required:
                               - id
+                          blockedBy:
+                            type: string
+                            enum:
+                              - personal-project
+                              - other-project-forbidden
+                              - other-project-not-covered
+                              - project-not-on-branch
                         required:
                           - id
                           - name

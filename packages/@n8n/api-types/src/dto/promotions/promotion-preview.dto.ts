@@ -86,8 +86,10 @@ export const promotionResourceSchema = z
 				'Whether the resource can be selected for Promote or Apply: a workflow, or a project or folder that is added or modified. Credentials, data tables, variables and tags come with the workflows that use them.',
 		}),
 		/**
-		 * Only for deleted workflows on Promote: the project that owns the workflow on this instance now.
-		 * Promote refuses the workflow, because the destination would delete it.
+		 * Only on a row of the project that the item leaves, when the view does not hold the other
+		 * project: the project that holds the item on the other side. The operation moves the item
+		 * between two team projects. It refuses a move into a personal project, and then `name` is
+		 * left out. `name` is also left out when the user cannot access the project.
 		 */
 		movedToProject: promotionInstanceProjectSchema.optional(),
 		/**

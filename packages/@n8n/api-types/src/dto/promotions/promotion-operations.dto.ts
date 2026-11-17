@@ -5,6 +5,7 @@ import { z } from 'zod';
 import { n8nIdSchema } from '../../schemas/id.schema';
 import { Z } from '../../zod-class';
 import {
+	promotionAppliedMoveSchema,
 	promotionApplyCheckSchema,
 	promotionBindingWarningSchema,
 } from './promotion-apply-check.dto';
@@ -181,6 +182,8 @@ const confirmDestructiveChangesSchema = z
 			'Rows and other columns are kept. ' +
 			'On a full apply, also deletes the team projects that a `project-deletion` conflict reports, ' +
 			'with everything in them. ' +
+			'On an apply of an environment, also moves the workflows and folders that `plannedMoves` ' +
+			'reports with `needsConfirmation`: they leave a project that the branch does not hold. ' +
 			'Without `expectedPreviewRevision`, the confirmation covers every such change and deletion ' +
 			'when Continue runs, including those that are not in the reviewed result.',
 	});
@@ -239,6 +242,8 @@ export const applyPackageResultSchema = z.discriminatedUnion('status', [
 		status: z.literal('applied'),
 		counts: applyPackageCountsSchema,
 		warnings: z.array(promotionBindingWarningSchema),
+		/** The workflows and folders that the Apply moved between two team projects. */
+		moves: z.array(promotionAppliedMoveSchema).optional(),
 		...promotionApplyDependencyResultShape,
 		/** Set when the Apply checked its dependencies. An incomplete Apply lists its gaps here. */
 		dependencyReport: promotionDependencyReportSchema.optional(),
@@ -301,6 +306,18 @@ const environmentSelectionProjectsSchema = z
 		description:
 			'The selection of each project. Every project must be in the scope of the environment, and the user needs the right to run the operation in each of them.',
 	});
+
+/**
+ * A selection whose dependency report the client wants before the operation. It is the
+ * selection of a Promote or an Apply across projects, and it writes nothing.
+ */
+export class PromotionDependencyReportRequestDto extends Z.class(
+	{
+		projects: environmentSelectionProjectsSchema,
+		credentialHomes: promotionApplyConfirmationShape.credentialHomes,
+	},
+	{ strict: true },
+) {}
 
 /** A Promote across projects. It writes one commit and opens at most one review. */
 export class PromoteEnvironmentSelectionRequestDto extends Z.class(

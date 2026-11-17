@@ -1,6 +1,7 @@
 import { Args, Flags } from '@oclif/core';
 
 import { PromotionApplyCommand, selectionContinueCommand } from './apply-command';
+import { applyConfirmationFlags, toApplyConfirmations } from './dependency-report';
 import {
 	expectedPreviewRevisionFlag,
 	expectedSourceFlags,
@@ -34,6 +35,7 @@ export default class PromotionEnvironmentApplySelection extends PromotionApplyCo
 		}),
 		...expectedSourceFlags({ required: false }),
 		...expectedPreviewRevisionFlag,
+		...applyConfirmationFlags,
 	};
 
 	async run() {
@@ -45,6 +47,7 @@ export default class PromotionEnvironmentApplySelection extends PromotionApplyCo
 				selection,
 				toExpectedSource(flags),
 				flags.expectedPreviewRevision,
+				toApplyConfirmations(flags),
 			);
 			this.reportApplyResult(result, flags, selectionContinueCommand(args.projectId, selection));
 		});

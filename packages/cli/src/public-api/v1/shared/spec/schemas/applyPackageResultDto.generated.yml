@@ -280,6 +280,53 @@ oneOf:
             - name
             - scope
             - consumers
+      moves:
+        type: array
+        items:
+          type: object
+          properties:
+            kind:
+              type: string
+              enum:
+                - workflow
+                - folder
+            id:
+              type: string
+            name:
+              type: string
+            fromProject:
+              type: object
+              properties:
+                id:
+                  type: string
+                  minLength: 1
+                name:
+                  type: string
+              required:
+                - id
+            toProject:
+              type: object
+              properties:
+                id:
+                  type: string
+                  minLength: 1
+                name:
+                  type: string
+              required:
+                - id
+            unpublished:
+              type: object
+              properties:
+                reason:
+                  type: string
+              required:
+                - reason
+          required:
+            - kind
+            - id
+            - name
+            - fromProject
+            - toProject
       placeholders:
         type: array
         items:
@@ -397,6 +444,13 @@ oneOf:
               type: boolean
             allowed:
               type: boolean
+            blockedReason:
+              type: string
+              enum:
+                - no-move-right
+                - missing-create-right
+                - managed
+                - end-user
           required:
             - credential
             - toProject
@@ -433,6 +487,42 @@ oneOf:
             - name
             - projectId
             - referencedBy
+      keptProjects:
+        type: array
+        items:
+          type: object
+          properties:
+            project:
+              type: object
+              properties:
+                id:
+                  type: string
+                  minLength: 1
+                name:
+                  type: string
+              required:
+                - id
+                - name
+            credentials:
+              type: array
+              items:
+                type: object
+                properties:
+                  id:
+                    type: string
+                    minLength: 1
+                  name:
+                    type: string
+                required:
+                  - id
+                  - name
+          required:
+            - project
+            - credentials
+      dependencyMessages:
+        type: array
+        items:
+          type: string
       dependencyReport:
         $ref: promotionDependencyReport.generated.yml
     required:
