@@ -18,7 +18,7 @@ switch-else 81
 unbounded-loop 24
 fn-length 41
 nesting 26
-fn-assert 144
+fn-assert 143
 discard 121
 core-std 89
 shell-syscall 68
