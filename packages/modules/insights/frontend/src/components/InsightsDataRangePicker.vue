@@ -29,9 +29,6 @@ const emit = defineEmits<N8nDateRangePickerRootEmits>();
 const telemetry = useTelemetry();
 
 const upgradeModal = ref(false);
-function showUpgradeModal() {
-	upgradeModal.value = true;
-}
 
 const actionType = ref<'preset' | 'custom'>('custom');
 
@@ -129,6 +126,13 @@ function syncData(isOpen: boolean) {
 	telemetry.track('User updated insights time range', trackData);
 }
 const open = ref(false);
+
+function showUpgradeModal() {
+	// The picker popover stacks above dialogs. Close it before the upgrade dialog opens.
+	open.value = false;
+	upgradeModal.value = true;
+}
+
 watch(open, (opened) => {
 	if (opened) {
 		actionType.value = 'custom';
