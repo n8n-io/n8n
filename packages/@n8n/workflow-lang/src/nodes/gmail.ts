@@ -32,6 +32,7 @@ import {
 	defineNode,
 	operationError,
 	type FailedResponse,
+	type HttpResponse,
 	type Item,
 } from '@n8n/workflow-lang';
 
@@ -205,6 +206,10 @@ function headerAddress(entry: Address): string {
 
 function headerAddresses(list: Address[]): string {
 	return list.map((entry) => headerAddress(entry)).join(', ');
+}
+
+function isObject(value: unknown): value is Record<string, unknown> {
+	return typeof value === 'object' && value !== null && !Array.isArray(value);
 }
 
 /** prepareEmailsInput of the v1 node, as a header value. */
@@ -453,17 +458,30 @@ export default defineNode<GmailParameters>({
 				itemSuffix: parameters.itemIndex ?? (position < 0 ? 0 : position),
 				operationError: true,
 			});
+		// A request that fails without an answer, or whose credential n8n does not renew (an
+		// OAuth2 token without a refresh token): the item loop of the v1 node adds ` (item N)`.
+		const stepFailure = (error: unknown): Error => {
+			const text =
+				isObject(error) && typeof error.message === 'string' ? error.message : String(error);
+			const index = parameters.itemIndex ?? (position < 0 ? 0 : position);
+			return operationError(`${text} (item ${index})`);
+		};
 		const get = async <T>(url: string, qs: Record<string, unknown>): Promise<T> => {
-			const response = await ctx.http<T>({
-				acceptAs: 'legacy',
-				json: true,
-				method: 'GET',
-				url,
-				headers,
-				qs,
-				body: undefined,
-				credential,
-			});
+			let response: HttpResponse<T>;
+			try {
+				response = await ctx.http<T>({
+					acceptAs: 'legacy',
+					json: true,
+					method: 'GET',
+					url,
+					headers,
+					qs,
+					body: undefined,
+					credential,
+				});
+			} catch (error) {
+				throw stepFailure(error);
+			}
 			if (response.status >= 400) throw requestFailure(response);
 			return response.body;
 		};
@@ -481,16 +499,21 @@ export default defineNode<GmailParameters>({
 				position++;
 				const url = `${api}/messages/${String(parameters.messageId ?? '')}`;
 				if (operation === 'delete') {
-					const response = await ctx.http<unknown>({
-						acceptAs: 'legacy',
-						json: true,
-						method: 'DELETE',
-						url,
-						headers,
-						qs: {},
-						body: undefined,
-						credential,
-					});
+					let response: HttpResponse<unknown>;
+					try {
+						response = await ctx.http<unknown>({
+							acceptAs: 'legacy',
+							json: true,
+							method: 'DELETE',
+							url,
+							headers,
+							qs: {},
+							body: undefined,
+							credential,
+						});
+					} catch (error) {
+						throw stepFailure(error);
+					}
 					if (response.status >= 400) throw requestFailure(response);
 					out.push({ success: true });
 					continue;
@@ -500,16 +523,21 @@ export default defineNode<GmailParameters>({
 				if (operation === 'markAsUnread') body = { addLabelIds: ['UNREAD'] };
 				if (operation === 'addLabels') body = { addLabelIds: parameters.labelIds };
 				if (operation === 'removeLabels') body = { removeLabelIds: parameters.labelIds };
-				const response = await ctx.http<Item>({
-					acceptAs: 'legacy',
-					json: true,
-					method: 'POST',
-					url: `${url}/modify`,
-					headers,
-					qs: {},
-					body,
-					credential,
-				});
+				let response: HttpResponse<Item>;
+				try {
+					response = await ctx.http<Item>({
+						acceptAs: 'legacy',
+						json: true,
+						method: 'POST',
+						url: `${url}/modify`,
+						headers,
+						qs: {},
+						body,
+						credential,
+					});
+				} catch (error) {
+					throw stepFailure(error);
+				}
 				if (response.status >= 400) throw requestFailure(response);
 				out.push(response.body);
 			}
@@ -569,16 +597,21 @@ export default defineNode<GmailParameters>({
 		}
 		const options = parameters.options ?? {};
 		const post = async (url: string, qs: Record<string, unknown>, body: unknown): Promise<Item> => {
-			const response = await ctx.http<Item>({
-				acceptAs: 'legacy',
-				json: true,
-				method: 'POST',
-				url,
-				headers,
-				qs,
-				body,
-				credential,
-			});
+			let response: HttpResponse<Item>;
+			try {
+				response = await ctx.http<Item>({
+					acceptAs: 'legacy',
+					json: true,
+					method: 'POST',
+					url,
+					headers,
+					qs,
+					body,
+					credential,
+				});
+			} catch (error) {
+				throw stepFailure(error);
+			}
 			if (response.status >= 400) throw requestFailure(response);
 			return response.body;
 		};
