@@ -1275,8 +1275,46 @@ function ticketCard(tk) {
     <p class="meta">À droite, la cote juste : ne prenez une sélection que si betPawa paie plus.</p></div>`;
 }
 
+/* "Hier" on the Today page (D86): the tickets and the matches of the owner's teams on the
+   last day with results, from the same data as the Bilan page. */
+function yesterdayBlock(b, now) {
+  if (!b) return "";
+  const days = [...new Set([...(b.tickets || []).map((d) => d.date), ...(b.matches || []).map((m) => m.date)])]
+    .filter((x) => x < now).sort();
+  const day = days[days.length - 1];
+  if (!day) return "";
+  const y = new Date(`${now}T12:00:00`); y.setDate(y.getDate() - 1);
+  const title = day === y.toLocaleDateString("en-CA") ? "Hier" : dayLabel(day);
+  const STATE = { "gagné": ["won", "gagné"], "perdu": ["lost", "perdu"], "en cours": ["open", "pas encore réglé"] };
+  const tks = ((b.tickets || []).find((d) => d.date === day)?.tickets || []).map((t) => {
+    const [cls, word] = STATE[t.state] || ["open", t.state];
+    const lost = t.legs.filter((l) => l.won === 0);
+    const wait = t.legs.filter((l) => l.won == null);
+    const why = lost.length
+      ? `<p class="muted small">Raté : ${lost.map((l) => `${esc(l.match)} ${esc(l.score || "")}, « ${esc(l.label)} »`).join(" ; ")}</p>`
+      : wait.length ? `<p class="muted small">En attente : ${wait.map((l) => esc(l.match)).join(", ")}</p>` : "";
+    return `<li><span class="t">${odds2(t.odds)}</span><span>Ticket ${esc(t.tag)} · ${esc(t.name || "")}
+      <br><span class="muted small">${t.right} sélection${t.right > 1 ? "s" : ""} juste${t.right > 1 ? "s" : ""} sur ${t.legs.length}</span>${why}</span>
+      <span class="state ${cls}">${esc(word)}</span></li>`;
+  });
+  const fav = (m) => { const i = m.model.indexOf(Math.max(...m.model));
+    return i === 1 ? `le nul (${pct(m.model[1], 0)})` : `${esc(i === 0 ? m.home : m.away)} (${pct(m.model[i], 0)})`; };
+  const games = (b.matches || []).filter((m) => m.date === day && isMine(m)).map((m) =>
+    `<li><span class="t">${esc(m.score)}</span><span>${esc(m.home)} – ${esc(m.away)}
+      <br><span class="muted small">Le site voyait ${fav(m)}</span></span>
+      <span class="state ${m.model_right ? "won" : "lost"}">${m.model_right ? "juste" : "raté"}</span></li>`);
+  if (!tks.length && !games.length) return "";
+  const right = (b.matches || []).filter((m) => m.date === day && isMine(m) && m.model_right).length;
+  return `<section class="today-block"><h2>${esc(title)}</h2>
+    ${tks.length ? `<div class="card"><h3>Vos tickets</h3><ul class="legs-plain">${tks.join("")}</ul></div>` : ""}
+    ${games.length ? `<div class="card"><h3>Vos équipes · le site a vu juste ${right} fois sur ${games.length}</h3>
+      <ul class="legs-plain results">${games.join("")}</ul></div>` : ""}
+    <p class="more"><a href="#/bilan">Tout le bilan de la semaine</a></p></section>`;
+}
+
 async function today() {
-  const [d, t, lec] = await Promise.all([get("/home"), get("/tickets").catch(() => null), get("/lecture").catch(() => null)]);
+  const [d, t, lec, b] = await Promise.all([get("/home"), get("/tickets").catch(() => null), get("/lecture").catch(() => null),
+    get("/bilan").catch(() => null)]);
   learnMine(d.matches);
   const now = localToday();
   const tday = (t?.days || []).find((x) => x.date >= now);
@@ -1311,7 +1349,8 @@ async function today() {
         <p class="lead">Un résumé par compétition, écrit par une IA à partir des seuls chiffres du site, puis vérifié : un texte avec un chiffre inventé est rejeté.</p>
         <div class="card">${lec.groups.map((g) => `<p><b>${esc(g.competition)}</b></p><p class="muted">${esc(g.text)}</p>`).join("")}</div></section>`
     : "";
-  return head + staleNote(d.last_prediction) + `<section class="today-block"><h2>Vos tickets</h2>${tickets}</section>` + lecture + notes + matches;
+  return head + staleNote(d.last_prediction) + `<section class="today-block"><h2>Vos tickets</h2>${tickets}</section>`
+    + yesterdayBlock(b, now) + lecture + notes + matches;
 }
 
 async function ticketsPage() {

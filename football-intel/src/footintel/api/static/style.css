@@ -522,3 +522,7 @@ h1 { font-size: 26px; letter-spacing: -0.025em; }
 /* Small tag when a figure comes from the bookmakers (the model is the default). */
 .src-tag { display: inline-block; margin-left: 4px; padding: 0 6px; border-radius: 999px;
            border: 1px solid var(--line); font-size: 11px; color: var(--muted); vertical-align: 1px; }
+
+/* "Hier" block (D86): cards stacked with a little space, titles inside cards start at the top. */
+.today-block > .card + .card { margin-top: 12px; }
+.today-block .card > h3:first-child { margin-top: 0; }
