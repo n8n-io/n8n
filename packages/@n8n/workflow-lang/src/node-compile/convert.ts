@@ -6,6 +6,7 @@ import type { NodeDescription } from '../convert/node-parameters.ts';
 import type {
 	CredentialDerivation,
 	CredentialMint,
+	EvaluatedText,
 	ParameterKind,
 	PublishFacts,
 	RandomShape,
@@ -113,6 +114,8 @@ export function unverifiedConditions(
 		);
 	for (const name of itemParameterNames(compiled))
 		check(name, (path) => itemParameterCondition(path, compiled.errorMode), hasExpression);
+	for (const name of evaluatedParameterNames(compiled))
+		need(evaluatedCondition(name, compiled.errorMode));
 	if (compiled.flags.length > 0 && verifiedFlagKeys(sources, type, version, compiled).length === 0)
 		missing.push(UNVERIFIED_FLAGS);
 	return missing;
@@ -183,6 +186,24 @@ export function itemParameterCondition(name: string, mode: ErrorMode = 'stopWork
 	return mode === 'stopWorkflow'
 		? `${ITEM_PARAMETER_PREFIX}${name}`
 		: `${ITEM_PARAMETER_PREFIX}${name}@${mode}`;
+}
+
+export const EVALUATED_PARAMETER_PREFIX = '@evaluated=';
+
+export function evaluatedCondition(name: string, mode: ErrorMode = 'stopWorkflow'): string {
+	return mode === 'stopWorkflow'
+		? `${EVALUATED_PARAMETER_PREFIX}${name}`
+		: `${EVALUATED_PARAMETER_PREFIX}${name}@${mode}`;
+}
+
+export function evaluatedParameterNames(compiled: CompiledNode): string[] {
+	return [
+		...new Set(
+			compiled.evaluated.flatMap((entry) =>
+				entry.parameter === undefined ? [] : [entry.parameter.split('.')[0]],
+			),
+		),
+	].sort();
 }
 
 export const ITEM_ERROR = '@eachError';
@@ -315,6 +336,8 @@ export interface CompiledNode {
 	dynamic: string[];
 
 	itemParameters: string[];
+
+	evaluated: EvaluatedText[];
 
 	firstItemParameters: string[];
 
@@ -543,6 +566,8 @@ export function compileNodeInstance(
 	if (result.source === undefined || result.retyped === undefined)
 		return { errors: result.errors, origins: result.origins };
 
+	const evaluated = result.evaluated ?? [];
+	const isEvaluated = (path: string) => evaluated.some((entry) => entry.path === path);
 	const type = `${node.type}#${hashOf(result.source)}`;
 	const source = result.retyped(type);
 	const errors = subsetErrors(type, node.version, source);
@@ -552,7 +577,8 @@ export function compileNodeInstance(
 		file: `nodes/compiled-${type.slice(type.indexOf('#') + 1)}.ts`,
 		source,
 		dynamic: Object.keys(parameters).filter((name) => hasExpression(parameters[name])),
-		itemParameters: result.itemParameters ?? [],
+		itemParameters: (result.itemParameters ?? []).filter((path) => !isEvaluated(path)),
+		evaluated,
 		firstItemParameters: result.firstItemParameters ?? [],
 		deferred: (result.itemParameters ?? []).filter((path) => deferred.includes(path)),
 		errorMode,

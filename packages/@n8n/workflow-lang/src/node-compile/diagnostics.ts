@@ -609,6 +609,14 @@ export const RULES: Rule[] = [
 		],
 	},
 	{
+		code: 'NC022',
+		title: 'An expression that the node evaluates from a text that is not known',
+		why: 'The converter translates an expression before the run. The compiler must know the text of each expression that the node gives to `this.evaluateExpression`: a constant, or a part of a parameter without an expression that the node finds with `getResolvables`.',
+		remediation:
+			'Give a text literal, or read the parameter into a variable and loop over `getResolvables(variable)` directly after the read: `for (const part of getResolvables(text)) text = text.replace(part, this.evaluateExpression(part, i))`. Do not change the variable before the loop. When the text comes from an item or from a parameter with an expression, the operation stays in the fallback host.',
+		forms: [{ pattern: /^'this\.evaluateExpression' has no compiled form: .+$/ }],
+	},
+	{
 		code: 'NC030',
 		title: 'A credential used as a whole value',
 		why: 'A compiled node never holds a secret. Each credential field is a marker that the engine fills in when it sends the request. An object of all fields cannot be a marker.',

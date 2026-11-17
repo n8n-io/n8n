@@ -35,6 +35,7 @@ import { evaluateDerivation, evaluateFlag } from '../evaluate-node.ts';
 import type {
 	CredentialDerivation,
 	CredentialMint,
+	EvaluatedText,
 	PublishFacts,
 	RandomShape,
 } from '../specialise.ts';
@@ -476,11 +477,14 @@ export function itemParameterEntries(
 	items: Array<Record<string, unknown>>,
 	firstOnly: string[] = [],
 	deferred: string[] = [],
+	evaluated: EvaluatedText[] = [],
 ): Array<Record<string, unknown>> {
+	const rawOf = (path: string): unknown =>
+		evaluated.find((entry) => entry.path === path)?.expression ?? valueAtPath(parameters, path);
 	const entryOf = (path: string, item: Record<string, unknown>): unknown => {
-		if (!deferred.includes(path)) return valueForItem(valueAtPath(parameters, path), item);
+		if (!deferred.includes(path)) return valueForItem(rawOf(path), item);
 		try {
-			return { value: valueForItem(valueAtPath(parameters, path), item) };
+			return { value: valueForItem(rawOf(path), item) };
 		} catch (error) {
 			if (!(error instanceof ExpressionFailure)) throw error;
 			return { error: { message: error.message } };
@@ -496,9 +500,14 @@ export function itemParameterEntries(
 }
 
 function failingPaths(compiled: Exclude<Compiled, { errors: string[] }>): string[] {
-	return compiled.itemParameters.filter((path) =>
-		(JSON.stringify(valueAtPath(compiled.resolved, path)) ?? '').includes(NO_NODE),
-	);
+	return [
+		...compiled.itemParameters.filter((path) =>
+			(JSON.stringify(valueAtPath(compiled.resolved, path)) ?? '').includes(NO_NODE),
+		),
+		...compiled.evaluated
+			.filter((entry) => entry.expression.includes(NO_NODE))
+			.map((entry) => entry.path),
+	];
 }
 
 type ItemEntries = Array<Record<string, unknown>> | undefined;
@@ -507,14 +516,16 @@ function entriesOf(
 	c: EquivalenceCase,
 	compiled: Exclude<Compiled, { errors: string[] }>,
 ): ItemEntries {
-	return compiled.itemParameters.length === 0
+	const paths = [...compiled.itemParameters, ...compiled.evaluated.map((entry) => entry.path)];
+	return paths.length === 0
 		? undefined
 		: itemParameterEntries(
 				compiled.resolved,
-				compiled.itemParameters,
+				paths,
 				c.items ?? [{}],
 				compiled.firstItemParameters,
 				compiled.deferred,
+				compiled.evaluated,
 			);
 }
 

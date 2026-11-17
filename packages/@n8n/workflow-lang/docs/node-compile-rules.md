@@ -137,7 +137,7 @@ for (const item of items) await send.call(this, item);
 
 - Cannot compile: a `this.*` method that has no equal operation in the
   compiled engine, for example `this.putExecutionToWait`,
-  `this.getWorkflowStaticData`, `this.evaluateExpression`, `this.logger`.
+  `this.getWorkflowStaticData`, `this.logger`.
 - Why: each context method needs an operation in the engine that gives the
   same result as n8n.
 - Rewrite: use `getNodeParameter`, `getInputData`, `getCredentials`,
@@ -266,6 +266,36 @@ const title = this.getNodeParameter('title', items.length - 1);
 for (let i = 0; i < items.length; i++) {
 	const title = this.getNodeParameter('title', i);
 }
+```
+
+## NC022 An expression that the node evaluates from a text that is not known
+
+- Cannot compile: `this.evaluateExpression(text, i)` with a text that the
+  compiler does not know: a value of an item, a parameter that has an
+  expression, or a variable that the code changes before the loop.
+- Compiles: a text literal, and each `{{ }}` part of a parameter without an
+  expression that the node finds with `getResolvables` of n8n. The converter
+  translates each expression. The module reads its value for the item. A
+  failed expression throws the error of v1 at the call.
+- Why: the converter translates expressions before the run. The engine has no
+  evaluator for a text that exists only at run time.
+- Rewrite: loop over `getResolvables` of the parameter directly after the
+  read.
+
+```ts
+// Before
+let query = this.getNodeParameter('query', i) as string;
+query = query.trim();
+for (const part of getResolvables(query)) {
+	query = query.replace(part, this.evaluateExpression(part, i) as string);
+}
+
+// After
+let query = this.getNodeParameter('query', i) as string;
+for (const part of getResolvables(query)) {
+	query = query.replace(part, this.evaluateExpression(part, i) as string);
+}
+query = query.trim();
 ```
 
 ## NC030 A credential used as a whole value

@@ -125,7 +125,23 @@ export interface SpecialiseResult {
 	itemParameters?: string[];
 
 	firstItemParameters?: string[];
+
+	evaluated?: EvaluatedText[];
 }
+
+export interface EvaluatedText {
+	path: string;
+	expression: string;
+	text: boolean;
+	parameter?: string;
+}
+
+export const EVALUATED_PREFIX = '@evaluate=';
+export const EVALUATED_TEXT_PREFIX = '@evaluateText=';
+const MAX_EVALUATED_TEXTS = 32;
+const RESOLVABLES_PATTERN = /({{[\s\S]*?}})/g;
+const RESOLVABLES_BODY =
+	'{if(!expression)return[];constresolvables=[];constresolvableRegex=/({{[\\s\\S]*?}})/g;letmatch;while((match=resolvableRegex.exec(expression))!==null){if(match[1]){resolvables.push(match[1]);}}returnresolvables;}';
 
 export interface CredentialDerivation {
 	name: string;
@@ -758,7 +774,12 @@ const HELPERS: Record<string, string> = {
 	return { items, paired, failed, again };
 }`,
 	__entries: `function __entries(list: any): any {
-	if (!Array.isArray(list)) throw new Error('the entries of a value that is not an array have no compiled form');
+	if (!Array.isArray(list)) {
+		if (list === null || typeof list !== 'object' || list.$coll === undefined) throw new Error('the list of the entries of a value that is not an array, a Map or a Set has no compiled form');
+		const pairs: any[] = [];
+		for (let k = 0; k < list.keys.length; k++) pairs.push([list.keys[k], list.$coll === 'Set' ? list.keys[k] : list.vals[k]]);
+		return pairs;
+	}
 	const out: any[] = [];
 	for (let k = 0; k < list.length; k++) out.push([k, list[k]]);
 	return out;
@@ -2041,6 +2062,159 @@ function call(name: string, ...args: ts.Expression[]): ts.CallExpression {
 	return f.createCallExpression(f.createIdentifier(name), undefined, args);
 }
 
+function jumpsTo(node: ts.Node, label: string): boolean {
+	if (ts.isBreakOrContinueStatement(node)) return node.label?.text === label;
+	return ts.forEachChild(node, (child) => jumpsTo(child, label) || undefined) === true;
+}
+
+function withoutIdleLabels(root: ts.Node): ts.Node {
+	const visit = (input: ts.Node): ts.Node => {
+		const n = ts.visitEachChild(input, visit, undefined);
+		return ts.isLabeledStatement(n) && !jumpsTo(n.statement, n.label.text) ? n.statement : n;
+	};
+	return ts.visitNode(root, visit);
+}
+
+function bindsPair(initializer: ts.ForInitializer): boolean {
+	if (!ts.isVariableDeclarationList(initializer) || initializer.declarations.length !== 1)
+		return false;
+	const pattern = initializer.declarations[0].name;
+	return (
+		ts.isArrayBindingPattern(pattern) &&
+		pattern.elements.length === 2 &&
+		pattern.elements.every(
+			(element) =>
+				ts.isBindingElement(element) &&
+				ts.isIdentifier(element.name) &&
+				!element.initializer &&
+				!element.dotDotDotToken,
+		)
+	);
+}
+
+function unwrapped(node: ts.Expression): ts.Expression {
+	return ts.isParenthesizedExpression(node) ||
+		ts.isAsExpression(node) ||
+		ts.isNonNullExpression(node)
+		? unwrapped(node.expression)
+		: node;
+}
+
+function isReplacement(node: ts.Expression): boolean {
+	const parent = node.parent;
+	if (
+		parent &&
+		(ts.isParenthesizedExpression(parent) ||
+			ts.isAsExpression(parent) ||
+			ts.isNonNullExpression(parent))
+	)
+		return isReplacement(parent);
+	return (
+		parent !== undefined &&
+		ts.isCallExpression(parent) &&
+		parent.arguments.length === 2 &&
+		parent.arguments[1] === node &&
+		ts.isPropertyAccessExpression(parent.expression) &&
+		parent.expression.name.text === 'replace'
+	);
+}
+
+function loopTextName(node: ts.Expression): string | undefined {
+	const inner = unwrapped(node);
+	if (ts.isIdentifier(inner)) return inner.text;
+	if (
+		ts.isTemplateExpression(inner) &&
+		inner.head.text === '' &&
+		inner.templateSpans.length === 1 &&
+		inner.templateSpans[0].literal.text === ''
+	)
+		return loopTextName(inner.templateSpans[0].expression);
+	return undefined;
+}
+
+function isInside(node: ts.Node, outer: ts.Node): boolean {
+	for (let at: ts.Node | undefined = node; at; at = at.parent) if (at === outer) return true;
+	return false;
+}
+
+function namesIn(node: ts.Node, name: string): boolean {
+	if (ts.isIdentifier(node)) return node.text === name;
+	return ts.forEachChild(node, (child) => namesIn(child, name) || undefined) === true;
+}
+
+function resolvableSource(call: ts.CallExpression, name: string): { parameter: string } | string {
+	let loop: ts.ForOfStatement | undefined;
+	for (let at: ts.Node | undefined = call.parent; at && !loop; at = at.parent) {
+		if (ts.isFunctionLike(at) && !ts.isArrowFunction(at)) break;
+		if (!ts.isForOfStatement(at) || !ts.isVariableDeclarationList(at.initializer)) continue;
+		const [declared] = at.initializer.declarations;
+		if (
+			(at.initializer.flags & ts.NodeFlags.Const) !== 0 &&
+			ts.isIdentifier(declared.name) &&
+			declared.name.text === name
+		)
+			loop = at;
+	}
+	if (!loop) return 'the text is not a constant and not the value of a loop over `getResolvables`';
+	const listed = loop.expression;
+	if (
+		!ts.isCallExpression(listed) ||
+		!ts.isIdentifier(listed.expression) ||
+		listed.expression.text !== 'getResolvables' ||
+		listed.arguments.length !== 1 ||
+		!ts.isIdentifier(listed.arguments[0])
+	)
+		return 'the loop of the text is not a loop over `getResolvables` of one variable';
+	const variable = listed.arguments[0].text;
+	let declaration: ts.VariableDeclaration | undefined;
+	let scope: ts.Block | undefined;
+	let child: ts.Node = loop;
+	for (let at: ts.Node | undefined = loop.parent; at && !declaration; child = at, at = at.parent) {
+		if (ts.isFunctionLike(at) || ts.isIterationStatement(at, false) || ts.isCatchClause(at)) break;
+		if (!ts.isBlock(at)) continue;
+		for (const statement of at.statements) {
+			if (statement === child) break;
+			if (
+				!ts.isVariableStatement(statement) ||
+				(statement.declarationList.flags & (ts.NodeFlags.Let | ts.NodeFlags.Const)) === 0
+			)
+				continue;
+			for (const d of statement.declarationList.declarations)
+				if (ts.isIdentifier(d.name) && d.name.text === variable) declaration = d;
+		}
+		scope = at;
+	}
+	const unproven = `the compiler cannot prove that '${variable}' holds the text of a parameter when the loop starts`;
+	if (!declaration?.initializer || !scope) return unproven;
+	let declarations = 0;
+	let proven = true;
+	const body = loop.statement;
+	const walk = (n: ts.Node) => {
+		const declares = ts.isVariableDeclaration(n) || ts.isParameter(n) || ts.isBindingElement(n);
+		if (declares && namesIn(n.name, variable)) declarations++;
+		if (declares && namesIn(n.name, name) && isInside(n, body)) proven = false;
+		const written =
+			ts.isBinaryExpression(n) &&
+			n.operatorToken.kind >= ts.SyntaxKind.FirstAssignment &&
+			n.operatorToken.kind <= ts.SyntaxKind.LastAssignment
+				? n.left
+				: ts.isPrefixUnaryExpression(n) || ts.isPostfixUnaryExpression(n)
+					? n.operand
+					: (ts.isForInStatement(n) || ts.isForOfStatement(n)) && ts.isExpression(n.initializer)
+						? n.initializer
+						: undefined;
+		if (written && namesIn(written, variable) && !isInside(n, body)) proven = false;
+		ts.forEachChild(n, walk);
+	};
+	walk(scope);
+	if (!proven || declarations !== 1) return unproven;
+	const read = unwrapped(declaration.initializer);
+	if (!isThisCall(read, 'getNodeParameter') || read.arguments.length > 3) return unproven;
+	const [parameter] = read.arguments;
+	if (!parameter || !ts.isStringLiteral(parameter)) return unproven;
+	return { parameter: parameter.text };
+}
+
 function isThisCall(node: ts.Node | undefined, ...path: string[]): node is ts.CallExpression {
 	if (!node || !ts.isCallExpression(node)) return false;
 	let target: ts.Expression = node.expression;
@@ -2548,6 +2722,100 @@ class Specialiser {
 		return fallback;
 	}
 
+	private readonly evaluated = new Map<string, EvaluatedText>();
+
+	private evaluatedCall(node: ts.CallExpression, unit: Unit): ts.Expression | undefined {
+		const unbound = (why: string) => {
+			this.error(unit.name, `'this.evaluateExpression' has no compiled form: ${why}`);
+			return undefined;
+		};
+		const [textArg, indexArg] = node.arguments;
+		if (!textArg || node.arguments.length > 2 || node.arguments.some(ts.isSpreadElement))
+			return unbound('the call does not have a text and an item index');
+		const index = indexArg === undefined ? undefined : unwrapped(indexArg);
+		if (index !== undefined && !ts.isIdentifier(index) && !ts.isNumericLiteral(index))
+			return unbound('the item index is not a name or a number');
+		const asText = isReplacement(node);
+		const read = (expression: string, parameter?: string): ts.Expression => {
+			const path = `${asText ? EVALUATED_TEXT_PREFIX : EVALUATED_PREFIX}${expression}`;
+			this.evaluated.set(path, {
+				path,
+				expression: `=${expression}`,
+				text: asText,
+				...(parameter === undefined ? {} : { parameter }),
+			});
+			const entry = f.createElementAccessExpression(
+				f.createElementAccessExpression(
+					f.createIdentifier(ITEM_PARAMETERS),
+					index === undefined
+						? f.createNumericLiteral(0)
+						: ts.isIdentifier(index)
+							? f.createIdentifier(index.text)
+							: f.createNumericLiteral(index.text),
+				),
+				f.createStringLiteral(path),
+			);
+			return this.helper(
+				'__deepCopy',
+				this.input.deferredParameters?.includes(path)
+					? this.helper('__parameterValue', entry)
+					: entry,
+			);
+		};
+		const literal = literalOf(textArg);
+		if (literal !== undefined) {
+			if (typeof literal.value !== 'string') return unbound('the text is not text');
+			if (this.evaluated.size >= MAX_EVALUATED_TEXTS)
+				return unbound(`the node has more than ${MAX_EVALUATED_TEXTS} expressions`);
+			return read(literal.value);
+		}
+		const name = loopTextName(textArg);
+		if (name === undefined)
+			return unbound(
+				'the text is not a constant and not the value of a loop over `getResolvables`',
+			);
+		const source = resolvableSource(node, name);
+		if (typeof source === 'string') return unbound(source);
+		const resolver = this.member(unit.file, 'getResolvables');
+		const declared = resolver?.node;
+		if (
+			!resolver ||
+			!declared ||
+			!ts.isFunctionDeclaration(declared) ||
+			!declared.body ||
+			declared.body.getText(resolver.file.sf).replace(/\s+/g, '') !== RESOLVABLES_BODY
+		)
+			return unbound('`getResolvables` is not the function of n8n that the compiler knows');
+		let value: unknown = this.input.parameters;
+		for (const key of source.parameter.split('.')) value = isRecord(value) ? value[key] : undefined;
+		if (typeof value !== 'string')
+			return unbound(`the parameter '${source.parameter}' is not text`);
+		if (hasExpression(value))
+			return unbound(
+				`the parameter '${source.parameter}' has an expression, and v1 evaluates the expressions in its result`,
+			);
+		const texts = [...new Set([...value.matchAll(RESOLVABLES_PATTERN)].map((match) => match[1]))];
+		if (this.evaluated.size + texts.length > MAX_EVALUATED_TEXTS)
+			return unbound(`the node has more than ${MAX_EVALUATED_TEXTS} expressions`);
+		let out: ts.Expression | undefined;
+		for (const text of [...texts].reverse()) {
+			const found = read(text, source.parameter);
+			out =
+				out === undefined
+					? found
+					: f.createParenthesizedExpression(
+							f.createConditionalExpression(
+								f.createStrictEquality(f.createIdentifier(name), f.createStringLiteral(text)),
+								undefined,
+								found,
+								undefined,
+								out,
+							),
+						);
+		}
+		return out ?? f.createIdentifier('undefined');
+	}
+
 	private readonly castParameters = new Set<string>();
 
 	private readonly uncheckedReads = new Map<string, string>();
@@ -2766,7 +3034,7 @@ class Specialiser {
 				node.expression.name.text === 'entries' &&
 				ts.isForOfStatement(node.parent) &&
 				node.parent.expression === node &&
-				isInputData(node.expression.expression)
+				(isInputData(node.expression.expression) || bindsPair(node.parent.initializer))
 			)
 				return this.helper(
 					'__entries',
@@ -2796,6 +3064,10 @@ class Specialiser {
 				return f.createObjectLiteralExpression([
 					f.createPropertyAssignment('aborted', f.createFalse()),
 				]);
+			if (isThisCall(node, 'evaluateExpression')) {
+				const bound = this.evaluatedCall(node, unit);
+				if (bound !== undefined) return bound;
+			}
 			if (isThisCall(node, 'getTimezone') && this.input.timezone !== undefined) {
 				return f.createStringLiteral(this.input.timezone);
 			}
@@ -6537,6 +6809,7 @@ class Specialiser {
 		cur = this.reparse(this.bind(cur.node, unit, isExecute), cur.sf);
 		cur = this.reparse(this.withoutIdleTry(cur.node), cur.sf);
 		cur = this.fold(cur, unit.name);
+		cur = this.renew(cur, withoutIdleLabels(cur.node));
 		cur = this.renew(cur, this.resolveChains(cur.node, unit));
 		cur = this.renew(cur, this.resolveInstances(cur.node, unit));
 		cur = this.renew(cur, this.markContextArguments(cur.node, unit.name));
@@ -7091,6 +7364,9 @@ class Specialiser {
 			retyped: this.retyped,
 			zones: [...this.zones].sort(),
 			itemParameters: [...this.itemParameters].sort(),
+			evaluated: [...this.evaluated.values()]
+				.filter((entry) => this.itemParameters.has(entry.path))
+				.sort((a, b) => (a.path < b.path ? -1 : 1)),
 			firstItemParameters: [...this.itemParameters]
 				.filter((name) => !this.laterItemParameters.has(name))
 				.sort(),
