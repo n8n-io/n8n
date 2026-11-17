@@ -336,6 +336,43 @@ const RESULTS: Case[] = [
 	},
 ];
 
+const FILE_ITEMS = [
+	{
+		id: 1,
+		$binary: {
+			data: { data: 'aGVsbG8gYnl0ZXM=', mimeType: 'text/plain', fileName: 'a.txt' },
+			empty: { data: '', mimeType: 'text/plain' },
+		},
+	},
+	{ id: 2 },
+];
+
+/** `this.helpers.getBinaryDataBuffer`: the bytes, and the error for a file that is not there. */
+const BINARY_CASES: Case[] = [
+	{
+		name: 'the bytes of a file',
+		code: "const b = await this.helpers.getBinaryDataBuffer(0, 'data');\nconst e = await this.helpers.getBinaryDataBuffer(0, 'empty');\nreturn [{ json: { text: b.toString(), n: b.length, b64: b.toString('base64'), empty: e.length } }];",
+	},
+	{
+		name: 'the bytes of the current item',
+		code: "if ($itemIndex > 0) return { json: { skipped: true } };\nconst b = await this.helpers.getBinaryDataBuffer($itemIndex, 'data');\nreturn { json: { text: b.toString('utf8') } };",
+		mode: 'each',
+	},
+	{
+		name: 'a binary property that the item does not have',
+		code: "const x = 1;\nconst b = await this.helpers.getBinaryDataBuffer(0, 'nope');\nreturn [{ json: { n: b.length } }];",
+	},
+	{
+		name: 'an item without binary data',
+		code: "const b = await this.helpers.getBinaryDataBuffer(1, 'data');\nreturn [{ json: { n: b.length } }];",
+	},
+	{
+		name: 'an item that is not there',
+		code: "const b = await this.helpers.getBinaryDataBuffer(7, 'data');\nreturn [{ json: { n: b.length } }];",
+	},
+];
+const BINARY: Case[] = BINARY_CASES.map((c) => ({ ...c, items: FILE_ITEMS }));
+
 describe.skipIf(!taskRunnerAvailable())("native Code nodes against n8n's task runner", () => {
 	// n8n's modules and the runner process take some seconds to start.
 	beforeAll(async () => await startRunner(), 120_000);
@@ -356,6 +393,10 @@ describe.skipIf(!taskRunnerAvailable())("native Code nodes against n8n's task ru
 	});
 
 	it.each(RESULTS)('gives the result of v1: ', async (c) => {
+		await same(c);
+	});
+
+	it.each(BINARY)('reads the bytes of binary data as v1: $name', async (c) => {
 		await same(c);
 	});
 });

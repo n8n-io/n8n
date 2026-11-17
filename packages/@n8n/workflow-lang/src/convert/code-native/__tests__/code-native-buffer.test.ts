@@ -26,7 +26,6 @@ const base = (code: string, mode: CodeMode, traced: boolean) => ({
 	hasNode: () => false,
 	timezone: 'system',
 	allowedModules: ['crypto'],
-	inlineBinary: true,
 	traced,
 });
 
@@ -54,9 +53,15 @@ function host(code: string, mode: CodeMode, input: unknown[]): Outcome {
 	}
 }
 
-function blockersOf(code: string, options: { inlineBinary?: boolean } = {}): string[] {
-	const t = translateCode({ ...base(code, 'all', false), inlineBinary: options.inlineBinary });
+function blockersOf(code: string): string[] {
+	const t = translateCode(base(code, 'all', false));
 	return t.ok ? [] : t.blockers.map((b) => b.feature);
+}
+
+/** `Translation.binaryNames` of the code. */
+function binaryNamesOf(code: string): unknown {
+	const t = translateCode(base(code, 'all', false));
+	return t.ok ? t.translation.binaryNames : 'blocked';
 }
 
 /** The plain form and the traced form give the result of the host. */
@@ -279,15 +284,18 @@ return out;`;
 		expect(same(code, items, 'each').ok).toBe(true);
 	});
 
-	it('stays in the host when the bytes can be in the binary data store', () => {
+	it('names the binary properties that the code reads, for the read of the stored files', () => {
 		const code =
 			"const buf = await this.helpers.getBinaryDataBuffer(0, 'data'); return [{ json: { text: buf.toString() } }];";
-		expect(blockersOf(code, { inlineBinary: false })).toContain('binary data of a stored file');
-		expect(blockersOf(code, { inlineBinary: true })).toEqual([]);
+		expect(binaryNamesOf(code)).toEqual(['data']);
 		expect(
-			blockersOf("const p = this.helpers.getBinaryDataBuffer(0, 'data'); return [{ json: {} }];", {
-				inlineBinary: true,
-			}),
+			binaryNamesOf(
+				"const a = await this.helpers.getBinaryDataBuffer(0, 'data'); const b = await this.helpers.getBinaryDataBuffer(0, $json.name); return [{ json: { n: a.length + b.length } }];",
+			),
+		).toBe('all');
+		expect(binaryNamesOf('return [{ json: {} }];')).toBeUndefined();
+		expect(
+			blockersOf("const p = this.helpers.getBinaryDataBuffer(0, 'data'); return [{ json: {} }];"),
 		).not.toEqual([]);
 	});
 });

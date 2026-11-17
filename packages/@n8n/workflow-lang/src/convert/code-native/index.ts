@@ -14,11 +14,14 @@
  */
 import { NodeFailure } from '../context.ts';
 import type { NodeContext } from '../context.ts';
+import { emitWithHostForm } from '../steps.ts';
+import type { HostForm } from '../steps.ts';
 import { checkTranslation } from './check.ts';
 import type { AsyncForm } from './emit.ts';
 import { emitAsync, emitExpression, emitHelpers } from './emit.ts';
 import type { Blocker, CodeKind, CodeMode, TranslateResult } from './translate.ts';
 import { HOST_GLOBALS, translateCode } from './translate.ts';
+import { RUNS_IN_HOST } from '../helpers.ts';
 
 /** Compiler names of blockers that the translation names otherwise. */
 const COMPILER_FEATURES: Record<string, string> = {
@@ -83,8 +86,11 @@ export type NativeAttempt =
 				lists: string[],
 				allLists?: string[],
 				plainInput?: boolean,
+				files?: string,
 			) => string;
 			helpers: (plainInput?: boolean) => string[];
+			/** `Translation.binaryNames`: the code reads the bytes of binary data of its input. */
+			binaryNames?: string[] | 'all';
 			/**
 			 * For code that makes requests: the declaration of its async function and the
 			 * expression of the result list. Undefined for other code.
@@ -172,8 +178,9 @@ export function attemptNative(
 		nodes: t.nodes,
 		zones: [...t.zones],
 		allNodes: t.allNodes,
-		expression: (input, lists, allLists = [], plainInput = false) =>
-			emitExpression(t, src.mode, input, lists, allLists, plainInput, traced),
+		expression: (input, lists, allLists = [], plainInput = false, files = '{}') =>
+			emitExpression(t, src.mode, input, lists, allLists, plainInput, traced, files),
+		...(t.binaryNames !== undefined ? { binaryNames: t.binaryNames } : {}),
 		helpers: (plainInput = false) => emitHelpers(t, src.mode, plainInput, traced),
 		...(t.usesHttp
 			? {
@@ -278,11 +285,66 @@ function retried(c: NodeContext, expr: string, onError: string): void {
 	w.close();
 }
 
+/** `BINARY_DATA_MAX_BYTES` of the `binaryData` service, and the base64 text of that many bytes. */
+const STORED_MAX_BYTES = 262144;
+const INLINE_MAX_BASE64 = 349528;
+/** The largest number of stored files that a Code node reads before its code runs. */
+const STORED_MAX_FILES = 32;
+
+/**
+ * The declaration of the async function `name` that reads the stored files of the input items
+ * of a Code node before its code runs (`Translation.binaryNames`). The result has the base64
+ * text of each stored file by its id, from the call `read` of the `binaryData` service. The
+ * code itself makes no call: it stays synchronous, as its Buffer values need.
+ *
+ * The function ends with the mark of `RUNS_IN_HOST`, and the fallback host runs the node, for:
+ * a file of more than 262,144 bytes (inline or stored), a stored file without a size, more
+ * than 32 stored files, and each reason that the service names.
+ */
+export function storedFilesReader(name: string, step: string, names: string[] | 'all'): string {
+	const mark = (reason: string) =>
+		`throw new Error(${JSON.stringify(`${reason} ${RUNS_IN_HOST}`)});`;
+	return [
+		`const ${name} = async (items: Json[]): Promise<Json> => {`,
+		'\tconst files: Json = {};',
+		'\tlet count = 0;',
+		'\tfor (const item of items) {',
+		'\t\tconst binary: Json = item === null || item === undefined ? undefined : item.$binary;',
+		"\t\tif (binary === null || binary === undefined || typeof binary !== 'object' || Array.isArray(binary)) continue;",
+		`\t\tconst names: string[] = ${names === 'all' ? 'Object.keys(binary)' : JSON.stringify(names)};`,
+		'\t\tfor (const name of names) {',
+		'\t\t\tconst entry: Json = binary[name];',
+		"\t\t\tif (entry === null || entry === undefined || typeof entry !== 'object') continue;",
+		'\t\t\tconst id: Json = entry.id;',
+		"\t\t\tif (id === undefined || id === null || id === '' || id === false || id === 0) {",
+		`\t\t\t\tif (typeof entry.data === 'string' && entry.data.length > ${INLINE_MAX_BASE64}) ${mark('The code reads a file of more than 262144 bytes')}`,
+		'\t\t\t\tcontinue;',
+		'\t\t\t}',
+		`\t\t\tif (typeof id !== 'string' || typeof entry.bytes !== 'number' || entry.bytes > ${STORED_MAX_BYTES}) ${mark('The code reads a stored file of more than 262144 bytes, or without a size')}`,
+		"\t\t\tif (typeof files[id] === 'string') continue;",
+		'\t\t\tcount += 1;',
+		`\t\t\tif (count > ${STORED_MAX_FILES}) ${mark(`The code reads more than ${STORED_MAX_FILES} stored files`)}`,
+		'\t\t\tlet answer: Json = null;',
+		'\t\t\ttry {',
+		`\t\t\t\tanswer = await ctx.service({ name: ${JSON.stringify(step)}, service: 'binaryData', op: 'read', args: { id, as: 'base64', limit: ${STORED_MAX_BYTES} } });`,
+		'\t\t\t} catch (error) {',
+		`\t\t\t\t${mark('The binaryData service gave no answer')}`,
+		'\t\t\t}',
+		`\t\t\tif (answer === null || answer === undefined || typeof answer !== 'object' || typeof answer.data !== 'string') ${mark('The binaryData service gave no bytes')}`,
+		'\t\t\tfiles[id] = answer.data;',
+		'\t\t}',
+		'\t}',
+		'\treturn files;',
+		'};',
+	].join('\n');
+}
+
 /**
  * Writes the node as native code and returns true, or returns false (with an
- * info diagnostic) when the host step must run it.
+ * info diagnostic) when the host step must run it. `hostForm` gives the fallback-host form of
+ * the node, for code that can end with the mark of `RUNS_IN_HOST`.
  */
-export function lowerCodeNative(c: NodeContext): boolean {
+export function lowerCodeNative(c: NodeContext, hostForm?: () => HostForm | null): boolean {
 	const field = c.node.type === 'n8n-nodes-base.code' ? 'jsCode' : 'functionCode';
 	if (c.codeNodes === 'host') return false;
 	// The characters U+0001-U+0003 mark translated expressions in the generated source, so
@@ -341,6 +403,40 @@ export function lowerCodeNative(c: NodeContext): boolean {
 	for (const z of attempt.zones ?? []) c.useZone?.(z);
 	const out = c.output(0);
 	const allLists = (attempt.allNodes ?? []).map((name) => c.ranBefore(name) ?? '[]');
+	if (attempt.binaryNames !== undefined) {
+		// The code reads the bytes of binary data of its input: the stored files are read before
+		// the code runs, and above a size limit the fallback host runs the node.
+		const host =
+			onError === 'stopWorkflow' &&
+			c.node.retryOnFail !== true &&
+			c.services !== false &&
+			c.scope.binaryMode !== 'combined'
+				? (hostForm?.() ?? null)
+				: null;
+		if (host === null) {
+			c.info(
+				'code-host',
+				'The code runs in the fallback host: it reads the bytes of binary data, which has a native form only with service calls, with the binary mode `separate`, without an error setting that continues and without "retry on fail".',
+				field,
+			);
+			return false;
+		}
+		const read = c.local('ReadFiles');
+		const files = c.local('Files');
+		w.block(storedFilesReader(read, c.node.name, attempt.binaryNames));
+		emitWithHostForm(
+			c,
+			false,
+			(to) => {
+				to.w.line(`const ${files}: Json = await ${read}(${input});`);
+				to.w.block(
+					`const ${to.output(0)}: Json[] = ${input}.length > 0 ? ${attempt.expression(input, lists, allLists, plainInput, files)} : [];`,
+				);
+			},
+			host,
+		);
+		return true;
+	}
 	let expr: string;
 	if (attempt.async) {
 		// The workflow awaits only a call of a local async function, so the code gets a name.

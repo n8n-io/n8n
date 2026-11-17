@@ -27,7 +27,7 @@ import type { Code } from './code.ts';
 import { escapeControls, raw, str } from './code.ts';
 import type { NodeContext } from './context.ts';
 import { NodeFailure } from './context.ts';
-import { emitStep, lowerFallback } from './steps.ts';
+import { emitStep, hostFormOf, lowerFallback } from './steps.ts';
 
 /** n8n globals that the host does not give to code steps. */
 const MISSING_GLOBALS = ['$evaluateExpression', '$secrets'];
@@ -285,7 +285,8 @@ export function lowerCode(c: NodeContext): void {
 		user = typeof p.functionCode === 'string' ? p.functionCode : '';
 	}
 	// JavaScript that fits the subset runs natively (`code-native/`), else in the host.
-	if (lowerCodeNative(c)) return;
+	if (lowerCodeNative(c, () => hostFormOf(c, (to) => lowerCode({ ...to, codeNodes: 'host' }))))
+		return;
 	for (const g of MISSING_GLOBALS) {
 		if (user.includes(g)) {
 			throw new NodeFailure(
