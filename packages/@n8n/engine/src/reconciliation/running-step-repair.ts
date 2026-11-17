@@ -18,7 +18,7 @@ export const STALE_RUNNING_STEP_ERROR_NAME = 'StaleRunningStepError';
 function staleRunningStepError(node: GraphNode): StepError {
 	return {
 		name: STALE_RUNNING_STEP_ERROR_NAME,
-		message: `The node "${node.name}" was still running after its stale time. The engine did not run it again, because a second run can repeat its side effects.`,
+		message: `The node "${node.name}" did not finish in time. The engine did not run it again, because a second run can repeat its side effects.`,
 	};
 }
 
