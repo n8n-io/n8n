@@ -11,6 +11,7 @@ import type { ExternalDependencies } from '../dependencies';
 import {
 	assertValidStalenessThresholds,
 	CancelExecutionService,
+	ExecutionFileCleanup,
 	ExecutionQueryService,
 	ExecutionStartHandler,
 	OrchestrationWorker,
@@ -42,6 +43,8 @@ import {
 	RunningStepRepair,
 } from '../reconciliation';
 import type { ExecutionResponseSender } from '../response-channel';
+import { RetentionSweeper } from '../retention';
+import type { ExecutionRetentionPolicy } from '../retention';
 import { createEngineServer, type EngineServerDeps } from '../server';
 
 /** The parts of the engine that a process can run. */
@@ -102,6 +105,11 @@ export interface EngineRuntimeOptions {
 	 * connections.
 	 */
 	queues: EngineWorkQueues;
+	/**
+	 * Which ended executions the engine deletes, with their files. No default:
+	 * absent, the engine deletes nothing, so no host deletes data by omission.
+	 */
+	retention?: ExecutionRetentionPolicy;
 }
 
 /** A built engine, ready for a host to serve. */
@@ -138,6 +146,7 @@ export function createEngineRuntime({
 	queues,
 	staleness,
 	reconciliationIntervalMs = DEFAULT_RECONCILIATION_INTERVAL_MS,
+	retention,
 }: EngineRuntimeOptions): EngineRuntime {
 	// An empty value is how an unset environment variable usually arrives.
 	const resumeSecret = givenResumeSecret || undefined;
@@ -235,6 +244,15 @@ export function createEngineRuntime({
 		},
 		logger,
 	);
+	const retentionSweeper =
+		retention === undefined
+			? undefined
+			: new RetentionSweeper(
+					executionStore,
+					new ExecutionFileCleanup(dependencies.deleteExecutionFiles, logger),
+					retention,
+					logger,
+				);
 	// One start path for every execution: the API and a step's sub-execution both admit
 	// and validate here, and only this path can set a parent link.
 	const startExecution = new StartExecutionService(
@@ -275,7 +293,7 @@ export function createEngineRuntime({
 	const { app } = createEngineServer(apiDeps);
 
 	const workers: Array<OrchestrationWorker | StepWorker> = [];
-	const sweepers: Array<ReconciliationSweeper | WaitSweeper> = [];
+	const sweepers: Array<ReconciliationSweeper | WaitSweeper | RetentionSweeper> = [];
 	if (runs.has('orchestrator')) {
 		workers.push(orchestrationWorker);
 		// Not with the step worker: it repairs what a crashed step worker leaves behind.
@@ -286,6 +304,7 @@ export function createEngineRuntime({
 		// The step worker re-arms it when a step suspends, which keeps a short wait on time.
 		sweepers.push(waitSweeper);
 	}
+	if (retentionSweeper) sweepers.push(retentionSweeper);
 
 	return {
 		app,
@@ -301,8 +320,8 @@ export function createEngineRuntime({
 			// dropped from an in-memory queue, and stays in a Redis queue for the
 			// next consumer.
 
-			// The sweepers stop first: they feed the queues, so nothing lands
-			// there after the workers have drained.
+			// The sweepers stop first: the wait and reconciliation sweepers feed the
+			// queues, and a retention pass must end before the host closes the database.
 			await Promise.all(sweepers.map(async (sweeper) => await sweeper.stop()));
 			await Promise.all(workers.map(async (worker) => await worker.stop()));
 			// After the workers are quiet, so the last events still reach the host.
