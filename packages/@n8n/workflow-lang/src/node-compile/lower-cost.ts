@@ -419,10 +419,13 @@ function requestForm(name: string, has: (key: RequestKey) => boolean, flags: Req
 				? 'options.uri'
 				: `options.uri ?? ${second}`
 			: (second ?? 'undefined'));
+	const method = flags.constants.method ?? (has('method') ? "options.method ?? 'GET'" : "'GET'");
+	if (flags.repeats && method !== "'GET'" && method !== '"GET"')
+		lines.push(`if ((${method}) !== 'GET') ${REPEATS} = false;`);
 	return `async function ${name}(options) {
 	${lines.join('\n\t')}
 	const response = await ctx.http({
-		method: ${flags.constants.method ?? (has('method') ? "options.method ?? 'GET'" : "'GET'")},
+		method: ${method},
 		url: ${url},
 		headers,
 		qs: ${has('qs') ? '__plain(options.qs ?? {})' : '{}'},
@@ -450,6 +453,7 @@ interface RequestFlags {
 	tokenOptions: boolean;
 	lenient: string;
 	full: string;
+	repeats: boolean;
 	constants: RequestConstants;
 }
 
@@ -528,6 +532,7 @@ function textHash(text: string): string {
 }
 
 const GENERAL_REQUEST_KEYS = ['encoding'];
+const REPEATS = '__repeats';
 
 function lowerRequests(sf: ts.SourceFile): string | undefined {
 	const changes = new Map<ts.Node, Replacement>();
@@ -582,6 +587,7 @@ function lowerRequests(sf: ts.SourceFile): string | undefined {
 			legacy: isLegacy,
 			headersAreObjects: shape.headersAreObjects,
 			tokenOptions,
+			repeats: generalText.includes(REPEATS),
 			lenient: !honoursLenient
 				? ''
 				: isLegacy

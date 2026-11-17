@@ -618,3 +618,126 @@ describe('a Google service account token in the node compiler', () => {
 		expect(result.errors.join('\n')).toContain('reads more than the access token');
 	});
 });
+
+describe('a credential type that gets a session token first (preAuthentication)', () => {
+	const CREDENTIAL = `
+export class SessionApi {
+	name = 'sessionApi';
+	properties = [
+		{ displayName: 'URL', name: 'url', type: 'string', default: '' },
+		{ displayName: 'Session Token', name: 'sessionUrl', type: 'hidden', typeOptions: { expirable: true }, default: '' },
+	];
+	async preAuthentication(credentials) {
+		const { token } = await this.helpers.httpRequest({ method: 'POST', url: credentials.url + '/login' });
+		return { sessionUrl: token };
+	}
+	authenticate = { type: 'generic', properties: { headers: { Authorization: '=Bearer {{$credentials.sessionUrl}}' } } };
+}`;
+	const node = (call: string) => `
+export class Session {
+	async execute() {
+		const items = this.getInputData();
+		const kind = 'sessionApi';
+		const response = await ${call};
+		return [this.helpers.returnJsonArray(response)];
+	}
+}`;
+	const LEGACY =
+		"this.helpers.requestWithAuthentication.call(this, 'sessionApi', { method: 'POST', uri: 'https://api.example.test/v1/items', json: true })";
+	const LEGACY_LATER = LEGACY.replace("'sessionApi'", 'kind');
+	const MODERN = LEGACY.replace(
+		'requestWithAuthentication',
+		'httpRequestWithAuthentication',
+	).replace('uri:', 'url:');
+	const compileNode = (call: string) =>
+		specialiseNode({
+			type: 'n8n-nodes-acme.session',
+			version: 1,
+			entry: '/acme/Session.node.ts',
+			readFile: (path) =>
+				path === '/acme/Session.node.ts'
+					? node(call)
+					: path === '/acme/SessionApi.credentials.ts'
+						? CREDENTIAL
+						: undefined,
+			credentialEntry: (type) =>
+				type === 'sessionApi' ? '/acme/SessionApi.credentials.ts' : undefined,
+			parameters: {},
+			instanceId: null,
+		});
+	const WORKFLOW = `import { webhook, workflow } from '@n8n/workflow-lang';
+
+export default workflow({
+	triggers: [webhook({ path: 'session' })],
+	credentials: { c: { type: 'sessionApi' } },
+	async run(ctx) {
+		return await ctx.node({ name: 'Node', type: 'n8n-nodes-acme.session', typeVersion: 1, parameters: {}, items: [{}], credential: 'c' });
+	},
+});
+`;
+	const run = async (call: string, answers: unknown[]) => {
+		const result = compileNode(call);
+		expect(result.errors).toEqual([]);
+		const files = { extraNodes: { 'nodes/session.ts': result.source ?? '' } };
+		const compiled = compile(WORKFLOW, files);
+		expect(compiled.diagnostics).toEqual([]);
+		const fixture = {
+			trigger: { body: {}, headers: {}, query: {} },
+			now: 0,
+			seed: 1,
+			effects: { Node: answers },
+		};
+		const reference = await runReference(WORKFLOW, fixture, files);
+		const ran = runModule(decodeModule(compiled.module ?? new Uint8Array()), fixture);
+		expect(JSON.stringify(ran)).toBe(JSON.stringify(reference));
+		const effects = reference.effects.map((effect) => {
+			const args: unknown = effect.args;
+			if (effect.kind !== 'service' || typeof args !== 'object' || args === null)
+				return effect.kind;
+			return JSON.stringify(args);
+		});
+		return { status: reference.status, result: reference.result, effects };
+	};
+	const OK = { status: 200, headers: {}, body: { id: 1 } };
+	const FAILED = { status: 500, headers: {}, body: { message: 'down' } };
+	const RENEW = '{"service":"credentials","op":"renew","args":{"credentialId":"c"}}';
+
+	it('keeps the session token out of the public fields, whatever its name', () => {
+		const info: CredentialTypeInfo = {
+			name: 'sessionApi',
+			preAuthentication: true,
+			expirable: 'sessionUrl',
+			defaults: { url: '', sessionUrl: '' },
+			fields: {
+				url: { type: 'string', password: false },
+				sessionUrl: { type: 'hidden', password: false },
+			},
+		};
+		const data = { url: 'https://api.example.test', sessionUrl: 'the-session' };
+		expect(publicCredential(info, data).fields).toEqual({ url: 'https://api.example.test' });
+	});
+
+	it('sends one request when the request does not fail', async () => {
+		const out = await run(LEGACY, [OK]);
+		expect(out).toEqual({ status: 'ok', result: [{ id: 1 }], effects: ['http'] });
+	});
+
+	it('asks n8n for a new session token after a failed request, and sends the request again, as v1', async () => {
+		const out = await run(LEGACY, [FAILED, {}, OK]);
+		expect(out).toEqual({ status: 'ok', result: [{ id: 1 }], effects: ['http', RENEW, 'http'] });
+		const twice = await run(LEGACY, [FAILED]);
+		expect(twice.status).toBe('error');
+		expect(twice.effects).toEqual(['http', RENEW, 'http']);
+	});
+
+	it('does the same when the node gives the credential type as a value that folds', async () => {
+		const out = await run(LEGACY_LATER, [FAILED, {}, OK]);
+		expect(out.effects).toEqual(['http', RENEW, 'http']);
+	});
+
+	it('leaves the renewal to the runtime for the helper that renews only after a 401', async () => {
+		const out = await run(MODERN, [FAILED]);
+		expect(out.status).toBe('error');
+		expect(out.effects).toEqual(['http']);
+	});
+});

@@ -24,8 +24,7 @@ import {
 } from '../node-compile/convert.ts';
 import { CORE_NODE_TYPES } from './core-types.ts';
 import type { Code } from './code.ts';
-import type { Writer } from './code.ts';
-import { literal, print, raw, str } from './code.ts';
+import { literal, print, raw, str, Writer } from './code.ts';
 import type { NodeContext } from './context.ts';
 import { NodeFailure } from './context.ts';
 import type { Failure, TranslatedValue } from './expression.ts';
@@ -52,6 +51,11 @@ export interface StepCall {
 	 * (a Code node in "all items" mode catches its own error so), not one for each input item.
 	 */
 	oneErrorItem?: boolean;
+	/**
+	 * A compiled node that stores responses: an error that says that the fallback host can run
+	 * the node (`fileLimitInHost`) is not tried again and not traced. The caller runs the host form.
+	 */
+	hostLimit?: boolean;
 	/**
 	 * With `oneErrorItem` under "continue (using error output)": the error item pairs with
 	 * the input item, so v1 (`handleNodeErrorOutput`) merges it into the input item when the
@@ -116,6 +120,7 @@ export function emitCall(
 	fn: string,
 	opts: Code,
 	first: string,
+	hostLimit = false,
 ): void {
 	const { w } = c;
 	const retry = errorRetry(c);
@@ -154,7 +159,9 @@ export function emitCall(
 	w.block(`${target} = await ${fn}(${c.print(call, `${target} = await ${fn}(`)});`);
 	w.close('} catch (error) {');
 	w.depth++;
-	w.line(`if (tryIndex + 1 >= ${retry.tries}) throw error;`);
+	w.line(
+		`if (tryIndex + 1 >= ${retry.tries}${hostLimit ? ' || fileLimitInHost(error)' : ''}) throw error;`,
+	);
 	w.line('failed = true;');
 	w.close();
 	w.line(`if (!failed && !retryError(${first})) break;`);
@@ -201,7 +208,7 @@ export function emitStep(c: NodeContext, call: StepCall): void {
 		if (onError === 'stopWorkflow' && !c.traceAll) {
 			w.line(`let ${out}: Json[] = [];`);
 			w.open(`if (${input}.length > 0) {`);
-			emitCall(c, out, null, fn, opts, `${out}[0]`);
+			emitCall(c, out, null, fn, opts, `${out}[0]`, call.hostLimit);
 			w.close();
 			return;
 		}
@@ -209,8 +216,8 @@ export function emitStep(c: NodeContext, call: StepCall): void {
 			w.line(`let ${out}: Json[] = [];`);
 			w.open(`if (${input}.length > 0) {`);
 			w.open('try {');
-			emitCall(c, out, null, fn, opts, `${out}[0]`);
-			failTrace(c);
+			emitCall(c, out, null, fn, opts, `${out}[0]`, call.hostLimit);
+			failTrace(c, call.hostLimit);
 			w.close();
 			return;
 		}
@@ -253,11 +260,11 @@ export function emitStep(c: NodeContext, call: StepCall): void {
 	const opts = options(c, call, `[${ITEM}]`);
 	if (onError === 'stopWorkflow' && c.traceAll) {
 		w.open('try {');
-		emitCall(c, 'result', 'let result: Json[]', fn, opts, 'result[0]');
+		emitCall(c, 'result', 'let result: Json[]', fn, opts, 'result[0]', call.hostLimit);
 		w.line(`for (const r of result) ${out}.push(r);`);
-		failTrace(c);
+		failTrace(c, call.hostLimit);
 	} else if (onError === 'stopWorkflow') {
-		emitCall(c, 'result', 'let result: Json[]', fn, opts, 'result[0]');
+		emitCall(c, 'result', 'let result: Json[]', fn, opts, 'result[0]', call.hostLimit);
 		w.line(`for (const r of result) ${out}.push(r);`);
 	} else {
 		w.open('try {');
@@ -315,10 +322,11 @@ function errorOutputItem(c: NodeContext): string {
  * throws it again. The run data of v1 has the failed node with its error, also when the
  * node is a library node that fails inside the run, without a failed step event.
  */
-function failTrace(c: NodeContext): void {
+function failTrace(c: NodeContext, hostLimit = false): void {
 	const { w } = c;
 	w.close('} catch (error) {');
 	w.depth++;
+	if (hostLimit) w.line('if (fileLimitInHost(error)) throw error;');
 	w.line(
 		`ctx.trace(${str(c.node.name)}, { $error: { message: error.message, description: error.description ?? '' } });`,
 	);
@@ -501,6 +509,34 @@ export function tryCompiledNode(c: NodeContext): boolean {
 		);
 		return false;
 	}
+	// A module asks n8n for a new session token of its credential with a service call, as v1
+	// gets one after a failed request (`__requestRenewed`).
+	if (c.services === false && /service: ["']credentials["']/.test(compiled.source)) {
+		c.info(
+			'node-compile',
+			'The node asks n8n for a new session token of its credential, and the runtime of the caller has no service calls.',
+		);
+		return false;
+	}
+	// A node that stores a response can reach the largest size of a stored file, which v1 does
+	// not have: its fallback-host form is in the source too. A node with lineage has one form.
+	// The host form runs the node again for all items. So the compiled form is one call for all
+	// items: a call for each item cannot tell what the calls before it sent.
+	if (compiled.storesResponses && !lineage && !once) {
+		c.info(
+			'node-compile',
+			'The node stores a response, and under this error setting it has no check of one call for all items.',
+		);
+		return false;
+	}
+	const hostForm = compiled.storesResponses && !lineage ? hostFormOf(c) : null;
+	if (compiled.storesResponses && !lineage && hostForm === null) {
+		c.info(
+			'node-compile',
+			'The node stores a response, and its fallback-host form has no code in this place.',
+		);
+		return false;
+	}
 	if (compiled.derivations.length > 0) {
 		const slot = c.credential();
 		if (slot === undefined || !c.addCredentialDerivations) {
@@ -607,28 +643,111 @@ export function tryCompiledNode(c: NodeContext): boolean {
 		c.credential(),
 		one,
 	);
-	if (lineage) emitPairedStep(c, call);
-	else if (onError === 'stopWorkflow') emitStep(c, call);
-	else if (once) {
-		const retry = errorRetry(c);
-		const fields = retry ? call.fields.filter(([k]) => k !== 'retry') : call.fields;
-		const opts = options(c, { ...call, fields }, c.input);
-		const helpers = emitContinueOnce(c.w, {
-			node: c.node.name,
-			out: c.output(0),
-			errors: onError === 'continueErrorOutput' ? c.output(1, 'Errors') : null,
-			input: c.input,
-			call: (head) => c.print(opts, head),
-			retry,
-			trace: c.traceAll === true,
-		});
-		for (const helper of helpers) c.helper(helper);
-	} else {
-		const byPosition = errorItemsByPosition(c.nodeSources, c.node.type, c.version, compiled);
-		emitCompiledContinue(c, call, onError === 'continueErrorOutput', byPosition);
-	}
+	const byPosition = errorItemsByPosition(c.nodeSources, c.node.type, c.version, compiled);
+	const emitForm = (to: NodeContext, hostLimit: boolean) => {
+		if (lineage) emitPairedStep(to, call);
+		else if (onError === 'stopWorkflow') emitStep(to, { ...call, hostLimit });
+		else if (once) {
+			const retry = errorRetry(to);
+			const fields = retry ? call.fields.filter(([k]) => k !== 'retry') : call.fields;
+			const opts = options(to, { ...call, fields }, to.input);
+			const helpers = emitContinueOnce(to.w, {
+				node: to.node.name,
+				out: to.output(0),
+				errors: onError === 'continueErrorOutput' ? to.output(1, 'Errors') : null,
+				input: to.input,
+				call: (head) => to.print(opts, head),
+				retry,
+				trace: to.traceAll === true,
+				hostLimit,
+			});
+			for (const helper of helpers) to.helper(helper);
+		} else {
+			emitCompiledContinue(to, call, onError === 'continueErrorOutput', byPosition);
+		}
+	};
+	if (hostForm === null) emitForm(c, false);
+	else emitWithHostForm(c, onError === 'continueErrorOutput', emitForm, hostForm);
 	c.markCompiled?.();
 	return true;
+}
+
+/** The end of the step name of the fallback-host form of a compiled node. */
+export const HOST_STEP = ' (fallback host)';
+
+/** The fallback-host form of a node, written apart from the source, with its own output names. */
+interface HostForm {
+	text: string;
+	out: string;
+	errors: string;
+}
+
+/** A context that writes a form of the node with the output names `out` and `errors`. */
+function renamed(c: NodeContext, out: string, errors: string): NodeContext {
+	return { ...c, output: (index) => (index === 0 ? out : errors) };
+}
+
+/**
+ * Writes the fallback-host form of a node (the code of `lowerHost`) one level below the
+ * current place. Null when the host form has no code here: the caller does not compile the node.
+ */
+function hostFormOf(c: NodeContext): HostForm | null {
+	const w = new Writer();
+	w.depth = c.w.depth + 1;
+	const form = { out: c.local('InHost'), errors: c.local('InHostErrors') };
+	const to: NodeContext = {
+		...renamed(c, form.out, form.errors),
+		// A step name is unique in a module. n8n reads this name as a step of the node.
+		node: { ...c.node, name: `${c.node.name}${HOST_STEP}` },
+		w,
+		print: (code, prefix = '') => print(code, w.indent, w.indent.length * 4 + prefix.length),
+		warn: () => {},
+		markFallback: () => {},
+	};
+	try {
+		lowerHost(to);
+	} catch (error) {
+		if (error instanceof NodeFailure) return null;
+		throw error;
+	}
+	return { text: w.toString(), ...form };
+}
+
+/**
+ * Emits a compiled node that stores responses, with its fallback-host form after it. `wfrt`
+ * has a largest size for a stored file (`--binary-max-file-mb`) and v1 has none. The module
+ * marks the error of that limit when it sent only GET requests (`RUNS_IN_HOST`): v1 can
+ * send a GET again. The node then runs in the host, in the same run, as the v1 node.
+ */
+function emitWithHostForm(
+	c: NodeContext,
+	errorOutput: boolean,
+	emitForm: (to: NodeContext, hostLimit: boolean) => void,
+	host: HostForm,
+): void {
+	const { w } = c;
+	const out = c.output(0);
+	const errors = errorOutput ? c.output(1, 'Errors') : null;
+	const inHost = c.local('RunsInHost');
+	const compiled = renamed(c, c.local('Compiled'), c.local('CompiledErrors'));
+	c.helper('fileLimitInHost');
+	w.line(`let ${out}: Json[] = [];`);
+	if (errors) w.line(`let ${errors}: Json[] = [];`);
+	w.line(`let ${inHost} = false;`);
+	w.open('try {');
+	emitForm(compiled, true);
+	w.line(`${out} = ${compiled.output(0)};`);
+	if (errors) w.line(`${errors} = ${compiled.output(1)};`);
+	w.close('} catch (error) {');
+	w.depth++;
+	w.line('if (!fileLimitInHost(error)) throw error;');
+	w.line(`${inHost} = true;`);
+	w.close();
+	w.open(`if (${inHost}) {`);
+	w.append(host.text.split('\n'));
+	w.line(`${out} = ${host.out};`);
+	if (errors) w.line(`${errors} = ${host.errors};`);
+	w.close();
 }
 
 /**
@@ -807,6 +926,8 @@ export interface ContinueOnce {
 	retry: { tries: number; delay: number } | null;
 	/** True when the code traces the error of a node that throws. */
 	trace: boolean;
+	/** True when an error that the fallback host can run the node for leaves the code (`fileLimitInHost`). */
+	hostLimit?: boolean;
 }
 
 /**
@@ -861,6 +982,10 @@ export function emitContinueOnce(w: Writer, once: ContinueOnce): string[] {
 	if (retry) w.line('break;');
 	w.close('} catch (error) {');
 	w.depth++;
+	if (once.hostLimit) {
+		helpers.push('fileLimitInHost');
+		w.line('if (fileLimitInHost(error)) throw error;');
+	}
 	if (retry) w.open(`if (tryIndex + 1 >= ${retry.tries}) {`);
 	w.line(`${out} = [...${input}];`);
 	if (errors) w.line(`${errors} = [];`);
@@ -935,6 +1060,11 @@ export function lowerFallback(c: NodeContext): void {
 	// A node with no native form and no library node is compiled from its n8n source when
 	// the caller gives the sources (`ConvertOptions.nodeSources`) and the source compiles.
 	if (tryCompiledNode(c)) return;
+	lowerHost(c);
+}
+
+/** Writes the node as a call of the fallback host, with its v1 parameters. */
+function lowerHost(c: NodeContext): void {
 	for (const path of SELF_EVALUATED[c.node.type] ?? []) {
 		let v: unknown = c.parameters;
 		for (const k of path) v = isRecord(v) ? v[k] : undefined;

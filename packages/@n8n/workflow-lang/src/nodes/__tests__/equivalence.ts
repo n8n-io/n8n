@@ -71,6 +71,11 @@ export interface NormalRequest {
 
 export interface Recording {
 	requests: NormalRequest[];
+	/**
+	 * `preAuthentication` of the credential type, when v1 ran it: the count of the requests that
+	 * it sent (they are not in `requests`), and the fields that v1 stored in the credential.
+	 */
+	preAuthentication?: { requests: number; data: Record<string, unknown> };
 	/** The service calls of the v1 node, as `ctx.service` effects carry them. */
 	services?: ServiceCallRecord[];
 	/** The JSON of the output items of the v1 node. */

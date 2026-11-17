@@ -394,9 +394,18 @@ file name with an extension and a `Content-Type`, and a file name without an ext
 - *The limit that v1 does not have.* A response larger than `--binary-max-file-mb` fails its step, and
   the text ends with `(limit: binary-max-file)`. n8n reads that text: it keeps the node of that
   workflow in the fallback host, compiles the workflow again and loads the new module
-  (`compiled-engine-sync.service.ts` `onRuntimeLimit`). So the next run has no limit. The run that
-  reached the limit stays failed: its node sent requests, and n8n does not send them again. The list
-  of such nodes is in the memory of n8n only.
+  (`compiled-engine-sync.service.ts` `onRuntimeLimit`). So the next run has no limit. n8n stores the
+  list of such nodes in one settings row (`compiledEngine.hostNodes`, at most 5,000 nodes), and reads
+  it before the first compile after a restart. It also finds the text in an error item of a node
+  under a "continue" setting.
+- *The same run.* A compiled node that stores a response has its fallback-host form in the source too
+  (`convert/steps.ts` `emitWithHostForm`). The module counts its requests: when every request before
+  the failure was a GET, which v1 can send again, it marks the error (`RUNS_IN_HOST`), and the source
+  runs the node in the host in the same run, under the step name `<node> (fallback host)`. When the
+  node sent another request first, the error stays as it is: the run fails, or the node gives an
+  error item, and n8n does not send the requests again. Not in the same run: a node whose paired
+  items a later node reads (`emitPairedStep`), and the HTTP Request node of the library. A node
+  whose compiled form is a call for each item runs in the host.
 
 **Not built.**
 

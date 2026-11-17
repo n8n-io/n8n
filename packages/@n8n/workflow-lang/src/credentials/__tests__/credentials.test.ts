@@ -128,6 +128,7 @@ const TYPES: CredentialTypeInfo[] = [
 	{
 		name: 'metabaseApi',
 		preAuthentication: true,
+		expirable: 'sessionToken',
 		authenticate: {
 			type: 'generic',
 			properties: { headers: { 'X-Metabase-Session': '={{$credentials.sessionToken}}' } },
@@ -198,6 +199,12 @@ describe('deriveInject', () => {
 			reasons: ['authenticate is a function'],
 		});
 		expect(deriveInject(registry, 'metabaseApi').reasons[0]).toContain('preAuthentication');
+		// The caller that fills the session token gets the `authenticate` of the type.
+		expect(deriveInject(registry, 'metabaseApi', {}, { preAuthenticated: true })).toEqual({
+			kind: 'generic',
+			inject: { headers: { 'X-Metabase-Session': '{{$credentials.sessionToken}}' } },
+			reasons: [],
+		});
 		expect(deriveInject(registry, 'twitterOAuth1Api').kind).toBe('unsupported');
 		expect(deriveInject(registry, 'unknownApi').kind).toBe('unsupported');
 	});
