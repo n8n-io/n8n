@@ -40,6 +40,8 @@ const ExecutionFilterShape = {
 	hostMode: z.string().min(1).max(32).optional(),
 	/** Only the executions this one started. */
 	parentExecutionId: z.string().uuid().optional(),
+	/** `true` for sub-executions only, `false` for top-level executions only. */
+	hasParent: z.boolean().optional(),
 	createdAfter: datetimeStringWithOffset().optional(),
 	createdBefore: datetimeStringWithOffset().optional(),
 };

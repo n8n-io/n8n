@@ -18,7 +18,7 @@ import { UnexpectedError, UserError } from '@n8n/errors';
 
 import { EngineDataPlaneProxyService } from '@/services/engine-data-plane-proxy.service';
 
-import { resolveV2Statuses, toV1Mode, toV1Status } from './engine-v2-mapping';
+import { resolveV2Statuses, toModeFilter, toV1Mode, toV1Status } from './engine-v2-mapping';
 import type { ExecutionPosition } from './execution-cursor';
 import { toWorkflowSnapshot, type WorkflowRunDocument } from './execution-data/types';
 import type { ExecutionIdV2 } from './execution-id';
@@ -156,7 +156,7 @@ export class EngineV2ExecutionReader {
 		return {
 			workflowIds: scope,
 			status,
-			hostMode: query.mode,
+			...toModeFilter(query.mode),
 			createdAfter: query.startedAfter ? new Date(query.startedAfter).toISOString() : undefined,
 			createdBefore: query.startedBefore ? new Date(query.startedBefore).toISOString() : undefined,
 		};
@@ -167,7 +167,7 @@ export class EngineV2ExecutionReader {
 			id: item.id,
 			workflowId: item.workflowId,
 			status: toV1Status(item.status),
-			mode: toV1Mode(item.hostMode),
+			mode: toV1Mode(item),
 			finished: item.status === 'completed',
 			createdAt: new Date(item.createdAt),
 			startedAt: new Date(item.createdAt),
@@ -237,7 +237,7 @@ export class EngineV2ExecutionReader {
 		return {
 			id: snapshot.id,
 			workflowId: snapshot.workflowId,
-			mode: toV1Mode(snapshot.hostMode),
+			mode: toV1Mode(snapshot),
 			status: toV1Status(snapshot.status),
 			finished: snapshot.status === 'completed',
 			createdAt: startedAt,
