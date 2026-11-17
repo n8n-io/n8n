@@ -36,11 +36,7 @@ import { mock, type MockProxy } from 'vitest-mock-extended';
 import type { InstanceSettings } from 'n8n-core';
 import type { AgentsSettingsService } from '../agents-settings.service';
 
-<<<<<<< HEAD
-import { ConflictError, NotFoundError } from '@n8n/errors';
-=======
-import { BadRequestError, ConflictError, ForbiddenError, NotFoundError } from '@n8n/errors';
->>>>>>> fec3317ec25fa68c69b7347813f60c8357048cf3
+import { ConflictError, ForbiddenError, NotFoundError } from '@n8n/errors';
 
 import type { AgentChatAttachmentService } from '../agent-chat-attachment.service';
 import type { AgentKnowledgeService } from '../agent-knowledge.service';
