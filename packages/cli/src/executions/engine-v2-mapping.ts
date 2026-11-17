@@ -1,4 +1,4 @@
-import type { ExecutionStatus } from '@n8n/engine';
+import type { ExecutionStatus, ParentLink } from '@n8n/engine';
 import assert from 'node:assert';
 import {
 	WorkflowExecuteModeList,
@@ -24,9 +24,19 @@ export function toV1Status(status: ExecutionStatus): ExecutionStatusV1 {
 	return V1_STATUS_BY_V2_STATUS.get(status) ?? 'unknown';
 }
 
-export function toV1Mode(hostMode: string): WorkflowExecuteMode {
-	const v1Mode = V1_MODE_BY_REPORTED_MODE.get(hostMode);
-	assert(v1Mode, `Unknown v1 mode ${hostMode}`);
+/**
+ * A sub-execution inherits the host mode of its parent, because the engine
+ * copies the caller context when it starts one. v1 runs every sub-execution as
+ * `integrated`, so a parent link decides the mode before the host mode does.
+ */
+export function toV1Mode(execution: {
+	hostMode: string;
+	parent: ParentLink | null;
+}): WorkflowExecuteMode {
+	if (execution.parent) return 'integrated';
+
+	const v1Mode = V1_MODE_BY_REPORTED_MODE.get(execution.hostMode);
+	assert(v1Mode, `Unknown v1 mode ${execution.hostMode}`);
 	return v1Mode;
 }
 

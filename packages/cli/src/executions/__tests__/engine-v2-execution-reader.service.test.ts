@@ -124,6 +124,26 @@ describe('EngineV2ExecutionReader', () => {
 			expect(dataPlane.getExecution).not.toHaveBeenCalled();
 		});
 
+		it('lists a sub-execution in integrated mode, whatever host mode it inherited', async () => {
+			dataPlane.searchExecutions.mockResolvedValue({
+				items: [
+					snapshot({ mode: 'production', hostMode: 'webhook' }),
+					snapshot({
+						id: '01a038ae-c4a8-7799-8a3e-e3c2ca055cfb',
+						mode: 'production',
+						hostMode: 'webhook',
+						parent: { executionId: EXECUTION_ID, stepId: 'step-1', awaited: true },
+					}),
+				],
+				total: 2,
+				nextCursor: null,
+			});
+
+			const result = await reader.findMany(query, ['wf-1']);
+
+			expect(result.items.map((item) => item.mode)).toEqual(['webhook', 'integrated']);
+		});
+
 		// Splitting a wider scope across searches can come later; until then the
 		// request fails rather than silently reporting a partial list.
 		it('rejects a scope wider than one search takes', async () => {
@@ -381,6 +401,20 @@ describe('EngineV2ExecutionReader', () => {
 				expect(result?.mode).toBe(mode);
 			},
 		);
+
+		it('should report a sub-execution in integrated mode, whatever host mode it inherited', async () => {
+			dataPlane.getExecution.mockResolvedValue(
+				snapshot({
+					mode: 'production',
+					hostMode: 'webhook',
+					parent: { executionId: 'parent-id', stepId: 'step-1', awaited: true },
+				}),
+			);
+
+			const result = await reader.findOne(EXECUTION_ID, [WORKFLOW_ID]);
+
+			expect(result?.mode).toBe('integrated');
+		});
 
 		it('should leave stoppedAt unset while the execution is unfinished', async () => {
 			dataPlane.getExecution.mockResolvedValue(snapshot({ status: 'running', finishedAt: null }));

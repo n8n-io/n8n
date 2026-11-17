@@ -167,7 +167,7 @@ export class EngineV2ExecutionReader {
 			id: item.id,
 			workflowId: item.workflowId,
 			status: toV1Status(item.status),
-			mode: toV1Mode(item.hostMode),
+			mode: toV1Mode(item),
 			finished: item.status === 'completed',
 			createdAt: new Date(item.createdAt),
 			startedAt: new Date(item.createdAt),
@@ -237,7 +237,7 @@ export class EngineV2ExecutionReader {
 		return {
 			id: snapshot.id,
 			workflowId: snapshot.workflowId,
-			mode: toV1Mode(snapshot.hostMode),
+			mode: toV1Mode(snapshot),
 			status: toV1Status(snapshot.status),
 			finished: snapshot.status === 'completed',
 			createdAt: startedAt,
