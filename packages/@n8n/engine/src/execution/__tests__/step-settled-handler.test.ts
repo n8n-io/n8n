@@ -684,7 +684,7 @@ describe('StepSettledHandler sub-executions', () => {
 		expect(stepStore.cancelPendingSteps).toHaveBeenCalledExactlyOnceWith('exec-1');
 	});
 
-	it('cancels the sub-executions and resumes the awaiting parent with the error the moment a step fails', async () => {
+	it('resumes the awaiting parent with the error the moment a step fails, then cancels the sub-executions', async () => {
 		const error = { name: 'TypeError', message: 'boom' };
 		const stepStore = makeStepStore({ status: 'failed', error });
 		const { handler, stepQueue, subExecutionCanceller } = makeHandler(stepStore, {
@@ -693,7 +693,6 @@ describe('StepSettledHandler sub-executions', () => {
 
 		await handler.handle(event);
 
-		expect(subExecutionCanceller.cancelSubExecutions).toHaveBeenCalledExactlyOnceWith('exec-1');
 		expect(stepStore.resumeStep).toHaveBeenCalledExactlyOnceWith('step-call', {
 			kind: 'subExecution',
 			executionId: 'exec-1',
@@ -705,6 +704,25 @@ describe('StepSettledHandler sub-executions', () => {
 			executionId: 'exec-parent',
 			stepId: 'step-call',
 		});
+		expect(subExecutionCanceller.cancelSubExecutions).toHaveBeenCalledExactlyOnceWith('exec-1');
+		// The parent first: a cascade that throws must not strand it.
+		expect(vi.mocked(stepStore.resumeStep).mock.invocationCallOrder[0]).toBeLessThan(
+			vi.mocked(subExecutionCanceller.cancelSubExecutions).mock.invocationCallOrder[0],
+		);
+	});
+
+	it('still cancels the sub-executions when the parent resume throws', async () => {
+		const stepStore = makeStepStore(
+			{ status: 'failed', error: { name: 'Error', message: 'x' } },
+			{ resumeStep: vi.fn().mockRejectedValue(new Error('resume failed')) },
+		);
+		const { handler, subExecutionCanceller } = makeHandler(stepStore, {
+			executionStore: makeExecutionStore({ parent }),
+		});
+
+		await expect(handler.handle(event)).rejects.toThrow('resume failed');
+
+		expect(subExecutionCanceller.cancelSubExecutions).not.toHaveBeenCalled();
 	});
 
 	it('resumes the awaiting parent with the failed step error when the completion count reveals a failure', async () => {
@@ -724,13 +742,16 @@ describe('StepSettledHandler sub-executions', () => {
 
 		await handler.handle({ ...event, stepId: 'step-m' });
 
-		expect(subExecutionCanceller.cancelSubExecutions).toHaveBeenCalledExactlyOnceWith('exec-1');
 		expect(stepStore.resumeStep).toHaveBeenCalledExactlyOnceWith('step-call', {
 			kind: 'subExecution',
 			executionId: 'exec-1',
 			status: 'failed',
 			error,
 		});
+		expect(subExecutionCanceller.cancelSubExecutions).toHaveBeenCalledExactlyOnceWith('exec-1');
+		expect(vi.mocked(stepStore.resumeStep).mock.invocationCallOrder[0]).toBeLessThan(
+			vi.mocked(subExecutionCanceller.cancelSubExecutions).mock.invocationCallOrder[0],
+		);
 	});
 
 	it('cancels no sub-executions and resumes no parent on a redelivered failure event', async () => {

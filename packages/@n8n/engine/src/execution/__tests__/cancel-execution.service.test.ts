@@ -201,6 +201,55 @@ describe('CancelExecutionService', () => {
 		]);
 	});
 
+	it('resumes the awaiting parent before it cancels the sub-executions', async () => {
+		const parent = { executionId: 'exec-parent', stepId: 'step-call', awaited: true };
+		const executionStore = makeExecutionStore({
+			loadExecution: vi.fn().mockImplementation(async (id: string) => {
+				return await Promise.resolve({
+					...execution,
+					id,
+					parent: id === 'exec-1' ? parent : null,
+					status: 'cancelled',
+					finishedAt: new Date(),
+				});
+			}),
+			loadLiveSubExecutionIds: vi.fn().mockImplementation(async (id: string) => {
+				return await Promise.resolve(id === 'exec-1' ? ['sub-1'] : []);
+			}),
+		});
+		const { service, stepStore } = makeService(executionStore);
+
+		await service.cancel('exec-1');
+
+		// A cascade that throws must not strand the parent.
+		const [, subCancel] = vi.mocked(executionStore.cancelExecution).mock.invocationCallOrder;
+		expect(vi.mocked(stepStore.resumeStep).mock.invocationCallOrder[0]).toBeLessThan(subCancel);
+	});
+
+	it('cancels the other sub-executions when one cancel throws, then throws them together', async () => {
+		const executionStore = makeExecutionStore({
+			cancelExecution: vi.fn().mockImplementation(async (id: string) => {
+				if (id === 'sub-1') throw new Error('sub-1 is locked');
+				return await Promise.resolve({ finishedAt: new Date() });
+			}),
+			loadLiveSubExecutionIds: vi.fn().mockImplementation(async (id: string) => {
+				return await Promise.resolve(id === 'exec-1' ? ['sub-1', 'sub-2'] : []);
+			}),
+		});
+		const { service } = makeService(executionStore);
+
+		await expect(service.cancel('exec-1')).rejects.toSatisfy(
+			(error: unknown) =>
+				error instanceof AggregateError &&
+				error.errors.map((cause: Error) => cause.message).join() === 'sub-1 is locked',
+		);
+		expect(vi.mocked(executionStore.cancelExecution).mock.calls.map(([id]) => id)).toEqual([
+			'exec-1',
+			'sub-1',
+			'sub-2',
+		]);
+	});
+
 	it('cancels no sub-execution when the execution had already ended', async () => {
 		const executionStore = makeExecutionStore({
 			cancelExecution: vi.fn().mockResolvedValue(null),

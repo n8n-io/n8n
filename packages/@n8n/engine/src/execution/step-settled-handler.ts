@@ -109,7 +109,8 @@ export class StepSettledHandler {
 				at: finished.finishedAt.toISOString(),
 			});
 			this.announceEnd(execution, step, node, 'failed');
-			await this.cancelExecution.cancelSubExecutions(execution.id);
+			// The parent goes before the cascade: the cascade can throw, and a
+			// redelivered event finds the execution ended and does nothing more.
 			if (execution.parent?.awaited) {
 				const { executionStore, stepStore, stepQueue } = this;
 				await resumeAwaitingParent({ executionStore, stepStore, stepQueue }, execution, {
@@ -117,6 +118,7 @@ export class StepSettledHandler {
 					error: await this.failureOf(execution, step),
 				});
 			}
+			await this.cancelExecution.cancelSubExecutions(execution.id);
 		}
 	}
 
@@ -244,7 +246,6 @@ export class StepSettledHandler {
 				at: finished.finishedAt.toISOString(),
 			});
 			this.announceEnd(execution, step, node, failed ? 'failed' : 'completed');
-			if (failed) await this.cancelExecution.cancelSubExecutions(execution.id);
 			if (execution.parent?.awaited) {
 				const { executionStore, stepStore, stepQueue } = this;
 				await resumeAwaitingParent(
@@ -264,6 +265,7 @@ export class StepSettledHandler {
 							},
 				);
 			}
+			if (failed) await this.cancelExecution.cancelSubExecutions(execution.id);
 		}
 	}
 
