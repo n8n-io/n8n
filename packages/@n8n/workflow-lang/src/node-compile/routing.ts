@@ -21,6 +21,7 @@ export interface RoutedEntry {
 	entry: string;
 	readFile: ReadFile;
 	refusals: string[];
+	ownHost?: string;
 }
 
 export interface RoutedInput {
@@ -523,6 +524,8 @@ class RoutedWriter {
 
 	pagination: unknown;
 
+	setsBase = false;
+
 	readonly paginates: Array<boolean | 'expression'> = [];
 
 	private counter = 0;
@@ -677,6 +680,7 @@ class RoutedWriter {
 		for (const [key, raw] of Object.entries(recordOf(routing.request) ?? {})) {
 			checkRequestKey(key);
 			if (['qs', 'body', 'headers'].includes(key)) this.dirty = true;
+			if (key === 'baseURL') this.setsBase = true;
 			this.emit(`${own}[${JSON.stringify(key)}] = ${routingValue(raw, scope)};`);
 		}
 		const send = recordOf(routing.send);
@@ -932,6 +936,7 @@ function pagedLines(
 	writer: RoutedWriter,
 	credentialType: string | undefined,
 	head: string[],
+	limited: boolean,
 ): string[] {
 	const steps = pageSteps(writer, credentialType);
 	const names = writer.groups.flatMap((group) => [
@@ -997,14 +1002,58 @@ function pagedLines(
 		'\t\t\t\t\t}',
 		'\t\t\t\t\tif (state.done) outcomes[i] = { items: state.items, maxResults: state.maxResults };',
 		'\t\t\t\t} catch (error) {',
-		'\t\t\t\t\toutcomes[i] = { error };',
 		'\t\t\t\t\tstate.done = true;',
+		...(limited
+			? [
+					'\t\t\t\t\tif (routingDomainSetting(error)) {',
+					'\t\t\t\t\t\tconst failure: any = new NodeOperationError(this.getNode(), (error as Error).message, { itemIndex: i });',
+					'\t\t\t\t\t\tif (this.continueOnFail()) {',
+					'\t\t\t\t\t\t\toutcomes[i] = { items: [{ json: {}, error: failure }] };',
+					'\t\t\t\t\t\t} else {',
+					'\t\t\t\t\t\t\tfatal = failure;',
+					'\t\t\t\t\t\t\tfor (let later = i; later < states.length; later++) states[later] = null;',
+					'\t\t\t\t\t\t}',
+					'\t\t\t\t\t\tcontinue;',
+					'\t\t\t\t\t}',
+				]
+			: []),
+		'\t\t\t\t\toutcomes[i] = { error };',
 		'\t\t\t\t}',
 		'\t\t\t\tif (!state.done) pending = true;',
 		'\t\t\t}',
 		'\t\t}',
 		'\t\tif (fatal !== undefined) throw fatal;',
 	];
+}
+
+function hostOf(url: string): string | undefined {
+	try {
+		return new URL(url).hostname.toLowerCase().replace(/\.$/, '') || undefined;
+	} catch {
+		return undefined;
+	}
+}
+
+function ownHostOf(
+	input: RoutedInput,
+	writer: RoutedWriter,
+	credentialType: string | undefined,
+): string | undefined {
+	if (credentialType === undefined) return undefined;
+	const limit = input.credentialFields(credentialType)?.allowedHttpRequestDomains;
+	if (limit === undefined || limit === 'all') return undefined;
+	const stays = (reason: string) =>
+		new RoutingRefusal(
+			`the credential '${credentialType}' limits its domains ('${String(limit)}'), and ${reason}`,
+		);
+	if (limit !== 'domains' && limit !== 'none') throw stays('the limit is not a mode of n8n');
+	const base = recordOf(Reflect.get(input.description, 'requestDefaults'))?.baseURL;
+	if (typeof base !== 'string' || base.startsWith('=') || writer.setsBase)
+		throw stays('the base URL of the node is not one constant of its description');
+	const host = hostOf(base);
+	if (host === undefined || !/^[a-z0-9]([a-z0-9.-]*[a-z0-9])?$/.test(host) || host.length > 96)
+		throw stays('the base URL of the node has no plain host name');
+	return host;
 }
 
 function credentialTypeOf(input: RoutedInput): string | undefined {
@@ -1024,11 +1073,6 @@ function credentialTypeOf(input: RoutedInput): string | undefined {
 	const fields = input.credentialFields(name);
 	if (fields === undefined)
 		throw new RoutingRefusal(`the public fields of the credential '${name}' are not known`);
-	const limit = fields.allowedHttpRequestDomains;
-	if (limit !== undefined && limit !== 'all')
-		throw new RoutingRefusal(
-			`the credential '${name}' limits its domains ('${String(limit)}'), and the check of the node has no compiled form`,
-		);
 	return name;
 }
 
@@ -1080,7 +1124,13 @@ function routingMerge(target: any, source: any): any {
 }
 `;
 
-function generate(input: RoutedInput, path: string): string {
+const DOMAIN_SETTING_HELPER = `function routingDomainSetting(error: any): boolean {
+	if (error === null || error === undefined) return false;
+	return error.message === 'This credential is configured to prevent use within an HTTP Request node' || error.message === 'No allowed domains specified. Configure allowed domains or change restriction setting.';
+}
+`;
+
+function generate(input: RoutedInput, path: string): { source: string; ownHost?: string } {
 	const settings = input.parameters.requestOptions;
 	if (
 		hasExpression(settings) ||
@@ -1101,6 +1151,11 @@ function generate(input: RoutedInput, path: string): string {
 	for (const property of input.description.properties) {
 		if (isRecord(property)) writer.property(property, [], 'requestOptions', {});
 	}
+	const ownHost = ownHostOf(input, writer, credentialType);
+	if (ownHost !== undefined)
+		writer.build.push(
+			'requestOptions.allowedDomains = routingUrl(requestOptions.baseURL, requestOptions.url);',
+		);
 	const first = writer.paginates[0];
 	const paged = writer.pagination !== undefined && first !== undefined && first !== false;
 	const post = postCode(writer, 'response', 'responseItems', '\t\t\t\t\t');
@@ -1138,11 +1193,21 @@ function generate(input: RoutedInput, path: string): string {
 		'\t\t\t\t\toutcomes.push({ items: responseItems, maxResults });',
 		'\t\t\t\t}',
 		'\t\t\t} catch (error) {',
+		...(ownHost === undefined
+			? []
+			: [
+					'\t\t\t\tif (routingDomainSetting(error)) {',
+					'\t\t\t\t\tconst failure: any = new NodeOperationError(this.getNode(), (error as Error).message, { itemIndex: i });',
+					'\t\t\t\t\tif (!this.continueOnFail()) throw failure;',
+					'\t\t\t\t\toutcomes.push({ items: [{ json: {}, error: failure }] });',
+					'\t\t\t\t\tcontinue;',
+					'\t\t\t\t}',
+				]),
 		'\t\t\t\toutcomes.push({ error });',
 		'\t\t\t}',
 		'\t\t}',
 	];
-	return [
+	const source = [
 		"import get from 'lodash/get';",
 		"import set from 'lodash/set';",
 		"import { NodeApiError, NodeOperationError } from 'n8n-workflow';",
@@ -1150,6 +1215,7 @@ function generate(input: RoutedInput, path: string): string {
 		'',
 		ROUTING_TEXT_HELPERS,
 		MERGE_HELPER,
+		...(ownHost === undefined ? [] : [DOMAIN_SETTING_HELPER]),
 		'export class RoutedNode {',
 		'\tasync execute(this: any): Promise<any[][]> {',
 		'\t\tconst items = this.getInputData();',
@@ -1159,7 +1225,7 @@ function generate(input: RoutedInput, path: string): string {
 			: [
 					`\t\tconst credentials: any = await this.getCredentials(${JSON.stringify(credentialType)});`,
 				]),
-		...(paged ? pagedLines(writer, credentialType, head) : singleLines),
+		...(paged ? pagedLines(writer, credentialType, head, ownHost !== undefined) : singleLines),
 		'\t\tfor (let i = 0; i < items.length; i++) {',
 		'\t\t\tconst outcome: any = outcomes[i];',
 		'\t\t\tif (outcome.error !== undefined) {',
@@ -1181,6 +1247,7 @@ function generate(input: RoutedInput, path: string): string {
 		'}',
 		'',
 	].join('\n');
+	return { source, ownHost };
 }
 
 export function routedEntry(input: RoutedInput): RoutedEntry | { errors: string[] } {
@@ -1195,8 +1262,9 @@ export function routedEntry(input: RoutedInput): RoutedEntry | { errors: string[
 		return out;
 	};
 	let source: string;
+	let ownHost: string | undefined;
 	try {
-		source = generate({ ...input, readFile: plain }, path);
+		({ source, ownHost } = generate({ ...input, readFile: plain }, path));
 	} catch (error) {
 		if (!(error instanceof RoutingRefusal)) throw error;
 		return { errors: [`the routing of the node stays in the host: ${error.message}`] };
@@ -1213,5 +1281,5 @@ export function routedEntry(input: RoutedInput): RoutedEntry | { errors: string[
 		if (rewritten.size < MAX_FILES) rewritten.set(file, out);
 		return out;
 	};
-	return { entry: path, readFile, refusals };
+	return { entry: path, readFile, refusals, ownHost };
 }

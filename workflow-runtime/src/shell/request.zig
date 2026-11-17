@@ -239,9 +239,16 @@ fn buildWith(args: []const u8, store: ?*const creds.Store, idem_key: ?[]const u8
         error.Userinfo => invalid(diag, "http: a user name or password in the url is not supported; use a credential", .{}),
         error.BadUrl => invalid(diag, "http: the url is not valid", .{}),
     };
-    if (fa.allowed_domains) |raw| if (eq(raw, "true")) if (slot) |s| {
-        try checkDomains(s, out.written(), url, diag);
-        b.no_redirect = s.domains_mode == .domains;
+    if (fa.allowed_domains) |raw| if (slot) |s| {
+        if (eq(raw, "true")) {
+            try checkDomains(s, null, out.written(), url, diag);
+            b.no_redirect = s.domains_mode == .domains;
+        } else if (raw.len > 0 and raw[0] == '{') {
+            var own_buf: [max_shown_host]u8 = @splat(0);
+            const node = try nodeHost(raw, &own_buf, diag);
+            try checkDomains(s, node, out.written(), url, diag);
+            b.no_redirect = s.domains_mode == .domains;
+        }
     };
     // `followRedirects: false`: the node sends the request of each redirect itself.
     if (fa.follow_redirects) |raw| if (eq(raw, "false")) {
@@ -854,18 +861,59 @@ fn authenticates(name: []const u8) bool {
     return std.ascii.eqlIgnoreCase(name, "authorization") or std.ascii.eqlIgnoreCase(name, "proxy-authorization") or std.ascii.eqlIgnoreCase(name, "cookie");
 }
 
+/// The host that the node of a request owns (`allowedDomains: {"own", "target"}`
+/// of the args), as the routed nodes of n8n have it (`routing-node.ts`).
+/// `own` is a constant of the compiled module: the host of the base URL in the
+/// description of the node. `target` is the URL of the request before the
+/// hooks of the node. `owned` is true when `target` goes to `own`: only then
+/// does n8n add `own` to the allowed domains of the credential.
+const NodeHost = struct {
+    host: []const u8,
+    owned: bool,
+};
+
+fn nodeHost(raw: []const u8, buf: *[max_shown_host]u8, diag: *Diag) Error!NodeHost {
+    std.debug.assert(raw.len > 0 and raw[0] == '{');
+    const own_raw = http.member(raw, "own") orelse return invalid(diag, "http: allowedDomains names no host of the node", .{});
+    var own: Out = .{ .buf = buf };
+    http.unescape(own_raw, &own) catch return invalid(diag, "http: the host of the node in allowedDomains is not a string of at most {d} bytes", .{max_shown_host});
+    const host = std.mem.trimEnd(u8, own.written(), ".");
+    if (host.len == 0 or std.mem.indexOfAny(u8, host, ",*/ ") != null) {
+        return invalid(diag, "http: the host of the node in allowedDomains is not a host name", .{});
+    }
+    std.debug.assert(host.len <= max_shown_host);
+    var target_buf: [max_url]u8 = @splat(0);
+    var target: Out = .{ .buf = &target_buf };
+    const target_raw = http.member(raw, "target") orelse return .{ .host = host, .owned = false };
+    http.unescape(target_raw, &target) catch return .{ .host = host, .owned = false };
+    const to = http.parseUrl(target.written()) catch return .{ .host = host, .owned = false };
+    return .{ .host = host, .owned = std.ascii.eqlIgnoreCase(std.mem.trimEnd(u8, to.host, "."), host) };
+}
+
 /// The texts of n8n for a request that the allowed domains of its credential
-/// refuse. The host and the list are settings, not secrets.
-fn checkDomains(s: creds.Slot, url_text: []const u8, url: http.Url, diag: *Diag) Error!void {
+/// refuse. The host and the list are settings, not secrets. With `node` the
+/// rule is that of a routed node (`getCredentialAllowedDomains` with
+/// `credentialOwnedSurface`): the mode `none` lets a request of an owned
+/// target pass, and the mode `domains` adds the host of the node to the list.
+fn checkDomains(s: creds.Slot, node: ?NodeHost, url_text: []const u8, url: http.Url, diag: *Diag) Error!void {
     std.debug.assert(url.host.len > 0);
+    const owned = if (node) |n| n.owned else false;
     switch (s.domains_mode) {
         .all => {},
-        .none => return invalid(diag, "This credential is configured to prevent use within an HTTP Request or GraphQL node", .{}),
+        .none => {
+            if (owned) return;
+            if (node != null) return invalid(diag, "This credential is configured to prevent use within an HTTP Request node", .{});
+            return invalid(diag, "This credential is configured to prevent use within an HTTP Request or GraphQL node", .{});
+        },
         .domains => {
-            if (domains.isEmpty(s.domains)) {
+            const empty = domains.isEmpty(s.domains);
+            if (empty and !owned) {
                 return invalid(diag, "No allowed domains specified. Configure allowed domains or change restriction setting.", .{});
             }
-            if (domains.allowed(url.host, s.domains)) return;
+            if (!empty and domains.allowed(url.host, s.domains)) return;
+            const own = if (node) |n| n.host else "";
+            const adds = owned and (empty or !domains.allowed(own, s.domains));
+            if (adds and domains.allowed(url.host, own)) return;
             // The host as n8n shows it: with the port when it is not the default one.
             const start = (std.mem.indexOf(u8, url_text, "://") orelse 0) + 3;
             const end = std.mem.indexOfAnyPos(u8, url_text, start, "/?#") orelse url_text.len;
@@ -875,9 +923,10 @@ fn checkDomains(s: creds.Slot, url_text: []const u8, url: http.Url, diag: *Diag)
             const list = std.mem.trim(u8, s.domains, " \t\r\n");
             var lower: [max_shown_host]u8 = @splat(0);
             const host = std.ascii.lowerString(&lower, shown[0..@min(shown.len, max_shown_host)]);
-            return invalid(diag, "Domain not allowed: This credential is restricted from accessing {s}. Only the following domains are allowed: {s}", .{
-                host, list[0..@min(list.len, max_shown_list)],
-            });
+            const text = "Domain not allowed: This credential is restricted from accessing {s}. Only the following domains are allowed: ";
+            if (adds and empty) return invalid(diag, text ++ "{s}", .{ host, own });
+            if (adds) return invalid(diag, text ++ "{s}, {s}", .{ host, own, list[0..@min(list.len, max_shown_list)] });
+            return invalid(diag, text ++ "{s}", .{ host, list[0..@min(list.len, max_shown_list)] });
         },
     }
 }
@@ -1631,6 +1680,32 @@ test "allowed domains: a request with the member is checked against the list of 
     try std.testing.expectEqualStrings("No allowed domains specified. Configure allowed domains or change restriction setting.", diag.text());
     try std.testing.expectError(error.Invalid, build("{\"url\":\"https://api.example.com/\",\"credential\":\"closed\",\"allowedDomains\":true}", &store, null, &buf, &diag));
     try std.testing.expectEqualStrings("This credential is configured to prevent use within an HTTP Request or GraphQL node", diag.text());
+
+    // A routed node: n8n adds the host that the node owns when the request goes to it.
+    const own = "\"allowedDomains\":{\"own\":\"api.node.test\",\"target\":\"https://API.node.test./v1/a\"}}";
+    const other = "\"allowedDomains\":{\"own\":\"api.node.test\",\"target\":\"https://other.test/v1/a\"}}";
+    const r = try build("{\"url\":\"https://api.node.test/v1/a\",\"credential\":\"listed\"," ++ own, &store, null, &buf, &diag);
+    try std.testing.expect(r.no_redirect);
+    _ = try build("{\"url\":\"https://api.example.com/x\",\"credential\":\"listed\"," ++ own, &store, null, &buf, &diag);
+    _ = try build("{\"url\":\"https://api.node.test/v1/a\",\"credential\":\"blank\"," ++ own, &store, null, &buf, &diag);
+    const c = try build("{\"url\":\"https://elsewhere.test/\",\"credential\":\"closed\"," ++ own, &store, null, &buf, &diag);
+    try std.testing.expect(!c.no_redirect);
+    // The hooks of the node sent the request to another host: the list with the host of the node refuses it.
+    try std.testing.expectError(error.Invalid, build("{\"url\":\"https://other.test/x\",\"credential\":\"listed\"," ++ own, &store, null, &buf, &diag));
+    try std.testing.expectEqualStrings("Domain not allowed: This credential is restricted from accessing other.test. Only the following domains are allowed: api.node.test, api.example.com, *.example.org", diag.text());
+    try std.testing.expectError(error.Invalid, build("{\"url\":\"https://other.test/x\",\"credential\":\"blank\"," ++ own, &store, null, &buf, &diag));
+    try std.testing.expectEqualStrings("Domain not allowed: This credential is restricted from accessing other.test. Only the following domains are allowed: api.node.test", diag.text());
+    // The workflow chose the host of the target: the host of the node is not added, and the list alone counts.
+    try std.testing.expectError(error.Invalid, build("{\"url\":\"https://api.node.test/v1/a\",\"credential\":\"listed\"," ++ other, &store, null, &buf, &diag));
+    try std.testing.expectEqualStrings("Domain not allowed: This credential is restricted from accessing api.node.test. Only the following domains are allowed: api.example.com, *.example.org", diag.text());
+    try std.testing.expectError(error.Invalid, build("{\"url\":\"https://other.test/v1/a\",\"credential\":\"blank\"," ++ other, &store, null, &buf, &diag));
+    try std.testing.expectEqualStrings("No allowed domains specified. Configure allowed domains or change restriction setting.", diag.text());
+    try std.testing.expectError(error.Invalid, build("{\"url\":\"https://other.test/v1/a\",\"credential\":\"closed\"," ++ other, &store, null, &buf, &diag));
+    try std.testing.expectEqualStrings("This credential is configured to prevent use within an HTTP Request node", diag.text());
+    // A target that is not a URL is not the host of the node, and a request names one host of the node.
+    try std.testing.expectError(error.Invalid, build("{\"url\":\"https://api.node.test/\",\"credential\":\"closed\",\"allowedDomains\":{\"own\":\"api.node.test\",\"target\":\"//api.node.test/\"}}", &store, null, &buf, &diag));
+    try std.testing.expectError(error.Invalid, build("{\"url\":\"https://api.node.test/\",\"credential\":\"closed\",\"allowedDomains\":{\"own\":\"a.test,b.test\",\"target\":\"https://a.test/\"}}", &store, null, &buf, &diag));
+    try std.testing.expectError(error.Invalid, build("{\"url\":\"https://api.node.test/\",\"credential\":\"closed\",\"allowedDomains\":{\"target\":\"https://a.test/\"}}", &store, null, &buf, &diag));
 
     // A credential without a limit, and a request of a node that does not read the limit.
     const o = try build("{\"url\":\"https://other.test/\",\"credential\":\"open\",\"allowedDomains\":true}", &store, null, &buf, &diag);

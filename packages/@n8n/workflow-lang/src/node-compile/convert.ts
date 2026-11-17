@@ -13,7 +13,7 @@ import type {
 	UnitOrigin,
 } from './specialise.ts';
 import { hasExecuteMethod, isRoutedDescription, routedEntry } from './routing.ts';
-import { hasExpression, specialiseNode } from './specialise.ts';
+import { hasExpression, OWNED_REQUEST, specialiseNode } from './specialise.ts';
 import type { FieldCheck, ParameterValidation } from './validate.ts';
 import { VERIFIED } from './verified.generated.ts';
 
@@ -581,10 +581,21 @@ export function compileNodeInstance(
 		credentialFields: Object.fromEntries(
 			Object.entries(credentials).map(([type, c]) => [type, c.fields]),
 		),
+		ownHost: routed?.ownHost,
 	};
 	const result = specialiseNode(input);
 	if (result.source === undefined || result.retyped === undefined)
 		return { errors: [...(routed?.refusals ?? []), ...result.errors], origins: result.origins };
+	if (routed?.ownHost !== undefined) {
+		const requests = result.source.match(/ctx\.http\(/g)?.length ?? 0;
+		const owned = result.source.match(OWNED_REQUEST)?.length ?? 0;
+		if (owned === 0 || owned !== requests)
+			return {
+				errors: [
+					'the routing of the node stays in the host: a request of the node does not name the host of the node for the allowed domains of the credential',
+				],
+			};
+	}
 
 	const evaluated = result.evaluated ?? [];
 	const isEvaluated = (path: string) => evaluated.some((entry) => entry.path === path);
