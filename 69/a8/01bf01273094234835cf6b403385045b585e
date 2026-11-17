@@ -1,0 +1,21 @@
+packages/@n8n/n8n-node-codegen/README.md
+  s_c76b585b42ea77::t_872b7b325b4b47 58-60
+  s_c76b585b42ea77::t_2b1d241beef213 47
+  s_c76b585b42ea77::t_7da806bbc838c5 56-57
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "69a801bf01273094234835cf6b403385045b585e",
+  "prompts": {},
+  "sessions": {
+    "s_c76b585b42ea77": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "724c21c2-8296-4d6b-9342-442f4111d503",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Dmitrii Kulikov <dmitrii.kulikov@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,73 @@
+packages/frontend/editor-ui/src/features/agents/components/AgentChatPanel.vue
+  s_8e7a418266e5a0::t_b77ce3f9cd6a95 1214-1220
+  s_91b4b22ce11712::t_552fac92840848 28-29,31,1221-1229,1767-2064,2123,2127,2129-2142,2144-2166,2168-2178,2180,2182-2188,2213-2217
+packages/frontend/editor-ui/src/features/agents/components/AgentChatMessageList.vue
+  s_fa60947423cda2::t_ebbeaaa9b3e982 623,1043
+  s_fa60947423cda2::t_177e015832b6de 2,15
+packages/frontend/@n8n/design-system/src/components/N8nChatScrollArea/ChatScrollArea.vue
+  s_3401c61efbb7b6::t_ade53a46e96fd9 114,248
+  s_fa60947423cda2::t_572c95e4cce27b 115-116
+  s_3401c61efbb7b6::t_a59c56c9951180 246-247
+  s_3401c61efbb7b6::t_891315262499ea 112-113
+packages/frontend/editor-ui/src/features/ai/instanceAi/components/InstanceAiConversation.vue
+  s_fa60947423cda2::t_53e9dbd4fd8f9d 1103
+  s_fa60947423cda2::t_1aa25cfebb00c0 990-1045,1047-1048,1052-1054,1056,1059
+  s_fa60947423cda2::t_45942a374d12d7 1102
+  s_fa60947423cda2::t_c2f0a1a3157aaf 894,898-905,907-908,910-935,937,939,941-948,950-952,955-962,966,968,970,974-975,977-984,989,1060
+  s_fa60947423cda2::t_96fe62bf5b3343 1100,1124,1126
+  s_fa60947423cda2::t_455b6998efcfc0 18,21,419-420,423-431,435-438,440-443,667,860
+  s_8e7a418266e5a0::t_dffc9e4e7bc1ea 1049-1051
+packages/frontend/editor-ui/src/features/ai/instanceAi/components/__tests__/InstanceAiConversation.test.ts
+  s_fa60947423cda2::t_0d3dcaee178123 350-357,360-361,366-367,371-372,374,377-381,383-385,390-391,395-400,403,410-413,419,422,430-432,434
+  s_fa60947423cda2::t_471ba5bc268b50 2
+  s_1c883d6d7d8e42::t_7f395617a63ddf 382
+  s_91b4b22ce11712::t_f84b86b2475980 436
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "0b661199be321be8b9bbae2529b98cff849af5bc",
+  "prompts": {},
+  "sessions": {
+    "s_1c883d6d7d8e42": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "01a1e37b-a8d3-76b5-b5f1-af87e16bfe2f",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "heymynameisrob <robhough180@gmail.com>"
+    },
+    "s_3401c61efbb7b6": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "01a1cff7-0289-75f9-b82c-04e5c911f5db",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "heymynameisrob <robhough180@gmail.com>"
+    },
+    "s_8e7a418266e5a0": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "01a1e8b8-a713-7025-9272-a6d34a6159c1",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "heymynameisrob <robhough180@gmail.com>"
+    },
+    "s_91b4b22ce11712": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "01a1e8da-2f7f-73a4-a680-dd6b7a78fb98",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "heymynameisrob <robhough180@gmail.com>"
+    },
+    "s_fa60947423cda2": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "01a1d022-1f8e-75f9-b82c-04e8ec9bf16c",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "heymynameisrob <robhough180@gmail.com>"
+    }
+  }
+}

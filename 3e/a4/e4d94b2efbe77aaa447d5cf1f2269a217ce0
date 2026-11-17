@@ -1,0 +1,20 @@
+packages/cli/src/modules/promotions.ee/__tests__/promotions.service.test.ts
+  s_b8162dbdf34b53::t_a0cadd6ceb0f76 55,111,246,2027-2049
+  s_b8162dbdf34b53::t_61af7d525ac6d2 2050
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "3ea4e4d94b2efbe77aaa447d5cf1f2269a217ce0",
+  "prompts": {},
+  "sessions": {
+    "s_b8162dbdf34b53": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a1d5f5-d72d-7d33-bbd4-1a8323e492bc",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "kgrhartlage <kai.hartlage@n8n.io>"
+    }
+  }
+}
