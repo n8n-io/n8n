@@ -8,8 +8,7 @@ import path from 'node:path';
 import { z } from 'zod';
 
 import { BadRequestError, InternalServerError } from '@n8n/errors';
-import { MANIFEST_FILE } from '@/modules/n8n-packages/spec/constants';
-import type { ManifestEntry, PackageManifest } from '@/modules/n8n-packages/spec/manifest.schema';
+import { MANIFEST_FILE, type ManifestEntry, type PackageManifest } from '@n8n/api-types';
 
 import { containerMoves, isUnder, projectHolding, staleWorkflowTargets } from './branch-placement';
 import type { BranchLayout, ContainerMove } from './branch-placement';

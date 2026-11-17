@@ -1,5 +1,6 @@
-import { packageRequirementConsumerSchema } from '@n8n/api-types';
 import { z } from 'zod';
+
+import { packageRequirementConsumerSchema } from './import-blocking-issue.schema';
 
 const requirementUsage = {
 	usedBy: z.array(packageRequirementConsumerSchema).min(1),

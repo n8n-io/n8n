@@ -39,6 +39,7 @@ import { createFolder } from '@test-integration/db/folders';
 import { createMember, createOwner } from '@test-integration/db/users';
 import { LicenseMocker } from '@test-integration/license';
 import { initNodeTypes } from '@test-integration/utils';
+import { FORMAT_VERSION, type PackageManifest } from '@n8n/api-types';
 
 import { TarPackageWriter } from '../io/tar/tar-package-writer';
 import { N8nPackagesService } from '../n8n-packages.service';
@@ -50,8 +51,6 @@ import {
 	type ImportPackageRequest,
 } from '../n8n-packages.types';
 import type { WorkflowPublishingPolicy as WorkflowPublishingPolicyValue } from '../entities/workflow/workflow-publishing-policy.types';
-import { FORMAT_VERSION } from '../spec/constants';
-import type { PackageManifest } from '../spec/manifest.schema';
 import {
 	buildImportPackageBuffer,
 	githubCredentialPayload,

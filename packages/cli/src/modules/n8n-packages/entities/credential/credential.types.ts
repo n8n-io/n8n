@@ -1,4 +1,9 @@
-import type { SerializedCredential, SerializedCredentialData } from '@n8n/api-types';
+import type {
+	SerializedCredential,
+	SerializedCredentialData,
+	PackageCredentialRequirement,
+	PackageRequirementConsumer,
+} from '@n8n/api-types';
 
 import type {
 	ImportBindingMap,
@@ -7,10 +12,6 @@ import type {
 	CredentialMatchingMode,
 	CredentialMissingMode,
 } from '../../n8n-packages.types';
-import type {
-	PackageCredentialRequirement,
-	PackageRequirementConsumer,
-} from '../../spec/requirements.schema';
 import type { AgentRequirementSource } from '../requirement-source';
 
 /** A requirement enriched with the expression data the package bundles for it, when any. */

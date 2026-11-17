@@ -2,13 +2,13 @@ import type { Project, User } from '@n8n/db';
 import { Service } from '@n8n/di';
 
 import { FolderFinderService } from '@n8n/backend-services';
+import type { ManifestEntry, WorkflowManifestEntry } from '@n8n/api-types';
 import { ProjectService } from '@/services/project.service.ee';
 import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 
 import { findExportableProjects } from './project-export-access';
 import { ProjectShellExporter, type ProjectShellExportContext } from './project-shell.exporter';
 import type { PackageWriter } from '../../io/package-writer';
-import type { ManifestEntry, WorkflowManifestEntry } from '../../spec/manifest.schema';
 import type { ExportVersionPolicy } from '../../n8n-packages.types';
 import { FolderExporter } from '../folder/folder.exporter';
 import type { FolderExportResult } from '../folder/folder.exporter';

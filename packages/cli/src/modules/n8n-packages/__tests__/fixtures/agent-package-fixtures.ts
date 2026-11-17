@@ -1,7 +1,7 @@
 import type { z } from 'zod';
+import type { ManifestEntry, PackageManifest } from '@n8n/api-types';
 
 import type { PackageWriter } from '../../io/package-writer';
-import type { ManifestEntry, PackageManifest } from '../../spec/manifest.schema';
 import type {
 	serializedAgentSchema,
 	SerializedAgentTool,

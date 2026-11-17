@@ -3,6 +3,10 @@ import type {
 	PromotionResource,
 	PromotionResourceDependency,
 	PromotionResourceType,
+	ManifestEntry,
+	PackageManifest,
+	WorkflowManifestEntry,
+	PackageRequirementConsumer,
 } from '@n8n/api-types';
 
 import {
@@ -10,13 +14,7 @@ import {
 	entityFilePath,
 	type ManifestEntityCollection,
 } from '@/modules/n8n-packages/io/manifest-entry';
-import type {
-	ManifestEntry,
-	PackageManifest,
-	WorkflowManifestEntry,
-} from '@/modules/n8n-packages/spec/manifest.schema';
 import { getWorkflowConsumerIds } from '@/modules/n8n-packages/spec/requirement-consumers';
-import type { PackageRequirementConsumer } from '@/modules/n8n-packages/spec/requirements.schema';
 
 import type { PlannedChange } from './apply-preview';
 import { PACKAGE_SUBFOLDER } from './constants';

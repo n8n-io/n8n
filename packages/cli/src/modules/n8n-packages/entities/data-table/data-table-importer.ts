@@ -1,4 +1,8 @@
-import type { SerializedDataTable, SerializedDataTableColumn } from '@n8n/api-types';
+import type {
+	SerializedDataTable,
+	SerializedDataTableColumn,
+	PackageDataTableRequirement,
+} from '@n8n/api-types';
 import { ModuleRegistry } from '@n8n/backend-common';
 import { Service } from '@n8n/di';
 
@@ -27,7 +31,6 @@ import type {
 } from './data-table.types';
 import { DataTableSchemaConflictPolicy } from '../../n8n-packages.types';
 import type { DataTableMissingMode, ImportContext } from '../../n8n-packages.types';
-import type { PackageDataTableRequirement } from '../../spec/requirements.schema';
 
 interface PlannedCreation {
 	table: SerializedDataTable;

@@ -34,11 +34,11 @@ import { createMember, createOwner } from '@test-integration/db/users';
 import { createProjectVariable, createVariable } from '@test-integration/db/variables';
 import { LicenseMocker } from '@test-integration/license';
 import { initNodeTypes } from '@test-integration/utils';
+import type { PackageVariableRequirement } from '@n8n/api-types';
 
 import { TarPackageReader } from '../io/tar/tar-package-reader';
 import { PackageImportConfig } from '../n8n-packages.config';
 import { N8nPackagesService } from '../n8n-packages.service';
-import type { PackageVariableRequirement } from '../spec/requirements.schema';
 import { importPackageRequest } from './fixtures/import-request';
 import type {
 	ImportPackageRequest,

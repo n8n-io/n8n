@@ -1,4 +1,5 @@
 import type { EventService } from '@n8n/backend-services';
+import type { PackageManifest } from '@n8n/api-types';
 
 import { loginIdOf } from '@/events/login-id';
 
@@ -16,7 +17,6 @@ import type {
 } from '../n8n-packages.types';
 import type { ImportContentResult } from './import-orchestrator';
 import { countImportStatuses, reconcileVariableSummary } from './import-result';
-import type { PackageManifest } from '../spec/manifest.schema';
 
 export interface PackageImportScope {
 	context: ImportContext;

@@ -1,4 +1,8 @@
-import type { SerializedCredentialData } from '@n8n/api-types';
+import type {
+	SerializedCredentialData,
+	ManifestEntry,
+	PackageCredentialRequirement,
+} from '@n8n/api-types';
 import type { CredentialsEntity, User } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { Credentials } from 'n8n-core';
@@ -21,8 +25,6 @@ import type { CredentialRequirement } from './credential.types';
 import { projectScopedDirectory, writeManifestEntry } from '../../io/manifest-entry';
 import type { PackageWriter } from '../../io/package-writer';
 import type { CredentialExportPolicy } from '../../n8n-packages.types';
-import type { ManifestEntry } from '../../spec/manifest.schema';
-import type { PackageCredentialRequirement } from '../../spec/requirements.schema';
 import { addRequirementUsage, type RequirementUsage } from '../requirement-source';
 
 interface CredentialGroup extends RequirementUsage {

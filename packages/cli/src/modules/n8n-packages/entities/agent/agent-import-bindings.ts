@@ -1,6 +1,7 @@
 import { ProjectScopeService } from '@n8n/backend-services';
 import { Service } from '@n8n/di';
 import { getStaticSubworkflowId, setStaticSubworkflowId } from 'n8n-workflow';
+import type { PackageAgentRequirement, PackageWorkflowRequirement } from '@n8n/api-types';
 
 import type { PlannedAgentDestinations } from '@/modules/agents/utils/agent-definition';
 import { extractAgentWorkflowRefs } from '@/modules/agents/utils/extract-agent-workflow-refs';
@@ -14,10 +15,6 @@ import type {
 	AgentImportPlan,
 	AgentPlanItem,
 } from './agent-import.types';
-import type {
-	PackageAgentRequirement,
-	PackageWorkflowRequirement,
-} from '../../spec/requirements.schema';
 import type { CredentialImportPlan } from '../credential/credential.types';
 import { WorkflowImportMatchService } from '../workflow/workflow-import-match.service';
 import type { WorkflowImportPlan } from '../workflow/workflow-import.types';

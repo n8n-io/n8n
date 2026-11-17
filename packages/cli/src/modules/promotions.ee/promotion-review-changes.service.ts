@@ -6,6 +6,8 @@ import {
 	type PromotionReviewDetailsRequestDto,
 	type PromotionReviewOutcome,
 	type PromotionReviewWarning,
+	MANIFEST_FILE,
+	type PackageManifest,
 } from '@n8n/api-types';
 import type { User } from '@n8n/db';
 import { accountSummary } from '@n8n/db';
@@ -14,8 +16,6 @@ import { BadRequestError, ForbiddenError, NotFoundError } from '@n8n/errors';
 import { hasGlobalScope } from '@n8n/permissions';
 
 import { gitBlobSha } from '@/modules/n8n-packages/io/hashing-package-writer';
-import { MANIFEST_FILE } from '@/modules/n8n-packages/spec/constants';
-import type { PackageManifest } from '@/modules/n8n-packages/spec/manifest.schema';
 
 import { PACKAGE_SUBFOLDER } from './constants';
 import type { PromotionEnvironment } from './database/entities/promotion-environment.entity';

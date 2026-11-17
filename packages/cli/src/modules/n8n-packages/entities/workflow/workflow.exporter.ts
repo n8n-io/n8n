@@ -1,5 +1,6 @@
 import type { User, WorkflowEntity } from '@n8n/db';
 import { Service } from '@n8n/di';
+import type { WorkflowManifestEntry } from '@n8n/api-types';
 
 import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 
@@ -8,7 +9,6 @@ import { applyWorkflowVersionPolicy, needsActiveVersion } from './workflow-versi
 import { packageDirectory, writeWorkflowManifestEntry } from '../../io/manifest-entry';
 import type { PackageWriter } from '../../io/package-writer';
 import type { ExportVersionPolicy } from '../../n8n-packages.types';
-import type { WorkflowManifestEntry } from '../../spec/manifest.schema';
 import { CredentialRequirementsExtractor } from '../credential/credential-requirements.extractor';
 import type { WorkflowCredentialRequirement } from '../credential/credential.types';
 import { DataTableRequirementsExtractor } from '../data-table/data-table-requirements.extractor';

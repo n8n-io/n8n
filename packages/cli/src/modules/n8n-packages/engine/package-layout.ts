@@ -1,4 +1,10 @@
-import type { SerializedCredential, SerializedVariable } from '@n8n/api-types';
+import type {
+	SerializedCredential,
+	SerializedVariable,
+	ManifestEntry,
+	PackageCredentialRequirement,
+	PackageVariableRequirement,
+} from '@n8n/api-types';
 import { UserError } from '@n8n/errors';
 
 import { resolveCredentialConflictPolicy } from '../entities/credential/credential-conflict-policy';
@@ -11,11 +17,6 @@ import {
 	VariableParentPolicy,
 } from '../n8n-packages.types';
 import type { ImportCredentialProperties, ImportVariableProperties } from '../n8n-packages.types';
-import type { ManifestEntry } from '../spec/manifest.schema';
-import type {
-	PackageCredentialRequirement,
-	PackageVariableRequirement,
-} from '../spec/requirements.schema';
 
 export function foldersInScope(
 	entries: ManifestEntry[] | undefined,

@@ -1,13 +1,9 @@
 import type { User } from '@n8n/db';
 import { ForbiddenError } from '@n8n/errors';
 import { mock } from 'vitest-mock-extended';
+import { FORMAT_VERSION, packageManifestSchema, type PackageManifest } from '@n8n/api-types';
 
 import { entityFilePath } from '@/modules/n8n-packages/io/manifest-entry';
-import { FORMAT_VERSION } from '@/modules/n8n-packages/spec/constants';
-import {
-	packageManifestSchema,
-	type PackageManifest,
-} from '@/modules/n8n-packages/spec/manifest.schema';
 
 import { PACKAGE_SUBFOLDER } from '../constants';
 import { PromotionChangeService } from '../promotion-change.service';

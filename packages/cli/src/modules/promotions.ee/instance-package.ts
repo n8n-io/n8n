@@ -1,4 +1,5 @@
 import type { User } from '@n8n/db';
+import type { PackageManifest } from '@n8n/api-types';
 
 import { HashingPackageWriter } from '@/modules/n8n-packages/io/hashing-package-writer';
 import type { N8nPackagesService } from '@/modules/n8n-packages/n8n-packages.service';
@@ -7,7 +8,6 @@ import {
 	ExportVersionPolicy,
 	type ExportPackageRequest,
 } from '@/modules/n8n-packages/n8n-packages.types';
-import type { PackageManifest } from '@/modules/n8n-packages/spec/manifest.schema';
 
 import { parsePackageFiles, type PackageFile } from './base-branch-files';
 import { PACKAGE_SUBFOLDER } from './constants';

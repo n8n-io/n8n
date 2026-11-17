@@ -1,6 +1,7 @@
 import type { Folder } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { UnexpectedError } from '@n8n/errors';
+import type { ManifestEntry, WorkflowManifestEntry } from '@n8n/api-types';
 
 import type { NodeTypeSource } from './node-type-usage';
 import type { AutoIncludedWorkflow } from './auto-included-workflow-resolver';
@@ -11,7 +12,6 @@ import {
 	writeWorkflowManifestEntry,
 } from '../../io/manifest-entry';
 import type { PackageWriter } from '../../io/package-writer';
-import type { ManifestEntry, WorkflowManifestEntry } from '../../spec/manifest.schema';
 import { CredentialRequirementsExtractor } from '../credential/credential-requirements.extractor';
 import type { WorkflowCredentialRequirement } from '../credential/credential.types';
 import { DataTableRequirementsExtractor } from '../data-table/data-table-requirements.extractor';

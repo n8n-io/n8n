@@ -1,5 +1,6 @@
+import type { PackageTagRequirement } from '@n8n/api-types';
+
 import type { TagConflictPolicy, TagMissingMode } from '../../n8n-packages.types';
-import type { PackageTagRequirement } from '../../spec/requirements.schema';
 import type { PreparedWorkflow } from '../workflow/workflow-import.types';
 
 export interface WorkflowTagUsage {

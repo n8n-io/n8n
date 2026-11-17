@@ -4,13 +4,12 @@ import { Service } from '@n8n/di';
 import { UserError } from '@n8n/errors';
 
 import { DataTableService } from '@n8n/backend-module-data-table';
+import type { ManifestEntry, PackageDataTableRequirement } from '@n8n/api-types';
 
 import { DataTableSerializer } from './data-table.serializer';
 import type { DataTableRequirement } from './data-table.types';
 import { projectScopedDirectory, writeManifestEntry } from '../../io/manifest-entry';
 import type { PackageWriter } from '../../io/package-writer';
-import type { ManifestEntry } from '../../spec/manifest.schema';
-import type { PackageDataTableRequirement } from '../../spec/requirements.schema';
 import { groupRequirementUsage } from '../requirement-source';
 
 export interface DataTableExportRequest {

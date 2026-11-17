@@ -1,4 +1,4 @@
-import type { PolicyViolation } from '@n8n/api-types';
+import type { PolicyViolation, PackageCredentialRequirement } from '@n8n/api-types';
 import type { Logger } from '@n8n/backend-common';
 import type { PolicyCleared } from '@n8n/decorators';
 import { mock } from 'vitest-mock-extended';
@@ -14,7 +14,6 @@ import type {
 	CredentialUpdateCandidate,
 } from '../../entities/credential/credential.types';
 import type { CredentialMissingMode } from '../../n8n-packages.types';
-import type { PackageCredentialRequirement } from '../../spec/requirements.schema';
 import { CredentialSavePolicyGate } from '../credential-save-policy';
 
 const violation: PolicyViolation = {

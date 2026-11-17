@@ -1,4 +1,4 @@
-import type { PromotionApplyCheck } from '@n8n/api-types';
+import { type PromotionApplyCheck, packageManifestSchema } from '@n8n/api-types';
 import { LockService, type Logger } from '@n8n/backend-common';
 import type { EventService } from '@n8n/backend-services';
 import type { GlobalConfig } from '@n8n/config';
@@ -40,7 +40,6 @@ import {
 	ExportDependencyPolicy,
 	ExportVersionPolicy,
 } from '@/modules/n8n-packages/n8n-packages.types';
-import { packageManifestSchema } from '@/modules/n8n-packages/spec/manifest.schema';
 import type { Publisher } from '@n8n/backend-services';
 import type { FolderService } from '@/services/folder.service';
 import type { ProjectService } from '@/services/project.service.ee';

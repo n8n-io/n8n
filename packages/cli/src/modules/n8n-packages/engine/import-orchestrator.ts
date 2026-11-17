@@ -1,5 +1,10 @@
 import { LicenseState } from '@n8n/backend-common';
 import { Container, Service } from '@n8n/di';
+import type {
+	PackageRequirementConsumer,
+	PackageAgentRequirement,
+	PackageWorkflowRequirement,
+} from '@n8n/api-types';
 
 import { extractAgentCredentialIds } from '@/modules/agents/utils/extract-agent-credential-ids';
 import { NodeTypes } from '@/node-types';
@@ -97,11 +102,6 @@ import type {
 } from '../n8n-packages.types';
 import { mergeRequirementConsumers } from '../spec/requirement-consumers';
 import type { SerializedSkill } from '../spec/serialized/skill.schema';
-import type {
-	PackageRequirementConsumer,
-	PackageAgentRequirement,
-	PackageWorkflowRequirement,
-} from '../spec/requirements.schema';
 import { ContentImportPolicyGate, contentImportTransport } from './content-import-policy';
 import { CredentialSavePolicyGate } from './credential-save-policy';
 import { toImportBlockedError } from './import-blocked.error';

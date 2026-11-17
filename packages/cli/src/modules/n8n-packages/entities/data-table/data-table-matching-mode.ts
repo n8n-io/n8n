@@ -1,7 +1,7 @@
 import type { DataTable } from '@n8n/backend-module-data-table';
+import type { PackageDataTableRequirement } from '@n8n/api-types';
 
 import type { DataTableMatchingMode } from '../../n8n-packages.types';
-import type { PackageDataTableRequirement } from '../../spec/requirements.schema';
 
 /**
  * Lookup structures prefetched by the caller that matching modes draw on.

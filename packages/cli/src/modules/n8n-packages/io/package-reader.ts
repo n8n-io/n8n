@@ -1,4 +1,4 @@
-import type { PackageManifest } from '../spec/manifest.schema';
+import type { PackageManifest } from '@n8n/api-types';
 
 export interface PackageReader {
 	readManifest(): Promise<PackageManifest>;

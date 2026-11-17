@@ -2,15 +2,14 @@ import type { Logger } from '@n8n/backend-common';
 import { UserError } from '@n8n/errors';
 import type { ICredentialType } from 'n8n-workflow';
 import { mock } from 'vitest-mock-extended';
+import { FORMAT_VERSION, type ManifestEntry, type PackageManifest } from '@n8n/api-types';
 
 import type { CredentialTypes } from '@/credential-types';
 import type { NodeTypes } from '@/node-types';
 
 import type { WorkflowSerializer } from '../../entities/workflow/workflow.serializer';
 import type { PackageReader } from '../../io/package-reader';
-import { FORMAT_VERSION } from '../../spec/constants';
 import { postgresLikeCredentialType } from '../../entities/credential/__tests__/postgres-like-credential-type';
-import type { ManifestEntry, PackageManifest } from '../../spec/manifest.schema';
 import { N8nPackageParser } from '../n8n-package-parser';
 
 function makeReader(manifest: PackageManifest, files: Record<string, unknown>): PackageReader {

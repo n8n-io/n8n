@@ -1,7 +1,10 @@
-import type { SerializedCredential, SerializedVariable } from '@n8n/api-types';
+import type {
+	SerializedCredential,
+	SerializedVariable,
+	ManifestEntry,
+	PackageCredentialRequirement,
+} from '@n8n/api-types';
 
-import type { ManifestEntry } from '../../spec/manifest.schema';
-import type { PackageCredentialRequirement } from '../../spec/requirements.schema';
 import {
 	deriveParentFolderId,
 	foldersInScope,
