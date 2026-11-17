@@ -109,3 +109,78 @@ No telemetry event changes. A Promote that returns `gaps-changed` counts as
 
 The foundation changes make some existing test files fail the typecheck
 (mostly fixtures without `allowIncomplete`). They are left as they are.
+
+### D13. When the placeholder marker goes away
+
+The marker goes away when a person saves the credential with values: an update
+that carries `data`, through the editor or the public API. A rename alone keeps
+the marker. The update of a promotion Apply and of a package import never
+removes it. The OAuth callback does not remove it either: the person saves the
+credential first.
+
+### D14. The publish check and a live workflow
+
+The publish check runs only for a version that is not live yet, like the check
+of the publisher's credential access. A workflow that is already live with the
+same version can register its triggers again.
+
+### D15. Credential decisions on the import request
+
+The import engine does not compute a gap, a grant or a move. The caller gives
+its decisions in `credentialDependencies` on the import request (promotion-only,
+no public DTO and no CLI flag). The engine checks each right again when it
+writes. The lists apply only with `credentialMatchingMode: 'id-only'`.
+
+### D16. A confirmed grant and an import that stops
+
+The engine gives a confirmed grant in the write step of the consumer project,
+before its workflows. The plan step writes nothing, so a plan that has another
+blocking issue gives no grant. A caller that must keep a confirmed grant when
+the Apply then stops (the scenario "The Apply grants only the items that the
+user confirmed") calls `EnterpriseCredentialsService.grantProjectAccess` before
+it plans. The plan then finds the credential usable. Both ways are safe to
+repeat.
+
+### D17. The API key scope of a grant
+
+`credential:share` is not an API key scope. The engine does not check a key
+scope for a grant. The promotion routes decide which key scope allows a grant
+and leave the grant out of the request when the key does not have it.
+
+### D18. The home of a top-level credential file
+
+`credentialHomes` only says which project owns a top-level credential file. The
+engine then treats the file like a file in the folder of that project: the
+owner follows it and its Apply updates the credential. The engine does not
+create the credential. A person creates it with its values, as for any other
+missing credential.
+
+### D19. Which credential files a project Apply writes
+
+With `credentialOwnerPolicy: 'follow-package'`, a credential file is content of
+its home project, also when no workflow of the Apply uses it. An Apply of the
+whole package writes every credential file of each applied project. A selection
+Apply writes the files that its selected workflows of the home project use.
+The caller can give the exact list in `ownedCredentialIds`. Only the scope of
+the home project updates such a credential, so an Apply of a consumer project
+never changes it.
+
+### D20. An unresolved workflow reference
+
+The import engine never blocks on a sub-workflow or an error workflow reference
+that it cannot resolve: it writes the reference unchanged. So the request has
+no list of allowed workflow ids. Only the dependency check of promotions
+decides whether such a reference stops an Apply.
+
+### D21. No policy check in the plan for a placeholder
+
+The `credentialSave` policy check runs when the placeholder is written, not in
+the plan. A policy that refuses the credential type stops the Apply at the
+write of the placeholder.
+
+### D22. A move that cannot run does not stop the Apply
+
+A credential that the user may not move, and a managed or an end-user
+credential, stay where they are and do not change. The import continues and the
+result lists them. A destination credential with usage scope `instance` blocks,
+as before.

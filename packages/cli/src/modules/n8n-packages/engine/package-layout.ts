@@ -76,15 +76,21 @@ export function needsBundledVariableValues(
 	);
 }
 
-/** Only an update compares with the package credential files, so `keep-existing` never reads them. */
+/**
+ * Only an update compares with the package credential files, so `keep-existing` never reads them.
+ * An import that follows the owner of the package reads them too: a credential file is content
+ * of its home project, also when no workflow of the import uses it.
+ */
 export function needsBundledCredentialFiles(
 	request: Pick<ImportCredentialProperties, 'credentialConflictPolicy'>,
 	hasRequirements: boolean,
+	followsPackageOwner = false,
 ): boolean {
 	return (
-		hasRequirements &&
-		resolveCredentialConflictPolicy(request.credentialConflictPolicy) !==
-			CredentialConflictPolicy.KeepExisting
+		followsPackageOwner ||
+		(hasRequirements &&
+			resolveCredentialConflictPolicy(request.credentialConflictPolicy) !==
+				CredentialConflictPolicy.KeepExisting)
 	);
 }
 

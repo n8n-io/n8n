@@ -748,6 +748,9 @@ export class N8nPackagesService {
 			...(request.credentialPersonalRoute !== undefined
 				? { credentialPersonalRoute: request.credentialPersonalRoute }
 				: {}),
+			...(request.credentialDependencies !== undefined
+				? { credentialDependencies: request.credentialDependencies }
+				: {}),
 			publishingPolicy: request.publishingPolicy ?? WorkflowPublishingPolicy.MatchSource,
 			selection,
 		};

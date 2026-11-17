@@ -146,6 +146,23 @@ export function reconcileCredentialSummary(input: {
 	};
 }
 
+export type CredentialDependencyResult = Pick<
+	CredentialApplyResult,
+	'placeholders' | 'grants' | 'moves' | 'unresolved'
+>;
+
+/** What every scope did for the credential decisions of the caller, one entry for each write. */
+export function credentialDependencySummary(
+	results: CredentialDependencyResult[],
+): Required<Pick<ImportCredentialSummary, 'placeholders' | 'grants' | 'moves' | 'unresolved'>> {
+	return {
+		placeholders: results.flatMap(({ placeholders }) => placeholders ?? []),
+		grants: results.flatMap(({ grants }) => grants ?? []),
+		moves: results.flatMap(({ moves }) => moves ?? []),
+		unresolved: [...new Set(results.flatMap(({ unresolved }) => unresolved ?? []))],
+	};
+}
+
 function toImportedAgentSummary({
 	sourceAgentId,
 	agent,

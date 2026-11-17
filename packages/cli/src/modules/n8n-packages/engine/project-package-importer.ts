@@ -7,6 +7,11 @@ import {
 	credentialUpdateScope,
 	resolveCredentialConflictPolicy,
 } from '../entities/credential/credential-conflict-policy';
+import {
+	followsPackageOwner,
+	packageCredentialHomes,
+	scopeCredentialDependencies,
+} from '../entities/credential/credential-dependencies';
 import type {
 	CredentialBindingRequest,
 	CredentialUpdateScope,
@@ -49,8 +54,10 @@ import {
 import {
 	buildImportResult,
 	credentialsUpdatedAcrossScopes,
+	credentialDependencySummary,
 	identifyRequirements,
 	reconcileCredentialSummary,
+	type CredentialDependencyResult,
 	reconcileVariableSummary,
 	scopeCredentialBindingsToRequirements,
 	toImportedWorkflowSummaries,
@@ -150,9 +157,15 @@ export class ProjectPackageImporter {
 		const packageCredentials = needsBundledCredentialFiles(
 			request,
 			(manifest.requirements?.credentials?.length ?? 0) > 0,
+			followsPackageOwner(request.credentialDependencies) &&
+				(manifest.credentials?.length ?? 0) > 0,
 		)
 			? await this.packageParser.getCredentials(reader)
 			: undefined;
+		const credentialHomes = packageCredentialHomes(
+			manifest,
+			request.credentialDependencies?.credentialHomes,
+		);
 		// Read once: Agents in any project can reference an instance skill.
 		const packageSkills =
 			!request.selection && manifest.agents?.length
@@ -183,6 +196,7 @@ export class ProjectPackageImporter {
 					packageCredentials,
 					packageSkills,
 					credentialUpdateScope: updateScope,
+					credentialHomes,
 				},
 				importSource,
 			);
@@ -260,6 +274,7 @@ export class ProjectPackageImporter {
 		const variablesSkipped: string[] = [];
 		const variablesUpdated: string[] = [];
 		const tagSummaries: ImportTagSummary[] = [];
+		const credentialDependencyResults: CredentialDependencyResult[] = [];
 		const scopes: PackageImportScope[] = [];
 
 		for (const { project, plan, content } of applied) {
@@ -277,6 +292,7 @@ export class ProjectPackageImporter {
 			dataTablesUpdated += content.dataTablePlan.updates.length;
 			seeded.push(...content.credentialResult.seeded);
 			incomplete.push(...content.credentialResult.incomplete);
+			credentialDependencyResults.push(content.credentialResult);
 			variablesMatched.push(...content.variablePlan.matched.map(({ name }) => name));
 			variablesMissing.push(...content.variablePlan.missing.map(({ name }) => name));
 			variablesCreated.push(...content.variableResult.created);
@@ -303,15 +319,21 @@ export class ProjectPackageImporter {
 			folders,
 			projects: projectSummaries,
 			bindings: mergeBindings(...scopedBindings),
-			credentials: reconcileCredentialSummary({
-				matched,
-				stubbed,
-				seeded,
-				incomplete,
-				updated: credentialsUpdatedAcrossScopes(
-					applied.map(({ content }) => content.credentialResult),
-				),
-			}),
+			credentials: {
+				...reconcileCredentialSummary({
+					matched,
+					stubbed,
+					seeded,
+					incomplete,
+					updated: credentialsUpdatedAcrossScopes(
+						applied.map(({ content }) => content.credentialResult),
+					),
+				}),
+				// Only an import with these decisions reports them, so other results keep their shape.
+				...(request.credentialDependencies
+					? credentialDependencySummary(credentialDependencyResults)
+					: {}),
+			},
 			dataTables: {
 				matched: dataTablesMatched,
 				created: dataTablesCreated,
@@ -343,6 +365,7 @@ export class ProjectPackageImporter {
 			packageCredentials: Map<string, SerializedCredential> | undefined;
 			packageSkills: SerializedSkill[];
 			credentialUpdateScope: CredentialUpdateScope;
+			credentialHomes: ReadonlyMap<string, string>;
 		},
 		importSource: PackageImportSource,
 	): Promise<ImportOrchestrationInput> {
@@ -386,6 +409,16 @@ export class ProjectPackageImporter {
 			personalRoute: request.credentialPersonalRoute,
 			packageCredentials: importWide.packageCredentials,
 			updateScope: importWide.credentialUpdateScope,
+			dependencies: scopeCredentialDependencies(
+				request.credentialDependencies,
+				importWide.credentialHomes,
+				{
+					project,
+					projectPendingCreation,
+					requiredCredentialIds: new Set((requirements ?? []).map(({ id }) => id)),
+					isSelection: request.selection !== undefined,
+				},
+			),
 		};
 
 		const dataTableRequest: DataTableImportRequest = {
