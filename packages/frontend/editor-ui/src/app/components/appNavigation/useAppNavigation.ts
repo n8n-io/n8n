@@ -388,7 +388,7 @@ export function useAppNavigation() {
 					{
 						id: 'new-chat',
 						label: i18n.baseText('instanceAi.thread.new'),
-						icon: 'square-pen',
+						icon: 'message-circle-plus',
 						to: { name: INSTANCE_AI_VIEW },
 						active: routeName.value === INSTANCE_AI_VIEW,
 					},
