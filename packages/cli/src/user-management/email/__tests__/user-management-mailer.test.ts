@@ -209,9 +209,9 @@ describe('UserManagementMailer', () => {
 				'Please review its recent executions',
 			],
 			[
-				'trigger-crashes' as const,
-				'because n8n repeatedly crashed while its trigger was running',
-				'Reduce how much data the trigger fetches at once',
+				'process-crashes' as const,
+				'because n8n repeatedly crashed while it was running',
+				'Reduce how much data the workflow handles at once',
 			],
 			[
 				'memory-pressure' as const,

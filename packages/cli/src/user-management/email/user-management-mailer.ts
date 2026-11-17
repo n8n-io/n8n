@@ -40,7 +40,7 @@ function formatRevokedBy(user: User): string {
 	return fullName || email || '';
 }
 
-export type AutodeactivationReason = 'crashes' | 'trigger-crashes' | 'memory-pressure';
+export type AutodeactivationReason = 'crashes' | 'process-crashes' | 'memory-pressure';
 
 type Template = HandlebarsTemplateDelegate<unknown>;
 type TemplateName =
@@ -345,10 +345,10 @@ export class UserManagementMailer {
 				nextStep:
 					'Please review its recent executions and resolve any issues before reactivating it.',
 			},
-			'trigger-crashes': {
-				reason: 'n8n repeatedly crashed while its trigger was running',
+			'process-crashes': {
+				reason: 'n8n repeatedly crashed while it was running',
 				nextStep:
-					'This often happens when a trigger fetches more data than fits in memory. Reduce how much data the trigger fetches at once before reactivating it.',
+					'This often happens when a run loads more data than fits in memory. Reduce how much data the workflow handles at once before reactivating it.',
 			},
 			'memory-pressure': {
 				reason:

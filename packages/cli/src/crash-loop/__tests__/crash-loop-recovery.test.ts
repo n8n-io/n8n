@@ -4,8 +4,8 @@ import { mock } from 'vitest-mock-extended';
 
 import type { ExecutionRecoveryService } from '@/executions/execution-recovery.service';
 
-import type { CrashStreak, ScheduledJobCrashJournal } from '../scheduled-job-crash-journal';
-import { ScheduledJobCrashRecovery } from '../scheduled-job-crash-recovery';
+import { CrashLoopRecovery } from '../crash-loop-recovery';
+import type { WorkflowCrashes, WorkflowCrashJournal } from '../workflow-crash-journal';
 
 const crashJournal = vi.hoisted(() => ({ crashed: true }));
 
@@ -13,25 +13,18 @@ vi.mock('@/crash-journal', () => ({
 	didLastSessionCrash: () => crashJournal.crashed,
 }));
 
-const streak = (workflowId: string, crashes: number, nodeId = 'node-1'): CrashStreak => ({
-	workflowId,
-	nodeId,
-	crashes,
-});
-
-describe('ScheduledJobCrashRecovery', () => {
+describe('CrashLoopRecovery', () => {
 	function setup({
 		crashed = true,
 		workflowDeactivationEnabled = true,
-		streaks = [] as CrashStreak[],
+		crashes = [] as WorkflowCrashes[],
 	} = {}) {
 		crashJournal.crashed = crashed;
-		const journal = mock<ScheduledJobCrashJournal>();
-		journal.startSession.mockReturnValue(streaks);
+		const journal = mock<WorkflowCrashJournal>();
+		journal.startSession.mockReturnValue(crashes);
 		const executionRecoveryService = mock<ExecutionRecoveryService>();
 		const logger = mockLogger();
-		const scopedLogger = vi.mocked(logger.scoped)('scheduler');
-		const recovery = new ScheduledJobCrashRecovery(
+		const recovery = new CrashLoopRecovery(
 			logger,
 			mock<ExecutionsConfig>({
 				recovery: { workflowDeactivationEnabled, maxLastExecutions: 3 },
@@ -39,7 +32,7 @@ describe('ScheduledJobCrashRecovery', () => {
 			journal,
 			executionRecoveryService,
 		);
-		return { recovery, journal, executionRecoveryService, logger: scopedLogger };
+		return { recovery, journal, executionRecoveryService, logger };
 	}
 
 	it.each([true, false])('starts a session of the journal when crashed is %s', async (crashed) => {
@@ -50,9 +43,12 @@ describe('ScheduledJobCrashRecovery', () => {
 		expect(journal.startSession).toHaveBeenCalledWith(crashed);
 	});
 
-	it('deactivates a workflow whose job reached the crash threshold and clears its streaks', async () => {
+	it('deactivates a workflow that reached the crash threshold and clears its crashes', async () => {
 		const { recovery, journal, executionRecoveryService } = setup({
-			streaks: [streak('wf-a', 3), streak('wf-b', 2)],
+			crashes: [
+				{ workflowId: 'wf-a', crashes: 3 },
+				{ workflowId: 'wf-b', crashes: 2 },
+			],
 		});
 
 		await recovery.recover();
@@ -60,7 +56,7 @@ describe('ScheduledJobCrashRecovery', () => {
 		expect(executionRecoveryService.autoDeactivateWorkflow).toHaveBeenCalledTimes(1);
 		expect(executionRecoveryService.autoDeactivateWorkflow).toHaveBeenCalledWith(
 			'wf-a',
-			'trigger-crashes',
+			'process-crashes',
 		);
 		expect(journal.clearWorkflow).toHaveBeenCalledExactlyOnceWith('wf-a');
 	});
@@ -68,7 +64,7 @@ describe('ScheduledJobCrashRecovery', () => {
 	it('counts but does not deactivate when auto deactivation is off', async () => {
 		const { recovery, journal, executionRecoveryService } = setup({
 			workflowDeactivationEnabled: false,
-			streaks: [streak('wf-a', 3)],
+			crashes: [{ workflowId: 'wf-a', crashes: 3 }],
 		});
 
 		await recovery.recover();
@@ -86,7 +82,7 @@ describe('ScheduledJobCrashRecovery', () => {
 		await expect(recovery.recover()).resolves.toBeUndefined();
 
 		expect(logger.error).toHaveBeenCalledWith(
-			'Failed to check scheduled jobs for crash loops',
+			'Failed to check workflows for crash loops',
 			expect.objectContaining({ error: expect.any(Error) }),
 		);
 	});

@@ -7,6 +7,7 @@ import uniqby from 'lodash/uniqBy';
 import { InstanceSettings } from 'n8n-core';
 import { existsSync } from 'node:fs';
 
+import { WorkflowCrashJournal } from '../../crash-loop/workflow-crash-journal';
 import { ExecutionCrashService } from '../../executions/execution-crash.service';
 import { ExecutionRecoveryService } from '../../executions/execution-recovery.service';
 import type { EventMessageTypes } from '../event-message-classes/';
@@ -63,6 +64,7 @@ export class MessageEventBus extends EventEmitter {
 		private readonly executionCrashService: ExecutionCrashService,
 		private readonly globalConfig: GlobalConfig,
 		private readonly instanceSettings: InstanceSettings,
+		private readonly workflowCrashJournal: WorkflowCrashJournal,
 	) {
 		super();
 	}
@@ -293,6 +295,9 @@ export class MessageEventBus extends EventEmitter {
 			return;
 		}
 
+		this.workflowCrashJournal.noteUnfinishedExecutions(
+			collectWorkflowIds(Object.values(unsentAndUnfinished.unfinishedExecutions)),
+		);
 		await this.logActiveWorkflows();
 
 		const recoveryAlreadyAttempted = this.logWriter?.isRecoveryProcessRunning();
@@ -374,4 +379,13 @@ export class MessageEventBus extends EventEmitter {
 
 		return Array.from(new Set([...unfinishedExecutionIds, ...dbUnfinishedExecutionIds]));
 	}
+}
+
+/** The workflows that the log messages name. */
+function collectWorkflowIds(logMessages: Array<EventMessageTypes[] | undefined>) {
+	const workflowIds = new Set<string>();
+	for (const { payload } of logMessages.flatMap((messages) => messages ?? [])) {
+		if (typeof payload?.workflowId === 'string') workflowIds.add(payload.workflowId);
+	}
+	return workflowIds;
 }

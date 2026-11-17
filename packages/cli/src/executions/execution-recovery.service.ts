@@ -103,7 +103,7 @@ export class ExecutionRecoveryService {
 				const cause =
 					reason === 'crashes'
 						? 'too many crashed executions'
-						: 'repeated crashes while its trigger was running';
+						: 'repeated crashes of n8n while it was running';
 				this.logger.warn(`Autodeactivated workflow ${workflowId} due to ${cause}.`);
 
 				const recipient = await this.getAutodeactivationRecipient(workflow);

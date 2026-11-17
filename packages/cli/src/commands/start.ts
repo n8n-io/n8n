@@ -33,6 +33,7 @@ import { ActiveExecutions } from '@/active-executions';
 import { ActiveWorkflowManager } from '@/active-workflow-manager';
 import config from '@/config';
 import { EDITOR_UI_DIST_DIR, N8N_VERSION } from '@/constants';
+import { CrashLoopRecovery } from '@/crash-loop/crash-loop-recovery';
 import { CredentialsOverwrites } from '@/credentials-overwrites';
 import { DeprecationService } from '@/deprecation/deprecation.service';
 import { FeatureNotLicensedError } from '@/errors/feature-not-licensed.error';
@@ -42,7 +43,6 @@ import { MultiMainSetup } from '@/scaling/multi-main-setup.ee';
 import { PubSubRegistry } from '@/scaling/pubsub/pubsub.registry';
 import { DurableScheduler } from '@/scheduling/durable-scheduler';
 import { PollJobProvider } from '@/scheduling/poll-trigger-node/poll-job-provider';
-import { ScheduledJobCrashRecovery } from '@/scheduling/scheduled-job-crash-recovery';
 import { mainSystemTasks } from '@/scheduling/system-tasks/main-system-tasks';
 import { Server } from '@/server';
 
@@ -460,8 +460,9 @@ export class Start extends BaseCommand<z.infer<typeof flagsSchema>> {
 		// The runner provisions the durable system task jobs, so it must finish
 		// before the scheduler can claim one.
 		await this.initSystemTasks(await mainSystemTasks(this.globalConfig));
-		// Before the scheduler starts, so that no job of this session is in flight yet.
-		await Container.get(ScheduledJobCrashRecovery).recover();
+		// After the event bus noted the unfinished executions, and before the scheduler
+		// starts, so that no job of this session is in flight yet.
+		await Container.get(CrashLoopRecovery).recover();
 		Container.get(DurableScheduler).start();
 
 		if (this.globalConfig.executions.mode === 'regular') {

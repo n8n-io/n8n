@@ -8,8 +8,10 @@ import { join } from 'node:path';
 import type { MockInstance } from 'vitest';
 import { mock } from 'vitest-mock-extended';
 
+import { EventMessageWorkflow } from '../../event-message-classes/event-message-workflow';
 import { MessageEventBusLogWriter } from '../../message-event-bus-writer/message-event-bus-log-writer';
 import { MessageEventBus } from '../message-event-bus';
+import type { WorkflowCrashJournal } from '@/crash-loop/workflow-crash-journal';
 import type { ExecutionCrashService } from '@/executions/execution-crash.service';
 
 vi.unmock('@/eventbus/message-event-bus/message-event-bus');
@@ -51,6 +53,7 @@ describe('MessageEventBus.initialize', () => {
 	const executionRepository = mock<ExecutionRepository>();
 	const workflowRepository = mock<WorkflowRepository>();
 	const executionCrashService = mock<ExecutionCrashService>();
+	const workflowCrashJournal = mock<WorkflowCrashJournal>();
 
 	const buildBus = (globalConfig: GlobalConfig) =>
 		new MessageEventBus(
@@ -61,6 +64,7 @@ describe('MessageEventBus.initialize', () => {
 			executionCrashService,
 			globalConfig,
 			mock<InstanceSettings>({ n8nFolder: tempDir }),
+			workflowCrashJournal,
 		);
 
 	beforeEach(() => {
@@ -146,6 +150,27 @@ describe('MessageEventBus.initialize', () => {
 			expect(executionCrashService.markAsCrashed).toHaveBeenCalledWith(
 				['b', 'c', 'a'],
 				'startup-recovery',
+			);
+		});
+
+		it('notes the workflows of the unfinished executions in the workflow crash journal', async () => {
+			const started = (workflowId?: string) =>
+				new EventMessageWorkflow({ eventName: 'n8n.workflow.started', payload: { workflowId } });
+			mockedWriter.getUnsentAndUnfinishedExecutions.mockResolvedValue({
+				unsentMessages: [],
+				unfinishedExecutions: {
+					a: [started('wf-1')],
+					b: [started('wf-1'), started('wf-2')],
+					c: [started()],
+				},
+			});
+			executionRepository.findUnfinishedIds.mockResolvedValue([]);
+			const bus = buildBus(buildGlobalConfig({ crashRecoveryMode: 'simple' }));
+
+			await bus.initialize({});
+
+			expect(workflowCrashJournal.noteUnfinishedExecutions).toHaveBeenCalledWith(
+				new Set(['wf-1', 'wf-2']),
 			);
 		});
 

@@ -20,12 +20,12 @@ import { AsyncLocalStorage } from 'node:async_hooks';
 import type { Mock, MockInstance } from 'vitest';
 import { mock } from 'vitest-mock-extended';
 
+import type { WorkflowCrashJournal } from '@/crash-loop/workflow-crash-journal';
 import { createNodeTypes } from '@/workflows/triggers/__tests__/trigger-test-utils';
 import type { PollBackoffService } from '@/workflows/triggers/poll-backoff.service';
 import type { TriggerExecutionContextFactory } from '@/workflows/triggers/trigger-execution-context.factory';
 
 import { POLL_TRIGGER_TASK_TYPE } from '../poll-trigger-task';
-import type { ScheduledJobCrashJournal } from '../../scheduled-job-crash-journal';
 import { PollTriggerTaskHandler } from '../poll-trigger-task-handler';
 
 const runOf = (signal: AbortSignal): TaskRun => ({ signal, remainingMs: () => 60_000 });
@@ -42,7 +42,7 @@ describe('PollTriggerTaskHandler', () => {
 	const rootLogger = mock<Logger>({ scoped: vi.fn().mockReturnValue(scopedLogger) });
 
 	const eventService = mock<EventService>();
-	const crashJournal = mock<ScheduledJobCrashJournal>();
+	const crashJournal = mock<WorkflowCrashJournal>();
 
 	const handler = new PollTriggerTaskHandler(
 		rootLogger,
@@ -253,10 +253,6 @@ describe('PollTriggerTaskHandler', () => {
 
 			expect(pollFunctions.__emit).toHaveBeenCalledWith(pollData);
 			expect(onDispatch).toHaveBeenCalledTimes(1);
-			expect(crashJournal.recordCompletion).toHaveBeenCalledWith({
-				workflowId: 'wf-1',
-				nodeId: 'node-1',
-			});
 		});
 
 		test('does not emit and reports no dispatch when poll() returns null', async () => {
@@ -536,8 +532,6 @@ describe('PollTriggerTaskHandler', () => {
 				}),
 			);
 			expect(pollBackoffService.recordSuccess).not.toHaveBeenCalled();
-			// The abandoned poll still runs, so the crash streak stays.
-			expect(crashJournal.recordCompletion).not.toHaveBeenCalled();
 		});
 
 		test('keeps a timed-out poll in flight in the crash journal until it settles', async () => {
@@ -911,7 +905,6 @@ describe('PollTriggerTaskHandler', () => {
 			expect(triggersAndPollers.runPollFunction).not.toHaveBeenCalled();
 			expect(onDispatch).not.toHaveBeenCalled();
 			expect(pollBackoffService.isBackingOff).toHaveBeenCalledWith(state, fixedNow);
-			expect(crashJournal.recordCompletion).not.toHaveBeenCalled();
 		});
 
 		test('records a failure and no success when poll() throws', async () => {
