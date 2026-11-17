@@ -33,6 +33,8 @@ import {
 	momentZones,
 	momentZoneUse,
 } from './moment.ts';
+import type { ParameterValidation, ValidationPlan } from './validate.ts';
+import { planValidation, VALIDATION_HELPER_USES, VALIDATION_HELPERS } from './validate.ts';
 
 export interface SpecialiseInput {
 	type: string;
@@ -61,6 +63,8 @@ export interface SpecialiseInput {
 	aliases?: Record<string, string>;
 
 	parameterKind?: (name: string) => ParameterKind | undefined;
+
+	validation?: (name: string) => ParameterValidation | undefined;
 
 	facts?: PublishFacts;
 
@@ -1357,6 +1361,7 @@ const HELPERS: Record<string, string> = {
 		.replaceAll('~', '%7E');
 }`,
 	...MOMENT_HELPERS,
+	...VALIDATION_HELPERS,
 };
 
 const PURE_GLOBALS = new Set([
@@ -1514,6 +1519,7 @@ const HELPER_USES: Record<string, string[]> = {
 	__binaryOf: ['__error'],
 	__inputBytes: ['__fileBytes', '__storedBytes'],
 	...MOMENT_HELPER_USES,
+	...VALIDATION_HELPER_USES,
 	__out: ['__outItem', '__assign'],
 	__outPaired: ['__outItem', '__assign', '__failedJson', '__pairOf'],
 	__outFailed: ['__outItem', '__assign', '__failedJson'],
@@ -2371,7 +2377,7 @@ class Specialiser {
 		this.queue.push(unit);
 	}
 
-	private parameter(node: ts.CallExpression, late = false): ts.Expression {
+	private parameter(node: ts.CallExpression, late = false, checked = false): ts.Expression {
 		const [nameArg, indexArg, fallback, options] = node.arguments;
 		if (!nameArg || !(ts.isStringLiteral(nameArg) || ts.isNoSubstitutionTemplateLiteral(nameArg))) {
 			return node;
@@ -2386,7 +2392,10 @@ class Specialiser {
 			const members: Array<[string, unknown]> = ts.isObjectLiteralExpression(options)
 				? options.properties.map((member): [string, unknown] =>
 						ts.isPropertyAssignment(member) && ts.isIdentifier(member.name)
-							? [member.name.text, literalOf(member.initializer)?.value]
+							? [
+									member.name.text,
+									(literalOf(member.initializer) ?? this.constantOf(member.initializer, 0))?.value,
+								]
 							: ['', undefined],
 					)
 				: flags?.value === undefined
@@ -2409,16 +2418,22 @@ class Specialiser {
 					? (value as Record<string, unknown>)[key]
 					: undefined;
 		}
-		if (
-			!skipsValidation &&
-			path.length === 2 &&
-			path[1] === 'value' &&
-			typeof value === 'object' &&
-			value !== null &&
-			this.castsMappedValue(path[0], value)
-		) {
-			this.castParameters.add(nameArg.text);
-			return node;
+		if (!skipsValidation && !checked) {
+			const plan = this.validationPlan(nameArg.text, value, extract);
+			if (plan !== undefined && 'refuse' in plan) {
+				this.uncheckedReads.set(nameArg.text, plan.refuse);
+				return node;
+			}
+			if (plan !== undefined) {
+				const bound = this.parameter(node, late, true);
+				if (bound === node) return node;
+				return this.helper(
+					plan.helper,
+					bound,
+					...plan.args.map(expressionOf),
+					indexArg ?? f.createIdentifier('undefined'),
+				);
+			}
 		}
 		const dynamic = hasExpression(value);
 		const entry = f.createElementAccessExpression(
@@ -2477,6 +2492,24 @@ class Specialiser {
 
 	private readonly castParameters = new Set<string>();
 
+	private readonly uncheckedReads = new Map<string, string>();
+
+	private validationPlan(name: string, value: unknown, extract: boolean): ValidationPlan {
+		const head = name.split('.')[0];
+		if (this.input.validation === undefined) {
+			const mapped =
+				name === `${head}.value` &&
+				typeof value === 'object' &&
+				value !== null &&
+				this.castsMappedValue(head, value);
+			if (mapped) this.castParameters.add(name);
+			return mapped ? { refuse: '' } : undefined;
+		}
+		const rule = this.input.validation(head);
+		if (rule === undefined) return undefined;
+		return planValidation(rule, name, value, this.input.parameters[head], hasExpression, extract);
+	}
+
 	private castsMappedValue(head: string, value: unknown): boolean {
 		const field = this.input.parameters[head];
 		if (
@@ -2532,11 +2565,21 @@ class Specialiser {
 			const held = this.constantOf(e.expression, hops + 1);
 			return held && isRecord(held.value) ? { value: held.value[e.name.text] } : undefined;
 		}
+		if (
+			ts.isCallExpression(e) &&
+			ts.isIdentifier(e.expression) &&
+			e.expression.text === 'Boolean' &&
+			e.arguments.length === 1
+		) {
+			const held = this.constantOf(e.arguments[0], hops + 1);
+			return held && { value: Boolean(held.value) };
+		}
 		if (isThisCall(e, 'getNodeParameter')) {
 			const [nameArg, , fallback, options] = e.arguments;
 			if (options || !nameArg || !ts.isStringLiteral(nameArg)) return undefined;
 			let value: unknown = this.input.parameters;
 			for (const key of nameArg.text.split('.')) value = isRecord(value) ? value[key] : undefined;
+			if (this.validationPlan(nameArg.text, value, false) !== undefined) return undefined;
 			if (hasExpression(value)) return undefined;
 			if (value !== undefined) return { value };
 			return fallback ? this.constantOf(fallback, hops + 1) : undefined;
@@ -3423,6 +3466,12 @@ class Specialiser {
 				if (isThisCall(n, 'getNodeParameter')) {
 					const [parameter, , , options] = n.arguments;
 					const read = parameter ? literalOf(parameter)?.value : undefined;
+					const unchecked = typeof read === 'string' ? this.uncheckedReads.get(read) : undefined;
+					if (unchecked !== undefined && unchecked !== '') {
+						this.error(name, unchecked);
+						ts.forEachChild(n, walk);
+						return;
+					}
 					if (typeof read === 'string' && this.castParameters.has(read)) {
 						this.error(
 							name,

@@ -236,6 +236,8 @@ export async function apiRequest(this: IExecuteFunctions, options: IHttpRequestO
   needs the name as text.
 - Rewrite: write the name as a text literal. Read each parameter with its own
   call. Remove the options argument and convert the value in code.
+- Also: a read of a value that v1 checks or casts, when the compiler has no
+  equal check. See "Parameter validation of v1 at `getNodeParameter`".
 
 ```ts
 // Before
@@ -712,3 +714,151 @@ for (const key of Object.keys(fields)) body[key] = fields[key];
   does not know.
 - Why: a new error, or a failure inside the compiler.
 - Rewrite: read the message, and report it so that the catalogue gets a rule.
+
+## Parameter validation of v1 at `getNodeParameter`
+
+This section is not an error code. It states what the v1 engine does to a
+parameter value when node code reads it, and what the node compiler does for
+each case. A read that the compiler cannot check gets the error NC020
+(`v1 checks the type of the parameter '<name>' when the node reads it, and
+<cause>`). The node then runs in the fallback host.
+
+### The order of the steps in v1
+
+Source: `packages/core/src/execution-engine/node-execution-context/node-execution-context.ts`,
+`_getNodeParameter` (line 526).
+
+1. v1 reads the raw value with `get(node.parameters, name, fallback)`. When the
+   value is `undefined`, it throws `UserError('Could not get parameter "<name>"')`
+   (line 541).
+2. `rawExpressions: true` returns the raw value. No expression runs and no
+   check runs (line 547).
+3. v1 resolves the expressions for the item (line 557).
+4. `extractValue: true` extracts the value of a resource locator (line 595).
+5. `ensureType` converts the value (line 600, `utils/ensure-type.ts` line 4).
+   `null` gives `Parameter '<name>' must not be null`. `undefined` gives
+   `Parameter '<name>' could not be 'undefined'`. `object`, `array` and `json`
+   parse a text with `JSON.parse` (`Parameter '<name>' could not be parsed`)
+   and reject other values (`Parameter '<name>' must be an <type>, but we got
+   '<value>'`). `string` uses `JSON.stringify` for an object and `String` for
+   other values. `number` uses `Number` and rejects `NaN` (`Parameter '<name>'
+   must be a number, but we got '<value>'`). `boolean` uses `Boolean`.
+6. `skipValidation: true` returns the value here (line 608).
+7. `validateValueAgainstSchema` checks the value (line 612,
+   `utils/validate-value-against-schema.ts` line 187).
+
+### Which reads v1 validates
+
+`validateValueAgainstSchema` takes the first property of the node description
+with the name of the first path segment that `displayParameter` shows for the
+node parameters (line 197). When no property is shown, there is no check. Then
+at most one of these cases applies, in this order:
+
+- (b) The path has one segment, and the property has `validateType` and not
+  `ignoreValidationDuringExecution` (line 209). v1 calls
+  `validateFieldType(name, value, validateType)` without options.
+- (a) The property type is `resourceMapper`, the second path segment is
+  `value`, and the value is an object (line 219). `validateResourceMapperValue`
+  (line 46) does nothing unless the path has exactly two segments and the
+  parameter has `mappingMode`, `schema` and `value`. For each key of the value,
+  in the order of the keys, it takes the first schema entry with that `id`:
+  - When the mapper has `mode: 'add'`, the entry is `required`, the entry type
+    is not `boolean`, and the value is `null` or `undefined`: the read fails
+    with the description `The value "<key>" is required but not set`.
+  - When the entry has a type: `validateFieldType(key, value, type, {
+    valueOptions: entry.options, strict, parseStrings })`. `strict` is
+    `showTypeConversionOptions && !attemptToConvertTypes`. `parseStrings` is
+    `showTypeConversionOptions && (alwaysConvertFieldsToString ||
+    convertFieldsToString)`. `showTypeConversionOptions` and
+    `alwaysConvertFieldsToString` come from `typeOptions.resourceMapper` of the
+    description. `attemptToConvertTypes` and `convertFieldsToString` come from
+    the parameter. v1 writes the cast value back into the value.
+- (c) The property type is `collection` or `fixedCollection` (line 233), for
+  each path length. `validateCollection` (line 113) takes the members of the
+  collection, or the members of the group with the name of the second path
+  segment of a fixed collection. Only members with `validateType` and without
+  `ignoreValidationDuringExecution` count. For the value, or for each entry
+  when the value is a list, and for each key with such a member, v1 calls
+  `validateFieldType(key, value[key], validateType, { valueOptions })`.
+  `valueOptions` are the options of the member when `validateType` is
+  `options`. v1 writes the cast value back. A value of `null` fails with the
+  JavaScript error `Cannot convert undefined or null to object`.
+
+`ignoreTypeMismatchErrors` is not a part of `getNodeParameter`. It is an
+option that node code reads and applies in its own code.
+
+### The casts of `validateFieldType`
+
+Source: `packages/workflow/src/type-validation.ts`, `validateFieldType`
+(line 347). The type name is compared in lower case. `null` and `undefined`
+are valid for each type, and the new value is `undefined` (line 353). The
+usual message is `'<field>' expects a <type> but we got <given>`. `<given>` is
+`'null'`, `array`, `object`, or the value in single quotes (line 286).
+
+| Type | Cast (not strict) | Strict | Rejected |
+|---|---|---|---|
+| `string` | No change. With `parseStrings`: `JSON.stringify` for an object, `toString` for other values (line 24) | With `parseStrings`: only a text | Usual message |
+| `number` | `Number(value)` (line 15) | Only a number | `NaN`: usual message |
+| `boolean` | A boolean; `true` and `false` in each letter case; a value that `Number` gives 0 or 1 for, but not a blank text (line 48) | Only a boolean | Usual message |
+| `dateTime` | A luxon `DateTime`: ISO, HTTP, RFC 2822, SQL, then `Date.parse` (line 72) | Same | Usual message, then a hint about `DateTime.fromFormat` (line 406) |
+| `time` | `String(value)` when it fits `hh:mm`, an optional `:ss`, an optional offset of four digits and an optional offset `h`, `hh` or `hh:mm` (line 114) | Same | `'<field>' expects time (hh:mm:(:ss)) but we got <given>.` |
+| `array` | A list; or `JSON.parse` of the text, then of the text with `'` replaced by `"` (line 124) | Only a list | Usual message |
+| `object` | An object that is not a list; or `jsonParse` with `acceptJSObject` (line 146) | Only an object or a list | Usual message |
+| `options` | No change when one option has this value | Same | `'<field>' expects one of the following values: [<values>] but we got <given>` |
+| `url` | `https://` in front of a text without `://`; the URL must parse with the protocol `http`, `https`, `ftp` or `file` (line 298) | Same | Usual message |
+| `jwt` | `String(value)` when it has three parts with a point between them (line 319) | Same | `Value is not a valid JWT token` |
+| `form-fields` | A list of form fields from JSON or from JavaScript object text (line 233) | Same | The message of the parser |
+| `binary` | A binary data object (line 162) | Same | Usual message, then a hint about `mimeType`, `data` and `id` (line 426) |
+| `string-alphanumeric` | A text of letters, digits and `_` (line 38) | Same | `Value is not a valid alphanumeric string, only letters, numbers and underscore allowed` |
+| other | No change | Same | Never |
+
+### The error
+
+For (a) and (b), `validateValueAgainstSchema` throws an `ExpressionError`
+(line 245). The message is `Invalid input for '<field>' [item <index>]`.
+`<field>` is the key of the mapper value for (a), and the `displayName` of the
+property for (b). For (c), `validateCollection` throws an `ExpressionError`
+(line 168). The message is `Invalid input for field '<displayName of the
+member>' inside '<displayName of the property>' in [item <index>]`. In each
+case the `description` is the message of `validateFieldType`, and the context
+has `runIndex`, `itemIndex` and `nodeCause` (the name of the node). `<index>`
+is the item index of the read.
+
+### What the node compiler does
+
+Source: `src/node-compile/validate.ts` (the plan and the helpers) and
+`parameterValidationOf` in `src/node-compile/convert.ts` (the data from the
+description).
+
+- The compiler takes the same property as v1. It uses the node parameters and
+  `displayParameter`. The description must be the full description of the
+  node: a description without `displayName` and `validateType` gives no check.
+- A value without an expression that already has the type of its field gets no
+  check: a text for `string`, a number for `number`, a boolean for `boolean`,
+  a list for `array`, an object for `object`, a listed value for `options`.
+- Other values get a helper at the read: `__validParameter` for (b),
+  `__validMapped` for (a), `__validMembers` for (c). The helper gets only the
+  fields that need a check. It does the casts of the table for `string`,
+  `number`, `boolean`, `time`, `array`, `options`, `jwt` and unknown types. It
+  throws an error with the name `ExpressionError`, and with the message and
+  the `description` of v1. The error has no `context`.
+- The compiler does not use a checked value as a constant of the node code.
+- These reads stay refused (NC020):
+  - A field of the type `dateTime`, `object`, `url`, `binary`, `form-fields`
+    or `string-alphanumeric`. The exceptions are a value of `null`, and an
+    object for `object`. A `dateTime` cast gives a luxon `DateTime` object.
+    The date helpers of the compiler (`moment.ts`) parse and format dates, but
+    they do not give a value that node code can use as a `DateTime`. Thus each
+    form of a `dateTime` field with a value stays refused. `object` and
+    `form-fields` need a parser of JavaScript object text.
+  - A read with `extractValue` of a parameter that needs the check of (b).
+  - A read with `ensureType` or `rawExpressions`, and options that are not
+    constant for the node.
+  - A resource mapper that is an expression as a whole, a schema that is not a
+    list, or a mapper option with an expression.
+  - A collection with a checked member that has a number as its name.
+- `skipValidation: true` compiles without a check, as in v1. The flag can be a
+  constant of the node code that depends on a parameter without an expression.
+- When the caller gives no description data (`validation` is not set), the
+  compiler keeps the first rule for a resource mapper: it refuses the read
+  when a field of the value has a schema type.

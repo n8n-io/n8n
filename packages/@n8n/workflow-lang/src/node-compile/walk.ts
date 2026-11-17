@@ -12,6 +12,8 @@ export interface WalkMember {
 	options?: WalkMember[];
 	values?: WalkMember[];
 	typeOptions?: { multipleValues?: boolean };
+	validateType?: string;
+	ignoreValidationDuringExecution?: boolean;
 }
 
 export interface WalkProperty {
@@ -21,6 +23,8 @@ export interface WalkProperty {
 	options?: WalkMember[];
 	displayOptions?: { show?: Record<string, unknown[]> };
 	typeOptions?: { multipleValues?: boolean };
+	validateType?: string;
+	ignoreValidationDuringExecution?: boolean;
 }
 
 export interface WalkNode {
@@ -39,13 +43,27 @@ export function resolveParameters(node: WalkNode, version: number, parameters: J
 	return getNodeParameters(d.properties, parameters, true, false, version, d) ?? {};
 }
 
+const VALID_SAMPLES: Record<string, unknown> = {
+	number: 1,
+	boolean: true,
+	array: ['a'],
+	object: { a: 1 },
+	url: 'https://example.test/a',
+	jwt: 'a.b.c',
+};
+
 export function requiredParameters(node: WalkNode, version: number, start: Json): Json {
 	const properties = propertiesOf(node);
 	const out: Json = { ...start };
 	for (const [name, value] of Object.entries(resolveParameters(node, version, start))) {
-		const type = properties.find((p) => p.name === name)?.type;
+		const property = properties.find((p) => p.name === name);
+		const type = property?.type;
 		if (name in out) continue;
-		if (type === 'string' && value === '') out[name] = 'v1';
+		const checked =
+			property?.validateType === undefined || property.ignoreValidationDuringExecution
+				? undefined
+				: VALID_SAMPLES[property.validateType];
+		if (type === 'string' && value === '') out[name] = checked ?? 'v1';
 		else if (type === 'json' && value === '') out[name] = '{}';
 		else if (type === 'number' && value === undefined) out[name] = 1;
 		else if (type === 'resourceLocator') out[name] = { __rl: true, mode: 'id', value: 'id1' };

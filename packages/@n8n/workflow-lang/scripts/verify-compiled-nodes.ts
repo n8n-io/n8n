@@ -49,6 +49,7 @@ import {
 	CALL_FOR_EACH_ITEM,
 	ERROR_ITEMS_BY_POSITION,
 	ITEM_ERROR,
+	ITEM_PARAMETER_PREFIX,
 	PAIRED_ITEMS,
 	itemErrorCondition,
 	errorModeCondition,
@@ -1132,6 +1133,39 @@ for (const name of one === undefined ? [] : Object.keys(known).sort()) {
 						}
 					}
 					if (failingForm && !other) expressions.failing = (expressions.failing ?? 0) + 1;
+					const rejectedEach = new Set<string>();
+					for (const variant of combined ? agreed : []) {
+						if (!variant.rejected) continue;
+						const tested: ExpressionForm = {
+							name: variant.name,
+							value: withVariant(together, variant, variant.rejected.value)[variant.name],
+							fields: variant.rejected.fields,
+						};
+						const difference = await differenceFromV1(
+							expressionCase(
+								`a value of ${variant.condition} that v1 rejects`,
+								[tested],
+								false,
+								undefined,
+								together,
+							),
+							sources,
+							registry,
+							checking,
+						);
+						if (difference === undefined) continue;
+						rejectedEach.add(variant.condition);
+						rejectedEach.add(variant.name);
+						if (!other) {
+							const text = `validation of ${variant.condition}: ${difference}`.slice(0, 110);
+							failureReasons[text] = (failureReasons[text] ?? 0) + 1;
+						}
+					}
+					const checkedEach = (condition: string) => {
+						if (!condition.startsWith(ITEM_PARAMETER_PREFIX)) return true;
+						const name = condition.slice(ITEM_PARAMETER_PREFIX.length).split('@')[0];
+						return !rejectedEach.has(name);
+					};
 					const keptModes = CONTINUE_MODES.filter((mode) =>
 						errorModeCondition(mode).every((m) => proven.includes(m)),
 					);
@@ -1147,7 +1181,7 @@ for (const name of one === undefined ? [] : Object.keys(known).sort()) {
 						...provenEach.map((name) => itemParameterCondition(name)),
 						...provenUnder.filter(ofKeptMode),
 						...provenErrors.filter((name) => name === ITEM_ERROR || ofKeptMode(name)),
-					];
+					].filter(checkedEach);
 					const modes = proven.filter(ofKeptMode);
 					const conditions = [
 						...names,
