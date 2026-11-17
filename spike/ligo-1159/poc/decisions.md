@@ -815,3 +815,135 @@ that project, as the server does when it gets `credentialHomes`.
 The API answers a read-only view to a project viewer (decision A2). The route
 guard of the page still needs the right to operate a project, so the viewer
 goes to the home page.
+
+## Decisions of the backend fixes after the coverage audits (stream K)
+
+### K1. A dependency file of a project that the user cannot read is not shown
+
+A preview row for a credential or a data table under a project folder that the
+user cannot read holds the id and the name of the requirement row of the
+consumer. It has no file, so the details routes return no content for it. The
+requirement row is what the consumer workflow shows: the exporter removes the
+credential name from the node and keeps it on the row. The same rule gives the
+name of a placeholder and of a gap. The file of the branch counts only when the
+user can read its project.
+
+### K2. A project that the user cannot read has no real id in a move
+
+A moved row, `plannedMoves`, `changedProjects`, the result `moves` and a
+refused move give `hidden-<12 hex characters>` in the place of the id of a
+project that the user cannot read, and no name. The value is a hash of the id,
+so it is stable and a client can still count such projects. A project that only
+the branch holds is readable only for a user who can create it (the global
+right on an instance environment).
+
+### K3. One answer for a workflow outside the selected project
+
+A Promote selection with a workflow of a project that the user cannot read, or
+with a deletion that the branch does not hold under the project, answers 400
+"The following workflows are not in the selected project". The dependency
+report route refuses the same `credentialIds` as the Promote. The groups
+`outside-environment` and `personal` of the report stay as the solution
+describes them, also for a target that the user cannot read.
+
+### K4. An owner request needs a covered owner project
+
+`create` stores a request only when the environment covers the owner project.
+The answer stays `sent`. For an Apply, the owner of a credential that this
+instance holds is its owner project here: its admins can share it. So "Ask the
+owner" is also an exit of the group `access-not-grantable`, except without a
+sharing licence.
+
+### K5. `credentialIds` on the project routes, and the default of a project Apply
+
+`POST /projects/:id/promote`, `/apply` and `/apply/continue` accept
+`credentialIds`. The CLI flag is `--credential`.
+
+- Promote: without `credentialIds`, a credential comes only with a selected
+  workflow of the project, as before.
+- Apply: without `credentialIds`, the Apply writes each credential that the
+  branch holds under the project and that this instance already holds, in any
+  project. So the Apply of the owner project moves a credential to its owner,
+  gives a placeholder its home and updates the name and the expression values.
+  A credential that this instance lacks is not in the default, so the Apply
+  never asks for a credential that no selected workflow needs. An explicit
+  list, also an empty one, replaces the default.
+- The Apply previews plan the same held credentials, so a changed or a moved
+  one is a selectable row.
+
+This replaces U4: a project page can send a selected credential on the project
+route with `expectedPreviewRevision`.
+
+### K6. The whole-instance Promote route writes what a selection of everything writes
+
+The export uses `reference-only`, and the same placement rules as
+`promote-selection` remove a credential file outside its owner project folder.
+The 409 message gives the id and the fix of each gap, and the folders of an
+ambiguous credential that the user can read.
+
+### K7. The confirmation of the callers of a deleted workflow
+
+Each `deletionCallers` row of an Apply has an `id`: the deleted workflow and a
+hash of the callers that the row lists and of the hidden count.
+`confirmedDeletionCallerIds` must hold exactly the current ids, else the Apply
+returns `gaps-changed`. The flag `confirmDeletionCallers` alone still accepts
+every caller, for a client of an earlier version. The server writes a log line
+then.
+
+### K8. The placeholder marker and the placeholder home
+
+- The marker goes away only when the saved data holds a value: a text that is
+  not blank, a number, or a list or an object with such a value. A switch alone
+  is not a value. This narrows D13.
+- The check gives the home of each placeholder to the import
+  (`placeholderHomes`). The import creates the placeholder in that project,
+  whatever the order of its scopes.
+- A credential reference without a reason (a branch of an earlier version) gets
+  no placeholder. It can be an instance credential, and the branch does not
+  say. The reference stays unresolved after an incomplete Apply. The block
+  `instance-credential-missing` still needs the reason on the row.
+
+### K9. A live workflow and a new placeholder
+
+The Apply does not unpublish. The `applied` result lists in
+`livePlaceholderWorkflows` each workflow whose published version references the
+id of a placeholder that the Apply created, and `dependencyMessages` holds one
+sentence for it. The workflow index gives the references of the published
+versions. This keeps D14.
+
+### K10. No audit event for a credential move
+
+No event for a credential transfer exists: the editor transfer writes none. The
+proof of concept adds no event, so the move of an Apply writes none either.
+
+### K11. Data tables and project variables of another project
+
+- The report has the optional list `resourceWarnings` with the codes
+  `data-table-of-other-project` and `variable-of-other-project`. A warning
+  never stops an operation.
+- Promote reads the source: the project of each data table, and whether the
+  project of the workflow resolves each variable name. An export under
+  `reference-only` no longer stops on a data table that the user cannot read:
+  the table becomes a requirement row. A Promote writes a data table file only
+  under a project of the operation.
+- Apply reads the branch. The folder of a file names its owner. A data table
+  under another project folder, or without a file, and a variable name that
+  only another project folder holds, are references of another project.
+- The import option `crossProjectResourcePolicy: 'reference-only'`
+  (promotion-only) makes the import leave such a reference as it is: no data
+  table is created or changed, and the variable is not required. The
+  `missing-definition` conflict of a warned workflow leaves the check.
+- Limit: when the branch holds no file for a variable name in any project, the
+  Apply still reports the variable as missing. The branch does not say that
+  another project owns it on the source.
+
+### K12. Smaller additions to the contracts
+
+- `credential-move-forbidden` has `detail.cause: 'missing-create-right'`. A
+  credential with values that the user may not move is not a block: its
+  `credentialMoves` row has `blockedReason: 'no-move-right'`.
+- A home choice has `noCandidateReason` when no project can be the home. The
+  candidates are team projects that the environment covers.
+- A `workflow-forbidden` conflict of a move has `missingScope`.
+- A `broken-on-source` warning of a Promote has `cause` when the user can read
+  the target.
