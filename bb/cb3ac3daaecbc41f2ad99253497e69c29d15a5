@@ -1,0 +1,70 @@
+packages/cli/src/modules/promotions.ee/promotion-change.service.ts
+  s_3dd47ea0104342::t_d71f6a72be8470 51-54,240-248
+  s_3dd47ea0104342::t_68495881aa7602 229-231,239,252,256
+  s_3dd47ea0104342::t_e04b72fb5fe8b1 3-4,26,46,50,75,176-228,232-238,249-251,253-255,257-276
+packages/cli/src/modules/promotions.ee/instance-package.ts
+  s_3dd47ea0104342::t_d71f6a72be8470 23-29
+packages/cli/src/modules/promotions.ee/promotion-access.service.ts
+  s_3dd47ea0104342::t_717b2272ce82f5 127-133
+spike/ligo-1159/poc/decisions.md
+  s_3dd47ea0104342::t_68495881aa7602 112-173
+packages/cli/src/modules/promotions.ee/promotion-dependency-gate.service.ts
+  s_3dd47ea0104342::t_9652b9760db314 2-68
+  s_3dd47ea0104342::t_68495881aa7602 1
+packages/cli/src/modules/promotions.ee/promotions.service.ts
+  s_3dd47ea0104342::t_6d322b80dbd273 457-462,467-472,475-481,484-517,545,548,571,574-577,590-596,602,617,680,685,687,691-712,775,777,786-1164,1384,1817,2120-2121,2128,2130-2142,2144-2147,2287-2305
+  s_3dd47ea0104342::t_68495881aa7602 570
+  s_3dd47ea0104342::t_20409c15d70ee0 4,10,19-20,30,56,69,77,79-81,138-142,180-183,2306-2308
+packages/cli/src/modules/promotions.ee/apply-preview.service.ts
+  s_3dd47ea0104342::t_d71f6a72be8470 55-58
+  s_3dd47ea0104342::t_858bbef263503a 3,42-43,54,204-297,446-454,458,537-574,607
+packages/cli/src/modules/promotions.ee/promote-preview.service.ts
+  s_3dd47ea0104342::t_68495881aa7602 171-173
+  s_3dd47ea0104342::t_b1c527e903d057 1-7,28,42,45-170,174-178
+packages/cli/src/modules/promotions.ee/promotion-environment-projects.service.ts
+  s_3dd47ea0104342::t_d71f6a72be8470 62-66
+  s_3dd47ea0104342::t_c6d33a3c3d93b8 1-61,67-113
+packages/cli/src/modules/promotions.ee/promotion-preview.ts
+  s_3dd47ea0104342::t_1e94f25454d68d 544-546
+  s_3dd47ea0104342::t_7831e7e50cb07f 4,7
+packages/cli/src/modules/promotions.ee/base-branch-files.ts
+  s_3dd47ea0104342::t_01f59d3256d019 42,52
+packages/cli/src/modules/promotions.ee/promotion-commit-message.ts
+  s_3dd47ea0104342::t_f1390391291b75 62-93
+packages/cli/src/modules/promotions.ee/promotion-review-gate.service.ts
+  s_402e765710e31b::t_1ff131660e7229 56-68,71,74-76,80-87,90
+packages/cli/src/modules/promotions.ee/working-copy-updater.ts
+  s_b7b13575e78da5::t_e9ecc1de855409 25-26,31-36,89-97,126-128,130,133-134,145-182,343,347-352,419-420,423-433,453,458-460,475,478-479,483,500,529
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "bbcb3ac3daaecbc41f2ad99253497e69c29d15a5",
+  "prompts": {},
+  "sessions": {
+    "s_3dd47ea0104342": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "c1a45d57-85a1-465a-839a-d3b98e3073fc",
+        "model": "claude-fable-5-2"
+      },
+      "human_author": "Irénée <irenee.ajeneza@n8n.io>"
+    },
+    "s_402e765710e31b": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "agent-af08e4e5911b564ef",
+        "model": "unknown"
+      },
+      "human_author": "Irénée <irenee.ajeneza@n8n.io>"
+    },
+    "s_b7b13575e78da5": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "agent-a518632057e785d0d",
+        "model": "unknown"
+      },
+      "human_author": "Irénée <irenee.ajeneza@n8n.io>"
+    }
+  }
+}
