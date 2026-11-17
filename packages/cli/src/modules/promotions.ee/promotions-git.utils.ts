@@ -35,6 +35,9 @@ export function buildHttpsGitConfig({ repositoryUrl }: { repositoryUrl: string }
 	const helper =
 		'!f() { printf \'%s\\n\' "username=$N8N_GIT_USERNAME" "password=$N8N_GIT_PASSWORD"; }; f';
 	const config = [
+		// The empty value drops the helpers of the host configuration (for example a keychain).
+		// Git then asks only the helper below, and stores no credential on the host.
+		'credential.helper=',
 		`credential.helper=${helper}`,
 		'credential.useHttpPath=true',
 		`http.lowSpeedLimit=${HTTP_LOW_SPEED_LIMIT_BYTES}`,
