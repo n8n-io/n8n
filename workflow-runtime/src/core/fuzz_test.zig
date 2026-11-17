@@ -913,3 +913,102 @@ test "fuzz mywire text scan" {
         },
     });
 }
+
+// ---- TDS protocol (tdswire.zig) ---------------------------------------------------
+
+const tdswire = @import("tdswire.zig");
+
+/// Any bytes as the reply to a request and to a login: JSON inside the
+/// buffer or an error that leaves nothing, never a crash.
+fn tdswireReplies(bytes: []const u8) !void {
+    var obuf: [2100]u8 = @splat(0xEE);
+    var o: tdswire.Out = .{ .buf = obuf[0..2048] };
+    var cols: [8]tdswire.Column = @splat(.{});
+    if (tdswire.writeReply(&o, bytes, &cols)) |_| {
+        const out = obuf[0..o.len];
+        if (!std.mem.startsWith(u8, out, "{\"sets\":[") or !std.mem.endsWith(u8, out, "]}")) return error.TdsReplyShape;
+        for (out) |b| if (b < 0x20) return error.TdsReplyControlByte;
+    } else |_| {
+        if (o.len != 0) return error.TdsReplyLeft;
+    }
+    const login: tdswire.LoginReply = tdswire.loginReply(bytes) catch .{};
+    try within(bytes, login.err);
+    o.len = 0;
+    if (tdswire.writeErrorMessage(&o, login.err)) |_| {
+        if (obuf[0] != '"' or obuf[o.len - 1] != '"') return error.TdsMessageShape;
+    } else |_| {}
+    if (tdswire.preloginEncryption(bytes)) |mode| {
+        if ((mode == tdswire.encryption.on or mode == tdswire.encryption.not_supported) and bytes.len < 6) return error.TdsPrelogin;
+    } else |_| {}
+    for (obuf[2048..]) |b| if (b != 0xEE) return error.TdsOverrun;
+}
+
+/// Any bytes as the text of each request: the bytes of a message in whole
+/// packets, or an error that leaves nothing.
+fn tdswireRequests(bytes: []const u8, number: f64) !void {
+    var obuf: [8192]u8 = @splat(0);
+    var o: tdswire.Out = .{ .buf = &obuf };
+    const collation: [tdswire.collation_bytes]u8 = @splat(0);
+    const params = [_]tdswire.Param{
+        .{ .name = "p1", .value = .{ .string = bytes } },
+        .{ .name = "p2", .value = .{ .number = number } },
+    };
+    const login: tdswire.Login = .{
+        .version = .v7_4,
+        .pid = 1,
+        .zone = 0,
+        .host = bytes,
+        .user = bytes,
+        .password = bytes,
+        .server = bytes,
+        .database = bytes,
+    };
+    const trace: [tdswire.trace_bytes]u8 = @splat(7);
+    const batch = if (tdswire.sqlBatch(&o, bytes)) |_| true else |_| false;
+    if (std.unicode.utf8ValidateSlice(bytes) and !batch) return error.TdsTextRefused;
+    const before = o.len;
+    if (tdswire.executeSql(&o, bytes, &params, collation)) |_| {} else |_| {
+        if (o.len != before) return error.TdsRequestLeft;
+    }
+    if (tdswire.login7(&o, login)) |_| {} else |_| {
+        if (batch) return error.TdsLoginRefused;
+    }
+    try tdswire.prelogin(&o, bytes.len % 2 == 0, &trace);
+    try tdswire.sqlBatch(&o, tdswire.initial_sql);
+    var framed: [8192 + 64 * tdswire.header_len]u8 = @splat(0);
+    var f: tdswire.Out = .{ .buf = &framed };
+    try tdswire.frame(&f, if (batch) tdswire.kind.sql_batch else tdswire.kind.rpc, obuf[0..o.len], 512);
+    var off: usize = 0;
+    var body: usize = 0;
+    for (0..f.len / tdswire.header_len + 1) |_| {
+        const p = (try tdswire.next(framed[off..f.len])) orelse break;
+        if (p.size != p.body.len + tdswire.header_len or p.size > 512) return error.TdsPacketSize;
+        if (p.last != (off + p.size == f.len)) return error.TdsLastPacket;
+        if (!std.mem.eql(u8, p.body, obuf[body..][0..p.body.len])) return error.TdsPacketBody;
+        body += p.body.len;
+        off += p.size;
+    }
+    if (body != o.len or off != f.len) return error.TdsFrames;
+    if (tdswire.packet_size < 512) return error.TdsPacketLimit;
+}
+
+fn fuzzTdswire(_: void, smith: *Smith) !void {
+    var buf: [512]u8 = @splat(0);
+    const bytes = buf[0..smith.slice(&buf)];
+    try tdswireReplies(bytes);
+    try tdswireRequests(bytes, @bitCast(smith.value(u64)));
+}
+
+test "fuzz tdswire replies and requests" {
+    try std.testing.fuzz({}, fuzzTdswire, .{
+        .corpus = &.{
+            seed("\x81\x01\x00\x00\x00\x00\x00\x09\x00\x30\x01v\x00\xd1\x07\xff\x11\x00\xc1\x00\x01\x00\x00\x00\x00\x00\x00\x00"),
+            seed("\x81\x01\x00\x00\x00\x00\x00\x09\x00\xe7\xff\xff\x09\x04\xd0\x00\x34\x01v\x00\xd1\xfe\xff\xff\xff\xff\xff\xff\xff" ++
+                "\x02\x00\x00\x00a\x00\x00\x00\x00\x00\xff\x10\x00\xc1\x00\x01\x00\x00\x00\x00\x00\x00\x00"),
+            seed("\xaa\x14\x00\x18\x48\x00\x00\x01\x0e\x02\x00n\x00o\x00\x01s\x00\x00\x01\x00\x00\x00\xfd\x02\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00"),
+            seed("\xe3\x08\x00\x07\x05\x09\x04\xd0\x00\x34\x00\xad\x10\x00\x01\x74\x00\x00\x04\x03S\x00Q\x00L\x00\x0f\x00\x07\xd0"),
+            seed("\x00\x00\x0b\x00\x06\x01\x00\x11\x00\x01\xff\x0f\x00\x07\xd0\x00\x00\x03"),
+            seed("select @p1 \xc3\xa9 \xf0\x9f\x98\x80"),
+        },
+    });
+}
