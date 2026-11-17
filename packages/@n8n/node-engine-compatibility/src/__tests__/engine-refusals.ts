@@ -219,6 +219,15 @@ export const engineRefusals: EngineRefusal[] = [
 		check: { code: 'LOOP_INPUT_NOT_FIRST' },
 	},
 	{
+		name: 'an edge leaves a Split In Batches node from an output other than done and loop',
+		workflow: fromTrigger('Loop', [splitInBatches('Loop'), noOp('Body'), noOp('After')], {
+			Loop: outputs([to('After')], [to('Body')], [to('Body', 1)]),
+			Body: outputs([to('Loop')]),
+		}),
+		engineError: 'which has only done (0) and loop (1)',
+		check: { code: 'LOOP_OUTPUT_NOT_DONE_OR_LOOP' },
+	},
+	{
 		name: 'the done output of a Split In Batches node feeds its own loop',
 		workflow: fromTrigger('Loop', [splitInBatches('Loop'), noOp('Body')], {
 			Loop: outputs([to('Body', 1)], [to('Body')]),

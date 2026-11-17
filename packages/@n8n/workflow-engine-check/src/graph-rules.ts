@@ -208,6 +208,17 @@ function findLoopShapeReasons(
 		);
 	}
 
+	if (edges.some((e) => e.from === loopNode && e.outputIndex > 1)) {
+		reasons.push(
+			reason(
+				'LOOP_OUTPUT_NOT_DONE_OR_LOOP',
+				'invalid',
+				`A connection leaves "${loopNode}" from an output other than done and loop. A Split In Batches node has only these two outputs. Remove the connection.`,
+				loopNode,
+			),
+		);
+	}
+
 	if (edges.some((e) => e.from === loopNode && e.outputIndex === 0 && members.has(e.to))) {
 		reasons.push(
 			reason(
@@ -221,7 +232,7 @@ function findLoopShapeReasons(
 
 	const exits = edges.filter(
 		(e) =>
-			members.has(e.from) && !members.has(e.to) && (e.from !== loopNode || e.outputIndex !== 0),
+			members.has(e.from) && !members.has(e.to) && (e.from !== loopNode || e.outputIndex === 1),
 	);
 	for (const from of new Set(exits.map((e) => e.from))) {
 		reasons.push(

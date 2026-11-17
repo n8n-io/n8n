@@ -251,6 +251,19 @@ describe('graph rules', () => {
 			node: 'Loop',
 		},
 		{
+			shape: 'a loop fed from an output of its Split In Batches node other than done and loop',
+			connections: [
+				['Trigger', 'Loop'],
+				['Loop', 'Body', 1],
+				['Loop', 'Body', 2, 1],
+				['Body', 'Loop'],
+				['Loop', 'After', 0],
+			],
+			code: 'LOOP_OUTPUT_NOT_DONE_OR_LOOP',
+			kind: 'invalid',
+			node: 'Loop',
+		},
+		{
 			shape: 'a Split In Batches node that nothing returns to',
 			connections: [
 				['Trigger', 'Loop'],
