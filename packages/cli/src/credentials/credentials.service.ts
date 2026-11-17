@@ -176,6 +176,11 @@ type UpdateOptions = {
 	instanceCredential?: Pick<CredentialsEntity, 'id' | 'type'>;
 	/** When provided, the returned entity is enriched with `connectedByMe` for this user. */
 	user?: User;
+	/**
+	 * A person saved values in the credential, so it is not a promotion placeholder any more.
+	 * An import update does not set this: it writes only the name and the expression values.
+	 */
+	clearPlaceholder?: boolean;
 };
 
 type CreateCredentialOptions = CreateCredentialDto & {
@@ -622,6 +627,12 @@ export class CredentialsService {
 				} satisfies ICredentialsDecrypted<ICredentialDataDecryptedObject>;
 			}),
 		);
+	}
+
+	/** The ids in `ids` that are promotion placeholders. Does not check access. */
+	async findPlaceholderIds(ids: string[]): Promise<Set<string>> {
+		const placeholders = await this.credentialsRepository.findPlaceholdersByIds(ids);
+		return new Set(placeholders.map(({ id }) => id));
 	}
 
 	/** The usage scope of each credential in `ids` that exists. Does not check access. */
@@ -1233,7 +1244,13 @@ export class CredentialsService {
 		if (cleared === null) return null;
 
 		const persist = async (transactionManager: EntityManager, ctx: OperationContext) => {
-			await this.credentialsRepository.updateContent(credentialId, newCredentialData, ctx);
+			await this.credentialsRepository.updateContent(
+				credentialId,
+				options?.clearPlaceholder
+					? { ...newCredentialData, isPlaceholder: false }
+					: newCredentialData,
+				ctx,
+			);
 
 			if (options?.deleteUserEntries) {
 				await this.connectionStatusProxy.deleteAllUserEntries(credentialId, transactionManager);

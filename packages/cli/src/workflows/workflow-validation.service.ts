@@ -521,6 +521,31 @@ export class WorkflowValidationService {
 			: { isValid: true };
 	}
 
+	/**
+	 * A placeholder credential holds no values, so a workflow that uses it must not go live.
+	 * The check reads the marker, not the data: a placeholder with a name from a later Apply
+	 * and no saved values is still a placeholder.
+	 */
+	async validateNoPlaceholderCredentials(nodes: INode[]): Promise<WorkflowValidationResult> {
+		const credentialIds = new Set<string>();
+		for (const node of nodes) {
+			if (node.disabled) continue;
+			for (const details of Object.values(node.credentials ?? {})) {
+				if (details.id) credentialIds.add(details.id);
+			}
+		}
+
+		const placeholders = await this.credentialsRepository.findPlaceholdersByIds([...credentialIds]);
+		if (placeholders.length === 0) return { isValid: true };
+
+		const plural = placeholders.length > 1;
+		const names = formatCredentialNames(placeholders);
+		return {
+			isValid: false,
+			error: `${names} ${plural ? 'have' : 'has'} no values. Add the values of the credential${plural ? 's' : ''} before you publish.`,
+		};
+	}
+
 	/** A published workflow runs as its publisher, so the publisher must be able to use every credential it references. */
 	async validatePublisherCredentialAccess(
 		user: User,

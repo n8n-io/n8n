@@ -74,7 +74,9 @@ export class CredentialExporter {
 				type: fallback.credentialType,
 			};
 
-			if (credential) {
+			// A placeholder is never content. Without a file, the reference stays a requirement
+			// row, so the missing credential is still visible on the next instance.
+			if (credential && !credential.isPlaceholder) {
 				let decryptedData: ICredentialDataDecryptedObject | undefined;
 				const expressionData = await selectCredentialDataForExport(
 					request.credentialExportPolicy,
