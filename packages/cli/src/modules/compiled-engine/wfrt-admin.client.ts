@@ -6,6 +6,7 @@ import type { IDataObject } from 'n8n-workflow';
 import { CompiledEngineConfig } from './compiled-engine.config';
 import type { WfrtAck, WfrtEvent, WfrtEventCursor } from './compiled-engine.types';
 import { isDataObject, parseWfrtEvent } from './compiled-engine.types';
+import { parseWorkloadClasses, workloadClassOf } from './compiled-workload-classes';
 
 export class WfrtRequestError extends OperationalError {
 	constructor(
@@ -90,7 +91,13 @@ export class WfrtAdminClient {
 	}
 
 	async putWorkflow(workflowId: string, upload: WfrtWorkflowUpload) {
+		// The workload class comes with each load, so `wfrt` has it again after a restart.
+		const workloadClass = workloadClassOf(
+			parseWorkloadClasses(this.config.workloadClasses),
+			workflowId,
+		);
 		await this.request('PUT', `/_admin/workflows/${encodeURIComponent(workflowId)}`, {
+			...(workloadClass === undefined ? {} : { class: workloadClass }),
 			versionId: upload.versionId,
 			module: upload.module.toString('base64'),
 			active: upload.active,

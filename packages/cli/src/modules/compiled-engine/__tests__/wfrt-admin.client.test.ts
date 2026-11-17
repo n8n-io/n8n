@@ -132,3 +132,42 @@ describe('WfrtAdminClient', () => {
 		expect(fetchMock).not.toHaveBeenCalled();
 	});
 });
+
+describe('the workload class of a load', () => {
+	const upload = {
+		versionId: 'v1',
+		module: Buffer.from('m'),
+		active: true,
+		webhookPrefix: '/webhook',
+		saveData: false,
+		credentials: {},
+		resumeUrlBase: '/resume',
+		resumeFormUrlBase: '/form',
+	};
+
+	it('sends no class without the setting', async () => {
+		const { client, fetchMock } = setup([]);
+		await client.putWorkflow('wf1', upload);
+		expect(JSON.parse(String(callOf(fetchMock, 0).body))).not.toHaveProperty('class');
+	});
+
+	it('sends the class of the workflow from the setting', async () => {
+		const config = mock<CompiledEngineConfig>({
+			adminPort: 5690,
+			port: 5691,
+			workloadClasses: 'critical=wf1;background=wf2',
+		});
+		const logger = mock<Logger>();
+		logger.scoped.mockReturnValue(logger);
+		const client = new WfrtAdminClient(config, logger);
+		const fetchMock = vi.fn(async () => responseOf([]));
+		vi.stubGlobal('fetch', fetchMock);
+		await client.putWorkflow('wf1', upload);
+		await client.putWorkflow('wf2~manual', upload);
+		await client.putWorkflow('wf3', upload);
+		const classes = [0, 1, 2].map(
+			(index) => JSON.parse(String(callOf(fetchMock, index).body)).class as string,
+		);
+		expect(classes).toEqual(['critical', 'background', 'default']);
+	});
+});

@@ -88,10 +88,13 @@ describe('wfrtUserAgent', () => {
 });
 
 describe('the listen address of wfrt', () => {
-	const argsWith = (listenAddress: string, sqlMysql = false) => {
+	const argsWith = (listenAddress: string, sqlMysql = false, workloadClasses = '') => {
 		const config = mock<CompiledEngineConfig>({
 			listenAddress,
 			sqlMysql,
+			workloadClasses,
+			workloadClassSlots: 'background=64',
+			workloadClassHostSteps: '',
 			port: 5690,
 			adminPort: 5691,
 			targetRate: 0,
@@ -129,6 +132,14 @@ describe('the listen address of wfrt', () => {
 		expect(new CompiledEngineConfig().sqlMysql).toBe(false);
 		expect(argsWith('127.0.0.1')).not.toContain('--sql-mysql');
 		expect(argsWith('127.0.0.1', true)).toContain('--sql-mysql');
+	});
+
+	it('starts wfrt with workload classes only with the setting', () => {
+		expect(argsWith('127.0.0.1').join(' ')).not.toContain('--class');
+		const args = argsWith('127.0.0.1', false, 'critical=a;background=b');
+		expect(args[args.indexOf('--classes') + 1]).toBe('critical,background,default');
+		expect(args[args.indexOf('--class-slots') + 1]).toBe('background=64');
+		expect(args).not.toContain('--class-host-steps');
 	});
 });
 

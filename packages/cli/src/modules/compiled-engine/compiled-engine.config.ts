@@ -158,4 +158,30 @@ export class CompiledEngineConfig {
 	 */
 	@Env('N8N_COMPILED_ENGINE_ARTIFACT_CACHE_MB', z.number({ coerce: true }).int().min(0))
 	artifactCacheMb: number = 256;
+
+	/**
+	 * Workload classes of compiled workflows, as a semicolon-separated list of
+	 * rules. Each rule is a class name, then a comma-separated list of workflow
+	 * IDs, for example `critical=4fGh2,9KlM1;background=7QwE3`. A workflow that
+	 * no rule names is in the class `default`. You can use up to eight classes.
+	 */
+	@Env('N8N_COMPILED_ENGINE_WORKLOAD_CLASSES')
+	workloadClasses: string = '';
+
+	/**
+	 * Limit of running executions for each workload class, as a comma-separated
+	 * list, for example `background=64`. When a class reaches its limit, new
+	 * executions of that class get a 503 response and the other classes keep
+	 * running. A class without a value has no limit of its own.
+	 */
+	@Env('N8N_COMPILED_ENGINE_WORKLOAD_CLASS_SLOTS')
+	workloadClassSlots: string = '';
+
+	/**
+	 * Limit of steps that each workload class runs in the fallback host at the
+	 * same time, as a comma-separated list, for example `background=32`. A step
+	 * over the limit waits. A class without a value has no limit of its own.
+	 */
+	@Env('N8N_COMPILED_ENGINE_WORKLOAD_CLASS_HOST_STEPS')
+	workloadClassHostSteps: string = '';
 }
