@@ -33,14 +33,15 @@ shim refuses an `EngineRequest`, so an agent with tools fails.
 
 ## Decision
 
-1. **A step can declare actions.** This is a fourth kind of step result, next to outputs, a wait
-   and a sub-execution. Each action names a target node, its position in the round, the input
-   item it belongs to, opaque arguments and opaque metadata. It can carry a call id, which the
-   engine hands back to the node and never reads. The declaration also carries an opaque round
-   payload. The engine never reads what an action or a payload means. Only a node that accepts
-   action targets can declare actions
-   (ADR-20261117-attach-sub-nodes-to-the-graph-outside-its-edges, decision 5). Any other node
-   that declares actions fails its step. The shim turns a v1 `EngineRequest` into actions.
+1. **A step can declare actions.** This is a fourth kind of step result, next to outputs, a wait and
+   a sub-execution. Each action names a target node, its position in the round, the input item it
+   belongs to, opaque arguments and opaque metadata. It can carry a call id, which the engine hands
+   back to the node and never reads. It can name the node that its target attaches to, which the
+   engine reads to check the target (ADR-20261117-attach-sub-nodes-to-the-graph-outside-its-edges,
+   decision 5). The declaration also carries an opaque round payload. The engine never reads what an
+   action or a payload means. Only a node that accepts action targets can declare actions
+   (ADR-20261117-attach-sub-nodes-to-the-graph-outside-its-edges, decision 5). Any other node that
+   declares actions fails its step. The shim turns a v1 `EngineRequest` into actions.
 2. **The engine runs each action as a spawned step in the same execution.** A spawned step has the
    full step lifecycle. It can complete, fail, wait for a deadline or a resume request, declare its
    own actions, or declare a sub-execution. It follows the retry settings of its node. Its outcome

@@ -23,17 +23,18 @@ derives inputs.
 ## Decision
 
 1. **Each round is one row in a new table, `workflow_step_round`.** The primary key is the step id
-   and the round number. The row holds the execution id, the actions (which the engine reads) and
-   the round payload (which the engine does not read). For a round with actions, one transaction
-   writes the row, suspends the step and creates one queued spawned step for each action. So the
-   execution never shows a round without its spawned steps. A round that ends with outputs settles
-   the step as any step does. A round without actions is written with an error, and no spawned
-   step. A duplicate write does nothing.
+   and the round number. The row holds the execution id, the actions (which the engine reads), the
+   round payload (which the engine does not read) and, for a round without actions, an error. For a
+   round with actions, one transaction writes the row, suspends the step and creates one queued
+   spawned step for each action. So the execution never shows a round without its spawned steps. A
+   round that ends with outputs settles the step as any step does. A round without actions is
+   written with an error, and no spawned step. A duplicate write does nothing.
 2. **A round row should hold only what is new in that round.** The engine builds the continuation
    from all round rows and their spawned steps: each action's outcome is its spawned step's outputs
-   or error. The node rebuilds its whole conversation from the continuation. An outcome is stored
-   only once, in its spawned step. The engine does not enforce this rule, and a v1 node behind
-   the shim does not follow it: its round payload repeats the earlier rounds.
+   or error. A round without actions carries the error from its row. The node rebuilds its whole
+   conversation from the continuation. An outcome is stored only once, in its spawned step. The
+   engine does not enforce this rule, and a v1 node behind the shim does not follow it: its round
+   payload repeats the earlier rounds.
 3. **Spawned steps live in `workflow_step_execution`.** A `kind` column tells a graph step, a
    spawned step and a recorded step apart
    (ADR-20261117-record-sub-node-runs-as-settled-steps). A spawned step also has its declaring

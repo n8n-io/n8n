@@ -28,7 +28,9 @@ stores outputs and derives inputs.
    step that made the call.
 2. **A recorded step is inserted already settled.** The engine never queues, claims or runs it.
    The executor returns the recorded runs with each step result, and the engine writes them with
-   that result. The key of a recorded step is its declaring step and a sequence number.
+   that result. Recorded runs are not a kind of step result. A result of any kind can carry them:
+   outputs, a wait, a sub-execution or actions. The key of a recorded step is its declaring step
+   and a sequence number.
 3. **A recorded step stores outputs only.** For a chat model, that is the LLM response with its
    token usage. The input, such as the prompt, is not stored.
 4. **Every query that counts, plans or continues steps filters on an explicit kind.** So these

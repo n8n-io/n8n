@@ -28,9 +28,10 @@ spawned step, so it must be a node of the graph.
    node it attaches to, a kind and an input index. The kind is the v1 connection type, and the
    engine treats it as an opaque string.
 2. **A sub-node is a graph node of the new type `attached`.** It has the same configuration as a
-   `v1-node`. The engine never plans it from edges, never uses it as a trigger and never seeds it.
-   It runs as a step only when an action targets it. Other sub-nodes, such as a chat model or a
-   memory, run inside the root node's step, as in engine v1 (decision 6).
+   `v1-node`. The engine never plans it from edges, never uses it as a trigger and never creates
+   a step for it when the execution starts. It runs as a step only when an action targets it. Other
+   sub-nodes, such as a chat model or a memory, run inside the root node's step, as in engine v1
+   (decision 6).
 3. **No algorithm that follows the edges changes.** Attachments are not edges. Code that picks nodes
    because no edge leaves them, such as the terminal nodes of a sub-execution, skips `attached`
    nodes.
@@ -45,8 +46,9 @@ spawned step, so it must be a node of the graph.
    strings and does not read them. A node that allows target kinds can also declare actions. For
    a v1 node, the converter infers both from its `ai_tool` attachments. An action can name the
    node that its target attaches to, and that attachment must be on a valid path. Without that
-   name, the engine takes the direct attachment to the declaring step's node, and then the first
-   valid path.
+   name, the engine takes the direct attachment to the declaring step's node. If there is none, it
+   takes the first valid path in the order of the attachment list. The choice sets where the run
+   is shown. It never decides whether an approval runs: the declaring node does.
 6. **The converter adds the sub-nodes of every node it keeps, recursively.** It drops disabled
    sub-nodes and every attachment whose node it drops. A node cannot be both a sub-node and a
    node that the trigger reaches over `main`. The converter rejects such a workflow. The shim
@@ -85,8 +87,10 @@ Solid arrows are edges. Dashed arrows are attachments.
 - Chat model and memory nodes become graph nodes, but they are never action targets.
 - A sub-node that two roots share is one node with two attachments.
 - In a manual run, a pinned sub-node that is an action target answers every action with its
-  pinned output and does not run. Pinned data on a sub-node that runs inside its root's step, such
-  as a chat model or a memory, is not supported.
+  pinned output and does not run. The caller supplies the pinned output with the start request, as
+  it does for a seeded node. The engine creates no step from it at the start. Each spawned step
+  that targets the node completes with that output. Pinned data on a sub-node that runs inside its
+  root's step, such as a chat model or a memory, is not supported.
 - The read path shows a spawned step under its declaring node, with the output under the
   attachment kind, as engine v1 does. A spawned step whose target attaches to a node between it
   and the declaring node, such as an approval, is shown under that node's run for the same call.
