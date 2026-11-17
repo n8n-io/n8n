@@ -58,6 +58,7 @@ packages/frontend/editor-ui/src/features/agents/components/AgentSessionListItem.
   s_d11d42e9f72c97::t_2af5b843f1e61e 530
   s_64d1a4ab791a69::t_fa7039a69435c7 1,10,35,38-40,45-48,64-70,79-82,85-86,95-101,112-115,129,140-149,152-165,180-195,203-216,221-238,243,248-270,280-285,290-291,304,337-357,372-373,400-406,414-417,431-433,441-442,502-504
   s_1eef7eb511fae6::t_3749866deb0405 83-84,105-106
+  s_fe72c42ec27018::t_0982a5f7547cc8 150-151
 packages/frontend/editor-ui/src/features/agents/__tests__/AgentBuilderView.test.ts
   s_1d829d17757cb3::t_bd41edcd42937b 1013
 packages/frontend/editor-ui/src/features/agents/views/AgentSessionsListView.vue
@@ -71,6 +72,12 @@ packages/frontend/editor-ui/src/features/agents/views/AgentSessionsListView.vue
   s_64d1a4ab791a69::t_c802d515889eb8 387-389
   s_d11d42e9f72c97::t_4cb0f3fed65956 394
   s_64d1a4ab791a69::t_f02ab75d075473 29,346,381,385-386,392
+packages/frontend/editor-ui/src/features/agents/components/AgentSessionListItemSkeleton.vue
+  s_fe72c42ec27018::t_4dedf98dc63927 1-91
+packages/frontend/@n8n/design-system/src/components/N8nBadge/Badge.vue
+  s_fe72c42ec27018::t_4dedf98dc63927 23-25
+packages/frontend/editor-ui/src/features/agents/components/AgentBuilderEditorColumn.vue
+  s_fe72c42ec27018::t_4dedf98dc63927 616
 ---
 {
   "schema_version": "authorship/3.0.0",
@@ -123,6 +130,14 @@ packages/frontend/editor-ui/src/features/agents/views/AgentSessionsListView.vue
         "tool": "pi",
         "id": "01a1c523-6c3d-728a-aad4-dd0065942e84",
         "model": "gpt-6.1-sol"
+      },
+      "human_author": "heymynameisrob <robhough180@gmail.com>"
+    },
+    "s_fe72c42ec27018": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "01a1ea16-1acb-74a0-bc0a-0623655f647d",
+        "model": "claude-opus-5-5"
       },
       "human_author": "heymynameisrob <robhough180@gmail.com>"
     }
