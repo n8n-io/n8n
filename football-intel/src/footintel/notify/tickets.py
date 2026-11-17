@@ -6,6 +6,7 @@ Plain text, readable on a phone. Same SMTP settings as the weekly report.
 from datetime import UTC, date, datetime
 
 from footintel.analysis.tickets import LOCAL_OFFSET
+from footintel.names_fr import fr_names
 
 SITE = "https://benkassiyfootball.vercel.app"
 DAYS_FR = ["lundi", "mardi", "mercredi", "jeudi", "vendredi", "samedi", "dimanche"]
@@ -37,15 +38,19 @@ def tickets_text(data: dict, today: date) -> tuple[str, str]:
     when = "aujourd'hui" if day["date"] == today.isoformat() else _day(day["date"])
     lines += [f"Tickets du {_day(day['date'])} ({when}), heure de Lubumbashi.",
               "Uniquement vos équipes : toute la Premier League et la Bundesliga, Inter, Milan, Como, Bologne,",
-              "Lazio, Barcelone, Real Madrid, Atlético, Betis, Villarreal et le PSG, dans toutes les compétitions.", ""]
+              "Lazio, Barcelone, Real Madrid, Atlético, Betis, Villarreal et le PSG, dans toutes les compétitions.",
+              "Sélections : tous les matchs avec des cotes de bookmakers, et tous ceux de vos 25 sélections.", ""]
     if not day["tickets"]:
         lines.append(f"{_few(day.get('n_followed', 0)).capitalize()} : pas assez pour un ticket à 10 ou plus.")
-    for m in day.get("missing", []):
-        if day["tickets"]:
-            lines.append(f"Pas de ticket {m['tag']} ({m['name']}) : il faut au moins {m['needs']} matchs de vos "
-                         f"équipes, il y en a {day.get('n_followed', 0)}.")
-    if day.get("missing") and day["tickets"]:
-        lines.append("")
+    missing = day.get("missing") or []
+    if missing and day["tickets"]:
+        # One line for all the tickets that could not be built (D85).
+        tags = [m["tag"] for m in missing]
+        names = tags[0] if len(tags) == 1 else ", ".join(tags[:-1]) + " et " + tags[-1]
+        plural = len(tags) > 1
+        lines += [(f"{'Tickets' if plural else 'Ticket'} {names} non construit{'s' if plural else ''} : "
+                   f"il faut au moins {min(m['needs'] for m in missing)} matchs de vos équipes, "
+                   f"il y en a {day.get('n_followed', 0)}."), ""]
     for t in day["tickets"]:
         chance = f"1 chance sur {round(1 / t['prob'])}" if t["prob"] > 0 else "—"
         lines.append(f"TICKET {t['tag']} — {t['name']} ({len(t['legs'])} sélections)")
@@ -71,7 +76,8 @@ def tickets_text(data: dict, today: date) -> tuple[str, str]:
               f"Toutes les alternatives : {SITE} (onglet Tickets du jour)."]
     n = len(day["tickets"])
     subject = f"Tickets du {_day(day['date'])} — {n} ticket{'s' if n > 1 else ''}"
-    return subject, "\n".join(lines) + "\n"
+    # National teams in French, as on the site (D85).
+    return fr_names(subject), fr_names("\n".join(lines) + "\n")
 
 
 def _few(n: int) -> str:
