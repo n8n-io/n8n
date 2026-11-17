@@ -1,0 +1,23 @@
+packages/@n8n/instance-ai/evaluations/__tests__/data-discovery.test.ts
+  s_77b664c5c8f320::t_0fab9e449f89b7 124-133
+  s_77b664c5c8f320::t_98d37c586c6246 123,134-138
+packages/@n8n/instance-ai/evaluations/data/discovery/index.ts
+  s_77b664c5c8f320::t_9707190734bb71 76-77,81,84-89
+  s_77b664c5c8f320::t_37e6fbd0616a24 110-114
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "09c1d5d4fa295c6469e86199fabbb9bf451d4441",
+  "prompts": {},
+  "sessions": {
+    "s_77b664c5c8f320": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "8f924aa7-a562-4cc9-a863-b2e3888af406",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "r00gm <raul00gm@gmail.com>"
+    }
+  }
+}
