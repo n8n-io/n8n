@@ -1040,6 +1040,7 @@ export const RULES: Rule[] = [
 				locate: identifier('DateTime', 'toFormat', 'setZone'),
 			},
 			{ pattern: /^Intl\.\w+: /, locate: identifier('Intl') },
+			{ pattern: /^Intl: formatToParts: /, locate: member('formatToParts') },
 			{ pattern: /^localeCompare with a locale or options: /, locate: member('localeCompare') },
 			{ pattern: /^locale [a-z ]+: / },
 			{
