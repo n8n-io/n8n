@@ -39,9 +39,8 @@ import { ActiveWorkflowManager } from '@/active-workflow-manager';
 import { AuthHandlerRegistry } from '@/auth/auth-handler.registry';
 import { CollaborationService } from '@/collaboration/collaboration.service';
 import { ControllerRegistry } from '@/controller.registry';
-import { Telemetry } from '@/telemetry';
 import { WorkflowPublicationNotifier } from '@/workflows/publication/workflow-publication-notifier';
-import { EventService, WorkflowPublishGuardProxy } from '@n8n/backend-services';
+import { EventService, WorkflowPublishGuardProxy, TelemetryProxy } from '@n8n/backend-services';
 import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 import { WorkflowValidationService } from '@/workflows/workflow-validation.service';
 import { WorkflowService } from '@/workflows/workflow.service';
@@ -73,6 +72,7 @@ import { SelfHealingConfigurationReviewer } from '../database/self-healing-confi
 import { createConfiguration, addReviewer, disableInstanceAdmins } from './support/configuration';
 
 mockInstance(ActiveWorkflowManager);
+mockInstance(TelemetryProxy);
 mockInstance(WorkflowPublicationNotifier);
 const validation = mockInstance(WorkflowValidationService);
 const runtime = mockInstance(InstanceAiService);
@@ -3134,8 +3134,8 @@ describe('result state telemetry', () => {
 
 	/** Collect the state changes that the code sends from now on. */
 	function trackStateChanges() {
-		// The test server replaces the telemetry service with a mock.
-		const track = vi.mocked(Container.get(Telemetry).track);
+		// The test replaces TelemetryProxy with a mock.
+		const track = vi.mocked(Container.get(TelemetryProxy).track);
 		track.mockClear();
 		return () => {
 			const calls: unknown[][] = track.mock.calls;

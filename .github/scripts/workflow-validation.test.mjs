@@ -435,73 +435,30 @@ describe('test-e2e-reusable.yml', () => {
 	});
 });
 
-describe('trusted publishing setup workflows', () => {
-	const orchestrator = workflowFile('release-setup-trusted-publishing.yml');
-	const packageSetup = workflowFile('release-publish-new-package.yml');
+describe('unpublished package handling', () => {
+	const scheduledCheck = workflowFile('ci-detect-new-packages.yml');
 	const releasePublish = workflowFile('release-publish.yml');
 
-	it('exposes unpublished packages and processes them one at a time', () => {
-		assert.equal(
-			triggersOf(orchestrator).workflow_call.outputs.packages.value,
-			'${{ jobs.detect-new-packages.outputs.packages }}',
-		);
-		assert.equal(
-			orchestrator.jobs['detect-new-packages'].outputs.packages,
-			"${{ steps.detect.outputs.packages-json || '[]' }}",
-		);
-		assert.equal(orchestrator.jobs['setup-trusted-publishing'].strategy['max-parallel'], 1);
-		assert.equal(orchestrator.jobs['setup-trusted-publishing'].strategy['fail-fast'], false);
-		assert.equal(
-			orchestrator.jobs['setup-trusted-publishing'].strategy.matrix.package,
-			'${{ fromJSON(needs.detect-new-packages.outputs.packages) }}',
-		);
-		assert.equal(
-			orchestrator.jobs['setup-trusted-publishing'].uses,
-			'./.github/workflows/release-publish-new-package.yml',
-		);
+	it('checks unpublished packages every Monday and notifies Developer Platform', () => {
+		const check = stepNamed(scheduledCheck, 'detect-new-packages', 'Check unpublished packages');
+		const notify = stepNamed(scheduledCheck, 'detect-new-packages', 'Notify Developer Platform');
+
+		assert.deepEqual(triggersOf(scheduledCheck).schedule, [{ cron: '0 8 * * 1' }]);
+		assert.match(check.run, /detect-new-packages\.mjs --report-only --strict/);
+		assert.equal(notify.if, "steps.detect.outputs.packages != ''");
+		assert.match(notify.run, /--channel '#team-developer-platform'/);
+		assert.match(notify.run, /Publish each package manually/);
 	});
 
-	it('publishes a throwaway version under the rc tag', () => {
-		const publish = stepNamed(packageSetup, 'publish-to-npm', 'Publish throwaway package version');
-		assert.match(publish.run, /npm pkg set version=0\.0\.0-tp/);
-		assert.match(publish.run, /pnpm publish --access public --tag rc --no-git-checks/);
-	});
-
-	it('configures the release workflow as a trusted publisher', () => {
-		const trust = stepNamed(packageSetup, 'publish-to-npm', 'Configure trusted publishing');
-		assert.match(
-			trust.run,
-			/npm trust github "\$PACKAGE_NAME" --repo n8n-io\/n8n --file release-publish\.yml --env npm --allow-publish --yes/,
-		);
-	});
-
-	it('finishes setup as a no-op outside minor releases and blocks publishing when setup fails', () => {
-		const setup = releasePublish.jobs['setup-trusted-publishing'];
+	it('keeps unpublished package setup out of the release workflow', () => {
 		const publish = releasePublish.jobs['publish-to-npm'];
-		const detectJob = orchestrator.jobs['detect-new-packages'];
-		const setupInputs = resolveInputs(orchestrator, { setup_required: false });
-		const skip = stepNamed(orchestrator, 'detect-new-packages', 'Skip setup for non-minor release');
 
-		assert.equal(setup.uses, './.github/workflows/release-setup-trusted-publishing.yml');
-		assert.equal(setup.if, 'github.event.pull_request.merged == true');
+		assert.equal(releasePublish.jobs['setup-trusted-publishing'], undefined);
+		assert.deepEqual(publish.needs, ['determine-version-info']);
+		assert.equal(publish.if, 'github.event.pull_request.merged == true');
 		assert.equal(
-			setup.with.setup_required,
-			"${{ needs.determine-version-info.outputs.bump == 'minor' }}",
+			publish.steps.some((step) => step.run?.includes('detect-new-packages.mjs')),
+			false,
 		);
-		assert.equal(detectJob.outputs.packages, "${{ steps.detect.outputs.packages-json || '[]' }}");
-		assert.equal(evaluateStepCondition(skip.if, { inputs: setupInputs }), true);
-		for (const name of [
-			'Checkout',
-			'Setup Node.js',
-			'Find unpublished packages',
-			'Summarize unpublished packages',
-		]) {
-			const step = stepNamed(orchestrator, 'detect-new-packages', name);
-			assert.equal(evaluateStepCondition(step.if, { inputs: setupInputs }), false);
-		}
-		assert.ok(publish.needs.includes('setup-trusted-publishing'));
-		assert.match(publish.if, /always\(\)/);
-		assert.match(publish.if, /needs\.setup-trusted-publishing\.result != 'failure'/);
-		assert.match(publish.if, /needs\.setup-trusted-publishing\.result != 'cancelled'/);
 	});
 });

@@ -54,49 +54,49 @@ export const engineRefusals: EngineRefusal[] = [
 			[TRIGGER.name]: mainTo('Node'),
 		}),
 		engineError: 'onError=continueErrorOutput',
-		check: { plannedIn: 'CET-677' },
+		check: { code: 'CONTINUE_ERROR_OUTPUT' },
 	},
 	{
 		name: 'a Merge node uses mode chooseBranch',
 		workflow: fromTrigger('Merge', [merge('chooseBranch')]),
 		engineError: 'Merge mode "chooseBranch"',
-		check: { plannedIn: 'CET-677' },
+		check: { code: 'MERGE_CHOOSE_BRANCH' },
 	},
 	{
 		name: 'a Merge node sets its mode with an expression',
 		workflow: fromTrigger('Merge', [merge('={{ "append" }}')]),
 		engineError: 'sets its Merge mode with an expression',
-		check: { plannedIn: 'CET-677' },
+		check: { code: 'MERGE_MODE_EXPRESSION' },
 	},
 	{
 		name: 'a Split In Batches node has a version other than 3',
 		workflow: batchNode({ batchSize: 1 }, 2),
 		engineError: 'only version 3 is supported',
-		check: { plannedIn: 'CET-677' },
+		check: { code: 'SPLIT_IN_BATCHES_VERSION' },
 	},
 	{
 		name: 'a Split In Batches node sets its options from an expression',
 		workflow: batchNode({ batchSize: 1, options: '={{ {} }}' }),
-		engineError: 'sets its options from an expression',
-		check: { plannedIn: 'CET-677' },
+		engineError: /sets its options from an expression\. .*Use fixed options\./,
+		check: { code: 'SPLIT_IN_BATCHES_OPTIONS_EXPRESSION' },
 	},
 	{
 		name: 'a Split In Batches node uses the reset option',
 		workflow: batchNode({ batchSize: 1, options: { reset: true } }),
 		engineError: 'uses the reset option',
-		check: { plannedIn: 'CET-677' },
+		check: { code: 'SPLIT_IN_BATCHES_RESET' },
 	},
 	{
 		name: 'a Split In Batches node sets its batch size from an expression',
 		workflow: batchNode({ batchSize: '={{ 1 }}' }),
-		engineError: 'sets its batch size from an expression',
-		check: { plannedIn: 'CET-677' },
+		engineError: /sets its batch size from an expression\. .*Use a fixed batch size\./,
+		check: { code: 'SPLIT_IN_BATCHES_BATCH_SIZE' },
 	},
 	{
 		name: 'a Split In Batches node has a batch size below 1',
 		workflow: batchNode({ batchSize: 0 }),
 		engineError: 'must be a whole number of at least 1',
-		check: { plannedIn: 'CET-677' },
+		check: { code: 'SPLIT_IN_BATCHES_BATCH_SIZE' },
 	},
 	{
 		// The converter checks only connections that leave a node the trigger reaches.
@@ -107,7 +107,7 @@ export const engineRefusals: EngineRefusal[] = [
 			Tool: { ai_tool: [[{ node: 'Agent', type: 'ai_tool', index: 0 }]] },
 		}),
 		engineError: 'connection, which is not supported yet',
-		check: { plannedIn: 'CET-677' },
+		check: { code: 'NON_MAIN_CONNECTION' },
 	},
 	{
 		name: 'a cycle has no Split In Batches node',
@@ -214,13 +214,19 @@ export const engineRefusals: EngineRefusal[] = [
  *   `EngineV2Dispatcher.assertSupported` in cli. These depend on the run, so the
  *   check has no rule for them.
  * - A node type without an execute method, and a node that sends engine requests,
- *   such as an AI agent with sub-nodes: `v1-step-executor.ts`. Check rule planned
- *   in CET-676.
+ *   such as an AI agent with sub-nodes: `v1-step-executor.ts`. Other node types run
+ *   but miss a feature they need. Check rules: the entries of `node-type-denylist.ts`
+ *   and COMMUNITY_NODE.
+ * - A trigger that waits for its run to finish: `EngineV2ActiveTriggers` in cli.
+ *   Check rule: the TRIGGER_WAITS_FOR_RUN entries of `node-type-denylist.ts`. They
+ *   block these triggers in every mode.
  * - A wait for a sub-execution that waits, a send-and-wait approval, a wait that
  *   nothing can end, and a wait date that is not valid: `v1-step-executor.ts`. A
  *   signed resume URL without a resume secret: `v1-adapters.ts`. No check rule.
- * - An inline sub-workflow, a sub-workflow called more than once for one run of a
- *   node, and a sub-workflow call from a node other than Execute Sub-workflow:
+ * - An inline sub-workflow, and a sub-workflow called more than once for one run of a
+ *   node: `sub-workflow-calls.ts`. Check rules: SUB_WORKFLOW_NOT_IN_DATABASE, and
+ *   SUB_WORKFLOW_FOR_EACH_ITEM for "Run once for each item".
+ * - A sub-workflow call from a node other than Execute Sub-workflow:
  *   `sub-workflow-calls.ts`. No check rule.
  *
  * Not refused: engine v2 ignores these settings without an error, so no engine

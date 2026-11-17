@@ -1,3 +1,9 @@
+export { default as N8nAttachment } from './N8nAttachments/Attachment/Attachment.vue';
+export { default as N8nAttachmentGroup } from './N8nAttachments/AttachmentGroup/AttachmentGroup.vue';
+export type {
+	AttachmentProps,
+	AttachmentEmits,
+} from './N8nAttachments/Attachment/Attachment.types';
 export { default as N8nAskAssistantButton } from './AskAssistantButton';
 export {
 	default as N8nAskAssistantChat,
@@ -135,6 +141,8 @@ export { default as N8nSettingsPageHeader } from './N8nSettingsPageHeader';
 export type { SettingsPageHeaderProps } from './N8nSettingsPageHeader';
 export { default as N8nSettingsRow } from './N8nSettingsRow';
 export type { SettingsRowProps, SettingsRowLayout } from './N8nSettingsRow';
+export { default as N8nSettingsEnableRow } from './N8nSettingsEnableRow';
+export type { SettingsEnableRowEmits, SettingsEnableRowProps } from './N8nSettingsEnableRow';
 export { default as N8nSettingsRowButton } from './N8nSettingsRowButton';
 export type { SettingsRowButtonProps } from './N8nSettingsRowButton';
 export { default as N8nSettingsRowConfigure } from './N8nSettingsRowConfigure';

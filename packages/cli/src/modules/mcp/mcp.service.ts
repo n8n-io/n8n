@@ -20,6 +20,7 @@ import {
 	CredentialsFinderService,
 	NodeTypesProxy,
 	PostHogClient,
+	TelemetryProxy,
 } from '@n8n/backend-services';
 import { ExecutionsConfig, GlobalConfig, WorkflowsConfig } from '@n8n/config';
 import { type OperationContext, ProjectRepository, SharedWorkflowRepository, User } from '@n8n/db';
@@ -53,7 +54,6 @@ import { NodeResourceExplorerService } from '@/services/node-resource-explorer.s
 import { ProjectService } from '@/services/project.service.ee';
 
 import { TagService } from '@/services/tag.service';
-import { Telemetry } from '@/telemetry';
 import { WorkflowRunner } from '@/workflow-runner';
 import { ErrorWorkflowValidationService } from '@/workflows/error-workflow-validation.service';
 import { WorkflowCreationService } from '@/workflows/workflow-creation.service';
@@ -261,7 +261,7 @@ export class McpService {
 		private readonly credentialsFinderService: CredentialsFinderService,
 		private readonly activeExecutions: ActiveExecutions,
 		private readonly globalConfig: GlobalConfig,
-		private readonly telemetry: Telemetry,
+		private readonly telemetry: TelemetryProxy,
 		private readonly workflowRunner: WorkflowRunner,
 		private readonly roleService: RoleService,
 		private readonly projectService: ProjectService,

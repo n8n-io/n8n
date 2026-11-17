@@ -34,7 +34,7 @@ import { UnexpectedError } from '@n8n/errors';
 import * as a from 'node:assert';
 import sanitize from 'sanitize-html';
 
-import { getResolvables } from '../../../utils/utilities';
+import { resolveExpressions } from '../../../utils/utilities';
 import { WebhookAuthorizationError } from '../../Webhook/error';
 import {
 	generateFormPostBasicAuthToken,
@@ -1442,11 +1442,11 @@ export async function formWebhook(
 
 	for (const field of formFields) {
 		if (field.fieldType === 'html') {
-			let html = field.html ?? '';
-			for (const resolvable of getResolvables(html)) {
-				html = html.replace(resolvable, context.evaluateExpression(resolvable) as string);
-			}
-			field.html = html;
+			field.html = resolveExpressions(
+				field.html ?? '',
+				(resolvable) => context.evaluateExpression(resolvable),
+				{ legacy: isLegacyExpressionResolution(node) },
+			);
 		}
 	}
 
@@ -1622,32 +1622,36 @@ export async function formWebhook(
 	};
 }
 
-type ExpressionResolutionContext = Pick<IWebhookFunctions, 'evaluateExpression'>;
+// Older versions resolve expressions with String.replace, which interprets `$` patterns in
+// resolved values. They keep that output so existing workflows render the same.
+const FIRST_LITERAL_EXPRESSION_RESOLUTION_VERSION: Partial<Record<string, number>> = {
+	[FORM_TRIGGER_NODE_TYPE]: 2.7,
+	[FORM_NODE_TYPE]: 2.6,
+	[WAIT_NODE_TYPE]: 1.2,
+};
+
+function isLegacyExpressionResolution(node: INode): boolean {
+	const firstLiteralVersion = FIRST_LITERAL_EXPRESSION_RESOLUTION_VERSION[node.type];
+	return firstLiteralVersion === undefined || node.typeVersion < firstLiteralVersion;
+}
+
+type ExpressionResolutionContext = Pick<IWebhookFunctions, 'evaluateExpression' | 'getNode'>;
 
 export function resolveRawData(context: ExpressionResolutionContext, rawData: string) {
 	if (!rawData) return rawData;
 
-	const resolvables = getResolvables(rawData);
-	let returnData: string = rawData;
+	if (!rawData.startsWith('=')) return rawData;
 
-	if (returnData.startsWith('=')) {
-		returnData = returnData.replace(/^=+/, '');
-	} else {
-		return returnData;
-	}
-
-	if (resolvables.length) {
-		for (const resolvable of resolvables) {
-			const resolvedValue = context.evaluateExpression(`${resolvable}`);
-
-			if (typeof resolvedValue === 'object' && resolvedValue !== null) {
-				returnData = returnData.replace(resolvable, JSON.stringify(resolvedValue));
-			} else {
-				returnData = returnData.replace(resolvable, resolvedValue as string);
-			}
-		}
-	}
-	return returnData;
+	return resolveExpressions(
+		rawData.replace(/^=+/, ''),
+		(resolvable) => {
+			const resolvedValue = context.evaluateExpression(resolvable);
+			return typeof resolvedValue === 'object' && resolvedValue !== null
+				? JSON.stringify(resolvedValue)
+				: resolvedValue;
+		},
+		{ legacy: isLegacyExpressionResolution(context.getNode()) },
+	);
 }
 
 type ParseFormFieldsOptions = {
@@ -1669,11 +1673,11 @@ export function parseFormFields(context: IWebhookFunctions, options: ParseFormFi
 		fields = context.getNodeParameter(options.fieldsParameterName, []) as FormFieldsParameter;
 		for (const field of fields) {
 			if (field.fieldType === 'html') {
-				let html = field.html ?? '';
-				for (const resolvable of getResolvables(html)) {
-					html = html.replace(resolvable, context.evaluateExpression(resolvable) as string);
-				}
-				field.html = html;
+				field.html = resolveExpressions(
+					field.html ?? '',
+					(resolvable) => context.evaluateExpression(resolvable),
+					{ legacy: isLegacyExpressionResolution(context.getNode()) },
+				);
 			}
 		}
 	}

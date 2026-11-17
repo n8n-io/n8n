@@ -18,6 +18,8 @@ const STATUS: Record<SkillSourceReason, number> = {
 	archive_too_large: 422,
 	blocked_by_check: 422,
 	review_required: 422,
+	stale: 409,
+	name_clash: 409,
 	name_taken: 409,
 	duplicate_source: 409,
 	rate_limited: 429,

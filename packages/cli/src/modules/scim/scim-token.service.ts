@@ -72,14 +72,28 @@ export class ScimTokenService {
 	}
 
 	/**
+	 * Tells if a rotation replaced this token. Call it only after
+	 * `verifyApiKey` rejected the token, to tell the identity provider setup
+	 * error apart from a wrong token.
+	 */
+	async isSupersededToken(apiKey: string, ctx: OperationContext = {}): Promise<boolean> {
+		if (!TOKEN_FORMAT.test(apiKey)) return false;
+
+		return await this.scimTokenRepository.isReplacedToken(hashScimToken(apiKey), ctx);
+	}
+
+	/**
 	 * Create the instance token, or replace the current one. The previous
 	 * token stops working at once. Returns the token value, which no other
-	 * call can return later.
+	 * call can return later. `replaced` tells if a token existed before.
 	 *
 	 * Throws `ScimTokenConflictError` when another request changed the token
 	 * after this one read it.
 	 */
-	async rotateToken(user: User, ctx: OperationContext = {}): Promise<string> {
+	async rotateToken(
+		user: User,
+		ctx: OperationContext = {},
+	): Promise<{ token: string; replaced: boolean }> {
 		const current = await this.scimTokenRepository.findInstanceToken(ctx);
 		const token = TOKEN_PREFIX + randomBytes(TOKEN_RANDOM_BYTES).toString('base64url');
 
@@ -94,12 +108,12 @@ export class ScimTokenService {
 			ctx,
 		);
 
-		return token;
+		return { token, replaced: current !== null };
 	}
 
-	/** Revoke the instance token, whoever created it. */
-	async revokeToken(ctx: OperationContext = {}) {
-		await this.scimTokenRepository.revokeInstanceToken(ctx);
+	/** Revoke the instance token, whoever created it. Tells if a token was there. */
+	async revokeToken(ctx: OperationContext = {}): Promise<boolean> {
+		return await this.scimTokenRepository.revokeInstanceToken(ctx);
 	}
 
 	/**

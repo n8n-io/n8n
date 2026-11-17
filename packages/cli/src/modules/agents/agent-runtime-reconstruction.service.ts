@@ -26,6 +26,7 @@ import {
 	hasChannelRuntime,
 	isCredentialAgentIntegration,
 	type AgentIntegrationConfig,
+	type AgentToolGuardrailConfig,
 	type BudgetGuardrailConfig,
 	type AgentJsonConfig,
 	type AgentJsonMcpServerConfig,
@@ -48,7 +49,6 @@ import { ActiveExecutions } from '@/active-executions';
 import { CredentialsFinderService } from '@n8n/backend-services';
 import { CredentialsService } from '@/credentials/credentials.service';
 import { SubworkflowPolicyChecker } from '@/executions/pre-execution-checks';
-import type { AgentRunTelemetryType } from '@/interfaces';
 import { EphemeralNodeExecutor } from '@/node-execution';
 import { OauthService } from '@/oauth/oauth.service';
 import { McpRegistryService } from '@/modules/mcp-registry/registry/mcp-registry.service';
@@ -60,6 +60,7 @@ import { sanitizeSandboxErrorDetail } from '@/utils/sanitize-sandbox-error-detai
 import { KnowledgeAvailabilityService } from '@/modules/knowledge/knowledge-availability.service';
 import type { KnowledgeConsumerScope } from '@/modules/knowledge/knowledge-consumer-scope';
 import { KnowledgeRetrievalService } from '@/modules/knowledge/retrieval/knowledge-retrieval.service';
+import type { EmbeddingProviderOptions } from '@/modules/knowledge/vector-stores/embedding-credential';
 import { WorkflowRunner } from '@/workflow-runner';
 import { CallableWorkflowLoader } from '@/workflows/callable/callable-workflow-loader.service';
 import { CallableWorkflowUnavailableError } from '@/workflows/callable/callable-workflow-unavailable.error';
@@ -73,6 +74,7 @@ import {
 	AgentSandboxRuntimeService,
 	type AgentSandboxRuntime,
 } from './agent-sandbox-runtime.service';
+import type { AgentRunTelemetryType } from './agent-telemetry.types';
 import { AgentWorkspaceService } from './agent-workspace.service';
 import type { AgentRuntimeInstrumentation } from './evaluation/agent-evaluation.contracts';
 import { ChatIntegrationRegistry } from './integrations/agent-chat-integration';
@@ -89,7 +91,6 @@ import {
 	buildFromJson,
 	buildProviderToolsForModel,
 	type MemoryFactory,
-	type ManagedEmbeddingProviderOptions,
 	type ToolResolver,
 } from './json-config/from-json-config';
 import { toAgentDocument } from './json-config/agent-document';
@@ -141,6 +142,8 @@ export interface ReconstructedAgentRuntime {
 	 * classifier — a depleted wallet ends the run with `budget.credits`.
 	 */
 	modelCredentialGatewayManaged?: boolean;
+	/** Saved tool guardrail config. Absent when the agent has none. */
+	toolGuardrails?: AgentToolGuardrailConfig[];
 }
 
 export interface SubAgentDelegationConfig {
@@ -748,6 +751,9 @@ export class AgentRuntimeReconstructionService {
 			...(options.config.credential === AI_GATEWAY_MANAGED_TAG
 				? { modelCredentialGatewayManaged: true }
 				: {}),
+			...(options.config.config?.guardrails?.tools?.length
+				? { toolGuardrails: options.config.config.guardrails.tools }
+				: {}),
 		};
 	}
 
@@ -965,7 +971,7 @@ export class AgentRuntimeReconstructionService {
 	 */
 	private async resolveManagedEmbeddingProviderOptions(
 		ownerId: string,
-	): Promise<ManagedEmbeddingProviderOptions | null> {
+	): Promise<EmbeddingProviderOptions | null> {
 		if (!this.aiService.isProxyEnabled()) return null;
 		// TODO: switch to n8n connect endpoints, don't use ai-proxy endpoints
 		const client = await this.aiService.getClient();

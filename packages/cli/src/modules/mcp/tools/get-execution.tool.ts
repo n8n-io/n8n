@@ -9,9 +9,8 @@ import { WorkflowAccessError } from '../mcp.errors';
 import type { ToolDefinition, UserCalledMCPToolEventPayload } from '../mcp.types';
 import { getMcpWorkflow } from './workflow-validation.utils';
 
-import type { ExecutionRedactionServiceProxy } from '@n8n/backend-services';
+import type { ExecutionRedactionServiceProxy, TelemetryProxy } from '@n8n/backend-services';
 import type { ExecutionService } from '@/executions/execution.service';
-import type { Telemetry } from '@/telemetry';
 import type { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 
 const inputSchema = z.object({
@@ -66,7 +65,7 @@ export const createGetExecutionTool = (
 	user: User,
 	executionService: ExecutionService,
 	workflowFinderService: WorkflowFinderService,
-	telemetry: Telemetry,
+	telemetry: TelemetryProxy,
 	executionRedactionServiceProxy: ExecutionRedactionServiceProxy,
 ): ToolDefinition<typeof inputSchema.shape> => ({
 	name: 'get_workflow_execution',

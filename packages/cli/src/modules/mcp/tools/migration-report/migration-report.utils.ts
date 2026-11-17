@@ -8,7 +8,7 @@ import {
 	type MigrationFindingListedStatus,
 } from '@n8n/api-types';
 import type { Logger } from '@n8n/backend-common';
-import type { UrlService } from '@n8n/backend-services';
+import type { UrlService, TelemetryProxy } from '@n8n/backend-services';
 import type { WorkflowRepository } from '@n8n/db';
 import { UserError } from '@n8n/errors';
 import z from 'zod';
@@ -21,7 +21,6 @@ import type { MigrationFindingQueryService } from '@/modules/breaking-changes/qu
 import type { MigrationFindingSyncService } from '@/modules/breaking-changes/sync/migration-finding-sync.service';
 import type { MigrationFindingTriageService } from '@/modules/breaking-changes/triage/migration-finding-triage.service';
 import { isWorkflowLevelRule } from '@/modules/breaking-changes/types';
-import type { Telemetry } from '@/telemetry';
 import type { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 
 import { MCP_GET_MIGRATION_REPORT_TOOL_NAME } from '../../mcp.constants';
@@ -39,7 +38,7 @@ export type MigrationReportToolDeps = {
 	workflowFinderService: WorkflowFinderService;
 	collaborationService: CollaborationService;
 	urlService: UrlService;
-	telemetry: Telemetry;
+	telemetry: TelemetryProxy;
 	logger: Logger;
 };
 

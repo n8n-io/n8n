@@ -7,15 +7,14 @@ import { USER_CALLED_MCP_TOOL_EVENT } from '../mcp.constants';
 import { createGetExecutionTool } from '../tools/get-execution.tool';
 
 import { ExecutionService } from '@/executions/execution.service';
-import { ExecutionRedactionServiceProxy } from '@n8n/backend-services';
-import { Telemetry } from '@/telemetry';
+import { ExecutionRedactionServiceProxy, TelemetryProxy } from '@n8n/backend-services';
 import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 
 describe('get-execution MCP tool', () => {
 	const user = Object.assign(new User(), { id: 'user-1' });
 	let executionService: ExecutionService;
 	let workflowFinderService: WorkflowFinderService;
-	let telemetry: Telemetry;
+	let telemetry: TelemetryProxy;
 	let executionRedactionServiceProxy: ExecutionRedactionServiceProxy;
 
 	const mockWorkflow = {
@@ -28,7 +27,7 @@ describe('get-execution MCP tool', () => {
 	beforeEach(() => {
 		executionService = mockInstance(ExecutionService);
 		workflowFinderService = mockInstance(WorkflowFinderService);
-		telemetry = mockInstance(Telemetry, {
+		telemetry = mockInstance(TelemetryProxy, {
 			track: vi.fn(),
 		});
 		executionRedactionServiceProxy = mockInstance(ExecutionRedactionServiceProxy);
