@@ -43,13 +43,16 @@ describe('useRunDataDisplayModes', () => {
 	const setup = (data: INodeExecutionData[] = [{ json: { lat: 1 } }]) =>
 		useRunDataDisplayModes({ node, pane: 'output', data });
 
-	describe('availableModes', () => {
+	describe('availableDisplayModes', () => {
 		it('lists the registered modes whose canRender is true, in registration order', () => {
 			runDataDisplayModeRegistry.register(contribution({ id: 'map' }));
 			runDataDisplayModeRegistry.register(contribution({ id: 'chart', canRender: () => false }));
 			runDataDisplayModeRegistry.register(contribution({ id: 'geo-map' }));
 
-			expect(setup().availableModes.value.map((mode) => mode.id)).toEqual(['map', 'geo-map']);
+			expect(setup().availableDisplayModes.value.map((mode) => mode.id)).toEqual([
+				'map',
+				'geo-map',
+			]);
 		});
 
 		it('passes the node, the pane and the data to canRender', () => {
@@ -57,7 +60,7 @@ describe('useRunDataDisplayModes', () => {
 			const data = [{ json: { lat: 1 } }];
 			runDataDisplayModeRegistry.register(contribution({ canRender }));
 
-			void setup(data).availableModes.value;
+			void setup(data).availableDisplayModes.value;
 
 			expect(canRender).toHaveBeenCalledWith({ node, pane: 'output', data });
 		});
@@ -65,23 +68,27 @@ describe('useRunDataDisplayModes', () => {
 		it('is empty when there is no node', () => {
 			runDataDisplayModeRegistry.register(contribution({}));
 
-			const { availableModes } = useRunDataDisplayModes({ node: null, pane: 'output', data: [] });
+			const { availableDisplayModes } = useRunDataDisplayModes({
+				node: null,
+				pane: 'output',
+				data: [],
+			});
 
-			expect(availableModes.value).toEqual([]);
+			expect(availableDisplayModes.value).toEqual([]);
 		});
 
 		it('updates when a mode is registered later or the data changes', () => {
 			const data = ref<INodeExecutionData[]>([]);
-			const { availableModes } = useRunDataDisplayModes({ node, pane: 'output', data });
-			expect(availableModes.value).toEqual([]);
+			const { availableDisplayModes } = useRunDataDisplayModes({ node, pane: 'output', data });
+			expect(availableDisplayModes.value).toEqual([]);
 
 			runDataDisplayModeRegistry.register(
 				contribution({ canRender: ({ data: items }) => items.length > 0 }),
 			);
-			expect(availableModes.value).toEqual([]);
+			expect(availableDisplayModes.value).toEqual([]);
 
 			data.value = [{ json: {} }];
-			expect(availableModes.value.map((mode) => mode.id)).toEqual(['map']);
+			expect(availableDisplayModes.value.map((mode) => mode.id)).toEqual(['map']);
 		});
 
 		it('hides a mode whose canRender throws, and warns once', () => {
@@ -95,11 +102,11 @@ describe('useRunDataDisplayModes', () => {
 			runDataDisplayModeRegistry.register(contribution({ id: 'map' }));
 
 			const data = ref<INodeExecutionData[]>([]);
-			const { availableModes } = useRunDataDisplayModes({ node, pane: 'output', data });
+			const { availableDisplayModes } = useRunDataDisplayModes({ node, pane: 'output', data });
 
-			expect(availableModes.value.map((mode) => mode.id)).toEqual(['map']);
+			expect(availableDisplayModes.value.map((mode) => mode.id)).toEqual(['map']);
 			data.value = [{ json: {} }];
-			expect(availableModes.value.map((mode) => mode.id)).toEqual(['map']);
+			expect(availableDisplayModes.value.map((mode) => mode.id)).toEqual(['map']);
 			expect(warnSpy).toHaveBeenCalledOnce();
 			expect(warnSpy).toHaveBeenCalledWith(
 				'Display mode "broken" threw in canRender. Hiding it.',
@@ -108,20 +115,20 @@ describe('useRunDataDisplayModes', () => {
 		});
 	});
 
-	describe('getAvailableMode', () => {
+	describe('getAvailableDisplayMode', () => {
 		it('returns an available mode, and nothing for a mode that cannot render', () => {
 			runDataDisplayModeRegistry.register(contribution({ id: 'map' }));
 			runDataDisplayModeRegistry.register(contribution({ id: 'chart', canRender: () => false }));
 
-			const { getAvailableMode } = setup();
+			const { getAvailableDisplayMode } = setup();
 
-			expect(getAvailableMode('map')?.id).toBe('map');
-			expect(getAvailableMode('chart')).toBeUndefined();
-			expect(getAvailableMode('table')).toBeUndefined();
+			expect(getAvailableDisplayMode('map')?.id).toBe('map');
+			expect(getAvailableDisplayMode('chart')).toBeUndefined();
+			expect(getAvailableDisplayMode('table')).toBeUndefined();
 		});
 	});
 
-	describe('modeToAutoSelect', () => {
+	describe('displayModeToAutoSelect', () => {
 		it('returns the first available mode that sets autoSelect', () => {
 			runDataDisplayModeRegistry.register(contribution({ id: 'map' }));
 			runDataDisplayModeRegistry.register(
@@ -129,13 +136,13 @@ describe('useRunDataDisplayModes', () => {
 			);
 			runDataDisplayModeRegistry.register(contribution({ id: 'geo-map', autoSelect: true }));
 
-			expect(setup().modeToAutoSelect.value?.id).toBe('geo-map');
+			expect(setup().displayModeToAutoSelect.value?.id).toBe('geo-map');
 		});
 
 		it('is undefined when no available mode sets autoSelect', () => {
 			runDataDisplayModeRegistry.register(contribution({}));
 
-			expect(setup().modeToAutoSelect.value).toBeUndefined();
+			expect(setup().displayModeToAutoSelect.value).toBeUndefined();
 		});
 	});
 });

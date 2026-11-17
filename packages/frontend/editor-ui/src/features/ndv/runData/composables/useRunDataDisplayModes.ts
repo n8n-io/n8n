@@ -33,7 +33,7 @@ export function useRunDataDisplayModes(options: {
 	pane: MaybeRefOrGetter<RunDataDisplayModePane>;
 	data: MaybeRefOrGetter<INodeExecutionData[]>;
 }) {
-	const availableModes = computed(() => {
+	const availableDisplayModes = computed(() => {
 		const node = toValue(options.node);
 		if (!node) return [];
 
@@ -41,11 +41,13 @@ export function useRunDataDisplayModes(options: {
 		return runDataDisplayModeRegistry.getAll().filter((mode) => safeCanRender(mode, context));
 	});
 
-	const modeToAutoSelect = computed(() => availableModes.value.find((mode) => mode.autoSelect));
+	const displayModeToAutoSelect = computed(() =>
+		availableDisplayModes.value.find((mode) => mode.autoSelect),
+	);
 
-	function getAvailableMode(id: DisplayMode) {
-		return availableModes.value.find((mode) => mode.id === id);
+	function getAvailableDisplayMode(id: DisplayMode) {
+		return availableDisplayModes.value.find((mode) => mode.id === id);
 	}
 
-	return { availableModes, modeToAutoSelect, getAvailableMode };
+	return { availableDisplayModes, displayModeToAutoSelect, getAvailableDisplayMode };
 }

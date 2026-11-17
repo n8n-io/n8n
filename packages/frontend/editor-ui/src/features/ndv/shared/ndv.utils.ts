@@ -876,7 +876,7 @@ export const PANE_DEFAULT_DISPLAY_MODE = {
  * before another mode is selected.
  *
  * It does not check `canRender`: the caller must also fall back when
- * `getAvailableMode` finds nothing for the current data.
+ * `getAvailableDisplayMode` finds nothing for the current data.
  */
 export function resolveDisplayMode(stored: DisplayMode, pane: RunDataDisplayModePane): DisplayMode {
 	const isBuiltIn = BUILT_IN_DISPLAY_MODES.some((mode) => mode === stored);
