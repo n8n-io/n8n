@@ -58,8 +58,11 @@ A result that has a time limit of a case (`no result after … ms`) is not kept.
 ## The key of a case (one case on the compiled node)
 
 The key has parts 1 and 3 to 8 above, the case (type, version, parameters, items, credential, responses,
-settings), the form of the check (cache, pairing, one call for each item, paired items) and the hash of the
-compiled output of the instance: the source text and each other member of the result of `compileNodeInstance`.
+settings), the form of the check (cache, pairing, one call for each item, paired items, a paging trial, and the
+paging choice that the operation has at that time) and the hash of the compiled output of the instance: the
+source text and each other member of the result of `compileNodeInstance`. A hit gives the paging choice back.
+The verifier forgets the paging choices at the start of each operation, so the result of an operation does not
+depend on the operations before it.
 Part 2 and part 9 are no part: they change a case only through the compiled output. Thus, after a change in the
 node compiler or in the source of a node, the verifier compiles each instance again and runs only the cases
 whose compiled output changed. A subset check has the same parts and the compiled source as its key.

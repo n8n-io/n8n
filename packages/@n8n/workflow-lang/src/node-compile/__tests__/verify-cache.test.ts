@@ -329,7 +329,7 @@ describe('the kept results of cases', () => {
 	});
 
 	it('keeps the entries of a run in a file', () => {
-		const file = join(root, 'cache/cases/alpha.json.gz');
+		const file = join(root, 'cache/cases/alpha.k.0-1.json.gz');
 		const first = new CaseStore(file);
 		expect(first.get('a'.repeat(64))).toBeUndefined();
 		first.set('a'.repeat(64), { difference: null, pairings: [] });
@@ -342,9 +342,25 @@ describe('the kept results of cases', () => {
 		expect([second.hits, second.misses]).toEqual([2, 1]);
 	});
 
+	it('reads the entries of each part of a node type and writes only its own part', () => {
+		const first = new CaseStore(join(root, 'cache/cases/alpha.k.0-2.json.gz'));
+		first.set('a'.repeat(64), 1);
+		first.save();
+		const other = new CaseStore(join(root, 'cache/cases/beta.k.0-1.json.gz'));
+		other.set('d'.repeat(64), 4);
+		other.save();
+		const whole = new CaseStore(join(root, 'cache/cases/alpha.k.0-1.json.gz'));
+		expect(whole.get('a'.repeat(64))).toBe(1);
+		expect(whole.get('d'.repeat(64))).toBeUndefined();
+		whole.set('b'.repeat(64), 2);
+		whole.save();
+		const again = new CaseStore(join(root, 'cache/cases/alpha.k.0-2.json.gz'));
+		expect([again.get('a'.repeat(64)), again.get('b'.repeat(64))]).toEqual([1, 2]);
+	});
+
 	it('reads a file that is not a store as an empty store', () => {
-		put('cache/cases/bad.json.gz', 'not a store');
-		expect(new CaseStore(join(root, 'cache/cases/bad.json.gz')).get('a')).toBeUndefined();
+		put('cache/cases/bad.k.0-1.json.gz', 'not a store');
+		expect(new CaseStore(join(root, 'cache/cases/bad.k.0-1.json.gz')).get('a')).toBeUndefined();
 	});
 });
 

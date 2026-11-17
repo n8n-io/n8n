@@ -7,7 +7,7 @@ import {
 	statSync,
 	writeFileSync,
 } from 'node:fs';
-import { dirname, join, resolve } from 'node:path';
+import { basename, dirname, join, resolve } from 'node:path';
 import { gunzipSync, gzipSync } from 'node:zlib';
 
 import { identityKey } from '../../convert/node-identity.ts';
@@ -238,12 +238,15 @@ export function storeResult(dir: string, name: string, entry: StoredResult<unkno
 }
 
 const MIN_KEPT_CASES = 2000;
+const PART_OF_A_STORE = /\d+-\d+\.json\.gz$/;
 const CASE_KEY_LENGTH = 32;
 
 export class CaseStore {
 	private readonly entries = new Map<string, unknown>();
 
 	private readonly used = new Set<string>();
+
+	private readonly own = new Set<string>();
 
 	private readonly file: string;
 
@@ -253,15 +256,31 @@ export class CaseStore {
 
 	constructor(file: string) {
 		this.file = file;
+		const family = basename(file).replace(PART_OF_A_STORE, '');
+		let others: string[] = [];
 		try {
-			const parsed: unknown = JSON.parse(gunzipSync(readFileSync(file)).toString());
-			if (!Array.isArray(parsed)) return;
-			for (const entry of parsed) {
-				if (Array.isArray(entry) && entry.length === 2 && typeof entry[0] === 'string')
-					this.entries.set(entry[0], entry[1]);
-			}
+			others = readdirSync(dirname(file)).filter(
+				(name) => name.startsWith(family) && PART_OF_A_STORE.test(name) && name !== basename(file),
+			);
 		} catch {
-			this.entries.clear();
+			others = [];
+		}
+		for (const name of others) this.read(join(dirname(file), name), false);
+		this.read(file, true);
+	}
+
+	private read(file: string, own: boolean): void {
+		let parsed: unknown;
+		try {
+			parsed = JSON.parse(gunzipSync(readFileSync(file)).toString());
+		} catch {
+			return;
+		}
+		if (!Array.isArray(parsed)) return;
+		for (const entry of parsed) {
+			if (!Array.isArray(entry) || entry.length !== 2 || typeof entry[0] !== 'string') continue;
+			this.entries.set(entry[0], entry[1]);
+			if (own) this.own.add(entry[0]);
 		}
 	}
 
@@ -286,9 +305,9 @@ export class CaseStore {
 		const kept: Array<[string, unknown]> = [];
 		for (const key of this.used) kept.push([key, this.entries.get(key)]);
 		const most = Math.max(MIN_KEPT_CASES, 2 * this.used.size);
-		for (const [key, value] of this.entries) {
+		for (const key of this.own) {
 			if (kept.length >= most) break;
-			if (!this.used.has(key)) kept.push([key, value]);
+			if (!this.used.has(key)) kept.push([key, this.entries.get(key)]);
 		}
 		writeWhole(this.file, gzipSync(JSON.stringify(kept)));
 	}
