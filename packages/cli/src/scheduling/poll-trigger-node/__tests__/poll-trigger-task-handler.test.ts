@@ -131,7 +131,7 @@ describe('PollTriggerTaskHandler', () => {
 
 	beforeEach(() => {
 		vi.clearAllMocks();
-		crashJournal.track.mockReturnValue(() => {});
+		crashJournal.recordStart.mockReturnValue(() => {});
 
 		const workflowData = buildWorkflowData();
 		workflow = buildWorkflow(workflowData);
@@ -535,8 +535,8 @@ describe('PollTriggerTaskHandler', () => {
 		});
 
 		test('keeps a timed-out poll in flight in the crash journal until it settles', async () => {
-			const untrack = vi.fn();
-			crashJournal.track.mockReturnValue(untrack);
+			const settle = vi.fn();
+			crashJournal.recordStart.mockReturnValue(settle);
 			let resolvePoll: (value: null) => void = () => {};
 			triggersAndPollers.runPollFunction.mockReturnValue(
 				new Promise((resolve) => {
@@ -547,16 +547,16 @@ describe('PollTriggerTaskHandler', () => {
 
 			const settled = handler.execute(buildTask(), report, runOf(run.signal));
 			await vi.waitFor(() =>
-				expect(crashJournal.track).toHaveBeenCalledWith(
+				expect(crashJournal.recordStart).toHaveBeenCalledWith(
 					expect.objectContaining({ id: 'task-1', leaseEpoch: 1 }),
 				),
 			);
 			run.abort(new TaskTimeoutError(45));
 			await settled;
 
-			expect(untrack).not.toHaveBeenCalled();
+			expect(settle).not.toHaveBeenCalled();
 			resolvePoll(null);
-			await vi.waitFor(() => expect(untrack).toHaveBeenCalledTimes(1));
+			await vi.waitFor(() => expect(settle).toHaveBeenCalledTimes(1));
 		});
 
 		test('records no failure for a workflow deactivated during a timed-out poll', async () => {

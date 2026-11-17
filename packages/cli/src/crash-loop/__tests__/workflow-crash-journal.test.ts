@@ -48,7 +48,7 @@ describe('WorkflowCrashJournal', () => {
 	const crashWith = (...attempts: Array<ReturnType<typeof attempt>>) => {
 		const journal = newSession();
 		journal.startSession(false, t0);
-		for (const a of attempts) journal.track(a);
+		for (const a of attempts) journal.recordStart(a);
 	};
 
 	beforeEach(() => {
@@ -168,7 +168,7 @@ describe('WorkflowCrashJournal', () => {
 		it('counts an attempt that a timeout abandoned but that had not settled', () => {
 			const journal = newSession();
 			journal.startSession(false, t0);
-			journal.track(attempt('1', 'wf-a'));
+			journal.recordStart(attempt('1', 'wf-a'));
 			// The task completed, but the poll never settled before the crash.
 
 			expect(newSession().startSession(true, t0)).toEqual({ workflowId: 'wf-a', crashes: 1 });
@@ -177,8 +177,8 @@ describe('WorkflowCrashJournal', () => {
 		it('does not count an attempt that settled before the crash', () => {
 			const journal = newSession();
 			journal.startSession(false, t0);
-			const untrack = journal.track(attempt('1', 'wf-a'));
-			untrack();
+			const settle = journal.recordStart(attempt('1', 'wf-a'));
+			settle();
 
 			expect(newSession().startSession(true, t0)).toBeUndefined();
 		});
@@ -195,9 +195,9 @@ describe('WorkflowCrashJournal', () => {
 			newSession().startSession(true, t0);
 			const journal = newSession();
 			journal.startSession(false, t0 + HOUR);
-			const untrack = journal.track(attempt('2', 'wf-a'));
+			const settle = journal.recordStart(attempt('2', 'wf-a'));
 			crashJournal.failWrites = true;
-			untrack();
+			settle();
 
 			expect(existsSync(journalPath())).toBe(false);
 			crashJournal.failWrites = false;
@@ -208,11 +208,11 @@ describe('WorkflowCrashJournal', () => {
 			const logger = mockLogger();
 			const journal = new WorkflowCrashJournal(logger);
 			journal.startSession(false, t0);
-			const untrack = journal.track(attempt('1', 'wf-a'));
+			const settle = journal.recordStart(attempt('1', 'wf-a'));
 			crashJournal.failWrites = true;
 			crashJournal.failRemoves = true;
 
-			expect(() => untrack()).not.toThrow();
+			expect(() => settle()).not.toThrow();
 
 			expect(logger.warn).toHaveBeenCalledWith(
 				'Failed to write and to clear the workflow crash journal',
@@ -254,15 +254,15 @@ describe('WorkflowCrashJournal', () => {
 		});
 	});
 
-	describe('track', () => {
+	describe('recordStart', () => {
 		it('lists the attempt as in flight until it settles', () => {
 			const journal = newSession();
 			journal.startSession(false, t0);
 
-			const untrack = journal.track(attempt('1', 'wf-a', 2));
+			const settle = journal.recordStart(attempt('1', 'wf-a', 2));
 
 			expect(readJournal()).toEqual({ streak: null, inFlight: { '1:2': 'wf-a' } });
-			untrack();
+			settle();
 			expect(readJournal()).toEqual({ streak: null, inFlight: {} });
 		});
 
@@ -270,7 +270,7 @@ describe('WorkflowCrashJournal', () => {
 			const journal = newSession();
 			journal.startSession(false, t0);
 
-			journal.track({ id: '1', leaseEpoch: 1, payload: { kind: 'system' } });
+			journal.recordStart({ id: '1', leaseEpoch: 1, payload: { kind: 'system' } });
 
 			expect(readJournal()).toEqual({ streak: null, inFlight: {} });
 		});
