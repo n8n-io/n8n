@@ -19,6 +19,7 @@ const workload = @import("workload.zig");
 const cred_flags = @import("cred_flags.zig");
 const Arena = @import("arena.zig").Arena;
 const reserveMem = @import("arena.zig").reserve;
+const poison = @import("arena.zig").poison;
 const Value = value.Value;
 
 // ---- configuration ----------------------------------------------------------
@@ -1832,9 +1833,10 @@ fn takeRegion(s: *State, class: u8) ?struct { idx: u32, region: heap.Region } {
     return .{ .idx = idx, .region = .{ .buf = buf, .used = 0, .probe = s.cfg.probe } };
 }
 
-/// Give a region back. `used`: the bytes it held. Safe builds fill them
-/// with 0xAA and track ownership, so a stale offset reads poison and a
-/// double release fails an assertion.
+/// Give a region back. `used`: the bytes it held. Safe builds track
+/// ownership, so a double release fails an assertion. Debug builds and tests
+/// also fill the bytes with 0xAA (`arena.poison`), so a stale offset reads
+/// poison.
 fn giveRegion(s: *State, class: u8, idx: u32, used: u32, owner: SlotId) void {
     std.debug.assert(s.pool_nfree[class] < s.pool_free[class].len);
     if (@import("builtin").mode == .debug) {
@@ -1848,6 +1850,8 @@ fn giveRegion(s: *State, class: u8, idx: u32, used: u32, owner: SlotId) void {
     if (std.debug.runtime_safety) {
         std.debug.assert(s.pool_owned[class][idx]);
         s.pool_owned[class][idx] = false;
+    }
+    if (poison) {
         const size = s.cfg.region_sizes[class];
         @memset(s.pools[class][@as(usize, idx) * size ..][0..@min(used, size)], 0xAA);
     }
@@ -3136,8 +3140,7 @@ fn noteSlotEnd(s: *const State, slot: SlotId) void {
 fn noteRelease(s: *const State, class: u8, idx: u32, used: u32) void {
     const size = s.cfg.region_sizes[class];
     mem.wr(s.cfg.probe, .region_pool, .core_row, &s.pool_free[class][s.pool_nfree[class]], 4);
-    const mode = @import("builtin").mode;
-    if (mode != .debug and mode != .safe) return;
+    if (!poison) return;
     mem.wrSlice(s.cfg.probe, .region_pool, .core_copy, s.pools[class][@as(usize, idx) * size ..][0..@min(used, size)]);
     mem.scan(s.cfg.probe, .byte_fill, @min(used, size));
 }
