@@ -25,8 +25,18 @@ const outlook: Derive = (data) => {
 	return { outlookApiUrl: `${base}/v1.0/${mailbox}` };
 };
 
+/** The Microsoft Graph host, as `getGraphBaseUrl` of the shared Microsoft Graph transport reads it. */
+const graph: Derive = (data) => {
+	const configured = text(data.graphApiBaseUrl);
+	let base = configured !== '' ? configured : 'https://graph.microsoft.com';
+	while (base.endsWith('/')) base = base.slice(0, -1);
+	return { graphApiUrl: base };
+};
+
 const RULES: Record<string, Derive> = {
 	microsoftOutlookOAuth2Api: outlook,
+	microsoftTeamsOAuth2Api: graph,
+	microsoftOAuth2Api: graph,
 };
 
 /** The derived values of a credential, or undefined when its type has none. */

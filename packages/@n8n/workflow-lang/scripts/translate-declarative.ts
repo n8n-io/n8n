@@ -438,6 +438,11 @@ const HAND_PORTS: Array<[string, number, string]> = [
 		'record.create, record.search, record.update (by id), record.upsert (versions 2.1 and 2.2)',
 	],
 	['n8n-nodes-base.supabase', 1, 'row.getAll, row.get, row.update (secret key)'],
+	[
+		'n8n-nodes-base.microsoftTeams',
+		2,
+		'24 operations of channel, channelMessage, chat, chatMember, chatMessage and task (OAuth2 credentials)',
+	],
 	['@n8n/n8n-nodes-langchain.openAi', 2.3, 'text.response (message a model)'],
 ];
 

@@ -6217,5 +6217,981 @@
 			}
 		],
 		"error": "Column names were updated after the node's setup"
+	},
+	"microsoftTeams channel.create": {
+		"requests": [
+			{
+				"method": "POST",
+				"url": "https://graph.microsoft.com/v1.0/teams/61165b04-e4cc-4026-b43f-926b4e2a7182/channels",
+				"qs": {},
+				"headers": {
+					"authorization": "Bearer fake-teams-token"
+				},
+				"body": {
+					"displayName": "Releases",
+					"description": "Release notes",
+					"membershipType": "private"
+				},
+				"qsFormat": "brackets"
+			},
+			{
+				"method": "POST",
+				"url": "https://graph.microsoft.com/v1.0/teams/61165b04-e4cc-4026-b43f-926b4e2a7182/channels",
+				"qs": {},
+				"headers": {
+					"authorization": "Bearer fake-teams-token"
+				},
+				"body": {
+					"displayName": "Releases",
+					"description": "Release notes",
+					"membershipType": "private"
+				},
+				"qsFormat": "brackets"
+			}
+		],
+		"output": [
+			{
+				"id": "19:abc123@thread.tacv2",
+				"displayName": "Releases"
+			},
+			{
+				"id": "19:abc123@thread.tacv2",
+				"displayName": "Releases"
+			}
+		]
+	},
+	"microsoftTeams channel.create team from the list, no options": {
+		"requests": [
+			{
+				"method": "POST",
+				"url": "https://graph.microsoft.com/v1.0/teams/61165b04-e4cc-4026-b43f-926b4e2a7182/channels",
+				"qs": {},
+				"headers": {
+					"authorization": "Bearer fake-teams-token"
+				},
+				"body": {
+					"displayName": "General 2"
+				},
+				"qsFormat": "brackets"
+			}
+		],
+		"output": [
+			{
+				"id": "19:abc123@thread.tacv2",
+				"displayName": "General 2"
+			}
+		]
+	},
+	"microsoftTeams channel.create team id that is not a GUID": {
+		"requests": [],
+		"error": "ERROR: Team parameter's value is invalid. This is likely because the URL entered is incorrect"
+	},
+	"microsoftTeams channel.create team id with text after the GUID": {
+		"requests": [
+			{
+				"method": "POST",
+				"url": "https://graph.microsoft.com/v1.0/teams/61165b04-e4cc-4026-b43f-926b4e2a7182/channels",
+				"qs": {},
+				"headers": {
+					"authorization": "Bearer fake-teams-token"
+				},
+				"body": {
+					"displayName": "x"
+				},
+				"qsFormat": "brackets"
+			}
+		],
+		"output": [
+			{
+				"id": "19:abc123@thread.tacv2"
+			}
+		]
+	},
+	"microsoftTeams channel.deleteChannel": {
+		"requests": [
+			{
+				"method": "DELETE",
+				"url": "https://graph.microsoft.com/v1.0/teams/61165b04-e4cc-4026-b43f-926b4e2a7182/channels/19:abc123@thread.tacv2",
+				"qs": {},
+				"headers": {
+					"authorization": "Bearer fake-teams-token"
+				},
+				"qsFormat": "brackets"
+			}
+		],
+		"output": [
+			{
+				"success": true
+			}
+		]
+	},
+	"microsoftTeams channel.deleteChannel that fails": {
+		"requests": [
+			{
+				"method": "DELETE",
+				"url": "https://graph.microsoft.com/v1.0/teams/61165b04-e4cc-4026-b43f-926b4e2a7182/channels/19:abc123@thread.tacv2",
+				"qs": {},
+				"headers": {
+					"authorization": "Bearer fake-teams-token"
+				},
+				"qsFormat": "brackets"
+			}
+		],
+		"error": "The channel you are trying to delete doesn't exist"
+	},
+	"microsoftTeams channel.get": {
+		"requests": [
+			{
+				"method": "GET",
+				"url": "https://graph.microsoft.com/v1.0/teams/61165b04-e4cc-4026-b43f-926b4e2a7182/channels/19:abc123@thread.tacv2",
+				"qs": {},
+				"headers": {
+					"authorization": "Bearer fake-teams-token"
+				},
+				"qsFormat": "brackets"
+			}
+		],
+		"output": [
+			{
+				"id": "19:abc123@thread.tacv2",
+				"displayName": "General"
+			}
+		]
+	},
+	"microsoftTeams channel.get that fails": {
+		"requests": [
+			{
+				"method": "GET",
+				"url": "https://graph.microsoft.com/v1.0/teams/61165b04-e4cc-4026-b43f-926b4e2a7182/channels/19:abc123@thread.tacv2",
+				"qs": {},
+				"headers": {
+					"authorization": "Bearer fake-teams-token"
+				},
+				"qsFormat": "brackets"
+			}
+		],
+		"error": "The channel you are trying to get doesn't exist"
+	},
+	"microsoftTeams channel.get channel id with a slash": {
+		"requests": [],
+		"error": "The ID is not valid"
+	},
+	"microsoftTeams channel.get empty channel id": {
+		"requests": [],
+		"error": "A required ID is empty"
+	},
+	"microsoftTeams channel.getAll with a limit": {
+		"requests": [
+			{
+				"method": "GET",
+				"url": "https://graph.microsoft.com/v1.0/teams/61165b04-e4cc-4026-b43f-926b4e2a7182/channels",
+				"qs": {},
+				"headers": {
+					"authorization": "Bearer fake-teams-token"
+				},
+				"qsFormat": "brackets"
+			}
+		],
+		"output": [
+			{
+				"id": "c1"
+			},
+			{
+				"id": "c2"
+			}
+		]
+	},
+	"microsoftTeams channel.getAll all pages": {
+		"requests": [
+			{
+				"method": "GET",
+				"url": "https://graph.microsoft.com/v1.0/teams/61165b04-e4cc-4026-b43f-926b4e2a7182/channels",
+				"qs": {},
+				"headers": {
+					"authorization": "Bearer fake-teams-token"
+				},
+				"qsFormat": "brackets"
+			},
+			{
+				"method": "GET",
+				"url": "https://graph.microsoft.com/v1.0/teams/61165b04-e4cc-4026-b43f-926b4e2a7182/channels",
+				"qs": {
+					"$skiptoken": "p2"
+				},
+				"headers": {
+					"authorization": "Bearer fake-teams-token"
+				},
+				"qsFormat": "brackets"
+			}
+		],
+		"output": [
+			{
+				"id": "c1"
+			},
+			{
+				"id": "c2"
+			}
+		]
+	},
+	"microsoftTeams channel.getAll next link to another host": {
+		"requests": [
+			{
+				"method": "GET",
+				"url": "https://graph.microsoft.com/v1.0/teams/61165b04-e4cc-4026-b43f-926b4e2a7182/channels",
+				"qs": {},
+				"headers": {
+					"authorization": "Bearer fake-teams-token"
+				},
+				"qsFormat": "brackets"
+			}
+		],
+		"error": "Refusing to send credentials to an unexpected host"
+	},
+	"microsoftTeams channel.update": {
+		"requests": [
+			{
+				"method": "PATCH",
+				"url": "https://graph.microsoft.com/v1.0/teams/61165b04-e4cc-4026-b43f-926b4e2a7182/channels/19:abc123@thread.tacv2",
+				"qs": {},
+				"headers": {
+					"authorization": "Bearer fake-teams-token"
+				},
+				"body": {
+					"displayName": "Renamed",
+					"description": "New text"
+				},
+				"qsFormat": "brackets"
+			}
+		],
+		"output": [
+			{
+				"success": true
+			}
+		]
+	},
+	"microsoftTeams channelMessage.create with the link to the workflow": {
+		"requests": [
+			{
+				"method": "POST",
+				"url": "https://graph.microsoft.com/beta/teams/61165b04-e4cc-4026-b43f-926b4e2a7182/channels/19:abc123@thread.tacv2/messages",
+				"qs": {},
+				"headers": {
+					"authorization": "Bearer fake-teams-token"
+				},
+				"body": {
+					"body": {
+						"contentType": "html",
+						"content": "Deploy done<br><br><em> Powered by <a href=\"http://localhost:5678workflow/equivalence?utm_source=n8n-internal&utm_medium=powered_by&utm_campaign=n8n-nodes-base.microsoftTeams\">this n8n workflow</a> </em>"
+					}
+				},
+				"qsFormat": "brackets"
+			},
+			{
+				"method": "POST",
+				"url": "https://graph.microsoft.com/beta/teams/61165b04-e4cc-4026-b43f-926b4e2a7182/channels/19:abc123@thread.tacv2/messages",
+				"qs": {},
+				"headers": {
+					"authorization": "Bearer fake-teams-token"
+				},
+				"body": {
+					"body": {
+						"contentType": "html",
+						"content": "Deploy done<br><br><em> Powered by <a href=\"http://localhost:5678workflow/equivalence?utm_source=n8n-internal&utm_medium=powered_by&utm_campaign=n8n-nodes-base.microsoftTeams\">this n8n workflow</a> </em>"
+					}
+				},
+				"qsFormat": "brackets"
+			}
+		],
+		"output": [
+			{
+				"id": "1700000000001",
+				"body": {
+					"contentType": "html",
+					"content": "x"
+				}
+			},
+			{
+				"id": "1700000000001",
+				"body": {
+					"contentType": "html",
+					"content": "x"
+				}
+			}
+		]
+	},
+	"microsoftTeams channelMessage.create as a reply, no link": {
+		"requests": [
+			{
+				"method": "POST",
+				"url": "https://graph.microsoft.com/beta/teams/61165b04-e4cc-4026-b43f-926b4e2a7182/channels/19:abc123@thread.tacv2/messages/1700000000001/replies",
+				"qs": {},
+				"headers": {
+					"authorization": "Bearer fake-teams-token"
+				},
+				"body": {
+					"body": {
+						"contentType": "html",
+						"content": "<b>Done</b>"
+					}
+				},
+				"qsFormat": "brackets"
+			}
+		],
+		"output": [
+			{
+				"id": "1700000000002"
+			}
+		]
+	},
+	"microsoftTeams channelMessage.get": {
+		"requests": [
+			{
+				"method": "GET",
+				"url": "https://graph.microsoft.com/beta/teams/61165b04-e4cc-4026-b43f-926b4e2a7182/channels/19:abc123@thread.tacv2/messages/1700000000001",
+				"qs": {},
+				"headers": {
+					"authorization": "Bearer fake-teams-token"
+				},
+				"qsFormat": "brackets"
+			}
+		],
+		"output": [
+			{
+				"id": "1700000000001"
+			}
+		]
+	},
+	"microsoftTeams channelMessage.getAll with a limit and two pages": {
+		"requests": [
+			{
+				"method": "GET",
+				"url": "https://graph.microsoft.com/beta/teams/61165b04-e4cc-4026-b43f-926b4e2a7182/channels/19:abc123@thread.tacv2/messages",
+				"qs": {
+					"$top": "3"
+				},
+				"headers": {
+					"authorization": "Bearer fake-teams-token"
+				},
+				"qsFormat": "brackets"
+			},
+			{
+				"method": "GET",
+				"url": "https://graph.microsoft.com/beta/teams/61165b04-e4cc-4026-b43f-926b4e2a7182/channels/19:abc123@thread.tacv2/messages",
+				"qs": {
+					"$top": "3",
+					"$skiptoken": "abc"
+				},
+				"headers": {
+					"authorization": "Bearer fake-teams-token"
+				},
+				"qsFormat": "brackets"
+			}
+		],
+		"output": [
+			{
+				"id": "m1"
+			},
+			{
+				"id": "m2"
+			},
+			{
+				"id": "m3"
+			}
+		]
+	},
+	"microsoftTeams channelMessage.getAll all": {
+		"requests": [
+			{
+				"method": "GET",
+				"url": "https://graph.microsoft.com/beta/teams/61165b04-e4cc-4026-b43f-926b4e2a7182/channels/19:abc123@thread.tacv2/messages",
+				"qs": {},
+				"headers": {
+					"authorization": "Bearer fake-teams-token"
+				},
+				"qsFormat": "brackets"
+			}
+		],
+		"output": [
+			{
+				"id": "m1"
+			},
+			{
+				"id": "m2"
+			}
+		]
+	},
+	"microsoftTeams channelMessage.getAllReplies": {
+		"requests": [
+			{
+				"method": "GET",
+				"url": "https://graph.microsoft.com/beta/teams/61165b04-e4cc-4026-b43f-926b4e2a7182/channels/19:abc123@thread.tacv2/messages/1700000000001/replies",
+				"qs": {
+					"$top": "1"
+				},
+				"headers": {
+					"authorization": "Bearer fake-teams-token"
+				},
+				"qsFormat": "brackets"
+			}
+		],
+		"output": [
+			{
+				"id": "r1"
+			}
+		]
+	},
+	"microsoftTeams channelMessage.reply with the link": {
+		"requests": [
+			{
+				"method": "POST",
+				"url": "https://graph.microsoft.com/beta/teams/61165b04-e4cc-4026-b43f-926b4e2a7182/channels/19:abc123@thread.tacv2/messages/1700000000001/replies",
+				"qs": {},
+				"headers": {
+					"authorization": "Bearer fake-teams-token"
+				},
+				"body": {
+					"body": {
+						"contentType": "html",
+						"content": "Thanks<br><br><em> Powered by <a href=\"http://localhost:5678workflow/equivalence?utm_source=n8n-internal&utm_medium=powered_by&utm_campaign=n8n-nodes-base.microsoftTeams\">this n8n workflow</a> </em>"
+					}
+				},
+				"qsFormat": "brackets"
+			}
+		],
+		"output": [
+			{
+				"id": "1700000000003"
+			}
+		]
+	},
+	"microsoftTeams channelMessage.reply no link": {
+		"requests": [
+			{
+				"method": "POST",
+				"url": "https://graph.microsoft.com/beta/teams/61165b04-e4cc-4026-b43f-926b4e2a7182/channels/19:abc123@thread.tacv2/messages/1700000000001/replies",
+				"qs": {},
+				"headers": {
+					"authorization": "Bearer fake-teams-token"
+				},
+				"body": {
+					"body": {
+						"contentType": "text",
+						"content": "Thanks"
+					}
+				},
+				"qsFormat": "brackets"
+			}
+		],
+		"output": [
+			{
+				"id": "1700000000003"
+			}
+		]
+	},
+	"microsoftTeams channelMessage.softDeleteMessage": {
+		"requests": [
+			{
+				"method": "POST",
+				"url": "https://graph.microsoft.com/v1.0/teams/61165b04-e4cc-4026-b43f-926b4e2a7182/channels/19:abc123@thread.tacv2/messages/1700000000001/softDelete",
+				"qs": {},
+				"headers": {
+					"authorization": "Bearer fake-teams-token"
+				},
+				"qsFormat": "brackets"
+			}
+		],
+		"output": [
+			{
+				"success": true
+			}
+		]
+	},
+	"microsoftTeams channelMessage.undoSoftDeleteMessage of a reply": {
+		"requests": [
+			{
+				"method": "POST",
+				"url": "https://graph.microsoft.com/v1.0/teams/61165b04-e4cc-4026-b43f-926b4e2a7182/channels/19:abc123@thread.tacv2/messages/1700000000001/replies/1700000000002/undoSoftDelete",
+				"qs": {},
+				"headers": {
+					"authorization": "Bearer fake-teams-token"
+				},
+				"qsFormat": "brackets"
+			}
+		],
+		"output": [
+			{
+				"success": true
+			}
+		]
+	},
+	"microsoftTeams chat.get": {
+		"requests": [
+			{
+				"method": "GET",
+				"url": "https://graph.microsoft.com/v1.0/chats/19:7e2f1174_0c5cfdbb@unq.gbl.spaces",
+				"qs": {},
+				"headers": {
+					"authorization": "Bearer fake-teams-token"
+				},
+				"qsFormat": "brackets"
+			}
+		],
+		"output": [
+			{
+				"id": "19:7e2f1174_0c5cfdbb@unq.gbl.spaces",
+				"chatType": "oneOnOne"
+			}
+		]
+	},
+	"microsoftTeams chat.get that is not there": {
+		"requests": [
+			{
+				"method": "GET",
+				"url": "https://graph.microsoft.com/v1.0/chats/19:7e2f1174_0c5cfdbb@unq.gbl.spaces",
+				"qs": {},
+				"headers": {
+					"authorization": "Bearer fake-teams-token"
+				},
+				"qsFormat": "brackets"
+			}
+		],
+		"error": "The chat you are trying to get doesn't exist"
+	},
+	"microsoftTeams chat.getAll with a limit": {
+		"requests": [
+			{
+				"method": "GET",
+				"url": "https://graph.microsoft.com/v1.0/chats",
+				"qs": {
+					"$top": "50"
+				},
+				"headers": {
+					"authorization": "Bearer fake-teams-token"
+				},
+				"qsFormat": "brackets"
+			},
+			{
+				"method": "GET",
+				"url": "https://graph.microsoft.com/v1.0/chats",
+				"qs": {
+					"$top": "50",
+					"$skiptoken": "n"
+				},
+				"headers": {
+					"authorization": "Bearer fake-teams-token"
+				},
+				"qsFormat": "brackets"
+			}
+		],
+		"output": [
+			{
+				"id": "a"
+			},
+			{
+				"id": "b"
+			},
+			{
+				"id": "c"
+			}
+		]
+	},
+	"microsoftTeams chat.getAll all": {
+		"requests": [
+			{
+				"method": "GET",
+				"url": "https://graph.microsoft.com/v1.0/chats",
+				"qs": {
+					"$top": "50"
+				},
+				"headers": {
+					"authorization": "Bearer fake-teams-token"
+				},
+				"qsFormat": "brackets"
+			}
+		],
+		"output": [
+			{
+				"id": "a"
+			}
+		]
+	},
+	"microsoftTeams chatMember.getAll": {
+		"requests": [
+			{
+				"method": "GET",
+				"url": "https://graph.microsoft.com/v1.0/chats/19:7e2f1174_0c5cfdbb@unq.gbl.spaces/members",
+				"qs": {},
+				"headers": {
+					"authorization": "Bearer fake-teams-token"
+				},
+				"qsFormat": "brackets"
+			}
+		],
+		"output": [
+			{
+				"id": "mem1"
+			}
+		]
+	},
+	"microsoftTeams chatMember.remove": {
+		"requests": [
+			{
+				"method": "DELETE",
+				"url": "https://graph.microsoft.com/v1.0/chats/19:7e2f1174_0c5cfdbb@unq.gbl.spaces/members/MCMjMCMjMjM3ODZjYTY=",
+				"qs": {},
+				"headers": {
+					"authorization": "Bearer fake-teams-token"
+				},
+				"qsFormat": "brackets"
+			}
+		],
+		"output": [
+			{
+				"success": true
+			}
+		]
+	},
+	"microsoftTeams chatMessage.create with the link to the workflow": {
+		"requests": [
+			{
+				"method": "POST",
+				"url": "https://graph.microsoft.com/v1.0/chats/19:7e2f1174_0c5cfdbb@unq.gbl.spaces/messages",
+				"qs": {},
+				"headers": {
+					"authorization": "Bearer fake-teams-token"
+				},
+				"body": {
+					"body": {
+						"contentType": "html",
+						"content": "Hello<br><br><em> Powered by <a href=\"http://localhost:5678workflow/equivalence?utm_source=n8n-internal&utm_medium=powered_by&utm_campaign=n8n-nodes-base.microsoftTeams\">this n8n workflow</a> </em>"
+					}
+				},
+				"qsFormat": "brackets"
+			},
+			{
+				"method": "POST",
+				"url": "https://graph.microsoft.com/v1.0/chats/19:7e2f1174_0c5cfdbb@unq.gbl.spaces/messages",
+				"qs": {},
+				"headers": {
+					"authorization": "Bearer fake-teams-token"
+				},
+				"body": {
+					"body": {
+						"contentType": "html",
+						"content": "Hello<br><br><em> Powered by <a href=\"http://localhost:5678workflow/equivalence?utm_source=n8n-internal&utm_medium=powered_by&utm_campaign=n8n-nodes-base.microsoftTeams\">this n8n workflow</a> </em>"
+					}
+				},
+				"qsFormat": "brackets"
+			}
+		],
+		"output": [
+			{
+				"id": "1700000000009"
+			},
+			{
+				"id": "1700000000009"
+			}
+		]
+	},
+	"microsoftTeams chatMessage.create html, no link, Microsoft OAuth2": {
+		"requests": [
+			{
+				"method": "POST",
+				"url": "https://graph.microsoft.us/v1.0/chats/19:7e2f1174_0c5cfdbb@unq.gbl.spaces/messages",
+				"qs": {},
+				"headers": {
+					"authorization": "Bearer fake-graph-token"
+				},
+				"body": {
+					"body": {
+						"contentType": "html",
+						"content": "<i>Hello</i>"
+					}
+				},
+				"qsFormat": "brackets"
+			}
+		],
+		"output": [
+			{
+				"id": "1700000000010"
+			}
+		]
+	},
+	"microsoftTeams chatMessage.get": {
+		"requests": [
+			{
+				"method": "GET",
+				"url": "https://graph.microsoft.com/v1.0/chats/19:7e2f1174_0c5cfdbb@unq.gbl.spaces/messages/1700000000009",
+				"qs": {},
+				"headers": {
+					"authorization": "Bearer fake-teams-token"
+				},
+				"qsFormat": "brackets"
+			}
+		],
+		"output": [
+			{
+				"id": "1700000000009"
+			}
+		]
+	},
+	"microsoftTeams chatMessage.get that fails": {
+		"requests": [
+			{
+				"method": "GET",
+				"url": "https://graph.microsoft.com/v1.0/chats/19:7e2f1174_0c5cfdbb@unq.gbl.spaces/messages/1700000000009",
+				"qs": {},
+				"headers": {
+					"authorization": "Bearer fake-teams-token"
+				},
+				"qsFormat": "brackets"
+			}
+		],
+		"error": "The message you are trying to get doesn't exist"
+	},
+	"microsoftTeams chatMessage.getAll with a limit": {
+		"requests": [
+			{
+				"method": "GET",
+				"url": "https://graph.microsoft.com/v1.0/chats/19:7e2f1174_0c5cfdbb@unq.gbl.spaces/messages",
+				"qs": {
+					"$top": "2"
+				},
+				"headers": {
+					"authorization": "Bearer fake-teams-token"
+				},
+				"qsFormat": "brackets"
+			}
+		],
+		"output": [
+			{
+				"id": "m1"
+			},
+			{
+				"id": "m2"
+			}
+		]
+	},
+	"microsoftTeams chatMessage.getAll all pages": {
+		"requests": [
+			{
+				"method": "GET",
+				"url": "https://graph.microsoft.com/v1.0/chats/19:7e2f1174_0c5cfdbb@unq.gbl.spaces/messages",
+				"qs": {},
+				"headers": {
+					"authorization": "Bearer fake-teams-token"
+				},
+				"qsFormat": "brackets"
+			},
+			{
+				"method": "GET",
+				"url": "https://graph.microsoft.com/v1.0/chats/19:7e2f1174_0c5cfdbb@unq.gbl.spaces/messages",
+				"qs": {
+					"$skiptoken": "z"
+				},
+				"headers": {
+					"authorization": "Bearer fake-teams-token"
+				},
+				"qsFormat": "brackets"
+			}
+		],
+		"output": [
+			{
+				"id": "m1"
+			},
+			{
+				"id": "m2"
+			}
+		]
+	},
+	"microsoftTeams task.create": {
+		"requests": [
+			{
+				"method": "POST",
+				"url": "https://graph.microsoft.com/v1.0/planner/tasks",
+				"qs": {},
+				"headers": {
+					"authorization": "Bearer fake-teams-token"
+				},
+				"body": {
+					"planId": "plan-1",
+					"bucketId": "bucket-1",
+					"title": "Write the notes",
+					"dueDateTime": "2026-03-01T10:00:00.000Z",
+					"percentComplete": 50,
+					"assignments": {
+						"7e2f1174-e8ee-4859-b8b1-a8d1cc63d276": {
+							"@odata.type": "microsoft.graph.plannerAssignment",
+							"orderHint": " !"
+						}
+					}
+				},
+				"qsFormat": "brackets"
+			}
+		],
+		"output": [
+			{
+				"id": "task-1",
+				"title": "Write the notes"
+			}
+		]
+	},
+	"microsoftTeams task.create no options": {
+		"requests": [
+			{
+				"method": "POST",
+				"url": "https://graph.microsoft.com/v1.0/planner/tasks",
+				"qs": {},
+				"headers": {
+					"authorization": "Bearer fake-teams-token"
+				},
+				"body": {
+					"planId": "plan-1",
+					"bucketId": "bucket-1",
+					"title": "Plain"
+				},
+				"qsFormat": "brackets"
+			}
+		],
+		"output": [
+			{
+				"id": "task-2"
+			}
+		]
+	},
+	"microsoftTeams task.deleteTask": {
+		"requests": [
+			{
+				"method": "GET",
+				"url": "https://graph.microsoft.com/v1.0/planner/tasks/task-1",
+				"qs": {},
+				"headers": {
+					"authorization": "Bearer fake-teams-token"
+				},
+				"qsFormat": "brackets"
+			},
+			{
+				"method": "DELETE",
+				"url": "https://graph.microsoft.com/v1.0/planner/tasks/task-1",
+				"qs": {},
+				"headers": {
+					"if-match": "W/\"abc\"",
+					"authorization": "Bearer fake-teams-token"
+				},
+				"qsFormat": "brackets"
+			}
+		],
+		"output": [
+			{
+				"success": true
+			}
+		]
+	},
+	"microsoftTeams task.get": {
+		"requests": [
+			{
+				"method": "GET",
+				"url": "https://graph.microsoft.com/v1.0/planner/tasks/task-1",
+				"qs": {},
+				"headers": {
+					"authorization": "Bearer fake-teams-token"
+				},
+				"qsFormat": "brackets"
+			}
+		],
+		"output": [
+			{
+				"id": "task-1"
+			}
+		]
+	},
+	"microsoftTeams task.getAll of the member": {
+		"requests": [
+			{
+				"method": "GET",
+				"url": "https://graph.microsoft.com/v1.0/me",
+				"qs": {},
+				"headers": {
+					"authorization": "Bearer fake-teams-token"
+				},
+				"qsFormat": "brackets"
+			},
+			{
+				"method": "GET",
+				"url": "https://graph.microsoft.com/v1.0/users/7e2f1174-e8ee-4859-b8b1-a8d1cc63d276/planner/tasks",
+				"qs": {},
+				"headers": {
+					"authorization": "Bearer fake-teams-token"
+				},
+				"qsFormat": "brackets"
+			}
+		],
+		"output": [
+			{
+				"id": "t1"
+			}
+		]
+	},
+	"microsoftTeams task.getAll of a plan": {
+		"requests": [
+			{
+				"method": "GET",
+				"url": "https://graph.microsoft.com/v1.0/planner/plans/plan-1/tasks",
+				"qs": {},
+				"headers": {
+					"authorization": "Bearer fake-teams-token"
+				},
+				"qsFormat": "brackets"
+			}
+		],
+		"output": [
+			{
+				"id": "t1"
+			},
+			{
+				"id": "t2"
+			}
+		]
+	},
+	"microsoftTeams task.update": {
+		"requests": [
+			{
+				"method": "GET",
+				"url": "https://graph.microsoft.com/v1.0/planner/tasks/task-1",
+				"qs": {},
+				"headers": {
+					"authorization": "Bearer fake-teams-token"
+				},
+				"qsFormat": "brackets"
+			},
+			{
+				"method": "PATCH",
+				"url": "https://graph.microsoft.com/v1.0/planner/tasks/task-1",
+				"qs": {},
+				"headers": {
+					"if-match": "W/\"abc\"",
+					"authorization": "Bearer fake-teams-token"
+				},
+				"body": {
+					"bucketId": "bucket-2",
+					"dueDateTime": "2026-04-01T10:00:00.000Z",
+					"percentComplete": 100,
+					"planId": "plan-1",
+					"title": "Done",
+					"assignments": {
+						"7e2f1174-e8ee-4859-b8b1-a8d1cc63d276": {
+							"@odata.type": "microsoft.graph.plannerAssignment",
+							"orderHint": " !"
+						}
+					}
+				},
+				"qsFormat": "brackets"
+			}
+		],
+		"output": [
+			{
+				"success": true
+			}
+		]
 	}
 }

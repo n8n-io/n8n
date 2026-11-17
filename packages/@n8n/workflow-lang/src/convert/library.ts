@@ -166,6 +166,27 @@ const ADAPTERS: Record<
 	// parts. The markers are not in the `supports` list, so a call keeps them and runs in the
 	// host when the link parts are not known, the option is an expression, or v1 reads the id
 	// of a channel URL with a regular expression (`channelUrl`).
+	// A message ends with a link to the workflow unless `includeLinkToWorkflow` is false: the
+	// marker `needsWorkflowLink` asks `lowerLibrary` for the link parts. The markers are not in
+	// the `supports` list, so these calls run in the host: the link parts are not known, the
+	// option is an expression, or v1 reads the id of a team URL with a regular expression. An
+	// empty `mentions` value is the same as none.
+	'n8n-nodes-base.microsoftTeams': (p, version) => {
+		if (version < 2) return p;
+		const out: Record<string, unknown> = { ...p };
+		const options = isRecord(p.options) ? p.options : {};
+		const message =
+			(p.resource === 'chatMessage' || p.resource === 'channelMessage') &&
+			(p.operation === undefined || p.operation === 'create' || p.operation === 'reply');
+		const link = options.includeLinkToWorkflow ?? true;
+		if (message && link !== true && link !== false) out.linkExpression = true;
+		if (message && link === true) out.needsWorkflowLink = true;
+		if (isRecord(p.teamId) && p.teamId.mode === 'url') out.teamUrl = true;
+		const mentions = isRecord(p.mentions) ? p.mentions.mention : p.mentions;
+		const none = mentions === undefined || (Array.isArray(mentions) && mentions.length === 0);
+		if (isRecord(p.mentions) && none) delete out.mentions;
+		return out;
+	},
 	'n8n-nodes-base.slack': (p, version) => {
 		const out: Record<string, unknown> = { ...p };
 		const other = isRecord(p.otherOptions) ? p.otherOptions : {};
@@ -222,11 +243,12 @@ const LOCATOR_TYPES = new Set([
 	'n8n-nodes-base.slack',
 	'n8n-nodes-base.googleDrive',
 	'n8n-nodes-base.dataTable',
+	'n8n-nodes-base.microsoftTeams',
 	'@n8n/n8n-nodes-langchain.openAi',
 ]);
 
 /** The oldest version of a node type that its library node runs; older ones run in the host. */
-const MIN_VERSIONS: Record<string, number> = {
+export const MIN_VERSIONS: Record<string, number> = {
 	// Version 2.0 searches once for all input items.
 	'n8n-nodes-base.airtable': 2.1,
 	// Version 1.3 changed the recurring events and the dates of `event.getAll`.
@@ -235,6 +257,9 @@ const MIN_VERSIONS: Record<string, number> = {
 	'n8n-nodes-base.googleDrive': 3,
 	// Version 2 is the node with Microsoft Graph operations in `actions/`.
 	'n8n-nodes-base.microsoftOutlook': 2,
+	// Version 2 is the node on the shared Microsoft Graph transport; the node compiler takes
+	// versions 1 and 1.1.
+	'n8n-nodes-base.microsoftTeams': 2,
 	// 1.2 has the relaxed Accept header; version 1 reads the feed once for all items.
 	'n8n-nodes-base.rssFeedRead': 1.2,
 };

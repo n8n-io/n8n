@@ -1,0 +1,531 @@
+/** Equivalence cases of Microsoft Teams version 2 (the library node `microsoft-teams.ts`). */
+import type { EquivalenceCase } from './equivalence.ts';
+
+const credential = {
+	type: 'microsoftTeamsOAuth2Api',
+	data: { oauthTokenData: { access_token: 'fake-teams-token', token_type: 'Bearer' } },
+};
+const base = { type: 'n8n-nodes-base.microsoftTeams', typeVersion: 2, credential };
+const TEAM = '61165b04-e4cc-4026-b43f-926b4e2a7182';
+const CHANNEL = '19:abc123@thread.tacv2';
+const CHAT = '19:7e2f1174_0c5cfdbb@unq.gbl.spaces';
+const MEMBER = '7e2f1174-e8ee-4859-b8b1-a8d1cc63d276';
+const id = (value: unknown) => ({ __rl: true, mode: 'id', value });
+const list = (value: unknown) => ({ __rl: true, mode: 'list', value });
+const ok = (body: unknown) => [{ status: 200, body }];
+const link = { baseUrl: 'http://localhost:5678', workflowId: 'equivalence', instanceId: '' };
+const page = (values: unknown[], next?: string) => ({
+	status: 200,
+	body: { value: values, ...(next === undefined ? {} : { '@odata.nextLink': next }) },
+});
+
+export const MICROSOFT_TEAMS_CASES: EquivalenceCase[] = [
+	{
+		...base,
+		name: 'microsoftTeams channel.create',
+		parameters: {
+			resource: 'channel',
+			operation: 'create',
+			teamId: id(TEAM),
+			name: 'Releases',
+			options: { description: 'Release notes', type: 'private' },
+		},
+		items: [{}, {}],
+		responses: ok({ id: CHANNEL, displayName: 'Releases' }),
+	},
+	{
+		...base,
+		name: 'microsoftTeams channel.create team from the list, no options',
+		parameters: { resource: 'channel', teamId: list(TEAM), name: 'General 2', options: {} },
+		responses: ok({ id: CHANNEL, displayName: 'General 2' }),
+	},
+	{
+		...base,
+		name: 'microsoftTeams channel.create team id that is not a GUID',
+		parameters: { resource: 'channel', teamId: id('not-a-guid'), name: 'x', options: {} },
+		responses: ok({}),
+		expectedError:
+			"ERROR: Team parameter's value is invalid. This is likely because the URL entered is incorrect",
+	},
+	{
+		...base,
+		name: 'microsoftTeams channel.create team id with text after the GUID',
+		parameters: { resource: 'channel', teamId: id(`${TEAM} `), name: 'x', options: {} },
+		responses: ok({ id: CHANNEL }),
+	},
+	{
+		...base,
+		name: 'microsoftTeams channel.deleteChannel',
+		parameters: {
+			resource: 'channel',
+			operation: 'deleteChannel',
+			teamId: id(TEAM),
+			channelId: list(CHANNEL),
+		},
+		responses: [{ status: 204, body: '' }],
+	},
+	{
+		...base,
+		name: 'microsoftTeams channel.deleteChannel that fails',
+		parameters: {
+			resource: 'channel',
+			operation: 'deleteChannel',
+			teamId: id(TEAM),
+			channelId: list(CHANNEL),
+		},
+		responses: [{ status: 404, body: { error: { code: 'NotFound', message: 'No channel' } } }],
+		expectedError: "The channel you are trying to delete doesn't exist",
+	},
+	{
+		...base,
+		name: 'microsoftTeams channel.get',
+		parameters: {
+			resource: 'channel',
+			operation: 'get',
+			teamId: id(TEAM),
+			channelId: list('19%3Aabc123%40thread.tacv2'),
+		},
+		responses: ok({ id: CHANNEL, displayName: 'General' }),
+	},
+	{
+		...base,
+		name: 'microsoftTeams channel.get that fails',
+		parameters: {
+			resource: 'channel',
+			operation: 'get',
+			teamId: id(TEAM),
+			channelId: list(CHANNEL),
+		},
+		responses: [{ status: 500, body: { error: { code: 'Failure', message: 'Broken' } } }],
+		expectedError: "The channel you are trying to get doesn't exist",
+	},
+	{
+		...base,
+		name: 'microsoftTeams channel.get channel id with a slash',
+		parameters: {
+			resource: 'channel',
+			operation: 'get',
+			teamId: id(TEAM),
+			channelId: list('19:abc/../x'),
+		},
+		responses: ok({}),
+		expectedError: 'The ID is not valid',
+	},
+	{
+		...base,
+		name: 'microsoftTeams channel.get empty channel id',
+		parameters: { resource: 'channel', operation: 'get', teamId: id(TEAM), channelId: list('') },
+		responses: ok({}),
+		expectedError: 'A required ID is empty',
+	},
+	{
+		...base,
+		name: 'microsoftTeams channel.getAll with a limit',
+		parameters: {
+			resource: 'channel',
+			operation: 'getAll',
+			teamId: id(TEAM),
+			returnAll: false,
+			limit: 2,
+		},
+		responses: [page([{ id: 'c1' }, { id: 'c2' }, { id: 'c3' }])],
+	},
+	{
+		...base,
+		name: 'microsoftTeams channel.getAll all pages',
+		parameters: { resource: 'channel', operation: 'getAll', teamId: id(TEAM), returnAll: true },
+		responses: [
+			page([{ id: 'c1' }], `https://graph.microsoft.com/v1.0/teams/${TEAM}/channels?$skiptoken=p2`),
+			page([{ id: 'c2' }]),
+		],
+	},
+	{
+		...base,
+		name: 'microsoftTeams channel.getAll next link to another host',
+		parameters: { resource: 'channel', operation: 'getAll', teamId: id(TEAM), returnAll: true },
+		responses: [page([{ id: 'c1' }], 'https://example.com/v1.0/teams?$skiptoken=p2')],
+		expectedError: 'Refusing to send credentials to an unexpected host',
+	},
+	{
+		...base,
+		name: 'microsoftTeams channel.update',
+		parameters: {
+			resource: 'channel',
+			operation: 'update',
+			teamId: id(TEAM),
+			channelId: list(CHANNEL),
+			name: 'Renamed',
+			options: { description: 'New text' },
+		},
+		responses: [{ status: 204, body: '' }],
+	},
+	{
+		...base,
+		name: 'microsoftTeams channelMessage.create with the link to the workflow',
+		parameters: {
+			resource: 'channelMessage',
+			operation: 'create',
+			teamId: id(TEAM),
+			channelId: list(CHANNEL),
+			contentType: 'text',
+			message: 'Deploy done',
+			options: {},
+			workflowLink: link,
+		},
+		items: [{}, {}],
+		responses: ok({ id: '1700000000001', body: { contentType: 'html', content: 'x' } }),
+	},
+	{
+		...base,
+		name: 'microsoftTeams channelMessage.create as a reply, no link',
+		parameters: {
+			resource: 'channelMessage',
+			teamId: id(TEAM),
+			channelId: list(CHANNEL),
+			contentType: 'html',
+			message: '<b>Done</b>',
+			options: { includeLinkToWorkflow: false, makeReply: '1700000000001' },
+		},
+		responses: ok({ id: '1700000000002' }),
+	},
+	{
+		...base,
+		name: 'microsoftTeams channelMessage.get',
+		parameters: {
+			resource: 'channelMessage',
+			operation: 'get',
+			teamId: id(TEAM),
+			channelId: list(CHANNEL),
+			messageId: '1700000000001',
+		},
+		responses: ok({ id: '1700000000001' }),
+	},
+	{
+		...base,
+		name: 'microsoftTeams channelMessage.getAll with a limit and two pages',
+		parameters: {
+			resource: 'channelMessage',
+			operation: 'getAll',
+			teamId: id(TEAM),
+			channelId: list(CHANNEL),
+			returnAll: false,
+			limit: 3,
+		},
+		responses: [
+			page(
+				[{ id: 'm1' }, { id: 'm2' }],
+				`https://graph.microsoft.com/beta/teams/${TEAM}/channels/${CHANNEL}/messages?$top=3&$skiptoken=abc`,
+			),
+			page([{ id: 'm3' }, { id: 'm4' }]),
+		],
+	},
+	{
+		...base,
+		name: 'microsoftTeams channelMessage.getAll all',
+		parameters: {
+			resource: 'channelMessage',
+			operation: 'getAll',
+			teamId: id(TEAM),
+			channelId: list(CHANNEL),
+			returnAll: true,
+		},
+		responses: [page([{ id: 'm1' }, { id: 'm2' }])],
+	},
+	{
+		...base,
+		name: 'microsoftTeams channelMessage.getAllReplies',
+		parameters: {
+			resource: 'channelMessage',
+			operation: 'getAllReplies',
+			teamId: id(TEAM),
+			channelId: list(CHANNEL),
+			messageId: '1700000000001',
+			returnAll: false,
+			limit: 1,
+		},
+		responses: [page([{ id: 'r1' }, { id: 'r2' }])],
+	},
+	{
+		...base,
+		name: 'microsoftTeams channelMessage.reply with the link',
+		parameters: {
+			resource: 'channelMessage',
+			operation: 'reply',
+			teamId: id(TEAM),
+			channelId: list(CHANNEL),
+			messageId: '1700000000001',
+			contentType: 'text',
+			message: 'Thanks',
+			options: {},
+			workflowLink: link,
+		},
+		responses: ok({ id: '1700000000003' }),
+	},
+	{
+		...base,
+		name: 'microsoftTeams channelMessage.reply no link',
+		parameters: {
+			resource: 'channelMessage',
+			operation: 'reply',
+			teamId: id(TEAM),
+			channelId: list(CHANNEL),
+			messageId: '1700000000001',
+			contentType: 'text',
+			message: 'Thanks',
+			options: { includeLinkToWorkflow: false },
+		},
+		responses: ok({ id: '1700000000003' }),
+	},
+	{
+		...base,
+		name: 'microsoftTeams channelMessage.softDeleteMessage',
+		parameters: {
+			resource: 'channelMessage',
+			operation: 'softDeleteMessage',
+			teamId: id(TEAM),
+			channelId: list(` ${CHANNEL} `),
+			messageId: ' 1700000000001 ',
+			options: {},
+		},
+		responses: [{ status: 204, body: '' }],
+	},
+	{
+		...base,
+		name: 'microsoftTeams channelMessage.undoSoftDeleteMessage of a reply',
+		parameters: {
+			resource: 'channelMessage',
+			operation: 'undoSoftDeleteMessage',
+			teamId: id(TEAM),
+			channelId: list(CHANNEL),
+			messageId: 1700000000002,
+			options: { parentMessageId: '1700000000001' },
+		},
+		responses: [{ status: 204, body: '' }],
+	},
+	{
+		...base,
+		name: 'microsoftTeams chat.get',
+		parameters: { resource: 'chat', operation: 'get', chatId: id(CHAT) },
+		responses: ok({ id: CHAT, chatType: 'oneOnOne' }),
+	},
+	{
+		...base,
+		name: 'microsoftTeams chat.get that is not there',
+		parameters: { resource: 'chat', operation: 'get', chatId: id(CHAT) },
+		responses: [{ status: 404, body: { error: { code: 'NotFound', message: 'No chat' } } }],
+		expectedError: "The chat you are trying to get doesn't exist",
+	},
+	{
+		...base,
+		name: 'microsoftTeams chat.getAll with a limit',
+		parameters: { resource: 'chat', operation: 'getAll', returnAll: false, limit: 70 },
+		responses: [
+			page(
+				[{ id: 'a' }, { id: 'b' }],
+				'https://graph.microsoft.com/v1.0/chats?$top=50&$skiptoken=n',
+			),
+			page([{ id: 'c' }]),
+		],
+	},
+	{
+		...base,
+		name: 'microsoftTeams chat.getAll all',
+		parameters: { resource: 'chat', operation: 'getAll', returnAll: true },
+		responses: [page([{ id: 'a' }])],
+	},
+	{
+		...base,
+		name: 'microsoftTeams chatMember.getAll',
+		parameters: { resource: 'chatMember', chatId: list(CHAT), returnAll: false, limit: 1 },
+		responses: [page([{ id: 'mem1' }, { id: 'mem2' }])],
+	},
+	{
+		...base,
+		name: 'microsoftTeams chatMember.remove',
+		parameters: {
+			resource: 'chatMember',
+			operation: 'remove',
+			chatId: list(CHAT),
+			membershipId: list('MCMjMCMjMjM3ODZjYTY='),
+		},
+		responses: [{ status: 204, body: '' }],
+	},
+	{
+		...base,
+		name: 'microsoftTeams chatMessage.create with the link to the workflow',
+		parameters: {
+			resource: 'chatMessage',
+			operation: 'create',
+			chatId: list(CHAT),
+			contentType: 'text',
+			message: 'Hello',
+			options: {},
+			workflowLink: link,
+		},
+		items: [{}, {}],
+		responses: ok({ id: '1700000000009' }),
+	},
+	{
+		...base,
+		name: 'microsoftTeams chatMessage.create html, no link, Microsoft OAuth2',
+		parameters: {
+			resource: 'chatMessage',
+			authentication: 'microsoftOAuth2Api',
+			chatId: id(CHAT),
+			contentType: 'html',
+			message: '<i>Hello</i>',
+			options: { includeLinkToWorkflow: false },
+		},
+		credential: {
+			type: 'microsoftOAuth2Api',
+			data: {
+				oauthTokenData: { access_token: 'fake-graph-token', token_type: 'Bearer' },
+				graphApiBaseUrl: 'https://graph.microsoft.us/',
+			},
+		},
+		responses: ok({ id: '1700000000010' }),
+	},
+	{
+		...base,
+		name: 'microsoftTeams chatMessage.get',
+		parameters: {
+			resource: 'chatMessage',
+			operation: 'get',
+			chatId: list(CHAT),
+			messageId: '1700000000009',
+		},
+		responses: ok({ id: '1700000000009' }),
+	},
+	{
+		...base,
+		name: 'microsoftTeams chatMessage.get that fails',
+		parameters: {
+			resource: 'chatMessage',
+			operation: 'get',
+			chatId: list(CHAT),
+			messageId: '1700000000009',
+		},
+		responses: [{ status: 403, body: { error: { code: 'Forbidden', message: 'No' } } }],
+		expectedError: "The message you are trying to get doesn't exist",
+	},
+	{
+		...base,
+		name: 'microsoftTeams chatMessage.getAll with a limit',
+		parameters: {
+			resource: 'chatMessage',
+			operation: 'getAll',
+			chatId: list(CHAT),
+			returnAll: false,
+			limit: 2,
+		},
+		responses: [page([{ id: 'm1' }, { id: 'm2' }, { id: 'm3' }])],
+	},
+	{
+		...base,
+		name: 'microsoftTeams chatMessage.getAll all pages',
+		parameters: {
+			resource: 'chatMessage',
+			operation: 'getAll',
+			chatId: list(CHAT),
+			returnAll: true,
+		},
+		responses: [
+			page([{ id: 'm1' }], `https://graph.microsoft.com/v1.0/chats/${CHAT}/messages?$skiptoken=z`),
+			page([{ id: 'm2' }]),
+		],
+	},
+	{
+		...base,
+		name: 'microsoftTeams task.create',
+		parameters: {
+			resource: 'task',
+			operation: 'create',
+			groupSource: 'all',
+			groupId: id(TEAM),
+			planId: list('plan-1'),
+			bucketId: list('bucket-1'),
+			title: 'Write the notes',
+			options: {
+				assignedTo: id(MEMBER),
+				dueDateTime: '2026-03-01T10:00:00.000Z',
+				percentComplete: 50,
+			},
+		},
+		responses: ok({ id: 'task-1', title: 'Write the notes' }),
+	},
+	{
+		...base,
+		name: 'microsoftTeams task.create no options',
+		parameters: {
+			resource: 'task',
+			groupId: list(TEAM),
+			planId: list('plan-1'),
+			bucketId: list('bucket-1'),
+			title: 'Plain',
+			options: {},
+		},
+		responses: ok({ id: 'task-2' }),
+	},
+	{
+		...base,
+		name: 'microsoftTeams task.deleteTask',
+		parameters: { resource: 'task', operation: 'deleteTask', taskId: 'task-1' },
+		responses: [
+			{ status: 200, body: { id: 'task-1', '@odata.etag': 'W/"abc"' } },
+			{ status: 204, body: '' },
+		],
+	},
+	{
+		...base,
+		name: 'microsoftTeams task.get',
+		parameters: { resource: 'task', operation: 'get', taskId: 'task-1' },
+		responses: ok({ id: 'task-1' }),
+	},
+	{
+		...base,
+		name: 'microsoftTeams task.getAll of the member',
+		parameters: {
+			resource: 'task',
+			operation: 'getAll',
+			tasksFor: 'member',
+			returnAll: false,
+			limit: 1,
+		},
+		responses: [{ status: 200, body: { id: MEMBER } }, page([{ id: 't1' }, { id: 't2' }])],
+	},
+	{
+		...base,
+		name: 'microsoftTeams task.getAll of a plan',
+		parameters: {
+			resource: 'task',
+			operation: 'getAll',
+			tasksFor: 'plan',
+			groupId: list(TEAM),
+			planId: list('plan-1'),
+			returnAll: true,
+		},
+		responses: [page([{ id: 't1' }, { id: 't2' }])],
+	},
+	{
+		...base,
+		name: 'microsoftTeams task.update',
+		parameters: {
+			resource: 'task',
+			operation: 'update',
+			taskId: 'task-1',
+			updateFields: {
+				assignedTo: list(MEMBER),
+				bucketId: list('bucket-2'),
+				dueDateTime: '2026-04-01T10:00:00.000Z',
+				groupId: list(TEAM),
+				percentComplete: 100,
+				planId: list('plan-1'),
+				title: 'Done',
+			},
+		},
+		responses: [
+			{ status: 200, body: { id: 'task-1', '@odata.etag': 'W/"abc"' } },
+			{ status: 204, body: '' },
+		],
+	},
+];

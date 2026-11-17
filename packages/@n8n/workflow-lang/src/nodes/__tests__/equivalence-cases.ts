@@ -8,6 +8,7 @@ import type { EquivalenceCase } from './equivalence.ts';
 import { DATA_TABLE_CASES } from './data-table-cases.ts';
 import { SHEETS_APPEND_CASES } from './google-sheets-append-cases.ts';
 import { SHEETS_UPSERT_CASES } from './google-sheets-upsert-cases.ts';
+import { MICROSOFT_TEAMS_CASES } from './microsoft-teams-cases.ts';
 
 const rl = (value: string) => ({ __rl: true, mode: 'id', value });
 const ok = (body: unknown) => [{ status: 200, body }];
@@ -2513,4 +2514,5 @@ export const EQUIVALENCE_CASES: EquivalenceCase[] = [
 	...DATA_TABLE_CASES,
 	...SHEETS_UPSERT_CASES,
 	...SHEETS_APPEND_CASES,
+	...MICROSOFT_TEAMS_CASES,
 ];
