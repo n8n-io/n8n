@@ -1,13 +1,65 @@
 <script setup lang="ts">
+import { getCurrentInstance, onMounted, onUpdated, useAttrs } from 'vue';
+
 import type { ListboxItemEmits, ListboxItemProps, ListboxItemSlots } from './ListboxItem.types';
 import { ListboxItem } from './reka-ui';
 
 defineOptions({ name: 'N8nListboxItem' });
 
-defineProps<ListboxItemProps>();
+const props = defineProps<ListboxItemProps>();
 defineSlots<ListboxItemSlots>();
 
 const emit = defineEmits<ListboxItemEmits>();
+const attrs = useAttrs();
+const instance = getCurrentInstance();
+
+// Reka memos the option while the highlight and the selection stay the same.
+// Copy caller attributes after each render so they stay current.
+const appliedKeys = new Set<string>();
+
+function applyAttrs() {
+	const el = instance?.vnode.el;
+	if (!(el instanceof HTMLElement)) return;
+
+	const nextKeys = new Set<string>();
+	for (const [key, value] of Object.entries(attrs)) {
+		if (key === 'class' || key === 'style' || key.startsWith('on')) continue;
+		writeAttr(el, key, value);
+		nextKeys.add(key);
+	}
+
+	for (const key of appliedKeys) {
+		if (!nextKeys.has(key)) el.removeAttribute(key);
+	}
+	appliedKeys.clear();
+	for (const key of nextKeys) appliedKeys.add(key);
+
+	writeAttr(el, 'data-value', props.value);
+	if (props.disabled) writeAttr(el, 'aria-disabled', 'true');
+	else el.removeAttribute('aria-disabled');
+}
+
+function writeAttr(el: HTMLElement, key: string, value: unknown) {
+	if (value === undefined || value === null) {
+		el.removeAttribute(key);
+		return;
+	}
+	if (value === false) {
+		if (key.startsWith('aria-') || key.startsWith('data-')) el.setAttribute(key, 'false');
+		else el.removeAttribute(key);
+		return;
+	}
+	if (value === true) {
+		el.setAttribute(key, 'true');
+		return;
+	}
+	if (typeof value === 'string' || typeof value === 'number') {
+		el.setAttribute(key, String(value));
+	}
+}
+
+onMounted(applyAttrs);
+onUpdated(applyAttrs);
 
 function onSelect(event: Event) {
 	emit('select', event);

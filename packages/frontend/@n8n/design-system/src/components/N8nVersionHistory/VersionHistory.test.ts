@@ -849,17 +849,38 @@ describe('N8nVersionHistory', () => {
 		});
 
 		it('watches the end again after a page is appended', async () => {
-			const { rerender, getByTestId } = renderHistory({ hasMore: true });
-			await nextTick();
-			observe.mockClear();
-
-			await rerender({
-				hasMore: true,
-				items: [...items, { id: 'v0', label: 'v0' }],
+			const originalOffsetHeight = Object.getOwnPropertyDescriptor(
+				HTMLElement.prototype,
+				'offsetHeight',
+			);
+			// jsdom reports 0, so the scroller would drop the end row once the page grows.
+			// A tall viewport keeps that row mounted, which is what a real panel does.
+			Object.defineProperty(HTMLElement.prototype, 'offsetHeight', {
+				configurable: true,
+				get(this: HTMLElement) {
+					return this.classList?.contains('recycle-scroller-wrapper') ? 400 : 48;
+				},
 			});
-			await nextTick();
 
-			expect(observe).toHaveBeenCalledWith(getByTestId('version-history-load-more'));
+			try {
+				const { rerender, getByTestId } = renderHistory({ hasMore: true });
+				await nextTick();
+				observe.mockClear();
+
+				await rerender({
+					hasMore: true,
+					items: [...items, { id: 'v0', label: 'v0' }],
+				});
+				await nextTick();
+
+				expect(observe).toHaveBeenCalledWith(getByTestId('version-history-load-more'));
+			} finally {
+				if (originalOffsetHeight) {
+					Object.defineProperty(HTMLElement.prototype, 'offsetHeight', originalOffsetHeight);
+				} else {
+					Reflect.deleteProperty(HTMLElement.prototype, 'offsetHeight');
+				}
+			}
 		});
 	});
 });
