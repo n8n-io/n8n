@@ -86,6 +86,7 @@ export default {
 	'previewBadge.preview': 'Preview',
 	'enterpriseReadinessBadge.limited': 'Limited enterprise readiness',
 	'enterpriseReadinessBadge.tooltip': "Some enterprise capabilities don't cover this feature yet.",
+	'enterpriseReadinessBadge.docsLink': 'See docs',
 	'settingsPageHeader.docsLeadingText': 'Learn more in the ',
 	'settingsPageHeader.docsLabel': 'documentation',
 	'spinner.loading': 'Loading…',

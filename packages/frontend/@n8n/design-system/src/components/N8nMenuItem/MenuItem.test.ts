@@ -188,17 +188,6 @@ describe('N8nMenuItem', () => {
 			const menuItem = getByTestId('menu-item');
 			expect(menuItem.textContent).not.toContain('Hidden Label');
 		});
-
-		it('should not render the maturity badges when compact is true', () => {
-			const { html } = render(N8nMenuItem, {
-				props: {
-					item: createMenuItem({ preview: true }),
-					compact: true,
-				},
-				global: { stubs: { ...stubs, N8nFeatureMaturityBadges: true } },
-			});
-			expect(html()).not.toContain('feature-maturity-badges');
-		});
 	});
 
 	describe('disabled prop', () => {
@@ -248,28 +237,6 @@ describe('N8nMenuItem', () => {
 			const menuItem = getByTestId('menu-item');
 			// When disabled, the `to` prop should be undefined (no navigation href)
 			expect(menuItem).not.toHaveAttribute('href');
-		});
-	});
-
-	describe('preview prop', () => {
-		it('should render the maturity badges when preview is true', () => {
-			const { html } = render(N8nMenuItem, {
-				props: {
-					item: createMenuItem({ preview: true }),
-				},
-				global: { stubs: { ...stubs, N8nFeatureMaturityBadges: true } },
-			});
-			expect(html()).toContain('n8n-feature-maturity-badges-stub');
-		});
-
-		it('should not render the maturity badges when preview is false', () => {
-			const { html } = render(N8nMenuItem, {
-				props: {
-					item: createMenuItem({ preview: false }),
-				},
-				global: { stubs: { ...stubs, N8nFeatureMaturityBadges: true } },
-			});
-			expect(html()).not.toContain('n8n-feature-maturity-badges-stub');
 		});
 	});
 

@@ -3,6 +3,7 @@ import { computed } from 'vue';
 
 import { useI18n } from '../../composables/useI18n';
 import N8nBadge from '../N8nBadge';
+import N8nExternalLink from '../N8nExternalLink';
 import N8nTooltip from '../N8nTooltip';
 
 import { resolveFeatureMaturityBadges, useFeatureMaturityCatalog } from './featureMaturityState';
@@ -35,6 +36,7 @@ const resolved = computed(() => {
 			showPreview: !props.hidePreview,
 			showEnterprise: false,
 			testId: undefined,
+			docsUrl: undefined,
 		};
 	}
 
@@ -62,15 +64,18 @@ const enterpriseTestId = computed(() =>
 		>
 			{{ t('previewBadge.preview') }}
 		</N8nBadge>
-		<N8nTooltip
-			v-if="resolved.showEnterprise"
-			placement="top"
-			as-child
-			:content="t('enterpriseReadinessBadge.tooltip')"
-		>
+		<N8nTooltip v-if="resolved.showEnterprise" placement="top" as-child>
 			<N8nBadge variant="outline" size="xxsmall" :data-test-id="enterpriseTestId" tabindex="0">
 				{{ t('enterpriseReadinessBadge.limited') }}
 			</N8nBadge>
+			<template #content>
+				<p>
+					{{ t('enterpriseReadinessBadge.tooltip') }}
+					<N8nExternalLink v-if="resolved.docsUrl" inline size="small" :href="resolved.docsUrl">
+						{{ t('enterpriseReadinessBadge.docsLink') }}
+					</N8nExternalLink>
+				</p>
+			</template>
 		</N8nTooltip>
 	</span>
 </template>

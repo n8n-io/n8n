@@ -14,7 +14,8 @@ export type FeatureMaturityEntry = {
 	limitedEnterpriseSupport: boolean;
 	/**
 	 * Documentation page for this feature.
-	 * `N8nSettingsPageHeader` reads this URL for the docs link.
+	 * The page header reads this URL for its docs link.
+	 * The enterprise badge tooltip links here when the URL is set.
 	 */
 	docsUrl?: string;
 };
@@ -39,7 +40,12 @@ export function resolveFeatureMaturityBadges(
 	catalog: FeatureMaturityCatalog,
 	id: string | undefined,
 	hidden: { preview?: boolean; enterprise?: boolean } = {},
-): { showPreview: boolean; showEnterprise: boolean; testId?: string } {
+): {
+	showPreview: boolean;
+	showEnterprise: boolean;
+	testId?: string;
+	docsUrl?: string;
+} {
 	if (id === undefined) {
 		return { showPreview: false, showEnterprise: false };
 	}
@@ -58,6 +64,7 @@ export function resolveFeatureMaturityBadges(
 		showPreview: entry.preview && !hidden.preview,
 		showEnterprise: entry.limitedEnterpriseSupport && !hidden.enterprise,
 		testId: featureMaturityTestId(id),
+		...(entry.docsUrl === undefined ? {} : { docsUrl: entry.docsUrl }),
 	};
 }
 
