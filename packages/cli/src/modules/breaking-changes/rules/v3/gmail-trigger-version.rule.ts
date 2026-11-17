@@ -52,7 +52,7 @@ export class GmailTriggerVersionRule implements IBreakingChangeWorkflowRule {
 			{
 				action: 'Poll sent or scheduled emails on a schedule',
 				description:
-					'If the workflow must run on sent or scheduled emails, use a Schedule Trigger and a Gmail "Get Many messages" operation with the search "in:sent" or "in:scheduled". Add a Remove Duplicates node set to "Remove Items Processed in Previous Executions" on the message ID, just before the steps that must not repeat.',
+					'If the workflow must run on sent or scheduled emails, use a Schedule Trigger and a Gmail "Get Many messages" operation with the search "in:sent" or "in:scheduled". Add a Remove Duplicates node set to "Remove Items Processed in Previous Executions" on the message ID, just before the steps that must not repeat. Raise its History Size (10,000 by default) if the search can return more messages than that.',
 			},
 		];
 	}

@@ -64,11 +64,16 @@ describe('GmailTriggerVersionRule', () => {
 		it('should explain the poll limit and how to migrate draft and sent/scheduled filters', async () => {
 			const recommendations = await rule.getRecommendations([]);
 
-			const text = recommendations.map((r) => `${r.action} ${r.description}`).join(' ');
-			expect(recommendations).toHaveLength(4);
-			expect(text).toContain('Max Emails per Poll');
-			expect(text).toContain('Include Drafts');
-			expect(text).toContain('Schedule Trigger');
+			expect(recommendations.map((r) => r.action)).toEqual([
+				'Replace the node with Gmail Trigger 1.4',
+				'Raise "Max Emails per Poll"',
+				'Enable "Include Drafts"',
+				'Poll sent or scheduled emails on a schedule',
+			]);
+			expect(recommendations[2].description).toContain('Include Drafts');
+			expect(recommendations[3].description).toContain('Schedule Trigger');
+			expect(recommendations[3].description).toContain('Remove Duplicates');
+			expect(recommendations[3].description).toContain('History Size');
 		});
 	});
 
