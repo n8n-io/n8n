@@ -70,6 +70,8 @@ interface ChainParameters {
 	kind?: string;
 	/** The agent: `options.returnIntermediateSteps`. Without tools the list is empty. */
 	returnIntermediateSteps?: boolean;
+	/** The agent: `options.maxIterations`. It counts when the model calls a tool. */
+	maxIterations?: number;
 	/** The version of the v1 node: batches of the chain start with version 1.7. */
 	nodeVersion?: number;
 	batchSize?: number;
@@ -85,6 +87,14 @@ interface ChainParameters {
 interface Outcome {
 	item?: Item;
 	error?: string;
+	/** The agent of version 3: the answer calls a tool, so the engine runs the node again. */
+	again?: boolean;
+}
+
+/** The request of one item: the body, and true when it goes to the Responses API. */
+interface ModelRequest {
+	responses: boolean;
+	body: Record<string, unknown>;
 }
 
 interface ChatMessage {
@@ -206,6 +216,63 @@ function failure(status: number, body: unknown): string {
 	return clientMessage(status, body);
 }
 
+/**
+ * The message of the OpenAI client for a request without an answer. The text of the failure
+ * names the code of Node.js; the client reads a timeout from it.
+ */
+function connectionMessage(text: string): string {
+	const lower = text.toLowerCase();
+	const timeout =
+		lower.includes('timedout') || lower.includes('timed out') || lower.includes('timeout');
+	return timeout ? 'Request timed out.' : 'Connection error.';
+}
+
+/**
+ * The agent of version 2 (LangChain's executor) with a tool call and no tools: it adds the
+ * answer of the model and, for each call, the text that the tool is not valid. Returns an
+ * error text when the answer is not one that this node can repeat as v1 does.
+ */
+function answerToolCalls(request: ModelRequest, data: unknown): string | undefined {
+	const messages = request.body.messages;
+	if (request.responses || !Array.isArray(messages) || !isObject(data)) {
+		return 'AI Agent: the model called a tool, and the agent has no tools';
+	}
+	const first: unknown = Array.isArray(data.choices) ? data.choices[0] : undefined;
+	const message = isObject(first) && isObject(first.message) ? first.message : {};
+	const calls = Array.isArray(message.tool_calls) ? message.tool_calls : [];
+	const sent: unknown[] = [];
+	const results: unknown[] = [];
+	for (const call of calls) {
+		const fn = isObject(call) && isObject(call.function) ? call.function : undefined;
+		if (!isObject(call) || fn === undefined || typeof fn.arguments !== 'string') {
+			return 'AI Agent: the model called a tool, and the agent has no tools';
+		}
+		let args: unknown;
+		try {
+			args = JSON.parse(fn.arguments);
+		} catch {
+			return 'AI Agent: the model called a tool, and the agent has no tools';
+		}
+		sent.push({
+			id: call.id,
+			type: 'function',
+			function: { name: fn.name, arguments: JSON.stringify(args) },
+		});
+		results.push({
+			role: 'tool',
+			content: `${String(fn.name)} is not a valid tool, try another one.`,
+			tool_call_id: call.id,
+		});
+	}
+	messages.push({
+		role: 'assistant',
+		content: typeof message.content === 'string' ? message.content : '',
+		tool_calls: sent,
+	});
+	for (const result of results) messages.push(result);
+	return undefined;
+}
+
 /** The wait of LangChain's caller before try `attempt + 1` (p-retry with `randomize`). */
 function retryWait(random: number, attempt: number): number {
 	let factor = 1;
@@ -307,11 +374,7 @@ function agentOutput(parts: Array<Record<string, unknown>>, responses: boolean):
 }
 
 /** The request body of the item, and true when it goes to the Responses API. */
-function requestOf(
-	item: ItemParameters,
-	ai: AiModel,
-	agent: boolean,
-): { responses: boolean; body: Record<string, unknown> } {
+function requestOf(item: ItemParameters, ai: AiModel, agent: boolean): ModelRequest {
 	const options = ai.options ?? {};
 	const maxTokens = options.maxTokens === -1 ? undefined : options.maxTokens;
 	const model = ai.model ?? '';
@@ -352,6 +415,7 @@ export default defineNode<ChainParameters>({
 			default: [
 				'kind',
 				'returnIntermediateSteps',
+				'maxIterations',
 				'nodeVersion',
 				'batchSize',
 				'delayBetweenBatches',
@@ -365,45 +429,38 @@ export default defineNode<ChainParameters>({
 		const batch = parameters.batch ?? [];
 		const ai = parameters.aiModel ?? {};
 		const runs: Array<{ error: string | null }> = [];
-		// True when the credential has an organization (the flag `f0a11c001` of
-		// `src/convert/ai-cluster.ts`). The credential type then injects a header that the
-		// LangChain client does not send, so the request names the key itself.
 		// The OpenRouter model is the same LangChain client with another credential type, which
 		// injects the key only, and without the header of the OpenAI nodes.
 		const openAi = ai.provider === 'openAi';
+		// True when the credential has an organization (the flag `f0a11c001` of
+		// `src/convert/ai-cluster.ts`). The credential type then injects a header that the
+		// LangChain client does not send, so the request names the key itself.
 		const hasOrganization = openAi && ctx.credentialFlag(credential, 'f0a11c001');
 		const platform: Record<string, string> = openAi
 			? { 'openai-platform': 'org-qkmJQuJ2WnvoIKMr2UJwIJkZ' }
 			: {};
-		const items: Item[] = [];
 		const agent = parameters.kind === 'agent';
+		const version = parameters.nodeVersion ?? 1.9;
 		const size = parameters.batchSize ?? (agent ? 1 : 5);
 		const delay = parameters.delayBetweenBatches ?? 0;
 		// The chain has batches from version 1.7, for a batch size above 1. The agent has them always.
-		const batched = agent ? size >= 1 : (parameters.nodeVersion ?? 1.9) >= 1.7 && size > 1;
+		const batched = agent ? size >= 1 : version >= 1.7 && size > 1;
 		const step = batched ? size : 1;
-		for (let start = 0; start < batch.length; start += step) {
-			// v1 starts the requests of a batch together, so all of them run before a failure counts.
-			const outcomes: Outcome[] = [];
-			for (const item of batch.slice(start, start + step)) {
-				if (ai.provider !== 'openAi' && ai.provider !== 'openRouter') {
-					outcomes.push({
-						error: 'Basic LLM Chain: the chat model is not in the compiled library',
-					});
-					continue;
-				}
-				// An expression that finds no value gives undefined, as in v1.
-				if (item.text === undefined) {
-					outcomes.push({ error: 'No prompt specified' });
-					continue;
-				}
-				const request = requestOf(item, ai, agent);
-				const tries = (ai.options?.maxRetries ?? 2) + 1;
-				// v1 records the run of the model when the request starts.
-				const run: { error: string | null } = { error: null };
-				runs.push(run);
-				let data: unknown;
-				for (let attempt = 1; run.error === null; attempt++) {
+		const maxIterations = parameters.maxIterations ?? 10;
+		const tries = (ai.options?.maxRetries ?? 2) + 1;
+
+		/**
+		 * One call of the model, with the tries of LangChain's caller. It records the run of the
+		 * model sub-node when the request starts, and gives the body of the answer or the error.
+		 */
+		const send = async (request: ModelRequest): Promise<{ data?: unknown; error?: string }> => {
+			const run: { error: string | null } = { error: null };
+			runs.push(run);
+			for (let attempt = 1; ; attempt++) {
+				let status = 0;
+				let body: unknown;
+				let transport = '';
+				try {
 					const response = await ctx.http<unknown>({
 						method: 'POST',
 						url: request.responses
@@ -417,64 +474,102 @@ export default defineNode<ChainParameters>({
 						credential,
 						inject: !hasOrganization,
 					});
-					if (response.status < 400) {
-						data = response.body;
-						break;
-					}
-					const final = response.status === 429 || NO_RETRY.includes(response.status);
-					if (final || attempt >= tries) {
-						run.error = failure(response.status, response.body);
-					} else {
-						await ctx.wait({ duration: retryWait(ctx.random(), attempt) });
-					}
+					status = response.status;
+					body = response.body;
+				} catch (error) {
+					// The request has no answer (a network failure). LangChain tries it again.
+					transport = messageOf(error);
 				}
-				if (run.error !== null) {
-					outcomes.push({ error: run.error });
-					continue;
+				if (status > 0 && status < 400) return { data: body };
+				const final = status === 429 || NO_RETRY.includes(status);
+				if (final || attempt >= tries) {
+					run.error = status > 0 ? failure(status, body) : connectionMessage(transport);
+					return { error: run.error };
 				}
+				await ctx.wait({ duration: retryWait(ctx.random(), attempt) });
+			}
+		};
+
+		/**
+		 * The root for one item. `again` is true when the answer calls a tool and the agent of
+		 * version 3 gives the call to n8n's engine: the engine then runs the whole node again.
+		 */
+		const one = async (item: ItemParameters, iteration: number): Promise<Outcome> => {
+			if (ai.provider !== 'openAi' && ai.provider !== 'openRouter') {
+				return { error: 'Basic LLM Chain: the chat model is not in the compiled library' };
+			}
+			if (agent && version >= 3 && iteration >= maxIterations) {
+				return {
+					error: `Max iterations (${maxIterations}) reached. The agent could not complete the task within the allowed number of iterations.`,
+				};
+			}
+			// An expression that finds no value gives undefined, as in v1.
+			if (item.text === undefined) return { error: 'No prompt specified' };
+			const request = requestOf(item, ai, agent);
+			for (let turn = 1; ; turn++) {
+				const answer = await send(request);
+				if (answer.error !== undefined) return { error: answer.error };
+				const run = runs[runs.length - 1];
 				let parts: Array<Record<string, unknown>> = [];
 				try {
-					if (request.responses) parts = responseParts(data);
-					else parts = [{ type: 'text', text: completionText(data) }];
+					if (request.responses) parts = responseParts(answer.data);
+					else parts = [{ type: 'text', text: completionText(answer.data) }];
 				} catch (error) {
 					run.error = messageOf(error);
-					outcomes.push({ error: run.error });
-					continue;
+					return { error: run.error };
 				}
 				if (agent) {
-					if (callsTool(data, request.responses)) {
-						outcomes.push({
-							error: 'AI Agent: the model called a tool, and the agent has no tools',
-						});
+					if (callsTool(answer.data, request.responses)) {
+						// The agent has no tools. Version 3 gives the calls to the engine, which has no
+						// tool to run and runs the agent again. Version 2 answers each call itself.
+						if (version >= 3) return { again: true };
+						if (turn >= maxIterations) {
+							return { item: { output: 'Agent stopped due to max iterations.' } };
+						}
+						const failed = answerToolCalls(request, answer.data);
+						if (failed !== undefined) return { error: failed };
 						continue;
 					}
-					const item: Item = { output: agentOutput(parts, request.responses) };
-					if (parameters.returnIntermediateSteps === true) item.intermediateSteps = [];
-					outcomes.push({ item });
-					continue;
+					const output: Item = { output: agentOutput(parts, request.responses) };
+					if (parameters.returnIntermediateSteps === true) output.intermediateSteps = [];
+					return { item: output };
 				}
 				// The string output parser of the chain works after the run of the model.
 				try {
 					let text = '';
 					for (const part of parts) text += partText(part);
-					outcomes.push({ item: { text: text.trim() } });
+					return { item: { text: text.trim() } };
 				} catch (error) {
-					outcomes.push({ error: messageOf(error) });
+					return { error: messageOf(error) };
 				}
 			}
-			for (const outcome of outcomes) {
-				if (outcome.item !== undefined) {
-					items.push(outcome.item);
-				} else if (parameters.continueOnFail === true) {
-					items.push({ error: outcome.error });
-				} else {
-					return [{ items: [], runs, error: outcome.error }];
+		};
+
+		for (let iteration = 0; ; iteration++) {
+			const items: Item[] = [];
+			let again = false;
+			for (let start = 0; start < batch.length; start += step) {
+				// v1 starts the requests of a batch together, so all of them run before a failure counts.
+				const outcomes: Outcome[] = [];
+				for (const item of batch.slice(start, start + step)) {
+					outcomes.push(await one(item, iteration));
+				}
+				for (const outcome of outcomes) {
+					if (outcome.again === true) {
+						again = true;
+					} else if (outcome.item !== undefined) {
+						items.push(outcome.item);
+					} else if (parameters.continueOnFail === true) {
+						items.push({ error: outcome.error });
+					} else {
+						return [{ items: [], runs, error: outcome.error }];
+					}
+				}
+				if (batched && start + step < batch.length && delay > 0) {
+					await ctx.wait({ duration: delay });
 				}
 			}
-			if (batched && start + step < batch.length && delay > 0) {
-				await ctx.wait({ duration: delay });
-			}
+			if (!again) return [{ items, runs }];
 		}
-		return [{ items, runs }];
 	},
 });

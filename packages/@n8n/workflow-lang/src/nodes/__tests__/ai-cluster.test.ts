@@ -24,7 +24,7 @@ import { runReference } from '../../reference/runner.ts';
 import { runModule } from '../../testing/vm.ts';
 import { ENGINE_CASES, AI_HOST_CASES } from './ai-cases.ts';
 import type { EquivalenceCase, NormalRequest, Recording } from './equivalence.ts';
-import { applyCredential, normalizeRequest } from './equivalence.ts';
+import { applyCredential, networkErrorText, normalizeRequest } from './equivalence.ts';
 
 const here = dirname(fileURLToPath(import.meta.url));
 const recordings: Record<string, Recording> = JSON.parse(
@@ -114,7 +114,13 @@ function fixtureOf(c: EquivalenceCase, result: ReturnType<typeof convertWorkflow
 		now: 0,
 		seed: 1,
 		trace: true,
-		effects: { [NODE]: c.responses.map((r) => ({ status: 200, headers: {}, ...r })) },
+		effects: {
+			[NODE]: c.responses.map((r) =>
+				r.networkError
+					? { $error: networkErrorText(r.networkError) }
+					: { status: 200, headers: {}, ...r },
+			),
+		},
 		credentialFlags,
 	};
 }

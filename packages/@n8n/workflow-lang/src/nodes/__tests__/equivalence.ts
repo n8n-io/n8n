@@ -21,7 +21,17 @@ export interface EquivalenceCase {
 	 */
 	responseBytes?: boolean;
 	/** HTTP responses, in request order. The last one repeats. */
-	responses: Array<{ status?: number; headers?: Record<string, string>; body: unknown }>;
+	responses: Array<{
+		status?: number;
+		headers?: Record<string, string>;
+		body: unknown;
+		/**
+		 * The request fails without an answer: the code that Node.js gives the failure
+		 * (`ECONNREFUSED`). The recorder throws the error of the HTTP client; the library side
+		 * gets an effect error whose text names the code.
+		 */
+		networkError?: string;
+	}>;
 	/**
 	 * Results of n8n service calls (`ctx.service`, spec 9.9), in call order. The
 	 * recorder gives them to the v1 node through a recording data-table service.
@@ -355,4 +365,11 @@ export function applyCredential(
 		};
 	}
 	return raw;
+}
+
+/** The text of the failure of a request without an answer, as Node.js writes it for the code. */
+export function networkErrorText(code: string): string {
+	if (code === 'ENOTFOUND' || code === 'EAI_AGAIN') return `getaddrinfo ${code} api.example.com`;
+	if (code === 'ECONNRESET') return 'read ECONNRESET';
+	return `connect ${code} 203.0.113.7:443`;
 }

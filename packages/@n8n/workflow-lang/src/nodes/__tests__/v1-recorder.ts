@@ -26,6 +26,7 @@ import { fileURLToPath } from 'node:url';
 import type { EquivalenceCase, RawRequest, Recording, ServiceCallRecord } from './equivalence.ts';
 import { normalizeRequest } from './equivalence.ts';
 import { fixtureBytes } from '../../reference/binary-response.ts';
+import { networkErrorText } from './equivalence.ts';
 
 const here = dirname(fileURLToPath(import.meta.url));
 const packagesDir = join(here, '../../../../..');
@@ -391,6 +392,7 @@ function installFakeHttp(
 				acceptDefault: options.json ? 'application/json' : 'application/json, text/plain, */*',
 			});
 			const r = next();
+			if (r.networkError) throw networkFailure(r.networkError);
 			if ((r.status ?? 200) >= 400 && options.ignoreHttpStatusErrors) {
 				return options.returnFullResponse
 					? { statusCode: r.status, headers: r.headers ?? {}, body: r.body }
@@ -432,6 +434,7 @@ function installFakeHttp(
 				acceptDefault: options.json === true ? 'application/json' : '*/*',
 			});
 			const r = next();
+			if (r.networkError) throw networkFailure(r.networkError);
 			// `simple: false`: the request library gives the answer of a failed request.
 			if ((r.status ?? 200) >= 400 && options.simple === false) {
 				return options.resolveWithFullResponse
@@ -453,6 +456,11 @@ function installFakeHttp(
 		// The model sub-nodes ask for the egress filter of the execution; the fake `fetch` answers.
 		egressFilter: () => network.passthroughEgressFilter,
 	});
+}
+
+/** The error of Node.js for a request that fails without an answer. */
+function networkFailure(code: string): Error {
+	return Object.assign(new Error(networkErrorText(code)), { code, errno: -1, syscall: 'connect' });
 }
 
 /** Headers that name the client library or the transport. A compiled node does not send them. */
@@ -482,6 +490,9 @@ function installFakeFetch(responses: EquivalenceCase['responses'], recorded: Raw
 		} catch {}
 		recorded.push({ method: request.method, url: request.url, headers, body });
 		const r = responses[Math.min(index++, responses.length - 1)] ?? { body: {} };
+		// The fetch of Node.js fails with a TypeError whose cause has the code.
+		if (r.networkError)
+			throw new TypeError('fetch failed', { cause: networkFailure(r.networkError) });
 		return new Response(typeof r.body === 'string' ? r.body : JSON.stringify(r.body), {
 			status: r.status ?? 200,
 			headers: { 'content-type': 'application/json', ...(r.headers ?? {}) },

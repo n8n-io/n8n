@@ -10,7 +10,7 @@
  * connected tools (a compiled workflow has no tool sub-nodes), prompt
  * templates and background mode.
  */
-import { defineNode, type Item } from '@n8n/workflow-lang';
+import { defineNode, type HttpResponse, type Item } from '@n8n/workflow-lang';
 
 interface Locator {
 	__rl?: boolean;
@@ -112,6 +112,34 @@ const STATUS_MESSAGES: Record<string, string> = {
 		'Service unavailable - try again later or consider setting this node to retry automatically (in the node settings)',
 	'504': 'Gateway timed out - perhaps try again later?',
 };
+
+/** The messages of n8n's NodeApiError for a request without an answer, by the code of Node.js. */
+const NETWORK_MESSAGES: Array<[string, string]> = [
+	['ECONNREFUSED', 'The service refused the connection - perhaps it is offline'],
+	[
+		'ENOTFOUND',
+		'The connection cannot be established, this usually occurs due to an incorrect host (domain) value',
+	],
+	[
+		'ETIMEDOUT',
+		"The connection timed out, consider setting the 'Retry on Fail' option in the node settings",
+	],
+	[
+		'ECONNRESET',
+		'The connection to the server was closed unexpectedly, perhaps it is offline. You can retry the request immediately or wait and retry later.',
+	],
+	['EAI_AGAIN', 'The DNS server returned an error, perhaps the server is offline'],
+	['EHOSTUNREACH', 'The host is unreachable, perhaps the server is offline'],
+];
+
+/** The error of the v1 node for a request that fails without an answer. */
+function networkError(error: unknown): Error {
+	const text = isObject(error) && typeof error.message === 'string' ? error.message : String(error);
+	for (const [code, message] of NETWORK_MESSAGES) {
+		if (text.includes(code)) return new Error(message);
+	}
+	return new Error(text);
+}
 
 function statusMessage(status: number): string {
 	const known = STATUS_MESSAGES[String(status)];
@@ -234,14 +262,20 @@ export default defineNode<OpenAiParameters>({
 						];
 						body.messages = messages;
 					}
-					const response = await ctx.http<Record<string, unknown> | null>({
-						method: 'POST',
-						url: '{{$credentials.url}}/chat/completions',
-						headers: {},
-						qs: {},
-						body,
-						credential,
-					});
+					// A request that fails without an answer gives the error text of the v1 node.
+					let response: HttpResponse<Record<string, unknown> | null>;
+					try {
+						response = await ctx.http<Record<string, unknown> | null>({
+							method: 'POST',
+							url: '{{$credentials.url}}/chat/completions',
+							headers: {},
+							qs: {},
+							body,
+							credential,
+						});
+					} catch (error) {
+						throw networkError(error);
+					}
 					if (response.status >= 400) throw new Error(statusMessage(response.status));
 					const result = response.body;
 					if (!isObject(result)) continue;
@@ -356,14 +390,20 @@ export default defineNode<OpenAiParameters>({
 					}
 					body.text = config;
 				}
-				const response = await ctx.http<Record<string, unknown>>({
-					method: 'POST',
-					url: '{{$credentials.url}}/responses',
-					headers: {},
-					qs: {},
-					body: removeEmpty(body),
-					credential,
-				});
+				// A request that fails without an answer gives the error text of the v1 node.
+				let response: HttpResponse<Record<string, unknown>>;
+				try {
+					response = await ctx.http<Record<string, unknown>>({
+						method: 'POST',
+						url: '{{$credentials.url}}/responses',
+						headers: {},
+						qs: {},
+						body: removeEmpty(body),
+						credential,
+					});
+				} catch (error) {
+					throw networkError(error);
+				}
 				if (response.status >= 400) throw new Error(statusMessage(response.status));
 				const result = response.body;
 				if (result.error === null) result.error = undefined;

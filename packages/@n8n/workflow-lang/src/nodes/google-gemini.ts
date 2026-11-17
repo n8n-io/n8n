@@ -11,7 +11,7 @@
  * once for all items, as the router of the v1 node does: under "continue on fail"
  * an item that fails gives `{ error }`, and else the first failure stops the node.
  */
-import { defineNode, type Item } from '@n8n/workflow-lang';
+import { defineNode, type HttpResponse, type Item } from '@n8n/workflow-lang';
 
 interface Locator {
 	__rl?: boolean;
@@ -57,6 +57,34 @@ const STATUS_MESSAGES: Record<string, string> = {
 		'Service unavailable - try again later or consider setting this node to retry automatically (in the node settings)',
 	'504': 'Gateway timed out - perhaps try again later?',
 };
+
+/** The messages of n8n's NodeApiError for a request without an answer, by the code of Node.js. */
+const NETWORK_MESSAGES: Array<[string, string]> = [
+	['ECONNREFUSED', 'The service refused the connection - perhaps it is offline'],
+	[
+		'ENOTFOUND',
+		'The connection cannot be established, this usually occurs due to an incorrect host (domain) value',
+	],
+	[
+		'ETIMEDOUT',
+		"The connection timed out, consider setting the 'Retry on Fail' option in the node settings",
+	],
+	[
+		'ECONNRESET',
+		'The connection to the server was closed unexpectedly, perhaps it is offline. You can retry the request immediately or wait and retry later.',
+	],
+	['EAI_AGAIN', 'The DNS server returned an error, perhaps the server is offline'],
+	['EHOSTUNREACH', 'The host is unreachable, perhaps the server is offline'],
+];
+
+/** The error of the v1 node for a request that fails without an answer. */
+function networkError(error: unknown): Error {
+	const text = isObject(error) && typeof error.message === 'string' ? error.message : String(error);
+	for (const [code, message] of NETWORK_MESSAGES) {
+		if (text.includes(code)) return new Error(message);
+	}
+	return new Error(text);
+}
 
 function statusMessage(status: number): string {
 	const known = STATUS_MESSAGES[String(status)];
@@ -195,14 +223,20 @@ export default defineNode<GeminiParameters>({
 			const generate = async (): Promise<Record<string, unknown>> => {
 				// n8n's request helper sends a request again, once, after a 401 answer.
 				for (let attempt = 1; ; attempt++) {
-					const response = await ctx.http<unknown>({
-						method: 'POST',
-						url: `{{$credentials.host}}/v1beta/${model}:generateContent`,
-						headers: {},
-						qs: {},
-						body,
-						credential,
-					});
+					// A request that fails without an answer gives the error text of the v1 node.
+					let response: HttpResponse<unknown>;
+					try {
+						response = await ctx.http<unknown>({
+							method: 'POST',
+							url: `{{$credentials.host}}/v1beta/${model}:generateContent`,
+							headers: {},
+							qs: {},
+							body,
+							credential,
+						});
+					} catch (error) {
+						throw networkError(error);
+					}
 					if (response.status === 401 && attempt === 1) continue;
 					if (response.status >= 400) throw new Error(statusMessage(response.status));
 					const answer = response.body;

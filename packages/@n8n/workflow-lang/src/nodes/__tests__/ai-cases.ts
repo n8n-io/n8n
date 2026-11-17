@@ -1120,8 +1120,8 @@ export const AGENT_ENGINE_CASES: EquivalenceCase[] = [
 	agent('intermediate steps', 3.1, gpt, [completion('Hi')], {
 		options: { returnIntermediateSteps: true },
 	}),
-	agent('intermediate steps, version 2', 2, gpt, [completion('Hi')], {
-		options: { returnIntermediateSteps: true, systemMessage: '' },
+	agent('empty system message, version 2', 2, gpt, [completion('Hi')], {
+		options: { systemMessage: '' },
 	}),
 	agent('empty answer', 3.1, gpt, [completion('')]),
 	agent('answer without content', 2.2, gpt, [completion(null)]),
@@ -1398,6 +1398,176 @@ export const AI_HOST_CASES: EquivalenceCase[] = [
 	),
 ];
 
+/** An answer of the model that calls a tool. The agents of these cases have no tools. */
+const toolCall = (content: string | null = null) => ({
+	body: {
+		id: 'chatcmpl-1',
+		choices: [
+			{
+				index: 0,
+				message: {
+					role: 'assistant',
+					content,
+					tool_calls: [
+						{
+							id: 'call_1',
+							type: 'function',
+							function: { name: 'lookup', arguments: '{ "a": 1 }' },
+						},
+					],
+				},
+				finish_reason: 'tool_calls',
+			},
+		],
+	},
+});
+const functionCall = {
+	body: {
+		id: 'resp_1',
+		object: 'response',
+		output: [
+			{ type: 'function_call', id: 'fc_1', call_id: 'call_1', name: 'lookup', arguments: '{}' },
+		],
+	},
+};
+
+/** The model calls a tool, and the agent has none. */
+const TOOL_CALL_CASES: EquivalenceCase[] = [
+	...[3, 3.1].flatMap((version) => [
+		agent(`${version}, tool call, then answer`, version, gpt, [toolCall(), completion('after')]),
+		agent(
+			`${version}, tool calls up to the limit`,
+			version,
+			gpt,
+			[toolCall()],
+			{
+				options: { maxIterations: 3, returnIntermediateSteps: true },
+			},
+			{
+				expectedError:
+					'Max iterations (3) reached. The agent could not complete the task within the allowed number of iterations.',
+			},
+		),
+	]),
+	agent(
+		'3.1, tool calls up to the default limit',
+		3.1,
+		gpt,
+		[toolCall('thinking')],
+		{},
+		{
+			expectedError:
+				'Max iterations (10) reached. The agent could not complete the task within the allowed number of iterations.',
+		},
+	),
+	agent('3.1, function call of the Responses API', 3.1, openAiModel(1.3, 'gpt-4o', {}), [
+		functionCall,
+		response(outputText('after')),
+	]),
+	agent(
+		'3.1, two items, the first calls a tool',
+		3.1,
+		gpt,
+		[toolCall(), completion('b'), completion('c'), completion('d')],
+		{},
+		two,
+	),
+	agent(
+		'3.1, tool calls up to the limit, continue',
+		3.1,
+		gpt,
+		[toolCall()],
+		{
+			options: { maxIterations: 2 },
+		},
+		{ ...two, settings: { onError: 'continueRegularOutput' } },
+	),
+	...[2, 2.1, 2.2].flatMap((version) => [
+		agent(`${version}, tool call, then answer`, version, gpt, [
+			toolCall('thinking aloud'),
+			completion('after'),
+		]),
+		agent(`${version}, tool calls up to the limit`, version, gpt, [toolCall()], {
+			options: { maxIterations: 3 },
+		}),
+	]),
+];
+
+const refused = { body: {}, networkError: 'ECONNREFUSED' };
+
+/** A request that fails without an answer. */
+const NETWORK_CASES: EquivalenceCase[] = [
+	...['ECONNREFUSED', 'ENOTFOUND', 'ETIMEDOUT', 'ECONNRESET', 'EAI_AGAIN', 'EHOSTUNREACH'].flatMap(
+		(code) => [
+			message(`network ${code}, continue`, [{ body: {}, networkError: code }, completion('late')], {
+				onError: 'continueRegularOutput',
+			}),
+			chain(
+				`network ${code}, continue`,
+				openAiModel(1.2, 'gpt-4o', { maxRetries: 0 }),
+				[{ body: {}, networkError: code }, completion('late')],
+				{},
+				{ ...two, settings: { onError: 'continueRegularOutput' } },
+			),
+		],
+	),
+	message(
+		'network, stop',
+		[refused],
+		{},
+		{
+			expectedError: 'The service refused the connection - perhaps it is offline',
+		},
+	),
+	message('network, error output', [completion('a'), refused], { onError: 'continueErrorOutput' }),
+	responsesNode('network, continue', [refused, response(outputText('b'))], {
+		onError: 'continueRegularOutput',
+	}),
+	anthropicMessage(
+		'network, continue',
+		[refused, claude([claudeText('b')])],
+		{},
+		{
+			...twoPrompts,
+			settings: { onError: 'continueRegularOutput' },
+		},
+	),
+	geminiMessage(
+		'network, error output',
+		[refused, gemini([{ text: 'b' }])],
+		{},
+		{
+			...twoGeminiPrompts,
+			items: [
+				{ q: 'one', t: 0.1 },
+				{ q: 'two', t: 0.2 },
+			],
+			settings: { onError: 'continueErrorOutput' },
+		},
+	),
+	chain('network, then answer', openAiModel(1.2, 'gpt-4o', { maxRetries: 1 }), [
+		refused,
+		completion('late'),
+	]),
+	chain(
+		'network twice, stop',
+		openAiModel(1.2, 'gpt-4o', { maxRetries: 1 }),
+		[refused],
+		{},
+		{
+			expectedError: 'Connection error.',
+		},
+	),
+	agent(
+		'network, error output',
+		3.1,
+		openAiModel(1.2, 'gpt-4o', { maxRetries: 0 }),
+		[refused, completion('ok')],
+		{},
+		{ ...two, settings: { onError: 'continueErrorOutput' } },
+	),
+];
+
 /** The chat model sub-node `lmChatOpenRouter`. */
 function openRouterModel(name: string, options: Record<string, unknown> = {}): SubNodeCase {
 	return {
@@ -1596,5 +1766,7 @@ export const ENGINE_CASES: EquivalenceCase[] = [
 	...AI_ENGINE_CASES,
 	...AGENT_ENGINE_CASES,
 	...PROMPT_SOURCE_CASES,
+	...TOOL_CALL_CASES,
+	...NETWORK_CASES,
 	...OPEN_ROUTER_CASES,
 ];

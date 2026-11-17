@@ -586,12 +586,24 @@ workflow static data under the node name and the session key, with the same wind
 
 ### Known differences from v1 in the native nodes
 
-- Agent version 3 and 3.1: v1 stores the first output as execution custom data. The native node does not.
-- An answer of the model with a tool call, for an agent without tools: v1 calls the model again. The native
-  node fails the item. A model has no tool to call there, so the case needs a faulty provider.
-- A network failure of a model request (no HTTP status) stops the node, also under a "continue" setting.
+- **Execution custom data (agent versions 3 and 3.1).** v1 stores the first output of the agent as execution
+  custom data (`options.autoSaveHighlightedData`, default on; n8n shows it on the execution and
+  `$execution.customData` reads it). The runtime has no execution custom data (spec 9.6: not built), and
+  the fallback host gives a step an empty `customData` and drops what the step writes. So the agent in the
+  host loses the value too: the host is not more exact than the native node. What the runtime lacks: an
+  effect that sets a key of the execution custom data, and n8n that stores it on the execution.
+- **A request without an answer.** The native nodes read the code of Node.js (`ECONNREFUSED`, ...) from the
+  text of the effect error, as the HTTP Request library node does, and give the v1 message for it. This
+  holds when the runtime writes that code in the text.
 - The custom error texts that v1 makes from the code of an OpenAI error in the vendor node were not seen in
   the recorder (its failed answer has no error code at the place where the node looks).
+
+Closed and proven against the engine: a tool call of the model for an agent without tools (version 3: the
+engine runs the agent again, up to `maxIterations`; version 2: LangChain answers "... is not a valid tool" and
+calls the model again), and a request without an answer under each error setting (the vendor nodes give
+n8n's message for the code; the chain and the agent give "Connection error." or "Request timed out." after
+the tries of LangChain). An agent before version 3 with `returnIntermediateSteps` stays in the host: a tool
+call there is a step with LangChain objects in it.
 
 ### Not native yet, in order of workflows
 

@@ -312,9 +312,12 @@ function toolsAgent(
 	if (streaming !== false && (context.streams || streaming !== true) && version >= 2.1) {
 		return 'streaming';
 	}
-	if (typeof (options.maxIterations ?? 10) !== 'number') return 'max iterations';
+	const maxIterations = options.maxIterations ?? 10;
+	if (typeof maxIterations !== 'number') return 'max iterations';
 	const steps = options.returnIntermediateSteps ?? false;
 	if (typeof steps !== 'boolean') return 'intermediate steps';
+	// Before version 3, a tool call of the model is a step with LangChain objects in it.
+	if (steps && version < 3) return 'intermediate steps before version 3';
 	const batching = options.batching ?? {};
 	if (!isRecord(batching)) return 'batching';
 	const size = batching.batchSize ?? 1;
@@ -323,6 +326,7 @@ function toolsAgent(
 	const shared: Record<string, unknown> = {
 		kind: 'agent',
 		nodeVersion: version,
+		maxIterations,
 		batchSize: size,
 		delayBetweenBatches: delay,
 	};

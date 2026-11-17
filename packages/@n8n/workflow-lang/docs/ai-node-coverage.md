@@ -18,6 +18,26 @@ workflow; an expression that does not translate can still send a node to the hos
 | Workflows where every AI root node is native, now | 4988 |
 | Workflows with one or more native AI root nodes, now | 5505 |
 
+### Measured by a real conversion (sample)
+
+A sample of 2,019 of the 12,112 AI workflows (each sixth one) went through `convertWorkflow`
+(with `trace: 'all'`, a stub for called workflows, and no node sources for the node compiler)
+and, when no node was left for the fallback host, through `compile`.
+
+| Result | Workflows of the sample | Share | Scaled to 12,112 |
+|---|---|---|---|
+| No AI node on the fallback host | 909 | 45.0% | about 5,450 |
+| Compiles fully (no fallback node of any kind, and the source compiles) | 310 | 15.4% | about 1,860 |
+| Fallback nodes are AI nodes only | 328 | 16.2% | about 1,970 |
+| Fallback nodes are other nodes only | 599 | 29.7% | about 3,590 |
+
+No conversion failed, and each source without a fallback node compiled. The run had no node
+sources, so a node of `n8n-nodes-base` that runs only as code compiled from its source counts
+as a fallback node here: the count of workflows that compile fully is a lower bound for the
+whole pipeline. The fallback node types with the most workflows in the sample: `agent` 640,
+`code` 342, `gmail` 220, `chainLlm` 210, `slack` 178, `googleDrive` 124, `googleSheets` 121,
+`set` 115, `openAi` 101, `microsoftOutlook` 95, `postgres` 94, `extractFromFile` 94.
+
 A root node is an AI node that is not a sub-node and not a trigger. A workflow with only a
 chat trigger or with unconnected sub-nodes has no root node, and counts as native in both rows.
 
