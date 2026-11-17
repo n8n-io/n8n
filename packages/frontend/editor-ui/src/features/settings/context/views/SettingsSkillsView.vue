@@ -1,5 +1,15 @@
 <script lang="ts" setup>
-import { computed, nextTick, onBeforeUnmount, onMounted, ref, useTemplateRef, watch } from 'vue';
+import {
+	computed,
+	h,
+	nextTick,
+	onBeforeUnmount,
+	onMounted,
+	ref,
+	useCssModule,
+	useTemplateRef,
+	watch,
+} from 'vue';
 import { useUsersStore } from '@n8n/stores/users.store';
 import { useRoute, useRouter } from 'vue-router';
 import { useDebounceFn, useLocalStorage } from '@vueuse/core';
@@ -26,6 +36,7 @@ import { TELEMETRY_EVENT } from '@n8n/telemetry';
 import {
 	N8nActionDropdown,
 	N8nButton,
+	N8nCheckbox,
 	N8nHeading,
 	N8nIcon,
 	N8nInput,
@@ -101,6 +112,7 @@ const FILTER_KEYS: Array<keyof SkillFilters> = ['scope', 'agentId', 'createdById
 const NO_FILTERS: SkillFilters = { scope: '', agentId: '', createdById: '' };
 
 const i18n = useI18n();
+const $style = useCssModule();
 const router = useRouter();
 const route = useRoute();
 const documentTitle = useDocumentTitle();
@@ -723,9 +735,30 @@ async function onDownload(item: Pick<SkillListItem, 'id'>) {
 }
 
 /** `onDeleted` runs as soon as the delete succeeds, before the list reloads. */
-async function onDelete(skill: Pick<SkillListItem, 'id'>, onDeleted?: () => void) {
+async function onDelete(skill: SkillListItem, onDeleted?: () => void) {
+	const source = skillsStore.sources.find(
+		(item) =>
+			skillSyncEnabled.value &&
+			item.id === skill.sourceId &&
+			item.skillCount === 1 &&
+			item.canDelete,
+	);
+	let removeSource = false;
+	const warning = i18n.baseText('settings.context.skills.delete.confirm.message');
 	const confirmed = await message.confirm(
-		i18n.baseText('settings.context.skills.delete.confirm.message'),
+		source
+			? h('div', { class: $style.confirmation }, [
+					h('p', warning),
+					h(N8nCheckbox, {
+						label: i18n.baseText('settings.context.skills.delete.removeSource', {
+							interpolate: { source: source.label },
+						}),
+						'onUpdate:modelValue': (checked: boolean) => {
+							removeSource = checked;
+						},
+					}),
+				])
+			: warning,
 		i18n.baseText('settings.context.skills.delete.confirm.title'),
 		{
 			type: 'warning',
@@ -735,7 +768,11 @@ async function onDelete(skill: Pick<SkillListItem, 'id'>, onDeleted?: () => void
 	);
 	if (confirmed !== MODAL_CONFIRM) return;
 	try {
-		await skillsStore.deleteSkill(skill.id);
+		if (source && removeSource) {
+			await skillsStore.deleteSource(source.id, { onlySkillId: skill.id });
+		} else {
+			await skillsStore.deleteSkill(skill.id);
+		}
 		onDeleted?.();
 		showMessage({
 			title: i18n.baseText('settings.context.skills.delete.success'),
@@ -759,10 +796,19 @@ async function onDelete(skill: Pick<SkillListItem, 'id'>, onDeleted?: () => void
 async function onStopSyncing(skill: SkillListItem, onStopped?: () => void) {
 	const name = skill.name;
 	const confirmed = await message.confirm(
-		i18n.baseText('settings.context.skills.stopSyncing.confirm.message', {
-			interpolate: { scope: scopeDisplay(skill).label, count: skill.latestVersion },
-			adjustToNumber: skill.latestVersion,
-		}),
+		h('div', { class: $style.confirmation }, [
+			h(
+				'p',
+				i18n.baseText('settings.context.skills.stopSyncing.confirm.message', {
+					interpolate: { scope: scopeDisplay(skill).label },
+				}),
+			),
+			h(
+				'p',
+				i18n.baseText('settings.context.skills.stopSyncing.confirm.keep', { adjustToNumber: 1 }),
+			),
+			h('p', i18n.baseText('settings.context.skills.stopSyncing.confirm.updates')),
+		]),
 		i18n.baseText('settings.context.skills.stopSyncing.confirm.title', {
 			interpolate: { name },
 		}),
@@ -1193,6 +1239,12 @@ onMounted(async () => {
 </template>
 
 <style lang="scss" module>
+.confirmation {
+	display: flex;
+	flex-direction: column;
+	gap: var(--spacing--sm);
+}
+
 /* The settings shell insets the page; the header is pulled to the table's left edge. */
 .layout {
 	padding: 0;

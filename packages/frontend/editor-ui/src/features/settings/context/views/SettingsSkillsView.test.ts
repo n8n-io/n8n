@@ -15,7 +15,8 @@ import { TELEMETRY_EVENT } from '@n8n/telemetry';
 import type { IUser } from '@n8n/rest-api-client/api/users';
 import { useUsersStore } from '@n8n/stores/users.store';
 import userEvent from '@testing-library/user-event';
-import { fireEvent, screen, waitFor, within } from '@testing-library/vue';
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/vue';
+import type { VNode } from 'vue';
 import { mock } from 'vitest-mock-extended';
 
 import { getDropdownItems } from '@/__tests__/utils';
@@ -1426,13 +1427,53 @@ describe('SettingsSkillsView', () => {
 				skillsStore.fetchSkills.mockClear();
 				skillsStore.fetchSources.mockClear();
 				skillsStore.fetchCreators.mockClear();
-				await userEvent.click(within(dialog).getByRole('button', { name: 'Delete source' }));
+				await userEvent.click(within(dialog).getByRole('button', { name: 'Delete skills' }));
 				await waitFor(() => expect(skillsStore.deleteSource).toHaveBeenCalledWith('src-1'));
 				await waitFor(() => expect(skillsStore.fetchSkills).toHaveBeenCalled());
 				expect(skillsStore.fetchSources).toHaveBeenCalled();
 				expect(skillsStore.fetchCreators).toHaveBeenCalled();
 				await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
 			});
+
+			it.each([false, true])(
+				'offers optional source removal for the last skill with checked=%s',
+				async (checked) => {
+					const view = await renderWithSource();
+					confirmMock.mockImplementationOnce(async (content: VNode) => {
+						const confirmation = render({ render: () => content });
+						const checkbox = confirmation.getByRole('checkbox', {
+							name: 'Also remove acme/skills. This is its last synced skill.',
+						});
+						expect(checkbox).not.toBeChecked();
+						if (checked) await userEvent.click(checkbox);
+						return 'confirm';
+					});
+
+					await userEvent.click(view.getByTestId('skill-actions').querySelector('button')!);
+					await userEvent.click(await screen.findByTestId('action-delete'));
+					await waitFor(() => {
+						if (checked)
+							expect(skillsStore.deleteSource).toHaveBeenCalledWith('src-1', { onlySkillId: 's1' });
+						else expect(skillsStore.deleteSkill).toHaveBeenCalledWith('s1');
+					});
+					if (checked) expect(skillsStore.deleteSkill).not.toHaveBeenCalled();
+					else expect(skillsStore.deleteSource).not.toHaveBeenCalled();
+				},
+			);
+
+			it.each([{ skillCount: 2 }, { canDelete: false }])(
+				'omits source removal when the source is not eligible: %j',
+				async (overrides) => {
+					const view = await renderWithSource();
+					skillsStore.sources = [{ ...source, ...overrides }];
+					await userEvent.click(view.getByTestId('skill-actions').querySelector('button')!);
+					await userEvent.click(await screen.findByTestId('action-delete'));
+					await waitFor(() => expect(confirmMock).toHaveBeenCalled());
+					expect(confirmMock.mock.calls[0][0]).toBe(
+						"This will permanently delete the skill and all its versions. This can't be undone.",
+					);
+				},
+			);
 
 			it('opens and focuses the page of a duplicate source', async () => {
 				enableSkillSync();
@@ -1753,7 +1794,7 @@ describe('SettingsSkillsView', () => {
 				await waitFor(() => expect(skillsStore.fetchSkills).toHaveBeenCalled());
 
 				expect(confirmMock).toHaveBeenCalledWith(
-					expect.stringContaining('You cannot undo this.'),
+					expect.objectContaining({ type: 'div' }),
 					'Stop syncing research-search?',
 					expect.anything(),
 				);
@@ -1778,20 +1819,30 @@ describe('SettingsSkillsView', () => {
 				expect(lastModalData().onStopSyncing).toBeUndefined();
 			});
 
-			it('asks first and says the action cannot be undone', async () => {
+			it('uses short paragraphs that explain local editing and stopped updates', async () => {
 				await openSynced();
 				confirmMock.mockResolvedValue('cancel');
 
 				await lastModalData().onStopSyncing?.('s1');
 
 				expect(confirmMock).toHaveBeenCalledWith(
-					'The skill stays in Global with all 3 versions. Agents keep using it. You can edit it in n8n after this, and move it to another scope on its own. It no longer gets updates from GitHub. You cannot undo this.',
+					expect.objectContaining({ type: 'div' }),
 					'Stop syncing research-search?',
 					expect.objectContaining({
 						confirmButtonText: 'Stop syncing',
 						cancelButtonText: 'Cancel',
 					}),
 				);
+				const confirmation = render({ render: () => confirmMock.mock.calls[0][0] });
+				expect(confirmation.container.querySelectorAll('p')).toHaveLength(3);
+				expect(confirmation.container).toHaveTextContent(
+					'The skill stays in Global with its version history.',
+				);
+				expect(confirmation.container).toHaveTextContent(
+					'Agents can still use the skill, and you can edit it in n8n.',
+				);
+				expect(confirmation.container).toHaveTextContent('GitHub updates stop.');
+				expect(confirmation.container).not.toHaveTextContent('cannot undo');
 				expect(skillsStore.stopSyncingSkill).not.toHaveBeenCalled();
 				expect(uiStore.closeModal).not.toHaveBeenCalled();
 				expect(skillsStore.fetchSkills).not.toHaveBeenCalled();

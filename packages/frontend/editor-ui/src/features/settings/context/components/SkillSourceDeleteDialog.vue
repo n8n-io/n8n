@@ -20,13 +20,18 @@ const { showError, showMessage } = useToast();
 const deleting = ref(false);
 const block = ref<SkillSourceDeleteBlock>();
 
-async function deleteSource() {
+async function deleteSource(keepSkills = false) {
 	if (deleting.value || !props.source.canDelete) return;
 	deleting.value = true;
 	try {
-		await skillsStore.deleteSource(props.source.id);
+		if (keepSkills) await skillsStore.deleteSource(props.source.id, { keepSkills: true });
+		else await skillsStore.deleteSource(props.source.id);
 		showMessage({
-			title: i18n.baseText('settings.context.skills.sources.delete.success'),
+			title: i18n.baseText(
+				keepSkills
+					? 'settings.context.skills.sources.delete.keep.success'
+					: 'settings.context.skills.sources.delete.success',
+			),
 			type: 'success',
 		});
 		emit('deleted');
@@ -55,7 +60,7 @@ async function deleteSource() {
 		data-test-id="skill-source-delete-dialog"
 		@update:open="!$event && !deleting && emit('close')"
 	>
-		<N8nDialogBody aria-live="polite">
+		<N8nDialogBody aria-live="polite" :class="$style.message">
 			<template v-if="block">
 				<N8nText tag="p">
 					{{ i18n.baseText('settings.context.skills.sources.delete.blocked.message') }}
@@ -82,14 +87,53 @@ async function deleteSource() {
 					})
 				}}
 			</N8nText>
+			<N8nText v-if="source.skillCount" tag="p">
+				{{ i18n.baseText('settings.context.skills.sources.delete.keep.message') }}
+			</N8nText>
+			<N8nText v-if="source.skillCount" tag="p">
+				{{
+					i18n.baseText('settings.context.skills.stopSyncing.confirm.keep', {
+						adjustToNumber: source.skillCount,
+					})
+				}}
+			</N8nText>
+			<N8nText v-if="source.skillCount" tag="p">
+				{{ i18n.baseText('settings.context.skills.stopSyncing.confirm.updates') }}
+			</N8nText>
 		</N8nDialogBody>
 		<N8nDialogFooter>
 			<N8nButton variant="outline" :disabled="deleting" @click="emit('close')">
 				{{ i18n.baseText(block ? 'generic.close' : 'generic.cancel') }}
 			</N8nButton>
-			<N8nButton v-if="!block" variant="destructive" :loading="deleting" @click="deleteSource">
-				{{ i18n.baseText('settings.context.skills.sources.delete.action') }}
+			<N8nButton
+				v-if="source.skillCount"
+				variant="outline"
+				:disabled="deleting || !source.canDelete"
+				@click="deleteSource(true)"
+			>
+				{{ i18n.baseText('settings.context.skills.stopSyncing.action') }}
+			</N8nButton>
+			<N8nButton
+				v-if="!block"
+				variant="destructive"
+				:loading="deleting"
+				:disabled="!source.canDelete"
+				@click="deleteSource()"
+			>
+				{{
+					i18n.baseText(
+						source.skillCount
+							? 'settings.context.skills.sources.delete.skills'
+							: 'settings.context.skills.sources.delete.action',
+					)
+				}}
 			</N8nButton>
 		</N8nDialogFooter>
 	</N8nDialog>
 </template>
+
+<style module>
+.message {
+	gap: var(--spacing--sm);
+}
+</style>

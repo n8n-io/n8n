@@ -39,7 +39,7 @@ type SkillActionItem = {
 	icon: IconName;
 	disabled?: boolean;
 	tooltip?: string;
-	destructive?: boolean;
+	class?: string;
 };
 
 const props = defineProps<{
@@ -120,7 +120,8 @@ function actionsFor(skill: SkillListItem): SkillActionItem[] {
 			icon: 'trash-2',
 			disabled: deleteBlocked !== undefined,
 			tooltip: deleteBlocked,
-			destructive: true,
+			// The shared destructive style also colors the icon.
+			class: $style.deleteAction,
 		},
 	];
 }
@@ -507,6 +508,12 @@ const headers = computed<Array<TableHeader<SkillListItem>>>(() => [
 </template>
 
 <style lang="scss" module>
+.deleteAction:not([data-disabled]) {
+	:global(.n8n-text) {
+		color: var(--color--danger);
+	}
+}
+
 .skillCell {
 	display: flex;
 	flex-direction: column;

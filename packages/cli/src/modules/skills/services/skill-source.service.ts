@@ -2,6 +2,7 @@ import {
 	type AgentSkill,
 	type ConnectSkillSourceDto,
 	type DiscoverSkillSourceDto,
+	type DeleteSkillSourceQueryDto,
 	type DiscoveredSkill,
 	type SkillSourceConnectResponse,
 	type SkillSourceDiscovery,
@@ -599,8 +600,12 @@ export class SkillSourceService {
 		return { source, client };
 	}
 
-	/** Deletes a source and all its synced skills, only when no agent uses any of them. */
-	async delete(user: User, sourceId: string): Promise<void> {
+	/** Removes a source and either keeps its skills or checks usage before deleting them. */
+	async delete(
+		user: User,
+		sourceId: string,
+		{ keepSkills = false, onlySkillId }: DeleteSkillSourceQueryDto = {},
+	): Promise<void> {
 		await this.flagGate.assertEnabled(user);
 		const source = isUuid(sourceId) ? await this.sourceRepository.findById(sourceId) : null;
 		if (!source || !(await this.skillAccess.canOnSource(user, source, 'view'))) {
@@ -627,6 +632,14 @@ export class SkillSourceService {
 				);
 				// Stop syncing or a skill delete may have finished while the locks waited.
 				const current = await this.sourceRepository.findLinksBySource(sourceId, ctx);
+				if (onlySkillId && (current.length !== 1 || current[0].skillId !== onlySkillId)) {
+					throw new BadRequestError('The source skills changed. Refresh the list and try again.');
+				}
+				if (keepSkills) {
+					// Removing the links makes the same skills editable and preserves agent references.
+					await this.sourceRepository.deleteSource(sourceId, ctx);
+					return;
+				}
 				const agentIds = new Set<string>();
 				for (const { skillId } of current) {
 					for (const id of await this.skillUsage.findUsingAgentIds(skillId, ctx)) agentIds.add(id);

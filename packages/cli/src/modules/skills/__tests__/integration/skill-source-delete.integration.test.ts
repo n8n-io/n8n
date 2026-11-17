@@ -202,6 +202,91 @@ describe('Delete a skill source', () => {
 	);
 
 	it.each([false, true])(
+		'keeps skills, versions, files, and agent references with published=%s',
+		async (published) => {
+			const { sourceId, first, second } = await sourceWithSkills();
+			const agent = await agentUsing('Research agent', team.id, [first, second], published);
+			if (!agent.versionId) throw new Error('Expected an agent version');
+			const refs = Container.get(AgentSkillRepository);
+			const before = await readSkillTables();
+			const dependencies = await refs.findDependencies([agent.id]);
+			const pins = await refs.findPins(agent.versionId);
+
+			await editor.delete(`/skill-sources/${sourceId}`).query({ keepSkills: true }).expect(200);
+
+			expect(await readSkillTables()).toEqual(before);
+			expect(await sources().findById(sourceId)).toBeNull();
+			expect(await sources().findLinksBySource(sourceId)).toEqual([]);
+			expect(await refs.findDependencies([agent.id])).toEqual(dependencies);
+			expect(await refs.findPins(agent.versionId)).toEqual(pins);
+			for (const { id } of [first, second]) {
+				const detail = await editor.get(`/skills/${id}`).expect(200);
+				expect(detail.body.data).toMatchObject({ canEdit: true, sourceId: null, syncedFrom: null });
+				await editor
+					.patch(`/skills/${id}`)
+					.send({
+						baseSkillHash: detail.body.data.skillHash,
+						description: 'Local edit.',
+					})
+					.expect(200);
+			}
+			await editor.post(`/skill-sources/${sourceId}/check`).expect(404);
+		},
+	);
+
+	it('deletes the last linked skill and its source together when requested', async () => {
+		const { sourceId, first, second } = await sourceWithSkills();
+		await editor.delete(`/skills/${second.id}`).expect(200);
+
+		await editor.delete(`/skill-sources/${sourceId}`).query({ onlySkillId: first.id }).expect(200);
+
+		expect(await sources().findById(sourceId)).toBeNull();
+		expect(await findSkill(first.id)).toBeNull();
+		expect(await findLatestSkillVersion(first.id)).toBeNull();
+	});
+
+	it('keeps the source when deleting the last linked skill without the option', async () => {
+		const { sourceId, first, second } = await sourceWithSkills();
+		await editor.delete(`/skills/${first.id}`).expect(200);
+		await editor.delete(`/skills/${second.id}`).expect(200);
+		expect(await sources().findById(sourceId)).not.toBeNull();
+	});
+
+	it.each(['viewer', 'updater', 'outsider'] as const)(
+		'checks source access for last-skill removal by %s',
+		async (role) => {
+			const { sourceId, first, second } = await sourceWithSkills();
+			await editor.delete(`/skills/${second.id}`).expect(200);
+			const before = await snapshot();
+			await { viewer, updater, outsider }[role]
+				.delete(`/skill-sources/${sourceId}`)
+				.query({ onlySkillId: first.id })
+				.expect(role === 'outsider' ? 404 : 403);
+			expect(await snapshot()).toEqual(before);
+		},
+	);
+
+	it.each(['multiple', 'unlinked', 'used'] as const)(
+		'refuses last-skill removal when the selection is %s and changes nothing',
+		async (state) => {
+			const { sourceId, first, second } = await sourceWithSkills();
+			if (state !== 'multiple') await editor.delete(`/skills/${second.id}`).expect(200);
+			if (state === 'unlinked') {
+				await editor.post(`/skill-sources/skills/${first.id}/stop-syncing`).expect(200);
+			}
+			if (state === 'used') await agentUsing('Research agent', team.id, [first], false);
+			const before = await snapshot();
+
+			await editor
+				.delete(`/skill-sources/${sourceId}`)
+				.query({ onlySkillId: first.id })
+				.expect(state === 'used' ? 409 : 400);
+
+			expect(await snapshot()).toEqual(before);
+		},
+	);
+
+	it.each([false, true])(
 		'blocks for agent usage with published=%s and changes nothing',
 		async (published) => {
 			const { sourceId, first, second } = await sourceWithSkills();
@@ -274,23 +359,25 @@ describe('Delete a skill source', () => {
 		expect(await snapshot()).toEqual(before);
 	});
 
-	it.each(['viewer', 'updater', 'outsider', 'globalMember'] as const)(
-		'enforces delete scope for %s',
-		async (role) => {
-			const { sourceId } = await sourceWithSkills(role === 'globalMember' ? null : team.id);
-			const agent = { viewer, updater, outsider, globalMember: editor }[role];
-			const before = await snapshot();
-			const list = await agent.get('/skill-sources').expect(200);
-			if (role !== 'outsider')
-				expect(list.body.data).toEqual([
-					expect.objectContaining({ id: sourceId, canDelete: false }),
-				]);
+	it.each(
+		(['viewer', 'updater', 'outsider', 'globalMember'] as const).flatMap((role) =>
+			[false, true].map((keepSkills) => ({ role, keepSkills })),
+		),
+	)('enforces delete scope for $role with keepSkills=$keepSkills', async ({ role, keepSkills }) => {
+		const { sourceId } = await sourceWithSkills(role === 'globalMember' ? null : team.id);
+		const agent = { viewer, updater, outsider, globalMember: editor }[role];
+		const before = await snapshot();
+		const list = await agent.get('/skill-sources').expect(200);
+		if (role !== 'outsider')
+			expect(list.body.data).toEqual([expect.objectContaining({ id: sourceId, canDelete: false })]);
 
-			await agent.delete(`/skill-sources/${sourceId}`).expect(role === 'outsider' ? 404 : 403);
+		await agent
+			.delete(`/skill-sources/${sourceId}`)
+			.query({ keepSkills })
+			.expect(role === 'outsider' ? 404 : 403);
 
-			expect(await snapshot()).toEqual(before);
-		},
-	);
+		expect(await snapshot()).toEqual(before);
+	});
 
 	it.each([randomUUID(), 'not-a-uuid'])('answers 404 for unknown source %s', async (id) => {
 		await owner.delete(`/skill-sources/${id}`).expect(404);
@@ -319,13 +406,16 @@ describe('Delete a skill source', () => {
 		expect(await readSkillTables()).toEqual(before);
 	});
 
-	it('rolls back the skills and links if the source delete fails', async () => {
-		const { sourceId } = await sourceWithSkills();
-		const before = await snapshot();
-		vi.spyOn(sources(), 'deleteSource').mockRejectedValueOnce(new Error('Write failed'));
+	it.each([false, true])(
+		'rolls back removal if the write fails with keepSkills=%s',
+		async (keepSkills) => {
+			const { sourceId } = await sourceWithSkills();
+			const before = await snapshot();
+			vi.spyOn(sources(), 'deleteSource').mockRejectedValueOnce(new Error('Write failed'));
 
-		await owner.delete(`/skill-sources/${sourceId}`).expect(500);
+			await owner.delete(`/skill-sources/${sourceId}`).query({ keepSkills }).expect(500);
 
-		expect(await snapshot()).toEqual(before);
-	});
+			expect(await snapshot()).toEqual(before);
+		},
+	);
 });
