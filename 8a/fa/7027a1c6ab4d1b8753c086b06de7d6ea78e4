@@ -1,0 +1,25 @@
+packages/@n8n/api-types/src/dto/workflows/run-workflow-public.dto.ts
+  s_06fc4a3eebd292::t_aca911b4156a84 21
+  s_06fc4a3eebd292::t_ba09ea30299259 2,10,13,18
+  s_06fc4a3eebd292::t_f8d5514ba919d3 20,22,25,38-41
+  s_06fc4a3eebd292::t_78ab01c9d2af2f 19
+  s_06fc4a3eebd292::t_ee6c3179324235 42
+packages/@n8n/api-types/src/dto/workflows/manual-run.dto.ts
+  s_06fc4a3eebd292::t_4dd11403a60c0f 8
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "8afa7027a1c6ab4d1b8753c086b06de7d6ea78e4",
+  "prompts": {},
+  "sessions": {
+    "s_06fc4a3eebd292": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "4fbd68ab-5524-436f-933c-230ffa062c5b",
+        "model": "claude-sonnet-5-5"
+      },
+      "human_author": "Sam Wooler <swooler592@gmail.com>"
+    }
+  }
+}
