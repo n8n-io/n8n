@@ -602,6 +602,21 @@ describe('CanvasNodeGroupTitleBar', () => {
 			expect(wrapper.queryByTestId('canvas-node-group-status-error')).toBeNull();
 		});
 
+		it('shows the setup key, not the issues triangle, when executionStatus is setup', () => {
+			const wrapper = render({
+				data: makeData({ executionStatus: 'setup' }),
+			});
+			expect(wrapper.getByTestId('canvas-node-group-status-setup')).toBeTruthy();
+			expect(wrapper.queryByTestId('canvas-node-group-status-issues')).toBeNull();
+		});
+
+		it('hides the setup key when the group is expanded', () => {
+			const wrapper = render({
+				data: makeData({ executionStatus: 'setup', isCollapsed: false }),
+			});
+			expect(wrapper.queryByTestId('canvas-node-group-status-setup')).toBeNull();
+		});
+
 		it('hides the status mark when the group is expanded (member nodes show their own)', () => {
 			const wrapper = render({
 				data: makeData({ executionStatus: 'success', isCollapsed: false }),

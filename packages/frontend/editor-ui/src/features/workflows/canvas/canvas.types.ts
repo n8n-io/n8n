@@ -192,6 +192,7 @@ export type GroupExecutionStatus =
 	| 'running'
 	| 'error'
 	| 'issues'
+	| 'setup'
 	| 'warning'
 	| 'success';
 
@@ -202,6 +203,8 @@ export interface NodeExecutionSnapshot {
 	waiting: string | undefined;
 	hasExecutionError: boolean;
 	hasValidationError: boolean;
+	/** The only validation issues are credentials that are not set yet. */
+	needsCredentialSetup: boolean;
 	status: ExecutionStatus | undefined;
 	/** Parameters changed since the last run — the single-node "dirty" warning. */
 	dirty: boolean;

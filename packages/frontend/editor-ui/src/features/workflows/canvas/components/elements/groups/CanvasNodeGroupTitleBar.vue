@@ -625,6 +625,13 @@ function onWrapperPointerDown(event: PointerEvent) {
 			>
 				<N8nIcon icon="node-validation-error" size="large" />
 			</div>
+			<div
+				v-else-if="isCollapsed && executionStatus === 'setup'"
+				:class="[$style.statusIcons, $style.setup]"
+				data-test-id="canvas-node-group-status-setup"
+			>
+				<N8nIcon icon="key-round" size="large" />
+			</div>
 		</div>
 
 		<div
@@ -952,6 +959,11 @@ function onWrapperPointerDown(event: PointerEvent) {
 // Validation issues mirror the single node: red triangle, no status border.
 .issues {
 	color: var(--color--danger);
+}
+
+// Missing credentials mirror the single node: amber key, no status border.
+.setup {
+	color: var(--color--warning);
 }
 
 .toolbar {

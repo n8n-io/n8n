@@ -9,6 +9,7 @@ import { throttledRef } from '@vueuse/core';
 import {
 	computed,
 	effectScope,
+	inject,
 	onScopeDispose,
 	provide,
 	ref,
@@ -34,6 +35,7 @@ import { buildNodeGroupLayoutComponents } from '../composables/useCanvasNodeGrou
 import { ContextMenuGroupViewKey } from '@/features/shared/contextMenu/composables/contextMenuGroupView';
 import Canvas from './Canvas.vue';
 import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
+import { EditorEnabledFeaturesKey } from '@/app/constants/injectionKeys';
 import { useWorkflowDocumentRenderData } from '@/app/stores/workflowDocument/useWorkflowDocumentRenderData';
 import { useExperimentalNdvStore } from '../experimental/experimentalNdv.store';
 import { useAgentNodeCanvasGeometryStore } from '@/features/agents/agentNodeCanvasGeometry.store';
@@ -132,6 +134,10 @@ const suppressInteractionRef = computed(() => props.suppressInteraction ?? false
 const experimentalNdvStore = useExperimentalNdvStore();
 const isExperimentalNdvActive = computed(() => experimentalNdvStore.isActive(viewport.value.zoom));
 const agentNodeGeometryStore = useAgentNodeCanvasGeometryStore();
+const editorFeatures = inject(EditorEnabledFeaturesKey, undefined);
+const credentialSetupWarnings = computed(
+	() => editorFeatures?.value.credentialSetupWarnings ?? false,
+);
 
 const {
 	nodes: mappedWorkflowNodes,
@@ -145,6 +151,7 @@ const {
 	allGroups,
 	nodeGroupView,
 	isExperimentalNdvActive,
+	credentialSetupWarnings,
 	getAgentNodeHeight: (id) => agentNodeGeometryStore.getNodeHeight(props.id, id),
 });
 

@@ -25,6 +25,7 @@ import {
 	applyOffset,
 	computeNodeDisplaySize,
 	mapLegacyConnectionsToCanvasConnections,
+	nodeNeedsCredentialSetup,
 	parseCanvasConnectionHandleString,
 } from '../canvas.utils';
 import { DEFAULT_AGENT_HEIGHT, DEFAULT_AGENT_WIDTH } from '@/features/agents/utils/agentNode';
@@ -59,6 +60,7 @@ export function useCanvasMapping({
 	allGroups = ref([]),
 	nodeGroupView,
 	isExperimentalNdvActive = ref(false),
+	credentialSetupWarnings = ref(false),
 	getAgentNodeHeight,
 }: {
 	nodes: Ref<INodeUi[]>;
@@ -67,6 +69,8 @@ export function useCanvasMapping({
 	allGroups?: Ref<IWorkflowGroup[]>;
 	nodeGroupView?: CanvasNodeGroupView;
 	isExperimentalNdvActive?: Ref<boolean>;
+	/** Mirrors the host flag that shows missing credentials as "setup required". */
+	credentialSetupWarnings?: Ref<boolean>;
 	getAgentNodeHeight?: (id: string) => number | undefined;
 }) {
 	const i18n = useI18n();
@@ -80,6 +84,8 @@ export function useCanvasMapping({
 	function countNonCanceledIterations(tasks: ITaskData[] | null | undefined): number {
 		return tasks?.filter((task) => task.executionStatus !== 'canceled').length ?? 0;
 	}
+
+	const nodeById = computed(() => new Map(nodes.value.map((node) => [node.id, node])));
 
 	// Per-node execution projection feeding the group-status aggregation.
 	function getNodeExecutionSnapshot(id: string): NodeExecutionSnapshot {
@@ -102,6 +108,8 @@ export function useCanvasMapping({
 			waiting: rd.executionWaitingByNodeId.get(id)?.value,
 			hasExecutionError,
 			hasValidationError: (rd.validationErrorsByNodeId.get(id)?.value?.length ?? 0) > 0,
+			needsCredentialSetup:
+				credentialSetupWarnings.value && nodeNeedsCredentialSetup(nodeById.value.get(id)),
 			status,
 			dirty:
 				render?.type === CanvasNodeRenderType.Default && render.options.dirtiness !== undefined,

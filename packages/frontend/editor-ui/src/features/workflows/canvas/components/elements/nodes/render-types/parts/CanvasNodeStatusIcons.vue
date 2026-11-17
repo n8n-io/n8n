@@ -3,7 +3,10 @@ import { computed, inject, useCssModule } from 'vue';
 import TitledList from '@/app/components/TitledList.vue';
 import { useNodeHelpers } from '@/app/composables/useNodeHelpers';
 import { useCanvasNode } from '../../../../../composables/useCanvasNode';
-import { injectCanvasRenderData } from '@/features/workflows/canvas/canvas.utils';
+import {
+	injectCanvasRenderData,
+	nodeNeedsCredentialSetup,
+} from '@/features/workflows/canvas/canvas.utils';
 import { useI18n } from '@n8n/i18n';
 import { CanvasNodeDirtiness, CanvasNodeRenderType } from '../../../../../canvas.types';
 import { useRoute } from 'vue-router';
@@ -62,22 +65,7 @@ const editorFeatures = inject(EditorEnabledFeaturesKey, undefined);
 const workflowDocumentStore = injectWorkflowDocumentStore();
 const needsCredentialSetup = computed(() => {
 	if (!editorFeatures?.value.credentialSetupWarnings) return false;
-	const node = workflowDocumentStore.value.getNodeById(id.value);
-	const issues = node?.issues;
-	const credentialTypes = Object.keys(issues?.credentials ?? {});
-	if (!node || !credentialTypes.length) return false;
-	if (
-		Object.entries(issues ?? {}).some(
-			([kind, issue]) =>
-				kind !== 'credentials' &&
-				(typeof issue === 'boolean' ? issue : Object.keys(issue ?? {}).length > 0),
-		)
-	)
-		return false;
-	return credentialTypes.every((type) => {
-		const credential = node.credentials?.[type];
-		return !credential?.id && !credential?.__aiGatewayManaged;
-	});
+	return nodeNeedsCredentialSetup(workflowDocumentStore.value.getNodeById(id.value));
 });
 const { labelOf } = usePolicyViolationLabels();
 const { restriction: subWorkflowRestriction } = useSubWorkflowRestriction({

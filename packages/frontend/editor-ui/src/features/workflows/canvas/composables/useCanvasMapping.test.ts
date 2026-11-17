@@ -472,6 +472,56 @@ describe('useCanvasMapping — getNodeExecutionSnapshot', () => {
 		expect(snapshot.hasExecutionError).toBe(false);
 	});
 
+	describe('needsCredentialSetup', () => {
+		function snapshotFor(node: INodeUi, credentialSetupWarnings: boolean) {
+			const rd = createEmptyCanvasRenderData();
+			rd.validationErrorsByNodeId.set(
+				node.id,
+				computed(() => ['Credentials for Notion are not set.']),
+			);
+			const { getNodeExecutionSnapshot } = useCanvasMapping({
+				nodes: ref([node]),
+				connections: ref({}),
+				renderData: shallowRef(rd),
+				credentialSetupWarnings: ref(credentialSetupWarnings),
+			});
+			return getNodeExecutionSnapshot(node.id);
+		}
+
+		function createNodeWithCredentialIssue(overrides: Partial<INodeUi> = {}): INodeUi {
+			return {
+				...createTestNode({ id: 'a', name: 'Alpha' }),
+				issues: { credentials: { notionApi: ['Credentials for Notion are not set.'] } },
+				...overrides,
+			} as INodeUi;
+		}
+
+		it('is true when the only issue is a credential without an id', () => {
+			expect(snapshotFor(createNodeWithCredentialIssue(), true).needsCredentialSetup).toBe(true);
+		});
+
+		it('is false when the host does not show credential setup warnings', () => {
+			expect(snapshotFor(createNodeWithCredentialIssue(), false).needsCredentialSetup).toBe(false);
+		});
+
+		it('is false when the node also has parameter issues', () => {
+			const node = createNodeWithCredentialIssue({
+				issues: {
+					credentials: { notionApi: ['Credentials for Notion are not set.'] },
+					parameters: { pageId: ['Parameter "Page" is required.'] },
+				},
+			});
+			expect(snapshotFor(node, true).needsCredentialSetup).toBe(false);
+		});
+
+		it('is false when the credential is already selected', () => {
+			const node = createNodeWithCredentialIssue({
+				credentials: { notionApi: { id: '1', name: 'Notion account' } },
+			});
+			expect(snapshotFor(node, true).needsCredentialSetup).toBe(false);
+		});
+	});
+
 	it.each(['error', 'crashed'] as const)(
 		'flags hasExecutionError on %s status even without execution-issue text',
 		(status) => {
