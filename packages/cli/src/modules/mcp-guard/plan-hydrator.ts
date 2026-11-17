@@ -17,6 +17,7 @@ import {
 	type PointerContext,
 	type UnprovenLiteral,
 } from './plan-template';
+import { GYM_LACKS_FEATURE } from './router';
 import type { Hydrator } from './router';
 import { SeededEntities } from './seeded-entities';
 
@@ -438,7 +439,7 @@ export class PlanHydrator implements Hydrator {
 		const text = resultText(res);
 		if (res.isError) {
 			// A limit of the gym build. No plan can change it, so the model is not asked again.
-			if (/not available in the gym/i.test(text)) return undefined;
+			if (GYM_LACKS_FEATURE.test(text)) return undefined;
 			return `the gym answered the original call with an error: ${text.slice(0, 500)}`;
 		}
 		// An id that only filters (a project of an empty list) is not in the answer, and not in the real one.

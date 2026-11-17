@@ -64,6 +64,12 @@ export class GuardRouter {
 		} catch (e) {
 			return toolError(`gym unreachable: ${errMsg(e)}`);
 		}
+		// The gym says when it lacks a feature of a call (the SQL mode of a Notion query). Then the real
+		// read and the hydration are useless: the gym can not answer, so tell the agent now.
+		if (gymNames.has(name)) {
+			const refused = await this.gymRefusal(name, args);
+			if (refused) return refused;
+		}
 		let upstreamResult: CallToolResult;
 		try {
 			upstreamResult = await this.deps.upstream.callTool(
@@ -98,6 +104,22 @@ export class GuardRouter {
 		}
 	}
 
+	// The gym error of a read that uses a feature that the gym lacks, or undefined. A read changes nothing,
+	// so the gym may see it first. Any other gym error (such as an object not found yet) is not a refusal.
+	private async gymRefusal(
+		name: string,
+		args: Record<string, unknown>,
+	): Promise<CallToolResult | undefined> {
+		try {
+			const res = await this.deps.gym.callTool(name, args);
+			if (!res.isError || !GYM_LACKS_FEATURE.test(textOf(res))) return undefined;
+			log(name, 'rejected (the gym lacks this feature)');
+			return res;
+		} catch {
+			return undefined;
+		}
+	}
+
 	// The gym answer of a read, or undefined when the gym fails or has no such object.
 	private async tryGym(
 		name: string,
@@ -121,10 +143,15 @@ export class GuardRouter {
 	}
 }
 
+// What the gym says when a call uses a feature that its build does not have.
+export const GYM_LACKS_FEATURE = /not available in the gym/i;
+
+const textOf = (res: CallToolResult): string =>
+	res.content.flatMap((c) => (c.type === 'text' ? [c.text] : [])).join(' ');
+
 // The real service says an object does not exist. Other errors (limits, auth) stay as they are.
 function isNotFound(res: CallToolResult): boolean {
-	const text = res.content.flatMap((c) => (c.type === 'text' ? [c.text] : [])).join(' ');
-	return /not found|could not find|does not exist/i.test(text);
+	return /not found|could not find|does not exist/i.test(textOf(res));
 }
 
 // Log the error text of a failed tool result, never the arguments.

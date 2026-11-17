@@ -39,7 +39,8 @@ describe('GuardRouter read args', () => {
 		await router.callTool('get_issue', args);
 		expect(upstreamArgs).toEqual([{ id: 'TRUST-1209' }]);
 		expect(hydrated).toEqual([args]);
-		expect(gymArgs).toEqual([args]);
+		// The gym sees the read twice: before the real read, and as the answer.
+		expect(gymArgs).toEqual([args, args]);
 	});
 
 	it('leaves the args alone when there is no field list', () => {
@@ -97,5 +98,55 @@ describe('GuardRouter read of an object that only the gym has', () => {
 		const { router } = build('The query is too complex', text('gym data'));
 		const res = await router.callTool('list_milestones', {});
 		expect(JSON.stringify(res)).toContain('too complex');
+	});
+});
+
+describe('GuardRouter read of a feature that the gym lacks', () => {
+	const build = (gym: CallToolResult) => {
+		const calls = { upstream: 0, hydrated: 0 };
+		const router = new GuardRouter({
+			upstream: {
+				callTool: async () => {
+					calls.upstream++;
+					return text('real rows');
+				},
+				listTools: async () => [],
+			} as McpCaller,
+			gym: {
+				callTool: async () => gym,
+				listTools: async () => [{ name: 'query', inputSchema: { type: 'object' as const } }],
+			} as McpCaller,
+			hydrator: {
+				hydrate: async () => {
+					calls.hydrated++;
+				},
+			},
+			readTools: new Set(['query']),
+			writeTools: new Set(),
+		});
+		return { router, calls };
+	};
+
+	it('tells the agent at once, without a real read or a hydration', async () => {
+		const refusal = {
+			isError: true,
+			content: [
+				{ type: 'text' as const, text: 'SQL mode is not available in the gym build of Notion' },
+			],
+		};
+		const { router, calls } = build(refusal);
+		const res = await router.callTool('query', { mode: 'sql' });
+		expect(res).toEqual(refusal);
+		expect(calls).toEqual({ upstream: 0, hydrated: 0 });
+	});
+
+	it('reads the real service when the gym error is another one', async () => {
+		const { router, calls } = build({
+			isError: true,
+			content: [{ type: 'text', text: 'not found' }],
+		});
+		await router.callTool('query', {});
+		expect(calls.upstream).toBe(1);
+		expect(calls.hydrated).toBe(1);
 	});
 });
