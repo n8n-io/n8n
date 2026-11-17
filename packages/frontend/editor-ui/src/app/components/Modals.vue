@@ -475,11 +475,7 @@ const TrialIntroModal = defineAsyncComponent(
 		</ModalRoot>
 		<ModalRoot :name="PROJECT_MOVE_RESOURCE_MODAL">
 			<template #default="{ modalName, data }">
-				<ProjectMoveResourceModal
-					data-test-id="project-move-resource-modal"
-					:modal-name="modalName"
-					:data="data"
-				/>
+				<ProjectMoveResourceModal :modal-name="modalName" :data="data" />
 			</template>
 		</ModalRoot>
 		<ModalRoot :name="NEW_ASSISTANT_SESSION_MODAL">

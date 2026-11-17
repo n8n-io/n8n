@@ -236,8 +236,13 @@ onMounted(async () => {
 });
 </script>
 <template>
-	<N8nDialog :open="modalOpen" size="medium" @update:open="onDialogOpenUpdate">
-		<N8nDialogHeader data-test-id="project-move-resource-modal">
+	<N8nDialog
+		:open="modalOpen"
+		size="medium"
+		data-test-id="project-move-resource-modal"
+		@update:open="onDialogOpenUpdate"
+	>
+		<N8nDialogHeader>
 			<N8nDialogTitle>
 				{{
 					i18n.baseText('projects.move.resource.modal.title', {
