@@ -435,7 +435,42 @@ function luxFormat(dt: Json, fmt: Json): string {
 		else if (tok === 'X') v = String(Math.floor(dt.ts / 1000));
 		else if (tok === 'q') v = String(Math.ceil(c.month / 3));
 		else if (tok === 'qq') v = pad(Math.ceil(c.month / 3), 2);
-		// The translator lets only known tokens through; other text is kept.
+		else if (tok === 'u') v = pad(c.millisecond, 3);
+		else if (tok === 'uu') v = pad(Math.floor(c.millisecond / 10), 2);
+		else if (tok === 'uuu') v = String(Math.floor(c.millisecond / 100));
+		else if (tok === 'W' || tok === 'WW' || tok === 'kk' || tok === 'kkkk') {
+			// The ISO week and its year: week 1 has the first Thursday of the year.
+			const weeks = (y: number): number => {
+				const p = (n: number): number => (n + Math.floor(n / 4) - Math.floor(n / 100) + Math.floor(n / 400)) % 7;
+				return p(y) === 4 || p(y - 1) === 3 ? 53 : 52;
+			};
+			const ord = Math.round((Date.UTC(c.year, c.month - 1, c.day) - Date.UTC(c.year, 0, 1)) / 86400000) + 1;
+			let week = Math.floor((ord - c.weekday + 10) / 7);
+			let year: number = c.year;
+			if (week < 1) {
+				year = c.year - 1;
+				week = weeks(year);
+			} else if (week > weeks(c.year)) {
+				year = c.year + 1;
+				week = 1;
+			}
+			v = tok === 'W' ? String(week) : tok === 'WW' ? pad(week, 2) : tok === 'kkkk' ? pad(year, 4) : pad(((year % 100) + 100) % 100, 2);
+		}
+		// The formats of the locale en-US, which Luxon makes with Intl.
+		else if (tok === 'D') v = luxFormat(dt, 'M/d/y');
+		else if (tok === 'DD') v = luxFormat(dt, 'LLL d, y');
+		else if (tok === 'DDD') v = luxFormat(dt, 'LLLL d, y');
+		else if (tok === 'DDDD') v = luxFormat(dt, 'EEEE, LLLL d, y');
+		else if (tok === 't') v = luxFormat(dt, 'h:mm a');
+		else if (tok === 'tt') v = luxFormat(dt, 'h:mm:ss a');
+		else if (tok === 'T') v = luxFormat(dt, 'HH:mm');
+		else if (tok === 'TT') v = luxFormat(dt, 'HH:mm:ss');
+		else if (tok === 'f') v = luxFormat(dt, 'M/d/y, h:mm a');
+		else if (tok === 'ff') v = luxFormat(dt, 'LLL d, y, h:mm a');
+		else if (tok === 'F') v = luxFormat(dt, 'M/d/y, h:mm:ss a');
+		else if (tok === 'FF') v = luxFormat(dt, 'LLL d, y, h:mm:ss a');
+		// The translator lets no token through that Luxon has and this function has not. Luxon
+		// keeps each other run of letters as it is.
 		if (v === null) v = tok;
 		out += v;
 	}

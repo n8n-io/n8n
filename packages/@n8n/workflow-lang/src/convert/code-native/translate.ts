@@ -30,6 +30,8 @@ import { isKnownTimezone } from '../../compiler/triggers.ts';
 import { DEFAULT_TIMEZONE } from '../triggers.ts';
 import { LOCALE_NAMES, LOCALE_TABLE } from './locale-data.generated.ts';
 import { planBody, planCatch } from './catch-check.ts';
+import { derivedLocaleEntry } from './locale-derive.ts';
+import { formatSupported as luxonFormatSupported } from './luxon-expression.ts';
 import { checkRegex } from './regex-syntax.ts';
 
 export type CodeMode = 'all' | 'each';
@@ -1723,29 +1725,8 @@ export function translateCode(input: CodeNativeInput): TranslateResult {
 		'milliseconds',
 	]);
 
-	/** The tokens of `luxFormat`. */
-	const LUX_TOKENS = new Set(
-		'yyyy yy y yyyyyy M MM MMM MMMM MMMMM L LL LLL LLLL LLLLL d dd H HH h hh m mm s ss S SSS a c ccc cccc ccccc E EEE EEEE EEEEE o ooo Z ZZ ZZZ z x X q qq'.split(
-			' ',
-		),
-	);
-
-	const formatSupported = (fmt: string): boolean => {
-		let k = 0;
-		while (k < fmt.length) {
-			const ch = fmt.charAt(k);
-			if (ch === "'") {
-				const end = fmt.indexOf("'", k + 1);
-				k = end < 0 ? fmt.length : end + 1;
-				continue;
-			}
-			let n = 1;
-			while (fmt.charAt(k + n) === ch) n++;
-			if (/[A-Za-z]/.test(ch) && !LUX_TOKENS.has(fmt.slice(k, k + n))) return false;
-			k += n;
-		}
-		return true;
-	};
+	/** A format whose tokens `luxFormat` has (`luxon-expression.ts`). */
+	const formatSupported = luxonFormatSupported;
 
 	/** A DateTime method on any receiver: true when it wrote the call. */
 	const luxMethod = (
@@ -1805,6 +1786,77 @@ export function translateCode(input: CodeNativeInput): TranslateResult {
 	/** True when the code makes an Intl formatter: then \`format\` calls become helpers. */
 	const hasIntl = /\bIntl\s*\.\s*(DateTimeFormat|NumberFormat)\b/.test(input.code);
 
+	/** True when \`e\` is an argument of a locale formatting call: the call does not change it. */
+	const isFormatArgument = (e: ts.Node): boolean => {
+		const call = e.parent;
+		if (ts.isNewExpression(call)) {
+			const made = call.expression;
+			return (
+				(call.arguments ?? []).some((x) => x === e) &&
+				ts.isPropertyAccessExpression(made) &&
+				ts.isIdentifier(made.expression) &&
+				made.expression.text === 'Intl'
+			);
+		}
+		if (!ts.isCallExpression(call) || !call.arguments.some((x) => x === e)) return false;
+		const callee = call.expression;
+		return (
+			ts.isPropertyAccessExpression(callee) &&
+			['toLocaleString', 'toLocaleDateString', 'toLocaleTimeString'].includes(callee.name.text)
+		);
+	};
+
+	/**
+	 * The object literal of the options of a locale formatting call: the argument itself, or
+	 * the start value of a constant that the code gives only to such calls (so no code changes
+	 * the object). Null for another value.
+	 */
+	const optionsLiteral = (e: ts.Expression): ts.ObjectLiteralExpression | null => {
+		const x = stripParens(e);
+		if (ts.isObjectLiteralExpression(x)) return x;
+		if (!ts.isIdentifier(x)) return null;
+		const symbol = checker.getSymbolAtLocation(x);
+		const decls = symbol?.declarations ?? [];
+		const d = decls[0];
+		if (
+			symbol === undefined ||
+			decls.length !== 1 ||
+			!ts.isVariableDeclaration(d) ||
+			!ts.isIdentifier(d.name) ||
+			!ts.isVariableDeclarationList(d.parent) ||
+			(d.parent.flags & ts.NodeFlags.Const) === 0 ||
+			d.initializer === undefined
+		) {
+			return null;
+		}
+		const start = stripParens(d.initializer);
+		if (!ts.isObjectLiteralExpression(start)) return null;
+		let onlyFormats = true;
+		const scan = (n: ts.Node): void => {
+			if (!onlyFormats) return;
+			if (
+				ts.isIdentifier(n) &&
+				n !== d.name &&
+				n.text === x.text &&
+				checker.getSymbolAtLocation(n) === symbol &&
+				!isFormatArgument(n)
+			) {
+				onlyFormats = false;
+				return;
+			}
+			if (
+				ts.isShorthandPropertyAssignment(n) &&
+				checker.getShorthandAssignmentValueSymbol(n) === symbol
+			) {
+				onlyFormats = false;
+				return;
+			}
+			ts.forEachChild(n, scan);
+		};
+		scan(root);
+		return onlyFormats ? start : null;
+	};
+
 	/** The locale and options of literal arguments, or a blocker reason. */
 	const localeArgs = (
 		a0: ts.Expression | undefined,
@@ -1819,8 +1871,9 @@ export function translateCode(input: CodeNativeInput): TranslateResult {
 		const options: Record<string, unknown> = {};
 		let zone: string | null = null;
 		if (a1 !== undefined) {
-			if (!ts.isObjectLiteralExpression(a1)) return 'computed options';
-			for (const p of a1.properties) {
+			const literal = optionsLiteral(a1);
+			if (literal === null) return 'computed options';
+			for (const p of literal.properties) {
 				if (
 					!ts.isPropertyAssignment(p) ||
 					!(ts.isIdentifier(p.name) || ts.isStringLiteral(p.name))
@@ -1863,7 +1916,8 @@ export function translateCode(input: CodeNativeInput): TranslateResult {
 	) =>
 		Object.hasOwn(LOCALE_TABLE, JSON.stringify([method, a.locale, a.options]))
 			? LOCALE_TABLE[JSON.stringify([method, a.locale, a.options])]
-			: undefined;
+			: // A combination outside the table: its specs from the ICU data, checked against Node.js.
+				derivedLocaleEntry(method, a.locale, a.options);
 
 	/** The code makes a Date somewhere: \`new Date(…)\` or \`Date(…)\`. */
 	const makesDates = /\bnew\s+Date\b|\bDate\s*\(/.test(input.code);
@@ -1955,12 +2009,66 @@ export function translateCode(input: CodeNativeInput): TranslateResult {
 	 * constant with such a value, or a value of the input in code that changes no input (the
 	 * input is JSON, which has no Date).
 	 */
+	/**
+	 * True when each assignment to the variable \`symbol\` gives it a value that is no Date. A
+	 * compound assignment (\`+=\`, \`-=\`) gives a number or a text. An assignment in a pattern
+	 * (\`[a, b] = …\`) has a value of unknown kind.
+	 */
+	const assignedNoDate = (symbol: ts.Symbol | undefined, depth: number): boolean => {
+		if (symbol === undefined) return false;
+		let ok = true;
+		const same = (e: ts.Node): boolean =>
+			ts.isIdentifier(e) && checker.getSymbolAtLocation(e) === symbol;
+		const scan = (n: ts.Node): void => {
+			if (!ok) return;
+			if (
+				ts.isBinaryExpression(n) &&
+				n.operatorToken.kind === ts.SyntaxKind.EqualsToken &&
+				same(stripParens(n.left))
+			) {
+				ok = isNotDate(n.right, depth);
+			} else if (
+				(ts.isArrayLiteralExpression(n) || ts.isObjectLiteralExpression(n)) &&
+				ts.isBinaryExpression(n.parent) &&
+				n.parent.left === n &&
+				n.parent.operatorToken.kind === ts.SyntaxKind.EqualsToken
+			) {
+				let named = false;
+				const find = (x: ts.Node): void => {
+					if (same(x)) named = true;
+					else ts.forEachChild(x, find);
+				};
+				find(n);
+				if (named) ok = false;
+			} else if ((ts.isForOfStatement(n) || ts.isForInStatement(n)) && same(n.initializer)) {
+				ok = false;
+			}
+			ts.forEachChild(n, scan);
+		};
+		scan(root);
+		return ok;
+	};
+
 	const isNotDate = (e: ts.Expression, depth: number): boolean => {
 		if (depth > 6) return false;
 		const x = stripParens(e);
 		if (isNumberValue(x) || ts.isStringLiteralLike(x) || ts.isTemplateExpression(x)) return true;
 		// \`a + b\` is a number or a text.
 		if (ts.isBinaryExpression(x) && x.operatorToken.kind === ts.SyntaxKind.PlusToken) return true;
+		// One of two values that are no Date: \`a || b\`, \`a && b\`, \`a ?? b\`, \`c ? a : b\`.
+		if (
+			ts.isBinaryExpression(x) &&
+			[
+				ts.SyntaxKind.BarBarToken,
+				ts.SyntaxKind.AmpersandAmpersandToken,
+				ts.SyntaxKind.QuestionQuestionToken,
+			].includes(x.operatorToken.kind)
+		) {
+			return isNotDate(x.left, depth + 1) && isNotDate(x.right, depth + 1);
+		}
+		if (ts.isConditionalExpression(x)) {
+			return isNotDate(x.whenTrue, depth + 1) && isNotDate(x.whenFalse, depth + 1);
+		}
 		if (ts.isCallExpression(x)) {
 			const callee = stripParens(x.expression);
 			if (ts.isPropertyAccessExpression(callee) && TEXT_METHODS.has(callee.name.text)) return true;
@@ -1969,6 +2077,21 @@ export function translateCode(input: CodeNativeInput): TranslateResult {
 		if (ts.isIdentifier(x) && !isFree(x)) {
 			const declarations = checker.getSymbolAtLocation(x)?.declarations ?? [];
 			const d = declarations.length === 1 ? declarations[0] : undefined;
+			// A \`let\` or \`var\` variable that gets no Date: its start value and each value
+			// that the code gives it are no Date.
+			if (
+				d !== undefined &&
+				ts.isVariableDeclaration(d) &&
+				ts.isIdentifier(d.name) &&
+				ts.isVariableDeclarationList(d.parent) &&
+				(d.parent.flags & ts.NodeFlags.Const) === 0 &&
+				!ts.isForOfStatement(d.parent.parent) &&
+				!ts.isForInStatement(d.parent.parent) &&
+				(d.initializer === undefined || isNotDate(d.initializer, depth + 1)) &&
+				assignedNoDate(checker.getSymbolAtLocation(x), depth + 1)
+			) {
+				return true;
+			}
 			if (
 				d !== undefined &&
 				ts.isVariableDeclaration(d) &&

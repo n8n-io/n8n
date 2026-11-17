@@ -129,6 +129,42 @@ const SET_VALUES: Array<[string, string, number]> = [
 	['string', `={{ ${AT} }}`, 1],
 ];
 
+/** Formats with the tokens that Luxon makes for the locale en-US, the ISO week, and text that is no token. */
+const FORMATS = [
+	'D',
+	'DD',
+	'DDD',
+	'DDDD',
+	't',
+	'tt',
+	'T',
+	'TT',
+	'f',
+	'ff',
+	'F',
+	'FF',
+	"kkkk-'W'WW",
+	'kk W',
+	'u uu uuu',
+	'YYYY-MM-DD',
+	'dd.MM.yyyy HH:mm:ss.SSS',
+];
+const FORMAT_DATES = [
+	'2024-03-07T15:04:05.678Z',
+	'2021-01-03T00:00:00.007Z',
+	'2020-12-31T23:59:59.990Z',
+	'2024-12-30T12:00:00.000Z',
+	'1999-01-05T00:04:05.008Z',
+	'2026-01-01T05:00:00.000Z',
+];
+for (const format of FORMATS) {
+	const parts = FORMAT_DATES.map(
+		(date) =>
+			`{{ DateTime.fromISO('${date}', { zone: 'Europe/Berlin' }).toFormat(${JSON.stringify(format)}) }}`,
+	);
+	SET_VALUES.push(['string', `=${parts.join(' | ')}`, 3.4]);
+}
+
 const SET_FAILURES: Array<[string, string, number]> = [
 	['number', `={{ ${AT} }}`, 3.4],
 	['boolean', `={{ ${AT} }}`, 3.4],

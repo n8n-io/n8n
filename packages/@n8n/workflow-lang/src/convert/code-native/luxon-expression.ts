@@ -118,11 +118,13 @@ const STATICS = new Set([
 	'utc',
 ]);
 
-/** The tokens of `luxFormat`. */
-const FORMAT_TOKENS = new Set(
-	'yyyy yy y yyyyyy M MM MMM MMMM MMMMM L LL LLL LLLL LLLLL d dd H HH h hh m mm s ss S SSS a c ccc cccc ccccc E EEE EEEE EEEEE o ooo Z ZZ ZZZ z x X q qq'.split(
-		' ',
-	),
+/**
+ * The tokens of Luxon that `luxFormat` does not have: the names of a time zone, the era, the
+ * week of the locale, and the formats of the locale with a time zone name. Luxon keeps each
+ * other run of letters that is no token as it is, and so does `luxFormat`.
+ */
+const TOKENS_WITHOUT_FORM = new Set(
+	'ZZZZ ZZZZZ G GG GGGGG n nn ii iiii ttt tttt TTT TTTT fff ffff FFF FFFF'.split(' '),
 );
 
 export function formatSupported(fmt: string): boolean {
@@ -136,7 +138,7 @@ export function formatSupported(fmt: string): boolean {
 		}
 		let n = 1;
 		while (fmt.charAt(k + n) === ch) n++;
-		if (/[A-Za-z]/.test(ch) && !FORMAT_TOKENS.has(fmt.slice(k, k + n))) return false;
+		if (/[A-Za-z]/.test(ch) && TOKENS_WITHOUT_FORM.has(fmt.slice(k, k + n))) return false;
 		k += n;
 	}
 	return true;

@@ -475,6 +475,19 @@ function postgresColumns(columns: unknown): Record<string, unknown> | null {
 }
 
 /**
+ * Library nodes whose parameters here have the places of the v1 parameters, and whose v1 node
+ * reads each collection as a whole: v1 gives the node the text of a Luxon DateTime that is a
+ * member of a collection or of a list (`cleanupParameterData`), so an expression that gives a
+ * DateTime there translates to its text. A DateTime that is a whole parameter stays one in
+ * v1, and has no translation.
+ */
+const NESTED_DATES = new Set([
+	'n8n-nodes-base.googleSheets',
+	'n8n-nodes-base.googleCalendar',
+	'n8n-nodes-base.supabase',
+]);
+
+/**
  * The mapped fields of a Data Table node that have the type `dateTime`: v1 parses each one
  * with Luxon in the time zone of the workflow (`tryToParseDateTime`) and gives the service
  * the date.
@@ -896,7 +909,11 @@ export function lowerLibrary(c: NodeContext): void {
 	// v1 gives the text of a DateTime there.
 	const parameters = c.compiled(adapted, '', {
 		flattenResourceLocators: !LOCATOR_TYPES.has(type),
-		...(type === 'n8n-nodes-base.dataTable' ? { luxonValue: 'text' as const } : {}),
+		...(type === 'n8n-nodes-base.dataTable'
+			? { luxonValue: 'text' as const }
+			: NESTED_DATES.has(type)
+				? { luxonValue: 'nested' as const }
+				: {}),
 	});
 	if (type === 'n8n-nodes-base.dataTable') {
 		parseDatedColumns(c, parameters.code, datedColumns(adapted));

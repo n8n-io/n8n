@@ -492,7 +492,12 @@ export function tryCompiledNode(c: NodeContext): boolean {
 	const resolved = compiled.resolved;
 	const values = compiled.itemParameters.map((path) => ({
 		path,
-		value: c.compiled(valueAtPath(resolved, path), path, { flattenResourceLocators: false }),
+		// `path` is a parameter as the module reads it: v1 gives the text of a DateTime below it
+		// (`cleanupParameterData`), and keeps a DateTime that is the whole parameter.
+		value: c.compiled(valueAtPath(resolved, path), path, {
+			flattenResourceLocators: false,
+			luxonValue: 'below',
+		}),
 	}));
 	// v1 evaluates an expression when the node reads the parameter. The code here evaluates
 	// it for all items before the call. So an expression that can throw keeps its error in the
