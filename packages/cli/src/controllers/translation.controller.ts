@@ -1,20 +1,18 @@
 import { safeJoinPath } from '@n8n/backend-common';
 import { GlobalConfig } from '@n8n/config';
 import { Get, RestController } from '@n8n/decorators';
-import type { Request, Response } from 'express';
+import type { Request } from 'express';
 import { access } from 'fs/promises';
 
 import { NODES_BASE_DIR } from '@/constants';
 import { CredentialTypes } from '@/credential-types';
-import { LocaleService } from '@/services/locale.service';
-import { BadRequestError, InternalServerError, NotFoundError } from '@n8n/errors';
+import { BadRequestError, InternalServerError } from '@n8n/errors';
 
 export const CREDENTIAL_TRANSLATIONS_DIR = 'n8n-nodes-base/dist/credentials/translations';
 export const NODE_HEADERS_PATH = safeJoinPath(NODES_BASE_DIR, 'dist/nodes/headers');
 
 export declare namespace TranslationRequest {
 	export type Credential = Request<{}, {}, {}, { credentialType: string }>;
-	export type Locale = Request<{ code: string }, {}, {}, { v?: string }>;
 }
 
 @RestController('/')
@@ -22,7 +20,6 @@ export class TranslationController {
 	constructor(
 		private readonly credentialTypes: CredentialTypes,
 		private readonly globalConfig: GlobalConfig,
-		private readonly localeService: LocaleService,
 	) {}
 
 	@Get('/credential-translation')
@@ -61,22 +58,5 @@ export class TranslationController {
 		} catch (error) {
 			throw new InternalServerError('Failed to load headers file', error);
 		}
-	}
-
-	// Unauthenticated because the sign-in page also renders in the instance default locale.
-	@Get('/locales/:code', { allowUnauthenticated: true })
-	async getLocaleCatalog(req: TranslationRequest.Locale, res: Response) {
-		const { code } = req.params;
-		const result = await this.localeService.getUiCatalog(code);
-		if (!result) throw new NotFoundError(`Unknown locale: "${code}"`);
-
-		// The client asks with the content hash from the settings. A URL with the current hash
-		// always returns this content, so the browser can keep it. Any other URL (a file edited
-		// after startup, or no hash) must not be cached under that URL.
-		res.setHeader(
-			'Cache-Control',
-			req.query.v === result.hash ? 'public, max-age=31536000, immutable' : 'no-store',
-		);
-		return result.catalog;
 	}
 }

@@ -2,9 +2,11 @@ import { Logger } from '@n8n/backend-common';
 import { GlobalConfig } from '@n8n/config';
 import { Service } from '@n8n/di';
 import { isRecord } from '@n8n/utils/is-record';
+import { InstanceSettings } from 'n8n-core';
 import { createHash } from 'crypto';
 import { readFileSync } from 'fs';
-import { readFile } from 'fs/promises';
+import { mkdir, rm, writeFile } from 'fs/promises';
+import path from 'path';
 import { parse as parseSemver } from 'semver';
 
 import { N8N_VERSION } from '@/constants';
@@ -12,17 +14,18 @@ import { N8N_VERSION } from '@/constants';
 export interface AvailableLocale {
 	code: string;
 	name: string;
-	/** Set for a remote catalog. The browser loads it from this URL. */
+	/**
+	 * Where the browser loads the catalog from. An absolute URL for a remote catalog, or a path
+	 * relative to the n8n base URL for a local catalog. English has none, because the UI bundles it.
+	 */
 	url?: string;
-	/** Set for a local catalog. A hash of the file content at startup, used to bust the browser cache. */
-	hash?: string;
 }
 
-export interface UiCatalog {
-	catalog: Record<string, unknown>;
-	/** Hash of the content that was read, to compare with the hash the client requested. */
-	hash: string;
-}
+/**
+ * Local catalogs are published under this path of the static file server. The name of each
+ * file has a hash of its content, so a browser can keep a file until the content changes.
+ */
+export const LOCAL_CATALOGS_PATH = 'locales';
 
 /** Keys under this prefix are reserved for backend message translations and never sent to the UI. */
 const BACKEND_KEY_PREFIX = 'backend.';
@@ -32,20 +35,24 @@ const ENGLISH: AvailableLocale = { code: 'en', name: 'English' };
 const hashCatalog = (content: string) =>
 	createHash('sha256').update(content).digest('hex').slice(0, 16);
 
-/** Resolves the admin-configured UI locales (`N8N_LOCALES`) and reads their translation catalogs. */
+/** Resolves the admin-configured UI locales (`N8N_LOCALES`) and publishes their local catalogs. */
 @Service()
 export class LocaleService {
 	private availableLocales: AvailableLocale[] | undefined;
 
+	/** Processed local catalogs, keyed by the file name they are published under. */
+	private readonly localCatalogs = new Map<string, string>();
+
 	constructor(
 		private readonly globalConfig: GlobalConfig,
 		private readonly logger: Logger,
+		private readonly instanceSettings: InstanceSettings,
 	) {}
 
 	/**
-	 * English plus every configured locale with a readable file or a remote URL. Computed once,
-	 * so adding a locale needs a restart. A missing file is skipped so a bad path doesn't break
-	 * startup.
+	 * English plus every configured locale with a valid local file or a remote URL. Computed once,
+	 * so a change to a locale or its file needs a restart. A bad file is skipped so it doesn't
+	 * break startup.
 	 */
 	getAvailableLocales(): AvailableLocale[] {
 		if (this.availableLocales) return this.availableLocales;
@@ -58,20 +65,8 @@ export class LocaleService {
 			}
 
 			if (file) {
-				let content: string;
-				try {
-					content = readFileSync(file, 'utf8');
-				} catch (error) {
-					this.logger.warn(
-						`Skipping locale "${code}" because its translation file is not readable`,
-						{
-							file,
-							error,
-						},
-					);
-					continue;
-				}
-				locales.push({ code, name, hash: hashCatalog(content) });
+				const fileName = this.loadLocalCatalog(code, file);
+				if (fileName) locales.push({ code, name, url: `${LOCAL_CATALOGS_PATH}/${fileName}` });
 				continue;
 			}
 
@@ -101,40 +96,53 @@ export class LocaleService {
 	}
 
 	/**
-	 * Reads a local catalog from disk on every call, so edits to an existing file apply without
-	 * a restart. Returns `null` for English (bundled in the UI), for a remote catalog (the browser
-	 * loads it directly), and for an unknown or unreadable locale.
+	 * Writes the local catalogs into the static file folder, so the editor's static file server
+	 * serves them. Removes the files of an earlier start first, so old versions don't pile up.
 	 */
-	async getUiCatalog(code: string): Promise<UiCatalog | null> {
-		if (code === ENGLISH.code || !this.isAvailable(code)) return null;
+	async publishLocalCatalogs(): Promise<void> {
+		this.getAvailableLocales();
 
-		const { file } = this.globalConfig.locales.available[code];
-		if (!file) return null;
+		const dir = path.join(this.instanceSettings.staticCacheDir, LOCAL_CATALOGS_PATH);
+		await rm(dir, { recursive: true, force: true });
+		if (this.localCatalogs.size === 0) return;
 
-		let content: string;
+		await mkdir(dir, { recursive: true });
+		await Promise.all(
+			[...this.localCatalogs].map(
+				async ([fileName, content]) => await writeFile(path.join(dir, fileName), content, 'utf8'),
+			),
+		);
+	}
+
+	/** Reads and checks a local file. Returns the name to publish it under, or `undefined` if invalid. */
+	private loadLocalCatalog(code: string, file: string): string | undefined {
 		let parsed: unknown;
 		try {
-			content = await readFile(file, 'utf8');
-			parsed = JSON.parse(content);
+			parsed = JSON.parse(readFileSync(file, 'utf8'));
 		} catch (error) {
-			this.logger.warn(`Failed to read the translation file for locale "${code}"`, {
+			this.logger.warn(`Skipping locale "${code}" because its translation file is not valid`, {
 				file,
 				error,
 			});
-			return null;
+			return undefined;
 		}
 
 		if (!isRecord(parsed)) {
-			this.logger.warn(`Translation file for locale "${code}" is not a JSON object`, { file });
-			return null;
+			this.logger.warn(
+				`Skipping locale "${code}" because its translation file is not a JSON object`,
+				{ file },
+			);
+			return undefined;
 		}
 
-		return {
-			catalog: Object.fromEntries(
+		const content = JSON.stringify(
+			Object.fromEntries(
 				Object.entries(parsed).filter(([key]) => !key.startsWith(BACKEND_KEY_PREFIX)),
 			),
-			hash: hashCatalog(content),
-		};
+		);
+		const fileName = `${encodeURIComponent(code)}.${hashCatalog(content)}.json`;
+		this.localCatalogs.set(fileName, content);
+		return fileName;
 	}
 
 	/** `{baseUrl}/{code}/{code}_{major}.{minor}.json`, or `undefined` for an invalid n8n version. */

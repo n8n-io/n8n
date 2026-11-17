@@ -1,11 +1,7 @@
-import { getLocaleCatalog, getRemoteLocaleCatalog, loadLocaleCatalog } from './settings';
-import type { IRestApiContext } from '../types';
-import * as utils from '../utils';
+import { fetchLocaleCatalog } from './settings';
 
-vi.mock('../utils');
-
-const context = {} as IRestApiContext;
-const url = 'https://translations.example.com/n8n/de/de_2.4.json';
+const remoteUrl = 'https://translations.example.com/n8n/de/de_2.4.json';
+const localUrl = 'locales/de.0a74b604c023226e.json';
 
 const mockFetch = (body: unknown, init: ResponseInit = { status: 200 }) => {
 	const fetchMock = vi
@@ -15,91 +11,57 @@ const mockFetch = (body: unknown, init: ResponseInit = { status: 200 }) => {
 	return fetchMock;
 };
 
-describe('locale catalogs', () => {
+describe('fetchLocaleCatalog', () => {
 	afterEach(() => {
 		vi.unstubAllGlobals();
-		vi.clearAllMocks();
 	});
 
-	describe('getLocaleCatalog', () => {
-		it('should send the hash as the "v" query parameter', async () => {
-			await getLocaleCatalog(context, 'de', 'abc123');
+	it('should fetch an absolute URL as it is, without credentials', async () => {
+		const fetchMock = mockFetch({ 'generic.save': 'Speichern' });
 
-			expect(utils.makeRestApiRequest).toHaveBeenCalledWith(context, 'GET', '/locales/de', {
-				v: 'abc123',
-			});
-		});
-
-		it('should send no query parameter without a hash', async () => {
-			await getLocaleCatalog(context, 'de');
-
-			expect(utils.makeRestApiRequest).toHaveBeenCalledWith(
-				context,
-				'GET',
-				'/locales/de',
-				undefined,
-			);
-		});
+		expect(await fetchLocaleCatalog(remoteUrl, '/')).toEqual({ 'generic.save': 'Speichern' });
+		expect(fetchMock).toHaveBeenCalledWith(remoteUrl, { credentials: 'omit' });
 	});
 
-	describe('getRemoteLocaleCatalog', () => {
-		it('should fetch the URL without credentials', async () => {
-			const fetchMock = mockFetch({ 'generic.save': 'Speichern' });
+	it.each([
+		['the root base path', '/', `${window.location.origin}/${localUrl}`],
+		['a base path', '/n8n/', `${window.location.origin}/n8n/${localUrl}`],
+		['an absolute base URL', 'http://localhost:5678/', `http://localhost:5678/${localUrl}`],
+	])('should resolve a relative URL against %s', async (_, baseUrl, expected) => {
+		const fetchMock = mockFetch({});
 
-			expect(await getRemoteLocaleCatalog(url)).toEqual({ 'generic.save': 'Speichern' });
-			expect(fetchMock).toHaveBeenCalledWith(url, { credentials: 'omit' });
-		});
+		await fetchLocaleCatalog(localUrl, baseUrl);
 
-		it('should remove backend keys', async () => {
-			mockFetch({ 'generic.save': 'Speichern', 'backend.error.notFound': 'Nicht gefunden' });
-
-			expect(await getRemoteLocaleCatalog(url)).toEqual({ 'generic.save': 'Speichern' });
-		});
-
-		it('should name the URL when the request fails', async () => {
-			vi.stubGlobal('fetch', vi.fn().mockRejectedValue(new TypeError('Failed to fetch')));
-
-			await expect(getRemoteLocaleCatalog(url)).rejects.toThrow(url);
-		});
-
-		it('should throw on a non-2xx status', async () => {
-			mockFetch('Not found', { status: 404 });
-
-			await expect(getRemoteLocaleCatalog(url)).rejects.toThrow('HTTP 404');
-		});
-
-		it('should throw on invalid JSON', async () => {
-			mockFetch('{not json');
-
-			await expect(getRemoteLocaleCatalog(url)).rejects.toThrow();
-		});
-
-		it('should throw when the JSON is not an object', async () => {
-			mockFetch(['Speichern']);
-
-			await expect(getRemoteLocaleCatalog(url)).rejects.toThrow('not a JSON object');
-		});
+		expect(fetchMock).toHaveBeenCalledWith(expected, expect.anything());
 	});
 
-	describe('loadLocaleCatalog', () => {
-		it('should load a remote catalog from its URL and not through n8n', async () => {
-			const fetchMock = mockFetch({ 'generic.save': 'Speichern' });
+	it('should remove backend keys', async () => {
+		mockFetch({ 'generic.save': 'Speichern', 'backend.error.notFound': 'Nicht gefunden' });
 
-			await loadLocaleCatalog(context, { code: 'de', name: 'Deutsch', url });
+		expect(await fetchLocaleCatalog(remoteUrl, '/')).toEqual({ 'generic.save': 'Speichern' });
+	});
 
-			expect(fetchMock).toHaveBeenCalledWith(url, expect.anything());
-			expect(utils.makeRestApiRequest).not.toHaveBeenCalled();
-		});
+	it('should name the URL when the request fails', async () => {
+		vi.stubGlobal('fetch', vi.fn().mockRejectedValue(new TypeError('Failed to fetch')));
 
-		it('should load a local catalog through n8n with its hash', async () => {
-			const fetchMock = mockFetch({});
+		await expect(fetchLocaleCatalog(remoteUrl, '/')).rejects.toThrow(remoteUrl);
+	});
 
-			await loadLocaleCatalog(context, { code: 'fr', name: 'Français', hash: 'abc123' });
+	it('should throw on a non-2xx status', async () => {
+		mockFetch('Not found', { status: 404 });
 
-			expect(utils.makeRestApiRequest).toHaveBeenCalledWith(context, 'GET', '/locales/fr', {
-				v: 'abc123',
-			});
-			expect(fetchMock).not.toHaveBeenCalled();
-		});
+		await expect(fetchLocaleCatalog(remoteUrl, '/')).rejects.toThrow('HTTP 404');
+	});
+
+	it('should throw on invalid JSON', async () => {
+		mockFetch('{not json');
+
+		await expect(fetchLocaleCatalog(remoteUrl, '/')).rejects.toThrow();
+	});
+
+	it('should throw when the JSON is not an object', async () => {
+		mockFetch(['Speichern']);
+
+		await expect(fetchLocaleCatalog(remoteUrl, '/')).rejects.toThrow('not a JSON object');
 	});
 });

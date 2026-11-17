@@ -150,11 +150,11 @@ export interface FrontendSettings {
 	personalizationSurveyEnabled: boolean;
 	defaultLocale: string;
 	/**
-	 * English plus the admin-configured locales with a readable file or a remote URL.
-	 * `url` is set for a remote catalog, which the browser loads directly.
-	 * `hash` is set for a local catalog. Send it as `v` to `/locales/:code` so the browser can cache it.
+	 * English plus the admin-configured locales with a valid local file or a remote URL.
+	 * `url` is where the browser loads the catalog from: an absolute URL for a remote catalog, or
+	 * a path relative to the n8n base URL for a local catalog. English has no `url`.
 	 */
-	availableLocales: Array<{ code: string; name: string; url?: string; hash?: string }>;
+	availableLocales: Array<{ code: string; name: string; url?: string }>;
 	/** Whether users can choose their own UI language in personal settings. */
 	localeUserOverride: boolean;
 	userManagement: IUserManagementSettings;

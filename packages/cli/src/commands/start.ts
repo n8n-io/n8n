@@ -44,6 +44,7 @@ import { DurableScheduler } from '@/scheduling/durable-scheduler';
 import { PollJobProvider } from '@/scheduling/poll-trigger-node/poll-job-provider';
 import { mainSystemTasks } from '@/scheduling/system-tasks/main-system-tasks';
 import { Server } from '@/server';
+import { LocaleService } from '@/services/locale.service';
 
 import { WaitTracker } from '@/wait-tracker';
 
@@ -301,6 +302,7 @@ export class Start extends BaseCommand<z.infer<typeof flagsSchema>> {
 
 		if (!this.globalConfig.endpoints.disableUi) {
 			await this.generateStaticAssets();
+			await Container.get(LocaleService).publishLocalCatalogs();
 		}
 
 		await this.moduleRegistry.initModules(this.instanceSettings.instanceType);

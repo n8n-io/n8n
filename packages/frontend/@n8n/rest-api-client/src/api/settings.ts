@@ -15,56 +15,38 @@ export async function getSettings(context: IRestApiContext): Promise<FrontendSet
 }
 
 /**
- * Fetches a locale catalog from the n8n server. Send the `hash` from the settings, so the
- * browser can cache the catalog until its content changes.
+ * Fetches a locale catalog from a static file server: the n8n server for a local catalog, or a
+ * translation server for a remote one. Sends no credentials, because a static file needs none.
+ * Missing keys fall back to English in the UI.
+ *
+ * @param url An absolute URL, or a path relative to `baseUrl`.
+ * @param baseUrl The n8n base URL, absolute or relative to the current page.
  */
-export async function getLocaleCatalog(
-	context: IRestApiContext,
-	code: string,
-	hash?: string,
+export async function fetchLocaleCatalog(
+	url: string,
+	baseUrl: string,
 ): Promise<Partial<LocaleMessages>> {
-	return await makeRestApiRequest(
-		context,
-		'GET',
-		`/locales/${encodeURIComponent(code)}`,
-		hash ? { v: hash } : undefined,
-	);
-}
+	const resolvedUrl = new URL(url, new URL(baseUrl, window.location.href)).href;
 
-/**
- * Fetches a locale catalog directly from the translation server, not through n8n. Sends no
- * credentials, because the server is not part of n8n.
- */
-export async function getRemoteLocaleCatalog(url: string): Promise<Partial<LocaleMessages>> {
 	let response: Response;
 	try {
-		response = await fetch(url, { credentials: 'omit' });
+		response = await fetch(resolvedUrl, { credentials: 'omit' });
 	} catch (error) {
 		// A network or CORS error only says "Failed to fetch", so name the URL.
-		throw new Error(`Failed to load the locale catalog from ${url}`, { cause: error });
+		throw new Error(`Failed to load the locale catalog from ${resolvedUrl}`, { cause: error });
 	}
 	if (!response.ok) {
-		throw new Error(`Failed to load the locale catalog from ${url}: HTTP ${response.status}`);
+		throw new Error(
+			`Failed to load the locale catalog from ${resolvedUrl}: HTTP ${response.status}`,
+		);
 	}
 
 	const parsed: unknown = await response.json();
 	if (!isRecord(parsed)) {
-		throw new Error(`The locale catalog at ${url} is not a JSON object`);
+		throw new Error(`The locale catalog at ${resolvedUrl} is not a JSON object`);
 	}
 
 	return Object.fromEntries(
 		Object.entries(parsed).filter(([key]) => !key.startsWith(BACKEND_KEY_PREFIX)),
 	);
-}
-
-/**
- * Loads the catalog of a configured locale from where it lives: the translation server for a
- * remote catalog, and the n8n server for a local file. Missing keys fall back to English in the UI.
- */
-export async function loadLocaleCatalog(
-	context: IRestApiContext,
-	locale: AvailableLocale,
-): Promise<Partial<LocaleMessages>> {
-	if (locale.url) return await getRemoteLocaleCatalog(locale.url);
-	return await getLocaleCatalog(context, locale.code, locale.hash);
 }
