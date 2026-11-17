@@ -38,6 +38,24 @@ export interface EquivalenceCase {
 	 * recording has `outputs`: the run data of the node.
 	 */
 	settings?: NodeSettings;
+	/**
+	 * The sub-nodes of an AI cluster (`ai_*` connections to the node). The recorder then runs
+	 * the node with its sub-nodes in n8n's engine, and records the requests that the LangChain
+	 * clients send with `fetch`. The credential of the case is the credential of every sub-node.
+	 * The library side gets the sub-nodes in the parameters of the root, as the converter
+	 * writes them (`clusterParameters`).
+	 */
+	subNodes?: SubNodeCase[];
+}
+
+/** One sub-node of a case: it supplies data to the node of the case over `connection`. */
+export interface SubNodeCase {
+	name: string;
+	type: string;
+	typeVersion: number;
+	parameters: Record<string, unknown>;
+	/** The n8n connection type, for example `ai_languageModel`. */
+	connection: string;
 }
 
 /** The settings of a v1 node that n8n's engine reads. */
@@ -100,6 +118,11 @@ export interface Recording {
 	nodeError?: string;
 	/** The error message when the v1 node failed. */
 	error?: string;
+	/**
+	 * The runs of the sub-nodes of an AI cluster (cases with `subNodes`), as n8n's engine
+	 * records them: one entry for each run, with the error message of a run that failed.
+	 */
+	subRuns?: Record<string, Array<{ error: string | null }>>;
 }
 
 export interface RawRequest {

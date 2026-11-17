@@ -5,6 +5,7 @@
  * are fake.
  */
 import type { EquivalenceCase } from './equivalence.ts';
+import { AI_CASES } from './ai-cases.ts';
 import { DATA_TABLE_CASES } from './data-table-cases.ts';
 import { SHEETS_APPEND_CASES } from './google-sheets-append-cases.ts';
 import { SHEETS_UPSERT_CASES } from './google-sheets-upsert-cases.ts';
@@ -2513,4 +2514,5 @@ export const EQUIVALENCE_CASES: EquivalenceCase[] = [
 	...DATA_TABLE_CASES,
 	...SHEETS_UPSERT_CASES,
 	...SHEETS_APPEND_CASES,
+	...AI_CASES,
 ];

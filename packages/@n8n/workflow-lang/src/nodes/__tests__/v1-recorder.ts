@@ -446,7 +446,48 @@ function installFakeHttp(
 		},
 		close() {},
 	};
-	di.Container.set(network.OutboundHttp, { requests: () => client });
+	di.Container.set(network.OutboundHttp, {
+		requests: () => client,
+		// The model sub-nodes ask for the egress filter of the execution; the fake `fetch` answers.
+		egressFilter: () => network.passthroughEgressFilter,
+	});
+}
+
+/** Headers that name the client library or the transport. A compiled node does not send them. */
+const CLIENT_HEADERS =
+	/^(user-agent|accept|accept-encoding|content-length|x-stainless-.*|x-goog-api-client|anthropic-dangerous-.*)$/;
+
+/**
+ * Replaces the global `fetch` for one run: the clients of the LangChain models (the OpenAI,
+ * Anthropic and Google SDKs) send their requests with it. It records each request and answers
+ * from the list of the case. Returns the function that restores the real `fetch`.
+ */
+function installFakeFetch(responses: EquivalenceCase['responses'], recorded: RawRequest[]) {
+	const real = globalThis.fetch;
+	let index = 0;
+	globalThis.fetch = async (input: any, init?: any): Promise<Response> => {
+		if (index >= MAX_FAKE_REQUESTS)
+			throw new Error(`the node sent more than ${MAX_FAKE_REQUESTS} requests`);
+		const request = new Request(input, init);
+		const headers: Record<string, string> = {};
+		request.headers.forEach((value, name) => {
+			if (!CLIENT_HEADERS.test(name)) headers[name] = value;
+		});
+		const text = await request.text();
+		let body: unknown = text;
+		try {
+			body = JSON.parse(text);
+		} catch {}
+		recorded.push({ method: request.method, url: request.url, headers, body });
+		const r = responses[Math.min(index++, responses.length - 1)] ?? { body: {} };
+		return new Response(typeof r.body === 'string' ? r.body : JSON.stringify(r.body), {
+			status: r.status ?? 200,
+			headers: { 'content-type': 'application/json', ...(r.headers ?? {}) },
+		});
+	};
+	return () => {
+		globalThis.fetch = real;
+	};
 }
 
 /**
@@ -553,6 +594,14 @@ async function recordInEngine(
 	helper: unknown,
 ): Promise<Recording> {
 	const { workflow, core } = load();
+	const subNodes = testCase.subNodes ?? [];
+	// Every credential type of a sub-node points at the case's credential.
+	const subCredentials = (sub: { type: string; typeVersion: number }) => {
+		const out: AnyRecord = {};
+		const description = nodeTypes.getByNameAndVersion(sub.type, sub.typeVersion).description;
+		for (const { name } of description.credentials ?? []) out[name] = { id: 'case', name: 'case' };
+		return out;
+	};
 	let nodePaired: boolean[] | undefined;
 	const observed = {
 		getByName: (type: string) => nodeTypes.getByName(type),
@@ -595,8 +644,25 @@ async function recordInEngine(
 				...(testCase.credential ? { credentials } : {}),
 				...testCase.settings,
 			},
+			...subNodes.map((sub, k) => ({
+				id: `sub-${k}`,
+				name: sub.name,
+				type: sub.type,
+				typeVersion: sub.typeVersion,
+				position: [200, 200 + 100 * k],
+				parameters: structuredClone(sub.parameters),
+				...(testCase.credential ? { credentials: subCredentials(sub) } : {}),
+			})),
 		],
-		connections: { [START_NODE]: { main: [[{ node: ENGINE_NODE, type: 'main', index: 0 }]] } },
+		connections: {
+			[START_NODE]: { main: [[{ node: ENGINE_NODE, type: 'main', index: 0 }]] },
+			...Object.fromEntries(
+				subNodes.map((sub) => [
+					sub.name,
+					{ [sub.connection]: [[{ node: ENGINE_NODE, type: sub.connection, index: 0 }]] },
+				]),
+			),
+		},
 		nodeTypes: observed,
 		active: false,
 		settings: { executionOrder: 'v1' },
@@ -626,7 +692,13 @@ async function recordInEngine(
 	// The check before the start refuses parameter values that are not real ids. The cases
 	// use made-up values, as the cases without settings do. The run itself is the engine's.
 	engine.checkReadyForExecution = () => null;
-	const run = await engine.processRunExecutionData(graph);
+	const restoreFetch = subNodes.length > 0 ? installFakeFetch(testCase.responses, recorded) : null;
+	let run: AnyRecord;
+	try {
+		run = await engine.processRunExecutionData(graph);
+	} finally {
+		restoreFetch?.();
+	}
 	const result = run.data.resultData;
 	const outputs: unknown[][] = [];
 	const paired: unknown[][] = [];
@@ -641,9 +713,24 @@ async function recordInEngine(
 			paired[k] = [...(paired[k] ?? []), ...(list ?? []).map((item) => item.pairedItem ?? null)];
 		});
 	}
+	const subRuns: Record<string, Array<{ error: string | null }>> = {};
+	for (const sub of subNodes) {
+		const runs: AnyRecord[] = result.runData[sub.name] ?? [];
+		if (runs.length === 0) continue;
+		subRuns[sub.name] = runs.map((r) => ({
+			error: r.error
+				? String(r.error.message ?? 'error')
+				: r.executionStatus === 'error'
+					? 'error'
+					: null,
+		}));
+	}
 	return {
 		requests: recorded.map(normalizeRequest),
 		...(testCase.serviceResults ? { services } : {}),
+		...(subNodes.length > 0 && !result.error
+			? { output: workflow.deepCopy(outputs[0] ?? []), subRuns }
+			: {}),
 		outputs: workflow.deepCopy(Array.from(outputs, (list) => list ?? [])),
 		paired: workflow.deepCopy(Array.from(paired, (list) => list ?? [])),
 		...(nodePaired ? { nodePaired } : {}),
@@ -704,7 +791,8 @@ async function recordNode(
 		},
 	};
 	const helper = credentialsHelper(credentialTypes, testCase.credential?.data ?? {});
-	if (testCase.settings) return await recordInEngine(testCase, nodeTypes, credentials, helper);
+	if (testCase.settings || testCase.subNodes)
+		return await recordInEngine(testCase, nodeTypes, credentials, helper);
 	const services: ServiceCallRecord[] = [];
 	const unsupported = async () => {
 		throw new Error('not supported');

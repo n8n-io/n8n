@@ -21,7 +21,15 @@ import type { NodeContext } from './context.ts';
 import { NodeFailure } from './context.ts';
 import type { TranslatedValue, Usage } from './expression.ts';
 import { constantText, emptyUsage, INDEX, ITEM, jsonLiteral } from './expression.ts';
-import { isClusterRoot, LANGCHAIN_PREFIX, lowerAiNode, lowerHostNode } from './host-node.ts';
+import { nativeCluster, openAiVendorParameters } from './ai-cluster.ts';
+import {
+	clusterMembers,
+	isClusterRoot,
+	LANGCHAIN_PREFIX,
+	lowerAiNode,
+	lowerHostNode,
+} from './host-node.ts';
+import { hideParameters } from './node-parameters.ts';
 import type { Paging } from './http-pagination.ts';
 import { emitPaging, readPaging } from './http-pagination.ts';
 import { emitStep, nodeCall, tryCompiledNode } from './steps.ts';
@@ -62,6 +70,7 @@ const ADAPTERS: Record<
 	string,
 	(p: Record<string, unknown>, version: number) => Record<string, unknown>
 > = {
+	'@n8n/n8n-nodes-langchain.openAi': openAiVendorParameters,
 	// v1 reads `queryString` with `String(value)`: an expression that gives no value searches
 	// for "undefined". The library node cannot tell that from a missing parameter, so the
 	// converter writes the default of a missing one.
@@ -323,8 +332,82 @@ function requireInjectable(credentialType: string | undefined): void {
 	);
 }
 
+/** Root AI nodes that have a native library form for some shapes of their cluster. */
+const NATIVE_ROOTS = new Set([`${LANGCHAIN_PREFIX}chainLlm`]);
+
+/**
+ * Lowers a root AI node with its sub-nodes to its library node, when `nativeCluster` accepts
+ * the cluster. Every other cluster runs in the fallback host, as before.
+ */
+function lowerNativeCluster(c: NodeContext): void {
+	const members = clusterMembers(c.workflow, c.node.name);
+	const onError =
+		c.node.onError ?? (c.node.continueOnFail ? 'continueRegularOutput' : 'stopWorkflow');
+	// Under a "continue" setting v1 records the error of each failed run of the model; the
+	// trace below knows only runs without an error.
+	const native =
+		onError === 'stopWorkflow'
+			? nativeCluster(
+					c.node.type,
+					c.version,
+					c.parameters,
+					members.map((m) => ({
+						name: m.node.name,
+						type: m.node.type,
+						typeVersion: m.node.typeVersion,
+						parameters: hideParameters(
+							m.node.type,
+							m.node.typeVersion ?? 1,
+							m.node.parameters ?? {},
+						),
+						connection: m.connection,
+						target: m.target === c.node.name ? undefined : m.target,
+						targetIndex: m.targetIndex,
+					})),
+				)
+			: 'error setting';
+	const model =
+		typeof native === 'string'
+			? undefined
+			: members.find((m) => m.node.name === native.credentialOf)?.node;
+	const credentialType = Object.keys(model?.credentials ?? {})[0];
+	const credential = model ? c.credentialOf(model) : undefined;
+	if (
+		typeof native === 'string' ||
+		credential === undefined ||
+		credentialType === undefined ||
+		NOT_INJECTABLE.has(credentialType)
+	) {
+		lowerAiNode(c);
+		return;
+	}
+	let parameters: TranslatedValue;
+	try {
+		parameters = c.compiled(native.parameters, '', { flattenResourceLocators: false });
+	} catch (error) {
+		if (!(error instanceof NodeFailure)) throw error;
+		lowerAiNode(c);
+		return;
+	}
+	// v1 runs the chain once for each item, so the library node runs once for each item too.
+	emitStep(c, nodeCall(c, c.node.type, parameters, credential, true));
+	if (c.traceAll) {
+		// v1 gives the model one run for each item, at the time of its request.
+		const out = c.output(0);
+		for (const sub of native.runsPerItem) {
+			c.w.line(
+				`if (${out}.length > 0) ctx.trace(${str(sub)}, { $subRuns: ${out}.map(() => ({ error: null })) });`,
+			);
+		}
+	}
+}
+
 export function lowerLibrary(c: NodeContext): void {
 	const type = c.node.type;
+	if (NATIVE_ROOTS.has(type)) {
+		lowerNativeCluster(c);
+		return;
+	}
 	requireInjectable(Object.keys(c.node.credentials ?? {})[0]);
 	// A LangChain node with sub-nodes (an OpenAI message with tools) runs as a cluster in the
 	// host, so the host gives the node its sub-nodes and reports their runs.

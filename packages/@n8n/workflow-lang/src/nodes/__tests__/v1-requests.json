@@ -3940,7 +3940,8 @@
 					"max_output_tokens": 50,
 					"temperature": 0.2,
 					"background": false
-				}
+				},
+				"qsFormat": "brackets"
 			}
 		],
 		"output": [
@@ -4007,7 +4008,8 @@
 							}
 						}
 					}
-				}
+				},
+				"qsFormat": "brackets"
 			}
 		],
 		"output": [
@@ -4069,7 +4071,8 @@
 							"type": "json_object"
 						}
 					}
-				}
+				},
+				"qsFormat": "brackets"
 			}
 		],
 		"output": [
@@ -6217,5 +6220,1602 @@
 			}
 		],
 		"error": "Column names were updated after the node's setup"
+	},
+	"openAi text.message": {
+		"requests": [
+			{
+				"method": "POST",
+				"url": "https://api.openai.com/v1/chat/completions",
+				"qs": {},
+				"headers": {
+					"authorization": "Bearer sk-fake",
+					"openai-organization": "org-fake"
+				},
+				"body": {
+					"model": "gpt-4o",
+					"messages": [
+						{
+							"content": "Hello",
+							"role": "user"
+						},
+						{
+							"content": "Be nice",
+							"role": "system"
+						},
+						{
+							"content": "",
+							"role": "assistant"
+						}
+					],
+					"frequency_penalty": 0.3,
+					"n": 2,
+					"presence_penalty": 0.4,
+					"temperature": 0.1,
+					"max_completion_tokens": 20,
+					"top_p": 0.5
+				},
+				"qsFormat": "brackets"
+			}
+		],
+		"output": [
+			{
+				"index": 0,
+				"message": {
+					"role": "assistant",
+					"content": "Hi"
+				},
+				"finish_reason": "stop"
+			},
+			{
+				"index": 1,
+				"message": {
+					"role": "assistant",
+					"content": "Hey"
+				},
+				"finish_reason": "stop"
+			}
+		]
+	},
+	"openAi text.message json raw": {
+		"requests": [
+			{
+				"method": "POST",
+				"url": "https://proxy.example.com/v1/chat/completions",
+				"qs": {},
+				"headers": {
+					"authorization": "Bearer sk-fake"
+				},
+				"body": {
+					"model": "gpt-4.1",
+					"messages": [
+						{
+							"role": "system",
+							"content": "You are a helpful assistant designed to output JSON."
+						},
+						{
+							"content": "Give JSON",
+							"role": "user"
+						}
+					],
+					"response_format": {
+						"type": "json_object"
+					}
+				},
+				"qsFormat": "brackets"
+			}
+		],
+		"output": [
+			{
+				"id": "chatcmpl-2",
+				"choices": [
+					{
+						"index": 0,
+						"message": {
+							"role": "assistant",
+							"content": {
+								"a": 1
+							}
+						}
+					},
+					{
+						"index": 1,
+						"message": {
+							"role": "assistant",
+							"content": "not json"
+						}
+					},
+					{
+						"index": 2,
+						"message": {
+							"role": "assistant",
+							"content": null
+						}
+					}
+				]
+			}
+		]
+	},
+	"openAi text.message empty prompt": {
+		"requests": [],
+		"error": "A non-empty prompt is required."
+	},
+	"openAi text.response 2.1 no built-in tools": {
+		"requests": [
+			{
+				"method": "POST",
+				"url": "https://api.openai.com/v1/responses",
+				"qs": {},
+				"headers": {
+					"authorization": "Bearer sk-fake"
+				},
+				"body": {
+					"model": "gpt-4.1-mini",
+					"input": [
+						{
+							"role": "user",
+							"content": [
+								{
+									"type": "input_text",
+									"text": "Say hi"
+								}
+							]
+						}
+					],
+					"parallel_tool_calls": true,
+					"store": true,
+					"background": false
+				},
+				"qsFormat": "brackets"
+			}
+		],
+		"output": [
+			{
+				"output": [
+					{
+						"type": "message",
+						"id": "msg_1",
+						"status": "completed",
+						"role": "assistant",
+						"content": [
+							{
+								"type": "output_text",
+								"text": "Hi",
+								"annotations": []
+							}
+						]
+					}
+				]
+			}
+		]
+	},
+	"openAi text.response 2": {
+		"requests": [
+			{
+				"method": "POST",
+				"url": "https://api.openai.com/v1/responses",
+				"qs": {},
+				"headers": {
+					"authorization": "Bearer sk-fake"
+				},
+				"body": {
+					"model": "gpt-4.1-mini",
+					"input": [
+						{
+							"role": "user",
+							"content": [
+								{
+									"type": "input_text",
+									"text": "Say hi"
+								}
+							]
+						}
+					],
+					"parallel_tool_calls": true,
+					"store": true,
+					"background": false
+				},
+				"qsFormat": "brackets"
+			}
+		],
+		"output": [
+			{
+				"id": "resp_1",
+				"object": "response",
+				"created_at": 1,
+				"status": "completed",
+				"model": "m",
+				"output": [
+					{
+						"type": "reasoning",
+						"id": "rs_1",
+						"summary": []
+					},
+					{
+						"type": "message",
+						"id": "msg_1",
+						"status": "completed",
+						"role": "assistant",
+						"content": [
+							{
+								"type": "output_text",
+								"text": "Hi",
+								"annotations": []
+							}
+						]
+					}
+				],
+				"usage": {
+					"input_tokens": 5,
+					"output_tokens": 2,
+					"total_tokens": 7
+				}
+			}
+		]
+	},
+	"openAi text.message status 400": {
+		"requests": [
+			{
+				"method": "POST",
+				"url": "https://api.openai.com/v1/chat/completions",
+				"qs": {},
+				"headers": {
+					"authorization": "Bearer sk-fake"
+				},
+				"body": {
+					"model": "gpt-4o",
+					"messages": [
+						{
+							"content": "Hello",
+							"role": "user"
+						}
+					]
+				},
+				"qsFormat": "brackets"
+			}
+		],
+		"error": "Bad request - please check your parameters"
+	},
+	"openAi text.response status 400": {
+		"requests": [
+			{
+				"method": "POST",
+				"url": "https://api.openai.com/v1/responses",
+				"qs": {},
+				"headers": {
+					"authorization": "Bearer sk-fake"
+				},
+				"body": {
+					"model": "gpt-4o",
+					"input": [
+						{
+							"role": "user",
+							"content": [
+								{
+									"type": "input_text",
+									"text": "Hello"
+								}
+							]
+						}
+					],
+					"parallel_tool_calls": true,
+					"store": true,
+					"background": false
+				},
+				"qsFormat": "brackets"
+			}
+		],
+		"error": "Bad request - please check your parameters"
+	},
+	"openAi text.message status 401": {
+		"requests": [
+			{
+				"method": "POST",
+				"url": "https://api.openai.com/v1/chat/completions",
+				"qs": {},
+				"headers": {
+					"authorization": "Bearer sk-fake"
+				},
+				"body": {
+					"model": "gpt-4o",
+					"messages": [
+						{
+							"content": "Hello",
+							"role": "user"
+						}
+					]
+				},
+				"qsFormat": "brackets"
+			}
+		],
+		"error": "Authorization failed - please check your credentials"
+	},
+	"openAi text.response status 401": {
+		"requests": [
+			{
+				"method": "POST",
+				"url": "https://api.openai.com/v1/responses",
+				"qs": {},
+				"headers": {
+					"authorization": "Bearer sk-fake"
+				},
+				"body": {
+					"model": "gpt-4o",
+					"input": [
+						{
+							"role": "user",
+							"content": [
+								{
+									"type": "input_text",
+									"text": "Hello"
+								}
+							]
+						}
+					],
+					"parallel_tool_calls": true,
+					"store": true,
+					"background": false
+				},
+				"qsFormat": "brackets"
+			}
+		],
+		"error": "Authorization failed - please check your credentials"
+	},
+	"openAi text.message status 404": {
+		"requests": [
+			{
+				"method": "POST",
+				"url": "https://api.openai.com/v1/chat/completions",
+				"qs": {},
+				"headers": {
+					"authorization": "Bearer sk-fake"
+				},
+				"body": {
+					"model": "gpt-4o",
+					"messages": [
+						{
+							"content": "Hello",
+							"role": "user"
+						}
+					]
+				},
+				"qsFormat": "brackets"
+			}
+		],
+		"error": "The resource you are requesting could not be found"
+	},
+	"openAi text.response status 404": {
+		"requests": [
+			{
+				"method": "POST",
+				"url": "https://api.openai.com/v1/responses",
+				"qs": {},
+				"headers": {
+					"authorization": "Bearer sk-fake"
+				},
+				"body": {
+					"model": "gpt-4o",
+					"input": [
+						{
+							"role": "user",
+							"content": [
+								{
+									"type": "input_text",
+									"text": "Hello"
+								}
+							]
+						}
+					],
+					"parallel_tool_calls": true,
+					"store": true,
+					"background": false
+				},
+				"qsFormat": "brackets"
+			}
+		],
+		"error": "The resource you are requesting could not be found"
+	},
+	"openAi text.message status 418": {
+		"requests": [
+			{
+				"method": "POST",
+				"url": "https://api.openai.com/v1/chat/completions",
+				"qs": {},
+				"headers": {
+					"authorization": "Bearer sk-fake"
+				},
+				"body": {
+					"model": "gpt-4o",
+					"messages": [
+						{
+							"content": "Hello",
+							"role": "user"
+						}
+					]
+				},
+				"qsFormat": "brackets"
+			}
+		],
+		"error": "Your request is invalid or could not be processed by the service"
+	},
+	"openAi text.response status 418": {
+		"requests": [
+			{
+				"method": "POST",
+				"url": "https://api.openai.com/v1/responses",
+				"qs": {},
+				"headers": {
+					"authorization": "Bearer sk-fake"
+				},
+				"body": {
+					"model": "gpt-4o",
+					"input": [
+						{
+							"role": "user",
+							"content": [
+								{
+									"type": "input_text",
+									"text": "Hello"
+								}
+							]
+						}
+					],
+					"parallel_tool_calls": true,
+					"store": true,
+					"background": false
+				},
+				"qsFormat": "brackets"
+			}
+		],
+		"error": "Your request is invalid or could not be processed by the service"
+	},
+	"openAi text.message status 429": {
+		"requests": [
+			{
+				"method": "POST",
+				"url": "https://api.openai.com/v1/chat/completions",
+				"qs": {},
+				"headers": {
+					"authorization": "Bearer sk-fake"
+				},
+				"body": {
+					"model": "gpt-4o",
+					"messages": [
+						{
+							"content": "Hello",
+							"role": "user"
+						}
+					]
+				},
+				"qsFormat": "brackets"
+			}
+		],
+		"error": "The service is receiving too many requests from you"
+	},
+	"openAi text.response status 429": {
+		"requests": [
+			{
+				"method": "POST",
+				"url": "https://api.openai.com/v1/responses",
+				"qs": {},
+				"headers": {
+					"authorization": "Bearer sk-fake"
+				},
+				"body": {
+					"model": "gpt-4o",
+					"input": [
+						{
+							"role": "user",
+							"content": [
+								{
+									"type": "input_text",
+									"text": "Hello"
+								}
+							]
+						}
+					],
+					"parallel_tool_calls": true,
+					"store": true,
+					"background": false
+				},
+				"qsFormat": "brackets"
+			}
+		],
+		"error": "The service is receiving too many requests from you"
+	},
+	"openAi text.message status 500": {
+		"requests": [
+			{
+				"method": "POST",
+				"url": "https://api.openai.com/v1/chat/completions",
+				"qs": {},
+				"headers": {
+					"authorization": "Bearer sk-fake"
+				},
+				"body": {
+					"model": "gpt-4o",
+					"messages": [
+						{
+							"content": "Hello",
+							"role": "user"
+						}
+					]
+				},
+				"qsFormat": "brackets"
+			}
+		],
+		"error": "The service was not able to process your request"
+	},
+	"openAi text.response status 500": {
+		"requests": [
+			{
+				"method": "POST",
+				"url": "https://api.openai.com/v1/responses",
+				"qs": {},
+				"headers": {
+					"authorization": "Bearer sk-fake"
+				},
+				"body": {
+					"model": "gpt-4o",
+					"input": [
+						{
+							"role": "user",
+							"content": [
+								{
+									"type": "input_text",
+									"text": "Hello"
+								}
+							]
+						}
+					],
+					"parallel_tool_calls": true,
+					"store": true,
+					"background": false
+				},
+				"qsFormat": "brackets"
+			}
+		],
+		"error": "The service was not able to process your request"
+	},
+	"openAi text.message status 503": {
+		"requests": [
+			{
+				"method": "POST",
+				"url": "https://api.openai.com/v1/chat/completions",
+				"qs": {},
+				"headers": {
+					"authorization": "Bearer sk-fake"
+				},
+				"body": {
+					"model": "gpt-4o",
+					"messages": [
+						{
+							"content": "Hello",
+							"role": "user"
+						}
+					]
+				},
+				"qsFormat": "brackets"
+			}
+		],
+		"error": "Service unavailable - try again later or consider setting this node to retry automatically (in the node settings)"
+	},
+	"openAi text.response status 503": {
+		"requests": [
+			{
+				"method": "POST",
+				"url": "https://api.openai.com/v1/responses",
+				"qs": {},
+				"headers": {
+					"authorization": "Bearer sk-fake"
+				},
+				"body": {
+					"model": "gpt-4o",
+					"input": [
+						{
+							"role": "user",
+							"content": [
+								{
+									"type": "input_text",
+									"text": "Hello"
+								}
+							]
+						}
+					],
+					"parallel_tool_calls": true,
+					"store": true,
+					"background": false
+				},
+				"qsFormat": "brackets"
+			}
+		],
+		"error": "Service unavailable - try again later or consider setting this node to retry automatically (in the node settings)"
+	},
+	"openAi text.message status 599": {
+		"requests": [
+			{
+				"method": "POST",
+				"url": "https://api.openai.com/v1/chat/completions",
+				"qs": {},
+				"headers": {
+					"authorization": "Bearer sk-fake"
+				},
+				"body": {
+					"model": "gpt-4o",
+					"messages": [
+						{
+							"content": "Hello",
+							"role": "user"
+						}
+					]
+				},
+				"qsFormat": "brackets"
+			}
+		],
+		"error": "The service failed to process your request"
+	},
+	"openAi text.response status 599": {
+		"requests": [
+			{
+				"method": "POST",
+				"url": "https://api.openai.com/v1/responses",
+				"qs": {},
+				"headers": {
+					"authorization": "Bearer sk-fake"
+				},
+				"body": {
+					"model": "gpt-4o",
+					"input": [
+						{
+							"role": "user",
+							"content": [
+								{
+									"type": "input_text",
+									"text": "Hello"
+								}
+							]
+						}
+					],
+					"parallel_tool_calls": true,
+					"store": true,
+					"background": false
+				},
+				"qsFormat": "brackets"
+			}
+		],
+		"error": "The service failed to process your request"
+	},
+	"chainLlm openAi completions": {
+		"requests": [
+			{
+				"method": "POST",
+				"url": "https://api.openai.com/v1/chat/completions",
+				"qs": {},
+				"headers": {
+					"authorization": "Bearer sk-fake",
+					"openai-platform": "org-qkmJQuJ2WnvoIKMr2UJwIJkZ"
+				},
+				"body": {
+					"model": "gpt-4o-mini",
+					"temperature": 0.3,
+					"top_p": 0.9,
+					"frequency_penalty": 0.1,
+					"presence_penalty": 0.2,
+					"stream": false,
+					"max_tokens": 100,
+					"messages": [
+						{
+							"role": "system",
+							"content": "Answer {briefly}"
+						},
+						{
+							"role": "assistant",
+							"content": "ok"
+						},
+						{
+							"role": "user",
+							"content": "first }{ question"
+						},
+						{
+							"role": "system",
+							"content": ""
+						},
+						{
+							"role": "user",
+							"content": "Say hi to {name}"
+						}
+					]
+				}
+			}
+		],
+		"output": [
+			{
+				"text": "Hi there"
+			}
+		],
+		"subRuns": {
+			"Model": [
+				{
+					"error": null
+				}
+			]
+		},
+		"outputs": [
+			[
+				{
+					"text": "Hi there"
+				}
+			]
+		],
+		"paired": [
+			[
+				{
+					"item": 0
+				}
+			]
+		],
+		"nodePaired": [false]
+	},
+	"chainLlm openAi completions reasoning model": {
+		"requests": [
+			{
+				"method": "POST",
+				"url": "https://api.openai.com/v1/chat/completions",
+				"qs": {},
+				"headers": {
+					"authorization": "Bearer sk-fake",
+					"openai-platform": "org-qkmJQuJ2WnvoIKMr2UJwIJkZ"
+				},
+				"body": {
+					"model": "o3-mini",
+					"temperature": 0.5,
+					"stream": false,
+					"max_completion_tokens": 50,
+					"messages": [
+						{
+							"role": "developer",
+							"content": "Answer {briefly}"
+						},
+						{
+							"role": "assistant",
+							"content": "ok"
+						},
+						{
+							"role": "user",
+							"content": "first }{ question"
+						},
+						{
+							"role": "developer",
+							"content": ""
+						},
+						{
+							"role": "user",
+							"content": "Say hi to {name}"
+						}
+					]
+				}
+			}
+		],
+		"output": [
+			{
+				"text": "Hi"
+			}
+		],
+		"subRuns": {
+			"Model": [
+				{
+					"error": null
+				}
+			]
+		},
+		"outputs": [
+			[
+				{
+					"text": "Hi"
+				}
+			]
+		],
+		"paired": [
+			[
+				{
+					"item": 0
+				}
+			]
+		],
+		"nodePaired": [false]
+	},
+	"chainLlm openAi completions gpt-5-chat": {
+		"requests": [
+			{
+				"method": "POST",
+				"url": "https://api.openai.com/v1/chat/completions",
+				"qs": {},
+				"headers": {
+					"authorization": "Bearer sk-fake",
+					"openai-platform": "org-qkmJQuJ2WnvoIKMr2UJwIJkZ"
+				},
+				"body": {
+					"model": "gpt-5-chat-latest",
+					"stream": false,
+					"messages": [
+						{
+							"role": "user",
+							"content": "Say hi to {name}"
+						}
+					]
+				}
+			}
+		],
+		"output": [
+			{
+				"text": ""
+			}
+		],
+		"subRuns": {
+			"Model": [
+				{
+					"error": null
+				}
+			]
+		},
+		"outputs": [
+			[
+				{
+					"text": ""
+				}
+			]
+		],
+		"paired": [
+			[
+				{
+					"item": 0
+				}
+			]
+		],
+		"nodePaired": [false]
+	},
+	"chainLlm openAi version 1 prompt, items": {
+		"requests": [
+			{
+				"method": "POST",
+				"url": "https://api.openai.com/v1/chat/completions",
+				"qs": {},
+				"headers": {
+					"authorization": "Bearer sk-fake",
+					"openai-platform": "org-qkmJQuJ2WnvoIKMr2UJwIJkZ"
+				},
+				"body": {
+					"model": "gpt-4",
+					"stream": false,
+					"messages": [
+						{
+							"role": "user",
+							"content": "Old prompt"
+						}
+					]
+				}
+			},
+			{
+				"method": "POST",
+				"url": "https://api.openai.com/v1/chat/completions",
+				"qs": {},
+				"headers": {
+					"authorization": "Bearer sk-fake",
+					"openai-platform": "org-qkmJQuJ2WnvoIKMr2UJwIJkZ"
+				},
+				"body": {
+					"model": "gpt-4",
+					"stream": false,
+					"messages": [
+						{
+							"role": "user",
+							"content": "Old prompt"
+						}
+					]
+				}
+			}
+		],
+		"output": [
+			{
+				"text": "one"
+			},
+			{
+				"text": "two"
+			}
+		],
+		"subRuns": {
+			"Model": [
+				{
+					"error": null
+				},
+				{
+					"error": null
+				}
+			]
+		},
+		"outputs": [
+			[
+				{
+					"text": "one"
+				},
+				{
+					"text": "two"
+				}
+			]
+		],
+		"paired": [
+			[
+				{
+					"item": 0
+				},
+				{
+					"item": 1
+				}
+			]
+		],
+		"nodePaired": [false, false]
+	},
+	"chainLlm openAi custom url, responses off": {
+		"requests": [
+			{
+				"method": "POST",
+				"url": "https://proxy.example.com/v1/chat/completions",
+				"qs": {},
+				"headers": {
+					"authorization": "Bearer sk-fake",
+					"openai-platform": "org-qkmJQuJ2WnvoIKMr2UJwIJkZ"
+				},
+				"body": {
+					"model": "gpt-4o",
+					"stream": false,
+					"messages": [
+						{
+							"role": "user",
+							"content": ""
+						}
+					]
+				}
+			}
+		],
+		"output": [
+			{
+				"text": "Hi"
+			}
+		],
+		"subRuns": {
+			"Model": [
+				{
+					"error": null
+				}
+			]
+		},
+		"outputs": [
+			[
+				{
+					"text": "Hi"
+				}
+			]
+		],
+		"paired": [
+			[
+				{
+					"item": 0
+				}
+			]
+		],
+		"nodePaired": [false]
+	},
+	"chainLlm openAi completions no choices": {
+		"requests": [
+			{
+				"method": "POST",
+				"url": "https://api.openai.com/v1/chat/completions",
+				"qs": {},
+				"headers": {
+					"authorization": "Bearer sk-fake",
+					"openai-platform": "org-qkmJQuJ2WnvoIKMr2UJwIJkZ"
+				},
+				"body": {
+					"model": "gpt-4o",
+					"stream": false,
+					"messages": [
+						{
+							"role": "user",
+							"content": "Say hi to {name}"
+						}
+					]
+				}
+			}
+		],
+		"outputs": [],
+		"paired": [],
+		"error": "Received empty response from chat model call (no choices). Response body: {\"id\":\"x\",\"choices\":[],\"usage\":{}}"
+	},
+	"chainLlm openAi responses": {
+		"requests": [
+			{
+				"method": "POST",
+				"url": "https://api.openai.com/v1/responses",
+				"qs": {},
+				"headers": {
+					"authorization": "Bearer sk-fake",
+					"openai-platform": "org-qkmJQuJ2WnvoIKMr2UJwIJkZ"
+				},
+				"body": {
+					"input": [
+						{
+							"type": "message",
+							"role": "developer",
+							"content": "Answer {briefly}"
+						},
+						{
+							"type": "message",
+							"role": "assistant",
+							"content": "ok"
+						},
+						{
+							"type": "message",
+							"role": "user",
+							"content": "first }{ question"
+						},
+						{
+							"type": "message",
+							"role": "developer",
+							"content": ""
+						},
+						{
+							"type": "message",
+							"role": "user",
+							"content": "Say hi to {name}"
+						}
+					],
+					"model": "gpt-5",
+					"temperature": 0.3,
+					"top_p": 0.5,
+					"stream": false,
+					"text": {},
+					"max_output_tokens": 50
+				}
+			}
+		],
+		"output": [
+			{
+				"text": "Hi!"
+			}
+		],
+		"subRuns": {
+			"Model": [
+				{
+					"error": null
+				}
+			]
+		},
+		"outputs": [
+			[
+				{
+					"text": "Hi!"
+				}
+			]
+		],
+		"paired": [
+			[
+				{
+					"item": 0
+				}
+			]
+		],
+		"nodePaired": [false]
+	},
+	"chainLlm openAi model that prefers responses": {
+		"requests": [
+			{
+				"method": "POST",
+				"url": "https://api.openai.com/v1/responses",
+				"qs": {},
+				"headers": {
+					"authorization": "Bearer sk-fake",
+					"openai-platform": "org-qkmJQuJ2WnvoIKMr2UJwIJkZ"
+				},
+				"body": {
+					"input": [
+						{
+							"type": "message",
+							"role": "user",
+							"content": "Say hi to {name}"
+						}
+					],
+					"model": "gpt-5.2-pro",
+					"stream": false,
+					"text": {},
+					"max_output_tokens": 9
+				}
+			}
+		],
+		"output": [
+			{
+				"text": "Hi"
+			}
+		],
+		"subRuns": {
+			"Model": [
+				{
+					"error": null
+				}
+			]
+		},
+		"outputs": [
+			[
+				{
+					"text": "Hi"
+				}
+			]
+		],
+		"paired": [
+			[
+				{
+					"item": 0
+				}
+			]
+		],
+		"nodePaired": [false]
+	},
+	"chainLlm openAi responses empty output": {
+		"requests": [
+			{
+				"method": "POST",
+				"url": "https://api.openai.com/v1/responses",
+				"qs": {},
+				"headers": {
+					"authorization": "Bearer sk-fake",
+					"openai-platform": "org-qkmJQuJ2WnvoIKMr2UJwIJkZ"
+				},
+				"body": {
+					"input": [
+						{
+							"type": "message",
+							"role": "user",
+							"content": "Say hi to {name}"
+						}
+					],
+					"model": "gpt-4o",
+					"stream": false,
+					"text": {}
+				}
+			}
+		],
+		"output": [
+			{
+				"text": ""
+			}
+		],
+		"subRuns": {
+			"Model": [
+				{
+					"error": null
+				}
+			]
+		},
+		"outputs": [
+			[
+				{
+					"text": ""
+				}
+			]
+		],
+		"paired": [
+			[
+				{
+					"item": 0
+				}
+			]
+		],
+		"nodePaired": [false]
+	},
+	"chainLlm openAi responses error in body": {
+		"requests": [
+			{
+				"method": "POST",
+				"url": "https://api.openai.com/v1/responses",
+				"qs": {},
+				"headers": {
+					"authorization": "Bearer sk-fake",
+					"openai-platform": "org-qkmJQuJ2WnvoIKMr2UJwIJkZ"
+				},
+				"body": {
+					"input": [
+						{
+							"type": "message",
+							"role": "user",
+							"content": "Say hi to {name}"
+						}
+					],
+					"model": "gpt-4o",
+					"stream": false,
+					"text": {}
+				}
+			}
+		],
+		"outputs": [],
+		"paired": [],
+		"error": "boom"
+	},
+	"chainLlm openAi status 409": {
+		"requests": [
+			{
+				"method": "POST",
+				"url": "https://api.openai.com/v1/chat/completions",
+				"qs": {},
+				"headers": {
+					"authorization": "Bearer sk-fake",
+					"openai-platform": "org-qkmJQuJ2WnvoIKMr2UJwIJkZ"
+				},
+				"body": {
+					"model": "gpt-4o",
+					"stream": false,
+					"messages": [
+						{
+							"role": "user",
+							"content": "Say hi to {name}"
+						}
+					]
+				}
+			}
+		],
+		"outputs": [],
+		"paired": [],
+		"error": "Your request is invalid or could not be processed by the service"
+	},
+	"chainLlm openAi status 400": {
+		"requests": [
+			{
+				"method": "POST",
+				"url": "https://api.openai.com/v1/responses",
+				"qs": {},
+				"headers": {
+					"authorization": "Bearer sk-fake",
+					"openai-platform": "org-qkmJQuJ2WnvoIKMr2UJwIJkZ"
+				},
+				"body": {
+					"input": [
+						{
+							"type": "message",
+							"role": "user",
+							"content": "Say hi to {name}"
+						}
+					],
+					"model": "gpt-4o",
+					"stream": false,
+					"text": {}
+				}
+			}
+		],
+		"outputs": [],
+		"paired": [],
+		"error": "Bad request - please check your parameters"
+	},
+	"chainLlm openAi status 401": {
+		"requests": [
+			{
+				"method": "POST",
+				"url": "https://api.openai.com/v1/chat/completions",
+				"qs": {},
+				"headers": {
+					"authorization": "Bearer sk-fake",
+					"openai-platform": "org-qkmJQuJ2WnvoIKMr2UJwIJkZ"
+				},
+				"body": {
+					"model": "gpt-4o",
+					"stream": false,
+					"messages": [
+						{
+							"role": "user",
+							"content": "Say hi to {name}"
+						}
+					]
+				}
+			}
+		],
+		"outputs": [],
+		"paired": [],
+		"error": "Authorization failed - please check your credentials"
+	},
+	"chainLlm openAi status 403": {
+		"requests": [
+			{
+				"method": "POST",
+				"url": "https://api.openai.com/v1/chat/completions",
+				"qs": {},
+				"headers": {
+					"authorization": "Bearer sk-fake",
+					"openai-platform": "org-qkmJQuJ2WnvoIKMr2UJwIJkZ"
+				},
+				"body": {
+					"model": "gpt-4o",
+					"stream": false,
+					"messages": [
+						{
+							"role": "user",
+							"content": "Say hi to {name}"
+						}
+					]
+				}
+			}
+		],
+		"outputs": [],
+		"paired": [],
+		"error": "Forbidden - perhaps check your credentials?"
+	},
+	"chainLlm openAi status 404": {
+		"requests": [
+			{
+				"method": "POST",
+				"url": "https://api.openai.com/v1/chat/completions",
+				"qs": {},
+				"headers": {
+					"authorization": "Bearer sk-fake",
+					"openai-platform": "org-qkmJQuJ2WnvoIKMr2UJwIJkZ"
+				},
+				"body": {
+					"model": "gpt-4o",
+					"stream": false,
+					"messages": [
+						{
+							"role": "user",
+							"content": "Say hi to {name}"
+						}
+					]
+				}
+			}
+		],
+		"outputs": [],
+		"paired": [],
+		"error": "The resource you are requesting could not be found"
+	},
+	"chainLlm openAi status 429": {
+		"requests": [
+			{
+				"method": "POST",
+				"url": "https://api.openai.com/v1/chat/completions",
+				"qs": {},
+				"headers": {
+					"authorization": "Bearer sk-fake",
+					"openai-platform": "org-qkmJQuJ2WnvoIKMr2UJwIJkZ"
+				},
+				"body": {
+					"model": "gpt-4o",
+					"stream": false,
+					"messages": [
+						{
+							"role": "user",
+							"content": "Say hi to {name}"
+						}
+					]
+				}
+			}
+		],
+		"outputs": [],
+		"paired": [],
+		"error": "OpenAI: Rate limit reached"
+	},
+	"chainLlm openAi status 429 quota": {
+		"requests": [
+			{
+				"method": "POST",
+				"url": "https://api.openai.com/v1/chat/completions",
+				"qs": {},
+				"headers": {
+					"authorization": "Bearer sk-fake",
+					"openai-platform": "org-qkmJQuJ2WnvoIKMr2UJwIJkZ"
+				},
+				"body": {
+					"model": "gpt-4o",
+					"stream": false,
+					"messages": [
+						{
+							"role": "user",
+							"content": "Say hi to {name}"
+						}
+					]
+				}
+			}
+		],
+		"outputs": [],
+		"paired": [],
+		"error": "Insufficient quota detected. <a href=\"https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-langchain.openai/common-issues/#insufficient-quota\" target=\"_blank\">Learn more</a> about resolving this issue"
+	},
+	"chainLlm openAi status 500 no retry": {
+		"requests": [
+			{
+				"method": "POST",
+				"url": "https://api.openai.com/v1/chat/completions",
+				"qs": {},
+				"headers": {
+					"authorization": "Bearer sk-fake",
+					"openai-platform": "org-qkmJQuJ2WnvoIKMr2UJwIJkZ"
+				},
+				"body": {
+					"model": "gpt-4o",
+					"stream": false,
+					"messages": [
+						{
+							"role": "user",
+							"content": "Say hi to {name}"
+						}
+					]
+				}
+			}
+		],
+		"outputs": [],
+		"paired": [],
+		"error": "500 bad thing"
+	},
+	"chainLlm openAi status 500 then answer": {
+		"requests": [
+			{
+				"method": "POST",
+				"url": "https://api.openai.com/v1/chat/completions",
+				"qs": {},
+				"headers": {
+					"authorization": "Bearer sk-fake",
+					"openai-platform": "org-qkmJQuJ2WnvoIKMr2UJwIJkZ"
+				},
+				"body": {
+					"model": "gpt-4o",
+					"stream": false,
+					"messages": [
+						{
+							"role": "user",
+							"content": "Say hi to {name}"
+						}
+					]
+				}
+			},
+			{
+				"method": "POST",
+				"url": "https://api.openai.com/v1/chat/completions",
+				"qs": {},
+				"headers": {
+					"authorization": "Bearer sk-fake",
+					"openai-platform": "org-qkmJQuJ2WnvoIKMr2UJwIJkZ"
+				},
+				"body": {
+					"model": "gpt-4o",
+					"stream": false,
+					"messages": [
+						{
+							"role": "user",
+							"content": "Say hi to {name}"
+						}
+					]
+				}
+			}
+		],
+		"output": [
+			{
+				"text": "late"
+			}
+		],
+		"subRuns": {
+			"Model": [
+				{
+					"error": null
+				}
+			]
+		},
+		"outputs": [
+			[
+				{
+					"text": "late"
+				}
+			]
+		],
+		"paired": [
+			[
+				{
+					"item": 0
+				}
+			]
+		],
+		"nodePaired": [false]
+	},
+	"chainLlm openAi status 503 twice": {
+		"requests": [
+			{
+				"method": "POST",
+				"url": "https://api.openai.com/v1/responses",
+				"qs": {},
+				"headers": {
+					"authorization": "Bearer sk-fake",
+					"openai-platform": "org-qkmJQuJ2WnvoIKMr2UJwIJkZ"
+				},
+				"body": {
+					"input": [
+						{
+							"type": "message",
+							"role": "user",
+							"content": "Say hi to {name}"
+						}
+					],
+					"model": "gpt-4o",
+					"stream": false,
+					"text": {}
+				}
+			},
+			{
+				"method": "POST",
+				"url": "https://api.openai.com/v1/responses",
+				"qs": {},
+				"headers": {
+					"authorization": "Bearer sk-fake",
+					"openai-platform": "org-qkmJQuJ2WnvoIKMr2UJwIJkZ"
+				},
+				"body": {
+					"input": [
+						{
+							"type": "message",
+							"role": "user",
+							"content": "Say hi to {name}"
+						}
+					],
+					"model": "gpt-4o",
+					"stream": false,
+					"text": {}
+				}
+			}
+		],
+		"outputs": [],
+		"paired": [],
+		"error": "503 {\"detail\":\"down\"}"
+	},
+	"chainLlm openAi responses effort": {
+		"requests": [
+			{
+				"method": "POST",
+				"url": "https://api.openai.com/v1/responses",
+				"qs": {},
+				"headers": {
+					"authorization": "Bearer sk-fake",
+					"openai-platform": "org-qkmJQuJ2WnvoIKMr2UJwIJkZ"
+				},
+				"body": {
+					"input": [
+						{
+							"type": "message",
+							"role": "user",
+							"content": "Say hi to {name}"
+						}
+					],
+					"model": "gpt-4.1",
+					"stream": false,
+					"text": {}
+				}
+			}
+		],
+		"output": [
+			{
+				"text": "Hi"
+			}
+		],
+		"subRuns": {
+			"Model": [
+				{
+					"error": null
+				}
+			]
+		},
+		"outputs": [
+			[
+				{
+					"text": "Hi"
+				}
+			]
+		],
+		"paired": [
+			[
+				{
+					"item": 0
+				}
+			]
+		],
+		"nodePaired": [false]
 	}
 }

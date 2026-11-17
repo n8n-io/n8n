@@ -20,6 +20,7 @@ import { DEFAULT_NODE_PACKAGES, loadCredentialTypes, registryOf } from '../../cr
 import { decodeModule } from '../../compiler/decode.ts';
 import { runReference } from '../../reference/runner.ts';
 import { runModule } from '../../testing/vm.ts';
+import { nativeCluster, openAiVendorParameters } from '../../convert/ai-cluster.ts';
 import { EQUIVALENCE_CASES } from './equivalence-cases.ts';
 import type { EquivalenceCase, NormalRequest, Recording } from './equivalence.ts';
 import { applyCredential, normalizeRequest, withoutInstanceId } from './equivalence.ts';
@@ -29,6 +30,16 @@ const recordings: Record<string, Recording> = JSON.parse(
 	readFileSync(join(here, 'v1-requests.json'), 'utf8'),
 );
 const typesBuilt = existsSync(join(DEFAULT_NODE_PACKAGES[0], 'dist/known/credentials.json'));
+
+/** The parameters of the library call: a cluster case gets its sub-nodes as the converter writes them. */
+function libraryParameters(c: EquivalenceCase): Record<string, unknown> {
+	if (c.type === '@n8n/n8n-nodes-langchain.openAi')
+		return openAiVendorParameters(c.parameters, c.typeVersion);
+	if (!c.subNodes) return c.parameters;
+	const native = nativeCluster(c.type, c.typeVersion, c.parameters, c.subNodes);
+	if (typeof native === 'string') throw new Error(`the cluster has no native form: ${native}`);
+	return native.parameters;
+}
 
 function workflowSource(c: EquivalenceCase): string {
 	const credentials = c.credential
@@ -45,7 +56,7 @@ export default workflow({
 			name: 'Node',
 			type: ${JSON.stringify(c.type)},
 			typeVersion: ${c.typeVersion},
-			parameters: ${JSON.stringify(c.parameters)},
+			parameters: ${JSON.stringify(libraryParameters(c))},
 			${c.items ? `items: ${JSON.stringify(c.items)},` : ''}
 			${credential}
 		});
@@ -177,6 +188,7 @@ describe.runIf(typesBuilt)('request equivalence with v1 nodes', () => {
 							qs: args.qs,
 							body: args.body,
 							qsFormat: typeof args.qsFormat === 'string' ? args.qsFormat : 'repeat',
+							inject: args.inject,
 						},
 						inject,
 						data,

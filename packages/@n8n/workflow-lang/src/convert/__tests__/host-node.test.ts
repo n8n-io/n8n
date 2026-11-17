@@ -116,6 +116,105 @@ describe('AI clusters', () => {
 		expect(source).toMatch(/for \(const \$json of customer\)/);
 	});
 
+	describe('a Basic LLM Chain with an OpenAI chat model', () => {
+		const chain = (
+			chainParameters: Record<string, unknown>,
+			modelParameters: Record<string, unknown>,
+			extra: Record<string, unknown> = {},
+			modelVersion = 1.2,
+		) =>
+			wf(
+				[
+					webhookNode(),
+					{
+						...ai('Chain', 'chainLlm', [200, 0], chainParameters, extra),
+						typeVersion: 1.9,
+					},
+					{
+						...ai('Model', 'lmChatOpenAi', [200, 200], modelParameters, {
+							credentials: { openAiApi: { id: '1', name: 'OpenAI account' } },
+						}),
+						typeVersion: modelVersion,
+					},
+				],
+				{
+					...connect([['Webhook', 0, 'Chain', 0]]),
+					Model: { ai_languageModel: [[{ node: 'Chain', type: 'ai_languageModel', index: 0 }]] },
+				},
+			);
+		const model = { model: { __rl: true, mode: 'list', value: 'gpt-4o-mini' }, options: {} };
+		const prompt = { promptType: 'define', text: '={{ $json.body.q }}' };
+
+		it('links the library node, with the model in the parameters', () => {
+			const { source, fallbackNodes } = converted(
+				chain(prompt, { ...model, options: { temperature: 0.2, timeout: 5000 } }),
+			);
+			expect(fallbackNodes).not.toContain('Chain');
+			expect(source).not.toContain('subNodes');
+			expect(source).toContain("type: '@n8n/n8n-nodes-langchain.chainLlm'");
+			expect(source).toMatch(/aiModel: \{\s*provider: 'openAi',\s*responses: false,/);
+			expect(source).toContain("model: 'gpt-4o-mini'");
+			expect(source).toContain('options: { temperature: 0.2 }');
+			expect(source).toMatch(/text: .*\$json\.body\.q/);
+			expect(source).toContain("credential: 'openAiAccount'");
+			expect(compile(source).diagnostics).toEqual([]);
+		});
+
+		it('asks for the Responses API from version 1.3 of the model node', () => {
+			const { source } = converted(chain(prompt, model, {}, 1.3));
+			expect(source).toMatch(/provider: 'openAi',\s*responses: true,/);
+		});
+
+		it('traces one run of the model for each item when the source traces all nodes', () => {
+			const r = convertWorkflow(chain(prompt, model), { trace: 'all' });
+			expect(r.source).toMatch(/ctx\.trace\('Model', \{ \$subRuns: \w+\.map\(/);
+		});
+
+		it.each([
+			['an output parser', { ...prompt, hasOutputParser: true }, model, {}],
+			['a fallback model', { ...prompt, needsFallback: true }, model, {}],
+			['the prompt of the chat trigger', { promptType: 'auto' }, model, {}],
+			[
+				'an image message',
+				{
+					...prompt,
+					messages: {
+						messageValues: [{ type: 'HumanMessagePromptTemplate', messageType: 'imageUrl' }],
+					},
+				},
+				model,
+				{},
+			],
+			['a delay between batches', { ...prompt, batching: { delayBetweenBatches: 100 } }, model, {}],
+			[
+				'the JSON response format',
+				prompt,
+				{ ...model, options: { responseFormat: 'json_object' } },
+				{},
+			],
+			['a "continue" setting', prompt, model, { onError: 'continueRegularOutput' }],
+		])(
+			'keeps the cluster in the host with %s',
+			(_name, chainParameters, modelParameters, extra) => {
+				const { source, fallbackNodes } = converted(chain(chainParameters, modelParameters, extra));
+				expect(fallbackNodes).toContain('Chain');
+				expect(source).toContain('subNodes: [');
+			},
+		);
+
+		it('keeps the cluster in the host with another model provider', () => {
+			const workflow = chain(prompt, { model: 'claude' });
+			const nodes = workflow.nodes.map((n) =>
+				typeof n === 'object' && n !== null && 'name' in n && n.name === 'Model'
+					? { ...n, type: `${LC}lmChatAnthropic` }
+					: n,
+			);
+			const { source, fallbackNodes } = converted({ ...workflow, nodes });
+			expect(fallbackNodes).toContain('Chain');
+			expect(source).toContain('subNodes: [');
+		});
+	});
+
 	it('runs a LangChain node without sub-nodes in the host', () => {
 		const { source } = converted(
 			wf(
