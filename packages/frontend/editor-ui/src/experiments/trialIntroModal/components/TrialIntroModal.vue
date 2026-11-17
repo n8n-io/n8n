@@ -1,5 +1,4 @@
 <script setup lang="ts">
-import Modal from '@/app/components/Modal.vue';
 import { useToast } from '@n8n/composables/useToast';
 import { useCloudPlanStore } from '@n8n/stores/cloudPlan.store';
 import { useUIStore } from '@/app/stores/ui.store';
@@ -10,13 +9,18 @@ import {
 	N8nBadge,
 	N8nButton,
 	N8nCallout,
+	N8nDialog,
+	N8nDialogBody,
+	N8nDialogFooter,
+	N8nDialogHeader,
+	N8nDialogDescription,
+	N8nDialogTitle,
 	N8nHeading,
 	N8nIcon,
 	N8nLogo,
 	N8nText,
 } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
-import { createEventBus } from '@n8n/utils/event-bus';
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import { I18nT } from 'vue-i18n';
 
@@ -30,9 +34,9 @@ const uiStore = useUIStore();
 const cloudPlanStore = useCloudPlanStore();
 const trialIntroModalStore = useTrialIntroModalStore();
 const { countdownText } = useTrialCountdown();
-const modalBus = createEventBus();
 
 const modalName = computed(() => props.modalName ?? TRIAL_INTRO_MODAL_KEY);
+const modalOpen = computed(() => uiStore.modalsById[modalName.value]?.open === true);
 
 // Same overrides as the trial banner's upgrade CTA (TrialBanner.vue), applied
 // inline because the button variant defines these custom properties itself.
@@ -109,9 +113,17 @@ function onBack() {
 	step.value = 1;
 }
 
-function onClose(closeDialog: () => void) {
+async function closeDialog() {
+	uiStore.closeModal(modalName.value);
+}
+
+function onDialogOpenUpdate(open: boolean) {
+	if (!open) void closeDialog();
+}
+
+function onClose() {
 	trialIntroModalStore.trackModalInteraction('close', { step: step.value });
-	closeDialog();
+	void closeDialog();
 }
 
 function onSelectPeriod(value: 'annual' | 'monthly') {
@@ -135,17 +147,15 @@ async function onUpgradeClick() {
 </script>
 
 <template>
-	<Modal
-		:name="modalName"
-		width="560px"
-		:center="false"
-		:overlay-class="$style.blurredOverlay"
-		:event-bus="modalBus"
-		:show-close="false"
-		:close-on-click-modal="false"
-		:close-on-press-escape="false"
+	<N8nDialog
+		:open="modalOpen"
+		size="large"
+		:show-close-button="false"
+		:close-on-overlay-click="false"
+		:close-on-escape="false"
+		@update:open="onDialogOpenUpdate"
 	>
-		<template #header="{ closeDialog }">
+		<N8nDialogHeader>
 			<div :class="$style.modalHeader">
 				<N8nLogo
 					v-if="step === 1"
@@ -186,12 +196,12 @@ async function onUpgradeClick() {
 						icon-only
 						:aria-label="i18n.baseText('generic.close')"
 						data-test-id="trial-intro-close-button"
-						@click="onClose(closeDialog)"
+						@click="onClose"
 					/>
 				</div>
 			</div>
-		</template>
-		<template #content>
+		</N8nDialogHeader>
+		<N8nDialogBody>
 			<div
 				v-if="step === 1"
 				:class="$style.content"
@@ -201,7 +211,7 @@ async function onUpgradeClick() {
 				<N8nText tag="p" size="small" color="text-base" :class="$style.welcomeLabel">
 					{{ i18n.baseText('experiments.trialIntroModal.eyebrow') }}
 				</N8nText>
-				<N8nHeading tag="h1" size="xlarge" :bold="true" :class="$style.trialLead">
+				<N8nDialogTitle>
 					<I18nT keypath="experiments.trialIntroModal.title" tag="span" scope="global">
 						<template #highlight>
 							<span :class="$style.titleHighlight">{{
@@ -209,10 +219,10 @@ async function onUpgradeClick() {
 							}}</span>
 						</template>
 					</I18nT>
-				</N8nHeading>
-				<N8nText tag="p" size="small" color="text-base" :class="$style.subtitle">
+				</N8nDialogTitle>
+				<N8nDialogDescription>
 					{{ i18n.baseText('experiments.trialIntroModal.subtitle') }}
-				</N8nText>
+				</N8nDialogDescription>
 				<div :class="$style.statCards">
 					<div
 						v-if="aiCredits !== undefined"
@@ -270,12 +280,12 @@ async function onUpgradeClick() {
 				</N8nCallout>
 			</div>
 			<div v-else :class="$style.content" data-test-id="trial-intro-step-2" @keydown.esc.stop>
-				<N8nHeading tag="h1" size="xlarge" :bold="true">
+				<N8nDialogTitle>
 					{{ i18n.baseText('experiments.trialIntroModal.step2.title') }}
-				</N8nHeading>
-				<N8nText tag="p" size="small" color="text-base" :class="$style.subtitle">
+				</N8nDialogTitle>
+				<N8nDialogDescription>
 					{{ i18n.baseText('experiments.trialIntroModal.step2.subtitle') }}
-				</N8nText>
+				</N8nDialogDescription>
 				<div v-if="starterOffer" :class="$style.comparisonRows">
 					<div
 						v-if="executionsLimit !== undefined"
@@ -379,8 +389,8 @@ async function onUpgradeClick() {
 					</div>
 				</div>
 			</div>
-		</template>
-		<template #footer>
+		</N8nDialogBody>
+		<N8nDialogFooter>
 			<div v-if="step === 1" :class="$style.footer">
 				<N8nButton
 					variant="outline"
@@ -406,8 +416,8 @@ async function onUpgradeClick() {
 			>
 				{{ i18n.baseText('experiments.trialIntroModal.step2.cta') }}
 			</N8nButton>
-		</template>
-	</Modal>
+		</N8nDialogFooter>
+	</N8nDialog>
 </template>
 
 <style lang="scss" module>
@@ -466,17 +476,8 @@ async function onUpgradeClick() {
 	align-items: center;
 }
 
-.trialLead {
-	margin: 0;
-}
-
 .titleHighlight {
 	color: var(--color--primary);
-}
-
-.subtitle {
-	margin-top: var(--spacing--2xs);
-	margin-bottom: var(--spacing--md);
 }
 
 .statCards {
@@ -508,10 +509,6 @@ async function onUpgradeClick() {
 	border: var(--border-width) var(--border-style) var(--border-color--subtle);
 	background: var(--background--surface);
 	color: var(--icon-color);
-}
-
-.blurredOverlay {
-	backdrop-filter: blur(4px);
 }
 
 .calloutTitle {
@@ -641,9 +638,11 @@ async function onUpgradeClick() {
 	display: flex;
 	justify-content: flex-end;
 	gap: var(--spacing--2xs);
+	width: 100%;
 }
 
 .ctaButton {
 	width: 100%;
+	flex-grow: 1;
 }
 </style>

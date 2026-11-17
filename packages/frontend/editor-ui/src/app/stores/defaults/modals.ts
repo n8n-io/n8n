@@ -38,6 +38,7 @@ import {
 } from '@/app/constants';
 import { PROJECT_MOVE_RESOURCE_MODAL } from '@/features/collaboration/projects/projects.constants';
 import {
+	CREATE_FOLDER_MODAL_KEY,
 	DELETE_FOLDER_MODAL_KEY,
 	MOVE_FOLDER_MODAL_KEY,
 } from '@/features/core/folders/folders.constants';
@@ -117,6 +118,12 @@ export const SHELL_MODAL_INITIAL_STATE: Readonly<Record<string, ModalState>> = O
 	[CREDENTIAL_RESOLVER_EDIT_MODAL_KEY]: { open: false },
 	[CREDENTIAL_SELECT_MODAL_KEY]: { open: false },
 	[DEBUG_PAYWALL_MODAL_KEY]: { open: false },
+	[CREATE_FOLDER_MODAL_KEY]: {
+		open: false,
+		data: {
+			parentName: '',
+		},
+	},
 	[DELETE_FOLDER_MODAL_KEY]: {
 		open: false,
 		activeId: null,

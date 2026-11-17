@@ -54,6 +54,7 @@ import {
 } from '@/features/settings/users/users.constants';
 import { COMMUNITY_PLUS_ENROLLMENT_MODAL } from '@/features/settings/usage/usage.constants';
 import {
+	CREATE_FOLDER_MODAL_KEY,
 	DELETE_FOLDER_MODAL_KEY,
 	MOVE_FOLDER_MODAL_KEY,
 } from '@/features/core/folders/folders.constants';
@@ -113,6 +114,9 @@ const CredentialsSelectModal = defineAsyncComponent(
 );
 const DebugPaywallModal = defineAsyncComponent(
 	async () => await import('@/features/execution/executions/components/DebugPaywallModal.vue'),
+);
+const CreateFolderModal = defineAsyncComponent(
+	async () => await import('@/features/core/folders/components/CreateFolderModal.vue'),
 );
 const DeleteFolderModal = defineAsyncComponent(
 	async () => await import('@/features/core/folders/components/DeleteFolderModal.vue'),
@@ -487,6 +491,12 @@ const TrialIntroModal = defineAsyncComponent(
 		<ModalRoot :name="COMMUNITY_PLUS_ENROLLMENT_MODAL">
 			<template #default="{ modalName, data }">
 				<CommunityPlusEnrollmentModal :modal-name="modalName" :data="data" />
+			</template>
+		</ModalRoot>
+
+		<ModalRoot :name="CREATE_FOLDER_MODAL_KEY">
+			<template #default="{ modalName, data }">
+				<CreateFolderModal :modal-name="modalName" :data="data" />
 			</template>
 		</ModalRoot>
 

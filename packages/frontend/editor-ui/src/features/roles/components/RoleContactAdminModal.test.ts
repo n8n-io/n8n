@@ -13,23 +13,9 @@ vi.mock('vue-router', async () => {
 	};
 });
 
-const ElDialogStub = {
-	template: `
-		<div role="dialog">
-			<slot name="header" />
-			<slot />
-		</div>
-	`,
-};
-
 const renderComponent = createComponentRenderer(RoleContactAdminModal, {
 	props: {
 		modelValue: true,
-	},
-	global: {
-		stubs: {
-			ElDialog: ElDialogStub,
-		},
 	},
 });
 
@@ -40,35 +26,35 @@ describe('RoleContactAdminModal', () => {
 	});
 
 	describe('Main View', () => {
-		it('should render the main view when visible', () => {
-			const { getByText } = renderComponent();
+		it('should render the main view when visible', async () => {
+			const { findByText } = renderComponent();
 
-			expect(getByText("Custom roles aren't set up yet")).toBeInTheDocument();
+			expect(await findByText("Custom roles aren't set up yet")).toBeInTheDocument();
 		});
 
-		it('should show documentation link', () => {
-			const { getByText } = renderComponent();
+		it('should show documentation link', async () => {
+			const { findByText } = renderComponent();
 
-			expect(getByText('Documentation')).toBeInTheDocument();
+			expect(await findByText('Documentation')).toBeInTheDocument();
 		});
 	});
 
 	describe('When custom roles exist', () => {
-		it('should show different title when customRolesExist is true', () => {
-			const { getByText, queryByText } = renderComponent({
+		it('should show different title when customRolesExist is true', async () => {
+			const { findByText, queryByText } = renderComponent({
 				props: { modelValue: true, customRolesExist: true },
 			});
 
-			expect(getByText('Only instance admins can add custom roles')).toBeInTheDocument();
+			expect(await findByText('Only instance admins can add custom roles')).toBeInTheDocument();
 			expect(queryByText("Custom roles aren't set up yet")).not.toBeInTheDocument();
 		});
 
-		it('should show different body text when customRolesExist is true', () => {
-			const { getByText } = renderComponent({
+		it('should show different body text when customRolesExist is true', async () => {
+			const { findByText } = renderComponent({
 				props: { modelValue: true, customRolesExist: true },
 			});
 
-			expect(getByText(/You can assign existing custom roles/)).toBeInTheDocument();
+			expect(await findByText(/You can assign existing custom roles/)).toBeInTheDocument();
 		});
 	});
 });

@@ -29,14 +29,18 @@ vi.mock('@n8n/rest-api-client', async (importOriginal) => {
 	};
 });
 
-const ModalStub = {
+const DialogStub = {
+	props: ['header', 'description'],
 	template: `
-		<div>
-			<slot name="header" />
-			<slot name="content" />
+		<div role="dialog">
+			<h2 v-if="header">{{ header }}</h2>
+			<p v-if="description">{{ description }}</p>
+			<slot />
 		</div>
 	`,
 };
+
+const dialogPartStub = { template: '<div><slot /></div>' };
 
 const CredentialInputsStub = {
 	template: '<div data-test-id="credential-inputs" />',
@@ -44,7 +48,11 @@ const CredentialInputsStub = {
 
 const global = {
 	stubs: {
-		Modal: ModalStub,
+		Dialog: DialogStub,
+		DialogHeader: dialogPartStub,
+		DialogTitle: dialogPartStub,
+		DialogFooter: dialogPartStub,
+		DialogDescription: dialogPartStub,
 		CredentialInputs: CredentialInputsStub,
 	},
 };
@@ -284,7 +292,16 @@ describe('CredentialResolverEditModal', () => {
 					data: { resolverId: 'oauth-resolver-id' },
 				},
 				pinia,
-				global: { stubs: { Modal: ModalStub, CredentialInputs: component } },
+				global: {
+					stubs: {
+						Dialog: DialogStub,
+						DialogHeader: dialogPartStub,
+						DialogTitle: dialogPartStub,
+						DialogFooter: dialogPartStub,
+						DialogDescription: dialogPartStub,
+						CredentialInputs: component,
+					},
+				},
 			});
 
 			await vi.waitFor(() => {
@@ -326,7 +343,16 @@ describe('CredentialResolverEditModal', () => {
 					data: { resolverId: 'oauth-resolver-id' },
 				},
 				pinia,
-				global: { stubs: { Modal: ModalStub, CredentialInputs: component } },
+				global: {
+					stubs: {
+						Dialog: DialogStub,
+						DialogHeader: dialogPartStub,
+						DialogTitle: dialogPartStub,
+						DialogFooter: dialogPartStub,
+						DialogDescription: dialogPartStub,
+						CredentialInputs: component,
+					},
+				},
 			});
 
 			await vi.waitFor(() => {
@@ -370,7 +396,16 @@ describe('CredentialResolverEditModal', () => {
 					data: { resolverId: 'oauth-resolver-id' },
 				},
 				pinia,
-				global: { stubs: { Modal: ModalStub, CredentialInputs: component } },
+				global: {
+					stubs: {
+						Dialog: DialogStub,
+						DialogHeader: dialogPartStub,
+						DialogTitle: dialogPartStub,
+						DialogFooter: dialogPartStub,
+						DialogDescription: dialogPartStub,
+						CredentialInputs: component,
+					},
+				},
 			});
 
 			await vi.waitFor(() => {
