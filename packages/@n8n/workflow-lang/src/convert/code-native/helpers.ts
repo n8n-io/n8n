@@ -751,6 +751,13 @@ function regexNew(pattern: Json, flags: Json): Json {
 	return regexOf(source, f, regexNames(source));
 }`,
 	},
+	regexFrom: {
+		uses: ['regexNew', 'isRegex'],
+		source: `/** The pattern of \`match\`, \`matchAll\` and \`search\`: a regular expression, or a new one of the value. */
+function regexFrom(pattern: Json, flags: Json): Json {
+	return isRegex(pattern) ? pattern : regexNew(pattern, flags);
+}`,
+	},
 	regexTestOf: {
 		uses: ['regexCaps'],
 		source: `/** \`re.test(s)\`. */
@@ -1474,6 +1481,278 @@ function utf8Text(b: number[]): string {
 	let out = '';
 	for (let s = 0; s < units.length; s += 1024) out += fromCharCodes(units.slice(s, s + 1024));
 	return out;
+}`,
+	},
+	codePointText: {
+		uses: ['fromCharCodes'],
+		source: `/** \`String.fromCodePoint(...points)\`, with the RangeError of V8. */
+function codePointText(points: Json[]): string {
+	let out = '';
+	for (const p of points) {
+		const n = Number(p);
+		if (!(n >= 0 && n <= 0x10ffff && Math.floor(n) === n)) throw new RangeError('Invalid code point ' + String(n));
+		if (n < 0x10000) out += fromCharCodes([n]);
+		else out += fromCharCodes([0xd800 + Math.floor((n - 0x10000) / 0x400), 0xdc00 + ((n - 0x10000) % 0x400)]);
+	}
+	return out;
+}`,
+	},
+	applyList: {
+		uses: [],
+		source: `/** The arguments of \`f.apply(thisArg, list)\`: a list, nothing, or the members of an object with a length. */
+function applyList(list: Json): Json[] {
+	if (list === undefined || list === null) return [];
+	if (Array.isArray(list)) return list;
+	if (typeof list !== 'object') throw new TypeError('CreateListFromArrayLike called on non-object');
+	const out: Json[] = [];
+	const length = Math.min(Math.max(Math.trunc(Number(list.length)) || 0, 0), 4294967295);
+	for (let k = 0; k < length; k++) out.push(list[String(k)]);
+	return out;
+}`,
+	},
+	promiseAll: {
+		uses: [],
+		source: `/** \`await Promise.all(list)\` of values that are no promises: a copy of the list, or the TypeError of V8. */
+function promiseAll(list: Json): Json[] {
+	if (Array.isArray(list)) return list.slice();
+	if (typeof list === 'string') {
+		// The code points of the text.
+		const out: Json[] = [];
+		for (let k = 0; k < list.length; k++) {
+			const c = list.charCodeAt(k);
+			const pair = c >= 0xd800 && c <= 0xdbff && k + 1 < list.length && list.charCodeAt(k + 1) >= 0xdc00 && list.charCodeAt(k + 1) <= 0xdfff;
+			out.push(pair ? list.slice(k, k + 2) : list.charAt(k));
+			if (pair) k++;
+		}
+		return out;
+	}
+	const what =
+		list === undefined
+			? 'undefined'
+			: list === null
+				? 'object null'
+				: typeof list === 'object'
+					? 'object'
+					: typeof list + ' ' + String(list);
+	throw new TypeError(what + ' is not iterable (cannot read property Symbol(Symbol.iterator))');
+}`,
+	},
+	hashWords: {
+		uses: [],
+		source: `/** The padded message of MD5, SHA-1 and SHA-256 as 32-bit words (\`little\`: the byte order of MD5). */
+function hashWords(b: number[], little: boolean): number[] {
+	const bits = b.length * 8;
+	const bytes = b.slice();
+	bytes.push(0x80);
+	while (bytes.length % 64 !== 56) bytes.push(0);
+	const high = Math.floor(bits / 4294967296);
+	const low = bits % 4294967296;
+	const size = [(high >>> 24) & 255, (high >>> 16) & 255, (high >>> 8) & 255, high & 255, (low >>> 24) & 255, (low >>> 16) & 255, (low >>> 8) & 255, low & 255];
+	for (let k = 0; k < 8; k++) bytes.push(little ? size[7 - k] : size[k]);
+	const words: number[] = [];
+	for (let k = 0; k < bytes.length; k += 4) {
+		words.push(
+			little
+				? (bytes[k] | (bytes[k + 1] << 8) | (bytes[k + 2] << 16) | (bytes[k + 3] << 24)) >>> 0
+				: ((bytes[k] << 24) | (bytes[k + 1] << 16) | (bytes[k + 2] << 8) | bytes[k + 3]) >>> 0,
+		);
+	}
+	return words;
+}`,
+	},
+	hashBytes: {
+		uses: ['hashWords'],
+		source: `/** The digest of bytes with \`md5\`, \`sha1\` or \`sha256\`, as bytes. */
+function hashBytes(alg: string, b: number[]): number[] {
+	const little = alg === 'md5';
+	const w = hashWords(b, little);
+	let h: number[];
+	if (alg === 'md5') {
+		h = [0x67452301, 0xefcdab89, 0x98badcfe, 0x10325476];
+		const shifts = [7, 12, 17, 22, 5, 9, 14, 20, 4, 11, 16, 23, 6, 10, 15, 21];
+		const t = [0xd76aa478, 0xe8c7b756, 0x242070db, 0xc1bdceee, 0xf57c0faf, 0x4787c62a, 0xa8304613, 0xfd469501, 0x698098d8, 0x8b44f7af, 0xffff5bb1, 0x895cd7be, 0x6b901122, 0xfd987193, 0xa679438e, 0x49b40821, 0xf61e2562, 0xc040b340, 0x265e5a51, 0xe9b6c7aa, 0xd62f105d, 0x2441453, 0xd8a1e681, 0xe7d3fbc8, 0x21e1cde6, 0xc33707d6, 0xf4d50d87, 0x455a14ed, 0xa9e3e905, 0xfcefa3f8, 0x676f02d9, 0x8d2a4c8a, 0xfffa3942, 0x8771f681, 0x6d9d6122, 0xfde5380c, 0xa4beea44, 0x4bdecfa9, 0xf6bb4b60, 0xbebfbc70, 0x289b7ec6, 0xeaa127fa, 0xd4ef3085, 0x4881d05, 0xd9d4d039, 0xe6db99e5, 0x1fa27cf8, 0xc4ac5665, 0xf4292244, 0x432aff97, 0xab9423a7, 0xfc93a039, 0x655b59c3, 0x8f0ccc92, 0xffeff47d, 0x85845dd1, 0x6fa87e4f, 0xfe2ce6e0, 0xa3014314, 0x4e0811a1, 0xf7537e82, 0xbd3af235, 0x2ad7d2bb, 0xeb86d391];
+		for (let o = 0; o < w.length; o += 16) {
+			let a = h[0];
+			let bb = h[1];
+			let c = h[2];
+			let d = h[3];
+			for (let k = 0; k < 64; k++) {
+				let f = 0;
+				let g = 0;
+				if (k < 16) {
+					f = (bb & c) | (~bb & d);
+					g = k;
+				} else if (k < 32) {
+					f = (d & bb) | (~d & c);
+					g = (5 * k + 1) % 16;
+				} else if (k < 48) {
+					f = bb ^ c ^ d;
+					g = (3 * k + 5) % 16;
+				} else {
+					f = c ^ (bb | ~d);
+					g = (7 * k) % 16;
+				}
+				const x = ((f >>> 0) + a + t[k] + w[o + g]) % 4294967296;
+				const r = shifts[Math.floor(k / 16) * 4 + (k % 4)];
+				a = d;
+				d = c;
+				c = bb;
+				bb = (bb + (((x << r) | (x >>> (32 - r))) >>> 0)) % 4294967296;
+			}
+			h = [(h[0] + a) % 4294967296, (h[1] + bb) % 4294967296, (h[2] + c) % 4294967296, (h[3] + d) % 4294967296];
+		}
+	} else if (alg === 'sha1') {
+		h = [0x67452301, 0xefcdab89, 0x98badcfe, 0x10325476, 0xc3d2e1f0];
+		for (let o = 0; o < w.length; o += 16) {
+			const x: number[] = w.slice(o, o + 16);
+			for (let k = 16; k < 80; k++) {
+				const v = x[k - 3] ^ x[k - 8] ^ x[k - 14] ^ x[k - 16];
+				x.push(((v << 1) | (v >>> 31)) >>> 0);
+			}
+			let a = h[0];
+			let bb = h[1];
+			let c = h[2];
+			let d = h[3];
+			let e = h[4];
+			for (let k = 0; k < 80; k++) {
+				let f = 0;
+				let kk = 0;
+				if (k < 20) {
+					f = (bb & c) | (~bb & d);
+					kk = 0x5a827999;
+				} else if (k < 40) {
+					f = bb ^ c ^ d;
+					kk = 0x6ed9eba1;
+				} else if (k < 60) {
+					f = (bb & c) | (bb & d) | (c & d);
+					kk = 0x8f1bbcdc;
+				} else {
+					f = bb ^ c ^ d;
+					kk = 0xca62c1d6;
+				}
+				const next = ((((a << 5) | (a >>> 27)) >>> 0) + (f >>> 0) + e + kk + x[k]) % 4294967296;
+				e = d;
+				d = c;
+				c = ((bb << 30) | (bb >>> 2)) >>> 0;
+				bb = a;
+				a = next;
+			}
+			h = [(h[0] + a) % 4294967296, (h[1] + bb) % 4294967296, (h[2] + c) % 4294967296, (h[3] + d) % 4294967296, (h[4] + e) % 4294967296];
+		}
+	} else {
+		h = [0x6a09e667, 0xbb67ae85, 0x3c6ef372, 0xa54ff53a, 0x510e527f, 0x9b05688c, 0x1f83d9ab, 0x5be0cd19];
+		const kk = [0x428a2f98, 0x71374491, 0xb5c0fbcf, 0xe9b5dba5, 0x3956c25b, 0x59f111f1, 0x923f82a4, 0xab1c5ed5, 0xd807aa98, 0x12835b01, 0x243185be, 0x550c7dc3, 0x72be5d74, 0x80deb1fe, 0x9bdc06a7, 0xc19bf174, 0xe49b69c1, 0xefbe4786, 0xfc19dc6, 0x240ca1cc, 0x2de92c6f, 0x4a7484aa, 0x5cb0a9dc, 0x76f988da, 0x983e5152, 0xa831c66d, 0xb00327c8, 0xbf597fc7, 0xc6e00bf3, 0xd5a79147, 0x6ca6351, 0x14292967, 0x27b70a85, 0x2e1b2138, 0x4d2c6dfc, 0x53380d13, 0x650a7354, 0x766a0abb, 0x81c2c92e, 0x92722c85, 0xa2bfe8a1, 0xa81a664b, 0xc24b8b70, 0xc76c51a3, 0xd192e819, 0xd6990624, 0xf40e3585, 0x106aa070, 0x19a4c116, 0x1e376c08, 0x2748774c, 0x34b0bcb5, 0x391c0cb3, 0x4ed8aa4a, 0x5b9cca4f, 0x682e6ff3, 0x748f82ee, 0x78a5636f, 0x84c87814, 0x8cc70208, 0x90befffa, 0xa4506ceb, 0xbef9a3f7, 0xc67178f2];
+		const rot = (v: number, n: number): number => (v >>> n) | (v << (32 - n));
+		for (let o = 0; o < w.length; o += 16) {
+			const x: number[] = w.slice(o, o + 16);
+			for (let k = 16; k < 64; k++) {
+				const s0 = rot(x[k - 15], 7) ^ rot(x[k - 15], 18) ^ (x[k - 15] >>> 3);
+				const s1 = rot(x[k - 2], 17) ^ rot(x[k - 2], 19) ^ (x[k - 2] >>> 10);
+				x.push((x[k - 16] + (s0 >>> 0) + x[k - 7] + (s1 >>> 0)) % 4294967296);
+			}
+			let a = h[0];
+			let bb = h[1];
+			let c = h[2];
+			let d = h[3];
+			let e = h[4];
+			let f = h[5];
+			let g = h[6];
+			let hh = h[7];
+			for (let k = 0; k < 64; k++) {
+				const s1 = rot(e, 6) ^ rot(e, 11) ^ rot(e, 25);
+				const ch = (e & f) ^ (~e & g);
+				const t1 = (hh + (s1 >>> 0) + (ch >>> 0) + kk[k] + x[k]) % 4294967296;
+				const s0 = rot(a, 2) ^ rot(a, 13) ^ rot(a, 22);
+				const maj = (a & bb) ^ (a & c) ^ (bb & c);
+				const t2 = ((s0 >>> 0) + (maj >>> 0)) % 4294967296;
+				hh = g;
+				g = f;
+				f = e;
+				e = (d + t1) % 4294967296;
+				d = c;
+				c = bb;
+				bb = a;
+				a = (t1 + t2) % 4294967296;
+			}
+			h = [(h[0] + a) % 4294967296, (h[1] + bb) % 4294967296, (h[2] + c) % 4294967296, (h[3] + d) % 4294967296, (h[4] + e) % 4294967296, (h[5] + f) % 4294967296, (h[6] + g) % 4294967296, (h[7] + hh) % 4294967296];
+		}
+	}
+	const out: number[] = [];
+	for (const v of h) {
+		const four = [(v >>> 24) & 255, (v >>> 16) & 255, (v >>> 8) & 255, v & 255];
+		for (let k = 0; k < 4; k++) out.push(little ? four[3 - k] : four[k]);
+	}
+	return out;
+}`,
+	},
+	hashArgument: {
+		uses: [],
+		source: `/** The text of an argument of a hash, or the TypeError of Node.js for a value that is no string. */
+function hashArgument(v: Json, name: string, kinds: string): string {
+	if (typeof v === 'string') return v;
+	const got =
+		v === undefined || v === null
+			? String(v)
+			: typeof v === 'number' || typeof v === 'boolean'
+				? 'type ' + typeof v + ' (' + String(v) + ')'
+				: 'an instance of ' + (Array.isArray(v) ? 'Array' : 'Object');
+	throw new TypeError('The "' + name + '" argument must be of type string or an instance of ' + kinds + '. Received ' + got);
+}`,
+	},
+	hashNew: {
+		uses: [],
+		source: `/** \`crypto.createHash(alg)\`: the algorithm is one that \`hashBytes\` has. */
+function hashNew(alg: string): Json {
+	return { $hash: alg, key: null, data: [], done: false };
+}`,
+	},
+	hmacNew: {
+		uses: ['hashArgument', 'hashBytes', 'utf8Bytes'],
+		source: `/** \`crypto.createHmac(alg, key)\` with a key that is text. */
+function hmacNew(alg: string, key: Json): Json {
+	let k = utf8Bytes(hashArgument(key, 'key', 'ArrayBuffer, Buffer, TypedArray, DataView, KeyObject, or CryptoKey'));
+	if (k.length > 64) k = hashBytes(alg, k);
+	while (k.length < 64) k.push(0);
+	return { $hash: alg, key: k, data: [], done: false };
+}`,
+	},
+	hashUpdate: {
+		uses: ['hashArgument', 'utf8Bytes'],
+		source: `/** \`hash.update(text)\`: gives the hash, as Node.js does. */
+function hashUpdate(hash: Json, data: Json): Json {
+	if (hash === undefined || hash === null) throw new TypeError('Cannot read properties of ' + hash + " (reading 'update')");
+	if (typeof hash !== 'object' || typeof hash.$hash !== 'string') throw new TypeError('value.update is not a function');
+	if (hash.done) throw new Error('Digest already called');
+	const text = hashArgument(data, 'data', 'Buffer, TypedArray, or DataView');
+	for (const b of utf8Bytes(text)) hash.data.push(b);
+	return hash;
+}`,
+	},
+	hashDigest: {
+		uses: ['hashBytes', 'base64Of'],
+		source: `/** \`hash.digest(encoding)\` for the encodings hex, base64 and base64url. */
+function hashDigest(hash: Json, encoding: string): string {
+	if (hash === undefined || hash === null) throw new TypeError('Cannot read properties of ' + hash + " (reading 'digest')");
+	if (typeof hash !== 'object' || typeof hash.$hash !== 'string') throw new TypeError('value.digest is not a function');
+	if (hash.done) throw new Error('Digest already called');
+	hash.done = true;
+	let out: number[];
+	if (hash.key === null) out = hashBytes(hash.$hash, hash.data);
+	else {
+		const inner: number[] = [];
+		const outer: number[] = [];
+		for (const b of hash.key) {
+			inner.push(b ^ 0x36);
+			outer.push(b ^ 0x5c);
+		}
+		for (const b of hash.data) inner.push(b);
+		for (const b of hashBytes(hash.$hash, inner)) outer.push(b);
+		out = hashBytes(hash.$hash, outer);
+	}
+	if (encoding !== 'hex') return base64Of(out, encoding === 'base64url');
+	let hex = '';
+	for (const b of out) hex += '0123456789abcdef'.charAt(b >>> 4) + '0123456789abcdef'.charAt(b & 15);
+	return hex;
 }`,
 	},
 	base64Of: {

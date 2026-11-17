@@ -33,6 +33,14 @@ const MESSAGES: Case[] = [
 		code: "function f() {\n  throw new Error('in f');\n}\nconst x = 1;\nf();",
 	},
 	{
+		name: 'named function expression in a declaration: throw line 3, call line 5',
+		code: "const x = 1;\nconst run = function work(i) {\n  throw new Error('in work ' + i.json.a);\n};\nreturn items.map((i) => run(i));",
+	},
+	{
+		name: 'named function expression that gives a value',
+		code: 'var double = function twice(n) { return n * 2; };\nreturn $input.all(0).map((i) => ({ json: { a: double(i.json.a) } }));',
+	},
+	{
 		name: 'anonymous callback: throw line 2, map call line 1',
 		code: "const out = items.map((i) => {\n  throw new Error('in callback');\n});\nreturn out;",
 	},

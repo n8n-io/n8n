@@ -199,10 +199,15 @@ function isHttpHelper(e: ts.Expression): boolean {
 export function httpRequestOptions(
 	n: ts.AwaitExpression,
 	isRequest: (callee: ts.Expression) => boolean = isHttpHelper,
+	constantOf: (id: ts.Identifier) => ts.Expression | null = () => null,
 ): ts.ObjectLiteralExpression | string | null {
 	const call = stripParens(n.expression);
 	if (!ts.isCallExpression(call) || !isRequest(stripParens(call.expression))) return null;
-	const options = call.arguments.length === 1 ? stripParens(call.arguments[0]) : undefined;
+	let options = call.arguments.length === 1 ? stripParens(call.arguments[0]) : undefined;
+	// The options in a constant that the code uses only for requests.
+	if (options !== undefined && ts.isIdentifier(options)) {
+		options = constantOf(options) ?? options;
+	}
 	if (options === undefined || !ts.isObjectLiteralExpression(options)) {
 		return 'options that are not an object literal';
 	}
@@ -948,6 +953,8 @@ export function translateCode(input: CodeNativeInput): TranslateResult {
 	const plannedCatches = new Set<ts.Node>();
 	/** Nodes that become `errText(<error>)`, by the name of the error. */
 	const errTextNodes = new Map<ts.Node, string>();
+	/** \`instanceof\` tests with a result that is certain. */
+	const certain = new Map<ts.Node, boolean>();
 	/** Receivers of method calls that `mcheck` checks first. */
 	const methodChecks = new Map<ts.Node, { method: string; text: string }>();
 	/** True when the catch clause reads its error. */
@@ -1027,7 +1034,12 @@ export function translateCode(input: CodeNativeInput): TranslateResult {
 		const member = p.name.text;
 		const call = ts.isCallExpression(p.parent) && p.parent.expression === p ? p.parent : null;
 		if (list === null) return;
-		if (call && call.arguments.length === 0) {
+		// \`$input.all\` of v1 takes no arguments and reads none.
+		const noArguments =
+			call !== null &&
+			(call.arguments.length === 0 ||
+				(own && member === 'all' && call.arguments.every((x) => ts.isNumericLiteral(x))));
+		if (call && noArguments) {
 			if (member === 'all') {
 				replace(base.getStart(sf), call.getEnd(), list);
 				return;
@@ -1416,6 +1428,51 @@ export function translateCode(input: CodeNativeInput): TranslateResult {
 	};
 	const isRequest = (callee: ts.Expression): boolean => requestKind(callee) === 'request';
 	/**
+	 * The object literal of a constant that holds the options of requests, or null. Each use of
+	 * the constant is the one argument of an awaited request, so no code changes the object.
+	 */
+	const optionsConstant = (id: ts.Identifier): ts.Expression | null => {
+		const sym = checker.getSymbolAtLocation(id);
+		const declarations = sym?.declarations ?? [];
+		const d = declarations.length === 1 ? declarations[0] : undefined;
+		if (
+			d === undefined ||
+			!ts.isVariableDeclaration(d) ||
+			!ts.isVariableDeclarationList(d.parent) ||
+			(d.parent.flags & ts.NodeFlags.Const) === 0 ||
+			d.initializer === undefined
+		) {
+			return null;
+		}
+		const literal = stripParens(d.initializer);
+		if (!ts.isObjectLiteralExpression(literal)) return null;
+		let only = true;
+		const scan = (x: ts.Node): void => {
+			if (!only) return;
+			if (
+				ts.isIdentifier(x) &&
+				x !== d.name &&
+				!isNameOf(x) &&
+				checker.getSymbolAtLocation(x) === sym
+			) {
+				let call: ts.Node = x.parent;
+				while (ts.isParenthesizedExpression(call)) call = call.parent;
+				let wait: ts.Node = call.parent;
+				while (ts.isParenthesizedExpression(wait)) wait = wait.parent;
+				const request =
+					ts.isCallExpression(call) &&
+					call.arguments.length === 1 &&
+					stripParens(call.arguments[0]) === x &&
+					isRequest(stripParens(call.expression)) &&
+					ts.isAwaitExpression(wait);
+				if (!request) only = false;
+			}
+			ts.forEachChild(x, scan);
+		};
+		scan(root);
+		return only ? literal : null;
+	};
+	/**
 	 * The full response (\`returnFullResponse: true\`) also has the headers and the status text
 	 * of the transport, which native code does not give as v1 does. So the code must read only
 	 * \`body\` and \`statusCode\` of it: from a constant that holds the response, or in a
@@ -1585,7 +1642,7 @@ export function translateCode(input: CodeNativeInput): TranslateResult {
 	 */
 	const awaited = (n: ts.AwaitExpression): 'http' | 'call' | null => {
 		if (!usesHttp) return null;
-		if (httpRequestOptions(n, isRequest) !== null) return 'http';
+		if (httpRequestOptions(n, isRequest, optionsConstant) !== null) return 'http';
 		const call = stripParens(n.expression);
 		if (!ts.isCallExpression(call)) return null;
 		const callee = stripParens(call.expression);
@@ -2336,11 +2393,11 @@ export function translateCode(input: CodeNativeInput): TranslateResult {
 			case 'match':
 			case 'matchAll':
 			case 'search':
-				if (!hasRegex && !regexish(a0)) return false;
-				if (!regexish(a0) || n.arguments.length !== 1) {
+				if (n.arguments.length !== 1) {
+					if (!hasRegex) return false;
 					block(
 						`${name} without a regular expression`,
-						`\`${name}\` with a string or a computed pattern has no native form.`,
+						`\`${name}\` without one pattern has no native form.`,
 					);
 					return true;
 				}
@@ -2350,6 +2407,14 @@ export function translateCode(input: CodeNativeInput): TranslateResult {
 					name === 'match' ? 'strMatch' : name === 'matchAll' ? 'strMatchAll' : 'strSearch',
 					name !== 'search' && usesMatchProps ? `, ${MATCHES}` : '',
 				);
+				if (!regexish(a0)) {
+					// As JavaScript: a pattern that is not a regular expression makes one
+					// (\`new RegExp(pattern)\`, with the flag \`g\` for \`matchAll\`).
+					helpers.add('regexFrom');
+					const o = seq;
+					open(a0.getStart(sf), 'regexFrom(');
+					closing(a0.getEnd(), a0.getEnd(), name === 'matchAll' ? ", 'g')" : ', undefined)', o);
+				}
 				return true;
 			case 'replace':
 			case 'replaceAll':
@@ -2375,7 +2440,301 @@ export function translateCode(input: CodeNativeInput): TranslateResult {
 
 	// ---- the walk ----------------------------------------------------------
 
+	// ---- hashes of the crypto module ----------------------------------------
+
+	/**
+	 * Names of the crypto module of Node.js: \`const crypto = require('crypto')\` and
+	 * \`const { createHash, createHmac } = require('crypto')\`. The native form has the hashes
+	 * MD5, SHA-1 and SHA-256 of text, with a digest as hex or base64 text. A deployment of v1
+	 * must allow the module for such code to run at all.
+	 */
+	const cryptoNames = new Map<ts.Symbol, 'module' | 'createHash' | 'createHmac'>();
+	const cryptoDeclarations = new Set<ts.Node>();
+	const isCryptoRequire = (e: ts.Expression | undefined): boolean => {
+		if (e === undefined) return false;
+		const x = stripParens(e);
+		return (
+			ts.isCallExpression(x) &&
+			ts.isIdentifier(x.expression) &&
+			x.expression.text === 'require' &&
+			isFree(x.expression) &&
+			x.arguments.length === 1 &&
+			ts.isStringLiteralLike(x.arguments[0]) &&
+			x.arguments[0].text === 'crypto'
+		);
+	};
+	/** The hash function that a callee names, or null. */
+	const cryptoCallee = (e: ts.Expression): 'createHash' | 'createHmac' | null => {
+		const x = stripParens(e);
+		if (ts.isIdentifier(x)) {
+			const sym = checker.getSymbolAtLocation(x);
+			const kind = sym === undefined ? undefined : cryptoNames.get(sym);
+			return kind === 'createHash' || kind === 'createHmac' ? kind : null;
+		}
+		if (!ts.isPropertyAccessExpression(x) || x.questionDotToken) return null;
+		const name = x.name.text;
+		if (name !== 'createHash' && name !== 'createHmac') return null;
+		const from = stripParens(x.expression);
+		if (isCryptoRequire(from)) return name;
+		const sym = ts.isIdentifier(from) ? checker.getSymbolAtLocation(from) : undefined;
+		return sym !== undefined && cryptoNames.get(sym) === 'module' ? name : null;
+	};
+	/** True when the code uses a name of the crypto module for something without a native form. */
+	let cryptoMisuse = false;
+	const usesCrypto = !input.nodeCode && /\brequire\s*\(\s*['"`]crypto['"`]\s*\)/.test(input.code);
+	if (usesCrypto && root.body) {
+		const declare = (x: ts.Node): void => {
+			if (ts.isVariableStatement(x) && x.declarationList.declarations.length === 1) {
+				const d = x.declarationList.declarations[0];
+				if (isCryptoRequire(d.initializer)) {
+					if (ts.isIdentifier(d.name)) {
+						const sym = checker.getSymbolAtLocation(d.name);
+						if (sym !== undefined) {
+							cryptoNames.set(sym, 'module');
+							cryptoDeclarations.add(x);
+							return;
+						}
+					} else if (ts.isObjectBindingPattern(d.name)) {
+						let known = true;
+						for (const el of d.name.elements) {
+							const key = el.propertyName ?? el.name;
+							const sym = ts.isIdentifier(el.name)
+								? checker.getSymbolAtLocation(el.name)
+								: undefined;
+							if (
+								el.dotDotDotToken ||
+								el.initializer ||
+								!ts.isIdentifier(key) ||
+								sym === undefined ||
+								(key.text !== 'createHash' && key.text !== 'createHmac')
+							) {
+								known = false;
+							} else cryptoNames.set(sym, key.text);
+						}
+						if (!known) cryptoMisuse = true;
+						cryptoDeclarations.add(x);
+						return;
+					}
+				}
+			}
+			ts.forEachChild(x, declare);
+		};
+		declare(root.body);
+		// Each other use of such a name is the callee of a call that makes a hash.
+		const uses = (x: ts.Node): void => {
+			if (cryptoDeclarations.has(x)) return;
+			if (ts.isCallExpression(x) && cryptoCallee(x.expression) !== null) {
+				for (const arg of x.arguments) uses(arg);
+				return;
+			}
+			if (ts.isIdentifier(x) && !isNameOf(x)) {
+				const sym = checker.getSymbolAtLocation(x);
+				if (sym !== undefined && cryptoNames.has(sym)) cryptoMisuse = true;
+				return;
+			}
+			ts.forEachChild(x, uses);
+		};
+		uses(root.body);
+	}
+	const HASHES = new Set(['md5', 'sha1', 'sha256']);
+	const literalText = (e: ts.Expression | undefined): string | null => {
+		const x = e === undefined ? undefined : stripParens(e);
+		return x !== undefined && ts.isStringLiteralLike(x) ? x.text : null;
+	};
+	/** \`crypto.createHash('sha256')\` and \`crypto.createHmac('sha256', key)\`. True when it wrote the call. */
+	const cryptoCall = (n: ts.CallExpression): boolean => {
+		const kind = usesCrypto ? cryptoCallee(n.expression) : null;
+		if (kind === null) return false;
+		const alg = literalText(n.arguments[0])?.toLowerCase() ?? null;
+		if (
+			cryptoMisuse ||
+			alg === null ||
+			!HASHES.has(alg) ||
+			n.arguments.length !== (kind === 'createHash' ? 1 : 2)
+		) {
+			block('require', 'This use of the crypto module has no native form.');
+			return true;
+		}
+		helpers.add(kind === 'createHash' ? 'hashNew' : 'hmacNew');
+		if (kind === 'createHash') {
+			replaceNode(n, `hashNew(${JSON.stringify(alg)})`);
+			return true;
+		}
+		replace(n.getStart(sf), n.arguments[1].getStart(sf), `hmacNew(${JSON.stringify(alg)}, `);
+		visit(n.arguments[1]);
+		return true;
+	};
+	/** \`hash.update(text)\` and \`hash.digest('hex')\` in code that makes hashes. True when it wrote the call. */
+	const hashMethod = (
+		n: ts.CallExpression,
+		callee: ts.PropertyAccessExpression,
+		name: string,
+	): boolean => {
+		if (!usesCrypto || (name !== 'update' && name !== 'digest')) return false;
+		if (callee.questionDotToken) {
+			block('optional chain', 'A method rewrite inside an optional chain has no native form.');
+			return true;
+		}
+		if (name === 'update') {
+			const encoding =
+				n.arguments.length === 2 ? literalText(n.arguments[1])?.toLowerCase() : undefined;
+			if (n.arguments.length !== 1 && encoding !== 'utf8' && encoding !== 'utf-8') {
+				block('require', '`update` of a hash with this encoding has no native form.');
+				return true;
+			}
+			helpers.add('hashUpdate');
+			const o = seq;
+			open(callee.expression.getStart(sf), 'hashUpdate(');
+			closing(callee.expression.getEnd(), n.arguments[0].getStart(sf), ', ', o);
+			closing(n.arguments[0].getEnd(), n.getEnd(), ')', o);
+			visit(callee.expression);
+			visit(n.arguments[0]);
+			return true;
+		}
+		const encoding = n.arguments.length === 1 ? literalText(n.arguments[0]) : null;
+		if (encoding !== 'hex' && encoding !== 'base64' && encoding !== 'base64url') {
+			block('require', '`digest` of a hash as bytes has no native form.');
+			return true;
+		}
+		helpers.add('hashDigest');
+		const o = seq;
+		open(callee.expression.getStart(sf), 'hashDigest(');
+		closing(callee.expression.getEnd(), n.getEnd(), `, ${JSON.stringify(encoding)})`, o);
+		visit(callee.expression);
+		return true;
+	};
+
+	/**
+	 * True when each error that the code can catch is an Error that the code made in its own
+	 * realm: the code makes no requests, reads no other node by a pairing, and each \`throw\`
+	 * gives a new Error or the error of a catch block. Then \`e instanceof Error\` is true.
+	 */
+	const ownErrors = ((): boolean => {
+		if (
+			usesHttp ||
+			input.nodeCode ||
+			/itemMatching|pairedItem|\$fromAI|\$evaluateExpression/.test(input.code)
+		) {
+			return false;
+		}
+		const ERRORS = new Set(['Error', 'TypeError', 'RangeError', 'SyntaxError', 'ReferenceError']);
+		let own = true;
+		const scan = (x: ts.Node): void => {
+			if (!own) return;
+			if (ts.isThrowStatement(x)) {
+				const v = stripParens(x.expression);
+				const made =
+					ts.isNewExpression(v) &&
+					ts.isIdentifier(v.expression) &&
+					ERRORS.has(v.expression.text) &&
+					isFree(v.expression);
+				const caught =
+					ts.isIdentifier(v) &&
+					(checker.getSymbolAtLocation(v)?.declarations ?? []).some(
+						(d) => ts.isVariableDeclaration(d) && ts.isCatchClause(d.parent),
+					);
+				if (!made && !caught) own = false;
+			}
+			ts.forEachChild(x, scan);
+		};
+		scan(root);
+		return own;
+	})();
+
+	/**
+	 * \`await Promise.all(list)\` and \`await Promise.resolve(value)\` in code that makes no
+	 * requests. No value of such code is a promise, and an async function runs to its end at
+	 * its call. So the list is a copy of the list, and the value is the value. The call is not
+	 * in a try block (v1 runs all callbacks before the error shows), and its argument has no
+	 * \`await\` (v1 runs such callbacks in turns). True when it wrote the call.
+	 */
+	const promiseCall = (n: ts.CallExpression): boolean => {
+		if (usesHttp || input.nodeCode || n.arguments.length !== 1) return false;
+		const callee = stripParens(n.expression);
+		if (
+			!ts.isPropertyAccessExpression(callee) ||
+			!ts.isIdentifier(callee.expression) ||
+			callee.expression.text !== 'Promise' ||
+			!isFree(callee.expression) ||
+			(callee.name.text !== 'all' && callee.name.text !== 'resolve')
+		) {
+			return false;
+		}
+		let p: ts.Node = n.parent;
+		while (ts.isParenthesizedExpression(p)) p = p.parent;
+		if (!ts.isAwaitExpression(p) && !ts.isReturnStatement(p)) return false;
+		for (let x: ts.Node = n; x !== root; x = x.parent) {
+			if (ts.isTryStatement(x.parent) && x.parent.tryBlock === x) return false;
+		}
+		const arg = n.arguments[0];
+		const hasAwait = (x: ts.Node): boolean =>
+			ts.isAwaitExpression(x) || (ts.forEachChild(x, hasAwait) ?? false);
+		if (ts.isSpreadElement(arg) || hasAwait(arg)) return false;
+		const o = seq;
+		const all = callee.name.text === 'all';
+		if (all) helpers.add('promiseAll');
+		replace(n.getStart(sf), arg.getStart(sf), all ? 'promiseAll(' : '(');
+		closing(arg.getEnd(), n.getEnd(), ')', o);
+		visit(arg);
+		return true;
+	};
+
+	/**
+	 * \`Math.max.apply(null, list)\` (also \`min\`) becomes \`mathMaxOf(applyList(list))\`, and
+	 * \`String.fromCodePoint(a, b)\` becomes \`codePointText([a, b])\`. True when it wrote the call.
+	 */
+	const staticCall = (n: ts.CallExpression): boolean => {
+		const callee = stripParens(n.expression);
+		if (!ts.isPropertyAccessExpression(callee) || callee.questionDotToken) return false;
+		const target = stripParens(callee.expression);
+		const isStatic = (e: ts.Expression, object: string, names: string[]): boolean =>
+			ts.isPropertyAccessExpression(e) &&
+			ts.isIdentifier(e.expression) &&
+			e.expression.text === object &&
+			isFree(e.expression) &&
+			names.includes(e.name.text);
+		if (isStatic(callee, 'String', ['fromCodePoint'])) {
+			helpers.add('codePointText');
+			const o = seq;
+			replace(n.getStart(sf), n.arguments.pos, 'codePointText([');
+			closing(n.arguments.end, n.getEnd(), '])', o);
+			for (const a of n.arguments) visit(a);
+			return true;
+		}
+		if (
+			callee.name.text === 'apply' &&
+			isStatic(target, 'Math', ['max', 'min']) &&
+			n.arguments.length === 2
+		) {
+			const self = stripParens(n.arguments[0]);
+			const plain =
+				self.kind === ts.SyntaxKind.NullKeyword ||
+				(ts.isIdentifier(self) &&
+					(self.text === 'undefined' || self.text === 'Math') &&
+					isFree(self));
+			if (!plain) return false;
+			helpers.add('applyList');
+			const list =
+				ts.isPropertyAccessExpression(target) && target.name.text === 'max'
+					? 'mathMaxOf'
+					: 'mathMinOf';
+			helpers.add(list);
+			const o = seq;
+			replace(n.getStart(sf), n.arguments[1].getStart(sf), `${list}(applyList(`);
+			closing(n.arguments[1].getEnd(), n.getEnd(), '))', o);
+			visit(n.arguments[1]);
+			return true;
+		}
+		return false;
+	};
+
 	const visit = (n: ts.Node): void => {
+		if (ts.isCallExpression(n) && (promiseCall(n) || staticCall(n))) return;
+		if (cryptoDeclarations.has(n) && !cryptoMisuse) {
+			replaceNode(n, '');
+			return;
+		}
+		if (ts.isCallExpression(n) && cryptoCall(n)) return;
 		// A constant for the request helper: its uses are requests, which need no such constant.
 		if (requestDeclarations.has(n) && !requestNameMisuse) {
 			replaceNode(n, '');
@@ -2409,7 +2768,7 @@ export function translateCode(input: CodeNativeInput): TranslateResult {
 			seq += 2;
 		}
 		if (ts.isTryStatement(n) && n.catchClause && readsError(n.catchClause)) {
-			const plan = planCatch(n, checker, { dateVars, awaited, requests: usesHttp });
+			const plan = planCatch(n, checker, { dateVars, awaited, requests: usesHttp, ownErrors });
 			if (typeof plan === 'string') {
 				// Node code: the node compiler checks the error text against v1 (the verified list).
 				if (!input.nodeCode)
@@ -2421,6 +2780,7 @@ export function translateCode(input: CodeNativeInput): TranslateResult {
 				plannedCatches.add(n.catchClause);
 				const name = n.catchClause.variableDeclaration?.name.getText(sf) ?? 'e';
 				for (const x of plan.errText) errTextNodes.set(x, name);
+				for (const x of plan.isError) certain.set(x, true);
 				for (const c of plan.checks)
 					methodChecks.set(c.receiver, { method: c.method, text: c.text });
 			}
@@ -2460,9 +2820,26 @@ export function translateCode(input: CodeNativeInput): TranslateResult {
 		}
 
 		if (ts.isFunctionExpression(n) && n.name) {
-			// The compiler does not bind the name of a function expression inside it.
-			block('named function expression', 'A named function expression has no native form.');
-			return;
+			// The compiler does not bind the name of a function expression inside it. The name goes
+			// when the function does not use it and is the value of a declaration: there, V8 also
+			// names the function after the variable, so the line of an error stays the same.
+			const own = checker.getSymbolAtLocation(n.name);
+			const fnName = n.name;
+			const usesName = (x: ts.Node): boolean =>
+				(ts.isIdentifier(x) && x !== fnName && checker.getSymbolAtLocation(x) === own) ||
+				(ts.forEachChild(x, usesName) ?? false);
+			let holder: ts.Node = n.parent;
+			while (ts.isParenthesizedExpression(holder)) holder = holder.parent;
+			if (
+				own === undefined ||
+				usesName(n) ||
+				!ts.isVariableDeclaration(holder) ||
+				!ts.isIdentifier(holder.name)
+			) {
+				block('named function expression', 'A named function expression has no native form.');
+				return;
+			}
+			replaceNode(fnName, '');
 		}
 		if (isFunctionNode(n) && n !== root) {
 			if (n.asteriskToken) block('generator', 'Generators have no native form.');
@@ -2481,7 +2858,7 @@ export function translateCode(input: CodeNativeInput): TranslateResult {
 		if (ts.isAwaitExpression(n) && !input.nodeCode) {
 			const kind = awaited(n);
 			if (kind === 'http') {
-				const options = httpRequestOptions(n, isRequest);
+				const options = httpRequestOptions(n, isRequest, optionsConstant);
 				if (requestNameMisuse) {
 					block(
 						'this.helpers.httpRequest',
@@ -2515,7 +2892,9 @@ export function translateCode(input: CodeNativeInput): TranslateResult {
 				if (ts.isCallExpression(call)) {
 					replace(call.expression.getStart(sf), call.expression.getEnd(), HTTP);
 				}
-				for (const p of options.properties) visit(p);
+				// Options in a constant: the walk writes them at the declaration.
+				const inline = ts.isCallExpression(call) && stripParens(call.arguments[0]) === options;
+				if (inline) for (const p of options.properties) visit(p);
 				return;
 			}
 			if (kind === null) {
@@ -2704,8 +3083,32 @@ export function translateCode(input: CodeNativeInput): TranslateResult {
 					closing(n.getEnd(), n.getEnd(), ')', o);
 				}
 			}
-			if (op === ts.SyntaxKind.InstanceOfKeyword)
+			if (op === ts.SyntaxKind.InstanceOfKeyword) {
+				// The task runner of v1 runs the code in its own realm. A Date that the code makes is
+				// a Date of that realm, and a value of the input is JSON, which has no Date. Arrays
+				// and objects of the input come from another realm, so those tests stay in the host.
+				const right = stripParens(n.right);
+				const left = stripParens(n.left);
+				const known = certain.get(n);
+				if (known !== undefined) {
+					replaceNode(n, String(known));
+					return;
+				}
+				const date = ts.isIdentifier(right) && right.text === 'Date' && isFree(right);
+				if (date && ts.isIdentifier(left) && isDateValue(left)) {
+					replaceNode(n, 'true');
+					return;
+				}
+				if (date && !isDateValue(left) && isNotDate(left, 0)) {
+					// The left side runs, for an error of its reads.
+					const o = seq;
+					open(n.getStart(sf), '((');
+					closing(n.left.getEnd(), n.getEnd(), ') === 0 && false)', o);
+					visit(n.left);
+					return;
+				}
 				block('instanceof', '`instanceof` has no native form.');
+			}
 			if (
 				usesLuxon &&
 				(op === ts.SyntaxKind.LessThanToken ||
@@ -2897,6 +3300,7 @@ export function translateCode(input: CodeNativeInput): TranslateResult {
 						n.arguments.length === 0 ? (usesLuxon ? 'luxToString' : 'toStringOf') : 'toStringRadix',
 					);
 				}
+				if (hashMethod(n, callee, name)) return;
 				if (luxMethod(n, callee, name)) return;
 				if (localeMethod(n, callee, name)) return;
 				if (hasIntl && (name === 'format' || name === 'formatToParts') && n.arguments.length <= 1) {

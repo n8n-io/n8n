@@ -342,7 +342,7 @@ describe('native Code nodes', () => {
 	});
 
 	it.each([
-		['require', "const c = require('crypto'); return [];", 'require'],
+		['require', "const c = require('os'); return [];", 'require'],
 		['this.helpers', 'return [{ json: { b: this.helpers } }];', 'this (this.helpers)'],
 		[
 			'Luxon parsing with a format',
