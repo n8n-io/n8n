@@ -6,11 +6,6 @@ import { describe, expect, it } from 'vitest';
 import { configs, rules } from '../plugin.js';
 import { HintMaxLengthRule } from './hint-max-length.js';
 
-/**
- * Maximum allowed hint length. This is the 95th percentile of `hint` length in
- * first-party nodes (506 single-line literal hints: median 59, p90 95, p95 120,
- * longest 268), so the limit only cuts the long tail.
- */
 const MAX_HINT_LENGTH = 120;
 
 /** A hint of the shape reviewers ask community authors to move to `description`. */
@@ -29,20 +24,12 @@ function createNodeDescriptionCode(body: string): string {
 	`;
 }
 
+function property(fields: string): string {
+	return `{ displayName: 'Query', name: 'query', type: 'string', default: '', ${fields} }`;
+}
+
 ruleTester.run('hint-max-length', HintMaxLengthRule, {
 	valid: [
-		{
-			name: 'ignores files outside the node file scope',
-			filename: '/tmp/TestNode.credentials.ts',
-			code: createNodeCode(TOO_LONG_HINT),
-		},
-		{
-			name: 'ignores classes that do not implement INodeType',
-			filename: '/tmp/TestNode.node.ts',
-			code: `export class NotANode {
-				description = { properties: [{ hint: '${TOO_LONG_HINT}' }] };
-			}`,
-		},
 		{
 			name: 'accepts a node without an inline description',
 			filename: '/tmp/TestNode.node.ts',
@@ -51,19 +38,83 @@ ruleTester.run('hint-max-length', HintMaxLengthRule, {
 		{
 			name: 'ignores dynamic hint values',
 			filename: '/tmp/TestNode.node.ts',
-			code: createNodeDescriptionCode('properties: [{ hint: getHint() }]'),
+			code: createNodeDescriptionCode(`properties: [${property('hint: getHint()')}]`),
 		},
 		{
 			name: 'allows long descriptions',
 			filename: '/tmp/TestNode.node.ts',
-			code: createNodeDescriptionCode(`properties: [{ description: '${TOO_LONG_HINT}' }]`),
+			code: createNodeDescriptionCode(
+				`properties: [${property(`description: '${TOO_LONG_HINT}'`)}]`,
+			),
+		},
+		{
+			name: 'does not count HTML markup toward the limit',
+			filename: '/tmp/TestNode.node.ts',
+			code: createNodeDescriptionCode(
+				`properties: [${property(`hint: 'See the <a href="https://example.com/${'x'.repeat(120)}" target="_blank">docs</a>'`)}]`,
+			),
+		},
+		{
+			name: 'ignores a hint key in a default value',
+			filename: '/tmp/TestNode.node.ts',
+			code: createNodeDescriptionCode(
+				`properties: [{ displayName: 'Body', name: 'body', type: 'json', default: { hint: '${TOO_LONG_HINT}' } }]`,
+			),
+		},
+		{
+			name: 'ignores a hint key in a request body',
+			filename: '/tmp/TestNode.node.ts',
+			code: createNodeDescriptionCode(
+				`properties: [${property(`routing: { request: { body: { hint: '${TOO_LONG_HINT}' } } }`)}]`,
+			),
 		},
 	],
 	invalid: [
 		{
+			name: 'reports a hint in a resource file outside the node file',
+			filename: '/tmp/nodes/TestNode/resources/issue/getAll.ts',
+			code: `export const getAll: INodeProperties[] = [${property(`hint: '${TOO_LONG_HINT}'`)}];`,
+			errors: [{ messageId: 'hintTooLong' }],
+		},
+		{
+			name: 'reports a hint in a versioned node class outside a .node.ts file',
+			filename: '/tmp/nodes/TestNode/v1/TestNodeV1.ts',
+			code: createNodeDescriptionCode(`properties: [${property(`hint: '${TOO_LONG_HINT}'`)}]`),
+			errors: [{ messageId: 'hintTooLong' }],
+		},
+		{
+			name: 'reports a hint that overrides a spread property',
+			filename: '/tmp/TestNode.node.ts',
+			code: createNodeDescriptionCode(
+				`properties: [{ ...baseProperty, hint: '${TOO_LONG_HINT}' }]`,
+			),
+			errors: [{ messageId: 'hintTooLong' }],
+		},
+		{
+			name: 'reports the visible length of a hint with HTML markup',
+			filename: '/tmp/TestNode.node.ts',
+			code: createNodeDescriptionCode(
+				`properties: [${property(`hint: '<b>${TOO_LONG_HINT}</b>'`)}]`,
+			),
+			errors: [
+				{
+					messageId: 'hintTooLong',
+					data: { length: TOO_LONG_HINT.length, max: MAX_HINT_LENGTH },
+				},
+			],
+		},
+		{
+			name: 'reports a hint on a resource locator mode',
+			filename: '/tmp/TestNode.node.ts',
+			code: createNodeDescriptionCode(
+				`properties: [{ displayName: 'Issue', name: 'issue', type: 'resourceLocator', default: {}, modes: [{ displayName: 'ID', name: 'id', type: 'string', hint: '${TOO_LONG_HINT}' }] }]`,
+			),
+			errors: [{ messageId: 'hintTooLong' }],
+		},
+		{
 			name: 'reports a quoted hint key and keeps the author text unchanged',
 			filename: '/tmp/TestNode.node.ts',
-			code: createNodeDescriptionCode(`properties: [{ 'hint': '${TOO_LONG_HINT}' }]`),
+			code: createNodeDescriptionCode(`properties: [${property(`'hint': '${TOO_LONG_HINT}'`)}]`),
 			errors: [
 				{
 					messageId: 'hintTooLong',
@@ -82,7 +133,7 @@ ruleTester.run('hint-max-length', HintMaxLengthRule, {
 						name: 'values',
 						values: [
 							...sharedProperties,
-							{ hint: '${TOO_LONG_HINT}' },
+							${property(`hint: '${TOO_LONG_HINT}'`)},
 						],
 					}],
 				}]

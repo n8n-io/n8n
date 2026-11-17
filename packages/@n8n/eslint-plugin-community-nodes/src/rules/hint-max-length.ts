@@ -1,26 +1,30 @@
-import type { TSESTree } from '@typescript-eslint/utils';
-import { AST_NODE_TYPES } from '@typescript-eslint/utils';
+import { AST_NODE_TYPES, type TSESTree } from '@typescript-eslint/utils';
 
-import {
-	createRule,
-	findNodeDescriptionObject,
-	getStringLiteralValue,
-	isFileType,
-	isNodeTypeClass,
-} from '../utils/index.js';
+import { createRule, findObjectProperty, getStringLiteralValue } from '../utils/index.js';
 
 /**
- * The 95th percentile of `hint` length in first-party nodes, so the limit only
- * cuts the long tail. A hint renders inline under the field, where long text
- * pushes the rest of the parameter panel down.
+ * Almost all first-party hints are within this limit, so it only cuts the long
+ * tail. A hint renders inline under the field, where long text pushes the rest
+ * of the parameter panel down.
  */
 const MAX_HINT_LENGTH = 120;
 
-function isHintKey(key: TSESTree.Node): boolean {
+/**
+ * Node properties and resource locator modes both have this shape. Matching on
+ * shape instead of on the node class also checks properties that a node
+ * imports from other files. A spread usually supplies the shape of a property
+ * that only overrides some fields.
+ */
+function isPropertyLike(node: TSESTree.ObjectExpression): boolean {
 	return (
-		(key.type === AST_NODE_TYPES.Identifier && key.name === 'hint') ||
-		(key.type === AST_NODE_TYPES.Literal && key.value === 'hint')
+		node.properties.some((property) => property.type === AST_NODE_TYPES.SpreadElement) ||
+		['displayName', 'name', 'type'].every((key) => findObjectProperty(node, key) !== null)
 	);
+}
+
+/** The editor renders a hint as HTML, so only the text takes up space. */
+function visibleLength(hint: string): number {
+	return hint.replace(/<[^>]*>/g, '').length;
 }
 
 export const HintMaxLengthRule = createRule({
@@ -38,55 +42,24 @@ export const HintMaxLengthRule = createRule({
 	},
 	defaultOptions: [],
 	create(context) {
-		if (!isFileType(context.filename, '.node.ts')) {
-			return {};
-		}
-
-		const checkHint = (valueNode: TSESTree.Node): void => {
-			const hint = getStringLiteralValue(valueNode);
-			if (hint === null || hint.length <= MAX_HINT_LENGTH) {
-				return;
-			}
-
-			context.report({
-				node: valueNode,
-				messageId: 'hintTooLong',
-				data: { length: hint.length, max: MAX_HINT_LENGTH },
-			});
-		};
-
-		// Properties nest through `properties` and the `options` of a collection,
-		// so walk object and array values to reach every hint.
-		const visit = (node: TSESTree.Node): void => {
-			if (node.type === AST_NODE_TYPES.ObjectExpression) {
-				for (const property of node.properties) {
-					if (property.type !== AST_NODE_TYPES.Property) {
-						continue;
-					}
-					if (isHintKey(property.key)) {
-						checkHint(property.value);
-					}
-					visit(property.value);
-				}
-			} else if (node.type === AST_NODE_TYPES.ArrayExpression) {
-				for (const element of node.elements) {
-					if (element) {
-						visit(element);
-					}
-				}
-			}
-		};
-
 		return {
-			ClassDeclaration(node) {
-				if (!isNodeTypeClass(node)) {
+			ObjectExpression(node) {
+				if (!isPropertyLike(node)) {
 					return;
 				}
 
-				const description = findNodeDescriptionObject(node);
-				if (description) {
-					visit(description);
+				const hintProperty = findObjectProperty(node, 'hint');
+				const hint = getStringLiteralValue(hintProperty?.value ?? null);
+				const length = hint === null ? 0 : visibleLength(hint);
+				if (!hintProperty || length <= MAX_HINT_LENGTH) {
+					return;
 				}
+
+				context.report({
+					node: hintProperty.value,
+					messageId: 'hintTooLong',
+					data: { length, max: MAX_HINT_LENGTH },
+				});
 			},
 		};
 	},

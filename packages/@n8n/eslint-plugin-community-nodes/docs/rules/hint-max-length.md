@@ -13,10 +13,13 @@ harder to read. A hint must be a short inline nudge.
 For longer text, use the property `description`. It renders as the tooltip, so
 it holds documentation without cost to the panel layout.
 
-The rule reports a `hint` of more than 120 characters. This limit is the 95th
-percentile of `hint` length in first-party nodes, so it only cuts the long tail.
-The rule checks every property in the node `description`, which includes the
-properties nested in a collection.
+The rule reports a `hint` of more than 120 characters. Almost all first-party
+hints are within this limit, so it only cuts the long tail. The hint renders as
+HTML, so the rule counts only the visible text and ignores the markup.
+
+The rule checks the properties in every file, so it also checks properties that
+you define in a separate resource file, and the credential properties. It also
+checks the modes of a resource locator.
 
 ## Examples
 
