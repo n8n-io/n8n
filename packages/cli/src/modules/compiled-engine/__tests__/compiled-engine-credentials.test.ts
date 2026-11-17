@@ -18,6 +18,7 @@ import type { CredentialsHelper } from '@/credentials-helper';
 import type { NodeTypes } from '@/node-types';
 
 import type { CredentialSlotBinding } from '../compiled-engine.types';
+import { loadWorkflowLang } from '../workflow-lang';
 import {
 	CompiledEngineCredentials,
 	earliestMintExpiry,
@@ -65,6 +66,12 @@ describe('CompiledEngineCredentials', () => {
 		await new Promise<void>((resolve) => api.listen(0, '127.0.0.1', resolve));
 		tokenUrl = `http://127.0.0.1:${(api.address() as AddressInfo).port}/token`;
 	});
+
+	// The first use of the workflow language loads the TypeScript compiler. It is loaded here,
+	// with its own time limit, so the first test that builds a document does not pay for it.
+	beforeAll(async () => {
+		await loadWorkflowLang();
+	}, 120_000);
 
 	afterAll(async () => {
 		await new Promise((resolve) => api.close(resolve));
