@@ -188,6 +188,18 @@ export class PlanHydrator implements Hydrator {
 		});
 	}
 
+	// The ids of what a write made. A later plan must not seed another object under them.
+	noteWrite(_toolName: string, result: CallToolResult): void {
+		const made = parseJson(resultText(result));
+		if (!isRecord(made)) return;
+		this.seeded.hold(
+			['id', 'uuid', 'identifier'].flatMap((key) => {
+				const value = made[key];
+				return typeof value === 'string' && value !== '' ? [value] : [];
+			}),
+		);
+	}
+
 	async hydrateWrite(toolName: string, args: Record<string, unknown>): Promise<void> {
 		const prompt = [
 			'An agent is about to call a write tool. The call runs in the gym only. Make sure the objects it refers to (its parent, target page, database or issue) exist in the gym with their real ids, so the call can run. Do not apply its change.',

@@ -244,6 +244,18 @@ describe('PlanHydrator', () => {
 		expect(gymLacks.upstreamCalls).toEqual([['get_issue', { id: 'TRUST-1' }]]);
 	});
 
+	it('leaves out an entity under the id of an object that a write made in the gym', async () => {
+		const plan = JSON.stringify({
+			overlay: {
+				native: { linear: { projects: [{ ref: 'project:P-TRUST-1', name: 'P-TRUST-1' }] } },
+			},
+		});
+		const { hydrator, seeds } = setup([plan]);
+		hydrator.noteWrite('save_project', text(JSON.stringify({ id: 'P-TRUST-1', uuid: ID })));
+		await hydrator.hydrate('get_issue', { id: 'TRUST-1209' }, real);
+		expect(seeds).toEqual([]);
+	});
+
 	it('goes back to the model with the gym error, and stops after two repairs', async () => {
 		const bad = JSON.stringify({ overlay: { a: 1 } });
 		const { hydrator, seedErrors, prompts } = setup([bad, bad, bad, bad]);

@@ -37,6 +37,9 @@ export class SeededEntities {
 	// Refs in lower case -> the stored ref. A model may write `team:lho` for `team:LHO`.
 	private readonly refs = new Map<string, string>();
 
+	// `<collection>:<key>` in lower case -> the stored ref. A team key is unique, also when the id differs.
+	private readonly byKey = new Map<string, string>();
+
 	// Ids of objects that the gym made itself, for example the issue that an agent created.
 	private readonly held = new Set<string>();
 
@@ -58,10 +61,19 @@ export class SeededEntities {
 		for (const [service, name] of collections(next)) {
 			service[name] = entities(service, name).filter((entity) => {
 				const key = keyOf(entity);
-				return key === undefined || !this.holds(key);
+				if (key !== undefined && this.holds(key)) return false;
+				const stored = this.byKey.get(this.keyName(name, entity));
+				if (stored === undefined) return true;
+				// Another ref for the same object: references to it use the stored ref.
+				if (typeof entity.ref === 'string') this.refs.set(entity.ref.toLowerCase(), stored);
+				return false;
 			});
 		}
 		return this.fixRefs(next) as Record<string, unknown>;
+	}
+
+	private keyName(collection: string, entity: Entity): string {
+		return typeof entity.key === 'string' ? `${collection}:${entity.key.toLowerCase()}` : '';
 	}
 
 	/** Notes the entities of an overlay that the gym took. */
@@ -72,6 +84,7 @@ export class SeededEntities {
 				if (key === undefined) continue;
 				const ref = typeof entity.ref === 'string' ? entity.ref : key;
 				this.seeded.set(key, ref);
+				if (typeof entity.key === 'string') this.byKey.set(this.keyName(name, entity), ref);
 				this.refs.set(ref.toLowerCase(), ref);
 			}
 		}

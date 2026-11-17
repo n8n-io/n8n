@@ -8,6 +8,8 @@ export interface Hydrator {
 	hydrate(toolName: string, args: Record<string, unknown>, result: CallToolResult): Promise<void>;
 	// Optional. Copies the objects a write refers to (such as its parent) from the real service.
 	hydrateWrite?(toolName: string, args: Record<string, unknown>): Promise<void>;
+	// Optional. The gym answered a write. The objects it made have no real copy.
+	noteWrite?(toolName: string, result: CallToolResult): void;
 }
 
 const toolError = (msg: string): CallToolResult => ({
@@ -49,6 +51,7 @@ export class GuardRouter {
 				await this.deps.hydrator.hydrateWrite?.(name, args).catch(() => undefined);
 				const res = await this.deps.gym.callTool(name, args);
 				if (res.isError) logError(name, 'gym', res);
+				else this.deps.hydrator.noteWrite?.(name, res);
 				return res;
 			} catch (e) {
 				return toolError(`gym call failed: ${errMsg(e)}`);
@@ -71,6 +74,12 @@ export class GuardRouter {
 			return toolError(`upstream read failed: ${errMsg(e)}`);
 		}
 		if (upstreamResult.isError) {
+			// An object that the agent made in the gym has no real copy. The gym may know it.
+			const fromGym =
+				isNotFound(upstreamResult) && gymNames.has(name)
+					? await this.tryGym(name, args)
+					: undefined;
+			if (fromGym) return fromGym;
 			log(name, 'upstream');
 			return upstreamResult;
 		}
@@ -89,12 +98,33 @@ export class GuardRouter {
 		}
 	}
 
+	// The gym answer of a read, or undefined when the gym fails or has no such object.
+	private async tryGym(
+		name: string,
+		args: Record<string, unknown>,
+	): Promise<CallToolResult | undefined> {
+		try {
+			const res = await this.deps.gym.callTool(name, args);
+			if (res.isError) return undefined;
+			log(name, 'gym (real read found nothing)');
+			return res;
+		} catch {
+			return undefined;
+		}
+	}
+
 	private async getGymToolNames(): Promise<Set<string>> {
 		if (!this.gymToolNames) {
 			this.gymToolNames = new Set((await this.deps.gym.listTools()).map((t) => t.name));
 		}
 		return this.gymToolNames;
 	}
+}
+
+// The real service says an object does not exist. Other errors (limits, auth) stay as they are.
+function isNotFound(res: CallToolResult): boolean {
+	const text = res.content.flatMap((c) => (c.type === 'text' ? [c.text] : [])).join(' ');
+	return /not found|could not find|does not exist/i.test(text);
 }
 
 // Log the error text of a failed tool result, never the arguments.

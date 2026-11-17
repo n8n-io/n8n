@@ -67,4 +67,20 @@ describe('SeededEntities', () => {
 		});
 		expect(left).toEqual({ native: { linear: { issues: [{ ref: 'issue:TRUST-9' }] } } });
 	});
+
+	it('removes a team with a key that the tenant has, and points its references at the stored ref', () => {
+		const seeded = new SeededEntities();
+		seeded.record({ native: { linear: { teams: [team] } } });
+		const left = seeded.dedupe({
+			native: {
+				linear: {
+					teams: [{ ref: 'team:trust', key: 'LHO' }],
+					projects: [{ ref: 'project:p', team: 'team:trust' }],
+				},
+			},
+		});
+		expect(left).toEqual({
+			native: { linear: { teams: [], projects: [{ ref: 'project:p', team: 'team:LHO' }] } },
+		});
+	});
 });
