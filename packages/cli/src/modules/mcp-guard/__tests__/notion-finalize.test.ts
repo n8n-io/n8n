@@ -31,6 +31,20 @@ describe('withTitles', () => {
 		});
 	});
 
+	it('cuts a title that holds a whole fetch text down to its title line', () => {
+		const blob =
+			'<data-source url="x">\nThe title of this Data Source is: Internal Policy Database\n\nmore text';
+		const out = withTitles({ native: { notion: { databases: [{ ref: 'db:a', title: blob }] } } });
+		expect(out).toEqual({
+			native: {
+				notion: {
+					databases: [{ ref: 'db:a', title: 'Internal Policy Database' }],
+					pages: undefined,
+				},
+			},
+		});
+	});
+
 	it('returns an overlay without Notion data as it is', () => {
 		const overlay = { world_version: 1 };
 		expect(withTitles(overlay)).toBe(overlay);

@@ -27,6 +27,10 @@ function entities(service: Record<string, unknown>, name: string): Entity[] {
 	return Array.isArray(items) ? items.filter(isRecord) : [];
 }
 
+// An entity that lists other entities, such as the rows of a database.
+const hasChildren = (entity: Entity): boolean =>
+	Object.values(entity).some((value) => Array.isArray(value) && value.some(isRecord));
+
 const keyOf = (entity: Entity): string | undefined => {
 	const key = typeof entity.id === 'string' ? entity.id : entity.ref;
 	return typeof key === 'string' && key !== '' ? key.toLowerCase() : undefined;
@@ -38,6 +42,12 @@ const keyOf = (entity: Entity): string | undefined => {
  * leave those entities out, and write a reference to one with the ref that the gym stored.
  */
 export class SeededEntities {
+	/**
+	 * keepParents: the gym takes a seed of an entity that it has and adds the new children (the rows of
+	 * a Notion database). Then an entity with new children stays in the seed. Without it the entity goes.
+	 */
+	constructor(private readonly options: { keepParents?: boolean } = {}) {}
+
 	// id (or ref, when there is no id) in lower case -> the ref that the gym stored
 	private readonly seeded = new Map<string, string>();
 
@@ -72,15 +82,18 @@ export class SeededEntities {
 	dedupe(overlay: Record<string, unknown>): Record<string, unknown> {
 		if (this.seeded.size === 0 && this.held.size === 0) return overlay;
 		const next: Record<string, unknown> = structuredClone(overlay);
-		for (const [service, name] of collections(next)) {
+		// Children first, so a parent is judged by the children that are left.
+		for (const [service, name] of collections(next).reverse()) {
 			service[name] = entities(service, name).filter((entity) => {
 				const key = keyOf(entity);
-				if (key !== undefined && this.holds(key)) return false;
+				const heldAlready = key !== undefined && this.holds(key);
 				const stored = this.byKey.get(this.keyName(name, entity));
-				if (stored === undefined) return true;
+				if (!heldAlready && stored === undefined) return true;
 				// Another ref for the same object: references to it use the stored ref.
-				if (typeof entity.ref === 'string') this.refs.set(entity.ref.toLowerCase(), stored);
-				return false;
+				if (!heldAlready && typeof entity.ref === 'string') {
+					this.refs.set(entity.ref.toLowerCase(), stored ?? entity.ref);
+				}
+				return this.options.keepParents === true && hasChildren(entity);
 			});
 		}
 		return this.fixRefs(next) as Record<string, unknown>;

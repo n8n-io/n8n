@@ -103,4 +103,46 @@ describe('SeededEntities', () => {
 		expect(seeded.knows(['91f85091a3fe4d7da6bae43b5805ec12'])).toBe(true);
 		expect(seeded.knows(['91f85091a3fe4d7da6bae43b5805ec12', 'trust1'])).toBe(false);
 	});
+
+	describe('an entity that the tenant has and that brings new children', () => {
+		const db = { ref: 'db:a', id: 'db-1' };
+		const again = {
+			native: {
+				notion: {
+					databases: [
+						{
+							...db,
+							rows: [
+								{ ref: 'row:1', id: 'r-1' },
+								{ ref: 'row:2', id: 'r-2' },
+							],
+						},
+					],
+				},
+			},
+		};
+		const first = {
+			native: { notion: { databases: [{ ...db, rows: [{ ref: 'row:1', id: 'r-1' }] }] } },
+		};
+
+		it('is dropped with its children by default', () => {
+			const seeded = new SeededEntities();
+			seeded.record(first);
+			expect(seeded.dedupe(again)).toEqual({ native: { notion: { databases: [] } } });
+		});
+
+		it('stays with the new children only when the parents are kept', () => {
+			const seeded = new SeededEntities({ keepParents: true });
+			seeded.record(first);
+			expect(seeded.dedupe(again)).toEqual({
+				native: { notion: { databases: [{ ...db, rows: [{ ref: 'row:2', id: 'r-2' }] }] } },
+			});
+		});
+
+		it('goes when no new child is left', () => {
+			const seeded = new SeededEntities({ keepParents: true });
+			seeded.record(again);
+			expect(seeded.dedupe(again)).toEqual({ native: { notion: { databases: [] } } });
+		});
+	});
 });

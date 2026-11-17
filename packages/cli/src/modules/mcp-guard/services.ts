@@ -35,6 +35,8 @@ export interface GuardServiceProfile {
 	finalize?: (overlay: Record<string, unknown>) => Record<string, unknown>;
 	// Lookup tools that the gym answers before the real service does, see PlanHydratorDeps.
 	gymFirst?: ReadonlySet<string>;
+	// The gym takes a seed of an entity that it has and adds new children to it, see SeededEntities.
+	keepParents?: boolean;
 	// Service part of the instructions of the hydration agent and of the plan hydrator.
 	instructions: string;
 	createHydrator(deps: { admin: GymAdmin; tenant: string; upstream: McpCaller }): Hydrator;
@@ -89,6 +91,7 @@ export const NOTION_PROFILE: GuardServiceProfile = {
 	credentialField: 'access_token',
 	placeholderSeed: { world_version: 1, persona: { name: 'Guard', email: 'guard@unknown.invalid' } },
 	lookups: notionLookups,
+	keepParents: true,
 	finalize: withTitles,
 	instructions: NOTION_INSTRUCTIONS,
 	createHydrator: (deps) => new NotionHydrator(deps),

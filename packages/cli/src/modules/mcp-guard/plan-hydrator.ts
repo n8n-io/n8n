@@ -41,6 +41,8 @@ export interface PlanHydratorDeps {
 	// Lookup tools that the gym answers first. An object that an agent created in the gym has no
 	// real copy, and a real object with the same key is another object.
 	gymFirst?: ReadonlySet<string>;
+	// The gym takes a seed of an entity that it has and adds the new children, see SeededEntities.
+	keepParents?: boolean;
 }
 
 interface Verify {
@@ -163,9 +165,11 @@ export class PlanHydrator implements Hydrator {
 	// Lookups of one chat. The same project, team or user is read once.
 	private readonly lookupCache = new Map<string, Promise<string>>();
 	// What this chat's tenant holds, so a later call does not seed it again.
-	private readonly seeded = new SeededEntities();
+	private readonly seeded: SeededEntities;
 
-	constructor(private readonly deps: PlanHydratorDeps) {}
+	constructor(private readonly deps: PlanHydratorDeps) {
+		this.seeded = new SeededEntities({ keepParents: deps.keepParents });
+	}
 
 	async hydrate(
 		toolName: string,
