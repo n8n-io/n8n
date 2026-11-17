@@ -20,6 +20,7 @@ import { ActiveExecutions } from '@/active-executions';
 import { ExecutionNotFoundError } from '@/errors/execution-not-found-error';
 import { CredentialsPermissionChecker } from '@/executions/pre-execution-checks/credentials-permission-checker';
 import { loadExecutionForViewer } from '@/executions/execution-viewer-reader';
+import { McpEngineV2Service } from '@/modules/mcp/mcp-engine-v2.service';
 import { McpService } from '@/modules/mcp/mcp.service';
 import { NodeTypesProxy } from '@n8n/backend-services';
 import { Telemetry } from '@/telemetry';
@@ -72,6 +73,7 @@ describe('test-workflow MCP tool', () => {
 	let nodeTypes: ReturnType<typeof createMockNodeTypes>;
 	let telemetry: Telemetry;
 	let mcpService: McpService;
+	let engineV2: McpEngineV2Service;
 	let logger: Logger;
 
 	beforeEach(() => {
@@ -82,6 +84,9 @@ describe('test-workflow MCP tool', () => {
 		nodeTypes = createMockNodeTypes();
 		telemetry = mockInstance(Telemetry, { track: vi.fn() });
 		mcpService = mockInstance(McpService, { isQueueMode: false });
+		engineV2 = mockInstance(McpEngineV2Service, {
+			routesManualRunToV2: vi.fn().mockReturnValue(false),
+		});
 		// The user can use every credential unless a test says otherwise.
 		mockInstance(CredentialsPermissionChecker);
 		logger = mockLogger();
@@ -98,6 +103,7 @@ describe('test-workflow MCP tool', () => {
 				telemetry,
 				mcpService,
 				logger,
+				engineV2,
 			);
 
 			expect(tool.name).toBe('test_workflow');
@@ -122,6 +128,7 @@ describe('test-workflow MCP tool', () => {
 					nodeTypes,
 					mcpService,
 					logger,
+					engineV2,
 					'missing-workflow',
 					{},
 				),
@@ -154,6 +161,7 @@ describe('test-workflow MCP tool', () => {
 					nodeTypes,
 					mcpService,
 					logger,
+					engineV2,
 					'no-trigger-workflow',
 					{},
 				),
@@ -186,6 +194,7 @@ describe('test-workflow MCP tool', () => {
 					nodeTypes,
 					mcpService,
 					logger,
+					engineV2,
 					'wf-1',
 					{},
 					'NonExistentTrigger',
@@ -219,6 +228,7 @@ describe('test-workflow MCP tool', () => {
 					nodeTypes,
 					mcpService,
 					logger,
+					engineV2,
 					'wf-1',
 					{},
 				),
@@ -266,6 +276,7 @@ describe('test-workflow MCP tool', () => {
 				nodeTypes,
 				mcpService,
 				logger,
+				engineV2,
 				'wf-1',
 				{},
 			);
@@ -314,6 +325,7 @@ describe('test-workflow MCP tool', () => {
 				nodeTypes,
 				mcpService,
 				logger,
+				engineV2,
 				'wf-1',
 				{},
 				'WebhookB',
@@ -360,6 +372,7 @@ describe('test-workflow MCP tool', () => {
 				nodeTypes,
 				mcpService,
 				logger,
+				engineV2,
 				'wf-1',
 				pinData,
 			);
@@ -405,6 +418,7 @@ describe('test-workflow MCP tool', () => {
 				nodeTypes,
 				mcpService,
 				logger,
+				engineV2,
 				'wf-1',
 				pinData as any,
 			);
@@ -447,6 +461,7 @@ describe('test-workflow MCP tool', () => {
 				nodeTypes,
 				mcpService,
 				logger,
+				engineV2,
 				'wf-1',
 				{},
 			);
@@ -485,6 +500,7 @@ describe('test-workflow MCP tool', () => {
 					nodeTypes,
 					mcpService,
 					logger,
+					engineV2,
 					'wf-1',
 					{ Trigger: [{ json: {} }], NonExistentNode: [{ json: { x: 1 } }] },
 					'Trigger',
@@ -529,6 +545,7 @@ describe('test-workflow MCP tool', () => {
 				nodeTypes,
 				mcpService,
 				logger,
+				engineV2,
 				'wf-1',
 				{ Trigger: [{ json: {} }] },
 			);
@@ -561,6 +578,7 @@ describe('test-workflow MCP tool', () => {
 				nodeTypes,
 				mcpService,
 				logger,
+				engineV2,
 				'wf-1',
 				{ Trigger: [{ json: {} }] },
 			);
@@ -593,6 +611,7 @@ describe('test-workflow MCP tool', () => {
 				nodeTypes,
 				mcpService,
 				logger,
+				engineV2,
 				'wf-1',
 				{ Trigger: [{ json: {} }] },
 			);
@@ -622,6 +641,7 @@ describe('test-workflow MCP tool', () => {
 				nodeTypes,
 				mcpService,
 				logger,
+				engineV2,
 				'wf-1',
 				{ Trigger: [{ json: {} }] },
 			);
@@ -645,6 +665,7 @@ describe('test-workflow MCP tool', () => {
 				nodeTypes,
 				mcpService,
 				logger,
+				engineV2,
 				'wf-1',
 				{ Trigger: [{ json: {} }] },
 			);
@@ -709,6 +730,7 @@ describe('test-workflow MCP tool', () => {
 				nodeTypes,
 				mcpService,
 				logger,
+				engineV2,
 				'wf-1',
 				{ Trigger: [{ json: {} }] },
 			);
@@ -730,6 +752,7 @@ describe('test-workflow MCP tool', () => {
 					nodeTypes,
 					mcpService,
 					logger,
+					engineV2,
 					'wf-1',
 					{ Trigger: [{ json: {} }] },
 				),
@@ -768,6 +791,7 @@ describe('test-workflow MCP tool', () => {
 				nodeTypes,
 				mcpService,
 				logger,
+				engineV2,
 				'wf-1',
 				{ MyTrigger: [{ json: { key: 'val' } }] },
 			);
@@ -815,6 +839,7 @@ describe('test-workflow MCP tool', () => {
 				nodeTypes,
 				mcpService,
 				logger,
+				engineV2,
 				'wf-1',
 				{},
 			);
@@ -860,6 +885,7 @@ describe('test-workflow MCP tool', () => {
 				nodeTypes,
 				queueMcpService,
 				logger,
+				engineV2,
 				'wf-1',
 				{},
 			);
@@ -902,6 +928,7 @@ describe('test-workflow MCP tool', () => {
 				telemetry,
 				mcpService,
 				logger,
+				engineV2,
 			);
 
 			const result = await tool.handler(
@@ -952,6 +979,7 @@ describe('test-workflow MCP tool', () => {
 				telemetry,
 				mcpService,
 				logger,
+				engineV2,
 			);
 
 			await tool.handler(
@@ -984,6 +1012,7 @@ describe('test-workflow MCP tool', () => {
 				telemetry,
 				mcpService,
 				logger,
+				engineV2,
 			);
 
 			const result = await tool.handler(
@@ -1061,6 +1090,7 @@ describe('test-workflow MCP tool', () => {
 				telemetry,
 				mcpService,
 				logger,
+				engineV2,
 			);
 
 			const result = await tool.handler(
@@ -1129,6 +1159,7 @@ describe('test-workflow MCP tool', () => {
 				nodeTypes,
 				mcpService,
 				logger,
+				engineV2,
 				'wf-1',
 				{ Trigger: [{ json: {} }] },
 				undefined,
@@ -1168,6 +1199,7 @@ describe('test-workflow MCP tool', () => {
 				nodeTypes,
 				mcpService,
 				logger,
+				engineV2,
 				'wf-1',
 				{ Trigger: [{ json: {} }] },
 				undefined,
@@ -1227,6 +1259,7 @@ describe('test-workflow MCP tool', () => {
 				telemetry,
 				mcpService,
 				logger,
+				engineV2,
 			);
 
 			await tool.handler(
@@ -1270,6 +1303,7 @@ describe('test-workflow MCP tool', () => {
 				telemetry,
 				mcpService,
 				logger,
+				engineV2,
 			);
 
 			await tool.handler(

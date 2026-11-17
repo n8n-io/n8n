@@ -120,4 +120,30 @@ describe('get-workflow-sdk-reference MCP tool', () => {
 			});
 		});
 	});
+
+	describe('engine section', () => {
+		test('the full reference carries the engine section only with engine v2', () => {
+			expect(getSdkReferenceContent()).not.toContain('## Execution engine');
+			expect(getSdkReferenceContent(undefined, { engineV2Available: true })).toContain(
+				'## Execution engine',
+			);
+		});
+
+		test('section="engine" describes v2 with engine v2, and warns off engineType without', () => {
+			const withV2 = getSdkReferenceContent('engine', { engineV2Available: true });
+			expect(withV2).toContain('run in parallel');
+			expect(withV2).toContain("engineType: 'v1'");
+
+			const withoutV2 = getSdkReferenceContent('engine');
+			expect(withoutV2).toContain('engine v1 only');
+			expect(withoutV2).not.toContain('run in parallel');
+		});
+
+		test('the tool serves the engine section it was built with', async () => {
+			const tool = createGetWorkflowSdkReferenceTool(user, telemetry, { engineV2Available: true });
+
+			const result = await tool.handler({ section: 'engine' }, {} as never);
+			expect(structuredOf(result)?.reference).toContain('run in parallel');
+		});
+	});
 });

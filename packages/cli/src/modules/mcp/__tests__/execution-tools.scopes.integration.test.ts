@@ -11,6 +11,7 @@ import { mock } from 'vitest-mock-extended';
 
 import { ExecutionListService } from '@/executions/execution-list.service';
 import { ExecutionRedactionServiceProxy } from '@n8n/backend-services';
+import { McpEngineV2Service } from '@/modules/mcp/mcp-engine-v2.service';
 import type { Telemetry } from '@/telemetry';
 import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 import { createSuccessfulExecution } from '@test-integration/db/executions';
@@ -54,6 +55,7 @@ const getExecution = async (user: User, includeData: boolean) =>
 		Container.get(WorkflowFinderService),
 		mock<Telemetry>(),
 		Container.get(ExecutionRedactionServiceProxy),
+		Container.get(McpEngineV2Service),
 	).handler(
 		{
 			workflowId: workflow.id,

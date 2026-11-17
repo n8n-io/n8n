@@ -15,6 +15,7 @@ import { createExecution } from '../shared/db/executions';
 import { createMember, createOwner } from '../shared/db/users';
 
 import { ExecutionRedactionServiceProxy } from '@n8n/backend-services';
+import { McpEngineV2Service } from '@/modules/mcp/mcp-engine-v2.service';
 import { createGetExecutionTool } from '@/modules/mcp/tools/get-execution.tool';
 import { RedactionModule } from '@/modules/redaction/redaction.module';
 import { Telemetry } from '@/telemetry';
@@ -68,6 +69,7 @@ const callTool = async (user: User, workflowId: string, executionId: string) => 
 		Container.get(WorkflowFinderService),
 		telemetry,
 		Container.get(ExecutionRedactionServiceProxy),
+		Container.get(McpEngineV2Service),
 	);
 
 	return await tool.handler(

@@ -58,6 +58,13 @@ import { getErrorCode } from './error-code.utils';
 import { sanitizeSkillsUsed, SKILLS_USED_PARAM_DESCRIPTION } from './skills-used';
 import { summarizeUngroupedNodeNames, topLevelItemsWarning } from './top-level-items-warning';
 import {
+	decideEngine,
+	describeEngineDecision,
+	ENGINE_V2_INCOMPATIBLE_ERROR_CODE,
+	type EngineContext,
+	engineOutputSchema,
+} from './engine-eligibility';
+import {
 	buildUninstalledNodeWarnings,
 	type FindUninstalledNodeTypes,
 } from './uninstalled-node-warnings';
@@ -177,7 +184,7 @@ const combinedSettingsInputSchema = z
 		...workflowSettingsObjectSchema.shape,
 	})
 	.describe(
-		'Settings to write. For setNodeSettings use the node-level keys (onError, retryOnFail, maxTries, waitBetweenTries, alwaysOutputData, executeOnce). For setWorkflowSettings use the workflow-level keys (errorWorkflow, timezone, executionOrder, saveExecutionProgress, saveManualExecutions, saveDataErrorExecution, saveDataSuccessExecution, executionTimeout, timeSavedPerExecution, callerPolicy, callerIds). Provide only the keys for the operation you are running.',
+		'Settings to write. For setNodeSettings use the node-level keys (onError, retryOnFail, maxTries, waitBetweenTries, alwaysOutputData, executeOnce). For setWorkflowSettings use the workflow-level keys (errorWorkflow, timezone, executionOrder, engineType, saveExecutionProgress, saveManualExecutions, saveDataErrorExecution, saveDataSuccessExecution, executionTimeout, timeSavedPerExecution, callerPolicy, callerIds). Provide only the keys for the operation you are running.',
 	);
 const operationInputSchema = z
 	.object({
@@ -375,6 +382,7 @@ const outputSchema = {
 		.optional()
 		.describe('Error message explaining why the update failed. Present only on failure.'),
 	errorCode: z.string().optional().describe('Machine-readable error code.'),
+	engine: engineOutputSchema,
 	note: z.string().optional(),
 	migrationFindings: workflowMigrationFindingsSchema.optional(),
 } satisfies z.ZodRawShape;
@@ -1149,6 +1157,11 @@ export const createUpdateWorkflowTool = (
 		 * extra check. Supplied only when the caller can read the migration report.
 		 */
 		readMigrationFindings?: ReadWorkflowMigrationFindings;
+		/**
+		 * What the instance offers in execution engines. Absent when the engine-v2
+		 * module is off, in which case the tool never mentions engines.
+		 */
+		engineContext?: EngineContext;
 	} = {},
 	logger: Logger,
 	postSaveMetrics: McpPostSaveMetricsService,
@@ -1327,6 +1340,34 @@ export const createUpdateWorkflowTool = (
 					settingsGuardDependencies,
 				);
 
+				// An existing workflow that names no engine stays on v1, so the instance
+				// default plays no part here: only a workflow that names v2 is checked, and
+				// one that v2 cannot run is refused rather than moved to v1 behind the
+				// author's back.
+				const engineDecision = options.engineContext
+					? decideEngine(result.workflow, { ...options.engineContext, defaultEngineType: 'v1' })
+					: undefined;
+				if (engineDecision?.source === 'blocked') {
+					const engine = describeEngineDecision(engineDecision);
+					const errorMessage = engine.note ?? 'Engine v2 cannot run this workflow.';
+					telemetryPayload.results = {
+						success: false,
+						error: errorMessage,
+						data: { engineReasonCodes: engineDecision.reasons.map((reason) => reason.code) },
+					};
+					telemetry.track(USER_CALLED_MCP_TOOL_EVENT, telemetryPayload);
+					const output = {
+						error: errorMessage,
+						errorCode: ENGINE_V2_INCOMPATIBLE_ERROR_CODE,
+						engine,
+					};
+					return {
+						content: [{ type: 'text', text: JSON.stringify(output, null, 2) }],
+						structuredContent: output,
+						isError: true,
+					};
+				}
+
 				const workflowUpdateData = buildWorkflowUpdateEntity({
 					workflow: result.workflow,
 					existingMeta: existingWorkflow.meta,
@@ -1465,6 +1506,7 @@ export const createUpdateWorkflowTool = (
 					settings: hasSettingsOperations
 						? ((updatedWorkflow.settings ?? {}) as Record<string, unknown>)
 						: undefined,
+					engine: engineDecision ? describeEngineDecision(engineDecision) : undefined,
 				};
 
 				const migrationFindings = await options.readMigrationFindings?.(updatedWorkflow.id);

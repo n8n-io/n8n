@@ -8,6 +8,7 @@ import { createGetExecutionTool } from '../tools/get-execution.tool';
 
 import { ExecutionPersistence } from '@/executions/execution-persistence';
 import { ExecutionRedactionServiceProxy } from '@n8n/backend-services';
+import { McpEngineV2Service } from '@/modules/mcp/mcp-engine-v2.service';
 import { Telemetry } from '@/telemetry';
 import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 
@@ -18,6 +19,7 @@ describe('get-execution MCP tool', () => {
 	let workflowFinderService: WorkflowFinderService;
 	let telemetry: Telemetry;
 	let executionRedactionServiceProxy: ExecutionRedactionServiceProxy;
+	let engineV2: McpEngineV2Service;
 
 	const mockWorkflow = {
 		id: 'workflow-1',
@@ -34,6 +36,7 @@ describe('get-execution MCP tool', () => {
 			track: vi.fn(),
 		});
 		executionRedactionServiceProxy = mockInstance(ExecutionRedactionServiceProxy);
+		engineV2 = mockInstance(McpEngineV2Service);
 	});
 
 	describe('smoke tests', () => {
@@ -44,6 +47,7 @@ describe('get-execution MCP tool', () => {
 				workflowFinderService,
 				telemetry,
 				executionRedactionServiceProxy,
+				engineV2,
 			);
 
 			expect(tool.name).toBe('get_workflow_execution');
@@ -67,6 +71,7 @@ describe('get-execution MCP tool', () => {
 						workflowFinderService,
 						telemetry,
 						executionRedactionServiceProxy,
+						engineV2,
 					);
 
 					(workflowFinderService.findWorkflowForUser as Mock).mockResolvedValue(mockWorkflow);
@@ -102,6 +107,7 @@ describe('get-execution MCP tool', () => {
 						workflowFinderService,
 						telemetry,
 						executionRedactionServiceProxy,
+						engineV2,
 					);
 
 					(workflowFinderService.findWorkflowForUser as Mock).mockResolvedValue(null);
@@ -133,6 +139,7 @@ describe('get-execution MCP tool', () => {
 					workflowFinderService,
 					telemetry,
 					executionRedactionServiceProxy,
+					engineV2,
 				);
 
 				(workflowFinderService.findWorkflowForUser as Mock).mockResolvedValue(mockWorkflow);
@@ -166,6 +173,7 @@ describe('get-execution MCP tool', () => {
 					workflowFinderService,
 					telemetry,
 					executionRedactionServiceProxy,
+					engineV2,
 				);
 
 				const mockExecution = {
@@ -212,6 +220,7 @@ describe('get-execution MCP tool', () => {
 					workflowFinderService,
 					telemetry,
 					executionRedactionServiceProxy,
+					engineV2,
 				);
 
 				const mockExecutionData = createEmptyRunExecutionData();
@@ -286,6 +295,7 @@ describe('get-execution MCP tool', () => {
 					workflowFinderService,
 					telemetry,
 					executionRedactionServiceProxy,
+					engineV2,
 				);
 
 				const mockExecutionData = createEmptyRunExecutionData();
@@ -359,6 +369,7 @@ describe('get-execution MCP tool', () => {
 					workflowFinderService,
 					telemetry,
 					executionRedactionServiceProxy,
+					engineV2,
 				);
 
 				const mockExecutionData = createEmptyRunExecutionData();
@@ -415,6 +426,7 @@ describe('get-execution MCP tool', () => {
 					workflowFinderService,
 					telemetry,
 					executionRedactionServiceProxy,
+					engineV2,
 				);
 
 				const mockExecutionData = createEmptyRunExecutionData();
@@ -481,6 +493,7 @@ describe('get-execution MCP tool', () => {
 					workflowFinderService,
 					telemetry,
 					executionRedactionServiceProxy,
+					engineV2,
 				);
 
 				const mockExecutionData = createEmptyRunExecutionData();
@@ -536,6 +549,7 @@ describe('get-execution MCP tool', () => {
 					workflowFinderService,
 					telemetry,
 					executionRedactionServiceProxy,
+					engineV2,
 				);
 
 				const mockExecutionData = createEmptyRunExecutionData();
@@ -595,6 +609,7 @@ describe('get-execution MCP tool', () => {
 					workflowFinderService,
 					telemetry,
 					executionRedactionServiceProxy,
+					engineV2,
 				);
 
 				const mockExecutionData = createEmptyRunExecutionData();
@@ -664,6 +679,7 @@ describe('get-execution MCP tool', () => {
 					workflowFinderService,
 					telemetry,
 					executionRedactionServiceProxy,
+					engineV2,
 				);
 
 				const mockExecution = {
@@ -706,6 +722,7 @@ describe('get-execution MCP tool', () => {
 					workflowFinderService,
 					telemetry,
 					executionRedactionServiceProxy,
+					engineV2,
 				);
 
 				const mockExecution = {
@@ -747,6 +764,7 @@ describe('get-execution MCP tool', () => {
 					workflowFinderService,
 					telemetry,
 					executionRedactionServiceProxy,
+					engineV2,
 				);
 
 				const mockExecution = {
@@ -791,6 +809,7 @@ describe('get-execution MCP tool', () => {
 					workflowFinderService,
 					telemetry,
 					executionRedactionServiceProxy,
+					engineV2,
 				);
 
 				const mockExecutionData = createEmptyRunExecutionData();
@@ -854,6 +873,7 @@ describe('get-execution MCP tool', () => {
 					workflowFinderService,
 					telemetry,
 					executionRedactionServiceProxy,
+					engineV2,
 				);
 
 				const waitTillDate = new Date('2025-01-01T12:00:00.000Z');
@@ -929,6 +949,7 @@ describe('get-execution MCP tool', () => {
 					workflowFinderService,
 					telemetry,
 					executionRedactionServiceProxy,
+					engineV2,
 				);
 
 				const execution = mockExecution();
@@ -960,6 +981,7 @@ describe('get-execution MCP tool', () => {
 					workflowFinderService,
 					telemetry,
 					executionRedactionServiceProxy,
+					engineV2,
 				);
 
 				(workflowFinderService.findWorkflowForUser as Mock).mockResolvedValue(mockWorkflow);
@@ -989,6 +1011,7 @@ describe('get-execution MCP tool', () => {
 					workflowFinderService,
 					telemetry,
 					executionRedactionServiceProxy,
+					engineV2,
 				);
 
 				const execution = mockExecution();
@@ -1074,6 +1097,7 @@ describe('get-execution MCP tool', () => {
 					workflowFinderService,
 					telemetry,
 					executionRedactionServiceProxy,
+					engineV2,
 				);
 
 				(workflowFinderService.findWorkflowForUser as Mock).mockResolvedValue(mockWorkflow);

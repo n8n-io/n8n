@@ -3,6 +3,8 @@ import { EngineConfig } from '@n8n/config';
 import { Service } from '@n8n/di';
 import type { IWorkflowSettings } from 'n8n-workflow';
 
+export type EngineType = NonNullable<IWorkflowSettings['engineType']>;
+
 /**
  * Puts a new workflow on engine v2 when the instance runs new workflows on v2 and the
  * creator did not choose an engine. A workflow without an engine runs on v1, so v1 is
@@ -23,8 +25,18 @@ export class WorkflowEngineDefaults {
 		return { ...(settings ?? {}), engineType: 'v2' };
 	}
 
-	// Read at call time: modules become active after services are constructed.
+	/** Whether a workflow on this instance can be put on engine v2 at all. */
+	isEngineV2Available(): boolean {
+		// Read at call time: modules become active after services are constructed.
+		return this.moduleRegistry.isActive('engine-v2');
+	}
+
+	/** The engine a new workflow gets when its creator does not choose one. */
+	defaultEngineType(): EngineType {
+		return this.runsNewWorkflowsOnV2() ? 'v2' : 'v1';
+	}
+
 	private runsNewWorkflowsOnV2() {
-		return this.engineConfig.defaultType === 'v2' && this.moduleRegistry.isActive('engine-v2');
+		return this.engineConfig.defaultType === 'v2' && this.isEngineV2Available();
 	}
 }

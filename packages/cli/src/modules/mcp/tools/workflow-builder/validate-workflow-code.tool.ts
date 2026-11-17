@@ -11,6 +11,13 @@ import type { ToolDefinition, UserCalledMCPToolEventPayload } from '../../mcp.ty
 import { getSdkReferenceHint } from '../workflow-validation.utils';
 import { buildInvalidAiToolSourceErrorResponse } from './connection-structure-check';
 import { CODE_BUILDER_VALIDATE_TOOL, MAX_WORKFLOW_CODE_LENGTH } from './constants';
+import {
+	decideEngine,
+	describeEngineDecision,
+	type EngineContext,
+	engineOutputSchema,
+	toEligibilityWorkflow,
+} from './engine-eligibility';
 import { validateScheduleTriggerIntervals } from './schedule-trigger-validation';
 
 const inputSchema = {
@@ -46,6 +53,7 @@ const outputSchema = {
 		.describe(
 			'Actionable hint for recovering from the error. When present, follow the suggested action before retrying.',
 		),
+	engine: engineOutputSchema,
 } satisfies z.ZodRawShape;
 
 /**
@@ -56,6 +64,13 @@ export const createValidateWorkflowCodeTool = (
 	user: User,
 	telemetry: Telemetry,
 	nodeTypes: INodeTypes,
+	options: {
+		/**
+		 * What the instance offers in execution engines. Absent when the engine-v2
+		 * module is off, in which case the tool never mentions engines.
+		 */
+		engineContext?: EngineContext;
+	} = {},
 ): ToolDefinition<typeof inputSchema> => ({
 	name: CODE_BUILDER_VALIDATE_TOOL.toolName,
 	config: {
@@ -134,12 +149,38 @@ export const createValidateWorkflowCodeTool = (
 				}
 			}
 
+			// The same decision the save makes, so the client learns before it saves
+			// whether the workflow lands on v2, is put on v1, or is refused.
+			const engineDecision = options.engineContext
+				? decideEngine(toEligibilityWorkflow(result.workflow), options.engineContext)
+				: undefined;
+			if (engineDecision?.source === 'blocked') {
+				const engine = describeEngineDecision(engineDecision);
+				const errorMessage = engine.note ?? 'Engine v2 cannot run this workflow.';
+				telemetryPayload.results = {
+					success: false,
+					error: errorMessage,
+					data: { engineReasonCodes: engineDecision.reasons.map((reason) => reason.code) },
+				};
+				telemetry.track(USER_CALLED_MCP_TOOL_EVENT, telemetryPayload);
+
+				const output = { valid: false, errors: [errorMessage], engine };
+				return {
+					content: [{ type: 'text', text: JSON.stringify(output, null, 2) }],
+					structuredContent: output,
+					isError: true,
+				};
+			}
+
 			telemetryPayload.results = {
 				success: true,
 				data: {
 					nodeCount: result.workflow.nodes.length,
 					warningCount: result.warnings.length,
 					groupCount: result.workflow.nodeGroups?.length ?? 0,
+					...(engineDecision
+						? { engineType: engineDecision.engineType, engineSource: engineDecision.source }
+						: {}),
 				},
 			};
 			telemetry.track(USER_CALLED_MCP_TOOL_EVENT, telemetryPayload);
@@ -151,6 +192,10 @@ export const createValidateWorkflowCodeTool = (
 
 			if (result.warnings.length > 0) {
 				response.warnings = result.warnings;
+			}
+
+			if (engineDecision) {
+				response.engine = describeEngineDecision(engineDecision);
 			}
 
 			return {

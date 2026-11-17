@@ -4,7 +4,11 @@ import z from 'zod';
 import type { Telemetry } from '@/telemetry';
 
 import { MCP_GET_SDK_REFERENCE_TOOL } from './constants';
-import { getSdkReferenceContent, type SdkReferenceSection } from './sdk-reference-content';
+import {
+	getSdkReferenceContent,
+	type SdkReferenceOptions,
+	type SdkReferenceSection,
+} from './sdk-reference-content';
 import { USER_CALLED_MCP_TOOL_EVENT } from '../../mcp.constants';
 import type { ToolDefinition, UserCalledMCPToolEventPayload } from '../../mcp.types';
 
@@ -18,6 +22,7 @@ const VALID_SECTIONS: SdkReferenceSection[] = [
 	'guidelines',
 	'design',
 	'groups',
+	'engine',
 	'all',
 ];
 
@@ -41,6 +46,7 @@ const outputSchema = {
 export const createGetWorkflowSdkReferenceTool = (
 	user: User,
 	telemetry: Telemetry,
+	referenceOptions: SdkReferenceOptions = {},
 ): ToolDefinition<typeof inputSchema> => ({
 	name: MCP_GET_SDK_REFERENCE_TOOL.toolName,
 	config: {
@@ -63,7 +69,10 @@ export const createGetWorkflowSdkReferenceTool = (
 			parameters: { section },
 		};
 
-		const content = getSdkReferenceContent(section as SdkReferenceSection | undefined);
+		const content = getSdkReferenceContent(
+			section as SdkReferenceSection | undefined,
+			referenceOptions,
+		);
 
 		telemetryPayload.results = { success: true };
 		telemetry.track(USER_CALLED_MCP_TOOL_EVENT, telemetryPayload);

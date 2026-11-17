@@ -207,4 +207,40 @@ describe('migration report', () => {
 		const end = instructions.indexOf('\n\n', start);
 		expect(end).toBeLessThan(2048);
 	});
+
+	describe('execution engine', () => {
+		it('says nothing about engines when the instance has no engine v2', () => {
+			const instructions = getMcpInstructions({ isBuilderEnabled: true });
+
+			expect(instructions).not.toContain('engine v2');
+			expect(instructions).not.toContain('engineType');
+		});
+
+		it.each([
+			['v2', 'A new workflow runs on engine v2 unless it names an engine.'],
+			['v1', 'A new workflow runs on engine v1 unless it names an engine.'],
+		] as const)('names the default engine when it is %s', (defaultEngineType, sentence) => {
+			const instructions = getMcpInstructions({
+				isBuilderEnabled: true,
+				engine: { defaultEngineType },
+			});
+
+			expect(instructions).toContain(sentence);
+			expect(instructions).toContain('Build for engine v2 when possible');
+			// The facts live in the save results, so the client is told to read them.
+			expect(instructions).toContain('`engine` field');
+			expect(instructions).toContain('"downgraded"');
+			expect(instructions).toContain('"blocked"');
+			expect(instructions).toContain('section "engine"');
+		});
+
+		it('stays silent without the builder, even with engine v2', () => {
+			const instructions = getMcpInstructions({
+				isBuilderEnabled: false,
+				engine: { defaultEngineType: 'v2' },
+			});
+
+			expect(instructions).not.toContain('engine v2');
+		});
+	});
 });

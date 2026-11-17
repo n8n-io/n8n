@@ -108,6 +108,8 @@ export interface WorkflowSettings {
 	saveExecutionProgress?: boolean;
 	executionTimeout?: number;
 	executionOrder?: 'v0' | 'v1';
+	/** The execution engine. Unset means the instance default. */
+	engineType?: 'v1' | 'v2';
 	callerPolicy?: 'any' | 'none' | 'workflowsFromAList' | 'workflowsFromSameOwner';
 	callerIds?: string;
 	/** Allow additional settings fields */
