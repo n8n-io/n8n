@@ -36,3 +36,21 @@ export function getParameterDefaults(
 
 	return Object.fromEntries(defaults);
 }
+
+/**
+ * The resource and operation that a node uses: its own values, else the
+ * defaults from its description. A node on its default operation often omits
+ * the parameter, and without it the schema lookup would treat the node like a
+ * trigger and could read a sibling trigger's `output.json`.
+ */
+export function defaultDiscriminators(
+	properties: INodeProperties[] | undefined,
+	{ resource, operation }: SchemaContext,
+): SchemaContext {
+	const asString = (value: unknown) => (typeof value === 'string' ? value : undefined);
+	const effectiveResource = resource ?? asString(getParameterDefaults(properties, {}).resource);
+	const effectiveOperation =
+		operation ??
+		asString(getParameterDefaults(properties, { resource: effectiveResource }).operation);
+	return { resource: effectiveResource, operation: effectiveOperation };
+}

@@ -5,12 +5,14 @@ export class FoldStepFailedError extends OperationalError {
 	constructor(
 		readonly step: string,
 		readonly attempt: number,
+		readonly firstLedgerId: string,
 		cause: unknown,
 	) {
 		super(`Fold step "${step}" failed, the batch stays in the ledger`, {
 			level: 'error',
 			cause,
-			extra: { step, attempt },
+			tags: { foldStep: step },
+			extra: { step, attempt, firstLedgerId },
 		});
 	}
 }

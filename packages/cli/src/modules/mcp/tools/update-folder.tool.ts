@@ -78,6 +78,8 @@ export const createUpdateFolderTool = (
 				return fail('Project not found or access denied');
 			}
 
+			await folderService.assertContentAccess(user, folderId, projectId, 'update');
+
 			const folder = await folderService.updateFolder(folderId, projectId, {
 				name,
 				parentFolderId,

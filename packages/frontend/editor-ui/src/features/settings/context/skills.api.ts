@@ -43,6 +43,8 @@ export type SkillListQuery = {
 	projectId?: string;
 	agentId?: string;
 	createdById?: string;
+	/** Comma-separated ids of the selected connected sources. */
+	sourceIds?: string;
 	sortBy?: SkillSortOption;
 	/** `source` groups the synced skills under their source. */
 	groupBy?: 'source';

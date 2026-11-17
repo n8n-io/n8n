@@ -1257,6 +1257,46 @@ describe('useCanvasPreview', () => {
 			expect(ctx.activeDataTableId.value).toBeNull();
 		});
 
+		test('closes data table preview when a batch deletes the active table', async () => {
+			const ctx = setup();
+			registerDataTable(ctx.thread, 'dt-1', 'Table', 'proj-1');
+			ctx.openDataTablePreview('dt-1', 'proj-1');
+
+			ctx.thread.messages = [
+				makeMessage({
+					agentTree: makeAgentNode({
+						toolCalls: [
+							makeToolCall({
+								toolName: 'change_data_tables',
+								args: { changes: [] },
+								result: {
+									success: true,
+									applied: [
+										{
+											index: 0,
+											action: 'delete',
+											table: { id: 'dt-1', name: 'Table' },
+											result: {},
+										},
+										{
+											index: 1,
+											action: 'delete',
+											table: { id: 'dt-2', name: 'Other' },
+											result: {},
+										},
+									],
+									skipped: [],
+								},
+							}),
+						],
+					}),
+				}),
+			];
+			await nextTick();
+
+			expect(ctx.activeDataTableId.value).toBeNull();
+		});
+
 		test('does not close preview when a different table is deleted', async () => {
 			const ctx = setup();
 			registerDataTable(ctx.thread, 'dt-1', 'Table 1', 'proj-1');
