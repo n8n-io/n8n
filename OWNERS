@@ -48,6 +48,12 @@ packages/@n8n/backend-services/                         @n8n-io/core-application
 packages/@n8n/backend-services/src/services/role.service.ts       @n8n-io/iam
 packages/@n8n/backend-services/src/services/role-cache.service.ts @n8n-io/iam
 packages/@n8n/backend-services/src/services/jwt.service.ts @n8n-io/iam
+packages/@n8n/backend-services/src/services/password.utility.ts @n8n-io/iam
+packages/@n8n/backend-services/src/services/__tests__/password.utility.test.ts @n8n-io/iam
+packages/@n8n/backend-services/src/events/login-id.ts @n8n-io/core-execution
+packages/@n8n/backend-services/src/events/__tests__/login-id.test.ts @n8n-io/core-execution
+packages/@n8n/backend-services/src/events/relays/ @n8n-io/core-execution
+packages/@n8n/backend-services/src/executions/execution-data/ @n8n-io/core-execution
 packages/@n8n/backend-test-utils/                       @n8n-io/core-application
 packages/@n8n/di/                                       @n8n-io/core-application
 packages/@n8n/errors/                                   @n8n-io/core-application
@@ -124,8 +130,6 @@ packages/cli/src/active-executions.ts                   @n8n-io/core-execution
 
 packages/cli/src/auth/                                  @n8n-io/iam
 packages/cli/src/credentials/                           @n8n-io/iam
-packages/cli/src/credentials/credential-field-mapping.ts                 @n8n-io/ai-agents
-packages/cli/src/credentials/__tests__/credential-field-mapping.test.ts  @n8n-io/ai-agents
 packages/cli/src/mfa/                                   @n8n-io/iam
 packages/cli/src/oauth/                                 @n8n-io/iam
 packages/cli/src/permissions.ee/                        @n8n-io/iam
@@ -196,7 +200,6 @@ packages/cli/src/controllers/e2e.controller.ts          						@n8n-io/qa-dx
 
 # CLI services
 packages/cli/src/services/user.service.ts               @n8n-io/iam
-packages/cli/src/services/password.utility.ts           @n8n-io/iam
 packages/cli/src/services/public-api-key.service.ts     @n8n-io/iam
 packages/cli/src/services/security-settings.service.ts  @n8n-io/iam
 packages/cli/src/services/static-auth-service.ts        @n8n-io/iam
