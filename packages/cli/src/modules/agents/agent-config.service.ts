@@ -115,16 +115,17 @@ export class AgentConfigService {
 		if (agent.revision !== options.expectedRevision) {
 			throw new ConflictError('Agent was modified concurrently; please retry');
 		}
+		const previousSkills = await this.agentSkillRefs.readDraft(agent, {});
+		const previousConfig = composeJsonConfig(agent, previousSkills.skillRefs);
 		const prepared = await this.configPreparation.prepareDefinition(
 			agentId,
 			definition,
 			projectId,
 			user,
 			options.plannedDestinations,
+			previousConfig,
 		);
 		const content = prepared.definition;
-		const previousSkills = await this.agentSkillRefs.readDraft(agent, {});
-		const previousConfig = composeJsonConfig(agent, previousSkills.skillRefs);
 		const previousIntegrations = agent.integrations ?? [];
 		await Container.get(AgentPolicyService).enforceSave(
 			projectId,

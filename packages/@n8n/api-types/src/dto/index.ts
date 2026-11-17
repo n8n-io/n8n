@@ -24,6 +24,7 @@ export { AiClearSessionRequestDto } from './ai/ai-clear-session-request.dto';
 export {
 	AiGatewayConfigDto,
 	AiGatewayProviderConfigEntry,
+	type AiGatewayPromotion,
 } from './ai/ai-gateway-config-response.dto';
 export {
 	AiGatewayMcpServersResponse,
@@ -45,6 +46,7 @@ export {
 } from './instance-ai/instance-ai-confirm-request.dto';
 export { InstanceAiFeedbackRequestDto } from './instance-ai/instance-ai-feedback-request.dto';
 export { InstanceAiRenameThreadRequestDto } from './instance-ai/instance-ai-rename-thread-request.dto';
+export { TrackPageHideEventRequestDto } from './telemetry/track-page-hide-event-request.dto';
 export { AssistantThreadTabsRequestDto } from './assistant/assistant-thread-tabs-request.dto';
 export { AssistantAgentTargetRequestDto } from './assistant/assistant-agent-target-request.dto';
 export {
@@ -53,6 +55,7 @@ export {
 } from './instance-ai/instance-ai-preference-card-request.dto';
 export { InstanceAiMcpCreateConnectionRequestDto } from './instance-ai/instance-ai-mcp-create-connection-request.dto';
 export { InstanceAiMcpUpdateConnectionRequestDto } from './instance-ai/instance-ai-mcp-update-connection-request.dto';
+export { InstanceAiUserPreferencesUpdateRequestDto } from './instance-ai/instance-ai-user-preferences-update-request.dto';
 
 export { BinaryDataQueryDto } from './binary-data/binary-data-query.dto';
 export { BinaryDataSignedQueryDto } from './binary-data/binary-data-signed-query.dto';
@@ -108,7 +111,10 @@ export { DeleteProjectDto } from './project/delete-project.dto';
 export { AddUsersToProjectDto } from './project/add-users-to-project.dto';
 export { ChangeUserRoleInProject } from './project/change-user-role-in-project.dto';
 export { TransferPreviewQueryDto } from './project/transfer-preview-query.dto';
-export { ListProjectsQueryDto } from './project/list-projects-query.dto';
+export {
+	ListProjectsQueryDto,
+	ListSharingCandidatesQueryDto,
+} from './project/list-projects-query.dto';
 export {
 	projectPublicSchema,
 	ProjectPublicDto,
@@ -836,10 +842,12 @@ export {
 	ContinueApplySelectionDto,
 	PromotePackageDto,
 	PromotePackageResultDto,
+	PromoteSelectionResultDto,
 	applyPackageCountsSchema,
 	applyPackageResultSchema,
 	promotePackageCountsSchema,
 	promotePackageResultSchema,
+	promoteSelectionResultSchema,
 	promotionGitResultSchema,
 	promotionPromoteWarningSchema,
 	type PromotionPromoteWarning,

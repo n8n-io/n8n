@@ -151,6 +151,26 @@ describe('POST /api/workflow-executions/search (integration)', () => {
 		]);
 	});
 
+	it('filters sub-executions in or out by whether they have a parent', async () => {
+		const workflowId = generateId();
+		const topLevelId = await start(workflowId);
+		const subId = await startSubExecution({
+			executionId: topLevelId,
+			stepId: generateId(),
+			awaited: true,
+		});
+
+		const subs = await search({ workflowIds: 'all', hasParent: true }).expect(200);
+		const subIds = (subs.body as SearchExecutionsResponse).items.map((item) => item.id);
+		expect(subIds).toContain(subId);
+		expect(subIds).not.toContain(topLevelId);
+
+		const topLevel = await search({ workflowIds: 'all', hasParent: false }).expect(200);
+		const topLevelIds = (topLevel.body as SearchExecutionsResponse).items.map((item) => item.id);
+		expect(topLevelIds).toContain(topLevelId);
+		expect(topLevelIds).not.toContain(subId);
+	});
+
 	it('rejects a parent execution id that is not a uuid', async () => {
 		await search({ workflowIds: 'all', parentExecutionId: 'parent' }).expect(400);
 	});

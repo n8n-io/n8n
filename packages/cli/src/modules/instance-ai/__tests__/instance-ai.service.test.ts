@@ -17,6 +17,7 @@ vi.mock('@n8n/instance-ai', async () => {
 		resolvePromptProfile: profiles.resolvePromptProfile,
 		MAX_STEPS: profiles.MAX_STEPS,
 		createThreadApprovalContext: profiles.createThreadApprovalContext,
+		threadTargetsAgent: profiles.threadTargetsAgent,
 		assertInstanceAiPromptVersion: profiles.assertInstanceAiPromptVersion,
 		CONCISE_PROMPT_VERSION: profiles.CONCISE_PROMPT_VERSION,
 		SELF_HEALING_PROFILE_VERSION: profiles.SELF_HEALING_PROFILE_VERSION,
@@ -137,6 +138,7 @@ vi.mock('@n8n/instance-ai', async () => {
 		WorkflowTaskCoordinator: class {},
 		WorkflowLoopStorage: class {},
 		ThreadTaskStorage: class {},
+		CloudBrowserTaskStorage: class {},
 		InstanceAiTerminalResponseGuard: class {
 			constructor(private readonly options: { runId: string; rootAgentId: string }) {}
 
@@ -326,7 +328,6 @@ type StartRunServiceInternals = {
 		setTimeZone: MockedFunction<(threadId: string, timeZone: string) => void>;
 		setBrowserUseAvailable: Mock;
 		getBrowserUseAvailable: Mock;
-		setBuildMode: MockedFunction<(threadId: string, mode: string | undefined) => void>;
 		setPromptVersion: Mock;
 		setObserverThresholdTokens: Mock;
 		activeRunCount: MockedFunction<() => number>;
@@ -354,7 +355,6 @@ function createStartRunService(): StartRunServiceInternals {
 		setTimeZone: vi.fn(),
 		setBrowserUseAvailable: vi.fn(),
 		getBrowserUseAvailable: vi.fn(() => undefined),
-		setBuildMode: vi.fn(),
 		setPromptVersion: vi.fn(),
 		setObserverThresholdTokens: vi.fn(),
 		activeRunCount: vi.fn(() => 0),
@@ -475,6 +475,11 @@ function attachTurnEnvironment(service: object): void {
 	for (const field of TURN_ENVIRONMENT_FIELDS) {
 		if (field in fields) Object.assign(turnEnvironment, { [field]: fields[field] });
 	}
+	// These tests run in Manual mode: no approval reviewer.
+	Object.assign(turnEnvironment, {
+		approvalModeService: { resolveMode: () => 'manual' },
+		approvalReviewerFactory: { create: vi.fn() },
+	});
 	Object.assign(service, { turnEnvironment });
 }
 
@@ -543,6 +548,7 @@ type ShutdownServiceInternals = {
 		>;
 	};
 	backgroundTasks: { cancelAll: MockedFunction<() => ManagedBackgroundTask[]> };
+	cloudBrowserTaskService: { shutdown: Mock };
 	tracing: {
 		finalizeRunTracing: MockedFunction<
 			(
@@ -582,9 +588,7 @@ type TerminalGuardOrderServiceInternals = {
 	) => Promise<RebuildSuspendedRunOutcome>;
 	finalizeCancelledSuspendedRun: (run: SuspendedRunState<User>, reason?: string) => Promise<void>;
 	runState: {
-		setBuildMode: Mock;
 		setPromptVersion: Mock;
-		getBuildMode: Mock;
 		getPromptVersion: Mock;
 		getPromptConfiguration: Mock;
 		setPromptConfiguration: Mock;
@@ -663,6 +667,7 @@ type TerminalGuardOrderServiceInternals = {
 	failedInternalFollowUpStreaks: Map<string, number>;
 	taskProjector: { syncFromWorkflowLoop: Mock };
 	maybeStartWorkflowSetupFollowUp: Mock;
+	cloudBrowserTaskService: { startTask: Mock; deliverPendingResults: Mock; shutdown: Mock };
 	finalizeRun: Mock;
 	preserveHitlOnShutdown: Set<string>;
 	inFlightExecutions: Set<Promise<unknown>>;
@@ -708,9 +713,7 @@ function createTerminalGuardOrderService(): TerminalGuardOrderServiceInternals {
 	) as unknown as TerminalGuardOrderServiceInternals;
 	Object.assign(service, { agentFactory: { disconnectMcpClients: vi.fn(async () => {}) } });
 	service.runState = {
-		setBuildMode: vi.fn(),
 		setPromptVersion: vi.fn(),
-		getBuildMode: vi.fn(() => undefined),
 		getPromptVersion: vi.fn(),
 		getPromptConfiguration: vi.fn(),
 		setPromptConfiguration: vi.fn(),
@@ -787,6 +790,10 @@ function createTerminalGuardOrderService(): TerminalGuardOrderServiceInternals {
 	return service;
 }
 
+function stubCloudBrowserTaskService() {
+	return { startTask: vi.fn(), deliverPendingResults: vi.fn(async () => {}), shutdown: vi.fn() };
+}
+
 function stubInitialRunSurface(
 	service: TerminalGuardOrderServiceInternals,
 	instanceContextEnabled = false,
@@ -816,6 +823,10 @@ function stubInitialRunSurface(
 		resolveProjectContextSection: vi.fn(async () => ''),
 		createAgentFromEnvironment: vi.fn(async () => ({})),
 		buildOrchestratorAgentStreamOptions: vi.fn(() => ({})),
+		cloudBrowserTaskService: stubCloudBrowserTaskService(),
+		// Off by default, so the end of a run never reaches the cloud browser.
+		settingsService: { isCloudBrowserEnabled: () => false },
+		cloudBrowserService: { isAvailable: async () => false },
 		domainAccessTrackersByThread: new Map(),
 	});
 	const { backgroundTasks } = service as { backgroundTasks?: object };
@@ -910,7 +921,7 @@ describe('InstanceAiService — runtime workspace setup', () => {
 			modelService: {
 				resolveAgentModelConfig: Mock;
 				resolveProxyModel: Mock;
-				resolveMemoryModelConfig: Mock;
+				resolveUtilityModelConfig: Mock;
 				getCredits: Mock;
 				getModelFetch: Mock;
 				getLabeledModelFetch: Mock;
@@ -931,11 +942,9 @@ describe('InstanceAiService — runtime workspace setup', () => {
 			runState: {
 				touchActiveRun: Mock;
 				registerPendingConfirmation: Mock;
-				getBuildMode: Mock;
 				getPromptVersion: Mock;
 				getPromptConfiguration: Mock;
 				setPromptConfiguration: Mock;
-				setBuildMode: Mock;
 				setSetupPanelEnabled: Mock;
 				setPromptVersion: Mock;
 				setObserverThresholdTokens: Mock;
@@ -950,7 +959,7 @@ describe('InstanceAiService — runtime workspace setup', () => {
 			threadGrantRepo: { findKeys: Mock };
 			evalCredentialAllowlists: EvalThreadCredentialAllowlistService;
 			instanceAiErrorReporter: ReturnType<typeof createInstanceAiErrorReporterMock>;
-			creditService: { claimRunUsage: Mock };
+			creditService: { claimRunUsage: Mock; helperUsageClaimer: Mock };
 			aiUsageService: { isParameterValueSharingAllowed: Mock };
 			areMcpConnectionsAvailable: Mock;
 			skillsService: InstanceAiSkillsService;
@@ -976,7 +985,6 @@ describe('InstanceAiService — runtime workspace setup', () => {
 				setupPanelVariant: snapshotMode === 'off' ? 'control' : 'variant',
 				configEvalsEnabled: true,
 				conversationHistoryEnabled: false,
-				progressiveBuildingEnabled: false,
 				nodeUsageEnabled: !instanceContextEnabled,
 				nodeContextEnabled: false,
 				folderExplorationEnabled: false,
@@ -987,7 +995,7 @@ describe('InstanceAiService — runtime workspace setup', () => {
 		service.modelService = {
 			resolveAgentModelConfig: vi.fn(async () => 'model-1'),
 			resolveProxyModel: vi.fn(async () => 'model-1'),
-			resolveMemoryModelConfig: vi.fn(async () => undefined),
+			resolveUtilityModelConfig: vi.fn(async () => undefined),
 			getModelFetch: vi.fn(),
 			getLabeledModelFetch: vi.fn(),
 			getCredits: vi.fn(async () => ({
@@ -1018,11 +1026,9 @@ describe('InstanceAiService — runtime workspace setup', () => {
 		service.runState = {
 			touchActiveRun: vi.fn(),
 			registerPendingConfirmation: vi.fn(),
-			getBuildMode: vi.fn(() => undefined),
 			getPromptVersion: vi.fn(),
 			getPromptConfiguration: vi.fn(),
 			setPromptConfiguration: vi.fn(),
-			setBuildMode: vi.fn(),
 			setSetupPanelEnabled: vi.fn(),
 			setPromptVersion: vi.fn(),
 			setObserverThresholdTokens: vi.fn(),
@@ -1032,6 +1038,7 @@ describe('InstanceAiService — runtime workspace setup', () => {
 		service.backgroundTasks = { touchTask: vi.fn() };
 		service.sendCorrectionToTask = vi.fn();
 		service.domainAccessTrackersByThread = new Map();
+		Object.assign(service, { cloudBrowserTaskService: stubCloudBrowserTaskService() });
 		service.browserSessionService = { findMcpServer: vi.fn(() => undefined) };
 		service.threadGrantRepo = { findKeys: vi.fn(async () => new Set<string>()) };
 		service.sandboxService = new InstanceAiSandboxService({
@@ -1053,7 +1060,7 @@ describe('InstanceAiService — runtime workspace setup', () => {
 		service.evalCredentialAllowlists = new EvalThreadCredentialAllowlistService();
 		service.instanceAiErrorReporter = createInstanceAiErrorReporterMock();
 		service.aiUsageService = { isParameterValueSharingAllowed: vi.fn(async () => true) };
-		service.creditService = { claimRunUsage: vi.fn() };
+		service.creditService = { claimRunUsage: vi.fn(), helperUsageClaimer: vi.fn(() => vi.fn()) };
 		const sandbox = { id: 'sandbox-1' };
 		const workspace = {
 			init: vi.fn(async () => {}),
@@ -1223,24 +1230,16 @@ describe('InstanceAiService — runtime workspace setup', () => {
 		expect(setupSandboxWorkspace).not.toHaveBeenCalled();
 	});
 
-	// [progressive flag, stored mode, pinned version, concise flag, expected profile]
+	// [assistant skills flag, pinned version, concise flag, expected profile]
 	it.each([
-		[false, undefined, undefined, false, 'default@1'],
-		[true, undefined, undefined, false, 'progressive@1'],
-		[true, 'default', undefined, false, 'default@1'],
-		[false, 'progressive', undefined, false, 'progressive@1'],
-		[true, 'progressive', 'default@1', false, 'default@1'],
-		[false, 'default', 'progressive@1', false, 'progressive@1'],
-		[true, 'progressive', 'retired@1', false, 'default@1'],
-		// The concise flag applies only in default mode, and any pin beats it.
-		[false, undefined, undefined, true, 'concise@1'],
-		[false, 'default', undefined, true, 'concise@1'],
-		[true, undefined, undefined, true, 'progressive@1'],
-		[false, 'progressive', undefined, true, 'progressive@1'],
-		[false, undefined, 'default@1', true, 'default@1'],
-	] as const)('selects profile (%s, %s, %s, %s) as %s', async (...row) => {
-		const [enabled, override, version, concise, profile] = row;
-		const expected = profile === 'progressive@1' ? 'progressive' : 'default';
+		[false, undefined, false, 'default@1'],
+		[true, 'concise@1', false, 'concise@1'],
+		[true, 'retired@1', false, 'default@1'],
+		// Any pin beats the concise flag.
+		[false, undefined, true, 'concise@1'],
+		[false, 'default@1', true, 'default@1'],
+	] as const)('selects profile (%s, %s, %s) as %s', async (...row) => {
+		const [enabled, version, concise, profile] = row;
 		const service = Object.create(InstanceAiService.prototype) as unknown as {
 			createExecutionEnvironment: (
 				user: User,
@@ -1277,7 +1276,7 @@ describe('InstanceAiService — runtime workspace setup', () => {
 			modelService: {
 				resolveAgentModelConfig: Mock;
 				resolveProxyModel: Mock;
-				resolveMemoryModelConfig: Mock;
+				resolveUtilityModelConfig: Mock;
 				getCredits: Mock;
 				getModelFetch: Mock;
 				getLabeledModelFetch: Mock;
@@ -1298,11 +1297,9 @@ describe('InstanceAiService — runtime workspace setup', () => {
 			runState: {
 				touchActiveRun: Mock;
 				registerPendingConfirmation: Mock;
-				getBuildMode: Mock;
 				getPromptVersion: Mock;
 				getPromptConfiguration: Mock;
 				setPromptConfiguration: Mock;
-				setBuildMode: Mock;
 				setSetupPanelEnabled: Mock;
 				setPromptVersion: Mock;
 				setObserverThresholdTokens: Mock;
@@ -1317,7 +1314,7 @@ describe('InstanceAiService — runtime workspace setup', () => {
 			threadGrantRepo: { findKeys: Mock };
 			evalCredentialAllowlists: EvalThreadCredentialAllowlistService;
 			instanceAiErrorReporter: ReturnType<typeof createInstanceAiErrorReporterMock>;
-			creditService: { claimRunUsage: Mock };
+			creditService: { claimRunUsage: Mock; helperUsageClaimer: Mock };
 			aiUsageService: { isParameterValueSharingAllowed: Mock };
 			areMcpConnectionsAvailable: Mock;
 			skillsService: InstanceAiSkillsService;
@@ -1341,7 +1338,6 @@ describe('InstanceAiService — runtime workspace setup', () => {
 			resolveExperimentGates: vi.fn().mockResolvedValue({
 				configEvalsEnabled: true,
 				conversationHistoryEnabled: false,
-				progressiveBuildingEnabled: enabled,
 				conciseStyleEnabled: concise,
 				nodeUsageEnabled: false,
 				nodeContextEnabled: false,
@@ -1353,7 +1349,7 @@ describe('InstanceAiService — runtime workspace setup', () => {
 		service.modelService = {
 			resolveAgentModelConfig: vi.fn(async () => 'model-1'),
 			resolveProxyModel: vi.fn(async () => 'model-1'),
-			resolveMemoryModelConfig: vi.fn(async () => undefined),
+			resolveUtilityModelConfig: vi.fn(async () => undefined),
 			getModelFetch: vi.fn(),
 			getLabeledModelFetch: vi.fn(),
 			getCredits: vi.fn(async () => ({
@@ -1380,11 +1376,9 @@ describe('InstanceAiService — runtime workspace setup', () => {
 		service.runState = {
 			touchActiveRun: vi.fn(),
 			registerPendingConfirmation: vi.fn(),
-			getBuildMode: vi.fn(() => override),
 			getPromptVersion: vi.fn(() => version),
 			getPromptConfiguration: vi.fn(),
 			setPromptConfiguration: vi.fn(),
-			setBuildMode: vi.fn(),
 			setSetupPanelEnabled: vi.fn(),
 			setPromptVersion: vi.fn(),
 			setObserverThresholdTokens: vi.fn(),
@@ -1394,6 +1388,7 @@ describe('InstanceAiService — runtime workspace setup', () => {
 		service.backgroundTasks = { touchTask: vi.fn() };
 		service.sendCorrectionToTask = vi.fn();
 		service.domainAccessTrackersByThread = new Map();
+		Object.assign(service, { cloudBrowserTaskService: stubCloudBrowserTaskService() });
 		service.browserSessionService = { findMcpServer: vi.fn(() => undefined) };
 		service.threadGrantRepo = { findKeys: vi.fn(async () => new Set<string>()) };
 		service.sandboxService = new InstanceAiSandboxService({
@@ -1419,7 +1414,7 @@ describe('InstanceAiService — runtime workspace setup', () => {
 		service.aiUsageService = {
 			isParameterValueSharingAllowed: vi.fn(async () => allowSendingParameterValues),
 		};
-		service.creditService = { claimRunUsage: vi.fn() };
+		service.creditService = { claimRunUsage: vi.fn(), helperUsageClaimer: vi.fn(() => vi.fn()) };
 		(createSandbox as Mock).mockResolvedValue({ id: 'sandbox-1' });
 		(createWorkspace as Mock).mockReturnValue({
 			init: vi.fn(async () => {}),
@@ -1436,9 +1431,8 @@ describe('InstanceAiService — runtime workspace setup', () => {
 		);
 
 		expect(service.adapterService.resolveExperimentGates).toHaveBeenCalledTimes(1);
-		expect(service.runState.setBuildMode).toHaveBeenCalledWith('thread-1', expected);
 		expect(loadInstanceAiPromptSkills).toHaveBeenCalledWith(
-			expect.objectContaining({ mode: expected, version: profile }),
+			expect.objectContaining({ version: profile }),
 		);
 		expect(environment.orchestrationContext).toMatchObject({
 			promptConfiguration: { version: profile },
@@ -1475,7 +1469,8 @@ describe('InstanceAiService — shutdown', () => {
 		expect(service.inFlightExecutions.size).toBe(0);
 	});
 
-	it('does not destroy thread-scoped sandboxes on service shutdown', async () => {
+	/** A service with only what `shutdown()` touches. */
+	function createShutdownService() {
 		const service = Object.create(
 			InstanceAiService.prototype,
 		) as unknown as ShutdownServiceInternals;
@@ -1502,12 +1497,18 @@ describe('InstanceAiService — shutdown', () => {
 		service.sandboxService = { stopSandboxExpiryTimers: vi.fn() };
 		service.browserSessionService = { shutdown: vi.fn(async () => {}) };
 		service.domainAccessTrackersByThread = new Map();
+		service.cloudBrowserTaskService = stubCloudBrowserTaskService();
 		service.eventBus = { clear: vi.fn() };
 		service.eventLog = { flushAll: vi.fn(async () => {}) };
 		service.agentFactory = { disconnectMcpClients: vi.fn(async () => {}) };
 		service.inFlightExecutions = new Set();
 		service.logger = { debug: vi.fn(), warn: vi.fn() };
 		service.instanceAiErrorReporter = createInstanceAiErrorReporterMock();
+		return service;
+	}
+
+	it('does not destroy thread-scoped sandboxes on service shutdown', async () => {
+		const service = createShutdownService();
 
 		await service.shutdown();
 
@@ -1530,6 +1531,20 @@ describe('InstanceAiService — shutdown', () => {
 		expect(service.eventBus.clear.mock.invocationCallOrder[0]).toBeLessThan(
 			vi.mocked(shutdownProductTelemetryProviders).mock.invocationCallOrder[0],
 		);
+	});
+
+	it('stops cloud browser task delivery before it cancels the background tasks', async () => {
+		const service = createShutdownService();
+		const calls: string[] = [];
+		service.cloudBrowserTaskService.shutdown.mockImplementation(() => calls.push('taskService'));
+		service.backgroundTasks.cancelAll.mockImplementation(() => {
+			calls.push('cancelAll');
+			return [];
+		});
+
+		await service.shutdown();
+
+		expect(calls).toEqual(['taskService', 'cancelAll']);
 	});
 });
 
@@ -1629,6 +1644,7 @@ describe('InstanceAiService — self-healing launcher', () => {
 					cancelThread: vi.fn(() => []),
 					listRunningTasks: vi.fn(() => []),
 				},
+				cloudBrowserTaskService: stubCloudBrowserTaskService(),
 				cancelAwaitingApprovalPlan: vi.fn(),
 				suspendedThreads: { dropPendingConfirmationsForThread: vi.fn() },
 				gatewayService: { disconnectAll: vi.fn() },
@@ -1687,6 +1703,21 @@ describe('InstanceAiService — self-healing launcher', () => {
 		expect(service.createExecutionEnvironment).not.toHaveBeenCalled();
 		expect(service.executeRun).not.toHaveBeenCalled();
 		expect(service.refineTitleIfNeeded).not.toHaveBeenCalled();
+	});
+
+	it('requests the proxy token with the self-healing billing user ID', async () => {
+		const createProxyRunConfig = vi.fn(async () => ({}));
+		const service = Object.assign(createLauncher(), {
+			turnEnvironment: { createProxyRunConfig },
+		});
+		service.selfHealingAgent.execute.mockImplementation(async (_input, options) => {
+			await options.createProxyRunConfig();
+			return completedRun(options);
+		});
+
+		await service.startSelfHealingRun(input, lifecycle);
+
+		expect(createProxyRunConfig).toHaveBeenCalledWith({ id: 'self_healing' });
 	});
 
 	it('applies concurrency admission before registering an internal run', async () => {
@@ -2071,7 +2102,6 @@ describe('InstanceAiService — run start', () => {
 			'UTC',
 			undefined,
 			undefined,
-			undefined,
 			true,
 		);
 		expect(service.runState.setBrowserUseAvailable).toHaveBeenLastCalledWith('thread-a', true);
@@ -2081,7 +2111,7 @@ describe('InstanceAiService — run start', () => {
 		expect(service.runState.setBrowserUseAvailable).toHaveBeenLastCalledWith('thread-a', undefined);
 	});
 
-	it('records each request mode for later internal runs', () => {
+	it('records each request pin for later internal runs', () => {
 		const service = createStartRunService();
 		service.startRun(
 			fakeUser,
@@ -2091,13 +2121,10 @@ describe('InstanceAiService — run start', () => {
 			undefined,
 			'UTC',
 			undefined,
-			'progressive',
-			'progressive@1',
+			'concise@1',
 		);
-		expect(service.runState.setPromptVersion).toHaveBeenLastCalledWith('thread-a', 'progressive@1');
-		expect(service.runState.setBuildMode).toHaveBeenLastCalledWith('thread-a', 'progressive');
+		expect(service.runState.setPromptVersion).toHaveBeenLastCalledWith('thread-a', 'concise@1');
 		service.startRun(fakeUser, 'thread-a', 'continue');
-		expect(service.runState.setBuildMode).toHaveBeenLastCalledWith('thread-a', undefined);
 		expect(service.runState.setPromptVersion).toHaveBeenLastCalledWith('thread-a', undefined);
 	});
 
@@ -2140,7 +2167,6 @@ describe('InstanceAiService — run start', () => {
 				undefined,
 				undefined,
 				'UTC',
-				undefined,
 				undefined,
 				'missing@1',
 			),
@@ -2185,7 +2211,6 @@ describe('InstanceAiService — run start', () => {
 			fakeUser,
 			'thread-a',
 			'Change this',
-			undefined,
 			undefined,
 			undefined,
 			undefined,
@@ -3353,7 +3378,7 @@ describe('InstanceAiService — terminal response guard wiring', () => {
 
 	it('persists the resumed-run fallback error before cleanup', async () => {
 		const service = createTerminalGuardOrderService();
-		service.runState.getPromptConfiguration.mockReturnValue({ version: 'progressive@1' });
+		service.runState.getPromptConfiguration.mockReturnValue({ version: 'concise@1' });
 		const abortController = new AbortController();
 		vi.mocked(resumeAgentRun).mockImplementationOnce(async (_agent, _data, resumeOptions) => {
 			const onResumeClaimed = resumeOptions.onResumeClaimed;
@@ -3382,7 +3407,7 @@ describe('InstanceAiService — terminal response guard wiring', () => {
 			run_id: 'run-1',
 			status: 'error',
 			user_id: 'user-1',
-			prompt_version: 'progressive@1',
+			prompt_version: 'concise@1',
 		});
 		expect(service.telemetry.track).toHaveBeenCalledWith('Builder generation errored', {
 			thread_id: 'thread-a',
@@ -3390,13 +3415,13 @@ describe('InstanceAiService — terminal response guard wiring', () => {
 			error_message: 'provider failed',
 			error_source: 'exception',
 			user_id: 'user-1',
-			prompt_version: 'progressive@1',
+			prompt_version: 'concise@1',
 		});
 	});
 
 	it('includes the resolved model id on resumed-run telemetry', async () => {
 		const service = createTerminalGuardOrderService();
-		service.runState.getPromptConfiguration.mockReturnValue({ version: 'progressive@1' });
+		service.runState.getPromptConfiguration.mockReturnValue({ version: 'concise@1' });
 		const abortController = new AbortController();
 		mockClaimedResumeResult({
 			status: 'completed',
@@ -3422,7 +3447,7 @@ describe('InstanceAiService — terminal response guard wiring', () => {
 
 		expect(service.telemetry.track).toHaveBeenCalledWith('instance_ai_run_finished', {
 			thread_id: 'thread-a',
-			prompt_version: 'progressive@1',
+			prompt_version: 'concise@1',
 			run_id: 'run-1',
 			status: 'completed',
 			user_id: 'user-1',
@@ -3564,7 +3589,7 @@ describe('InstanceAiService — terminal response guard wiring', () => {
 
 	it('claims credits when a resumed run completes', async () => {
 		const service = createTerminalGuardOrderService();
-		service.runState.getPromptConfiguration.mockReturnValue({ version: 'progressive@1' });
+		service.runState.getPromptConfiguration.mockReturnValue({ version: 'concise@1' });
 		const abortController = new AbortController();
 		service.creditService.claimRunUsage.mockImplementationOnce(async () => {
 			service.runState.getPromptConfiguration.mockReturnValue({ version: 'default@1' });
@@ -3600,16 +3625,16 @@ describe('InstanceAiService — terminal response guard wiring', () => {
 		expect(service.telemetry.track).toHaveBeenCalledWith('Builder sent message', {
 			thread_id: 'thread-a',
 			message: 'done',
-			prompt_version: 'progressive@1',
+			prompt_version: 'concise@1',
 		});
 		expect(service.telemetry.track).toHaveBeenCalledWith('Builder satisfied user intent', {
 			thread_id: 'thread-a',
-			prompt_version: 'progressive@1',
+			prompt_version: 'concise@1',
 		});
 		// user_id must be present so the heartbeat event reaches PostHog
 		expect(service.telemetry.track).toHaveBeenCalledWith('instance_ai_run_finished', {
 			thread_id: 'thread-a',
-			prompt_version: 'progressive@1',
+			prompt_version: 'concise@1',
 			run_id: 'run-1',
 			status: 'completed',
 			user_id: 'user-1',
@@ -4042,6 +4067,7 @@ describe('InstanceAiService — terminal response guard wiring', () => {
 			inFlightExecutions: new Set<Promise<unknown>>(),
 			browserSessionService: { shutdown: vi.fn(async () => {}) },
 			sandboxService: { stopSandboxExpiryTimers: vi.fn() },
+			cloudBrowserTaskService: stubCloudBrowserTaskService(),
 			domainAccessTrackersByThread: new Map(),
 			eventLog: { flushAll: vi.fn(async () => {}) },
 		});
@@ -4707,7 +4733,7 @@ describe('InstanceAiService — run error reporter lifecycle', () => {
 
 	it('does not acquire local ownership when checkpoint claiming returns an error stream', async () => {
 		const service = createTerminalGuardOrderService();
-		service.runState.getPromptConfiguration.mockReturnValue({ version: 'progressive@1' });
+		service.runState.getPromptConfiguration.mockReturnValue({ version: 'concise@1' });
 		const abortController = new AbortController();
 		const suspendedTracing = { id: 'suspended-trace' };
 		const resumeTracing = {
@@ -4768,7 +4794,7 @@ describe('InstanceAiService — run error reporter lifecycle', () => {
 			run_id: 'run-1',
 			status: 'error',
 			user_id: 'user-1',
-			prompt_version: 'progressive@1',
+			prompt_version: 'concise@1',
 		});
 		expect(service.telemetry.track).toHaveBeenCalledWith('Builder generation errored', {
 			thread_id: 'thread-a',
@@ -4776,7 +4802,7 @@ describe('InstanceAiService — run error reporter lifecycle', () => {
 			error_message: 'checkpoint unavailable',
 			error_source: 'stream',
 			user_id: 'user-1',
-			prompt_version: 'progressive@1',
+			prompt_version: 'concise@1',
 		});
 		expect(service.tracing.finalizeRunTracing).not.toHaveBeenCalled();
 		expect(service.tracing.finalizeMessageTraceRoot).not.toHaveBeenCalled();
@@ -5030,6 +5056,16 @@ describe('InstanceAiService — run error reporter lifecycle', () => {
 		service.maybeStartWorkflowSetupFollowUp = vi.fn(async () => {
 			callOrder.push('maybeStartWorkflowSetupFollowUp');
 		});
+		Object.assign(service, {
+			settingsService: { isCloudBrowserEnabled: () => true },
+			cloudBrowserService: { isAvailable: async () => true },
+		});
+		service.cloudBrowserTaskService = {
+			...stubCloudBrowserTaskService(),
+			deliverPendingResults: vi.fn(async () => {
+				callOrder.push('deliverPendingResults');
+			}),
+		};
 		service.finalizeRun = vi.fn(async () => {
 			callOrder.push('finalizeRun');
 		});
@@ -5054,8 +5090,128 @@ describe('InstanceAiService — run error reporter lifecycle', () => {
 			'finalizeRun',
 			'syncFromWorkflowLoop',
 			'maybeStartWorkflowSetupFollowUp',
+			'deliverPendingResults',
 			'endRun',
 		]);
+	});
+
+	it.each([
+		{ cloudBrowserEnabled: false, isAvailable: true },
+		{ cloudBrowserEnabled: true, isAvailable: false },
+	])(
+		'does not deliver cloud browser task results when the cloud browser is off (%j)',
+		async ({ cloudBrowserEnabled, isAvailable }) => {
+			const service = createTerminalGuardOrderService();
+			const abortController = new AbortController();
+			service.runState.hasSuspendedRun = vi.fn(() => false);
+			service.taskProjector = { syncFromWorkflowLoop: vi.fn(async () => {}) };
+			service.maybeStartWorkflowSetupFollowUp = vi.fn(async () => {});
+			Object.assign(service, {
+				settingsService: { isCloudBrowserEnabled: () => cloudBrowserEnabled },
+				cloudBrowserService: { isAvailable: async () => isAvailable },
+			});
+			service.cloudBrowserTaskService = stubCloudBrowserTaskService();
+			mockClaimedResumeResult({
+				status: 'completed',
+				agentRunId: 'agent-run-1',
+				text: Promise.resolve('done'),
+				workSummary: emptyWorkSummary(),
+			});
+
+			await service.processResumedStream({}, {}, resumedStreamOpts(abortController));
+
+			expect(service.cloudBrowserTaskService.deliverPendingResults).not.toHaveBeenCalled();
+			expect(service.instanceAiErrorReporter.endRun).toHaveBeenCalledWith(
+				'run-1',
+				service.instanceAiErrorReporter.beginRun.mock.results[0].value,
+			);
+		},
+	);
+
+	it.each([
+		{ stopped: false, delivered: true },
+		{ stopped: true, delivered: false },
+	])(
+		'delivers cloud browser task results when a chat run ends, unless it was stopped (%j)',
+		async ({ stopped, delivered }) => {
+			const service = createTerminalGuardOrderService();
+			stubInitialRunSurface(service);
+			service.runState.hasSuspendedRun = vi.fn(() => false);
+			service.taskProjector = { syncFromWorkflowLoop: vi.fn(async () => {}) };
+			service.maybeStartWorkflowSetupFollowUp = vi.fn(async () => {});
+			service.finalizeRun = vi.fn(async () => {});
+			Object.assign(service, {
+				settingsService: { isCloudBrowserEnabled: () => true },
+				cloudBrowserService: { isAvailable: async () => true },
+			});
+			const abortController = new AbortController();
+			if (stopped) abortController.abort();
+			vi.mocked(streamAgentRun).mockResolvedValueOnce({
+				status: stopped ? 'cancelled' : 'completed',
+				agentRunId: 'agent-run-1',
+				text: Promise.resolve('done'),
+				workSummary: emptyWorkSummary(),
+			});
+
+			await service.executeRun(fakeUser, 'thread-a', 'run-1', 'Hello', abortController);
+
+			if (delivered) {
+				expect(service.cloudBrowserTaskService.deliverPendingResults).toHaveBeenCalledWith(
+					fakeUser,
+					'thread-a',
+				);
+			} else {
+				expect(service.cloudBrowserTaskService.deliverPendingResults).not.toHaveBeenCalled();
+			}
+		},
+	);
+
+	it('logs a failed cloud browser result delivery and still finishes the run', async () => {
+		const service = createTerminalGuardOrderService();
+		const abortController = new AbortController();
+		service.runState.hasSuspendedRun = vi.fn(() => false);
+		service.taskProjector = { syncFromWorkflowLoop: vi.fn(async () => {}) };
+		service.maybeStartWorkflowSetupFollowUp = vi.fn(async () => {});
+		service.finalizeRun = vi.fn(async () => {});
+		Object.assign(service, {
+			settingsService: { isCloudBrowserEnabled: () => true },
+			cloudBrowserService: { isAvailable: async () => true },
+		});
+		service.cloudBrowserTaskService = {
+			...stubCloudBrowserTaskService(),
+			deliverPendingResults: vi.fn(async () => {
+				throw new Error('Store unavailable');
+			}),
+		};
+		mockClaimedResumeResult({
+			status: 'completed',
+			agentRunId: 'agent-run-1',
+			text: Promise.resolve('done'),
+			workSummary: emptyWorkSummary(),
+		});
+
+		await expect(
+			service.processResumedStream({}, {}, resumedStreamOpts(abortController)),
+		).resolves.toBeUndefined();
+
+		expect(service.cloudBrowserTaskService.deliverPendingResults).toHaveBeenCalledWith(
+			fakeUser,
+			'thread-a',
+		);
+		expect(service.logger.error).toHaveBeenCalledWith(
+			'Failed to deliver the cloud browser task results',
+			{ threadId: 'thread-a', error: 'Store unavailable' },
+		);
+		expect(service.finalizeRun).toHaveBeenCalledWith(
+			'thread-a',
+			'run-1',
+			'completed',
+			expect.any(Object),
+		);
+		expect(service.instanceAiErrorReporter.endRun).toHaveBeenCalledWith(
+			'run-1',
+			service.instanceAiErrorReporter.beginRun.mock.results[0].value,
+		);
 	});
 
 	it('still projects tasks when the resumed run was cancelled', async () => {
@@ -5130,6 +5286,7 @@ describe('InstanceAiService run input gates', () => {
 			shouldPreserveHitlOnShutdown: vi.fn(() => true),
 			runState: { clearActiveRun: vi.fn(), hasSuspendedRun: vi.fn(() => true) },
 			telemetry: { track: vi.fn() },
+			cloudBrowserTaskService: stubCloudBrowserTaskService(),
 			domainAccessTrackersByThread: new Map(),
 			updateInternalFollowUpFailureStreak: vi.fn(),
 		}) as {
@@ -5143,7 +5300,7 @@ describe('InstanceAiService run input gates', () => {
 				context?: InstanceAiHandoffContext,
 				messageGroupId?: string,
 				timeZone?: string,
-				resumeReason?: 'background_task_completed',
+				resumeReason?: 'workflow_setup',
 			) => Promise<void>;
 		};
 		attachTurnInput(service);
@@ -5180,7 +5337,7 @@ describe('InstanceAiService run input gates', () => {
 			undefined,
 			undefined,
 			undefined,
-			'background_task_completed',
+			'workflow_setup',
 		);
 
 		const input = vi.mocked(streamAgentRun).mock.lastCall?.[1];
@@ -5254,6 +5411,7 @@ describe('InstanceAiService — user message persistence on cancel', () => {
 		// hasSuspendedRun → true short-circuits the finally's post-run scheduling
 		service.runState = { clearActiveRun: vi.fn(), hasSuspendedRun: vi.fn(() => true) };
 		service.domainAccessTrackersByThread = new Map();
+		Object.assign(service, { cloudBrowserTaskService: stubCloudBrowserTaskService() });
 		service.instanceAiErrorReporter = {
 			beginRun: vi.fn(() => Symbol('error-reporter-execution')),
 			endRun: vi.fn(),
@@ -5580,6 +5738,55 @@ describe('InstanceAiService — background task cancellation', () => {
 				payload: { role: 'builder', result: '', status: 'cancelled' },
 			}),
 		);
+	});
+
+	it('marks the agent-completed event of a detached task when the thread is cancelled', () => {
+		const service = createCancellationService();
+		service.backgroundTasks.cancelThread.mockReturnValue([
+			{ ...task, role: 'cloud-browser', detachedFromTurn: true },
+		]);
+
+		service.cancelRun('thread-a');
+
+		expect(service.eventBus.publish).toHaveBeenCalledWith('thread-a', {
+			type: 'agent-completed',
+			runId: 'task-run-1',
+			agentId: 'agent-1',
+			detachedFromTurn: true,
+			payload: { role: 'cloud-browser', result: '', status: 'cancelled' },
+		});
+	});
+
+	it('does not mark the agent-completed event of a task that is not detached', () => {
+		const service = createCancellationService();
+
+		service.cancelRun('thread-a');
+
+		expect(service.eventBus.publish).toHaveBeenCalledWith('thread-a', {
+			type: 'agent-completed',
+			runId: 'task-run-1',
+			agentId: 'agent-1',
+			payload: { role: 'builder', result: '', status: 'cancelled' },
+		});
+	});
+
+	it('marks the agent-completed event of a detached task when that task is cancelled', () => {
+		const service = createCancellationService();
+		service.backgroundTasks.cancelTask.mockReturnValue({
+			...task,
+			role: 'cloud-browser',
+			detachedFromTurn: true,
+		});
+
+		service.cancelBackgroundTask('thread-a', 'task-1');
+
+		expect(service.eventBus.publish).toHaveBeenCalledWith('thread-a', {
+			type: 'agent-completed',
+			runId: 'task-run-1',
+			agentId: 'agent-1',
+			detachedFromTurn: true,
+			payload: { role: 'cloud-browser', result: '', status: 'cancelled' },
+		});
 	});
 });
 
@@ -6381,6 +6588,7 @@ describe('InstanceAiService — clearThreadState agent-builder cleanup', () => {
 		service.failedInternalFollowUpStreaks = new Map();
 		service.liveness = { clearThreadState: vi.fn() };
 		service.domainAccessTrackersByThread = new Map();
+		Object.assign(service, { cloudBrowserTaskService: stubCloudBrowserTaskService() });
 		service.evalCredentialAllowlists = new EvalThreadCredentialAllowlistService();
 		service.eventBus = { clearThread: vi.fn() };
 		service.tracing = {
@@ -7098,7 +7306,7 @@ describe('InstanceAiService — instance-context turn event', () => {
 			persistence: {
 				threadId: 'thread-1',
 				resourceId: fakeUser.id,
-				hostMetadata: { buildMode: 'default' },
+				hostMetadata: { promptVersion: 'concise@1' },
 			},
 		};
 		function createRecoveryService() {
@@ -7198,7 +7406,7 @@ describe('InstanceAiService — instance-context turn event', () => {
 					undefined,
 					saved.instanceContext,
 				);
-				expect(checkpoint.persistence?.hostMetadata?.buildMode).toBe('default');
+				expect(checkpoint.persistence?.hostMetadata?.promptVersion).toBe('concise@1');
 				instanceContext = restored.state.instanceContext!;
 			}
 		}
@@ -7295,7 +7503,7 @@ describe('approval context of orchestrator runs', () => {
 		Object.assign(service, {
 			instanceAiConfig: { runDebugEnabled: false },
 			aiConfig: {},
-			runState: { getBuildMode: vi.fn(), getPromptVersion: vi.fn() },
+			runState: { getPromptVersion: vi.fn() },
 		});
 		return service;
 	}

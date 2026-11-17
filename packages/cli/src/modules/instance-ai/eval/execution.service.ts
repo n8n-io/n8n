@@ -43,6 +43,7 @@ import {
 	TimeoutExecutionCancelledError,
 	Workflow,
 	type IWorkflowIssues,
+	isTriggerNode,
 } from 'n8n-workflow';
 import { OperationalError, UnexpectedError, UserError } from '@n8n/errors';
 import { randomUUID } from 'node:crypto';
@@ -61,6 +62,7 @@ import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 import { WorkflowStaticDataService } from '@/workflows/workflow-static-data.service';
 
 import { pruneConfigForEval } from '@/modules/agents/evaluation/evaluation-config';
+import { skipTimeBasedWaits } from '../skip-time-based-waits';
 import { resolveCanonicalMcpCatalogs } from './agent-execution.service';
 import { createLlmCompletionMockHandler } from './llm-completion-mock';
 import { EvalMockedCredentialsHelper } from './eval-mocked-credentials-helper';
@@ -238,6 +240,7 @@ export class EvalExecutionService {
 				options.scenarioHints,
 				unpinSet,
 				options.seededDataTableIds,
+				options.scenarioDescription,
 			);
 		} catch (error) {
 			const message = error instanceof Error ? error.message : String(error);
@@ -283,6 +286,7 @@ export class EvalExecutionService {
 		scenarioHints?: string,
 		unpinSet?: Set<string>,
 		seededDataTableIds?: string[],
+		scenarioDescription?: string,
 	): Promise<MockHints> {
 		// Phase 1: Generate mock hints for HTTP-interceptible nodes
 		const hintNodes = identifyNodesForHints(workflowEntity);
@@ -302,6 +306,10 @@ export class EvalExecutionService {
 					nodeNames,
 					scenarioHints,
 					defaultStartNodeName: defaultStartNode?.name,
+					triggerNodeNames: workflowEntity.nodes
+						.filter((node) => this.asTriggerNode(node))
+						.map((node) => node.name),
+					scenarioDescription,
 				}),
 		);
 
@@ -539,16 +547,9 @@ export class EvalExecutionService {
 		// Time-based Wait nodes park the execution until a future timestamp
 		// (specificTime) or sleep away the scenario budget (timeInterval), so
 		// downstream nodes never run inside the eval window even when the built
-		// workflow is correct. Zero them — execution order and branch structure
-		// stay observable, and the verifier still sees the builder's original
-		// wait config in the workflow JSON. Webhook/form-resume waits are left
-		// untouched (they model an external event, not the passage of time).
-		for (const node of workflowEntity.nodes) {
-			if (node.disabled || node.type !== 'n8n-nodes-base.wait') continue;
-			const resume = node.parameters?.resume;
-			if (resume === 'webhook' || resume === 'form') continue;
-			node.parameters = { ...node.parameters, resume: 'timeInterval', amount: 0, unit: 'seconds' };
-		}
+		// workflow is correct. The verifier still sees the builder's original
+		// wait config in the workflow JSON.
+		workflowEntity.nodes = skipTimeBasedWaits(workflowEntity.nodes).nodes;
 
 		const workflow = this.buildWorkflow(workflowEntity);
 		// Multi-trigger workflows: Phase 1 picks the trigger the scenario targets
@@ -557,6 +558,9 @@ export class EvalExecutionService {
 			? this.asTriggerNode(workflow.nodes[hints.startNodeName])
 			: undefined;
 		const startNode = hintedStart ?? this.findStartNode(workflow);
+		this.logger.debug(
+			`[EvalMock] Start node: "${startNode?.name}" (Phase 1 named "${hints.startNodeName ?? 'none'}")`,
+		);
 
 		if (!startNode) {
 			return this.errorResult(randomUUID(), 'No trigger or start node found in the workflow');
@@ -865,9 +869,8 @@ export class EvalExecutionService {
 	private asTriggerNode(node: INode | undefined): INode | undefined {
 		if (!node || node.disabled) return undefined;
 		const nodeType = this.nodeTypes.getByNameAndVersion(node.type, node.typeVersion);
-		if (!nodeType) return undefined;
-		const isTriggerCapable = 'trigger' in nodeType || 'poll' in nodeType || 'webhook' in nodeType;
-		return isTriggerCapable ? node : undefined;
+		// Not `'webhook' in nodeType`: Slack, Gmail, Wait and Form have one for send-and-wait.
+		return nodeType && isTriggerNode(nodeType.description) ? node : undefined;
 	}
 
 	private findWebhookNode(workflow: Workflow): INode | undefined {

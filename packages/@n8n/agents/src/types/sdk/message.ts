@@ -277,6 +277,18 @@ export interface CustomAgentMessages {
 		/** The cue text the model sees, without the `<system-reminder>` wrapper. */
 		content: string;
 	};
+	/**
+	 * An instruction that the host adds to a running turn, for example when the
+	 * agent tries to stop before a required step. It is not user input, so
+	 * transcripts, the observer and cue retrieval skip it.
+	 */
+	hostInstruction: {
+		type: 'n8n:host-instruction';
+		/** Stable key of the host feature that sent it, for example `workflow_setup`. */
+		reason: string;
+		/** The text the model sees, without the `<system-reminder>` wrapper. */
+		content: string;
+	};
 	// Apps can add message types through declaration merging.
 }
 

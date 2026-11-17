@@ -163,6 +163,7 @@ dotenvx run -f ../../../.env.local -- pnpm eval:instance-ai --iterations 3
 | `--build-max-attempts` | `3` | Retries per workflow when `claude` returns no id (`--build-via-mcp`) |
 | `--build-mcp-timeout-ms` | `120000` | `MCP_TIMEOUT` passed to the `claude` build subprocess — bounds one MCP tool call (`--build-via-mcp`) |
 | `--build-timeout-ms` | `1800000` | Wall-clock cap per build attempt; on expiry the `claude` process is killed so a hung build can't hold its lane. `0` disables. A timed-out build is not retried (`--build-via-mcp`) |
+| `--assistant-runtime` | `instance-ai` | Which Assistant the builds drive: `instance-ai` or `agents` (the Assistant agent on the Agents runtime). See [Running against the Assistant agent](#running-against-the-assistant-agent---assistant-runtime-agents). Not allowed with `--build-via-mcp` or `--prebuilt-workflows` |
 
 ### Eval LLM settings (env)
 
@@ -426,6 +427,47 @@ When both sides captured per-trial `failureCategory` values, the comparison also
 ### Best-effort
 
 Comparison is logged and skipped on any LangSmith failure — it never fails the eval. It is also skipped when no baseline experiment exists yet.
+
+## Running against the Assistant agent (`--assistant-runtime agents`)
+
+With `--assistant-runtime agents`, the harness drives the Assistant agent on the
+Agents runtime instead of the Instance AI runtime (`--assistant-runtime instance-ai`,
+the default). The same cases run on both runtimes,
+except compaction cases (see below).
+Lane setup reads `/rest/module-settings` and stops when
+`assistantAgentEnabled` is not true.
+
+The Agents transport is in `clients/assistant-agents-api.ts` and
+`harness/assistant-agents.ts`. `N8nClient` sends each thread-tied call there when
+the flag is set:
+
+| Step | `instance-ai` | `agents` |
+|------|---------------|----------|
+| Thread create / delete | `/rest/instance-ai/threads` | `/rest/assistant/eval/threads` (no source context) |
+| Mode, prompt version | On each message | Once per thread, `PUT /rest/assistant/eval/threads/:id/overrides`, before the first message |
+| Observer threshold | On each message | None. Memory uses the configured policy |
+| Send | `POST /rest/instance-ai/chat/:id` | `POST /rest/agents/system/assistant/chat` (SSE, closed after `message-queued`) |
+| Wait | SSE event log + status polls | Poll `.../chat/:id/messages` until no active execution and no open card for 3 polls |
+| Cards | `POST /rest/instance-ai/confirm/:requestId` | `POST .../chat/resume` with the same confirmation strategies |
+| Cancel | `POST .../chat/:id/cancel` | `DELETE .../chat/:id/executions/:activeExecutionId` |
+| Tokens and cost | Run debug | `.../chat/:id/usage`, one record per turn |
+| Thread eval routes (credential pin, seeds, executions) | `/rest/instance-ai/eval/...` | `/rest/assistant/eval/...` |
+| Memory read | `GET /rest/instance-ai/eval/threads/:id/memory` | None |
+
+The wait loop rebuilds Instance AI events from the history, so the outcome,
+transcript and metrics code is the same for both runtimes. Some data is not
+available on the Agents runtime:
+
+- Usage has one synthetic step for each turn, so step counts are turn counts.
+  The run-debug report has no prompts and no workflow code.
+- The build trace has no prompt configuration (the Agents runtime has no status route).
+- Delegated sub-agent tool calls are not rebuilt, only the top-level ones.
+- Memory tasks are not visible.
+
+Compaction cases (`requiresMemoryCompaction: true`) are skipped, and the run
+logs a warning that names them. The Assistant agent has no observer threshold
+override, so a case cannot make its short thread compact. The run stops when
+all selected cases are compaction cases.
 
 ## Running evals against pre-built workflows
 
@@ -932,6 +974,8 @@ A direction governs only what it covers; otherwise the proxy answers every quest
 Each orchestrator build runs in its own empty project, named like the lane owner. The owner drives the build. When the license allows team projects, the project is a team project the owner creates, so the owner is its admin and n8n shows it the build's execution output. Cleanup deletes the project; lane setup and the run end also delete any marked build project a crashed or failed build left, because with team projects licensed the agent's project list shows every project. Without team projects, the project is the personal project of a freshly invited member, the only new project an unlicensed instance can create. n8n then hides execution output from the owner, because the owner has no direct access to the member's credentials, and lane setup logs a warning. Cleanup deletes the member, which also deletes its project and anything a timed-out build left there. Under `--keep-workflows`, build projects and members stay. Like the MCP lane, the member path needs a lane without SMTP, so invites return their accept token.
 
 If the agent still reads a workflow that its build did not create or seed, the run fails as a harness fault: its rows and expectations fail with `framework_issue`. The pass rate shows the leak, builder analyses can filter it out by attribution, and the log names the workflow. A timeout still wins: if the build also timed out, the run stays neutral as `timeout`, like every timed-out run.
+
+A build that the sandbox service refused with `tenant sandbox quota exceeded` is a harness fault too. The harness does not grade its rows and expectations, so they stay out of the pass rate.
 
 ### Credentials
 

@@ -1,5 +1,5 @@
-import memoize from 'lodash/memoize';
 import {
+	NodeOperationError,
 	tryToParseNumber,
 	type IDataObject,
 	type IExecuteFunctions,
@@ -7,12 +7,6 @@ import {
 	type INodeProperties,
 } from 'n8n-workflow';
 
-import {
-	addCursorPredicate,
-	addCursorSortRule,
-	assertUniqueCursorColumn,
-	getStartAfter,
-} from '@utils/sql-keyset-paging';
 import { updateDisplayOptions } from '@utils/utilities';
 
 import type {
@@ -25,8 +19,11 @@ import type {
 } from '../../helpers/interfaces';
 import {
 	addSortRules,
+	addStartAfterClause,
 	addWhereClauses,
-	getUniqueKeyColumns,
+	checkStartAfterColumn,
+	getStartAfter,
+	getStartAfterSortRules,
 	getWhereClauses,
 	replaceEmptyStringsByNulls,
 } from '../../helpers/utils';
@@ -96,10 +93,7 @@ export async function execute(
 	items = replaceEmptyStringsByNulls(items, nodeOptions.replaceEmptyStrings as boolean);
 
 	const queries: QueryWithValues[] = [];
-	const uniqueColumnsOf = memoize(
-		async (schema: string, table: string) => await getUniqueKeyColumns(db, schema, table),
-		(schema, table) => `${schema}.${table}`,
-	);
+	const checkedStartAfterColumns = new Set<string>();
 
 	for (let i = 0; i < items.length; i++) {
 		const schema = this.getNodeParameter('schema', i, undefined, {
@@ -127,40 +121,59 @@ export async function execute(
 
 		const combineConditions = this.getNodeParameter('combineConditions', i, 'AND') as string;
 
-		const base = query;
-		[query, values] = addWhereClauses(
-			this.getNode(),
-			i,
-			query,
-			whereClauses,
-			values,
-			combineConditions,
-		);
-
-		const sortRules =
+		let sortRules =
 			((this.getNodeParameter('sort', i, []) as IDataObject).values as SortRule[]) || [];
-		let rules = sortRules;
 
-		const returnAll = this.getNodeParameter('returnAll', i, false);
-		if (!returnAll) {
-			const { column, value } = getStartAfter(this, i);
+		const startAfter = getStartAfter(this, i);
 
-			if (column !== '') {
-				const uniqueColumns = await uniqueColumnsOf(schema, table);
-				assertUniqueCursorColumn(this.getNode(), i, uniqueColumns, column, table);
+		if (startAfter) {
+			const { column } = startAfter;
+			// An expression can give Output Columns as one string.
+			const selectedColumns: unknown[] = Array.isArray(outputColumns)
+				? outputColumns
+				: [outputColumns];
 
-				if (value !== '') {
-					values.push(column, value);
-					const predicate = `$${values.length - 1}:name > $${values.length}`;
-					query = addCursorPredicate(base, query, predicate);
-				}
+			if (!selectedColumns.includes('*') && !selectedColumns.includes(column)) {
+				throw new NodeOperationError(this.getNode(), `Add "${column}" to Output Columns`, {
+					itemIndex: i,
+					description: `Start After needs "${column}" in the output to get the next page.`,
+				});
+			}
 
-				rules = addCursorSortRule(sortRules, column);
+			sortRules = getStartAfterSortRules(this.getNode(), i, sortRules, column);
+
+			// Only an empty Value can start the walk again, so only then the node looks for empty text
+			const valueIsEmpty = startAfter.value === undefined;
+			const columnKey = JSON.stringify([schema, table, column, valueIsEmpty]);
+			if (!checkedStartAfterColumns.has(columnKey)) {
+				await checkStartAfterColumn(
+					db,
+					this.getNode(),
+					i,
+					schema,
+					table,
+					column,
+					nodeOptions.largeNumbersOutput,
+					valueIsEmpty,
+				);
+				checkedStartAfterColumns.add(columnKey);
 			}
 		}
 
-		[query, values] = addSortRules(query, rules, values);
+		[query, values] = startAfter
+			? addStartAfterClause(
+					query,
+					whereClauses,
+					values,
+					combineConditions,
+					startAfter,
+					sortRules[0].direction === 'DESC',
+				)
+			: addWhereClauses(this.getNode(), i, query, whereClauses, values, combineConditions);
 
+		[query, values] = addSortRules(query, sortRules, values);
+
+		const returnAll = this.getNodeParameter('returnAll', i, false);
 		if (!returnAll) {
 			const limitRaw = this.getNodeParameter('limit', i, 50);
 			const limit = tryToParseNumber(limitRaw);

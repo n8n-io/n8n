@@ -1,6 +1,12 @@
 import FormData from 'form-data';
-import type { IExecuteFunctions, ILoadOptionsFunctions, INode, JsonObject } from 'n8n-workflow';
-import { NodeApiError, NodeOperationError } from 'n8n-workflow';
+import type {
+	IExecuteFunctions,
+	ILoadOptionsFunctions,
+	INode,
+	JsonObject,
+	RequestPath,
+} from 'n8n-workflow';
+import { NodeApiError, NodeOperationError, requestPath, requestUrl } from 'n8n-workflow';
 import type { Mock, Mocked } from 'vitest';
 import { mockDeep } from 'vitest-mock-extended';
 
@@ -59,7 +65,7 @@ describe('confluenceApiRequest', () => {
 	let mockNode: INode;
 	let mockHttpRequestWithAuthentication: Mock;
 
-	async function captureRejection(endpoint: string): Promise<NodeApiError | null> {
+	async function captureRejection(endpoint: RequestPath): Promise<NodeApiError | null> {
 		return await confluenceApiRequest
 			.call(ctx, 'GET', endpoint)
 			.then(() => null)
@@ -99,7 +105,7 @@ describe('confluenceApiRequest', () => {
 	});
 
 	it('routes requests to https://api.atlassian.com/ex/confluence/{cloudId}', async () => {
-		await confluenceApiRequest.call(ctx, 'GET', '/wiki/api/v2/pages');
+		await confluenceApiRequest.call(ctx, 'GET', requestPath`/wiki/api/v2/pages`);
 
 		expect(ctx.getNodeParameter).toHaveBeenCalledWith('site', 0, null);
 		expect(mockHttpRequestWithAuthentication).toHaveBeenCalledTimes(2);
@@ -114,18 +120,20 @@ describe('confluenceApiRequest', () => {
 			2,
 			'confluenceCloudOAuth2Api',
 			expect.objectContaining({
-				url: 'https://api.atlassian.com/ex/confluence/cloud-1/wiki/api/v2/pages',
+				url: requestUrl`https://api.atlassian.com/ex/confluence/cloud-1/wiki/api/v2/pages`,
 			}),
 			OAUTH2_TOKEN_EXPIRED_STATUS_CODES,
 		);
 	});
 
 	it('reuses the cached cloudId across requests', async () => {
-		await confluenceApiRequest.call(ctx, 'GET', '/wiki/api/v2/pages');
-		await confluenceApiRequest.call(ctx, 'GET', '/wiki/api/v2/spaces');
+		await confluenceApiRequest.call(ctx, 'GET', requestPath`/wiki/api/v2/pages`);
+		await confluenceApiRequest.call(ctx, 'GET', requestPath`/wiki/api/v2/spaces`);
 
 		expect(mockHttpRequestWithAuthentication).toHaveBeenCalledTimes(3);
-		const urls = mockHttpRequestWithAuthentication.mock.calls.map(([, options]) => options.url);
+		const urls = mockHttpRequestWithAuthentication.mock.calls.map(([, options]) =>
+			String(options.url),
+		);
 		expect(urls).toEqual([
 			'https://api.atlassian.com/oauth/token/accessible-resources',
 			'https://api.atlassian.com/ex/confluence/cloud-1/wiki/api/v2/pages',
@@ -137,7 +145,7 @@ describe('confluenceApiRequest', () => {
 		const body = { title: 'New page' };
 		const qs = { limit: 25 };
 
-		await confluenceApiRequest.call(ctx, 'POST', '/wiki/api/v2/pages', body, qs);
+		await confluenceApiRequest.call(ctx, 'POST', requestPath`/wiki/api/v2/pages`, body, qs);
 
 		expect(mockHttpRequestWithAuthentication).toHaveBeenNthCalledWith(
 			2,
@@ -150,7 +158,7 @@ describe('confluenceApiRequest', () => {
 	it('sends an array body through as an array', async () => {
 		const body = [{ prefix: 'global', name: 'a' }];
 
-		await confluenceApiRequest.call(ctx, 'POST', '/wiki/rest/api/content/1/label', body);
+		await confluenceApiRequest.call(ctx, 'POST', requestPath`/wiki/rest/api/content/1/label`, body);
 
 		expect(mockHttpRequestWithAuthentication).toHaveBeenNthCalledWith(
 			2,
@@ -161,7 +169,7 @@ describe('confluenceApiRequest', () => {
 	});
 
 	it('defaults body and qs to empty objects', async () => {
-		await confluenceApiRequest.call(ctx, 'GET', '/wiki/api/v2/pages');
+		await confluenceApiRequest.call(ctx, 'GET', requestPath`/wiki/api/v2/pages`);
 
 		expect(mockHttpRequestWithAuthentication).toHaveBeenNthCalledWith(
 			2,
@@ -175,7 +183,7 @@ describe('confluenceApiRequest', () => {
 		// 500 (not 404/403) so this test exercises plain wrapping, not the expired-token retry
 		failNextRequest({ message: 'boom', response: { status: 500 } });
 
-		const error = await captureRejection('/wiki/api/v2/pages');
+		const error = await captureRejection(requestPath`/wiki/api/v2/pages`);
 
 		expect(error).toBeInstanceOf(NodeApiError);
 		expect(error?.httpCode).toBe('500');
@@ -186,7 +194,7 @@ describe('confluenceApiRequest', () => {
 		// A page that's genuinely gone still 404s after the forced-refresh retry
 		alwaysFailGatewayCalls(mockHttpRequestWithAuthentication, pageNotFoundResponse);
 
-		const error = await captureRejection('/wiki/api/v2/pages/1');
+		const error = await captureRejection(requestPath`/wiki/api/v2/pages/1`);
 
 		expect(error).toBeInstanceOf(NodeApiError);
 		expect(error?.message).toBe('Page not found');
@@ -199,7 +207,7 @@ describe('confluenceApiRequest', () => {
 	// "requestOAuth2 - tokenExpiredStatusCode" suite. This only pins that the option is
 	// actually passed through from this call site.
 	it('passes tokenExpiredStatusCode: [401, 403, 404] so core retries the gateway 404/403 quirk', async () => {
-		await confluenceApiRequest.call(ctx, 'GET', '/wiki/api/v2/pages');
+		await confluenceApiRequest.call(ctx, 'GET', requestPath`/wiki/api/v2/pages`);
 
 		expect(mockHttpRequestWithAuthentication).toHaveBeenNthCalledWith(
 			2,
@@ -215,7 +223,7 @@ describe('confluenceApiRequest', () => {
 			response: { status: 500, data: { errors: [{ title: '' }] } },
 		});
 
-		const error = await captureRejection('/wiki/api/v2/pages');
+		const error = await captureRejection(requestPath`/wiki/api/v2/pages`);
 
 		expect(error).toBeInstanceOf(NodeApiError);
 		expect(error?.httpCode).toBe('500');
@@ -236,7 +244,7 @@ describe('confluenceApiRequest', () => {
 			},
 		} as JsonObject);
 
-		const error = await captureRejection('/wiki/rest/api/search');
+		const error = await captureRejection(requestPath`/wiki/rest/api/search`);
 
 		expect(error).toBeInstanceOf(NodeApiError);
 		expect(error).not.toBe(wrapped);
@@ -256,7 +264,7 @@ describe('confluenceApiRequest', () => {
 			new NodeApiError(mockNode, pageNotFoundResponse as JsonObject),
 		);
 
-		const error = await captureRejection('/wiki/api/v2/pages/1');
+		const error = await captureRejection(requestPath`/wiki/api/v2/pages/1`);
 
 		expect(error).toBeInstanceOf(NodeApiError);
 		expect(error?.message).toBe('Page not found');
@@ -267,7 +275,7 @@ describe('confluenceApiRequest', () => {
 	it('rethrows a wrapped NodeApiError unchanged when there is no response body', async () => {
 		const wrapped = failNextRequestWrapped({ message: 'socket hang up' } as JsonObject);
 
-		const error = await captureRejection('/wiki/api/v2/pages');
+		const error = await captureRejection(requestPath`/wiki/api/v2/pages`);
 
 		expect(error).toBe(wrapped);
 	});
@@ -275,22 +283,22 @@ describe('confluenceApiRequest', () => {
 	it('surfaces the cloudId lookup error when no site matches the By URL value', async () => {
 		ctx.getNodeParameter.mockReturnValue(siteByUrl('https://missing.atlassian.net') as never);
 
-		await expect(confluenceApiRequest.call(ctx, 'GET', '/wiki/api/v2/pages')).rejects.toThrow(
-			'No Confluence site matched "https://missing.atlassian.net"',
-		);
+		await expect(
+			confluenceApiRequest.call(ctx, 'GET', requestPath`/wiki/api/v2/pages`),
+		).rejects.toThrow('No Confluence site matched "https://missing.atlassian.net"');
 	});
 
 	it('uses a From List selection as the cloudId directly, without the resources lookup', async () => {
 		ctx.getNodeParameter.mockReturnValue({ __rl: true, mode: 'list', value: 'cloud-2' } as never);
 		mockHttpRequestWithAuthentication.mockResolvedValueOnce({ results: [] });
 
-		await confluenceApiRequest.call(ctx, 'GET', '/wiki/api/v2/pages');
+		await confluenceApiRequest.call(ctx, 'GET', requestPath`/wiki/api/v2/pages`);
 
 		expect(mockHttpRequestWithAuthentication).toHaveBeenCalledTimes(1);
 		expect(mockHttpRequestWithAuthentication).toHaveBeenCalledWith(
 			'confluenceCloudOAuth2Api',
 			expect.objectContaining({
-				url: 'https://api.atlassian.com/ex/confluence/cloud-2/wiki/api/v2/pages',
+				url: requestUrl`https://api.atlassian.com/ex/confluence/cloud-2/wiki/api/v2/pages`,
 			}),
 			OAUTH2_TOKEN_EXPIRED_STATUS_CODES,
 		);
@@ -302,13 +310,13 @@ describe('confluenceApiRequest', () => {
 			.mockResolvedValueOnce([accessibleResources[0]])
 			.mockResolvedValueOnce({ results: [] });
 
-		await confluenceApiRequest.call(ctx, 'GET', '/wiki/api/v2/pages');
+		await confluenceApiRequest.call(ctx, 'GET', requestPath`/wiki/api/v2/pages`);
 
 		expect(mockHttpRequestWithAuthentication).toHaveBeenNthCalledWith(
 			2,
 			'confluenceCloudOAuth2Api',
 			expect.objectContaining({
-				url: 'https://api.atlassian.com/ex/confluence/cloud-1/wiki/api/v2/pages',
+				url: requestUrl`https://api.atlassian.com/ex/confluence/cloud-1/wiki/api/v2/pages`,
 			}),
 			OAUTH2_TOKEN_EXPIRED_STATUS_CODES,
 		);
@@ -317,7 +325,7 @@ describe('confluenceApiRequest', () => {
 	it('asks to pick a site when the Site parameter is empty and several sites are reachable', async () => {
 		ctx.getNodeParameter.mockReturnValue({ __rl: true, mode: 'list', value: '' } as never);
 
-		const promise = confluenceApiRequest.call(ctx, 'GET', '/wiki/api/v2/pages');
+		const promise = confluenceApiRequest.call(ctx, 'GET', requestPath`/wiki/api/v2/pages`);
 
 		await expect(promise).rejects.toThrow(NodeOperationError);
 		await expect(promise).rejects.toThrow(
@@ -332,14 +340,14 @@ describe('confluenceApiRequest', () => {
 			helpers: { httpRequestWithAuthentication: mockHttpRequestWithAuthentication },
 		});
 
-		await confluenceApiRequest.call(loadOptionsCtx, 'GET', '/wiki/api/v2/spaces');
+		await confluenceApiRequest.call(loadOptionsCtx, 'GET', requestPath`/wiki/api/v2/spaces`);
 
 		expect(loadOptionsCtx.getCurrentNodeParameter).toHaveBeenCalledWith('site');
 		expect(loadOptionsCtx.getNodeParameter).not.toHaveBeenCalled();
 		expect(mockHttpRequestWithAuthentication).toHaveBeenLastCalledWith(
 			'confluenceCloudOAuth2Api',
 			expect.objectContaining({
-				url: 'https://api.atlassian.com/ex/confluence/cloud-2/wiki/api/v2/spaces',
+				url: requestUrl`https://api.atlassian.com/ex/confluence/cloud-2/wiki/api/v2/spaces`,
 			}),
 			OAUTH2_TOKEN_EXPIRED_STATUS_CODES,
 		);
@@ -374,14 +382,20 @@ describe('confluenceApiRequestBinary', () => {
 			.mockResolvedValueOnce(accessibleResources)
 			.mockResolvedValueOnce(bytes);
 
-		const data = await confluenceApiRequestBinary.call(ctx, '/wiki/download/attachments/9/a.txt');
+		const data = await confluenceApiRequestBinary.call(
+			ctx,
+			requestPath`/wiki/download/attachments/9/a.txt`,
+			{ version: '1' },
+		);
 
 		expect(mockHttpRequestWithAuthentication).toHaveBeenNthCalledWith(
 			2,
 			'confluenceCloudOAuth2Api',
 			expect.objectContaining({
 				method: 'GET',
-				url: 'https://api.atlassian.com/ex/confluence/cloud-1/wiki/download/attachments/9/a.txt',
+				url: requestUrl`https://api.atlassian.com/ex/confluence/cloud-1/wiki/download/attachments/9/a.txt`,
+				qs: { version: '1' },
+				arrayFormat: 'repeat',
 				encoding: 'arraybuffer',
 				sendCredentialsOnCrossOriginRedirect: false,
 			}),
@@ -395,7 +409,10 @@ describe('confluenceApiRequestBinary', () => {
 			.mockResolvedValueOnce(accessibleResources)
 			.mockResolvedValueOnce('plain-text-body');
 
-		const data = await confluenceApiRequestBinary.call(ctx, '/wiki/download/attachments/9/a.txt');
+		const data = await confluenceApiRequestBinary.call(
+			ctx,
+			requestPath`/wiki/download/attachments/9/a.txt`,
+		);
 
 		expect(Buffer.isBuffer(data)).toBe(true);
 		expect(data.toString()).toBe('plain-text-body');
@@ -406,7 +423,10 @@ describe('confluenceApiRequestBinary', () => {
 			.mockResolvedValueOnce(accessibleResources)
 			.mockResolvedValueOnce(new TextEncoder().encode('ab-bytes').buffer);
 
-		const data = await confluenceApiRequestBinary.call(ctx, '/wiki/download/attachments/9/a.txt');
+		const data = await confluenceApiRequestBinary.call(
+			ctx,
+			requestPath`/wiki/download/attachments/9/a.txt`,
+		);
 
 		expect(Buffer.isBuffer(data)).toBe(true);
 		expect(data.toString()).toBe('ab-bytes');
@@ -418,7 +438,7 @@ describe('confluenceApiRequestBinary', () => {
 			.mockResolvedValueOnce({ unexpected: true });
 
 		await expect(
-			confluenceApiRequestBinary.call(ctx, '/wiki/download/attachments/9/a.txt'),
+			confluenceApiRequestBinary.call(ctx, requestPath`/wiki/download/attachments/9/a.txt`),
 		).rejects.toThrow('Confluence returned an unexpected binary response');
 	});
 
@@ -429,7 +449,7 @@ describe('confluenceApiRequestBinary', () => {
 			.mockRejectedValueOnce({ message: 'boom', response: { status: 500 } });
 
 		const error = await confluenceApiRequestBinary
-			.call(ctx, '/wiki/download/attachments/9/a.txt')
+			.call(ctx, requestPath`/wiki/download/attachments/9/a.txt`)
 			.then(() => null)
 			.catch((thrown: NodeApiError) => thrown);
 
@@ -457,7 +477,7 @@ describe('confluenceApiRequestBinary', () => {
 		});
 
 		const error = await confluenceApiRequestBinary
-			.call(ctx, '/wiki/download/attachments/9/a.txt')
+			.call(ctx, requestPath`/wiki/download/attachments/9/a.txt`)
 			.then(() => null)
 			.catch((thrown: NodeApiError) => thrown);
 
@@ -475,7 +495,7 @@ describe('confluenceApiRequestBinary', () => {
 			.mockResolvedValueOnce(accessibleResources)
 			.mockResolvedValueOnce(bytes);
 
-		await confluenceApiRequestBinary.call(ctx, '/wiki/download/attachments/9/a.txt');
+		await confluenceApiRequestBinary.call(ctx, requestPath`/wiki/download/attachments/9/a.txt`);
 
 		expect(mockHttpRequestWithAuthentication).toHaveBeenNthCalledWith(
 			2,
@@ -517,7 +537,7 @@ describe('confluenceApiRequestUpload', () => {
 
 		const data = await confluenceApiRequestUpload.call(
 			ctx,
-			'/wiki/rest/api/content/9/child/attachment',
+			requestPath`/wiki/rest/api/content/9/child/attachment`,
 			formData,
 		);
 
@@ -528,7 +548,7 @@ describe('confluenceApiRequestUpload', () => {
 				// PUT, not POST: the same endpoint's POST is create-only and 400s on
 				// a filename that already exists on the page, PUT upserts
 				method: 'PUT',
-				url: 'https://api.atlassian.com/ex/confluence/cloud-1/wiki/rest/api/content/9/child/attachment',
+				url: requestUrl`https://api.atlassian.com/ex/confluence/cloud-1/wiki/rest/api/content/9/child/attachment`,
 				body: formData,
 				headers: { 'X-Atlassian-Token': 'nocheck' },
 			}),
@@ -544,7 +564,7 @@ describe('confluenceApiRequestUpload', () => {
 			.mockRejectedValueOnce({ message: 'boom', response: { status: 403 } });
 
 		const error = await confluenceApiRequestUpload
-			.call(ctx, '/wiki/rest/api/content/9/child/attachment', new FormData())
+			.call(ctx, requestPath`/wiki/rest/api/content/9/child/attachment`, new FormData())
 			.then(() => null)
 			.catch((thrown: NodeApiError) => thrown);
 
@@ -562,7 +582,7 @@ describe('confluenceApiRequestUpload', () => {
 			.mockRejectedValueOnce({ message: 'boom', response: { status: 404 } });
 
 		const error = await confluenceApiRequestUpload
-			.call(ctx, '/wiki/rest/api/content/9/child/attachment', new FormData())
+			.call(ctx, requestPath`/wiki/rest/api/content/9/child/attachment`, new FormData())
 			.then(() => null)
 			.catch((thrown: NodeApiError) => thrown);
 
@@ -585,7 +605,7 @@ describe('confluenceApiRequestUpload', () => {
 			});
 
 		const error = await confluenceApiRequestUpload
-			.call(ctx, '/wiki/rest/api/content/9/child/attachment', new FormData())
+			.call(ctx, requestPath`/wiki/rest/api/content/9/child/attachment`, new FormData())
 			.then(() => null)
 			.catch((thrown: NodeApiError) => thrown);
 
@@ -599,7 +619,7 @@ describe('confluenceApiRequestUpload', () => {
 
 		const promise = confluenceApiRequestUpload.call(
 			ctx,
-			'/wiki/rest/api/content/9/child/attachment',
+			requestPath`/wiki/rest/api/content/9/child/attachment`,
 			new FormData(),
 		);
 
@@ -645,7 +665,7 @@ describe('credential routing (authentication selector)', () => {
 	it('routes the cloudId lookup and the API call through the Service Account credential', async () => {
 		setup('serviceAccount');
 
-		await confluenceApiRequest.call(ctx, 'GET', '/wiki/api/v2/pages');
+		await confluenceApiRequest.call(ctx, 'GET', requestPath`/wiki/api/v2/pages`);
 
 		expect(mockHttpRequestWithAuthentication.mock.calls.length).toBeGreaterThanOrEqual(2);
 		for (const call of mockHttpRequestWithAuthentication.mock.calls) {
@@ -661,7 +681,7 @@ describe('credential routing (authentication selector)', () => {
 	it('passes preAuthenticationRetryStatusCode: [401, 403, 404] for the Service Account credential', async () => {
 		setup('serviceAccount');
 
-		await confluenceApiRequest.call(ctx, 'GET', '/wiki/api/v2/pages');
+		await confluenceApiRequest.call(ctx, 'GET', requestPath`/wiki/api/v2/pages`);
 
 		expect(mockHttpRequestWithAuthentication).toHaveBeenLastCalledWith(
 			'atlassianServiceAccountApi',
@@ -678,7 +698,7 @@ describe('credential routing (authentication selector)', () => {
 
 		await confluenceApiRequestUpload.call(
 			ctx,
-			'/wiki/rest/api/content/9/child/attachment',
+			requestPath`/wiki/rest/api/content/9/child/attachment`,
 			new FormData(),
 		);
 
@@ -694,7 +714,7 @@ describe('credential routing (authentication selector)', () => {
 			.mockResolvedValueOnce(accessibleResources)
 			.mockResolvedValueOnce(Buffer.from('bytes'));
 
-		await confluenceApiRequestBinary.call(ctx, '/wiki/download/attachments/9/file.txt');
+		await confluenceApiRequestBinary.call(ctx, requestPath`/wiki/download/attachments/9/file.txt`);
 
 		expect(mockHttpRequestWithAuthentication.mock.calls.length).toBeGreaterThanOrEqual(2);
 		for (const call of mockHttpRequestWithAuthentication.mock.calls) {
@@ -707,7 +727,7 @@ describe('credential routing (authentication selector)', () => {
 		// the read falls back to 'cloudOAuth2' and behavior is unchanged.
 		setup(undefined);
 
-		await confluenceApiRequest.call(ctx, 'GET', '/wiki/api/v2/pages');
+		await confluenceApiRequest.call(ctx, 'GET', requestPath`/wiki/api/v2/pages`);
 
 		expect(mockHttpRequestWithAuthentication.mock.calls.length).toBeGreaterThanOrEqual(2);
 		for (const call of mockHttpRequestWithAuthentication.mock.calls) {
@@ -735,7 +755,7 @@ describe('credential routing (authentication selector)', () => {
 			return siteByUrl('https://example.atlassian.net');
 		}) as never);
 
-		await confluenceApiRequest.call(loadCtx, 'GET', '/wiki/api/v2/pages');
+		await confluenceApiRequest.call(loadCtx, 'GET', requestPath`/wiki/api/v2/pages`);
 
 		expect(loadMock.mock.calls.length).toBeGreaterThanOrEqual(2);
 		for (const call of loadMock.mock.calls) {

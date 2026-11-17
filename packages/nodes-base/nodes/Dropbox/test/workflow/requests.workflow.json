@@ -1,0 +1,155 @@
+{
+	"name": "Dropbox request URLs",
+	"nodes": [
+		{
+			"parameters": {},
+			"name": "When clicking 'Execute workflow'",
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [0, 600],
+			"id": "f1a6f0a4-6f7a-4c55-9d43-4b5a1d6e0001"
+		},
+		{
+			"parameters": {
+				"operation": "download",
+				"path": "/Reports/q1.pdf"
+			},
+			"name": "Download File",
+			"type": "n8n-nodes-base.dropbox",
+			"typeVersion": 1,
+			"position": [300, 0],
+			"id": "f1a6f0a4-6f7a-4c55-9d43-4b5a1d6e0002",
+			"credentials": { "dropboxApi": { "id": "1", "name": "Dropbox account" } }
+		},
+		{
+			"parameters": {
+				"path": "/Reports/notes.txt",
+				"fileContent": "hello"
+			},
+			"name": "Upload File",
+			"type": "n8n-nodes-base.dropbox",
+			"typeVersion": 1,
+			"position": [300, 150],
+			"id": "f1a6f0a4-6f7a-4c55-9d43-4b5a1d6e0003",
+			"credentials": { "dropboxApi": { "id": "1", "name": "Dropbox account" } }
+		},
+		{
+			"parameters": {
+				"resource": "folder",
+				"path": "/Reports/2024"
+			},
+			"name": "Create Folder",
+			"type": "n8n-nodes-base.dropbox",
+			"typeVersion": 1,
+			"position": [300, 300],
+			"id": "f1a6f0a4-6f7a-4c55-9d43-4b5a1d6e0004",
+			"credentials": { "dropboxApi": { "id": "1", "name": "Dropbox account" } }
+		},
+		{
+			"parameters": {
+				"resource": "folder",
+				"operation": "list",
+				"path": "/Reports",
+				"returnAll": true,
+				"filters": {}
+			},
+			"name": "List Folder",
+			"type": "n8n-nodes-base.dropbox",
+			"typeVersion": 1,
+			"position": [300, 450],
+			"id": "f1a6f0a4-6f7a-4c55-9d43-4b5a1d6e0005",
+			"credentials": { "dropboxApi": { "id": "1", "name": "Dropbox account" } }
+		},
+		{
+			"parameters": {
+				"resource": "search",
+				"query": "invoice",
+				"returnAll": true,
+				"simple": false,
+				"filters": {}
+			},
+			"name": "Search",
+			"type": "n8n-nodes-base.dropbox",
+			"typeVersion": 1,
+			"position": [300, 600],
+			"id": "f1a6f0a4-6f7a-4c55-9d43-4b5a1d6e0006",
+			"credentials": { "dropboxApi": { "id": "1", "name": "Dropbox account" } }
+		},
+		{
+			"parameters": {
+				"operation": "copy",
+				"path": "/Reports/q1.pdf",
+				"toPath": "/Archive/q1.pdf"
+			},
+			"name": "Copy File",
+			"type": "n8n-nodes-base.dropbox",
+			"typeVersion": 1,
+			"position": [300, 750],
+			"id": "f1a6f0a4-6f7a-4c55-9d43-4b5a1d6e0007",
+			"credentials": { "dropboxApi": { "id": "1", "name": "Dropbox account" } }
+		},
+		{
+			"parameters": {
+				"operation": "delete",
+				"path": "/Archive/q1.pdf"
+			},
+			"name": "Delete File",
+			"type": "n8n-nodes-base.dropbox",
+			"typeVersion": 1,
+			"position": [300, 900],
+			"id": "f1a6f0a4-6f7a-4c55-9d43-4b5a1d6e0008",
+			"credentials": { "dropboxApi": { "id": "1", "name": "Dropbox account" } }
+		},
+		{
+			"parameters": {
+				"operation": "move",
+				"path": "/Reports/q2.pdf",
+				"toPath": "/Archive/q2.pdf"
+			},
+			"name": "Move File",
+			"type": "n8n-nodes-base.dropbox",
+			"typeVersion": 1,
+			"position": [300, 1050],
+			"id": "f1a6f0a4-6f7a-4c55-9d43-4b5a1d6e0009",
+			"credentials": { "dropboxApi": { "id": "1", "name": "Dropbox account" } }
+		}
+	],
+	"pinData": {
+		"Download File": [{ "json": {} }],
+		"Upload File": [{ "json": { "id": "id:u1", "name": "notes.txt" } }],
+		"Create Folder": [{ "json": { "metadata": { "id": "id:f1", "name": "2024" } } }],
+		"List Folder": [
+			{ "json": { "id": "id:a1", "name": "q1.pdf", "type": "file" } },
+			{ "json": { "id": "id:a2", "name": "q2.pdf", "type": "file" } }
+		],
+		"Search": [
+			{ "json": { "match_type": { ".tag": "filename" }, "metadata": { "id": "id:s1" } } },
+			{ "json": { "match_type": { ".tag": "filename" }, "metadata": { "id": "id:s2" } } }
+		],
+		"Copy File": [{ "json": { "metadata": { "id": "id:c1" } } }],
+		"Delete File": [{ "json": { "metadata": { "id": "id:a1" } } }],
+		"Move File": [{ "json": { "metadata": { "id": "id:m1" } } }]
+	},
+	"connections": {
+		"When clicking 'Execute workflow'": {
+			"main": [
+				[
+					{ "node": "Download File", "type": "main", "index": 0 },
+					{ "node": "Upload File", "type": "main", "index": 0 },
+					{ "node": "Create Folder", "type": "main", "index": 0 },
+					{ "node": "List Folder", "type": "main", "index": 0 },
+					{ "node": "Search", "type": "main", "index": 0 },
+					{ "node": "Copy File", "type": "main", "index": 0 },
+					{ "node": "Delete File", "type": "main", "index": 0 },
+					{ "node": "Move File", "type": "main", "index": 0 }
+				]
+			]
+		}
+	},
+	"active": false,
+	"settings": { "executionOrder": "v1" },
+	"versionId": "f1a6f0a4-6f7a-4c55-9d43-4b5a1d6e00ff",
+	"meta": { "instanceId": "test" },
+	"id": "DropboxRequests",
+	"tags": []
+}

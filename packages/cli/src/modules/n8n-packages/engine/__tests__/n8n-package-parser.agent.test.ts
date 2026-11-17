@@ -75,6 +75,18 @@ describe('N8nPackageParser.getAgents', () => {
 		];
 	}
 
+	it('does not read folder files for loose Agents', async () => {
+		fixture.manifest.folders = [
+			{ id: 'unrelated', name: 'Unrelated', target: 'folders/unrelated' },
+		];
+		const reader = memoryReader(fixture);
+		const readFile = vi.spyOn(reader, 'readFile');
+
+		await parser.getAgents(reader);
+
+		expect(readFile.mock.calls.some(([file]) => file.endsWith('/folder.json'))).toBe(false);
+	});
+
 	it.each([
 		{ name: 'loose Agents', fixture: looseAgentsFixture, prefix: '' },
 		{ name: 'whole project', fixture: projectAgentsFixture, prefix: 'projects/operations/' },
@@ -114,6 +126,32 @@ describe('N8nPackageParser.getAgents', () => {
 				},
 			});
 		}
+	});
+
+	it('derives Agent placement from its folder path and rejects workflow folders', async () => {
+		const nestedTarget = 'folders/team/agents/support';
+		fixture.manifest.folders = [{ id: 'folder-1', name: 'Team', target: 'folders/team' }];
+		fixture.manifest.agents = [{ id: agent.id, name: agent.name, target: nestedTarget }];
+		fixture.files['folders/team/folder.json'] = {
+			id: 'folder-1',
+			name: 'Team',
+			parentFolderId: null,
+			resourceType: 'agent',
+		};
+		fixture.files[`${nestedTarget}/agent.json`] = agent;
+		fixture.files[`${nestedTarget}/agent-metadata.json`] =
+			fixture.files['agents/support/agent-metadata.json'];
+
+		const [parsed] = await parser.getAgents(memoryReader(fixture));
+
+		expect(parsed.parentFolderId).toBe('folder-1');
+		fixture.files['folders/team/folder.json'] = {
+			id: 'folder-1',
+			name: 'Team',
+			parentFolderId: null,
+		};
+
+		await expect(parser.getAgents(memoryReader(fixture))).rejects.toThrow('Agent folder');
 	});
 
 	it('scopes Agents by the requested package prefix', async () => {

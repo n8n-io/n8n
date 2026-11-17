@@ -34,6 +34,10 @@ workspace source file and the `workflow_builder_build_workflow` tool
   smallest edit with `workspace_str_replace_file`, then build with the same
   `filePath` (no `workflowId` needed; the build remembers it). Never re-emit the
   whole source, and do not fetch the same unchanged workflow again.
+- **Several files:** when one step writes or changes two or more files (for
+  example the sources of several supporting workflows), put them all in one
+  `workspace_edit_files` call, not one call for each file. Read two or more
+  files with one `workspace_read_files` call.
 
 When the needed node types are already obvious from the request, make one
 `find_tools` call for every tool catalog tool the build will need (for example
@@ -50,8 +54,11 @@ context.
    `form_input`, `content_generation`, `triage`, `scraping_and_research`). Call
    `search_nodes` with `query`/`queries` and short service names ("Gmail") for
    service-specific nodes.
-2. **Read definitions.** Call `get_node_types` with the exact node IDs and
-   discriminators you will use (up to ten per call). Follow `@builderHint`,
+2. **Read definitions.** Call `get_node_types` once with every node the
+   workflow could need, not only the service nodes. Include utility nodes
+   (Set, IF, Switch, Code, Wait, Sort, Filter) in that first call. There is no
+   limit on how many you request. Fetch again only for a node you did not
+   expect. Use exact node IDs and discriminators. Follow `@builderHint`,
    `@default`, enum values, credential types and display conditions.
 3. **Resolve real values.** For each `searchListMethod`, `loadOptionsMethod` or
    `resourceLocator` parameter, call `get_node_parameter_options` when a

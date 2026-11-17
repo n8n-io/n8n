@@ -2,7 +2,7 @@
 /* eslint-disable n8n-nodes-base/node-param-display-name-miscased */
 
 import type { IExecuteFunctions, INode } from 'n8n-workflow';
-import { NodeOperationError } from 'n8n-workflow';
+import { NodeOperationError, requestPath } from 'n8n-workflow';
 import { mockDeep } from 'vitest-mock-extended';
 
 import { dataverseApiRequest, dataverseApiRequestAllItems } from '../GenericFunctions';
@@ -238,13 +238,21 @@ describe('Microsoft Dataverse operations/shared', () => {
 
 	describe('buildRecordPath', () => {
 		it('builds a GUID path', () => {
-			expect(buildRecordPath('accounts', '7c-guid')).toBe('/accounts(7c-guid)');
+			expect(String(buildRecordPath('accounts', '7c-guid'))).toBe('/accounts(7c-guid)');
 		});
 
 		it('normalizes the entity set and trims the id', () => {
-			expect(buildRecordPath('/accounts/', "  accountnumber='ACC-001'  ")).toBe(
+			expect(String(buildRecordPath('/accounts/', "  accountnumber='ACC-001'  "))).toBe(
 				"/accounts(accountnumber='ACC-001')",
 			);
+		});
+
+		it.each([
+			["accountnumber='AB%2F12'", "/accounts(accountnumber='AB%252F12')"],
+			["accountnumber='AB%252F12'", "/accounts(accountnumber='AB%25252F12')"],
+			["accountnumber='AB+12'", "/accounts(accountnumber='AB%2B12')"],
+		])('builds the alternate key path for %s', (key, expected) => {
+			expect(String(buildRecordPath('accounts', key))).toBe(expected);
 		});
 	});
 
@@ -339,7 +347,7 @@ describe('Microsoft Dataverse operations/shared', () => {
 
 			const result = await executeRequest(ctx, CREDENTIAL_TYPE, {
 				method: 'GET',
-				path: '/accounts',
+				path: requestPath`/accounts`,
 				options: { partitionId: 'p1', returnFullMetadata: true },
 			});
 
@@ -347,7 +355,7 @@ describe('Microsoft Dataverse operations/shared', () => {
 			expect(dataverseApiRequestAllItems).not.toHaveBeenCalled();
 			const [, method, path, body, qs, headers] = vi.mocked(dataverseApiRequest).mock.calls[0];
 			expect(method).toBe('GET');
-			expect(path).toBe('/accounts');
+			expect(String(path)).toBe('/accounts');
 			expect(body).toEqual({});
 			expect(qs).toEqual({ partitionId: 'p1' });
 			expect(headers?.Prefer).toBe('odata.include-annotations="*"');
@@ -358,7 +366,7 @@ describe('Microsoft Dataverse operations/shared', () => {
 
 			await executeRequest(ctx, CREDENTIAL_TYPE, {
 				method: 'GET',
-				path: '/accounts',
+				path: requestPath`/accounts`,
 				options: { returnFullMetadata: false },
 			});
 
@@ -371,7 +379,7 @@ describe('Microsoft Dataverse operations/shared', () => {
 
 			await executeRequest(ctx, CREDENTIAL_TYPE, {
 				method: 'POST',
-				path: '/accounts',
+				path: requestPath`/accounts`,
 				extraHeaders: { Prefer: 'caller-value' },
 				prefer: { returnRepresentation: true },
 			});
@@ -384,7 +392,7 @@ describe('Microsoft Dataverse operations/shared', () => {
 		it('forwards the credential type on the single-shot path', async () => {
 			vi.mocked(dataverseApiRequest).mockResolvedValue({});
 
-			await executeRequest(ctx, CREDENTIAL_TYPE, { method: 'GET', path: '/accounts' });
+			await executeRequest(ctx, CREDENTIAL_TYPE, { method: 'GET', path: requestPath`/accounts` });
 
 			const [, , , , , , credType] = vi.mocked(dataverseApiRequest).mock.calls[0];
 			expect(credType).toBe(CREDENTIAL_TYPE);
@@ -395,7 +403,7 @@ describe('Microsoft Dataverse operations/shared', () => {
 
 			const result = await executeRequest(ctx, CREDENTIAL_TYPE, {
 				method: 'GET',
-				path: '/accounts',
+				path: requestPath`/accounts`,
 				paged: true,
 				limit: 10,
 			});
@@ -411,7 +419,7 @@ describe('Microsoft Dataverse operations/shared', () => {
 
 			await executeRequest(ctx, CREDENTIAL_TYPE, {
 				method: 'GET',
-				path: '/accounts',
+				path: requestPath`/accounts`,
 				qs: { $select: 'name' },
 				paged: true,
 				options: { partitionId: 'p1', returnFullMetadata: true },

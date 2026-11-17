@@ -1,5 +1,5 @@
 import { randomBytes } from 'crypto';
-import { toPathSegment, type IHookFunctions, type IWebhookFunctions } from 'n8n-workflow';
+import { requestUrl, type IHookFunctions, type IWebhookFunctions } from 'n8n-workflow';
 
 import { verifySignature as verifySignatureGeneric } from '../../utils/webhook-signature-verification';
 
@@ -50,7 +50,7 @@ export async function listWebhooks(
 ): Promise<CurrentsWebhook[]> {
 	const response = await this.helpers.httpRequestWithAuthentication.call(this, 'currentsApi', {
 		method: 'GET',
-		url: `${CURRENTS_API_BASE}/webhooks`,
+		url: requestUrl`${CURRENTS_API_BASE}/webhooks`,
 		qs: { projectId },
 	});
 
@@ -79,7 +79,7 @@ export async function createWebhook(
 ): Promise<CurrentsWebhook> {
 	const response = await this.helpers.httpRequestWithAuthentication.call(this, 'currentsApi', {
 		method: 'POST',
-		url: `${CURRENTS_API_BASE}/webhooks`,
+		url: requestUrl`${CURRENTS_API_BASE}/webhooks`,
 		qs: { projectId },
 		body: {
 			url: options.url,
@@ -102,7 +102,7 @@ export async function updateWebhook(
 ): Promise<CurrentsWebhook> {
 	const response = await this.helpers.httpRequestWithAuthentication.call(this, 'currentsApi', {
 		method: 'PUT',
-		url: `${CURRENTS_API_BASE}/webhooks/${toPathSegment(hookId)}`,
+		url: requestUrl`${CURRENTS_API_BASE}/webhooks/${hookId}`,
 		body: {
 			...(options.url && { url: options.url }),
 			...(options.hookEvents && { hookEvents: options.hookEvents }),
@@ -120,7 +120,7 @@ export async function updateWebhook(
 export async function deleteWebhook(this: IHookFunctions, hookId: string): Promise<void> {
 	await this.helpers.httpRequestWithAuthentication.call(this, 'currentsApi', {
 		method: 'DELETE',
-		url: `${CURRENTS_API_BASE}/webhooks/${toPathSegment(hookId)}`,
+		url: requestUrl`${CURRENTS_API_BASE}/webhooks/${hookId}`,
 	});
 }
 

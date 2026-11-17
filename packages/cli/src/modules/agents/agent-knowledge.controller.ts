@@ -1,3 +1,4 @@
+import { TelemetryProxy } from '@n8n/backend-services';
 import type { AuthenticatedRequest } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { Delete, Get, Param, Post, ProjectScope, RestController } from '@n8n/decorators';
@@ -7,16 +8,14 @@ import multer from 'multer';
 
 import { BadRequestError, NotFoundError } from '@n8n/errors';
 
-import type { UploadedKnowledgeFile } from '@/modules/knowledge/files/knowledge-file.service';
+import type { KnowledgeFileUploadResult } from '@/modules/knowledge/files/knowledge-file.service';
 import { KnowledgeUploadError } from '@/modules/knowledge/files/knowledge-upload.error';
 import {
 	KnowledgeUploadMiddleware,
 	cleanupUploadedTempFiles,
-	describeMulterError,
 	multerFailureReason,
 } from '@/modules/knowledge/files/knowledge-upload.middleware';
 import { KnowledgeAvailabilityService } from '@/modules/knowledge/knowledge-availability.service';
-import { Telemetry } from '@/telemetry';
 
 import { AgentKnowledgeService } from './agent-knowledge.service';
 import { AgentRuntimeCacheService } from './agent-runtime-cache.service';
@@ -30,11 +29,11 @@ export class AgentKnowledgeController {
 		private readonly agentKnowledgeService: AgentKnowledgeService,
 		private readonly knowledgeAvailabilityService: KnowledgeAvailabilityService,
 		private readonly runtimeCacheService: AgentRuntimeCacheService,
-		private readonly telemetry: Telemetry,
+		private readonly telemetry: TelemetryProxy,
 	) {}
 
 	/** Knowledge base endpoints require the knowledge module and an enabled Agent sandbox. */
-	private assertKnowledgeBaseEnabled() {
+	private assertFileKnowledgeEnabled() {
 		if (!this.knowledgeAvailabilityService.isFileKnowledgeEnabled()) {
 			throw new NotFoundError('Agent knowledge base is not enabled');
 		}
@@ -48,7 +47,7 @@ export class AgentKnowledgeController {
 		@Param('projectId') projectId: string,
 		@Param('agentId') agentId: string,
 	) {
-		this.assertKnowledgeBaseEnabled();
+		this.assertFileKnowledgeEnabled();
 		return await this.agentKnowledgeService.listFiles(agentId, projectId);
 	}
 
@@ -67,11 +66,11 @@ export class AgentKnowledgeController {
 	) {
 		const files = req.files ?? [];
 		try {
-			this.assertKnowledgeBaseEnabled();
+			this.assertFileKnowledgeEnabled();
 			if (req.fileUploadError) {
 				const error = req.fileUploadError;
 				if (error instanceof multer.MulterError) {
-					const message = `File upload error: ${describeMulterError(error)}`;
+					const message = `File upload error: ${knowledgeUploadMiddleware.describeMulterError(error)}`;
 					const reason = multerFailureReason(error, KNOWLEDGE_FILES_FIELD);
 					throw reason ? new KnowledgeUploadError(message, reason) : new BadRequestError(message);
 				}
@@ -105,7 +104,7 @@ export class AgentKnowledgeController {
 		@Param('agentId') agentId: string,
 		@Param('fileId') fileId: string,
 	) {
-		this.assertKnowledgeBaseEnabled();
+		this.assertFileKnowledgeEnabled();
 
 		const deleted = await this.agentKnowledgeService.deleteFile(agentId, projectId, fileId);
 
@@ -126,7 +125,7 @@ export class AgentKnowledgeController {
 		userId: string,
 		projectId: string,
 		agentId: string,
-		uploadedFiles: UploadedKnowledgeFile[],
+		uploadedFiles: KnowledgeFileUploadResult[],
 	) {
 		const files = uploadedFiles.map(({ file, contentHash }) => ({
 			...(contentHash === undefined ? {} : { content_hash: contentHash }),

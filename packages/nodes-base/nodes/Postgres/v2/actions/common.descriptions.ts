@@ -361,16 +361,21 @@ export const sortFixedCollection: INodeProperties = {
 	],
 };
 
+// From 2.7 the node outputs DATE columns as text, so a date can be the Start After value
+const START_AFTER_MIN_VERSION = 2.7;
+
 export const startAfterFixedCollection: INodeProperties = {
 	displayName: 'Start After',
 	name: 'startAfter',
 	type: 'fixedCollection',
-	placeholder: 'Add Cursor',
+	placeholder: 'Add Start After',
 	default: {},
 	description:
-		'Return rows after a given value of a unique column, so a large table can be read page by page',
+		'Get the table one page at a time. Each page has the rows after the last value of the page before. Limit sets the page size. To get the biggest values first, sort this column DESC.',
 	displayOptions: {
 		show: {
+			// Keep '@version' first. When a show value is an expression, n8n shows the field and skips the next keys.
+			'@version': [{ _cnd: { gte: START_AFTER_MIN_VERSION } }],
 			returnAll: [false],
 		},
 	},
@@ -386,7 +391,7 @@ export const startAfterFixedCollection: INodeProperties = {
 					type: 'options',
 					// eslint-disable-next-line n8n-nodes-base/node-param-description-wrong-for-dynamic-options
 					description:
-						'Unique column to page by. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/" target="_blank">expression</a>.',
+						'A unique column that is never null, for example the primary key. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/" target="_blank">expression</a>.',
 					default: '',
 					typeOptions: {
 						loadOptionsMethod: 'getColumns',
@@ -399,7 +404,8 @@ export const startAfterFixedCollection: INodeProperties = {
 					type: 'string',
 					default: '',
 					description:
-						'Value of the column in the last row of the previous page, leave empty for the first page',
+						'The value of the column in the last row of the page before. Leave empty to get the first page.',
+					hint: 'The node runs once for each input item. In a loop, give it only the last row of the page before, for example with a Limit node that keeps the last item, and use {{ $json.id }}.',
 				},
 			],
 		},

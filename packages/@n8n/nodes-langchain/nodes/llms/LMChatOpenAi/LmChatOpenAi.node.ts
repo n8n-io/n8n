@@ -13,7 +13,7 @@ import {
 } from 'n8n-workflow';
 
 import { wrapChatModelMessageInput } from '@utils/chatModelMessageWrapper';
-import { getCustomCredentialHeader, mergeCustomHeaders } from '@utils/helpers';
+import { getCustomCredentialHeader, mergeCustomHeaders, getRequiredApiKey } from '@utils/helpers';
 import { MODEL_SELECTION_HINT } from '@utils/model-builder-hints';
 
 import { parseExtraBody } from '../shared/extra-body';
@@ -22,6 +22,7 @@ import { openAiFailedAttemptHandler } from '../../vendors/OpenAi/helpers/error-h
 import {
 	makeN8nLlmFailedAttemptHandler,
 	N8nLlmTracing,
+	openAiTokensUsageParser,
 	getProxyAgent,
 	aiClientFetch,
 	getConnectionHintNoticeField,
@@ -731,7 +732,7 @@ export class LmChatOpenAi implements INodeType {
 						name: 'promptConfig',
 						type: 'fixedCollection',
 						description:
-							'Configure the reusable prompt template configured via OpenAI Dashboard. <a href="https://platform.openai.com/docs/guides/prompt-engineering#reusable-prompts">Learn more</a>.',
+							'Configure the reusable prompt template configured via OpenAI Dashboard. <a href="https://developers.openai.com/api/docs/guides/prompting/migrate-from-prompt-object">Learn more</a>.',
 						default: { promptOptions: [{ promptId: '' }] },
 						options: [
 							{
@@ -844,14 +845,17 @@ export class LmChatOpenAi implements INodeType {
 		]);
 
 		const fields: ChatOpenAIFields = {
-			apiKey: credentials.apiKey as string,
+			apiKey: getRequiredApiKey(this.getNode(), credentials.apiKey),
 			model: modelName,
 			...includedOptions,
 			timeout,
 			maxRetries: options.maxRetries ?? 2,
 			configuration,
 			callbacks: [
-				new N8nLlmTracing(this, { redactedHeaders: customHeader ? [customHeader.name] : [] }),
+				new N8nLlmTracing(this, {
+					tokensUsageParser: openAiTokensUsageParser,
+					redactedHeaders: customHeader ? [customHeader.name] : [],
+				}),
 			],
 			modelKwargs,
 			onFailedAttempt: makeN8nLlmFailedAttemptHandler(this, openAiFailedAttemptHandler),

@@ -1,11 +1,13 @@
-import type { User } from '@n8n/db';
+import type { TransactionRunner, User } from '@n8n/db';
 import { ForbiddenError, NotFoundError } from '@n8n/errors';
 import { createDeferredPromise } from '@n8n/utils/promise/deferred-promise';
 import { mock } from 'vitest-mock-extended';
 
+import { TX_CTX } from './test-utils/skill-services';
 import type { SkillSourceConnection } from '../database/entities/skill-source-connection.entity';
 import type { SkillSourceLink } from '../database/entities/skill-source-link.entity';
 import type { SkillSourceRepository } from '../database/repositories/skill-source.repository';
+import type { SkillRepository } from '../database/repositories/skill.repository';
 import { SkillSourceReadError } from '../errors/skill-source-read.error';
 import type { SkillAccessService } from '../services/skill-access.service';
 import type { SkillSyncFlagGate } from '../services/skill-sync-flag-gate';
@@ -18,18 +20,24 @@ describe('SkillSyncService', () => {
 	const flagGate = mock<SkillSyncFlagGate>();
 	const access = mock<SkillAccessService>();
 	const sources = mock<SkillSourceRepository>();
+	const skills = mock<SkillRepository>();
 	const telemetry = mock<SkillsTelemetry>();
+	const txRunner = mock<TransactionRunner>();
 	const service = new SkillSyncService(
 		mock(),
 		flagGate,
 		access,
 		sources,
-		mock(),
+		skills,
 		mock(),
 		mock(),
 		mock(),
 		mock(),
 		telemetry,
+		mock(),
+		mock(),
+		mock(),
+		txRunner,
 	);
 	const user = mock<User>({ id: 'user-1' });
 	const source = mock<SkillSourceConnection>({ id: 'source-1', type: 'github', projectId: 'p1' });
@@ -41,12 +49,28 @@ describe('SkillSyncService', () => {
 
 	beforeEach(() => {
 		vi.resetAllMocks();
+		txRunner.run.mockImplementation(async (_ctx, fn) => await fn(TX_CTX));
 		sources.findById.mockResolvedValue(source);
 		access.canOnSource.mockResolvedValue(true);
+		access.accessCheck.mockResolvedValue(() => true);
 		sources.deleteLink.mockResolvedValue(true);
 	});
 
 	describe('stopSyncing', () => {
+		it('waits for the skill lock before it removes the link', async () => {
+			givenLink(null);
+			const acquired = createDeferredPromise<undefined>();
+			skills.lockForEdit.mockReturnValueOnce(acquired.promise);
+
+			const stopped = service.stopSyncing(user, 'skill_a');
+			await vi.waitFor(() => expect(skills.lockForEdit).toHaveBeenCalled());
+			expect(sources.deleteLink).not.toHaveBeenCalled();
+			expect(telemetry.stoppedSync).not.toHaveBeenCalled();
+			acquired.resolve(undefined);
+			await stopped;
+			expect(sources.deleteLink).toHaveBeenCalledWith('skill_a', TX_CTX);
+		});
+
 		it.each([
 			{ pending: null, hadPendingUpdate: false },
 			{ pending: 'hash-of-update', hadPendingUpdate: true },
@@ -57,7 +81,7 @@ describe('SkillSyncService', () => {
 
 				await service.stopSyncing(user, 'skill_a');
 
-				expect(sources.deleteLink).toHaveBeenCalledWith('skill_a');
+				expect(sources.deleteLink).toHaveBeenCalledWith('skill_a', TX_CTX);
 				expect(telemetry.stoppedSync).toHaveBeenCalledTimes(1);
 				expect(telemetry.stoppedSync).toHaveBeenCalledWith(
 					{ provider: 'github', had_pending_update: hadPendingUpdate },
@@ -113,6 +137,10 @@ describe('SkillSyncService', () => {
 				mock(),
 				mock(),
 				telemetry,
+				mock(),
+				mock(),
+				mock(),
+				txRunner,
 			);
 			const firstId = 'a6c11527-f2f8-4dc9-a0e2-d2804c5b219a';
 			const secondId = '4795c2a1-f46c-4b7d-a657-a435cedb7181';
@@ -121,6 +149,7 @@ describe('SkillSyncService', () => {
 					id,
 					type: 'github',
 					credentialId: null,
+					credentialRequired: false,
 					probeCursor: 'current',
 					lastCheckedAt: null,
 				}),
@@ -144,7 +173,7 @@ describe('SkillSyncService', () => {
 			await expect(sync.checkNow(user, secondId)).rejects.toThrow();
 
 			expect(probe).toHaveBeenCalledTimes(2);
-			expect(sources.recordDelayed).toHaveBeenCalledWith(secondId);
+			expect(sources.recordDelayed).toHaveBeenCalledWith(expect.objectContaining({ id: secondId }));
 		},
 	);
 });

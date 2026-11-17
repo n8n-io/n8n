@@ -6,6 +6,7 @@ import type { ZodIssue } from 'zod';
 import type { SkillContent } from './skill-content-hash';
 import { SKILL_MD } from './skill-md';
 import { codePointOf, HIDDEN_PATTERN, locate, skillMdText } from './skill-text';
+import { isScriptFile } from './skipped-files';
 import type { SkillSourceFidelityWarning } from '../sources/skill-source-client';
 
 /**
@@ -53,10 +54,6 @@ export function checkShape({ content }: SkillScanInput): SkillScanFinding[] {
 	return findings;
 }
 
-/** Extensions of scripts and code. A skill that runs a left-out script can stop working. */
-const CODE_FILE =
-	/\.(?:sh|bash|zsh|fish|ps1|bat|cmd|py|rb|pl|php|lua|r|js|mjs|cjs|ts|mts|cts|jsx|tsx|go|rs|java|kt|swift|c|cc|cpp|h|hpp|cs)$/i;
-
 /**
  * A skill keeps only SKILL.md and `references/*.md`. The SKILL.md reader leaves out every other
  * file, scripts and binaries included, so n8n never stores or runs them. The user sees the list,
@@ -74,7 +71,7 @@ export function listSkippedFiles({
 					file,
 					detail: 'n8n leaves this file out. It has a NUL character, which n8n cannot store.',
 				}
-			: CODE_FILE.test(file)
+			: isScriptFile(file)
 				? {
 						rule: 'file_skipped',
 						severity: 'needs_review',

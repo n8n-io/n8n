@@ -1,4 +1,5 @@
-import { UnexpectedError, type IHttpRequestOptions, type IN8nHttpResponse } from 'n8n-workflow';
+import type { IHttpRequestOptions, IN8nHttpResponse } from 'n8n-workflow';
+import { UnexpectedError } from '@n8n/errors';
 import type { Readable } from 'node:stream';
 
 import type { HttpRequestClient, TypedHttpFullResponse } from './outbound-http';
