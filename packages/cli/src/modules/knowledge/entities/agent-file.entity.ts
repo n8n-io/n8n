@@ -13,7 +13,7 @@ import { Column, Entity, Index } from '@n8n/typeorm';
 @Entity({ name: 'agent_files' })
 @Index(['agentId', 'createdAt'])
 @Index(['agentId', 'fileName'], { unique: true })
-export class KnowledgeFile extends WithTimestampsAndStringId {
+export class AgentFile extends WithTimestampsAndStringId {
 	/**
 	 * The owning agent. The database keeps the foreign key to `agents` with its
 	 * cascade from `CreateAgentFilesTable`; the entity declares no relation, so
