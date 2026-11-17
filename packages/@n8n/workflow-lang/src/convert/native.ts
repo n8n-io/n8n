@@ -108,6 +108,18 @@ export function lowerIf(c: NodeContext): void {
 	c.w.line(`if (${code}) ${t}.push(${ITEM});`);
 	c.w.line(`else ${f}.push(${ITEM});`);
 	c.w.close();
+	keepsPlain(c, [t, f]);
+}
+
+/**
+ * Records that the lists `outs` are plain JSON (`NodeContext.plainLists`) when the input
+ * list is: each list holds items of the input list, each at most once. An error setting
+ * can add other items, so the node must have none.
+ */
+function keepsPlain(c: NodeContext, outs: string[]): void {
+	if (c.node.onError !== undefined && c.node.onError !== 'stopWorkflow') return;
+	if (c.node.continueOnFail || !c.plainLists?.has(c.input)) return;
+	for (const out of outs) c.plainLists.add(out);
 }
 
 /** Filter version 2 (filter conditions) and version 1 (typed conditions). */
@@ -142,6 +154,7 @@ export function lowerFilter(c: NodeContext): void {
 	c.w.line(`if (${code}) ${kept}.push(${ITEM});`);
 	c.w.line(`else ${discarded}.push(${ITEM});`);
 	c.w.close();
+	keepsPlain(c, [kept, discarded]);
 }
 
 /** Switch version 3: rules mode and expression mode. */

@@ -361,6 +361,15 @@ const CHECK_STEP = 'n8n readiness check';
 /** The variable with the name of the node that runs now (`trace: 'all'`). */
 const CURRENT_NODE = '$currentNode';
 
+/** The set of plain list names of a name table: a name leaves the set when the table frees it. */
+function plainListsOf(names: NameTable): Set<string> {
+	const lists = new Set<string>();
+	names.onRelease = (name) => {
+		lists.delete(name);
+	};
+	return lists;
+}
+
 export class ModuleGenerator {
 	private readonly names = new NameTable();
 
@@ -378,6 +387,12 @@ export class ModuleGenerator {
 
 	/** IANA time zones that native Code nodes format dates in (META \`zones\`). */
 	private readonly zones = new Set<string>();
+
+	/**
+	 * List variables that hold plain JSON from a parse (`NodeContext.plainLists`). A name that
+	 * the generator frees (it writes a node again in another form) is no longer in the set.
+	 */
+	private readonly plainLists = plainListsOf(this.names);
 
 	/** The whole input list of each node with "execute once" (its input is the first item). */
 	private readonly onceInputs = new Map<string, string>();
@@ -807,6 +822,9 @@ export class ModuleGenerator {
 			useZone: (zone) => {
 				this.zones.add(zone);
 			},
+			// In the engine shape a name can stand for two lists (a function's own list hides a
+			// `let` list), so no list counts as plain there.
+			plainLists: b.engine ? undefined : this.plainLists,
 			connected: (index) => b.graph.outgoing(node.name).some((e) => e.output === index),
 			ranBefore: (name) =>
 				this.known(b, `${b.prefix}${name}`)

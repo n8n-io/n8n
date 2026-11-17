@@ -187,6 +187,9 @@ export function emitStep(c: NodeContext, call: StepCall): void {
 	const out = c.output(0);
 	const errors = onError === 'continueErrorOutput' ? c.output(1, 'Errors') : null;
 	const fn = call.method === 'node' ? 'ctx.node' : 'ctx.code';
+	// Without an error setting, output 0 only ever holds results of the step, and the result
+	// of an effect is JSON (spec 4.5).
+	if (onError === 'stopWorkflow') c.plainLists?.add(out);
 	if (errors) w.line(`const ${errors}: Json[] = [];`);
 
 	if (!call.perItem) {
