@@ -34,7 +34,8 @@ Memory (long-term, cross-session recall).
 
 ## Observational Memory Tuning
 
-- Supported observational memory tuning fields: \`enabled\`, \`observerModel\`, \`reflectorModel\`, \`observerThresholdTokens\`, \`reflectorThresholdTokens\`, \`renderTokenBudget\`, \`observationLogTailLimit\`, and \`lockTtlMs\`.
+- \`windowShares.maxContextWindowTokens\` caps the window used for memory compaction. The model’s smaller context window still applies. Use \`0\` to remove the cap. Setting this field selects window-based thresholds instead of \`observerThresholdTokens\`. Check that the observer and reflector models can fit their inputs, with room for instructions, notes and output.
+- Supported observational memory tuning fields: \`enabled\`, \`windowShares\`, \`observerModel\`, \`reflectorModel\`, \`observerThresholdTokens\`, \`reflectorThresholdTokens\`, \`renderTokenBudget\`, \`observationLogTailLimit\`, and \`lockTtlMs\`.
 - Memory worker model fields must use object shape: \`{ "model": "provider/model-name", "credential": "<credentialId>" }\`.
 - Only set \`observerModel\`, \`reflectorModel\`, or \`episodicMemory.reflectorModel\` when the user explicitly asks to use a specific model for memory work.
 - Use only credential IDs returned by \`agent_builder_resolve_llm\` or \`setup_credentials(target: "agent")\` for memory worker model fields. Do not invent IDs or copy a main-model credential unless one of those tools returned it for that worker model provider.
