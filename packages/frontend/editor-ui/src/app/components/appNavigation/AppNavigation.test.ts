@@ -68,7 +68,10 @@ const renderComponent = createComponentRenderer(AppNavigation, {
 	global: {
 		stubs: {
 			MainSidebarAccountMenu: { template: '<div data-test-id="account-menu" />' },
-			ProjectIcon: { props: ['icon'], template: '<span data-test-id="rail-icon" :data-icon="icon.value" />' },
+			ProjectIcon: {
+				props: ['icon'],
+				template: '<span data-test-id="rail-icon" :data-icon="icon.value" />',
+			},
 		},
 	},
 });
@@ -221,14 +224,21 @@ describe('AppNavigation', () => {
 			await waitFor(() => expect(panelTitle(getByTestId('app-nav-docked'))).toBe('Marketing'));
 		});
 
-		it('closes the floating panel when a rail item is clicked', async () => {
+		it('keeps the floating panel open after a rail click, until the pointer leaves', async () => {
 			vi.useFakeTimers();
-			const { getByTestId, queryByTestId } = setup({ collapsed: true });
+			const { getByTestId, queryByTestId, router } = setup({ collapsed: true });
 			await fireEvent.mouseEnter(getByTestId('app-nav-project'));
 			vi.advanceTimersByTime(PEEK_OPEN_DELAY);
 			await waitFor(() => expect(queryByTestId('app-nav-floating')).toBeInTheDocument());
 
 			await fireEvent.click(getByTestId('app-nav-project'));
+			await router.push('/projects/p1');
+			vi.advanceTimersByTime(PEEK_CLOSE_DELAY);
+
+			expect(queryByTestId('app-nav-floating')).toBeInTheDocument();
+
+			await fireEvent.mouseLeave(getByTestId('app-nav-rail'));
+			vi.advanceTimersByTime(PEEK_CLOSE_DELAY);
 
 			await waitFor(() => expect(queryByTestId('app-nav-floating')).not.toBeInTheDocument());
 		});

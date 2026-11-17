@@ -33,13 +33,14 @@ const isExpanded = computed(() => !(uiStore.sidebarMenuCollapsed ?? false));
 
 const peek = useNavigationPeek({ enabled: () => !isExpanded.value });
 
-// Pinning a floating panel keeps showing that item until the next navigation.
+// Pinning a floating panel keeps showing that item until the next navigation. A navigation
+// does not close the floating panel: it stays until the pointer leaves for the page, so a
+// click on the rail does not make it flash open and shut.
 const pinnedItemId = ref<string | null>(null);
 watch(
 	() => route.fullPath,
 	() => {
 		pinnedItemId.value = null;
-		peek.close();
 	},
 );
 
@@ -70,7 +71,6 @@ function toggle() {
 }
 
 function onRailItemClick(itemId: string) {
-	peek.close();
 	if (itemId === ASSISTANT_ITEM_ID) agentTelemetry.trackClickedSidebarItem({ item: 'new_chat' });
 }
 
