@@ -223,6 +223,17 @@ pub fn main(init: std.process.Init) !void {
     try out.writeAll(usage);
 }
 
+/// Raise the limit of open files to what the tables of `opts` can use, and
+/// say so when the system allows less. Each inbound and outbound connection
+/// is one file; with too few, outbound requests wait for a socket.
+fn checkFdLimit(opts: server.Options) void {
+    const per_shard: u64 = @as(u64, opts.max_conns) + opts.egress.max_conns + opts.sql.max_conns * 2 + 64;
+    const need = per_shard * opts.shards + 64;
+    const lim = @import("shell/sys.zig").raiseFdLimit(need) orelse return;
+    if (lim.soft >= need) return;
+    std.debug.print("warning: the open-file limit is {d} and the configured connections can use {d} (--max-conns {d}, --egress-max-conns {d}, {d} shard(s)); raise it (ulimit -n, LimitNOFILE=). With no free file, new inbound connections wait and outbound requests wait for a socket until their timeout\n", .{ lim.soft, need, opts.max_conns, opts.egress.max_conns, opts.shards });
+}
+
 /// The options of `perf-model` after the two file names.
 fn perfOptions(args: []const [:0]const u8) !perf_report.Options {
     var o: perf_report.Options = .{};
@@ -536,6 +547,7 @@ fn serve(process_gpa: std.mem.Allocator, io: std.Io, args: []const [:0]const u8)
     }
     @import("shell/sys.zig").ignoreSigpipe();
     @import("shell/sys.zig").handleShutdownSignals();
+    checkFdLimit(opts);
     var stop = std.atomic.Value(bool).init(false);
     const stats = try gpa.alloc(server.Stats, opts.shards);
     for (stats) |*st| st.* = .{};
@@ -568,6 +580,8 @@ fn serve(process_gpa: std.mem.Allocator, io: std.Io, args: []const [:0]const u8)
         var writes: u64 = 0;
         var host = [4]u64{ 0, 0, 0, 0 };
         var host_wait_ms: u64 = 0;
+        // Outbound requests: gauges, then counts since the start.
+        var eg: [11]u64 = @splat(0);
         for (stats) |*st| {
             host[0] += st.host_inflight.load(.monotonic);
             host[1] += st.host_waiting.load(.monotonic);
@@ -578,10 +592,18 @@ fn serve(process_gpa: std.mem.Allocator, io: std.Io, args: []const [:0]const u8)
             batches += st.batches.load(.monotonic);
             log_bytes += st.log_bytes.load(.monotonic);
             writes += st.syscalls_write.load(.monotonic);
+            const parts = [eg.len]*const std.atomic.Value(u64){
+                &st.egress_active,           &st.egress_waiting,         &st.egress_conns,     &st.egress_h2_streams, &st.egress_refused_retried,
+                &st.egress_deadline,         &st.egress_deadline_queued, &st.egress_no_socket, &st.egress_queue_full, &st.egress_h2_reclaimed,
+                &st.egress_origin_conns_max,
+            };
+            for (parts[0..10], eg[0..10]) |part, *sum| sum.* += part.load(.monotonic);
+            eg[10] = @max(eg[10], parts[10].load(.monotonic));
         }
         const now = @import("shell/sys.zig").nowNs();
         const dt = @as(f64, @floatFromInt(now - last_t)) / 1e9;
         std.debug.print("req/s={d:.0} total={d} batches={d} log_bytes={d} writes={d} host_inflight={d} host_waiting={d} host_waited={d} host_refused={d} host_wait_ms={d}\n", .{ @as(f64, @floatFromInt(req - last)) / dt, req, batches, log_bytes, writes, host[0], host[1], host[2], host[3], host_wait_ms });
+        std.debug.print("egress: active={d} waiting={d} conns={d} origin_conns_max={d} h2_streams={d} refused_retried={d} deadline={d} deadline_queued={d} no_socket={d} queue_full={d} h2_reclaimed={d}\n", .{ eg[0], eg[1], eg[2], eg[10], eg[3], eg[4], eg[5], eg[6], eg[7], eg[8], eg[9] });
         last = req;
         last_t = now;
     }

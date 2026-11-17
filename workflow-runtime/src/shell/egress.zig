@@ -276,6 +276,33 @@ pub const Counters = struct {
     queue_full: u64 = 0,
     overload: u64 = 0,
     requeued: u64 = 0,
+    /// Streams that the server refused (RST_STREAM REFUSED_STREAM, or a
+    /// GOAWAY below their id) and that went back to the queue.
+    refused_retried: u64 = 0,
+    /// Requests that ended because their time ran out, and how many of
+    /// them still waited in the queue of their origin.
+    deadline: u64 = 0,
+    deadline_queued: u64 = 0,
+    /// Connections that did not open because the process had no free file
+    /// descriptor. Their requests wait for one.
+    no_socket: u64 = 0,
+    /// Idle HTTP/2 connections closed to give their HTTP/2 state to
+    /// another origin (`--egress-h2-conns` is too small when this grows).
+    h2_reclaimed: u64 = 0,
+};
+
+/// What the client holds now, for `--stats`.
+pub const Gauges = struct {
+    /// Requests in flight, waiting ones included.
+    active: u32 = 0,
+    /// Requests that wait in the queue of their origin for a connection,
+    /// a stream, the rate or a socket.
+    waiting: u32 = 0,
+    /// Open connections, and the most that one origin has.
+    conns: u32 = 0,
+    origin_conns_max: u32 = 0,
+    /// Open HTTP/2 streams.
+    h2_streams: u32 = 0,
 };
 
 const none: u32 = std.math.maxInt(u32);
@@ -291,6 +318,11 @@ const big_release_bytes = 256 << 10;
 const h2_assumed_streams = 100;
 /// The least time between two AIMD cuts of one origin.
 const aimd_cut_gap_ms = 100;
+/// After a connection found no free file descriptor, no new connection
+/// opens for this long (a closed connection ends the wait at once).
+const no_socket_wait_ms = 50;
+/// Times one request goes out again after the server refused its stream.
+const max_refusals = 64;
 
 const RState = enum { free, queued, active };
 
@@ -374,6 +406,8 @@ const Req = struct {
     held: bool = false,
     /// Counted in the origin's requests on the wire.
     on_wire: bool = false,
+    /// Times the server refused its stream.
+    refusals: u8 = 0,
     // HTTP/2 stream.
     conn: u32 = none,
     sid: u32 = 0,
@@ -583,6 +617,10 @@ const H2 = struct {
     err_msg: []const u8 = "",
     /// Streams were freed and their origin may take more.
     freed: bool = false,
+    /// The server refused a stream while this many were open: the cap
+    /// until a response completes (`h2Room`). The server counts its open
+    /// streams itself, and its count can be ahead of ours.
+    refused_cap: u32 = std.math.maxInt(u32),
 };
 
 pub const Client = struct {
@@ -624,6 +662,11 @@ pub const Client = struct {
     last_scan_ms: i64 = 0,
     /// The earliest origin wake (rate or hold).
     wake_ms: i64 = std.math.maxInt(i64),
+    /// No new connection opens before this time (`noSocket`).
+    no_socket_until_ms: i64 = 0,
+    /// The last connection found no free file descriptor: queued requests
+    /// wait for a socket.
+    no_socket_now: bool = false,
     counters: Counters = .{},
     /// Connections to read after a send (TLS), in `afterEvents`. A read
     /// there, not inside the send, keeps the path from a completed
@@ -788,6 +831,7 @@ pub const Client = struct {
         };
         r.held = false;
         r.on_wire = false;
+        r.refusals = 0;
         c.resetStream(ri);
         if (!c.build(ri, args, st, idem_key)) return;
         // The one branch that a request without `responseBinary` pays for it
@@ -1387,6 +1431,17 @@ pub const Client = struct {
         return @max(0, c.wake_ms - now_ms);
     }
 
+    /// The requests, connections and streams that the client holds now.
+    pub fn gauges(c: *const Client) Gauges {
+        var most: u32 = 0;
+        for (c.origins) |*o| {
+            if (o.used) most = @max(most, o.nconns);
+        }
+        const g: Gauges = .{ .active = c.active, .waiting = c.queued_total, .conns = @intCast(c.conns.len - c.ncfree), .origin_conns_max = most, .h2_streams = c.h2_open_total };
+        std.debug.assert(g.waiting <= g.active and g.origin_conns_max <= g.conns);
+        return g;
+    }
+
     // ---- requests and origins -------------------------------------------------
 
     fn reqData(c: *Client, ri: u32) []u8 {
@@ -1689,6 +1744,8 @@ pub const Client = struct {
             if (o.h2_ok and !o.alpn_known and o.h2_opening > 0) return;
             if (o.h2_known and o.h2_opening * h2_assumed_streams >= o.queued) return;
             if (o.lim.max_conns > 0 and o.nconns >= o.lim.max_conns) return;
+            // No free file descriptor a moment ago: wait (`noSocket`).
+            if (c.now_ms < c.no_socket_until_ms) return;
             const addrs = c.addrsFor(oi) orelse return;
             if (!c.takeToken(&c.origins[oi])) return;
             const ci = c.allocConn(oi) orelse return;
@@ -1819,6 +1876,9 @@ pub const Client = struct {
         cn.h2 = none;
         cn.deadline_ms = c.now_ms + if (o.lim.connect_ms > 0) @as(i64, o.lim.connect_ms) else c.cfg.connect_timeout_ms;
         // Keep an HTTP/2 state for the connection while h2 is possible.
+        // Without one the connection speaks HTTP/1.1 and carries one
+        // request: an idle HTTP/2 connection gives its state first.
+        if (o.h2_ok and c.nh2free == 0) c.reclaimH2();
         if (o.h2_ok and c.nh2free > 0) {
             c.nh2free -= 1;
             cn.h2 = c.h2free[c.nh2free];
@@ -1828,6 +1888,44 @@ pub const Client = struct {
         c.onWire(ri);
         cn.state = .connecting;
         c.connectNext(ci);
+    }
+
+    /// Close one HTTP/2 connection that has no stream, so that its HTTP/2
+    /// state is free. The scan runs only when every state is in use.
+    fn reclaimH2(c: *Client) void {
+        std.debug.assert(c.nh2free == 0);
+        for (c.conns, 0..) |*cn, i| {
+            if (cn.state != .h2 or c.h2s[cn.h2].open > 0) continue;
+            c.counters.h2_reclaimed += 1;
+            return c.closeConn(@intCast(i));
+        }
+    }
+
+    /// The process has no free file descriptor for the connection `ci`.
+    /// Its request goes back to the front of the queue and waits for a
+    /// socket until its deadline, as a request of v1 waits for a socket. An
+    /// idle connection closes at once to free a descriptor.
+    fn noSocket(c: *Client, ci: u32) void {
+        const cn = &c.conns[ci];
+        std.debug.assert(cn.state == .connecting and cn.fd < 0);
+        c.counters.no_socket += 1;
+        const oi = cn.origin;
+        if (cn.req != none) {
+            const ri = cn.req;
+            cn.req = none;
+            c.enqueue(oi, ri, true);
+        }
+        c.no_socket_now = true;
+        c.closeConn(ci);
+        var freed = false;
+        for (c.origins) |*o| {
+            if (!o.used or o.idle == none) continue;
+            c.closeConn(o.idle);
+            freed = true;
+            break;
+        }
+        c.no_socket_until_ms = if (freed) c.now_ms else c.now_ms + no_socket_wait_ms;
+        c.wake_ms = @min(c.wake_ms, c.no_socket_until_ms);
     }
 
     /// Try the addresses in order; the first that starts connecting wins.
@@ -1846,6 +1944,7 @@ pub const Client = struct {
             };
             cn.fd = fd;
             cn.gen +%= 1;
+            c.no_socket_now = false;
             const tok = sys.makeToken(c.kind_conn, cn.gen, ci);
             c.poller.addRead(fd, tok) catch {
                 sys.close(fd);
@@ -1856,6 +1955,7 @@ pub const Client = struct {
             cn.write_armed = true;
             return;
         }
+        if (sys.isNoDescriptor(last_err)) return c.noSocket(ci);
         c.connFailFmt(ci, "connect to {s} failed: {s}", .{ c.hostPort(ci), if (last_err != 0) sys.errnoText(last_err) else "no address worked" });
     }
 
@@ -2667,7 +2767,7 @@ pub const Client = struct {
         // answer streams over its limit with PROTOCOL_ERROR, which fails
         // them. Its SETTINGS come with its first bytes, one round trip.
         const peer_cap = if (h.got_settings) h.peer.max_concurrent_streams else 1;
-        const cap = @min(peer_cap, c.cfg.h2_streams);
+        const cap = @min(peer_cap, c.cfg.h2_streams, h.refused_cap);
         return if (h.open >= cap) 0 else cap - h.open;
     }
 
@@ -2903,6 +3003,15 @@ pub const Client = struct {
         }
         if (was_full and c.h2Room(ci) > 0) c.h2List(ci, true);
         if (h.open == 0) cn.deadline_ms = c.now_ms + c.cfg.idle_timeout_ms;
+    }
+
+    /// The server refused a stream of the connection. The streams that are
+    /// open now are the most it takes until a response completes, and the
+    /// connection goes behind the ones with free streams.
+    fn h2Refused(c: *Client, ci: u32) void {
+        const h = c.h2Of(ci);
+        h.refused_cap = @max(1, h.open);
+        if (!h.goaway and c.conns[ci].h2_listed and c.h2Room(ci) == 0) c.h2List(ci, false);
     }
 
     /// Queue RST_STREAM for a stream that we give up (timeout). A stream
@@ -3264,7 +3373,10 @@ pub const Client = struct {
     fn h2Complete(c: *Client, ri: u32) void {
         const r = &c.reqs[ri];
         const oi = r.origin;
+        const ci = r.conn;
         c.h2CloseStream(ri);
+        // A response completed: the server takes streams again.
+        c.h2Of(ci).refused_cap = std.math.maxInt(u32);
         const area = c.respArea(ri);
         const lines = area[0..r.hdr_len];
         c.feedback(oi, r.status, lines);
@@ -3571,18 +3683,28 @@ pub const Client = struct {
             const ri = self.stream(sid) orelse return;
             const r = &c.reqs[ri];
             c.h2CloseStream(ri);
+            const refused = code == .refused_stream or (code == .no_error and !r.got_bytes);
+            if (refused) c.h2Refused(self.ci);
             // A response that the store began to take cannot start again.
-            if (!r.storing and (code == .refused_stream or (code == .no_error and !r.got_bytes))) {
-                // Not processed (RFC 9113 8.7): safe to send again.
+            if (!r.storing and refused and r.refusals < max_refusals) {
+                // Not processed (RFC 9113 8.7): safe to send again. The
+                // connection takes no stream until one of its streams ends,
+                // so the request goes to another connection or waits.
+                r.refusals += 1;
                 c.resetStream(ri);
                 c.counters.requeued += 1;
+                c.counters.refused_retried += 1;
                 c.enqueue(r.origin, ri, true);
                 c.pending_pump = true;
                 return;
             }
             c.resetStream(ri);
-            var b: [160]u8 = undefined;
-            c.failReq(ri, std.fmt.bufPrint(&b, "http: the server reset the stream ({s})", .{code.text()}) catch "http: the server reset the stream");
+            var b: [200]u8 = undefined;
+            const msg = if (refused and !r.storing)
+                std.fmt.bufPrint(&b, "http: the server refused the HTTP/2 stream {d} times ({s})", .{ @as(u32, r.refusals) + 1, code.text() })
+            else
+                std.fmt.bufPrint(&b, "http: the server reset the stream ({s})", .{code.text()});
+            c.failReq(ri, msg catch "http: the server reset the stream");
         }
 
         pub fn onSetting(self: *H2Handler, id: u16, v: u32) Err!void {
@@ -3616,16 +3738,17 @@ pub const Client = struct {
             const hh = self.h();
             if (ack) return;
             hh.settings_acks += 1;
+            const c = self.c;
+            const cn = &c.conns[self.ci];
             if (!hh.got_settings) {
                 hh.got_settings = true;
-                const c = self.c;
-                const cn = &c.conns[self.ci];
                 c.origins[cn.origin].h2_opening -= 1;
-                if (hh.goaway) return;
-                // The stream cap is known now.
-                if (c.h2Room(self.ci) > 0) c.h2List(self.ci, true) else c.h2List(self.ci, false);
-                if (c.origins[cn.origin].queued > 0) c.pending_pump = true;
             }
+            if (hh.goaway) return;
+            // The stream cap is known now, or the server changed it: a
+            // connection with free streams is at the front of the list.
+            if (c.h2Room(self.ci) > 0) c.h2List(self.ci, true) else c.h2List(self.ci, false);
+            if (c.origins[cn.origin].queued > 0) c.pending_pump = true;
         }
 
         pub fn onPing(self: *H2Handler, data: [8]u8, ack: bool) Err!void {
@@ -3661,6 +3784,7 @@ pub const Client = struct {
                     continue;
                 }
                 c.counters.requeued += 1;
+                c.counters.refused_retried += 1;
                 c.enqueue(r.origin, ri, true);
                 c.pending_pump = true;
             }
@@ -3916,48 +4040,105 @@ pub const Client = struct {
     fn checkReq(c: *Client, ri: u32) void {
         const now = c.now_ms;
         const r = &c.reqs[ri];
-        const read_ms = c.readMs(r.origin);
         if (r.state != .free and c.cfg.stuck_ms > 0 and !r.stuck_reported and now - r.started_ms >= c.cfg.stuck_ms and now < r.deadline_ms) c.reportStuck(ri);
-        switch (r.state) {
-            .free => return,
-            .queued => if (now >= r.deadline_ms) {
-                c.unqueue(ri);
-                return c.failReqFmt(ri, "http: the request timed out after {d} ms", .{r.timeout_ms});
-            },
-            .active => if (r.conn != none and r.sid != 0) {
-                if (now >= r.deadline_ms) {
-                    const ci = r.conn;
-                    c.h2Cancel(ri, .cancel);
-                    var b: [320]u8 = undefined;
-                    const msg = std.fmt.bufPrint(&b, "http: the request to {s} timed out after {d} ms", .{ c.hostPort(ci), r.timeout_ms }) catch "http: the request timed out";
-                    c.resetStream(ri);
-                    return c.failReq(ri, msg);
-                }
-                if (read_ms > 0 and r.hdrs_sent and now - r.last_io_ms >= read_ms) {
-                    c.h2Cancel(ri, .cancel);
-                    c.resetStream(ri);
-                    return c.failReqFmt(ri, "http: no data for {d} ms (read timeout)", .{read_ms});
-                }
-            } else if (r.h1conn != none and c.conns[r.h1conn].req == ri) {
-                const ci = r.h1conn;
-                const cn = &c.conns[ci];
-                switch (cn.state) {
-                    .connecting, .handshaking => if (now >= r.deadline_ms) {
-                        cn.req = none;
-                        return c.failReqFmt(ri, "http: the request timed out after {d} ms", .{r.timeout_ms});
-                    },
-                    .sending, .reading, .paused => {
-                        if (now >= r.deadline_ms) return c.connFailFmt(ci, "the request to {s} timed out after {d} ms", .{ c.hostPort(ci), r.timeout_ms });
-                        if (cn.state == .reading and read_ms > 0 and now - cn.last_io_ms >= read_ms) return c.connFailFmt(ci, "no data from {s} for {d} ms (read timeout)", .{ c.hostPort(ci), read_ms });
-                    },
-                    else => {},
-                }
-            } else if (r.stored_end and now >= r.deadline_ms) {
-                // The stream ended, and the store did not take the last bytes in time.
-                return c.failReqFmt(ri, "http: the request timed out after {d} ms", .{r.timeout_ms});
-            },
+        const ended = switch (r.state) {
+            .free => true,
+            .queued => now >= r.deadline_ms and c.endQueued(ri),
+            .active => if (r.conn != none and r.sid != 0)
+                c.endStream(ri)
+            else if (r.h1conn != none and c.conns[r.h1conn].req == ri)
+                c.endOnConn(ri)
+            else
+                r.stored_end and now >= r.deadline_ms and c.endStoredEnd(ri),
+        };
+        if (!ended) c.wheelInsert(ri, c.nextCheck(ri));
+    }
+
+    /// The deadline of a queued request: the error says what it waited for.
+    fn endQueued(c: *Client, ri: u32) bool {
+        const r = &c.reqs[ri];
+        std.debug.assert(r.state == .queued and r.origin != none);
+        const o = &c.origins[r.origin];
+        const host = o.hostSlice()[0..@min(o.host_len, 80)];
+        const ms = r.timeout_ms;
+        const held = r.held;
+        c.counters.deadline += 1;
+        c.counters.deadline_queued += 1;
+        c.unqueue(ri);
+        if (c.no_socket_now) {
+            c.failReqFmt(ri, "http: the request timed out after {d} ms; it waited for a socket to {s}:{d}: the process had no free file descriptor (raise the open-file limit)", .{ ms, host, o.port });
+        } else if (o.resolving) {
+            c.failReqFmt(ri, "http: the request timed out after {d} ms; it waited for the address of {s}", .{ ms, host });
+        } else if (held) {
+            c.failReqFmt(ri, "http: the request timed out after {d} ms; it waited for the Retry-After of {s}:{d}", .{ ms, host, o.port });
+        } else if (o.inflight >= c.wireLimit(o)) {
+            c.failReqFmt(ri, "http: the request timed out after {d} ms; it waited for {s}:{d}, which has {d} requests on the wire (limit {d})", .{ ms, host, o.port, o.inflight, c.wireLimit(o) });
+        } else if (o.h2_known) {
+            c.failReqFmt(ri, "http: the request timed out after {d} ms; it waited for an HTTP/2 stream to {s}:{d} ({d} connections, {d} more requests wait)", .{ ms, host, o.port, o.nconns, o.queued });
+        } else {
+            c.failReqFmt(ri, "http: the request timed out after {d} ms; it waited for a connection to {s}:{d} ({d} of the origin, {d} of {d} in all)", .{ ms, host, o.port, o.nconns, c.conns.len - c.ncfree, c.conns.len });
         }
-        c.wheelInsert(ri, c.nextCheck(ri));
+        return true;
+    }
+
+    /// The deadline or the read timeout of a request on an HTTP/2 stream.
+    /// True when the request ended.
+    fn endStream(c: *Client, ri: u32) bool {
+        const r = &c.reqs[ri];
+        const now = c.now_ms;
+        const read_ms = c.readMs(r.origin);
+        const ci = r.conn;
+        if (now >= r.deadline_ms) {
+            const what: []const u8 = if (!r.hdrs_sent) "the request did not go out" else if (!r.headers_done) "no response headers arrived" else "the response body did not end";
+            const sid = r.sid;
+            c.counters.deadline += 1;
+            c.h2Cancel(ri, .cancel);
+            c.resetStream(ri);
+            c.failReqFmt(ri, "http: the request to {s} timed out after {d} ms; {s} (HTTP/2 stream {d}, {d} more open on the connection)", .{ c.hostPort(ci), r.timeout_ms, what, sid, c.h2Of(ci).open });
+            return true;
+        }
+        if (read_ms > 0 and r.hdrs_sent and now - r.last_io_ms >= read_ms) {
+            c.counters.deadline += 1;
+            c.h2Cancel(ri, .cancel);
+            c.resetStream(ri);
+            c.failReqFmt(ri, "http: no data for {d} ms (read timeout)", .{read_ms});
+            return true;
+        }
+        return false;
+    }
+
+    /// The deadline or the read timeout of a request on an HTTP/1.1
+    /// connection. True when the request ended.
+    fn endOnConn(c: *Client, ri: u32) bool {
+        const r = &c.reqs[ri];
+        const now = c.now_ms;
+        const read_ms = c.readMs(r.origin);
+        const ci = r.h1conn;
+        const cn = &c.conns[ci];
+        const late = now >= r.deadline_ms;
+        switch (cn.state) {
+            .connecting, .handshaking => if (late) {
+                cn.req = none;
+                c.counters.deadline += 1;
+                c.failReqFmt(ri, "http: the request timed out after {d} ms; the connection to {s} did not open", .{ r.timeout_ms, c.hostPort(ci) });
+                return true;
+            },
+            .sending, .reading, .paused => {
+                const silent = cn.state == .reading and read_ms > 0 and now - cn.last_io_ms >= read_ms;
+                if (late or silent) c.counters.deadline += 1;
+                if (late) c.connFailFmt(ci, "the request to {s} timed out after {d} ms", .{ c.hostPort(ci), r.timeout_ms }) else if (silent) c.connFailFmt(ci, "no data from {s} for {d} ms (read timeout)", .{ c.hostPort(ci), read_ms });
+                return late or silent;
+            },
+            else => {},
+        }
+        return false;
+    }
+
+    /// The stream ended, and the store did not take the last bytes in time.
+    fn endStoredEnd(c: *Client, ri: u32) bool {
+        c.counters.deadline += 1;
+        c.failReqFmt(ri, "http: the request timed out after {d} ms", .{c.reqs[ri].timeout_ms});
+        return true;
     }
 
     fn connectMs(c: *Client, oi: u32) i64 {

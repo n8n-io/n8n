@@ -224,7 +224,7 @@ wfrt serve --target-rate 20000 --vendor-latency-ms 300 [--memory-mb 512] ...
 | `--egress-read-timeout-ms` | 0 (none) | the wait for the next byte of a response |
 | `--egress-timeout-ms` | 300000 | the whole request when the step has no `timeoutMs` |
 | `--egress-h2` | on | offer `h2` with ALPN to https origins |
-| `--egress-h2-conns` | 256 (64) | connections that speak HTTP/2 at once (each has its HPACK table and frame buffers) |
+| `--egress-h2-conns` | 256 | connections that speak HTTP/2 at once (each has its HPACK table and frame buffers). When all are in use, an idle HTTP/2 connection gives its state; else the new connection speaks HTTP/1.1 |
 | `--egress-h2-streams` | 256 | our cap of streams on one connection (the server's SETTINGS can lower it) |
 | `--egress-aimd` | on | halve an origin's requests on the wire after a 429 or 503 |
 | `--egress-retry-after-max-ms` | 60000 | the longest `Retry-After` hold |
@@ -245,6 +245,25 @@ first matching rule wins; its unset keys take the defaults above.
 
 Behaviour:
 
+- At its start, `serve` raises the soft limit of open files to what
+  `--max-conns` and `--egress-max-conns` can use, up to the hard limit (as
+  Node.js does), and prints a warning when the hard limit is lower. A
+  connection that finds no free file descriptor does not fail its request:
+  the request waits for a socket until its timeout.
+- A request that waits for an HTTP/2 stream, a connection, a socket or the
+  rate waits until its timeout (`timeoutMs`, else `--egress-timeout-ms`).
+  The error of the timeout says what the request waited for. A stream that
+  the server refuses goes out again, on another connection when one has a
+  free stream; the refusing connection takes no new stream until one of
+  its responses completes.
+- `--stats` prints a second line each second: `egress: active= waiting=
+  conns= origin_conns_max= h2_streams=` (now) and `refused_retried=
+  deadline= deadline_queued= no_socket= queue_full= h2_reclaimed=` (counts
+  since the start). `waiting` is the requests in origin queues;
+  `deadline` is the requests that ended by a timeout, `deadline_queued`
+  those of them that never left the queue; `no_socket` is the connections
+  that found no free file descriptor; `h2_reclaimed` grows when
+  `--egress-h2-conns` is too small.
 - A request over an origin's limits waits in the origin's queue; it never
   fails because of a limit, unless the queue is full (`queue=`) or every
   request slot is used (`--egress-max-requests`). Then the step gets an

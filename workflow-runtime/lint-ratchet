@@ -4,12 +4,12 @@
 # List the findings of one rule with: zig build lint -- --rule <name>
 core-allocator 9
 row-pointer 10
-undefined 378
+undefined 377
 pointer-cast 26
 local-array 1
 global-var 18
 empty-catch 15
-silent-catch 86
+silent-catch 85
 anyerror 14
 inferred-error 16
 unreachable-comment 74
