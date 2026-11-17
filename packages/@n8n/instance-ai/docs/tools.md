@@ -1177,7 +1177,9 @@ Input: `{ projectId?, changes: [{ action, ... }] }`, with 1 to 50 changes.
 - The user approves the whole batch on one card. A change needs no approval
   when the permission is `always_allow`, when a session approval covers its
   action, or when it changes columns or rows of a table that the thread
-  created. Session approvals never cover destructive actions.
+  created. Session approvals never cover destructive actions. An approval
+  applies only to the tables that the card showed. If one of them changed, the
+  tool shows a new card.
 - The former write tools (`create_data_table`, `insert_data_table_rows`, and
   the others) and the former `data_tables` tool are legacy names. A suspended
   call under such a name still resumes through `change_data_tables`. A new call

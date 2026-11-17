@@ -107,6 +107,30 @@ async function resumeBatch(
 	return await executeTool(createChangeDataTablesTool(context), input, resumeCtx(approved, scope));
 }
 
+/**
+ * Shows the card, then resumes it approved with the continuation that the card
+ * stored, as the runtime does. `beforeResume` changes the world in between.
+ */
+async function approveAfterCard(
+	context: InstanceAiContext,
+	input: unknown,
+	beforeResume: () => void = () => {},
+) {
+	const tool = createChangeDataTablesTool(context);
+	const firstSuspend = vi.fn();
+	await executeTool(tool, input, suspendCtx(firstSuspend));
+	expect(firstSuspend).toHaveBeenCalledTimes(1);
+	const options = z
+		.object({ continuation: z.unknown().optional() })
+		.optional()
+		.parse(firstSuspend.mock.calls[0][1]);
+	beforeResume();
+	const suspend = vi.fn();
+	const resumed = { resumeData: { approved: true }, continuation: options?.continuation, suspend };
+	const result = await executeTool(tool, input, resumed);
+	return { result, suspend, continuation: options?.continuation };
+}
+
 /** The payload of the only card the tool showed. */
 function cardOf(suspend: ReturnType<typeof vi.fn>) {
 	expect(suspend).toHaveBeenCalledTimes(1);
@@ -833,6 +857,59 @@ describe('change_data_tables tool', () => {
 			for (const method of WRITE_METHODS) {
 				expect(context.dataTableService[method]).not.toHaveBeenCalled();
 			}
+		});
+
+		describe('tables that change before approval', () => {
+			const insertIntoLeads = {
+				changes: [{ action: 'insert-rows', table: 'Leads', rows: [{ name: 'a' }] }],
+			};
+			const leadsColumns = { 'dt-Leads': [column('name')], 'dt-Leads-2': [column('name')] };
+
+			it('shows a new card and runs nothing when a table resolves to another ID', async () => {
+				const context = contextWithTables(leadsColumns);
+				const { result, suspend } = await approveAfterCard(context, insertIntoLeads, () => {
+					context.dataTableService.resolveTableReference = vi.fn(async () => ({
+						id: 'dt-Leads-2',
+						name: 'Leads',
+						projectId: 'proj-1',
+					}));
+				});
+
+				expect(cardOf(suspend).approvalDetails.changes).toHaveLength(1);
+				expect(result).not.toMatchObject({ success: true });
+				for (const method of WRITE_METHODS) {
+					expect(context.dataTableService[method]).not.toHaveBeenCalled();
+				}
+			});
+
+			it('runs the batch when every table still resolves to the ID the card showed', async () => {
+				const context = contextWithTables(leadsColumns);
+				const { result, suspend } = await approveAfterCard(context, insertIntoLeads);
+
+				expect(suspend).not.toHaveBeenCalled();
+				expect(result).toMatchObject({ success: true });
+				expect(context.dataTableService.insertRows).toHaveBeenCalledTimes(1);
+			});
+
+			it('runs an approved batch whose card stored no tables', async () => {
+				const context = contextWithTables(leadsColumns);
+				const result = await resumeBatch(context, insertIntoLeads, true, 'once');
+
+				expect(result).toMatchObject({ success: true });
+				expect(context.dataTableService.insertRows).toHaveBeenCalledTimes(1);
+			});
+
+			it('stores no table for a batch that only creates tables', async () => {
+				const context = contextWithTables();
+				const { result, suspend, continuation } = await approveAfterCard(context, {
+					changes: [createA, { action: 'insert-rows', table: 'A', rows: [{ email: 'x' }] }],
+				});
+
+				expect(continuation).toEqual({ tables: [] });
+				expect(suspend).not.toHaveBeenCalled();
+				expect(result).toMatchObject({ success: true });
+				expect(context.dataTableService.create).toHaveBeenCalledTimes(1);
+			});
 		});
 
 		it('validates the batch again on resume and runs nothing when it fails', async () => {

@@ -27,11 +27,16 @@ import {
 	type ChangeDataTablesInput,
 } from './change-data-tables.schema';
 import { runChanges } from './change-data-tables.run';
+import {
+	approvedTablesChanged,
+	approvedTablesOf,
+	type ApprovedTables,
+} from './change-data-tables.continuation';
 import { validateChanges, type ChangePlan } from './change-data-tables.validate';
 import {
 	confirmationResumeSchema,
 	confirmationSuspendSchema,
-	type ConfirmationToolContext,
+	type ConfirmationSuspendPayload,
 	type ResumeData,
 } from './confirmation';
 
@@ -70,10 +75,20 @@ function invalidInputResult(error: z.ZodError) {
 	};
 }
 
+/** The confirmation context plus the continuation that keeps the tables the card showed. */
+interface ChangeDataTablesToolContext {
+	resumeData: ResumeData | undefined;
+	continuation?: unknown;
+	suspend: (
+		payload: ConfirmationSuspendPayload,
+		options?: { continuation?: ApprovedTables },
+	) => Promise<never>;
+}
+
 async function handleChanges(
 	context: InstanceAiContext,
 	input: unknown,
-	ctx: ConfirmationToolContext,
+	ctx: ChangeDataTablesToolContext,
 ) {
 	const parsed = parseStrict(input);
 	if (!parsed.ok) return parsed.result;
@@ -83,9 +98,17 @@ async function handleChanges(
 	const validation = await validateChanges(context, parsed.input);
 	if (!validation.ok) return validation.error;
 	const { plan } = validation;
+	// The approval covers only the tables that the card showed.
+	if (ctx.resumeData && approvedTablesChanged(plan, ctx.continuation)) {
+		return await suspendForApproval(plan, ctx);
+	}
 	if (ctx.resumeData) return await resumeChanges(context, plan, ctx.resumeData);
-	if (batchNeedsApproval(context, plan)) return await ctx.suspend(buildApprovalRequest(plan));
+	if (batchNeedsApproval(context, plan)) return await suspendForApproval(plan, ctx);
 	return await runChanges(context, plan);
+}
+
+async function suspendForApproval(plan: ChangePlan, ctx: ChangeDataTablesToolContext) {
+	return await ctx.suspend(buildApprovalRequest(plan), { continuation: approvedTablesOf(plan) });
 }
 
 function deniedResult(changes: number) {
