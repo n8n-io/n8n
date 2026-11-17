@@ -1,0 +1,139 @@
+packages/frontend/editor-ui/src/app/components/app/AppSidePanel.test.ts
+  s_6956ec5be81713::t_3589dfd289db5d 2,6
+  s_6956ec5be81713::t_83c8c18fb81cc4 28-36,43,51,102-104,106,108-109
+packages/frontend/editor-ui/src/app/utils/uiExtensionNodes.ts
+  s_6956ec5be81713::t_83a402b27e5608 1-14
+packages/frontend/@n8n/design-system/src/types/tabs.ts
+  s_6956ec5be81713::t_d060429269c65a 20-26
+packages/modules/ui-extensions/frontend/src/ui-extensions.store.test.ts
+  s_6956ec5be81713::t_40e42f8331c6a8 19
+  s_6956ec5be81713::t_17ce0ae386a95c 9,25-30,37,223-312
+packages/modules/ui-extensions/frontend/src/__tests__/render-builtin-view.ts
+  s_6956ec5be81713::t_4d4b98a986316d 3,27,31,68,191-212,216-221
+  s_6956ec5be81713::t_01d2bec895ada5 213-215
+packages/frontend/@n8n/design-system/src/locale/lang/en.ts
+  s_6956ec5be81713::t_d060429269c65a 62
+packages/modules/ui-extensions/frontend/src/examples/servicesOverview.view.test.ts
+  s_6956ec5be81713::t_01d2bec895ada5 57-59
+  s_6956ec5be81713::t_4b878553b7fb70 1-56,60-123
+packages/modules/ui-extensions/frontend/README.md
+  s_6956ec5be81713::t_d4ee3589693644 3-30
+packages/modules/ui-extensions/frontend/src/ui-extensions.module.test.ts
+  s_6956ec5be81713::t_b8818dbafa81b2 11-20
+packages/modules/ui-extensions/frontend/src/examples/servicesOverview.view.js
+  s_6956ec5be81713::t_2924b67db094b9 23,29,33
+  s_6956ec5be81713::t_2530644a4d689f 1-22,24-28,30-32,34-193
+packages/frontend/editor-ui/src/app/App.vue
+  s_6956ec5be81713::t_f8d56b00c3524c 38-39,89-90
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_6956ec5be81713::t_24b9f9240195f1 5839-5871
+packages/modules/ui-extensions/frontend/src/components/ViewFrame.test.ts
+  s_6956ec5be81713::t_bacaea93186478 16
+  s_6956ec5be81713::t_e66969e9e98d24 143-179
+  s_6956ec5be81713::t_5d491301a69dbd 142
+packages/modules/ui-extensions/frontend/src/ui-extensions.builtin.ts
+  s_6956ec5be81713::t_26d364a2ed1e90 6-10,15,133-172,174
+packages/modules/ui-extensions/frontend/src/index.ts
+  s_6956ec5be81713::t_ef4996481f1898 6-13,17-19
+packages/frontend/editor-ui/src/app/composables/useUiExtensionOverviewData.test.ts
+  s_6956ec5be81713::t_7050393e4dd27f 83-88
+  s_6956ec5be81713::t_300aac1e39f47d 156-157
+  s_6956ec5be81713::t_ad10365a0bf6a5 1-82,89-155,158-182,184-283
+  s_6956ec5be81713::t_99b91009db9f20 183
+packages/modules/ui-extensions/frontend/src/components/UiExtensionPagesNav.test.ts
+  s_6956ec5be81713::t_bd913de4fc13ca 1-129
+packages/modules/ui-extensions/frontend/src/ui-extensions.builtin.test.ts
+  s_6956ec5be81713::t_4d4b98a986316d 8-9,16-23,29,34,46,57-109
+  s_6956ec5be81713::t_50b6909bed8450 110
+packages/modules/ui-extensions/frontend/src/components/SidePanel.vue
+  s_6956ec5be81713::t_4d2cc9e005cfb8 3,7,38,40,42-52,55-59,99-100,103-111,128-129,137-139,163-166,168-176,186-188,190
+  s_6956ec5be81713::t_01d2bec895ada5 130-136
+packages/modules/ui-extensions/frontend/src/ui-extensions.store.ts
+  s_6956ec5be81713::t_74ece5919f07aa 10-11,24-26,36-37,46-53,56-62,64,66-73,103-104,107-110,113,115-117,128,135,138-142,144-145,152-165,168,176
+packages/frontend/editor-ui/src/features/collaboration/projects/components/ProjectNavigation.vue
+  s_6956ec5be81713::t_cd7953e8b1cecb 12,28,49-50,237,337-338
+packages/modules/ui-extensions/frontend/src/ui-extensions.types.ts
+  s_6956ec5be81713::t_26d364a2ed1e90 1-6,8-11,17,19-38
+packages/modules/ui-extensions/frontend/src/ui-extensions.module.ts
+  s_6956ec5be81713::t_ef4996481f1898 3-4,13,16-23
+  s_6956ec5be81713::t_28eeb1e7b2fd72 24
+packages/modules/ui-extensions/frontend/src/ui-extensions.constants.ts
+  s_6956ec5be81713::t_26d364a2ed1e90 2-5
+packages/frontend/editor-ui/src/app/components/app/AppSidePanel.vue
+  s_6956ec5be81713::t_f8d56b00c3524c 2,37-41,59,77
+packages/modules/ui-extensions/frontend/src/composables/useRemoveUiExtension.ts
+  s_6956ec5be81713::t_4d2cc9e005cfb8 8,44
+  s_6956ec5be81713::t_d45c6ed77a5ce0 1-7,9-43,45-67
+packages/frontend/@n8n/design-system/src/components/N8nTabs/Tabs.stories.ts
+  s_6956ec5be81713::t_bad8a337921263 144-150
+  s_6956ec5be81713::t_1e4b0106d14a0b 137-143,151-158
+packages/frontend/editor-ui/src/app/composables/useUiExtensionPanelData.ts
+  s_6956ec5be81713::t_83a402b27e5608 70
+packages/modules/ui-extensions/frontend/package.json
+  s_6956ec5be81713::t_34d75f2c853a36 24
+packages/modules/ui-extensions/frontend/src/components/UiExtensionPagesNav.vue
+  s_6956ec5be81713::t_08f323a359e7db 1-47,52-62,66-124
+  s_6956ec5be81713::t_01d2bec895ada5 48-51,63-65
+packages/frontend/@n8n/design-system/src/components/N8nTabs/Tabs.vue
+  s_6956ec5be81713::t_2574ad9a99cff3 367,370,388,394
+  s_6956ec5be81713::t_d060429269c65a 70,73-81,143-146,202,224-235,356-366,368-369,371-387,389-393,396,398-399
+  s_6956ec5be81713::t_96d8236322e40e 395,397,400
+packages/modules/ui-extensions/frontend/src/views/UiExtensionPageView.vue
+  s_6956ec5be81713::t_01d2bec895ada5 27,79-84
+  s_6956ec5be81713::t_19b291b800d744 1-26,28-76,78,85-107
+  s_6956ec5be81713::t_16dfb2ffe31c2d 77
+packages/frontend/editor-ui/src/app/composables/useUiExtensionPageContext.ts
+  s_6956ec5be81713::t_83a402b27e5608 5,9
+packages/modules/ui-extensions/frontend/src/ui-extensions.api.ts
+  s_6956ec5be81713::t_26d364a2ed1e90 14-18
+packages/frontend/editor-ui/src/app/composables/useUiExtensionsHost.ts
+  s_6956ec5be81713::t_f8d56b00c3524c 1-69
+packages/modules/ui-extensions/frontend/src/components/SidePanel.test.ts
+  s_6956ec5be81713::t_01d2bec895ada5 56-62,108-114
+  s_6956ec5be81713::t_f025a09b1cddc3 11-21,41,43,150-228
+packages/modules/ui-extensions/frontend/src/views/UiExtensionPageView.test.ts
+  s_6956ec5be81713::t_bd913de4fc13ca 2,122
+  s_6956ec5be81713::t_01d2bec895ada5 116-118
+  s_6956ec5be81713::t_644361144de13b 1,3-115,119-121,123-161
+packages/frontend/editor-ui/src/app/composables/useUiExtensionOverviewData.ts
+  s_6956ec5be81713::t_e377ca85cdfeb1 1-6,8-12,14-102,104-154,159-160,162-212
+  s_6956ec5be81713::t_56c1e261492be9 7,13,155-158
+  s_6956ec5be81713::t_7050393e4dd27f 103,161
+packages/frontend/editor-ui/src/app/composables/useUiExtensionsHost.test.ts
+  s_6956ec5be81713::t_83c8c18fb81cc4 1-72
+packages/frontend/editor-ui/src/features/collaboration/projects/components/ProjectNavigation.test.ts
+  s_6956ec5be81713::t_7050393e4dd27f 666-668,684
+  s_6956ec5be81713::t_35a8fa4ea6a28b 60,69,662-664,673-683,685-694
+  s_6956ec5be81713::t_3a7a57fcc6ff54 61-65,68,695
+  s_6956ec5be81713::t_300aac1e39f47d 6,665
+  s_6956ec5be81713::t_0921bc3e14685a 66-67
+  s_6956ec5be81713::t_ca89526ed1d8f5 669-672
+packages/modules/ui-extensions/backend/README.md
+  s_6956ec5be81713::t_d4ee3589693644 14-34
+packages/frontend/@n8n/design-system/src/components/N8nTabs/Tabs.test.ts
+  s_6956ec5be81713::t_1e4b0106d14a0b 207-273
+packages/frontend/@n8n/ui-extension-runtime/README.md
+  s_6956ec5be81713::t_2fe8f06763fc48 12-21
+packages/frontend/@n8n/ui-extension-runtime/src/runtime.test.ts
+  s_6956ec5be81713::t_a91a9d8b513d41 235,246,272
+packages/frontend/@n8n/ui-extension-runtime/src/runtime.ts
+  s_6956ec5be81713::t_dc5ba4410132d0 22-25,33-34,53,147-148
+pnpm-lock.yaml
+  s_6956ec5be81713::t_7af88386d8de73 8993-8995
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "1e988c0cdd7834bd95e6cc10fafc906efa8b1888",
+  "prompts": {},
+  "sessions": {
+    "s_6956ec5be81713": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "91664345-a691-443f-b08d-05a7967643b2",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "alex <alex@n8n.io>"
+    }
+  }
+}
