@@ -65,6 +65,7 @@ describe('CompiledWorkflowCompiler: nodes with conditions on a credential', () =
 	const input = { id: 'wf1', name: 'W', versionId: 'v1', nodes, connections: {} };
 	let dataDir = '';
 	let compiler: CompiledWorkflowCompiler;
+	let nodeIdentity = 'icu=78.3 v8=14.6';
 
 	beforeEach(async () => {
 		vi.resetAllMocks();
@@ -92,6 +93,7 @@ describe('CompiledWorkflowCompiler: nodes with conditions on a credential', () =
 		});
 		vi.mocked(loadWorkflowLang).mockResolvedValue({
 			COMPILER_VERSION: 'test',
+			identityKey: () => nodeIdentity,
 			convertWorkflow,
 			compile: (source: string) => ({
 				ok: true,
@@ -124,6 +126,20 @@ describe('CompiledWorkflowCompiler: nodes with conditions on a credential', () =
 
 	afterEach(async () => {
 		await rm(dataDir, { recursive: true, force: true });
+	});
+
+	it('compiles the workflow again when the Node.js of the process is another one', async () => {
+		credentials.unprovenFlagNodes.mockResolvedValue([]);
+
+		const first = await compiler.compile(input);
+		const again = await compiler.compile(input);
+		nodeIdentity = 'icu=78.3 v8=13.6';
+		const other = await compiler.compile(input);
+		nodeIdentity = 'icu=78.3 v8=14.6';
+
+		expect(again.key).toBe(first.key);
+		expect(other.key).not.toBe(first.key);
+		expect(convertWorkflow).toHaveBeenCalledTimes(2);
 	});
 
 	it('keeps the node compiled when the values of its conditions are checked', async () => {

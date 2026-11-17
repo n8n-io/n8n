@@ -6,8 +6,10 @@
  *
  * Each spec comes from the ICU data of this Node.js. The script then formats
  * many dates and numbers with the helpers and with Node.js, and keeps a spec
- * only when every result is the same. The output depends only on the ICU
- * version, which the header names.
+ * only when every result is the same. The output is the behaviour of this
+ * Node.js build: the table names its locale identity (`LOCALE_TABLE_IDENTITY`,
+ * `node-identity.ts`), and the converter uses the table only for a target
+ * with that identity.
  *
  * Run: node scripts/locale-data.ts
  */
@@ -17,10 +19,16 @@ import { fileURLToPath } from 'node:url';
 
 import type { LocaleOptions } from '../src/convert/code-native/locale-derive.ts';
 import { deriveLocaleEntry } from '../src/convert/code-native/locale-derive.ts';
+import { localeIdentity, processIdentity } from '../src/convert/node-identity.ts';
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..', 'src', 'convert', 'code-native');
 
 type Combo = [string, string | null, LocaleOptions];
+interface Entry {
+	date?: Record<string, unknown>;
+	num?: Record<string, unknown>;
+	split?: true;
+}
 
 function nameIndex(names: string[][], list: string[]): number {
 	const key = JSON.stringify(list);
@@ -33,14 +41,13 @@ function nameIndex(names: string[][], list: string[]): number {
 function main() {
 	const combos: Combo[] = JSON.parse(readFileSync(join(root, 'locale-combos.json'), 'utf8'));
 	const names: string[][] = [];
-	const table: Record<string, { date?: Record<string, unknown>; num?: Record<string, unknown> }> =
-		{};
+	const table: Record<string, Entry> = {};
 	let kept = 0;
 	for (const [method, localeIn, options] of combos) {
 		const key = JSON.stringify([method, localeIn, options]);
 		// The specs and their check against Node.js: `locale-derive.ts`.
 		const derived = deriveLocaleEntry(method, localeIn, options);
-		const entry: { date?: Record<string, unknown>; num?: Record<string, unknown> } = {};
+		const entry: Entry = {};
 		if (derived.date) {
 			// The name lists go to `LOCALE_NAMES`: many specs share one list.
 			const { p, m, w, ap, hc, dg } = derived.date;
@@ -53,6 +60,7 @@ function main() {
 			entry.date = date;
 		}
 		if (derived.num) entry.num = { ...derived.num };
+		if (derived.split) entry.split = true;
 		if (entry.date || entry.num) {
 			table[key] = entry;
 			kept++;
@@ -67,9 +75,12 @@ function main() {
  * \`w\` and \`ap\` of a date spec are indexes in \`LOCALE_NAMES\`.
  */
 /* eslint-disable */
+/** The locale identity of the Node.js that made the table (\`localeIdentity\` of \`node-identity.ts\`). */
+export const LOCALE_TABLE_IDENTITY = ${JSON.stringify(localeIdentity(processIdentity()))};
+
 export const LOCALE_NAMES: string[][] = ${JSON.stringify(names)};
 
-export const LOCALE_TABLE: Record<string, { date?: Record<string, unknown>; num?: Record<string, unknown> }> = ${JSON.stringify(table)};
+export const LOCALE_TABLE: Record<string, { date?: Record<string, unknown>; num?: Record<string, unknown>; split?: true }> = ${JSON.stringify(table)};
 `;
 	writeFileSync(join(root, 'locale-data.generated.ts'), out);
 	console.log(`${kept} of ${combos.length} combinations kept, ${names.length} name lists`);

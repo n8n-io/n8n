@@ -14,6 +14,7 @@ import { issueOf } from '../legacy/index.ts';
 import { NATIVE_FORM_FAILED } from './expression.ts';
 import type { ConvertOptions, Round } from './generator.ts';
 import { diagnosticKey, ModuleGenerator, readWorkflow } from './generator.ts';
+import { runtimeDataMismatch } from './node-identity.ts';
 import type { ConvertDiagnostic, ConvertResult } from './types.ts';
 
 export type { ConvertDiagnostic, ConvertResult, N8nWorkflow } from './types.ts';
@@ -45,6 +46,16 @@ export function convertWorkflow(input: unknown, options: ConvertOptions = {}): C
 			ok: false,
 			source: '',
 			diagnostics: [{ severity: 'error', code: 'input', message: wf }],
+			fallbackNodes: [],
+		};
+	}
+	// The tables of the runtime must be those of the Node.js that runs v1 (`node-identity.ts`).
+	const mismatch = runtimeDataMismatch();
+	if (mismatch !== null) {
+		return {
+			ok: false,
+			source: '',
+			diagnostics: [{ severity: 'error', code: 'node-data', message: mismatch }],
 			fallbackNodes: [],
 		};
 	}

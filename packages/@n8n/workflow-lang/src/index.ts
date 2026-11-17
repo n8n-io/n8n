@@ -8,6 +8,13 @@ export type { ConvertOptions } from './convert/index.ts';
 export type { ConvertDiagnostic, ConvertResult, N8nWorkflow } from './convert/types.ts';
 export { credentialKey, credentialSlots } from './convert/naming.ts';
 export { COMPILER_VERSION, compile, decodeModule } from './compiler/index.ts';
+export {
+	identityKey,
+	processIdentity,
+	setTargetNode,
+	targetNode,
+} from './convert/node-identity.ts';
+export type { NodeIdentity } from './convert/node-identity.ts';
 export type { CompileOptions, CompileResult, Manifest } from './compiler/index.ts';
 export { buildCredentialsFile, CredentialsToolError } from './credentials/build.ts';
 export type {

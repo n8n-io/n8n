@@ -8,16 +8,15 @@
  * set of options that the helpers can format has a native form.
  *
  * A spec is kept only when the helpers give the text of Node.js for many dates and numbers.
- * A spec depends on the ICU version. The translator derives one only with the ICU version of
- * the table (`LOCALE_ICU`): another version keeps the call in the fallback host, so the same
- * workflow converts to the same code on each machine.
+ * A spec is the behaviour of one Node.js build (`node-identity.ts`): its ICU data and its
+ * V8. So `localeEntry` (`locale-entry.ts`) takes a spec of the table only when the table has the locale identity
+ * of the target, and derives a spec only when the target is this process. Each other case
+ * keeps the call in the fallback host.
  */
 import ts from 'typescript';
 
+import { targetIsProcess } from '../node-identity.ts';
 import { LOCALE_HELPERS } from './locale-helpers.ts';
-
-/** The ICU version of `locale-data.generated.ts`. */
-export const LOCALE_ICU = '78.3';
 
 export type LocaleOptions = Record<string, string | number | boolean>;
 type Part = [string, string];
@@ -49,11 +48,31 @@ export interface NumSpec {
 export interface LocaleEntry {
 	date?: DateSpec;
 	num?: NumSpec;
+	/**
+	 * True when `formatToParts` of this Node.js does not give the parts of the helpers, while
+	 * `format` gives their text. V8 before 14 writes a space for U+202F in the text of a date
+	 * and keeps U+202F in the parts.
+	 */
+	split?: true;
+}
+
+interface HelperPart {
+	type: string;
+	value: string;
 }
 
 interface Helpers {
-	dateParts: (spec: unknown, t: number, offset: number) => Array<{ value: string }>;
-	numberParts: (spec: unknown, x: unknown) => Array<{ value: string }>;
+	dateParts: (spec: unknown, t: number, offset: number) => HelperPart[];
+	numberParts: (spec: unknown, x: unknown) => HelperPart[];
+}
+
+const partsText = (parts: HelperPart[]): string => parts.map((p) => p.value).join('');
+
+function sameParts(ours: HelperPart[], theirs: Array<{ type: string; value: string }>): boolean {
+	return (
+		ours.length === theirs.length &&
+		ours.every((p, k) => p.type === theirs[k].type && p.value === theirs[k].value)
+	);
 }
 
 let helpers: Helpers | undefined;
@@ -350,37 +369,47 @@ export function deriveLocaleEntry(
 			spec = null;
 		}
 		if (spec) {
-			const found = spec;
-			const same = times.every((t) => {
-				const want =
-					method === 'DateTimeFormat'
-						? new Intl.DateTimeFormat(locale, { ...options, timeZone: 'UTC' }).format(t)
-						: new Date(t)[method as 'toLocaleString']?.call(new Date(t), locale, {
-								...options,
-								timeZone: 'UTC',
-							});
-				return (
-					h
-						.dateParts(found, t, 0)
-						.map((p) => p.value)
-						.join('') === want
-				);
-			});
-			if (same) entry.date = spec;
+			const zoned = { ...options, timeZone: 'UTC' };
+			const format = new Intl.DateTimeFormat(locale, zoned);
+			const want = (t: number): string | undefined =>
+				method === 'DateTimeFormat'
+					? format.format(t)
+					: new Date(t)[method as 'toLocaleString']?.call(new Date(t), locale, zoned);
+			const gives = (candidate: DateSpec) =>
+				times.every((t) => partsText(h.dateParts(candidate, t, 0)) === want(t));
+			// V8 writes a space for U+202F in the text of a date. Before V8 14 the parts keep
+			// U+202F, so a spec from the parts needs the same change to give the text.
+			const spaced: DateSpec = {
+				...spec,
+				p: spec.p.map(
+					([type, value]): Part => [type, type === 'literal' ? value.replaceAll(' ', ' ') : value],
+				),
+			};
+			const found = gives(spec) ? spec : gives(spaced) ? spaced : null;
+			if (found) {
+				entry.date = found;
+				if (
+					method === 'DateTimeFormat' &&
+					!times.every((t) => sameParts(h.dateParts(found, t, 0), format.formatToParts(t)))
+				) {
+					entry.split = true;
+				}
+			}
 		}
 	}
 	if (method === 'NumberFormat' || method === 'toLocaleString') {
 		const spec = numberSpec(locale, options);
 		if (spec) {
 			const f = new Intl.NumberFormat(locale, options);
-			const same = values.every(
-				(v) =>
-					h
-						.numberParts(spec, v)
-						.map((p) => p.value)
-						.join('') === f.format(v),
-			);
-			if (same) entry.num = spec;
+			if (values.every((v) => partsText(h.numberParts(spec, v)) === f.format(v))) {
+				entry.num = spec;
+				if (
+					method === 'NumberFormat' &&
+					!values.every((v) => sameParts(h.numberParts(spec, v), f.formatToParts(v)))
+				) {
+					entry.split = true;
+				}
+			}
 		}
 	}
 	return entry;
@@ -390,6 +419,7 @@ export function deriveLocaleEntry(
 export interface TableEntry {
 	date?: Record<string, unknown>;
 	num?: Record<string, unknown>;
+	split?: true;
 }
 
 /** The largest number of combinations that `derivedLocaleEntry` keeps. */
@@ -397,16 +427,18 @@ const MAX_DERIVED = 4096;
 const derived = new Map<string, TableEntry | undefined>();
 
 /**
- * The specs of a combination that the table does not have, or undefined: the helpers cannot
- * format it, the locale or an option is not valid, or this Node.js has another ICU version
- * than the table.
+ * The specs of a combination from this process, or undefined: the helpers cannot format it,
+ * the locale or an option is not valid, or the target is not this process (`node-identity.ts`).
+ *
+ * A derivation formats about 600 dates or numbers with Node.js and with the helpers. The
+ * result stays for the life of the process, for at most `MAX_DERIVED` combinations.
  */
 export function derivedLocaleEntry(
 	method: string,
 	locale: string | null,
 	options: Record<string, unknown>,
 ): TableEntry | undefined {
-	if (typeof process === 'undefined' || process.versions.icu !== LOCALE_ICU) return undefined;
+	if (!targetIsProcess()) return undefined;
 	const key = JSON.stringify([method, locale, options]);
 	if (derived.has(key)) return derived.get(key);
 	const plain: LocaleOptions = {};
@@ -422,6 +454,7 @@ export function derivedLocaleEntry(
 			entry = {
 				...(found.date ? { date: { ...found.date } } : {}),
 				...(found.num ? { num: { ...found.num } } : {}),
+				...(found.split ? { split: true as const } : {}),
 			};
 		}
 	} catch {

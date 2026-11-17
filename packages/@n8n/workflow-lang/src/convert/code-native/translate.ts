@@ -28,9 +28,9 @@ import ts from 'typescript';
 
 import { isKnownTimezone } from '../../compiler/triggers.ts';
 import { DEFAULT_TIMEZONE } from '../triggers.ts';
-import { LOCALE_NAMES, LOCALE_TABLE } from './locale-data.generated.ts';
+import { LOCALE_NAMES } from './locale-data.generated.ts';
 import { planBody, planCatch } from './catch-check.ts';
-import { derivedLocaleEntry } from './locale-derive.ts';
+import { localeEntry } from './locale-entry.ts';
 import { formatSupported as luxonFormatSupported } from './luxon-expression.ts';
 import { checkRegex } from './regex-syntax.ts';
 
@@ -1989,10 +1989,12 @@ export function translateCode(input: CodeNativeInput): TranslateResult {
 		method: string,
 		a: { locale: string | null; options: Record<string, unknown> },
 	) =>
-		Object.hasOwn(LOCALE_TABLE, JSON.stringify([method, a.locale, a.options]))
-			? LOCALE_TABLE[JSON.stringify([method, a.locale, a.options])]
-			: // A combination outside the table: its specs from the ICU data, checked against Node.js.
-				derivedLocaleEntry(method, a.locale, a.options);
+		// From the table when it has the identity of the target Node.js, else from the ICU data
+		// of this process, checked against Node.js (\`node-identity.ts\`).
+		localeEntry(method, a.locale, a.options);
+
+	/** The code reads the parts of a format somewhere. */
+	const readsParts = /\bformatToParts\b/.test(input.code);
 
 	/** The code makes a Date somewhere: \`new Date(…)\` or \`Date(…)\`. */
 	const makesDates = /\bnew\s+Date\b|\bDate\s*\(/.test(input.code);
@@ -3768,6 +3770,14 @@ export function translateCode(input: CodeNativeInput): TranslateResult {
 			const spec = kind === 'DateTimeFormat' ? entry?.date : entry?.num;
 			if (typeof a === 'string' || !spec || args.length > 2) {
 				block(`Intl.${kind}`, `\`Intl.${kind}\` with these arguments is not in the locale table.`);
+				return;
+			}
+			if (entry?.split && readsParts) {
+				// The helpers give the text of \`format\` of this Node.js, and not its parts.
+				block(
+					'Intl: formatToParts',
+					`\`formatToParts\` of this \`Intl.${kind}\` has no native form on this Node.js.`,
+				);
 				return;
 			}
 			if (a.zone) zones.add(a.zone);

@@ -35,6 +35,7 @@ import {
 } from './moment.ts';
 import type { ParameterValidation, ValidationPlan } from './validate.ts';
 import { planValidation, VALIDATION_HELPER_USES, VALIDATION_HELPERS } from './validate.ts';
+import { URL_PATH_ESCAPES_CARET, urlHelperFits } from './url-check.ts';
 
 export interface SpecialiseInput {
 	type: string;
@@ -1430,7 +1431,7 @@ const HELPERS: Record<string, string> = {
 			if (end) path.push('');
 		} else if (lower === '.' || lower === '%2e') {
 			if (end) path.push('');
-		} else path.push(__urlText(piece, [34, 35, 60, 62, 63, 94, 96, 123, 125]));
+		} else path.push(__urlText(piece, [34, 35, 60, 62, 63, ${URL_PATH_ESCAPES_CARET ? '94, ' : ''}96, 123, 125]));
 		piece = '';
 	}
 	const hostText: string = port === '' ? host : host + ':' + port;
@@ -1873,6 +1874,10 @@ const URL_PROPERTIES = new Set([
 	'search',
 	'hash',
 ]);
+
+export function urlReaderFits(): boolean {
+	return urlHelperFits([HELPERS.__urlText, HELPERS.__url]);
+}
 
 function isUrlNew(e: ts.Node | undefined): e is ts.NewExpression {
 	return (
@@ -3421,7 +3426,7 @@ class Specialiser {
 					);
 				}
 			}
-			if (!localNames.has('URL')) {
+			if (!localNames.has('URL') && urlReaderFits()) {
 				const parsed = (e: ts.Expression): ts.Expression | undefined =>
 					isUrlNew(e)
 						? this.helper('__url', ...args(e))

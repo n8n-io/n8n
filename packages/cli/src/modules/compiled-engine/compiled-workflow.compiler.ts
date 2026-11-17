@@ -323,6 +323,9 @@ export class CompiledWorkflowCompiler {
 		};
 		const baseKey = createHash('sha256')
 			.update(lang.COMPILER_VERSION)
+			// A module holds text that this Node.js gives (locale formats, URL parts): its ICU
+			// data, time zone rules, Unicode tables, V8 and URL parser. Another Node.js compiles again.
+			.update(lang.identityKey())
 			.update(JSON.stringify(workflowJson))
 			.update(JSON.stringify([...subWorkflows.entries()]))
 			.update(getGlobalState().defaultTimezone)

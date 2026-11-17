@@ -6,7 +6,8 @@ import { compile } from '../../compiler/index.ts';
 import { decodeModule } from '../../compiler/decode.ts';
 import { runReference } from '../../reference/runner.ts';
 import { runModule } from '../../testing/vm.ts';
-import { specialiseNode } from '../specialise.ts';
+import { processIdentity, setTargetNode } from '../../convert/node-identity.ts';
+import { specialiseNode, urlReaderFits } from '../specialise.ts';
 
 const here = dirname(fileURLToPath(import.meta.url));
 const nodesBase = join(here, '../../../../../nodes-base');
@@ -321,12 +322,27 @@ const URL_OUTSIDE = [
 ];
 
 describe('node compiler: URL', () => {
-	it('gives the result of Node for each URL that it reads', async () => {
+	afterEach(() => setTargetNode(undefined));
+
+	const fits = urlReaderFits();
+
+	it('compiles a URL only when the reader gives the result of this Node.js', () => {
+		const errors = probe('', URL_READ).errors;
+		if (fits) expect(errors).toEqual([]);
+		else expect(errors.length).toBeGreaterThan(0);
+	});
+
+	it('does not compile a URL for a Node.js with another URL parser than this process', () => {
+		setTargetNode({ ...processIdentity(), ada: 'another parser' });
+		expect(probe('', URL_READ).errors.length).toBeGreaterThan(0);
+	});
+
+	it.skipIf(!fits)('gives the result of Node for each URL that it reads', async () => {
 		const out = await values('', URL_READ, URL_SUPPORTED);
 		expect(out).toEqual(URL_SUPPORTED.map(urlOfNode));
 	});
 
-	it.each(URL_OUTSIDE.map((text) => ({ text })))(
+	it.skipIf(!fits).each(URL_OUTSIDE.map((text) => ({ text })))(
 		'gives the result of Node or stops, and no catch block hides the stop: $text',
 		async ({ text }) => {
 			const out = await run('', URL_READ, [text]);
@@ -335,7 +351,7 @@ describe('node compiler: URL', () => {
 		},
 	);
 
-	it('reads a URL in a variable, a pattern and an assignment', async () => {
+	it.skipIf(!fits)('reads a URL in a variable, a pattern and an assignment', async () => {
 		const expression = `(() => {
 	let late;
 	try {
@@ -383,7 +399,7 @@ describe('node compiler: URL', () => {
 		expect(probe('', expression).errors.length).toBeGreaterThan(0);
 	});
 
-	it('gives the text of URLSearchParams for an object of text', async () => {
+	it.skipIf(!fits)('gives the text of URLSearchParams for an object of text', async () => {
 		const texts = [
 			{},
 			{ a: '1', 'b c': "x y!~*'()-._", e: '€&=+%', n: 5, t: true, empty: '' },

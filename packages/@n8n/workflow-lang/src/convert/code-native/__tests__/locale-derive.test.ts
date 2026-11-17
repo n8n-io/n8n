@@ -1,15 +1,19 @@
 /**
  * Locale formatting with a locale and options outside the table of
  * `locale-data.generated.ts`: the translator derives the specs from the ICU data
- * (`locale-derive.ts`). Each case runs natively, and the texts must be the texts of Node.js.
+ * (`locale-derive.ts`). Each case runs natively, and the texts must be the texts of the
+ * Node.js that runs the test: no expected text is in this file, so the tests pass on each
+ * Node.js version (`node-identity.ts`).
  */
-import { describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it } from 'vitest';
 
 import { useUtc } from '../../../reference/runner.ts';
 import { runModule } from '../../../testing/vm.ts';
 import { checkTranslation } from '../check.ts';
+import { localeIdentity, processIdentity, setTargetNode } from '../../node-identity.ts';
 import { LOCALE_TABLE } from '../locale-data.generated.ts';
-import { deriveLocaleEntry, derivedLocaleEntry, LOCALE_ICU } from '../locale-derive.ts';
+import { deriveLocaleEntry, derivedLocaleEntry } from '../locale-derive.ts';
+import { localeEntry } from '../locale-entry.ts';
 import { translateCode } from '../translate.ts';
 
 useUtc();
@@ -41,6 +45,11 @@ function run(code: string): unknown {
 	});
 	expect(out.status).toBe('ok');
 	return out.result;
+}
+
+function blockersOf(code: string): string[] {
+	const t = translateCode({ code, mode: 'all', kind: 'code', hasNode: () => false });
+	return t.ok ? [] : t.blockers.map((b) => b.feature);
 }
 
 type Options = Record<string, string | number | boolean>;
@@ -101,12 +110,73 @@ const INTL_NUMBERS: Array<[string, Options]> = [
 const withZone = (options: Options, zone: string | null): Options =>
 	zone === null ? options : { ...options, timeZone: zone };
 
+describe('the Node.js identity of the locale table', () => {
+	afterEach(() => setTargetNode(undefined));
+
+	const options = { day: 'numeric', month: 'long', year: 'numeric' } as const;
+	const key = JSON.stringify(['toLocaleDateString', 'en-US', options]);
+	const code = `return [{ json: { t: new Date(${TIMES[0]}).toLocaleDateString('en-US', ${JSON.stringify(options)}) } }];`;
+	const wrong = { date: { p: [['literal', 'not the text of Node.js']] } };
+
+	it('has a combination of the table for the checks below', () => {
+		expect(Object.hasOwn(LOCALE_TABLE, key)).toBe(true);
+	});
+
+	it('uses a table that has the locale identity of the target', () => {
+		const table = { identity: localeIdentity(), entries: { [key]: wrong } };
+		expect(localeEntry('toLocaleDateString', 'en-US', options, table)).toBe(wrong);
+	});
+
+	it('does not use a table of another identity: it derives the specs in this process', () => {
+		const table = {
+			identity: localeIdentity({ ...processIdentity(), v8: 'another V8' }),
+			entries: { [key]: wrong },
+		};
+		const entry = localeEntry('toLocaleDateString', 'en-US', options, table);
+		expect(entry).not.toBe(wrong);
+		expect(entry?.date).toEqual(deriveLocaleEntry('toLocaleDateString', 'en-US', options).date);
+	});
+
+	it.each([
+		['V8', { v8: 'another V8' }],
+		['ICU', { icu: '0.1' }],
+		['CLDR', { cldr: '0.1' }],
+	])(
+		'keeps the call in the host for a target with another %s than this process and the table',
+		(_name, change) => {
+			setTargetNode({ ...processIdentity(), ...change });
+			expect(localeEntry('toLocaleDateString', 'en-US', options)).toBeUndefined();
+			expect(blockersOf(code)).toEqual(['locale formatting outside the table']);
+			setTargetNode(undefined);
+			expect(run(code)).toEqual([
+				{ t: new Date(TIMES[0]).toLocaleDateString('en-US', { ...options, timeZone: 'UTC' }) },
+			]);
+		},
+	);
+
+	it('gives the text of this Node.js for each combination of the table that it uses or derives', () => {
+		// On the Node.js of the table the specs are the table's. On another one they are derived.
+		const methods = new Set(['toLocaleString', 'toLocaleDateString', 'toLocaleTimeString']);
+		const keys = Object.keys(LOCALE_TABLE).filter((_k, at) => at % 40 === 0);
+		for (const text of keys) {
+			const [method, locale, combo]: [string, string | null, Options] = JSON.parse(text);
+			const entry = localeEntry(method, locale, combo);
+			if (!methods.has(method) || !entry?.date) continue;
+			const call = `new Date(${TIMES[0]}).${method}(${locale === null ? 'undefined' : JSON.stringify(locale)}, ${JSON.stringify(combo)})`;
+			const want = new Date(TIMES[0])[method as 'toLocaleString'](locale ?? undefined, {
+				...combo,
+				timeZone: 'UTC',
+			});
+			expect(run(`return [{ json: { t: ${call} } }];`), text).toEqual([{ t: want }]);
+		}
+	});
+});
+
 describe('locale formatting outside the table', () => {
 	it('uses cases that the table does not have', () => {
 		for (const [method, locale, options] of DATES) {
 			expect(Object.hasOwn(LOCALE_TABLE, JSON.stringify([method, locale, options]))).toBe(false);
 		}
-		expect(process.versions.icu).toBe(LOCALE_ICU);
 	});
 
 	it.each(DATES)('%s %s %j %s', (method, locale, options, zone) => {
@@ -122,10 +192,19 @@ return [{ json: { out } }];`;
 
 	it.each(INTL_DATES)('Intl.DateTimeFormat %s %j %s', (locale, options, zone) => {
 		const all = withZone(options, zone);
-		const code = `const f = new Intl.DateTimeFormat(${JSON.stringify(locale)}, ${JSON.stringify(all)});
-return [{ json: { out: ${JSON.stringify(TIMES)}.map((t) => f.format(new Date(t))), parts: f.formatToParts(new Date(${TIMES[0]})).map((p) => p.value).join('') } }];`;
+		const make = `const f = new Intl.DateTimeFormat(${JSON.stringify(locale)}, ${JSON.stringify(all)});`;
+		const texts = `${JSON.stringify(TIMES)}.map((t) => f.format(new Date(t)))`;
 		const f = new Intl.DateTimeFormat(locale, { timeZone: 'UTC', ...all });
-		expect(run(code)).toEqual([{ out: TIMES.map((t) => f.format(t)), parts: f.format(TIMES[0]) }]);
+		expect(run(`${make}\nreturn [{ json: { out: ${texts} } }];`)).toEqual([
+			{ out: TIMES.map((t) => f.format(t)) },
+		]);
+		const code = `${make}\nreturn [{ json: { parts: f.formatToParts(new Date(${TIMES[0]})) } }];`;
+		if (derivedLocaleEntry('DateTimeFormat', locale, options)?.split) {
+			// This Node.js gives other text in the parts than in \`format\`: the parts stay in the host.
+			expect(blockersOf(code)).toContain('Intl: formatToParts');
+		} else {
+			expect(run(code)).toEqual([{ parts: f.formatToParts(TIMES[0]) }]);
+		}
 	});
 
 	it.each(INTL_NUMBERS)('Intl.NumberFormat %s %j', (locale, options) => {
