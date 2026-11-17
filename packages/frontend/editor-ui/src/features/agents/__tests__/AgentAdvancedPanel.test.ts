@@ -33,7 +33,6 @@ vi.mock('@n8n/i18n', () => ({
 	useI18n: () => ({
 		baseText: (key: string) =>
 			({
-				'agents.builder.advanced.reasoning.hint': 'Let the model reason before responding.',
 				'agents.builder.advanced.reasoning.unsupportedHint':
 					'This model does not support reasoning',
 				'agents.builder.advanced.reasoning.noModelHint': 'No model selected',
@@ -284,7 +283,7 @@ describe('AgentAdvancedPanel', () => {
 		expect(toggle.exists()).toBe(true);
 		expect(toggle.attributes('disabled')).toBeUndefined();
 		expect(wrapper.find('[data-testid="agent-reasoning-hint"]').text()).toBe(
-			'Let the model reason before responding.',
+			'agents.builder.advanced.reasoning.hint',
 		);
 	});
 
@@ -318,10 +317,12 @@ describe('AgentAdvancedPanel', () => {
 		expect(last.config?.reasoning).toBe('low');
 	});
 
-	it('removes reasoning when the toggle flips off', async () => {
+	it('removes only the reasoning override when the toggle flips off', async () => {
 		const wrapper = mount(AgentAdvancedPanel, {
 			props: {
-				config: makeConfig({ config: { reasoning: 'medium' } }),
+				config: makeConfig({
+					config: { reasoning: 'medium', toolCallConcurrency: 3, maxIterations: 42 },
+				}),
 				projectId: 'project-1',
 			},
 			global: { stubs: globalStubs },
@@ -331,7 +332,8 @@ describe('AgentAdvancedPanel', () => {
 
 		const events = wrapper.emitted('update:config') ?? [];
 		const last = events.at(-1)?.[0] as Partial<AgentJsonConfig>;
-		expect(last.config?.reasoning).toBeUndefined();
+		expect(last.config).toEqual({ toolCallConcurrency: 3, maxIterations: 42 });
+		expect(wrapper.find('[data-testid="agent-reasoning-settings"]').exists()).toBe(false);
 	});
 
 	it('disables reasoning and explains when the selected model does not support it', async () => {
@@ -396,7 +398,7 @@ describe('AgentAdvancedPanel', () => {
 		expect(toggle.exists()).toBe(true);
 		expect(toggle.attributes('disabled')).toBeUndefined();
 		expect(wrapper.find('[data-testid="agent-reasoning-hint"]').text()).toBe(
-			'Let the model reason before responding.',
+			'agents.builder.advanced.reasoning.hint',
 		);
 
 		modelCatalog.value = makeCatalog();
@@ -419,7 +421,7 @@ describe('AgentAdvancedPanel', () => {
 		const toggle = wrapper.find('[data-testid="agent-reasoning-toggle"]');
 		expect(toggle.attributes('disabled')).toBeUndefined();
 		expect(wrapper.find('[data-testid="agent-reasoning-hint"]').text()).toBe(
-			'Let the model reason before responding.',
+			'agents.builder.advanced.reasoning.hint',
 		);
 
 		modelCatalog.value = makeCatalog();
@@ -449,7 +451,7 @@ describe('AgentAdvancedPanel', () => {
 		expect(toggle.exists()).toBe(true);
 		expect(toggle.attributes('disabled')).toBeUndefined();
 		expect(wrapper.find('[data-testid="agent-reasoning-hint"]').text()).toBe(
-			'Let the model reason before responding.',
+			'agents.builder.advanced.reasoning.hint',
 		);
 		expect(findStubComponent(wrapper, 'agent-reasoning-effort-select').props('disabled')).toBe(
 			false,
