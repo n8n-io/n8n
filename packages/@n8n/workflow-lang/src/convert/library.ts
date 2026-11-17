@@ -29,6 +29,7 @@ import {
 	lowerAiNode,
 	lowerHostNode,
 } from './host-node.ts';
+import { googleMint } from '../node-compile/specialise.ts';
 import type { Paging } from './http-pagination.ts';
 import { emitPaging, readPaging } from './http-pagination.ts';
 import { getNodeParameters, hideParameters, nodeDescription } from './node-parameters.ts';
@@ -788,13 +789,35 @@ export function lowerNativeCluster(c: NodeContext): void {
 	w.close();
 }
 
+/**
+ * Library nodes that take a Google service account (`googleApi`): the service of the v1 node
+ * and its scopes (`getGoogleAccessToken` in `nodes/Google/GenericFunctions.ts`). The runtime
+ * cannot apply the credential, so n8n makes the token (a mint, as for a compiled node) and
+ * the library node sends it.
+ */
+const SERVICE_ACCOUNT_SCOPES: Record<string, { service: string; scopes: string[] }> = {
+	'n8n-nodes-base.googleSheets': {
+		service: 'sheetV2',
+		scopes: [
+			'https://www.googleapis.com/auth/drive.file',
+			'https://www.googleapis.com/auth/spreadsheets',
+			'https://www.googleapis.com/auth/drive.metadata',
+		],
+	},
+};
+
 export function lowerLibrary(c: NodeContext): void {
 	const type = c.node.type;
 	if (NATIVE_ROOTS.has(type)) {
 		lowerNativeCluster(c);
 		return;
 	}
-	requireInjectable(Object.keys(c.node.credentials ?? {})[0]);
+	const credentialType = Object.keys(c.node.credentials ?? {})[0];
+	const account =
+		credentialType === 'googleApi' && c.parameters.authentication === 'serviceAccount'
+			? SERVICE_ACCOUNT_SCOPES[type]
+			: undefined;
+	if (!account) requireInjectable(credentialType);
 	// A LangChain node with sub-nodes (an OpenAI message with tools) runs as a cluster in the
 	// host, so the host gives the node its sub-nodes and reports their runs.
 	if (type.startsWith(LANGCHAIN_PREFIX) && isClusterRoot(c.workflow, c.node.name)) {
@@ -845,13 +868,23 @@ export function lowerLibrary(c: NodeContext): void {
 		(type === 'n8n-nodes-base.dataTable' && c.services === false) ||
 		postgresInHost(c) ||
 		mysqlInHost(c);
-	const unsupported = (support && !librarySupports(support, adapted)) || older;
+	// A caller that does not make tokens for a service account runs the node in the host.
+	const noToken = account !== undefined && c.addCredentialMints === undefined;
+	const unsupported = (support && !librarySupports(support, adapted)) || older || noToken;
 	// The library node comes first. An operation that it does not have is compiled from the
 	// source of the v1 node when that compiles, and else runs in the host.
 	if (unsupported && !service && tryCompiledNode(c)) return;
 	if (unsupported || (attribution && !c.instance) || service) {
 		lowerHostNode(c, 1, [['host', raw("'fallback'")]]);
 		return;
+	}
+	if (account) {
+		const slot = c.credential();
+		if (slot === undefined) {
+			lowerHostNode(c, 1, [['host', raw("'fallback'")]]);
+			return;
+		}
+		c.addCredentialMints?.(slot, [googleMint(account.service, account.scopes)]);
 	}
 	// The values of a Data Table node are inside collection parameters (`columns`, `filters`):
 	// v1 gives the text of a DateTime there.

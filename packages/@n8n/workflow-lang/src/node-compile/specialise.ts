@@ -133,6 +133,17 @@ export interface CredentialMint {
 	scopes: string[];
 }
 
+export function googleMint(service: string, scopes: string[]): CredentialMint {
+	const kind = 'google-service-account';
+	const text = JSON.stringify([kind, scopes]);
+	let hash = 0x811c9dc5;
+	for (let k = 0; k < text.length; k++) {
+		hash ^= text.charCodeAt(k);
+		hash = Math.imul(hash, 0x01000193) >>> 0;
+	}
+	return { name: `m${hash.toString(16).padStart(8, '0')}`, kind, service, scopes: [...scopes] };
+}
+
 const MINT_GOOGLE = '__MINT_GOOGLE';
 const LATER_AUTHENTICATE = '__AUTHENTICATE';
 const GOOGLE_TOKEN_FUNCTION = 'getGoogleAccessToken';
@@ -3592,14 +3603,7 @@ class Specialiser {
 			this.error(where, `the Google service '${service.text}' has no scopes that are constants`);
 			return undefined;
 		}
-		const kind = 'google-service-account';
-		const text = JSON.stringify([kind, scopes]);
-		let hash = 0x811c9dc5;
-		for (let k = 0; k < text.length; k++) {
-			hash ^= text.charCodeAt(k);
-			hash = Math.imul(hash, 0x01000193) >>> 0;
-		}
-		const name = `m${hash.toString(16).padStart(8, '0')}`;
+		const { name, kind } = googleMint(service.text, scopes);
 		const known = this.mints.get(name);
 		if (known && JSON.stringify(known.scopes) !== JSON.stringify(scopes)) {
 			this.error(where, 'two token requests have the same name');

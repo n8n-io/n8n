@@ -33,6 +33,11 @@ const out: Record<string, Recording> = only ? JSON.parse(readFileSync(file, 'utf
 for (const testCase of EQUIVALENCE_CASES) {
 	if (only && !testCase.name.includes(only)) continue;
 	const recording = await recordV1(testCase);
+	// The token request of a Google service account carries a signed assertion that is new in
+	// each run. The test drops the request, so the file keeps only its place.
+	for (const request of recording.requests) {
+		if (request.url === 'https://oauth2.googleapis.com/token') request.body = '<token request>';
+	}
 	out[testCase.name] = recording;
 	const status = recording.error
 		? `error: ${recording.error}`

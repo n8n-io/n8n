@@ -18,6 +18,7 @@ import { withDerivedValues } from '../../credentials/derived.ts';
 import { deriveInject } from '../../credentials/inject.ts';
 import { DEFAULT_NODE_PACKAGES, loadCredentialTypes, registryOf } from '../../credentials/types.ts';
 import { decodeModule } from '../../compiler/decode.ts';
+import { googleMint } from '../../node-compile/specialise.ts';
 import { runReference } from '../../reference/runner.ts';
 import { runModule } from '../../testing/vm.ts';
 import { VENDOR_NODES } from '../../convert/ai-cluster.ts';
@@ -30,6 +31,13 @@ const here = dirname(fileURLToPath(import.meta.url));
 const recordings: Record<string, Recording> = JSON.parse(
 	readFileSync(join(here, 'v1-requests.json'), 'utf8'),
 );
+const TOKEN_URL = 'https://oauth2.googleapis.com/token';
+/** The name of the token that the converter asks n8n for, for a Sheets node with a service account. */
+const SHEETS_MINT = googleMint('sheetV2', [
+	'https://www.googleapis.com/auth/drive.file',
+	'https://www.googleapis.com/auth/spreadsheets',
+	'https://www.googleapis.com/auth/drive.metadata',
+]).name;
 const typesBuilt = existsSync(join(DEFAULT_NODE_PACKAGES[0], 'dist/known/credentials.json'));
 
 /** The parameters of the library call, as the converter writes them. */
@@ -156,12 +164,21 @@ describe.runIf(typesBuilt)('request equivalence with v1 nodes', () => {
 			expect(result.diagnostics).toEqual([]);
 		});
 
+		// A Google service account: v1 asks Google for a token before each request. n8n makes
+		// that token for the library node (`n8nMinted`), so the library node does not send these
+		// requests and does not get their responses.
+		const tokenRequest = (recording?.requests ?? []).map((r) => r.url === TOKEN_URL);
+		const answerOf = (k: number) => c.responses[Math.min(k, c.responses.length - 1)];
+		const minted = tokenRequest.includes(true);
+		const responses = minted
+			? tokenRequest.flatMap((token, k) => (token ? [] : [answerOf(k)]))
+			: c.responses;
 		const fixture = {
 			trigger: { body: {}, headers: {}, query: {} },
 			now: 0,
 			seed: 1,
 			effects: {
-				Node: c.serviceResults ?? c.responses.map((r) => ({ status: 200, headers: {}, ...r })),
+				Node: c.serviceResults ?? responses.map((r) => ({ status: 200, headers: {}, ...r })),
 			},
 		};
 
@@ -184,6 +201,10 @@ describe.runIf(typesBuilt)('request equivalence with v1 nodes', () => {
 				...(registry.get(c.credential?.type ?? '')?.defaults ?? {}),
 				...c.credential?.data,
 			});
+			if (minted) {
+				const token = answerOf(tokenRequest.indexOf(true)).body;
+				data.n8nMinted = { [SHEETS_MINT]: token };
+			}
 			const inject = c.credential
 				? deriveInject(registry, c.credential.type, data).inject
 				: undefined;
@@ -223,7 +244,9 @@ describe.runIf(typesBuilt)('request equivalence with v1 nodes', () => {
 			});
 			const withoutFormat = (list: NormalRequest[]) => list.map(({ qsFormat: _, ...r }) => r);
 			expect(await withParsedMime(withoutFormat(requests))).toEqual(
-				await withParsedMime(withoutFormat(recording.requests)),
+				await withParsedMime(
+					withoutFormat(recording.requests.filter((_request, k) => !tokenRequest[k])),
+				),
 			);
 			// The error is not the output of a run that failed.
 			if (c.expectedError === undefined) expect(out.result).toEqual(recording.output);

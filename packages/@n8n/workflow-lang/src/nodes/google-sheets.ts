@@ -5,7 +5,8 @@
  * update row, versions 4.1 and later, once for all items with `batch`).
  *
  * It sends the same request sequence as the v1 node: the sheet lookup, the
- * sheet data, then the write. Limits: OAuth2 only (no service account), no
+ * sheet data, then the write. With a service account, the token of v1 comes
+ * from n8n (a minted token), so the node sends no token request. Limits: no
  * automatic mapping on update, no sheets in mode `url`. Values are sent as
  * given: the v1 node also converts values to the column schema types.
  *
@@ -348,6 +349,12 @@ function withoutRowNumber(item: Item): Item {
 	return out;
 }
 
+/**
+ * The token that n8n makes from a Google service account for the scopes of the v1 node
+ * (`sheetV2`): the name is `googleMint` of the node compiler for these scopes.
+ */
+const SHEETS_TOKEN = '{{$credentials.n8nMinted.m116a0d8b.access_token}}';
+
 export default defineNode<SheetsParameters>({
 	type: 'n8n-nodes-base.googleSheets',
 	version: 4.7,
@@ -441,11 +448,20 @@ export default defineNode<SheetsParameters>({
 		) {
 			throw new Error(`Google Sheets: ${resource}.${operation} is not in the compiled library`);
 		}
-		if ((parameters.authentication ?? 'oAuth2') !== 'oAuth2') {
-			throw new Error('Google Sheets: only OAuth2 authentication is in the compiled library');
+		const authentication = parameters.authentication ?? 'oAuth2';
+		if (authentication !== 'oAuth2' && authentication !== 'serviceAccount') {
+			throw new Error(
+				'Google Sheets: only OAuth2 and the service account are in the compiled library',
+			);
 		}
+		// With a service account, v1 asks Google for a token and sends it itself. n8n makes that
+		// token for the module (the mint of the converter), and the credential adds nothing else
+		// to the request.
+		const oauth = authentication === 'oAuth2';
 		const base = `https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId(parameters.documentId)}`;
-		const headers = { 'Content-Type': 'application/json' };
+		const headers: Record<string, string> = oauth
+			? { 'Content-Type': 'application/json' }
+			: { 'Content-Type': 'application/json', Authorization: `Bearer ${SHEETS_TOKEN}` };
 		const fail = (status: number) => new Error(`Google Sheets: HTTP status ${status}`);
 
 		// spreadsheetGetSheet of the v1 node.
@@ -466,6 +482,7 @@ export default defineNode<SheetsParameters>({
 			qs: { fields: 'sheets.properties' },
 			body: undefined,
 			credential,
+			inject: oauth,
 		});
 		if (meta.status >= 400) throw fail(meta.status);
 		const wantedId = sheetValue === 'gid=0' ? 0 : parseInt(sheetValue, 10);
@@ -512,6 +529,7 @@ export default defineNode<SheetsParameters>({
 					},
 					body: undefined,
 					credential,
+					inject: oauth,
 				});
 				if (response.status >= 400) throw fail(response.status);
 				const values = response.body.values;
@@ -558,6 +576,7 @@ export default defineNode<SheetsParameters>({
 				qs: { valueRenderOption: 'FORMATTED_VALUE', dateTimeRenderOption: 'FORMATTED_STRING' },
 				body: undefined,
 				credential,
+				inject: oauth,
 			});
 			if (current.status >= 400) throw fail(current.status);
 			const sheetData = current.body.values;
@@ -615,6 +634,7 @@ export default defineNode<SheetsParameters>({
 						qs: { valueRenderOption: 'FORMATTED_VALUE', dateTimeRenderOption: 'FORMATTED_STRING' },
 						body: undefined,
 						credential,
+						inject: oauth,
 					});
 					if (response.status >= 400) throw fail(response.status);
 					names = response.body.values ? response.body.values[0] : [];
@@ -632,6 +652,7 @@ export default defineNode<SheetsParameters>({
 							qs: { valueInputOption: options.cellFormat || 'RAW' },
 							body: { range, values: [first] },
 							credential,
+							inject: oauth,
 						});
 						if (write.status >= 400) throw fail(write.status);
 						names = Object.keys(inputs[0]);
@@ -656,6 +677,7 @@ export default defineNode<SheetsParameters>({
 							qs: { valueInputOption: options.cellFormat || 'RAW' },
 							body: { range, values: [names] },
 							credential,
+							inject: oauth,
 						});
 						if (write.status >= 400) throw fail(write.status);
 					}
@@ -687,6 +709,7 @@ export default defineNode<SheetsParameters>({
 					qs: { valueRenderOption: 'UNFORMATTED_VALUE', dateTimeRenderOption: 'FORMATTED_STRING' },
 					body: undefined,
 					credential,
+					inject: oauth,
 				});
 				if (response.status >= 400) throw fail(response.status);
 				if (response.body.values === undefined)
@@ -705,6 +728,7 @@ export default defineNode<SheetsParameters>({
 					qs: { valueRenderOption: 'UNFORMATTED_VALUE', dateTimeRenderOption: 'FORMATTED_STRING' },
 					body: undefined,
 					credential,
+					inject: oauth,
 				});
 				if (again.status >= 400) throw fail(again.status);
 				lastRow = (again.body.values ?? []).length + 1;
@@ -719,6 +743,7 @@ export default defineNode<SheetsParameters>({
 					qs: {},
 					body: { requests: [{ appendDimension: { sheetId, dimension: 'ROWS', length: 1 } }] },
 					credential,
+					inject: oauth,
 				});
 				if (grow.status >= 400) throw fail(grow.status);
 				lastRow = (sheetData ?? [{}]).length + 1;
@@ -734,6 +759,7 @@ export default defineNode<SheetsParameters>({
 				qs: { valueInputOption: cellFormat },
 				body: { range, values: rows },
 				credential,
+				inject: oauth,
 			});
 			if (write.status >= 400) throw fail(write.status);
 			return dataMode === 'autoMapInputData' ? [...inputs] : input;
@@ -762,6 +788,7 @@ export default defineNode<SheetsParameters>({
 				qs: { valueRenderOption: 'FORMATTED_VALUE', dateTimeRenderOption: 'FORMATTED_STRING' },
 				body: undefined,
 				credential,
+				inject: oauth,
 			});
 			if (read.status >= 400) throw fail(read.status);
 			const sheetData: Row[] = read.body.values ?? [];
@@ -849,6 +876,7 @@ export default defineNode<SheetsParameters>({
 						qs: { valueInputOption: valueInputMode },
 						body: { range, values: [names] },
 						credential,
+						inject: oauth,
 					});
 					if (write.status >= 400) throw fail(write.status);
 					sheetData[keyRowIndex] = names;
@@ -890,6 +918,7 @@ export default defineNode<SheetsParameters>({
 					qs: {},
 					body: { data: updates, valueInputOption: valueInputMode },
 					credential,
+					inject: oauth,
 				});
 				if (write.status >= 400) throw fail(write.status);
 			}
@@ -905,6 +934,7 @@ export default defineNode<SheetsParameters>({
 						qs: {},
 						body: { requests: [{ appendDimension: { sheetId, dimension: 'ROWS', length: 1 } }] },
 						credential,
+						inject: oauth,
 					});
 					if (grow.status >= 400) throw fail(grow.status);
 				}
@@ -919,6 +949,7 @@ export default defineNode<SheetsParameters>({
 					qs: { valueInputOption: valueInputMode },
 					body: { range, values: rows },
 					credential,
+					inject: oauth,
 				});
 				if (write.status >= 400) throw fail(write.status);
 			}
@@ -940,6 +971,7 @@ export default defineNode<SheetsParameters>({
 			qs: { valueRenderOption: 'FORMATTED_VALUE', dateTimeRenderOption: 'FORMATTED_STRING' },
 			body: undefined,
 			credential,
+			inject: oauth,
 		});
 		if (current.status >= 400) throw fail(current.status);
 		const sheetData = current.body.values;
@@ -994,6 +1026,7 @@ export default defineNode<SheetsParameters>({
 				qs: {},
 				body: { data: byRow, valueInputOption: cellFormat },
 				credential,
+				inject: oauth,
 			});
 			if (written.status >= 400) throw fail(written.status);
 			return rowMapped;
@@ -1055,6 +1088,7 @@ export default defineNode<SheetsParameters>({
 			qs: {},
 			body: { data: updates, valueInputOption: cellFormat },
 			credential,
+			inject: oauth,
 		});
 		if (write.status >= 400) throw fail(write.status);
 		return mapped;
