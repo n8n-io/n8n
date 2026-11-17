@@ -17,6 +17,7 @@ import { useUsersStore } from '@n8n/stores/users.store';
 import userEvent from '@testing-library/user-event';
 import { fireEvent, screen, waitFor, within } from '@testing-library/vue';
 import { mock } from 'vitest-mock-extended';
+import { nextTick, ref } from 'vue';
 
 import { getDropdownItems } from '@/__tests__/utils';
 import { RECOMMENDED_SKILLS_EXPERIMENT } from '@/app/constants/experiments';
@@ -934,6 +935,40 @@ describe('SettingsSkillsView', () => {
 			await new Promise(process.nextTick);
 
 			expect(mockedStore(usePostHog).trackExposure).not.toHaveBeenCalled();
+		});
+
+		it('tracks the exposure when the variant arrives after the page', async () => {
+			const lateVariant = ref<string>();
+			mockedStore(usePostHog).getVariant.mockImplementation((flag) =>
+				String(flag) === RECOMMENDED_SKILLS_EXPERIMENT.name ? lateVariant.value : undefined,
+			);
+			renderView();
+			await new Promise(process.nextTick);
+			expect(mockedStore(usePostHog).trackExposure).not.toHaveBeenCalled();
+
+			lateVariant.value = 'variant';
+			await nextTick();
+
+			expect(mockedStore(usePostHog).trackExposure).toHaveBeenCalledExactlyOnceWith(
+				RECOMMENDED_SKILLS_EXPERIMENT.name,
+			);
+		});
+
+		it('tracks the exposure when the last skill goes away', async () => {
+			assignVariant('variant');
+			skillsStore.skills = [skill()];
+			skillsStore.count = 1;
+			renderView();
+			await new Promise(process.nextTick);
+			expect(mockedStore(usePostHog).trackExposure).not.toHaveBeenCalled();
+
+			skillsStore.skills = [];
+			skillsStore.count = 0;
+			await nextTick();
+
+			expect(mockedStore(usePostHog).trackExposure).toHaveBeenCalledExactlyOnceWith(
+				RECOMMENDED_SKILLS_EXPERIMENT.name,
+			);
 		});
 
 		it('tracks no exposure when a source with no synced skills replaces the empty state', async () => {

@@ -125,6 +125,7 @@ const { failedSkillReason, reasonText } = useSkillSourceReasons();
 const skillSyncEnabled = useSkillSyncFlag();
 const {
 	showRecommendedSkills,
+	hasVariant: hasRecommendedSkillsVariant,
 	trackExposure: trackRecommendedSkillsExposure,
 	trackSkillAdded: trackRecommendedSkillAdded,
 } = useRecommendedSkillsExperiment();
@@ -467,6 +468,13 @@ const recommendedSkillsEligible = computed(
 
 const showRecommendedEmptyState = computed(
 	() => recommendedSkillsEligible.value && showRecommendedSkills.value,
+);
+
+watch(
+	() => recommendedSkillsEligible.value && hasRecommendedSkillsVariant.value,
+	(eligible) => {
+		if (eligible) trackRecommendedSkillsExposure();
+	},
 );
 
 const emptyStateCreateMenuItems = computed(() =>
@@ -983,7 +991,6 @@ onMounted(async () => {
 	// here is an empty list and never a broken one.
 	if (!loadFailed.value) {
 		telemetry.track(TELEMETRY_EVENT.CONTEXT.USER_VIEWED_SKILLS, { count: skillsStore.count });
-		if (recommendedSkillsEligible.value) trackRecommendedSkillsExposure();
 	}
 	// Deep links: one skill to open, or a new one to start. The skill may be on another
 	// page, so it is read by id rather than from the list.

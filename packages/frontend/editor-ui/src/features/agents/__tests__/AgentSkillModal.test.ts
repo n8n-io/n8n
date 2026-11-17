@@ -912,7 +912,7 @@ describe('AgentSkillModal', () => {
 					'aria-label',
 					'experiments.recommendedSkills.useAriaLabel humanizer',
 				);
-				expect(recommendedSkills.trackExposure).toHaveBeenCalledTimes(1);
+				expect(recommendedSkills.trackExposure).not.toHaveBeenCalled();
 				expect(recommendedSkills.trackCardsShown).toHaveBeenCalledExactlyOnceWith(
 					'agent_skill_modal',
 				);
@@ -937,7 +937,7 @@ describe('AgentSkillModal', () => {
 				expect(getByTestId('agent-skill-picker')).toBeVisible();
 			});
 
-			it('shows no recommended tab in the control group and still tracks the exposure', async () => {
+			it('shows no recommended tab in the control group', async () => {
 				recommendedSkills.show.value = false;
 				listAttachableSkills.mockResolvedValue([projectSkill]);
 				const { findAllByTestId, getByTestId } = renderModal({
@@ -947,7 +947,7 @@ describe('AgentSkillModal', () => {
 
 				expect(await findAllByTestId('agent-skill-picker-row')).toHaveLength(1);
 				expect(getByTestId('agent-skill-picker-tabs')).toHaveTextContent('all,project,global');
-				expect(recommendedSkills.trackExposure).toHaveBeenCalledTimes(1);
+				expect(recommendedSkills.trackExposure).not.toHaveBeenCalled();
 				expect(recommendedSkills.trackCardsShown).not.toHaveBeenCalled();
 			});
 
@@ -1082,10 +1082,9 @@ describe('AgentSkillModal', () => {
 				expect(recommendedSkills.trackSkillAdded).not.toHaveBeenCalled();
 			});
 
-			it('tracks no exposure without the picker', () => {
+			it('reports no recommended skills without the picker', () => {
 				renderModal({ settings: { scopeOptions: [] } });
 
-				expect(recommendedSkills.trackExposure).not.toHaveBeenCalled();
 				expect(recommendedSkills.trackCardsShown).not.toHaveBeenCalled();
 			});
 		});

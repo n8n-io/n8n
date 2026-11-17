@@ -361,7 +361,6 @@ const pickerItems = computed<SkillConnectionItem[]>(() =>
 
 const {
 	showRecommendedSkills,
-	trackExposure: trackRecommendedSkillsExposure,
 	trackCardsShown: trackRecommendedSkillsShown,
 	trackSkillAdded: trackRecommendedSkillAdded,
 } = useRecommendedSkillsExperiment();
@@ -981,7 +980,6 @@ onMounted(() => {
 	if (startsManual) void refreshDefaultName();
 	if (hasPicker) {
 		void loadLibrarySkills();
-		trackRecommendedSkillsExposure();
 		if (showRecommendedSkills.value) trackRecommendedSkillsShown('agent_skill_modal');
 	}
 	if (props.data.skillId && props.data.skillRefsEnabled) void loadSkillAccess(props.data.skillId);

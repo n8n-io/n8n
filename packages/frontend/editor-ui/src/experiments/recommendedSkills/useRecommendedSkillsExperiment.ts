@@ -28,6 +28,10 @@ export function useRecommendedSkillsExperiment() {
 		),
 	);
 
+	const hasVariant = computed(() =>
+		Boolean(posthogStore.getVariant(RECOMMENDED_SKILLS_EXPERIMENT.name)),
+	);
+
 	function trackExposure() {
 		posthogStore.trackExposure(RECOMMENDED_SKILLS_EXPERIMENT.name);
 	}
@@ -69,6 +73,7 @@ export function useRecommendedSkillsExperiment() {
 
 	return {
 		showRecommendedSkills,
+		hasVariant,
 		addedSkillIds,
 		trackExposure,
 		trackCardsShown,
