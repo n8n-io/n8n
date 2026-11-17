@@ -3471,8 +3471,8 @@ describe('useAgentChatStream — older messages', () => {
 
 		await expect(hook.loadOlderMessages()).rejects.toThrow('offline');
 		expect(hook.hasOlderMessages.value).toBe(true);
-		expect(hook.isLoadingOlderMessages.value).toBe(false);
 
+		// The retry loads the page, so the failed load did not leave a lock behind.
 		await hook.loadOlderMessages();
 		expect(ids(hook)).toEqual(['e1:user', 'e1:assistant', 'e2:user', 'e2:assistant']);
 	});

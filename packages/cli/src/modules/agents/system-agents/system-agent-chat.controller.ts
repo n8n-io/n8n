@@ -33,7 +33,7 @@ import type { AgentExecutionThreadKeyset } from '../repositories/agent-execution
 import { N8NCheckpointStorage } from '../integrations/n8n-checkpoint-storage';
 import { N8nMemory } from '../integrations/n8n-memory';
 import { SYSTEM_CHAT_SOURCE } from '../utils/agent-thread-access';
-import { parseChatHistoryPage } from '../utils/chat-history-page';
+import { isOlderChatHistoryPage, parseChatHistoryPage } from '../utils/chat-history-page';
 import { ownCheckpoint, threadMessagesResponse } from '../utils/messages-envelope';
 import { parseThreadListLimit } from '../utils/parse-thread-list-limit';
 import { SystemAgentExecutionService } from './system-agent-execution.service';
@@ -247,11 +247,11 @@ export class SystemAgentChatController {
 			userId: req.user.id,
 			page,
 		});
+		if (isOlderChatHistoryPage(page)) return threadMessagesResponse(history, null);
 		const checkpoint = await this.checkpointStorage.findSuspendedForThread(agentId, thread.id);
 		return threadMessagesResponse(
 			history,
 			ownCheckpoint(checkpoint, this.systemAgents.resourceIdFor(req.user)),
-			{ olderPage: page?.before !== undefined },
 		);
 	}
 

@@ -15,6 +15,14 @@ export interface ChatHistoryPageRequest {
 	before?: ExecutionPosition;
 }
 
+/**
+ * Whether the page holds older turns, not the newest ones. An open suspension
+ * belongs to the newest turn, so a page of older turns has none.
+ */
+export function isOlderChatHistoryPage(page: ChatHistoryPageRequest | undefined): boolean {
+	return page?.before !== undefined;
+}
+
 export function encodeChatHistoryCursor({ createdAt, id }: ExecutionPosition): string {
 	return `${createdAt.toISOString()}|${id}`;
 }

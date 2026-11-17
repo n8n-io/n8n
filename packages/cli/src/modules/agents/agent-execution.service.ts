@@ -1002,6 +1002,8 @@ export class AgentExecutionService {
 		);
 		const executions = rows.slice(0, limit);
 		let older: AgentExecution | undefined = rows[limit];
+		// Two queries for each continuation. Continuations are rare, so a page
+		// usually needs none of them.
 		while (
 			older &&
 			(await this.messageRepository.continuesExecution(

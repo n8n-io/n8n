@@ -579,6 +579,7 @@ describe('SystemAgentChatController', () => {
 				},
 			}),
 		);
+		expect(checkpointStorage.findSuspendedForThread).not.toHaveBeenCalled();
 		expect(result).toEqual({
 			messages: [],
 			openSuspensions: [],

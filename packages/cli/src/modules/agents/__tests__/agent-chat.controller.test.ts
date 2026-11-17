@@ -762,6 +762,33 @@ describe('AgentChatController chat message history', () => {
 		expect(result.nextCursor).toBe('2026-05-07T10:00:00.000Z|execution-1');
 	});
 
+	it('reads no checkpoint for a page of older turns', async () => {
+		const { controller, agentsService, checkpointStorage } = makeController();
+		agentsService.findById.mockResolvedValue({ id: 'agent-1' } as never);
+		agentsService.getConversationHistory.mockResolvedValue({
+			messages: [],
+			activeExecutionId: null,
+			nextCursor: null,
+		});
+		const request = {
+			params: { projectId: 'project-1', agentId: 'agent-1', threadId: 'thread-1' },
+			user: { id: 'user-1' },
+		};
+
+		const result = await controller.getChatMessages(request as never, mock<express.Response>(), {
+			limit: '20',
+			cursor: '2026-05-07T10:00:00.000Z|execution-1',
+		});
+
+		expect(checkpointStorage.findSuspendedForThread).not.toHaveBeenCalled();
+		expect(result).toEqual({
+			messages: [],
+			openSuspensions: [],
+			activeExecutionId: null,
+			nextCursor: null,
+		});
+	});
+
 	it('accepts only shared checkpoints for a project-scoped thread', async () => {
 		const { controller, agentsService, checkpointStorage, agentExecutionService } =
 			makeController();

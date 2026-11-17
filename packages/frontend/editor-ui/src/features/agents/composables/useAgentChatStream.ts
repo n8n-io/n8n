@@ -7,6 +7,7 @@ import { useRootStore } from '@n8n/stores/useRootStore';
 import { isRecord } from '@n8n/utils/is-record';
 import type {
 	AgentBuilderOpenSuspension,
+	AgentChatMessagesResponse,
 	AgentChatQueueItem,
 	AgentPersistedMessageDto,
 	AgentSseEvent,
@@ -204,7 +205,8 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 	const olderMessagesCursor = ref<string | null>(null);
 	/** Whether `messages` starts with turns from older pages, which a refresh must keep. */
 	let hasLoadedOlderPages = false;
-	const isLoadingOlderMessages = ref(false);
+	/** Stops a second load of the same page while one runs. */
+	let isLoadingOlderMessages = false;
 	const hasOlderMessages = computed(() => olderMessagesCursor.value !== null);
 	const pushStore = usePushConnectionStore();
 	const visibility = useDocumentVisibility();
@@ -379,10 +381,18 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 		return firstShared === -1 ? undefined : messages.value.slice(0, firstShared);
 	}
 
+	/**
+	 * The chat messages of a response that holds older turns. Open suspensions
+	 * belong to the newest turn, so these turns settle their tool calls.
+	 */
+	function toOlderMessages(envelope: AgentChatMessagesResponse): ChatMessage[] {
+		return applyOpenSuspensions(convertDbMessages(envelope.messages, extensions), [], extensions);
+	}
+
 	function resetOlderMessages(): void {
 		olderMessagesCursor.value = null;
 		hasLoadedOlderPages = false;
-		isLoadingOlderMessages.value = false;
+		isLoadingOlderMessages = false;
 	}
 
 	/**
@@ -392,12 +402,12 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 	async function loadOlderMessages(): Promise<void> {
 		const cursor = olderMessagesCursor.value;
 		const threadId = params.continueSessionId?.value ?? acceptedSessionId.value;
-		if (cursor === null || !threadId || disposed || isLoadingOlderMessages.value) return;
+		if (cursor === null || !threadId || disposed || isLoadingOlderMessages) return;
 		const target = targetKey();
 		// A refresh that drops the older pages, or a new target, makes this page stale.
 		const isCurrent = () =>
 			!disposed && target === targetKey() && olderMessagesCursor.value === cursor;
-		isLoadingOlderMessages.value = true;
+		isLoadingOlderMessages = true;
 		try {
 			const envelope = await getChatMessages(
 				rootStore.restApiContext,
@@ -409,12 +419,7 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 			);
 			if (!isCurrent()) return;
 			const loadedIds = new Set(messages.value.map((message) => message.id));
-			// Open suspensions belong to the newest turn, so older turns settle their tool calls.
-			const older = applyOpenSuspensions(
-				convertDbMessages(envelope.messages, extensions),
-				[],
-				extensions,
-			).filter((message) => !loadedIds.has(message.id));
+			const older = toOlderMessages(envelope).filter((message) => !loadedIds.has(message.id));
 			// Hosts with sync watchers, such as the Assistant preview, skip turns that load as
 			// history. Mark the older turns as history only while they are added.
 			const wasLoadingHistory = isLoadingHistory.value;
@@ -424,7 +429,7 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 			olderMessagesCursor.value = envelope.nextCursor ?? null;
 			hasLoadedOlderPages = true;
 		} finally {
-			if (target === targetKey()) isLoadingOlderMessages.value = false;
+			if (target === targetKey()) isLoadingOlderMessages = false;
 		}
 	}
 
@@ -443,11 +448,7 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 			threadId,
 			channel.value,
 		);
-		const thread = applyOpenSuspensions(
-			convertDbMessages(envelope.messages, extensions),
-			[],
-			extensions,
-		);
+		const thread = toOlderMessages(envelope);
 		// The loaded messages can be newer than the response, for example a live reply.
 		const loadedExecutionIds = new Set(messages.value.map((message) => message.executionId));
 		const firstLoaded = thread.findIndex(
@@ -2190,7 +2191,6 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 		isSubmitting,
 		isLoadingHistory,
 		hasOlderMessages,
-		isLoadingOlderMessages,
 		loadOlderMessages,
 		getFullHistory,
 		messages,

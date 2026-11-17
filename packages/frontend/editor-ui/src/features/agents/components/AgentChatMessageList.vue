@@ -650,6 +650,7 @@ function isNearBottom(): boolean {
 
 function onScroll(): void {
 	isStickToBottom.value = isNearBottom();
+	onScrollForOlderMessages();
 }
 
 function scrollToBottom(): void {
@@ -711,26 +712,24 @@ const loadOlderFailed = ref(false);
 // messages load only after the first scroll event.
 const viewScrolled = ref(false);
 
-function onScrollForOlderMessages(el: HTMLElement): void {
+function onScrollForOlderMessages(): void {
 	viewScrolled.value = true;
-	if (el.scrollTop > OLDER_MESSAGES_DISTANCE_PX) loadOlderFailed.value = false;
+	if ((scrollRef.value?.scrollTop ?? 0) > OLDER_MESSAGES_DISTANCE_PX) loadOlderFailed.value = false;
 }
 
 /** Frames to wait for content above the anchor (markdown, highlighters) to stop growing. */
 const MAX_ANCHOR_SETTLE_FRAMES = 30;
 
 /**
- * The first message in view, which stays in place when older messages load
- * above it. Timestamp dividers are not anchors: a page of older turns can
- * remove the divider of the old first turn.
+ * The first element in view, which stays in place when older messages load
+ * above it. The loading status is not an anchor: it sticks to the top of the
+ * view and goes away after the load.
  */
 function findScrollAnchor(container: HTMLElement): HTMLElement | undefined {
 	const viewTop = container.getBoundingClientRect().top;
 	const candidates = [...container.children].filter(
 		(child): child is HTMLElement =>
-			child instanceof HTMLElement &&
-			child.dataset.olderMessagesStatus === undefined &&
-			child.dataset.testid !== 'agent-chat-timestamp-divider',
+			child instanceof HTMLElement && child.dataset.olderMessagesStatus === undefined,
 	);
 	return (
 		candidates.find((child) => child.getBoundingClientRect().bottom > viewTop) ?? candidates[0]
@@ -739,53 +738,58 @@ function findScrollAnchor(container: HTMLElement): HTMLElement | undefined {
 
 const nextFrame = async () => await new Promise((resolve) => requestAnimationFrame(resolve));
 
+/**
+ * Run `change`, and keep `anchor` in the same place in the view while the
+ * content above it changes and finishes its render (markdown, highlighters).
+ */
+async function keepInPlace(
+	container: HTMLElement,
+	anchor: HTMLElement | undefined,
+	change: () => Promise<void>,
+): Promise<void> {
+	// Measure only how far the anchor moves in the content: the user can scroll,
+	// and a live reply can grow below the view, while the change runs.
+	const contentTop = (el: HTMLElement) => el.getBoundingClientRect().top + container.scrollTop;
+	let anchorTop = anchor ? contentTop(anchor) : 0;
+	// This code moves the view itself. Browser scroll anchoring would move it a
+	// second time, and the view would jump down by the height of the change.
+	container.style.overflowAnchor = 'none';
+	try {
+		await change();
+		await nextTick();
+		let stableFrames = 0;
+		for (let frame = 0; frame < MAX_ANCHOR_SETTLE_FRAMES && stableFrames < 2; frame++) {
+			if (!anchor || !container.contains(anchor)) return;
+			const moved = contentTop(anchor) - anchorTop;
+			if (moved === 0) {
+				stableFrames++;
+			} else {
+				stableFrames = 0;
+				container.scrollTop += moved;
+				anchorTop += moved;
+			}
+			await nextFrame();
+		}
+	} finally {
+		container.style.overflowAnchor = '';
+	}
+}
+
 const { isLoading: isLoadingOlderMessages } = useInfiniteScroll(
 	scrollRef,
 	async () => {
 		const container = scrollRef.value;
-		if (!container || !props.loadOlderMessages) return;
-		// Measure only how far the first message moves: the user can scroll, and a
-		// live reply can grow below the view, while the page loads.
-		const contentTop = (el: HTMLElement) => el.getBoundingClientRect().top + container.scrollTop;
-		const anchor = findScrollAnchor(container);
-		let anchorTop = anchor ? contentTop(anchor) : 0;
-		// This code moves the view itself. Browser scroll anchoring would move it a
-		// second time, and the view would jump down by the height of the page.
-		container.style.overflowAnchor = 'none';
+		const load = props.loadOlderMessages;
+		if (!container || !load) return;
 		try {
-			try {
-				await props.loadOlderMessages();
-			} catch {
-				loadOlderFailed.value = true;
-				return;
-			}
-			await nextTick();
-			if (!anchor) return;
-			// Keep the messages that the user reads in place, also while the older
-			// messages finish their render and grow.
-			let stableFrames = 0;
-			for (let frame = 0; frame < MAX_ANCHOR_SETTLE_FRAMES && stableFrames < 2; frame++) {
-				if (!container.contains(anchor)) return;
-				const moved = contentTop(anchor) - anchorTop;
-				if (moved === 0) {
-					stableFrames++;
-				} else {
-					stableFrames = 0;
-					container.scrollTop += moved;
-					anchorTop += moved;
-				}
-				await nextFrame();
-			}
-		} finally {
-			container.style.overflowAnchor = '';
+			await keepInPlace(container, findScrollAnchor(container), load);
+		} catch {
+			loadOlderFailed.value = true;
 		}
 	},
 	{
 		direction: 'top',
 		distance: OLDER_MESSAGES_DISTANCE_PX,
-		onScroll: (event) => {
-			if (event.target instanceof HTMLElement) onScrollForOlderMessages(event.target);
-		},
 		// A thread too short to scroll loads older messages until it fills the view.
 		canLoadMore: (el) =>
 			!!props.hasOlderMessages &&

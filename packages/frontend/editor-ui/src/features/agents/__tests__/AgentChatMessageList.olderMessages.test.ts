@@ -94,7 +94,7 @@ describe('AgentChatMessageList older messages', () => {
 
 		expect(canLoadMore(el)).toBe(false);
 
-		infiniteScroll.options?.onScroll?.({ target: el } as unknown as UIEvent);
+		await wrapper.trigger('scroll');
 
 		expect(canLoadMore(el)).toBe(true);
 		await wrapper.setProps({ hasOlderMessages: false });

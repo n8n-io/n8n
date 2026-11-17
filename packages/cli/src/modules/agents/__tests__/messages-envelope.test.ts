@@ -433,19 +433,4 @@ describe('threadMessagesResponse', () => {
 			nextCursor: 'cursor-1',
 		});
 	});
-
-	it('ignores the checkpoint on a page of older turns', () => {
-		const result = threadMessagesResponse(
-			{ messages: persisted, activeExecutionId: null, nextCursor: null },
-			suspendedCheckpoint(),
-			{ olderPage: true },
-		);
-
-		expect(result).toEqual({
-			messages: persisted,
-			openSuspensions: [],
-			activeExecutionId: null,
-			nextCursor: null,
-		});
-	});
 });

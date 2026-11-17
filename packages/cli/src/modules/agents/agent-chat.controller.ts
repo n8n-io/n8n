@@ -65,7 +65,7 @@ import {
 	productionChatMemoryResourceId,
 	userIdFromDraftChatMemoryResourceId,
 } from './utils/agent-memory-scope';
-import { parseChatHistoryPage } from './utils/chat-history-page';
+import { isOlderChatHistoryPage, parseChatHistoryPage } from './utils/chat-history-page';
 import {
 	ownCheckpoint,
 	threadMessagesResponse,
@@ -467,11 +467,11 @@ export class AgentChatController {
 			page,
 		});
 		if (!history) throw new NotFoundError('Session not found');
+		if (isOlderChatHistoryPage(page)) return threadMessagesResponse(history, null);
 		const checkpoint = await this.checkpointStorage.findSuspendedForThread(agentId, threadId);
 		return threadMessagesResponse(
 			history,
 			ownCheckpoint(checkpoint, productionChatMemoryResourceId(req.user.id)),
-			{ olderPage: page?.before !== undefined },
 		);
 	}
 
@@ -1091,15 +1091,11 @@ export class AgentChatController {
 			userId: req.user.id,
 			page,
 		});
-		const checkpoint = await this.findReadableCheckpoint(
-			thread,
-			threadId,
-			projectId,
-			agentId,
-			req.user.id,
-		);
+		const checkpoint = isOlderChatHistoryPage(page)
+			? null
+			: await this.findReadableCheckpoint(thread, threadId, projectId, agentId, req.user.id);
 		if (!history && !checkpoint) throw new NotFoundError(`Thread "${threadId}" not found`);
-		return threadMessagesResponse(history, checkpoint, { olderPage: page?.before !== undefined });
+		return threadMessagesResponse(history, checkpoint);
 	}
 
 	@Get('/:agentId/chat/messages')
