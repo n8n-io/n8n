@@ -111,7 +111,6 @@ export interface NodeViewItem {
 		tag?: {
 			type?: string;
 			text?: string;
-			/** Feature id. The feature list decides which badges render. */
 			feature?: keyof typeof featureMaturity;
 		};
 		forceIncludeNodes?: string[];
