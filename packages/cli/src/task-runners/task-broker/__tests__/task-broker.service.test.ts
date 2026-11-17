@@ -2555,7 +2555,7 @@ describe('TaskBroker', () => {
 				expect(requesterCallback).toHaveBeenCalledWith({
 					type: 'broker:requestexpired',
 					requestId: 'request1',
-					reason: 'timeout',
+					reason: 'shutdown',
 				});
 			});
 
@@ -2583,7 +2583,7 @@ describe('TaskBroker', () => {
 				expect(requesterCallback).toHaveBeenCalledWith({
 					type: 'broker:requestexpired',
 					requestId: 'request1',
-					reason: 'timeout',
+					reason: 'shutdown',
 				});
 			});
 
@@ -2671,8 +2671,38 @@ describe('TaskBroker', () => {
 				expect(requesterCallback).toHaveBeenCalledWith({
 					type: 'broker:requestexpired',
 					requestId: 'request1',
-					reason: 'timeout',
+					reason: 'shutdown',
 				});
+			});
+
+			it('labels a request cut short by the shutdown deadline as shutdown', async () => {
+				vi.useFakeTimers();
+
+				const requesterId = 'requester1';
+				const requesterCallback = vi.fn();
+				taskBroker.registerRequester(requesterId, requesterCallback);
+
+				const deadline = Date.now();
+				taskBroker.capTaskTimeoutsForShutdown(deadline);
+
+				const request: TaskRequest = {
+					requestId: 'request1',
+					requesterId,
+					taskType: 'taskType1',
+					timeout: taskBroker['createRequestTimeout']('request1'),
+				};
+				taskBroker.taskRequested(request);
+
+				vi.advanceTimersByTime(0);
+				await Promise.resolve();
+
+				expect(requesterCallback).toHaveBeenCalledWith({
+					type: 'broker:requestexpired',
+					requestId: 'request1',
+					reason: 'shutdown',
+				});
+
+				vi.useRealTimers();
 			});
 		});
 	});
