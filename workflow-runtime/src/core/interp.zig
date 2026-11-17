@@ -396,8 +396,7 @@ inline fn fastOp(vm: *Vm, op: Op, ins: Instr, R: []Value, pc: *u32) bool {
         .getprop => {
             const o = R[ins.b];
             if (value.kindOf(o) != .object) return false;
-            const off = value.payload(o);
-            R[ins.a] = if (vm.objFindValue(off, value.constString(ins.c))) |i| mem.load(vm.r.probe, .obj_entries, .vals_at, &vm.r.objEntriesRaw(off)[i * 2 + 1]) else value.undef;
+            R[ins.a] = vm.objGetValue(value.payload(o), value.constString(ins.c));
         },
         // Allocations: a full region leaves nothing changed, and `step`
         // runs the instruction again and reports it.
@@ -485,9 +484,7 @@ pub inline fn stepIn(vm: *Vm, fi: u32, f: *Fibre, fr: *Frame, R: []Value, compti
         .newobj => R[ins.a] = try vm.r.newObject(4),
         .newarr => R[ins.a] = try vm.r.newArray(4),
         .getprop => R[ins.a] = if (value.kindOf(R[ins.b]) == .object) blk: {
-            const off = value.payload(R[ins.b]);
-            const i = vm.objFindValue(off, value.constString(ins.c)) orelse break :blk value.undef;
-            break :blk mem.load(vm.r.probe, .obj_entries, .vals_at, &vm.r.objEntriesRaw(off)[i * 2 + 1]);
+            break :blk vm.objGetValue(value.payload(R[ins.b]), value.constString(ins.c));
         } else try vm.getProp(R[ins.b], vm.m.str(ins.c)),
         .setprop => try setProp(vm, R[ins.a], ins.b, R[ins.c]),
         .getelem => R[ins.a] = try vm.getElem(R[ins.b], R[ins.c]),

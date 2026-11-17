@@ -60,10 +60,10 @@ pub inline fn rdHeader(p: Probe, st: Structure, site: Site, ptr: anytype, size: 
 }
 
 /// One key of an object, read in a search for a property.
-pub inline fn probeKey(p: Probe, key: anytype) void {
+pub inline fn probeKey(p: Probe, site: Site, key: anytype) void {
     if (enabled) {
         scan(p, .key_probe, 1);
-        rd(p, .obj_entries, .obj_find, key, 8);
+        rd(p, .obj_entries, site, key, 8);
     }
 }
 

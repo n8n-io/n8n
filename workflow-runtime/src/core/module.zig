@@ -196,6 +196,10 @@ pub const Module = struct {
     /// `credentialFlags` list of META as written, or empty when META has no
     /// such list or the list has another form (`cred_flags.validList`).
     flag_names: []const u8 = "",
+    /// No two strings of the module have the same bytes, so two string
+    /// constants are equal only when their indices are. False when the
+    /// loader had no room for `keys`.
+    strs_unique: bool = false,
 
     /// The index of the module string equal to `bytes`, whose hash is `h`.
     pub fn internKey(m: *const Module, bytes: []const u8, h: u32) ?u32 {
@@ -316,7 +320,7 @@ pub fn load(bytes: []const u8, natives_buf: []u16) Error!Module {
         // Keys: at most half full. The u16 entries name strings below 0xFFFF.
         const size = std.math.ceilPowerOfTwo(usize, @max(8, m.strCount() * 2)) catch 0;
         if (size > 0 and m.strCount() < 0xFFFF and natives_buf.len >= used + size) {
-            m.keys = buildKeys(&m, natives_buf[used..][0..size]);
+            m.keys = buildKeys(&m, natives_buf[used..][0..size], &m.strs_unique);
         }
     }
     return m;
@@ -530,8 +534,10 @@ pub fn jsonGet(obj: []const u8, key: []const u8) ?[]const u8 {
     return null;
 }
 
-fn buildKeys(m: *const Module, table: []u16) []const u16 {
+/// Fill `table` (`Module.keys`). `unique` is true when no string repeats.
+fn buildKeys(m: *const Module, table: []u16, unique: *bool) []const u16 {
     @memset(table, 0);
+    unique.* = true;
     const mask = table.len - 1;
     var i: u32 = 0;
     while (i < m.strCount()) : (i += 1) {
@@ -545,7 +551,10 @@ fn buildKeys(m: *const Module, table: []u16) []const u16 {
                 break;
             }
             // A repeated string keeps its first index.
-            if (std.mem.eql(u8, m.str(e - 1), s)) break;
+            if (std.mem.eql(u8, m.str(e - 1), s)) {
+                unique.* = false;
+                break;
+            }
             slot = (slot + 1) & @as(u32, @intCast(mask));
         }
     }

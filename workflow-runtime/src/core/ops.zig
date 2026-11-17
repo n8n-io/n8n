@@ -6,6 +6,7 @@ const value = @import("value.zig");
 const heap = @import("heap.zig");
 const numfmt = @import("numfmt.zig");
 const mem = @import("mem.zig");
+const perf = @import("perf.zig");
 const Arena = @import("arena.zig").Arena;
 const Builder = @import("arena.zig").Builder;
 const Module = @import("module.zig").Module;
@@ -326,12 +327,23 @@ pub const Vm = struct {
 
     // ---- objects ----------------------------------------------------------
 
+    /// The keys and values in use of an object, and where the model puts a
+    /// read of one: an object with its entries beside it has them at an
+    /// address that comes from its offset, not from a load of the header.
+    const Entries = struct { es: []Value, find: perf.Site, at: perf.Site };
+
+    inline fn entries(vm: *const Vm, off: u32) Entries {
+        const o = vm.r.at(heap.Obj, off);
+        if (heap.Region.objBeside(o, off)) return .{ .es = vm.r.entriesBeside(off, o.count), .find = .obj_slot, .at = .obj_slot };
+        return .{ .es = vm.r.valsAt(o.entries, o.count * 2), .find = .obj_find, .at = .vals_at };
+    }
+
     pub fn objFind(vm: *const Vm, off: u32, key: []const u8) ?u32 {
-        const es = vm.r.objEntriesRaw(off);
+        const e = vm.entries(off);
         var i: u32 = 0;
-        while (i < es.len) : (i += 2) {
-            if (mem.enabled) mem.probeKey(vm.r.probe, &es[i]);
-            if (std.mem.eql(u8, vm.str(es[i]), key)) return i / 2;
+        while (i < e.es.len) : (i += 2) {
+            if (mem.enabled) mem.probeKey(vm.r.probe, e.find, &e.es[i]);
+            if (std.mem.eql(u8, vm.str(e.es[i]), key)) return i / 2;
         }
         return null;
     }
@@ -339,16 +351,32 @@ pub const Vm = struct {
     /// `objFind` for a key value: the same value (a module constant set and
     /// read by the program) matches without a look at the bytes.
     pub fn objFindValue(vm: *const Vm, off: u32, key: Value) ?u32 {
-        const es = vm.r.objEntriesRaw(off);
-        const bytes = vm.str(key);
+        return vm.findKey(vm.entries(off), key);
+    }
+
+    /// The index of the entry of `e` with key `key`.
+    fn findKey(vm: *const Vm, e: Entries, key: Value) ?u32 {
+        const es = e.es;
+        std.debug.assert(es.len % 2 == 0);
+        // Two constants of a module without repeated strings are equal
+        // only when they are the same value. A key that is not a constant
+        // does not read the module (a test Vm has none).
+        const key_const = value.payload(key) >= value.const_handle_base and vm.m.strs_unique;
+        var bytes: ?[]const u8 = null;
         var i: u32 = 0;
         while (i < es.len) : (i += 2) {
-            if (mem.enabled) mem.probeKey(vm.r.probe, &es[i]);
+            if (mem.enabled) mem.probeKey(vm.r.probe, e.find, &es[i]);
             if (es[i] == key) return i / 2;
+            if (key_const and value.payload(es[i]) >= value.const_handle_base) continue;
+            const b = bytes orelse blk: {
+                const b = vm.str(key);
+                bytes = b;
+                break :blk b;
+            };
             // The length is in the header: most keys differ there.
-            if (vm.strLen(es[i]) != bytes.len) continue;
-            if (mem.enabled) mem.scan(vm.r.probe, .key_bytes, bytes.len);
-            if (std.mem.eql(u8, vm.str(es[i]), bytes)) return i / 2;
+            if (vm.strLen(es[i]) != b.len) continue;
+            if (mem.enabled) mem.scan(vm.r.probe, .key_bytes, b.len);
+            if (std.mem.eql(u8, vm.str(es[i]), b)) return i / 2;
         }
         return null;
     }
@@ -358,11 +386,20 @@ pub const Vm = struct {
         return mem.load(vm.r.probe, .obj_entries, .vals_at, &vm.r.objEntriesRaw(off)[i * 2 + 1]);
     }
 
+    /// The property `key` of the object at `off`, or undefined: one read of
+    /// the header, then the keys.
+    pub fn objGetValue(vm: *const Vm, off: u32, key: Value) Value {
+        const e = vm.entries(off);
+        const i = vm.findKey(e, key) orelse return value.undef;
+        return mem.load(vm.r.probe, .obj_entries, e.at, &e.es[i * 2 + 1]);
+    }
+
     /// Set a property. `key` must be a string value.
     pub fn objSet(vm: *Vm, off: u32, key: Value, v: Value) Err!void {
         std.debug.assert(value.kindOf(key) == .string);
-        if (vm.objFindValue(off, key)) |i| {
-            mem.store(vm.r.probe, .obj_entries, .obj_set, &vm.r.objEntriesRaw(off)[i * 2 + 1], v);
+        const e = vm.entries(off);
+        if (vm.findKey(e, key)) |i| {
+            mem.store(vm.r.probe, .obj_entries, if (e.at == .obj_slot) .obj_slot else .obj_set, &e.es[i * 2 + 1], v);
             return;
         }
         try vm.r.objReserve(off, 1);

@@ -253,12 +253,18 @@ pub const Region = struct {
         return .{ .buf = buf, .used = 0 };
     }
 
-    pub fn alloc(r: *Region, kind: ObjKind, size_in: u32) Error!u32 {
-        const size = alignUp(size_in);
-        std.debug.assert(size >= @sizeOf(Hdr));
+    /// The offset of `size` new bytes; `size` is a multiple of 8.
+    fn take(r: *Region, size: u32) Error!u32 {
+        std.debug.assert(size >= @sizeOf(Hdr) and size % 8 == 0);
         if (@as(u64, r.used) + size > r.buf.len) return error.RegionFull;
         const off = r.used;
         r.used += size;
+        return off;
+    }
+
+    pub fn alloc(r: *Region, kind: ObjKind, size_in: u32) Error!u32 {
+        const size = alignUp(size_in);
+        const off = try r.take(size);
         const h = r.hdr(off);
         h.* = .{ .kind = kind, .size = size };
         // A `vals` block belongs to its user: `newValsFor` states it.
@@ -506,12 +512,45 @@ pub const Region = struct {
 
     // ---- objects --------------------------------------------------------
 
+    /// A new object with room for `cap_in` properties. The header and its
+    /// entries block come from one allocation, the entries after the header:
+    /// a property of a small object is in the line of the header or the
+    /// next one, and its address needs no load (`objBeside`). The two keep
+    /// their own headers, so the entries can still move when the object grows.
     pub fn newObject(r: *Region, cap_in: u32) Error!Value {
         const cap = @max(cap_in, 4);
-        const entries = try r.newValsFor(.obj_entries, cap * 2);
-        const off = try r.alloc(.object, @sizeOf(Obj));
-        r.at(Obj, off).* = .{ .hdr = r.hdr(off).*, .count = 0, .cap = cap, .entries = entries };
+        const entries_size: u32 = @sizeOf(Hdr) + cap * 16;
+        const off = try r.take(@sizeOf(Obj) + entries_size);
+        const entries = off + @sizeOf(Obj);
+        r.hdr(entries).* = .{ .kind = .vals, .size = entries_size };
+        const vs = r.valsAt(entries, cap * 2);
+        if (mem.enabled) {
+            if (mem.enabled) mem.wr(r.probe, .obj_header, .region_alloc, r.hdr(off), @sizeOf(Obj));
+            if (mem.enabled) mem.alloc(r.probe, .obj_header, @sizeOf(Obj));
+            if (mem.enabled) mem.wr(r.probe, .obj_entries, .region_alloc, r.hdr(entries), @sizeOf(Hdr));
+            if (mem.enabled) mem.alloc(r.probe, .obj_entries, entries_size);
+            if (mem.enabled) mem.wrSlice(r.probe, .obj_entries, .vals_fill, vs);
+            if (mem.enabled) mem.scan(r.probe, .value_fill, cap * 2);
+        }
+        @memset(vs, value.undef);
+        const o = r.at(Obj, off);
+        o.* = .{ .hdr = .{ .kind = .object, .size = @sizeOf(Obj) }, .count = 0, .cap = cap, .entries = entries };
+        std.debug.assert(objBeside(o, off));
         return value.box(.object, off);
+    }
+
+    /// True when the entries of object `o` at `off` are right after it: an
+    /// object that did not grow and that no compacting copy moved. Entry
+    /// `i` is then at `off + @sizeOf(Obj) + @sizeOf(Hdr) + i * 16`.
+    pub inline fn objBeside(o: *const Obj, off: u32) bool {
+        return o.entries == off + @sizeOf(Obj);
+    }
+
+    /// The `count` keys and values of an object at `off` with its entries
+    /// beside it. The address comes from `off` alone.
+    pub inline fn entriesBeside(r: *const Region, off: u32, count: u32) []Value {
+        std.debug.assert(@as(u64, off) + @sizeOf(Obj) + @sizeOf(Hdr) + @as(u64, count) * 16 <= r.used);
+        return r.valsAt(off + @sizeOf(Obj), count * 2);
     }
 
     /// The keys and values, for a caller that reads all of them.
@@ -763,6 +802,35 @@ test "compact keeps sharing and drops garbage" {
     try std.testing.expectEqual(items[0], items[1]);
     try std.testing.expectEqualStrings("héllo", b.strBytes(value.payload(items[0])));
     try std.testing.expectEqual(@as(u32, 5), b.at(Str, value.payload(items[0])).utf16_len);
+}
+
+test "the entries of a new object are beside it, in the bytes of the two blocks that it had" {
+    var buf: [4096]u8 align(8) = undefined;
+    var r = Region.init(&buf);
+    _ = try r.alloc(.exec, @sizeOf(Exec));
+    const before = r.used;
+    const obj = try r.newObject(4);
+    const off = value.payload(obj);
+    try std.testing.expectEqual(before + @sizeOf(Obj) + @sizeOf(Hdr) + 4 * 16, r.used);
+    try std.testing.expect(Region.objBeside(r.at(Obj, off), off));
+    // Two blocks with their own headers: a walk by header size finds both.
+    try std.testing.expectEqual(ObjKind.object, r.hdr(off).kind);
+    try std.testing.expectEqual(@as(u32, @sizeOf(Obj)), r.hdr(off).size);
+    try std.testing.expectEqual(ObjKind.vals, r.hdr(off + @sizeOf(Obj)).kind);
+    try std.testing.expectEqual(off + @sizeOf(Obj) + r.hdr(off + @sizeOf(Obj)).size, r.used);
+    const key = try r.newString("k");
+    r.entriesBeside(off, 1)[0..2].* = .{ key, value.num(7) };
+    r.at(Obj, off).count = 1;
+    try std.testing.expectEqual(value.num(7), r.objEntriesRaw(off)[1]);
+    // Six properties: the entries move to a larger block, away from the header.
+    try r.objReserve(off, 5);
+    try std.testing.expect(!Region.objBeside(r.at(Obj, off), off));
+    try std.testing.expectEqual(value.num(7), r.objEntriesRaw(off)[1]);
+    // A full region leaves nothing behind.
+    var small: [64]u8 align(8) = undefined;
+    var full = Region.init(&small);
+    try std.testing.expectError(error.RegionFull, full.newObject(4));
+    try std.testing.expectEqual(@as(u32, 0), full.used);
 }
 
 test "appendStr grows in place, keeps older strings, and survives compaction" {
