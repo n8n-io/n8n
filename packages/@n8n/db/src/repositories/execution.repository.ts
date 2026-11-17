@@ -787,7 +787,7 @@ export class ExecutionRepository extends BaseRepository<ExecutionEntity> {
 		}).then((executions) => executions.map(({ id }) => id));
 	}
 
-	async softDeletePrunableExecutions() {
+	async softDeletePrunableExecutions(retainedExecutionIds: string[] = []) {
 		const { pruneDataMaxAge, pruneDataMaxCount } = this.globalConfig.executions;
 
 		// Sub-query to exclude executions having annotations
@@ -831,6 +831,16 @@ export class ExecutionRepository extends BaseRepository<ExecutionEntity> {
 			})
 			// Only mark executions as deleted if they are not annotated
 			.andWhere('id NOT IN ' + annotatedExecutionsSubQuery.getQuery())
+			.andWhere(
+				isPostgres
+					? 'CAST(id AS TEXT) <> ALL(CAST(:retainedExecutionIds AS TEXT[]))'
+					: 'CAST(id AS TEXT) NOT IN (SELECT value FROM json_each(:retainedExecutionIds))',
+				{
+					retainedExecutionIds: isPostgres
+						? retainedExecutionIds
+						: JSON.stringify(retainedExecutionIds),
+				},
+			)
 			.andWhere(pruningCriteria)
 			.execute();
 	}

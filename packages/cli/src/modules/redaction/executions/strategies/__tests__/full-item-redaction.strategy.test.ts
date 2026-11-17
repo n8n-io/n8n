@@ -682,3 +682,44 @@ describe('FullItemRedactionStrategy', () => {
 		});
 	});
 });
+
+it('removes temporary Agent item results from every metadata location', async () => {
+	const metadata = () =>
+		({
+			agentInvocations: {
+				version: 1 as const,
+				items: [{ threadId: 'thread', result: { response: 'private response' } }],
+			},
+		}) as import('n8n-workflow').ITaskMetadata;
+	const execution = makeExecution({
+		Agent: [
+			{
+				startTime: 0,
+				executionIndex: 0,
+				executionTime: 0,
+				executionStatus: 'waiting',
+				source: [],
+				metadata: metadata(),
+			},
+		],
+	});
+	execution.data.executionData!.metadata = { Agent: [metadata()] };
+	execution.data.executionData!.nodeExecutionStack = [
+		{
+			node: {
+				id: 'node',
+				name: 'Agent',
+				type: 'n8n-nodes-base.messageAnAgent',
+				typeVersion: 4,
+				position: [0, 0],
+				parameters: {},
+			},
+			source: null,
+			data: { main: [[]] },
+			metadata: metadata(),
+		},
+	];
+	await new FullItemRedactionStrategy().apply(execution, makeContext());
+	expect(JSON.stringify(execution.data)).not.toContain('private response');
+	expect(JSON.stringify(execution.data)).not.toContain('agentInvocations');
+});
