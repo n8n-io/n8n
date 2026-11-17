@@ -1,11 +1,12 @@
 import type {
 	AgentToolGuardrailConfig,
 	AgentToolGuardrailKind,
+	AgentToolGuardrailToolRef,
 	ToolGuardrailPiiEntity,
 } from '@n8n/api-types';
 import type { BaseTextKey } from '@n8n/i18n';
 
-import type { AgentJsonConfig } from '../types';
+import type { AgentJsonConfig, AgentJsonToolRef } from '../types';
 
 export const TOOL_GUARDRAIL_KINDS: readonly AgentToolGuardrailKind[] = [
 	'keywords',
@@ -92,4 +93,23 @@ export function withToolGuardrails(
 			},
 		},
 	};
+}
+
+/** Node refs match by tool name, workflow refs by the stable workflow id — the keys the runtime registry resolves. */
+export function guardrailRefMatchesTool(
+	ref: AgentToolGuardrailToolRef,
+	tool: AgentJsonToolRef,
+): boolean {
+	if (ref.type === 'node') return tool.type === 'node' && ref.name === tool.name;
+	return (
+		tool.type === 'workflow' && tool.workflowId !== undefined && ref.workflowId === tool.workflowId
+	);
+}
+
+/** Whether a guardrail names this tool in its `tools` list. Wildcards (no list) never match. */
+export function guardrailNamesTool(
+	guardrail: AgentToolGuardrailConfig,
+	tool: AgentJsonToolRef,
+): boolean {
+	return (guardrail.tools ?? []).some((ref) => guardrailRefMatchesTool(ref, tool));
 }

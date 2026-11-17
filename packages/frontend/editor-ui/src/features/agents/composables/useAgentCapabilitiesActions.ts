@@ -8,6 +8,7 @@ import {
 	type AgentConfigValidationIssue,
 	type AgentSkillAvailability,
 	type AgentSkillVersionInfo,
+	type AgentToolGuardrailConfig,
 	type SkillCreateMethod,
 	type SkillDetail,
 	type SkillVersionDetail,
@@ -27,8 +28,10 @@ import {
 	AGENT_SKILL_MODAL_KEY,
 } from '../constants';
 import { isSkillNameTakenError, normalizeAgentSkillForSave } from '../utils/agentSkill';
+import { withToolGuardrails } from '../utils/guardrails';
 import type { ToolOpenTarget, ToolPickerMode } from '../components/AgentCapabilitiesSection.types';
 import type { AgentSkillConfirmResult } from '../components/AgentSkillModal.vue';
+import type { ToolGuardrailsWiring } from '../components/AgentToolGuardrailsSection.vue';
 import type {
 	AgentResource,
 	AgentJsonConfig,
@@ -157,6 +160,26 @@ export function useAgentCapabilitiesActions(deps: UseAgentCapabilitiesActionsDep
 
 	// Agents keep their skills in the skills module. Inline agents keep them in the node.
 	const skillRefsEnabled = computed(() => !localSkills);
+	// Tool guardrails live on the agent's `config` sub-object, which inline
+	// agents do not carry, so their tool modals get no guardrails wiring.
+	const toolGuardrailsEnabled = !localSkills;
+
+	/**
+	 * Guardrails wiring for the tool modals: reads stay live through getters,
+	 * commits write the whole `config` sub-object because the config funnel
+	 * shallow-assigns top-level keys. Writes land on the agent that was open
+	 * when the modal opened, like the tools confirm.
+	 */
+	function toolGuardrailsWiring(targetAgentId: string): ToolGuardrailsWiring {
+		return {
+			getGuardrails: () => localConfig.value?.config?.guardrails?.tools ?? [],
+			getTools: () => localConfig.value?.tools ?? [],
+			onUpdateGuardrails: (tools: AgentToolGuardrailConfig[]) => {
+				if (agentId.value !== targetAgentId) return;
+				scheduleConfigUpdate(withToolGuardrails(localConfig.value, tools));
+			},
+		};
+	}
 
 	function onOpenAddToolModal(mode: ToolPickerMode = 'tools') {
 		// Capture the target at open time: a confirm landing after an agent/node
@@ -172,6 +195,7 @@ export function useAgentCapabilitiesActions(deps: UseAgentCapabilitiesActionsDep
 				projectId: projectId.value,
 				agentId: targetAgentId,
 				supportsToolApproval,
+				...(toolGuardrailsEnabled && { guardrails: toolGuardrailsWiring(targetAgentId) }),
 				onConfirm: (payload: {
 					tools?: AgentJsonToolConfig[];
 					mcpServers?: AgentJsonMcpServerConfig[];
@@ -222,6 +246,16 @@ export function useAgentCapabilitiesActions(deps: UseAgentCapabilitiesActionsDep
 						validationIssues?.value.filter(
 							(issue) => issue.capability.kind === 'tool' && issue.capability.index === toolIndex,
 						) ?? [],
+					...(toolGuardrailsEnabled &&
+						tool.type !== 'custom' && {
+							guardrails: {
+								...toolGuardrailsWiring(agentId.value),
+								validationIssues: () =>
+									validationIssues?.value.filter(
+										(issue) => issue.capability.kind === 'guardrail',
+									) ?? [],
+							},
+						}),
 					existingToolNames: tools
 						.map((toolRef, i) =>
 							i === toolIndex || toolRef.type === 'custom' ? null : toolRef.name,

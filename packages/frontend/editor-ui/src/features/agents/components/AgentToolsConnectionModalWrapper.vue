@@ -98,6 +98,7 @@ import {
 	nodeTypeToNewMcpServer,
 } from '../composables/useMcpServerAdapter';
 import type { AgentJsonMcpServerConfig, AgentJsonToolRef } from '../types';
+import type { ToolGuardrailsWiring } from './AgentToolGuardrailsSection.vue';
 import {
 	isAiGatewayMcpEntry,
 	toMcpEntryAuth,
@@ -137,6 +138,8 @@ const props = defineProps<{
 		projectId: string;
 		agentId?: string;
 		supportsToolApproval?: boolean;
+		/** Agent-level guardrails wiring, threaded into the config step for existing tools. */
+		guardrails?: ToolGuardrailsWiring;
 		onConfirm: (payload: {
 			tools?: AgentJsonToolRef[];
 			mcpServers?: AgentJsonMcpServerConfig[];
@@ -664,6 +667,8 @@ function openConfigForToolEntry(entry: WorkingToolEntry) {
 		agentId: props.data.agentId,
 		supportsToolApproval: props.data.supportsToolApproval,
 		existingToolNames: getExistingToolNames(workingTools.value, toolRef),
+		...(toolRef.type !== 'custom' &&
+			props.data.guardrails && { guardrails: props.data.guardrails }),
 		onConfirm: (updatedRef: AgentJsonToolRef) => {
 			workingToolEntries.value = workingToolEntries.value.map((e) =>
 				e.localId === entry.localId ? { ...e, ref: updatedRef } : e,

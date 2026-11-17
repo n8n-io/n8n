@@ -41,6 +41,9 @@ import AgentToolConfigCustomContent from './AgentToolConfigCustomContent.vue';
 import AgentToolConfigMcpApprovalSetting from './AgentToolConfigMcpApprovalSetting.vue';
 import AgentToolConfigNodeContent from './AgentToolConfigNodeContent.vue';
 import AgentToolConfigWorkflowContent from './AgentToolConfigWorkflowContent.vue';
+import AgentToolGuardrailsSection, {
+	type ToolGuardrailsWiring,
+} from './AgentToolGuardrailsSection.vue';
 
 interface ToolModalData {
 	toolRef: AgentJsonToolRef;
@@ -55,6 +58,12 @@ interface ToolModalData {
 	onConfirm: (updatedRef: AgentJsonToolRef) => void;
 	onRemove?: () => void;
 	kind?: 'tool';
+	/**
+	 * Tool-guardrails wiring. Present only on hosts whose agent supports
+	 * guardrails, and only for existing node/workflow tools; commits are
+	 * agent-level and immediate, independent of this form's Save.
+	 */
+	guardrails?: ToolGuardrailsWiring;
 }
 
 interface McpServerModalData {
@@ -107,6 +116,19 @@ const toolModalData = computed(() => (isMcpServerModalData(props.data) ? null : 
 const toolValidationIssues = computed(() => toValue(toolModalData.value?.validationIssues) ?? []);
 const isWorkflowTool = computed(() => toolModalData.value?.toolRef.type === 'workflow');
 const isCustomTool = computed(() => toolModalData.value?.toolRef.type === 'custom');
+
+/**
+ * The Guardrails section shows for an existing node or workflow tool whose
+ * host wired guardrails in. New tools, MCP servers, custom tools, and inline
+ * agents have none: refs cannot target them yet, or the host carries no
+ * agent-level config to commit to.
+ */
+const guardrailsSection = computed(() => {
+	const data = toolModalData.value;
+	if (!data?.guardrails || !data.onRemove) return null;
+	if (data.toolRef.type !== 'node' && data.toolRef.type !== 'workflow') return null;
+	return { toolRef: data.toolRef, wiring: data.guardrails };
+});
 
 const nodeContentRef = ref<InstanceType<typeof AgentToolConfigNodeContent> | null>(null);
 const mcpContentRef = ref<InstanceType<typeof AgentToolConfigNodeContent> | null>(null);
@@ -437,6 +459,11 @@ defineExpose({ canSave, confirm, remove, changeTitle });
 				@update:valid="mcpApprovalValid = $event"
 			/>
 		</div>
+		<AgentToolGuardrailsSection
+			v-if="guardrailsSection"
+			:tool-ref="guardrailsSection.toolRef"
+			v-bind="guardrailsSection.wiring"
+		/>
 	</div>
 </template>
 

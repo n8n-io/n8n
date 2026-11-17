@@ -9675,7 +9675,7 @@
 	"agents.builder.guardrails.add": "Add guardrail",
 	"agents.builder.guardrails.chip.allTools": "All tools",
 	"agents.builder.guardrails.chip.nTools": "{count} tool | {count} tools",
-	"agents.builder.guardrails.name.placeholder": "Finance data check",
+	"agents.builder.guardrails.name.placeholder": "Guardrail",
 	"agents.builder.guardrails.type.label": "Guardrail type",
 	"agents.builder.guardrails.kind.keywords": "Blocked keywords",
 	"agents.builder.guardrails.kind.jailbreak": "Jailbreak detection",
