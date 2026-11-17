@@ -54,6 +54,7 @@ const toMenuItem = (link: AppNavLink): IMenuItem => ({
 					icon="search"
 					icon-size="large"
 					:aria-label="i18n.baseText('nodeView.openCommandBar')"
+					:class="$style.headerAction"
 					data-test-id="app-nav-search"
 					@click="emit('search', $event)"
 				/>
@@ -78,6 +79,7 @@ const toMenuItem = (link: AppNavLink): IMenuItem => ({
 							? i18n.baseText('mainSidebar.state.collapse')
 							: i18n.baseText('mainSidebar.state.expand')
 					"
+					:class="$style.headerAction"
 					data-test-id="app-nav-toggle"
 					@click="emit('toggle')"
 				/>
@@ -157,6 +159,16 @@ const toMenuItem = (link: AppNavLink): IMenuItem => ({
 	height: var(--spacing--2xl);
 	padding: 0 var(--spacing--3xs) 0 var(--spacing--sm);
 	flex: none;
+}
+
+.headerAction {
+	// Quieter than the title, so the panel's name stays the first thing to read.
+	color: var(--text-color--subtle);
+
+	&:hover,
+	&:focus-visible {
+		color: var(--text-color);
+	}
 }
 
 .title {
