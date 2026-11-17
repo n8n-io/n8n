@@ -340,10 +340,13 @@ describe('WorkflowPublicationApplier', () => {
 
 			expect(result).toMatchObject({
 				type: 'failed',
-				triggerStatuses: [
-					{ nodeId: 'a', status: 'failed', errorMessage: refusal().message },
-					{ nodeId: 'b', status: 'failed', errorMessage: refusal().message },
-				],
+				triggerState: {
+					versionId: 'v-2',
+					triggerStatuses: [
+						{ nodeId: 'a', status: 'failed', errorMessage: refusal().message },
+						{ nodeId: 'b', status: 'failed', errorMessage: refusal().message },
+					],
+				},
 			});
 			expect(workflowTriggerActivator.activate).not.toHaveBeenCalled();
 			expect(workflowTriggerActivator.deactivate).not.toHaveBeenCalled();
@@ -449,22 +452,25 @@ describe('WorkflowPublicationApplier', () => {
 
 			expect(result).toMatchObject({
 				type: 'failed',
-				triggerStatuses: [
-					{
-						nodeId: 'a',
-						nodeName: 'a',
-						status: 'failed',
-						triggerKind: 'in-memory',
-						errorMessage: 'Blocked by policy',
-					},
-					{
-						nodeId: 'b',
-						nodeName: 'b',
-						status: 'failed',
-						triggerKind: 'in-memory',
-						errorMessage: 'Blocked by policy',
-					},
-				],
+				triggerState: {
+					versionId: 'v-2',
+					triggerStatuses: [
+						{
+							nodeId: 'a',
+							nodeName: 'a',
+							status: 'failed',
+							triggerKind: 'in-memory',
+							errorMessage: 'Blocked by policy',
+						},
+						{
+							nodeId: 'b',
+							nodeName: 'b',
+							status: 'failed',
+							triggerKind: 'in-memory',
+							errorMessage: 'Blocked by policy',
+						},
+					],
+				},
 			});
 		});
 
@@ -532,11 +538,10 @@ describe('WorkflowPublicationApplier', () => {
 			expect(result).toMatchObject({
 				type: 'failed',
 				error,
-				previousTriggerState: {
+				triggerState: {
 					versionId: 'v-2',
 					triggerStatuses: [{ nodeId: 'a', status: 'activated' }],
 				},
-				triggerStatuses: [{ nodeId: 'a', status: 'failed', errorMessage: error.message }],
 			});
 			expect(workflowTriggerActivator.activate).not.toHaveBeenCalled();
 			expect(workflowTriggerActivator.deactivate).not.toHaveBeenCalled();
@@ -567,7 +572,7 @@ describe('WorkflowPublicationApplier', () => {
 
 			expect(result).toMatchObject({
 				type: 'failed',
-				previousTriggerState: {
+				triggerState: {
 					triggerStatuses: [
 						{ nodeId: 'a', status: 'activated' },
 						{ nodeId: 'b', status: 'failed', errorMessage: 'Trigger is not registered' },
@@ -586,8 +591,7 @@ describe('WorkflowPublicationApplier', () => {
 			const result = await applier.apply(makeRecord(), abort);
 
 			expect(result).toMatchObject({ type: 'failed', error });
-			expect(result).not.toHaveProperty('previousTriggerState');
-			expect(result).not.toHaveProperty('triggerStatuses', expect.anything());
+			expect(result).not.toHaveProperty('triggerState', expect.anything());
 			expect(workflowTriggerActivator.activate).not.toHaveBeenCalled();
 			expect(workflowTriggerActivator.deactivate).not.toHaveBeenCalled();
 			expect(workflowPublishedVersionRepository.setPublishedVersion).not.toHaveBeenCalled();
@@ -1177,15 +1181,18 @@ describe('WorkflowPublicationApplier', () => {
 		expect(result).toEqual({
 			type: 'failed',
 			error,
-			triggerStatuses: [
-				{
-					nodeId: 'b',
-					nodeName: 'b',
-					status: 'failed',
-					triggerKind: 'in-memory',
-					errorMessage: error.message,
-				},
-			],
+			triggerState: {
+				versionId: 'v-2',
+				triggerStatuses: [
+					{
+						nodeId: 'b',
+						nodeName: 'b',
+						status: 'failed',
+						triggerKind: 'in-memory',
+						errorMessage: error.message,
+					},
+				],
+			},
 		});
 		expect((result as { error: Error }).error).toBe(error);
 		expect(workflowPublishedVersionRepository.setPublishedVersion).toHaveBeenCalledWith(
@@ -1212,22 +1219,25 @@ describe('WorkflowPublicationApplier', () => {
 			error: expect.objectContaining({
 				message: `Triggers failed to activate: "b": ${deterministic.message}; "c": third-party unavailable`,
 			}),
-			triggerStatuses: [
-				{
-					nodeId: 'b',
-					nodeName: 'b',
-					status: 'failed',
-					triggerKind: 'in-memory',
-					errorMessage: deterministic.message,
-				},
-				{
-					nodeId: 'c',
-					nodeName: 'c',
-					status: 'failed',
-					triggerKind: 'in-memory',
-					errorMessage: 'third-party unavailable',
-				},
-			],
+			triggerState: {
+				versionId: 'v-2',
+				triggerStatuses: [
+					{
+						nodeId: 'b',
+						nodeName: 'b',
+						status: 'failed',
+						triggerKind: 'in-memory',
+						errorMessage: deterministic.message,
+					},
+					{
+						nodeId: 'c',
+						nodeName: 'c',
+						status: 'failed',
+						triggerKind: 'in-memory',
+						errorMessage: 'third-party unavailable',
+					},
+				],
+			},
 		});
 	});
 
@@ -1368,22 +1378,25 @@ describe('WorkflowPublicationApplier', () => {
 				error: expect.objectContaining({
 					message: expect.stringContaining('n8n-nodes-base.executeCommand'),
 				}),
-				triggerStatuses: [
-					{
-						nodeId: 'a',
-						nodeName: 'a',
-						status: 'failed',
-						triggerKind: 'in-memory',
-						errorMessage: expect.stringContaining('n8n-nodes-base.executeCommand'),
-					},
-					{
-						nodeId: 'x',
-						nodeName: 'Execute Command',
-						status: 'failed',
-						triggerKind: 'persisted',
-						errorMessage: 'Unrecognized node type: n8n-nodes-base.executeCommand',
-					},
-				],
+				triggerState: {
+					versionId: 'v-2',
+					triggerStatuses: [
+						{
+							nodeId: 'a',
+							nodeName: 'a',
+							status: 'failed',
+							triggerKind: 'in-memory',
+							errorMessage: expect.stringContaining('n8n-nodes-base.executeCommand'),
+						},
+						{
+							nodeId: 'x',
+							nodeName: 'Execute Command',
+							status: 'failed',
+							triggerKind: 'persisted',
+							errorMessage: 'Unrecognized node type: n8n-nodes-base.executeCommand',
+						},
+					],
+				},
 			});
 			expect(workflowTriggerActivator.activate).not.toHaveBeenCalled();
 		});
@@ -1438,7 +1451,10 @@ describe('WorkflowPublicationApplier', () => {
 
 			expect(result).toMatchObject({
 				type: 'failed',
-				triggerStatuses: [{ nodeId: 'x', status: 'failed', triggerKind: 'persisted' }],
+				triggerState: {
+					versionId: 'v-2',
+					triggerStatuses: [{ nodeId: 'x', status: 'failed', triggerKind: 'persisted' }],
+				},
 			});
 		});
 
@@ -1704,15 +1720,18 @@ describe('WorkflowPublicationApplier', () => {
 					message,
 					affectedNodes: [{ id: longId, name: 'Long' }],
 				}),
-				triggerStatuses: [
-					{
-						nodeId: fittingId,
-						nodeName: 'Fitting',
-						status: 'failed',
-						triggerKind: 'in-memory',
-						errorMessage: message,
-					},
-				],
+				triggerState: {
+					versionId: 'v-2',
+					triggerStatuses: [
+						{
+							nodeId: fittingId,
+							nodeName: 'Fitting',
+							status: 'failed',
+							triggerKind: 'in-memory',
+							errorMessage: message,
+						},
+					],
+				},
 			});
 			expect(workflowPublishedVersionRepository.setPublishedVersion).not.toHaveBeenCalled();
 			expect(workflowTriggerActivator.activate).not.toHaveBeenCalled();
@@ -1734,7 +1753,10 @@ describe('WorkflowPublicationApplier', () => {
 			expect(result).toMatchObject({
 				type: 'failed',
 				error: { affectedNodes: [{ id: longId, name: 'Long' }] },
-				triggerStatuses: [{ nodeId: astralId, nodeName: 'Astral', status: 'failed' }],
+				triggerState: {
+					versionId: 'v-2',
+					triggerStatuses: [{ nodeId: astralId, nodeName: 'Astral', status: 'failed' }],
+				},
 			});
 		});
 
@@ -1769,7 +1791,10 @@ describe('WorkflowPublicationApplier', () => {
 
 			const result = await applier.apply(makeRecord(), abort);
 
-			expect(result).toMatchObject({ type: 'failed', triggerStatuses: [] });
+			expect(result).toMatchObject({
+				type: 'failed',
+				triggerState: { versionId: 'v-2', triggerStatuses: [] },
+			});
 			expect(workflowPublishedVersionRepository.setPublishedVersion).not.toHaveBeenCalled();
 		});
 

@@ -106,16 +106,17 @@ export class PublicationStatusReporter {
 				// The record's failure stays the activation error; the abandoned
 				// deregistrations (whose teardown already ran) get their own report.
 				this.surfaceTeardownFailures(result.teardownFailures);
-				const { triggerStatuses, previousTriggerState } = result;
-				const rows = previousTriggerState
-					? this.toRows(
-							{ publishedVersionId: previousTriggerState.versionId },
-							previousTriggerState.triggerStatuses,
-						)
-					: triggerStatuses && this.toRows(record, triggerStatuses);
+				const { triggerState } = result;
 				await this.transactionRunner.run({}, async (ctx) => {
-					if (rows) {
-						await this.triggerStatusRepository.replaceForWorkflow(record.workflowId, rows, ctx);
+					if (triggerState) {
+						await this.triggerStatusRepository.replaceForWorkflow(
+							record.workflowId,
+							this.toRows(
+								{ publishedVersionId: triggerState.versionId },
+								triggerState.triggerStatuses,
+							),
+							ctx,
+						);
 					}
 					await this.retryStateRepository.suppressRetry(
 						record.workflowId,
@@ -131,7 +132,12 @@ export class PublicationStatusReporter {
 					this.errorReporter.error(result.error, { shouldBeLogged: true });
 				}
 				// Name a node only when the error belongs to it. Shared failures name none.
-				const failedTriggers = (triggerStatuses ?? []).filter((s) => s.status === 'failed');
+				const failedTriggers =
+					triggerState?.versionId === record.publishedVersionId
+						? triggerState.triggerStatuses.filter(
+								(s) => s.status === 'failed' && s.errorMessage === result.error.message,
+							)
+						: [];
 				let nodeId: string | undefined;
 				if (result.error instanceof TriggerNodeIdTooLongError) {
 					if (result.error.affectedNodes.length === 1) {

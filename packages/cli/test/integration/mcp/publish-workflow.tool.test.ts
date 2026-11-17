@@ -34,6 +34,7 @@ import { createWorkflowDetailsTool } from '@/modules/mcp/tools/get-workflow-deta
 import { PolicyEnforcementService } from '@/policy/policy-enforcement.service';
 import { PolicyViolationError } from '@/policy/policy-violation.error';
 import { Push } from '@/push';
+import { ActiveWorkflowsService } from '@/services/active-workflows.service';
 import { ProjectService } from '@/services/project.service.ee';
 import { WorkflowPublicationNotifier } from '@/workflows/publication/workflow-publication-notifier';
 import { WorkflowPublicationOutboxConsumer } from '@/workflows/publication/workflow-publication-outbox-consumer';
@@ -175,20 +176,8 @@ describe('publish_workflow trigger activation', () => {
 				`Publication was not queued: ${JSON.stringify((await response).structuredContent)}`,
 			);
 		}
-		expect(record).toMatchObject({
-			workflowId: workflow.id,
-			publishedVersionId: workflow.versionId,
-			status: 'in_progress',
-		});
 		const pendingDetails = await detailsFor(owner, workflow.id);
-		expect(pendingDetails.structuredContent).toMatchObject({
-			workflow: {
-				active: false,
-				publicationStatus: { status: 'in_progress', pendingVersionId: workflow.versionId },
-			},
-		});
-		expect(responseSettled).toBe(false);
-		return { response, workflow, owner, record: record! };
+		return { response, workflow, owner, record, pendingDetails, responseSettled };
 	}
 
 	async function publishAndActivate(nodes: INode[]) {
@@ -267,7 +256,7 @@ describe('publish_workflow trigger activation', () => {
 
 		expect((await response).structuredContent).toMatchObject({
 			success: false,
-			activeVersionId: null,
+			activeVersionId: workflow.versionId,
 			error: expect.stringContaining('Another publication replaced this request'),
 		});
 		expect((await detailsFor(owner, workflow.id)).structuredContent).toMatchObject({
@@ -276,6 +265,49 @@ describe('publish_workflow trigger activation', () => {
 				publicationStatus: { status: 'not_published', liveVersionId: null },
 			},
 		});
+	});
+
+	test('keeps an unpublished workflow inactive after its completed outbox record expires', async () => {
+		const { workflow, owner, recordId } = await publishAndActivate([scheduleNode('invalid', 60)]);
+		await Container.get(WorkflowService).deactivateWorkflow(owner, workflow.id, {
+			source: 'n8n-mcp',
+		});
+		const record = await outboxRepository.claimNextPendingRecord();
+		expect(record).not.toBeNull();
+		await consumer.processRecord(record!, new AbortController().signal);
+
+		const completedAt = new Date(Date.now() - 2 * 60 * 60 * 1_000);
+		await outboxRepository.update(recordId, {
+			updatedAt: new Date(completedAt.getTime() - 60 * 60 * 1_000),
+		});
+		await outboxRepository.update(record!.id, { updatedAt: completedAt });
+		expect(await outboxRepository.deleteTerminalOlderThan(3_600, 7 * 86_400, 10)).toBe(1);
+		expect(await outboxRepository.findLatestByWorkflowId(workflow.id)).toMatchObject({
+			status: 'failed',
+			publishedVersionId: workflow.versionId,
+		});
+
+		for (const detailLevel of ['full', 'execution'] as const) {
+			expect((await detailsFor(owner, workflow.id, detailLevel)).structuredContent).toMatchObject({
+				workflow: {
+					active: false,
+					activeVersionId: null,
+					publicationStatus: {
+						status: 'not_published',
+						versionId: null,
+						liveVersionId: null,
+						errorMessage: null,
+					},
+				},
+			});
+		}
+		await expect(statusService.getStatus(workflow.id)).resolves.toMatchObject({
+			status: 'not_published',
+		});
+		expect(await statusService.getListStatusesByWorkflowIds([workflow.id])).toEqual(new Map());
+		await expect(
+			statusService.getFailedActivationError(workflow.id, workflow.nodes),
+		).resolves.toBeNull();
 	});
 
 	test('returns success for a valid 30-minute schedule', async () => {
@@ -412,7 +444,7 @@ describe('publish_workflow trigger activation', () => {
 
 				expect((await response).structuredContent).toMatchObject({
 					success: false,
-					activeVersionId: previousLive ? workflow.versionId : null,
+					activeVersionId: versionId,
 					error: error.message,
 					publicationStatus,
 				});
@@ -422,10 +454,24 @@ describe('publish_workflow trigger activation', () => {
 					).toMatchObject({
 						workflow: {
 							active: previousLive,
+							activeVersionId: versionId,
 							publicationStatus,
 						},
 					});
 				}
+				await expect(statusService.getStatus(workflow.id)).resolves.toMatchObject({
+					status: 'failed',
+					liveVersionId: previousLive ? workflow.versionId : null,
+				});
+				expect(await statusService.getListStatusesByWorkflowIds([workflow.id])).toEqual(
+					new Map([[workflow.id, 'failed']]),
+				);
+				await expect(
+					statusService.getFailedActivationError(workflow.id, workflow.nodes),
+				).resolves.toBe(error.message);
+				expect(await Container.get(ActiveWorkflowsService).getAllActiveIdsInStorage()).toEqual(
+					previousLive ? [workflow.id] : [],
+				);
 				expect(Container.get(ActiveWorkflowTriggers).get(workflow.id)?.get(trigger.id)).toBe(
 					previousLive ? registeredTrigger : undefined,
 				);
@@ -519,22 +565,31 @@ describe('publish_workflow trigger activation', () => {
 	});
 
 	test('returns a pending status that workflow details can poll', async () => {
-		const { response, workflow, owner, record } = await queuePublication([
-			scheduleNode('invalid', 60),
-		]);
+		const { response, workflow, owner, record, pendingDetails, responseSettled } =
+			await queuePublication([scheduleNode('invalid', 60)]);
+
+		expect(record).toMatchObject({
+			workflowId: workflow.id,
+			publishedVersionId: workflow.versionId,
+			status: 'in_progress',
+		});
+		expect(pendingDetails.structuredContent).toMatchObject({
+			workflow: {
+				active: false,
+				publicationStatus: { status: 'in_progress', pendingVersionId: workflow.versionId },
+			},
+		});
+		expect(responseSettled).toBe(false);
 
 		const result = await response;
 		expect(result.structuredContent).toMatchObject({
 			success: false,
-			activeVersionId: null,
+			activeVersionId: workflow.versionId,
 			publicationStatus: {
 				status: 'in_progress',
 				versionId: workflow.versionId,
 				pendingVersionId: workflow.versionId,
 			},
-		});
-		expect((await detailsFor(owner, workflow.id)).structuredContent).toMatchObject({
-			workflow: { active: false, publicationStatus: { status: 'in_progress' } },
 		});
 
 		await consumer.processRecord(record, new AbortController().signal);

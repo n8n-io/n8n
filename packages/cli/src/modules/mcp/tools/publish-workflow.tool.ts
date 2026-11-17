@@ -133,14 +133,23 @@ export const createPublishWorkflowTool = (
 				workflowId,
 				requestedVersionId,
 			);
+			const replaced =
+				publicationStatus !== undefined &&
+				(publicationStatus.versionId !== requestedVersionId ||
+					publicationStatus.status === 'not_published');
+			const publicationError = replaced
+				? 'Another publication replaced this request. Check the current workflow publication status.'
+				: publicationStatus?.errorMessage;
 			const output: PublishWorkflowOutput = {
-				success: publicationStatus === undefined || publicationStatus.status === 'published',
+				success:
+					publicationStatus === undefined ||
+					(!replaced &&
+						publicationStatus.status === 'published' &&
+						publicationStatus.liveVersionId === requestedVersionId),
 				workflowId: activatedWorkflow.id,
-				activeVersionId: publicationStatus
-					? publicationStatus.liveVersionId
-					: activatedWorkflow.activeVersionId,
+				activeVersionId: activatedWorkflow.activeVersionId,
 				...(publicationStatus ? { publicationStatus } : {}),
-				...(publicationStatus?.errorMessage ? { error: publicationStatus.errorMessage } : {}),
+				...(publicationError ? { error: publicationError } : {}),
 			};
 
 			telemetryPayload.results = {

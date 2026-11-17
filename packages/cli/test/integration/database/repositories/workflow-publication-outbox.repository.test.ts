@@ -61,6 +61,24 @@ describe('WorkflowPublicationOutboxRepository', () => {
 			errorMessage: 'Invalid interval',
 		});
 		expect(await repository.findLatestByWorkflowId('unknown')).toBeNull();
+		expect(await repository.findLatestByWorkflowIds(['wf-1', 'unknown'])).toMatchObject([
+			{ workflowId: 'wf-1', publishedVersionId: 'v-2', status: 'failed' },
+		]);
+		expect(await repository.findLatestByWorkflowIds(['wf-1', 'wf-2'])).toEqual(
+			expect.arrayContaining([
+				expect.objectContaining({
+					workflowId: 'wf-1',
+					publishedVersionId: 'v-2',
+					status: 'failed',
+				}),
+				expect.objectContaining({
+					workflowId: 'wf-2',
+					publishedVersionId: 'other-version',
+					status: 'pending',
+				}),
+			]),
+		);
+		expect(await repository.findLatestByWorkflowIds([])).toEqual([]);
 	});
 
 	it.each(['completed', 'failed', 'partial_success'] as const)(
@@ -170,6 +188,9 @@ describe('WorkflowPublicationOutboxRepository', () => {
 		await repository.runInTransaction({}, async (trx, ctx) => {
 			await repository.enqueue('wf-1', 'v-1', 'publish', trx);
 			expect(await repository.findInFlightByWorkflowId('wf-1', ctx)).toMatchObject({
+				publishedVersionId: 'v-1',
+			});
+			expect(await repository.findLatestByWorkflowId('wf-1', ctx)).toMatchObject({
 				publishedVersionId: 'v-1',
 			});
 		});

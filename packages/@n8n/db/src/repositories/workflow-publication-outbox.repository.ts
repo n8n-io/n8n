@@ -14,6 +14,7 @@ import {
 import { WorkflowPublicationRetryState } from '../entities/workflow-publication-retry-state';
 import type { OperationContext } from '../services/transaction';
 import { TransactionRunner } from '../services/transaction';
+import { chunkIds } from '../utils/chunk-ids';
 import { dbNowLiteral } from '../utils/dialect-time';
 import { isUniqueConstraintError } from '../utils/is-unique-constraint-error';
 
@@ -46,8 +47,35 @@ export class WorkflowPublicationOutboxRepository extends BaseRepository<Workflow
 	}
 
 	/** Get the latest request, including its terminal outcome, for publication callers. */
-	async findLatestByWorkflowId(workflowId: string): Promise<WorkflowPublicationOutbox | null> {
-		return await this.findOne({ where: { workflowId }, order: { id: 'DESC' } });
+	async findLatestByWorkflowId(
+		workflowId: string,
+		ctx: OperationContext = {},
+	): Promise<WorkflowPublicationOutbox | null> {
+		return await this.managerFor(ctx).findOne(WorkflowPublicationOutbox, {
+			where: { workflowId },
+			order: { id: 'DESC' },
+		});
+	}
+
+	/** Read one latest request per workflow without loading its retained history. */
+	async findLatestByWorkflowIds(workflowIds: string[]): Promise<WorkflowPublicationOutbox[]> {
+		const records: WorkflowPublicationOutbox[] = [];
+		for (const chunk of chunkIds(workflowIds)) {
+			const latest = await this.createQueryBuilder('outbox')
+				.where((qb) => {
+					const latestIds = qb
+						.subQuery()
+						.select('MAX(request.id)')
+						.from(WorkflowPublicationOutbox, 'request')
+						.where('request.workflowId IN (:...workflowIds)', { workflowIds: chunk })
+						.groupBy('request.workflowId')
+						.getQuery();
+					return `outbox.id IN ${latestIds}`;
+				})
+				.getMany();
+			records.push(...latest);
+		}
+		return records;
 	}
 
 	/**

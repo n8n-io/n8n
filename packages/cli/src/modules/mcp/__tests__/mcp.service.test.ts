@@ -761,21 +761,30 @@ describe('McpService', () => {
 							}),
 						);
 						const text = await response.text();
-						expect(response.status, text).toBe(200);
 						const body = JSON.parse(text) as {
 							result?: { structuredContent?: unknown };
 							error?: unknown;
 						};
-						expect(body.error).toBeUndefined();
-						return body.result?.structuredContent;
+						return { status: response.status, body };
 					};
 
-					expect(await callTool('publish_workflow')).toMatchObject({
+					const publicationResponse = await callTool('publish_workflow');
+					expect(publicationResponse.status).toBe(200);
+					expect(publicationResponse.body.error).toBeUndefined();
+					expect(publicationResponse.body.result?.structuredContent).toMatchObject({
 						success: !enabled,
+						activeVersionId: requestedVersionId,
 						...(enabled ? { error: 'Invalid interval', publicationStatus: status } : {}),
 					});
-					expect(await callTool('get_workflow_details')).toMatchObject({
-						workflow: { active: !enabled, ...(enabled ? { publicationStatus: status } : {}) },
+					const detailsResponse = await callTool('get_workflow_details');
+					expect(detailsResponse.status).toBe(200);
+					expect(detailsResponse.body.error).toBeUndefined();
+					expect(detailsResponse.body.result?.structuredContent).toMatchObject({
+						workflow: {
+							active: !enabled,
+							activeVersionId: requestedVersionId,
+							...(enabled ? { publicationStatus: status } : {}),
+						},
 					});
 					expect(publication.waitForPublication).toHaveBeenCalledTimes(enabled ? 1 : 0);
 					if (enabled) {
