@@ -330,7 +330,7 @@ export class LinearHydrator implements Hydrator {
 		const priority = isRecord(issue.priority) ? issue.priority.value : issue.priority;
 		const outIssue = omitUndef({
 			id: issueId,
-			number: identMatch ? Number(identMatch[2]) : undefined,
+			['number']: identMatch ? Number(identMatch[2]) : undefined,
 			ref: `issue:${issueId}`,
 			team: teamRef,
 			title: str(issue.title) ?? 'Untitled',

@@ -1,0 +1,59 @@
+import { SeededEntities } from '../seeded-entities';
+
+const team = { ref: 'team:LHO', id: 'team-1', key: 'LHO' };
+
+describe('SeededEntities', () => {
+	it('keeps everything while nothing is seeded', () => {
+		const overlay = { world_version: 1, native: { linear: { teams: [team] } } };
+		expect(new SeededEntities().dedupe(overlay)).toBe(overlay);
+	});
+
+	it('removes an entity that was seeded, by id', () => {
+		const seeded = new SeededEntities();
+		seeded.record({ native: { linear: { teams: [team] } } });
+		const left = seeded.dedupe({
+			world_version: 1,
+			native: {
+				linear: {
+					teams: [
+						{ ...team, ref: 'other' },
+						{ ref: 'team:new', id: 'team-2' },
+					],
+				},
+			},
+		});
+		expect(left).toEqual({
+			world_version: 1,
+			native: { linear: { teams: [{ ref: 'team:new', id: 'team-2' }] } },
+		});
+	});
+
+	it('writes a reference with the stored letter case', () => {
+		const seeded = new SeededEntities();
+		seeded.record({ native: { linear: { teams: [team] } } });
+		const left = seeded.dedupe({
+			native: { linear: { projects: [{ ref: 'project:p', id: 'p-1', team: 'team:lho' }] } },
+		});
+		expect(left).toEqual({
+			native: { linear: { projects: [{ ref: 'project:p', id: 'p-1', team: 'team:LHO' }] } },
+		});
+	});
+
+	it('does not change the input', () => {
+		const seeded = new SeededEntities();
+		seeded.record({ native: { linear: { teams: [team] } } });
+		const overlay = { native: { linear: { teams: [team] } } };
+		seeded.dedupe(overlay);
+		expect(overlay.native.linear.teams).toHaveLength(1);
+	});
+
+	it('knows an overlay with no entity is empty', () => {
+		expect(SeededEntities.isEmpty({ world_version: 1, native: { linear: { teams: [] } } })).toBe(
+			true,
+		);
+		expect(
+			SeededEntities.isEmpty({ world_version: 1, native: { linear: { teams: [team] } } }),
+		).toBe(false);
+		expect(SeededEntities.isEmpty({ world_version: 1, persona: { name: 'x' } })).toBe(false);
+	});
+});

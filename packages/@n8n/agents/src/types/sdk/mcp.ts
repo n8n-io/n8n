@@ -66,6 +66,12 @@ export interface McpServerConfig {
 	connectionTimeoutMs?: number;
 
 	/**
+	 * Maximum time in milliseconds to wait for a tool call of this server to
+	 * answer. When omitted, the MCP SDK default applies (60s).
+	 */
+	callTimeoutMs?: number;
+
+	/**
 	 * Require human-in-the-loop approval for tool calls from this server.
 	 *
 	 * - `true` — every tool from this server requires approval before execution.

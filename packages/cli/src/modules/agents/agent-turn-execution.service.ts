@@ -39,6 +39,7 @@ import {
 } from './agent-execution.service';
 import { ExecutionRecorder } from './execution-recorder';
 import type { ToolRegistry } from './tool-registry';
+import { withChatScope } from '../mcp-guard/chat-scope';
 import { streamAgentChunks } from './utils/agent-stream';
 import { MAX_ITERATIONS_STOPPED_MESSAGE } from './utils/fatal-session-outcome';
 import { createAttributionTracker } from './utils/mcp-attribution';
@@ -271,21 +272,29 @@ export class AgentTurnExecutionService {
 		if (turn.type === 'start') {
 			state.executionStarted = true;
 			config.onRuntimeStarted?.();
-			const started = await config.agentInstance.stream(turn.input, turn.options);
+			// The guard of test runs gives each chat its own simulated tenant, see mcp-guard/chat-scope.ts.
+			const started = await withChatScope(
+				config.context.threadId,
+				async () => await config.agentInstance.stream(turn.input, turn.options),
+			);
 			state.runId = started.runId;
 			return started.stream;
 		}
 
 		const { options, resumeData } = turn;
-		const resumed = await config.agentInstance.resume('stream', resumeData, {
-			...options,
-			onResumeClaimed: async () => {
-				state.executionStarted = true;
-				config.onRuntimeStarted?.();
-				recorder.recordHitlResponse(options.toolCallId, resumeData);
-				await options.onResumeClaimed?.();
-			},
-		});
+		const resumed = await withChatScope(
+			config.context.threadId,
+			async () =>
+				await config.agentInstance.resume('stream', resumeData, {
+					...options,
+					onResumeClaimed: async () => {
+						state.executionStarted = true;
+						config.onRuntimeStarted?.();
+						recorder.recordHitlResponse(options.toolCallId, resumeData);
+						await options.onResumeClaimed?.();
+					},
+				}),
+		);
 		state.runId = resumed.runId;
 		return resumed.stream;
 	}

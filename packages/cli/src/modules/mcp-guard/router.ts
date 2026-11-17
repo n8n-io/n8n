@@ -27,6 +27,10 @@ export class GuardRouter {
 			hydrator: Hydrator;
 			readTools: ReadonlySet<string>;
 			writeTools: ReadonlySet<string>;
+			// The args of the call to the real service. The agent's args can ask for less than the
+			// hydration needs (a field list without ids), so the real call may ask for more. The gym
+			// still answers the agent's own args.
+			upstreamArgs?: (name: string, args: Record<string, unknown>) => Record<string, unknown>;
 		},
 	) {}
 
@@ -59,7 +63,10 @@ export class GuardRouter {
 		}
 		let upstreamResult: CallToolResult;
 		try {
-			upstreamResult = await this.deps.upstream.callTool(name, args);
+			upstreamResult = await this.deps.upstream.callTool(
+				name,
+				this.deps.upstreamArgs?.(name, args) ?? args,
+			);
 		} catch (e) {
 			return toolError(`upstream read failed: ${errMsg(e)}`);
 		}

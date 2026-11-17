@@ -5,6 +5,7 @@ import { WebStandardStreamableHTTPServerTransport } from '@modelcontextprotocol/
 import { CallToolRequestSchema, ListToolsRequestSchema } from '@modelcontextprotocol/sdk/types.js';
 
 import { GymAdmin, isRecord } from './gym-admin';
+import type { HydrationModel } from './hydration-llm';
 import { RunRegistry } from './runs';
 import { GUARD_PROFILES, type GuardServiceProfile } from './services';
 
@@ -43,7 +44,12 @@ export class McpGuardService {
 	constructor(private readonly logger: Logger) {}
 
 	// In-process: takes the MCP Request from the test-run fetch wrapper and returns the Response.
-	async handleMcp(host: string, runId: string, req: Request): Promise<Response> {
+	async handleMcp(
+		host: string,
+		runId: string,
+		req: Request,
+		model?: HydrationModel,
+	): Promise<Response> {
 		const registry = this.registries.get(host);
 		if (!registry) return new Response(null, { status: 404 });
 		// The real upstream key is only used for upstream reads. Never log it.
@@ -52,7 +58,7 @@ export class McpGuardService {
 
 		let run;
 		try {
-			run = await registry.getOrCreate(runId, token);
+			run = await registry.getOrCreate(runId, token, model);
 		} catch (e) {
 			this.logger.error(
 				`mcp-guard run setup failed: ${e instanceof Error ? e.message : 'unknown'}`,
