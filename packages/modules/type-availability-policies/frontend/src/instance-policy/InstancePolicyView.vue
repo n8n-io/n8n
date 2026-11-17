@@ -6,6 +6,7 @@ import { useI18n } from '@n8n/i18n';
 import { computed, onMounted } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 
+import { useInstancePolicy } from './useInstancePolicy';
 import { usePolicyAdminAccess } from '../composables/usePolicyAdminAccess';
 import {
 	POLICIES_LANDING_VIEW,
@@ -18,6 +19,7 @@ const route = useRoute();
 const router = useRouter();
 const documentTitle = useDocumentTitle();
 const { manageableKinds, entryRouteName } = usePolicyAdminAccess();
+const instancePolicy = useInstancePolicy();
 
 const tabOptions = computed(() =>
 	manageableKinds.value.map((kind) => ({
@@ -56,6 +58,7 @@ function onBack() {
 
 onMounted(() => {
 	documentTitle.set(i18n.baseText('typeAvailabilityPolicies.instancePolicy.title'));
+	void instancePolicy.load();
 });
 </script>
 
