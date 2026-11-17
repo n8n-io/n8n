@@ -304,6 +304,23 @@ Each route lists the same type names as the builder read of its kind: `available
 node types, `available-credential-types` for credential types. Generated tool variants are node
 types, and they get the verdict of their base type.
 
+### Usage counts of each credential type
+
+`GET /credential-type-policies/usage` and `GET /projects/:projectId/credential-type-policies/usage`
+return Uses, Workflows and Active workflows for each credential type in use. A type that no
+workflow uses has no entry. The counts come from the `activeCredentialId` rows of the workflow
+dependency index:
+
+- The indexer writes these rows only for the credentials that the node's current configuration
+  uses. A credential left on a node after an auth mode change does not count.
+- Each workflow counts in one version: the published version if it is active, the draft if not.
+  Archived workflows and deleted credentials do not count.
+- The project route counts only the workflows that the project owns.
+- A disabled node counts, the same as in the check above.
+
+The counts are only as current as the index. After an upgrade that bumps
+`WORKFLOW_DEPENDENCY_INDEX_VERSION`, a workflow counts as 0 until the startup reindex reaches it.
+
 ## The write seal
 
 This is the first check that can deny anything, so the clearance token is now exercised end to

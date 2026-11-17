@@ -16,9 +16,11 @@ import type { WorkflowEntity } from './workflow-entity';
 // start then reindexes every workflow whose rows carry an older version.
 // Version 2: the indexer records `workflowCall` rows for sub-workflow tool and
 // retriever nodes, not only for the Execute Sub-workflow node.
-export const WORKFLOW_DEPENDENCY_INDEX_VERSION = 2;
+// Version 3: the indexer records `activeCredentialId` rows.
+export const WORKFLOW_DEPENDENCY_INDEX_VERSION = 3;
 
 export type DependencyType =
+	| 'activeCredentialId'
 	| 'credentialId'
 	| 'dataTableId'
 	| 'errorWorkflow'
@@ -57,7 +59,7 @@ export class WorkflowDependency extends WithCreatedAt {
 
 	/**
 	 * The type of the dependency.
-	 * credentialId | dataTableId | errorWorkflow | nodeType | webhookPath | workflowCall | workflowIndexed
+	 * activeCredentialId | credentialId | dataTableId | errorWorkflow | nodeType | webhookPath | workflowCall | workflowIndexed
 	 */
 	@Column({ length: 32 })
 	@Index()
@@ -66,6 +68,8 @@ export class WorkflowDependency extends WithCreatedAt {
 	/**
 	 * The ID of the dependency, interpreted based on the dependency type.
 	 * E.g., for 'credentialId' it would be the credential ID, for 'nodeType' the node type name, etc.
+	 * 'activeCredentialId' also holds a credential ID, but only for a credential that the node's
+	 * current configuration uses. 'credentialId' keeps every selected credential, also stale ones.
 	 */
 	@Column({ length: 255 })
 	@Index()
