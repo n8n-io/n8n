@@ -254,8 +254,9 @@ that forwards a posted call to `ctx.sql`.
 zig build && node bench/pg-replay/replay.mts
 ```
 
-Result on 2026-11-17 (206 cases, 266 calls: select, insert, update, upsert, delete, execute query): 258 results
-are equal, and the tables after each such case are equal. 4 calls end with the same marker and another message.
-4 calls differ. In 3 of them the reference client gives a marker for an `int4[]` or an `interval` column, which
-`wfrt` reads. In 1 the result has two columns of one name: the reference client gives the row of JavaScript, and
-`wfrt` gives the marker `sql-type`.
+Result on 2026-11-17 with the release build (279 cases, 365 calls: select, insert, update, upsert, delete,
+execute query): 357 results are equal, and the tables after each such case are equal. 1 call ends with the same
+marker and another message. 7 calls differ. In 6 of them the reference client gives a marker for a column that
+`wfrt` reads: an `int4[]` or `text[]` column, an `interval` column, a `date` column with `dates: legacy`. In 1 the
+result has two columns of one name: the reference client gives the row of JavaScript, and `wfrt` gives the
+marker `sql-type`.
