@@ -35,6 +35,8 @@ export interface ExecutionListFilter {
 	hostMode?: string;
 	/** Only the sub-executions of this execution. */
 	parentExecutionId?: string;
+	/** `true` for sub-executions only, `false` for top-level executions only. */
+	hasParent?: boolean;
 	createdAfter?: string;
 	createdBefore?: string;
 }

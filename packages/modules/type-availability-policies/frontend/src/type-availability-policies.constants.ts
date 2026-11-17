@@ -7,6 +7,8 @@ export const TYPE_AVAILABILITY_POLICIES_MODULE_ID = 'type-availability-policies'
 
 export const TYPE_AVAILABILITY_POLICIES_STORE_ID = 'typeAvailabilityPolicies';
 
+export const INSTANCE_POLICY_STORE_ID = 'typeAvailabilityInstancePolicy';
+
 export const RESTRICTED_NODE_POPOVER_WIDTH = 254;
 
 /** The default gap between the popover card and the row it explains. */

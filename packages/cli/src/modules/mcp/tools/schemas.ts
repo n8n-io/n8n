@@ -1,4 +1,4 @@
-import { WorkflowPublicationStatusSchema } from '@n8n/api-types';
+import { WorkflowPublicationStatusSchema, folderResourceTypeSchema } from '@n8n/api-types';
 import type {
 	IConnections,
 	INode,
@@ -125,6 +125,7 @@ export const columnNameSchema = z
 	);
 
 export const folderOutputSchema = {
+	resourceType: folderResourceTypeSchema.optional(),
 	id: z.string().optional().describe('The ID of the folder'),
 	name: z.string().optional().describe('The name of the folder'),
 	parentFolderId: z

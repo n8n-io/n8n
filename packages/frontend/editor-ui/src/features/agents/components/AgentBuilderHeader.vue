@@ -23,6 +23,7 @@ import type { IconOrEmoji, PathItem } from '@n8n/design-system';
 import type { DropdownMenuItemProps } from '@n8n/design-system';
 import type { ActionDropdownItem } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
+import { useAgentFolderBreadcrumb } from '../composables/useAgentFolderBreadcrumb';
 import { PROJECT_AGENTS } from '@/features/agents/constants';
 
 import AgentPublishButton from './AgentPublishButton.vue';
@@ -79,6 +80,11 @@ const projectRoute = computed<RouteLocationRaw>(() => ({
 	params: { projectId: props.projectId },
 }));
 
+const folderBreadcrumbs = useAgentFolderBreadcrumb(
+	computed(() => props.projectId),
+	computed(() => props.agent?.parentFolderId),
+);
+
 const breadcrumbItems = computed<PathItem[]>(() => [
 	{
 		id: props.projectId,
@@ -86,6 +92,7 @@ const breadcrumbItems = computed<PathItem[]>(() => [
 		label: props.projectName ?? i18n.baseText('agents.builder.header.projectFallback'),
 		href: router.resolve(projectRoute.value).href,
 	},
+	...folderBreadcrumbs.value,
 ]);
 
 const agentDisplayName = computed(() => props.agent?.name ?? '…');
@@ -124,8 +131,15 @@ function onCreateAgent() {
 }
 
 function onBreadcrumbSelect(item: PathItem) {
-	if (item.id !== props.projectId) return;
-	void router.push(projectRoute.value);
+	void router.push(
+		item.id === props.projectId
+			? projectRoute.value
+			: {
+					name: PROJECT_AGENTS,
+					params: { projectId: props.projectId },
+					query: { folderId: item.id },
+				},
+	);
 }
 
 /**
