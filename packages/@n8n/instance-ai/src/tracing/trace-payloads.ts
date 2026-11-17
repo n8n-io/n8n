@@ -37,6 +37,14 @@ const MAX_TRACE_STRING_LENGTH = 2_000;
 const MAX_TRACE_CONVERSATION_TEXT_LENGTH = 100_000;
 const TRACE_CONVERSATION_TEXT_KEYS = new Set(['message', 'response']);
 const TRUNCATED_MARKER_PATTERN = /^\[truncated \d+ chars\]$/;
+/** Scrub this much past the cap, so a long secret (a PEM key) that crosses the cut is still matched whole. */
+const CONVERSATION_TEXT_SCRUB_MARGIN = 10_000;
+/**
+ * The redactor's cost grows with the square of an unbroken run's length (40k
+ * characters of base64 take ~1 s), so a pasted blob keeps only its start.
+ */
+const MAX_TRACE_UNBROKEN_RUN_LENGTH = 2_000;
+const LONG_UNBROKEN_RUN_PATTERN = new RegExp(`\\S{${MAX_TRACE_UNBROKEN_RUN_LENGTH + 1},}`, 'g');
 const MAX_TOOL_ACTION_DISPLAY_LENGTH = 64;
 const MAX_TRACE_ARRAY_ITEMS = 20;
 const MAX_TRACE_OBJECT_KEYS = 30;
@@ -1409,25 +1417,51 @@ export function sanitizeTraceValue(value: unknown, depth = 0): unknown {
 	return truncateString(Object.prototype.toString.call(value));
 }
 
-/** Idempotent: inputs are re-sanitized on every merge, so an already capped text must not change. */
-function truncateConversationText(value: string): string {
-	if (value.length <= MAX_TRACE_CONVERSATION_TEXT_LENGTH) {
+/**
+ * Scrub before the cut: a secret that crosses the cap would otherwise lose the
+ * tail the redactor needs to match. Idempotent, because inputs are
+ * re-sanitized on every merge.
+ */
+function capConversationText(value: string): string {
+	if (TRUNCATED_MARKER_PATTERN.test(value.slice(MAX_TRACE_CONVERSATION_TEXT_LENGTH))) {
 		return value;
 	}
-	const rest = value.slice(MAX_TRACE_CONVERSATION_TEXT_LENGTH);
-	if (TRUNCATED_MARKER_PATTERN.test(rest)) {
-		return value;
+	const scanLength = MAX_TRACE_CONVERSATION_TEXT_LENGTH + CONVERSATION_TEXT_SCRUB_MARGIN;
+	const scrubbed = scrubTelemetryText(cutLongUnbrokenRuns(value.slice(0, scanLength)));
+	const unscanned = Math.max(value.length - scanLength, 0);
+	const dropped = scrubbed.length - MAX_TRACE_CONVERSATION_TEXT_LENGTH + unscanned;
+	if (dropped <= 0) {
+		return scrubbed;
 	}
-	return `${value.slice(0, MAX_TRACE_CONVERSATION_TEXT_LENGTH)}[truncated ${rest.length} chars]`;
+	return `${scrubbed.slice(0, MAX_TRACE_CONVERSATION_TEXT_LENGTH)}[truncated ${dropped} chars]`;
 }
 
-export function sanitizeTracePayload(value: unknown): Record<string, unknown> {
+/** The space before the marker keeps the kept run at the limit, so a second pass leaves it unchanged. */
+function cutLongUnbrokenRuns(value: string): string {
+	return value.replace(
+		LONG_UNBROKEN_RUN_PATTERN,
+		(run) =>
+			`${run.slice(0, MAX_TRACE_UNBROKEN_RUN_LENGTH)} [truncated ${run.length - MAX_TRACE_UNBROKEN_RUN_LENGTH} chars]`,
+	);
+}
+
+export interface SanitizeTracePayloadOptions {
+	/** Give the user message and the assistant reply the higher cap. Only a turn root sets this. */
+	conversationText?: boolean;
+}
+
+export function sanitizeTracePayload(
+	value: unknown,
+	options: SanitizeTracePayloadOptions = {},
+): Record<string, unknown> {
 	if (isRecord(value)) {
 		const sanitized: Record<string, unknown> = {};
 		for (const [key, entryValue] of Object.entries(value)) {
 			sanitized[key] =
-				TRACE_CONVERSATION_TEXT_KEYS.has(key) && typeof entryValue === 'string'
-					? truncateConversationText(entryValue)
+				options.conversationText &&
+				TRACE_CONVERSATION_TEXT_KEYS.has(key) &&
+				typeof entryValue === 'string'
+					? capConversationText(entryValue)
 					: sanitizeTraceValue(entryValue);
 		}
 		return sanitized;

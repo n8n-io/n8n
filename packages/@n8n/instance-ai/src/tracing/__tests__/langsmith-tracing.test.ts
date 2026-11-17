@@ -458,7 +458,7 @@ describe('createInstanceAiTraceContext', () => {
 	});
 
 	it('caps a very large user message in the turn inputs and marks the cut', async () => {
-		const message = 'a'.repeat(150_000);
+		const message = 'word '.repeat(30_000);
 
 		const tracing = await createInstanceAiTraceContext({
 			threadId: 'thread-1',
@@ -470,7 +470,55 @@ describe('createInstanceAiTraceContext', () => {
 
 		const traced = tracing?.rootRun.inputs?.message;
 		expect(typeof traced).toBe('string');
-		expect(traced).toMatch(/^a{100000}\[truncated 50000 chars\]$/);
+		expect(traced).toMatch(/^(word ){20000}\[truncated 50000 chars\]$/);
+	});
+
+	it('scrubs a secret that crosses the user message cap', async () => {
+		const secret = 'sk-proj-1234567890abcdefghijklmnopqrst';
+		const message = `${'word '.repeat(19_998)}${secret} ${'word '.repeat(200)}`;
+
+		const tracing = await createInstanceAiTraceContext({
+			threadId: 'thread-1',
+			messageId: 'message-1',
+			runId: 'run-1',
+			userId: 'user-1',
+			input: { message },
+		});
+
+		expect(tracing?.rootRun.inputs?.message).not.toContain('sk-proj');
+	});
+
+	it('cuts a long unbroken run inside the user message and keeps the words around it', async () => {
+		const message = `Here is my data: ${'x'.repeat(50_000)} thanks`;
+
+		const tracing = await createInstanceAiTraceContext({
+			threadId: 'thread-1',
+			messageId: 'message-1',
+			runId: 'run-1',
+			userId: 'user-1',
+			input: { message },
+		});
+
+		expect(tracing?.rootRun.inputs?.message).toBe(
+			`Here is my data: ${'x'.repeat(2_000)} [truncated 48000 chars] thanks`,
+		);
+	});
+
+	it('keeps the 2,000-character cap on a message in a child run', async () => {
+		const tracing = await createInstanceAiTraceContext({
+			threadId: 'thread-1',
+			messageId: 'message-1',
+			runId: 'run-1',
+			userId: 'user-1',
+			input: { message: 'hi' },
+		});
+
+		const child = await tracing!.startChildRun(tracing!.rootRun, {
+			name: 'agent: orchestrator',
+			inputs: { message: 'd'.repeat(5_000) },
+		});
+
+		expect(child.inputs?.message).toBe(`${'d'.repeat(2_000)}...`);
 	});
 
 	it('keeps a long assistant response whole in the turn outputs', async () => {
@@ -497,7 +545,7 @@ describe('createInstanceAiTraceContext', () => {
 			messageId: 'message-1',
 			runId: 'run-1',
 			userId: 'user-1',
-			input: { message: 'a'.repeat(150_000) },
+			input: { message: 'word '.repeat(30_000) },
 		});
 		const capped = tracing?.rootRun.inputs?.message;
 
