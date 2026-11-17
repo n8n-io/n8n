@@ -7005,7 +7005,7 @@
 	"settings.security.workflowReviews.enable.title": "Enable workflow reviews",
 	"settings.security.workflowReviews.enable.description": "Allow users to submit workflow versions for approval before publishing. An open review blocks publishing.",
 	"settings.security.workflowReviews.requireApproval.title": "Require approval",
-	"settings.security.workflowReviews.requireApproval.description": "Choose when new versions of team project workflows need an approved review before they can be published. With When configured, only workflows that have Review required on need one. Workflows in personal spaces never need one.",
+	"settings.security.workflowReviews.requireApproval.description": "Choose when team project workflows need an approved review before they are published. Workflows in personal spaces never need one.",
 	"settings.security.workflowReviews.requireApproval.option.whenConfigured": "When configured",
 	"settings.security.workflowReviews.requireApproval.option.always": "Always required",
 	"settings.security.workflowReviews.requireApproval.success": "Approval setting updated",
