@@ -1,7 +1,7 @@
 import { mockDeep } from 'vitest-mock-extended';
 import moment from 'moment-timezone';
 import type { IPollFunctions, INode, ILoadOptionsFunctions, IDataObject } from 'n8n-workflow';
-import { NodeApiError } from 'n8n-workflow';
+import { NodeApiError, requestPath } from 'n8n-workflow';
 
 import { GoogleDriveTrigger } from '../GoogleDriveTrigger.node';
 import * as GenericFunctions from '../v1/GenericFunctions';
@@ -80,7 +80,7 @@ describe('GoogleDriveTrigger', () => {
 				expect(googleApiRequestAllItemsSpy).toHaveBeenCalledWith(
 					'drives',
 					'GET',
-					'/drive/v3/drives',
+					requestPath`/drive/v3/drives`,
 				);
 
 				expect(result).toEqual([
@@ -136,7 +136,7 @@ describe('GoogleDriveTrigger', () => {
 			expect(googleApiRequestSpy).toHaveBeenCalledTimes(1);
 			expect(googleApiRequestSpy).toHaveBeenCalledWith(
 				'GET',
-				'/drive/v3/files/test-file-id',
+				requestPath`/drive/v3/files/test-file-id`,
 				{},
 				{ supportsAllDrives: true, fields: '*' },
 			);
@@ -178,7 +178,7 @@ describe('GoogleDriveTrigger', () => {
 			expect(googleApiRequestAllItemsSpy).toHaveBeenCalledWith(
 				'files',
 				'GET',
-				'/drive/v3/files',
+				requestPath`/drive/v3/files`,
 				{},
 				expect.objectContaining({
 					q: expect.stringContaining("'test-folder-id' in parents"),
@@ -207,7 +207,7 @@ describe('GoogleDriveTrigger', () => {
 			expect(googleApiRequestAllItemsSpy).toHaveBeenCalledWith(
 				'files',
 				'GET',
-				'/drive/v3/files',
+				requestPath`/drive/v3/files`,
 				{},
 				expect.objectContaining({
 					q: expect.stringContaining("mimeType = 'application/vnd.google-apps.document'"),
@@ -233,7 +233,7 @@ describe('GoogleDriveTrigger', () => {
 			expect(googleApiRequestAllItemsSpy).toHaveBeenCalledWith(
 				'files',
 				'GET',
-				'/drive/v3/files',
+				requestPath`/drive/v3/files`,
 				{},
 				expect.objectContaining({
 					q: expect.stringContaining("mimeType = 'application/vnd.google-apps.folder'"),
@@ -270,7 +270,7 @@ describe('GoogleDriveTrigger', () => {
 
 			expect(googleApiRequestSpy).toHaveBeenCalledWith(
 				'GET',
-				'/drive/v3/files/test-folder-id',
+				requestPath`/drive/v3/files/test-folder-id`,
 				{},
 				{ supportsAllDrives: true, fields: '*' },
 			);
@@ -305,7 +305,7 @@ describe('GoogleDriveTrigger', () => {
 			expect(googleApiRequestAllItemsSpy).toHaveBeenCalledWith(
 				'files',
 				'GET',
-				'/drive/v3/files',
+				requestPath`/drive/v3/files`,
 				{},
 				expect.objectContaining({
 					q: expect.stringContaining('createdTime >'),
@@ -331,7 +331,7 @@ describe('GoogleDriveTrigger', () => {
 			expect(googleApiRequestAllItemsSpy).toHaveBeenCalledWith(
 				'files',
 				'GET',
-				'/drive/v3/files',
+				requestPath`/drive/v3/files`,
 				{},
 				expect.objectContaining({
 					q: expect.stringContaining('modifiedTime >'),
@@ -370,7 +370,7 @@ describe('GoogleDriveTrigger', () => {
 
 			expect(googleApiRequestSpy).toHaveBeenCalledWith(
 				'GET',
-				'/drive/v3/files',
+				requestPath`/drive/v3/files`,
 				{},
 				expect.objectContaining({
 					pageSize: 1,
@@ -722,7 +722,7 @@ describe('GoogleDriveTrigger', () => {
 
 			expect(googleApiRequestSpy).toHaveBeenCalledWith(
 				'GET',
-				'/drive/v3/files',
+				requestPath`/drive/v3/files`,
 				{},
 				expect.objectContaining({
 					q: expect.not.stringMatching(/createdTime|modifiedTime/),
@@ -860,7 +860,7 @@ describe('GoogleDriveTrigger', () => {
 			expect(googleApiRequestAllItemsSpy).toHaveBeenCalledWith(
 				'files',
 				'GET',
-				'/drive/v3/files',
+				requestPath`/drive/v3/files`,
 				{},
 				expect.objectContaining({
 					q: `trashed = false AND 'target-folder-id' in parents AND mimeType != 'application/vnd.google-apps.folder' AND createdTime > '${lastTimeChecked}'`,

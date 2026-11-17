@@ -54,25 +54,11 @@ jobs:
           PRERELEASE: ${{ contains(github.event.pull_request.body, '<!-- release-prerelease -->') }}
         run: node .github/scripts/determine-version-info.mjs
 
-  setup-trusted-publishing:
-    name: Setup trusted publishing for new packages
-    needs: [determine-version-info]
-    if: |
-      github.event.pull_request.merged == true &&
-      needs.determine-version-info.outputs.bump == 'minor'
-    uses: ./.github/workflows/release-setup-trusted-publishing.yml
-    secrets: inherit
-
   publish-to-npm:
     name: Publish to NPM
-    needs: [determine-version-info, setup-trusted-publishing]
+    needs: [determine-version-info]
     runs-on: ubuntu-latest
-    if: |
-      always() &&
-      github.event.pull_request.merged == true &&
-      needs.determine-version-info.result == 'success' &&
-      needs.setup-trusted-publishing.result != 'failure' &&
-      needs.setup-trusted-publishing.result != 'cancelled'
+    if: github.event.pull_request.merged == true
     timeout-minutes: 30
     environment: npm
     permissions:
@@ -89,12 +75,6 @@ jobs:
         env:
           N8N_FAIL_ON_POPULARITY_FETCH_ERROR: true
           SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
-
-      - name: Install script dependencies
-        run: pnpm install --frozen-lockfile --dir ./.github/scripts --lockfile-dir ${{ github.workspace }}/.github/scripts --ignore-workspace
-
-      - name: Check for new unpublished packages
-        run: node .github/scripts/detect-new-packages.mjs
 
       - name: Dry-run publishing
         run: |

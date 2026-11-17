@@ -9,21 +9,26 @@ import {
 	type PublishAgentDto,
 } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
-import { EventService } from '@n8n/backend-services';
-import { TransactionRunner, isUniqueConstraintError, type User } from '@n8n/db';
+import { EventService, TelemetryProxy } from '@n8n/backend-services';
+import {
+	TransactionRunner,
+	isUniqueConstraintError,
+	type OperationContext,
+	type User,
+} from '@n8n/db';
 import { Container, Service } from '@n8n/di';
 import { TELEMETRY_EVENT } from '@n8n/telemetry';
 import isEqual from 'lodash/isEqual';
 import { v4 as uuid } from 'uuid';
 
 import { CredentialsService } from '@/credentials/credentials.service';
+import { loginIdOf } from '@/events/login-id';
 import { BadRequestError, ConflictError, NotFoundError, UserError } from '@n8n/errors';
 import { KnowledgeAvailabilityService } from '@/modules/knowledge/knowledge-availability.service';
 import {
 	KnowledgeFileRepository,
-	type AgentKnowledgeTotals,
+	type KnowledgeFileTotals,
 } from '@/modules/knowledge/repositories/knowledge-file.repository';
-import { Telemetry } from '@/telemetry';
 
 import { AgentDefinitionService } from './agent-definition.service';
 import { AgentsCredentialProvider } from './adapters/agents-credential-provider';
@@ -117,7 +122,7 @@ export class AgentPublishService {
 		private readonly runtimeCacheService: AgentRuntimeCacheService,
 		private readonly agentValidationService: AgentValidationService,
 		private readonly credentialsService: CredentialsService,
-		private readonly telemetry: Telemetry,
+		private readonly telemetry: TelemetryProxy,
 		private readonly eventService: EventService,
 		private readonly setupCompletionService: AgentSetupCompletionService,
 		private readonly agentUpdateBroadcaster: AgentUpdateBroadcaster,
@@ -126,7 +131,7 @@ export class AgentPublishService {
 		private readonly definitionService: AgentDefinitionService,
 		private readonly agentPolicyService: AgentPolicyService,
 		private readonly agentSkillRefs: AgentSkillRefsService,
-		private readonly agentFileRepository: KnowledgeFileRepository,
+		private readonly knowledgeFileRepository: KnowledgeFileRepository,
 		private readonly publishHistory: AgentPublishHistoryRepository,
 		private readonly knowledgeAvailabilityService: KnowledgeAvailabilityService,
 	) {}
@@ -308,18 +313,19 @@ export class AgentPublishService {
 		user: User,
 		pushRef?: string,
 		by: AgentActor = 'user',
+		ctx: OperationContext = {},
 	): Promise<ProjectAgent> {
 		const agent = await getAgentOrThrow(this.agentRepository, agentId, projectId);
 		if (agent.isArchived) throw new BadRequestError('Agent is already archived.');
 
 		let current = agent;
 		if (agent.activeVersionId) {
-			current = await this.unpublishAndArchive(agentId, projectId, user, by, pushRef);
+			current = await this.unpublishAndArchive(agentId, projectId, user, by, pushRef, ctx);
 		}
 		// A concurrent unpublication makes unpublishAgent skip the archive write.
 		if (!current.isArchived) await this.setArchived(agentId, projectId, true, pushRef, by);
 
-		this.reportArchived(agentId, projectId, user);
+		this.reportArchived(agentId, projectId, user, ctx);
 		return await getAgentOrThrow(this.agentRepository, agentId, projectId);
 	}
 
@@ -330,6 +336,7 @@ export class AgentPublishService {
 		user: User,
 		by: AgentActor,
 		pushRef?: string,
+		ctx: OperationContext = {},
 	): Promise<ProjectAgent> {
 		try {
 			return await this.unpublishAgent(agentId, projectId, user, by, pushRef, undefined, {
@@ -340,13 +347,23 @@ export class AgentPublishService {
 			const committed =
 				!(error instanceof ConflictError) &&
 				(await this.agentRepository.findById(agentId))?.isArchived;
-			if (committed) this.reportArchived(agentId, projectId, user);
+			if (committed) this.reportArchived(agentId, projectId, user, ctx);
 			throw error;
 		}
 	}
 
-	private reportArchived(agentId: string, projectId: string, user: User): void {
-		this.eventService.emit('agent-archived', { user, agentId, projectId });
+	private reportArchived(
+		agentId: string,
+		projectId: string,
+		user: User,
+		ctx: OperationContext = {},
+	): void {
+		this.eventService.emit('agent-archived', {
+			user,
+			agentId,
+			projectId,
+			loginId: loginIdOf(ctx),
+		});
 		this.telemetry.track(TELEMETRY_EVENT.AGENTS.USER_ARCHIVED_AGENT, {
 			agent_id: agentId,
 			project_id: projectId,
@@ -361,13 +378,19 @@ export class AgentPublishService {
 		projectId: string,
 		user: User,
 		pushRef?: string,
+		ctx: OperationContext = {},
 	): Promise<ProjectAgent> {
 		const agent = await getAgentOrThrow(this.agentRepository, agentId, projectId);
 		if (!agent.isArchived) throw new BadRequestError('Agent is not archived.');
 
 		await this.setArchived(agentId, projectId, false, pushRef);
 
-		this.eventService.emit('agent-unarchived', { user, agentId, projectId });
+		this.eventService.emit('agent-unarchived', {
+			user,
+			agentId,
+			projectId,
+			loginId: loginIdOf(ctx),
+		});
 		this.telemetry.track(TELEMETRY_EVENT.AGENTS.USER_UNARCHIVED_AGENT, {
 			agent_id: agentId,
 			project_id: projectId,
@@ -394,14 +417,14 @@ export class AgentPublishService {
 	/** Make sure a failed read for the publish event never stops the publication. */
 	private async readKnowledgeTotalsForTelemetry(
 		agentId: string,
-	): Promise<AgentKnowledgeTotals | undefined> {
+	): Promise<KnowledgeFileTotals | undefined> {
 		// With the knowledge module off no file is reachable, so the event carries no totals.
 		if (!this.knowledgeAvailabilityService.isModuleActive()) {
 			return undefined;
 		}
 
 		try {
-			return await this.agentFileRepository.getKnowledgeTotals(agentId, {});
+			return await this.knowledgeFileRepository.getKnowledgeTotals(agentId, {});
 		} catch (error) {
 			this.logger.warn('Failed to read knowledge totals for the publish event', {
 				agentId,
@@ -424,7 +447,7 @@ export class AgentPublishService {
 		emitter: AgentPublishEmitter,
 		wasPublished: boolean,
 		published: AgentJsonConfig | null,
-		knowledgeTotals: AgentKnowledgeTotals | undefined,
+		knowledgeTotals: KnowledgeFileTotals | undefined,
 	): void {
 		const properties = {
 			agent_id: agent.id,

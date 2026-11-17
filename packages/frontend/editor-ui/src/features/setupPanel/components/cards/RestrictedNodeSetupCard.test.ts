@@ -1,0 +1,146 @@
+import { createComponentRenderer } from '@/__tests__/render';
+import { createTestNode } from '@/__tests__/mocks';
+import { mockedStore } from '@/__tests__/utils';
+import { createTestingPinia } from '@pinia/testing';
+import userEvent from '@testing-library/user-event';
+import RestrictedNodeSetupCard from '@/features/setupPanel/components/cards/RestrictedNodeSetupCard.vue';
+import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
+import { useCredentialsStore } from '@/features/credentials/credentials.store';
+import { nodeViewEventBus } from '@/app/event-bus';
+import type { INodeUi } from '@/Interface';
+import type { TypeRestriction } from '@n8n/frontend-module-type-availability-policies';
+
+vi.mock('@/app/components/NodeIcon.vue', () => ({
+	default: {
+		template: '<div data-test-id="node-icon" :data-disabled="disabled"></div>',
+		props: { nodeType: Object, size: Number, disabled: Boolean },
+	},
+}));
+
+const renderComponent = createComponentRenderer(RestrictedNodeSetupCard);
+
+const node = createTestNode({
+	id: 'gmail-1',
+	name: 'New email',
+	type: 'n8n-nodes-base.gmailTrigger',
+}) as INodeUi;
+
+const render = (expanded = true, isReadOnly = false) =>
+	renderComponent({
+		props: {
+			node,
+			restriction: { name: node.type, available: false, scope: 'instance' },
+			isTrigger: true,
+			isReadOnly,
+			expanded,
+		},
+	});
+
+describe('RestrictedNodeSetupCard', () => {
+	beforeEach(() => {
+		createTestingPinia();
+		mockedStore(useNodeTypesStore).getNodeType = vi
+			.fn()
+			.mockReturnValue({ displayName: 'Gmail Trigger' });
+	});
+
+	it('shows a greyed icon, the restricted badge, the reason and the two actions', () => {
+		const { getByTestId } = render();
+
+		expect(getByTestId('node-icon')).toHaveAttribute('data-disabled', 'true');
+		expect(getByTestId('setup-card-restricted-badge')).toHaveTextContent('Restricted');
+		expect(getByTestId('setup-card-restricted-description')).toHaveTextContent(
+			'Gmail Trigger is restricted on this instance. Replace it to save the workflow.',
+		);
+		expect(getByTestId('setup-card-contact-admin')).toHaveTextContent('Contact instance admin');
+		expect(getByTestId('setup-card-replace-node')).toHaveTextContent('Replace node');
+	});
+
+	it('never shows the card as complete', () => {
+		const { queryByTestId } = render(false);
+
+		expect(queryByTestId('restricted-node-setup-card-complete-icon')).not.toBeInTheDocument();
+	});
+
+	it('asks the canvas to replace the node', async () => {
+		const onReplaceNode = vi.fn();
+		nodeViewEventBus.on('replaceNode', onReplaceNode);
+		const { getByTestId } = render();
+
+		await userEvent.click(getByTestId('setup-card-replace-node'));
+
+		expect(onReplaceNode).toHaveBeenCalledWith('gmail-1');
+		nodeViewEventBus.off('replaceNode', onReplaceNode);
+	});
+
+	it('offers only the contact action on a read-only canvas', () => {
+		const { getByTestId, queryByTestId } = render(true, true);
+
+		expect(getByTestId('setup-card-contact-admin')).toBeInTheDocument();
+		expect(queryByTestId('setup-card-replace-node')).not.toBeInTheDocument();
+	});
+
+	describe('contact admin for a credential-only node', () => {
+		const credentialOnlyNode = createTestNode({
+			id: 'bitly-1',
+			name: 'Shorten link',
+			type: 'n8n-creds-base.bitlyApi',
+		}) as INodeUi;
+
+		const renderWithModal = (restriction: TypeRestriction) =>
+			renderComponent({
+				props: { node: credentialOnlyNode, restriction, isTrigger: false, expanded: true },
+				global: {
+					stubs: {
+						ContactAdminModal: {
+							props: ['open', 'kind', 'typeName', 'audience'],
+							template:
+								'<div v-if="open" data-test-id="contact-admin-modal" :data-kind="kind">{{ typeName }}</div>',
+						},
+					},
+				},
+			});
+
+		beforeEach(() => {
+			const displayNames: Record<string, string> = {
+				'n8n-creds-base.bitlyApi': 'Bitly',
+				'n8n-nodes-base.httpRequest': 'HTTP Request',
+			};
+			mockedStore(useNodeTypesStore).getNodeType = vi.fn((type: string) => ({
+				displayName: displayNames[type],
+			})) as unknown as ReturnType<typeof useNodeTypesStore>['getNodeType'];
+			mockedStore(useCredentialsStore).getCredentialTypeByName = vi
+				.fn()
+				.mockReturnValue({ displayName: 'Bitly API' });
+		});
+
+		it('names the credential type when the credential type is restricted', async () => {
+			const { getByTestId, queryByTestId } = renderWithModal({
+				name: 'bitlyApi',
+				available: false,
+				scope: 'instance',
+			});
+			expect(queryByTestId('contact-admin-modal')).not.toBeInTheDocument();
+
+			await userEvent.click(getByTestId('setup-card-contact-admin'));
+
+			expect(getByTestId('contact-admin-modal')).toHaveAttribute('data-kind', 'credential');
+			expect(getByTestId('contact-admin-modal')).toHaveTextContent('Bitly API');
+		});
+
+		it('names the node when HTTP Request itself is restricted', async () => {
+			const { getByTestId, queryByTestId } = renderWithModal({
+				name: 'n8n-nodes-base.httpRequest',
+				available: false,
+				scope: 'instance',
+			});
+			expect(queryByTestId('contact-admin-modal')).not.toBeInTheDocument();
+
+			await userEvent.click(getByTestId('setup-card-contact-admin'));
+
+			expect(getByTestId('contact-admin-modal')).toHaveAttribute('data-kind', 'node');
+			expect(getByTestId('contact-admin-modal')).toHaveTextContent('HTTP Request');
+			expect(getByTestId('contact-admin-modal')).not.toHaveTextContent('Bitly');
+		});
+	});
+});

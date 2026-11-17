@@ -435,7 +435,6 @@ export function useRunWorkflow(useRunWorkflowOpts: {
 				} as IWorkflowDb,
 			};
 			workflowExecutionState.value.setWorkflowExecutionData(executionData);
-			nodeHelpers.updateNodesExecutionIssues();
 
 			useDocumentTitle().setDocumentTitle(workflowDocumentStore.value.name, 'EXECUTING');
 			const runWorkflowApiResponse = await runWorkflowApi(startRunData);

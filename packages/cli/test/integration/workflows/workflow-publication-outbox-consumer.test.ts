@@ -234,6 +234,7 @@ describe('WorkflowPublicationOutboxConsumer (integration)', () => {
 		const record = await outboxRepository.claimNextPendingRecord();
 		await consumer.processRecord(record!, abortSignal);
 
+		expect(activeWorkflowTriggers.get(workflow.id)?.has(trigger.id)).toBe(true);
 		expect(activeWorkflowTriggers.get(workflow.id)?.get(trigger.id)).not.toBe(responseBefore);
 	});
 

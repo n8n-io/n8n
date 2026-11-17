@@ -3,6 +3,7 @@ import type {
 	CredentialsEntity,
 	CredentialsRepository,
 	FolderRepository,
+	Folder,
 	Project,
 	SharedWorkflow,
 	User,
@@ -11,7 +12,7 @@ import type {
 	WorkflowPublishHistoryRepository,
 	WorkflowRepository,
 } from '@n8n/db';
-import { BadRequestError } from '@n8n/errors';
+import { BadRequestError, ForbiddenError, UserError } from '@n8n/errors';
 import type { EntityManager, UpdateResult } from '@n8n/typeorm';
 import type { INode, IWorkflowBase } from 'n8n-workflow';
 import { WorkflowActivationError } from 'n8n-workflow';
@@ -21,6 +22,7 @@ import type { ActiveWorkflowManager } from '@/active-workflow-manager';
 import type { CredentialsFinderService, WorkflowMutationHooksProxy } from '@n8n/backend-services';
 import type { CredentialsService } from '@/credentials/credentials.service';
 import { TransferWorkflowError } from '@/errors/response-errors/transfer-workflow.error';
+import { TriggerCredentialAccessError } from '@/errors/trigger-credential-access.error';
 import type { NodeTypes } from '@/node-types';
 import type { CredentialsPermissionChecker } from '@/executions/pre-execution-checks/credentials-permission-checker';
 import type { PolicyEnforcementService } from '@/policy/policy-enforcement.service';
@@ -54,6 +56,9 @@ describe('EnterpriseWorkflowService', () => {
 
 	beforeEach(() => {
 		vi.clearAllMocks();
+		folderRepository.findOneOrFailFolderInProject.mockResolvedValue(
+			mock<Folder>({ resourceType: 'workflow' }),
+		);
 		nodeTypes.getByNameAndVersion.mockReset();
 		service = new EnterpriseWorkflowService(
 			mock(), // logger
@@ -1457,6 +1462,17 @@ describe('EnterpriseWorkflowService', () => {
 			expect(service['logger'].error).toHaveBeenCalled();
 		});
 
+		it('should deactivate without a trigger teardown when the credential check refuses', async () => {
+			activeWorkflowManager.add.mockRejectedValue(
+				new TriggerCredentialAccessError(new UserError('Node "Trigger" cannot use the credential')),
+			);
+
+			await service['attemptWorkflowReactivation']('wf-1', 'version-1', 'user-1');
+
+			expect(activeWorkflowManager.remove).not.toHaveBeenCalled();
+			expect(workflowRepository.updateActiveState).toHaveBeenCalledWith('wf-1', false);
+		});
+
 		it('should still deactivate the workflow when the trigger teardown fails', async () => {
 			activeWorkflowManager.add.mockRejectedValue(new WorkflowActivationError('broken credential'));
 			activeWorkflowManager.remove.mockRejectedValue(new Error('teardown failed'));
@@ -1518,6 +1534,9 @@ describe('EnterpriseWorkflowService', () => {
 		beforeEach(() => {
 			folderRepository.getAllFolderIdsInHierarchy.mockResolvedValue([]);
 			workflowRepository.findInFoldersForTransfer.mockResolvedValue(workflows);
+			workflowFinderService.findWorkflowIdsWithScopeForUser.mockResolvedValue(
+				new Set(workflows.map((workflow) => workflow.id)),
+			);
 			projectService.getProjectWithScope.mockResolvedValue(destinationProject);
 			activeWorkflowManager.remove.mockResolvedValue(undefined);
 			activeWorkflowManager.add.mockResolvedValue({ webhooks: true, triggersAndPollers: true });
@@ -1531,6 +1550,25 @@ describe('EnterpriseWorkflowService', () => {
 			moveFoldersSpy = vi
 				.spyOn(service as any, 'moveFoldersToDestination')
 				.mockResolvedValue(undefined);
+		});
+
+		it('keeps Agent folders out of workflow transfers', async () => {
+			folderRepository.findOneOrFailFolderInProject.mockRejectedValue(
+				new Error('Folder not found'),
+			);
+
+			await expect(
+				service.transferFolder(user, 'proj-source', 'folder-1', 'proj-dest', '0'),
+			).rejects.toThrow('Folder not found in the requested project');
+
+			expect(folderRepository.findOneOrFailFolderInProject).toHaveBeenCalledWith(
+				'folder-1',
+				'proj-source',
+				'workflow',
+			);
+
+			expect(transferOwnershipSpy).not.toHaveBeenCalled();
+			expect(moveFoldersSpy).not.toHaveBeenCalled();
 		});
 
 		it('moves the folder without asking the transfer policy', async () => {
@@ -1599,6 +1637,37 @@ describe('EnterpriseWorkflowService', () => {
 
 			expect(result).toEqual({ unpublishedWorkflows: [] });
 		});
+
+		it('requires workflow:create and folder:create in the destination project', async () => {
+			await service.transferFolder(user, 'proj-source', 'folder-1', 'proj-dest', '0');
+
+			expect(projectService.getProjectWithScope).toHaveBeenCalledWith(user, 'proj-dest', [
+				'workflow:create',
+				'folder:create',
+			]);
+		});
+
+		it('checks workflow:move for every workflow in the folder', async () => {
+			await service.transferFolder(user, 'proj-source', 'folder-1', 'proj-dest', '0');
+
+			expect(workflowFinderService.findWorkflowIdsWithScopeForUser).toHaveBeenCalledWith(
+				['wf-1', 'wf-2'],
+				user,
+				['workflow:move'],
+			);
+		});
+
+		it('performs no mutation when the user cannot move a workflow in the folder', async () => {
+			workflowFinderService.findWorkflowIdsWithScopeForUser.mockResolvedValue(new Set(['wf-1']));
+
+			await expect(
+				service.transferFolder(user, 'proj-source', 'folder-1', 'proj-dest', '0'),
+			).rejects.toThrow(ForbiddenError);
+
+			expect(activeWorkflowManager.remove).not.toHaveBeenCalled();
+			expect(transferOwnershipSpy).not.toHaveBeenCalled();
+			expect(moveFoldersSpy).not.toHaveBeenCalled();
+		});
 	});
 
 	describe('previewFolderTransfer()', () => {
@@ -1619,11 +1688,16 @@ describe('EnterpriseWorkflowService', () => {
 			await service.previewFolderTransfer(user, 'proj-source', 'folder-1', 'proj-dest');
 
 		beforeEach(() => {
-			folderRepository.findOneOrFailFolderInProject.mockResolvedValue(mock());
+			folderRepository.findOneOrFailFolderInProject.mockResolvedValue(
+				mock<Folder>({ resourceType: 'workflow' }),
+			);
 			folderRepository.getAllFolderIdsInHierarchy.mockResolvedValue([]);
 			projectService.getProjectWithScope.mockResolvedValue(destinationProject);
 			policyEnforcementService.hasChecksFor.mockReturnValue(true);
 			policyEnforcementService.evaluateWorkflowTransfer.mockResolvedValue({ violations: [] });
+			workflowFinderService.findWorkflowIdsWithScopeForUser.mockImplementation(
+				async (workflowIds) => new Set(workflowIds),
+			);
 		});
 
 		describe('when no check is registered', () => {
@@ -1680,6 +1754,33 @@ describe('EnterpriseWorkflowService', () => {
 
 			await expect(preview()).rejects.toThrow(TransferWorkflowError);
 			expect(policyEnforcementService.evaluateWorkflowTransfer).not.toHaveBeenCalled();
+		});
+
+		it('refuses a folder with a workflow the user cannot move', async () => {
+			workflowRepository.findInFoldersForTransfer.mockResolvedValue([
+				makeWorkflow('wf-1'),
+				makeWorkflow('wf-2'),
+			]);
+			workflowFinderService.findWorkflowIdsWithScopeForUser.mockResolvedValue(new Set(['wf-1']));
+
+			await expect(preview()).rejects.toThrow(ForbiddenError);
+			expect(workflowFinderService.findWorkflowIdsWithScopeForUser).toHaveBeenCalledWith(
+				['wf-1', 'wf-2'],
+				user,
+				['workflow:move'],
+			);
+			expect(policyEnforcementService.evaluateWorkflowTransfer).not.toHaveBeenCalled();
+		});
+
+		it('requires workflow:create and folder:create in the destination project', async () => {
+			workflowRepository.findInFoldersForTransfer.mockResolvedValue([makeWorkflow('wf-1')]);
+
+			await preview();
+
+			expect(projectService.getProjectWithScope).toHaveBeenCalledWith(user, 'proj-dest', [
+				'workflow:create',
+				'folder:create',
+			]);
 		});
 	});
 

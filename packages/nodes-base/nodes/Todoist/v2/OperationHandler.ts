@@ -3,6 +3,7 @@ import {
 	assertParamIsString,
 	assertParamIsNumber,
 	assertParamIsOfAnyTypes,
+	requestPath,
 	validateNodeParameters,
 } from 'n8n-workflow';
 import { v4 as uuid } from 'uuid';
@@ -223,7 +224,12 @@ export class CreateHandler implements OperationHandler {
 			body.deadline_date = options.deadlineDate;
 		}
 
-		const data = await todoistApiRequest.call(ctx, 'POST', '/tasks', body as IDataObject);
+		const data = await todoistApiRequest.call(
+			ctx,
+			'POST',
+			requestPath`/tasks`,
+			body as IDataObject,
+		);
 
 		return {
 			data,
@@ -236,7 +242,7 @@ export class CloseHandler implements OperationHandler {
 		const id = ctx.getNodeParameter('taskId', itemIndex);
 		assertValidTodoistId('taskId', id, ctx.getNode());
 
-		await todoistApiRequest.call(ctx, 'POST', `/tasks/${id}/close`);
+		await todoistApiRequest.call(ctx, 'POST', requestPath`/tasks/${id}/close`);
 
 		return {
 			success: true,
@@ -249,7 +255,7 @@ export class DeleteHandler implements OperationHandler {
 		const id = ctx.getNodeParameter('taskId', itemIndex);
 		assertValidTodoistId('taskId', id, ctx.getNode());
 
-		await todoistApiRequest.call(ctx, 'DELETE', `/tasks/${id}`);
+		await todoistApiRequest.call(ctx, 'DELETE', requestPath`/tasks/${id}`);
 
 		return {
 			success: true,
@@ -262,7 +268,7 @@ export class GetHandler implements OperationHandler {
 		const id = ctx.getNodeParameter('taskId', itemIndex);
 		assertValidTodoistId('taskId', id, ctx.getNode());
 
-		const responseData = await todoistApiRequest.call(ctx, 'GET', `/tasks/${id}`);
+		const responseData = await todoistApiRequest.call(ctx, 'GET', requestPath`/tasks/${id}`);
 		return {
 			data: responseData,
 		};
@@ -321,7 +327,7 @@ export class GetAllHandler implements OperationHandler {
 		}
 
 		// https://developer.todoist.com/api/v1/#tag/Tasks/operation/get_tasks_by_filter_api_v1_tasks_filter_get
-		const endpoint = qs.query ? '/tasks/filter' : '/tasks';
+		const endpoint = qs.query ? requestPath`/tasks/filter` : requestPath`/tasks`;
 		const data = await todoistApiGetAllRequest(ctx, endpoint, qs, limit);
 
 		return { data };
@@ -334,7 +340,7 @@ export class ReopenHandler implements OperationHandler {
 		const id = ctx.getNodeParameter('taskId', itemIndex);
 		assertValidTodoistId('taskId', id, ctx.getNode());
 
-		await todoistApiRequest.call(ctx, 'POST', `/tasks/${id}/reopen`);
+		await todoistApiRequest.call(ctx, 'POST', requestPath`/tasks/${id}/reopen`);
 
 		return {
 			success: true,
@@ -427,7 +433,7 @@ export class UpdateHandler implements OperationHandler {
 			body.deadline_date = updateFields.deadlineDate;
 		}
 
-		await todoistApiRequest.call(ctx, 'POST', `/tasks/${id}`, body as IDataObject);
+		await todoistApiRequest.call(ctx, 'POST', requestPath`/tasks/${id}`, body as IDataObject);
 
 		return { success: true };
 	}
@@ -516,7 +522,7 @@ export class ProjectCreateHandler implements OperationHandler {
 			...options,
 		};
 
-		const data = await todoistApiRequest.call(ctx, 'POST', '/projects', body);
+		const data = await todoistApiRequest.call(ctx, 'POST', requestPath`/projects`, body);
 		return { data };
 	}
 }
@@ -526,7 +532,7 @@ export class ProjectDeleteHandler implements OperationHandler {
 		const id = ctx.getNodeParameter('projectId', itemIndex);
 		assertValidTodoistId('projectId', id, ctx.getNode());
 
-		await todoistApiRequest.call(ctx, 'DELETE', `/projects/${id}`);
+		await todoistApiRequest.call(ctx, 'DELETE', requestPath`/projects/${id}`);
 		return { success: true };
 	}
 }
@@ -536,14 +542,14 @@ export class ProjectGetHandler implements OperationHandler {
 		const id = ctx.getNodeParameter('projectId', itemIndex);
 		assertValidTodoistId('projectId', id, ctx.getNode());
 
-		const data = await todoistApiRequest.call(ctx, 'GET', `/projects/${id}`);
+		const data = await todoistApiRequest.call(ctx, 'GET', requestPath`/projects/${id}`);
 		return { data };
 	}
 }
 
 export class ProjectGetAllHandler implements OperationHandler {
 	async handleOperation(ctx: Context, _itemIndex: number): Promise<TodoistResponse> {
-		const data = await todoistApiGetAllRequest(ctx, '/projects');
+		const data = await todoistApiGetAllRequest(ctx, requestPath`/projects`);
 		return { data };
 	}
 }
@@ -565,7 +571,7 @@ export class ProjectUpdateHandler implements OperationHandler {
 			ctx.getNode(),
 		);
 
-		await todoistApiRequest.call(ctx, 'POST', `/projects/${id}`, updateFields);
+		await todoistApiRequest.call(ctx, 'POST', requestPath`/projects/${id}`, updateFields);
 		return { success: true };
 	}
 }
@@ -575,7 +581,7 @@ export class ProjectArchiveHandler implements OperationHandler {
 		const id = ctx.getNodeParameter('projectId', itemIndex);
 		assertValidTodoistId('projectId', id, ctx.getNode());
 
-		await todoistApiRequest.call(ctx, 'POST', `/projects/${id}/archive`);
+		await todoistApiRequest.call(ctx, 'POST', requestPath`/projects/${id}/archive`);
 		return { success: true };
 	}
 }
@@ -585,7 +591,7 @@ export class ProjectUnarchiveHandler implements OperationHandler {
 		const id = ctx.getNodeParameter('projectId', itemIndex);
 		assertValidTodoistId('projectId', id, ctx.getNode());
 
-		await todoistApiRequest.call(ctx, 'POST', `/projects/${id}/unarchive`);
+		await todoistApiRequest.call(ctx, 'POST', requestPath`/projects/${id}/unarchive`);
 		return { success: true };
 	}
 }
@@ -595,7 +601,7 @@ export class ProjectGetCollaboratorsHandler implements OperationHandler {
 		const id = ctx.getNodeParameter('projectId', itemIndex);
 		assertValidTodoistId('projectId', id, ctx.getNode());
 
-		const data = await todoistApiGetAllRequest(ctx, `/projects/${id}/collaborators`);
+		const data = await todoistApiGetAllRequest(ctx, requestPath`/projects/${id}/collaborators`);
 		return { data };
 	}
 }
@@ -626,7 +632,7 @@ export class SectionCreateHandler implements OperationHandler {
 			...options,
 		};
 
-		const data = await todoistApiRequest.call(ctx, 'POST', '/sections', body);
+		const data = await todoistApiRequest.call(ctx, 'POST', requestPath`/sections`, body);
 		return { data };
 	}
 }
@@ -636,7 +642,7 @@ export class SectionDeleteHandler implements OperationHandler {
 		const id = ctx.getNodeParameter('sectionId', itemIndex);
 		assertValidTodoistId('sectionId', id, ctx.getNode());
 
-		await todoistApiRequest.call(ctx, 'DELETE', `/sections/${id}`);
+		await todoistApiRequest.call(ctx, 'DELETE', requestPath`/sections/${id}`);
 		return { success: true };
 	}
 }
@@ -646,7 +652,7 @@ export class SectionGetHandler implements OperationHandler {
 		const id = ctx.getNodeParameter('sectionId', itemIndex);
 		assertValidTodoistId('sectionId', id, ctx.getNode());
 
-		const data = await todoistApiRequest.call(ctx, 'GET', `/sections/${id}`);
+		const data = await todoistApiRequest.call(ctx, 'GET', requestPath`/sections/${id}`);
 		return { data };
 	}
 }
@@ -661,7 +667,7 @@ export class SectionGetAllHandler implements OperationHandler {
 			qs.project_id = filters.project_id;
 		}
 
-		const data = await todoistApiGetAllRequest(ctx, '/sections', qs);
+		const data = await todoistApiGetAllRequest(ctx, requestPath`/sections`, qs);
 		return { data };
 	}
 }
@@ -680,7 +686,7 @@ export class SectionUpdateHandler implements OperationHandler {
 			ctx.getNode(),
 		);
 
-		await todoistApiRequest.call(ctx, 'POST', `/sections/${id}`, updateFields);
+		await todoistApiRequest.call(ctx, 'POST', requestPath`/sections/${id}`, updateFields);
 		return { success: true };
 	}
 }
@@ -699,7 +705,7 @@ export class CommentCreateHandler implements OperationHandler {
 			content,
 		};
 
-		const data = await todoistApiRequest.call(ctx, 'POST', '/comments', body);
+		const data = await todoistApiRequest.call(ctx, 'POST', requestPath`/comments`, body);
 		return { data };
 	}
 }
@@ -709,7 +715,7 @@ export class CommentDeleteHandler implements OperationHandler {
 		const id = ctx.getNodeParameter('commentId', itemIndex);
 		assertValidTodoistId('commentId', id, ctx.getNode());
 
-		await todoistApiRequest.call(ctx, 'DELETE', `/comments/${id}`);
+		await todoistApiRequest.call(ctx, 'DELETE', requestPath`/comments/${id}`);
 		return { success: true };
 	}
 }
@@ -719,7 +725,7 @@ export class CommentGetHandler implements OperationHandler {
 		const id = ctx.getNodeParameter('commentId', itemIndex);
 		assertValidTodoistId('commentId', id, ctx.getNode());
 
-		const data = await todoistApiRequest.call(ctx, 'GET', `/comments/${id}`);
+		const data = await todoistApiRequest.call(ctx, 'GET', requestPath`/comments/${id}`);
 		return { data };
 	}
 }
@@ -739,7 +745,7 @@ export class CommentGetAllHandler implements OperationHandler {
 			qs.project_id = filters.project_id;
 		}
 
-		const data = await todoistApiGetAllRequest(ctx, '/comments', qs);
+		const data = await todoistApiGetAllRequest(ctx, requestPath`/comments`, qs);
 		return { data };
 	}
 }
@@ -758,7 +764,7 @@ export class CommentUpdateHandler implements OperationHandler {
 			ctx.getNode(),
 		);
 
-		await todoistApiRequest.call(ctx, 'POST', `/comments/${id}`, updateFields);
+		await todoistApiRequest.call(ctx, 'POST', requestPath`/comments/${id}`, updateFields);
 		return { success: true };
 	}
 }
@@ -785,7 +791,7 @@ export class LabelCreateHandler implements OperationHandler {
 			...options,
 		};
 
-		const data = await todoistApiRequest.call(ctx, 'POST', '/labels', body);
+		const data = await todoistApiRequest.call(ctx, 'POST', requestPath`/labels`, body);
 		return { data };
 	}
 }
@@ -795,7 +801,7 @@ export class LabelDeleteHandler implements OperationHandler {
 		const id = ctx.getNodeParameter('labelId', itemIndex);
 		assertValidTodoistId('labelId', id, ctx.getNode());
 
-		await todoistApiRequest.call(ctx, 'DELETE', `/labels/${id}`);
+		await todoistApiRequest.call(ctx, 'DELETE', requestPath`/labels/${id}`);
 		return { success: true };
 	}
 }
@@ -805,14 +811,14 @@ export class LabelGetHandler implements OperationHandler {
 		const id = ctx.getNodeParameter('labelId', itemIndex);
 		assertValidTodoistId('labelId', id, ctx.getNode());
 
-		const data = await todoistApiRequest.call(ctx, 'GET', `/labels/${id}`);
+		const data = await todoistApiRequest.call(ctx, 'GET', requestPath`/labels/${id}`);
 		return { data };
 	}
 }
 
 export class LabelGetAllHandler implements OperationHandler {
 	async handleOperation(ctx: Context, _itemIndex: number): Promise<TodoistResponse> {
-		const data = await todoistApiGetAllRequest(ctx, '/labels');
+		const data = await todoistApiGetAllRequest(ctx, requestPath`/labels`);
 		return { data };
 	}
 }
@@ -834,7 +840,7 @@ export class LabelUpdateHandler implements OperationHandler {
 			ctx.getNode(),
 		);
 
-		await todoistApiRequest.call(ctx, 'POST', `/labels/${id}`, updateFields);
+		await todoistApiRequest.call(ctx, 'POST', requestPath`/labels/${id}`, updateFields);
 		return { success: true };
 	}
 }
@@ -870,7 +876,8 @@ export class QuickAddHandler implements OperationHandler {
 		}
 
 		const nodeVersion = ctx.getNode().typeVersion;
-		const quickAddEndpoint = nodeVersion >= 2.2 ? '/tasks/quick' : '/quick/add';
+		const quickAddEndpoint =
+			nodeVersion >= 2.2 ? requestPath`/tasks/quick` : requestPath`/quick/add`;
 		const data = await todoistSyncRequest.call(ctx, body, {}, quickAddEndpoint);
 
 		return {

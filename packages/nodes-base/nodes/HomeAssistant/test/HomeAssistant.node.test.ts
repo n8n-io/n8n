@@ -7,7 +7,7 @@ import type {
 	INodeExecutionData,
 	IPairedItemData,
 } from 'n8n-workflow';
-import { NodeApiError } from 'n8n-workflow';
+import { NodeApiError, requestPath } from 'n8n-workflow';
 
 import * as GenericFunctions from '../GenericFunctions';
 import { HomeAssistant } from '../HomeAssistant.node';
@@ -91,11 +91,15 @@ describe('HomeAssistant Node', () => {
 
 			await homeAssistant.execute.call(mockExecuteFunctions);
 
-			expect(mockHomeAssistantApiRequest).toHaveBeenNthCalledWith(1, 'GET', '/states/sensor.test');
+			expect(mockHomeAssistantApiRequest).toHaveBeenNthCalledWith(
+				1,
+				'GET',
+				requestPath`/states/sensor.test`,
+			);
 			expect(mockHomeAssistantApiRequest).toHaveBeenNthCalledWith(
 				2,
 				'POST',
-				'/states/sensor.test',
+				requestPath`/states/sensor.test`,
 				{
 					state: 'off',
 					attributes: existingAttributes,
@@ -121,11 +125,15 @@ describe('HomeAssistant Node', () => {
 
 			await homeAssistant.execute.call(mockExecuteFunctions);
 
-			expect(mockHomeAssistantApiRequest).toHaveBeenNthCalledWith(1, 'GET', '/states/sensor.test');
+			expect(mockHomeAssistantApiRequest).toHaveBeenNthCalledWith(
+				1,
+				'GET',
+				requestPath`/states/sensor.test`,
+			);
 			expect(mockHomeAssistantApiRequest).toHaveBeenNthCalledWith(
 				2,
 				'POST',
-				'/states/sensor.test',
+				requestPath`/states/sensor.test`,
 				{
 					state: 'off',
 					attributes: existingAttributes,
@@ -147,7 +155,7 @@ describe('HomeAssistant Node', () => {
 			expect(mockHomeAssistantApiRequest).toHaveBeenNthCalledWith(
 				2,
 				'POST',
-				'/states/sensor.test',
+				requestPath`/states/sensor.test`,
 				{
 					state: 'off',
 				},
@@ -188,13 +196,17 @@ describe('HomeAssistant Node', () => {
 
 			await homeAssistant.execute.call(mockExecuteFunctions);
 
-			expect(mockHomeAssistantApiRequest).toHaveBeenCalledWith('POST', '/states/sensor.test', {
-				state: 'on',
-				attributes: {
-					unit_of_measurement: '°C',
-					friendly_name: 'Test Sensor',
+			expect(mockHomeAssistantApiRequest).toHaveBeenCalledWith(
+				'POST',
+				requestPath`/states/sensor.test`,
+				{
+					state: 'on',
+					attributes: {
+						unit_of_measurement: '°C',
+						friendly_name: 'Test Sensor',
+					},
 				},
-			});
+			);
 		});
 
 		it('should not write unsafe prototype-polluting attribute keys', async () => {

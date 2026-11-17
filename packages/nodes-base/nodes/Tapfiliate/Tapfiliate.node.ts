@@ -7,7 +7,12 @@ import type {
 	INodeType,
 	INodeTypeDescription,
 } from 'n8n-workflow';
-import { NodeConnectionTypes, NodeOperationError } from 'n8n-workflow';
+import {
+	decodePathValue,
+	NodeConnectionTypes,
+	NodeOperationError,
+	requestPath,
+} from 'n8n-workflow';
 
 import { affiliateFields, affiliateOperations } from './AffiliateDescription';
 import {
@@ -23,7 +28,8 @@ export class Tapfiliate implements INodeType {
 		name: 'tapfiliate',
 		icon: 'file:tapfiliate.svg',
 		group: ['transform'],
-		version: 1,
+		version: [1, 1.1],
+		defaultVersion: 1.1,
 		subtitle: '={{$parameter["operation"] + ":" + $parameter["resource"]}}',
 		description: 'Consume Tapfiliate API',
 		defaults: {
@@ -75,7 +81,11 @@ export class Tapfiliate implements INodeType {
 			// Get custom fields to display to user so that they can select them easily
 			async getPrograms(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
-				const programs = await tapfiliateApiRequestAllItems.call(this, 'GET', '/programs/');
+				const programs = await tapfiliateApiRequestAllItems.call(
+					this,
+					'GET',
+					requestPath`/programs/`,
+				);
 				for (const program of programs) {
 					returnData.push({
 						name: program.title as string,
@@ -95,6 +105,8 @@ export class Tapfiliate implements INodeType {
 		const returnData: INodeExecutionData[] = [];
 		const resource = this.getNodeParameter('resource', 0);
 		const operation = this.getNodeParameter('operation', 0);
+		const { typeVersion } = this.getNode();
+		const toPathValue = (value: string) => (typeVersion < 1.1 ? decodePathValue(value) : value);
 		for (let i = 0; i < length; i++) {
 			try {
 				if (resource === 'affiliate') {
@@ -127,7 +139,12 @@ export class Tapfiliate implements INodeType {
 							};
 							delete body.companyName;
 						}
-						responseData = await tapfiliateApiRequest.call(this, 'POST', '/affiliates/', body);
+						responseData = await tapfiliateApiRequest.call(
+							this,
+							'POST',
+							requestPath`/affiliates/`,
+							body,
+						);
 						returnData.push(responseData as INodeExecutionData);
 					}
 					if (operation === 'delete') {
@@ -136,7 +153,7 @@ export class Tapfiliate implements INodeType {
 						responseData = await tapfiliateApiRequest.call(
 							this,
 							'DELETE',
-							`/affiliates/${affiliateId}/`,
+							requestPath`/affiliates/${affiliateId}/`,
 						);
 						responseData = { success: true };
 					}
@@ -146,7 +163,7 @@ export class Tapfiliate implements INodeType {
 						responseData = await tapfiliateApiRequest.call(
 							this,
 							'GET',
-							`/affiliates/${affiliateId}/`,
+							requestPath`/affiliates/${affiliateId}/`,
 						);
 					}
 					if (operation === 'getAll') {
@@ -158,13 +175,19 @@ export class Tapfiliate implements INodeType {
 							responseData = await tapfiliateApiRequestAllItems.call(
 								this,
 								'GET',
-								'/affiliates/',
+								requestPath`/affiliates/`,
 								{},
 								qs,
 							);
 						} else {
 							const limit = this.getNodeParameter('limit', i);
-							responseData = await tapfiliateApiRequest.call(this, 'GET', '/affiliates/', {}, qs);
+							responseData = await tapfiliateApiRequest.call(
+								this,
+								'GET',
+								requestPath`/affiliates/`,
+								{},
+								qs,
+							);
 							responseData = responseData.splice(0, limit);
 						}
 					}
@@ -185,7 +208,7 @@ export class Tapfiliate implements INodeType {
 							await tapfiliateApiRequest.call(
 								this,
 								'PUT',
-								`/affiliates/${affiliateId}/meta-data/${key}/`,
+								requestPath`/affiliates/${affiliateId}/meta-data/${toPathValue(key as string)}/`,
 								{ value },
 							);
 						}
@@ -198,7 +221,7 @@ export class Tapfiliate implements INodeType {
 						responseData = await tapfiliateApiRequest.call(
 							this,
 							'DELETE',
-							`/affiliates/${affiliateId}/meta-data/${key}/`,
+							requestPath`/affiliates/${affiliateId}/meta-data/${toPathValue(key)}/`,
 						);
 						responseData = { success: true };
 					}
@@ -210,7 +233,7 @@ export class Tapfiliate implements INodeType {
 						responseData = await tapfiliateApiRequest.call(
 							this,
 							'PUT',
-							`/affiliates/${affiliateId}/meta-data/`,
+							requestPath`/affiliates/${affiliateId}/meta-data/`,
 							{ [key]: value },
 						);
 					}
@@ -231,7 +254,7 @@ export class Tapfiliate implements INodeType {
 						responseData = await tapfiliateApiRequest.call(
 							this,
 							'POST',
-							`/programs/${programId}/affiliates/`,
+							requestPath`/programs/${programId}/affiliates/`,
 							body,
 						);
 					}
@@ -242,7 +265,7 @@ export class Tapfiliate implements INodeType {
 						responseData = await tapfiliateApiRequest.call(
 							this,
 							'PUT',
-							`/programs/${programId}/affiliates/${affiliateId}/approved/`,
+							requestPath`/programs/${programId}/affiliates/${affiliateId}/approved/`,
 						);
 					}
 					if (operation === 'disapprove') {
@@ -252,7 +275,7 @@ export class Tapfiliate implements INodeType {
 						responseData = await tapfiliateApiRequest.call(
 							this,
 							'DELETE',
-							`/programs/${programId}/affiliates/${affiliateId}/approved/`,
+							requestPath`/programs/${programId}/affiliates/${affiliateId}/approved/`,
 						);
 					}
 					if (operation === 'get') {
@@ -262,7 +285,7 @@ export class Tapfiliate implements INodeType {
 						responseData = await tapfiliateApiRequest.call(
 							this,
 							'GET',
-							`/programs/${programId}/affiliates/${affiliateId}/`,
+							requestPath`/programs/${programId}/affiliates/${affiliateId}/`,
 						);
 					}
 					if (operation === 'getAll') {
@@ -275,7 +298,7 @@ export class Tapfiliate implements INodeType {
 							responseData = await tapfiliateApiRequestAllItems.call(
 								this,
 								'GET',
-								`/programs/${programId}/affiliates/`,
+								requestPath`/programs/${programId}/affiliates/`,
 								{},
 								qs,
 							);
@@ -284,7 +307,7 @@ export class Tapfiliate implements INodeType {
 							responseData = await tapfiliateApiRequest.call(
 								this,
 								'GET',
-								`/programs/${programId}/affiliates/`,
+								requestPath`/programs/${programId}/affiliates/`,
 								{},
 								qs,
 							);

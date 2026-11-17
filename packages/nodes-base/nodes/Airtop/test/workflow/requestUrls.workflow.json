@@ -1,0 +1,609 @@
+{
+	"name": "Airtop request URLs",
+	"nodes": [
+		{
+			"parameters": {},
+			"id": "31e7aa43-fa28-532c-862d-ad1d7a7b43c7",
+			"name": "When clicking ‘Execute workflow’",
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [0, 0]
+		},
+		{
+			"parameters": {
+				"resource": "session",
+				"operation": "create",
+				"profileName": "my-profile",
+				"saveProfileOnTermination": true
+			},
+			"id": "89874f45-6d5a-557c-b953-11ce2f7ae9ed",
+			"name": "Create Session",
+			"type": "n8n-nodes-base.airtop",
+			"typeVersion": 1.1,
+			"position": [220, 0],
+			"credentials": {
+				"airtopApi": {
+					"id": "1",
+					"name": "Airtop account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "session",
+				"operation": "save",
+				"sessionId": "3f9a6c2e-8b41-4d7a-9e05-1c2b3d4e5f60",
+				"profileName": "my-profile"
+			},
+			"id": "36417369-0dfb-50d5-a0a1-de741a01ac19",
+			"name": "Save Profile",
+			"type": "n8n-nodes-base.airtop",
+			"typeVersion": 1.1,
+			"position": [440, 0],
+			"credentials": {
+				"airtopApi": {
+					"id": "1",
+					"name": "Airtop account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "window",
+				"operation": "create",
+				"sessionId": "3f9a6c2e-8b41-4d7a-9e05-1c2b3d4e5f60",
+				"url": "https://www.example.com",
+				"getLiveView": true
+			},
+			"id": "1f6add3e-a438-5b23-9012-8278de1e6c7c",
+			"name": "Create Window",
+			"type": "n8n-nodes-base.airtop",
+			"typeVersion": 1.1,
+			"position": [660, 0],
+			"credentials": {
+				"airtopApi": {
+					"id": "1",
+					"name": "Airtop account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "window",
+				"operation": "load",
+				"sessionId": "3f9a6c2e-8b41-4d7a-9e05-1c2b3d4e5f60",
+				"windowId": "7b8c9d0e-1f2a-4b3c-8d4e-5f6a7b8c9d0e",
+				"url": "https://www.example.com/pricing"
+			},
+			"id": "388fbf5b-f353-5731-b0a6-23869e9aff7b",
+			"name": "Load URL",
+			"type": "n8n-nodes-base.airtop",
+			"typeVersion": 1.1,
+			"position": [880, 0],
+			"credentials": {
+				"airtopApi": {
+					"id": "1",
+					"name": "Airtop account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "window",
+				"operation": "takeScreenshot",
+				"sessionId": "3f9a6c2e-8b41-4d7a-9e05-1c2b3d4e5f60",
+				"windowId": "7b8c9d0e-1f2a-4b3c-8d4e-5f6a7b8c9d0e"
+			},
+			"id": "46b36d3c-d616-52df-a8b4-ced69881a951",
+			"name": "Take Screenshot",
+			"type": "n8n-nodes-base.airtop",
+			"typeVersion": 1.1,
+			"position": [1100, 0],
+			"credentials": {
+				"airtopApi": {
+					"id": "1",
+					"name": "Airtop account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "interaction",
+				"operation": "click",
+				"sessionId": "3f9a6c2e-8b41-4d7a-9e05-1c2b3d4e5f60",
+				"windowId": "7b8c9d0e-1f2a-4b3c-8d4e-5f6a7b8c9d0e",
+				"elementDescription": "the Search button"
+			},
+			"id": "6394f8fd-a436-5cce-b35d-03549d2a9dea",
+			"name": "Click",
+			"type": "n8n-nodes-base.airtop",
+			"typeVersion": 1.1,
+			"position": [1320, 0],
+			"credentials": {
+				"airtopApi": {
+					"id": "1",
+					"name": "Airtop account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "interaction",
+				"operation": "hover",
+				"sessionId": "3f9a6c2e-8b41-4d7a-9e05-1c2b3d4e5f60",
+				"windowId": "7b8c9d0e-1f2a-4b3c-8d4e-5f6a7b8c9d0e",
+				"elementDescription": "the Products menu"
+			},
+			"id": "e2be944f-5146-5560-b66d-bd18f4b9f1f5",
+			"name": "Hover",
+			"type": "n8n-nodes-base.airtop",
+			"typeVersion": 1.1,
+			"position": [1540, 0],
+			"credentials": {
+				"airtopApi": {
+					"id": "1",
+					"name": "Airtop account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "interaction",
+				"operation": "type",
+				"sessionId": "3f9a6c2e-8b41-4d7a-9e05-1c2b3d4e5f60",
+				"windowId": "7b8c9d0e-1f2a-4b3c-8d4e-5f6a7b8c9d0e",
+				"text": "n8n",
+				"pressEnterKey": false,
+				"elementDescription": "the search box"
+			},
+			"id": "7e3556f5-21ac-575c-ac81-cf670b7203de",
+			"name": "Type",
+			"type": "n8n-nodes-base.airtop",
+			"typeVersion": 1.1,
+			"position": [1760, 0],
+			"credentials": {
+				"airtopApi": {
+					"id": "1",
+					"name": "Airtop account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "interaction",
+				"operation": "scroll",
+				"sessionId": "3f9a6c2e-8b41-4d7a-9e05-1c2b3d4e5f60",
+				"windowId": "7b8c9d0e-1f2a-4b3c-8d4e-5f6a7b8c9d0e",
+				"scrollingMode": "automatic",
+				"scrollToElement": "the page footer"
+			},
+			"id": "d85de894-c9f3-545d-a131-906301d4ff91",
+			"name": "Scroll",
+			"type": "n8n-nodes-base.airtop",
+			"typeVersion": 1.1,
+			"position": [1980, 0],
+			"credentials": {
+				"airtopApi": {
+					"id": "1",
+					"name": "Airtop account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "interaction",
+				"operation": "fill",
+				"sessionId": "3f9a6c2e-8b41-4d7a-9e05-1c2b3d4e5f60",
+				"windowId": "7b8c9d0e-1f2a-4b3c-8d4e-5f6a7b8c9d0e",
+				"formData": "Name: Jane Doe"
+			},
+			"id": "da35ec4f-70cd-5d63-8486-6ba7684728ba",
+			"name": "Fill Form",
+			"type": "n8n-nodes-base.airtop",
+			"typeVersion": 1.1,
+			"position": [2200, 0],
+			"credentials": {
+				"airtopApi": {
+					"id": "1",
+					"name": "Airtop account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "extraction",
+				"operation": "scrape",
+				"sessionMode": "existing",
+				"sessionId": "3f9a6c2e-8b41-4d7a-9e05-1c2b3d4e5f60",
+				"windowId": "7b8c9d0e-1f2a-4b3c-8d4e-5f6a7b8c9d0e"
+			},
+			"id": "2d36abc4-21e9-54f9-90ad-2155b31f44a6",
+			"name": "Scrape",
+			"type": "n8n-nodes-base.airtop",
+			"typeVersion": 1.1,
+			"position": [2420, 0],
+			"credentials": {
+				"airtopApi": {
+					"id": "1",
+					"name": "Airtop account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "extraction",
+				"operation": "query",
+				"sessionMode": "new",
+				"url": "https://www.example.com",
+				"prompt": "What is the page title?",
+				"autoTerminateSession": true
+			},
+			"id": "2359d555-01fb-572a-8180-4930bb2e9f49",
+			"name": "Query Page",
+			"type": "n8n-nodes-base.airtop",
+			"typeVersion": 1.1,
+			"position": [2640, 0],
+			"credentials": {
+				"airtopApi": {
+					"id": "1",
+					"name": "Airtop account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "extraction",
+				"operation": "getPaginated",
+				"sessionMode": "existing",
+				"sessionId": "3f9a6c2e-8b41-4d7a-9e05-1c2b3d4e5f60",
+				"windowId": "7b8c9d0e-1f2a-4b3c-8d4e-5f6a7b8c9d0e",
+				"prompt": "List all product names"
+			},
+			"id": "e436004e-659c-5694-bc95-568e91449975",
+			"name": "Query Page Paginated",
+			"type": "n8n-nodes-base.airtop",
+			"typeVersion": 1.1,
+			"position": [2860, 0],
+			"credentials": {
+				"airtopApi": {
+					"id": "1",
+					"name": "Airtop account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "file",
+				"operation": "get",
+				"fileId": "c4d5e6f7-a8b9-4c0d-9e1f-2a3b4c5d6e7f"
+			},
+			"id": "8383db92-9d61-554e-8125-0eeb6c5bd2c0",
+			"name": "Get File",
+			"type": "n8n-nodes-base.airtop",
+			"typeVersion": 1.1,
+			"position": [3080, 0],
+			"credentials": {
+				"airtopApi": {
+					"id": "1",
+					"name": "Airtop account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "file",
+				"operation": "getMany",
+				"sessionIds": "3f9a6c2e-8b41-4d7a-9e05-1c2b3d4e5f60",
+				"limit": 10
+			},
+			"id": "125d0f8f-e464-5da1-8e88-b7bd29fe1184",
+			"name": "Get Many Files",
+			"type": "n8n-nodes-base.airtop",
+			"typeVersion": 1.1,
+			"position": [3300, 0],
+			"credentials": {
+				"airtopApi": {
+					"id": "1",
+					"name": "Airtop account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "file",
+				"operation": "deleteFile",
+				"fileId": "c4d5e6f7-a8b9-4c0d-9e1f-2a3b4c5d6e7f"
+			},
+			"id": "252ac0fc-4037-5708-af2c-b73a30b6fb13",
+			"name": "Delete File",
+			"type": "n8n-nodes-base.airtop",
+			"typeVersion": 1.1,
+			"position": [3520, 0],
+			"credentials": {
+				"airtopApi": {
+					"id": "1",
+					"name": "Airtop account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "session",
+				"operation": "waitForDownload",
+				"sessionId": "3f9a6c2e-8b41-4d7a-9e05-1c2b3d4e5f60"
+			},
+			"id": "00260f19-8489-5141-b34c-eb06231b67ee",
+			"name": "Wait for Download",
+			"type": "n8n-nodes-base.airtop",
+			"typeVersion": 1.1,
+			"position": [3740, 0],
+			"credentials": {
+				"airtopApi": {
+					"id": "1",
+					"name": "Airtop account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "window",
+				"operation": "close",
+				"sessionId": "3f9a6c2e-8b41-4d7a-9e05-1c2b3d4e5f60",
+				"windowId": "7b8c9d0e-1f2a-4b3c-8d4e-5f6a7b8c9d0e"
+			},
+			"id": "c20a7056-a689-5b2d-bf2b-4c7006dfb417",
+			"name": "Close Window",
+			"type": "n8n-nodes-base.airtop",
+			"typeVersion": 1.1,
+			"position": [3960, 0],
+			"credentials": {
+				"airtopApi": {
+					"id": "1",
+					"name": "Airtop account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "session",
+				"operation": "terminate",
+				"sessionId": "3f9a6c2e-8b41-4d7a-9e05-1c2b3d4e5f60"
+			},
+			"id": "3c9f3d6b-4a49-50bd-bfe5-0eaefe53441a",
+			"name": "Terminate Session",
+			"type": "n8n-nodes-base.airtop",
+			"typeVersion": 1.1,
+			"position": [4180, 0],
+			"credentials": {
+				"airtopApi": {
+					"id": "1",
+					"name": "Airtop account"
+				}
+			}
+		}
+	],
+	"pinData": {
+		"Terminate Session": [
+			{
+				"json": {
+					"success": true
+				}
+			}
+		]
+	},
+	"connections": {
+		"When clicking ‘Execute workflow’": {
+			"main": [
+				[
+					{
+						"node": "Create Session",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Create Session": {
+			"main": [
+				[
+					{
+						"node": "Save Profile",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Save Profile": {
+			"main": [
+				[
+					{
+						"node": "Create Window",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Create Window": {
+			"main": [
+				[
+					{
+						"node": "Load URL",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Load URL": {
+			"main": [
+				[
+					{
+						"node": "Take Screenshot",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Take Screenshot": {
+			"main": [
+				[
+					{
+						"node": "Click",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Click": {
+			"main": [
+				[
+					{
+						"node": "Hover",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Hover": {
+			"main": [
+				[
+					{
+						"node": "Type",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Type": {
+			"main": [
+				[
+					{
+						"node": "Scroll",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Scroll": {
+			"main": [
+				[
+					{
+						"node": "Fill Form",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Fill Form": {
+			"main": [
+				[
+					{
+						"node": "Scrape",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Scrape": {
+			"main": [
+				[
+					{
+						"node": "Query Page",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Query Page": {
+			"main": [
+				[
+					{
+						"node": "Query Page Paginated",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Query Page Paginated": {
+			"main": [
+				[
+					{
+						"node": "Get File",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Get File": {
+			"main": [
+				[
+					{
+						"node": "Get Many Files",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Get Many Files": {
+			"main": [
+				[
+					{
+						"node": "Delete File",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Delete File": {
+			"main": [
+				[
+					{
+						"node": "Wait for Download",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Wait for Download": {
+			"main": [
+				[
+					{
+						"node": "Close Window",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Close Window": {
+			"main": [
+				[
+					{
+						"node": "Terminate Session",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"active": false,
+	"settings": {},
+	"meta": {},
+	"tags": []
+}

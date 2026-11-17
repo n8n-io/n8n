@@ -1,8 +1,7 @@
 import type { LicenseState } from '@n8n/backend-common';
+import type { TelemetryProxy } from '@n8n/backend-services';
 import type { ProjectRepository, User } from '@n8n/db';
 import z from 'zod';
-
-import type { Telemetry } from '@/telemetry';
 
 import { USER_CALLED_MCP_TOOL_EVENT } from '../mcp.constants';
 import type { ToolDefinition, UserCalledMCPToolEventPayload } from '../mcp.types';
@@ -64,7 +63,7 @@ export const createSearchProjectsTool = (
 	user: User,
 	projectRepository: ProjectRepository,
 	licenseState: LicenseState,
-	telemetry: Telemetry,
+	telemetry: TelemetryProxy,
 ): ToolDefinition<typeof inputSchema> => ({
 	name: 'search_projects',
 	config: {

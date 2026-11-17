@@ -165,4 +165,26 @@ describe('buildWorkflow build project', () => {
 		expect(result.success).toBe(false);
 		expect(result.foreignWorkflowReads).toEqual(['other-wf']);
 	});
+
+	it('reports a sandbox that the service refused because the tenant quota was full', async () => {
+		const actual =
+			await vi.importActual<typeof import('../outcome/event-parser')>('../outcome/event-parser');
+		vi.mocked(extractOutcomeFromEvents).mockImplementationOnce((events) => ({
+			...actual.extractOutcomeFromEvents(events),
+			toolCalls: [
+				{
+					toolCallId: 'call-1',
+					toolName: 'workflow_builder_build_workflow',
+					args: {},
+					error: 'SandboxServiceError: tenant sandbox quota exceeded',
+					durationMs: 0,
+				},
+			],
+		}));
+		const { client } = makeClient();
+
+		const result = await buildWorkflow({ client, ...baseConfig });
+
+		expect(result.sandboxQuotaExceeded).toBe(true);
+	});
 });

@@ -1,4 +1,5 @@
-import type { IHttpRequestMethods } from 'n8n-workflow';
+import type { IHttpRequestMethods, RequestUrl } from 'n8n-workflow';
+import { requestUrl } from 'n8n-workflow';
 import {
 	BaseChatModel,
 	type ChatModelConfig,
@@ -24,13 +25,13 @@ interface ProviderResponse {
 interface RequestConfig {
 	httpRequest: (
 		method: IHttpRequestMethods,
-		url: string,
+		url: RequestUrl,
 		body?: object,
 		headers?: Record<string, string>,
 	) => Promise<{ body: unknown }>;
 	openStream: (
 		method: IHttpRequestMethods,
-		url: string,
+		url: RequestUrl,
 		body?: object,
 		headers?: Record<string, string>,
 	) => Promise<{ body: AsyncIterableIterator<string> }>;
@@ -67,7 +68,7 @@ export class CustomChatModel extends BaseChatModel<ModelConfig> {
 
 		const response = await this.requests.httpRequest(
 			'POST',
-			`${this.baseURL}/generate`,
+			requestUrl`${this.baseURL}/generate`,
 			requestBody,
 		);
 		const body = response.body as ProviderResponse;
@@ -106,7 +107,11 @@ export class CustomChatModel extends BaseChatModel<ModelConfig> {
 			messages: providerMessages,
 			temperature: merged.temperature,
 		};
-		const response = await this.requests.openStream('POST', `${this.baseURL}/stream`, requestBody);
+		const response = await this.requests.openStream(
+			'POST',
+			requestUrl`${this.baseURL}/stream`,
+			requestBody,
+		);
 		for await (const chunk of response.body) {
 			yield { type: 'text-delta', delta: chunk };
 		}

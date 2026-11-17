@@ -18,6 +18,7 @@ import {
 } from '../execution.types';
 import { resolveInputReads, StepReadyHandler } from '../step-ready-handler';
 import { InvalidParentLinkError, type StartExecutionService } from '../start-execution.service';
+import { attachStepErrorDetails } from '../step-error-details';
 import type { StepRecord, StepStore, StepSummary } from '../step-store';
 
 /** Key for a `loadStepsByKeys` result at iteration 0, as the handler requests them. */
@@ -112,6 +113,8 @@ function makeExecutionStore(
 		finishExecution: vi.fn().mockResolvedValue(null),
 		cancelExecution: vi.fn().mockResolvedValue(null),
 		loadSeededOutputs: vi.fn().mockResolvedValue(new Map()),
+		findStaleQueuedExecutions: vi.fn(),
+		renewQueuedExecution: vi.fn(),
 		refreshLiveStatus: vi.fn(),
 	};
 }
@@ -700,6 +703,28 @@ describe('StepReadyHandler', () => {
 		});
 	});
 
+	it('records the details an executor hands over with its error', async () => {
+		const stepStore = makeStepStore();
+		const queue = makeQueue();
+		const executor: IStepExecutor = {
+			execute: vi
+				.fn()
+				.mockRejectedValue(attachStepErrorDetails(new RangeError('too many items'), { limit: 10 })),
+		};
+		const handler = makeHandler(makeExecutionStore(), stepStore, queue, {
+			v1StepExecutor: executor,
+		});
+
+		await handler.handle(event);
+
+		expect(stepStore.failStep).toHaveBeenCalledWith('step-a', {
+			name: 'RangeError',
+			message: 'too many items',
+			stack: expect.stringContaining('RangeError: too many items') as string,
+			details: { limit: 10 },
+		});
+	});
+
 	// A v1 node runs user code, which can reject with anything — a non-Error still
 	// has to land as a recorded failure rather than escaping the handler.
 	it('records a non-Error rejection as a failure', async () => {
@@ -873,16 +898,18 @@ describe('StepReadyHandler waits', () => {
 		expect(onStepSuspended).toHaveBeenCalledTimes(1);
 	});
 
-	it('reports no suspension when another owner took the step over', async () => {
+	it('reports no suspension when the step was taken over or its execution ended', async () => {
 		const stepStore = makeStepStore();
 		vi.mocked(stepStore.suspendStep).mockResolvedValue(false);
 		const onStepSuspended = vi.fn();
+		const executionStore = makeExecutionStore();
+		const lifecycleEventPublisher = makeLifecycleEventPublisher();
 		const handler = makeHandler(
-			makeExecutionStore(),
+			executionStore,
 			stepStore,
 			makeQueue(),
 			{ v1StepExecutor: makeExecutor({ wait: timeWait }) },
-			makeLifecycleEventPublisher(),
+			lifecycleEventPublisher,
 			noopExecutionResponseSender,
 			onStepSuspended,
 		);
@@ -890,6 +917,10 @@ describe('StepReadyHandler waits', () => {
 		await handler.handle(event);
 
 		expect(onStepSuspended).not.toHaveBeenCalled();
+		expect(lifecycleEventPublisher.publish).not.toHaveBeenCalledWith(
+			expect.objectContaining({ type: 'step:waiting' }),
+		);
+		expect(executionStore.refreshLiveStatus).not.toHaveBeenCalled();
 	});
 
 	it('suspends a wait that only a resume request ends', async () => {
@@ -1174,11 +1205,12 @@ describe('StepReadyHandler sub-executions', () => {
 		expect(executionStore.refreshLiveStatus).toHaveBeenCalledExactlyOnceWith('exec-1');
 	});
 
-	it('starts no sub-execution when another owner took the step over', async () => {
+	it('starts no sub-execution when the step was taken over or its execution ended', async () => {
 		const stepStore = makeStepStore({}, { suspendStep: vi.fn().mockResolvedValue(false) });
 		const subExecutionStarter = makeSubExecutionStarter();
+		const executionStore = makeExecutionStore();
 		const handler = makeHandler(
-			makeExecutionStore(),
+			executionStore,
 			stepStore,
 			makeQueue(),
 			{ v1StepExecutor: makeExecutor({ subExecution }) },
@@ -1191,6 +1223,7 @@ describe('StepReadyHandler sub-executions', () => {
 		await handler.handle(event);
 
 		expect(subExecutionStarter.start).not.toHaveBeenCalled();
+		expect(executionStore.refreshLiveStatus).not.toHaveBeenCalled();
 	});
 
 	it('announces no step:waiting while the step waits on an awaited sub-execution', async () => {
@@ -1439,6 +1472,7 @@ describe('StepReadyHandler lifecycle events', () => {
 		expect(lifecycleEventPublisher.publish).toHaveBeenNthCalledWith(2, {
 			type: 'step:failed',
 			...stepFields,
+			error: { name: 'Error', message: 'boom', stack: expect.stringContaining('boom') as string },
 		});
 	});
 

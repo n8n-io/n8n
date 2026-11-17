@@ -321,6 +321,7 @@ export type { HandlerExecutor } from './types/sdk/handler-executor';
 export {
 	filterLlmMessages,
 	getCreatedAt,
+	isHostInstruction,
 	isLlmMessage,
 	isRuntimeContextCue,
 } from './sdk/message';
@@ -579,5 +580,5 @@ export type {
 
 export type { JSONObject, JSONArray, JSONValue } from './types/utils/json';
 
-export { modelConfigToId } from './utils/model';
+export { getCatalogModelId, modelConfigToId } from './utils/model';
 export { isZodSchema, zodToJsonSchema } from './utils/zod';

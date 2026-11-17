@@ -1,4 +1,5 @@
-import type { IWebhookFunctions } from 'n8n-workflow';
+import type { IDataObject, IHookFunctions, IRequestOptions, IWebhookFunctions } from 'n8n-workflow';
+import { mockDeep } from 'vitest-mock-extended';
 
 import { TaigaTrigger } from '../TaigaTrigger.node';
 import { verifySignature } from '../TaigaTriggerHelpers';
@@ -93,6 +94,35 @@ describe('TaigaTrigger', () => {
 
 			expect(result.workflowData).toBeDefined();
 			expect(mockResponse.status).not.toHaveBeenCalled();
+		});
+	});
+
+	describe('webhookMethods.delete', () => {
+		it('should delete the webhook with the stored ID', async () => {
+			const context = mockDeep<IHookFunctions>();
+			const webhookData: IDataObject = { webhookId: 55, key: 'secret' };
+			context.getWorkflowStaticData.mockReturnValue(webhookData);
+			context.getCredentials.mockResolvedValue({
+				username: 'nathan',
+				password: 'fake-password',
+				environment: 'selfHosted',
+				url: 'https://taiga.example.com',
+			});
+			context.helpers.request.mockResolvedValue({ auth_token: 'fake-token' });
+
+			const result = await trigger.webhookMethods.default.delete.call(context);
+
+			expect(result).toBe(true);
+			expect(webhookData).toEqual({});
+			expect(
+				context.helpers.request.mock.calls.map(([options]) => [
+					(options as IRequestOptions).method,
+					String((options as IRequestOptions).uri),
+				]),
+			).toEqual([
+				['POST', 'https://taiga.example.com/api/v1/auth'],
+				['DELETE', 'https://taiga.example.com/api/v1/webhooks/55'],
+			]);
 		});
 	});
 });

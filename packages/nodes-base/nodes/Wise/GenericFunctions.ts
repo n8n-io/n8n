@@ -6,8 +6,10 @@ import type {
 	IHttpRequestOptions,
 	ILoadOptionsFunctions,
 	JsonObject,
+	RequestPath,
+	WithRequestTarget,
 } from 'n8n-workflow';
-import { NodeApiError } from 'n8n-workflow';
+import { NodeApiError, requestUrl } from 'n8n-workflow';
 
 /**
  * Make an authenticated API request to Wise.
@@ -15,10 +17,10 @@ import { NodeApiError } from 'n8n-workflow';
 export async function wiseApiRequest(
 	this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions,
 	method: 'GET' | 'POST' | 'PUT' | 'DELETE' | 'HEAD' | 'PATCH',
-	endpoint: string,
+	endpoint: RequestPath,
 	body: IDataObject = {},
 	qs: IDataObject = {},
-	option: IDataObject = {},
+	option: Pick<IHttpRequestOptions, 'encoding'> = {},
 ) {
 	const { apiToken, environment, privateKey } = await this.getCredentials<{
 		apiToken: string;
@@ -26,15 +28,14 @@ export async function wiseApiRequest(
 		privateKey?: string;
 	}>('wiseApi');
 
-	const rootUrl =
-		environment === 'live' ? 'https://api.wise.com/' : 'https://api.wise-sandbox.com/';
+	const rootUrl = environment === 'live' ? 'https://api.wise.com' : 'https://api.wise-sandbox.com';
 
-	const options: IHttpRequestOptions = {
+	const options: WithRequestTarget<IHttpRequestOptions> = {
 		headers: {
 			Authorization: `Bearer ${apiToken}`,
 		},
 		method,
-		url: `${rootUrl}${endpoint}`,
+		url: requestUrl`${rootUrl}/${endpoint}`,
 		qs,
 		body,
 		json: true,
@@ -85,7 +86,6 @@ export async function wiseApiRequest(
 		const signerObject = createSign('RSA-SHA256').update(oneTimeToken);
 		try {
 			const signature = signerObject.sign(privateKey, 'base64');
-			delete option.ignoreHttpStatusErrors;
 			options.headers = {
 				...options.headers,
 				'X-Signature': signature,
