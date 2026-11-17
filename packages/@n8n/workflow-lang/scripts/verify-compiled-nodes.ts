@@ -95,7 +95,7 @@ const add = (into: Record<string, number>, from: Record<string, number> | undefi
 const MEASURE_COST =
 	SHOW_COST || CHECK_COST || (one === undefined && pattern === undefined && !DIST);
 const filter = new RegExp(one === undefined ? (pattern ?? '.') : `^${one}$`, 'i');
-const PARALLEL = 6;
+const PARALLEL = Number(process.env.VERIFY_PARALLEL) || 6;
 const NODE_TIMEOUT_MS = Number(process.env.VERIFY_NODE_TIMEOUT_MS) || 2_700_000;
 const UPLOAD_ANSWER = {
 	upload_url: 'https://files.example.com/upload/v1/abc',
