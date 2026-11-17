@@ -1002,8 +1002,9 @@ export class AgentExecutionService {
 		);
 		const executions = rows.slice(0, limit);
 		let older: AgentExecution | undefined = rows[limit];
-		// Up to two queries for each continuation. Continuations are rare, so a
-		// page usually needs none of them.
+		// A page with older turns checks once whether its oldest turn continues the
+		// next older one. Each continuation adds up to two queries, but
+		// continuations are rare.
 		while (older && (await this.continues(executions[executions.length - 1], older))) {
 			executions.push(older);
 			[older] = await this.agentExecutionRepository.findByThreadIdNewestFirst(threadId, 1, older);
