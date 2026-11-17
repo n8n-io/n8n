@@ -16,7 +16,6 @@ import {
 } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { BadRequestError, ForbiddenError } from '@n8n/errors';
-import { In } from '@n8n/typeorm';
 import { v4 as uuid } from 'uuid';
 
 import type { ProjectAgent } from '@/modules/agents/entities/agent.entity';
@@ -136,11 +135,32 @@ describe('ResourceOwnerService', () => {
 			const serviceAccount = await createServiceAccountWithProject();
 			await linkUserToProject(serviceAccount, project, 'project:editor');
 
-			for (const invalidOwner of [outsider, instanceOwner, serviceAccount]) {
+			for (const invalidOwner of [outsider, serviceAccount]) {
 				await expect(service.setOwner(projectAdmin, resource, invalidOwner.id)).rejects.toThrow(
 					BadRequestError,
 				);
 			}
+		});
+
+		it('accepts an instance admin without a relation in a team project only', async () => {
+			const instanceAdmin = await createAdmin();
+			const teamWorkflow = await createOwnedWorkflow(null);
+			const personalWorkflow = await createOwnedWorkflow(null, await getPersonalProject(editor));
+
+			await service.setOwner(
+				projectAdmin,
+				{ type: 'workflow', id: teamWorkflow.id },
+				instanceAdmin.id,
+			);
+			expect(await ownerOf(teamWorkflow)).toBe(instanceAdmin.id);
+
+			await expect(
+				service.setOwner(
+					instanceOwner,
+					{ type: 'workflow', id: personalWorkflow.id },
+					instanceAdmin.id,
+				),
+			).rejects.toThrow(BadRequestError);
 		});
 
 		it('sets the owner of an agent', async () => {
@@ -169,27 +189,30 @@ describe('ResourceOwnerService', () => {
 			).toBe(editor.id);
 		});
 
-		it('picks the project admin with the oldest relation, then the lowest user id', async () => {
-			const relations = Container.get(ProjectRelationRepository);
-			const laterAdmins = [await createMember(), await createMember()];
-			for (const admin of laterAdmins) await linkUserToProject(admin, project, 'project:admin');
-			await relations.update({ projectId: project.id }, { createdAt: new Date('2026-01-02') });
-			await relations.update(
-				{ projectId: project.id, userId: In(laterAdmins.map(({ id }) => id)) },
-				{ createdAt: new Date('2026-01-01') },
-			);
+		it('picks an instance admin who creates in a team project without a relation', async () => {
+			const instanceAdmin = await createAdmin();
 
-			expect(await service.ownerForNewResource(instanceOwner, project.id, 'agent', {})).toBe(
-				laterAdmins.map(({ id }) => id).sort()[0],
+			expect(await service.ownerForNewResource(instanceAdmin, project.id, 'workflow', {})).toBe(
+				instanceAdmin.id,
 			);
 		});
 
-		it('picks nobody in a team project without members', async () => {
-			const memberlessProject = await createTeamProject();
+		it('picks the sole project admin, and nobody when there are two', async () => {
+			expect(await service.ownerForNewResource(outsider, project.id, 'agent', {})).toBe(
+				projectAdmin.id,
+			);
+
+			await linkUserToProject(await createMember(), project, 'project:admin');
+
+			expect(await service.ownerForNewResource(outsider, project.id, 'agent', {})).toBeNull();
+		});
+
+		it('picks the instance owner in a team project without a project admin', async () => {
+			const adminlessProject = await createTeamProject();
 
 			expect(
-				await service.ownerForNewResource(undefined, memberlessProject.id, 'workflow', {}),
-			).toBeNull();
+				await service.ownerForNewResource(undefined, adminlessProject.id, 'workflow', {}),
+			).toBe(instanceOwner.id);
 		});
 	});
 
@@ -244,6 +267,10 @@ describe('ResourceOwnerService', () => {
 			const workflow = await createOwnedWorkflow(editor.id);
 			const agent = await createOwnedAgent(editor.id);
 			const untouched = await createOwnedWorkflow(editor.id, otherProject);
+			await Container.get(ProjectRelationRepository).delete({
+				projectId: project.id,
+				userId: editor.id,
+			});
 
 			await service.reassignOwnedBy(
 				{ userId: editor.id, projectId: project.id, actor: undefined, reason: 'member-removed' },
@@ -281,16 +308,28 @@ describe('ResourceOwnerService', () => {
 			]);
 		});
 
-		it('does not pick the leaving user as the fallback owner', async () => {
+		it('picks the instance owner when the only project admin leaves', async () => {
 			const workflow = await createOwnedWorkflow(projectAdmin.id);
-			const globalAdmin = await createAdmin();
 
 			await service.reassignOwnedBy(
-				{ userId: projectAdmin.id, actor: globalAdmin, reason: 'user-deleted' },
+				{ userId: projectAdmin.id, actor: undefined, reason: 'user-deleted' },
 				{},
 			);
 
-			expect(await ownerOf(workflow)).toBeNull();
+			expect(await ownerOf(workflow)).toBe(instanceOwner.id);
+		});
+
+		it('picks the other project admin when one of two project admins leaves', async () => {
+			const otherAdmin = await createMember();
+			await linkUserToProject(otherAdmin, project, 'project:admin');
+			const workflow = await createOwnedWorkflow(projectAdmin.id);
+
+			await service.reassignOwnedBy(
+				{ userId: projectAdmin.id, actor: undefined, reason: 'user-deleted' },
+				{},
+			);
+
+			expect(await ownerOf(workflow)).toBe(otherAdmin.id);
 		});
 	});
 });
