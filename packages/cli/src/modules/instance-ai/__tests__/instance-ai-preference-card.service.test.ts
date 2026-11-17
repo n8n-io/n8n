@@ -3,8 +3,7 @@ import type { User } from '@n8n/db';
 import { TELEMETRY_EVENT } from '@n8n/telemetry';
 import { mock } from 'vitest-mock-extended';
 
-import type { AiPreferenceService } from '@n8n/backend-services';
-import type { Telemetry } from '@/telemetry';
+import type { AiPreferenceService, TelemetryProxy } from '@n8n/backend-services';
 
 import type { InProcessEventBus } from '../event-bus/in-process-event-bus';
 import { InstanceAiPreferenceCardService } from '../instance-ai-preference-card.service';
@@ -12,7 +11,7 @@ import { InstanceAiPreferenceCardService } from '../instance-ai-preference-card.
 describe('InstanceAiPreferenceCardService', () => {
 	const aiPreferenceService = mock<AiPreferenceService>();
 	const eventBus = mock<InProcessEventBus>();
-	const telemetry = mock<Telemetry>();
+	const telemetry = mock<TelemetryProxy>();
 	const service = new InstanceAiPreferenceCardService(aiPreferenceService, eventBus, telemetry);
 	const user = mock<User>({ id: 'user-1' });
 

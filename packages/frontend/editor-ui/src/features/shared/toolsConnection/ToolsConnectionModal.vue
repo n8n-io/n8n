@@ -253,7 +253,7 @@ function itemsForCategory(category: ToolCategoryKey): ToolConnectionItem[] {
 	// Stable sort keeps each bucket in its original order (Array.sort is stable).
 	if (category === 'all') {
 		return props.items
-			.filter((item) => !isGatewayDuplicate(item))
+			.filter((item) => !isGatewayDuplicate(item) && categoryOf(item) !== 'recommended')
 			.sort((a, b) => allSortRank(a) - allSortRank(b));
 	}
 	if (category === 'connected') return props.items.filter((item) => hasToolConnection(item.status));
@@ -346,6 +346,7 @@ const CATEGORY_I18N: Record<ToolCategoryKey, BaseTextKey> = {
 	project: 'tools.connection.categories.project',
 	global: 'tools.connection.categories.global',
 	data: 'tools.connection.categories.data',
+	recommended: 'tools.connection.categories.recommended',
 };
 
 function categoryLabel(category: ToolCategoryKey): string {
