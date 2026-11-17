@@ -14,7 +14,13 @@
  * the fallback host. OAuth2 only (`triggerOAuth2`); sheets in mode `url` run
  * in the host.
  */
-import { apiError, defineNode, type Item } from '@n8n/workflow-lang';
+import {
+	apiError,
+	defineNode,
+	operationError,
+	type FailedResponse,
+	type Item,
+} from '@n8n/workflow-lang';
 
 interface Locator {
 	mode?: string;
@@ -96,6 +102,24 @@ function rowsToJson(rows: unknown[][], columns: string[]): Item[] {
 	return out;
 }
 
+/**
+ * The error of a failed request, as `poll` of the v1 node throws it: the NodeApiError of
+ * apiRequest, or the text about edit access when Google refuses the file.
+ */
+function requestFailure(response: FailedResponse): Error {
+	const failure = apiError(response, { helper: 'legacy' });
+	const text = failure.description;
+	if (
+		typeof text === 'string' &&
+		text.toLowerCase().includes('user does not have sufficient permissions for file')
+	) {
+		return operationError(
+			"Edit access to the document is required for the 'Row Update' and 'Row Added or Updated' triggers. Request edit access to the document's owner or select the 'Row Added' trigger in the 'Trigger On' dropdown.",
+		);
+	}
+	return failure;
+}
+
 export default defineNode<SheetsTriggerParameters>({
 	type: 'n8n-nodes-base.googleSheetsTrigger',
 	version: 1,
@@ -140,7 +164,7 @@ export default defineNode<SheetsTriggerParameters>({
 				body: undefined,
 				credential,
 			});
-			if (response.status >= 400) throw apiError(response, { helper: 'legacy' });
+			if (response.status >= 400) throw requestFailure(response);
 			return response.body;
 		};
 
