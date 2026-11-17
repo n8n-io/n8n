@@ -17,7 +17,7 @@ export class TimescaleDb implements INodeType {
 		name: 'timescaleDb',
 		icon: { light: 'file:timescaleDb.svg', dark: 'file:timescaleDb.dark.svg' },
 		group: ['input'],
-		version: [1, 1.1],
+		version: [1, 1.1, 1.2],
 		description: 'Add and update data in TimescaleDB',
 		defaults: {
 			name: 'TimescaleDB',
@@ -289,6 +289,7 @@ export class TimescaleDb implements INodeType {
 
 			const queryResult = await pgQueryV2.call(this, pgp, db, items, this.continueOnFail(), {
 				resolveExpression: true,
+				literalExpressions: this.getNode().typeVersion >= 1.2,
 			});
 
 			returnItems = this.helpers.returnJsonArray(queryResult);

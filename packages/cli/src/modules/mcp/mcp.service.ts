@@ -20,15 +20,10 @@ import {
 	CredentialsFinderService,
 	NodeTypesProxy,
 	PostHogClient,
+	TelemetryProxy,
 } from '@n8n/backend-services';
 import { ExecutionsConfig, GlobalConfig, WorkflowsConfig } from '@n8n/config';
-import {
-	ExecutionRepository,
-	type OperationContext,
-	ProjectRepository,
-	SharedWorkflowRepository,
-	User,
-} from '@n8n/db';
+import { type OperationContext, ProjectRepository, SharedWorkflowRepository, User } from '@n8n/db';
 import { Container, Service } from '@n8n/di';
 import {
 	mcpAppToolMeta,
@@ -59,7 +54,6 @@ import { NodeResourceExplorerService } from '@/services/node-resource-explorer.s
 import { ProjectService } from '@/services/project.service.ee';
 
 import { TagService } from '@/services/tag.service';
-import { Telemetry } from '@/telemetry';
 import { WorkflowRunner } from '@/workflow-runner';
 import { ErrorWorkflowValidationService } from '@/workflows/error-workflow-validation.service';
 import { WorkflowCreationService } from '@/workflows/workflow-creation.service';
@@ -81,7 +75,7 @@ import {
 	MCP_SKILLS_EXTENSION_FLAG,
 	USER_CALLED_MCP_TOOL_EVENT,
 } from './mcp.constants';
-import { getAllowedToolNames } from './mcp-scopes';
+import { FOLDER_FEATURE_TOOLS, getAllowedToolNames } from './mcp-scopes';
 import {
 	areAgentToolsAvailable,
 	canReadMigrationReport,
@@ -267,7 +261,7 @@ export class McpService {
 		private readonly credentialsFinderService: CredentialsFinderService,
 		private readonly activeExecutions: ActiveExecutions,
 		private readonly globalConfig: GlobalConfig,
-		private readonly telemetry: Telemetry,
+		private readonly telemetry: TelemetryProxy,
 		private readonly workflowRunner: WorkflowRunner,
 		private readonly roleService: RoleService,
 		private readonly projectService: ProjectService,
@@ -277,7 +271,6 @@ export class McpService {
 		private readonly projectRepository: ProjectRepository,
 		private readonly folderFinderService: FolderFinderService,
 		private readonly sharedWorkflowRepository: SharedWorkflowRepository,
-		private readonly executionRepository: ExecutionRepository,
 		private readonly executionService: ExecutionService,
 		private readonly executionListService: ExecutionListService,
 		private readonly dataTableProxyService: DataTableProxyService,
@@ -585,6 +578,11 @@ export class McpService {
 
 		const registerIfAllowed: RegisterToolFn = (tool) => {
 			if (allowedToolNames && !allowedToolNames.has(tool.name)) return;
+
+			if (FOLDER_FEATURE_TOOLS.has(tool.name) && !this.licenseState.isFoldersLicensed()) {
+				return;
+			}
+
 			registerTool(tool);
 		};
 
@@ -610,16 +608,13 @@ export class McpService {
 
 		const getExecutionTool = createGetExecutionTool(
 			user,
-			this.executionRepository,
+			this.executionService,
 			this.workflowFinderService,
 			this.telemetry,
 			this.executionRedactionServiceProxy,
 		);
 		registerIfAllowed(getExecutionTool);
 
-		// TODO(CAT-4510): the search lists engine v2 executions, but
-		// `get_workflow_execution` above still reads only the control plane, so an
-		// agent cannot fetch a v2 result it just found.
 		const searchExecutionsTool = createSearchExecutionsTool(
 			user,
 			this.executionListService,

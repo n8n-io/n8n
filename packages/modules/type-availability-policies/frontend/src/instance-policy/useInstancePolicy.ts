@@ -6,10 +6,6 @@ import { usePolicyAdminAccess } from '../composables/usePolicyAdminAccess';
 import type { InstancePolicy, InstancePolicyContent } from '../type-availability-policies.api';
 import type { RestrictedTypeKind } from '../type-availability-policies.constants';
 
-/**
- * Loads and saves the instance policy for the admin pages, and tells the admin when a load or a
- * save fails or when the policy changed after the load. It loads only the kinds the user can manage.
- */
 export function useInstancePolicy() {
 	const store = useInstancePolicyStore();
 	const toast = useToast();
@@ -35,8 +31,9 @@ export function useInstancePolicy() {
 				title: i18n.baseText('typeAvailabilityPolicies.instancePolicy.changed.title'),
 				message: i18n.baseText('typeAvailabilityPolicies.instancePolicy.changed.message'),
 			});
-		} else if (result.status === 'notEditable') {
-			// The server message names attachments, which this page does not show.
+		} else if (result.status === 'notEditable' && result.sent) {
+			// Not `showError`: it adds the server message, which names attachments that this page
+			// does not show.
 			toast.showMessage({
 				type: 'error',
 				title: i18n.baseText('typeAvailabilityPolicies.instancePolicy.saveError'),
@@ -53,5 +50,11 @@ export function useInstancePolicy() {
 		return result;
 	}
 
-	return { policies: store.policies, loadStates: store.loadStates, load, save };
+	return {
+		policies: store.policies,
+		loadStates: store.loadStates,
+		notEditable: store.notEditable,
+		load,
+		save,
+	};
 }

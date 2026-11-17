@@ -266,10 +266,61 @@ describe('useInstancePolicyStore', () => {
 
 			const result = await store.save('node', addDenySlack);
 
-			expect(result).toEqual({ status: 'notEditable', error });
+			expect(result).toEqual({ status: 'notEditable', sent: true });
+			expect(store.notEditable.node).toBe(true);
 			expect(mocks.saveInstancePolicy).toHaveBeenCalledTimes(1);
 			expect(mocks.fetchInstancePolicy).toHaveBeenCalledTimes(2);
 			expect(store.policies.node).toEqual(nodePolicy(3));
+		});
+
+		it('does not send the saves after a policy it cannot edit, queued or new', async () => {
+			mocks.saveInstancePolicy.mockRejectedValue(conflict());
+			const store = useInstancePolicyStore();
+			await store.load(['node']);
+
+			const [first, queued] = await Promise.all([
+				store.save('node', addDenySlack),
+				store.save('node', addDenySlack),
+			]);
+			const later = await store.save('node', addDenySlack);
+
+			expect(first).toEqual({ status: 'notEditable', sent: true });
+			expect(queued).toEqual({ status: 'notEditable', sent: false });
+			expect(later).toEqual({ status: 'notEditable', sent: false });
+			expect(mocks.saveInstancePolicy).toHaveBeenCalledTimes(1);
+			expect(store.notEditable.credential).toBe(false);
+		});
+
+		it('sends saves again after a load finds a newer version', async () => {
+			mocks.saveInstancePolicy.mockRejectedValueOnce(conflict());
+			const store = useInstancePolicyStore();
+			await store.load(['node']);
+			await store.save('node', addDenySlack);
+			mocks.fetchInstancePolicy.mockResolvedValue(nodePolicy(4));
+			mocks.saveInstancePolicy.mockResolvedValueOnce({ ...nodePolicy(5), warnings: [] });
+
+			await store.load(['node']);
+			const result = await store.save('node', addDenySlack);
+
+			expect(store.notEditable.node).toBe(false);
+			expect(result.status).toBe('saved');
+		});
+
+		it('runs the next save of a kind after a save rejects', async () => {
+			mocks.saveInstancePolicy
+				.mockRejectedValueOnce(conflict())
+				.mockResolvedValueOnce({ ...nodePolicy(5), warnings: [] });
+			const store = useInstancePolicyStore();
+			await store.load(['node']);
+			mocks.fetchInstancePolicy.mockResolvedValue(nodePolicy(4));
+			vi.mocked(useTypeAvailabilityPoliciesStore().reload).mockImplementationOnce(() => {
+				throw new Error('Unexpected');
+			});
+
+			await expect(store.save('node', addDenySlack)).rejects.toThrow('Unexpected');
+			const result = await store.save('node', addDenySlack);
+
+			expect(result.status).toBe('saved');
 		});
 
 		it('fails with the save error when a conflict cannot load the new policy', async () => {

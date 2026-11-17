@@ -109,6 +109,21 @@ describe.runIf(process.env.N8N_EXPRESSION_ENGINE === 'legacy')('Expression shado
 			expect(loadWasm).toHaveBeenCalledTimes(1);
 		});
 
+		it('names where a QuickJS error started', async () => {
+			const evaluator = await start();
+			try {
+				const thrown =
+					'{{ (() => { throw Object.assign(new Error("x"), { name: "ExpressionError" }); })() }}';
+				expect(evaluator.evaluate(thrown, data(), 'UTC')).toMatchObject({
+					ok: false,
+					errorClass: 'ExpressionError',
+					errorOrigin: 'guest:ExpressionError',
+				});
+			} finally {
+				await evaluator.dispose();
+			}
+		});
+
 		it('returns a timeout as an outcome instead of throwing', async () => {
 			const evaluator = await start(50);
 			try {

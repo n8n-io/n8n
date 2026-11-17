@@ -129,6 +129,23 @@ describe('useInstancePolicy', () => {
 		expect(mocks.showError).not.toHaveBeenCalled();
 	});
 
+	it('explains a policy that the page cannot edit only once', async () => {
+		const instancePolicy = setup(['nodeTypePolicy:manage']);
+		await instancePolicy.load();
+		mocks.saveInstancePolicy.mockRejectedValue(
+			new ResponseError('Cannot replace the policy', { httpStatusCode: 409 }),
+		);
+
+		await Promise.all([
+			instancePolicy.save('node', (current) => current),
+			instancePolicy.save('node', (current) => current),
+		]);
+		await instancePolicy.save('node', (current) => current);
+
+		expect(mocks.showMessage).toHaveBeenCalledTimes(1);
+		expect(instancePolicy.notEditable.node).toBe(true);
+	});
+
 	it('shows an error when a save fails', async () => {
 		const error = new ResponseError('Invalid rule', { httpStatusCode: 400 });
 		const instancePolicy = setup(['nodeTypePolicy:manage']);

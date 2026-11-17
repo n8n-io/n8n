@@ -30,6 +30,7 @@ import type {
 	IntegrationContextQuery,
 	IntegrationContextQueryDefinition,
 	IntegrationContextQueryParams,
+	IntegrationMessageContext,
 	IntegrationPlatformMessageContext,
 	ReplyExpectation,
 } from './integration-tools';
@@ -603,6 +604,17 @@ export abstract class AgentChatIntegration {
 	}
 
 	/**
+	 * Refuses a send to a recipient that the run may not message. Return the
+	 * reason in words the agent can act on, or undefined to allow the send.
+	 */
+	checkActionRecipient?(params: {
+		action: IntegrationAction;
+		input: Record<string, unknown>;
+		resourceId?: string;
+		currentMessageContext?: IntegrationMessageContext;
+	}): string | undefined;
+
+	/**
 	 * Explains a failed send in words the agent can act on, for errors where the
 	 * platform message alone gives the model nothing to do next. Return
 	 * undefined to keep the default error.
@@ -714,6 +726,12 @@ export abstract class AgentChatIntegration {
 		thread: Thread<unknown, unknown>;
 		message: Message<unknown>;
 	}): Promise<Attachment[]>;
+
+	/**
+	 * Puts a user ID given to `send_dm` into the form the platform uses for
+	 * inbound messages, so one person always maps to one thread and session.
+	 */
+	normalizeUserId?(userId: string): string;
 
 	/**
 	 * Optional per-message reply policy (see `ReplyExpectation`).

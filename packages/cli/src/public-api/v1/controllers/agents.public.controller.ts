@@ -32,7 +32,6 @@ import { AgentDefaultModelResolverService } from '@/modules/agents/agent-default
 import {
 	AgentResponseMapper,
 	mapAgentListPublicItem,
-	toAgentPublicDto,
 } from '@/modules/agents/agent-response.mapper';
 import type { DeletedAgentSnapshot } from '@/modules/agents/agents.service';
 import { AgentsService } from '@/modules/agents/agents.service';
@@ -87,7 +86,7 @@ export class AgentsPublicController {
 			...(defaultModel ? { defaultModel } : {}),
 		});
 
-		return toAgentPublicDto(await this.agentResponseMapper.toAgentDto(agent, projectId, req.user));
+		return await this.agentResponseMapper.toPublicDto(agent, projectId, req.user);
 	}
 
 	@Get('/:agentId')
@@ -114,9 +113,7 @@ export class AgentsPublicController {
 			throw new NotFoundError('Not Found');
 		}
 
-		return toAgentPublicDto(
-			await this.agentResponseMapper.toAgentDto(agent, agent.projectId ?? '', req.user),
-		);
+		return await this.agentResponseMapper.toPublicDto(agent, agent.projectId ?? '', req.user);
 	}
 
 	@Get('/')
@@ -161,11 +158,11 @@ export class AgentsPublicController {
 	@ApiResponse(200, DeletedAgentPublicDto)
 	@ApiErrorResponse(404)
 	async deleteAgent(
-		_req: AuthenticatedRequest,
+		req: AuthenticatedRequest,
 		_res: Response,
 		@Param('agentId', agentIdParamSchema) agentId: string,
 	): Promise<DeletedAgentPublicDto> {
-		const deleted = await this.agentsService.delete(agentId);
+		const deleted = await this.agentsService.delete(agentId, req.user, undefined, {}, req.ctx);
 
 		if (!deleted) {
 			// the user cannot see this agent, or it does not exist
