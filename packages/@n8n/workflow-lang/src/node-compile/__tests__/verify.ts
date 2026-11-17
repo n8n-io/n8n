@@ -28,6 +28,7 @@ import { compile } from '../../compiler/index.ts';
 import { decodeModule } from '../../compiler/decode.ts';
 import { libraryNodeTypes } from '../../library/node-sources.ts';
 import { referenceHash } from '../../reference/binary-response.ts';
+import { lastPagesOf, loopPaths, nextPageOf } from './paging-answers.ts';
 import { runReference } from '../../reference/runner.ts';
 import type { BinaryDataBackend } from '../../services/binary-data.ts';
 import { runBinaryDataCall } from '../../services/binary-data.ts';
@@ -418,17 +419,17 @@ async function recordWithMints(
 		if (settled) return { testCase, v1, exchanges, tokens };
 		const others = testCase.responses.filter((r) => r !== MINTED_TOKEN_RESPONSE);
 		let used = 0;
-		testCase = {
-			...testCase,
-			responses: v1.requests.map((_request, k) =>
-				exchanges.has(k) ? MINTED_TOKEN_RESPONSE : (answerAt(others, used++) ?? { body: {} }),
-			),
-		};
+		const answered = v1.requests.map((_request, k) =>
+			exchanges.has(k) ? MINTED_TOKEN_RESPONSE : (answerAt(others, used++) ?? { body: {} }),
+		);
+		testCase = { ...testCase, responses: [...answered, ...others.slice(used)] };
 	}
 	return 'the token requests of v1 do not settle';
 }
 
 const V1_REQUEST_LIMIT = 'the node sent more than';
+const PAGING_GOES_ON = 'v1 has no result: the paging does not end';
+const LAST_PAGE_FAILS = 'v1 fails on the last page';
 
 export type ErrorPairing = 'item' | 'position';
 
@@ -968,6 +969,7 @@ export async function differenceFromV1(
 		pairings?: Set<ErrorPairing>;
 		eachItem?: boolean;
 		paired?: boolean;
+		pagingEnds?: boolean;
 	} = {},
 ): Promise<string | undefined> {
 	const mode: ErrorMode =
@@ -1017,7 +1019,30 @@ export async function differenceFromV1(
 		compiled.mints.length > 0 ? await recordWithMints(asked, compiled.mints, record) : undefined;
 	if (typeof minted === 'string') return minted;
 	const v1 = minted?.v1 ?? (await record(asked));
-	if (v1.error?.includes(V1_REQUEST_LIMIT)) return `v1 has no result: ${v1.error.slice(0, 90)}`;
+	if (v1.error?.includes(V1_REQUEST_LIMIT)) {
+		if (options.pagingEnds === true) return PAGING_GOES_ON;
+		const paths = loopPaths(compiled.source);
+		const page = c.responses.at(-1) ?? { body: {} };
+		const lastPages = lastPagesOf(page.body, paths);
+		for (const [n, next] of [nextPageOf(page.body, paths), page.body].entries()) {
+			for (const [k, last] of lastPages.entries()) {
+				const found = await differenceFromV1(
+					{
+						...c,
+						name: `${c.name}, the paging ends ${n}.${k}`,
+						responses: [...c.responses, { ...page, body: next }, { ...page, body: last }],
+					},
+					sources,
+					registry,
+					{ ...options, pagingEnds: true },
+				);
+				if (found !== PAGING_GOES_ON && found !== LAST_PAGE_FAILS) return found;
+			}
+		}
+		return `v1 has no result: ${v1.error.slice(0, 90)}`;
+	}
+	if (options.pagingEnds === true && (v1.error ?? v1.nodeError) !== undefined)
+		return LAST_PAGE_FAILS;
 	const source = continues
 		? continueWorkflow(compiled.type, c, credentialType, options.pairing ?? 'item', each)
 		: plainSource;
@@ -1025,7 +1050,7 @@ export async function differenceFromV1(
 		? minted.testCase.responses.filter((_response, k) => !minted.exchanges.has(k))
 		: c.responses;
 	const responses =
-		continues || options.eachItem === true
+		continues || options.eachItem === true || options.pagingEnds === true
 			? Array.from({ length: MAX_ANSWERS }, (_, k) => given[Math.min(k, given.length - 1)])
 			: given;
 	const flags = flagValues(compiled.flags, credentialData(c, registry));
@@ -1185,6 +1210,14 @@ export async function differenceFromV1(
 		}
 		return 'the requests differ';
 	}
+	const waited = JSON.stringify(
+		out.effects
+			.filter((effect) => effect.kind === 'wait')
+			.map((effect) => (isRecord(effect.args) ? effect.args.duration : undefined)),
+	);
+	const v1Waited = JSON.stringify(v1.waits ?? []);
+	if (waited !== v1Waited)
+		return `the waits differ: ${waited.slice(0, 70)} / ${v1Waited.slice(0, 70)}`;
 	if (continues) {
 		if (v1.error !== undefined) return `the v1 run fails: ${v1.error.slice(0, 90)}`;
 		if (out.status !== 'ok')
