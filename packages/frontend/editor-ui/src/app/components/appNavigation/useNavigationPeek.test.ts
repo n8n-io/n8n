@@ -1,5 +1,10 @@
 import { effectScope, ref } from 'vue';
-import { PEEK_CLOSE_DELAY, PEEK_OPEN_DELAY, useNavigationPeek } from './useNavigationPeek';
+import {
+	PEEK_CARRY_OVER_WINDOW,
+	PEEK_CLOSE_DELAY,
+	PEEK_OPEN_DELAY,
+	useNavigationPeek,
+} from './useNavigationPeek';
 
 function setup(enabled = ref(true)) {
 	const scope = effectScope();
@@ -114,5 +119,52 @@ describe('useNavigationPeek', () => {
 		vi.advanceTimersByTime(PEEK_OPEN_DELAY * 2);
 
 		expect(peek.peekItemId.value).toBeNull();
+	});
+
+	describe('carry over', () => {
+		function mount() {
+			const scope = effectScope();
+			const peek = scope.run(() => useNavigationPeek({ carryOver: true }))!;
+			return { peek, scope };
+		}
+
+		it('hands the open panel to a navigation that mounts right after', () => {
+			const first = mount();
+			first.peek.onItemEnter('assistant');
+			vi.advanceTimersByTime(PEEK_OPEN_DELAY);
+			first.scope.stop();
+
+			const second = mount();
+
+			expect(second.peek.peekItemId.value).toBe('assistant');
+			second.scope.stop();
+		});
+
+		it('starts closed when the next navigation mounts later, or when no panel was open', () => {
+			const first = mount();
+			first.peek.onItemEnter('assistant');
+			vi.advanceTimersByTime(PEEK_OPEN_DELAY);
+			first.scope.stop();
+			vi.advanceTimersByTime(PEEK_CARRY_OVER_WINDOW + 1);
+
+			const late = mount();
+			expect(late.peek.peekItemId.value).toBeNull();
+			late.scope.stop();
+
+			const next = mount();
+			expect(next.peek.peekItemId.value).toBeNull();
+			next.scope.stop();
+		});
+
+		it('hands nothing over without the option', () => {
+			const first = mount();
+			first.peek.onItemEnter('assistant');
+			vi.advanceTimersByTime(PEEK_OPEN_DELAY);
+			first.scope.stop();
+
+			const { peek, scope } = setup();
+			expect(peek.peekItemId.value).toBeNull();
+			scope.stop();
+		});
 	});
 });

@@ -1,5 +1,14 @@
 <script setup lang="ts">
-import { computed, nextTick, onBeforeMount, onBeforeUnmount, ref, watch } from 'vue';
+import {
+	computed,
+	nextTick,
+	onBeforeMount,
+	onBeforeUnmount,
+	onMounted,
+	ref,
+	useTemplateRef,
+	watch,
+} from 'vue';
 import { useRoute } from 'vue-router';
 import { N8nTooltip, updatedIconSet, type IconOrEmoji } from '@n8n/design-system';
 import { promotionEventBus } from '@n8n/frontend-module-promotions';
@@ -31,7 +40,7 @@ const { railItems, activeItemId, sectionsFor, railItemById } = useAppNavigation(
 
 const isExpanded = computed(() => !(uiStore.sidebarMenuCollapsed ?? false));
 
-const peek = useNavigationPeek({ enabled: () => !isExpanded.value });
+const peek = useNavigationPeek({ enabled: () => !isExpanded.value, carryOver: true });
 
 // Pinning a floating panel keeps showing that item until the next navigation. A navigation
 // does not close the floating panel: it stays until the pointer leaves for the page, so a
@@ -138,6 +147,14 @@ onBeforeMount(() => {
 	promotionEventBus.on('projectRemoved', reloadMyProjects);
 });
 
+// A panel carried over from the previous layout stays only while the pointer is still on the
+// navigation. The pointer may have moved to the page while the layout loaded, without a
+// leave event to close the panel.
+const navigationRef = useTemplateRef<HTMLElement>('navigation');
+onMounted(() => {
+	if (peek.peekItemId.value !== null && !navigationRef.value?.matches(':hover')) peek.onLeave();
+});
+
 onBeforeUnmount(() => {
 	sourceControlEventBus.off('pull', reloadMyProjects);
 	promotionEventBus.off('applied', reloadMyProjects);
@@ -148,6 +165,7 @@ onBeforeUnmount(() => {
 <template>
 	<div
 		id="side-menu"
+		ref="navigation"
 		:class="[$style.navigation, { [$style.expanded]: isExpanded }]"
 		data-test-id="app-navigation"
 	>

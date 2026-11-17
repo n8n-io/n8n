@@ -2,6 +2,12 @@ import { onScopeDispose, ref, toValue, type MaybeRefOrGetter } from 'vue';
 
 export const PEEK_OPEN_DELAY = 200;
 export const PEEK_CLOSE_DELAY = 150;
+/** How long an open panel waits for the next navigation to mount, see `carryOver` */
+export const PEEK_CARRY_OVER_WINDOW = 2000;
+
+// Each layout mounts its own navigation, so a page with another layout, such as the
+// Assistant, mounts a new one. The open panel is handed to it, so it does not close and open.
+const handoff = { itemId: null as string | null, at: 0 };
 
 /**
  * The floating panel of the collapsed navigation. Hovering a rail item opens its panel
@@ -14,11 +20,21 @@ export function useNavigationPeek(
 		enabled?: MaybeRefOrGetter<boolean>;
 		openDelay?: number;
 		closeDelay?: number;
+		/** Keep the open panel when the navigation unmounts and a new one mounts soon after */
+		carryOver?: boolean;
 	} = {},
 ) {
-	const { enabled = true, openDelay = PEEK_OPEN_DELAY, closeDelay = PEEK_CLOSE_DELAY } = options;
+	const {
+		enabled = true,
+		openDelay = PEEK_OPEN_DELAY,
+		closeDelay = PEEK_CLOSE_DELAY,
+		carryOver = false,
+	} = options;
 
-	const peekItemId = ref<string | null>(null);
+	const handedOver =
+		carryOver && Date.now() - handoff.at <= PEEK_CARRY_OVER_WINDOW ? handoff.itemId : null;
+	handoff.itemId = null;
+	const peekItemId = ref<string | null>(toValue(enabled) ? handedOver : null);
 	let openTimer: ReturnType<typeof setTimeout> | undefined;
 	let closeTimer: ReturnType<typeof setTimeout> | undefined;
 
@@ -64,7 +80,12 @@ export function useNavigationPeek(
 		peekItemId.value = null;
 	}
 
-	onScopeDispose(clearTimers);
+	onScopeDispose(() => {
+		clearTimers();
+		if (!carryOver) return;
+		handoff.itemId = peekItemId.value;
+		handoff.at = Date.now();
+	});
 
 	return { peekItemId, onItemEnter, onLeave, onPanelEnter, close };
 }
