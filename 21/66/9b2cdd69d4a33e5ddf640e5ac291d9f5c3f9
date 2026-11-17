@@ -1,0 +1,21 @@
+packages/cli/src/events/relays/activity.event-relay.ts
+  s_043f5ea13b0ca2::t_4b61e1155a43d7 406
+packages/cli/src/events/maps/relay.event-map.ts
+  s_043f5ea13b0ca2::t_4b61e1155a43d7 249
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "21669b2cdd69d4a33e5ddf640e5ac291d9f5c3f9",
+  "prompts": {},
+  "sessions": {
+    "s_043f5ea13b0ca2": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "80b31086-dd76-4604-92db-53cbedccf87b",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Veljko Terzic <veljko.terzic@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,21 @@
+packages/frontend/editor-ui/src/features/ai/instanceAi/__tests__/useAppAssistantHandoff.test.ts
+  s_771457c926e571::t_788f35fdec7efe 280,283,285,290-295,300
+packages/frontend/editor-ui/src/features/ai/instanceAi/composables/useAppAssistantHandoff.ts
+  s_771457c926e571::t_788f35fdec7efe 43-46
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "0a7dc3d17d5f091c05941f2b41e099d9a1b8651a",
+  "prompts": {},
+  "sessions": {
+    "s_771457c926e571": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ad7fc79a-2f23-40ab-a02a-a0ca28c6c53c",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Jaakko Husso <jaakko@n8n.io>"
+    }
+  }
+}

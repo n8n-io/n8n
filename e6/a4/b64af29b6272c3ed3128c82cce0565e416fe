@@ -1,0 +1,31 @@
+packages/cli/src/modules/promotions.ee/promotions.service.ts
+  s_6ff6669ec38435::t_a61374c8be1fc0 88
+  s_6ff6669ec38435::t_b245986d01b452 597-598,607-616
+  s_6ff6669ec38435::t_13e29f8e0a964e 320
+  s_6ff6669ec38435::t_2655c6be687d90 522-523
+  s_6ff6669ec38435::t_ae9ed16b8386e4 599-606,617-623
+  s_6ff6669ec38435::t_8d3fed572102a3 629-630
+  s_6ff6669ec38435::t_bff7dc39e70a9c 631
+  s_6ff6669ec38435::t_721262ce222568 318-319,553-554
+  s_6ff6669ec38435::t_154168e4341dec 555-556
+  s_6ff6669ec38435::t_f49c0000c07e1c 594-596
+packages/cli/src/modules/promotions.ee/__tests__/promotions.service.test.ts
+  s_6ff6669ec38435::t_52033355706f63 501-528
+  s_6ff6669ec38435::t_290bdd7841d398 1963-1981,1984-1985,1989,1991-2025
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "e6a4b64af29b6272c3ed3128c82cce0565e416fe",
+  "prompts": {},
+  "sessions": {
+    "s_6ff6669ec38435": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "2fa9cc74-ac1f-4ccd-aa71-f9a79ee57a44",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Irénée <irenee.ajeneza@n8n.io>"
+    }
+  }
+}

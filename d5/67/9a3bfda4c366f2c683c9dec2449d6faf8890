@@ -1,0 +1,28 @@
+packages/@n8n/api-types/src/__tests__/workflow-publish-blocked-details.test.ts
+  s_3d42f5aac10616::t_f09c0c490d9fd1 39-45,49
+packages/frontend/editor-ui/src/app/components/MainHeader/WorkflowHeaderDraftPublishActions.test.ts
+  s_3d42f5aac10616::t_f6085f859b7fe0 231,256
+packages/cli/src/services/workflow-review-policy.service.ts
+  s_3d42f5aac10616::t_471c83b72f8dda 39-42
+  s_3d42f5aac10616::t_5a22e9f7797b13 2,11-18,21-24,32,48-54,56-62,64-71
+packages/@n8n/api-types/src/workflow-publish-blocked-details.ts
+  s_3d42f5aac10616::t_f09c0c490d9fd1 28-37
+packages/frontend/editor-ui/src/features/shared/commandBar/composables/useWorkflowCommands.test.ts
+  s_3d42f5aac10616::t_f6085f859b7fe0 321-328
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "d5679a3bfda4c366f2c683c9dec2449d6faf8890",
+  "prompts": {},
+  "sessions": {
+    "s_3d42f5aac10616": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "14440739-a8bf-40e4-b7b8-ad261dcda974",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Jan K. <jan.kalkan@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,23 @@
+packages/frontend/editor-ui/src/features/agents/components/chatMode/AgentChatModeBadge.vue
+  s_4ac30b523ff5a0::t_00feb2a0e99fac 12
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentChatMode.test.ts
+  s_4ac30b523ff5a0::t_73172a96210863 67-85
+  s_4ac30b523ff5a0::t_fc25b0ff228e27 32,41-43,105,425
+  s_4ac30b523ff5a0::t_5bbefc2714f10b 21-23
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "bd98d2737ec1c9a52ff333ff66c12bd87a2205e4",
+  "prompts": {},
+  "sessions": {
+    "s_4ac30b523ff5a0": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "01a1d6bd-91a3-73e0-90b4-f9a04d4c977f",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "Thiago Pacheco <hi@sudoish.com>"
+    }
+  }
+}
