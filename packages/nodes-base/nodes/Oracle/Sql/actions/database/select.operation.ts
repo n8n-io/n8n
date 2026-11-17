@@ -10,9 +10,10 @@ import type * as oracleDBTypes from 'oracledb';
 
 import {
 	addCursorPredicate,
-	addCursorSortRule,
+	assertCursorColumnInOutput,
 	assertUniqueCursorColumn,
 	getStartAfter,
+	getStartAfterSortRules,
 } from '@utils/sql-keyset-paging';
 import { updateDisplayOptions } from '@utils/utilities';
 
@@ -145,27 +146,25 @@ export async function execute(
 		let rules = sortRules;
 
 		const returnAll = this.getNodeParameter('returnAll', i, false);
-		if (!returnAll) {
-			const { column, value } = getStartAfter(this, i);
+		const startAfter = returnAll ? undefined : getStartAfter(this, i);
+		if (startAfter) {
+			const { column, value } = startAfter;
+			if (!columnMetaDataObject[column]) {
+				throw new NodeOperationError(
+					this.getNode(),
+					`Column "${column}" was not found in table "${table}"`,
+					{ itemIndex: i },
+				);
+			}
+			assertCursorColumnInOutput(this.getNode(), i, outputColumns, column);
+			rules = getStartAfterSortRules(this.getNode(), i, sortRules, column);
+			assertUniqueCursorColumn(this.getNode(), i, await uniqueColumnsOf(schema, table), column);
 
-			if (column !== '') {
-				if (!columnMetaDataObject[column]) {
-					throw new NodeOperationError(
-						this.getNode(),
-						`Column "${column}" was not found in table "${table}"`,
-						{ itemIndex: i },
-					);
-				}
-				const uniqueColumns = await uniqueColumnsOf(schema, table);
-				assertUniqueCursorColumn(this.getNode(), i, uniqueColumns, column, table);
-
-				if (value !== '') {
-					const predicate = `${quoteSqlIdentifier(column)} > :${values.length}`;
-					innerQuery = addCursorPredicate(base, innerQuery, predicate);
-					addBindParam(columnMetaDataObject[column], value, values);
-				}
-
-				rules = addCursorSortRule(sortRules, column);
+			if (value !== undefined) {
+				const operator = rules[0].direction === 'DESC' ? '<' : '>';
+				const predicate = `${quoteSqlIdentifier(column)} ${operator} :${values.length}`;
+				innerQuery = addCursorPredicate(base, innerQuery, predicate);
+				addBindParam(columnMetaDataObject[column], value, values);
 			}
 		}
 

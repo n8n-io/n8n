@@ -1783,6 +1783,41 @@ VALUES (
 				);
 			});
 
+			it('should page down when the cursor column sorts DESC', async () => {
+				const mockThis = createMockExecuteFunction({
+					...baseParameters,
+					sort: { values: [{ column: 'ID', direction: 'DESC' }] },
+					startAfter: { values: { column: 'ID', value: '7' } },
+				});
+				const runQueries = getRunQueriesFn(mockThis, pool);
+
+				await select.execute.call(mockThis, runQueries, items, nodeOptions, pool);
+
+				expect(runQueries).toHaveBeenCalledWith(
+					[
+						{
+							query: `SELECT * FROM "${CONFIG.user}"."${table}" WHERE "ID" < :0 ORDER BY "ID" DESC FETCH FIRST 5 ROWS ONLY`,
+							values: [{ type: oracleDBTypes.NUMBER, val: 7 }],
+						},
+					],
+					items,
+					nodeOptions,
+				);
+			});
+
+			it('should throw when the cursor column is not the first sort rule', async () => {
+				const mockThis = createMockExecuteFunction({
+					...baseParameters,
+					sort: { values: [{ column: 'NAME', direction: 'ASC' }] },
+					startAfter: { values: { column: 'ID', value: '7' } },
+				});
+				const runQueries = getRunQueriesFn(mockThis, pool);
+
+				await expect(
+					select.execute.call(mockThis, runQueries, items, nodeOptions, pool),
+				).rejects.toThrow('Sort by "ID" first');
+			});
+
 			it('should not duplicate ORDER BY when the cursor column is already sorted', async () => {
 				const mockThis = createMockExecuteFunction({
 					...baseParameters,
@@ -1815,7 +1850,9 @@ VALUES (
 				const promise = select.execute.call(mockThis, runQueries, items, nodeOptions, pool);
 
 				await expect(promise).rejects.toThrow(NodeOperationError);
-				await expect(promise).rejects.toThrow(`Column "NAME" in table "${table}" is not unique`);
+				await expect(promise).rejects.toThrow(
+					'Column "NAME" has no unique index that Start After can use',
+				);
 				expect(runQueries).not.toHaveBeenCalled();
 			});
 

@@ -1,24 +1,64 @@
-import type { IDataObject, IExecuteFunctions, INode } from 'n8n-workflow';
+import { isRecord } from '@n8n/utils/is-record';
+import type { IExecuteFunctions, INode } from 'n8n-workflow';
 import { NodeOperationError } from 'n8n-workflow';
 
 type SortRule = { column: string; direction: string };
+/** An empty `value` asks for the first page. */
+type StartAfter = { column: string; value?: string };
 
 const sameColumn = (a: string, b: string, caseInsensitive: boolean) =>
 	caseInsensitive ? a.toLowerCase() === b.toLowerCase() : a === b;
 
-export function getStartAfter(ctx: IExecuteFunctions, itemIndex: number) {
-	const cursor = ((ctx.getNodeParameter('startAfter', itemIndex, {}) as IDataObject).values ??
-		{}) as IDataObject;
-	const column = String(cursor.column ?? '');
-	const value = typeof cursor.value === 'number' ? cursor.value : String(cursor.value ?? '');
-	if (column === '' && value !== '') {
-		throw new NodeOperationError(
-			ctx.getNode(),
-			'Start After has a Value but no Column. Select the Column to page by',
-			{ itemIndex },
-		);
+export function getStartAfter(ctx: IExecuteFunctions, itemIndex: number): StartAfter | undefined {
+	const startAfter: unknown = ctx.getNodeParameter('startAfter.values', itemIndex, null);
+	if (!isRecord(startAfter)) return undefined;
+
+	const { column, value } = startAfter;
+	if (typeof column !== 'string' || column === '') {
+		throw new NodeOperationError(ctx.getNode(), 'Choose a column in Start After', {
+			itemIndex,
+			description: 'Start After needs a unique column, for example the primary key.',
+		});
 	}
-	return { column, value };
+
+	if (value === undefined || value === null || value === '') return { column };
+	if (typeof value === 'object') {
+		throw new NodeOperationError(ctx.getNode(), 'The Start After value must be text or a number', {
+			itemIndex,
+			description: `Use the value of "${column}" in the last row of the page before.`,
+		});
+	}
+	if (typeof value === 'number' && Number.isInteger(value) && !Number.isSafeInteger(value)) {
+		throw new NodeOperationError(ctx.getNode(), 'The Start After value is too big to be exact', {
+			itemIndex,
+			description:
+				'n8n cannot keep all digits of a number above 9007199254740991, so the next page can skip rows.',
+		});
+	}
+
+	// The value stays text, so the database casts it to the type of the column
+	return { column, value: String(value) };
+}
+
+export function assertCursorColumnInOutput(
+	node: INode,
+	itemIndex: number,
+	outputColumns: unknown,
+	column: string,
+	caseInsensitive = false,
+) {
+	// An expression can give Output Columns as one string.
+	const selected: unknown[] = Array.isArray(outputColumns) ? outputColumns : [outputColumns];
+	const hasColumn = selected.some(
+		(name) =>
+			name === '*' || (typeof name === 'string' && sameColumn(name, column, caseInsensitive)),
+	);
+	if (!hasColumn) {
+		throw new NodeOperationError(node, `Add "${column}" to Output Columns`, {
+			itemIndex,
+			description: `Start After needs "${column}" in the output to get the next page.`,
+		});
+	}
 }
 
 export function assertUniqueCursorColumn(
@@ -26,14 +66,17 @@ export function assertUniqueCursorColumn(
 	itemIndex: number,
 	uniqueColumns: string[],
 	column: string,
-	table: string,
 	caseInsensitive = false,
 ) {
 	if (!uniqueColumns.some((unique) => sameColumn(unique, column, caseInsensitive))) {
 		throw new NodeOperationError(
 			node,
-			`Column "${column}" in table "${table}" is not unique. Start After needs a column with a single-column unique index or primary key`,
-			{ itemIndex },
+			`Column "${column}" has no unique index that Start After can use`,
+			{
+				itemIndex,
+				description:
+					'Start After needs a primary key or a unique index on this column alone. A unique index on more than one column does not count. If values repeat, a page skips the rows that share the last value.',
+			},
 		);
 	}
 }
@@ -51,16 +94,25 @@ export function addCursorPredicate(base: string, query: string, predicate: strin
 }
 
 /**
- * Appends the cursor column as the final sort key unless a Sort rule already
- * names it. The walk is only correct with no Sort rules, or with Sort = cursor
- * column ASC. The node does not guard this; the user owns the Sort rules.
+ * The cursor column must be the first sort key. A key before it changes the
+ * order of the rows, so "after the last value" skips rows.
  */
-export function addCursorSortRule(
+export function getStartAfterSortRules(
+	node: INode,
+	itemIndex: number,
 	sortRules: SortRule[],
 	column: string,
 	caseInsensitive = false,
 ): SortRule[] {
-	return sortRules.some((rule) => sameColumn(rule.column, column, caseInsensitive))
-		? sortRules
-		: [...sortRules, { column, direction: 'ASC' }];
+	if (sortRules.length === 0) return [{ column, direction: 'ASC' }];
+	if (sameColumn(sortRules[0].column, column, caseInsensitive)) return sortRules;
+
+	const fix = sortRules.some((rule) => sameColumn(rule.column, column, caseInsensitive))
+		? `Move "${column}" to the top of Sort.`
+		: `Add "${column}" as the first sort rule, or remove the other sort rules.`;
+
+	throw new NodeOperationError(node, `Sort by "${column}" first`, {
+		itemIndex,
+		description: `Start After pages by "${column}", so "${column}" must be the first sort rule. ${fix}`,
+	});
 }

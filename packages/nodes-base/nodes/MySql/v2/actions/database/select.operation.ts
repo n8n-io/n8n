@@ -9,9 +9,10 @@ import { NodeOperationError } from 'n8n-workflow';
 
 import {
 	addCursorPredicate,
-	addCursorSortRule,
+	assertCursorColumnInOutput,
 	assertUniqueCursorColumn,
 	getStartAfter,
+	getStartAfterSortRules,
 } from '@utils/sql-keyset-paging';
 import { updateDisplayOptions } from '@utils/utilities';
 
@@ -138,19 +139,17 @@ export async function execute(
 			let rules = sortRules;
 
 			const returnAll = this.getNodeParameter('returnAll', i, false);
-			if (!returnAll) {
-				const { column, value } = getStartAfter(this, i);
+			const startAfter = returnAll ? undefined : getStartAfter(this, i);
+			if (startAfter) {
+				const { column, value } = startAfter;
+				assertCursorColumnInOutput(this.getNode(), i, outputColumns, column, true);
+				rules = getStartAfterSortRules(this.getNode(), i, sortRules, column, true);
+				assertUniqueCursorColumn(this.getNode(), i, await uniqueColumnsOf(table), column, true);
 
-				if (column !== '') {
-					const uniqueColumns = await uniqueColumnsOf(table);
-					assertUniqueCursorColumn(this.getNode(), i, uniqueColumns, column, table, true);
-
-					if (value !== '') {
-						query = addCursorPredicate(base, query, `${escapeSqlIdentifier(column)} > ?`);
-						values.push(value);
-					}
-
-					rules = addCursorSortRule(sortRules, column, true);
+				if (value !== undefined) {
+					const operator = rules[0].direction === 'DESC' ? '<' : '>';
+					query = addCursorPredicate(base, query, `${escapeSqlIdentifier(column)} ${operator} ?`);
+					values.push(value);
 				}
 			}
 

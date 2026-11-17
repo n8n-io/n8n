@@ -185,6 +185,6 @@ describe('MySQL Integration - Select Start After', () => {
 	});
 
 	test('rejects a column without a single-column unique index', async () => {
-		await expect(selectPage('grp', '')).rejects.toThrow('Column "grp" in table "paging_test"');
+		await expect(selectPage('grp', '')).rejects.toThrow('Column "grp" has no unique index');
 	});
 });

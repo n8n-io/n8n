@@ -865,7 +865,7 @@ describe('Test MySql V2, operations', () => {
 			);
 		});
 
-		it('next page: should wrap the existing WHERE, bind the value verbatim and keep the sort rule', async () => {
+		it('next page: should wrap the existing WHERE and page down when the cursor column sorts DESC', async () => {
 			const pool = createCatalogPool();
 			const connectionQuerySpy = vi.spyOn(fakeConnection, 'query');
 
@@ -886,7 +886,7 @@ describe('Test MySql V2, operations', () => {
 			);
 
 			expect(connectionQuerySpy).toHaveBeenCalledWith(
-				"SELECT * FROM `test_table` WHERE (`id` > 1 OR `name` = 'test') AND `id` > '5' ORDER BY `id` DESC LIMIT 2",
+				"SELECT * FROM `test_table` WHERE (`id` > 1 OR `name` = 'test') AND `id` < '5' ORDER BY `id` DESC LIMIT 2",
 			);
 		});
 
@@ -910,7 +910,7 @@ describe('Test MySql V2, operations', () => {
 
 				await expect(promise).rejects.toThrow(NodeOperationError);
 				await expect(promise).rejects.toThrow(
-					`Column "${column}" in table "test_table" is not unique`,
+					`Column "${column}" has no unique index that Start After can use`,
 				);
 				expect(mockRunQueries).not.toHaveBeenCalled();
 			},
@@ -937,6 +937,32 @@ describe('Test MySql V2, operations', () => {
 			expect(result[0].error).toBeDefined();
 			expect(result[0].json.message).toContain('Column "name"');
 			expect(mockRunQueries).not.toHaveBeenCalled();
+		});
+
+		it.each([
+			[
+				'the cursor column is not the first sort rule',
+				{ sort: { values: [{ column: 'name', direction: 'ASC' }] } },
+				'Sort by "id" first',
+			],
+			[
+				'Output Columns leaves out the cursor column',
+				{ options: { outputColumns: ['name'] } },
+				'Add "id" to Output Columns',
+			],
+			[
+				'Start After has no column',
+				{ startAfter: { values: { column: '', value: '5' } } },
+				'Choose a column in Start After',
+			],
+		])('should throw when %s', async (_, overrides, message) => {
+			const pool = createCatalogPool();
+			const promise = runSelect(
+				{ ...baseParameters, startAfter: { values: { column: 'id', value: '5' } }, ...overrides },
+				pool,
+			);
+
+			await expect(promise).rejects.toThrow(message);
 		});
 
 		it('returnAll: should ignore the cursor and not query the catalog', async () => {
@@ -999,8 +1025,8 @@ describe('Test MySql V2, operations', () => {
 				itemIndex: number,
 				...rest: unknown[]
 			) =>
-				name === 'startAfter'
-					? { values: { column: columnsByItem[itemIndex], value: '5' } }
+				name === 'startAfter.values'
+					? { column: columnsByItem[itemIndex], value: '5' }
 					: getNodeParameter(name, itemIndex, ...rest)) as IExecuteFunctions['getNodeParameter'];
 
 			const result = await select.execute.call(
