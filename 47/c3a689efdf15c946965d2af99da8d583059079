@@ -1,0 +1,37 @@
+packages/@n8n/cli/src/commands/promotion-environment/apply-command.ts
+  s_3dd47ea0104342::t_d9e992abf774dd 52-54,59-64
+  s_3dd47ea0104342::t_9cdaa7c9c78988 5,156-177
+packages/@n8n/cli/src/commands/promotion-environment/list-environment-changes.ts
+  s_3dd47ea0104342::t_bf1b67f19cec41 1-65
+packages/@n8n/cli/src/commands/promotion-environment/promote-environment-selection.ts
+  s_3dd47ea0104342::t_6c4a92c17850f5 1-73
+packages/@n8n/cli/src/commands/promotion-environment/apply-environment-selection.ts
+  s_3dd47ea0104342::t_e6cfe9b5883c6c 1-9,11-63
+  s_3dd47ea0104342::t_d9e992abf774dd 10
+packages/@n8n/cli/src/commands/promotion-environment/environment-selection.ts
+  s_3dd47ea0104342::t_08e858439a311b 1-78
+packages/@n8n/cli/README.md
+  s_3dd47ea0104342::t_84ebd203e9ce60 64
+packages/@n8n/cli/docs/commands/promotions.md
+  s_3dd47ea0104342::t_b521cc44cbf5f4 570-650
+packages/@n8n/cli/src/client.ts
+  s_3dd47ea0104342::t_7a849cfa694c8d 9-12,124-144,191-195,197,560-597
+packages/@n8n/cli/src/index.ts
+  s_3dd47ea0104342::t_7b0ac8f7629141 41,52,56,132,137-138,142-143
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "47c3a689efdf15c946965d2af99da8d583059079",
+  "prompts": {},
+  "sessions": {
+    "s_3dd47ea0104342": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "c1a45d57-85a1-465a-839a-d3b98e3073fc",
+        "model": "claude-fable-5-2"
+      },
+      "human_author": "Irénée <irenee.ajeneza@n8n.io>"
+    }
+  }
+}
