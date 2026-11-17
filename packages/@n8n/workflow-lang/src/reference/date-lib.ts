@@ -27,6 +27,18 @@ function fromValue(v: unknown): number {
 	return d.getTime();
 }
 
+/**
+ * The Date of a Date value. For another value it throws the TypeError of JavaScript for the
+ * call `text()` of the method `method`.
+ */
+export function dateOf(v: unknown, method: string, text: string): Date {
+	if (v instanceof Date) return v;
+	if (v === null || v === undefined) {
+		throw new TypeError(`Cannot read properties of ${String(v)} (reading '${method}')`);
+	}
+	throw new TypeError(`${text} is not a function`);
+}
+
 /** Calls the Date library function `name`. Returns undefined for other names. */
 export function callDate(name: string, args: unknown[]): { value: unknown } | undefined {
 	if (process.env.TZ !== 'UTC') process.env.TZ = 'UTC';
@@ -46,6 +58,10 @@ export function callDate(name: string, args: unknown[]): { value: unknown } | un
 			return { value: Date.parse(String(args[0])) };
 		case 'Date.zoneOffset':
 			return { value: zoneOffset(String(args[0]), Number(args[1])) };
+		case 'Date.value':
+			return { value: typeof args[0] === 'number' ? new Date(args[0]) : args[0] };
+		case 'Date.of':
+			return { value: dateOf(args[0], String(args[1]), String(args[2])).getTime() };
 		case 'Date.json':
 			return { value: typeof args[0] === 'number' ? new Date(args[0]).toJSON() : args[0] };
 		case 'Date.text':

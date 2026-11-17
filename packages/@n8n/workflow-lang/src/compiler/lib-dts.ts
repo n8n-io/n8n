@@ -238,6 +238,10 @@ interface DateConstructor {
   parse(text: string): number;
   /** Spec section 4.5: minutes from UTC of an IANA time zone of META \`zones\` at time value \`t\`. */
   zoneOffset(zone: string, t: number): number;
+  /** Spec section 4.5: the Date value of a Date, for a place without the type Date. */
+  value(date: Date): unknown;
+  /** Spec section 4.5: the Date of a Date value, or the TypeError of JavaScript for the call \`text()\` of the method. */
+  of(value: unknown, method: string, text: string): Date;
 }
 declare var Date: DateConstructor;
 

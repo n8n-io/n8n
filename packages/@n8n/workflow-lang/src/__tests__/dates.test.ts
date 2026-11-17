@@ -162,6 +162,71 @@ describe('Date rejections (WL013)', () => {
 		expect(found.join('\n')).toContain(text);
 	});
 
+	it('keeps the kind of a Date in a place without the type Date', async () => {
+		const { output, text } = await both(
+			`const d = new Date(trigger.body.s);
+const bad = new Date('x');
+const o: any = { d: Date.value(d), list: [Date.value(bad)] };
+const v: any = o.d;
+return {
+	type: typeof v,
+	plus: 'at ' + v,
+	template: \`\${v}\`,
+	minus: v - 5,
+	less: v < 5,
+	same: v === o.d,
+	other: v === o.list[0],
+	truth: v ? 1 : 2,
+	not: !o.list[0],
+	json: JSON.stringify(o),
+	ms: Date.of(v, 'getTime', 'v.getTime').getTime(),
+	iso: Date.of(o.d, 'toISOString', 'o.d.toISOString').toISOString(),
+	invalid: Number(o.list[0]),
+	out: v,
+	nested: o,
+};`,
+		);
+		expect(JSON.parse(JSON.stringify(output.result))).toEqual({
+			type: 'object',
+			plus: 'at Thu Feb 29 2024 12:00:00 GMT+0000 (Coordinated Universal Time)',
+			template: 'Thu Feb 29 2024 12:00:00 GMT+0000 (Coordinated Universal Time)',
+			minus: 1709207999995,
+			less: false,
+			same: true,
+			other: false,
+			truth: 1,
+			not: false,
+			json: '{"d":"2024-02-29T12:00:00.000Z","list":[null]}',
+			ms: 1709208000000,
+			iso: '2024-02-29T12:00:00.000Z',
+			invalid: null,
+			out: '2024-02-29T12:00:00.000Z',
+			nested: { d: '2024-02-29T12:00:00.000Z', list: [null] },
+		});
+		expect(text).toContain('Date.value');
+		expect(text).toContain('Date.of');
+	});
+
+	it.each([
+		['trigger.body.s', 'v.getTime is not a function'],
+		['trigger.body.list', 'v.getTime is not a function'],
+		['null', "Cannot read properties of null (reading 'getTime')"],
+		['undefined', "Cannot read properties of undefined (reading 'getTime')"],
+	])('gives the TypeError of JavaScript for a Date method of %s', async (value, message) => {
+		const { output } = await both(
+			`const v: any = ${value};\nreturn Date.of(v, 'getTime', 'v.getTime').getTime();`,
+		);
+		expect(output.status).toBe('error');
+		expect(output.result).toMatchObject({ message });
+	});
+
+	it('has no instruction for a Date value in code without one', async () => {
+		const { text } = await both(
+			"const o: any = { a: trigger.body.ms };\nreturn 'x' + o.a + (o.a - 1) + typeof o.a;",
+		);
+		expect(text).not.toContain('Date.');
+	});
+
 	it('allows Date methods, statics and escapes', () => {
 		expect(
 			diagnostics(

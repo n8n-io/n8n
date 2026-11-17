@@ -517,6 +517,49 @@ a callback result (for example `map`), the return value of `run`, and an
 compiler inserts `Date.text(d)`: a template, `+` (JavaScript adds a Date as
 its `toString` text), `String(d)`, and `new Error(d)`.
 
+**Date values.** A Date in a place without the type `Date` can keep its
+kind at run time. `Date.value(d)` gives the Date value of the Date `d`: a heap
+object with the kind Date and one number, the time value (NaN for an invalid
+date). The value goes through variables, members, lists, arguments, results
+and closures as each reference does, and no static proof is necessary where
+code reads it back. `Date.of(v, method, text)` gives the Date of the Date
+value `v`. For another value it throws the TypeError of JavaScript for the
+call `text()`: `Cannot read properties of null (reading 'getTime')` for null
+or undefined, else `<text> is not a function`.
+
+Each operation reads a Date value as JavaScript reads a Date:
+
+| Operation | Result |
+|---|---|
+| `typeof` | `'object'` |
+| Truth test (`JT`, `JF`, `NOT`, `&&`, `\|\|`, `?:`) | always true |
+| `??`, `ISNULLISH` | not nullish |
+| `===`, `!==`, `includes`, `indexOf` | identity of the heap object |
+| `+`, a template, `String(v)`, `join` | the `toString` text (`Invalid Date` for NaN) |
+| `-`, `*`, `/`, `%`, `**`, unary `+` and `-`, `Number(v)`, `isNaN`, `Math.*`, bit operators | the time value |
+| `<`, `<=`, `>`, `>=` | the time value |
+| `JSON.stringify`, and each place where a value leaves the module (the result of `run`, the arguments of an effect, a trace record, a snapshot) | the ISO text, or `null` for an invalid date |
+| A member read (`v.x`), `Object.keys(v)`, a spread | undefined, no keys |
+| `new Date(v)` | a Date with the same time value |
+
+No opcode is new and no opcode has another encoding. `ADD`, `SUB`, `MUL`,
+`DIV`, `MOD`, `POW`, `NEG`, `TONUM`, `BNOT` and the bit operators, `LT`,
+`LE`, `GT`, `GE` and `TOSTR` read a Date value in the conversion that they
+do for an operand that is not a number or a string, so code without a Date
+value runs the same instructions with the same cost. `TYPEOF`, `NOT`, `JT`,
+`JF`, `SEQ` and `SNE` need no change: a Date value is a reference that is
+not a closure. The new library names of `CALLN` are `Date.value` and
+`Date.of`.
+
+The reference runner has JavaScript Dates, so a Date is its own Date value
+there. The test VM holds a Date value as a JavaScript Date. The Zig runtime
+does not have the kind yet: it needs the heap kind (header and one f64, a
+leaf for the copy and the snapshot), the Date arm of `toNumber`,
+`appendScalarString`, `toPrimitiveForCompare` and the JSON writer, and the
+two library functions. Until then no converter gives `Date.value` to the
+runtime: the translation of Code nodes makes Date values only with the
+option `dateValues`.
+
 **Setters.** A setter stores the new time value back into its variable:
 `d.setHours(0)` becomes `d = Date.prototype.setHours(d, 0)`. Because a
 number has no identity, the compiler rejects a setter unless JavaScript
