@@ -1033,6 +1033,22 @@ export function translateBody(
 	// A line comment at the end would hide the code that wraps the expression: end the line.
 	const lastLine = legacy.code.slice(legacy.code.lastIndexOf('\n') + 1);
 	const ended = lastLine.includes('//') ? `${legacy.code}\n` : legacy.code;
+	// `toISOString` of an invalid Date throws a RangeError, and v1 gives null for it: the plain
+	// form then needs the guard for every error.
+	const plain = (): BodyResult => {
+		if (!/\.\s*toISOString\s*\(/.test(ended)) return { ok: true, code: ended, usage };
+		if (scope.useHelper) return { ok: true, code: ended, usage, guard: true, guardAll: true };
+		return {
+			ok: false,
+			issues: [
+				{
+					feature: 'Date: toISOString',
+					message: '`toISOString` can throw a RangeError, and the guard for it is not there.',
+					code: 'WL101',
+				},
+			],
+		};
+	};
 	if (native) {
 		const form = nativeExpression(ended, trimmed, scope.timezone);
 		if (!form.ok) {
@@ -1046,14 +1062,12 @@ export function translateBody(
 			};
 		}
 		// A part of a template that needs no rewrite keeps its plain form and its plain guard.
-		if (form.helpers.length === 0 && form.code === `(${ended})`) {
-			return { ok: true, code: ended, usage };
-		}
+		if (form.helpers.length === 0 && form.code === `(${ended})`) return plain();
 		for (const h of form.helpers) scope.useHelper?.(h);
 		for (const z of form.zones) scope.useZone?.(z);
 		return { ok: true, code: form.code, usage, guard: true, guardAll: true };
 	}
-	return { ok: true, code: ended, usage };
+	return plain();
 }
 
 function printFlat(code: Code): string {

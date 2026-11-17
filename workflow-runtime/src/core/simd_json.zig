@@ -22,6 +22,7 @@ const builtin = @import("builtin");
 const value = @import("value.zig");
 const heap = @import("heap.zig");
 const numfmt = @import("numfmt.zig");
+const date = @import("date.zig");
 const mem = @import("mem.zig");
 const ops = @import("ops.zig");
 const Builder = @import("arena.zig").Builder;
@@ -1001,7 +1002,16 @@ fn writeScalarOrOpen(vm: *Vm, b: *Builder, v: Value, stack: []EFrame, sp: *usize
             sp.* += 1;
             return true;
         },
-        .ref => try b.append("{}"),
+        .ref => if (vm.dateTime(v)) |t| {
+            // JSON.stringify writes a Date as `toJSON` gives it: the ISO text, or null.
+            if (std.math.isNan(t)) {
+                try b.append("null");
+            } else {
+                try b.byte('"');
+                try date.appendFormat(b, t, .iso);
+                try b.byte('"');
+            }
+        } else try b.append("{}"),
     }
     return false;
 }

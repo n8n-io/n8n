@@ -48,6 +48,21 @@ async function traced(wf: Record<string, unknown>, body: unknown = {}) {
 }
 
 describe('native Code nodes in a workflow', () => {
+	it('keeps a Code node with a Date in a list in the fallback host without Date values', () => {
+		const wf = {
+			name: 'Dates',
+			nodes: [
+				hook,
+				code(
+					'Dates',
+					'return items.map((i) => { const a = [new Date(i.json.t)]; return { json: { ms: a[0] - 1 } }; });',
+				),
+			],
+			connections: chain(['Hook', 'Dates']),
+		};
+		expect(convertWorkflow(wf).fallbackNodes).toEqual(['Dates']);
+	});
+
 	it('shares the workflow static data between the nodes of an execution', async () => {
 		const wf = {
 			name: 'Static',

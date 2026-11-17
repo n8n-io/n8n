@@ -29,7 +29,21 @@ import { LIB_FILE, SDK_FILE } from './program.ts';
 
 export const DATE_CODE = 'WL013';
 
-export const DATE_STATICS: ReadonlySet<string> = new Set(['now', 'UTC', 'parse', 'zoneOffset']);
+/**
+ * `Date.value(d)` gives the Date value of a Date: a value with the kind Date at run time, for a
+ * place without the type Date. `Date.of(v, method, text)` is the Date of a value of unknown
+ * kind, or the TypeError of JavaScript for the call `text()` when `v` is no Date value.
+ * `Date.is(v)` is true when `v` is a Date value: `v instanceof Date` of JavaScript.
+ */
+export const DATE_STATICS: ReadonlySet<string> = new Set([
+	'now',
+	'UTC',
+	'parse',
+	'zoneOffset',
+	'value',
+	'of',
+	'is',
+]);
 
 const GETTERS = [
 	'getTime',
@@ -102,6 +116,9 @@ export const DATE_FUNCTIONS: ReadonlySet<string> = new Set([
 	'Date.parse',
 	'Date.json',
 	'Date.text',
+	'Date.value',
+	'Date.of',
+	'Date.is',
 	...[...DATE_METHODS].map((m) => `Date.prototype.${m}`),
 ]);
 
@@ -581,6 +598,10 @@ function callArgumentUse(
 	if (call.expression === node) {
 		return reject('A Date cannot be called.', 'Call a Date method.');
 	}
+	if (dateStatic(checker, call.expression) === 'value') return RAW;
+	if (dateStatic(checker, call.expression) === 'is') {
+		return reject('`Date.is` of a value with the type Date is always true.', 'Remove the test.');
+	}
 	if (ctxCallMethod(checker, call)) return JSON_USE;
 	if (isPromiseAll(call)) return JSON_USE;
 	const global = globalCallName(checker, call);
@@ -787,7 +808,11 @@ export function checkDates(checker: ts.TypeChecker, sf: ts.SourceFile, report: R
 				'Store d.getTime() and use new Date(ms).',
 			);
 			return;
-		} else if (ts.isCallExpression(e) && !isUserCall(checker, e)) {
+		} else if (
+			ts.isCallExpression(e) &&
+			!isUserCall(checker, e) &&
+			dateStatic(checker, e.expression) !== 'of'
+		) {
 			r(
 				e,
 				'A Date read from an array is not a Date at run time.',

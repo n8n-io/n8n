@@ -240,6 +240,66 @@ test "json: the fast codec agrees with the reference on fixed documents" {
     }
 }
 
+test "a Date value reads as a Date of JavaScript in each operation" {
+    const lib = @import("lib.zig");
+    const gpa = std.testing.allocator;
+    var p: Pair = undefined;
+    try p.init(gpa);
+    defer p.deinit(gpa);
+    const vm = &p.va;
+    const to_value = lib.nativeId("Date.value").?;
+    const of = lib.nativeId("Date.of").?;
+    const from_value = lib.nativeId("Date.fromValue").?;
+    const time: f64 = 1709208000000;
+    const text = "Thu Feb 29 2024 12:00:00 GMT+0000 (Coordinated Universal Time)";
+    const d = try lib.callNative(vm, to_value, &.{value.num(time)});
+    const same_time = try lib.callNative(vm, to_value, &.{value.num(time)});
+    const bad = try lib.callNative(vm, to_value, &.{value.num(std.math.nan(f64))});
+
+    try std.testing.expectEqualStrings("object", vm.typeOf(d));
+    try std.testing.expect(vm.truthy(d));
+    try std.testing.expect(vm.truthy(bad));
+    try std.testing.expect(!value.isNullish(d));
+    try std.testing.expect(vm.strictEquals(d, d));
+    try std.testing.expect(!vm.strictEquals(d, same_time));
+
+    try std.testing.expectEqual(time, try vm.toNumber(d));
+    try std.testing.expect(std.math.isNan(try vm.toNumber(bad)));
+    try std.testing.expectEqual(Vm.Order.gt, try vm.compare(d, value.num(5)));
+    try std.testing.expectEqual(Vm.Order.eq, try vm.compare(d, same_time));
+    try std.testing.expectEqual(Vm.Order.unordered, try vm.compare(bad, value.num(5)));
+
+    try std.testing.expectEqualStrings(text, vm.str(try vm.toStr(d)));
+    try std.testing.expectEqualStrings("Invalid Date", vm.str(try vm.toStr(bad)));
+    try std.testing.expectEqualStrings("at " ++ text, vm.str(try vm.add(try vm.newStr("at "), d)));
+    try std.testing.expectEqualStrings(text ++ "5", vm.str(try vm.add(d, value.num(5))));
+
+    inline for (.{ fast, ref }) |codec| {
+        var b = p.sa.builder();
+        try std.testing.expect(try codec.encode(vm, &b, d, ""));
+        try b.byte(' ');
+        try std.testing.expect(try codec.encode(vm, &b, bad, ""));
+        try std.testing.expectEqualStrings("\"2024-02-29T12:00:00.000Z\" null", b.bytes());
+    }
+
+    const method = try vm.newStr("getTime");
+    const callee = try vm.newStr("v.getTime");
+    try std.testing.expectEqual(time, value.asNum(try lib.callNative(vm, of, &.{ d, method, callee })));
+    try std.testing.expectEqual(time, value.asNum(try lib.callNative(vm, from_value, &.{d})));
+    try std.testing.expect(std.math.isNan(value.asNum(try lib.callNative(vm, from_value, &.{bad}))));
+    const is = lib.nativeId("Date.is").?;
+    try std.testing.expect(vm.strictEquals(value.true_, try lib.callNative(vm, is, &.{d})));
+    try std.testing.expect(vm.strictEquals(value.true_, try lib.callNative(vm, is, &.{bad})));
+    try std.testing.expect(vm.strictEquals(value.false_, try lib.callNative(vm, is, &.{method})));
+    try std.testing.expect(vm.strictEquals(value.false_, try lib.callNative(vm, is, &.{value.num(time)})));
+    // A value that is no Date value keeps its kind in `Date.value`.
+    try std.testing.expect(vm.strictEquals(method, try lib.callNative(vm, to_value, &.{method})));
+    try std.testing.expectError(error.Throw, lib.callNative(vm, of, &.{ method, method, callee }));
+    try std.testing.expectEqualStrings("v.getTime is not a function", vm.str(vm.objGet(value.payload(vm.thrown), "message")));
+    try std.testing.expectError(error.Throw, lib.callNative(vm, of, &.{ value.null_, method, callee }));
+    try std.testing.expectEqualStrings("Cannot read properties of null (reading 'getTime')", vm.str(vm.objGet(value.payload(vm.thrown), "message")));
+}
+
 test "json: large containers move to the region in parts" {
     const gpa = std.testing.allocator;
     var p: Pair = undefined;

@@ -11,6 +11,7 @@ const ops = @import("ops.zig");
 const Value = value.Value;
 const Vm = ops.Vm;
 const Err = ops.Err;
+const Builder = @import("arena.zig").Builder;
 
 const ms_per_day: f64 = 86_400_000;
 const max_time: f64 = 8.64e15;
@@ -886,6 +887,9 @@ pub const Op = enum(u8) {
     json,
     text,
     zone_offset,
+    value,
+    of,
+    is,
     get_time,
     to_iso,
     to_json,
@@ -970,6 +974,9 @@ pub const names = [_]Entry{
     .{ .name = "Date.prototype.setUTCMonth", .op = .set_month },
     .{ .name = "Date.prototype.setFullYear", .op = .set_full_year },
     .{ .name = "Date.prototype.setUTCFullYear", .op = .set_full_year },
+    .{ .name = "Date.value", .op = .value },
+    .{ .name = "Date.of", .op = .of },
+    .{ .name = "Date.is", .op = .is },
 };
 
 pub fn id(name: []const u8) ?u16 {
@@ -992,6 +999,13 @@ fn thisTime(vm: *Vm, args: []const Value, i: u16) Err!f64 {
         }),
         else => vm.throwMsg(.type_error, "this is not a Date object.", .{}),
     };
+}
+
+/// Appends the text of the time value `t`, which is not NaN, to `b`.
+pub fn appendFormat(b: *Builder, t: f64, f: Format) Err!void {
+    std.debug.assert(!std.math.isNan(t));
+    var buf: [max_format_len]u8 = @splat(0);
+    try b.append(format(&buf, t, f));
 }
 
 fn formatted(vm: *Vm, t: f64, f: Format) Err!Value {
@@ -1060,6 +1074,23 @@ fn callStatic(vm: *Vm, op: Op, args: []const Value) Err!Value {
             return formatted(vm, value.asNum(v), .string);
         },
         .zone_offset => return zoneOffset(vm, args),
+        .value => {
+            const v = arg(args, 0);
+            if (value.kindOf(v) != .number) return v;
+            return value.box(.ref, try vm.r.newDate(value.asNum(v)));
+        },
+        .is => return value.boolean(vm.dateTime(arg(args, 0)) != null),
+        .of => {
+            const v = arg(args, 0);
+            if (vm.dateTime(v)) |t| return value.num(t);
+            if (value.isNullish(v)) {
+                return vm.throwMsg(.type_error, "Cannot read properties of {s} (reading '{s}')", .{
+                    if (value.kindOf(v) == .null) "null" else "undefined",
+                    vm.str(try vm.toStr(arg(args, 1))),
+                });
+            }
+            return vm.throwMsg(.type_error, "{s} is not a function", .{vm.str(try vm.toStr(arg(args, 2)))});
+        },
         else => unreachable,
     }
 }
@@ -1146,7 +1177,9 @@ fn fromValue(vm: *Vm, v: Value) Err!f64 {
     return switch (value.kindOf(v)) {
         .number => timeClip(value.asNum(v)),
         .string => parse(vm.str(v)),
-        .array, .object, .ref => parse(vm.str(try vm.toStr(v))),
+        .array, .object => parse(vm.str(try vm.toStr(v))),
+        // `new Date(d)` of a Date has the time value of `d`.
+        .ref => vm.dateTime(v) orelse parse(vm.str(try vm.toStr(v))),
         else => timeClip(try vm.toNumber(v)),
     };
 }

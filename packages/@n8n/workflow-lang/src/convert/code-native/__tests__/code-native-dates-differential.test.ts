@@ -7,6 +7,8 @@
  * the host).
  *
  * `WF_DATE_CASES` sets the number of bodies (the default is 300). `WF_DATE_SEED` sets the seed.
+ * `WF_DATE_VALUES=0` gives the translation without Date values. `WF_DATE_HELPERS` prints the
+ * helpers of the bodies that ran: the list for `DATE_VALUE_HELPERS` of the translation.
  */
 import { describe, expect, it } from 'vitest';
 
@@ -19,6 +21,9 @@ import { translateCode } from '../translate.ts';
 
 useUtc();
 
+const VALUES = process.env.WF_DATE_VALUES !== '0';
+
+const USED = new Set<string>();
 type Outcome = { ok: true; value: string } | { ok: false } | { refused: string };
 
 const input = [
@@ -146,6 +151,7 @@ function native(code: string): Outcome {
 		kind: 'code',
 		hasNode: () => false,
 		timezone: 'system',
+		dateValues: VALUES,
 	});
 	let c = t.ok ? checkTranslation(t.translation, 'all') : undefined;
 	const typed = t.ok ? t.translation.typedDates : t.partial?.typedDates === true;
@@ -157,6 +163,7 @@ function native(code: string): Outcome {
 			kind: 'code',
 			hasNode: () => false,
 			timezone: 'system',
+			dateValues: VALUES,
 			plainDates: true,
 		});
 		c = t.ok ? checkTranslation(t.translation, 'all') : undefined;
@@ -164,6 +171,7 @@ function native(code: string): Outcome {
 	if (!t.ok) return { refused: first || t.blockers[0].feature };
 	if (!c?.ok) return { refused: first || (c ? c.blockers[0].feature : 'no check') };
 	if (!c.compiled.data) return { refused: 'no module' };
+	for (const h of t.translation.helpers) USED.add(h);
 	const out = runModule(c.compiled.data, {
 		trigger: { body: { input: structuredClone(input), nodes: [] } },
 		now: 1_700_000_000_000,
@@ -225,7 +233,142 @@ describe('Dates in Code nodes: the native form against the fallback host', () =>
 			),
 		].join('\n');
 		if (process.env.WF_DATE_CASES || wrong.size > 0) console.log(report);
+		if (process.env.WF_DATE_HELPERS) console.log('HELPERS', [...USED].sort().join(' '));
 		expect([...wrong.keys()]).toEqual([]);
 		expect(equal).toBeGreaterThan(0);
 	}, 1_800_000);
+});
+
+describe('Dates in node code and in expressions: the rule of Code nodes', () => {
+	const translate = (code: string, where: 'node' | 'expression') =>
+		translateCode({
+			code,
+			mode: 'all',
+			kind: 'code',
+			hasNode: () => false,
+			timezone: 'UTC',
+			...(where === 'node'
+				? { nodeCode: { globals: new Set(['value']) } }
+				: { expression: { globals: new Set(['value']) } }),
+		});
+	const feature = (code: string, where: 'node' | 'expression') => {
+		const t = translate(code, where);
+		return t.ok ? 'ok' : t.blockers[0].feature;
+	};
+
+	it.each(['node', 'expression'] as const)(
+		'refuses a Date that loses its kind in %s code',
+		(where) => {
+			expect(feature('return value.getTime();', where)).toBe(
+				'Date: method of a value of unknown kind',
+			);
+			expect(feature('return value.toISOString();', where)).toBe(
+				'Date: method of a value of unknown kind',
+			);
+			expect(feature('const f = (d) => d - 1; return f(new Date(value));', where)).toBe(
+				'Date: a Date in a place that loses its kind',
+			);
+			expect(feature('const o = { d: new Date(value) }; return o.d - 1;', where)).toBe(
+				'Date: a Date read back from an object',
+			);
+			expect(feature('const a = [new Date(value)]; return a[0] - 1;', where)).toBe(
+				'Date: a Date in a place that loses its kind',
+			);
+		},
+	);
+
+	it.each(['node', 'expression'] as const)(
+		'keeps a Date with a proven kind in %s code',
+		(where) => {
+			expect(feature('return new Date(value).getTime();', where)).toBe('ok');
+			expect(feature('const d = new Date(value); return d.toISOString();', where)).toBe('ok');
+			expect(feature('const d = new Date(value); return { at: d, ms: d - 1 };', where)).toBe('ok');
+		},
+	);
+});
+
+describe('Date values in Code nodes', () => {
+	const feature = (code: string, dateValues: boolean) => {
+		const t = translateCode({
+			code,
+			mode: 'all',
+			kind: 'code',
+			hasNode: () => false,
+			timezone: 'system',
+			dateValues,
+		});
+		return t.ok ? t.translation.body : t.blockers[0].feature;
+	};
+	const body = (statements: string) =>
+		`return items.map((i) => { ${statements} return { json: { a: a[0] - 1 } }; });`;
+
+	it('gives a Date in a list as a Date value only with the option', () => {
+		const code = body('const a = [new Date(i.json.t)];');
+		expect(feature(code, false)).toBe('Date: a Date in a place that loses its kind');
+		expect(feature(code, true)).toContain('[Date.value(new Date(i.json.t))]');
+	});
+
+	it('checks the receiver of a Date method of a value of unknown kind', () => {
+		const code = 'return items.map((i) => ({ json: { a: i.json.t.getTime() } }));';
+		expect(feature(code, false)).toBe('Date: method of a value of unknown kind');
+		expect(feature(code, true)).toContain(
+			'Date.of(i.json.t, "getTime", "i.json.t.getTime").getTime()',
+		);
+	});
+
+	it.each([
+		[
+			'two Date values of one variable',
+			'const d = new Date(i.json.t); const a = [d]; const b = [d];',
+		],
+		[
+			'a Date value of a variable in a loop',
+			'const d = new Date(i.json.t); const a = []; for (let k = 0; k < 2; k++) a.push(d);',
+		],
+		[
+			'a Date value of a variable with a setter',
+			'const d = new Date(i.json.t); const a = [d]; d.setFullYear(2000);',
+		],
+	])('refuses %s: the code could see two objects', (_name, statements) => {
+		expect(feature(body(statements), true)).toBe('Date: a Date in a place that loses its kind');
+	});
+
+	it('tests the kind of a value with instanceof Date', () => {
+		const code = body(
+			'const a = [new Date(i.json.t), i.json.t]; if (a[1] instanceof Date) a.pop();',
+		);
+		expect(feature(code, false)).toBe('Date: a Date in a place that loses its kind');
+		expect(feature(code, true)).toContain('if (Date.is(a[1])) a.pop();');
+	});
+
+	it('refuses a method of a Date that the code reads as a value', () => {
+		const code = body('const a = [new Date(i.json.t)]; if (a[0].getTime) return { json: {} };');
+		expect(feature(code, true)).toBe('Date: method of a Date as a value');
+	});
+
+	it.each([
+		['a write', 'const a = [new Date(i.json.t)]; a[0].note = 1;'],
+		[
+			'a write to a parameter',
+			'const a = [new Date(i.json.t)]; const f = (o) => { o.note = 1; }; f(a[0]);',
+		],
+		['a delete', 'const a = [new Date(i.json.t)]; delete a[0].note;'],
+		['a test with in', "const a = [new Date(i.json.t)]; if ('note' in a[0]) return { json: {} };"],
+	])('refuses %s of a member of a value that can be a Date value', (_name, statements) => {
+		expect(feature(body(statements), true)).toBe(
+			'Date: a member of a value that can be a Date value',
+		);
+	});
+
+	it('keeps a write to a member of an object of the code and of the json of an item', () => {
+		const code = body(
+			'const o = {}; o.d = new Date(i.json.t); i.json.at = new Date(i.json.ms); const a = [o.d];',
+		);
+		expect(feature(code, true)).toContain('i.json.at = Date.value(new Date(i.json.ms))');
+	});
+
+	it('refuses a Date value with a helper that is not proven', () => {
+		const code = body('const a = [new Date(i.json.t)]; const s = new Set([1]);');
+		expect(feature(code, true)).toBe('Date: a Date value with a helper that is not proven');
+	});
 });

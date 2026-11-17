@@ -4,9 +4,9 @@
  *
  * `$json` becomes a variable that holds the current item. A reference to the
  * item of another node (`$('Node').item.json`, `$node["Node"].json`) becomes
- * a variable that holds that item. `$now.toISO()`, `$now.toMillis()` and
- * `$today.toISO()` become Date forms. Other n8n variables do not fit the
- * subset, and the import reports them.
+ * a variable that holds that item. `$now.toMillis()` becomes a Date form, and
+ * `$now.toISO()` and `$today.toISO()` do so when the workflow time zone is UTC.
+ * Other n8n variables do not fit the subset, and the import reports them.
  */
 import ts from 'typescript';
 
@@ -50,13 +50,19 @@ const NODE_DOT_REF = /\$node\s*\.\s*([A-Za-z_$][\w$]*)\s*\.\s*json/g;
 const INPUT_ITEM = /\$input\s*\.\s*item\s*\.\s*json/g;
 
 /**
- * The Luxon forms of `$now` and `$today` that have an exact Date form. With
- * the UTC policy (spec section 4.5), Luxon's `toISO()` prints `Z` and the
- * same extended years as `toISOString()`. Other Luxon methods have no mapping.
+ * `$now.toMillis()` is the same in each time zone.
  */
-const TIME_FORMS: Array<[RegExp, string]> = [
+const TIME_FORMS: Array<[RegExp, string]> = [[/\$now\s*\.\s*toMillis\s*\(\s*\)/g, 'Date.now()']];
+
+/**
+ * The Luxon forms of `$now` and `$today` that have an exact Date form only when the
+ * workflow time zone is `UTC`. Luxon writes the offset of the workflow time zone
+ * (`2024-03-07T00:00:00.000-05:00`), and the day of `$today` starts at midnight in that
+ * zone. Only the fixed zone UTC gives `Z`, as `toISOString()` does: `Etc/UTC` and
+ * `Europe/London` give `+00:00`.
+ */
+const UTC_TIME_FORMS: Array<[RegExp, string]> = [
 	[/\$now\s*\.\s*toISO\s*\(\s*\)/g, '(new Date().toISOString())'],
-	[/\$now\s*\.\s*toMillis\s*\(\s*\)/g, 'Date.now()'],
 	[
 		/\$today\s*\.\s*toISO\s*\(\s*\)/g,
 		'(new Date(Math.floor(Date.now() / 86400000) * 86400000).toISOString())',
@@ -74,11 +80,15 @@ function nodeVariable(name: string, used: Map<string, string>): string {
 	return v;
 }
 
-/** Rewrites the n8n variables of an expression body to plain variables. */
-export function rewriteLegacy(body: string): RewrittenExpression {
+/**
+ * Rewrites the n8n variables of an expression body to plain variables. `timezone` is the
+ * workflow time zone: without it, `$now.toISO()` and `$today.toISO()` have no mapping.
+ */
+export function rewriteLegacy(body: string, timezone?: string): RewrittenExpression {
 	const nodes = new Map<string, string>();
 	let code = body.replace(INPUT_ITEM, '$json');
-	for (const [re, form] of TIME_FORMS) code = code.replace(re, form);
+	const forms = timezone?.toLowerCase() === 'utc' ? [...TIME_FORMS, ...UTC_TIME_FORMS] : TIME_FORMS;
+	for (const [re, form] of forms) code = code.replace(re, form);
 	for (const re of NODE_REF) {
 		code = code.replace(re, (_m, _q: string, name: string) =>
 			nodeVariable(name.replace(/\\(.)/g, '$1'), nodes),
@@ -232,8 +242,8 @@ export function firstExpressionOf(body: string): string | undefined {
  * Compiles one expression body (the text between `{{` and `}}`). The module
  * takes `{ json, nodes }` as its trigger body and returns the value.
  */
-export function compileLegacyExpression(body: string): LegacyCompileResult {
-	const rewritten = rewriteLegacy(body.trim());
+export function compileLegacyExpression(body: string, timezone?: string): LegacyCompileResult {
+	const rewritten = rewriteLegacy(body.trim(), timezone);
 	if (!parsesAsExpression(rewritten.code)) {
 		return {
 			ok: false,

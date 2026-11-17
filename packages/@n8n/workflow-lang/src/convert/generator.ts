@@ -117,6 +117,12 @@ export interface ConvertOptions {
 	 */
 	codeModules?: string[];
 	/**
+	 * A Date of a Code node that goes to a place without the type Date is a Date value (spec
+	 * section 4.5). Set it only when the runtime has the kind Date. The default is false: such
+	 * a Code node runs in the fallback host.
+	 */
+	dateValues?: boolean;
+	/**
 	 * The sources of nodes. With it, a node that has no native form and no library node is
 	 * compiled from its n8n source (`src/node-compile/`), and runs in the fallback host only
 	 * when the source does not compile. The modules are in `ConvertResult.nodes`.
@@ -910,6 +916,7 @@ export class ModuleGenerator {
 					? 'host'
 					: 'native',
 			codeModules: this.options.codeModules,
+			dateValues: this.options.dateValues,
 			useZone: (zone) => {
 				this.zones.add(zone);
 			},

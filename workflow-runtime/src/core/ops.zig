@@ -5,6 +5,7 @@ const std = @import("std");
 const value = @import("value.zig");
 const heap = @import("heap.zig");
 const numfmt = @import("numfmt.zig");
+const date = @import("date.zig");
 const mem = @import("mem.zig");
 const perf = @import("perf.zig");
 const Arena = @import("arena.zig").Arena;
@@ -162,6 +163,14 @@ pub const Vm = struct {
         };
     }
 
+    /// The time value of a Date value (spec section 4.5), or null for another value.
+    pub fn dateTime(vm: *const Vm, v: Value) ?f64 {
+        if (value.kindOf(v) != .ref) return null;
+        const off = value.payload(v);
+        if (vm.r.hdr(off).kind != .date) return null;
+        return vm.r.dateTime(off);
+    }
+
     pub fn toNumber(vm: *Vm, v: Value) Err!f64 {
         return switch (value.kindOf(v)) {
             .number => value.asNum(v),
@@ -176,7 +185,9 @@ pub const Vm = struct {
                 try vm.appendString(&b, v);
                 break :blk numfmt.parse(b.bytes());
             },
-            .object, .ref => std.math.nan(f64),
+            .object => std.math.nan(f64),
+            // JavaScript converts a Date to its time value.
+            .ref => vm.dateTime(v) orelse std.math.nan(f64),
         };
     }
 
@@ -218,7 +229,11 @@ pub const Vm = struct {
             .boolean => try b.append(if (value.payload(v) != 0) "true" else "false"),
             .string => try b.append(vm.str(v)),
             .object => try b.append("[object Object]"),
-            .ref => try b.append("function () { [native code] }"),
+            .ref => if (vm.dateTime(v)) |t| {
+                // JavaScript writes a Date as its `toString` text.
+                if (std.math.isNan(t)) return b.append("Invalid Date");
+                try date.appendFormat(b, t, .string);
+            } else try b.append("function () { [native code] }"),
             .array => unreachable, // appendString handles arrays.
         }
     }
@@ -283,7 +298,9 @@ pub const Vm = struct {
 
     fn toPrimitiveForCompare(vm: *Vm, v: Value) Err!Value {
         return switch (value.kindOf(v)) {
-            .array, .object, .ref => vm.toStr(v),
+            .array, .object => vm.toStr(v),
+            // JavaScript compares a Date by its time value.
+            .ref => if (vm.dateTime(v)) |t| value.num(t) else vm.toStr(v),
             else => v,
         };
     }

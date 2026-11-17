@@ -184,6 +184,12 @@ async function startRunnerTask(
 	}
 }
 
+/** The time zone of the workflow settings: v1 reads it for `$now`, `$today` and Luxon. */
+function timezoneOf(settings: unknown): { timezone?: string } {
+	if (typeof settings !== 'object' || settings === null || !('timezone' in settings)) return {};
+	return typeof settings.timezone === 'string' ? { timezone: settings.timezone } : {};
+}
+
 export interface OracleWorkflow {
 	id?: string;
 	name?: string;
@@ -326,7 +332,7 @@ async function execute(
 		connections: workflowJson.connections,
 		nodeTypes: options.nodeTypes ?? nodeTypes(),
 		active: false,
-		settings: { executionOrder: 'v1' },
+		settings: { executionOrder: 'v1', ...timezoneOf(workflowJson.settings) },
 	});
 	executions++;
 	const executionId =
