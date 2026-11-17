@@ -18,6 +18,8 @@ class TestCommand extends BaseCommand {
 }
 
 const logger = mockInstance(Logger);
+// One shared mock: a second mockInstance(License) in another describe would replace this one for every test.
+const license = mockInstance(License);
 
 afterEach(() => {
 	vi.resetAllMocks();
@@ -56,7 +58,6 @@ describe('logError', () => {
 describe('initBinaryDataService', () => {
 	const binaryDataConfig = mockInstance(BinaryDataConfig, { mode: 's3' });
 	const binaryDataService = mockInstance(BinaryDataService);
-	const license = mockInstance(License);
 	mockInstance(DatabaseManager);
 
 	it('should exit before the store starts when the write mode is not licensed', async () => {
@@ -119,8 +120,6 @@ describe('initSystemTasks', () => {
 });
 
 describe('keepsDerivedInstanceId', () => {
-	const license = mockInstance(License);
-
 	class SeedingCommand extends TestCommand {
 		override seedsInstanceIdentity = true;
 	}
