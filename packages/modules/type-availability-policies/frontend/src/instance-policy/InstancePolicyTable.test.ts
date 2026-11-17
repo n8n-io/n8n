@@ -191,12 +191,11 @@ describe('InstancePolicyTable', () => {
 		const many = Array.from({ length: 30 }, (_, index) =>
 			row(`type${index}`, `Type ${String(index).padStart(2, '0')}`),
 		);
-		const { getByTestId, getByText, getByRole } = setup(many);
+		const { getByTestId, getByRole } = setup(many);
 		expect(rowNames(getByTestId('instance-policy-table'))).toHaveLength(25);
-		expect(getByText('Page size')).toBeInTheDocument();
 
 		await userEvent.click(getByRole('combobox', { name: 'Page size' }));
-		await userEvent.click(await findPopupItem(OPTION, '10'));
+		await userEvent.click(await findPopupItem(OPTION, '10/page'));
 
 		await waitFor(() => expect(rowNames(getByTestId('instance-policy-table'))).toHaveLength(10));
 	});

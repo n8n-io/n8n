@@ -86,11 +86,32 @@ function toThemed(value: unknown): Themed<string> | undefined {
 	return undefined;
 }
 
+// A type that a later package install adds shows its name until the page reloads.
+const summariesByBaseUrl = new Map<string, Promise<Map<string, CredentialTypeSummary>>>();
+
 /**
  * Credential types by name. Reads the static file that the editor also loads, because the server
- * releases the type descriptions from memory after startup.
+ * releases the type descriptions from memory after startup. Each page reads the file once.
  */
 export async function fetchCredentialTypeSummaries(
+	baseUrl: string,
+): Promise<Map<string, CredentialTypeSummary>> {
+	let summaries = summariesByBaseUrl.get(baseUrl);
+	if (!summaries) {
+		summaries = readCredentialTypeSummaries(baseUrl);
+		summariesByBaseUrl.set(baseUrl, summaries);
+		// A failed or empty read tries again on the next call.
+		void summaries.then(
+			(read) => {
+				if (read.size === 0) summariesByBaseUrl.delete(baseUrl);
+			},
+			() => summariesByBaseUrl.delete(baseUrl),
+		);
+	}
+	return await summaries;
+}
+
+async function readCredentialTypeSummaries(
 	baseUrl: string,
 ): Promise<Map<string, CredentialTypeSummary>> {
 	let types: unknown;

@@ -3,7 +3,7 @@ import { useLatestFetch } from '@n8n/composables/useLatestFetch';
 import { useToast } from '@n8n/composables/useToast';
 import { useI18n } from '@n8n/i18n';
 import { useRootStore } from '@n8n/stores/useRootStore';
-import { computed, reactive, ref, shallowRef, toRaw, watch } from 'vue';
+import { computed, ref, shallowReactive, shallowRef, watch } from 'vue';
 
 import { useInstancePolicy } from './useInstancePolicy';
 import { fetchInstanceAccess, type InstancePolicyContent } from '../type-availability-policies.api';
@@ -40,7 +40,7 @@ export function useInstanceTypeAccess<K extends RestrictedTypeKind>(
 	const latestLoad = useLatestFetch();
 
 	// A save that does not apply drops its entry, so the row goes back to the server value.
-	const pending = reactive(new Map<string, PendingChange>());
+	const pending = shallowReactive(new Map<string, PendingChange>());
 
 	const types = computed<InstanceTypeAccessRow[]>(() =>
 		(response.value?.types ?? []).map((type) => ({
@@ -93,7 +93,7 @@ export function useInstanceTypeAccess<K extends RestrictedTypeKind>(
 		);
 
 		// A later pick on the same row owns the entry now.
-		if (toRaw(pending.get(typeName)) !== change) return;
+		if (pending.get(typeName) !== change) return;
 		const savedVersion = instancePolicy.policies[kind]?.version;
 		if (result.status === 'saved' && savedVersion !== undefined) {
 			if ((response.value?.version ?? -1) >= savedVersion) pending.delete(typeName);

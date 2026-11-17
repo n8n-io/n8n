@@ -21,6 +21,10 @@ vi.mock('@n8n/rest-api-client', async (importOriginal) => ({
 
 const context: IRestApiContext = { baseUrl: 'http://localhost', pushRef: 'test' };
 
+// The summaries are kept for each base URL, so each test reads from its own.
+let instanceCount = 0;
+const newBaseUrl = () => `/instance-${++instanceCount}/`;
+
 describe('instance policy requests', () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
@@ -78,9 +82,10 @@ describe('instance access requests', () => {
 			'notARecord',
 		]);
 
-		const types = await fetchCredentialTypeSummaries('/');
+		const baseUrl = newBaseUrl();
+		const types = await fetchCredentialTypeSummaries(baseUrl);
 
-		expect(get).toHaveBeenCalledWith('/', 'types/credentials.json');
+		expect(get).toHaveBeenCalledWith(baseUrl, 'types/credentials.json');
 		expect([...types]).toEqual([
 			[
 				'bitlyApi',
@@ -101,7 +106,7 @@ describe('instance access requests', () => {
 			.mockResolvedValueOnce({})
 			.mockResolvedValue([{ name: 'bitlyApi', displayName: 'Bitly API' }]);
 
-		const request = fetchCredentialTypeSummaries('/');
+		const request = fetchCredentialTypeSummaries(newBaseUrl());
 		await vi.runAllTimersAsync();
 
 		expect([...(await request).keys()]).toEqual(['bitlyApi']);
@@ -113,11 +118,34 @@ describe('instance access requests', () => {
 		vi.useFakeTimers();
 		get.mockResolvedValue({});
 
-		const request = fetchCredentialTypeSummaries('/');
+		const request = fetchCredentialTypeSummaries(newBaseUrl());
 		await vi.runAllTimersAsync();
 
 		expect((await request).size).toBe(0);
 		expect(get).toHaveBeenCalledTimes(5);
 		vi.useRealTimers();
+	});
+
+	it('reads the file once for each base URL', async () => {
+		get.mockResolvedValue([{ name: 'bitlyApi', displayName: 'Bitly API' }]);
+		const baseUrl = newBaseUrl();
+
+		await fetchCredentialTypeSummaries(baseUrl);
+		const types = await fetchCredentialTypeSummaries(baseUrl);
+
+		expect([...types.keys()]).toEqual(['bitlyApi']);
+		expect(get).toHaveBeenCalledTimes(1);
+	});
+
+	it('reads the file again after a failed read', async () => {
+		get
+			.mockRejectedValueOnce(new Error('offline'))
+			.mockResolvedValue([{ name: 'bitlyApi', displayName: 'Bitly API' }]);
+		const baseUrl = newBaseUrl();
+
+		await expect(fetchCredentialTypeSummaries(baseUrl)).rejects.toThrow('offline');
+		const types = await fetchCredentialTypeSummaries(baseUrl);
+
+		expect([...types.keys()]).toEqual(['bitlyApi']);
 	});
 });
