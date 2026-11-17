@@ -165,6 +165,8 @@ responses:
                   required:
                     - movedWorkflows
                     - movedFolders
+            dependencyReport:
+              $ref: ../../../../shared/spec/schemas/promotionDependencyReport.generated.yml
             revision:
               type: string
               description: A hash of what this preview shows. Send it as `expectedPreviewRevision` with Promote or Apply to run only when the preview did not change.

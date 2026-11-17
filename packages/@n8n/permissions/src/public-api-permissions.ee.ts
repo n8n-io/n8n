@@ -194,6 +194,9 @@ export const MEMBER_API_KEY_SCOPES: ApiKeyScope[] = [
 	'dataTableColumn:delete',
 	'nodeTypePolicy:manage',
 	'credentialTypePolicy:manage',
+	// Valid for the project routes of promotions only. Those routes check the right in each project.
+	'promotions:promote',
+	'promotions:apply',
 ];
 
 export const CHAT_USER_API_KEY_SCOPES: ApiKeyScope[] = [];
@@ -274,6 +277,16 @@ export const API_KEY_SCOPES_FOR_IMPLICIT_PERSONAL_PROJECT: ApiKeyScope[] = [
 	'credentialTypePolicy:manage',
 ];
 
+/**
+ * A project admin can promote and apply the admin's own team projects without a global promotion
+ * scope. The project routes of promotions check the right in each project, and the
+ * instance-wide routes still need the global scope.
+ */
+export const API_KEY_SCOPES_FOR_PROJECT_PROMOTIONS: ApiKeyScope[] = [
+	'promotions:promote',
+	'promotions:apply',
+];
+
 const MAP_ROLE_SCOPES: Record<GlobalRole, ApiKeyScope[]> = {
 	'global:owner': OWNER_API_KEY_SCOPES,
 	'global:admin': ADMIN_API_KEY_SCOPES,
@@ -291,6 +304,7 @@ export const getApiKeyScopesForRole = (user: AuthPrincipal) => {
 		...new Set(
 			(user.role.scopes.map((scope) => scope.slug) as Array<Scope | ApiKeyScope>)
 				.concat(API_KEY_SCOPES_FOR_IMPLICIT_PERSONAL_PROJECT)
+				.concat(API_KEY_SCOPES_FOR_PROJECT_PROMOTIONS)
 				.filter(isApiKeyScope),
 		),
 	];

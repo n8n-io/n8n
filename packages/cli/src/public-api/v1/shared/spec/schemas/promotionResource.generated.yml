@@ -27,6 +27,10 @@ properties:
   previousParentKey:
     type: string
     nullable: true
+  projectId:
+    type: string
+  projectName:
+    type: string
   change:
     type: string
     enum:

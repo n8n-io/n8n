@@ -1,0 +1,449 @@
+type: object
+properties:
+  allowIncomplete:
+    type: boolean
+  blocked:
+    type: boolean
+    description: 'True when the operation cannot run: the environment is strict and the report has gaps, or it has a hard block.'
+  gaps:
+    type: array
+    items:
+      $ref: promotionGap.generated.yml
+  warnings:
+    type: array
+    items:
+      type: object
+      properties:
+        id:
+          type: string
+          minLength: 1
+        consumer:
+          type: object
+          properties:
+            kind:
+              type: string
+              enum:
+                - workflow
+            id:
+              type: string
+              minLength: 1
+            name:
+              type: string
+            projectId:
+              type: string
+              minLength: 1
+          required:
+            - kind
+            - id
+            - name
+            - projectId
+        target:
+          type: object
+          properties:
+            kind:
+              type: string
+              enum:
+                - credential
+                - workflow
+            id:
+              type: string
+              minLength: 1
+            name:
+              type: string
+            credentialType:
+              type: string
+            project:
+              type: object
+              properties:
+                id:
+                  type: string
+                  minLength: 1
+                name:
+                  type: string
+              required:
+                - id
+                - name
+              description: The project that owns the target. Set only when the user can access it.
+          required:
+            - kind
+            - id
+        usage:
+          type: string
+          enum:
+            - credential
+            - sub-workflow
+            - error-workflow
+        code:
+          type: string
+          enum:
+            - broken-on-source
+            - legacy-workflow-reference
+      required:
+        - id
+        - consumer
+        - target
+        - usage
+        - code
+  notes:
+    type: array
+    items:
+      type: object
+      properties:
+        consumer:
+          type: object
+          properties:
+            kind:
+              type: string
+              enum:
+                - workflow
+            id:
+              type: string
+              minLength: 1
+            name:
+              type: string
+            projectId:
+              type: string
+              minLength: 1
+          required:
+            - kind
+            - id
+            - name
+            - projectId
+        target:
+          type: object
+          properties:
+            kind:
+              type: string
+              enum:
+                - credential
+                - workflow
+            id:
+              type: string
+              minLength: 1
+            name:
+              type: string
+            credentialType:
+              type: string
+            project:
+              type: object
+              properties:
+                id:
+                  type: string
+                  minLength: 1
+                name:
+                  type: string
+              required:
+                - id
+                - name
+              description: The project that owns the target. Set only when the user can access it.
+          required:
+            - kind
+            - id
+        usage:
+          type: string
+          enum:
+            - credential
+            - sub-workflow
+            - error-workflow
+        code:
+          type: string
+          enum:
+            - instance-credential
+            - expression-not-checked
+      required:
+        - consumer
+        - usage
+        - code
+  grants:
+    type: array
+    items:
+      type: object
+      properties:
+        id:
+          type: string
+          minLength: 1
+          description: Stable for one credential and one consumer project. Send it in `confirmedGrantIds`.
+        credential:
+          type: object
+          properties:
+            id:
+              type: string
+              minLength: 1
+            name:
+              type: string
+            type:
+              type: string
+          required:
+            - id
+            - name
+            - type
+        project:
+          type: object
+          properties:
+            id:
+              type: string
+              minLength: 1
+            name:
+              type: string
+          required:
+            - id
+            - name
+        consumers:
+          type: array
+          items:
+            type: object
+            properties:
+              id:
+                type: string
+                minLength: 1
+              name:
+                type: string
+            required:
+              - id
+              - name
+      required:
+        - id
+        - credential
+        - project
+        - consumers
+  credentialMoves:
+    type: array
+    items:
+      type: object
+      properties:
+        credential:
+          type: object
+          properties:
+            id:
+              type: string
+              minLength: 1
+            name:
+              type: string
+            type:
+              type: string
+          required:
+            - id
+            - name
+            - type
+        toProject:
+          type: object
+          properties:
+            id:
+              type: string
+              minLength: 1
+            name:
+              type: string
+          required:
+            - id
+            - name
+        fromProject:
+          type: object
+          properties:
+            id:
+              type: string
+              minLength: 1
+            name:
+              type: string
+          required:
+            - id
+            - name
+        placeholder:
+          type: boolean
+        allowed:
+          type: boolean
+      required:
+        - credential
+        - toProject
+        - placeholder
+        - allowed
+  deletionCallers:
+    type: array
+    items:
+      type: object
+      properties:
+        target:
+          type: object
+          properties:
+            id:
+              type: string
+              minLength: 1
+            name:
+              type: string
+          required:
+            - id
+            - name
+        callers:
+          type: array
+          items:
+            type: object
+            properties:
+              id:
+                type: string
+                minLength: 1
+              name:
+                type: string
+              projectId:
+                type: string
+                minLength: 1
+              publishedOnly:
+                type: boolean
+            required:
+              - id
+              - name
+              - projectId
+        hiddenCallerCount:
+          type: integer
+          minimum: 0
+      required:
+        - target
+        - callers
+        - hiddenCallerCount
+  keptWorkflows:
+    type: array
+    items:
+      type: object
+      properties:
+        id:
+          type: string
+          minLength: 1
+        name:
+          type: string
+        projectId:
+          type: string
+          minLength: 1
+        referencedBy:
+          type: array
+          items:
+            type: object
+            properties:
+              id:
+                type: string
+                minLength: 1
+              name:
+                type: string
+            required:
+              - id
+              - name
+      required:
+        - id
+        - name
+        - projectId
+        - referencedBy
+  credentialHomeChoices:
+    type: array
+    items:
+      type: object
+      properties:
+        credential:
+          type: object
+          properties:
+            id:
+              type: string
+              minLength: 1
+            name:
+              type: string
+            type:
+              type: string
+          required:
+            - id
+            - name
+            - type
+        candidateProjects:
+          type: array
+          items:
+            type: object
+            properties:
+              id:
+                type: string
+                minLength: 1
+              name:
+                type: string
+            required:
+              - id
+              - name
+      required:
+        - credential
+        - candidateProjects
+  hardBlocks:
+    type: array
+    items:
+      type: object
+      properties:
+        code:
+          type: string
+          enum:
+            - credential-type-mismatch
+            - ambiguous-credential-owner
+            - instance-credential-missing
+            - incompatible-usage-scope
+            - placeholder-create-forbidden
+            - credential-move-forbidden
+        target:
+          type: object
+          properties:
+            kind:
+              type: string
+              enum:
+                - credential
+                - workflow
+            id:
+              type: string
+              minLength: 1
+            name:
+              type: string
+            credentialType:
+              type: string
+            project:
+              type: object
+              properties:
+                id:
+                  type: string
+                  minLength: 1
+                name:
+                  type: string
+              required:
+                - id
+                - name
+              description: The project that owns the target. Set only when the user can access it.
+          required:
+            - kind
+            - id
+        consumer:
+          type: object
+          properties:
+            kind:
+              type: string
+              enum:
+                - workflow
+            id:
+              type: string
+              minLength: 1
+            name:
+              type: string
+            projectId:
+              type: string
+              minLength: 1
+          required:
+            - kind
+            - id
+            - name
+            - projectId
+        detail:
+          type: object
+          additionalProperties:
+            type: string
+      required:
+        - code
+        - target
+required:
+  - allowIncomplete
+  - blocked
+  - gaps
+  - warnings
+  - notes
+  - grants
+  - credentialMoves
+  - deletionCallers
+  - keptWorkflows
+  - credentialHomeChoices
+  - hardBlocks

@@ -45,6 +45,12 @@ requestBody:
             type: string
             pattern: ^[0-9a-f]{64}$
             description: The `revision` of the reviewed preview. The operation builds the preview again. When it differs, the operation returns status `preview-changed` and changes nothing.
+          confirmedGapIds:
+            type: array
+            items:
+              type: string
+              minLength: 1
+            description: The `id` of each gap that the user accepts, from the dependency report of the preview. Needs an environment that allows incomplete operations. When the list differs from the current gaps, the operation returns status `gaps-changed` and changes nothing.
         additionalProperties: false
 responses:
   '200':
@@ -123,6 +129,8 @@ responses:
                         type: string
                     required:
                       - message
+                dependencyReport:
+                  $ref: ../../../../shared/spec/schemas/promotionDependencyReport.generated.yml
                 status:
                   type: string
                   enum:
@@ -145,6 +153,22 @@ responses:
               required:
                 - status
                 - environmentId
+            - type: object
+              properties:
+                status:
+                  type: string
+                  enum:
+                    - gaps-changed
+                environmentId:
+                  type: string
+                  minLength: 1
+                  maxLength: 36
+                dependencyReport:
+                  $ref: ../../../../shared/spec/schemas/promotionDependencyReport.generated.yml
+              required:
+                - status
+                - environmentId
+                - dependencyReport
           type: object
   '400':
     $ref: ../../../../shared/spec/responses/badRequest.yml

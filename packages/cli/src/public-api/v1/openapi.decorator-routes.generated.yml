@@ -329,6 +329,9 @@ paths:
   /promotions/environments/{promotionEnvironmentId}/changes/details:
     post:
       $ref: ./handlers/promotions/spec/paths/getInstanceApplyChangeDetails.generated.yml
+  /promotions/projects/{projectId}/environments:
+    get:
+      $ref: ./handlers/promotions/spec/paths/getPromotionProjectEnvironments.generated.yml
   /promotions/projects/{projectId}/changes/{direction}:
     get:
       $ref: ./handlers/promotions/spec/paths/getPromotionChanges.generated.yml

@@ -31,6 +31,12 @@ requestBody:
             description: Message for the promotion commit. If you omit it, the commit uses a generated message.
           force:
             type: boolean
+          confirmedGapIds:
+            type: array
+            items:
+              type: string
+              minLength: 1
+            description: The `id` of each gap that the user accepts, from the dependency report of the preview. Needs an environment that allows incomplete operations. When the list differs from the current gaps, the operation returns status `gaps-changed` and changes nothing.
         additionalProperties: false
 responses:
   '200':
@@ -108,6 +114,8 @@ responses:
                     type: string
                 required:
                   - message
+            dependencyReport:
+              $ref: ../../../../shared/spec/schemas/promotionDependencyReport.generated.yml
           required:
             - environmentId
             - counts

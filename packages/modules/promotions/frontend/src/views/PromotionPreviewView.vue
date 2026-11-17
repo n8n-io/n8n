@@ -563,9 +563,9 @@ const treeResizer = useResizablePanel({
 			v-model:open="promoteDialogOpen"
 			v-model:commit-message="promoteCommitMessage"
 			:change-count="includedChanges"
-			:base-branch-name="promoteEnvironment.settings.baseBranchName"
-			:create-branch-on-promotion="promoteEnvironment.settings.createBranchOnPromotion"
-			:provider-type="promoteEnvironment.provider.type"
+			:base-branch-name="promoteEnvironment.branchName"
+			:create-branch-on-promotion="promoteEnvironment.createBranchOnPromotion"
+			:provider-type="promoteEnvironment.providerType"
 			@confirm="onPromoteConfirm"
 		/>
 	</div>

@@ -1,0 +1,128 @@
+type: object
+properties:
+  id:
+    type: string
+    minLength: 1
+    description: Stable for one reference. It comes from the consumer, the target and the usage, so the preview and the operation give the same id. Send it in `confirmedGapIds`.
+  consumer:
+    type: object
+    properties:
+      kind:
+        type: string
+        enum:
+          - workflow
+      id:
+        type: string
+        minLength: 1
+      name:
+        type: string
+      projectId:
+        type: string
+        minLength: 1
+    required:
+      - kind
+      - id
+      - name
+      - projectId
+  target:
+    type: object
+    properties:
+      kind:
+        type: string
+        enum:
+          - credential
+          - workflow
+      id:
+        type: string
+        minLength: 1
+      name:
+        type: string
+      credentialType:
+        type: string
+      project:
+        type: object
+        properties:
+          id:
+            type: string
+            minLength: 1
+          name:
+            type: string
+        required:
+          - id
+          - name
+        description: The project that owns the target. Set only when the user can access it.
+    required:
+      - kind
+      - id
+  usage:
+    type: string
+    enum:
+      - credential
+      - sub-workflow
+      - error-workflow
+  group:
+    type: string
+    enum:
+      - same-project
+      - other-project
+      - read-only-project
+      - no-access
+      - personal
+      - outside-environment
+      - archived-on-destination
+      - access-not-grantable
+      - deleted-by-apply
+      - caller-policy
+      - not-on-branch
+  state:
+    type: string
+    enum:
+      - not-on-branch
+      - in-open-review
+      - missing-on-destination
+      - on-branch
+  review:
+    type: object
+    properties:
+      reviewId:
+        type: string
+      webUrl:
+        type: string
+    required:
+      - reviewId
+  exits:
+    type: array
+    items:
+      type: string
+      enum:
+        - include
+        - open-review
+        - ask-owner
+        - continue-incomplete
+        - restore
+        - remove-deletion
+        - change-policy
+        - add-project
+        - move-to-team-project
+  include:
+    type: object
+    properties:
+      projectId:
+        type: string
+        minLength: 1
+      resourceKey:
+        type: string
+    required:
+      - projectId
+      - resourceKey
+  ownerRequestSent:
+    type: boolean
+  placeholder:
+    type: boolean
+required:
+  - id
+  - consumer
+  - target
+  - usage
+  - group
+  - exits

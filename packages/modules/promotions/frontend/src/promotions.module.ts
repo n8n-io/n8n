@@ -3,6 +3,7 @@ import { VIEWS } from '@n8n/frontend-constants/views';
 import { capabilities, capabilityRegistry, defineFrontendModule } from '@n8n/frontend-module-sdk';
 import { useI18n } from '@n8n/i18n';
 import { useRBACStore } from '@n8n/stores/rbac.store';
+import { useRootStore } from '@n8n/stores/useRootStore';
 import { RouterView, type RouteLocationNormalized, type RouteRecordRaw } from 'vue-router';
 
 import {
@@ -26,13 +27,28 @@ const requirePromotionsEnabled = () => isPromotionsEnabled() || { name: VIEWS.SO
 
 // Users who cannot promote or apply see no promotions UI, so a direct link leads home.
 // The rbac middleware needs project scopes, which these routes do not load.
-const requireOperationScope = (direction: PromotionDirection) => () => {
-	const scope = direction === 'promote' ? 'promotions:promote' : 'promotions:apply';
-	const allowed =
-		isPromotionsEnabled() &&
-		useRBACStore().hasScope(['promotions:read', scope], {}, { mode: 'allOf' });
-	return allowed || { name: VIEWS.HOMEPAGE };
-};
+const requireOperationScope =
+	(direction: PromotionDirection) => async (to: RouteLocationNormalized) => {
+		if (!isPromotionsEnabled()) return { name: VIEWS.HOMEPAGE };
+		const scope = direction === 'promote' ? 'promotions:promote' : 'promotions:apply';
+		const hasGlobalRight = useRBACStore().hasScope(
+			['promotions:read', scope],
+			{},
+			{ mode: 'allOf' },
+		);
+		if (hasGlobalRight) return true;
+		// A project page also opens for an admin of the project. The server knows that right.
+		const projectId = to.params.projectId;
+		if (typeof projectId !== 'string') return { name: VIEWS.HOMEPAGE };
+		const { loadPromotionProjectEnvironments } = await import(
+			'./composables/usePromotionProjectEnvironments'
+		);
+		const { environments } = await loadPromotionProjectEnvironments(
+			useRootStore().publicApiContext,
+			projectId,
+		);
+		return environments[direction]?.canOperate === true || { name: VIEWS.HOMEPAGE };
+	};
 
 /** A project page that shows the changes before the user promotes or applies them. */
 const previewRoute = (direction: PromotionDirection): RouteRecordRaw => ({

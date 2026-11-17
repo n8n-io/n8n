@@ -7,17 +7,14 @@ import { useI18n } from '@n8n/i18n';
 import { ProjectTypes } from '@n8n/rest-api-client';
 import { computed, onBeforeUnmount, onMounted, watch } from 'vue';
 import { RouterLink, useRouter } from 'vue-router';
-import { getResourcePermissions } from '@n8n/permissions';
-import { useUsersStore } from '@n8n/stores/users.store';
 
-import { useInstancePromotionConnection } from '../composables/useInstancePromotionConnection';
+import { usePromotionProjectEnvironments } from '../composables/usePromotionProjectEnvironments';
 import { usePromotionChangeCount } from '../composables/usePromotionChangeCount';
 import { promotionEventBus, type PromotionEventBusEvents } from '../promotions.eventBus';
 import { PROMOTION_PREVIEW_VIEWS } from '../promotions.constants';
 
 const i18n = useI18n();
 const router = useRouter();
-const usersStore = useUsersStore();
 // The project header renders in editor tests that provide no capabilities. Then no badges show.
 const projectContext = capabilityRegistry.tryUse(capabilities.projectContext);
 const environmentsSettings = capabilityRegistry.tryUse(capabilities.environmentsSettings);
@@ -26,43 +23,26 @@ const isPromotionsEnabled = computed(() => environmentsSettings?.isPromotionsEna
 const currentProject = computed(() => projectContext?.currentProject() ?? null);
 const currentProjectId = computed(() => currentProject.value?.id);
 const isTeamProject = computed(() => currentProject.value?.type === ProjectTypes.Team);
-const projectPermissions = computed(
-	() => getResourcePermissions(currentProject.value?.scopes).project,
-);
-const promotionsPermissions = computed(
-	() => getResourcePermissions(usersStore.currentUser?.globalScopes).promotions,
-);
 
-// Each direction needs its configuration on the instance connection, so a source never
-// asks for incoming changes and a destination never asks for outgoing ones.
+// The server says which environment serves the project for each direction, and whether the
+// user can run that operation here: with a global promotion scope, or as an admin of the
+// project. So a source never asks for incoming changes, and a destination never asks for
+// outgoing ones.
 const {
 	environments,
-	hasPromoteConfig,
-	hasApplyConfig,
-	load: loadConnection,
-} = useInstancePromotionConnection();
+	canPromote,
+	canApply,
+	load: loadEnvironments,
+} = usePromotionProjectEnvironments();
 
-const canPreviewChanges = computed(
-	() =>
-		isTeamProject.value &&
-		isPromotionsEnabled.value &&
-		!!projectPermissions.value.export &&
-		// `list` loads the connection. `read` loads the preview, as on the preview page.
-		!!promotionsPermissions.value.list &&
-		!!promotionsPermissions.value.read &&
-		(!!promotionsPermissions.value.promote || !!promotionsPermissions.value.apply),
-);
-const showPromote = computed(
-	() => canPreviewChanges.value && hasPromoteConfig.value && !!promotionsPermissions.value.promote,
-);
-const showApply = computed(
-	() => canPreviewChanges.value && hasApplyConfig.value && !!promotionsPermissions.value.apply,
-);
+const canPreviewChanges = computed(() => isTeamProject.value && isPromotionsEnabled.value);
+const showPromote = computed(() => canPreviewChanges.value && canPromote.value);
+const showApply = computed(() => canPreviewChanges.value && canApply.value);
 
 watch(
 	[canPreviewChanges, currentProjectId],
-	async ([canPreview]) => {
-		if (canPreview) await loadConnection();
+	async ([canPreview, projectId]) => {
+		await loadEnvironments(canPreview ? projectId : undefined);
 	},
 	{ immediate: true },
 );
@@ -151,10 +131,7 @@ const badges = computed(() => {
 										adjustToNumber: changes.changeCount.value,
 										interpolate: {
 											count: String(changes.changeCount.value),
-											environment:
-												environments.value.find(
-													(environment) => environment.direction === direction,
-												)?.name ?? '',
+											environment: environments.value[direction]?.name ?? '',
 										},
 									}),
 				to: { name: PROMOTION_PREVIEW_VIEWS[direction], params: { projectId } },

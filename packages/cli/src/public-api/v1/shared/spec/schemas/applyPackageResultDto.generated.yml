@@ -280,6 +280,161 @@ oneOf:
             - name
             - scope
             - consumers
+      placeholders:
+        type: array
+        items:
+          type: object
+          properties:
+            id:
+              type: string
+              minLength: 1
+            name:
+              type: string
+            type:
+              type: string
+            projectId:
+              type: string
+              minLength: 1
+          required:
+            - id
+            - name
+            - type
+            - projectId
+      grants:
+        type: array
+        items:
+          type: object
+          properties:
+            id:
+              type: string
+              minLength: 1
+              description: Stable for one credential and one consumer project. Send it in `confirmedGrantIds`.
+            credential:
+              type: object
+              properties:
+                id:
+                  type: string
+                  minLength: 1
+                name:
+                  type: string
+                type:
+                  type: string
+              required:
+                - id
+                - name
+                - type
+            project:
+              type: object
+              properties:
+                id:
+                  type: string
+                  minLength: 1
+                name:
+                  type: string
+              required:
+                - id
+                - name
+            consumers:
+              type: array
+              items:
+                type: object
+                properties:
+                  id:
+                    type: string
+                    minLength: 1
+                  name:
+                    type: string
+                required:
+                  - id
+                  - name
+          required:
+            - id
+            - credential
+            - project
+            - consumers
+      credentialMoves:
+        type: array
+        items:
+          type: object
+          properties:
+            credential:
+              type: object
+              properties:
+                id:
+                  type: string
+                  minLength: 1
+                name:
+                  type: string
+                type:
+                  type: string
+              required:
+                - id
+                - name
+                - type
+            toProject:
+              type: object
+              properties:
+                id:
+                  type: string
+                  minLength: 1
+                name:
+                  type: string
+              required:
+                - id
+                - name
+            fromProject:
+              type: object
+              properties:
+                id:
+                  type: string
+                  minLength: 1
+                name:
+                  type: string
+              required:
+                - id
+                - name
+            placeholder:
+              type: boolean
+            allowed:
+              type: boolean
+          required:
+            - credential
+            - toProject
+            - placeholder
+            - allowed
+      keptWorkflows:
+        type: array
+        items:
+          type: object
+          properties:
+            id:
+              type: string
+              minLength: 1
+            name:
+              type: string
+            projectId:
+              type: string
+              minLength: 1
+            referencedBy:
+              type: array
+              items:
+                type: object
+                properties:
+                  id:
+                    type: string
+                    minLength: 1
+                  name:
+                    type: string
+                required:
+                  - id
+                  - name
+          required:
+            - id
+            - name
+            - projectId
+            - referencedBy
+      dependencyReport:
+        $ref: promotionDependencyReport.generated.yml
     required:
       - environmentId
       - git
@@ -308,11 +463,92 @@ oneOf:
           - blocked
       check:
         $ref: promotionApplyCheck.generated.yml
+      dependencyReport:
+        $ref: promotionDependencyReport.generated.yml
+      grants:
+        type: array
+        items:
+          type: object
+          properties:
+            id:
+              type: string
+              minLength: 1
+              description: Stable for one credential and one consumer project. Send it in `confirmedGrantIds`.
+            credential:
+              type: object
+              properties:
+                id:
+                  type: string
+                  minLength: 1
+                name:
+                  type: string
+                type:
+                  type: string
+              required:
+                - id
+                - name
+                - type
+            project:
+              type: object
+              properties:
+                id:
+                  type: string
+                  minLength: 1
+                name:
+                  type: string
+              required:
+                - id
+                - name
+            consumers:
+              type: array
+              items:
+                type: object
+                properties:
+                  id:
+                    type: string
+                    minLength: 1
+                  name:
+                    type: string
+                required:
+                  - id
+                  - name
+          required:
+            - id
+            - credential
+            - project
+            - consumers
     required:
       - environmentId
       - git
       - status
       - check
+  - type: object
+    properties:
+      environmentId:
+        type: string
+        minLength: 1
+        maxLength: 36
+      git:
+        type: object
+        properties:
+          commitSha:
+            type: string
+          branchName:
+            type: string
+        required:
+          - commitSha
+          - branchName
+      status:
+        type: string
+        enum:
+          - gaps-changed
+      dependencyReport:
+        $ref: promotionDependencyReport.generated.yml
+    required:
+      - environmentId
+      - git
+      - status
+      - dependencyReport
   - type: object
     properties:
       environmentId:

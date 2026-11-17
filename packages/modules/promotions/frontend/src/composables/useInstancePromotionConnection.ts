@@ -4,6 +4,7 @@ import {
 	fetchPromotionEnvironments,
 	type PromotionEnvironmentSummary,
 } from '../promotionsSettings.api';
+import { invalidatePromotionProjectEnvironments } from './usePromotionProjectEnvironments';
 
 type EnvironmentLookup = { environments: PromotionEnvironmentSummary[]; failed: boolean };
 
@@ -11,6 +12,8 @@ let instanceEnvironments: Promise<EnvironmentLookup> | undefined;
 
 export function invalidateInstancePromotionConnection() {
 	instanceEnvironments = undefined;
+	// The project lookups read the same environments.
+	invalidatePromotionProjectEnvironments();
 }
 
 /** The instance environments and their directions, so callers only ask for those. */

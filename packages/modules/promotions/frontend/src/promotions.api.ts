@@ -7,6 +7,7 @@ import type {
 	PromotionDirection,
 	PromotionInstanceApplyPreview,
 	PromotionPreview,
+	PromotionProjectEnvironments,
 	PromotionResourceDetails,
 	PromotionResourceDetailsRequestDto,
 	PromotionReviewChanges,
@@ -24,6 +25,18 @@ export async function getPromotionPreview(
 		context,
 		'GET',
 		`/promotions/projects/${projectId}/changes/${direction}`,
+	);
+}
+
+/** The environments that serve a project. A project admin can read them without global scopes. */
+export async function getPromotionProjectEnvironments(
+	context: PublicApiContext,
+	projectId: string,
+): Promise<PromotionProjectEnvironments> {
+	return await makePublicApiRequest(
+		context,
+		'GET',
+		`/promotions/projects/${projectId}/environments`,
 	);
 }
 

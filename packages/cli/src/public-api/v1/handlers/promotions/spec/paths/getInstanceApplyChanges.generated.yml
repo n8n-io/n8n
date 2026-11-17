@@ -143,6 +143,8 @@ responses:
                   required:
                     - movedWorkflows
                     - movedFolders
+            dependencyReport:
+              $ref: ../../../../shared/spec/schemas/promotionDependencyReport.generated.yml
             revision:
               type: string
               description: Send it as `expectedPreviewRevision` to apply only when this instance still matches the preview.

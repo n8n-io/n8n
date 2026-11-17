@@ -1,0 +1,93 @@
+operationId: getPromotionProjectEnvironments
+tags:
+  - Promotions
+summary: 'Beta: Read the promotion environments of a project'
+description: |-
+  **Beta** — breaking changes may still occur without major version bump.
+
+  Returns the Promote environment and the Apply environment that serve a team project: its own environment for the direction, otherwise the instance environment. A direction is left out when no environment covers the project. Each entry has the `id`, the `name`, the branch, the `allowIncomplete` setting, and `canOperate`: whether the user can run that operation in the project. The user needs read access to the project. The global promotion scopes are not needed.
+
+  Requires one of these API key scopes: `promotions:promote`, `promotions:apply`.
+x-required-scope: promotions:promote,promotions:apply
+parameters:
+  - schema:
+      type: string
+    required: true
+    description: The ID of the project.
+    name: projectId
+    in: path
+responses:
+  '200':
+    description: Operation successful.
+    content:
+      application/json:
+        schema:
+          type: object
+          properties:
+            promote:
+              type: object
+              properties:
+                id:
+                  type: string
+                  minLength: 1
+                  maxLength: 36
+                name:
+                  type: string
+                providerType:
+                  type: string
+                  enum:
+                    - git
+                    - gitlab
+                allowIncomplete:
+                  type: boolean
+                branchName:
+                  type: string
+                canOperate:
+                  type: boolean
+                createBranchOnPromotion:
+                  type: boolean
+              required:
+                - id
+                - name
+                - providerType
+                - allowIncomplete
+                - branchName
+                - canOperate
+                - createBranchOnPromotion
+            apply:
+              type: object
+              properties:
+                id:
+                  type: string
+                  minLength: 1
+                  maxLength: 36
+                name:
+                  type: string
+                providerType:
+                  type: string
+                  enum:
+                    - git
+                    - gitlab
+                allowIncomplete:
+                  type: boolean
+                branchName:
+                  type: string
+                canOperate:
+                  type: boolean
+              required:
+                - id
+                - name
+                - providerType
+                - allowIncomplete
+                - branchName
+                - canOperate
+  '401':
+    $ref: ../../../../shared/spec/responses/unauthorized.yml
+  '403':
+    $ref: ../../../../shared/spec/responses/forbidden.yml
+  '404':
+    $ref: ../../../../shared/spec/responses/notFound.yml
+  '429':
+    $ref: ../../../../shared/spec/responses/tooManyRequests.yml
+  '503':
+    $ref: ../../../../shared/spec/responses/serviceUnavailable.yml

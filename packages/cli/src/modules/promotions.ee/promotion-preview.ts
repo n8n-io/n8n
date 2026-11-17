@@ -489,8 +489,22 @@ export function buildPreview({
 		}
 	}
 
+	// The changes view groups by project, so each resource names the project above it.
+	const projectOf = (resource: PromotionResource): PromotionResource | undefined => {
+		let current: PromotionResource | undefined = resource;
+		const seen = new Set<string>();
+		while (current && current.type !== 'project' && !seen.has(current.key)) {
+			seen.add(current.key);
+			current = current.parentKey === null ? undefined : all.get(current.parentKey);
+		}
+		return current?.type === 'project' ? current : undefined;
+	};
 	const resources = [...listed]
 		.flatMap((key) => all.get(key) ?? [])
+		.map((resource): PromotionResource => {
+			const project = projectOf(resource);
+			return project ? { ...resource, projectId: project.id, projectName: project.name } : resource;
+		})
 		.sort(
 			(a, b) =>
 				TYPE_ORDER.indexOf(a.type) - TYPE_ORDER.indexOf(b.type) ||

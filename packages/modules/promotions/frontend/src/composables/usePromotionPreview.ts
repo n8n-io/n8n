@@ -1,4 +1,4 @@
-import type { PromotionDirection, PromotionPreview } from '@n8n/api-types';
+import type { PromotionDirection, PromotionPreview, PromotionProviderType } from '@n8n/api-types';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { computed, ref, shallowRef, watch, type Ref } from 'vue';
 
@@ -9,6 +9,22 @@ import type { ApplyCheckResult } from '../promotions.types';
 import { buildSelectionGraph } from '../promotionPreview.selection';
 import { repositoryDisplayName } from '../promotionsSettings.utils';
 import { useInstancePromotionConnection } from './useInstancePromotionConnection';
+import { usePromotionProjectEnvironments } from './usePromotionProjectEnvironments';
+
+/**
+ * What the preview page needs to know about its environment. A project page reads it from the
+ * project lookup, which also serves a project admin. The instance page reads the full list.
+ */
+export type PromotionPreviewEnvironment = {
+	id: string;
+	name: string;
+	direction: PromotionDirection;
+	providerType: PromotionProviderType;
+	/** The base branch of a Promote, or the branch of an Apply. */
+	branchName: string;
+	createBranchOnPromotion: boolean;
+	allowIncomplete: boolean;
+};
 
 type PromotionPreviewState =
 	| 'loading'
@@ -38,6 +54,13 @@ export function usePromotionPreview(
 		failed: connectionFailed,
 		load: loadConnection,
 	} = useInstancePromotionConnection();
+	const {
+		environments: projectEnvironments,
+		failed: projectLookupFailed,
+		load: loadProjectEnvironments,
+	} = usePromotionProjectEnvironments();
+	/** False when the user may not run the operation in the project. */
+	const canOperate = ref(true);
 
 	const state = ref<PromotionPreviewState>('loading');
 	const preview = shallowRef<PromotionPreview | null>(null);
@@ -59,11 +82,43 @@ export function usePromotionPreview(
 	const graph = computed(() =>
 		preview.value ? buildSelectionGraph(preview.value, direction.value) : null,
 	);
-	const environment = computed(
+	const instanceEnvironment = computed(
 		() => environments.value.find((candidate) => candidate.direction === direction.value) ?? null,
 	);
+	const environment = computed((): PromotionPreviewEnvironment | null => {
+		if (projectId.value !== undefined) {
+			const found = projectEnvironments.value[direction.value];
+			if (!found) return null;
+			return {
+				id: found.id,
+				name: found.name,
+				direction: direction.value,
+				providerType: found.providerType,
+				branchName: found.branchName,
+				createBranchOnPromotion:
+					'createBranchOnPromotion' in found && found.createBranchOnPromotion,
+				allowIncomplete: found.allowIncomplete,
+			};
+		}
+		const found = instanceEnvironment.value;
+		if (!found) return null;
+		return {
+			id: found.id,
+			name: found.name,
+			direction: found.direction,
+			providerType: found.provider.type,
+			branchName:
+				found.direction === 'apply' ? found.settings.branchName : found.settings.baseBranchName,
+			createBranchOnPromotion:
+				found.direction === 'promote' && found.settings.createBranchOnPromotion,
+			allowIncomplete: found.settings.allowIncomplete,
+		};
+	});
+	/** Only the instance page knows the remote. The project lookup does not send it. */
 	const repositoryName = computed(() =>
-		environment.value ? repositoryDisplayName(environment.value.remote) : null,
+		projectId.value === undefined && instanceEnvironment.value
+			? repositoryDisplayName(instanceEnvironment.value.remote)
+			: null,
 	);
 
 	async function load() {
@@ -74,10 +129,18 @@ export function usePromotionPreview(
 		refreshFailed.value = false;
 
 		try {
-			await loadConnection();
+			let lookupFailed: boolean;
+			if (requested.projectId === undefined) {
+				await loadConnection();
+				lookupFailed = connectionFailed.value;
+			} else {
+				await loadProjectEnvironments(requested.projectId);
+				lookupFailed = projectLookupFailed.value;
+				canOperate.value = projectEnvironments.value[requested.direction]?.canOperate !== false;
+			}
 			if (!isLatest()) return;
-			if (connectionFailed.value || !environment.value) {
-				state.value = connectionFailed.value ? 'connectionFailed' : 'disconnected';
+			if (lookupFailed || !environment.value) {
+				state.value = lookupFailed ? 'connectionFailed' : 'disconnected';
 				preview.value = null;
 				return;
 			}
@@ -124,6 +187,7 @@ export function usePromotionPreview(
 		check,
 		graph,
 		environment,
+		canOperate,
 		repositoryName,
 		refreshing,
 		refreshFailed,

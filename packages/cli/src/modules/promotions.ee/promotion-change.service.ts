@@ -1,5 +1,6 @@
 import type {
 	PromotionDirection,
+	PromotionProjectEnvironments,
 	PromotionInstanceApplyPreview,
 	PromotionPreview,
 	PromotionResourceDetail,
@@ -18,10 +19,9 @@ import {
 } from '@n8n/api-types';
 import { ProjectRepository, type User } from '@n8n/db';
 import { Service } from '@n8n/di';
-import { hasGlobalScope, type Scope } from '@n8n/permissions';
 import type { z } from 'zod';
 
-import { BadRequestError, ForbiddenError } from '@n8n/errors';
+import { BadRequestError } from '@n8n/errors';
 import { diffDataTableSchema } from '@/modules/n8n-packages/entities/data-table/data-table-compat';
 import { gitBlobSha } from '@/modules/n8n-packages/io/hashing-package-writer';
 import { PACKAGE_ENTITY_LAYOUT, entityIdOfSegment } from '@/modules/n8n-packages/io/manifest-entry';
@@ -40,6 +40,7 @@ import {
 	parsePackageManifest,
 	scopeManifestToProject,
 } from './promotion-preview';
+import { PromotionAccessService } from './promotion-access.service';
 import { PromotionEnvironmentResolver } from './promotion-environment.resolver';
 import { ApplyPreviewService } from './apply-preview.service';
 import { PromotePreviewService } from './promote-preview.service';
@@ -50,11 +51,6 @@ import {
 	type LocalTag,
 } from './local-package-entities.service';
 import { PromotionsService } from './promotions.service';
-
-const PROMOTION_SCOPES = {
-	promote: 'promotions:promote',
-	apply: 'promotions:apply',
-} as const satisfies Record<PromotionDirection, Scope>;
 
 export type DetailSide = { content: string | null; blobSha: string | null };
 
@@ -68,7 +64,51 @@ export class PromotionChangeService {
 		private readonly localEntities: LocalPackageEntities,
 		private readonly environmentResolver: PromotionEnvironmentResolver,
 		private readonly projectRepository: ProjectRepository,
+		private readonly accessService: PromotionAccessService,
 	) {}
+
+	/**
+	 * The environments that serve a project, for a user who can read it. The project header
+	 * uses it, so it needs no global promotion scope.
+	 */
+	async getProjectEnvironments(
+		user: User,
+		projectId: string,
+	): Promise<PromotionProjectEnvironments> {
+		await this.accessService.assertCanRead(user, projectId);
+		const { promote, apply } = await this.environmentResolver.describeForProject(projectId);
+		const [canPromote, canApply] = await Promise.all([
+			promote ? this.accessService.canOperate(user, projectId, 'promote') : false,
+			apply ? this.accessService.canOperate(user, projectId, 'apply') : false,
+		]);
+		return {
+			...(promote?.config.direction === 'promote'
+				? {
+						promote: {
+							id: promote.id,
+							name: promote.name,
+							providerType: promote.providerType,
+							allowIncomplete: promote.config.settings.allowIncomplete,
+							createBranchOnPromotion: promote.config.settings.createBranchOnPromotion,
+							branchName: promote.config.settings.baseBranchName,
+							canOperate: canPromote,
+						},
+					}
+				: {}),
+			...(apply?.config.direction === 'apply'
+				? {
+						apply: {
+							id: apply.id,
+							name: apply.name,
+							providerType: apply.providerType,
+							allowIncomplete: apply.config.settings.allowIncomplete,
+							branchName: apply.config.settings.branchName,
+							canOperate: canApply,
+						},
+					}
+				: {}),
+		};
+	}
 
 	/**
 	 * Every resource that the operation changes. Each resource has its place in the project and
@@ -80,7 +120,7 @@ export class PromotionChangeService {
 		direction: PromotionDirection,
 	): Promise<PromotionPreview> {
 		if (direction === 'apply') return await this.getApplyPreview(user, projectId);
-		this.assertCanPreview(user, direction);
+		await this.accessService.assertCanOperate(user, [projectId], direction);
 		const input = await this.environmentResolver.resolveForProject(projectId, direction);
 		return await this.promotePreviewService.build({
 			user,
@@ -92,7 +132,7 @@ export class PromotionChangeService {
 
 	/** The Apply preview, built from the import plan at the branch tip. */
 	private async getApplyPreview(user: User, projectId: string): Promise<PromotionPreview> {
-		this.assertCanPreview(user, 'apply');
+		await this.accessService.assertCanOperate(user, [projectId], 'apply');
 		const branch = await this.promotionsService.readBranchPackage(projectId, 'apply');
 		if (branch.commitSha === null) {
 			throw new BadRequestError(
@@ -138,7 +178,7 @@ export class PromotionChangeService {
 		{ commitSha, keys }: PromotionResourceDetailsRequestDto,
 		{ canSeeVariableValues }: { canSeeVariableValues: boolean },
 	): Promise<PromotionResourceDetails> {
-		this.assertCanPreview(user, direction);
+		await this.accessService.assertCanOperate(user, [projectId], direction);
 		const requestedIds = new Set(keys.map((key) => key.slice(key.indexOf(':') + 1)));
 		const readBranch = async (paths: readonly string[]) =>
 			commitSha === null
@@ -337,16 +377,6 @@ export class PromotionChangeService {
 				}),
 			];
 		});
-	}
-
-	/** One route serves both directions, so the per-direction scope is checked here, not on the decorator. */
-	private assertCanPreview(user: User, direction: PromotionDirection) {
-		const scope = PROMOTION_SCOPES[direction];
-		if (!hasGlobalScope(user, scope)) {
-			throw new ForbiddenError(
-				`Change preview requires the ${scope} scope. Ask an administrator for access.`,
-			);
-		}
 	}
 }
 

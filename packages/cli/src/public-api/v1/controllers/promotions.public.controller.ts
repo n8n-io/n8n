@@ -24,6 +24,7 @@ import {
 	PromotionMissingProjectListPublicDto,
 	PromotionInstanceApplyPreviewDto,
 	PromotionPreviewDto,
+	PromotionProjectEnvironmentsDto,
 	PromotionProviderCreatedPublicDto,
 	PromotionProviderListPublicDto,
 	PromotionProviderPublicDto,
@@ -712,6 +713,27 @@ export class PromotionsPublicController {
 		);
 	}
 
+	@Get('/projects/:projectId/environments')
+	@Licensed(LICENSE_FEATURES.PROMOTIONS)
+	@ApiKeyScope({ anyOf: ['promotions:promote', 'promotions:apply'] })
+	@ApiSummary('Beta: Read the promotion environments of a project')
+	@ApiDescription(
+		BETA_NOTE +
+			'Returns the Promote environment and the Apply environment that serve a team project: its own environment for the direction, otherwise the instance environment. A direction is left out when no environment covers the project. Each entry has the `id`, the `name`, the branch, the `allowIncomplete` setting, and `canOperate`: whether the user can run that operation in the project. The user needs read access to the project. The global promotion scopes are not needed.',
+	)
+	@ApiTags(tags)
+	@ApiResponse(200, PromotionProjectEnvironmentsDto)
+	@ApiErrorResponse(403)
+	@ApiErrorResponse(404)
+	@ApiErrorResponse(503)
+	async getPromotionProjectEnvironments(
+		req: AuthenticatedRequest,
+		_res: Response,
+		@Param('projectId', projectIdParamSchema) projectId: string,
+	): Promise<PromotionProjectEnvironmentsDto> {
+		return await (await this.changeService()).getProjectEnvironments(req.user, projectId);
+	}
+
 	@Get('/projects/:projectId/changes/:direction')
 	@Licensed(LICENSE_FEATURES.PROMOTIONS)
 	@ApiKeyScope({ anyOf: ['promotions:promote', 'promotions:apply'] })
@@ -775,7 +797,6 @@ export class PromotionsPublicController {
 	@Post('/projects/:projectId/promote')
 	@Licensed(LICENSE_FEATURES.PROMOTIONS)
 	@ApiKeyScope('promotions:promote')
-	@GlobalScope('promotions:promote')
 	@ApiSummary("Beta: Promote a selection of a project's workflows and folders")
 	@ApiDescription(
 		BETA_NOTE +
@@ -794,6 +815,7 @@ export class PromotionsPublicController {
 		@Param('projectId', projectIdParamSchema) projectId: string,
 		@Body input: PromoteSelectionRequestDto,
 	): Promise<PromoteSelectionResultDto> {
+		await (await this.accessService()).assertCanOperate(req.user, [projectId], 'promote');
 		return await (await this.promotionsService()).promoteProjectSelection(projectId, req.user, {
 			...input,
 			// Variable values only travel when the key may list them.
@@ -806,7 +828,6 @@ export class PromotionsPublicController {
 	@Post('/projects/:projectId/apply')
 	@Licensed(LICENSE_FEATURES.PROMOTIONS)
 	@ApiKeyScope('promotions:apply')
-	@GlobalScope('promotions:apply')
 	@ApiSummary("Beta: Apply a selection of a project's workflows and folders")
 	@ApiDescription(
 		BETA_NOTE +
@@ -826,6 +847,7 @@ export class PromotionsPublicController {
 		@Param('projectId', projectIdParamSchema) projectId: string,
 		@Body input: ApplySelectionDto,
 	): Promise<ApplyPackageResultDto> {
+		await (await this.accessService()).assertCanOperate(req.user, [projectId], 'apply');
 		return await (await this.promotionsService()).applyProjectSelection(
 			projectId,
 			req.user,
@@ -838,7 +860,6 @@ export class PromotionsPublicController {
 	@Post('/projects/:projectId/apply/continue')
 	@Licensed(LICENSE_FEATURES.PROMOTIONS)
 	@ApiKeyScope('promotions:apply')
-	@GlobalScope('promotions:apply')
 	@ApiSummary('Beta: Continue applying a selection after binding setup')
 	@ApiDescription(
 		BETA_NOTE +
@@ -858,6 +879,7 @@ export class PromotionsPublicController {
 		@Param('projectId', projectIdParamSchema) projectId: string,
 		@Body input: ContinueApplySelectionDto,
 	): Promise<ApplyPackageResultDto> {
+		await (await this.accessService()).assertCanOperate(req.user, [projectId], 'apply');
 		return await (await this.promotionsService()).continueApplyProjectSelection(
 			projectId,
 			req.user,
@@ -913,6 +935,15 @@ export class PromotionsPublicController {
 			'@/modules/promotions.ee/promotion-change.service.js'
 		);
 		return Container.get(PromotionChangeService);
+	}
+
+	/** The project routes need the right in the project, not a global promotion scope. */
+	private async accessService() {
+		this.assertModuleActive();
+		const { PromotionAccessService } = await import(
+			'@/modules/promotions.ee/promotion-access.service.js'
+		);
+		return Container.get(PromotionAccessService);
 	}
 
 	private resolvePage(query: { cursor?: string; limit: number }) {
