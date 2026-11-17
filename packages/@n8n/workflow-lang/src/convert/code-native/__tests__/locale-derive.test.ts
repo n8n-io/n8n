@@ -10,7 +10,7 @@ import { afterEach, describe, expect, it } from 'vitest';
 import { useUtc } from '../../../reference/runner.ts';
 import { runModule } from '../../../testing/vm.ts';
 import { checkTranslation } from '../check.ts';
-import { localeIdentity, processIdentity, setTargetNode } from '../../node-identity.ts';
+import { localeIdentity, processIdentity, setTargetNode, targetNode } from '../../node-identity.ts';
 import { LOCALE_TABLE } from '../locale-data.generated.ts';
 import { deriveLocaleEntry, derivedLocaleEntry } from '../locale-derive.ts';
 import { localeEntry } from '../locale-entry.ts';
@@ -144,7 +144,7 @@ describe('the Node.js identity of the locale table', () => {
 	])(
 		'keeps the call in the host for a target with another %s than this process and the table',
 		(_name, change) => {
-			setTargetNode({ ...processIdentity(), ...change });
+			setTargetNode({ ...targetNode(), ...change });
 			expect(localeEntry('toLocaleDateString', 'en-US', options)).toBeUndefined();
 			expect(blockersOf(code)).toEqual(['locale formatting outside the table']);
 			setTargetNode(undefined);

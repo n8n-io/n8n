@@ -31,6 +31,17 @@ export interface NodeIdentity {
 	v8: string;
 	/** `process.versions.ada`: the URL parser. */
 	ada: string;
+	/**
+	 * The time zone of the n8n process: `Date` in an expression and in a node gives local time
+	 * in it. `?` when it is not known.
+	 */
+	zone?: string;
+	/**
+	 * The time zone of the task runner process: `Date` in a Code node gives local time in it.
+	 * n8n starts the runner without `TZ`, so it is the zone of the operating system, not the
+	 * `TZ` of the n8n process and not `GENERIC_TIMEZONE`. `?` when it is not known.
+	 */
+	runnerZone?: string;
 }
 
 /** The versions of the tables that the runtime (`wfrt`) holds: `unicase.zig`, `normalize_tables.zig`, `collate_tables.zig`. */
@@ -68,12 +79,71 @@ export function setTargetNode(identity: NodeIdentity | undefined): void {
 }
 
 export function targetNode(): NodeIdentity {
-	return target ?? processIdentity();
+	return target ?? { ...processIdentity(), zone: processZone(), runnerZone: runnerZone() };
 }
 
 /** The identity as one text: a part of the cache key of a compiled workflow. */
 export function identityKey(identity: NodeIdentity = targetNode()): string {
-	return FIELDS.map((name) => `${name}=${identity[name]}`).join(' ');
+	const zones = `zone=${identity.zone ?? '?'} runnerZone=${identity.runnerZone ?? '?'}`;
+	return `${FIELDS.map((name) => `${name}=${identity[name]}`).join(' ')} ${zones}`;
+}
+
+/** The names of the time zone that is UTC all year, as `Intl` gives them. */
+const UTC_ZONES = new Set([
+	'UTC',
+	'Etc/UTC',
+	'GMT',
+	'Etc/GMT',
+	'UCT',
+	'Etc/UCT',
+	'Zulu',
+	'Etc/Zulu',
+]);
+
+/** The zone of this process: `TZ`, or the zone of the operating system. It is not kept: `TZ` can change. */
+function processZone(): string {
+	try {
+		return new Intl.DateTimeFormat().resolvedOptions().timeZone || '?';
+	} catch {
+		return '?';
+	}
+}
+
+let declaredRunnerZone: string | undefined;
+
+/**
+ * Declares the time zone of the task runner process, for a converter that knows it: a test
+ * that starts its runner with `TZ`, or a deployment with external runners. `undefined` takes
+ * the declaration away.
+ */
+export function setRunnerZone(zone: string | undefined): void {
+	declaredRunnerZone = zone;
+}
+
+/**
+ * The zone of the task runner that the n8n of this process starts. n8n gives the runner no
+ * `TZ`, so the runner has the zone of the operating system. This process has the same zone
+ * only when it has no `TZ` itself. With `TZ`, and with external runners, the zone is not
+ * known unless `setRunnerZone` or `WF_TARGET_RUNNER_ZONE` declares it.
+ */
+function runnerZone(): string {
+	if (declaredRunnerZone !== undefined) return declaredRunnerZone;
+	const env: Record<string, string | undefined> = typeof process === 'undefined' ? {} : process.env;
+	if (env.WF_TARGET_RUNNER_ZONE) return env.WF_TARGET_RUNNER_ZONE;
+	if (env.N8N_RUNNERS_MODE === 'external' || env.TZ) return '?';
+	return processZone();
+}
+
+/**
+ * True when local time of `Date` is UTC for certain in the process that runs the code on v1:
+ * the task runner for a Code node (`runner`), the n8n process for an expression or a node
+ * (`process`). The runtime gives local time in UTC only, so each other zone, and a zone that
+ * is not known, keeps the local time forms in the host.
+ */
+export function localTimeIsUtc(consumer: 'process' | 'runner'): boolean {
+	const identity = targetNode();
+	const zone = consumer === 'runner' ? identity.runnerZone : identity.zone;
+	return zone !== undefined && UTC_ZONES.has(zone);
 }
 
 /**

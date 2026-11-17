@@ -10,7 +10,9 @@ export { credentialKey, credentialSlots } from './convert/naming.ts';
 export { COMPILER_VERSION, compile, decodeModule } from './compiler/index.ts';
 export {
 	identityKey,
+	localTimeIsUtc,
 	processIdentity,
+	setRunnerZone,
 	setTargetNode,
 	targetNode,
 } from './convert/node-identity.ts';

@@ -1051,6 +1051,8 @@ export const RULES: Rule[] = [
 				pattern: /^Date\(\): /,
 				locate: identifier('Date'),
 			},
+			{ pattern: /^Date: (a Date |method of a value |local time )/ },
+			{ pattern: /^Luxon toJSDate: /, locate: member('toJSDate') },
 		],
 	},
 	{

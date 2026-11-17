@@ -4,7 +4,6 @@
  * JavaScript Date in UTC, so the results are those of Node.js.
  */
 import { zoneOffset } from './zone-lib.ts';
-import { useUtc } from './runner.ts';
 
 const PROTO = 'Date.prototype.';
 
@@ -30,7 +29,7 @@ function fromValue(v: unknown): number {
 
 /** Calls the Date library function `name`. Returns undefined for other names. */
 export function callDate(name: string, args: unknown[]): { value: unknown } | undefined {
-	useUtc();
+	if (process.env.TZ !== 'UTC') process.env.TZ = 'UTC';
 	const n = (i: number) => Number(args[i]);
 	switch (name) {
 		case 'Date.fromValue':

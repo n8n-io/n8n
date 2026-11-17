@@ -27,6 +27,7 @@
 import ts from 'typescript';
 
 import { isKnownTimezone } from '../../compiler/triggers.ts';
+import { localTimeIsUtc } from '../node-identity.ts';
 import { DEFAULT_TIMEZONE } from '../triggers.ts';
 import { LOCALE_NAMES } from './locale-data.generated.ts';
 import { planBody, planCatch } from './catch-check.ts';
@@ -2769,6 +2770,138 @@ export function translateCode(input: CodeNativeInput): TranslateResult {
 		reads(root);
 	};
 	if (!input.nodeCode && !input.expression && (makesDates || usesLuxon)) guardDates();
+
+	/**
+	 * True when the code reads local time of a \`Date\`: a getter or a setter of local fields,
+	 * the text of a Date, a Date from fields or from a text without a zone, or a format in the
+	 * zone of the process.
+	 */
+	const readsLocalTime = (): boolean => {
+		const LOCAL = new Set([
+			'getFullYear',
+			'getYear',
+			'getMonth',
+			'getDate',
+			'getDay',
+			'getHours',
+			'getMinutes',
+			'getSeconds',
+			'getMilliseconds',
+			'getTimezoneOffset',
+			'setFullYear',
+			'setYear',
+			'setMonth',
+			'setDate',
+			'setHours',
+			'setMinutes',
+			'setSeconds',
+			'setMilliseconds',
+			'toDateString',
+			'toTimeString',
+			'toLocaleString',
+			'toLocaleDateString',
+			'toLocaleTimeString',
+			'toGMTString',
+			'resolvedOptions',
+		]);
+		const ZONED = /(Z|[+-]\d\d:?\d\d)$|^\d{4}-\d\d-\d\d$/;
+		/** True when a Date from \`e\` needs no zone: a number, a Date, or a text with its zone. */
+		const zoneFree = (e: ts.Expression): boolean => {
+			const x = stripParens(e);
+			if (ts.isStringLiteralLike(x)) return ZONED.test(x.text.trim());
+			if (isDateValue(x)) return true;
+			if (ts.isNumericLiteral(x) || ts.isPrefixUnaryExpression(x)) return true;
+			if (ts.isBinaryExpression(x)) return ARITHMETIC.has(x.operatorToken.kind);
+			if (!ts.isCallExpression(x)) return false;
+			const callee = stripParens(x.expression);
+			if (!ts.isPropertyAccessExpression(callee)) return false;
+			const name = callee.name.text;
+			if (ts.isIdentifier(callee.expression) && isFree(callee.expression)) {
+				if (callee.expression.text === 'Date') return name === 'now' || name === 'UTC';
+				if (callee.expression.text === 'Math') return true;
+			}
+			return ['getTime', 'valueOf', 'toISOString', 'toJSON', 'toMillis', 'toJSDate'].includes(name);
+		};
+		let found = false;
+		const scan = (n: ts.Node): void => {
+			if (found) return;
+			if (ts.isPropertyAccessExpression(n) && LOCAL.has(n.name.text)) found = true;
+			else if (ts.isNewExpression(n) && isNewDate(n)) {
+				const args = n.arguments ?? [];
+				if (args.length > 1 || (args.length === 1 && !zoneFree(args[0]))) found = true;
+			} else if (ts.isCallExpression(n)) {
+				const callee = stripParens(n.expression);
+				if (ts.isIdentifier(callee) && callee.text === 'Date' && isFree(callee)) found = true;
+				if (
+					ts.isPropertyAccessExpression(callee) &&
+					ts.isIdentifier(callee.expression) &&
+					isFree(callee.expression)
+				) {
+					const g = callee.expression.text;
+					if (g === 'Date' && callee.name.text === 'parse') {
+						if (n.arguments.length !== 1 || !zoneFree(n.arguments[0])) found = true;
+					}
+					if (g === 'Intl') found = true;
+					if (g === 'String' || callee.name.text === 'toString') {
+						if (n.arguments.some((a) => isDateValue(a))) found = true;
+					}
+				}
+				if (
+					ts.isIdentifier(callee) &&
+					callee.text === 'String' &&
+					n.arguments.some((a) => isDateValue(a))
+				) {
+					found = true;
+				}
+				if (
+					ts.isPropertyAccessExpression(callee) &&
+					callee.name.text === 'toString' &&
+					isDateValue(callee.expression)
+				) {
+					found = true;
+				}
+			} else if (ts.isNewExpression(n)) {
+				const made = stripParens(n.expression);
+				if (
+					ts.isPropertyAccessExpression(made) &&
+					ts.isIdentifier(made.expression) &&
+					made.expression.text === 'Intl'
+				) {
+					found = true;
+				}
+			} else if (ts.isTemplateSpan(n) && isDateValue(n.expression)) found = true;
+			else if (
+				ts.isBinaryExpression(n) &&
+				(n.operatorToken.kind === ts.SyntaxKind.PlusToken ||
+					n.operatorToken.kind === ts.SyntaxKind.PlusEqualsToken) &&
+				(isDateValue(n.left) || isDateValue(n.right))
+			) {
+				found = true;
+			} else if (
+				usesLuxon &&
+				ts.isStringLiteralLike(n) &&
+				['local', 'system'].includes(n.text.toLowerCase())
+			) {
+				found = true;
+			}
+			ts.forEachChild(n, scan);
+		};
+		scan(root);
+		return found;
+	};
+	const zoneConsumer = input.nodeCode || input.expression ? 'process' : 'runner';
+	if (
+		(/\bDate\b|\bIntl\b|toLocale(Date|Time)?String/.test(input.code) || usesLuxon) &&
+		!localTimeIsUtc(zoneConsumer) &&
+		readsLocalTime()
+	) {
+		block(
+			'Date: local time in a zone that is not UTC',
+			zoneConsumer === 'runner'
+				? 'The code reads local time of a Date. The task runner of v1 gives it in the time zone of its operating system, which is not UTC or is not known. Native code gives it in UTC.'
+				: 'The code reads local time of a Date. v1 gives it in the time zone of the n8n process, which is not UTC or is not known. Native code gives it in UTC.',
+		);
+	}
 	/**
 	 * True when `n` is in the branch of a test \`x instanceof Date\` that is false for certain
 	 * (\`x\` is no Date): the branch does not run.
