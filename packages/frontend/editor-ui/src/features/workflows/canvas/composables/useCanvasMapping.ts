@@ -25,7 +25,6 @@ import {
 	applyOffset,
 	computeNodeDisplaySize,
 	mapLegacyConnectionsToCanvasConnections,
-	nodeNeedsCredentialSetup,
 	parseCanvasConnectionHandleString,
 } from '../canvas.utils';
 import { DEFAULT_AGENT_HEIGHT, DEFAULT_AGENT_WIDTH } from '@/features/agents/utils/agentNode';
@@ -60,7 +59,7 @@ export function useCanvasMapping({
 	allGroups = ref([]),
 	nodeGroupView,
 	isExperimentalNdvActive = ref(false),
-	credentialSetupWarnings = ref(false),
+	isNodeSetupRequired,
 	getAgentNodeHeight,
 }: {
 	nodes: Ref<INodeUi[]>;
@@ -69,8 +68,8 @@ export function useCanvasMapping({
 	allGroups?: Ref<IWorkflowGroup[]>;
 	nodeGroupView?: CanvasNodeGroupView;
 	isExperimentalNdvActive?: Ref<boolean>;
-	/** Mirrors the host flag that shows missing credentials as "setup required". */
-	credentialSetupWarnings?: Ref<boolean>;
+	/** True when the host shows the node's missing credentials as "setup required". */
+	isNodeSetupRequired?: (id: string) => boolean;
 	getAgentNodeHeight?: (id: string) => number | undefined;
 }) {
 	const i18n = useI18n();
@@ -84,8 +83,6 @@ export function useCanvasMapping({
 	function countNonCanceledIterations(tasks: ITaskData[] | null | undefined): number {
 		return tasks?.filter((task) => task.executionStatus !== 'canceled').length ?? 0;
 	}
-
-	const nodeById = computed(() => new Map(nodes.value.map((node) => [node.id, node])));
 
 	// Per-node execution projection feeding the group-status aggregation.
 	function getNodeExecutionSnapshot(id: string): NodeExecutionSnapshot {
@@ -101,15 +98,16 @@ export function useCanvasMapping({
 			status === 'crashed' ||
 			(executionIssues?.length ?? 0) > 0 ||
 			Boolean(tasks?.at(-1)?.error);
+		const hasValidationError = (rd.validationErrorsByNodeId.get(id)?.value?.length ?? 0) > 0;
 
 		return {
 			running: rd.executionRunningByNodeId.get(id)?.value ?? false,
 			waitingForNext: rd.executionWaitingForNextByNodeId.get(id)?.value ?? false,
 			waiting: rd.executionWaitingByNodeId.get(id)?.value,
 			hasExecutionError,
-			hasValidationError: (rd.validationErrorsByNodeId.get(id)?.value?.length ?? 0) > 0,
-			needsCredentialSetup:
-				credentialSetupWarnings.value && nodeNeedsCredentialSetup(nodeById.value.get(id)),
+			hasValidationError,
+			// Only nodes with validation errors can need setup; skip the node lookup for the rest.
+			needsCredentialSetup: hasValidationError && (isNodeSetupRequired?.(id) ?? false),
 			status,
 			dirty:
 				render?.type === CanvasNodeRenderType.Default && render.options.dirtiness !== undefined,
@@ -185,6 +183,7 @@ export function useCanvasMapping({
 				issues: {
 					validation: rd.validationErrorsByNodeId.get(node.id)?.value ?? [],
 					visible: rd.hasIssuesByNodeId.get(node.id)?.value ?? false,
+					setupRequired: executionSnapshot.needsCredentialSetup,
 				},
 				execution: {
 					status: executionSnapshot.status,

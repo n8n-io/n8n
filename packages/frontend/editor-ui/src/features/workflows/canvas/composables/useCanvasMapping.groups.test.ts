@@ -220,15 +220,6 @@ describe('aggregateGroupExecution', () => {
 		).toBe('issues');
 	});
 
-	it('returns setup (not issues) when the only validation errors are missing credentials', () => {
-		expect(
-			statusOf(['a', 'b'], {
-				a: { hasValidationError: true, needsCredentialSetup: true },
-				b: { status: 'success' },
-			}),
-		).toBe('setup');
-	});
-
 	it('validation issues beat setup', () => {
 		expect(
 			statusOf(['a', 'b'], {
@@ -238,7 +229,7 @@ describe('aggregateGroupExecution', () => {
 		).toBe('issues');
 	});
 
-	it('setup beats warning (dirty)', () => {
+	it('setup (missing credentials only) beats warning (dirty) and success', () => {
 		expect(
 			statusOf(['a', 'b'], {
 				a: { hasValidationError: true, needsCredentialSetup: true },

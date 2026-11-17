@@ -143,6 +143,8 @@ export interface CanvasNodeData {
 	issues: {
 		validation: string[];
 		visible: boolean;
+		/** The only issues are missing credentials, shown as "setup required". */
+		setupRequired?: boolean;
 	};
 	execution: {
 		status?: ExecutionStatus;

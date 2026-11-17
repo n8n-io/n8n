@@ -9,7 +9,6 @@ import { throttledRef } from '@vueuse/core';
 import {
 	computed,
 	effectScope,
-	inject,
 	onScopeDispose,
 	provide,
 	ref,
@@ -20,7 +19,11 @@ import {
 	type EffectScope,
 } from 'vue';
 import type { CanvasEventBusEvents, GroupExpansionMode } from '../canvas.types';
-import { createEmptyCanvasRenderData, type CanvasRenderData } from '../canvas.utils';
+import {
+	createEmptyCanvasRenderData,
+	nodeNeedsCredentialSetup,
+	type CanvasRenderData,
+} from '../canvas.utils';
 import { useCanvasMapping } from '../composables/useCanvasMapping';
 import {
 	aggregateGroupExecution,
@@ -35,7 +38,7 @@ import { buildNodeGroupLayoutComponents } from '../composables/useCanvasNodeGrou
 import { ContextMenuGroupViewKey } from '@/features/shared/contextMenu/composables/contextMenuGroupView';
 import Canvas from './Canvas.vue';
 import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
-import { EditorEnabledFeaturesKey } from '@/app/constants/injectionKeys';
+import { useEditorContext } from '@/app/composables/useEditorContext';
 import { useWorkflowDocumentRenderData } from '@/app/stores/workflowDocument/useWorkflowDocumentRenderData';
 import { useExperimentalNdvStore } from '../experimental/experimentalNdv.store';
 import { useAgentNodeCanvasGeometryStore } from '@/features/agents/agentNodeCanvasGeometry.store';
@@ -134,10 +137,7 @@ const suppressInteractionRef = computed(() => props.suppressInteraction ?? false
 const experimentalNdvStore = useExperimentalNdvStore();
 const isExperimentalNdvActive = computed(() => experimentalNdvStore.isActive(viewport.value.zoom));
 const agentNodeGeometryStore = useAgentNodeCanvasGeometryStore();
-const editorFeatures = inject(EditorEnabledFeaturesKey, undefined);
-const credentialSetupWarnings = computed(
-	() => editorFeatures?.value.credentialSetupWarnings ?? false,
-);
+const { credentialSetupWarnings } = useEditorContext();
 
 const {
 	nodes: mappedWorkflowNodes,
@@ -151,7 +151,9 @@ const {
 	allGroups,
 	nodeGroupView,
 	isExperimentalNdvActive,
-	credentialSetupWarnings,
+	isNodeSetupRequired: (id) =>
+		credentialSetupWarnings.value &&
+		nodeNeedsCredentialSetup(workflowDocumentStore.value.getNodeById(id)),
 	getAgentNodeHeight: (id) => agentNodeGeometryStore.getNodeHeight(props.id, id),
 });
 

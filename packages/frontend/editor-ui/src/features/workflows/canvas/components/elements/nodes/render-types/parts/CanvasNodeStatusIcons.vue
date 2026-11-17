@@ -3,10 +3,7 @@ import { computed, inject, useCssModule } from 'vue';
 import TitledList from '@/app/components/TitledList.vue';
 import { useNodeHelpers } from '@/app/composables/useNodeHelpers';
 import { useCanvasNode } from '../../../../../composables/useCanvasNode';
-import {
-	injectCanvasRenderData,
-	nodeNeedsCredentialSetup,
-} from '@/features/workflows/canvas/canvas.utils';
+import { injectCanvasRenderData } from '@/features/workflows/canvas/canvas.utils';
 import { useI18n } from '@n8n/i18n';
 import { CanvasNodeDirtiness, CanvasNodeRenderType } from '../../../../../canvas.types';
 import { useRoute } from 'vue-router';
@@ -39,6 +36,7 @@ const {
 	name,
 	validationErrors,
 	hasValidationErrors,
+	isSetupRequired: needsCredentialSetup,
 	executionStatus,
 	hasRunData,
 	runDataIterations,
@@ -63,10 +61,6 @@ const deprecatedTooltip = computed(() =>
 
 const editorFeatures = inject(EditorEnabledFeaturesKey, undefined);
 const workflowDocumentStore = injectWorkflowDocumentStore();
-const needsCredentialSetup = computed(() => {
-	if (!editorFeatures?.value.credentialSetupWarnings) return false;
-	return nodeNeedsCredentialSetup(workflowDocumentStore.value.getNodeById(id.value));
-});
 const { labelOf } = usePolicyViolationLabels();
 const { restriction: subWorkflowRestriction } = useSubWorkflowRestriction({
 	parentWorkflowId: () => workflowDocumentStore.value.workflowId,

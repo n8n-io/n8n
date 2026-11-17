@@ -473,52 +473,53 @@ describe('useCanvasMapping — getNodeExecutionSnapshot', () => {
 	});
 
 	describe('needsCredentialSetup', () => {
-		function snapshotFor(node: INodeUi, credentialSetupWarnings: boolean) {
+		function mapWith({
+			validationErrors,
+			setupRequired,
+		}: {
+			validationErrors: string[];
+			setupRequired: boolean;
+		}) {
+			const node = createTestNode({ id: 'a', name: 'Alpha' }) as INodeUi;
 			const rd = createEmptyCanvasRenderData();
 			rd.validationErrorsByNodeId.set(
-				node.id,
-				computed(() => ['Credentials for Notion are not set.']),
+				'a',
+				computed(() => validationErrors),
 			);
-			const { getNodeExecutionSnapshot } = useCanvasMapping({
+			const isNodeSetupRequired = vi.fn(() => setupRequired);
+			const mapping = useCanvasMapping({
 				nodes: ref([node]),
 				connections: ref({}),
 				renderData: shallowRef(rd),
-				credentialSetupWarnings: ref(credentialSetupWarnings),
+				isNodeSetupRequired,
 			});
-			return getNodeExecutionSnapshot(node.id);
+			return { ...mapping, isNodeSetupRequired };
 		}
 
-		function createNodeWithCredentialIssue(overrides: Partial<INodeUi> = {}): INodeUi {
-			return {
-				...createTestNode({ id: 'a', name: 'Alpha' }),
-				issues: { credentials: { notionApi: ['Credentials for Notion are not set.'] } },
-				...overrides,
-			} as INodeUi;
-		}
-
-		it('is true when the only issue is a credential without an id', () => {
-			expect(snapshotFor(createNodeWithCredentialIssue(), true).needsCredentialSetup).toBe(true);
-		});
-
-		it('is false when the host does not show credential setup warnings', () => {
-			expect(snapshotFor(createNodeWithCredentialIssue(), false).needsCredentialSetup).toBe(false);
-		});
-
-		it('is false when the node also has parameter issues', () => {
-			const node = createNodeWithCredentialIssue({
-				issues: {
-					credentials: { notionApi: ['Credentials for Notion are not set.'] },
-					parameters: { pageId: ['Parameter "Page" is required.'] },
-				},
+		it('flags a node with validation errors that the host reports as setup required', () => {
+			const { getNodeExecutionSnapshot, nodes } = mapWith({
+				validationErrors: ['Credentials for Notion are not set.'],
+				setupRequired: true,
 			});
-			expect(snapshotFor(node, true).needsCredentialSetup).toBe(false);
+			expect(getNodeExecutionSnapshot('a').needsCredentialSetup).toBe(true);
+			expect(nodes.value[0].data?.issues.setupRequired).toBe(true);
 		});
 
-		it('is false when the credential is already selected', () => {
-			const node = createNodeWithCredentialIssue({
-				credentials: { notionApi: { id: '1', name: 'Notion account' } },
+		it('is false when the host does not report setup required', () => {
+			const { getNodeExecutionSnapshot } = mapWith({
+				validationErrors: ['Credentials for Notion are not set.'],
+				setupRequired: false,
 			});
-			expect(snapshotFor(node, true).needsCredentialSetup).toBe(false);
+			expect(getNodeExecutionSnapshot('a').needsCredentialSetup).toBe(false);
+		});
+
+		it('skips the host check for a node without validation errors', () => {
+			const { getNodeExecutionSnapshot, isNodeSetupRequired } = mapWith({
+				validationErrors: [],
+				setupRequired: true,
+			});
+			expect(getNodeExecutionSnapshot('a').needsCredentialSetup).toBe(false);
+			expect(isNodeSetupRequired).not.toHaveBeenCalled();
 		});
 	});
 
