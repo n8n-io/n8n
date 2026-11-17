@@ -20,17 +20,21 @@ import { useToast } from '@n8n/composables/useToast';
 import { useSettingsStore } from '@n8n/stores/settings.store';
 import { useMcp, useMCPStore } from '@n8n/frontend-module-mcp';
 import { deleteAgent } from '../composables/useAgentApi';
+import { useAgentArchive } from '../composables/useAgentArchive';
 import { useAgentConfirmationModal } from '../composables/useAgentConfirmationModal';
 import { useAgentPermissions } from '../composables/useAgentPermissions';
 import { useAgentPublish } from '../composables/useAgentPublish';
 import { removeProjectAgentFromListCache } from '../composables/useProjectAgentsList';
+import type { AgentListItem } from '../agent.types';
 import type { AgentResource } from '../types';
+import { hasAgentUnpublishedChanges } from '../utils/agentPublication';
 import { useFavoritesStore } from '@/app/stores/favorites.store';
 import type { ActionToggleItem } from '@n8n/design-system/components/N8nActionToggle/ActionToggle.types';
 
 const props = defineProps<{
-	agent: AgentResource;
+	agent: AgentListItem;
 	projectId: string;
+	showFolderPath?: boolean;
 }>();
 
 const emit = defineEmits<{
@@ -38,8 +42,11 @@ const emit = defineEmits<{
 	published: [agent: AgentResource];
 	unpublished: [agent: AgentResource];
 	deleted: [agentId: string];
+	archived: [agent: AgentResource];
+	unarchived: [agent: AgentResource];
 	'new-chat': [agentId: string, projectId: string];
 	duplicate: [agentId: string];
+	move: [agentId: string];
 }>();
 
 const locale = useI18n();
@@ -50,16 +57,14 @@ const mcpStore = useMCPStore();
 const mcp = useMcp();
 const { openAgentConfirmationModal } = useAgentConfirmationModal();
 const { publish, unpublish } = useAgentPublish();
+const { archive, unarchive } = useAgentArchive();
 const { canCreate, canUpdate, canDelete, canPublish, canUnpublish } = useAgentPermissions(
 	() => props.projectId,
 );
 
 const isPublished = computed(() => props.agent.activeVersionId !== null);
 
-// Saving a draft bumps `versionId`, so a mismatch means unpublished edits.
-const hasUnpublishedChanges = computed(
-	() => isPublished.value && props.agent.versionId !== props.agent.activeVersionId,
-);
+const hasUnpublishedChanges = computed(() => hasAgentUnpublishedChanges(props.agent));
 const isUntitled = computed(() => props.agent.name === locale.baseText('agents.new.defaultName'));
 
 const isMcpEnabled = computed(
@@ -78,17 +83,49 @@ watch([() => props.agent, () => props.agent.availableInMCP], () => {
 	mcpToggleStatus.value = null;
 });
 
-const showMcpIndicator = computed(() => isMcpEnabled.value && isAvailableInMCP.value);
+// MCP tools refuse an archived agent, so the indicator would mislead.
+const showMcpIndicator = computed(
+	() => isMcpEnabled.value && isAvailableInMCP.value && !props.agent.isArchived,
+);
 
 const favoriteStore = useFavoritesStore();
 const isFavorite = computed(() => favoriteStore.isFavorite(props.agent.id, 'agent'));
 
-const actions = computed(() => {
-	const items: ActionToggleItem[] = [];
+const archiveActions = computed((): ActionToggleItem[] => {
+	if (!canDelete.value) return [];
+	if (!props.agent.isArchived) {
+		return [{ value: 'archive', label: locale.baseText('menuActions.archive'), divided: true }];
+	}
+	return [
+		{
+			value: 'delete',
+			label: locale.baseText('agents.list.actions.delete'),
+			divided: true,
+			destructive: true,
+		},
+		{ value: 'unarchive', label: locale.baseText('menuActions.unarchive') },
+	];
+});
 
-	items.push({
+const favoriteAction = computed(
+	(): ActionToggleItem => ({
 		value: 'toggleFavorite',
 		label: locale.baseText(isFavorite.value ? 'favorites.remove' : 'favorites.add'),
+	}),
+);
+
+const actions = computed(() => {
+	// An archived agent is read-only. Offer only the favorite and archive actions.
+	if (props.agent.isArchived) return [favoriteAction.value, ...archiveActions.value];
+
+	const items: ActionToggleItem[] = [];
+
+	if (canUpdate.value && settingsStore.isFoldersFeatureEnabled) {
+		items.push({ value: 'move', label: locale.baseText('agents.folders.move') });
+	}
+
+	items.push({
+		...favoriteAction.value,
 		divided: !isPublished.value ? !canPublish.value : !canUnpublish.value,
 	});
 
@@ -123,16 +160,7 @@ const actions = computed(() => {
 		});
 	}
 
-	if (canDelete.value) {
-		items.push({
-			value: 'delete',
-			label: locale.baseText('agents.list.actions.delete'),
-			divided: true,
-			destructive: true,
-		});
-	}
-
-	return items;
+	return [...items, ...archiveActions.value];
 });
 
 const showActions = computed(() => actions.value.length > 0);
@@ -146,8 +174,39 @@ const formattedCreatedAtDate = computed(() => {
 	);
 });
 
+async function deleteArchivedAgent() {
+	const confirmed = await openAgentConfirmationModal({
+		title: locale.baseText('agents.delete.modal.title', {
+			interpolate: { name: props.agent.name },
+		}),
+		description: locale.baseText('agents.delete.modal.description', {
+			interpolate: { name: props.agent.name },
+		}),
+		isDestructive: true,
+		confirmButtonText: locale.baseText('agents.delete.modal.button.delete'),
+		cancelButtonText: locale.baseText('generic.cancel'),
+	});
+	if (confirmed !== MODAL_CONFIRM) return;
+	await deleteAgent(rootStore.restApiContext, props.projectId, props.agent.id);
+	removeProjectAgentFromListCache(props.projectId, props.agent.id);
+	favoriteStore.removeFavoriteLocally(props.agent.id, 'agent');
+	emit('deleted', props.agent.id);
+}
+
 async function onAction(action: string) {
-	if (action === 'publish') {
+	if (action === 'move') {
+		emit('move', props.agent.id);
+
+		return;
+	}
+
+	if (action === 'archive') {
+		const updated = await archive(props.agent);
+		if (updated) emit('archived', updated);
+	} else if (action === 'unarchive') {
+		const updated = await unarchive(props.agent);
+		if (updated) emit('unarchived', updated);
+	} else if (action === 'publish') {
 		const updated = await publish(props.projectId, props.agent.id);
 		if (updated) emit('published', updated);
 	} else if (action === 'unpublish') {
@@ -158,22 +217,7 @@ async function onAction(action: string) {
 	} else if (action === 'toggleMCPAccess') {
 		await toggleMCPAccess(!isAvailableInMCP.value);
 	} else if (action === 'delete') {
-		const confirmed = await openAgentConfirmationModal({
-			title: locale.baseText('agents.delete.modal.title', {
-				interpolate: { name: props.agent.name },
-			}),
-			description: locale.baseText('agents.delete.modal.description', {
-				interpolate: { name: props.agent.name },
-			}),
-			isDestructive: true,
-			confirmButtonText: locale.baseText('agents.delete.modal.button.delete'),
-			cancelButtonText: locale.baseText('generic.cancel'),
-		});
-		if (confirmed !== MODAL_CONFIRM) return;
-		await deleteAgent(rootStore.restApiContext, props.projectId, props.agent.id);
-		removeProjectAgentFromListCache(props.projectId, props.agent.id);
-		favoriteStore.removeFavoriteLocally(props.agent.id, 'agent');
-		emit('deleted', props.agent.id);
+		await deleteArchivedAgent();
 	} else if (action === 'duplicate') {
 		emit('duplicate', props.agent.id);
 	}
@@ -201,12 +245,31 @@ async function toggleMCPAccess(enabled: boolean) {
 					tag="h2"
 					:bold="!isUntitled"
 					:color="isUntitled ? 'text-light' : undefined"
-					:class="[$style.cardHeading, { [$style.untitledName]: isUntitled }]"
+					:class="[
+						$style.cardHeading,
+						{ [$style.untitledName]: isUntitled, [$style.cardHeadingArchived]: agent.isArchived },
+					]"
 					data-test-id="agent-card-name"
 				>
 					{{ agent.name }}
 				</N8nText>
-				<span v-if="isPublished" :class="$style.mcpIndicator" @click.stop>
+				<N8nText
+					v-if="showFolderPath && agent.folderPath?.length"
+					:class="$style.folderPath"
+					size="small"
+					color="text-light"
+					>{{ agent.folderPath.join(' / ') }}</N8nText
+				>
+				<N8nText
+					v-if="agent.isArchived"
+					color="text-light"
+					size="small"
+					bold
+					data-test-id="agent-card-archived"
+				>
+					{{ locale.baseText('workflows.item.archived') }}
+				</N8nText>
+				<span v-else-if="isPublished" :class="$style.mcpIndicator" @click.stop>
 					<PublicationIndicator
 						:label="
 							locale.baseText(
@@ -244,12 +307,15 @@ async function toggleMCPAccess(enabled: boolean) {
 			</template>
 			<template #actions>
 				<span :class="$style.cellContent" @click.stop>
-					<N8nTooltip :content="locale.baseText('agents.list.actions.newChat')">
+					<N8nTooltip
+						v-if="!agent.isArchived"
+						:content="locale.baseText('agents.list.actions.newTest')"
+					>
 						<N8nIconButton
-							icon="message-circle-plus"
+							icon="flask-conical"
 							variant="ghost"
 							size="medium"
-							:aria-label="locale.baseText('agents.list.actions.newChat')"
+							:aria-label="locale.baseText('agents.list.actions.newTest')"
 							data-test-id="agent-card-new-chat"
 							@click="emit('new-chat', agent.id, projectId)"
 						/>
@@ -286,8 +352,19 @@ async function toggleMCPAccess(enabled: boolean) {
 	font-style: italic;
 }
 
+.cardHeadingArchived {
+	color: var(--color--text--tint-1);
+}
+
 .readonlyBadge {
 	flex-shrink: 0;
+}
+
+.folderPath {
+	min-width: 0;
+	overflow: hidden;
+	white-space: nowrap;
+	text-overflow: ellipsis;
 }
 
 .mcpIndicator {

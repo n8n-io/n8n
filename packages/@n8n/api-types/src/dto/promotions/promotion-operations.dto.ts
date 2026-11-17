@@ -5,12 +5,14 @@ import { z } from 'zod';
 import { n8nIdSchema } from '../../schemas/id.schema';
 import { Z } from '../../zod-class';
 import {
-	promotionBindingPreflightResultSchema,
-	promotionBindingProjectSchema,
+	promotionApplyCheckSchema,
 	promotionBindingWarningSchema,
-	promotionInstanceProjectSchema,
-} from './promotion-binding-preflight.dto';
-import { promotionCommitMessageSchema } from './promotion-common.dto';
+} from './promotion-apply-check.dto';
+import {
+	expectedPreviewRevisionSchema,
+	promotionCommitMessageSchema,
+	promotionSelectedIdsSchema,
+} from './promotion-common.dto';
 import { promotionReviewResultSchema } from './promotion-review.dto';
 
 export class PromotePackageDto extends Z.class(
@@ -63,6 +65,21 @@ export const promotePackageResultSchema = z.object({
 });
 
 export class PromotePackageResultDto extends Z.class(promotePackageResultSchema.shape) {}
+
+/** The result of a project Promote. Read `status` before the other fields. */
+export const promoteSelectionResultSchema = z.discriminatedUnion('status', [
+	promotePackageResultSchema.extend({ status: z.literal('promoted') }),
+	/** The project or its branch changed after the reviewed preview. Nothing was pushed. */
+	z.object({ status: z.literal('preview-changed'), environmentId: n8nIdSchema }),
+]);
+
+export const PromoteSelectionResultDto = {
+	name: 'PromoteSelectionResultDto',
+	schema: promoteSelectionResultSchema,
+	parse: (value: unknown) => promoteSelectionResultSchema.parse(value),
+};
+
+export type PromoteSelectionResultDto = z.infer<typeof promoteSelectionResultSchema>;
 
 /** What the import changed. Partial results are visible here too. */
 export const applyPackageCountsSchema = z.object({
@@ -155,26 +172,32 @@ export class ContinueApplyPackageDto extends Z.class(
 	{ strict: true },
 ) {}
 
-/** The selection is a set, so a repeated workflow id is a malformed request. */
-const selectedWorkflowIdsSchema = z
-	.array(n8nIdSchema)
-	.min(1)
-	.refine((ids) => new Set(ids).size === ids.length, {
-		message: 'workflowIds contains duplicates',
-	});
+/**
+ * The selection of a project Apply. Apply always applies the project details, so a request
+ * without workflows and folders applies only the project.
+ */
+const applySelectionShape = {
+	workflowIds: promotionSelectedIdsSchema('workflowIds'),
+	folderIds: promotionSelectedIdsSchema('folderIds').openapi({
+		description:
+			'Folders of the project on the branch. Apply creates a selected folder, or moves and renames it to match the branch.',
+	}),
+};
 
 export class ApplySelectionDto extends Z.class(
 	{
-		workflowIds: selectedWorkflowIdsSchema,
+		...applySelectionShape,
 		expectedSource: expectedSourceSchema.optional(),
+		expectedPreviewRevision: expectedPreviewRevisionSchema,
 	},
 	{ strict: true },
 ) {}
 
 export class ContinueApplySelectionDto extends Z.class(
 	{
-		workflowIds: selectedWorkflowIdsSchema,
+		...applySelectionShape,
 		expectedSource: expectedSourceSchema,
+		expectedPreviewRevision: expectedPreviewRevisionSchema,
 		confirmDestructiveChanges: confirmDestructiveChangesSchema,
 	},
 	{ strict: true },
@@ -193,9 +216,11 @@ export const applyPackageResultSchema = z.discriminatedUnion('status', [
 	}),
 	applyPackageIdentitySchema.extend({
 		status: z.literal('blocked'),
-		preflight: promotionBindingPreflightResultSchema,
+		check: promotionApplyCheckSchema,
 	}),
 	applyPackageIdentitySchema.extend({ status: z.literal('source-changed') }),
+	/** This instance changed after the reviewed preview. Nothing was imported. */
+	applyPackageIdentitySchema.extend({ status: z.literal('preview-changed') }),
 ]);
 
 export const ApplyPackageResultDto = {
@@ -205,36 +230,3 @@ export const ApplyPackageResultDto = {
 };
 
 export type ApplyPackageResultDto = z.infer<typeof applyPackageResultSchema>;
-
-/** The Apply check reads the package at the commit of the Apply preview. */
-export class ApplyCheckQueryDto extends Z.class(
-	{ commitSha: expectedSourceSchema.shape.commitSha },
-	{ strict: true },
-) {}
-
-const crossProjectMoveSchema = z.object({
-	id: z.string(),
-	name: z.string(),
-	/** The project that holds the item on the branch. */
-	project: promotionBindingProjectSchema,
-	/**
-	 * False when the branch project does not exist on this instance yet. Then the item can only move
-	 * back on the source instance.
-	 */
-	projectExists: z.boolean(),
-	/** The project that holds the item on this instance. */
-	instanceProject: promotionInstanceProjectSchema,
-});
-
-const applyCheckResultSchema = applyPackageIdentitySchema.extend({
-	preflight: promotionBindingPreflightResultSchema,
-	/**
-	 * Workflows that the branch holds in one project and this instance holds in another, where one of
-	 * the two is this project. Apply cannot move them between projects.
-	 */
-	movedWorkflows: z.array(crossProjectMoveSchema),
-	/** Folders that the branch and this instance hold in different projects, as for workflows. */
-	movedFolders: z.array(crossProjectMoveSchema),
-});
-
-export type ApplyCheckResult = z.infer<typeof applyCheckResultSchema>;

@@ -36,7 +36,7 @@ it('does not let a pending read replace a completed action', async () => {
 	await store.select(resultSelection);
 	const request = createDeferredPromise<SelfHealingResultDetail>();
 	vi.mocked(api.fetchSelfHealingResult).mockReturnValueOnce(request.promise);
-	const loading = store.refreshDetail();
+	const loading = store.retryDetail();
 	store.acceptResult(result({ reviewState: 'applied' }));
 	request.resolve(result());
 	await loading;
@@ -44,12 +44,42 @@ it('does not let a pending read replace a completed action', async () => {
 	expect(store.loading).toBe(false);
 });
 
+it('shows a refreshed result only after its callback finishes', async () => {
+	const store = useSelfHealingResultStore();
+	await store.select(resultSelection);
+	vi.mocked(api.fetchSelfHealingResult).mockResolvedValueOnce(result({ reviewState: 'applied' }));
+	const handoff = createDeferredPromise();
+	const beforeShow = vi.fn(async () => await handoff.promise);
+	const loading = store.retryDetail(beforeShow);
+	await vi.waitFor(() => expect(beforeShow).toHaveBeenCalledOnce());
+	expect(store.detail?.reviewState).toBe('open');
+	expect(store.loading).toBe(true);
+	handoff.resolve();
+	await loading;
+	expect(store.detail?.reviewState).toBe('applied');
+	expect(store.loading).toBe(false);
+});
+
+it('skips the callback for a refresh replaced by another selection', async () => {
+	const store = useSelfHealingResultStore();
+	await store.select(resultSelection);
+	const request = createDeferredPromise<SelfHealingResultDetail>();
+	vi.mocked(api.fetchSelfHealingResult).mockReturnValueOnce(request.promise);
+	const beforeShow = vi.fn(async () => {});
+	const loading = store.retryDetail(beforeShow);
+	await store.select({ ...resultSelection, id: 'other' });
+	request.resolve(result({ reviewState: 'applied' }));
+	await loading;
+	expect(beforeShow).not.toHaveBeenCalled();
+	expect(store.detail?.resultId).toBe('other');
+});
+
 it.each([403, 404])('clears saved detail when a read returns %s', async (httpStatusCode) => {
 	const store = useSelfHealingResultStore();
 	await store.select(resultSelection);
 	const error = new ResponseError('Unavailable', { httpStatusCode });
 	vi.mocked(api.fetchSelfHealingResult).mockRejectedValueOnce(error);
-	await store.refreshDetail();
+	await store.retryDetail();
 	expect(store.detail).toBeNull();
 	expect(store.error).toBe(error);
 	expect(store.loading).toBe(false);
@@ -61,7 +91,7 @@ it('keeps the report available when the workflow metadata request fails', async 
 	const store = useSelfHealingResultStore();
 	await store.select(resultSelection);
 	expect(store.detail?.report).toBe(result().report);
-	expect(store.workflow).toBeNull();
+	expect(store.workflows.size).toBe(0);
 	expect(store.workflowError).toBe(error);
 	expect(store.error).toBeNull();
 });

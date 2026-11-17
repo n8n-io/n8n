@@ -1,4 +1,5 @@
 import type { BaseResource } from '@/Interface';
+import type { IconName } from '@n8n/design-system';
 import type {
 	AgentJsonToolConfig,
 	AgentCreationState,
@@ -7,9 +8,20 @@ import type {
 	AgentSkillReference,
 	AgentTokenUsage,
 } from '@n8n/api-types';
-import type { Agent, ToolDescriptor, CustomToolEntry } from './agent.types';
+import type { Agent, ToolDescriptor, CustomToolEntry, AgentListItem } from './agent.types';
 
 export type { ToolDescriptor, CustomToolEntry, AgentSkill, AgentSkillReference };
+
+export interface SessionTimelineMetadata {
+	trigger: {
+		source: string | null;
+		icon: IconName;
+		label: string;
+	};
+	totalTokens: number;
+	totalCost: number | null;
+	durationLabel: string;
+}
 
 export interface AgentContinueLoadedEvent {
 	sessionId: string;
@@ -54,12 +66,22 @@ export type AgentResource = BaseResource &
 		resourceType: 'agent';
 	};
 
+/**
+ * The list endpoints' projection, wrapped as a resource so the shared list
+ * layout accepts it. The wrapper exists only at render time; the list cache
+ * stores plain `AgentListItem` values.
+ */
+export type AgentListRowResource = BaseResource &
+	AgentListItem & {
+		resourceType: 'agent';
+	};
+
 export type AgentCreationResource = AgentResource & AgentCreationState;
 
 // Extend the ModuleResources interface to include Agent
 declare module '@/Interface' {
 	interface ModuleResources {
-		agent: AgentResource;
+		agent: AgentResource | AgentListRowResource;
 	}
 }
 

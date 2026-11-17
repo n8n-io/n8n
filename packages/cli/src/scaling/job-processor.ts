@@ -1,7 +1,7 @@
 import type { Tool } from '@langchain/core/tools';
 import type { RunningJobSummary } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
-import { EventService } from '@n8n/backend-services';
+import { EventService, sumNodeTimeSavedMinutes } from '@n8n/backend-services';
 import { ExecutionsConfig } from '@n8n/config';
 import { MAX_INTEGER_32BITS_SIGNED } from '@n8n/constants';
 import type { IExecutionResponse } from '@n8n/db';
@@ -14,11 +14,11 @@ import {
 	NodeOperationError,
 	TimeoutExecutionCancelledError,
 	Workflow,
-	UnexpectedError,
 	CHAT_TRIGGER_NODE_TYPE,
 	runDataAttemptedDynamicCredentials,
 	runDataUsedDynamicCredentials,
 } from 'n8n-workflow';
+import { UnexpectedError } from '@n8n/errors';
 import type {
 	CancellationReason,
 	ExecutionStatus,
@@ -37,7 +37,10 @@ import type {
 } from 'n8n-workflow';
 import type PCancelable from 'p-cancelable';
 
-import { getLifecycleHooksForScalingWorker } from '@/execution-lifecycle/execution-lifecycle-hooks';
+import {
+	getLifecycleHooksForScalingWorker,
+	getPushRefUserId,
+} from '@/execution-lifecycle/execution-lifecycle-hooks';
 import { prepareExecutionDataForDbUpdate } from '@/execution-lifecycle/shared/shared-hook-functions';
 import { ExecutionPersistence } from '@/executions/execution-persistence';
 import { getWorkflowActiveStatusFromWorkflowData } from '@/executions/execution.utils';
@@ -153,6 +156,10 @@ export class JobProcessor {
 		 */
 		if (execution.status === 'crashed') return { success: false };
 
+		// A stop request for a job that still waits in the queue only marks the execution as
+		// canceled: no worker runs it yet, and only the enqueuing process can remove the job.
+		if (execution.status === 'canceled') return { success: false };
+
 		// A correctly enqueued execution always carries a run-data payload. A missing
 		// one means the producer persisted no data, which would otherwise surface as an
 		// opaque `Cannot read properties of undefined` deref further down. Fail with a
@@ -228,23 +235,24 @@ export class JobProcessor {
 
 		const { pushRef } = job.data;
 
-		const lifecycleHooks = getLifecycleHooksForScalingWorker(
-			{
-				executionMode: execution.mode,
-				workflowData: execution.workflowData,
-				retryOf: execution.retryOf,
-				pushRef,
-				userId: execution.data.manualData?.userId,
-				source: execution.data.manualData?.source,
-				suppressErrorWorkflow: execution.data.manualData?.suppressErrorWorkflow,
-			},
-			executionId,
-		);
+		const hooksData: IWorkflowExecutionDataProcess = {
+			executionMode: execution.mode,
+			workflowData: execution.workflowData,
+			executionData: execution.data,
+			retryOf: execution.retryOf,
+			pushRef,
+			pushRefUserId: job.data.pushRefUserId,
+			userId: execution.data.manualData?.userId,
+			source: execution.data.manualData?.source,
+			suppressErrorWorkflow: execution.data.manualData?.suppressErrorWorkflow,
+		};
+		const lifecycleHooks = getLifecycleHooksForScalingWorker(hooksData, executionId);
 		additionalData.hooks = lifecycleHooks;
 
 		if (pushRef) {
 			additionalData.sendDataToUI = WorkflowExecuteAdditionalData.sendDataToUI.bind({
 				pushRef,
+				userId: getPushRefUserId(hooksData),
 			});
 		}
 
@@ -573,11 +581,29 @@ export class JobProcessor {
 			usedDynamicCredentials: !!run.data.executionData?.runtimeData?.credentials,
 			metadata: run.data.resultData.metadata,
 			waitTill: run.waitTill ?? null,
+			...(run.data.resultData.failedBeforeStart && { failedBeforeStart: true }),
+			nodeTimeSavedMinutes: sumNodeTimeSavedMinutes(run.data.resultData.runData),
 		};
 	}
 
 	stopJob(jobId: JobId) {
 		this.cancelJob(jobId, 'manual'); // Job stops via scaling service are always user-initiated
+	}
+
+	/**
+	 * Stop the running top-level job for an execution, if this worker runs it. A main that
+	 * did not enqueue the job has no Bull job handle, so it addresses the job by execution id.
+	 */
+	stopJobByExecutionId(executionId: string): boolean {
+		const entry = Object.entries(this.runningJobs).find(
+			([, runningJob]) => runningJob.executionId === executionId,
+		);
+		if (!entry) return false;
+
+		const [jobId] = entry;
+		this.cancelJob(jobId, 'manual');
+		this.logger.debug('Stopped running job by execution id', { executionId, jobId });
+		return true;
 	}
 
 	private cancelJob(jobId: JobId, reason: CancellationReason) {

@@ -12,6 +12,7 @@ import {
 } from '@n8n/agents';
 import { getProviderPrefix, splitModelId } from '@n8n/ai-utilities/agent-config';
 import { isRecord } from '@n8n/utils/is-record';
+import { readFileSync } from 'node:fs';
 import { appendFile } from 'node:fs/promises';
 
 import { evalUsageGuardrail } from './eval-usage';
@@ -184,11 +185,12 @@ function effortFromEnv(name: string): AnthropicThinkingEffort | undefined {
 function resolveEvalEffort(options: {
 	judge?: boolean;
 	model?: string;
+	resolvedModel?: ModelConfig;
 	effort?: AnthropicThinkingEffort;
 }): AnthropicThinkingEffort | undefined {
 	if (options.judge) return effortFromEnv('N8N_INSTANCE_AI_EVAL_JUDGE_EFFORT') ?? JUDGE_EFFORT;
-	// A caller that pins its model (an in-product helper) uses its own effort, or the standard one.
-	if (options.model !== undefined) return options.effort;
+	// A caller that pins or passes its model (an in-product helper) uses its own effort, or the standard one.
+	if (options.model !== undefined || options.resolvedModel !== undefined) return options.effort;
 	return effortFromEnv('N8N_INSTANCE_AI_EVAL_EFFORT');
 }
 
@@ -205,25 +207,15 @@ const CACHE_PROVIDER_OPTS = {
 	providerOptions: EPHEMERAL_CACHE,
 };
 
-/**
- * Env-based tiered model when configured, otherwise the caller's fallback.
- * Deployments where the model is managed outside the environment (e.g. the
- * cloud AI service proxy) have no eval API key, so without a fallback every
- * in-product eval call would fail before reaching the LLM.
- */
-function resolveAgentModel(model?: string, fallbackModelConfig?: ModelConfig): ModelConfig {
-	try {
-		const { modelId, apiKey, url, headers } = resolveEvalModelConfig(model);
-		return {
-			id: modelId,
-			apiKey,
-			url,
-			...(headers ? { headers } : {}),
-		};
-	} catch (error) {
-		if (fallbackModelConfig) return fallbackModelConfig;
-		throw error;
-	}
+/** Env-based eval model, for harness callers that have no host-resolved model. */
+function resolveAgentModel(model?: string): ModelConfig {
+	const { modelId, apiKey, url, headers } = resolveEvalModelConfig(model);
+	return {
+		id: modelId,
+		apiKey,
+		url,
+		...(headers ? { headers } : {}),
+	};
 }
 
 /** Step hooks that append one JSON line per model call to `N8N_INSTANCE_AI_EVAL_USAGE_LOG`, to price eval runs. */
@@ -265,27 +257,44 @@ function usageLogHooks(
 	};
 }
 
+/**
+ * Same switch as `InstanceAiConfig.modelRequestLabels`, read here so harness callers share it.
+ * Parses as `@n8n/config` does: the env value as is, else the trimmed `_FILE` contents.
+ */
+function requestLabelsEnabled(): boolean {
+	const name = 'N8N_INSTANCE_AI_MODEL_REQUEST_LABELS';
+	const filePath = process.env[`${name}_FILE`];
+	const value = process.env[name] ?? (filePath ? readFileSync(filePath, 'utf8').trim() : '');
+	return ['true', '1'].includes(value.toLowerCase());
+}
+
 export function createEvalAgent(
 	name: string,
 	options: {
 		model?: string;
-		/** Thinking effort for a pinned `model`. Ignored without one. */
+		/**
+		 * Host-resolved model for in-product helpers. Used as is: it skips the
+		 * environment lookup that `model` goes through.
+		 */
+		resolvedModel?: ModelConfig;
+		/** Thinking effort for a pinned `model` or a `resolvedModel`. Ignored without one. */
 		effort?: AnthropicThinkingEffort;
 		instructions: string;
 		cache?: boolean;
-		/** Host-resolved model used when no eval model API key is configured in the environment. */
-		fallbackModelConfig?: ModelConfig;
 		modelFetch?: FetchFn;
 		telemetry?: BuiltTelemetry;
 		/** Use `N8N_INSTANCE_AI_EVAL_JUDGE_MODEL` / `_JUDGE_EFFORT` instead of the default eval settings. */
 		judge?: boolean;
 	},
 ): Agent {
-	const model = resolveAgentModel(
-		options.judge ? (judgeModelOverride() ?? options.model ?? JUDGE_MODEL) : options.model,
-		options.fallbackModelConfig,
-	);
+	const model =
+		options.resolvedModel ??
+		resolveAgentModel(
+			options.judge ? (judgeModelOverride() ?? options.model ?? JUDGE_MODEL) : options.model,
+		);
 	const agent = new Agent(name).model(model);
+	// The SDK accepts only `[A-Za-z0-9._-]` in a caller id.
+	if (requestLabelsEnabled()) agent.functionId(name.replace(/[^A-Za-z0-9._-]+/g, '-'));
 	if (options.modelFetch) agent.modelFetch(options.modelFetch);
 	if (options.telemetry) agent.telemetry(options.telemetry);
 

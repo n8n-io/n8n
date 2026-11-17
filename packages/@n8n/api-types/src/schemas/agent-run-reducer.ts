@@ -25,7 +25,7 @@ import {
 } from './instance-ai-event-lifecycle';
 import type { InstanceAiEventLifecycle } from './instance-ai-event-lifecycle';
 import { getRenderHint, isKnownInstanceAiErrorCode, isSafeObjectKey } from './instance-ai.schema';
-import { resolveBuilderToolName } from '../builder-tool-names';
+import { resolveBuilderToolName, unwrapToolCatalogCall } from '../builder-tool-names';
 import type {
 	InstanceAiEvent,
 	InstanceAiAgentNode,
@@ -389,15 +389,16 @@ export function reduceEvent(state: AgentRunState, event: InstanceAiEvent): Agent
 
 		case 'tool-call': {
 			if (!isSafeObjectKey(event.payload.toolCallId)) break;
+			// Show the tool that a tool catalog `call_tool` call runs. Events stored
+			// before the server unwrapped these calls still carry `call_tool`.
+			const call = unwrapToolCatalogCall(event.payload.toolName, event.payload.args);
 			// Announced by a preceding tool-input-start: fill in the streamed args
 			// on the existing entry instead of duplicating it.
 			const announced = state.toolCallsById[event.payload.toolCallId];
 			if (announced) {
-				announced.args = event.payload.args;
-				announced.toolName = resolveBuilderToolName(
-					event.payload.toolName,
-					event.payload.args.action,
-				);
+				announced.args = call.args;
+				announced.toolName = resolveBuilderToolName(call.toolName, call.args.action);
+				announced.renderHint = getRenderHint(call.toolName);
 				break;
 			}
 			const agent = ensureAgent(state, event.agentId);
@@ -405,10 +406,10 @@ export function reduceEvent(state: AgentRunState, event: InstanceAiEvent): Agent
 				const tc: InstanceAiToolCallState = {
 					runId: event.runId,
 					toolCallId: event.payload.toolCallId,
-					toolName: resolveBuilderToolName(event.payload.toolName, event.payload.args.action),
-					args: event.payload.args,
+					toolName: resolveBuilderToolName(call.toolName, call.args.action),
+					args: call.args,
 					isLoading: true,
-					renderHint: getRenderHint(event.payload.toolName),
+					renderHint: getRenderHint(call.toolName),
 					startedAt: eventTimestamp(event),
 				};
 				state.toolCallsById[event.payload.toolCallId] = tc;
@@ -489,6 +490,7 @@ export function reduceEvent(state: AgentRunState, event: InstanceAiEvent): Agent
 					runId: event.runId,
 					tools: event.payload.tools,
 					taskId: event.payload.taskId,
+					...(event.detachedFromTurn ? { detachedFromTurn: true } : {}),
 					kind: event.payload.kind,
 					activity: event.payload.activity,
 					title: event.payload.title,
@@ -544,6 +546,16 @@ export function reduceEvent(state: AgentRunState, event: InstanceAiEvent): Agent
 			break;
 		}
 
+		case 'auto-approval': {
+			if (!isSafeObjectKey(event.payload.toolCallId)) break;
+			const tc = state.toolCallsById[event.payload.toolCallId];
+			if (tc) {
+				const { message, reason, decidedBy } = event.payload;
+				tc.autoApproval = { message, reason, decidedBy };
+			}
+			break;
+		}
+
 		case 'instance-context': {
 			// Store the row on the root so history replay restores it.
 			const root = ensureAgent(state, state.rootAgentId);
@@ -556,6 +568,27 @@ export function reduceEvent(state: AgentRunState, event: InstanceAiEvent): Agent
 					type: 'instance-context',
 					runId: event.runId,
 					injection: event.payload.injection,
+					...(event.responseId ? { responseId: event.responseId } : {}),
+				});
+			}
+			break;
+		}
+
+		case 'skill-update': {
+			const agent = ensureAgent(state, event.agentId);
+			const alreadyShown = agent?.timeline.some(
+				(entry) =>
+					entry.type === 'skill-update' &&
+					entry.runId === event.runId &&
+					entry.skillId === event.payload.skillId &&
+					entry.version === event.payload.version &&
+					entry.change === event.payload.change,
+			);
+			if (agent && !alreadyShown) {
+				agent.timeline.push({
+					type: 'skill-update',
+					runId: event.runId,
+					...event.payload,
 					...(event.responseId ? { responseId: event.responseId } : {}),
 				});
 			}
@@ -648,7 +681,14 @@ export function reduceEvent(state: AgentRunState, event: InstanceAiEvent): Agent
 				(status === 'cancelled' || status === 'interrupted') &&
 				(!state.currentRunId || state.currentRunId === event.runId);
 			if (status !== 'completed') {
+				const detachedToolCallIds = new Set<string>();
 				for (const agent of Object.values(state.agentsById)) {
+					// An agent detached from its turn outlives the run that started it, and so do its tool
+					// calls. Its own events end them.
+					if (agent.detachedFromTurn) {
+						for (const tc of agent.toolCalls) detachedToolCallIds.add(tc.toolCallId);
+						continue;
+					}
 					if (agent.status === 'active' && (agent.runId === event.runId || cancelGroup)) {
 						agent.status = status === 'error' ? 'error' : 'cancelled';
 						if (agent.runId && isSafeObjectKey(agent.runId))
@@ -656,6 +696,7 @@ export function reduceEvent(state: AgentRunState, event: InstanceAiEvent): Agent
 					}
 				}
 				for (const tc of Object.values(state.toolCallsById)) {
+					if (detachedToolCallIds.has(tc.toolCallId)) continue;
 					if (tc.runId === event.runId || cancelGroup) tc.isLoading = false;
 				}
 			}
@@ -761,6 +802,7 @@ export function stateFromAgentTree(tree: InstanceAiAgentNode): AgentRunState | u
 	state.currentRunId = currentRunId;
 	if (tree.status === 'cancelled' || tree.status === 'error') {
 		for (const node of Object.values(state.agentsById)) {
+			if (node.detachedFromTurn) continue;
 			if (node.status === 'active') node.status = tree.status;
 			if (isAdoptableId(node.runId)) state.lifecycle.closedRuns[node.runId] = true;
 			for (const tc of node.toolCalls) tc.isLoading = false;

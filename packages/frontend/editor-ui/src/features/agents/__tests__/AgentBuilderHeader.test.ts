@@ -1,10 +1,20 @@
+vi.mock('@n8n/stores/settings.store', () => ({
+	useSettingsStore: () => ({ isFoldersFeatureEnabled: true }),
+}));
 /* eslint-disable import-x/no-extraneous-dependencies, @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access -- test-only patterns */
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { mount, flushPromises, type VueWrapper } from '@vue/test-utils';
 import { ref } from 'vue';
 
+import type { PathItem } from '@n8n/design-system';
 import type { AgentResource } from '../types';
 import { AGENT_BUILDER_VIEW, PENDING_AGENT_ID_STATE } from '../constants';
+
+const folderBreadcrumbs = ref<PathItem[]>([]);
+
+vi.mock('../composables/useAgentFolderBreadcrumb', () => ({
+	useAgentFolderBreadcrumb: () => folderBreadcrumbs,
+}));
 
 const trackClickedNewAgentMock = vi.fn();
 vi.mock('../composables/useAgentTelemetry', () => ({
@@ -35,15 +45,11 @@ vi.mock('@n8n/i18n', () => ({
 
 vi.mock('vue-router', () => ({
 	useRouter: () => ({ push: routerPush, resolve: routerResolve }),
+	useRoute: () => ({ query: {} }),
 	RouterLink: { template: '<a><slot/></a>' },
 }));
 
 vi.mock('@n8n/design-system', () => ({
-	N8nAssistantIcon: {
-		name: 'N8nAssistantIcon',
-		template: '<i data-testid="stub-assistant-icon" />',
-		props: ['size'],
-	},
 	N8nText: { template: '<span><slot /></span>', props: ['step', 'color'] },
 	N8nIcon: { template: '<i v-bind="$attrs"></i>', props: ['icon', 'size'] },
 	N8nButton: {
@@ -135,11 +141,12 @@ const globalStubs = {
 			'projectId',
 			'agentId',
 			'isSaving',
+			'showPublishTimeline',
 			'beforeRevertToPublished',
 			'configValidationStatus',
 			'beforePublish',
 		],
-		emits: ['publish-ready', 'published', 'unpublished', 'reverted'],
+		emits: ['publish-ready', 'published', 'unpublished', 'reverted', 'open-publish-timeline'],
 	},
 };
 
@@ -151,7 +158,6 @@ function mountHeader(
 		headerActions: unknown[];
 		mode: 'edit' | 'preview';
 		artifactMode: boolean;
-		isPreviewOpen: boolean;
 		currentSessionTitle: string;
 		sessionOptions: Array<{ id: string; label: string }>;
 		configValidationStatus: 'valid' | 'invalid' | null;
@@ -181,6 +187,7 @@ function mountHeader(
 
 describe('AgentBuilderHeader', () => {
 	beforeEach(() => {
+		folderBreadcrumbs.value = [];
 		ensureLoadedMock.mockReset();
 		routerPush.mockReset();
 		routerResolve.mockClear();
@@ -194,6 +201,14 @@ describe('AgentBuilderHeader', () => {
 		expect(wrapper.find('[data-testid="agent-header-preview-btn"]').exists()).toBe(false);
 		expect(wrapper.find('[data-testid="stub-publish"]').exists()).toBe(true);
 		expect(wrapper.find('[data-testid="agent-header-actions"]').exists()).toBe(true);
+	});
+
+	it('connects the publish menu timeline action to the builder', () => {
+		const wrapper = mountHeader();
+		const publish = wrapper.getComponent({ name: 'AgentPublishButton' });
+		expect(publish.props('showPublishTimeline')).toBe(true);
+		publish.vm.$emit('open-publish-timeline');
+		expect(wrapper.emitted('open-publish-timeline')).toEqual([[]]);
 	});
 
 	it('links the help trigger and card to the Agent documentation', () => {
@@ -225,7 +240,9 @@ describe('AgentBuilderHeader', () => {
 			headerActions: [{ id: 'delete', label: 'Delete' }],
 		});
 
-		expect(wrapper.find('[data-testid="agent-header-version-history-btn"]').exists()).toBe(false);
+		expect(wrapper.getComponent({ name: 'AgentPublishButton' }).props('showPublishTimeline')).toBe(
+			false,
+		);
 		expect(wrapper.find('[data-testid="agent-header-actions"]').exists()).toBe(false);
 	});
 
@@ -264,6 +281,23 @@ describe('AgentBuilderHeader', () => {
 		}>;
 
 		expect(items[0].icon).toEqual(projectIcon);
+	});
+
+	it('shows folder breadcrumbs and opens the selected folder', () => {
+		folderBreadcrumbs.value = [
+			{ id: 'folder-1', label: 'Support', href: '/projects/p1/agents?folderId=folder-1' },
+		];
+		const wrapper = mountHeader();
+		const breadcrumbs = wrapper.findComponent({ name: 'N8nBreadcrumbs' });
+
+		expect(breadcrumbs.props('items')).toEqual(expect.arrayContaining(folderBreadcrumbs.value));
+		breadcrumbs.vm.$emit('itemSelected', folderBreadcrumbs.value[0]);
+
+		expect(routerPush).toHaveBeenCalledWith({
+			name: 'ProjectAgents',
+			params: { projectId: 'p1' },
+			query: { folderId: 'folder-1' },
+		});
 	});
 
 	it('links the project breadcrumb to the project agents page', () => {

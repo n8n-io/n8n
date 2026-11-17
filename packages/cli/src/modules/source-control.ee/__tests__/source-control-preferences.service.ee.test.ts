@@ -7,8 +7,7 @@ import os from 'os';
 import path from 'path';
 import { mock, mockReset } from 'vitest-mock-extended';
 
-import type { Publisher } from '@/scaling/pubsub/publisher.service';
-import { InstanceWriteAccessService } from '@n8n/backend-services';
+import { InstanceWriteAccessService, type Publisher } from '@n8n/backend-services';
 
 import { SourceControlPreferencesService } from '../source-control-preferences.service.ee';
 import type { SourceControlPreferences } from '../types/source-control-preferences';
@@ -489,8 +488,8 @@ describe('SourceControlPreferencesService', () => {
 		});
 
 		const savedVersion = () => {
-			const [saved] = mockSettingsRepository.save.mock.calls[0] as [{ value: string }];
-			return JSON.parse(saved.value).environmentsVersion;
+			const [, value] = mockSettingsRepository.upsertByKey.mock.calls[0];
+			return JSON.parse(value).environmentsVersion;
 		};
 
 		it.each([
@@ -505,7 +504,7 @@ describe('SourceControlPreferencesService', () => {
 
 				await loader.loadFromDbAndApplySourceControlPreferences();
 
-				expect(mockSettingsRepository.save).toHaveBeenCalledTimes(1);
+				expect(mockSettingsRepository.upsertByKey).toHaveBeenCalledTimes(1);
 				expect(savedVersion()).toBe(version);
 				expect(loader.getPreferences().environmentsVersion).toBe(version);
 			},
@@ -518,7 +517,7 @@ describe('SourceControlPreferencesService', () => {
 
 			await loader.loadFromDbAndApplySourceControlPreferences();
 
-			expect(mockSettingsRepository.save).not.toHaveBeenCalled();
+			expect(mockSettingsRepository.upsertByKey).not.toHaveBeenCalled();
 			expect(loader.getPreferences().environmentsVersion).toBe('v2');
 		});
 

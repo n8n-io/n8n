@@ -221,22 +221,22 @@ function onScroll() {
 	scrollTop.value = readScrollTop();
 }
 
-function scrollTo(position: number) {
+function scrollTo(position: number, behavior: ScrollBehavior = 'auto') {
 	if (!scrollContainer.value) {
 		return;
 	}
 
-	scrollContainer.value.scrollTop = position + getListOffset();
+	scrollContainer.value.scrollTo({ top: position + getListOffset(), behavior });
 	scrollTop.value = readScrollTop();
 }
 
-function scrollToKey(key: Item[Key]) {
+function scrollToKey(key: Item[Key], behavior: ScrollBehavior = 'auto') {
 	const position = itemPositionCache.value[key];
 	if (position === undefined) {
 		return;
 	}
 
-	scrollTo(position);
+	scrollTo(position, behavior);
 }
 
 defineExpose({ scrollToKey, scrollTo, scrollTop });

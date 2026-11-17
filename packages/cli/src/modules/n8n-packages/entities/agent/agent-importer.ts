@@ -1,16 +1,21 @@
-import { ProjectScopeService } from '@n8n/backend-services';
+import type { AgentIntegrationConfig, ImportedAgentChannel } from '@n8n/api-types';
+import { ProjectScopeService, UrlService } from '@n8n/backend-services';
 import { Service } from '@n8n/di';
-import { BadRequestError, ForbiddenError } from '@n8n/errors';
+import { BadRequestError, ForbiddenError, UserError } from '@n8n/errors';
 import type { Scope } from '@n8n/permissions';
-import { UserError } from 'n8n-workflow';
 
 import { AgentConfigService } from '@/modules/agents/agent-config.service';
 import { AgentConfigPreparationService } from '@/modules/agents/agent-config-preparation.service';
 import { AgentPolicyService } from '@/modules/agents/agent-policy.service';
+import { AgentPublishService } from '@/modules/agents/agent-publish.service';
 import { AgentsService } from '@/modules/agents/agents.service';
 import { AgentsSettingsService } from '@/modules/agents/agents-settings.service';
 import type { CompleteAgentDefinition } from '@/modules/agents/utils/agent-definition';
 import type { ProjectAgent } from '@/modules/agents/entities/agent.entity';
+import {
+	resolveImportedChannels,
+	type ImportedChannel,
+} from '@/modules/agents/integrations/resolve-imported-channels';
 import type { AgentImportIdentity } from '@/modules/agents/repositories/agent.repository';
 
 import { agentBodyIssues } from './agent-body-issues';
@@ -24,10 +29,18 @@ import {
 	type PreparedAgent,
 	type PersistedAgentOutcome,
 } from './agent-import.types';
-import type { ImportEntityProperties } from '../../n8n-packages.types';
+import { LayoutConflictPolicy, type ImportEntityProperties } from '../../n8n-packages.types';
+import type { SerializedSkill } from '../../spec/serialized/skill.schema';
 import { decideImportConflictAction } from '../import-conflict-policy';
+import { SkillImporter } from '../skill/skill-importer';
+import { decideWorkflowArchiveTransition } from '../workflow/workflow-archive-transition';
 import { derivePublishedState } from '../workflow/workflow-published-state';
 import { decidePublishingAction } from '../workflow/workflow-publishing-policy';
+
+type AgentImportOptions = ImportEntityProperties & {
+	checkRootPlacement: boolean;
+	layoutConflictPolicy?: LayoutConflictPolicy;
+};
 
 @Service()
 export class AgentImporter {
@@ -37,14 +50,18 @@ export class AgentImporter {
 		private readonly configService: AgentConfigService,
 		private readonly configPreparation: AgentConfigPreparationService,
 		private readonly policyService: AgentPolicyService,
+		private readonly publishService: AgentPublishService,
 		private readonly projectScopeService: ProjectScopeService,
 		private readonly settingsService: AgentsSettingsService,
+		private readonly skillImporter: SkillImporter,
+		private readonly urlService: UrlService,
 	) {}
 
 	async plan(
 		context: AgentImportMatchContext,
 		agents: PreparedAgent[],
-		options: ImportEntityProperties,
+		skills: SerializedSkill[],
+		options: AgentImportOptions,
 	): Promise<AgentImportPlan> {
 		const plan: AgentImportPlan = {
 			items: [],
@@ -80,6 +97,15 @@ export class AgentImporter {
 		const active = plan.items.filter(({ action }) => action !== 'skip');
 		if (active.length > 0) await this.settingsService.assertEnabled();
 		for (const item of active) plan.issues.push(...agentBodyIssues(item));
+		const skillPlan = await this.skillImporter.plan(
+			context,
+			plan.items,
+			skills,
+			options.conflictPolicy,
+		);
+		plan.skills = skillPlan.plan;
+		plan.issues.push(...skillPlan.issues);
+		for (const item of plan.items) useSkillCopies(item, skillPlan.copyIds);
 		return plan;
 	}
 
@@ -90,7 +116,11 @@ export class AgentImporter {
 			if (item.action === 'skip') continue;
 			let validated: AgentPlanItem;
 			try {
-				validated = await this.validateDefinition(item);
+				// Validate the source channels before they become destination channels.
+				validated = withImportedChannels(
+					await this.validateDefinition(item),
+					item.existing?.integrations ?? [],
+				);
 			} catch (error) {
 				if (!(error instanceof UserError) && !(error instanceof BadRequestError)) throw error;
 				issues.push({
@@ -131,6 +161,7 @@ export class AgentImporter {
 			{ ...context, projectPendingCreation: false },
 			requiredAgentScopes(plan),
 		);
+		if (plan.skills) await this.skillImporter.applyShared(context.user, plan.skills);
 		for (const item of plan.items) {
 			if (item.action === 'skip') {
 				outcomes.push({
@@ -146,6 +177,9 @@ export class AgentImporter {
 					availableInMCP: item.availableInMCP,
 				},
 				plannedDestinations: plan.plannedDestinations,
+				writeSkills: plan.skills
+					? this.skillImporter.writerFor(plan.skills, item.sourceAgentId)
+					: undefined,
 			};
 			let agent: ProjectAgent;
 			if (item.action === 'create') {
@@ -164,15 +198,30 @@ export class AgentImporter {
 					context.user,
 					{
 						...options,
+						// Shared skill writes do not change the revision of the Agents that follow them.
 						expectedRevision: item.existing.revision,
+						allowArchivedUpdate: item.existing.isArchived,
 					},
 				);
 			}
+			const parentFolderId = item.action === 'create' ? item.parentFolderId : item.moveToFolderId;
+
+			if (parentFolderId !== undefined) {
+				await this.agentsService.move(agent.id, context.projectId, parentFolderId);
+				agent.parentFolderId = parentFolderId;
+			}
+
+			agent = await this.applyArchiveTransition(context, item, agent);
+			const channels = item.channels.map((channel) => this.withSetupUrl(channel, agent));
 			outcomes.push({
 				status: item.action === 'create' ? 'created' : 'updated',
 				agent,
 				sourceAgentId: item.sourceAgentId,
 				publishingAction: item.publishingAction,
+				channels,
+				...(channels.some(({ status }) => status === 'setup-required')
+					? { blockedFromPublish: 'channel-setup-required' as const }
+					: {}),
 			});
 		}
 		for (const outcome of outcomes) {
@@ -186,7 +235,7 @@ export class AgentImporter {
 		agent: PreparedAgent,
 		match: AgentImportIdentity | undefined,
 		context: AgentImportMatchContext,
-		options: ImportEntityProperties,
+		options: AgentImportOptions,
 	): Promise<AgentPlanItem | AgentImportIssue> {
 		const { action, blocked } = decideImportConflictAction(
 			options.conflictPolicy,
@@ -205,15 +254,20 @@ export class AgentImporter {
 			? await this.agentsService.findById(agent.sourceAgentId, context.projectId)
 			: null;
 		const statuses = { create: 'created', update: 'updated', skip: 'skipped' } as const;
-		const publishingAction = decidePublishingAction(options.publishingPolicy, {
-			status: statuses[action],
-			currentlyPublished: Boolean(existing?.activeVersionId),
-			sourcePublished: derivePublishedState(agent.metadata),
-		});
-		const item = {
-			...structuredClone(agent),
-			publishingAction,
-		};
+		// The archive step unpublishes an archived Agent, so the publication sweep leaves it alone.
+		const publishingAction = agent.isArchived
+			? 'noop'
+			: decidePublishingAction(options.publishingPolicy, {
+					status: statuses[action],
+					currentlyPublished: Boolean(existing?.activeVersionId),
+					sourcePublished: derivePublishedState(agent.metadata),
+				});
+		const archiveTransition =
+			action === 'skip'
+				? null
+				: decideWorkflowArchiveTransition(agent.isArchived, existing?.isArchived ?? false);
+		const channels: ImportedChannel[] = [];
+		const item = { ...structuredClone(agent), publishingAction, archiveTransition, channels };
 		if (action === 'create') return { ...item, action, existing: null };
 		if (!existing) {
 			return {
@@ -223,7 +277,60 @@ export class AgentImporter {
 				message: 'The destination Agent no longer exists.',
 			};
 		}
+
+		if (
+			action === 'update' &&
+			agent.parentFolderId !== undefined &&
+			(agent.parentFolderId !== null || options.checkRootPlacement) &&
+			existing.parentFolderId !== agent.parentFolderId
+		) {
+			if (options.layoutConflictPolicy !== LayoutConflictPolicy.FollowPackage) {
+				return {
+					type: 'agent-invalid',
+					sourceAgentId: agent.sourceAgentId,
+					path: 'parentFolderId',
+					message: 'The package places this Agent in a different folder from its current location.',
+				};
+			}
+
+			return { ...item, action, existing, moveToFolderId: agent.parentFolderId };
+		}
+
 		return { ...item, action, existing };
+	}
+
+	private async applyArchiveTransition(
+		context: AgentImportMatchContext,
+		item: AgentPlanItem,
+		agent: ProjectAgent,
+	): Promise<ProjectAgent> {
+		if (item.archiveTransition === 'archive') {
+			return await this.publishService.archiveAgent(
+				agent.id,
+				context.projectId,
+				context.user,
+				undefined,
+				undefined,
+				context.ctx,
+			);
+		}
+		if (item.archiveTransition === 'unarchive') {
+			return await this.publishService.unarchiveAgent(
+				agent.id,
+				context.projectId,
+				context.user,
+				undefined,
+				context.ctx,
+			);
+		}
+		return agent;
+	}
+
+	private withSetupUrl(channel: ImportedChannel, agent: ProjectAgent): ImportedAgentChannel {
+		if (channel.status === 'reused') return channel;
+		// Concatenate, so the link keeps the base path of an instance under a sub-path.
+		const setupUrl = `${this.urlService.getInstanceBaseUrl()}/projects/${agent.projectId}/agents/${agent.id}`;
+		return { ...channel, setupUrl };
 	}
 
 	private async validateDefinition(item: AgentPlanItem): Promise<AgentPlanItem> {
@@ -249,11 +356,30 @@ export class AgentImporter {
 	}
 }
 
+/** A package credential never connects a channel. */
+function withImportedChannels<T extends PreparedAgent & { channels: ImportedChannel[] }>(
+	item: T,
+	destination: AgentIntegrationConfig[],
+): T {
+	const source = item.config?.integrations;
+	if (!item.config || !source) return item;
+	const { integrations, channels } = resolveImportedChannels(destination, source);
+	return { ...item, config: { ...item.config, integrations }, channels };
+}
+
+/** Points the skill refs of the Agent to the copies that the import uses. */
+function useSkillCopies(item: AgentPlanItem, copyIds: Map<string, string>): void {
+	if (!item.config?.skills) return;
+	item.config.skills = item.config.skills.map((ref) => ({
+		...ref,
+		id: copyIds.get(ref.id) ?? ref.id,
+	}));
+}
+
 function completeDefinition(item: PreparedAgent): CompleteAgentDefinition {
 	return {
 		name: item.name,
 		config: item.config,
-		skills: item.skills,
 		tools: item.tools,
 		tasks: new Map(Object.entries(item.tasks)),
 	};

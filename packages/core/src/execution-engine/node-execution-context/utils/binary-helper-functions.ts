@@ -16,13 +16,12 @@ import type {
 import {
 	NodeOperationError,
 	fileTypeFromMimeType,
-	UserError,
-	UnexpectedError,
 	isBinaryValue,
 	BINARY_MODE_COMBINED,
 	BINARY_MODE_SEPARATE,
 	sanitizeFilename,
 } from 'n8n-workflow';
+import { UserError, UnexpectedError } from '@n8n/errors';
 import path from 'path';
 import type { Readable } from 'stream';
 import { URL } from 'url';
@@ -268,12 +267,16 @@ export async function prepareBinaryData(
 					const parsed = new URL(responseUrl);
 					parsed.username = '';
 					parsed.password = '';
+					parsed.search = '';
+					parsed.hash = '';
 					sanitizedUrl = parsed.toString();
 					urlPathname = parsed.pathname;
 				}
+				const requestPathname = binaryData.req?.path
+					? new URL(binaryData.req.path, 'http://localhost').pathname
+					: undefined;
 				filePath =
-					binaryData.contentDisposition?.filename ??
-					(urlPathname ?? binaryData.req?.path)?.slice(1);
+					binaryData.contentDisposition?.filename ?? (urlPathname ?? requestPathname)?.slice(1);
 				fullUrl = sanitizedUrl;
 			} catch {}
 		}

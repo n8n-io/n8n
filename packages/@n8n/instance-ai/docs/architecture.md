@@ -124,7 +124,7 @@ graph TD
     O -->|direct| T1[workflows]
     O -->|direct| T2[executions]
     O -->|direct| T3[credentials]
-    O -->|direct| T5[data_tables]
+    O -->|direct| T5[data table tools]
     O -->|direct| T8[nodes]
     O -->|direct| T9[workspace files]
 
@@ -132,11 +132,11 @@ graph TD
 ```
 
 **Orchestrator** handles directly:
-- Read-only queries (`workflow_builder_workflows`, `workflow_builder_executions`, `list_credentials`, `search_credential_types`)
+- Read-only queries (`list_workflows`, `get_workflow`, `workflow_builder_executions`, `list_credentials`, `search_credential_types`)
 - Execution triggers (`workflow_builder_executions(action="run")`)
 - Workflow building (`workflow-builder` skill + workspace files + `workflow_builder_build_workflow`)
 - Verification and credential application (workflow_builder_verify_built_workflow, workflow_builder_apply_workflow_credentials)
-- Data-table work (`data-table-manager` skill + `data_tables` / `parse-file`)
+- Data-table work (`data-table-manager` skill + the data table tools / `parse-file`)
 - Config-based evaluations (`config-evals` skill + `eval-config`)
 
 ## Package Responsibilities
@@ -156,7 +156,7 @@ The agent package — framework-agnostic business logic.
 - **Workflow builder** (`workflow-builder/`) — TypeScript SDK source files, parsing, validation, and prompt sections
 - **Workspace** (`workspace/`) — sandbox provisioning (n8n sandbox service / Daytona), filesystem abstraction, snapshot management
 - **Memory** (`memory/`) — title generation, memory configuration
-- **Storage** (`storage/`) — iteration logs, task storage, workflow loop storage
+- **Storage** (`storage/`) — task storage, workflow loop storage
 - **MCP client** (`mcp/`) — manages connections to external MCP servers, schema sanitization for Anthropic compatibility
 - **Domain access** (`domain-access/`) — domain gating and access tracking for external URL approval
 - **Stream mapping** (`stream/`) — agent chunk → canonical event translation, HITL consumption
@@ -185,7 +185,7 @@ The n8n integration layer.
 - **Browser Use** — `BrowserLocalMcpServer` (extension session via CDP relay).
 - **Persistence** — 12 TypeORM entity/repository pairs for threads, messages,
   resources, observations, observation cursors and locks, checkpoints,
-  event-log entries, pending confirmations, iteration logs, thread
+  event-log entries, pending confirmations, thread tabs, thread
   grants, and MCP registry connections
 
 ### `packages/@n8n/api-types` (Shared Types)
@@ -320,7 +320,7 @@ workflow builds:
 
 - `ready_to_verify` schedules an internal workflow-verification follow-up.
 - `verified` reuses structured `workflow_builder_verify_built_workflow` evidence.
-- `needs_setup` routes to `workflow_builder_workflows(action="setup")`.
+- `needs_setup` routes to `setup_workflow`.
 - `not_verifiable` is a warning/manual-test completion state, not "verified".
 - `blocked` carries the build or verification blocker.
 
@@ -332,22 +332,25 @@ a terminal state to prevent infinite loops.
 
 To keep the orchestrator's context lean, tools are stratified into two tiers:
 
-- **Core tools** (always-loaded when registered, as selected by
-  `ALWAYS_LOADED_TOOL_NAMES` in `tools/tool-ids.ts`): `workflow_builder_ask_user`, `workflow_builder_workflows`,
-  `workflow_builder_executions`, the credential tools, `data_tables`, `search_nodes`, `get_node_types`, `get_node_parameter_options`, `execute_node`, `workflow_builder_build_workflow`,
-  `workflow_builder_search_models`, `research`, and `n8n-docs`. `workflow_builder_verify_built_workflow`, `parse-file`, `agents`,
-  `agent_builder_build_agent`, and `mcp-servers` are also direct when their required runtime
-  context or feature is available.
-- **Deferred tools** (behind ToolSearchProcessor): everything else, including
-  the rest of the orchestration surface — discovered
-  on-demand via `search_tools` and activated via `load_tool`
+- **Harness tools** (always loaded when registered, as selected by
+  `ALWAYS_LOADED_TOOL_NAMES` in `tools/tool-ids.ts`): `ask_user`, `leave-onboarding`,
+  `parse-file`, `research`, `n8n-docs`, `web-search`, `fetch-url`, `agent-context`,
+  `mcp-servers`, `conversation-history`, `activity`, `save_user_preference`, and
+  `skills`. The `@n8n/agents` SDK adds its own tools (skills, memory, workspace
+  files, `find_tools`, `call_tool`).
+- **Deferred tools** (behind the `@n8n/agents` tool catalog): every n8n resource
+  tool. The prompt lists their names by tool group: `workflows`, `executions`,
+  `data_tables`, `credentials`, `nodes`, `agents`, `instance` (see
+  `getToolGroup`), and one tool group for each MCP server. The model reads
+  schemas with `find_tools` and runs a tool with `call_tool`, with no load step.
+  Skill tool dependencies stay in the tool catalog too
 
 Two entries in the always-loaded set are pinned for reasons worth knowing before
 changing the list. `n8n-docs` sits next to `research` because the research tool
-directs the model to n8n's own docs for n8n questions; deferring docs priced that
-route at `search_tools` + `load_tool` while web search stayed one call away.
+directs the model to n8n's own docs for n8n questions; deferring docs put that
+route behind tool discovery while web search stayed one call away.
 `mcp-servers` is pinned because it exists for the case where nothing is
-connected, which is exactly when `search_tools` surfaces no MCP tool and the
+connected, which is exactly when the tool catalog lists no MCP tool and the
 model concludes the integration is unavailable.
 
 This follows Anthropic's guidance on tool search for agents with large tool sets.
@@ -363,7 +366,7 @@ The cli's `InstanceAiService` holds one manager instance and passes it to
 1. **Schema-sanitized** for Anthropic compatibility (ZodNull → optional,
    discriminated unions → flattened objects, array types → recursive element fix)
 2. **Name-checked** against reserved domain tool names (prevents malicious
-   shadowing of tools like `workflow_builder_workflows` or `workflow_builder_executions`)
+   shadowing of tools like `list_workflows` or `workflow_builder_executions`)
 3. **Separated** from domain tools in the orchestrator's tool set
 4. **Cached** by config hash inside the manager — the underlying `MCPClient`
    instances are tracked so `mcpManager.disconnect()` (called during service

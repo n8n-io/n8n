@@ -151,3 +151,25 @@ describe('agent_builder_configure_channel tool', () => {
 		expect(track).not.toHaveBeenCalled();
 	});
 });
+
+describe('agent_builder_configure_channel model output', () => {
+	const tool = buildConfigureChannelTool({
+		agentId: 'agent-1',
+		projectId: 'project-1',
+		listChatIntegrationTypes: async () => ['slack'],
+		track: vi.fn(),
+	});
+	const modelView = (result: Record<string, unknown>) =>
+		tool.toModelOutput!(result) as Record<string, unknown>;
+
+	it('tells the model to continue without a skipped channel', () => {
+		const view = modelView({ configured: false });
+
+		expect(view.nextStep).toContain('without');
+		expect(view.nextStep).toContain('do not ask');
+	});
+
+	it('adds no next step to a configured channel', () => {
+		expect(modelView({ configured: true })).not.toHaveProperty('nextStep');
+	});
+});

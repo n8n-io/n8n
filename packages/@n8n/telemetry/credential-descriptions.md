@@ -79,3 +79,7 @@ Record the following on CONTEXT-151 before shipment:
 
 The telemetry change alone does not establish a correctness result.
 The comparison requires the CONTEXT-150 read changes on the candidate instance.
+
+Description-only updates from Assistant and MCP use the existing update event.
+They omit secret-related properties that require credential decryption. Full credential
+updates keep their existing properties. Both paths report the saved description length.

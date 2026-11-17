@@ -302,6 +302,8 @@ function bindCredentials(
 ): void {
 	visitAgentCredentialReferences(item.config, ({ id, path, managedToken, setId }) => {
 		if (!id || id === managedToken) return;
+		// Channel credentials come from the destination Agent after validation.
+		if (path[0] === 'integrations') return;
 		const targetId = bindings.get(id);
 		if (targetId) setId(targetId);
 		else

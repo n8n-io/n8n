@@ -1,9 +1,11 @@
 import type { Logger } from '@n8n/backend-common';
-import type { EventService } from '@n8n/backend-services';
+import type { EventService, Publisher } from '@n8n/backend-services';
 import type { GlobalConfig } from '@n8n/config';
 import { PublicApiRateLimitConfig } from '@n8n/config';
-import type { Settings, SettingsRepository } from '@n8n/db';
+import type { OperationContext, Settings, SettingsRepository } from '@n8n/db';
 import { BadRequestError } from '@n8n/errors';
+import type { SecurityContext } from '@n8n/permissions';
+import type { InstanceSettings } from 'n8n-core';
 import { mock } from 'vitest-mock-extended';
 
 import {
@@ -33,8 +35,19 @@ describe('PublicApiRateLimitSettingsService', () => {
 	const logger = mock<Logger>();
 	const settingsRepository = mock<SettingsRepository>();
 	const eventService = mock<EventService>();
+	const publisher = mock<Publisher>();
 	let config: PublicApiRateLimitConfig;
 	let service: PublicApiRateLimitSettingsService;
+
+	const createService = ({ isMultiMain = false }: { isMultiMain?: boolean } = {}) =>
+		new PublicApiRateLimitSettingsService(
+			{ publicApi: { rateLimit: config } } as GlobalConfig,
+			mock<InstanceSettings>({ isMultiMain }),
+			settingsRepository,
+			eventService,
+			publisher,
+			logger,
+		);
 
 	const storeRow = (value: string) =>
 		settingsRepository.findByKey.mockResolvedValue(
@@ -44,12 +57,8 @@ describe('PublicApiRateLimitSettingsService', () => {
 	beforeEach(() => {
 		settingsRepository.findByKey.mockResolvedValue(null);
 		config = { ...codeDefaults };
-		service = new PublicApiRateLimitSettingsService(
-			{ publicApi: { rateLimit: config } } as GlobalConfig,
-			settingsRepository,
-			eventService,
-			logger,
-		);
+		publisher.publishCommand.mockResolvedValue(undefined);
+		service = createService();
 	});
 
 	afterEach(() => {
@@ -156,24 +165,81 @@ describe('PublicApiRateLimitSettingsService', () => {
 			expect(settingsRepository.upsertByKey).not.toHaveBeenCalled();
 		});
 
-		it('emits a policy event with only the user fields when rate limiting is turned on', async () => {
+		describe('event emission', () => {
 			const user = { ...actor, password: 'password-hash' };
 
-			await service.saveSettings(stored, user);
+			it.each([
+				{ change: 'on', from: false, to: true },
+				{ change: 'off', from: true, to: false },
+			])(
+				'emits only a policy event with the user fields when rate limiting is turned $change',
+				async ({ from, to }) => {
+					storeRow(JSON.stringify({ ...stored, enabled: from }));
 
-			expect(eventService.emit).toHaveBeenCalledWith('instance-policies-updated', {
-				user: actor,
-				settingName: 'public_api_rate_limit',
-				value: true,
+					await service.saveSettings({ ...stored, enabled: to }, user);
+
+					expect(eventService.emit).toHaveBeenCalledTimes(1);
+					expect(eventService.emit).toHaveBeenCalledWith('instance-policies-updated', {
+						user: actor,
+						settingName: 'public_api_rate_limit',
+						value: to,
+					});
+				},
+			);
+
+			it('emits an update event with the user fields and only the changed values', async () => {
+				storeRow(JSON.stringify(stored));
+
+				await service.saveSettings(
+					{ ...stored, globalReadLimit: 20, endpointWriteWindowSeconds: 30 },
+					user,
+				);
+
+				expect(eventService.emit).toHaveBeenCalledTimes(1);
+				expect(eventService.emit).toHaveBeenCalledWith('public-api-rate-limit-updated', {
+					user: actor,
+					before: { globalReadLimit: 50, endpointWriteWindowSeconds: 60 },
+					after: { globalReadLimit: 20, endpointWriteWindowSeconds: 30 },
+				});
+			});
+
+			it('emits no event when nothing changes', async () => {
+				storeRow(JSON.stringify(stored));
+
+				await service.saveSettings(stored, actor);
+
+				expect(eventService.emit).not.toHaveBeenCalled();
+			});
+
+			it('emits no update event for a value that an env var sets', async () => {
+				storeRow(JSON.stringify(stored));
+				vi.stubEnv('N8N_PUBLIC_API_RATE_LIMIT_GLOBAL_READ_LIMIT', '50');
+				config.globalReadLimit = 50;
+
+				await service.saveSettings({ ...stored, globalReadLimit: 20 }, actor);
+
+				expect(eventService.emit).not.toHaveBeenCalled();
 			});
 		});
 
-		it('does not emit a policy event when only the limits change', async () => {
-			storeRow(JSON.stringify(stored));
+		it('passes the login id of the operation context to the policy event', async () => {
+			const ctx: OperationContext = {
+				security: mock<SecurityContext>({ subIdentityId: 'login-1' }),
+			};
 
-			await service.saveSettings({ ...stored, globalReadLimit: 20 }, actor);
+			await service.saveSettings(stored, actor, ctx);
 
-			expect(eventService.emit).not.toHaveBeenCalled();
+			expect(eventService.emit).toHaveBeenCalledWith(
+				'instance-policies-updated',
+				expect.objectContaining({ loginId: 'login-1' }),
+			);
+		});
+
+		it('emits no login id without an operation context', async () => {
+			await service.saveSettings(stored, actor);
+
+			const [, payload] = eventService.emit.mock.calls[0];
+			expect(payload).toMatchObject({ loginId: undefined });
 		});
 	});
 
@@ -183,6 +249,38 @@ describe('PublicApiRateLimitSettingsService', () => {
 
 			expect(service.settings).toEqual(codeDefaults);
 			await service.load();
+
+			expect(service.settings).toEqual(stored);
+		});
+	});
+
+	describe('applying a saved change', () => {
+		it('makes the saved values the values that the limiter reads, without a reload', async () => {
+			await service.saveSettings(stored, actor);
+
+			expect(service.settings).toEqual(stored);
+		});
+
+		it('tells the other mains to reload the settings on multi-main', async () => {
+			service = createService({ isMultiMain: true });
+
+			await service.saveSettings(stored, actor);
+
+			expect(publisher.publishCommand).toHaveBeenCalledWith({
+				command: 'reload-public-api-rate-limit-settings',
+			});
+		});
+
+		it('does not publish a command on a single main', async () => {
+			await service.saveSettings(stored, actor);
+
+			expect(publisher.publishCommand).not.toHaveBeenCalled();
+		});
+
+		it('reloads the stored values when another main saves a change', async () => {
+			storeRow(JSON.stringify(stored));
+
+			await service.handleSettingsChanged();
 
 			expect(service.settings).toEqual(stored);
 		});

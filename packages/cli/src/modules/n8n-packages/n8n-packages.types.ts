@@ -1,10 +1,13 @@
 import type { AgentImportIssue } from './entities/agent/agent-import.types';
-import type { PolicyViolation } from '@n8n/api-types';
-import type { User } from '@n8n/db';
+import type { ImportedAgentChannel, PolicyViolation } from '@n8n/api-types';
+import type { OperationContext, User } from '@n8n/db';
 import type { Readable } from 'node:stream';
+
+import type { PublicApiCaller } from '@/public-api/public-api-client';
 
 import type {
 	CredentialConflict,
+	CredentialNotFoundReason,
 	CredentialUpdateForbidden,
 } from './entities/credential/credential.types';
 import type { DataTableResolutionFailure } from './entities/data-table/data-table.types';
@@ -119,7 +122,7 @@ export const ExportVersionPolicy = {
 } as const;
 
 export const CredentialExportPolicy = {
-	/** Bundles only expression-valued fields from credential data; literal values never travel. */
+	/** Bundles expression-valued fields from credential data. A literal travels only when it decides whether a field with a bundled expression shows. */
 	ExpressionValuesOnly: 'expression-values-only',
 	/** Keeps credential data out of the package; credential.json carries id, name and type only. */
 	NoValues: 'no-values',
@@ -177,6 +180,16 @@ export const CredentialConflictPolicy = {
 	Overwrite: 'overwrite',
 	/** Blocks the import when `overwrite` would change a matched credential. */
 	Fail: 'fail',
+} as const;
+
+/**
+ * Whether the credential matcher may bind the user's own personal credential in a team project
+ * the user is a member of. Promotions use `exclude`: a credential must be usable by the
+ * project, not only by the user who runs the import.
+ */
+export const CredentialPersonalRoute = {
+	Allow: 'allow',
+	Exclude: 'exclude',
 } as const;
 
 export const VariableParentPolicy = {
@@ -239,6 +252,9 @@ export type VariableConflictPolicy =
 export type CredentialConflictPolicy =
 	(typeof CredentialConflictPolicy)[keyof typeof CredentialConflictPolicy];
 
+export type CredentialPersonalRoute =
+	(typeof CredentialPersonalRoute)[keyof typeof CredentialPersonalRoute];
+
 export type VariableParentPolicy = (typeof VariableParentPolicy)[keyof typeof VariableParentPolicy];
 
 export type TagMissingMode = (typeof TagMissingMode)[keyof typeof TagMissingMode];
@@ -247,6 +263,8 @@ export type TagConflictPolicy = (typeof TagConflictPolicy)[keyof typeof TagConfl
 
 export interface ExportPackageRequest {
 	user: User;
+	/** The caller's operation context. Audit events read the login of a service account from it. */
+	ctx?: OperationContext;
 	agentIds?: string[];
 	workflowIds?: string[];
 	folderIds?: string[];
@@ -257,13 +275,15 @@ export interface ExportPackageRequest {
 	 * project shells only. Every id must belong to one of `projectIds`.
 	 */
 	projectWorkflowIds?: string[];
-	/** Internal opt-out for callers that cannot import Agents yet. */
+	/** With `projectWorkflowIds`, also export these folders and the folders above them. */
+	projectFolderIds?: string[];
+	/** Internal opt-out for callers that cannot import Agents or Agent folders yet. */
 	includeAgents?: boolean;
 	includeVariableValues?: boolean;
 	canExportVariableValues?: boolean;
 	includeTags?: boolean;
-	/** Whether folder and project exports include archived workflows. Explicit ids always export. */
-	includeArchivedWorkflows?: boolean;
+	/** Whether folder exports include archived workflows and project exports include archived workflows and agents. Explicit ids always export. */
+	includeArchived?: boolean;
 	dependencyPolicy?: ExportDependencyPolicy;
 	versionPolicy?: ExportVersionPolicy;
 	credentialExportPolicy?: CredentialExportPolicy;
@@ -273,10 +293,13 @@ export type PackageImportSource = 'package-import' | 'git-pull';
 
 export type ImportRequest = {
 	user: User;
+	/** The caller's operation context. Audit events read the login of a service account from it. */
+	ctx?: OperationContext;
 	projectId?: string;
 	folderId?: string;
 	bindings?: Partial<Pick<PackageImportBindings, 'credentials'>>;
 	apiKeyScopes?: string[];
+	publicApi: PublicApiCaller;
 	/** Omit to import the whole package. */
 	selection?: ImportSelection;
 } & ImportCredentialProperties &
@@ -292,7 +315,8 @@ export type ImportPackageRequest = ImportRequest & {
 };
 
 /**
- * Import only the selected workflows. Do not add referenced sub-workflows to the selection.
+ * Import only the selected workflows and folders. Do not add referenced sub-workflows to the
+ * selection.
  *
  * Delete only within the destination project, even under `merge`. Ignore absent or archived IDs.
  * References to deleted workflows remain unchanged.
@@ -302,6 +326,8 @@ export interface ImportSelection {
 	selectedProjectId: string;
 	/** Source workflow IDs from the selected project. */
 	selectedWorkflowIds: string[];
+	/** Source folder IDs from the selected project. Their parents come along. */
+	selectedFolderIds?: string[];
 	/** Destination workflow IDs to remove. */
 	deletedWorkflowIds?: string[];
 }
@@ -311,12 +337,16 @@ export interface ImportSelection {
  * The service fixes all policies except `conflictPolicy`, `idPolicy`,
  * `overwriteDeletionPolicy` (how removals are carried out; defaults to `archive`),
  * `dataTableSchemaConflictPolicy` (defaults to `fail`), `tagConflictPolicy` (defaults to `skip`),
- * `credentialConflictPolicy` (defaults to `keep-existing`), and `layoutConflictPolicy` (defaults to
- * `fail`; only promotions set it).
+ * `credentialConflictPolicy` (defaults to `keep-existing`), `layoutConflictPolicy` (defaults to
+ * `fail`; only promotions set it), `publishingPolicy` (defaults to `match-source`; only
+ * promotions set it), and `projectConflictPolicy` (defaults to `merge`; only promotions set it).
  */
 export type ImportSelectionRequest = {
 	user: User;
+	/** The caller's operation context. Audit events read the login of a service account from it. */
+	ctx?: OperationContext;
 	apiKeyScopes?: string[];
+	publicApi: PublicApiCaller;
 	bindings?: Partial<Pick<PackageImportBindings, 'credentials'>>;
 	conflictPolicy?: ImportConflictPolicy;
 	idPolicy?: WorkflowIdPolicy;
@@ -325,6 +355,13 @@ export type ImportSelectionRequest = {
 	tagConflictPolicy?: TagConflictPolicy;
 	/** Omitted means `keep-existing`. */
 	credentialConflictPolicy?: CredentialConflictPolicy;
+	/** Promotion-only. The public selection import does not carry it. Omitted means `match-source`. */
+	publishingPolicy?: WorkflowPublishingPolicy;
+	/**
+	 * Promotion-only. `overwrite` also applies the project's details from the package. Omitted means
+	 * `merge`. The folder policy stays `merge`, so nothing is removed.
+	 */
+	projectConflictPolicy?: ProjectConflictPolicy;
 } & PromotionLayoutProperties;
 
 export type ImportPackageSelectionRequest = ImportSelectionRequest & {
@@ -360,11 +397,14 @@ export type ResolvedImportFolderProperties = ImportFolderProperties &
 	};
 
 /**
- * Promotion-only. The public import request does not carry it, so a public import keeps `fail`.
- * Omitted means `fail`.
+ * Promotion-only. The public import request does not carry these, so a public import keeps the
+ * defaults.
  */
 export type PromotionLayoutProperties = {
+	/** Omitted means `fail`. */
 	layoutConflictPolicy?: LayoutConflictPolicy;
+	/** Omitted means `allow`. */
+	credentialPersonalRoute?: CredentialPersonalRoute;
 };
 
 export type ResolvedImportRequest = ImportRequest & ResolvedImportFolderProperties;
@@ -420,8 +460,11 @@ export type ImportTagProperties = {
  */
 export interface ImportContext {
 	user: User;
+	/** The caller's operation context. Audit events read the login of a service account from it. */
+	ctx?: OperationContext;
 	projectId: string;
 	folderId: string | null;
+	publicApi: PublicApiCaller;
 }
 
 export type ImportPackageEventOptions = Required<ImportCredentialProperties> &
@@ -565,6 +608,7 @@ export interface ImportedAgentSummary {
 	activeVersionId: string | null;
 	status: 'created' | 'updated' | 'skipped';
 	publishing: PublishingOutcome;
+	channels: ImportedAgentChannel[];
 }
 
 export interface ImportStatusCounts {
@@ -619,6 +663,14 @@ export interface ImportedProjectSummary {
 }
 
 /**
+ * How an import plan runs its gates.
+ * - `enforce`: policy checks write audit events. A refusal that the import reports as an error
+ *   throws that error.
+ * - `check`: policy checks write no audit events, and refusals become issues.
+ */
+export type ImportPlanMode = 'enforce' | 'check';
+
+/**
  * A reason the import cannot proceed, produced by some policy from any subsystem.
  * Discriminated by `type` so new gates add a variant rather than a new throw site.
  * The import aborts when any are present.
@@ -633,6 +685,8 @@ export type BlockingIssue =
 	| {
 			type: 'credential-unresolved';
 			kind: 'not_found' | 'unknown_type' | 'source_not_found' | 'type_mismatch';
+			/** For `not_found` of a credential named by id: why the user cannot use it. */
+			reason?: CredentialNotFoundReason;
 			sourceId: string;
 			targetId?: string;
 			/** For `type_mismatch`: the credential type the package's workflow node requires. */
@@ -676,6 +730,14 @@ export type BlockingIssue =
 			violations: PolicyViolation[];
 	  }
 	| {
+			/**
+			 * A policy check that crashed or timed out in `check` mode. The plan cannot tell whether
+			 * the import is allowed. In `enforce` mode the same failure fails the import.
+			 */
+			type: 'policy-check-failed';
+			point: 'contentImport' | 'credentialSave';
+	  }
+	| {
 			/** A credential write that a `credentialSave` or `contentImport` policy check refused. */
 			type: 'credential-policy-violation';
 			sourceId: string;
@@ -716,8 +778,15 @@ export interface FolderRemovalFailure {
 	projectId: string;
 }
 
+/**
+ * - `fail-policy`: the project exists and `projectConflictPolicy` is `fail`.
+ * - `not-team`: the project id belongs to a personal project on the target.
+ * - `update-forbidden`: the project exists and the user cannot update it.
+ * - `create-forbidden`: the project is new and the user cannot create projects.
+ * - `license`: the project is new and the license does not allow team projects.
+ */
 export interface ProjectConflict {
-	kind: 'fail-policy';
+	kind: 'fail-policy' | 'not-team' | 'update-forbidden' | 'create-forbidden' | 'license';
 	sourceProjectId: string;
 	name: string;
 }
@@ -777,7 +846,6 @@ export function serializeBindings(bindings: PackageImportBindings): SerializedBi
 export interface ImportPackageSummary {
 	sourceN8nVersion: string;
 	sourceId: string;
-	exportedAt: string;
 }
 
 export interface ImportCredentialSummary {

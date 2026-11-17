@@ -1,14 +1,24 @@
+import type { FolderService } from '@/services/folder.service';
 import { N8N_CHAT_INTEGRATION_TYPE } from '@n8n/api-types';
 import type { AgentIntegrationConfig, AgentJsonConfig } from '@n8n/api-types';
 import { createTeamProject, mockLogger, testDb, testModules } from '@n8n/backend-test-utils';
-import { TransactionRunner, type User, type WorkflowRepository } from '@n8n/db';
+import type { GlobalConfig } from '@n8n/config';
+import {
+	Person,
+	TransactionRunner,
+	type ProjectRepository,
+	type WorkflowRepository,
+} from '@n8n/db';
 import { Container } from '@n8n/di';
 import { ConflictError } from '@n8n/errors';
+import { DataSource } from '@n8n/typeorm';
 import { v4 as uuid } from 'uuid';
 import { mock } from 'vitest-mock-extended';
+import type { CredentialsFinderService } from '@n8n/backend-services';
 
-import { registerSkillAgentsProvider } from '@/modules/agents/register-skill-agents-provider';
+import { registerSkillUsage } from '@/modules/agents/register-skill-usage';
 import type { CredentialsService } from '@/credentials/credentials.service';
+import type { TagService } from '@/services/tag.service';
 import { AgentConfigPreparationService } from '@/modules/agents/agent-config-preparation.service';
 import { AgentConfigService } from '@/modules/agents/agent-config.service';
 import { AgentsService } from '@/modules/agents/agents.service';
@@ -20,7 +30,8 @@ import { AgentTaskService } from '@/modules/agents/agent-task.service';
 import type { Agent } from '@/modules/agents/entities/agent.entity';
 import type { NodeToolAiGatewayService } from '@/modules/agents/json-config/node-tool-ai-gateway.service';
 import { AgentHistoryRepository } from '@/modules/agents/repositories/agent-history.repository';
-import { SkillRepository } from '@/modules/skills/skill.repository';
+import { AgentHistory } from '@/modules/agents/entities/agent-history.entity';
+import { createSkill } from '@/modules/skills/testing';
 import { AgentSkillRepository } from '@/modules/agents/repositories/agent-skill.repository';
 import { AgentTaskRepository } from '@/modules/agents/repositories/agent-task.repository';
 import { AgentRepository } from '@/modules/agents/repositories/agent.repository';
@@ -35,6 +46,12 @@ import {
 	storedSkillRefs,
 	type AgentFixtureOverrides,
 } from '@/modules/agents/__tests__/test-utils/stored-agent-config';
+
+const writingSkill = {
+	name: 'Writing',
+	description: 'Write notes',
+	instructions: 'Use short sentences',
+};
 
 describe('AgentRepository', () => {
 	let agentRepo: AgentRepository;
@@ -60,7 +77,7 @@ describe('AgentRepository', () => {
 	}
 
 	async function createHistory(agentId: string, versionId: string) {
-		await agentHistoryRepo.insert({
+		await Container.get(DataSource).getRepository(AgentHistory).insert({
 			versionId,
 			agentId,
 			author: 'test',
@@ -72,7 +89,7 @@ describe('AgentRepository', () => {
 	beforeAll(async () => {
 		await testModules.loadModules(['skills', 'agents']);
 		await testDb.init();
-		registerSkillAgentsProvider();
+		registerSkillUsage();
 		agentRepo = Container.get(AgentRepository);
 		agentHistoryRepo = Container.get(AgentHistoryRepository);
 		taskRepo = Container.get(AgentTaskRepository);
@@ -87,7 +104,7 @@ describe('AgentRepository', () => {
 
 	afterEach(async () => {
 		vi.restoreAllMocks();
-		await agentHistoryRepo.delete({});
+		await Container.get(DataSource).getRepository(AgentHistory).delete({});
 		await agentRepo.delete({});
 	});
 
@@ -163,19 +180,9 @@ describe('AgentRepository', () => {
 		};
 
 		it('rolls back Agent creation with its skill references, then commits one creation on retry', async () => {
-			const skillRepo = Container.get(SkillRepository);
 			const skillRefs = Container.get(AgentSkillRefsService);
 			const skillId = uuid();
-			await skillRepo.createSkill(
-				{ id: skillId, target: { projectId, agentId: null }, source: 'ui', createdById: null },
-				{
-					name: 'Writing',
-					description: 'Write notes',
-					instructions: 'Use short sentences',
-					frontmatter: null,
-					files: [],
-				},
-			);
+			await createSkill({ id: skillId, projectId, content: writingSkill });
 			const credentials = mock<CredentialsService>();
 			credentials.getCredentialsAUserCanUseInAWorkflow.mockResolvedValue([]);
 			const policy = mock<AgentPolicyService>();
@@ -184,6 +191,7 @@ describe('AgentRepository', () => {
 				mockLogger(),
 				agentRepo,
 				mock(),
+				mock<ProjectRepository>(),
 				mock(),
 				mock(),
 				mock(),
@@ -206,17 +214,26 @@ describe('AgentRepository', () => {
 					taskRepo,
 					skillRefs,
 					policy,
+					mock<CredentialsFinderService>({
+						findCredentialForUser: async (id: string) => ({ id }) as never,
+					}),
 				),
 				completion,
 				mock<AgentSetupCompletionService>(),
 				mock(),
+				definitionService,
+				mock<GlobalConfig>({ tags: { disabled: false } }),
+				mock<TagService>(),
+				mock<FolderService>(),
+				mock(),
+				mock(),
 			);
-			const user = mock<User>();
+			const person = Object.assign(new Person(), { firstName: 'Test', lastName: 'User' });
 			const id = uuid();
 			const options = {
 				id,
-				user,
-				actor: { kind: 'user', user },
+				user: person,
+				actor: { kind: 'user', user: person },
 				createdBy: 'user',
 				adoptOnCollision: true,
 				config: { instructions: 'Help users', skills: [{ type: 'skill', id: skillId }] },
@@ -242,6 +259,16 @@ describe('AgentRepository', () => {
 				config: { instructions: 'Help users', skills: [{ type: 'skill', id: skillId }] },
 			});
 			expect(created.configHash).toBe(getAgentConfigHash(created.config));
+			expect(
+				await agentHistoryRepo.findByVersionAndAgentId(
+					created.agent.versionId!,
+					created.agent.id,
+					{},
+				),
+			).toMatchObject({ schema: { instructions: 'Help users' } });
+			expect(
+				await Container.get(AgentSkillRepository).findPinnedSkillIds(created.agent.versionId!),
+			).toEqual([skillId]);
 			expect(await agentRepo.findById(id)).toMatchObject({
 				schema: { instructions: 'Help users' },
 			});
@@ -291,12 +318,16 @@ describe('AgentRepository', () => {
 					taskRepo,
 					Container.get(AgentSkillRefsService),
 					mock<AgentPolicyService>(),
+					mock<CredentialsFinderService>({
+						findCredentialForUser: async (id: string) => ({ id }) as never,
+					}),
 				),
 				setup,
 				transactionRunner,
 				completion,
 				Container.get(AgentSkillRefsService),
 				mock<ChatIntegrationRegistry>(),
+				definitionService,
 			);
 			const deleteTasks = taskRepo.deleteForAgent.bind(taskRepo);
 			vi.spyOn(taskRepo, 'deleteForAgent').mockImplementationOnce(async (id, ids, ctx) => {
@@ -309,7 +340,13 @@ describe('AgentRepository', () => {
 				modifiedBy: 'user',
 			} as const;
 			await expect(
-				service.updateConfig(agent.id, projectId, config, mock<User>(), options),
+				service.updateConfig(
+					agent.id,
+					projectId,
+					config,
+					Object.assign(new Person(), { firstName: 'Test', lastName: 'User' }),
+					options,
+				),
 			).rejects.toThrow('Task cleanup failed');
 			expect(await agentRepo.findById(agent.id)).toMatchObject({
 				schema,
@@ -318,32 +355,41 @@ describe('AgentRepository', () => {
 			expect(await taskRepo.findByAgentId(agent.id)).toMatchObject([{ id: 'task-remove' }]);
 			expect(completion.configurationSaved).not.toHaveBeenCalled();
 
-			const saved = await service.updateConfig(agent.id, projectId, config, mock<User>(), options);
+			const saved = await service.updateConfig(
+				agent.id,
+				projectId,
+				config,
+				Object.assign(new Person(), { firstName: 'Test', lastName: 'User' }),
+				options,
+			);
 			expect(saved.config).toMatchObject({ name: 'Updated agent', tasks: [] });
 			expect(await agentRepo.findById(agent.id)).toMatchObject({
 				schema: { name: 'Updated agent', tasks: [] },
 			});
 			expect(await taskRepo.findByAgentId(agent.id)).toEqual([]);
+			expect(
+				await Container.get(DataSource).getRepository(AgentHistory).countBy({ agentId: agent.id }),
+			).toBe(1);
+			const repeated = await service.updateConfig(
+				agent.id,
+				projectId,
+				saved.config,
+				Object.assign(new Person(), { firstName: 'Test', lastName: 'User' }),
+				{
+					...options,
+					baseConfigHash: saved.configHash,
+				},
+			);
+			expect(repeated.versionId).toBe(saved.versionId);
+			expect(
+				await Container.get(DataSource).getRepository(AgentHistory).countBy({ agentId: agent.id }),
+			).toBe(1);
 			expect(completion.configurationSaved).toHaveBeenCalled();
 		});
 
 		it('replaces the complete draft and preserves existing task creation times', async () => {
 			const agent = await createAgent({ availableInMCP: true });
-			await Container.get(SkillRepository).createSkill(
-				{
-					id: 'writing',
-					target: { projectId, agentId: null },
-					source: 'ui',
-					createdById: null,
-				},
-				{
-					name: 'Writing',
-					description: 'Write notes',
-					instructions: 'Use short sentences',
-					frontmatter: null,
-					files: [],
-				},
-			);
+			await createSkill({ id: 'writing', projectId, content: writingSkill });
 			const createdAt = new Date('2025-01-01T00:00:00.000Z');
 			await taskRepo.insert([
 				{ id: 'task-keep', agentId: agent.id, ...taskBody, createdAt },
@@ -401,7 +447,7 @@ describe('AgentRepository', () => {
 				availableInMCP: true,
 			});
 			expect(stored?.schema).not.toHaveProperty('skills');
-			// The skill refs live in the dependency rows. The skill body stays in the hub.
+			// The skill refs live in the dependency rows. The skill body stays in the skills module.
 			const agentSkillRefs = Container.get(AgentSkillRefsService);
 			await expect(agentSkillRefs.refsForDraft(agent, {})).resolves.toEqual(skillRefs);
 			const tasks = await taskRepo.findByAgentId(agent.id);
@@ -439,6 +485,7 @@ describe('AgentRepository', () => {
 				mock(),
 				transactionRunner,
 				Container.get(AgentSkillRefsService),
+				definitionService,
 			);
 			const readTask = taskRepo.findByIdAndAgentId.bind(taskRepo);
 			vi.spyOn(taskRepo, 'findByIdAndAgentId').mockImplementationOnce(async (id, agentId) => {
@@ -459,7 +506,7 @@ describe('AgentRepository', () => {
 					'task-1',
 					{ name: 'Renamed task' },
 					{
-						user: mock<User>(),
+						user: Object.assign(new Person(), { firstName: 'Test', lastName: 'User' }),
 						modifiedBy: 'user',
 					},
 				),
@@ -582,28 +629,34 @@ describe('AgentRepository', () => {
 			expect(agent.integrations).toEqual([]);
 			expect(await agentRepo.isN8nChatPublished(agent.id, projectId)).toBe(false);
 			const firstVersion = uuid();
-			await agentHistoryRepo.saveVersion({
-				versionId: firstVersion,
-				agentId: agent.id,
-				schema: agent.schema
-					? { ...agent.schema, integrations: [{ type: 'n8n_chat', credentialId: '' }] }
-					: null,
-				tools: {},
-				publishedBy: 'test',
-			});
+			await agentHistoryRepo.saveVersion(
+				{
+					versionId: firstVersion,
+					agentId: agent.id,
+					schema: agent.schema
+						? { ...agent.schema, integrations: [{ type: 'n8n_chat', credentialId: '' }] }
+						: null,
+					tools: {},
+					publishedBy: 'test',
+				},
+				{},
+			);
 			await agentRepo.update({ id: agent.id }, { activeVersionId: firstVersion });
 			expect(await agentRepo.isN8nChatPublished(agent.id, projectId)).toBe(true);
 			await agentRepo.update({ id: agent.id }, { integrations: [] });
 			expect(await agentRepo.isN8nChatPublished(agent.id, projectId)).toBe(true);
 
 			const secondVersion = uuid();
-			await agentHistoryRepo.saveVersion({
-				versionId: secondVersion,
-				agentId: agent.id,
-				schema: agent.schema,
-				tools: {},
-				publishedBy: 'test',
-			});
+			await agentHistoryRepo.saveVersion(
+				{
+					versionId: secondVersion,
+					agentId: agent.id,
+					schema: agent.schema,
+					tools: {},
+					publishedBy: 'test',
+				},
+				{},
+			);
 			await agentRepo.update({ id: agent.id }, { activeVersionId: secondVersion });
 			expect(await agentRepo.isN8nChatPublished(agent.id, projectId)).toBe(false);
 			await agentRepo.update({ id: agent.id }, { activeVersionId: firstVersion });
@@ -644,6 +697,22 @@ describe('AgentRepository', () => {
 			expect(row).toMatchObject({ availableInMCP: true, revision: 1 });
 		});
 
+		it('rejects a draft loaded before the agent was archived unless archived updates are allowed', async () => {
+			const stale = await createAgent();
+			expect(await agentRepo.setArchived(stale.id, true)).toBe(true);
+			stale.name = 'Stale Edit';
+
+			expect(await agentRepo.saveDraftFenced(stale)).toBe(false);
+			expect((await agentRepo.findById(stale.id))?.name).not.toBe('Stale Edit');
+
+			const allowed = await agentRepo.saveDraftFenced(stale, {}, {}, { allowArchivedUpdate: true });
+			expect(allowed).toBe(true);
+			expect(await agentRepo.findById(stale.id)).toMatchObject({
+				name: 'Stale Edit',
+				isArchived: true,
+			});
+		});
+
 		it('cannot roll back a publish that won between load and save', async () => {
 			const agent = await createAgent();
 			const publishedVersionId = uuid();
@@ -653,34 +722,34 @@ describe('AgentRepository', () => {
 			const stale = await agentRepo.findById(agent.id);
 			expect(stale).not.toBeNull();
 
-			// A concurrent publish wins the fence: sets the active pointer and
-			// bumps revision.
-			const publishWon = await agentRepo.setActiveVersionFenced(agent.id, agent.revision, {
-				activeVersionId: publishedVersionId,
-				versionId: publishedVersionId,
-			});
+			// Publication changes its own revision.
+			const publishWon = await agentRepo.setActiveVersionFenced(
+				agent.id,
+				agent.publicationRevision,
+				publishedVersionId,
+			);
 			expect(publishWon).toBe(true);
 
-			// The stale draft save must lose instead of writing its
-			// pre-publish column values over the row.
+			// A concurrent draft save preserves the published pointer.
 			stale!.schema = { name: 'Stale Edit', model: 'm', instructions: 'i' };
 			const draftWon = await agentRepo.saveDraftFenced(stale!);
 
-			expect(draftWon).toBe(false);
+			expect(draftWon).toBe(true);
 			const row = await agentRepo.findById(agent.id);
 			expect(row?.activeVersionId).toBe(publishedVersionId);
-			expect(row?.versionId).toBe(publishedVersionId);
-			expect(row?.schema?.name).toBe('Test Agent');
+			expect(row?.versionId).toBe(stale!.versionId);
+			expect(row?.schema?.name).toBe('Stale Edit');
 		});
 
 		it('never writes the active version pointer, even when it wins', async () => {
 			const agent = await createAgent();
 			const publishedVersionId = uuid();
 			await createHistory(agent.id, publishedVersionId);
-			await agentRepo.setActiveVersionFenced(agent.id, agent.revision, {
-				activeVersionId: publishedVersionId,
-				versionId: publishedVersionId,
-			});
+			await agentRepo.setActiveVersionFenced(
+				agent.id,
+				agent.publicationRevision,
+				publishedVersionId,
+			);
 
 			// Fresh load sees the published state; a draft edit on top of it
 			// must start a new draft without touching the active pointer.
@@ -696,24 +765,68 @@ describe('AgentRepository', () => {
 			expect(row?.schema?.name).toBe('Draft Edit');
 		});
 
-		it('lets a publish lose to a draft edit that won in between', async () => {
+		it('publishes a saved version while preserving a concurrent draft edit', async () => {
 			const agent = await createAgent();
-			const expectedAtLoad = agent.revision;
+			const expectedAtLoad = agent.publicationRevision;
 
 			agent.schema = { name: 'Concurrent Edit', model: 'm', instructions: 'i' };
 			await agentRepo.saveDraftFenced(agent);
 
 			const publishedVersionId = uuid();
 			await createHistory(agent.id, publishedVersionId);
-			const publishWon = await agentRepo.setActiveVersionFenced(agent.id, expectedAtLoad, {
-				activeVersionId: publishedVersionId,
-				versionId: publishedVersionId,
-			});
+			const publishWon = await agentRepo.setActiveVersionFenced(
+				agent.id,
+				expectedAtLoad,
+				publishedVersionId,
+			);
 
-			expect(publishWon).toBe(false);
+			expect(publishWon).toBe(true);
 			const row = await agentRepo.findById(agent.id);
-			expect(row?.activeVersionId).toBeNull();
+			expect(row?.activeVersionId).toBe(publishedVersionId);
 			expect(row?.schema?.name).toBe('Concurrent Edit');
+		});
+	});
+
+	describe('publication revisions', () => {
+		it('allows one competing publication and keeps the draft on unpublish', async () => {
+			const agent = await createAgent();
+			const versionId = uuid();
+			await createHistory(agent.id, versionId);
+			expect(await agentRepo.setActiveVersionFenced(agent.id, 0, versionId)).toBe(true);
+			expect(await agentRepo.setActiveVersionFenced(agent.id, 0, null)).toBe(false);
+			expect(await agentRepo.setActiveVersionFenced(agent.id, 1, null)).toBe(true);
+			expect(await agentRepo.findById(agent.id)).toMatchObject({
+				versionId: agent.versionId,
+				activeVersionId: null,
+				publicationRevision: 2,
+				revision: 0,
+			});
+		});
+
+		it('invalidates publication validation when live credentials change', async () => {
+			const agent = await createAgent();
+			const versionId = uuid();
+			await createHistory(agent.id, versionId);
+			agent.integrations = [{ type: 'slack', credentialId: 'new-credential' }];
+			expect(await agentRepo.saveDraftFenced(agent)).toBe(true);
+			expect(await agentRepo.setActiveVersionFenced(agent.id, 0, versionId)).toBe(false);
+			expect(await agentRepo.findById(agent.id)).toMatchObject({
+				activeVersionId: null,
+				publicationRevision: 1,
+			});
+		});
+
+		it('changes the archive state only when the agent has the opposite state', async () => {
+			const agent = await createAgent();
+
+			expect(await agentRepo.setArchived(agent.id, true)).toBe(true);
+			expect(await agentRepo.setArchived(agent.id, true)).toBe(false);
+			expect(await agentRepo.findById(agent.id)).toMatchObject({
+				isArchived: true,
+				publicationRevision: 1,
+			});
+			expect(await agentRepo.setArchived(agent.id, false)).toBe(true);
+			expect(await agentRepo.setArchived(agent.id, false)).toBe(false);
 		});
 	});
 
@@ -764,13 +877,16 @@ describe('AgentRepository', () => {
 		it('refuses the write when a publication landed after the read', async () => {
 			const agent = await createAgent({ versionId: 'version-1', activeVersionId: null });
 			// A concurrent publish claims the current draft as the live version.
-			await agentHistoryRepo.saveVersion({
-				versionId: 'version-1',
-				agentId: agent.id,
-				schema: agent.schema,
-				tools: null,
-				publishedBy: 'Someone Else',
-			});
+			await agentHistoryRepo.saveVersion(
+				{
+					versionId: 'version-1',
+					agentId: agent.id,
+					schema: agent.schema,
+					tools: null,
+					publishedBy: 'Someone Else',
+				},
+				{},
+			);
 			await agentRepo.update({ id: agent.id }, { activeVersionId: 'version-1' });
 
 			const written = await agentRepo.updateIntegrations(
@@ -814,6 +930,23 @@ describe('AgentRepository', () => {
 			const reloaded = await agentRepo.findById(agent.id);
 			expect(reloaded?.integrations).toEqual([]);
 			expect(reloaded?.versionId).toBe('version-9');
+		});
+
+		it('refuses the write when the agent was archived after the read', async () => {
+			const agent = await createAgent({ versionId: 'version-1' });
+			await agentRepo.setArchived(agent.id, true);
+
+			const written = await agentRepo.updateIntegrations(
+				agent.id,
+				[{ type: 'slack', credentialId: 'slack-1' }],
+				{ revision: 0, versionId: 'version-1', activeVersionId: null },
+				'version-2',
+			);
+
+			expect(written).toBe(false);
+			const reloaded = await agentRepo.findById(agent.id);
+			expect(reloaded?.integrations).toEqual([]);
+			expect(reloaded?.versionId).toBe('version-1');
 		});
 
 		it('rejects an integration delta after a draft save with the same version ID', async () => {
@@ -965,8 +1098,8 @@ describe('AgentRepository', () => {
 			await createAgent();
 
 			const { count, data } = await agentRepo.findByProjectIdsPaginated([projectId], {
-				skip: 0,
-				take: 10,
+				offset: 0,
+				limit: 10,
 				filter: { ids: [first.id, second.id] },
 			});
 
@@ -979,8 +1112,8 @@ describe('AgentRepository', () => {
 			const outside = await createAgent({ projectId: otherProject.id });
 
 			const { count, data } = await agentRepo.findByProjectIdsPaginated([projectId], {
-				skip: 0,
-				take: 10,
+				offset: 0,
+				limit: 10,
 				filter: { ids: [outside.id] },
 			});
 
@@ -1012,21 +1145,23 @@ describe('AgentRepository', () => {
 		): Promise<Agent> {
 			const versionId = uuid();
 			const agent = await createAgent(overrides);
-			await agentHistoryRepo.save({
-				versionId,
-				agentId: agent.id,
-				author: 'test',
-				schema: storedAgentConfig(publishedSchema(snapshotIntegrations)),
-				tools: null,
-			});
+			await Container.get(DataSource)
+				.getRepository(AgentHistory)
+				.save({
+					versionId,
+					agentId: agent.id,
+					author: 'test',
+					schema: storedAgentConfig(publishedSchema(snapshotIntegrations)),
+					tools: null,
+				});
 			await agentRepo.update({ id: agent.id }, { activeVersionId: versionId });
 			return (await agentRepo.findById(agent.id)) as Agent;
 		}
 
 		async function listReachable(availableInChat = true) {
 			return await agentRepo.findByProjectIdsPaginated([projectId], {
-				skip: 0,
-				take: 10,
+				offset: 0,
+				limit: 10,
 				filter: { availableInChat },
 			});
 		}
@@ -1147,7 +1282,7 @@ describe('AgentRepository', () => {
 			}
 		});
 
-		it('keeps count and skip/take pagination correct with the filter applied', async () => {
+		it('keeps count and offset/limit pagination correct with the filter applied', async () => {
 			const agents: Agent[] = [];
 			for (let i = 0; i < 3; i++) {
 				agents.push(await createPublishedAgent([chatChannel]));
@@ -1155,8 +1290,8 @@ describe('AgentRepository', () => {
 			await createPublishedAgent([]);
 
 			const page = await agentRepo.findByProjectIdsPaginated([projectId], {
-				skip: 1,
-				take: 1,
+				offset: 1,
+				limit: 1,
 				sortBy: 'name:asc',
 				filter: { availableInChat: true },
 			});
@@ -1179,18 +1314,20 @@ describe('AgentRepository', () => {
 		): Promise<Agent> {
 			const versionId = uuid();
 			const agent = await createAgent(overrides);
-			await agentHistoryRepo.save({
-				versionId,
-				agentId: agent.id,
-				author: 'test',
-				schema: {
-					name: 'Published',
-					model: 'm',
-					instructions: 'i',
-					integrations: snapshotIntegrations,
-				},
-				tools: null,
-			});
+			await Container.get(DataSource)
+				.getRepository(AgentHistory)
+				.save({
+					versionId,
+					agentId: agent.id,
+					author: 'test',
+					schema: {
+						name: 'Published',
+						model: 'm',
+						instructions: 'i',
+						integrations: snapshotIntegrations,
+					},
+					tools: null,
+				});
 			await agentRepo.update({ id: agent.id }, { activeVersionId: versionId });
 			return (await agentRepo.findById(agent.id)) as Agent;
 		}
@@ -1248,7 +1385,7 @@ describe('AgentRepository', () => {
 		async function listByUsage(usageCounts?: Map<string, number>) {
 			return await agentRepo.findByProjectIdsPaginated(
 				[projectId],
-				{ skip: 0, take: 10, sortBy: 'usage:desc' },
+				{ offset: 0, limit: 10, sortBy: 'usage:desc' },
 				{ usageCounts },
 			);
 		}

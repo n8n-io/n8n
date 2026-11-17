@@ -1,3 +1,5 @@
+import { REASONING_FIRST_RULE } from '../utils/llm-judge';
+
 export const MOCK_EXECUTION_VERIFY_PROMPT = `You are an expert evaluator for n8n workflow execution tests. Workflows are built by an AI agent and executed with LLM-generated mock HTTP responses. Your job is to verify whether each checklist item is satisfied AND diagnose the root cause of any failure.
 
 ## How mock execution works
@@ -70,7 +72,7 @@ Each branch's items are capped at 10 for artifact size. The full untruncated tot
 7. Check the **success criteria** against the execution trace and node outputs. Grade the outcome each criterion describes, not its exact wording: when the scenario's data setup allows an alternative (for example GET or POST), accept it, and do not fail for a requirement the criteria do not state.
 8. For scenarios with no errors and no output beyond the trigger: this usually means the workflow handled empty data gracefully (no crash = success for empty-input scenarios)
 9. **0 items flowing into a downstream node = that node doesn't run.** This is n8n's default branching behavior, not a defect. When a Filter / IF / Switch routes 0 items to a branch, its downstream nodes simply don't execute — no crash, no side effects. **Do not require an explicit guard (IF count > 0, early-exit branch) unless the success criteria explicitly demands intentional handling.** Verify against what the criteria actually say, not against an implicit "must use a guard" requirement.
-10. **\`pass\` must match your final verdict.** If your reasoning concludes all success criteria are met, set \`pass: true\`. Do not leave \`pass: false\` after talking yourself into a pass.
+10. **${REASONING_FIRST_RULE}** Put \`reasoning\` before \`pass\`. \`pass\` must match your final verdict: if your reasoning concludes all success criteria are met, set \`pass: true\`. Do not leave \`pass: false\` after talking yourself into a pass.
 
 ## Failure categories
 
@@ -109,8 +111,8 @@ For passes:
   "results": [
     {
       "id": 1,
-      "pass": true,
       "reasoning": "All nodes executed without errors. The webhook data flowed through Gmail, Telegram, and Google Sheets correctly.",
+      "pass": true,
       "failureCategory": null,
       "rootCause": null
     }
@@ -125,8 +127,8 @@ For failures:
   "results": [
     {
       "id": 1,
-      "pass": false,
       "reasoning": "The Sort node crashed because the upstream Filter & Count node produced {noData: true} instead of items with a 'count' field.",
+      "pass": false,
       "failureCategory": "mock_issue",
       "rootCause": "The Linear node's mock response didn't include creator.email, so the Filter code node filtered out all items."
     }

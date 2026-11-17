@@ -34,7 +34,8 @@ export class AgentPublisher {
 
 	private async apply(user: User, outcome: PersistedAgentOutcome): Promise<AgentImportOutcome> {
 		const { status, sourceAgentId, agent } = outcome;
-		const imported = { status, sourceAgentId, agent };
+		const channels = outcome.status === 'skipped' ? [] : outcome.channels;
+		const imported = { status, sourceAgentId, agent, channels };
 		if (outcome.status === 'skipped' || outcome.publishingAction === 'noop') {
 			return { ...imported, publishing: { state: 'unchanged' } };
 		}

@@ -9,6 +9,7 @@ import { AgentEvalDataset, type AgentEvalColumnMapping } from './agent-eval-data
 import { AgentEvalRating, type AgentEvalVote } from './agent-eval-rating.ee';
 import { AgentEvalResult, type AgentEvalResultStatus } from './agent-eval-result.ee';
 import { AgentEvalRun, type AgentEvalRunStatus } from './agent-eval-run.ee';
+import { AgentTagMapping } from './agent-tag-mapping';
 import { AiBuilderTemporaryWorkflow } from './ai-builder-temporary-workflow';
 import { AiPreference } from './ai-preference';
 import { AnnotationTagEntity } from './annotation-tag-entity.ee';
@@ -45,6 +46,9 @@ import {
 } from './idempotency-key';
 import { InstanceCredentialAssignment } from './instance-credential-assignment';
 import { InvalidAuthToken } from './invalid-auth-token';
+import { Lease } from './lease';
+import { LeaseKind } from './lease-kind';
+import { LeaseSession } from './lease-session';
 import { PollerState } from './poller-state';
 import { ProcessedData } from './processed-data';
 import { Project } from './project';
@@ -137,12 +141,16 @@ export {
 	type AgentEvalResultStatus,
 	AgentEvalRating,
 	type AgentEvalVote,
+	AgentTagMapping,
 	IdempotencyKey,
 	idempotencyKeyStatuses,
 	IDEMPOTENCY_KEY_TTL_MS,
 	type IdempotencyKeyStatus,
 	InvalidAuthToken,
 	InstanceCredentialAssignment,
+	Lease,
+	LeaseKind,
+	LeaseSession,
 	AiBuilderTemporaryWorkflow,
 	PollerState,
 	ProcessedData,
@@ -236,9 +244,13 @@ export const entities = {
 	AgentEvalRun,
 	AgentEvalResult,
 	AgentEvalRating,
+	AgentTagMapping,
 	IdempotencyKey,
 	InvalidAuthToken,
 	InstanceCredentialAssignment,
+	Lease,
+	LeaseKind,
+	LeaseSession,
 	AiBuilderTemporaryWorkflow,
 	PollerState,
 	ProcessedData,

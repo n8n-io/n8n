@@ -18,6 +18,7 @@ import { CanvasConnectionMode, CanvasNodeRenderType } from '../canvas.types';
 import type { CanvasNodeGroupView } from './useCanvasNodeGroupView';
 import {
 	buildCollapsedGroupByNodeId,
+	getStickyZIndex,
 	remapCollapsedGroupConnections,
 } from './useCanvasMapping.groups';
 import {
@@ -26,7 +27,7 @@ import {
 	mapLegacyConnectionsToCanvasConnections,
 	parseCanvasConnectionHandleString,
 } from '../canvas.utils';
-import { AGENT_NODE_SIZE } from '@/features/agents/utils/agentNode';
+import { DEFAULT_AGENT_HEIGHT, DEFAULT_AGENT_WIDTH } from '@/features/agents/utils/agentNode';
 import {
 	isEmptyGroupAnchor,
 	NodeConnectionTypes,
@@ -114,6 +115,8 @@ export function useCanvasMapping({
 		return buildCollapsedGroupByNodeId(allGroups.value, (id) => nodeGroupView.isGroupCollapsed(id));
 	});
 
+	const groupMemberIds = computed(() => new Set(allGroups.value.flatMap((group) => group.nodeIds)));
+
 	// Display size by node id. WorkflowCanvas uses this for group bounds so
 	// they wrap each node's actual rendered size. Sticky notes are omitted —
 	// their own width/height parameters are read by the group mapper directly.
@@ -133,8 +136,8 @@ export function useCanvasMapping({
 				);
 			} else if (render?.type === CanvasNodeRenderType.Agent) {
 				dimensionsById[node.id] = {
-					width: AGENT_NODE_SIZE[0],
-					height: getAgentNodeHeight?.(node.id) ?? AGENT_NODE_SIZE[1],
+					width: DEFAULT_AGENT_WIDTH,
+					height: getAgentNodeHeight?.(node.id) ?? DEFAULT_AGENT_HEIGHT,
 				};
 			}
 		}
@@ -143,10 +146,7 @@ export function useCanvasMapping({
 
 	function getVisiblePinDataByNodeId(id: string) {
 		const rd = renderData.value;
-		if (rd.isExecutionDataDisplayed) {
-			return rd.executionPinDataByNodeId.get(id)?.value;
-		}
-		return rd.pinnedDataByNodeId.get(id)?.value;
+		return rd.pinnedDataByNodeId.get(id)?.value ?? rd.getDisplayedExecutionPinData(id);
 	}
 
 	const mappedNodes = computed<CanvasNode[]>(() => {
@@ -194,6 +194,7 @@ export function useCanvasMapping({
 					({ type: node.type, options: {} } as CanvasNodeData['render']),
 			};
 			const offset = nodeGroupView?.getVisualOffsetForNode(node.id) ?? { x: 0, y: 0 };
+			const stickyStyle = additionalProperties[node.id]?.style;
 
 			return {
 				id: node.id,
@@ -201,7 +202,11 @@ export function useCanvasMapping({
 				type: 'canvas-node',
 				position: applyOffset(node.position, offset),
 				data,
-				...additionalProperties[node.id],
+				...(stickyStyle && {
+					style: {
+						zIndex: getStickyZIndex(stickyStyle.zIndex, groupMemberIds.value.has(node.id)),
+					},
+				}),
 				draggable: node.draggable,
 				hidden: collapsedGroupByNodeId.value.has(node.id) ? true : undefined,
 			};

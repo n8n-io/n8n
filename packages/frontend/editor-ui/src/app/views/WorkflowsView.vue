@@ -1,4 +1,5 @@
 <script lang="ts" setup>
+import { TELEMETRY_EVENT } from '@n8n/telemetry';
 import Draggable from '@/app/components/Draggable.vue';
 import EmptySharedSectionActionBox from '@/features/core/folders/components/EmptySharedSectionActionBox.vue';
 import FolderBreadcrumbs from '@/features/core/folders/components/FolderBreadcrumbs.vue';
@@ -22,7 +23,7 @@ import WorkflowTagsDropdown from '@/features/shared/tags/components/WorkflowTags
 import { useAutoScrollOnDrag } from '@/app/composables/useAutoScrollOnDrag';
 import { getDebounceTime, useDebounce } from '@n8n/composables/useDebounce';
 import { useDocumentTitle } from '@/app/composables/useDocumentTitle';
-import { useLatestFetch } from '@/app/composables/useLatestFetch';
+import { useLatestFetch } from '@n8n/composables/useLatestFetch';
 import { type BatchRange, useLoadMoreBatches } from '@/app/composables/useLoadMoreBatches';
 import type {
 	DragTarget,
@@ -79,7 +80,7 @@ import { WORKFLOW_CARD_MCP_TOGGLE_EXPERIMENT } from '@/app/constants/experiments
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 import { useSettingsStore } from '@n8n/stores/settings.store';
 import { useSourceControlStore } from '@/features/integrations/sourceControl.ee/sourceControl.store';
-import { promotionEventBus } from '@/features/integrations/promotions.ee/promotions.eventBus';
+import { promotionEventBus } from '@n8n/frontend-module-promotions';
 import { useTagsStore } from '@/features/shared/tags/tags.store';
 import { useUIStore } from '@/app/stores/ui.store';
 import { useUsageStore } from '@/features/settings/usage/usage.store';
@@ -94,6 +95,13 @@ import {
 	useMCPStore,
 	type ToggleWorkflowsMcpAccessResponse,
 } from '@n8n/frontend-module-mcp';
+import {
+	parseExecutionBlockCauses,
+	useTypeAvailabilityPoliciesStore,
+	WontExecuteCallout,
+	WontExecuteFilter,
+} from '@n8n/frontend-module-type-availability-policies';
+import type { WorkflowExecutionBlockCause } from '@n8n/api-types';
 import {
 	type Project,
 	type ProjectSharingData,
@@ -133,6 +141,7 @@ interface Filters extends BaseFilters {
 	status: string | boolean;
 	showArchived: boolean;
 	tags: string[];
+	executionBlockedBy: WorkflowExecutionBlockCause[];
 }
 
 const StatusFilter = {
@@ -182,6 +191,7 @@ const personalizedTemplatesV3Store = usePersonalizedTemplatesV3Store();
 const readyToRunStore = useReadyToRunStore();
 const agentListStore = useAgentListStore();
 const trialIntroModalStore = useTrialIntroModalStore();
+const typeAvailabilityPoliciesStore = useTypeAvailabilityPoliciesStore();
 
 const documentTitle = useDocumentTitle();
 const { callDebounced } = useDebounce();
@@ -209,6 +219,7 @@ const filters = ref<Filters>({
 	status: StatusFilter.ALL,
 	showArchived: false,
 	tags: [],
+	executionBlockedBy: [],
 });
 
 const workflowListEventBus = createEventBus<WorkflowListEventMap>();
@@ -605,12 +616,24 @@ const showReadyToRunWorkflowsCallout = computed(() => {
 	);
 });
 
+// When the module is off, the backend returns no workflows for this filter.
+const isWontExecuteFilterActive = computed(
+	() => typeAvailabilityPoliciesStore.isEnabled && filters.value.executionBlockedBy.length > 0,
+);
+
+// With no match, the empty filtered list already says so; a warning would be a false alarm.
+const showWontExecuteCallout = computed(
+	() =>
+		isWontExecuteFilterActive.value && !loading.value && workflowsListStore.totalWorkflowCount > 0,
+);
+
 const hasFilters = computed(() => {
 	return !!(
 		filters.value.search ||
 		filters.value.status !== StatusFilter.ALL ||
 		filters.value.showArchived ||
-		filters.value.tags.length
+		filters.value.tags.length ||
+		isWontExecuteFilterActive.value
 	);
 });
 
@@ -679,12 +702,21 @@ watch([() => route.params?.projectId, () => route.name], async () => {
 	}
 });
 
+let isClearingSearchOnFolderChange = false;
+
 watch(
 	() => route.params?.folderId,
 	async (newVal) => {
 		currentFolderId.value = newVal as string;
 		filters.value.search = '';
-		saveFiltersOnQueryString();
+		// A route-name change can run initialize() before the URL drops the old
+		// search term. Stop it from restoring that term from the stale URL.
+		isClearingSearchOnFolderChange = true;
+		try {
+			await saveFiltersOnQueryString();
+		} finally {
+			isClearingSearchOnFolderChange = false;
+		}
 		await Promise.all([
 			fetchWorkflows(),
 			foldersStore.fetchTotalWorkflowsAndFoldersCount(
@@ -746,7 +778,8 @@ const onFolderDeleted = async (payload: {
 	} else {
 		await fetchWorkflows();
 	}
-	telemetry.track('User deleted folder', {
+	telemetry.track(TELEMETRY_EVENT.PLATFORM.USER_DELETED_FOLDER, {
+		resource_type: 'workflow',
 		folder_id: payload.folderId,
 		deleted_sub_folders: payload.folderCount,
 		deleted_sub_workflows: payload.workflowCount,
@@ -902,6 +935,10 @@ const getWorkflowsListQuery = () => {
 
 	const archivedFilter = filters.value.showArchived ? undefined : false;
 
+	const executionBlockedBy = isWontExecuteFilterActive.value
+		? filters.value.executionBlockedBy
+		: undefined;
+
 	return {
 		projectId: routeProjectId ?? homeProjectFilter,
 		sortBy: currentSort.value,
@@ -910,10 +947,13 @@ const getWorkflowsListQuery = () => {
 			active: activeFilter,
 			isArchived: archivedFilter,
 			tags: tags.length ? tags : undefined,
+			executionBlockedBy,
 			parentFolderId: getParentFolderId(parentFolder),
 		},
-		// Only fetch folders if showFolders is enabled and there are not tags or active filter applied
-		includeFolders: showFolders.value && !tags.length && activeFilter === undefined,
+		// Only fetch folders if showFolders is enabled and there are not tags or active filter applied.
+		// The folder query ignores these filters, so folders would stay in the list and in the count.
+		includeFolders:
+			showFolders.value && !tags.length && activeFilter === undefined && !executionBlockedBy,
 		onlySharedWithMe: projectPages.isSharedSubPage,
 	};
 };
@@ -1001,7 +1041,8 @@ const fetchWorkflows = async () => {
 			projectPages.isOverviewSubPage ||
 			projectPages.isSharedSubPage ||
 			filters.value.search !== '' ||
-			filters.value.tags.length > 0;
+			filters.value.tags.length > 0 ||
+			isWontExecuteFilterActive.value;
 
 		return fetchedResources;
 	} catch (error) {
@@ -1058,8 +1099,8 @@ const getParentFolderId = (routeId?: string) => {
 		return undefined;
 	}
 
-	// If filtering by tags, search across all folders
-	if (filters.value.tags.length > 0) {
+	// If filtering by tags or by execution blockers, search across all folders
+	if (filters.value.tags.length > 0 || isWontExecuteFilterActive.value) {
 		return undefined;
 	}
 
@@ -1069,16 +1110,16 @@ const getParentFolderId = (routeId?: string) => {
 
 // Filter and sort methods
 const onFiltersUpdated = async () => {
-	batches.reset();
-	saveFiltersOnQueryString();
+		batches.reset();
+		void saveFiltersOnQueryString();
 	if (!loading.value) {
 		await callDebounced(fetchWorkflows, { debounceTime: FILTERS_DEBOUNCE_TIME, trailing: true });
 	}
 };
 
 const onSearchUpdated = async (search: string) => {
-	batches.reset();
-	saveFiltersOnQueryString();
+		batches.reset();
+		void saveFiltersOnQueryString();
 	if (search) {
 		await callDebounced(fetchWorkflows, { debounceTime: SEARCH_DEBOUNCE_TIME, trailing: true });
 	} else {
@@ -1105,14 +1146,14 @@ const onClickTag = async (tagId: string) => {
 	if (!filters.value.tags.includes(tagId)) {
 		filters.value.tags.push(tagId);
 		batches.reset();
-		saveFiltersOnQueryString();
+		void saveFiltersOnQueryString();
 		await fetchWorkflows();
 	}
 };
 
 // Query string methods
 
-const saveFiltersOnQueryString = () => {
+const saveFiltersOnQueryString = async () => {
 	// Get current query parameters
 	const currentQuery = { ...route.query };
 
@@ -1141,13 +1182,19 @@ const saveFiltersOnQueryString = () => {
 		delete currentQuery.tags;
 	}
 
+	if (filters.value.executionBlockedBy.length) {
+		currentQuery.executionBlockedBy = filters.value.executionBlockedBy.join(',');
+	} else {
+		delete currentQuery.executionBlockedBy;
+	}
+
 	if (filters.value.homeProject) {
 		currentQuery.homeProject = filters.value.homeProject;
 	} else {
 		delete currentQuery.homeProject;
 	}
 
-	void router.replace({
+	await router.replace({
 		query: Object.keys(currentQuery).length ? currentQuery : undefined,
 	});
 };
@@ -1155,7 +1202,8 @@ const saveFiltersOnQueryString = () => {
 const setFiltersFromQueryString = async () => {
 	const { fullPath } = route;
 	const newQuery: LocationQueryRaw = { ...route.query };
-	const { tags, status, search, homeProject, sort, showArchived } = route.query ?? {};
+	const { tags, status, search, homeProject, sort, showArchived, executionBlockedBy } =
+		route.query ?? {};
 
 	// Helper to check if string value is not empty
 	const isValidString = (value: unknown): value is string =>
@@ -1175,7 +1223,7 @@ const setFiltersFromQueryString = async () => {
 	}
 
 	// Handle search
-	if (isValidString(search)) {
+	if (isValidString(search) && !isClearingSearchOnFolderChange) {
 		newQuery.search = search;
 		filters.value.search = search;
 	} else {
@@ -1198,6 +1246,17 @@ const setFiltersFromQueryString = async () => {
 	} else {
 		delete newQuery.tags;
 	}
+
+	const validCauses =
+		typeAvailabilityPoliciesStore.isEnabled && isValidString(executionBlockedBy)
+			? parseExecutionBlockCauses(executionBlockedBy.split(','))
+			: [];
+	if (validCauses.length) {
+		newQuery.executionBlockedBy = validCauses.join(',');
+	} else {
+		delete newQuery.executionBlockedBy;
+	}
+	filters.value.executionBlockedBy = validCauses;
 
 	// Handle status
 	if (isValidString(status)) {
@@ -1344,6 +1403,11 @@ const dismissStarterCollectionCallout = () => {
 
 const onShowArchived = async () => {
 	filters.value.showArchived = true;
+	await onFiltersUpdated();
+};
+
+const onClearWontExecuteFilter = async () => {
+	filters.value.executionBlockedBy = [];
 	await onFiltersUpdated();
 };
 
@@ -1872,7 +1936,8 @@ const createFolder = async (
 				},
 				type: 'success',
 			});
-			telemetry.track('User created folder', {
+			telemetry.track(TELEMETRY_EVENT.PLATFORM.USER_CREATED_FOLDER, {
+				resource_type: 'workflow',
 				folder_id: newFolder.id,
 			});
 			if (options.openAfterCreate) {
@@ -1936,7 +2001,8 @@ const renameFolder = async (folderId: string) => {
 				type: 'success',
 			});
 			await fetchWorkflows();
-			telemetry.track('User renamed folder', {
+			telemetry.track(TELEMETRY_EVENT.PLATFORM.USER_RENAMED_FOLDER, {
+				resource_type: 'workflow',
 				folder_id: folderId,
 			});
 		} catch (error) {
@@ -2221,7 +2287,8 @@ const onWorkflowMoved = async (payload: WorkflowListEventMap['workflow-moved']) 
 			},
 			type: 'success',
 		});
-		telemetry.track('User moved content', {
+		telemetry.track(TELEMETRY_EVENT.PLATFORM.USER_MOVED_CONTENT, {
+			resource_type: 'workflow',
 			workflow_id: payload.workflow.id,
 			source_folder_id: payload.workflow.oldParentId,
 			destination_folder_id: payload.newParent.id,
@@ -2290,7 +2357,8 @@ const onNameSubmit = async (name: string) => {
 				}),
 				type: 'success',
 			});
-			telemetry.track('User renamed folder', {
+			telemetry.track(TELEMETRY_EVENT.PLATFORM.USER_RENAMED_FOLDER, {
+				resource_type: 'workflow',
 				folder_id: currentFolder.value.id,
 			});
 		} catch (error) {
@@ -2351,6 +2419,13 @@ const onNameSubmit = async (name: string) => {
 			</ProjectHeader>
 		</template>
 		<template #callout>
+			<WontExecuteCallout
+				v-if="showWontExecuteCallout"
+				:count="workflowsListStore.totalWorkflowCount"
+				:causes="filters.executionBlockedBy"
+				:class="$style['easy-ai-workflow-callout']"
+				@clear="onClearWontExecuteFilter"
+			/>
 			<N8nCallout
 				v-if="showAIStarterCollectionCallout"
 				theme="secondary"
@@ -2610,6 +2685,12 @@ const onNameSubmit = async (name: string) => {
 					:model-value="filters.showArchived || false"
 					data-test-id="show-archived-checkbox"
 					@update:model-value="setKeyValue('showArchived', $event)"
+				/>
+			</div>
+			<div v-if="typeAvailabilityPoliciesStore.isEnabled" class="mb-s">
+				<WontExecuteFilter
+					:model-value="filters.executionBlockedBy"
+					@update:model-value="setKeyValue('executionBlockedBy', $event)"
 				/>
 			</div>
 		</template>

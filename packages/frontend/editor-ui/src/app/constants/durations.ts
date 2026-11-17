@@ -42,9 +42,15 @@ export const AGENT_EVAL_RUN_POLL_TIMEOUT = 10 * TIME.MINUTE;
 /** One failed poll is a blip worth retrying; a sustained run of them means we've lost the run. */
 export const AGENT_EVAL_RUN_POLL_MAX_ERRORS = 3;
 
+/** How long the editor waits for `nodeExecuteAfterData` before it fetches the node's output. */
+export const TRIMMED_RUN_DATA_FILL_DELAY = 3 * TIME.SECOND;
+
 export const LOADING_ANIMATION_MIN_DURATION = 1000;
 
 export const AGENT_EXTERNAL_UPDATE_NOTICE_DURATION = 5 * TIME.MINUTE;
+
+/** Shows the summary fallback if background results never reach the agent. */
+export const AGENT_SUMMARY_WAIT_TIMEOUT = 2 * TIME.MINUTE;
 
 /** Keeps short agent tool and skill calls perceptible without adding continuous motion. */
 export const AGENT_CAPABILITY_ACTIVE_MIN_DURATION = 300;
@@ -63,3 +69,10 @@ export const HOVER_DELAY = {
 // `DEBOUNCE_TIME` moved to `@n8n/frontend-constants/durations` so a module outside the
 // shell can debounce with the same values. Re-exported here for existing importers.
 export { DEBOUNCE_TIME } from '@n8n/frontend-constants/durations';
+
+/** Timing for the Agent builder's template prompt preview. */
+export const AGENT_PROMPT_INSPIRATION_TIMING = {
+	TYPE: 35,
+	ERASE: 15,
+	HOLD: 5 * TIME.SECOND,
+} as const;

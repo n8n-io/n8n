@@ -8,6 +8,8 @@ import { AgentThreadEntity } from './agent-thread.entity';
 export interface AgentMessageOrigin {
 	source: string | null;
 	hidden?: boolean;
+	/** Keep the Stop reply in history after the queue item is removed. */
+	stopReport?: boolean;
 	integrationConnectionId?: string;
 	platformMessageId?: string;
 	platformThreadId?: string;

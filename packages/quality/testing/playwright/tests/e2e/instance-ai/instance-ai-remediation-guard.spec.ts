@@ -9,11 +9,11 @@ const TERMINAL_FALLBACK_TEXT = 'I finished the run, but I did not generate a fin
 // Replayed traces keep the tool names from the time of recording.
 // Use only type imports from `@n8n/api-types`: the E2E shard job does not build it.
 const CURRENT_TOOL_NAMES = new Map<string, WorkflowBuilderToolName>([
-	['workflows', 'workflow_builder_workflows'],
 	['build-workflow', 'workflow_builder_build_workflow'],
 	['verify-built-workflow', 'workflow_builder_verify_built_workflow'],
 	['report-verification-verdict', 'workflow_builder_report_verification_verdict'],
 ]);
+const FORMER_WORKFLOWS_TOOL_NAMES = new Set(['workflows', 'workflow_builder_workflows']);
 
 test.use({
 	...instanceAiTestConfig,
@@ -56,10 +56,17 @@ async function getTraceEvents(api: ApiHelpers, testInfo: TestInfo): Promise<Trac
 		getInstanceAiTestSlug(testInfo),
 	)) as TraceEvent[];
 	return events.map((event) =>
-		event.toolName
-			? { ...event, toolName: CURRENT_TOOL_NAMES.get(event.toolName) ?? event.toolName }
-			: event,
+		event.toolName ? { ...event, toolName: getCurrentToolName(event) } : event,
 	);
+}
+
+function getCurrentToolName(event: TraceEvent): string | undefined {
+	const { toolName } = event;
+	if (!toolName) return toolName;
+	if (FORMER_WORKFLOWS_TOOL_NAMES.has(toolName) && event.input?.action === 'setup') {
+		return 'setup_workflow';
+	}
+	return CURRENT_TOOL_NAMES.get(toolName) ?? toolName;
 }
 
 function getToolCalls(events: TraceEvent[], toolName: string): TraceEvent[] {
@@ -163,18 +170,13 @@ function summarizeRemediationTrace(events: TraceEvent[]): RemediationTraceSummar
 	const terminalWorkflowSetupIndex = events.findIndex((event) => {
 		return (
 			(event.kind === 'tool-call' || event.kind === 'tool-suspend') &&
-			event.toolName === 'workflow_builder_workflows' &&
-			event.input?.action === 'setup' &&
-			event.input.workflowId === firstSuccessfulBuild?.workflowId
+			event.toolName === 'setup_workflow' &&
+			event.input?.workflowId === firstSuccessfulBuild?.workflowId
 		);
 	});
-	const workflowSetupRequestsSlackCredential = getToolEvents(
-		events,
-		'workflow_builder_workflows',
-	).some(
+	const workflowSetupRequestsSlackCredential = getToolEvents(events, 'setup_workflow').some(
 		(event) =>
-			event.input?.action === 'setup' &&
-			event.input.workflowId === firstSuccessfulBuild?.workflowId &&
+			event.input?.workflowId === firstSuccessfulBuild?.workflowId &&
 			hasSetupRequestCredential(event, 'slackApi'),
 	);
 	const terminalSetupIndex = getFirstIndex(
@@ -273,9 +275,8 @@ test.describe(
 				const events = getLatestRecordingEvents(await getTraceEvents(api, testInfo));
 				const summary = summarizeRemediationTrace(events);
 				const buildCalls = getToolCalls(events, 'workflow_builder_build_workflow');
-				const setupCalls = getToolEvents(events, 'workflow_builder_workflows').filter(
-					(event) =>
-						event.input?.action === 'setup' && event.input.workflowId === summary.workflowId,
+				const setupCalls = getToolEvents(events, 'setup_workflow').filter(
+					(event) => event.input?.workflowId === summary.workflowId,
 				);
 
 				expect(summary).toMatchObject({

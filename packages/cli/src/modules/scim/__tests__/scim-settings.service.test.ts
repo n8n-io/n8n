@@ -4,7 +4,7 @@ import { mock } from 'vitest-mock-extended';
 
 import type { CacheService } from '@n8n/backend-services';
 
-import { ScimSettingsService } from '../scim-settings.service';
+import { DEFAULT_SCIM_DEPROVISIONING_POLICY, ScimSettingsService } from '../scim-settings.service';
 
 describe('ScimSettingsService', () => {
 	let settingsRepository: Mocked<SettingsRepository>;
@@ -74,6 +74,57 @@ describe('ScimSettingsService', () => {
 			);
 
 			await expect(service.isEnabled()).resolves.toBe(false);
+		});
+	});
+
+	describe('getDeprovisioningPolicy', () => {
+		it.each([
+			['no stored value', null],
+			['a value that is not JSON', mock<Settings>({ value: '{' })],
+			['a value of another shape', mock<Settings>({ value: '{"onDelete":"archive"}' })],
+		])('returns the default policy for %s', async (_, row) => {
+			settingsRepository.findByKey.mockResolvedValue(row);
+
+			await expect(service.getDeprovisioningPolicy()).resolves.toEqual(
+				DEFAULT_SCIM_DEPROVISIONING_POLICY,
+			);
+		});
+	});
+
+	describe('setDeprovisioningPolicy', () => {
+		const policy = {
+			onDelete: 'disable',
+			dataAction: 'transfer',
+			transferProjectId: 'p-1',
+		} as const;
+
+		it('reads and saves the policy under one row lock, and returns the policy that it replaced', async () => {
+			const previous = { onDelete: 'delete', dataAction: 'delete', transferProjectId: null };
+			settingsRepository.getOrCreateWithWriteLock.mockResolvedValue(
+				mock<Settings>({ value: JSON.stringify(previous) }),
+			);
+
+			await expect(service.setDeprovisioningPolicy(policy)).resolves.toEqual(previous);
+			expect(settingsRepository.getOrCreateWithWriteLock).toHaveBeenCalledWith(
+				'scim.provisioning.deprovisioning',
+				JSON.stringify(DEFAULT_SCIM_DEPROVISIONING_POLICY),
+				false,
+				trxCtx,
+			);
+			expect(settingsRepository.upsertByKey).toHaveBeenCalledWith(
+				'scim.provisioning.deprovisioning',
+				JSON.stringify(policy),
+				false,
+				trxCtx,
+			);
+		});
+
+		it('returns the default policy when the saved value is broken', async () => {
+			settingsRepository.getOrCreateWithWriteLock.mockResolvedValue(mock<Settings>({ value: '{' }));
+
+			await expect(service.setDeprovisioningPolicy(policy)).resolves.toEqual(
+				DEFAULT_SCIM_DEPROVISIONING_POLICY,
+			);
 		});
 	});
 

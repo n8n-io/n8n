@@ -46,7 +46,7 @@ Migrate files from direct `workflowsStore` / `workflowState` node access to `wor
 ## Migration guidelines
 
 - **Always name the variable `workflowDocumentStore`.** Never abbreviate to `docStore`, `wds`, `documentStore`, or any other shorthand. The canonical name is `workflowDocumentStore` — in production code, tests, and local variables alike. This keeps the codebase grep-friendly and avoids confusion with other stores.
-- **Migrate all guarded APIs per file together.** When migrating a file, replace ALL `workflowsStore` reads AND `workflowState` mutations in one pass. Don't leave some calls on the old API — partial migrations make the code harder to follow and the ESLint warnings will remain.
+- **Migrate all guarded APIs per file together.** When migrating a file, replace ALL `workflowsStore` reads AND `workflowState` mutations in one pass. Don't leave some calls on the old API — partial migrations make the code harder to follow.
 - **Each ticket lists both surfaces.** The "Facade methods used" section covers `workflowsStore` reads; the "`workflowState` migration" section covers per-node mutations. Both need to move to `workflowDocumentStore`.
 - **Consolidate existing inline `useWorkflowDocumentStore()` calls.** Some files may already have partial migrations (e.g. for `usedCredentials` or `pinData`). When you add the computed accessor, consolidate all inline calls into the single computed. Pinia deduplicates store instances by ID, so this is always safe.
 - **Remove dead `workflowState` parameters after migration.** If a composable accepts `workflowState` only for node mutations (e.g. `setNodeIssue`, `updateNodeProperties`), migrating those to `workflowDocumentStore` makes the parameter dead. Remove it from the signature and update all callers. Keep `workflowState` only if the composable still uses non-node-document properties like `executingNode`.
@@ -175,8 +175,10 @@ Object.defineProperty(workflowsStore, 'allNodes', {
 `workflowsStore.workflowId` is a deprecated global pointer to "the open workflow".
 It is being removed: consumers become document-store-first and the id is derived
 from the route. There is **no `storeToRefs` destructuring** of it — every access
-is the literal `workflowsStore.workflowId` member expression, guarded by ESLint
-(`no-restricted-syntax`, `warn` during migration, flipped to `error` once empty).
+is the literal `workflowsStore.workflowId` member expression. No lint rule
+guards it now. The ESLint `no-restricted-syntax` ratchet for it was `off`, and
+Oxlint has no `no-restricted-syntax` rule (`frontend/no-restricted-syntax` in
+`scripts/lint-parity/oxlint-gap.json`).
 
 The per-document store is keyed *by* the id, so it cannot itself answer "which
 workflow is current" — that comes from the route (or the injected current-document
@@ -196,7 +198,7 @@ Notes:
 
 ## What NOT to migrate
 
-- **`workflowsStore.workflowObject`** (39 files) — provides indirect node access via `Workflow` class methods (`.getNode()`, `.nodes`, `.getParentNodes()`, etc.). This is intentionally NOT migrated until both nodes **and** connections move to `workflowDocumentStore`. No ESLint guard for this — it's accepted tech debt.
+- **`workflowsStore.workflowObject`** (39 files) — provides indirect node access via `Workflow` class methods (`.getNode()`, `.nodes`, `.getParentNodes()`, etc.). This is intentionally NOT migrated until both nodes **and** connections move to `workflowDocumentStore`. No lint rule guards this — it's accepted tech debt.
 - **Execution-related methods** (e.g., `renameNodeSelectedAndExecution`, `removeNodeExecutionDataById`) — these are not node document state
 - **`workflowExecutionStateStore.executingNode`** and other execution-state properties — these are not node document state (they live in `useWorkflowExecutionStateStore`)
 

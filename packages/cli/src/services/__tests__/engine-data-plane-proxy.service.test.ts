@@ -1,5 +1,5 @@
 import type { ExecutionSnapshot, StartExecutionRequest } from '@n8n/engine';
-import { UserError } from 'n8n-workflow';
+import { UserError } from '@n8n/errors';
 import { mock } from 'vitest-mock-extended';
 
 import type { ExecutionIdV2 } from '@/executions/execution-id';
@@ -120,5 +120,57 @@ describe('EngineDataPlaneProxyService', () => {
 			finishedAt: new Date('2026-10-02T09:00:00.000Z'),
 		});
 		expect(provider.cancelExecution).toHaveBeenCalledWith(executionId);
+	});
+});
+
+describe('EngineDataPlaneProxyService resume requests', () => {
+	const executionId = '01a038ae-c4a8-7799-8a3e-e3c2ca055cfa' as ExecutionIdV2;
+
+	it('answers both phases as not found without a provider', async () => {
+		const proxy = new EngineDataPlaneProxyService();
+
+		await expect(proxy.locateResume({ id: executionId, token: 't' })).resolves.toEqual({
+			ok: false,
+			status: 404,
+			error: 'not_found',
+		});
+		await expect(proxy.resolveStep('step-1', { token: 't', outputs: [] })).resolves.toEqual({
+			ok: false,
+			status: 404,
+			error: 'not_found',
+		});
+	});
+
+	it('forwards both phases to the provider', async () => {
+		const provider = mock<EngineDataPlaneProvider>();
+		const proxy = new EngineDataPlaneProxyService();
+		proxy.registerProvider(provider);
+		const located = {
+			ok: true as const,
+			value: { execution: mock<ExecutionSnapshot>(), target: null },
+		};
+		provider.locateResume.mockResolvedValue(located);
+		const resolved = { ok: true as const, value: { executionId, stepId: 'step-1' } };
+		provider.resolveStep.mockResolvedValue(resolved);
+
+		await expect(proxy.locateResume({ id: executionId, token: 't' })).resolves.toBe(located);
+		await expect(proxy.resolveStep('step-1', { token: 't', outputs: [[]] })).resolves.toBe(
+			resolved,
+		);
+
+		expect(provider.locateResume).toHaveBeenCalledWith({ id: executionId, token: 't' });
+		expect(provider.resolveStep).toHaveBeenCalledWith('step-1', { token: 't', outputs: [[]] });
+	});
+
+	it('reads an approval callback through the provider, and nothing without one', () => {
+		const provider = mock<EngineDataPlaneProvider>();
+		const proxy = new EngineDataPlaneProxyService();
+		expect(proxy.readApprovalCallback('callback')).toBeUndefined();
+
+		proxy.registerProvider(provider);
+		provider.readApprovalCallback.mockReturnValue('step-1');
+
+		expect(proxy.readApprovalCallback('callback')).toBe('step-1');
+		expect(provider.readApprovalCallback).toHaveBeenCalledWith('callback');
 	});
 });

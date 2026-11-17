@@ -72,7 +72,26 @@ export interface DueStep {
 	executionId: string;
 }
 
-/** Persistence interface for step records. */
+/** A step that is still `queued` after its `stale_after` time. */
+export interface StaleQueuedStep {
+	id: string;
+	executionId: string;
+	staleAfter: Date;
+}
+
+/** A step that is still `running` after its `stale_after` time. */
+export interface StaleRunningStep {
+	id: string;
+	staleAfter: Date;
+}
+
+/**
+ * Persistence interface for step records.
+ *
+ * Every transition into `queued` or `running` also records when the engine
+ * treats the step as stuck in that status (see `StalenessThresholds`). Every
+ * other transition clears that time.
+ */
 export interface StepStore {
 	/**
 	 * Persist new step records for one execution, batched so planning a fan-out
@@ -123,6 +142,8 @@ export interface StepStore {
 	 * Record a wait: persist `wait_declaration` and move the step to `waiting`. A
 	 * compare-and-set on `running`, as `completeStep` — but `waiting` is no
 	 * outcome, so nothing plans behind the step and nothing counts it settled.
+	 * If the execution has ended, the step is cancelled instead and the call
+	 * returns `false`: nothing resumes a wait in an ended execution.
 	 */
 	suspendStep(id: string, waitDeclaration: WaitDeclaration): Promise<boolean>;
 
@@ -169,8 +190,42 @@ export interface StepStore {
 	 */
 	nextWaitDeadline(): Promise<Date | null>;
 
+	/**
+	 * The steps that are `queued` and whose `stale_after` time is `at` or
+	 * earlier, oldest first, at most `limit`. A plain read: it locks no row.
+	 */
+	findStaleQueuedSteps(at: Date, limit: number): Promise<StaleQueuedStep[]>;
+
+	/**
+	 * Gives a `queued` step a new `stale_after` time. A compare-and-set on the
+	 * status and on the `staleAfter` value that the caller read, so only one of
+	 * several concurrent callers gets `true`.
+	 */
+	renewQueuedStep(id: string, staleAfter: Date): Promise<boolean>;
+
+	/**
+	 * The steps that are `running` and whose `stale_after` time is `at` or
+	 * earlier, oldest first, at most `limit`. A plain read: it locks no row.
+	 */
+	findStaleRunningSteps(at: Date, limit: number): Promise<StaleRunningStep[]>;
+
+	/**
+	 * Fail a step that no worker settled in time. As `failStep`, but the
+	 * compare-and-set also tests the `staleAfter` value that the caller read. A
+	 * step that settled, or that was claimed again, after that read is not
+	 * changed.
+	 */
+	failStaleRunningStep(id: string, staleAfter: Date, error: StepError): Promise<boolean>;
+
 	/** Record a failed run: persist `error` and mark the step failed. As `completeStep`. */
 	failStep(id: string, error: StepError): Promise<boolean>;
+
+	/**
+	 * Fail a step that waits on a sub-execution the engine could not start. As
+	 * `failStep`, but a compare-and-set on `waiting`: the step suspended before
+	 * the start was attempted, so no worker owns it.
+	 */
+	failWaitingStep(id: string, error: StepError): Promise<boolean>;
 
 	/**
 	 * Settle a claimed step that will not run, because its execution ended
@@ -238,6 +293,9 @@ export interface StepStore {
 	 */
 	loadAllSteps(executionId: string): Promise<StepRecord[]>;
 
+	/** The steps of the given nodes, every pass of each, with their outputs. */
+	loadStepsByNodeIds(executionId: string, nodeIds: string[]): Promise<StepRecord[]>;
+
 	/**
 	 * Every step of the execution in the `waiting` status, with its wait
 	 * declaration, whatever that declaration says. The caller decides which
@@ -257,4 +315,7 @@ export interface StepStore {
 
 	/** Whether any of the execution's steps failed. */
 	hasFailedSteps(executionId: string): Promise<boolean>;
+
+	/** The execution's failed steps, by node and then by pass. */
+	loadFailedSteps(executionId: string): Promise<StepRecord[]>;
 }

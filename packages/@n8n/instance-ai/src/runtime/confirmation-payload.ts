@@ -1,4 +1,5 @@
 import type {
+	AppBlueprint,
 	InstanceAiConfirmRequest,
 	InstanceAiCredentialDestinationDecision,
 } from '@n8n/api-types';
@@ -50,6 +51,7 @@ export interface ConfirmationData {
 	autoSetup?: { credentialType: string; attemptId?: string };
 	credentialDestination?: InstanceAiCredentialDestinationDecision;
 	connectedSlugs?: string[];
+	blueprint?: AppBlueprint;
 }
 
 /** Collapse the frontend's typed confirmation union into the flat payload
@@ -85,6 +87,11 @@ export function toConfirmationData(request: InstanceAiConfirmRequest): Confirmat
 			return { approved: true, resourceDecision: request.resourceDecision };
 		case 'mcpConnect':
 			return { approved: request.approved, connectedSlugs: request.connectedSlugs };
+		case 'appBlueprint':
+			return {
+				approved: request.approved,
+				blueprint: request.blueprint,
+			};
 		case 'setupWorkflowApply':
 			return {
 				approved: true,
@@ -127,5 +134,6 @@ export function buildResumeData(data: ConfirmationData): Record<string, unknown>
 		...(data.autoSetup ? { autoSetup: data.autoSetup } : {}),
 		...(data.credentialDestination ? { credentialDestination: data.credentialDestination } : {}),
 		...(data.connectedSlugs ? { connectedSlugs: data.connectedSlugs } : {}),
+		...(data.blueprint ? { blueprint: data.blueprint } : {}),
 	};
 }

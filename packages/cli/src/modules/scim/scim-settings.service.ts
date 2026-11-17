@@ -1,11 +1,34 @@
+import { scimDeprovisioningPolicySchema, type ScimDeprovisioningPolicy } from '@n8n/api-types';
 import { SettingsRepository, TransactionRunner, type OperationContext } from '@n8n/db';
 import { Service } from '@n8n/di';
+import { jsonParse } from 'n8n-workflow';
 
 import { CacheService } from '@n8n/backend-services';
 
 import { SCIM_PROVISIONING_ENABLED_KEY } from '@/sso.ee/scim-switch-reader';
 
 const ENABLED_KEY = SCIM_PROVISIONING_ENABLED_KEY;
+const DEPROVISIONING_KEY = 'scim.provisioning.deprovisioning';
+
+/**
+ * The policy while none is stored. `disable` keeps the work of the user and
+ * keeps the behaviour of instances that never saved a policy. Without a
+ * transfer project, a deletion sends the work to the personal project of the
+ * owner.
+ */
+export const DEFAULT_SCIM_DEPROVISIONING_POLICY: Readonly<ScimDeprovisioningPolicy> = {
+	onDelete: 'disable',
+	dataAction: 'transfer',
+	transferProjectId: null,
+};
+
+/** A missing or broken value gives the default policy. */
+function parsePolicy(value: string | undefined): ScimDeprovisioningPolicy {
+	const result = scimDeprovisioningPolicySchema.safeParse(
+		jsonParse<unknown>(value ?? '', { fallbackValue: null }),
+	);
+	return result.success ? result.data : { ...DEFAULT_SCIM_DEPROVISIONING_POLICY };
+}
 
 export interface ScimSettingsChange {
 	enabled: boolean;
@@ -70,6 +93,37 @@ export class ScimSettingsService {
 				ctx,
 			);
 			return row.value === 'true';
+		});
+	}
+
+	/** What SCIM DELETE does. A missing or broken value gives the default policy. */
+	async getDeprovisioningPolicy(): Promise<ScimDeprovisioningPolicy> {
+		const row = await this.settingsRepository.findByKey(DEPROVISIONING_KEY);
+		return parsePolicy(row?.value);
+	}
+
+	/**
+	 * Saves the policy and returns the policy that it replaced. The read and
+	 * the write run under one row lock, so a parallel save cannot report the
+	 * wrong previous policy.
+	 */
+	async setDeprovisioningPolicy(
+		policy: ScimDeprovisioningPolicy,
+	): Promise<ScimDeprovisioningPolicy> {
+		return await this.transactionRunner.run({}, async (ctx) => {
+			const row = await this.settingsRepository.getOrCreateWithWriteLock(
+				DEPROVISIONING_KEY,
+				JSON.stringify(DEFAULT_SCIM_DEPROVISIONING_POLICY),
+				false,
+				ctx,
+			);
+			await this.settingsRepository.upsertByKey(
+				DEPROVISIONING_KEY,
+				JSON.stringify(policy),
+				false,
+				ctx,
+			);
+			return parsePolicy(row.value);
 		});
 	}
 

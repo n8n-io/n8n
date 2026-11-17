@@ -1,9 +1,15 @@
 import type {
 	BreakingChangeRuleDetailWorkflow,
-	MigrationFindingListedStatus,
 	MigrationFindingTriageStatus,
 } from '@n8n/api-types';
 import { TIME } from '@/app/constants';
+import {
+	findingState,
+	isUnresolved,
+	isUnresolvedState,
+	type FindingState,
+	type MigrationContext,
+} from './findingState';
 
 export type AgeFilter = 'any' | 'under30Days' | 'under6Months' | 'over12Months';
 export type ExecutionsFilter = 'any' | 'none' | 'under100' | 'over1000';
@@ -22,6 +28,7 @@ export interface WorkflowFilters {
 	owner: OwnerFilter;
 	project: ProjectFilter;
 	state: StateFilter;
+	showArchived: boolean;
 }
 
 export const DEFAULT_WORKFLOW_FILTERS: WorkflowFilters = {
@@ -32,6 +39,15 @@ export const DEFAULT_WORKFLOW_FILTERS: WorkflowFilters = {
 	owner: 'any',
 	project: 'any',
 	state: 'any',
+	showArchived: false,
+};
+
+// The callout offers to dismiss open findings on workflows that did not run for
+// 12 months. "Review" applies the same filters, so it shows the rows the callout counts.
+export const UNUSED_WORKFLOW_FILTERS: WorkflowFilters = {
+	...DEFAULT_WORKFLOW_FILTERS,
+	state: 'open',
+	lastRun: 'over12Months',
 };
 
 export const UNASSIGNED_OWNER = 'unassigned';
@@ -76,13 +92,9 @@ function matchesProject(
 	return workflow.homeProjectId === filter;
 }
 
-// A notified finding still needs a fix, so it filters as open.
-function matchesState(
-	state: MigrationFindingListedStatus | 'migrated',
-	filter: StateFilter,
-): boolean {
+function matchesState(state: FindingState, filter: StateFilter): boolean {
 	if (filter === 'any') return true;
-	return state === filter || (filter === 'open' && state === 'notified');
+	return filter === 'open' ? isUnresolvedState(state) : state === filter;
 }
 
 /**
@@ -93,7 +105,7 @@ export function matchesWorkflowFilters(
 	workflow: BreakingChangeRuleDetailWorkflow,
 	filters: WorkflowFilters,
 	now = Date.now(),
-	state: MigrationFindingListedStatus | 'migrated' = workflow.status,
+	state: FindingState = workflow.status,
 ): boolean {
 	return (
 		matchesState(state, filters.state) &&
@@ -102,6 +114,37 @@ export function matchesWorkflowFilters(
 		matchesExecutions(workflow.numberOfExecutions, filters.executions) &&
 		(filters.published === 'any' || workflow.active === (filters.published === 'published')) &&
 		matchesOwner(workflow, filters.owner) &&
-		matchesProject(workflow, filters.project)
+		matchesProject(workflow, filters.project) &&
+		(filters.showArchived || !workflow.isArchived)
 	);
+}
+
+/** The rows that match the name search and the filters. */
+export function filterWorkflows(
+	rows: BreakingChangeRuleDetailWorkflow[],
+	query: string,
+	filters: WorkflowFilters,
+	context: MigrationContext,
+	now = Date.now(),
+): BreakingChangeRuleDetailWorkflow[] {
+	const search = query.toLowerCase();
+	return rows.filter(
+		(row) =>
+			(!search || row.name.toLowerCase().includes(search)) &&
+			matchesWorkflowFilters(row, filters, now, findingState(row, context)),
+	);
+}
+
+/** The counts on the quick filters. Won't fix counts as resolved, so `open` leaves it out. */
+export function countQuickFilters(
+	rows: BreakingChangeRuleDetailWorkflow[],
+	context: MigrationContext,
+	currentUserId: string | undefined,
+) {
+	return {
+		assignedToMe: rows.filter((row) => row.owner?.id === currentUserId).length,
+		open: rows.filter((row) => isUnresolved(row, context)).length,
+		wontFix: rows.filter((row) => findingState(row, context) === 'wont_fix').length,
+		unassigned: rows.filter((row) => !row.owner).length,
+	};
 }

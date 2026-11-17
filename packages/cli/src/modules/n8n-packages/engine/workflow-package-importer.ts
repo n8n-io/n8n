@@ -1,10 +1,8 @@
-import { LicenseState } from '@n8n/backend-common';
 import type { Project, User } from '@n8n/db';
 import { Service } from '@n8n/di';
 import type { Scope } from '@n8n/permissions';
-import { UserError } from 'n8n-workflow';
 
-import { ForbiddenError, NotFoundError } from '@n8n/errors';
+import { ForbiddenError, NotFoundError, UserError } from '@n8n/errors';
 import { FolderService } from '@/services/folder.service';
 import { ProjectService } from '@/services/project.service.ee';
 
@@ -19,7 +17,7 @@ import type { VariableImportRequest } from '../entities/variable/variable.types'
 import type { PackageReader } from '../io/package-reader';
 import { VariableParentPolicy } from '../n8n-packages.types';
 import type { ImportContext, ResolvedImportRequest } from '../n8n-packages.types';
-import { assertPackageImportApiKeyScopes, packageImportScopes } from './import-gates';
+import { packageImportScopes } from './import-gates';
 import { ImportOrchestrator } from './import-orchestrator';
 import {
 	buildImportResult,
@@ -52,7 +50,6 @@ export class WorkflowPackageImporter {
 		private readonly importPreflight: PackageImportPreflight,
 		private readonly projectService: ProjectService,
 		private readonly folderService: FolderService,
-		private readonly licenseState: LicenseState,
 	) {}
 
 	async import(
@@ -61,18 +58,18 @@ export class WorkflowPackageImporter {
 		manifest: PackageManifest,
 	): Promise<ImportOutcome> {
 		const folders = await this.packageParser.getFolders(reader);
-		if (folders.length > 0) {
-			this.assertFoldersLicensed();
-			assertPackageImportApiKeyScopes(request.apiKeyScopes, ['folder:create', 'folder:update']);
-		}
-
-		const context = await this.findImportLocation(
+		const importLocation = await this.findImportLocation(
 			request.user,
 			request.projectId,
 			request.folderId,
 			folders.length > 0,
 			packageImportScopes(manifest),
 		);
+		const context: ImportContext = {
+			...importLocation,
+			publicApi: request.publicApi,
+			ctx: request.ctx,
+		};
 
 		const workflows = await this.packageParser.getWorkflows(reader);
 		const agents = manifest.agents?.length ? await this.packageParser.getAgents(reader) : [];
@@ -87,6 +84,7 @@ export class WorkflowPackageImporter {
 			missingMode: request.credentialMissingMode,
 			credentialBindings: request.bindings?.credentials,
 			conflictPolicy: resolveCredentialConflictPolicy(request.credentialConflictPolicy),
+			personalRoute: request.credentialPersonalRoute,
 			packageCredentials: needsBundledCredentialFiles(
 				request,
 				(credentialRequirements?.length ?? 0) > 0,
@@ -101,13 +99,6 @@ export class WorkflowPackageImporter {
 			workflows,
 			agents,
 		);
-		// Plan Agent actions first. Skipped Agents do not require dependency write scopes.
-		if (
-			dataTableRequirements?.some(({ usedBy }) => usedBy.some(({ kind }) => kind === 'workflow')) &&
-			request.dataTableMissingMode === 'create'
-		) {
-			assertPackageImportApiKeyScopes(request.apiKeyScopes, ['dataTable:create']);
-		}
 		const dataTableRequest: DataTableImportRequest = {
 			requirements: dataTableRequirements,
 			packageDataTables: await this.packageParser.getDataTables(reader),
@@ -150,6 +141,7 @@ export class WorkflowPackageImporter {
 			workflows,
 			credentialRequest,
 			agents,
+			skills: agents.length > 0 ? await this.packageParser.getSkills(reader) : [],
 			agentRequirements: identifyRequirements(manifest.requirements?.agents, workflows, agents),
 			dataTableRequest,
 			variableRequest,
@@ -169,6 +161,8 @@ export class WorkflowPackageImporter {
 
 		const { workflows: published, agentOutcomes } = await this.importOrchestrator.publishPackage({
 			user: request.user,
+			publicApi: request.publicApi,
+			ctx: request.ctx,
 			content: [content],
 			policy: request.publishingPolicy,
 			subWorkflowRequirements: plan.input.subWorkflowRequirements,
@@ -212,21 +206,13 @@ export class WorkflowPackageImporter {
 		return { result, scopes, agentOutcomes };
 	}
 
-	private assertFoldersLicensed(): void {
-		if (!this.licenseState.isLicensed('feat:folders')) {
-			throw new ForbiddenError(
-				'Your license does not allow folders. Importing a package with folders requires a license that supports folders.',
-			);
-		}
-	}
-
 	private async findImportLocation(
 		user: User,
 		projectId: string | undefined,
 		folderId: string | undefined,
 		needsFolderCreate: boolean,
 		importScopes: Scope[],
-	): Promise<ImportContext> {
+	): Promise<Omit<ImportContext, 'publicApi'>> {
 		const scopes: Scope[] = needsFolderCreate
 			? [...importScopes, 'folder:create', 'folder:update']
 			: importScopes;
@@ -269,7 +255,7 @@ export class WorkflowPackageImporter {
 		}
 
 		try {
-			await this.folderService.findFolderInProjectOrFail(folderId, projectId);
+			await this.folderService.findFolderInProjectOrFail(folderId, projectId, 'workflow');
 		} catch (cause) {
 			throw new UserError(`Folder not found in target project: ${folderId}`, { cause });
 		}

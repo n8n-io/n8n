@@ -1,6 +1,7 @@
 import { CreateAppDto, ListAppsQueryDto, UpdateAppDto } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
-import { ProjectScopeService } from '@n8n/backend-services';
+import { EventService, ProjectScopeService, UrlService } from '@n8n/backend-services';
+import { GlobalConfig } from '@n8n/config';
 import { DbLock, DbLockService, type OperationContext, type User } from '@n8n/db';
 import { BadRequestError, ConflictError, NotFoundError } from '@n8n/errors';
 import { mock } from 'vitest-mock-extended';
@@ -10,15 +11,33 @@ import { AppVersionRepository } from '../versions/app-version.repository';
 import { AppWorkspaceService } from '../build/app-workspace.service';
 import type { App } from '../app.entity';
 import { AppRepository } from '../app.repository';
+import { AppsConfig } from '../apps.config';
 import { AppsService } from '../apps.service';
+import { AppHostService } from '../serving/app-host.service';
 
-function createService() {
+function createService({ deploymentType = 'default', host = 'n8n.example.net' } = {}) {
 	const appRepository = mock<AppRepository>();
 	const appVersions = mock<AppVersionRepository>();
 	const projectScopeService = mock<ProjectScopeService>();
 	const locks = mock<DbLockService>();
 	const workspaces = mock<AppWorkspaceService>();
 	const logger = mock<Logger>();
+	const events = mock<EventService>();
+	const configuredHosts = new AppHostService(
+		mock<AppsConfig>({ baseUrl: 'https://apps.example.com' }),
+		mock<GlobalConfig>({
+			host,
+			deployment: mock<GlobalConfig['deployment']>({ type: deploymentType }),
+			sentry: mock<GlobalConfig['sentry']>({ deploymentName: host.split('.')[0] }),
+		}),
+		mock<UrlService>({
+			getInstanceBaseUrl: () => 'https://n8n.example.net',
+			getWebhookBaseUrl: () => 'https://hooks.example.net',
+		}),
+	);
+	const hosts = mock<AppHostService>();
+	hosts.origin.mockImplementation((namespace) => configuredHosts.origin(namespace));
+	hosts.previewOrigin.mockImplementation((namespace) => configuredHosts.previewOrigin(namespace));
 	locks.withLockContext.mockImplementation(async (_key, fn) => await fn({}));
 	appVersions.hasRunningBuild.mockResolvedValue(false);
 	const service = new AppsService(
@@ -28,8 +47,20 @@ function createService() {
 		locks,
 		workspaces,
 		logger,
+		hosts,
+		events,
 	);
-	return { service, appRepository, appVersions, projectScopeService, locks, workspaces, logger };
+	return {
+		service,
+		appRepository,
+		appVersions,
+		projectScopeService,
+		locks,
+		workspaces,
+		logger,
+		hosts,
+		events,
+	};
 }
 
 describe('AppsService', () => {
@@ -72,6 +103,30 @@ describe('AppsService', () => {
 		expect(response.visibility).toBe('project');
 	});
 
+	it('creates an app with a caller-provided id', async () => {
+		const { service, appRepository } = createService();
+		const dto = CreateAppDto.parse({ name: 'App', namespace: 'app' });
+		const id = '0190a5d2-6f4b-7c3e-8a1d-2b3c4d5e6f70';
+		appRepository.projectExists.mockResolvedValue(true);
+		appRepository.createApp.mockResolvedValue(
+			mock<App>({ id, namespace: 'app', createdAt: new Date(), updatedAt: new Date() }),
+		);
+
+		await service.createApp('project-1', dto, { id });
+
+		expect(appRepository.createApp).toHaveBeenCalledExactlyOnceWith('project-1', { ...dto, id });
+	});
+
+	it('rejects a caller-provided id that is not a UUID', async () => {
+		const { service, appRepository } = createService();
+		const dto = CreateAppDto.parse({ name: 'App', namespace: 'app' });
+
+		await expect(service.createApp('project-1', dto, { id: 'not-a-uuid' })).rejects.toThrow(
+			BadRequestError,
+		);
+		expect(appRepository.createApp).not.toHaveBeenCalled();
+	});
+
 	it('returns not found when creating an app in a missing project', async () => {
 		const { service, appRepository } = createService();
 		const dto = CreateAppDto.parse({ name: 'App', namespace: 'app' });
@@ -97,12 +152,12 @@ describe('AppsService', () => {
 	});
 
 	it('updates an app and maps the returned row to the response', async () => {
-		const { service, appRepository } = createService();
+		const { service, appRepository, hosts } = createService();
 		const appId = '11111111-1111-4111-8111-111111111111';
 		const dto = UpdateAppDto.parse({
 			name: 'Updated app',
 			namespace: 'updated-app',
-			visibility: 'public',
+			visibility: 'instance',
 		});
 		const app = mock<App>({
 			id: appId,
@@ -114,21 +169,104 @@ describe('AppsService', () => {
 			updatedAt: new Date('2026-10-14T00:00:00.000Z'),
 		});
 		appRepository.updateApp.mockResolvedValue(app);
+		hosts.origin.mockReturnValue('https://updated-app.apps.example.com');
 
 		const response = await service.updateApp('project-1', appId, dto);
 
 		expect(appRepository.updateApp).toHaveBeenCalledExactlyOnceWith('project-1', appId, dto);
+		expect(hosts.origin).toHaveBeenCalledWith('updated-app');
 		expect(response).toEqual({
 			id: appId,
 			projectId: 'project-1',
 			name: 'Updated app',
 			namespace: 'updated-app',
-			visibility: 'public',
+			visibility: 'instance',
 			draftVersionId: '22222222-2222-4222-8222-222222222222',
 			publishedVersionId: '33333333-3333-4333-8333-333333333333',
 			createdAt: '2026-10-13T00:00:00.000Z',
+			publishedUrl: 'https://updated-app.apps.example.com',
 			updatedAt: '2026-10-14T00:00:00.000Z',
 		});
+	});
+
+	it.each([
+		{ deploymentType: 'cloud', host: 'test.app.n8n.cloud', maxLength: 48 },
+		{ deploymentType: 'cloud', host: 'foo-bar1.app.n8n.cloud', maxLength: 44 },
+		{ deploymentType: 'default', host: 'test.app.n8n.cloud', maxLength: 54 },
+	])('accepts namespaces at the limit for $deploymentType host $host', async (config) => {
+		const { service, appRepository } = createService(config);
+		const appId = '11111111-1111-4111-8111-111111111111';
+		const namespace = 'a'.repeat(config.maxLength);
+		const dto = CreateAppDto.parse({ name: 'App', namespace });
+		const app = mock<App>({
+			id: appId,
+			...dto,
+			publishedVersionId: null,
+			createdAt: new Date('2026-10-13T00:00:00.000Z'),
+			updatedAt: new Date('2026-10-13T00:00:00.000Z'),
+		});
+		appRepository.projectExists.mockResolvedValue(true);
+		appRepository.createApp.mockResolvedValue(app);
+		appRepository.updateApp.mockResolvedValue(app);
+
+		await expect(service.createApp('project-1', dto)).resolves.toMatchObject({ namespace });
+		await expect(service.updateApp('project-1', appId, { namespace })).resolves.toMatchObject({
+			namespace,
+		});
+		expect(appRepository.createApp).toHaveBeenCalledExactlyOnceWith('project-1', dto);
+		expect(appRepository.updateApp).toHaveBeenCalledExactlyOnceWith('project-1', appId, {
+			namespace,
+		});
+	});
+
+	it.each([
+		{ host: 'test.app.n8n.cloud', namespace: 'a'.repeat(49) },
+		{ host: 'foo-bar1.app.n8n.cloud', namespace: 'a'.repeat(45) },
+	])(
+		'rejects namespace "$namespace" before writing for Cloud host $host',
+		async ({ host, namespace }) => {
+			const { service, appRepository } = createService({ deploymentType: 'cloud', host });
+			const appId = '11111111-1111-4111-8111-111111111111';
+			const dto = CreateAppDto.parse({ name: 'App', namespace });
+			appRepository.projectExists.mockResolvedValue(true);
+			const message =
+				'This namespace produces an invalid app URL for this instance. Choose another namespace.';
+
+			await expect(service.createApp('project-1', dto)).rejects.toThrow(message);
+			await expect(
+				service.updateApp('project-1', appId, { namespace: dto.namespace }),
+			).rejects.toThrow(message);
+			expect(appRepository.createApp).not.toHaveBeenCalled();
+			expect(appRepository.updateApp).not.toHaveBeenCalled();
+		},
+	);
+
+	it('updates other fields without validating the existing namespace', async () => {
+		const { service, appRepository, hosts } = createService({
+			deploymentType: 'cloud',
+			host: 'test.app.n8n.cloud',
+		});
+		const appId = '11111111-1111-4111-8111-111111111111';
+		appRepository.updateApp.mockResolvedValue(
+			mock<App>({
+				id: appId,
+				name: 'Updated app',
+				namespace: 'a'.repeat(63),
+				publishedVersionId: null,
+				createdAt: new Date('2026-10-13T00:00:00.000Z'),
+				updatedAt: new Date('2026-10-13T00:00:00.000Z'),
+			}),
+		);
+
+		await expect(
+			service.updateApp('project-1', appId, { name: 'Updated app' }),
+		).resolves.toMatchObject({
+			name: 'Updated app',
+		});
+		expect(appRepository.updateApp).toHaveBeenCalledExactlyOnceWith('project-1', appId, {
+			name: 'Updated app',
+		});
+		expect(hosts.origin).not.toHaveBeenCalled();
 	});
 
 	it('rejects empty metadata updates', async () => {
@@ -236,5 +374,112 @@ describe('AppsService', () => {
 
 		await expect(service.deleteApp('project-1', appId)).resolves.toBeUndefined();
 		expect(logger.warn).toHaveBeenCalledWith('Could not delete app sandbox.', { appId, error });
+	});
+
+	describe('telemetry events', () => {
+		const appId = '11111111-1111-4111-8111-111111111111';
+		const actor = { userId: 'user-1', threadId: 'thread-1' };
+		const appRow = (fields: Partial<App>) =>
+			mock<App>({
+				id: appId,
+				publishedVersionId: null,
+				createdAt: new Date('2026-10-13T00:00:00.000Z'),
+				updatedAt: new Date('2026-10-13T00:00:00.000Z'),
+				...fields,
+			});
+
+		it('emits app-created with the actor', async () => {
+			const { service, appRepository, events } = createService();
+			const dto = CreateAppDto.parse({ name: 'App', namespace: 'app', visibility: 'instance' });
+			appRepository.projectExists.mockResolvedValue(true);
+			appRepository.createApp.mockResolvedValue(appRow({ projectId: 'project-1', ...dto }));
+
+			await service.createApp('project-1', dto, { actor });
+
+			expect(events.emit).toHaveBeenCalledExactlyOnceWith('app-created', {
+				...actor,
+				appId,
+				projectId: 'project-1',
+				visibility: 'instance',
+			});
+		});
+
+		it('emits no app-created when the project is missing', async () => {
+			const { service, appRepository, events } = createService();
+			appRepository.projectExists.mockResolvedValue(false);
+
+			await expect(
+				service.createApp('project-1', CreateAppDto.parse({ name: 'App', namespace: 'app' })),
+			).rejects.toThrow(NotFoundError);
+			expect(events.emit).not.toHaveBeenCalled();
+		});
+
+		it('emits app-visibility-changed only when the visibility changes', async () => {
+			const { service, appRepository, events } = createService();
+			appRepository.findInProject.mockResolvedValue(
+				mock<App>({ id: appId, visibility: 'project' }),
+			);
+			appRepository.updateApp.mockResolvedValue(appRow({ visibility: 'instance' }));
+
+			await service.updateApp('project-1', appId, { visibility: 'instance' }, { userId: 'user-1' });
+
+			expect(events.emit).toHaveBeenCalledExactlyOnceWith('app-visibility-changed', {
+				userId: 'user-1',
+				appId,
+				from: 'project',
+				to: 'instance',
+			});
+		});
+
+		it('emits nothing when a save keeps the visibility', async () => {
+			const { service, appRepository, events } = createService();
+			appRepository.findInProject.mockResolvedValue(
+				mock<App>({ id: appId, visibility: 'instance' }),
+			);
+			appRepository.updateApp.mockResolvedValue(appRow({ visibility: 'instance' }));
+
+			await service.updateApp('project-1', appId, { visibility: 'instance' });
+
+			expect(events.emit).not.toHaveBeenCalled();
+		});
+
+		it('does not read the app before an update without visibility', async () => {
+			const { service, appRepository, events } = createService();
+			appRepository.updateApp.mockResolvedValue(appRow({ visibility: 'instance' }));
+
+			await service.updateApp('project-1', appId, { name: 'Renamed' });
+
+			expect(appRepository.findInProject).not.toHaveBeenCalled();
+			expect(events.emit).not.toHaveBeenCalled();
+		});
+
+		it.each([
+			{ publishedVersionId: '33333333-3333-4333-8333-333333333333', wasPublished: true },
+			{ publishedVersionId: null, wasPublished: false },
+		])(
+			'emits app-deleted with wasPublished $wasPublished',
+			async ({ publishedVersionId, wasPublished }) => {
+				const { service, appRepository, events } = createService();
+				appRepository.findInProject.mockResolvedValue(mock<App>({ id: appId, publishedVersionId }));
+				appRepository.deleteInProject.mockResolvedValue(true);
+
+				await service.deleteApp('project-1', appId, { userId: 'user-1' });
+
+				expect(events.emit).toHaveBeenCalledExactlyOnceWith('app-deleted', {
+					userId: 'user-1',
+					appId,
+					wasPublished,
+				});
+			},
+		);
+
+		it('emits no app-deleted when nothing was deleted', async () => {
+			const { service, appRepository, events } = createService();
+			appRepository.findInProject.mockResolvedValue(mock<App>({ id: appId }));
+			appRepository.deleteInProject.mockResolvedValue(false);
+
+			await expect(service.deleteApp('project-1', appId)).rejects.toThrow(NotFoundError);
+			expect(events.emit).not.toHaveBeenCalled();
+		});
 	});
 });

@@ -123,6 +123,9 @@ export class SlackIntegration extends AgentChatIntegration {
 		'do_not_respond',
 	]);
 
+	// Slack accepts files up to 1 GB. The Slack UI shows up to 10 files on one message.
+	readonly fileUploadLimits = { maxFiles: 10, maxFileBytes: 1024 * 1024 * 1024 };
+
 	async assertStartupPreconditions(ctx: AgentChannelPreconditionContext): Promise<void> {
 		await assertCredentialNotClaimed(this.agentRepository, this.displayLabel, this.type, ctx);
 	}

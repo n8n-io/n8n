@@ -1,8 +1,7 @@
 import type { SerializedCredential, SerializedVariable } from '@n8n/api-types';
-import { LicenseState } from '@n8n/backend-common';
 import { Service } from '@n8n/di';
 
-import { ForbiddenError } from '@n8n/errors';
+import { UnexpectedError } from '@n8n/errors';
 
 import {
 	credentialUpdateScope,
@@ -12,9 +11,9 @@ import type {
 	CredentialBindingRequest,
 	CredentialUpdateScope,
 } from '../entities/credential/credential.types';
-import { removesUnpackagedWorkflows } from '../entities/folder/folder-conflict-policy';
 import type { DataTableImportRequest } from '../entities/data-table/data-table.types';
-import { ProjectImporter } from '../entities/project/project-importer';
+import { ProjectImporter, projectRefusalError } from '../entities/project/project-importer';
+import type { ProjectImportPlan } from '../entities/project/project-import.types';
 import type { TagImportRequest } from '../entities/tag/tag.types';
 import type { VariableImportRequest } from '../entities/variable/variable.types';
 import { collectPlannedWorkflowBindings } from '../entities/workflow/workflow-importer';
@@ -26,6 +25,7 @@ import type {
 	ImportBindingMap,
 	ImportedFolderSummary,
 	ImportedWorkflowSummary,
+	ImportPlanMode,
 	ImportSelection,
 	ResolvedImportRequest,
 	ImportTagSummary,
@@ -33,7 +33,7 @@ import type {
 	PackageImportSource,
 } from '../n8n-packages.types';
 import { mergeBindings } from '../n8n-packages.types';
-import { assertPackageImportApiKeyScopes } from './import-gates';
+import { assertPackageImportApiKeyScopes, assertProjectWritesAllowed } from './import-gates';
 import { toImportBlockedError } from './import-blocked.error';
 import {
 	needsBundledCredentialFiles,
@@ -62,6 +62,18 @@ import type { ImportOutcome, PackageImportScope } from './import-telemetry';
 import { N8nPackageParser } from './n8n-package-parser';
 import { PackageImportPreflight } from './package-import-preflight';
 import type { ManifestEntry, PackageManifest } from '../spec/manifest.schema';
+import type { SerializedSkill } from '../spec/serialized/skill.schema';
+
+/** Everything an import will do, read before its first write. */
+export interface PackageImportPlan {
+	request: ResolvedImportRequest;
+	manifest: PackageManifest;
+	projectPlan: ProjectImportPlan;
+	/** Empty when a project conflict stops the import before its contents are planned. */
+	scopes: Array<{ project: ManifestEntry; plan: ImportPlan }>;
+	/** Everything that blocks the import, from every stage that could run. */
+	issues: BlockingIssue[];
+}
 
 @Service()
 export class ProjectPackageImporter {
@@ -70,7 +82,6 @@ export class ProjectPackageImporter {
 		private readonly projectImporter: ProjectImporter,
 		private readonly importOrchestrator: ImportOrchestrator,
 		private readonly importPreflight: PackageImportPreflight,
-		private readonly licenseState: LicenseState,
 	) {}
 
 	async import(
@@ -79,6 +90,25 @@ export class ProjectPackageImporter {
 		manifest: PackageManifest,
 		importSource: PackageImportSource,
 	): Promise<ImportOutcome> {
+		const plan = await this.planImport(request, reader, manifest, importSource, 'enforce');
+		const refusal = plan.projectPlan.conflicts.map(projectRefusalError).find((error) => error);
+		if (refusal) throw refusal;
+		if (plan.issues.length > 0) throw toImportBlockedError(plan.issues);
+		return await this.applyPlan(plan);
+	}
+
+	/**
+	 * Plans every project of the import and collects the issues that block it. Writes no data.
+	 * In `enforce` mode, policy checks write audit events. A refused project is an issue in both
+	 * modes, so Apply can report it with the other blockers.
+	 */
+	async planImport(
+		request: ResolvedImportRequest,
+		reader: PackageReader,
+		manifest: PackageManifest,
+		importSource: PackageImportSource,
+		mode: ImportPlanMode,
+	): Promise<PackageImportPlan> {
 		this.assertAdequatePermissions(request, manifest);
 
 		const { selection } = request;
@@ -95,14 +125,19 @@ export class ProjectPackageImporter {
 			projects,
 			request.projectConflictPolicy,
 		);
+		assertProjectWritesAllowed(request.apiKeyScopes, projectPlan.items);
 		// A refused project decides the whole import, so report it before reading any project's
 		// contents — planning work that is certain to be discarded only delays the same failure.
 		if (projectPlan.conflicts.length > 0) {
-			throw toImportBlockedError(
-				projectPlan.conflicts.map(
+			return {
+				request,
+				manifest,
+				projectPlan,
+				scopes: [],
+				issues: projectPlan.conflicts.map(
 					(conflict): BlockingIssue => ({ type: 'project-conflict', ...conflict }),
 				),
-			);
+			};
 		}
 
 		const bundledVariables = needsBundledVariableValues(
@@ -118,6 +153,11 @@ export class ProjectPackageImporter {
 		)
 			? await this.packageParser.getCredentials(reader)
 			: undefined;
+		// Read once: Agents in any project can reference an instance skill.
+		const packageSkills =
+			!request.selection && manifest.agents?.length
+				? await this.packageParser.getSkills(reader)
+				: [];
 		// Projects match by id, so a package project id is also its destination project id.
 		const updateScope = credentialUpdateScope(selectedProjects.map(({ id }) => id));
 		// Projects the user is creating (vs matching an existing one). They will be admin of these,
@@ -138,14 +178,36 @@ export class ProjectPackageImporter {
 				manifest,
 				project,
 				pendingCreateIds.has(project.id),
-				{ bundledVariables, packageCredentials, credentialUpdateScope: updateScope },
+				{
+					bundledVariables,
+					packageCredentials,
+					packageSkills,
+					credentialUpdateScope: updateScope,
+				},
 				importSource,
 			);
 			inputs.push(input);
 		}
-		const draftPlans = await this.importOrchestrator.planPackage(inputs);
-		const plans = await this.importPreflight.prepare(draftPlans, reader, request.apiKeyScopes);
-		const planned = selectedProjects.map((project, index) => ({ project, plan: plans[index] }));
+		const draftPlans = await this.importOrchestrator.planPackage(inputs, mode);
+		const { plans, issues } = await this.importPreflight.check(
+			draftPlans,
+			reader,
+			request.apiKeyScopes,
+			mode,
+		);
+		const scopes = selectedProjects.map((project, index) => ({ project, plan: plans[index] }));
+
+		return { request, manifest, projectPlan, scopes, issues };
+	}
+
+	/** Writes a plan that has no issues. */
+	async applyPlan(plan: PackageImportPlan): Promise<ImportOutcome> {
+		const { request, manifest, projectPlan, scopes: planned } = plan;
+		if (plan.issues.length > 0) {
+			throw new UnexpectedError('An import plan with blocking issues cannot be applied');
+		}
+
+		await this.importOrchestrator.assertCanUpdateCredentials(planned.map(({ plan }) => plan));
 
 		const projectSummaries = await this.projectImporter.apply(request.user, projectPlan.items);
 
@@ -172,6 +234,8 @@ export class ProjectPackageImporter {
 
 		const { workflows: published, agentOutcomes } = await this.importOrchestrator.publishPackage({
 			user: request.user,
+			publicApi: request.publicApi,
+			ctx: request.ctx,
 			content: applied.map(({ content }) => content),
 			policy: request.publishingPolicy,
 			subWorkflowRequirements: manifest.requirements?.workflows,
@@ -213,7 +277,7 @@ export class ProjectPackageImporter {
 			dataTablesUpdated += content.dataTablePlan.updates.length;
 			seeded.push(...content.credentialResult.seeded);
 			incomplete.push(...content.credentialResult.incomplete);
-			variablesMatched.push(...content.variablePlan.matched);
+			variablesMatched.push(...content.variablePlan.matched.map(({ name }) => name));
 			variablesMissing.push(...content.variablePlan.missing.map(({ name }) => name));
 			variablesCreated.push(...content.variableResult.created);
 			variablesStubbed.push(...content.variableResult.stubbed);
@@ -277,12 +341,13 @@ export class ProjectPackageImporter {
 		importWide: {
 			bundledVariables: Map<string, SerializedVariable> | undefined;
 			packageCredentials: Map<string, SerializedCredential> | undefined;
+			packageSkills: SerializedSkill[];
 			credentialUpdateScope: CredentialUpdateScope;
 		},
 		importSource: PackageImportSource,
 	): Promise<ImportOrchestrationInput> {
 		const basePrefix = `${project.target}/`;
-		const folders = await this.packageParser.getFolders(reader, basePrefix);
+		const allFolders = await this.packageParser.getFolders(reader, basePrefix);
 		const allWorkflows = await this.packageParser.getWorkflows(reader, basePrefix);
 		const agents =
 			!request.selection && manifest.agents?.length
@@ -295,6 +360,12 @@ export class ProjectPackageImporter {
 					request.selection!.selectedWorkflowIds.includes(workflow.sourceWorkflowId),
 				)
 			: allWorkflows;
+		const selectedFolderIds = request.selection
+			? foldersInSelection(allFolders, workflows, request.selection.selectedFolderIds ?? [])
+			: undefined;
+		const folders = selectedFolderIds
+			? allFolders.filter(({ sourceFolderId }) => selectedFolderIds.has(sourceFolderId))
+			: allFolders;
 
 		// Requirements and bindings are both scoped to this project's workflows so another project's
 		// binding is not seen as an orphan here (which would block the whole multi-project import).
@@ -312,6 +383,7 @@ export class ProjectPackageImporter {
 				requirements,
 			),
 			conflictPolicy: resolveCredentialConflictPolicy(request.credentialConflictPolicy),
+			personalRoute: request.credentialPersonalRoute,
 			packageCredentials: importWide.packageCredentials,
 			updateScope: importWide.credentialUpdateScope,
 		};
@@ -346,12 +418,15 @@ export class ProjectPackageImporter {
 		return {
 			context: {
 				user: request.user,
+				ctx: request.ctx,
 				projectId: project.id,
 				folderId: null,
+				publicApi: request.publicApi,
 			},
 			folders,
 			workflows,
 			agents,
+			skills: importWide.packageSkills,
 			agentRequirements: identifyRequirements(manifest.requirements?.agents, workflows, agents),
 			credentialRequest,
 			dataTableRequest,
@@ -369,7 +444,6 @@ export class ProjectPackageImporter {
 			),
 			explicitDeleteWorkflowIds: deletesForProject(request.selection, project.id),
 			checkRootPlacement: true,
-			...(request.selection ? { movableFolderIds: foldersHolding(folders, workflows) } : {}),
 		};
 	}
 
@@ -377,28 +451,8 @@ export class ProjectPackageImporter {
 		request: ResolvedImportRequest,
 		manifest: PackageManifest,
 	): void {
-		// A project package can create new projects or update matched ones (by source id), so require both —
-		// mirroring the folder create+update assertion below.
-		assertPackageImportApiKeyScopes(request.apiKeyScopes, ['project:create', 'project:update']);
-
-		if ((manifest.folders?.length ?? 0) > 0) {
-			if (!this.licenseState.isLicensed('feat:folders')) {
-				throw new ForbiddenError(
-					'Your license does not allow folders. Importing a package with folders requires a license that supports folders.',
-				);
-			}
-			assertPackageImportApiKeyScopes(request.apiKeyScopes, ['folder:create', 'folder:update']);
-		}
-
 		if ((manifest.workflows?.length ?? 0) > 0) {
 			assertPackageImportApiKeyScopes(request.apiKeyScopes, ['workflow:import']);
-		}
-
-		// `overwrite` archives workflows the package omits, so require the scope up front rather than
-		// discovering mid-import that the caller may not remove what reconciliation demands.
-		if (removesUnpackagedWorkflows(request.folderConflictPolicy)) {
-			// Folders it empties go too, so it needs both removal scopes up front.
-			assertPackageImportApiKeyScopes(request.apiKeyScopes, ['workflow:delete', 'folder:delete']);
 		}
 
 		// Selection imports preserve folders, so explicit deletions need only workflow:delete.
@@ -416,24 +470,28 @@ function deletesForProject(
 	return selection.deletedWorkflowIds;
 }
 
-/** The folders that hold a selected workflow, with every folder above them. */
-function foldersHolding(
+/**
+ * The folders that a selection creates, moves or renames: the selected folders and the folders
+ * that hold a selected workflow, with every folder above them. Other folders stay as they are.
+ */
+function foldersInSelection(
 	folders: Array<{ sourceFolderId: string; parentFolderId: string | null }>,
 	workflows: Array<{ parentFolderId: string | null }>,
+	selectedFolderIds: string[],
 ): Set<string> {
 	const parentOf = new Map(
 		folders.map(({ sourceFolderId, parentFolderId }) => [sourceFolderId, parentFolderId]),
 	);
-	const holding = new Set<string>();
-	for (const workflow of workflows) {
+	const result = new Set<string>();
+	for (const start of [...selectedFolderIds, ...workflows.map((w) => w.parentFolderId)]) {
 		// A visited folder ends the walk, which also stops a cycle.
 		for (
-			let current = workflow.parentFolderId;
-			current !== null && !holding.has(current);
+			let current = start;
+			current !== null && !result.has(current);
 			current = parentOf.get(current) ?? null
 		) {
-			holding.add(current);
+			result.add(current);
 		}
 	}
-	return holding;
+	return result;
 }

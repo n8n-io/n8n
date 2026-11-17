@@ -1,5 +1,7 @@
 import type { ButtonSize } from '../../types/button';
 import type { IconSize } from '../../types/icon';
+import type { IconName } from '../N8nIcon/icons';
+import type { IconOrEmoji } from '../N8nIconPicker/types';
 
 /**
  * Extracted from the SFC: `<script setup>` types that reference the component's
@@ -9,6 +11,8 @@ import type { IconSize } from '../../types/icon';
  */
 export type ActionToggleItem<T extends string = string> = {
 	label: string;
+	/** Icon before the label: an icon name, or an icon or emoji as dropdown items take it. */
+	icon?: IconName | IconOrEmoji;
 	disabled?: boolean;
 	divided?: boolean;
 	/** Whether to render the item as a destructive action. */
@@ -19,6 +23,8 @@ export type ActionToggleItem<T extends string = string> = {
 } & ({ id: T; value?: T } | { id?: T; value: T });
 
 export interface ActionToggleProps<T extends string = string> {
+	/** Accessible name of the default trigger button. */
+	ariaLabel?: string;
 	actions?: Array<ActionToggleItem<T>>;
 	placement?: 'top' | 'top-start' | 'top-end' | 'bottom' | 'bottom-start' | 'bottom-end';
 	theme?: 'default' | 'dark';

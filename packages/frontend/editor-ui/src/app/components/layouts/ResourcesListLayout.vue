@@ -15,6 +15,7 @@ import ResourcesListEmptyState, {
 	isEmptyStateResourceKey,
 } from '@/app/components/layouts/ResourcesListEmptyState.vue';
 import type { DatatableColumn } from '@n8n/design-system';
+import type { SlotResourcesListLayoutProps } from '@n8n/frontend-module-sdk';
 import { useDebounce } from '@n8n/composables/useDebounce';
 import { useTelemetry } from '@n8n/composables/useTelemetry';
 import { useRoute, useRouter } from 'vue-router';
@@ -22,7 +23,7 @@ import { useIntersectionObserver } from '@/app/composables/useIntersectionObserv
 
 import type { BaseFilters, Resource, SortingAndPaginationUpdates } from '@/Interface';
 import { isSharedResource, isResourceSortableByDate } from '@/app/utils/typeGuards';
-import { type LocalStorageTabKey, useN8nLocalStorage } from '@/app/composables/useN8nLocalStorage';
+import { useN8nLocalStorage } from '@/app/composables/useN8nLocalStorage';
 import { useResourcesListI18n } from '@/app/composables/useResourcesListI18n';
 
 import {
@@ -39,12 +40,6 @@ import {
 	N8nText,
 	getScrollParent,
 } from '@n8n/design-system';
-type UIConfig = {
-	searchEnabled: boolean;
-	showFiltersDropdown: boolean;
-	sortEnabled: boolean;
-};
-
 const route = useRoute();
 const router = useRouter();
 const { callDebounced } = useDebounce();
@@ -52,41 +47,17 @@ const telemetry = useTelemetry();
 const n8nLocalStorage = useN8nLocalStorage();
 
 const props = withDefaults(
-	defineProps<{
-		resourceKey: string;
-		displayName?: (resource: ResourceType) => string;
-		resources: ResourceType[];
-		disabled: boolean;
-		initialize?: () => Promise<void>;
-		filters?: BaseFilters;
-		additionalFiltersHandler?: (
-			resource: ResourceType,
-			filters: BaseFilters,
-			matches: boolean,
-		) => boolean;
-		shareable?: boolean;
-		sortFns?: Record<string, (a: ResourceType, b: ResourceType) => number>;
-		sortOptions?: string[];
-		/**
-		 * - `list-full`: the component gets every resource, and sorts and filters them
-		 * - `list-paginated`: the parent fetches the resources in batches, and appends the next
-		 *   batch on `load-more`
-		 */
-		type?: 'datatable' | 'list-full' | 'list-paginated';
-		typeProps: { itemSize: number } | { columns: DatatableColumn[] };
-		loading: boolean;
-		customPageSize?: number;
-		totalItems?: number;
-		resourcesRefreshing?: boolean;
-		// Set to true if sorting and filtering is done outside of the component
-		dontPerformSortingAndFiltering?: boolean;
-		hasEmptyState?: boolean;
-		uiConfig?: UIConfig;
-		tabKey?: LocalStorageTabKey;
-		persistKeyExclusions?: string[];
-		/** Show the list as columns under a header. The row cells must use the same keys */
-		listColumns?: ResourceListColumn[];
-	}>(),
+	defineProps<
+		SlotResourcesListLayoutProps<ResourceType> & {
+			/** Show the list as columns under a header. The row cells must use the same keys */
+			listColumns?: ResourceListColumn[];
+			/**
+			 * The rows that a `list-paginated` list has loaded, including rows in the `list-prepend`
+			 * slot. The default is the number of resources
+			 */
+			loadedCount?: number;
+		}
+	>(),
 	{
 		displayName: (resource: ResourceType) => resource.name || '',
 		initialize: async () => {},
@@ -99,6 +70,7 @@ const props = withDefaults(
 		additionalFiltersHandler: undefined,
 		shareable: true,
 		customPageSize: 25,
+		availablePageSizeOptions: () => [10, 25, 50, 100],
 		totalItems: 0,
 		dontPerformSortingAndFiltering: false,
 		resourcesRefreshing: false,
@@ -111,6 +83,7 @@ const props = withDefaults(
 		tabKey: 'workflows',
 		persistKeyExclusions: () => [],
 		listColumns: undefined,
+		loadedCount: undefined,
 	},
 );
 
@@ -168,6 +141,7 @@ const slots = defineSlots<{
 	}): unknown;
 	item(props: { item: unknown; index: number }): unknown;
 	breadcrumbs(): unknown;
+	'list-prepend'(): unknown;
 }>();
 
 //computed
@@ -192,7 +166,8 @@ const showEmptyState = computed(() => {
 const showLoadingState = computed(() => {
 	return (
 		props.loading ||
-		(props.resourcesRefreshing &&
+		(props.hasEmptyState &&
+			props.resourcesRefreshing &&
 			props.resources.length === 0 &&
 			!hasFilters.value &&
 			!filtersModel.value.search)
@@ -597,7 +572,9 @@ const scrollToTop = () => {
 };
 
 const hasMoreResources = computed(
-	() => props.type === 'list-paginated' && props.resources.length < props.totalItems,
+	() =>
+		props.type === 'list-paginated' &&
+		(props.loadedCount ?? props.resources.length) < props.totalItems,
 );
 
 // Shown in the column header. A paginated list counts all resources, not only the loaded ones.
@@ -619,8 +596,8 @@ const { observe: observeLoadMore, disconnect: disconnectLoadMore } = useIntersec
 // Observe again after each batch: a new observer reports at once if the end is still near,
 // for example on a tall screen.
 watch(
-	[loadMoreRef, () => props.resources, () => props.resourcesRefreshing],
-	([element, , refreshing]) => {
+	[loadMoreRef, () => props.resources, () => props.loadedCount, () => props.resourcesRefreshing],
+	([element, , , refreshing]) => {
 		if (!element || refreshing) {
 			disconnectLoadMore();
 			return;
@@ -753,7 +730,7 @@ defineExpose({
 					<ResourceListSkeleton />
 				</div>
 				<div
-					v-else-if="filteredAndSortedResources.length > 0"
+					v-else-if="filteredAndSortedResources.length > 0 || slots['list-prepend']"
 					ref="listWrapperRef"
 					data-test-id="resources-list-wrapper"
 					:class="$style.listWrapper"
@@ -778,6 +755,7 @@ defineExpose({
 						data-test-id="paginated-list"
 					>
 						<div :class="$style.listItems">
+							<slot name="list-prepend" />
 							<div v-for="(item, index) in resources" :key="index" :class="$style.listItem">
 								<slot name="item" :item="item" :index="index">
 									{{ item }}

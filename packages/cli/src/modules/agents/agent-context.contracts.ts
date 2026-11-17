@@ -28,6 +28,11 @@ export type AgentContextLookup =
 	  }
 	| { type: 'session'; agentId: string; threadId: string; executionId?: string };
 
+export type AgentSessionListOptions = Omit<
+	Extract<AgentContextLookup, { type: 'sessions' }>,
+	'type' | 'agentId'
+>;
+
 export interface AgentContextReader {
 	lookup(input: AgentContextLookup): Promise<AgentContextResult>;
 }
@@ -51,6 +56,11 @@ export interface AgentSessionSummary {
 	totalCompletionTokens: number;
 	totalDuration: number;
 }
+
+export type AgentSessionList = {
+	sessions: AgentSessionSummary[];
+	nextCursor: string | null;
+};
 
 export interface AgentSessionThread {
 	id: string;

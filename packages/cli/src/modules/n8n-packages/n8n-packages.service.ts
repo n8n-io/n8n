@@ -1,17 +1,17 @@
-import { ModuleRegistry } from '@n8n/backend-common';
+import { getN8nVersion, ModuleRegistry } from '@n8n/backend-common';
 import { EventService } from '@n8n/backend-services';
 import { GlobalConfig } from '@n8n/config';
 import { Service } from '@n8n/di';
 import { InstanceSettings } from 'n8n-core';
 
-import { N8N_VERSION } from '@/constants';
 import { BadRequestError, ForbiddenError } from '@n8n/errors';
+import { loginIdOf } from '@/events/login-id';
 
 import { buildImportResult, toPackageSummary } from './engine/import-result';
 import { assertPackageImportApiKeyScopes, packageImportScopes } from './engine/import-gates';
 import { emitPackageImportedEvent, type ImportOutcome } from './engine/import-telemetry';
 import { N8nPackageParser } from './engine/n8n-package-parser';
-import { ProjectPackageImporter } from './engine/project-package-importer';
+import { ProjectPackageImporter, type PackageImportPlan } from './engine/project-package-importer';
 import { WorkflowPackageImporter } from './engine/workflow-package-importer';
 import { AgentSelectionExporter } from './entities/agent/agent-selection.exporter';
 import { CredentialExporter } from './entities/credential/credential.exporter';
@@ -53,10 +53,12 @@ import {
 	ExportDependencyPolicy,
 	ExportVersionPolicy,
 	OverwriteDeletionPolicy,
+	ProjectConflictPolicy,
 	LayoutConflictPolicy,
 	TagConflictPolicy,
 	ImportConflictPolicy,
 	WorkflowIdPolicy,
+	WorkflowPublishingPolicy,
 	type ExportPackageEventCounts,
 	type ExportPackageRequest,
 	type ExportPackageDirectoryResult,
@@ -64,6 +66,7 @@ import {
 	type ExportPackageSummary,
 	type ImportPackageRequest,
 	type ImportPackageSelectionRequest,
+	type ImportPlanMode,
 	type ImportRequest,
 	type ImportResult,
 	type ImportSelection,
@@ -90,7 +93,7 @@ interface WrittenExport {
 	folderIds: string[];
 	projectIds: string[];
 	credentialExportPolicy: CredentialExportPolicy;
-	includeArchivedWorkflows: boolean;
+	includeArchived: boolean;
 }
 
 type DirectoryProjectPackage =
@@ -102,13 +105,12 @@ type DirectoryProjectPackage =
  * left to the caller (`overwriteDeletionPolicy`): promotion passes `hard-delete` for diff convergence,
  * while the public selection import defaults to the safe `archive`. The caller also sets
  * `dataTableSchemaConflictPolicy`, which defaults to `fail`, `tagConflictPolicy`, which defaults to
- * `skip`, `credentialConflictPolicy`, which defaults to `keep-existing`, and `layoutConflictPolicy`,
- * which defaults to `fail`.
+ * `skip`, `credentialConflictPolicy`, which defaults to `keep-existing`, `layoutConflictPolicy`,
+ * which defaults to `fail`, and `publishingPolicy`, which defaults to `match-source`.
  */
 const CHERRY_PICK_IMPORT_POLICY = {
 	projectConflictPolicy: 'merge',
 	folderConflictPolicy: 'merge',
-	publishingPolicy: 'match-source',
 	missingNodeTypeMode: 'fail',
 	credentialMatchingMode: 'id-only',
 	credentialMissingMode: 'must-preexist',
@@ -123,6 +125,7 @@ const CHERRY_PICK_IMPORT_POLICY = {
 	| 'projectId'
 	| 'folderId'
 	| 'apiKeyScopes'
+	| 'publicApi'
 	| 'bindings'
 	| 'selection'
 	| 'overwriteDeletionPolicy'
@@ -132,6 +135,7 @@ const CHERRY_PICK_IMPORT_POLICY = {
 	| 'tagConflictPolicy'
 	| 'credentialConflictPolicy'
 	| 'layoutConflictPolicy'
+	| 'publishingPolicy'
 >;
 
 @Service()
@@ -173,7 +177,8 @@ export class N8nPackagesService {
 			...(result.projectIds.length ? { projectIds: result.projectIds } : {}),
 			counts: result.counts,
 			credentialExportPolicy: result.credentialExportPolicy,
-			includeArchivedWorkflows: result.includeArchivedWorkflows,
+			includeArchived: result.includeArchived,
+			loginId: loginIdOf(request.ctx),
 		});
 
 		return { stream, counts: result.counts };
@@ -213,19 +218,20 @@ export class N8nPackagesService {
 		const versionPolicy = request.versionPolicy ?? ExportVersionPolicy.Latest;
 		const credentialExportPolicy =
 			request.credentialExportPolicy ?? CredentialExportPolicy.ExpressionValuesOnly;
-		const includeArchivedWorkflows = request.includeArchivedWorkflows ?? false;
+		const includeArchived = request.includeArchived ?? false;
 
 		const { folderExportResult, workflowExportResult, projectExportResult, agentExportResult } =
 			await this.exportSelectedEntities(writer, request, {
 				includeTags,
 				versionPolicy,
 				dependencyPolicy,
-				includeArchivedWorkflows,
+				includeArchived,
 			});
 
 		const allFoldersBeforeAutoInclude = [
 			...(folderExportResult?.entries ?? []),
 			...(projectExportResult?.folderEntries ?? []),
+			...(agentExportResult?.folderEntries ?? []),
 		];
 		const allProjectsBeforeAutoInclude = [
 			...(projectExportResult?.entries ?? []),
@@ -389,12 +395,12 @@ export class N8nPackagesService {
 		});
 
 		const agentEntries = agentExportResult?.agentEntries ?? [];
-		const manifest = packageManifestSchema.parse({
+		const written = {
 			packageFormatVersion: FORMAT_VERSION,
-			exportedAt: new Date().toISOString(),
-			sourceN8nVersion: N8N_VERSION,
+			sourceN8nVersion: getN8nVersion(),
 			sourceId: this.instanceSettings.instanceId,
 			...(agentEntries.length > 0 ? { agents: agentEntries } : {}),
+			...(agentExportResult?.skillEntries.length ? { skills: agentExportResult.skillEntries } : {}),
 			...(credentialExportResult.entries.length > 0
 				? { credentials: credentialExportResult.entries }
 				: {}),
@@ -409,7 +415,8 @@ export class N8nPackagesService {
 			...(allWorkflowsInPackage.length > 0 ? { workflows: allWorkflowsInPackage } : {}),
 			...(allFolders.length > 0 ? { folders: allFolders } : {}),
 			...(allProjects.length > 0 ? { projects: allProjects } : {}),
-		});
+		} satisfies PackageManifest;
+		const manifest = packageManifestSchema.parse(written);
 
 		await writer.writeFile('manifest.json', formatEntityFile(manifest));
 
@@ -431,7 +438,7 @@ export class N8nPackagesService {
 			folderIds: allFolders.map(({ id }) => id),
 			projectIds: allProjects.map(({ id }) => id),
 			credentialExportPolicy,
-			includeArchivedWorkflows,
+			includeArchived,
 		};
 	}
 
@@ -442,13 +449,13 @@ export class N8nPackagesService {
 			includeTags: boolean;
 			versionPolicy: ExportVersionPolicy;
 			dependencyPolicy: ExportDependencyPolicy;
-			includeArchivedWorkflows: boolean;
+			includeArchived: boolean;
 		},
 	) {
 		const workflowIds = request.workflowIds ?? [];
 		const folderIds = request.folderIds ?? [];
 		const projectIds = request.projectIds ?? [];
-		const { includeTags, versionPolicy, dependencyPolicy, includeArchivedWorkflows } = options;
+		const { includeTags, versionPolicy, dependencyPolicy, includeArchived } = options;
 
 		const folderExportResult =
 			folderIds.length > 0
@@ -458,7 +465,8 @@ export class N8nPackagesService {
 						writer,
 						includeTags,
 						versionPolicy,
-						includeArchivedWorkflows,
+						includeArchived,
+						includeAgentFolders: request.includeAgents !== false,
 					})
 				: undefined;
 
@@ -484,10 +492,12 @@ export class N8nPackagesService {
 						user: request.user,
 						projectIds,
 						workflowIds: request.projectWorkflowIds,
+						folderIds: request.projectFolderIds,
 						writer,
 						includeTags,
 						versionPolicy,
-						includeArchivedWorkflows,
+						includeArchived,
+						includeAgentFolders: request.includeAgents !== false,
 					})
 				: undefined;
 
@@ -498,11 +508,17 @@ export class N8nPackagesService {
 						user: request.user,
 						writer,
 						agentIds: request.agentIds,
+						folderIds: folderExportResult?.entries.map(({ id }) => id),
 						projectIds,
 						projectWorkflowIds: request.projectWorkflowIds,
 						versionPolicy,
 						dependencyPolicy,
+						includeArchived,
 						projectTargetsById: projectExportResult?.projectTargetsById,
+						existingFolderEntries: [
+							...(projectExportResult?.folderEntries ?? []),
+							...(folderExportResult?.entries ?? []),
+						],
 					});
 
 		return { folderExportResult, workflowExportResult, projectExportResult, agentExportResult };
@@ -599,10 +615,24 @@ export class N8nPackagesService {
 			if (!allowAgents) {
 				throw new BadRequestError('Agent packages require the ordinary archive import endpoint.');
 			}
+
 			if (!this.moduleRegistry.isActive('agents')) {
 				throw new BadRequestError('The Agents module is not enabled.');
 			}
 		}
+
+		if (!allowAgents && manifest.folders?.length) {
+			const prefixes = ['', ...(manifest.projects ?? []).map(({ target }) => `${target}/`)];
+
+			for (const prefix of prefixes) {
+				const folders = await this.packageParser.getFolders(reader, prefix);
+
+				if (folders.some((folder) => folder.resourceType === 'agent')) {
+					throw new BadRequestError('Agent folders require the ordinary archive import endpoint.');
+				}
+			}
+		}
+
 		return manifest;
 	}
 
@@ -622,6 +652,52 @@ export class N8nPackagesService {
 		return { status: 'empty', result: emptyImportResult(manifest) };
 	}
 
+	/**
+	 * Plans a project package import. Like the directory import, it uses the Git pull source and
+	 * emits no telemetry. Write the plan with {@link applyPackagePlan}. In `check` mode, refusals
+	 * become issues and policy checks write no audit events.
+	 */
+	async planPackage(
+		request: ImportRequest & PromotionLayoutProperties,
+		reader: PackageReader,
+		mode: ImportPlanMode,
+	): Promise<PackageImportPlan> {
+		const manifest = await this.readImportManifest(reader);
+		if (!isProjectPackage(manifest) && hasContentWithoutProjects(manifest)) {
+			throw new BadRequestError('Directory packages must contain projects');
+		}
+		return await this.projectPackageImporter.planImport(
+			this.resolveProjectPackageRequest(request),
+			reader,
+			manifest,
+			'git-pull',
+			mode,
+		);
+	}
+
+	/** Plans a selection import like {@link planPackage}. */
+	async planPackageSelection(
+		request: ImportSelectionRequest,
+		reader: PackageReader,
+		selection: ImportSelection,
+		mode: ImportPlanMode,
+	): Promise<PackageImportPlan> {
+		const manifest = await this.readImportManifest(reader);
+		return await this.projectPackageImporter.planImport(
+			this.resolveSelectionRequest(request, manifest, selection),
+			reader,
+			manifest,
+			'git-pull',
+			mode,
+		);
+	}
+
+	/** Writes a plan from {@link planPackage} or {@link planPackageSelection} that has no issues. */
+	async applyPackagePlan(plan: PackageImportPlan): Promise<ImportResult> {
+		const { result } = await this.projectPackageImporter.applyPlan(plan);
+		return result;
+	}
+
 	/** The caller must validate that the manifest describes a project package. */
 	private async dispatchSelectionImport(
 		request: ImportSelectionRequest,
@@ -630,30 +706,7 @@ export class N8nPackagesService {
 		selection: ImportSelection,
 		importSource: PackageImportSource,
 	): Promise<ImportOutcome & { resolvedRequest: ResolvedImportRequest }> {
-		const packageProjectIds = new Set((manifest.projects ?? []).map((project) => project.id));
-		if (!packageProjectIds.has(selection.selectedProjectId)) {
-			throw new BadRequestError(
-				`The selected project "${selection.selectedProjectId}" is not present in the package.`,
-			);
-		}
-
-		const resolvedRequest: ResolvedImportRequest = {
-			user: request.user,
-			...(request.apiKeyScopes !== undefined ? { apiKeyScopes: request.apiKeyScopes } : {}),
-			...(request.bindings !== undefined ? { bindings: request.bindings } : {}),
-			...CHERRY_PICK_IMPORT_POLICY,
-			overwriteDeletionPolicy: request.overwriteDeletionPolicy ?? OverwriteDeletionPolicy.Archive,
-			conflictPolicy: request.conflictPolicy ?? ImportConflictPolicy.NewVersion,
-			idPolicy: request.idPolicy ?? WorkflowIdPolicy.Source,
-			dataTableSchemaConflictPolicy:
-				request.dataTableSchemaConflictPolicy ?? DataTableSchemaConflictPolicy.Fail,
-			tagConflictPolicy: request.tagConflictPolicy ?? TagConflictPolicy.Skip,
-			credentialConflictPolicy:
-				request.credentialConflictPolicy ?? CredentialConflictPolicy.KeepExisting,
-			layoutConflictPolicy: request.layoutConflictPolicy ?? LayoutConflictPolicy.Fail,
-			selection,
-		};
-
+		const resolvedRequest = this.resolveSelectionRequest(request, manifest, selection);
 		const outcome = await this.projectPackageImporter.import(
 			resolvedRequest,
 			reader,
@@ -663,6 +716,43 @@ export class N8nPackagesService {
 		return { ...outcome, resolvedRequest };
 	}
 
+	private resolveSelectionRequest(
+		request: ImportSelectionRequest,
+		manifest: PackageManifest,
+		selection: ImportSelection,
+	): ResolvedImportRequest {
+		const packageProjectIds = new Set((manifest.projects ?? []).map((project) => project.id));
+		if (!packageProjectIds.has(selection.selectedProjectId)) {
+			throw new BadRequestError(
+				`The selected project "${selection.selectedProjectId}" is not present in the package.`,
+			);
+		}
+
+		return {
+			user: request.user,
+			publicApi: request.publicApi,
+			...(request.ctx !== undefined ? { ctx: request.ctx } : {}),
+			...(request.apiKeyScopes !== undefined ? { apiKeyScopes: request.apiKeyScopes } : {}),
+			...(request.bindings !== undefined ? { bindings: request.bindings } : {}),
+			...CHERRY_PICK_IMPORT_POLICY,
+			projectConflictPolicy: request.projectConflictPolicy ?? ProjectConflictPolicy.Merge,
+			overwriteDeletionPolicy: request.overwriteDeletionPolicy ?? OverwriteDeletionPolicy.Archive,
+			conflictPolicy: request.conflictPolicy ?? ImportConflictPolicy.NewVersion,
+			idPolicy: request.idPolicy ?? WorkflowIdPolicy.Source,
+			dataTableSchemaConflictPolicy:
+				request.dataTableSchemaConflictPolicy ?? DataTableSchemaConflictPolicy.Fail,
+			tagConflictPolicy: request.tagConflictPolicy ?? TagConflictPolicy.Skip,
+			credentialConflictPolicy:
+				request.credentialConflictPolicy ?? CredentialConflictPolicy.KeepExisting,
+			layoutConflictPolicy: request.layoutConflictPolicy ?? LayoutConflictPolicy.Fail,
+			...(request.credentialPersonalRoute !== undefined
+				? { credentialPersonalRoute: request.credentialPersonalRoute }
+				: {}),
+			publishingPolicy: request.publishingPolicy ?? WorkflowPublishingPolicy.MatchSource,
+			selection,
+		};
+	}
+
 	private async dispatchImport(
 		request: ImportRequest & PromotionLayoutProperties,
 		reader: PackageReader,
@@ -670,15 +760,8 @@ export class N8nPackagesService {
 		importSource: PackageImportSource,
 	): Promise<ImportOutcome> {
 		if (isProjectPackage(manifest)) {
-			if (request.variableParentPolicy !== undefined) {
-				throw new BadRequestError(
-					'variableParentPolicy is not supported for project packages, where variable placement follows the package layout. Omit it.',
-				);
-			}
-			const rejection = folderPolicyRejection(request, 'project');
-			if (rejection) throw new BadRequestError(rejection);
 			return await this.projectPackageImporter.import(
-				{ ...request, folderConflictPolicy: resolveFolderConflictPolicy(request, 'project') },
+				this.resolveProjectPackageRequest(request),
 				reader,
 				manifest,
 				importSource,
@@ -694,13 +777,26 @@ export class N8nPackagesService {
 		);
 	}
 
+	private resolveProjectPackageRequest(
+		request: ImportRequest & PromotionLayoutProperties,
+	): ResolvedImportRequest {
+		if (request.variableParentPolicy !== undefined) {
+			throw new BadRequestError(
+				'variableParentPolicy is not supported for project packages, where variable placement follows the package layout. Omit it.',
+			);
+		}
+		const rejection = folderPolicyRejection(request, 'project');
+		if (rejection) throw new BadRequestError(rejection);
+		return { ...request, folderConflictPolicy: resolveFolderConflictPolicy(request, 'project') };
+	}
+
 	filterWorkflowsAlreadyInFolders(workflowsInFolders: ManifestEntry[] = [], workflowIds: string[]) {
 		const folderWorkflowIds = new Set(workflowsInFolders.map((entry) => entry.id) ?? []);
 		return workflowIds.filter((id) => !folderWorkflowIds.has(id));
 	}
 
-	private dedupeManifestEntries(entries: ManifestEntry[]): ManifestEntry[] {
-		const byId = new Map<string, ManifestEntry>();
+	private dedupeManifestEntries<T extends ManifestEntry>(entries: T[]): T[] {
+		const byId = new Map<string, T>();
 		for (const entry of entries) {
 			if (!byId.has(entry.id)) {
 				byId.set(entry.id, entry);

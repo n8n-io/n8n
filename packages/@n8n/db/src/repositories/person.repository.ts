@@ -1,9 +1,18 @@
+import type { UsersListFilterDto } from '@n8n/api-types';
 import { Service } from '@n8n/di';
-import type { Repository } from '@n8n/typeorm';
+import { PROJECT_OWNER_ROLE_SLUG, PROJECT_VIEWER_ROLE_SLUG } from '@n8n/permissions';
+import type { DeepPartial, EntityManager, Repository } from '@n8n/typeorm';
 import { DataSource, In, IsNull, Not } from '@n8n/typeorm';
+import { UnexpectedError } from '@n8n/errors';
 
 import { BaseRepository } from './base-repository';
-import { Person } from '../entities';
+import {
+	eligibleAccountsWhere,
+	type EligibleAccountsQuery,
+	UserRepository,
+} from './user.repository';
+import { GLOBAL_OWNER_ROLE } from '../constants';
+import { Person, Project, ProjectRelation, type User } from '../entities';
 import type { IPersonalizationSurveyAnswers } from '../entities/types-db';
 import { type OperationContext, TransactionRunner } from '../services/transaction';
 import { isUniqueConstraintError } from '../utils/is-unique-constraint-error';
@@ -25,8 +34,28 @@ class PersonTable extends BaseRepository<Person> {
 export class PersonRepository {
 	private readonly table: PersonTable;
 
-	constructor(dataSource: DataSource, transactionRunner: TransactionRunner) {
+	constructor(
+		dataSource: DataSource,
+		transactionRunner: TransactionRunner,
+		private readonly userRepository: UserRepository,
+	) {
 		this.table = new PersonTable(dataSource, transactionRunner);
+	}
+
+	/** One page of the users list and its total count, limited to persons. */
+	async listUsers(
+		listQueryOptions: UsersListFilterDto,
+		roleSlugs?: string[],
+	): Promise<{ users: User[]; count: number }> {
+		const [users, count] = await this.userRepository
+			.buildUserQuery(listQueryOptions, roleSlugs, 'person')
+			.getManyAndCount();
+		return { users, count };
+	}
+
+	/** The status counts of the users list, limited to persons. */
+	async countUserListStatuses(filter: UsersListFilterDto['filter'], roleSlugs?: string[]) {
+		return await this.userRepository.countUsersListStatuses(filter, roleSlugs, 'person');
 	}
 
 	async findById(id: string, ctx: OperationContext = {}): Promise<Person | null> {
@@ -44,6 +73,78 @@ export class PersonRepository {
 
 	async findByEmail(email: string): Promise<Person | null> {
 		return await this.table.findOneBy({ email });
+	}
+
+	async findByEmailWithRole(email: string): Promise<Person | null> {
+		return await this.table.findOne({ where: { email }, relations: ['role'] });
+	}
+
+	/** Only the columns that the invite and LDAP sync checks read. */
+	async findManyByEmail(emails: string[]): Promise<Person[]> {
+		return await this.table.find({
+			where: { email: In(emails) },
+			select: ['email', 'password', 'id'],
+		});
+	}
+
+	/**
+	 * True when a claimed instance owner exists. A claimed owner has logged in
+	 * (`lastActiveAt` is set) or has a password. Some setup paths set a password
+	 * before the first login, so the password check is required. The unclaimed
+	 * "shell" owner that first boot creates matches neither condition.
+	 */
+	async hasClaimedInstanceOwner(): Promise<boolean> {
+		return await this.table.exists({
+			where: [
+				{ role: { slug: GLOBAL_OWNER_ROLE.slug }, lastActiveAt: Not(IsNull()) },
+				{ role: { slug: GLOBAL_OWNER_ROLE.slug }, password: Not(IsNull()) },
+			],
+			relations: ['role'],
+		});
+	}
+
+	/** Creates a person and their personal project. */
+	async createPersonWithProject(
+		person: DeepPartial<Person>,
+		transactionManager?: EntityManager,
+	): Promise<{ user: Person; project: Project }> {
+		const createInner = async (entityManager: EntityManager) => {
+			const newPerson = entityManager.create(Person, person);
+			const savedPerson = await entityManager.save<Person>(newPerson);
+			const personWithRole = await entityManager.findOne(Person, {
+				where: { id: savedPerson.id },
+				relations: ['role'],
+			});
+			if (!personWithRole) throw new UnexpectedError('Failed to create user!');
+			const savedProject = await entityManager.save<Project>(
+				entityManager.create(Project, {
+					type: 'personal',
+					name: personWithRole.createPersonalProjectName(),
+					creatorId: savedPerson.id,
+				}),
+			);
+
+			await entityManager.save<ProjectRelation>(
+				entityManager.create(ProjectRelation, {
+					projectId: savedProject.id,
+					userId: savedPerson.id,
+					role: {
+						slug:
+							personWithRole.role.slug !== 'global:chatUser'
+								? PROJECT_OWNER_ROLE_SLUG
+								: PROJECT_VIEWER_ROLE_SLUG,
+					},
+				}),
+			);
+
+			return { user: personWithRole, project: savedProject };
+		};
+		if (transactionManager) {
+			return await createInner(transactionManager);
+		}
+		// TODO: use a transactions
+		// This is blocked by TypeORM having concurrency issues with transactions
+		return await createInner(this.table.manager);
 	}
 
 	/** With the role and the auth identities, which login and SSO checks read. */
@@ -72,6 +173,18 @@ export class PersonRepository {
 			select: ['id', 'email'],
 			where: { id: In(ids), password: Not(IsNull()) },
 		});
+	}
+
+	/**
+	 * Enabled people whose global or project role is in the given slug sets, such
+	 * as the people who can review a workflow. Loads `role` and `authIdentities`
+	 * because `isPending` needs both.
+	 */
+	async findEligibleByProjectOrGlobalRoles(query: EligibleAccountsQuery): Promise<Person[]> {
+		const where = eligibleAccountsWhere(query);
+		if (!where) return [];
+
+		return await this.table.find({ where, relations: { role: true, authIdentities: true } });
 	}
 
 	async countWithMfaEnabled(): Promise<number> {
@@ -124,6 +237,10 @@ export class PersonRepository {
 			}
 			return 'changed';
 		});
+	}
+
+	async findManyByIds(ids: string[]): Promise<Person[]> {
+		return await this.table.find({ where: { id: In(ids) }, order: { id: 'ASC' } });
 	}
 
 	/**

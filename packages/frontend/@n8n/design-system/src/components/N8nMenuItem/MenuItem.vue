@@ -149,7 +149,7 @@ const tooltipPlacement = computed(() => {
 							v-else-if="icon"
 							:color="iconColor"
 							:icon="icon"
-							:size="props.compact ? 'medium' : undefined"
+							:size="props.compact ? 'large' : undefined"
 						/>
 					</slot>
 				</div>

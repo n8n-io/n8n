@@ -14,8 +14,9 @@ export async function computeSideCallCost(
 	modelId: string,
 	usage: TokenUsage,
 	promptCaching?: PromptCachingConfig,
+	fetch?: typeof globalThis.fetch,
 ): Promise<number | undefined> {
-	const modelCost = await getModelCost(modelId);
+	const modelCost = await getModelCost(modelId, fetch);
 	if (!modelCost) return undefined;
 	return computeCost(usage, modelCost, {
 		anthropicCacheTtl: getEffectiveAnthropicCacheTtl(promptCaching, modelId),

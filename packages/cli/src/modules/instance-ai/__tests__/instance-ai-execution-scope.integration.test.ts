@@ -1,4 +1,5 @@
 import { LicenseState } from '@n8n/backend-common';
+import { TelemetryProxy } from '@n8n/backend-services';
 import {
 	createTeamProject,
 	createWorkflowWithHistory,
@@ -16,7 +17,6 @@ import { mock } from 'vitest-mock-extended';
 import { ActiveWorkflowManager } from '@/active-workflow-manager';
 import { License } from '@/license';
 import { Push } from '@/push';
-import { Telemetry } from '@/telemetry';
 import { createExecution } from '@test-integration/db/executions';
 import { createCustomRoleWithScopeSlugs } from '@test-integration/db/roles';
 import { createMember, createOwner } from '@test-integration/db/users';
@@ -32,7 +32,7 @@ import { InstanceAiAdapterService } from '../instance-ai.adapter.service';
  */
 describe('Instance AI execution read scope (integration)', () => {
 	mockInstance(ActiveWorkflowManager);
-	mockInstance(Telemetry);
+	mockInstance(TelemetryProxy);
 	mockInstance(Push, new Push(mock(), mock(), mock(), mock(), mock()));
 
 	const MARKER = 'RUNTIME-MARKER-42';
@@ -88,9 +88,12 @@ describe('Instance AI execution read scope (integration)', () => {
 			'project:read',
 			'project:list',
 		];
-		const [workflowOnlyRole, executionReaderRole] = await Promise.all([
-			createCustomRoleWithScopeSlugs(workflowScopes),
-			createCustomRoleWithScopeSlugs([...workflowScopes, 'execution:read', 'execution:list']),
+		// Each role creation refreshes the shared cache. Keep the refreshes in order.
+		const workflowOnlyRole = await createCustomRoleWithScopeSlugs(workflowScopes);
+		const executionReaderRole = await createCustomRoleWithScopeSlugs([
+			...workflowScopes,
+			'execution:read',
+			'execution:list',
 		]);
 
 		const owner = await createOwner();

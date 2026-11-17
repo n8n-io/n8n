@@ -5,7 +5,8 @@ import type { ValidationError } from 'class-validator';
 import { validate } from 'class-validator';
 import { rm as fsRm } from 'fs/promises';
 import { Cipher, InstanceSettings } from 'n8n-core';
-import { jsonParse, UnexpectedError } from 'n8n-workflow';
+import { jsonParse } from 'n8n-workflow';
+import { UnexpectedError } from '@n8n/errors';
 import { readFile, writeFile } from 'node:fs/promises';
 import * as path from 'path';
 
@@ -216,14 +217,16 @@ export class SourceControlPreferencesService {
 		const keyPair = await generateSshKeyPair(keyPairType);
 
 		try {
-			await this.settingsRepository.save({
-				key: 'features.sourceControl.sshKeys',
-				value: JSON.stringify({
+			// Upsert is atomic, so mains that start at the same time do not fail on a duplicate key
+			await this.settingsRepository.upsertByKey(
+				'features.sourceControl.sshKeys',
+				JSON.stringify({
 					encryptedPrivateKey: await this.cipher.encryptV2(keyPair.privateKey),
 					publicKey: keyPair.publicKey,
 				}),
-				loadOnStartup: true,
-			});
+				true,
+				{},
+			);
 		} catch (error) {
 			throw new UnexpectedError('Failed to write key pair to database', { cause: error });
 		}
@@ -304,13 +307,11 @@ export class SourceControlPreferencesService {
 		if (saveToDb) {
 			const settingsValue = JSON.stringify(this._sourceControlPreferences);
 			try {
-				await this.settingsRepository.save(
-					{
-						key: SOURCE_CONTROL_PREFERENCES_DB_KEY,
-						value: settingsValue,
-						loadOnStartup: true,
-					},
-					{ transaction: false },
+				await this.settingsRepository.upsertByKey(
+					SOURCE_CONTROL_PREFERENCES_DB_KEY,
+					settingsValue,
+					true,
+					{},
 				);
 			} catch (error) {
 				throw new UnexpectedError('Failed to save source control preferences', { cause: error });
@@ -329,7 +330,7 @@ export class SourceControlPreferencesService {
 	 */
 	private async broadcastReloadSourceControlConfiguration(): Promise<void> {
 		if (this.instanceSettings.isMultiMain) {
-			const { Publisher } = await import('@/scaling/pubsub/publisher.service.js');
+			const { Publisher } = await import('@n8n/backend-services');
 			await Container.get(Publisher).publishCommand({ command: 'reload-source-control-config' });
 			this.logger.debug('Broadcasting source control configuration reload to other main instances');
 		}

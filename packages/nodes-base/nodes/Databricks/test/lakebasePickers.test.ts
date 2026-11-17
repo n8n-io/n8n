@@ -1,5 +1,6 @@
 /* eslint-disable n8n-nodes-base/node-param-display-name-miscased */
-import { NodeApiError, NodeOperationError } from 'n8n-workflow';
+import { UserError } from '@n8n/errors';
+import { NodeApiError, NodeOperationError, requestUrl } from 'n8n-workflow';
 import type {
 	IExecuteFunctions,
 	ILoadOptionsFunctions,
@@ -24,6 +25,7 @@ import {
 	getLakebaseSchemas,
 	getLakebaseTables,
 } from '../methods/listSearch';
+import { getLakebaseColumns } from '../methods/loadOptions';
 import { resolveLakebaseRestBase } from '../transport';
 
 const HOST = 'https://adb-1234567890.1.azuredatabricks.net';
@@ -141,7 +143,7 @@ describe('listSearch -> getLakebaseProjects', () => {
 			'databricksOAuth2Api',
 			expect.objectContaining({
 				method: 'GET',
-				url: `${HOST}/api/2.0/postgres/projects`,
+				url: requestUrl`${HOST}/api/2.0/postgres/projects`,
 				qs: { page_size: 100, page_token: 'p1' },
 			}),
 		);
@@ -259,7 +261,7 @@ describe('listSearch -> getLakebaseBranches', () => {
 		expect(apiMock(context)).toHaveBeenCalledWith(
 			'databricksOAuth2Api',
 			expect.objectContaining({
-				url: `${HOST}/api/2.0/postgres/projects/spike-test/branches`,
+				url: requestUrl`${HOST}/api/2.0/postgres/projects/spike-test/branches`,
 				qs: { page_size: 100, page_token: 'p1' },
 			}),
 		);
@@ -281,7 +283,11 @@ describe('listSearch -> getLakebaseBranches', () => {
 
 		expect(apiMock(context)).toHaveBeenCalledWith(
 			'databricksOAuth2Api',
-			expect.objectContaining({ url: expect.stringContaining('/projects/a%20b/branches') }),
+			expect.objectContaining({
+				url: expect.objectContaining({
+					value: expect.stringContaining('/projects/a%20b/branches'),
+				}),
+			}),
 		);
 	});
 });
@@ -315,7 +321,7 @@ describe('listSearch -> getLakebaseDatabases', () => {
 		expect(apiMock(context)).toHaveBeenCalledWith(
 			'databricksOAuth2Api',
 			expect.objectContaining({
-				url: `${HOST}/api/2.0/postgres/projects/spike-test/branches/production/databases`,
+				url: requestUrl`${HOST}/api/2.0/postgres/projects/spike-test/branches/production/databases`,
 				qs: { page_size: 100, page_token: 'p1' },
 			}),
 		);
@@ -561,7 +567,7 @@ describe('resolveLakebaseRestBase', () => {
 		expect(apiMock(context)).toHaveBeenCalledWith(
 			'databricksOAuth2Api',
 			expect.objectContaining({
-				url: `${HOST}/api/2.0/postgres/projects/spike-test/branches/production/endpoints`,
+				url: requestUrl`${HOST}/api/2.0/postgres/projects/spike-test/branches/production/endpoints`,
 				returnFullResponse: true,
 			}),
 		);
@@ -577,7 +583,9 @@ describe('resolveLakebaseRestBase', () => {
 			1,
 			'databricksOAuth2Api',
 			expect.objectContaining({
-				url: expect.stringContaining('/projects/a%20b/branches/c%2Fd/endpoints'),
+				url: expect.objectContaining({
+					value: expect.stringContaining('/projects/a%20b/branches/c%2Fd/endpoints'),
+				}),
 			}),
 		);
 	});
@@ -724,7 +732,7 @@ describe('resolveLakebaseSchemaUrl', () => {
 			1,
 			'databricksOAuth2Api',
 			expect.objectContaining({
-				url: `${HOST}/api/2.0/postgres/projects/spike-test/branches/production/endpoints`,
+				url: requestUrl`${HOST}/api/2.0/postgres/projects/spike-test/branches/production/endpoints`,
 			}),
 		);
 	});
@@ -768,6 +776,91 @@ describe('resolveLakebaseTableUrl', () => {
 			message: 'Select a Lakebase table',
 			context: { itemIndex: ITEM },
 		});
+		expect(apiMock(context)).not.toHaveBeenCalled();
+	});
+});
+
+// `encodeURIComponent('..')` is `'..'`, so a traversal value used to survive
+// encoding and then normalise away, moving a bearer-carrying request to a
+// different endpoint. `toPathSegment` rejects it instead.
+describe('Lakebase path segments reject a traversal value', () => {
+	// An empty locator is rejected earlier by readLocator with a friendlier
+	// message, and is already covered above; only these reach toPathSegment.
+	const TRAVERSAL = ['..', '.'];
+
+	describe.each(TRAVERSAL)('value %j', (value) => {
+		it.each(['lakebaseProject', 'lakebaseBranch'])(
+			'rejects it in %s before any request',
+			async (name) => {
+				const context = createExecuteContext({ ...defaultLocators(), [name]: value });
+
+				await expect(resolveLakebaseSchemaUrl(context, ITEM)).rejects.toThrow();
+				expect(apiMock(context)).not.toHaveBeenCalled();
+			},
+		);
+
+		it.each(['lakebaseDatabase', 'lakebaseSchema'])(
+			'rejects it in %s before the Data API is called',
+			async (name) => {
+				const context = createExecuteContext({ ...defaultLocators(), [name]: value });
+				apiMock(context).mockResolvedValueOnce(endpointsResponse);
+
+				await expect(resolveLakebaseSchemaUrl(context, ITEM)).rejects.toThrow();
+				// Only the endpoint lookup, which carries no user-supplied segment
+				expect(apiMock(context)).toHaveBeenCalledTimes(1);
+			},
+		);
+
+		it('rejects it in lakebaseTable before the Data API is called', async () => {
+			const context = createExecuteContext({ ...defaultLocators(), lakebaseTable: value });
+			apiMock(context).mockResolvedValueOnce(endpointsResponse);
+
+			await expect(resolveLakebaseTableUrl(context, ITEM)).rejects.toThrow();
+			expect(apiMock(context)).toHaveBeenCalledTimes(1);
+		});
+	});
+
+	it.each(TRAVERSAL)('reports %j as an invalid identifier', async (value) => {
+		const context = createExecuteContext({ ...defaultLocators(), lakebaseProject: value });
+
+		await expect(resolveLakebaseSchemaUrl(context, ITEM)).rejects.toBeInstanceOf(UserError);
+		await expect(resolveLakebaseSchemaUrl(context, ITEM)).rejects.toMatchObject({
+			message: `Invalid identifier: "${value}" is not allowed`,
+		});
+	});
+
+	it('rejects a traversal project in the branch picker before any request', async () => {
+		const context = createLoadOptionsContext({ lakebaseProject: locator('..') });
+
+		await expect(getLakebaseBranches.call(context)).rejects.toBeInstanceOf(UserError);
+		expect(apiMock(context)).not.toHaveBeenCalled();
+	});
+
+	// The column loader builds the schema URL itself rather than going through
+	// the resolvers above, so it needs its own case.
+	it.each(['lakebaseDatabase', 'lakebaseSchema'])(
+		'rejects a traversal %s in the column loader before the Data API is called',
+		async (name) => {
+			const context = createLoadOptionsContext({
+				...selectedSchema,
+				lakebaseTable: locator('orders'),
+				[name]: locator('..'),
+			});
+			apiMock(context).mockResolvedValueOnce(endpointsResponse);
+
+			await expect(getLakebaseColumns.call(context)).rejects.toBeInstanceOf(UserError);
+			// Only the endpoint lookup, which carries no user-supplied segment
+			expect(apiMock(context)).toHaveBeenCalledTimes(1);
+		},
+	);
+
+	it('rejects a traversal branch in the database picker before any request', async () => {
+		const context = createLoadOptionsContext({
+			lakebaseProject: locator('spike-test'),
+			lakebaseBranch: locator('..'),
+		});
+
+		await expect(getLakebaseDatabases.call(context)).rejects.toBeInstanceOf(UserError);
 		expect(apiMock(context)).not.toHaveBeenCalled();
 	});
 });

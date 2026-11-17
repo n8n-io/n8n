@@ -1,3 +1,4 @@
+import { GLOBAL_MEMBER_ROLE, GLOBAL_OWNER_ROLE } from '@n8n/db';
 import type { Project, SlimProject, User } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { mock } from 'vitest-mock-extended';
@@ -32,7 +33,7 @@ const credentialsService = mock<CredentialsService>();
 const credentialTypes = mock<CredentialTypes>();
 const targetProject = mock<Project>({ id: 'project-target' });
 const targetProjectRef = mock<SlimProject>({ id: targetProject.id });
-const user = mock<User>({ id: 'user-1' });
+const user = mock<User>({ id: 'user-1', role: GLOBAL_OWNER_ROLE });
 
 function createMatcherFactory(): CredentialMatcherFactory {
 	Container.set(
@@ -62,6 +63,7 @@ describe('IdBasedCredentialMatcher', () => {
 		vi.clearAllMocks();
 		credentialTypes.recognizes.mockReturnValue(true);
 		credentialsService.getCredentialsAUserCanUseInAWorkflow.mockResolvedValue([]);
+		credentialsService.findUsageScopes.mockResolvedValue(new Map());
 		context = { projectId: targetProject.id, user };
 		matcherFactory = createMatcherFactory();
 	});
@@ -77,11 +79,30 @@ describe('IdBasedCredentialMatcher', () => {
 		const result = await matcherFactory.getMatcher('id-only').match([requirement], context);
 
 		expect(result.successes).toEqual(new Map());
-		expect(result.failures).toEqual([createFailure(requirement, 'not_found')]);
+		expect(result.failures).toEqual([
+			{ ...createFailure(requirement, 'not_found'), reason: 'not-on-instance' },
+		]);
 		expect(credentialsService.getCredentialsAUserCanUseInAWorkflow).toHaveBeenCalledWith(user, {
 			projectId: targetProject.id,
 			excludePersonalRoute: false,
 		});
+	});
+
+	it('gives no reason for a missing credential when the user cannot read all credentials', async () => {
+		const member = mock<User>({ id: 'member-1', role: GLOBAL_MEMBER_ROLE });
+		const requirement: PackageCredentialRequirement = {
+			id: 'cred-other',
+			name: 'Other',
+			type: 'httpBasicAuth',
+			usedBy: [{ kind: 'workflow', id: 'wf-1' }],
+		};
+
+		const result = await matcherFactory
+			.getMatcher('id-only')
+			.match([requirement], { ...context, user: member });
+
+		expect(result.failures).toEqual([createFailure(requirement, 'not_found')]);
+		expect(credentialsService.findUsageScopes).not.toHaveBeenCalled();
 	});
 
 	it.each(['id-only', 'name-and-type'] as const)(
@@ -125,6 +146,12 @@ describe('IdBasedCredentialMatcher', () => {
 				usedBy: [...workflowRequirement.usedBy, ...agentRequirement.usedBy],
 			};
 			const sharedRequirement = { ...agentRequirement, id: 'agent-shared' };
+			credentialsService.findUsageScopes.mockResolvedValue(
+				new Map([
+					['agent-personal', 'project'],
+					['mixed-personal', 'project'],
+				]),
+			);
 			credentialsService.getCredentialsAUserCanUseInAWorkflow.mockImplementation(
 				async (_user, { excludePersonalRoute }) => {
 					const shared = [usable('agent-shared')];
@@ -151,8 +178,8 @@ describe('IdBasedCredentialMatcher', () => {
 					['agent-shared', 'agent-shared'],
 				]),
 				failures: [
-					createFailure(agentRequirement, 'not_found'),
-					createFailure(mixedRequirement, 'not_found'),
+					{ ...createFailure(agentRequirement, 'not_found'), reason: 'access-required' },
+					{ ...createFailure(mixedRequirement, 'not_found'), reason: 'access-required' },
 				],
 			});
 		},
@@ -176,6 +203,9 @@ describe('IdBasedCredentialMatcher', () => {
 				async (_user, { excludePersonalRoute }) =>
 					excludePersonalRoute ? [] : [usable('target-personal')],
 			);
+			credentialsService.findUsageScopes.mockResolvedValue(
+				new Map([['target-personal', 'project']]),
+			);
 
 			const result = await matcherFactory
 				.getMatcher(mode)
@@ -190,11 +220,37 @@ describe('IdBasedCredentialMatcher', () => {
 			expect(result).toEqual({
 				successes: new Map([['workflow-source', 'target-personal']]),
 				failures: [
-					{ ...createFailure(agentRequirement, 'not_found'), targetId: 'target-personal' },
+					{
+						...createFailure(agentRequirement, 'not_found'),
+						reason: 'access-required',
+						targetId: 'target-personal',
+					},
 				],
 			});
 		},
 	);
+
+	it('leaves out the personal route when asked, and reports that the credential needs access', async () => {
+		credentialsService.findUsageScopes.mockResolvedValue(new Map([['cred-personal', 'project']]));
+		const requirement: PackageCredentialRequirement = {
+			id: 'cred-personal',
+			name: 'Personal',
+			type: 'httpBasicAuth',
+			usedBy: [{ kind: 'workflow', id: 'wf-1' }],
+		};
+
+		const result = await matcherFactory
+			.getMatcher('id-only')
+			.match([requirement], { ...context, excludePersonalRoute: true });
+
+		expect(credentialsService.getCredentialsAUserCanUseInAWorkflow).toHaveBeenCalledWith(user, {
+			projectId: targetProject.id,
+			excludePersonalRoute: true,
+		});
+		expect(result.failures).toEqual([
+			{ ...createFailure(requirement, 'not_found'), reason: 'access-required' },
+		]);
+	});
 
 	it('does not query the database for unknown credential types', async () => {
 		credentialTypes.recognizes.mockReturnValue(false);
@@ -290,7 +346,9 @@ describe('IdBasedCredentialMatcher', () => {
 		const result = await matcherFactory.getMatcher('id-only').match([requirement], context);
 
 		expect(result.successes).toEqual(new Map());
-		expect(result.failures).toEqual([createFailure(requirement, 'not_found')]);
+		expect(result.failures).toEqual([
+			{ ...createFailure(requirement, 'not_found'), reason: 'not-on-instance' },
+		]);
 	});
 
 	it('only binds requested ids even when more are usable in the project', async () => {
@@ -355,7 +413,11 @@ describe('IdBasedCredentialMatcher', () => {
 
 		expect(result.successes).toEqual(new Map());
 		expect(result.failures).toEqual([
-			{ ...createFailure(requirement, 'not_found'), targetId: 'target-missing' },
+			{
+				...createFailure(requirement, 'not_found'),
+				reason: 'not-on-instance',
+				targetId: 'target-missing',
+			},
 		]);
 	});
 
@@ -403,6 +465,7 @@ describe('NameAndTypeCredentialMatcher', () => {
 		vi.clearAllMocks();
 		credentialTypes.recognizes.mockReturnValue(true);
 		credentialsService.getCredentialsAUserCanUseInAWorkflow.mockResolvedValue([]);
+		credentialsService.findUsageScopes.mockResolvedValue(new Map());
 		context = { projectId: targetProject.id, user };
 		matcherFactory = createMatcherFactory();
 	});
@@ -677,6 +740,7 @@ describe('TypeOnlyCredentialMatcher', () => {
 		vi.clearAllMocks();
 		credentialTypes.recognizes.mockReturnValue(true);
 		credentialsService.getCredentialsAUserCanUseInAWorkflow.mockResolvedValue([]);
+		credentialsService.findUsageScopes.mockResolvedValue(new Map());
 		context = { projectId: targetProject.id, user };
 		matcherFactory = createMatcherFactory();
 	});

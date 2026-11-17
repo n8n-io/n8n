@@ -4,20 +4,34 @@ import type {
 	SelfHealingChatStartOutcome,
 } from '@n8n/frontend-module-sdk';
 import { useI18n } from '@n8n/i18n';
+import { getResourcePermissions } from '@n8n/permissions';
+import { useUsersStore } from '@n8n/stores/users.store';
+
+import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 
 import { useInstanceAiReady } from './useInstanceAiAvailability';
-import { ensurePersonalProjectId, useInstanceAiHandoff } from './useInstanceAiHandoff';
+import { useInstanceAiHandoff } from './useInstanceAiHandoff';
 
 export function useSelfHealingChatHandoff(): SelfHealingChatHandoff {
 	const available = useInstanceAiReady();
 	const { startThread } = useInstanceAiHandoff();
 	const i18n = useI18n();
+	const usersStore = useUsersStore();
+	const projectsStore = useProjectsStore();
+
+	function canStart(projectId: string) {
+		if (!available.value) return false;
+		const projectScopes =
+			projectsStore.myProjects.find((project) => project.id === projectId)?.scopes ?? [];
+		const scopes = [...(usersStore.currentUser?.globalScopes ?? []), ...projectScopes];
+		return !!getResourcePermissions(scopes).project.read;
+	}
 
 	async function start(
 		projectId: string,
 		result: SelfHealingChatInput,
 	): Promise<SelfHealingChatStartOutcome> {
-		if (!available.value) return 'unavailable';
+		if (!canStart(projectId)) return 'unavailable';
 
 		const messageParts = [i18n.baseText('inbox.selfHealing.chat.prompt')];
 		if (result.reviewState === 'applied') {
@@ -46,5 +60,5 @@ export function useSelfHealingChatHandoff(): SelfHealingChatHandoff {
 		return outcome === 'setup' ? 'unavailable' : outcome;
 	}
 
-	return { available, resolveProjectId: ensurePersonalProjectId, start };
+	return { available, canStart, start };
 }

@@ -27,6 +27,7 @@ vi.mock('node:fs/promises', async (importOriginal) => {
 
 import type { PackageManifest } from '@/modules/n8n-packages/spec/manifest.schema';
 import { packageManifestSchema } from '@/modules/n8n-packages/spec/manifest.schema';
+import { serializedSkillSchema } from '@/modules/n8n-packages/spec/serialized/skill.schema';
 
 import type { BranchLayout } from '../branch-placement';
 import { PromotionsWorkflowsMovedCrossProjectError } from '../promotions-selective-push.error';
@@ -35,7 +36,6 @@ import type { SelectivePushOptions } from '../working-copy-updater';
 
 const baseMetadata = {
 	packageFormatVersion: '1' as const,
-	exportedAt: '2026-01-01T00:00:00.000Z',
 	sourceN8nVersion: '1.0.0',
 	sourceId: 'inst-1',
 };
@@ -50,6 +50,7 @@ const wf = (id: string) => ({
 	id,
 	name: id.toUpperCase(),
 	target: `projects/alpha/workflows/${id}`,
+	isArchived: false,
 });
 const folder = (id: string, name: string, slug: string) => ({
 	id,
@@ -60,6 +61,7 @@ const inFolder = (id: string, slug: string) => ({
 	id,
 	name: id.toUpperCase(),
 	target: `projects/alpha/folders/${slug}/workflows/${id}`,
+	isArchived: false,
 });
 const cred = (id: string) => ({ id, name: id, target: `projects/alpha/credentials/${id}` });
 
@@ -88,6 +90,7 @@ const selection = (overrides: Partial<SelectivePushOptions> = {}): SelectivePush
 	projectId: 'p1',
 	workflowIds: [],
 	deletedWorkflowIds: [],
+	folderIds: [],
 	...overrides,
 });
 
@@ -153,10 +156,8 @@ describe('WorkingCopyUpdater', () => {
 	});
 
 	describe('validateSelection', () => {
-		it('rejects an empty selection', () => {
-			expect(() => updater.validateSelection(selection())).toThrow(
-				'At least one workflow must be selected or deleted',
-			);
+		it('accepts an empty selection, which promotes only the project', () => {
+			expect(() => updater.validateSelection(selection())).not.toThrow();
 		});
 
 		it('rejects duplicate workflowIds', () => {
@@ -224,6 +225,17 @@ describe('WorkingCopyUpdater', () => {
 			expect(branch).not.toHaveProperty('credentials');
 		});
 
+		it('keeps the archive flag from a workflow file', async () => {
+			await writeTree(exportFolder, {
+				'projects/alpha/project.json': projectFile,
+				'projects/alpha/workflows/w1/workflow.json': workflowFile('w1', { isArchived: true }),
+			});
+
+			const branch = await updater.readBranchLayout(exportFolder);
+
+			expect(branch.workflows).toEqual([{ ...wf('w1'), isArchived: true }]);
+		});
+
 		it('returns an empty state when the export has no entity files', async () => {
 			await mkdir(exportFolder, { recursive: true });
 
@@ -287,7 +299,12 @@ describe('WorkingCopyUpdater', () => {
 		});
 
 		it('rejects deletes of workflows that belong to another project', () => {
-			const other = { id: 'w-other', name: 'WOther', target: 'projects/beta/workflows/w-other' };
+			const other = {
+				id: 'w-other',
+				name: 'WOther',
+				target: 'projects/beta/workflows/w-other',
+				isArchived: false,
+			};
 			const branch: BranchLayout = {
 				workflows: [wf('w1'), other],
 				projects: [alpha, { id: 'p2', name: 'Beta', target: 'projects/beta' }],
@@ -309,7 +326,12 @@ describe('WorkingCopyUpdater', () => {
 
 	describe('assertNoCrossProjectMoves', () => {
 		const beta = { id: 'p2', name: 'Beta', target: 'projects/beta' };
-		const inBeta = { id: 'w-moved', name: 'WMoved', target: 'projects/beta/workflows/w-moved' };
+		const inBeta = {
+			id: 'w-moved',
+			name: 'WMoved',
+			target: 'projects/beta/workflows/w-moved',
+			isArchived: false,
+		};
 
 		it('rejects a selected workflow that the branch holds under another project', () => {
 			const branch: BranchLayout = { workflows: [wf('w1'), inBeta], projects: [alpha, beta] };
@@ -353,9 +375,40 @@ describe('WorkingCopyUpdater', () => {
 	});
 
 	describe('applySelection', () => {
+		it('keeps selected and unselected archived workflows in the rebuilt manifest', async () => {
+			const selected = { ...wf('w1'), isArchived: true };
+			const unselected = { ...wf('w2'), isArchived: true };
+			await apply(
+				{
+					manifest: makeManifest({ projects: [alpha], workflows: [wf('w1'), unselected] }),
+					files: {
+						'projects/alpha/project.json': projectFile,
+						'projects/alpha/workflows/w1/workflow.json': workflowFile('w1'),
+						'projects/alpha/workflows/w2/workflow.json': workflowFile('w2', { isArchived: true }),
+					},
+				},
+				{
+					manifest: makeManifest({ projects: [alpha], workflows: [selected] }),
+					files: {
+						'projects/alpha/workflows/w1/workflow.json': workflowFile('w1', { isArchived: true }),
+					},
+				},
+				{ workflowIds: ['w1'] },
+			);
+
+			const written = await readWrittenManifest();
+			expect(written.workflows).toHaveLength(2);
+			expect(written.workflows).toEqual(expect.arrayContaining([selected, unselected]));
+		});
+
 		it('rejects a cross-project delete before it writes', async () => {
 			const beta = { id: 'p2', name: 'Beta', target: 'projects/beta' };
-			const other = { id: 'w-other', name: 'WOther', target: 'projects/beta/workflows/w-other' };
+			const other = {
+				id: 'w-other',
+				name: 'WOther',
+				target: 'projects/beta/workflows/w-other',
+				isArchived: false,
+			};
 			await writeTree(exportFolder, {
 				'manifest.json': manifestFile(
 					makeManifest({
@@ -405,7 +458,12 @@ describe('WorkingCopyUpdater', () => {
 
 		it('rejects a cross-project move before it writes', async () => {
 			const beta = { id: 'p2', name: 'Beta', target: 'projects/beta' };
-			const inBeta = { id: 'w-moved', name: 'WMoved', target: 'projects/beta/workflows/w-moved' };
+			const inBeta = {
+				id: 'w-moved',
+				name: 'WMoved',
+				target: 'projects/beta/workflows/w-moved',
+				isArchived: false,
+			};
 			await writeTree(exportFolder, {
 				'manifest.json': manifestFile(
 					makeManifest({ projects: [alpha, beta], workflows: [inBeta] }),
@@ -430,6 +488,63 @@ describe('WorkingCopyUpdater', () => {
 			expect(await readExported('projects/beta/workflows/w-moved/workflow.json')).toBe(
 				workflowFile('w-moved'),
 			);
+		});
+
+		it('keeps Agent folders, skills, and metadata when the project is renamed', async () => {
+			const agentFile = JSON.stringify({ id: 'a1', name: 'Agent' });
+			const metadata = JSON.stringify({ versionId: 'v1', publishedVersionId: 'v1' });
+			const agentFolder = JSON.stringify({ id: 'f1', name: 'Sales', resourceType: 'agent' });
+			const skill = serializedSkillSchema.parse({
+				id: 'skill_triage',
+				scope: 'project',
+				skill: {
+					name: 'Triage',
+					description: 'Triage support requests',
+					instructions: 'Read requests.',
+				},
+				frontmatter: null,
+			});
+			const skillFile = JSON.stringify(skill);
+			const renamed = { ...alpha, name: 'Renamed', target: 'projects/renamed' };
+			await apply(
+				{
+					manifest: makeManifest({
+						projects: [alpha],
+						folders: [folder('f1', 'Sales', 'sales')],
+						agents: [{ id: 'a1', name: 'Agent', target: 'projects/alpha/folders/sales/agents/a1' }],
+					}),
+					files: {
+						'projects/alpha/project.json': projectFile,
+						'projects/alpha/folders/sales/folder.json': agentFolder,
+						'projects/alpha/folders/sales/agents/a1/agent.json': agentFile,
+						'projects/alpha/folders/sales/agents/a1/agent-metadata.json': metadata,
+						'projects/alpha/skills/skill_triage/skill.json': skillFile,
+					},
+				},
+				{
+					manifest: makeManifest({
+						projects: [renamed],
+					}),
+					files: {
+						'projects/renamed/project.json': JSON.stringify({ id: alpha.id, name: renamed.name }),
+					},
+				},
+			);
+
+			expect(await readExported('projects/renamed/folders/sales/folder.json')).toBe(agentFolder);
+			expect(await readExported('projects/renamed/folders/sales/agents/a1/agent.json')).toBe(
+				agentFile,
+			);
+			expect(
+				await readExported('projects/renamed/folders/sales/agents/a1/agent-metadata.json'),
+			).toBe(metadata);
+			expect((await readWrittenManifest()).agents).toEqual([
+				{ id: 'a1', name: 'Agent', target: 'projects/renamed/folders/sales/agents/a1' },
+			]);
+			expect(await readExported('projects/renamed/skills/skill_triage/skill.json')).toBe(skillFile);
+			expect((await readWrittenManifest()).skills).toEqual([
+				{ id: skill.id, name: skill.skill.name, target: 'projects/renamed/skills/skill_triage' },
+			]);
 		});
 
 		it('renames the folder on the branch and rides unselected workflows along', async () => {
@@ -622,7 +737,9 @@ describe('WorkingCopyUpdater', () => {
 				{
 					manifest: makeManifest({
 						projects: [renamed],
-						workflows: [{ id: 'w1', name: 'W1', target: 'projects/renamed/workflows/w1' }],
+						workflows: [
+							{ id: 'w1', name: 'W1', target: 'projects/renamed/workflows/w1', isArchived: false },
+						],
 					}),
 					files: {
 						'projects/renamed/project.json': JSON.stringify({ id: alpha.id, name: 'Renamed' }),
@@ -655,6 +772,7 @@ describe('WorkingCopyUpdater', () => {
 									id: 'w-beta',
 									name: 'WBeta',
 									target: 'projects/beta/folders/f1/workflows/w-beta',
+									isArchived: false,
 								},
 							],
 						}),
@@ -692,7 +810,7 @@ describe('WorkingCopyUpdater', () => {
 					{
 						manifest: makeManifest({
 							projects: [{ ...alpha, target: '.' }],
-							workflows: [{ id: 'w1', name: 'W1', target: 'workflows/w1' }],
+							workflows: [{ id: 'w1', name: 'W1', target: 'workflows/w1', isArchived: false }],
 						}),
 						files: {
 							'project.json': projectFile,

@@ -1,4 +1,5 @@
-import type { IExecuteFunctions, INodeTypeBaseDescription } from 'n8n-workflow';
+import { NodeApiError } from 'n8n-workflow';
+import type { IExecuteFunctions, INodeTypeBaseDescription, JsonObject } from 'n8n-workflow';
 
 import { HttpRequestV2 } from '../../V2/HttpRequestV2.node';
 import type { Mock } from 'vitest';
@@ -164,6 +165,7 @@ describe('HttpRequestV2', () => {
 					expect(executeFunctions.helpers.request).toHaveBeenCalledWith(
 						expect.objectContaining({
 							[authField]: expect.objectContaining(authValue),
+							sendCredentialsOnCrossOriginRedirect: true,
 						}),
 					);
 				}
@@ -266,6 +268,110 @@ describe('HttpRequestV2', () => {
 			await expect(node.execute.call(executeFunctions)).rejects.toThrow(
 				`URL parameter must be a string, got ${expectedType}`,
 			);
+		});
+	});
+
+	it('should remove request options from the cause of continued errors', async () => {
+		const headerValue = 'header-value';
+
+		(executeFunctions.getInputData as Mock).mockReturnValue([{ json: {} }]);
+		(executeFunctions.continueOnFail as Mock).mockReturnValue(true);
+		(executeFunctions.getNodeParameter as Mock).mockImplementation((paramName: string) => {
+			switch (paramName) {
+				case 'responseFormat':
+					return 'json';
+				case 'requestMethod':
+					return 'GET';
+				case 'url':
+					return baseUrl;
+				case 'authentication':
+					return 'predefinedCredentialType';
+				case 'nodeCredentialType':
+					return 'testApi';
+				case 'jsonParameters':
+					return false;
+				case 'options':
+					return options;
+				case 'bodyParametersUi':
+				case 'headerParametersUi':
+				case 'queryParametersUi':
+					return { parameter: [] };
+				default:
+					return undefined;
+			}
+		});
+		(executeFunctions.getCredentials as Mock).mockResolvedValue({ apiKey: headerValue });
+		(executeFunctions.helpers.requestWithAuthentication as Mock).mockImplementation(async () => {
+			const cause = Object.assign(new Error('Request failed'), {
+				statusCode: 401,
+				options: { headers: { Authorization: `Bearer ${headerValue}` } },
+			});
+
+			throw new NodeApiError(executeFunctions.getNode(), cause as unknown as JsonObject);
+		});
+
+		const result = await node.execute.call(executeFunctions);
+		const outputError = result[0][0].json.error;
+
+		expect(outputError).toBeInstanceOf(NodeApiError);
+		expect(outputError).toHaveProperty('cause.message', 'Request failed');
+		expect(outputError).not.toHaveProperty('cause.options');
+		expect(JSON.stringify(outputError)).not.toContain(headerValue);
+	});
+
+	describe('Raw request body', () => {
+		const setupRawBody = (responseFormat: string) => {
+			(executeFunctions.getInputData as Mock).mockReturnValue([{ json: {} }]);
+			(executeFunctions.getNodeParameter as Mock).mockImplementation(
+				(paramName: string, _itemIndex?: number, fallback?: unknown) => {
+					switch (paramName) {
+						case 'responseFormat':
+							return responseFormat;
+						case 'requestMethod':
+							return 'POST';
+						case 'url':
+							return baseUrl;
+						case 'authentication':
+							return 'none';
+						case 'jsonParameters':
+							return false;
+						case 'options':
+							return { ...options, response: undefined, bodyContentType: 'raw' };
+						case 'dataPropertyName':
+							return 'data';
+						case 'bodyParametersUi':
+						case 'headerParametersUi':
+						case 'queryParametersUi':
+							return { parameter: [] };
+						default:
+							return fallback;
+					}
+				},
+			);
+		};
+
+		it.each(['json', 'string'])(
+			'should not request a stream for the %s response format',
+			async (responseFormat) => {
+				setupRawBody(responseFormat);
+				(executeFunctions.helpers.request as Mock).mockResolvedValue('{"a":1}');
+
+				await node.execute.call(executeFunctions);
+
+				const requestOptions = (executeFunctions.helpers.request as Mock).mock.calls[0][0] as {
+					useStream?: boolean;
+				};
+				expect(requestOptions.useStream).toBeUndefined();
+			},
+		);
+
+		it('should return the parsed body for the json response format', async () => {
+			setupRawBody('json');
+			(executeFunctions.helpers.request as Mock).mockResolvedValue('{"a":1}');
+
+			const result = await node.execute.call(executeFunctions);
+
+			expect(result).toEqual([[{ json: { a: 1 }, pairedItem: { item: 0 } }]]);
 		});
 	});
 });

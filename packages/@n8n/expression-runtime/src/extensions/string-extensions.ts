@@ -3,11 +3,11 @@ import SHA from 'jssha';
 import { DateTime } from 'luxon';
 import MD5 from 'md5';
 import { titleCase } from 'title-case';
-import { transliterate } from 'transliteration';
 
 import type { Extension, ExtensionMap } from './extensions';
 import { ExpressionExtensionError } from './expression-extension-error';
 import { toDateTime as numberToDateTime } from './number-extensions';
+import { toAscii } from './to-ascii';
 
 export const SupportedHashAlgorithms = [
 	'md5',
@@ -300,7 +300,7 @@ function toTitleCase(value: string) {
 }
 
 function replaceSpecialChars(value: string) {
-	return transliterate(value, { unknown: '?' });
+	return toAscii(value);
 }
 
 function toSentenceCase(value: string) {
@@ -329,7 +329,8 @@ function toSentenceCase(value: string) {
 function toSnakeCase(value: string) {
 	return value
 		.toLocaleLowerCase()
-		.replace(/[ \-]/g, '_')
+		.replace(/\uFEFF/g, '')
+		.replace(/[\p{White_Space}-]/gu, '_')
 		.replace(/[\u2000-\u206F\u2E00-\u2E7F\\'!"#$%&()*+,.\/:;<=>?@\[\]^`{|}~]/g, '');
 }
 

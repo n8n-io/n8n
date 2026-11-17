@@ -123,6 +123,17 @@ describe('ResourcesListLayout', () => {
 		expect(queryByTestId('resources-list-search')).not.toBeInTheDocument();
 	});
 
+	it('should render the list chrome while refreshing an empty list without an empty state', () => {
+		const { getByTestId } = renderComponent({
+			props: {
+				resourcesRefreshing: true,
+				hasEmptyState: false,
+			},
+		});
+
+		expect(getByTestId('resources-list-search')).toBeInTheDocument();
+	});
+
 	it('should render the list chrome while refreshing when resources are already known', () => {
 		const { getByTestId } = renderComponent({
 			props: {
@@ -166,6 +177,40 @@ describe('ResourcesListLayout', () => {
 		});
 		expect(getByTestId('resources-list-wrapper')).toBeTruthy();
 		expect(getByTestId('resources-table')).toBeTruthy();
+	});
+
+	it('keeps folder content in the scrolling list when there are no other resources', () => {
+		const { getByTestId, queryByTestId } = renderComponent({
+			props: {
+				type: 'list-paginated',
+				hasEmptyState: false,
+			},
+			slots: {
+				'list-prepend': '<div data-test-id="folder-list">Support</div>',
+			},
+		});
+
+		expect(getByTestId('paginated-list')).toContainElement(getByTestId('folder-list'));
+		expect(getByTestId('resources-list-search')).toBeInTheDocument();
+		expect(queryByTestId('resources-list-load-more')).not.toBeInTheDocument();
+	});
+
+	it('keeps folder content before resources', () => {
+		const { getByTestId } = renderComponent({
+			props: {
+				type: 'list-paginated',
+				resources: TEST_WORKFLOWS,
+				totalItems: TEST_WORKFLOWS.length,
+			},
+			slots: {
+				'list-prepend': '<div data-test-id="folder-list">Support</div>',
+				item: '<div data-test-id="resource-card">Resource</div>',
+			},
+		});
+
+		expect(getByTestId('folder-list').nextElementSibling).toContainElement(
+			getByTestId('paginated-list').querySelector('[data-test-id="resource-card"]'),
+		);
 	});
 
 	it('should load the sort from local storage', async () => {

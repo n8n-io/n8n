@@ -5,6 +5,7 @@ import type { MockInstance } from 'vitest';
 
 import type { DatabaseConfig } from '../src/index';
 import {
+	AgentsConfig,
 	DEFAULT_CONTENT_SECURITY_POLICY,
 	GlobalConfig,
 	SSRF_DEFAULT_BLOCKED_IP_RANGES,
@@ -60,6 +61,8 @@ describe('GlobalConfig', () => {
 				secure: true,
 			},
 			oauthBrowserBinding: false,
+			oauthCimdEnabled: false,
+			oauthClientMetadataUrl: '',
 		},
 		defaultLocale: 'en',
 		hideUsagePage: false,
@@ -85,6 +88,7 @@ describe('GlobalConfig', () => {
 		},
 		editorBaseUrl: '',
 		webhookUrl: '',
+		agentWebhookUrl: '',
 		dataTable: {
 			maxSize: 200 * 1024 * 1024,
 			sizeCheckCacheDuration: 5 * 1000,
@@ -304,8 +308,10 @@ describe('GlobalConfig', () => {
 				includeWorkflowPublicationMetrics: false,
 				includeMcpPostSaveMetrics: false,
 				workflowPublicationMetricInterval: 60,
+				includeExecutionLedgerMetrics: false,
 			},
 			additionalNonUIRoutes: '',
+			agentWebhook: 'agent-webhook',
 			disableProductionWebhooksOnMainProcess: false,
 			disableUi: false,
 			form: 'form',
@@ -358,18 +364,21 @@ describe('GlobalConfig', () => {
 		},
 		instanceAi: {
 			workflowSuggestionsEnabled: false,
-			model: 'anthropic/claude-opus-4-8',
+			assistantAgentEnabled: false,
+			model: 'anthropic/claude-opus-5-5',
 			modelUrl: '',
+			modelRequestLabels: false,
 			modelApiKey: '',
 			vertexProjectId: '',
 			vertexLocation: '',
 			vertexServiceAccountJson: '',
 			mcpServers: '',
 			browserUseEnabled: true,
+			cloudBrowserEnabled: true,
 			observerMessageTokens: 30_000,
-			memoryModel: '',
-			reflectorObservationTokens: 40_000,
-			midRunObservation: false,
+			utilityModel: '',
+			approvalJudgeModel: '',
+			midRunObservation: true,
 			sandboxEnabled: false,
 			sandboxProvider: 'n8n-sandbox',
 			sandboxImage: 'daytonaio/sandbox:0.5.0',
@@ -403,6 +412,12 @@ describe('GlobalConfig', () => {
 			maxConcurrentRuns: -1,
 			maxConcurrentRunsPerUser: -1,
 			maxConcurrentSubAgents: -1,
+			observationMaxWindowTokens: 200_000,
+			observationLogPlacement: 'message',
+			observationFailurePolicy: 'retry',
+			observerMaxBatches: 5,
+			reflectionMode: 'background',
+			historyRecall: true,
 		},
 		queue: {
 			health: {
@@ -463,12 +478,20 @@ describe('GlobalConfig', () => {
 			grantTokenTtl: 30,
 			insecureMode: false,
 		},
+		codeExecution: {
+			backend: 'task-runners',
+			sandbox: {
+				url: '',
+				apiKey: '',
+				scope: 'execution',
+			},
+		},
 		sentry: {
 			backendDsn: '',
 			frontendDsn: '',
 			environment: '',
 			deploymentName: '',
-			profilesSampleRate: 0,
+			profilingEnabled: false,
 			tracesSampleRate: 0,
 			tracesSlowSpanThresholdMs: 1000,
 			webhookTracesSampleRate: 0.05,
@@ -529,6 +552,9 @@ describe('GlobalConfig', () => {
 			ownerQuarantineGraceSeconds: 86400,
 			ownerSettleSeconds: 300,
 		},
+		leases: {
+			enabled: false,
+		},
 		evaluation: {
 			collectionsEnabled: false,
 			configEvalsEnabled: false,
@@ -552,7 +578,7 @@ describe('GlobalConfig', () => {
 		security: {
 			restrictFileAccessTo: '~/.n8n-files',
 			blockFileAccessToN8nFiles: true,
-			blockFilePatterns: '^(?:[^/]*/)*\\.git(?:/.*)?$',
+			blockFilePatterns: '(?:^|/)\\.git(?:/|$)',
 			daysAbandonedWorkflow: 90,
 			contentSecurityPolicy: undefined,
 			contentSecurityPolicyReportOnly: DEFAULT_CONTENT_SECURITY_POLICY,
@@ -594,6 +620,7 @@ describe('GlobalConfig', () => {
 			recovery: {
 				maxLastExecutions: 3,
 				workflowDeactivationEnabled: false,
+				maxResumeAttempts: 2,
 			},
 			saveDataOnError: 'all',
 			saveDataOnSuccess: 'all',
@@ -752,12 +779,19 @@ describe('GlobalConfig', () => {
 			tracingRecordOutputs: true,
 			modules: [],
 			backgroundTasksEnabled: false,
+			serviceAccountsEnabled: false,
 			sandboxEnabled: false,
 			sandboxImage: 'daytonaio/sandbox:0.5.0',
 			sandboxSnapshot: 'daytonaio/sandbox:0.8.0',
 			sandboxTimeout: 300000,
 			sandboxEphemeral: false,
+			maxGeneratedFileSizeMb: 50,
+			maxGeneratedFileCount: 100,
+			maxGeneratedTotalMb: 500,
+			maxTotalMb: 1536,
+			maxImportMb: 200,
 			channelReconcileIntervalSeconds: 60,
+			webhookChannelRateLimit: 300,
 			whatsAppAllowTemporaryToken: false,
 		},
 	} satisfies GlobalConfigShape;
@@ -1262,6 +1296,19 @@ describe('GlobalConfig', () => {
 			const globalConfig = Container.get(GlobalConfig);
 			expect(globalConfig.security.crossOriginOpenerPolicy).toEqual('same-origin-allow-popups');
 		});
+	});
+
+	it('falls back to the default for a negative or infinite agent file cap', () => {
+		process.env = {
+			N8N_AGENTS_FILES_MAX_TOTAL_MB: '-1',
+			N8N_AGENTS_FILES_MAX_IMPORT_MB: 'Infinity',
+			N8N_AGENTS_FILES_MAX_GENERATED_COUNT: '20',
+		};
+
+		const config = Container.get(AgentsConfig);
+		expect(config.maxTotalMb).toEqual(1536);
+		expect(config.maxImportMb).toEqual(200);
+		expect(config.maxGeneratedFileCount).toEqual(20);
 	});
 
 	describe('health endpoint transformation', () => {

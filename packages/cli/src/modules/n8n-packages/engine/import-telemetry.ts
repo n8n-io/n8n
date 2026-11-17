@@ -1,5 +1,7 @@
 import type { EventService } from '@n8n/backend-services';
 
+import { loginIdOf } from '@/events/login-id';
+
 import { resolveCredentialConflictPolicy } from '../entities/credential/credential-conflict-policy';
 import type { AgentImportOutcome } from '../entities/agent/agent-import.types';
 import type { CredentialBindingRequest } from '../entities/credential/credential.types';
@@ -86,7 +88,9 @@ export function emitPackageImportedEvent(
 	// Reconciled once across every scope, by the same helper the API response uses, so a name one
 	// scope stubbed and another found occupied is not also reported as pre-existing.
 	const variableSummary = reconcileVariableSummary({
-		matched: scopes.flatMap(({ imported }) => imported.variablePlan.matched),
+		matched: scopes.flatMap(({ imported }) =>
+			imported.variablePlan.matched.map(({ name }) => name),
+		),
 		missing: scopes.flatMap(({ imported }) =>
 			imported.variablePlan.missing.map(({ name }) => name),
 		),
@@ -191,5 +195,6 @@ export function emitPackageImportedEvent(
 				requirements: tagRequirements,
 			},
 		},
+		loginId: loginIdOf(request.ctx),
 	});
 }

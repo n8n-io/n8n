@@ -1,3 +1,4 @@
+import { isRecord } from '@n8n/utils/is-record';
 import type { BuiltTool, CredentialListItem, InterruptibleToolContext } from '@n8n/agents';
 import { Tool } from '@n8n/agents/tool';
 import {
@@ -72,8 +73,7 @@ const finishSetupQuestionInputSchema = interactionQuestionSchema.extend({
 		.startsWith('/')
 		.optional()
 		.describe(
-			'JSON Pointer into the agent config, e.g. "/tools/2/node/nodeParameters/sendTo". ' +
-				'The answer is written there as a string when the flow completes.',
+			'JSON Pointer that receives the answer as a string, e.g. "/tools/2/node/nodeParameters/sendTo"',
 		),
 });
 type FinishSetupQuestionInput = z.infer<typeof finishSetupQuestionInputSchema>;
@@ -185,6 +185,8 @@ interface FinishSetupToolResult extends Collected {
 	appliedToConfig?: { credentialTypes: string[]; paths: string[] };
 	configHash?: string;
 	configApplyErrors?: Array<{ path: string; message: string }>;
+	/** Resolved credential slots that the config write did not apply, such as MCP credentials. */
+	unappliedCredentials?: string[];
 }
 
 /** The card question shape: `configPath` is builder-only and never reaches the FE. */
@@ -234,6 +236,39 @@ function collectConfigWrites(
 
 /** Write the collected setup into the config so the builder does not patch it afterwards. */
 async function complete(
+	input: FinishSetupInput,
+	collected: Collected,
+	deps: FinishSetupToolDeps,
+): Promise<FinishSetupToolResult> {
+	const result = await applyCollectedSetup(input, collected, deps);
+	// Only a write that saved something tells which credentials are left. A write that
+	// saved nothing has its own configApplyErrors step.
+	const savedNothing = result.configApplyErrors !== undefined && !result.appliedToConfig;
+	if (!deps.applySetupToConfig || savedNothing) return result;
+	const unapplied = unappliedCredentialSlots(input, collected, result.appliedToConfig);
+	if (unapplied.length > 0) result.unappliedCredentials = unapplied;
+	return result;
+}
+
+/** Resolved slots whose credential type the config write did not apply. Slots and types can differ. */
+function unappliedCredentialSlots(
+	input: FinishSetupInput,
+	collected: Collected,
+	applied: FinishSetupToolResult['appliedToConfig'],
+): string[] {
+	const appliedTypes = new Set(applied?.credentialTypes ?? []);
+	return Object.entries(collected.credentials ?? {})
+		.filter(([, outcome]) => outcome !== 'skipped')
+		.map(([slot]) => slot)
+		.filter((slot) => {
+			const request = input.credentialRequests?.find(
+				(r) => (r.credentialSlot ?? r.credentialType) === slot,
+			);
+			return !appliedTypes.has(request?.credentialType ?? slot);
+		});
+}
+
+async function applyCollectedSetup(
 	input: FinishSetupInput,
 	collected: Collected,
 	deps: FinishSetupToolDeps,
@@ -542,32 +577,51 @@ async function resumePlan(
 	});
 }
 
+/** What the model must do after the flow. The tool description stays short; this rides on the result. */
+function nextStepFor(result: Record<string, unknown>): string | undefined {
+	if (result.completed !== true) return undefined;
+	const steps: string[] = [];
+	if (result.appliedToConfig !== undefined) {
+		steps.push('The flow already wrote everything in appliedToConfig. Do not patch it again.');
+	}
+	if (result.configApplyErrors !== undefined) {
+		steps.push('Fix each configApplyErrors entry with agent_builder_patch_config.');
+	}
+	if (result.channels !== undefined) {
+		steps.push('Do not call agent_builder_configure_channel for these channels again.');
+	}
+	if (Array.isArray(result.answers) && result.answers.length > 0) {
+		steps.push('If an answer picks the model, resolve it with agent_builder_resolve_llm.');
+	}
+	if (Array.isArray(result.unappliedCredentials) && result.unappliedCredentials.length > 0) {
+		steps.push(
+			'For each credential in unappliedCredentials, such as an MCP server credential, call ' +
+				'agent_builder_verify_mcp_server.',
+		);
+	}
+	return steps.length > 0 ? steps.join(' ') : undefined;
+}
+
+function withNextStep(result: unknown): unknown {
+	if (!isRecord(result)) return result;
+	const nextStep = nextStepFor(result);
+	return nextStep ? { ...result, nextStep } : result;
+}
+
 export function buildFinishSetupTool(deps: FinishSetupToolDeps): BuiltTool {
 	return new Tool(BUILDER_TOOLS.FINISH_SETUP)
 		.legacyNames(...getLegacyBuilderToolNames(BUILDER_TOOLS.FINISH_SETUP))
 		.description(
-			'Collect everything still needed to finish the initial build in ONE guided flow: open ' +
-				'questions (including the model choice), credential slots, and chat-channel ' +
-				'setup. Call it at most once, only in the trailing step of an initial build ' +
-				'when only pending setup remains, and never together with another interactive tool. ' +
-				'It shows setup cards back-to-back without returning control between them: questions, ' +
-				'then credentials, then one card per requested channel. Channel cards always run last ' +
-				'after every credential phase, including when earlier setup was skipped or dismissed. Pass ' +
-				'`channels` with a returned `type` from agent-context integrations, one entry per channel ' +
-				'to configure; do not infer channel names. Each channel card persists the configuration ' +
-				'or skips it, so channel outcomes are `"configured"` or `"skipped"`. Do not call ' +
-				'agent_builder_configure_channel again for a channel handled by ' +
-				'this flow. When a question answers a value that already has a place in the config ' +
-				'(a recipient, a channel id, a sheet id), give it `configPath`: the answer is written ' +
-				'there as a string. Write that config field empty beforehand, never skip the tool. ' +
-				'Returns { completed, answers, credentials, channels, appliedToConfig, configHash } ' +
-				'(plus configMutated/agentId refresh metadata when completed). The tool already wrote ' +
-				'each resolved credential into every empty node-tool slot of its type, and each ' +
-				'configPath answer; `appliedToConfig` lists them. Do not patch those again. Resolve ' +
-				'only what is left: the model answer with agent_builder_resolve_llm, MCP servers with ' +
-				'agent_builder_verify_mcp_server, and any entry in `configApplyErrors`. Auto-resolves ' +
-				'credential slots that match an existing single credential or configured channel credential.',
+			'Collect all pending setup of an initial build in ONE guided flow: questions (including ' +
+				'the model choice), credential slots, and chat channels. Call it at most once, as the ' +
+				'trailing step of an initial build when only pending setup remains, and never with ' +
+				'another interactive tool. Cards run back-to-back: questions, credentials, then one ' +
+				'card per channel. Pass channel types returned by agent-context integrations; do not ' +
+				'infer names. Give a question `configPath` when its answer has a place in the config, ' +
+				'and write that field empty first. Slots that match a single existing credential or a ' +
+				'channel credential resolve without a card. The result carries `nextStep`: follow it.',
 		)
+		.toModelOutput(withNextStep)
 		.input(finishSetupInputSchema)
 		.suspend(finishSetupSuspendSchema)
 		.resume(finishSetupResumeSchema)

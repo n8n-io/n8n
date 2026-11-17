@@ -16,16 +16,18 @@ import {
 import { Logger } from '@n8n/backend-common';
 import { WorkflowEntity } from '@n8n/db';
 import { Service } from '@n8n/di';
-import { jsonParse, UserError } from 'n8n-workflow';
+import { jsonParse } from 'n8n-workflow';
 import { ZodError, type ZodType, type ZodTypeDef } from 'zod';
 
-import { BadRequestError } from '@n8n/errors';
+import { BadRequestError, UserError } from '@n8n/errors';
+import { CredentialTypes } from '@/credential-types';
 import { NodeTypes } from '@/node-types';
 import * as WorkflowHelpers from '@/workflow-helpers';
 
 import { deriveParentFolderId, foldersInScope, workflowsInScope } from './package-layout';
 import { toImportBlockedError } from './import-blocked.error';
 import { agentBodyIssues } from '../entities/agent/agent-body-issues';
+import { dropUnconfirmedCredentialData } from '../entities/credential/credential-display-controllers';
 import type { PreparedAgent } from '../entities/agent/agent-import.types';
 import type { PreparedFolder } from '../entities/folder/folder-import.types';
 import type { PreparedProject } from '../entities/project/project-import.types';
@@ -46,6 +48,7 @@ import {
 	serializedAgentMetadataSchema,
 	type SerializedAgent,
 } from '../spec/serialized/agent.schema';
+import { serializedSkillSchema, type SerializedSkill } from '../spec/serialized/skill.schema';
 
 /**
  * Parses the typed entities out of a `.n8np` package — the read-side counterpart
@@ -59,6 +62,7 @@ export class N8nPackageParser {
 		private readonly logger: Logger,
 		private readonly nodeTypes: NodeTypes,
 		private readonly workflowSerializer: WorkflowSerializer,
+		private readonly credentialTypes: CredentialTypes,
 	) {}
 
 	async getManifest(reader: PackageReader): Promise<PackageManifest> {
@@ -86,12 +90,48 @@ export class N8nPackageParser {
 
 	async getAgents(reader: PackageReader, basePrefix = ''): Promise<PreparedAgent[]> {
 		const manifest = await this.getManifest(reader);
+		const folderTargetToId = new Map(
+			(manifest.folders ?? []).map((folder) => [folder.target, folder.id]),
+		);
+		let folders: PreparedFolder[] | undefined;
 		const agents: PreparedAgent[] = [];
 		for (const entry of manifest.agents ?? []) {
-			if (!entry.target.startsWith(`${basePrefix}agents/`)) continue;
-			agents.push(await this.readAgent(reader, entry));
+			if (
+				!entry.target.startsWith(`${basePrefix}agents/`) &&
+				!entry.target.startsWith(`${basePrefix}folders/`)
+			)
+				continue;
+			const parentFolderId = deriveParentFolderId(entry.target, folderTargetToId, 'agents');
+			if (parentFolderId) {
+				folders ??= await this.getFolders(reader, basePrefix);
+			}
+
+			const parent = folders?.find((folder) => folder.sourceFolderId === parentFolderId);
+
+			if (parentFolderId && parent?.resourceType !== 'agent') {
+				throw new UserError('An Agent must be in an Agent folder');
+			}
+
+			agents.push({ ...(await this.readAgent(reader, entry)), parentFolderId });
 		}
 		return agents;
+	}
+
+	/** Reads every skill of the package. Agents in any scope can reference an instance skill. */
+	async getSkills(reader: PackageReader): Promise<SerializedSkill[]> {
+		const manifest = await this.getManifest(reader);
+		const skills: SerializedSkill[] = [];
+		for (const entry of manifest.skills ?? []) {
+			const path = entityFilePath('skills', entry.target);
+			const skill = await this.readEntityFile(reader, path, 'skill', serializedSkillSchema);
+			if (skill.id !== entry.id) {
+				throw new UserError(
+					`Package skill at ${path} declares id "${skill.id}" but the manifest lists "${entry.id}".`,
+				);
+			}
+			skills.push(skill);
+		}
+		return skills;
 	}
 
 	async getFolders(reader: PackageReader, basePrefix = ''): Promise<PreparedFolder[]> {
@@ -172,7 +212,7 @@ export class N8nPackageParser {
 
 	private async readAgent(reader: PackageReader, entry: ManifestEntry): Promise<PreparedAgent> {
 		const path = entityFilePath('agents', entry.target);
-		const agent = await this.readAgentFile(reader, path, serializedAgentSchema);
+		const agent = await this.readEntityFile(reader, path, 'Agent', serializedAgentSchema);
 		if (agent.id !== entry.id) {
 			throw new UserError(
 				`Package Agent at ${path} declares id "${agent.id}" but the manifest lists "${entry.id}".`,
@@ -180,9 +220,10 @@ export class N8nPackageParser {
 		}
 		this.assertAgentBodiesPresent(agent, path);
 
-		const metadata = await this.readAgentFile(
+		const metadata = await this.readEntityFile(
 			reader,
 			agentMetadataFilePath(entry.target),
+			'Agent',
 			serializedAgentMetadataSchema,
 		);
 		await this.validateAgentTaskCrons(agent.id, agent.tasks);
@@ -192,8 +233,8 @@ export class N8nPackageParser {
 			name: agent.name,
 			config: agent.config,
 			availableInMCP: agent.availableInMCP,
+			isArchived: agent.isArchived ?? false,
 			metadata,
-			skills: agent.skills,
 			tools: agent.tools,
 			tasks: agent.tasks,
 		};
@@ -225,15 +266,16 @@ export class N8nPackageParser {
 		}
 	}
 
-	private async readAgentFile<T>(
+	private async readEntityFile<T>(
 		reader: PackageReader,
 		path: string,
+		label: 'Agent' | 'skill',
 		schema: ZodType<T, ZodTypeDef, unknown>,
 	): Promise<T> {
-		const wire = await this.readJson(reader, path, 'Agent');
+		const wire = await this.readJson(reader, path, label);
 		const result = schema.safeParse(wire);
 		if (!result.success) {
-			throw new UserError(`Package Agent file at ${path} failed schema validation.`, {
+			throw new UserError(`Package ${label} file at ${path} failed schema validation.`, {
 				cause: result.error,
 			});
 		}
@@ -340,6 +382,7 @@ export class N8nPackageParser {
 
 		return {
 			sourceFolderId: folder.id,
+			resourceType: folder.resourceType,
 			name: folder.name,
 			parentFolderId: folder.parentFolderId,
 		};
@@ -479,7 +522,20 @@ export class N8nPackageParser {
 			);
 		}
 
-		return credential;
+		return this.dropUnconfirmedPlainValues(credential, path);
+	}
+
+	private dropUnconfirmedPlainValues(
+		credential: SerializedCredential,
+		path: string,
+	): SerializedCredential {
+		const result = dropUnconfirmedCredentialData(credential, this.credentialTypes);
+		if (result.dropped.length > 0) {
+			this.logger.warn(
+				`Package credential file at ${path}: dropped values of ${result.dropped.join(', ')}. Only expressions and values that control which fields show can travel in a package.`,
+			);
+		}
+		return result.credential;
 	}
 
 	private async readJson<T = unknown>(

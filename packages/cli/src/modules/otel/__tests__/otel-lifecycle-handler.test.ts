@@ -1,12 +1,14 @@
 import type { LicenseState, Logger } from '@n8n/backend-common';
 import { EventService } from '@n8n/backend-services';
 import type { WorkflowEntity, WorkflowRepository } from '@n8n/db';
-import type {
-	NodeExecuteAfterContext,
-	NodeExecuteBeforeContext,
-	WorkflowExecuteAfterContext,
-	WorkflowExecuteBeforeContext,
+import {
+	PubSubMetadata,
+	type NodeExecuteAfterContext,
+	type NodeExecuteBeforeContext,
+	type WorkflowExecuteAfterContext,
+	type WorkflowExecuteBeforeContext,
 } from '@n8n/decorators';
+import { Container } from '@n8n/di';
 import { mock } from 'vitest-mock-extended';
 import { Workflow } from 'n8n-workflow';
 import type { INodeTypes, IRun, IRunExecutionData, WorkflowExecuteMode } from 'n8n-workflow';
@@ -1301,6 +1303,24 @@ describe('OtelLifecycleHandler', () => {
 			});
 		});
 
+		it('should mark the span of a node connected as a tool with the tool operation and the node name', () => {
+			const ctx = makeEndCtx();
+			ctx.workflow.connections = {
+				Node1: { ai_tool: [[{ node: 'AI Agent', type: 'ai_tool', index: 0 }]] },
+			};
+
+			handler.onNodeEnd(ctx);
+
+			expect(tracer.endNode).toHaveBeenCalledWith(
+				expect.objectContaining({
+					genAiAttributes: {
+						'gen_ai.operation.name': 'execute_tool',
+						'gen_ai.tool.name': 'Node1',
+					},
+				}),
+			);
+		});
+
 		it('should forward taskData.error to tracer.endNode', () => {
 			const error = new Error('node failure');
 			handler.onNodeEnd(
@@ -1534,13 +1554,25 @@ describe('onReloadOtelConfig', () => {
 		vi.clearAllMocks();
 	});
 
-	it('restarts the OTel tracer provider', async () => {
+	it('reloads the saved settings without shutting tracing down', async () => {
 		const handler = makeHandler();
-		otelService.restart.mockResolvedValue(undefined);
+		otelService.reloadSettings.mockResolvedValue(undefined);
 
 		await handler.onReloadOtelConfig();
 
-		expect(otelService.restart).toHaveBeenCalledTimes(1);
+		expect(otelService.reloadSettings).toHaveBeenCalledTimes(1);
+		expect(otelService.shutdown).not.toHaveBeenCalled();
+	});
+
+	it.each(['reload-otel-config', 'pubsub-reconnected'])('runs on %s', (eventName) => {
+		const handlers = Container.get(PubSubMetadata)
+			.getHandlers()
+			.filter(
+				({ eventName: name, eventHandlerClass }) =>
+					name === eventName && eventHandlerClass.name === 'OtelLifecycleHandler',
+			);
+
+		expect(handlers.map(({ methodName }) => methodName)).toEqual(['onReloadOtelConfig']);
 	});
 });
 

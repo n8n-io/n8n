@@ -4,6 +4,7 @@ import type {
 	INodeExecutionData,
 	INodeProperties,
 } from 'n8n-workflow';
+import { requestPath } from 'n8n-workflow';
 
 import { updateDisplayOptions } from '@utils/utilities';
 
@@ -54,7 +55,7 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 	const response = await googleApiRequest.call(
 		this,
 		'POST',
-		`/drive/v3/files/${folderId}/permissions`,
+		requestPath`/drive/v3/files/${folderId}/permissions`,
 		body,
 		qs,
 	);

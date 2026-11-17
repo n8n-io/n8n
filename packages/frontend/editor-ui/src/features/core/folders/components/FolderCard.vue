@@ -1,42 +1,21 @@
 <script setup lang="ts">
-import { computed, getCurrentInstance, ref } from 'vue';
-import { FOLDER_LIST_ITEM_ACTIONS, MCP_ACCESS_ACTIONS } from '../folders.constants';
+import { computed, ref } from 'vue';
+import { FOLDER_LIST_ITEM_ACTIONS } from '../folders.constants';
 import { ProjectTypes, type Project } from '@/features/collaboration/projects/projects.types';
 import { useI18n } from '@n8n/i18n';
 import { useRoute, useRouter } from 'vue-router';
 import { VIEWS } from '@/app/constants';
-import type { UserAction, FolderResource } from '@/Interface';
+import type { FolderResource } from '@/Interface';
 import { ResourceType } from '@/features/collaboration/projects/projects.utils';
 import type { PathItem } from '@n8n/design-system';
 import { useFoldersStore } from '../folders.store';
-import { useFavoritesStore } from '@/app/stores/favorites.store';
-import { type IUser } from 'n8n-workflow';
+import FolderCardActions, { type FolderCardAction } from './FolderCardActions.vue';
 import TimeAgo from '@/app/components/TimeAgo.vue';
 import ProjectCardBadge from '@/features/collaboration/projects/components/ProjectCardBadge.vue';
 import ResourceListRow from '@/app/components/layouts/ResourceListRow.vue';
 import { formatResourceListDate } from '@/app/components/layouts/resourceListColumns';
 
-import {
-	N8nBadge,
-	N8nBreadcrumbs,
-	N8nCard,
-	N8nDropdownMenu,
-	N8nHeading,
-	N8nIcon,
-	N8nIconButton,
-	N8nText,
-	N8nTooltip,
-	type DropdownMenuItemProps,
-} from '@n8n/design-system';
-
-type FolderCardAction = UserAction<IUser> & {
-	children?: FolderCardAction[];
-	tooltip?: string;
-};
-
-type MenuItemData = {
-	tooltip?: string;
-};
+import { N8nBadge, N8nBreadcrumbs, N8nCard, N8nHeading, N8nIcon, N8nText } from '@n8n/design-system';
 
 type Props = {
 	data: FolderResource;
@@ -58,80 +37,17 @@ const i18n = useI18n();
 const route = useRoute();
 const router = useRouter();
 const foldersStore = useFoldersStore();
-const favoritesStore = useFavoritesStore();
 
 const emit = defineEmits<{
 	action: [{ action: string; folderId: string }];
 	folderOpened: [{ folder: FolderResource }];
 }>();
 
-const dropdownId = `folder-card-actions-dropdown-${getCurrentInstance()?.uid ?? 0}`;
-
 const hiddenBreadcrumbsItemsAsync = ref<Promise<PathItem[]>>(new Promise(() => {}));
 
 const cachedHiddenBreadcrumbsItems = ref<PathItem[]>([]);
 
 const resourceTypeLabel = computed(() => i18n.baseText('generic.folder').toLowerCase());
-
-const mcpAccessAction = computed<FolderCardAction>(() => ({
-	label: i18n.baseText('resourceActions.mcpAccess.manage'),
-	value: MCP_ACCESS_ACTIONS.MANAGE,
-	disabled: false,
-	children: [
-		{
-			label: i18n.baseText('resourceActions.mcpAccess.enable'),
-			value: MCP_ACCESS_ACTIONS.ENABLE,
-			disabled: false,
-			tooltip: i18n.baseText('resourceActions.mcpAccess.enable.tooltip', {
-				interpolate: { scopeName: props.data.name },
-			}),
-		},
-		{
-			label: i18n.baseText('resourceActions.mcpAccess.disable'),
-			value: MCP_ACCESS_ACTIONS.DISABLE,
-			disabled: false,
-			tooltip: i18n.baseText('resourceActions.mcpAccess.disable.tooltip', {
-				interpolate: { scopeName: props.data.name },
-			}),
-		},
-	],
-}));
-
-const allActions = computed<FolderCardAction[]>(() => {
-	const favoriteAction: FolderCardAction = {
-		label: favoritesStore.isFavorite(props.data.id, 'folder')
-			? i18n.baseText('favorites.remove')
-			: i18n.baseText('favorites.add'),
-		value: FOLDER_LIST_ITEM_ACTIONS.TOGGLE_FAVORITE,
-		disabled: false,
-	};
-	const renameIndex = props.actions.findIndex((a) => a.value === FOLDER_LIST_ITEM_ACTIONS.RENAME);
-	let result: FolderCardAction[];
-
-	if (renameIndex !== -1) {
-		result = [...props.actions];
-		result.splice(renameIndex, 0, favoriteAction);
-	} else {
-		result = [...props.actions, favoriteAction];
-	}
-
-	return props.showMcpAccessActions ? [...result, mcpAccessAction.value] : result;
-});
-
-function toMenuItem(action: FolderCardAction): DropdownMenuItemProps<string, MenuItemData> {
-	return {
-		id: action.value,
-		testId: `action-${action.value}`,
-		label: action.label,
-		disabled: action.disabled,
-		children: action.children?.map(toMenuItem),
-		data: action.tooltip ? { tooltip: action.tooltip } : undefined,
-	};
-}
-
-const menuItems = computed<Array<DropdownMenuItemProps<string, MenuItemData>>>(() =>
-	allActions.value.map(toMenuItem),
-);
 
 const cardUrl = computed(() => {
 	return getFolderUrl(props.data.id);
@@ -183,12 +99,10 @@ const onAction = async (action: string) => {
 	if (action === FOLDER_LIST_ITEM_ACTIONS.OPEN) {
 		emit('folderOpened', { folder: props.data });
 		await router.push(cardUrl.value);
+
 		return;
 	}
-	if (action === FOLDER_LIST_ITEM_ACTIONS.TOGGLE_FAVORITE) {
-		await favoritesStore.toggleFavorite(props.data.id, 'folder');
-		return;
-	}
+
 	emit('action', { action, folderId: props.data.id });
 };
 
@@ -246,7 +160,7 @@ const onBreadcrumbItemClick = async (item: PathItem) => {
 								size="small"
 								color="text-light"
 								:class="[$style['info-cell'], $style['info-cell--workflow-count']]"
-								data-test-id="folder-card-folder-count"
+								data-test-id="folder-card-resource-count"
 							>
 								{{
 									i18n.baseText('generic.workflow', { interpolate: { count: data.workflowCount } })
@@ -257,7 +171,7 @@ const onBreadcrumbItemClick = async (item: PathItem) => {
 								size="small"
 								color="text-light"
 								:class="[$style['info-cell'], $style['info-cell--workflow-count']]"
-								data-test-id="folder-card-workflow-count"
+								data-test-id="folder-card-folder-count"
 							>
 								{{
 									i18n.baseText('generic.folderCount', {
@@ -325,51 +239,13 @@ const onBreadcrumbItemClick = async (item: PathItem) => {
 					</template>
 					<template #actions>
 						<span :class="$style.cellContent" @click.stop.prevent>
-							<span data-test-id="folder-card-actions" data-row-menu>
-								<N8nDropdownMenu
-									:id="dropdownId"
-									:items="menuItems"
-									placement="bottom-end"
-									:extra-popper-class="$style['actions-menu-dropdown']"
-									@select="onAction"
-								>
-									<template #trigger>
-										<N8nIconButton
-											:class="['action-toggle', $style['actions-menu']]"
-											variant="ghost"
-											icon="ellipsis-12"
-											size="small"
-											icon-size="medium"
-											role="button"
-											:aria-controls="dropdownId"
-										/>
-									</template>
-									<template #item-label="{ item, ui }">
-										<N8nTooltip
-											v-if="item.data?.tooltip"
-											:content="item.data.tooltip"
-											placement="left"
-											:show-after="300"
-											teleported
-										>
-											<N8nText
-												:class="ui.class"
-												size="medium"
-												:color="item.disabled ? 'text-light' : 'text-dark'"
-											>
-												{{ item.label }}
-											</N8nText>
-										</N8nTooltip>
-										<N8nText
-											v-else
-											:class="ui.class"
-											size="medium"
-											:color="item.disabled ? 'text-light' : 'text-dark'"
-										>
-											{{ item.label }}
-										</N8nText>
-									</template>
-								</N8nDropdownMenu>
+							<span data-row-menu>
+								<FolderCardActions
+									:folder="data"
+									:actions="actions"
+									:show-mcp-access-actions="showMcpAccessActions"
+									@action="onAction"
+								/>
 							</span>
 						</span>
 					</template>
@@ -434,9 +310,5 @@ const onBreadcrumbItemClick = async (item: PathItem) => {
 // Controls in a cell must not open the folder.
 .cellContent {
 	display: contents;
-}
-
-.actions-menu-dropdown {
-	width: 200px;
 }
 </style>

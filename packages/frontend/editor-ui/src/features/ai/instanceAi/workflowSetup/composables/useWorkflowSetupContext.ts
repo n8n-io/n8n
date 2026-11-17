@@ -12,10 +12,14 @@ import {
 import type { InstanceAiCredentialFlow, InstanceAiWorkflowSetupNode } from '@n8n/api-types';
 import { useCredentialTestInBackground } from '@/features/credentials/composables/useCredentialTestInBackground';
 import type { INodeUi } from '@/Interface';
-import { useThread } from '../../instanceAi.store';
-import type { TerminalState, WorkflowSetupSection } from '../workflowSetup.types';
+import type {
+	TerminalState,
+	WorkflowSetupApplyPayload,
+	WorkflowSetupOutcome,
+	WorkflowSetupSection,
+} from '../workflowSetup.types';
 import { useWorkflowSetupActions } from './useWorkflowSetupActions';
-import { useWorkflowSetupApply } from './useWorkflowSetupApply';
+import { useWorkflowSetupDecision } from './useWorkflowSetupDecision';
 import { useWorkflowSetupBootstrap } from './useWorkflowSetupBootstrap';
 import { useWorkflowSetupSections } from './useWorkflowSetupSections';
 import { useWorkflowSetupInputs, type CredentialSelectionsMap } from './useWorkflowSetupInputs';
@@ -57,10 +61,22 @@ interface ProvideOptions {
 	projectId: Ref<string | undefined>;
 	workflowId: Ref<string | undefined>;
 	credentialFlow: Ref<InstanceAiCredentialFlow | undefined>;
+	/** The thread that the telemetry reports. */
+	threadId: Ref<string>;
+	/** Joins the telemetry with the "Builder asked for input" event of this card. */
+	inputThreadId: Ref<string | undefined>;
+	/** How the parent settled the last answer. */
+	outcome: Ref<WorkflowSetupOutcome | undefined>;
+	/**
+	 * Hands the user's apply to the parent, which sends it. `sections` is the
+	 * card's sections at apply time, for a parent that reads the result later.
+	 */
+	emitApply: (payload: WorkflowSetupApplyPayload, sections: WorkflowSetupSection[]) => void;
+	/** Hands the user's defer to the parent, which sends it. */
+	emitDefer: () => void;
 }
 
 export function provideWorkflowSetupContext(opts: ProvideOptions): WorkflowSetupContext {
-	const thread = useThread();
 	const { hydrateCredentialTestResults } = useCredentialTestInBackground();
 
 	hydrateCredentialTestResults(
@@ -74,9 +90,10 @@ export function provideWorkflowSetupContext(opts: ProvideOptions): WorkflowSetup
 
 	const { sections } = useWorkflowSetupSections(opts.setupRequests);
 	const bootstrap = useWorkflowSetupBootstrap(opts.workflowId);
-	const applyMachine = useWorkflowSetupApply({
-		requestId: opts.requestId,
-		thread,
+	const applyMachine = useWorkflowSetupDecision({
+		outcome: opts.outcome,
+		emitApply: (payload) => opts.emitApply(payload, sections.value),
+		emitDefer: opts.emitDefer,
 	});
 
 	const currentStepIndex = ref(0);
@@ -126,7 +143,8 @@ export function provideWorkflowSetupContext(opts: ProvideOptions): WorkflowSetup
 			apply: applyMachine.apply,
 			defer: applyMachine.defer,
 		},
-		thread,
+		threadId: opts.threadId,
+		inputThreadId: opts.inputThreadId,
 	});
 
 	// Clamp currentStepIndex when the section list shrinks beneath it.

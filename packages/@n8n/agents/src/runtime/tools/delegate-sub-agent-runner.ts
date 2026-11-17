@@ -436,11 +436,12 @@ function stringifyUnknown(value: unknown): string {
  * (the n8n CLI runner does).
  */
 
-/** Render the default delegation prompt from a request's goal / context / expectedOutput. */
+/** Render the default delegation prompt from a request's goal / context / expectedOutput / fileIds. */
 export function renderDelegateSubAgentPrompt(request: {
 	goal: string;
 	context?: string;
 	expectedOutput?: string;
+	fileIds?: string[];
 }): string {
 	const sections = [
 		'You are a focused subagent working on a specific delegated task.',
@@ -453,6 +454,10 @@ export function renderDelegateSubAgentPrompt(request: {
 
 	if (request.expectedOutput) {
 		sections.push(`EXPECTED OUTPUT:\n${request.expectedOutput}`);
+	}
+
+	if (request.fileIds?.length) {
+		sections.push(`FILES (pass these fileIds to tools):\n${request.fileIds.join('\n')}`);
 	}
 
 	sections.push(

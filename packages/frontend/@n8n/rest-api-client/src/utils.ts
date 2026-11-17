@@ -9,9 +9,10 @@ import type {
 } from 'axios';
 import axios from 'axios';
 import { jsonParse } from 'n8n-workflow';
+import { BaseError } from '@n8n/errors';
 import type { GenericValue, IDataObject } from 'n8n-workflow';
 
-import type { IRestApiContext } from './types';
+import type { IRestApiContext, PublicApiContext } from './types';
 
 export const NO_NETWORK_ERROR_CODE = 999;
 export const STREAM_SEPARATOR = '⧉⇋⇋➽⌑⧉§§\n';
@@ -23,7 +24,7 @@ export class MfaRequiredError extends Error {
 	}
 }
 
-export class ResponseError extends Error {
+export class ResponseError extends BaseError {
 	// The HTTP status code of response
 	httpStatusCode?: number;
 
@@ -59,6 +60,7 @@ export class ResponseError extends Error {
 		} = {},
 	) {
 		super(message);
+		// Set explicitly, because minification renames the class.
 		this.name = 'ResponseError';
 
 		const { errorCode, httpStatusCode, stack, meta, hint } = options;
@@ -257,6 +259,23 @@ export async function makeRestApiRequest<T>(
 
 	// All cli rest api endpoints return data wrapped in `data` key
 	return response.data as T;
+}
+
+export async function makePublicApiRequest<T>(
+	context: PublicApiContext,
+	method: Method,
+	endpoint: string,
+	data?: GenericValue | GenericValue[],
+) {
+	const response = await request({
+		method,
+		baseURL: context.baseUrl,
+		endpoint,
+		headers: context.headers,
+		data,
+	});
+
+	return response as T;
 }
 
 export async function get(

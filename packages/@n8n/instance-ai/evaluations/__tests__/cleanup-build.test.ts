@@ -59,6 +59,33 @@ describe('cleanupBuild', () => {
 		expect(mocks.deleteThread).toHaveBeenCalledWith('T1');
 	});
 
+	it('deletes the owner thread an MCP build used for seeding', async () => {
+		const { client, mocks } = makeClient();
+		await cleanupBuild(
+			client,
+			{ ...makeBuild(), threadId: undefined, seedThreadId: 'S1' },
+			silentLogger,
+		);
+		expect(mocks.deleteThread).toHaveBeenCalledWith('S1');
+	});
+
+	it('treats a thread that is already gone as cleaned, so the build user is still deleted', async () => {
+		const { client, mocks } = makeClient({
+			deleteThread: vi.fn().mockRejectedValue(new N8nApiError('HTTP 404', 404)),
+			deleteAgent: vi.fn().mockResolvedValue(undefined),
+			deleteUser: vi.fn().mockResolvedValue(undefined),
+		});
+		const build = {
+			...makeBuild(),
+			seedThreadId: 'S1',
+			buildProjectId: 'build-project',
+			buildUserId: 'build-user',
+		};
+
+		await expect(cleanupBuild(client, build, silentLogger)).resolves.toBe(true);
+		expect(mocks.deleteUser).toHaveBeenCalledWith('build-user');
+	});
+
 	it('reports not clean when a deletion fails, but still attempts the rest', async () => {
 		const { client, mocks } = makeClient({
 			deleteWorkflow: vi.fn().mockRejectedValue(new Error('HTTP 502')),
@@ -114,6 +141,30 @@ describe('cleanupBuild', () => {
 		expect(mocks.deleteUser.mock.invocationCallOrder[0]).toBeGreaterThan(
 			mocks.deleteThread.mock.invocationCallOrder[0],
 		);
+	});
+
+	it('deletes a team build project last, after the thread', async () => {
+		const { client, mocks } = makeClient();
+		const build = { ...makeBuild(), buildProjectId: 'team-project' };
+
+		await expect(cleanupBuild(client, build, silentLogger)).resolves.toBe(true);
+
+		expect(mocks.deleteDataTable).toHaveBeenCalledWith('team-project', 'DT1');
+		expect(mocks.deleteProject).toHaveBeenCalledExactlyOnceWith('team-project');
+		expect(mocks.deleteProject.mock.invocationCallOrder[0]).toBeGreaterThan(
+			mocks.deleteThread.mock.invocationCallOrder[0],
+		);
+	});
+
+	it('keeps a team build project when another delete fails, so the retry still finds it', async () => {
+		const { client, mocks } = makeClient({
+			deleteDataTable: vi.fn().mockRejectedValue(new Error('HTTP 502')),
+		});
+		const build = { ...makeBuild(), buildProjectId: 'team-project' };
+
+		await expect(cleanupBuild(client, build, silentLogger)).resolves.toBe(false);
+
+		expect(mocks.deleteProject).not.toHaveBeenCalled();
 	});
 
 	it('keeps the build user when another delete fails, so the retry still finds its project', async () => {

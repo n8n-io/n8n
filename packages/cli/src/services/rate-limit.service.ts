@@ -80,7 +80,7 @@ export class RateLimitService {
 	 * The counts are stored on the request under `requestPropertyName`.
 	 */
 	createApiKeyRateLimitMiddleware(
-		limits: Required<RateLimiterLimits>,
+		limits: { limit: number | (() => number); windowMs: number },
 		{ requestPropertyName, store }: { requestPropertyName: string; store: Store },
 	): RequestHandler {
 		const limiter = expressRateLimit({
@@ -91,6 +91,8 @@ export class RateLimitService {
 			requestPropertyName,
 			store,
 			handler: (_req, _res, next) => next(),
+			// The Public API creates a limiter on the first request and again when a window changes.
+			validate: { creationStack: false },
 			skip: (req: AuthenticatedRequest): boolean => req.tokenGrant?.apiKeyId === undefined,
 			keyGenerator: (req: AuthenticatedRequest) => `apiKey:${req.tokenGrant?.apiKeyId}`,
 		});

@@ -550,6 +550,23 @@ describe('instanceAi.reducer', () => {
 	});
 
 	// Test live event dispatch, not only shared history replay.
+	it('adds a live skill update to the assistant timeline', () => {
+		const state = stateWithRun('run-1', 'agent-root');
+		const payload = {
+			skillId: 'hub:1',
+			name: 'Writing',
+			version: 'v2',
+			change: 'updated' as const,
+		};
+		handleEvent(state, { type: 'skill-update', runId: 'run-1', agentId: 'agent-root', payload });
+		const runState = state.runStateByGroupId.get('run-1');
+		expect(runState?.agentsById['agent-root'].timeline).toContainEqual({
+			type: 'skill-update',
+			runId: 'run-1',
+			...payload,
+		});
+	});
+
 	describe('instance context', () => {
 		const injected = {
 			injection: {
@@ -643,6 +660,30 @@ describe('instanceAi.reducer', () => {
 				message: 'Select credentials',
 				projectId: 'proj-789',
 			});
+		});
+
+		test('auto-approval marks the tool call that ran without its card', () => {
+			const state = stateWithRun('run-1', 'agent-root');
+			handleEvent(state, makeToolCallEvent('run-1', 'agent-root', 'tc-1', 'publish_workflow'));
+			handleEvent(state, {
+				type: 'auto-approval',
+				runId: 'run-1',
+				agentId: 'agent-root',
+				payload: {
+					toolCallId: 'tc-1',
+					message: 'Publish "Lead router"',
+					reason: 'The user asked to publish it.',
+					decidedBy: 'judge',
+				},
+			});
+
+			const tc = state.messages[0].agentTree!.toolCalls[0];
+			expect(tc.autoApproval).toEqual({
+				message: 'Publish "Lead router"',
+				reason: 'The user asked to publish it.',
+				decidedBy: 'judge',
+			});
+			expect(tc.confirmation).toBeUndefined();
 		});
 	});
 

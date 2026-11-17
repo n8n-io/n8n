@@ -3,10 +3,14 @@ import { readFileSync } from 'node:fs';
 import * as path from 'node:path';
 import type { RuntimeBridge, BridgeConfig, ExecuteOptions, WorkflowData } from '../types';
 import { DEFAULT_BRIDGE_CONFIG, TimeoutError, MemoryLimitError } from '../types';
+import { readToAsciiCharmapJson } from '../extensions/to-ascii';
+import { TO_ASCII_CHARMAP_HOST_FUNCTION } from '../runtime/host-function-names';
 import type { ErrorSentinel } from '../runtime/lazy-proxy';
-import { unwrapLuxonValues } from '../runtime/luxon-transfer';
+import { unwrapTransferredValue } from '../runtime/transfer-codec';
+import { HostDataResolver } from './host-data-resolver';
 import {
 	dispatchHostCall,
+	escapeHostResult,
 	getArrayElement,
 	getValueAtPath,
 	isErrorSentinel,
@@ -111,16 +115,6 @@ function loadRuntimeBundle(): string {
 	);
 }
 
-/** Workflow data for one `execute()` call, cleared when the call ends. */
-interface DataHolder {
-	data?: WorkflowData;
-}
-
-function heldData(holder: DataHolder): WorkflowData {
-	if (!holder.data) throw new Error('Host callback called after its expression finished');
-	return holder.data;
-}
-
 /**
  * IsolatedVmBridge - Runtime bridge using isolated-vm for secure expression evaluation.
  *
@@ -178,6 +172,9 @@ export class IsolatedVmBridge implements RuntimeBridge {
 		// Set 'global' to reference itself (pattern from POC)
 		// This allows code in isolate to access 'global.something'
 		await jail.set('global', jail.derefInto());
+
+		// The runtime bundle takes this function off the global object when it loads.
+		await jail.set(TO_ASCII_CHARMAP_HOST_FUNCTION, new (getIvm().Callback)(readToAsciiCharmapJson));
 
 		// Load runtime bundle (DateTime, extend, SafeObject, proxy system)
 		await this.loadVendorLibraries();
@@ -279,6 +276,7 @@ export class IsolatedVmBridge implements RuntimeBridge {
 			this.context = this.isolate.createContextSync();
 			const jail = this.context.global;
 			jail.setSync('global', jail.derefInto());
+			jail.setSync(TO_ASCII_CHARMAP_HOST_FUNCTION, new (getIvm().Callback)(readToAsciiCharmapJson));
 
 			if (this.config.compileCache) {
 				const script = this.isolate.compileScriptSync(
@@ -315,10 +313,10 @@ export class IsolatedVmBridge implements RuntimeBridge {
 	 *
 	 * @private
 	 */
-	private createGetValueAtPathRef(holder: DataHolder): ivm.Callback {
+	private createGetValueAtPathRef(resolver: HostDataResolver): ivm.Callback {
 		return new (getIvm().Callback)((pathArr: string[]) => {
 			try {
-				return getValueAtPath(heldData(holder), pathArr);
+				return getValueAtPath(resolver, pathArr);
 			} catch (err) {
 				return serializeError(err);
 			}
@@ -334,10 +332,10 @@ export class IsolatedVmBridge implements RuntimeBridge {
 	 *
 	 * @private
 	 */
-	private createGetArrayElementRef(holder: DataHolder): ivm.Callback {
+	private createGetArrayElementRef(resolver: HostDataResolver): ivm.Callback {
 		return new (getIvm().Callback)((pathArr: string[], index: number) => {
 			try {
-				return getArrayElement(heldData(holder), pathArr, index);
+				return getArrayElement(resolver, pathArr, index);
 			} catch (err) {
 				return serializeError(err);
 			}
@@ -360,10 +358,10 @@ export class IsolatedVmBridge implements RuntimeBridge {
 	 *
 	 * @private
 	 */
-	private createCallHostRef(holder: DataHolder): ivm.Callback {
+	private createCallHostRef(resolver: HostDataResolver): ivm.Callback {
 		return new (getIvm().Callback)((rawMsg: unknown) => {
 			try {
-				return dispatchHostCall(rawMsg, heldData(holder));
+				return escapeHostResult(dispatchHostCall(rawMsg, resolver));
 			} catch (err) {
 				return serializeError(err);
 			}
@@ -416,13 +414,13 @@ export class IsolatedVmBridge implements RuntimeBridge {
 		// arrive as plain functions with structured-clone marshaling, so the
 		// runtime invokes them directly. isolated-vm frees a callback only at the
 		// next isolated-vm call in the process, even after the isolate is disposed.
-		// So the callbacks read the data from a holder that `finally` clears.
-		const holder: DataHolder = { data };
-		const getValueAtPath = this.createGetValueAtPathRef(holder);
-		const getArrayElement = this.createGetArrayElementRef(holder);
-		const callHost = this.createCallHostRef(holder);
+		// So the callbacks read the data from a resolver that `finally` disposes.
+		const resolver = new HostDataResolver(data);
 
 		try {
+			const getValueAtPath = this.createGetValueAtPathRef(resolver);
+			const getArrayElement = this.createGetArrayElementRef(resolver);
+			const callHost = this.createCallHostRef(resolver);
 			const timezone = options?.timezone ? safeStringify(options.timezone) : 'undefined';
 
 			// Wrap transformed code so 'this' === the closure-scoped context.
@@ -476,8 +474,8 @@ try {
 			this.logger.debug('[IsolatedVmBridge] Expression executed successfully');
 
 			// The structured clone above drops the prototype of a class instance, so
-			// rebuild the luxon instances from the markers the isolate sent.
-			return unwrapLuxonValues(result);
+			// rebuild the luxon and Error instances from the markers the isolate sent.
+			return unwrapTransferredValue(result);
 		} catch (error) {
 			// Re-throw reconstructed errors as-is.
 			// Note: TypeError is intentionally NOT included here — the isolate's
@@ -502,7 +500,7 @@ try {
 			}
 			throw new Error(`Expression evaluation failed: ${errorMessage}`);
 		} finally {
-			holder.data = undefined;
+			resolver.dispose();
 		}
 	}
 

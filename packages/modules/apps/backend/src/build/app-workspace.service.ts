@@ -10,7 +10,7 @@ import { BadRequestError } from '@n8n/errors';
 import { raceAbort } from '@n8n/utils/race-abort';
 
 import { APP_BUILD_SCRIPT } from './app-build-script';
-import { APP_DEPENDENCY_KEY } from '../scaffold/app-scaffold';
+import { loadAppSdkFiles } from './app-sdk-files';
 import { AppSandboxSettings, type AppSandboxResolveOptions } from './app-sandbox-settings';
 import { AppBuildError, type AppBuildAttempt, type AppBuildStage } from './app-build.types';
 import { AppsConfig } from '../apps.config';
@@ -38,6 +38,7 @@ export class AppWorkspaceService {
 		versionId: string,
 		attempt: AppBuildAttempt,
 		files: AppFiles,
+		dependencyKey: string,
 		signal: AbortSignal,
 	): Promise<AppFiles> {
 		const config = await this.sandboxConfig(projectId, appId);
@@ -61,6 +62,11 @@ export class AppWorkspaceService {
 			await filesystem.writeFile(`${stage}/source.tgz`, await this.archives.pack(files), {
 				abortSignal: signal,
 			});
+			await filesystem.writeFile(
+				`${stage}/sdk.tgz`,
+				await this.archives.pack(await loadAppSdkFiles()),
+				{ abortSignal: signal },
+			);
 			await filesystem.writeFile(`${stage}/build.sh`, APP_BUILD_SCRIPT, { abortSignal: signal });
 			const deadline = attempt.startedAt.getTime() + this.config.buildTimeoutMs;
 			const remaining = deadline - Date.now();
@@ -81,7 +87,7 @@ export class AppWorkspaceService {
 					`${stage}/build.sh`,
 					root,
 					stage,
-					APP_DEPENDENCY_KEY,
+					dependencyKey,
 					String(deadline),
 					String(this.config.maxBuildLogBytes),
 					String(this.config.buildTimeoutMs),

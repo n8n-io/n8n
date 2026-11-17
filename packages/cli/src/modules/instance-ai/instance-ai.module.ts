@@ -1,11 +1,14 @@
 import { Logger } from '@n8n/backend-common';
-import type { ModuleInterface } from '@n8n/decorators';
+import type { ModuleInterface, SystemTaskClass } from '@n8n/decorators';
 import { BackendModule, OnShutdown } from '@n8n/decorators';
 import { Container } from '@n8n/di';
 import { InstanceSettings } from 'n8n-core';
 
 @BackendModule({ name: 'instance-ai', instanceTypes: ['main', 'worker', 'webhook'] })
 export class InstanceAiModule implements ModuleInterface {
+	/** Whether this main registered the n8n Assistant agent on the agents runtime. */
+	private assistantAgentRegistered = false;
+
 	private isMain(): boolean {
 		return Container.get(InstanceSettings).instanceType === 'main';
 	}
@@ -15,6 +18,17 @@ export class InstanceAiModule implements ModuleInterface {
 
 		// Workers and webhook processes only relay eligible failures to main.
 		if (!this.isMain()) return;
+
+		const { InstanceAiConfig } = await import('@n8n/config');
+		if (Container.get(InstanceAiConfig).evalInstance) {
+			// Services inject the overrides when they are first resolved, so set them
+			// before anything resolves a service. Only an eval instance loads this code.
+			const { AssistantTurnOverrides } = await import('./turn-setup/assistant-turn-overrides.js');
+			const { EvalAssistantTurnOverrides } = await import(
+				'./eval/eval-assistant-turn-overrides.js'
+			);
+			Container.set(AssistantTurnOverrides, Container.get(EvalAssistantTurnOverrides));
+		}
 
 		const { WorkflowMutationHooksProxy } = await import('@n8n/backend-services');
 		const { SelfHealingConfigurationService } = await import(
@@ -49,14 +63,15 @@ export class InstanceAiModule implements ModuleInterface {
 		);
 		await Container.get(InstanceAiSetupTelemetryService).recordSetupCompletedIfNeeded();
 		await import('./instance-ai.controller.js');
+		await import('./assistant.controller.js');
 		await import('./mcp/instance-ai-mcp-connection.controller.js');
-		const { InstanceAiConfig } = await import('@n8n/config');
 		if (Container.get(InstanceAiConfig).evalInstance) {
 			await import('./eval/eval.controller.js');
 		}
 		if (Container.get(InstanceAiConfig).workflowSuggestionsEnabled) {
 			await import('./self-healing/self-healing-results.controller.js');
 			await import('./self-healing/self-healing-configurations.controller.js');
+			await import('./self-healing/self-healing-status.controller.js');
 			const { InboxSourceRegistry } = await import('../inbox/inbox-source.registry.js');
 			const { SelfHealingResultService } = await import(
 				'./self-healing/self-healing-result.service.js'
@@ -74,6 +89,14 @@ export class InstanceAiModule implements ModuleInterface {
 			Container.get(WorkflowMutationHooksProxy).registerProvider(
 				Container.get(WorkflowSuggestionEventRelay),
 			);
+			const { SelfHealingTelemetryEventRelay } = await import(
+				'./self-healing/self-healing-telemetry.event-relay.js'
+			);
+			Container.get(SelfHealingTelemetryEventRelay).init();
+		}
+
+		if (Container.get(InstanceAiConfig).assistantAgentEnabled) {
+			await this.registerAssistantAgent();
 		}
 
 		// Instantiating the relay registers its `user-deleted` listener, which
@@ -92,6 +115,42 @@ export class InstanceAiModule implements ModuleInterface {
 		}
 	}
 
+	/** Run the n8n Assistant as a system agent on the Agents runtime, next to its own runtime. */
+	private async registerAssistantAgent(): Promise<void> {
+		const { ModuleRegistry } = await import('@n8n/backend-common');
+		// This module starts before the agents module, so check that agents will start, not
+		// that it is active. Registration needs only the agents tables.
+		if (!Container.get(ModuleRegistry).eligibleModules.includes('agents')) {
+			Container.get(Logger)
+				.scoped('instance-ai')
+				.warn('The Assistant agent needs the agents module, so it is not registered');
+			return;
+		}
+		const { SystemAgentRegistrationService } = await import(
+			'@/modules/agents/system-agents/system-agent-registration.service.js'
+		);
+		const { AssistantAgentProvider } = await import(
+			'./assistant-agent/assistant-agent.provider.js'
+		);
+		await Container.get(SystemAgentRegistrationService).register(
+			Container.get(AssistantAgentProvider),
+		);
+		const { InstanceAiCreditService } = await import('./instance-ai-credit.service.js');
+		const { AssistantThreadCreditsService } = await import(
+			'./assistant-agent/assistant-thread-credits.service.js'
+		);
+		Container.get(InstanceAiCreditService).useAgentThreadCredits(
+			Container.get(AssistantThreadCreditsService),
+		);
+		// Its routes depend on the agents module, so they load only with the agent.
+		await import('./assistant-agent/assistant-agent.controller.js');
+		const { InstanceAiConfig } = await import('@n8n/config');
+		if (Container.get(InstanceAiConfig).evalInstance) {
+			await import('./eval/assistant-agent-eval.controller.js');
+		}
+		this.assistantAgentRegistered = true;
+	}
+
 	private async reconcileInterruptedRuns(): Promise<void> {
 		const { InterruptedRunSweeper } = await import('./event-bus/interrupted-run-sweeper.js');
 		const { InstanceAiService } = await import('./instance-ai.service.js');
@@ -108,16 +167,28 @@ export class InstanceAiModule implements ModuleInterface {
 	async systemTasks() {
 		if (!this.isMain()) return [];
 
-		const { InstanceAiConfig } = await import('@n8n/config');
+		const { GlobalConfig, InstanceAiConfig } = await import('@n8n/config');
 		const { SelfHealingReconciliationTask } = await import(
 			'./self-healing/self-healing-reconciliation.task.js'
 		);
-		if (Container.get(InstanceAiConfig).pruneInterval <= 0) return [SelfHealingReconciliationTask];
+		const config = Container.get(InstanceAiConfig);
+		const tasks: SystemTaskClass[] = [SelfHealingReconciliationTask];
 
-		const { InstanceAiCheckpointPruningTask } = await import(
-			'./instance-ai-checkpoint-pruning.task.js'
-		);
-		return [InstanceAiCheckpointPruningTask, SelfHealingReconciliationTask];
+		// Like `telemetry-pulse`: make sure no job is scheduled when telemetry is off.
+		if (config.workflowSuggestionsEnabled && Container.get(GlobalConfig).diagnostics.enabled) {
+			const { SelfHealingConfigurationSnapshotTask } = await import(
+				'./self-healing/self-healing-configuration-snapshot.task.js'
+			);
+			tasks.push(SelfHealingConfigurationSnapshotTask);
+		}
+
+		if (config.pruneInterval > 0) {
+			const { InstanceAiCheckpointPruningTask } = await import(
+				'./instance-ai-checkpoint-pruning.task.js'
+			);
+			tasks.push(InstanceAiCheckpointPruningTask);
+		}
+		return tasks;
 	}
 
 	async settings() {
@@ -146,6 +217,7 @@ export class InstanceAiModule implements ModuleInterface {
 			sandboxUnavailableReason: sandboxStatus.unavailableReason,
 			runDebugEnabled: globalConfig.instanceAi.runDebugEnabled,
 			workflowSuggestionsEnabled: globalConfig.instanceAi.workflowSuggestionsEnabled,
+			assistantAgentEnabled: this.assistantAgentRegistered,
 		};
 	}
 
@@ -153,9 +225,6 @@ export class InstanceAiModule implements ModuleInterface {
 		const { InstanceAiThread } = await import('./entities/instance-ai-thread.entity.js');
 		const { InstanceAiMessage } = await import('./entities/instance-ai-message.entity.js');
 		const { InstanceAiResource } = await import('./entities/instance-ai-resource.entity.js');
-		const { InstanceAiIterationLog } = await import(
-			'./entities/instance-ai-iteration-log.entity.js'
-		);
 		const { InstanceAiCheckpoint } = await import('./entities/instance-ai-checkpoint.entity.js');
 		const { InstanceAiPendingConfirmation } = await import(
 			'./entities/instance-ai-pending-confirmation.entity.js'
@@ -204,7 +273,6 @@ export class InstanceAiModule implements ModuleInterface {
 			InstanceAiThread,
 			InstanceAiMessage,
 			InstanceAiResource,
-			InstanceAiIterationLog,
 			InstanceAiCheckpoint,
 			InstanceAiPendingConfirmation,
 			InstanceAiObservation,
@@ -227,6 +295,19 @@ export class InstanceAiModule implements ModuleInterface {
 	@OnShutdown()
 	async shutdown() {
 		if (!this.isMain()) return;
+
+		if (this.assistantAgentRegistered) {
+			// Before the service shutdown, whose final flush exports these trace roots.
+			// A failure here must not stop the shutdown of the current Assistant runtime.
+			try {
+				const { AssistantTurnTracer } = await import('./assistant-agent/assistant-turn-trace.js');
+				await Container.get(AssistantTurnTracer).finishOpenTraces();
+			} catch (error) {
+				Container.get(Logger)
+					.scoped('instance-ai')
+					.warn('Failed to close the Assistant agent traces at shutdown', { error });
+			}
+		}
 
 		const { InstanceAiService } = await import('./instance-ai.service.js');
 		await Container.get(InstanceAiService).shutdown();

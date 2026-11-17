@@ -30,7 +30,8 @@ export default class PackageImport extends BaseCommand {
 			aliases: ['folder-id', 'folder'],
 		}),
 		conflictPolicy: Flags.option({
-			description: 'What to do when an Agent or workflow already exists in the target project',
+			description:
+				'What to do when an Agent or workflow already exists in the target project, or a skill of an imported Agent already exists. new-version saves a new version, skip keeps the existing one, and fail blocks the import. A missing skill is created. Under every policy, a skill ID that another project, Agent or the instance owns, or a skill name that its scope already uses, blocks the import',
 			options: ['new-version', 'fail', 'skip'] as const,
 			default: 'new-version',
 			aliases: ['conflict-policy'],
@@ -83,7 +84,7 @@ export default class PackageImport extends BaseCommand {
 		})(),
 		credentialMissingMode: Flags.option({
 			description:
-				'What to do when a referenced credential cannot be resolved (default on the instance: create-stub)',
+				'What to do when a referenced credential cannot be resolved (default on the instance: create-stub). create-stub and create-with-values need credential:create when the import creates a credential',
 			options: ['must-preexist', 'create-stub', 'create-with-values'] as const,
 			aliases: ['credential-missing-mode'],
 		})(),

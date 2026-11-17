@@ -57,6 +57,7 @@ function getClasses() {
 	// Lists override these to render cards as flat rows.
 	border-radius: var(--card--radius, var(--radius));
 	border: var(--border-width, 1px) solid var(--card--border-color, var(--border-color));
+	background-clip: padding-box;
 	box-shadow: var(--card--shadow, var(--shadow--xs));
 	background-color: var(--card--color--background, var(--background--surface));
 	padding: var(--card--padding, var(--spacing--sm));

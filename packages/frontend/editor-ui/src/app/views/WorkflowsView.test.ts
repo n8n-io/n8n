@@ -11,7 +11,7 @@ import { useCredentialsStore } from '@/features/credentials/credentials.store';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 import { useSettingsStore } from '@n8n/stores/settings.store';
 import { useSourceControlStore } from '@/features/integrations/sourceControl.ee/sourceControl.store';
-import { promotionEventBus } from '@/features/integrations/promotions.ee/promotions.eventBus';
+import { promotionEventBus } from '@n8n/frontend-module-promotions';
 import { foldersEventBus } from '@/features/core/folders/folders.eventBus';
 import { useTagsStore } from '@/features/shared/tags/tags.store';
 import { useUsersStore } from '@n8n/stores/users.store';
@@ -26,6 +26,7 @@ import { createRouter, createWebHistory } from 'vue-router';
 import { useReadyToRunStore } from '@/features/workflows/readyToRun/stores/readyToRun.store';
 import { useEmptyStateDetection } from '@/features/workflows/readyToRun/composables/useEmptyStateDetection';
 import { useAgentListStore } from '@/features/agents/agentList.store';
+import { useTypeAvailabilityPoliciesStore } from '@n8n/frontend-module-type-availability-policies';
 
 vi.mock('@/features/collaboration/projects/projects.api');
 vi.mock('@n8n/rest-api-client/api/users');
@@ -432,6 +433,126 @@ describe('WorkflowsView', () => {
 			await waitFor(() => expect(router.currentRoute.value.query).toStrictEqual({}));
 		});
 
+		describe("won't execute", () => {
+			beforeEach(() => {
+				mockedStore(useTypeAvailabilityPoliciesStore).isEnabled = true;
+				settingsStore.isFoldersFeatureEnabled = true;
+				workflowsListStore.totalWorkflowCount = 8;
+			});
+
+			it('should send the causes from the URL and search across all folders', async () => {
+				await router.replace({ query: { executionBlockedBy: 'restrictedNode' } });
+
+				renderComponent({ pinia });
+				await waitAllPromises();
+
+				expect(workflowsListStore.fetchWorkflowsPage).toHaveBeenCalledWith(
+					expect.any(String),
+					expect.any(Number),
+					expect.any(Number),
+					expect.any(String),
+					expect.objectContaining({
+						executionBlockedBy: ['restrictedNode'],
+						parentFolderId: undefined,
+					}),
+					false,
+					expect.any(Boolean),
+				);
+			});
+
+			it('should scope the filter to the current folder when inside a folder', async () => {
+				await router.replace({
+					path: '/project-1/folders/folder-1',
+					query: { executionBlockedBy: 'restrictedNode' },
+				});
+
+				renderComponent({ pinia });
+				await waitAllPromises();
+
+				expect(workflowsListStore.fetchWorkflowsPage).toHaveBeenCalledWith(
+					expect.any(String),
+					expect.any(Number),
+					expect.any(Number),
+					expect.any(String),
+					expect.objectContaining({
+						executionBlockedBy: ['restrictedNode'],
+						parentFolderId: 'folder-1',
+					}),
+					false,
+					expect.any(Boolean),
+				);
+			});
+
+			it('should drop unknown causes from the URL', async () => {
+				await router.replace({ query: { executionBlockedBy: 'restrictedNode,unknown' } });
+
+				renderComponent({ pinia });
+				await waitAllPromises();
+
+				await waitFor(() =>
+					expect(router.currentRoute.value.query).toStrictEqual({
+						executionBlockedBy: 'restrictedNode',
+					}),
+				);
+				expect(workflowsListStore.fetchWorkflowsPage).toHaveBeenCalledWith(
+					expect.any(String),
+					expect.any(Number),
+					expect.any(Number),
+					expect.any(String),
+					expect.objectContaining({ executionBlockedBy: ['restrictedNode'] }),
+					false,
+					expect.any(Boolean),
+				);
+			});
+
+			it('should ignore the filter when the policies module is off', async () => {
+				mockedStore(useTypeAvailabilityPoliciesStore).isEnabled = false;
+				await router.replace({ query: { executionBlockedBy: 'restrictedNode' } });
+
+				const { queryByTestId } = renderComponent({ pinia });
+				await waitAllPromises();
+
+				await waitFor(() => expect(router.currentRoute.value.query).toStrictEqual({}));
+				expect(workflowsListStore.fetchWorkflowsPage).toHaveBeenCalledWith(
+					expect.any(String),
+					expect.any(Number),
+					expect.any(Number),
+					expect.any(String),
+					expect.objectContaining({ executionBlockedBy: undefined }),
+					expect.any(Boolean),
+					expect.any(Boolean),
+				);
+				expect(queryByTestId('wont-execute-callout')).not.toBeInTheDocument();
+			});
+
+			it('should show the count in the callout and clear the filter from it', async () => {
+				await router.replace({ query: { executionBlockedBy: 'restrictedNode' } });
+
+				const { getByTestId, queryByTestId } = renderComponent({ pinia });
+				await waitAllPromises();
+
+				expect(getByTestId('wont-execute-callout')).toHaveTextContent(
+					"8 workflows won't execute: restricted node",
+				);
+
+				await userEvent.click(getByTestId('wont-execute-callout-clear'));
+				await waitAllPromises();
+
+				expect(router.currentRoute.value.query).toStrictEqual({});
+				expect(queryByTestId('wont-execute-callout')).not.toBeInTheDocument();
+			});
+
+			it('should not show the callout when no workflow matches', async () => {
+				workflowsListStore.totalWorkflowCount = 0;
+				await router.replace({ query: { executionBlockedBy: 'restrictedNode' } });
+
+				const { queryByTestId } = renderComponent({ pinia });
+				await waitAllPromises();
+
+				expect(queryByTestId('wont-execute-callout')).not.toBeInTheDocument();
+			});
+		});
+
 		it('should not replace the route when the query does not change', async () => {
 			await router.replace({ query: { search: 'one' } });
 			const replaceSpy = vi.spyOn(router, 'replace');
@@ -665,6 +786,87 @@ describe('Folders', () => {
 		expect(workflowsListStore.fetchWorkflowsPage).not.toHaveBeenCalled();
 		expect(foldersStore.fetchTotalWorkflowsAndFoldersCount).not.toHaveBeenCalled();
 		unmount();
+	});
+
+	describe('entering a folder from search results', () => {
+		// Named routes like the real app, so the route-name watchers fire on
+		// project-root -> folder navigation.
+		const namedRouter = createRouter({
+			history: createWebHistory(),
+			routes: [
+				{
+					path: '/projects/:projectId/workflows',
+					name: VIEWS.PROJECTS_WORKFLOWS,
+					component: { template: '<div></div>' },
+				},
+				{
+					path: '/projects/:projectId/folders/:folderId/workflows',
+					name: VIEWS.PROJECTS_FOLDERS,
+					component: { template: '<div></div>' },
+				},
+			],
+		});
+
+		const renderWithNamedRoutes = createComponentRenderer(WorkflowsView, {
+			global: {
+				plugins: [namedRouter],
+			},
+		});
+
+		it('should clear the search when opening a folder from search results', async () => {
+			vi.spyOn(projectPages, 'isOverviewSubPage', 'get').mockReturnValue(false);
+			vi.spyOn(projectPages, 'isSharedSubPage', 'get').mockReturnValue(false);
+			foldersStore.totalWorkflowCount = 4;
+
+			await namedRouter.push({
+				name: VIEWS.PROJECTS_WORKFLOWS,
+				params: { projectId: 'project-1' },
+				query: { search: 'candi' },
+			});
+			await namedRouter.isReady();
+
+			const { getByTestId, unmount } = renderWithNamedRoutes({ pinia });
+			await waitAllPromises();
+
+			expect(workflowsListStore.fetchWorkflowsPage).toHaveBeenLastCalledWith(
+				'project-1',
+				expect.any(Number),
+				expect.any(Number),
+				expect.any(String),
+				expect.objectContaining({ query: 'candi' }),
+				expect.any(Boolean),
+				expect.any(Boolean),
+			);
+
+			workflowsListStore.fetchWorkflowsPage.mockClear();
+
+			// FolderCard builds the folder URL from the current route query,
+			// so the search term is carried into the folder route.
+			await namedRouter.push({
+				name: VIEWS.PROJECTS_FOLDERS,
+				params: { projectId: 'project-1', folderId: 'folder-1' },
+				query: { search: 'candi' },
+			});
+			await waitAllPromises();
+			await waitAllPromises();
+
+			expect(namedRouter.currentRoute.value.query.search).toBeUndefined();
+			// The folder contents must load unfiltered
+			expect(workflowsListStore.fetchWorkflowsPage).toHaveBeenLastCalledWith(
+				'project-1',
+				expect.any(Number),
+				expect.any(Number),
+				expect.any(String),
+				expect.objectContaining({ query: undefined, parentFolderId: 'folder-1' }),
+				expect.any(Boolean),
+				expect.any(Boolean),
+			);
+			const searchEl = getByTestId('resources-list-search');
+			const searchInput =
+				searchEl instanceof HTMLInputElement ? searchEl : searchEl.querySelector('input');
+			expect(searchInput).toHaveValue('');
+			unmount();
+		});
 	});
 });
 
