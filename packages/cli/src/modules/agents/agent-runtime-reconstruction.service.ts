@@ -1242,6 +1242,7 @@ export class AgentRuntimeReconstructionService {
 				const integrationDef = integrationRegistry.get(integrationConfig.type);
 				return {
 					conversationTools: integrationDef?.conversationTools,
+					supportedComponents: integrationDef?.supportedComponents,
 					contextToolDefinitions: integrationDef?.contextToolDefinitions,
 					actionToolDefinitions: integrationDef?.actionToolDefinitions,
 					contextQueries: integrationDef?.contextQueries,
@@ -1285,6 +1286,7 @@ export class AgentRuntimeReconstructionService {
 			contextToolGuidance: n8nChat.contextToolGuidance,
 			actionToolGuidance: n8nChat.actionToolGuidance,
 			conversationTools: n8nChat.conversationTools,
+			supportedComponents: n8nChat.supportedComponents,
 		};
 	}
 

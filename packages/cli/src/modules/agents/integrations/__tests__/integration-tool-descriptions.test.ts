@@ -1,29 +1,47 @@
 import {
 	buildActionToolDescription,
+	buildChannelToolInstruction,
 	buildFileUploadGuidance,
 } from '../integration-tool-descriptions';
 import { getIntegrationToolConnectionDescriptors } from '../integration-tool-factory';
 
 describe('buildActionToolDescription', () => {
-	it.each([false, true])('routes card requests with render_ui=%s', (renderUi) => {
-		const [descriptor] = getIntegrationToolConnectionDescriptors(
-			[{ type: 'slack', credentialId: 'cred-1' }],
-			'agent-1',
-			() => ({ conversationTools: renderUi ? ['render_ui'] : [] }),
-		);
+	it('includes card examples and destination guidance in channel actions', () => {
+		const [descriptor] = getIntegrationToolConnectionDescriptors([
+			{ type: 'slack', credentialId: 'cred-1' },
+		]);
 		const description = buildActionToolDescription(descriptor);
-		if (renderUi) {
-			expect(description).toContain('Your reply text is posted automatically.');
-			expect(description).toContain('Use render_ui to show a card in the current conversation.');
-			expect(description).toContain(
-				'Use respond for files or after switching to a different target.',
-			);
-			expect(description).not.toContain('Call respond only with message.card');
-			expect(description).not.toContain('Generic card examples:');
-		} else {
-			expect(description).toContain('Call respond only with message.card');
-			expect(description).toContain('Generic card examples:');
-		}
+		expect(description).toContain('Call respond only with message.card');
+		expect(description).toContain('Generic card examples:');
+		expect(description).toContain(
+			'send_channel_message with input.channelId and input.message.card',
+		);
+		expect(description).not.toContain('render_ui');
+	});
+});
+
+describe('buildChannelToolInstruction', () => {
+	it('names the connection tools and declared card components', () => {
+		const descriptors = getIntegrationToolConnectionDescriptors(
+			[
+				{ type: 'slack', credentialId: 'cred-1' },
+				{ type: 'slack', credentialId: 'cred-2' },
+			],
+			'agent-1',
+			() => ({ supportedComponents: ['section', 'button', 'select'] }),
+		);
+		const instruction = buildChannelToolInstruction(descriptors[1]);
+		expect(instruction).toContain('slack_2_context and slack_2_action');
+		expect(instruction).toContain('Search your tools');
+		expect(instruction).toContain('section, button, select');
+		expect(instruction).toContain('supported destinations');
+	});
+
+	it('does not claim card support without declared components', () => {
+		const [descriptor] = getIntegrationToolConnectionDescriptors([
+			{ type: 'linear', credentialId: 'cred-1' },
+		]);
+		expect(buildChannelToolInstruction(descriptor)).not.toContain('rich messages');
 	});
 });
 

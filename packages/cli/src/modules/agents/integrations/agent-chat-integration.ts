@@ -379,12 +379,10 @@ export abstract class AgentChatIntegration {
 
 	/**
 	 * Eager conversation tools use the channel's existing action handlers.
-	 * New channels declare card components and supported actions to opt in.
+	 * New channels declare the silence action to opt in.
 	 */
 	get conversationTools(): ConversationToolName[] {
 		const tools: ConversationToolName[] = [];
-		if (this.supportedComponents?.length && this.actions.includes('respond'))
-			tools.push('render_ui');
 		if (this.actions.includes('do_not_respond')) tools.push('do_not_respond');
 		return tools;
 	}

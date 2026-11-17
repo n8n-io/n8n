@@ -50,7 +50,10 @@ const card = { components: [{ type: 'button', label: 'Continue', value: 'continu
 const uiInput = { message: { text: 'Choose an option', card } };
 
 function setup(connectionId: string | null = 'slack:cred-b') {
-	const channel = new TestChannel(['button'], ['respond', 'do_not_respond', 'send_dm']);
+	const channel = new TestChannel(
+		['button'],
+		['respond', 'do_not_respond', 'send_dm', 'send_channel_message'],
+	);
 	const descriptors = getIntegrationToolConnectionDescriptors(
 		[
 			{ type: 'slack', credentialId: 'cred-a' },
@@ -102,12 +105,12 @@ function setup(connectionId: string | null = 'slack:cred-b') {
 describe('conversation tools', () => {
 	it.each([
 		{ components: [], actions: ['respond'], expected: [] },
-		{ components: ['button'], actions: ['respond'], expected: ['render_ui'] },
+		{ components: ['button'], actions: ['respond'], expected: [] },
 		{ components: [], actions: ['respond', 'do_not_respond'], expected: ['do_not_respond'] },
 		{
 			components: ['button'],
 			actions: ['respond', 'do_not_respond'],
-			expected: ['render_ui', 'do_not_respond'],
+			expected: ['do_not_respond'],
 		},
 	] satisfies Array<{
 		components: RichCardComponentType[];
@@ -119,7 +122,7 @@ describe('conversation tools', () => {
 
 	it('attaches each generic tool once and keeps its definition eager', () => {
 		const { tools } = setup();
-		expect(tools.map(({ name }) => name)).toEqual(['render_ui', 'do_not_respond']);
+		expect(tools.map(({ name }) => name)).toEqual(['do_not_respond']);
 		for (const tool of tools) {
 			expect(tool.providerOptions).toEqual({
 				anthropic: { deferLoading: false },
@@ -139,101 +142,18 @@ describe('conversation tools', () => {
 		).toEqual([]);
 	});
 
-	it('routes UI to the current connection and preserves interactive suspension', async () => {
-		const { tool, actionExecutor, ctx } = setup();
-		await tool('render_ui').handler!(uiInput, ctx);
-		expect(actionExecutor.execute).toHaveBeenCalledExactlyOnceWith(
-			expect.objectContaining({
-				descriptor: expect.objectContaining({ integrationConnectionId: 'slack:cred-b' }),
-				action: 'respond',
-				input: uiInput,
-				awaitResponse: true,
-				fileScope: { projectId: 'project-1', threadId: 'thread-1' },
-			}),
-		);
-		expect(ctx.suspend).toHaveBeenCalledWith(
-			expect.objectContaining({
-				type: 'integration_action',
-				integrationConnectionId: 'slack:cred-b',
-			}),
-			expect.anything(),
-		);
-	});
-
-	it('does not suspend for a display-only card', async () => {
-		const { tool, actionExecutor, ctx } = setup();
-		await tool('render_ui').handler!(
-			{ message: { card: { components: [{ type: 'section', text: 'Result' }] } } },
-			ctx,
-		);
-		expect(actionExecutor.execute).toHaveBeenCalledWith(
-			expect.objectContaining({ awaitResponse: false }),
-		);
-		expect(ctx.suspend).not.toHaveBeenCalled();
-	});
-
-	it('requires a card for render_ui', () => {
-		const { tool } = setup();
-		expect(
-			(tool('render_ui').inputSchema as z.ZodType).safeParse({ message: { text: 'Hello' } })
-				.success,
-		).toBe(false);
-	});
-
 	it.each([null, 'linear:cred-linear', 'slack:removed'])(
 		'refuses an absent or unsupported current channel: %s',
 		async (connectionId) => {
 			const { tools, actionExecutor, ctx } = setup(connectionId);
 			for (const tool of tools) {
-				expect(await tool.handler!(tool.name === 'render_ui' ? uiInput : {}, ctx)).toMatchObject({
+				expect(await tool.handler!({}, ctx)).toMatchObject({
 					ok: false,
 				});
 			}
 			expect(actionExecutor.execute).not.toHaveBeenCalled();
 		},
 	);
-
-	it('preserves channel approval for render_ui', async () => {
-		const params = setup();
-		params.descriptors.forEach((descriptor) => {
-			descriptor.approval = { mode: 'global' };
-		});
-		const ui = params.tool('render_ui');
-		await ui.handler!(uiInput, params.ctx);
-		expect(params.actionExecutor.execute).not.toHaveBeenCalled();
-		expect(params.ctx.suspend).toHaveBeenCalledWith(
-			expect.objectContaining({ type: 'approval', toolName: 'respond' }),
-			expect.anything(),
-		);
-	});
-
-	it('returns an interactive answer without posting the card again', async () => {
-		const { tool, actionExecutor, ctx } = setup();
-		ctx.resumeData = { choice: 'continue' };
-		expect(await tool('render_ui').handler!(uiInput, ctx)).toEqual({ choice: 'continue' });
-		expect(actionExecutor.execute).not.toHaveBeenCalled();
-	});
-
-	it.each([true, false])('resumes a UI approval with approved=%s', async (approved) => {
-		const { tool, ctx, actionExecutor } = setup();
-		ctx.suspendPayload = { type: 'approval', toolName: 'respond' };
-		ctx.resumeData = { approved };
-		const result = await tool('render_ui').handler!(uiInput, ctx);
-		if (approved) {
-			expect(actionExecutor.execute).toHaveBeenCalledOnce();
-		} else {
-			expect(actionExecutor.execute).not.toHaveBeenCalled();
-			expect(result).toMatchObject({ ok: false, error: { code: 'ACTION_DECLINED' } });
-		}
-	});
-
-	it('preserves files on a UI request', async () => {
-		const { tool, actionExecutor, ctx } = setup();
-		await tool('render_ui').handler!({ ...uiInput, fileIds: ['file-1'] }, ctx);
-		expect(actionExecutor.execute).toHaveBeenCalledWith(
-			expect.objectContaining({ input: { ...uiInput, fileIds: ['file-1'] } }),
-		);
-	});
 
 	it('ends the turn only after successful silence', async () => {
 		const { tool, actionExecutor, ctx } = setup();
@@ -275,7 +195,7 @@ describe('conversation tools', () => {
 		expect(silence.description).toContain('Direct messages and direct mentions require a reply.');
 	});
 
-	it('moves UI and silence out of the grouped action schema', () => {
+	it('keeps cards in channel actions and moves silence to the generic tool', () => {
 		const params = setup();
 		const descriptor = params.descriptors.find((d) => d.integration.type === 'slack')!;
 		const grouped = createIntegrationActionTool({ ...params, descriptor }).build();
@@ -284,12 +204,40 @@ describe('conversation tools', () => {
 		);
 		expect(
 			(grouped.inputSchema as z.ZodType).safeParse({ action: 'respond', input: uiInput }).success,
-		).toBe(false);
+		).toBe(true);
 		expect(
 			(grouped.inputSchema as z.ZodType).safeParse({
 				action: 'respond',
 				input: { message: { text: 'Files' }, fileIds: ['file-1'] },
 			}).success,
 		).toBe(true);
+	});
+
+	it.each([
+		{ action: 'respond', input: uiInput },
+		{ action: 'send_channel_message', input: { channelId: 'COTHER', ...uiInput } },
+	])('sends an interactive card through $action', async (operation) => {
+		const params = setup();
+		const descriptor = params.descriptors.find(
+			(d) => d.integrationConnectionId === 'slack:cred-b',
+		)!;
+		const grouped = createIntegrationActionTool({ ...params, descriptor }).build();
+		expect((grouped.inputSchema as z.ZodType).safeParse(operation).success).toBe(true);
+		await grouped.handler!(operation, params.ctx);
+		expect(params.actionExecutor.execute).toHaveBeenCalledExactlyOnceWith(
+			expect.objectContaining({
+				descriptor,
+				action: operation.action,
+				input: operation.input,
+				awaitResponse: true,
+			}),
+		);
+		expect(params.ctx.suspend).toHaveBeenCalledWith(
+			expect.objectContaining({
+				type: 'integration_action',
+				integrationConnectionId: 'slack:cred-b',
+			}),
+			expect.anything(),
+		);
 	});
 });

@@ -487,19 +487,23 @@ describe('AgentRuntimeReconstructionService integration tools', () => {
 				});
 				expect(attached.map(({ name }) => name)).toEqual(
 					n8nChat
-						? ['chat_context', 'chat_action', 'render_ui']
+						? ['chat_context', 'chat_action']
 						: [
 								'slack_context',
 								'slack_action',
 								'slack_2_context',
 								'slack_2_action',
-								'render_ui',
 								'do_not_respond',
 							],
 				);
-				for (const tool of attached.filter(
-					({ name }) => name === 'render_ui' || name === 'do_not_respond',
-				)) {
+				const actions = attached.filter(({ name }) => name.endsWith('_action'));
+				for (const action of actions) {
+					expect(action.systemInstruction).toContain('Search your tools');
+					expect(action.systemInstruction).toContain('rich messages');
+					expect(action.systemInstruction).toContain(action.name);
+					expect(action.description).toContain('Generic card examples:');
+				}
+				for (const tool of attached.filter(({ name }) => name === 'do_not_respond')) {
 					expect(tool.providerOptions).toEqual({
 						anthropic: { deferLoading: false },
 						openai: { deferLoading: false },

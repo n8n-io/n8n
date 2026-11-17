@@ -1,10 +1,8 @@
 import { Tool } from '@n8n/agents';
-import { richCardSchema } from '@n8n/api-types';
 import { z } from 'zod';
 
 import { INTEGRATION_ERROR_CODES } from './integration-error-codes';
 import { readIntegrationMessageContext } from './integration-message-context';
-import { fileIdsSchema } from './integration-tool-definitions';
 import {
 	INTEGRATION_ACTION_SUSPEND_SCHEMA,
 	executeIntegrationActionTool,
@@ -15,13 +13,6 @@ import {
 	isSilentActionOutput,
 } from './integration-tool-execution';
 import { CONVERSATION_TOOL_NAMES } from './integration-tool-types';
-
-const renderUiSchema = z
-	.object({
-		message: z.object({ text: z.string().optional(), card: richCardSchema }).strict(),
-		fileIds: fileIdsSchema,
-	})
-	.strict();
 
 const doNotRespondSchema = z
 	.object({
@@ -48,11 +39,9 @@ export function createConversationTools(
 		return [
 			new Tool(name)
 				.description(
-					name === 'render_ui'
-						? 'Show a rich card in the current conversation. Use it for forms, buttons, choices, images, and structured information. Use generic message.card components, not platform-native payloads. Interactive components send the card and wait for the user to respond. Display-only cards let you continue. Normal reply text is posted automatically; do not duplicate it here.'
-						: 'End this turn without replying to the current conversation. Call this when a subscribed channel or thread message needs no reply from you. Do not write any text before or after the call. Do not announce that you are staying silent. Direct messages and direct mentions require a reply.',
+					'End this turn without replying to the current conversation. Call this when a subscribed channel or thread message needs no reply from you. Do not write any text before or after the call. Do not announce that you are staying silent. Direct messages and direct mentions require a reply.',
 				)
-				.input(name === 'render_ui' ? renderUiSchema : doNotRespondSchema)
+				.input(doNotRespondSchema)
 				.providerOptions({ anthropic: { deferLoading: false }, openai: { deferLoading: false } })
 				.suspend(INTEGRATION_ACTION_SUSPEND_SCHEMA)
 				.resume(INTEGRATION_ACTION_RESUME_SCHEMA)
@@ -73,7 +62,7 @@ export function createConversationTools(
 					}
 					return await executeIntegrationActionTool(
 						{ ...params, descriptor },
-						{ action: name === 'render_ui' ? 'respond' : 'do_not_respond', input },
+						{ action: name, input },
 						ctx,
 					);
 				}),

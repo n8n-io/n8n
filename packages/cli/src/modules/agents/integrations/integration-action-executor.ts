@@ -293,9 +293,7 @@ export class ChatIntegrationActionExecutor implements IntegrationActionExecutor 
 		if (!input.message.card && isAutomaticReplyTarget) {
 			return integrationError(
 				INTEGRATION_ERROR_CODES.ACTION_FAILED,
-				params.descriptor.conversationTools?.includes('render_ui')
-					? 'Plain text is already delivered as your normal reply. Write the text directly in your reply. Use render_ui to show a rich card, or use an explicit send action for a different target.'
-					: 'Plain text is already delivered to this conversation as your normal reply — write the text directly in your reply instead of calling respond. Call respond only with message.card, or use an explicit send action for a different target.',
+				'Plain text is already delivered to this conversation as your normal reply — write the text directly in your reply instead of calling respond. Call respond only with message.card, or use an explicit send action for a different target.',
 			);
 		}
 

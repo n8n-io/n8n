@@ -6,20 +6,20 @@ import {
 	type InterruptibleToolContext,
 	type ToolContext,
 } from '@n8n/agents';
-import type { AgentIntegrationConfig } from '@n8n/api-types';
+import type { AgentIntegrationConfig, RichCardComponentType } from '@n8n/api-types';
 import { UserError } from '@n8n/errors';
 import { z } from 'zod';
 
 import {
 	DEFAULT_INTEGRATION_ACTION_TOOL_DEFINITIONS,
 	DEFAULT_INTEGRATION_CONTEXT_TOOL_DEFINITIONS,
-	fileIdsSchema,
 	resolveIntegrationActionDefinitions,
 	resolveIntegrationContextQueryDefinitions,
 } from './integration-tool-definitions';
 import {
 	buildActionToolDescription,
 	buildContextToolDescription,
+	buildChannelToolInstruction,
 } from './integration-tool-descriptions';
 import {
 	executeActionToolBatch,
@@ -52,6 +52,7 @@ import type {
 } from './integration-tool-types';
 
 export interface IntegrationToolCapabilities {
+	supportedComponents?: readonly RichCardComponentType[];
 	conversationTools?: readonly ConversationToolName[];
 	contextQueries?: IntegrationContextQuery[];
 	actions?: IntegrationAction[];
@@ -119,6 +120,7 @@ export function getIntegrationToolConnectionDescriptors(
 			contextToolGuidance: capabilities?.contextToolGuidance,
 			actionToolGuidance: capabilities?.actionToolGuidance,
 			conversationTools: capabilities?.conversationTools,
+			supportedComponents: capabilities?.supportedComponents,
 			...('approval' in integration && integration.approval
 				? { approval: integration.approval }
 				: {}),
@@ -182,28 +184,11 @@ export interface IntegrationActionToolParams {
 
 export function createIntegrationActionTool(params: IntegrationActionToolParams) {
 	const { descriptor } = params;
-	const definitions = descriptor.actionToolDefinitions
-		.filter(
-			(definition) =>
-				definition.name !== 'do_not_respond' ||
-				!descriptor.conversationTools?.includes('do_not_respond'),
-		)
-		.map((definition) =>
-			definition.name === 'respond' && descriptor.conversationTools?.includes('render_ui')
-				? {
-						...definition,
-						inputSchema: z.object({
-							action: z.literal('respond'),
-							input: z
-								.object({
-									message: z.object({ text: z.string() }).strict(),
-									fileIds: fileIdsSchema,
-								})
-								.strict(),
-						}),
-					}
-				: definition,
-		);
+	const definitions = descriptor.actionToolDefinitions.filter(
+		(definition) =>
+			definition.name !== 'do_not_respond' ||
+			!descriptor.conversationTools?.includes('do_not_respond'),
+	);
 	const exposedDescriptor = {
 		...descriptor,
 		actions: definitions.map(({ name }) => name),
@@ -211,6 +196,7 @@ export function createIntegrationActionTool(params: IntegrationActionToolParams)
 	};
 	return new Tool(descriptor.actionToolName)
 		.description(buildActionToolDescription(exposedDescriptor))
+		.systemInstruction(buildChannelToolInstruction(exposedDescriptor))
 		.input(buildActionInputSchema(definitions))
 		.suspend(INTEGRATION_ACTION_SUSPEND_SCHEMA)
 		.resume(INTEGRATION_ACTION_RESUME_SCHEMA)

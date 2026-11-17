@@ -137,9 +137,7 @@ describe('N8nChatIntegration', () => {
 		});
 		expect(result).toMatchObject({ ok: false, error: { code: 'ACTION_FAILED' } });
 		if (result && !result.ok) {
-			expect(result.error.message).toContain('Write plain text directly in your reply.');
-			expect(result.error.message).toContain('Use render_ui');
-			expect(result.error.message).not.toContain('Call this tool only with message.card');
+			expect(result.error.message).toContain('write the text directly in your reply');
 		}
 	});
 
