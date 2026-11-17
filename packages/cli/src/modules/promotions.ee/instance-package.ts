@@ -47,9 +47,9 @@ export function instancePromotionExportRequest({
 		includeTags: true,
 		// Archived workflows travel too, so the target archives them instead of removing them.
 		includeArchived: true,
-		// personal projects are excluded, so a team workflow calling a personal
-		// sub-workflow blocks the whole promotion; intended for now, see LIGO-1089
-		dependencyPolicy: ExportDependencyPolicy.Fail,
+		// A reference to an item outside the export stays a requirement row, as for a selection.
+		// The dependency check decides before the export whether such a reference stops the Promote.
+		dependencyPolicy: ExportDependencyPolicy.ReferenceOnly,
 		versionPolicy: ExportVersionPolicy.Latest,
 	};
 }

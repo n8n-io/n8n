@@ -78,6 +78,12 @@ properties:
           enum:
             - broken-on-source
             - legacy-workflow-reference
+        cause:
+          type: string
+          enum:
+            - archived
+            - caller-policy
+            - not-usable
       required:
         - id
         - consumer
@@ -268,6 +274,9 @@ properties:
     items:
       type: object
       properties:
+        id:
+          type: string
+          description: Stable for one deleted workflow and the callers that this row lists. Send it in `confirmedDeletionCallerIds`. Set on Apply only.
         target:
           type: object
           properties:
@@ -406,6 +415,11 @@ properties:
             required:
               - id
               - name
+        noCandidateReason:
+          type: string
+          enum:
+            - missing-create-right
+            - no-covered-project
       required:
         - credential
         - candidateProjects
@@ -480,6 +494,65 @@ properties:
       required:
         - code
         - target
+  resourceWarnings:
+    type: array
+    items:
+      type: object
+      properties:
+        code:
+          type: string
+          enum:
+            - data-table-of-other-project
+            - variable-of-other-project
+        consumer:
+          type: object
+          properties:
+            kind:
+              type: string
+              enum:
+                - workflow
+            id:
+              type: string
+              minLength: 1
+            name:
+              type: string
+            projectId:
+              type: string
+              minLength: 1
+          required:
+            - kind
+            - id
+            - name
+            - projectId
+        resource:
+          type: object
+          properties:
+            kind:
+              type: string
+              enum:
+                - dataTable
+                - variable
+            id:
+              type: string
+            name:
+              type: string
+            project:
+              type: object
+              properties:
+                id:
+                  type: string
+                  minLength: 1
+                name:
+                  type: string
+              required:
+                - id
+                - name
+          required:
+            - kind
+      required:
+        - code
+        - consumer
+        - resource
 required:
   - allowIncomplete
   - blocked

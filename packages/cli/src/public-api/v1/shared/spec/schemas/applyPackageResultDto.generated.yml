@@ -519,6 +519,42 @@ oneOf:
           required:
             - project
             - credentials
+      livePlaceholderWorkflows:
+        type: array
+        items:
+          type: object
+          properties:
+            credential:
+              type: object
+              properties:
+                id:
+                  type: string
+                  minLength: 1
+                name:
+                  type: string
+              required:
+                - id
+                - name
+            workflows:
+              type: array
+              items:
+                type: object
+                properties:
+                  id:
+                    type: string
+                    minLength: 1
+                  name:
+                    type: string
+                required:
+                  - id
+                  - name
+            hiddenWorkflowCount:
+              type: integer
+              minimum: 0
+          required:
+            - credential
+            - workflows
+            - hiddenWorkflowCount
       dependencyMessages:
         type: array
         items:

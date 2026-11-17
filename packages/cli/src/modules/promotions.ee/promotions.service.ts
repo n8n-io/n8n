@@ -311,10 +311,12 @@ export class PromotionsService {
 		const projectIds = await this.projectRepository.findTeamProjectIds();
 
 		// The result of this route has no status, so a Promote that must stop throws (409).
+		// The route is the Promote of a selection that holds everything.
+		const instanceSelection = await this.dependencyGate.instancePromoteSelection(projectIds);
 		const dependencyReport = await this.dependencyGate.promoteReport({
 			user: actor,
 			input,
-			selection: await this.dependencyGate.instancePromoteSelection(projectIds),
+			selection: instanceSelection,
 		});
 		this.dependencyGate.assertCanPromote(dependencyReport, request.confirmedGapIds);
 
@@ -329,6 +331,9 @@ export class PromotionsService {
 		let pushed: PushedPromotion;
 		let reviewMessage: string | undefined;
 		let written: Array<{ kind: 'credential' | 'workflow'; id: string }> = [];
+		let writtenCredentialIds: string[] = [];
+		let exportedCredentialCount = 0;
+		let exportedDataTableCount = 0;
 		try {
 			const exportResult = await this.n8nPackagesService.exportPackageToDirectory(
 				instancePromotionExportRequest({
@@ -339,17 +344,38 @@ export class PromotionsService {
 				{ targetDir: stagingFolder },
 			);
 
-			// The export does not know why a target is not in the package. Apply reads the reason.
-			const withReasons = this.dependencyGate.withRequirementReasons(
-				exportResult.manifest,
-				dependencyReport,
+			// The same placement rule as a selection: a credential file is only under its owner
+			// project. The exporter writes a credential of a project outside the export at the top
+			// level, and that file goes away, so the reference stays a requirement row.
+			const everything = instanceSelection.map(
+				({ projectId, workflowIds = [], credentialIds = [] }) => ({
+					projectId,
+					workflowIds,
+					deletedWorkflowIds: [],
+					folderIds: [],
+					credentialIds,
+				}),
 			);
+			const placed = await this.workingCopy.dropDataTablesOfOtherProjects(
+				stagingFolder,
+				await this.workingCopy.dropUnselectedCredentials(
+					stagingFolder,
+					exportResult.manifest,
+					everything,
+				),
+				everything,
+			);
+			exportedCredentialCount = placed.credentials?.length ?? 0;
+			exportedDataTableCount = placed.dataTables?.length ?? 0;
+			// The export does not know why a target is not in the package. Apply reads the reason.
+			const withReasons = this.dependencyGate.withRequirementReasons(placed, dependencyReport);
 			if (withReasons !== exportResult.manifest) {
 				await writeFile(
 					path.join(stagingFolder, MANIFEST_FILE),
 					JSON.stringify(withReasons, null, '\t'),
 				);
 			}
+			writtenCredentialIds = (placed.credentials ?? []).map(({ id }) => id);
 
 			// Replace the managed package only after the new one is complete.
 			await rm(packageFolder, { recursive: true, force: true });
@@ -379,10 +405,7 @@ export class PromotionsService {
 					kind: 'workflow' as const,
 					id,
 				})),
-				...(exportResult.manifest.credentials ?? []).map(({ id }) => ({
-					kind: 'credential' as const,
-					id,
-				})),
+				...writtenCredentialIds.map((id) => ({ kind: 'credential' as const, id })),
 			];
 			const { commitSha } = await this.gitService.commitAndPush({
 				remoteUrl: repositoryUrl(input),
@@ -401,7 +424,15 @@ export class PromotionsService {
 				// Staging and the commit take time, so check again just before the push.
 				beforePush: () => throwIfLockLost(signal),
 			});
-			pushed = { commitSha, counts: exportResult.counts, commitMessage };
+			pushed = {
+				commitSha,
+				counts: {
+					...exportResult.counts,
+					credentials: exportedCredentialCount,
+					dataTables: exportedDataTableCount,
+				},
+				commitMessage,
+			};
 		} finally {
 			await rm(stagingFolder, { recursive: true, force: true });
 		}
@@ -640,14 +671,22 @@ export class PromotionsService {
 			assertSelectedCredentialsExported(exported.manifest, selections);
 			// Each requirement row records why its target is not on the branch: Apply reads it.
 			const staging = this.dependencyGate.withRequirementReasons(
-				await this.workingCopy.dropUnselectedCredentials(
+				await this.workingCopy.dropDataTablesOfOtherProjects(
 					stagingFolder,
-					exported.manifest,
+					await this.workingCopy.dropUnselectedCredentials(
+						stagingFolder,
+						exported.manifest,
+						selections,
+					),
 					selections,
 				),
 				dependencyReport,
 			);
-			const counts = { ...exported.counts, credentials: staging.credentials?.length ?? 0 };
+			const counts = {
+				...exported.counts,
+				credentials: staging.credentials?.length ?? 0,
+				dataTables: staging.dataTables?.length ?? 0,
+			};
 
 			// A move changes two projects. The write below removes the old branch path and adds
 			// the new one, so the user needs the right to promote in the old project too.
@@ -854,6 +893,8 @@ export class PromotionsService {
 					input,
 					async () => await this.resolver.resolveForProject(projectId, 'promote'),
 					async (current, signal): Promise<PromoteSelectionResultDto> => {
+						// The service checks the right itself, so each caller gets the gate.
+						await this.environmentProjects.assertCanOperate(actor, current, 'promote', [projectId]);
 						// Promote what the page shows. When the project or its branch changed after the
 						// preview, stop and write nothing. This is a check, not a lock. It runs before the
 						// selection is read, so a selected folder that moved away gives this result too.
@@ -884,7 +925,15 @@ export class PromotionsService {
 						const selections = await this.movesService.withMovedWorkflows(
 							actor,
 							current,
-							[selection],
+							[
+								{
+									...selection,
+									// The owner promotes a credential also when only another project uses it.
+									...(request.credentialIds?.length
+										? { credentialIds: request.credentialIds }
+										: {}),
+								},
+							],
 							moved,
 						);
 						return await this.promoteSelectionResolved(
@@ -1001,6 +1050,8 @@ export class PromotionsService {
 				});
 				for (const [id, owner] of classified.moved) moved.set(id, owner);
 			}
+			// The report refuses what the Promote refuses.
+			await this.assertOwnsSelectedCredentials(selections);
 			// The same selection as the Promote: a moved workflow is under its new project.
 			return await this.dependencyGate.promoteReport({
 				user: actor,
@@ -1384,7 +1435,7 @@ export class PromotionsService {
 			}),
 			warnings: check.warnings,
 			...(await this.appliedMoves(actor, input, result)),
-			...this.dependencyGate.applyResult(decision, result),
+			...(await this.dependencyGate.applyResult(actor, decision, result)),
 			dependencyReport: decision.report,
 		};
 	}
@@ -1438,6 +1489,22 @@ export class PromotionsService {
 				id,
 			})),
 		]);
+	}
+
+	/**
+	 * The default of a project Apply that names no credential: each credential that the branch
+	 * holds under the project and that this instance already holds, in any project. So the
+	 * Apply never asks for a credential that no selected workflow needs.
+	 */
+	private async heldProjectCredentialIds(
+		inventory: PackageDirectoryInventory,
+		projectId: string,
+	): Promise<string[]> {
+		const ids = inventory.credentials
+			.filter((file) => file.projectId === projectId)
+			.map(({ credential }) => credential.id);
+		const local = await this.localEntities.credentialNames(ids);
+		return ids.filter((id) => local.has(id));
 	}
 
 	/**
@@ -1832,6 +1899,8 @@ export class PromotionsService {
 		confirmations: ApplyConfirmations = {},
 	): Promise<ApplyPackageResultDto> {
 		await this.assertCheckoutReady(input, 'applying');
+		// The service checks the right itself, so each caller gets the gate.
+		await this.environmentProjects.assertCanOperate(actor, input, 'apply', [projectId]);
 
 		const tip = await this.readApplyTip(input, expectedSource);
 		if (tip.status === 'source-changed') return tip;
@@ -1854,12 +1923,23 @@ export class PromotionsService {
 		const reader = new GitCommitPackageReader(files);
 		const inventory = await this.inventoryReader.read(reader);
 		const moves = await this.applyPreviewService.findCrossProjectMoves(inventory, projectId);
-		const projectSelection = await this.classifyApplySelection(
-			inventory,
-			projectId,
-			requested,
-			new Set(moves.workflows.map(({ id }) => id)),
-		);
+		// The Apply of a project also writes the credentials that the project owns on the branch:
+		// the owner on this instance follows the branch, and a placeholder gets its home.
+		const credentialIds =
+			requested.credentialIds ?? (await this.heldProjectCredentialIds(inventory, projectId));
+		const credentials = await this.classifySelectedCredentials(inventory, projectId, credentialIds);
+		const projectSelection: ImportProjectSelection = {
+			...(await this.classifyApplySelection(
+				inventory,
+				projectId,
+				requested,
+				new Set(moves.workflows.map(({ id }) => id)),
+			)),
+			...(credentials.existingIds.length > 0
+				? { selectedCredentialIds: credentials.existingIds }
+				: {}),
+		};
+		const selectedCredentialIds = new Map([[projectId, credentialIds]]);
 		const requestedWorkflowIds = new Set(requested.workflowIds);
 		// A move between two team projects is one transfer, so the plan also holds the other
 		// project of each move. A project Apply refuses a move out of a project that the branch
@@ -1894,7 +1974,7 @@ export class PromotionsService {
 						user: actor,
 						input,
 						files,
-						selection: this.dependencyGate.toCheckSelection(planned),
+						selection: this.dependencyGate.toCheckSelection(planned, selectedCredentialIds),
 					},
 					confirmations,
 				);
@@ -1927,6 +2007,15 @@ export class PromotionsService {
 			}),
 			decision,
 		);
+		// A selected credential that this instance lacks needs the binding step.
+		const listed = new Set(
+			check.missingBindings.flatMap((binding) =>
+				binding.kind === 'credential' ? [binding.sourceId] : [],
+			),
+		);
+		check.missingBindings.push(
+			...credentials.missing.filter(({ sourceId }) => !listed.has(sourceId)),
+		);
 		if (this.isBlocked(check, confirmDestructiveChanges, identity)) {
 			return this.blockedResult(identity, check, decision);
 		}
@@ -1952,7 +2041,7 @@ export class PromotionsService {
 			}),
 			warnings: check.warnings,
 			...(await this.appliedMoves(actor, input, result)),
-			...this.dependencyGate.applyResult(decision, result),
+			...(await this.dependencyGate.applyResult(actor, decision, result)),
 			dependencyReport: decision.report,
 		};
 	}
@@ -2081,7 +2170,12 @@ export class PromotionsService {
 			counts: this.toApplyCounts({ importResult: result, projectReconciliation }),
 			warnings: check.warnings,
 			...(await this.appliedMoves(actor, input, result)),
-			...this.dependencyGate.applyResult(decision, result, projectReconciliation.deletedProjectIds),
+			...(await this.dependencyGate.applyResult(
+				actor,
+				decision,
+				result,
+				projectReconciliation.deletedProjectIds,
+			)),
 			dependencyReport: decision.report,
 		};
 	}
@@ -2736,10 +2830,19 @@ async function pathExists(target: string): Promise<boolean> {
 }
 
 /** What a project Apply selects. The project details always come along. */
-type ApplySelection = { workflowIds: string[]; folderIds: string[] };
+type ApplySelection = {
+	workflowIds: string[];
+	folderIds: string[];
+	/** Not set: the credentials of the project on the branch that this instance already holds. */
+	credentialIds?: string[];
+};
 
 function toApplySelection(request: ApplySelectionDto | ContinueApplySelectionDto): ApplySelection {
-	return { workflowIds: request.workflowIds ?? [], folderIds: request.folderIds ?? [] };
+	return {
+		workflowIds: request.workflowIds ?? [],
+		folderIds: request.folderIds ?? [],
+		...(request.credentialIds ? { credentialIds: request.credentialIds } : {}),
+	};
 }
 
 function promotedOutcome(

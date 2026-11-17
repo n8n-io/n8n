@@ -284,16 +284,21 @@ export class PromotionChangeService {
 							path.includes(`/${PACKAGE_ENTITY_LAYOUT.variables.directory}/`),
 					})
 				: EMPTY_INSTANCE_PACKAGE;
+		// A dependency file of a project that the user cannot read is not indexed, so it is not served.
+		const access = { readableProjectIds: await this.readableBranchProjects(user, branchManifest) };
 		const branchIndex = indexProjects(
 			{ manifest: branchManifest, blobByPath: new Map() },
 			projectIds,
+			access,
 		);
 		const instanceIndex = indexProjects(
 			{ manifest: instance.manifest, blobByPath: blobsByPath(instance.files) },
 			exportedIds,
+			access,
 		);
 		const missingKeys = keys.filter((key) => !branchIndex.has(key) && !instanceIndex.has(key));
 		const details = await this.assembleDetails({
+			user,
 			keys,
 			direction,
 			branchIndex,
@@ -347,15 +352,23 @@ export class PromotionChangeService {
 			}),
 		]);
 		const branchManifest = parseBranchManifest(branchFiles.get(manifestPath), projectId);
-		const branchIndex = indexSide({ manifest: branchManifest, blobByPath: new Map() }, projectId);
+		// A dependency file of a project that the user cannot read is not indexed, so it is not served.
+		const access = { readableProjectIds: await this.readableBranchProjects(user, branchManifest) };
+		const branchIndex = indexSide(
+			{ manifest: branchManifest, blobByPath: new Map() },
+			projectId,
+			access,
+		);
 		const instanceIndex = indexSide(
 			{ manifest: instance.manifest, blobByPath: blobsByPath(instance.files) },
 			projectId,
+			access,
 		);
 		// A resource can disappear after the summary, for example when a local workflow is deleted.
 		const missingKeys = keys.filter((key) => !branchIndex.has(key) && !instanceIndex.has(key));
 
 		const details = await this.assembleDetails({
+			user,
 			keys,
 			direction,
 			branchIndex,
@@ -365,6 +378,17 @@ export class PromotionChangeService {
 			canSeeVariableValues,
 		});
 		return { details, missingKeys };
+	}
+
+	/** The projects of the branch that the user can read. */
+	private async readableBranchProjects(
+		user: User,
+		manifest: PackageManifest | null,
+	): Promise<Set<string>> {
+		return await this.accessService.readableProjectIds(
+			user,
+			(manifest?.projects ?? []).map(({ id }) => id),
+		);
 	}
 
 	/**
@@ -414,6 +438,7 @@ export class PromotionChangeService {
 		const tablePrefix = resourceKey('dataTable', '');
 		const [details, localTables] = await Promise.all([
 			this.assembleDetails({
+				user,
 				keys,
 				direction: 'apply',
 				branchIndex,
@@ -447,6 +472,7 @@ export class PromotionChangeService {
 
 	/** Reads both sides of each requested resource that an index holds. */
 	private async assembleDetails({
+		user,
 		keys,
 		direction,
 		branchIndex,
@@ -455,6 +481,7 @@ export class PromotionChangeService {
 		readBranch,
 		canSeeVariableValues,
 	}: {
+		user: User;
 		keys: readonly string[];
 		direction: PromotionDirection;
 		branchIndex: SideIndex;
@@ -463,8 +490,9 @@ export class PromotionChangeService {
 		readBranch: (paths: readonly string[]) => Promise<Map<string, string>>;
 		canSeeVariableValues: boolean;
 	}): Promise<PromotionResourceDetail[]> {
+		// A row without a path has no file that the user may read.
 		const branchContents = await readBranch(
-			keys.flatMap((key) => branchIndex.get(key)?.path ?? []),
+			keys.flatMap((key) => branchIndex.get(key)?.path || []),
 		);
 		// Apply reuses a data table that exists on this instance, even when no local workflow uses it.
 		const localTables =
@@ -474,6 +502,8 @@ export class PromotionChangeService {
 							const resource = branchIndex.get(key);
 							return resource?.type === 'dataTable' && !instanceIndex.has(key) ? [resource.id] : [];
 						}),
+						// Only a data table that the user can read on this instance.
+						user,
 					)
 				: new Map<string, LocalDataTable>();
 		// Apply also reuses a tag that exists on this instance, by ID or by name.

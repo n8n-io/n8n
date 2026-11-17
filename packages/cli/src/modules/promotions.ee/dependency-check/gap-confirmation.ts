@@ -1,4 +1,4 @@
-import type { PromotionDependencyReport, PromotionGap } from '@n8n/api-types';
+import type { PromotionDependencyReport, PromotionGap, PromotionHardBlock } from '@n8n/api-types';
 
 import { targetKey, type RequirementReasonFact, type TargetKey } from './dependency-check.types';
 
@@ -81,6 +81,57 @@ export function describeGap(gap: PromotionGap): string {
 	const type = target.credentialType ? ` (${target.credentialType})` : '';
 	const project = target.project ? `, project "${target.project.name}"` : '';
 	return `"${consumer.name}" needs the ${USAGE_LABELS[usage]} ${label}${type}: ${GROUP_LABELS[group]}${project}`;
+}
+
+/** What the user does to close a gap of each group. A route without a client text gives it. */
+const GROUP_FIXES: Partial<Record<PromotionGap['group'], string>> = {
+	'same-project': 'Include it in the operation.',
+	'other-project': 'Include it in the operation.',
+	'read-only-project': 'Ask the owner team to promote or apply it.',
+	'no-access': 'Ask the owner team to promote or apply it.',
+	personal: 'Move it to a team project.',
+	'outside-environment': 'An instance admin can add the project to the environment.',
+	'archived-on-destination': 'Restore it on the destination.',
+	'access-not-grantable': 'Ask a user who may share the credential to give the project access.',
+	'deleted-by-apply': 'Remove the deletion from the selection.',
+	'caller-policy': 'Change the caller policy of the sub-workflow on the destination.',
+	'not-on-branch': 'The owner team must promote it.',
+};
+
+/** One line for each gap, with its id and the fix. For an error message of a route. */
+export function describeGapWithFix(gap: PromotionGap): string {
+	const fix =
+		gap.detail === 'placeholder-on-source'
+			? 'It is an empty placeholder on this instance. Add its values, then promote again.'
+			: (GROUP_FIXES[gap.group] ?? '');
+	return [`${describeGap(gap)}.`, fix, `(gap id: ${gap.id})`].filter(Boolean).join(' ');
+}
+
+const HARD_BLOCK_LABELS: Record<PromotionHardBlock['code'], string> = {
+	'credential-type-mismatch': 'the destination holds a credential with this id and another type',
+	'ambiguous-credential-owner':
+		'the branch holds this credential under more than one project. Keep the file of one project',
+	'instance-credential-missing': 'create the instance credential on the destination',
+	'incompatible-usage-scope': 'the usage scope on the destination is not compatible',
+	'placeholder-create-forbidden':
+		'you cannot create a credential in the project that needs the placeholder',
+	'credential-move-forbidden': 'you cannot create a credential in the project that owns it',
+};
+
+/** One line for a hard block. It names a project folder only when the report holds its name. */
+export function describeHardBlock({ code, target, detail }: PromotionHardBlock): string {
+	const parts: string[] = [];
+	if (detail?.folders) parts.push(`projects: ${detail.folders}`);
+	if (detail?.hiddenFolderCount) {
+		const count = Number(detail.hiddenFolderCount);
+		parts.push(`${count} ${count === 1 ? 'project' : 'projects'} that you cannot access`);
+	}
+	if (detail?.sourceType) parts.push(`type on the branch: ${detail.sourceType}`);
+	if (detail?.destinationType) parts.push(`type on the destination: ${detail.destinationType}`);
+	if (detail?.missingPermission) parts.push(`missing permission: ${detail.missingPermission}`);
+	if (detail?.project) parts.push(`project: ${detail.project}`);
+	const label = target.name ? `"${target.name}"` : `id ${target.id}`;
+	return `${label}: ${HARD_BLOCK_LABELS[code]}${parts.length > 0 ? ` (${parts.join('; ')})` : ''}`;
 }
 
 /** The gaps as plain text, for the body of a commit message. Empty when there is no gap. */

@@ -24,6 +24,7 @@ import {
 	applyMovedItems,
 	classifyApplyMoves,
 	describePlannedMoves,
+	hiddenProjectId,
 	listPromoteMoves,
 	markMovedResources,
 	type ApplyMoveBlock,
@@ -33,7 +34,10 @@ import {
 	type PromoteMoveList,
 } from './project-moves';
 import { PromotionAccessService } from './promotion-access.service';
-import { PromotionsWorkflowsMovedCrossProjectError } from './promotions-selective-push.error';
+import {
+	PromotionsWorkflowsMovedCrossProjectError,
+	workflowsNotInSelectedProjectError,
+} from './promotions-selective-push.error';
 import type { PromotionOperationInput } from './promotions.types';
 import type { SelectivePushOptions } from './working-copy-updater';
 
@@ -199,6 +203,14 @@ export class PromotionMovesService {
 		selections: readonly SelectivePushOptions[],
 		movedOwners: ReadonlyMap<string, InstanceProject>,
 	): Promise<SelectivePushOptions[]> {
+		// A workflow of a project that the user cannot read gets the answer of an id that does not
+		// exist, so the selection is not a way to ask where a workflow is.
+		const readable = await this.accessService.readableProjectIds(user, [
+			...new Set([...movedOwners.values()].map(({ id }) => id)),
+		]);
+		const hidden = [...movedOwners].filter(([, owner]) => !readable.has(owner.id));
+		if (hidden.length > 0) throw workflowsNotInSelectedProjectError(hidden.map(([id]) => id));
+
 		const personal = [...movedOwners].filter(([, owner]) => owner.type !== 'team');
 		if (personal.length > 0) {
 			throw new PromotionsWorkflowsMovedCrossProjectError(
@@ -421,20 +433,25 @@ export class PromotionMovesService {
 				instanceProject.id,
 			]),
 		]);
+		// The Apply of a user with the global right creates a project that this instance lacks, so
+		// that user reads it in the package. Any other user does not.
+		const createsProjects =
+			this.accessService.hasGlobalRight(user, 'apply') && input.scope === 'instance';
+		const readable = new Set([
+			...access.readable,
+			...(createsProjects
+				? branchProjects.map(({ id }) => id).filter((id) => !access.existing.has(id))
+				: []),
+		]);
 		const { allowed, refused } = classifyApplyMoves({
 			planned,
 			known,
 			relevant,
 			refusedBefore,
 			branchProjects,
-			access,
+			access: { ...access, readable },
 			confirmable,
 		});
-		// The Apply creates a project that this instance lacks, so the user reads it in the package.
-		const readable = new Set([
-			...access.readable,
-			...branchProjects.map(({ id }) => id).filter((id) => !access.existing.has(id)),
-		]);
 		const { plannedMoves, changedProjects } = describePlannedMoves(
 			allowed,
 			new Map([...access.names, ...branchProjects.map(({ id, name }) => [id, name] as const)]),
@@ -465,7 +482,9 @@ export class PromotionMovesService {
 		);
 		const named = (id: string): MoveProject => {
 			const name = access.names.get(id);
-			return access.readable.has(id) && name !== undefined ? { id, name } : { id };
+			return access.readable.has(id) && name !== undefined
+				? { id, name }
+				: { id: hiddenProjectId(id) };
 		};
 		return moves.map(({ kind, id, name, fromProjectId, toProjectId, unpublished }) => ({
 			kind,

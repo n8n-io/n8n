@@ -48,27 +48,49 @@ export function reconcileApplyCheck<T extends PromotionApplyCheck>(
 	for (const { credential } of report.grants) reported.add(credential.id);
 	const needsHome = new Set(report.credentialHomeChoices.map(({ credential }) => credential.id));
 
+	// A variable of another project is a warning of the report. The import does not need it,
+	// so the workflows that the warning names leave the conflict.
+	const warnedVariables = new Set(
+		(report.resourceWarnings ?? []).flatMap(({ code, consumer, resource }) =>
+			code === 'variable-of-other-project' ? [`${consumer.id}|${resource.name ?? ''}`] : [],
+		),
+	);
+
 	const createdInHome: MissingBinding[] = [];
-	const conflicts = check.conflicts.filter((conflict) => {
-		if (conflict.code === 'project-deletion') {
-			return !options.keptProjectIds?.has(conflict.project.id);
-		}
-		if (conflict.kind !== 'credential' || conflict.sourceId === null) return true;
-		if (!REPORTED_CONFLICT_CODES.has(conflict.code)) return true;
-		if (reported.has(conflict.sourceId)) return false;
-		if (conflict.code !== 'unknown-owner' || needsHome.has(conflict.sourceId)) return true;
-		const home = options.homes?.get(conflict.sourceId);
-		if (!home) return true;
-		createdInHome.push({
-			kind: 'credential',
-			sourceId: conflict.sourceId,
-			name: conflict.name,
-			credentialType: conflict.expectedTypes[0],
-			consumers: conflict.consumers,
-			ownerProject: home,
+	const conflicts = check.conflicts
+		.flatMap((conflict): Array<T['conflicts'][number]> => {
+			if (conflict.kind !== 'variable' || conflict.code !== 'missing-definition') return [conflict];
+			if (warnedVariables.size === 0) return [conflict];
+			const consumers = conflict.consumers
+				.map((consumer) => ({
+					...consumer,
+					workflows: consumer.workflows.filter(
+						({ id }) => !warnedVariables.has(`${id}|${conflict.name}`),
+					),
+				}))
+				.filter(({ workflows }) => workflows.length > 0);
+			return consumers.length > 0 ? [{ ...conflict, consumers }] : [];
+		})
+		.filter((conflict) => {
+			if (conflict.code === 'project-deletion') {
+				return !options.keptProjectIds?.has(conflict.project.id);
+			}
+			if (conflict.kind !== 'credential' || conflict.sourceId === null) return true;
+			if (!REPORTED_CONFLICT_CODES.has(conflict.code)) return true;
+			if (reported.has(conflict.sourceId)) return false;
+			if (conflict.code !== 'unknown-owner' || needsHome.has(conflict.sourceId)) return true;
+			const home = options.homes?.get(conflict.sourceId);
+			if (!home) return true;
+			createdInHome.push({
+				kind: 'credential',
+				sourceId: conflict.sourceId,
+				name: conflict.name,
+				credentialType: conflict.expectedTypes[0],
+				consumers: conflict.consumers,
+				ownerProject: home,
+			});
+			return false;
 		});
-		return false;
-	});
 
 	const confirmed = new Set(options.confirmedGrantIds ?? []);
 	return {

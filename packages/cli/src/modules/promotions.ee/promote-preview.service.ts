@@ -15,6 +15,7 @@ import type { PackageManifest } from '@/modules/n8n-packages/spec/manifest.schem
 
 import { PACKAGE_SUBFOLDER } from './constants';
 import { exportInstancePackage } from './instance-package';
+import { PromotionAccessService } from './promotion-access.service';
 import { PromotionMovesService } from './promotion-moves.service';
 import {
 	blobsByPath,
@@ -39,7 +40,19 @@ export class PromotePreviewService {
 		private readonly movesService: PromotionMovesService,
 		private readonly reviewGate: PromotionReviewGateService,
 		private readonly dependencyGate: PromotionDependencyGate,
+		private readonly access: PromotionAccessService,
 	) {}
+
+	/** The projects of the branch that the user can read: only their dependency files are shown. */
+	private async readableBranchProjects(
+		user: User,
+		branch: PackageManifest | null,
+	): Promise<Set<string>> {
+		return await this.access.readableProjectIds(
+			user,
+			(branch?.projects ?? []).map(({ id }) => id),
+		);
+	}
 
 	/**
 	 * The Promote preview of an environment: the changes of every listed project, in one view.
@@ -87,6 +100,7 @@ export class PromotePreviewService {
 				// The index reads each listed project only, so other projects of the branch stay out.
 				base: { manifest: promoteBase, blobByPath: blobsByPath(branch.files) },
 				desired: { manifest: instance.manifest, blobByPath: blobsByPath(instance.files) },
+				readableProjectIds: await this.readableBranchProjects(user, promoteBase),
 			});
 			dependencies = compared.dependencies;
 			// A workflow or folder that moved between two team projects is one moved row. The row
@@ -208,6 +222,7 @@ export class PromotePreviewService {
 				blobByPath: blobsByPath(branch.files),
 			},
 			desired: { manifest: instance.manifest, blobByPath: blobsByPath(instance.files) },
+			readableProjectIds: await this.readableBranchProjects(user, promoteBase),
 		});
 		// The moved row is on the page of each of the two projects. The Promote from either page
 		// writes both sides.

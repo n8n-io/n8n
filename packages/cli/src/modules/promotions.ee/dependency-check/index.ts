@@ -3,6 +3,8 @@ export type { BranchPackageInput } from './branch-facts.reader';
 export type * from './dependency-check.types';
 export {
 	describeGap,
+	describeGapWithFix,
+	describeHardBlock,
 	renderGapsForCommitMessage,
 	renderGapsForReviewDescription,
 	requirementReasons,

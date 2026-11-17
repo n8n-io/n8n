@@ -90,6 +90,12 @@ export type BranchFact = {
 	>;
 	/** The projects of the branch, for the names of projects that the destination lacks. */
 	projects: Record<string, { name: string }>;
+	/**
+	 * The name and the type of each credential as the requirement rows of its consumers hold
+	 * them, also for a credential that the branch holds. The exporter removes the name from the
+	 * node, so the row is what the consumer workflow shows.
+	 */
+	credentialRows?: Record<string, { name?: string; credentialType?: string }>;
 };
 
 /** What the operation writes and deletes. */

@@ -1,7 +1,12 @@
 import type { PromotionResource } from '@n8n/api-types';
 import { ModuleRegistry } from '@n8n/backend-common';
 import { DataTableService } from '@n8n/backend-module-data-table';
-import { CredentialsRepository, SharedCredentialsRepository, VariablesRepository } from '@n8n/db';
+import {
+	CredentialsRepository,
+	SharedCredentialsRepository,
+	VariablesRepository,
+	type User,
+} from '@n8n/db';
 import { Service } from '@n8n/di';
 
 import { DataTableSerializer } from '@/modules/n8n-packages/entities/data-table/data-table.serializer';
@@ -10,6 +15,7 @@ import { serializeTag } from '@/modules/n8n-packages/entities/tag/tag.exporter';
 import { formatEntityFile } from '@/modules/n8n-packages/io/entity-file-format';
 import { gitBlobSha } from '@/modules/n8n-packages/io/hashing-package-writer';
 
+import { TargetLookupService } from './dependency-check/target-lookup.service';
 import { resourceKey, variableResourceKey } from './promotion-preview';
 
 export type LocalDataTable = { content: string; blobSha: string };
@@ -31,6 +37,7 @@ export class LocalPackageEntities {
 		private readonly credentialsRepository: CredentialsRepository,
 		private readonly sharedCredentialsRepository: SharedCredentialsRepository,
 		private readonly variablesRepository: VariablesRepository,
+		private readonly targetLookup: TargetLookupService,
 	) {}
 
 	/**
@@ -87,6 +94,18 @@ export class LocalPackageEntities {
 		return new Map(credentials.map(({ id, name }) => [id, name]));
 	}
 
+	/** The local names of the credentials that the user can read. A response shows only these. */
+	async readableCredentialNames(user: User, ids: string[]): Promise<Map<string, string>> {
+		if (ids.length === 0) return new Map();
+		const readable = await this.targetLookup.idsWithScope(
+			user,
+			'credential',
+			ids,
+			'credential:read',
+		);
+		return await this.credentialNames(ids.filter((id) => readable.has(id)));
+	}
+
 	/** The local tag that Apply uses for each branch tag: the tag with the same ID, else the tag with the same name. */
 	async tags(
 		branchTags: ReadonlyArray<{ id: string; name: string }>,
@@ -103,9 +122,12 @@ export class LocalPackageEntities {
 		);
 	}
 
-	async dataTables(ids: string[]): Promise<Map<string, LocalDataTable>> {
+	/** With `user`, only the data tables that the user can read. */
+	async dataTables(ids: string[], user?: User): Promise<Map<string, LocalDataTable>> {
 		if (ids.length === 0 || !this.moduleRegistry.isActive('data-table')) return new Map();
-		const tables = await this.dataTableService.findDataTablesByIds(ids);
+		const tables = user
+			? await this.dataTableService.findDataTablesByIdsForUser(ids, user, ['dataTable:read'])
+			: await this.dataTableService.findDataTablesByIds(ids);
 		return new Map(
 			tables.map((table) => {
 				const content = formatEntityFile(this.dataTableSerializer.serialize(table));

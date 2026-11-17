@@ -63,6 +63,8 @@ properties:
         type: string
     required:
       - id
+  neededByBranch:
+    type: boolean
   revision:
     type: object
     properties:
