@@ -22,6 +22,7 @@ const builtin = @import("builtin");
 const value = @import("value.zig");
 const heap = @import("heap.zig");
 const numfmt = @import("numfmt.zig");
+const mem = @import("mem.zig");
 const ops = @import("ops.zig");
 const Builder = @import("arena.zig").Builder;
 const Value = value.Value;
@@ -300,6 +301,7 @@ const Decoder = struct {
             const n: u32 = @intCast(items.len / 2);
             const o = try r.newObject(n);
             const obj = r.at(heap.Obj, value.payload(o));
+            if (mem.enabled) mem.wrValues(r.probe, .obj_entries, .json_build, r.valsAt(obj.entries, n * 2));
             @memcpy(r.valsAt(obj.entries, n * 2), items);
             obj.count = n;
             return o;
@@ -307,6 +309,7 @@ const Decoder = struct {
         const n: u32 = @intCast(items.len);
         const a = try r.newArray(n);
         const arr = r.at(heap.Arr, value.payload(a));
+        if (mem.enabled) mem.wrValues(r.probe, .arr_items, .json_build, r.valsAt(arr.items, n));
         @memcpy(r.valsAt(arr.items, n), items);
         arr.len = n;
         return a;
@@ -319,6 +322,7 @@ const Decoder = struct {
             const n: u32 = @intCast(items.len / 2);
             try r.objReserve(off, n);
             const o = r.at(heap.Obj, off);
+            if (mem.enabled) mem.wrValues(r.probe, .obj_entries, .json_build, r.valsAt(o.entries, (o.count + n) * 2)[o.count * 2 ..]);
             @memcpy(r.valsAt(o.entries, (o.count + n) * 2)[o.count * 2 ..], items);
             o.count += n;
             return;
@@ -326,6 +330,7 @@ const Decoder = struct {
         const n: u32 = @intCast(items.len);
         try r.arrReserve(off, n);
         const a = r.at(heap.Arr, off);
+        if (mem.enabled) mem.wrValues(r.probe, .arr_items, .json_build, r.valsAt(a.items, a.len + n)[a.len..]);
         @memcpy(r.valsAt(a.items, a.len + n)[a.len..], items);
         a.len += n;
     }
@@ -477,6 +482,7 @@ const Decoder = struct {
         const r = d.vm.r;
         const len = end - start;
         const off = try r.alloc(.string, @sizeOf(heap.Str) + len);
+        if (mem.enabled) mem.wr(r.probe, .str_bytes, .str_new, r.buf.ptr + off + @sizeOf(heap.Str), len);
         var direct: Direct = .{ .out = r.buf[off + @sizeOf(heap.Str) ..][0..len] };
         if (unescape(Direct, &direct, d.src, start, end)) |units| {
             // The string is the last object: give back the bytes not used.
@@ -579,6 +585,7 @@ fn newStrFrom(r: *heap.Region, src: []const u8, start: usize, len: u32, units: u
     st.len = len;
     st.utf16_len = units;
     const dst: usize = off + @sizeOf(heap.Str);
+    if (mem.enabled) mem.wr(r.probe, .str_bytes, .str_new, r.buf.ptr + dst, len);
     const span = (@as(usize, len) + 15) & ~@as(usize, 15);
     if (len <= 64 and start + span <= src.len and dst + span <= r.buf.len) {
         var k: usize = 0;

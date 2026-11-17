@@ -3,6 +3,8 @@
 pub const value = @import("value.zig");
 pub const heap = @import("heap.zig");
 pub const arena = @import("arena.zig");
+pub const mem = @import("mem.zig");
+pub const perf = @import("perf.zig");
 pub const numfmt = @import("numfmt.zig");
 pub const module = @import("module.zig");
 pub const ops = @import("ops.zig");

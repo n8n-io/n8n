@@ -8,6 +8,7 @@
 //! and the snapshot writer.
 const std = @import("std");
 const value = @import("value.zig");
+const mem = @import("mem.zig");
 const Value = value.Value;
 
 pub const ObjKind = enum(u8) {
@@ -243,6 +244,8 @@ pub const Error = error{RegionFull};
 pub const Region = struct {
     buf: []align(8) u8,
     used: u32,
+    /// The recorder of the performance model; no size in the normal build.
+    probe: mem.Probe = mem.none,
 
     pub fn init(buf: []align(8) u8) Region {
         std.debug.assert(buf.len >= 64);
@@ -258,6 +261,11 @@ pub const Region = struct {
         r.used += size;
         const h = r.hdr(off);
         h.* = .{ .kind = kind, .size = size };
+        // A `vals` block belongs to its user: `newValsFor` states it.
+        if (mem.enabled and kind != .vals) {
+            if (mem.enabled) mem.wr(r.probe, structureOf(kind), .region_alloc, h, @sizeOf(Hdr));
+            if (mem.enabled) mem.alloc(r.probe, structureOf(kind), size);
+        }
         return off;
     }
 
@@ -268,6 +276,7 @@ pub const Region = struct {
     pub inline fn at(r: *const Region, comptime T: type, off: u32) *T {
         std.debug.assert(off % 8 == 0);
         std.debug.assert(off + @sizeOf(T) <= r.used);
+        if (mem.enabled) mem.rdHeader(r.probe, structureOfType(T), if (T == Exec) .exec_at else .region_at, r.buf.ptr + off, @sizeOf(T));
         return @ptrCast(@alignCast(r.buf.ptr + off));
     }
 
@@ -284,6 +293,7 @@ pub const Region = struct {
     // ---- strings -------------------------------------------------------
 
     pub fn newString(r: *Region, bytes: []const u8) Error!Value {
+        if (mem.enabled) mem.scan(r.probe, .utf16_len, bytes.len);
         return r.newStringUnits(bytes, utf16Len(bytes));
     }
 
@@ -295,6 +305,8 @@ pub const Region = struct {
         const s = r.at(Str, off);
         s.len = @intCast(bytes.len);
         s.utf16_len = units;
+        if (mem.enabled) mem.wr(r.probe, .str_bytes, .str_new, r.buf.ptr + off + @sizeOf(Str), bytes.len);
+        if (mem.enabled) mem.scan(r.probe, .byte_copy, bytes.len);
         @memcpy(r.buf[off + @sizeOf(Str) ..][0..bytes.len], bytes);
         return value.box(.string, off);
     }
@@ -305,11 +317,13 @@ pub const Region = struct {
         const s = r.at(Str, off);
         s.len = len;
         s.utf16_len = 0;
+        if (mem.enabled) mem.wr(r.probe, .str_bytes, .str_new, r.buf.ptr + off + @sizeOf(Str), len);
         return .{ .v = value.box(.string, off), .bytes = r.buf[off + @sizeOf(Str) ..][0..len] };
     }
 
     pub fn finishString(r: *Region, v: Value) void {
         const s = r.at(Str, value.payload(v));
+        if (mem.enabled) mem.scan(r.probe, .utf16_len, s.len);
         s.utf16_len = utf16Len(r.strBytes(value.payload(v)));
     }
 
@@ -318,8 +332,10 @@ pub const Region = struct {
         if (s.hdr._pad[0] & str_flag_ref != 0) {
             const ref = r.at(StrRef, off);
             std.debug.assert(s.len <= r.at(StrBuf, ref.data).fill);
+            if (mem.enabled) mem.rd(r.probe, .str_bytes, .str_bytes, r.buf.ptr + ref.data + @sizeOf(StrBuf), s.len);
             return r.buf[ref.data + @sizeOf(StrBuf) ..][0..s.len];
         }
+        if (mem.enabled) mem.rd(r.probe, .str_bytes, .str_bytes, r.buf.ptr + off + @sizeOf(Str), s.len);
         return r.buf[off + @sizeOf(Str) ..][0..s.len];
     }
 
@@ -330,6 +346,7 @@ pub const Region = struct {
     /// comes first, so a full region leaves every object as it was.
     pub fn appendStr(r: *Region, a: Value, a_bytes: []const u8, a_units: u32, tail: []const u8) Error!Value {
         const total: u32 = @intCast(a_bytes.len + tail.len);
+        if (mem.enabled) mem.scan(r.probe, .utf16_len, tail.len);
         const units = a_units + utf16Len(tail);
         const p = value.payload(a);
         if (value.kindOf(a) == .string and p < value.const_handle_base) {
@@ -340,6 +357,8 @@ pub const Region = struct {
                 if (b.fill == s.len and b.cap - b.fill >= tail.len) {
                     const off = try r.newStrRef(data, total, units);
                     const b2 = r.at(StrBuf, data);
+                    if (mem.enabled) mem.wr(r.probe, .str_bytes, .str_append, r.buf.ptr + data + @sizeOf(StrBuf) + b2.fill, tail.len);
+                    if (mem.enabled) mem.scan(r.probe, .byte_copy, tail.len);
                     @memcpy(r.buf[data + @sizeOf(StrBuf) + b2.fill ..][0..tail.len], tail);
                     b2.fill = total;
                     return value.box(.string, off);
@@ -360,6 +379,8 @@ pub const Region = struct {
         b.cap = cap;
         b.fill = total;
         const dst = r.buf[data + @sizeOf(StrBuf) ..];
+        if (mem.enabled) mem.wr(r.probe, .str_bytes, .str_append, dst.ptr, total);
+        if (mem.enabled) mem.scan(r.probe, .byte_copy, total);
         @memcpy(dst[0..a_bytes.len], a_bytes);
         @memcpy(dst[a_bytes.len..][0..tail.len], tail);
         return value.box(.string, off);
@@ -379,8 +400,17 @@ pub const Region = struct {
     // ---- value blocks ---------------------------------------------------
 
     pub fn newVals(r: *Region, n: u32) Error!u32 {
+        return r.newValsFor(.registers, n);
+    }
+
+    /// `newVals` for the items of an array or the entries of an object.
+    fn newValsFor(r: *Region, comptime st: mem.Structure, n: u32) Error!u32 {
         const off = try r.alloc(.vals, @sizeOf(Hdr) + n * 8);
         const vs = r.valsAt(off, n);
+        if (mem.enabled) mem.wr(r.probe, st, .region_alloc, r.buf.ptr + off, @sizeOf(Hdr));
+        if (mem.enabled) mem.alloc(r.probe, st, @sizeOf(Hdr) + n * 8);
+        if (mem.enabled) mem.wrSlice(r.probe, st, .vals_fill, vs);
+        if (mem.enabled) mem.scan(r.probe, .value_fill, n);
         @memset(vs, value.undef);
         return off;
     }
@@ -391,6 +421,8 @@ pub const Region = struct {
     pub fn newFrames(r: *Region, n: u32) Error!u32 {
         const off = try r.alloc(.frames, @sizeOf(Hdr) + n * @sizeOf(Frame));
         const p: [*]Frame = @ptrCast(@alignCast(r.buf.ptr + off + @sizeOf(Hdr)));
+        if (mem.enabled) mem.wrSlice(r.probe, .frames, .vals_fill, p[0..n]);
+        if (mem.enabled) mem.scan(r.probe, .value_fill, n * 3);
         @memset(p[0..n], .{ .func = 0, .pc = 0, .base = 0, .ret_reg = 0, .closure = value.undef });
         return off;
     }
@@ -407,6 +439,7 @@ pub const Region = struct {
 
     pub fn newBytes(r: *Region, n: u32) Error!u32 {
         const off = try r.alloc(.bytes, @sizeOf(Hdr) + n);
+        if (mem.enabled) mem.wr(r.probe, .bytes_block, .vals_fill, r.buf.ptr + off + @sizeOf(Hdr), n);
         @memset(r.buf[off + @sizeOf(Hdr) ..][0..n], 0);
         return off;
     }
@@ -426,13 +459,21 @@ pub const Region = struct {
     pub fn newArray(r: *Region, cap_in: u32) Error!Value {
         const cap = @max(cap_in, 4);
         // Allocate the items first: a failure leaves no half-built array.
-        const items = try r.newVals(cap);
+        const items = try r.newValsFor(.arr_items, cap);
         const off = try r.alloc(.array, @sizeOf(Arr));
         r.at(Arr, off).* = .{ .hdr = r.hdr(off).*, .len = 0, .cap = cap, .items = items };
         return value.box(.array, off);
     }
 
+    /// The items, for a caller that reads all of them.
     pub fn arrItems(r: *const Region, off: u32) []Value {
+        const items = r.arrItemsRaw(off);
+        if (mem.enabled) mem.rdSlice(r.probe, .arr_items, .vals_walk, items);
+        return items;
+    }
+
+    /// The items, for a caller that states the items it reads (`mem.zig`).
+    pub fn arrItemsRaw(r: *const Region, off: u32) []Value {
         const a = r.at(Arr, off);
         return r.valsAt(a.items, a.len);
     }
@@ -443,8 +484,12 @@ pub const Region = struct {
         const need = a.len + extra;
         if (need <= a.cap) return;
         const new_cap = @max(need, a.cap * 2);
-        const items = try r.newVals(new_cap);
+        const items = try r.newValsFor(.arr_items, new_cap);
         const a2 = r.at(Arr, off);
+        if (mem.enabled) mem.rdSlice(r.probe, .arr_items, .arr_grow, r.valsAt(a2.items, a2.len));
+        if (mem.enabled) mem.wrSlice(r.probe, .arr_items, .arr_grow, r.valsAt(a2.items, a2.len));
+        if (mem.enabled) mem.scan(r.probe, .value_copy, a2.len);
+        if (mem.enabled) mem.scan(r.probe, .value_fill, a2.len);
         @memcpy(r.valsAt(items, a2.len), r.valsAt(a2.items, a2.len));
         @memset(r.valsAt(a2.items, a2.len), value.undef);
         a2.items = items;
@@ -454,7 +499,8 @@ pub const Region = struct {
     pub fn arrPush(r: *Region, off: u32, v: Value) Error!void {
         try r.arrReserve(off, 1);
         const a = r.at(Arr, off);
-        r.valsAt(a.items, a.cap)[a.len] = v;
+        mem.store(r.probe, .arr_items, .arr_push, &r.valsAt(a.items, a.cap)[a.len], v);
+        if (mem.enabled) mem.wr(r.probe, .arr_header, .arr_push, a, @sizeOf(Arr));
         a.len += 1;
     }
 
@@ -462,13 +508,21 @@ pub const Region = struct {
 
     pub fn newObject(r: *Region, cap_in: u32) Error!Value {
         const cap = @max(cap_in, 4);
-        const entries = try r.newVals(cap * 2);
+        const entries = try r.newValsFor(.obj_entries, cap * 2);
         const off = try r.alloc(.object, @sizeOf(Obj));
         r.at(Obj, off).* = .{ .hdr = r.hdr(off).*, .count = 0, .cap = cap, .entries = entries };
         return value.box(.object, off);
     }
 
+    /// The keys and values, for a caller that reads all of them.
     pub fn objEntries(r: *const Region, off: u32) []Value {
+        const es = r.objEntriesRaw(off);
+        if (mem.enabled) mem.rdSlice(r.probe, .obj_entries, .vals_walk, es);
+        return es;
+    }
+
+    /// The keys and values, for a caller that states the entries it reads (`mem.zig`).
+    pub fn objEntriesRaw(r: *const Region, off: u32) []Value {
         const o = r.at(Obj, off);
         return r.valsAt(o.entries, o.count * 2);
     }
@@ -478,8 +532,10 @@ pub const Region = struct {
         const need = o.count + extra;
         if (need <= o.cap) return;
         const new_cap = @max(need, o.cap * 2);
-        const entries = try r.newVals(new_cap * 2);
+        const entries = try r.newValsFor(.obj_entries, new_cap * 2);
         const o2 = r.at(Obj, off);
+        if (mem.enabled) mem.rdSlice(r.probe, .obj_entries, .obj_grow, r.valsAt(o2.entries, o2.count * 2));
+        if (mem.enabled) mem.scan(r.probe, .value_copy, o2.count * 2);
         @memcpy(r.valsAt(entries, o2.count * 2), r.valsAt(o2.entries, o2.count * 2));
         o2.entries = entries;
         o2.cap = new_cap;
@@ -522,6 +578,32 @@ pub const Region = struct {
         return r.valsAt(f.regs, f.regs_cap);
     }
 };
+
+/// The structure of the performance model that holds objects of `kind`.
+inline fn structureOf(kind: ObjKind) mem.Structure {
+    return switch (kind) {
+        .string, .strbuf => .str_header,
+        .array => .arr_header,
+        .vals => .registers,
+        .object => .obj_header,
+        .closure, .cell => .closure_cell,
+        .exec => .exec_root,
+        .fibres => .fibre_table,
+        .frames => .frames,
+        .bytes, .forwarded => .bytes_block,
+    };
+}
+
+inline fn structureOfType(comptime T: type) mem.Structure {
+    if (T == Str or T == StrRef or T == StrBuf) return .str_header;
+    if (T == Arr) return .arr_header;
+    if (T == Obj) return .obj_header;
+    if (T == Closure or T == Cell) return .closure_cell;
+    if (T == Exec) return .exec_root;
+    if (T == Fibre) return .fibre_table;
+    if (T == Frame) return .frames;
+    return .bytes_block;
+}
 
 pub inline fn alignUp(n: u32) u32 {
     return (n + 7) & ~@as(u32, 7);

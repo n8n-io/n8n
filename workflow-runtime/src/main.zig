@@ -3,6 +3,7 @@
 const std = @import("std");
 const core_lib = @import("core");
 const fixture = @import("shell/fixture.zig");
+const perf_report = @import("shell/perf_report.zig");
 const sim = @import("shell/sim.zig");
 const server = @import("shell/server.zig");
 const loadgen = @import("shell/loadgen.zig");
@@ -44,6 +45,10 @@ const usage =
     \\  asm <glue|w2|w3|w4> <out.wfm> [durability]   write a hand-assembled benchmark module
     \\  cron-next <cases.json>           next slots of cron expressions (differential test)
     \\  aot-gen <out.zig> <module.wfm>... write the compiled functions of the library code in the modules
+    \\  perf-model <module.wfm> <fixture.json> [N] [--json] [--profile NAME] [--no-prefetch] [--l1-kb K] [--l2-kb K] [--l3-kb K]
+    \\                                    run the fixture N times (default 100) with the recorder of the performance
+    \\                                    model and print where instructions, memory accesses and modelled cycles go
+    \\                                    (docs/perf-model.md; needs a build with -Dperf-model=true)
     \\  bench-node [--arena-mb M] <module.wfm> <fixture.json> N   run the fixture N times in one core (CPU per execution);
     \\                                    --arena-mb: all memory of the run is one block of M MB (for Valgrind)
     \\  aot-check <module.wfm>...        list the library functions that have no compiled form
@@ -172,6 +177,21 @@ pub fn main(init: std.process.Init) !void {
         if (missing > 0) std.process.exit(1);
         return;
     }
+    if (std.mem.eql(u8, cmd, "perf-model") and args.len >= 4) {
+        const mod = try cwd.readFileAlloc(io, args[2], gpa, .limited(64 << 20));
+        defer gpa.free(mod);
+        const fx = try cwd.readFileAlloc(io, args[3], gpa, .limited(64 << 20));
+        defer gpa.free(fx);
+        var arena_state = std.heap.ArenaAllocator.init(gpa);
+        defer arena_state.deinit();
+        const ok = if (perfOptions(args[4..])) |o| perf_report.run(arena_state.allocator(), out, mod, fx, args[2], o) else |e| e;
+        try out.flush();
+        ok catch |e| {
+            std.debug.print("perf-model: {s}\n", .{@errorName(e)});
+            std.process.exit(2);
+        };
+        return;
+    }
     if (std.mem.eql(u8, cmd, "bench-node") and args.len >= 5) {
         // `--arena-mb M`: the memory of the run is one block of M MB, mapped once. A tool
         // that cannot map what the run reserves by default (Valgrind) can then run it.
@@ -201,6 +221,33 @@ pub fn main(init: std.process.Init) !void {
         return;
     }
     try out.writeAll(usage);
+}
+
+/// The options of `perf-model` after the two file names.
+fn perfOptions(args: []const [:0]const u8) !perf_report.Options {
+    var o: perf_report.Options = .{};
+    var i: usize = 0;
+    while (i < args.len) : (i += 1) {
+        const a = args[i];
+        if (std.mem.eql(u8, a, "--json")) {
+            o.json = true;
+        } else if (std.mem.eql(u8, a, "--no-prefetch")) {
+            o.profile.cache.next_line_prefetch = false;
+        } else if (!std.mem.startsWith(u8, a, "--")) {
+            o.n = @max(1, try std.fmt.parseInt(u32, a, 10));
+        } else {
+            if (i + 1 >= args.len) return error.MissingValue;
+            i += 1;
+            if (std.mem.eql(u8, a, "--profile")) {
+                o.profile = core_lib.perf.profileNamed(args[i]) orelse return error.UnknownProfile;
+                continue;
+            }
+            const v = try std.fmt.parseInt(u32, args[i], 10);
+            const c = &o.profile.cache;
+            if (std.mem.eql(u8, a, "--l1-kb")) c.l1.bytes = v << 10 else if (std.mem.eql(u8, a, "--l2-kb")) c.l2.bytes = v << 10 else if (std.mem.eql(u8, a, "--l3-kb")) c.l3.bytes = v << 10 else return error.UnknownOption;
+        }
+    }
+    return o;
 }
 
 /// `bench-node --arena-mb`: every allocation of the run comes from one block of `mb` MB.

@@ -15,6 +15,12 @@ pub fn build(b: *std.Build) void {
     // Frame pointers for call graphs (`perf record -g` without DWARF unwinding).
     const frame_pointers = b.option(bool, "frame-pointers", "Keep frame pointers in all code (default false)") orelse false;
     const omit_fp: ?bool = if (frame_pointers) false else null;
+    // The performance model (docs/perf-model.md): the core records each
+    // instruction and memory access. Off, the access layer is plain loads
+    // and stores.
+    const perf_model = b.option(bool, "perf-model", "Record instructions and memory accesses for `wfrt perf-model` (default false)") orelse false;
+    const perf_options = b.addOptions();
+    perf_options.addOption(bool, "perf_model", perf_model);
 
     const core = b.createModule(.{
         .root_source_file = b.path("src/core/root.zig"),
@@ -22,6 +28,7 @@ pub fn build(b: *std.Build) void {
         .optimize = optimize,
         .omit_frame_pointer = omit_fp,
     });
+    core.addOptions("perf_options", perf_options);
 
     const exe_mod = b.createModule(.{
         .root_source_file = b.path("src/main.zig"),
@@ -64,6 +71,7 @@ pub fn build(b: *std.Build) void {
     const test_safe = b.step("test-safe", "Unit tests, ReleaseSafe");
     inline for (.{ .{ test_debug, std.builtin.OptimizeMode.Debug }, .{ test_safe, std.builtin.OptimizeMode.ReleaseSafe } }) |pair| {
         const core_t = b.createModule(.{ .root_source_file = b.path("src/core/root.zig"), .target = target, .optimize = pair[1] });
+        core_t.addOptions("perf_options", perf_options);
         const shell_t = b.createModule(.{
             .root_source_file = b.path("src/main.zig"),
             .target = target,

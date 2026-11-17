@@ -102,6 +102,12 @@ pub const Builder = struct {
     }
 };
 
+/// The address of a pointer, for the performance model (`mem.zig`), which
+/// records where the core reads and writes and never reads through the number.
+pub inline fn addressOf(ptr: anytype) usize {
+    return @intFromPtr(ptr);
+}
+
 /// Like `gpa.alloc`, but it does not write the memory. In safe builds
 /// `alloc` fills new memory with 0xAA, which makes each page of a large
 /// buffer resident at once; this keeps pages untouched until first use.
