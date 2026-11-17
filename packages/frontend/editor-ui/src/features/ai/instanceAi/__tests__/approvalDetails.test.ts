@@ -4,6 +4,7 @@ import {
 	CHANGE_DATA_TABLES_TOOL_NAME,
 	DATA_TABLE_TOOL_NAME_BY_ACTION,
 	type InstanceAiApprovalDetails,
+	type InstanceAiDataTableChangeDetails,
 } from '@n8n/api-types';
 import { formatApprovalDetails, formatApprovalTitle } from '../approvalDetails';
 
@@ -149,7 +150,9 @@ describe('approval details', () => {
 			expect(title).not.toContain('instanceAi.');
 		});
 
-		it.each([
+		const singleChangeCases: Array<
+			[string, keyof typeof DATA_TABLE_TOOL_NAME_BY_ACTION, InstanceAiDataTableChangeDetails]
+		> = [
 			['create-table', 'create', { action: 'create-table', columns: [] }],
 			['delete-table', 'delete', { action: 'delete-table' }],
 			['add-column', 'add-column', { action: 'add-column', column: 'x', columnType: 'string' }],
@@ -170,7 +173,9 @@ describe('approval details', () => {
 				'delete-rows',
 				{ action: 'delete-rows', filter: { type: 'and', filters: [] } },
 			],
-		] as const)(
+		];
+
+		it.each(singleChangeCases)(
 			'titles a single %s change like the former single-action tool',
 			(_, toolAction, details) => {
 				const title = formatApprovalTitle({
