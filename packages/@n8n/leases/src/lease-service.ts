@@ -11,6 +11,7 @@ export class LeaseService<TTransaction> {
 
 	constructor(private readonly provider: LeaseProvider<TTransaction>) {}
 
+	/** Register a kind with the provider. Rejects when the name is invalid or already registered. */
 	async registerKind(kind: LeaseKind<TTransaction>): Promise<void> {
 		const { name } = kind;
 		if (name.length > MAX_LEASE_KIND_LENGTH || !LEASE_KIND_NAME_PATTERN.test(name)) {
@@ -35,6 +36,7 @@ export class LeaseService<TTransaction> {
 		);
 	}
 
+	/** Sync the leases of a registered kind, or only those with `keys`. */
 	async changed(kind: string, keys?: readonly string[]): Promise<void> {
 		this.assertKnown(kind);
 		if (keys === undefined) {
@@ -44,12 +46,14 @@ export class LeaseService<TTransaction> {
 		}
 	}
 
+	/** Sync the leases of every registered kind. */
 	async syncAll(): Promise<void> {
 		for (const kind of this.kinds.keys()) {
 			await this.provider.sync(kind);
 		}
 	}
 
+	/** The state of each of `keys` in a registered kind. */
 	async status(kind: string, keys: readonly string[]): Promise<LeaseStatus[]> {
 		this.assertKnown(kind);
 		return await this.provider.status(kind, keys);
