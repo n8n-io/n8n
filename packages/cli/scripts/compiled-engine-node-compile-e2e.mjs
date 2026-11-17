@@ -466,7 +466,7 @@ function postgresCases(credential) {
 		},
 		{
 			key: 'pd',
-			title: 'Postgres query with an array column: the fallback host runs the node in the same run',
+			title: 'Postgres query with an array column',
 			before: resetPeople,
 			nodes: [
 				postgres(credential, {
@@ -476,13 +476,33 @@ function postgresCases(credential) {
 					options: { queryReplacement: '={{ $json.body.age }}' },
 				}),
 			],
-			// The first call reaches the limit in `wfrt`. The second call starts in the host.
+			calls: [{ body: { age: 40 } }, { body: { age: 30 } }],
+			tiers: { Postgres: 'native' },
+			check: (run) =>
+				native(run) &&
+				JSON.stringify(run.calls[0]?.response) ===
+					'[{"id":3,"pair":[3,52]},{"id":4,"pair":[4,41]}]',
+		},
+		{
+			key: 'pe',
+			title:
+				'Postgres query with two columns of one name: the fallback host runs the node in the same run',
+			before: resetPeople,
+			nodes: [
+				postgres(credential, {
+					resource: 'database',
+					operation: 'executeQuery',
+					query: `SELECT id, age AS id FROM ${PG_SCHEMA}.people WHERE age > $1 ORDER BY 1`,
+					options: { queryReplacement: '={{ $json.body.age }}' },
+				}),
+			],
+			// The first call reaches the limit `sql-type` in `wfrt`. The second call starts in the host.
+			// node-postgres gives one key with the value of the last column.
 			calls: [{ body: { age: 40 } }, { body: { age: 30 } }],
 			tiers: { Postgres: 'native' },
 			check: (run) =>
 				run.tiersAfter?.Postgres === 'host' &&
-				JSON.stringify(run.calls[0]?.response) ===
-					'[{"id":3,"pair":[3,52]},{"id":4,"pair":[4,41]}]',
+				JSON.stringify(run.calls[0]?.response) === '[{"id":52},{"id":41}]',
 		},
 	];
 }
