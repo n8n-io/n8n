@@ -438,3 +438,51 @@ This revision reverses the consensus of the four submissions. It is a candidate 
 
 **R10. Rollout.**
 - The Promote check warns for one release, then blocks. Decision 5 of `solution.md`.
+
+## Part 8: revision of 2026-11-17 (evening), complete by default, never stuck
+
+Reason for the change: team feedback on the Notion page and in Slack. The rule "a dependency goes before, or with, what uses it" had no objection. The hard block had: it stops users who cannot access the dependency, and it gives no exit for archived or personal dependencies. `solution.md` now describes the final state only. Work planning is a separate conversation.
+
+**S1. The rule defines "complete". Enforcement gives exits.**
+- Adopted: each gap gets the best exit that the user can take: include it, ask the owner, continue incomplete, or block.
+- Replaces: R7 (Apply gate without acceptance) and the hard-block part of R1.
+
+**S2. Strict by default. "Allow incomplete" is opt-in.**
+- One setting for each environment and each direction, next to `createBranchOnPromotion`. Off by default. No extra permission.
+- Rejected: an instance setting (the risk depends on the destination), and "on" by default.
+
+**S3. Selection across projects, one review.**
+- Builds on the instance Apply preview (#43422). A Promote across projects opens one review. Runs already store `contents.projectIds` as a list.
+- Replaces: the instance Promote and instance Apply as the only route for a cycle across projects (R4 and decision 2 of the previous revision).
+
+**S4. No information leaks.**
+- A user never sees information about a resource that they cannot access. The report shows only what the workflow of the user already holds.
+
+**S5. Placeholder credential in the consumer project, then the owner follows the branch.**
+- An incomplete Apply creates an empty placeholder for a credential that is not on the branch and not on the destination.
+- When Apply writes a credential that the branch places in P, and the destination holds it in Q, Apply moves it to P, keeps every share, then updates it.
+- Any owner mismatch moves. No placeholder marker.
+- The move needs the rights of the user in P only, because every share stays.
+- Rejected: no placeholder (the workflow cannot bind), a placeholder in the owner project (unknown owner), a marker for placeholders only, and access to Q for the move.
+- Replaces: decision 9 of the previous revision (a credential with another owner on the destination keeps that owner).
+
+**S6. No placeholder workflow.**
+- A workflow gap stays an unresolved reference. A workflow reference that is not on the branch stays a warning.
+
+**S7. Publishing.**
+- Promotion Apply never changes the publish state (`PreserveTargetState`). A workflow with a gap does not go live by itself.
+
+**S8. Personal dependencies.**
+- Strict: block. "Allow incomplete": a gap with the fix in the message.
+- Replaces: R2 for environments that allow incomplete.
+
+**S9. Removed from the document.**
+- The rollout (R10, warning for one release). There is no phase in the final state.
+- The ticket plan. Planning is separate.
+- Auto-apply. It is a future feature and does not shape the solution.
+- The reference to LIGO-1268. That ticket is "Allow project promotion without first promoting the entire instance" (Done). It does not cover what an instance Apply deletes. The earlier revisions cited it by mistake.
+
+**S10. Kept.**
+- The branch path is the owner (R5). No format change.
+- No closure. Sharing in Git stays rejected (R8).
+- Per-project repositories stay with LIGO-1399 (R9).

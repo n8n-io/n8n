@@ -1,3 +1,5 @@
+> **Out of date.** This file describes the previous revision ("dependencies first", hard blocks). The current solution is `solution.md`, revision of 2026-11-17 (evening).
+
 # Cross-project promotion: proposed direction (LIGO-1159)
 
 This page gives the direction that the spike recommends. It leaves out the details on purpose. The analysis behind each point is available on request.

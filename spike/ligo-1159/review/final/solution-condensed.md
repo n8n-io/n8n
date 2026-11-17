@@ -1,3 +1,5 @@
+> **Out of date.** This file describes the previous revision ("dependencies first", hard blocks). The current solution is `solution.md`, revision of 2026-11-17 (evening).
+
 # LIGO-1159: Cross-project promotion, condensed solution
 
 Full version: `solution.md`. Evidence: `decision-log.md`, Part 7. The earlier model is in `consolidated-solution.md` (alternative, not chosen).
