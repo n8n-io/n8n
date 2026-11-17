@@ -1,0 +1,19 @@
+packages/@n8n/test/README.md
+  s_1a2087067112a6::t_9a440f65b9b4dc 38-41
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "96558598d88d658c61bd6c68e964814171f617a4",
+  "prompts": {},
+  "sessions": {
+    "s_1a2087067112a6": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "6300bd3e-1cc9-4e36-ad69-be897cb35d93",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "James Gee <1285296+geemanjs@users.noreply.github.com>"
+    }
+  }
+}
