@@ -91,15 +91,6 @@ export class AgentsConfig {
 	@Env('N8N_AGENTS_SERVICE_ACCOUNTS_ENABLED')
 	serviceAccountsEnabled: boolean = false;
 
-	// In the global config because the PostHog client cannot read module configs.
-	/**
-	 * Whether to turn on knowledge collections for this instance before n8n
-	 * rolls them out to it. Set to true to turn them on. When false, the
-	 * staged rollout decides.
-	 */
-	@Env('N8N_KNOWLEDGE_COLLECTIONS_ENABLED')
-	knowledgeCollectionsEnabled: boolean = false;
-
 	/** Enable sandbox-backed agent knowledge base operations. */
 	@Env('N8N_AGENTS_AI_SANDBOX_ENABLED')
 	sandboxEnabled: boolean = false;

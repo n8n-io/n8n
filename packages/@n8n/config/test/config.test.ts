@@ -780,7 +780,6 @@ describe('GlobalConfig', () => {
 			modules: [],
 			backgroundTasksEnabled: false,
 			serviceAccountsEnabled: false,
-			knowledgeCollectionsEnabled: false,
 			sandboxEnabled: false,
 			sandboxImage: 'daytonaio/sandbox:0.5.0',
 			sandboxSnapshot: 'daytonaio/sandbox:0.8.0',
@@ -814,15 +813,6 @@ describe('GlobalConfig', () => {
 		const config = Container.get(GlobalConfig);
 
 		expect(config.agents.tracingEnabled).toBe(false);
-	});
-
-	it('should parse N8N_KNOWLEDGE_COLLECTIONS_ENABLED from env variables', () => {
-		process.env = {
-			N8N_KNOWLEDGE_COLLECTIONS_ENABLED: 'true',
-		};
-		const config = Container.get(GlobalConfig);
-
-		expect(config.agents.knowledgeCollectionsEnabled).toBe(true);
 	});
 
 	it('should parse N8N_POLLER_DURABLE_CURSORS_ENABLED from env variables', () => {

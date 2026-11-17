@@ -39,6 +39,22 @@ describe('KnowledgeAvailabilityService', () => {
 			},
 		);
 
+		it.each([
+			{ isKnowledgeActive: true, collectionsEnabled: true },
+			{ isKnowledgeActive: false, collectionsEnabled: false },
+		])(
+			'is $collectionsEnabled with the override on, the flag off and the module active $isKnowledgeActive',
+			async ({ isKnowledgeActive, collectionsEnabled }) => {
+				const availability = makeKnowledgeAvailabilityService({
+					isKnowledgeActive,
+					collectionsFlag: false,
+					collectionsOverride: true,
+				});
+
+				expect(await availability.isCollectionsEnabled()).toBe(collectionsEnabled);
+			},
+		);
+
 		it('does not need the sandbox', async () => {
 			const availability = makeKnowledgeAvailabilityService({ isSandboxEnabled: false });
 

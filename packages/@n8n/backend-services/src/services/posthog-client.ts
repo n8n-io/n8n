@@ -302,10 +302,6 @@ export class PostHogClient {
 				INSTANCE_AI_FOLDER_EXPLORATION_ENABLED_VARIANT;
 		}
 
-		if (this.globalConfig.agents.knowledgeCollectionsEnabled) {
-			overrides[KNOWLEDGE_COLLECTIONS_FLAG] = true;
-		}
-
 		if (this.globalConfig.workflows.groupsWithTriggersEnabled) {
 			overrides[GROUPS_WITH_TRIGGERS_FLAG] = true;
 		}

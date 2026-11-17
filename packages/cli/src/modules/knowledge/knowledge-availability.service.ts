@@ -7,6 +7,8 @@ import { NotFoundError } from '@n8n/errors';
 
 import { SandboxSettingsService } from '@/services/sandbox-settings.service';
 
+import { KnowledgeConfig } from './knowledge.config';
+
 /**
  * Answers whether knowledge is available on this instance. Consumers ask here
  * before they call into the module and derive their own availability flags from
@@ -18,6 +20,7 @@ export class KnowledgeAvailabilityService {
 		private readonly moduleRegistry: ModuleRegistry,
 		private readonly sandboxSettingsService: SandboxSettingsService,
 		private readonly postHogClient: PostHogClient,
+		private readonly knowledgeConfig: KnowledgeConfig,
 	) {}
 
 	/**
@@ -37,12 +40,17 @@ export class KnowledgeAvailabilityService {
 	}
 
 	/**
-	 * Whether collections are on: the module is active and the instance flag is on.
-	 * The flag is read for the instance because retrieval runs without a user.
+	 * Whether collections are on: the module is active, and the operator override
+	 * or the instance flag is on. The flag is read for the instance because
+	 * retrieval runs without a user.
 	 */
 	async isCollectionsEnabled(): Promise<boolean> {
+		if (!this.isModuleActive()) {
+			return false;
+		}
+
 		return (
-			this.isModuleActive() &&
+			this.knowledgeConfig.collectionsEnabled ||
 			(await this.postHogClient.getFeatureFlagForInstance(KNOWLEDGE_COLLECTIONS_FLAG)) === true
 		);
 	}

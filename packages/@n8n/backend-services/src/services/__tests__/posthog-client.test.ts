@@ -419,7 +419,6 @@ describe('PostHog', () => {
 				globalConfig.evaluation.configEvalsEnabled = false;
 				globalConfig.evaluation.agentEvalsEnabled = false;
 				globalConfig.instanceAi.canvasNodeContextEnabled = false;
-				globalConfig.agents.knowledgeCollectionsEnabled = false;
 				globalConfig.instanceAi.folderExplorationEnabled = false;
 				globalConfig.workflows.groupsWithTriggersEnabled = false;
 				globalConfig.workflows.groupsWithManyBoundariesEnabled = false;
@@ -727,22 +726,6 @@ describe('PostHog', () => {
 				const flags = await ph.getFeatureFlags({ id: userId, createdAt });
 
 				expect(flags).toMatchObject({ '104_canvas_aia_node_context': true });
-			});
-
-			it('force-enables the knowledge collections flag for the editor and the backend when N8N_KNOWLEDGE_COLLECTIONS_ENABLED is set', async () => {
-				(PostHog.prototype.evaluateFlags as Mock).mockResolvedValue(
-					mockEvaluatedFlags({ [KNOWLEDGE_COLLECTIONS_FLAG]: false }),
-				);
-
-				globalConfig.agents.knowledgeCollectionsEnabled = true;
-
-				const ph = new PostHogClient(instanceSettings, globalConfig);
-				await ph.init();
-
-				const flags = await ph.getFeatureFlags({ id: userId, createdAt });
-
-				expect(flags).toMatchObject({ [KNOWLEDGE_COLLECTIONS_FLAG]: true });
-				expect(await ph.getFeatureFlagForInstance(KNOWLEDGE_COLLECTIONS_FLAG)).toBe(true);
 			});
 
 			it('leaves the canvas-node-context flag untouched when the override is off', async () => {

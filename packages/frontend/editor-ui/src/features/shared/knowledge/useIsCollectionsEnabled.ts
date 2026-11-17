@@ -4,7 +4,8 @@ import { useSettingsStore } from '@n8n/stores/settings.store';
 
 import { usePostHog } from '@/app/stores/posthog.store';
 
-// Mirrors `KnowledgeAvailabilityService.isCollectionsEnabled()` on the backend.
+// Mirrors `KnowledgeAvailabilityService.isCollectionsEnabled()` on the backend. The
+// operator override comes in the module settings, so it works without PostHog.
 export function useIsCollectionsEnabled() {
 	const posthog = usePostHog();
 	const settingsStore = useSettingsStore();
@@ -12,6 +13,7 @@ export function useIsCollectionsEnabled() {
 	return computed(
 		() =>
 			settingsStore.isModuleActive('knowledge') === true &&
-			posthog.isFeatureEnabled(KNOWLEDGE_COLLECTIONS_FLAG),
+			(settingsStore.moduleSettings.knowledge?.collectionsEnabled === true ||
+				posthog.isFeatureEnabled(KNOWLEDGE_COLLECTIONS_FLAG)),
 	);
 }

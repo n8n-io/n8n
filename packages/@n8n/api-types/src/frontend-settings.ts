@@ -482,6 +482,12 @@ export type FrontendModuleSettings = {
 			/** Most bytes one knowledge base can hold across all its files. */
 			maxTotalSizeBytes: number;
 		};
+		/**
+		 * Whether the operator turned collections on with
+		 * `N8N_KNOWLEDGE_COLLECTIONS_ENABLED`. The editor combines it with the
+		 * PostHog flag `KNOWLEDGE_COLLECTIONS_FLAG`.
+		 */
+		collectionsEnabled?: boolean;
 	};
 };
 
