@@ -419,6 +419,18 @@ const credentialPolicyViolationIssueSchema = z
 	})
 	.openapi(credentialPolicyViolationIssueOpenApi);
 
+/** Promotion only: the public import never plans a move between projects. */
+const crossProjectMoveBlockedIssueSchema = z.object({
+	type: z.literal('cross-project-move-blocked'),
+	kind: z.enum(['forbidden', 'unconfirmed']),
+	entity: z.enum(['workflow', 'folder']),
+	id: z.string(),
+	name: z.string(),
+	fromProjectId: z.string(),
+	toProjectId: z.string(),
+	missingScope: z.string().optional(),
+});
+
 export const importBlockingIssueSchema = z
 	.discriminatedUnion('type', [
 		z.object({
@@ -463,6 +475,7 @@ export const importBlockingIssueSchema = z
 		workflowRemovalForbiddenIssueSchema,
 		workflowRemovalConflictIssueSchema,
 		folderRemovalForbiddenIssueSchema,
+		crossProjectMoveBlockedIssueSchema,
 		dataTableUnresolvedIssueSchema,
 		tagUnresolvedIssueSchema,
 		variableUnresolvedIssueSchema,

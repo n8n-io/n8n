@@ -181,3 +181,72 @@ not exist, or when the user cannot run the operation in its project. It answers
 - A placeholder credential on the destination counts as "on the destination".
 - The delete of the environment, of the owner project or of the requester
   deletes the request.
+### F1. The import option for a move between projects
+
+The import request has the promotion-only option `crossProjectMovePolicy`
+(`refuse` by default, `transfer`). The public import never sets it. Under
+`transfer`, a workflow or folder that the package holds under project P and the
+target holds under team project Q is one transfer. All transfers run after the
+projects exist and before the content of any project.
+
+### F2. The transfer is the editor transfer
+
+The import calls `EnterpriseWorkflowService.transferWorkflow` and
+`transferFolder`. So the rights, the loss of the shares and the publish
+behaviour are the ones of the editor move. A moved item first goes to the root
+of the new project. The usual update of the import then puts it in its folder.
+
+### F3. Publish state of a moved workflow
+
+The transfer stops the triggers of a published workflow, changes the owner and
+starts the published version again in the new project. The workflow stays
+published when the new project accepts that version. When it does not (a policy
+of the project, or a credential that the new project cannot use), the transfer
+unpublishes the workflow. This is the only case where an Apply unpublishes. The
+result names it: `moves[].unpublished.reason`. The plan says which moved
+workflows are published (`published`), so a preview can warn.
+
+### F4. A move out of a project that the operation does not write
+
+The plan marks the move with `fromProjectInOperation: false`. It is the
+blocking issue `cross-project-move-blocked` (kind `unconfirmed`) until the
+request sets `confirmedMovesOutOfOperation`. The field is one flag, not a list
+of ids: the preview revision already proves that the user saw the same moves.
+An instance Apply sets the flag when the user confirms the destructive changes.
+A project Apply never sets it.
+
+### F5. The tree of a moved folder
+
+A folder move transfers the whole tree that the target holds under the folder,
+also the workflows and folders that the package does not hold. The old project
+does not remove them as "missing from the package". They stay in the new
+project until the next Apply, which removes them there under the normal rules.
+
+### F6. A copy with the same source id
+
+When the new project already holds a workflow that came from the same source
+workflow under another id, the import updates that copy. The workflow of the
+other project does not move.
+
+### F7. A move on the branch
+
+A selection Promote writes a move through the selection of the new project,
+with `allowCrossProjectMoves` on the working-copy selection. The write removes
+the old branch path and adds the new one in the same working copy. A moved
+folder takes its branch directory, with all its content, to the new project.
+A moved row that the user selects under the old project is put under the new
+project first (`selectionWithMoves`).
+
+### F8. Shape of the moves in the Apply check
+
+The check gets two optional fields: `plannedMoves` (each move with both
+projects, `needsConfirmation` and `losesShares`) and `changedProjects`. No new
+conflict code. The lists `movedWorkflows` and `movedFolders` keep their
+meaning: moves that stop the Apply. `movedFromProject` on a preview resource
+now has an optional `name`, because a moved row does not name a project that
+the user cannot access.
+
+### F9. The warning of a Promote that deletes a called workflow
+
+The Promote preview reuses `dependencyReport.deletionCallers`. The callers come
+from the workflow requirement rows of the branch manifest. No new field.

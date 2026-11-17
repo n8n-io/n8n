@@ -104,6 +104,7 @@ import type {
 } from '../spec/requirements.schema';
 import { ContentImportPolicyGate, contentImportTransport } from './content-import-policy';
 import { CredentialSavePolicyGate } from './credential-save-policy';
+import type { ScopeCrossProjectMoves } from './cross-project-mover';
 import { toImportBlockedError } from './import-blocked.error';
 import {
 	assertArchiveTransitionsAllowed,
@@ -141,6 +142,8 @@ export interface ImportOrchestrationInput {
 	explicitDeleteWorkflowIds?: string[];
 	/** Treat the project root as a workflow location (project packages, which set the layout). */
 	checkRootPlacement: boolean;
+	/** The transfers between projects that run before this scope is written. */
+	crossProjectMoves?: ScopeCrossProjectMoves;
 }
 
 /**
@@ -453,6 +456,7 @@ export class ImportOrchestrator {
 		const workflowPlan = await this.workflowImporter.plan(context, workflows, options, {
 			checkRootPlacement: input.checkRootPlacement,
 			layoutConflictPolicy: options.layoutConflictPolicy,
+			crossProjectMoves: input.crossProjectMoves,
 		});
 		// Tags plan after workflows: only tags referenced by non-skipped workflows gate or create.
 		const activeWorkflows = workflowPlan.items.filter((item) => item.action !== 'skip');
@@ -462,7 +466,11 @@ export class ImportOrchestrator {
 			folderConflictPolicy: options.folderConflictPolicy,
 			layoutConflictPolicy: options.layoutConflictPolicy,
 		};
-		const folderPlan = await this.folderImporter.plan(folderContext, folders);
+		const folderPlan = await this.folderImporter.plan(
+			folderContext,
+			folders,
+			input.crossProjectMoves,
+		);
 
 		const packageFolderIds = folders.map(({ sourceFolderId }) => sourceFolderId);
 		const removalPlan = await this.workflowRemover.plan(context, {
@@ -474,6 +482,7 @@ export class ImportOrchestrator {
 			projectPendingCreation: input.projectPendingCreation,
 			importSource: input.importSource,
 			explicitDeleteIds: input.explicitDeleteWorkflowIds,
+			movedOutWorkflowIds: input.crossProjectMoves?.movedOutWorkflowIds,
 		});
 
 		// Which folders end up empty depends on which workflows survive and where the planned moves put
@@ -484,6 +493,7 @@ export class ImportOrchestrator {
 						packageFolderIds,
 						occupiedFolderIds: removalPlan.occupiedFolderIds,
 						folderItems: folderPlan.items,
+						movedOutFolderIds: input.crossProjectMoves?.movedOutFolderIds,
 					})
 				: { removals: [], failures: [] };
 

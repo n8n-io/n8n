@@ -32,6 +32,7 @@ import type {
 	WorkflowImportDecision,
 } from './workflow-import.types';
 import { decidePlannedPublishingAction } from './workflow-publishing-policy';
+import type { ScopeCrossProjectMoves } from '../../engine/cross-project-mover';
 import { LayoutConflictPolicy } from '../../n8n-packages.types';
 import type {
 	ImportBindingMap,
@@ -70,7 +71,13 @@ export class WorkflowImporter {
 		{
 			checkRootPlacement,
 			layoutConflictPolicy,
-		}: { checkRootPlacement: boolean; layoutConflictPolicy?: LayoutConflictPolicy },
+			crossProjectMoves,
+		}: {
+			checkRootPlacement: boolean;
+			layoutConflictPolicy?: LayoutConflictPolicy;
+			/** The transfers that run before this plan is written. */
+			crossProjectMoves?: ScopeCrossProjectMoves;
+		},
 	): Promise<WorkflowImportPlan> {
 		const { matches: existingBySourceWorkflowId, lineageConflicts } =
 			await this.workflowImportMatchService.findBySourceWorkflowIds(
@@ -91,7 +98,11 @@ export class WorkflowImporter {
 		);
 
 		for (const workflow of prepared) {
-			const existing = existingBySourceWorkflowId.get(workflow.sourceWorkflowId) ?? null;
+			// A workflow that a transfer brings into this project is an update, not an id conflict.
+			const existing =
+				existingBySourceWorkflowId.get(workflow.sourceWorkflowId) ??
+				crossProjectMoves?.movedInWorkflows.get(workflow.sourceWorkflowId) ??
+				null;
 			if (existing && ambiguousSourceIds.has(workflow.sourceWorkflowId)) {
 				items.push({ action: 'skip', ...workflow, existing, publishingAction: 'noop' });
 				continue;
@@ -129,7 +140,10 @@ export class WorkflowImporter {
 			// layout. Otherwise no location was asked for, and the update keeps the current folder.
 			const targetFolderId = workflow.parentFolderId ?? context.folderId;
 			if (item.action === 'update' && (targetFolderId !== null || checkRootPlacement)) {
-				const existingParentFolderId = item.existing.parentFolder?.id ?? null;
+				// A transfer of the workflow alone puts it at the root of this project.
+				const existingParentFolderId = crossProjectMoves?.rootedWorkflowIds.has(item.existing.id)
+					? null
+					: (item.existing.parentFolder?.id ?? null);
 				if (existingParentFolderId !== targetFolderId) {
 					if (layoutConflictPolicy === LayoutConflictPolicy.FollowPackage) {
 						item.moveToFolderId = targetFolderId;

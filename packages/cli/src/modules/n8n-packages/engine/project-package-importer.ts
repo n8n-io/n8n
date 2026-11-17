@@ -34,6 +34,7 @@ import type {
 } from '../n8n-packages.types';
 import { mergeBindings } from '../n8n-packages.types';
 import { assertPackageImportApiKeyScopes, assertProjectWritesAllowed } from './import-gates';
+import { CrossProjectMover, type CrossProjectMovePlan } from './cross-project-mover';
 import { toImportBlockedError } from './import-blocked.error';
 import {
 	needsBundledCredentialFiles,
@@ -73,6 +74,12 @@ export interface PackageImportPlan {
 	scopes: Array<{ project: ManifestEntry; plan: ImportPlan }>;
 	/** Everything that blocks the import, from every stage that could run. */
 	issues: BlockingIssue[];
+	/**
+	 * The moves between projects (`crossProjectMovePolicy=transfer`). `moves` lists each workflow
+	 * and folder that changes project, with both project ids. Absent when a project conflict
+	 * stopped the plan.
+	 */
+	crossProjectMoves?: CrossProjectMovePlan;
 }
 
 @Service()
@@ -82,6 +89,7 @@ export class ProjectPackageImporter {
 		private readonly projectImporter: ProjectImporter,
 		private readonly importOrchestrator: ImportOrchestrator,
 		private readonly importPreflight: PackageImportPreflight,
+		private readonly crossProjectMover: CrossProjectMover,
 	) {}
 
 	async import(
@@ -188,6 +196,11 @@ export class ProjectPackageImporter {
 			);
 			inputs.push(input);
 		}
+		// Across scopes and before them: a move changes what two projects hold.
+		const crossProjectMoves = await this.crossProjectMover.plan(inputs);
+		for (const input of inputs) {
+			input.crossProjectMoves = crossProjectMoves.scopes.get(input.context.projectId);
+		}
 		const draftPlans = await this.importOrchestrator.planPackage(inputs, mode);
 		const { plans, issues } = await this.importPreflight.check(
 			draftPlans,
@@ -197,7 +210,14 @@ export class ProjectPackageImporter {
 		);
 		const scopes = selectedProjects.map((project, index) => ({ project, plan: plans[index] }));
 
-		return { request, manifest, projectPlan, scopes, issues };
+		return {
+			request,
+			manifest,
+			projectPlan,
+			scopes,
+			issues: [...issues, ...crossProjectMoves.issues],
+			crossProjectMoves,
+		};
 	}
 
 	/** Writes a plan that has no issues. */
@@ -210,6 +230,12 @@ export class ProjectPackageImporter {
 		await this.importOrchestrator.assertCanUpdateCredentials(planned.map(({ plan }) => plan));
 
 		const projectSummaries = await this.projectImporter.apply(request.user, projectPlan.items);
+
+		// After the projects exist and before any content: each scope planned a moved item as an
+		// item of its own project. A later deletion of the old project then finds it gone.
+		const moves = plan.crossProjectMoves
+			? await this.crossProjectMover.apply(request.user, plan.crossProjectMoves)
+			: [];
 
 		// Resolve every project's workflow ids up front so a sub-workflow reference
 		// that points into another project resolves when its parent is applied.
@@ -327,6 +353,7 @@ export class ProjectPackageImporter {
 			}),
 			tags: unionTagSummaries(tagSummaries),
 		});
+		if (moves.length > 0) result.moves = moves;
 
 		return { result, scopes, agentOutcomes };
 	}

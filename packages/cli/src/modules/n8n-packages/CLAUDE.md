@@ -12,8 +12,8 @@ is invisible to public-API and CLI users — and an out-of-date OpenAPI spec or
 CLI flag is a silent bug, not a compile error.
 
 One exception: a policy that only promotions needs can stop at
-`ImportSelectionRequest`, for example `dataTableSchemaConflictPolicy` and
-`tagConflictPolicy`. The public selection import keeps the fixed default.
+`ImportSelectionRequest`, for example `dataTableSchemaConflictPolicy`,
+`tagConflictPolicy` and `crossProjectMovePolicy`. The public selection import keeps the fixed default.
 When the full directory import (`importPackageFromDirectory`) needs it too,
 declare it on an internal type such as `PromotionLayoutProperties`, never
 on `ImportRequest`.
@@ -61,6 +61,14 @@ flowchart LR
   folder or data table that the import keeps as it is needs no scope, and an `overwrite` that
   removes nothing needs no delete scope. `WorkflowPackageImporter.findImportLocation` still
   checks the user's project role for the folder scopes before the plan (see LIGO-1439).
+
+### Moves between projects
+- Under `crossProjectMovePolicy=transfer` (promotion only), `CrossProjectMover` plans the moves
+  across every scope before `ImportOrchestrator.planPackage`, and runs the transfers in
+  `applyPlan` before the content of any project. A scope plans a moved item as an item that it
+  already holds. The scope that loses the item does not remove it.
+- `PackageImportPlan.crossProjectMoves.moves` lists each move with both project ids, and
+  `ImportResult.moves` lists the moves done.
 
 ### Adding an IMPORT property
 

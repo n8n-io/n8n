@@ -168,6 +168,27 @@ const crossProjectMoveSchema = z.object({
 });
 
 /**
+ * A workflow or folder that the Apply transfers between two team projects. The id, the history
+ * and the executions stay. A project name is left out when the user cannot access the project.
+ */
+export const promotionPlannedMoveSchema = z.object({
+	kind: z.enum(['workflow', 'folder']),
+	id: z.string(),
+	name: z.string(),
+	/** The project that holds the item on this instance. */
+	fromProject: promotionInstanceProjectSchema,
+	/** The project that holds the item on the branch. */
+	toProject: promotionInstanceProjectSchema,
+	/**
+	 * True when the branch does not hold `fromProject`. Only an instance Apply can do this move,
+	 * after the user confirms the destructive changes.
+	 */
+	needsConfirmation: z.boolean(),
+	/** Workflow only: the workflow has shares on this instance. The move removes them. */
+	losesShares: z.boolean().optional(),
+});
+
+/**
  * Continue can confirm a `destructive-change` or `project-deletion` conflict.
  * The other conflicts need a package or target correction before creation can proceed.
  */
@@ -288,6 +309,10 @@ export const promotionApplyCheckSchema = z
 		accessRequirements: z.array(promotionBindingAccessRequirementSchema),
 		conflicts: z.array(promotionBindingConflictSchema),
 		warnings: z.array(promotionBindingWarningSchema),
+		/** The moves between team projects that the Apply does. */
+		plannedMoves: z.array(promotionPlannedMoveSchema).optional(),
+		/** Each project that a planned move changes, so a project Apply can say that it changes two. */
+		changedProjects: z.array(promotionInstanceProjectSchema).optional(),
 	})
 	// One component for the Apply results and the Apply preview.
 	.openapi('PromotionApplyCheck');
@@ -314,3 +339,4 @@ export type PromotionBindingConflict = z.infer<typeof promotionBindingConflictSc
 export type PromotionDataTableChange = z.infer<typeof promotionDataTableChangeSchema>;
 export type PromotionApplyCheck = z.infer<typeof promotionApplyCheckSchema>;
 export type PromotionPreviewCheck = z.infer<typeof promotionPreviewCheckSchema>;
+export type PromotionPlannedMove = z.infer<typeof promotionPlannedMoveSchema>;

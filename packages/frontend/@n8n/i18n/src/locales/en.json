@@ -11177,6 +11177,7 @@
 	"promotions.preview.tab.blockers": "Blockers",
 	"promotions.preview.marker.workflow": "This workflow has {count} blocker. Resolve it to apply this change. | This workflow has {count} blockers. Resolve them to apply this change.",
 	"promotions.preview.personalProject": "a personal project",
+	"promotions.preview.anotherProject": "another project",
 	"promotions.preview.marker.movedOut": "This workflow moved to {project} on this instance. Promote can't move a workflow between projects. Move it back, then promote again.",
 	"promotions.preview.marker.movedIn": "The branch holds this workflow in {project}. Promote can't move a workflow between projects. Move it back to {project}, then promote again.",
 	"promotions.preview.marker.movedFolder": "The branch and this instance hold this folder in different projects. Apply can't move folders between projects. The Blockers tab shows how to fix it.",
