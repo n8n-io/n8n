@@ -510,7 +510,7 @@ describe('ComponentMapper', () => {
 
 		it('should preserve radio_select components for Slack cards', async () => {
 			const registry = new ChatIntegrationRegistry();
-			registry.register(new SlackIntegration(mock<AgentRepository>()));
+			registry.register(new SlackIntegration(mock<AgentRepository>(), mock()));
 			Container.set(ChatIntegrationRegistry, registry);
 
 			const payload = {

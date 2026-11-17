@@ -27,6 +27,10 @@ import { useAgentChannelRemoval } from '../composables/useAgentChannelRemoval';
 import { useN8nChatChannel } from '../channels/n8nChat/useN8nChatChannel';
 import { useAgentIntegrationsCatalog } from '../composables/useAgentIntegrationsCatalog';
 import { useAgentIntegrationStatus } from '../composables/useAgentIntegrationStatus';
+import {
+	MENTION_CHANNEL_TYPES,
+	useAgentIntegrationAccounts,
+} from '../composables/useAgentIntegrationAccounts';
 import { useAgentTriggerRedesignFlag } from '../composables/useAgentTriggerRedesignFlag';
 import { resolveAgentValidationIssueMessageKey } from '../utils/agentValidationIssueMessages';
 import AgentChannelModal, { type ChannelView } from './AgentChannelModal.vue';
@@ -169,6 +173,49 @@ const { isEnabled: isN8nChatEnabled, withN8nChat } = useN8nChatChannel();
 const channelList = computed(() => withN8nChat(catalog.value ?? []));
 
 const credentialNamesById = ref<Record<string, string>>({});
+const { getAccount, loadAccount } = useAgentIntegrationAccounts();
+
+/**
+ * Says how users reach the agent. The platform name shows on its own line, so
+ * it is not part of this text. Falls back to less detail when the platform does not say.
+ */
+function channelMentionLabel(channel: string): string | undefined {
+	if (!MENTION_CHANNEL_TYPES.includes(channel)) return undefined;
+	const account = getAccount({
+		agentId: props.agentId,
+		type: channel,
+		credentialId: connectedCredentials.value[channel],
+	});
+	const bot = account?.botName;
+	const workspaces = account?.workspaceNames ?? [];
+	if (!bot) {
+		return i18n.baseText('agents.builder.triggers.channel.mention');
+	}
+	if (workspaces.length === 1) {
+		return i18n.baseText('agents.builder.triggers.channel.mention.botInWorkspace', {
+			interpolate: { bot, workspace: workspaces[0] },
+		});
+	}
+	if (workspaces.length > 1) {
+		return i18n.baseText('agents.builder.triggers.channel.mention.botInServers', {
+			interpolate: { bot, count: String(workspaces.length) },
+		});
+	}
+	return i18n.baseText('agents.builder.triggers.channel.mention.bot', {
+		interpolate: { bot },
+	});
+}
+
+watch(
+	connectedCredentials,
+	(credentials) => {
+		if (props.agentUnsaved) return;
+		for (const [type, credentialId] of Object.entries(credentials)) {
+			void loadAccount(props.projectId, { agentId: props.agentId, type, credentialId });
+		}
+	},
+	{ immediate: true, deep: true },
+);
 const channelModalOpen = ref(false);
 
 watch(channelModalOpen, (open, wasOpen) => {
@@ -219,9 +266,11 @@ const channelRows = computed<AgentTriggerChannelItem[]>(() =>
 			...(hasRuntimeError(channel) ? [channelRuntimeErrorMessage(channel)] : []),
 			...(metaNotice?.isError ? [metaNotice.message] : []),
 		];
+		const label = integration?.label ?? channel;
 		return {
 			type: channel,
-			label: integration?.label ?? channel,
+			label,
+			mentionLabel: channelMentionLabel(channel),
 			icon: channelIcon(integration?.icon),
 			credentialName: credentialId ? credentialNamesById.value[credentialId] : undefined,
 			invalidReasons,

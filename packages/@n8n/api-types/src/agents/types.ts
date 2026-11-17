@@ -166,6 +166,18 @@ export interface AgentIntegrationStatusEntry {
 	errorMessage?: string;
 }
 
+/**
+ * Who the agent is on a chat platform, for labels such as
+ * "Mention @AgentBot in Acme on Slack". Every field is optional: the label
+ * falls back to the platform name when the platform does not tell us.
+ */
+export interface AgentIntegrationAccountResponse {
+	/** The name that users mention, without the `@`. */
+	botName?: string;
+	/** The workspaces or servers where the bot is installed. */
+	workspaceNames?: string[];
+}
+
 export interface AgentIntegrationDraftEntry {
 	type: string;
 	settings?: AgentIntegrationSettings;

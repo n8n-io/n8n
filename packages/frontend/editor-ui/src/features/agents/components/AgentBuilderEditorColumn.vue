@@ -206,7 +206,7 @@ defineExpose({ onSetupTaskAction });
 						@update:config="emit('update:config', $event)"
 					/>
 					<AgentTestButton
-						v-if="!props.hidePreviewButton"
+						v-if="!props.hidePreviewButton && !isTriggerRedesignEnabled"
 						:disabled-reason="props.previewDisabledReason"
 						:is-runnable="props.agent?.isRunnable === true"
 						:is-preview-open="props.isPreviewOpen"
