@@ -80,12 +80,14 @@ describe('MessageEventBus.initialize', () => {
 		mockedWriter.getLogFileName.mockReturnValue('mocked.log');
 		mockedWriter.isRecoveryProcessRunning.mockReturnValue(false);
 		executionRepository.findUnfinishedIds.mockResolvedValue([]);
+		executionRepository.findStatusesByIds.mockResolvedValue([]);
 		workflowRepository.getWorkflowInfo.mockResolvedValue([]);
 	});
 
 	afterEach(() => {
 		getInstanceSpy.mockRestore();
 		rmSync(tempDir, { recursive: true, force: true });
+		vi.unstubAllEnvs();
 		vi.clearAllMocks();
 	});
 
@@ -153,25 +155,77 @@ describe('MessageEventBus.initialize', () => {
 			);
 		});
 
-		it('notes the workflows of the unfinished executions in the workflow crash journal', async () => {
+		it('notes the workflows of the logged executions that are still running', async () => {
 			const started = (workflowId?: string) =>
 				new EventMessageWorkflow({ eventName: 'n8n.workflow.started', payload: { workflowId } });
 			mockedWriter.getUnsentAndUnfinishedExecutions.mockResolvedValue({
 				unsentMessages: [],
 				unfinishedExecutions: {
 					a: [started('wf-1')],
-					b: [started('wf-1'), started('wf-2')],
-					c: [started()],
+					b: [started('wf-2')],
+					c: [started('wf-3')],
+					d: [started()],
 				},
 			});
-			executionRepository.findUnfinishedIds.mockResolvedValue([]);
+			executionRepository.findStatusesByIds.mockResolvedValue([
+				{ id: 'a', status: 'running' },
+				{ id: 'b', status: 'waiting' },
+				{ id: 'c', status: 'crashed' },
+				{ id: 'd', status: 'running' },
+			]);
 			const bus = buildBus(buildGlobalConfig({ crashRecoveryMode: 'simple' }));
 
 			await bus.initialize({});
 
-			expect(workflowCrashJournal.noteUnfinishedExecutions).toHaveBeenCalledWith(
-				new Set(['wf-1', 'wf-2']),
+			expect(executionRepository.findStatusesByIds).toHaveBeenCalledWith(['a', 'b', 'c', 'd']);
+			expect(workflowCrashJournal.noteUnfinishedExecutions).toHaveBeenCalledWith(new Set(['wf-1']));
+		});
+
+		it('notes only manual executions in queue mode, while they are not offloaded', async () => {
+			vi.stubEnv('OFFLOAD_MANUAL_EXECUTIONS_TO_WORKERS', '');
+			const started = (workflowId: string, isManual: boolean) =>
+				new EventMessageWorkflow({
+					eventName: 'n8n.workflow.started',
+					payload: { workflowId, isManual },
+				});
+			mockedWriter.getUnsentAndUnfinishedExecutions.mockResolvedValue({
+				unsentMessages: [],
+				unfinishedExecutions: { a: [started('wf-1', true)], b: [started('wf-2', false)] },
+			});
+			executionRepository.findStatusesByIds.mockResolvedValue([
+				{ id: 'a', status: 'running' },
+				{ id: 'b', status: 'running' },
+			]);
+			const bus = buildBus(
+				buildGlobalConfig({ crashRecoveryMode: 'simple', executionsMode: 'queue' }),
 			);
+
+			await bus.initialize({});
+
+			expect(workflowCrashJournal.noteUnfinishedExecutions).toHaveBeenCalledWith(new Set(['wf-1']));
+		});
+
+		it('notes no execution in queue mode when manual executions are offloaded', async () => {
+			vi.stubEnv('OFFLOAD_MANUAL_EXECUTIONS_TO_WORKERS', 'true');
+			mockedWriter.getUnsentAndUnfinishedExecutions.mockResolvedValue({
+				unsentMessages: [],
+				unfinishedExecutions: {
+					a: [
+						new EventMessageWorkflow({
+							eventName: 'n8n.workflow.started',
+							payload: { workflowId: 'wf-1', isManual: true },
+						}),
+					],
+				},
+			});
+			executionRepository.findStatusesByIds.mockResolvedValue([{ id: 'a', status: 'running' }]);
+			const bus = buildBus(
+				buildGlobalConfig({ crashRecoveryMode: 'simple', executionsMode: 'queue' }),
+			);
+
+			await bus.initialize({});
+
+			expect(workflowCrashJournal.noteUnfinishedExecutions).toHaveBeenCalledWith(new Set());
 		});
 
 		it('does not read unfinished executions from the database in queue mode', async () => {
@@ -186,6 +240,7 @@ describe('MessageEventBus.initialize', () => {
 			await bus.initialize({});
 
 			expect(executionRepository.findUnfinishedIds).not.toHaveBeenCalled();
+			expect(workflowCrashJournal.noteUnfinishedExecutions).toHaveBeenCalledWith(new Set());
 			expect(executionCrashService.markAsCrashed).toHaveBeenCalledWith(
 				['b', 'c'],
 				'startup-recovery',

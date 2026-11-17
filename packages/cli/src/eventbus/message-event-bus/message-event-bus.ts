@@ -295,9 +295,7 @@ export class MessageEventBus extends EventEmitter {
 			return;
 		}
 
-		this.workflowCrashJournal.noteUnfinishedExecutions(
-			collectWorkflowIds(Object.values(unsentAndUnfinished.unfinishedExecutions)),
-		);
+		await this.noteRunningExecutions(unsentAndUnfinished.unfinishedExecutions);
 		await this.logActiveWorkflows();
 
 		const recoveryAlreadyAttempted = this.logWriter?.isRecoveryProcessRunning();
@@ -343,6 +341,29 @@ export class MessageEventBus extends EventEmitter {
 
 		// remove the recovery process flag file
 		this.logWriter?.endRecoveryProcess();
+	}
+
+	/**
+	 * Feeds the workflow crash journal the workflows of the logged executions that are still
+	 * `running` in this process. A logged execution that is waiting, or that an earlier recovery
+	 * already closed, was not in flight at the crash. In queue mode the executions run on workers,
+	 * except manual ones while they are not offloaded.
+	 */
+	private async noteRunningExecutions(
+		unfinishedExecutions: Record<string, EventMessageTypes[] | undefined>,
+	) {
+		const statuses = await this.executionRepository.findStatusesByIds(
+			Object.keys(unfinishedExecutions),
+		);
+		const runsHere = (messages: EventMessageTypes[] | undefined) =>
+			this.globalConfig.executions.mode !== 'queue' ||
+			(process.env.OFFLOAD_MANUAL_EXECUTIONS_TO_WORKERS !== 'true' &&
+				(messages ?? []).some(({ payload }) => payload?.isManual === true));
+		const running = statuses
+			.filter(({ status }) => status === 'running')
+			.map(({ id }) => unfinishedExecutions[id])
+			.filter(runsHere);
+		this.workflowCrashJournal.noteUnfinishedExecutions(collectWorkflowIds(running));
 	}
 
 	/**
