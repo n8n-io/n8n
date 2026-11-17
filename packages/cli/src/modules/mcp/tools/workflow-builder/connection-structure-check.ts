@@ -1,12 +1,11 @@
+import type { TelemetryProxy } from '@n8n/backend-services';
 import {
 	getConnectionTypes,
 	NodeConnectionTypes,
 	type INodeOutputConfiguration,
 	type NodeConnectionType,
+	type INodeTypes,
 } from 'n8n-workflow';
-
-import type { NodeTypes } from '@/node-types';
-import type { Telemetry } from '@/telemetry';
 
 import { USER_CALLED_MCP_TOOL_EVENT } from '../../mcp.constants';
 import type { UserCalledMCPToolEventPayload } from '../../mcp.types';
@@ -128,11 +127,11 @@ export function formatInvalidAiToolSourceMessage(violations: InvalidAiToolSource
 }
 
 /**
- * Build a `NodeOutputsResolver` backed by the runtime NodeTypes registry.
+ * Build a `NodeOutputsResolver` backed by the runtime node types registry.
  * Falls back to `undefined` for unknown / dynamic / unloadable types so the
  * caller treats those as "can't prove invalid".
  */
-export function createNodeOutputsResolver(nodeTypes: NodeTypes): NodeOutputsResolver {
+export function createNodeOutputsResolver(nodeTypes: INodeTypes): NodeOutputsResolver {
 	return (type, version) => {
 		try {
 			const nodeType = nodeTypes.getByNameAndVersion(type, version);
@@ -156,10 +155,10 @@ export function createNodeOutputsResolver(nodeTypes: NodeTypes): NodeOutputsReso
  */
 export function buildInvalidAiToolSourceErrorResponse<T extends Record<string, unknown>>(
 	workflow: WorkflowForToolSourceCheck,
-	nodeTypes: NodeTypes,
+	nodeTypes: INodeTypes,
 	buildOutput: (errorMessage: string) => T,
 	telemetryPayload: UserCalledMCPToolEventPayload,
-	telemetry: Telemetry,
+	telemetry: TelemetryProxy,
 ): {
 	content: Array<{ type: 'text'; text: string }>;
 	structuredContent: T;

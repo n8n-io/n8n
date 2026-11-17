@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { AppBlueprint, InstanceAiConfirmRequest } from '@n8n/api-types';
+import type { AppBlueprint, AppBlueprintErrors, InstanceAiConfirmRequest } from '@n8n/api-types';
 import { useTelemetry } from '@n8n/composables/useTelemetry';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { ref } from 'vue';
@@ -12,6 +12,8 @@ const props = defineProps<{
 	requestId: string;
 	inputThreadId?: string;
 	blueprint: AppBlueprint;
+	errors?: AppBlueprintErrors;
+	failed?: boolean;
 	readOnly?: boolean;
 	expired?: boolean;
 }>();
@@ -49,6 +51,8 @@ async function submit(body: InstanceAiConfirmRequest) {
 <template>
 	<AppBlueprintCard
 		:blueprint="blueprint"
+		:errors="errors"
+		:failed="failed"
 		:read-only="readOnly || expired || submitted"
 		@submit="submit"
 	/>

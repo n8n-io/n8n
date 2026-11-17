@@ -1,6 +1,7 @@
 import { ensureError } from '@n8n/utils/errors/ensure-error';
 import { isSerializedBuffer, serializeBuffer, toBuffer } from 'n8n-core';
-import { OperationalError, randomInt, UnexpectedError } from 'n8n-workflow';
+import { randomInt } from 'n8n-workflow';
+import { OperationalError, UnexpectedError } from '@n8n/errors';
 import { nanoid } from 'nanoid';
 import { EventEmitter } from 'node:events';
 import { type MessageEvent, WebSocket } from 'ws';

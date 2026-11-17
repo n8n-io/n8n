@@ -1,14 +1,13 @@
 import { Repository } from '@n8n/typeorm';
 import type { EntityManager, EntityTarget, ObjectLiteral } from '@n8n/typeorm';
-import { UnexpectedError } from 'n8n-workflow';
 
 import type { OperationContext, TransactionRunner } from '../services/transaction';
-import { TypeOrmTransaction } from '../services/typeorm-transaction';
+import { entityManagerOf } from '../services/typeorm-transaction';
 
 /**
  * Base class for the table behind a repository. It participates in {@link TransactionRunner}
- * transactions and owns the single seam that turns an opaque {@link Transaction} back into a
- * native `EntityManager`: {@link BaseRepository.managerFor}.
+ * transactions. Repositories get a native `EntityManager` for an opaque {@link Transaction}
+ * through {@link BaseRepository.managerFor}.
  *
  * A repository does not extend this class. It declares a file-private subclass (the table),
  * which is never exported or registered with DI, and holds it as a private field. Every data
@@ -37,14 +36,7 @@ export abstract class BaseRepository<Entity extends ObjectLiteral> extends Repos
 	 * and business logic never holds a `BaseRepository`.
 	 */
 	managerFor(ctx: OperationContext): EntityManager {
-		const { trx } = ctx;
-		if (!trx) return this.manager;
-
-		if (!(trx instanceof TypeOrmTransaction)) {
-			throw new UnexpectedError('Transaction was not created by the TypeORM runner');
-		}
-
-		return trx.getEntityManager();
+		return ctx.trx ? entityManagerOf(ctx.trx) : this.manager;
 	}
 
 	/**

@@ -1,6 +1,7 @@
 import { createHmac, timingSafeEqual } from 'node:crypto';
 
 import { UUID_V7_PATTERN } from '@n8n/constants';
+import { APPROVAL_CALLBACK_PREFIX, decodeStepId, encodeStepId } from '@n8n/utils/approval-callback';
 import { z } from 'zod';
 
 import {
@@ -92,23 +93,11 @@ export function mintStepBoundResumeToken(secret: string, stepId: string, binding
 }
 
 /**
- * Starts an approval callback. Telegram allows 64 bytes for the data of a
- * button, so the callback carries its claims in a compact signed form and not
- * as a JWT: the prefix, the 16 bytes of the step id in 22 base64url
- * characters, the decision, and 32 base64url characters of an HMAC-SHA256.
+ * An approval callback carries its claims in a compact signed form and not as
+ * a JWT: the prefix, the encoded step id, the decision, and 32 base64url
+ * characters of an HMAC-SHA256. The layout is shared with core.
  */
-export const APPROVAL_CALLBACK_PREFIX = 'nhitl2|';
-
-const encodeStepId = (stepId: string) =>
-	Buffer.from(stepId.replaceAll('-', ''), 'hex').toString('base64url');
-
-function decodeStepId(encoded: string): string | undefined {
-	const hex = Buffer.from(encoded, 'base64url').toString('hex');
-	const stepId = `${hex.slice(0, 8)}-${hex.slice(8, 12)}-${hex.slice(12, 16)}-${hex.slice(16, 20)}-${hex.slice(20)}`;
-	// Accept only the string that `encodeStepId` builds. The last of the 22 characters has 4 unused
-	// bits, so 16 strings decode to the same id, but we only accept the one we produce.
-	return UUID_V7_PATTERN.test(stepId) && encodeStepId(stepId) === encoded ? stepId : undefined;
-}
+export { APPROVAL_CALLBACK_PREFIX };
 
 const callbackMac = (secret: string, stepId: string, decision: ApprovalDecision) =>
 	createHmac('sha256', secret)

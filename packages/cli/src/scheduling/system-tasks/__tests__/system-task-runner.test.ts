@@ -105,6 +105,22 @@ describe('SystemTaskRunner', () => {
 			expect(dummy.runCount).toBe(1);
 		});
 
+		it('uses the initial delay once, then keeps the interval', async () => {
+			const { runner, metadata } = setup({ isLeader: true });
+			Object.assign(dummy, { initialDelaySeconds: 17 });
+			metadata.register(DummySystemTask);
+			await initRunner(runner);
+			await vi.advanceTimersByTimeAsync(16_999);
+			expect(dummy.runCount).toBe(0);
+			await vi.advanceTimersByTimeAsync(1);
+			expect(dummy.runCount).toBe(1);
+			await vi.advanceTimersByTimeAsync(59_999);
+			expect(dummy.runCount).toBe(1);
+			await vi.advanceTimersByTimeAsync(1);
+			expect(dummy.runCount).toBe(2);
+			await runner.shutdown();
+		});
+
 		it('fires a task whose interval is not a whole number of seconds on the rounded cadence', async () => {
 			const { runner, metadata, logger } = setup({ isLeader: true });
 			dummy.schedule = { kind: 'interval', intervalSeconds: 59.99999999999999 };

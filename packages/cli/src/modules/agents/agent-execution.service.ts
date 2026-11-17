@@ -12,14 +12,20 @@ import { Logger } from '@n8n/backend-common';
 import type { StorageLocation } from '@n8n/blob-storage';
 import { TransactionRunner, type OperationContext } from '@n8n/db';
 import { Service } from '@n8n/di';
+import { isRecord } from '@n8n/utils/is-record';
 import chunk from 'lodash/chunk';
+import groupBy from 'lodash/groupBy';
 import { ErrorReporter, StorageConfig } from 'n8n-core';
 
 import { ConflictError, OperationalError, UnexpectedError } from '@n8n/errors';
-import type { AgentRunTelemetryType, IAgentConfigurationTelemetryProperties } from '@/interfaces';
-import { Telemetry } from '@/telemetry';
 
+import { AgentProjectDeletionRepository } from './repositories/agent-project-deletion.repository';
 import { AgentChatAttachmentService } from './agent-chat-attachment.service';
+import type {
+	AgentRunTelemetryType,
+	IAgentConfigurationTelemetryProperties,
+} from './agent-telemetry.types';
+import { AgentUsageTelemetryService } from './agent-usage-telemetry.service';
 import type { StoredAttachmentRef } from './types/agent-chat-attachment';
 import { AgentExecutionUpdateBroadcaster } from './agent-execution-update-broadcaster';
 import { AgentTurnAlreadyRunningError } from './agent-turn-already-running.error';
@@ -192,7 +198,7 @@ export class AgentExecutionService {
 		private readonly agentExecutionRepository: AgentExecutionRepository,
 		private readonly agentExecutionThreadRepository: AgentExecutionThreadRepository,
 		private readonly n8nMemory: N8nMemory,
-		private readonly telemetry: Telemetry,
+		private readonly agentUsageTelemetry: AgentUsageTelemetryService,
 		private readonly agentChatAttachmentService: AgentChatAttachmentService,
 		private readonly agentExecutionLogStore: AgentExecutionLogStore,
 		private readonly storageConfig: StorageConfig,
@@ -203,6 +209,7 @@ export class AgentExecutionService {
 		private readonly queueRepository: AgentMessageQueueRepository,
 		private readonly messageRepository: AgentMessageRepository,
 		private readonly systemAgents: SystemAgentRegistry,
+		private readonly projectDeletion: AgentProjectDeletionRepository,
 	) {}
 
 	async startExecutionRecording(
@@ -227,10 +234,24 @@ export class AgentExecutionService {
 		ctx: OperationContext,
 		lockedQueueThread?: AgentExecutionThread,
 	): Promise<AgentExecutionReservation> {
+		return await this.projectDeletion.withWritableProject(
+			params.projectId,
+			async (ctx) => await this.reserveWritableExecution(params, startedAt, ctx, lockedQueueThread),
+			ctx,
+		);
+	}
+
+	private async reserveWritableExecution(
+		params: StartExecutionParams,
+		startedAt: Date,
+		ctx: OperationContext,
+		lockedQueueThread?: AgentExecutionThread,
+	): Promise<AgentExecutionReservation> {
 		// The queue already locked the session. Its consumer validates the owner before execution.
 		const prepared = lockedQueueThread
 			? { thread: lockedQueueThread, created: false }
 			: await this.prepareThread(params, ctx);
+		await this.agentExecutionThreadRepository.assertOwnerActive(prepared.thread, ctx);
 		const { queueItem, predecessorId } = await this.checkAdmission(params, ctx);
 		const execution = this.agentExecutionRepository.create({
 			threadId: params.threadId,
@@ -443,7 +464,7 @@ export class AgentExecutionService {
 		this.pendingTimelineSnapshots.delete(executionId);
 		const record = applyFatalSessionOutcome(params.record);
 		const settled = record === params.record ? params : { ...params, record };
-		const status = executionStatus(record);
+		const status = executionStatus(settled);
 		const stoppedAt = new Date(record.startTime + record.duration);
 		const failureSummary = computeExecutionFailureSummary({
 			timeline: record.timeline,
@@ -487,7 +508,7 @@ export class AgentExecutionService {
 			const currentLocation = await this.agentExecutionRepository.findTimelineStorageLocation(
 				ref.executionId,
 			);
-			if (currentLocation === 'db')
+			if (currentLocation === 'db' || currentLocation === null)
 				await this.agentExecutionLogStore.delete([{ ...ref, storedAt }]);
 		} catch (error) {
 			this.errorReporter.error(error);
@@ -500,7 +521,8 @@ export class AgentExecutionService {
 	): Promise<boolean> {
 		const timeline = execution.timeline ?? [];
 		const stoppedAt = new Date();
-		const error = 'Agent execution was interrupted by a process restart.';
+		const error =
+			'Agent execution stopped because n8n restarted, for example after a crash or an update.';
 		const duration = execution.startedAt
 			? Math.max(0, stoppedAt.getTime() - execution.startedAt.getTime())
 			: 0;
@@ -727,18 +749,34 @@ export class AgentExecutionService {
 		}
 		const { refs } = result;
 
+		// The thread is already deleted, so a failed blob delete only leaves orphaned bytes.
 		await Promise.all([
 			this.agentChatAttachmentService.deleteStoredData(refs.attachmentBinaryDataIds, { threadId }),
-			this.agentExecutionLogStore.delete(
-				this.toBlobRefs(refs.executionLogs).map((ref) => ({
+			this.deleteThreadExecutionLogs(agentId, threadId, refs.executionLogs),
+		]);
+		return true;
+	}
+
+	private async deleteThreadExecutionLogs(
+		agentId: string,
+		threadId: string,
+		executionLogs: Array<Pick<AgentExecution, 'id' | 'storedAt'>>,
+	): Promise<void> {
+		try {
+			await this.agentExecutionLogStore.delete(
+				this.toBlobRefs(executionLogs).map((ref) => ({
 					agentId,
 					threadId,
 					executionId: ref.id,
 					storedAt: ref.storedAt,
 				})),
-			),
-		]);
-		return true;
+			);
+		} catch (error) {
+			this.logger.warn('Failed to delete agent execution logs of a deleted thread', {
+				threadId,
+				error: error instanceof Error ? error.message : String(error),
+			});
+		}
 	}
 
 	/**
@@ -761,6 +799,23 @@ export class AgentExecutionService {
 		}
 	}
 
+	/** Include logs from instance agents that have sessions in the deleted project. */
+	async deleteExecutionLogsForProject(projectId: string): Promise<void> {
+		const refs = this.toBlobRefs(
+			await this.agentExecutionRepository.findBlobRefsByProjectId(projectId),
+		);
+		for (const batch of chunk(refs, AgentExecutionService.logDeletionBatchSize)) {
+			await this.agentExecutionLogStore.delete(
+				batch.map((ref) => ({
+					agentId: ref.agentId,
+					threadId: ref.threadId,
+					executionId: ref.id,
+					storedAt: ref.storedAt,
+				})),
+			);
+		}
+	}
+
 	/**
 	 * Delete the SDK-memory threads of an agent's sessions. Call before the agent
 	 * is removed: the cascade then deletes the execution threads that list them.
@@ -770,6 +825,22 @@ export class AgentExecutionService {
 		const threadIds = await this.agentExecutionThreadRepository.findIdsByAgentId(agentId);
 		for (const batch of chunk(threadIds, AgentExecutionService.logDeletionBatchSize)) {
 			await memory.deleteThreads(batch);
+		}
+	}
+
+	/** Include instance-agent sessions before the project cascade removes their thread ids. */
+	async deleteMemoryThreadsForProject(projectId: string): Promise<void> {
+		const sessions =
+			await this.agentExecutionThreadRepository.findMemoryThreadsForProject(projectId);
+		for (const [agentId, threads] of Object.entries(
+			groupBy(sessions, (session) => session.agentId),
+		)) {
+			const memory = this.n8nMemory.getImplementation(agentId);
+			for (const batch of chunk(threads, AgentExecutionService.logDeletionBatchSize)) {
+				const threadIds = batch.map((thread) => thread.id);
+				await memory.deleteThreads(threadIds);
+				await this.agentExecutionThreadRepository.deleteCheckpointsForThreads(threadIds);
+			}
 		}
 	}
 
@@ -1202,7 +1273,9 @@ export class AgentExecutionService {
 		try {
 			await this.agentExecutionLogStore.write(logRef, { timeline: record.timeline }, storedAt);
 			blobWritten = true;
-			await this.agentExecutionRepository.moveTimelineToBlob(executionId, storedAt);
+			await this.projectDeletion.withWritableProject(params.projectId, async (ctx) => {
+				await this.agentExecutionRepository.moveTimelineToBlob(executionId, storedAt, ctx);
+			});
 		} catch (error) {
 			this.errorReporter.error(error);
 			if (blobWritten) await this.deleteUnreferencedTimelineBlob(logRef, storedAt);
@@ -1357,10 +1430,11 @@ export class AgentExecutionService {
 	}
 
 	private trackFinishedTurn(params: RecordMessageParams, status: AgentExecutionStatus): void {
-		if (!params.telemetry) return;
+		// A parked approval is neither a success nor a failure.
+		if (status === 'awaiting' || !params.telemetry) return;
 		const { agentId, threadId, record } = params;
 		try {
-			this.telemetry.trackAgentTurnFinished({
+			this.agentUsageTelemetry.trackAgentTurnFinished({
 				agent_id: agentId,
 				user_id: params.telemetry.userId,
 				thread_id: threadId,
@@ -1397,10 +1471,28 @@ function cleanUserMessage(message: string | null, agentName: string): string | n
 	return cleaned.length > 0 ? cleaned : null;
 }
 
-function executionStatus(record: MessageRecord): AgentExecution['status'] {
+function executionStatus(
+	params: Pick<RecordMessageParams, 'record' | 'hitlStatus' | 'source'>,
+): AgentExecution['status'] {
+	const { record } = params;
 	if (record.error !== null || record.finishReason === 'error') return 'error';
 	if (record.finishReason === 'cancelled') return 'cancelled';
+	if (
+		params.hitlStatus === 'suspended' &&
+		params.source === 'task' &&
+		record.timeline.some(isApprovalSuspension)
+	) {
+		return 'awaiting';
+	}
 	return 'success';
+}
+
+function isApprovalSuspension(event: TimelineEvent): boolean {
+	return (
+		event.type === 'suspension' &&
+		isRecord(event.suspendPayload) &&
+		event.suspendPayload.type === 'approval'
+	);
 }
 
 /** Maps a thread (with `agent` and `agent.activeVersion` loaded) to the

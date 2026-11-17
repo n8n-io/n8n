@@ -16,6 +16,7 @@ import {
 	type AppRuntimeMeResponse,
 } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
+import { EventService } from '@n8n/backend-services';
 import {
 	createIpRateLimit,
 	Get,
@@ -24,6 +25,7 @@ import {
 	Post,
 	RootLevelController,
 } from '@n8n/decorators';
+import { principalFromUser } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { NotFoundError } from '@n8n/errors';
 import type { Principal } from '@n8n/permissions';
@@ -37,6 +39,7 @@ import express, {
 } from 'express';
 import type { z } from 'zod';
 
+import type { AppInteractionType } from '../app-events';
 import { AppsConfig } from '../apps.config';
 import type { App } from '../app.entity';
 import { AppAuthService } from '../auth/app-auth.service';
@@ -52,6 +55,7 @@ import { toRuntimeBinding } from '../bindings/app-bindings.service';
 import { AppRuntimeError } from '../bindings/app-runtime.error';
 import { AppPreviewService } from '../preview/app-preview.service';
 import { AppHostService } from '../serving/app-host.service';
+import type { AppVersion } from '../versions/app-version.entity';
 import { AppVersionRepository } from '../versions/app-version.repository';
 
 export const APP_RUNTIME_MAX_BODY_BYTES = 1024 * 1024;
@@ -74,6 +78,8 @@ interface AppRuntimeContext {
 	/** The bindings of the served version: the published one, or the one a preview session shows. */
 	bindings: AppBinding[];
 	user: AppRuntimeUser;
+	versionId: string;
+	isPreview: boolean;
 }
 
 /** The app host of the request. A preview host serves a version that can be an unpublished draft. */
@@ -128,6 +134,7 @@ export class AppRuntimeController {
 		private readonly workflows: AppWorkflowPort,
 		private readonly agents: AppAgentPort,
 		private readonly logger: Logger,
+		private readonly events: EventService,
 	) {}
 
 	/** App hosts bypass the main server middleware, so this parses cookies and bodies itself. */
@@ -138,11 +145,19 @@ export class AppRuntimeController {
 			const host = this.resolveHost(req);
 			this.assertSameOriginRequest(req, host);
 			await run(parseCookies, req, res);
-			const { app, versionId, user } =
-				host?.kind === 'preview' ? await this.admitPreview(req) : await this.admitPublished(req);
-			const bindings = await this.servedBindings(app, versionId);
+			const isPreview = host?.kind === 'preview';
+			const { app, versionId, user } = isPreview
+				? await this.admitPreview(req)
+				: await this.admitPublished(req);
+			const version = await this.servedVersion(app, versionId);
 			await this.parseBody(req, res);
-			req.appRuntime = { app, bindings, user };
+			req.appRuntime = {
+				app,
+				bindings: version.bindings,
+				user,
+				versionId: version.id,
+				isPreview,
+			};
 			next();
 		} catch (error) {
 			this.sendError(res, error);
@@ -187,7 +202,9 @@ export class AppRuntimeController {
 			async () => {
 				const { ctx, binding } = this.resolve(req, 'dataTable', 'insert');
 				const { data } = parse(appRuntimeInsertRowsSchema, req.body, 'The rows are invalid.');
-				return { data: await this.dataTables.insertRows(ctx, binding.dataTableId, data) };
+				const rows = await this.dataTables.insertRows(ctx, binding.dataTableId, data);
+				this.interacted(req, 'data_table_write');
+				return { data: rows };
 			},
 			201,
 		);
@@ -203,6 +220,7 @@ export class AppRuntimeController {
 				'The update is invalid.',
 			);
 			const rows = await this.dataTables.updateRows(ctx, binding.dataTableId, filter, data);
+			this.interacted(req, 'data_table_write');
 			return { data: readableRows(binding, rows) };
 		});
 	}
@@ -213,6 +231,7 @@ export class AppRuntimeController {
 			const { ctx, binding } = this.resolve(req, 'dataTable', 'delete');
 			const { filter } = parse(appRuntimeDeleteRowsSchema, req.body, 'The filter is invalid.');
 			const rows = await this.dataTables.deleteRows(ctx, binding.dataTableId, filter);
+			this.interacted(req, 'data_table_write');
 			return { data: readableRows(binding, rows) };
 		});
 	}
@@ -222,6 +241,7 @@ export class AppRuntimeController {
 		await this.answer(res, async () => {
 			const { ctx, binding } = this.resolve(req, 'workflow');
 			const result = await this.workflows.run(ctx, binding.workflowId, req.body ?? {});
+			this.interacted(req, 'workflow_run');
 			if (result.status === 'running') res.status(202);
 			return result;
 		});
@@ -242,7 +262,9 @@ export class AppRuntimeController {
 		await this.stream(res, async (signal) => {
 			const { ctx, binding } = this.resolve(req, 'agent', 'chat');
 			const body = parse(appAgentChatRequestSchema, req.body, 'The message is invalid.');
-			return await this.agents.chat(ctx, binding.agentId, body, signal);
+			const turn = await this.agents.chat(ctx, binding.agentId, body, signal);
+			this.interacted(req, 'agent_message');
+			return turn;
 		});
 	}
 
@@ -344,24 +366,28 @@ export class AppRuntimeController {
 			);
 		}
 		const { app, versionId, user } = admitted;
-		return {
-			app,
-			versionId,
-			user: {
-				id: user.id,
-				email: user.email,
-				firstName: user.firstName ?? undefined,
-				lastName: user.lastName ?? undefined,
-			},
-		};
+		// A service account has no email or name.
+		const { id, email, firstName, lastName } = principalFromUser(user);
+		return { app, versionId, user: { id, email, firstName, lastName } };
 	}
 
-	private async servedBindings(app: App, versionId: string | null): Promise<AppBinding[]> {
+	private interacted(req: AppRuntimeRequest, interactionType: AppInteractionType) {
+		const { app, user, versionId, isPreview } = this.context(req);
+		this.events.emit('app-interacted', {
+			appId: app.id,
+			versionId,
+			userId: user.id,
+			interactionType,
+			isPreview,
+		});
+	}
+
+	private async servedVersion(app: App, versionId: string | null): Promise<AppVersion> {
 		const version = versionId ? await this.versions.findVersionById(versionId) : null;
 		if (!version || version.appId !== app.id) {
 			throw new AppRuntimeError(404, 'app_not_found', 'App not found.');
 		}
-		return version.bindings;
+		return version;
 	}
 
 	private async parseBody(req: Request, res: Response) {

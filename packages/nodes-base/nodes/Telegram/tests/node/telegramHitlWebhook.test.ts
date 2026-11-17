@@ -1,6 +1,7 @@
 import { Container } from '@n8n/di';
 import {
 	buildHitlCallbackReference,
+	HITL_CALLBACK_PREFIX_V2,
 	InstanceSettings,
 	markTelegramInteractionRequest,
 } from 'n8n-core';
@@ -11,7 +12,6 @@ import { mock } from 'vitest-mock-extended';
 import type * as _sendAndWaitUtils from '../../../../utils/sendAndWait/utils';
 
 const TEST_HMAC_SECRET = 'test-hmac-secret';
-Container.set(InstanceSettings, { hmacSignatureSecret: TEST_HMAC_SECRET } as InstanceSettings);
 
 const ACCESS_TOKEN = '123456:test-bot-token';
 
@@ -36,7 +36,7 @@ vi.mock('../../../../utils/sendAndWait/utils', async () => {
 // Imported after the mocks above so both bind to the mocked implementations.
 import { sendAndWaitWebhook } from '../../../../utils/sendAndWait/utils';
 import * as genericFunctions from '../../GenericFunctions';
-import { deriveHitlSecretToken } from '../../hitl/tokens';
+import { deriveHitlSecretToken, deriveLegacyHitlSecretToken } from '../../hitl/tokens';
 import { telegramSendAndWaitWebhook } from '../../hitl/webhook';
 
 const VALID_SECRET_TOKEN = deriveHitlSecretToken(ACCESS_TOKEN);
@@ -163,6 +163,40 @@ describe('telegramSendAndWaitWebhook', () => {
 		expect(status).toHaveBeenCalledWith(400);
 		expect(result).toEqual({ noWebhookResponse: true });
 		expect(genericFunctions.apiRequest).not.toHaveBeenCalled();
+	});
+
+	it('fails closed when the credential has no access token', async () => {
+		webhookFns.getCredentials.mockResolvedValue({ accessToken: '' });
+		webhookFns.getBodyData.mockReturnValue(makeCallbackQueryBody());
+		webhookFns.getNodeParameter.mockImplementation((name: unknown) =>
+			name === 'chatApproval' ? true : undefined,
+		);
+		webhookFns.getHeaderData.mockReturnValue({ 'x-telegram-bot-api-secret-token': '' });
+
+		await expect(telegramSendAndWaitWebhook.call(webhookFns)).rejects.toThrow(
+			'The Telegram credential has no access token',
+		);
+		expect(genericFunctions.apiRequest).not.toHaveBeenCalled();
+	});
+
+	it('resumes on the secret token a bot still holds from before the derivation changed', async () => {
+		Container.set(InstanceSettings, { hmacSignatureSecret: 'instance-secret' } as InstanceSettings);
+		webhookFns.getBodyData.mockReturnValue(makeCallbackQueryBody());
+		webhookFns.getNodeParameter.mockImplementation((name: unknown, fallback?: unknown) => {
+			if (name === 'chatApproval') return true;
+			if (name === 'postDecisionBehavior') return 'keepMessage';
+			return fallback as never;
+		});
+		webhookFns.getHeaderData.mockReturnValue({
+			'x-telegram-bot-api-secret-token': deriveLegacyHitlSecretToken(ACCESS_TOKEN),
+		});
+
+		const result = await telegramSendAndWaitWebhook.call(webhookFns);
+
+		expect(
+			(result as { workflowData: Array<Array<{ json: { data: { approved: boolean } } }>> })
+				.workflowData[0][0].json.data.approved,
+		).toBe(true);
 	});
 
 	it('responds 403 and does not resume when the secret-token header is wrong', async () => {
@@ -313,6 +347,27 @@ describe('telegramSendAndWaitWebhook', () => {
 		).toBe(false);
 	});
 
+	it('resumes with the decision of an engine v2 reference, which names a step', async () => {
+		webhookFns.getBodyData.mockReturnValue(
+			makeCallbackQueryBody({ data: `${HITL_CALLBACK_PREFIX_V2}AZJqTn9ccACAAAAAAAAAAQ|d|mac` }),
+		);
+		webhookFns.getNodeParameter.mockImplementation((name: unknown, fallback?: unknown) => {
+			if (name === 'chatApproval') return true;
+			if (name === 'postDecisionBehavior') return 'keepMessage';
+			return fallback as never;
+		});
+		webhookFns.getHeaderData.mockReturnValue({
+			'x-telegram-bot-api-secret-token': VALID_SECRET_TOKEN,
+		});
+
+		const result = await telegramSendAndWaitWebhook.call(webhookFns);
+
+		expect(
+			(result as { workflowData: Array<Array<{ json: { data: { approved: boolean } } }>> })
+				.workflowData[0][0].json.data.approved,
+		).toBe(false);
+	});
+
 	it('removes the buttons without an outcome message when postDecisionBehavior is removeButtons', async () => {
 		webhookFns.getBodyData.mockReturnValue(makeCallbackQueryBody());
 		webhookFns.getNodeParameter.mockImplementation((name: unknown, fallback?: unknown) => {
@@ -432,5 +487,12 @@ describe('telegramSendAndWaitWebhook', () => {
 		expect(genericFunctions.apiRequest).toHaveBeenCalledWith('POST', 'answerCallbackQuery', {
 			callback_query_id: 'cbq-1',
 		});
+	});
+});
+
+describe('deriveHitlSecretToken', () => {
+	it('derives the registered value from the bot token alone', () => {
+		// Pinned: the data plane registers this value and the control plane checks it.
+		expect(deriveHitlSecretToken('123:abc')).toBe('WPKjqiNTOuImrBtLZo-_icC3OUZkkWhYKHml3Meplfc');
 	});
 });

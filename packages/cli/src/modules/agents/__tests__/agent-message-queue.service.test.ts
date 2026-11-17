@@ -141,6 +141,31 @@ describe('AgentMessageQueueService', () => {
 			);
 		});
 
+		it('discards pending work without clearing input when audit history must remain', async () => {
+			threadRepository.lockById.mockResolvedValue(makeThread());
+			executionRepository.findRunningByThread.mockResolvedValue([]);
+			repository.listPending.mockResolvedValue([
+				mock<AgentMessageQueue>({
+					id: 'queue-1',
+					messageId: 'message-1',
+					message: mock<AgentMessageEntity>({
+						content: { role: 'user', content: [{ type: 'text', text: 'Keep this request.' }] },
+					}),
+				}),
+			]);
+
+			await service.prepareSessionStop('thread-1', { preserveInput: true });
+
+			expect(repository.discardPendingForSession).toHaveBeenCalledWith(
+				'thread-1',
+				expect.anything(),
+			);
+			expect(messages.clearPendingInput).not.toHaveBeenCalled();
+			expect(threadRepository.lockById.mock.invocationCallOrder[0]).toBeLessThan(
+				repository.discardPendingForSession.mock.invocationCallOrder[0],
+			);
+		});
+
 		it('does not discard input when the session no longer exists', async () => {
 			threadRepository.lockById.mockResolvedValue(null);
 			await expect(service.prepareSessionStop('thread-1')).rejects.toThrow(NotFoundError);

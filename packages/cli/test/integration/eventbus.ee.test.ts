@@ -24,7 +24,7 @@ import type { MessageEventBusDestinationSentry } from '@/modules/log-streaming.e
 import type { MessageEventBusDestinationSyslog } from '@/modules/log-streaming.ee/destinations/message-event-bus-destination-syslog.ee';
 import type { MessageEventBusDestinationWebhook } from '@/modules/log-streaming.ee/destinations/message-event-bus-destination-webhook.ee';
 import { LogStreamingDestinationService } from '@/modules/log-streaming.ee/log-streaming-destination.service';
-import { Publisher } from '@/scaling/pubsub/publisher.service';
+import { Publisher } from '@n8n/backend-services';
 
 import { createUser } from './shared/db/users';
 import type { SuperAgentTest } from './shared/types';

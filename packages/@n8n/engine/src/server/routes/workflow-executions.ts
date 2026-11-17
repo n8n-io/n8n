@@ -8,10 +8,10 @@ import {
 	createGetExecutionHandler,
 	createSearchExecutionsHandler,
 } from './workflow-executions.handlers';
-import { createResumeTargetHandler } from './resume-requests';
 import { AdmittanceRejectedError } from '../../admittance';
 import { jsonObjectSchema, jsonValueSchema, UnimplementedError } from '../../common';
 import { GraphValidationError } from '../../graph';
+import { lifecycleEventSubscriptionSchema } from '../../lifecycle-events';
 import { responseExpectationSchema } from '../../response-channel';
 import type { EngineServerDeps } from '../create-engine-server';
 import { fail } from '../error-response';
@@ -46,6 +46,8 @@ const StartExecutionBody = z.object({
 		.strict(),
 	/** What kind of a response the caller expects. */
 	responseExpectation: responseExpectationSchema.optional(),
+	/** Which lifecycle events the caller subscribes to. Missing means none. */
+	lifecycleEventSubscription: lifecycleEventSubscriptionSchema.optional(),
 	/** The caller mints the id. v7 only, so ids stay time-ordered. */
 	executionId: z.string().regex(UUID_V7_PATTERN),
 });
@@ -84,10 +86,6 @@ export function createWorkflowExecutionsRouter(deps: EngineServerDeps): RouterTy
 
 	router.get('/:id', createGetExecutionHandler(deps.executionQuery));
 	router.post('/:id/cancel', createCancelExecutionHandler(deps.cancelExecution));
-	router.post(
-		'/:id/resume-target',
-		createResumeTargetHandler(deps.resumeRequests, deps.executionQuery),
-	);
 
 	return router;
 }

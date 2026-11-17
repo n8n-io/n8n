@@ -10,10 +10,8 @@ export class AuthIdentity extends WithTimestamps {
 	@Column()
 	userId: string;
 
-	@ManyToOne(
-		() => User,
-		(user) => user.authIdentities,
-	)
+	// The inverse side, `Person.authIdentities`, is on the child entity, so it is not named here.
+	@ManyToOne(() => User)
 	user: User;
 
 	@PrimaryColumn({ length: 255 })

@@ -602,11 +602,17 @@ async function finishResult(
 	inputFiles = new Map<string, AgentToolOutputFile>(),
 ): Promise<WorkflowToolResult> {
 	const { wait: _wait, items, ...rest } = result;
-	const threadId = ctx.persistence?.threadId;
-	if (!threadId || !items) return rest;
+	const persistence = ctx.persistence;
+	if (!persistence?.threadId || !persistence.resourceId || !items) return rest;
+	const { threadId, resourceId } = persistence;
 
 	const bridge = Container.get(AgentFileBridge);
-	const scope = { agentId: context.agentId ?? null, projectId: context.projectId, threadId };
+	const scope = {
+		agentId: context.agentId ?? null,
+		projectId: context.projectId,
+		threadId,
+		resourceId,
+	};
 	const data = { ...rest.data };
 	const files: AgentToolOutputFile[] = [];
 	const skippedFiles: AgentToolSkippedFile[] = [];

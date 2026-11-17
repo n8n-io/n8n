@@ -3,6 +3,7 @@ import { mock } from 'vitest-mock-extended';
 import {
 	type CredentialAccessRepository,
 	type CredentialsEntity,
+	GLOBAL_ADMIN_ROLE,
 	GLOBAL_MEMBER_ROLE,
 	GLOBAL_OWNER_ROLE,
 	type OperationContext,
@@ -18,6 +19,7 @@ import { CredentialsFinderService } from '../credentials-finder.service';
 
 const member = mock<User>({ id: 'user-1', role: GLOBAL_MEMBER_ROLE });
 const owner = mock<User>({ id: 'owner-1', role: GLOBAL_OWNER_ROLE });
+const admin = mock<User>({ id: 'admin-1', role: GLOBAL_ADMIN_ROLE });
 
 const makeCustomUser = (id: string, scopes: Scope[]) =>
 	mock<User>({
@@ -53,6 +55,7 @@ describe('CredentialsFinderService', () => {
 		accessRepository.findProjectCredentialsForUser.mockResolvedValue([]);
 		accessRepository.findProjectCredentialForUser.mockResolvedValue(null);
 		accessRepository.findProjectCredentialIdsForUser.mockResolvedValue(new Set());
+		accessRepository.findTeamProjectCredentialIds.mockResolvedValue(new Set());
 		accessRepository.findGlobalProjectCredentials.mockResolvedValue([]);
 		accessRepository.findGlobalProjectCredentialIds.mockResolvedValue([]);
 		accessRepository.findAllProjectCredentialsForUser.mockResolvedValue([]);
@@ -493,7 +496,23 @@ describe('CredentialsFinderService', () => {
 				['credential-1'],
 				expect.objectContaining({ userId: owner.id }),
 			);
-			expect(accessRepository.findGlobalProjectCredentialIds).not.toHaveBeenCalled();
+		});
+
+		it('keeps global credentials when the global override is ignored', async () => {
+			accessRepository.findGlobalProjectCredentialIds.mockResolvedValue(['global-credential']);
+
+			await expect(
+				service.findCredentialIdsWithScopeForUser(
+					['credential-1', 'global-credential'],
+					owner,
+					['credential:read'],
+					{ ignoreGlobalOverride: true },
+				),
+			).resolves.toEqual(new Set(['global-credential']));
+			expect(accessRepository.findGlobalProjectCredentialIds).toHaveBeenCalledWith(
+				['credential-1', 'global-credential'],
+				false,
+			);
 		});
 
 		it('does not load global ids for write scopes', async () => {
@@ -544,6 +563,16 @@ describe('CredentialsFinderService', () => {
 			expect(accessRepository.findProjectCredentialIdsForUser).toHaveBeenCalled();
 		});
 
+		it('counts a global credential as usable when instance-wide access is ignored', async () => {
+			accessRepository.findGlobalProjectCredentialIds.mockResolvedValue(['global-credential']);
+
+			await expect(
+				service.findUnusableCredentialsForUser(member, ['global-credential'], {
+					ignoreGlobalUseScope: true,
+				}),
+			).resolves.toEqual([]);
+		});
+
 		it('returns no unusable credentials when personal access remains', async () => {
 			accessRepository.findProjectCredentialIdsForUser.mockResolvedValue(new Set(['credential-1']));
 
@@ -553,6 +582,56 @@ describe('CredentialsFinderService', () => {
 				}),
 			).resolves.toEqual([]);
 			expect(accessRepository.findCredentialNames).not.toHaveBeenCalled();
+		});
+
+		it.each([
+			['owner', owner],
+			['admin', admin],
+		])(
+			'counts credentials shared with a team project for the %s when instance-wide access is ignored',
+			async (_, user) => {
+				accessRepository.findProjectCredentialIdsForUser.mockResolvedValue(
+					new Set(['related-credential']),
+				);
+				accessRepository.findTeamProjectCredentialIds.mockResolvedValue(
+					new Set(['team-credential']),
+				);
+				accessRepository.findCredentialNames.mockResolvedValue([
+					{ id: 'personal-credential', name: 'Personal' },
+				]);
+
+				await expect(
+					service.findUnusableCredentialsForUser(
+						user,
+						['related-credential', 'team-credential', 'personal-credential'],
+						{ ignoreGlobalUseScope: true },
+					),
+				).resolves.toEqual([
+					{ id: 'personal-credential', name: 'Personal', exists: true, ownerProject: null },
+				]);
+				expect(accessRepository.findTeamProjectCredentialIds).toHaveBeenCalledWith(
+					['team-credential', 'personal-credential'],
+					['credential:owner', 'credential:user'],
+				);
+			},
+		);
+
+		it('does not count team project credentials for a member without a project relation', async () => {
+			await service.findUnusableCredentialsForUser(member, ['team-credential'], {
+				ignoreGlobalUseScope: true,
+			});
+
+			expect(accessRepository.findTeamProjectCredentialIds).not.toHaveBeenCalled();
+		});
+
+		it('does not query team project credentials when the owner can use every credential already', async () => {
+			accessRepository.findProjectCredentialIdsForUser.mockResolvedValue(new Set(['credential-1']));
+
+			await service.findUnusableCredentialsForUser(owner, ['credential-1'], {
+				ignoreGlobalUseScope: true,
+			});
+
+			expect(accessRepository.findTeamProjectCredentialIds).not.toHaveBeenCalled();
 		});
 
 		it('does not grant universal use to a view-only global role', async () => {

@@ -1,3 +1,4 @@
+import { requestPath } from 'n8n-workflow';
 import type { IExecuteFunctions } from 'n8n-workflow';
 
 import { execute } from '../../../../v2/actions/rows/upsert.operation';
@@ -81,7 +82,7 @@ describe('NocoDB Rows Upsert Action', () => {
 			expect(apiRequest.call).toHaveBeenCalledWith(
 				expect.anything(),
 				'POST',
-				`/api/v3/data/${mockBase}/${mockTable}/records`,
+				requestPath`/api/v3/data/${mockBase}/${mockTable}/records`,
 				[
 					{
 						fields: mockColumnsToInsert,
@@ -147,7 +148,7 @@ describe('NocoDB Rows Upsert Action', () => {
 			expect(apiRequest.call).toHaveBeenCalledWith(
 				expect.anything(),
 				'POST',
-				`/api/v3/data/${mockBase}/${mockTable}/records`,
+				requestPath`/api/v3/data/${mockBase}/${mockTable}/records`,
 				[
 					{
 						fields: mockColumnsToInsert,
@@ -213,7 +214,7 @@ describe('NocoDB Rows Upsert Action', () => {
 			expect(apiRequest.call).toHaveBeenCalledWith(
 				expect.anything(),
 				'PATCH',
-				`/api/v3/data/${mockBase}/${mockTable}/records`,
+				requestPath`/api/v3/data/${mockBase}/${mockTable}/records`,
 				[
 					{
 						id: '1',
@@ -287,7 +288,7 @@ describe('NocoDB Rows Upsert Action', () => {
 			expect(apiRequest.call).toHaveBeenCalledWith(
 				expect.anything(),
 				'PATCH',
-				`/api/v3/data/${mockBase}/${mockTable}/records`,
+				requestPath`/api/v3/data/${mockBase}/${mockTable}/records`,
 				[
 					{
 						id: '1',

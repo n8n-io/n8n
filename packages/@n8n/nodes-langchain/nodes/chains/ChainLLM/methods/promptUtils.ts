@@ -9,7 +9,7 @@ import {
 	SystemMessagePromptTemplate,
 } from '@langchain/core/prompts';
 import type { IExecuteFunctions } from 'n8n-workflow';
-import { OperationalError } from 'n8n-workflow';
+import { OperationalError } from '@n8n/errors';
 
 import { isChatInstance } from '@n8n/ai-utilities';
 import type { N8nOutputParser } from '@utils/output_parsers/N8nOutputParser';

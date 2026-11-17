@@ -229,7 +229,7 @@ function contactForAll() {
 		</N8nDialogFooter>
 		<ContactAdminModal
 			v-model:open="isContactAdminOpen"
-			:node-type-name="contact.names"
+			:type-name="contact.names"
 			:kind="contact.kind"
 			:audience="contact.audience"
 			:project="destination"

@@ -6,7 +6,7 @@ test.use({ capability: 'proxy' });
 test.describe(
 	'Proxy server',
 	{
-		annotation: [{ type: 'owner', description: 'Catalysts' }],
+		annotation: [{ type: 'owner', description: 'Core Application' }],
 	},
 	() => {
 		test.beforeEach(async ({ services }) => {

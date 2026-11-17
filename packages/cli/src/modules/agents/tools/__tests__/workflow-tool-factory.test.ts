@@ -954,11 +954,13 @@ describe('workflow tool → binary output', () => {
 	});
 
 	it('adopts binary output as agent files and lists them as metadata', async () => {
-		const { output, bridge, tool } = await runTool({ persistence: { threadId: 't-1' } });
+		const { output, bridge, tool } = await runTool({
+			persistence: { threadId: 't-1', resourceId: 'draft-chat:user-1' },
+		});
 
 		expect(bridge.adoptFromItems).toHaveBeenCalledWith(
 			[binaryItem],
-			{ agentId: 'agent-1', projectId: 'p1', threadId: 't-1' },
+			{ agentId: 'agent-1', projectId: 'p1', threadId: 't-1', resourceId: 'draft-chat:user-1' },
 			expect.any(Map),
 			expect.any(Set),
 		);
@@ -974,7 +976,10 @@ describe('workflow tool → binary output', () => {
 
 	it('lists the files that are too large to store', async () => {
 		const skipped = { fileName: 'big.mp4', reason: 'larger than 50 MB' };
-		const { output } = await runTool({ persistence: { threadId: 't-1' } }, [skipped]);
+		const { output } = await runTool(
+			{ persistence: { threadId: 't-1', resourceId: 'draft-chat:user-1' } },
+			[skipped],
+		);
 
 		expect(output).toMatchObject({ files: [file], skippedFiles: [skipped] });
 	});
@@ -1429,7 +1434,7 @@ describe('workflow tool → file input', () => {
 		);
 
 		await tool.handler?.({ files: { data: 'aid-1' } }, {
-			persistence: { threadId: 't-1' },
+			persistence: { threadId: 't-1', resourceId: 'draft-chat:user-1' },
 		} as never);
 
 		expect(bridge.toBinary).toHaveBeenCalledWith(
@@ -1467,7 +1472,7 @@ describe('workflow tool → file input', () => {
 		);
 
 		const output = await tool.handler?.({ files: { data: 'aid-1' } }, {
-			persistence: { threadId: 't-1' },
+			persistence: { threadId: 't-1', resourceId: 'draft-chat:user-1' },
 		} as never);
 
 		const stored = bridge.adoptFromItems.mock.calls[0][2];
@@ -1502,7 +1507,9 @@ describe('workflow tool → file input', () => {
 			buildContext(run, { workflowLoader }),
 		);
 
-		await tool.handler?.({ files: 'a.txt' }, { persistence: { threadId: 't-1' } } as never);
+		await tool.handler?.({ files: 'a.txt' }, {
+			persistence: { threadId: 't-1', resourceId: 'draft-chat:user-1' },
+		} as never);
 
 		expect(bridge.toBinary).not.toHaveBeenCalled();
 		const { pinData } = run.mock.calls[0][0] as IWorkflowExecutionDataProcess;
@@ -1536,7 +1543,7 @@ describe('workflow tool → file input', () => {
 		);
 
 		const output = await tool.handler?.({}, {
-			persistence: { threadId: 't-1' },
+			persistence: { threadId: 't-1', resourceId: 'draft-chat:user-1' },
 			continuation: { executionId: 'exec-1', inputFiles: { 'fs:x': inputFile } },
 		} as never);
 

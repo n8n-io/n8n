@@ -4,7 +4,7 @@ import type { n8nPage } from '../../../../../pages/n8nPage';
 test.describe(
 	'Data transformation expressions',
 	{
-		annotation: [{ type: 'owner', description: 'Catalysts' }],
+		annotation: [{ type: 'owner', description: 'Core Execution' }],
 	},
 	() => {
 		test.beforeEach(async ({ n8n }) => {

@@ -1,0 +1,2043 @@
+{
+	"name": "Harvest Requests",
+	"nodes": [
+		{
+			"parameters": {},
+			"id": "00000000-0000-4000-8000-000000000000",
+			"name": "When clicking ‘Execute workflow’",
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [0, 0]
+		},
+		{
+			"parameters": {
+				"accountId": "1234567",
+				"resource": "timeEntry",
+				"operation": "get",
+				"id": "636709355"
+			},
+			"id": "00000000-0000-4000-8000-000000000001",
+			"name": "Time Entry Get",
+			"type": "n8n-nodes-base.harvest",
+			"typeVersion": 1,
+			"position": [220, 120],
+			"credentials": {
+				"harvestApi": {
+					"id": "1",
+					"name": "Test account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"accountId": "1234567",
+				"resource": "timeEntry",
+				"operation": "getAll",
+				"returnAll": false,
+				"limit": 2,
+				"filters": {}
+			},
+			"id": "00000000-0000-4000-8000-000000000002",
+			"name": "Time Entry Get Many",
+			"type": "n8n-nodes-base.harvest",
+			"typeVersion": 1,
+			"position": [220, 240],
+			"credentials": {
+				"harvestApi": {
+					"id": "1",
+					"name": "Test account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"accountId": "1234567",
+				"resource": "timeEntry",
+				"operation": "getAll",
+				"returnAll": true,
+				"filters": {}
+			},
+			"id": "00000000-0000-4000-8000-000000000003",
+			"name": "Time Entry Get All",
+			"type": "n8n-nodes-base.harvest",
+			"typeVersion": 1,
+			"position": [220, 360],
+			"credentials": {
+				"harvestApi": {
+					"id": "1",
+					"name": "Test account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"accountId": "1234567",
+				"resource": "timeEntry",
+				"operation": "createByStartEnd",
+				"projectId": "14308069",
+				"taskId": "8083365",
+				"spentDate": "2026-10-01",
+				"additionalFields": {}
+			},
+			"id": "00000000-0000-4000-8000-000000000004",
+			"name": "Time Entry createByStartEnd",
+			"type": "n8n-nodes-base.harvest",
+			"typeVersion": 1,
+			"position": [220, 480],
+			"credentials": {
+				"harvestApi": {
+					"id": "1",
+					"name": "Test account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"accountId": "1234567",
+				"resource": "timeEntry",
+				"operation": "createByDuration",
+				"projectId": "14308069",
+				"taskId": "8083365",
+				"spentDate": "2026-10-01",
+				"additionalFields": {}
+			},
+			"id": "00000000-0000-4000-8000-000000000005",
+			"name": "Time Entry createByDuration",
+			"type": "n8n-nodes-base.harvest",
+			"typeVersion": 1,
+			"position": [220, 600],
+			"credentials": {
+				"harvestApi": {
+					"id": "1",
+					"name": "Test account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"accountId": "1234567",
+				"resource": "timeEntry",
+				"operation": "deleteExternal",
+				"id": "636709355"
+			},
+			"id": "00000000-0000-4000-8000-000000000006",
+			"name": "Time Entry deleteExternal",
+			"type": "n8n-nodes-base.harvest",
+			"typeVersion": 1,
+			"position": [220, 720],
+			"credentials": {
+				"harvestApi": {
+					"id": "1",
+					"name": "Test account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"accountId": "1234567",
+				"resource": "timeEntry",
+				"operation": "restartTime",
+				"id": "636709355"
+			},
+			"id": "00000000-0000-4000-8000-000000000007",
+			"name": "Time Entry restartTime",
+			"type": "n8n-nodes-base.harvest",
+			"typeVersion": 1,
+			"position": [220, 840],
+			"credentials": {
+				"harvestApi": {
+					"id": "1",
+					"name": "Test account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"accountId": "1234567",
+				"resource": "timeEntry",
+				"operation": "stopTime",
+				"id": "636709355"
+			},
+			"id": "00000000-0000-4000-8000-000000000008",
+			"name": "Time Entry stopTime",
+			"type": "n8n-nodes-base.harvest",
+			"typeVersion": 1,
+			"position": [220, 960],
+			"credentials": {
+				"harvestApi": {
+					"id": "1",
+					"name": "Test account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"accountId": "1234567",
+				"resource": "timeEntry",
+				"operation": "update",
+				"id": "636709355",
+				"updateFields": {}
+			},
+			"id": "00000000-0000-4000-8000-000000000009",
+			"name": "Time Entry Update",
+			"type": "n8n-nodes-base.harvest",
+			"typeVersion": 1,
+			"position": [220, 1080],
+			"credentials": {
+				"harvestApi": {
+					"id": "1",
+					"name": "Test account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"accountId": "1234567",
+				"resource": "timeEntry",
+				"operation": "delete",
+				"id": "636709355"
+			},
+			"id": "00000000-0000-4000-8000-000000000010",
+			"name": "Time Entry Delete",
+			"type": "n8n-nodes-base.harvest",
+			"typeVersion": 1,
+			"position": [220, 1200],
+			"credentials": {
+				"harvestApi": {
+					"id": "1",
+					"name": "Test account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"accountId": "1234567",
+				"resource": "client",
+				"operation": "get",
+				"id": "5735776"
+			},
+			"id": "00000000-0000-4000-8000-000000000011",
+			"name": "Client Get",
+			"type": "n8n-nodes-base.harvest",
+			"typeVersion": 1,
+			"position": [220, 1320],
+			"credentials": {
+				"harvestApi": {
+					"id": "1",
+					"name": "Test account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"accountId": "1234567",
+				"resource": "client",
+				"operation": "getAll",
+				"returnAll": false,
+				"limit": 2,
+				"filters": {}
+			},
+			"id": "00000000-0000-4000-8000-000000000012",
+			"name": "Client Get Many",
+			"type": "n8n-nodes-base.harvest",
+			"typeVersion": 1,
+			"position": [220, 1440],
+			"credentials": {
+				"harvestApi": {
+					"id": "1",
+					"name": "Test account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"accountId": "1234567",
+				"resource": "client",
+				"operation": "getAll",
+				"returnAll": true,
+				"filters": {}
+			},
+			"id": "00000000-0000-4000-8000-000000000013",
+			"name": "Client Get All",
+			"type": "n8n-nodes-base.harvest",
+			"typeVersion": 1,
+			"position": [220, 1560],
+			"credentials": {
+				"harvestApi": {
+					"id": "1",
+					"name": "Test account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"accountId": "1234567",
+				"resource": "client",
+				"operation": "create",
+				"name": "Acme Corp",
+				"additionalFields": {}
+			},
+			"id": "00000000-0000-4000-8000-000000000014",
+			"name": "Client Create",
+			"type": "n8n-nodes-base.harvest",
+			"typeVersion": 1,
+			"position": [220, 1680],
+			"credentials": {
+				"harvestApi": {
+					"id": "1",
+					"name": "Test account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"accountId": "1234567",
+				"resource": "client",
+				"operation": "update",
+				"id": "5735776",
+				"updateFields": {}
+			},
+			"id": "00000000-0000-4000-8000-000000000015",
+			"name": "Client Update",
+			"type": "n8n-nodes-base.harvest",
+			"typeVersion": 1,
+			"position": [220, 1800],
+			"credentials": {
+				"harvestApi": {
+					"id": "1",
+					"name": "Test account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"accountId": "1234567",
+				"resource": "client",
+				"operation": "delete",
+				"id": "5735776"
+			},
+			"id": "00000000-0000-4000-8000-000000000016",
+			"name": "Client Delete",
+			"type": "n8n-nodes-base.harvest",
+			"typeVersion": 1,
+			"position": [220, 1920],
+			"credentials": {
+				"harvestApi": {
+					"id": "1",
+					"name": "Test account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"accountId": "1234567",
+				"resource": "project",
+				"operation": "get",
+				"id": "14308069"
+			},
+			"id": "00000000-0000-4000-8000-000000000017",
+			"name": "Project Get",
+			"type": "n8n-nodes-base.harvest",
+			"typeVersion": 1,
+			"position": [220, 2040],
+			"credentials": {
+				"harvestApi": {
+					"id": "1",
+					"name": "Test account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"accountId": "1234567",
+				"resource": "project",
+				"operation": "getAll",
+				"returnAll": false,
+				"limit": 2,
+				"filters": {}
+			},
+			"id": "00000000-0000-4000-8000-000000000018",
+			"name": "Project Get Many",
+			"type": "n8n-nodes-base.harvest",
+			"typeVersion": 1,
+			"position": [220, 2160],
+			"credentials": {
+				"harvestApi": {
+					"id": "1",
+					"name": "Test account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"accountId": "1234567",
+				"resource": "project",
+				"operation": "getAll",
+				"returnAll": true,
+				"filters": {}
+			},
+			"id": "00000000-0000-4000-8000-000000000019",
+			"name": "Project Get All",
+			"type": "n8n-nodes-base.harvest",
+			"typeVersion": 1,
+			"position": [220, 2280],
+			"credentials": {
+				"harvestApi": {
+					"id": "1",
+					"name": "Test account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"accountId": "1234567",
+				"resource": "project",
+				"operation": "create",
+				"clientId": "5735776",
+				"name": "Website",
+				"isBillable": true,
+				"billBy": "Project",
+				"budgetBy": "project",
+				"additionalFields": {}
+			},
+			"id": "00000000-0000-4000-8000-000000000020",
+			"name": "Project Create",
+			"type": "n8n-nodes-base.harvest",
+			"typeVersion": 1,
+			"position": [220, 2400],
+			"credentials": {
+				"harvestApi": {
+					"id": "1",
+					"name": "Test account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"accountId": "1234567",
+				"resource": "project",
+				"operation": "update",
+				"id": "14308069",
+				"updateFields": {}
+			},
+			"id": "00000000-0000-4000-8000-000000000021",
+			"name": "Project Update",
+			"type": "n8n-nodes-base.harvest",
+			"typeVersion": 1,
+			"position": [220, 2520],
+			"credentials": {
+				"harvestApi": {
+					"id": "1",
+					"name": "Test account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"accountId": "1234567",
+				"resource": "project",
+				"operation": "delete",
+				"id": "14308069"
+			},
+			"id": "00000000-0000-4000-8000-000000000022",
+			"name": "Project Delete",
+			"type": "n8n-nodes-base.harvest",
+			"typeVersion": 1,
+			"position": [220, 2640],
+			"credentials": {
+				"harvestApi": {
+					"id": "1",
+					"name": "Test account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"accountId": "1234567",
+				"resource": "user",
+				"operation": "get",
+				"id": "1782959"
+			},
+			"id": "00000000-0000-4000-8000-000000000023",
+			"name": "User Get",
+			"type": "n8n-nodes-base.harvest",
+			"typeVersion": 1,
+			"position": [220, 2760],
+			"credentials": {
+				"harvestApi": {
+					"id": "1",
+					"name": "Test account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"accountId": "1234567",
+				"resource": "user",
+				"operation": "getAll",
+				"returnAll": false,
+				"limit": 2,
+				"filters": {}
+			},
+			"id": "00000000-0000-4000-8000-000000000024",
+			"name": "User Get Many",
+			"type": "n8n-nodes-base.harvest",
+			"typeVersion": 1,
+			"position": [220, 2880],
+			"credentials": {
+				"harvestApi": {
+					"id": "1",
+					"name": "Test account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"accountId": "1234567",
+				"resource": "user",
+				"operation": "getAll",
+				"returnAll": true,
+				"filters": {}
+			},
+			"id": "00000000-0000-4000-8000-000000000025",
+			"name": "User Get All",
+			"type": "n8n-nodes-base.harvest",
+			"typeVersion": 1,
+			"position": [220, 3000],
+			"credentials": {
+				"harvestApi": {
+					"id": "1",
+					"name": "Test account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"accountId": "1234567",
+				"resource": "user",
+				"operation": "create",
+				"firstName": "Ada",
+				"lastName": "Lovelace",
+				"email": "ada@example.com",
+				"additionalFields": {}
+			},
+			"id": "00000000-0000-4000-8000-000000000026",
+			"name": "User Create",
+			"type": "n8n-nodes-base.harvest",
+			"typeVersion": 1,
+			"position": [220, 3120],
+			"credentials": {
+				"harvestApi": {
+					"id": "1",
+					"name": "Test account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"accountId": "1234567",
+				"resource": "user",
+				"operation": "update",
+				"id": "1782959",
+				"updateFields": {}
+			},
+			"id": "00000000-0000-4000-8000-000000000027",
+			"name": "User Update",
+			"type": "n8n-nodes-base.harvest",
+			"typeVersion": 1,
+			"position": [220, 3240],
+			"credentials": {
+				"harvestApi": {
+					"id": "1",
+					"name": "Test account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"accountId": "1234567",
+				"resource": "user",
+				"operation": "delete",
+				"id": "1782959"
+			},
+			"id": "00000000-0000-4000-8000-000000000028",
+			"name": "User Delete",
+			"type": "n8n-nodes-base.harvest",
+			"typeVersion": 1,
+			"position": [220, 3360],
+			"credentials": {
+				"harvestApi": {
+					"id": "1",
+					"name": "Test account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"accountId": "1234567",
+				"resource": "contact",
+				"operation": "get",
+				"id": "4706479"
+			},
+			"id": "00000000-0000-4000-8000-000000000029",
+			"name": "Contact Get",
+			"type": "n8n-nodes-base.harvest",
+			"typeVersion": 1,
+			"position": [220, 3480],
+			"credentials": {
+				"harvestApi": {
+					"id": "1",
+					"name": "Test account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"accountId": "1234567",
+				"resource": "contact",
+				"operation": "getAll",
+				"returnAll": false,
+				"limit": 2,
+				"filters": {}
+			},
+			"id": "00000000-0000-4000-8000-000000000030",
+			"name": "Contact Get Many",
+			"type": "n8n-nodes-base.harvest",
+			"typeVersion": 1,
+			"position": [220, 3600],
+			"credentials": {
+				"harvestApi": {
+					"id": "1",
+					"name": "Test account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"accountId": "1234567",
+				"resource": "contact",
+				"operation": "getAll",
+				"returnAll": true,
+				"filters": {}
+			},
+			"id": "00000000-0000-4000-8000-000000000031",
+			"name": "Contact Get All",
+			"type": "n8n-nodes-base.harvest",
+			"typeVersion": 1,
+			"position": [220, 3720],
+			"credentials": {
+				"harvestApi": {
+					"id": "1",
+					"name": "Test account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"accountId": "1234567",
+				"resource": "contact",
+				"operation": "create",
+				"clientId": "5735776",
+				"firstName": "Grace",
+				"additionalFields": {}
+			},
+			"id": "00000000-0000-4000-8000-000000000032",
+			"name": "Contact Create",
+			"type": "n8n-nodes-base.harvest",
+			"typeVersion": 1,
+			"position": [220, 3840],
+			"credentials": {
+				"harvestApi": {
+					"id": "1",
+					"name": "Test account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"accountId": "1234567",
+				"resource": "contact",
+				"operation": "update",
+				"id": "4706479",
+				"updateFields": {}
+			},
+			"id": "00000000-0000-4000-8000-000000000033",
+			"name": "Contact Update",
+			"type": "n8n-nodes-base.harvest",
+			"typeVersion": 1,
+			"position": [220, 3960],
+			"credentials": {
+				"harvestApi": {
+					"id": "1",
+					"name": "Test account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"accountId": "1234567",
+				"resource": "contact",
+				"operation": "delete",
+				"id": "4706479"
+			},
+			"id": "00000000-0000-4000-8000-000000000034",
+			"name": "Contact Delete",
+			"type": "n8n-nodes-base.harvest",
+			"typeVersion": 1,
+			"position": [220, 4080],
+			"credentials": {
+				"harvestApi": {
+					"id": "1",
+					"name": "Test account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"accountId": "1234567",
+				"resource": "task",
+				"operation": "get",
+				"id": "8083365"
+			},
+			"id": "00000000-0000-4000-8000-000000000035",
+			"name": "Task Get",
+			"type": "n8n-nodes-base.harvest",
+			"typeVersion": 1,
+			"position": [220, 4200],
+			"credentials": {
+				"harvestApi": {
+					"id": "1",
+					"name": "Test account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"accountId": "1234567",
+				"resource": "task",
+				"operation": "getAll",
+				"returnAll": false,
+				"limit": 2,
+				"filters": {}
+			},
+			"id": "00000000-0000-4000-8000-000000000036",
+			"name": "Task Get Many",
+			"type": "n8n-nodes-base.harvest",
+			"typeVersion": 1,
+			"position": [220, 4320],
+			"credentials": {
+				"harvestApi": {
+					"id": "1",
+					"name": "Test account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"accountId": "1234567",
+				"resource": "task",
+				"operation": "getAll",
+				"returnAll": true,
+				"filters": {}
+			},
+			"id": "00000000-0000-4000-8000-000000000037",
+			"name": "Task Get All",
+			"type": "n8n-nodes-base.harvest",
+			"typeVersion": 1,
+			"position": [220, 4440],
+			"credentials": {
+				"harvestApi": {
+					"id": "1",
+					"name": "Test account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"accountId": "1234567",
+				"resource": "task",
+				"operation": "create",
+				"name": "Design",
+				"additionalFields": {}
+			},
+			"id": "00000000-0000-4000-8000-000000000038",
+			"name": "Task Create",
+			"type": "n8n-nodes-base.harvest",
+			"typeVersion": 1,
+			"position": [220, 4560],
+			"credentials": {
+				"harvestApi": {
+					"id": "1",
+					"name": "Test account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"accountId": "1234567",
+				"resource": "task",
+				"operation": "update",
+				"id": "8083365",
+				"updateFields": {}
+			},
+			"id": "00000000-0000-4000-8000-000000000039",
+			"name": "Task Update",
+			"type": "n8n-nodes-base.harvest",
+			"typeVersion": 1,
+			"position": [220, 4680],
+			"credentials": {
+				"harvestApi": {
+					"id": "1",
+					"name": "Test account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"accountId": "1234567",
+				"resource": "task",
+				"operation": "delete",
+				"id": "8083365"
+			},
+			"id": "00000000-0000-4000-8000-000000000040",
+			"name": "Task Delete",
+			"type": "n8n-nodes-base.harvest",
+			"typeVersion": 1,
+			"position": [220, 4800],
+			"credentials": {
+				"harvestApi": {
+					"id": "1",
+					"name": "Test account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"accountId": "1234567",
+				"resource": "invoice",
+				"operation": "get",
+				"id": "13150403"
+			},
+			"id": "00000000-0000-4000-8000-000000000041",
+			"name": "Invoice Get",
+			"type": "n8n-nodes-base.harvest",
+			"typeVersion": 1,
+			"position": [220, 4920],
+			"credentials": {
+				"harvestApi": {
+					"id": "1",
+					"name": "Test account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"accountId": "1234567",
+				"resource": "invoice",
+				"operation": "getAll",
+				"returnAll": false,
+				"limit": 2,
+				"filters": {}
+			},
+			"id": "00000000-0000-4000-8000-000000000042",
+			"name": "Invoice Get Many",
+			"type": "n8n-nodes-base.harvest",
+			"typeVersion": 1,
+			"position": [220, 5040],
+			"credentials": {
+				"harvestApi": {
+					"id": "1",
+					"name": "Test account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"accountId": "1234567",
+				"resource": "invoice",
+				"operation": "getAll",
+				"returnAll": true,
+				"filters": {}
+			},
+			"id": "00000000-0000-4000-8000-000000000043",
+			"name": "Invoice Get All",
+			"type": "n8n-nodes-base.harvest",
+			"typeVersion": 1,
+			"position": [220, 5160],
+			"credentials": {
+				"harvestApi": {
+					"id": "1",
+					"name": "Test account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"accountId": "1234567",
+				"resource": "invoice",
+				"operation": "create",
+				"clientId": "5735776",
+				"additionalFields": {}
+			},
+			"id": "00000000-0000-4000-8000-000000000044",
+			"name": "Invoice Create",
+			"type": "n8n-nodes-base.harvest",
+			"typeVersion": 1,
+			"position": [220, 5280],
+			"credentials": {
+				"harvestApi": {
+					"id": "1",
+					"name": "Test account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"accountId": "1234567",
+				"resource": "invoice",
+				"operation": "update",
+				"id": "13150403",
+				"updateFields": {}
+			},
+			"id": "00000000-0000-4000-8000-000000000045",
+			"name": "Invoice Update",
+			"type": "n8n-nodes-base.harvest",
+			"typeVersion": 1,
+			"position": [220, 5400],
+			"credentials": {
+				"harvestApi": {
+					"id": "1",
+					"name": "Test account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"accountId": "1234567",
+				"resource": "invoice",
+				"operation": "delete",
+				"id": "13150403"
+			},
+			"id": "00000000-0000-4000-8000-000000000046",
+			"name": "Invoice Delete",
+			"type": "n8n-nodes-base.harvest",
+			"typeVersion": 1,
+			"position": [220, 5520],
+			"credentials": {
+				"harvestApi": {
+					"id": "1",
+					"name": "Test account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"accountId": "1234567",
+				"resource": "expense",
+				"operation": "get",
+				"id": "15296442"
+			},
+			"id": "00000000-0000-4000-8000-000000000047",
+			"name": "Expense Get",
+			"type": "n8n-nodes-base.harvest",
+			"typeVersion": 1,
+			"position": [220, 5640],
+			"credentials": {
+				"harvestApi": {
+					"id": "1",
+					"name": "Test account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"accountId": "1234567",
+				"resource": "expense",
+				"operation": "getAll",
+				"returnAll": false,
+				"limit": 2,
+				"filters": {}
+			},
+			"id": "00000000-0000-4000-8000-000000000048",
+			"name": "Expense Get Many",
+			"type": "n8n-nodes-base.harvest",
+			"typeVersion": 1,
+			"position": [220, 5760],
+			"credentials": {
+				"harvestApi": {
+					"id": "1",
+					"name": "Test account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"accountId": "1234567",
+				"resource": "expense",
+				"operation": "getAll",
+				"returnAll": true,
+				"filters": {}
+			},
+			"id": "00000000-0000-4000-8000-000000000049",
+			"name": "Expense Get All",
+			"type": "n8n-nodes-base.harvest",
+			"typeVersion": 1,
+			"position": [220, 5880],
+			"credentials": {
+				"harvestApi": {
+					"id": "1",
+					"name": "Test account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"accountId": "1234567",
+				"resource": "expense",
+				"operation": "create",
+				"projectId": "14308069",
+				"expenseCategoryId": "4195926",
+				"spentDate": "2026-10-01",
+				"additionalFields": {}
+			},
+			"id": "00000000-0000-4000-8000-000000000050",
+			"name": "Expense Create",
+			"type": "n8n-nodes-base.harvest",
+			"typeVersion": 1,
+			"position": [220, 6000],
+			"credentials": {
+				"harvestApi": {
+					"id": "1",
+					"name": "Test account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"accountId": "1234567",
+				"resource": "expense",
+				"operation": "update",
+				"id": "15296442",
+				"updateFields": {}
+			},
+			"id": "00000000-0000-4000-8000-000000000051",
+			"name": "Expense Update",
+			"type": "n8n-nodes-base.harvest",
+			"typeVersion": 1,
+			"position": [220, 6120],
+			"credentials": {
+				"harvestApi": {
+					"id": "1",
+					"name": "Test account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"accountId": "1234567",
+				"resource": "expense",
+				"operation": "delete",
+				"id": "15296442"
+			},
+			"id": "00000000-0000-4000-8000-000000000052",
+			"name": "Expense Delete",
+			"type": "n8n-nodes-base.harvest",
+			"typeVersion": 1,
+			"position": [220, 6240],
+			"credentials": {
+				"harvestApi": {
+					"id": "1",
+					"name": "Test account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"accountId": "1234567",
+				"resource": "estimate",
+				"operation": "get",
+				"id": "1439818"
+			},
+			"id": "00000000-0000-4000-8000-000000000053",
+			"name": "Estimate Get",
+			"type": "n8n-nodes-base.harvest",
+			"typeVersion": 1,
+			"position": [220, 6360],
+			"credentials": {
+				"harvestApi": {
+					"id": "1",
+					"name": "Test account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"accountId": "1234567",
+				"resource": "estimate",
+				"operation": "getAll",
+				"returnAll": false,
+				"limit": 2,
+				"filters": {}
+			},
+			"id": "00000000-0000-4000-8000-000000000054",
+			"name": "Estimate Get Many",
+			"type": "n8n-nodes-base.harvest",
+			"typeVersion": 1,
+			"position": [220, 6480],
+			"credentials": {
+				"harvestApi": {
+					"id": "1",
+					"name": "Test account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"accountId": "1234567",
+				"resource": "estimate",
+				"operation": "getAll",
+				"returnAll": true,
+				"filters": {}
+			},
+			"id": "00000000-0000-4000-8000-000000000055",
+			"name": "Estimate Get All",
+			"type": "n8n-nodes-base.harvest",
+			"typeVersion": 1,
+			"position": [220, 6600],
+			"credentials": {
+				"harvestApi": {
+					"id": "1",
+					"name": "Test account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"accountId": "1234567",
+				"resource": "estimate",
+				"operation": "create",
+				"clientId": "5735776",
+				"additionalFields": {}
+			},
+			"id": "00000000-0000-4000-8000-000000000056",
+			"name": "Estimate Create",
+			"type": "n8n-nodes-base.harvest",
+			"typeVersion": 1,
+			"position": [220, 6720],
+			"credentials": {
+				"harvestApi": {
+					"id": "1",
+					"name": "Test account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"accountId": "1234567",
+				"resource": "estimate",
+				"operation": "update",
+				"id": "1439818",
+				"updateFields": {}
+			},
+			"id": "00000000-0000-4000-8000-000000000057",
+			"name": "Estimate Update",
+			"type": "n8n-nodes-base.harvest",
+			"typeVersion": 1,
+			"position": [220, 6840],
+			"credentials": {
+				"harvestApi": {
+					"id": "1",
+					"name": "Test account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"accountId": "1234567",
+				"resource": "estimate",
+				"operation": "delete",
+				"id": "1439818"
+			},
+			"id": "00000000-0000-4000-8000-000000000058",
+			"name": "Estimate Delete",
+			"type": "n8n-nodes-base.harvest",
+			"typeVersion": 1,
+			"position": [220, 6960],
+			"credentials": {
+				"harvestApi": {
+					"id": "1",
+					"name": "Test account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"accountId": "1234567",
+				"resource": "user",
+				"operation": "me"
+			},
+			"id": "00000000-0000-4000-8000-000000000059",
+			"name": "User Me",
+			"type": "n8n-nodes-base.harvest",
+			"typeVersion": 1,
+			"position": [220, 7080],
+			"credentials": {
+				"harvestApi": {
+					"id": "1",
+					"name": "Test account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"accountId": "1234567",
+				"resource": "company",
+				"operation": "get"
+			},
+			"id": "00000000-0000-4000-8000-000000000060",
+			"name": "Company Get",
+			"type": "n8n-nodes-base.harvest",
+			"typeVersion": 1,
+			"position": [220, 7200],
+			"credentials": {
+				"harvestApi": {
+					"id": "1",
+					"name": "Test account"
+				}
+			}
+		}
+	],
+	"pinData": {
+		"Time Entry Get": [
+			{
+				"json": {
+					"id": 636709355,
+					"resource": "time_entries"
+				}
+			}
+		],
+		"Time Entry Get Many": [
+			{
+				"json": {
+					"id": 636709355,
+					"resource": "time_entries"
+				}
+			}
+		],
+		"Time Entry Get All": [
+			{
+				"json": {
+					"id": 636709355,
+					"resource": "time_entries"
+				}
+			},
+			{
+				"json": {
+					"id": 636709356
+				}
+			}
+		],
+		"Time Entry createByStartEnd": [
+			{
+				"json": {
+					"id": 636709355,
+					"resource": "time_entries"
+				}
+			}
+		],
+		"Time Entry createByDuration": [
+			{
+				"json": {
+					"id": 636709355,
+					"resource": "time_entries"
+				}
+			}
+		],
+		"Time Entry deleteExternal": [
+			{
+				"json": {
+					"id": 636709355,
+					"resource": "time_entries"
+				}
+			}
+		],
+		"Time Entry restartTime": [
+			{
+				"json": {
+					"id": 636709355,
+					"resource": "time_entries"
+				}
+			}
+		],
+		"Time Entry stopTime": [
+			{
+				"json": {
+					"id": 636709355,
+					"resource": "time_entries"
+				}
+			}
+		],
+		"Time Entry Update": [
+			{
+				"json": {
+					"id": 636709355,
+					"resource": "time_entries"
+				}
+			}
+		],
+		"Time Entry Delete": [
+			{
+				"json": {
+					"id": 636709355,
+					"resource": "time_entries"
+				}
+			}
+		],
+		"Client Get": [
+			{
+				"json": {
+					"id": 5735776,
+					"resource": "clients"
+				}
+			}
+		],
+		"Client Get Many": [
+			{
+				"json": {
+					"id": 5735776,
+					"resource": "clients"
+				}
+			}
+		],
+		"Client Get All": [
+			{
+				"json": {
+					"id": 5735776,
+					"resource": "clients"
+				}
+			},
+			{
+				"json": {
+					"id": 5735777
+				}
+			}
+		],
+		"Client Create": [
+			{
+				"json": {
+					"id": 5735776,
+					"resource": "clients"
+				}
+			}
+		],
+		"Client Update": [
+			{
+				"json": {
+					"id": 5735776,
+					"resource": "clients"
+				}
+			}
+		],
+		"Client Delete": [
+			{
+				"json": {
+					"id": 5735776,
+					"resource": "clients"
+				}
+			}
+		],
+		"Project Get": [
+			{
+				"json": {
+					"id": 14308069,
+					"resource": "projects"
+				}
+			}
+		],
+		"Project Get Many": [
+			{
+				"json": {
+					"id": 14308069,
+					"resource": "projects"
+				}
+			}
+		],
+		"Project Get All": [
+			{
+				"json": {
+					"id": 14308069,
+					"resource": "projects"
+				}
+			},
+			{
+				"json": {
+					"id": 14308070
+				}
+			}
+		],
+		"Project Create": [
+			{
+				"json": {
+					"id": 14308069,
+					"resource": "projects"
+				}
+			}
+		],
+		"Project Update": [
+			{
+				"json": {
+					"id": 14308069,
+					"resource": "projects"
+				}
+			}
+		],
+		"Project Delete": [
+			{
+				"json": {
+					"id": 14308069,
+					"resource": "projects"
+				}
+			}
+		],
+		"User Get": [
+			{
+				"json": {
+					"id": 1782959,
+					"resource": "users"
+				}
+			}
+		],
+		"User Get Many": [
+			{
+				"json": {
+					"id": 1782959,
+					"resource": "users"
+				}
+			}
+		],
+		"User Get All": [
+			{
+				"json": {
+					"id": 1782959,
+					"resource": "users"
+				}
+			},
+			{
+				"json": {
+					"id": 1782960
+				}
+			}
+		],
+		"User Create": [
+			{
+				"json": {
+					"id": 1782959,
+					"resource": "users"
+				}
+			}
+		],
+		"User Update": [
+			{
+				"json": {
+					"id": 1782959,
+					"resource": "users"
+				}
+			}
+		],
+		"User Delete": [
+			{
+				"json": {
+					"id": 1782959,
+					"resource": "users"
+				}
+			}
+		],
+		"Contact Get": [
+			{
+				"json": {
+					"id": 4706479,
+					"resource": "contacts"
+				}
+			}
+		],
+		"Contact Get Many": [
+			{
+				"json": {
+					"id": 4706479,
+					"resource": "contacts"
+				}
+			}
+		],
+		"Contact Get All": [
+			{
+				"json": {
+					"id": 4706479,
+					"resource": "contacts"
+				}
+			},
+			{
+				"json": {
+					"id": 4706480
+				}
+			}
+		],
+		"Contact Create": [
+			{
+				"json": {
+					"id": 4706479,
+					"resource": "contacts"
+				}
+			}
+		],
+		"Contact Update": [
+			{
+				"json": {
+					"id": 4706479,
+					"resource": "contacts"
+				}
+			}
+		],
+		"Contact Delete": [
+			{
+				"json": {
+					"id": 4706479,
+					"resource": "contacts"
+				}
+			}
+		],
+		"Task Get": [
+			{
+				"json": {
+					"id": 8083365,
+					"resource": "tasks"
+				}
+			}
+		],
+		"Task Get Many": [
+			{
+				"json": {
+					"id": 8083365,
+					"resource": "tasks"
+				}
+			}
+		],
+		"Task Get All": [
+			{
+				"json": {
+					"id": 8083365,
+					"resource": "tasks"
+				}
+			},
+			{
+				"json": {
+					"id": 8083366
+				}
+			}
+		],
+		"Task Create": [
+			{
+				"json": {
+					"id": 8083365,
+					"resource": "tasks"
+				}
+			}
+		],
+		"Task Update": [
+			{
+				"json": {
+					"id": 8083365,
+					"resource": "tasks"
+				}
+			}
+		],
+		"Task Delete": [
+			{
+				"json": {
+					"id": 8083365,
+					"resource": "tasks"
+				}
+			}
+		],
+		"Invoice Get": [
+			{
+				"json": {
+					"id": 13150403,
+					"resource": "invoices"
+				}
+			}
+		],
+		"Invoice Get Many": [
+			{
+				"json": {
+					"id": 13150403,
+					"resource": "invoices"
+				}
+			}
+		],
+		"Invoice Get All": [
+			{
+				"json": {
+					"id": 13150403,
+					"resource": "invoices"
+				}
+			},
+			{
+				"json": {
+					"id": 13150404
+				}
+			}
+		],
+		"Invoice Create": [
+			{
+				"json": {
+					"id": 13150403,
+					"resource": "invoices"
+				}
+			}
+		],
+		"Invoice Update": [
+			{
+				"json": {
+					"id": 13150403,
+					"resource": "invoices"
+				}
+			}
+		],
+		"Invoice Delete": [
+			{
+				"json": {
+					"id": 13150403,
+					"resource": "invoices"
+				}
+			}
+		],
+		"Expense Get": [
+			{
+				"json": {
+					"id": 15296442,
+					"resource": "expenses"
+				}
+			}
+		],
+		"Expense Get Many": [
+			{
+				"json": {
+					"id": 15296442,
+					"resource": "expenses"
+				}
+			}
+		],
+		"Expense Get All": [
+			{
+				"json": {
+					"id": 15296442,
+					"resource": "expenses"
+				}
+			},
+			{
+				"json": {
+					"id": 15296443
+				}
+			}
+		],
+		"Expense Create": [
+			{
+				"json": {
+					"id": 15296442,
+					"resource": "expenses"
+				}
+			}
+		],
+		"Expense Update": [
+			{
+				"json": {
+					"id": 15296442,
+					"resource": "expenses"
+				}
+			}
+		],
+		"Expense Delete": [
+			{
+				"json": {
+					"id": 15296442,
+					"resource": "expenses"
+				}
+			}
+		],
+		"Estimate Get": [
+			{
+				"json": {
+					"id": 1439818,
+					"resource": "estimates"
+				}
+			}
+		],
+		"Estimate Get Many": [
+			{
+				"json": {
+					"id": 1439818,
+					"resource": "estimates"
+				}
+			}
+		],
+		"Estimate Get All": [
+			{
+				"json": {
+					"id": 1439818,
+					"resource": "estimates"
+				}
+			},
+			{
+				"json": {
+					"id": 1439819
+				}
+			}
+		],
+		"Estimate Create": [
+			{
+				"json": {
+					"id": 1439818,
+					"resource": "estimates"
+				}
+			}
+		],
+		"Estimate Update": [
+			{
+				"json": {
+					"id": 1439818,
+					"resource": "estimates"
+				}
+			}
+		],
+		"Estimate Delete": [
+			{
+				"json": {
+					"id": 1439818,
+					"resource": "estimates"
+				}
+			}
+		],
+		"User Me": [
+			{
+				"json": {
+					"id": 1782959
+				}
+			}
+		],
+		"Company Get": [
+			{
+				"json": {
+					"name": "Acme Corp"
+				}
+			}
+		]
+	},
+	"connections": {
+		"When clicking ‘Execute workflow’": {
+			"main": [
+				[
+					{
+						"node": "Time Entry Get",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Time Entry Get Many",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Time Entry Get All",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Time Entry createByStartEnd",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Time Entry createByDuration",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Time Entry deleteExternal",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Time Entry restartTime",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Time Entry stopTime",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Time Entry Update",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Time Entry Delete",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Client Get",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Client Get Many",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Client Get All",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Client Create",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Client Update",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Client Delete",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Project Get",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Project Get Many",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Project Get All",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Project Create",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Project Update",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Project Delete",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "User Get",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "User Get Many",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "User Get All",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "User Create",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "User Update",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "User Delete",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Contact Get",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Contact Get Many",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Contact Get All",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Contact Create",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Contact Update",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Contact Delete",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Task Get",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Task Get Many",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Task Get All",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Task Create",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Task Update",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Task Delete",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Invoice Get",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Invoice Get Many",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Invoice Get All",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Invoice Create",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Invoice Update",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Invoice Delete",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Expense Get",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Expense Get Many",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Expense Get All",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Expense Create",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Expense Update",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Expense Delete",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Estimate Get",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Estimate Get Many",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Estimate Get All",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Estimate Create",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Estimate Update",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Estimate Delete",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "User Me",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Company Get",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	}
+}

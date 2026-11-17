@@ -1,17 +1,22 @@
+import { ModelStreamStallError } from '@n8n/agents';
 import { ASSISTANT_TRACE_EVENT, ASSISTANT_WORKFLOWS_ARCHIVED_EVENT } from '@n8n/api-types';
 import type { Logger } from '@n8n/backend-common';
 import type { GlobalConfig } from '@n8n/config';
-import type { User } from '@n8n/db';
+import type { User, UserRepository } from '@n8n/db';
 import { hasGlobalScope } from '@n8n/permissions';
 import { UserError } from '@n8n/errors';
+import { TELEMETRY_EVENT } from '@n8n/telemetry';
+import type { ErrorReporter } from 'n8n-core';
 import { mock } from 'vitest-mock-extended';
 
 import type {
 	SystemAgentResumeTurn,
 	SystemAgentStartTurn,
 } from '@/modules/agents/system-agents/system-agent.types';
+import type { TelemetryProxy } from '@n8n/backend-services';
 
 import type { InstanceAiCreditService } from '../../instance-ai-credit.service';
+import { InstanceAiErrorReporterService } from '../../instance-ai-error-reporter.service';
 import type { InstanceAiSettingsService } from '../../instance-ai-settings.service';
 import type { InstanceAiAdapterService } from '../../instance-ai.adapter.service';
 import type { AssistantAgentFactory } from '../../turn-setup/assistant-agent.factory';
@@ -25,14 +30,16 @@ import type {
 } from '../../turn-setup/assistant-turn-input.builder';
 import type { AssistantTurnRuntime } from '../../turn-setup/assistant-turn-runtime';
 import { QuotaExhaustedStreamError } from '../../turn-setup/assistant-credits';
+import { AssistantTurnOverrides } from '../../turn-setup/assistant-turn-overrides';
 import { QUOTA_EXHAUSTED_USER_MESSAGE } from '../../user-facing-errors';
-import { AssistantAgentProvider } from '../assistant-agent.provider';
+import { AssistantAgentProvider, FILES_ONLY_MESSAGE } from '../assistant-agent.provider';
 import type { AssistantThreadTabsService } from '../assistant-thread-tabs.service';
 import type { AssistantTurnTrace, AssistantTurnTracer } from '../assistant-turn-trace';
 import type {
 	AssistantSandboxLease,
 	AssistantSandboxWorkspaceSource,
 } from '../assistant-workspace-source';
+import { createMemory, outcome, routedAt, saveBuild } from './workflow-loop-memory';
 
 vi.mock('@n8n/permissions', async (importOriginal) => ({
 	...(await importOriginal<typeof import('@n8n/permissions')>()),
@@ -61,7 +68,7 @@ function setup() {
 		context: { workflowService: { archiveIfAiTemporary } },
 		orchestrationContext: {},
 		modelId: 'anthropic/claude-sonnet',
-		skillScope: { profile: { mode: 'default' } },
+		skillScope: { profile: {} },
 	} as unknown as AssistantTurnEnvironment;
 	const turnEnvironment = mock<AssistantTurnEnvironmentFactory>();
 	turnEnvironment.create.mockResolvedValue(environment);
@@ -82,6 +89,17 @@ function setup() {
 	const tracer = mock<AssistantTurnTracer>();
 	tracer.startForTurn.mockResolvedValue(undefined);
 	const threadTabs = mock<AssistantThreadTabsService>();
+	// The real reporter, so that the tests see its filters. Sentry is the mock.
+	const sentry = mock<ErrorReporter>();
+	const errorReporter = new InstanceAiErrorReporterService(logger, sentry);
+	const userRepository = mock<UserRepository>();
+	userRepository.findByIdWithRole.mockResolvedValue(user);
+	adapterService.createContext.mockReturnValue(
+		environment.context as ReturnType<InstanceAiAdapterService['createContext']>,
+	);
+	// The real default, so that the tests see "no override" unless a test sets one.
+	const turnOverrides = new AssistantTurnOverrides();
+	const telemetry = mock<TelemetryProxy>();
 	const provider = new AssistantAgentProvider(
 		logger,
 		mock<GlobalConfig>({ ai: {} }),
@@ -94,9 +112,19 @@ function setup() {
 		agentFactory,
 		tracer,
 		threadTabs,
+		errorReporter,
+		userRepository,
+		turnOverrides,
+		telemetry,
 	);
 	return {
+		userRepository,
 		provider,
+		telemetry,
+		turnOverrides,
+		sentry,
+		errorReporter,
+		adapterService,
 		logger,
 		tracer,
 		threadTabs,
@@ -127,6 +155,7 @@ function startTurn(
 		checkpointStore: mock<SystemAgentStartTurn['checkpointStore']>(),
 		sessionGrants: mock<SystemAgentStartTurn['sessionGrants']>(),
 		readAttachment: vi.fn(async () => undefined),
+		readFile: vi.fn(async () => undefined),
 		executionId: 'exec-1',
 		message: 'Build a digest',
 		attachments: [],
@@ -176,13 +205,15 @@ describe('AssistantAgentProvider', () => {
 
 		const options = await provider.chatTurnOptions(user, thread, {
 			timeZone: 'UTC',
-			mode: 'progressive',
+			// The turn overrides supply these settings, so the client cannot set them.
+			promptVersion: 'default@1',
+			observerThresholdTokens: 5_000,
 		});
 
 		expect(options).toEqual({
 			runId: expect.stringMatching(/^run_/),
 			messageGroupId: expect.stringMatching(/^mg_/),
-			request: { timeZone: 'UTC', mode: 'progressive' },
+			request: { timeZone: 'UTC' },
 		});
 	});
 
@@ -193,6 +224,78 @@ describe('AssistantAgentProvider', () => {
 			approved: true,
 		});
 		expect(provider.normalizeResumeData({ other: 'shape' })).toEqual({ other: 'shape' });
+	});
+
+	describe('onBeforeThreadDeletion', () => {
+		function deletionScope(workflowIds?: string[]) {
+			const memory = mock<SystemAgentStartTurn['memory']>({
+				getThread: vi.fn(async () => ({
+					id: 'thread-1',
+					resourceId: 'system-chat:user-1',
+					metadata: workflowIds ? { assistantTemporaryWorkflowIds: workflowIds } : {},
+				})) as never,
+			});
+			return {
+				agentId: 'assistant',
+				threadId: 'thread-1',
+				projectId: 'project-1',
+				userId: 'user-1',
+				memory,
+			};
+		}
+
+		it('has no cleanup when the thread marks no temporary workflows', async () => {
+			const { provider, adapterService } = setup();
+
+			await expect(provider.onBeforeThreadDeletion(deletionScope())).resolves.toBeUndefined();
+			expect(adapterService.createContext).not.toHaveBeenCalled();
+		});
+
+		it('archives the marked workflows only after the deletion', async () => {
+			const { provider, adapterService, archiveIfAiTemporary, userRepository } = setup();
+			const scope = deletionScope(['wf-1', 'wf-2']);
+
+			const afterDeletion = await provider.onBeforeThreadDeletion(scope);
+			expect(archiveIfAiTemporary).not.toHaveBeenCalled();
+
+			await afterDeletion?.();
+
+			expect(userRepository.findByIdWithRole).toHaveBeenCalledWith('user-1');
+			expect(adapterService.createContext).toHaveBeenCalledWith(
+				user,
+				expect.objectContaining({ threadId: 'thread-1' }),
+			);
+			expect(archiveIfAiTemporary).toHaveBeenCalledWith('wf-1');
+			expect(archiveIfAiTemporary).toHaveBeenCalledWith('wf-2');
+		});
+
+		it('gives the archive the markers it read before the deletion', async () => {
+			const { provider, adapterService, archiveIfAiTemporary } = setup();
+			archiveIfAiTemporary.mockResolvedValueOnce(false);
+			const scope = deletionScope(['wf-1', 'wf-2']);
+
+			const afterDeletion = await provider.onBeforeThreadDeletion(scope);
+			await afterDeletion?.();
+
+			const [, options] = adapterService.createContext.mock.calls[0];
+			const markers = options?.temporaryWorkflowMarkers;
+			await expect(markers?.has('wf-2')).resolves.toBe(true);
+			// The archive drops the marker of a workflow that it cannot archive.
+			await expect(markers?.list()).resolves.toEqual(['wf-2']);
+			// The thread is gone, so the archive does not write to its metadata.
+			const { patchThread } = scope.memory as unknown as { patchThread: ReturnType<typeof vi.fn> };
+			expect(patchThread).not.toHaveBeenCalled();
+		});
+
+		it('archives nothing when the user no longer exists', async () => {
+			const { provider, archiveIfAiTemporary, userRepository } = setup();
+			userRepository.findByIdWithRole.mockResolvedValue(null);
+
+			const afterDeletion = await provider.onBeforeThreadDeletion(deletionScope(['wf-1']));
+			await afterDeletion?.();
+
+			expect(archiveIfAiTemporary).not.toHaveBeenCalled();
+		});
 	});
 
 	describe('prepareTurn', () => {
@@ -274,38 +377,137 @@ describe('AssistantAgentProvider', () => {
 			expect(handle.runOptions?.titleText).toBe('Build a digest');
 			expect(handle.hostMetadata).toMatchObject({
 				assistantTurn: { runId: 'run-1', messageGroupId: 'mg-1' },
-				buildMode: 'default',
 			});
 		});
 
-		it('gives the file tools the content of the turn files, and keeps the input as text', async () => {
-			const { provider, turnInput } = setup();
-			const ref = { id: 'att-1', fileName: 'notes.csv', mimeType: 'text/csv', sizeBytes: 3 };
+		it('reads no thread settings from the turn overrides by default', async () => {
+			const { provider, turnEnvironment } = setup();
 			const turn = startTurn({
-				attachments: [ref, { ...ref, id: 'att-gone' }],
-				readAttachment: vi.fn(async (attachment) =>
-					attachment.id === 'att-1' ? Buffer.from('a,b') : undefined,
-				),
+				options: {
+					...startTurn().options,
+					// Stored options of an older turn can still carry these fields.
+					request: {
+						mode: 'progressive',
+						promptVersion: 'default@1',
+						observerThresholdTokens: 5_000,
+					},
+				},
 			});
 
 			const handle = await provider.prepareTurn(turn);
 
-			const file = {
-				type: 'file',
-				data: Buffer.from('a,b').toString('base64'),
-				mimeType: 'text/csv',
+			const { turnState } = turnEnvironment.create.mock.calls[0][1];
+			expect(turnState.getPromptVersion()).toBeUndefined();
+			expect(turnState.getObserverThresholdTokens()).toBeUndefined();
+			expect(handle.hostMetadata).toMatchObject({ promptVersion: null });
+		});
+
+		it('reads the thread settings of the turn from the turn overrides', async () => {
+			const { provider, turnEnvironment, turnOverrides } = setup();
+			vi.spyOn(turnOverrides, 'getPromptVersion').mockReturnValue('concise@1');
+
+			const handle = await provider.prepareTurn(startTurn());
+
+			const { turnState } = turnEnvironment.create.mock.calls[0][1];
+			expect(turnState.getPromptVersion()).toBe('concise@1');
+			// The Assistant agent has no threshold override.
+			expect(turnState.getObserverThresholdTokens()).toBeUndefined();
+			expect(turnOverrides.getPromptVersion).toHaveBeenCalledWith('thread-1');
+			expect(handle.hostMetadata).toMatchObject({ promptVersion: 'concise@1' });
+		});
+
+		it('keeps the element a user picked in an app preview, whatever the node gate says', async () => {
+			const { provider, turnInput } = setup();
+			const element = { type: 'element', appId: 'app-1', tagName: 'button', text: 'Save' };
+			const turn = startTurn({
+				options: { ...startTurn().options, request: { attachments: [element] } },
+			});
+
+			await provider.prepareTurn(turn);
+
+			expect(turnInput.buildInput).toHaveBeenCalledWith(
+				expect.anything(),
+				expect.anything(),
+				expect.objectContaining({ contextAttachments: [element] }),
+			);
+		});
+
+		it('gives parse-file the stored files of the thread, and keeps the input as text', async () => {
+			const { provider, turnInput, environment } = setup();
+			const ref = { id: 'att-1', fileName: 'notes.csv', mimeType: 'text/csv', sizeBytes: 3 };
+			const stored = {
 				fileName: 'notes.csv',
+				mimeType: 'text/csv',
+				sizeBytes: 3,
+				readContent: vi.fn(async () => Buffer.from('a,b')),
 			};
+			const turn = startTurn({
+				attachments: [ref],
+				readFile: vi.fn(async (fileId: string) => (fileId === 'att-1' ? stored : undefined)),
+			});
+
+			const handle = await provider.prepareTurn(turn);
+
+			// No file content is loaded up front, so parse-file is not tied to this message.
+			expect(turn.readAttachment).not.toHaveBeenCalled();
 			expect(turnInput.applyTurnScope).toHaveBeenCalledWith(
 				expect.anything(),
-				expect.objectContaining({ fileAttachments: [file] }),
+				expect.objectContaining({ fileAttachments: [] }),
 			);
 			expect(turnInput.buildInput).toHaveBeenCalledWith(
 				expect.anything(),
 				expect.anything(),
-				expect.objectContaining({ fileAttachments: [file] }),
+				expect.objectContaining({ fileAttachments: [] }),
 			);
+			await expect(environment.context.storedFiles?.read('att-1')).resolves.toBe(stored);
+			await expect(environment.context.storedFiles?.read('other')).resolves.toBeUndefined();
 			expect(handle.input).toBe('Build a digest');
+		});
+
+		it('asks the model to inspect the files of a message without text', async () => {
+			const { provider, turnInput } = setup();
+			const ref = { id: 'att-1', fileName: 'notes.csv', mimeType: 'text/csv', sizeBytes: 3 };
+
+			await provider.prepareTurn(startTurn({ message: '', attachments: [ref] }));
+
+			expect(turnInput.buildInput).toHaveBeenCalledWith(
+				expect.anything(),
+				expect.anything(),
+				expect.objectContaining({ message: FILES_ONLY_MESSAGE }),
+			);
+		});
+
+		it('gives parse-file the stored files on a resumed turn', async () => {
+			const { provider, environment } = setup();
+			const start = startTurn();
+			const stored = {
+				fileName: 'notes.csv',
+				mimeType: 'text/csv',
+				sizeBytes: 3,
+				readContent: vi.fn(async () => Buffer.from('a,b')),
+			};
+			const turn: SystemAgentResumeTurn<AssistantSandboxLease> = {
+				type: 'resume',
+				user,
+				thread,
+				resourceId: start.resourceId,
+				abortSignal: start.abortSignal,
+				emitHostEvent: start.emitHostEvent,
+				memory: start.memory,
+				checkpointStore: start.checkpointStore,
+				sessionGrants: start.sessionGrants,
+				readFile: vi.fn(async () => stored),
+				runId: 'agent-run-1',
+				toolCallId: 'tool-call-1',
+				checkpointHostMetadata: { assistantTurn: { runId: 'run-1', messageGroupId: 'mg-1' } },
+				openSuspensions: [],
+				resumeData: { approved: true },
+			};
+
+			await provider.prepareTurn(turn);
+
+			await expect(environment.context.storedFiles?.read('att-1')).resolves.toBe(stored);
+			expect(turn.readFile).toHaveBeenCalledWith('att-1');
 		});
 
 		describe('attached agent', () => {
@@ -503,6 +705,146 @@ describe('AssistantAgentProvider', () => {
 			);
 		});
 
+		describe('"Builder asked for input" telemetry', () => {
+			function card(requestId: string, extra: Record<string, unknown> = {}) {
+				return { requestId, message: 'Delete the workflow?', severity: 'destructive', ...extra };
+			}
+
+			function suspended(toolCallId: string, suspendPayload: unknown) {
+				return {
+					type: 'tool-call-suspended',
+					runId: 'agent-run-1',
+					toolCallId,
+					toolName: 'workflows',
+					suspendPayload,
+				} as never;
+			}
+
+			function resumeTurn(
+				openSuspensions: SystemAgentResumeTurn['openSuspensions'],
+			): SystemAgentResumeTurn<AssistantSandboxLease> {
+				const start = startTurn();
+				const checkpointStore = mock<SystemAgentStartTurn['checkpointStore']>();
+				return {
+					type: 'resume',
+					user,
+					thread,
+					resourceId: start.resourceId,
+					abortSignal: start.abortSignal,
+					emitHostEvent: start.emitHostEvent,
+					memory: start.memory,
+					checkpointStore,
+					sessionGrants: start.sessionGrants,
+					readFile: vi.fn(async () => undefined),
+					runId: 'agent-run-1',
+					toolCallId: 'tc-1',
+					checkpointHostMetadata: { assistantTurn: { runId: 'run-1', messageGroupId: 'mg-1' } },
+					openSuspensions,
+					resumeData: { approved: true },
+				};
+			}
+
+			function open(
+				toolCallId: string,
+				suspendPayload: unknown,
+			): SystemAgentResumeTurn['openSuspensions'][number] {
+				return { toolCallId, toolName: 'workflows', suspendPayload };
+			}
+
+			it('sends one event for each new Assistant card, with the request id as input id', async () => {
+				const { provider, telemetry } = setup();
+
+				const handle = await provider.prepareTurn(startTurn());
+				handle.onChunk?.(suspended('tc-1', card('req-1')));
+				handle.onChunk?.(
+					suspended('tc-2', card('req-2', { inputType: 'questions', questions: [{}, {}] })),
+				);
+
+				expect(telemetry.track).toHaveBeenCalledTimes(2);
+				expect(telemetry.track).toHaveBeenNthCalledWith(
+					1,
+					TELEMETRY_EVENT.INSTANCE_AI.BUILDER_ASKED_FOR_INPUT,
+					{
+						user_id: 'user-1',
+						thread_id: 'thread-1',
+						input_thread_id: 'req-1',
+						type: 'approval',
+						num_steps: 1,
+						contains_templated_cred: false,
+						tool_call_id: 'tc-1',
+						tool_name: 'workflows',
+						severity: 'destructive',
+						approval_mode: 'unavailable',
+						runtime: 'agents',
+					},
+				);
+				expect(telemetry.track).toHaveBeenNthCalledWith(
+					2,
+					TELEMETRY_EVENT.INSTANCE_AI.BUILDER_ASKED_FOR_INPUT,
+					expect.objectContaining({ input_thread_id: 'req-2', type: 'questions', num_steps: 2 }),
+				);
+			});
+
+			it('sends no event for a suspension that is not an Assistant card', async () => {
+				const { provider, telemetry } = setup();
+
+				const handle = await provider.prepareTurn(startTurn());
+				handle.onChunk?.(suspended('tc-1', { toolName: 'notion_search', args: {} }));
+
+				expect(telemetry.track).not.toHaveBeenCalled();
+			});
+
+			it('does not count an open sibling card again when another card is answered', async () => {
+				const { provider, telemetry } = setup();
+				const turn = resumeTurn([open('tc-1', card('req-1')), open('tc-2', card('req-2'))]);
+
+				const handle = await provider.prepareTurn(turn);
+				// The runtime sends the open sibling again, with the same payload.
+				handle.onChunk?.(suspended('tc-2', card('req-2')));
+
+				expect(turn.checkpointStore.load).not.toHaveBeenCalled();
+				expect(telemetry.track).not.toHaveBeenCalled();
+			});
+
+			it('does not count the open cards again when a resume sends all of them back', async () => {
+				const { provider, telemetry } = setup();
+				const turn = resumeTurn([open('tc-1', card('req-1')), open('tc-2', card('req-2'))]);
+
+				const handle = await provider.prepareTurn(turn);
+				// A failed cancellation cleanup keeps every pending card, the answered one too.
+				handle.onChunk?.(suspended('tc-1', card('req-1')));
+				handle.onChunk?.(suspended('tc-2', card('req-2')));
+
+				expect(telemetry.track).not.toHaveBeenCalled();
+			});
+
+			it('counts a new card that the resumed tool shows', async () => {
+				const { provider, telemetry } = setup();
+				const turn = resumeTurn([open('tc-1', card('req-1'))]);
+
+				const handle = await provider.prepareTurn(turn);
+				handle.onChunk?.(suspended('tc-1', card('req-3')));
+
+				expect(telemetry.track).toHaveBeenCalledWith(
+					TELEMETRY_EVENT.INSTANCE_AI.BUILDER_ASKED_FOR_INPUT,
+					expect.objectContaining({ input_thread_id: 'req-3', runtime: 'agents' }),
+				);
+			});
+
+			it('sends the approval mode of the run', async () => {
+				const { provider, telemetry, environment } = setup();
+				environment.context.approvalMode = 'auto';
+
+				const handle = await provider.prepareTurn(startTurn());
+				handle.onChunk?.(suspended('tc-1', card('req-1')));
+
+				expect(telemetry.track).toHaveBeenCalledWith(
+					TELEMETRY_EVENT.INSTANCE_AI.BUILDER_ASKED_FOR_INPUT,
+					expect.objectContaining({ approval_mode: 'auto' }),
+				);
+			});
+		});
+
 		describe('side-call usage', () => {
 			const usage = { promptTokens: 50, completionTokens: 5, totalTokens: 55 };
 
@@ -519,12 +861,11 @@ describe('AssistantAgentProvider', () => {
 						reportId: 'report-1',
 					});
 
-					expect(creditService.claimRunUsage).toHaveBeenCalledWith(
+					expect(creditService.claimSideCallUsage).toHaveBeenCalledWith(
 						user,
 						'thread-1',
 						`run-1:${task}:report-1`,
-						expect.arrayContaining([expect.anything()]),
-						'completed',
+						expect.objectContaining({ model: 'anthropic/claude-haiku-4-5', usage }),
 					);
 				},
 			);
@@ -542,24 +883,58 @@ describe('AssistantAgentProvider', () => {
 						reportId: 'report-1',
 					});
 
-					expect(creditService.claimRunUsage).not.toHaveBeenCalled();
+					expect(creditService.claimSideCallUsage).not.toHaveBeenCalled();
 				},
 			);
+		});
 
-			it('keeps the turn going when the claim fails', async () => {
-				const { provider, creditService } = setup();
-				creditService.claimRunUsage.mockRejectedValueOnce(new Error('billing down'));
+		describe('workflow setup route', () => {
+			async function turnWithBuild() {
+				const memory = createMemory();
+				await saveBuild(memory, outcome());
+				return { memory, turn: startTurn({ memory }) };
+			}
 
-				const handle = await provider.prepareTurn(startTurn());
+			it('adds a setup instruction when the agent stops before setup', async () => {
+				const { provider } = setup();
+				const { memory, turn } = await turnWithBuild();
 
-				await expect(
-					handle.onSideCallUsage?.({
-						task: 'title',
-						model: 'anthropic/claude-haiku-4-5',
-						usage,
-						reportId: 'report-1',
-					}),
-				).resolves.toBeUndefined();
+				const handle = await provider.prepareTurn(turn);
+				const instruction = await handle.onCompletingBoundary?.();
+
+				expect(instruction).toMatchObject({ reason: 'workflow_setup' });
+				expect(instruction?.content).toContain('"workflowId": "wf-1"');
+				expect(await routedAt(memory)).toEqual(expect.any(String));
+			});
+
+			it('marks the build when its setup card suspends the turn', async () => {
+				const { provider } = setup();
+				const { memory, turn } = await turnWithBuild();
+
+				const handle = await provider.prepareTurn(turn);
+				handle.onChunk?.({
+					type: 'tool-call-suspended',
+					runId: 'run-1',
+					toolCallId: 'call-1',
+					toolName: 'setup_workflow',
+					suspendPayload: { workflowId: 'wf-1', setupRequests: [] },
+				});
+				await handle.onSettled?.({ executionId: 'exec-1', status: 'suspended' });
+
+				expect(await routedAt(memory)).toEqual(expect.any(String));
+				const resumed = await provider.prepareTurn(startTurn({ memory }));
+				expect(await resumed.onCompletingBoundary?.()).toBeUndefined();
+			});
+
+			it('marks the build when the setup panel announces its checklist', async () => {
+				const { provider, turnEnvironment } = setup();
+				const { memory, turn } = await turnWithBuild();
+
+				await provider.prepareTurn(turn);
+				const runtime: AssistantTurnRuntime = turnEnvironment.create.mock.calls[0][1];
+				await runtime.markWorkflowSetupHandled?.('wf-1');
+
+				expect(await routedAt(memory)).toEqual(expect.any(String));
 			});
 		});
 
@@ -713,8 +1088,12 @@ describe('AssistantAgentProvider', () => {
 					code: 'quota_exhausted',
 				});
 
+				// The turn checks the credits once for each error.
 				turnEnvironment.assertAssistantCreditsAvailable.mockResolvedValue(undefined);
-				await expect(handle.formatError?.(masked)).resolves.not.toHaveProperty('code');
+				const nextMasked = Object.assign(new Error('No output generated'), {
+					name: 'AI_NoOutputGeneratedError',
+				});
+				await expect(handle.formatError?.(nextMasked)).resolves.not.toHaveProperty('code');
 			});
 
 			it('gives a credit error from the turn setup its text and code', async () => {
@@ -742,9 +1121,11 @@ describe('AssistantAgentProvider', () => {
 				memory: start.memory,
 				checkpointStore: start.checkpointStore,
 				sessionGrants: start.sessionGrants,
+				readFile: start.readFile,
 				runId: 'agent-run-1',
 				toolCallId: 'tool-call-1',
 				checkpointHostMetadata: { assistantTurn: { runId: 'run-1', messageGroupId: 'mg-1' } },
+				openSuspensions: [],
 				resumeData: { approved: true },
 			};
 
@@ -889,9 +1270,11 @@ describe('AssistantAgentProvider', () => {
 					memory: start.memory,
 					checkpointStore: start.checkpointStore,
 					sessionGrants: start.sessionGrants,
+					readFile: start.readFile,
 					runId: 'agent-run-1',
 					toolCallId: 'tool-call-1',
 					checkpointHostMetadata: { assistantTurn: { runId: 'run-1', messageGroupId: 'mg-1' } },
+					openSuspensions: [],
 					resumeData: { approved: true },
 				};
 
@@ -1000,6 +1383,7 @@ describe('AssistantAgentProvider', () => {
 						memory: start.memory,
 						checkpointStore: start.checkpointStore,
 						sessionGrants: start.sessionGrants,
+						readFile: start.readFile,
 						runId: 'agent-run-1',
 						toolCallId: 'tool-call-1',
 						checkpointHostMetadata: {
@@ -1009,6 +1393,7 @@ describe('AssistantAgentProvider', () => {
 								request: { attachments: [agentAttachment] },
 							},
 						},
+						openSuspensions: [],
 						resumeData: { approved: true },
 					});
 
@@ -1034,6 +1419,242 @@ describe('AssistantAgentProvider', () => {
 			await expect(runtime.sandbox.getOrCreateWorkspace({} as never)).resolves.toBe(
 				sandboxWorkspace,
 			);
+		});
+	});
+
+	describe('error reports', () => {
+		function tracedSetup() {
+			const ctx = setup();
+			const context = {
+				rootRun: { traceId: 'ls-trace-1', otelTraceId: 'otel-1' },
+			} as unknown as AssistantTurnTrace['context'];
+			const trace = mock<AssistantTurnTrace>({ context });
+			trace.tracePromptBuild.mockImplementation(async (_inputs, build) => await build());
+			trace.hostMetadata.mockReturnValue({});
+			ctx.tracer.startForTurn.mockResolvedValue(trace);
+			return { ...ctx, trace };
+		}
+
+		const reportedIds = {
+			source: 'instance-ai',
+			threadId: 'thread-1',
+			runId: 'run-1',
+			projectId: 'project-1',
+			userId: 'user-1',
+			agentId: 'orchestrator-run-1',
+			messageGroupId: 'mg-1',
+			traceId: 'otel-1',
+			langsmithTraceId: 'ls-trace-1',
+		};
+
+		it('reports a turn that the model stream failed, with the trace ids', async () => {
+			const { provider, sentry } = tracedSetup();
+			const handle = await provider.prepareTurn(startTurn());
+			const error = new Error('overloaded');
+
+			handle.onChunk?.({ type: 'error', error });
+			await handle.onSettled?.({ executionId: 'exec-1', status: 'errored', error });
+
+			expect(sentry.error).toHaveBeenCalledTimes(1);
+			expect(sentry.error).toHaveBeenCalledWith(error, {
+				tags: { component: 'instance-ai-stream', ...reportedIds },
+				extra: reportedIds,
+				shouldIsolate: true,
+			});
+		});
+
+		it('reports an error that the run threw as a run failure', async () => {
+			const { provider, sentry } = tracedSetup();
+			const handle = await provider.prepareTurn(startTurn());
+			const error = new Error('tool crashed');
+
+			await handle.onSettled?.({ executionId: 'exec-1', status: 'errored', error });
+
+			expect(sentry.error).toHaveBeenCalledWith(
+				error,
+				expect.objectContaining({
+					tags: expect.objectContaining({
+						component: 'instance-ai-run',
+						langsmithTraceId: 'ls-trace-1',
+					}),
+				}),
+			);
+		});
+
+		it('claims the turn usage when the report fails', async () => {
+			const { provider, sentry, creditService, trace } = tracedSetup();
+			sentry.error.mockImplementation(() => {
+				throw new Error('sentry down');
+			});
+			const handle = await provider.prepareTurn(startTurn());
+			handle.onChunk?.({
+				type: 'finish',
+				finishReason: 'error',
+				model: 'anthropic/claude-sonnet',
+				usage: { promptTokens: 100, completionTokens: 20, totalTokens: 120 },
+			} as never);
+			const outcome = { executionId: 'exec-1', status: 'errored', error: new Error('x') } as const;
+
+			await handle.onSettled?.(outcome);
+
+			expect(sentry.error).toHaveBeenCalled();
+			expect(creditService.claimRunUsage).toHaveBeenCalled();
+			expect(trace.finish).toHaveBeenCalledWith(outcome, expect.anything());
+		});
+
+		it('reports the turn without trace ids when tracing is off', async () => {
+			const { provider, sentry } = setup();
+			const handle = await provider.prepareTurn(startTurn());
+			const error = new Error('tool crashed');
+
+			await handle.onSettled?.({ executionId: 'exec-1', status: 'errored', error });
+
+			const [, context] = sentry.error.mock.calls[0];
+			expect(context?.tags).toMatchObject({ component: 'instance-ai-run', runId: 'run-1' });
+			expect(context?.tags).not.toHaveProperty('langsmithTraceId');
+		});
+
+		it.each(['completed', 'suspended', 'cancelled'] as const)(
+			'does not report a %s turn',
+			async (status) => {
+				const { provider, sentry } = tracedSetup();
+				const handle = await provider.prepareTurn(startTurn());
+
+				await handle.onSettled?.({ executionId: 'exec-1', status });
+
+				expect(sentry.error).not.toHaveBeenCalled();
+			},
+		);
+
+		it('does not report a stream transport failure', async () => {
+			const { provider, sentry } = tracedSetup();
+			const handle = await provider.prepareTurn(startTurn());
+			const error = new ModelStreamStallError(90_000);
+
+			handle.onChunk?.({ type: 'error', error });
+			await handle.onSettled?.({ executionId: 'exec-1', status: 'errored', error });
+
+			expect(sentry.error).not.toHaveBeenCalled();
+		});
+
+		it('does not report a masked stream failure when the credits are used up', async () => {
+			const { provider, sentry, turnEnvironment } = tracedSetup();
+			turnEnvironment.assertAssistantCreditsAvailable.mockRejectedValue(
+				new QuotaExhaustedStreamError(new Error('Assistant credits exhausted')),
+			);
+			const handle = await provider.prepareTurn(startTurn());
+			const masked = Object.assign(new Error('No output generated'), {
+				name: 'AI_NoOutputGeneratedError',
+			});
+
+			handle.onChunk?.({ type: 'error', error: masked });
+			await expect(handle.formatError?.(masked)).resolves.toMatchObject({
+				code: 'quota_exhausted',
+			});
+			await handle.onSettled?.({ executionId: 'exec-1', status: 'errored', error: masked });
+
+			expect(sentry.error).not.toHaveBeenCalled();
+			// The error text and the report share one credit check.
+			expect(turnEnvironment.assertAssistantCreditsAvailable).toHaveBeenCalledTimes(1);
+		});
+
+		it('reports an error only once for each turn', async () => {
+			const { provider, sentry, errorReporter } = tracedSetup();
+			const handle = await provider.prepareTurn(startTurn());
+			const error = new Error('overloaded');
+			// A report from the turn setup that saw the same error first.
+			errorReporter.report(error, {
+				component: 'instance-ai-observer',
+				threadId: 'thread-1',
+				runId: 'run-1',
+			});
+
+			await handle.onSettled?.({ executionId: 'exec-1', status: 'errored', error });
+
+			expect(sentry.error).toHaveBeenCalledTimes(1);
+
+			// The turn ended, so the next turn of the run reports the error again.
+			const next = await provider.prepareTurn(startTurn());
+			await next.onSettled?.({ executionId: 'exec-2', status: 'errored', error });
+			expect(sentry.error).toHaveBeenCalledTimes(2);
+		});
+
+		it('reports a failure of the turn setup, with the trace ids', async () => {
+			const { provider, sentry, agentFactory } = tracedSetup();
+			const error = new Error('No model');
+			agentFactory.createAgent.mockRejectedValue(error);
+
+			await expect(provider.prepareTurn(startTurn())).rejects.toBe(error);
+
+			expect(sentry.error).toHaveBeenCalledWith(error, {
+				tags: { component: 'instance-ai-run', ...reportedIds },
+				extra: reportedIds,
+				shouldIsolate: true,
+			});
+		});
+
+		it('keeps the setup error and ends the turn when the report fails', async () => {
+			const { provider, sentry, agentFactory, errorReporter, trace } = tracedSetup();
+			sentry.error.mockImplementation(() => {
+				throw new Error('sentry down');
+			});
+			const endRun = vi.spyOn(errorReporter, 'endRun');
+			const error = new Error('No model');
+			agentFactory.createAgent.mockRejectedValue(error);
+
+			await expect(provider.prepareTurn(startTurn())).rejects.toBe(error);
+
+			expect(endRun).toHaveBeenCalledWith('run-1', expect.any(Symbol));
+			expect(trace.finish).toHaveBeenCalledWith({ status: 'errored', error });
+		});
+
+		it('reports a failure of the turn setup before the trace starts', async () => {
+			const { provider, sentry, adapterService } = setup();
+			const error = new Error('flags down');
+			adapterService.resolveExperimentGates.mockRejectedValue(error);
+
+			await expect(provider.prepareTurn(startTurn())).rejects.toBe(error);
+
+			expect(sentry.error).toHaveBeenCalledWith(
+				error,
+				expect.objectContaining({
+					tags: expect.objectContaining({ component: 'instance-ai-run', runId: 'run-1' }),
+				}),
+			);
+		});
+
+		it('does not report a turn setup that the user stopped', async () => {
+			const { provider, sentry, agentFactory } = tracedSetup();
+			const controller = new AbortController();
+			agentFactory.createAgent.mockImplementation(async () => {
+				controller.abort();
+				throw new Error('aborted');
+			});
+
+			await expect(
+				provider.prepareTurn(startTurn({ abortSignal: controller.signal })),
+			).rejects.toThrow('aborted');
+
+			expect(sentry.error).not.toHaveBeenCalled();
+		});
+
+		it('does not report a setup credit error', async () => {
+			const { provider, sentry, turnEnvironment } = tracedSetup();
+			turnEnvironment.create.mockRejectedValue(
+				new QuotaExhaustedStreamError(new Error('Assistant credits exhausted')),
+			);
+
+			await expect(provider.prepareTurn(startTurn())).rejects.toThrow();
+
+			expect(sentry.error).not.toHaveBeenCalled();
+		});
+
+		it('gives the trace of the turn to the turn setup', async () => {
+			const { provider, turnEnvironment, trace } = tracedSetup();
+
+			await provider.prepareTurn(startTurn());
+
+			expect(turnEnvironment.create.mock.calls[0][0].tracing).toBe(trace.context);
 		});
 	});
 });

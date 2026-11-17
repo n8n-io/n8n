@@ -11,7 +11,7 @@ import type { ResponseStream } from '@/webhooks/streaming-webhook-response-heart
 import type {
 	ExecutionResponseReceiver,
 	UnsubscribeExecutionResponse,
-} from '../response-channel/execution-response-receiver';
+} from '../execution-channel/execution-response-receiver';
 import { StreamingResponseWriter } from './streaming-response-writer';
 import { toWebhookOutcome, type WebhookRunOutcome } from './webhook-outcome';
 

@@ -1,4 +1,4 @@
-import { Logger, ModuleRegistry } from '@n8n/backend-common';
+import { getN8nVersion, Logger, ModuleRegistry } from '@n8n/backend-common';
 import { Service } from '@n8n/di';
 import { getErrorMessage } from '@n8n/utils/errors/get-error-message';
 import { latestWins } from '@n8n/utils/promise/latest-wins';
@@ -25,12 +25,11 @@ import type { OtelConnectionParams } from './otel-settings.service';
 import { OtelSettingsService } from './otel-settings.service';
 import type { OtelConfig } from './otel.config';
 import { ATTR, OTEL_TEST_SPAN_NAME } from './otel.constants';
-import { withResourceAttributes } from './otel-span-exporter';
+import { withHookAttributes } from './otel-span-exporter';
 
-import { N8N_VERSION } from '@/constants';
 import { ExternalHooks } from '@/external-hooks';
 import { OtelSdk } from '@/observability/otel-sdk';
-import { Publisher } from '@/scaling/pubsub/publisher.service';
+import { Publisher } from '@n8n/backend-services';
 import { outboundPropagatorFromEnv } from '@/observability/outbound-propagator';
 import {
 	TRACING_OFF,
@@ -261,10 +260,10 @@ export class OtelService {
 		settings: ExportSettings,
 	): Promise<SpanProcessor[] | undefined> {
 		try {
-			const exporter = withResourceAttributes(
+			const exporter = withHookAttributes(
 				await this.exporterFactory.createTraceExporter(settings),
 				this.resourceAttributes(settings.exporterServiceName),
-				(spanAttributes) => this.configureHook.mapResourceAttributes(spanAttributes),
+				this.configureHook,
 			);
 			return [new ExecutionIdentitySpanProcessor(), new BatchSpanProcessor(exporter)];
 		} catch (error) {
@@ -278,7 +277,7 @@ export class OtelService {
 	private resourceAttributes(serviceName: string) {
 		return {
 			[ATTR.OTEL_SERVICE_NAME]: serviceName,
-			[ATTR.OTEL_SERVICE_VERSION]: N8N_VERSION,
+			[ATTR.OTEL_SERVICE_VERSION]: getN8nVersion(),
 			[ATTR.INSTANCE_ID]: this.instanceSettings.instanceId,
 			[ATTR.INSTANCE_ROLE]: this.instanceSettings.instanceType,
 		};

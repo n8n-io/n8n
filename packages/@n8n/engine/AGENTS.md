@@ -28,7 +28,7 @@ a deployable engine worker) without touching core logic.
 
 ## Layers (today, all in this package)
 
-- **Core (decides)** — `graph/`, `execution/`, `admittance/`. Pure
+- **Core (decides)** — `graph/`, `execution/`, `reconciliation/`, `admittance/`. Pure
   orchestration/policy. Must not open connections, bind an HTTP server, or read
   the environment. Everything external arrives via constructor args / a deps bag
   (the `createScheduler(deps)` pattern).
@@ -58,7 +58,7 @@ a deployable engine worker) without touching core logic.
 
 ## Rules that keep the seams extractable
 
-- Core modules (`graph`, `execution`, `admittance`) don't import `express`,
+- Core modules (`graph`, `execution`, `reconciliation`, `admittance`) don't import `express`,
   `pg`, or `@n8n/typeorm`, don't construct a `DataSource`, and never import from
   `database/`. Persistence, queue, and HTTP are injected. The dependency arrow
   is one-way: `database/` imports the interface + domain types from the core, not
@@ -104,6 +104,13 @@ Reads go through `ExecutionViewStore`, so a reader's type cannot reach
 (`ExecutionQueryService`). Name the columns in the query: these types are
 structural, so an adapter returning whole entities still type-checks and still
 ships every column.
+
+## Error messages name nodes, not IDs
+
+Users see engine errors in the editor, and node IDs mean nothing to them. When
+an error message refers to a node, use the node's name. Use
+`createNodeLabeler(graph)` from `graph/` to get the name in quotes. It falls
+back to the ID when the graph has no node with that ID.
 
 ## Known deviations — the seams to clean up on decomposition
 

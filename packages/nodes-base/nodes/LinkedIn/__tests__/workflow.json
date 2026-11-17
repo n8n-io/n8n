@@ -1,0 +1,142 @@
+{
+	"name": "LinkedIn request URLs",
+	"nodes": [
+		{
+			"parameters": {},
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [0, 0],
+			"id": "5f1c3c62-0d2a-4d1f-9b7e-1a2b3c4d5e01",
+			"name": "When clicking ‘Execute workflow’"
+		},
+		{
+			"parameters": {
+				"assignments": {
+					"assignments": [
+						{
+							"id": "5f1c3c62-0d2a-4d1f-9b7e-1a2b3c4d5e02",
+							"name": "data",
+							"value": "aGVsbG8=",
+							"type": "string"
+						}
+					]
+				},
+				"options": {}
+			},
+			"type": "n8n-nodes-base.set",
+			"typeVersion": 3.4,
+			"position": [200, 200],
+			"id": "5f1c3c62-0d2a-4d1f-9b7e-1a2b3c4d5e03",
+			"name": "Set Data"
+		},
+		{
+			"parameters": {
+				"operation": "toBinary",
+				"sourceProperty": "data",
+				"options": {
+					"fileName": "image.png",
+					"mimeType": "image/png"
+				}
+			},
+			"type": "n8n-nodes-base.convertToFile",
+			"typeVersion": 1.1,
+			"position": [400, 200],
+			"id": "5f1c3c62-0d2a-4d1f-9b7e-1a2b3c4d5e04",
+			"name": "Create File"
+		},
+		{
+			"parameters": {
+				"person": "AbCdEf1234",
+				"text": "Hello from n8n",
+				"additionalFields": {}
+			},
+			"type": "n8n-nodes-base.linkedIn",
+			"typeVersion": 1,
+			"position": [400, 0],
+			"id": "5f1c3c62-0d2a-4d1f-9b7e-1a2b3c4d5e05",
+			"name": "Text Post",
+			"credentials": {
+				"linkedInOAuth2Api": {
+					"id": "1",
+					"name": "LinkedIn account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"person": "AbCdEf1234",
+				"text": "An image",
+				"shareMediaCategory": "IMAGE",
+				"additionalFields": {
+					"title": "Image title"
+				}
+			},
+			"type": "n8n-nodes-base.linkedIn",
+			"typeVersion": 1,
+			"position": [600, 200],
+			"id": "5f1c3c62-0d2a-4d1f-9b7e-1a2b3c4d5e06",
+			"name": "Image Post",
+			"credentials": {
+				"linkedInOAuth2Api": {
+					"id": "1",
+					"name": "LinkedIn account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"postAs": "organization",
+				"organization": "12345678",
+				"text": "An article",
+				"shareMediaCategory": "ARTICLE",
+				"additionalFields": {
+					"description": "Article description",
+					"originalUrl": "https://n8n.io",
+					"thumbnailBinaryPropertyName": "data",
+					"title": "Article title"
+				}
+			},
+			"type": "n8n-nodes-base.linkedIn",
+			"typeVersion": 1,
+			"position": [600, 400],
+			"id": "5f1c3c62-0d2a-4d1f-9b7e-1a2b3c4d5e07",
+			"name": "Article Post",
+			"credentials": {
+				"linkedInOAuth2Api": {
+					"id": "1",
+					"name": "LinkedIn account"
+				}
+			}
+		}
+	],
+	"pinData": {
+		"Text Post": [{ "json": { "urn": "urn:li:share:7000000000000000001" } }],
+		"Image Post": [{ "json": { "urn": "urn:li:share:7000000000000000002" } }],
+		"Article Post": [{ "json": { "urn": "urn:li:share:7000000000000000003" } }]
+	},
+	"connections": {
+		"When clicking ‘Execute workflow’": {
+			"main": [
+				[
+					{ "node": "Text Post", "type": "main", "index": 0 },
+					{ "node": "Set Data", "type": "main", "index": 0 }
+				]
+			]
+		},
+		"Set Data": {
+			"main": [[{ "node": "Create File", "type": "main", "index": 0 }]]
+		},
+		"Create File": {
+			"main": [
+				[
+					{ "node": "Image Post", "type": "main", "index": 0 },
+					{ "node": "Article Post", "type": "main", "index": 0 }
+				]
+			]
+		}
+	},
+	"active": false,
+	"settings": {
+		"executionOrder": "v1"
+	}
+}
