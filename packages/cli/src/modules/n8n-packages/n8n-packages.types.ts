@@ -277,6 +277,11 @@ export interface ExportPackageRequest {
 	projectWorkflowIds?: string[];
 	/** With `projectWorkflowIds`, also export these folders and the folders above them. */
 	projectFolderIds?: string[];
+	/**
+	 * Promotion-only. Credentials to write also when no exported workflow uses them. A credential
+	 * lands in the directory of its owner project when that project is one of `projectIds`.
+	 */
+	credentialIds?: string[];
 	/** Internal opt-out for callers that cannot import Agents or Agent folders yet. */
 	includeAgents?: boolean;
 	includeVariableValues?: boolean;
@@ -330,6 +335,22 @@ export interface ImportSelection {
 	selectedFolderIds?: string[];
 	/** Destination workflow IDs to remove. */
 	deletedWorkflowIds?: string[];
+	/**
+	 * Promotion-only. Source IDs of credentials that the package holds under the selected project.
+	 * Each is matched and updated like a credential that a selected workflow uses.
+	 */
+	selectedCredentialIds?: string[];
+	/** Promotion-only. More projects of the same import. One plan covers every project. */
+	otherProjects?: ImportProjectSelection[];
+}
+
+/** The selection of one project of a selection import. */
+export type ImportProjectSelection = Omit<ImportSelection, 'otherProjects'>;
+
+/** Every project of a selection, the first one included. */
+export function importSelectionProjects(selection: ImportSelection): ImportProjectSelection[] {
+	const { otherProjects, ...first } = selection;
+	return [first, ...(otherProjects ?? [])];
 }
 
 /**

@@ -1,4 +1,5 @@
 import {
+	ApplyEnvironmentSelectionRequestDto,
 	ApplyPackageDto,
 	ApplyPackageResultDto,
 	ApplySelectionDto,
@@ -13,11 +14,13 @@ import {
 	ListPromotionBranchesQueryDto,
 	MAX_ITEMS_PER_PAGE,
 	MAX_PROMOTION_DISCOVERY_ITEMS_PER_PAGE,
+	PromoteEnvironmentSelectionRequestDto,
 	PromotePackageDto,
 	PromotePackageResultDto,
 	PromoteSelectionResultDto,
 	PromoteSelectionRequestDto,
 	PromotionCheckoutPublicDto,
+	PromotionEnvironmentChangesDto,
 	PromotionEnvironmentListPublicDto,
 	PromotionEnvironmentProjectListPublicDto,
 	PromotionEnvironmentProjectPublicDto,
@@ -712,6 +715,141 @@ export class PromotionsPublicController {
 					hasGlobalScope(req.user, 'variable:list') &&
 					(req.tokenGrant?.apiKeyScopes?.includes('variable:list') ?? false),
 			},
+		);
+	}
+
+	// -- Operations across projects ------------------------------------------
+
+	@Get('/environments/:promotionEnvironmentId/changes/:direction')
+	@Licensed(LICENSE_FEATURES.PROMOTIONS)
+	@ApiKeyScope({ anyOf: ['promotions:promote', 'promotions:apply'] })
+	@ApiSummary('Beta: Preview the changes of an environment across its projects')
+	@ApiDescription(
+		BETA_NOTE +
+			'Compares the projects of a promotion environment on this instance with its branch, in one view. For `promote` the preview is what a Promote sends to the branch, and the key needs the promotions:promote scope. For `apply` the preview is what an Apply of the branch tip changes on this instance, and the key needs the promotions:apply scope. The global promotion scopes are not needed. `projects` lists the projects of the environment that the user can read: every team project for an instance environment, the linked projects for a projects environment. `canOperate` says whether the user can promote or apply in the project. A project that the user cannot read is left out, with everything in it. `resources` and `dependencies` have the same shape as the project change preview, and each resource has the `projectId` and `projectName` of its project, so a client groups by project. `selectable` is true only in a project where `canOperate` is true. For `promote`, `blockers` lists each project whose changes an open review already holds; such a project has no resources. For `apply`, `check` lists what blocks the Apply of the projects that the user can apply, from one plan across them. A project that the branch does not hold has no resources. `revision` identifies this preview: send it as expectedPreviewRevision with promote-selection or apply-selection. Requires the environment to be connected first.',
+	)
+	@ApiTags(tags)
+	@ApiResponse(200, PromotionEnvironmentChangesDto)
+	@ApiErrorResponse(400)
+	@ApiErrorResponse(403)
+	@ApiErrorResponse(404)
+	@ApiErrorResponse(503)
+	async getPromotionEnvironmentChanges(
+		req: AuthenticatedRequest,
+		_res: Response,
+		@Param('promotionEnvironmentId', promotionEnvironmentIdParamSchema)
+		promotionEnvironmentId: string,
+		@Param('direction', promotionDirectionParamSchema) direction: string,
+	): Promise<PromotionEnvironmentChangesDto> {
+		const parsedDirection = this.parseDirectionWithKeyScope(req, direction);
+		return await (await this.changeService()).getEnvironmentChanges(
+			req.user,
+			promotionEnvironmentId,
+			parsedDirection,
+		);
+	}
+
+	@Post('/environments/:promotionEnvironmentId/changes/:direction/details')
+	@Licensed(LICENSE_FEATURES.PROMOTIONS)
+	@ApiKeyScope({ anyOf: ['promotions:promote', 'promotions:apply'] })
+	@RateLimitAccess('read')
+	@ApiSummary('Beta: Read the content of changed resources of an environment')
+	@ApiDescription(
+		BETA_NOTE +
+			'Returns the content before and after the change for up to 50 resources of the changes preview of an environment. Send the `commitSha` and the resource `key` values from the preview. The branch side is read at that commit. The instance side is read now, so a `revision` that differs from the preview means the resource changed after the preview. `missingKeys` lists requested resources that neither side holds anymore, and resources of a project that the user cannot read. Credential content holds expressions only. Variable values are left out, and `valueHidden` is true, unless the API key and the user have the variable:list scope. The key needs the same scope as the preview for that direction.',
+	)
+	@ApiTags(tags)
+	@ApiResponse(200, PromotionResourceDetailsDto)
+	@ApiErrorResponse(400)
+	@ApiErrorResponse(403)
+	@ApiErrorResponse(404)
+	@ApiErrorResponse(503)
+	async getPromotionEnvironmentChangeDetails(
+		req: AuthenticatedRequest,
+		_res: Response,
+		@Param('promotionEnvironmentId', promotionEnvironmentIdParamSchema)
+		promotionEnvironmentId: string,
+		@Param('direction', promotionDirectionParamSchema) direction: string,
+		@Body input: PromotionResourceDetailsRequestDto,
+	): Promise<PromotionResourceDetailsDto> {
+		const parsedDirection = this.parseDirectionWithKeyScope(req, direction);
+		return await (await this.changeService()).getEnvironmentChangeDetails(
+			req.user,
+			promotionEnvironmentId,
+			parsedDirection,
+			input,
+			{
+				canSeeVariableValues:
+					hasGlobalScope(req.user, 'variable:list') &&
+					(req.tokenGrant?.apiKeyScopes?.includes('variable:list') ?? false),
+			},
+		);
+	}
+
+	@Post('/environments/:promotionEnvironmentId/promote-selection')
+	@Licensed(LICENSE_FEATURES.PROMOTIONS)
+	@ApiKeyScope('promotions:promote')
+	@ApiSummary('Beta: Promote a selection across the projects of an environment')
+	@ApiDescription(
+		BETA_NOTE +
+			'Promotes selected workflows, folders and credentials of one or more team projects to the branch of a Promote environment, in one commit. When the environment creates a branch for each Promote, the Promote opens one review, and that review covers every project of the selection. Send `projects`: one entry for each project, with its `workflowIds`, `folderIds` and `credentialIds`. The details of each listed project are always written. Credentials, data tables, variables and tags of a project come with the selected workflows of that project. `credentialIds` adds a credential of the project that no selected workflow of the project uses; the user must be able to read it. The environment must cover each project: an instance environment covers every team project, a projects environment covers its linked projects. The user needs the right to promote in each project; the global promotion scopes are not needed. Status 409 means an open review already holds the changes of a project of the selection. A workflow that moved between projects since the branch was written is refused with 400. Optionally send expectedPreviewRevision with the `revision` of the changes preview of the environment. Status `preview-changed` means a project or the branch changed since that preview, and nothing was pushed. Status `gaps-changed` means the dependency gaps differ from `confirmedGapIds`, and nothing was pushed. Status `promoted` includes counts and git. Inspect status before reading counts. The API key also needs variable:list when the workflows reference variables. Another operation on the same environment returns 423.',
+	)
+	@ApiTags(tags)
+	@ApiResponse(200, PromoteSelectionResultDto)
+	@ApiErrorResponse(400)
+	@ApiErrorResponse(403)
+	@ApiErrorResponse(404)
+	@ApiErrorResponse(409)
+	@ApiErrorResponse(423)
+	@ApiErrorResponse(503)
+	async promoteEnvironmentSelection(
+		req: AuthenticatedRequest,
+		_res: Response,
+		@Param('promotionEnvironmentId', promotionEnvironmentIdParamSchema)
+		promotionEnvironmentId: string,
+		@Body input: PromoteEnvironmentSelectionRequestDto,
+	): Promise<PromoteSelectionResultDto> {
+		return await (await this.promotionsService()).promoteEnvironmentSelection(
+			promotionEnvironmentId,
+			req.user,
+			{
+				...input,
+				// Variable values only travel when the key may list them.
+				canExportVariableValues: req.tokenGrant?.apiKeyScopes?.includes('variable:list') ?? false,
+			},
+		);
+	}
+
+	@Post('/environments/:promotionEnvironmentId/apply-selection')
+	@Licensed(LICENSE_FEATURES.PROMOTIONS)
+	@ApiKeyScope('promotions:apply')
+	@ApiSummary('Beta: Apply a selection across the projects of an environment')
+	@ApiDescription(
+		BETA_NOTE +
+			'Applies selected workflows, folders and credentials of one or more projects from the branch of an Apply environment, in one plan. A reference to a workflow of the same Apply counts as present, in any project of the selection. Send `projects`: one entry for each project, with its `workflowIds`, `folderIds` and `credentialIds`. The details of each listed project always come from the branch. The server imports the selected workflow IDs that the branch holds for the project, and removes a selected workflow that the project owns when the branch does not hold it. `credentialIds` selects a credential that the branch holds under the project: Apply updates it when this instance holds it, and reports it in `missingBindings` with its `ownerProject` when not. The environment must cover each project, and the branch must hold it. The user needs the right to apply in each project; the global promotion scopes are not needed. A project that this instance does not hold is created only on an instance environment, for a user with the global promotions:apply scope. Optionally send expectedSource and expectedPreviewRevision from the changes preview of the environment. Status `source-changed` or `preview-changed` means nothing was imported. Status `blocked` returns the blockers before import writes: bindings that need setup and conflicts with this instance. To continue after the binding step, send the same selection again with expectedSource, and `confirmDestructiveChanges: true` to also apply destructive data table changes. The server does not keep a session. Apply cannot move a workflow or a folder between projects; it returns a `moved` conflict. Status `gaps-changed` means the dependency gaps differ from `confirmedGapIds`, and nothing was imported. Status `applied` includes counts and warnings. Inspect status before reading counts. The importer checks user write permissions. Another operation on the same environment returns 423.',
+	)
+	@ApiTags(tags)
+	@ApiResponse(200, ApplyPackageResultDto)
+	@ApiErrorResponse(400)
+	@ApiErrorResponse(403)
+	@ApiErrorResponse(404)
+	@ApiErrorResponse(409)
+	@ApiErrorResponse(422)
+	@ApiErrorResponse(423)
+	@ApiErrorResponse(503)
+	async applyEnvironmentSelection(
+		req: PublicApiRequest,
+		_res: Response,
+		@Param('promotionEnvironmentId', promotionEnvironmentIdParamSchema)
+		promotionEnvironmentId: string,
+		@Body input: ApplyEnvironmentSelectionRequestDto,
+	): Promise<ApplyPackageResultDto> {
+		return await (await this.promotionsService()).applyEnvironmentSelection(
+			promotionEnvironmentId,
+			req.user,
+			input,
+			req.publicApiClient,
+			req.ctx,
 		);
 	}
 

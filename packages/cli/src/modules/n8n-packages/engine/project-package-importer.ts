@@ -31,13 +31,12 @@ import type {
 	ImportedFolderSummary,
 	ImportedWorkflowSummary,
 	ImportPlanMode,
-	ImportSelection,
 	ResolvedImportRequest,
 	ImportTagSummary,
 	PackageImportBindings,
 	PackageImportSource,
 } from '../n8n-packages.types';
-import { mergeBindings } from '../n8n-packages.types';
+import { importSelectionProjects, mergeBindings } from '../n8n-packages.types';
 import { assertPackageImportApiKeyScopes, assertProjectWritesAllowed } from './import-gates';
 import { CrossProjectMover, type CrossProjectMovePlan } from './cross-project-mover';
 import { toImportBlockedError } from './import-blocked.error';
@@ -70,6 +69,7 @@ import type { ImportOutcome, PackageImportScope } from './import-telemetry';
 import { N8nPackageParser } from './n8n-package-parser';
 import { PackageImportPreflight } from './package-import-preflight';
 import type { ManifestEntry, PackageManifest } from '../spec/manifest.schema';
+import type { PackageCredentialRequirement } from '../spec/requirements.schema';
 import type { SerializedSkill } from '../spec/serialized/skill.schema';
 
 /** Everything an import will do, read before its first write. */
@@ -127,13 +127,16 @@ export class ProjectPackageImporter {
 		this.assertAdequatePermissions(request, manifest);
 
 		const { selection } = request;
-		const selectedProjects = selection
-			? (manifest.projects ?? []).filter((project) => project.id === selection.selectedProjectId)
+		const selectedProjectIds =
+			selection &&
+			new Set(importSelectionProjects(selection).map(({ selectedProjectId }) => selectedProjectId));
+		const selectedProjects = selectedProjectIds
+			? (manifest.projects ?? []).filter((project) => selectedProjectIds.has(project.id))
 			: (manifest.projects ?? []);
 
 		const allProjects = await this.packageParser.getProjects(reader);
-		const projects = selection
-			? allProjects.filter((project) => project.sourceProjectId === selection.selectedProjectId)
+		const projects = selectedProjectIds
+			? allProjects.filter((project) => selectedProjectIds.has(project.sourceProjectId))
 			: allProjects;
 		const projectPlan = await this.projectImporter.plan(
 			request.user,
@@ -162,9 +165,14 @@ export class ProjectPackageImporter {
 			? await this.packageParser.getVariables(reader)
 			: undefined;
 		// Read once for the whole import: every scope looks its credentials up by id.
+		const selectsCredentials =
+			selection !== undefined &&
+			importSelectionProjects(selection).some(
+				({ selectedCredentialIds }) => (selectedCredentialIds?.length ?? 0) > 0,
+			);
 		const packageCredentials = needsBundledCredentialFiles(
 			request,
-			(manifest.requirements?.credentials?.length ?? 0) > 0,
+			selectsCredentials || (manifest.requirements?.credentials?.length ?? 0) > 0,
 			followsPackageOwner(request.credentialDependencies) &&
 				(manifest.credentials?.length ?? 0) > 0,
 		)
@@ -404,14 +412,20 @@ export class ProjectPackageImporter {
 				? await this.packageParser.getAgents(reader, basePrefix)
 				: [];
 
+		// A selection can hold several projects. Each project reads its own part.
+		const selection =
+			request.selection &&
+			importSelectionProjects(request.selection).find(
+				({ selectedProjectId }) => selectedProjectId === project.id,
+			);
 		// Do not expand the selection to include referenced sub-workflows.
-		const workflows = request.selection
+		const workflows = selection
 			? allWorkflows.filter((workflow) =>
-					request.selection!.selectedWorkflowIds.includes(workflow.sourceWorkflowId),
+					selection.selectedWorkflowIds.includes(workflow.sourceWorkflowId),
 				)
 			: allWorkflows;
-		const selectedFolderIds = request.selection
-			? foldersInSelection(allFolders, workflows, request.selection.selectedFolderIds ?? [])
+		const selectedFolderIds = selection
+			? foldersInSelection(allFolders, workflows, selection.selectedFolderIds ?? [])
 			: undefined;
 		const folders = selectedFolderIds
 			? allFolders.filter(({ sourceFolderId }) => selectedFolderIds.has(sourceFolderId))
@@ -419,10 +433,10 @@ export class ProjectPackageImporter {
 
 		// Requirements and bindings are both scoped to this project's workflows so another project's
 		// binding is not seen as an orphan here (which would block the whole multi-project import).
-		const requirements = identifyRequirements(
-			manifest.requirements?.credentials,
-			workflows,
-			agents,
+		const requirements = withSelectedCredentials(
+			identifyRequirements(manifest.requirements?.credentials, workflows, agents),
+			selection?.selectedCredentialIds,
+			importWide.packageCredentials,
 		);
 		const credentialRequest: CredentialBindingRequest = {
 			requirements,
@@ -502,7 +516,7 @@ export class ProjectPackageImporter {
 				workflows,
 				agents,
 			),
-			explicitDeleteWorkflowIds: deletesForProject(request.selection, project.id),
+			explicitDeleteWorkflowIds: selection?.deletedWorkflowIds,
 			checkRootPlacement: true,
 		};
 	}
@@ -516,18 +530,34 @@ export class ProjectPackageImporter {
 		}
 
 		// Selection imports preserve folders, so explicit deletions need only workflow:delete.
-		if (request.selection?.deletedWorkflowIds?.length) {
+		if (
+			request.selection &&
+			importSelectionProjects(request.selection).some(
+				({ deletedWorkflowIds }) => (deletedWorkflowIds?.length ?? 0) > 0,
+			)
+		) {
 			assertPackageImportApiKeyScopes(request.apiKeyScopes, ['workflow:delete']);
 		}
 	}
 }
 
-function deletesForProject(
-	selection: ImportSelection | undefined,
-	projectId: string,
-): string[] | undefined {
-	if (!selection || selection.selectedProjectId !== projectId) return undefined;
-	return selection.deletedWorkflowIds;
+/**
+ * A selected credential needs no consumer in the import. It joins the requirements of its
+ * project without consumers, so the plan matches it and compares it with its package file.
+ */
+function withSelectedCredentials(
+	requirements: PackageCredentialRequirement[] | undefined,
+	selectedCredentialIds: string[] | undefined,
+	packageCredentials: Map<string, SerializedCredential> | undefined,
+): PackageCredentialRequirement[] | undefined {
+	if (!selectedCredentialIds?.length) return requirements;
+	const required = new Set((requirements ?? []).map(({ id }) => id));
+	const selected = selectedCredentialIds.flatMap((id): PackageCredentialRequirement[] => {
+		const credential = packageCredentials?.get(id);
+		if (!credential || required.has(id)) return [];
+		return [{ id, name: credential.name, type: credential.type, usedBy: [] }];
+	});
+	return [...(requirements ?? []), ...selected];
 }
 
 /**

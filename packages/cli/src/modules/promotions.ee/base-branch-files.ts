@@ -39,7 +39,7 @@ const ENTITIES_BY_DIRECTORY = new Map<string, BaseBranchEntity>(
 
 export function parseBaseBranchFiles(
 	lsTreeOutput: string,
-	options: { exportRoot: string; projectId: string },
+	options: { exportRoot: string; projectId: string | readonly string[] },
 ): PackageFile[] {
 	const files = lsTreeOutput.split('\0').flatMap((record) => {
 		const tabIndex = record.indexOf('\t');
@@ -49,7 +49,7 @@ export function parseBaseBranchFiles(
 	});
 	return parsePackageFiles(files, {
 		exportRoot: options.exportRoot,
-		projectIds: [options.projectId],
+		projectIds: typeof options.projectId === 'string' ? [options.projectId] : options.projectId,
 	});
 }
 

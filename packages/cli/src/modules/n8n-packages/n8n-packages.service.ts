@@ -70,6 +70,7 @@ import {
 	type ImportRequest,
 	type ImportResult,
 	type ImportSelection,
+	importSelectionProjects,
 	type ImportSelectionRequest,
 	type PackageImportSource,
 	type PromotionLayoutProperties,
@@ -355,6 +356,7 @@ export class N8nPackagesService {
 			credentialExportPolicy,
 			// Routes project-owned credentials into their project namespace; others stay top-level.
 			projectTargetsById,
+			additionalCredentialIds: request.credentialIds,
 		});
 
 		const dataTableExportResult = await this.dataTableExporter.export({
@@ -722,10 +724,12 @@ export class N8nPackagesService {
 		selection: ImportSelection,
 	): ResolvedImportRequest {
 		const packageProjectIds = new Set((manifest.projects ?? []).map((project) => project.id));
-		if (!packageProjectIds.has(selection.selectedProjectId)) {
-			throw new BadRequestError(
-				`The selected project "${selection.selectedProjectId}" is not present in the package.`,
-			);
+		for (const { selectedProjectId } of importSelectionProjects(selection)) {
+			if (!packageProjectIds.has(selectedProjectId)) {
+				throw new BadRequestError(
+					`The selected project "${selectedProjectId}" is not present in the package.`,
+				);
+			}
 		}
 
 		return {

@@ -53,21 +53,41 @@ export class PromotionReviewGateService {
 		projectId: string,
 		environmentId: string,
 	): Promise<PromotionBlocker | null> {
-		if (!this.inbox.isEnabled()) return null;
+		return (await this.findPromoteBlockers([projectId], environmentId)).get(projectId) ?? null;
+	}
+
+	/**
+	 * The open review that holds the promote changes of each project, by project id. A project
+	 * without an entry is free. Each review gets one live read, also when it covers many projects.
+	 */
+	async findPromoteBlockers(
+		projectIds: readonly string[],
+		environmentId: string,
+	): Promise<Map<string, PromotionBlocker>> {
+		const blockers = new Map<string, PromotionBlocker>();
+		if (projectIds.length === 0 || !this.inbox.isEnabled()) return blockers;
 		try {
 			const open = await this.reviewRepository.findOpenByEnvironmentId(environmentId);
-			if (open.length === 0) return null;
+			if (open.length === 0) return blockers;
 			const runs = await this.runRepository.findByReviewIds(open.map(({ id }) => id));
 			const runsOf = (review: PromotionReview) => runs.filter((run) => run.reviewId === review.id);
-			const covering = open.filter((review) => reviewCoversProject(runsOf(review), projectId));
+			const covering = open.filter((review) =>
+				projectIds.some((projectId) => reviewCoversProject(runsOf(review), projectId)),
+			);
 			const states = await Promise.all(
 				covering.map(async (review) => await this.readState(review, runsOf(review))),
 			);
-			const blocking = covering.find((_, index) => states[index]);
-			return blocking ? { code: 'reviewOpen', reviewId: blocking.id } : null;
+			const blocking = covering.filter((_, index) => states[index]);
+			for (const projectId of projectIds) {
+				const review = blocking.find((candidate) =>
+					reviewCoversProject(runsOf(candidate), projectId),
+				);
+				if (review) blockers.set(projectId, { code: 'reviewOpen', reviewId: review.id });
+			}
+			return blockers;
 		} catch (error) {
 			this.logger.warn('Could not check for an open promotion review', { environmentId, error });
-			return null;
+			return new Map();
 		}
 	}
 

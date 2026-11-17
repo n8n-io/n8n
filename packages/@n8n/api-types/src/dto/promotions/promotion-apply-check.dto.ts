@@ -90,6 +90,8 @@ const credentialSchema = z.object({
 });
 
 export const promotionMissingCredentialBindingSchema = credentialSchema.extend({
+	// A credential that the user selected for the Apply needs no workflow of the Apply.
+	consumers: z.array(promotionBindingConsumerSchema),
 	ownerProject: promotionBindingProjectSchema,
 	expressionData: promotionCredentialExpressionDataSchema.optional(),
 });

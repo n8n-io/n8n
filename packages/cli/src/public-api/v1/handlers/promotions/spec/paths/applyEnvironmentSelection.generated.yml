@@ -1,0 +1,136 @@
+operationId: applyEnvironmentSelection
+tags:
+  - Promotions
+summary: 'Beta: Apply a selection across the projects of an environment'
+description: |-
+  **Beta** — breaking changes may still occur without major version bump.
+
+  Applies selected workflows, folders and credentials of one or more projects from the branch of an Apply environment, in one plan. A reference to a workflow of the same Apply counts as present, in any project of the selection. Send `projects`: one entry for each project, with its `workflowIds`, `folderIds` and `credentialIds`. The details of each listed project always come from the branch. The server imports the selected workflow IDs that the branch holds for the project, and removes a selected workflow that the project owns when the branch does not hold it. `credentialIds` selects a credential that the branch holds under the project: Apply updates it when this instance holds it, and reports it in `missingBindings` with its `ownerProject` when not. The environment must cover each project, and the branch must hold it. The user needs the right to apply in each project; the global promotion scopes are not needed. A project that this instance does not hold is created only on an instance environment, for a user with the global promotions:apply scope. Optionally send expectedSource and expectedPreviewRevision from the changes preview of the environment. Status `source-changed` or `preview-changed` means nothing was imported. Status `blocked` returns the blockers before import writes: bindings that need setup and conflicts with this instance. To continue after the binding step, send the same selection again with expectedSource, and `confirmDestructiveChanges: true` to also apply destructive data table changes. The server does not keep a session. Apply cannot move a workflow or a folder between projects; it returns a `moved` conflict. Status `gaps-changed` means the dependency gaps differ from `confirmedGapIds`, and nothing was imported. Status `applied` includes counts and warnings. Inspect status before reading counts. The importer checks user write permissions. Another operation on the same environment returns 423.
+
+  Requires the `promotions:apply` API key scope.
+x-required-scope: promotions:apply
+parameters:
+  - $ref: ../../../../shared/spec/parameters/idempotencyKey.yml
+  - schema:
+      type: string
+      format: uuid
+    required: true
+    description: The ID of the promotion environment.
+    name: promotionEnvironmentId
+    in: path
+requestBody:
+  required: true
+  content:
+    application/json:
+      schema:
+        type: object
+        properties:
+          projects:
+            type: array
+            items:
+              type: object
+              properties:
+                projectId:
+                  type: string
+                  minLength: 1
+                  maxLength: 36
+                workflowIds:
+                  type: array
+                  items:
+                    type: string
+                    minLength: 1
+                    maxLength: 36
+                folderIds:
+                  type: array
+                  items:
+                    type: string
+                    minLength: 1
+                    maxLength: 36
+                credentialIds:
+                  type: array
+                  items:
+                    type: string
+                    minLength: 1
+                    maxLength: 36
+              required:
+                - projectId
+              additionalProperties: false
+            minItems: 1
+            description: The selection of each project. Every project must be in the scope of the environment, and the user needs the right to run the operation in each of them.
+          expectedSource:
+            type: object
+            properties:
+              environmentId:
+                type: string
+                minLength: 1
+                maxLength: 36
+              branchName:
+                type: string
+                minLength: 1
+              commitSha:
+                type: string
+                pattern: ^[0-9a-f]{40}([0-9a-f]{24})?$
+            required:
+              - environmentId
+              - branchName
+              - commitSha
+            additionalProperties: false
+          expectedPreviewRevision:
+            type: string
+            pattern: ^[0-9a-f]{64}$
+            description: The `revision` of the reviewed preview. The operation builds the preview again. When it differs, the operation returns status `preview-changed` and changes nothing.
+          confirmDestructiveChanges:
+            type: boolean
+            description: 'Also applies destructive data table changes, which a `destructive-change` conflict reports: removed or retyped columns. The values in those columns are removed. Rows and other columns are kept. On a full apply, also deletes the team projects that a `project-deletion` conflict reports, with everything in them. Without `expectedPreviewRevision`, the confirmation covers every such change and deletion when Continue runs, including those that are not in the reviewed result.'
+          confirmedGapIds:
+            type: array
+            items:
+              type: string
+              minLength: 1
+            description: The `id` of each gap that the user accepts, from the dependency report of the preview. Needs an environment that allows incomplete operations. When the list differs from the current gaps, the operation returns status `gaps-changed` and changes nothing.
+          confirmedGrantIds:
+            type: array
+            items:
+              type: string
+              minLength: 1
+            description: The `id` of each credential grant that the user accepts, from the report.
+          confirmDeletionCallers:
+            type: boolean
+            description: Accepts that the Apply deletes workflows that other workflows on this instance call.
+          credentialHomes:
+            type: object
+            additionalProperties:
+              type: string
+              minLength: 1
+              maxLength: 36
+            description: The project that gets each credential that the branch holds without an owner, by credential id.
+        required:
+          - projects
+        additionalProperties: false
+responses:
+  '200':
+    description: Operation successful.
+    content:
+      application/json:
+        schema:
+          $ref: ../../../../shared/spec/schemas/applyPackageResultDto.generated.yml
+  '400':
+    $ref: ../../../../shared/spec/responses/badRequest.yml
+  '401':
+    $ref: ../../../../shared/spec/responses/unauthorized.yml
+  '403':
+    $ref: ../../../../shared/spec/responses/forbidden.yml
+  '404':
+    $ref: ../../../../shared/spec/responses/notFound.yml
+  '409':
+    $ref: ../../../../shared/spec/responses/conflict.yml
+  '415':
+    $ref: ../../../../shared/spec/responses/unsupportedMediaType.yml
+  '422':
+    $ref: ../../../../shared/spec/responses/unprocessableEntity.yml
+  '423':
+    $ref: ../../../../shared/spec/responses/locked.yml
+  '429':
+    $ref: ../../../../shared/spec/responses/tooManyRequests.yml
+  '503':
+    $ref: ../../../../shared/spec/responses/serviceUnavailable.yml

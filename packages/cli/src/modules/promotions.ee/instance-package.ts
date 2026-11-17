@@ -20,6 +20,13 @@ export type InstancePackage = {
 	contents: ReadonlyMap<string, string>;
 };
 
+/** The export of no project. A view without an exportable project compares with it. */
+export const EMPTY_INSTANCE_PACKAGE: InstancePackage = {
+	files: [],
+	manifest: { packageFormatVersion: '1', sourceN8nVersion: '', sourceId: '' },
+	contents: new Map(),
+};
+
 /** What an instance Promote exports to the branch. */
 export function instancePromotionExportRequest({
 	user,
