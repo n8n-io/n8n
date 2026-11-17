@@ -5,10 +5,15 @@
 const std = @import("std");
 const http = @import("http.zig");
 const creds = @import("creds.zig");
+const domains = @import("domains.zig");
 const binary_store = @import("binary_store.zig");
 const Out = creds.Out;
 
 pub const max_url = 8 << 10;
+
+/// The most bytes of a host and of a list of allowed domains in a message.
+const max_shown_host = 96;
+const max_shown_list = 280;
 
 /// Layout of a built request in its buffer: the URL, then the header
 /// lines (ending with the blank line), then the body. The request line
@@ -26,6 +31,9 @@ pub const Built = struct {
     /// The args have `responseBinary`: the body of a 2xx response goes to
     /// the binary data store (`blob_store.zig`).
     stores: bool = false,
+    /// The credential limits the hosts of this request: a redirect goes back
+    /// to the node, which sends the next request, so each URL is checked.
+    no_redirect: bool = false,
     /// Not 0: the body has stored files (`Files`), so its length is not
     /// known yet. The content-length line goes here (`finishLength`), and
     /// `hdr_end` is the start of the body bytes in memory.
@@ -39,7 +47,7 @@ pub const Built = struct {
 /// The reason for `error.Invalid`, for the effect error message. It never
 /// holds a credential value.
 pub const Diag = struct {
-    buf: [256]u8 = undefined,
+    buf: [512]u8 = undefined,
     len: usize = 0,
 
     pub fn set(d: *Diag, comptime fmt: []const u8, args: anytype) void {
@@ -104,16 +112,36 @@ pub fn build(args: []const u8, store: ?*const creds.Store, idem_key: ?[]const u8
 /// `build` for a sender that sends stored files in pieces: the files of the
 /// body go to `files`, not into the buffer, and `Built.cl_at` is set when
 /// there is one. Null: a stored file is read whole into the buffer.
-pub fn buildFiles(args: []const u8, store: ?*const creds.Store, idem_key: ?[]const u8, out_buf: []u8, diag: *Diag, files: ?*Files) Error!Built {
+fn buildFiles(args: []const u8, store: ?*const creds.Store, idem_key: ?[]const u8, out_buf: []u8, diag: *Diag, files: ?*Files) Error!Built {
+    return buildFilesAs(args, store, idem_key, out_buf, diag, files, default_user_agent);
+}
+
+/// The user agent of a request that sets none: the default of n8n.
+pub const default_user_agent = "n8n";
+
+/// The most bytes of a user agent from the settings (`--egress-user-agent`).
+const max_user_agent = 256;
+
+/// True when `text` can be the value of the user-agent header.
+pub fn validUserAgent(text: []const u8) bool {
+    if (text.len == 0 or text.len > max_user_agent) return false;
+    for (text) |c| if (c < ' ' or c == 0x7f) return false;
+    return true;
+}
+
+/// `buildFiles` with the user agent of the settings of n8n, for a request
+/// that sets none.
+pub fn buildFilesAs(args: []const u8, store: ?*const creds.Store, idem_key: ?[]const u8, out_buf: []u8, diag: *Diag, files: ?*Files, user_agent: []const u8) Error!Built {
     @setRuntimeSafety(false);
+    std.debug.assert(validUserAgent(user_agent));
     // Safe builds fill `undefined` memory with 0xAA; for this buffer (8 KB,
     // on every request) the fill cost more than the work. The callee keeps
     // its safety checks.
     var tmp: Tmp = undefined;
-    return buildWith(args, store, idem_key, out_buf, diag, &tmp, files);
+    return buildWith(args, store, idem_key, out_buf, diag, &tmp, files, user_agent);
 }
 
-fn buildWith(args: []const u8, store: ?*const creds.Store, idem_key: ?[]const u8, out_buf: []u8, diag: *Diag, tmp: *Tmp, files: ?*Files) Error!Built {
+fn buildWith(args: []const u8, store: ?*const creds.Store, idem_key: ?[]const u8, out_buf: []u8, diag: *Diag, tmp: *Tmp, files: ?*Files, user_agent: []const u8) Error!Built {
     std.debug.assert(out_buf.len > 0);
     if (idem_key) |k| std.debug.assert(k.len > 0);
     if (files) |f| f.n = 0;
@@ -151,7 +179,9 @@ fn buildWith(args: []const u8, store: ?*const creds.Store, idem_key: ?[]const u8
     // `inject: false`: the credential fills templates only. The headers, the query, the
     // body members and the basic auth that it injects are not added, as for a request that
     // v1 sends without the authentication of the credential.
-    const adding: ?creds.Slot = if (fa.inject) |raw| (if (eq(raw, "false")) null else slot) else slot;
+    // `"redirect"` and `"redirectOtherOrigin"`: the request after a redirect, as n8n sends it.
+    const inj = injectOf(fa.inject);
+    const adding: ?creds.Slot = if (inj.any) slot else null;
 
     if (fa.timeout_ms) |raw| if (!std.mem.eql(u8, raw, "null")) {
         const f = std.fmt.parseFloat(f64, raw) catch return invalid(diag, "http: timeoutMs must be a number", .{});
@@ -183,7 +213,7 @@ fn buildWith(args: []const u8, store: ?*const creds.Store, idem_key: ?[]const u8
             while (it.next()) |mem| try queryPair(&out, &has_query, mem.key, mem.value, slot, diag);
         }
     }
-    if (adding) |s| if (s.qs) |q| {
+    if (adding) |s| if (inj.qs) if (s.qs) |q| {
         var it = q.iterator();
         while (it.next()) |e| {
             const v = e.value_ptr.*;
@@ -198,7 +228,14 @@ fn buildWith(args: []const u8, store: ?*const creds.Store, idem_key: ?[]const u8
         error.Userinfo => invalid(diag, "http: a user name or password in the url is not supported; use a credential", .{}),
         error.BadUrl => invalid(diag, "http: the url is not valid", .{}),
     };
-    _ = url;
+    if (fa.allowed_domains) |raw| if (eq(raw, "true")) if (slot) |s| {
+        try checkDomains(s, out.written(), url, diag);
+        b.no_redirect = s.domains_mode == .domains;
+    };
+    // `followRedirects: false`: the node sends the request of each redirect itself.
+    if (fa.follow_redirects) |raw| if (eq(raw, "false")) {
+        b.no_redirect = true;
+    };
 
     // A multipart body sets its own content type (with the boundary).
     const multipart: ?[]const u8 = if (fa.multipart) |r| (if (std.mem.eql(u8, r, "null")) null else r) else null;
@@ -239,6 +276,7 @@ fn buildWith(args: []const u8, store: ?*const creds.Store, idem_key: ?[]const u8
                 if (v != .string) continue;
                 const name = e.key_ptr.*;
                 if (managed(name)) continue;
+                if (!inj.auth and authenticates(name)) continue;
                 if (std.ascii.eqlIgnoreCase(name, "content-type")) have.ct = true;
                 try headerName(&out, name, diag);
                 const start = out.len;
@@ -250,13 +288,17 @@ fn buildWith(args: []const u8, store: ?*const creds.Store, idem_key: ?[]const u8
         try defaultHeaders(s, fa.headers, &have, &out, diag);
         // The basic auth of the call replaces the basic auth of the credential.
         const call_auth = if (fa.basic_auth) |raw| !eq(raw, "null") else false;
-        if (s.basic and !call_auth) try basicAuth(s, slot, &out, diag);
+        if (s.basic and !call_auth and inj.auth) try basicAuth(s, slot, &out, diag);
     }
     if (fa.basic_auth) |raw| {
         if (!eq(raw, "null")) try requestBasicAuth(raw, slot, &out, diag);
     }
-    if (!have.ua) try out.put("user-agent: n8n-wfrt\r\n");
-    if (!have.accept) try out.put("accept: application/json,text/*;q=0.9,*/*;q=0.8\r\n");
+    if (!have.ua) {
+        try out.put("user-agent: ");
+        try out.put(user_agent);
+        try out.put("\r\n");
+    }
+    if (!have.accept) try out.put(acceptLine(fa.accept_as, fa.json));
     // The runtime does not decompress, so it asks for identity.
     try out.put("accept-encoding: identity\r\n");
     if (idem_key) |k| {
@@ -677,6 +719,10 @@ const Args = struct {
     basic_auth: ?[]const u8 = null,
     inject: ?[]const u8 = null,
     response_binary: ?[]const u8 = null,
+    allowed_domains: ?[]const u8 = null,
+    follow_redirects: ?[]const u8 = null,
+    accept_as: ?[]const u8 = null,
+    json: ?[]const u8 = null,
 };
 
 fn readArgs(args: []const u8) Args {
@@ -686,7 +732,7 @@ fn readArgs(args: []const u8) Args {
     while (it.next()) |mem| : (guard += 1) {
         if (guard > args.len) break;
         const k = mem.key;
-        const slot: *?[]const u8 = if (eq(k, "\"method\"")) &a.method else if (eq(k, "\"credential\"")) &a.credential else if (eq(k, "\"timeoutMs\"")) &a.timeout_ms else if (eq(k, "\"url\"")) &a.url else if (eq(k, "\"qs\"")) &a.qs else if (eq(k, "\"headers\"")) &a.headers else if (eq(k, "\"body\"")) &a.body else if (eq(k, "\"multipart\"")) &a.multipart else if (eq(k, "\"qsFormat\"")) &a.qs_format else if (eq(k, "\"basicAuth\"")) &a.basic_auth else if (eq(k, "\"inject\"")) &a.inject else if (eq(k, "\"responseBinary\"")) &a.response_binary else continue;
+        const slot: *?[]const u8 = if (eq(k, "\"method\"")) &a.method else if (eq(k, "\"credential\"")) &a.credential else if (eq(k, "\"timeoutMs\"")) &a.timeout_ms else if (eq(k, "\"url\"")) &a.url else if (eq(k, "\"qs\"")) &a.qs else if (eq(k, "\"headers\"")) &a.headers else if (eq(k, "\"body\"")) &a.body else if (eq(k, "\"multipart\"")) &a.multipart else if (eq(k, "\"qsFormat\"")) &a.qs_format else if (eq(k, "\"basicAuth\"")) &a.basic_auth else if (eq(k, "\"inject\"")) &a.inject else if (eq(k, "\"responseBinary\"")) &a.response_binary else if (eq(k, "\"allowedDomains\"")) &a.allowed_domains else if (eq(k, "\"followRedirects\"")) &a.follow_redirects else if (eq(k, "\"acceptAs\"")) &a.accept_as else if (eq(k, "\"json\"")) &a.json else continue;
         if (slot.* == null) slot.* = mem.value;
     }
     return a;
@@ -699,6 +745,85 @@ fn eq(a: []const u8, b: []const u8) bool {
 fn invalid(diag: *Diag, comptime fmt: []const u8, args: anytype) Error {
     diag.set(fmt, args);
     return error.Invalid;
+}
+
+/// The accept line of a request that sets none. `acceptAs` names the request
+/// helper of n8n whose default the node expects, and `json` is the `json`
+/// option of the node's request:
+/// - `"legacy"` (`helpers.request`): `application/json` when `json` is
+///   true, else `*/*`;
+/// - `"request"` (`helpers.httpRequest`): `application/json` when `json` is
+///   a true value, else the default of the HTTP client of n8n.
+/// Without `acceptAs` the runtime asks for JSON first and takes each type.
+fn acceptLine(accept_as: ?[]const u8, json: ?[]const u8) []const u8 {
+    const as = accept_as orelse return "accept: application/json,text/*;q=0.9,*/*;q=0.8\r\n";
+    std.debug.assert(as.len <= std.math.maxInt(u32));
+    const j = std.mem.trim(u8, json orelse "null", " \t\r\n");
+    if (eq(as, "\"legacy\"")) return if (eq(j, "true")) "accept: application/json\r\n" else "accept: */*\r\n";
+    if (eq(as, "\"request\"")) {
+        const falsy = eq(j, "null") or eq(j, "false") or eq(j, "0") or eq(j, "\"\"");
+        return if (falsy) "accept: application/json, text/plain, */*\r\n" else "accept: application/json\r\n";
+    }
+    return "accept: application/json,text/*;q=0.9,*/*;q=0.8\r\n";
+}
+
+/// What a request gets of its credential (`inject` of the args). The
+/// templates of the request are always filled.
+const Inject = struct {
+    /// False: the credential adds nothing (`inject: false`).
+    any: bool = true,
+    /// The query parameters of the credential.
+    qs: bool = true,
+    /// The basic auth, and the headers that authenticate (`authenticates`).
+    auth: bool = true,
+};
+
+/// `"redirect"`: the request after a redirect. n8n takes the URL of the
+/// redirect as it is, so the query parameters of the credential are not
+/// added again. `"redirectOtherOrigin"`: such a request to another origin
+/// without authentication: also no basic auth and no header that
+/// authenticates. A header of the credential with another name stays.
+fn injectOf(raw: ?[]const u8) Inject {
+    const r = raw orelse return .{};
+    std.debug.assert(r.len <= std.math.maxInt(u32));
+    if (eq(r, "false")) return .{ .any = false };
+    if (eq(r, "\"redirect\"")) return .{ .qs = false };
+    if (eq(r, "\"redirectOtherOrigin\"")) return .{ .qs = false, .auth = false };
+    return .{};
+}
+
+/// The headers that n8n removes from a request to another origin after a redirect.
+fn authenticates(name: []const u8) bool {
+    std.debug.assert(name.len <= std.math.maxInt(u32));
+    return std.ascii.eqlIgnoreCase(name, "authorization") or std.ascii.eqlIgnoreCase(name, "proxy-authorization") or std.ascii.eqlIgnoreCase(name, "cookie");
+}
+
+/// The texts of n8n for a request that the allowed domains of its credential
+/// refuse. The host and the list are settings, not secrets.
+fn checkDomains(s: creds.Slot, url_text: []const u8, url: http.Url, diag: *Diag) Error!void {
+    std.debug.assert(url.host.len > 0);
+    switch (s.domains_mode) {
+        .all => {},
+        .none => return invalid(diag, "This credential is configured to prevent use within an HTTP Request or GraphQL node", .{}),
+        .domains => {
+            if (domains.isEmpty(s.domains)) {
+                return invalid(diag, "No allowed domains specified. Configure allowed domains or change restriction setting.", .{});
+            }
+            if (domains.allowed(url.host, s.domains)) return;
+            // The host as n8n shows it: with the port when it is not the default one.
+            const start = (std.mem.indexOf(u8, url_text, "://") orelse 0) + 3;
+            const end = std.mem.indexOfAnyPos(u8, url_text, start, "/?#") orelse url_text.len;
+            var shown = url_text[@min(start, end)..end];
+            const default = if (url.https) ":443" else ":80";
+            if (std.mem.endsWith(u8, shown, default)) shown = shown[0 .. shown.len - default.len];
+            const list = std.mem.trim(u8, s.domains, " \t\r\n");
+            var lower: [max_shown_host]u8 = @splat(0);
+            const host = std.ascii.lowerString(&lower, shown[0..@min(shown.len, max_shown_host)]);
+            return invalid(diag, "Domain not allowed: This credential is restricted from accessing {s}. Only the following domains are allowed: {s}", .{
+                host, list[0..@min(list.len, max_shown_list)],
+            });
+        },
+    }
 }
 
 /// Headers the client writes itself; values from args are dropped.
@@ -1252,7 +1377,7 @@ test "binary body: base64, the file store, multipart, and a retry in a larger bu
     try std.testing.expect(std.mem.indexOf(u8, buf[b.url_len..b.hdr_end], "content-length: 12\r\n") != null);
 
     // Too large for a small buffer: NoSpace, so egress builds it again in a large one.
-    var small: [160]u8 = undefined;
+    var small: [152]u8 = undefined;
     try std.testing.expectError(error.NoSpace, build(stored, null, null, &small, &diag));
     // A missing file and an id outside the store fail with a reason.
     try std.testing.expectError(error.Invalid, build("{\"url\":\"http://x.io/\",\"method\":\"POST\",\"body\":{\"$binary\":{\"data\":\"filesystem-v2\",\"id\":\"filesystem-v2:workflows/wf1/executions/7/binary_data/none\"}}}", null, null, &buf, &diag));
@@ -1416,4 +1541,119 @@ test "inject false: the credential fills templates and adds nothing" {
     try std.testing.expect(std.mem.indexOf(u8, headers, "authorization") == null);
     const b = try build("{\"url\":\"http://h/\",\"credential\":\"api\"}", &store, null, &buf, &diag);
     try std.testing.expectEqualStrings("http://h/?key=T", buf[0..b.url_len]);
+}
+
+test "allowed domains: a request with the member is checked against the list of the credential" {
+    const gpa = std.testing.allocator;
+    var arena = std.heap.ArenaAllocator.init(gpa);
+    defer arena.deinit();
+    const doc =
+        \\{"open":{"data":{"k":"v"},"inject":{"headers":{"X-Key":"{{$credentials.k}}"}}},
+        \\ "listed":{"data":{"k":"v"},"inject":{"headers":{"X-Key":"{{$credentials.k}}"}},
+        \\  "allowedDomains":{"mode":"domains","domains":"api.example.com, *.example.org"}},
+        \\ "blank":{"data":{"k":"v"},"allowedDomains":{"mode":"domains","domains":"  "}},
+        \\ "closed":{"data":{"k":"v"},"allowedDomains":{"mode":"none"}}}
+    ;
+    var store = try creds.Store.parse(arena.allocator(), doc);
+    var buf: [1024]u8 = undefined;
+    var diag: Diag = .{};
+
+    // A listed host and a host below a wildcard go out, and a redirect goes back to the node.
+    const a = try build("{\"url\":\"https://API.example.com/x\",\"credential\":\"listed\",\"allowedDomains\":true}", &store, null, &buf, &diag);
+    try std.testing.expect(a.no_redirect);
+    const w = try build("{\"url\":\"https://a.example.org/x\",\"credential\":\"listed\",\"allowedDomains\":true}", &store, null, &buf, &diag);
+    try std.testing.expect(w.no_redirect);
+
+    // Another host is refused with the text of n8n, and nothing is built.
+    try std.testing.expectError(error.Invalid, build("{\"url\":\"http://Other.test:8080/x?a=1\",\"credential\":\"listed\",\"allowedDomains\":true}", &store, null, &buf, &diag));
+    try std.testing.expectEqualStrings("Domain not allowed: This credential is restricted from accessing other.test:8080. Only the following domains are allowed: api.example.com, *.example.org", diag.text());
+    try std.testing.expectError(error.Invalid, build("{\"url\":\"https://example.org:443/\",\"credential\":\"listed\",\"allowedDomains\":true}", &store, null, &buf, &diag));
+    try std.testing.expectEqualStrings("Domain not allowed: This credential is restricted from accessing example.org. Only the following domains are allowed: api.example.com, *.example.org", diag.text());
+
+    // An empty list and the mode `none` refuse each host.
+    try std.testing.expectError(error.Invalid, build("{\"url\":\"https://api.example.com/\",\"credential\":\"blank\",\"allowedDomains\":true}", &store, null, &buf, &diag));
+    try std.testing.expectEqualStrings("No allowed domains specified. Configure allowed domains or change restriction setting.", diag.text());
+    try std.testing.expectError(error.Invalid, build("{\"url\":\"https://api.example.com/\",\"credential\":\"closed\",\"allowedDomains\":true}", &store, null, &buf, &diag));
+    try std.testing.expectEqualStrings("This credential is configured to prevent use within an HTTP Request or GraphQL node", diag.text());
+
+    // A credential without a limit, and a request of a node that does not read the limit.
+    const o = try build("{\"url\":\"https://other.test/\",\"credential\":\"open\",\"allowedDomains\":true}", &store, null, &buf, &diag);
+    try std.testing.expect(!o.no_redirect);
+    const n = try build("{\"url\":\"https://other.test/\",\"credential\":\"closed\"}", &store, null, &buf, &diag);
+    try std.testing.expect(!n.no_redirect);
+}
+
+test "inject after a redirect: no query of the credential, and no authentication for another origin" {
+    const gpa = std.testing.allocator;
+    var arena = std.heap.ArenaAllocator.init(gpa);
+    defer arena.deinit();
+    const doc =
+        \\{"api":{"data":{"t":"tok","user":"u","pw":"p"},
+        \\ "inject":{"headers":{"Authorization":"Bearer {{$credentials.t}}","X-Key":"{{$credentials.t}}","Cookie":"s={{$credentials.t}}"},
+        \\  "qs":{"key":"{{$credentials.t}}"},"basicAuth":{"user":"{{$credentials.user}}","password":"{{$credentials.pw}}"}}}}
+    ;
+    var store = try creds.Store.parse(arena.allocator(), doc);
+    var buf: [1024]u8 = undefined;
+    var diag: Diag = .{};
+
+    // The same origin, or a node that sends its credential to each origin.
+    const a = try build("{\"url\":\"http://h/next\",\"credential\":\"api\",\"inject\":\"redirect\",\"followRedirects\":false}", &store, null, &buf, &diag);
+    try std.testing.expectEqualStrings("http://h/next", buf[0..a.url_len]);
+    try std.testing.expect(a.no_redirect);
+    const ah = buf[a.url_len..a.hdr_end];
+    try std.testing.expect(std.mem.indexOf(u8, ah, "Authorization: Bearer tok\r\n") != null);
+    try std.testing.expect(std.mem.indexOf(u8, ah, "X-Key: tok\r\n") != null);
+
+    // Another origin without authentication: the header with another name stays.
+    const o = try build("{\"url\":\"http://other/next\",\"credential\":\"api\",\"inject\":\"redirectOtherOrigin\"}", &store, null, &buf, &diag);
+    try std.testing.expectEqualStrings("http://other/next", buf[0..o.url_len]);
+    try std.testing.expect(!o.no_redirect);
+    const oh = buf[o.url_len..o.hdr_end];
+    try std.testing.expect(std.mem.indexOf(u8, oh, "X-Key: tok\r\n") != null);
+    var lower: [1024]u8 = @splat(0);
+    const ol = std.ascii.lowerString(&lower, oh);
+    try std.testing.expect(std.mem.indexOf(u8, ol, "authorization:") == null);
+    try std.testing.expect(std.mem.indexOf(u8, ol, "cookie:") == null);
+
+    // The first request has all that the credential adds.
+    const f = try build("{\"url\":\"http://h/first\",\"credential\":\"api\"}", &store, null, &buf, &diag);
+    try std.testing.expectEqualStrings("http://h/first?key=tok", buf[0..f.url_len]);
+}
+
+test "the user agent of the settings goes to a request that sets none" {
+    var buf: [512]u8 = undefined;
+    var diag: Diag = .{};
+    const a = try buildFilesAs("{\"url\":\"http://h/\"}", null, null, &buf, &diag, null, "Mozilla/5.0 (compatible; n8n/2.48.0; +https://n8n.io/)");
+    try std.testing.expect(std.mem.indexOf(u8, buf[a.url_len..a.hdr_end], "user-agent: Mozilla/5.0 (compatible; n8n/2.48.0; +https://n8n.io/)\r\n") != null);
+    const own = try buildFilesAs("{\"url\":\"http://h/\",\"headers\":{\"User-Agent\":\"mine\"}}", null, null, &buf, &diag, null, "other");
+    try std.testing.expect(std.mem.indexOf(u8, buf[own.url_len..own.hdr_end], "other") == null);
+    const d = try build("{\"url\":\"http://h/\"}", null, null, &buf, &diag);
+    try std.testing.expect(std.mem.indexOf(u8, buf[d.url_len..d.hdr_end], "user-agent: n8n\r\n") != null);
+    try std.testing.expect(!validUserAgent(""));
+    try std.testing.expect(!validUserAgent("a\r\nx: y"));
+    try std.testing.expect(validUserAgent("n8n"));
+}
+
+test "the accept header of a request that sets none: the defaults of the request helpers of n8n" {
+    var buf: [512]u8 = undefined;
+    var diag: Diag = .{};
+    const Case = struct { args: []const u8, line: []const u8 };
+    const cases = [_]Case{
+        .{ .args = "{\"url\":\"http://h/\",\"acceptAs\":\"legacy\",\"json\":true}", .line = "accept: application/json\r\n" },
+        .{ .args = "{\"url\":\"http://h/\",\"acceptAs\":\"legacy\",\"json\":false}", .line = "accept: */*\r\n" },
+        .{ .args = "{\"url\":\"http://h/\",\"acceptAs\":\"legacy\"}", .line = "accept: */*\r\n" },
+        .{ .args = "{\"url\":\"http://h/\",\"acceptAs\":\"legacy\",\"json\":\"yes\"}", .line = "accept: */*\r\n" },
+        .{ .args = "{\"url\":\"http://h/\",\"acceptAs\":\"request\",\"json\":true}", .line = "accept: application/json\r\n" },
+        .{ .args = "{\"url\":\"http://h/\",\"acceptAs\":\"request\",\"json\":\"yes\"}", .line = "accept: application/json\r\n" },
+        .{ .args = "{\"url\":\"http://h/\",\"acceptAs\":\"request\",\"json\":null}", .line = "accept: application/json, text/plain, */*\r\n" },
+        .{ .args = "{\"url\":\"http://h/\",\"acceptAs\":\"request\"}", .line = "accept: application/json, text/plain, */*\r\n" },
+        .{ .args = "{\"url\":\"http://h/\"}", .line = "accept: application/json,text/*;q=0.9,*/*;q=0.8\r\n" },
+    };
+    for (cases) |c| {
+        const b = try build(c.args, null, null, &buf, &diag);
+        try std.testing.expect(std.mem.indexOf(u8, buf[b.url_len..b.hdr_end], c.line) != null);
+    }
+    // A request with its own accept header keeps it.
+    const own = try build("{\"url\":\"http://h/\",\"acceptAs\":\"legacy\",\"json\":true,\"headers\":{\"Accept\":\"text/csv\"}}", null, null, &buf, &diag);
+    try std.testing.expect(std.mem.indexOf(u8, buf[own.url_len..own.hdr_end], "application/json") == null);
 }

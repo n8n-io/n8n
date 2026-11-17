@@ -16,7 +16,13 @@ import { WebhookPathTakenError } from 'n8n-workflow';
 
 import { TELEMETRY_EVENT } from '@n8n/telemetry';
 
+import { Container } from '@n8n/di';
+
 import type { NodeTypes } from '@/node-types';
+import {
+	CompiledEngineBridge,
+	type CompiledEngineProvider,
+} from '@/services/compiled-engine-bridge.service';
 import type { PolicyEnforcementService } from '@/policy/policy-enforcement.service';
 import { PolicyViolationError } from '@/policy/policy-violation.error';
 import type { OwnershipService } from '@/services/ownership.service';
@@ -1145,6 +1151,72 @@ describe('WorkflowPublicationApplier', () => {
 			expect(workflowPublishedVersionRepository.removePublishedVersion).not.toHaveBeenCalled();
 		});
 	});
+	describe('a workflow that selects the compiled engine', () => {
+		const compiledEngine = mock<CompiledEngineProvider>();
+		const bridge = Container.get(CompiledEngineBridge);
+		const compiledWorkflow = () =>
+			makeWorkflow({ activeVersionId: 'v-2', settings: { engineType: 'compiled' } });
+
+		beforeEach(() => {
+			bridge.registerProvider(compiledEngine);
+			bridge.runOnCompiledEngine('wf-1');
+			compiledEngine.deactivate.mockResolvedValue(undefined);
+			compiledEngine.activate.mockResolvedValue(undefined);
+			workflowRepository.findOneBy.mockResolvedValue(compiledWorkflow());
+			workflowTriggerActivator.getTriggerKinds.mockReturnValue(new Map());
+			workflowTriggerActivator.activate.mockResolvedValue({ activated: [], failures: [] });
+			workflowTriggerActivator.deactivate.mockResolvedValue({ externalTeardownFailures: [] });
+		});
+
+		afterEach(() => bridge.runOnCompiledEngine('wf-1'));
+
+		it('publishes on v1 when the version cannot run on the compiled engine', async () => {
+			const oldTrigger = triggerNode('old-schedule');
+			const newTrigger = triggerNode('new-schedule');
+			setTriggerSets([oldTrigger], [newTrigger]);
+			compiledEngine.activate.mockRejectedValue(
+				new Error('The workflow cannot run on the compiled engine. The loop has no exit.'),
+			);
+
+			const result = await applier.apply(makeRecord(), abort);
+
+			// The publication does not fail: n8n registers the triggers of the version.
+			expect(result.type).not.toBe('failed');
+			expect(workflowTriggerActivator.activate).toHaveBeenCalled();
+			expect(bridge.handles(compiledWorkflow())).toBe(false);
+			expect(bridge.reasonForV1('wf-1')).toContain('The loop has no exit.');
+			expect(compiledEngine.deactivate).toHaveBeenCalledWith('wf-1');
+			expect(logger.warn).toHaveBeenCalledWith(
+				expect.stringContaining('runs on the v1 engine'),
+				expect.objectContaining({ workflowId: 'wf-1' }),
+			);
+		});
+
+		it('moves the workflow to the compiled engine when a later version can run there', async () => {
+			const oldTrigger = triggerNode('old-schedule');
+			setTriggerSets([oldTrigger], [triggerNode('new-schedule')]);
+			bridge.runOnV1('wf-1', 'The loop has no exit.');
+
+			await applier.apply(makeRecord(), abort);
+
+			expect(compiledEngine.activate).toHaveBeenCalledTimes(1);
+			expect(bridge.handles(compiledWorkflow())).toBe(true);
+			// The triggers that n8n ran for the old version go, so none fires in two places.
+			expect(workflowTriggerActivator.deactivate).toHaveBeenCalled();
+			expect(compiledEngine.deactivate).not.toHaveBeenCalled();
+		});
+
+		it('loads a version that compiles before it registers the triggers', async () => {
+			setTriggerSets([], []);
+
+			await applier.apply(makeRecord(), abort);
+
+			expect(compiledEngine.activate).toHaveBeenCalledTimes(1);
+			expect(bridge.handles(compiledWorkflow())).toBe(true);
+			expect(compiledEngine.deactivate).not.toHaveBeenCalled();
+		});
+	});
+
 	describe('unresolvable node types', () => {
 		const unknownNode: INode = {
 			id: 'x',

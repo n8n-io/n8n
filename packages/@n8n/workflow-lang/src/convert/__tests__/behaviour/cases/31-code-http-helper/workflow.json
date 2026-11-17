@@ -26,7 +26,7 @@
 		},
 		{
 			"parameters": {
-				"jsCode": "await this.helpers.httpRequest({\n  method: 'GET',\n  url: 'http://127.0.0.1:47123/code-404',\n});\nreturn [{ json: { threw: false } }];"
+				"jsCode": "await this.helpers.httpRequest({\n  method: 'GET',\n  url: 'http://127.0.0.1:47123/code-fails',\n});\nreturn [{ json: { threw: false } }];"
 			},
 			"id": "3c5f9e42-2a6d-4f4b-9c33-2e3d4f5a6b72",
 			"name": "Fails",

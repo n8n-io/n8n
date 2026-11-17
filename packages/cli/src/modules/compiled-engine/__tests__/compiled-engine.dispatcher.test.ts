@@ -200,6 +200,8 @@ describe('CompiledEngineDispatcher', () => {
 				params: {},
 				query: {},
 				body: null,
+				// No trigger item: the module gives the item of a test webhook.
+				executionMode: 'test',
 			},
 			trace: true,
 		});
@@ -235,6 +237,29 @@ describe('CompiledEngineDispatcher', () => {
 			statusCode: 201,
 		});
 		expect(activeExecutions.finalizeExecution).toHaveBeenCalledWith('100', run);
+	});
+
+	it('answers a webhook with the list of items that the Respond to Webhook node sends', async () => {
+		const { dispatcher, activeExecutions } = setup();
+		const executionId = await dispatcher.runManual({ executionMode: 'manual', workflowData });
+		const body = [{ greeting: 'Hello Ada' }, { greeting: 'Hello Bo' }];
+
+		void dispatcher.handleEvent({
+			type: 'step',
+			executionId,
+			step: 'Respond',
+			status: 'started',
+			args: { body, status: 200 },
+			at: 1,
+		});
+		void dispatcher.handleEvent({ type: 'finished', executionId, status: 'ok', at: 2 });
+		await dispatcher.drain();
+
+		expect(activeExecutions.resolveResponsePromise).toHaveBeenCalledWith(executionId, {
+			body,
+			headers: {},
+			statusCode: 200,
+		});
 	});
 
 	it('passes the request of a test webhook as the trigger value', async () => {
@@ -523,6 +548,29 @@ describe('CompiledEngineDispatcher', () => {
 		const run = dispatcher.calls.at(-1)?.args[0] as IRun;
 		expect(run.status).toBe('error');
 		expect(run.data.resultData.error?.message).toBe(limit);
+		expect(sync.onRuntimeLimit).toHaveBeenCalledTimes(1);
+		expect(sync.onRuntimeLimit).toHaveBeenCalledWith('wf1', 'HTTP Request');
+	});
+
+	it('moves a node to the fallback host when the run went on after the limit', async () => {
+		const { dispatcher, sync } = setup();
+		sync.onRuntimeLimit.mockResolvedValue(undefined);
+		const limit =
+			'http: the response body is 20971520 bytes; a stored file can have 16777216 (--binary-max-file-mb); the fallback host can run the node (limit: binary-max-file)';
+		const executionId = await dispatcher.runManual({ executionMode: 'manual', workflowData });
+		// Under a "continue" setting the node gives the error as an item, and the run is a success.
+		void dispatcher.handleEvent({
+			type: 'trace',
+			executionId,
+			step: 'HTTP Request',
+			items: [{ error: limit }],
+			at: 2,
+		});
+		void dispatcher.handleEvent({ type: 'finished', executionId, status: 'ok', at: 3 });
+		await dispatcher.drain();
+
+		const run = dispatcher.calls.at(-1)?.args[0] as IRun;
+		expect(run.status).toBe('success');
 		expect(sync.onRuntimeLimit).toHaveBeenCalledTimes(1);
 		expect(sync.onRuntimeLimit).toHaveBeenCalledWith('wf1', 'HTTP Request');
 	});

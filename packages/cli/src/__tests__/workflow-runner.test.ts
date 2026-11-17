@@ -57,6 +57,11 @@ import {
 } from '@/executions/pre-execution-checks';
 import { ManualExecutionService } from '@/manual-execution.service';
 import { EngineV2Dispatcher } from '@/services/engine-v2-dispatcher.service';
+import {
+	CompiledEngineBridge,
+	CompiledEngineUnavailableError,
+	type CompiledEngineProvider,
+} from '@/services/compiled-engine-bridge.service';
 import { OwnershipService } from '@/services/ownership.service';
 import { Telemetry } from '@/telemetry';
 import * as WorkflowExecuteAdditionalData from '@/workflow-execute-additional-data';
@@ -1090,6 +1095,58 @@ describe('run', () => {
 			} finally {
 				storageConfig.mode = 'database';
 			}
+		});
+	});
+
+	describe('compiled engine dispatch', () => {
+		const provider = mock<CompiledEngineProvider>();
+		const compiledData = (executionMode: 'manual' | 'webhook') =>
+			mock<IWorkflowExecutionDataProcess>({
+				executionMode,
+				workflowData: { id: 'wf-compiled', settings: { engineType: 'compiled' } },
+			});
+		/** The run reaches the code after the compiled engine: the next engine check sees it. */
+		const afterCompiledEngine = () => {
+			const dispatcher = Container.get(EngineV2Dispatcher);
+			vi.spyOn(dispatcher, 'start').mockResolvedValueOnce('next-engine');
+			return vi.spyOn(dispatcher, 'routesToEngineV2').mockReturnValueOnce(true);
+		};
+
+		beforeEach(() => {
+			vi.resetAllMocks();
+			Container.get(CompiledEngineBridge).registerProvider(provider);
+			Container.get(CompiledEngineBridge).runOnCompiledEngine('wf-compiled');
+		});
+
+		it('gives the run to the compiled engine', async () => {
+			provider.run.mockResolvedValue('compiled-1');
+			expect(await runner.run(compiledData('webhook'))).toBe('compiled-1');
+		});
+
+		it('starts the run on v1 when the compiled engine cannot take it', async () => {
+			provider.run.mockRejectedValue(
+				new CompiledEngineUnavailableError('The compiled engine is not running.'),
+			);
+			const reached = afterCompiledEngine();
+
+			expect(await runner.run(compiledData('manual'))).toBe('next-engine');
+			expect(reached).toHaveBeenCalled();
+		});
+
+		it('does not ask the compiled engine for a workflow whose published version runs on v1', async () => {
+			Container.get(CompiledEngineBridge).runOnV1('wf-compiled', 'The loop has no exit.');
+			const reached = afterCompiledEngine();
+
+			expect(await runner.run(compiledData('webhook'))).toBe('next-engine');
+			expect(provider.run).not.toHaveBeenCalled();
+			expect(reached).toHaveBeenCalled();
+		});
+
+		it('keeps another error of the compiled engine', async () => {
+			provider.run.mockRejectedValue(new Error('The user cannot use this credential'));
+			await expect(runner.run(compiledData('manual'))).rejects.toThrow(
+				'The user cannot use this credential',
+			);
 		});
 	});
 

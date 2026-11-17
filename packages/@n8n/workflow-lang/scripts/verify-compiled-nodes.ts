@@ -14,8 +14,6 @@ import { createRequire } from 'node:module';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-import type { NodeDescription } from '../src/convert/node-parameters.ts';
-import { getNodeParameters } from '../src/convert/node-parameters.ts';
 import { publicCredential } from '../src/credentials/public.ts';
 import { loadCredentialTypes, registryOf } from '../src/credentials/types.ts';
 import type { ContinueForm, ErrorPairing } from '../src/node-compile/__tests__/verify.ts';
@@ -35,6 +33,16 @@ import {
 import { COST } from '../src/node-compile/cost.generated.ts';
 import type { ErrorMode, NodeSources } from '../src/node-compile/convert.ts';
 import { evaluateInSandbox } from '../src/node-compile/evaluate-node.ts';
+import type { Variant } from '../src/node-compile/variants.ts';
+import { parameterVariants, withVariant } from '../src/node-compile/variants.ts';
+import type { Json, WalkNode, WalkProperty as Property } from '../src/node-compile/walk.ts';
+import {
+	credentialOf,
+	fakeCredentialData,
+	operationsOf,
+	requiredParameters,
+	resolveParameters,
+} from '../src/node-compile/walk.ts';
 import {
 	CONTINUE_MODES,
 	CALL_FOR_EACH_ITEM,
@@ -57,29 +65,7 @@ import {
 	recorderAvailable,
 } from '../src/nodes/__tests__/v1-recorder.ts';
 
-type Json = Record<string, unknown>;
-interface Member {
-	name?: string;
-	value?: unknown;
-	type?: string;
-	default?: unknown;
-	options?: Member[];
-	values?: Member[];
-	typeOptions?: { multipleValues?: boolean };
-}
-interface Property {
-	name: string;
-	type: string;
-	default?: unknown;
-	options?: Member[];
-	displayOptions?: { show?: Record<string, unknown[]> };
-	typeOptions?: { multipleValues?: boolean };
-}
-interface LoadedNode {
-	description: NodeDescription & {
-		version: number | number[];
-		credentials?: Array<{ name: string; displayOptions?: { show?: Record<string, unknown[]> } }>;
-	};
+interface LoadedNode extends WalkNode {
 	nodeVersions?: Record<string, LoadedNode>;
 	constructor: { name: string };
 }
@@ -238,16 +224,6 @@ function weightOf(type: string, parameters: Json): number {
 	);
 }
 
-function credentialOf(node: LoadedNode, resolved: Json): string | undefined {
-	const all = node.description.credentials ?? [];
-	const shown = all.find((c) =>
-		Object.entries(c.displayOptions?.show ?? {}).every(
-			([name, allowed]) => name.startsWith('@') || allowed.includes(resolved[name]),
-		),
-	);
-	return (shown ?? all[0])?.name;
-}
-
 const SIGNING_KEY_FILE = join(here, '../node_modules/.cache/v1-recordings/test-signing-key.pem');
 let signingKey: string | undefined;
 function testSigningKey(): string {
@@ -295,42 +271,10 @@ function otherAuthentications(node: LoadedNode, version: number, start: Json): J
 	return out;
 }
 
-function fakeCredential(type: string): Json {
-	const data: Json = {};
-	for (const [key, value] of Object.entries(registry.get(type)?.defaults ?? {})) {
-		const address = /url|host|domain|server|endpoint/i.test(key);
-		data[key] = value === '' ? (address ? 'https://api.example.test' : `fake-${key}`) : value;
-	}
-	if (type === 'googleApi') data.privateKey = testSigningKey();
-	if (/oauth2/i.test(type)) {
-		data.oauthTokenData = {
-			access_token: 'fake-token',
-			instance_url: 'https://instance.example.test',
-			api_domain: 'https://api.example.test',
-			...(type === 'quickBooksOAuth2Api' ? { callbackQueryString: { realmId: 'fake-realm' } } : {}),
-		};
-	}
-	return data;
-}
-
-function resolve(node: LoadedNode, version: number, parameters: Json): Json {
-	const d = node.description;
-	return getNodeParameters(d.properties, parameters, true, false, version, d) ?? {};
-}
-
-function required(node: LoadedNode, version: number, start: Json): Json {
-	const properties = node.description.properties as unknown as Property[];
-	const out: Json = { ...start };
-	for (const [name, value] of Object.entries(resolve(node, version, start))) {
-		const type = properties.find((p) => p.name === name)?.type;
-		if (name in out) continue;
-		if (type === 'string' && value === '') out[name] = 'v1';
-		else if (type === 'json' && value === '') out[name] = '{}';
-		else if (type === 'number' && value === undefined) out[name] = 1;
-		else if (type === 'resourceLocator') out[name] = { __rl: true, mode: 'id', value: 'id1' };
-	}
-	return out;
-}
+const fakeCredential = (type: string): Json => fakeCredentialData(registry, type, testSigningKey);
+const resolve = resolveParameters;
+const required = requiredParameters;
+const operations = operationsOf;
 
 function withOptions(node: LoadedNode, version: number, start: Json): Json {
 	const properties = node.description.properties as unknown as Property[];
@@ -398,6 +342,7 @@ function expressionForms(parameters: Json, fixed: Json): ExpressionForm[] {
 }
 
 const MAX_WIDER_FORMS = 6;
+const MAX_VARIANT_FORMS_ALONE = 6;
 const NOT_AN_EXPRESSION = new Set(['resource', 'operation', 'authentication']);
 
 function widerExpressionForms(
@@ -433,233 +378,6 @@ function widerExpressionForms(
 		}
 	}
 	return forms;
-}
-
-interface Variant {
-	condition: string;
-	name: string;
-	member?: string;
-	values: unknown[];
-	form?: { value: unknown; fields: Record<string, unknown[]> };
-}
-
-const MAX_CHOICES = 12;
-const MAX_GROUP_CASES = 16;
-const MAX_VARIANT_CASES = 60;
-const MAX_VARIANT_FORMS_ALONE = 6;
-const DATES = ['2024-01-10T10:00:00.000Z', '2024-02-11T11:00:00.000Z', '2024-03-12T12:00:00.000Z'];
-
-const fieldNameOf = (name: string) => name.replace(/\W/g, '_');
-
-function choicesOf(member: Member): unknown[] {
-	return (member.options ?? [])
-		.map((o) => o.value)
-		.filter((v) => typeof v === 'string' || typeof v === 'number' || typeof v === 'boolean');
-}
-
-function samplesOf(member: Member, current: unknown): unknown[] {
-	const choices = choicesOf(member);
-	if (member.type === 'string') return [current === 'v5' ? 'v6' : 'v5'];
-	if (member.type === 'number') return [typeof current === 'number' ? current + 1 : 1];
-	if (member.type === 'boolean') return [current !== true];
-	if (member.type === 'dateTime') return [DATES[0]];
-	if (member.type === 'json') return ['{"a":1}'];
-	if (member.type === 'options') {
-		if (choices.length === 0) return ['v1'];
-		const others = choices.filter((choice) => choice !== current);
-		return others.length <= MAX_CHOICES ? others : [];
-	}
-	if (member.type === 'multiOptions') {
-		if (choices.length === 0) return [['v1', 'v2']];
-		return choices.length <= MAX_CHOICES ? [choices, [choices[0]]] : [];
-	}
-	return [];
-}
-
-function itemValuesOf(member: Member, sample: unknown): unknown[] | undefined {
-	const free =
-		member.type === 'string' || (member.type === 'options' && choicesOf(member).length === 0);
-	if (free && typeof sample === 'string') return [sample, `${sample}b`, `${sample}c`];
-	if (member.type === 'number' && typeof sample === 'number')
-		return [sample, sample + 1, sample + 2];
-	if (member.type === 'dateTime') return DATES;
-	return undefined;
-}
-
-function groupVariant(property: Property, group: Member): Variant | undefined {
-	if (!group.name) return undefined;
-	const entry: Json = {};
-	const second: Json = {};
-	const withItems: Json = {};
-	const fields: Record<string, unknown[]> = {};
-	const others: Json[] = [];
-	for (const field of group.values ?? []) {
-		if (!field.name || field.type === 'notice') continue;
-		const choices = choicesOf(field);
-		const all =
-			field.type === 'options' && choices.length > 0 ? choices : samplesOf(field, field.default);
-		if (all.length === 0 || all.length > MAX_CHOICES) return undefined;
-		entry[field.name] = all[0];
-		second[field.name] =
-			typeof all[0] === 'string' && field.type === 'string' ? `${all[0]}2` : all[0];
-		const itemValues = itemValuesOf(field, all[0]);
-		if (itemValues !== undefined) {
-			const itemField = fieldNameOf(`${property.name}_${group.name}_${field.name}`);
-			withItems[field.name] = itemFieldExpression(itemField);
-			fields[itemField] = itemValues;
-		}
-		for (const other of all.slice(1)) others.push({ [field.name]: other });
-	}
-	if (Object.keys(entry).length === 0 || others.length >= MAX_GROUP_CASES) return undefined;
-	const multiple = property.typeOptions?.multipleValues === true;
-	const valueOf = (first: Json, more: Json[]) => (multiple ? [first, ...more] : first);
-	return {
-		condition: `${property.name}.${group.name}`,
-		name: property.name,
-		member: group.name,
-		values: [
-			valueOf(entry, [second]),
-			...others.map((other) => valueOf({ ...entry, ...other }, [])),
-		],
-		...(Object.keys(fields).length > 0
-			? { form: { value: valueOf({ ...entry, ...withItems }, [second]), fields } }
-			: {}),
-	};
-}
-
-function shownProperty(
-	node: LoadedNode,
-	version: number,
-	parameters: Json,
-	name: string,
-): Property | undefined {
-	const d = node.description;
-	const properties = d.properties as unknown as Property[];
-	const places = properties.flatMap((p, at) => (p.name === name ? [at] : []));
-	if (places.length === 1) return properties[places[0]];
-	const shown = places.filter((place) => {
-		const rest = d.properties.filter((p, at) => p.name !== name || at === place);
-		return name in (getNodeParameters(rest, parameters, true, false, version, d) ?? {});
-	});
-	return shown.length === 1 ? properties[shown[0]] : undefined;
-}
-
-function parameterVariants(
-	node: LoadedNode,
-	version: number,
-	parameters: Json,
-	fixed: Json,
-	listed: string[],
-): Variant[] {
-	const variants: Variant[] = [];
-	let cases = 0;
-	const take = (variant: Variant | undefined) => {
-		if (!variant || variant.values.length === 0) return;
-		if (cases + variant.values.length > MAX_VARIANT_CASES) return;
-		cases += variant.values.length;
-		variants.push(variant);
-	};
-	for (const [name, value] of Object.entries(resolve(node, version, parameters))) {
-		if (name in fixed || name in parameters || NOT_AN_EXPRESSION.has(name) || listed.includes(name))
-			continue;
-		const property = shownProperty(node, version, parameters, name);
-		if (!property) continue;
-		if (property.type === 'collection') {
-			for (const member of property.options ?? []) {
-				if (!member.name) continue;
-				if (member.type === 'fixedCollection') {
-					const inner: Property = {
-						name: `${name}.${member.name}`,
-						type: member.type,
-						options: member.options,
-						typeOptions: member.typeOptions,
-					};
-					const groups = (member.options ?? []).map((group) => groupVariant(inner, group));
-					const built = groups.filter((group): group is Variant => group !== undefined);
-					if (built.length === 0 || built.length !== groups.length) continue;
-					const [only] = built;
-					take({
-						condition: `${name}.${member.name}`,
-						name,
-						member: member.name,
-						values: built.flatMap((group) =>
-							group.values.map((entry) => ({ [group.member ?? '']: entry })),
-						),
-						...(built.length === 1 && only.form
-							? {
-									form: {
-										value: { [only.member ?? '']: only.form.value },
-										fields: only.form.fields,
-									},
-								}
-							: {}),
-					});
-					continue;
-				}
-				const values = samplesOf(member, member.default);
-				const itemValues = itemValuesOf(member, values[0]);
-				const field = fieldNameOf(`${name}_${member.name}`);
-				take({
-					condition: `${name}.${member.name}`,
-					name,
-					member: member.name,
-					values,
-					...(itemValues === undefined
-						? {}
-						: { form: { value: itemFieldExpression(field), fields: { [field]: itemValues } } }),
-				});
-			}
-		} else if (property.type === 'fixedCollection') {
-			for (const group of property.options ?? []) take(groupVariant(property, group));
-		} else {
-			const values = samplesOf(property, value);
-			const itemValues = itemValuesOf(property, values[0]);
-			const field = fieldNameOf(name);
-			take({
-				condition: name,
-				name,
-				values,
-				...(itemValues === undefined
-					? {}
-					: { form: { value: itemFieldExpression(field), fields: { [field]: itemValues } } }),
-			});
-		}
-	}
-	return variants;
-}
-
-function withVariant(parameters: Json, variant: Variant, value: unknown): Json {
-	if (variant.member === undefined) return { ...parameters, [variant.name]: value };
-	const current = parameters[variant.name];
-	return {
-		...parameters,
-		[variant.name]: { ...(isJson(current) ? current : {}), [variant.member]: value },
-	};
-}
-
-function operations(node: LoadedNode): Json[] {
-	const properties = node.description.properties as unknown as Property[];
-	const values = (p: Property) =>
-		(p.options ?? []).map((o) => o.value).filter((v) => typeof v === 'string');
-	const resources = properties.filter((p) => p.name === 'resource').flatMap(values);
-	const out: Json[] = [];
-	for (const resource of resources.length > 0 ? resources : [undefined]) {
-		const shown = properties.filter(
-			(p) =>
-				p.name === 'operation' &&
-				(resource === undefined ||
-					!p.displayOptions?.show?.resource ||
-					p.displayOptions.show.resource.includes(resource)),
-		);
-		const names = [...new Set(shown.flatMap(values))];
-		for (const operation of names.length > 0 ? names : [undefined]) {
-			out.push({
-				...(resource === undefined ? {} : { resource }),
-				...(operation === undefined ? {} : { operation }),
-			});
-		}
-	}
-	return out;
 }
 
 const checking = { cache: CACHE };
@@ -1000,7 +718,14 @@ for (const name of one === undefined ? [] : Object.keys(known).sort()) {
 						);
 						return difference ?? c.changed;
 					};
-					const variants = parameterVariants(node, version, settled, start, names);
+					const variants = parameterVariants(
+						node,
+						version,
+						settled,
+						start,
+						names,
+						itemFieldExpression,
+					);
 					const agreed: Variant[] = [];
 					const added: string[] = [];
 					for (const variant of variants) {

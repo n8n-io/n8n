@@ -488,7 +488,7 @@ fn webhookAfterWait(ms: f64, end: WaitEnd) !core.Action {
         .attention => try h.tick(&.{.{ .kind = .effect_err, .exec_id = id, .seq = call.seq, .payload = "down" }}),
     };
     const r = find(done, .reply) orelse return error.NoReply;
-    return .{ .kind = r.kind, .conn = r.conn, .aux = r.aux, .payload = try testing.allocator.dupe(u8, r.payload) };
+    return .{ .kind = r.kind, .conn = r.conn, .aux = r.aux, .seq = r.seq, .payload = try testing.allocator.dupe(u8, r.payload) };
 }
 
 test "regression: a webhook run answers on its connection after a wait (ok, error, needs_attention; evicted or not)" {
@@ -509,6 +509,8 @@ test "regression: a webhook run answers on its connection after a wait (ok, erro
                 .attention => {
                     try testing.expectEqual(@as(u32, 500), r.aux);
                     try testing.expectEqualStrings("{\"status\":\"needs_attention\"}", r.payload);
+                    // The shell answers a webhook with the body of n8n for this reply.
+                    try testing.expect(r.seq & core.reply_failed != 0);
                 },
             }
         }

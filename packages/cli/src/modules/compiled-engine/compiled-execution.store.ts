@@ -19,6 +19,29 @@ const RECONCILE_BATCH = 1000;
 /** The settings key of the cursor of the `wfrt` event outbox. */
 export const EVENT_CURSOR_KEY = 'compiledEngine.eventCursor';
 
+/**
+ * The settings key of the nodes that run in the fallback host, because a run reached a limit
+ * of `wfrt` that v1 does not have: `{ [workflowId]: nodeNames }`.
+ */
+export const HOST_NODES_KEY = 'compiledEngine.hostNodes';
+
+/** Reads the stored nodes of each workflow; a value of another form is ignored. */
+function readHostNodes(value: string): Record<string, string[]> {
+	let parsed: unknown;
+	try {
+		parsed = JSON.parse(value);
+	} catch {
+		return {};
+	}
+	if (typeof parsed !== 'object' || parsed === null || Array.isArray(parsed)) return {};
+	const nodes: Record<string, string[]> = {};
+	for (const [workflowId, names] of Object.entries(parsed)) {
+		if (!Array.isArray(names)) continue;
+		nodes[workflowId] = names.filter((name): name is string => typeof name === 'string');
+	}
+	return nodes;
+}
+
 /** Reads a stored cursor; a value that is not a seq per shard is ignored. */
 function readCursor(value: string): WfrtEventCursor {
 	let parsed: unknown;
@@ -62,6 +85,17 @@ export class CompiledExecutionStore {
 	/** Stores the cursor of the event outbox; `wfrt` may then delete those events. */
 	async saveEventCursor(cursor: WfrtEventCursor) {
 		await this.settingsRepository.upsertByKey(EVENT_CURSOR_KEY, JSON.stringify(cursor), false, {});
+	}
+
+	/** The nodes of each workflow that run in the fallback host for a limit of `wfrt`. */
+	async readHostNodes(): Promise<Record<string, string[]>> {
+		const row = await this.settingsRepository.findByKey(HOST_NODES_KEY);
+		return row ? readHostNodes(row.value) : {};
+	}
+
+	/** Stores the nodes that run in the fallback host, so they stay there after a restart. */
+	async saveHostNodes(nodes: Record<string, string[]>) {
+		await this.settingsRepository.upsertByKey(HOST_NODES_KEY, JSON.stringify(nodes), false, {});
 	}
 
 	async saveMapping(executionId: string, values: Record<string, string>) {

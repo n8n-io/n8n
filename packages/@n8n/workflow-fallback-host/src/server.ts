@@ -248,9 +248,11 @@ function serveConnection(
 			// Ids are unique on one connection only: several runtime processes can
 			// share the host, and the worker pool keys its steps by id.
 			const id = request.id;
-			void handler
-				.run({ ...request, id: `${connection}/${id}` })
-				.then((response) => reply({ ...response, id }));
+			void handler.run({ ...request, id: `${connection}/${id}` }).then(
+				(response) => reply({ ...response, id }),
+				// A runner that rejects fails this step only; the connection serves the next one.
+				(error: unknown) => reply({ id, ok: false, error: messageOf(error) }),
+			);
 		}
 	};
 	socket.on('data', onData);

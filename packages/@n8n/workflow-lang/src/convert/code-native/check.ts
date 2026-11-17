@@ -9,13 +9,28 @@ import type { CompileResult } from '../../compiler/index.ts';
 import { issueOf, withoutTypeNoise } from '../../legacy/index.ts';
 import { helperSources } from '../helpers.ts';
 import type { Blocker, Translation } from './translate.ts';
-import { emitExpression, emitHelpers } from './emit.ts';
+import { emitAsync, emitExpression, emitHelpers } from './emit.ts';
 
 /** The workflow source of a translated Code node. */
-export function harnessSource(t: Translation, mode: 'all' | 'each'): string {
+export function harnessSource(t: Translation, mode: 'all' | 'each', plainInput = false): string {
 	const lists = t.nodes.map((_, k) => `trigger.body.nodes[${k}]`);
 	const all = t.allNodes.map((_, k) => `trigger.body.all[${k}]`);
-	const expr = emitExpression(t, mode, 'trigger.body.input', lists, all);
+	// Code that makes requests is an async function; its \`http\` step has the name \`code\`.
+	const parts = t.usesHttp
+		? emitAsync(
+				t,
+				mode,
+				{ fn: 'runCode', step: 'code' },
+				'trigger.body.input',
+				lists,
+				all,
+				plainInput,
+			)
+		: {
+				declaration: '',
+				expression: emitExpression(t, mode, 'trigger.body.input', lists, all, plainInput),
+			};
+	const expr = parts.expression;
 	return `import { webhook, workflow } from '@n8n/workflow-lang';
 
 type Json = any;
@@ -25,12 +40,13 @@ export default workflow({
 	async run(ctx, trigger) {
 		// The engine shape names the run index of a node \`runIndex\`.
 		const runIndex: number = 0;
+		${parts.declaration}
 		const out: Json[] = ${expr};
 		return out;
 	},
 });
 
-${helperSources(emitHelpers(t, mode)).join('\n\n')}
+${helperSources(emitHelpers(t, mode, plainInput)).join('\n\n')}
 `;
 }
 
@@ -38,9 +54,16 @@ export type CheckResult =
 	| { ok: true; compiled: CompileResult; source: string }
 	| { ok: false; blockers: Blocker[] };
 
-/** Compiles the harness. Compiler diagnostics become blockers. */
-export function checkTranslation(t: Translation, mode: 'all' | 'each'): CheckResult {
-	const source = harnessSource(t, mode);
+/**
+ * Compiles the harness. Compiler diagnostics become blockers. `plainInput` gives the form
+ * that reads the input list without a copy (`emit.ts`).
+ */
+export function checkTranslation(
+	t: Translation,
+	mode: 'all' | 'each',
+	plainInput = false,
+): CheckResult {
+	const source = harnessSource(t, mode, plainInput);
 	const compiled = compile(source, { nodes: {} });
 	if (compiled.ok) return { ok: true, compiled, source };
 	const issues = withoutTypeNoise(compiled.diagnostics.map(issueOf));

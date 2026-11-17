@@ -41,6 +41,8 @@ export interface MintedToken {
 const MINTED_KEY = 'n8nMinted';
 /** The member of a slot that tells `wfrt` how the slot is renewed. */
 const RENEWAL_KEY = 'renewal';
+/** The member of a slot that tells `wfrt` the allowed domains of the credential. */
+const ALLOWED_DOMAINS_KEY = 'allowedDomains';
 /** `wfrt` reads at most this many status codes for a slot (`renew.zig`). */
 const MAX_RENEWAL_STATUSES = 8;
 
@@ -94,6 +96,29 @@ function oauth2ExpiredStatuses(data: IDataObject): number[] {
 	const list = Array.isArray(configured) ? configured : [configured];
 	return list.map((code) => Number(code)).filter((code) => Number.isInteger(code) && code > 0);
 }
+
+/** A client-credentials credential that has no access token yet: n8n-core gets one at the first request. */
+function needsFirstToken(data: IDataObject): boolean {
+	if (data.grantType !== 'clientCredentials') return false;
+	const token = isRecord(data.oauthTokenData) ? data.oauthTokenData.access_token : undefined;
+	return typeof token !== 'string' || token === '';
+}
+
+/** The allowed domains of a credential, as `wfrt` reads them for a request of the HTTP Request node. */
+export interface SlotAllowedDomains {
+	mode: 'domains' | 'none';
+	/** The list of the mode `domains`, as the user wrote it. */
+	domains?: string;
+}
+
+/** The allowed domains of a credential, or `undefined` when it allows all domains. */
+function allowedDomainsOf(data: IDataObject): SlotAllowedDomains | undefined {
+	if (data.allowedHttpRequestDomains === 'none') return { mode: 'none' };
+	if (data.allowedHttpRequestDomains !== 'domains') return undefined;
+	const domains = typeof data.allowedDomains === 'string' ? data.allowedDomains.trim() : '';
+	return { mode: 'domains', domains };
+}
+
 /** The name of a flag under `data.n8nDerived`. Only a boolean has such a name. */
 const FLAG_NAME = /^f[0-9a-f]{8}$/;
 /** The lifetime that n8n assumes when the token endpoint gives none. */
@@ -164,14 +189,21 @@ export class CompiledEngineCredentials {
 				const additionalData = await WorkflowExecuteAdditionalData.getBase({
 					workflowId,
 				});
-				const data = await this.credentialsHelper.getDecrypted(
-					additionalData,
-					{ id: use.credentialId, name: use.credentialName },
-					use.type,
-					'internal',
-					toExecuteData(use.type),
-				);
+				const read = async () =>
+					await this.credentialsHelper.getDecrypted(
+						additionalData,
+						{ id: use.credentialId, name: use.credentialName },
+						use.type,
+						'internal',
+						toExecuteData(use.type),
+					);
+				let data = await read();
 				const kind = this.renewalKind(use.type, (mints[use.slot] ?? []).length > 0);
+				if (kind === 'oauth2' && needsFirstToken(data)) {
+					// As v1 at the first request: a client-credentials credential without a token gets one.
+					await this.refreshOAuth2(use, workflowId);
+					data = await read();
+				}
 				if (kind === 'preAuthentication') {
 					// As v1 before each request: a credential without a session token gets one.
 					Object.assign(data, await this.preAuthenticate(use, data, workflowId, false));
@@ -243,6 +275,10 @@ export class CompiledEngineCredentials {
 				}
 				if (kind !== undefined && typeof entry === 'object' && entry !== null) {
 					Reflect.set(entry, RENEWAL_KEY, this.slotRenewal(kind, { ...data }, entryData));
+				}
+				const allowedDomains = allowedDomainsOf(data);
+				if (allowedDomains !== undefined && typeof entry === 'object' && entry !== null) {
+					Reflect.set(entry, ALLOWED_DOMAINS_KEY, allowedDomains);
 				}
 				Object.assign(document, file);
 			} catch (error) {
@@ -465,7 +501,7 @@ export class CompiledEngineCredentials {
 		workflowId: string,
 	): Promise<MintedToken> {
 		const { getGoogleAccessToken, googleServiceAccountScopes } = await import(
-			'n8n-nodes-base/dist/nodes/Google/GenericFunctions'
+			'n8n-nodes-base/dist/nodes/Google/GenericFunctions.js'
 		);
 		const isService = (name: string): name is keyof typeof googleServiceAccountScopes =>
 			Object.hasOwn(googleServiceAccountScopes, name);

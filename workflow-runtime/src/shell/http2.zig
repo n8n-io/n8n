@@ -525,7 +525,7 @@ fn putByte(out: []u8, len: *usize, b: u8) WriteError!void {
 
 /// The header lines that `request.zig` adds to every request.
 const const_lines = [_][]const u8{
-    "user-agent: n8n-wfrt",
+    "user-agent: n8n",
     "accept: application/json,text/*;q=0.9,*/*;q=0.8",
     "accept-encoding: identity",
 };

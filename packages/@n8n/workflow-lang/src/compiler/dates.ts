@@ -236,6 +236,15 @@ export function arrayHoldsDates(checker: ts.TypeChecker, type: ts.Type, depth = 
 
 function isGlobalDate(checker: ts.TypeChecker, node: ts.Node): boolean {
 	if (!ts.isIdentifier(node) || node.text !== 'Date') return false;
+	// A property with the name `Date` (`row.Date`, `{ Date: 1 }`) is not the global.
+	const parent = node.parent;
+	if (
+		parent !== undefined &&
+		(ts.isPropertyAccessExpression(parent) || ts.isPropertyAssignment(parent)) &&
+		parent.name === node
+	) {
+		return false;
+	}
 	const s = checker.getSymbolAtLocation(node);
 	return (s?.declarations ?? []).every((d) => d.getSourceFile().fileName === LIB_FILE);
 }

@@ -771,6 +771,18 @@ export function costOfCase(
 	};
 }
 
+const RUNTIME_ACCEPT = 'application/json,text/*;q=0.9,*/*;q=0.8';
+
+function sentAccept(acceptAs: unknown, json: unknown): string {
+	if (acceptAs === 'legacy') return json === true ? 'application/json' : '*/*';
+	if (acceptAs === 'request') {
+		const falsy =
+			json === undefined || json === null || json === false || json === 0 || json === '';
+		return falsy ? 'application/json, text/plain, */*' : 'application/json';
+	}
+	return RUNTIME_ACCEPT;
+}
+
 export async function differenceFromV1(
 	c: EquivalenceCase,
 	sources: NodeSources,
@@ -862,6 +874,7 @@ export async function differenceFromV1(
 	const data: Record<string, unknown> = withDerivedValues(credentialType ?? '', {
 		...(registry.get(credentialType ?? '')?.defaults ?? {}),
 		...c.credential?.data,
+		...v1.preAuthentication?.data,
 	});
 	if (compiled.derivations.length > 0) {
 		const derived: Record<string, unknown> = isRecord(data.n8nDerived)
@@ -882,9 +895,20 @@ export async function differenceFromV1(
 		}
 		data.n8nMinted = minted.tokens;
 	}
-	const inject = credentialType ? deriveInject(registry, credentialType, data).inject : undefined;
+	const inject = credentialType
+		? deriveInject(registry, credentialType, data, { preAuthenticated: true }).inject
+		: undefined;
+	const renewsSession = (effect: (typeof out.effects)[number]) =>
+		effect.kind === 'service' &&
+		isRecord(effect.args) &&
+		effect.args.service === 'credentials' &&
+		effect.args.op === 'renew';
+	const sessionRequests = (v1.preAuthentication?.requests ?? 1) - 1;
+	const renewals = out.effects.filter(renewsSession).length;
+	if (renewals !== sessionRequests)
+		return `the requests for a new session token differ: ${renewals} / ${sessionRequests}`;
 	const requestsOf = (run: typeof out) =>
-		run.effects.filter((effect) => effect.kind !== 'wait').map(requestOf);
+		run.effects.filter((effect) => effect.kind !== 'wait' && !renewsSession(effect)).map(requestOf);
 	const requestOf = (effect: (typeof out.effects)[number]) => {
 		const args = isRecord(effect.args) ? effect.args : {};
 		const { qsFormat: _, ...request } = normalizeRequest(
@@ -903,6 +927,8 @@ export async function differenceFromV1(
 				data,
 			),
 		);
+		if (request.headers.accept === undefined)
+			request.headers.accept = sentAccept(args.acceptAs, args.json);
 		const type = request.headers['content-type'] ?? '';
 		const fields = isRecord(request.body) ? request.body.$form : undefined;
 		if (type.startsWith('application/x-www-form-urlencoded') && isRecord(fields)) {
@@ -924,7 +950,13 @@ export async function differenceFromV1(
 		return request;
 	};
 	const others = compiled.randoms.length > 0 ? await Promise.all(OTHER_SEEDS.map(runWith)) : [];
-	const sent = minted ? v1.requests.filter((_request, k) => !minted.exchanges.has(k)) : v1.requests;
+	const recorded = v1.requests.map((request, k) => {
+		const added = v1.accepts?.[k];
+		return request.headers.accept !== undefined || added === undefined || added === null
+			? request
+			: { ...request, headers: { ...request.headers, accept: added } };
+	});
+	const sent = minted ? recorded.filter((_request, k) => !minted.exchanges.has(k)) : recorded;
 	const sentPlain = sent.map(({ qsFormat: _, ...r }) => {
 		const emptyForm =
 			r.body === undefined &&

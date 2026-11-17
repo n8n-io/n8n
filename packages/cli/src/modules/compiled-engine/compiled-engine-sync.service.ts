@@ -7,6 +7,7 @@ import { Service } from '@n8n/di';
 import { OperationalError, UserError } from '@n8n/errors';
 import type { IDataObject, IWorkflowBase, IWorkflowSettings } from 'n8n-workflow';
 
+import { CompiledEngineUnavailableError } from '@/services/compiled-engine-bridge.service';
 import { WorkflowStaticDataService } from '@/workflows/workflow-static-data.service';
 import { getVariables } from '@/workflow-helpers';
 
@@ -14,6 +15,7 @@ import type { MintedToken } from './compiled-engine-credentials';
 import { CompiledEngineCredentials, mintExpiries } from './compiled-engine-credentials';
 import type { CompiledArtifact } from './compiled-engine.types';
 import { MANUAL_WORKFLOW_SUFFIX, WFRT_WEBHOOK_PREFIX } from './compiled-engine.types';
+import { CompiledExecutionStore } from './compiled-execution.store';
 import { CompiledWorkflowCompiler } from './compiled-workflow.compiler';
 import type { WfrtWorkflowStatus } from './wfrt-admin.client';
 import { WfrtAdminClient } from './wfrt-admin.client';
@@ -38,6 +40,8 @@ export interface LoadedWorkflow {
 	workflowData: IWorkflowBase;
 	artifact: CompiledArtifact;
 	active: boolean;
+	/** Why `wfrt` does not have the module, when the last load after a connect failed. */
+	loadError?: string;
 }
 
 /** The first error diagnostics, as one line for an error message. */
@@ -90,6 +94,9 @@ export class CompiledEngineSync {
 	/** The last static data save of each workflow, so saves stay in order. */
 	private readonly staticSaves = new Map<string, Promise<void>>();
 
+	/** The read of the stored nodes that run in the fallback host, shared by all compiles. */
+	private hostNodesRestored: Promise<void> | undefined;
+
 	constructor(
 		private readonly compiler: CompiledWorkflowCompiler,
 		private readonly client: WfrtAdminClient,
@@ -99,6 +106,7 @@ export class CompiledEngineSync {
 		private readonly globalConfig: GlobalConfig,
 		private readonly logger: Logger,
 		private readonly staticData: WorkflowStaticDataService,
+		private readonly store: CompiledExecutionStore,
 	) {
 		this.logger = this.logger.scoped('compiled-engine');
 	}
@@ -111,15 +119,34 @@ export class CompiledEngineSync {
 		return this.loaded.get(wfrtId);
 	}
 
-	/** Compiles the published version of a workflow and loads it with its triggers on. */
-	async activate(workflow: WorkflowEntity) {
+	/** The published version of a workflow, as the compiler takes it. */
+	private publishedData(workflow: WorkflowEntity): IWorkflowBase {
 		const version = workflow.activeVersion;
-		const workflowData: IWorkflowBase = {
+		return {
 			...workflow,
 			nodes: version?.nodes ?? workflow.nodes,
 			connections: version?.connections ?? workflow.connections,
 			versionId: version?.versionId ?? workflow.versionId,
 		};
+	}
+
+	/**
+	 * True when `wfrt` is connected and has the published module of the workflow. Otherwise
+	 * n8n serves a production webhook request of the workflow on v1.
+	 */
+	isServing(workflowId: string): boolean {
+		const entry = this.loaded.get(workflowId);
+		return this.connected && entry !== undefined && entry.active && entry.loadError === undefined;
+	}
+
+	/**
+	 * Compiles the published version of a workflow and loads it with its triggers on. It
+	 * throws when the version does not compile or when `wfrt` refuses the module (a limit of
+	 * the runtime, such as the module count or the module size): the caller then runs the
+	 * workflow on v1.
+	 */
+	async activate(workflow: WorkflowEntity) {
+		const workflowData = this.publishedData(workflow);
 		const artifact = await this.compile(workflowData);
 		if (!artifact.ok) {
 			throw new UserError(
@@ -134,7 +161,13 @@ export class CompiledEngineSync {
 			);
 			return;
 		}
-		await this.push(entry);
+		try {
+			await this.push(entry);
+		} catch (error) {
+			// `wfrt` does not have this version: the workflow is not a loaded workflow.
+			if (this.loaded.get(entry.wfrtId) === entry) this.loaded.delete(entry.wfrtId);
+			throw error;
+		}
 	}
 
 	async deactivate(workflowId: string) {
@@ -149,13 +182,14 @@ export class CompiledEngineSync {
 	/** Compiles the given workflow and loads it, with no triggers, for one manual run. */
 	async prepareManualRun(workflowData: IWorkflowBase, trigger?: string): Promise<LoadedWorkflow> {
 		const artifact = await this.compile(workflowData, trigger);
+		// The caller starts the run on v1 for these two reasons: no execution exists yet.
 		if (!artifact.ok) {
-			throw new UserError(
+			throw new CompiledEngineUnavailableError(
 				`The workflow cannot run on the compiled engine. ${describeErrors(artifact)}`,
 			);
 		}
 		if (!this.connected) {
-			throw new OperationalError(
+			throw new CompiledEngineUnavailableError(
 				'The compiled engine is not running. Check the n8n logs for wfrt errors.',
 			);
 		}
@@ -167,7 +201,29 @@ export class CompiledEngineSync {
 		return entry;
 	}
 
+	/**
+	 * Reads the stored nodes that run in the fallback host for a limit of `wfrt`, once, before
+	 * the first compile. Without them, the first run after a restart of n8n would reach the
+	 * limit again. A failed read is tried again at the next compile.
+	 */
+	private async restoreHostNodes() {
+		this.hostNodesRestored ??= this.readHostNodes();
+		await this.hostNodesRestored;
+	}
+
+	private async readHostNodes() {
+		try {
+			this.compiler.restoreHostNodes(await this.store.readHostNodes());
+		} catch (error) {
+			this.hostNodesRestored = undefined;
+			this.logger.warn('Could not read the nodes that run in the fallback host', {
+				error: error instanceof Error ? error.message : String(error),
+			});
+		}
+	}
+
 	async compile(workflowData: IWorkflowBase, trigger?: string) {
+		await this.restoreHostNodes();
 		return await this.compiler.compile({
 			...(trigger === undefined ? {} : { trigger }),
 			id: workflowData.id,
@@ -176,7 +232,15 @@ export class CompiledEngineSync {
 			nodes: workflowData.nodes,
 			connections: workflowData.connections,
 			settings: workflowData.settings,
+			webhookUrls: this.webhookUrls(),
 		});
+	}
+
+	/** The URLs of n8n for production and test webhooks, as the Webhook node of v1 gets them. */
+	private webhookUrls() {
+		const base = this.urlService.getWebhookBaseUrl().replace(/\/$/, '');
+		const { webhook, webhookTest } = this.globalConfig.endpoints;
+		return { production: `${base}/${webhook}`, test: `${base}/${webhookTest}` };
 	}
 
 	/**
@@ -210,9 +274,12 @@ export class CompiledEngineSync {
 		for (const entry of this.loaded.values()) {
 			try {
 				await this.push(entry);
+				entry.loadError = undefined;
 			} catch (error) {
+				// n8n serves the webhooks of this workflow on v1 until a load succeeds.
+				entry.loadError = error instanceof Error ? error.message : String(error);
 				this.logger.error(`Could not load workflow ${entry.wfrtId} into wfrt`, {
-					error: error instanceof Error ? error.message : String(error),
+					error: entry.loadError,
 				});
 			}
 		}
@@ -302,7 +369,9 @@ export class CompiledEngineSync {
 	 * run, so its next run has the node in the host.
 	 */
 	async onRuntimeLimit(workflowId: string, nodeName: string) {
+		await this.restoreHostNodes();
 		if (!this.compiler.runInHost(workflowId, nodeName)) return;
+		await this.saveHostNodes();
 		this.logger.info(
 			`Node "${nodeName}" of workflow ${workflowId} reached a limit of wfrt that the v1 engine does not have. It runs in the fallback host from the next run.`,
 			{ workflowId },
@@ -311,6 +380,21 @@ export class CompiledEngineSync {
 		for (const entry of this.loaded.values()) {
 			if (entry.workflowData.id !== workflowId) continue;
 			if (await this.compileAgain(entry)) await this.push(entry);
+		}
+	}
+
+	/**
+	 * Stores the nodes that run in the fallback host. Another main can have stored nodes since
+	 * this process read them: they are read again and kept.
+	 */
+	private async saveHostNodes() {
+		try {
+			this.compiler.restoreHostNodes(await this.store.readHostNodes());
+			await this.store.saveHostNodes(this.compiler.hostNodes());
+		} catch (error) {
+			this.logger.warn('Could not store the nodes that run in the fallback host', {
+				error: error instanceof Error ? error.message : String(error),
+			});
 		}
 	}
 

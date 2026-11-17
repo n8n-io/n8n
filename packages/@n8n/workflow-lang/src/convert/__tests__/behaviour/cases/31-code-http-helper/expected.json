@@ -32,6 +32,11 @@
 			]
 		]
 	},
-	"requests": [],
+	"requests": [
+		{
+			"path": "/code-fails",
+			"method": "GET"
+		}
+	],
 	"responses": []
 }

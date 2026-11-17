@@ -128,6 +128,44 @@ describe('CompiledEngineCredentials', () => {
 		});
 	});
 
+	describe('allowed domains', () => {
+		const plain = { ...binding, slot: 'plain', type: 'httpHeaderAuth' };
+
+		it('gives wfrt the list of a credential with specific domains', async () => {
+			helper.getDecrypted.mockResolvedValue({
+				name: 'X-Key',
+				value: 'k',
+				allowedHttpRequestDomains: 'domains',
+				allowedDomains: ' api.example.com, *.example.org ',
+			});
+			const document = await credentials().buildDocument('wf1', [plain]);
+			expect(document.plain).toMatchObject({
+				allowedDomains: { mode: 'domains', domains: 'api.example.com, *.example.org' },
+			});
+		});
+
+		it('gives wfrt the mode of a credential that allows no domain', async () => {
+			helper.getDecrypted.mockResolvedValue({
+				name: 'X-Key',
+				value: 'k',
+				allowedHttpRequestDomains: 'none',
+			});
+			const document = await credentials().buildDocument('wf1', [plain]);
+			expect(document.plain).toMatchObject({ allowedDomains: { mode: 'none' } });
+		});
+
+		it('adds nothing for a credential that allows all domains', async () => {
+			helper.getDecrypted.mockResolvedValue({
+				name: 'X-Key',
+				value: 'k',
+				allowedHttpRequestDomains: 'all',
+			});
+			const document = await credentials().buildDocument('wf1', [plain]);
+			expect(document.plain).toBeDefined();
+			expect(document.plain).not.toHaveProperty('allowedDomains');
+		});
+	});
+
 	describe('renewal', () => {
 		it('tells wfrt that an OAuth2 slot is renewed on 401', async () => {
 			const document = await credentials().buildDocument('wf1', [binding]);
@@ -147,6 +185,33 @@ describe('CompiledEngineCredentials', () => {
 			const document = await credentials().buildDocument('wf1', [binding]);
 			expect(document.oauth).toMatchObject({ renewal: { status: [403, 419], oauth2: true } });
 			expect(Reflect.get(Object(document.oauth), 'renewal')).not.toHaveProperty('statusDefault');
+		});
+
+		it('gets the first token of a client-credentials credential when it builds the document', async () => {
+			const stored = {
+				grantType: 'clientCredentials',
+				accessTokenUrl: tokenUrl,
+				clientId: 'c',
+				clientSecret: 's',
+				authentication: 'body',
+			};
+			helper.getDecrypted.mockImplementation(async () => {
+				const saved = helper.updateCredentialsOauthTokenData.mock.calls[0]?.[2].oauthTokenData;
+				return saved === undefined ? { ...stored } : { ...stored, oauthTokenData: saved };
+			});
+			const document = await credentials().buildDocument('wf1', [binding]);
+			expect(helper.updateCredentialsOauthTokenData).toHaveBeenCalledTimes(1);
+			expect(JSON.stringify(document.oauth)).toContain('"access_token":"new"');
+		});
+
+		it('does not get a token for a client-credentials credential that has one', async () => {
+			helper.getDecrypted.mockResolvedValue({
+				grantType: 'clientCredentials',
+				accessTokenUrl: tokenUrl,
+				oauthTokenData: { access_token: 'old' },
+			});
+			await credentials().buildDocument('wf1', [binding]);
+			expect(helper.updateCredentialsOauthTokenData).not.toHaveBeenCalled();
 		});
 
 		it('gives no renewal to a credential whose values do not expire', async () => {

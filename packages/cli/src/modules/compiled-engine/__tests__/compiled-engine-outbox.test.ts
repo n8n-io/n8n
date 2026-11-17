@@ -98,6 +98,41 @@ function setup(storedCursor: Record<string, number> = {}) {
 	return { service, client, dispatcher, store, stream, start };
 }
 
+describe('CompiledEngineService event order of one execution', () => {
+	it('handles the finished event after the earlier node events of its execution', async () => {
+		const { dispatcher, stream, start } = setup();
+		const order: string[] = [];
+		let releaseTrace = () => {};
+		dispatcher.handleEvent.mockImplementation(async (event) => {
+			const name = `${event.type}${'step' in event ? `:${String(event.step)}` : ''}`;
+			// The node event has a slow database write.
+			if (event.type === 'trace') await new Promise<void>((r) => (releaseTrace = r));
+			order.push(name);
+		});
+		await start();
+
+		// As `wfrt` sends them: the node events have no outbox position, `finished` has one.
+		stream.onEvent({ type: 'trace', executionId: 'w-1', step: 'Fetch', items: [], at: 1 });
+		stream.onEvent({ type: 'trace', executionId: 'w-1', step: 'Respond', items: [], at: 2 });
+		stream.onEvent(finished(1));
+		// An execution of another shard, with no earlier event, does not wait.
+		stream.onEvent(finished(2, 1));
+		await settle();
+		expect(order).toEqual(['finished']);
+
+		releaseTrace();
+		await settle();
+		releaseTrace();
+		await settle();
+		expect(order).toEqual(['finished', 'trace:Fetch', 'trace:Respond', 'finished']);
+		expect(
+			dispatcher.handleEvent.mock.calls.map(
+				([event]) => 'executionId' in event && event.executionId,
+			),
+		).toEqual(['w-1', 'w-2', 'w-1', 'w-1']);
+	});
+});
+
 describe('CompiledEngineService event outbox', () => {
 	it('resumes the stream from the stored cursor', async () => {
 		const { service, client, store, stream, start } = setup({ '0': 6, '3': 1 });

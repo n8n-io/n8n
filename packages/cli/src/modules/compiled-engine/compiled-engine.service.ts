@@ -9,6 +9,7 @@ import type { IDeferredPromise } from '@n8n/utils/promise/deferred-promise';
 import type { Request, Response } from 'express';
 import type {
 	IExecuteResponsePromiseData,
+	INode,
 	IWorkflowBase,
 	IWorkflowExecutionDataProcess,
 } from 'n8n-workflow';
@@ -45,6 +46,26 @@ const UNSEQUENCED = 'unsequenced';
  * Runs the compiled engine: starts the processes, follows the event stream
  * of `wfrt`, and serves the core code through the compiled engine bridge.
  */
+/** The options of the Webhook node that `wfrt` reads when it takes the request. */
+const RUNTIME_WEBHOOK_OPTIONS = new Set(['binaryPropertyName', 'rawBody', 'binaryData']);
+
+/**
+ * True when `wfrt` can serve the requests of this Webhook node itself. `wfrt` does not
+ * check who sends a request and does not read the other options of the node (the allowed
+ * addresses, the allowed origins, the response headers). For such a node the Webhook node
+ * of n8n takes the request, as for a trigger of an app, and its item starts the run in
+ * `wfrt`: the item then has what the v1 node gives, for example `jwtPayload`.
+ */
+export function runtimeServesWebhookNode(node: INode): boolean {
+	if (node.type !== 'n8n-nodes-base.webhook') return false;
+	const authentication = node.parameters.authentication;
+	if (authentication !== undefined && authentication !== 'none') return false;
+	const options = node.parameters.options;
+	if (options === undefined) return true;
+	if (typeof options !== 'object' || options === null || Array.isArray(options)) return false;
+	return Object.keys(options).every((name) => RUNTIME_WEBHOOK_OPTIONS.has(name));
+}
+
 @Service()
 export class CompiledEngineService implements CompiledEngineProvider {
 	private stopped = false;
@@ -64,6 +85,14 @@ export class CompiledEngineService implements CompiledEngineProvider {
 
 	/** The events of one shard are handled in seq order, one at a time. */
 	private readonly eventChains = new Map<string, Promise<void>>();
+
+	/**
+	 * The last event of each execution that waits or runs. The events of an execution come
+	 * with and without an outbox position, so they are in different chains: each one also
+	 * waits for the earlier events of its execution, and the run data is complete when
+	 * `finished` is handled. An entry goes when its event is handled.
+	 */
+	private readonly executionTails = new Map<string, Promise<void>>();
 
 	private handledSinceAck = 0;
 
@@ -202,12 +231,19 @@ export class CompiledEngineService implements CompiledEngineProvider {
 	private acceptEvent(event: WfrtEvent) {
 		const key = isSequencedEvent(event) ? String(event.shard) : UNSEQUENCED;
 		const previous = this.eventChains.get(key) ?? Promise.resolve();
-		const next = previous.then(async () => await this.handleEvent(event));
+		const executionId = 'executionId' in event ? event.executionId : undefined;
+		const earlier = executionId === undefined ? undefined : this.executionTails.get(executionId);
+		// `handleEvent` does not reject, so the two waits end.
+		const next = Promise.all([previous, earlier]).then(async () => await this.handleEvent(event));
 		this.eventChains.set(key, next);
+		if (executionId !== undefined) this.executionTails.set(executionId, next);
 		void next
 			.catch(() => {})
 			.then(() => {
 				if (this.eventChains.get(key) === next) this.eventChains.delete(key);
+				if (executionId !== undefined && this.executionTails.get(executionId) === next) {
+					this.executionTails.delete(executionId);
+				}
 			});
 	}
 
@@ -327,6 +363,10 @@ export class CompiledEngineService implements CompiledEngineProvider {
 		await this.sync.activate(workflow);
 	}
 
+	isServing(workflowId: string) {
+		return this.sync.isServing(workflowId);
+	}
+
 	async deactivate(workflowId: string) {
 		await this.sync.deactivate(workflowId);
 	}
@@ -358,7 +398,7 @@ export class CompiledEngineService implements CompiledEngineProvider {
 
 	servesWebhook(workflow: Pick<IWorkflowBase, 'nodes' | 'connections'>, nodeName: string): boolean {
 		const kept = findTriggerNode(workflow);
-		return kept?.name === nodeName && kept.type === 'n8n-nodes-base.webhook';
+		return kept?.name === nodeName && runtimeServesWebhookNode(kept);
 	}
 
 	async forwardWebhook({
@@ -380,12 +420,14 @@ export class CompiledEngineService implements CompiledEngineProvider {
 		const workflow = await this.workflowRepository.findById(workflowId);
 		if (!workflow) throw new NotFoundError(`The workflow "${workflowId}" does not exist.`);
 		const artifact = await this.sync.compile(workflow);
+		const runsOnV1 = this.bridge.reasonForV1(workflowId);
 		return {
 			ok: artifact.ok,
 			diagnostics: artifact.diagnostics,
 			nodes: artifact.nodes,
 			versionId: workflow.versionId,
 			compiledAt: artifact.compiledAt,
+			...(runsOnV1 === undefined ? {} : { runsOnV1 }),
 		};
 	}
 }

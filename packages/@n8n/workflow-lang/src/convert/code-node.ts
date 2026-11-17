@@ -22,7 +22,7 @@
  * `language: 'python'`. The prologue gives the names of n8n's Python runner:
  * `_items` in "all items" mode, `_item` in "each item" mode.
  */
-import { lowerCodeNative } from './code-native/index.ts';
+import { lowerCodeNative, previousRunsOnce } from './code-native/index.ts';
 import type { Code } from './code.ts';
 import { escapeControls, raw, str } from './code.ts';
 import type { NodeContext } from './context.ts';
@@ -139,7 +139,12 @@ const $runIndex = __context.$runIndex ?? 0;
 const $executionId = __context.$executionId;
 const $prevNode = __context.$prevNode;
 const $node = new Proxy({}, { get: (_, name) => ({ json: (__nodes[name] || [])[0], pairedItem: { item: 0 } }) });
-const $items = (name) => (__nodes[name] || []).map((json, k) => ({ json, pairedItem: { item: k } }));
+// Legacy \`$items()\` of v1's data proxy: without a name, the input items (the first one only
+// when the node before has "execute once"); \`__inputItems\` gives the list of this mode.
+const $items = (name) => {
+	if (name === undefined) return __context.$itemsOnce ? __inputItems().slice(0, 1) : __inputItems();
+	return (__nodes[name] || []).map((json, k) => ({ json, pairedItem: { item: k } }));
+};
 // Legacy \`$item(k)\` of v1's data proxy: the data of item k, with v1's errors. One run of each node.
 const __input = items.slice();
 const $item = (k) => {
@@ -183,6 +188,7 @@ const FUNCTION_ITEM_BINARY = `	const getBinaryData = () => __item.binary;
 
 export function allItemsCode(user: string, nodes: boolean, legacyFunction = false): string {
 	return `${nodes ? NODES_PROLOGUE : ''}${WRAP}${legacyFunction ? FUNCTION_BINARY : ''}items = items.map((j, k) => __wrap(j, k));
+const __inputItems = () => items;
 const $input = { all: () => items, first: () => items[0], last: () => items[items.length - 1], item: items[0] };
 // As n8n's runner: in "all items" mode, $json and $input.item are the first item.
 const $json = items[0]?.json;
@@ -209,6 +215,7 @@ const EACH_ITEM = `const __itemOf = (r) => {
 
 export function eachItemCode(user: string, nodes: boolean, functionItem: boolean): string {
 	return `${nodes ? NODES_PROLOGUE : ''}${WRAP}${EACH_ITEM}const __all = items.map((j, k) => __wrap(j, k));
+const __inputItems = () => __all;
 const __out = [];
 for (let $itemIndex = 0; $itemIndex < __all.length; $itemIndex++) {
 	const __item = __all[$itemIndex];
@@ -323,6 +330,7 @@ export function lowerCode(c: NodeContext): void {
 	if (user.includes('$runIndex')) globals.push(`$runIndex: ${c.runIndex}`);
 	if (user.includes('$executionId')) globals.push('$executionId: ctx.execution().id');
 	if (user.includes('$prevNode')) globals.push(`$prevNode: ${prevNode(c)}`);
+	if (/\$items\(\s*\)/.test(user) && previousRunsOnce(c) === true) globals.push('$itemsOnce: true');
 	// The prologue defines `$`, `$node`, `$items` and `$item` when the code reads them.
 	const context =
 		refs.length > 0 || globals.length > 0 || /\$items\b|\$item\b|\$\(|\$node\b/.test(user);

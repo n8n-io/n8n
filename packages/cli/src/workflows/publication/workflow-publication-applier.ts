@@ -133,30 +133,83 @@ export class WorkflowPublicationApplier {
 		// A null `activeVersionId` means the workflow has been unpublished, so we
 		// reconcile its triggers down to nothing rather than to a target version.
 		const compiledEngine = Container.get(CompiledEngineBridge);
-		const compiled = compiledEngine.handles(workflow);
 
 		if (workflow.activeVersionId === null) {
 			const result = await this.unpublish(workflow, oldVersion, record, abort);
-			if (compiledEngine.isEnabled) await compiledEngine.get().deactivate(workflow.id);
+			if (compiledEngine.isEnabled) {
+				await compiledEngine.get().deactivate(workflow.id);
+				compiledEngine.runOnCompiledEngine(workflow.id);
+			}
 			return result;
 		}
 
 		if (!newVersion) return { type: 'version-missing' };
 
-		const result = await this.publish(workflow, oldVersion, newVersion, record, abort);
-		if (!compiled) {
-			// A workflow that left the compiled engine must not keep its triggers in `wfrt`.
-			if (compiledEngine.isEnabled) await compiledEngine.get().deactivate(workflow.id);
-			return result;
+		// The load goes first: `publish` below registers the triggers for the engine that
+		// runs the version.
+		const selected = compiledEngine.selects(workflow);
+		const wasOnV1 = compiledEngine.reasonForV1(workflow.id) !== undefined;
+		const compiled = selected && (await this.loadIntoCompiledEngine(workflow, newVersion, record));
+
+		// The engine of the workflow changed between the two versions: v1 keeps the schedules
+		// and pollers in n8n, and the compiled engine keeps them in `wfrt`. The triggers of the
+		// old version go first, and the new version is registered as a first publication, so
+		// no trigger fires in two places and none is missing.
+		let from = oldVersion;
+		let teardownFailures: TriggerTeardownFailure[] = [];
+		if (selected && oldVersion !== null && wasOnV1 === compiled) {
+			const { old, oldTriggerCandidates } = this.resolveOldTriggerCandidates(oldVersion);
+			abort.signal.throwIfAborted();
+			teardownFailures = await this.teardownOldVersionNodes(
+				workflow,
+				old,
+				new Set(oldTriggerCandidates.map((node) => node.id)),
+				abort,
+			);
+			from = null;
 		}
-		if (result.type !== 'completed' && result.type !== 'partial') return result;
-		try {
-			workflow.activeVersion = newVersion;
-			await compiledEngine.get().activate(workflow);
-		} catch (e) {
-			return { type: 'failed', error: ensureError(e) };
+
+		const result = this.withTeardownFailures(
+			await this.publish(workflow, from, newVersion, record, abort),
+			teardownFailures,
+		);
+		if (!compiled || (result.type !== 'completed' && result.type !== 'partial')) {
+			// A workflow that is not on the compiled engine, or whose publication did not end,
+			// must not keep its triggers in `wfrt`.
+			if (compiledEngine.isEnabled) await compiledEngine.get().deactivate(workflow.id);
 		}
 		return result;
+	}
+
+	/**
+	 * Loads the version into the compiled engine before n8n registers its triggers. When the
+	 * version cannot run there (it does not compile, or `wfrt` refuses the module), the
+	 * workflow runs on v1: n8n registers all its triggers and serves its webhooks, as for a
+	 * workflow that does not select the compiled engine. The check runs at each publication,
+	 * so a later version that compiles moves the workflow to the compiled engine.
+	 *
+	 * Returns true when the version runs on the compiled engine.
+	 */
+	private async loadIntoCompiledEngine(
+		workflow: WorkflowEntity,
+		newVersion: WorkflowHistory,
+		record: WorkflowPublicationOutbox,
+	): Promise<boolean> {
+		const bridge = Container.get(CompiledEngineBridge);
+		workflow.activeVersion = newVersion;
+		try {
+			await bridge.get().activate(workflow);
+		} catch (e) {
+			const reason = ensureError(e).message;
+			bridge.runOnV1(workflow.id, reason);
+			this.logger.warn(
+				`Workflow ${workflow.id} selects the compiled engine and runs on the v1 engine: ${reason}`,
+				{ workflowId: workflow.id, versionId: record.publishedVersionId },
+			);
+			return false;
+		}
+		bridge.runOnCompiledEngine(workflow.id);
+		return true;
 	}
 
 	/**

@@ -9,6 +9,7 @@ import type {
 	ParameterKind,
 	PublishFacts,
 	RandomShape,
+	UnitOrigin,
 } from './specialise.ts';
 import { hasExpression, specialiseNode } from './specialise.ts';
 import { VERIFIED } from './verified.generated.ts';
@@ -342,7 +343,7 @@ export function compileNodeInstance(
 	errorMode: ErrorMode = 'stopWorkflow',
 	deferred: string[] = [],
 	pairedOutput = false,
-): CompiledNode | { errors: string[] } {
+): CompiledNode | { errors: string[]; origins?: UnitOrigin[] } {
 	const entry = sources.entry(node.type, node.version);
 	const description = sources.description(node.type, node.version);
 	if (entry === undefined || description === undefined) {
@@ -404,7 +405,8 @@ export function compileNodeInstance(
 		),
 	};
 	const result = specialiseNode(input);
-	if (result.source === undefined || result.retyped === undefined) return { errors: result.errors };
+	if (result.source === undefined || result.retyped === undefined)
+		return { errors: result.errors, origins: result.origins };
 
 	const type = `${node.type}#${hashOf(result.source)}`;
 	const source = result.retyped(type);

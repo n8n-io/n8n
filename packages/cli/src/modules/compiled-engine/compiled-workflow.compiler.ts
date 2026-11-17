@@ -35,6 +35,11 @@ export interface CompileInput {
 	settings?: IWorkflowSettings | null;
 	/** The trigger node to start from, by name. The default is the converter's choice. */
 	trigger?: string;
+	/**
+	 * The URLs of n8n for production and test webhooks, without a slash at the end. The item
+	 * of a Webhook trigger gets its `webhookUrl` from them, as the item of the v1 node.
+	 */
+	webhookUrls?: { production: string; test: string };
 }
 
 interface StepInfo {
@@ -194,10 +199,13 @@ interface CompileContext {
 }
 
 /** The most workflows with nodes that moved to the host for a limit. The oldest one goes first. */
-const MAX_LIMIT_WORKFLOWS = 10_000;
+const MAX_LIMIT_WORKFLOWS = 1_000;
 
 /** The most nodes of one workflow that moved to the host for a limit. */
-const MAX_LIMIT_NODES = 1_000;
+const MAX_LIMIT_NODES = 100;
+
+/** The most nodes of all workflows that moved to the host for a limit: n8n stores them in one row. */
+const MAX_LIMIT_MARKS = 5_000;
 
 /**
  * Converts and compiles workflows with `@n8n/workflow-lang`. Results are kept
@@ -212,10 +220,13 @@ export class CompiledWorkflowCompiler {
 
 	/**
 	 * The nodes of each workflow that run in the fallback host, because a run reached a limit
-	 * of `wfrt` that v1 does not have. In memory only: after a restart of n8n, a node is here
-	 * again after one run that reaches the limit.
+	 * of `wfrt` that v1 does not have. The caller stores them (`hostNodes`) and gives them
+	 * back after a restart of n8n (`restoreHostNodes`).
 	 */
 	private readonly limitNodes = new Map<string, Set<string>>();
+
+	/** The count of the nodes in `limitNodes`, at most `MAX_LIMIT_MARKS`. */
+	private limitMarks = 0;
 
 	/** `N8N_COMPILED_ENGINE_COMPILE_NODES`. */
 	private readonly compileNodes: boolean;
@@ -250,16 +261,42 @@ export class CompiledWorkflowCompiler {
 		let nodes = this.limitNodes.get(workflowId);
 		if (nodes?.has(nodeName)) return false;
 		if (!nodes) {
-			if (this.limitNodes.size >= MAX_LIMIT_WORKFLOWS) {
-				const oldest = this.limitNodes.keys().next();
-				if (!oldest.done) this.limitNodes.delete(oldest.value);
-			}
+			if (this.limitNodes.size >= MAX_LIMIT_WORKFLOWS) this.dropOldestLimitNodes();
 			nodes = new Set();
 			this.limitNodes.set(workflowId, nodes);
 		}
 		if (nodes.size >= MAX_LIMIT_NODES) return false;
+		while (this.limitMarks >= MAX_LIMIT_MARKS && this.limitNodes.size > 1) {
+			this.dropOldestLimitNodes(workflowId);
+		}
+		if (this.limitMarks >= MAX_LIMIT_MARKS) return false;
 		nodes.add(nodeName);
+		this.limitMarks++;
 		return true;
+	}
+
+	/** Forgets the nodes of the workflow that is longest in the list, and not `keep`. */
+	private dropOldestLimitNodes(keep?: string) {
+		for (const [workflowId, nodes] of this.limitNodes) {
+			if (workflowId === keep) continue;
+			this.limitMarks -= nodes.size;
+			this.limitNodes.delete(workflowId);
+			return;
+		}
+	}
+
+	/** The nodes of each workflow that run in the fallback host for a limit, for the caller to store. */
+	hostNodes(): Record<string, string[]> {
+		const out: Record<string, string[]> = {};
+		for (const [workflowId, nodes] of this.limitNodes) out[workflowId] = [...nodes];
+		return out;
+	}
+
+	/** Takes the stored nodes that run in the fallback host for a limit, within the same bounds. */
+	restoreHostNodes(stored: Record<string, string[]>) {
+		for (const [workflowId, nodes] of Object.entries(stored)) {
+			for (const nodeName of nodes) this.runInHost(workflowId, nodeName);
+		}
 	}
 
 	async compile(input: CompileInput): Promise<CompiledArtifact> {
@@ -281,6 +318,7 @@ export class CompiledWorkflowCompiler {
 			.update(JSON.stringify([...subWorkflows.entries()]))
 			.update(getGlobalState().defaultTimezone)
 			.update(input.trigger ?? '')
+			.update(JSON.stringify(input.webhookUrls ?? null))
 			// A module holds the public fields of its credentials: other fields give another module.
 			.update(JSON.stringify([this.compileNodes, ...publicCredentials.entries()]))
 			// A node that stores a response compiles only when `wfrt` has the file store.
@@ -363,6 +401,7 @@ export class CompiledWorkflowCompiler {
 			// n8n runs every trigger that `wfrt` does not run itself (`n8nTriggerNodeIds`).
 			hostTriggers: true,
 			...(input.trigger === undefined ? {} : { trigger: input.trigger }),
+			...(input.webhookUrls === undefined ? {} : { webhookUrls: input.webhookUrls }),
 			resolveWorkflow: (id: string) => subWorkflows.get(id),
 			timezone: getGlobalState().defaultTimezone,
 			instance: {

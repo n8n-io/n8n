@@ -127,6 +127,10 @@ function isDataObject(value: unknown): value is IDataObject {
 	return isRecord(value);
 }
 
+function isItemList(value: unknown): value is IDataObject[] {
+	return Array.isArray(value) && value.every(isRecord);
+}
+
 /** The trigger node that the converter keeps: a webhook first, then a schedule, then others. */
 export function findTriggerNode(workflow: Pick<IWorkflowBase, 'nodes' | 'connections'>) {
 	const targets = new Set<string>();
@@ -310,15 +314,22 @@ export class CompiledEngineDispatcher {
 			path: typeof path === 'string' ? `/webhook/${path}` : '',
 		};
 		if (isRecord(json)) {
+			// The item that the editor or a test webhook gave: the module adds no field to it.
+			// An empty text says that the item has no such field.
 			return {
 				...request,
 				headers: json.headers ?? {},
 				params: json.params ?? {},
 				query: json.query ?? {},
 				body: json.body ?? null,
+				webhookUrl: typeof json.webhookUrl === 'string' ? json.webhookUrl : '',
+				executionMode: typeof json.executionMode === 'string' ? json.executionMode : '',
+				// The Webhook node of n8n checked the token of the request and gave its payload.
+				...(isRecord(json.jwtPayload) ? { jwtPayload: json.jwtPayload } : {}),
 			};
 		}
-		return { ...request, headers: {}, params: {}, query: {}, body: null };
+		// No item: the module gives the test URL of the webhook, as the v1 node in a manual run.
+		return { ...request, headers: {}, params: {}, query: {}, body: null, executionMode: 'test' };
 	}
 
 	// ----- events -----
@@ -583,7 +594,11 @@ export class CompiledEngineDispatcher {
 		const { body, headers, status, statusCode } = event.args;
 		const code = typeof statusCode === 'number' ? statusCode : status;
 		state.response = {
-			body: isDataObject(body) || typeof body === 'string' ? body : { value: body ?? null },
+			// A list of items is the body as it is, as the Respond to Webhook node of v1 sends it.
+			body:
+				isDataObject(body) || typeof body === 'string' || isItemList(body)
+					? body
+					: { value: body ?? null },
 			headers: isDataObject(headers) ? headers : {},
 			statusCode: typeof code === 'number' ? code : 200,
 		};
@@ -663,7 +678,7 @@ export class CompiledEngineDispatcher {
 		const { updates, error } = state.recorder.finish(event);
 		await this.send(state, updates);
 		if (error) state.runExecutionData.resultData.error = error;
-		if (error) this.moveToHostOnLimit(state, event);
+		this.moveToHostOnLimit(state, event);
 		if (state.runExecutionData.executionData) {
 			state.runExecutionData.executionData.nodeExecutionStack = [];
 		}
@@ -684,20 +699,27 @@ export class CompiledEngineDispatcher {
 	}
 
 	/**
-	 * A run that failed on a limit of `wfrt` that v1 does not have (a response larger than
-	 * `--binary-max-file-mb`): the node runs in the fallback host from the next run. This run
-	 * stays failed, because its node sent requests that n8n must not send twice.
+	 * A node that reached a limit of `wfrt` that v1 does not have (a response larger than
+	 * `--binary-max-file-mb`) runs in the fallback host from the next run. The converted
+	 * workflow runs such a node in the host in the same run when the node sent only requests
+	 * that v1 can send again. In the other cases the run failed, or the node gave an error item
+	 * under a "continue" setting: n8n must not send the requests of the node twice.
 	 */
 	private moveToHostOnLimit(state: ExecutionState, event: WfrtFinishedEvent) {
-		const failed = state.recorder.failed;
 		const workflowId = state.data.workflowData.id;
-		if (!failed || !workflowId) return;
-		if (!needsFallbackHost(failed.message) && !needsFallbackHost(event.error)) return;
-		void this.sync.onRuntimeLimit(workflowId, failed.nodeName).catch((error) => {
-			this.logger.warn(`Could not move node "${failed.nodeName}" to the fallback host`, {
-				error: error instanceof Error ? error.message : String(error),
+		if (!workflowId) return;
+		const nodes = new Set(state.recorder.hostLimitNodes);
+		const failed = state.recorder.failed;
+		if (failed && (needsFallbackHost(failed.message) || needsFallbackHost(event.error))) {
+			nodes.add(failed.nodeName);
+		}
+		for (const nodeName of nodes) {
+			void this.sync.onRuntimeLimit(workflowId, nodeName).catch((error) => {
+				this.logger.warn(`Could not move node "${nodeName}" to the fallback host`, {
+					error: error instanceof Error ? error.message : String(error),
+				});
 			});
-		});
+		}
 	}
 
 	/**

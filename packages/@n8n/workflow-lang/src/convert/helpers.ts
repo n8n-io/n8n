@@ -16,6 +16,12 @@ interface HelperSource {
 	source: string;
 }
 
+/**
+ * The end of the error of a compiled node that reached the largest size of a stored file of
+ * the runtime (`(limit: binary-max-file)`) after it sent only GET requests.
+ */
+export const RUNS_IN_HOST = '(no request to repeat: the fallback host runs the node)';
+
 const HELPERS: Record<string, HelperSource> = {
 	// Helpers of native Code node steps (`code-native/`).
 	...CODE_HELPERS,
@@ -1365,6 +1371,17 @@ function splitPairedErrorItems(result: Json, input: Json[], out: Json[], errors:
 		const index = pairedInputIndex(result.paired[k], k, input.length, items.length);
 		errors.push(index < 0 ? item : mergedErrorItem(item, input[index]));
 	}
+}`,
+	},
+	fileLimitInHost: {
+		uses: [],
+		source: `/**
+ * True for the error of a compiled node that reached the largest size of a stored file of
+ * the runtime, after it sent only GET requests. v1 has no such limit: the fallback host
+ * runs the node.
+ */
+function fileLimitInHost(error: Json): boolean {
+	return error != null && typeof error.message === 'string' && error.message.includes(${JSON.stringify(RUNS_IN_HOST)});
 }`,
 	},
 	retryError: {

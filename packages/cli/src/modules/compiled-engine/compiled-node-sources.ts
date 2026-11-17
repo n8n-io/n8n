@@ -14,17 +14,33 @@ const MAX_FILE_BYTES = 4 * 1024 * 1024;
 
 const fileOfClass = new Map<unknown, string | undefined>();
 
-function fileOf(nodeClass: unknown): string | undefined {
-	if (fileOfClass.has(nodeClass)) return fileOfClass.get(nodeClass);
-	let found: string | undefined;
-	for (const loaded of Object.values(require.cache)) {
-		const exported: unknown = loaded?.exports;
+/** A module of the require cache: only these members are read. */
+interface LoadedModule {
+	exports: unknown;
+	filename: string;
+}
+
+/**
+ * The file of the loaded module that exports `nodeClass`. Only data properties are read:
+ * a getter of an unrelated module can throw or have a side effect.
+ */
+export function findExportingFile(
+	modules: Iterable<LoadedModule | undefined>,
+	nodeClass: unknown,
+): string | undefined {
+	for (const loaded of modules) {
+		const exported = loaded?.exports;
 		if (typeof exported !== 'object' || exported === null) continue;
-		if (Object.values(exported).includes(nodeClass)) {
-			found = loaded?.filename;
-			break;
+		for (const property of Object.values(Object.getOwnPropertyDescriptors(exported))) {
+			if ('value' in property && property.value === nodeClass) return loaded?.filename;
 		}
 	}
+	return undefined;
+}
+
+function fileOf(nodeClass: unknown): string | undefined {
+	if (fileOfClass.has(nodeClass)) return fileOfClass.get(nodeClass);
+	const found = findExportingFile(Object.values(require.cache), nodeClass);
 	fileOfClass.set(nodeClass, found);
 	return found;
 }

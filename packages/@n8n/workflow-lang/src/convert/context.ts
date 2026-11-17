@@ -77,6 +77,12 @@ export interface NodeContext {
 	noOutputWhen?(condition: string): void;
 	/** Code of a condition under which v1 does not run the node at all (no run data). */
 	notRunWhen?(condition: string): void;
+	/**
+	 * Names of list variables that only ever hold plain JSON from a parse, with no object in
+	 * two places: the result of a native Code node, or of a step of the fallback host. A
+	 * native Code node that changes nothing reads such a list without a copy.
+	 */
+	plainLists?: Set<string>;
 	/** `host` keeps JavaScript Code nodes in the fallback host (`ConvertOptions.codeNodes`). */
 	codeNodes?: 'native' | 'host';
 	/** The n8n instance (`ConvertOptions.instance`), when the caller gives it. */

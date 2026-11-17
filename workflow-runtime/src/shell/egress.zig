@@ -200,6 +200,9 @@ pub const Config = struct {
     aimd: bool = true,
     /// Which requests may share a connection (`--egress-pool`).
     pool: Pool = .shared,
+    /// The user agent of a request that sets none (`--egress-user-agent`):
+    /// the outbound user agent of n8n.
+    user_agent: []const u8 = request.default_user_agent,
     insecure_tls: bool = false,
     credentials: ?*const creds.Store = null,
     /// The binary data store of the shard, for `responseBinary`. Null: no
@@ -1060,6 +1063,7 @@ pub const Client = struct {
 
     fn isRedirect(r: *const Req, h: http.Head) bool {
         return (h.status == 301 or h.status == 302 or h.status == 303 or h.status == 307 or h.status == 308) and h.location != null and
+            !r.built.no_redirect and
             (std.mem.eql(u8, r.built.method(), "GET") or std.mem.eql(u8, r.built.method(), "HEAD"));
     }
 
@@ -1262,7 +1266,7 @@ pub const Client = struct {
 
     fn buildWith(c: *Client, ri: u32, args: []const u8, st: ?*const creds.Store, idem_key: ?[]const u8, diag: *request.Diag) bool {
         const r = &c.reqs[ri];
-        r.built = request.buildFiles(args, st, idem_key, r.small, diag, c.files_tmp) catch |e| blk: {
+        r.built = request.buildFilesAs(args, st, idem_key, r.small, diag, c.files_tmp, c.cfg.user_agent) catch |e| blk: {
             if (e == error.Invalid) {
                 c.failFree(ri, diag.text());
                 return false;
@@ -1272,7 +1276,7 @@ pub const Client = struct {
                 c.failFree(ri, "http: the request is larger than the small buffer and all large buffers are in use");
                 return false;
             };
-            break :blk request.buildFiles(args, st, idem_key, c.bigSlice(r.big), diag, c.files_tmp) catch |e2| {
+            break :blk request.buildFilesAs(args, st, idem_key, c.bigSlice(r.big), diag, c.files_tmp, c.cfg.user_agent) catch |e2| {
                 if (e2 == error.Invalid) c.failFree(ri, diag.text()) else c.failFreeFmt(ri, "http: the request is larger than {d} bytes", .{c.big_size});
                 return false;
             };
@@ -3282,6 +3286,7 @@ pub const Client = struct {
         const r = &c.reqs[ri];
         const method = r.built.method();
         const is_redirect = (r.status == 301 or r.status == 302 or r.status == 303 or r.status == 307 or r.status == 308) and
+            !r.built.no_redirect and
             (std.mem.eql(u8, method, "GET") or std.mem.eql(u8, method, "HEAD"));
         if (!is_redirect) return null;
         return headerValue(c.respArea(ri)[0..r.hdr_len], "location");

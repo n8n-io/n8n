@@ -5,5 +5,11 @@
 			"label": "code-http"
 		}
 	},
+	"http": {
+		"Fails": {
+			"path": "code-fails",
+			"responses": [{ "status": 404, "body": { "error": "not found" } }]
+		}
+	},
 	"compare": ["Status", "Fails"]
 }

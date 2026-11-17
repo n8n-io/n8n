@@ -9,6 +9,7 @@ import type { WorkflowStaticDataService } from '@/workflows/workflow-static-data
 import type { CompiledEngineCredentials } from '../compiled-engine-credentials';
 import { CompiledEngineSync } from '../compiled-engine-sync.service';
 import type { CompiledArtifact } from '../compiled-engine.types';
+import type { CompiledExecutionStore } from '../compiled-execution.store';
 import type { CompiledWorkflowCompiler } from '../compiled-workflow.compiler';
 import type { WfrtAdminClient } from '../wfrt-admin.client';
 
@@ -23,6 +24,7 @@ describe('CompiledEngineSync: minted tokens', () => {
 	const logger = mock<Logger>();
 	const urlService = mock<UrlService>();
 	const staticData = mock<WorkflowStaticDataService>();
+	const store = mock<CompiledExecutionStore>();
 	const globalConfig = mock<GlobalConfig>({
 		endpoints: { webhookWaiting: 'webhook-waiting', formWaiting: 'form-waiting' },
 	});
@@ -65,7 +67,9 @@ describe('CompiledEngineSync: minted tokens', () => {
 			globalConfig,
 			logger,
 			staticData,
+			store,
 		);
+		store.readHostNodes.mockResolvedValue({});
 		await sync.onConnected();
 	});
 
@@ -94,6 +98,21 @@ describe('CompiledEngineSync: minted tokens', () => {
 		await vi.advanceTimersByTimeAsync(56 * MINUTE);
 		expect(client.putWorkflowCredentials).toHaveBeenCalledTimes(2);
 		expect(client.putWorkflow).toHaveBeenCalledTimes(1);
+	});
+
+	it('does not keep a workflow whose module wfrt refuses, so its webhooks run on v1', async () => {
+		compiler.compile.mockResolvedValue(artifact(undefined));
+		credentials.buildDocument.mockResolvedValue({});
+		client.putWorkflow.mockRejectedValueOnce(new Error('wfrt has no room for one more module'));
+
+		await expect(sync.activate(workflow)).rejects.toThrow('wfrt has no room for one more module');
+		expect(sync.findLoaded('wf1')).toBeUndefined();
+		expect(sync.isServing('wf1')).toBe(false);
+
+		await sync.activate(workflow);
+		expect(sync.isServing('wf1')).toBe(true);
+		sync.onDisconnected();
+		expect(sync.isServing('wf1')).toBe(false);
 	});
 
 	it('tries again after a minute when n8n could not make the token', async () => {
@@ -209,6 +228,61 @@ describe('CompiledEngineSync: minted tokens', () => {
 
 			expect(compiler.runInHost).toHaveBeenCalledWith('wf1', 'Download');
 			expect(client.putWorkflow).toHaveBeenCalledTimes(2);
+			expect(client.putWorkflow.mock.lastCall?.[1]).toMatchObject({ versionId: 'host' });
+		});
+
+		it('stores the nodes that run in the host, with the nodes that another main stored', async () => {
+			compiler.compile.mockResolvedValue(withKey('compiled'));
+			await sync.activate(workflow);
+			compiler.runInHost.mockReturnValue(true);
+			store.readHostNodes.mockResolvedValue({ wf9: ['Export'] });
+			compiler.hostNodes.mockReturnValue({ wf9: ['Export'], wf1: ['Download'] });
+
+			await sync.onRuntimeLimit('wf1', 'Download');
+
+			expect(compiler.restoreHostNodes).toHaveBeenLastCalledWith({ wf9: ['Export'] });
+			expect(store.saveHostNodes).toHaveBeenCalledWith({ wf9: ['Export'], wf1: ['Download'] });
+		});
+
+		it('reads the stored nodes once, before the first compile', async () => {
+			store.readHostNodes.mockResolvedValue({ wf1: ['Download'] });
+			const order: string[] = [];
+			compiler.restoreHostNodes.mockImplementation(() => {
+				order.push('restore');
+			});
+			compiler.compile.mockImplementation(async () => {
+				order.push('compile');
+				return withKey('host');
+			});
+
+			await sync.activate(workflow);
+			await sync.compile(workflow);
+
+			expect(order).toEqual(['restore', 'compile', 'compile']);
+			expect(compiler.restoreHostNodes).toHaveBeenCalledWith({ wf1: ['Download'] });
+			expect(store.readHostNodes).toHaveBeenCalledTimes(1);
+		});
+
+		it('compiles when the stored nodes cannot be read, and reads them at the next compile', async () => {
+			store.readHostNodes.mockRejectedValueOnce(new Error('the database is not there'));
+			compiler.compile.mockResolvedValue(withKey('compiled'));
+
+			await sync.activate(workflow);
+			await sync.compile(workflow);
+
+			expect(compiler.compile).toHaveBeenCalledTimes(2);
+			expect(store.readHostNodes).toHaveBeenCalledTimes(2);
+		});
+
+		it('keeps the node in the host of this process when the store fails', async () => {
+			compiler.compile.mockResolvedValue(withKey('compiled'));
+			await sync.activate(workflow);
+			compiler.runInHost.mockReturnValue(true);
+			compiler.compile.mockResolvedValue(withKey('host'));
+			store.saveHostNodes.mockRejectedValue(new Error('the database is not there'));
+
+			await sync.onRuntimeLimit('wf1', 'Download');
+
 			expect(client.putWorkflow.mock.lastCall?.[1]).toMatchObject({ versionId: 'host' });
 		});
 
