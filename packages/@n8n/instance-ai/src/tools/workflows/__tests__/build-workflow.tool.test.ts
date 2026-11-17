@@ -29,6 +29,7 @@ import {
 	resolveCredentials,
 } from '../resolve-credentials';
 import type { SetupRequest } from '../setup-workflow.schema';
+import type { WorkflowDraft } from '../workflow-draft-publisher';
 import { analyzeWorkflow, getValidCredentialTypes } from '../setup-workflow.service';
 import {
 	getWorkflowSourceFileBinding,
@@ -1685,6 +1686,122 @@ describe('createBuildWorkflowTool', () => {
 			});
 			expect(result.errors?.some((e) => e.includes('urlScanIoApi'))).toBe(true);
 			expect(context.workflowService.updateFromWorkflowJSON).not.toHaveBeenCalled();
+		});
+	});
+
+	describe('workflow drafts', () => {
+		function withDraftPublisher(source = 'workflow source') {
+			const publish = vi.fn(async (_draft: WorkflowDraft) => await Promise.resolve());
+			const publishIssues = vi.fn();
+			const made = makeContext({
+				source,
+				overrides: { workflowDraftPublisher: { publish, publishIssues } },
+			});
+			return { ...made, publish, publishIssues };
+		}
+
+		it('publishes the compiled workflow as a draft even when validation blocks the save', async () => {
+			vi.mocked(partitionWarnings).mockImplementation((warnings: ValidationWarning[]) => ({
+				blocking: warnings,
+				informational: [],
+			}));
+			vi.mocked(compileWorkflowSource).mockResolvedValueOnce({
+				success: true,
+				workflow: structuredClone(generatedWorkflow),
+				warnings: [{ code: 'SET_INVALID_ASSIGNMENT', message: 'Missing id', nodeName: 'Webhook' }],
+				compiler: 'sandbox-tsx',
+			});
+			const { context, filePath, publish } = withDraftPublisher();
+
+			const result = await executeTool<BuildToolOutput>(createBuildWorkflowTool(context), {
+				filePath,
+			});
+
+			expect(result.success).toBe(false);
+			expect(context.workflowService.createFromWorkflowJSON).not.toHaveBeenCalled();
+			expect(publish).toHaveBeenCalledWith({
+				filePath,
+				workflowId: undefined,
+				workflow: generatedWorkflow,
+			});
+		});
+
+		it('publishes the issues that blocked the save for the draft', async () => {
+			vi.mocked(partitionWarnings).mockImplementation((warnings: ValidationWarning[]) => ({
+				blocking: warnings,
+				informational: [],
+			}));
+			vi.mocked(compileWorkflowSource).mockResolvedValueOnce({
+				success: true,
+				workflow: structuredClone(generatedWorkflow),
+				warnings: [
+					{ code: 'SET_INVALID_ASSIGNMENT', message: 'Missing id', nodeName: 'Webhook' },
+					{ code: 'GROUP_DROPPED_OVER_CEILING', message: 'Too many groups' },
+				],
+				compiler: 'sandbox-tsx',
+			});
+			const { context, filePath, publishIssues } = withDraftPublisher();
+
+			await executeTool<BuildToolOutput>(createBuildWorkflowTool(context), { filePath });
+
+			expect(publishIssues).toHaveBeenCalledWith({
+				filePath,
+				issues: [
+					{ code: 'SET_INVALID_ASSIGNMENT', message: 'Missing id', nodeName: 'Webhook' },
+					{ code: 'GROUP_DROPPED_OVER_CEILING', message: 'Too many groups' },
+				],
+			});
+		});
+
+		it('publishes no issues when the build saves', async () => {
+			const { context, filePath, publishIssues } = withDraftPublisher();
+
+			const result = await executeTool<BuildToolOutput>(createBuildWorkflowTool(context), {
+				filePath,
+			});
+
+			expect(result.success).toBe(true);
+			expect(publishIssues).not.toHaveBeenCalled();
+		});
+
+		it('names the bound workflow on the draft of an edit', async () => {
+			const { context, filePath, publish } = withDraftPublisher();
+
+			await executeTool<BuildToolOutput>(createBuildWorkflowTool(context), {
+				filePath,
+				workflowId: 'wf-bound',
+			});
+
+			expect(publish).toHaveBeenCalledWith(
+				expect.objectContaining({ filePath, workflowId: 'wf-bound' }),
+			);
+		});
+
+		it('shows the workflow name that the build passes on the draft', async () => {
+			const { context, filePath, publish } = withDraftPublisher();
+			const draftNames: string[] = [];
+			publish.mockImplementation(async (draft: WorkflowDraft) => {
+				draftNames.push(draft.workflow.name);
+				await Promise.resolve();
+			});
+
+			await executeTool<BuildToolOutput>(createBuildWorkflowTool(context), {
+				filePath,
+				name: 'Daily digest',
+			});
+
+			expect(draftNames).toEqual(['Daily digest']);
+		});
+
+		it('publishes no draft when the source does not compile', async () => {
+			vi.mocked(compileWorkflowSource).mockResolvedValueOnce(
+				workflowSourceBuildFailure('SyntaxError: Unexpected token'),
+			);
+			const { context, filePath, publish } = withDraftPublisher();
+
+			await executeTool<BuildToolOutput>(createBuildWorkflowTool(context), { filePath });
+
+			expect(publish).not.toHaveBeenCalled();
 		});
 	});
 

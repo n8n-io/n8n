@@ -720,6 +720,25 @@ describe('getExecutionResultsByWorkflow', () => {
 		expect(results.get('wf-1')).toEqual({ executionId: 'exec-1', status: 'success' });
 	});
 
+	test('extracts a failed verify-built-workflow result, so the saved canvas marks its nodes', () => {
+		const node = makeAgentNode({
+			toolCalls: [
+				makeToolCall({
+					toolName: 'workflow_builder_verify_built_workflow',
+					args: { workflowId: 'wf-1' },
+					result: {
+						success: false,
+						executionId: 'exec-2',
+						status: 'error',
+						nodeErrors: [{ nodeName: 'HTTP Request', message: 'Bad request' }],
+					},
+				}),
+			],
+		});
+		const results = getExecutionResultsByWorkflow(node);
+		expect(results.get('wf-1')).toEqual({ executionId: 'exec-2', status: 'error' });
+	});
+
 	test('extracts simulated node names from a verify-built-workflow result', () => {
 		const node = makeAgentNode({
 			toolCalls: [
