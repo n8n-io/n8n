@@ -4620,6 +4620,9 @@ importers:
         specifier: 7.5.21
         version: 7.5.21
     devDependencies:
+      '@n8n/eslint-config':
+        specifier: workspace:*
+        version: link:../eslint-config
       '@n8n/oxlint-config':
         specifier: workspace:*
         version: link:../oxlint-config
