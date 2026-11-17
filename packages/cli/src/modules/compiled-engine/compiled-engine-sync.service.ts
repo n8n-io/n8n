@@ -111,15 +111,30 @@ export class CompiledEngineSync {
 		return this.loaded.get(wfrtId);
 	}
 
-	/** Compiles the published version of a workflow and loads it with its triggers on. */
-	async activate(workflow: WorkflowEntity) {
+	/** The published version of a workflow, as the compiler takes it. */
+	private publishedData(workflow: WorkflowEntity): IWorkflowBase {
 		const version = workflow.activeVersion;
-		const workflowData: IWorkflowBase = {
+		return {
 			...workflow,
 			nodes: version?.nodes ?? workflow.nodes,
 			connections: version?.connections ?? workflow.connections,
 			versionId: version?.versionId ?? workflow.versionId,
 		};
+	}
+
+	/**
+	 * Why the published version does not compile, or `undefined` when it compiles. The
+	 * compiler keeps the result, so `activate` does not compile again.
+	 */
+	async compileError(workflow: WorkflowEntity): Promise<string | undefined> {
+		const artifact = await this.compile(this.publishedData(workflow));
+		if (artifact.ok) return undefined;
+		return `The workflow cannot run on the compiled engine. ${describeErrors(artifact)}`;
+	}
+
+	/** Compiles the published version of a workflow and loads it with its triggers on. */
+	async activate(workflow: WorkflowEntity) {
+		const workflowData = this.publishedData(workflow);
 		const artifact = await this.compile(workflowData);
 		if (!artifact.ok) {
 			throw new UserError(

@@ -16,7 +16,13 @@ import { WebhookPathTakenError } from 'n8n-workflow';
 
 import { TELEMETRY_EVENT } from '@n8n/telemetry';
 
+import { Container } from '@n8n/di';
+
 import type { NodeTypes } from '@/node-types';
+import {
+	CompiledEngineBridge,
+	type CompiledEngineProvider,
+} from '@/services/compiled-engine-bridge.service';
 import type { PolicyEnforcementService } from '@/policy/policy-enforcement.service';
 import { PolicyViolationError } from '@/policy/policy-violation.error';
 import type { OwnershipService } from '@/services/ownership.service';
@@ -1145,6 +1151,50 @@ describe('WorkflowPublicationApplier', () => {
 			expect(workflowPublishedVersionRepository.removePublishedVersion).not.toHaveBeenCalled();
 		});
 	});
+	describe('a version that the compiled engine cannot compile', () => {
+		const compiledEngine = mock<CompiledEngineProvider>();
+		const compiledWorkflow = () =>
+			makeWorkflow({ activeVersionId: 'v-2', settings: { engineType: 'compiled' } });
+
+		beforeEach(() => {
+			Container.get(CompiledEngineBridge).registerProvider(compiledEngine);
+			compiledEngine.deactivate.mockResolvedValue(undefined);
+			compiledEngine.activate.mockResolvedValue(undefined);
+			workflowRepository.findOneBy.mockResolvedValue(compiledWorkflow());
+			workflowTriggerActivator.getTriggerKinds.mockReturnValue(new Map());
+		});
+
+		it('registers no trigger, removes the triggers of the old version, and fails with the reason', async () => {
+			const oldTrigger = triggerNode('old-webhook');
+			const newTrigger = triggerNode('new-webhook');
+			setTriggerSets([oldTrigger], [newTrigger]);
+			compiledEngine.compileError.mockResolvedValue(
+				'The workflow cannot run on the compiled engine. The loop has no exit.',
+			);
+
+			const result = await applier.apply(makeRecord(), abort);
+
+			expect(result).toMatchObject({ type: 'failed' });
+			expect(result.type === 'failed' && result.error.message).toBe(
+				'The workflow cannot run on the compiled engine. The loop has no exit.',
+			);
+			expect(workflowTriggerActivator.activate).not.toHaveBeenCalled();
+			expect(compiledEngine.activate).not.toHaveBeenCalled();
+			expect(compiledEngine.deactivate).toHaveBeenCalledWith('wf-1');
+			expect(workflowPublishedVersionRepository.setPublishedVersion).toHaveBeenCalled();
+		});
+
+		it('publishes a version that compiles as before', async () => {
+			setTriggerSets([], []);
+			compiledEngine.compileError.mockResolvedValue(undefined);
+
+			await applier.apply(makeRecord(), abort);
+
+			expect(compiledEngine.compileError).toHaveBeenCalledTimes(1);
+			expect(compiledEngine.deactivate).not.toHaveBeenCalled();
+		});
+	});
+
 	describe('unresolvable node types', () => {
 		const unknownNode: INode = {
 			id: 'x',

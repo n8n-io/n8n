@@ -38,6 +38,13 @@ export interface CompiledEngineProvider {
 	/** Loads the active version of a workflow into `wfrt` and starts its triggers. */
 	activate(workflow: WorkflowEntity): Promise<void>;
 
+	/**
+	 * Why the active version of a workflow cannot run on the compiled engine, or `undefined`
+	 * when it can. Core code asks before it registers the triggers of the version: a version
+	 * that cannot run gets no trigger, as a version that n8n cannot load.
+	 */
+	compileError(workflow: WorkflowEntity): Promise<string | undefined>;
+
 	/** Stops the triggers of a workflow in `wfrt`. */
 	deactivate(workflowId: string): Promise<void>;
 

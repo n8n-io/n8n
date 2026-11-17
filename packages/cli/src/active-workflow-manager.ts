@@ -662,6 +662,13 @@ export class ActiveWorkflowManager {
 				);
 			}
 
+			if (runsOnCompiledEngine) {
+				// A version that does not compile gets no webhook: its requests would go to a
+				// module that `wfrt` does not have.
+				const reason = await compiledEngine.get().compileError(dbWorkflow);
+				if (reason !== undefined) throw new WorkflowActivationError(reason, { level: 'warning' });
+			}
+
 			// Carries no user: a registration outlives any number of republishes, so
 			// the publishing user is resolved at emit instead, next to the fresh
 			// workflow data the run actually uses.

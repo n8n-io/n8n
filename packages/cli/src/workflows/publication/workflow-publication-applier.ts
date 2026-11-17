@@ -143,6 +143,17 @@ export class WorkflowPublicationApplier {
 
 		if (!newVersion) return { type: 'version-missing' };
 
+		if (compiled && compiledEngine.isEnabled) {
+			const refused = await this.refuseVersionThatDoesNotCompile(
+				workflow,
+				oldVersion,
+				newVersion,
+				record,
+				abort,
+			);
+			if (refused !== null) return refused;
+		}
+
 		const result = await this.publish(workflow, oldVersion, newVersion, record, abort);
 		if (!compiled) {
 			// A workflow that left the compiled engine must not keep its triggers in `wfrt`.
@@ -157,6 +168,62 @@ export class WorkflowPublicationApplier {
 			return { type: 'failed', error: ensureError(e) };
 		}
 		return result;
+	}
+
+	/**
+	 * A version that the compiled engine cannot compile gets no trigger, as a version that
+	 * holds a node type that this instance cannot load: the triggers of the old version go,
+	 * the published version advances, and the result is `failed` with the reason. A request
+	 * to a webhook of the workflow then gets the answer of a webhook that is not registered.
+	 */
+	private async refuseVersionThatDoesNotCompile(
+		workflow: WorkflowEntity,
+		oldVersion: WorkflowHistory | null,
+		newVersion: WorkflowHistory,
+		record: WorkflowPublicationOutbox,
+		abort: TriggerOperationAbort,
+	): Promise<PublicationResult | null> {
+		const compiledEngine = Container.get(CompiledEngineBridge).get();
+		workflow.activeVersion = newVersion;
+		let reason: string | undefined;
+		try {
+			reason = await compiledEngine.compileError(workflow);
+		} catch (e) {
+			reason = ensureError(e).message;
+		}
+		if (reason === undefined) return null;
+
+		this.logger.warn('Published version does not compile for the compiled engine', {
+			workflowId: workflow.id,
+			versionId: record.publishedVersionId,
+		});
+
+		const { old, oldTriggerCandidates } = this.resolveOldTriggerCandidates(oldVersion);
+		const toRemove = new Set(oldTriggerCandidates.map((node) => node.id));
+
+		abort.signal.throwIfAborted();
+		const teardownFailures = await this.teardownOldVersionNodes(workflow, old, toRemove, abort);
+
+		try {
+			await compiledEngine.deactivate(workflow.id);
+			await this.advancePublishedVersion(record);
+			await this.workflowTriggerActivator.updateTriggerCount(workflow, newVersion);
+		} catch (e) {
+			return this.withTeardownFailures({ type: 'failed', error: ensureError(e) }, teardownFailures);
+		}
+
+		const error = new UserError(reason);
+		const desiredTriggerNodes = this.workflowTriggerActivator.getEnabledTriggerNodes(newVersion);
+		const triggerKinds = this.workflowTriggerActivator.getTriggerKinds(desiredTriggerNodes);
+		const triggerStatuses = this.buildTriggerStatuses(desiredTriggerNodes, triggerKinds, {
+			activated: [],
+			failures: desiredTriggerNodes.map((node) => ({
+				nodeId: node.id,
+				nodeName: node.name,
+				error,
+			})),
+		});
+		return this.withTeardownFailures({ type: 'failed', error, triggerStatuses }, teardownFailures);
 	}
 
 	/**
