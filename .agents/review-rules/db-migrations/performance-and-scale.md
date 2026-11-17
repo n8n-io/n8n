@@ -8,11 +8,15 @@ table is small.
 Flag:
 
 - an unbounded `SELECT` into Node. Use `runInBatches`;
+- a `runInBatches` query with no `ORDER BY` on a unique column, or one that
+  filters on the column the batch writes. Its offset skips rows;
 - row-by-row updates where one `UPDATE … FROM` does the work;
 - a dataset in memory that grows with the table;
 - a table rewrite on a hot table: `ALTER … TYPE`, `SET NOT NULL`, SQLite
   recreation;
-- an index built on a huge table;
+- the same SQLite table recreated more than once in one migration;
+- a CHECK added to an existing Postgres table without `NOT VALID`;
+- an index built on a huge table with no measured build time in the PR;
 - a `LIKE '%…%'` scan over a JSON column;
 - a large blob column added to a hot row.
 
