@@ -22,7 +22,7 @@ export class GetPairedItemRule implements IBreakingChangeWorkflowRule {
 			version: 'v3',
 			title: '$getPairedItem expression helper is removed',
 			description:
-				"The $getPairedItem expression helper is removed, so expressions that use it fail. Replace each $getPairedItem call with $('Node').item, $('Node').pairedItem(n) or $('Node').itemMatching(n).",
+				'The $getPairedItem expression helper is removed. Expressions using it will fail to evaluate.',
 			category: BreakingChangeCategory.workflow,
 			impact: 'executionsFail',
 			assistant: 'fix',
@@ -53,7 +53,7 @@ export class GetPairedItemRule implements IBreakingChangeWorkflowRule {
 
 		return reportAffectedNodes(affectedNodes, (node) => ({
 			title: `Node '${node.name}' uses the removed ${HELPER_NAME} helper`,
-			description: `Expressions in this node call ${HELPER_NAME}, which is removed. They fail to evaluate after the update. Replace each call. Use $('Node').item for the item paired with the current item. Use $('Node').pairedItem(n) or $('Node').itemMatching(n) for the item paired with input item n of this node. Node is the name of the node that produced the item.`,
+			description: `Expressions in this node call ${HELPER_NAME}, which is removed. They will fail to evaluate after the update.`,
 			level: 'error',
 		}));
 	}

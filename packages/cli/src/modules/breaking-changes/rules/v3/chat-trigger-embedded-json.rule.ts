@@ -29,7 +29,7 @@ export class ChatTriggerEmbeddedJsonRule implements IBreakingChangeWorkflowRule 
 			version: 'v3',
 			title: 'Embedded chat now uses a JSON WebSocket message format',
 			description:
-				'The chat WebSocket now sends every frame as JSON. Embedded chats using an old @n8n/chat widget pinned to a specific version, or a custom chat client that reads the raw WebSocket, will not understand the new frames until updated. Update a pinned @n8n/chat widget to the latest version, or change your custom chat client to parse JSON frames and answer each heartbeat with a JSON heartbeat-ack. Chats embedded via the unpinned CDN script update automatically, and hosted chats served by n8n are unaffected.',
+				'The chat WebSocket now sends every frame as JSON. Embedded chats using an old @n8n/chat widget pinned to a specific version, or a custom chat client that reads the raw WebSocket, will not understand the new frames until updated. Chats embedded via the unpinned CDN script update automatically, and hosted chats served by n8n are unaffected.',
 			category: BreakingChangeCategory.workflow,
 			impact: 'executionsFail',
 			documentationUrl: 'https://www.npmjs.com/package/@n8n/chat',
@@ -61,7 +61,7 @@ export class ChatTriggerEmbeddedJsonRule implements IBreakingChangeWorkflowRule 
 		return reportAffectedNodes(affectedNodes, (node) => ({
 			title: `Node '${node.name}' uses an embedded chat`,
 			description:
-				'This embedded chat now receives JSON WebSocket frames. Update a pinned @n8n/chat widget to the latest version, or change your custom chat client to parse JSON frames and answer each heartbeat with a JSON heartbeat-ack. Unpinned CDN embeds update automatically.',
+				'This embedded chat now receives JSON WebSocket frames. Update a pinned @n8n/chat widget to a version that supports the JSON format, or ensure your custom chat client parses JSON frames. Unpinned CDN embeds update automatically.',
 			level: 'warning',
 		}));
 	}

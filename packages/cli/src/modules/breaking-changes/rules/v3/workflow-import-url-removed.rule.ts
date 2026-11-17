@@ -15,8 +15,7 @@ export class WorkflowImportUrlRemovedRule implements IBreakingChangeInstanceRule
 		return {
 			version: 'v3',
 			title: 'Workflow import from URL is removed',
-			description:
-				'The "Import from URL" option in the editor is removed. Download workflows as JSON files and use "Import JSON" in the workflow menu instead.',
+			description: 'The "Import from URL" option in the editor is removed.',
 			category: BreakingChangeCategory.instance,
 			impact: 'capabilityRemoved',
 		};

@@ -23,7 +23,7 @@ export class GmailTriggerVersionRule implements IBreakingChangeWorkflowRule {
 			version: 'v3',
 			title: 'Gmail Trigger always runs with version 1.4 behavior',
 			description:
-				'Gmail Trigger versions below 1.4 are removed and every Gmail Trigger node runs with v1.4 behavior: the number of emails fetched per poll is limited by "Max Emails per Poll" (default 10, the remainder is picked up in later polls), drafts are excluded unless the "Include Drafts" filter is enabled, and sent (non-inbox) and scheduled emails no longer trigger the workflow. Check that each affected Gmail Trigger node still receives the emails its workflow needs.',
+				'Gmail Trigger versions below 1.4 are removed and every Gmail Trigger node runs with v1.4 behavior: the number of emails fetched per poll is limited by "Max Emails per Poll" (default 10, the remainder is picked up in later polls), drafts are excluded unless the "Include Drafts" filter is enabled, and sent (non-inbox) and scheduled emails no longer trigger the workflow.',
 			category: BreakingChangeCategory.workflow,
 			impact: 'behaviorChanges',
 			assistant: 'review',
