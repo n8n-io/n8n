@@ -15,6 +15,7 @@
 | name | varchar(128) |  | false |  |  |  |
 | nodeGroups | json | '[]'::json | false |  |  |  |
 | nodes | json |  | false |  |  |  |
+| ownerUserId | uuid |  | true |  | [public.user](public.user.md) | Person accountable for the resource. A member of its home project, or null |
 | parentFolderId | varchar(36) | NULL::character varying | true |  | [public.folder](public.folder.md) |  |
 | pinData | json |  | true |  |  |  |
 | settings | json |  | true |  |  |  |
@@ -30,6 +31,7 @@
 | Name | Type | Definition |
 | ---- | ---- | ---------- |
 | FK_08d6c67b7f722b0039d9d5ed620 | FOREIGN KEY | FOREIGN KEY ("activeVersionId") REFERENCES workflow_history("versionId") ON DELETE RESTRICT |
+| FK_workflow_entity_owner_user | FOREIGN KEY | FOREIGN KEY ("ownerUserId") REFERENCES "user"(id) ON DELETE SET NULL |
 | fk_workflow_parent_folder | FOREIGN KEY | FOREIGN KEY ("parentFolderId") REFERENCES folder(id) ON DELETE CASCADE |
 | workflow_entity_active_not_null | n | NOT NULL active |
 | workflow_entity_connections_not_null | n | NOT NULL connections |
@@ -50,6 +52,7 @@
 | Name | Definition |
 | ---- | ---------- |
 | IDX_workflow_entity_name | CREATE INDEX "IDX_workflow_entity_name" ON public.workflow_entity USING btree (name) |
+| IDX_workflow_entity_ownerUserId | CREATE INDEX "IDX_workflow_entity_ownerUserId" ON public.workflow_entity USING btree ("ownerUserId") |
 | IDX_workflow_entity_sourceWorkflowId | CREATE INDEX "IDX_workflow_entity_sourceWorkflowId" ON public.workflow_entity USING btree ("sourceWorkflowId") WHERE ("sourceWorkflowId" IS NOT NULL) |
 | pk_workflow_entity_id | CREATE UNIQUE INDEX pk_workflow_entity_id ON public.workflow_entity USING btree (id) |
 | workflow_entity_pkey | CREATE UNIQUE INDEX workflow_entity_pkey ON public.workflow_entity USING btree (id) |
@@ -94,6 +97,7 @@ erDiagram
 "public.workflow_review_request_workflow" }o--|| "public.workflow_entity" : "FOREIGN KEY (#quot;workflowId#quot;) REFERENCES workflow_entity(id) ON DELETE CASCADE"
 "public.workflow_suggestion" }o--|| "public.workflow_entity" : "FOREIGN KEY (#quot;workflowId#quot;) REFERENCES workflow_entity(id) ON DELETE CASCADE"
 "public.workflows_tags" }o--|| "public.workflow_entity" : "FOREIGN KEY (#quot;workflowId#quot;) REFERENCES workflow_entity(id) ON DELETE CASCADE"
+"public.workflow_entity" }o--o| "public.user" : "FOREIGN KEY (#quot;ownerUserId#quot;) REFERENCES #quot;user#quot;(id) ON DELETE SET NULL"
 "public.workflow_entity" }o--o| "public.folder" : "FOREIGN KEY (#quot;parentFolderId#quot;) REFERENCES folder(id) ON DELETE CASCADE"
 
 "public.workflow_entity" {
@@ -108,6 +112,7 @@ erDiagram
   varchar_128_ name
   json nodeGroups
   json nodes
+  uuid ownerUserId FK
   varchar_36_ parentFolderId FK
   json pinData
   json settings
@@ -418,6 +423,24 @@ erDiagram
 "public.workflows_tags" {
   varchar_36_ tagId FK
   varchar_36_ workflowId FK
+}
+"public.user" {
+  timestamp_3__with_time_zone createdAt
+  boolean disabled
+  varchar_255_ email
+  varchar_32_ firstName
+  uuid id
+  varchar_16_ kind
+  date lastActiveAt
+  varchar_32_ lastName
+  boolean mfaEnabled
+  text mfaRecoveryCodes
+  text mfaSecret
+  varchar_255_ password
+  json personalizationAnswers
+  varchar_128_ roleSlug FK
+  json settings
+  timestamp_3__with_time_zone updatedAt
 }
 "public.folder" {
   timestamp_3__with_time_zone createdAt

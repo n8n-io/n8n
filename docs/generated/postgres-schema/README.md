@@ -38,7 +38,7 @@ Auto-generated from the PostgreSQL migrations in @n8n/db. Do not edit by hand.
 | [public.agent_thread_grants](public.agent_thread_grants.md) | 4 |  | BASE TABLE |
 | [public.agent_version_skill_dependency](public.agent_version_skill_dependency.md) | 4 |  | BASE TABLE |
 | [public.agent_workflow_dependency](public.agent_workflow_dependency.md) | 3 |  | BASE TABLE |
-| [public.agents](public.agents.md) | 19 |  | BASE TABLE |
+| [public.agents](public.agents.md) | 20 |  | BASE TABLE |
 | [public.agents_memory_entries](public.agents_memory_entries.md) | 13 |  | BASE TABLE |
 | [public.agents_memory_entry_candidates](public.agents_memory_entry_candidates.md) | 14 |  | BASE TABLE |
 | [public.agents_memory_entry_locks](public.agents_memory_entry_locks.md) | 6 |  | BASE TABLE |
@@ -169,7 +169,7 @@ Auto-generated from the PostgreSQL migrations in @n8n/db. Do not edit by hand.
 | [public.webhook_entity](public.webhook_entity.md) | 6 |  | BASE TABLE |
 | [public.workflow_builder_session](public.workflow_builder_session.md) | 9 |  | BASE TABLE |
 | [public.workflow_dependency](public.workflow_dependency.md) | 9 |  | BASE TABLE |
-| [public.workflow_entity](public.workflow_entity.md) | 20 |  | BASE TABLE |
+| [public.workflow_entity](public.workflow_entity.md) | 21 |  | BASE TABLE |
 | [public.workflow_history](public.workflow_history.md) | 12 |  | BASE TABLE |
 | [public.workflow_publication_outbox](public.workflow_publication_outbox.md) | 8 |  | BASE TABLE |
 | [public.workflow_publication_retry_state](public.workflow_publication_retry_state.md) | 4 |  | BASE TABLE |
@@ -263,6 +263,7 @@ erDiagram
 "public.agent_workflow_dependency" }o--|| "public.workflow_entity" : "FOREIGN KEY (#quot;workflowId#quot;) REFERENCES workflow_entity(id) ON DELETE CASCADE"
 "public.agent_workflow_dependency" }o--|| "public.agents" : "FOREIGN KEY (#quot;agentId#quot;) REFERENCES agents(id) ON DELETE CASCADE"
 "public.agents" }o--o| "public.user" : "FOREIGN KEY (#quot;identityId#quot;) REFERENCES #quot;user#quot;(id) ON DELETE SET NULL"
+"public.agents" }o--o| "public.user" : "FOREIGN KEY (#quot;ownerUserId#quot;) REFERENCES #quot;user#quot;(id) ON DELETE SET NULL"
 "public.agents" }o--o| "public.project" : "FOREIGN KEY (#quot;projectId#quot;) REFERENCES project(id) ON DELETE CASCADE"
 "public.agents" }o--o| "public.folder" : "FOREIGN KEY (#quot;parentFolderId#quot;) REFERENCES folder(id) ON DELETE RESTRICT"
 "public.agents" }o--o| "public.agent_history" : "FOREIGN KEY (#quot;activeVersionId#quot;) REFERENCES agent_history(#quot;versionId#quot;) ON DELETE SET NULL"
@@ -458,6 +459,7 @@ erDiagram
 "public.workflow_builder_session" }o--|| "public.user" : "FOREIGN KEY (#quot;userId#quot;) REFERENCES #quot;user#quot;(id) ON DELETE CASCADE"
 "public.workflow_builder_session" }o--|| "public.workflow_entity" : "FOREIGN KEY (#quot;workflowId#quot;) REFERENCES workflow_entity(id) ON DELETE CASCADE"
 "public.workflow_dependency" }o--|| "public.workflow_entity" : "FOREIGN KEY (#quot;workflowId#quot;) REFERENCES workflow_entity(id) ON DELETE CASCADE"
+"public.workflow_entity" }o--o| "public.user" : "FOREIGN KEY (#quot;ownerUserId#quot;) REFERENCES #quot;user#quot;(id) ON DELETE SET NULL"
 "public.workflow_entity" }o--o| "public.workflow_history" : "FOREIGN KEY (#quot;activeVersionId#quot;) REFERENCES workflow_history(#quot;versionId#quot;) ON DELETE RESTRICT"
 "public.workflow_entity" }o--o| "public.folder" : "FOREIGN KEY (#quot;parentFolderId#quot;) REFERENCES folder(id) ON DELETE CASCADE"
 "public.workflow_history" }o--|| "public.workflow_entity" : "FOREIGN KEY (#quot;workflowId#quot;) REFERENCES workflow_entity(id) ON DELETE CASCADE"
@@ -843,6 +845,7 @@ erDiagram
   json integrations
   boolean isArchived
   varchar_128_ name
+  uuid ownerUserId FK
   varchar_36_ parentFolderId FK
   varchar_255_ projectId FK
   integer publicationRevision
@@ -2158,6 +2161,7 @@ erDiagram
   varchar_128_ name
   json nodeGroups
   json nodes
+  uuid ownerUserId FK
   varchar_36_ parentFolderId FK
   json pinData
   json settings

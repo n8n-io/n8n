@@ -81,6 +81,7 @@ erDiagram
   TEXT integrations
   boolean isArchived
   varchar_128_ name
+  varchar ownerUserId FK
   varchar_36_ parentFolderId FK
   varchar_255_ projectId FK
   INTEGER publicationRevision

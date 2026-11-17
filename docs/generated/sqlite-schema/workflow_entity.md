@@ -6,7 +6,7 @@
 <summary><strong>Table Definition</strong></summary>
 
 ```sql
-CREATE TABLE "workflow_entity" ("id" varchar(36) PRIMARY KEY NOT NULL, "name" varchar(128) NOT NULL, "active" boolean NOT NULL, "nodes" text, "connections" text, "settings" text, "staticData" text, "pinData" text, "versionId" varchar(36) NOT NULL, "triggerCount" integer DEFAULT (0), "meta" text, "parentFolderId" varchar(36), "createdAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), "updatedAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), "isArchived" boolean NOT NULL DEFAULT (FALSE), "versionCounter" integer NOT NULL DEFAULT (1), "description" text, "activeVersionId" varchar(36), "nodeGroups" text NOT NULL DEFAULT ('[]'), "sourceWorkflowId" varchar, CONSTRAINT "FK_04a4db5906fbc5606c71448d912" FOREIGN KEY ("parentFolderId") REFERENCES "folder" ("id") ON DELETE CASCADE ON UPDATE NO ACTION, CONSTRAINT "FK_08d6c67b7f722b0039d9d5ed620" FOREIGN KEY ("activeVersionId") REFERENCES "workflow_history" ("versionId") ON DELETE RESTRICT ON UPDATE NO ACTION)
+CREATE TABLE "workflow_entity" ("id" varchar(36) PRIMARY KEY NOT NULL, "name" varchar(128) NOT NULL, "active" boolean NOT NULL, "nodes" text, "connections" text, "settings" text, "staticData" text, "pinData" text, "versionId" varchar(36) NOT NULL, "triggerCount" integer DEFAULT (0), "meta" text, "parentFolderId" varchar(36), "createdAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), "updatedAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), "isArchived" boolean NOT NULL DEFAULT (FALSE), "versionCounter" integer NOT NULL DEFAULT (1), "description" text, "activeVersionId" varchar(36), "nodeGroups" text NOT NULL DEFAULT ('[]'), "sourceWorkflowId" varchar, "ownerUserId" varchar CONSTRAINT "FK_workflow_entity_owner_user" REFERENCES "user" ("id") ON DELETE SET NULL, CONSTRAINT "FK_04a4db5906fbc5606c71448d912" FOREIGN KEY ("parentFolderId") REFERENCES "folder" ("id") ON DELETE CASCADE ON UPDATE NO ACTION, CONSTRAINT "FK_08d6c67b7f722b0039d9d5ed620" FOREIGN KEY ("activeVersionId") REFERENCES "workflow_history" ("versionId") ON DELETE RESTRICT ON UPDATE NO ACTION)
 ```
 
 </details>
@@ -26,6 +26,7 @@ CREATE TABLE "workflow_entity" ("id" varchar(36) PRIMARY KEY NOT NULL, "name" va
 | name | varchar(128) |  | false |  |  |  |
 | nodeGroups | TEXT | '[]' | false |  |  |  |
 | nodes | TEXT |  | true |  |  |  |
+| ownerUserId | varchar |  | true |  | [user](user.md) |  |
 | parentFolderId | varchar(36) |  | true |  | [folder](folder.md) |  |
 | pinData | TEXT |  | true |  |  |  |
 | settings | TEXT |  | true |  |  |  |
@@ -42,6 +43,7 @@ CREATE TABLE "workflow_entity" ("id" varchar(36) PRIMARY KEY NOT NULL, "name" va
 | ---- | ---- | ---------- |
 | - (Foreign key ID: 0) | FOREIGN KEY | FOREIGN KEY (activeVersionId) REFERENCES workflow_history (versionId) ON UPDATE NO ACTION ON DELETE RESTRICT MATCH NONE |
 | - (Foreign key ID: 1) | FOREIGN KEY | FOREIGN KEY (parentFolderId) REFERENCES folder (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE |
+| - (Foreign key ID: 2) | FOREIGN KEY | FOREIGN KEY (ownerUserId) REFERENCES user (id) ON UPDATE NO ACTION ON DELETE SET NULL MATCH NONE |
 | id | PRIMARY KEY | PRIMARY KEY (id) |
 | sqlite_autoindex_workflow_entity_1 | PRIMARY KEY | PRIMARY KEY (id) |
 
@@ -50,6 +52,7 @@ CREATE TABLE "workflow_entity" ("id" varchar(36) PRIMARY KEY NOT NULL, "name" va
 | Name | Definition |
 | ---- | ---------- |
 | IDX_e10425f6ab9964c4c1623a4a03 | CREATE INDEX "IDX_e10425f6ab9964c4c1623a4a03" ON "workflow_entity" ("name")  |
+| IDX_workflow_entity_ownerUserId | CREATE INDEX "IDX_workflow_entity_ownerUserId" ON "workflow_entity" ("ownerUserId")  |
 | IDX_workflow_entity_sourceWorkflowId | CREATE INDEX "IDX_workflow_entity_sourceWorkflowId" ON "workflow_entity" ("sourceWorkflowId") WHERE "sourceWorkflowId" IS NOT NULL |
 | sqlite_autoindex_workflow_entity_1 | PRIMARY KEY (id) |
 
@@ -93,6 +96,7 @@ erDiagram
 "workflow_review_request_workflow" }o--|| "workflow_entity" : "FOREIGN KEY (workflowId) REFERENCES workflow_entity (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "workflow_suggestion" }o--|| "workflow_entity" : "FOREIGN KEY (workflowId) REFERENCES workflow_entity (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "workflows_tags" |o--|| "workflow_entity" : "FOREIGN KEY (workflowId) REFERENCES workflow_entity (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
+"workflow_entity" }o--o| "user" : "FOREIGN KEY (ownerUserId) REFERENCES user (id) ON UPDATE NO ACTION ON DELETE SET NULL MATCH NONE"
 "workflow_entity" }o--o| "folder" : "FOREIGN KEY (parentFolderId) REFERENCES folder (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 
 "workflow_entity" {
@@ -107,6 +111,7 @@ erDiagram
   varchar_128_ name
   TEXT nodeGroups
   TEXT nodes
+  varchar ownerUserId FK
   varchar_36_ parentFolderId FK
   TEXT pinData
   TEXT settings
@@ -409,6 +414,24 @@ erDiagram
 "workflows_tags" {
   INTEGER tagId PK
   varchar_36_ workflowId PK
+}
+"user" {
+  datetime_3_ createdAt
+  boolean disabled
+  varchar_255_ email
+  varchar_32_ firstName
+  varchar id PK
+  VARCHAR_16_ kind
+  date lastActiveAt
+  varchar_32_ lastName
+  boolean mfaEnabled
+  TEXT mfaRecoveryCodes
+  TEXT mfaSecret
+  varchar password
+  TEXT personalizationAnswers
+  varchar_128_ roleSlug FK
+  TEXT settings
+  datetime_3_ updatedAt
 }
 "folder" {
   datetime_3_ createdAt

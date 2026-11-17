@@ -38,6 +38,7 @@ type WorkflowPackageKeyHandling = {
 	parentFolder: 'transform';
 	testRuns: 'exclude';
 	sourceWorkflowId: 'exclude';
+	ownerUserId: 'exclude';
 };
 
 export type WorkflowPackageContent = Pick<

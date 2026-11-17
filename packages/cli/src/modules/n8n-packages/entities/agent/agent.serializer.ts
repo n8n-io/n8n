@@ -39,6 +39,7 @@ type AgentPackageKeyHandling = {
 	publicationRevision: 'exclude';
 	setupCompletedAt: 'exclude';
 	identityId: 'exclude';
+	ownerUserId: 'exclude';
 	identity: 'exclude';
 };
 
