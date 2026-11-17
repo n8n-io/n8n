@@ -1,12 +1,10 @@
+import type { AgentImportIssue } from './entities/agent/agent-import.types';
 import type {
 	ImportedAgentChannel,
-	PolicyViolation,
 	PackageManifest,
 	PackageRequirementConsumer,
+	PolicyViolation,
 } from '@n8n/api-types';
-
-import type { AgentImportIssue } from './entities/agent/agent-import.types';
-import type { ImportedAgentChannel, PolicyViolation } from '@n8n/api-types';
 import type { OperationContext, User } from '@n8n/db';
 import type { Readable } from 'node:stream';
 
