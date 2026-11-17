@@ -57,7 +57,7 @@ export class ExternalSecretsProjectRolesDefaultRule implements IBreakingChangeIn
 				{
 					action: 'Check which project editors and admins get external secrets access',
 					description:
-						'Under the new default, every project editor and admin can read and use external secrets in their projects. No action is needed to keep the new default. If a person must not use external secrets in a project, change their role in that project before the update.',
+						'Under the new default, every project editor and admin can read and use external secrets in their projects. No action is needed to keep the new default. If a person must not use external secrets in a project, change their role in that project before the update. This applies only to access through a project role. Instance owners and admins get access through their instance role, so a project role change does not limit them.',
 				},
 			],
 		};

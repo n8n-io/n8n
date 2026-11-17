@@ -29,7 +29,7 @@ export class ChatTriggerEmbeddedJsonRule implements IBreakingChangeWorkflowRule 
 			version: 'v3',
 			title: 'Embedded chat now uses a JSON WebSocket message format',
 			description:
-				'The chat WebSocket now sends every frame as JSON. Embedded chats using an old @n8n/chat widget pinned to a specific version, or a custom chat client that reads the raw WebSocket, will not understand the new frames until updated. Update a pinned @n8n/chat widget to the latest version, or change your custom chat client to parse JSON frames. Chats embedded via the unpinned CDN script update automatically, and hosted chats served by n8n are unaffected.',
+				'The chat WebSocket now sends every frame as JSON. Embedded chats using an old @n8n/chat widget pinned to a specific version, or a custom chat client that reads the raw WebSocket, will not understand the new frames until updated. Update a pinned @n8n/chat widget to the latest version, or change your custom chat client to parse JSON frames and answer each heartbeat with a JSON heartbeat-ack. Chats embedded via the unpinned CDN script update automatically, and hosted chats served by n8n are unaffected.',
 			category: BreakingChangeCategory.workflow,
 			impact: 'executionsFail',
 			documentationUrl: 'https://www.npmjs.com/package/@n8n/chat',
@@ -44,7 +44,7 @@ export class ChatTriggerEmbeddedJsonRule implements IBreakingChangeWorkflowRule 
 			{
 				action: 'Update your embedded chat to support the JSON message format',
 				description:
-					"If you embed the @n8n/chat widget with a pinned version, update it to the latest version. If you use a custom chat client, make sure it parses JSON frames. Embeds using the unpinned CDN script update automatically and need no action. No change in the workflow clears this finding: when your embed is ready, set the finding to Won't fix.",
+					'If you embed the @n8n/chat widget with a pinned version, update it to the latest version. If you use a custom chat client, make sure it parses JSON frames and answers each {"type":"heartbeat"} frame with {"type":"heartbeat-ack"}. Without this answer, n8n cancels the chat execution after 60 seconds. Embeds using the unpinned CDN script update automatically and need no action. No change in the workflow clears this finding: when your embed is ready, set the finding to Won\'t fix.',
 			},
 		];
 	}
@@ -61,7 +61,7 @@ export class ChatTriggerEmbeddedJsonRule implements IBreakingChangeWorkflowRule 
 		return reportAffectedNodes(affectedNodes, (node) => ({
 			title: `Node '${node.name}' uses an embedded chat`,
 			description:
-				'This embedded chat now receives JSON WebSocket frames. Update a pinned @n8n/chat widget to the latest version, or change your custom chat client to parse JSON frames. Unpinned CDN embeds update automatically.',
+				'This embedded chat now receives JSON WebSocket frames. Update a pinned @n8n/chat widget to the latest version, or change your custom chat client to parse JSON frames and answer each heartbeat with a JSON heartbeat-ack. Unpinned CDN embeds update automatically.',
 			level: 'warning',
 		}));
 	}
