@@ -38,8 +38,12 @@ const reply = {
 	options: {},
 };
 
-function converted(parameters: Record<string, unknown>, typeVersion: number): string {
-	const out = convertWorkflow(workflow(parameters, typeVersion));
+function converted(
+	parameters: Record<string, unknown>,
+	typeVersion: number,
+	repeatRequestsInHost = false,
+): string {
+	const out = convertWorkflow(workflow(parameters, typeVersion), { repeatRequestsInHost });
 	expect(out.ok).toBe(true);
 	expect(compile(out.source).diagnostics).toEqual([]);
 	return out.source;
@@ -90,11 +94,23 @@ describe('Gmail library node in the converter', () => {
 		).toContain("host: 'fallback'");
 	});
 
-	it('links a read without "simplify", with the host form for a message it does not parse', () => {
+	it('runs a read without "simplify" in the host, so that no request goes out twice', () => {
 		for (const operation of ['get', 'getAll']) {
 			const source = converted(
 				{ resource: 'message', operation, messageId: 'm1', simple: false, options: {} },
 				2.1,
+			);
+			expect(source).toContain("host: 'fallback'");
+			expect(source).not.toContain('fileLimitInHost(error)');
+		}
+	});
+
+	it('links a read without "simplify" when the caller accepts repeated requests', () => {
+		for (const operation of ['get', 'getAll']) {
+			const source = converted(
+				{ resource: 'message', operation, messageId: 'm1', simple: false, options: {} },
+				2.1,
+				true,
 			);
 			expect(source).toContain('simple: false');
 			expect(source).toContain('fileLimitInHost(error)');

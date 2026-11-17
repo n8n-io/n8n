@@ -105,6 +105,8 @@ export interface NodeContext {
 	addCredentialMints?(slot: string, mints: CredentialMint[]): void;
 	/** False when the runtime does not run `ctx.service` effects (`ConvertOptions.services`). */
 	services?: boolean;
+	/** True when a library node may run before the host repeats its GET requests (`ConvertOptions.repeatRequestsInHost`). */
+	repeatRequestsInHost?: boolean;
 	/** True when the runtime runs `ctx.sql` effects (`ConvertOptions.sql`). */
 	sql?: boolean;
 	/** True when the `sql` effect of the runtime has a MySQL client (`ConvertOptions.mysql`). */

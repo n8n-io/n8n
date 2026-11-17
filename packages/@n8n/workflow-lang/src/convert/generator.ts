@@ -155,6 +155,14 @@ export interface ConvertOptions {
 	 */
 	services?: boolean;
 	/**
+	 * A library node can find, after it sent GET requests, that only the v1 node gives the
+	 * exact result (the mark of `RUNS_IN_HOST`). The fallback host then runs the v1 node, which
+	 * sends the same GET requests again: the engine sends more requests than v1. The default
+	 * is false: a node with such a path runs in the fallback host from the start (a Gmail read
+	 * without "simplify"). With true, the library node runs first.
+	 */
+	repeatRequestsInHost?: boolean;
+	/**
 	 * The runtime runs `ctx.sql` effects (spec 9.10). The default is false: the Postgres
 	 * node runs in the fallback host. With true, it runs as a library node when the
 	 * library node has the call.
@@ -864,6 +872,7 @@ export class ModuleGenerator {
 				this.credentialMints[slot] = list;
 			},
 			services: this.options.services,
+			repeatRequestsInHost: this.options.repeatRequestsInHost,
 			sql: this.options.sql,
 			mysql: this.options.mysql,
 			mysqlRecordFirst: this.options.mysqlRecordFirst,

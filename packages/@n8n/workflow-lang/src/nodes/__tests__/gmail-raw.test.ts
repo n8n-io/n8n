@@ -573,7 +573,8 @@ describe('Gmail without "simplify": the compiled parser against mailparser', () 
 			}
 		}
 		expect(count).toBe(512);
-		expect(parsed).toBeGreaterThan(100);
+		if (process.env.GMAIL_RAW_DEBUG) console.log(`native parts: ${parsed} of ${count}`);
+		expect(parsed).toBeGreaterThan(250);
 	}, 120_000);
 
 	it('getAll gives one item for each message', async () => {
@@ -585,4 +586,196 @@ describe('Gmail without "simplify": the compiled parser against mailparser', () 
 			await v1Item(messageOf(raws[1], 1)),
 		]);
 	});
+	it('gives the HTML form of text that mailparser makes with linkify-it and he', async () => {
+		const words = [
+			'Hello',
+			'the',
+			'report',
+			'is',
+			'ready',
+			'e.g.',
+			'3.50',
+			'100%',
+			'A&B',
+			'<tag>',
+			'"quoted"',
+			"it's",
+			'`code`',
+			'naïve',
+			'café',
+			'Ærø',
+			'日本語',
+			'😀',
+			'→',
+			'±',
+			' ',
+			'€',
+			'ﬁ',
+			'𝒜',
+			'≠',
+			'fjord',
+			'end.',
+			'wait...',
+			'(x)',
+			'[y]',
+			'a,b;c',
+			'ok!',
+			'why?',
+			'-',
+			'--',
+			'_',
+			'$5',
+			'x=y',
+			'∽̱',
+			'∠⃒',
+			'\u0085',
+			'\u0081',
+			'\u007f',
+			' ',
+			'x⃒',
+			' ',
+			'­',
+		];
+		const links = [
+			'http://example.com',
+			'https://example.com/a/b?c=d&e=f#g',
+			'HTTP://EXAMPLE.COM',
+			'http://localhost:8080/x',
+			'http://192.168.1.1/a',
+			'https://example.com/path(with)paren',
+			'http://example.com/a.',
+			'http://example.com/a,b',
+			'http://example.com/?q="x"',
+			'git://example.com/repo.git',
+			'ftp://example.com/file',
+			'//example.com/x',
+			'://example.com',
+			'mailto:bob@example.com',
+			'MAILTO:bob@example.com',
+			'bob@example.com',
+			'bob.smith+tag@mail.example.co.uk',
+			'"bob"@example.com',
+			'@handle',
+			'@@double',
+			'@this_is_a_very_long_handle_name',
+			'a@b',
+			'example.com',
+			'www.example.com',
+			'www.example',
+			'example.com/path?x=1',
+			'example.onion',
+			'example.museum',
+			'sub.domain.example.org:8080/p',
+			'foo.bar',
+			'foo.zz',
+			'1.2.3.4',
+			'1.2.3.4:80/x',
+			'999.1.1.1',
+			'example.com<',
+			'>example.com',
+			'example.com|x',
+			'test.рф',
+			'münchen.de',
+			'xn--mnchen-3ya.de',
+			'example.com.',
+			'example.com...',
+			'(example.com)',
+			'[example.com]',
+			'"example.com"',
+			'http://example.com/a_b-c~d',
+			'https://user:pw@example.com/',
+			'http://a.b-',
+			'http://example.com:99999',
+			'example.com:80',
+			'localhost',
+			'localhost:3000',
+			'file.txt',
+			'v1.2.3',
+			'user@localhost',
+			'a@b.c@d.e',
+			'x@example.com,y@example.org',
+			'http://例え.jp/パス',
+			'example.COM',
+			'http://example.com/a"b',
+			"http://example.com/'q'",
+			'_http://example.com',
+			'http://example.com_',
+			'$example.com',
+			'=example.com',
+			'+example.com',
+			'/example.com',
+			'.example.com',
+			':example.com',
+			'-example.com',
+			'@example.com',
+			'http://-a.com',
+			'a.com/b!',
+			'a.com/b!!c',
+			'a.com/b?',
+			'a.com?b',
+			'a.com#x',
+			'foo@bar.com.',
+			'mailto:foo',
+			'http://',
+			'https:',
+			'git:',
+			'//',
+			'///a.b',
+			'http://example.com/aéb',
+			'café@example.com',
+			'a.b.c.d.e.com/x/y/z',
+			'http://example.com/[a]{b}',
+			'example.com/a-b--c',
+			'http://ex_ample.com',
+			'a@b.museum',
+		];
+		const gaps = [
+			' ',
+			' ',
+			' ',
+			'  ',
+			'\n',
+			'\n\n',
+			'\n\n\n',
+			', ',
+			'. ',
+			': ',
+			' - ',
+			'\t',
+			' \n',
+			'(',
+			')',
+			'<',
+			'>',
+			'"',
+			"'",
+			'',
+		];
+		let seed = 12345;
+		const next = (n: number): number => {
+			seed = (seed * 1103515245 + 12345) % 2147483648;
+			return seed % n;
+		};
+		let native = 0;
+		const total = Number(process.env.GMAIL_RAW_CASES ?? 3000);
+		for (let n = 0; n < total; n++) {
+			const parts: string[] = [];
+			const size = 1 + next(8);
+			for (let k = 0; k < size; k++) {
+				parts.push(next(2) === 0 ? links[next(links.length)] : words[next(words.length)]);
+				parts.push(gaps[next(gaps.length)]);
+			}
+			const text = parts.join('');
+			const raw = mail(
+				[...HEAD, 'Content-Type: text/plain; charset=utf-8', 'Content-Transfer-Encoding: base64'],
+				b64Lines(text),
+			);
+			const got = await library('get', [raw], true);
+			if (!got.ok) continue;
+			native++;
+			expect(got.result, JSON.stringify(text)).toEqual([await v1Item(messageOf(raw))]);
+		}
+		if (process.env.GMAIL_RAW_DEBUG) console.log(`native: ${native} of ${total}`);
+		expect(native).toBeGreaterThan(total * 0.9);
+	}, 900_000);
 });

@@ -902,14 +902,25 @@ export function lowerLibrary(c: NodeContext): void {
 		mysqlInHost(c);
 	// A caller that does not make tokens for a service account runs the node in the host.
 	const noToken = account !== undefined && c.addCredentialMints === undefined;
-	const unsupported = (support && !librarySupports(support, adapted)) || older || noToken;
+	// A Gmail read without "simplify" parses the raw message. The library node parses the
+	// messages that it reads exactly as mailparser. For each other message it ends with the
+	// mark of `RUNS_IN_HOST` after its GET requests, and the v1 node in the host sends them
+	// again. v1 sends them once, so the node runs in the host unless the caller accepts this.
+	const gmailRaw =
+		type === 'n8n-nodes-base.gmail' &&
+		(adapted.resource ?? 'message') === 'message' &&
+		(adapted.operation === 'get' || adapted.operation === 'getAll') &&
+		adapted.simple === false;
+	const repeats = gmailRaw && c.repeatRequestsInHost !== true;
+	const unsupported =
+		(support && !librarySupports(support, adapted)) || older || noToken || repeats;
 	// The caller says that the node runs in the host (`NodeSources.runsInHost`): a limit of
 	// the runtime, or a token for a service account that the caller does not make. Without
 	// this, a workflow with such a library node had no conversion with the node compiler.
 	const moved = c.nodeSources?.runsInHost?.(c.node.name) === true;
 	// The library node comes first. An operation that it does not have is compiled from the
 	// source of the v1 node when that compiles, and else runs in the host.
-	if (unsupported && !service && !moved && tryCompiledNode(c)) return;
+	if (unsupported && !service && !moved && !repeats && tryCompiledNode(c)) return;
 	if (unsupported || (attribution && !c.instance) || service || moved) {
 		lowerHostNode(c, 1, [['host', raw("'fallback'")]]);
 		return;
@@ -1008,14 +1019,7 @@ export function lowerLibrary(c: NodeContext): void {
 		});
 		return;
 	}
-	// A Gmail read without "simplify" parses the raw message. The library node parses the
-	// messages that it reads exactly as mailparser. For each other message it sent only GET
-	// requests and ends with the mark of `RUNS_IN_HOST`: the host runs the v1 node.
-	const gmailRaw =
-		type === 'n8n-nodes-base.gmail' &&
-		(resource === 'message' || resource === '') &&
-		(operation === 'get' || operation === 'getAll') &&
-		adapted.simple === false;
+	// The host form of a Gmail read without "simplify" (`repeatRequestsInHost`).
 	if (gmailRaw) {
 		const inHost = (to: NodeContext) => lowerHostNode(to, 1, [['host', raw("'fallback'")]]);
 		const hostForm = hostFormOf(c, inHost);
