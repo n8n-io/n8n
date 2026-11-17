@@ -26,7 +26,9 @@
     "picocolors": "catalog:",
     "tsx": "catalog:",
     "typescript": "catalog:typescript-tooling",
-    "yaml": "catalog:",
+    "yaml": "catalog:"
+  },
+  "peerDependencies": {
     "zod": "catalog:"
   },
   "devDependencies": {
@@ -36,6 +38,7 @@
     "oxlint": "catalog:",
     "oxlint-tsgolint": "catalog:",
     "tsdown": "catalog:typescript",
-    "vitest": "catalog:"
+    "vitest": "catalog:",
+    "zod": "catalog:"
   }
 }
