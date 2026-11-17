@@ -114,7 +114,7 @@ export class AiSdkLanguageModelAdapter implements LanguageModelV4 {
 						// Closing the iterator frees the request when the model ignores the signal.
 						cancellation.abort();
 						void Promise.resolve(iterator.return?.()).catch(() => undefined);
-						controller.enqueue({ type: 'error', error });
+						for (const part of converter.fail(error)) controller.enqueue(part);
 						controller.close();
 						return;
 					} finally {
