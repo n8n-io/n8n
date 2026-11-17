@@ -6,7 +6,7 @@ import { Script, createContext } from 'node:vm';
 
 import { readItems, StepInputError, toCodeResultItems } from './items';
 import { jmespathText } from './jmespath';
-import { isJsonObject, type JsonObject, type JsonValue } from './protocol';
+import { isJsonObject, type JsonObject } from './protocol';
 
 export const DEFAULT_CODE_TIMEOUT_MS = 5_000;
 
@@ -92,7 +92,8 @@ function wrap(code: string): string {
 		code,
 		'\n})(JSON.parse(__wfItems)).then(',
 		'  (value) => {',
-		'    try { __wfOut.json = JSON.stringify(value === undefined ? null : value); }',
+		// As n8n: null gives no items, and undefined is not a result.
+		'    try { __wfOut.json = value === undefined ? undefined : JSON.stringify(value); __wfOut.returned = true; }',
 		'    catch (error) { __wfOut.error = "Code returned a value that is not JSON: " + String(error && error.message); }',
 		'    if (globalThis.__wfStaticDoc !== undefined) {',
 		'      try { __wfOut.staticJson = JSON.stringify(globalThis.__wfStaticDoc); }',
@@ -101,8 +102,15 @@ function wrap(code: string): string {
 		'    __wfOut.done = true;',
 		'  },',
 		'  (error) => {',
-		'    __wfOut.error = error !== null && typeof error === "object" && "message" in error',
-		'      ? String(error.message) : String(error);',
+		// The thrown value as text, for the message that n8n's task runner makes (`thrownMessage`).
+		'    const thrown = {};',
+		'    if (error !== null && typeof error === "object" && typeof error.message === "string") {',
+		'      thrown.message = error.message;',
+		'      if (typeof error.stack === "string") thrown.stack = error.stack;',
+		'    } else {',
+		'      try { thrown.json = JSON.stringify(error); } catch (e) { thrown.json = undefined; }',
+		'    }',
+		'    __wfOut.thrown = JSON.stringify(thrown);',
 		'    __wfOut.done = true;',
 		'  },',
 		');',
@@ -196,12 +204,9 @@ const HELPERS = new Script(
 		if (reply.ok === true) {
 			return reply.base64 === undefined ? reply.value : Buffer.from(reply.base64, 'base64');
 		}
-		// As v1 gives it: a plain object with the fields of the error, so the code reads
-		// \`message\`, \`status\`, \`response.status\` and the other fields it knows.
-		const error = reply.error;
-		const out = { message: typeof error?.message === 'string' ? error.message : 'httpRequest failed' };
-		for (const key of Object.keys(error)) if (key !== 'message') out[key] = error[key];
-		throw out;
+		// As v1's task runner: the error is the JSON form that the broker sent, a plain object;
+		// a text becomes an Error.
+		throw typeof reply.error === 'string' ? new Error(reply.error) : reply.error;
 	},
 };
 // $jmespath of n8n (jmespath.ts). Data and result cross the context as JSON.
@@ -344,6 +349,10 @@ interface ScriptOutcome {
 	json: unknown;
 	error: unknown;
 	staticJson?: unknown;
+	/** The thrown value of the code, as JSON text of `{ message, stack }` or `{ json }`. */
+	thrown?: unknown;
+	/** True when the code returned a value. */
+	returned?: unknown;
 }
 
 function isScriptOutcome(value: unknown): value is ScriptOutcome {
@@ -501,7 +510,7 @@ export function runCodeStep(args: CodeStepArgs, options: CodeStepOptions = {}): 
 		if (isTimeout(error)) throw new CodeStepError(`Code did not finish within ${timeout} ms`);
 		throw new CodeStepError(messageOf(error));
 	}
-	return finish(outcome, options);
+	return finish(outcome, options, { filename: `${args.name || 'code'}.js`, code: args.code });
 }
 
 /**
@@ -581,32 +590,15 @@ function propertyOf(value: unknown, name: string): unknown {
 	return typeof value === 'object' && value !== null ? Reflect.get(value, name) : undefined;
 }
 
-/** The JSON form of a property, or undefined when the value has no JSON form. */
-function jsonProperty(value: unknown, name: string): JsonValue | undefined {
-	const text = JSON.stringify(propertyOf(value, name));
-	if (text === undefined) return undefined;
-	const parsed: JsonValue = JSON.parse(text);
-	return parsed;
-}
-
-/** The fields of an error that the Code node reads, as JSON. */
-function httpErrorFields(error: unknown): JsonObject {
-	const message = propertyOf(error, 'message');
-	const out: JsonObject = { message: typeof message === 'string' ? message : String(error) };
-	for (const name of ['name', 'description', 'code', 'httpCode', 'status', 'isAxiosError']) {
-		const value = jsonProperty(error, name);
-		if (value !== undefined) out[name] = value;
-	}
-	const response = propertyOf(error, 'response');
-	if (typeof response === 'object' && response !== null) {
-		const fields: JsonObject = {};
-		for (const name of ['status', 'statusText', 'headers', 'data']) {
-			const value = jsonProperty(response, name);
-			if (value !== undefined) fields[name] = value;
-		}
-		out.response = fields;
-	}
-	return out;
+/** The JSON text of a value as n8n's task broker writes it for the task runner. */
+function wireJson(value: unknown): string {
+	const workflow: unknown = hostRequire('n8n-workflow');
+	const stringify = propertyOf(workflow, 'jsonStringify');
+	const text: unknown =
+		typeof stringify === 'function'
+			? Reflect.apply(stringify, undefined, [value, { replaceCircularRefs: true }])
+			: JSON.stringify(value);
+	return typeof text === 'string' ? text : 'null';
 }
 
 /**
@@ -626,7 +618,10 @@ async function httpRequestText(optionsText: string): Promise<string> {
 	try {
 		result = await outboundRequests().request(options);
 	} catch (error) {
-		return JSON.stringify({ ok: false, error: httpErrorFields(error) });
+		// As n8n's task broker sends the error to the runner (`jsonStringify` with
+		// `replaceCircularRefs`): the JSON form of the error, which for an axios error is
+		// `message`, `name`, `stack`, `config`, `code` and `status`, without `response`.
+		return `{"ok":false,"error":${wireJson(error)}}`;
 	}
 	if (Buffer.isBuffer(result)) {
 		return JSON.stringify({ ok: true, base64: result.toString('base64') });
@@ -663,13 +658,92 @@ export async function runCodeStepAsync(
 	if (isScriptOutcome(outcome) && outcome.done !== true) {
 		throw new CodeStepError(`Code did not finish within ${timeout} ms`);
 	}
-	return finish(outcome, options);
+	return finish(outcome, options, { filename: `${args.name || 'code'}.js`, code: args.code });
+}
+
+/** The first row of a stack that is a stack frame (`    at …`). */
+const STACK_FRAME = /^\s+at\s/;
+/** The row of a stack with the name and the message of the error. */
+const STACK_HEADER = /^(?<errorType>\S.*?): (?<errorDetails>.+)$/;
+/** The row of carets that ends the source excerpt of a syntax error. */
+const SOURCE_CARETS = /^\s*\^+\s*$/;
+/** The function that holds the user code in the code of a step (`code-node.ts` of the converter). */
+const USER_FUNCTION = 'VmCodeWrapper';
+
+/**
+ * The message of a value that the code threw, as n8n's task runner makes it
+ * (`toExecutionErrorIfNeeded` and `ExecutionError` of `@n8n/task-runner`):
+ * - a value without a text `message` gives its JSON text;
+ * - else the text after the first ": " of the row of the stack with the name and the
+ *   message, else the message, else "Unknown error";
+ * - then ` [line N]`: the line of the innermost frame of a function with a name in the user
+ *   code, else the line in the user code itself. The user code is the body of the function
+ *   `VmCodeWrapper` in the code of the step, so the lines count from there.
+ */
+export function thrownMessage(
+	thrown: { message?: string; stack?: string; json?: string },
+	script: { filename: string; code: string },
+): string {
+	if (thrown.message === undefined) return (thrown.json ?? 'Unknown error').trim();
+	const fallback = thrown.message || 'Unknown error';
+	const rows = (thrown.stack ?? '').split(/\r?\n/);
+	// The line of the user code: `wrap` puts two lines before the code of the step.
+	const codeLines = script.code.split('\n');
+	const first = codeLines.findIndex((line) => line.includes(`function ${USER_FUNCTION}(`)) + 4;
+	let last = first;
+	for (let k = codeLines.length - 1; k >= 0 && last === first; k--) {
+		if (codeLines[k].startsWith('}).call(this)')) last = k + 3;
+	}
+	const location = `${script.filename}:`;
+	const lineOf = (row: string): number | undefined => {
+		const at = row.lastIndexOf(location);
+		if (at < 0) return undefined;
+		const line = Number.parseInt(row.slice(at + location.length), 10);
+		return first > 3 && line >= first && line < last ? line - first + 1 : undefined;
+	};
+	let line: number | undefined;
+	for (const row of rows) {
+		if (line !== undefined) break;
+		if (STACK_FRAME.test(row) && row.trimEnd().endsWith(')') && !row.includes(USER_FUNCTION)) {
+			line = lineOf(row);
+		}
+	}
+	if (line === undefined) {
+		const top = rows.find((row) => row.includes(USER_FUNCTION) && row.includes(location));
+		line = top === undefined ? undefined : lineOf(top);
+	}
+	const firstFrame = rows.findIndex((row) => STACK_FRAME.test(row));
+	const headerRows = firstFrame === -1 ? rows : rows.slice(0, firstFrame);
+	const excerptEnd = headerRows.reduce(
+		(lastCaret, row, index) => (SOURCE_CARETS.test(row) ? index + 1 : lastCaret),
+		0,
+	);
+	const header = headerRows.slice(excerptEnd).find((row) => STACK_HEADER.test(row));
+	const details = header?.match(STACK_HEADER)?.groups?.errorDetails.trim() || null;
+	return `${details ?? fallback} ${line === undefined ? '' : `[line ${line}]`}`.trim();
 }
 
 /** The items of a finished code step, from the wrapper's outcome. */
-function finish(outcome: unknown, options: CodeStepOptions): JsonObject[] {
+function finish(
+	outcome: unknown,
+	options: CodeStepOptions,
+	script?: { filename: string; code: string },
+): JsonObject[] {
 	if (!isScriptOutcome(outcome) || outcome.done !== true) {
 		throw new CodeStepError('Code did not finish: it waits for a value that never settles');
+	}
+	if (typeof outcome.thrown === 'string') {
+		const thrown: unknown = JSON.parse(outcome.thrown);
+		const read = (name: string): string | undefined => {
+			const value: unknown = isJsonObject(thrown) ? thrown[name] : undefined;
+			return typeof value === 'string' ? value : undefined;
+		};
+		throw new CodeStepError(
+			thrownMessage(
+				{ message: read('message'), stack: read('stack'), json: read('json') },
+				script ?? { filename: '', code: '' },
+			),
+		);
 	}
 	if (typeof outcome.error === 'string') throw new CodeStepError(outcome.error);
 	if (typeof outcome.staticJson === 'string' && options.onStaticData) {
@@ -677,7 +751,12 @@ function finish(outcome: unknown, options: CodeStepOptions): JsonObject[] {
 		if (isJsonObject(doc)) options.onStaticData(doc);
 	}
 	if (typeof outcome.json !== 'string') {
-		throw new CodeStepError('Code returned a value that is not JSON');
+		// undefined, or a function: n8n's Code node gets no result.
+		throw new CodeStepError(
+			outcome.returned === true
+				? "Code doesn't return items properly"
+				: 'Code returned a value that is not JSON',
+		);
 	}
 
 	const value: unknown = JSON.parse(outcome.json);

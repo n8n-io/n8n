@@ -26,7 +26,7 @@ function native(code: string, mode: CodeMode, input: unknown[], plainInput: bool
 	const c = checkTranslation(translated(code, mode), mode, plainInput);
 	if (!c.ok) throw new Error(`does not compile: ${c.blockers.map((b) => b.message).join('; ')}`);
 	if (!c.compiled.data) throw new Error('no module');
-	expect(c.source.includes('codeClone(')).toBe(!plainInput);
+	expect(c.source.slice(0, c.source.indexOf('\ttry {')).includes(COPIED)).toBe(!plainInput);
 	const out = runModule(c.compiled.data, {
 		trigger: { body: { input, nodes: [] } },
 		now: 1_700_000_000_000,
@@ -44,6 +44,9 @@ function host(code: string, mode: CodeMode, input: unknown[]): unknown {
 		return 'failed';
 	}
 }
+
+/** The first statement of a native Code node that copies its input list. */
+const COPIED = 'let __wf_items: Json[] = codeClone(__wf_in)';
 
 const rows = [
 	{ id: 2, name: 'Grace', tags: ['x', 'y'], address: { city: 'Paris', zip: null } },
@@ -220,9 +223,10 @@ describe('a native Code node without a copy of its input', () => {
 				.map((n, k) => [n, { main: [[{ node: names[k + 1], type: 'main', index: 0 }]] }]),
 		);
 	/** The lines of the native Code node `name` in the generated source. */
+	/** The lines of the native Code node `name` before its code: the values that the code reads. */
 	const blockOf = (source: string, name: string): string => {
 		const from = source.indexOf(`// ${name} (code)`);
-		const to = source.indexOf("ctx.trace('", from);
+		const to = source.indexOf('\ttry {', from);
 		return source.slice(from, to);
 	};
 	const run = async (wf: Record<string, unknown>, body: unknown) => {
@@ -264,8 +268,8 @@ describe('a native Code node without a copy of its input', () => {
 			connections: chain(['Hook', 'Make', 'Pass', 'Change', 'Report']),
 		};
 		const { source, items } = await run(wf, {});
-		expect(blockOf(source, 'Pass')).not.toContain('codeClone(');
-		expect(blockOf(source, 'Change')).toContain('codeClone(');
+		expect(blockOf(source, 'Pass')).not.toContain(COPIED);
+		expect(blockOf(source, 'Change')).toContain(COPIED);
 		const made = [
 			{ id: 1, tags: ['a'], at: { n: 1 } },
 			{ id: 2, tags: [], at: { n: 2 } },
@@ -292,8 +296,8 @@ describe('a native Code node without a copy of its input', () => {
 			connections: chain(['Hook', 'Read', 'Again']),
 		};
 		const { source, items } = await run(wf, { n: 1 });
-		expect(blockOf(source, 'Read')).toContain('codeClone(');
-		expect(blockOf(source, 'Again')).not.toContain('codeClone(');
+		expect(blockOf(source, 'Read')).toContain(COPIED);
+		expect(blockOf(source, 'Again')).not.toContain(COPIED);
 		expect(items('Read')).toEqual([{ keys: ['body', 'params'] }]);
 		expect(items('Again')).toEqual([{ keys: ['body', 'params'], again: true }]);
 	});
@@ -352,9 +356,9 @@ describe('a native Code node without a copy of its input', () => {
 		const out = convertWorkflow(wf);
 		expect(out.ok).toBe(true);
 		expect(out.fallbackNodes).toEqual(['Python']);
-		expect(blockOf(out.source, 'Direct').includes('codeClone(')).toBe(copies);
-		expect(blockOf(out.source, 'After If').includes('codeClone(')).toBe(copies);
-		expect(blockOf(out.source, 'Writer')).toContain('codeClone(');
+		expect(blockOf(out.source, 'Direct').includes(COPIED)).toBe(copies);
+		expect(blockOf(out.source, 'After If').includes(COPIED)).toBe(copies);
+		expect(blockOf(out.source, 'Writer')).toContain(COPIED);
 	});
 
 	it('keeps the copy of the items of other nodes', async () => {
@@ -372,7 +376,7 @@ describe('a native Code node without a copy of its input', () => {
 		};
 		const { source, items } = await run(wf, {});
 		expect(blockOf(source, 'Same')).toContain('codeClone(__wf_r0)');
-		expect(blockOf(source, 'Same')).not.toContain('codeClone(__wf_in)');
+		expect(blockOf(source, 'Same')).not.toContain(COPIED);
 		// As v1: the items of another node are other objects than the input items.
 		expect(items('Same')).toEqual([{ same: false, list: [1] }]);
 	});

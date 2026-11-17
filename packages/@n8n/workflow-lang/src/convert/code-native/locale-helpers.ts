@@ -201,7 +201,13 @@ function localeFormat(x: Json, date: Json, num: Json, zone: Json, isDate: boolea
 		throw new TypeError('Cannot read properties of ' + x + " (reading 'toLocaleString')");
 	}
 	if (typeof x === 'string' || typeof x === 'boolean') return String(x);
-	throw new TypeError('toLocaleString has no native form for this value');
+	// A number without a number format here: the options are those of a date, which a number ignores.
+	if (typeof x === 'number') return String(x);
+	// A list joins the texts of its values, and null and undefined give no text. Another object has the text of \\\`Object\\\`.
+	if (Array.isArray(x)) {
+		return x.map((v: Json): Json => (v === undefined || v === null ? '' : localeFormat(v, date, num, zone, false))).join(',');
+	}
+	return '[object Object]';
 }`,
 	},
 	intlOf: {

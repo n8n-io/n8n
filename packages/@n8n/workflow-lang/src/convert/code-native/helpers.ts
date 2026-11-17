@@ -39,28 +39,23 @@ function codeWrap(j: Json, index: number): Json {
 	return { json: j, pairedItem };
 }`,
 	},
-	codeWrapJson: {
-		uses: [],
-		source: `/** An item of another node as the Code node gets it from \`$('Node')\`. */
-function codeWrapJson(j: Json, index: number): Json {
-	return { json: j, pairedItem: { item: index } };
-}`,
-	},
 	codeItem: {
 		uses: [],
 		source: `/**
  * One v1 item as compiled code holds it: its \`json\`, with its binary data in \`$binary\`.
- * The checks are the ones of v1's \`validateItem\`.
+ * The checks are the ones of v1's \`validateItem\`. v1's Code node checks the result after
+ * the code ran, so the error setting of the node does not turn such an error into an item:
+ * \`$invalid\` marks it.
  */
 function codeItem(e: Json, index: number): Json {
 	const json = e.json;
 	if (json === null || typeof json !== 'object' || Array.isArray(json)) {
-		throw new Error("A 'json' property isn't an object [item " + index + ']');
+		throw { name: 'Error', message: "A 'json' property isn't an object [item " + index + ']', $invalid: true };
 	}
 	const binary = e.binary;
 	if (binary === undefined) return json;
 	if (binary === null || typeof binary !== 'object' || Array.isArray(binary)) {
-		throw new Error("A 'binary' property isn't an object [item " + index + ']');
+		throw { name: 'Error', message: "A 'binary' property isn't an object [item " + index + ']', $invalid: true };
 	}
 	return Object.keys(binary).length > 0 ? { ...json, $binary: binary } : json;
 }`,
@@ -97,8 +92,8 @@ function codeTopLevelKeys(list: Json[]): void {
 			}
 		}
 		if (unknown.length === 0) continue;
-		if (found !== '') throw new Error('Invalid output format [item ' + k + ']');
-		throw new Error('Unknown top-level item key: ' + unknown[0] + ' [item ' + k + ']');
+		if (found !== '') throw { name: 'Error', message: 'Invalid output format [item ' + k + ']', $invalid: true };
+		throw { name: 'Error', message: 'Unknown top-level item key: ' + unknown[0] + ' [item ' + k + ']', $invalid: true };
 	}
 }`,
 	},
@@ -111,11 +106,9 @@ function codeTopLevelKeys(list: Json[]): void {
  */
 function codeNormalize(value: Json): Json[] {
 	if (!Array.isArray(value)) {
-		if (value === null || typeof value !== 'object') {
-			throw new Error(
-				'Code must return an object or an array of objects. Result item 0 is not an object',
-			);
-		}
+		if (typeof value !== 'object') throw { name: 'Error', message: "Code doesn't return items properly", $invalid: true };
+		// A number that JSON cannot hold is null on the wire of v1's task runner.
+		if (value === null) throw { name: 'Error', message: "Cannot read properties of null (reading 'json')", $invalid: true };
 		// As v1: an object with a truthy \`json\` is one item, else the object goes under \`json\`.
 		return value.json ? [value] : [{ json: value }];
 	}
@@ -124,17 +117,15 @@ function codeNormalize(value: Json): Json[] {
 	for (let k = 0; k < value.length; k++) {
 		const e: Json = value[k];
 		if (e === null || typeof e !== 'object' || Array.isArray(e)) {
-			throw new Error(
-				'Code must return an object or an array of objects. Result item ' + k + ' is not an object',
-			);
+			throw { name: 'Error', message: "Code doesn't return items properly", $invalid: true };
 		}
 		if ('json' in e) withJson++;
 		if ('binary' in e) withBinary++;
 	}
 	codeTopLevelKeys(value);
 	if (withJson === value.length) return value;
-	if (withJson > 0) throw new Error('Inconsistent item format');
-	if (withBinary > 0 && withBinary < value.length) throw new Error('Inconsistent item format');
+	if (withJson > 0) throw { name: 'Error', message: 'Inconsistent item format', $invalid: true };
+	if (withBinary > 0 && withBinary < value.length) throw { name: 'Error', message: 'Inconsistent item format', $invalid: true };
 	const out: Json[] = [];
 	for (let k = 0; k < value.length; k++) {
 		const e: Json = value[k];
@@ -151,67 +142,140 @@ function codeNormalize(value: Json): Json[] {
 	return out;
 }`,
 	},
-	codeItemEach: {
-		uses: [],
-		source: `/**
- * One result of a Code node in "each item" mode, as v1's task runner gives it
- * (\`extractJsonData\` of \`js-task-runner.ts\`) and \`validateItem\` checks it.
- */
-function codeItemEach(e: Json, index: number): Json {
-	let json: Json;
-	if ('json' in e) {
-		json = e.json;
-	} else if ('binary' in e) {
-		// As v1: a result with binary data and no \`json\` gives an empty \`json\`.
-		json = e.json === undefined || e.json === null ? {} : e.json;
-	} else {
-		json = e;
-	}
-	if (json === null || typeof json !== 'object' || Array.isArray(json)) {
-		throw new Error("A 'json' property isn't an object [item " + index + ']');
-	}
-	const binary = e.binary;
-	if (binary === undefined) return json;
-	if (binary === null || typeof binary !== 'object' || Array.isArray(binary)) {
-		throw new Error("A 'binary' property isn't an object [item " + index + ']');
-	}
-	return Object.keys(binary).length > 0 ? { ...json, $binary: binary } : json;
-}`,
-	},
 	codeItems: {
 		uses: ['codeNormalize', 'codeItem'],
-		source: `/** The result list of a Code node in "all items" mode: a JSON copy, as v1 normalizes it. */
+		source: `/**
+ * The result list of a Code node in "all items" mode. As v1: null gives no items; the
+ * result crosses the wire of the task runner as JSON; then the Code node checks it.
+ */
 function codeItems(value: Json): Json[] {
-	const text: Json = JSON.stringify(value === undefined ? null : value);
-	if (text === undefined) throw new Error('Code returned a value that is not JSON');
-	const parsed: Json = JSON.parse(text);
-	if (parsed === null) return [];
-	const list = codeNormalize(parsed);
+	// JSON has no text for undefined and for a function.
+	const text: Json = JSON.stringify(value);
+	if (text === undefined) throw { name: 'Error', message: "Code doesn't return items properly", $invalid: true };
+	if (value === null) return [];
+	const list = codeNormalize(JSON.parse(text));
 	const out: Json[] = [];
 	for (let k = 0; k < list.length; k++) out.push(codeItem(list[k], k));
 	return out;
 }`,
 	},
 	codeEachItems: {
-		uses: ['codeItemEach'],
-		source: `/** The result list of a Code node in "each item" mode: a JSON copy, one item for each result. */
-function codeEachItems(value: Json): Json[] {
-	const text: Json = JSON.stringify(value === undefined ? null : value);
-	if (text === undefined) throw new Error('Code returned a value that is not JSON');
-	const parsed: Json = JSON.parse(text);
-	if (parsed === null) return [];
-	const list: Json[] = Array.isArray(parsed) ? parsed : [parsed];
+		uses: [],
+		source: `/**
+ * The result list of a Code node in "each item" mode: \`results[k]\` is the result for input
+ * item k. As v1's task runner (\`runForEachItem\`): a result that is false gives no item;
+ * the item has the \`json\` of the result (\`extractJsonData\`) and its \`binary\`; the items
+ * cross the wire as JSON; then the Code node checks each one (\`validateRunCodeEachItem\`).
+ * A result whose \`json\` is undefined has no \`json\` on the wire, so v1 takes the item
+ * itself, which holds only its paired item.
+ */
+function codeEachItems(results: Json[]): Json[] {
+	const list: Json[] = JSON.parse(JSON.stringify(results));
 	const out: Json[] = [];
 	for (let k = 0; k < list.length; k++) {
 		const e: Json = list[k];
-		if (e === null || typeof e !== 'object' || Array.isArray(e)) {
-			throw new Error(
-				'Code must return an object or an array of objects. Result item ' + k + ' is not an object',
-			);
+		// A result that is false gives no item; JSON keeps such a value, or gives null for it.
+		if (!e) continue;
+		let json: Json = e;
+		let binary: Json = undefined;
+		if (typeof e === 'object' && !Array.isArray(e)) {
+			if ('json' in e) json = e.json;
+			else if ('json' in results[k]) json = { pairedItem: { item: k } };
+			else if ('binary' in e) json = {};
+			if (e.binary) binary = e.binary;
 		}
-		out.push(codeItemEach(e, k));
+		if (json === null || typeof json !== 'object' || Array.isArray(json)) {
+			throw { name: 'Error', message: "A 'json' property isn't an object [item " + out.length + ']', $invalid: true };
+		}
+		if (binary === undefined) {
+			out.push(json);
+			continue;
+		}
+		if (typeof binary !== 'object' || Array.isArray(binary)) {
+			throw { name: 'Error', message: "A 'binary' property isn't an object [item " + out.length + ']', $invalid: true };
+		}
+		out.push(Object.keys(binary).length > 0 ? { ...json, $binary: binary } : json);
 	}
 	return out;
+}`,
+	},
+	codeAt: {
+		uses: [],
+		source: `/**
+ * Gives an error the line where it came from, when it has none yet. Only an Error has a
+ * stack in v1: a thrown text or plain object, and the error of a request, get no line.
+ */
+function codeAt(e: Json, line: number): Json {
+	if (
+		e !== null &&
+		typeof e === 'object' &&
+		typeof e.message === 'string' &&
+		typeof e.name === 'string' &&
+		e.$line === undefined &&
+		e.$request !== true &&
+		e.$invalid !== true
+	) {
+		e.$line = line;
+	}
+	return e;
+}`,
+	},
+	codeFail: {
+		uses: [],
+		source: `/**
+ * The error that the node gives when its code fails: \`traced\` is the error of the traced
+ * form of the code, which has the line; without it, the error of the code itself.
+ */
+function codeFail(traced: Json, error: Json): Json {
+	const e: Json = traced === undefined ? error : traced;
+	if (e !== null && typeof e === 'object' && e.$invalid === true) return e;
+	return { name: 'Error', message: codeErrorMessage(e) };
+}
+
+/**
+ * The message that v1 gives for a value that the code throws (\`toExecutionErrorIfNeeded\`
+ * and \`ExecutionError\` of n8n's task runner):
+ * - a value without a text \`message\` gives its JSON text;
+ * - an Error gives the text after the first ": " of the first line of its stack that has
+ *   one (the line with its name and message), without spaces around it, else its message,
+ *   else "Unknown error"; then " [line N]" for the line of the error.
+ */
+function codeErrorMessage(e: Json): string {
+	if (e === null || typeof e !== 'object' || typeof e.message !== 'string') {
+		const text: Json = JSON.stringify(e);
+		return text === undefined ? 'Unknown error' : String(text).trim();
+	}
+	const message: string = e.message;
+	let details = '';
+	if (typeof e.name === 'string') {
+		const head = e.name === '' ? message : message === '' ? e.name : e.name + ': ' + message;
+		const rows = head.split('\\n');
+		let first = 0;
+		let last = rows.length;
+		for (let k = 0; k < rows.length; k++) {
+			let row = rows[k];
+			if (row.endsWith('\\r')) row = row.slice(0, row.length - 1);
+			rows[k] = row;
+			const text = row.trim();
+			// A row of a stack frame ends the head of the stack.
+			if (row !== '' && row.charAt(0).trim() === '' && text.startsWith('at') && text.length > 2 && text.charAt(2).trim() === '') {
+				last = k;
+				break;
+			}
+			// A row of carets ends an excerpt of the source.
+			let carets = text !== '';
+			for (let c = 0; c < text.length && carets; c++) carets = text.charAt(c) === '^';
+			if (carets) first = k + 1;
+		}
+		for (let k = first; k < last && details === ''; k++) {
+			const row = rows[k];
+			if (row === '' || row.charAt(0).trim() === '') continue;
+			const at = row.indexOf(': ', 1);
+			if (at >= 1 && row.length > at + 2) details = row.slice(at + 2).trim();
+		}
+	}
+	const text = details !== '' ? details : message !== '' ? message : 'Unknown error';
+	return (text + ' ' + (typeof e.$line === 'number' ? '[line ' + e.$line + ']' : '')).trim();
 }`,
 	},
 	iterOf: {
@@ -1692,81 +1756,6 @@ function codeHttpResult(o: Json, r: Json): Json {
 	return body;
 }`,
 	},
-	codeFileSize: {
-		uses: [],
-		source: `/**
- * n8n's text of a file size, as the fallback host writes it (\`fileSizeText\` of its
- * \`binary.ts\`): the value with three significant digits (\`toPrecision(3)\`) without zeros
- * at its end, and the unit.
- */
-function codeFileSize(bytes: number): string {
-	const units = ['B', 'kB', 'MB', 'GB', 'TB'];
-	let value = bytes;
-	let unit = 0;
-	while (value >= 1000 && unit < 4) {
-		value /= 1000;
-		unit++;
-	}
-	if (unit === 0 || !Number.isFinite(value)) return String(value) + ' ' + units[unit];
-	let text = '';
-	if (value >= 1000) {
-		// Only the last unit: \`toPrecision\` writes an exponent.
-		const whole = Math.floor(value).toFixed(0);
-		if (whole.indexOf('e') >= 0) return String(value) + ' ' + units[unit];
-		let head = Number(whole.slice(0, 3)) + (whole.charAt(3) >= '5' ? 1 : 0);
-		let exponent = whole.length - 1;
-		if (head === 1000) {
-			head = 100;
-			exponent++;
-		}
-		const digits = String(head);
-		return digits.charAt(0) + '.' + digits.slice(1) + 'e+' + exponent + ' ' + units[unit];
-	}
-	const places = value < 10 ? 2 : value < 100 ? 1 : 0;
-	text = value.toFixed(places);
-	const rounded = Number(text);
-	if (places === 2 && rounded >= 10) text = '10.0';
-	else if (places === 1 && rounded >= 100) text = '100';
-	else if (places === 0 && rounded >= 1000) text = '1.00e+3';
-	if (text.indexOf('.') >= 0 && text.indexOf('e') < 0) {
-		while (text.endsWith('0')) text = text.slice(0, text.length - 1);
-		if (text.endsWith('.')) text = text.slice(0, text.length - 1);
-	}
-	return text + ' ' + units[unit];
-}`,
-	},
-	codeBinarySizes: {
-		uses: ['codeFileSize', 'base64Bytes'],
-		source: `/**
- * The result items with both size members on each binary entry, as the fallback host gives
- * them for the result of a code step (\`binaryWithSizes\`): \`bytes\`, from the base64 data when
- * the entry has no number, and \`fileSize\`, n8n's text, when the entry has no text.
- */
-function codeBinarySizes(list: Json[]): Json[] {
-	for (let k = 0; k < list.length; k++) {
-		const binary: Json = list[k].$binary;
-		if (binary === undefined) continue;
-		const out: Json = {};
-		for (const key of Object.keys(binary)) {
-			const entry: Json = binary[key];
-			if (
-				entry !== null &&
-				typeof entry === 'object' &&
-				!Array.isArray(entry) &&
-				typeof entry.data === 'string' &&
-				typeof entry.mimeType === 'string'
-			) {
-				const bytes: number = typeof entry.bytes === 'number' ? entry.bytes : base64Bytes(entry.data).length;
-				out[key] = { ...entry, bytes, fileSize: typeof entry.fileSize === 'string' ? entry.fileSize : codeFileSize(bytes) };
-			} else {
-				out[key] = entry;
-			}
-		}
-		list[k] = { ...list[k], $binary: out };
-	}
-	return list;
-}`,
-	},
 	mcheck: {
 		uses: ['isRegex', 'isColl'],
 		source: `/**
@@ -1813,7 +1802,7 @@ function optCall(v: Json, f: Json): Json {
 }`,
 	},
 	nodeByName: {
-		uses: ['codeClone', 'codeWrapJson'],
+		uses: ['codeClone', 'codeWrap'],
 		source: `/**
  * \\\`$(name).all()\\\` and its forms for a computed name, as the fallback host gives them:
  * a node that did not run before has no items.
@@ -1822,7 +1811,7 @@ function nodeByName(nodes: Json, name: Json, which: string): Json {
 	const key = String(name);
 	const raw: Json[] = Object.keys(nodes).includes(key) ? nodes[key] : [];
 	if (nodes.$cache === undefined) nodes.$cache = {};
-	if (!Object.keys(nodes.$cache).includes(key)) nodes.$cache[key] = codeClone(raw).map(codeWrapJson);
+	if (!Object.keys(nodes.$cache).includes(key)) nodes.$cache[key] = codeClone(raw).map(codeWrap);
 	const list: Json[] = nodes.$cache[key];
 	if (which === 'all') return list;
 	if (which === 'first' || which === 'item') return list[0];
@@ -1870,3 +1859,23 @@ function toStringRadix(v: Json, radix: Json): string {
 }`,
 	},
 };
+
+/** The names of the helpers that \`names\` need, with the ones that they use. */
+export function codeHelperNames(names: Iterable<string>): Set<string> {
+	const all = new Set<string>();
+	const add = (n: string) => {
+		const h = Object.hasOwn(CODE_HELPERS, n) ? CODE_HELPERS[n] : undefined;
+		if (h === undefined || all.has(n)) return;
+		all.add(n);
+		for (const u of h.uses) add(u);
+	};
+	for (const n of names) add(n);
+	return all;
+}
+
+/** The sources of the helpers \`names\`, in the order of the table. */
+export function codeHelperSources(names: Set<string>): string[] {
+	return Object.keys(CODE_HELPERS)
+		.filter((n) => names.has(n))
+		.map((n) => CODE_HELPERS[n].source);
+}

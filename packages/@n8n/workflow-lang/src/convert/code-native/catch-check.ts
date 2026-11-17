@@ -86,10 +86,12 @@ const N8N_ROOTS = new Set([
 /**
  * Members of the error of a failed request that native code does not give as v1 does. v1's
  * Code node gets the error through its task runner as plain JSON (`AxiosError.toJSON`):
- * `message`, `name`, `code`, `status`, and also `stack` and `config`. It has no `response`.
- * The fallback host gives `response` and `isAxiosError`, so code that reads them stays there.
+ * `message`, `name`, `code`, `status`, and also `stack` and `config`. It has no `response`,
+ * so a read of `response` gives undefined there and in native code. `stack` has the file
+ * paths of the n8n installation and `config` has the state of n8n's HTTP agents: native
+ * code cannot give them.
  */
-const REQUEST_ERROR_GAPS = new Set(['config', 'response', 'isAxiosError', 'request']);
+const REQUEST_ERROR_GAPS = new Set(['config']);
 
 const ERROR_CONSTRUCTORS = new Set([
 	'Date',
@@ -192,13 +194,7 @@ function groupText(e: ts.Expression): string | null {
 export function planCatch(
 	t: ts.TryStatement,
 	checker: ts.TypeChecker,
-	known: {
-		dateVars: Set<ts.Symbol>;
-		/** What an `await` waits for: a request, a call of a local async function, or a value. */
-		awaited?: (n: ts.AwaitExpression) => 'http' | 'call' | null;
-		/** The code makes requests, so a caught error can be the error of a failed request. */
-		requests?: boolean;
-	},
+	known: PlanKnown,
 ): CatchPlan | string {
 	const clause = t.catchClause;
 	const decl = clause?.variableDeclaration;
@@ -279,8 +275,43 @@ export function planCatch(
 	};
 	uses(clause.block);
 	if (reason !== null) return reason;
+	const operations = planOperations(t.tryBlock, checker, known, plan);
+	return operations ?? plan;
+}
 
-	// Operations of the try block.
+/**
+ * Plans the code of a whole Code node, whose error the node gives when the code does not
+ * catch it: the same rules as for a try block whose catch reads the error.
+ */
+export function planBody(
+	body: ts.Node,
+	checker: ts.TypeChecker,
+	known: PlanKnown,
+): { plan: CatchPlan; reason: string | null } {
+	const plan: CatchPlan = { errText: [], checks: [] };
+	const reason = planOperations(body, checker, { ...known, all: true }, plan);
+	return { plan, reason };
+}
+
+interface PlanKnown {
+	dateVars: Set<ts.Symbol>;
+	/** What an `await` waits for: a request, a call of a local async function, or a value. */
+	awaited?: (n: ts.AwaitExpression) => 'http' | 'call' | null;
+	/** The code makes requests, so a caught error can be the error of a failed request. */
+	requests?: boolean;
+	/** The walk goes on after the first reason against, and collects every method check. */
+	all?: boolean;
+}
+
+/** Checks the operations of `block` and adds the method checks to `plan`; a string is the first reason against. */
+function planOperations(
+	block: ts.Node,
+	checker: ts.TypeChecker,
+	known: PlanKnown,
+	plan: CatchPlan,
+): string | null {
+	let reason: string | null = null;
+	// Operations of the block.
 	const seen = new Set<ts.Node>();
 	const localFunction = (id: ts.Identifier): ts.Node | null => {
 		const s = checker.getSymbolAtLocation(id);
@@ -356,14 +387,15 @@ export function planCatch(
 		return false;
 	};
 	const check = (x: ts.Node): void => {
-		if (reason !== null) return;
+		// The traced form of the code wants every method check, also after a reason against.
+		if (reason !== null && !known.all) return;
 		if (ts.isCallExpression(x)) {
 			const c = strip(x.expression);
 			if (ts.isIdentifier(c)) {
 				if (!SAFE_FUNCTIONS.has(c.text)) {
 					const body = localFunction(c);
 					if (body === null) {
-						reason = `a call of ${c.text}`;
+						reason ??= `a call of ${c.text}`;
 						return;
 					}
 					if (!seen.has(body)) {
@@ -381,13 +413,13 @@ export function planCatch(
 				const root = rootName(recv);
 				const statics = ts.isIdentifier(recv) ? SAFE_STATICS[recv.text] : undefined;
 				if (method === null) {
-					reason = 'a call with a computed method name';
+					reason ??= 'a call with a computed method name';
 					return;
 				}
 				if (statics === 'all' || statics?.has(method)) {
 					// A static method of a global object.
 				} else if (statics !== undefined) {
-					reason = `${recv.getText()}.${method}`;
+					reason ??= `${recv.getText()}.${method}`;
 					return;
 				} else if (
 					root !== null &&
@@ -403,12 +435,12 @@ export function planCatch(
 						(ts.isNumericLiteral(x.arguments[0]) && Number(x.arguments[0].text) <= 100)
 					)
 				) {
-					reason = '`toFixed` with a computed number of digits';
+					reason ??= '`toFixed` with a computed number of digits';
 					return;
 				} else if (!knownReceiver(recv)) {
 					const text = calleeText(c);
 					if (text === null) {
-						reason = 'a method call whose callee V8 prints in another form';
+						reason ??= 'a method call whose callee V8 prints in another form';
 						return;
 					}
 					plan.checks.push({ receiver: c.expression, method, text });
@@ -423,21 +455,21 @@ export function planCatch(
 								(['Boolean', 'String', 'Number'].includes(fnArg.text) ||
 									localFunction(fnArg) !== null)));
 					if (!fn) {
-						reason = `${method} with a callback that may not be a function`;
+						reason ??= `${method} with a callback that may not be a function`;
 						return;
 					}
 				}
 			} else {
-				reason = 'a call of a computed function';
+				reason ??= 'a call of a computed function';
 				return;
 			}
 		} else if (ts.isNewExpression(x)) {
 			if (!ts.isIdentifier(x.expression) || !ERROR_CONSTRUCTORS.has(x.expression.text)) {
-				reason = `new ${x.expression.getText()}`;
+				reason ??= `new ${x.expression.getText()}`;
 				return;
 			}
 		} else if (ts.isObjectBindingPattern(x) || ts.isArrayBindingPattern(x)) {
-			reason = 'destructuring';
+			reason ??= 'destructuring';
 			return;
 		} else if (
 			ts.isBinaryExpression(x) &&
@@ -446,10 +478,10 @@ export function planCatch(
 				((ts.isObjectLiteralExpression(x.left) || ts.isArrayLiteralExpression(x.left)) &&
 					x.operatorToken.kind === ts.SyntaxKind.EqualsToken))
 		) {
-			reason = `the ${x.operatorToken.getText()} operator`;
+			reason ??= `the ${x.operatorToken.getText()} operator`;
 			return;
 		} else if (ts.isDeleteExpression(x)) {
-			reason = '`delete`';
+			reason ??= '`delete`';
 			return;
 		} else if (ts.isAwaitExpression(x)) {
 			const kind = known.awaited?.(x) ?? null;
@@ -460,26 +492,25 @@ export function planCatch(
 				return;
 			}
 			if (kind === null) {
-				reason = '`await`';
+				reason ??= '`await`';
 				return;
 			}
 			// A call of a local async function: the walk checks its body. `Promise.all` is not safe.
 			const call = strip(x.expression);
 			if (!ts.isCallExpression(call) || !ts.isIdentifier(strip(call.expression))) {
-				reason = '`await` of Promise.all';
+				reason ??= '`await` of Promise.all';
 				return;
 			}
 		} else if (ts.isSpreadElement(x) && !ts.isArrayLiteralExpression(x.parent)) {
-			reason = 'spread arguments';
+			reason ??= 'spread arguments';
 			return;
 		} else if (ts.isSpreadAssignment(x)) {
 			// Object spread of null or undefined gives nothing; it never throws.
 		}
 		ts.forEachChild(x, check);
 	};
-	check(t.tryBlock);
-	if (reason !== null) return reason;
-	return plan;
+	check(block);
+	return reason;
 }
 
 function isWritten(n: ts.Node): boolean {

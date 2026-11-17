@@ -53,6 +53,27 @@ export function codeOf(
 	return null;
 }
 
+/**
+ * The error of v1's Code node for code of "each item" mode that names a method of \`$input\`
+ * for all items (\`validateNoDisallowedMethodsInRunForEach\` of the Code node): the node
+ * fails before the code runs. Null when the code has none.
+ */
+export function eachItemModeError(user: string): string | null {
+	const method = /\$input\.(first|last|all|itemMatching)/.exec(user)?.[1];
+	if (method === undefined) return null;
+	const line =
+		user.split('\n').findIndex((text) => {
+			const start = text.trimStart();
+			return (
+				start.includes(method) &&
+				!start.startsWith('//') &&
+				!start.startsWith('/*') &&
+				!start.startsWith('*')
+			);
+		}) + 1;
+	return line === 0 ? null : `Can't use .${method}() here [line ${line}, for item 0]`;
+}
+
 export type NativeAttempt =
 	| {
 			ok: true;
@@ -96,6 +117,18 @@ export function attemptNative(
 ): NativeAttempt & { nodes?: string[]; zones?: string[]; allNodes?: string[] } {
 	const src = codeOf(type, parameters);
 	if (!src) return { ok: false, blockers: [{ feature: 'language', message: 'Not JavaScript.' }] };
+	// v1 fails such a node before its code runs; the host step gives that error.
+	if (src.kind === 'code' && src.mode === 'each' && eachItemModeError(src.code) !== null) {
+		return {
+			ok: false,
+			blockers: [
+				{
+					feature: '$input.all() in each item mode',
+					message: 'The code names a method of `$input` that v1 refuses in "each item" mode.',
+				},
+			],
+		};
+	}
 	const r: TranslateResult = translateCode({ ...src, hasNode, ...context });
 	if (!r.ok) {
 		if (!collectAll || !r.partial) return r;
@@ -112,25 +145,39 @@ export function attemptNative(
 		}
 		return { ok: false, blockers };
 	}
+	const t = r.translation;
+	// The traced form of the same code gives the line of an error (\`translate.ts\`).
+	const second = translateCode({ ...src, hasNode, ...context, traced: true });
+	if (!second.ok) {
+		return {
+			ok: false,
+			blockers: [
+				{
+					feature: 'line of an error',
+					message: `The traced form of the code has no native form: ${second.blockers.map((b) => b.feature).join(', ')}.`,
+				},
+			],
+		};
+	}
+	const traced = second.translation;
 	// The converter skips this: it compiles the whole workflow and moves a node
 	// whose native form does not compile to the host (`../index.ts`).
 	if (context.check !== false) {
-		const checked = checkTranslation(r.translation, src.mode);
+		const checked = checkTranslation(t, src.mode, false, traced);
 		if (!checked.ok) return checked;
 	}
-	const t = r.translation;
 	return {
 		ok: true,
 		nodes: t.nodes,
 		zones: [...t.zones],
 		allNodes: t.allNodes,
 		expression: (input, lists, allLists = [], plainInput = false) =>
-			emitExpression(t, src.mode, input, lists, allLists, plainInput),
-		helpers: (plainInput = false) => emitHelpers(t, src.mode, plainInput),
+			emitExpression(t, src.mode, input, lists, allLists, plainInput, traced),
+		helpers: (plainInput = false) => emitHelpers(t, src.mode, plainInput, traced),
 		...(t.usesHttp
 			? {
 					async: (form, input, lists, allLists = [], plainInput = false) =>
-						emitAsync(t, src.mode, form, input, lists, allLists, plainInput),
+						emitAsync(t, src.mode, form, input, lists, allLists, plainInput, traced),
 				}
 			: {}),
 	};
@@ -260,7 +307,10 @@ export function lowerCodeNative(c: NodeContext): boolean {
 	w.block(`${out} = ${expr};`);
 	w.close('} catch (error) {');
 	w.depth++;
-	if (errors) w.line(`${errors}.push({ error: error.message });`);
+	// A result that is not valid fails the node under each error setting, as in v1.
+	w.line('if (error.$invalid) throw error;');
+	// As v1: the error output gets the first input item with the message.
+	if (errors) w.line(`${errors}.push({ ...${input}[0], error: error.message });`);
 	else w.line(`${out} = [{ error: error.message }];`);
 	w.close();
 	w.close();
