@@ -312,6 +312,33 @@ the file store (`filesystem-v2`, `filesystem`) when `id` names a stored file. `c
 - A handle as the whole `body` stops at run time. See "Raw bodies" below.
 - `items[i].binary` reads `$binary`.
 
+**Built: file bytes through the `binaryData` service (2026-11-17).** n8n answers the calls `read` and
+`store` (`src/services/binary-data.ts`). The limit is 262,144 bytes for each file. Each form is exact, or the
+fallback host runs the node.
+
+| v1 | Compiled form | Route and limit |
+|---|---|---|
+| `new FormData()` of `form-data`, `append(name, value, options)`, as `formData` of a `request` helper | `multipart`, parts in the order of the calls. A text field with a content type is a part with that type | The runtime sends a stored file by its id: the bytes do not reach the bytecode. No size limit |
+| `bytes.toString('base64')`, for the bytes of an input item (`getBinaryDataBuffer`, `binaryToBuffer` of `getBinaryStream`) | `await __bytesBase64(handle)` | Service `read`, 262,144 bytes |
+| `prepareBinaryData(Buffer.from(text, 'base64'), fileName?, mimeType?)` | `await __storeBase64(text, fileName, mimeType)`: the entry of n8n-core, in the binary data mode of the instance | Service `store`, 262,144 bytes |
+| `prepareBinaryData(bytes, fileName?, mimeType?)`, for the bytes of an input item | `await __storeBinary(handle, fileName, mimeType)` | Service `read` then `store`, 262,144 bytes |
+| Code node: `await this.helpers.getBinaryDataBuffer(index, name)` | The stored files of the input items are read before the code runs. The code stays synchronous | Service `read`, 262,144 bytes for each file (inline too), 32 stored files |
+| Code node: `await this.helpers.prepareBinaryData(buffer, fileName?, mimeType?)` | The code runs two times. The node stores the files of the first run. In the second run each call gives its stored entry | Service `store`, 262,144 bytes, 32 files |
+
+- Hand-over to the host. A module that reads item bytes checks all input files before its first request
+  (`__filesInLimit`): a file above the limit, a stored file without a size, or a file outside the file system
+  store ends the module with the mark of `RUNS_IN_HOST`. A reason that the service names does the same, as
+  long as the module sent only GET requests. The converter emits the fallback-host form with the module
+  (`marksFileLimit`), so these modules compile only where that form has a place.
+- Code nodes. The error for an item, binary data or property that is not there is the error of the real task
+  runner: the node fails with the message `{}` and no line. The node goes to the host when the first run
+  fails, when the second run makes other files than the first, and above a limit. Code with a random number or
+  static data, an error setting that continues, "retry on fail", or the binary mode `combined` stays in the host.
+- Not built. The other methods of a form (`getHeaders`, `getBoundary`, `getLengthSync`, `getBuffer`) are
+  compile errors. Google Drive `file.upload` needs them for a `multipart/related` body, which the runtime does
+  not have, and it needs a ranged send of a stored file (`Content-Range`) for its resumable upload. Slices of
+  bytes (Microsoft Outlook `messageAttachment.add`) and a handle as the whole body stay as before.
+
 **Verification.** The v1 recorder gives an item its `$binary` as `binary`. For `formData` it calls the function
 of n8n that makes the form-data, and it records each part from the bytes: name, file name, content type and
 data. The check compares these with the `multipart` of the compiled node. An operation that reads a file gets
@@ -333,8 +360,8 @@ runtime stores the body of a 2xx response, and the body of the result is `{ $bin
 - These stop at run time: no MIME type and no known file extension (v1 reads the type from the bytes), a
   file name or a MIME type that is not text, a size of 1 TB or more (`pretty-bytes` rounds a logarithm
   there), and a MIME type with a character outside printable ASCII.
-- `prepareBinaryData` of the bytes of an input item is a compile error. So is a `Buffer.from(x)` that does
-  not go into `prepareBinaryData`.
+- `prepareBinaryData` of the bytes of an input item goes through the `binaryData` service (above). A
+  `Buffer.from(x)` that does not go into `prepareBinaryData` is a compile error.
 - A request asks for bytes only in a module that makes binary data from a response (`prepareBinaryData`,
   or a Buffer for it). In another module `encoding: null` changes nothing, as before this work: the body is
   the JSON or the text that the runtime gives, and the verifier answers v1 in the same way.
