@@ -181,6 +181,8 @@ export default defineNode<CalendarParameters>({
 			const url = `https://www.googleapis.com/calendar/v3/calendars/${calendarId}/events`;
 			const get = async (target: string, query: Record<string, unknown>) => {
 				const response = await ctx.http<{ items?: CalendarEvent[]; nextPageToken?: string }>({
+					acceptAs: 'legacy',
+					json: true,
 					method: 'GET',
 					url: target,
 					headers,

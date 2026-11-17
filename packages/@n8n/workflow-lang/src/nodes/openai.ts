@@ -266,6 +266,8 @@ export default defineNode<OpenAiParameters>({
 					let response: HttpResponse<Record<string, unknown> | null>;
 					try {
 						response = await ctx.http<Record<string, unknown> | null>({
+							acceptAs: 'legacy',
+							json: true,
 							method: 'POST',
 							url: '{{$credentials.url}}/chat/completions',
 							headers: {},
@@ -394,6 +396,8 @@ export default defineNode<OpenAiParameters>({
 				let response: HttpResponse<Record<string, unknown>>;
 				try {
 					response = await ctx.http<Record<string, unknown>>({
+						acceptAs: 'legacy',
+						json: true,
 						method: 'POST',
 						url: '{{$credentials.url}}/responses',
 						headers: {},

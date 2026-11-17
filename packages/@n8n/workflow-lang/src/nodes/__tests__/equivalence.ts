@@ -105,10 +105,10 @@ export interface Recording {
 	 */
 	preAuthentication?: { requests: number; data: Record<string, unknown> };
 	/**
-	 * For each request, the `accept` header that the HTTP client of n8n adds when the
-	 * request has none (`RawRequest.acceptDefault`).
+	 * For each request, the headers that the HTTP client of n8n put on the wire for it
+	 * (`RawRequest.wire`); null when the request was not sent to the local server.
 	 */
-	accepts?: Array<string | null>;
+	wire?: Array<WireHeaders | null>;
 	/** The service calls of the v1 node, as `ctx.service` effects carry them. */
 	services?: ServiceCallRecord[];
 	/** The JSON of the output items of the v1 node. */
@@ -149,12 +149,21 @@ export interface RawRequest {
 	body?: unknown;
 	auth?: unknown;
 	qsFormat?: string;
-	/**
-	 * The `accept` header that the HTTP client of n8n adds when the request has none
-	 * (`helpers.request`: `application/json` for `json: true`, else any type;
-	 * `helpers.httpRequest`: `application/json` for a true `json`, else the default of axios).
-	 */
-	acceptDefault?: string;
+	/** The headers of this request on the wire (`WireHeaders`). */
+	wire?: WireHeaders | null;
+}
+
+/**
+ * The headers that the HTTP client of n8n sends for a request and that a node does not
+ * always give: the recorder sends each request of the v1 node to a local server with the
+ * real client and reads them there. The values hold the defaults of the request helper
+ * (`helpers.request` or `helpers.httpRequest`), of the `json` option and of the body kind.
+ * A multipart content type has no boundary here.
+ */
+export interface WireHeaders {
+	accept?: string;
+	contentType?: string;
+	userAgent?: string;
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {

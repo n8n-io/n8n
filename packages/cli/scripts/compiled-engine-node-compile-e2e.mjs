@@ -545,11 +545,18 @@ async function runOn(engine, spec) {
 			stub.requests = [];
 			stub.failWith = call.failWith ?? 0;
 			stub.unauthorizedOnce = call.unauthorizedOnce ?? false;
-			const response = await fetch(`${BASE}/webhook/${path}`, {
-				method: 'POST',
-				headers: { 'content-type': 'application/json', ...(call.headers ?? {}) },
-				body: JSON.stringify(call.body),
-			});
+			// On a loaded machine the webhook is not registered at once: a 404 is tried again.
+			let response;
+			for (let attempt = 0; attempt < 60; attempt++) {
+				response = await fetch(`${BASE}/webhook/${path}`, {
+					method: 'POST',
+					headers: { 'content-type': 'application/json', ...(call.headers ?? {}) },
+					body: JSON.stringify(call.body),
+				});
+				if (response.status !== 404) break;
+				await response.text();
+				await sleep(500);
+			}
 			// The path has the name of the engine: the two responses must not differ by it.
 			const text = (await response.text()).replaceAll(path, 'e2e-path');
 			let json;
@@ -569,12 +576,23 @@ async function runOn(engine, spec) {
 		}
 		stub.failWith = 0;
 		stub.unauthorizedOnce = false;
-		await sleep(500);
-		const list = await rest(
-			'GET',
-			`/executions?filter=${encodeURIComponent(JSON.stringify({ workflowId: workflow.id }))}&limit=20`,
-		);
-		out.executions = (list.results ?? list).map((e) => `${e.mode}/${e.status}`).sort();
+		// The executions are saved after the responses: wait until each one has its end state.
+		let saved = [];
+		for (let attempt = 0; attempt < 40; attempt++) {
+			await sleep(500);
+			const list = await rest(
+				'GET',
+				`/executions?filter=${encodeURIComponent(JSON.stringify({ workflowId: workflow.id }))}&limit=20`,
+			);
+			saved = list.results ?? list;
+			const ended = saved.every((e) => !['running', 'new'].includes(e.status));
+			if (
+				ended &&
+				saved.length >= out.calls.filter((c) => c.status < 400 || c.status >= 500).length
+			)
+				break;
+		}
+		out.executions = saved.map((e) => `${e.mode}/${e.status}`).sort();
 		if (engine === 'compiled') {
 			// Where each node runs after the calls: a limit of `wfrt` moves a node to the host.
 			const state = await rest('GET', `/compiled-engine/workflows/${workflow.id}/compile`);

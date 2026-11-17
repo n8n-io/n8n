@@ -112,6 +112,8 @@ export default defineNode<OutlookParameters>({
 			const saved = additional.saveToSentItems;
 			const saveToSentItems = saved === undefined ? true : saved;
 			const response = await ctx.http<unknown>({
+				acceptAs: 'legacy',
+				json: true,
 				method: 'POST',
 				url: '{{$credentials.n8nDerived.outlookApiUrl}}/sendMail',
 				headers: { 'Content-Type': 'application/json' },

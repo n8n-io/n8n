@@ -40,6 +40,63 @@ return await api({});`,
 		expect(flat(out.code)).toContain('throw __apiError(failure, undefined);');
 	});
 
+	it('names the request helper of n8n and keeps a constant json option in the form', () => {
+		const out = lowerCost(
+			`${REQUEST}
+async function api(body) {
+	const options = { method: 'POST', uri: 'https://x.test', body, json: true };
+	return await __request(options, true, true);
+}
+return await api({});`,
+			false,
+		);
+		expect(flat(out.code)).toContain("acceptAs: 'legacy', json: true,");
+		expect(flat(out.code)).toContain('const options = { body };');
+	});
+
+	it('keeps the json option when the node sets it later', () => {
+		const out = lowerCost(
+			`${REQUEST}
+async function api(wanted) {
+	const options = { url: 'https://x.test' };
+	options.json = wanted;
+	return await __request(options, false, false);
+}
+return await api(true);`,
+			false,
+		);
+		expect(flat(out.code)).toContain("acceptAs: 'request', json: true,");
+	});
+
+	it('gives no json option when the node has none', () => {
+		const out = lowerCost(
+			`${REQUEST}
+async function api() {
+	const options = { uri: 'https://x.test' };
+	return await __request(options, false, true);
+}
+return await api();`,
+			false,
+		);
+		expect(flat(out.code)).toContain("acceptAs: 'legacy', inject: false,");
+	});
+
+	it('sends a form only without a body, and joins the form with a body', () => {
+		const out = lowerCost(
+			`${REQUEST}
+async function api(body, form) {
+	const options = { method: 'POST', uri: 'https://x.test', body, form };
+	return await __request(options, false, true);
+}
+return await api({}, {});`,
+			false,
+		);
+		expect(flat(out.code)).toContain(
+			'const form = options.body === undefined ? options.form : undefined;',
+		);
+		expect(flat(out.code)).toContain('__assign(options.body, options.form) : options.body');
+	});
+
 	it('keeps the copy of the headers and the form when the node can set a form', () => {
 		const out = lowerCost(
 			`${REQUEST}

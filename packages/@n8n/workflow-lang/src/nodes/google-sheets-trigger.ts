@@ -131,6 +131,8 @@ export default defineNode<SheetsTriggerParameters>({
 		const headers = { 'Content-Type': 'application/json' };
 		const get = async <T>(url: string, qs: Record<string, unknown>): Promise<T> => {
 			const response = await ctx.http<T>({
+				acceptAs: 'legacy',
+				json: true,
 				method: 'GET',
 				url,
 				headers,

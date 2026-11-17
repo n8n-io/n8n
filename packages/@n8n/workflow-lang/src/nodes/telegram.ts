@@ -83,6 +83,8 @@ export default defineNode<TelegramParameters>({
 			if (key !== 'appendAttribution') body[key] = value;
 		}
 		const response = await ctx.http<Item>({
+			acceptAs: 'legacy',
+			json: true,
 			method: 'POST',
 			url: '{{$credentials.baseUrl}}/bot{{$credentials.accessToken}}/sendMessage',
 			headers: {},

@@ -223,6 +223,8 @@ export default defineNode<GmailParameters>({
 		const api = 'https://www.googleapis.com/gmail/v1/users/me';
 		const get = async <T>(url: string, qs: Record<string, unknown>): Promise<T> => {
 			const response = await ctx.http<T>({
+				acceptAs: 'legacy',
+				json: true,
 				method: 'GET',
 				url,
 				headers,
@@ -247,6 +249,8 @@ export default defineNode<GmailParameters>({
 				const url = `${api}/messages/${String(parameters.messageId ?? '')}`;
 				if (operation === 'delete') {
 					const response = await ctx.http<unknown>({
+						acceptAs: 'legacy',
+						json: true,
 						method: 'DELETE',
 						url,
 						headers,
@@ -264,6 +268,8 @@ export default defineNode<GmailParameters>({
 				if (operation === 'addLabels') body = { addLabelIds: parameters.labelIds };
 				if (operation === 'removeLabels') body = { removeLabelIds: parameters.labelIds };
 				const response = await ctx.http<Item>({
+					acceptAs: 'legacy',
+					json: true,
 					method: 'POST',
 					url: `${url}/modify`,
 					headers,
@@ -332,6 +338,8 @@ export default defineNode<GmailParameters>({
 			const lines: string[] = [];
 			if (options.senderName) {
 				const profile = await ctx.http<{ emailAddress?: string }>({
+					acceptAs: 'legacy',
+					json: true,
 					method: 'GET',
 					url: 'https://www.googleapis.com/gmail/v1/users/me/profile',
 					headers,
@@ -364,6 +372,8 @@ export default defineNode<GmailParameters>({
 			let raw = base64Utf8(mime).replaceAll('+', '-').replaceAll('/', '_');
 			while (raw.endsWith('=')) raw = raw.slice(0, -1);
 			const response = await ctx.http<Item>({
+				acceptAs: 'legacy',
+				json: true,
 				method: 'POST',
 				url: 'https://www.googleapis.com/gmail/v1/users/me/messages/send',
 				headers,

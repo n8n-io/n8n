@@ -234,7 +234,16 @@ export default defineNode<DriveParameters>({
 				qs: Record<string, unknown>,
 				body: unknown,
 			) => {
-				const response = await ctx.http<Item>({ method, url, headers, qs, body, credential });
+				const response = await ctx.http<Item>({
+					acceptAs: 'request',
+					json: true,
+					method,
+					url,
+					headers,
+					qs,
+					body,
+					credential,
+				});
 				if (response.status >= 400) throw new Error(`Google Drive: HTTP status ${response.status}`);
 				return response.body;
 			};
@@ -307,6 +316,8 @@ export default defineNode<DriveParameters>({
 						formPart(boundary, 'data', mimeType, text) +
 						`--${boundary}--\r\n`;
 					const sent = await ctx.http<Item>({
+						acceptAs: 'request',
+						json: true,
 						method: 'POST',
 						url: 'https://www.googleapis.com/upload/drive/v3/files',
 						headers: {
@@ -463,6 +474,8 @@ export default defineNode<DriveParameters>({
 				qs.pageSize = 100;
 				for (let page = 0; page < 10000; page++) {
 					const response = await ctx.http<{ files?: Item[]; nextPageToken?: string }>({
+						acceptAs: 'request',
+						json: true,
 						method: 'GET',
 						url,
 						headers,
@@ -480,6 +493,8 @@ export default defineNode<DriveParameters>({
 			} else {
 				qs.pageSize = parameters.limit ?? 50;
 				const response = await ctx.http<{ files?: Item[] }>({
+					acceptAs: 'request',
+					json: true,
 					method: 'GET',
 					url,
 					headers,

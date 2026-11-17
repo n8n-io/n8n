@@ -19,6 +19,7 @@ import type {
 	Recording,
 } from '../../nodes/__tests__/equivalence.ts';
 import { applyCredential, normalizeRequest } from '../../nodes/__tests__/equivalence.ts';
+import type { WireHeaders } from '../../nodes/__tests__/equivalence.ts';
 import { recordV1, recordV1Cached } from '../../nodes/__tests__/v1-recorder.ts';
 import { resolveCredentialData } from '../../../scripts/gym/v1-credentials.ts';
 import { compile } from '../../compiler/index.ts';
@@ -782,15 +783,109 @@ export function costOfCase(
 }
 
 const RUNTIME_ACCEPT = 'application/json,text/*;q=0.9,*/*;q=0.8';
+const FORM_TYPE = 'application/x-www-form-urlencoded';
+const JSON_TYPE = 'application/json';
+const BODY_METHODS = ['POST', 'PUT', 'PATCH'];
 
-function sentAccept(acceptAs: unknown, json: unknown): string {
-	if (acceptAs === 'legacy') return json === true ? 'application/json' : '*/*';
-	if (acceptAs === 'request') {
+function sentAccept(helper: string | undefined, json: unknown): string {
+	if (helper === 'legacy') return json === true ? JSON_TYPE : '*/*';
+	if (helper === 'request') {
 		const falsy =
 			json === undefined || json === null || json === false || json === 0 || json === '';
-		return falsy ? 'application/json, text/plain, */*' : 'application/json';
+		return falsy ? 'application/json, text/plain, */*' : JSON_TYPE;
 	}
 	return RUNTIME_ACCEPT;
+}
+
+function sentWire(
+	args: Record<string, unknown>,
+	headers: unknown,
+	injectsBody: boolean,
+): WireHeaders {
+	const given = (name: string): string | undefined => {
+		for (const [key, value] of Object.entries(isRecord(headers) ? headers : {})) {
+			if (key.toLowerCase() === name && value !== undefined && value !== null)
+				return String(value).trim();
+		}
+		return undefined;
+	};
+	const helper =
+		args.acceptAs === 'legacy' || args.acceptAs === 'request' ? args.acceptAs : undefined;
+	const method = typeof args.method === 'string' ? args.method.toUpperCase() : 'GET';
+	const sends = BODY_METHODS.includes(method);
+	const emptyObject = isRecord(args.body) && Object.keys(args.body).length === 0;
+	const empty =
+		emptyObject || args.body === '' || (Array.isArray(args.body) && args.body.length === 0);
+	const reads = method === 'GET' || method === 'HEAD' || method === 'OPTIONS';
+	const dropped =
+		(helper === 'request' && (method === 'GET' || emptyObject || (reads && empty))) ||
+		(helper === 'legacy' && args.inject !== false && reads && empty);
+	const added =
+		injectsBody &&
+		args.inject !== false &&
+		method !== 'HEAD' &&
+		(method !== 'GET' || helper === 'legacy');
+	const given0 = dropped ? undefined : args.body;
+	const body = (given0 === undefined || given0 === null) && added ? {} : given0;
+	const special = isRecord(body) ? Object.keys(body)[0] : undefined;
+	const binary = isRecord(body) && isRecord(body.$binary) ? body.$binary.mimeType : undefined;
+	const text =
+		typeof body !== 'string'
+			? undefined
+			: helper === 'legacy' && args.json !== false && body !== ''
+				? JSON_TYPE
+				: helper !== undefined && sends
+					? FORM_TYPE
+					: undefined;
+	const type =
+		args.multipart !== undefined && args.multipart !== null
+			? 'multipart/form-data'
+			: given('content-type') !== undefined
+				? given('content-type')?.replace(/;\s*boundary=.*$/, '')
+				: special === '$form'
+					? FORM_TYPE
+					: special === '$binary'
+						? typeof binary === 'string'
+							? binary
+							: undefined
+						: body === undefined || body === null || typeof body === 'string'
+							? text
+							: JSON_TYPE;
+	return {
+		accept: given('accept') ?? sentAccept(helper, args.json),
+		contentType: type,
+		userAgent: given('user-agent') ?? 'n8n',
+	};
+}
+
+function withWire<T extends { headers: Record<string, string> }>(
+	request: T,
+	wire: WireHeaders | null | undefined,
+): T {
+	if (wire === undefined || wire === null) return request;
+	const headers: Record<string, string> = { ...request.headers };
+	if (wire.accept !== undefined) headers[':accept'] = wire.accept;
+	if (wire.contentType !== undefined) headers[':content-type'] = wire.contentType;
+	if (wire.userAgent !== undefined) headers[':user-agent'] = wire.userAgent;
+	return { ...request, headers };
+}
+
+const WIRE_NAMES = [':accept', ':content-type', ':user-agent'];
+
+function wireOf(request: unknown): Record<string, unknown> | undefined {
+	if (!isRecord(request) || !isRecord(request.headers)) return undefined;
+	const wire: Record<string, unknown> = {};
+	for (const name of WIRE_NAMES) {
+		if (request.headers[name] !== undefined) wire[name] = request.headers[name];
+	}
+	return Object.keys(wire).length === 0 ? undefined : wire;
+}
+
+function withoutWire(request: unknown): unknown {
+	if (!isRecord(request) || !isRecord(request.headers)) return request;
+	const headers = { ...request.headers };
+	for (const name of WIRE_NAMES) delete headers[name];
+	return { ...request, headers };
 }
 
 export async function differenceFromV1(
@@ -921,24 +1016,23 @@ export async function differenceFromV1(
 		run.effects.filter((effect) => effect.kind !== 'wait' && !renewsSession(effect)).map(requestOf);
 	const requestOf = (effect: (typeof out.effects)[number]) => {
 		const args = isRecord(effect.args) ? effect.args : {};
-		const { qsFormat: _, ...request } = normalizeRequest(
-			applyCredential(
-				{
-					method: String(args.method),
-					url: String(args.url),
-					headers: args.headers,
-					qs: args.qs,
-					body:
-						args.multipart === undefined ? args.body : { $multipart: sentParts(args.multipart) },
-					basicAuth: args.basicAuth,
-					inject: args.inject,
-				},
-				inject,
-				data,
-			),
+		const raw = applyCredential(
+			{
+				method: String(args.method),
+				url: String(args.url),
+				headers: args.headers,
+				qs: args.qs,
+				body: args.multipart === undefined ? args.body : { $multipart: sentParts(args.multipart) },
+				basicAuth: args.basicAuth,
+				inject: args.inject,
+			},
+			inject,
+			data,
 		);
-		if (request.headers.accept === undefined)
-			request.headers.accept = sentAccept(args.acceptAs, args.json);
+		const { qsFormat: _, ...plain } = normalizeRequest(raw);
+		const injectsBody =
+			isRecord(inject) && isRecord(inject.body) && Object.keys(inject.body).length > 0;
+		const request = withWire(plain, sentWire(args, raw.headers, injectsBody));
 		const type = request.headers['content-type'] ?? '';
 		const fields = isRecord(request.body) ? request.body.$form : undefined;
 		if (type.startsWith('application/x-www-form-urlencoded') && isRecord(fields)) {
@@ -960,12 +1054,7 @@ export async function differenceFromV1(
 		return request;
 	};
 	const others = compiled.randoms.length > 0 ? await Promise.all(OTHER_SEEDS.map(runWith)) : [];
-	const recorded = v1.requests.map((request, k) => {
-		const added = v1.accepts?.[k];
-		return request.headers.accept !== undefined || added === undefined || added === null
-			? request
-			: { ...request, headers: { ...request.headers, accept: added } };
-	});
+	const recorded = v1.requests.map((request, k) => withWire(request, v1.wire?.[k]));
 	const sent = minted ? recorded.filter((_request, k) => !minted.exchanges.has(k)) : recorded;
 	const sentPlain = sent.map(({ qsFormat: _, ...r }) => {
 		const emptyForm =
@@ -987,16 +1076,27 @@ export async function differenceFromV1(
 		others.map(requestsOf),
 		compiled.randoms,
 	);
-	const requests = Array.isArray(requestPair.mine) ? requestPair.mine : [];
 	const expected = Array.isArray(requestPair.theirs) ? requestPair.theirs : [];
+	const requests = (Array.isArray(requestPair.mine) ? requestPair.mine : []).map(
+		(request: unknown, k: number) =>
+			wireOf(expected[k]) === undefined ? withoutWire(request) : request,
+	);
 	if (JSON.stringify(requests) !== JSON.stringify(expected)) {
 		if (requests.length !== expected.length) {
 			const cause = v1.error === undefined ? '' : `; v1 fails: ${v1.error.slice(0, 90)}`;
 			return `the requests differ: count ${requests.length} / ${expected.length}${cause}`;
 		}
 		for (let k = 0; k < requests.length; k++) {
-			const mine: Record<string, unknown> = { ...requests[k] };
+			const sentRequest = requests[k];
+			const mine: Record<string, unknown> = isRecord(sentRequest) ? { ...sentRequest } : {};
 			const theirs: Record<string, unknown> = { ...expected[k] };
+			const sentOnWire = JSON.stringify(wireOf(mine));
+			const v1OnWire = JSON.stringify(wireOf(theirs));
+			if (
+				sentOnWire !== v1OnWire &&
+				JSON.stringify(withoutWire(mine)) === JSON.stringify(withoutWire(theirs))
+			)
+				return `the requests differ: wire headers ${sentOnWire} / ${v1OnWire}`;
 			for (const part of ['method', 'url', 'qs', 'headers', 'body', 'basicAuth']) {
 				const a = JSON.stringify(mine[part]);
 				const b = JSON.stringify(theirs[part]);

@@ -309,10 +309,25 @@ fn buildWith(args: []const u8, store: ?*const creds.Store, idem_key: ?[]const u8
 
     // Body.
     var body_raw: ?[]const u8 = if (fa.body) |r| (if (std.mem.eql(u8, r, "null")) null else r) else null;
+    // The request helper of n8n whose defaults the node expects (`acceptAs`).
+    const helper = helperOf(fa.accept_as);
+    const sends = eq(m, "POST") or eq(m, "PUT") or eq(m, "PATCH");
+    if (body_raw) |br| {
+        const text = std.mem.trim(u8, br, " \t\r\n");
+        const empty = eq(text, "{}") or eq(text, "[]") or eq(text, "\"\"");
+        const reads = eq(m, "GET") or eq(m, "HEAD") or eq(m, "OPTIONS");
+        // `helpers.httpRequest` sends no body with GET, and no empty object.
+        if (helper == .request and (eq(m, "GET") or eq(text, "{}") or (reads and empty))) body_raw = null;
+        // The helpers of n8n that authenticate a request remove an empty body from a GET,
+        // HEAD or OPTIONS request. `helpers.request` alone (`inject: false`) keeps it.
+        if (helper == .legacy and inj.any and reads and empty) body_raw = null;
+    }
     const inject_body: ?std.json.ObjectMap = if (adding) |s| s.body else null;
     // A credential that authenticates in the body needs one, except on
-    // GET and HEAD.
-    if (body_raw == null and inject_body != null and !eq(m, "GET") and !eq(m, "HEAD") and multipart == null) body_raw = "{}";
+    // HEAD, and on GET without the request helper of n8n.
+    // `helpers.request` of n8n sends the body also with GET.
+    const bodiless = eq(m, "HEAD") or (eq(m, "GET") and helper != .legacy);
+    if (body_raw == null and inject_body != null and !bodiless and multipart == null) body_raw = "{}";
     // A `$binary` or `$form` body: every other body pays one test of its first bytes.
     var special_ref: []const u8 = "";
     const special: Special = if (body_raw) |br| specialBody(br, &special_ref) else .none;
@@ -342,7 +357,13 @@ fn buildWith(args: []const u8, store: ?*const creds.Store, idem_key: ?[]const u8
         b.hdr_end = try deferredBody(&out, diag, BinaryBody{ .ref = ref, .files = files }, files, &b.cl_at);
     } else if (body_raw) |br| {
         const is_string = br.len > 0 and br[0] == '"';
-        if (!is_string and !have.ct) try out.put("content-type: application/json\r\n");
+        if (!have.ct) {
+            if (!is_string) {
+                try out.put("content-type: application/json\r\n");
+            } else if (textBodyType(helper, fa.json, br, sends)) |line| {
+                try out.put(line);
+            }
+        }
         const merge = inject_body != null and !is_string and br.len >= 2 and br[0] == '{';
         var counter = Out.counter();
         try writeFullBody(br, is_string, merge, slot, &counter, diag);
@@ -352,7 +373,8 @@ fn buildWith(args: []const u8, store: ?*const creds.Store, idem_key: ?[]const u8
         try writeFullBody(br, is_string, merge, slot, &out, diag);
         std.debug.assert(out.len - b.hdr_end == counter.len);
     } else {
-        if (eq(m, "POST") or eq(m, "PUT") or eq(m, "PATCH")) try out.put("content-length: 0\r\n");
+        // No content type without a body, as the HTTP client of n8n sends it.
+        if (sends) try out.put("content-length: 0\r\n");
         try out.put("\r\n");
         b.hdr_end = @intCast(out.len);
     }
@@ -745,6 +767,29 @@ fn eq(a: []const u8, b: []const u8) bool {
 fn invalid(diag: *Diag, comptime fmt: []const u8, args: anytype) Error {
     diag.set(fmt, args);
     return error.Invalid;
+}
+
+/// The request helper of n8n behind a request (`acceptAs` of the args).
+const Helper = enum { none, legacy, request };
+
+fn helperOf(accept_as: ?[]const u8) Helper {
+    const as = accept_as orelse return .none;
+    std.debug.assert(as.len <= std.math.maxInt(u32));
+    if (eq(as, "\"legacy\"")) return .legacy;
+    if (eq(as, "\"request\"")) return .request;
+    return .none;
+}
+
+/// The content-type line of a text body without one, as the HTTP client of
+/// n8n writes it: `helpers.request` sends text as JSON unless `json` is
+/// false or the text is empty; else a POST, PUT or PATCH has the form type,
+/// and another method has no type. Without a helper the body has no type.
+fn textBodyType(helper: Helper, json: ?[]const u8, body: []const u8, sends: bool) ?[]const u8 {
+    std.debug.assert(body.len > 0 and body[0] == '"');
+    if (helper == .none) return null;
+    const j = std.mem.trim(u8, json orelse "null", " \t\r\n");
+    if (helper == .legacy and !eq(j, "false") and !eq(body, "\"\"")) return "content-type: application/json\r\n";
+    return if (sends) "content-type: application/x-www-form-urlencoded\r\n" else null;
 }
 
 /// The accept line of a request that sets none. `acceptAs` names the request
@@ -1655,5 +1700,51 @@ test "the accept header of a request that sets none: the defaults of the request
     }
     // A request with its own accept header keeps it.
     const own = try build("{\"url\":\"http://h/\",\"acceptAs\":\"legacy\",\"json\":true,\"headers\":{\"Accept\":\"text/csv\"}}", null, null, &buf, &diag);
+    try std.testing.expect(std.mem.indexOf(u8, buf[own.url_len..own.hdr_end], "application/json") == null);
+}
+
+test "the content type of a request without one: the defaults of the request helpers of n8n" {
+    var buf: [512]u8 = undefined;
+    var diag: Diag = .{};
+    const json = "content-type: application/json\r\n";
+    const form = "content-type: application/x-www-form-urlencoded\r\n";
+    const Case = struct { args: []const u8, line: ?[]const u8, body: []const u8 = "" };
+    const cases = [_]Case{
+        // helpers.request
+        .{ .args = "{\"method\":\"POST\",\"url\":\"http://h/\",\"acceptAs\":\"legacy\",\"json\":true}", .line = null },
+        .{ .args = "{\"method\":\"GET\",\"url\":\"http://h/\",\"acceptAs\":\"legacy\",\"json\":true}", .line = null },
+        .{ .args = "{\"method\":\"POST\",\"url\":\"http://h/\",\"acceptAs\":\"legacy\",\"body\":{\"a\":1}}", .line = json, .body = "{\"a\":1}" },
+        .{ .args = "{\"method\":\"POST\",\"url\":\"http://h/\",\"acceptAs\":\"legacy\",\"body\":{}}", .line = json, .body = "{}" },
+        .{ .args = "{\"method\":\"POST\",\"url\":\"http://h/\",\"acceptAs\":\"legacy\",\"json\":true,\"body\":\"a=1\"}", .line = json, .body = "a=1" },
+        .{ .args = "{\"method\":\"GET\",\"url\":\"http://h/\",\"acceptAs\":\"legacy\",\"body\":\"a=1\"}", .line = json, .body = "a=1" },
+        .{ .args = "{\"method\":\"POST\",\"url\":\"http://h/\",\"acceptAs\":\"legacy\",\"json\":false,\"body\":\"a=1\"}", .line = form, .body = "a=1" },
+        .{ .args = "{\"method\":\"DELETE\",\"url\":\"http://h/\",\"acceptAs\":\"legacy\",\"json\":false,\"body\":\"a=1\"}", .line = null, .body = "a=1" },
+        // helpers.httpRequest
+        .{ .args = "{\"method\":\"POST\",\"url\":\"http://h/\",\"acceptAs\":\"request\"}", .line = null },
+        .{ .args = "{\"method\":\"POST\",\"url\":\"http://h/\",\"acceptAs\":\"request\",\"body\":{\"a\":1}}", .line = json, .body = "{\"a\":1}" },
+        .{ .args = "{\"method\":\"POST\",\"url\":\"http://h/\",\"acceptAs\":\"request\",\"json\":true,\"body\":\"a=1\"}", .line = form, .body = "a=1" },
+        .{ .args = "{\"method\":\"POST\",\"url\":\"http://h/\",\"acceptAs\":\"request\",\"body\":{}}", .line = null },
+        .{ .args = "{\"method\":\"GET\",\"url\":\"http://h/\",\"acceptAs\":\"request\",\"body\":{\"a\":1}}", .line = null },
+        // An empty body of a GET: removed by the helpers that authenticate, kept by `helpers.request`.
+        .{ .args = "{\"method\":\"GET\",\"url\":\"http://h/\",\"acceptAs\":\"legacy\",\"json\":true,\"body\":{}}", .line = null },
+        .{ .args = "{\"method\":\"GET\",\"url\":\"http://h/\",\"acceptAs\":\"legacy\",\"json\":true,\"inject\":false,\"body\":{}}", .line = json, .body = "{}" },
+        .{ .args = "{\"method\":\"DELETE\",\"url\":\"http://h/\",\"acceptAs\":\"legacy\",\"json\":true,\"body\":{}}", .line = json, .body = "{}" },
+        // No helper: the defaults of the runtime.
+        .{ .args = "{\"method\":\"POST\",\"url\":\"http://h/\"}", .line = null },
+        .{ .args = "{\"method\":\"POST\",\"url\":\"http://h/\",\"body\":\"a=1\"}", .line = null, .body = "a=1" },
+        .{ .args = "{\"method\":\"POST\",\"url\":\"http://h/\",\"body\":{}}", .line = json, .body = "{}" },
+    };
+    for (cases) |c| {
+        const b = try build(c.args, null, null, &buf, &diag);
+        const headers = buf[b.url_len..b.hdr_end];
+        if (c.line) |line| {
+            try std.testing.expect(std.mem.indexOf(u8, headers, line) != null);
+        } else {
+            try std.testing.expect(std.mem.indexOf(u8, headers, "content-type:") == null);
+        }
+        try std.testing.expectEqualStrings(c.body, buf[b.hdr_end..b.body_end]);
+    }
+    // A request with its own content type keeps it.
+    const own = try build("{\"method\":\"POST\",\"url\":\"http://h/\",\"acceptAs\":\"legacy\",\"headers\":{\"Content-Type\":\"text/csv\"},\"body\":\"a\"}", null, null, &buf, &diag);
     try std.testing.expect(std.mem.indexOf(u8, buf[own.url_len..own.hdr_end], "application/json") == null);
 }
