@@ -619,13 +619,14 @@ export async function getUniqueKeyColumns(
 	);
 }
 
+/** LENGTH leaves out values of only spaces, which most collations see as equal to ''. */
 export async function hasEmptyText(
 	pool: Mysql2Pool,
 	table: string,
 	column: string,
 ): Promise<boolean> {
 	const [rows] = await pool.query<RowDataPacket[]>(
-		`SELECT 1 FROM ${escapeSqlIdentifier(table)} WHERE ${escapeSqlIdentifier(column)} = '' LIMIT 1`,
+		`SELECT 1 FROM ${escapeSqlIdentifier(table)} WHERE ${escapeSqlIdentifier(column)} = '' AND LENGTH(${escapeSqlIdentifier(column)}) = 0 LIMIT 1`,
 	);
 	return rows.length > 0;
 }

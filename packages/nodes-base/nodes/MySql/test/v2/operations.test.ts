@@ -821,56 +821,55 @@ describe('Test MySql V2, operations', () => {
 			},
 		};
 
-		const createCatalogPool = () => {
+		const createCatalogPool = (emptyTextRows: unknown[] = []) => {
 			const pool = createFakePool(fakeConnection);
-			vi.mocked(pool.query).mockResolvedValue([
-				[
-					// One row set answers both SHOW INDEX and SHOW COLUMNS
-					{
-						Non_unique: 0,
-						Key_name: 'PRIMARY',
-						Column_name: 'id',
-						Null: '',
-						Field: 'id',
-						Type: 'int',
-					},
-					{
-						Non_unique: 0,
-						Key_name: 'uq_email',
-						Column_name: 'email',
-						Null: 'YES',
-						Field: 'email',
-						Type: 'varchar(64)',
-					},
-					{
-						Non_unique: 0,
-						Key_name: 'uq_code',
-						Column_name: 'code',
-						Null: '',
-						Field: 'code',
-						Type: 'varchar(8)',
-					},
-					{
-						Non_unique: 0,
-						Key_name: 'uq_created',
-						Column_name: 'created',
-						Null: '',
-						Field: 'created',
-						Type: 'datetime',
-					},
-					{
-						Non_unique: 0,
-						Key_name: 'uq_price',
-						Column_name: 'price',
-						Null: '',
-						Field: 'price',
-						Type: 'decimal(10,2)',
-					},
-				],
-				[],
-			] as never);
+			vi.mocked(pool.query).mockImplementation((async (sql: string) =>
+				sql.startsWith('SELECT 1') ? [emptyTextRows, []] : [catalogRows, []]) as never);
 			return pool;
 		};
+		const catalogRows = [
+			// One row set answers both SHOW INDEX and SHOW COLUMNS
+			{
+				Non_unique: 0,
+				Key_name: 'PRIMARY',
+				Column_name: 'id',
+				Null: '',
+				Field: 'id',
+				Type: 'int',
+			},
+			{
+				Non_unique: 0,
+				Key_name: 'uq_email',
+				Column_name: 'email',
+				Null: 'YES',
+				Field: 'email',
+				Type: 'varchar(64)',
+			},
+			{
+				Non_unique: 0,
+				Key_name: 'uq_code',
+				Column_name: 'code',
+				Null: '',
+				Field: 'code',
+				Type: 'varchar(8)',
+			},
+			{
+				Non_unique: 0,
+				Key_name: 'uq_created',
+				Column_name: 'created',
+				Null: '',
+				Field: 'created',
+				Type: 'datetime',
+			},
+			{
+				Non_unique: 0,
+				Key_name: 'uq_price',
+				Column_name: 'price',
+				Null: '',
+				Field: 'price',
+				Type: 'decimal(10,2)',
+			},
+		];
 
 		const runSelect = async (
 			nodeParameters: IDataObject,
@@ -1015,12 +1014,6 @@ describe('Test MySql V2, operations', () => {
 				},
 				'Turn off Output Decimals as Numbers to page by "price"',
 			],
-			[
-				// The mocked pool returns rows for each query, so the empty text lookup finds a row
-				'a text cursor column has empty text and Value is empty',
-				{ startAfter: { values: { column: 'code', value: '' } } },
-				'Column "code" has empty text in one row',
-			],
 		])('should throw when %s', async (_, overrides, message) => {
 			const pool = createCatalogPool();
 			const promise = runSelect(
@@ -1029,6 +1022,33 @@ describe('Test MySql V2, operations', () => {
 			);
 
 			await expect(promise).rejects.toThrow(message);
+		});
+
+		it('should throw when a text cursor column has empty text and Value is empty', async () => {
+			const pool = createCatalogPool([{ 1: 1 }]);
+			const promise = runSelect(
+				{ ...baseParameters, startAfter: { values: { column: 'code', value: '' } } },
+				pool,
+			);
+
+			await expect(promise).rejects.toThrow('Column "code" has empty text in one row');
+			expect(pool.query).toHaveBeenCalledWith(
+				"SELECT 1 FROM `test_table` WHERE `code` = '' AND LENGTH(`code`) = 0 LIMIT 1",
+			);
+		});
+
+		it('should get the first page by a text cursor column without empty text', async () => {
+			const pool = createCatalogPool();
+			const connectionQuerySpy = vi.spyOn(fakeConnection, 'query');
+
+			await runSelect(
+				{ ...baseParameters, startAfter: { values: { column: 'code', value: '' } } },
+				pool,
+			);
+
+			expect(connectionQuerySpy).toHaveBeenCalledWith(
+				'SELECT * FROM `test_table` ORDER BY `code` ASC LIMIT 2',
+			);
 		});
 
 		it('returnAll: should ignore the cursor and not query the catalog', async () => {
