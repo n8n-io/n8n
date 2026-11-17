@@ -214,10 +214,22 @@ export class CredentialImporter {
 		const movedIntoScope = new Set(
 			moves.filter(({ status }) => status === 'allowed').map(({ credentialId }) => credentialId),
 		);
+		// A move that cannot run does not stop the import: the credential stays where it is.
+		const refusedMoves = new Set(
+			moves.filter(({ status }) => status !== 'allowed').map(({ credentialId }) => credentialId),
+		);
 		const failures: CredentialResolutionFailure[] = [];
 
 		for (const failure of resolution.failures) {
 			const { sourceId } = failure;
+			if (
+				failure.kind === 'not_found' &&
+				failure.targetId === undefined &&
+				refusedMoves.has(sourceId)
+			) {
+				plan.unresolvedAllowed.push(sourceId);
+				continue;
+			}
 			const named =
 				dependencies.placeholderIds.has(sourceId) ||
 				dependencies.allowedUnresolvedIds.has(sourceId) ||

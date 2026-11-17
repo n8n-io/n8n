@@ -554,7 +554,7 @@ function blockForCredentialIdentity(
 			target,
 			...(consumer ? { consumer } : {}),
 			detail: {
-				branchType: expectedType,
+				sourceType: expectedType,
 				...(destination.canRead ? { destinationType: destination.credentialType } : {}),
 			},
 		});

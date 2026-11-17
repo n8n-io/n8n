@@ -694,7 +694,10 @@ export class WorkingCopyUpdater {
 			if (newTarget === undefined || newTarget === dependency.target) continue;
 
 			const underOtherProject = otherProjectTargets.some((pt) => isUnder(dependency.target, pt));
-			if (underOtherProject) {
+			// The owner changed on the source: the export holds the file under a project of the
+			// selection. The file follows its owner, so the old one goes.
+			const ownedBySelection = (staging.projects ?? []).some((p) => isUnder(newTarget, p.target));
+			if (underOtherProject && !ownedBySelection) {
 				outOfScopeInStaging.add(newTarget);
 			} else {
 				renamedInScope.push({ collection: dependency.collection, target: dependency.target });
