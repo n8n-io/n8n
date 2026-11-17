@@ -21,6 +21,7 @@ const sourceTypes: InboxSourceType[] = [
 	'workflow_review',
 	'self_healing_result',
 	'promotion_review',
+	'promotion_owner_request',
 ];
 
 type ListState = {
@@ -36,9 +37,7 @@ type ListState = {
 };
 
 function isSourceType(value: unknown): value is InboxSourceType {
-	return (
-		value === 'workflow_review' || value === 'self_healing_result' || value === 'promotion_review'
-	);
+	return sourceTypes.some((type) => type === value);
 }
 
 function disabledTypesFromError(error: unknown): InboxSourceType[] {
@@ -184,6 +183,7 @@ export const useInboxStore = defineStore('inbox', () => {
 		return (
 			disabled.includes('workflow_review') &&
 			disabled.includes('promotion_review') &&
+			disabled.includes('promotion_owner_request') &&
 			!disabled.includes('self_healing_result')
 		);
 	});

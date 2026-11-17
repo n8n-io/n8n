@@ -58,5 +58,7 @@ export function inboxItemLocation(item: InboxItem, route?: InboxRoute): RouteLoc
 	if (item.type === 'promotion_review') {
 		return { name: INBOX_PROMOTION_REVIEW_VIEW, params: { reviewId: item.id }, query: next };
 	}
+	// A request to the owner has no detail page yet, so it stays on the list.
+	if (item.type === 'promotion_owner_request') return { name: INBOX_VIEW, query: next };
 	return { name: WORKFLOW_REVIEW_REQUESTS_VIEW, params: { reviewId: item.id }, query: next };
 }

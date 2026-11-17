@@ -9,6 +9,7 @@ import {
 	promotionInstanceProjectSchema,
 	promotionPreviewCheckSchema,
 } from './promotion-apply-check.dto';
+import { promotionDependencyReportSchema } from './promotion-dependency.dto';
 import { n8nIdSchema } from '../../schemas/id.schema';
 import { Z } from '../../zod-class';
 import {
@@ -67,6 +68,12 @@ export const promotionResourceSchema = z
 				'The `key` of the project or folder that holds the resource. `null` for instance-wide resources.',
 		}),
 		previousParentKey: z.string().nullable().optional(),
+		/**
+		 * The project that holds the resource, so that a client groups by project without a walk
+		 * of `parentKey`. Not set for instance-wide resources and for a top-level credential.
+		 */
+		projectId: z.string().optional(),
+		projectName: z.string().optional(),
 		change: promotionResourceChangeSchema.openapi({
 			description:
 				'How the operation changes the resource. `unchanged` resources give context, such as a parent folder or a workflow that uses a changed credential.',
@@ -127,6 +134,8 @@ export const promotionPreviewSchema = z.object({
 	}),
 	/** Apply only: what stops the Apply of each workflow, from the same plan as the resources. */
 	check: promotionPreviewCheckSchema.optional(),
+	/** The dependency report of the changes that the preview lists. */
+	dependencyReport: promotionDependencyReportSchema.optional(),
 	/**
 	 * A hash of what this preview shows. Promote and Apply compare it with a fresh preview and
 	 * stop when the project or its branch changed after the preview was loaded.
@@ -157,6 +166,51 @@ export type PromotionInstanceApplyPreview = z.infer<typeof promotionInstanceAppl
 
 export class PromotionInstanceApplyPreviewDto extends Z.class(
 	promotionInstanceApplyPreviewSchema.shape,
+) {}
+
+/** A project of the changes view. The view lists only projects that the user can access. */
+export const promotionEnvironmentChangesProjectSchema = z.object({
+	id: n8nIdSchema,
+	name: z.string(),
+	/** Whether the user can run the operation in the project. False for a project that the user can only read. */
+	canOperate: z.boolean(),
+});
+export type PromotionEnvironmentChangesProject = z.infer<
+	typeof promotionEnvironmentChangesProjectSchema
+>;
+
+/** Why the changes of one project cannot be promoted now. */
+export const promotionProjectBlockerSchema = promotionBlockerSchema.extend({
+	projectId: n8nIdSchema,
+});
+export type PromotionProjectBlocker = z.infer<typeof promotionProjectBlockerSchema>;
+
+/**
+ * The changes view of an environment, for Promote and for Apply: the changes of every project
+ * of the environment that the user can access, grouped by `projectId` of each resource.
+ */
+export const promotionEnvironmentChangesSchema = z.object({
+	direction: z.enum(['apply', 'promote']),
+	/** The commit the preview was read from. `null` when the branch has no commit yet. */
+	commitSha: z.string().nullable(),
+	source: z.object({ environmentId: n8nIdSchema, branchName: z.string() }),
+	projects: z.array(promotionEnvironmentChangesProjectSchema),
+	resources: z.array(promotionResourceSchema),
+	dependencies: z.array(promotionResourceDependencySchema),
+	/** Promote only: the projects whose changes an open review already holds. */
+	blockers: z.array(promotionProjectBlockerSchema).optional(),
+	/** Apply only: what stops the Apply of each workflow. */
+	check: promotionPreviewCheckSchema.optional(),
+	dependencyReport: promotionDependencyReportSchema.optional(),
+	revision: z.string().openapi({
+		description:
+			'A hash of what this preview shows. Send it as `expectedPreviewRevision` with Promote or Apply to run only when the preview did not change.',
+	}),
+});
+export type PromotionEnvironmentChanges = z.infer<typeof promotionEnvironmentChangesSchema>;
+
+export class PromotionEnvironmentChangesDto extends Z.class(
+	promotionEnvironmentChangesSchema.shape,
 ) {}
 
 export class PromotionResourceDetailsRequestDto extends Z.class(

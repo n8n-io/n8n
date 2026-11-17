@@ -46,8 +46,25 @@ const promotionEnvironmentRemotePublicSchema = promotionEnvironmentRemoteSchema.
  */
 const branchNameSchema = z.string().trim().min(1).max(255);
 
+/**
+ * "Allow incomplete": an operation can write items whose dependencies are missing, after the
+ * user confirms the gaps. Off when a client does not send it, and off for a stored environment
+ * that predates the field.
+ */
+const allowIncompleteSchema = (operation: 'Promote' | 'Apply') =>
+	z
+		.boolean()
+		.default(false)
+		.openapi({
+			description: `When true, ${operation === 'Apply' ? 'an Apply' : 'a Promote'} can continue with dependency gaps after the user confirms them. When false or omitted, a gap stops the ${operation}.`,
+		});
+
 export const promotionGitApplySettingsSchema = z
-	.object({ schemaVersion: z.literal(1), branchName: branchNameSchema })
+	.object({
+		schemaVersion: z.literal(1),
+		branchName: branchNameSchema,
+		allowIncomplete: allowIncompleteSchema('Apply'),
+	})
 	.strict();
 
 /**
@@ -64,6 +81,7 @@ export const promotionGitPromoteSettingsSchema = z
 		schemaVersion: z.literal(1),
 		baseBranchName: branchNameSchema,
 		createBranchOnPromotion: z.boolean(),
+		allowIncomplete: allowIncompleteSchema('Promote'),
 	})
 	.strict();
 
@@ -76,6 +94,8 @@ export const promotionEnvironmentSettingsSchema = z.union([
 	promotionGitPromoteSettingsSchema,
 ]);
 export type PromotionEnvironmentSettings = z.infer<typeof promotionEnvironmentSettingsSchema>;
+/** The settings as a client sends them: `allowIncomplete` is optional. */
+export type PromotionEnvironmentSettingsInput = z.input<typeof promotionEnvironmentSettingsSchema>;
 
 const createPromotionEnvironmentFields = {
 	name: promotionDisplayNameSchema,
@@ -102,6 +122,7 @@ const createPromotionEnvironmentSchema = z.discriminatedUnion('direction', [
 ]);
 
 export type CreatePromotionEnvironmentDto = z.infer<typeof createPromotionEnvironmentSchema>;
+export type CreatePromotionEnvironmentInput = z.input<typeof createPromotionEnvironmentSchema>;
 export const CreatePromotionEnvironmentDto = class {
 	static schema = createPromotionEnvironmentSchema;
 
@@ -138,6 +159,7 @@ const updatePromotionEnvironmentSchema = z
 	.openapi({ minProperties: 1 });
 
 type UpdatePromotionEnvironment = z.infer<typeof updatePromotionEnvironmentSchema>;
+export type UpdatePromotionEnvironmentInput = z.input<typeof updatePromotionEnvironmentSchema>;
 
 export class UpdatePromotionEnvironmentDto implements UpdatePromotionEnvironment {
 	name?: string;
@@ -150,7 +172,7 @@ export class UpdatePromotionEnvironmentDto implements UpdatePromotionEnvironment
 
 	static schema = updatePromotionEnvironmentSchema;
 
-	constructor(data: UpdatePromotionEnvironment) {
+	constructor(data: UpdatePromotionEnvironmentInput) {
 		Object.assign(this, updatePromotionEnvironmentSchema.parse(data));
 	}
 

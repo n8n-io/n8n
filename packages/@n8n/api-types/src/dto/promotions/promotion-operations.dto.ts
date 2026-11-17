@@ -13,12 +13,19 @@ import {
 	promotionCommitMessageSchema,
 	promotionSelectedIdsSchema,
 } from './promotion-common.dto';
+import {
+	confirmedGapIdsSchema,
+	promotionApplyConfirmationShape,
+	promotionApplyDependencyResultShape,
+	promotionDependencyReportSchema,
+} from './promotion-dependency.dto';
 import { promotionReviewResultSchema } from './promotion-review.dto';
 
 export class PromotePackageDto extends Z.class(
 	{
 		commitMessage: promotionCommitMessageSchema,
 		force: z.boolean().optional(),
+		confirmedGapIds: confirmedGapIdsSchema,
 	},
 	{ strict: true },
 ) {}
@@ -62,6 +69,8 @@ export const promotePackageResultSchema = z.object({
 	review: promotionReviewResultSchema.optional(),
 	/** The push succeeded, but a follow-up step did not. The admin can finish it on the host. */
 	warnings: z.array(promotionPromoteWarningSchema).optional(),
+	/** Set when the Promote checked its dependencies. An incomplete Promote lists its gaps here. */
+	dependencyReport: promotionDependencyReportSchema.optional(),
 });
 
 export class PromotePackageResultDto extends Z.class(promotePackageResultSchema.shape) {}
@@ -71,6 +80,15 @@ export const promoteSelectionResultSchema = z.discriminatedUnion('status', [
 	promotePackageResultSchema.extend({ status: z.literal('promoted') }),
 	/** The project or its branch changed after the reviewed preview. Nothing was pushed. */
 	z.object({ status: z.literal('preview-changed'), environmentId: n8nIdSchema }),
+	/**
+	 * The gaps differ from `confirmedGapIds`, or the environment is strict and gaps exist.
+	 * Nothing was pushed. The report holds the current gaps.
+	 */
+	z.object({
+		status: z.literal('gaps-changed'),
+		environmentId: n8nIdSchema,
+		dependencyReport: promotionDependencyReportSchema,
+	}),
 ]);
 
 export const PromoteSelectionResultDto = {
@@ -148,6 +166,7 @@ export class ApplyPackageDto extends Z.class(
 	{
 		expectedSource: expectedSourceSchema.optional(),
 		expectedPreviewRevision: expectedPreviewRevisionSchema,
+		...promotionApplyConfirmationShape,
 	},
 	{ strict: true },
 ) {}
@@ -172,6 +191,7 @@ export class ContinueApplyPackageDto extends Z.class(
 		expectedSource: expectedSourceSchema,
 		expectedPreviewRevision: expectedPreviewRevisionSchema,
 		confirmDestructiveChanges: confirmDestructiveChangesSchema,
+		...promotionApplyConfirmationShape,
 	},
 	{ strict: true },
 ) {}
@@ -193,6 +213,7 @@ export class ApplySelectionDto extends Z.class(
 		...applySelectionShape,
 		expectedSource: expectedSourceSchema.optional(),
 		expectedPreviewRevision: expectedPreviewRevisionSchema,
+		...promotionApplyConfirmationShape,
 	},
 	{ strict: true },
 ) {}
@@ -203,6 +224,7 @@ export class ContinueApplySelectionDto extends Z.class(
 		expectedSource: expectedSourceSchema,
 		expectedPreviewRevision: expectedPreviewRevisionSchema,
 		confirmDestructiveChanges: confirmDestructiveChangesSchema,
+		...promotionApplyConfirmationShape,
 	},
 	{ strict: true },
 ) {}
@@ -217,10 +239,24 @@ export const applyPackageResultSchema = z.discriminatedUnion('status', [
 		status: z.literal('applied'),
 		counts: applyPackageCountsSchema,
 		warnings: z.array(promotionBindingWarningSchema),
+		...promotionApplyDependencyResultShape,
+		/** Set when the Apply checked its dependencies. An incomplete Apply lists its gaps here. */
+		dependencyReport: promotionDependencyReportSchema.optional(),
 	}),
 	applyPackageIdentitySchema.extend({
 		status: z.literal('blocked'),
 		check: promotionApplyCheckSchema,
+		dependencyReport: promotionDependencyReportSchema.optional(),
+		/** Grants that the Apply made before it stopped. A retry does not grant them again. */
+		grants: promotionApplyDependencyResultShape.grants,
+	}),
+	/**
+	 * The gaps or the grants differ from the confirmed lists, or the environment is strict and
+	 * gaps exist. Nothing was imported. The report holds the current state.
+	 */
+	applyPackageIdentitySchema.extend({
+		status: z.literal('gaps-changed'),
+		dependencyReport: promotionDependencyReportSchema,
 	}),
 	applyPackageIdentitySchema.extend({ status: z.literal('source-changed') }),
 	/** This instance changed after the reviewed preview. Nothing was imported. */
@@ -234,3 +270,57 @@ export const ApplyPackageResultDto = {
 };
 
 export type ApplyPackageResultDto = z.infer<typeof applyPackageResultSchema>;
+
+/**
+ * The items of one project in a selection across projects. Credentials, data tables, variables
+ * and tags of the project come with the workflows that use them. `credentialIds` adds a
+ * credential that no selected workflow of its project uses: the exit "Include it" of a gap.
+ */
+const environmentSelectionProjectSchema = z
+	.object({
+		projectId: n8nIdSchema,
+		workflowIds: promotionSelectedIdsSchema('workflowIds'),
+		folderIds: promotionSelectedIdsSchema('folderIds'),
+		credentialIds: promotionSelectedIdsSchema('credentialIds'),
+	})
+	.strict();
+export type PromotionEnvironmentSelectionProject = z.infer<
+	typeof environmentSelectionProjectSchema
+>;
+
+const environmentSelectionProjectsSchema = z
+	.array(environmentSelectionProjectSchema)
+	.min(1)
+	.refine(
+		(projects) => new Set(projects.map(({ projectId }) => projectId)).size === projects.length,
+		{
+			message: 'projects contains a project more than once',
+		},
+	)
+	.openapi({
+		description:
+			'The selection of each project. Every project must be in the scope of the environment, and the user needs the right to run the operation in each of them.',
+	});
+
+/** A Promote across projects. It writes one commit and opens at most one review. */
+export class PromoteEnvironmentSelectionRequestDto extends Z.class(
+	{
+		projects: environmentSelectionProjectsSchema,
+		commitMessage: promotionCommitMessageSchema,
+		expectedPreviewRevision: expectedPreviewRevisionSchema,
+		confirmedGapIds: confirmedGapIdsSchema,
+	},
+	{ strict: true },
+) {}
+
+/** An Apply across projects. It resolves each reference against the whole selection. */
+export class ApplyEnvironmentSelectionRequestDto extends Z.class(
+	{
+		projects: environmentSelectionProjectsSchema,
+		expectedSource: expectedSourceSchema.optional(),
+		expectedPreviewRevision: expectedPreviewRevisionSchema,
+		confirmDestructiveChanges: confirmDestructiveChangesSchema,
+		...promotionApplyConfirmationShape,
+	},
+	{ strict: true },
+) {}

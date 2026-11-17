@@ -156,7 +156,8 @@ export function usePromotionOperation(
 			...(commitMessage && { commitMessage }),
 			expectedPreviewRevision: preview.value?.revision,
 		});
-		if (result.status === 'preview-changed') {
+		// Changed gaps also mean that nothing was pushed. The reloaded preview shows the report.
+		if (result.status === 'preview-changed' || result.status === 'gaps-changed') {
 			notice.value = 'projectChanged';
 			await refresh();
 			return;
@@ -165,12 +166,15 @@ export function usePromotionOperation(
 		await leave();
 	}
 
-	async function reportUnapplied(status: 'source-changed' | 'preview-changed' | 'blocked') {
+	async function reportUnapplied(
+		status: 'source-changed' | 'preview-changed' | 'blocked' | 'gaps-changed',
+	) {
 		// Nothing was written. The reloaded preview and check show what changed.
 		const notices = {
 			'source-changed': 'sourceChanged',
 			'preview-changed': 'instanceChanged',
 			blocked: 'newBlockers',
+			'gaps-changed': 'newBlockers',
 		} as const;
 		notice.value = notices[status];
 		await refresh();

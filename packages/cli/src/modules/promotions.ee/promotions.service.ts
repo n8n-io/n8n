@@ -1825,7 +1825,11 @@ function promotedOutcome(
 > {
 	if (!observed.ok) return { outcome: 'failed', failureKind: observed.failureKind };
 	const { result } = observed;
-	if ('status' in result && result.status === 'preview-changed') {
+	// No telemetry outcome exists for changed gaps yet. Nothing was pushed, as for a changed preview.
+	if (
+		'status' in result &&
+		(result.status === 'preview-changed' || result.status === 'gaps-changed')
+	) {
 		return { outcome: 'preview_changed' };
 	}
 	return {
@@ -1848,7 +1852,10 @@ function appliedOutcome(
 > {
 	if (!observed.ok) return { outcome: 'failed', failureKind: observed.failureKind };
 	const { result } = observed;
-	if (result.status === 'blocked') return { outcome: 'blocked' };
+	// No telemetry outcome exists for changed gaps yet. Nothing was imported, as for a block.
+	if (result.status === 'blocked' || result.status === 'gaps-changed') {
+		return { outcome: 'blocked' };
+	}
 	if (result.status === 'source-changed') return { outcome: 'source_changed' };
 	if (result.status === 'preview-changed') return { outcome: 'preview_changed' };
 	const { workflows, folders, projects } = result.counts;

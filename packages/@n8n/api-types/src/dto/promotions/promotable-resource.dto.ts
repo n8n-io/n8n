@@ -9,6 +9,7 @@ import {
 	promotionCommitMessageSchema,
 	promotionSelectedIdsSchema,
 } from './promotion-common.dto';
+import { confirmedGapIdsSchema } from './promotion-dependency.dto';
 
 /**
  * A Promote always writes the project itself, so a request without workflows and folders
@@ -22,6 +23,7 @@ export const promoteRequestSchema = z.object({
 	}),
 	commitMessage: promotionCommitMessageSchema,
 	expectedPreviewRevision: expectedPreviewRevisionSchema,
+	confirmedGapIds: confirmedGapIdsSchema,
 });
 
 export type PromoteRequest = z.infer<typeof promoteRequestSchema>;

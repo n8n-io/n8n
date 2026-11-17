@@ -4,11 +4,12 @@ import { BaseCommand } from '../../base-command';
 
 export default class PromotionEnvironmentUpdate extends BaseCommand {
 	static override description =
-		'Update the name, provider, remote, or settings of a promotion environment, from JSON. Settings replace the whole saved settings and must match the direction. Direction and scope cannot change.';
+		'Update the name, provider, remote, or settings of a promotion environment, from JSON. Settings replace the whole saved settings and must match the direction, so settings.allowIncomplete becomes false when omitted. Direction and scope cannot change.';
 
 	static override examples = [
 		'echo \'{"name":"Production (EU)"}\' | <%= config.bin %> promotion-environment update env-1 --stdin',
 		'echo \'{"settings":{"schemaVersion":1,"baseBranchName":"main","createBranchOnPromotion":true}}\' | <%= config.bin %> promotion-environment update env-1 --stdin',
+		'echo \'{"settings":{"schemaVersion":1,"baseBranchName":"main","createBranchOnPromotion":true,"allowIncomplete":true}}\' | <%= config.bin %> promotion-environment update env-1 --stdin',
 		'<%= config.bin %> promotion-environment update env-1 --file=environment.json',
 	];
 

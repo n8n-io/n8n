@@ -31,6 +31,10 @@ function itemTitle(item: InboxItem) {
 			return item.summary;
 		case 'promotion_review':
 			return item.title ?? item.branchName ?? i18n.baseText('inbox.promotionReview.untitled');
+		case 'promotion_owner_request':
+			return i18n.baseText(`inbox.promotionOwnerRequest.title.${item.operation}`, {
+				interpolate: { name: item.resource.name },
+			});
 	}
 }
 
@@ -54,6 +58,8 @@ function statusTooltip(item: InboxItem) {
 			return item.state === 'closed' ? i18n.baseText('inbox.tabs.closed') : outcomeLabel(item);
 		case 'promotion_review':
 			return i18n.baseText(`inbox.promotionReview.state.${item.reviewState}`);
+		case 'promotion_owner_request':
+			return i18n.baseText(item.state === 'open' ? 'inbox.tabs.open' : 'inbox.tabs.closed');
 	}
 }
 </script>
@@ -101,6 +107,16 @@ function statusTooltip(item: InboxItem) {
 						data-test-id="inbox-promotion-status"
 					/>
 					<span
+						v-else-if="item.type === 'promotion_owner_request'"
+						:class="[
+							$style.statusDot,
+							item.state === 'closed' ? $style.closed : $style.needsAttention,
+						]"
+						role="img"
+						:aria-label="statusTooltip(item)"
+						data-test-id="inbox-owner-request-status"
+					/>
+					<span
 						v-else
 						:class="[
 							$style.statusDot,
@@ -123,6 +139,13 @@ function statusTooltip(item: InboxItem) {
 					:leading-icon="reviewTypeIcon[item.reviewType]"
 					:class="$style.workflowBadge"
 					>{{ i18n.baseText('inbox.promotionReview.badge') }}</N8nBadge
+				>
+				<N8nBadge
+					v-else-if="item.type === 'promotion_owner_request'"
+					variant="outline"
+					leading-icon="git-branch"
+					:class="$style.workflowBadge"
+					>{{ i18n.baseText('inbox.promotionOwnerRequest.badge') }}</N8nBadge
 				>
 				<N8nBadge
 					v-else-if="item.workflowName"

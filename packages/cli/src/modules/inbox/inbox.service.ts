@@ -24,6 +24,7 @@ const sourceOrder: InboxSourceType[] = [
 	'workflow_review',
 	'self_healing_result',
 	'promotion_review',
+	'promotion_owner_request',
 ];
 
 const cursorSchema = z

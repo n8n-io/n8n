@@ -13,6 +13,7 @@ export const inboxSourceTypeSchema = z.enum([
 	'workflow_review',
 	'self_healing_result',
 	'promotion_review',
+	'promotion_owner_request',
 ]);
 export type InboxSourceType = z.infer<typeof inboxSourceTypeSchema>;
 
@@ -59,7 +60,40 @@ export type InboxPromotionReviewItem = {
 	updatedAt: string;
 };
 
-export type InboxItem = InboxWorkflowReviewItem | InboxSelfHealingItem | InboxPromotionReviewItem;
+/**
+ * "Ask the owner": a user asks the owner of a resource to promote or apply it. The item never
+ * shows the project of the requester.
+ */
+export type InboxPromotionOwnerRequestItem = {
+	type: 'promotion_owner_request';
+	id: string;
+	state: InboxState;
+	resource: {
+		kind: 'credential' | 'workflow';
+		id: string;
+		name: string;
+		credentialType?: string;
+	};
+	/** Not set when the owner project is not on this instance. The instance admins get the item. */
+	ownerProject?: { id: string; name: string };
+	requester: {
+		id: string;
+		firstName: string | null;
+		lastName: string | null;
+		email: string | null;
+	};
+	/** The operation that the request offers to the owner. */
+	operation: 'promote' | 'apply';
+	environment: { id: string; name: string };
+	createdAt: string;
+	updatedAt: string;
+};
+
+export type InboxItem =
+	| InboxWorkflowReviewItem
+	| InboxSelfHealingItem
+	| InboxPromotionReviewItem
+	| InboxPromotionOwnerRequestItem;
 
 export type InboxCounts = { open: number; closed: number };
 

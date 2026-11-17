@@ -37,12 +37,18 @@ export const promotionEnvironmentDirectionFields = (
 	direction: PromotionDirection,
 	branch: string,
 	createBranchOnPromotion: boolean,
+	allowIncomplete = false,
 ) =>
 	direction === 'apply'
-		? { direction, settings: { schemaVersion: 1 as const, branchName: branch } }
+		? { direction, settings: { schemaVersion: 1 as const, branchName: branch, allowIncomplete } }
 		: {
 				direction,
-				settings: { schemaVersion: 1 as const, baseBranchName: branch, createBranchOnPromotion },
+				settings: {
+					schemaVersion: 1 as const,
+					baseBranchName: branch,
+					createBranchOnPromotion,
+					allowIncomplete,
+				},
 			};
 
 export type PromotionProviderChange = {

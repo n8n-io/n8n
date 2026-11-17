@@ -233,6 +233,7 @@ n8n-cli promotion-environment create --file=promote.json
 | `settings.branchName` | For `apply`: the branch to import from. |
 | `settings.baseBranchName` | For `promote`: the branch to push to. |
 | `settings.createBranchOnPromotion` | For `promote`: required. Push to a new timestamped branch instead of the base branch. |
+| `settings.allowIncomplete` | Optional, `false` when omitted. `true` lets a Promote or an Apply continue with dependency gaps after the user confirms them. A write replaces the whole settings object, so send it again on each update. |
 
 ## `promotion-environment list` / `get` / `update` / `delete`
 

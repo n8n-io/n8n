@@ -807,6 +807,7 @@ export {
 	promotionCheckoutPublicSchema,
 } from './promotions/promotion-checkout.dto';
 export * from './promotions/promotion-apply-check.dto';
+export * from './promotions/promotion-dependency.dto';
 export * from './promotions/promotion-preview.dto';
 export {
 	CreatePromotionEnvironmentDto,
@@ -831,15 +832,20 @@ export {
 	type PromotionDirection,
 	type PromotionEnvironmentCheckout,
 	type PromotionEnvironmentScope,
+	type CreatePromotionEnvironmentInput,
 	type PromotionEnvironmentSettings,
+	type PromotionEnvironmentSettingsInput,
 	type PromotionEnvironmentSummary,
+	type UpdatePromotionEnvironmentInput,
 } from './promotions/promotion-environment.dto';
 export {
+	ApplyEnvironmentSelectionRequestDto,
 	ApplyPackageDto,
 	ApplyPackageResultDto,
 	ApplySelectionDto,
 	ContinueApplyPackageDto,
 	ContinueApplySelectionDto,
+	PromoteEnvironmentSelectionRequestDto,
 	PromotePackageDto,
 	PromotePackageResultDto,
 	PromoteSelectionResultDto,
@@ -850,6 +856,7 @@ export {
 	promoteSelectionResultSchema,
 	promotionGitResultSchema,
 	promotionPromoteWarningSchema,
+	type PromotionEnvironmentSelectionProject,
 	type PromotionPromoteWarning,
 } from './promotions/promotion-operations.dto';
 export {
