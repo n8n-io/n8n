@@ -1976,6 +1976,229 @@ await ctx.sql({
   in the fallback host. The equivalence test runs each case of the v1 node
   in n8n's engine (`WorkflowExecute`), which loads the node as n8n does.
 
+### 9.11 SQL statements for MySQL (`dialect: 'mysql'`)
+
+The `sql` effect of section 9.10 also has a MySQL client. This section
+says only what differs from Postgres. All facts are from mysql2 3.23.1
+(the driver of the v1 node) against MySQL 8.4.
+
+The v1 node (`n8n-nodes-base.mySql` version 2) never binds a value. mysql2
+writes each value into the query text on the client (`connection.format`,
+package `sql-escaper`) and sends the text with the text protocol
+(`COM_QUERY`). So a MySQL statement is always `simple: true`. The runtime
+never changes the text.
+
+**Request.** `SqlRequest` as in 9.10, with these rules:
+
+```ts
+interface SqlStatement {
+  text: string;      // the exact text; it can hold several commands with `;`
+  simple: true;      // required for mysql; `values` must be absent
+  group?: number;    // an integer >= 0; see the mode `independently`
+}
+interface SqlRequest {
+  credential: string;
+  dialect: 'mysql';
+  mode?: 'single' | 'independently' | 'transaction';
+  statements: SqlStatement[];            // 1..256
+  largeNumbers?: 'numbers' | 'text';     // default 'numbers'
+  decimals?: 'text' | 'numbers';         // mysql only; default 'text'
+  dates?: 'text' | 'legacy';             // 'legacy' = node version 2.0
+  connectTimeoutMs?: number;             // default 10,000
+  timeoutMs?: number;
+}
+```
+
+A statement with `values`, or without `simple`, is an argument error. A
+text with several commands is normal for MySQL and is never a limit.
+
+All statements of one call run on one connection, in order. The state of
+the session (`@x`, temporary tables, `LAST_INSERT_ID()`) goes from one
+statement to the next.
+
+- `single`: the runtime sends each statement alone, with autocommit, and
+  sends no `BEGIN`. `results` ends with the first failure. Each command of
+  a text commits alone: a command that fails keeps the commands before it.
+- `transaction`: `START TRANSACTION`, each statement alone and in order
+  (the runtime waits for each answer), then `COMMIT`. The first failure
+  sends `ROLLBACK`, and `results` ends with that failure. A failure of
+  `START TRANSACTION` or `COMMIT` is one more `{ error }` entry.
+- `independently`: each statement alone, with autocommit. When a
+  statement fails, its entry is `{ error }`, and each later statement
+  with the same `group` does not run and has the entry
+  `{ skipped: true }`. Statements of other groups run. A statement
+  without `group` is a group of its own. `results` has one entry for
+  each statement.
+
+The client sends the capability flags of mysql2 that change behaviour:
+`CLIENT_FOUND_ROWS` (the affected rows of an `UPDATE` are the rows that
+match), `CLIENT_IGNORE_SPACE`, `CLIENT_MULTI_STATEMENTS`,
+`CLIENT_MULTI_RESULTS`, and the character set `utf8mb4_unicode_ci`
+(id 224). It sends no `SET` statement at connect.
+
+**Result.** `{ results, connect? }` as in 9.10. Each entry is one of:
+
+```ts
+{ sets: SqlSet[] }     // one set for each result of the text, in wire order
+{ error: SqlError }    // a command of the text failed; the sets before it are dropped
+{ skipped: true }      // `independently` only
+
+// A result set (also with 0 rows):
+{ command: 'SELECT', rowCount: number, rows: Item[] }
+// An OK packet (INSERT, UPDATE, DELETE, SET, DDL, the last result of CALL):
+{ command: 'OK', rowCount: number, rows: [],
+  ok: { affectedRows: number | string, insertId: number | string,
+        info: string, serverStatus: number, warningStatus: number } }
+```
+
+- `ok` is on a set only for an OK packet. Node code makes the
+  `ResultSetHeader` of mysql2 from it, with `changedRows` from `info`
+  (`/\schanged:\s*(\d+)/i`, else 0). The runtime does not compute
+  `changedRows`.
+- `affectedRows` and `insertId` are JSON numbers when they are safe
+  integers, else decimal text. With `largeNumbers: 'text'`, an 8-byte
+  value whose high 32-bit word is 2097152 or more is text.
+- `info` is the text of the OK packet (`Rows matched: 1  Changed: 0
+  Warnings: 0`). `serverStatus` is the 16-bit status word as it is: v1
+  gives it in its output.
+- A text with several commands gives several sets (`SELECT 1; INSERT
+  ...; SELECT 2` gives a row set, an OK and a row set). `CALL p()` gives
+  the result sets of the procedure and then one OK.
+- A row is an object with the column names as keys, in column order. A
+  later column with the same name wins and keeps the first position.
+- An empty text is the error 1065 of the server, as any other error.
+
+```ts
+interface SqlError {     // the fields of mysql2
+  message: string;       // the text of the server
+  code?: string;         // the mysql2 name of `errno`: 'ER_DUP_ENTRY', 'ER_PARSE_ERROR'
+  errno?: number;        // 1062
+  sqlState?: string;     // '23000'
+  sqlMessage?: string;   // the text of the server
+}
+```
+
+`code` comes from the table of mysql2 (`lib/constants/errors.js`). For
+an `errno` that is not in the table, `code` is absent. Node code adds
+the `sql` text of mysql2 itself.
+
+**Connection errors** (`connect`, with `results: []`). The messages and
+codes are the ones of Node and mysql2: `connect ECONNREFUSED <ip>:<port>`
+(`ECONNREFUSED`), `getaddrinfo ENOTFOUND <host>` (`ENOTFOUND`),
+`connect ETIMEDOUT` (`ETIMEDOUT`), `Server does not support secure
+connection` (`HANDSHAKE_NO_SSL_SUPPORT`), the TLS text of Node
+(`HANDSHAKE_SSL_ERROR`), `Connection lost: The server closed the
+connection.` (`PROTOCOL_CONNECTION_LOST`). A refusal of the login is the
+error packet of the server (`ER_ACCESS_DENIED_ERROR`, 1045, `28000`).
+
+**Credential** (n8n type `mySql`): `host`, `port`, `database`, `user`,
+`password`, `ssl`, `caCertificate`, `clientCertificate`,
+`clientPrivateKey`, `sshTunnel`. `ssl` without a certificate field gives
+TLS with verification against the system roots and the host name. The
+field `connectTimeout` is not read, as in v1. Authentication:
+`mysql_native_password` and `caching_sha2_password` (fast and full, with
+the RSA exchange without TLS that mysql2 does), and an empty password.
+
+**Column types.** The runtime decides by the column definition (`type`,
+`character_set` 63 = binary) and the request options.
+
+| Column type (protocol id) | JSON |
+|---|---|
+| TINY 1, SHORT 2, LONG 3, INT24 9, YEAR 13 | number |
+| LONGLONG 8 | `largeNumbers: 'numbers'`: a number when it is a safe integer, else the text of the server. `'text'`: always the text |
+| FLOAT 4, DOUBLE 5 | number, with the float rule of mysql2 |
+| DECIMAL 0, NEWDECIMAL 246 | `decimals: 'text'`: the text. `'numbers'`: a number, with the float rule |
+| DATE 10, DATETIME 12, TIMESTAMP 7 | `dates: 'text'`: the text as sent. `dates: 'legacy'`: `(limit: sql-type)` |
+| TIME 11 | the text |
+| JSON 245 | the JSON value; an integer numeral that is not a safe integer becomes its source text |
+| BIT 16 | `{"type":"Buffer","data":[bytes...]}` |
+| VARCHAR 15/253, STRING 254, BLOB / TEXT 249-252, `character_set` not 63 | text |
+| the same types with `character_set` 63 | `{"type":"Buffer","data":[bytes...]}` |
+| NULL 6, and SQL NULL in any column | null |
+| GEOMETRY 255, VECTOR 242, any other id | `(limit: sql-type)` |
+
+The float rule is `Packet.parseFloat` of mysql2, which is not always a
+correctly rounded parse. For a text of more than 17 bytes, or with `e` or
+`E`: the correctly rounded double. Else, in f64 arithmetic: `result =
+result * 10 + digit` for each digit, `factor = factor * 10` for each
+digit after the dot (`factor` starts at 1, or -1 after a `-`), and the
+value is `result / factor`. Text that is not valid UTF-8 in a character
+column is `(limit: sql-type)`.
+
+**Errors and markers.** The markers and the rule of 9.10 hold: a marker
+only when the call committed nothing.
+
+- `(limit: sql-credential)`: an SSH tunnel, a CA or client certificate, an
+  authentication plugin that is not built, a TLS failure whose Node text
+  the runtime cannot give. Always before a statement is sent.
+- `(limit: sql-type)`: GEOMETRY, VECTOR, an unknown type, `dates:
+  'legacy'` with a date column, bad UTF-8. The runtime sees the column
+  definitions only after the command ran.
+- `(limit: sql-max-result)`: the result is over `--sql-max-result-kb`.
+- `(limit: sql-host)`: node code throws it before it sends a statement.
+- The runtime keeps one fact for the call: a command that can have
+  changed the database has completed. A result set from a text whose
+  commands all start with `SELECT`, `SHOW`, `DESCRIBE`, `DESC` or
+  `EXPLAIN` does not set the fact. An OK packet sets it, except the OK of
+  `START TRANSACTION`. While the fact is false, a limit ends the call
+  with its marker. When it is true, a limit is a plain error `(limit)`
+  without a marker, and no later statement runs. In the mode
+  `transaction`, a limit before `COMMIT` sends `ROLLBACK`: the marker
+  holds when no command with an implicit commit ran.
+
+**Converter.** `ConvertOptions.mysql` (default false) says that the `sql`
+effect of the runtime has a MySQL client. It is a flag of its own
+because a runtime can have the Postgres client and no MySQL client.
+Without it, the MySQL node runs in the fallback host.
+
+**The MySQL library node** (`src/nodes/mysql.ts`) is a port of the v1
+node versions 2 to 2.5: `executeQuery`, `select`, `insert`, `update`,
+`upsert` and `deleteTable`, with the continue settings.
+
+- Each value becomes SQL text only through the formatter
+  `src/nodes/shared/mysql-format.ts`, which equals `connection.format` of
+  mysql2 (differentially tested). The node holds a copy that a test
+  compares. Table and column names go through `escapeSqlIdentifier` of
+  v1. This text has the safety of v1 and no more.
+- `single`: one statement, the formatted texts of all items joined with
+  `;`, as v1 sends them. `independently` and `transaction`: one statement
+  for each statement that v1 splits from the text of an item. Without a
+  continue setting, all statements have `group: 0`. With a continue
+  setting, the statements of item `i` have `group: i`.
+- The node always sends `largeNumbers` and `dates`. It sends `decimals:
+  'numbers'` only with the node option. It never sends
+  `connectTimeoutMs`: v1 reads no timeout option.
+- The statements: ``SELECT [DISTINCT] * FROM `t` WHERE `a` = ? ORDER BY
+  `b` ASC LIMIT ?``, ``INSERT <priority> [IGNORE] INTO `t` (`a`, `b`)
+  VALUES (?,?),(?,?)`` (one statement for all items in the mode
+  `single`), ``UPDATE `t` SET `a` = ? WHERE `id` = ?``, ``INSERT INTO
+  `t`(`a`) VALUES(?) ON DUPLICATE KEY UPDATE `a` = ?``, ``DELETE FROM `t`
+  WHERE ...``, ``TRUNCATE TABLE `t` ``, ``DROP TABLE IF EXISTS `t` ``.
+- With a continue setting, the node gives one item `{ items, errors,
+  nodeError?, retry? }`, as the Postgres node does. An item that fails
+  before its query, or whose query fails in the modes `independently`
+  and `transaction`, gives `{ message, item, itemIndex }` (`prepareErrorItem`
+  of v1). A failure of the connection, or of the one text of the mode
+  `single`, gives one item `{ message, error }` with the spread of the
+  NodeOperationError of v1. v1 keeps the error object of a
+  `prepareErrorItem` item beside its JSON; the compiled item has the JSON
+  only.
+- The node throws `(limit: sql-host)` before it sends a statement when
+  it cannot make the result of v1. The header of `src/nodes/mysql.ts`
+  lists the cases.
+- `MYSQL_RECORD_FIRST` in `src/nodes/mysql.ts` lists the operations and
+  the error settings that have no recording against the v1 node yet. The
+  converter keeps a node with one of them in the fallback host. The
+  recording harness converts them with
+  `ConvertOptions.mysqlRecordFirst`.
+
+The equivalence test (`src/nodes/__tests__/mysql-equivalence.test.ts`)
+runs each case on the v1 node with its real driver and on the library
+node with a reference client (`mysql-reference.ts`). It compares the
+output or the error, and the tables after the run.
+`mysql-recordings.json` holds, for each case, the `sql` calls and their
+results, which replay without a database.
+
 ## 10. Fallback host steps (AI clusters, binary data, Python)
 
 These are options of `ctx.node` and `ctx.code` that only the fallback host
