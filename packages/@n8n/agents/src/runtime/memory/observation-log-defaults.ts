@@ -51,6 +51,8 @@ NO_OBSERVATIONS
 
 Do not add a preamble, header, explanation, or code fence. Do not combine \`NO_OBSERVATIONS\` with bullets or other text.
 
+After either form, you can add one \`<working-set>\` block. See WORKING SET.
+
 MARKERS
 
 CRITICAL. A fact that the agent must not forget. Use it for hard constraints, explicit decisions, commitments, identity, and project context.
@@ -126,6 +128,26 @@ BAD:
 GOOD:
 * CRITICAL (14:30) Temporary exception replaces the Tuesday report with Wednesday at 16:00 Europe/London on 2026-08-12 and 2026-08-19. Do not also run Tuesday in those weeks. The normal Tuesday 14:30 rule resumes on 2026-08-20.
 
+WORKING SET
+
+The working set is a short reference that the agent needs through the whole task. The observations can bury it. It has only two lists:
+
+- Plan: when the user asked for a plan with several parts, list its parts as a checklist. Use the id and name that the plan gives each part. Tick a part when it is done, and add the commit when there is one.
+- Commands: the commands that work for building, checking, testing, and running. Write each command exactly as it was run, with a few words about its purpose.
+
+The working set is not a log. Put events and findings in observations.
+
+You receive the current working set. When the transcript changes it, write it again in full after the observations. Your working set replaces the current one. Tick parts. Do not remove them: a missing part is forgotten. When nothing changed, or the task has no such plan and no such commands, do not write the block. Keep one line for each part and each command.
+
+<working-set>
+Plan
+- [x] 1A: add the owner column (commit 3f2a9c1)
+- [ ] 1B: stop a turn from any process
+Commands
+- tests: cd packages/api && pnpm test src/agents
+- typecheck: cd packages/api && npx tsc --noEmit
+</working-set>
+
 RUN CONTINUATION
 
 When work is unfinished, retain the verified results, the remaining work, blockers, required approvals, and the stated next action. Label a next action as a plan. Do not report it as completed.
@@ -136,7 +158,7 @@ Skip small talk, routine acknowledgments, repeated log content, irrelevant tool 
 
 FINAL FORMAT CHECK
 
-When durable facts exist, return only observation bullets whose lines start with \`* \` or \`  * \`. Return exactly \`NO_OBSERVATIONS\` only when nothing durable happened. Never return marker names without the \`*\` prefix.`;
+When durable facts exist, return only observation bullets whose lines start with \`* \` or \`  * \`. Return exactly \`NO_OBSERVATIONS\` only when nothing durable happened. Never return marker names without the \`*\` prefix. Add a \`<working-set>\` block after them only when the working set changed.`;
 
 export interface CreateObservationLogObserveFnOptions {
 	observerPrompt?: string;
@@ -160,6 +182,7 @@ export function buildObservationLogObserverPrompt(input: ObservationLogObserverI
 		`Current timestamp: ${input.now.toISOString()}`,
 		`Unobserved transcript tokens: ${input.transcriptTokenCount}`,
 		`Current observation log tail:\n${renderedLogTail}`,
+		`Current working set:\n${input.workingSet?.trim() || '(empty)'}`,
 		`New transcript delta since the last observation:\n${transcript}`,
 	].join('\n\n');
 }
@@ -319,6 +342,11 @@ export function buildObservationLogReflectorPrompt(input: ObservationLogReflecto
 		`Active observation log tokens: ${input.tokenCount}`,
 		`Token budget: ${input.tokenBudget}`,
 		`Current active observation log:\n${renderedLog}`,
+		...(input.olderOnly
+			? [
+					'These are the oldest observations. The newest observations stay as written and follow your reduction. Reduce only these.',
+				]
+			: []),
 	].join('\n\n');
 }
 
