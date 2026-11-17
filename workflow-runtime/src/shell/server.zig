@@ -29,6 +29,7 @@ const programs = @import("programs.zig");
 /// The largest stored file that a binary reply reads.
 const binary_reply_limit: usize = 64 << 20;
 const heap = core_lib.heap;
+const workload = core_lib.workload;
 const Shard = shard_mod.Shard;
 
 pub const RouteArg = struct {
@@ -42,12 +43,27 @@ pub const RouteArg = struct {
 
 pub const IoMode = enum { poll, uring, auto };
 
+/// The webhook port of shard `id`. With shard groups (`--class-shards`) the
+/// shards of class number `c` listen on `--port` + `c`: the router picks
+/// the group of a workflow by the port, and the kernel spreads the
+/// connections of a port over the shards of that group only.
+fn shardPort(opts: Options, id: u32) u16 {
+    if (opts.workload.only != null or !opts.workload.grouped()) return opts.port;
+    const c = opts.workload.classOfShard(@intCast(id)) orelse return opts.port;
+    std.debug.assert(@as(u32, opts.port) + c <= std.math.maxInt(u16));
+    return opts.port + c;
+}
+
 pub const Options = struct {
     port: u16 = 8080,
     /// `--host`: the IPv4 address of the webhook port. The default is every
     /// address of the machine.
     host: [4]u8 = .{ 0, 0, 0, 0 },
     shards: u32 = 1,
+    /// `--classes`, `--class-shards`, `--class-slots`, `--class-host-steps`,
+    /// `--class-serve`: the workload classes (docs/workload-classes.md). The
+    /// default is one class without limits.
+    workload: workload.Classes = workload.single,
     log_dir: ?[]const u8 = null,
     fallback: ?[]const u8 = null,
     /// `--fallback-wait-ms`: how long a step waits for the host while no
@@ -451,6 +467,14 @@ pub const Stats = struct {
     host_refused: std.atomic.Value(u64) = .init(0),
     /// The longest time that a host step of this shard waits now, in milliseconds.
     host_wait_ms: std.atomic.Value(u64) = .init(0),
+    /// The workload classes of this shard, by class index, copied with the
+    /// egress numbers when `--stats` is set: executions that hold a slot,
+    /// starts, starts refused at the limit of the class, and host steps
+    /// that wait.
+    class_in_flight: [workload.max_classes]std.atomic.Value(u64) = @splat(.init(0)),
+    class_started: [workload.max_classes]std.atomic.Value(u64) = @splat(.init(0)),
+    class_refused: [workload.max_classes]std.atomic.Value(u64) = @splat(.init(0)),
+    class_host_waiting: [workload.max_classes]std.atomic.Value(u64) = @splat(.init(0)),
     /// The egress client (`egress.Gauges`, `egress.Counters`), copied a few
     /// times each second when `--stats` is set.
     egress_active: std.atomic.Value(u64) = .init(0),
@@ -606,6 +630,12 @@ pub const Runner = struct {
     /// Host steps that wait, and those of each workflow.
     fb_waiting_n: u32,
     fb_wf_waiting: []u32,
+    /// The workload class that the host steps of each module slot count
+    /// for, and the host steps of each class with a place and in the wait
+    /// queue (`hostClass`). One entry for each module slot, from startup.
+    fb_wf_class: []u8,
+    fb_cl_inflight: [workload.max_classes]u32,
+    fb_cl_waiting: [workload.max_classes]u32,
     /// The number of the last step that each workflow sent to the host
     /// (`fb_serve` counts them). The workflow with the smallest number
     /// waited longest for its turn.
@@ -688,6 +718,7 @@ pub const Runner = struct {
         const small = opts.embedded;
         const cfg: core.Config = .{
             .shard_id = @intCast(id),
+            .workload = opts.workload,
             .slots = opts.slots,
             // The largest class holds a trigger with a 16 MB upload in base64.
             .region_sizes = .{ 4 << 10, 64 << 10, 1 << 20, 32 << 20 },
@@ -766,7 +797,7 @@ pub const Runner = struct {
         r.nlost = 0;
         r.batch = Arena.init(try reserve(gpa, u8, opts.batch_bytes));
         r.poller = try sys.Poller.init();
-        r.lfd = try sys.listenTcp(opts.host, opts.port, true);
+        r.lfd = try sys.listenTcp(opts.host, shardPort(opts, id), true);
         try r.poller.addRead(r.lfd, token(.listener, 0, 0));
         r.ring = null;
         r.ring_store = null;
@@ -851,6 +882,10 @@ pub const Runner = struct {
         r.fb_wf_pos = try gpa.alloc(u32, nmod);
         r.fb_wf_inflight = try gpa.alloc(u32, nmod);
         r.fb_wf_waiting = try gpa.alloc(u32, nmod);
+        r.fb_wf_class = try gpa.alloc(u8, nmod);
+        @memset(r.fb_wf_class, opts.workload.default);
+        r.fb_cl_inflight = @splat(0);
+        r.fb_cl_waiting = @splat(0);
         r.fb_wf_last = try gpa.alloc(u64, nmod);
         r.fb_wf_order = try gpa.alloc(FbTurn, nmod);
         @memset(r.fb_wf_head, fb_none);
@@ -978,6 +1013,7 @@ pub const Runner = struct {
         r.gpa.free(r.fb_wf_pos);
         r.gpa.free(r.fb_wf_inflight);
         r.gpa.free(r.fb_wf_waiting);
+        r.gpa.free(r.fb_wf_class);
         r.gpa.free(r.fb_wf_last);
         r.gpa.free(r.fb_wf_order);
         r.fb_scratch.deinit(r.gpa);
@@ -1128,6 +1164,7 @@ pub const Runner = struct {
             if (r.stream != null and (r.stream_more or r.queue.bytes > 0 or r.queue.notice_len > 0)) r.flushStream();
             const now = sys.nowMs();
             r.egress.afterEvents(now);
+            if (r.opts.stats and now - r.egress_stats_ms >= egress_stats_gap_ms) r.publishClassStats();
             if (r.opts.stats and now - r.egress_stats_ms >= egress_stats_gap_ms) r.publishEgressStats(now);
             r.sql.afterEvents(now);
             r.mysql.afterEvents(now);
@@ -1833,6 +1870,18 @@ pub const Runner = struct {
 
     // ---- outbound HTTP --------------------------------------------------------
 
+    /// Copy the numbers of the workload classes to `Stats` for the `--stats` lines.
+    fn publishClassStats(r: *Runner) void {
+        const n = r.opts.workload.count;
+        std.debug.assert(n >= 1 and n <= workload.max_classes);
+        for (r.sh.st.wl[0..n], 0..) |k, c| {
+            r.stats.class_in_flight[c].store(k.in_flight, .monotonic);
+            r.stats.class_started[c].store(k.started, .monotonic);
+            r.stats.class_refused[c].store(k.refused, .monotonic);
+            r.stats.class_host_waiting[c].store(r.fb_cl_waiting[c], .monotonic);
+        }
+    }
+
     /// Copy the numbers of the egress client to `Stats` for the `--stats` line.
     fn publishEgressStats(r: *Runner, now: i64) void {
         r.egress_stats_ms = now;
@@ -2429,6 +2478,14 @@ pub const Runner = struct {
                 r.adminReply(idx, 200, r.sh.st.statics.get(id) orelse "{}");
             },
             .put_workflow_credentials => |id| r.putWorkflowCreds(idx, id, req.body),
+            .put_workflow_class => |id| r.putWorkflowClass(idx, id, req.body),
+            .get_classes => {
+                const t = r.batch.begin();
+                defer t.end();
+                var b = r.batch.builder();
+                r.listClasses(&b) catch return r.adminReply(idx, 503, busy_body);
+                r.adminReply(idx, 200, b.bytes());
+            },
             .list_workflows => {
                 const t = r.batch.begin();
                 defer t.end();
@@ -2550,6 +2607,43 @@ pub const Runner = struct {
     /// The slots of the body replace those of the workflow's document; the
     /// other slots and the module stay. Requests copy what they need when
     /// they start, so the old store is free at once.
+    /// `PUT /_admin/workflows/<id>/class`: `{"class":"<name>"}` changes the
+    /// workload class of a loaded workflow. The module stays, and no log
+    /// record is written: n8n sends the class again with each load.
+    fn putWorkflowClass(r: *Runner, idx: u32, id: []const u8, body: []const u8) void {
+        const table = &r.opts.workload;
+        const text = core_lib.module.jsonStr(http.member(body, "class")) orelse return r.adminReply(idx, 400, "{\"error\":\"the body needs a class name\"}");
+        const class = table.find(text) orelse return r.adminReply(idx, 400, "{\"error\":\"unknown workload class\"}");
+        if (!r.sh.st.setWorkflowClass(id, class)) return r.adminReply(idx, 404, "{\"error\":\"unknown workflow\"}");
+        std.debug.assert(r.sh.st.workflowClass(id).? == class);
+        r.adminReply(idx, 200, "{\"ok\":true}");
+    }
+
+    /// `GET /_admin/classes`: the workload classes of this shard with their
+    /// limits and counters.
+    fn listClasses(r: *Runner, b: *core_lib.arena.Builder) error{ArenaFull}!void {
+        const table = &r.opts.workload;
+        var nb: [320]u8 = @splat(0);
+        // 320 bytes hold the field names and a number of at most 20 digits.
+        try b.append(std.fmt.bufPrint(&nb, "{{\"shard\":{d},\"serves\":", .{r.id}) catch unreachable);
+        if (table.served(@intCast(r.id))) |c| try jsonStr(b, table.name(c)) else try b.append("null");
+        try b.append(",\"classes\":[");
+        for (r.sh.st.wl[0..table.count], 0..) |k, i| {
+            const c: u8 = @intCast(i);
+            if (i > 0) try b.byte(',');
+            try b.append("{\"class\":");
+            try jsonStr(b, table.name(c));
+            const limits = .{ table.shards[c], table.slots[c], table.host_steps[c] };
+            // 320 bytes hold the three field names and three numbers of at most 10 digits.
+            try b.append(std.fmt.bufPrint(&nb, ",\"shards\":{d},\"slotLimit\":{d},\"hostStepLimit\":{d}", limits) catch unreachable);
+            const counts = .{ k.in_flight, k.started, k.refused, k.misrouted, k.deferred, r.fb_cl_inflight[c], r.fb_cl_waiting[c] };
+            const form = ",\"inFlight\":{d},\"started\":{d},\"refused\":{d},\"misrouted\":{d},\"deferred\":{d},\"hostInFlight\":{d},\"hostWaiting\":{d}}}";
+            // 320 bytes hold the seven field names and seven numbers of at most 20 digits.
+            try b.append(std.fmt.bufPrint(&nb, form, counts) catch unreachable);
+        }
+        try b.append("]}");
+    }
+
     fn putWorkflowCreds(r: *Runner, idx: u32, id: []const u8, body: []const u8) void {
         const pool = if (r.wf_pool) |*p| p else return r.adminReply(idx, 404, "{\"error\":\"not found\"}");
         if (id.len > core.max_id) return r.adminReply(idx, 404, "{\"error\":\"unknown workflow\"}");
@@ -3008,11 +3102,38 @@ pub const Runner = struct {
 
     /// True when a step of the workflow in `module` can go to the host now.
     fn hostHasPlace(r: *const Runner, module: u32) bool {
-        return r.fb_admitted < r.hostCapTotal() and r.fb_wf_inflight[module] < r.hostCapWorkflow();
+        return r.fb_admitted < r.hostCapTotal() and r.fb_wf_inflight[module] < r.hostCapWorkflow() and r.hostClassHasPlace(module);
     }
 
-    /// A host step takes a place: one of the total and one of its workflow.
+    /// True when the workload class of `module` is under its share of host
+    /// steps (`--class-host-steps`). A class without a share has no limit
+    /// of its own.
+    fn hostClassHasPlace(r: *const Runner, module: u32) bool {
+        const c = r.sh.st.module_wclass[module];
+        const cap = r.opts.workload.host_steps[c];
+        return cap == 0 or r.fb_cl_inflight[c] < cap;
+    }
+
+    /// The workload class that the host steps of `module` count for. When
+    /// the class of the module changed, its steps move to the new class
+    /// first, so each count leaves the class that it entered.
+    fn hostClass(r: *Runner, module: u32) u8 {
+        const now = r.sh.st.module_wclass[module];
+        const was = r.fb_wf_class[module];
+        if (now == was) return now;
+        std.debug.assert(r.fb_cl_inflight[was] >= r.fb_wf_inflight[module] and r.fb_cl_waiting[was] >= r.fb_wf_waiting[module]);
+        r.fb_cl_inflight[was] -= r.fb_wf_inflight[module];
+        r.fb_cl_inflight[now] += r.fb_wf_inflight[module];
+        r.fb_cl_waiting[was] -= r.fb_wf_waiting[module];
+        r.fb_cl_waiting[now] += r.fb_wf_waiting[module];
+        r.fb_wf_class[module] = now;
+        return now;
+    }
+
+    /// A host step takes a place: one of the total, one of its workflow and
+    /// one of its workload class.
     fn fbAdmit(r: *Runner, module: u32) void {
+        r.fb_cl_inflight[r.hostClass(module)] += 1;
         r.fb_admitted += 1;
         r.fb_wf_inflight[module] += 1;
         r.fb_serve += 1;
@@ -3023,6 +3144,7 @@ pub const Runner = struct {
 
     /// A host step starts to wait (`waitPush`).
     fn fbWaits(r: *Runner, module: u32) void {
+        r.fb_cl_waiting[r.hostClass(module)] += 1;
         r.fb_wf_waiting[module] += 1;
         r.fb_waiting_n += 1;
         r.fb_wait_dirty = true;
@@ -3035,14 +3157,17 @@ pub const Runner = struct {
     /// to wait. Each change of `FbEntry.conn` between a place and
     /// `fb_waiting`, and each removal from `fb_inflight`, goes through here.
     fn fbLeave(r: *Runner, e: *const FbEntry) void {
+        const class = r.hostClass(e.module);
         if (e.conn == fb_waiting) {
-            std.debug.assert(r.fb_waiting_n > 0 and r.fb_wf_waiting[e.module] > 0);
+            std.debug.assert(r.fb_waiting_n > 0 and r.fb_wf_waiting[e.module] > 0 and r.fb_cl_waiting[class] > 0);
+            r.fb_cl_waiting[class] -= 1;
             r.fb_waiting_n -= 1;
             r.fb_wf_waiting[e.module] -= 1;
             gauge(&r.stats.host_waiting, -1);
             return;
         }
-        std.debug.assert(r.fb_admitted > 0 and r.fb_wf_inflight[e.module] > 0);
+        std.debug.assert(r.fb_admitted > 0 and r.fb_wf_inflight[e.module] > 0 and r.fb_cl_inflight[class] > 0);
+        r.fb_cl_inflight[class] -= 1;
         r.fb_admitted -= 1;
         r.fb_wf_inflight[e.module] -= 1;
         r.fb_wait_dirty = true;
@@ -3232,7 +3357,7 @@ pub const Runner = struct {
         const cap = r.hostCapWorkflow();
         var n: u32 = 0;
         for (r.fb_wf_list[0..r.fb_wf_waiters]) |m| {
-            if (r.fb_wf_inflight[m] >= cap) continue;
+            if (r.fb_wf_inflight[m] >= cap or !r.hostClassHasPlace(m)) continue;
             r.fb_wf_order[n] = .{ .last = r.fb_wf_last[m], .module = m };
             n += 1;
         }
@@ -4097,6 +4222,8 @@ const TestRunner = struct {
     modules: []const []const u8 = &.{},
     /// `--fallback-wait-ms`; null keeps the default.
     fallback_wait_ms: ?i64 = null,
+    /// The workload classes (`--classes` and its flags).
+    workload: workload.Classes = workload.single,
     stats: Stats = .{},
     stop: std.atomic.Value(bool) = .init(false),
     r: *Runner = undefined,
@@ -4124,6 +4251,7 @@ const TestRunner = struct {
         opts.max_modules = 4;
         opts.modules = t.modules;
         opts.fallback = t.fallback;
+        opts.workload = t.workload;
         if (t.fallback_wait_ms) |ms| opts.fallback_wait_ms = ms;
         var p: u16 = 36000 + @as(u16, @intCast(@mod(std.c.getpid(), 2000)));
         while (p < 39000) : (p += 1) {
@@ -5346,4 +5474,70 @@ test "a sql step with the dialect mysql goes to the MySQL client, and its result
     try std.testing.expectEqual(@as(u64, 1), r.mysql.counters.connects);
     // The PostgreSQL client took none of these calls.
     try std.testing.expectEqual(@as(u64, 0), r.sql.counters.started);
+}
+
+test "workload classes: the host steps of a class wait at its share, and the other classes go" {
+    var mod_arena = std.heap.ArenaAllocator.init(std.testing.allocator);
+    defer mod_arena.deinit();
+    const ma = mod_arena.allocator();
+    const mods = [_][]const u8{ try programs.loop(ma, null), try programs.loop(ma, "{\"other\":1}") };
+    var table = workload.single;
+    try table.setNames("critical,default,background");
+    try table.set(.host_steps, "background=1");
+    var t: TestRunner = .{ .arena = undefined, .fallback = no_host, .modules = &mods, .workload = table };
+    try t.start();
+    defer t.deinit();
+    const r = t.r;
+    r.fb_version = 2;
+    try std.testing.expectEqual(@as(u32, 2), r.sh.st.nmodules);
+    // Module 0 is a `background` workflow, module 1 a `critical` one.
+    r.sh.st.module_wclass[0] = 2;
+    r.sh.st.module_wclass[1] = 0;
+    const h = try fakeHostConn(r, 0);
+    defer sys.close(h);
+    for ([_]u32{ 1, 2 }) |seq| {
+        const a = fakeAction(7, seq);
+        r.sendFrame(a, a.payload, false);
+    }
+    // The second step of `background` waits: the class has one place.
+    try std.testing.expectEqual(@as(u32, 1), r.fb_waiting_n);
+    try std.testing.expectEqual(@as(u32, 1), r.fb_cl_inflight[2]);
+    try std.testing.expectEqual(@as(u32, 1), r.fb_cl_waiting[2]);
+    // A step of `critical` goes at once, also after a pass over the wait queue.
+    var c = fakeAction(8, 1);
+    c.module = 1;
+    r.sendFrame(c, c.payload, false);
+    r.sendWaiting();
+    try std.testing.expectEqual(@as(u32, 1), r.fb_cl_inflight[0]);
+    try std.testing.expectEqual(@as(u32, 0), r.fb_cl_waiting[0]);
+    try std.testing.expectEqual(@as(u32, 1), r.fb_waiting_n);
+    try std.testing.expectEqual(@as(u32, 2), r.fb_admitted);
+
+    // The workflow moves to `default`, which has no share: its steps count
+    // for the new class, and the step that waited goes.
+    r.sh.st.module_wclass[0] = 1;
+    r.fb_wait_dirty = true;
+    r.sendWaiting();
+    try std.testing.expectEqual(@as(u32, 0), r.fb_waiting_n);
+    try std.testing.expectEqual(@as(u32, 2), r.fb_cl_inflight[1]);
+    try std.testing.expectEqual(@as(u32, 0), r.fb_cl_inflight[2]);
+    try std.testing.expectEqual(@as(u32, 0), r.fb_cl_waiting[2]);
+    // Each step leaves the class that holds it.
+    r.fbRemove(.{ .exec_id = 7, .seq = 1, .send = false });
+    r.fbRemove(.{ .exec_id = 7, .seq = 2, .send = false });
+    r.fbRemove(.{ .exec_id = 8, .seq = 1, .send = false });
+    try std.testing.expectEqual(@as(u32, 0), r.fb_admitted);
+    for (r.fb_cl_inflight) |n| try std.testing.expectEqual(@as(u32, 0), n);
+}
+
+test "workload classes: with shard groups each class has its own webhook port" {
+    var opts: Options = .{ .port = 9000 };
+    try std.testing.expectEqual(@as(u16, 9000), shardPort(opts, 3));
+    try opts.workload.setNames("critical,default,background");
+    try opts.workload.set(.shards, "critical=2,default=4,background=1");
+    const want = [_]u16{ 9000, 9000, 9001, 9001, 9001, 9001, 9002 };
+    for (want, 0..) |port, shard| try std.testing.expectEqual(port, shardPort(opts, @intCast(shard)));
+    // A process for one class keeps the port that it got.
+    try opts.workload.serveOnly("background");
+    try std.testing.expectEqual(@as(u16, 9000), shardPort(opts, 0));
 }

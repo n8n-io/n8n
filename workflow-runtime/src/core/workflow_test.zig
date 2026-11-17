@@ -539,3 +539,124 @@ test "regression: after a recovery, runs from before it do not answer a connecti
     done = try h.tick(&.{});
     try testing.expect(find(done, .reply) == null);
 }
+
+// ---- workload classes (docs/workload-classes.md) --------------------------------------
+
+const workload = @import("workload.zig");
+
+/// `run(t) { r = await node(); return {} }` behind `POST /webhook/<path>`:
+/// the execution holds its slot until the result of the node comes.
+fn holdModule(gpa: std.mem.Allocator, comptime path: []const u8) ![]u8 {
+    const EK = @import("module.zig").EffectKind;
+    var a: Asm = .{ .gpa = gpa, .meta = "{\"triggers\":[{\"kind\":\"webhook\",\"path\":\"" ++ path ++ "\",\"method\":\"POST\"}]}" };
+    defer a.deinit();
+    const call = try a.step("Call", .node);
+    a.beginFunc();
+    try a.emit(.newobj, 0, 1, 0, 0);
+    try a.emitBc(.loadi, 2, call);
+    try a.emit(.@"suspend", @backingInt(EK.node), 3, 2, 1);
+    try a.emit(.newobj, 0, 4, 0, 0);
+    try a.emit(.ret, 0, 4, 0, 0);
+    try a.endFunc("run", 1, 5, 0);
+    return a.finish();
+}
+
+fn classHarness(a: std.mem.Allocator, shard: u16, table: workload.Classes) !Harness {
+    var cfg: core.Config = .{ .slots = 8, .region_counts = .{ 8, 2, 1, 1 }, .region_sizes = .{ 4 << 10, 64 << 10, 256 << 10, 1 << 20 } };
+    cfg.shard_id = shard;
+    cfg.workload = table;
+    cfg.max_parked = 16;
+    cfg.max_timers = 16;
+    cfg.max_pending = 16;
+    cfg.max_actions = 64;
+    cfg.max_batch_events = 16;
+    cfg.module_bytes = 1 << 14;
+    cfg.natives_total = 1 << 10;
+    cfg.max_modules = 4;
+    cfg.max_routes = 8;
+    cfg.max_schedules = 4;
+    cfg.max_zones = 2;
+    cfg.lifecycle = true;
+    return .{ .st = try core.State.init(a, cfg), .scratch = Arena.init(try a.alloc(u8, 1 << 20)), .gpa = a };
+}
+
+fn loadClass(h: *Harness, id: []const u8, class: []const u8, bytes: []const u8) !u32 {
+    const p = try std.fmt.allocPrint(h.gpa, "{{\"workflowId\":\"{s}\",\"versionId\":\"v1\",\"active\":true,\"class\":\"{s}\"}}\n{s}", .{ id, class, bytes });
+    return replyStatus(try h.tick(&.{.{ .kind = .load_workflow, .conn = 7, .payload = p }}));
+}
+
+test "workload classes: the full slots of one class refuse that class only" {
+    var arena = std.heap.ArenaAllocator.init(testing.allocator);
+    defer arena.deinit();
+    const a = arena.allocator();
+    var table = workload.single;
+    try table.setNames("critical,default,background");
+    try table.set(.slots, "background=2");
+    var h = try classHarness(a, 0, table);
+    try testing.expectEqual(@as(u32, 200), try loadClass(&h, "bulk", "background", try holdModule(a, "b")));
+    try testing.expectEqual(@as(u32, 200), try loadClass(&h, "pay", "critical", try holdModule(a, "p")));
+    try testing.expectEqual(@as(u8, 2), h.st.workflowClass("bulk").?);
+
+    const first = find(try h.request("POST", "/webhook/b"), .started).?.exec_id;
+    try testing.expect(find(try h.request("POST", "/webhook/b"), .started) != null);
+    // The third run of `background` gets 503 with the name of the class. The log does not keep it.
+    const refused = try h.request("POST", "/webhook/b");
+    try testing.expectEqual(@as(u32, 503), replyStatus(refused));
+    try testing.expect(std.mem.indexOf(u8, find(refused, .reply).?.payload, "\"class\":\"background\"") != null);
+    try testing.expectEqual(core.LogMode.skip, h.st.log_modes[0]);
+    const manual = try h.tick(&.{.{ .kind = .manual, .exec_id = core.parseExecId("50").?, .conn = 3, .payload = "bulk\n\nnull" }});
+    try testing.expectEqual(@as(u32, 503), replyStatus(manual));
+    // The other classes start runs: the shard has free slots.
+    for (0..3) |_| try testing.expect(find(try h.request("POST", "/webhook/p"), .started) != null);
+    try testing.expectEqual(@as(u32, 2), h.st.wl[2].in_flight);
+    try testing.expectEqual(@as(u64, 2), h.st.wl[2].started);
+    try testing.expectEqual(@as(u64, 2), h.st.wl[2].refused);
+    try testing.expectEqual(@as(u32, 3), h.st.wl[0].in_flight);
+    try testing.expectEqual(@as(u64, 0), h.st.wl[0].refused);
+
+    // A run of `background` ends: its slot is free for the class again.
+    const done = try h.tick(&.{.{ .kind = .effect_ok, .exec_id = first, .seq = 0, .payload = "{}" }});
+    try testing.expect(find(done, .finished) != null);
+    try testing.expectEqual(@as(u32, 1), h.st.wl[2].in_flight);
+    try testing.expect(find(try h.request("POST", "/webhook/b"), .started) != null);
+    // A replay starts what the log holds, also above the limit.
+    h.st.replaying = true;
+    try testing.expect(find(try h.request("POST", "/webhook/b"), .started) != null);
+    try testing.expectEqual(@as(u32, 3), h.st.wl[2].in_flight);
+    try core.checkInvariants(&h.st);
+}
+
+test "workload classes: a class change moves new runs, and a waiting run resumes on its shard" {
+    var arena = std.heap.ArenaAllocator.init(testing.allocator);
+    defer arena.deinit();
+    const a = arena.allocator();
+    var table = workload.single;
+    try table.setNames("critical,default,background");
+    try table.set(.shards, "critical=1,default=1,background=1");
+    try table.check();
+    // Shard 1 is the group of `default`.
+    var h = try classHarness(a, 1, table);
+    try testing.expectEqual(@as(u32, 200), try h.load("wf", "v1", true, try module(a, webhook_meta, 1, true)));
+    try testing.expectEqual(@as(u16, 1), table.shardFor(h.st.workflowClass("wf").?, workload.idHash("wf")));
+    const acts = try h.request("POST", "/webhook/ping");
+    const id = find(acts, .started).?.exec_id;
+    const snap = try a.dupe(u8, find(acts, .snapshot).?.payload);
+    // The waiting run left its slot.
+    try testing.expectEqual(@as(u32, 0), h.st.wl[1].in_flight);
+
+    try testing.expect(h.st.setWorkflowClass("wf", table.classOf("background")));
+    try testing.expect(!h.st.setWorkflowClass("unknown", 0));
+    // The router sends a new run to the group of `background`. This shard refuses one.
+    try testing.expectEqual(@as(u16, 2), table.shardFor(h.st.workflowClass("wf").?, workload.idHash("wf")));
+    const wrong = try h.request("POST", "/webhook/ping");
+    try testing.expectEqual(@as(u32, 421), replyStatus(wrong));
+    try testing.expect(find(wrong, .started) == null);
+    try testing.expectEqual(@as(u64, 1), h.st.wl[2].misrouted);
+
+    // The id of the waiting run names its shard, and the run ends there.
+    try testing.expectEqual(@as(u16, 1), core.ownerShard(id).?);
+    try testing.expect(core.ownerShard(core.parseExecId("77").?) == null);
+    const done = try h.tick(&.{ .{ .kind = .restore, .exec_id = id, .payload = snap }, .{ .kind = .effect_ok, .exec_id = id, .seq = 0, .payload = "true" } });
+    try testing.expectEqualStrings("{\"v\":1,\"x\":true}", find(done, .finished).?.payload);
+    try testing.expectEqual(@as(u32, 0), h.st.wl[2].in_flight);
+}

@@ -16,6 +16,7 @@ import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
 
 import { hostCodeModules } from './compiled-code-modules';
 import { CompiledEngineConfig } from './compiled-engine.config';
+import { parseWorkloadClasses, workloadClassArgs } from './compiled-workload-classes';
 
 const WFRT_RELATIVE_PATH = join('workflow-runtime', 'zig-out', 'bin', 'wfrt');
 const HOST_RELATIVE_PATH = join('packages', '@n8n', 'workflow-fallback-host', 'dist', 'main.js');
@@ -220,6 +221,12 @@ export class CompiledEngineProcesses {
 		if (timestampZone !== undefined) args.push('--sql-timestamp-zone', timestampZone);
 		// `N8N_COMPILED_ENGINE_SQL_MYSQL`: without the flag, `wfrt` gives a MySQL call to the host.
 		if (this.config.sqlMysql) args.push('--sql-mysql');
+		args.push(
+			...workloadClassArgs(parseWorkloadClasses(this.config.workloadClasses), {
+				slots: this.config.workloadClassSlots,
+				hostSteps: this.config.workloadClassHostSteps,
+			}),
+		);
 		if (this.socketPath) args.push('--fallback', this.socketPath);
 		return args;
 	}

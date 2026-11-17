@@ -17,6 +17,11 @@ pub const Route = union(enum) {
     /// `PUT /_admin/workflows/<id>/credentials`: new values for some
     /// credential slots of a loaded workflow; the module stays.
     put_workflow_credentials: []const u8,
+    /// `PUT /_admin/workflows/<id>/class`: the workload class of a loaded
+    /// workflow (docs/workload-classes.md); the module stays.
+    put_workflow_class: []const u8,
+    /// `GET /_admin/classes`: the workload classes with their counters.
+    get_classes,
     list_workflows,
     put_credentials,
     put_variables,
@@ -49,12 +54,14 @@ pub fn route(method: []const u8, target: []const u8) Route {
         if (b == null or b.?.len == 0) return if (eq(u8, method, "GET") and c == null) .list_workflows else .not_found;
         if (c) |sub| {
             if (eq(u8, sub, "credentials") and eq(u8, method, "PUT")) return .{ .put_workflow_credentials = b orelse "" };
+            if (eq(u8, sub, "class") and eq(u8, method, "PUT")) return .{ .put_workflow_class = b orelse "" };
             return if (eq(u8, sub, "static-data") and eq(u8, method, "GET")) .{ .get_static_data = b.? } else .not_found;
         }
         if (eq(u8, method, "PUT")) return .{ .put_workflow = b.? };
         if (eq(u8, method, "DELETE")) return .{ .delete_workflow = b.? };
         return .not_found;
     }
+    if (eq(u8, a, "classes") and b == null and eq(u8, method, "GET")) return .get_classes;
     if (eq(u8, a, "credentials") and b == null and eq(u8, method, "PUT")) return .put_credentials;
     if (eq(u8, a, "variables") and b == null and eq(u8, method, "PUT")) return .put_variables;
     if (eq(u8, a, "executions")) {
@@ -131,6 +138,13 @@ pub fn loadPayload(gpa: std.mem.Allocator, workflow_id: []const u8, body: []cons
     try appendJsonString(gpa, &out, resume_base);
     try out.appendSlice(gpa, ",\"resumeFormUrlBase\":");
     try appendJsonString(gpa, &out, form_base);
+    // The workload class (docs/workload-classes.md). The core gives the
+    // default class to a name that the table does not have.
+    if (strField(o, "class")) |class| {
+        if (class.len == 0 or class.len > core_lib.workload.max_name) return error.BadBody;
+        try out.appendSlice(gpa, ",\"class\":");
+        try appendJsonString(gpa, &out, class);
+    }
     // n8n's copy of the workflow static data (spec 9.7), on the header line.
     if (http.member(body, "staticData")) |raw| {
         const t = std.mem.trim(u8, raw, " \t\r\n");
@@ -1331,4 +1345,19 @@ test "service call table: limits, deadlines and lines" {
     var out: Out = .{ .buf = &out_buf };
     try encode(&out, .{ .service = .{ .line = t.line(a) } }, 5);
     try std.testing.expect(std.mem.endsWith(u8, out.written(), ",\"at\":5}\n"));
+}
+
+test "workload classes: the routes, and the class of a load" {
+    const gpa = std.testing.allocator;
+    try std.testing.expect(route("GET", "/_admin/classes") == .get_classes);
+    try std.testing.expect(route("POST", "/_admin/classes") == .not_found);
+    try std.testing.expectEqualStrings("wf1", route("PUT", "/_admin/workflows/wf1/class").put_workflow_class);
+    try std.testing.expect(route("GET", "/_admin/workflows/wf1/class") == .not_found);
+    const p = try loadPayload(gpa, "wf1", "{\"versionId\":\"v1\",\"class\":\"background\",\"module\":\"AAAA\"}");
+    defer gpa.free(p);
+    try std.testing.expect(std.mem.indexOf(u8, p, ",\"class\":\"background\"}\n") != null);
+    const plain = try loadPayload(gpa, "wf1", "{\"versionId\":\"v1\",\"module\":\"AAAA\"}");
+    defer gpa.free(plain);
+    try std.testing.expect(std.mem.indexOf(u8, plain, "class") == null);
+    try std.testing.expectError(error.BadBody, loadPayload(gpa, "wf1", "{\"class\":\"a-name-longer-than-16-bytes\",\"module\":\"AAAA\"}"));
 }

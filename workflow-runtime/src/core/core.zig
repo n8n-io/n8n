@@ -15,6 +15,7 @@ const cron = @import("cron.zig");
 const tz = @import("tz.zig");
 const multipart = @import("multipart.zig");
 const static_data = @import("static_data.zig");
+const workload = @import("workload.zig");
 const cred_flags = @import("cred_flags.zig");
 const Arena = @import("arena.zig").Arena;
 const reserveMem = @import("arena.zig").reserve;
@@ -24,6 +25,8 @@ const Value = value.Value;
 
 pub const Config = struct {
     shard_id: u16 = 0,
+    /// The workload classes of the process (`workload.zig`). The default is one class.
+    workload: workload.Classes = workload.single,
     seed: u64 = 0x5EED,
     max_modules: u32 = 64,
     module_bytes: u32 = 32 << 20,
@@ -488,6 +491,14 @@ pub const State = struct {
     slot_responded: []bool,
     slot_subscribed: []bool,
     slot_long_wait: []bool,
+    /// The workload class of the execution in each slot, from the class of
+    /// its module when it took the slot. One entry for each slot, from startup.
+    slot_wclass: []u8,
+    /// The workload class of each module slot. A load sets it and
+    /// `setWorkflowClass` changes it. One entry for each module slot, from startup.
+    module_wclass: []u8,
+    /// The counters of each workload class in this shard.
+    wl: [workload.max_classes]workload.Counters,
     regions: []heap.Region,
     free_slots: []SlotId,
     nfree_slots: u32,
@@ -557,6 +568,11 @@ pub const State = struct {
         s.slot_exec = try gpa.alloc(u64, cfg.slots);
         s.slot_module = try gpa.alloc(u16, cfg.slots);
         s.slot_route = try gpa.alloc(u16, cfg.slots);
+        std.debug.assert(cfg.workload.count >= 1 and cfg.workload.default < cfg.workload.count);
+        s.slot_wclass = try gpa.alloc(u8, cfg.slots);
+        s.module_wclass = try gpa.alloc(u8, cfg.max_modules);
+        @memset(s.module_wclass, cfg.workload.default);
+        s.wl = @splat(.{});
         s.slot_class = try gpa.alloc(u8, cfg.slots);
         s.slot_region_idx = try gpa.alloc(u32, cfg.slots);
         s.slot_conn = try gpa.alloc(u64, cfg.slots);
@@ -689,6 +705,22 @@ pub const State = struct {
     pub fn emitted(s: *const State) []const Action {
         return s.actions[0..s.nactions];
     }
+
+    /// The workload class of the current module of a workflow.
+    pub fn workflowClass(s: *const State, id: []const u8) ?u8 {
+        return s.module_wclass[s.liveWorkflow(id) orelse return null];
+    }
+
+    /// Changes the workload class of a loaded workflow. New executions use
+    /// the new class. An execution that holds a slot keeps the class it
+    /// started with until it leaves the slot. False for an unknown workflow.
+    /// The change is not in the log: after a recovery the workflow has the
+    /// class of its last load, until n8n sets it again.
+    pub fn setWorkflowClass(s: *State, id: []const u8, class: u8) bool {
+        std.debug.assert(class < s.cfg.workload.count);
+        s.module_wclass[s.liveWorkflow(id) orelse return false] = class;
+        return true;
+    }
 };
 
 pub const StepError = error{ ActionsFull, ArenaFull, TooManyEvents };
@@ -814,6 +846,7 @@ fn loadModule(s: *State, bytes: []const u8) void {
     const idx = storeModule(s, bytes) orelse return;
     // A module from `--module` is never unloaded.
     s.modules[idx].refs = 1;
+    s.module_wclass[idx] = s.cfg.workload.default;
     if (s.cfg.schedules) registerSchedules(s, idx);
 }
 
@@ -978,6 +1011,9 @@ const WorkflowHeader = struct {
     /// `staticData`: the workflow's static data from n8n (spec 9.7), as raw
     /// JSON, or null to keep what the shard has.
     static_doc: ?[]const u8 = null,
+    /// `class`: the name of the workload class. Null or an unknown name
+    /// gives the default class.
+    class: ?[]const u8 = null,
 };
 
 fn parseHeader(line: []const u8) ?WorkflowHeader {
@@ -993,7 +1029,7 @@ fn parseHeader(line: []const u8) ?WorkflowHeader {
     if (resume_base.len > max_base or form_base.len > max_base) return null;
     const static_doc = module.jsonGet(line, "staticData");
     if (static_doc) |d| if (d.len == 0 or (d[0] != '{' and !std.mem.eql(u8, d, "null"))) return null;
-    return .{ .id = id, .version = version, .active = active, .save_data = save_data, .prefix = prefix, .resume_base = resume_base, .form_base = form_base, .static_doc = static_doc };
+    return .{ .id = id, .version = version, .active = active, .save_data = save_data, .prefix = prefix, .resume_base = resume_base, .form_base = form_base, .static_doc = static_doc, .class = module.jsonStr(module.jsonGet(line, "class")) };
 }
 
 /// The route of a META webhook trigger, as n8n builds it: the prefix, then
@@ -1122,12 +1158,14 @@ fn loadWorkflow(s: *State, ev: Event) StepError!void {
         // The same module: only the version and trigger settings change.
         removeTriggers(s, o);
         setIdentity(&s.modules[o], h);
+        s.module_wclass[o] = s.cfg.workload.classOf(h.class);
         seedStatic(s, h);
         startTriggers(s, o, h.prefix);
         return reply(s, ev.conn, 200, "{\"ok\":true}");
     };
     const idx = storeModule(s, bytes) orelse return rejectStore(s, ev.conn, bytes.len);
     setIdentity(&s.modules[idx], h);
+    s.module_wclass[idx] = s.cfg.workload.classOf(h.class);
     s.modules[idx].refs = 1;
     if (old) |o| retire(s, o);
     seedStatic(s, h);
@@ -1287,6 +1325,8 @@ fn manualRun(s: *State, ev: Event, scratch: *Arena) StepError!void {
     if (ev.exec_id & given_id_flag == 0) return rejectEvent(s, ev.conn, 400, "{\"error\":\"bad execution id\"}");
     if (s.knowsExecution(ev.exec_id)) return rejectEvent(s, ev.conn, 409, "{\"error\":\"the execution id is in use\"}");
     // The none tier keeps no record; a given id needs no reservation.
+    const gate = classGate(s, mod);
+    if (gate != .ok) return classRefuse(s, mod, gate, ev.conn, scratch);
     if (s.modules[mod].durability == .none) s.log_modes[s.cur_event] = .skip;
     const started = try startExecution(s, mod, if (trigger.len == 0) "null" else trigger, ev.conn, 0xFFFF, .{ .flags = ev.seq | heap.exec_flag_manual, .id = ev.exec_id, .quiet = true, .clock_offset_ms = clock_offset_ms }, scratch);
     if (!started) {
@@ -1301,6 +1341,12 @@ fn manualRun(s: *State, ev: Event, scratch: *Arena) StepError!void {
 
 fn scratchDupe(scratch: *Arena, b: []const u8) StepError![]const u8 {
     return scratch.dupe(b) catch error.ArenaFull;
+}
+
+/// The shard that made an execution id, for the router of a resume. Null
+/// for an id that n8n gave (a manual run): the router keeps its shard.
+pub fn ownerShard(exec_id: u64) ?u16 {
+    return if (exec_id & given_id_flag != 0) null else @intCast(exec_id >> 48);
 }
 
 pub fn parseExecId(text: []const u8) ?u64 {
@@ -1462,6 +1508,12 @@ fn fireSchedule(s: *State, ev: Event, scratch: *Arena) StepError!void {
         s.log_modes[s.cur_event] = .skip;
         return;
     }
+    // The same when the class of the workflow has no slot here.
+    if (!reserve and classGate(s, sc.module) != .ok) {
+        s.wl[s.module_wclass[sc.module]].deferred += 1;
+        s.log_modes[s.cur_event] = .skip;
+        return;
+    }
     sc.last_fired = slot;
     // Catch-up "once": the next slot comes after now, not after the slot.
     if (sc.zone) |z| sc.next_at = cron.nextSlot(&sc.spec, @max(slot, s.now_ms), &s.zones[z]);
@@ -1488,6 +1540,8 @@ fn httpRequest(s: *State, ev: Event, scratch: *Arena) StepError!void {
         s.log_modes[s.cur_event] = .skip;
         return reply(s, ev.conn, 404, "{\"error\":\"no route\"}");
     };
+    const gate = classGate(s, s.routes[ri].module);
+    if (gate != .ok) return classRefuse(s, s.routes[ri].module, gate, ev.conn, scratch);
     const none_tier = s.modules[s.routes[ri].module].durability == .none;
     // The id comes from the reserved `none` block: nothing to log.
     if (none_tier) s.log_modes[s.cur_event] = .skip;
@@ -1633,6 +1687,45 @@ fn dynamicScore(r: *const Route, segs: []const []const u8) ?usize {
         score += 1;
     }
     return score;
+}
+
+/// The decision for a new execution of module `mod` by its workload class.
+/// A replay starts what the log holds: a refused start is never logged.
+fn classGate(s: *const State, mod: u16) workload.Gate {
+    if (s.replaying) return .ok;
+    const c = s.module_wclass[mod];
+    return s.cfg.workload.gate(s.cfg.shard_id, c, s.wl[c].in_flight);
+}
+
+/// Refuses a webhook or a manual run of module `mod` for its workload
+/// class: 503 at the limit of the class, 421 in a shard of another group.
+/// The log does not keep the event.
+fn classRefuse(s: *State, mod: u16, why: workload.Gate, conn: u64, scratch: *Arena) StepError!void {
+    std.debug.assert(why != .ok);
+    const c = s.module_wclass[mod];
+    const busy = why == .busy;
+    s.log_modes[s.cur_event] = .skip;
+    if (busy) s.wl[c].refused += 1 else s.wl[c].misrouted += 1;
+    const text = if (busy) "the workload class is at its limit; try again" else "another shard group serves the workload class";
+    const parts = [_][]const u8{ "{\"error\":\"", text, "\",\"class\":\"", s.cfg.workload.name(c), "\"}" };
+    var buf: [160]u8 = @splat(0);
+    var n: usize = 0;
+    for (parts) |part| {
+        // 160 bytes hold the longer text and a name of `workload.max_name` bytes.
+        std.debug.assert(n + part.len <= buf.len);
+        @memcpy(buf[n..][0..part.len], part);
+        n += part.len;
+    }
+    const body = buf[0..n];
+    try reply(s, conn, if (busy) 503 else 421, try scratchDupe(scratch, body));
+}
+
+/// A slot starts to hold an execution of module `mod`.
+fn classEnter(s: *State, slot: SlotId, mod: u16) void {
+    const c = s.module_wclass[mod];
+    std.debug.assert(c < s.cfg.workload.count);
+    s.slot_wclass[slot] = c;
+    s.wl[c].in_flight += 1;
 }
 
 /// Token bucket and concurrency check, before any memory is taken.
@@ -1783,6 +1876,8 @@ fn releaseSlot(s: *State, slot: SlotId) void {
     giveRegion(s, s.slot_class[slot], s.slot_region_idx[slot], s.regions[slot].used, slot);
     s.map_removals += 1;
     _ = s.by_exec.remove(s.slot_exec[slot]);
+    std.debug.assert(s.wl[s.slot_wclass[slot]].in_flight > 0);
+    s.wl[s.slot_wclass[slot]].in_flight -= 1;
     if (s.slot_route[slot] != 0xFFFF) {
         const r = &s.routes[s.slot_route[slot]];
         if (r.active > 0) r.active -= 1;
@@ -1912,6 +2007,8 @@ fn startExecution(s: *State, mod: u16, trigger: []const u8, conn: u64, route: u1
     }
     s.slot_exec[slot] = exec_id;
     s.slot_route[slot] = route;
+    classEnter(s, slot, mod);
+    s.wl[s.slot_wclass[slot]].started += 1;
     s.slot_conn[slot] = if (opts.quiet) 0 else conn;
     s.slot_responded[slot] = false;
     s.slot_subscribed[slot] = false;
@@ -2832,6 +2929,7 @@ fn restore(s: *State, exec_id: u64, snap: []const u8) void {
     s.slot_module[slot] = parked.module;
     s.slot_exec[slot] = exec_id;
     s.slot_route[slot] = 0xFFFF;
+    classEnter(s, slot, parked.module);
     s.slot_conn[slot] = parked.conn;
     s.slot_responded[slot] = parked.responded;
     s.slot_subscribed[slot] = false;
