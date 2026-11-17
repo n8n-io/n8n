@@ -65,6 +65,11 @@ describe('GlobalConfig', () => {
 			oauthClientMetadataUrl: '',
 		},
 		defaultLocale: 'en',
+		locales: {
+			available: {},
+			userOverride: false,
+			versionedBaseUrl: '',
+		},
 		hideUsagePage: false,
 		deployment: {
 			type: 'default',

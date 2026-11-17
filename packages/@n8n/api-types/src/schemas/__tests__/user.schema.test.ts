@@ -244,5 +244,16 @@ describe('user.schema', () => {
 			const result = usersListSchema.safeParse(data);
 			expect(result.success).toBe(isValid);
 		});
+
+		// The editor merges list entries into the current user. A dropped key would reset that
+		// setting in the editor, for example the personal locale.
+		test('should keep the personal locale in user settings', () => {
+			const result = usersListSchema.parse({
+				count: 1,
+				items: [{ id: '123', settings: { userActivated: true, locale: 'de' } }],
+			});
+
+			expect(result.items[0].settings).toEqual({ userActivated: true, locale: 'de' });
+		});
 	});
 });

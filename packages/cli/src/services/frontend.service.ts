@@ -14,6 +14,7 @@ import path from 'path';
 import { UrlService } from '@n8n/backend-services';
 
 import { AiUsageService } from './ai-usage.service';
+import { LocaleService } from './locale.service';
 import { WorkflowReviewPolicyService } from './workflow-review-policy.service';
 
 import config from '@/config';
@@ -48,6 +49,9 @@ export type PublicFrontendSettings = {
 
 	/** Used to localize login page UI */
 	defaultLocale: FrontendSettings['defaultLocale'];
+
+	/** Tells the login page where to load the catalog of the default locale from */
+	availableLocales: FrontendSettings['availableLocales'];
 
 	/** Used to bypass authentication on the workflows/demo page */
 	previewMode: FrontendSettings['previewMode'];
@@ -148,6 +152,7 @@ export class FrontendService {
 		private readonly workflowRepository: WorkflowRepository,
 		private readonly workflowReviewPolicyService: WorkflowReviewPolicyService,
 		private readonly inboxService: InboxService,
+		private readonly localeService: LocaleService,
 	) {
 		loadNodesAndCredentials.addPostProcessor(async () => await this.generateTypes());
 		credentialsOverwrites.registerReloadHandler(async () => await this.generateTypes());
@@ -270,6 +275,8 @@ export class FrontendService {
 			personalizationSurveyEnabled:
 				this.globalConfig.personalization.enabled && this.globalConfig.diagnostics.enabled,
 			defaultLocale: this.globalConfig.defaultLocale,
+			availableLocales: this.localeService.getAvailableLocales(),
+			localeUserOverride: this.globalConfig.locales.userOverride,
 			userManagement: {
 				// oxlint-disable-next-line typescript/no-deprecated
 				quota: this.license.getUsersLimit(),
@@ -730,6 +737,7 @@ export class FrontendService {
 		// Get full settings to ensure all required properties are initialized
 		const {
 			defaultLocale,
+			availableLocales,
 			userManagement: { authenticationMethod, showSetupOnFirstLoad, smtpSetup, passwordMinLength },
 			sso: { saml: ssoSaml, ldap: ssoLdap, oidc: ssoOidc },
 			authCookie,
@@ -743,6 +751,7 @@ export class FrontendService {
 		const publicSettings: PublicFrontendSettings = {
 			settingsMode: 'public',
 			defaultLocale,
+			availableLocales,
 			userManagement: {
 				authenticationMethod,
 				showSetupOnFirstLoad,

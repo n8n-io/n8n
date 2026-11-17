@@ -16,4 +16,6 @@ export class UserSelfSettingsUpdateRequestDto extends Z.class({
 	easyAIWorkflowOnboarded: z.boolean().optional(),
 	dismissedCallouts: z.record(z.string(), z.boolean()).optional(),
 	mcpJsonNudge: z.object({ impressions: z.number().int().nonnegative() }).optional(),
+	/** Personal UI locale. `null` clears it, so the instance default applies. */
+	locale: z.string().min(1).nullable().optional(),
 }) {}

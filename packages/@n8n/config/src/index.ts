@@ -33,6 +33,7 @@ import { HttpRequestConfig } from './configs/http-request.config';
 import { InstanceAiConfig } from './configs/instance-ai.config';
 import { InstanceSettingsLoaderConfig } from './configs/instance-settings-loader.config';
 import { LicenseConfig } from './configs/license.config';
+import { LocalesConfig } from './configs/locales.config';
 import { LoggingConfig } from './configs/logging.config';
 import { MemoryGuardConfig } from './configs/memory-guard.config';
 import { McpClientConfig } from './configs/mcp-client.config';
@@ -65,6 +66,8 @@ export { AiConfig } from './configs/ai.config';
 export { DatabaseConfig, SqliteConfig, statementTimeoutSeconds } from './configs/database.config';
 export { InstanceSettingsConfig } from './configs/instance-settings-config';
 export { InstanceSettingsLoaderConfig } from './configs/instance-settings-loader.config';
+export { LocalesConfig } from './configs/locales.config';
+export type { LocaleDefinitions } from './configs/locales.config';
 export { sampleRateSchema } from './configs/sentry.config';
 export { positiveIntSchema, nonnegativeIntSchema } from './schemas';
 export type { TaskRunnerMode } from './configs/runners.config';
@@ -269,9 +272,15 @@ export class GlobalConfig {
 	@Nested
 	outboundProxy: OutboundProxyConfig;
 
-	/** Default locale for the UI. */
+	/**
+	 * Default UI language for the instance, including the sign-in page. Use `en`
+	 * or a locale code from `N8N_LOCALES`.
+	 */
 	@Env('N8N_DEFAULT_LOCALE')
 	defaultLocale: string = 'en';
+
+	@Nested
+	locales: LocalesConfig;
 
 	/** Whether to hide the page that shows active workflows and executions count. */
 	@Env('N8N_HIDE_USAGE_PAGE')

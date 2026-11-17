@@ -24,8 +24,9 @@ import { useSettingsStore } from '@n8n/stores/settings.store';
 import LoadingView from '@/app/views/LoadingView.vue';
 import { locale } from '@n8n/design-system';
 import { registerTimeAgoLocale } from '@/app/utils/timeAgoLocale';
-import { setLanguage } from '@n8n/i18n';
+import { loadLanguage, setLanguage } from '@n8n/i18n';
 // Note: no need to import en.json here; default 'en' is handled via setLanguage
+import { getLocaleCatalog, loadLocaleCatalog } from '@n8n/rest-api-client/api/settings';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import axios from 'axios';
 import { computed, onMounted, provide, ref, shallowRef, watch } from 'vue';
@@ -34,6 +35,7 @@ import { useStyles } from '@n8n/composables/useStyles';
 import { useExposeCssVar } from '@/app/composables/useExposeCssVar';
 import { useFloatingUiOffsets } from '@/app/composables/useFloatingUiOffsets';
 import { useWorkflowId } from '@/app/composables/useWorkflowId';
+import { useEffectiveLocale } from '@/app/composables/useEffectiveLocale';
 import { WorkflowDocumentStoreKey, WorkflowIdKey } from '@/app/constants/injectionKeys';
 import type {
 	WorkflowDocumentId,
@@ -82,7 +84,7 @@ useMcpDiscoveryEnrollment();
 // EOF Experiment cleanup
 
 const loading = ref(true);
-const defaultLocale = computed(() => rootStore.defaultLocale);
+const effectiveLocale = useEffectiveLocale();
 const isDemoMode = computed(() => route.name === VIEWS.DEMO);
 const hasContentFooter = ref(false);
 
@@ -113,8 +115,28 @@ watch(route, (r) => {
 });
 
 watch(
-	defaultLocale,
+	effectiveLocale,
 	async (newLocale) => {
+		if (newLocale !== 'en') {
+			try {
+				const configured = settingsStore.settings.availableLocales?.find(
+					({ code }) => code === newLocale,
+				);
+				// A locale that the settings don't list has no catalog. The request returns 404.
+				const messages = configured
+					? await loadLocaleCatalog(rootStore.restApiContext, configured)
+					: await getLocaleCatalog(rootStore.restApiContext, newLocale);
+				// A newer locale change started while this catalog was loading.
+				if (newLocale !== effectiveLocale.value) return;
+				loadLanguage(newLocale, messages);
+			} catch (error) {
+				// No admin-configured catalog for this locale. Apply it anyway: missing keys show
+				// in English, and node translations keyed by this locale still work.
+				if (newLocale !== effectiveLocale.value) return;
+				console.warn(`Failed to load the catalog for locale "${newLocale}"`, error);
+			}
+		}
+
 		setLanguage(newLocale);
 
 		axios.defaults.headers.common['Accept-Language'] = newLocale;
