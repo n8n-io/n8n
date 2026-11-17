@@ -433,6 +433,12 @@ onMounted(async () => {
 
 	header {
 		margin-inline: 0 auto;
+		max-width: none;
+
+		> p {
+			display: block;
+			max-width: 45rem;
+		}
 	}
 }
 
