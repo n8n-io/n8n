@@ -105,15 +105,15 @@ holds in flight (`workflow-runtime/src/shell/server.zig`, for each shard):
 - Total: host workers x `--fallback-steps-per-worker` (256). For each
   workflow (module slot): `--fallback-workflow-steps`, default a quarter of
   the total, at least 1 (`hostCapTotal`, `hostCapWorkflow`).
-- A step beyond a cap waits in `fb_waitq` (1,024 steps, at most 512 of one
-  workflow). Its frame is in the journal. All tables have their size from
-  startup; `fbAdmit`, `fbLeave` and `fbRemove` are the only code that counts.
-- `sendWaiting`: the workflows take turns. Each pass gives each workflow an
-  equal part of the free places, in arrival order. With fewer places than
-  workflows, those that sent a step longest ago go first (`waitTurn`). A
-  workflow at its share is passed over.
-- Defined results: a full queue fails the step with `fb_full`; a wait longer
-  than `--fallback-wait-ms` (30 s) fails it with `fb_busy`. Both are retryable.
-- `--stats`: `host_inflight`, `host_waiting`, `host_waited`, `host_refused`.
+- A step beyond a cap waits, as in v1: admission fails no step. The wait
+  queue has a slot for each frame of `fb_inflight` (65,536) from startup, so
+  it is never full first. `fbAdmit`, `fbLeave`, `fbRemove` do all counting.
+- `sendWaiting`: one list for each workflow, in arrival order. Each round
+  gives each workflow an equal part of the free places; those that sent a
+  step longest ago go first. A workflow at its share is passed over.
+- A wait has no time limit while a host connection is open, unless
+  `--fallback-admit-wait-ms` (default 0) sets one (`fb_busy`). Without a
+  host connection, `--fallback-wait-ms` (30 s) applies as before.
+- `--stats`: `host_inflight`, `host_waiting`, `host_waited`, `host_refused`, `host_wait_ms`.
 
 Limits: a cap is for each shard, and each version of a workflow has its own share.
