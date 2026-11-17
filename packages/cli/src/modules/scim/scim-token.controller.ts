@@ -7,6 +7,7 @@ import {
 	type ScimTransferTargetsResponse,
 } from '@n8n/api-types';
 import { Logger, ModuleRegistry } from '@n8n/backend-common';
+import { EventService } from '@n8n/backend-services';
 import type { AuthenticatedRequest } from '@n8n/db';
 import {
 	Body,
@@ -50,6 +51,7 @@ export class ScimTokenController {
 		private readonly moduleRegistry: ModuleRegistry,
 		private readonly scimSsoService: ScimSsoService,
 		private readonly scimDeprovisioningService: ScimDeprovisioningService,
+		private readonly eventService: EventService,
 	) {}
 
 	/** Every route answers 404 while the SCIM opt-in is off. */
@@ -97,7 +99,7 @@ export class ScimTokenController {
 	 */
 	@Patch('/config')
 	@GlobalScope('scim:manage')
-	async updateConfig(_req: AuthenticatedRequest, res: Response, @Body body: ScimConfigPatchDto) {
+	async updateConfig(req: AuthenticatedRequest, res: Response, @Body body: ScimConfigPatchDto) {
 		const { enabled } = body;
 
 		try {
@@ -115,6 +117,15 @@ export class ScimTokenController {
 					}
 				},
 			});
+
+			if (saved.wasEnabled !== saved.enabled) {
+				this.eventService.emit('scim-settings-updated', {
+					user: req.user,
+					isActive: saved.enabled,
+					change: saved.enabled ? 'enabled' : 'disabled',
+					source: 'user',
+				});
+			}
 
 			// `/rest/module-settings` serves a cached snapshot, so refresh it or
 			// clients keep reading the previous value.
@@ -140,16 +151,26 @@ export class ScimTokenController {
 	@Put('/deprovisioning')
 	@GlobalScope('scim:manage')
 	async setDeprovisioningPolicy(
-		_req: AuthenticatedRequest,
+		req: AuthenticatedRequest,
 		_res: Response,
 		@Body body: ScimDeprovisioningPolicyDto,
 	): Promise<ScimDeprovisioningPolicy> {
 		const { onDelete, dataAction, transferProjectId } = body;
-		return await this.scimDeprovisioningService.savePolicy({
+		const { saved, previous } = await this.scimDeprovisioningService.savePolicy({
 			onDelete,
 			dataAction,
 			transferProjectId,
 		});
+
+		if (
+			saved.onDelete !== previous.onDelete ||
+			saved.dataAction !== previous.dataAction ||
+			saved.transferProjectId !== previous.transferProjectId
+		) {
+			await this.emitPolicyChange(req, previous, saved);
+		}
+
+		return saved;
 	}
 
 	/**
@@ -162,8 +183,9 @@ export class ScimTokenController {
 	@GlobalScope('scim:manage')
 	async generateToken(req: AuthenticatedRequest, res: Response) {
 		try {
-			const token = await this.scimTokenService.rotateToken(req.user);
+			const { token, replaced } = await this.scimTokenService.rotateToken(req.user);
 			const baseUrl = this.scimTokenService.getScimBaseUrl();
+			await this.emitTokenChange(req, replaced ? 'token_rotated' : 'token_created');
 			await this.refreshModuleSettings();
 
 			return res.status(201).json({ data: { token, baseUrl } });
@@ -183,9 +205,10 @@ export class ScimTokenController {
 	 */
 	@Delete('/token')
 	@GlobalScope('scim:manage')
-	async deleteToken(_req: AuthenticatedRequest, res: Response) {
+	async deleteToken(req: AuthenticatedRequest, res: Response) {
 		try {
-			await this.scimTokenService.revokeToken();
+			const revoked = await this.scimTokenService.revokeToken();
+			if (revoked) await this.emitTokenChange(req, 'token_revoked');
 			await this.refreshModuleSettings();
 
 			return res.status(200).json({ data: { success: true } });
@@ -215,6 +238,45 @@ export class ScimTokenController {
 	/** SCIM users can sign in only through the identity provider. */
 	private assertSsoEnabled() {
 		if (!this.scimSsoService.isSsoEnabled()) throw new ScimSsoRequiredError();
+	}
+
+	/**
+	 * Reports a saved token change. A failed read of the switch must not fail
+	 * the request: the token change is already saved, and the response of a
+	 * rotation is the only copy of the new token.
+	 */
+	private async emitTokenChange(
+		req: AuthenticatedRequest,
+		change: 'token_created' | 'token_rotated' | 'token_revoked',
+	) {
+		try {
+			this.eventService.emit('scim-settings-updated', {
+				user: req.user,
+				isActive: await this.scimSettingsService.isEnabled(),
+				change,
+				source: 'user',
+			});
+		} catch (error) {
+			this.logger.warn('SCIM: Failed to report the token change', { error });
+		}
+	}
+
+	/** Reports a saved policy change. A failed read of the switch must not fail the request. */
+	private async emitPolicyChange(
+		req: AuthenticatedRequest,
+		before: ScimDeprovisioningPolicy,
+		after: ScimDeprovisioningPolicy,
+	) {
+		try {
+			this.eventService.emit('scim-deprovisioning-policy-updated', {
+				user: req.user,
+				isActive: await this.scimSettingsService.isEnabled(),
+				before,
+				after,
+			});
+		} catch (error) {
+			this.logger.warn('SCIM: Failed to report the deprovisioning policy change', { error });
+		}
 	}
 
 	/**

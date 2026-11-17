@@ -265,24 +265,7 @@ export class AgentSkillRepository extends BaseRepository<AgentSkillDependency> {
 
 	/** The agents that use the skill: a draft ref or a published pin. */
 	async findUsingAgentIds(skillId: string, ctx: OperationContext = {}): Promise<string[]> {
-		const manager = this.managerFor(ctx);
-		const drafts = await manager.find(AgentSkillDependency, {
-			select: ['agentId'],
-			where: { skillId },
-		});
-		const pins = await manager
-			.createQueryBuilder(AgentVersionSkillDependency, 'pin')
-			.innerJoin(AgentHistory, 'history', 'history.versionId = pin.agentVersionId')
-			.innerJoin(
-				AgentPublishHistory,
-				'publication',
-				"publication.versionId = history.versionId AND publication.event = 'activated'",
-			)
-			.where('pin.skillId = :skillId', { skillId })
-			.select('history.agentId', 'agentId')
-			.distinct(true)
-			.getRawMany<{ agentId: string }>();
-		return unique([...drafts, ...pins].map((row) => row.agentId));
+		return (await this.findUsingAgentIdsBySkill([skillId], ctx)).get(skillId) ?? [];
 	}
 
 	/** The skills one agent uses: a draft ref or a pin of any of its published versions. */
@@ -312,6 +295,14 @@ export class AgentSkillRepository extends BaseRepository<AgentSkillDependency> {
 		skillIds: string[],
 		ctx: OperationContext = {},
 	): Promise<Map<string, number>> {
+		const agentsBySkill = await this.findUsingAgentIdsBySkill(skillIds, ctx);
+		return new Map([...agentsBySkill].map(([skillId, agents]) => [skillId, agents.length]));
+	}
+
+	async findUsingAgentIdsBySkill(
+		skillIds: string[],
+		ctx: OperationContext = {},
+	): Promise<Map<string, string[]>> {
 		const manager = this.managerFor(ctx);
 		const pairs = await inChunks(skillIds, async (chunk) => {
 			const drafts = await manager.find(AgentSkillDependency, {
@@ -337,7 +328,7 @@ export class AgentSkillRepository extends BaseRepository<AgentSkillDependency> {
 		for (const { skillId, agentId } of pairs) {
 			agentsBySkill.set(skillId, (agentsBySkill.get(skillId) ?? new Set()).add(agentId));
 		}
-		return new Map([...agentsBySkill].map(([skillId, agents]) => [skillId, agents.size]));
+		return new Map([...agentsBySkill].map(([skillId, agents]) => [skillId, [...agents]]));
 	}
 
 	/** Name and project of each agent, keyed by agent id. */

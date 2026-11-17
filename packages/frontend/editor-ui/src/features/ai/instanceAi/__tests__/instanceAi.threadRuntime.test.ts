@@ -5,6 +5,7 @@ import { describe, test, it, expect, vi, beforeEach, afterEach, beforeAll, after
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { mockedStore } from '@/__tests__/utils';
 import { useWorkflowsListStore } from '@/app/stores/workflowsList.store';
+import { useInstanceAiSettingsStore } from '../instanceAiSettings.store';
 import { fetchThreadMessages, fetchThreadStatus } from '../instanceAi.memory.api';
 import { ensureThread, postMessage, postConfirmation, postCancel } from '../instanceAi.api';
 import {
@@ -1322,6 +1323,7 @@ describe('createThreadRuntime - SSE and hydration', () => {
 				mention_counts: { total: 0, workflow: 0, node: 0, group: 0 },
 				attachment_count: 0,
 				selected_element_count: 0,
+				approval_mode: 'unavailable',
 			},
 		);
 		expect(mockTelemetryTrack).toHaveBeenNthCalledWith(
@@ -1338,6 +1340,7 @@ describe('createThreadRuntime - SSE and hydration', () => {
 				mention_counts: { total: 0, workflow: 0, node: 0, group: 0 },
 				attachment_count: 0,
 				selected_element_count: 0,
+				approval_mode: 'unavailable',
 			},
 		);
 		expect(warnSpy).toHaveBeenCalledWith(
@@ -1418,6 +1421,7 @@ describe('createThreadRuntime - SSE and hydration', () => {
 					mention_counts: { total: 0, workflow: 0, node: 0, group: 0 },
 					attachment_count: 0,
 					selected_element_count: 0,
+					approval_mode: 'unavailable',
 				},
 			);
 		});
@@ -1547,11 +1551,42 @@ describe('createThreadRuntime - SSE and hydration', () => {
 				mention_counts: { total: 0, workflow: 0, node: 0, group: 0 },
 				attachment_count: 0,
 				selected_element_count: 0,
+				approval_mode: 'unavailable',
 			},
 		);
 		expect(warnSpy).not.toHaveBeenCalled();
 		warnSpy.mockRestore();
 	});
+
+	test.each([
+		{ available: false, metadata: undefined, expected: 'unavailable' },
+		{ available: true, metadata: undefined, expected: 'auto' },
+		{
+			available: true,
+			metadata: { instanceAiAgentBuilderTarget: { agentId: 'agent-1', projectId: 'project-1' } },
+			expected: 'manual',
+		},
+	])(
+		'sendMessage tracks the approval mode $expected',
+		async ({ available, metadata, expected }) => {
+			const settingsStore = mockedStore(useInstanceAiSettingsStore);
+			settingsStore.approvalModesAvailable = available;
+			settingsStore.approvalMode = 'auto';
+			const runtime = createThreadRuntime(activeThreadId, {
+				onTitleUpdated: vi.fn(),
+				onRunFinish: vi.fn(),
+				getThreadMetadata: () => metadata,
+			});
+			mockPostMessage.mockResolvedValue({ runId: 'run-1' });
+
+			await runtime.sendMessage('hello', { authorship: USER_TYPED_MESSAGE });
+
+			expect(mockTelemetryTrack).toHaveBeenCalledWith(
+				TELEMETRY_EVENT.INSTANCE_AI.USER_SENT_BUILDER_MESSAGE,
+				expect.objectContaining({ approval_mode: expected }),
+			);
+		},
+	);
 
 	test('sendMessage falls back and warns for invalid action_source values', async () => {
 		const hooks = {
@@ -1578,6 +1613,7 @@ describe('createThreadRuntime - SSE and hydration', () => {
 				mention_counts: { total: 0, workflow: 0, node: 0, group: 0 },
 				attachment_count: 0,
 				selected_element_count: 0,
+				approval_mode: 'unavailable',
 			},
 		);
 		expect(warnSpy).toHaveBeenCalledWith(
@@ -1614,6 +1650,7 @@ describe('createThreadRuntime - SSE and hydration', () => {
 				mention_counts: { total: 0, workflow: 0, node: 0, group: 0 },
 				attachment_count: 0,
 				selected_element_count: 0,
+				approval_mode: 'unavailable',
 			},
 		);
 		warnSpy.mockRestore();

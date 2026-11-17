@@ -4,4 +4,5 @@ export type {
 	EngineV2EligibilityWorkflow,
 	EngineV2Reason,
 	EngineV2ReasonCode,
+	EngineV2ReasonKind,
 } from './types';

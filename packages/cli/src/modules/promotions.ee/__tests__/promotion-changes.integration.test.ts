@@ -841,6 +841,53 @@ describe('resources in the preview', () => {
 		expect(changedResources(await loadPreview())).toEqual([]);
 	}, 60_000);
 
+	it('stops Promote when the project or its branch changed after the preview, then pushes what the preview shows', async () => {
+		const owner = await createOwner();
+		const project = await createTeamProject('Billing', owner);
+		const invoice = await createWorkflow({ name: 'Invoice', nodes: [], connections: {} }, project);
+		const reminder = await createWorkflow(
+			{ name: 'Reminder', nodes: [], connections: {} },
+			project,
+		);
+		const environments = await createInstanceEnvironments();
+		await exportPreviewBaseline(environments.promote, owner);
+		const workflowRepository = Container.get(WorkflowRepository);
+		await workflowRepository.update(invoice.id, { name: 'Invoice (local)' });
+		await workflowRepository.update(reminder.id, { name: 'Reminder (local)' });
+
+		const agent = server.publicApiAgentWithCookie(owner);
+		const loadPreview = async () =>
+			(await agent.get(`/promotions/projects/${project.id}/changes/promote`).expect(200)).body;
+		const promoteShown = async (preview: { revision: string }) =>
+			(
+				await agent
+					.post(`/promotions/projects/${project.id}/promote`)
+					.send({ workflowIds: [invoice.id], expectedPreviewRevision: preview.revision })
+					.expect(200)
+			).body;
+		const stopped = { status: 'preview-changed', environmentId: environments.promote.id };
+
+		// A colleague edits a workflow of the project during the review.
+		const beforeEdit = await loadPreview();
+		await workflowRepository.update(invoice.id, { name: 'Invoice (edited again)' });
+		const head = await remoteHead();
+		expect(await promoteShown(beforeEdit)).toEqual(stopped);
+		expect(await remoteHead()).toBe(head);
+
+		// Another promotion of the project lands on the branch during the review.
+		const beforePromotion = await loadPreview();
+		await Container.get(PromotionsService).promoteProjectSelection(project.id, owner, {
+			workflowIds: [reminder.id],
+			canExportVariableValues: true,
+		});
+		const promotedHead = await remoteHead();
+		expect(await promoteShown(beforePromotion)).toEqual(stopped);
+		expect(await remoteHead()).toBe(promotedHead);
+
+		expect(await promoteShown(await loadPreview())).toMatchObject({ status: 'promoted' });
+		expect(changedResources(await loadPreview())).toEqual([]);
+	}, 60_000);
+
 	it('lists a changed data table once, with each workflow that uses it, and describes the new column', async () => {
 		const owner = await createOwner();
 		const project = await createTeamProject('Orders', owner);

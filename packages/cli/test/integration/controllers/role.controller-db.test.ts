@@ -31,6 +31,9 @@ describe('RoleController - Integration Tests', () => {
 	let memberAgent: SuperAgentTest;
 	let owner: Person;
 	let member: Person;
+	// Accounts a single test creates. The file shares one database, and an account
+	// that holds a custom role makes the role delete below fail on the FK.
+	const scratchUserIds: string[] = [];
 
 	beforeAll(async () => {
 		await testDb.init();
@@ -45,6 +48,9 @@ describe('RoleController - Integration Tests', () => {
 	});
 
 	afterEach(async () => {
+		if (scratchUserIds.length > 0) {
+			await Container.get(UserRepository).delete(scratchUserIds.splice(0));
+		}
 		await cleanupRolesAndScopes();
 		await Container.get(RoleRepository).delete({ systemRole: false });
 	});
@@ -200,6 +206,44 @@ describe('RoleController - Integration Tests', () => {
 		});
 	});
 
+	describe('GET /roles/:slug/members', () => {
+		it('should list a person and a service account with their kind', async () => {
+			const role = await createCustomRoleWithScopeSlugs([], {
+				roleType: 'global',
+				displayName: 'Global Members Test',
+			});
+			const person = await createUser({ role });
+			scratchUserIds.push(person.id);
+			const serviceAccount = await createServiceAccountWithProject(role);
+			scratchUserIds.push(serviceAccount.id);
+
+			const response = await ownerAgent.get(`/roles/${role.slug}/members`).expect(200);
+
+			expect(response.body.data.total).toBe(2);
+			expect(response.body.data.members).toHaveLength(2);
+			expect(response.body.data.members).toEqual(
+				expect.arrayContaining([
+					{
+						userId: person.id,
+						firstName: person.firstName,
+						lastName: person.lastName,
+						email: person.email,
+						role: role.slug,
+						kind: 'person',
+					},
+					{
+						userId: serviceAccount.id,
+						firstName: 'Deploy bot',
+						lastName: null,
+						email: '',
+						role: role.slug,
+						kind: 'service',
+					},
+				]),
+			);
+		});
+	});
+
 	describe('GET /roles/:slug/assignments', () => {
 		it('should return projects where the role is assigned', async () => {
 			const project = await createTeamProject('Test Project', owner);
@@ -237,15 +281,6 @@ describe('RoleController - Integration Tests', () => {
 	});
 
 	describe('GET /roles/:slug/assignments/:projectId/members', () => {
-		// Accounts a single test creates. The file shares one database, and some
-		// global role listings still fail for a service account (IAM-1888).
-		const scratchUserIds: string[] = [];
-
-		afterEach(async () => {
-			if (scratchUserIds.length === 0) return;
-			await Container.get(UserRepository).delete(scratchUserIds.splice(0));
-		});
-
 		it('should return only members with the specified role', async () => {
 			const project = await createTeamProject('Members Test', owner);
 			await linkUserToProject(member, project, 'project:editor');

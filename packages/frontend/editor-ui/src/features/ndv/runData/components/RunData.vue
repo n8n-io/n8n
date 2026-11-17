@@ -2236,6 +2236,7 @@ defineExpose({ enterEditMode });
 					:mapping-enabled="mappingEnabled"
 					:distance-from-active="distanceFromActive"
 					:run-index="runIndex"
+					:connection-type="connectionType"
 					:output-index="currentOutputIndex"
 					:total-runs="maxRunIndex"
 					:search="search"

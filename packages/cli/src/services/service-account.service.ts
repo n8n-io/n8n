@@ -6,7 +6,7 @@ import {
 } from '@n8n/db';
 import { Service } from '@n8n/di';
 
-import { UserService } from '@/services/user.service';
+import { type SystemDeletionActor, UserService } from '@/services/user.service';
 
 /**
  * Creates and removes service accounts. A service account always has a
@@ -35,10 +35,15 @@ export class ServiceAccountService {
 	 * to that project. Without it, the work is deleted with the account.
 	 * Does nothing when no service account has this id.
 	 */
-	async remove(serviceAccountId: string, actor: User, transferId?: string) {
+	async remove(
+		serviceAccountId: string,
+		actor: User | SystemDeletionActor,
+		transferId?: string,
+		ctx: OperationContext = {},
+	) {
 		const serviceAccount = await this.serviceAccountRepository.findById(serviceAccountId);
 		if (!serviceAccount) return;
 
-		await this.userService.deleteUser(actor, serviceAccountId, transferId);
+		await this.userService.deleteServiceAccount(actor, serviceAccountId, transferId, ctx);
 	}
 }
