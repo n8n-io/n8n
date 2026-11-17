@@ -727,6 +727,21 @@ describe('CredentialsView', () => {
 				await flushPromises();
 
 				expect(policies.clearProjectVerdicts).toHaveBeenCalled();
+				expect(policies.reload).not.toHaveBeenCalled();
+			});
+
+			it('refetches the policy of the open project when it is already loaded', async () => {
+				mockedStore(useProjectsStore).personalProject = createTestProject({
+					id: 'personal-1',
+					type: ProjectTypes.Personal,
+				});
+				const policies = setup({});
+				policies.loadedProjectId = 'personal-1';
+
+				renderComponent();
+				await flushPromises();
+
+				expect(policies.reload).toHaveBeenCalled();
 			});
 
 			it('uses the loaded policy of the open project and does not fetch it again', async () => {

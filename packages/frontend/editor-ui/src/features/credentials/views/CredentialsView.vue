@@ -343,10 +343,19 @@ const maybeEditCredential = async () => {
 	}
 };
 
+// Policies can change between visits, so each visit fetches them again. A policy project that
+// is not loaded yet is already being fetched by `useTypeAvailability`.
+function refreshPolicies() {
+	if (typeAvailabilityPoliciesStore.loadedProjectId === policyProjectId.value) {
+		void typeAvailabilityPoliciesStore.reload();
+	} else {
+		typeAvailabilityPoliciesStore.clearProjectVerdicts();
+	}
+}
+
 const initialize = async () => {
 	loading.value = true;
-	// Policies can change between visits, so each visit fetches the other projects again.
-	typeAvailabilityPoliciesStore.clearProjectVerdicts();
+	refreshPolicies();
 	const isVarsEnabled =
 		useSettingsStore().isEnterpriseFeatureEnabled[EnterpriseEditionFeature.Variables];
 
