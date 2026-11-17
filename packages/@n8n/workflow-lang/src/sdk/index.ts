@@ -497,6 +497,68 @@ export interface SqlResult {
 	connect?: SqlError;
 }
 
+/**
+ * The request of an `smtp` effect: one message for one SMTP connection. The runtime reads
+ * host, port, TLS settings, user and password from the credential of the slot. Code never
+ * reads them. The runtime sends the message as nodemailer 10 sends it for the Send Email
+ * node of n8n: EHLO, STARTTLS when the server offers it, AUTH PLAIN or LOGIN, the envelope,
+ * DATA, and no QUIT.
+ */
+export interface SmtpRequest {
+	/** Name of a credential slot of the workflow, with a credential of the type `smtp`. */
+	credential: string;
+	/** The sender of the envelope. An empty text when the message has no sender. */
+	from: string;
+	/** The recipients of the envelope: the addresses of To, Cc and Bcc, each one time. */
+	to: string[];
+	/** The message: headers, an empty line, and the body. The runtime adds the dots of DATA. */
+	message: string;
+	/** True: a certificate that cannot be checked is taken (the option of the node). */
+	allowUnauthorizedCerts?: boolean;
+}
+
+export interface SmtpCall extends StepOptions, SmtpRequest {}
+
+/** One recipient that the server refused, as nodemailer reports it. */
+export interface SmtpRejected {
+	message: string;
+	code: string;
+	response: string;
+	responseCode?: number;
+	command: string;
+	recipient: string;
+}
+
+/** The `info` of nodemailer, without `envelope` and `messageId`: the caller has both. */
+export interface SmtpSent {
+	accepted: string[];
+	rejected: string[];
+	/** The lines of the last EHLO reply after the first. Absent when there is none. */
+	ehlo?: string[];
+	rejectedErrors?: SmtpRejected[];
+	envelopeTime: number;
+	messageTime: number;
+	/** The bytes of the message on the wire. */
+	messageSize: number;
+	/** The last reply of the server. */
+	response: string;
+}
+
+/** An error of nodemailer. It is data, not a throw. */
+export interface SmtpFailure {
+	error: {
+		message: string;
+		code: string;
+		response?: string;
+		responseCode?: number;
+		command: string;
+		rejected?: string[];
+		rejectedErrors?: SmtpRejected[];
+	};
+}
+
+export type SmtpResult = SmtpSent | SmtpFailure;
+
 /** The execution context. Each call except `now`, `random` and `trace` is a durable step. */
 export interface Ctx {
 	node<T = Item>(call: NodeCall): Promise<T[]>;
@@ -507,6 +569,7 @@ export interface Ctx {
 	respond(call: RespondCall): Promise<void>;
 	service<T = unknown>(call: ServiceCall): Promise<T>;
 	sql(call: SqlCall): Promise<SqlResult>;
+	smtp(call: SmtpCall): Promise<SmtpResult>;
 	now(): number;
 	random(): number;
 	/**
@@ -626,6 +689,8 @@ export interface NodeCtx {
 	service<T = unknown>(request: ServiceRequest): Promise<T>;
 	/** SQL statements on the database of a credential slot (spec 9.10). Values are bind values. */
 	sql(request: SqlRequest): Promise<SqlResult>;
+	/** One message over SMTP, with the server and the login of a credential slot. */
+	smtp(request: SmtpRequest): Promise<SmtpResult>;
 	/** The workflow static data, as `Ctx.staticData` (spec 9.7). Library polls keep their cursor there. */
 	staticData(type: 'global' | 'node', node?: string): Record<string, unknown>;
 	/** A number in [0, 1) from the execution PRNG, as `Ctx.random`. Glue. */

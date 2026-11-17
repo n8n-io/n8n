@@ -87,6 +87,7 @@ export const EffectKind = {
 	respond: 5,
 	service: 6,
 	sql: 7,
+	smtp: 8,
 } as const;
 
 export type EffectKindName = keyof typeof EffectKind;
@@ -100,6 +101,7 @@ export const EFFECT_KIND_NAMES: EffectKindName[] = [
 	'respond',
 	'service',
 	'sql',
+	'smtp',
 ];
 
 /** Library functions that CALLN can name (spec section 4.3). */
